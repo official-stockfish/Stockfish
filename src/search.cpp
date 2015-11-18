@@ -129,6 +129,8 @@ namespace {
   EasyMoveManager EasyMove;
   double BestMoveChanges;
   Value DrawValue[COLOR_NB];
+  Value FailLowResolveScore;
+  bool FirstSearchOfGame;
   CounterMovesHistoryStats CounterMovesHistory;
 
   template <NodeType NT>
@@ -187,6 +189,9 @@ void Search::clear() {
       th->history.clear();
       th->counterMoves.clear();
   }
+
+  FailLowResolveScore = VALUE_ZERO;
+  FirstSearchOfGame = true;
 }
 
 
@@ -333,6 +338,10 @@ void MainThread::search() {
           && th->rootMoves[0].score > bestThread->rootMoves[0].score)
         bestThread = th;
 
+  // The score will be used for controlling fail lows on the next search.
+  FailLowResolveScore = bestThread->rootMoves[0].score;
+  FirstSearchOfGame = false;
+
   // Send new PV when needed.
   // FIXME: Breaks multiPV, and skill levels
   if (bestThread != this)
@@ -449,7 +458,6 @@ void Thread::search() {
               {
                   beta = (alpha + beta) / 2;
                   alpha = std::max(bestValue - delta, -VALUE_INFINITE);
-
                   if (isMainThread)
                   {
                       Signals.failedLowAtRoot = true;
@@ -462,7 +470,11 @@ void Thread::search() {
                   beta = std::min(bestValue + delta, VALUE_INFINITE);
               }
               else
+              {
+                  if (isMainThread && !FirstSearchOfGame && bestValue >= FailLowResolveScore)
+                      Signals.failedLowAtRoot = false;
                   break;
+              }
 
               delta += delta / 4 + 5;
 
