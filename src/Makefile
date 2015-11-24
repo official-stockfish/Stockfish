@@ -160,7 +160,15 @@ endif
 ifeq ($(COMP),mingw)
 	comp=mingw
         ifeq ($(UNAME),Linux)
-            CXX=x86_64-w64-mingw32-g++-posix
+            ifeq ($(shell which x86_64-w64-mingw32-g++-posix),)
+                ifeq ($(shell which x86_64-w64-mingw32-g++),)
+                    CXX=g++
+                else
+                    CXX=x86_64-w64-mingw32-g++
+                endif
+            else
+                CXX=x86_64-w64-mingw32-g++-posix
+            endif
         else
 	    CXX=g++
         endif
