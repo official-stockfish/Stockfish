@@ -107,10 +107,10 @@ namespace {
 
 
   // Evaluation weights, indexed by the corresponding evaluation term
-  enum { Mobility, PawnStructure, PassedPawns, Space, KingSafety };
+  enum { Mobility, PawnStructure, PassedPawns, Space, KingSafety, Threats };
 
   const struct Weight { int mg, eg; } Weights[] = {
-    {289, 344}, {233, 201}, {221, 273}, {46, 0}, {322, 0}
+    {289, 344}, {233, 201}, {221, 273}, {46, 0}, {322, 0}, {350, 256}
   };
 
   Score operator*(Score s, const Weight& w) {
@@ -566,9 +566,9 @@ namespace {
         score += popcount<Max15>(b) * PawnAttackThreat;
 
     if (DoTrace)
-        Trace::add(THREAT, Us, score);
+        Trace::add(THREAT, Us, score * Weights[Threats]);
 
-    return score;
+    return score * Weights[Threats];
   }
 
 
