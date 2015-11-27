@@ -39,7 +39,7 @@ const string Version = "";
 /// usual I/O functionality, all without changing a single line of code!
 /// Idea from http://groups.google.com/group/comp.lang.c++/msg/1d941c0f26ea0d81
 
-struct Tie: public streambuf { // MSVC requires splitted streambuf for cin and cout
+struct Tie: public streambuf { // MSVC requires split streambuf for cin and cout
 
   Tie(streambuf* b, streambuf* l) : buf(b), logBuf(l) {}
 
@@ -113,7 +113,7 @@ const string engine_info(bool to_uci) {
   ss << (Is64Bit ? " 64" : "")
      << (HasPext ? " BMI2" : (HasPopCnt ? " POPCNT" : ""))
      << (to_uci  ? "\nid author ": " by ")
-     << "Tord Romstad, Marco Costalba and Joona Kiiski";
+     << "T. Romstad, M. Costalba, J. Kiiski, G. Linscott";
 
   return ss.str();
 }

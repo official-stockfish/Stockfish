@@ -58,10 +58,11 @@ namespace {
 
     if (Checks && !pos.gives_check(m, *ci))
         return moveList;
+    else
+        (void)ci; // Silence a warning under MSVC
 
     *moveList++ = m;
-
-    return (void)ci, moveList; // Silence a warning under MSVC
+    return moveList;
   }
 
 
@@ -82,8 +83,10 @@ namespace {
     // that's not already included in the queen promotion.
     if (Type == QUIET_CHECKS && (StepAttacksBB[W_KNIGHT][to] & ci->ksq))
         *moveList++ = make<PROMOTION>(to - Delta, to, KNIGHT);
+    else
+        (void)ci; // Silence a warning under MSVC
 
-    return (void)ci, moveList; // Silence a warning under MSVC
+    return moveList;
   }
 
 

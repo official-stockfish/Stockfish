@@ -197,6 +197,11 @@ ifeq ($(UNAME),Darwin)
 	LDFLAGS += -arch $(arch) -mmacosx-version-min=10.9
 endif
 
+### Travis CI script uses COMPILER to overwrite CXX
+ifdef COMPILER
+	CXX=$(COMPILER)
+endif
+
 ### On mingw use Windows threads, otherwise POSIX
 ifneq ($(comp),mingw)
 	# On Android Bionic's C library comes with its own pthread implementation bundled in
@@ -382,7 +387,7 @@ profile-build:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_make)
 	@echo ""
 	@echo "Step 2/4. Running benchmark for pgo-build ..."
-	@$(PGOBENCH) > /dev/null
+	$(PGOBENCH) > /dev/null
 	@echo ""
 	@echo "Step 3/4. Building final executable ..."
 	@touch *.cpp *.h syzygy/*.cpp syzygy/*.h
