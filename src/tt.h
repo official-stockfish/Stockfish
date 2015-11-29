@@ -76,8 +76,9 @@ private:
 /// A TranspositionTable consists of a power of 2 number of clusters and each
 /// cluster consists of ClusterSize number of TTEntry. Each non-empty entry
 /// contains information of exactly one position. The size of a cluster should
-/// not be bigger than a cache line size. In case it is less, it should be padded
-/// to guarantee always aligned accesses.
+/// divide the size of a cache line size, to ensure that clusters never cross
+/// cache lines. This ensures best cache performance, as the cacheline is
+/// prefetched, as soon as possible.
 
 class TranspositionTable {
 
@@ -86,10 +87,10 @@ class TranspositionTable {
 
   struct Cluster {
     TTEntry entry[ClusterSize];
-    char padding[2]; // Align to the cache line size
+    char padding[2]; // Align to a divisor of the cache line size
   };
 
-  static_assert(sizeof(Cluster) == CacheLineSize / 2, "Cluster size incorrect");
+  static_assert(CacheLineSize % sizeof(Cluster) == 0, "Cluster size incorrect");
 
 public:
  ~TranspositionTable() { free(mem); }

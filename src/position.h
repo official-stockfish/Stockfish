@@ -28,7 +28,7 @@
 #include "types.h"
 
 class Position;
-struct Thread;
+class Thread;
 
 namespace PSQT {
 
@@ -37,7 +37,7 @@ namespace PSQT {
   void init();
 }
 
-/// CheckInfo struct is initialized at constructor time and keeps info used to 
+/// CheckInfo struct is initialized at constructor time and keeps info used to
 /// detect if a move gives check.
 
 struct CheckInfo {
