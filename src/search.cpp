@@ -290,12 +290,11 @@ void MainThread::search() {
       {
           th->maxPly = 0;
           th->rootDepth = DEPTH_ZERO;
-          th->searching = true;
           if (th != this)
           {
               th->rootPos = Position(rootPos, th);
               th->rootMoves = rootMoves;
-              th->notify_one(); // Wake up the thread and start searching
+              th->start_searching();
           }
       }
 
@@ -324,7 +323,7 @@ void MainThread::search() {
   // Wait until all threads have finished
   for (Thread* th : Threads)
       if (th != this)
-          th->join();
+          th->wait_for_search_finished();
 
   // Check if there are threads with a better score than main thread.
   Thread* bestThread = this;
