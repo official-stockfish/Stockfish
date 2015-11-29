@@ -159,19 +159,7 @@ endif
 
 ifeq ($(COMP),mingw)
 	comp=mingw
-        ifeq ($(UNAME),Linux)
-            ifeq ($(shell which x86_64-w64-mingw32-g++-posix),)
-                ifeq ($(shell which x86_64-w64-mingw32-g++),)
-                    CXX=g++
-                else
-                    CXX=x86_64-w64-mingw32-g++
-                endif
-            else
-                CXX=x86_64-w64-mingw32-g++-posix
-            endif
-        else
-	    CXX=g++
-        endif
+	CXX=g++
 	CXXFLAGS += -Wextra -Wshadow
 	LDFLAGS += -static
 endif
@@ -319,7 +307,7 @@ ifeq ($(pext),yes)
 	endif
 endif
 
-### 3.11 Link Time Optimization, it works since gcc 4.5 but not on mingw under windows.
+### 3.11 Link Time Optimization, it works since gcc 4.5 but not on mingw.
 ### This is a mix of compile and link time options because the lto link phase
 ### needs access to the optimization flags.
 ifeq ($(comp),gcc)
@@ -329,17 +317,6 @@ ifeq ($(comp),gcc)
 		LDFLAGS += $(CXXFLAGS)
 	endif
 	endif
-endif
-
-ifeq ($(UNAME),Linux)
-ifeq ($(comp),mingw)
-        ifeq ($(optimize),yes)
-        ifeq ($(debug),no)
-                CXXFLAGS += -flto
-                LDFLAGS += $(CXXFLAGS)
-        endif
-        endif
-endif
 endif
 
 ### 3.12 Android 5 can only run position independent executables. Note that this
