@@ -327,10 +327,11 @@ void MainThread::search() {
 
   // Check if there are threads with a better score than main thread.
   Thread* bestThread = this;
-  for (Thread* th : Threads)
-      if (   th->completedDepth > bestThread->completedDepth
-          && th->rootMoves[0].score > bestThread->rootMoves[0].score)
-        bestThread = th;
+  if (!Limits.use_time_management() || Time.elapsed() > Time.available())
+      for (Thread* th : Threads)
+          if (   th->completedDepth > bestThread->completedDepth
+              && th->rootMoves[0].score > bestThread->rootMoves[0].score)
+            bestThread = th;
 
   // Send new PV when needed.
   // FIXME: Breaks multiPV, and skill levels
