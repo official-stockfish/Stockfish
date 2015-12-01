@@ -482,7 +482,8 @@ void Thread::search() {
               sync_cout << UCI::pv(rootPos, rootDepth, alpha, beta) << sync_endl;
       }
 
-      if (!Signals.stop)
+      // Picking best thread is not compatible with skill level or multipv
+      if (!Signals.stop && multiPV == 1 && !skill.enabled())
           completedDepth = rootDepth;
 
       if (!isMainThread)
