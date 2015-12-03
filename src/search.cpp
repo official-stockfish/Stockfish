@@ -127,6 +127,7 @@ namespace {
   };
 
   EasyMoveManager EasyMove;
+  bool easyPlayed;
   double BestMoveChanges;
   Value DrawValue[COLOR_NB];
   CounterMovesHistoryStats CounterMovesHistory;
@@ -327,7 +328,7 @@ void MainThread::search() {
 
   // Check if there are threads with a better score than main thread.
   Thread* bestThread = this;
-  if (!Limits.use_time_management() || Time.elapsed() > Time.available())
+  if (!easyPlayed)
       for (Thread* th : Threads)
           if (   th->completedDepth > bestThread->completedDepth
               && th->rootMoves[0].score > bestThread->rootMoves[0].score)
@@ -368,6 +369,7 @@ void Thread::search() {
   {
       easyMove = EasyMove.get(rootPos.key());
       EasyMove.clear();
+      easyPlayed = false;
       BestMoveChanges = 0;
       TT.new_search();
   }
@@ -513,9 +515,9 @@ void Thread::search() {
               // from the previous search and just did a fast verification.
               if (   rootMoves.size() == 1
                   || Time.elapsed() > Time.available()
-                  || (   rootMoves[0].pv[0] == easyMove
-                      && BestMoveChanges < 0.03
-                      && Time.elapsed() > Time.available() / 10))
+                  || (easyPlayed = (   rootMoves[0].pv[0] == easyMove
+                                    && BestMoveChanges < 0.03
+                                    && Time.elapsed() > Time.available() / 10)))
               {
                   // If we are allowed to ponder do not stop the search now but
                   // keep pondering until the GUI sends "ponderhit" or "stop".
@@ -538,7 +540,7 @@ void Thread::search() {
 
   // Clear any candidate easy move that wasn't stable for the last search
   // iterations; the second condition prevents consecutive fast moves.
-  if (EasyMove.stableCnt < 6 || Time.elapsed() < Time.available())
+  if (EasyMove.stableCnt < 6 || easyPlayed)
       EasyMove.clear();
 
   // If skill level is enabled, swap best PV line with the sub-optimal one
