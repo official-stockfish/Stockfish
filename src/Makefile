@@ -291,6 +291,10 @@ endif
 ### 3.6. Bits
 ifeq ($(bits),64)
 	CXXFLAGS += -DIS_64BIT
+else
+	ifneq ($(UNAME),Darwin)
+		CXXFLAGS += -m32
+	endif
 endif
 
 ### 3.7 prefetch
