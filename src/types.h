@@ -101,7 +101,7 @@ typedef uint64_t Key;
 typedef uint64_t Bitboard;
 
 const int MAX_MOVES = 256;
-const int MAX_PLY   = 128;
+const int MAX_PLY   = 250;
 
 /// A move needs 16 bits to be stored
 ///
@@ -214,9 +214,10 @@ enum Depth {
   DEPTH_QS_NO_CHECKS  = -1,
   DEPTH_QS_RECAPTURES = -5,
 
-  DEPTH_NONE = -6,
+  DEPTH_MIN = -6,
   DEPTH_MAX  = MAX_PLY
 };
+static_assert(DEPTH_MAX - DEPTH_MIN <= 256, "Depth out of range.");
 
 enum Square {
   SQ_A1, SQ_B1, SQ_C1, SQ_D1, SQ_E1, SQ_F1, SQ_G1, SQ_H1,

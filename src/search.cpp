@@ -703,7 +703,7 @@ namespace {
         (ss-1)->currentMove != MOVE_NULL ? evaluate(pos)
                                          : -(ss-1)->staticEval + 2 * Eval::Tempo;
 
-        tte->save(posKey, VALUE_NONE, BOUND_NONE, DEPTH_NONE, MOVE_NONE,
+        tte->save(posKey, VALUE_NONE, BOUND_NONE, DEPTH_MIN, MOVE_NONE,
                   ss->staticEval, TT.generation());
     }
 
@@ -1230,7 +1230,7 @@ moves_loop: // When in check search starts from here
         {
             if (!ttHit)
                 tte->save(pos.key(), value_to_tt(bestValue, ss->ply), BOUND_LOWER,
-                          DEPTH_NONE, MOVE_NONE, ss->staticEval, TT.generation());
+                          DEPTH_MIN, MOVE_NONE, ss->staticEval, TT.generation());
 
             return bestValue;
         }
@@ -1575,7 +1575,7 @@ void RootMove::insert_pv_in_tt(Position& pos) {
       TTEntry* tte = TT.probe(pos.key(), ttHit);
 
       if (!ttHit || tte->move() != m) // Don't overwrite correct entries
-          tte->save(pos.key(), VALUE_NONE, BOUND_NONE, DEPTH_NONE,
+          tte->save(pos.key(), VALUE_NONE, BOUND_NONE, DEPTH_MIN,
                     m, VALUE_NONE, TT.generation());
 
       pos.do_move(m, *st++, pos.gives_check(m, CheckInfo(pos)));
