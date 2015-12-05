@@ -161,6 +161,7 @@ ifeq ($(COMP),mingw)
 	comp=mingw
 	CXX=g++
 	CXXFLAGS += -Wextra -Wshadow
+	LDFLAGS += -static
 endif
 
 ifeq ($(COMP),icc)
@@ -306,10 +307,10 @@ ifeq ($(pext),yes)
 	endif
 endif
 
-### 3.11 Link Time Optimization.
+### 3.11 Link Time Optimization, it works since gcc 4.5 but not on mingw.
 ### This is a mix of compile and link time options because the lto link phase
 ### needs access to the optimization flags.
-ifeq ($(comp),$(filter $(comp),gcc mingw))
+ifeq ($(comp),gcc)
 	ifeq ($(optimize),yes)
 	ifeq ($(debug),no)
 		CXXFLAGS += -flto
