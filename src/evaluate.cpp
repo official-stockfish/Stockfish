@@ -109,12 +109,12 @@ namespace {
   // Evaluation weights, indexed by the corresponding evaluation term
   enum { Mobility, PawnStructure, PassedPawns, Space, KingSafety, Threats };
 
-  const struct Weight { int mg, eg; } Weights[] = {
+  const int Weights[][2] = {
     {289, 344}, {233, 201}, {221, 273}, {46, 0}, {322, 0}, {350, 256}
   };
 
-  Score operator*(Score s, const Weight& w) {
-    return make_score(mg_value(s) * w.mg / 256, eg_value(s) * w.eg / 256);
+  Score operator*(Score s, const int w[2]) {
+    return make_score(mg_value(s) * w[0] / 256, eg_value(s) * w[1] / 256);
   }
 
 
