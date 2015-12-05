@@ -34,89 +34,64 @@
 #include "search.h"
 #include "thread_win32.h"
 
-struct Thread;
 
-const size_t MAX_THREADS = 128;
+/// Thread struct keeps together all the thread related stuff. We also use
+/// per-thread pawn and material hash tables so that once we get a pointer to an
+/// entry its life time is unlimited and we don't have to care about someone
+/// changing the entry under our feet.
 
+class Thread {
 
-/// ThreadBase struct is the base of the hierarchy from where we derive all the
-/// specialized thread classes.
-
-struct ThreadBase : public std::thread {
-
-  virtual ~ThreadBase() = default;
-  virtual void idle_loop() = 0;
-  void notify_one();
-  void wait(volatile const bool& b);
-  void wait_while(volatile const bool& b);
-
+  std::thread nativeThread;
   Mutex mutex;
   ConditionVariable sleepCondition;
-  volatile bool exit = false;
-};
+  bool exit, searching;
 
-
-/// Thread struct keeps together all the thread related stuff like locks, state
-/// and especially split points. We also use per-thread pawn and material hash
-/// tables so that once we get a pointer to an entry its life time is unlimited
-/// and we don't have to care about someone changing the entry under our feet.
-
-struct Thread : public ThreadBase {
-
+public:
   Thread();
-  virtual void idle_loop();
-  void search(bool isMainThread = false);
+  virtual ~Thread();
+  virtual void search();
+  void idle_loop();
+  void start_searching(bool resume = false);
+  void wait_for_search_finished();
+  void wait(std::atomic_bool& b);
 
   Pawns::Table pawnsTable;
   Material::Table materialTable;
   Endgames endgames;
   size_t idx, PVIdx;
-  int maxPly;
-  volatile bool searching;
+  int maxPly, callsCnt;
 
   Position rootPos;
   Search::RootMoveVector rootMoves;
-  Search::Stack stack[MAX_PLY+4];
-  HistoryStats History;
-  MovesStats Countermoves;
-  Depth depth;
+  Depth rootDepth;
+  HistoryStats history;
+  MovesStats counterMoves;
+  Depth completedDepth;
+  std::atomic_bool resetCalls;
 };
 
 
-/// MainThread and TimerThread are derived classes used to characterize the two
-/// special threads: the main one and the recurring timer.
+/// MainThread is a derived class with a specific overload for the main thread
 
 struct MainThread : public Thread {
-  virtual void idle_loop();
-  void join();
-  void think();
-  volatile bool thinking = true; // Avoid a race with start_thinking()
-};
-
-struct TimerThread : public ThreadBase {
-
-  static const int Resolution = 5; // Millisec between two check_time() calls
-
-  virtual void idle_loop();
-
-  bool run = false;
+  virtual void search();
 };
 
 
 /// ThreadPool struct handles all the threads related stuff like init, starting,
-/// parking and, most importantly, launching a slave thread at a split point.
-/// All the access to shared thread data is done through this class.
+/// parking and, most importantly, launching a thread. All the access to threads
+/// data is done through this class.
 
 struct ThreadPool : public std::vector<Thread*> {
 
-  void init(); // No c'tor and d'tor, threads rely on globals that should be
-  void exit(); // initialized and are valid during the whole thread lifetime.
+  void init(); // No constructor and destructor, threads rely on globals that should
+  void exit(); // be initialized and valid during the whole thread lifetime.
 
   MainThread* main() { return static_cast<MainThread*>(at(0)); }
-  void read_uci_options();
   void start_thinking(const Position&, const Search::LimitsType&, Search::StateStackPtr&);
+  void read_uci_options();
   int64_t nodes_searched();
-  TimerThread* timer;
 };
 
 extern ThreadPool Threads;

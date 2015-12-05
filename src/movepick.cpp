@@ -68,8 +68,8 @@ namespace {
 /// ordering is at the current node.
 
 MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const HistoryStats& h,
-                       const CounterMovesHistoryStats& cmh, Move cm, Search::Stack* s)
-           : pos(p), history(h), counterMovesHistory(cmh), ss(s), countermove(cm), depth(d) {
+                       const CounterMovesStats& cmh, Move cm, Search::Stack* s)
+           : pos(p), history(h), counterMovesHistory(&cmh), ss(s), countermove(cm), depth(d) {
 
   assert(d > DEPTH_ZERO);
 
@@ -78,9 +78,9 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const HistoryStats&
   endMoves += (ttMove != MOVE_NONE);
 }
 
-MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const HistoryStats& h,
-                       const CounterMovesHistoryStats& cmh, Square s)
-           : pos(p), history(h), counterMovesHistory(cmh) {
+MovePicker::MovePicker(const Position& p, Move ttm, Depth d,
+                       const HistoryStats& h, Square s)
+           : pos(p), history(h), counterMovesHistory(nullptr) {
 
   assert(d <= DEPTH_ZERO);
 
@@ -104,9 +104,8 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const HistoryStats&
   endMoves += (ttMove != MOVE_NONE);
 }
 
-MovePicker::MovePicker(const Position& p, Move ttm, const HistoryStats& h,
-                       const CounterMovesHistoryStats& cmh, Value th)
-           : pos(p), history(h), counterMovesHistory(cmh), threshold(th) {
+MovePicker::MovePicker(const Position& p, Move ttm, const HistoryStats& h, Value th)
+           : pos(p), history(h), counterMovesHistory(nullptr), threshold(th) {
 
   assert(!pos.checkers());
 
@@ -127,7 +126,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, const HistoryStats& h,
 template<>
 void MovePicker::score<CAPTURES>() {
   // Winning and equal captures in the main search are ordered by MVV, preferring
-  // captures near our home rank. Suprisingly, this appears to perform slightly
+  // captures near our home rank. Surprisingly, this appears to perform slightly
   // better than SEE based move ordering: exchanging big pieces before capturing
   // a hanging piece probably helps to reduce the subtree size.
   // In main search we want to push captures with negative SEE values to the
@@ -141,12 +140,9 @@ void MovePicker::score<CAPTURES>() {
 template<>
 void MovePicker::score<QUIETS>() {
 
-  Square prevSq = to_sq((ss-1)->currentMove);
-  const HistoryStats& cmh = counterMovesHistory[pos.piece_on(prevSq)][prevSq];
-
   for (auto& m : *this)
       m.value =  history[pos.moved_piece(m)][to_sq(m)]
-               + cmh[pos.moved_piece(m)][to_sq(m)];
+               + (*counterMovesHistory)[pos.moved_piece(m)][to_sq(m)];
 }
 
 template<>

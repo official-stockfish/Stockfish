@@ -28,7 +28,7 @@
 #include "types.h"
 
 class Position;
-struct Thread;
+class Thread;
 
 namespace PSQT {
 
@@ -37,8 +37,8 @@ namespace PSQT {
   void init();
 }
 
-/// CheckInfo struct is initialized at c'tor time and keeps info used to detect
-/// if a move gives check.
+/// CheckInfo struct is initialized at constructor time and keeps info used to
+/// detect if a move gives check.
 
 struct CheckInfo {
 
@@ -81,8 +81,6 @@ struct StateInfo {
 /// traversing the search tree.
 
 class Position {
-
-  friend std::ostream& operator<<(std::ostream&, const Position&);
 
 public:
   static void init();
@@ -209,6 +207,8 @@ private:
   StateInfo* st;
   bool chess960;
 };
+
+extern std::ostream& operator<<(std::ostream& os, const Position& pos);
 
 inline Color Position::side_to_move() const {
   return sideToMove;

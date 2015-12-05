@@ -36,10 +36,10 @@
 /// Countermoves store the move that refute a previous one. Entries are stored
 /// using only the moving piece and destination square, hence two moves with
 /// different origin but same destination and piece will be considered identical.
-template<typename T>
+template<typename T, bool CM = false>
 struct Stats {
 
-  static const Value Max = Value(1<<28);
+  static const Value Max = Value(1 << 28);
 
   const T* operator[](Piece pc) const { return table[pc]; }
   T* operator[](Piece pc) { return table[pc]; }
@@ -51,29 +51,23 @@ struct Stats {
         table[pc][to] = m;
   }
 
-  void updateH(Piece pc, Square to, Value v) {
+  void update(Piece pc, Square to, Value v) {
 
-    if (abs(int(v)) >= 324) 
+    if (abs(int(v)) >= 324)
         return;
-    table[pc][to] -= table[pc][to] * abs(int(v)) / 324;
-    table[pc][to] += int(v) * 32;
-  }
 
-  void updateCMH(Piece pc, Square to, Value v) {
-
-    if (abs(int(v)) >= 324) 
-        return;
-    table[pc][to] -= table[pc][to] * abs(int(v)) / 512;
-    table[pc][to] += int(v) * 64;
+    table[pc][to] -= table[pc][to] * abs(int(v)) / (CM ? 512 : 324);
+    table[pc][to] += int(v) * (CM ? 64 : 32);
   }
 
 private:
   T table[PIECE_NB][SQUARE_NB];
 };
 
-typedef Stats<Value> HistoryStats;
 typedef Stats<Move> MovesStats;
-typedef Stats<HistoryStats> CounterMovesHistoryStats;
+typedef Stats<Value, false> HistoryStats;
+typedef Stats<Value,  true> CounterMovesStats;
+typedef Stats<CounterMovesStats> CounterMovesHistoryStats;
 
 
 /// MovePicker class is used to pick one pseudo legal move at a time from the
@@ -88,9 +82,9 @@ public:
   MovePicker(const MovePicker&) = delete;
   MovePicker& operator=(const MovePicker&) = delete;
 
-  MovePicker(const Position&, Move, Depth, const HistoryStats&, const CounterMovesHistoryStats&, Square);
-  MovePicker(const Position&, Move, const HistoryStats&, const CounterMovesHistoryStats&, Value);
-  MovePicker(const Position&, Move, Depth, const HistoryStats&, const CounterMovesHistoryStats&, Move, Search::Stack*);
+  MovePicker(const Position&, Move, Depth, const HistoryStats&, Square);
+  MovePicker(const Position&, Move, const HistoryStats&, Value);
+  MovePicker(const Position&, Move, Depth, const HistoryStats&, const CounterMovesStats&, Move, Search::Stack*);
 
   Move next_move();
 
@@ -102,7 +96,7 @@ private:
 
   const Position& pos;
   const HistoryStats& history;
-  const CounterMovesHistoryStats& counterMovesHistory;
+  const CounterMovesStats* counterMovesHistory;
   Search::Stack* ss;
   Move countermove;
   Depth depth;

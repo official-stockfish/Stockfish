@@ -91,8 +91,8 @@ const vector<string> Defaults = {
 void benchmark(const Position& current, istream& is) {
 
   string token;
-  Search::LimitsType limits;
   vector<string> fens;
+  Search::LimitsType limits;
 
   // Assign default values to missing arguments
   string ttSize    = (is >> token) ? token : "16";
@@ -103,10 +103,10 @@ void benchmark(const Position& current, istream& is) {
 
   Options["Hash"]    = ttSize;
   Options["Threads"] = threads;
-  Search::reset();
+  Search::clear();
 
   if (limitType == "time")
-      limits.movetime = stoi(limit); // movetime is in ms
+      limits.movetime = stoi(limit); // movetime is in millisecs
 
   else if (limitType == "nodes")
       limits.nodes = stoi(limit);
@@ -151,14 +151,14 @@ void benchmark(const Position& current, istream& is) {
       cerr << "\nPosition: " << i + 1 << '/' << fens.size() << endl;
 
       if (limitType == "perft")
-          nodes += Search::perft<true>(pos, limits.depth * ONE_PLY);
+          nodes += Search::perft(pos, limits.depth * ONE_PLY);
 
       else
       {
           Search::StateStackPtr st;
           limits.startTime = now();
           Threads.start_thinking(pos, limits, st);
-          Threads.main()->join();
+          Threads.main()->wait_for_search_finished();
           nodes += Threads.nodes_searched();
       }
   }

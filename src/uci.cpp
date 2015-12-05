@@ -170,7 +170,7 @@ void UCI::loop(int argc, char* argv[]) {
           || (token == "ponderhit" && Search::Signals.stopOnPonderhit))
       {
           Search::Signals.stop = true;
-          Threads.main()->notify_one(); // Could be sleeping
+          Threads.main()->start_searching(true); // Could be sleeping
       }
       else if (token == "ponderhit")
           Search::Limits.ponder = 0; // Switch to normal search
@@ -182,7 +182,7 @@ void UCI::loop(int argc, char* argv[]) {
 
       else if (token == "ucinewgame")
       {
-          Search::reset();
+          Search::clear();
           Time.availableNodes = 0;
       }
       else if (token == "isready")    sync_cout << "readyok" << sync_endl;
@@ -211,7 +211,7 @@ void UCI::loop(int argc, char* argv[]) {
 
   } while (token != "quit" && argc == 1); // Passed args have one-shot behaviour
 
-  Threads.main()->join(); // Cannot quit whilst the search is running
+  Threads.main()->wait_for_search_finished();
 }
 
 
