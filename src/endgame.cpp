@@ -59,6 +59,9 @@ namespace {
   const int PushClose[8] = { 0, 0, 100, 80, 60, 40, 20, 10 };
   const int PushAway [8] = { 0, 5, 20, 40, 60, 80, 90, 100 };
 
+  // Pawn Rank based scaling factors used in KRPPKRP endgame
+  const int KRPPKRPScaleFactors[RANK_NB] = { 0, 9, 10, 14, 21, 44, 0, 0 };
+
 #ifndef NDEBUG
   bool verify_material(const Position& pos, Color c, Value npm, int pawnsCnt) {
     return pos.non_pawn_material(c) == npm && pos.count<PAWN>(c) == pawnsCnt;
@@ -600,14 +603,8 @@ ScaleFactor Endgame<KRPPKRP>::operator()(const Position& pos) const {
       && distance<File>(bksq, wpsq2) <= 1
       && relative_rank(strongSide, bksq) > r)
   {
-      switch (r) {
-      case RANK_2: return ScaleFactor(10);
-      case RANK_3: return ScaleFactor(10);
-      case RANK_4: return ScaleFactor(15);
-      case RANK_5: return ScaleFactor(20);
-      case RANK_6: return ScaleFactor(40);
-      default: assert(false);
-      }
+      assert(r > RANK_1 && r < RANK_7);
+      return ScaleFactor(KRPPKRPScaleFactors[r]);
   }
   return SCALE_FACTOR_NONE;
 }
