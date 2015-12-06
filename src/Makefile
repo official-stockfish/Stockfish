@@ -159,7 +159,25 @@ endif
 
 ifeq ($(COMP),mingw)
 	comp=mingw
-	CXX=g++
+
+	ifeq ($(UNAME),Linux)
+		ifeq ($(bits),64)
+			ifeq ($(shell which x86_64-w64-mingw32-c++-posix),)
+				CXX=x86_64-w64-mingw32-c++
+			else
+				CXX=x86_64-w64-mingw32-c++-posix
+			endif
+		else
+			ifeq ($(shell which i686-w64-mingw32-c++-posix),)
+				CXX=i686-w64-mingw32-c++
+			else
+				CXX=i686-w64-mingw32-c++-posix
+			endif
+		endif
+	else
+		CXX=g++
+	endif
+
 	CXXFLAGS += -Wextra -Wshadow
 	LDFLAGS += -static
 endif
@@ -195,6 +213,11 @@ endif
 ifeq ($(UNAME),Darwin)
 	CXXFLAGS += -arch $(arch) -mmacosx-version-min=10.9
 	LDFLAGS += -arch $(arch) -mmacosx-version-min=10.9
+endif
+
+### Travis CI script uses COMPILER to overwrite CXX
+ifdef COMPILER
+	CXX=$(COMPILER)
 endif
 
 ### On mingw use Windows threads, otherwise POSIX
@@ -304,7 +327,7 @@ ifeq ($(pext),yes)
 	endif
 endif
 
-### 3.11 Link Time Optimization, it works since gcc 4.5 but not on mingw.
+### 3.11 Link Time Optimization, it works since gcc 4.5 but not on mingw under Windows.
 ### This is a mix of compile and link time options because the lto link phase
 ### needs access to the optimization flags.
 ifeq ($(comp),gcc)
@@ -312,6 +335,17 @@ ifeq ($(comp),gcc)
 	ifeq ($(debug),no)
 		CXXFLAGS += -flto
 		LDFLAGS += $(CXXFLAGS)
+	endif
+	endif
+endif
+
+ifeq ($(comp),mingw)
+	ifeq ($(UNAME),Linux)
+	ifeq ($(optimize),yes)
+	ifeq ($(debug),no)
+		CXXFLAGS += -flto
+		LDFLAGS += $(CXXFLAGS)
+	endif
 	endif
 	endif
 endif
@@ -384,7 +418,7 @@ profile-build:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_make)
 	@echo ""
 	@echo "Step 2/4. Running benchmark for pgo-build ..."
-	@$(PGOBENCH) > /dev/null
+	$(PGOBENCH) > /dev/null
 	@echo ""
 	@echo "Step 3/4. Building final executable ..."
 	@touch *.cpp *.h syzygy/*.cpp syzygy/*.h

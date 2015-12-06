@@ -57,12 +57,6 @@ namespace {
   // Unsupported pawn penalty
   const Score UnsupportedPawnPenalty = S(20, 10);
 
-  // Center bind bonus: Two pawns controlling the same central square
-  const Bitboard CenterBindMask[COLOR_NB] = {
-    (FileDBB | FileEBB) & (Rank5BB | Rank6BB | Rank7BB),
-    (FileDBB | FileEBB) & (Rank4BB | Rank3BB | Rank2BB)
-  };
-
   const Score CenterBind = S(16, 0);
 
   // Weakness of our pawn shelter in front of the king by [distance from edge][rank]
@@ -115,6 +109,10 @@ namespace {
     const Square Right = (Us == WHITE ? DELTA_NE : DELTA_SW);
     const Square Left  = (Us == WHITE ? DELTA_NW : DELTA_SE);
 
+    const Bitboard CenterBindMask =
+      Us == WHITE ? (FileDBB | FileEBB) & (Rank5BB | Rank6BB | Rank7BB)
+                  : (FileDBB | FileEBB) & (Rank4BB | Rank3BB | Rank2BB);
+
     Bitboard b, neighbours, doubled, supported, phalanx;
     Square s;
     bool passed, isolated, opposed, backward, lever, connected;
@@ -125,7 +123,7 @@ namespace {
     Bitboard ourPawns   = pos.pieces(Us  , PAWN);
     Bitboard theirPawns = pos.pieces(Them, PAWN);
 
-    e->passedPawns[Us] = 0;
+    e->passedPawns[Us] = e->pawnAttacksSpan[Us] = 0;
     e->kingSquares[Us] = SQ_NONE;
     e->semiopenFiles[Us] = 0xFF;
     e->pawnAttacks[Us] = shift_bb<Right>(ourPawns) | shift_bb<Left>(ourPawns);
@@ -139,8 +137,8 @@ namespace {
 
         File f = file_of(s);
 
-        // This file cannot be semi-open
         e->semiopenFiles[Us] &= ~(1 << f);
+        e->pawnAttacksSpan[Us] |= pawn_attack_span(Us, s);
 
         // Flag the pawn
         neighbours  =   ourPawns   & adjacent_files_bb(f);
@@ -211,7 +209,7 @@ namespace {
     e->pawnSpan[Us] = b ? int(msb(b) - lsb(b)) : 0;
 
     // Center binds: Two pawns controlling the same central square
-    b = shift_bb<Right>(ourPawns) & shift_bb<Left>(ourPawns) & CenterBindMask[Us];
+    b = shift_bb<Right>(ourPawns) & shift_bb<Left>(ourPawns) & CenterBindMask;
     score += popcount<Max15>(b) * CenterBind;
 
     return score;
@@ -256,6 +254,7 @@ Entry* probe(const Position& pos) {
 
   e->key = key;
   e->score = evaluate<WHITE>(pos, e) - evaluate<BLACK>(pos, e);
+  e->asymmetry = popcount<Max15>(e->semiopenFiles[WHITE] ^ e->semiopenFiles[BLACK]);
   return e;
 }
 

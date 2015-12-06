@@ -87,7 +87,7 @@ PieceType min_attacker<KING>(const Bitboard*, Square, Bitboard, Bitboard&, Bitbo
 } // namespace
 
 
-/// CheckInfo c'tor
+/// CheckInfo constructor
 
 CheckInfo::CheckInfo(const Position& pos) {
 
@@ -143,7 +143,7 @@ std::ostream& operator<<(std::ostream& os, const Position& pos) {
   }
 
   os << "\nFen: " << pos.fen() << "\nKey: " << std::hex << std::uppercase
-     << std::setfill('0') << std::setw(16) << pos.st->key << std::dec << "\nCheckers: ";
+     << std::setfill('0') << std::setw(16) << pos.key() << std::dec << "\nCheckers: ";
 
   for (Bitboard b = pos.checkers(); b; )
       os << UCI::square(pop_lsb(&b)) << " ";
@@ -481,9 +481,11 @@ void Position::set_state(StateInfo* si) const {
       for (PieceType pt = KNIGHT; pt <= QUEEN; ++pt)
           si->nonPawnMaterial[c] += pieceCount[c][pt] * PieceValue[MG][pt];
 
+#ifdef THREECHECK
   for (Color c = WHITE; c <= BLACK; ++c)
       for (Checks n = CHECKS_1; n <= si->checksGiven[c]; ++n)
           si->key ^= Zobrist::checks[c][n];
+#endif
 }
 
 
@@ -1481,7 +1483,7 @@ bool Position::is_draw() const {
   {
       stp = stp->previous->previous;
 
-      if (stp->key == st->key && (++rep >= 2 + (gamePly - i < Search::RootPly)))
+      if (stp->key == st->key && (++rep >= 2 + (gamePly - i < thisThread->rootPly)))
           return true; // Draw at first repetition in search, and second repetition in game tree.
   }
 
