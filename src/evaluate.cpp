@@ -108,10 +108,10 @@ namespace {
 
 
   // Evaluation weights, indexed by the corresponding evaluation term
-  enum { Mobility, PawnStructure, PassedPawns, Space, KingSafety, Threats };
+  enum { Mobility, PawnStructure, PassedPawns, Space, KingSafety }; //, Threats
 
   const struct Weight { int mg, eg; } Weights[] = {
-    {266, 334}, {214, 203}, {193, 262}, {47, 0}, {330, 0}, {404, 241}
+    {266, 334}, {214, 203}, {193, 262}, {47, 0}, {330, 0} //, {256, 256}
   };
 
   Score operator*(Score s, const Weight& w) {
@@ -161,14 +161,14 @@ namespace {
   // bonuses according to which piece type attacks which one.
   // Attacks on lesser pieces which are pawn defended are not considered.
   const Score Threat[2][PIECE_TYPE_NB] = {
-   { S(0, 0), S(0, 32), S(25, 39), S(28, 44), S(42, 98), S(35,105) }, // Minor attacks
-   { S(0, 0), S(0, 27), S(26, 57), S(26, 57), S( 0, 30), S(23, 51) }  // Rook attacks
+   { S(0, 0), S(0, 29), S(44, 39), S(46, 44), S(72, 94), S(47,106) }, // Minor attacks
+   { S(0, 0), S(0, 24), S(40, 55), S(39, 52), S( 0, 31), S(36, 44) }  // Rook attacks
   };
 
   // ThreatenedByPawn[PieceType] contains a penalty according to which piece
   // type is attacked by a pawn.
   const Score ThreatenedByPawn[PIECE_TYPE_NB] = {
-    S(0, 0), S(0, 0), S(107, 138), S(84, 122), S(114, 203), S(121, 217)
+    S(0, 0), S(0, 0), S(171, 126), S(123, 118), S(217, 204), S(208, 199)
   };
 
   // Passed[mg/eg][Rank] contains midgame and endgame bonuses for passed pawns.
@@ -184,11 +184,11 @@ namespace {
     S(-27, -12), S( 1, -8), S( 3, 10), S( 12,  10)
   };
 
-  const Score ThreatenedByHangingPawn = S(40, 60);
+  const Score ThreatenedByHangingPawn = S(69, 58);
 
   // Assorted bonuses and penalties used by evaluation
-  const Score KingOnOne          = S( 2, 58);
-  const Score KingOnMany         = S( 6,125);
+  const Score KingOnOne          = S( 3, 54);
+  const Score KingOnMany         = S( 8,122);
   const Score RookOnPawn         = S( 7, 27);
   const Score RookOnOpenFile     = S(43, 21);
   const Score RookOnSemiOpenFile = S(19, 10);
@@ -196,8 +196,8 @@ namespace {
   const Score MinorBehindPawn    = S(16,  0);
   const Score TrappedRook        = S(92,  0);
   const Score Unstoppable        = S( 0, 20);
-  const Score Hanging            = S(31, 26);
-  const Score PawnAttackThreat   = S(20, 20);
+  const Score Hanging            = S(49, 25);
+  const Score PawnAttackThreat   = S(31, 19);
   const Score Checked            = S(20, 20);
 
   // Penalty for a bishop on a1/h1 (a8/h8 for black) which is trapped by
@@ -557,9 +557,9 @@ namespace {
         score += popcount<Max15>(b) * PawnAttackThreat;
 
     if (DoTrace)
-        Trace::add(THREAT, Us, score * Weights[Threats]);
+        Trace::add(THREAT, Us, score);// * Weights[Threats]);
 
-    return score * Weights[Threats];
+    return score;// * Weights[Threats];
   }
 
 
