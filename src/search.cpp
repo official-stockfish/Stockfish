@@ -35,6 +35,8 @@
 #include "uci.h"
 #include "syzygy/tbprobe.h"
 
+#define POS_OF_HIGHESTBITclz(a) (((sizeof(unsigned) << 3) - 1) - __builtin_clz(a))
+
 namespace Search {
 
   SignalsType Signals;
@@ -65,6 +67,28 @@ namespace {
 
   // Razoring and futility margin based on depth
   const int razor_margin[4] = { 483, 570, 603, 554 };
+
+  const int combos6[] = {
+		  0b000111,
+		  0b001011,
+		  0b001101,
+		  0b001110,
+		  0b010011,
+		  0b010110,
+		  0b011001,
+		  0b011010,
+		  0b011100,
+		  0b100011,
+		  0b100101,
+		  0b100110,
+		  0b101001,
+		  0b101100,
+		  0b110001,
+		  0b110010,
+		  0b110100,
+		  0b111000
+  };
+
   Value futility_margin(Depth d) { return Value(200 * d); }
 
   // Futility and reductions lookup tables, initialized at startup
@@ -384,9 +408,17 @@ void Thread::search() {
   // Iterative deepening loop until requested to stop or target depth reached
   while (++rootDepth < DEPTH_MAX && !Signals.stop && (!Limits.depth || rootDepth <= Limits.depth))
   {
-      // Set up the new depth for the helper threads
-      if (!isMainThread)
-          rootDepth = std::min(DEPTH_MAX - ONE_PLY, Threads.main()->rootDepth + Depth(int(2.2 * log(1 + this->idx))));
+      // Set up the new depth for the helper threads skipping in average each 2nd ply (using a half density map similar to a Hadamard matrix)
+      if (!isMainThread) {
+    	  if (idx <= 6 || idx > 24) {
+    		  if (( (rootPos.game_ply() + rootDepth + idx) >> (POS_OF_HIGHESTBITclz(idx + 1) - 1) ) % 2)
+    			  continue;
+    	  }
+    	  else {
+    		  if (combos6[idx - 7] >> (( rootPos.game_ply() + rootDepth) % 6) & 1)
+    			  continue;
+    	  }
+      }
 
       // Age out PV variability metric
       if (isMainThread)
