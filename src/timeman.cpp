@@ -32,8 +32,8 @@ namespace {
   enum TimeType { OptimumTime, MaxTime };
 
   const int MoveHorizon   = 50;   // Plan time management at most this many moves ahead
-  const double MaxRatio   = 7.0;  // When in trouble, we can step over reserved time with this ratio
-  const double StealRatio = 0.33; // However we must not steal time from remaining moves over this ratio
+  const double MaxRatio   = 6.93;  // When in trouble, we can step over reserved time with this ratio
+  const double StealRatio = 0.36; // However we must not steal time from remaining moves over this ratio
 
 
   // move_importance() is a skew-logistic function based on naive statistical
@@ -43,9 +43,9 @@ namespace {
 
   double move_importance(int ply) {
 
-    const double XScale = 9.3;
-    const double XShift = 59.8;
-    const double Skew   = 0.172;
+    const double XScale = 8.27;
+    const double XShift = 59.;
+    const double Skew   = 0.179;
 
     return pow((1 + exp((ply - XShift) / XScale)), -Skew) + DBL_MIN; // Ensure non-zero
   }
@@ -129,6 +129,4 @@ void TimeManagement::init(Search::LimitsType& limits, Color us, int ply)
 
   if (Options["Ponder"])
       optimumTime += optimumTime / 4;
-
-  optimumTime = std::min(optimumTime, maximumTime);
 }

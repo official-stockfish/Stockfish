@@ -127,6 +127,7 @@ namespace {
   };
 
   EasyMoveManager EasyMove;
+  bool easyPlayed, failedLow;
   double BestMoveChanges;
   Value DrawValue[COLOR_NB];
   CounterMovesHistoryStats CounterMovesHistory;
@@ -368,6 +369,7 @@ void Thread::search() {
   {
       easyMove = EasyMove.get(rootPos.key());
       EasyMove.clear();
+      easyPlayed = false;
       BestMoveChanges = 0;
       TT.new_search();
   }
@@ -391,7 +393,7 @@ void Thread::search() {
 
       // Age out PV variability metric
       if (isMainThread)
-          BestMoveChanges *= 0.5;
+          BestMoveChanges *= 0.505, failedLow = false;
 
       // Save the last iteration's scores before first PV line is searched and
       // all the move scores except the (new) PV are set to -VALUE_INFINITE.
@@ -452,7 +454,7 @@ void Thread::search() {
 
                   if (isMainThread)
                   {
-                      Signals.failedLowAtRoot = true;
+                      failedLow = true;
                       Signals.stopOnPonderhit = false;
                   }
               }
@@ -512,10 +514,10 @@ void Thread::search() {
               // of the available time has been used or we matched an easyMove
               // from the previous search and just did a fast verification.
               if (   rootMoves.size() == 1
-                  || Time.elapsed() > Time.available()
-                  || (   rootMoves[0].pv[0] == easyMove
+                  || Time.elapsed() > Time.available() * (failedLow? 641 : 315)/640
+		  || ( easyPlayed = (   rootMoves[0].pv[0] == easyMove
                       && BestMoveChanges < 0.03
-                      && Time.elapsed() > Time.available() / 10))
+                      && Time.elapsed() > Time.available() / 8)))
               {
                   // If we are allowed to ponder do not stop the search now but
                   // keep pondering until the GUI sends "ponderhit" or "stop".
@@ -538,7 +540,7 @@ void Thread::search() {
 
   // Clear any candidate easy move that wasn't stable for the last search
   // iterations; the second condition prevents consecutive fast moves.
-  if (EasyMove.stableCnt < 6 || Time.elapsed() < Time.available())
+  if (EasyMove.stableCnt < 6 || easyPlayed)
       EasyMove.clear();
 
   // If skill level is enabled, swap best PV line with the sub-optimal one
@@ -859,15 +861,10 @@ moves_loop: // When in check search starts from here
 
       ss->moveCount = ++moveCount;
 
-      if (RootNode && thisThread == Threads.main())
-      {
-          Signals.firstRootMove = (moveCount == 1);
-
-          if (Time.elapsed() > 3000)
-              sync_cout << "info depth " << depth / ONE_PLY
-                        << " currmove " << UCI::move(move, pos.is_chess960())
-                        << " currmovenumber " << moveCount + thisThread->PVIdx << sync_endl;
-      }
+      if (RootNode && thisThread == Threads.main() && Time.elapsed() > 3000)
+          sync_cout << "info depth " << depth / ONE_PLY
+                    << " currmove " << UCI::move(move, pos.is_chess960())
+                    << " currmovenumber " << moveCount + thisThread->PVIdx << sync_endl;
 
       if (PvNode)
           (ss+1)->pv = nullptr;
@@ -1486,19 +1483,9 @@ moves_loop: // When in check search starts from here
     if (Limits.ponder)
         return;
 
-    if (Limits.use_time_management())
-    {
-        bool stillAtFirstMove =    Signals.firstRootMove.load(std::memory_order_relaxed)
-                               && !Signals.failedLowAtRoot.load(std::memory_order_relaxed)
-                               &&  elapsed > Time.available() * 3 / 4;
-
-        if (stillAtFirstMove || elapsed > Time.maximum() - 10)
-            Signals.stop = true;
-    }
-    else if (Limits.movetime && elapsed >= Limits.movetime)
-        Signals.stop = true;
-
-    else if (Limits.nodes && Threads.nodes_searched() >= Limits.nodes)
+    if (   (Limits.use_time_management() && elapsed > Time.maximum() - 10)
+        || (Limits.movetime && elapsed >= Limits.movetime)
+        || (Limits.nodes && Threads.nodes_searched() >= Limits.nodes))
             Signals.stop = true;
   }
 

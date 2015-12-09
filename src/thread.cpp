@@ -174,8 +174,7 @@ void ThreadPool::start_thinking(const Position& pos, const LimitsType& limits,
 
   main()->wait_for_search_finished();
 
-  Signals.stopOnPonderhit = Signals.firstRootMove = false;
-  Signals.stop = Signals.failedLowAtRoot = false;
+  Signals.stopOnPonderhit = Signals.stop = false;
 
   main()->rootMoves.clear();
   main()->rootPos = pos;
