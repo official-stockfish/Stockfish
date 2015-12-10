@@ -409,15 +409,15 @@ void Thread::search() {
   while (++rootDepth < DEPTH_MAX && !Signals.stop && (!Limits.depth || rootDepth <= Limits.depth))
   {
       // Set up the new depth for the helper threads skipping in average each 2nd ply (using a half density map similar to a Hadamard matrix)
-      if (!isMainThread) {
-    	  if (idx <= 6 || idx > 24) {
-    		  if (( (rootPos.game_ply() + rootDepth + idx) >> (POS_OF_HIGHESTBITclz(idx + 1) - 1) ) % 2)
-    			  continue;
-    	  }
-    	  else {
-    		  if (combos6[idx - 7] >> (( rootPos.game_ply() + rootDepth) % 6) & 1)
-    			  continue;
-    	  }
+      if (!isMainThread)
+      {
+          if (idx <= 6 || idx > 24)
+          {
+    	      if (((rootPos.game_ply() + rootDepth + idx) >> (POS_OF_HIGHESTBITclz(idx + 1) - 1)) % 2)
+                  continue;
+          }
+    	  else if (combos6[idx - 7] >> ((rootPos.game_ply() + rootDepth) % 6) & 1)
+              continue;
       }
 
       // Age out PV variability metric
