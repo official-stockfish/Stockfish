@@ -58,7 +58,7 @@
 /// _WIN32             Building on Windows (any)
 /// _WIN64             Building on Windows 64 bit
 
-#if defined(_WIN64) && !defined(IS_64BIT) // Last condition means Makefile is not used
+#if defined(_WIN64) && defined(_MSC_VER) // No Makefile used
 #  include <intrin.h> // MSVC popcnt and bsfq instrinsics
 #  define IS_64BIT
 #  define USE_BSFQ
@@ -186,7 +186,7 @@ enum Value : int {
   PawnValueMg   = 198,   PawnValueEg   = 258,
   KnightValueMg = 817,   KnightValueEg = 846,
   BishopValueMg = 836,   BishopValueEg = 857,
-  RookValueMg   = 1270,  RookValueEg   = 1278,
+  RookValueMg   = 1270,  RookValueEg   = 1281,
   QueenValueMg  = 2521,  QueenValueEg  = 2558,
 
   MidgameLimit  = 15581, EndgameLimit  = 3998

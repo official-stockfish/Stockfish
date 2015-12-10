@@ -18,7 +18,6 @@
 */
 
 #include <algorithm>
-#include <cstring>   // For std::memset
 
 #include "bitboard.h"
 #include "bitcount.h"
@@ -56,7 +55,7 @@ namespace {
   const uint64_t DeBruijn64 = 0x3F79D71B4CB0A89ULL;
   const uint32_t DeBruijn32 = 0x783A9B23;
 
-  int MS1BTable[256];           // To implement software msb()
+  int MSBTable[256];            // To implement software msb()
   Square BSFTable[SQUARE_NB];   // To implement software bitscan
   Bitboard RookTable[0x19000];  // To store rook attacks
   Bitboard BishopTable[0x1480]; // To store bishop attacks
@@ -109,7 +108,7 @@ Square msb(Bitboard b) {
       result += 8;
   }
 
-  return Square(result + MS1BTable[b32]);
+  return Square(result + MSBTable[b32]);
 }
 
 #endif // ifndef USE_BSFQ
@@ -125,9 +124,9 @@ const std::string Bitboards::pretty(Bitboard b) {
   for (Rank r = RANK_8; r >= RANK_1; --r)
   {
       for (File f = FILE_A; f <= FILE_H; ++f)
-          s.append(b & make_square(f, r) ? "| X " : "|   ");
+          s += b & make_square(f, r) ? "| X " : "|   ";
 
-      s.append("|\n+---+---+---+---+---+---+---+---+\n");
+      s += "|\n+---+---+---+---+---+---+---+---+\n";
   }
 
   return s;
@@ -145,8 +144,8 @@ void Bitboards::init() {
       BSFTable[bsf_index(SquareBB[s])] = s;
   }
 
-  for (Bitboard b = 1; b < 256; ++b)
-      MS1BTable[b] = more_than_one(b) ? MS1BTable[b - 1] : lsb(b);
+  for (Bitboard b = 2; b < 256; ++b)
+      MSBTable[b] = MSBTable[b - 1] + !more_than_one(b);
 
   for (File f = FILE_A; f <= FILE_H; ++f)
       FileBB[f] = f > FILE_A ? FileBB[f - 1] << 1 : FileABB;
@@ -201,17 +200,15 @@ void Bitboards::init() {
       PseudoAttacks[QUEEN][s1]  = PseudoAttacks[BISHOP][s1] = attacks_bb<BISHOP>(s1, 0);
       PseudoAttacks[QUEEN][s1] |= PseudoAttacks[  ROOK][s1] = attacks_bb<  ROOK>(s1, 0);
 
-      for (Square s2 = SQ_A1; s2 <= SQ_H8; ++s2)
-      {
-          Piece pc = (PseudoAttacks[BISHOP][s1] & s2) ? W_BISHOP :
-                     (PseudoAttacks[ROOK][s1]   & s2) ? W_ROOK   : NO_PIECE;
+      for (Piece pc = W_BISHOP; pc <= W_ROOK; ++pc)
+          for (Square s2 = SQ_A1; s2 <= SQ_H8; ++s2)
+          {
+              if (!(PseudoAttacks[pc][s1] & s2))
+                  continue;
 
-          if (pc == NO_PIECE)
-              continue;
-
-          LineBB[s1][s2] = (attacks_bb(pc, s1, 0) & attacks_bb(pc, s2, 0)) | s1 | s2;
-          BetweenBB[s1][s2] = attacks_bb(pc, s1, SquareBB[s2]) & attacks_bb(pc, s2, SquareBB[s1]);
-      }
+              LineBB[s1][s2] = (attacks_bb(pc, s1, 0) & attacks_bb(pc, s2, 0)) | s1 | s2;
+              BetweenBB[s1][s2] = attacks_bb(pc, s1, SquareBB[s2]) & attacks_bb(pc, s2, SquareBB[s1]);
+          }
   }
 }
 
@@ -249,9 +246,7 @@ namespace {
                              {  728, 10316, 55013, 32803, 12281, 15100,  16645,   255 } };
 
     Bitboard occupancy[4096], reference[4096], edges, b;
-    int age[4096], current = 0, i, size;
-
-    std::memset(age, 0, sizeof(age));
+    int age[4096] = {0}, current = 0, i, size;
 
     // attacks[s] is a pointer to the beginning of the attacks table for square 's'
     attacks[SQ_A1] = table;

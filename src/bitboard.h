@@ -200,14 +200,6 @@ inline Bitboard passed_pawn_mask(Color c, Square s) {
 }
 
 
-/// squares_of_color() returns a bitboard representing all the squares of the
-/// same color of the given one.
-
-inline Bitboard squares_of_color(Square s) {
-  return DarkSquares & s ? DarkSquares : ~DarkSquares;
-}
-
-
 /// aligned() returns true if the squares s1, s2 and s3 are aligned either on a
 /// straight or on a diagonal line.
 
