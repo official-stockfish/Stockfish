@@ -161,14 +161,14 @@ namespace {
   // bonuses according to which piece type attacks which one.
   // Attacks on lesser pieces which are pawn defended are not considered.
   const Score Threat[2][PIECE_TYPE_NB] = {
-   { S(0, 0), S(0, 30), S(45, 39), S(46, 43), S(72, 97), S(48,107) }, // Minor attacks
-   { S(0, 0), S(0, 23), S(40, 56), S(40, 53), S( 0, 31), S(35, 44) }  // Rook attacks
+   { S(0, 0), S(0, 33), S(45, 43), S(46, 47), S(72, 107), S(48,118) }, // Minor attacks
+   { S(0, 0), S(0, 25), S(40, 62), S(40, 59), S( 0,  34), S(35, 48) }  // Rook attacks
   };
 
   // ThreatenedByPawn[PieceType] contains a penalty according to which piece
   // type is attacked by a pawn.
   const Score ThreatenedByPawn[PIECE_TYPE_NB] = {
-    S(0, 0), S(0, 0), S(176, 127), S(131, 115), S(217, 199), S(203, 195)
+    S(0, 0), S(0, 0), S(176, 139), S(131, 127), S(217, 218), S(203, 215)
   };
 
   // Passed[mg/eg][Rank] contains midgame and endgame bonuses for passed pawns.
@@ -184,11 +184,11 @@ namespace {
     S(-27, -12), S( 1, -8), S( 3, 10), S( 12,  10)
   };
 
-  const Score ThreatenedByHangingPawn = S(70, 58);
+  const Score ThreatenedByHangingPawn = S(70, 63);
 
   // Assorted bonuses and penalties used by evaluation
-  const Score KingOnOne          = S( 3, 56);
-  const Score KingOnMany         = S( 9,126);
+  const Score KingOnOne          = S( 3, 62);
+  const Score KingOnMany         = S( 9,138);
   const Score RookOnPawn         = S( 7, 27);
   const Score RookOnOpenFile     = S(43, 21);
   const Score RookOnSemiOpenFile = S(19, 10);
@@ -196,7 +196,7 @@ namespace {
   const Score MinorBehindPawn    = S(16,  0);
   const Score TrappedRook        = S(92,  0);
   const Score Unstoppable        = S( 0, 20);
-  const Score Hanging            = S(48, 24);
+  const Score Hanging            = S(48, 28);
   const Score PawnAttackThreat   = S(31, 19);
   const Score Checked            = S(20, 20);
 
