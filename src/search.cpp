@@ -35,8 +35,6 @@
 #include "uci.h"
 #include "syzygy/tbprobe.h"
 
-#define POS_OF_HIGHESTBITclz(a) (((sizeof(unsigned) << 3) - 1) - __builtin_clz(a))
-
 namespace Search {
 
   SignalsType Signals;
@@ -67,27 +65,6 @@ namespace {
 
   // Razoring and futility margin based on depth
   const int razor_margin[4] = { 483, 570, 603, 554 };
-
-  const int combos6[] = {
-		  0b000111,
-		  0b001011,
-		  0b001101,
-		  0b001110,
-		  0b010011,
-		  0b010110,
-		  0b011001,
-		  0b011010,
-		  0b011100,
-		  0b100011,
-		  0b100101,
-		  0b100110,
-		  0b101001,
-		  0b101100,
-		  0b110001,
-		  0b110010,
-		  0b110100,
-		  0b111000
-  };
 
   Value futility_margin(Depth d) { return Value(200 * d); }
 
@@ -408,16 +385,28 @@ void Thread::search() {
   // Iterative deepening loop until requested to stop or target depth reached
   while (++rootDepth < DEPTH_MAX && !Signals.stop && (!Limits.depth || rootDepth <= Limits.depth))
   {
-      // Set up the new depth for the helper threads skipping in average each 2nd ply (using a half density map similar to a Hadamard matrix)
+      // Set up the new depth for the helper threads skipping in average each
+      // 2nd ply (using a half density map similar to a Hadamard matrix).
       if (!isMainThread)
       {
+    	  int d = rootDepth + rootPos.game_ply();
+
           if (idx <= 6 || idx > 24)
           {
-    	      if (((rootPos.game_ply() + rootDepth + idx) >> (POS_OF_HIGHESTBITclz(idx + 1) - 1)) % 2)
+        	  if (((d + idx) >> (msb(idx + 1) - 1)) % 2)
                   continue;
           }
-    	  else if (combos6[idx - 7] >> ((rootPos.game_ply() + rootDepth) % 6) & 1)
-              continue;
+    	  else
+    	  {
+              // Table of values of 6 bits with 3 of them set
+              static const int HalfDensityMap[] = {
+                      0x07, 0x0b, 0x0d, 0x0e, 0x13, 0x16, 0x19, 0x1a, 0x1c,
+                      0x23, 0x25, 0x26, 0x29, 0x2c, 0x31, 0x32, 0x34, 0x38
+              };
+
+              if ((HalfDensityMap[idx - 7] >> (d % 6)) & 1)
+                  continue;
+          }
       }
 
       // Age out PV variability metric
