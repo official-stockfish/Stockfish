@@ -65,7 +65,6 @@ namespace {
 
   // Razoring and futility margin based on depth
   const int razor_margin[4] = { 483, 570, 603, 554 };
-
   Value futility_margin(Depth d) { return Value(200 * d); }
 
   // Futility and reductions lookup tables, initialized at startup
@@ -389,15 +388,15 @@ void Thread::search() {
       // 2nd ply (using a half density map similar to a Hadamard matrix).
       if (!isMainThread)
       {
-    	  int d = rootDepth + rootPos.game_ply();
+          int d = rootDepth + rootPos.game_ply();
 
           if (idx <= 6 || idx > 24)
           {
-        	  if (((d + idx) >> (msb(idx + 1) - 1)) % 2)
+              if (((d + idx) >> (msb(idx + 1) - 1)) % 2)
                   continue;
           }
-    	  else
-    	  {
+          else
+          {
               // Table of values of 6 bits with 3 of them set
               static const int HalfDensityMap[] = {
                       0x07, 0x0b, 0x0d, 0x0e, 0x13, 0x16, 0x19, 0x1a, 0x1c,
