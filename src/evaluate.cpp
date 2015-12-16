@@ -111,7 +111,7 @@ namespace {
   enum { Mobility, PawnStructure, PassedPawns, Space, KingSafety };
 
   const struct Weight { int mg, eg; } Weights[] = {
-    {266, 334}, {214, 203}, {193, 262}, {47, 0}, {330, -50}
+    {266, 334}, {214, 203}, {193, 262}, {47, 0}, {330, 50}
   };
 
   Score operator*(Score s, const Weight& w) {
