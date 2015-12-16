@@ -18,6 +18,8 @@
 #include <sys/mman.h>
 #endif
 #include "tbcore.h"
+#include "tbprobe.h"
+
 
 #define TBMAX_PIECE 254
 #define TBMAX_PAWN 256
@@ -53,7 +55,7 @@ static struct TBHashEntry TB_hash[1 << TBHASHBITS][HSHMAX];
 static struct DTZTableEntry DTZ_table[DTZ_ENTRIES];
 
 static void init_indices(void);
-static uint64 calc_key_from_pcs(int *pcs, int mirror);
+
 static void free_wdl_entry(struct TBEntry *entry);
 static void free_dtz_entry(struct TBEntry *entry);
 
@@ -201,8 +203,8 @@ static void init_tb(char *str)
   for (i = 0; i < 8; i++)
     if (pcs[i] != pcs[i+8])
       break;
-  key = calc_key_from_pcs(pcs, 0);
-  key2 = calc_key_from_pcs(pcs, 1);
+  key = Tablebases::calc_key_from_pcs(pcs, 0);
+  key2 = Tablebases::calc_key_from_pcs(pcs, 1);
   if (pcs[TB_WPAWN] + pcs[TB_BPAWN] == 0) {
     if (TBnum_piece == TBMAX_PIECE) {
       printf("TBMAX_PIECE limit too low!\n");
@@ -224,7 +226,7 @@ static void init_tb(char *str)
   entry->symmetric = (key == key2);
   entry->has_pawns = (pcs[TB_WPAWN] + pcs[TB_BPAWN] > 0);
   if (entry->num > Tablebases::MaxCardinality)
-    Tablebases::MaxCardinality = entry->num;
+	  Tablebases::MaxCardinality = entry->num;
 
   if (entry->has_pawns) {
     struct TBEntry_pawn *ptr = (struct TBEntry_pawn *)entry;
@@ -251,123 +253,6 @@ static void init_tb(char *str)
   }
   add_to_hash(entry, key);
   if (key2 != key) add_to_hash(entry, key2);
-}
-
-void Tablebases::init(const std::string& path)
-{
-  char str[16];
-  int i, j, k, l;
-
-  if (initialized) {
-    free(path_string);
-    free(paths);
-    struct TBEntry *entry;
-    for (i = 0; i < TBnum_piece; i++) {
-      entry = (struct TBEntry *)&TB_piece[i];
-      free_wdl_entry(entry);
-    }
-    for (i = 0; i < TBnum_pawn; i++) {
-      entry = (struct TBEntry *)&TB_pawn[i];
-      free_wdl_entry(entry);
-    }
-    for (i = 0; i < DTZ_ENTRIES; i++)
-      if (DTZ_table[i].entry)
-        free_dtz_entry(DTZ_table[i].entry);
-  } else {
-    init_indices();
-    initialized = true;
-  }
-
-  const char *p = path.c_str();
-  if (strlen(p) == 0 || !strcmp(p, "<empty>")) return;
-  path_string = (char *)malloc(strlen(p) + 1);
-  strcpy(path_string, p);
-  num_paths = 0;
-  for (i = 0;; i++) {
-    if (path_string[i] != SEP_CHAR)
-      num_paths++;
-    while (path_string[i] && path_string[i] != SEP_CHAR)
-      i++;
-    if (!path_string[i]) break;
-    path_string[i] = 0;
-  }
-  paths = (char **)malloc(num_paths * sizeof(char *));
-  for (i = j = 0; i < num_paths; i++) {
-    while (!path_string[j]) j++;
-    paths[i] = &path_string[j];
-    while (path_string[j]) j++;
-  }
-
-  LOCK_INIT(TB_mutex);
-
-  TBnum_piece = TBnum_pawn = 0;
-  MaxCardinality = 0;
-
-  for (i = 0; i < (1 << TBHASHBITS); i++)
-    for (j = 0; j < HSHMAX; j++) {
-      TB_hash[i][j].key = 0ULL;
-      TB_hash[i][j].ptr = NULL;
-    }
-
-  for (i = 0; i < DTZ_ENTRIES; i++)
-    DTZ_table[i].entry = NULL;
-
-  for (i = 1; i < 6; i++) {
-    sprintf(str, "K%cvK", pchr[i]);
-    init_tb(str);
-  }
-
-  for (i = 1; i < 6; i++)
-    for (j = i; j < 6; j++) {
-      sprintf(str, "K%cvK%c", pchr[i], pchr[j]);
-      init_tb(str);
-    }
-
-  for (i = 1; i < 6; i++)
-    for (j = i; j < 6; j++) {
-      sprintf(str, "K%c%cvK", pchr[i], pchr[j]);
-      init_tb(str);
-    }
-
-  for (i = 1; i < 6; i++)
-    for (j = i; j < 6; j++)
-      for (k = 1; k < 6; k++) {
-        sprintf(str, "K%c%cvK%c", pchr[i], pchr[j], pchr[k]);
-        init_tb(str);
-      }
-
-  for (i = 1; i < 6; i++)
-    for (j = i; j < 6; j++)
-      for (k = j; k < 6; k++) {
-        sprintf(str, "K%c%c%cvK", pchr[i], pchr[j], pchr[k]);
-        init_tb(str);
-      }
-
-  for (i = 1; i < 6; i++)
-    for (j = i; j < 6; j++)
-      for (k = i; k < 6; k++)
-        for (l = (i == k) ? j : k; l < 6; l++) {
-          sprintf(str, "K%c%cvK%c%c", pchr[i], pchr[j], pchr[k], pchr[l]);
-          init_tb(str);
-        }
-
-  for (i = 1; i < 6; i++)
-    for (j = i; j < 6; j++)
-      for (k = j; k < 6; k++)
-        for (l = 1; l < 6; l++) {
-          sprintf(str, "K%c%c%cvK%c", pchr[i], pchr[j], pchr[k], pchr[l]);
-          init_tb(str);
-        }
-
-  for (i = 1; i < 6; i++)
-    for (j = i; j < 6; j++)
-      for (k = j; k < 6; k++)
-        for (l = k; l < 6; l++) {
-          sprintf(str, "K%c%c%c%cvK", pchr[i], pchr[j], pchr[k], pchr[l]);
-          init_tb(str);
-        }
-
-  printf("info string Found %d tablebases.\n", TBnum_piece + TBnum_pawn);
 }
 
 static const signed char offdiag[] = {
@@ -941,14 +826,6 @@ static void calc_symlen(struct PairsData *d, int s, char *tmp)
   tmp[s] = 1;
 }
 
-ushort ReadUshort(ubyte* d) {
-  return ushort(d[0] | (d[1] << 8));
-}
-
-uint32 ReadUint32(ubyte* d) {
-  return d[0] | (d[1] << 8) | (d[2] << 16) | (d[3] << 24);
-}
-
 static struct PairsData *setup_pairs(unsigned char *data, uint64 tb_size, uint64 *size, unsigned char **next, ubyte *flags, int wdl)
 {
   struct PairsData *d;
@@ -969,12 +846,12 @@ static struct PairsData *setup_pairs(unsigned char *data, uint64 tb_size, uint64
 
   int blocksize = data[1];
   int idxbits = data[2];
-  int real_num_blocks = ReadUint32(&data[4]);
+  int real_num_blocks = Tablebases::ReadUint32(&data[4]);
   int num_blocks = real_num_blocks + *(ubyte *)(&data[3]);
   int max_len = data[8];
   int min_len = data[9];
   int h = max_len - min_len + 1;
-  int num_syms = ReadUshort(&data[10 + 2 * h]);
+  int num_syms = Tablebases::ReadUshort(&data[10 + 2 * h]);
   d = (struct PairsData *)malloc(sizeof(struct PairsData) + (h - 1) * sizeof(base_t) + num_syms);
   d->blocksize = blocksize;
   d->idxbits = idxbits;
@@ -999,7 +876,7 @@ static struct PairsData *setup_pairs(unsigned char *data, uint64 tb_size, uint64
 
   d->base[h - 1] = 0;
   for (i = h - 2; i >= 0; i--)
-    d->base[i] = (d->base[i + 1] + ReadUshort((ubyte*)(d->offset + i)) - ReadUshort((ubyte*)(d->offset + i + 1))) / 2;
+    d->base[i] = (d->base[i + 1] + Tablebases::ReadUshort((ubyte*)(d->offset + i)) - Tablebases::ReadUshort((ubyte*)(d->offset + i + 1))) / 2;
   for (i = 0; i < h; i++)
     d->base[i] <<= 64 - (min_len + i);
 
@@ -1297,46 +1174,6 @@ static ubyte decompress_pairs(struct PairsData *d, uint64 idx)
   }
 
   return sympat[3 * sym];
-}
-
-void load_dtz_table(char *str, uint64 key1, uint64 key2)
-{
-  int i;
-  struct TBEntry *ptr, *ptr3;
-  struct TBHashEntry *ptr2;
-
-  DTZ_table[0].key1 = key1;
-  DTZ_table[0].key2 = key2;
-  DTZ_table[0].entry = NULL;
-
-  // find corresponding WDL entry
-  ptr2 = TB_hash[key1 >> (64 - TBHASHBITS)];
-  for (i = 0; i < HSHMAX; i++)
-    if (ptr2[i].key == key1) break;
-  if (i == HSHMAX) return;
-  ptr = ptr2[i].ptr;
-
-  ptr3 = (struct TBEntry *)malloc(ptr->has_pawns
-                                ? sizeof(struct DTZEntry_pawn)
-                                : sizeof(struct DTZEntry_piece));
-
-  ptr3->data = map_file(str, DTZSUFFIX, &ptr3->mapping);
-  ptr3->key = ptr->key;
-  ptr3->num = ptr->num;
-  ptr3->symmetric = ptr->symmetric;
-  ptr3->has_pawns = ptr->has_pawns;
-  if (ptr3->has_pawns) {
-    struct DTZEntry_pawn *entry = (struct DTZEntry_pawn *)ptr3;
-    entry->pawns[0] = ((struct TBEntry_pawn *)ptr)->pawns[0];
-    entry->pawns[1] = ((struct TBEntry_pawn *)ptr)->pawns[1];
-  } else {
-    struct DTZEntry_piece *entry = (struct DTZEntry_piece *)ptr3;
-    entry->enc_type = ((struct TBEntry_piece *)ptr)->enc_type;
-  }
-  if (!init_table_dtz(ptr3))
-    free(ptr3);
-  else
-    DTZ_table[0].entry = ptr3;
 }
 
 static void free_wdl_entry(struct TBEntry *entry)

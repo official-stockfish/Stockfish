@@ -232,6 +232,8 @@ ifneq ($(comp),mingw)
 endif
 
 ### 3.4 Debugging
+CXXFLAGS += -DATOMIC -DHORDE -DKOTH -DTHREECHECK
+#CXXFLAGS += -DKOTH_DISTANCE_BONUS
 ifeq ($(debug),no)
 	CXXFLAGS += -DNDEBUG
 else

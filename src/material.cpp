@@ -175,12 +175,36 @@ Entry* probe(const Position& pos) {
   {
       if (!pos.count<PAWN>(BLACK))
       {
+#ifdef KOTH
+          if (pos.is_koth()) {} else
+#endif
+#ifdef THREECHECK
+          if (pos.is_three_check()) {} else
+#endif
+#ifdef HORDE
+          if (pos.is_horde()) {} else
+#endif
+#ifdef ATOMIC
+          if (pos.is_atomic()) {} else
+#endif
           assert(pos.count<PAWN>(WHITE) >= 2);
 
           e->scalingFunction[WHITE] = &ScaleKPsK[WHITE];
       }
       else if (!pos.count<PAWN>(WHITE))
       {
+#ifdef KOTH
+          if (pos.is_koth()) {} else
+#endif
+#ifdef THREECHECK
+          if (pos.is_three_check()) {} else
+#endif
+#ifdef HORDE
+          if (pos.is_horde()) {} else
+#endif
+#ifdef ATOMIC
+          if (pos.is_atomic()) {} else
+#endif
           assert(pos.count<PAWN>(BLACK) >= 2);
 
           e->scalingFunction[BLACK] = &ScaleKPsK[BLACK];

@@ -178,6 +178,15 @@ namespace {
     { V(7), V(14), V(37), V(63), V(134), V(189) }
   };
 
+#ifdef THREECHECK
+  const Score ChecksGivenBonus[CHECKS_NB] = {
+      S(0, 0),
+      S(2 * PawnValueMg, 2 * PawnValueEg),
+      S(5 * PawnValueMg, 4 * PawnValueEg),
+      S(9 * PawnValueMg, 9 * PawnValueEg)
+  };
+#endif
+
   // PassedFile[File] contains a bonus according to the file of a passed pawn.
   const Score PassedFile[] = {
     S( 12,  10), S( 3, 10), S( 1, -8), S(-27, -12),
@@ -349,7 +358,9 @@ namespace {
 
             // Bonus when on an open or semi-open file
             if (ei.pi->semiopen_file(Us, file_of(s)))
+            {
                 score += ei.pi->semiopen_file(Them, file_of(s)) ? RookOnOpenFile : RookOnSemiOpenFile;
+            }
 
             // Penalize when trapped by the king, even more if king cannot castle
             if (mob <= 3 && !ei.pi->semiopen_file(Us, file_of(s)))
@@ -430,6 +441,10 @@ namespace {
 
         // Analyse the enemy's safe distance checks for sliders and knights
         safe = ~(ei.attackedBy[Us][ALL_PIECES] | pos.pieces(Them));
+#ifdef THREECHECK
+        if (pos.is_three_check() && pos.checks_taken())
+            safe = ~pos.pieces(Them);
+#endif
 
         b1 = pos.attacks_from<ROOK  >(ksq) & safe;
         b2 = pos.attacks_from<BISHOP>(ksq) & safe;
@@ -452,6 +467,7 @@ namespace {
 
         // Enemy bishops safe checks
         b = b2 & ei.attackedBy[Them][BISHOP];
+
         if (b)
         {
             attackUnits += BishopCheck * popcount<Max15>(b);
@@ -468,6 +484,19 @@ namespace {
 
         // Finally, extract the king danger score from the KingDanger[]
         // array and subtract the score from evaluation.
+#ifdef THREECHECK
+        if (pos.is_three_check())
+        {
+            switch(pos.checks_taken())
+            {
+            case CHECKS_NB:
+            case CHECKS_3:
+            case CHECKS_2:  attackUnits += RookCheck; break;
+            case CHECKS_1:  attackUnits += KnightCheck + attackUnits / 2; break;
+            case CHECKS_0:  attackUnits += BishopCheck + attackUnits; break;
+            }
+        }
+#endif
         score -= KingDanger[std::max(std::min(attackUnits, 399), 0)];
     }
 
@@ -611,6 +640,12 @@ namespace {
                 if (!(pos.pieces(Us) & bb))
                     defendedSquares &= ei.attackedBy[Us][ALL_PIECES];
 
+#ifdef ATOMIC
+                // Consider most squares safe since capturing costs a piece
+                if (pos.is_atomic())
+                    unsafeSquares &= pos.square<KING>(Them);
+                else
+#endif
                 if (!(pos.pieces(Them) & bb))
                     unsafeSquares &= ei.attackedBy[Them][ALL_PIECES] | pos.pieces(Them);
 
@@ -637,6 +672,10 @@ namespace {
 
         score += make_score(mbonus, ebonus) + PassedFile[file_of(s)];
     }
+#ifdef ATOMIC
+    if (pos.is_atomic())
+        score += score;
+#endif
 
     if (DoTrace)
         Trace::add(PASSED, Us, score * Weights[PassedPawns]);
@@ -667,19 +706,48 @@ namespace {
                    & ~pos.pieces(Us, PAWN)
                    & ~ei.attackedBy[Them][PAWN]
                    & (ei.attackedBy[Us][ALL_PIECES] | ~ei.attackedBy[Them][ALL_PIECES]);
+#ifdef HORDE
+    if (pos.is_horde())
+        safe =   ~ei.attackedBy[Them][PAWN]
+               & (ei.attackedBy[Us][ALL_PIECES] | ~ei.attackedBy[Them][ALL_PIECES]);
+#endif
 
     // Find all squares which are at most three squares behind some friendly pawn
     Bitboard behind = pos.pieces(Us, PAWN);
     behind |= (Us == WHITE ? behind >>  8 : behind <<  8);
     behind |= (Us == WHITE ? behind >> 16 : behind << 16);
+#ifdef HORDE
+    if (pos.is_horde())
+        behind |= (Us == WHITE ? behind >> 24 : behind << 24);
+#endif
 
     // Since SpaceMask[Us] is fully on our half of the board...
+#ifdef HORDE
+    assert(pos.is_horde() || unsigned(safe >> (Us == WHITE ? 32 : 0)) == 0);
+#else
     assert(unsigned(safe >> (Us == WHITE ? 32 : 0)) == 0);
+#endif
 
     // ...count safe + (behind & safe) with a single popcount
     int bonus = popcount<Full>((Us == WHITE ? safe << 32 : safe >> 32) | (behind & safe));
+#ifdef HORDE
+    if (pos.is_horde())
+        bonus = popcount<Full>(safe | behind);
+#endif
     int weight =  pos.count<KNIGHT>(Us) + pos.count<BISHOP>(Us)
                 + pos.count<KNIGHT>(Them) + pos.count<BISHOP>(Them);
+#ifdef THREECHECK
+    if (pos.is_three_check())
+        weight -= pos.checks_count();
+#endif
+#ifdef HORDE
+    if (pos.is_horde())
+    {
+        weight += pos.count<ROOK>(Us) + pos.count<QUEEN>(Us) + pos.count<KING>(Us)
+                + pos.count<ROOK>(Them) + pos.count<QUEEN>(Them) + pos.count<KING>(Them);
+        return make_score(bonus * (bonus + 2 * weight) * weight, 0);
+    }
+#endif
 
     return make_score(bonus * weight * weight, 0);
   }
@@ -742,7 +810,6 @@ namespace {
 
 } // namespace
 
-
 /// evaluate() is the main evaluation function. It returns a static evaluation
 /// of the position from the point of view of the side to move.
 
@@ -759,12 +826,66 @@ Value Eval::evaluate(const Position& pos) {
   // internally from the white point of view.
   score = pos.psq_score();
 
+#ifdef KOTH
+    // Possibly redundant static evaluator
+    if (pos.is_koth())
+    {
+        if (pos.is_koth_win())
+            return VALUE_MATE;
+        if (pos.is_koth_loss())
+            return -VALUE_MATE;
+    }
+#endif
+#ifdef THREECHECK
+    if (pos.is_three_check())
+    {
+        // Possibly redundant static evaluator
+        if (pos.is_three_check_win())
+            return VALUE_MATE;
+        if (pos.is_three_check_loss())
+            return -VALUE_MATE;
+
+        score += ChecksGivenBonus[pos.checks_given()];
+        score -= ChecksGivenBonus[pos.checks_taken()];
+    }
+#endif
+#ifdef HORDE
+    // Possibly redundant static evaluator
+    if (pos.is_horde())
+    {
+        if (pos.is_horde_loss())
+            return -VALUE_MATE;
+    }
+#endif
+#ifdef ATOMIC
+    // Possibly redundant static evaluator
+    if (pos.is_atomic())
+    {
+        if (pos.is_atomic_win())
+            return VALUE_MATE;
+        if (pos.is_atomic_loss())
+            return -VALUE_MATE;
+    }
+#endif
+
   // Probe the material hash table
   ei.me = Material::probe(pos);
   score += ei.me->imbalance();
 
   // If we have a specialized evaluation function for the current material
   // configuration, call it and return.
+#ifdef KOTH
+  if (pos.is_koth()) {} else
+#endif
+#ifdef THREECHECK
+  if (pos.is_three_check()) {} else
+#endif
+#ifdef HORDE
+  if (pos.is_horde()) {} else
+#endif
+#ifdef ATOMIC
+  if (pos.is_atomic()) {} else
+#endif
   if (ei.me->specialized_eval_exists())
       return ei.me->evaluate(pos);
 
@@ -819,12 +940,25 @@ Value Eval::evaluate(const Position& pos) {
   }
 
   // Evaluate space for both sides, only during opening
+#ifdef HORDE
+  if (pos.is_horde())
+  {
+  if (pos.non_pawn_material(BLACK) + pos.non_pawn_material(BLACK) >= 12222)
+      score += (  evaluate_space<WHITE>(pos, ei)
+                - evaluate_space<BLACK>(pos, ei)) * Weights[Space];
+  }
+  else
+  {
+#endif
   if (pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK) >= 12222)
       score += (  evaluate_space<WHITE>(pos, ei)
                 - evaluate_space<BLACK>(pos, ei)) * Weights[Space];
 
   // Evaluate position potential for the winning side
   score += evaluate_initiative(pos, ei.pi->pawn_asymmetry(), eg_value(score));
+#ifdef HORDE
+  }
+#endif
 
   // Evaluate scale factor for the winning side
   ScaleFactor sf = evaluate_scale_factor(pos, ei, score);

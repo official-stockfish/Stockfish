@@ -27,6 +27,13 @@
 #include "bitboard.h"
 #include "types.h"
 
+#define STANDARD_VARIANT 0
+#define CHESS960_VARIANT 1 << 1
+#define KOTH_VARIANT 1 << 2
+#define THREECHECK_VARIANT 1 << 3
+#define HORDE_VARIANT 1 << 4
+#define ATOMIC_VARIANT 1 << 5
+
 class Position;
 class Thread;
 
@@ -64,6 +71,9 @@ struct StateInfo {
   int    castlingRights;
   int    rule50;
   int    pliesFromNull;
+#ifdef THREECHECK
+  Checks checksGiven[COLOR_NB];
+#endif
   Score  psq;
   Square epSquare;
 
@@ -71,6 +81,9 @@ struct StateInfo {
   Key        key;
   Bitboard   checkersBB;
   PieceType  capturedType;
+#ifdef ATOMIC
+  Piece      blast[SQUARE_NB];
+#endif
   StateInfo* previous;
 };
 
@@ -88,11 +101,15 @@ public:
   Position() = default; // To define the global object RootPos
   Position(const Position&) = delete;
   Position(const Position& pos, Thread* th) { *this = pos; thisThread = th; }
-  Position(const std::string& f, bool c960, Thread* th) { set(f, c960, th); }
+
+  Position(const std::string& f, Thread* t) { set(f, STANDARD_VARIANT, t); }
+  Position(const std::string& f, int var, Thread* t) { set(f, var, t); }
+
   Position& operator=(const Position&); // To assign RootPos from UCI
 
   // FEN string input/output
-  void set(const std::string& fenStr, bool isChess960, Thread* th);
+  void set(const std::string& fenStr, int var, Thread* th);
+
   const std::string fen() const;
 
   // Position representation
@@ -163,6 +180,29 @@ public:
   Phase game_phase() const;
   int game_ply() const;
   bool is_chess960() const;
+#ifdef ATOMIC
+  bool is_atomic() const;
+  bool is_atomic_win() const;
+  bool is_atomic_loss() const;
+#endif
+#ifdef HORDE
+  bool is_horde() const;
+  bool is_horde_loss() const;
+#endif
+#ifdef KOTH
+  bool is_koth() const;
+  bool is_koth_win() const;
+  bool is_koth_loss() const;
+  int koth_distance(Color c) const;
+#endif
+#ifdef THREECHECK
+  bool is_three_check() const;
+  bool is_three_check_win() const;
+  bool is_three_check_loss() const;
+  int checks_count() const;
+  Checks checks_given() const;
+  Checks checks_taken() const;
+#endif
   Thread* this_thread() const;
   uint64_t nodes_searched() const;
   void set_nodes_searched(uint64_t n);
@@ -194,7 +234,11 @@ private:
   Bitboard byTypeBB[PIECE_TYPE_NB];
   Bitboard byColorBB[COLOR_NB];
   int pieceCount[COLOR_NB][PIECE_TYPE_NB];
+#ifdef HORDE
+  Square pieceList[COLOR_NB][PIECE_TYPE_NB][SQUARE_NB];
+#else
   Square pieceList[COLOR_NB][PIECE_TYPE_NB][16];
+#endif
   int index[SQUARE_NB];
   int castlingRightsMask[SQUARE_NB];
   Square castlingRookSquare[CASTLING_RIGHT_NB];
@@ -205,7 +249,8 @@ private:
   Color sideToMove;
   Thread* thisThread;
   StateInfo* st;
-  bool chess960;
+  int variant;
+
 };
 
 extern std::ostream& operator<<(std::ostream& os, const Position& pos);
@@ -259,9 +304,46 @@ template<PieceType Pt> inline const Square* Position::squares(Color c) const {
 }
 
 template<PieceType Pt> inline Square Position::square(Color c) const {
+#ifdef HORDE
+  if (is_horde() && c == WHITE)
+  {
+      assert(pieceCount[c][Pt] == 0);
+      return SQ_NONE;
+  }
+#endif
+#ifdef ATOMIC
+  if (is_atomic() && pieceCount[c][Pt] == 0)
+      return SQ_NONE;
+#endif
   assert(pieceCount[c][Pt] == 1);
   return pieceList[c][Pt][0];
 }
+
+#ifdef THREECHECK
+inline bool Position::is_three_check() const {
+  return variant & THREECHECK_VARIANT;
+}
+
+inline bool Position::is_three_check_win() const {
+  return st->checksGiven[sideToMove] == CHECKS_3;
+}
+
+inline bool Position::is_three_check_loss() const {
+  return st->checksGiven[~sideToMove] == CHECKS_3;
+}
+
+inline int Position::checks_count() const {
+  return st->checksGiven[WHITE] + st->checksGiven[BLACK];
+}
+
+inline Checks Position::checks_given() const {
+  return st->checksGiven[sideToMove];
+}
+
+inline Checks Position::checks_taken() const {
+  return st->checksGiven[~sideToMove];
+}
+#endif
 
 inline Square Position::ep_square() const {
   return st->epSquare;
@@ -316,6 +398,10 @@ inline Bitboard Position::pinned_pieces(Color c) const {
 }
 
 inline bool Position::pawn_passed(Color c, Square s) const {
+#ifdef HORDE
+  if (is_horde())
+      return !(pieces(~c, PAWN) & forward_bb(c, s));
+#endif
   return !(pieces(~c, PAWN) & passed_pawn_mask(c, s));
 }
 
@@ -366,8 +452,62 @@ inline bool Position::opposite_bishops() const {
         && opposite_colors(square<BISHOP>(WHITE), square<BISHOP>(BLACK));
 }
 
+#ifdef ATOMIC
+inline bool Position::is_atomic() const {
+  return variant & ATOMIC_VARIANT;
+}
+
+// Loss if king is captured (Atomic)
+inline bool Position::is_atomic_win() const {
+  return count<KING>(~sideToMove) == 0;
+}
+
+// Loss if king is captured (Atomic)
+inline bool Position::is_atomic_loss() const {
+  return count<KING>(sideToMove) == 0;
+}
+#endif
+
+#ifdef HORDE
+inline bool Position::is_horde() const {
+  return variant & HORDE_VARIANT;
+}
+
+// Loss if horde is captured (Horde)
+inline bool Position::is_horde_loss() const {
+  return count<ALL_PIECES>(WHITE) == 0;
+}
+#endif
+
+#ifdef KOTH
+inline bool Position::is_koth() const {
+  return variant & KOTH_VARIANT;
+}
+
+// Win if king is in the center (KOTH)
+inline bool Position::is_koth_win() const {
+  return koth_distance(sideToMove) == 0;
+}
+
+// Loss if king is in the center (KOTH)
+inline bool Position::is_koth_loss() const {
+  return koth_distance(~sideToMove) == 0;
+}
+
+inline int Position::koth_distance(Color c) const {
+  Square ksq = square<KING>(c);
+  int sdistance =
+	distance(ksq, SQ_D4) +
+	distance(ksq, SQ_E4) +
+	distance(ksq, SQ_D5) +
+	distance(ksq, SQ_E5);
+  // Return 0 if in the center, weighted average distance otherwise
+  return sdistance < 4 ? 0 : (sdistance + 1) / 4;
+}
+#endif
+
 inline bool Position::is_chess960() const {
-  return chess960;
+  return variant & CHESS960_VARIANT;
 }
 
 inline bool Position::capture_or_promotion(Move m) const {
@@ -411,6 +551,10 @@ inline void Position::remove_piece(Color c, PieceType pt, Square s) {
   byTypeBB[ALL_PIECES] ^= s;
   byTypeBB[pt] ^= s;
   byColorBB[c] ^= s;
+#ifdef ATOMIC
+  if (is_atomic())
+      board[s] = NO_PIECE;
+#endif
   /* board[s] = NO_PIECE;  Not needed, overwritten by the capturing one */
   Square lastSquare = pieceList[c][pt][--pieceCount[c][pt]];
   index[lastSquare] = index[s];

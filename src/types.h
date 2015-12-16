@@ -151,6 +151,12 @@ template<Color C, CastlingSide S> struct MakeCastling {
                      : S == QUEEN_SIDE ? BLACK_OOO : BLACK_OO;
 };
 
+#ifdef THREECHECK
+enum Checks {
+  CHECKS_0 = 0, CHECKS_1 = 1, CHECKS_2 = 2, CHECKS_3 = 3, CHECKS_NB = 4
+};
+#endif
+
 enum Phase {
   PHASE_ENDGAME,
   PHASE_MIDGAME = 128,
@@ -299,6 +305,9 @@ ENABLE_FULL_OPERATORS_ON(Value)
 ENABLE_FULL_OPERATORS_ON(PieceType)
 ENABLE_FULL_OPERATORS_ON(Piece)
 ENABLE_FULL_OPERATORS_ON(Color)
+#ifdef THREECHECK
+ENABLE_FULL_OPERATORS_ON(Checks)
+#endif
 ENABLE_FULL_OPERATORS_ON(Depth)
 ENABLE_FULL_OPERATORS_ON(Square)
 ENABLE_FULL_OPERATORS_ON(File)

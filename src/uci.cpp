@@ -35,8 +35,12 @@ extern void benchmark(const Position& pos, istream& is);
 
 namespace {
 
-  // FEN string of the initial position, normal chess
+  // FEN string of the initial position, normal variant
   const char* StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+#ifdef HORDE
+  // FEN string of the initial position, horde variant
+  const char* StartFENHorde = "rnbqkbnr/pppppppp/8/1PP2PP1/PPPPPPPP/PPPPPPPP/PPPPPPPP/PPPPPPPP w kq - 0 1";
+#endif
 
   // Stack to keep track of the position states along the setup moves (from the
   // start position to the position just before the search starts). Needed by
@@ -54,11 +58,34 @@ namespace {
     Move m;
     string token, fen;
 
-    is >> token;
+    int variant = STANDARD_VARIANT;
+    if (Options["UCI_Chess960"])
+        variant |= CHESS960_VARIANT;
+#ifdef ATOMIC
+    if (Options["UCI_Atomic"])
+        variant |= ATOMIC_VARIANT;
+#endif
+#ifdef HORDE
+    if (Options["UCI_Horde"])
+        variant |= HORDE_VARIANT;
+#endif
+#ifdef KOTH
+    if (Options["UCI_KingOfTheHill"])
+        variant |= KOTH_VARIANT;
+#endif
+#ifdef THREECHECK
+    if (Options["UCI_3Check"])
+        variant |= THREECHECK_VARIANT;
+#endif
 
+    is >> token;
     if (token == "startpos")
     {
+#ifdef HORDE
+        fen = (variant & HORDE_VARIANT) ? StartFENHorde : StartFEN;
+#else
         fen = StartFEN;
+#endif
         is >> token; // Consume "moves" token if any
     }
     else if (token == "fen")
@@ -66,8 +93,8 @@ namespace {
             fen += token + " ";
     else
         return;
-
-    pos.set(fen, Options["UCI_Chess960"], Threads.main());
+    pos.set(fen, variant, Threads.main());
+    
     SetupStates = Search::StateStackPtr(new std::stack<StateInfo>);
 
     // Parse move list (if any)
@@ -85,7 +112,6 @@ namespace {
   void setoption(istringstream& is) {
 
     string token, name, value;
-
     is >> token; // Consume "name" token
 
     // Read option name (can contain spaces)
@@ -145,7 +171,7 @@ namespace {
 
 void UCI::loop(int argc, char* argv[]) {
 
-  Position pos(StartFEN, false, Threads.main()); // The root position
+  Position pos(StartFEN, Threads.main()); // The root position
   string token, cmd;
 
   for (int i = 1; i < argc; ++i)

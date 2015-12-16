@@ -146,7 +146,27 @@ void benchmark(const Position& current, istream& is) {
 
   for (size_t i = 0; i < fens.size(); ++i)
   {
-      Position pos(fens[i], Options["UCI_Chess960"], Threads.main());
+      Position pos;
+      int variant = STANDARD_VARIANT;
+      if (Options["UCI_Chess960"])
+          variant |= CHESS960_VARIANT;
+#ifdef ATOMIC
+      if (Options["UCI_Atomic"])
+          variant |= ATOMIC_VARIANT;
+#endif
+#ifdef HORDE
+      if (Options["UCI_Horde"])
+          variant |= HORDE_VARIANT;
+#endif
+#ifdef KOTH
+      if (Options["UCI_KingOfTheHill"])
+          variant |= KOTH_VARIANT;
+#endif
+#ifdef THREECHECK
+      if (Options["UCI_3Check"])
+          variant |= THREECHECK_VARIANT;
+#endif
+      pos.set(fens[i], variant, Threads.main());
 
       cerr << "\nPosition: " << i + 1 << '/' << fens.size() << endl;
 

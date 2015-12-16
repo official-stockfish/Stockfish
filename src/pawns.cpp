@@ -89,6 +89,15 @@ namespace {
   // in front of the king and no enemy pawn on the horizon.
   const Value MaxSafetyBonus = V(258);
 
+#ifdef KOTH_DISTANCE_BONUS
+  const Score KOTHDistanceBonus[4] = {
+    S(1*PawnValueMg + PawnValueMg/2, 9*PawnValueEg),
+    S(1*PawnValueMg                , 4*PawnValueEg),
+    S(                PawnValueMg/2, 1*PawnValueEg),
+    S(0, 0)
+  };
+#endif
+
   #undef S
   #undef V
 
@@ -169,6 +178,10 @@ namespace {
         // Passed pawns will be properly scored in evaluation because we need
         // full attack info to evaluate passed pawns. Only the frontmost passed
         // pawn on each file is considered a true passed pawn.
+#ifdef HORDE
+        if (pos.is_horde())
+            passed = !opposed;
+#endif
         if (passed && !doubled)
             e->passedPawns[Us] |= s;
 
@@ -291,13 +304,35 @@ Score Entry::do_king_safety(const Position& pos, Square ksq) {
   kingSquares[Us] = ksq;
   castlingRights[Us] = pos.can_castle(Us);
   int minKingPawnDistance = 0;
+#ifdef THREECHECK
+  Checks checks = pos.is_three_check() ? pos.checks_taken() : CHECKS_0;
+#endif
+
+#ifdef KOTH_DISTANCE_BONUS
+  Score kothBonus = SCORE_ZERO;
+  if (pos.is_koth())
+  {
+      // Initial attempt to adjust score based on KOTH distance
+      // TODO: account for attacked and blocked squares
+      kothBonus = KOTHDistanceBonus[pos.koth_distance(Us)];
+  }
+#endif
 
   Bitboard pawns = pos.pieces(Us, PAWN);
   if (pawns)
       while (!(DistanceRingBB[ksq][minKingPawnDistance++] & pawns)) {}
 
   if (relative_rank(Us, ksq) > RANK_4)
+#ifdef THREECHECK
+      // Decrease score when checks have been taken
+      return make_score(0, -16 * minKingPawnDistance - checks);
+#else
+#ifdef KOTH_DISTANCE_BONUS
+      return kothBonus + make_score(0, -16 * minKingPawnDistance);
+#else
       return make_score(0, -16 * minKingPawnDistance);
+#endif
+#endif
 
   Value bonus = shelter_storm<Us>(pos, ksq);
 
@@ -308,7 +343,16 @@ Score Entry::do_king_safety(const Position& pos, Square ksq) {
   if (pos.can_castle(MakeCastling<Us, QUEEN_SIDE>::right))
       bonus = std::max(bonus, shelter_storm<Us>(pos, relative_square(Us, SQ_C1)));
 
+#ifdef THREECHECK
+  // Decrease score when checks have been taken
+  return make_score(bonus, (-16 * minKingPawnDistance) + (-2 * checks));
+#else
+#ifdef KOTH_DISTANCE_BONUS
+  return kothBonus + make_score(bonus, -16 * minKingPawnDistance);
+#else
   return make_score(bonus, -16 * minKingPawnDistance);
+#endif
+#endif
 }
 
 // Explicit template instantiation
