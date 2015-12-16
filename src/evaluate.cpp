@@ -108,10 +108,10 @@ namespace {
 
 
   // Evaluation weights, indexed by the corresponding evaluation term
-  enum { Mobility, PawnStructure, PassedPawns, Space, KingSafety, Threats };
+  enum { Mobility, PawnStructure, PassedPawns, Space, KingSafety };
 
   const struct Weight { int mg, eg; } Weights[] = {
-    {266, 334}, {214, 203}, {193, 262}, {47, 0}, {330, 0}, {245, 241}
+    {266, 334}, {214, 203}, {200, 262}, {47, 30}, {330, 0}
   };
 
   Score operator*(Score s, const Weight& w) {
