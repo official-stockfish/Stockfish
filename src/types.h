@@ -172,25 +172,25 @@ enum Bound {
   BOUND_EXACT = BOUND_UPPER | BOUND_LOWER
 };
 
-enum Value : int {
-  VALUE_ZERO      = 0,
-  VALUE_DRAW      = 0,
-  VALUE_KNOWN_WIN = 10000,
-  VALUE_MATE      = 32000,
-  VALUE_INFINITE  = 32001,
-  VALUE_NONE      = 32002,
-
-  VALUE_MATE_IN_MAX_PLY  =  VALUE_MATE - 2 * MAX_PLY,
-  VALUE_MATED_IN_MAX_PLY = -VALUE_MATE + 2 * MAX_PLY,
-
-  PawnValueMg   = 198,   PawnValueEg   = 258,
-  KnightValueMg = 817,   KnightValueEg = 846,
-  BishopValueMg = 836,   BishopValueEg = 857,
-  RookValueMg   = 1270,  RookValueEg   = 1281,
-  QueenValueMg  = 2521,  QueenValueEg  = 2558,
-
-  MidgameLimit  = 15581, EndgameLimit  = 3998
-};
+// Value of various pieces and postions.
+// Declared as external so they can be modified at runtime.
+// Actual values are in uci.cpp
+typedef int Value;
+extern Value
+  VALUE_ZERO,
+  VALUE_DRAW,
+  VALUE_KNOWN_WIN,
+  VALUE_MATE,
+  VALUE_INFINITE,
+  VALUE_NONE,
+  VALUE_MATE_IN_MAX_PLY,
+  VALUE_MATED_IN_MAX_PLY,
+  PawnValueMg   ,   PawnValueEg   ,
+  KnightValueMg ,   KnightValueEg ,
+  BishopValueMg ,   BishopValueEg ,
+  RookValueMg   ,  RookValueEg  ,
+  QueenValueMg  ,  QueenValueEg ,
+  MidgameLimit  , EndgameLimit  ;
 
 enum PieceType {
   NO_PIECE_TYPE, PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING,
@@ -295,7 +295,7 @@ inline T operator/(T d, int i) { return T(int(d) / i); }        \
 inline int operator/(T d1, T d2) { return int(d1) / int(d2); }  \
 inline T& operator/=(T& d, int i) { return d = T(int(d) / i); }
 
-ENABLE_FULL_OPERATORS_ON(Value)
+//ENABLE_FULL_OPERATORS_ON(Value)
 ENABLE_FULL_OPERATORS_ON(PieceType)
 ENABLE_FULL_OPERATORS_ON(Piece)
 ENABLE_FULL_OPERATORS_ON(Color)
@@ -310,10 +310,10 @@ ENABLE_BASE_OPERATORS_ON(Score)
 #undef ENABLE_BASE_OPERATORS_ON
 
 /// Additional operators to add integers to a Value
-inline Value operator+(Value v, int i) { return Value(int(v) + i); }
-inline Value operator-(Value v, int i) { return Value(int(v) - i); }
-inline Value& operator+=(Value& v, int i) { return v = v + i; }
-inline Value& operator-=(Value& v, int i) { return v = v - i; }
+//inline Value operator+(Value v, int i) { return Value(int(v) + i); }
+//inline Value operator-(Value v, int i) { return Value(int(v) - i); }
+//inline Value& operator+=(Value& v, int i) { return v = v + i; }
+//inline Value& operator-=(Value& v, int i) { return v = v - i; }
 
 /// Only declared but not defined. We don't want to multiply two scores due to
 /// a very high risk of overflow. So user should explicitly convert to integer.
