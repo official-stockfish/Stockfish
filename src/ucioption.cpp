@@ -49,6 +49,29 @@ bool CaseInsensitiveLess::operator() (const string& s1, const string& s2) const 
          [](char c1, char c2) { return tolower(c1) < tolower(c2); });
 }
 
+// Initialize the value of a chess piece.
+// The default value is hardcoded in uci.cpp and external in types.h
+// These can be overridden with system environment variables of the same
+// name as below... They can be further overridden with the 'setoption'
+// command during runtime.
+static int initMaterialValue(OptionsMap& o, const char *key, int defaultValue) {
+  int value = defaultValue;
+
+  // Look for an environment variable...
+  char *sValue = getenv(key);
+  if (sValue != NULL) {
+    value = std::stoi(sValue);
+  }
+
+  // Set default values in options map -- for reference only
+  // these are not the values used by the program. The global
+  // variables are what the code actually uses.
+  Option op = Option(std::to_string(defaultValue).c_str());
+  op = std::to_string(value);
+  o[key] << op;
+
+  return value;
+}
 
 /// init() initializes the UCI options to their hard-coded default values
 
@@ -73,6 +96,18 @@ void init(OptionsMap& o) {
   o["SyzygyProbeDepth"]      << Option(1, 1, 100);
   o["Syzygy50MoveRule"]      << Option(true);
   o["SyzygyProbeLimit"]      << Option(6, 0, 6);
+
+  // Initliaze default and current material values
+  PawnValueMg = initMaterialValue(o, "PawnValueMg", PawnValueMg);
+  PawnValueEg = initMaterialValue(o, "PawnValueEg", PawnValueEg);
+  KnightValueMg = initMaterialValue(o, "KnightValueMg", KnightValueMg);
+  KnightValueEg = initMaterialValue(o, "KnightValueEg", KnightValueEg);
+  BishopValueMg = initMaterialValue(o, "BishopValueMg", BishopValueMg);
+  BishopValueEg = initMaterialValue(o, "BishopValueEg", BishopValueEg);
+  RookValueMg = initMaterialValue(o, "RookValueMg", RookValueMg);
+  RookValueEg = initMaterialValue(o, "RookValueEg", RookValueEg);
+  QueenValueMg = initMaterialValue(o, "QueenValueMg", QueenValueMg);
+  QueenValueEg = initMaterialValue(o, "QueenValueEg", QueenValueEg);
 }
 
 
@@ -89,7 +124,7 @@ std::ostream& operator<<(std::ostream& os, const OptionsMap& om) {
               os << "\noption name " << it.first << " type " << o.type;
 
               if (o.type != "button")
-                  os << " default " << o.defaultValue;
+                  os << " default " << o.defaultValue << " current " << o.currentValue;
 
               if (o.type == "spin")
                   os << " min " << o.min << " max " << o.max;

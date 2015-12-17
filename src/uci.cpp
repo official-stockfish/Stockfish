@@ -33,6 +33,25 @@ using namespace std;
 
 extern void benchmark(const Position& pos, istream& is);
 
+// Instantiate the material values. These are global and used to
+// compute the value of a position. They are here as this is also where
+// the code to set them is. They are declared external in types.h
+Value
+  VALUE_ZERO      = 0,
+  VALUE_DRAW      = 0,
+  VALUE_KNOWN_WIN = 10000,
+  VALUE_MATE      = 32000,
+  VALUE_INFINITE  = 32001,
+  VALUE_NONE      = 32002,
+  VALUE_MATE_IN_MAX_PLY  =  VALUE_MATE - 2 * MAX_PLY,
+  VALUE_MATED_IN_MAX_PLY = -VALUE_MATE + 2 * MAX_PLY,
+  PawnValueMg   = 198,   PawnValueEg   = 258,
+  KnightValueMg = 817,   KnightValueEg = 846,
+  BishopValueMg = 836,   BishopValueEg = 857,
+  RookValueMg   = 1270,  RookValueEg   = 1281,
+  QueenValueMg  = 2521,  QueenValueEg  = 2558,
+  MidgameLimit  = 15581, EndgameLimit  = 3998;
+
 namespace {
 
   // FEN string of the initial position, normal chess
@@ -100,6 +119,29 @@ namespace {
         Options[name] = value;
     else
         sync_cout << "No such option: " << name << sync_endl;
+
+    // For material value options, also set the global integer that is used
+    // within the code for calculating position value.
+    if (name == "PawnValueMg")
+        PawnValueMg = std::stoi(value);
+    else if (name == "PawnValueEg")
+        PawnValueEg = std::stoi(value);
+    else if (name == "KnightValueMg")
+        KnightValueMg = std::stoi(value);
+    else if (name == "KnightValueEg")
+        KnightValueEg = std::stoi(value);
+    else if (name == "BishopValueMg")
+        BishopValueMg = std::stoi(value);
+    else if (name == "BishopValueEg")
+        BishopValueEg = std::stoi(value);
+    else if (name == "RookValueMg")
+        RookValueMg = std::stoi(value);
+    else if (name == "RookValueEg")
+        RookValueEg = std::stoi(value);
+    else if (name == "QueenValueMg")
+        QueenValueMg = std::stoi(value);
+    else if (name == "QueenValueEg")
+        QueenValueEg = std::stoi(value);
   }
 
 
