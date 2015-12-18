@@ -387,9 +387,29 @@ void Thread::search() {
   // Iterative deepening loop until requested to stop or target depth reached
   while (++rootDepth < DEPTH_MAX && !Signals.stop && (!Limits.depth || rootDepth <= Limits.depth))
   {
-      // Set up the new depth for the helper threads
+      // Set up the new depth for the helper threads skipping in average each
+      // 2nd ply (using a half density map similar to a Hadamard matrix).
       if (!isMainThread)
-          rootDepth = std::min(DEPTH_MAX - ONE_PLY, Threads.main()->rootDepth + Depth(int(2.2 * log(1 + this->idx))));
+      {
+          int d = rootDepth + rootPos.game_ply();
+
+          if (idx <= 6 || idx > 24)
+          {
+              if (((d + idx) >> (msb(idx + 1) - 1)) % 2)
+                  continue;
+          }
+          else
+          {
+              // Table of values of 6 bits with 3 of them set
+              static const int HalfDensityMap[] = {
+                      0x07, 0x0b, 0x0d, 0x0e, 0x13, 0x16, 0x19, 0x1a, 0x1c,
+                      0x23, 0x25, 0x26, 0x29, 0x2c, 0x31, 0x32, 0x34, 0x38
+              };
+
+              if ((HalfDensityMap[idx - 7] >> (d % 6)) & 1)
+                  continue;
+          }
+      }
 
       // Age out PV variability metric
       if (isMainThread)
