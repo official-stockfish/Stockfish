@@ -93,7 +93,7 @@ struct LimitsType {
 /// typically in an async fashion e.g. to stop the search by the GUI.
 
 struct SignalsType {
-  std::atomic_bool stop, stopOnPonderhit, firstRootMove, failedLowAtRoot;
+  std::atomic_bool stop, stopOnPonderhit;
 };
 
 typedef std::unique_ptr<std::stack<StateInfo>> StateStackPtr;
