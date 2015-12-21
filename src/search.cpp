@@ -387,9 +387,29 @@ void Thread::search() {
   // Iterative deepening loop until requested to stop or target depth reached
   while (++rootDepth < DEPTH_MAX && !Signals.stop && (!Limits.depth || rootDepth <= Limits.depth))
   {
-      // Set up the new depth for the helper threads
+      // Set up the new depth for the helper threads skipping in average each
+      // 2nd ply (using a half density map similar to a Hadamard matrix).
       if (!isMainThread)
-          rootDepth = std::min(DEPTH_MAX - ONE_PLY, Threads.main()->rootDepth + Depth(int(2.2 * log(1 + this->idx))));
+      {
+          int d = rootDepth + rootPos.game_ply();
+
+          if (idx <= 6 || idx > 24)
+          {
+              if (((d + idx) >> (msb(idx + 1) - 1)) % 2)
+                  continue;
+          }
+          else
+          {
+              // Table of values of 6 bits with 3 of them set
+              static const int HalfDensityMap[] = {
+                      0x07, 0x0b, 0x0d, 0x0e, 0x13, 0x16, 0x19, 0x1a, 0x1c,
+                      0x23, 0x25, 0x26, 0x29, 0x2c, 0x31, 0x32, 0x34, 0x38
+              };
+
+              if ((HalfDensityMap[idx - 7] >> (d % 6)) & 1)
+                  continue;
+          }
+      }
 
       // Age out PV variability metric
       if (isMainThread)
@@ -621,7 +641,7 @@ namespace {
 
     assert(0 <= ss->ply && ss->ply < MAX_PLY);
 
-    ss->currentMove = ss->ttMove = (ss+1)->excludedMove = bestMove = MOVE_NONE;
+    ss->currentMove = (ss+1)->excludedMove = bestMove = MOVE_NONE;
     (ss+1)->skipEarlyPruning = false; (ss+1)->reduction = DEPTH_ZERO;
     (ss+2)->killers[0] = (ss+2)->killers[1] = MOVE_NONE;
 
@@ -632,8 +652,8 @@ namespace {
     posKey = excludedMove ? pos.exclusion_key() : pos.key();
     tte = TT.probe(posKey, ttHit);
     ttValue = ttHit ? value_from_tt(tte->value(), ss->ply) : VALUE_NONE;
-    ss->ttMove = ttMove =  RootNode ? thisThread->rootMoves[thisThread->PVIdx].pv[0]
-                         : ttHit    ? tte->move() : MOVE_NONE;
+    ttMove =  RootNode ? thisThread->rootMoves[thisThread->PVIdx].pv[0]
+            : ttHit    ? tte->move() : MOVE_NONE;
 
     // At non-PV nodes we check for an early TT cutoff
     if (  !PvNode
@@ -962,9 +982,7 @@ moves_loop: // When in check search starts from here
       // re-searched at full depth.
       if (    depth >= 3 * ONE_PLY
           &&  moveCount > 1
-          && !captureOrPromotion
-          &&  move != ss->killers[0]
-          &&  move != ss->killers[1])
+          && !captureOrPromotion)
       {
           ss->reduction = reduction<PvNode>(improving, depth, moveCount);
 
