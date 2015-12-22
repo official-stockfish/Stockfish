@@ -36,7 +36,8 @@ Thread::Thread() {
 
   resetCalls = exit = false;
   maxPly = callsCnt = 0;
-  history.clear();
+  history[0].clear();
+  history[1].clear();
   counterMoves.clear();
   idx = Threads.size(); // Start from 0
 
