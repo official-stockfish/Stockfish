@@ -41,7 +41,6 @@ struct Stack {
   Move currentMove;
   Move excludedMove;
   Move killers[2];
-  Depth reduction;
   Value staticEval;
   bool skipEarlyPruning;
   int moveCount;
