@@ -850,7 +850,7 @@ Value npm = pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK);
     Move cm = thisThread->counterMoves[pos.piece_on(prevSq)][prevSq];
     const CounterMovesStats& cmh = CounterMovesHistory[pos.piece_on(prevSq)][prevSq];
 
-    MovePicker mp(pos, ttMove, depth, thisThread->history, cmh, cm, ss);
+    MovePicker mp(pos, ttMove, depth, thisThread->history[npm<mth], cmh, cm, ss);
     CheckInfo ci(pos);
     value = bestValue; // Workaround a bogus 'uninitialized' warning under gcc
     improving =   ss->staticEval >= (ss-2)->staticEval
