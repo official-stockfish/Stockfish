@@ -817,7 +817,7 @@ namespace {
         assert((ss-1)->currentMove != MOVE_NONE);
         assert((ss-1)->currentMove != MOVE_NULL);
 
-	Value npm = pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK);
+        Value npm = pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK);
         MovePicker mp(pos, ttMove, thisThread->history[npm < mth], PieceValue[MG][pos.captured_piece_type()]);
         CheckInfo ci(pos);
 
@@ -1440,7 +1440,7 @@ moves_loop: // When in check search starts from here
     // Decrease all the other played quiet moves
     for (int i = 0; i < quietsCnt; ++i)
     {
-        thisThread->history[npm<mth].update(pos.moved_piece(quiets[i]), to_sq(quiets[i]), -bonus);
+        thisThread->history[npm < mth].update(pos.moved_piece(quiets[i]), to_sq(quiets[i]), -bonus);
 
         if (is_ok((ss-1)->currentMove))
             cmh.update(pos.moved_piece(quiets[i]), to_sq(quiets[i]), -bonus);
