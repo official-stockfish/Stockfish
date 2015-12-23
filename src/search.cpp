@@ -60,6 +60,9 @@ using namespace Search;
 
 namespace {
 
+  // material threshold for history table split 
+  Value mth;
+  
   // Different node types, used as template parameter
   enum NodeType { Root, PV, NonPV };
 
@@ -185,7 +188,8 @@ void Search::clear() {
 
   for (Thread* th : Threads)
   {
-      th->history.clear();
+      th->history[0].clear();
+      th->history[1].clear();
       th->counterMoves.clear();
   }
 }
@@ -383,7 +387,8 @@ void Thread::search() {
       multiPV = std::max(multiPV, (size_t)4);
 
   multiPV = std::min(multiPV, rootMoves.size());
-
+  mth = rootPos.non_pawn_material(WHITE) + rootPos.non_pawn_material(BLACK) - KnightValueMg - BishopValueMg;
+  
   // Iterative deepening loop until requested to stop or target depth reached
   while (++rootDepth < DEPTH_MAX && !Signals.stop && (!Limits.depth || rootDepth <= Limits.depth))
   {
@@ -812,7 +817,8 @@ namespace {
         assert((ss-1)->currentMove != MOVE_NONE);
         assert((ss-1)->currentMove != MOVE_NULL);
 
-        MovePicker mp(pos, ttMove, thisThread->history, PieceValue[MG][pos.captured_piece_type()]);
+        Value npm = pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK);
+        MovePicker mp(pos, ttMove, thisThread->history[npm < mth], PieceValue[MG][pos.captured_piece_type()]);
         CheckInfo ci(pos);
 
         while ((move = mp.next_move()) != MOVE_NONE)
@@ -842,12 +848,13 @@ namespace {
     }
 
 moves_loop: // When in check search starts from here
-
+    
+    Value npm = pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK);
     Square prevSq = to_sq((ss-1)->currentMove);
     Move cm = thisThread->counterMoves[pos.piece_on(prevSq)][prevSq];
     const CounterMovesStats& cmh = CounterMovesHistory[pos.piece_on(prevSq)][prevSq];
 
-    MovePicker mp(pos, ttMove, depth, thisThread->history, cmh, cm, ss);
+    MovePicker mp(pos, ttMove, depth, thisThread->history[npm < mth], cmh, cm, ss);
     CheckInfo ci(pos);
     value = bestValue; // Workaround a bogus 'uninitialized' warning under gcc
     improving =   ss->staticEval >= (ss-2)->staticEval
@@ -940,7 +947,7 @@ moves_loop: // When in check search starts from here
           // History based pruning
           if (   depth <= 4 * ONE_PLY
               && move != ss->killers[0]
-              && thisThread->history[pos.moved_piece(move)][to_sq(move)] < VALUE_ZERO
+              && thisThread->history[npm < mth][pos.moved_piece(move)][to_sq(move)] < VALUE_ZERO
               && cmh[pos.moved_piece(move)][to_sq(move)] < VALUE_ZERO)
               continue;
 
@@ -988,12 +995,12 @@ moves_loop: // When in check search starts from here
 
           // Increase reduction for cut nodes and moves with a bad history
           if (   (!PvNode && cutNode)
-              || (   thisThread->history[pos.piece_on(to_sq(move))][to_sq(move)] < VALUE_ZERO
+              || (   thisThread->history[npm < mth][pos.piece_on(to_sq(move))][to_sq(move)] < VALUE_ZERO
                   && cmh[pos.piece_on(to_sq(move))][to_sq(move)] <= VALUE_ZERO))
               r += ONE_PLY;
 
           // Decrease reduction for moves with a good history
-          if (   thisThread->history[pos.piece_on(to_sq(move))][to_sq(move)] > VALUE_ZERO
+          if (   thisThread->history[npm < mth][pos.piece_on(to_sq(move))][to_sq(move)] > VALUE_ZERO
               && cmh[pos.piece_on(to_sq(move))][to_sq(move)] > VALUE_ZERO)
               r = std::max(DEPTH_ZERO, r - ONE_PLY);
 
@@ -1260,7 +1267,9 @@ moves_loop: // When in check search starts from here
     // to search the moves. Because the depth is <= 0 here, only captures,
     // queen promotions and checks (only if depth >= DEPTH_QS_CHECKS) will
     // be generated.
-    MovePicker mp(pos, ttMove, depth, pos.this_thread()->history, to_sq((ss-1)->currentMove));
+    
+    Value npm = pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK);
+    MovePicker mp(pos, ttMove, depth, pos.this_thread()->history[npm < mth], to_sq((ss - 1)->currentMove));
     CheckInfo ci(pos);
 
     // Loop through the moves until no moves remain or a beta cutoff occurs
@@ -1410,6 +1419,8 @@ moves_loop: // When in check search starts from here
         ss->killers[1] = ss->killers[0];
         ss->killers[0] = move;
     }
+    
+    Value npm = pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK);
 
     Value bonus = Value((depth / ONE_PLY) * (depth / ONE_PLY) + depth / ONE_PLY - 1);
 
@@ -1417,7 +1428,7 @@ moves_loop: // When in check search starts from here
     CounterMovesStats& cmh = CounterMovesHistory[pos.piece_on(prevSq)][prevSq];
     Thread* thisThread = pos.this_thread();
 
-    thisThread->history.update(pos.moved_piece(move), to_sq(move), bonus);
+    thisThread->history[npm < mth].update(pos.moved_piece(move), to_sq(move), bonus);
 
     if (is_ok((ss-1)->currentMove))
     {
@@ -1428,7 +1439,7 @@ moves_loop: // When in check search starts from here
     // Decrease all the other played quiet moves
     for (int i = 0; i < quietsCnt; ++i)
     {
-        thisThread->history.update(pos.moved_piece(quiets[i]), to_sq(quiets[i]), -bonus);
+        thisThread->history[npm < mth].update(pos.moved_piece(quiets[i]), to_sq(quiets[i]), -bonus);
 
         if (is_ok((ss-1)->currentMove))
             cmh.update(pos.moved_piece(quiets[i]), to_sq(quiets[i]), -bonus);
