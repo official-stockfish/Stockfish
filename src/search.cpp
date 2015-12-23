@@ -127,8 +127,6 @@ namespace {
   };
 
   EasyMoveManager EasyMove;
-  bool easyPlayed, failedLow;
-  double BestMoveChanges;
   Value DrawValue[COLOR_NB];
   CounterMovesHistoryStats CounterMovesHistory;
 
@@ -326,16 +324,19 @@ void MainThread::search() {
       if (th != this)
           th->wait_for_search_finished();
 
-  // Check if there are threads with a better score than main thread.
+  // Check if there are threads with a better score than main thread
   Thread* bestThread = this;
-  if (!easyPlayed && Options["MultiPV"] == 1 && !Skill(Options["Skill Level"]).enabled())
+  if (   !this->easyMovePlayed
+      &&  Options["MultiPV"] == 1
+      && !Skill(Options["Skill Level"]).enabled())
+  {
       for (Thread* th : Threads)
           if (   th->completedDepth > bestThread->completedDepth
               && th->rootMoves[0].score > bestThread->rootMoves[0].score)
-            bestThread = th;
+              bestThread = th;
+  }
 
-  // Send new PV when needed.
-  // FIXME: Breaks multiPV, and skill levels
+  // Send new PV when needed
   if (bestThread != this)
       sync_cout << UCI::pv(bestThread->rootPos, bestThread->completedDepth, -VALUE_INFINITE, VALUE_INFINITE) << sync_endl;
 
@@ -357,7 +358,7 @@ void Thread::search() {
   Stack stack[MAX_PLY+4], *ss = stack+2; // To allow referencing (ss-2) and (ss+2)
   Value bestValue, alpha, beta, delta;
   Move easyMove = MOVE_NONE;
-  bool isMainThread = (this == Threads.main());
+  MainThread* mainThread = (this == Threads.main() ? Threads.main() : nullptr);
 
   std::memset(ss-2, 0, 5 * sizeof(Stack));
 
@@ -365,12 +366,12 @@ void Thread::search() {
   beta = VALUE_INFINITE;
   completedDepth = DEPTH_ZERO;
 
-  if (isMainThread)
+  if (mainThread)
   {
       easyMove = EasyMove.get(rootPos.key());
       EasyMove.clear();
-      easyPlayed = false;
-      BestMoveChanges = 0;
+      mainThread->easyMovePlayed = mainThread->failedLow = false;
+      mainThread->bestMoveChanges = 0;
       TT.new_search();
   }
 
@@ -389,7 +390,7 @@ void Thread::search() {
   {
       // Set up the new depth for the helper threads skipping in average each
       // 2nd ply (using a half density map similar to a Hadamard matrix).
-      if (!isMainThread)
+      if (!mainThread)
       {
           int d = rootDepth + rootPos.game_ply();
 
@@ -402,8 +403,8 @@ void Thread::search() {
           {
               // Table of values of 6 bits with 3 of them set
               static const int HalfDensityMap[] = {
-                      0x07, 0x0b, 0x0d, 0x0e, 0x13, 0x16, 0x19, 0x1a, 0x1c,
-                      0x23, 0x25, 0x26, 0x29, 0x2c, 0x31, 0x32, 0x34, 0x38
+                0x07, 0x0b, 0x0d, 0x0e, 0x13, 0x16, 0x19, 0x1a, 0x1c,
+                0x23, 0x25, 0x26, 0x29, 0x2c, 0x31, 0x32, 0x34, 0x38
               };
 
               if ((HalfDensityMap[idx - 7] >> (d % 6)) & 1)
@@ -412,8 +413,8 @@ void Thread::search() {
       }
 
       // Age out PV variability metric
-      if (isMainThread)
-          BestMoveChanges *= 0.505, failedLow = false;
+      if (mainThread)
+          mainThread->bestMoveChanges *= 0.505, mainThread->failedLow = false;
 
       // Save the last iteration's scores before first PV line is searched and
       // all the move scores except the (new) PV are set to -VALUE_INFINITE.
@@ -459,7 +460,7 @@ void Thread::search() {
 
               // When failing high/low give some update (without cluttering
               // the UI) before a re-search.
-              if (   isMainThread
+              if (   mainThread
                   && multiPV == 1
                   && (bestValue <= alpha || bestValue >= beta)
                   && Time.elapsed() > 3000)
@@ -472,9 +473,9 @@ void Thread::search() {
                   beta = (alpha + beta) / 2;
                   alpha = std::max(bestValue - delta, -VALUE_INFINITE);
 
-                  if (isMainThread)
+                  if (mainThread)
                   {
-                      failedLow = true;
+                      mainThread->failedLow = true;
                       Signals.stopOnPonderhit = false;
                   }
               }
@@ -494,7 +495,7 @@ void Thread::search() {
           // Sort the PV lines searched so far and update the GUI
           std::stable_sort(rootMoves.begin(), rootMoves.begin() + PVIdx + 1);
 
-          if (!isMainThread)
+          if (!mainThread)
               break;
 
           if (Signals.stop)
@@ -508,7 +509,7 @@ void Thread::search() {
       if (!Signals.stop)
           completedDepth = rootDepth;
 
-      if (!isMainThread)
+      if (!mainThread)
           continue;
 
       // If skill level is enabled and time is up, pick a sub-optimal best move
@@ -528,16 +529,16 @@ void Thread::search() {
           {
               // Take some extra time if the best move has changed
               if (rootDepth > 4 * ONE_PLY && multiPV == 1)
-                  Time.pv_instability(BestMoveChanges);
+                  Time.pv_instability(mainThread->bestMoveChanges);
 
               // Stop the search if only one legal move is available or all
               // of the available time has been used or we matched an easyMove
               // from the previous search and just did a fast verification.
               if (   rootMoves.size() == 1
-                  || Time.elapsed() > Time.available() * (failedLow? 641 : 315)/640
-		  || ( easyPlayed = (   rootMoves[0].pv[0] == easyMove
-                      && BestMoveChanges < 0.03
-                      && Time.elapsed() > Time.available() / 8)))
+                  || Time.elapsed() > Time.available() * (mainThread->failedLow ? 641 : 315) / 640
+                  || (mainThread->easyMovePlayed = (   rootMoves[0].pv[0] == easyMove
+                                                    && mainThread->bestMoveChanges < 0.03
+                                                    && Time.elapsed() > Time.available() / 8)))
               {
                   // If we are allowed to ponder do not stop the search now but
                   // keep pondering until the GUI sends "ponderhit" or "stop".
@@ -555,12 +556,12 @@ void Thread::search() {
       }
   }
 
-  if (!isMainThread)
+  if (!mainThread)
       return;
 
   // Clear any candidate easy move that wasn't stable for the last search
   // iterations; the second condition prevents consecutive fast moves.
-  if (EasyMove.stableCnt < 6 || easyPlayed)
+  if (EasyMove.stableCnt < 6 || mainThread->easyMovePlayed)
       EasyMove.clear();
 
   // If skill level is enabled, swap best PV line with the sub-optimal one
@@ -1066,7 +1067,7 @@ moves_loop: // When in check search starts from here
               // iteration. This information is used for time management: When
               // the best move changes frequently, we allocate some more time.
               if (moveCount > 1 && thisThread == Threads.main())
-                  ++BestMoveChanges;
+                  ++static_cast<MainThread*>(thisThread)->bestMoveChanges;
           }
           else
               // All other moves but the PV are set to the lowest value: this is
