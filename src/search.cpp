@@ -641,8 +641,8 @@ namespace {
 
     assert(0 <= ss->ply && ss->ply < MAX_PLY);
 
-    ss->currentMove = ss->ttMove = (ss+1)->excludedMove = bestMove = MOVE_NONE;
-    (ss+1)->skipEarlyPruning = false; (ss+1)->reduction = DEPTH_ZERO;
+    ss->currentMove = (ss+1)->excludedMove = bestMove = MOVE_NONE;
+    (ss+1)->skipEarlyPruning = false;
     (ss+2)->killers[0] = (ss+2)->killers[1] = MOVE_NONE;
 
     // Step 4. Transposition table lookup. We don't want the score of a partial
@@ -652,8 +652,8 @@ namespace {
     posKey = excludedMove ? pos.exclusion_key() : pos.key();
     tte = TT.probe(posKey, ttHit);
     ttValue = ttHit ? value_from_tt(tte->value(), ss->ply) : VALUE_NONE;
-    ss->ttMove = ttMove =  RootNode ? thisThread->rootMoves[thisThread->PVIdx].pv[0]
-                         : ttHit    ? tte->move() : MOVE_NONE;
+    ttMove =  RootNode ? thisThread->rootMoves[thisThread->PVIdx].pv[0]
+            : ttHit    ? tte->move() : MOVE_NONE;
 
     // At non-PV nodes we check for an early TT cutoff
     if (  !PvNode
@@ -982,36 +982,33 @@ moves_loop: // When in check search starts from here
       // re-searched at full depth.
       if (    depth >= 3 * ONE_PLY
           &&  moveCount > 1
-          && !captureOrPromotion
-          &&  move != ss->killers[0]
-          &&  move != ss->killers[1])
+          && !captureOrPromotion)
       {
-          ss->reduction = reduction<PvNode>(improving, depth, moveCount);
+          Depth r = reduction<PvNode>(improving, depth, moveCount);
 
           // Increase reduction for cut nodes and moves with a bad history
           if (   (!PvNode && cutNode)
               || (   thisThread->history[pos.piece_on(to_sq(move))][to_sq(move)] < VALUE_ZERO
                   && cmh[pos.piece_on(to_sq(move))][to_sq(move)] <= VALUE_ZERO))
-              ss->reduction += ONE_PLY;
+              r += ONE_PLY;
 
           // Decrease reduction for moves with a good history
           if (   thisThread->history[pos.piece_on(to_sq(move))][to_sq(move)] > VALUE_ZERO
               && cmh[pos.piece_on(to_sq(move))][to_sq(move)] > VALUE_ZERO)
-              ss->reduction = std::max(DEPTH_ZERO, ss->reduction - ONE_PLY);
+              r = std::max(DEPTH_ZERO, r - ONE_PLY);
 
           // Decrease reduction for moves that escape a capture
-          if (   ss->reduction
+          if (   r
               && type_of(move) == NORMAL
               && type_of(pos.piece_on(to_sq(move))) != PAWN
               && pos.see(make_move(to_sq(move), from_sq(move))) < VALUE_ZERO)
-              ss->reduction = std::max(DEPTH_ZERO, ss->reduction - ONE_PLY);
+              r = std::max(DEPTH_ZERO, r - ONE_PLY);
 
-          Depth d = std::max(newDepth - ss->reduction, ONE_PLY);
+          Depth d = std::max(newDepth - r, ONE_PLY);
 
           value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, d, true);
 
-          doFullDepthSearch = (value > alpha && ss->reduction != DEPTH_ZERO);
-          ss->reduction = DEPTH_ZERO;
+          doFullDepthSearch = (value > alpha && r != DEPTH_ZERO);
       }
       else
           doFullDepthSearch = !PvNode || moveCount > 1;
