@@ -32,9 +32,11 @@ namespace {
   enum TimeType { OptimumTime, MaxTime };
 
   const int MoveHorizon   = 50;   // Plan time management at most this many moves ahead
-  const double MaxRatio   = 6.93;  // When in trouble, we can step over reserved time with this ratio
+  const double MaxRatio   = 7.48;  // When in trouble, we can step over reserved time with this ratio
   const double StealRatio = 0.36; // However we must not steal time from remaining moves over this ratio
 
+  // Easy move, fail low + eval drop, no fail low, no eval drop, no fail low + no eval drop 
+  const double searchFactor[5] = {0.12, 0.968, 0.743, 0.791, 0.383};
 
   // move_importance() is a skew-logistic function based on naive statistical
   // analysis of "how many games are still undecided after n half-moves". Game
@@ -43,9 +45,9 @@ namespace {
 
   double move_importance(int ply) {
 
-    const double XScale = 8.27;
-    const double XShift = 59.;
-    const double Skew   = 0.179;
+    const double XScale = 7.28;
+    const double XShift = 60.5;
+    const double Skew   = 0.188;
 
     return pow((1 + exp((ply - XShift) / XScale)), -Skew) + DBL_MIN; // Ensure non-zero
   }
@@ -129,4 +131,8 @@ void TimeManagement::init(Search::LimitsType& limits, Color us, int ply)
 
   if (Options["Ponder"])
       optimumTime += optimumTime / 4;
+}
+
+int TimeManagement::available(int mask){
+   return int(optimumTime * unstablePvFactor * searchFactor[mask]);
 }
