@@ -596,6 +596,8 @@ namespace {
     int moveCount, quietCount;
 
     // Step 1. Initialize node
+    prefetch(ThisThread->materialTable[pos.material_key()]);
+    prefetch(ThisThread->pawnsTable[pos.material_key()]);
     inCheck = pos.checkers();
     moveCount = quietCount =  ss->moveCount = 0;
     bestValue = -VALUE_INFINITE;
@@ -1174,6 +1176,9 @@ moves_loop: // When in check search starts from here
     Value bestValue, value, ttValue, futilityValue, futilityBase, oldAlpha;
     bool ttHit, givesCheck, evasionPrunable;
     Depth ttDepth;
+
+    prefetch(ThisThread->materialTable[pos.material_key()]);
+    prefetch(ThisThread->pawnsTable[pos.material_key()]);
 
     if (PvNode)
     {
