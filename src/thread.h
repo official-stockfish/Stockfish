@@ -95,5 +95,6 @@ struct ThreadPool : public std::vector<Thread*> {
 };
 
 extern ThreadPool Threads;
+extern thread_local Thread *ThisThread;
 
 #endif // #ifndef THREAD_H_INCLUDED

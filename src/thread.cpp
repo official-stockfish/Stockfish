@@ -27,7 +27,8 @@
 
 using namespace Search;
 
-ThreadPool Threads; // Global object
+ThreadPool Threads;
+thread_local Thread *ThisThread;
 
 /// Thread constructor launch the thread and then wait until it goes to sleep
 /// in idle_loop().
@@ -93,6 +94,8 @@ void Thread::start_searching(bool resume) {
 /// Thread::idle_loop() is where the thread is parked when it has no work to do
 
 void Thread::idle_loop() {
+
+  ThisThread = this;
 
   while (!exit)
   {

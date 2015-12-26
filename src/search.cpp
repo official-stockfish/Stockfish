@@ -293,7 +293,7 @@ void MainThread::search() {
           th->rootDepth = DEPTH_ZERO;
           if (th != this)
           {
-              th->rootPos = Position(rootPos, th);
+              th->rootPos = Position(rootPos);
               th->rootMoves = rootMoves;
               th->start_searching();
           }
@@ -596,19 +596,18 @@ namespace {
     int moveCount, quietCount;
 
     // Step 1. Initialize node
-    Thread* thisThread = pos.this_thread();
     inCheck = pos.checkers();
     moveCount = quietCount =  ss->moveCount = 0;
     bestValue = -VALUE_INFINITE;
     ss->ply = (ss-1)->ply + 1;
 
     // Check for available remaining time
-    if (thisThread->resetCalls.load(std::memory_order_relaxed))
+    if (ThisThread->resetCalls.load(std::memory_order_relaxed))
     {
-        thisThread->resetCalls = false;
-        thisThread->callsCnt = 0;
+        ThisThread->resetCalls = false;
+        ThisThread->callsCnt = 0;
     }
-    if (++thisThread->callsCnt > 4096)
+    if (++ThisThread->callsCnt > 4096)
     {
         for (Thread* th : Threads)
             th->resetCalls = true;
@@ -617,8 +616,8 @@ namespace {
     }
 
     // Used to send selDepth info to GUI
-    if (PvNode && thisThread->maxPly < ss->ply)
-        thisThread->maxPly = ss->ply;
+    if (PvNode && ThisThread->maxPly < ss->ply)
+        ThisThread->maxPly = ss->ply;
 
     if (!RootNode)
     {
@@ -652,7 +651,7 @@ namespace {
     posKey = excludedMove ? pos.exclusion_key() : pos.key();
     tte = TT.probe(posKey, ttHit);
     ttValue = ttHit ? value_from_tt(tte->value(), ss->ply) : VALUE_NONE;
-    ttMove =  RootNode ? thisThread->rootMoves[thisThread->PVIdx].pv[0]
+    ttMove =  RootNode ? ThisThread->rootMoves[ThisThread->PVIdx].pv[0]
             : ttHit    ? tte->move() : MOVE_NONE;
 
     // At non-PV nodes we check for an early TT cutoff
@@ -812,7 +811,7 @@ namespace {
         assert((ss-1)->currentMove != MOVE_NONE);
         assert((ss-1)->currentMove != MOVE_NULL);
 
-        MovePicker mp(pos, ttMove, thisThread->history, PieceValue[MG][pos.captured_piece_type()]);
+        MovePicker mp(pos, ttMove, ThisThread->history, PieceValue[MG][pos.captured_piece_type()]);
         CheckInfo ci(pos);
 
         while ((move = mp.next_move()) != MOVE_NONE)
@@ -844,10 +843,10 @@ namespace {
 moves_loop: // When in check search starts from here
 
     Square prevSq = to_sq((ss-1)->currentMove);
-    Move cm = thisThread->counterMoves[pos.piece_on(prevSq)][prevSq];
+    Move cm = ThisThread->counterMoves[pos.piece_on(prevSq)][prevSq];
     const CounterMovesStats& cmh = CounterMovesHistory[pos.piece_on(prevSq)][prevSq];
 
-    MovePicker mp(pos, ttMove, depth, thisThread->history, cmh, cm, ss);
+    MovePicker mp(pos, ttMove, depth, ThisThread->history, cmh, cm, ss);
     CheckInfo ci(pos);
     value = bestValue; // Workaround a bogus 'uninitialized' warning under gcc
     improving =   ss->staticEval >= (ss-2)->staticEval
@@ -875,16 +874,16 @@ moves_loop: // When in check search starts from here
       // At root obey the "searchmoves" option and skip moves not listed in Root
       // Move List. As a consequence any illegal move is also skipped. In MultiPV
       // mode we also skip PV moves which have been already searched.
-      if (RootNode && !std::count(thisThread->rootMoves.begin() + thisThread->PVIdx,
-                                  thisThread->rootMoves.end(), move))
+      if (RootNode && !std::count(ThisThread->rootMoves.begin() + ThisThread->PVIdx,
+                                  ThisThread->rootMoves.end(), move))
           continue;
 
       ss->moveCount = ++moveCount;
 
-      if (RootNode && thisThread == Threads.main() && Time.elapsed() > 3000)
+      if (RootNode && ThisThread == Threads.main() && Time.elapsed() > 3000)
           sync_cout << "info depth " << depth / ONE_PLY
                     << " currmove " << UCI::move(move, pos.is_chess960())
-                    << " currmovenumber " << moveCount + thisThread->PVIdx << sync_endl;
+                    << " currmovenumber " << moveCount + ThisThread->PVIdx << sync_endl;
 
       if (PvNode)
           (ss+1)->pv = nullptr;
@@ -940,7 +939,7 @@ moves_loop: // When in check search starts from here
           // History based pruning
           if (   depth <= 4 * ONE_PLY
               && move != ss->killers[0]
-              && thisThread->history[pos.moved_piece(move)][to_sq(move)] < VALUE_ZERO
+              && ThisThread->history[pos.moved_piece(move)][to_sq(move)] < VALUE_ZERO
               && cmh[pos.moved_piece(move)][to_sq(move)] < VALUE_ZERO)
               continue;
 
@@ -988,12 +987,12 @@ moves_loop: // When in check search starts from here
 
           // Increase reduction for cut nodes and moves with a bad history
           if (   (!PvNode && cutNode)
-              || (   thisThread->history[pos.piece_on(to_sq(move))][to_sq(move)] < VALUE_ZERO
+              || (   ThisThread->history[pos.piece_on(to_sq(move))][to_sq(move)] < VALUE_ZERO
                   && cmh[pos.piece_on(to_sq(move))][to_sq(move)] <= VALUE_ZERO))
               r += ONE_PLY;
 
           // Decrease reduction for moves with a good history
-          if (   thisThread->history[pos.piece_on(to_sq(move))][to_sq(move)] > VALUE_ZERO
+          if (   ThisThread->history[pos.piece_on(to_sq(move))][to_sq(move)] > VALUE_ZERO
               && cmh[pos.piece_on(to_sq(move))][to_sq(move)] > VALUE_ZERO)
               r = std::max(DEPTH_ZERO, r - ONE_PLY);
 
@@ -1048,8 +1047,8 @@ moves_loop: // When in check search starts from here
 
       if (RootNode)
       {
-          RootMove& rm = *std::find(thisThread->rootMoves.begin(),
-                                    thisThread->rootMoves.end(), move);
+          RootMove& rm = *std::find(ThisThread->rootMoves.begin(),
+                                    ThisThread->rootMoves.end(), move);
 
           // PV move or new best move ?
           if (moveCount == 1 || value > alpha)
@@ -1065,7 +1064,7 @@ moves_loop: // When in check search starts from here
               // We record how often the best move has been changed in each
               // iteration. This information is used for time management: When
               // the best move changes frequently, we allocate some more time.
-              if (moveCount > 1 && thisThread == Threads.main())
+              if (moveCount > 1 && ThisThread == Threads.main())
                   ++BestMoveChanges;
           }
           else
@@ -1083,7 +1082,7 @@ moves_loop: // When in check search starts from here
           {
               // If there is an easy move for this position, clear it if unstable
               if (    PvNode
-                  &&  thisThread == Threads.main()
+                  &&  ThisThread == Threads.main()
                   &&  EasyMove.get(pos.key())
                   && (move != EasyMove.get(pos.key()) || moveCount > 1))
                   EasyMove.clear();
@@ -1260,7 +1259,7 @@ moves_loop: // When in check search starts from here
     // to search the moves. Because the depth is <= 0 here, only captures,
     // queen promotions and checks (only if depth >= DEPTH_QS_CHECKS) will
     // be generated.
-    MovePicker mp(pos, ttMove, depth, pos.this_thread()->history, to_sq((ss-1)->currentMove));
+    MovePicker mp(pos, ttMove, depth, ThisThread->history, to_sq((ss-1)->currentMove));
     CheckInfo ci(pos);
 
     // Loop through the moves until no moves remain or a beta cutoff occurs
@@ -1415,20 +1414,19 @@ moves_loop: // When in check search starts from here
 
     Square prevSq = to_sq((ss-1)->currentMove);
     CounterMovesStats& cmh = CounterMovesHistory[pos.piece_on(prevSq)][prevSq];
-    Thread* thisThread = pos.this_thread();
 
-    thisThread->history.update(pos.moved_piece(move), to_sq(move), bonus);
+    ThisThread->history.update(pos.moved_piece(move), to_sq(move), bonus);
 
     if (is_ok((ss-1)->currentMove))
     {
-        thisThread->counterMoves.update(pos.piece_on(prevSq), prevSq, move);
+        ThisThread->counterMoves.update(pos.piece_on(prevSq), prevSq, move);
         cmh.update(pos.moved_piece(move), to_sq(move), bonus);
     }
 
     // Decrease all the other played quiet moves
     for (int i = 0; i < quietsCnt; ++i)
     {
-        thisThread->history.update(pos.moved_piece(quiets[i]), to_sq(quiets[i]), -bonus);
+        ThisThread->history.update(pos.moved_piece(quiets[i]), to_sq(quiets[i]), -bonus);
 
         if (is_ok((ss-1)->currentMove))
             cmh.update(pos.moved_piece(quiets[i]), to_sq(quiets[i]), -bonus);
@@ -1516,8 +1514,8 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
 
   std::stringstream ss;
   int elapsed = Time.elapsed() + 1;
-  const Search::RootMoveVector& rootMoves = pos.this_thread()->rootMoves;
-  size_t PVIdx = pos.this_thread()->PVIdx;
+  const Search::RootMoveVector& rootMoves = ThisThread->rootMoves;
+  size_t PVIdx = ThisThread->PVIdx;
   size_t multiPV = std::min((size_t)Options["MultiPV"], rootMoves.size());
   uint64_t nodes_searched = Threads.nodes_searched();
 
@@ -1539,7 +1537,7 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
 
       ss << "info"
          << " depth "    << d / ONE_PLY
-         << " seldepth " << pos.this_thread()->maxPly
+         << " seldepth " << ThisThread->maxPly
          << " multipv "  << i + 1
          << " score "    << UCI::value(v);
 

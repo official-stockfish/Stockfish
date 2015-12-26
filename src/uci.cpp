@@ -67,7 +67,7 @@ namespace {
     else
         return;
 
-    pos.set(fen, Options["UCI_Chess960"], Threads.main());
+    pos.set(fen, Options["UCI_Chess960"]);
     SetupStates = Search::StateStackPtr(new std::stack<StateInfo>);
 
     // Parse move list (if any)
@@ -145,7 +145,7 @@ namespace {
 
 void UCI::loop(int argc, char* argv[]) {
 
-  Position pos(StartFEN, false, Threads.main()); // The root position
+  Position pos(StartFEN, false); // The root position
   string token, cmd;
 
   for (int i = 1; i < argc; ++i)
