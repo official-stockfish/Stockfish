@@ -127,7 +127,7 @@ namespace {
   };
 
   EasyMoveManager EasyMove;
-  Value DrawValue[COLOR_NB];
+  Value PreviousMoveScore, DrawValue[COLOR_NB];
   CounterMovesHistoryStats CounterMovesHistory;
 
   template <NodeType NT>
@@ -187,7 +187,7 @@ void Search::clear() {
       th->counterMoves.clear();
   }
 
-  PreviousMoveValue = VALUE_INFINITE;
+  PreviousMoveScore = VALUE_INFINITE;
 }
 
 
@@ -337,8 +337,10 @@ void MainThread::search() {
               && th->rootMoves[0].score > bestThread->rootMoves[0].score)
               bestThread = th;
   }
-  mainThread->previousMoveScore = bestThread->rootMoves[0].score;
 
+  PreviousMoveScore = bestThread->rootMoves[0].score;
+
+  // Send new PV when needed
   if (bestThread != this)
       sync_cout << UCI::pv(bestThread->rootPos, bestThread->completedDepth, -VALUE_INFINITE, VALUE_INFINITE) << sync_endl;
 
@@ -538,8 +540,8 @@ void Thread::search() {
               // from the previous search and just did a fast verification.
               if (   rootMoves.size() == 1
                   || Time.elapsed() > Time.available() * ( 640  - 160 * !mainThread->failedLow 
-                     - 126 * (bestValue >= mainThread->previousMoveScore)  
-                     - 124 * (bestValue >= mainThread->previousMoveScore && !mainThread->failedLow))/640
+                     - 126 * (bestValue >= PreviousMoveScore)  
+                     - 124 * (bestValue >= PreviousMoveScore && !mainThread->failedLow))/640
                   || ( mainThread->easyMovePlayed = ( rootMoves[0].pv[0] == easyMove
                                                      && mainThread->bestMoveChanges < 0.03
                                                      && Time.elapsed() > Time.available() * 25/206)))
