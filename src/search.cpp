@@ -293,7 +293,7 @@ void MainThread::search() {
           th->rootDepth = DEPTH_ZERO;
           if (th != this)
           {
-              th->rootPos = Position(rootPos, th);
+              th->rootPos = Position(rootPos);
               th->rootMoves = rootMoves;
               th->start_searching();
           }
@@ -596,7 +596,9 @@ namespace {
     int moveCount, quietCount;
 
     // Step 1. Initialize node
-    Thread* thisThread = pos.this_thread();
+    Thread *thisThread = ThisThread; // TLS lookup is horribly slow on Windows
+    prefetch(thisThread->materialTable[pos.material_key()]);
+    prefetch(thisThread->pawnsTable[pos.material_key()]);
     inCheck = pos.checkers();
     moveCount = quietCount =  ss->moveCount = 0;
     bestValue = -VALUE_INFINITE;
@@ -1176,6 +1178,10 @@ moves_loop: // When in check search starts from here
     bool ttHit, givesCheck, evasionPrunable;
     Depth ttDepth;
 
+    Thread *thisThread = ThisThread; // TLS lookup is horribly slow on Windows
+    prefetch(thisThread->materialTable[pos.material_key()]);
+    prefetch(thisThread->pawnsTable[pos.material_key()]);
+
     if (PvNode)
     {
         oldAlpha = alpha; // To flag BOUND_EXACT when eval above alpha and no available moves
@@ -1260,7 +1266,7 @@ moves_loop: // When in check search starts from here
     // to search the moves. Because the depth is <= 0 here, only captures,
     // queen promotions and checks (only if depth >= DEPTH_QS_CHECKS) will
     // be generated.
-    MovePicker mp(pos, ttMove, depth, pos.this_thread()->history, to_sq((ss-1)->currentMove));
+    MovePicker mp(pos, ttMove, depth, thisThread->history, to_sq((ss-1)->currentMove));
     CheckInfo ci(pos);
 
     // Loop through the moves until no moves remain or a beta cutoff occurs
@@ -1415,20 +1421,19 @@ moves_loop: // When in check search starts from here
 
     Square prevSq = to_sq((ss-1)->currentMove);
     CounterMovesStats& cmh = CounterMovesHistory[pos.piece_on(prevSq)][prevSq];
-    Thread* thisThread = pos.this_thread();
 
-    thisThread->history.update(pos.moved_piece(move), to_sq(move), bonus);
+    ThisThread->history.update(pos.moved_piece(move), to_sq(move), bonus);
 
     if (is_ok((ss-1)->currentMove))
     {
-        thisThread->counterMoves.update(pos.piece_on(prevSq), prevSq, move);
+        ThisThread->counterMoves.update(pos.piece_on(prevSq), prevSq, move);
         cmh.update(pos.moved_piece(move), to_sq(move), bonus);
     }
 
     // Decrease all the other played quiet moves
     for (int i = 0; i < quietsCnt; ++i)
     {
-        thisThread->history.update(pos.moved_piece(quiets[i]), to_sq(quiets[i]), -bonus);
+        ThisThread->history.update(pos.moved_piece(quiets[i]), to_sq(quiets[i]), -bonus);
 
         if (is_ok((ss-1)->currentMove))
             cmh.update(pos.moved_piece(quiets[i]), to_sq(quiets[i]), -bonus);
@@ -1516,8 +1521,8 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
 
   std::stringstream ss;
   int elapsed = Time.elapsed() + 1;
-  const Search::RootMoveVector& rootMoves = pos.this_thread()->rootMoves;
-  size_t PVIdx = pos.this_thread()->PVIdx;
+  const Search::RootMoveVector& rootMoves = ThisThread->rootMoves;
+  size_t PVIdx = ThisThread->PVIdx;
   size_t multiPV = std::min((size_t)Options["MultiPV"], rootMoves.size());
   uint64_t nodes_searched = Threads.nodes_searched();
 
@@ -1539,7 +1544,7 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
 
       ss << "info"
          << " depth "    << d / ONE_PLY
-         << " seldepth " << pos.this_thread()->maxPly
+         << " seldepth " << ThisThread->maxPly
          << " multipv "  << i + 1
          << " score "    << UCI::value(v);
 

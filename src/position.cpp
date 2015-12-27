@@ -27,7 +27,6 @@
 #include "misc.h"
 #include "movegen.h"
 #include "position.h"
-#include "thread.h"
 #include "tt.h"
 #include "uci.h"
 
@@ -193,7 +192,7 @@ void Position::clear() {
 /// This function is not very robust - make sure that input FENs are correct,
 /// this is assumed to be the responsibility of the GUI.
 
-void Position::set(const string& fenStr, bool isChess960, Thread* th) {
+void Position::set(const string& fenStr, bool isChess960) {
 /*
    A FEN string defines a particular position using only the ASCII character set.
 
@@ -303,7 +302,6 @@ void Position::set(const string& fenStr, bool isChess960, Thread* th) {
   gamePly = std::max(2 * (gamePly - 1), 0) + (sideToMove == BLACK);
 
   chess960 = isChess960;
-  thisThread = th;
   set_state(st);
 
   assert(pos_is_ok());
@@ -740,10 +738,9 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       // Update board and piece lists
       remove_piece(them, captured, capsq);
 
-      // Update material hash key and prefetch access to materialTable
+      // Update material hash key
       k ^= Zobrist::psq[them][captured][capsq];
       st->materialKey ^= Zobrist::psq[them][captured][pieceCount[them][captured]];
-      prefetch(thisThread->materialTable[st->materialKey]);
 
       // Update incremental scores
       st->psq -= PSQT::psq[them][captured][capsq];
@@ -808,9 +805,8 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
           st->nonPawnMaterial[us] += PieceValue[MG][promotion];
       }
 
-      // Update pawn hash key and prefetch access to pawnsTable
+      // Update pawn hash key
       st->pawnKey ^= Zobrist::psq[us][PAWN][from] ^ Zobrist::psq[us][PAWN][to];
-      prefetch(thisThread->pawnsTable[st->pawnKey]);
 
       // Reset rule 50 draw counter
       st->rule50 = 0;
@@ -1111,7 +1107,7 @@ void Position::flip() {
   std::getline(ss, token); // Half and full moves
   f += token;
 
-  set(f, is_chess960(), this_thread());
+  set(f, is_chess960());
 
   assert(pos_is_ok());
 }

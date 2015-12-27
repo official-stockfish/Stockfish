@@ -23,7 +23,7 @@
 #include <sstream>
 
 #include "misc.h"
-#include "thread.h"
+#include "thread_win32.h"
 
 using namespace std;
 
