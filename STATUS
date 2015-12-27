@@ -51,7 +51,10 @@ icc windows ???, 32-bit: TODO
 MSVC ??? 64-bit: TODO
 MSVC ??? 32-bit: TODO
 
-mingw ??? 64-bit: TODO
+mingw 4.8.2 64-bit: PASS ppigazzini
+mingw 4.9.2 64-bit: PASS ppigazzini
+mingw 5.2.0 64-bit: PASS ppigazzini
+mingw 5.2.0 64-bit (msys2): PASS ppigazzini
 mingw ??? 32-bit: TODO
 
 mingw ??? cross compiling 64-bit: TODO
