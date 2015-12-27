@@ -156,7 +156,7 @@ namespace {
     { S( 8, 2), S(13, 4) }  // Bishops
   };
   
-  // RookOnFile[semiopen/open] is a contains bonuses for each rook when there is no friendly
+  // RookOnFile[semiopen/open] contains bonuses for each rook when there is no friendly
   // pawn on the rook file.
   const Score RookOnFile[2] = { S(19, 10), S(43, 21) };
 
