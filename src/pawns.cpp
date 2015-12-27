@@ -31,11 +31,6 @@ namespace {
   #define V Value
   #define S(mg, eg) make_score(mg, eg)
 
-  // Doubled pawn penalty by file
-  const Score Doubled[FILE_NB] = {
-    S(13, 43), S(20, 48), S(23, 48), S(23, 48),
-    S(23, 48), S(23, 48), S(20, 48), S(13, 43) };
-
   // Isolated pawn penalty by opposed flag and file
   const Score Isolated[2][FILE_NB] = {
   { S(37, 45), S(54, 52), S(60, 52), S(60, 52),
@@ -45,18 +40,24 @@ namespace {
 
   // Backward pawn penalty by opposed flag
   const Score Backward[2] = { S(67, 42), S(49, 24) };
+  
+  // Unsupported pawn penalty, for pawns which are neither isolated or backward.
+  const Score Unsupported = S(20, 10);
 
   // Connected pawn bonus by opposed, phalanx, twice supported and rank
   Score Connected[2][2][2][RANK_NB];
+  
+  // Doubled pawn penalty by file
+  const Score Doubled[FILE_NB] = {
+    S(13, 43), S(20, 48), S(23, 48), S(23, 48),
+    S(23, 48), S(23, 48), S(20, 48), S(13, 43) };
 
-  // Levers bonus by rank
+  // Lever bonus by rank
   const Score Lever[RANK_NB] = {
     S( 0, 0), S( 0, 0), S(0, 0), S(0, 0),
     S(20,20), S(40,40), S(0, 0), S(0, 0) };
 
-  // Unsupported pawn penalty
-  const Score UnsupportedPawnPenalty = S(20, 10);
-
+  // Center bind bonus, when two pawns controls the same central square
   const Score CenterBind = S(16, 0);
 
   // Weakness of our pawn shelter in front of the king by [distance from edge][rank]
@@ -167,7 +168,7 @@ namespace {
         assert(opposed | passed | (pawn_attack_span(Us, s) & theirPawns));
 
         // Passed pawns will be properly scored in evaluation because we need
-        // full attack info to evaluate passed pawns. Only the frontmost passed
+        // full attack info to evaluate them. Only the frontmost passed
         // pawn on each file is considered a true passed pawn.
         if (passed && !doubled)
             e->passedPawns[Us] |= s;
@@ -180,7 +181,7 @@ namespace {
             score -= Backward[opposed];
 
         else if (!supported)
-            score -= UnsupportedPawnPenalty;
+            score -= Unsupported;
 
         if (connected)
             score += Connected[opposed][!!phalanx][more_than_one(supported)][relative_rank(Us, s)];
@@ -195,9 +196,8 @@ namespace {
     b = e->semiopenFiles[Us] ^ 0xFF;
     e->pawnSpan[Us] = b ? int(msb(b) - lsb(b)) : 0;
 
-    // Center binds: Two pawns controlling the same central square
     b = shift_bb<Right>(ourPawns) & shift_bb<Left>(ourPawns) & CenterBindMask;
-    score += popcount<Max15>(b) * CenterBind;
+    score += CenterBind * popcount<Max15>(b);
 
     return score;
   }
