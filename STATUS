@@ -1,0 +1,98 @@
+0. Instructions
+===============
+
+After a test has been completed, replace "TODO" with "PASS (Tester name)".
+
+1. Tests
+========
+
+1.1 ELO gain vs. Stockfish 6:
+=============================
+
+Fishtest Regression Test 60+0.05 (1  Threads), 8 moves book, 60k games: TODO
+Fishtest Regression Test 60+0.05 (3  Threads), 8 moves book, 60k games: TODO
+Fishtest Regression Test 60+0.05 (15 Threads), 8 moves book, 20k games: TODO
+
+1.2. Benchmark Tests:
+=====================
+
+"./stockfish bench" returns the expected result
+For Stockfish7 the bench signature is: 8355485
+
+1.2.1. Compilers
+================
+
+gcc 4.8, 64-bit: TODO 
+gcc 4.9, 64-bit: TODO 
+gcc 5  , 64-bit: TODO
+gcc DEV, 64-bit: TODO
+
+gcc 4.8, 32-bit: TODO 
+gcc 4.9, 32-bit: TODO 
+gcc 5  , 32-bit: TODO
+gcc DEV, 32-bit: TODO
+
+clang 3.4, 64-bit: TODO
+clang 3.5, 64-bit: TODO
+clang 3.6, 64-bit: TODO
+clang 3.7, 64-bit: TODO
+
+clang 3.4, 32-bit: TODO
+clang 3.5, 32-bit: TODO
+clang 3.6, 32-bit: TODO
+clang 3.7, 32-bit: TODO
+
+icc linux ???, 64-bit: TODO
+icc linux ???, 32-bit: TODO
+
+icc windows ???, 64-bit: TODO
+icc windows ???, 32-bit: TODO
+ 
+MSVC ??? 64-bit: TODO
+MSVC ??? 32-bit: TODO
+
+mingw ??? 64-bit: TODO
+mingw ??? 32-bit: TODO
+
+mingw ??? cross compiling 64-bit: TODO
+mingw ??? cross compiling 32-bit: TODO
+
+(add more if required...)
+
+1.2.2. Operating Systems:
+=========================
+
+Mac OSX: TODO
+Android: TODO
+iOS: TODO
+PPC (or other big-endian): TODO
+
+(add more if required...)
+
+1.3. Variants test:
+===================
+
+At minimum 2000 games at minimum 10+0.1 time control. SF7 vs. SF6.
+Expect no crashes and no losses on time.
+
+Ponder On: TODO
+Chess960: TODO
+Syzygy tables: TODO
+
+(add more if required...)
+
+1.4. GUI test:
+==============
+
+At minimum 2000 games at minimum 10+0.1 time control. SF7 vs. SF6.
+
+Fritz: TODO
+Arena: TODO
+Little Blitzer: TODO
+
+(add more if required...)
+
+1.5 Perft:
+==========
+
+perft7 (starting pos): TODO
