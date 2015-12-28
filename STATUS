@@ -22,12 +22,12 @@ For Stockfish7 the bench signature is: 8355485
 1.2.1. Compilers
 ================
 
-gcc 4.8, 64-bit: TODO 
+gcc 4.8, 64-bit: PASS (Trevis CI: https://travis-ci.org/official-stockfish/Stockfish)
 gcc 4.9, 64-bit: TODO 
 gcc 5.2, 64-bit: PASS (lucasart)
 gcc DEV, 64-bit: TODO
 
-gcc 4.8, 32-bit: TODO 
+gcc 4.8, 32-bit: PASS (Trevis CI: https://travis-ci.org/official-stockfish/Stockfish) 
 gcc 4.9, 32-bit: TODO 
 gcc 5  , 32-bit: TODO
 gcc DEV, 32-bit: TODO
@@ -35,12 +35,12 @@ gcc DEV, 32-bit: TODO
 clang 3.4, 64-bit: TODO
 clang 3.5, 64-bit: TODO
 clang 3.6, 64-bit: PASS (lucasart)
-clang 3.7, 64-bit: TODO
+clang 3.7, 64-bit: PASS (Trevis CI: https://travis-ci.org/official-stockfish/Stockfish)
 
 clang 3.4, 32-bit: TODO
 clang 3.5, 32-bit: TODO
 clang 3.6, 32-bit: TODO
-clang 3.7, 32-bit: TODO
+clang 3.7, 32-bit: PASS (Trevis CI: https://travis-ci.org/official-stockfish/Stockfish)
 
 icc linux ???, 64-bit: TODO
 icc linux ???, 32-bit: TODO
