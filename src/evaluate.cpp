@@ -155,13 +155,13 @@ namespace {
     { S(21, 5), S(31, 8) }, // Knights
     { S( 8, 2), S(13, 4) }  // Bishops
   };
-  
-  // RookOnFile[semiopen/open] contains bonuses for each rook when there is no friendly
-  // pawn on the rook file.
+
+  // RookOnFile[semiopen/open] contains bonuses for each rook when there is no
+  // friendly pawn on the rook file.
   const Score RookOnFile[2] = { S(19, 10), S(43, 21) };
 
   // ThreatBySafePawn[PieceType] contains bonuses according to which piece
-  // type is attacked by a pawn which is protected or not attacked
+  // type is attacked by a pawn which is protected or not attacked.
   const Score ThreatBySafePawn[PIECE_TYPE_NB] = {
     S(0, 0), S(0, 0), S(176, 139), S(131, 127), S(217, 218), S(203, 215) };
   
@@ -174,7 +174,7 @@ namespace {
   };
 
   // ThreatByKing[on one/on many] contains bonuses for King attacks on
-  // pawns or pieces which are not pawn defended
+  // pawns or pieces which are not pawn defended.
   const Score ThreatByKing[2] = { S(3, 62), S(9, 138) };
 
   // Passed[mg/eg][Rank] contains midgame and endgame bonuses for passed pawns.
@@ -184,7 +184,7 @@ namespace {
     { V(7), V(14), V(37), V(63), V(134), V(189) }
   };
 
-  // PassedFile[File] contains a bonus according to the file of a passed pawn.
+  // PassedFile[File] contains a bonus according to the file of a passed pawn
   const Score PassedFile[FILE_NB] = {
     S( 12,  10), S( 3, 10), S( 1, -8), S(-27, -12),
     S(-27, -12), S( 1, -8), S( 3, 10), S( 12,  10)

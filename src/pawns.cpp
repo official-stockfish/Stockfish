@@ -41,7 +41,7 @@ namespace {
   // Backward pawn penalty by opposed flag
   const Score Backward[2] = { S(67, 42), S(49, 24) };
   
-  // Unsupported pawn penalty, for pawns which are neither isolated or backward.
+  // Unsupported pawn penalty, for pawns which are neither isolated or backward
   const Score Unsupported = S(20, 10);
 
   // Connected pawn bonus by opposed, phalanx, twice supported and rank
