@@ -33,18 +33,18 @@ namespace {
 
   // Doubled pawn penalty by file
   const Score Doubled[FILE_NB] = {
-    S(13, 43), S(20, 48), S(23, 48), S(23, 48),
-    S(23, 48), S(23, 48), S(20, 48), S(13, 43) };
+    S(11, 35), S(17, 39), S(20, 39), S(20, 39),
+    S(20, 39), S(20, 39), S(17, 39), S(11, 35) };
 
   // Isolated pawn penalty by opposed flag and file
   const Score Isolated[2][FILE_NB] = {
-  { S(37, 45), S(54, 52), S(60, 52), S(60, 52),
-    S(60, 52), S(60, 52), S(54, 52), S(37, 45) },
-  { S(25, 30), S(36, 35), S(40, 35), S(40, 35),
-    S(40, 35), S(40, 35), S(36, 35), S(25, 30) } };
+  { S(32, 37), S(46, 42), S(51, 42), S(51, 42),
+    S(51, 42), S(51, 42), S(46, 42), S(32, 37) },
+  { S(22, 24), S(31, 29), S(34, 29), S(34, 29),
+    S(34, 29), S(34, 29), S(31, 29), S(22, 24) } };
 
   // Backward pawn penalty by opposed flag
-  const Score Backward[2] = { S(67, 42), S(49, 24) };
+  const Score Backward[2] = { S(57, 34), S(43, 21) };
 
   // Connected pawn bonus by opposed, phalanx, twice supported and rank
   Score Connected[2][2][2][RANK_NB];
@@ -52,12 +52,16 @@ namespace {
   // Levers bonus by rank
   const Score Lever[RANK_NB] = {
     S( 0, 0), S( 0, 0), S(0, 0), S(0, 0),
-    S(20,20), S(40,40), S(0, 0), S(0, 0) };
+    S(16, 16), S(32, 32), S(0, 0), S(0, 0) };
 
-  // Unsupported pawn penalty by twice supporting
-  const Score Unsupported[2] = { S(20, 10), S(25, 15) };
+  // Unsupported pawn penalty
+  // for pawns which are neither backward or isolated.
+  const Score Unsupported = S(18, 8);
 
-  const Score CenterBind = S(16, 0);
+  // Unsupported pawn which protects 2 other pawns
+  const Score VPawn = S(4, 4);
+
+  const Score CenterBind = S(13, 0);
 
   // Weakness of our pawn shelter in front of the king by [distance from edge][rank]
   const Value ShelterWeakness[][RANK_NB] = {
@@ -104,7 +108,7 @@ namespace {
       Us == WHITE ? (FileDBB | FileEBB) & (Rank5BB | Rank6BB | Rank7BB)
                   : (FileDBB | FileEBB) & (Rank4BB | Rank3BB | Rank2BB);
 
-    Bitboard b, neighbours, doubled, supported, phalanx;
+    Bitboard b, neighbours, doubled, supported, phalanx, supporting;
     Square s;
     bool passed, isolated, opposed, backward, lever, connected;
     Score score = SCORE_ZERO;
@@ -139,6 +143,7 @@ namespace {
         lever       =   theirPawns & pawnAttacksBB[s];
         phalanx     =   neighbours & rank_bb(s);
         supported   =   neighbours & rank_bb(s - Up);
+        supporting  =   neighbours & rank_bb(s + Up);
         connected   =   supported | phalanx;
         isolated    =  !neighbours;
 
@@ -180,7 +185,10 @@ namespace {
             score -= Backward[opposed];
 
         else if (!supported)
-            score -= Unsupported[more_than_one(neighbours & rank_bb(s + Up))];
+            score -= Unsupported;
+        
+        if (!supported & more_than_one(supporting))
+            score -= VPawn;
 
         if (connected)
             score += Connected[opposed][!!phalanx][more_than_one(supported)][relative_rank(Us, s)];
@@ -197,7 +205,7 @@ namespace {
 
     // Center binds: Two pawns controlling the same central square
     b = shift_bb<Right>(ourPawns) & shift_bb<Left>(ourPawns) & CenterBindMask;
-    score += popcount<Max15>(b) * CenterBind;
+    score += CenterBind * popcount<Max15>(b);
 
     return score;
   }
@@ -212,7 +220,7 @@ namespace Pawns {
 
 void init()
 {
-  static const int Seed[RANK_NB] = { 0, 6, 15, 10, 57, 75, 135, 258 };
+  static const int Seed[RANK_NB] = { 0, 5, 12, 8, 46, 61, 110, 210 };
 
   for (int opposed = 0; opposed <= 1; ++opposed)
       for (int phalanx = 0; phalanx <= 1; ++phalanx)
