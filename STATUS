@@ -48,8 +48,8 @@ icc linux ???, 32-bit: TODO
 icc windows ???, 64-bit: TODO
 icc windows ???, 32-bit: TODO
  
-MSVC ??? 64-bit: TODO
-MSVC ??? 32-bit: TODO
+MSVC 2013 64-bit: PASS (mcostalba)
+MSVC 2013 32-bit: PASS (mcostalba)
 
 mingw 4.8.2 64-bit: PASS (ppigazzini)
 mingw 4.9.2 64-bit: PASS (ppigazzini)
