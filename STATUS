@@ -78,8 +78,8 @@ At minimum 2000 games at minimum 10+0.1 time control. SF7 vs. SF6.
 Expect no crashes and no losses on time.
 
 Ponder On: TODO
-Chess960: TODO
-Syzygy tables: TODO
+Chess960: PASS (lucasart)
+Syzygy tables: PASS (lucasart)
 
 (add more if required...)
 
