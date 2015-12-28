@@ -33,7 +33,7 @@ gcc 5  , 32-bit: TODO
 gcc DEV, 32-bit: TODO
 
 clang 3.4, 64-bit: PASS (Joona Kiiski)
-clang 3.5, 64-bit: TODO
+clang 3.5, 64-bit: PASS (Joona Kiiski)
 clang 3.6, 64-bit: PASS (lucasart)
 clang 3.7, 64-bit: PASS (frenchel & Trevis CI: https://travis-ci.org/official-stockfish/Stockfish)
 
