@@ -25,7 +25,7 @@ For Stockfish7 the bench signature is: 8355485
 gcc 4.8, 64-bit: PASS (Trevis CI: https://travis-ci.org/official-stockfish/Stockfish)
 gcc 4.9, 64-bit: TODO 
 gcc 5.2, 64-bit: PASS (lucasart)
-gcc DEV, 64-bit: TODO
+gcc DEV, 64-bit: PASS (Joona Kiiski)
 
 gcc 4.8, 32-bit: PASS (Trevis CI: https://travis-ci.org/official-stockfish/Stockfish) 
 gcc 4.9, 32-bit: TODO 
