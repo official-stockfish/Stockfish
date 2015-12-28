@@ -66,7 +66,7 @@ mingw ??? cross compiling 32-bit: TODO
 
 Mac OSX: PASS (Daylen Yang)
 FreeBSD: PASS (Tom Vijlbrief)
-Android: TODO
+Android: PASS, but some patching required due to Android NDK bug (Peter Osterlund, http://www.talkchess.com/forum/viewtopic.php?t=58703&postdays=0&postorder=asc&topic_view=&start=10)
 iOS: TODO
 PPC (or other big-endian): TODO
 
