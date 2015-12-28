@@ -51,10 +51,12 @@ icc windows ???, 32-bit: TODO
 MSVC ??? 64-bit: TODO
 MSVC ??? 32-bit: TODO
 
-mingw ??? 64-bit: TODO
+mingw 4.8.2 64-bit: PASS (ppigazzini)
+mingw 4.9.2 64-bit: PASS (ppigazzini)
+mingw 5.2.0 64-bit: PASS (ppigazzini)
 mingw ??? 32-bit: TODO
 
-mingw ??? cross compiling 64-bit: TODO
+mingw 4.9.2 cross compiling 64-bit: PASS (ppigazzini)
 mingw ??? cross compiling 32-bit: TODO
 
 (add more if required...)
@@ -62,7 +64,7 @@ mingw ??? cross compiling 32-bit: TODO
 1.2.2. Operating Systems:
 =========================
 
-Mac OSX: TODO
+Mac OSX: PASS (Daylen Yang)
 Android: TODO
 iOS: TODO
 PPC (or other big-endian): TODO
@@ -95,4 +97,5 @@ Little Blitzer: TODO
 1.5 Perft:
 ==========
 
-perft7 (starting pos): TODO
+perft7 (starting pos): PASS (Rocky640)
+perft7 (https://chessprogramming.wikispaces.com/Perft+Results): PASS (Rocky640)
