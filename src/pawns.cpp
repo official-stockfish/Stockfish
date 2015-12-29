@@ -54,7 +54,8 @@ namespace {
     S( 0, 0), S( 0, 0), S(0, 0), S(0, 0),
     S(20,20), S(40,40), S(0, 0), S(0, 0) };
 
-  // Unsupported pawn penalty by twice supporting
+  // Unsupported pawn penalty by twice supporting.
+  // This applies only to pawns which are neither isolated or backward.
   const Score Unsupported[2] = { S(20, 10), S(25, 15) };
 
   const Score CenterBind = S(16, 0);
