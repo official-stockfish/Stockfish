@@ -111,8 +111,7 @@ namespace {
   enum { PawnStructure, PassedPawns, Space, KingSafety };
 
   const struct Weight { int mg, eg; } Weights[] = {
-    {214, 203}, {193, 262}, {47, 0}, {330, 0}
-  };
+    {214, 203}, {193, 262}, {47, 0}, {330, 0} };
 
   Score operator*(Score s, const Weight& w) {
     return make_score(mg_value(s) * w.mg / 256, eg_value(s) * w.eg / 256);
@@ -165,12 +164,12 @@ namespace {
   const Score ThreatBySafePawn[PIECE_TYPE_NB] = {
     S(0, 0), S(0, 0), S(176, 139), S(131, 127), S(217, 218), S(203, 215) };
   
-  // Threat[minor/rook][attacked PieceType] contains
+  // Threat[by minor/by rook][attacked PieceType] contains
   // bonuses according to which piece type attacks which one.
   // Attacks on lesser pieces which are pawn defended are not considered.
   const Score Threat[][PIECE_TYPE_NB] = {
-   { S(0, 0), S(0, 33), S(45, 43), S(46, 47), S(72,107), S(48,118) }, // Minor attacks
-   { S(0, 0), S(0, 25), S(40, 62), S(40, 59), S( 0, 34), S(35, 48) }  // Rook attacks
+    { S(0, 0), S(0, 33), S(45, 43), S(46, 47), S(72,107), S(48,118) }, // by Minor
+    { S(0, 0), S(0, 25), S(40, 62), S(40, 59), S( 0, 34), S(35, 48) }  // by Rook
   };
 
   // ThreatByKing[on one/on many] contains bonuses for King attacks on
@@ -186,8 +185,8 @@ namespace {
 
   // PassedFile[File] contains a bonus according to the file of a passed pawn
   const Score PassedFile[FILE_NB] = {
-    S( 12,  10), S( 3, 10), S( 1, -8), S(-27, -12),
-    S(-27, -12), S( 1, -8), S( 3, 10), S( 12,  10)
+    S( 12, 10), S( 3, 10), S( 1, -8), S(-27,-12),
+    S(-27,-12), S( 1, -8), S( 3, 10), S( 12, 10)
   };
 
   // Assorted bonuses and penalties used by evaluation
