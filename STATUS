@@ -43,8 +43,8 @@ clang 3.5, 32-bit: TODO
 clang 3.6, 32-bit: TODO
 clang 3.7, 32-bit: PASS (Trevis CI: https://travis-ci.org/official-stockfish/Stockfish)
 
-icc linux ???, 64-bit: TODO
-icc linux ???, 32-bit: TODO
+icc linux 16.0.1, 64-bit: PASS (mcostalba)
+icc linux 16.0.1, 32-bit: PASS (mcostalba)
 
 icc windows ???, 64-bit: TODO
 icc windows ???, 32-bit: TODO
