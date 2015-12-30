@@ -79,7 +79,7 @@ PPC (or other big-endian): TODO
 At minimum 2000 games at minimum 10+0.1 time control. SF7 vs. SF6.
 Expect no crashes and no losses on time.
 
-Ponder On: TODO
+Ponder On: PASS (Ingo Bauer)
 Chess960: PASS (lucasart)
 Syzygy tables: PASS (lucasart)
 
