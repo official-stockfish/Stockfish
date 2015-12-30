@@ -31,59 +31,60 @@ namespace {
   #define V Value
   #define S(mg, eg) make_score(mg, eg)
 
+  // Isolated pawn penalty by opposed flag and file
+  const Score Isolated[2][FILE_NB] = {
+    { S(37, 45), S(54, 52), S(60, 52), S(60, 52),
+      S(60, 52), S(60, 52), S(54, 52), S(37, 45) },
+    { S(25, 30), S(36, 35), S(40, 35), S(40, 35),
+      S(40, 35), S(40, 35), S(36, 35), S(25, 30) } };
+
+  // Backward pawn penalty by opposed flag
+  const Score Backward[2] = { S(67, 42), S(49, 24) };
+  
+  // Unsupported pawn penalty, for pawns which are neither isolated or backward
+  const Score Unsupported = S(20, 10);
+
+  // Connected pawn bonus by opposed, phalanx, twice supported and rank
+  Score Connected[2][2][2][RANK_NB];
+  
   // Doubled pawn penalty by file
   const Score Doubled[FILE_NB] = {
     S(13, 43), S(20, 48), S(23, 48), S(23, 48),
     S(23, 48), S(23, 48), S(20, 48), S(13, 43) };
 
-  // Isolated pawn penalty by opposed flag and file
-  const Score Isolated[2][FILE_NB] = {
-  { S(37, 45), S(54, 52), S(60, 52), S(60, 52),
-    S(60, 52), S(60, 52), S(54, 52), S(37, 45) },
-  { S(25, 30), S(36, 35), S(40, 35), S(40, 35),
-    S(40, 35), S(40, 35), S(36, 35), S(25, 30) } };
-
-  // Backward pawn penalty by opposed flag
-  const Score Backward[2] = { S(67, 42), S(49, 24) };
-
-  // Connected pawn bonus by opposed, phalanx, twice supported and rank
-  Score Connected[2][2][2][RANK_NB];
-
-  // Levers bonus by rank
+  // Lever bonus by rank
   const Score Lever[RANK_NB] = {
-    S( 0, 0), S( 0, 0), S(0, 0), S(0, 0),
-    S(20,20), S(40,40), S(0, 0), S(0, 0) };
+    S( 0,  0), S( 0,  0), S(0, 0), S(0, 0),
+    S(20, 20), S(40, 40), S(0, 0), S(0, 0) };
 
-  // Unsupported pawn penalty
-  const Score UnsupportedPawnPenalty = S(20, 10);
-
+  // Center bind bonus, when two pawns controls the same central square
   const Score CenterBind = S(16, 0);
 
   // Weakness of our pawn shelter in front of the king by [distance from edge][rank]
   const Value ShelterWeakness[][RANK_NB] = {
-  { V( 97), V(21), V(26), V(51), V(87), V( 89), V( 99) },
-  { V(120), V( 0), V(28), V(76), V(88), V(103), V(104) },
-  { V(101), V( 7), V(54), V(78), V(77), V( 92), V(101) },
-  { V( 80), V(11), V(44), V(68), V(87), V( 90), V(119) } };
+    { V( 97), V(21), V(26), V(51), V(87), V( 89), V( 99) },
+    { V(120), V( 0), V(28), V(76), V(88), V(103), V(104) },
+    { V(101), V( 7), V(54), V(78), V(77), V( 92), V(101) },
+    { V( 80), V(11), V(44), V(68), V(87), V( 90), V(119) } };
 
   // Danger of enemy pawns moving toward our king by [type][distance from edge][rank]
   const Value StormDanger[][4][RANK_NB] = {
-  { { V( 0),  V(  67), V( 134), V(38), V(32) },
-    { V( 0),  V(  57), V( 139), V(37), V(22) },
-    { V( 0),  V(  43), V( 115), V(43), V(27) },
-    { V( 0),  V(  68), V( 124), V(57), V(32) } },
-  { { V(20),  V(  43), V( 100), V(56), V(20) },
-    { V(23),  V(  20), V(  98), V(40), V(15) },
-    { V(23),  V(  39), V( 103), V(36), V(18) },
-    { V(28),  V(  19), V( 108), V(42), V(26) } },
-  { { V( 0),  V(   0), V(  75), V(14), V( 2) },
-    { V( 0),  V(   0), V( 150), V(30), V( 4) },
-    { V( 0),  V(   0), V( 160), V(22), V( 5) },
-    { V( 0),  V(   0), V( 166), V(24), V(13) } },
-  { { V( 0),  V(-283), V(-281), V(57), V(31) },
-    { V( 0),  V(  58), V( 141), V(39), V(18) },
-    { V( 0),  V(  65), V( 142), V(48), V(32) },
-    { V( 0),  V(  60), V( 126), V(51), V(19) } } };
+    { { V( 0),  V(  67), V( 134), V(38), V(32) },
+      { V( 0),  V(  57), V( 139), V(37), V(22) },
+      { V( 0),  V(  43), V( 115), V(43), V(27) },
+      { V( 0),  V(  68), V( 124), V(57), V(32) } },
+    { { V(20),  V(  43), V( 100), V(56), V(20) },
+      { V(23),  V(  20), V(  98), V(40), V(15) },
+      { V(23),  V(  39), V( 103), V(36), V(18) },
+      { V(28),  V(  19), V( 108), V(42), V(26) } },
+    { { V( 0),  V(   0), V(  75), V(14), V( 2) },
+      { V( 0),  V(   0), V( 150), V(30), V( 4) },
+      { V( 0),  V(   0), V( 160), V(22), V( 5) },
+      { V( 0),  V(   0), V( 166), V(24), V(13) } },
+    { { V( 0),  V(-283), V(-281), V(57), V(31) },
+      { V( 0),  V(  58), V( 141), V(39), V(18) },
+      { V( 0),  V(  65), V( 142), V(48), V(32) },
+      { V( 0),  V(  60), V( 126), V(51), V(19) } } };
 
   // Max bonus for king safety. Corresponds to start position with all the pawns
   // in front of the king and no enemy pawn on the horizon.
@@ -167,7 +168,7 @@ namespace {
         assert(opposed | passed | (pawn_attack_span(Us, s) & theirPawns));
 
         // Passed pawns will be properly scored in evaluation because we need
-        // full attack info to evaluate passed pawns. Only the frontmost passed
+        // full attack info to evaluate them. Only the frontmost passed
         // pawn on each file is considered a true passed pawn.
         if (passed && !doubled)
             e->passedPawns[Us] |= s;
@@ -180,7 +181,7 @@ namespace {
             score -= Backward[opposed];
 
         else if (!supported)
-            score -= UnsupportedPawnPenalty;
+            score -= Unsupported;
 
         if (connected)
             score += Connected[opposed][!!phalanx][more_than_one(supported)][relative_rank(Us, s)];
@@ -195,9 +196,8 @@ namespace {
     b = e->semiopenFiles[Us] ^ 0xFF;
     e->pawnSpan[Us] = b ? int(msb(b) - lsb(b)) : 0;
 
-    // Center binds: Two pawns controlling the same central square
     b = shift_bb<Right>(ourPawns) & shift_bb<Left>(ourPawns) & CenterBindMask;
-    score += popcount<Max15>(b) * CenterBind;
+    score += CenterBind * popcount<Max15>(b);
 
     return score;
   }
