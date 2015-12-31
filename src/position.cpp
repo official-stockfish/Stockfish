@@ -182,10 +182,6 @@ void Position::clear() {
   std::memset(this, 0, sizeof(Position));
   startState.epSquare = SQ_NONE;
   st = &startState;
-
-  for (int i = 0; i < PIECE_TYPE_NB; ++i)
-      for (int j = 0; j < 16; ++j)
-          pieceList[WHITE][i][j] = pieceList[BLACK][i][j] = SQ_NONE;
 }
 
 
@@ -737,7 +733,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       else
           st->nonPawnMaterial[them] -= PieceValue[MG][captured];
 
-      // Update board and piece lists
+      // Update board
       remove_piece(them, captured, capsq);
 
       // Update material hash key and prefetch access to materialTable
@@ -1124,7 +1120,7 @@ bool Position::pos_is_ok(int* failedStep) const {
 
   const bool Fast = true; // Quick (default) or full check?
 
-  enum { Default, King, Bitboards, State, Lists, Castling };
+  enum { Default, King, Bitboards, State, Castling };
 
   for (int step = Default; step <= (Fast ? Default : Castling); step++)
   {
@@ -1164,19 +1160,6 @@ bool Position::pos_is_ok(int* failedStep) const {
           if (std::memcmp(&si, st, sizeof(StateInfo)))
               return false;
       }
-
-      if (step == Lists)
-          for (Color c = WHITE; c <= BLACK; ++c)
-              for (PieceType pt = PAWN; pt <= KING; ++pt)
-              {
-                  if (pieceCount[c][pt] != popcount<Full>(pieces(c, pt)))
-                      return false;
-
-                  for (int i = 0; i < pieceCount[c][pt];  ++i)
-                      if (   board[pieceList[c][pt][i]] != make_piece(c, pt)
-                          || index[pieceList[c][pt][i]] != i)
-                          return false;
-              }
 
       if (step == Castling)
           for (Color c = WHITE; c <= BLACK; ++c)
