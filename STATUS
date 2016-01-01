@@ -29,7 +29,7 @@ gcc 5.2, 64-bit: PASS (lucasart)
 gcc DEV, 64-bit: PASS (Joona Kiiski)
 
 gcc 4.8, 32-bit: PASS (Trevis CI: https://travis-ci.org/official-stockfish/Stockfish) 
-gcc 4.9, 32-bit: TODO 
+gcc 4.9, 32-bit: PASS (Rolf)
 gcc 5  , 32-bit: TODO
 gcc DEV, 32-bit: TODO
 
