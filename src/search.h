@@ -1,7 +1,7 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
-  Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
+  Copyright (C) 2008-2016 Marco Costalba, Joona Kiiski, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -39,10 +39,8 @@ struct Stack {
   Move* pv;
   int ply;
   Move currentMove;
-  Move ttMove;
   Move excludedMove;
   Move killers[2];
-  Depth reduction;
   Value staticEval;
   bool skipEarlyPruning;
   int moveCount;
@@ -56,7 +54,7 @@ struct RootMove {
 
   explicit RootMove(Move m) : pv(1, m) {}
 
-  bool operator<(const RootMove& m) const { return score > m.score; } // Ascending sort
+  bool operator<(const RootMove& m) const { return m.score < score; } // Descending sort
   bool operator==(const Move& m) const { return pv[0] == m; }
   void insert_pv_in_tt(Position& pos);
   bool extract_ponder_from_tt(Position& pos);
@@ -93,7 +91,7 @@ struct LimitsType {
 /// typically in an async fashion e.g. to stop the search by the GUI.
 
 struct SignalsType {
-  std::atomic_bool stop, stopOnPonderhit, firstRootMove, failedLowAtRoot;
+  std::atomic_bool stop, stopOnPonderhit;
 };
 
 typedef std::unique_ptr<std::stack<StateInfo>> StateStackPtr;

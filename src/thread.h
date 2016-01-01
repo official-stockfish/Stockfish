@@ -1,7 +1,7 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
-  Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
+  Copyright (C) 2008-2016 Marco Costalba, Joona Kiiski, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -40,19 +40,21 @@
 /// entry its life time is unlimited and we don't have to care about someone
 /// changing the entry under our feet.
 
-struct Thread : public std::thread {
+class Thread {
 
+  std::thread nativeThread;
+  Mutex mutex;
+  ConditionVariable sleepCondition;
+  bool exit, searching;
+
+public:
   Thread();
   virtual ~Thread();
   virtual void search();
   void idle_loop();
-  void join();
-  void notify_one();
+  void start_searching(bool resume = false);
+  void wait_for_search_finished();
   void wait(std::atomic_bool& b);
-
-  std::atomic_bool exit, searching, resetCalls;
-  Mutex mutex;
-  ConditionVariable sleepCondition;
 
   Pawns::Table pawnsTable;
   Material::Table materialTable;
@@ -66,19 +68,23 @@ struct Thread : public std::thread {
   HistoryStats history;
   MovesStats counterMoves;
   Depth completedDepth;
+  std::atomic_bool resetCalls;
 };
 
 
-/// MainThread is a derived classes used to characterize the the main one
+/// MainThread is a derived class with a specific overload for the main thread
 
 struct MainThread : public Thread {
   virtual void search();
+
+  bool easyMovePlayed, failedLow;
+  double bestMoveChanges;
 };
 
 
 /// ThreadPool struct handles all the threads related stuff like init, starting,
-/// parking and, most importantly, launching a thread.
-/// All the access to shared thread data is done through this class.
+/// parking and, most importantly, launching a thread. All the access to threads
+/// data is done through this class.
 
 struct ThreadPool : public std::vector<Thread*> {
 
@@ -86,8 +92,8 @@ struct ThreadPool : public std::vector<Thread*> {
   void exit(); // be initialized and valid during the whole thread lifetime.
 
   MainThread* main() { return static_cast<MainThread*>(at(0)); }
-  void read_uci_options();
   void start_thinking(const Position&, const Search::LimitsType&, Search::StateStackPtr&);
+  void read_uci_options();
   int64_t nodes_searched();
 };
 
