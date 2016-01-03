@@ -59,9 +59,6 @@ namespace {
     S( 0,  0), S( 0,  0), S(0, 0), S(0, 0),
     S(20, 20), S(40, 40), S(0, 0), S(0, 0) };
 
-  // Center bind bonus, when two pawns controls the same central square
-  const Score CenterBind = S(16, 0);
-
   // Weakness of our pawn shelter in front of the king by [distance from edge][rank]
   const Value ShelterWeakness[][RANK_NB] = {
     { V( 97), V(21), V(26), V(51), V(87), V( 89), V( 99) },
@@ -102,10 +99,6 @@ namespace {
     const Square Up    = (Us == WHITE ? DELTA_N  : DELTA_S);
     const Square Right = (Us == WHITE ? DELTA_NE : DELTA_SW);
     const Square Left  = (Us == WHITE ? DELTA_NW : DELTA_SE);
-
-    const Bitboard CenterBindMask =
-      Us == WHITE ? (FileDBB | FileEBB) & (Rank5BB | Rank6BB | Rank7BB)
-                  : (FileDBB | FileEBB) & (Rank4BB | Rank3BB | Rank2BB);
 
     Bitboard b, neighbours, doubled, supported, phalanx;
     Square s;
@@ -197,9 +190,6 @@ namespace {
 
     b = e->semiopenFiles[Us] ^ 0xFF;
     e->pawnSpan[Us] = b ? int(msb(b) - lsb(b)) : 0;
-
-    b = shift_bb<Right>(ourPawns) & shift_bb<Left>(ourPawns) & CenterBindMask;
-    score += CenterBind * popcount<Max15>(b);
 
     return score;
   }
