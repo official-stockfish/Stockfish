@@ -1,64 +1,98 @@
-# Generated with git shortlog -sn | cut -c8-', which sorts by commits (manually moved Tord to top)
+# Generated with git shortlog -sn | cut -c8-', which sorts by commits (manually ordered the first four authors)
 
 Tord Romstad
 Marco Costalba
 Joona Kiiski
 Gary Linscott
+lucasart
+mstembera
 Lucas Braesch
+Stefan Geschwentner
 Reuven Peleg
 Chris Caino
-homoSapiensSapiens
+joergoster
+VoyagerOne
 Jean-Francois Romang
-jundery
+homoSapiensSapiens
+Alain SAVARD
 Arjun Temurnikar
+Stéphane Nicolet
 Uri Blass
+jundery
 Ralph Stößer
-Stefan Geschwentner
+Ajith
+Leonid Pechenik
+Stefano80
 Tom Vijlbrief
+hxim
+snicolet
 Daylen Yang
 Henri Wiechers
-Leonid Pechenik
-mstembera
+Jonathan Calovski
+mbootsector
+David Zar
 Eelco de Groot
 Jerry Donald
+Joerg Oster
 Jörg Oster
 Ryan Schmitt
 mcostalba
 Alexander Kure
 Dan Schmidt
 H. Felix Wittmann
+Joseph R. Prostko
 Justin Blanchard
 Linus Arver
+NicklasPersson
+Rodrigo Exterckötter Tjäder
+Ron Britvich
+Ronald de Man
 RyanTaker
+Vince Negri
 ceebo
-Joseph H Ellis
-Stephane Nicolet
-Ajith
+jhellis3
+ppigazzini
+shane31
 Andy Duplain
 Auguste Pop
 Balint Pfliegel
 Chris Cain
+DU-jdto
 Dariusz Orzechowski
+DiscanX
+Ernesto Gatti
 Gregor Cramer
+Guenther Demetz
 Hiraoka Takuya
 Hongzhi Cheng
-Jonathan Calovski
-Joseph R. Prostko
+Joseph Hellis
 Kelly Wilson
+Ken T Takusagawa
 Kojirion
+Luca Brivio
 Matt Sullivan
+Matthew Lai
 Matthew Sullivan
 Michel Van den Bergh
 Mysseno
+Oskar Werkelin Ahlin
 Pablo Vazquez
+Pascal Romaret
+Ralph Stoesser
+Ralph St��er
 Raminder Singh
 Richard Lloyd
-Ron Britvich
-Ronald de Man
 Ryan Takker
+Stephane Nicolet
 Thanar2
+absimaldata
+braich
+gguliash
 kinderchocolate
+loco-loco
 pellanda
 renouve
-shane31
+sf-x
 thaspel
+unknown
+uriblass

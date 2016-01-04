@@ -2,6 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
+  Copyright (C) 2015-2016 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -32,8 +33,8 @@ namespace {
   enum TimeType { OptimumTime, MaxTime };
 
   const int MoveHorizon   = 50;   // Plan time management at most this many moves ahead
-  const double MaxRatio   = 6.93;  // When in trouble, we can step over reserved time with this ratio
-  const double StealRatio = 0.36; // However we must not steal time from remaining moves over this ratio
+  const double MaxRatio   = 7.09;  // When in trouble, we can step over reserved time with this ratio
+  const double StealRatio = 0.35; // However we must not steal time from remaining moves over this ratio
 
 
   // move_importance() is a skew-logistic function based on naive statistical
@@ -43,9 +44,9 @@ namespace {
 
   double move_importance(int ply) {
 
-    const double XScale = 8.27;
-    const double XShift = 59.;
-    const double Skew   = 0.179;
+    const double XScale = 7.64;
+    const double XShift = 58.4;
+    const double Skew   = 0.183;
 
     return pow((1 + exp((ply - XShift) / XScale)), -Skew) + DBL_MIN; // Ensure non-zero
   }
