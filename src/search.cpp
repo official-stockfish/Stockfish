@@ -1008,7 +1008,7 @@ moves_loop: // When in check search starts from here
           // Decrease reduction for moves that escape a capture
           if (   r
               && type_of(pos.piece_on(to_sq(move))) != PAWN
-              && pos.see(make_move(to_sq(move), from_sq(move))) < VALUE_ZERO)
+              && pos.see_sign(make_move(to_sq(move), from_sq(move))) < VALUE_ZERO)
               r = std::max(DEPTH_ZERO, r - ONE_PLY);
 
           Depth d = std::max(newDepth - r, ONE_PLY);
