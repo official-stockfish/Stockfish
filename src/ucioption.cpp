@@ -276,7 +276,7 @@ void BoolConditions::set() {
 // Just copy fishtest tuning results in a tune_result.txt file and extract the
 // values with:
 //
-//  cat tune_result.txt | sed 's/^param: \([^,]*\), best: \([^,]*\).*/  TuneResults["\1"] = int(\2);/'
+//  cat tune_result.txt | sed 's/^param: \([^,]*\), best: \([^,]*\).*/  TuneResults["\1"] = int(round(\2));/'
 //
 // Then paste the output below, as the function body
 
