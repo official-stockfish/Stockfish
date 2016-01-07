@@ -160,8 +160,6 @@ endif
 
 ifeq ($(COMP),mingw)
 	comp=mingw
-
-	ifeq ($(UNAME),Linux)
 		ifeq ($(bits),64)
 			ifeq ($(shell which x86_64-w64-mingw32-c++-posix),)
 				CXX=x86_64-w64-mingw32-c++
@@ -175,10 +173,6 @@ ifeq ($(COMP),mingw)
 				CXX=i686-w64-mingw32-c++-posix
 			endif
 		endif
-	else
-		CXX=g++
-	endif
-
 	CXXFLAGS += -Wextra -Wshadow
 	LDFLAGS += -static
 endif
