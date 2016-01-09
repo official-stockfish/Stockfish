@@ -1005,7 +1005,9 @@ moves_loop: // When in check search starts from here
               && cmh[pos.piece_on(to_sq(move))][to_sq(move)] > VALUE_ZERO)
               r = std::max(DEPTH_ZERO, r - ONE_PLY);
 
-          // Decrease reduction for moves that escape a capture
+          // Decrease reduction for moves that escape a capture. Explicitly filter out castling moves
+          // and use see() instead of see_sign() to avoid any possible surprise.
+
           if (   r
               && type_of(move) == NORMAL
               && type_of(pos.piece_on(to_sq(move))) != PAWN
