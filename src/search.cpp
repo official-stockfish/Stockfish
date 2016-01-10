@@ -1002,7 +1002,7 @@ moves_loop: // When in check search starts from here
 
           // Decrease reduction for moves with a good history
           int reductionHistoryDecrease =
-                  (19*thisThread->history[pos.piece_on(to_sq(move))][to_sq(move)] + 18*cmh[pos.piece_on(to_sq(move))][to_sq(move)])/262144;
+                  (18*thisThread->history[pos.piece_on(to_sq(move))][to_sq(move)] + 17*cmh[pos.piece_on(to_sq(move))][to_sq(move)] + 11)/262144;
           r = std::max(DEPTH_ZERO, r - reductionHistoryDecrease*ONE_PLY);
 
           // Decrease reduction for moves that escape a capture
