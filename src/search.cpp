@@ -1000,10 +1000,11 @@ moves_loop: // When in check search starts from here
                   && cmh[pos.piece_on(to_sq(move))][to_sq(move)] <= VALUE_ZERO))
               r += ONE_PLY;
 
-          // Decrease reduction for moves with a good history
-          if (   thisThread->history[pos.piece_on(to_sq(move))][to_sq(move)] > VALUE_ZERO
-              && cmh[pos.piece_on(to_sq(move))][to_sq(move)] > VALUE_ZERO)
-              r = std::max(DEPTH_ZERO, r - ONE_PLY);
+          // Decrease reduction for moves with a good history and
+          // increase reduction for moves with a bad history
+          int rDecrease = (  thisThread->history[pos.piece_on(to_sq(move))][to_sq(move)] 
+                           + cmh[pos.piece_on(to_sq(move))][to_sq(move)]) / 14980;
+          r = std::max(DEPTH_ZERO, r - rDecrease * ONE_PLY);
 
           // Decrease reduction for moves that escape a capture. Filter out castling
           // moves because are coded as "king captures rook" and break make_move().
