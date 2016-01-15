@@ -1451,7 +1451,7 @@ moves_loop: // When in check search starts from here
         && is_ok((ss-2)->currentMove))
     {
         Square prevPrevSq = to_sq((ss-2)->currentMove);
-        CounterMovesStat& prevCmh = CounterMoveHistory[pos.piece_on(prevPrevSq)][prevPrevSq];
+        CounterMoveStats& prevCmh = CounterMoveHistory[pos.piece_on(prevPrevSq)][prevPrevSq];
         prevCmh.update(pos.piece_on(prevSq), prevSq, -bonus - 2 * (depth + 1) / ONE_PLY);
     }
   }
