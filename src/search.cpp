@@ -88,8 +88,8 @@ namespace {
     Move best = MOVE_NONE;
   };
 
-  // EasyMoveManager struct is used to detect a so called 'easy move'; when PV is
-  // stable across multiple search iterations we can fast return the best move.
+  // EasyMoveManager struct is used to detect an 'easy move'. When PV is stable
+  // across multiple search iterations, we can quickly return the best move.
   struct EasyMoveManager {
 
     void clear() {
@@ -175,7 +175,7 @@ void Search::init() {
 }
 
 
-/// Search::clear() resets to zero search state, to obtain reproducible results
+/// Search::clear() resets search state to zero, to obtain reproducible results
 
 void Search::clear() {
 
@@ -193,7 +193,7 @@ void Search::clear() {
 
 
 /// Search::perft() is our utility to verify move generation. All the leaf nodes
-/// up to the given depth are generated and counted and the sum returned.
+/// up to the given depth are generated and counted, and the sum is returned.
 template<bool Root>
 uint64_t Search::perft(Position& pos, Depth depth) {
 
@@ -223,8 +223,8 @@ template uint64_t Search::perft<true>(Position&, Depth);
 
 
 /// MainThread::search() is called by the main thread when the program receives
-/// the UCI 'go' command. It searches from root position and at the end prints
-/// the "bestmove" to output.
+/// the UCI 'go' command. It searches from the root position and at the end
+/// prints the "bestmove" to output.
 
 void MainThread::search() {
 
@@ -260,8 +260,8 @@ void MainThread::search() {
       if (TB::Cardinality >=  rootPos.count<ALL_PIECES>(WHITE)
                             + rootPos.count<ALL_PIECES>(BLACK))
       {
-          // If the current root position is in the tablebases then RootMoves
-          // contains only moves that preserve the draw or win.
+          // If the current root position is in the tablebases, then RootMoves
+          // contains only moves that preserve the draw or the win.
           TB::RootInTB = Tablebases::root_probe(rootPos, rootMoves, TB::Score);
 
           if (TB::RootInTB)
@@ -269,7 +269,7 @@ void MainThread::search() {
 
           else // If DTZ tables are missing, use WDL tables as a fallback
           {
-              // Filter out moves that do not preserve a draw or win
+              // Filter out moves that do not preserve the draw or the win.
               TB::RootInTB = Tablebases::root_probe_wdl(rootPos, rootMoves, TB::Score);
 
               // Only probe during search if winning
@@ -304,7 +304,7 @@ void MainThread::search() {
   }
 
   // When playing in 'nodes as time' mode, subtract the searched nodes from
-  // the available ones before to exit.
+  // the available ones before exiting.
   if (Limits.npmsec)
       Time.availableNodes += Limits.inc[us] - Threads.nodes_searched();
 
@@ -356,7 +356,7 @@ void MainThread::search() {
 
 // Thread::search() is the main iterative deepening loop. It calls search()
 // repeatedly with increasing depth until the allocated thinking time has been
-// consumed, user stops the search, or the maximum search depth is reached.
+// consumed, the user stops the search, or the maximum search depth is reached.
 
 void Thread::search() {
 
@@ -390,10 +390,10 @@ void Thread::search() {
 
   multiPV = std::min(multiPV, rootMoves.size());
 
-  // Iterative deepening loop until requested to stop or target depth reached
+  // Iterative deepening loop until requested to stop or target depth is reached.
   while (++rootDepth < DEPTH_MAX && !Signals.stop && (!Limits.depth || rootDepth <= Limits.depth))
   {
-      // Set up the new depth for the helper threads skipping in average each
+      // Set up the new depths for the helper threads skipping in average every
       // 2nd ply (using a half density map similar to a Hadamard matrix).
       if (!mainThread)
       {
@@ -536,8 +536,8 @@ void Thread::search() {
               if (rootDepth > 4 * ONE_PLY && multiPV == 1)
                   Time.pv_instability(mainThread->bestMoveChanges);
 
-              // Stop the search if only one legal move is available or all
-              // of the available time has been used or we matched an easyMove
+              // Stop the search if only one legal move is available, or if all
+              // of the available time has been used, or if we matched an easyMove
               // from the previous search and just did a fast verification.
               if (   rootMoves.size() == 1
                   || Time.elapsed() > Time.available() * ( 640  - 160 * !mainThread->failedLow 
@@ -1006,9 +1006,10 @@ moves_loop: // When in check search starts from here
                            + cmh[pos.piece_on(to_sq(move))][to_sq(move)]) / 14980;
           r = std::max(DEPTH_ZERO, r - rDecrease * ONE_PLY);
 
-          // Decrease reduction for moves that escape a capture. Filter out castling
-          // moves because are coded as "king captures rook" and break make_move().
-          // Also use see() instead of see_sign() because destination square is empty.
+          // Decrease reduction for moves that escape a capture. Filter out
+          // castling moves, because they are coded as "king captures rook" and
+          // hence break make_move(). Also use see() instead of see_sign(),
+		  // because the destination square is empty.
           if (   r
               && type_of(move) == NORMAL
               && type_of(pos.piece_on(to_sq(move))) != PAWN
@@ -1033,7 +1034,7 @@ moves_loop: // When in check search starts from here
 
       // For PV nodes only, do a full PV search on the first move or after a fail
       // high (in the latter case search only if value < beta), otherwise let the
-      // parent node fail low with value <= alpha and to try another move.
+      // parent node fail low with value <= alpha and try another move.
       if (PvNode && (moveCount == 1 || (value > alpha && (RootNode || value < beta))))
       {
           (ss+1)->pv = pv;
