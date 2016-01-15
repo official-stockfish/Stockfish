@@ -129,7 +129,7 @@ namespace {
 
   EasyMoveManager EasyMove;
   Value DrawValue[COLOR_NB];
-  CounterMovesHistoryStats CounterMovesHistory;
+  CounterMoveHistoryStats CounterMoveHistory;
 
   template <NodeType NT>
   Value search(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth, bool cutNode);
@@ -180,7 +180,7 @@ void Search::init() {
 void Search::clear() {
 
   TT.clear();
-  CounterMovesHistory.clear();
+  CounterMoveHistory.clear();
 
   for (Thread* th : Threads)
   {
@@ -853,7 +853,7 @@ moves_loop: // When in check search starts from here
 
     Square prevSq = to_sq((ss-1)->currentMove);
     Move cm = thisThread->counterMoves[pos.piece_on(prevSq)][prevSq];
-    const CounterMovesStats& cmh = CounterMovesHistory[pos.piece_on(prevSq)][prevSq];
+    const CounterMoveStats& cmh = CounterMoveHistory[pos.piece_on(prevSq)][prevSq];
 
     MovePicker mp(pos, ttMove, depth, thisThread->history, cmh, cm, ss);
     CheckInfo ci(pos);
@@ -1148,7 +1148,7 @@ moves_loop: // When in check search starts from here
     {
         Value bonus = Value((depth / ONE_PLY) * (depth / ONE_PLY) + depth / ONE_PLY - 1);
         Square prevPrevSq = to_sq((ss - 2)->currentMove);
-        CounterMovesStats& prevCmh = CounterMovesHistory[pos.piece_on(prevPrevSq)][prevPrevSq];
+        CounterMoveStats& prevCmh = CounterMoveHistory[pos.piece_on(prevPrevSq)][prevPrevSq];
         prevCmh.update(pos.piece_on(prevSq), prevSq, bonus);
     }
 
@@ -1425,7 +1425,7 @@ moves_loop: // When in check search starts from here
     Value bonus = Value((depth / ONE_PLY) * (depth / ONE_PLY) + depth / ONE_PLY - 1);
 
     Square prevSq = to_sq((ss-1)->currentMove);
-    CounterMovesStats& cmh = CounterMovesHistory[pos.piece_on(prevSq)][prevSq];
+    CounterMoveStats& cmh = CounterMoveHistory[pos.piece_on(prevSq)][prevSq];
     Thread* thisThread = pos.this_thread();
 
     thisThread->history.update(pos.moved_piece(move), to_sq(move), bonus);
@@ -1451,7 +1451,7 @@ moves_loop: // When in check search starts from here
         && is_ok((ss-2)->currentMove))
     {
         Square prevPrevSq = to_sq((ss-2)->currentMove);
-        CounterMovesStats& prevCmh = CounterMovesHistory[pos.piece_on(prevPrevSq)][prevPrevSq];
+        CounterMovesStat& prevCmh = CounterMoveHistory[pos.piece_on(prevPrevSq)][prevPrevSq];
         prevCmh.update(pos.piece_on(prevSq), prevSq, -bonus - 2 * (depth + 1) / ONE_PLY);
     }
   }
