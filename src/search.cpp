@@ -88,7 +88,7 @@ namespace {
     Move best = MOVE_NONE;
   };
 
-  // EasyMoveManager struct is used to detect an 'easy move'. When PV is stable
+  // EasyMoveManager struct is used to detect an 'easy move'. When the PV is stable
   // across multiple search iterations, we can quickly return the best move.
   struct EasyMoveManager {
 
@@ -223,8 +223,7 @@ template uint64_t Search::perft<true>(Position&, Depth);
 
 
 /// MainThread::search() is called by the main thread when the program receives
-/// the UCI 'go' command. It searches from the root position and at the end
-/// prints the "bestmove" to output.
+/// the UCI 'go' command. It searches from the root position and outputs the "bestmove".
 
 void MainThread::search() {
 
@@ -390,7 +389,7 @@ void Thread::search() {
 
   multiPV = std::min(multiPV, rootMoves.size());
 
-  // Iterative deepening loop until requested to stop or target depth is reached.
+  // Iterative deepening loop until requested to stop or the target depth is reached.
   while (++rootDepth < DEPTH_MAX && !Signals.stop && (!Limits.depth || rootDepth <= Limits.depth))
   {
       // Set up the new depths for the helper threads skipping in average every
@@ -1009,7 +1008,7 @@ moves_loop: // When in check search starts from here
           // Decrease reduction for moves that escape a capture. Filter out
           // castling moves, because they are coded as "king captures rook" and
           // hence break make_move(). Also use see() instead of see_sign(),
-		  // because the destination square is empty.
+          // because the destination square is empty.
           if (   r
               && type_of(move) == NORMAL
               && type_of(pos.piece_on(to_sq(move))) != PAWN
