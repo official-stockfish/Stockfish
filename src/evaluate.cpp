@@ -164,7 +164,7 @@ namespace {
   // type is attacked by a pawn which is protected or is not attacked.
   const Score ThreatBySafePawn[PIECE_TYPE_NB] = {
     S(0, 0), S(0, 0), S(176, 139), S(131, 127), S(217, 218), S(203, 215) };
-  
+
   // Threat[by minor/by rook][attacked PieceType] contains
   // bonuses according to which piece type attacks which one.
   // Attacks on lesser pieces which are pawn-defended are not considered.
