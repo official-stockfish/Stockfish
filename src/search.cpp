@@ -392,7 +392,7 @@ void Thread::search() {
   // Iterative deepening loop until requested to stop or the target depth is reached.
   while (++rootDepth < DEPTH_MAX && !Signals.stop && (!Limits.depth || rootDepth <= Limits.depth))
   {
-      // Set up the new depths for the helper threads skipping in average every
+      // Set up the new depths for the helper threads skipping on average every
       // 2nd ply (using a half-density map similar to a Hadamard matrix).
       if (!mainThread)
       {
