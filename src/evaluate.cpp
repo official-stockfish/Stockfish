@@ -33,7 +33,7 @@ namespace {
 
   namespace Trace {
 
-    enum Term { // First 8 entries are for PieceType
+    enum Term { // The first 8 entries are for PieceType
       MATERIAL = 8, IMBALANCE, MOBILITY, THREAT, PASSED, SPACE, TOTAL, TERM_NB
     };
 
@@ -89,7 +89,7 @@ namespace {
     // which attack a square in the kingRing of the enemy king.
     int kingAttackersCount[COLOR_NB];
 
-    // kingAttackersWeight[color] is the sum of the "weight" of the pieces of the
+    // kingAttackersWeight[color] is the sum of the "weights" of the pieces of the
     // given color which attack a square in the kingRing of the enemy king. The
     // weights of the individual piece types are given by the elements in the
     // KingAttackWeights array.
@@ -161,20 +161,20 @@ namespace {
   const Score RookOnFile[2] = { S(19, 10), S(43, 21) };
 
   // ThreatBySafePawn[PieceType] contains bonuses according to which piece
-  // type is attacked by a pawn which is protected or not attacked.
+  // type is attacked by a pawn which is protected or is not attacked.
   const Score ThreatBySafePawn[PIECE_TYPE_NB] = {
     S(0, 0), S(0, 0), S(176, 139), S(131, 127), S(217, 218), S(203, 215) };
-  
+
   // Threat[by minor/by rook][attacked PieceType] contains
   // bonuses according to which piece type attacks which one.
-  // Attacks on lesser pieces which are pawn defended are not considered.
+  // Attacks on lesser pieces which are pawn-defended are not considered.
   const Score Threat[][PIECE_TYPE_NB] = {
     { S(0, 0), S(0, 33), S(45, 43), S(46, 47), S(72,107), S(48,118) }, // by Minor
     { S(0, 0), S(0, 25), S(40, 62), S(40, 59), S( 0, 34), S(35, 48) }  // by Rook
   };
 
   // ThreatByKing[on one/on many] contains bonuses for King attacks on
-  // pawns or pieces which are not pawn defended.
+  // pawns or pieces which are not pawn-defended.
   const Score ThreatByKing[2] = { S(3, 62), S(9, 138) };
 
   // Passed[mg/eg][Rank] contains midgame and endgame bonuses for passed pawns.
@@ -226,7 +226,7 @@ namespace {
   const int KnightCheck       = 14;
 
 
-  // eval_init() initializes king and attack bitboards for given color
+  // eval_init() initializes king and attack bitboards for a given color
   // adding pawn attacks. To be done at the beginning of the evaluation.
 
   template<Color Us>
@@ -319,7 +319,7 @@ namespace {
                 && (pos.pieces(PAWN) & (s + pawn_push(Us))))
                 score += MinorBehindPawn;
 
-            // Penalty for pawns on same color square of bishop
+            // Penalty for pawns on the same color square as the bishop
             if (Pt == BISHOP)
                 score -= BishopPawns * ei.pi->pawns_on_same_color_squares(Us, s);
 
@@ -352,7 +352,7 @@ namespace {
             if (ei.pi->semiopen_file(Us, file_of(s)))
                 score += RookOnFile[!!ei.pi->semiopen_file(Them, file_of(s))];
 
-            // Penalize when trapped by the king, even more if king cannot castle
+            // Penalize when trapped by the king, even more if the king cannot castle
             else if (mob <= 3)
             {
                 Square ksq = pos.square<KING>(Us);
@@ -368,7 +368,7 @@ namespace {
     if (DoTrace)
         Trace::add(Pt, Us, score);
 
-    // Recursively call evaluate_pieces() of next piece type until KING excluded
+    // Recursively call evaluate_pieces() of next piece type until KING is excluded
     return score - evaluate_pieces<DoTrace, Them, NextPt>(pos, ei, mobility, mobilityArea);
   }
 
@@ -468,7 +468,7 @@ namespace {
         }
 
         // Finally, extract the king danger score from the KingDanger[]
-        // array and subtract the score from evaluation.
+        // array and subtract the score from the evaluation.
         score -= KingDanger[std::max(std::min(attackUnits, 399), 0)];
     }
 
@@ -479,8 +479,8 @@ namespace {
   }
 
 
-  // evaluate_threats() assigns bonuses according to the type of attacking piece
-  // and the type of attacked one.
+  // evaluate_threats() assigns bonuses according to the types of the attacking 
+  // and the attacked pieces.
 
   template<Color Us, bool DoTrace>
   Score evaluate_threats(const Position& pos, const EvalInfo& ei) {
@@ -619,7 +619,7 @@ namespace {
                 // assign a smaller bonus if the block square isn't attacked.
                 int k = !unsafeSquares ? 18 : !(unsafeSquares & blockSq) ? 8 : 0;
 
-                // If the path to queen is fully defended, assign a big bonus.
+                // If the path to the queen is fully defended, assign a big bonus.
                 // Otherwise assign a smaller bonus if the block square is defended.
                 if (defendedSquares == squaresToQueen)
                     k += 6;
@@ -687,7 +687,7 @@ namespace {
 
 
   // evaluate_initiative() computes the initiative correction value for the
-  // position, i.e. second order bonus/malus based on the known attacking/defending
+  // position, i.e., second order bonus/malus based on the known attacking/defending
   // status of the players.
   Score evaluate_initiative(const Position& pos, int asymmetry, Value eg) {
 
@@ -720,7 +720,7 @@ namespace {
         if (pos.opposite_bishops())
         {
             // Endgame with opposite-colored bishops and no other pieces (ignoring pawns)
-            // is almost a draw, in case of KBP vs KB is even more a draw.
+            // is almost a draw, in case of KBP vs KB, it is even more a draw.
             if (   pos.non_pawn_material(WHITE) == BishopValueMg
                 && pos.non_pawn_material(BLACK) == BishopValueMg)
                 sf = more_than_one(pos.pieces(PAWN)) ? ScaleFactor(31) : ScaleFactor(9);

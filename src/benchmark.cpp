@@ -166,7 +166,7 @@ void benchmark(const Position& current, istream& is) {
 
   elapsed = now() - elapsed + 1; // Ensure positivity to avoid a 'divide by zero'
 
-  dbg_print(); // Just before to exit
+  dbg_print(); // Just before exiting
 
   cerr << "\n==========================="
        << "\nTotal time (ms) : " << elapsed

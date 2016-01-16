@@ -65,10 +65,10 @@ private:
   T table[PIECE_NB][SQUARE_NB];
 };
 
-typedef Stats<Move> MovesStats;
+typedef Stats<Move> MoveStats;
 typedef Stats<Value, false> HistoryStats;
-typedef Stats<Value,  true> CounterMovesStats;
-typedef Stats<CounterMovesStats> CounterMovesHistoryStats;
+typedef Stats<Value,  true> CounterMoveStats;
+typedef Stats<CounterMoveStats> CounterMoveHistoryStats;
 
 
 /// MovePicker class is used to pick one pseudo legal move at a time from the
@@ -85,7 +85,7 @@ public:
 
   MovePicker(const Position&, Move, Depth, const HistoryStats&, Square);
   MovePicker(const Position&, Move, const HistoryStats&, Value);
-  MovePicker(const Position&, Move, Depth, const HistoryStats&, const CounterMovesStats&, Move, Search::Stack*);
+  MovePicker(const Position&, Move, Depth, const HistoryStats&, const CounterMoveStats&, Move, Search::Stack*);
 
   Move next_move();
 
@@ -97,7 +97,7 @@ private:
 
   const Position& pos;
   const HistoryStats& history;
-  const CounterMovesStats* counterMovesHistory;
+  const CounterMoveStats* counterMoveHistory;
   Search::Stack* ss;
   Move countermove;
   Depth depth;

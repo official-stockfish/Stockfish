@@ -51,7 +51,7 @@ namespace {
 
   // pick_best() finds the best move in the range (begin, end) and moves it to
   // the front. It's faster than sorting all the moves in advance when there
-  // are few moves e.g. the possible captures.
+  // are few moves, e.g., the possible captures.
   Move pick_best(ExtMove* begin, ExtMove* end)
   {
       std::swap(*begin, *std::max_element(begin, end));
@@ -64,12 +64,12 @@ namespace {
 /// Constructors of the MovePicker class. As arguments we pass information
 /// to help it to return the (presumably) good moves first, to decide which
 /// moves to return (in the quiescence search, for instance, we only want to
-/// search captures, promotions and some checks) and how important good move
+/// search captures, promotions, and some checks) and how important good move
 /// ordering is at the current node.
 
 MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const HistoryStats& h,
-                       const CounterMovesStats& cmh, Move cm, Search::Stack* s)
-           : pos(p), history(h), counterMovesHistory(&cmh), ss(s), countermove(cm), depth(d) {
+                       const CounterMoveStats& cmh, Move cm, Search::Stack* s)
+           : pos(p), history(h), counterMoveHistory(&cmh), ss(s), countermove(cm), depth(d) {
 
   assert(d > DEPTH_ZERO);
 
@@ -80,7 +80,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const HistoryStats&
 
 MovePicker::MovePicker(const Position& p, Move ttm, Depth d,
                        const HistoryStats& h, Square s)
-           : pos(p), history(h), counterMovesHistory(nullptr) {
+           : pos(p), history(h), counterMoveHistory(nullptr) {
 
   assert(d <= DEPTH_ZERO);
 
@@ -105,7 +105,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d,
 }
 
 MovePicker::MovePicker(const Position& p, Move ttm, const HistoryStats& h, Value th)
-           : pos(p), history(h), counterMovesHistory(nullptr), threshold(th) {
+           : pos(p), history(h), counterMoveHistory(nullptr), threshold(th) {
 
   assert(!pos.checkers());
 
@@ -127,9 +127,9 @@ template<>
 void MovePicker::score<CAPTURES>() {
   // Winning and equal captures in the main search are ordered by MVV, preferring
   // captures near our home rank. Surprisingly, this appears to perform slightly
-  // better than SEE based move ordering: exchanging big pieces before capturing
+  // better than SEE-based move ordering: exchanging big pieces before capturing
   // a hanging piece probably helps to reduce the subtree size.
-  // In main search we want to push captures with negative SEE values to the
+  // In the main search we want to push captures with negative SEE values to the
   // badCaptures[] array, but instead of doing it now we delay until the move
   // has been picked up, saving some SEE calls in case we get a cutoff.
   for (auto& m : *this)
@@ -142,14 +142,14 @@ void MovePicker::score<QUIETS>() {
 
   for (auto& m : *this)
       m.value =  history[pos.moved_piece(m)][to_sq(m)]
-               + (*counterMovesHistory)[pos.moved_piece(m)][to_sq(m)];
+               + (*counterMoveHistory)[pos.moved_piece(m)][to_sq(m)];
 }
 
 template<>
 void MovePicker::score<EVASIONS>() {
-  // Try winning and equal captures captures ordered by MVV/LVA, then non-captures
-  // ordered by history value, then bad-captures and quiet moves with a negative
-  // SEE ordered by SEE value.
+  // Try winning and equal captures ordered by MVV/LVA, then non-captures ordered
+  // by history value, then bad captures and quiet moves with a negative SEE ordered
+  // by SEE value.
   Value see;
 
   for (auto& m : *this)
@@ -164,7 +164,7 @@ void MovePicker::score<EVASIONS>() {
 }
 
 
-/// generate_next_stage() generates, scores and sorts the next bunch of moves,
+/// generate_next_stage() generates, scores, and sorts the next bunch of moves
 /// when there are no more moves to try for the current stage.
 
 void MovePicker::generate_next_stage() {

@@ -36,7 +36,7 @@
 #include "thread_win32.h"
 
 
-/// Thread struct keeps together all the thread related stuff. We also use
+/// Thread struct keeps together all the thread-related stuff. We also use
 /// per-thread pawn and material hash tables so that once we get a pointer to an
 /// entry its life time is unlimited and we don't have to care about someone
 /// changing the entry under our feet.
@@ -67,7 +67,7 @@ public:
   Search::RootMoveVector rootMoves;
   Depth rootDepth;
   HistoryStats history;
-  MovesStats counterMoves;
+  MoveStats counterMoves;
   Depth completedDepth;
   std::atomic_bool resetCalls;
 };
@@ -84,7 +84,7 @@ struct MainThread : public Thread {
 };
 
 
-/// ThreadPool struct handles all the threads related stuff like init, starting,
+/// ThreadPool struct handles all the threads-related stuff like init, starting,
 /// parking and, most importantly, launching a thread. All the access to threads
 /// data is done through this class.
 

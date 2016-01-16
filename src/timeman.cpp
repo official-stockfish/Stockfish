@@ -40,7 +40,7 @@ namespace {
   // move_importance() is a skew-logistic function based on naive statistical
   // analysis of "how many games are still undecided after n half-moves". Game
   // is considered "undecided" as long as neither side has >275cp advantage.
-  // Data was extracted from CCRL game database with some simple filtering criteria.
+  // Data was extracted from the CCRL game database with some simple filtering criteria.
 
   double move_importance(int ply) {
 
@@ -66,7 +66,7 @@ namespace {
     double ratio1 = (TMaxRatio * moveImportance) / (TMaxRatio * moveImportance + otherMovesImportance);
     double ratio2 = (moveImportance + TStealRatio * otherMovesImportance) / (moveImportance + otherMovesImportance);
 
-    return int(myTime * std::min(ratio1, ratio2)); // Intel C++ asks an explicit cast
+    return int(myTime * std::min(ratio1, ratio2)); // Intel C++ asks for an explicit cast
   }
 
 } // namespace
@@ -91,7 +91,7 @@ void TimeManagement::init(Search::LimitsType& limits, Color us, int ply)
   // If we have to play in 'nodes as time' mode, then convert from time
   // to nodes, and use resulting values in time management formulas.
   // WARNING: Given npms (nodes per millisecond) must be much lower then
-  // real engine speed to avoid time losses.
+  // the real engine speed to avoid time losses.
   if (npmsec)
   {
       if (!availableNodes) // Only once at game start
