@@ -61,7 +61,7 @@ using namespace Search;
 
 namespace {
 
-  // Different node types, used as template parameter
+  // Different node types, used as a template parameter
   enum NodeType { Root, PV, NonPV };
 
   // Razoring and futility margin based on depth
@@ -76,7 +76,7 @@ namespace {
     return Reductions[PvNode][i][std::min(d, 63 * ONE_PLY)][std::min(mn, 63)];
   }
 
-  // Skill struct is used to implement strength limiting
+  // Skill structure is used to implement strength limit
   struct Skill {
     Skill(int l) : level(l) {}
     bool enabled() const { return level < 20; }
@@ -88,8 +88,8 @@ namespace {
     Move best = MOVE_NONE;
   };
 
-  // EasyMoveManager struct is used to detect an 'easy move'. When the PV is stable
-  // across multiple search iterations, we can quickly return the best move.
+  // EasyMoveManager structure is used to detect an 'easy move'. When the PV is
+  // stable across multiple search iterations, we can quickly return the best move.
   struct EasyMoveManager {
 
     void clear() {
@@ -106,7 +106,7 @@ namespace {
 
       assert(newPv.size() >= 3);
 
-      // Keep track of how many times in a row 3rd ply remains stable
+      // Keep track of how many times in a row the 3rd ply remains stable
       stableCnt = (newPv[2] == pv[2]) ? stableCnt + 1 : 0;
 
       if (!std::equal(newPv.begin(), newPv.begin() + 3, pv))
@@ -393,7 +393,7 @@ void Thread::search() {
   while (++rootDepth < DEPTH_MAX && !Signals.stop && (!Limits.depth || rootDepth <= Limits.depth))
   {
       // Set up the new depths for the helper threads skipping in average every
-      // 2nd ply (using a half density map similar to a Hadamard matrix).
+      // 2nd ply (using a half-density map similar to a Hadamard matrix).
       if (!mainThread)
       {
           int d = rootDepth + rootPos.game_ply();
@@ -451,14 +451,14 @@ void Thread::search() {
               // search the already searched PV lines are preserved.
               std::stable_sort(rootMoves.begin() + PVIdx, rootMoves.end());
 
-              // Write PV back to transposition table in case the relevant
+              // Write PV back to the transposition table in case the relevant
               // entries have been overwritten during the search.
               for (size_t i = 0; i <= PVIdx; ++i)
                   rootMoves[i].insert_pv_in_tt(rootPos);
 
-              // If search has been stopped break immediately. Sorting and
+              // If search has been stopped, break immediately. Sorting and
               // writing PV back to TT is safe because RootMoves is still
-              // valid, although it refers to previous iteration.
+              // valid, although it refers to the previous iteration.
               if (Signals.stop)
                   break;
 
@@ -609,7 +609,7 @@ namespace {
     bestValue = -VALUE_INFINITE;
     ss->ply = (ss-1)->ply + 1;
 
-    // Check for available remaining time
+    // Check for the available remaining time
     if (thisThread->resetCalls.load(std::memory_order_relaxed))
     {
         thisThread->resetCalls = false;
@@ -1024,7 +1024,7 @@ moves_loop: // When in check search starts from here
       else
           doFullDepthSearch = !PvNode || moveCount > 1;
 
-      // Step 16. Full depth search, when LMR is skipped or fails high
+      // Step 16. Full depth search when LMR is skipped or fails high
       if (doFullDepthSearch)
           value = newDepth <   ONE_PLY ?
                             givesCheck ? -qsearch<NonPV,  true>(pos, ss+1, -(alpha+1), -alpha, DEPTH_ZERO)
@@ -1050,7 +1050,7 @@ moves_loop: // When in check search starts from here
 
       assert(value > -VALUE_INFINITE && value < VALUE_INFINITE);
 
-      // Step 18. Check for new best move
+      // Step 18. Check for a new best move
       // Finished searching the move. If a stop occurred, the return value of
       // the search cannot be trusted, and we return immediately without
       // updating best move, PV and TT.
@@ -1118,7 +1118,7 @@ moves_loop: // When in check search starts from here
           quietsSearched[quietCount++] = move;
     }
 
-    // Following condition would detect a stop only after move loop has been
+    // The following condition would detect a stop only after move loop has been
     // completed. But in this case bestValue is valid because we have fully
     // searched our subtree, and we can anyhow save the result in TT.
     /*
@@ -1128,7 +1128,7 @@ moves_loop: // When in check search starts from here
 
     // Step 20. Check for mate and stalemate
     // All legal moves have been searched and if there are no legal moves, it
-    // must be mate or stalemate. If we are in a singular extension search then
+    // must be a mate or a stalemate. If we are in a singular extension search then
     // return a fail low score.
     if (!moveCount)
         bestValue = excludedMove ? alpha
@@ -1334,7 +1334,7 @@ moves_loop: // When in check search starts from here
 
       assert(value > -VALUE_INFINITE && value < VALUE_INFINITE);
 
-      // Check for new best move
+      // Check for a new best move
       if (value > bestValue)
       {
           bestValue = value;
@@ -1472,8 +1472,8 @@ moves_loop: // When in check search starts from here
     int maxScore = -VALUE_INFINITE;
 
     // Choose best move. For each move score we add two terms, both dependent on
-    // weakness. One deterministic and bigger for weaker levels, and one random,
-    // then we choose the move with the resulting highest score.
+    // weakness. One is deterministic and bigger for weaker levels, and one is 
+    // random. Then we choose the move with the resulting highest score.
     for (size_t i = 0; i < multiPV; ++i)
     {
         // This is our magic formula
@@ -1603,7 +1603,7 @@ void RootMove::insert_pv_in_tt(Position& pos) {
 
 
 /// RootMove::extract_ponder_from_tt() is called in case we have no ponder move
-/// before exiting the search, for instance in case we stop the search during a
+/// before exiting the search, for instance, in case we stop the search during a
 /// fail high at root. We try hard to have a ponder move to return to the GUI,
 /// otherwise in case of 'ponder on' we have nothing to think on.
 
