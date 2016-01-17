@@ -686,7 +686,8 @@ namespace {
 
         if (    piecesCnt <= TB::Cardinality
             && (piecesCnt <  TB::Cardinality || depth >= TB::ProbeDepth)
-            &&  pos.rule50_count() == 0)
+            &&  pos.rule50_count() == 0
+            && !pos.can_castle())
         {
             int found, v = Tablebases::probe_wdl(pos, &found);
 
