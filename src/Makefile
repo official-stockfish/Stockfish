@@ -194,8 +194,8 @@ ifeq ($(COMP),clang)
 	CXX=clang++
 	CXXFLAGS += -pedantic -Wextra -Wshadow
 	ifeq ($(UNAME),Darwin)
-		CXXFLAGS += -std=c++0x -stdlib=libc++
-		DEPENDFLAGS += -std=c++0x -stdlib=libc++
+		CXXFLAGS += -stdlib=libc++
+		DEPENDFLAGS += -stdlib=libc++
 	endif
 endif
 
