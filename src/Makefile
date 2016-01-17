@@ -218,7 +218,12 @@ endif
 
 ### Travis CI script uses COMPILER to overwrite CXX
 ifdef COMPILER
-	CXX=$(COMPILER)
+	COMPCXX=$(COMPILER)
+endif
+
+### Allow overwriting CXX from command line
+ifdef COMPCXX
+	CXX=$(COMPCXX)
 endif
 
 ### On mingw use Windows threads, otherwise POSIX
@@ -365,7 +370,7 @@ help:
 	@echo ""
 	@echo "To compile stockfish, type: "
 	@echo ""
-	@echo "make target ARCH=arch [COMP=comp]"
+	@echo "make target ARCH=arch [COMP=compiler] [COMPCXX=cxx]"
 	@echo ""
 	@echo "Supported targets:"
 	@echo ""
@@ -395,11 +400,17 @@ help:
 	@echo "clang                   > LLVM Clang compiler"
 	@echo "icc                     > Intel compiler"
 	@echo ""
-	@echo "Examples. If you don't know what to do, you likely want to run: "
+	@echo "Simple examples. If you don't know what to do, you likely want to run: "
 	@echo ""
 	@echo "make build ARCH=x86-64    (This is for 64-bit systems)"
 	@echo "make build ARCH=x86-32    (This is for 32-bit systems)"
 	@echo ""
+	@echo "Advanced examples, for experienced users: "
+	@echo ""
+	@echo "make build ARCH=x86-64 COMP=clang"
+	@echo "make profile-build ARCH=x86-64-modern COMP=gcc COMPCXX=g++-4.8"
+	@echo ""
+
 
 .PHONY: build profile-build
 build:
