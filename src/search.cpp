@@ -62,7 +62,7 @@ using namespace Search;
 namespace {
 
   // Different node types, used as template parameter
-  enum NodeType { Root, PV, NonPV };
+  enum NodeType { NonPV, PV };
 
   // Razoring and futility margin based on depth
   const int razor_margin[4] = { 483, 570, 603, 554 };
@@ -442,7 +442,7 @@ void Thread::search() {
           // high/low anymore.
           while (true)
           {
-              bestValue = ::search<Root>(rootPos, ss, alpha, beta, rootDepth, false);
+              bestValue = ::search<PV>(rootPos, ss, alpha, beta, rootDepth, false);
 
               // Bring the best move to the front. It is critical that sorting
               // is done with a stable algorithm because all the values but the
@@ -585,8 +585,8 @@ namespace {
   template <NodeType NT>
   Value search(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth, bool cutNode) {
 
-    const bool RootNode = NT == Root;
-    const bool PvNode   = NT == PV || NT == Root;
+    const bool PvNode = NT == PV;
+    const bool RootNode = PvNode && (ss-1)->ply == 0;
 
     assert(-VALUE_INFINITE <= alpha && alpha < beta && beta <= VALUE_INFINITE);
     assert(PvNode || (alpha == beta - 1));
@@ -842,7 +842,7 @@ namespace {
     {
         Depth d = depth - 2 * ONE_PLY - (PvNode ? DEPTH_ZERO : depth / 4);
         ss->skipEarlyPruning = true;
-        search<PvNode ? PV : NonPV>(pos, ss, alpha, beta, d, true);
+        search<NT>(pos, ss, alpha, beta, d, true);
         ss->skipEarlyPruning = false;
 
         tte = TT.probe(posKey, ttHit);
@@ -1172,7 +1172,6 @@ moves_loop: // When in check search starts from here
 
     const bool PvNode = NT == PV;
 
-    assert(NT == PV || NT == NonPV);
     assert(InCheck == !!pos.checkers());
     assert(alpha >= -VALUE_INFINITE && alpha < beta && beta <= VALUE_INFINITE);
     assert(PvNode || (alpha == beta - 1));
