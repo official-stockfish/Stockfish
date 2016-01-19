@@ -111,7 +111,6 @@ namespace {
 Endgames::Endgames() {
 
   add<KPK>("KPK");
-  add<KNNK>("KNNK");
   add<KBNK>("KBNK");
   add<KRKP>("KRKP");
   add<KRKB>("KRKB");
@@ -165,6 +164,9 @@ Value Endgame<KXK>::operator()(const Position& pos) const {
       ||(pos.count<BISHOP>(strongSide) > 1 && opposite_colors(pos.squares<BISHOP>(strongSide)[0],
                                                               pos.squares<BISHOP>(strongSide)[1])))
       result = std::min(result + VALUE_KNOWN_WIN, VALUE_MATE_IN_MAX_PLY - 1);
+
+  else
+      result = VALUE_DRAW;
 
   return strongSide == pos.side_to_move() ? result : -result;
 }
@@ -340,10 +342,6 @@ Value Endgame<KQKR>::operator()(const Position& pos) const {
 
   return strongSide == pos.side_to_move() ? result : -result;
 }
-
-
-/// Some cases of trivial draws
-template<> Value Endgame<KNNK>::operator()(const Position&) const { return VALUE_DRAW; }
 
 
 /// KB and one or more pawns vs K. It checks for draws with rook pawns and
