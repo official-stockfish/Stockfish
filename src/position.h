@@ -111,7 +111,6 @@ public:
   template<PieceType Pt> Square square(Color c) const;
 
   // Castling
-  int can_castle() const;
   int can_castle(Color c) const;
   int can_castle(CastlingRight cr) const;
   bool castling_impeded(CastlingRight cr) const;
@@ -267,10 +266,6 @@ template<PieceType Pt> inline Square Position::square(Color c) const {
 
 inline Square Position::ep_square() const {
   return st->epSquare;
-}
-
-inline int Position::can_castle() const {
-  return st->castlingRights;
 }
 
 inline int Position::can_castle(CastlingRight cr) const {
