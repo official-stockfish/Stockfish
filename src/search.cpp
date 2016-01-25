@@ -922,8 +922,10 @@ moves_loop: // When in check search starts from here
                   ? ci.checkSquares[type_of(pos.piece_on(from_sq(move)))] & to_sq(move)
                   : pos.gives_check(move, ci);
 
+      Value see=VALUE_NONE;
+
       // Step 12. Extend checks
-      if (givesCheck && pos.see_sign(move) >= VALUE_ZERO)
+      if (givesCheck && (see == pos.see_sign(move)) >= VALUE_ZERO)
           extension = ONE_PLY;
 
       // Singular extension search. If all moves but one fail low on a search of
@@ -985,7 +987,7 @@ moves_loop: // When in check search starts from here
           }
 
           // Prune moves with negative SEE at low depths
-          if (predictedDepth < 4 * ONE_PLY && pos.see_sign(move) < VALUE_ZERO)
+          if (predictedDepth < 4 * ONE_PLY && (see == VALUE_NONE ? pos.see_sign(move) : see) < VALUE_ZERO)
               continue;
       }
 
