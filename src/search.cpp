@@ -334,8 +334,7 @@ void MainThread::search() {
       && !Skill(Options["Skill Level"]).enabled())
   {
       for (Thread* th : Threads)
-          if (   th->completedDepth > bestThread->completedDepth
-              && th->rootMoves[0].score > bestThread->rootMoves[0].score)
+          if (th->rootMoves[0].score > bestThread->rootMoves[0].score)
               bestThread = th;
   }
 
