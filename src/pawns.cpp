@@ -232,7 +232,8 @@ Entry* probe(const Position& pos) {
       return e;
 
   e->key = key;
-  e->score = evaluate<WHITE>(pos, e) - evaluate<BLACK>(pos, e);
+  Score score = evaluate<WHITE>(pos, e) - evaluate<BLACK>(pos, e);
+  e->score = make_score(mg_value(score) * 214 / 256, eg_value(score) * 203 / 256);
   e->asymmetry = popcount<Max15>(e->semiopenFiles[WHITE] ^ e->semiopenFiles[BLACK]);
   return e;
 }

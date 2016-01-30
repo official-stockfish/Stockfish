@@ -107,18 +107,6 @@ namespace {
     Pawns::Entry* pi;
   };
 
-
-  // Evaluation weights, indexed by the corresponding evaluation term
-  enum { PawnStructure, PassedPawns, Space, KingSafety };
-
-  const struct Weight { int mg, eg; } Weights[] = {
-    {214, 203}, {193, 262}, {47, 0}, {330, 0} };
-
-  Score operator*(Score s, const Weight& w) {
-    return make_score(mg_value(s) * w.mg / 256, eg_value(s) * w.eg / 256);
-  }
-
-
   #define V(v) Value(v)
   #define S(mg, eg) make_score(mg, eg)
 
@@ -638,12 +626,13 @@ namespace {
 
         score += make_score(mbonus, ebonus) + PassedFile[file_of(s)];
     }
-
+    score = make_score(mg_value(score) * 193 / 256, eg_value(score) * 262 / 256);
+    
     if (DoTrace)
-        Trace::add(PASSED, Us, score * Weights[PassedPawns]);
+        Trace::add(PASSED, Us, score);
 
     // Add the scores to the middlegame and endgame eval
-    return score * Weights[PassedPawns];
+    return score;
   }
 
 
@@ -771,7 +760,7 @@ Value Eval::evaluate(const Position& pos) {
 
   // Probe the pawn hash table
   ei.pi = Pawns::probe(pos);
-  score += ei.pi->pawns_score() * Weights[PawnStructure];
+  score += ei.pi->pawns_score();
 
   // Initialize attack and king safety bitboards
   ei.attackedBy[WHITE][ALL_PIECES] = ei.attackedBy[BLACK][ALL_PIECES] = 0;
@@ -821,8 +810,8 @@ Value Eval::evaluate(const Position& pos) {
 
   // Evaluate space for both sides, only during opening
   if (pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK) >= 12222)
-      score += (  evaluate_space<WHITE>(pos, ei)
-                - evaluate_space<BLACK>(pos, ei)) * Weights[Space];
+      score += make_score(mg_value(evaluate_space<WHITE>(pos, ei)
+                                 - evaluate_space<BLACK>(pos, ei)) * 47 / 256, 0);
 
   // Evaluate position potential for the winning side
   score += evaluate_initiative(pos, ei.pi->pawn_asymmetry(), eg_value(score));
@@ -841,10 +830,10 @@ Value Eval::evaluate(const Position& pos) {
   {
       Trace::add(MATERIAL, pos.psq_score());
       Trace::add(IMBALANCE, ei.me->imbalance());
-      Trace::add(PAWN, ei.pi->pawns_score() * Weights[PawnStructure]);
+      Trace::add(PAWN, ei.pi->pawns_score());
       Trace::add(MOBILITY, mobility[WHITE], mobility[BLACK]);
-      Trace::add(SPACE, evaluate_space<WHITE>(pos, ei) * Weights[Space]
-                      , evaluate_space<BLACK>(pos, ei) * Weights[Space]);
+      Trace::add(SPACE, make_score(mg_value(evaluate_space<WHITE>(pos, ei)) * 47 / 256, 0)
+                      , make_score(mg_value(evaluate_space<BLACK>(pos, ei)) * 47 / 256, 0));
       Trace::add(TOTAL, score);
   }
 
@@ -904,6 +893,6 @@ void Eval::init() {
   for (int i = 0; i < 400; ++i)
   {
       t = std::min(Peak, std::min(i * i * 27, t + MaxSlope));
-      KingDanger[i] = make_score(t / 1000, 0) * Weights[KingSafety];
+      KingDanger[i] = make_score((t / 1000) * 330 / 256, 0);
   }
 }
