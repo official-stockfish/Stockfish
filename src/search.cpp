@@ -127,6 +127,35 @@ namespace {
     Move pv[3];
   };
 
+  // Set of rows with half bits set to 1 and half to 0. It is used to allocate
+  // the search depths across the threads.
+  typedef std::vector<int> Row;
+
+  const Row HalfDensity[] = {
+    {0, 1},
+    {1, 0},
+    {0, 0, 1, 1},
+    {0, 1, 1, 0},
+    {1, 1, 0, 0},
+    {1, 0, 0, 1},
+    {0, 0, 0, 1, 1, 1},
+    {0, 0, 1, 1, 1, 0},
+    {0, 1, 1, 1, 0, 0},
+    {1, 1, 1, 0, 0, 0},
+    {1, 1, 0, 0, 0, 1},
+    {1, 0, 0, 0, 1, 1},
+    {0, 0, 0, 0, 1, 1, 1, 1},
+    {0, 0, 0, 1, 1, 1, 1, 0},
+    {0, 0, 1, 1, 1, 1, 0 ,0},
+    {0, 1, 1, 1, 1, 0, 0 ,0},
+    {1, 1, 1, 1, 0, 0, 0 ,0},
+    {1, 1, 1, 0, 0, 0, 0 ,1},
+    {1, 1, 0, 0, 0, 0, 1 ,1},
+    {1, 0, 0, 0, 0, 1, 1 ,1},
+  };
+
+  const size_t HalfDensitySize = std::extent<decltype(HalfDensity)>::value;
+
   EasyMoveManager EasyMove;
   Value DrawValue[COLOR_NB];
   CounterMoveHistoryStats CounterMoveHistory;
@@ -353,33 +382,6 @@ void MainThread::search() {
   std::cout << sync_endl;
 }
 
-const int halfDensityMap[][9] =
-{
-    {2, 0, 1},
-    {2, 1, 0},
-
-    {4, 0, 0, 1, 1},
-    {4, 0, 1, 1, 0},
-    {4, 1, 1, 0, 0},
-    {4, 1, 0, 0, 1},
-
-    {6, 0, 0, 0, 1, 1, 1},
-    {6, 0, 0, 1, 1, 1, 0},
-    {6, 0, 1, 1, 1, 0, 0},
-    {6, 1, 1, 1, 0, 0, 0},
-    {6, 1, 1, 0, 0, 0, 1},
-    {6, 1, 0, 0, 0, 1, 1},
-
-    {8, 0, 0, 0, 0, 1, 1, 1, 1},
-    {8, 0, 0, 0, 1, 1, 1, 1, 0},
-    {8, 0, 0, 1, 1, 1, 1, 0 ,0},
-    {8, 0, 1, 1, 1, 1, 0, 0 ,0},
-    {8, 1, 1, 1, 1, 0, 0, 0 ,0},
-    {8, 1, 1, 1, 0, 0, 0, 0 ,1},
-    {8, 1, 1, 0, 0, 0, 0, 1 ,1},
-    {8, 1, 0, 0, 0, 0, 1, 1 ,1},
-};
-
 
 // Thread::search() is the main iterative deepening loop. It calls search()
 // repeatedly with increasing depth until the allocated thinking time has been
@@ -424,8 +426,8 @@ void Thread::search() {
       // 2nd ply (using a half-density matrix).
       if (!mainThread)
       {
-          int row = (idx - 1) % 20;
-          if (halfDensityMap[row][(rootDepth + rootPos.game_ply()) % halfDensityMap[row][0] + 1])
+          const Row& row = HalfDensity[(idx - 1) % HalfDensitySize];
+          if (row[(rootDepth + rootPos.game_ply()) % row.size()])
              continue;
       }
 
