@@ -168,14 +168,14 @@ namespace {
   // Passed[mg/eg][Rank] contains midgame and endgame bonuses for passed pawns.
   // We don't use a Score because we process the two components independently.
   const Value Passed[][RANK_NB] = {
-    { V(0), V( 1), V(34), V(90), V(214), V(328) },
-    { V(7), V(14), V(37), V(63), V(134), V(189) }
+    { V(0), V( 1), V(26), V(68), V(161), V(247) },
+    { V(7), V(14), V(38), V(64), V(137), V(193) }
   };
 
   // PassedFile[File] contains a bonus according to the file of a passed pawn
   const Score PassedFile[FILE_NB] = {
-    S( 12, 10), S( 3, 10), S( 1, -8), S(-27,-12),
-    S(-27,-12), S( 1, -8), S( 3, 10), S( 12, 10)
+    S(  9, 10), S( 2, 10), S( 1, -8), S(-20,-12),
+    S(-20,-12), S( 1, -8), S( 2, 10), S( 9, 10)
   };
 
   // Assorted bonuses and penalties used by evaluation
@@ -615,10 +615,10 @@ namespace {
                 else if (defendedSquares & blockSq)
                     k += 4;
 
-                mbonus += k * rr, ebonus += k * rr;
+                mbonus += k * rr * 3 / 4, ebonus += k * rr;
             }
             else if (pos.pieces(Us) & blockSq)
-                mbonus += rr * 3 + r * 2 + 3, ebonus += rr + r * 2;
+                mbonus += (rr * 3 + r * 2 + 3) * 3 / 4, ebonus += rr + r * 2;
         } // rr != 0
 
         if (pos.count<PAWN>(Us) < pos.count<PAWN>(Them))
@@ -626,7 +626,6 @@ namespace {
 
         score += make_score(mbonus, ebonus) + PassedFile[file_of(s)];
     }
-    score = make_score(mg_value(score) * 193 / 256, eg_value(score) * 262 / 256);
     
     if (DoTrace)
         Trace::add(PASSED, Us, score);
