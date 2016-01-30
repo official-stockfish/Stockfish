@@ -886,13 +886,13 @@ std::string Eval::trace(const Position& pos) {
 
 void Eval::init() {
 
-  const int MaxSlope = 8700;
-  const int Peak = 1280000;
+  const int MaxSlope = 322;
+  const int Peak = 47410;
   int t = 0;
 
   for (int i = 0; i < 400; ++i)
   {
-      t = std::min(Peak, std::min(i * i * 27, t + MaxSlope));
-      KingDanger[i] = make_score((t / 1000) * 330 / 256, 0);
+      t = std::min(Peak, std::min(i * i - 16, t + MaxSlope));
+      KingDanger[i] = make_score(t * 268 / 7700, 0);
   }
 }
