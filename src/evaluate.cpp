@@ -670,7 +670,7 @@ namespace {
     int weight =  pos.count<KNIGHT>(Us) + pos.count<BISHOP>(Us)
                 + pos.count<KNIGHT>(Them) + pos.count<BISHOP>(Them);
 
-    return make_score(bonus * weight * weight, 0);
+    return make_score(bonus * weight * weight * 2 / 11, 0);
   }
 
 
@@ -809,8 +809,8 @@ Value Eval::evaluate(const Position& pos) {
 
   // Evaluate space for both sides, only during opening
   if (pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK) >= 12222)
-      score += make_score(mg_value(evaluate_space<WHITE>(pos, ei)
-                                 - evaluate_space<BLACK>(pos, ei)) * 47 / 256, 0);
+      score +=  evaluate_space<WHITE>(pos, ei)
+              - evaluate_space<BLACK>(pos, ei);
 
   // Evaluate position potential for the winning side
   score += evaluate_initiative(pos, ei.pi->pawn_asymmetry(), eg_value(score));
@@ -831,8 +831,8 @@ Value Eval::evaluate(const Position& pos) {
       Trace::add(IMBALANCE, ei.me->imbalance());
       Trace::add(PAWN, ei.pi->pawns_score());
       Trace::add(MOBILITY, mobility[WHITE], mobility[BLACK]);
-      Trace::add(SPACE, make_score(mg_value(evaluate_space<WHITE>(pos, ei)) * 47 / 256, 0)
-                      , make_score(mg_value(evaluate_space<BLACK>(pos, ei)) * 47 / 256, 0));
+      Trace::add(SPACE, evaluate_space<WHITE>(pos, ei)
+                      , evaluate_space<BLACK>(pos, ei));
       Trace::add(TOTAL, score);
   }
 
