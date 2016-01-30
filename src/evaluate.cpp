@@ -626,7 +626,7 @@ namespace {
 
         score += make_score(mbonus, ebonus) + PassedFile[file_of(s)];
     }
-    
+
     if (DoTrace)
         Trace::add(PASSED, Us, score);
 
