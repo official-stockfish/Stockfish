@@ -34,30 +34,30 @@ namespace {
 
   // Isolated pawn penalty by opposed flag and file
   const Score Isolated[2][FILE_NB] = {
-    { S(37, 45), S(54, 52), S(60, 52), S(60, 52),
-      S(60, 52), S(60, 52), S(54, 52), S(37, 45) },
-    { S(25, 30), S(36, 35), S(40, 35), S(40, 35),
-      S(40, 35), S(40, 35), S(36, 35), S(25, 30) } };
+    { S(31, 36), S(45, 41), S(50, 41), S(50, 41),
+      S(50, 41), S(50, 41), S(45, 41), S(31, 36) },
+    { S(21, 24), S(30, 28), S(33, 28), S(33, 28),
+      S(33, 28), S(33, 28), S(30, 28), S(21, 24) } };
 
   // Backward pawn penalty by opposed flag
-  const Score Backward[2] = { S(67, 42), S(49, 24) };
+  const Score Backward[2] = { S(56, 33), S(41, 19) };
 
   // Unsupported pawn penalty for pawns which are neither isolated or backward,
   // by number of pawns it supports [less than 2 / exactly 2].
-  const Score Unsupported[2] = { S(20, 10), S(25, 15) };
+  const Score Unsupported[2] = { S(17, 8), S(21, 12) };
 
   // Connected pawn bonus by opposed, phalanx, twice supported and rank
   Score Connected[2][2][2][RANK_NB];
 
   // Doubled pawn penalty by file
   const Score Doubled[FILE_NB] = {
-    S(13, 43), S(20, 48), S(23, 48), S(23, 48),
-    S(23, 48), S(23, 48), S(20, 48), S(13, 43) };
+    S(11, 34), S(17, 38), S(19, 38), S(19, 38),
+    S(19, 38), S(19, 38), S(17, 38), S(11, 34) };
 
   // Lever bonus by rank
   const Score Lever[RANK_NB] = {
     S( 0,  0), S( 0,  0), S(0, 0), S(0, 0),
-    S(20, 20), S(40, 40), S(0, 0), S(0, 0) };
+    S(17, 16), S(33, 32), S(0, 0), S(0, 0) };
 
   // Weakness of our pawn shelter in front of the king by [distance from edge][rank]
   const Value ShelterWeakness[][RANK_NB] = {
@@ -204,7 +204,7 @@ namespace Pawns {
 
 void init()
 {
-  static const int Seed[RANK_NB] = { 0, 6, 15, 10, 57, 75, 135, 258 };
+  static const int Seed[RANK_NB] = { 0, 8, 19, 13, 71, 94, 169, 324 };
 
   for (int opposed = 0; opposed <= 1; ++opposed)
       for (int phalanx = 0; phalanx <= 1; ++phalanx)
@@ -213,7 +213,7 @@ void init()
   {
       int v = (Seed[r] + (phalanx ? (Seed[r + 1] - Seed[r]) / 2 : 0)) >> opposed;
       v += (apex ? v / 2 : 0);
-      Connected[opposed][phalanx][apex][r] = make_score(3 * v / 2, v);
+      Connected[opposed][phalanx][apex][r] = make_score(v, v * 5 / 8);
   }
 }
 
