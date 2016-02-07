@@ -226,7 +226,7 @@ ifdef COMPCXX
 	CXX=$(COMPCXX)
 endif
 
-### On mingw use Windows threads, otherwise POSIX
+### Mingw-w64 has POSIX thread support built-in
 ifneq ($(comp),mingw)
 	# On Android Bionic's C library comes with its own pthread implementation bundled in
 	ifneq ($(arch),armv7)
@@ -331,7 +331,7 @@ ifeq ($(pext),yes)
 	endif
 endif
 
-### 3.11 Link Time Optimization, it works since gcc 4.5 but not on mingw under Windows.
+### 3.11 Link Time Optimization, it works since gcc 4.5 but not on mingw-w64 under Windows.
 ### This is a mix of compile and link time options because the lto link phase
 ### needs access to the optimization flags.
 ifeq ($(comp),gcc)
@@ -396,7 +396,7 @@ help:
 	@echo "Supported compilers:"
 	@echo ""
 	@echo "gcc                     > Gnu compiler (default)"
-	@echo "mingw                   > Gnu compiler with MinGW under Windows"
+	@echo "mingw                   > Gnu compiler with MinGW-w64 under Windows"
 	@echo "clang                   > LLVM Clang compiler"
 	@echo "icc                     > Intel compiler"
 	@echo ""
