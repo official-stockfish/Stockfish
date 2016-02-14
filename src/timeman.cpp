@@ -44,20 +44,18 @@ namespace {
 
   double move_importance(int ply) {
 
-    const double XScale = 7.64;
-    const double XShift = 58.4;
-    const double Skew   = 0.183;
+    const double XScale = 0.00003;
 
-    return pow((1 + exp((ply - XShift) / XScale)), -Skew) + DBL_MIN; // Ensure non-zero
+    return exp(-XScale * ply * ply) + DBL_MIN; // Ensure non-zero
   }
 
   template<TimeType T>
-  int remaining(int myTime, int movesToGo, int ply, int slowMover)
+  int remaining(int myTime, int movesToGo, int ply)
   {
     const double TMaxRatio   = (T == OptimumTime ? 1 : MaxRatio);
     const double TStealRatio = (T == OptimumTime ? 0 : StealRatio);
 
-    double moveImportance = (move_importance(ply) * slowMover) / 100;
+    double moveImportance = move_importance(ply);
     double otherMovesImportance = 0;
 
     for (int i = 1; i < movesToGo; ++i)
@@ -85,7 +83,6 @@ void TimeManagement::init(Search::LimitsType& limits, Color us, int ply)
 {
   int minThinkingTime = Options["Minimum Thinking Time"];
   int moveOverhead    = Options["Move Overhead"];
-  int slowMover       = Options["Slow Mover"];
   int npmsec          = Options["nodestime"];
 
   // If we have to play in 'nodes as time' mode, then convert from time
@@ -120,8 +117,8 @@ void TimeManagement::init(Search::LimitsType& limits, Color us, int ply)
 
       hypMyTime = std::max(hypMyTime, 0);
 
-      int t1 = minThinkingTime + remaining<OptimumTime>(hypMyTime, hypMTG, ply, slowMover);
-      int t2 = minThinkingTime + remaining<MaxTime    >(hypMyTime, hypMTG, ply, slowMover);
+      int t1 = minThinkingTime + remaining<OptimumTime>(hypMyTime, hypMTG, ply);
+      int t2 = minThinkingTime + remaining<MaxTime    >(hypMyTime, hypMTG, ply);
 
       optimumTime = std::min(t1, optimumTime);
       maximumTime = std::min(t2, maximumTime);
