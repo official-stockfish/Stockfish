@@ -969,7 +969,7 @@ moves_loop: // When in check search starts from here
               && cmh[pos.moved_piece(move)][to_sq(move)] < VALUE_ZERO)
               continue;
 
-          predictedDepth = newDepth - reduction<PvNode>(improving, depth, moveCount);
+          predictedDepth = std::max(newDepth - reduction<PvNode>(improving, depth, moveCount), DEPTH_ZERO);
 
           // Futility pruning: parent node
           if (predictedDepth < 7 * ONE_PLY)
