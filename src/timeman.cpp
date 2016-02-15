@@ -44,7 +44,7 @@ namespace {
 
   double move_importance(int ply) {
 
-    const double XScale = 0.00003;
+    const double XScale = 0.00004;
 
     return exp(-XScale * ply * ply) + DBL_MIN; // Ensure non-zero
   }
