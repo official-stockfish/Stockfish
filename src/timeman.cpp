@@ -44,9 +44,9 @@ namespace {
 
   double move_importance(int ply) {
 
-    const double XScale = 0.0000007;
+    const double XScale = 0.000000007;
 
-    return exp(-XScale * ply * ply * ply) + DBL_MIN; // Ensure non-zero
+    return exp(-XScale * ply * ply * ply * ply) + DBL_MIN; // Ensure non-zero
   }
 
   template<TimeType T>
