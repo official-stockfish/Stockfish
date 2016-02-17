@@ -2,6 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
+  Copyright (C) 2015-2016 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -36,10 +37,10 @@
 /// Countermoves store the move that refute a previous one. Entries are stored
 /// using only the moving piece and destination square, hence two moves with
 /// different origin but same destination and piece will be considered identical.
-template<typename T>
+template<typename T, bool CM = false>
 struct Stats {
 
-  static const Value Max = Value(1<<28);
+  static const Value Max = Value(1 << 28);
 
   const T* operator[](Piece pc) const { return table[pc]; }
   T* operator[](Piece pc) { return table[pc]; }
@@ -53,17 +54,21 @@ struct Stats {
 
   void update(Piece pc, Square to, Value v) {
 
-    table[pc][to] -= table[pc][to] * std::min(abs(int(v)), 512) / 512;
-    table[pc][to] += int(v) * 64;
+    if (abs(int(v)) >= 324)
+        return;
+
+    table[pc][to] -= table[pc][to] * abs(int(v)) / (CM ? 512 : 324);
+    table[pc][to] += int(v) * (CM ? 64 : 32);
   }
 
 private:
   T table[PIECE_NB][SQUARE_NB];
 };
 
-typedef Stats<Value> HistoryStats;
-typedef Stats<Move> MovesStats;
-typedef Stats<HistoryStats> CounterMovesHistoryStats;
+typedef Stats<Move> MoveStats;
+typedef Stats<Value, false> HistoryStats;
+typedef Stats<Value,  true> CounterMoveStats;
+typedef Stats<CounterMoveStats> CounterMoveHistoryStats;
 
 
 /// MovePicker class is used to pick one pseudo legal move at a time from the
@@ -78,11 +83,11 @@ public:
   MovePicker(const MovePicker&) = delete;
   MovePicker& operator=(const MovePicker&) = delete;
 
-  MovePicker(const Position&, Move, Depth, const HistoryStats&, const CounterMovesHistoryStats&, Square);
-  MovePicker(const Position&, Move, const HistoryStats&, const CounterMovesHistoryStats&, Value);
-  MovePicker(const Position&, Move, Depth, const HistoryStats&, const CounterMovesHistoryStats&, Move, Search::Stack*);
+  MovePicker(const Position&, Move, Depth, const HistoryStats&, Square);
+  MovePicker(const Position&, Move, const HistoryStats&, Value);
+  MovePicker(const Position&, Move, Depth, const HistoryStats&, const CounterMoveStats&, Move, Search::Stack*);
 
-  template<bool SpNode> Move next_move();
+  Move next_move();
 
 private:
   template<GenType> void score();
@@ -92,7 +97,7 @@ private:
 
   const Position& pos;
   const HistoryStats& history;
-  const CounterMovesHistoryStats& counterMovesHistory;
+  const CounterMoveStats* counterMoveHistory;
   Search::Stack* ss;
   Move countermove;
   Depth depth;

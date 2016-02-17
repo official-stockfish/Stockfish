@@ -2,6 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
+  Copyright (C) 2015-2016 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -31,28 +32,28 @@ namespace {
   // Polynomial material imbalance parameters
 
   //                      pair  pawn knight bishop rook queen
-  const int Linear[6] = { 1852, -162, -1122, -183,  249, -154 };
+  const int Linear[6] = { 1667, -168, -1027, -166,  238, -138 };
 
   const int QuadraticOurs[][PIECE_TYPE_NB] = {
     //            OUR PIECES
     // pair pawn knight bishop rook queen
     {   0                               }, // Bishop pair
-    {  39,    2                         }, // Pawn
-    {  35,  271,  -4                    }, // Knight      OUR PIECES
-    {   0,  105,   4,    0              }, // Bishop
-    { -27,   -2,  46,   100,  -141      }, // Rook
-    {-177,   25, 129,   142,  -137,   0 }  // Queen
+    {  40,    2                         }, // Pawn
+    {  32,  255,  -3                    }, // Knight      OUR PIECES
+    {   0,  104,   4,    0              }, // Bishop
+    { -26,   -2,  47,   105,  -149      }, // Rook
+    {-185,   24, 122,   137,  -134,   0 }  // Queen
   };
 
   const int QuadraticTheirs[][PIECE_TYPE_NB] = {
     //           THEIR PIECES
     // pair pawn knight bishop rook queen
     {   0                               }, // Bishop pair
-    {  37,    0                         }, // Pawn
-    {  10,   62,   0                    }, // Knight      OUR PIECES
-    {  57,   64,  39,     0             }, // Bishop
-    {  50,   40,  23,   -22,    0       }, // Rook
-    {  98,  105, -39,   141,  274,    0 }  // Queen
+    {  36,    0                         }, // Pawn
+    {   9,   63,   0                    }, // Knight      OUR PIECES
+    {  59,   65,  42,     0             }, // Bishop
+    {  46,   39,  24,   -24,    0       }, // Rook
+    { 101,  100, -37,   141,  268,    0 }  // Queen
   };
 
   // Endgame evaluation and scaling functions are accessed directly and not through
@@ -199,11 +200,11 @@ Entry* probe(const Position& pos) {
   // drawish scale factor for cases such as KRKBP and KmmKm (except for KBBKN).
   if (!pos.count<PAWN>(WHITE) && npm_w - npm_b <= BishopValueMg)
       e->factor[WHITE] = uint8_t(npm_w <  RookValueMg   ? SCALE_FACTOR_DRAW :
-                                 npm_b <= BishopValueMg ? 4 : 12);
+                                 npm_b <= BishopValueMg ? 4 : 14);
 
   if (!pos.count<PAWN>(BLACK) && npm_b - npm_w <= BishopValueMg)
       e->factor[BLACK] = uint8_t(npm_b <  RookValueMg   ? SCALE_FACTOR_DRAW :
-                                 npm_w <= BishopValueMg ? 4 : 12);
+                                 npm_w <= BishopValueMg ? 4 : 14);
 
   if (pos.count<PAWN>(WHITE) == 1 && npm_w - npm_b <= BishopValueMg)
       e->factor[WHITE] = (uint8_t) SCALE_FACTOR_ONEPAWN;

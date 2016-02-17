@@ -2,6 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
+  Copyright (C) 2015-2016 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -28,7 +29,7 @@
 #include "types.h"
 
 class Position;
-struct Thread;
+class Thread;
 
 namespace PSQT {
 
@@ -37,8 +38,8 @@ namespace PSQT {
   void init();
 }
 
-/// CheckInfo struct is initialized at c'tor time and keeps info used to detect
-/// if a move gives check.
+/// CheckInfo struct is initialized at constructor time and keeps info used to
+/// detect if a move gives check.
 
 struct CheckInfo {
 
@@ -81,8 +82,6 @@ struct StateInfo {
 /// traversing the search tree.
 
 class Position {
-
-  friend std::ostream& operator<<(std::ostream&, const Position&);
 
 public:
   static void init();
@@ -209,6 +208,8 @@ private:
   StateInfo* st;
   bool chess960;
 };
+
+extern std::ostream& operator<<(std::ostream& os, const Position& pos);
 
 inline Color Position::side_to_move() const {
   return sideToMove;

@@ -1,5 +1,7 @@
 ### Overview
 
+[![Build Status](https://travis-ci.org/official-stockfish/Stockfish.svg?branch=master)](https://travis-ci.org/official-stockfish/Stockfish)
+
 Stockfish is a free UCI chess engine derived from Glaurung 2.1. It is
 not a complete chess program and requires some UCI-compatible GUI
 (e.g. XBoard with PolyGlot, eboard, Arena, Sigma Chess, Shredder, Chess
@@ -54,7 +56,7 @@ for correspondence games (because of tablebase adjudication).
 
 The "SyzygyProbeLimit" option should normally be left at its default value.
 
-**What to expect**  
+**What to expect**
 If the engine is searching a position that is not in the tablebases (e.g.
 a position with 7 pieces), it will access the tablebases during the search.
 If the engine reports a very large score (typically 123.xx), this means
@@ -109,4 +111,4 @@ to where the source code can be found. If you make any changes to the
 source code, these changes must also be made available under the GPL.
 
 For full details, read the copy of the GPL found in the file named
-*Copying.txt*
+*Copying.txt*.

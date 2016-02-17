@@ -2,6 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
+  Copyright (C) 2015-2016 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -39,7 +40,7 @@ namespace {
      70, 50, 30, 20, 20, 30, 50,  70,
      80, 60, 40, 30, 30, 40, 60,  80,
      90, 70, 60, 50, 50, 60, 70,  90,
-    100, 90, 80, 70, 70, 80, 90, 100,
+    100, 90, 80, 70, 70, 80, 90, 100
   };
 
   // Table used to drive the king towards a corner square of the
@@ -58,6 +59,9 @@ namespace {
   // Tables used to drive a piece towards or away from another piece
   const int PushClose[8] = { 0, 0, 100, 80, 60, 40, 20, 10 };
   const int PushAway [8] = { 0, 5, 20, 40, 60, 80, 90, 100 };
+
+  // Pawn Rank based scaling factors used in KRPPKRP endgame
+  const int KRPPKRPScaleFactors[RANK_NB] = { 0, 9, 10, 14, 21, 44, 0, 0 };
 
 #ifndef NDEBUG
   bool verify_material(const Position& pos, Color c, Value npm, int pawnsCnt) {
@@ -160,7 +164,7 @@ Value Endgame<KXK>::operator()(const Position& pos) const {
       ||(pos.count<BISHOP>(strongSide) && pos.count<KNIGHT>(strongSide))
       ||(pos.count<BISHOP>(strongSide) > 1 && opposite_colors(pos.squares<BISHOP>(strongSide)[0],
                                                               pos.squares<BISHOP>(strongSide)[1])))
-      result += VALUE_KNOWN_WIN;
+      result = std::min(result + VALUE_KNOWN_WIN, VALUE_MATE_IN_MAX_PLY - 1);
 
   return strongSide == pos.side_to_move() ? result : -result;
 }
@@ -600,14 +604,8 @@ ScaleFactor Endgame<KRPPKRP>::operator()(const Position& pos) const {
       && distance<File>(bksq, wpsq2) <= 1
       && relative_rank(strongSide, bksq) > r)
   {
-      switch (r) {
-      case RANK_2: return ScaleFactor(10);
-      case RANK_3: return ScaleFactor(10);
-      case RANK_4: return ScaleFactor(15);
-      case RANK_5: return ScaleFactor(20);
-      case RANK_6: return ScaleFactor(40);
-      default: assert(false);
-      }
+      assert(r > RANK_1 && r < RANK_7);
+      return ScaleFactor(KRPPKRPScaleFactors[r]);
   }
   return SCALE_FACTOR_NONE;
 }

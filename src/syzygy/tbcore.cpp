@@ -3,7 +3,7 @@
   This file may be redistributed and/or modified without restrictions.
 
   tbcore.c contains engine-independent routines of the tablebase probing code.
-  This file should not need to much adaptation to add tablebase probing to
+  This file should not need too much adaptation to add tablebase probing to
   a particular engine, provided the engine is written in C or C++.
 */
 

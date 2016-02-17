@@ -2,6 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
+  Copyright (C) 2015-2016 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -39,7 +40,7 @@ const string Version = "";
 /// usual I/O functionality, all without changing a single line of code!
 /// Idea from http://groups.google.com/group/comp.lang.c++/msg/1d941c0f26ea0d81
 
-struct Tie: public streambuf { // MSVC requires splitted streambuf for cin and cout
+struct Tie: public streambuf { // MSVC requires split streambuf for cin and cout
 
   Tie(streambuf* b, streambuf* l) : buf(b), logBuf(l) {}
 
@@ -113,7 +114,7 @@ const string engine_info(bool to_uci) {
   ss << (Is64Bit ? " 64" : "")
      << (HasPext ? " BMI2" : (HasPopCnt ? " POPCNT" : ""))
      << (to_uci  ? "\nid author ": " by ")
-     << "Tord Romstad, Marco Costalba and Joona Kiiski";
+     << "T. Romstad, M. Costalba, J. Kiiski, G. Linscott";
 
   return ss.str();
 }

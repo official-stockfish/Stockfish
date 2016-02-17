@@ -2,6 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
+  Copyright (C) 2015-2016 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -90,11 +91,11 @@ namespace {
 
     // Read option name (can contain spaces)
     while (is >> token && token != "value")
-        name += string(" ", !name.empty()) + token;
+        name += string(" ", name.empty() ? 0 : 1) + token;
 
     // Read option value (can contain spaces)
     while (is >> token)
-        value += string(" ", !value.empty()) + token;
+        value += string(" ", value.empty() ? 0 : 1) + token;
 
     if (Options.count(name))
         Options[name] = value;
@@ -112,6 +113,8 @@ namespace {
     Search::LimitsType limits;
     string token;
 
+    limits.startTime = now(); // As early as possible!
+
     while (is >> token)
         if (token == "searchmoves")
             while (is >> token)
@@ -126,8 +129,8 @@ namespace {
         else if (token == "nodes")     is >> limits.nodes;
         else if (token == "movetime")  is >> limits.movetime;
         else if (token == "mate")      is >> limits.mate;
-        else if (token == "infinite")  limits.infinite = true;
-        else if (token == "ponder")    limits.ponder = true;
+        else if (token == "infinite")  limits.infinite = 1;
+        else if (token == "ponder")    limits.ponder = 1;
 
     Threads.start_thinking(pos, limits, SetupStates);
   }
@@ -168,10 +171,10 @@ void UCI::loop(int argc, char* argv[]) {
           || (token == "ponderhit" && Search::Signals.stopOnPonderhit))
       {
           Search::Signals.stop = true;
-          Threads.main()->notify_one(); // Could be sleeping
+          Threads.main()->start_searching(true); // Could be sleeping
       }
       else if (token == "ponderhit")
-          Search::Limits.ponder = false; // Switch to normal search
+          Search::Limits.ponder = 0; // Switch to normal search
 
       else if (token == "uci")
           sync_cout << "id name " << engine_info(true)
@@ -180,7 +183,7 @@ void UCI::loop(int argc, char* argv[]) {
 
       else if (token == "ucinewgame")
       {
-          Search::reset();
+          Search::clear();
           Time.availableNodes = 0;
       }
       else if (token == "isready")    sync_cout << "readyok" << sync_endl;
@@ -209,7 +212,7 @@ void UCI::loop(int argc, char* argv[]) {
 
   } while (token != "quit" && argc == 1); // Passed args have one-shot behaviour
 
-  Threads.main()->join(); // Cannot quit whilst the search is running
+  Threads.main()->wait_for_search_finished();
 }
 
 
