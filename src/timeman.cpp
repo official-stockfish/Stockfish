@@ -43,10 +43,10 @@ namespace {
 
   double move_importance(int ply) {
 
-    const double XScale = 7.0e-9;
-    const double XPower = 4.0;
+    const double PlyScale = 109.3265;
+    const double PlyGrowth = 4.0;
 
-    return exp(-XScale * pow(ply, XPower)) + DBL_MIN; // Ensure non-zero
+    return exp(-pow(ply / PlyScale, PlyGrowth)) + DBL_MIN; // Ensure non-zero
   }
 
   template<TimeType T>
