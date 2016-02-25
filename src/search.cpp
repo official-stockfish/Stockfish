@@ -183,16 +183,17 @@ void Search::init() {
       for (int d = 1; d < 64; ++d)
           for (int mc = 1; mc < 64; ++mc)
           {
+              bool pv=true;
               double r = log(d) * log(mc) / 2;
               if (r < 0.80)
                 continue;
 
-              Reductions[0][imp][d][mc] = int(std::round(r)) * ONE_PLY;
-              Reductions[1][imp][d][mc] = std::max(Reductions[0][imp][d][mc] - 1, 0) * ONE_PLY;
-
-              // Increase reduction when eval is not improving
-              if (!imp && Reductions[0][imp][d][mc] >= 2 * ONE_PLY)
-                Reductions[0][imp][d][mc] += ONE_PLY;
+              Reductions[!pv][imp][d][mc] = int(std::round(r)) * ONE_PLY;
+              Reductions[pv][imp][d][mc] = std::max(Reductions[!pv][imp][d][mc] - ONE_PLY, DEPTH_ZERO);
+              
+              // Increase reduction for non-pv nodes when eval is not improving
+              if (!imp && Reductions[!pv][imp][d][mc] >= 2 * ONE_PLY)
+                Reductions[!pv][imp][d][mc] += ONE_PLY;
           }
 
   for (int d = 0; d < 16; ++d)
