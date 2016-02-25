@@ -168,7 +168,7 @@ namespace {
   // Passed[mg/eg][Rank] contains midgame and endgame bonuses for passed pawns.
   // We don't use a Score because we process the two components independently.
   const Value Passed[][RANK_NB] = {
-    { V(0), V( 1), V(26), V(68), V(161), V(247) },
+    { V(5), V( 5), V(31), V(73), V(166), V(252) },
     { V(7), V(14), V(38), V(64), V(137), V(193) }
   };
 
@@ -615,10 +615,10 @@ namespace {
                 else if (defendedSquares & blockSq)
                     k += 4;
 
-                mbonus += k * rr * 3 / 4, ebonus += k * rr;
+                mbonus += k * rr, ebonus += k * rr;
             }
             else if (pos.pieces(Us) & blockSq)
-                mbonus += (rr * 3 + r * 2 + 3) * 3 / 4, ebonus += rr + r * 2;
+                mbonus += rr + r * 2, ebonus += rr + r * 2;
         } // rr != 0
 
         if (pos.count<PAWN>(Us) < pos.count<PAWN>(Them))
