@@ -179,11 +179,12 @@ namespace {
 
 void Search::init() {
 
+  const bool pv=true;
+
   for (int imp = 0; imp <= 1; ++imp)
       for (int d = 1; d < 64; ++d)
           for (int mc = 1; mc < 64; ++mc)
           {
-              bool pv=true;
               double r = log(d) * log(mc) / 2;
               if (r < 0.80)
                 continue;
