@@ -179,22 +179,23 @@ namespace {
 
 void Search::init() {
 
-  const double K[][2] = {{ 0.799, 2.281 }, { 0.484, 3.023 }};
+  const bool pv=true;
 
-  for (int pv = 0; pv <= 1; ++pv)
-      for (int imp = 0; imp <= 1; ++imp)
-          for (int d = 1; d < 64; ++d)
-              for (int mc = 1; mc < 64; ++mc)
-              {
-                  double r = K[pv][0] + log(d) * log(mc) / K[pv][1];
+  for (int imp = 0; imp <= 1; ++imp)
+      for (int d = 1; d < 64; ++d)
+          for (int mc = 1; mc < 64; ++mc)
+          {
+              double r = log(d) * log(mc) / 2;
+              if (r < 0.80)
+                continue;
 
-                  if (r >= 1.5)
-                      Reductions[pv][imp][d][mc] = int(r) * ONE_PLY;
-
-                  // Increase reduction when eval is not improving
-                  if (!pv && !imp && Reductions[pv][imp][d][mc] >= 2 * ONE_PLY)
-                      Reductions[pv][imp][d][mc] += ONE_PLY;
-              }
+              Reductions[!pv][imp][d][mc] = int(std::round(r)) * ONE_PLY;
+              Reductions[pv][imp][d][mc] = std::max(Reductions[!pv][imp][d][mc] - ONE_PLY, DEPTH_ZERO);
+              
+              // Increase reduction for non-pv nodes when eval is not improving
+              if (!imp && Reductions[!pv][imp][d][mc] >= 2 * ONE_PLY)
+                Reductions[!pv][imp][d][mc] += ONE_PLY;
+          }
 
   for (int d = 0; d < 16; ++d)
   {
