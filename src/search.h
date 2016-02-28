@@ -5,7 +5,7 @@
   Copyright (C) 2015-2016 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
+  it under the terms of the GNU General Public License as published byrotmove
   the Free Software Foundation, either version 3 of the License, or
   (at your option) any later version.
 
@@ -54,8 +54,8 @@ struct Stack {
 struct RootMove {
 
   explicit RootMove(Move m) : pv(1, m) {
-    Value score = -VALUE_INFINITE;
-    Value previousScore = -VALUE_INFINITE;
+    score = -VALUE_INFINITE;
+    previousScore = -VALUE_INFINITE;
   }
 
   bool operator<(const RootMove& m) const { return m.score < score; } // Descending sort
