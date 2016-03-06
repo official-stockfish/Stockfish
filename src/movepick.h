@@ -46,11 +46,7 @@ struct Stats {
   T* operator[](Piece pc) { return table[pc]; }
   void clear() { std::memset(table, 0, sizeof(table)); }
 
-  void update(Piece pc, Square to, Move m) {
-
-    if (m != table[pc][to])
-        table[pc][to] = m;
-  }
+  void update(Piece pc, Square to, Move m) { table[pc][to] = m; }
 
   void update(Piece pc, Square to, Value v) {
 
