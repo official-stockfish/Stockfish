@@ -467,7 +467,7 @@ namespace {
   }
 
 
-  // evaluate_threats() assigns bonuses according to the types of the attacking 
+  // evaluate_threats() assigns bonuses according to the types of the attacking
   // and the attacked pieces.
 
   template<Color Us, bool DoTrace>
@@ -597,10 +597,10 @@ namespace {
 
                 Bitboard bb = forward_bb(Them, s) & pos.pieces(ROOK, QUEEN) & pos.attacks_from<ROOK>(s);
 
-                if (!(pos.pieces(Us) & bb))
+                if (!(bb & pos.pieces(Us)))
                     defendedSquares &= ei.attackedBy[Us][ALL_PIECES];
 
-                if (!(pos.pieces(Them) & bb))
+                if (!(bb & pos.pieces(Them)))
                     unsafeSquares &= ei.attackedBy[Them][ALL_PIECES] | pos.pieces(Them);
 
                 // If there aren't any enemy attacks, assign a big bonus. Otherwise
@@ -617,7 +617,7 @@ namespace {
 
                 mbonus += k * rr * 3 / 4, ebonus += k * rr;
             }
-            else if (pos.pieces(Us) & blockSq)
+            else if (blockSq & pos.pieces(Us))
                 mbonus += (rr * 3 + r * 2 + 3) * 3 / 4, ebonus += rr + r * 2;
         } // rr != 0
 
