@@ -168,7 +168,7 @@ namespace {
   // Passed[mg/eg][Rank] contains midgame and endgame bonuses for passed pawns.
   // We don't use a Score because we process the two components independently.
   const Value Passed[][RANK_NB] = {
-    { V(0), V( 1), V(26), V(68), V(161), V(247) },
+    { V(5), V( 5), V(31), V(73), V(166), V(252) },
     { V(7), V(14), V(38), V(64), V(137), V(193) }
   };
 
@@ -615,10 +615,10 @@ namespace {
                 else if (defendedSquares & blockSq)
                     k += 4;
 
-                mbonus += k * rr * 3 / 4, ebonus += k * rr;
+                mbonus += k * rr, ebonus += k * rr;
             }
             else if (pos.pieces(Us) & blockSq)
-                mbonus += (rr * 3 + r * 2 + 3) * 3 / 4, ebonus += rr + r * 2;
+                mbonus += rr + r * 2, ebonus += rr + r * 2;
         } // rr != 0
 
         if (pos.count<PAWN>(Us) < pos.count<PAWN>(Them))
@@ -679,11 +679,12 @@ namespace {
   // status of the players.
   Score evaluate_initiative(const Position& pos, int asymmetry, Value eg) {
 
-    int kingDistance = distance<File>(pos.square<KING>(WHITE), pos.square<KING>(BLACK));
+    int kingDistance =   distance<File>(pos.square<KING>(WHITE), pos.square<KING>(BLACK))
+                       - distance<Rank>(pos.square<KING>(WHITE), pos.square<KING>(BLACK));
     int pawns = pos.count<PAWN>(WHITE) + pos.count<PAWN>(BLACK);
 
     // Compute the initiative bonus for the attacking side
-    int initiative = 8 * (pawns + asymmetry + kingDistance - 15);
+    int initiative = 8 * (asymmetry + kingDistance) + 12 * pawns - 120;
 
     // Now apply the bonus: note that we find the attacking side by extracting
     // the sign of the endgame value, and that we carefully cap the bonus so
@@ -695,9 +696,9 @@ namespace {
 
 
   // evaluate_scale_factor() computes the scale factor for the winning side
-  ScaleFactor evaluate_scale_factor(const Position& pos, const EvalInfo& ei, Score score) {
+  ScaleFactor evaluate_scale_factor(const Position& pos, const EvalInfo& ei, Value eg) {
 
-    Color strongSide = eg_value(score) > VALUE_DRAW ? WHITE : BLACK;
+    Color strongSide = eg > VALUE_DRAW ? WHITE : BLACK;
     ScaleFactor sf = ei.me->scale_factor(pos, strongSide);
 
     // If we don't already have an unusual scale factor, check for certain
@@ -720,7 +721,7 @@ namespace {
         }
         // Endings where weaker side can place his king in front of the opponent's
         // pawns are drawish.
-        else if (    abs(eg_value(score)) <= BishopValueEg
+        else if (    abs(eg) <= BishopValueEg
                  &&  ei.pi->pawn_span(strongSide) <= 1
                  && !pos.pawn_passed(~strongSide, pos.square<KING>(~strongSide)))
             sf = ei.pi->pawn_span(strongSide) ? ScaleFactor(51) : ScaleFactor(37);
@@ -816,7 +817,7 @@ Value Eval::evaluate(const Position& pos) {
   score += evaluate_initiative(pos, ei.pi->pawn_asymmetry(), eg_value(score));
 
   // Evaluate scale factor for the winning side
-  ScaleFactor sf = evaluate_scale_factor(pos, ei, score);
+  ScaleFactor sf = evaluate_scale_factor(pos, ei, eg_value(score));
 
   // Interpolate between a middlegame and a (scaled by 'sf') endgame score
   Value v =  mg_value(score) * int(ei.me->game_phase())

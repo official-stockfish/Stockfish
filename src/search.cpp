@@ -179,22 +179,23 @@ namespace {
 
 void Search::init() {
 
-  const double K[][2] = {{ 0.799, 2.281 }, { 0.484, 3.023 }};
+  const bool PV=true;
 
-  for (int pv = 0; pv <= 1; ++pv)
-      for (int imp = 0; imp <= 1; ++imp)
-          for (int d = 1; d < 64; ++d)
-              for (int mc = 1; mc < 64; ++mc)
-              {
-                  double r = K[pv][0] + log(d) * log(mc) / K[pv][1];
+  for (int imp = 0; imp <= 1; ++imp)
+      for (int d = 1; d < 64; ++d)
+          for (int mc = 1; mc < 64; ++mc)
+          {
+              double r = log(d) * log(mc) / 2;
+              if (r < 0.80)
+                continue;
 
-                  if (r >= 1.5)
-                      Reductions[pv][imp][d][mc] = int(r) * ONE_PLY;
-
-                  // Increase reduction when eval is not improving
-                  if (!pv && !imp && Reductions[pv][imp][d][mc] >= 2 * ONE_PLY)
-                      Reductions[pv][imp][d][mc] += ONE_PLY;
-              }
+              Reductions[!PV][imp][d][mc] = int(std::round(r)) * ONE_PLY;
+              Reductions[PV][imp][d][mc] = std::max(Reductions[!PV][imp][d][mc] - ONE_PLY, DEPTH_ZERO);
+              
+              // Increase reduction for non-PV nodes when eval is not improving
+              if (!imp && Reductions[!PV][imp][d][mc] >= 2 * ONE_PLY)
+                Reductions[!PV][imp][d][mc] += ONE_PLY;
+          }
 
   for (int d = 0; d < 16; ++d)
   {
@@ -1010,16 +1011,16 @@ moves_loop: // When in check search starts from here
           && !captureOrPromotion)
       {
           Depth r = reduction<PvNode>(improving, depth, moveCount);
+          Value hValue = thisThread->history[pos.piece_on(to_sq(move))][to_sq(move)];
+          Value cmhValue = cmh[pos.piece_on(to_sq(move))][to_sq(move)];
 
           // Increase reduction for cut nodes and moves with a bad history
           if (   (!PvNode && cutNode)
-              || (   thisThread->history[pos.piece_on(to_sq(move))][to_sq(move)] < VALUE_ZERO
-                  && cmh[pos.piece_on(to_sq(move))][to_sq(move)] <= VALUE_ZERO))
+              || (hValue < VALUE_ZERO && cmhValue <= VALUE_ZERO))
               r += ONE_PLY;
 
           // Decrease/increase reduction for moves with a good/bad history
-          int rHist = (  thisThread->history[pos.piece_on(to_sq(move))][to_sq(move)]
-                       + cmh[pos.piece_on(to_sq(move))][to_sq(move)]) / 14980;
+          int rHist = (hValue + cmhValue) / 14980;
           r = std::max(DEPTH_ZERO, r - rHist * ONE_PLY);
 
           // Decrease reduction for moves that escape a capture. Filter out
