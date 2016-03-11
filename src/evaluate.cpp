@@ -424,36 +424,20 @@ namespace {
         b2 = pos.attacks_from<BISHOP>(ksq) & safe;
 
         // Enemy queen safe checks
-        b = (b1 | b2) & ei.attackedBy[Them][QUEEN];
-        if (b)
-        {
-            attackUnits += QueenCheck;
-            score -= Checked;
-        }
+        if ((b1 | b2) & ei.attackedBy[Them][QUEEN])
+            attackUnits += QueenCheck, score -= Checked;
 
         // Enemy rooks safe checks
-        b = b1 & ei.attackedBy[Them][ROOK];
-        if (b)
-        {
-            attackUnits += RookCheck;
-            score -= Checked;
-        }
+        if (b1 & ei.attackedBy[Them][ROOK])
+            attackUnits += RookCheck, score -= Checked;
 
         // Enemy bishops safe checks
-        b = b2 & ei.attackedBy[Them][BISHOP];
-        if (b)
-        {
-            attackUnits += BishopCheck;
-            score -= Checked;
-        }
+        if (b2 & ei.attackedBy[Them][BISHOP])
+            attackUnits += BishopCheck, score -= Checked;
 
         // Enemy knights safe checks
-        b = pos.attacks_from<KNIGHT>(ksq) & ei.attackedBy[Them][KNIGHT] & safe;
-        if (b)
-        {
-            attackUnits += KnightCheck;
-            score -= Checked;
-        }
+        if (pos.attacks_from<KNIGHT>(ksq) & ei.attackedBy[Them][KNIGHT] & safe)
+            attackUnits += KnightCheck, score -= Checked;
 
         // Finally, extract the king danger score from the KingDanger[]
         // array and subtract the score from the evaluation.
