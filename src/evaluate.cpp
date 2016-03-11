@@ -372,9 +372,6 @@ namespace {
   Score evaluate_king(const Position& pos, const EvalInfo& ei) {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
-
-    Bitboard undefended, b, b1, b2, safe;
-    int attackUnits;
     const Square ksq = pos.square<KING>(Us);
 
     // King shelter and enemy pawns storm
@@ -385,27 +382,27 @@ namespace {
     {
         // Find the attacked squares around the king which have no defenders
         // apart from the king itself.
-        undefended =  ei.attackedBy[Them][ALL_PIECES]
-                    & ei.attackedBy[Us][KING]
-                    & ~(  ei.attackedBy[Us][PAWN]   | ei.attackedBy[Us][KNIGHT]
-                        | ei.attackedBy[Us][BISHOP] | ei.attackedBy[Us][ROOK]
-                        | ei.attackedBy[Us][QUEEN]);
+        Bitboard undefended =  ei.attackedBy[Them][ALL_PIECES]
+                             & ei.attackedBy[Us][KING]
+                             & ~(  ei.attackedBy[Us][PAWN]   | ei.attackedBy[Us][KNIGHT]
+                                 | ei.attackedBy[Us][BISHOP] | ei.attackedBy[Us][ROOK]
+                                 | ei.attackedBy[Us][QUEEN]);
 
         // Initialize the 'attackUnits' variable, which is used later on as an
         // index into the KingDanger[] array. The initial value is based on the
         // number and types of the enemy's attacking pieces, the number of
         // attacked and undefended squares around our king and the quality of
         // the pawn shelter (current 'score' value).
-        attackUnits =  std::min(72, ei.kingAttackersCount[Them] * ei.kingAttackersWeight[Them])
-                     +  9 * ei.kingAdjacentZoneAttacksCount[Them]
-                     + 27 * popcount<Max15>(undefended)
-                     + 11 * !!ei.pinnedPieces[Us]
-                     - 64 * !pos.count<QUEEN>(Them)
-                     - mg_value(score) / 8;
+        int attackUnits =  std::min(72, ei.kingAttackersCount[Them] * ei.kingAttackersWeight[Them])
+                         +  9 * ei.kingAdjacentZoneAttacksCount[Them]
+                         + 27 * popcount<Max15>(undefended)
+                         + 11 * !!ei.pinnedPieces[Us]
+                         - 64 * !pos.count<QUEEN>(Them)
+                         - mg_value(score) / 8;
 
         // Analyse the enemy's safe queen contact checks. Firstly, find the
         // undefended squares around the king reachable by the enemy queen...
-        b = undefended & ei.attackedBy[Them][QUEEN] & ~pos.pieces(Them);
+        Bitboard b = undefended & ei.attackedBy[Them][QUEEN] & ~pos.pieces(Them);
         if (b)
         {
             // ...and then remove squares not supported by another enemy piece
@@ -418,10 +415,10 @@ namespace {
         }
 
         // Analyse the enemy's safe distance checks for sliders and knights
-        safe = ~(ei.attackedBy[Us][ALL_PIECES] | pos.pieces(Them));
+        Bitboard safe = ~(ei.attackedBy[Us][ALL_PIECES] | pos.pieces(Them));
 
-        b1 = pos.attacks_from<ROOK  >(ksq) & safe;
-        b2 = pos.attacks_from<BISHOP>(ksq) & safe;
+        Bitboard b1 = pos.attacks_from<ROOK  >(ksq) & safe;
+        Bitboard b2 = pos.attacks_from<BISHOP>(ksq) & safe;
 
         // Enemy queen safe checks
         if ((b1 | b2) & ei.attackedBy[Them][QUEEN])
