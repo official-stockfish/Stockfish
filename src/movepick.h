@@ -83,9 +83,10 @@ public:
   MovePicker(const MovePicker&) = delete;
   MovePicker& operator=(const MovePicker&) = delete;
 
-  MovePicker(const Position&, Move, Depth, const HistoryStats&, Square);
   MovePicker(const Position&, Move, const HistoryStats&, Value);
-  MovePicker(const Position&, Move, Depth, const HistoryStats&, const CounterMoveStats&, const CounterMoveStats&, Move, Search::Stack*);
+  MovePicker(const Position&, Move, Depth, const HistoryStats&, Square);
+  MovePicker(const Position&, Move, Depth, const HistoryStats&,
+             const CounterMoveStats&, const CounterMoveStats&, Move, Search::Stack*);
 
   Move next_move();
 

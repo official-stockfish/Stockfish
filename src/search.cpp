@@ -179,8 +179,6 @@ namespace {
 
 void Search::init() {
 
-  const bool PV=true;
-
   for (int imp = 0; imp <= 1; ++imp)
       for (int d = 1; d < 64; ++d)
           for (int mc = 1; mc < 64; ++mc)
@@ -189,12 +187,12 @@ void Search::init() {
               if (r < 0.80)
                 continue;
 
-              Reductions[!PV][imp][d][mc] = int(std::round(r)) * ONE_PLY;
-              Reductions[PV][imp][d][mc] = std::max(Reductions[!PV][imp][d][mc] - ONE_PLY, DEPTH_ZERO);
-              
+              Reductions[NonPV][imp][d][mc] = int(std::round(r)) * ONE_PLY;
+              Reductions[PV][imp][d][mc] = std::max(Reductions[NonPV][imp][d][mc] - ONE_PLY, DEPTH_ZERO);
+
               // Increase reduction for non-PV nodes when eval is not improving
-              if (!imp && Reductions[!PV][imp][d][mc] >= 2 * ONE_PLY)
-                Reductions[!PV][imp][d][mc] += ONE_PLY;
+              if (!imp && Reductions[NonPV][imp][d][mc] >= 2 * ONE_PLY)
+                Reductions[NonPV][imp][d][mc] += ONE_PLY;
           }
 
   for (int d = 0; d < 16; ++d)
@@ -1429,8 +1427,8 @@ moves_loop: // When in check search starts from here
   }
 
 
-  // update_stats() updates killers, history, countermove and countermove
-  // history when a new quiet best move is found.
+  // update_stats() updates killers, history, countermove and countermove plus
+  // follow-up move history when a new quiet best move is found.
 
   void update_stats(const Position& pos, Stack* ss, Move move,
                     Depth depth, Move* quiets, int quietsCnt) {
