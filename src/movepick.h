@@ -46,11 +46,7 @@ struct Stats {
   T* operator[](Piece pc) { return table[pc]; }
   void clear() { std::memset(table, 0, sizeof(table)); }
 
-  void update(Piece pc, Square to, Move m) {
-
-    if (m != table[pc][to])
-        table[pc][to] = m;
-  }
+  void update(Piece pc, Square to, Move m) { table[pc][to] = m; }
 
   void update(Piece pc, Square to, Value v) {
 
@@ -83,9 +79,10 @@ public:
   MovePicker(const MovePicker&) = delete;
   MovePicker& operator=(const MovePicker&) = delete;
 
-  MovePicker(const Position&, Move, Depth, const HistoryStats&, Square);
   MovePicker(const Position&, Move, const HistoryStats&, Value);
-  MovePicker(const Position&, Move, Depth, const HistoryStats&, const CounterMoveStats&, const CounterMoveStats&, Move, Search::Stack*);
+  MovePicker(const Position&, Move, Depth, const HistoryStats&, Square);
+  MovePicker(const Position&, Move, Depth, const HistoryStats&,
+             const CounterMoveStats&, const CounterMoveStats&, Move, Search::Stack*);
 
   Move next_move();
 

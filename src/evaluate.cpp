@@ -424,36 +424,20 @@ namespace {
         b2 = pos.attacks_from<BISHOP>(ksq) & safe;
 
         // Enemy queen safe checks
-        b = (b1 | b2) & ei.attackedBy[Them][QUEEN];
-        if (b)
-        {
-            attackUnits += QueenCheck * popcount<Max15>(b);
-            score -= Checked;
-        }
+        if ((b1 | b2) & ei.attackedBy[Them][QUEEN])
+            attackUnits += QueenCheck, score -= Checked;
 
         // Enemy rooks safe checks
-        b = b1 & ei.attackedBy[Them][ROOK];
-        if (b)
-        {
-            attackUnits += RookCheck * popcount<Max15>(b);
-            score -= Checked;
-        }
+        if (b1 & ei.attackedBy[Them][ROOK])
+            attackUnits += RookCheck, score -= Checked;
 
         // Enemy bishops safe checks
-        b = b2 & ei.attackedBy[Them][BISHOP];
-        if (b)
-        {
-            attackUnits += BishopCheck * popcount<Max15>(b);
-            score -= Checked;
-        }
+        if (b2 & ei.attackedBy[Them][BISHOP])
+            attackUnits += BishopCheck, score -= Checked;
 
         // Enemy knights safe checks
-        b = pos.attacks_from<KNIGHT>(ksq) & ei.attackedBy[Them][KNIGHT] & safe;
-        if (b)
-        {
-            attackUnits += KnightCheck * popcount<Max15>(b);
-            score -= Checked;
-        }
+        if (pos.attacks_from<KNIGHT>(ksq) & ei.attackedBy[Them][KNIGHT] & safe)
+            attackUnits += KnightCheck, score -= Checked;
 
         // Finally, extract the king danger score from the KingDanger[]
         // array and subtract the score from the evaluation.
@@ -467,7 +451,7 @@ namespace {
   }
 
 
-  // evaluate_threats() assigns bonuses according to the types of the attacking 
+  // evaluate_threats() assigns bonuses according to the types of the attacking
   // and the attacked pieces.
 
   template<Color Us, bool DoTrace>
@@ -679,12 +663,12 @@ namespace {
   // status of the players.
   Score evaluate_initiative(const Position& pos, int asymmetry, Value eg) {
 
-    int kingDistance =   distance<File>(pos.square<KING>(WHITE), pos.square<KING>(BLACK))
-                       - distance<Rank>(pos.square<KING>(WHITE), pos.square<KING>(BLACK));
+    int kingDistance =  distance<File>(pos.square<KING>(WHITE), pos.square<KING>(BLACK))
+                      - distance<Rank>(pos.square<KING>(WHITE), pos.square<KING>(BLACK));
     int pawns = pos.count<PAWN>(WHITE) + pos.count<PAWN>(BLACK);
 
     // Compute the initiative bonus for the attacking side
-    int initiative = 8 * (asymmetry + kingDistance) + 12 * pawns - 120;
+    int initiative = 8 * (asymmetry + kingDistance - 15) + 12 * pawns;
 
     // Now apply the bonus: note that we find the attacking side by extracting
     // the sign of the endgame value, and that we carefully cap the bonus so

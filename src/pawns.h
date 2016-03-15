@@ -53,7 +53,7 @@ struct Entry {
   }
 
   template<Color Us>
-  Score king_safety(const Position& pos, Square ksq)  {
+  Score king_safety(const Position& pos, Square ksq) {
     return  kingSquares[Us] == ksq && castlingRights[Us] == pos.can_castle(Us)
           ? kingSafety[Us] : (kingSafety[Us] = do_king_safety<Us>(pos, ksq));
   }
