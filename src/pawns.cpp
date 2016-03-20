@@ -288,9 +288,6 @@ Score Entry::do_king_safety(const Position& pos, Square ksq) {
   if (pawns)
       while (!(DistanceRingBB[ksq][minKingPawnDistance++] & pawns)) {}
 
-  if (relative_rank(Us, ksq) > RANK_4)
-      return make_score(0, -16 * minKingPawnDistance);
-
   Value bonus = shelter_storm<Us>(pos, ksq);
 
   // If we can castle use the bonus after the castling if it is bigger
