@@ -225,8 +225,7 @@ namespace {
 
     ei.pinnedPieces[Us] = pos.pinned_pieces(Us);
     Bitboard b = ei.attackedBy[Them][KING] = pos.attacks_from<KING>(pos.square<KING>(Them));
-    ei.attackedBy[Them][ALL_PIECES] |= b;
-    ei.attackedBy[Us][ALL_PIECES] |= ei.attackedBy[Us][PAWN] = ei.pi->pawn_attacks(Us);
+    ei.attackedBy[Us][ALL_PIECES] = ei.attackedBy[Us][PAWN] = ei.pi->pawn_attacks(Us);
 
     // Init king safety tables only if we are going to use them
     if (pos.non_pawn_material(Us) >= QueenValueMg)
@@ -281,9 +280,7 @@ namespace {
         }
 
         if (Pt == QUEEN)
-            b &= ~(  ei.attackedBy[Them][KNIGHT]
-                   | ei.attackedBy[Them][BISHOP]
-                   | ei.attackedBy[Them][ROOK]);
+            b &= ~ei.attackedBy[Them][ALL_BUT_KQ];
 
         int mob = popcount<Pt == QUEEN ? Full : Max15>(b & mobilityArea[Us]);
 
@@ -352,6 +349,12 @@ namespace {
             }
         }
     }
+    
+    if (Pt == ROOK)
+    {
+        ei.attackedBy[Us][ALL_BUT_KQ] = ei.attackedBy[Us][ALL_PIECES];
+        ei.attackedBy[Us][ALL_PIECES] |= ei.attackedBy[Us][KING];
+    }
 
     if (DoTrace)
         Trace::add(Pt, Us, score);
@@ -387,9 +390,7 @@ namespace {
         // apart from the king itself.
         undefended =  ei.attackedBy[Them][ALL_PIECES]
                     & ei.attackedBy[Us][KING]
-                    & ~(  ei.attackedBy[Us][PAWN]   | ei.attackedBy[Us][KNIGHT]
-                        | ei.attackedBy[Us][BISHOP] | ei.attackedBy[Us][ROOK]
-                        | ei.attackedBy[Us][QUEEN]);
+                    & ~(ei.attackedBy[Us][ALL_BUT_KQ] | ei.attackedBy[Us][QUEEN]);
 
         // Initialize the 'attackUnits' variable, which is used later on as an
         // index into the KingDanger[] array. The initial value is based on the
@@ -409,10 +410,7 @@ namespace {
         if (b)
         {
             // ...and then remove squares not supported by another enemy piece
-            b &=  ei.attackedBy[Them][PAWN]   | ei.attackedBy[Them][KNIGHT]
-                | ei.attackedBy[Them][BISHOP] | ei.attackedBy[Them][ROOK]
-                | ei.attackedBy[Them][KING];
-
+            b &= ei.attackedBy[Them][ALL_BUT_KQ] | ei.attackedBy[Them][KING];
             if (b)
                 attackUnits += QueenContactCheck * popcount<Max15>(b);
         }
@@ -747,7 +745,6 @@ Value Eval::evaluate(const Position& pos) {
   score += ei.pi->pawns_score();
 
   // Initialize attack and king safety bitboards
-  ei.attackedBy[WHITE][ALL_PIECES] = ei.attackedBy[BLACK][ALL_PIECES] = 0;
   eval_init<WHITE>(pos, ei);
   eval_init<BLACK>(pos, ei);
 
