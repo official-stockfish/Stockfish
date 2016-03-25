@@ -384,12 +384,15 @@ namespace {
     if (ei.kingAttackersCount[Them])
     {
         // Find the attacked squares around the king which have no defenders
-        // apart from the king itself.
+        // apart from the king itself...
         undefended =  ei.attackedBy[Them][ALL_PIECES]
                     & ei.attackedBy[Us][KING]
                     & ~(  ei.attackedBy[Us][PAWN]   | ei.attackedBy[Us][KNIGHT]
                         | ei.attackedBy[Us][BISHOP] | ei.attackedBy[Us][ROOK]
                         | ei.attackedBy[Us][QUEEN]);
+
+        // and those which are not defended at all in the larger kingring 
+        b = ei.attackedBy[Them][ALL_PIECES] & ~ei.attackedBy[Us][ALL_PIECES] & ei.kingRing[Us];
 
         // Initialize the 'attackUnits' variable, which is used later on as an
         // index into the KingDanger[] array. The initial value is based on the
@@ -399,7 +402,7 @@ namespace {
         attackUnits =  std::min(72, ei.kingAttackersCount[Them] * ei.kingAttackersWeight[Them])
                      +  9 * ei.kingAdjacentZoneAttacksCount[Them]
                      + 27 * popcount<Max15>(undefended)
-                     + 11 * !!ei.pinnedPieces[Us]
+                     + 11 * (popcount<Max15>(b) + !!ei.pinnedPieces[Us])
                      - 64 * !pos.count<QUEEN>(Them)
                      - mg_value(score) / 8;
 
