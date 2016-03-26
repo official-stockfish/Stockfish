@@ -383,13 +383,17 @@ namespace {
     // Main king safety evaluation
     if (ei.kingAttackersCount[Them])
     {
-        // apart from the king itself...
+        // Find the attacked squares which are defended only by the king...
         undefended =  ei.attackedBy[Them][ALL_PIECES]
                     & ei.attackedBy[Us][KING]
                     & ~(  ei.attackedBy[Us][PAWN]   | ei.attackedBy[Us][KNIGHT]
                         | ei.attackedBy[Us][BISHOP] | ei.attackedBy[Us][ROOK]
                         | ei.attackedBy[Us][QUEEN]);
 
+        // ... and those which are not defended at all in the larger king ring
+        // (excluding our pieces, since we already score the hanging bonus elsewhere)
+        b =   ei.attackedBy[Them][ALL_PIECES] & ~ei.attackedBy[Us][ALL_PIECES] 
+            & ei.kingRing[Us] & ~pos.pieces(Us);
 
         // Initialize the 'attackUnits' variable, which is used later on as an
         // index into the KingDanger[] array. The initial value is based on the
