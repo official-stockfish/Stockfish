@@ -310,7 +310,7 @@ inline Square msb(Bitboard b) {
 
 #  if defined(__GNUC__)
 inline Square lsb(Bitboard b) { return Square(__builtin_ctzll(b)); }
-inline Square msb(Bitboard b) { return Square(return 63 - __builtin_clzll(b)); }
+inline Square msb(Bitboard b) { return Square(63 - __builtin_clzll(b)); }
 #  else
 Square lsb(Bitboard b);
 Square msb(Bitboard b);
