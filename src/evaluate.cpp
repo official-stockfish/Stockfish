@@ -248,19 +248,18 @@ namespace {
   Score evaluate_pieces(const Position& pos, EvalInfo& ei, Score* mobility,
                         const Bitboard* mobilityArea) {
     Bitboard b, bb;
-    Square s;
     Score score = SCORE_ZERO;
 
     const PieceType NextPt = (Us == WHITE ? Pt : PieceType(Pt + 1));
     const Color Them = (Us == WHITE ? BLACK : WHITE);
     const Bitboard OutpostRanks = (Us == WHITE ? Rank4BB | Rank5BB | Rank6BB
                                                : Rank5BB | Rank4BB | Rank3BB);
-    const Square* pl = pos.squares<Pt>(Us);
-
     ei.attackedBy[Us][Pt] = 0;
 
-    while ((s = *pl++) != SQ_NONE)
+    for (Bitboard pieces = pos.pieces(Us, Pt); pieces; )
     {
+        Square s = pop_lsb(&pieces);
+
         // Find attacked squares, including x-ray attacks for bishops and rooks
         b = Pt == BISHOP ? attacks_bb<BISHOP>(s, pos.pieces() ^ pos.pieces(Us, QUEEN))
           : Pt ==   ROOK ? attacks_bb<  ROOK>(s, pos.pieces() ^ pos.pieces(Us, ROOK, QUEEN))
