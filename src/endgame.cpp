@@ -163,7 +163,7 @@ Value Endgame<KXK>::operator()(const Position& pos) const {
       || pos.count<ROOK>(strongSide)
       ||(pos.count<BISHOP>(strongSide) && pos.count<KNIGHT>(strongSide))
       ||(pos.count<BISHOP>(strongSide) > 1 && opposite_colors(lsb(pos.pieces(strongSide, BISHOP)),
-                                                              msb(pos.pieces(strongSide, BISHOP))))
+                                                              msb(pos.pieces(strongSide, BISHOP)))))
       result = std::min(result + VALUE_KNOWN_WIN, VALUE_MATE_IN_MAX_PLY - 1);
 
   return strongSide == pos.side_to_move() ? result : -result;
