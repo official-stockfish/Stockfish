@@ -76,15 +76,13 @@ namespace {
   }
 }
 
-#ifndef USE_BSFQ
+#if !defined(USE_BSFQ) && !defined(__GNUC__)
 
 /// Software fall-back of lsb() and msb() for CPU lacking hardware support
 
-#  if !defined(__GNUC__)
 Square lsb(Bitboard b) {
   return BSFTable[bsf_index(b)];
 }
-#  endif
 
 Square msb(Bitboard b) {
 
@@ -114,7 +112,7 @@ Square msb(Bitboard b) {
   return Square(result + MSBTable[b32]);
 }
 
-#endif // ifndef USE_BSFQ
+#endif // if !defined(USE_BSFQ) && !defined(__GNUC__)
 
 
 /// Bitboards::pretty() returns an ASCII representation of a bitboard suitable
