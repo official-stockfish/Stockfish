@@ -308,7 +308,12 @@ inline Square msb(Bitboard b) {
 
 #else // ifdef(USE_BSFQ)
 
+#  if defined(__GNUC__)
+inline Square lsb(Bitboard b) { return Square(__builtin_ctzll(b)); }
+#  else
 Square lsb(Bitboard b);
+#  endif
+
 Square msb(Bitboard b);
 
 #endif

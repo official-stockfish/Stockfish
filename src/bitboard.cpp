@@ -80,9 +80,11 @@ namespace {
 
 /// Software fall-back of lsb() and msb() for CPU lacking hardware support
 
+#  if !defined(__GNUC__)
 Square lsb(Bitboard b) {
   return BSFTable[bsf_index(b)];
 }
+#  endif
 
 Square msb(Bitboard b) {
 
