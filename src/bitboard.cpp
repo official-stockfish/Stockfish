@@ -76,7 +76,7 @@ namespace {
   }
 }
 
-#ifndef USE_BSFQ
+#ifdef NO_BSF
 
 /// Software fall-back of lsb() and msb() for CPU lacking hardware support
 
@@ -112,7 +112,7 @@ Square msb(Bitboard b) {
   return Square(result + MSBTable[b32]);
 }
 
-#endif // ifndef USE_BSFQ
+#endif // ifdef NO_BSF
 
 
 /// Bitboards::pretty() returns an ASCII representation of a bitboard suitable
