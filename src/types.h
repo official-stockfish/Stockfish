@@ -62,7 +62,6 @@
 #if defined(_WIN64) && defined(_MSC_VER) // No Makefile used
 #  include <intrin.h> // MSVC popcnt and bsfq instrinsics
 #  define IS_64BIT
-#  define USE_BSFQ
 #endif
 
 #if defined(USE_POPCNT) && defined(__INTEL_COMPILER) && defined(_MSC_VER)

@@ -50,10 +50,8 @@ OBJS = benchmark.o bitbase.o bitboard.o endgame.o evaluate.o main.o \
 # optimize = yes/no   --- (-O3/-fast etc.) --- Enable/Disable optimizations
 # arch = (name)       --- (-arch)          --- Target architecture
 # bits = 64/32        --- -DIS_64BIT       --- 64-/32-bit operating system
-# prefetch = yes/no   --- -DUSE_PREFETCH   --- Use prefetch x86 asm-instruction
-# bsfq = yes/no       --- -DUSE_BSFQ       --- Use bsfq x86_64 asm-instruction (only
-#                                              with GCC and ICC 64-bit)
-# popcnt = yes/no     --- -DUSE_POPCNT     --- Use popcnt x86_64 asm-instruction
+# prefetch = yes/no   --- -DUSE_PREFETCH   --- Use prefetch asm-instruction
+# popcnt = yes/no     --- -DUSE_POPCNT     --- Use popcnt asm-instruction
 # sse = yes/no        --- -msse            --- Use Intel Streaming SIMD Extensions
 # pext = yes/no       --- -DUSE_PEXT       --- Use pext x86_64 asm-instruction
 #
@@ -66,7 +64,6 @@ optimize = yes
 debug = no
 bits = 32
 prefetch = no
-bsfq = no
 popcnt = no
 sse = no
 pext = no
@@ -96,7 +93,6 @@ ifeq ($(ARCH),x86-64)
 	arch = x86_64
 	bits = 64
 	prefetch = yes
-	bsfq = yes
 	sse = yes
 endif
 
@@ -104,7 +100,6 @@ ifeq ($(ARCH),x86-64-modern)
 	arch = x86_64
 	bits = 64
 	prefetch = yes
-	bsfq = yes
 	popcnt = yes
 	sse = yes
 endif
@@ -113,7 +108,6 @@ ifeq ($(ARCH),x86-64-bmi2)
 	arch = x86_64
 	bits = 64
 	prefetch = yes
-	bsfq = yes
 	popcnt = yes
 	sse = yes
 	pext = yes
@@ -122,7 +116,6 @@ endif
 ifeq ($(ARCH),armv7)
 	arch = armv7
 	prefetch = yes
-	bsfq = yes
 endif
 
 ifeq ($(ARCH),ppc-32)
@@ -309,11 +302,6 @@ else
 	CXXFLAGS += -DNO_PREFETCH
 endif
 
-### 3.8 bsfq
-ifeq ($(bsfq),yes)
-	CXXFLAGS += -DUSE_BSFQ
-endif
-
 ### 3.9 popcnt
 ifeq ($(popcnt),yes)
 	ifeq ($(comp),icc)
@@ -465,7 +453,6 @@ config-sanity:
 	@echo "arch: '$(arch)'"
 	@echo "bits: '$(bits)'"
 	@echo "prefetch: '$(prefetch)'"
-	@echo "bsfq: '$(bsfq)'"
 	@echo "popcnt: '$(popcnt)'"
 	@echo "sse: '$(sse)'"
 	@echo "pext: '$(pext)'"
@@ -483,7 +470,6 @@ config-sanity:
 	 test "$(arch)" = "ppc64" || test "$(arch)" = "ppc" || test "$(arch)" = "armv7"
 	@test "$(bits)" = "32" || test "$(bits)" = "64"
 	@test "$(prefetch)" = "yes" || test "$(prefetch)" = "no"
-	@test "$(bsfq)" = "yes" || test "$(bsfq)" = "no"
 	@test "$(popcnt)" = "yes" || test "$(popcnt)" = "no"
 	@test "$(sse)" = "yes" || test "$(sse)" = "no"
 	@test "$(pext)" = "yes" || test "$(pext)" = "no"
