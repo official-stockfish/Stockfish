@@ -282,13 +282,8 @@ inline Square msb(Bitboard b) {
 
 #define NO_BSF // Fallback on software implementation for other cases
 
-#  if defined(__GNUC__)
-inline Square lsb(Bitboard b) { return Square(__builtin_ctzll(b)); }
-inline Square msb(Bitboard b) { return Square(63 - __builtin_clzll(b)); }
-#  else
 Square lsb(Bitboard b);
 Square msb(Bitboard b);
-#  endif
 
 #endif
 
