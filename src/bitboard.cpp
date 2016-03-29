@@ -81,11 +81,13 @@ namespace {
 /// Software fall-back of lsb() and msb() for CPU lacking hardware support
 
 Square lsb(Bitboard b) {
+  assert(b);
   return BSFTable[bsf_index(b)];
 }
 
 Square msb(Bitboard b) {
 
+  assert(b);
   unsigned b32;
   int result = 0;
 
