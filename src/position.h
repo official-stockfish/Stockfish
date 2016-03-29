@@ -105,7 +105,7 @@ public:
   Bitboard pieces(Color c, PieceType pt1, PieceType pt2) const;
   Piece piece_on(Square s) const;
   Square ep_square() const;
-  Square king_square(Color c) const;
+  Square square(Color c, PieceType pt) const;
   bool empty(Square s) const;
   template<PieceType Pt> int count(Color c) const;
   template<PieceType Pt> const Square* squares(Color c) const;
@@ -269,8 +269,9 @@ inline Square Position::ep_square() const {
   return st->epSquare;
 }
 
-inline Square Position::king_square(Color c) const {
-  return lsb(pieces(c, KING));
+inline Square Position::square(Color c, PieceType pt) const {
+  assert(popcount<Full>(pieces(c, pt)) == 1);
+  return lsb(pieces(c, pt));
 }
 
 inline int Position::can_castle(CastlingRight cr) const {

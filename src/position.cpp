@@ -90,7 +90,7 @@ PieceType min_attacker<KING>(const Bitboard*, Square, Bitboard, Bitboard&, Bitbo
 CheckInfo::CheckInfo(const Position& pos) {
 
   Color them = ~pos.side_to_move();
-  ksq = pos.king_square(them);
+  ksq = pos.square(them, KING);
 
   pinned = pos.pinned_pieces(pos.side_to_move());
   dcCandidates = pos.discovered_check_candidates();
