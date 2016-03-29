@@ -109,7 +109,6 @@ public:
   bool empty(Square s) const;
   template<PieceType Pt> int count(Color c) const;
   template<PieceType Pt> const Square* squares(Color c) const;
-  template<PieceType Pt> Square square(Color c) const;
 
   // Castling
   int can_castle(Color c) const;
@@ -260,11 +259,6 @@ template<PieceType Pt> inline const Square* Position::squares(Color c) const {
   return pieceList[c][Pt];
 }
 
-template<PieceType Pt> inline Square Position::square(Color c) const {
-  assert(pieceCount[c][Pt] == 1);
-  return pieceList[c][Pt][0];
-}
-
 inline Square Position::ep_square() const {
   return st->epSquare;
 }
@@ -370,7 +364,7 @@ inline void Position::set_nodes_searched(uint64_t n) {
 inline bool Position::opposite_bishops() const {
   return   pieceCount[WHITE][BISHOP] == 1
         && pieceCount[BLACK][BISHOP] == 1
-        && opposite_colors(square<BISHOP>(WHITE), square<BISHOP>(BLACK));
+        && opposite_colors(square(WHITE, BISHOP), square(BLACK, BISHOP));
 }
 
 inline bool Position::is_chess960() const {
