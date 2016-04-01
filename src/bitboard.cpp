@@ -76,16 +76,18 @@ namespace {
   }
 }
 
-#ifndef USE_BSFQ
+#ifdef NO_BSF
 
 /// Software fall-back of lsb() and msb() for CPU lacking hardware support
 
 Square lsb(Bitboard b) {
+  assert(b);
   return BSFTable[bsf_index(b)];
 }
 
 Square msb(Bitboard b) {
 
+  assert(b);
   unsigned b32;
   int result = 0;
 
@@ -112,7 +114,7 @@ Square msb(Bitboard b) {
   return Square(result + MSBTable[b32]);
 }
 
-#endif // ifndef USE_BSFQ
+#endif // ifdef NO_BSF
 
 
 /// Bitboards::pretty() returns an ASCII representation of a bitboard suitable
