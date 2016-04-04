@@ -128,18 +128,18 @@ namespace {
         e->pawnAttacksSpan[Us] |= pawn_attack_span(Us, s);
 
         // Flag the pawn
-        opposed     =   theirPawns & forward_bb(Us, s);
-        stoppers    =   theirPawns & passed_pawn_mask(Us, s);
-        lever       =   theirPawns & pawnAttacksBB[s];
+        opposed    = theirPawns & forward_bb(Us, s);
+        stoppers   = theirPawns & passed_pawn_mask(Us, s);
+        lever      = theirPawns & pawnAttacksBB[s];
         doubled    = ourPawns   & forward_bb(Us, s);
         neighbours = ourPawns   & adjacent_files_bb(f);
-        phalanx     =   neighbours & rank_bb(s);
-        supported   =   neighbours & rank_bb(s - Up);
-        connected   =   supported | phalanx;
+        phalanx    = neighbours & rank_bb(s);
+        supported  = neighbours & rank_bb(s - Up);
+        connected  = supported | phalanx;
 
-        // A pawn is backward when is behind all pawns of the same color on the
+        // A pawn is backward when it is behind all pawns of the same color on the
         // adjacent files and cannot be safely advanced.
-        if (!neighbours || lever || connected || relative_rank(Us, s) >= RANK_5)
+        if (connected || !neighbours || relative_rank(Us, s) >= RANK_5 || lever)
             backward = false;
         else
         {
@@ -148,7 +148,7 @@ namespace {
 
             // The pawn is backward when it cannot safely progress to that rank:
             // either there is a stopper in the way on this rank, or there is a
-            // stopper on adjacent file which control the way to that rank.
+            // stopper on adjacent file which controls the way to that rank.
             backward = (b | shift_bb<Up>(b & adjacent_files_bb(f))) & stoppers;
         }
 
@@ -166,7 +166,7 @@ namespace {
             score -= Backward[opposed];
 
         else if (!supported)
-            score -= Unsupported[more_than_one(neighbours & rank_bb(s + Up))];
+            score -= Unsupported[more_than_one(neighbours & pawnAttacksBB[s])];
 
         if (connected)
             score += Connected[opposed][!!phalanx][more_than_one(supported)][relative_rank(Us, s)];
