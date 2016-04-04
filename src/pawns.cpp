@@ -139,7 +139,7 @@ namespace {
 
         // A pawn is backward when it is behind all pawns of the same color on the
         // adjacent files and cannot be safely advanced.
-        if (connected || !neighbours || relative_rank(Us, s) >= RANK_5 || lever)
+        if (connected || !neighbours || lever || relative_rank(Us, s) >= RANK_5)
             backward = false;
         else
         {
