@@ -102,7 +102,7 @@ namespace {
 
     Bitboard b, neighbours, stoppers, doubled, supported, phalanx;
     Square s;
-    bool isolated, opposed, lever, connected, backward;
+    bool opposed, lever, connected, backward;
     Score score = SCORE_ZERO;
     const Square* pl = pos.squares<PAWN>(Us);
     const Bitboard* pawnAttacksBB = StepAttacksBB[make_piece(Us, PAWN)];
@@ -128,18 +128,18 @@ namespace {
         e->pawnAttacksSpan[Us] |= pawn_attack_span(Us, s);
 
         // Flag the pawn
-        neighbours  =   ourPawns   & adjacent_files_bb(f);
-        doubled     =   ourPawns   & forward_bb(Us, s);
         opposed     =   theirPawns & forward_bb(Us, s);
         stoppers    =   theirPawns & passed_pawn_mask(Us, s);
         lever       =   theirPawns & pawnAttacksBB[s];
+        doubled    = ourPawns   & forward_bb(Us, s);
+        neighbours = ourPawns   & adjacent_files_bb(f);
         phalanx     =   neighbours & rank_bb(s);
         supported   =   neighbours & rank_bb(s - Up);
         connected   =   supported | phalanx;
-        isolated    =  !neighbours;
 
-        // Test for backward pawn.
-        if ( (isolated | lever | connected) || (relative_rank(Us, s) >= RANK_5))
+        // A pawn is backward when is behind all pawns of the same color on the
+        // adjacent files and cannot be safely advanced.
+        if (!neighbours || lever || connected || relative_rank(Us, s) >= RANK_5)
             backward = false;
         else
         {
@@ -147,12 +147,10 @@ namespace {
             b = rank_bb(backmost_sq(Us, neighbours | stoppers));
 
             // The pawn is backward when it cannot safely progress to that rank:
-            // either there is a stopper in the way on this rank,
-            // or there is a stopper on adjacent file which control the way to that rank
+            // either there is a stopper in the way on this rank, or there is a
+            // stopper on adjacent file which control the way to that rank.
             backward = (b | shift_bb<Up>(b & adjacent_files_bb(f))) & stoppers;
         }
-
-        assert(opposed | !stoppers | (pawn_attack_span(Us, s) & theirPawns));
 
         // Passed pawns will be properly scored in evaluation because we need
         // full attack info to evaluate them. Only the frontmost passed
@@ -161,7 +159,7 @@ namespace {
             e->passedPawns[Us] |= s;
 
         // Score this pawn
-        if (isolated)
+        if (!neighbours)
             score -= Isolated[opposed][f];
 
         else if (backward)
