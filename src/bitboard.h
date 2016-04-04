@@ -259,11 +259,16 @@ inline Bitboard attacks_bb(Piece pc, Square s, Bitboard occupied) {
 
 /// lsb() and msb() return the least/most significant bit in a non-zero bitboard
 
-#if defined(__GNUC__)
+#ifdef __GNUC__
 
 inline Square lsb(Bitboard b) {
   assert(b);
+#  ifdef IS_64BIT
   return Square(__builtin_ctzll(b));
+#  else
+  uint32_t low = uint32_t(b), high = uint32_t(b >> 32);
+  return Square(low ? __builtin_ctz(low) : 32 + __builtin_ctz(high));
+#  endif
 }
 
 inline Square msb(Bitboard b) {
