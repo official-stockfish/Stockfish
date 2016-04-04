@@ -139,24 +139,16 @@ namespace {
         isolated    =  !neighbours;
 
         // Test for backward pawn.
-        // If the pawn is passed, isolated, lever or connected it cannot be
-        // backward. If there are friendly pawns behind on adjacent files
-        // or if it is sufficiently advanced, it cannot be backward either.
-        if (   (!stoppers | isolated | lever | connected)
-            || (ourPawns & pawn_attack_span(Them, s))
-            || (relative_rank(Us, s) >= RANK_5))
+        if ( (isolated | lever | connected) || (relative_rank(Us, s) >= RANK_5))
             backward = false;
         else
         {
-            // We now know there are no friendly pawns beside or behind this
-            // pawn on adjacent files. We now check whether the pawn is
-            // backward by looking in the forward direction on the adjacent
-            // files and the front file, and picking the closest pawn there.
+            // Find the backmost rank with neighbours or stoppers
             b = rank_bb(backmost_sq(Us, neighbours | stoppers));
 
-            // If we have an enemy pawn in the same or next rank, the pawn is
-            // backward because it is opposed or it can be captured before 
-            // making a phalanx with closest neighbour.
+            // The pawn is backward when it cannot safely progress to that rank:
+            // either there is a stopper in the way on this rank,
+            // or there is a stopper on adjacent file which control the way to that rank
             backward = (b | shift_bb<Up>(b & adjacent_files_bb(f))) & stoppers;
         }
 
