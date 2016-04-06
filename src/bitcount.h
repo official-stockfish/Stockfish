@@ -60,9 +60,9 @@ inline int popcount<CNT_64_MAX15>(Bitboard b) {
 template<>
 inline int popcount<CNT_32>(Bitboard b) {
 
-	union { Bitboard bb; uint16_t u[4];	} v = { b };
-	extern uint8_t PopCounts16[1 << 16];
-	return PopCounts16[v.u[0]] + PopCounts16[v.u[1]] + PopCounts16[v.u[2]] + PopCounts16[v.u[3]];
+  union { Bitboard bb; uint16_t u[4]; } v = { b };
+  extern uint8_t PopCounts16[1 << 16];
+  return PopCounts16[v.u[0]] + PopCounts16[v.u[1]] + PopCounts16[v.u[2]] + PopCounts16[v.u[3]];
 }
 
 template<>
