@@ -140,11 +140,11 @@ const std::string Bitboards::pretty(Bitboard b) {
 }
 
 #if !defined(IS_64BIT)
-inline uint8_t popcount16(uint16_t s) {
-    s -= (s >> 1) & 0x5555U;
-    s = ((s >> 2) & 0x3333U) + (s & 0x3333U);
-    s = ((s >> 4) + s) & 0x0F0FU;
-    return (s * 0x0101U) >> 8;
+inline uint8_t popcount16(uint16_t u) {
+    u -= (u >> 1) & 0x5555U;
+    u = ((u >> 2) & 0x3333U) + (u & 0x3333U);
+    u = ((u >> 4) + u) & 0x0F0FU;
+    return (u * 0x0101U) >> 8;
 }
 #endif
 
