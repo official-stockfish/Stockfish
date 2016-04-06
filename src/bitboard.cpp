@@ -21,9 +21,9 @@
 #include <algorithm>
 
 #include "bitboard.h"
-#include "bitcount.h"
 #include "misc.h"
 
+uint8_t PopCnt16[1 << 16];
 int SquareDistance[SQUARE_NB][SQUARE_NB];
 
 Bitboard  RookMasks  [SQUARE_NB];
@@ -50,8 +50,6 @@ Bitboard PassedPawnMask[COLOR_NB][SQUARE_NB];
 Bitboard PawnAttackSpan[COLOR_NB][SQUARE_NB];
 Bitboard PseudoAttacks[PIECE_TYPE_NB][SQUARE_NB];
 
-uint8_t PopCounts16[1 << 16];
-
 namespace {
 
   // De Bruijn sequences. See chessprogramming.wikispaces.com/BitScan
@@ -75,6 +73,16 @@ namespace {
     b ^= b - 1;
     return Is64Bit ? (b * DeBruijn64) >> 58
                    : ((unsigned(b) ^ unsigned(b >> 32)) * DeBruijn32) >> 26;
+  }
+
+
+  // popcount16() counts the non-zero bits using SWAR-Popcount algorithm
+
+  uint8_t popcount16(uint16_t u) {
+    u -= (u >> 1) & 0x5555U;
+    u = ((u >> 2) & 0x3333U) + (u & 0x3333U);
+    u = ((u >> 4) + u) & 0x0F0FU;
+    return (u * 0x0101U) >> 8;
   }
 }
 
@@ -137,12 +145,6 @@ const std::string Bitboards::pretty(Bitboard b) {
   return s;
 }
 
-inline uint8_t popcount16(uint16_t u) {
-    u -= (u >> 1) & 0x5555U;
-    u = ((u >> 2) & 0x3333U) + (u & 0x3333U);
-    u = ((u >> 4) + u) & 0x0F0FU;
-    return (u * 0x0101U) >> 8;
-}
 
 /// Bitboards::init() initializes various bitboard tables. It is called at
 /// startup and relies on global objects to be already zero-initialized.
@@ -150,7 +152,7 @@ inline uint8_t popcount16(uint16_t u) {
 void Bitboards::init() {
 
   for (unsigned i = 0; i < (1 << 16); ++i)
-      PopCounts16[i] = popcount16(i);
+      PopCnt16[i] = popcount16(i);
 
   for (Square s = SQ_A1; s <= SQ_H8; ++s)
   {
@@ -276,7 +278,7 @@ namespace {
         // the number of 1s of the mask. Hence we deduce the size of the shift to
         // apply to the 64 or 32 bits word to get the index.
         masks[s]  = sliding_attack(deltas, s, 0) & ~edges;
-        shifts[s] = (Is64Bit ? 64 : 32) - popcount<Max15>(masks[s]);
+        shifts[s] = (Is64Bit ? 64 : 32) - popcount(masks[s]);
 
         // Use Carry-Rippler trick to enumerate all subsets of masks[s] and
         // store the corresponding sliding attack bitboard in reference[].
@@ -307,7 +309,7 @@ namespace {
         do {
             do
                 magics[s] = rng.sparse_rand<Bitboard>();
-            while (popcount<Max15>((magics[s] * masks[s]) >> 56) < 6);
+            while (popcount((magics[s] * masks[s]) >> 56) < 6);
 
             // A good magic must map every possible occupancy to an index that
             // looks up the correct sliding attack in the attacks[s] database.

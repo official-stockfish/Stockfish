@@ -24,7 +24,7 @@
 #include <iomanip>
 #include <sstream>
 
-#include "bitcount.h"
+#include "bitboard.h"
 #include "misc.h"
 #include "movegen.h"
 #include "position.h"
@@ -1170,7 +1170,7 @@ bool Position::pos_is_ok(int* failedStep) const {
           for (Color c = WHITE; c <= BLACK; ++c)
               for (PieceType pt = PAWN; pt <= KING; ++pt)
               {
-                  if (pieceCount[c][pt] != popcount<Full>(pieces(c, pt)))
+                  if (pieceCount[c][pt] != popcount(pieces(c, pt)))
                       return false;
 
                   for (int i = 0; i < pieceCount[c][pt];  ++i)
