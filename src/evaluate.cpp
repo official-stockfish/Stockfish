@@ -614,9 +614,6 @@ namespace {
                 mbonus += rr + r * 2, ebonus += rr + r * 2;
         } // rr != 0
 
-        if (pos.count<PAWN>(Us) < pos.count<PAWN>(Them))
-            ebonus += ebonus / 4;
-
         score += make_score(mbonus, ebonus) + PassedFile[file_of(s)];
     }
 
