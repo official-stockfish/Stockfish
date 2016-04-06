@@ -15,7 +15,6 @@
 #include "../movegen.h"
 #include "../bitboard.h"
 #include "../search.h"
-#include "../bitboard.h"
 
 #include "tbprobe.h"
 #include "tbcore.h"
