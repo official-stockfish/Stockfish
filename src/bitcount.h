@@ -29,7 +29,6 @@ enum BitCountType {
   CNT_64,
   CNT_64_MAX15,
   CNT_32,
-  CNT_32_MAX15,
   CNT_HW_POPCNT
 };
 
@@ -37,7 +36,7 @@ enum BitCountType {
 /// whether the platform is 32 or 64 bit, the maximum number of non-zero
 /// bits to count and if the hardware popcnt instruction is available.
 const BitCountType Full  = HasPopCnt ? CNT_HW_POPCNT : Is64Bit ? CNT_64       : CNT_32;
-const BitCountType Max15 = HasPopCnt ? CNT_HW_POPCNT : Is64Bit ? CNT_64_MAX15 : CNT_32_MAX15;
+const BitCountType Max15 = HasPopCnt ? CNT_HW_POPCNT : Is64Bit ? CNT_64_MAX15 : CNT_32;
 
 
 /// popcount() counts the number of non-zero bits in a bitboard
@@ -60,23 +59,10 @@ inline int popcount<CNT_64_MAX15>(Bitboard b) {
 
 template<>
 inline int popcount<CNT_32>(Bitboard b) {
-  unsigned w = unsigned(b >> 32), v = unsigned(b);
-  v -=  (v >> 1) & 0x55555555; // 0-2 in 2 bits
-  w -=  (w >> 1) & 0x55555555;
-  v  = ((v >> 2) & 0x33333333) + (v & 0x33333333); // 0-4 in 4 bits
-  w  = ((w >> 2) & 0x33333333) + (w & 0x33333333);
-  v  = ((v >> 4) + v + (w >> 4) + w) & 0x0F0F0F0F;
-  return (v * 0x01010101) >> 24;
-}
 
-template<>
-inline int popcount<CNT_32_MAX15>(Bitboard b) {
-  unsigned w = unsigned(b >> 32), v = unsigned(b);
-  v -=  (v >> 1) & 0x55555555; // 0-2 in 2 bits
-  w -=  (w >> 1) & 0x55555555;
-  v  = ((v >> 2) & 0x33333333) + (v & 0x33333333); // 0-4 in 4 bits
-  w  = ((w >> 2) & 0x33333333) + (w & 0x33333333);
-  return ((v + w) * 0x11111111) >> 28;
+	union { Bitboard bb; uint16_t u[4];	} v = { b };
+	extern uint8_t PopCounts16[1 << 16];
+	return PopCounts16[v.u[0]] + PopCounts16[v.u[1]] + PopCounts16[v.u[2]] + PopCounts16[v.u[3]];
 }
 
 template<>
