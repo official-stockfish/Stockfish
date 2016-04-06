@@ -50,9 +50,7 @@ Bitboard PassedPawnMask[COLOR_NB][SQUARE_NB];
 Bitboard PawnAttackSpan[COLOR_NB][SQUARE_NB];
 Bitboard PseudoAttacks[PIECE_TYPE_NB][SQUARE_NB];
 
-#if !defined(IS_64BIT)
 uint8_t PopCounts16[1 << 16];
-#endif
 
 namespace {
 
@@ -139,24 +137,20 @@ const std::string Bitboards::pretty(Bitboard b) {
   return s;
 }
 
-#if !defined(IS_64BIT)
 inline uint8_t popcount16(uint16_t u) {
     u -= (u >> 1) & 0x5555U;
     u = ((u >> 2) & 0x3333U) + (u & 0x3333U);
     u = ((u >> 4) + u) & 0x0F0FU;
     return (u * 0x0101U) >> 8;
 }
-#endif
 
 /// Bitboards::init() initializes various bitboard tables. It is called at
 /// startup and relies on global objects to be already zero-initialized.
 
 void Bitboards::init() {
 
-#if !defined(IS_64BIT)
-    for (unsigned i = 0; i < (1 << 16); ++i)
-        PopCounts16[i] = popcount16(i);
-#endif
+  for (unsigned i = 0; i < (1 << 16); ++i)
+      PopCounts16[i] = popcount16(i);
 
   for (Square s = SQ_A1; s <= SQ_H8; ++s)
   {

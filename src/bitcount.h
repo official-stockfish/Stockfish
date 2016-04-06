@@ -26,39 +26,22 @@
 #include "types.h"
 
 enum BitCountType {
-  CNT_64,
-  CNT_64_MAX15,
-  CNT_32,
+  CNT_SW_POPCNT,
   CNT_HW_POPCNT
 };
 
 /// Determine at compile time the best popcount<> specialization according to
 /// whether the platform is 32 or 64 bit, the maximum number of non-zero
 /// bits to count and if the hardware popcnt instruction is available.
-const BitCountType Full  = HasPopCnt ? CNT_HW_POPCNT : Is64Bit ? CNT_64       : CNT_32;
-const BitCountType Max15 = HasPopCnt ? CNT_HW_POPCNT : Is64Bit ? CNT_64_MAX15 : CNT_32;
+const BitCountType Full  = HasPopCnt ? CNT_HW_POPCNT : CNT_SW_POPCNT;
+const BitCountType Max15 = HasPopCnt ? CNT_HW_POPCNT : CNT_SW_POPCNT;
 
 
 /// popcount() counts the number of non-zero bits in a bitboard
 template<BitCountType> inline int popcount(Bitboard);
 
 template<>
-inline int popcount<CNT_64>(Bitboard b) {
-  b -=  (b >> 1) & 0x5555555555555555ULL;
-  b  = ((b >> 2) & 0x3333333333333333ULL) + (b & 0x3333333333333333ULL);
-  b  = ((b >> 4) + b) & 0x0F0F0F0F0F0F0F0FULL;
-  return (b * 0x0101010101010101ULL) >> 56;
-}
-
-template<>
-inline int popcount<CNT_64_MAX15>(Bitboard b) {
-  b -=  (b >> 1) & 0x5555555555555555ULL;
-  b  = ((b >> 2) & 0x3333333333333333ULL) + (b & 0x3333333333333333ULL);
-  return (b * 0x1111111111111111ULL) >> 60;
-}
-
-template<>
-inline int popcount<CNT_32>(Bitboard b) {
+inline int popcount<CNT_SW_POPCNT>(Bitboard b) {
 
   union { Bitboard bb; uint16_t u[4]; } v = { b };
   extern uint8_t PopCounts16[1 << 16];
