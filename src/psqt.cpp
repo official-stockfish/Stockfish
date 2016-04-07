@@ -18,7 +18,13 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <algorithm>
+
 #include "types.h"
+
+Value PieceValue[PHASE_NB][PIECE_NB] = {
+{ VALUE_ZERO, PawnValueMg, KnightValueMg, BishopValueMg, RookValueMg, QueenValueMg },
+{ VALUE_ZERO, PawnValueEg, KnightValueEg, BishopValueEg, RookValueEg, QueenValueEg } };
 
 namespace PSQT {
 
@@ -96,7 +102,7 @@ const Score Bonus[][RANK_NB][int(FILE_NB) / 2] = {
 
 Score psq[COLOR_NB][PIECE_TYPE_NB][SQUARE_NB];
 
-// init() initializes piece square tables: the white halves of the tables are
+// init() initializes piece-square tables: the white halves of the tables are
 // copied from Bonus[] adding the piece value, then the black halves of the
 // tables are initialized by flipping and changing the sign of the white scores.
 void init() {
@@ -110,8 +116,9 @@ void init() {
 
       for (Square s = SQ_A1; s <= SQ_H8; ++s)
       {
-          int edgeDistance = file_of(s) < FILE_E ? file_of(s) : FILE_H - file_of(s);
-          psq[BLACK][pt][~s] = -(psq[WHITE][pt][s] = v + Bonus[pt][rank_of(s)][edgeDistance]);
+          File f = std::min(file_of(s), FILE_H - file_of(s));
+          psq[WHITE][pt][ s] = v + Bonus[pt][rank_of(s)][f];
+          psq[BLACK][pt][~s] = -psq[WHITE][pt][s];
       }
   }
 }

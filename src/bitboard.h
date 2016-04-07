@@ -61,16 +61,6 @@ const Bitboard Rank8BB = Rank1BB << (8 * 7);
 
 extern int SquareDistance[SQUARE_NB][SQUARE_NB];
 
-extern Bitboard  RookMasks  [SQUARE_NB];
-extern Bitboard  RookMagics [SQUARE_NB];
-extern Bitboard* RookAttacks[SQUARE_NB];
-extern unsigned  RookShifts [SQUARE_NB];
-
-extern Bitboard  BishopMasks  [SQUARE_NB];
-extern Bitboard  BishopMagics [SQUARE_NB];
-extern Bitboard* BishopAttacks[SQUARE_NB];
-extern unsigned  BishopShifts [SQUARE_NB];
-
 extern Bitboard SquareBB[SQUARE_NB];
 extern Bitboard FileBB[FILE_NB];
 extern Bitboard RankBB[RANK_NB];
@@ -225,6 +215,13 @@ template<> inline int distance<Rank>(Square x, Square y) { return distance(rank_
 template<PieceType Pt>
 inline unsigned magic_index(Square s, Bitboard occupied) {
 
+  extern Bitboard RookMasks[SQUARE_NB];
+  extern Bitboard RookMagics[SQUARE_NB];
+  extern unsigned RookShifts[SQUARE_NB];
+  extern Bitboard BishopMasks[SQUARE_NB];
+  extern Bitboard BishopMagics[SQUARE_NB];
+  extern unsigned BishopShifts[SQUARE_NB];
+
   Bitboard* const Masks  = Pt == ROOK ? RookMasks  : BishopMasks;
   Bitboard* const Magics = Pt == ROOK ? RookMagics : BishopMagics;
   unsigned* const Shifts = Pt == ROOK ? RookShifts : BishopShifts;
@@ -242,6 +239,10 @@ inline unsigned magic_index(Square s, Bitboard occupied) {
 
 template<PieceType Pt>
 inline Bitboard attacks_bb(Square s, Bitboard occupied) {
+
+  extern Bitboard* RookAttacks[SQUARE_NB];
+  extern Bitboard* BishopAttacks[SQUARE_NB];
+
   return (Pt == ROOK ? RookAttacks : BishopAttacks)[s][magic_index<Pt>(s, occupied)];
 }
 
