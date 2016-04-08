@@ -22,7 +22,6 @@
 #include <cassert>
 
 #include "bitboard.h"
-#include "bitcount.h"
 #include "endgame.h"
 #include "movegen.h"
 
