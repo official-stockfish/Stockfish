@@ -35,7 +35,7 @@
 #define TB_WPAWN TB_PAWN
 #define TB_BPAWN (TB_PAWN | 8)
 
-static LOCK_T TB_mutex;
+static Mutex TB_mutex;
 
 static bool initialized = false;
 static int num_paths = 0;
@@ -297,8 +297,6 @@ void Tablebases::init(const std::string& path)
     paths[i] = &path_string[j];
     while (path_string[j]) j++;
   }
-
-  LOCK_INIT(TB_mutex);
 
   TBnum_piece = TBnum_pawn = 0;
   MaxCardinality = 0;

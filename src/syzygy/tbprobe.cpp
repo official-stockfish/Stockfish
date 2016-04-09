@@ -136,14 +136,14 @@ static int probe_wdl_table(Position& pos, int *success)
 
   ptr = ptr2[i].ptr;
   if (!ptr->ready) {
-    LOCK(TB_mutex);
+    TB_mutex.lock();
     if (!ptr->ready) {
       char str[16];
       prt_str(pos, str, ptr->key != key);
       if (!init_table_wdl(ptr, str)) {
         ptr2[i].key = 0ULL;
         *success = 0;
-        UNLOCK(TB_mutex);
+        TB_mutex.unlock();
         return 0;
       }
       // Memory barrier to ensure ptr->ready = 1 is not reordered.
@@ -154,7 +154,7 @@ static int probe_wdl_table(Position& pos, int *success)
 #endif
       ptr->ready = 1;
     }
-    UNLOCK(TB_mutex);
+    TB_mutex.unlock();
   }
 
   int bside, mirror, cmirror;
