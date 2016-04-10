@@ -28,14 +28,14 @@ int Tablebases::MaxCardinality = 0;
 
 // Given a position with 6 or fewer pieces, produce a text string
 // of the form KQPvKRP, where "KQP" represents the white pieces if
-// mirror == 0 and the black pieces if mirror == 1.
-static void prt_str(Position& pos, char *str, int mirror)
+// mirror == false and the black pieces if mirror == true.
+static void prt_str(Position& pos, char *str, bool mirror)
 {
     Color color;
     PieceType pt;
     int i;
 
-    color = !mirror ? WHITE : BLACK;
+    color = mirror ? BLACK: WHITE;
 
     for (pt = KING; pt >= PAWN; --pt)
         for (i = popcount(pos.pieces(color, pt)); i > 0; i--)
@@ -53,14 +53,14 @@ static void prt_str(Position& pos, char *str, int mirror)
 
 // Given a position, produce a 64-bit material signature key.
 // If the engine supports such a key, it should equal the engine's key.
-static uint64_t calc_key(Position& pos, int mirror)
+static uint64_t calc_key(Position& pos, bool mirror)
 {
     Color color;
     PieceType pt;
     int i;
     uint64_t key = 0;
 
-    color = !mirror ? WHITE : BLACK;
+    color = mirror ? BLACK: WHITE;
 
     for (pt = PAWN; pt <= KING; ++pt)
         for (i = popcount(pos.pieces(color, pt)); i > 0; i--)
@@ -79,14 +79,14 @@ static uint64_t calc_key(Position& pos, int mirror)
 // defined by pcs[16], where pcs[1], ..., pcs[6] is the number of white
 // pawns, ..., kings and pcs[9], ..., pcs[14] is the number of black
 // pawns, ..., kings.
-static uint64_t calc_key_from_pcs(int *pcs, int mirror)
+static uint64_t calc_key_from_pcs(int *pcs, bool mirror)
 {
     int color;
     PieceType pt;
     int i;
     uint64_t key = 0;
 
-    color = !mirror ? 0 : 8;
+    color = mirror ? 8 : 0;
 
     for (pt = PAWN; pt <= KING; ++pt)
         for (i = 0; i < pcs[color + pt]; i++)
@@ -272,7 +272,7 @@ static int probe_dtz_table(Position& pos, int wdl, int *success)
 
             ptr = ptr2[i].ptr;
             char str[16];
-            int mirror = (ptr->key != key);
+            bool mirror = (ptr->key != key);
             prt_str(pos, str, mirror);
 
             if (DTZ_table[DTZ_ENTRIES - 1].entry)

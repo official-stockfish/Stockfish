@@ -42,7 +42,7 @@ static struct TBHashEntry TB_hash[1 << TBHASHBITS][HSHMAX];
 static struct DTZTableEntry DTZ_table[DTZ_ENTRIES];
 
 static void init_indices(void);
-static uint64_t calc_key_from_pcs(int *pcs, int mirror);
+static uint64_t calc_key_from_pcs(int *pcs, bool mirror);
 static void free_wdl_entry(struct TBEntry *entry);
 static void free_dtz_entry(struct TBEntry *entry);
 
