@@ -8,11 +8,12 @@
 #include <cstdint>
 
 #ifndef _WIN32
-#include <pthread.h>
 #define SEP_CHAR ':'
 #define FD int
 #define FD_ERR -1
 #else
+#define NOMINMAX
+#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #define SEP_CHAR ';'
 #define FD HANDLE
