@@ -1,4 +1,6 @@
 language: cpp
+sudo: required
+dist: trusty
 
 matrix:
   include:
@@ -7,25 +9,25 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['g++-4.8']
+          packages: ['g++-multilib']
       env:
-        - COMPILER=g++-4.8
+        - COMPILER=g++
         - COMP=gcc
 
     - os: linux
       compiler: clang
       addons:
         apt:
-          sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-precise-3.7']
-          packages: ['clang-3.7']
+          sources: ['ubuntu-toolchain-r-test']
+          packages: ['clang', 'g++-multilib']
       env:
-        - COMPILER=clang++-3.7
+        - COMPILER=clang++
         - COMP=clang
 
     - os: osx
       compiler: gcc
       env:
-        - COMPILER=g++-4.8
+        - COMPILER=g++
         - COMP=gcc
 
     - os: osx
