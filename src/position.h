@@ -150,7 +150,7 @@ public:
 
   // Static exchange evaluation
   Value see(Move m) const;
-  Value see_sign(Move m) const;
+  Value see_sign(Move m, bool quickSee) const;
 
   // Accessing hash keys
   Key key() const;
