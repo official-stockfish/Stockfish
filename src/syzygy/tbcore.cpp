@@ -175,7 +175,7 @@ static void init_tb(char *str)
     pcs[i] = 0;
   color = 0;
   for (s = str; *s; s++) {
-    int pt = PieceToChar.find(*s);
+    int pt = std::string(" PNBRQK").find(*s);
     if (pt == std::string::npos) {
       assert(*s == 'v');
       color = 8;
