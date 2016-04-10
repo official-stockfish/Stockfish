@@ -12,6 +12,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <algorithm>
 #ifndef _WIN32
 #include <unistd.h>
 #include <sys/mman.h>
@@ -21,8 +22,6 @@
 #define TBMAX_PIECE 254
 #define TBMAX_PAWN 256
 #define HSHMAX 5
-
-#define Swap(a,b) {int tmp=a;a=b;b=tmp;}
 
 #define TB_PAWN 1
 #define TB_KNIGHT 2
@@ -757,7 +756,7 @@ static uint64_t encode_piece(struct TBEntry_piece *ptr, uint8_t *norm, int *pos,
 
         for (j = i; j < i + t; j++)
             for (k = j + 1; k < i + t; k++)
-                if (pos[j] > pos[k]) Swap(pos[j], pos[k]);
+                if (pos[j] > pos[k]) std::swap(pos[j], pos[k]);
 
         int s = 0;
 
@@ -784,7 +783,7 @@ static int pawn_file(struct TBEntry_pawn *ptr, int *pos)
 
     for (i = 1; i < ptr->pawns[0]; i++)
         if (flap[pos[0]] > flap[pos[i]])
-            Swap(pos[0], pos[i]);
+            std::swap(pos[0], pos[i]);
 
     return file_to_file[pos[0] & 0x07];
 }
@@ -802,7 +801,7 @@ static uint64_t encode_pawn(struct TBEntry_pawn *ptr, uint8_t *norm, int *pos, i
     for (i = 1; i < ptr->pawns[0]; i++)
         for (j = i + 1; j < ptr->pawns[0]; j++)
             if (ptwist[pos[i]] < ptwist[pos[j]])
-                Swap(pos[i], pos[j]);
+                std::swap(pos[i], pos[j]);
 
     t = ptr->pawns[0] - 1;
     idx = pawnidx[t][flap[pos[0]]];
@@ -819,7 +818,7 @@ static uint64_t encode_pawn(struct TBEntry_pawn *ptr, uint8_t *norm, int *pos, i
     if (t > i) {
         for (j = i; j < t; j++)
             for (k = j + 1; k < t; k++)
-                if (pos[j] > pos[k]) Swap(pos[j], pos[k]);
+                if (pos[j] > pos[k]) std::swap(pos[j], pos[k]);
 
         s = 0;
 
@@ -841,7 +840,7 @@ static uint64_t encode_pawn(struct TBEntry_pawn *ptr, uint8_t *norm, int *pos, i
 
         for (j = i; j < i + t; j++)
             for (k = j + 1; k < i + t; k++)
-                if (pos[j] > pos[k]) Swap(pos[j], pos[k]);
+                if (pos[j] > pos[k]) std::swap(pos[j], pos[k]);
 
         s = 0;
 
