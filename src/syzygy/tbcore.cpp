@@ -174,30 +174,14 @@ static void init_tb(char *str)
   for (i = 0; i < 16; i++)
     pcs[i] = 0;
   color = 0;
-  for (s = str; *s; s++)
-    switch (*s) {
-    case 'P':
-      pcs[TB_PAWN | color]++;
-      break;
-    case 'N':
-      pcs[TB_KNIGHT | color]++;
-      break;
-    case 'B':
-      pcs[TB_BISHOP | color]++;
-      break;
-    case 'R':
-      pcs[TB_ROOK | color]++;
-      break;
-    case 'Q':
-      pcs[TB_QUEEN | color]++;
-      break;
-    case 'K':
-      pcs[TB_KING | color]++;
-      break;
-    case 'v':
-      color = 0x08;
-      break;
-    }
+  for (s = str; *s; s++) {
+    int pt = PieceToChar.find(*s);
+    if (pt == std::string::npos) {
+      assert(*s == 'v');
+      color = 8;
+    } else
+      pcs[pt | color]++;
+  }
   for (i = 0; i < 8; i++)
     if (pcs[i] != pcs[i+8])
       break;

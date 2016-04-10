@@ -34,6 +34,8 @@
 
 using std::string;
 
+const string PieceToChar(" PNBRQK  pnbrqk");
+
 Value PieceValue[PHASE_NB][PIECE_NB] = {
 { VALUE_ZERO, PawnValueMg, KnightValueMg, BishopValueMg, RookValueMg, QueenValueMg },
 { VALUE_ZERO, PawnValueEg, KnightValueEg, BishopValueEg, RookValueEg, QueenValueEg } };
@@ -50,8 +52,6 @@ namespace Zobrist {
 Key Position::exclusion_key() const { return st->key ^ Zobrist::exclusion; }
 
 namespace {
-
-const string PieceToChar(" PNBRQK  pnbrqk");
 
 // min_attacker() is a helper function used by see() to locate the least
 // valuable attacker for the side to move, remove the attacker we just found

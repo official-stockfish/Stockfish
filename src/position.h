@@ -31,6 +31,8 @@
 class Position;
 class Thread;
 
+extern const std::string PieceToChar;
+
 namespace PSQT {
 
   extern Score psq[COLOR_NB][PIECE_TYPE_NB][SQUARE_NB];
