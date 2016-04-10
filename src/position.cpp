@@ -979,15 +979,25 @@ Key Position::key_after(Move m) const {
 /// Position::see() is a static exchange evaluator: It tries to estimate the
 /// material gain or loss resulting from a move.
 
-Value Position::see_sign(Move m) const {
+Value Position::see_sign(Move m, bool quickSEE) const {
 
   assert(is_ok(m));
 
   // Early return if SEE cannot be negative because captured piece value
   // is not less then capturing one. Note that king moves always return
   // here because king midgame value is set to 0.
-  if (PieceValue[MG][moved_piece(m)] <= PieceValue[MG][piece_on(to_sq(m))])
-      return VALUE_KNOWN_WIN;
+  Piece mp = (moved_piece(m));
+  Piece capturePiece = (piece_on(to_sq(m)));
+  if (PieceValue[MG][mp] <= PieceValue[MG][capturePiece])
+	  return VALUE_KNOWN_WIN;
+
+  if (quickSEE && type_of(mp) == QUEEN && type_of(capturePiece) != QUEEN)
+	   {
+	  Color stm = color_of(mp);
+	  if ((attacks_from<PAWN>(to_sq(m), stm)  & pieces(~stm, PAWN))
+		   || (attacks_from<KNIGHT>(to_sq(m))  & pieces(~stm, KNIGHT)))
+		   return PieceValue[MG][capturePiece]-QueenValueMg;
+	  }
 
   return see(m);
 }
@@ -1044,6 +1054,7 @@ Value Position::see(Move m) const {
 
       // Add the new entry to the swap list
       swapList[slIndex] = -swapList[slIndex - 1] + PieceValue[MG][captured];
+
 
       // Locate and remove the next least valuable attacker
       captured = min_attacker<PAWN>(byTypeBB, to, stmAttackers, occupied, attackers);
