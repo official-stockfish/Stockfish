@@ -24,16 +24,6 @@
 #define TBMAX_PAWN 256
 #define HSHMAX 5
 
-#define TB_PAWN 1
-#define TB_KNIGHT 2
-#define TB_BISHOP 3
-#define TB_ROOK 4
-#define TB_QUEEN 5
-#define TB_KING 6
-
-#define TB_WPAWN TB_PAWN
-#define TB_BPAWN (TB_PAWN | 8)
-
 static Mutex TB_mutex;
 
 static bool initialized = false;
@@ -191,7 +181,7 @@ static void init_tb(char *str)
     color = 0;
 
     for (s = str; *s; s++) {
-        int p = std::string(" PNBRQK").find(*s);
+        auto p = std::string(" PNBRQK").find(*s);
 
         if (p == std::string::npos) {
             assert(*s == 'v');
@@ -207,7 +197,7 @@ static void init_tb(char *str)
     key = calc_key_from_pcs(pcs, 0);
     key2 = calc_key_from_pcs(pcs, 1);
 
-    if (pcs[TB_WPAWN] + pcs[TB_BPAWN] == 0) {
+    if (pcs[W_PAWN] + pcs[B_PAWN] == 0) {
         if (TBnum_piece == TBMAX_PIECE) {
             printf("TBMAX_PIECE limit too low!\n");
             exit(1);
@@ -231,20 +221,20 @@ static void init_tb(char *str)
         entry->num += (uint8_t)pcs[i];
 
     entry->symmetric = (key == key2);
-    entry->has_pawns = (pcs[TB_WPAWN] + pcs[TB_BPAWN] > 0);
+    entry->has_pawns = (pcs[W_PAWN] + pcs[B_PAWN] > 0);
 
     if (entry->num > Tablebases::MaxCardinality)
         Tablebases::MaxCardinality = entry->num;
 
     if (entry->has_pawns) {
         struct TBEntry_pawn *ptr = (struct TBEntry_pawn *)entry;
-        ptr->pawns[0] = (uint8_t)pcs[TB_WPAWN];
-        ptr->pawns[1] = (uint8_t)pcs[TB_BPAWN];
+        ptr->pawns[0] = (uint8_t)pcs[W_PAWN];
+        ptr->pawns[1] = (uint8_t)pcs[B_PAWN];
 
-        if (pcs[TB_BPAWN] > 0
-                && (pcs[TB_WPAWN] == 0 || pcs[TB_BPAWN] < pcs[TB_WPAWN])) {
-            ptr->pawns[0] = (uint8_t)pcs[TB_BPAWN];
-            ptr->pawns[1] = (uint8_t)pcs[TB_WPAWN];
+        if (pcs[B_PAWN] > 0
+                && (pcs[W_PAWN] == 0 || pcs[B_PAWN] < pcs[W_PAWN])) {
+            ptr->pawns[0] = (uint8_t)pcs[B_PAWN];
+            ptr->pawns[1] = (uint8_t)pcs[W_PAWN];
         }
     } else {
         struct TBEntry_piece *ptr = (struct TBEntry_piece *)entry;
