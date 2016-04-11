@@ -30,24 +30,20 @@ int Tablebases::MaxCardinality = 0;
 // mirror == false and the black pieces if mirror == true.
 static void prt_str(Position& pos, char *str, bool mirror)
 {
-    Color color;
-    PieceType pt;
-    int i;
+    Color color = mirror ? BLACK: WHITE;
 
-    color = mirror ? BLACK: WHITE;
-
-    for (pt = KING; pt >= PAWN; --pt)
-        for (i = popcount(pos.pieces(color, pt)); i > 0; i--)
-            *str++ = pchr[6 - pt];
+    for (PieceType pt = KING; pt >= PAWN; --pt)
+        for (Bitboard b = pos.pieces(color, pt); b; b &= b - 1)
+            *str++ = pchr[pt];
 
     *str++ = 'v';
     color = ~color;
 
-    for (pt = KING; pt >= PAWN; --pt)
-        for (i = popcount(pos.pieces(color, pt)); i > 0; i--)
-            *str++ = pchr[6 - pt];
+    for (PieceType pt = KING; pt >= PAWN; --pt)
+        for (Bitboard b = pos.pieces(color, pt); b; b &= b - 1)
+            *str++ = pchr[pt];
 
-    *str++ = 0;
+    *str++ = '\0';
 }
 
 // Given a position, produce a 64-bit material signature key.
