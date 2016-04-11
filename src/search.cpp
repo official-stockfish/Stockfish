@@ -40,7 +40,6 @@ namespace Search {
 
   SignalsType Signals;
   LimitsType Limits;
-  StateStackPtr SetupStates;
 }
 
 namespace Tablebases {
@@ -317,16 +316,8 @@ void MainThread::search() {
       }
 
       for (Thread* th : Threads)
-      {
-          th->maxPly = 0;
-          th->rootDepth = DEPTH_ZERO;
           if (th != this)
-          {
-              th->rootPos = Position(rootPos, th);
-              th->rootMoves = rootMoves;
               th->start_searching();
-          }
-      }
 
       Thread::search(); // Let's start searching!
   }
@@ -1488,7 +1479,7 @@ moves_loop: // When in check search starts from here
 
   Move Skill::pick_best(size_t multiPV) {
 
-    const Search::RootMoveVector& rootMoves = Threads.main()->rootMoves;
+    const RootMoves& rootMoves = Threads.main()->rootMoves;
     static PRNG rng(now()); // PRNG sequence should be non-deterministic
 
     // RootMoves are already sorted by score in descending order
@@ -1553,7 +1544,7 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
 
   std::stringstream ss;
   int elapsed = Time.elapsed() + 1;
-  const Search::RootMoveVector& rootMoves = pos.this_thread()->rootMoves;
+  const RootMoves& rootMoves = pos.this_thread()->rootMoves;
   size_t PVIdx = pos.this_thread()->PVIdx;
   size_t multiPV = std::min((size_t)Options["MultiPV"], rootMoves.size());
   uint64_t nodes_searched = Threads.nodes_searched();

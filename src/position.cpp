@@ -155,42 +155,11 @@ void Position::init() {
 }
 
 
-/// Position::operator=() creates a copy of 'pos' but detaching the state pointer
-/// from the source to be self-consistent and not depending on any external data.
-
-Position& Position::operator=(const Position& pos) {
-
-  std::memcpy(this, &pos, sizeof(Position));
-  std::memcpy(&startState, st, sizeof(StateInfo));
-  st = &startState;
-  nodes = 0;
-
-  assert(pos_is_ok());
-
-  return *this;
-}
-
-
-/// Position::clear() erases the position object to a pristine state, with an
-/// empty board, white to move, and no castling rights.
-
-void Position::clear() {
-
-  std::memset(this, 0, sizeof(Position));
-  startState.epSquare = SQ_NONE;
-  st = &startState;
-
-  for (int i = 0; i < PIECE_TYPE_NB; ++i)
-      for (int j = 0; j < 16; ++j)
-          pieceList[WHITE][i][j] = pieceList[BLACK][i][j] = SQ_NONE;
-}
-
-
 /// Position::set() initializes the position object with the given FEN string.
 /// This function is not very robust - make sure that input FENs are correct,
 /// this is assumed to be the responsibility of the GUI.
 
-void Position::set(const string& fenStr, bool isChess960, Thread* th) {
+Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Thread* th) {
 /*
    A FEN string defines a particular position using only the ASCII character set.
 
@@ -230,7 +199,11 @@ void Position::set(const string& fenStr, bool isChess960, Thread* th) {
   Square sq = SQ_A8;
   std::istringstream ss(fenStr);
 
-  clear();
+  std::memset(this, 0, sizeof(Position));
+  std::memset(si, 0, sizeof(StateInfo));
+  std::fill_n(&pieceList[0][0][0], sizeof(pieceList) / sizeof(Square), SQ_NONE);
+  st = si;
+
   ss >> std::noskipws;
 
   // 1. Piece placement
@@ -291,6 +264,8 @@ void Position::set(const string& fenStr, bool isChess960, Thread* th) {
       if (!(attackers_to(st->epSquare) & pieces(sideToMove, PAWN)))
           st->epSquare = SQ_NONE;
   }
+  else
+      st->epSquare = SQ_NONE;
 
   // 5-6. Halfmove clock and fullmove number
   ss >> std::skipws >> st->rule50 >> gamePly;
@@ -304,6 +279,8 @@ void Position::set(const string& fenStr, bool isChess960, Thread* th) {
   set_state(st);
 
   assert(pos_is_ok());
+
+  return *this;
 }
 
 
@@ -1108,7 +1085,7 @@ void Position::flip() {
   std::getline(ss, token); // Half and full moves
   f += token;
 
-  set(f, is_chess960(), this_thread());
+  set(f, is_chess960(), st, this_thread());
 
   assert(pos_is_ok());
 }

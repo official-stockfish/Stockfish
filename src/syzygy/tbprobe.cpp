@@ -688,7 +688,7 @@ static Value wdl_to_Value[5] = {
 //
 // A return value false indicates that not all probes were successful and that
 // no moves were filtered out.
-bool Tablebases::root_probe(Position& pos, Search::RootMoveVector& rootMoves, Value& score)
+bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves, Value& score)
 {
   int success;
 
@@ -795,7 +795,7 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoveVector& rootMoves, Va
 //
 // A return value false indicates that not all probes were successful and that
 // no moves were filtered out.
-bool Tablebases::root_probe_wdl(Position& pos, Search::RootMoveVector& rootMoves, Value& score)
+bool Tablebases::root_probe_wdl(Position& pos, Search::RootMoves& rootMoves, Value& score)
 {
   int success;
 
