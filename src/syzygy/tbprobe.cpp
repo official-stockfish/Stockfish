@@ -50,21 +50,18 @@ static void prt_str(Position& pos, char *str, bool mirror)
 // If the engine supports such a key, it should equal the engine's key.
 static uint64_t calc_key(Position& pos, bool mirror)
 {
-    Color color;
-    PieceType pt;
-    int i;
     uint64_t key = 0;
 
-    color = mirror ? BLACK: WHITE;
+    Color color = mirror ? BLACK: WHITE;
 
-    for (pt = PAWN; pt <= KING; ++pt)
-        for (i = popcount(pos.pieces(color, pt)); i > 0; i--)
+    for (PieceType pt = PAWN; pt <= KING; ++pt)
+        for (int i = popcount(pos.pieces(color, pt)); i > 0; i--)
             key ^= Zobrist::psq[WHITE][pt][i - 1];
 
     color = ~color;
 
-    for (pt = PAWN; pt <= KING; ++pt)
-        for (i = popcount(pos.pieces(color, pt)); i > 0; i--)
+    for (PieceType pt = PAWN; pt <= KING; ++pt)
+        for (int i = popcount(pos.pieces(color, pt)); i > 0; i--)
             key ^= Zobrist::psq[BLACK][pt][i - 1];
 
     return key;
