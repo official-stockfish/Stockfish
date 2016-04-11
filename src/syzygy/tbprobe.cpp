@@ -19,8 +19,7 @@
 
 #include "tbcore.cpp"
 
-namespace Zobrist
-{
+namespace Zobrist {
 extern Key psq[COLOR_NB][PIECE_TYPE_NB][SQUARE_NB];
 }
 

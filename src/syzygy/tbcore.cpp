@@ -114,7 +114,7 @@ static char *map_file(const char *name, const char *suffix, uint64_t *mapping)
 
     if (data == NULL) {
         std::cerr << "MapViewOfFile() failed, name = " << name << suffix << ", error = "
-            << GetLastError() << '\n';
+                  << GetLastError() << '\n';
         exit(1);
     }
 
