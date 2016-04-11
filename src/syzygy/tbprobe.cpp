@@ -100,7 +100,7 @@ bool is_little_endian()
     return x.c[0] == 1;
 }
 
-static uint8_t decompress_pairs(struct PairsData *d, uint64_t idx)
+static uint8_t decompress_pairs(PairsData *d, uint64_t idx)
 {
     static const bool isLittleEndian = is_little_endian();
     return isLittleEndian ? decompress_pairs<true >(d, idx)
@@ -110,8 +110,8 @@ static uint8_t decompress_pairs(struct PairsData *d, uint64_t idx)
 // probe_wdl_table and probe_dtz_table require similar adaptations.
 static int probe_wdl_table(Position& pos, int *success)
 {
-    struct TBEntry *ptr;
-    struct TBHashEntry *ptr2;
+    TBEntry *ptr;
+    TBHashEntry *ptr2;
     uint64_t idx;
     uint64_t key;
     int i;
@@ -184,7 +184,7 @@ static int probe_wdl_table(Position& pos, int *success)
     // pc[i] ^ cmirror, where 1 = white pawn, ..., 14 = black king.
     // Pieces of the same type are guaranteed to be consecutive.
     if (!ptr->has_pawns) {
-        struct TBEntry_piece *entry = (struct TBEntry_piece *)ptr;
+        TBEntry_piece *entry = (TBEntry_piece *)ptr;
         uint8_t *pc = entry->pieces[bside];
 
         for (i = 0; i < entry->num;) {
@@ -199,7 +199,7 @@ static int probe_wdl_table(Position& pos, int *success)
         idx = encode_piece(entry, entry->norm[bside], p, entry->factor[bside]);
         res = decompress_pairs(entry->precomp[bside], idx);
     } else {
-        struct TBEntry_pawn *entry = (struct TBEntry_pawn *)ptr;
+        TBEntry_pawn *entry = (TBEntry_pawn *)ptr;
         int k = entry->file[0].pieces[0][0] ^ cmirror;
         Bitboard bb = pos.pieces((Color)(k >> 3), (PieceType)(k & 0x07));
         i = 0;
@@ -229,7 +229,7 @@ static int probe_wdl_table(Position& pos, int *success)
 
 static int probe_dtz_table(Position& pos, int wdl, int *success)
 {
-    struct TBEntry *ptr;
+    TBEntry *ptr;
     uint64_t idx;
     int i, res;
     int p[TBPIECES];
@@ -242,14 +242,14 @@ static int probe_dtz_table(Position& pos, int wdl, int *success)
             if (DTZ_table[i].key1 == key) break;
 
         if (i < DTZ_ENTRIES) {
-            struct DTZTableEntry table_entry = DTZ_table[i];
+            DTZTableEntry table_entry = DTZ_table[i];
 
             for (; i > 0; i--)
                 DTZ_table[i] = DTZ_table[i - 1];
 
             DTZ_table[0] = table_entry;
         } else {
-            struct TBHashEntry *ptr2 = TB_hash[key >> (64 - TBHASHBITS)];
+            TBHashEntry *ptr2 = TB_hash[key >> (64 - TBHASHBITS)];
 
             for (i = 0; i < HSHMAX; i++)
                 if (ptr2[i].key == key) break;
@@ -299,7 +299,7 @@ static int probe_dtz_table(Position& pos, int wdl, int *success)
     }
 
     if (!ptr->has_pawns) {
-        struct DTZEntry_piece *entry = (struct DTZEntry_piece *)ptr;
+        DTZEntry_piece *entry = (DTZEntry_piece *)ptr;
 
         if ((entry->flags & 1) != bside && !entry->symmetric) {
             *success = -1;
@@ -317,7 +317,7 @@ static int probe_dtz_table(Position& pos, int wdl, int *success)
             } while (bb);
         }
 
-        idx = encode_piece((struct TBEntry_piece *)entry, entry->norm, p, entry->factor);
+        idx = encode_piece((TBEntry_piece *)entry, entry->norm, p, entry->factor);
         res = decompress_pairs(entry->precomp, idx);
 
         if (entry->flags & 2)
@@ -326,7 +326,7 @@ static int probe_dtz_table(Position& pos, int wdl, int *success)
         if (!(entry->flags & pa_flags[wdl + 2]) || (wdl & 1))
             res *= 2;
     } else {
-        struct DTZEntry_pawn *entry = (struct DTZEntry_pawn *)ptr;
+        DTZEntry_pawn *entry = (DTZEntry_pawn *)ptr;
         int k = entry->file[0].pieces[0] ^ cmirror;
         Bitboard bb = pos.pieces((Color)(k >> 3), (PieceType)(k & 0x07));
         i = 0;
@@ -335,7 +335,7 @@ static int probe_dtz_table(Position& pos, int wdl, int *success)
             p[i++] = pop_lsb(&bb) ^ mirror;
         } while (bb);
 
-        int f = pawn_file((struct TBEntry_pawn *)entry, p);
+        int f = pawn_file((TBEntry_pawn *)entry, p);
 
         if ((entry->flags[f] & 1) != bside) {
             *success = -1;
@@ -353,7 +353,7 @@ static int probe_dtz_table(Position& pos, int wdl, int *success)
             } while (bb);
         }
 
-        idx = encode_pawn((struct TBEntry_pawn *)entry, entry->file[f].norm, p, entry->file[f].factor);
+        idx = encode_pawn((TBEntry_pawn *)entry, entry->file[f].norm, p, entry->file[f].factor);
         res = decompress_pairs(entry->file[f].precomp, idx);
 
         if (entry->flags[f] & 2)
