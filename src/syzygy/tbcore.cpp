@@ -27,9 +27,7 @@
 static Mutex TB_mutex;
 
 static bool initialized = false;
-static int num_paths = 0;
-static char *path_string = NULL;
-static char **paths = NULL;
+static std::vector<std::string> paths;
 
 static int TBnum_piece, TBnum_pawn;
 static TBEntry_piece TB_piece[TBMAX_PIECE];
@@ -46,19 +44,15 @@ static uint64_t calc_key_from_pcs(int *pcs, bool mirror);
 static void free_wdl_entry(TBEntry *entry);
 static void free_dtz_entry(TBEntry *entry);
 
-static FD open_tb(const char *str, const char *suffix)
+static FD open_tb(const std::string& str, const std::string& suffix)
 {
-    int i;
     FD fd;
-    char file[256];
+    std::string file;
 
-    for (i = 0; i < num_paths; i++) {
-        strcpy(file, paths[i]);
-        strcat(file, "/");
-        strcat(file, str);
-        strcat(file, suffix);
+    for (auto& path : paths) {
+        file = path + "/" + str + suffix;
 #ifndef _WIN32
-        fd = open(file, O_RDONLY);
+        fd = open(file.c_str(), O_RDONLY);
 #else
         fd = CreateFile(file, GENERIC_READ, FILE_SHARE_READ, NULL,
                         OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
@@ -79,7 +73,7 @@ static void close_tb(FD fd)
 #endif
 }
 
-static char *map_file(const char *name, const char *suffix, uint64_t *mapping)
+static char *map_file(const std::string& name, const std::string& suffix, uint64_t *mapping)
 {
     FD fd = open_tb(name, suffix);
 
@@ -159,17 +153,16 @@ static void add_to_hash(TBEntry *ptr, uint64_t key)
     }
 }
 
-static char pchr[]     = " PNBRQK";
-static char pchr_rev[] = "KQRBNP ";
+static std::string pchr = " PNBRQK";
+static std::string pchr_rev = "KQRBNP ";
 
-static void init_tb(char *str)
+static void init_tb(std::string str)
 {
     FD fd;
     TBEntry *entry;
     int i, j, pcs[16];
     uint64_t key, key2;
     int color;
-    char *s;
 
     fd = open_tb(str, WDLSUFFIX);
 
@@ -182,11 +175,11 @@ static void init_tb(char *str)
 
     color = 0;
 
-    for (s = str; *s; s++) {
-        auto p = std::string(" PNBRQK").find(*s);
+    for (char c : str) {
+        auto p = pchr.find(c);
 
         if (p == std::string::npos) {
-            assert(*s == 'v');
+            assert(c == 'v');
             color = 8;
         } else
             pcs[p | color]++;
@@ -268,8 +261,6 @@ void Tablebases::init(const std::string& path)
     int i, j, k, l;
 
     if (initialized) {
-        free(path_string);
-        free(paths);
         TBEntry *entry;
 
         for (i = 0; i < TBnum_piece; i++) {
@@ -290,35 +281,17 @@ void Tablebases::init(const std::string& path)
         initialized = true;
     }
 
-    const char *p = path.c_str();
+    if (path.empty() || path == "<empty>")
+        return;
 
-    if (strlen(p) == 0 || !strcmp(p, "<empty>")) return;
-
-    path_string = (char *)malloc(strlen(p) + 1);
-    strcpy(path_string, p);
-    num_paths = 0;
-
-    for (i = 0;; i++) {
-        if (path_string[i] != SEP_CHAR)
-            num_paths++;
-
-        while (path_string[i] && path_string[i] != SEP_CHAR)
-            i++;
-
-        if (!path_string[i]) break;
-
-        path_string[i] = 0;
+    // Tokenize path into paths[] using SEP_CHAR delimiter
+    std::string s(path);
+    size_t pos = 0;
+    while ((pos = s.find(SEP_CHAR)) != std::string::npos) {
+        paths.push_back(s.substr(0, pos));
+        s.erase(0, pos + 1);
     }
-
-    paths = (char **)malloc(num_paths * sizeof(char *));
-
-    for (i = j = 0; i < num_paths; i++) {
-        while (!path_string[j]) j++;
-
-        paths[i] = &path_string[j];
-
-        while (path_string[j]) j++;
-    }
+    paths.push_back(s);
 
     TBnum_piece = TBnum_pawn = 0;
     MaxCardinality = 0;
@@ -1116,7 +1089,7 @@ static PairsData *setup_pairs(unsigned char *data, uint64_t tb_size, uint64_t *s
     return d;
 }
 
-static int init_table_wdl(TBEntry *entry, char *str)
+static int init_table_wdl(TBEntry *entry, const std::string& str)
 {
     uint8_t *next;
     int f, s;
@@ -1443,7 +1416,7 @@ static uint8_t decompress_pairs(PairsData *d, uint64_t idx)
     return sympat[3 * sym];
 }
 
-void load_dtz_table(char *str, uint64_t key1, uint64_t key2)
+void load_dtz_table(const std::string& str, uint64_t key1, uint64_t key2)
 {
     int i;
     TBEntry *ptr, *ptr3;

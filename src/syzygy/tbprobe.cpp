@@ -28,22 +28,22 @@ int Tablebases::MaxCardinality = 0;
 // Given a position with 6 or fewer pieces, produce a text string
 // of the form KQPvKRP, where "KQP" represents the white pieces if
 // mirror == false and the black pieces if mirror == true.
-static void prt_str(Position& pos, char *str, bool mirror)
+static std::string prt_str(Position& pos, bool mirror)
 {
-    Color color = mirror ? BLACK: WHITE;
+    std::string s;
 
-    for (PieceType pt = KING; pt >= PAWN; --pt)
-        for (Bitboard b = pos.pieces(color, pt); b; b &= b - 1)
-            *str++ = pchr[pt];
+    for (int i = 0; i <= 1; i++) {
+        Color color = Color(i ^ mirror);
 
-    *str++ = 'v';
-    color = ~color;
+        for (PieceType pt = KING; pt >= PAWN; --pt)
+            for (Bitboard b = pos.pieces(color, pt); b; b &= b - 1)
+                s += pchr[pt];
 
-    for (PieceType pt = KING; pt >= PAWN; --pt)
-        for (Bitboard b = pos.pieces(color, pt); b; b &= b - 1)
-            *str++ = pchr[pt];
+        if (i == 0)
+            s += 'v';
+    }
 
-    *str++ = '\0';
+    return s;
 }
 
 // Given a position, produce a 64-bit material signature key.
@@ -141,10 +141,9 @@ static int probe_wdl_table(Position& pos, int *success)
         TB_mutex.lock();
 
         if (!ptr->ready) {
-            char str[16];
-            prt_str(pos, str, ptr->key != key);
+            std::string s = prt_str(pos, ptr->key != key);
 
-            if (!init_table_wdl(ptr, str)) {
+            if (!init_table_wdl(ptr, s)) {
                 ptr2[i].key = 0ULL;
                 *success = 0;
                 TB_mutex.unlock();
@@ -260,9 +259,8 @@ static int probe_dtz_table(Position& pos, int wdl, int *success)
             }
 
             ptr = ptr2[i].ptr;
-            char str[16];
             bool mirror = (ptr->key != key);
-            prt_str(pos, str, mirror);
+            std::string s = prt_str(pos, mirror);
 
             if (DTZ_table[DTZ_ENTRIES - 1].entry)
                 free_dtz_entry(DTZ_table[DTZ_ENTRIES-1].entry);
@@ -270,7 +268,7 @@ static int probe_dtz_table(Position& pos, int wdl, int *success)
             for (i = DTZ_ENTRIES - 1; i > 0; i--)
                 DTZ_table[i] = DTZ_table[i - 1];
 
-            load_dtz_table(str, calc_key(pos, mirror), calc_key(pos, !mirror));
+            load_dtz_table(s, calc_key(pos, mirror), calc_key(pos, !mirror));
         }
     }
 
