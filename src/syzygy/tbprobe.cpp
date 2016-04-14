@@ -460,7 +460,7 @@ int Tablebases::probe_wdl(Position& pos, int *success)
     // Now handle en passant.
     int v1 = -3;
     // Generate (at least) all legal en passant captures.
-    ExtMove stack[192];
+    ExtMove stack[MAX_MOVES];
     ExtMove *moves, *end;
     StateInfo st;
 
@@ -533,7 +533,7 @@ static int probe_dtz_no_ep(Position& pos, int *success)
     if (*success == 2)
         return wdl == 2 ? 1 : 101;
 
-    ExtMove stack[192];
+    ExtMove stack[MAX_MOVES];
     ExtMove *moves, *end = NULL;
     StateInfo st;
     CheckInfo ci(pos);
@@ -675,7 +675,7 @@ int Tablebases::probe_dtz(Position& pos, int *success)
     // Now handle en passant.
     int v1 = -3;
 
-    ExtMove stack[192];
+    ExtMove stack[MAX_MOVES];
     ExtMove *moves, *end;
     StateInfo st;
 
@@ -804,7 +804,7 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoveVector& rootMoves, Va
         int v = 0;
 
         if (pos.checkers() && dtz > 0) {
-            ExtMove s[192];
+            ExtMove s[MAX_MOVES];
 
             if (generate<LEGAL>(pos, s) == s)
                 v = 1;
