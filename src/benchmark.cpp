@@ -149,7 +149,7 @@ void benchmark(const Position& current, istream& is) {
   {
       Position pos(fens[i], Options["UCI_Chess960"], Threads.main());
 
-      cerr << "\nPosition: " << i + 1 << '/' << fens.size() << endl;
+      cout << "\nPosition: " << i + 1 << '/' << fens.size() << endl;
 
       if (limitType == "perft")
           nodes += Search::perft(pos, limits.depth * ONE_PLY);
@@ -168,7 +168,7 @@ void benchmark(const Position& current, istream& is) {
 
   dbg_print(); // Just before exiting
 
-  cerr << "\n==========================="
+  cerr << "==========================="
        << "\nTotal time (ms) : " << elapsed
        << "\nNodes searched  : " << nodes
        << "\nNodes/second    : " << 1000 * nodes / elapsed << endl;
