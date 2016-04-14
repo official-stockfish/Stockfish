@@ -54,7 +54,7 @@ static FD open_tb(const std::string& str, const std::string& suffix)
 #ifndef _WIN32
         fd = open(file.c_str(), O_RDONLY);
 #else
-        fd = CreateFile(file, GENERIC_READ, FILE_SHARE_READ, NULL,
+        fd = CreateFile(file.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL,
                         OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 #endif
 
