@@ -617,6 +617,7 @@ namespace {
     bool ttHit, inCheck, givesCheck, singularExtensionNode, improving;
     bool captureOrPromotion, doFullDepthSearch;
     int moveCount, quietCount;
+    CheckInfo ci;
 
     // Step 1. Initialize node
     Thread* thisThread = pos.this_thread();
@@ -837,8 +838,8 @@ namespace {
         assert((ss-1)->currentMove != MOVE_NULL);
 
         MovePicker mp(pos, ttMove, thisThread->history, PieceValue[MG][pos.captured_piece_type()]);
-        CheckInfo ci(pos);
-
+        CheckInfo cip(pos);
+        ci.setState(cip);
         while ((move = mp.next_move()) != MOVE_NONE)
             if (pos.legal(move, ci.pinned))
             {
@@ -874,7 +875,10 @@ moves_loop: // When in check search starts from here
     const CounterMoveStats& fmh = CounterMoveHistory[pos.piece_on(ownPrevSq)][ownPrevSq];
 
     MovePicker mp(pos, ttMove, depth, thisThread->history, cmh, fmh, cm, ss);
-    CheckInfo ci(pos);
+    if (ci.checkSquares[KING]) {
+      CheckInfo cit(pos);
+      ci.setState(cit);
+    }
     value = bestValue; // Workaround a bogus 'uninitialized' warning under gcc
     improving =   ss->staticEval >= (ss-2)->staticEval
                || ss->staticEval == VALUE_NONE
