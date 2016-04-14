@@ -99,6 +99,24 @@ CheckInfo::CheckInfo(const Position& pos) {
   checkSquares[KING]   = 0;
 }
 
+CheckInfo::CheckInfo() {
+  checkSquares[KING]   = 1;
+}
+
+void CheckInfo::setState(CheckInfo ci) {
+    ksq = ci.ksq;
+    pinned = ci.pinned;
+    dcCandidates = ci.dcCandidates;
+
+    checkSquares[PAWN]   = ci.checkSquares[PAWN];
+    checkSquares[KNIGHT] = ci.checkSquares[KNIGHT];
+    checkSquares[BISHOP] = ci.checkSquares[BISHOP];
+    checkSquares[ROOK]   = ci.checkSquares[ROOK];
+    checkSquares[QUEEN]  = ci.checkSquares[QUEEN];
+    checkSquares[KING]   = 0;
+}
+
+
 
 /// operator<<(Position) returns an ASCII representation of the position
 

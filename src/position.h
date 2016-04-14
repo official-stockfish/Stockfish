@@ -44,6 +44,9 @@ namespace PSQT {
 struct CheckInfo {
 
   explicit CheckInfo(const Position&);
+  explicit CheckInfo();
+
+  void setState(CheckInfo ci);
 
   Bitboard dcCandidates;
   Bitboard pinned;
