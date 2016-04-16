@@ -79,9 +79,9 @@ public:
   MovePicker(const MovePicker&) = delete;
   MovePicker& operator=(const MovePicker&) = delete;
 
-  MovePicker(const Position&, Move, const HistoryStats&, Value);
-  MovePicker(const Position&, Move, Depth, const HistoryStats&, Square);
-  MovePicker(const Position&, Move, Depth, const HistoryStats&, Move, Search::Stack*);
+  MovePicker(const Position&, Move, Value);
+  MovePicker(const Position&, Move, Depth, Square);
+  MovePicker(const Position&, Move, Depth, Search::Stack*);
 
   Move next_move();
 
@@ -92,8 +92,7 @@ private:
   ExtMove* end() { return endMoves; }
 
   const Position& pos;
-  const HistoryStats& history;
-  Search::Stack* ss;
+  const Search::Stack* ss;
   Move countermove;
   Depth depth;
   Move ttMove;
