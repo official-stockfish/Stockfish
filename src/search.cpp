@@ -359,7 +359,8 @@ void MainThread::search() {
   Thread* bestThread = this;
   if (   !this->easyMovePlayed
       &&  Options["MultiPV"] == 1
-      && !Skill(Options["Skill Level"]).enabled())
+      && !Skill(Options["Skill Level"]).enabled()
+      &&  rootMoves[0].pv[0] != MOVE_NONE)
   {
       for (Thread* th : Threads)
           if (   th->completedDepth > bestThread->completedDepth
