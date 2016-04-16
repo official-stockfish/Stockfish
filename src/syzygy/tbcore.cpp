@@ -58,7 +58,8 @@ static FD open_tb(const std::string& str, const std::string& suffix)
                         OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 #endif
 
-        if (fd != FD_ERR) return fd;
+        if (fd != FD_ERR)
+            return fd;
     }
 
     return FD_ERR;
@@ -120,14 +121,16 @@ static char *map_file(const std::string& name, const std::string& suffix, uint64
 #ifndef _WIN32
 static void unmap_file(char *data, uint64_t size)
 {
-    if (!data) return;
+    if (!data)
+        return;
 
     munmap(data, size);
 }
 #else
 static void unmap_file(char *data, uint64_t mapping)
 {
-    if (!data) return;
+    if (!data)
+        return;
 
     UnmapViewOfFile(data);
     CloseHandle((HANDLE)mapping);
@@ -166,7 +169,8 @@ static void init_tb(std::string str)
 
     fd = open_tb(str, WDLSUFFIX);
 
-    if (fd == FD_ERR) return;
+    if (fd == FD_ERR)
+        return;
 
     close_tb(fd);
 
@@ -287,10 +291,12 @@ void Tablebases::init(const std::string& path)
     // Tokenize path into paths[] using SEP_CHAR delimiter
     std::string s(path);
     size_t pos = 0;
+
     while ((pos = s.find(SEP_CHAR)) != std::string::npos) {
         paths.push_back(s.substr(0, pos));
         s.erase(0, pos + 1);
     }
+
     paths.push_back(s);
 
     TBnum_piece = TBnum_pawn = 0;
@@ -645,7 +651,8 @@ static uint64_t encode_piece(TBEntry_piece *ptr, uint8_t *norm, int *pos, int *f
     }
 
     for (i = 0; i < n; i++)
-        if (offdiag[pos[i]]) break;
+        if (offdiag[pos[i]])
+            break;
 
     if (i < (ptr->enc_type == 0 ? 3 : 2) && offdiag[pos[i]] > 0)
         for (i = 0; i < n; i++)
@@ -1382,7 +1389,8 @@ static uint8_t decompress_pairs(PairsData *d, uint64_t idx)
 
         sym += static_cast<int>((code - base[l]) >> (64 - l));
 
-        if (litidx < (int)symlen[sym] + 1) break;
+        if (litidx < (int)symlen[sym] + 1)
+            break;
 
         litidx -= (int)symlen[sym] + 1;
         code <<= l;
@@ -1430,15 +1438,17 @@ void load_dtz_table(const std::string& str, uint64_t key1, uint64_t key2)
     ptr2 = TB_hash[key1 >> (64 - TBHASHBITS)];
 
     for (i = 0; i < HSHMAX; i++)
-        if (ptr2[i].key == key1) break;
+        if (ptr2[i].key == key1)
+            break;
 
-    if (i == HSHMAX) return;
+    if (i == HSHMAX)
+        return;
 
     ptr = ptr2[i].ptr;
 
     ptr3 = (TBEntry *)malloc(ptr->has_pawns
-                                    ? sizeof(DTZEntry_pawn)
-                                    : sizeof(DTZEntry_piece));
+                             ? sizeof(DTZEntry_pawn)
+                             : sizeof(DTZEntry_piece));
 
     ptr3->data = map_file(str, DTZSUFFIX, &ptr3->mapping);
     ptr3->key = ptr->key;

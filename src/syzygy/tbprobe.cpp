@@ -128,7 +128,8 @@ static int probe_wdl_table(Position& pos, int *success)
     ptr2 = TB_hash[key >> (64 - TBHASHBITS)];
 
     for (i = 0; i < HSHMAX; i++)
-        if (ptr2[i].key == key) break;
+        if (ptr2[i].key == key)
+            break;
 
     if (i == HSHMAX) {
         *success = 0;
@@ -238,7 +239,8 @@ static int probe_dtz_table(Position& pos, int wdl, int *success)
 
     if (DTZ_table[0].key1 != key && DTZ_table[0].key2 != key) {
         for (i = 1; i < DTZ_ENTRIES; i++)
-            if (DTZ_table[i].key1 == key) break;
+            if (DTZ_table[i].key1 == key)
+                break;
 
         if (i < DTZ_ENTRIES) {
             DTZTableEntry table_entry = DTZ_table[i];
@@ -251,7 +253,8 @@ static int probe_dtz_table(Position& pos, int wdl, int *success)
             TBHashEntry *ptr2 = TB_hash[key >> (64 - TBHASHBITS)];
 
             for (i = 0; i < HSHMAX; i++)
-                if (ptr2[i].key == key) break;
+                if (ptr2[i].key == key)
+                    break;
 
             if (i == HSHMAX) {
                 *success = 0;
@@ -411,7 +414,8 @@ static int probe_ab(Position& pos, int alpha, int beta, int *success)
         v = -probe_ab(pos, -beta, -alpha, success);
         pos.undo_move(capture);
 
-        if (*success == 0) return 0;
+        if (*success == 0)
+            return 0;
 
         if (v > alpha) {
             if (v >= beta) {
@@ -425,7 +429,8 @@ static int probe_ab(Position& pos, int alpha, int beta, int *success)
 
     v = probe_wdl_table(pos, success);
 
-    if (*success == 0) return 0;
+    if (*success == 0)
+        return 0;
 
     if (alpha >= v) {
         *success = 1 + (alpha > 0);
@@ -455,7 +460,8 @@ int Tablebases::probe_wdl(Position& pos, int *success)
     if (pos.ep_square() == SQ_NONE)
         return v;
 
-    if (!(*success)) return 0;
+    if (*success == 0)
+        return 0;
 
     // Now handle en passant.
     int v1 = -3;
@@ -482,7 +488,8 @@ int Tablebases::probe_wdl(Position& pos, int *success)
         int v0 = -probe_ab(pos, -2, 2, success);
         pos.undo_move(capture);
 
-        if (*success == 0) return 0;
+        if (*success == 0)
+            return 0;
 
         if (v0 > v1) v1 = v0;
     }
@@ -496,7 +503,8 @@ int Tablebases::probe_wdl(Position& pos, int *success)
 
                 if (type_of(capture) == ENPASSANT) continue;
 
-                if (pos.legal(capture, ci.pinned)) break;
+                if (pos.legal(capture, ci.pinned))
+                    break;
             }
 
             if (moves == end && !pos.checkers()) {
@@ -586,7 +594,8 @@ static int probe_dtz_no_ep(Position& pos, int *success)
             int v = -Tablebases::probe_dtz(pos, success);
             pos.undo_move(move);
 
-            if (*success == 0) return 0;
+            if (*success == 0)
+                return 0;
 
             if (v > 0 && v + 1 < best)
                 best = v + 1;
@@ -622,7 +631,8 @@ static int probe_dtz_no_ep(Position& pos, int *success)
 
             pos.undo_move(move);
 
-            if (*success == 0) return 0;
+            if (*success == 0)
+                return 0;
 
             if (v < best)
                 best = v;
@@ -670,7 +680,8 @@ int Tablebases::probe_dtz(Position& pos, int *success)
     if (pos.ep_square() == SQ_NONE)
         return v;
 
-    if (*success == 0) return 0;
+    if (*success == 0)
+        return 0;
 
     // Now handle en passant.
     int v1 = -3;
@@ -697,7 +708,8 @@ int Tablebases::probe_dtz(Position& pos, int *success)
         int v0 = -probe_ab(pos, -2, 2, success);
         pos.undo_move(capture);
 
-        if (*success == 0) return 0;
+        if (*success == 0)
+            return 0;
 
         if (v0 > v1) v1 = v0;
     }
@@ -725,7 +737,8 @@ int Tablebases::probe_dtz(Position& pos, int *success)
 
                 if (type_of(move) == ENPASSANT) continue;
 
-                if (pos.legal(move, ci.pinned)) break;
+                if (pos.legal(move, ci.pinned))
+                    break;
             }
 
             if (moves == end && !pos.checkers()) {
@@ -792,7 +805,8 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoveVector& rootMoves, Va
 
     int dtz = probe_dtz(pos, &success);
 
-    if (!success) return false;
+    if (!success)
+        return false;
 
     StateInfo st;
     CheckInfo ci(pos);
@@ -824,7 +838,8 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoveVector& rootMoves, Va
 
         pos.undo_move(move);
 
-        if (!success) return false;
+        if (!success)
+            return false;
 
         rootMoves[i].score = (Value)v;
     }
@@ -921,7 +936,8 @@ bool Tablebases::root_probe_wdl(Position& pos, Search::RootMoveVector& rootMoves
 
     int wdl = Tablebases::probe_wdl(pos, &success);
 
-    if (!success) return false;
+    if (!success)
+        return false;
 
     score = wdl_to_Value[wdl + 2];
 
@@ -937,7 +953,8 @@ bool Tablebases::root_probe_wdl(Position& pos, Search::RootMoveVector& rootMoves
         int v = -Tablebases::probe_wdl(pos, &success);
         pos.undo_move(move);
 
-        if (!success) return false;
+        if (!success)
+            return false;
 
         rootMoves[i].score = (Value)v;
 
