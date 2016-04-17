@@ -560,54 +560,27 @@ static int pfactor[5][4];
 
 static void init_indices(void)
 {
-    int i, j, k;
+    // There are Binomial(n, k) ways to choose k elements out of a set of n
+    // elements. Fill binomial[] with the binomial coefficents using pascal
+    // triangle algorithm so that binomial[k-1][n] = Binomial(n, k).
+    for (int k = 0; k < 5; k++)
+    {
+        binomial[k][0] = 0;
 
-// binomial[k-1][n] = Bin(n, k)
-    for (i = 0; i < 5; i++)
-        for (j = 0; j < 64; j++) {
-            int f = j;
-            int l = 1;
+        for (int n = 1; n < 64; n++)
+            binomial[k][n] = (k ? binomial[k-1][n-1] : 1) + binomial[k][n-1];
+    }
 
-            for (k = 1; k <= i; k++) {
-                f *= (j - k);
-                l *= (k + 1);
-            }
-
-            binomial[i][j] = f / l;
-        }
-
-    for (i = 0; i < 5; i++) {
-        int s = 0;
-
-        for (j = 0; j < 6; j++) {
+    for (int s = 0, i = 0; i < 5; i++)
+    {
+        for (int j = 0; j < 24; j++)
+        {
             pawnidx[i][j] = s;
-            s += (i == 0) ? 1 : binomial[i - 1][ptwist[invflap[j]]];
+            s += (i ? binomial[i - 1][ptwist[invflap[j]]] : 1);
+
+            if (j && !(j % 6))
+                pfactor[i][(j / 6) - 1] = s, s = 0;
         }
-
-        pfactor[i][0] = s;
-        s = 0;
-
-        for (; j < 12; j++) {
-            pawnidx[i][j] = s;
-            s += (i == 0) ? 1 : binomial[i - 1][ptwist[invflap[j]]];
-        }
-
-        pfactor[i][1] = s;
-        s = 0;
-
-        for (; j < 18; j++) {
-            pawnidx[i][j] = s;
-            s += (i == 0) ? 1 : binomial[i - 1][ptwist[invflap[j]]];
-        }
-
-        pfactor[i][2] = s;
-        s = 0;
-
-        for (; j < 24; j++) {
-            pawnidx[i][j] = s;
-            s += (i == 0) ? 1 : binomial[i - 1][ptwist[invflap[j]]];
-        }
-
         pfactor[i][3] = s;
     }
 }
