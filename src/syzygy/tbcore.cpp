@@ -40,7 +40,6 @@ static TBHashEntry TB_hash[1 << TBHASHBITS][HSHMAX];
 
 static DTZTableEntry DTZ_table[DTZ_ENTRIES];
 
-static void init_indices(void);
 static uint64_t calc_key_from_pcs(int *pcs, bool mirror);
 static void free_wdl_entry(TBEntry *entry);
 static void free_dtz_entry(TBEntry *entry);
@@ -259,93 +258,6 @@ static void init_tb(const std::string& str)
     if (key2 != key) add_to_hash(entry, key2);
 }
 
-void Tablebases::init(const std::string& path)
-{
-    static bool initialized = false;
-
-    if (initialized) {
-        TBEntry *entry;
-
-        for (int i = 0; i < TBnum_piece; i++) {
-            entry = (TBEntry *)&TB_piece[i];
-            free_wdl_entry(entry);
-        }
-
-        for (int i = 0; i < TBnum_pawn; i++) {
-            entry = (TBEntry *)&TB_pawn[i];
-            free_wdl_entry(entry);
-        }
-
-        for (int i = 0; i < DTZ_ENTRIES; i++)
-            if (DTZ_table[i].entry)
-                free_dtz_entry(DTZ_table[i].entry);
-    } else {
-        init_indices();
-        initialized = true;
-    }
-
-    if (path.empty() || path == "<empty>")
-        return;
-
-    // Argument path is set to the directory or directories where the .rtbw and
-    // .rtbz files can be found. Multiple directories are separated by ";" on
-    // Windows and by ":" on Unix-based operating systems.
-    //
-    // Example:
-    // C:\tb\wdl345;C:\tb\wdl6;D:\tb\dtz345;D:\tb\dtz6
-
-    // Tokenize path into paths[] using SEP_CHAR delimiter
-    std::stringstream ss(path);
-    std::string token;
-
-    while (std::getline(ss, token, SEP_CHAR))
-        paths.push_back(token);
-
-    TBnum_piece = TBnum_pawn = 0;
-    MaxCardinality = 0;
-
-    for (int i = 0; i < (1 << TBHASHBITS); i++)
-        for (int j = 0; j < HSHMAX; j++) {
-            TB_hash[i][j].key = 0;
-            TB_hash[i][j].ptr = nullptr;
-        }
-
-    for (int i = 0; i < DTZ_ENTRIES; i++)
-        DTZ_table[i].entry = nullptr;
-
-    const std::string K("K");
-
-    for (PieceType p1 = PAWN; p1 < KING; ++p1)
-    {
-        init_tb(K + pchr[p1] + "vK");
-
-        for (PieceType p2 = PAWN; p2 <= p1; ++p2)
-        {
-            init_tb(K + pchr[p1] + pchr[p2]                               + "vK");
-            init_tb(K + pchr[p1]                                          + "vK" + pchr[p2]);
-
-            for (PieceType p3 = PAWN; p3 < KING; ++p3)
-                init_tb(K + pchr[p1] + pchr[p2]                           + "vK" + pchr[p3]);
-
-            for (PieceType p3 = PAWN; p3 <= p2; ++p3)
-            {
-                init_tb(K + pchr[p1] + pchr[p2] + pchr[p3]                + "vK");
-
-                for (PieceType p4 = PAWN; p4 <= p3; ++p4)
-                    init_tb(K + pchr[p1] + pchr[p2] + pchr[p3] + pchr[p4] + "vK");
-
-                for (PieceType p4 = PAWN; p4 < KING; ++p4)
-                    init_tb(K + pchr[p1] + pchr[p2] + pchr[p3]            + "vK" + pchr[p4]);
-            }
-
-            for (PieceType p3 = PAWN; p3 <= p1; ++p3)
-                for (PieceType p4 = PAWN; p4 <= (p1 == p3 ? p2 : p3); ++p4)
-                    init_tb(K + pchr[p1] + pchr[p2]                       + "vK" + pchr[p3] + pchr[p4]);
-        }
-    }
-
-    std::cerr << "info string Found " << TBnum_piece + TBnum_pawn << " tablebases\n";
-}
 
 static const signed char offdiag[] = {
     0,-1,-1,-1,-1,-1,-1,-1,
@@ -558,11 +470,23 @@ static int binomial[5][64];
 static int pawnidx[5][24];
 static int pfactor[5][4];
 
-static void init_indices(void)
+void Tablebases::init(const std::string& path)
 {
-    // There are Binomial(n, k) ways to choose k elements out of a set of n
-    // elements. Fill binomial[] with the binomial coefficents using pascal
-    // triangle algorithm so that binomial[k-1][n] = Binomial(n, k).
+    for (int i = 0; i < TBnum_piece; i++)
+        free_wdl_entry((TBEntry*)&TB_piece[i]);
+
+    for (int i = 0; i < TBnum_pawn; i++)
+        free_wdl_entry((TBEntry*)&TB_pawn[i]);
+
+    for (int i = 0; i < DTZ_ENTRIES; i++)
+        if (DTZ_table[i].entry)
+            free_dtz_entry(DTZ_table[i].entry);
+
+    if (path.empty() || path == "<empty>")
+        return;
+
+    // Fill binomial[] with the Binomial Coefficents using pascal triangle
+    // so that binomial[k-1][n] = Binomial(n, k).
     for (int k = 0; k < 5; k++)
     {
         binomial[k][0] = 0;
@@ -583,6 +507,65 @@ static void init_indices(void)
         }
         pfactor[i][3] = s;
     }
+
+    // Argument path is set to the directory or directories where the .rtbw and
+    // .rtbz files can be found. Multiple directories are separated by ";" on
+    // Windows and by ":" on Unix-based operating systems.
+    //
+    // Example:
+    // C:\tb\wdl345;C:\tb\wdl6;D:\tb\dtz345;D:\tb\dtz6
+
+    // Tokenize path into paths[] using SEP_CHAR delimiter
+    std::stringstream ss(path);
+    std::string token;
+
+    while (std::getline(ss, token, SEP_CHAR))
+        paths.push_back(token);
+
+    TBnum_piece = TBnum_pawn = 0;
+    MaxCardinality = 0;
+
+    for (int i = 0; i < (1 << TBHASHBITS); i++)
+        for (int j = 0; j < HSHMAX; j++) {
+            TB_hash[i][j].key = 0;
+            TB_hash[i][j].ptr = nullptr;
+        }
+
+    for (int i = 0; i < DTZ_ENTRIES; i++)
+        DTZ_table[i].entry = nullptr;
+
+    const std::string K("K");
+
+    for (PieceType p1 = PAWN; p1 < KING; ++p1)
+    {
+        init_tb(K + pchr[p1] + "vK");
+
+        for (PieceType p2 = PAWN; p2 <= p1; ++p2)
+        {
+            init_tb(K + pchr[p1] + pchr[p2] + "vK");
+            init_tb(K + pchr[p1] + "vK" + pchr[p2]);
+
+            for (PieceType p3 = PAWN; p3 < KING; ++p3)
+                init_tb(K + pchr[p1] + pchr[p2] + "vK" + pchr[p3]);
+
+            for (PieceType p3 = PAWN; p3 <= p2; ++p3)
+            {
+                init_tb(K + pchr[p1] + pchr[p2] + pchr[p3] + "vK");
+
+                for (PieceType p4 = PAWN; p4 <= p3; ++p4)
+                    init_tb(K + pchr[p1] + pchr[p2] + pchr[p3] + pchr[p4] + "vK");
+
+                for (PieceType p4 = PAWN; p4 < KING; ++p4)
+                    init_tb(K + pchr[p1] + pchr[p2] + pchr[p3] + "vK" + pchr[p4]);
+            }
+
+            for (PieceType p3 = PAWN; p3 <= p1; ++p3)
+                for (PieceType p4 = PAWN; p4 <= (p1 == p3 ? p2 : p3); ++p4)
+                    init_tb(K + pchr[p1] + pchr[p2] + "vK" + pchr[p3] + pchr[p4]);
+        }
+    }
+
+    std::cerr << "info string Found " << TBnum_piece + TBnum_pawn << " tablebases\n";
 }
 
 static uint64_t encode_piece(TBEntry_piece *ptr, uint8_t *norm, int *pos, int *factor)
