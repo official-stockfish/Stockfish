@@ -67,22 +67,21 @@ namespace {
 /// search captures, promotions, and some checks) and how important good move
 /// ordering is at the current node.
 
-MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const HistoryStats& h,
-                       const CounterMoveStats& cmh, const CounterMoveStats& fmh,
-                       Move cm, Search::Stack* s)
-           : pos(p), history(h), counterMoveHistory(&cmh),
-             followupMoveHistory(&fmh), ss(s), countermove(cm), depth(d) {
+MovePicker::MovePicker(const Position& p, Move ttm, Depth d, Search::Stack* s)
+           : pos(p), ss(s), depth(d) {
 
   assert(d > DEPTH_ZERO);
+
+  Square prevSq = to_sq((ss-1)->currentMove);
+  countermove = pos.this_thread()->counterMoves[pos.piece_on(prevSq)][prevSq];
 
   stage = pos.checkers() ? EVASION : MAIN_SEARCH;
   ttMove = ttm && pos.pseudo_legal(ttm) ? ttm : MOVE_NONE;
   endMoves += (ttMove != MOVE_NONE);
 }
 
-MovePicker::MovePicker(const Position& p, Move ttm, Depth d,
-                       const HistoryStats& h, Square s)
-           : pos(p), history(h) {
+MovePicker::MovePicker(const Position& p, Move ttm, Depth d, Square s)
+           : pos(p) {
 
   assert(d <= DEPTH_ZERO);
 
@@ -106,8 +105,8 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d,
   endMoves += (ttMove != MOVE_NONE);
 }
 
-MovePicker::MovePicker(const Position& p, Move ttm, const HistoryStats& h, Value th)
-           : pos(p), history(h), threshold(th) {
+MovePicker::MovePicker(const Position& p, Move ttm, Value th)
+           : pos(p), threshold(th) {
 
   assert(!pos.checkers());
 
@@ -142,10 +141,17 @@ void MovePicker::score<CAPTURES>() {
 template<>
 void MovePicker::score<QUIETS>() {
 
+  const HistoryStats& history = pos.this_thread()->history;
+
+  const CounterMoveStats* cm = (ss-1)->counterMoves;
+  const CounterMoveStats* fm = (ss-2)->counterMoves;
+  const CounterMoveStats* f2 = (ss-4)->counterMoves;
+
   for (auto& m : *this)
-      m.value =  history[pos.moved_piece(m)][to_sq(m)]
-               + (*counterMoveHistory )[pos.moved_piece(m)][to_sq(m)]
-               + (*followupMoveHistory)[pos.moved_piece(m)][to_sq(m)];
+      m.value =      history[pos.moved_piece(m)][to_sq(m)]
+               + (cm ? (*cm)[pos.moved_piece(m)][to_sq(m)] : VALUE_ZERO)
+               + (fm ? (*fm)[pos.moved_piece(m)][to_sq(m)] : VALUE_ZERO)
+               + (f2 ? (*f2)[pos.moved_piece(m)][to_sq(m)] : VALUE_ZERO);
 }
 
 template<>
@@ -153,6 +159,7 @@ void MovePicker::score<EVASIONS>() {
   // Try winning and equal captures ordered by MVV/LVA, then non-captures ordered
   // by history value, then bad captures and quiet moves with a negative SEE ordered
   // by SEE value.
+  const HistoryStats& history = pos.this_thread()->history;
   Value see;
 
   for (auto& m : *this)
