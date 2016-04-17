@@ -42,7 +42,7 @@ namespace {
   // A list to keep track of the position states along the setup moves (from the
   // start position to the position just before the search starts). Needed by
   // 'draw by repetition' detection.
-  StateListPtr States(new std::vector<StateInfo>(1));
+  StateListPtr States(new std::deque<StateInfo>(1));
 
 
   // position() is called when engine receives the "position" UCI command.
@@ -68,7 +68,7 @@ namespace {
     else
         return;
 
-    States = StateListPtr(new std::vector<StateInfo>(1));
+    States = StateListPtr(new std::deque<StateInfo>(1));
     pos.set(fen, Options["UCI_Chess960"], &States->back(), Threads.main());
 
     // Parse move list (if any)
