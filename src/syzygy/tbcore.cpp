@@ -8,6 +8,7 @@
 */
 
 #include <iostream>
+#include <sstream>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -19,6 +20,7 @@
 #include <sys/mman.h>
 #endif
 #include "tbcore.h"
+#include "../types.h"
 
 #define TBMAX_PIECE 254
 #define TBMAX_PAWN 256
@@ -26,7 +28,6 @@
 
 static Mutex TB_mutex;
 
-static bool initialized = false;
 static std::vector<std::string> paths;
 
 static int TBnum_piece, TBnum_pawn;
@@ -156,10 +157,9 @@ static void add_to_hash(TBEntry *ptr, uint64_t key)
     }
 }
 
-static std::string pchr = " PNBRQK";
-static std::string pchr_rev = "KQRBNP ";
+static const std::string pchr = " PNBRQK";
 
-static void init_tb(std::string str)
+static void init_tb(const std::string& str)
 {
     FD fd;
     TBEntry *entry;
@@ -261,23 +261,22 @@ static void init_tb(std::string str)
 
 void Tablebases::init(const std::string& path)
 {
-    char str[16];
-    int i, j, k, l;
+    static bool initialized = false;
 
     if (initialized) {
         TBEntry *entry;
 
-        for (i = 0; i < TBnum_piece; i++) {
+        for (int i = 0; i < TBnum_piece; i++) {
             entry = (TBEntry *)&TB_piece[i];
             free_wdl_entry(entry);
         }
 
-        for (i = 0; i < TBnum_pawn; i++) {
+        for (int i = 0; i < TBnum_pawn; i++) {
             entry = (TBEntry *)&TB_pawn[i];
             free_wdl_entry(entry);
         }
 
-        for (i = 0; i < DTZ_ENTRIES; i++)
+        for (int i = 0; i < DTZ_ENTRIES; i++)
             if (DTZ_table[i].entry)
                 free_dtz_entry(DTZ_table[i].entry);
     } else {
@@ -288,83 +287,62 @@ void Tablebases::init(const std::string& path)
     if (path.empty() || path == "<empty>")
         return;
 
+    // Argument path is set to the directory or directories where the .rtbw and
+    // .rtbz files can be found. Multiple directories are separated by ";" on
+    // Windows and by ":" on Unix-based operating systems.
+    //
+    // Example:
+    // C:\tb\wdl345;C:\tb\wdl6;D:\tb\dtz345;D:\tb\dtz6
+
     // Tokenize path into paths[] using SEP_CHAR delimiter
-    std::string s(path);
-    size_t pos = 0;
+    std::stringstream ss(path);
+    std::string token;
 
-    while ((pos = s.find(SEP_CHAR)) != std::string::npos) {
-        paths.push_back(s.substr(0, pos));
-        s.erase(0, pos + 1);
-    }
-
-    paths.push_back(s);
+    while (std::getline(ss, token, SEP_CHAR))
+        paths.push_back(token);
 
     TBnum_piece = TBnum_pawn = 0;
     MaxCardinality = 0;
 
-    for (i = 0; i < (1 << TBHASHBITS); i++)
-        for (j = 0; j < HSHMAX; j++) {
-            TB_hash[i][j].key = 0ULL;
-            TB_hash[i][j].ptr = NULL;
+    for (int i = 0; i < (1 << TBHASHBITS); i++)
+        for (int j = 0; j < HSHMAX; j++) {
+            TB_hash[i][j].key = 0;
+            TB_hash[i][j].ptr = nullptr;
         }
 
-    for (i = 0; i < DTZ_ENTRIES; i++)
-        DTZ_table[i].entry = NULL;
+    for (int i = 0; i < DTZ_ENTRIES; i++)
+        DTZ_table[i].entry = nullptr;
 
-    for (i = 1; i < 6; i++) {
-        sprintf(str, "K%cvK", pchr_rev[i]);
-        init_tb(str);
+    const std::string K("K");
+
+    for (PieceType p1 = PAWN; p1 < KING; ++p1)
+    {
+        init_tb(K + pchr[p1] + "vK");
+
+        for (PieceType p2 = PAWN; p2 <= p1; ++p2)
+        {
+            init_tb(K + pchr[p1] + pchr[p2]                               + "vK");
+            init_tb(K + pchr[p1]                                          + "vK" + pchr[p2]);
+
+            for (PieceType p3 = PAWN; p3 < KING; ++p3)
+                init_tb(K + pchr[p1] + pchr[p2]                           + "vK" + pchr[p3]);
+
+            for (PieceType p3 = PAWN; p3 <= p2; ++p3)
+            {
+                init_tb(K + pchr[p1] + pchr[p2] + pchr[p3]                + "vK");
+
+                for (PieceType p4 = PAWN; p4 <= p3; ++p4)
+                    init_tb(K + pchr[p1] + pchr[p2] + pchr[p3] + pchr[p4] + "vK");
+
+                for (PieceType p4 = PAWN; p4 < KING; ++p4)
+                    init_tb(K + pchr[p1] + pchr[p2] + pchr[p3]            + "vK" + pchr[p4]);
+            }
+
+            for (PieceType p3 = PAWN; p3 <= p1; ++p3)
+                for (PieceType p4 = PAWN; p4 <= (p1 == p3 ? p2 : p3); ++p4)
+                    init_tb(K + pchr[p1] + pchr[p2]                       + "vK" + pchr[p3] + pchr[p4]);
+        }
     }
-
-    for (i = 1; i < 6; i++)
-        for (j = i; j < 6; j++) {
-            sprintf(str, "K%cvK%c", pchr_rev[i], pchr_rev[j]);
-            init_tb(str);
-        }
-
-    for (i = 1; i < 6; i++)
-        for (j = i; j < 6; j++) {
-            sprintf(str, "K%c%cvK", pchr_rev[i], pchr_rev[j]);
-            init_tb(str);
-        }
-
-    for (i = 1; i < 6; i++)
-        for (j = i; j < 6; j++)
-            for (k = 1; k < 6; k++) {
-                sprintf(str, "K%c%cvK%c", pchr_rev[i], pchr_rev[j], pchr_rev[k]);
-                init_tb(str);
-            }
-
-    for (i = 1; i < 6; i++)
-        for (j = i; j < 6; j++)
-            for (k = j; k < 6; k++) {
-                sprintf(str, "K%c%c%cvK", pchr_rev[i], pchr_rev[j], pchr_rev[k]);
-                init_tb(str);
-            }
-
-    for (i = 1; i < 6; i++)
-        for (j = i; j < 6; j++)
-            for (k = i; k < 6; k++)
-                for (l = (i == k) ? j : k; l < 6; l++) {
-                    sprintf(str, "K%c%cvK%c%c", pchr_rev[i], pchr_rev[j], pchr_rev[k], pchr_rev[l]);
-                    init_tb(str);
-                }
-
-    for (i = 1; i < 6; i++)
-        for (j = i; j < 6; j++)
-            for (k = j; k < 6; k++)
-                for (l = 1; l < 6; l++) {
-                    sprintf(str, "K%c%c%cvK%c", pchr_rev[i], pchr_rev[j], pchr_rev[k], pchr_rev[l]);
-                    init_tb(str);
-                }
-
-    for (i = 1; i < 6; i++)
-        for (j = i; j < 6; j++)
-            for (k = j; k < 6; k++)
-                for (l = k; l < 6; l++) {
-                    sprintf(str, "K%c%c%c%cvK", pchr_rev[i], pchr_rev[j], pchr_rev[k], pchr_rev[l]);
-                    init_tb(str);
-                }
 
     std::cerr << "info string Found " << TBnum_piece + TBnum_pawn << " tablebases\n";
 }
