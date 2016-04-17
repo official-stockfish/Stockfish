@@ -190,6 +190,8 @@ void ThreadPool::start_thinking(const Position& pos, StateListPtr& states,
   if (states.get())
       setupStates = std::move(states); // Ownership transfer, states is now empty
 
+  StateInfo tmp = setupStates->back();
+
   for (Thread* th : Threads)
   {
       th->maxPly = 0;
@@ -197,6 +199,8 @@ void ThreadPool::start_thinking(const Position& pos, StateListPtr& states,
       th->rootMoves = rootMoves;
       th->rootPos.set(pos.fen(), pos.is_chess960(), &setupStates->back(), th);
   }
+
+  setupStates->back() = tmp; // Restore st->previous, cleared by Position::set()
 
   main()->start_searching();
 }
