@@ -534,17 +534,19 @@ void Tablebases::init(const std::string& path)
             binomial[k][n] = (k ? binomial[k-1][n-1] : 1) + binomial[k][n-1];
     }
 
-    for (int s = 0, i = 0; i < 5; i++)
-    {
-        for (int j = 0; j < 24; j++)
-        {
-            pawnidx[i][j] = s;
-            s += (i ? binomial[i - 1][ptwist[invflap[j]]] : 1);
+    for (int i = 0; i < 5; i++) {
+        int k = 0;
 
-            if (j && !(j % 6))
-                pfactor[i][(j / 6) - 1] = s, s = 0;
+        for (int j = 1; j <= 4; j++) {
+            int s = 0;
+
+            for ( ; k < 6 * j; k++) {
+                pawnidx[i][k] = s;
+                s += (i == 0) ? 1 : binomial[i - 1][ptwist[invflap[k]]];
+            }
+
+            pfactor[i][j - 1] = s;
         }
-        pfactor[i][3] = s;
     }
 
     // Argument path is set to the directory or directories where the .rtbw and
