@@ -64,7 +64,7 @@ public:
   int maxPly, callsCnt;
 
   Position rootPos;
-  Search::RootMoveVector rootMoves;
+  Search::RootMoves rootMoves;
   Depth rootDepth;
   HistoryStats history;
   MoveStats counterMoves;
@@ -94,9 +94,12 @@ struct ThreadPool : public std::vector<Thread*> {
   void exit(); // be initialized and valid during the whole thread lifetime.
 
   MainThread* main() { return static_cast<MainThread*>(at(0)); }
-  void start_thinking(const Position&, const Search::LimitsType&, Search::StateStackPtr&);
+  void start_thinking(const Position&, StateListPtr&, const Search::LimitsType&);
   void read_uci_options();
   int64_t nodes_searched();
+
+private:
+  StateListPtr setupStates;
 };
 
 extern ThreadPool Threads;

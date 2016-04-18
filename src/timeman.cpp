@@ -33,7 +33,7 @@ namespace {
   enum TimeType { OptimumTime, MaxTime };
 
   const int MoveHorizon   = 50;   // Plan time management at most this many moves ahead
-  const double MaxRatio   = 7.09;  // When in trouble, we can step over reserved time with this ratio
+  const double MaxRatio   = 7.09; // When in trouble, we can step over reserved time with this ratio
   const double StealRatio = 0.35; // However we must not steal time from remaining moves over this ratio
 
 
