@@ -67,16 +67,14 @@ static uint64_t calc_key(Position& pos, bool mirror)
 // defined by pcs[16], where pcs[1], ..., pcs[6] is the number of white
 // pawns, ..., kings and pcs[9], ..., pcs[14] is the number of black
 // pawns, ..., kings.
-static uint64_t calc_key_from_pcs(int *pcs, bool mirror)
+static uint64_t calc_key_from_pcs(uint8_t* pcs, bool mirror)
 {
     uint64_t key = 0;
 
-    for (int i = 0; i < 2; i++) {
+    for (Color c = WHITE; c <= BLACK; ++c)
         for (PieceType pt = PAWN; pt <= KING; ++pt)
-            for (int j = 0; j < pcs[8 * (i ^ mirror) + pt]; j++)
-                key ^= Zobrist::psq[i][pt][j];
-    }
-
+            for (int cnt = 0; cnt < pcs[8 * (c ^ mirror) + pt]; ++cnt)
+                key ^= Zobrist::psq[c][pt][cnt];
     return key;
 }
 

@@ -39,7 +39,7 @@ static TBHashEntry TB_hash[1 << TBHASHBITS][HSHMAX];
 
 static DTZTableEntry DTZ_table[DTZ_ENTRIES];
 
-static uint64_t calc_key_from_pcs(int *pcs, bool mirror);
+static uint64_t calc_key_from_pcs(uint8_t* pcs, bool mirror);
 
 static FD open_tb(const std::string& str, const std::string& suffix)
 {
@@ -154,104 +154,108 @@ static void add_to_hash(TBEntry *ptr, uint64_t key)
 
 static const std::string pchr = " PNBRQK";
 
-static void init_tb(const std::string& str)
+static void init_tb(const std::vector<PieceType>& pieces)
 {
     FD fd;
-    TBEntry *entry;
-    int i, j, pcs[16];
-    uint64_t key, key2;
-    int color;
+    TBEntry* entry;
+    uint64_t key1, key2;
 
-    fd = open_tb(str, WDLSUFFIX);
+    std::string fname;
+    Color c = BLACK;
+    uint8_t pcs[PIECE_NB] = {0};
+
+    for (PieceType pt : pieces)
+    {
+        if (pt == KING)
+        {
+            c = ~c;
+            if (!fname.empty())
+                fname += 'v';
+        }
+
+        pcs[make_piece(c, pt)]++;
+        fname += pchr[pt];
+    }
+
+    fd = open_tb(fname, WDLSUFFIX);
 
     if (fd == FD_ERR)
         return;
 
     close_tb(fd);
 
-    for (i = 0; i < 16; i++)
-        pcs[i] = 0;
-
-    color = 0;
-
-    for (char c : str) {
-        auto p = pchr.find(c);
-
-        if (p == std::string::npos) {
-            assert(c == 'v');
-            color = 8;
-        } else
-            pcs[p | color]++;
-    }
-
-    for (i = 0; i < 8; i++)
-        if (pcs[i] != pcs[i+8])
-            break;
-
-    key = calc_key_from_pcs(pcs, 0);
+    key1 = calc_key_from_pcs(pcs, 0);
     key2 = calc_key_from_pcs(pcs, 1);
 
-    if (pcs[W_PAWN] + pcs[B_PAWN] == 0) {
-        if (TBnum_piece == TBMAX_PIECE) {
-            std::cerr << "TBMAX_PIECE limit too low!\n";
-            exit(1);
-        }
+    bool hasPawns = pcs[W_PAWN] + pcs[B_PAWN];
 
-        entry = (TBEntry *)&TB_piece[TBnum_piece++];
-    } else {
+    if (hasPawns) {
         if (TBnum_pawn == TBMAX_PAWN) {
             std::cerr << "TBMAX_PAWN limit too low!\n";
             exit(1);
         }
-
-        entry = (TBEntry *)&TB_pawn[TBnum_pawn++];
+        entry = (TBEntry*)&TB_pawn[TBnum_pawn++];
+    } else {
+        if (TBnum_piece == TBMAX_PIECE) {
+            std::cerr << "TBMAX_PIECE limit too low!\n";
+            exit(1);
+        }
+        entry = (TBEntry*)&TB_piece[TBnum_piece++];
     }
 
-    entry->key = key;
+    entry->key = key1;
     entry->ready = 0;
     entry->num = 0;
 
-    for (i = 0; i < 16; i++)
-        entry->num += (uint8_t)pcs[i];
-
-    entry->symmetric = (key == key2);
-    entry->has_pawns = (pcs[W_PAWN] + pcs[B_PAWN] > 0);
+    for (auto n : pcs)
+        entry->num += n;
 
     if (entry->num > Tablebases::MaxCardinality)
         Tablebases::MaxCardinality = entry->num;
 
-    if (entry->has_pawns) {
-        TBEntry_pawn *ptr = (TBEntry_pawn *)entry;
-        ptr->pawns[0] = (uint8_t)pcs[W_PAWN];
-        ptr->pawns[1] = (uint8_t)pcs[B_PAWN];
+    entry->symmetric = (key1 == key2);
+    entry->has_pawns = hasPawns;
 
-        if (pcs[B_PAWN] > 0
-                && (pcs[W_PAWN] == 0 || pcs[B_PAWN] < pcs[W_PAWN])) {
-            ptr->pawns[0] = (uint8_t)pcs[B_PAWN];
-            ptr->pawns[1] = (uint8_t)pcs[W_PAWN];
+    if (hasPawns) {
+        TBEntry_pawn* ptr = (TBEntry_pawn*)entry;
+        ptr->pawns[0] = pcs[W_PAWN];
+        ptr->pawns[1] = pcs[B_PAWN];
+
+        // FIXME: What it means this one?
+        if (    pcs[B_PAWN] > 0
+            && (pcs[W_PAWN] == 0 || pcs[B_PAWN] < pcs[W_PAWN])) {
+            ptr->pawns[0] = pcs[B_PAWN];
+            ptr->pawns[1] = pcs[W_PAWN];
         }
     } else {
-        TBEntry_piece *ptr = (TBEntry_piece *)entry;
+        TBEntry_piece* ptr = (TBEntry_piece*)entry;
 
-        for (i = 0, j = 0; i < 16; i++)
-            if (pcs[i] == 1) j++;
+        int j = 0;
+        for (auto n : pcs)
+            if (n == 1)
+                j++;
 
-        if (j >= 3) ptr->enc_type = 0;
-        else if (j == 2) ptr->enc_type = 2;
+        if (j >= 3)
+            ptr->enc_type = 0;
+
+        else if (j == 2)
+            ptr->enc_type = 2;
+
         else { /* only for suicide */
             j = 16;
 
-            for (i = 0; i < 16; i++) {
-                if (pcs[i] < j && pcs[i] > 1) j = pcs[i];
-
+            for (auto n : pcs) {
+                if (n < j && n > 1)
+                    j = n;
                 ptr->enc_type = uint8_t(1 + j);
             }
         }
     }
 
-    add_to_hash(entry, key);
+    add_to_hash(entry, key1);
 
-    if (key2 != key) add_to_hash(entry, key2);
+    if (key2 != key1)
+        add_to_hash(entry, key2);
 }
 
 
@@ -536,7 +540,7 @@ void Tablebases::init(const std::string& path)
 
             for ( ; k < 6 * j; k++) {
                 pawnidx[i][k] = s;
-                s += (i == 0) ? 1 : binomial[i - 1][ptwist[invflap[k]]];
+                s += (i ? binomial[i - 1][ptwist[invflap[k]]] : 1);
             }
 
             pfactor[i][j - 1] = s;
@@ -557,31 +561,29 @@ void Tablebases::init(const std::string& path)
     while (std::getline(ss, token, SEP_CHAR))
         paths.push_back(token);
 
-    const std::string K("K");
-
     for (PieceType p1 = PAWN; p1 < KING; ++p1) {
-        init_tb(K + pchr[p1] + "vK");
+        init_tb({KING, p1, KING});
 
         for (PieceType p2 = PAWN; p2 <= p1; ++p2) {
-            init_tb(K + pchr[p1] + pchr[p2] + "vK");
-            init_tb(K + pchr[p1] + "vK" + pchr[p2]);
+            init_tb({KING, p1, p2, KING});
+            init_tb({KING, p1, KING, p2});
 
             for (PieceType p3 = PAWN; p3 < KING; ++p3)
-                init_tb(K + pchr[p1] + pchr[p2] + "vK" + pchr[p3]);
+                init_tb({KING, p1, p2, KING, p3});
 
             for (PieceType p3 = PAWN; p3 <= p2; ++p3) {
-                init_tb(K + pchr[p1] + pchr[p2] + pchr[p3] + "vK");
+                init_tb({KING, p1, p2, p3, KING});
 
                 for (PieceType p4 = PAWN; p4 <= p3; ++p4)
-                    init_tb(K + pchr[p1] + pchr[p2] + pchr[p3] + pchr[p4] + "vK");
+                    init_tb({KING, p1, p2, p3, p4, KING});
 
                 for (PieceType p4 = PAWN; p4 < KING; ++p4)
-                    init_tb(K + pchr[p1] + pchr[p2] + pchr[p3] + "vK" + pchr[p4]);
+                    init_tb({KING, p1, p2, p3, KING, p4});
             }
 
             for (PieceType p3 = PAWN; p3 <= p1; ++p3)
                 for (PieceType p4 = PAWN; p4 <= (p1 == p3 ? p2 : p3); ++p4)
-                    init_tb(K + pchr[p1] + pchr[p2] + "vK" + pchr[p3] + pchr[p4]);
+                    init_tb({KING, p1, p2, KING, p3, p4});
         }
     }
 
