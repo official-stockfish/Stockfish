@@ -27,8 +27,6 @@
 #define TBMAX_PAWN 256
 #define HSHMAX 5
 
-static Mutex TB_mutex;
-
 static std::vector<std::string> paths;
 
 static int TBnum_piece, TBnum_pawn;
@@ -593,7 +591,7 @@ void Tablebases::init(const std::string& path)
 static uint64_t encode_piece(TBEntry_piece *ptr, uint8_t *norm, int *pos, int *factor)
 {
     uint64_t idx;
-    int i, j, k, m, l, p;
+    int i, j, m, l, p;
     int n = ptr->num;
 
     if (pos[0] & 4) {
@@ -660,9 +658,7 @@ static uint64_t encode_piece(TBEntry_piece *ptr, uint8_t *norm, int *pos, int *f
     for (; i < n;) {
         int t = norm[i];
 
-        for (j = i; j < i + t; j++)
-            for (k = j + 1; k < i + t; k++)
-                if (pos[j] > pos[k]) std::swap(pos[j], pos[k]);
+        std::sort(&pos[i], &pos[i + t]);
 
         int s = 0;
 
@@ -722,9 +718,7 @@ static uint64_t encode_pawn(TBEntry_pawn *ptr, uint8_t *norm, int *pos, int *fac
     t = i + ptr->pawns[1];
 
     if (t > i) {
-        for (j = i; j < t; j++)
-            for (k = j + 1; k < t; k++)
-                if (pos[j] > pos[k]) std::swap(pos[j], pos[k]);
+        std::sort(&pos[i], &pos[t]);
 
         s = 0;
 
@@ -744,9 +738,7 @@ static uint64_t encode_pawn(TBEntry_pawn *ptr, uint8_t *norm, int *pos, int *fac
     for (; i < n;) {
         t = norm[i];
 
-        for (j = i; j < i + t; j++)
-            for (k = j + 1; k < i + t; k++)
-                if (pos[j] > pos[k]) std::swap(pos[j], pos[k]);
+        std::sort(&pos[i], &pos[i + t]);
 
         s = 0;
 
