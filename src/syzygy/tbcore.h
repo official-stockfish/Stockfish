@@ -13,6 +13,9 @@
 #define FD_ERR -1
 #else
 #define WIN32_LEAN_AND_MEAN
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
 #include <windows.h>
 #define SEP_CHAR ';'
 #define FD HANDLE
@@ -63,11 +66,7 @@ struct TBEntry {
     uint8_t num;
     uint8_t symmetric;
     uint8_t has_pawns;
-}
-#ifndef _WIN32
-__attribute__((__may_alias__))
-#endif
-;
+};
 
 struct TBEntry_piece {
     char *data;

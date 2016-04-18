@@ -7,7 +7,9 @@
   a particular engine, provided the engine is written in C or C++.
 */
 
+#include <cstring>   // For std::memset
 #include <iostream>
+#include <sstream>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -19,6 +21,7 @@
 #include <sys/mman.h>
 #endif
 #include "tbcore.h"
+#include "../types.h"
 
 #define TBMAX_PIECE 254
 #define TBMAX_PAWN 256
@@ -26,7 +29,6 @@
 
 static Mutex TB_mutex;
 
-static bool initialized = false;
 static std::vector<std::string> paths;
 
 static int TBnum_piece, TBnum_pawn;
@@ -39,10 +41,7 @@ static TBHashEntry TB_hash[1 << TBHASHBITS][HSHMAX];
 
 static DTZTableEntry DTZ_table[DTZ_ENTRIES];
 
-static void init_indices(void);
 static uint64_t calc_key_from_pcs(int *pcs, bool mirror);
-static void free_wdl_entry(TBEntry *entry);
-static void free_dtz_entry(TBEntry *entry);
 
 static FD open_tb(const std::string& str, const std::string& suffix)
 {
@@ -156,10 +155,9 @@ static void add_to_hash(TBEntry *ptr, uint64_t key)
     }
 }
 
-static std::string pchr = " PNBRQK";
-static std::string pchr_rev = "KQRBNP ";
+static const std::string pchr = " PNBRQK";
 
-static void init_tb(std::string str)
+static void init_tb(const std::string& str)
 {
     FD fd;
     TBEntry *entry;
@@ -259,115 +257,6 @@ static void init_tb(std::string str)
     if (key2 != key) add_to_hash(entry, key2);
 }
 
-void Tablebases::init(const std::string& path)
-{
-    char str[16];
-    int i, j, k, l;
-
-    if (initialized) {
-        TBEntry *entry;
-
-        for (i = 0; i < TBnum_piece; i++) {
-            entry = (TBEntry *)&TB_piece[i];
-            free_wdl_entry(entry);
-        }
-
-        for (i = 0; i < TBnum_pawn; i++) {
-            entry = (TBEntry *)&TB_pawn[i];
-            free_wdl_entry(entry);
-        }
-
-        for (i = 0; i < DTZ_ENTRIES; i++)
-            if (DTZ_table[i].entry)
-                free_dtz_entry(DTZ_table[i].entry);
-    } else {
-        init_indices();
-        initialized = true;
-    }
-
-    if (path.empty() || path == "<empty>")
-        return;
-
-    // Tokenize path into paths[] using SEP_CHAR delimiter
-    std::string s(path);
-    size_t pos = 0;
-
-    while ((pos = s.find(SEP_CHAR)) != std::string::npos) {
-        paths.push_back(s.substr(0, pos));
-        s.erase(0, pos + 1);
-    }
-
-    paths.push_back(s);
-
-    TBnum_piece = TBnum_pawn = 0;
-    MaxCardinality = 0;
-
-    for (i = 0; i < (1 << TBHASHBITS); i++)
-        for (j = 0; j < HSHMAX; j++) {
-            TB_hash[i][j].key = 0ULL;
-            TB_hash[i][j].ptr = NULL;
-        }
-
-    for (i = 0; i < DTZ_ENTRIES; i++)
-        DTZ_table[i].entry = NULL;
-
-    for (i = 1; i < 6; i++) {
-        sprintf(str, "K%cvK", pchr_rev[i]);
-        init_tb(str);
-    }
-
-    for (i = 1; i < 6; i++)
-        for (j = i; j < 6; j++) {
-            sprintf(str, "K%cvK%c", pchr_rev[i], pchr_rev[j]);
-            init_tb(str);
-        }
-
-    for (i = 1; i < 6; i++)
-        for (j = i; j < 6; j++) {
-            sprintf(str, "K%c%cvK", pchr_rev[i], pchr_rev[j]);
-            init_tb(str);
-        }
-
-    for (i = 1; i < 6; i++)
-        for (j = i; j < 6; j++)
-            for (k = 1; k < 6; k++) {
-                sprintf(str, "K%c%cvK%c", pchr_rev[i], pchr_rev[j], pchr_rev[k]);
-                init_tb(str);
-            }
-
-    for (i = 1; i < 6; i++)
-        for (j = i; j < 6; j++)
-            for (k = j; k < 6; k++) {
-                sprintf(str, "K%c%c%cvK", pchr_rev[i], pchr_rev[j], pchr_rev[k]);
-                init_tb(str);
-            }
-
-    for (i = 1; i < 6; i++)
-        for (j = i; j < 6; j++)
-            for (k = i; k < 6; k++)
-                for (l = (i == k) ? j : k; l < 6; l++) {
-                    sprintf(str, "K%c%cvK%c%c", pchr_rev[i], pchr_rev[j], pchr_rev[k], pchr_rev[l]);
-                    init_tb(str);
-                }
-
-    for (i = 1; i < 6; i++)
-        for (j = i; j < 6; j++)
-            for (k = j; k < 6; k++)
-                for (l = 1; l < 6; l++) {
-                    sprintf(str, "K%c%c%cvK%c", pchr_rev[i], pchr_rev[j], pchr_rev[k], pchr_rev[l]);
-                    init_tb(str);
-                }
-
-    for (i = 1; i < 6; i++)
-        for (j = i; j < 6; j++)
-            for (k = j; k < 6; k++)
-                for (l = k; l < 6; l++) {
-                    sprintf(str, "K%c%c%c%cvK", pchr_rev[i], pchr_rev[j], pchr_rev[k], pchr_rev[l]);
-                    init_tb(str);
-                }
-
-    std::cerr << "info string Found " << TBnum_piece + TBnum_pawn << " tablebases\n";
-}
 
 static const signed char offdiag[] = {
     0,-1,-1,-1,-1,-1,-1,-1,
@@ -580,58 +469,132 @@ static int binomial[5][64];
 static int pawnidx[5][24];
 static int pfactor[5][4];
 
-static void init_indices(void)
+void free_wdl_entry(TBEntry_piece* entry)
 {
-    int i, j, k;
+    unmap_file(entry->data, entry->mapping);
 
-// binomial[k-1][n] = Bin(n, k)
-    for (i = 0; i < 5; i++)
-        for (j = 0; j < 64; j++) {
-            int f = j;
-            int l = 1;
+    free(entry->precomp[0]);
+    free(entry->precomp[1]);
+}
 
-            for (k = 1; k <= i; k++) {
-                f *= (j - k);
-                l *= (k + 1);
+void free_wdl_entry(TBEntry_pawn* entry)
+{
+    unmap_file(entry->data, entry->mapping);
+
+    for (int f = 0; f < 4; f++)
+    {
+        free(entry->file[f].precomp[0]);
+        free(entry->file[f].precomp[1]);
+    }
+}
+
+void free_dtz_entry(TBEntry* entry)
+{
+    unmap_file(entry->data, entry->mapping);
+
+    if (!entry->has_pawns)
+        free(((DTZEntry_piece*)entry)->precomp);
+    else
+        for (int f = 0; f < 4; f++)
+            free(((DTZEntry_pawn*)entry)->file[f].precomp);
+
+    free(entry);
+}
+
+void Tablebases::init(const std::string& path)
+{
+    for (int i = 0; i < TBnum_piece; i++)
+        free_wdl_entry(&TB_piece[i]);
+
+    for (int i = 0; i < TBnum_pawn; i++)
+        free_wdl_entry(&TB_pawn[i]);
+
+    for (int i = 0; i < DTZ_ENTRIES; i++)
+        if (DTZ_table[i].entry)
+        {
+            free_dtz_entry(DTZ_table[i].entry);
+            DTZ_table[i].entry = nullptr;
+        }
+
+    TBnum_piece = TBnum_pawn = 0;
+    MaxCardinality = 0;
+
+    std::memset(TB_hash, 0, sizeof(TB_hash));
+
+    if (path.empty() || path == "<empty>")
+        return;
+
+    // Fill binomial[] with the Binomial Coefficents using pascal triangle
+    // so that binomial[k-1][n] = Binomial(n, k).
+    for (int k = 0; k < 5; k++)
+    {
+        binomial[k][0] = 0;
+
+        for (int n = 1; n < 64; n++)
+            binomial[k][n] = (k ? binomial[k-1][n-1] : 1) + binomial[k][n-1];
+    }
+
+    for (int i = 0; i < 5; i++) {
+        int k = 0;
+
+        for (int j = 1; j <= 4; j++) {
+            int s = 0;
+
+            for ( ; k < 6 * j; k++) {
+                pawnidx[i][k] = s;
+                s += (i == 0) ? 1 : binomial[i - 1][ptwist[invflap[k]]];
             }
 
-            binomial[i][j] = f / l;
+            pfactor[i][j - 1] = s;
         }
-
-    for (i = 0; i < 5; i++) {
-        int s = 0;
-
-        for (j = 0; j < 6; j++) {
-            pawnidx[i][j] = s;
-            s += (i == 0) ? 1 : binomial[i - 1][ptwist[invflap[j]]];
-        }
-
-        pfactor[i][0] = s;
-        s = 0;
-
-        for (; j < 12; j++) {
-            pawnidx[i][j] = s;
-            s += (i == 0) ? 1 : binomial[i - 1][ptwist[invflap[j]]];
-        }
-
-        pfactor[i][1] = s;
-        s = 0;
-
-        for (; j < 18; j++) {
-            pawnidx[i][j] = s;
-            s += (i == 0) ? 1 : binomial[i - 1][ptwist[invflap[j]]];
-        }
-
-        pfactor[i][2] = s;
-        s = 0;
-
-        for (; j < 24; j++) {
-            pawnidx[i][j] = s;
-            s += (i == 0) ? 1 : binomial[i - 1][ptwist[invflap[j]]];
-        }
-
-        pfactor[i][3] = s;
     }
+
+    // Argument path is set to the directory or directories where the .rtbw and
+    // .rtbz files can be found. Multiple directories are separated by ";" on
+    // Windows and by ":" on Unix-based operating systems.
+    //
+    // Example:
+    // C:\tb\wdl345;C:\tb\wdl6;D:\tb\dtz345;D:\tb\dtz6
+
+    // Tokenize path into paths[] using SEP_CHAR delimiter
+    std::stringstream ss(path);
+    std::string token;
+
+    while (std::getline(ss, token, SEP_CHAR))
+        paths.push_back(token);
+
+    const std::string K("K");
+
+    for (PieceType p1 = PAWN; p1 < KING; ++p1)
+    {
+        init_tb(K + pchr[p1] + "vK");
+
+        for (PieceType p2 = PAWN; p2 <= p1; ++p2)
+        {
+            init_tb(K + pchr[p1] + pchr[p2] + "vK");
+            init_tb(K + pchr[p1] + "vK" + pchr[p2]);
+
+            for (PieceType p3 = PAWN; p3 < KING; ++p3)
+                init_tb(K + pchr[p1] + pchr[p2] + "vK" + pchr[p3]);
+
+            for (PieceType p3 = PAWN; p3 <= p2; ++p3)
+            {
+                init_tb(K + pchr[p1] + pchr[p2] + pchr[p3] + "vK");
+
+                for (PieceType p4 = PAWN; p4 <= p3; ++p4)
+                    init_tb(K + pchr[p1] + pchr[p2] + pchr[p3] + pchr[p4] + "vK");
+
+                for (PieceType p4 = PAWN; p4 < KING; ++p4)
+                    init_tb(K + pchr[p1] + pchr[p2] + pchr[p3] + "vK" + pchr[p4]);
+            }
+
+            for (PieceType p3 = PAWN; p3 <= p1; ++p3)
+                for (PieceType p4 = PAWN; p4 <= (p1 == p3 ? p2 : p3); ++p4)
+                    init_tb(K + pchr[p1] + pchr[p2] + "vK" + pchr[p3] + pchr[p4]);
+        }
+    }
+
+    std::cerr << "info string Found " << TBnum_piece + TBnum_pawn << " tablebases\n";
 }
 
 static uint64_t encode_piece(TBEntry_piece *ptr, uint8_t *norm, int *pos, int *factor)
@@ -1469,47 +1432,6 @@ void load_dtz_table(const std::string& str, uint64_t key1, uint64_t key2)
         free(ptr3);
     else
         DTZ_table[0].entry = ptr3;
-}
-
-static void free_wdl_entry(TBEntry *entry)
-{
-    unmap_file(entry->data, entry->mapping);
-
-    if (!entry->has_pawns) {
-        TBEntry_piece *ptr = (TBEntry_piece *)entry;
-        free(ptr->precomp[0]);
-
-        if (ptr->precomp[1])
-            free(ptr->precomp[1]);
-    } else {
-        TBEntry_pawn *ptr = (TBEntry_pawn *)entry;
-        int f;
-
-        for (f = 0; f < 4; f++) {
-            free(ptr->file[f].precomp[0]);
-
-            if (ptr->file[f].precomp[1])
-                free(ptr->file[f].precomp[1]);
-        }
-    }
-}
-
-static void free_dtz_entry(TBEntry *entry)
-{
-    unmap_file(entry->data, entry->mapping);
-
-    if (!entry->has_pawns) {
-        DTZEntry_piece *ptr = (DTZEntry_piece *)entry;
-        free(ptr->precomp);
-    } else {
-        DTZEntry_pawn *ptr = (DTZEntry_pawn *)entry;
-        int f;
-
-        for (f = 0; f < 4; f++)
-            free(ptr->file[f].precomp);
-    }
-
-    free(entry);
 }
 
 static int wdl_to_map[5] = { 1, 3, 0, 2, 0 };
