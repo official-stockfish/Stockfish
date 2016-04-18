@@ -26,8 +26,6 @@
 #include "thread.h"
 #include "uci.h"
 
-using namespace Search;
-
 ThreadPool Threads; // Global object
 
 /// Thread constructor launches the thread and then waits until it goes to sleep
@@ -171,26 +169,38 @@ int64_t ThreadPool::nodes_searched() {
 /// ThreadPool::start_thinking() wakes up the main thread sleeping in idle_loop()
 /// and starts a new search, then returns immediately.
 
-void ThreadPool::start_thinking(const Position& pos, const LimitsType& limits,
-                                StateStackPtr& states) {
+void ThreadPool::start_thinking(const Position& pos, StateListPtr& states,
+                                const Search::LimitsType& limits) {
 
   main()->wait_for_search_finished();
 
-  Signals.stopOnPonderhit = Signals.stop = false;
-
-  main()->rootMoves.clear();
-  main()->rootPos = pos;
-  Limits = limits;
-  if (states.get()) // If we don't set a new position, preserve current state
-  {
-      SetupStates = std::move(states); // Ownership transfer here
-      assert(!states.get());
-  }
+  Search::Signals.stopOnPonderhit = Search::Signals.stop = false;
+  Search::Limits = limits;
+  Search::RootMoves rootMoves;
 
   for (const auto& m : MoveList<LEGAL>(pos))
       if (   limits.searchmoves.empty()
           || std::count(limits.searchmoves.begin(), limits.searchmoves.end(), m))
-          main()->rootMoves.push_back(RootMove(m));
+          rootMoves.push_back(Search::RootMove(m));
+
+  // After ownership transfer 'states' becomes empty, so if we stop the search
+  // and call 'go' again without setting a new position states.get() == NULL.
+  assert(states.get() || setupStates.get());
+
+  if (states.get())
+      setupStates = std::move(states); // Ownership transfer, states is now empty
+
+  StateInfo tmp = setupStates->back();
+
+  for (Thread* th : Threads)
+  {
+      th->maxPly = 0;
+      th->rootDepth = DEPTH_ZERO;
+      th->rootMoves = rootMoves;
+      th->rootPos.set(pos.fen(), pos.is_chess960(), &setupStates->back(), th);
+  }
+
+  setupStates->back() = tmp; // Restore st->previous, cleared by Position::set()
 
   main()->start_searching();
 }
