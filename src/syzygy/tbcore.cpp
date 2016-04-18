@@ -95,8 +95,7 @@ static char *map_file(const std::string& name, const std::string& suffix, uint64
 #else
     DWORD size_low, size_high;
     size_low = GetFileSize(fd, &size_high);
-    HANDLE map = CreateFileMapping(fd, NULL, PAGE_READONLY, size_high, size_low,
-                                   NULL);
+    HANDLE map = CreateFileMapping(fd, NULL, PAGE_READONLY, size_high, size_low, NULL);
 
     if (map == NULL) {
         std::cerr << "CreateFileMapping() failed\n";
@@ -481,8 +480,7 @@ void free_wdl_entry(TBEntry_pawn* entry)
 {
     unmap_file(entry->data, entry->mapping);
 
-    for (int f = 0; f < 4; f++)
-    {
+    for (int f = 0; f < 4; f++) {
         free(entry->file[f].precomp[0]);
         free(entry->file[f].precomp[1]);
     }
@@ -510,8 +508,7 @@ void Tablebases::init(const std::string& path)
         free_wdl_entry(&TB_pawn[i]);
 
     for (int i = 0; i < DTZ_ENTRIES; i++)
-        if (DTZ_table[i].entry)
-        {
+        if (DTZ_table[i].entry) {
             free_dtz_entry(DTZ_table[i].entry);
             DTZ_table[i].entry = nullptr;
         }
@@ -526,8 +523,7 @@ void Tablebases::init(const std::string& path)
 
     // Fill binomial[] with the Binomial Coefficents using pascal triangle
     // so that binomial[k-1][n] = Binomial(n, k).
-    for (int k = 0; k < 5; k++)
-    {
+    for (int k = 0; k < 5; k++) {
         binomial[k][0] = 0;
 
         for (int n = 1; n < 64; n++)
@@ -565,20 +561,17 @@ void Tablebases::init(const std::string& path)
 
     const std::string K("K");
 
-    for (PieceType p1 = PAWN; p1 < KING; ++p1)
-    {
+    for (PieceType p1 = PAWN; p1 < KING; ++p1) {
         init_tb(K + pchr[p1] + "vK");
 
-        for (PieceType p2 = PAWN; p2 <= p1; ++p2)
-        {
+        for (PieceType p2 = PAWN; p2 <= p1; ++p2) {
             init_tb(K + pchr[p1] + pchr[p2] + "vK");
             init_tb(K + pchr[p1] + "vK" + pchr[p2]);
 
             for (PieceType p3 = PAWN; p3 < KING; ++p3)
                 init_tb(K + pchr[p1] + pchr[p2] + "vK" + pchr[p3]);
 
-            for (PieceType p3 = PAWN; p3 <= p2; ++p3)
-            {
+            for (PieceType p3 = PAWN; p3 <= p2; ++p3) {
                 init_tb(K + pchr[p1] + pchr[p2] + pchr[p3] + "vK");
 
                 for (PieceType p4 = PAWN; p4 <= p3; ++p4)
@@ -603,9 +596,9 @@ static uint64_t encode_piece(TBEntry_piece *ptr, uint8_t *norm, int *pos, int *f
     int i, j, k, m, l, p;
     int n = ptr->num;
 
-    if (pos[0] & 0x04) {
+    if (pos[0] & 4) {
         for (i = 0; i < n; i++)
-            pos[i] ^= 0x07;
+            pos[i] ^= 7;
     }
 
     if (pos[0] & 0x20) {
@@ -682,7 +675,7 @@ static uint64_t encode_piece(TBEntry_piece *ptr, uint8_t *norm, int *pos, int *f
             s += binomial[m - i][p - j];
         }
 
-        idx += ((uint64_t)s) * ((uint64_t)factor[i]);
+        idx += (uint64_t)s * ((uint64_t)factor[i]);
         i += t;
     }
 
@@ -698,7 +691,7 @@ static int pawn_file(TBEntry_pawn *ptr, int *pos)
         if (flap[pos[0]] > flap[pos[i]])
             std::swap(pos[0], pos[i]);
 
-    return file_to_file[pos[0] & 0x07];
+    return file_to_file[pos[0] & 7];
 }
 
 static uint64_t encode_pawn(TBEntry_pawn *ptr, uint8_t *norm, int *pos, int *factor)
@@ -707,9 +700,9 @@ static uint64_t encode_pawn(TBEntry_pawn *ptr, uint8_t *norm, int *pos, int *fac
     int i, j, k, m, s, t;
     int n = ptr->num;
 
-    if (pos[0] & 0x04)
+    if (pos[0] & 4)
         for (i = 0; i < n; i++)
-            pos[i] ^= 0x07;
+            pos[i] ^= 7;
 
     for (i = 1; i < ptr->pawns[0]; i++)
         for (j = i + 1; j < ptr->pawns[0]; j++)
@@ -744,7 +737,7 @@ static uint64_t encode_pawn(TBEntry_pawn *ptr, uint8_t *norm, int *pos, int *fac
             s += binomial[m - i][p - j - 8];
         }
 
-        idx += ((uint64_t)s) * ((uint64_t)factor[i]);
+        idx += (uint64_t)s * ((uint64_t)factor[i]);
         i = t;
     }
 
@@ -766,7 +759,7 @@ static uint64_t encode_pawn(TBEntry_pawn *ptr, uint8_t *norm, int *pos, int *fac
             s += binomial[m - i][p - j];
         }
 
-        idx += ((uint64_t)s) * ((uint64_t)factor[i]);
+        idx += (uint64_t)s * ((uint64_t)factor[i]);
         i += t;
     }
 
@@ -1088,8 +1081,8 @@ static int init_table_wdl(TBEntry *entry, const std::string& str)
         return 0;
     }
 
-    int split = data[4] & 0x01;
-    int files = data[4] & 0x02 ? 4 : 1;
+    int split = data[4] & 1;
+    int files = data[4] & 2 ? 4 : 1;
 
     data += 5;
 
@@ -1097,7 +1090,7 @@ static int init_table_wdl(TBEntry *entry, const std::string& str)
         TBEntry_piece *ptr = (TBEntry_piece *)entry;
         setup_pieces_piece(ptr, data, &tb_size[0]);
         data += ptr->num + 1;
-        data += ((uintptr_t)data) & 0x01;
+        data += (uintptr_t)data & 1;
 
         ptr->precomp[0] = setup_pairs(data, tb_size[0], &size[0], &next, &flags, 1);
         data = next;
@@ -1124,12 +1117,12 @@ static int init_table_wdl(TBEntry *entry, const std::string& str)
             data += size[4];
         }
 
-        data = (uint8_t *)((((uintptr_t)data) + 0x3f) & ~0x3f);
+        data = (uint8_t *)(((uintptr_t)data + 0x3f) & ~0x3f);
         ptr->precomp[0]->data = data;
         data += size[2];
 
         if (split) {
-            data = (uint8_t *)((((uintptr_t)data) + 0x3f) & ~0x3f);
+            data = (uint8_t *)(((uintptr_t)data + 0x3f) & ~0x3f);
             ptr->precomp[1]->data = data;
         }
     } else {
@@ -1141,7 +1134,7 @@ static int init_table_wdl(TBEntry *entry, const std::string& str)
             data += ptr->num + s;
         }
 
-        data += ((uintptr_t)data) & 0x01;
+        data += (uintptr_t)data & 1;
 
         for (f = 0; f < files; f++) {
             ptr->file[f].precomp[0] = setup_pairs(data, tb_size[2 * f], &size[6 * f], &next, &flags, 1);
@@ -1175,12 +1168,12 @@ static int init_table_wdl(TBEntry *entry, const std::string& str)
         }
 
         for (f = 0; f < files; f++) {
-            data = (uint8_t *)((((uintptr_t)data) + 0x3f) & ~0x3f);
+            data = (uint8_t *)(((uintptr_t)data + 0x3f) & ~0x3f);
             ptr->file[f].precomp[0]->data = data;
             data += size[6 * f + 2];
 
             if (split) {
-                data = (uint8_t *)((((uintptr_t)data) + 0x3f) & ~0x3f);
+                data = (uint8_t *)(((uintptr_t)data + 0x3f) & ~0x3f);
                 ptr->file[f].precomp[1]->data = data;
                 data += size[6 * f + 5];
             }
@@ -1209,7 +1202,7 @@ static int init_table_dtz(TBEntry *entry)
         return 0;
     }
 
-    int files = data[4] & 0x02 ? 4 : 1;
+    int files = data[4] & 2 ? 4 : 1;
 
     data += 5;
 
@@ -1217,7 +1210,7 @@ static int init_table_dtz(TBEntry *entry)
         DTZEntry_piece *ptr = (DTZEntry_piece *)entry;
         setup_pieces_piece_dtz(ptr, data, &tb_size[0]);
         data += ptr->num + 1;
-        data += ((uintptr_t)data) & 0x01;
+        data += (uintptr_t)data & 1;
 
         ptr->precomp = setup_pairs(data, tb_size[0], &size[0], &next, &(ptr->flags), 0);
         data = next;
@@ -1232,7 +1225,7 @@ static int init_table_dtz(TBEntry *entry)
                 data += 1 + data[0];
             }
 
-            data += ((uintptr_t)data) & 0x01;
+            data += (uintptr_t)data & 1;
         }
 
         ptr->precomp->indextable = (char *)data;
@@ -1241,7 +1234,7 @@ static int init_table_dtz(TBEntry *entry)
         ptr->precomp->sizetable = (uint16_t *)data;
         data += size[1];
 
-        data = (uint8_t *)((((uintptr_t)data) + 0x3f) & ~0x3f);
+        data = (uint8_t *)(((uintptr_t)data + 0x3f) & ~0x3f);
         ptr->precomp->data = data;
         data += size[2];
     } else {
@@ -1253,7 +1246,7 @@ static int init_table_dtz(TBEntry *entry)
             data += ptr->num + s;
         }
 
-        data += ((uintptr_t)data) & 0x01;
+        data += (uintptr_t)data & 1;
 
         for (f = 0; f < files; f++) {
             ptr->file[f].precomp = setup_pairs(data, tb_size[f], &size[3 * f], &next, &(ptr->flags[f]), 0);
@@ -1273,7 +1266,7 @@ static int init_table_dtz(TBEntry *entry)
             }
         }
 
-        data += ((uintptr_t)data) & 0x01;
+        data += (uintptr_t)data & 1;
 
         for (f = 0; f < files; f++) {
             ptr->file[f].precomp->indextable = (char *)data;
@@ -1286,7 +1279,7 @@ static int init_table_dtz(TBEntry *entry)
         }
 
         for (f = 0; f < files; f++) {
-            data = (uint8_t *)((((uintptr_t)data) + 0x3f) & ~0x3f);
+            data = (uint8_t *)(((uintptr_t)data + 0x3f) & ~0x3f);
             ptr->file[f].precomp->data = data;
             data += size[3 * f + 2];
         }
@@ -1366,7 +1359,7 @@ static uint8_t decompress_pairs(PairsData *d, uint64_t idx)
             if (LittleEndian)
                 tmp = BSWAP32(tmp);
 
-            code |= ((uint64_t)tmp) << bitcnt;
+            code |= (uint64_t)tmp << bitcnt;
         }
     }
 
