@@ -23,6 +23,8 @@ namespace Zobrist {
 extern Key psq[COLOR_NB][PIECE_TYPE_NB][SQUARE_NB];
 }
 
+static Mutex TB_mutex;
+
 int Tablebases::MaxCardinality = 0;
 
 // Given a position with 6 or fewer pieces, produce a text string
