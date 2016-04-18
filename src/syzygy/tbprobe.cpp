@@ -52,17 +52,11 @@ static uint64_t calc_key(Position& pos, bool mirror)
 {
     uint64_t key = 0;
 
-    Color color = mirror ? BLACK: WHITE;
-
-    for (PieceType pt = PAWN; pt <= KING; ++pt)
-        for (int i = popcount(pos.pieces(color, pt)); i > 0; i--)
-            key ^= Zobrist::psq[WHITE][pt][i - 1];
-
-    color = ~color;
-
-    for (PieceType pt = PAWN; pt <= KING; ++pt)
-        for (int i = popcount(pos.pieces(color, pt)); i > 0; i--)
-            key ^= Zobrist::psq[BLACK][pt][i - 1];
+    for (int i = 0; i < 2; i++) {
+        for (PieceType pt = PAWN; pt <= KING; ++pt)
+            for (int j = popcount(pos.pieces(Color(i ^ mirror), pt)); j > 0; j--)
+                key ^= Zobrist::psq[i][pt][j - 1];
+    }
 
     return key;
 }
@@ -75,17 +69,11 @@ static uint64_t calc_key_from_pcs(int *pcs, bool mirror)
 {
     uint64_t key = 0;
 
-    Color color = mirror ? BLACK : WHITE;
-
-    for (PieceType pt = PAWN; pt <= KING; ++pt)
-        for (int i = 0; i < pcs[8 * color + pt]; i++)
-            key ^= Zobrist::psq[WHITE][pt][i];
-
-    color = ~color;
-
-    for (PieceType pt = PAWN; pt <= KING; ++pt)
-        for (int i = 0; i < pcs[8 * color + pt]; i++)
-            key ^= Zobrist::psq[BLACK][pt][i];
+    for (int i = 0; i < 2; i++) {
+        for (PieceType pt = PAWN; pt <= KING; ++pt)
+            for (int j = 0; j < pcs[8 * (i ^ mirror) + pt]; j++)
+                key ^= Zobrist::psq[i][pt][j];
+    }
 
     return key;
 }
@@ -189,7 +177,7 @@ static int probe_wdl_table(Position& pos, int *success)
 
         for (i = 0; i < entry->num;) {
             Bitboard bb = pos.pieces((Color)((pc[i] ^ cmirror) >> 3),
-                                     (PieceType)(pc[i] & 0x07));
+                                     (PieceType)(pc[i] & 7));
 
             do {
                 p[i++] = pop_lsb(&bb);
@@ -201,7 +189,7 @@ static int probe_wdl_table(Position& pos, int *success)
     } else {
         TBEntry_pawn *entry = (TBEntry_pawn *)ptr;
         int k = entry->file[0].pieces[0][0] ^ cmirror;
-        Bitboard bb = pos.pieces((Color)(k >> 3), (PieceType)(k & 0x07));
+        Bitboard bb = pos.pieces((Color)(k >> 3), (PieceType)(k & 7));
         i = 0;
 
         do {
@@ -213,7 +201,7 @@ static int probe_wdl_table(Position& pos, int *success)
 
         for (; i < entry->num;) {
             bb = pos.pieces((Color)((pc[i] ^ cmirror) >> 3),
-                            (PieceType)(pc[i] & 0x07));
+                            (PieceType)(pc[i] & 7));
 
             do {
                 p[i++] = pop_lsb(&bb) ^ mirror;
@@ -224,7 +212,7 @@ static int probe_wdl_table(Position& pos, int *success)
         res = decompress_pairs(entry->file[f].precomp[bside], idx);
     }
 
-    return ((int)res) - 2;
+    return (int)res - 2;
 }
 
 static int probe_dtz_table(Position& pos, int wdl, int *success)
@@ -311,7 +299,7 @@ static int probe_dtz_table(Position& pos, int wdl, int *success)
 
         for (i = 0; i < entry->num;) {
             Bitboard bb = pos.pieces((Color)((pc[i] ^ cmirror) >> 3),
-                                     (PieceType)(pc[i] & 0x07));
+                                     (PieceType)(pc[i] & 7));
 
             do {
                 p[i++] = pop_lsb(&bb);
@@ -329,7 +317,7 @@ static int probe_dtz_table(Position& pos, int wdl, int *success)
     } else {
         DTZEntry_pawn *entry = (DTZEntry_pawn *)ptr;
         int k = entry->file[0].pieces[0] ^ cmirror;
-        Bitboard bb = pos.pieces((Color)(k >> 3), (PieceType)(k & 0x07));
+        Bitboard bb = pos.pieces((Color)(k >> 3), (PieceType)(k & 7));
         i = 0;
 
         do {
@@ -347,7 +335,7 @@ static int probe_dtz_table(Position& pos, int wdl, int *success)
 
         for (; i < entry->num;) {
             bb = pos.pieces((Color)((pc[i] ^ cmirror) >> 3),
-                            (PieceType)(pc[i] & 0x07));
+                            (PieceType)(pc[i] & 7));
 
             do {
                 p[i++] = pop_lsb(&bb) ^ mirror;
@@ -799,7 +787,7 @@ static Value wdl_to_Value[5] = {
 //
 // A return value false indicates that not all probes were successful and that
 // no moves were filtered out.
-bool Tablebases::root_probe(Position& pos, Search::RootMoveVector& rootMoves, Value& score)
+bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves, Value& score)
 {
     int success;
 
@@ -930,7 +918,7 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoveVector& rootMoves, Va
 //
 // A return value false indicates that not all probes were successful and that
 // no moves were filtered out.
-bool Tablebases::root_probe_wdl(Position& pos, Search::RootMoveVector& rootMoves, Value& score)
+bool Tablebases::root_probe_wdl(Position& pos, Search::RootMoves& rootMoves, Value& score)
 {
     int success;
 
