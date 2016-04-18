@@ -7,6 +7,7 @@
   a particular engine, provided the engine is written in C or C++.
 */
 
+#include <cstring>   // For std::memset
 #include <iostream>
 #include <sstream>
 #include <stdlib.h>
@@ -41,8 +42,6 @@ static TBHashEntry TB_hash[1 << TBHASHBITS][HSHMAX];
 static DTZTableEntry DTZ_table[DTZ_ENTRIES];
 
 static uint64_t calc_key_from_pcs(int *pcs, bool mirror);
-static void free_wdl_entry(TBEntry *entry);
-static void free_dtz_entry(TBEntry *entry);
 
 static FD open_tb(const std::string& str, const std::string& suffix)
 {
@@ -470,17 +469,57 @@ static int binomial[5][64];
 static int pawnidx[5][24];
 static int pfactor[5][4];
 
+void free_wdl_entry(TBEntry_piece* entry)
+{
+    unmap_file(entry->data, entry->mapping);
+
+    free(entry->precomp[0]);
+    free(entry->precomp[1]);
+}
+
+void free_wdl_entry(TBEntry_pawn* entry)
+{
+    unmap_file(entry->data, entry->mapping);
+
+    for (int f = 0; f < 4; f++)
+    {
+        free(entry->file[f].precomp[0]);
+        free(entry->file[f].precomp[1]);
+    }
+}
+
+void free_dtz_entry(TBEntry* entry)
+{
+    unmap_file(entry->data, entry->mapping);
+
+    if (!entry->has_pawns)
+        free(((DTZEntry_piece*)entry)->precomp);
+    else
+        for (int f = 0; f < 4; f++)
+            free(((DTZEntry_pawn*)entry)->file[f].precomp);
+
+    free(entry);
+}
+
 void Tablebases::init(const std::string& path)
 {
     for (int i = 0; i < TBnum_piece; i++)
-        free_wdl_entry((TBEntry*)&TB_piece[i]);
+        free_wdl_entry(&TB_piece[i]);
 
     for (int i = 0; i < TBnum_pawn; i++)
-        free_wdl_entry((TBEntry*)&TB_pawn[i]);
+        free_wdl_entry(&TB_pawn[i]);
 
     for (int i = 0; i < DTZ_ENTRIES; i++)
         if (DTZ_table[i].entry)
+        {
             free_dtz_entry(DTZ_table[i].entry);
+            DTZ_table[i].entry = nullptr;
+        }
+
+    TBnum_piece = TBnum_pawn = 0;
+    MaxCardinality = 0;
+
+    std::memset(TB_hash, 0, sizeof(TB_hash));
 
     if (path.empty() || path == "<empty>")
         return;
@@ -521,18 +560,6 @@ void Tablebases::init(const std::string& path)
 
     while (std::getline(ss, token, SEP_CHAR))
         paths.push_back(token);
-
-    TBnum_piece = TBnum_pawn = 0;
-    MaxCardinality = 0;
-
-    for (int i = 0; i < (1 << TBHASHBITS); i++)
-        for (int j = 0; j < HSHMAX; j++) {
-            TB_hash[i][j].key = 0;
-            TB_hash[i][j].ptr = nullptr;
-        }
-
-    for (int i = 0; i < DTZ_ENTRIES; i++)
-        DTZ_table[i].entry = nullptr;
 
     const std::string K("K");
 
@@ -1403,47 +1430,6 @@ void load_dtz_table(const std::string& str, uint64_t key1, uint64_t key2)
         free(ptr3);
     else
         DTZ_table[0].entry = ptr3;
-}
-
-static void free_wdl_entry(TBEntry *entry)
-{
-    unmap_file(entry->data, entry->mapping);
-
-    if (!entry->has_pawns) {
-        TBEntry_piece *ptr = (TBEntry_piece *)entry;
-        free(ptr->precomp[0]);
-
-        if (ptr->precomp[1])
-            free(ptr->precomp[1]);
-    } else {
-        TBEntry_pawn *ptr = (TBEntry_pawn *)entry;
-        int f;
-
-        for (f = 0; f < 4; f++) {
-            free(ptr->file[f].precomp[0]);
-
-            if (ptr->file[f].precomp[1])
-                free(ptr->file[f].precomp[1]);
-        }
-    }
-}
-
-static void free_dtz_entry(TBEntry *entry)
-{
-    unmap_file(entry->data, entry->mapping);
-
-    if (!entry->has_pawns) {
-        DTZEntry_piece *ptr = (DTZEntry_piece *)entry;
-        free(ptr->precomp);
-    } else {
-        DTZEntry_pawn *ptr = (DTZEntry_pawn *)entry;
-        int f;
-
-        for (f = 0; f < 4; f++)
-            free(ptr->file[f].precomp);
-    }
-
-    free(entry);
 }
 
 static int wdl_to_map[5] = { 1, 3, 0, 2, 0 };

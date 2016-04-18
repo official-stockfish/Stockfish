@@ -66,11 +66,7 @@ struct TBEntry {
     uint8_t num;
     uint8_t symmetric;
     uint8_t has_pawns;
-}
-#ifndef _WIN32
-__attribute__((__may_alias__))
-#endif
-;
+};
 
 struct TBEntry_piece {
     char *data;
