@@ -27,7 +27,7 @@
 #define TBMAX_PAWN 256
 #define HSHMAX 5
 
-static std::vector<std::string> paths;
+static std::vector<std::string> Paths;
 
 static int TBnum_piece, TBnum_pawn;
 static TBEntry_piece TB_piece[TBMAX_PIECE];
@@ -46,7 +46,7 @@ static FD open_tb(const std::string& str, const std::string& suffix)
     FD fd;
     std::string file;
 
-    for (auto& path : paths) {
+    for (auto& path : Paths) {
         file = path + "/" + str + suffix;
 #ifndef _WIN32
         fd = open(file.c_str(), O_RDONLY);
@@ -133,22 +133,18 @@ static void unmap_file(char *data, uint64_t mapping)
 }
 #endif
 
-static void add_to_hash(TBEntry *ptr, uint64_t key)
+static void add_to_hash(TBEntry* ptr, uint64_t key)
 {
-    int i, hshidx;
+    TBHashEntry* entry = TB_hash[key >> (64 - TBHASHBITS)];
 
-    hshidx = key >> (64 - TBHASHBITS);
-    i = 0;
+    for (int i = 0; i < HSHMAX && entry->ptr; i++, entry++) {}
 
-    while (i < HSHMAX && TB_hash[hshidx][i].ptr)
-        i++;
-
-    if (i == HSHMAX) {
+    if (!entry->ptr) {
+        entry->key = key;
+        entry->ptr = ptr;
+    } else {
         std::cerr << "HSHMAX too low!\n";
         exit(1);
-    } else {
-        TB_hash[hshidx][i].key = key;
-        TB_hash[hshidx][i].ptr = ptr;
     }
 }
 
@@ -163,6 +159,7 @@ static void init_tb(const std::vector<PieceType>& pieces)
     std::string fname;
     Color c = BLACK;
     uint8_t pcs[PIECE_NB] = {0};
+    int num = 0;
 
     for (PieceType pt : pieces)
     {
@@ -174,6 +171,7 @@ static void init_tb(const std::vector<PieceType>& pieces)
         }
 
         pcs[make_piece(c, pt)]++;
+        num++;
         fname += pchr[pt];
     }
 
@@ -183,6 +181,9 @@ static void init_tb(const std::vector<PieceType>& pieces)
         return;
 
     close_tb(fd);
+
+    if (num > Tablebases::MaxCardinality)
+        Tablebases::MaxCardinality = num;
 
     key1 = calc_key_from_pcs(pcs, 0);
     key2 = calc_key_from_pcs(pcs, 1);
@@ -194,30 +195,8 @@ static void init_tb(const std::vector<PieceType>& pieces)
             std::cerr << "TBMAX_PAWN limit too low!\n";
             exit(1);
         }
-        entry = (TBEntry*)&TB_pawn[TBnum_pawn++];
-    } else {
-        if (TBnum_piece == TBMAX_PIECE) {
-            std::cerr << "TBMAX_PIECE limit too low!\n";
-            exit(1);
-        }
-        entry = (TBEntry*)&TB_piece[TBnum_piece++];
-    }
 
-    entry->key = key1;
-    entry->ready = 0;
-    entry->num = 0;
-
-    for (auto n : pcs)
-        entry->num += n;
-
-    if (entry->num > Tablebases::MaxCardinality)
-        Tablebases::MaxCardinality = entry->num;
-
-    entry->symmetric = (key1 == key2);
-    entry->has_pawns = hasPawns;
-
-    if (hasPawns) {
-        TBEntry_pawn* ptr = (TBEntry_pawn*)entry;
+        TBEntry_pawn* ptr = &TB_pawn[TBnum_pawn++];
         ptr->pawns[0] = pcs[W_PAWN];
         ptr->pawns[1] = pcs[B_PAWN];
 
@@ -227,9 +206,15 @@ static void init_tb(const std::vector<PieceType>& pieces)
             ptr->pawns[0] = pcs[B_PAWN];
             ptr->pawns[1] = pcs[W_PAWN];
         }
-    } else {
-        TBEntry_piece* ptr = (TBEntry_piece*)entry;
+        entry = (TBEntry*)ptr;
 
+    } else {
+        if (TBnum_piece == TBMAX_PIECE) {
+            std::cerr << "TBMAX_PIECE limit too low!\n";
+            exit(1);
+        }
+
+        TBEntry_piece* ptr = &TB_piece[TBnum_piece++];
         int j = 0;
         for (auto n : pcs)
             if (n == 1)
@@ -250,7 +235,14 @@ static void init_tb(const std::vector<PieceType>& pieces)
                 ptr->enc_type = uint8_t(1 + j);
             }
         }
+        entry = (TBEntry*)ptr;
     }
+
+    entry->key = key1;
+    entry->ready = 0;
+    entry->num = num;
+    entry->symmetric = (key1 == key2);
+    entry->has_pawns = hasPawns;
 
     add_to_hash(entry, key1);
 
@@ -559,7 +551,7 @@ void Tablebases::init(const std::string& path)
     std::string token;
 
     while (std::getline(ss, token, SEP_CHAR))
-        paths.push_back(token);
+        Paths.push_back(token);
 
     for (PieceType p1 = PAWN; p1 < KING; ++p1) {
         init_tb({KING, p1, KING});
