@@ -27,7 +27,13 @@
 #define TBMAX_PAWN 256
 #define HSHMAX 5
 
-static std::vector<std::string> Paths;
+// TBPaths stores the paths to directories where the .rtbw and .rtbz files can
+// be found. Multiple directories are separated by ";" on Windows and by ":"
+// on Unix-based operating systems.
+//
+// Example:
+// C:\tb\wdl345;C:\tb\wdl6;D:\tb\dtz345;D:\tb\dtz6
+static std::string TBPaths;
 
 static int TBnum_piece, TBnum_pawn;
 static TBEntry_piece TB_piece[TBMAX_PIECE];
@@ -41,13 +47,18 @@ static DTZTableEntry DTZ_table[DTZ_ENTRIES];
 
 static uint64_t calc_key_from_pcs(uint8_t* pcs, bool mirror);
 
-static FD open_tb(const std::string& str, const std::string& suffix)
+static FD open_tb(const std::string& fname)
 {
     FD fd;
     std::string file;
 
-    for (auto& path : Paths) {
-        file = path + "/" + str + suffix;
+    // Tokenize TBPaths into single paths using SEP_CHAR delimiter
+    std::stringstream ss(TBPaths);
+    std::string path;
+
+    while (std::getline(ss, path, SEP_CHAR)) {
+        file = path + "/" + fname;
+
 #ifndef _WIN32
         fd = open(file.c_str(), O_RDONLY);
 #else
@@ -71,9 +82,9 @@ static void close_tb(FD fd)
 #endif
 }
 
-static char *map_file(const std::string& name, const std::string& suffix, uint64_t *mapping)
+static char* map_file(const std::string& fname, uint64_t* mapping)
 {
-    FD fd = open_tb(name, suffix);
+    FD fd = open_tb(fname);
 
     if (fd == FD_ERR)
         return NULL;
@@ -104,7 +115,7 @@ static char *map_file(const std::string& name, const std::string& suffix, uint64
     char *data = (char *)MapViewOfFile(map, FILE_MAP_READ, 0, 0, 0);
 
     if (data == NULL) {
-        std::cerr << "MapViewOfFile() failed, name = " << name << suffix << ", error = "
+        std::cerr << "MapViewOfFile() failed, name = " << fname << ", error = "
                   << GetLastError() << '\n';
         exit(1);
     }
@@ -175,7 +186,7 @@ static void init_tb(const std::vector<PieceType>& pieces)
         fname += pchr[pt];
     }
 
-    fd = open_tb(fname, WDLSUFFIX);
+    fd = open_tb(fname + WDLSUFFIX);
 
     if (fd == FD_ERR)
         return;
@@ -507,12 +518,13 @@ void Tablebases::init(const std::string& path)
             DTZ_table[i].entry = nullptr;
         }
 
-    TBnum_piece = TBnum_pawn = 0;
-    MaxCardinality = 0;
-
     std::memset(TB_hash, 0, sizeof(TB_hash));
 
-    if (path.empty() || path == "<empty>")
+    TBnum_piece = TBnum_pawn = 0;
+    MaxCardinality = 0;
+    TBPaths = path;
+
+    if (TBPaths.empty() || TBPaths == "<empty>")
         return;
 
     // Fill binomial[] with the Binomial Coefficents using pascal triangle
@@ -538,20 +550,6 @@ void Tablebases::init(const std::string& path)
             pfactor[i][j - 1] = s;
         }
     }
-
-    // Argument path is set to the directory or directories where the .rtbw and
-    // .rtbz files can be found. Multiple directories are separated by ";" on
-    // Windows and by ":" on Unix-based operating systems.
-    //
-    // Example:
-    // C:\tb\wdl345;C:\tb\wdl6;D:\tb\dtz345;D:\tb\dtz6
-
-    // Tokenize path into paths[] using SEP_CHAR delimiter
-    std::stringstream ss(path);
-    std::string token;
-
-    while (std::getline(ss, token, SEP_CHAR))
-        Paths.push_back(token);
 
     for (PieceType p1 = PAWN; p1 < KING; ++p1) {
         init_tb({KING, p1, KING});
@@ -579,7 +577,7 @@ void Tablebases::init(const std::string& path)
         }
     }
 
-    std::cerr << "info string Found " << TBnum_piece + TBnum_pawn << " tablebases\n";
+    std::cerr << "info string Found " << TBnum_piece + TBnum_pawn << " tablebases" << std::endl;
 }
 
 static uint64_t encode_piece(TBEntry_piece *ptr, uint8_t *norm, int *pos, int *factor)
@@ -1048,10 +1046,10 @@ static int init_table_wdl(TBEntry *entry, const std::string& str)
 
     // first mmap the table into memory
 
-    entry->data = map_file(str, WDLSUFFIX, &entry->mapping);
+    entry->data = map_file(str + WDLSUFFIX, &entry->mapping);
 
     if (!entry->data) {
-        std::cerr << "Could not find " << str << WDLSUFFIX << '\n';
+        std::cerr << "Could not find " << str + WDLSUFFIX << '\n';
         return 0;
     }
 
@@ -1392,7 +1390,7 @@ void load_dtz_table(const std::string& str, uint64_t key1, uint64_t key2)
                              ? sizeof(DTZEntry_pawn)
                              : sizeof(DTZEntry_piece));
 
-    ptr3->data = map_file(str, DTZSUFFIX, &ptr3->mapping);
+    ptr3->data = map_file(str + DTZSUFFIX, &ptr3->mapping);
     ptr3->key = ptr->key;
     ptr3->num = ptr->num;
     ptr3->symmetric = ptr->symmetric;
