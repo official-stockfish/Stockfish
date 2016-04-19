@@ -8,6 +8,7 @@
 */
 
 #include <cstring>   // For std::memset
+#include <fstream>
 #include <iostream>
 #include <sstream>
 #include <stdlib.h>
@@ -47,102 +48,85 @@ static DTZTableEntry DTZ_table[DTZ_ENTRIES];
 
 static uint64_t calc_key_from_pcs(uint8_t* pcs, bool mirror);
 
-static FD open_tb(const std::string& fname)
-{
-    FD fd;
-    std::string file;
+class TBFile : public std::ifstream {
 
-    // Tokenize TBPaths into single paths using SEP_CHAR delimiter
-    std::stringstream ss(TBPaths);
-    std::string path;
+    std::string fname;
 
-    while (std::getline(ss, path, SEP_CHAR)) {
-        file = path + "/" + fname;
+public:
+    // Open the file with the given name found among the TBPaths
+    TBFile(const std::string& f) {
 
-#ifndef _WIN32
-        fd = open(file.c_str(), O_RDONLY);
-#else
-        fd = CreateFile(file.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL,
-                        OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-#endif
+        std::stringstream ss(TBPaths);
+        std::string path;
 
-        if (fd != FD_ERR)
-            return fd;
+        while (std::getline(ss, path, SEP_CHAR)) {
+            fname = path + "/" + f;
+            std::ifstream::open(fname);
+            if (is_open())
+                return;
+        }
     }
 
-    return FD_ERR;
-}
+    // Maps the file to memory. File is closed after mapping
+    char* map(uint64_t* mapping) {
 
-static void close_tb(FD fd)
-{
-#ifndef _WIN32
-    close(fd);
-#else
-    CloseHandle(fd);
-#endif
-}
+        assert(is_open());
 
-static char* map_file(const std::string& fname, uint64_t* mapping)
-{
-    FD fd = open_tb(fname);
-
-    if (fd == FD_ERR)
-        return NULL;
+        close();
 
 #ifndef _WIN32
+    int fd = ::open(fname.c_str(), O_RDONLY);
+
     struct stat statbuf;
     fstat(fd, &statbuf);
     *mapping = statbuf.st_size;
     char *data = (char *)mmap(NULL, statbuf.st_size, PROT_READ,
                               MAP_SHARED, fd, 0);
+    ::close(fd);
 
     if (data == (char *)(-1)) {
         std::cerr << "Could not mmap() " << fname << '\n';
         exit(1);
     }
-
 #else
     DWORD size_low, size_high;
+    HANDLE fd = CreateFile(fname.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL,
+                           OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     size_low = GetFileSize(fd, &size_high);
-    HANDLE map = CreateFileMapping(fd, NULL, PAGE_READONLY, size_high, size_low, NULL);
+    HANDLE m = CreateFileMapping(fd, NULL, PAGE_READONLY, size_high, size_low, NULL);
+    CloseHandle(fd);
 
-    if (map == NULL) {
+    if (m == NULL) {
         std::cerr << "CreateFileMapping() failed\n";
         exit(1);
     }
 
-    *mapping = (uint64_t)map;
-    char *data = (char *)MapViewOfFile(map, FILE_MAP_READ, 0, 0, 0);
+    *mapping = (uint64_t)m;
+    char *data = (char *)MapViewOfFile(m, FILE_MAP_READ, 0, 0, 0);
 
     if (data == NULL) {
         std::cerr << "MapViewOfFile() failed, name = " << fname << ", error = "
                   << GetLastError() << '\n';
         exit(1);
     }
-
 #endif
-    close_tb(fd);
-    return data;
-}
+        return data;
+    }
+
+    static void unmap(char* data, uint64_t mapping) {
+
+        if (!data)
+            return;
 
 #ifndef _WIN32
-static void unmap_file(char *data, uint64_t size)
-{
-    if (!data)
-        return;
-
-    munmap(data, size);
-}
+    munmap(data, mapping);
 #else
-static void unmap_file(char *data, uint64_t mapping)
-{
-    if (!data)
-        return;
-
     UnmapViewOfFile(data);
     CloseHandle((HANDLE)mapping);
-}
 #endif
+
+    }
+};
 
 static void add_to_hash(TBEntry* ptr, uint64_t key)
 {
@@ -163,7 +147,6 @@ static const std::string pchr = " PNBRQK";
 
 static void init_tb(const std::vector<PieceType>& pieces)
 {
-    FD fd;
     TBEntry* entry;
     uint64_t key1, key2;
 
@@ -183,12 +166,12 @@ static void init_tb(const std::vector<PieceType>& pieces)
         fname += pchr[pt];
     }
 
-    fd = open_tb(fname + WDLSUFFIX);
+    TBFile f(fname + WDLSUFFIX);
 
-    if (fd == FD_ERR)
+    if (!f.is_open())
         return;
 
-    close_tb(fd);
+    f.close();
 
     if (num > Tablebases::MaxCardinality)
         Tablebases::MaxCardinality = num;
@@ -472,7 +455,7 @@ static int pfactor[5][4];
 
 void free_wdl_entry(TBEntry_piece* entry)
 {
-    unmap_file(entry->data, entry->mapping);
+    TBFile::unmap(entry->data, entry->mapping);
 
     free(entry->precomp[0]);
     free(entry->precomp[1]);
@@ -480,7 +463,7 @@ void free_wdl_entry(TBEntry_piece* entry)
 
 void free_wdl_entry(TBEntry_pawn* entry)
 {
-    unmap_file(entry->data, entry->mapping);
+    TBFile::unmap(entry->data, entry->mapping);
 
     for (int f = 0; f < 4; f++) {
         free(entry->file[f].precomp[0]);
@@ -490,7 +473,7 @@ void free_wdl_entry(TBEntry_pawn* entry)
 
 void free_dtz_entry(TBEntry* entry)
 {
-    unmap_file(entry->data, entry->mapping);
+    TBFile::unmap(entry->data, entry->mapping);
 
     if (!entry->has_pawns)
         free(((DTZEntry_piece*)entry)->precomp);
@@ -1041,14 +1024,15 @@ static int init_table_wdl(TBEntry *entry, const std::string& str)
     uint64_t size[8 * 3];
     uint8_t flags;
 
-    // first mmap the table into memory
+    TBFile file(str + WDLSUFFIX);
 
-    entry->data = map_file(str + WDLSUFFIX, &entry->mapping);
-
-    if (!entry->data) {
+    if (!file.is_open()) {
         std::cerr << "Could not find " << str + WDLSUFFIX << '\n';
         return 0;
     }
+
+    // First mmap the table into memory
+    entry->data = file.map(&entry->mapping);
 
     uint8_t *data = (uint8_t *)entry->data;
 
@@ -1057,7 +1041,7 @@ static int init_table_wdl(TBEntry *entry, const std::string& str)
             data[2] != WDL_MAGIC[2] ||
             data[3] != WDL_MAGIC[3]) {
         std::cerr << "Corrupted table\n";
-        unmap_file(entry->data, entry->mapping);
+        TBFile::unmap(entry->data, entry->mapping);
         entry->data = 0;
         return 0;
     }
@@ -1387,7 +1371,9 @@ void load_dtz_table(const std::string& str, uint64_t key1, uint64_t key2)
                              ? sizeof(DTZEntry_pawn)
                              : sizeof(DTZEntry_piece));
 
-    ptr3->data = map_file(str + DTZSUFFIX, &ptr3->mapping);
+    TBFile file(str + WDLSUFFIX);
+
+    ptr3->data = file.is_open() ? file.map(&ptr3->mapping) : nullptr;
     ptr3->key = ptr->key;
     ptr3->num = ptr->num;
     ptr3->symmetric = ptr->symmetric;
