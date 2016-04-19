@@ -54,12 +54,10 @@ static uint64_t calc_key(Position& pos, bool mirror)
 {
     uint64_t key = 0;
 
-    for (int i = 0; i < 2; i++) {
+    for (Color c = WHITE; c <= BLACK; ++c)
         for (PieceType pt = PAWN; pt <= KING; ++pt)
-            for (int j = popcount(pos.pieces(Color(i ^ mirror), pt)); j > 0; j--)
-                key ^= Zobrist::psq[i][pt][j - 1];
-    }
-
+            for (int j = popcount(pos.pieces(Color(c ^ mirror), pt)); j > 0; j--)
+                key ^= Zobrist::psq[c][pt][j - 1];
     return key;
 }
 

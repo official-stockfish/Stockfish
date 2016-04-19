@@ -97,7 +97,7 @@ static char* map_file(const std::string& fname, uint64_t* mapping)
                               MAP_SHARED, fd, 0);
 
     if (data == (char *)(-1)) {
-        std::cerr << "Could not mmap() " << name << '\n';
+        std::cerr << "Could not mmap() " << fname << '\n';
         exit(1);
     }
 
@@ -172,15 +172,12 @@ static void init_tb(const std::vector<PieceType>& pieces)
     uint8_t pcs[PIECE_NB] = {0};
     int num = 0;
 
-    for (PieceType pt : pieces)
-    {
-        if (pt == KING)
-        {
+    for (PieceType pt : pieces) {
+        if (pt == KING) {
             c = ~c;
             if (!fname.empty())
                 fname += 'v';
         }
-
         pcs[make_piece(c, pt)]++;
         num++;
         fname += pchr[pt];
