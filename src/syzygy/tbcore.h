@@ -9,8 +9,6 @@
 
 #ifndef _WIN32
 #define SEP_CHAR ':'
-#define FD int
-#define FD_ERR -1
 #else
 #define WIN32_LEAN_AND_MEAN
 #ifndef NOMINMAX
@@ -18,8 +16,6 @@
 #endif
 #include <windows.h>
 #define SEP_CHAR ';'
-#define FD HANDLE
-#define FD_ERR INVALID_HANDLE_VALUE
 #endif
 
 #ifndef _MSC_VER
