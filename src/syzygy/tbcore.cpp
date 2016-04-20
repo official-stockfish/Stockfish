@@ -1347,7 +1347,7 @@ void load_dtz_table(const std::string& str, uint64_t key1, uint64_t key2)
                              ? sizeof(DTZEntry_pawn)
                              : sizeof(DTZEntry_piece));
 
-    TBFile file(str + WDLSUFFIX);
+    TBFile file(str + DTZSUFFIX);
 
     ptr3->data = file.is_open() ? file.map(&ptr3->mapping) : nullptr;
     ptr3->key = ptr->key;
