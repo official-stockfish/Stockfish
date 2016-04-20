@@ -22,16 +22,16 @@
 #include <sys/mman.h>
 #endif
 
-#include "../thread_win32.h"
-#include "../types.h"
 #include "tbcore.h"
+#include "tbprobe.h"
+
+TBHashEntry TB_hash[1 << TBHASHBITS][HSHMAX];
+DTZTableEntry DTZ_table[DTZ_ENTRIES];
 
 namespace {
 
 const int TBMAX_PIECE = 254;
 const int TBMAX_PAWN = 256;
-const int HSHMAX = 5;
-const int DTZ_ENTRIES = 64;
 
 const std::string PieceChar = " PNBRQK";
 
@@ -241,12 +241,9 @@ std::string TBPaths;
 int TBnum_piece, TBnum_pawn;
 TBEntry_piece TB_piece[TBMAX_PIECE];
 TBEntry_pawn TB_pawn[TBMAX_PAWN];
-TBHashEntry TB_hash[1 << TBHASHBITS][HSHMAX];
-DTZTableEntry DTZ_table[DTZ_ENTRIES];
 
 } // namespace
 
-static uint64_t calc_key_from_pcs(uint8_t* pcs, bool mirror);
 
 class TBFile : public std::ifstream {
 
@@ -335,7 +332,7 @@ static void add_to_hash(TBEntry* ptr, uint64_t key)
     }
 }
 
-void free_wdl_entry(TBEntry_piece* entry)
+static void free_wdl_entry(TBEntry_piece* entry)
 {
     TBFile::unmap(entry->data, entry->mapping);
 
@@ -343,7 +340,7 @@ void free_wdl_entry(TBEntry_piece* entry)
     free(entry->precomp[1]);
 }
 
-void free_wdl_entry(TBEntry_pawn* entry)
+static void free_wdl_entry(TBEntry_pawn* entry)
 {
     TBFile::unmap(entry->data, entry->mapping);
 
@@ -395,8 +392,8 @@ static void init_tb(const std::vector<PieceType>& pieces)
     if (num > Tablebases::MaxCardinality)
         Tablebases::MaxCardinality = num;
 
-    uint64_t key1 = calc_key_from_pcs(pcs, 0);
-    uint64_t key2 = calc_key_from_pcs(pcs, 1);
+    uint64_t key1 = Tablebases::calc_key_from_pcs(pcs, 0);
+    uint64_t key2 = Tablebases::calc_key_from_pcs(pcs, 1);
 
     bool hasPawns = pcs[W_PAWN] + pcs[B_PAWN];
 
@@ -536,7 +533,7 @@ void Tablebases::init(const std::string& path)
     std::cerr << "info string Found " << TBnum_piece + TBnum_pawn << " tablebases" << std::endl;
 }
 
-static uint64_t encode_piece(TBEntry_piece *ptr, uint8_t *norm, int *pos, int *factor)
+uint64_t encode_piece(TBEntry_piece *ptr, uint8_t *norm, int *pos, int *factor)
 {
     uint64_t idx;
     int i, j, m, l, p;
@@ -627,7 +624,7 @@ static uint64_t encode_piece(TBEntry_piece *ptr, uint8_t *norm, int *pos, int *f
 }
 
 // determine file of leftmost pawn and sort pawns
-static int pawn_file(TBEntry_pawn *ptr, int *pos)
+int pawn_file(TBEntry_pawn *ptr, int *pos)
 {
     int i;
 
@@ -638,7 +635,7 @@ static int pawn_file(TBEntry_pawn *ptr, int *pos)
     return file_to_file[pos[0] & 7];
 }
 
-static uint64_t encode_pawn(TBEntry_pawn *ptr, uint8_t *norm, int *pos, int *factor)
+uint64_t encode_pawn(TBEntry_pawn *ptr, uint8_t *norm, int *pos, int *factor)
 {
     uint64_t idx;
     int i, j, k, m, s, t;
@@ -992,7 +989,7 @@ static PairsData *setup_pairs(unsigned char *data, uint64_t tb_size, uint64_t *s
     return d;
 }
 
-static int init_table_wdl(TBEntry *entry, const std::string& str)
+int init_table_wdl(TBEntry *entry, const std::string& str)
 {
     uint8_t *next;
     int f, s;
@@ -1230,7 +1227,7 @@ static int init_table_dtz(TBEntry *entry)
 }
 
 template<bool LittleEndian>
-static uint8_t decompress_pairs(PairsData *d, uint64_t idx)
+uint8_t decompress_pairs(PairsData *d, uint64_t idx)
 {
     if (!d->idxbits)
         return uint8_t(d->min_len);
@@ -1321,6 +1318,9 @@ static uint8_t decompress_pairs(PairsData *d, uint64_t idx)
     return sympat[3 * sym];
 }
 
+template uint8_t decompress_pairs<true >(PairsData*, uint64_t);
+template uint8_t decompress_pairs<false>(PairsData*, uint64_t);
+
 void load_dtz_table(const std::string& str, uint64_t key1, uint64_t key2)
 {
     int i;
@@ -1369,7 +1369,3 @@ void load_dtz_table(const std::string& str, uint64_t key1, uint64_t key2)
     else
         DTZ_table[0].entry = ptr3;
 }
-
-static int wdl_to_map[5] = { 1, 3, 0, 2, 0 };
-static uint8_t pa_flags[5] = { 8, 0, 0, 0, 4 };
-

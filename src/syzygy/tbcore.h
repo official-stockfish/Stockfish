@@ -35,7 +35,9 @@
 const uint8_t WDL_MAGIC[4] = { 0x71, 0xe8, 0x23, 0x5d };
 const uint8_t DTZ_MAGIC[4] = { 0xd7, 0x66, 0x0c, 0xa5 };
 
-#define TBHASHBITS 10
+const int TBHASHBITS = 10;
+const int HSHMAX = 5;
+const int DTZ_ENTRIES = 64;
 
 struct TBHashEntry;
 
@@ -144,6 +146,19 @@ struct DTZTableEntry {
     uint64_t key2;
     struct TBEntry *entry;
 };
+
+extern TBHashEntry TB_hash[1 << TBHASHBITS][HSHMAX];
+extern DTZTableEntry DTZ_table[DTZ_ENTRIES];
+
+uint64_t encode_piece(TBEntry_piece *ptr, uint8_t *norm, int *pos, int *factor);
+uint64_t encode_pawn(TBEntry_pawn *ptr, uint8_t *norm, int *pos, int *factor);
+int pawn_file(TBEntry_pawn *ptr, int *pos);
+int init_table_wdl(TBEntry *entry, const std::string& str);
+void free_dtz_entry(TBEntry* entry);
+void load_dtz_table(const std::string& str, uint64_t key1, uint64_t key2);
+
+template<bool LittleEndian>
+uint8_t decompress_pairs(PairsData *d, uint64_t idx);
 
 #endif
 

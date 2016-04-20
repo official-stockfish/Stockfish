@@ -9,15 +9,20 @@
 
 #include <algorithm>
 
-#include "../position.h"
-#include "../movegen.h"
 #include "../bitboard.h"
+#include "../movegen.h"
+#include "../position.h"
 #include "../search.h"
+#include "../thread_win32.h"
+#include "../types.h"
 
-#include "tbprobe.h"
 #include "tbcore.h"
+#include "tbprobe.h"
 
-#include "tbcore.cpp"
+static const int wdl_to_map[5] = { 1, 3, 0, 2, 0 };
+static const uint8_t pa_flags[5] = { 8, 0, 0, 0, 4 };
+
+static const std::string PieceChar = " PNBRQK";
 
 namespace Zobrist {
 extern Key psq[COLOR_NB][PIECE_TYPE_NB][SQUARE_NB];
@@ -65,7 +70,7 @@ static uint64_t calc_key(Position& pos, bool mirror)
 // defined by pcs[16], where pcs[1], ..., pcs[6] is the number of white
 // pawns, ..., kings and pcs[9], ..., pcs[14] is the number of black
 // pawns, ..., kings.
-static uint64_t calc_key_from_pcs(uint8_t* pcs, bool mirror)
+uint64_t Tablebases::calc_key_from_pcs(uint8_t* pcs, bool mirror)
 {
     uint64_t key = 0;
 
@@ -90,7 +95,7 @@ static uint8_t decompress_pairs(PairsData *d, uint64_t idx)
 {
     static const bool isLittleEndian = is_little_endian();
     return isLittleEndian ? decompress_pairs<true >(d, idx)
-           : decompress_pairs<false>(d, idx);
+                          : decompress_pairs<false>(d, idx);
 }
 
 // probe_wdl_table and probe_dtz_table require similar adaptations.
