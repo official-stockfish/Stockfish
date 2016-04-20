@@ -39,7 +39,7 @@ static std::string prt_str(Position& pos, bool mirror)
 
         for (PieceType pt = KING; pt >= PAWN; --pt)
             for (Bitboard b = pos.pieces(color, pt); b; b &= b - 1)
-                s += pchr[pt];
+                s += PieceChar[pt];
 
         if (i == 0)
             s += 'v';

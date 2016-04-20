@@ -7,259 +7,35 @@
   a particular engine, provided the engine is written in C or C++.
 */
 
+#include <algorithm>
 #include <cstring>   // For std::memset
+#include <fcntl.h>
+#include <fstream>
 #include <iostream>
 #include <sstream>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
-#include <fcntl.h>
-#include <algorithm>
-#include "../thread_win32.h"
+
 #ifndef _WIN32
 #include <unistd.h>
 #include <sys/mman.h>
 #endif
-#include "tbcore.h"
+
+#include "../thread_win32.h"
 #include "../types.h"
+#include "tbcore.h"
 
-#define TBMAX_PIECE 254
-#define TBMAX_PAWN 256
-#define HSHMAX 5
+namespace {
 
-// TBPaths stores the paths to directories where the .rtbw and .rtbz files can
-// be found. Multiple directories are separated by ";" on Windows and by ":"
-// on Unix-based operating systems.
-//
-// Example:
-// C:\tb\wdl345;C:\tb\wdl6;D:\tb\dtz345;D:\tb\dtz6
-static std::string TBPaths;
+const int TBMAX_PIECE = 254;
+const int TBMAX_PAWN = 256;
+const int HSHMAX = 5;
+const int DTZ_ENTRIES = 64;
 
-static int TBnum_piece, TBnum_pawn;
-static TBEntry_piece TB_piece[TBMAX_PIECE];
-static TBEntry_pawn TB_pawn[TBMAX_PAWN];
+const std::string PieceChar = " PNBRQK";
 
-static TBHashEntry TB_hash[1 << TBHASHBITS][HSHMAX];
-
-#define DTZ_ENTRIES 64
-
-static DTZTableEntry DTZ_table[DTZ_ENTRIES];
-
-static uint64_t calc_key_from_pcs(uint8_t* pcs, bool mirror);
-
-static FD open_tb(const std::string& fname)
-{
-    FD fd;
-    std::string file;
-
-    // Tokenize TBPaths into single paths using SEP_CHAR delimiter
-    std::stringstream ss(TBPaths);
-    std::string path;
-
-    while (std::getline(ss, path, SEP_CHAR)) {
-        file = path + "/" + fname;
-
-#ifndef _WIN32
-        fd = open(file.c_str(), O_RDONLY);
-#else
-        fd = CreateFile(file.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL,
-                        OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-#endif
-
-        if (fd != FD_ERR)
-            return fd;
-    }
-
-    return FD_ERR;
-}
-
-static void close_tb(FD fd)
-{
-#ifndef _WIN32
-    close(fd);
-#else
-    CloseHandle(fd);
-#endif
-}
-
-static char* map_file(const std::string& fname, uint64_t* mapping)
-{
-    FD fd = open_tb(fname);
-
-    if (fd == FD_ERR)
-        return NULL;
-
-#ifndef _WIN32
-    struct stat statbuf;
-    fstat(fd, &statbuf);
-    *mapping = statbuf.st_size;
-    char *data = (char *)mmap(NULL, statbuf.st_size, PROT_READ,
-                              MAP_SHARED, fd, 0);
-
-    if (data == (char *)(-1)) {
-        std::cerr << "Could not mmap() " << fname << '\n';
-        exit(1);
-    }
-
-#else
-    DWORD size_low, size_high;
-    size_low = GetFileSize(fd, &size_high);
-    HANDLE map = CreateFileMapping(fd, NULL, PAGE_READONLY, size_high, size_low, NULL);
-
-    if (map == NULL) {
-        std::cerr << "CreateFileMapping() failed\n";
-        exit(1);
-    }
-
-    *mapping = (uint64_t)map;
-    char *data = (char *)MapViewOfFile(map, FILE_MAP_READ, 0, 0, 0);
-
-    if (data == NULL) {
-        std::cerr << "MapViewOfFile() failed, name = " << fname << ", error = "
-                  << GetLastError() << '\n';
-        exit(1);
-    }
-
-#endif
-    close_tb(fd);
-    return data;
-}
-
-#ifndef _WIN32
-static void unmap_file(char *data, uint64_t size)
-{
-    if (!data)
-        return;
-
-    munmap(data, size);
-}
-#else
-static void unmap_file(char *data, uint64_t mapping)
-{
-    if (!data)
-        return;
-
-    UnmapViewOfFile(data);
-    CloseHandle((HANDLE)mapping);
-}
-#endif
-
-static void add_to_hash(TBEntry* ptr, uint64_t key)
-{
-    TBHashEntry* entry = TB_hash[key >> (64 - TBHASHBITS)];
-
-    for (int i = 0; i < HSHMAX && entry->ptr; i++, entry++) {}
-
-    if (!entry->ptr) {
-        entry->key = key;
-        entry->ptr = ptr;
-    } else {
-        std::cerr << "HSHMAX too low!\n";
-        exit(1);
-    }
-}
-
-static const std::string pchr = " PNBRQK";
-
-static void init_tb(const std::vector<PieceType>& pieces)
-{
-    FD fd;
-    TBEntry* entry;
-    uint64_t key1, key2;
-
-    std::string fname;
-    Color c = BLACK;
-    uint8_t pcs[PIECE_NB] = {0};
-    int num = 0;
-
-    for (PieceType pt : pieces) {
-        if (pt == KING) {
-            c = ~c;
-            if (!fname.empty())
-                fname += 'v';
-        }
-        pcs[make_piece(c, pt)]++;
-        num++;
-        fname += pchr[pt];
-    }
-
-    fd = open_tb(fname + WDLSUFFIX);
-
-    if (fd == FD_ERR)
-        return;
-
-    close_tb(fd);
-
-    if (num > Tablebases::MaxCardinality)
-        Tablebases::MaxCardinality = num;
-
-    key1 = calc_key_from_pcs(pcs, 0);
-    key2 = calc_key_from_pcs(pcs, 1);
-
-    bool hasPawns = pcs[W_PAWN] + pcs[B_PAWN];
-
-    if (hasPawns) {
-        if (TBnum_pawn == TBMAX_PAWN) {
-            std::cerr << "TBMAX_PAWN limit too low!\n";
-            exit(1);
-        }
-
-        TBEntry_pawn* ptr = &TB_pawn[TBnum_pawn++];
-        ptr->pawns[0] = pcs[W_PAWN];
-        ptr->pawns[1] = pcs[B_PAWN];
-
-        // FIXME: What it means this one?
-        if (    pcs[B_PAWN] > 0
-            && (pcs[W_PAWN] == 0 || pcs[B_PAWN] < pcs[W_PAWN])) {
-            ptr->pawns[0] = pcs[B_PAWN];
-            ptr->pawns[1] = pcs[W_PAWN];
-        }
-        entry = (TBEntry*)ptr;
-
-    } else {
-        if (TBnum_piece == TBMAX_PIECE) {
-            std::cerr << "TBMAX_PIECE limit too low!\n";
-            exit(1);
-        }
-
-        TBEntry_piece* ptr = &TB_piece[TBnum_piece++];
-        int j = 0;
-        for (auto n : pcs)
-            if (n == 1)
-                j++;
-
-        if (j >= 3)
-            ptr->enc_type = 0;
-
-        else if (j == 2)
-            ptr->enc_type = 2;
-
-        else { /* only for suicide */
-            j = 16;
-
-            for (auto n : pcs) {
-                if (n < j && n > 1)
-                    j = n;
-                ptr->enc_type = uint8_t(1 + j);
-            }
-        }
-        entry = (TBEntry*)ptr;
-    }
-
-    entry->key = key1;
-    entry->ready = 0;
-    entry->num = num;
-    entry->symmetric = (key1 == key2);
-    entry->has_pawns = hasPawns;
-
-    add_to_hash(entry, key1);
-
-    if (key2 != key1)
-        add_to_hash(entry, key2);
-}
-
-
-static const signed char offdiag[] = {
+const signed char Offdiag[] = {
     0,-1,-1,-1,-1,-1,-1,-1,
     1, 0,-1,-1,-1,-1,-1,-1,
     1, 1, 0,-1,-1,-1,-1,-1,
@@ -270,7 +46,7 @@ static const signed char offdiag[] = {
     1, 1, 1, 1, 1, 1, 1, 0
 };
 
-static const uint8_t triangle[] = {
+const uint8_t Triangle[] = {
     6, 0, 1, 2, 2, 1, 0, 6,
     0, 7, 3, 4, 4, 3, 7, 0,
     1, 3, 8, 5, 5, 8, 3, 1,
@@ -281,16 +57,7 @@ static const uint8_t triangle[] = {
     6, 0, 1, 2, 2, 1, 0, 6
 };
 
-static const uint8_t invtriangle[] = {
-    1, 2, 3, 10, 11, 19, 0, 9, 18, 27
-};
-
-static const uint8_t invdiag[] = {
-    0, 9, 18, 27, 36, 45, 54, 63,
-    7, 14, 21, 28, 35, 42, 49, 56
-};
-
-static const uint8_t flipdiag[] = {
+const uint8_t Flipdiag[] = {
     0,  8, 16, 24, 32, 40, 48, 56,
     1,  9, 17, 25, 33, 41, 49, 57,
     2, 10, 18, 26, 34, 42, 50, 58,
@@ -301,7 +68,7 @@ static const uint8_t flipdiag[] = {
     7, 15, 23, 31, 39, 47, 55, 63
 };
 
-static const uint8_t lower[] = {
+const uint8_t Lower[] = {
     28,  0,  1,  2,  3,  4,  5,  6,
     0, 29,  7,  8,  9, 10, 11, 12,
     1,  7, 30, 13, 14, 15, 16, 17,
@@ -312,7 +79,7 @@ static const uint8_t lower[] = {
     6, 12, 17, 21, 24, 26, 27, 35
 };
 
-static const uint8_t diag[] = {
+const uint8_t Diag[] = {
     0,  0,  0,  0,  0,  0,  0,  8,
     0,  1,  0,  0,  0,  0,  9,  0,
     0,  0,  2,  0,  0, 10,  0,  0,
@@ -323,7 +90,7 @@ static const uint8_t diag[] = {
     15,  0,  0,  0,  0,  0,  0,  7
 };
 
-static const uint8_t flap[] = {
+const uint8_t Flap[] = {
     0, 0, 0, 0, 0, 0, 0, 0,
     0, 6, 12, 18, 18, 12, 6, 0,
     1, 7, 13, 19, 19, 13, 7, 1,
@@ -334,7 +101,7 @@ static const uint8_t flap[] = {
     0, 0, 0, 0, 0, 0, 0, 0
 };
 
-static const uint8_t ptwist[] = {
+const uint8_t Ptwist[] = {
     0, 0, 0, 0, 0, 0, 0, 0,
     47, 35, 23, 11, 10, 22, 34, 46,
     45, 33, 21, 9, 8, 20, 32, 44,
@@ -345,25 +112,18 @@ static const uint8_t ptwist[] = {
     0, 0, 0, 0, 0, 0, 0, 0
 };
 
-static const uint8_t invflap[] = {
+const uint8_t Invflap[] = {
     8, 16, 24, 32, 40, 48,
     9, 17, 25, 33, 41, 49,
     10, 18, 26, 34, 42, 50,
     11, 19, 27, 35, 43, 51
 };
 
-static const uint8_t invptwist[] = {
-    52, 51, 44, 43, 36, 35, 28, 27, 20, 19, 12, 11,
-    53, 50, 45, 42, 37, 34, 29, 26, 21, 18, 13, 10,
-    54, 49, 46, 41, 38, 33, 30, 25, 22, 17, 14, 9,
-    55, 48, 47, 40, 39, 32, 31, 24, 23, 16, 15, 8
-};
-
-static const uint8_t file_to_file[] = {
+const uint8_t file_to_file[] = { // TODO: Remove it
     0, 1, 2, 3, 3, 2, 1, 0
 };
 
-static const short KK_idx[10][64] = {
+const short KK_idx[10][64] = {
     {
         -1, -1, -1,  0,  1,  2,  3,  4,
         -1, -1, -1,  5,  6,  7,  8,  9,
@@ -466,13 +226,118 @@ static const short KK_idx[10][64] = {
     }
 };
 
-static int binomial[5][64];
-static int pawnidx[5][24];
-static int pfactor[5][4];
+int Binomial[5][64];
+int Pawnidx[5][24];
+int Pfactor[5][4];
+
+// TBPaths stores the paths to directories where the .rtbw and .rtbz files can
+// be found. Multiple directories are separated by ";" on Windows and by ":"
+// on Unix-based operating systems.
+//
+// Example:
+// C:\tb\wdl345;C:\tb\wdl6;D:\tb\dtz345;D:\tb\dtz6
+std::string TBPaths;
+
+int TBnum_piece, TBnum_pawn;
+TBEntry_piece TB_piece[TBMAX_PIECE];
+TBEntry_pawn TB_pawn[TBMAX_PAWN];
+TBHashEntry TB_hash[1 << TBHASHBITS][HSHMAX];
+DTZTableEntry DTZ_table[DTZ_ENTRIES];
+
+} // namespace
+
+static uint64_t calc_key_from_pcs(uint8_t* pcs, bool mirror);
+
+class TBFile : public std::ifstream {
+
+    std::string fname;
+public:
+    // Open the file with the given name found among the TBPaths
+    TBFile(const std::string& f) {
+
+        std::stringstream ss(TBPaths);
+        std::string path;
+
+        while (std::getline(ss, path, SEP_CHAR)) {
+            fname = path + "/" + f;
+            std::ifstream::open(fname);
+            if (is_open())
+                return;
+        }
+    }
+
+    // Maps the file to memory. File is closed after mapping
+    char* map(uint64_t* mapping) {
+
+        assert(is_open());
+
+        close();
+
+#ifndef _WIN32
+        struct stat statbuf;
+        int fd = ::open(fname.c_str(), O_RDONLY);
+        fstat(fd, &statbuf);
+        *mapping = statbuf.st_size;
+        char* data = (char*)mmap(NULL, statbuf.st_size, PROT_READ, MAP_SHARED, fd, 0);
+        ::close(fd);
+        if (data == (char*)(-1)) {
+            std::cerr << "Could not mmap() " << fname << std::endl;
+            exit(1);
+        }
+#else
+        HANDLE fd = CreateFile(fname.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL,
+                               OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+        DWORD size_high;
+        DWORD size_low = GetFileSize(fd, &size_high);
+        HANDLE mmap = CreateFileMapping(fd, NULL, PAGE_READONLY, size_high, size_low, NULL);
+        CloseHandle(fd);
+        if (!mmap) {
+            std::cerr << "CreateFileMapping() failed" << std::endl;
+            exit(1);
+        }
+        *mapping = (uint64_t)mmap;
+        char* data = (char*)MapViewOfFile(mmap, FILE_MAP_READ, 0, 0, 0);
+        if (!data) {
+            std::cerr << "MapViewOfFile() failed, name = " << fname
+                      << ", error = " << GetLastError() << std::endl;
+            exit(1);
+        }
+#endif
+        return data;
+    }
+
+    static void unmap(char* data, uint64_t mapping) {
+
+        if (!data)
+            return;
+
+#ifndef _WIN32
+        munmap(data, mapping);
+#else
+        UnmapViewOfFile(data);
+        CloseHandle((HANDLE)mapping);
+#endif
+    }
+};
+
+static void add_to_hash(TBEntry* ptr, uint64_t key)
+{
+    TBHashEntry* entry = TB_hash[key >> (64 - TBHASHBITS)];
+
+    for (int i = 0; i < HSHMAX && entry->ptr; i++, entry++) {}
+
+    if (!entry->ptr) {
+        entry->key = key;
+        entry->ptr = ptr;
+    } else {
+        std::cerr << "HSHMAX too low!" << std::endl;
+        exit(1);
+    }
+}
 
 void free_wdl_entry(TBEntry_piece* entry)
 {
-    unmap_file(entry->data, entry->mapping);
+    TBFile::unmap(entry->data, entry->mapping);
 
     free(entry->precomp[0]);
     free(entry->precomp[1]);
@@ -480,7 +345,7 @@ void free_wdl_entry(TBEntry_piece* entry)
 
 void free_wdl_entry(TBEntry_pawn* entry)
 {
-    unmap_file(entry->data, entry->mapping);
+    TBFile::unmap(entry->data, entry->mapping);
 
     for (int f = 0; f < 4; f++) {
         free(entry->file[f].precomp[0]);
@@ -490,7 +355,7 @@ void free_wdl_entry(TBEntry_pawn* entry)
 
 void free_dtz_entry(TBEntry* entry)
 {
-    unmap_file(entry->data, entry->mapping);
+    TBFile::unmap(entry->data, entry->mapping);
 
     if (!entry->has_pawns)
         free(((DTZEntry_piece*)entry)->precomp);
@@ -499,6 +364,100 @@ void free_dtz_entry(TBEntry* entry)
             free(((DTZEntry_pawn*)entry)->file[f].precomp);
 
     free(entry);
+}
+
+static void init_tb(const std::vector<PieceType>& pieces)
+{
+    TBEntry* entry;
+    std::string fname;
+    Color c = BLACK;
+    uint8_t pcs[PIECE_NB] = {0};
+    int num = 0;
+
+    for (PieceType pt : pieces) {
+        if (pt == KING) {
+            c = ~c;
+            if (!fname.empty())
+                fname += 'v';
+        }
+        pcs[make_piece(c, pt)]++;
+        num++;
+        fname += PieceChar[pt];
+    }
+
+    TBFile f(fname + WDLSUFFIX);
+
+    if (!f.is_open())
+        return;
+
+    f.close();
+
+    if (num > Tablebases::MaxCardinality)
+        Tablebases::MaxCardinality = num;
+
+    uint64_t key1 = calc_key_from_pcs(pcs, 0);
+    uint64_t key2 = calc_key_from_pcs(pcs, 1);
+
+    bool hasPawns = pcs[W_PAWN] + pcs[B_PAWN];
+
+    if (hasPawns) {
+        if (TBnum_pawn == TBMAX_PAWN) {
+            std::cerr << "TBMAX_PAWN limit too low!" << std::endl;
+            exit(1);
+        }
+
+        TBEntry_pawn* ptr = &TB_pawn[TBnum_pawn++];
+        ptr->pawns[0] = pcs[W_PAWN];
+        ptr->pawns[1] = pcs[B_PAWN];
+
+        // FIXME: What it means this one?
+        if (    pcs[B_PAWN] > 0
+            && (pcs[W_PAWN] == 0 || pcs[B_PAWN] < pcs[W_PAWN])) {
+            ptr->pawns[0] = pcs[B_PAWN];
+            ptr->pawns[1] = pcs[W_PAWN];
+        }
+        entry = (TBEntry*)ptr;
+
+    } else {
+        if (TBnum_piece == TBMAX_PIECE) {
+            std::cerr << "TBMAX_PIECE limit too low!" << std::endl;
+            exit(1);
+        }
+
+        TBEntry_piece* ptr = &TB_piece[TBnum_piece++];
+        int j = 0;
+        for (auto n : pcs)
+            if (n == 1)
+                j++;
+
+        if (j >= 3)
+            ptr->enc_type = 0;
+
+        else if (j == 2)
+            ptr->enc_type = 2;
+
+        else { /* only for suicide */
+            j = 16;
+
+            for (auto n : pcs) {
+                if (n < j && n > 1)
+                    j = n;
+                ptr->enc_type = uint8_t(1 + j);
+            }
+        }
+        entry = (TBEntry*)ptr;
+    }
+
+    entry->key = key1;
+    entry->ready = 0;
+    entry->num = num;
+    entry->symmetric = (key1 == key2);
+    entry->has_pawns = hasPawns;
+
+    add_to_hash(entry, key1);
+
+    if (key2 != key1)
+        add_to_hash(entry, key2);
 }
 
 void Tablebases::init(const std::string& path)
@@ -527,10 +486,10 @@ void Tablebases::init(const std::string& path)
     // Fill binomial[] with the Binomial Coefficents using pascal triangle
     // so that binomial[k-1][n] = Binomial(n, k).
     for (int k = 0; k < 5; k++) {
-        binomial[k][0] = 0;
+        Binomial[k][0] = 0;
 
         for (int n = 1; n < 64; n++)
-            binomial[k][n] = (k ? binomial[k-1][n-1] : 1) + binomial[k][n-1];
+            Binomial[k][n] = (k ? Binomial[k-1][n-1] : 1) + Binomial[k][n-1];
     }
 
     for (int i = 0; i < 5; i++) {
@@ -540,11 +499,11 @@ void Tablebases::init(const std::string& path)
             int s = 0;
 
             for ( ; k < 6 * j; k++) {
-                pawnidx[i][k] = s;
-                s += (i ? binomial[i - 1][ptwist[invflap[k]]] : 1);
+                Pawnidx[i][k] = s;
+                s += (i ? Binomial[i - 1][Ptwist[Invflap[k]]] : 1);
             }
 
-            pfactor[i][j - 1] = s;
+            Pfactor[i][j - 1] = s;
         }
     }
 
@@ -594,12 +553,12 @@ static uint64_t encode_piece(TBEntry_piece *ptr, uint8_t *norm, int *pos, int *f
     }
 
     for (i = 0; i < n; i++)
-        if (offdiag[pos[i]])
+        if (Offdiag[pos[i]])
             break;
 
-    if (i < (ptr->enc_type == 0 ? 3 : 2) && offdiag[pos[i]] > 0)
+    if (i < (ptr->enc_type == 0 ? 3 : 2) && Offdiag[pos[i]] > 0)
         for (i = 0; i < n; i++)
-            pos[i] = flipdiag[pos[i]];
+            pos[i] = Flipdiag[pos[i]];
 
     switch (ptr->enc_type) {
 
@@ -607,14 +566,14 @@ static uint64_t encode_piece(TBEntry_piece *ptr, uint8_t *norm, int *pos, int *f
         i = (pos[1] > pos[0]);
         j = (pos[2] > pos[0]) + (pos[2] > pos[1]);
 
-        if (offdiag[pos[0]])
-            idx = triangle[pos[0]] * 63*62 + (pos[1] - i) * 62 + (pos[2] - j);
-        else if (offdiag[pos[1]])
-            idx = 6*63*62 + diag[pos[0]] * 28*62 + lower[pos[1]] * 62 + pos[2] - j;
-        else if (offdiag[pos[2]])
-            idx = 6*63*62 + 4*28*62 + (diag[pos[0]]) * 7*28 + (diag[pos[1]] - i) * 28 + lower[pos[2]];
+        if (Offdiag[pos[0]])
+            idx = Triangle[pos[0]] * 63*62 + (pos[1] - i) * 62 + (pos[2] - j);
+        else if (Offdiag[pos[1]])
+            idx = 6*63*62 + Diag[pos[0]] * 28*62 + Lower[pos[1]] * 62 + pos[2] - j;
+        else if (Offdiag[pos[2]])
+            idx = 6*63*62 + 4*28*62 + (Diag[pos[0]]) * 7*28 + (Diag[pos[1]] - i) * 28 + Lower[pos[2]];
         else
-            idx = 6*63*62 + 4*28*62 + 4*7*28 + (diag[pos[0]] * 7*6) + (diag[pos[1]] - i) * 6 + (diag[pos[2]] - j);
+            idx = 6*63*62 + 4*28*62 + 4*7*28 + (Diag[pos[0]] * 7*6) + (Diag[pos[1]] - i) * 6 + (Diag[pos[2]] - j);
 
         i = 3;
         break;
@@ -622,14 +581,14 @@ static uint64_t encode_piece(TBEntry_piece *ptr, uint8_t *norm, int *pos, int *f
     case 1: /* K3 */
         j = (pos[2] > pos[0]) + (pos[2] > pos[1]);
 
-        idx = KK_idx[triangle[pos[0]]][pos[1]];
+        idx = KK_idx[Triangle[pos[0]]][pos[1]];
 
         if (idx < 441)
             idx = idx + 441 * (pos[2] - j);
         else {
-            idx = 441*62 + (idx - 441) + 21 * lower[pos[2]];
+            idx = 441*62 + (idx - 441) + 21 * Lower[pos[2]];
 
-            if (!offdiag[pos[2]])
+            if (!Offdiag[pos[2]])
                 idx -= j * 21;
         }
 
@@ -637,7 +596,7 @@ static uint64_t encode_piece(TBEntry_piece *ptr, uint8_t *norm, int *pos, int *f
         break;
 
     default: /* K2 */
-        idx = KK_idx[triangle[pos[0]]][pos[1]];
+        idx = KK_idx[Triangle[pos[0]]][pos[1]];
         i = 2;
         break;
     }
@@ -657,7 +616,7 @@ static uint64_t encode_piece(TBEntry_piece *ptr, uint8_t *norm, int *pos, int *f
             for (l = 0, j = 0; l < i; l++)
                 j += (p > pos[l]);
 
-            s += binomial[m - i][p - j];
+            s += Binomial[m - i][p - j];
         }
 
         idx += (uint64_t)s * ((uint64_t)factor[i]);
@@ -673,7 +632,7 @@ static int pawn_file(TBEntry_pawn *ptr, int *pos)
     int i;
 
     for (i = 1; i < ptr->pawns[0]; i++)
-        if (flap[pos[0]] > flap[pos[i]])
+        if (Flap[pos[0]] > Flap[pos[i]])
             std::swap(pos[0], pos[i]);
 
     return file_to_file[pos[0] & 7];
@@ -691,14 +650,14 @@ static uint64_t encode_pawn(TBEntry_pawn *ptr, uint8_t *norm, int *pos, int *fac
 
     for (i = 1; i < ptr->pawns[0]; i++)
         for (j = i + 1; j < ptr->pawns[0]; j++)
-            if (ptwist[pos[i]] < ptwist[pos[j]])
+            if (Ptwist[pos[i]] < Ptwist[pos[j]])
                 std::swap(pos[i], pos[j]);
 
     t = ptr->pawns[0] - 1;
-    idx = pawnidx[t][flap[pos[0]]];
+    idx = Pawnidx[t][Flap[pos[0]]];
 
     for (i = t; i > 0; i--)
-        idx += binomial[t - i][ptwist[pos[i]]];
+        idx += Binomial[t - i][Ptwist[pos[i]]];
 
     idx *= factor[0];
 
@@ -717,7 +676,7 @@ static uint64_t encode_pawn(TBEntry_pawn *ptr, uint8_t *norm, int *pos, int *fac
             for (k = 0, j = 0; k < i; k++)
                 j += (p > pos[k]);
 
-            s += binomial[m - i][p - j - 8];
+            s += Binomial[m - i][p - j - 8];
         }
 
         idx += (uint64_t)s * ((uint64_t)factor[i]);
@@ -737,7 +696,7 @@ static uint64_t encode_pawn(TBEntry_pawn *ptr, uint8_t *norm, int *pos, int *fac
             for (k = 0, j = 0; k < i; k++)
                 j += (p > pos[k]);
 
-            s += binomial[m - i][p - j];
+            s += Binomial[m - i][p - j];
         }
 
         idx += (uint64_t)s * ((uint64_t)factor[i]);
@@ -804,7 +763,7 @@ static uint64_t calc_factors_pawn(int *factor, int num, int order, int order2, u
     for (k = 0; i < num || k == order || k == order2; k++) {
         if (k == order) {
             factor[0] = static_cast<int>(f);
-            f *= pfactor[norm[0] - 1][file];
+            f *= Pfactor[norm[0] - 1][file];
         } else if (k == order2) {
             factor[norm[0]] = static_cast<int>(f);
             f *= subfactor(norm[norm[0]], 48 - norm[0]);
@@ -1041,14 +1000,15 @@ static int init_table_wdl(TBEntry *entry, const std::string& str)
     uint64_t size[8 * 3];
     uint8_t flags;
 
-    // first mmap the table into memory
+    TBFile file(str + WDLSUFFIX);
 
-    entry->data = map_file(str + WDLSUFFIX, &entry->mapping);
-
-    if (!entry->data) {
-        std::cerr << "Could not find " << str + WDLSUFFIX << '\n';
+    if (!file.is_open()) {
+        std::cerr << "Could not find " << str + WDLSUFFIX << std::endl;
         return 0;
     }
+
+    // First mmap the table into memory
+    entry->data = file.map(&entry->mapping);
 
     uint8_t *data = (uint8_t *)entry->data;
 
@@ -1056,8 +1016,8 @@ static int init_table_wdl(TBEntry *entry, const std::string& str)
             data[1] != WDL_MAGIC[1] ||
             data[2] != WDL_MAGIC[2] ||
             data[3] != WDL_MAGIC[3]) {
-        std::cerr << "Corrupted table\n";
-        unmap_file(entry->data, entry->mapping);
+        std::cerr << "Corrupted table" << std::endl;
+        TBFile::unmap(entry->data, entry->mapping);
         entry->data = 0;
         return 0;
     }
@@ -1179,7 +1139,7 @@ static int init_table_dtz(TBEntry *entry)
             data[1] != DTZ_MAGIC[1] ||
             data[2] != DTZ_MAGIC[2] ||
             data[3] != DTZ_MAGIC[3]) {
-        std::cerr << "Corrupted table\n";
+        std::cerr << "Corrupted table" << std::endl;
         return 0;
     }
 
@@ -1387,7 +1347,9 @@ void load_dtz_table(const std::string& str, uint64_t key1, uint64_t key2)
                              ? sizeof(DTZEntry_pawn)
                              : sizeof(DTZEntry_piece));
 
-    ptr3->data = map_file(str + DTZSUFFIX, &ptr3->mapping);
+    TBFile file(str + DTZSUFFIX);
+
+    ptr3->data = file.is_open() ? file.map(&ptr3->mapping) : nullptr;
     ptr3->key = ptr->key;
     ptr3->num = ptr->num;
     ptr3->symmetric = ptr->symmetric;
