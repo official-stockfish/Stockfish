@@ -407,6 +407,7 @@ public:
         while (std::getline(ss, path, SepChar)) {
             fname = path + "/" + f;
             std::ifstream::open(fname);
+
             if (is_open())
                 return;
         }
@@ -426,10 +427,12 @@ public:
         *mapping = statbuf.st_size;
         char* data = (char*)mmap(NULL, statbuf.st_size, PROT_READ, MAP_SHARED, fd, 0);
         ::close(fd);
+
         if (data == (char*)(-1)) {
             std::cerr << "Could not mmap() " << fname << std::endl;
             exit(1);
         }
+
 #else
         HANDLE fd = CreateFile(fname.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL,
                                OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
@@ -437,17 +440,21 @@ public:
         DWORD size_low = GetFileSize(fd, &size_high);
         HANDLE mmap = CreateFileMapping(fd, NULL, PAGE_READONLY, size_high, size_low, NULL);
         CloseHandle(fd);
+
         if (!mmap) {
             std::cerr << "CreateFileMapping() failed" << std::endl;
             exit(1);
         }
+
         *mapping = (uint64_t)mmap;
         char* data = (char*)MapViewOfFile(mmap, FILE_MAP_READ, 0, 0, 0);
+
         if (!data) {
             std::cerr << "MapViewOfFile() failed, name = " << fname
                       << ", error = " << GetLastError() << std::endl;
             exit(1);
         }
+
 #endif
         return data;
     }
@@ -476,6 +483,7 @@ Key calc_key(Position& pos, bool mirror)
         for (PieceType pt = PAWN; pt <= KING; ++pt)
             for (int j = popcount(pos.pieces(Color(c ^ mirror), pt)); j > 0; j--)
                 key ^= Zobrist::psq[c][pt][j - 1];
+
     return key;
 }
 
@@ -491,6 +499,7 @@ Key calc_key_from_pcs(uint8_t* pcs, bool mirror)
         for (PieceType pt = PAWN; pt <= KING; ++pt)
             for (int cnt = 0; cnt < pcs[8 * (c ^ mirror) + pt]; ++cnt)
                 key ^= Zobrist::psq[c][pt][cnt];
+
     return key;
 }
 
@@ -551,9 +560,11 @@ void init_tb(const std::vector<PieceType>& pieces)
     for (PieceType pt : pieces) {
         if (pt == KING) {
             c = ~c;
+
             if (!fname.empty())
                 fname += 'v';
         }
+
         pcs[make_piece(c, pt)]++;
         num++;
         fname += PieceChar[pt];
@@ -590,8 +601,8 @@ void init_tb(const std::vector<PieceType>& pieces)
             ptr->pawns[0] = pcs[B_PAWN];
             ptr->pawns[1] = pcs[W_PAWN];
         }
-        entry = (TBEntry*)ptr;
 
+        entry = (TBEntry*)ptr;
     } else {
         if (TBnum_piece == TBMAX_PIECE) {
             std::cerr << "TBMAX_PIECE limit too low!" << std::endl;
@@ -600,25 +611,26 @@ void init_tb(const std::vector<PieceType>& pieces)
 
         TBEntry_piece* ptr = &TB_piece[TBnum_piece++];
         int j = 0;
+
         for (auto n : pcs)
             if (n == 1)
                 j++;
 
         if (j >= 3)
             ptr->enc_type = 0;
-
         else if (j == 2)
             ptr->enc_type = 2;
-
         else { /* only for suicide */
             j = 16;
 
             for (auto n : pcs) {
                 if (n < j && n > 1)
                     j = n;
+
                 ptr->enc_type = uint8_t(1 + j);
             }
         }
+
         entry = (TBEntry*)ptr;
     }
 
@@ -717,7 +729,7 @@ uint64_t encode_piece(TBEntry_piece *ptr, uint8_t *norm, int *pos, int *factor)
             s += Binomial[m - i][p - j];
         }
 
-        idx += (uint64_t)s * ((uint64_t)factor[i]);
+        idx += (uint64_t)s * (uint64_t)factor[i];
         i += t;
     }
 
@@ -777,7 +789,7 @@ uint64_t encode_pawn(TBEntry_pawn *ptr, uint8_t *norm, int *pos, int *factor)
             s += Binomial[m - i][p - j - 8];
         }
 
-        idx += (uint64_t)s * ((uint64_t)factor[i]);
+        idx += (uint64_t)s * (uint64_t)factor[i];
         i = t;
     }
 
@@ -797,7 +809,7 @@ uint64_t encode_pawn(TBEntry_pawn *ptr, uint8_t *norm, int *pos, int *factor)
             s += Binomial[m - i][p - j];
         }
 
-        idx += (uint64_t)s * ((uint64_t)factor[i]);
+        idx += (uint64_t)s * (uint64_t)factor[i];
         i += t;
     }
 
@@ -832,10 +844,10 @@ uint64_t calc_factors_piece(int *factor, int num, int order, uint8_t *norm, uint
 
     for (i = norm[0], k = 0; i < num || k == order; k++) {
         if (k == order) {
-            factor[0] = static_cast<int>(f);
+            factor[0] = (int)(f);
             f *= pivfac[enc_type];
         } else {
-            factor[i] = static_cast<int>(f);
+            factor[i] = (int)(f);
             f *= subfactor(norm[i], n);
             n -= norm[i];
             i += norm[i];
@@ -860,13 +872,13 @@ uint64_t calc_factors_pawn(int *factor, int num, int order, int order2, uint8_t 
 
     for (k = 0; i < num || k == order || k == order2; k++) {
         if (k == order) {
-            factor[0] = static_cast<int>(f);
+            factor[0] = (int)(f);
             f *= Pfactor[norm[0] - 1][file];
         } else if (k == order2) {
-            factor[norm[0]] = static_cast<int>(f);
+            factor[norm[0]] = (int)(f);
             f *= subfactor(norm[norm[0]], 48 - norm[0]);
         } else {
-            factor[i] = static_cast<int>(f);
+            factor[i] = (int)(f);
             f *= subfactor(norm[i], n);
             n -= norm[i];
             i += norm[i];
@@ -1260,7 +1272,7 @@ int init_table_dtz(TBEntry *entry)
             int i;
 
             for (i = 0; i < 4; i++) {
-                ptr->map_idx[i] = static_cast<uint16_t>(data + 1 - ptr->map);
+                ptr->map_idx[i] = (uint16_t)(data + 1 - ptr->map);
                 data += 1 + data[0];
             }
 
@@ -1299,7 +1311,7 @@ int init_table_dtz(TBEntry *entry)
                 int i;
 
                 for (i = 0; i < 4; i++) {
-                    ptr->map_idx[f][i] = static_cast<uint16_t>(data + 1 - ptr->map);
+                    ptr->map_idx[f][i] = (uint16_t)(data + 1 - ptr->map);
                     data += 1 + data[0];
                 }
             }
@@ -1333,7 +1345,7 @@ uint8_t decompress_pairs(PairsData *d, uint64_t idx)
     if (!d->idxbits)
         return uint8_t(d->min_len);
 
-    uint32_t mainidx = static_cast<uint32_t>(idx >> d->idxbits);
+    uint32_t mainidx = (uint32_t)(idx >> d->idxbits);
     int litidx = (idx & ((1ULL << d->idxbits) - 1)) - (1ULL << (d->idxbits - 1));
     uint32_t block = *(uint32_t *)(d->indextable + 6 * mainidx);
 
@@ -1382,7 +1394,7 @@ uint8_t decompress_pairs(PairsData *d, uint64_t idx)
         if (!LittleEndian)
             sym = ((sym & 0xff) << 8) | (sym >> 8);
 
-        sym += static_cast<int>((code - base[l]) >> (64 - l));
+        sym += (int)((code - base[l]) >> (64 - l));
 
         if (litidx < (int)symlen[sym] + 1)
             break;
@@ -1499,6 +1511,7 @@ bool is_little_endian()
         int i;
         char c[sizeof(int)];
     } x;
+
     x.i = 1;
     return x.c[0] == 1;
 }
@@ -2309,8 +2322,10 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves, Value& 
             if (st.rule50 != 0) {
                 v = -Tablebases::probe_dtz(pos, &success);
 
-                if (v > 0) v++;
-                else if (v < 0) v--;
+                if (v > 0)
+                    v++;
+                else if (v < 0)
+                    v--;
             } else {
                 v = -Tablebases::probe_wdl(pos, &success);
                 v = wdl_to_dtz[v + 2];
