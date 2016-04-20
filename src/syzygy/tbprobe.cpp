@@ -30,14 +30,10 @@
 #ifndef _WIN32
 #include <unistd.h>
 #include <sys/mman.h>
-#define SEP_CHAR ':'
 #else
 #define WIN32_LEAN_AND_MEAN
-#ifndef NOMINMAX
 #define NOMINMAX
-#endif
 #include <windows.h>
-#define SEP_CHAR ';'
 #endif
 
 #ifndef _MSC_VER
@@ -60,12 +56,7 @@ namespace Zobrist {
 extern Key psq[COLOR_NB][PIECE_TYPE_NB][SQUARE_NB];
 }
 
-const uint8_t WDL_MAGIC[4] = { 0x71, 0xe8, 0x23, 0x5d };
-const uint8_t DTZ_MAGIC[4] = { 0xd7, 0x66, 0x0c, 0xa5 };
-
-const int TBHASHBITS = 10;
-const int HSHMAX = 5;
-const int DTZ_ENTRIES = 64;
+namespace {
 
 typedef uint64_t base_t;
 
@@ -172,22 +163,6 @@ struct DTZTableEntry {
     uint64_t key2;
     struct TBEntry *entry;
 };
-
-
-static const int wdl_to_map[5] = { 1, 3, 0, 2, 0 };
-static const uint8_t pa_flags[5] = { 8, 0, 0, 0, 4 };
-
-static Mutex TB_mutex;
-
-TBHashEntry TB_hash[1 << TBHASHBITS][HSHMAX];
-DTZTableEntry DTZ_table[DTZ_ENTRIES];
-
-namespace {
-
-const int TBMAX_PIECE = 254;
-const int TBMAX_PAWN = 256;
-
-const std::string PieceChar = " PNBRQK";
 
 const signed char Offdiag[] = {
     0,-1,-1,-1,-1,-1,-1,-1,
@@ -380,6 +355,28 @@ const short KK_idx[10][64] = {
     }
 };
 
+const uint8_t WDL_MAGIC[4] = { 0x71, 0xe8, 0x23, 0x5d };
+const uint8_t DTZ_MAGIC[4] = { 0xd7, 0x66, 0x0c, 0xa5 };
+
+const int wdl_to_map[5] = { 1, 3, 0, 2, 0 };
+const uint8_t pa_flags[5] = { 8, 0, 0, 0, 4 };
+
+const int TBMAX_PIECE = 254;
+const int TBMAX_PAWN = 256;
+const int TBHASHBITS = 10;
+const int HSHMAX = 5;
+const int DTZ_ENTRIES = 64;
+
+const std::string PieceChar = " PNBRQK";
+
+int TBnum_piece, TBnum_pawn;
+TBEntry_piece TB_piece[TBMAX_PIECE];
+TBEntry_pawn TB_pawn[TBMAX_PAWN];
+Mutex TB_mutex;
+
+TBHashEntry TB_hash[1 << TBHASHBITS][HSHMAX];
+DTZTableEntry DTZ_table[DTZ_ENTRIES];
+
 int Binomial[5][64];
 int Pawnidx[5][24];
 int Pfactor[5][4];
@@ -392,13 +389,6 @@ int Pfactor[5][4];
 // C:\tb\wdl345;C:\tb\wdl6;D:\tb\dtz345;D:\tb\dtz6
 std::string TBPaths;
 
-int TBnum_piece, TBnum_pawn;
-TBEntry_piece TB_piece[TBMAX_PIECE];
-TBEntry_pawn TB_pawn[TBMAX_PAWN];
-
-} // namespace
-
-
 class TBFile : public std::ifstream {
 
     std::string fname;
@@ -406,10 +396,15 @@ public:
     // Open the file with the given name found among the TBPaths
     TBFile(const std::string& f) {
 
+#ifndef _WIN32
+        const char SepChar = ':';
+#else
+        const char SepChar = ';';
+#endif
         std::stringstream ss(TBPaths);
         std::string path;
 
-        while (std::getline(ss, path, SEP_CHAR)) {
+        while (std::getline(ss, path, SepChar)) {
             fname = path + "/" + f;
             std::ifstream::open(fname);
             if (is_open())
@@ -471,7 +466,35 @@ public:
     }
 };
 
-static void add_to_hash(TBEntry* ptr, uint64_t key)
+// Given a position, produce a 64-bit material signature key.
+// If the engine supports such a key, it should equal the engine's key.
+Key calc_key(Position& pos, bool mirror)
+{
+    Key key = 0;
+
+    for (Color c = WHITE; c <= BLACK; ++c)
+        for (PieceType pt = PAWN; pt <= KING; ++pt)
+            for (int j = popcount(pos.pieces(Color(c ^ mirror), pt)); j > 0; j--)
+                key ^= Zobrist::psq[c][pt][j - 1];
+    return key;
+}
+
+// Produce a 64-bit material key corresponding to the material combination
+// defined by pcs[16], where pcs[1], ..., pcs[6] is the number of white
+// pawns, ..., kings and pcs[9], ..., pcs[14] is the number of black
+// pawns, ..., kings.
+Key calc_key_from_pcs(uint8_t* pcs, bool mirror)
+{
+    Key key = 0;
+
+    for (Color c = WHITE; c <= BLACK; ++c)
+        for (PieceType pt = PAWN; pt <= KING; ++pt)
+            for (int cnt = 0; cnt < pcs[8 * (c ^ mirror) + pt]; ++cnt)
+                key ^= Zobrist::psq[c][pt][cnt];
+    return key;
+}
+
+void add_to_hash(TBEntry* ptr, uint64_t key)
 {
     TBHashEntry* entry = TB_hash[key >> (64 - TBHASHBITS)];
 
@@ -486,7 +509,7 @@ static void add_to_hash(TBEntry* ptr, uint64_t key)
     }
 }
 
-static void free_wdl_entry(TBEntry_piece* entry)
+void free_wdl_entry(TBEntry_piece* entry)
 {
     TBFile::unmap(entry->data, entry->mapping);
 
@@ -494,7 +517,7 @@ static void free_wdl_entry(TBEntry_piece* entry)
     free(entry->precomp[1]);
 }
 
-static void free_wdl_entry(TBEntry_pawn* entry)
+void free_wdl_entry(TBEntry_pawn* entry)
 {
     TBFile::unmap(entry->data, entry->mapping);
 
@@ -517,7 +540,7 @@ void free_dtz_entry(TBEntry* entry)
     free(entry);
 }
 
-static void init_tb(const std::vector<PieceType>& pieces)
+void init_tb(const std::vector<PieceType>& pieces)
 {
     TBEntry* entry;
     std::string fname;
@@ -546,8 +569,8 @@ static void init_tb(const std::vector<PieceType>& pieces)
     if (num > Tablebases::MaxCardinality)
         Tablebases::MaxCardinality = num;
 
-    uint64_t key1 = Tablebases::calc_key_from_pcs(pcs, 0);
-    uint64_t key2 = Tablebases::calc_key_from_pcs(pcs, 1);
+    uint64_t key1 = calc_key_from_pcs(pcs, 0);
+    uint64_t key2 = calc_key_from_pcs(pcs, 1);
 
     bool hasPawns = pcs[W_PAWN] + pcs[B_PAWN];
 
@@ -609,82 +632,6 @@ static void init_tb(const std::vector<PieceType>& pieces)
 
     if (key2 != key1)
         add_to_hash(entry, key2);
-}
-
-void Tablebases::init(const std::string& path)
-{
-    for (int i = 0; i < TBnum_piece; i++)
-        free_wdl_entry(&TB_piece[i]);
-
-    for (int i = 0; i < TBnum_pawn; i++)
-        free_wdl_entry(&TB_pawn[i]);
-
-    for (int i = 0; i < DTZ_ENTRIES; i++)
-        if (DTZ_table[i].entry) {
-            free_dtz_entry(DTZ_table[i].entry);
-            DTZ_table[i].entry = nullptr;
-        }
-
-    std::memset(TB_hash, 0, sizeof(TB_hash));
-
-    TBnum_piece = TBnum_pawn = 0;
-    MaxCardinality = 0;
-    TBPaths = path;
-
-    if (TBPaths.empty() || TBPaths == "<empty>")
-        return;
-
-    // Fill binomial[] with the Binomial Coefficents using pascal triangle
-    // so that binomial[k-1][n] = Binomial(n, k).
-    for (int k = 0; k < 5; k++) {
-        Binomial[k][0] = 0;
-
-        for (int n = 1; n < 64; n++)
-            Binomial[k][n] = (k ? Binomial[k-1][n-1] : 1) + Binomial[k][n-1];
-    }
-
-    for (int i = 0; i < 5; i++) {
-        int k = 0;
-
-        for (int j = 1; j <= 4; j++) {
-            int s = 0;
-
-            for ( ; k < 6 * j; k++) {
-                Pawnidx[i][k] = s;
-                s += (i ? Binomial[i - 1][Ptwist[Invflap[k]]] : 1);
-            }
-
-            Pfactor[i][j - 1] = s;
-        }
-    }
-
-    for (PieceType p1 = PAWN; p1 < KING; ++p1) {
-        init_tb({KING, p1, KING});
-
-        for (PieceType p2 = PAWN; p2 <= p1; ++p2) {
-            init_tb({KING, p1, p2, KING});
-            init_tb({KING, p1, KING, p2});
-
-            for (PieceType p3 = PAWN; p3 < KING; ++p3)
-                init_tb({KING, p1, p2, KING, p3});
-
-            for (PieceType p3 = PAWN; p3 <= p2; ++p3) {
-                init_tb({KING, p1, p2, p3, KING});
-
-                for (PieceType p4 = PAWN; p4 <= p3; ++p4)
-                    init_tb({KING, p1, p2, p3, p4, KING});
-
-                for (PieceType p4 = PAWN; p4 < KING; ++p4)
-                    init_tb({KING, p1, p2, p3, KING, p4});
-            }
-
-            for (PieceType p3 = PAWN; p3 <= p1; ++p3)
-                for (PieceType p4 = PAWN; p4 <= (p1 == p3 ? p2 : p3); ++p4)
-                    init_tb({KING, p1, p2, KING, p3, p4});
-        }
-    }
-
-    std::cerr << "info string Found " << TBnum_piece + TBnum_pawn << " tablebases" << std::endl;
 }
 
 uint64_t encode_piece(TBEntry_piece *ptr, uint8_t *norm, int *pos, int *factor)
@@ -858,7 +805,7 @@ uint64_t encode_pawn(TBEntry_pawn *ptr, uint8_t *norm, int *pos, int *factor)
 }
 
 // place k like pieces on n squares
-static int subfactor(int k, int n)
+int subfactor(int k, int n)
 {
     int i, f, l;
 
@@ -873,7 +820,7 @@ static int subfactor(int k, int n)
     return f / l;
 }
 
-static uint64_t calc_factors_piece(int *factor, int num, int order, uint8_t *norm, uint8_t enc_type)
+uint64_t calc_factors_piece(int *factor, int num, int order, uint8_t *norm, uint8_t enc_type)
 {
     int i, k, n;
     uint64_t f;
@@ -898,7 +845,7 @@ static uint64_t calc_factors_piece(int *factor, int num, int order, uint8_t *nor
     return f;
 }
 
-static uint64_t calc_factors_pawn(int *factor, int num, int order, int order2, uint8_t *norm, int file)
+uint64_t calc_factors_pawn(int *factor, int num, int order, int order2, uint8_t *norm, int file)
 {
     int i, k, n;
     uint64_t f;
@@ -929,7 +876,7 @@ static uint64_t calc_factors_pawn(int *factor, int num, int order, int order2, u
     return f;
 }
 
-static void set_norm_piece(TBEntry_piece *ptr, uint8_t *norm, uint8_t *pieces)
+void set_norm_piece(TBEntry_piece *ptr, uint8_t *norm, uint8_t *pieces)
 {
     int i, j;
 
@@ -955,7 +902,7 @@ static void set_norm_piece(TBEntry_piece *ptr, uint8_t *norm, uint8_t *pieces)
             norm[i]++;
 }
 
-static void set_norm_pawn(TBEntry_pawn *ptr, uint8_t *norm, uint8_t *pieces)
+void set_norm_pawn(TBEntry_pawn *ptr, uint8_t *norm, uint8_t *pieces)
 {
     int i, j;
 
@@ -971,7 +918,7 @@ static void set_norm_pawn(TBEntry_pawn *ptr, uint8_t *norm, uint8_t *pieces)
             norm[i]++;
 }
 
-static void setup_pieces_piece(TBEntry_piece *ptr, unsigned char *data, uint64_t *tb_size)
+void setup_pieces_piece(TBEntry_piece *ptr, unsigned char *data, uint64_t *tb_size)
 {
     int i;
     int order;
@@ -991,7 +938,7 @@ static void setup_pieces_piece(TBEntry_piece *ptr, unsigned char *data, uint64_t
     tb_size[1] = calc_factors_piece(ptr->factor[1], ptr->num, order, ptr->norm[1], ptr->enc_type);
 }
 
-static void setup_pieces_piece_dtz(DTZEntry_piece *ptr, unsigned char *data, uint64_t *tb_size)
+void setup_pieces_piece_dtz(DTZEntry_piece *ptr, unsigned char *data, uint64_t *tb_size)
 {
     int i;
     int order;
@@ -1004,7 +951,7 @@ static void setup_pieces_piece_dtz(DTZEntry_piece *ptr, unsigned char *data, uin
     tb_size[0] = calc_factors_piece(ptr->factor, ptr->num, order, ptr->norm, ptr->enc_type);
 }
 
-static void setup_pieces_pawn(TBEntry_pawn *ptr, unsigned char *data, uint64_t *tb_size, int f)
+void setup_pieces_pawn(TBEntry_pawn *ptr, unsigned char *data, uint64_t *tb_size, int f)
 {
     int i, j;
     int order, order2;
@@ -1029,7 +976,7 @@ static void setup_pieces_pawn(TBEntry_pawn *ptr, unsigned char *data, uint64_t *
     tb_size[1] = calc_factors_pawn(ptr->file[f].factor[1], ptr->num, order, order2, ptr->file[f].norm[1], f);
 }
 
-static void setup_pieces_pawn_dtz(DTZEntry_pawn *ptr, unsigned char *data, uint64_t *tb_size, int f)
+void setup_pieces_pawn_dtz(DTZEntry_pawn *ptr, unsigned char *data, uint64_t *tb_size, int f)
 {
     int i, j;
     int order, order2;
@@ -1045,7 +992,7 @@ static void setup_pieces_pawn_dtz(DTZEntry_pawn *ptr, unsigned char *data, uint6
     tb_size[0] = calc_factors_pawn(ptr->file[f].factor, ptr->num, order, order2, ptr->file[f].norm, f);
 }
 
-static void calc_symlen(PairsData *d, int s, char *tmp)
+void calc_symlen(PairsData *d, int s, char *tmp)
 {
     int s1, s2;
 
@@ -1077,7 +1024,7 @@ uint32_t ReadUint32(uint8_t* d)
     return d[0] | (d[1] << 8) | (d[2] << 16) | (d[3] << 24);
 }
 
-static PairsData *setup_pairs(unsigned char *data, uint64_t tb_size, uint64_t *size, unsigned char **next, uint8_t *flags, int wdl)
+PairsData *setup_pairs(unsigned char *data, uint64_t tb_size, uint64_t *size, unsigned char **next, uint8_t *flags, int wdl)
 {
     PairsData *d;
     int i;
@@ -1275,7 +1222,7 @@ int init_table_wdl(TBEntry *entry, const std::string& str)
     return 1;
 }
 
-static int init_table_dtz(TBEntry *entry)
+int init_table_dtz(TBEntry *entry)
 {
     uint8_t *data = (uint8_t *)entry->data;
     uint8_t *next;
@@ -1528,7 +1475,7 @@ void load_dtz_table(const std::string& str, uint64_t key1, uint64_t key2)
 // Given a position with 6 or fewer pieces, produce a text string
 // of the form KQPvKRP, where "KQP" represents the white pieces if
 // mirror == false and the black pieces if mirror == true.
-static std::string prt_str(Position& pos, bool mirror)
+std::string prt_str(Position& pos, bool mirror)
 {
     std::string s;
 
@@ -1546,34 +1493,6 @@ static std::string prt_str(Position& pos, bool mirror)
     return s;
 }
 
-// Given a position, produce a 64-bit material signature key.
-// If the engine supports such a key, it should equal the engine's key.
-static uint64_t calc_key(Position& pos, bool mirror)
-{
-    uint64_t key = 0;
-
-    for (Color c = WHITE; c <= BLACK; ++c)
-        for (PieceType pt = PAWN; pt <= KING; ++pt)
-            for (int j = popcount(pos.pieces(Color(c ^ mirror), pt)); j > 0; j--)
-                key ^= Zobrist::psq[c][pt][j - 1];
-    return key;
-}
-
-// Produce a 64-bit material key corresponding to the material combination
-// defined by pcs[16], where pcs[1], ..., pcs[6] is the number of white
-// pawns, ..., kings and pcs[9], ..., pcs[14] is the number of black
-// pawns, ..., kings.
-uint64_t Tablebases::calc_key_from_pcs(uint8_t* pcs, bool mirror)
-{
-    uint64_t key = 0;
-
-    for (Color c = WHITE; c <= BLACK; ++c)
-        for (PieceType pt = PAWN; pt <= KING; ++pt)
-            for (int cnt = 0; cnt < pcs[8 * (c ^ mirror) + pt]; ++cnt)
-                key ^= Zobrist::psq[c][pt][cnt];
-    return key;
-}
-
 bool is_little_endian()
 {
     union {
@@ -1584,7 +1503,7 @@ bool is_little_endian()
     return x.c[0] == 1;
 }
 
-static uint8_t decompress_pairs(PairsData *d, uint64_t idx)
+uint8_t decompress_pairs(PairsData *d, uint64_t idx)
 {
     static const bool isLittleEndian = is_little_endian();
     return isLittleEndian ? decompress_pairs<true >(d, idx)
@@ -1592,7 +1511,7 @@ static uint8_t decompress_pairs(PairsData *d, uint64_t idx)
 }
 
 // probe_wdl_table and probe_dtz_table require similar adaptations.
-static int probe_wdl_table(Position& pos, int *success)
+int probe_wdl_table(Position& pos, int *success)
 {
     TBEntry *ptr;
     TBHashEntry *ptr2;
@@ -1711,7 +1630,7 @@ static int probe_wdl_table(Position& pos, int *success)
     return (int)res - 2;
 }
 
-static int probe_dtz_table(Position& pos, int wdl, int *success)
+int probe_dtz_table(Position& pos, int wdl, int *success)
 {
     TBEntry *ptr;
     uint64_t idx;
@@ -1852,7 +1771,7 @@ static int probe_dtz_table(Position& pos, int wdl, int *success)
 }
 
 // Add underpromotion captures to list of captures.
-static ExtMove *add_underprom_caps(Position& pos, ExtMove *stack, ExtMove *end)
+ExtMove *add_underprom_caps(Position& pos, ExtMove *stack, ExtMove *end)
 {
     ExtMove *moves, *extra = end;
 
@@ -1869,7 +1788,7 @@ static ExtMove *add_underprom_caps(Position& pos, ExtMove *stack, ExtMove *end)
     return extra;
 }
 
-static int probe_ab(Position& pos, int alpha, int beta, int *success)
+int probe_ab(Position& pos, int alpha, int beta, int *success)
 {
     int v;
     ExtMove stack[64];
@@ -1923,6 +1842,84 @@ static int probe_ab(Position& pos, int alpha, int beta, int *success)
         *success = 1;
         return v;
     }
+}
+
+} // namespace
+
+void Tablebases::init(const std::string& path)
+{
+    for (int i = 0; i < TBnum_piece; i++)
+        free_wdl_entry(&TB_piece[i]);
+
+    for (int i = 0; i < TBnum_pawn; i++)
+        free_wdl_entry(&TB_pawn[i]);
+
+    for (int i = 0; i < DTZ_ENTRIES; i++)
+        if (DTZ_table[i].entry) {
+            free_dtz_entry(DTZ_table[i].entry);
+            DTZ_table[i].entry = nullptr;
+        }
+
+    std::memset(TB_hash, 0, sizeof(TB_hash));
+
+    TBnum_piece = TBnum_pawn = 0;
+    MaxCardinality = 0;
+    TBPaths = path;
+
+    if (TBPaths.empty() || TBPaths == "<empty>")
+        return;
+
+    // Fill binomial[] with the Binomial Coefficents using pascal triangle
+    // so that binomial[k-1][n] = Binomial(n, k).
+    for (int k = 0; k < 5; k++) {
+        Binomial[k][0] = 0;
+
+        for (int n = 1; n < 64; n++)
+            Binomial[k][n] = (k ? Binomial[k-1][n-1] : 1) + Binomial[k][n-1];
+    }
+
+    for (int i = 0; i < 5; i++) {
+        int k = 0;
+
+        for (int j = 1; j <= 4; j++) {
+            int s = 0;
+
+            for ( ; k < 6 * j; k++) {
+                Pawnidx[i][k] = s;
+                s += (i ? Binomial[i - 1][Ptwist[Invflap[k]]] : 1);
+            }
+
+            Pfactor[i][j - 1] = s;
+        }
+    }
+
+    for (PieceType p1 = PAWN; p1 < KING; ++p1) {
+        init_tb({KING, p1, KING});
+
+        for (PieceType p2 = PAWN; p2 <= p1; ++p2) {
+            init_tb({KING, p1, p2, KING});
+            init_tb({KING, p1, KING, p2});
+
+            for (PieceType p3 = PAWN; p3 < KING; ++p3)
+                init_tb({KING, p1, p2, KING, p3});
+
+            for (PieceType p3 = PAWN; p3 <= p2; ++p3) {
+                init_tb({KING, p1, p2, p3, KING});
+
+                for (PieceType p4 = PAWN; p4 <= p3; ++p4)
+                    init_tb({KING, p1, p2, p3, p4, KING});
+
+                for (PieceType p4 = PAWN; p4 < KING; ++p4)
+                    init_tb({KING, p1, p2, p3, KING, p4});
+            }
+
+            for (PieceType p3 = PAWN; p3 <= p1; ++p3)
+                for (PieceType p4 = PAWN; p4 <= (p1 == p3 ? p2 : p3); ++p4)
+                    init_tb({KING, p1, p2, KING, p3, p4});
+        }
+    }
+
+    std::cerr << "info string Found " << TBnum_piece + TBnum_pawn << " tablebases" << std::endl;
 }
 
 // Probe the WDL table for a particular position.

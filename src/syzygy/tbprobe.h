@@ -13,7 +13,6 @@ int probe_dtz(Position& pos, int *success);
 bool root_probe(Position& pos, Search::RootMoves& rootMoves, Value& score);
 bool root_probe_wdl(Position& pos, Search::RootMoves& rootMoves, Value& score);
 
-uint64_t calc_key_from_pcs(uint8_t* pcs, bool mirror);
 }
 
 #endif
