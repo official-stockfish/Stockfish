@@ -610,25 +610,18 @@ void init_tb(const std::vector<PieceType>& pieces)
         }
 
         TBEntry_piece* ptr = &TB_piece[TBnum_piece++];
-        int j = 0;
+        int uniquePiece = 0;
 
         for (auto n : pcs)
             if (n == 1)
-                j++;
+                uniquePiece++;
 
-        if (j >= 3)
+        if (uniquePiece >= 3)
             ptr->enc_type = 0;
-        else if (j == 2)
+        else {
+            // W_KING and B_KING are the only unique pieces
+            assert(uniquePiece == 2);
             ptr->enc_type = 2;
-        else { /* only for suicide */
-            j = 16;
-
-            for (auto n : pcs) {
-                if (n < j && n > 1)
-                    j = n;
-
-                ptr->enc_type = uint8_t(1 + j);
-            }
         }
 
         entry = (TBEntry*)ptr;
@@ -652,15 +645,15 @@ uint64_t encode_piece(TBEntry_piece *ptr, uint8_t *norm, int *pos, int *factor)
     int i, j, m, l, p;
     int n = ptr->num;
 
-    if (pos[0] & 4) {
+    // If the right half of the board is occupied, do a file-wise mirror
+    if (pos[0] & 4)
         for (i = 0; i < n; i++)
             pos[i] ^= 7;
-    }
 
-    if (pos[0] & 0x20) {
+    // If the upper half of the board is occupied, do a rank-wise mirror
+    if (pos[0] & 0x20)
         for (i = 0; i < n; i++)
-            pos[i] ^= 0x38;
-    }
+            pos[i] ^= 070;
 
     for (i = 0; i < n; i++)
         if (Offdiag[pos[i]])
@@ -670,9 +663,9 @@ uint64_t encode_piece(TBEntry_piece *ptr, uint8_t *norm, int *pos, int *factor)
         for (i = 0; i < n; i++)
             pos[i] = Flipdiag[pos[i]];
 
-    switch (ptr->enc_type) {
+    if (ptr->enc_type == 0) {
+        // There are unique pieces other than W_KING and B_KING
 
-    case 0: /* 111 */
         i = (pos[1] > pos[0]);
         j = (pos[2] > pos[0]) + (pos[2] > pos[1]);
 
@@ -686,29 +679,12 @@ uint64_t encode_piece(TBEntry_piece *ptr, uint8_t *norm, int *pos, int *factor)
             idx = 6*63*62 + 4*28*62 + 4*7*28 + (Diag[pos[0]] * 7*6) + (Diag[pos[1]] - i) * 6 + (Diag[pos[2]] - j);
 
         i = 3;
-        break;
+    } else {
+        // The only unique pieces are W_KING and B_KING
+        assert(ptr->enc_type == 2);
 
-    case 1: /* K3 */
-        j = (pos[2] > pos[0]) + (pos[2] > pos[1]);
-
-        idx = KK_idx[Triangle[pos[0]]][pos[1]];
-
-        if (idx < 441)
-            idx = idx + 441 * (pos[2] - j);
-        else {
-            idx = 441*62 + (idx - 441) + 21 * Lower[pos[2]];
-
-            if (!Offdiag[pos[2]])
-                idx -= j * 21;
-        }
-
-        i = 3;
-        break;
-
-    default: /* K2 */
         idx = KK_idx[Triangle[pos[0]]][pos[1]];
         i = 2;
-        break;
     }
 
     idx *= factor[0];
@@ -836,7 +812,7 @@ uint64_t calc_factors_piece(int *factor, int num, int order, uint8_t *norm, uint
 {
     int i, k, n;
     uint64_t f;
-    static int pivfac[] = { 31332, 28056, 462 };
+    static int pivfac[] = { 31332, 0, 462 };
 
     n = 64 - norm[0];
 
@@ -895,19 +871,7 @@ void set_norm_piece(TBEntry_piece *ptr, uint8_t *norm, uint8_t *pieces)
     for (i = 0; i < ptr->num; i++)
         norm[i] = 0;
 
-    switch (ptr->enc_type) {
-    case 0:
-        norm[0] = 3;
-        break;
-
-    case 2:
-        norm[0] = 2;
-        break;
-
-    default:
-        norm[0] = uint8_t(ptr->enc_type - 1);
-        break;
-    }
+    norm[0] = ptr->enc_type == 0 ? 3 : 2;
 
     for (i = norm[0]; i < ptr->num; i += norm[i])
         for (j = i; j < ptr->num && pieces[j] == pieces[i]; j++)
@@ -1584,7 +1548,7 @@ int probe_wdl_table(Position& pos, int *success)
     if (!ptr->symmetric) {
         if (key != ptr->key) {
             cmirror = 8;
-            mirror = 0x38;
+            mirror = 070;
             bside = (pos.side_to_move() == WHITE);
         } else {
             cmirror = mirror = 0;
@@ -1592,7 +1556,7 @@ int probe_wdl_table(Position& pos, int *success)
         }
     } else {
         cmirror = pos.side_to_move() == WHITE ? 0 : 8;
-        mirror = pos.side_to_move() == WHITE ? 0 : 0x38;
+        mirror = pos.side_to_move() == WHITE ? 0 : 070;
         bside = 0;
     }
 
@@ -1703,7 +1667,7 @@ int probe_dtz_table(Position& pos, int wdl, int *success)
     if (!ptr->symmetric) {
         if (key != ptr->key) {
             cmirror = 8;
-            mirror = 0x38;
+            mirror = 070;
             bside = (pos.side_to_move() == WHITE);
         } else {
             cmirror = mirror = 0;
@@ -1711,7 +1675,7 @@ int probe_dtz_table(Position& pos, int wdl, int *success)
         }
     } else {
         cmirror = pos.side_to_move() == WHITE ? 0 : 8;
-        mirror = pos.side_to_move() == WHITE ? 0 : 0x38;
+        mirror = pos.side_to_move() == WHITE ? 0 : 070;
         bside = 0;
     }
 
