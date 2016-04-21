@@ -658,7 +658,7 @@ void init_tb(const std::vector<PieceType>& pieces)
 
     TBHash.insert(entry, key1);
 
-    if (key2 != key1)
+    if (key2 != key1) // Asymmetric distribution
         TBHash.insert(entry, key2);
 }
 
@@ -1486,111 +1486,91 @@ std::string prt_str(Position& pos, bool mirror)
     return s;
 }
 
-int probe_wdl_table(Position& pos, int *success)
+int probe_wdl_table(Position& pos, int* success)
 {
-    uint64_t idx;
-    int i, res;
-    int p[TBPIECES];
-
     Key key = pos.material_key();
 
     if (pos.count<ALL_PIECES>(WHITE) + pos.count<ALL_PIECES>(BLACK) == 2)
         return 0; // KvK
 
     TBEntry* ptr = TBHash[key];
-
     if (!ptr) {
         *success = 0;
         return 0;
     }
 
+    // Init table at first access attempt
     if (!ptr->ready) {
-        TB_mutex.lock();
-
+        std::unique_lock<Mutex> lk(TB_mutex);
         if (!ptr->ready) {
-            std::string s = prt_str(pos, ptr->key != key);
-
-            if (!init_table_wdl(ptr, s)) {
+            if (!init_table_wdl(ptr, prt_str(pos, ptr->key != key))) {
                 // Was ptr2->key = 0ULL;  Just leave !ptr->ready condition
                 *success = 0;
-                TB_mutex.unlock();
                 return 0;
             }
-
-            // Memory barrier to ensure ptr->ready = 1 is not reordered.
-#ifdef _MSC_VER
-            _ReadWriteBarrier();
-#else
-            __asm__ __volatile__ ("" ::: "memory");
-#endif
             ptr->ready = 1;
         }
-
-        TB_mutex.unlock();
     }
 
-    int bside, mirror, cmirror;
+    int squares[TBPIECES];
+    int bside, smirror, cmirror;
 
-    if (!ptr->symmetric) {
-        if (key != ptr->key) {
-            cmirror = 8;
-            mirror = 070;
-            bside = (pos.side_to_move() == WHITE);
-        } else {
-            cmirror = mirror = 0;
-            bside = !(pos.side_to_move() == WHITE);
-        }
+    assert(key == ptr->key || !ptr->symmetric);
+
+    // Entries are stored from point of view of white, so in case of a symmetric
+    // material distribution, we just need to lookup the relative TB entry in
+    // case we are black. Instead in case of asymmetric distribution, because
+    // stored entry is the same for both keys, we have first to verify if the
+    // entry is stored according to our key, otherwise we have to lookup
+    // the relative entry.
+    if (ptr->symmetric) {
+        cmirror = pos.side_to_move() * 8;
+        smirror = pos.side_to_move() * 070;
+        bside = WHITE;
     } else {
-        cmirror = pos.side_to_move() == WHITE ? 0 : 8;
-        mirror = pos.side_to_move() == WHITE ? 0 : 070;
-        bside = 0;
+        cmirror = (key != ptr->key) * 8;   // Switch color
+        smirror = (key != ptr->key) * 070; // Vertical flip SQ_A1 -> SQ_A8
+        bside   = (key != ptr->key) ^ pos.side_to_move();
     }
 
-    // p[i] is to contain the square 0-63 (A1-H8) for a piece of type
+    // squares[i] is to contain the square 0-63 (A1-H8) for a piece of type
     // pc[i] ^ cmirror, where 1 = white pawn, ..., 14 = black king.
     // Pieces of the same type are guaranteed to be consecutive.
     if (!ptr->has_pawns) {
-        TBEntry_piece *entry = (TBEntry_piece *)ptr;
-        uint8_t *pc = entry->pieces[bside];
+        TBEntry_piece* entry = (TBEntry_piece*)ptr;
 
-        for (i = 0; i < entry->num;) {
-            Bitboard bb = pos.pieces((Color)((pc[i] ^ cmirror) >> 3),
-                                     (PieceType)(pc[i] & 7));
-
-            do {
-                p[i++] = pop_lsb(&bb);
-            } while (bb);
+        for (int i = 0; i < entry->num; ) {
+            Piece pc = Piece(entry->pieces[bside][i] ^ cmirror);
+            Bitboard b = pos.pieces(color_of(pc), type_of(pc));
+            do
+                squares[i++] = pop_lsb(&b);
+            while (b);
         }
 
-        idx = encode_piece(entry, entry->norm[bside], p, entry->factor[bside]);
-        res = decompress_pairs(entry->precomp[bside], idx);
+        uint64_t idx = encode_piece(entry, entry->norm[bside], squares, entry->factor[bside]);
+        return decompress_pairs(entry->precomp[bside], idx) - 2;
     } else {
-        TBEntry_pawn *entry = (TBEntry_pawn *)ptr;
-        int k = entry->file[0].pieces[0][0] ^ cmirror;
-        Bitboard bb = pos.pieces((Color)(k >> 3), (PieceType)(k & 7));
-        i = 0;
+        TBEntry_pawn* entry = (TBEntry_pawn*)ptr;
+        Piece pc = Piece(entry->file[0].pieces[0][0] ^ cmirror);
+        Bitboard b = pos.pieces(color_of(pc), type_of(pc));
+        int i = 0;
+        do
+            squares[i++] = pop_lsb(&b) ^ smirror;
+        while (b);
 
-        do {
-            p[i++] = pop_lsb(&bb) ^ mirror;
-        } while (bb);
+        int f = pawn_file(entry, squares);
 
-        int f = pawn_file(entry, p);
-        uint8_t *pc = entry->file[f].pieces[bside];
-
-        for (; i < entry->num;) {
-            bb = pos.pieces((Color)((pc[i] ^ cmirror) >> 3),
-                            (PieceType)(pc[i] & 7));
-
-            do {
-                p[i++] = pop_lsb(&bb) ^ mirror;
-            } while (bb);
+        for ( ; i < entry->num; ) {
+            pc = Piece(entry->file[f].pieces[bside][i] ^ cmirror);
+            b = pos.pieces(color_of(pc), type_of(pc));
+            do
+                squares[i++] = pop_lsb(&b) ^ smirror;
+            while (b);
         }
 
-        idx = encode_pawn(entry, entry->file[f].norm[bside], p, entry->file[f].factor[bside]);
-        res = decompress_pairs(entry->file[f].precomp[bside], idx);
+        uint64_t idx = encode_pawn(entry, entry->file[f].norm[bside], squares, entry->file[f].factor[bside]);
+        return decompress_pairs(entry->file[f].precomp[bside], idx) - 2;
     }
-
-    return (int)res - 2;
 }
 
 int probe_dtz_table(Position& pos, int wdl, int *success)
