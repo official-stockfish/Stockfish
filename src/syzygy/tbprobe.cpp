@@ -46,8 +46,6 @@
 
 #define WDLSUFFIX ".rtbw"
 #define DTZSUFFIX ".rtbz"
-#define WDLDIR "RTBWDIR"
-#define DTZDIR "RTBZDIR"
 #define TBPIECES 6
 
 int Tablebases::MaxCardinality = 0;
@@ -198,7 +196,7 @@ const uint8_t Flipdiag[] = {
 };
 
 const uint8_t Lower[] = {
-    28,  0,  1,  2,  3,  4,  5,  6,
+    28, 0,  1,  2,  3,  4,  5,  6,
     0, 29,  7,  8,  9, 10, 11, 12,
     1,  7, 30, 13, 14, 15, 16, 17,
     2,  8, 13, 31, 18, 19, 20, 21,
@@ -216,34 +214,34 @@ const uint8_t Diag[] = {
     0,  0,  0, 12,  4,  0,  0,  0,
     0,  0, 13,  0,  0,  5,  0,  0,
     0, 14,  0,  0,  0,  0,  6,  0,
-    15,  0,  0,  0,  0,  0,  0,  7
+    15, 0,  0,  0,  0,  0,  0,  7
 };
 
 const uint8_t Flap[] = {
-    0, 0, 0, 0, 0, 0, 0, 0,
-    0, 6, 12, 18, 18, 12, 6, 0,
-    1, 7, 13, 19, 19, 13, 7, 1,
-    2, 8, 14, 20, 20, 14, 8, 2,
-    3, 9, 15, 21, 21, 15, 9, 3,
+    0,  0,  0,  0,  0,  0, 0,  0,
+    0,  6, 12, 18, 18, 12, 6,  0,
+    1,  7, 13, 19, 19, 13, 7,  1,
+    2,  8, 14, 20, 20, 14, 8,  2,
+    3,  9, 15, 21, 21, 15, 9,  3,
     4, 10, 16, 22, 22, 16, 10, 4,
     5, 11, 17, 23, 23, 17, 11, 5,
-    0, 0, 0, 0, 0, 0, 0, 0
+    0,  0,  0,  0,  0,  0,  0, 0
 };
 
 const uint8_t Ptwist[] = {
-    0, 0, 0, 0, 0, 0, 0, 0,
+     0,  0,  0,  0,  0,  0,  0,  0,
     47, 35, 23, 11, 10, 22, 34, 46,
-    45, 33, 21, 9, 8, 20, 32, 44,
-    43, 31, 19, 7, 6, 18, 30, 42,
-    41, 29, 17, 5, 4, 16, 28, 40,
-    39, 27, 15, 3, 2, 14, 26, 38,
-    37, 25, 13, 1, 0, 12, 24, 36,
-    0, 0, 0, 0, 0, 0, 0, 0
+    45, 33, 21,  9,  8, 20, 32, 44,
+    43, 31, 19,  7,  6, 18, 30, 42,
+    41, 29, 17,  5,  4, 16, 28, 40,
+    39, 27, 15,  3,  2, 14, 26, 38,
+    37, 25, 13,  1,  0, 12, 24, 36,
+     0,  0,  0,  0,  0, 0,  0,  0
 };
 
 const uint8_t Invflap[] = {
-    8, 16, 24, 32, 40, 48,
-    9, 17, 25, 33, 41, 49,
+     8, 16, 24, 32, 40, 48,
+     9, 17, 25, 33, 41, 49,
     10, 18, 26, 34, 42, 50,
     11, 19, 27, 35, 43, 51
 };
@@ -264,12 +262,12 @@ const short KK_idx[10][64] = {
         50, 51, 52, 53, 54, 55, 56, 57
     },
     {
-        58, -1, -1, -1, 59, 60, 61, 62,
-        63, -1, -1, -1, 64, 65, 66, 67,
-        68, 69, 70, 71, 72, 73, 74, 75,
-        76, 77, 78, 79, 80, 81, 82, 83,
-        84, 85, 86, 87, 88, 89, 90, 91,
-        92, 93, 94, 95, 96, 97, 98, 99,
+        58,  -1, -1, -1, 59, 60, 61, 62,
+        63,  -1, -1, -1, 64, 65, 66, 67,
+        68,  69, 70, 71, 72, 73, 74, 75,
+        76,  77, 78, 79, 80, 81, 82, 83,
+        84,  85, 86, 87, 88, 89, 90, 91,
+        92,  93, 94, 95, 96, 97, 98, 99,
         100,101,102,103,104,105,106,107,
         108,109,110,111,112,113,114,115
     },
@@ -335,45 +333,54 @@ const short KK_idx[10][64] = {
     },
     {
         452,391,392,393,394,395,396,397,
-        -1, -1, -1, -1,398,399,400,401,
-        -1, -1, -1, -1,402,403,404,405,
-        -1, -1, -1, -1,406,407,408,409,
-        -1, -1, -1, -1,453,410,411,412,
-        -1, -1, -1, -1, -1,454,413,414,
-        -1, -1, -1, -1, -1, -1,455,415,
-        -1, -1, -1, -1, -1, -1, -1,456
+         -1, -1, -1, -1,398,399,400,401,
+         -1, -1, -1, -1,402,403,404,405,
+         -1, -1, -1, -1,406,407,408,409,
+         -1, -1, -1, -1,453,410,411,412,
+         -1, -1, -1, -1, -1,454,413,414,
+         -1, -1, -1, -1, -1, -1,455,415,
+         -1, -1, -1, -1, -1, -1, -1,456
     },
     {
         457,416,417,418,419,420,421,422,
-        -1,458,423,424,425,426,427,428,
-        -1, -1, -1, -1, -1,429,430,431,
-        -1, -1, -1, -1, -1,432,433,434,
-        -1, -1, -1, -1, -1,435,436,437,
-        -1, -1, -1, -1, -1,459,438,439,
-        -1, -1, -1, -1, -1, -1,460,440,
-        -1, -1, -1, -1, -1, -1, -1,461
+         -1,458,423,424,425,426,427,428,
+         -1, -1, -1, -1, -1,429,430,431,
+         -1, -1, -1, -1, -1,432,433,434,
+         -1, -1, -1, -1, -1,435,436,437,
+         -1, -1, -1, -1, -1,459,438,439,
+         -1, -1, -1, -1, -1, -1,460,440,
+         -1, -1, -1, -1, -1, -1, -1,461
     }
 };
 
-const uint8_t WDL_MAGIC[4] = { 0x71, 0xe8, 0x23, 0x5d };
-const uint8_t DTZ_MAGIC[4] = { 0xd7, 0x66, 0x0c, 0xa5 };
+const uint8_t WDL_MAGIC[] = { 0x71, 0xE8, 0x23, 0x5D };
+const uint8_t DTZ_MAGIC[] = { 0xD7, 0x66, 0x0C, 0xA5 };
 
-const int wdl_to_map[5] = { 1, 3, 0, 2, 0 };
-const uint8_t pa_flags[5] = { 8, 0, 0, 0, 4 };
+const int   wdl_to_map[] = { 1, 3, 0, 2, 0 };
+const uint8_t pa_flags[] = { 8, 0, 0, 0, 4 };
 
-const int TBMAX_PIECE = 254;
-const int TBMAX_PAWN = 256;
-const int TBHASHBITS = 10;
-const int HSHMAX = 5;
+const Value WDL_to_value[] = {
+    -VALUE_MATE + MAX_PLY + 1,
+    VALUE_DRAW - 2,
+    VALUE_DRAW,
+    VALUE_DRAW + 2,
+    VALUE_MATE - MAX_PLY - 1
+};
+
 const int DTZ_ENTRIES = 64;
+const int TBMAX_PIECE = 254;
+const int TBMAX_PAWN  = 256;
+const int TBHASHBITS  = 10;
+const int HSHMAX      = 5;
 
 const std::string PieceChar = " PNBRQK";
 
-int TBnum_piece, TBnum_pawn;
+int TBnum_piece;
+int TBnum_pawn;
+Mutex TB_mutex;
+std::string TBPaths;
 TBEntry_piece TB_piece[TBMAX_PIECE];
 TBEntry_pawn TB_pawn[TBMAX_PAWN];
-Mutex TB_mutex;
-
 TBHashEntry TB_hash[1 << TBHASHBITS][HSHMAX];
 DTZTableEntry DTZ_table[DTZ_ENTRIES];
 
@@ -381,19 +388,17 @@ int Binomial[5][64];
 int Pawnidx[5][24];
 int Pfactor[5][4];
 
-// TBPaths stores the paths to directories where the .rtbw and .rtbz files can
-// be found. Multiple directories are separated by ";" on Windows and by ":"
-// on Unix-based operating systems.
-//
-// Example:
-// C:\tb\wdl345;C:\tb\wdl6;D:\tb\dtz345;D:\tb\dtz6
-std::string TBPaths;
-
 class TBFile : public std::ifstream {
 
     std::string fname;
 public:
-    // Open the file with the given name found among the TBPaths
+    // Open the file with the given name found among the TBPaths. TBPaths stores
+    // the paths to directories where the .rtbw and .rtbz files can be found.
+    // Multiple directories are separated by ";" on Windows and by ":" on
+    // Unix-based operating systems.
+    //
+    // Example:
+    // C:\tb\wdl345;C:\tb\wdl6;D:\tb\dtz345;D:\tb\dtz6
     TBFile(const std::string& f) {
 
 #ifndef _WIN32
@@ -413,7 +418,7 @@ public:
         }
     }
 
-    // Maps the file to memory. File is closed after mapping
+    // Memory map the file. File is closed after mapping
     char* map(uint64_t* mapping) {
 
         assert(is_open());
@@ -461,9 +466,6 @@ public:
 
     static void unmap(char* data, uint64_t mapping) {
 
-        if (!data)
-            return;
-
 #ifndef _WIN32
         munmap(data, mapping);
 #else
@@ -473,9 +475,9 @@ public:
     }
 };
 
-// Given a position, produce a 64-bit material signature key.
-// If the engine supports such a key, it should equal the engine's key.
-Key calc_key(Position& pos, bool mirror)
+// Given a position, produce a 64-bit material signature key. If the engine
+// supports such a key, it should equal the engine's key.
+Key get_key(Position& pos, bool mirror)
 {
     Key key = 0;
 
@@ -491,7 +493,7 @@ Key calc_key(Position& pos, bool mirror)
 // defined by pcs[16], where pcs[1], ..., pcs[6] is the number of white
 // pawns, ..., kings and pcs[9], ..., pcs[14] is the number of black
 // pawns, ..., kings.
-Key calc_key_from_pcs(uint8_t* pcs, bool mirror)
+Key get_key(uint8_t* pcs, bool mirror)
 {
     Key key = 0;
 
@@ -503,7 +505,7 @@ Key calc_key_from_pcs(uint8_t* pcs, bool mirror)
     return key;
 }
 
-void add_to_hash(TBEntry* ptr, uint64_t key)
+void add_to_hash(TBEntry* ptr, Key key)
 {
     TBHashEntry* entry = TB_hash[key >> (64 - TBHASHBITS)];
 
@@ -580,9 +582,6 @@ void init_tb(const std::vector<PieceType>& pieces)
     if (num > Tablebases::MaxCardinality)
         Tablebases::MaxCardinality = num;
 
-    uint64_t key1 = calc_key_from_pcs(pcs, 0);
-    uint64_t key2 = calc_key_from_pcs(pcs, 1);
-
     bool hasPawns = pcs[W_PAWN] + pcs[B_PAWN];
 
     if (hasPawns) {
@@ -627,6 +626,9 @@ void init_tb(const std::vector<PieceType>& pieces)
         entry = (TBEntry*)ptr;
     }
 
+    Key key1 = get_key(pcs, 0);
+    Key key2 = get_key(pcs, 1);
+
     entry->key = key1;
     entry->ready = 0;
     entry->num = num;
@@ -639,7 +641,7 @@ void init_tb(const std::vector<PieceType>& pieces)
         add_to_hash(entry, key2);
 }
 
-uint64_t encode_piece(TBEntry_piece *ptr, uint8_t *norm, int *pos, int *factor)
+uint64_t encode_piece(TBEntry_piece* ptr, uint8_t* norm, int* pos, int* factor)
 {
     uint64_t idx;
     int i, j, m, l, p;
@@ -1086,10 +1088,10 @@ int init_table_wdl(TBEntry *entry, const std::string& str)
 
     uint8_t *data = (uint8_t *)entry->data;
 
-    if (data[0] != WDL_MAGIC[0] ||
-            data[1] != WDL_MAGIC[1] ||
-            data[2] != WDL_MAGIC[2] ||
-            data[3] != WDL_MAGIC[3]) {
+    if (   data[0] != WDL_MAGIC[0]
+        || data[1] != WDL_MAGIC[1]
+        || data[2] != WDL_MAGIC[2]
+        || data[3] != WDL_MAGIC[3]) {
         std::cerr << "Corrupted table" << std::endl;
         TBFile::unmap(entry->data, entry->mapping);
         entry->data = 0;
@@ -1395,8 +1397,13 @@ uint8_t decompress_pairs(PairsData *d, uint64_t idx)
     return sympat[3 * sym];
 }
 
-template uint8_t decompress_pairs<true >(PairsData*, uint64_t);
-template uint8_t decompress_pairs<false>(PairsData*, uint64_t);
+uint8_t decompress_pairs(PairsData *d, uint64_t idx)
+{
+    const union { uint32_t i; char c[4]; } bint = {0x01020304};
+    const bool isLittleEndian = (bint.c[0] == 4);
+    return isLittleEndian ? decompress_pairs<true >(d, idx)
+                          : decompress_pairs<false>(d, idx);
+}
 
 void load_dtz_table(const std::string& str, uint64_t key1, uint64_t key2)
 {
@@ -1467,24 +1474,6 @@ std::string prt_str(Position& pos, bool mirror)
     }
 
     return s;
-}
-
-bool is_little_endian()
-{
-    union {
-        int i;
-        char c[sizeof(int)];
-    } x;
-
-    x.i = 1;
-    return x.c[0] == 1;
-}
-
-uint8_t decompress_pairs(PairsData *d, uint64_t idx)
-{
-    static const bool isLittleEndian = is_little_endian();
-    return isLittleEndian ? decompress_pairs<true >(d, idx)
-                          : decompress_pairs<false>(d, idx);
 }
 
 // probe_wdl_table and probe_dtz_table require similar adaptations.
@@ -1614,8 +1603,7 @@ int probe_dtz_table(Position& pos, int wdl, int *success)
     int i, res;
     int p[TBPIECES];
 
-    // Obtain the position's material signature key.
-    uint64_t key = pos.material_key();
+    Key key = pos.material_key();
 
     if (DTZ_table[0].key1 != key && DTZ_table[0].key2 != key) {
         for (i = 1; i < DTZ_ENTRIES; i++)
@@ -1651,7 +1639,7 @@ int probe_dtz_table(Position& pos, int wdl, int *success)
             for (i = DTZ_ENTRIES - 1; i > 0; i--)
                 DTZ_table[i] = DTZ_table[i - 1];
 
-            load_dtz_table(s, calc_key(pos, mirror), calc_key(pos, !mirror));
+            load_dtz_table(s, get_key(pos, mirror), get_key(pos, !mirror));
         }
     }
 
@@ -1823,7 +1811,7 @@ int probe_ab(Position& pos, int alpha, int beta, int *success)
 
 } // namespace
 
-void Tablebases::init(const std::string& path)
+void Tablebases::init(const std::string& paths)
 {
     for (int i = 0; i < TBnum_piece; i++)
         free_wdl_entry(&TB_piece[i]);
@@ -1841,7 +1829,7 @@ void Tablebases::init(const std::string& path)
 
     TBnum_piece = TBnum_pawn = 0;
     MaxCardinality = 0;
-    TBPaths = path;
+    TBPaths = paths;
 
     if (TBPaths.empty() || TBPaths == "<empty>")
         return;
@@ -2243,14 +2231,6 @@ static int has_repeated(StateInfo *st)
     }
 }
 
-static Value wdl_to_Value[5] = {
-    -VALUE_MATE + MAX_PLY + 1,
-    VALUE_DRAW - 2,
-    VALUE_DRAW,
-    VALUE_DRAW + 2,
-    VALUE_MATE - MAX_PLY - 1
-};
-
 // Use the DTZ tables to filter out moves that don't preserve the win or draw.
 // If the position is lost, but DTZ is fairly high, only keep moves that
 // maximise DTZ.
@@ -2269,7 +2249,7 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves, Value& 
     StateInfo st;
     CheckInfo ci(pos);
 
-    // Probe each move.
+    // Probe each move
     for (size_t i = 0; i < rootMoves.size(); i++) {
         Move move = rootMoves[i].pv[0];
         pos.do_move(move, st, pos.gives_check(move, ci));
@@ -2318,7 +2298,7 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves, Value& 
         wdl = (-dtz + cnt50 <= 100) ? -2 : -1;
 
     // Determine the score to report to the user.
-    score = wdl_to_Value[wdl + 2];
+    score = WDL_to_value[wdl + 2];
 
     // If the position is winning or losing, but too few moves left, adjust the
     // score to show how close it is to winning or losing.
@@ -2399,14 +2379,14 @@ bool Tablebases::root_probe_wdl(Position& pos, Search::RootMoves& rootMoves, Val
     if (!success)
         return false;
 
-    score = wdl_to_Value[wdl + 2];
+    score = WDL_to_value[wdl + 2];
 
     StateInfo st;
     CheckInfo ci(pos);
 
     int best = -2;
 
-    // Probe each move.
+    // Probe each move
     for (size_t i = 0; i < rootMoves.size(); i++) {
         Move move = rootMoves[i].pv[0];
         pos.do_move(move, st, pos.gives_check(move, ci));
