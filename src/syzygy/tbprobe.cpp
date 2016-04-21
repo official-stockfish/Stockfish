@@ -652,15 +652,15 @@ uint64_t encode_piece(TBEntry_piece *ptr, uint8_t *norm, int *pos, int *factor)
     int i, j, m, l, p;
     int n = ptr->num;
 
-    if (pos[0] & 4) {
+    // If the right half of the board is occupied, do a file-wise mirror
+    if (pos[0] & 4)
         for (i = 0; i < n; i++)
             pos[i] ^= 7;
-    }
 
-    if (pos[0] & 0x20) {
+    // If the upper half of the board is occupied, do a rank-wise mirror
+    if (pos[0] & 0x20)
         for (i = 0; i < n; i++)
-            pos[i] ^= 0x38;
-    }
+            pos[i] ^= 070;
 
     for (i = 0; i < n; i++)
         if (Offdiag[pos[i]])
@@ -1584,7 +1584,7 @@ int probe_wdl_table(Position& pos, int *success)
     if (!ptr->symmetric) {
         if (key != ptr->key) {
             cmirror = 8;
-            mirror = 0x38;
+            mirror = 070;
             bside = (pos.side_to_move() == WHITE);
         } else {
             cmirror = mirror = 0;
@@ -1592,7 +1592,7 @@ int probe_wdl_table(Position& pos, int *success)
         }
     } else {
         cmirror = pos.side_to_move() == WHITE ? 0 : 8;
-        mirror = pos.side_to_move() == WHITE ? 0 : 0x38;
+        mirror = pos.side_to_move() == WHITE ? 0 : 070;
         bside = 0;
     }
 
@@ -1703,7 +1703,7 @@ int probe_dtz_table(Position& pos, int wdl, int *success)
     if (!ptr->symmetric) {
         if (key != ptr->key) {
             cmirror = 8;
-            mirror = 0x38;
+            mirror = 070;
             bside = (pos.side_to_move() == WHITE);
         } else {
             cmirror = mirror = 0;
@@ -1711,7 +1711,7 @@ int probe_dtz_table(Position& pos, int wdl, int *success)
         }
     } else {
         cmirror = pos.side_to_move() == WHITE ? 0 : 8;
-        mirror = pos.side_to_move() == WHITE ? 0 : 0x38;
+        mirror = pos.side_to_move() == WHITE ? 0 : 070;
         bside = 0;
     }
 
