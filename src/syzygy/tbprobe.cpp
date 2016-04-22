@@ -10,13 +10,11 @@
 #include <algorithm>
 #include <cstdint>
 #include <cstring>   // For std::memset
-#include <fcntl.h>
 #include <fstream>
 #include <iostream>
 #include <sstream>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
 
 #include "../bitboard.h"
 #include "../movegen.h"
@@ -28,8 +26,10 @@
 #include "tbprobe.h"
 
 #ifndef _WIN32
+#include <fcntl.h>
 #include <unistd.h>
 #include <sys/mman.h>
+#include <sys/stat.h>
 #else
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
@@ -90,7 +90,7 @@ struct TBEntry_piece {
     uint8_t symmetric;
     uint8_t has_pawns;
     uint8_t enc_type;
-    struct PairsData *precomp[2];
+    PairsData *precomp[2];
     int factor[2][TBPIECES];
     uint8_t pieces[2][TBPIECES];
     uint8_t norm[2][TBPIECES];
@@ -106,7 +106,7 @@ struct TBEntry_pawn {
     uint8_t has_pawns;
     uint8_t pawns[2];
     struct {
-        struct PairsData *precomp[2];
+        PairsData *precomp[2];
         int factor[2][TBPIECES];
         uint8_t pieces[2][TBPIECES];
         uint8_t norm[2][TBPIECES];
@@ -122,7 +122,7 @@ struct DTZEntry_piece {
     uint8_t symmetric;
     uint8_t has_pawns;
     uint8_t enc_type;
-    struct PairsData *precomp;
+    PairsData *precomp;
     int factor[TBPIECES];
     uint8_t pieces[TBPIECES];
     uint8_t norm[TBPIECES];
@@ -141,7 +141,7 @@ struct DTZEntry_pawn {
     uint8_t has_pawns;
     uint8_t pawns[2];
     struct {
-        struct PairsData *precomp;
+        PairsData *precomp;
         int factor[TBPIECES];
         uint8_t pieces[TBPIECES];
         uint8_t norm[TBPIECES];
@@ -154,7 +154,7 @@ struct DTZEntry_pawn {
 struct DTZTableEntry {
     uint64_t key1;
     uint64_t key2;
-    struct TBEntry *entry;
+    TBEntry *entry;
 };
 
 const signed char Offdiag[] = {
@@ -384,7 +384,7 @@ class HashTable {
 
     struct Entry {
         Key key;
-        struct TBEntry* ptr;
+        TBEntry* ptr;
     };
 
     static const int TBHASHBITS = 10;
@@ -396,7 +396,7 @@ public:
   TBEntry* operator[](Key key) {
       Entry* entry = table[key >> (64 - TBHASHBITS)];
 
-      for (int i = 0; i < HSHMAX; i++, entry++)
+      for (int i = 0; i < HSHMAX; ++i, ++entry)
           if (entry->key == key)
               return entry->ptr;
 
@@ -406,7 +406,7 @@ public:
   void insert(TBEntry* ptr, Key key) {
       Entry* entry = table[key >> (64 - TBHASHBITS)];
 
-      for (int i = 0; i < HSHMAX; i++, entry++)
+      for (int i = 0; i < HSHMAX; ++i, ++entry)
           if (!entry->ptr) {
               entry->key = key;
               entry->ptr = ptr;
@@ -473,7 +473,6 @@ public:
             std::cerr << "Could not mmap() " << fname << std::endl;
             exit(1);
         }
-
 #else
         HANDLE fd = CreateFile(fname.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL,
                                OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
@@ -495,7 +494,6 @@ public:
                       << ", error = " << GetLastError() << std::endl;
             exit(1);
         }
-
 #endif
         return data;
     }
@@ -519,7 +517,7 @@ Key get_key(Position& pos, bool mirror)
 
     for (Color c = WHITE; c <= BLACK; ++c)
         for (PieceType pt = PAWN; pt <= KING; ++pt)
-            for (int j = popcount(pos.pieces(Color(c ^ mirror), pt)); j > 0; j--)
+            for (int j = popcount(pos.pieces(Color(c ^ mirror), pt)); j > 0; --j)
                 key ^= Zobrist::psq[c][pt][j - 1];
 
     return key;
@@ -553,7 +551,7 @@ void free_wdl_entry(TBEntry_pawn* entry)
 {
     TBFile::unmap(entry->data, entry->mapping);
 
-    for (int f = 0; f < 4; f++) {
+    for (int f = 0; f < 4; ++f) {
         free(entry->file[f].precomp[0]);
         free(entry->file[f].precomp[1]);
     }
@@ -566,7 +564,7 @@ void free_dtz_entry(TBEntry* entry)
     if (!entry->has_pawns)
         free(((DTZEntry_piece*)entry)->precomp);
     else
-        for (int f = 0; f < 4; f++)
+        for (int f = 0; f < 4; ++f)
             free(((DTZEntry_pawn*)entry)->file[f].precomp);
 
     free(entry);
@@ -588,8 +586,8 @@ void init_tb(const std::vector<PieceType>& pieces)
                 fname += 'v';
         }
 
-        pcs[make_piece(c, pt)]++;
-        num++;
+        ++pcs[make_piece(c, pt)];
+        ++num;
         fname += PieceChar[pt];
     }
 
@@ -630,17 +628,17 @@ void init_tb(const std::vector<PieceType>& pieces)
         }
 
         TBEntry_piece* ptr = &TB_piece[TBnum_piece++];
-        int uniquePiece = 0;
+        int uniquePieces = 0;
 
         for (auto n : pcs)
             if (n == 1)
-                uniquePiece++;
+                ++uniquePieces;
 
-        if (uniquePiece >= 3)
+        if (uniquePieces >= 3)
             ptr->enc_type = 0;
         else {
             // W_KING and B_KING are the only unique pieces
-            assert(uniquePiece == 2);
+            assert(uniquePieces == 2);
             ptr->enc_type = 2;
         }
 
@@ -665,32 +663,30 @@ void init_tb(const std::vector<PieceType>& pieces)
 uint64_t encode_piece(TBEntry_piece* ptr, uint8_t* norm, int* pos, int* factor)
 {
     uint64_t idx;
-    int i, j, m, l, p;
+    int i;
     int n = ptr->num;
 
-    // If the right half of the board is occupied, do a file-wise mirror
     if (pos[0] & 4)
-        for (i = 0; i < n; i++)
+        for (i = 0; i < n; ++i)
             pos[i] ^= 7;
 
-    // If the upper half of the board is occupied, do a rank-wise mirror
     if (pos[0] & 0x20)
-        for (i = 0; i < n; i++)
+        for (i = 0; i < n; ++i)
             pos[i] ^= 070;
 
-    for (i = 0; i < n; i++)
+    for (i = 0; i < n; ++i)
         if (Offdiag[pos[i]])
             break;
 
     if (i < (ptr->enc_type == 0 ? 3 : 2) && Offdiag[pos[i]] > 0)
-        for (i = 0; i < n; i++)
+        for (i = 0; i < n; ++i)
             pos[i] = Flipdiag[pos[i]];
 
     if (ptr->enc_type == 0) {
         // There are unique pieces other than W_KING and B_KING
 
-        i = (pos[1] > pos[0]);
-        j = (pos[2] > pos[0]) + (pos[2] > pos[1]);
+        i = pos[1] > pos[0];
+        int j = (pos[2] > pos[0]) + (pos[2] > pos[1]);
 
         if (Offdiag[pos[0]])
             idx = Triangle[pos[0]] * 63*62 + (pos[1] - i) * 62 + (pos[2] - j);
@@ -712,23 +708,23 @@ uint64_t encode_piece(TBEntry_piece* ptr, uint8_t* norm, int* pos, int* factor)
 
     idx *= factor[0];
 
-    for (; i < n;) {
+    while (i < n) {
         int t = norm[i];
 
         std::sort(&pos[i], &pos[i + t]);
 
-        int s = 0;
+        uint64_t s = 0;
 
-        for (m = i; m < i + t; m++) {
-            p = pos[m];
+        for (int l = i; l < i + t; ++l) {
+            int j = 0;
 
-            for (l = 0, j = 0; l < i; l++)
-                j += (p > pos[l]);
+            for (int k = 0; k < i; ++k)
+                j += pos[l] > pos[k];
 
-            s += Binomial[m - i][p - j];
+            s += Binomial[l - i][pos[l] - j];
         }
 
-        idx += (uint64_t)s * (uint64_t)factor[i];
+        idx += s * factor[i];
         i += t;
     }
 
@@ -740,7 +736,7 @@ int pawn_file(TBEntry_pawn *ptr, int *pos)
 {
     int i;
 
-    for (i = 1; i < ptr->pawns[0]; i++)
+    for (i = 1; i < ptr->pawns[0]; ++i)
         if (Flap[pos[0]] > Flap[pos[i]])
             std::swap(pos[0], pos[i]);
 
@@ -749,66 +745,65 @@ int pawn_file(TBEntry_pawn *ptr, int *pos)
 
 uint64_t encode_pawn(TBEntry_pawn *ptr, uint8_t *norm, int *pos, int *factor)
 {
-    uint64_t idx;
-    int i, j, k, m, s, t;
+    int i;
     int n = ptr->num;
 
     if (pos[0] & 4)
-        for (i = 0; i < n; i++)
+        for (i = 0; i < n; ++i)
             pos[i] ^= 7;
 
-    for (i = 1; i < ptr->pawns[0]; i++)
-        for (j = i + 1; j < ptr->pawns[0]; j++)
+    for (i = 1; i < ptr->pawns[0]; ++i)
+        for (int j = i + 1; j < ptr->pawns[0]; ++j)
             if (Ptwist[pos[i]] < Ptwist[pos[j]])
                 std::swap(pos[i], pos[j]);
 
-    t = ptr->pawns[0] - 1;
-    idx = Pawnidx[t][Flap[pos[0]]];
+    int t = ptr->pawns[0] - 1;
+    uint64_t idx = Pawnidx[t][Flap[pos[0]]];
 
-    for (i = t; i > 0; i--)
+    for (i = t; i > 0; --i)
         idx += Binomial[t - i][Ptwist[pos[i]]];
 
     idx *= factor[0];
 
-// remaining pawns
+    // remaining pawns
     i = ptr->pawns[0];
     t = i + ptr->pawns[1];
 
     if (t > i) {
         std::sort(&pos[i], &pos[t]);
 
-        s = 0;
+        uint64_t s = 0;
 
-        for (m = i; m < t; m++) {
-            int p = pos[m];
+        for (int m = i; m < t; ++m) {
+            int j = 0;
 
-            for (k = 0, j = 0; k < i; k++)
-                j += (p > pos[k]);
+            for (int k = 0; k < i; ++k)
+                j += pos[m] > pos[k];
 
-            s += Binomial[m - i][p - j - 8];
+            s += Binomial[m - i][pos[m] - j - 8];
         }
 
-        idx += (uint64_t)s * (uint64_t)factor[i];
+        idx += s * factor[i];
         i = t;
     }
 
-    for (; i < n;) {
+    while (i < n) {
         t = norm[i];
 
         std::sort(&pos[i], &pos[i + t]);
 
-        s = 0;
+        uint64_t s = 0;
 
-        for (m = i; m < i + t; m++) {
-            int p = pos[m];
+        for (int l = i; l < i + t; ++l) {
+            int j = 0;
 
-            for (k = 0, j = 0; k < i; k++)
-                j += (p > pos[k]);
+            for (int k = 0; k < i; ++k)
+                j += pos[l] > pos[k];
 
-            s += Binomial[m - i][p - j];
+            s += Binomial[l - i][pos[l] - j];
         }
 
-        idx += (uint64_t)s * (uint64_t)factor[i];
+        idx += s * factor[i];
         i += t;
     }
 
@@ -823,7 +818,7 @@ int subfactor(int k, int n)
     f = n;
     l = 1;
 
-    for (i = 1; i < k; i++) {
+    for (i = 1; i < k; ++i) {
         f *= n - i;
         l *= i + 1;
     }
@@ -841,7 +836,7 @@ uint64_t calc_factors_piece(int *factor, int num, int order, uint8_t *norm, uint
 
     f = 1;
 
-    for (i = norm[0], k = 0; i < num || k == order; k++) {
+    for (i = norm[0], k = 0; i < num || k == order; ++k) {
         if (k == order) {
             factor[0] = (int)(f);
             f *= pivfac[enc_type];
@@ -869,7 +864,7 @@ uint64_t calc_factors_pawn(int *factor, int num, int order, int order2, uint8_t 
 
     f = 1;
 
-    for (k = 0; i < num || k == order || k == order2; k++) {
+    for (k = 0; i < num || k == order || k == order2; ++k) {
         if (k == order) {
             factor[0] = (int)(f);
             f *= Pfactor[norm[0] - 1][file];
@@ -891,21 +886,21 @@ void set_norm_piece(TBEntry_piece *ptr, uint8_t *norm, uint8_t *pieces)
 {
     int i, j;
 
-    for (i = 0; i < ptr->num; i++)
+    for (i = 0; i < ptr->num; ++i)
         norm[i] = 0;
 
     norm[0] = ptr->enc_type == 0 ? 3 : 2;
 
     for (i = norm[0]; i < ptr->num; i += norm[i])
-        for (j = i; j < ptr->num && pieces[j] == pieces[i]; j++)
-            norm[i]++;
+        for (j = i; j < ptr->num && pieces[j] == pieces[i]; ++j)
+            ++norm[i];
 }
 
 void set_norm_pawn(TBEntry_pawn *ptr, uint8_t *norm, uint8_t *pieces)
 {
     int i, j;
 
-    for (i = 0; i < ptr->num; i++)
+    for (i = 0; i < ptr->num; ++i)
         norm[i] = 0;
 
     norm[0] = ptr->pawns[0];
@@ -913,8 +908,8 @@ void set_norm_pawn(TBEntry_pawn *ptr, uint8_t *norm, uint8_t *pieces)
     if (ptr->pawns[1]) norm[ptr->pawns[0]] = ptr->pawns[1];
 
     for (i = ptr->pawns[0] + ptr->pawns[1]; i < ptr->num; i += norm[i])
-        for (j = i; j < ptr->num && pieces[j] == pieces[i]; j++)
-            norm[i]++;
+        for (j = i; j < ptr->num && pieces[j] == pieces[i]; ++j)
+            ++norm[i];
 }
 
 void setup_pieces_piece(TBEntry_piece *ptr, unsigned char *data, uint64_t *tb_size)
@@ -922,14 +917,14 @@ void setup_pieces_piece(TBEntry_piece *ptr, unsigned char *data, uint64_t *tb_si
     int i;
     int order;
 
-    for (i = 0; i < ptr->num; i++)
+    for (i = 0; i < ptr->num; ++i)
         ptr->pieces[0][i] = uint8_t(data[i + 1] & 0x0f);
 
     order = data[0] & 0x0f;
     set_norm_piece(ptr, ptr->norm[0], ptr->pieces[0]);
     tb_size[0] = calc_factors_piece(ptr->factor[0], ptr->num, order, ptr->norm[0], ptr->enc_type);
 
-    for (i = 0; i < ptr->num; i++)
+    for (i = 0; i < ptr->num; ++i)
         ptr->pieces[1][i] = uint8_t(data[i + 1] >> 4);
 
     order = data[0] >> 4;
@@ -942,7 +937,7 @@ void setup_pieces_piece_dtz(DTZEntry_piece *ptr, unsigned char *data, uint64_t *
     int i;
     int order;
 
-    for (i = 0; i < ptr->num; i++)
+    for (i = 0; i < ptr->num; ++i)
         ptr->pieces[i] = uint8_t(data[i + 1] & 0x0f);
 
     order = data[0] & 0x0f;
@@ -959,7 +954,7 @@ void setup_pieces_pawn(TBEntry_pawn *ptr, unsigned char *data, uint64_t *tb_size
     order = data[0] & 0x0f;
     order2 = ptr->pawns[1] ? (data[1] & 0x0f) : 0x0f;
 
-    for (i = 0; i < ptr->num; i++)
+    for (i = 0; i < ptr->num; ++i)
         ptr->file[f].pieces[0][i] = uint8_t(data[i + j] & 0x0f);
 
     set_norm_pawn(ptr, ptr->file[f].norm[0], ptr->file[f].pieces[0]);
@@ -968,7 +963,7 @@ void setup_pieces_pawn(TBEntry_pawn *ptr, unsigned char *data, uint64_t *tb_size
     order = data[0] >> 4;
     order2 = ptr->pawns[1] ? (data[1] >> 4) : 0x0f;
 
-    for (i = 0; i < ptr->num; i++)
+    for (i = 0; i < ptr->num; ++i)
         ptr->file[f].pieces[1][i] = uint8_t(data[i + j] >> 4);
 
     set_norm_pawn(ptr, ptr->file[f].norm[1], ptr->file[f].pieces[1]);
@@ -984,7 +979,7 @@ void setup_pieces_pawn_dtz(DTZEntry_pawn *ptr, unsigned char *data, uint64_t *tb
     order = data[0] & 0x0f;
     order2 = ptr->pawns[1] ? (data[1] & 0x0f) : 0x0f;
 
-    for (i = 0; i < ptr->num; i++)
+    for (i = 0; i < ptr->num; ++i)
         ptr->file[f].pieces[i] = uint8_t(data[i + j] & 0x0f);
 
     set_norm_pawn((TBEntry_pawn *)ptr, ptr->file[f].norm, ptr->file[f].pieces);
@@ -1069,19 +1064,19 @@ PairsData *setup_pairs(unsigned char *data, uint64_t tb_size, uint64_t *size, un
     // char tmp[num_syms];
     char tmp[4096];
 
-    for (i = 0; i < num_syms; i++)
+    for (i = 0; i < num_syms; ++i)
         tmp[i] = 0;
 
-    for (i = 0; i < num_syms; i++)
+    for (i = 0; i < num_syms; ++i)
         if (!tmp[i])
             calc_symlen(d, i, tmp);
 
     d->base[h - 1] = 0;
 
-    for (i = h - 2; i >= 0; i--)
+    for (i = h - 2; i >= 0; --i)
         d->base[i] = (d->base[i + 1] + ReadUshort((uint8_t*)(d->offset + i)) - ReadUshort((uint8_t*)(d->offset + i + 1))) / 2;
 
-    for (i = 0; i < h; i++)
+    for (i = 0; i < h; ++i)
         d->base[i] <<= 64 - (min_len + i);
 
     d->offset -= d->min_len;
@@ -1167,14 +1162,14 @@ int init_table_wdl(TBEntry *entry, const std::string& str)
         TBEntry_pawn *ptr = (TBEntry_pawn *)entry;
         s = 1 + (ptr->pawns[1] > 0);
 
-        for (f = 0; f < 4; f++) {
+        for (f = 0; f < 4; ++f) {
             setup_pieces_pawn((TBEntry_pawn *)ptr, data, &tb_size[2 * f], f);
             data += ptr->num + s;
         }
 
         data += (uintptr_t)data & 1;
 
-        for (f = 0; f < files; f++) {
+        for (f = 0; f < files; ++f) {
             ptr->file[f].precomp[0] = setup_pairs(data, tb_size[2 * f], &size[6 * f], &next, &flags, 1);
             data = next;
 
@@ -1185,7 +1180,7 @@ int init_table_wdl(TBEntry *entry, const std::string& str)
                 ptr->file[f].precomp[1] = NULL;
         }
 
-        for (f = 0; f < files; f++) {
+        for (f = 0; f < files; ++f) {
             ptr->file[f].precomp[0]->indextable = (char *)data;
             data += size[6 * f];
 
@@ -1195,7 +1190,7 @@ int init_table_wdl(TBEntry *entry, const std::string& str)
             }
         }
 
-        for (f = 0; f < files; f++) {
+        for (f = 0; f < files; ++f) {
             ptr->file[f].precomp[0]->sizetable = (uint16_t *)data;
             data += size[6 * f + 1];
 
@@ -1205,7 +1200,7 @@ int init_table_wdl(TBEntry *entry, const std::string& str)
             }
         }
 
-        for (f = 0; f < files; f++) {
+        for (f = 0; f < files; ++f) {
             data = (uint8_t *)(((uintptr_t)data + 0x3f) & ~0x3f);
             ptr->file[f].precomp[0]->data = data;
             data += size[6 * f + 2];
@@ -1258,7 +1253,7 @@ int init_table_dtz(TBEntry *entry)
         if (ptr->flags & 2) {
             int i;
 
-            for (i = 0; i < 4; i++) {
+            for (i = 0; i < 4; ++i) {
                 ptr->map_idx[i] = (uint16_t)(data + 1 - ptr->map);
                 data += 1 + data[0];
             }
@@ -1279,25 +1274,25 @@ int init_table_dtz(TBEntry *entry)
         DTZEntry_pawn *ptr = (DTZEntry_pawn *)entry;
         s = 1 + (ptr->pawns[1] > 0);
 
-        for (f = 0; f < 4; f++) {
+        for (f = 0; f < 4; ++f) {
             setup_pieces_pawn_dtz(ptr, data, &tb_size[f], f);
             data += ptr->num + s;
         }
 
         data += (uintptr_t)data & 1;
 
-        for (f = 0; f < files; f++) {
+        for (f = 0; f < files; ++f) {
             ptr->file[f].precomp = setup_pairs(data, tb_size[f], &size[3 * f], &next, &(ptr->flags[f]), 0);
             data = next;
         }
 
         ptr->map = data;
 
-        for (f = 0; f < files; f++) {
+        for (f = 0; f < files; ++f) {
             if (ptr->flags[f] & 2) {
                 int i;
 
-                for (i = 0; i < 4; i++) {
+                for (i = 0; i < 4; ++i) {
                     ptr->map_idx[f][i] = (uint16_t)(data + 1 - ptr->map);
                     data += 1 + data[0];
                 }
@@ -1306,17 +1301,17 @@ int init_table_dtz(TBEntry *entry)
 
         data += (uintptr_t)data & 1;
 
-        for (f = 0; f < files; f++) {
+        for (f = 0; f < files; ++f) {
             ptr->file[f].precomp->indextable = (char *)data;
             data += size[3 * f];
         }
 
-        for (f = 0; f < files; f++) {
+        for (f = 0; f < files; ++f) {
             ptr->file[f].precomp->sizetable = (uint16_t *)data;
             data += size[3 * f + 1];
         }
 
-        for (f = 0; f < files; f++) {
+        for (f = 0; f < files; ++f) {
             data = (uint8_t *)(((uintptr_t)data + 0x3f) & ~0x3f);
             ptr->file[f].precomp->data = data;
             data += size[3 * f + 2];
@@ -1374,7 +1369,8 @@ uint8_t decompress_pairs(PairsData *d, uint64_t idx)
     for (;;) {
         int l = m;
 
-        while (code < base[l]) l++;
+        while (code < base[l])
+            ++l;
 
         sym = offset[l];
 
@@ -1472,7 +1468,7 @@ std::string prt_str(Position& pos, bool mirror)
 {
     std::string s;
 
-    for (int i = 0; i <= 1; i++) {
+    for (int i = 0; i <= 1; ++i) {
         Color color = Color(i ^ mirror);
 
         for (PieceType pt = KING; pt >= PAWN; --pt)
@@ -1582,14 +1578,14 @@ int probe_dtz_table(Position& pos, int wdl, int *success)
     Key key = pos.material_key();
 
     if (DTZ_table[0].key1 != key && DTZ_table[0].key2 != key) {
-        for (i = 1; i < DTZ_ENTRIES; i++)
+        for (i = 1; i < DTZ_ENTRIES; ++i)
             if (DTZ_table[i].key1 == key)
                 break;
 
         if (i < DTZ_ENTRIES) {
             DTZTableEntry table_entry = DTZ_table[i];
 
-            for (; i > 0; i--)
+            for (; i > 0; --i)
                 DTZ_table[i] = DTZ_table[i - 1];
 
             DTZ_table[0] = table_entry;
@@ -1606,7 +1602,7 @@ int probe_dtz_table(Position& pos, int wdl, int *success)
             if (DTZ_table[DTZ_ENTRIES - 1].entry)
                 free_dtz_entry(DTZ_table[DTZ_ENTRIES-1].entry);
 
-            for (i = DTZ_ENTRIES - 1; i > 0; i--)
+            for (i = DTZ_ENTRIES - 1; i > 0; --i)
                 DTZ_table[i] = DTZ_table[i - 1];
 
             load_dtz_table(s, get_key(pos, mirror), get_key(pos, !mirror));
@@ -1710,7 +1706,7 @@ ExtMove *add_underprom_caps(Position& pos, ExtMove *stack, ExtMove *end)
 {
     ExtMove *moves, *extra = end;
 
-    for (moves = stack; moves < end; moves++) {
+    for (moves = stack; moves < end; ++moves) {
         Move move = moves->move;
 
         if (type_of(move) == PROMOTION && !pos.empty(to_sq(move))) {
@@ -1741,7 +1737,7 @@ int probe_ab(Position& pos, int alpha, int beta, int *success)
 
     CheckInfo ci(pos);
 
-    for (moves = stack; moves < end; moves++) {
+    for (moves = stack; moves < end; ++moves) {
         Move capture = moves->move;
 
         if (!pos.capture(capture) || type_of(capture) == ENPASSANT
@@ -1783,13 +1779,13 @@ int probe_ab(Position& pos, int alpha, int beta, int *success)
 
 void Tablebases::init(const std::string& paths)
 {
-    for (int i = 0; i < TBnum_piece; i++)
+    for (int i = 0; i < TBnum_piece; ++i)
         free_wdl_entry(&TB_piece[i]);
 
-    for (int i = 0; i < TBnum_pawn; i++)
+    for (int i = 0; i < TBnum_pawn; ++i)
         free_wdl_entry(&TB_pawn[i]);
 
-    for (int i = 0; i < DTZ_ENTRIES; i++)
+    for (int i = 0; i < DTZ_ENTRIES; ++i)
         if (DTZ_table[i].entry) {
             free_dtz_entry(DTZ_table[i].entry);
             DTZ_table[i].entry = nullptr;
@@ -1806,20 +1802,20 @@ void Tablebases::init(const std::string& paths)
 
     // Fill binomial[] with the Binomial Coefficents using pascal triangle
     // so that binomial[k-1][n] = Binomial(n, k).
-    for (int k = 0; k < 5; k++) {
+    for (int k = 0; k < 5; ++k) {
         Binomial[k][0] = 0;
 
-        for (int n = 1; n < 64; n++)
+        for (int n = 1; n < 64; ++n)
             Binomial[k][n] = (k ? Binomial[k-1][n-1] : 1) + Binomial[k][n-1];
     }
 
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 5; ++i) {
         int k = 0;
 
-        for (int j = 1; j <= 4; j++) {
+        for (int j = 1; j <= 4; ++j) {
             int s = 0;
 
-            for ( ; k < 6 * j; k++) {
+            for ( ; k < 6 * j; ++k) {
                 Pawnidx[i][k] = s;
                 s += (i ? Binomial[i - 1][Ptwist[Invflap[k]]] : 1);
             }
@@ -1893,7 +1889,7 @@ int Tablebases::probe_wdl(Position& pos, int *success)
 
     CheckInfo ci(pos);
 
-    for (moves = stack; moves < end; moves++) {
+    for (moves = stack; moves < end; ++moves) {
         Move capture = moves->move;
 
         if (type_of(capture) != ENPASSANT
@@ -1914,7 +1910,7 @@ int Tablebases::probe_wdl(Position& pos, int *success)
         if (v1 >= v) v = v1;
         else if (v == 0) {
             // Check whether there is at least one legal non-ep move.
-            for (moves = stack; moves < end; moves++) {
+            for (moves = stack; moves < end; ++moves) {
                 Move capture = moves->move;
 
                 if (type_of(capture) == ENPASSANT) continue;
@@ -1926,7 +1922,7 @@ int Tablebases::probe_wdl(Position& pos, int *success)
             if (moves == end && !pos.checkers()) {
                 end = generate<QUIETS>(pos, end);
 
-                for (; moves < end; moves++) {
+                for (; moves < end; ++moves) {
                     Move move = moves->move;
 
                     if (pos.legal(move, ci.pinned))
@@ -1970,7 +1966,7 @@ static int probe_dtz_no_ep(Position& pos, int *success)
         else
             end = generate<EVASIONS>(pos, stack);
 
-        for (moves = stack; moves < end; moves++) {
+        for (moves = stack; moves < end; ++moves) {
             Move move = moves->move;
 
             if (type_of(pos.moved_piece(move)) != PAWN || pos.capture(move)
@@ -1999,7 +1995,7 @@ static int probe_dtz_no_ep(Position& pos, int *success)
     if (wdl > 0) {
         int best = 0xffff;
 
-        for (moves = stack; moves < end; moves++) {
+        for (moves = stack; moves < end; ++moves) {
             Move move = moves->move;
 
             if (pos.capture(move) || type_of(pos.moved_piece(move)) == PAWN
@@ -2026,7 +2022,7 @@ static int probe_dtz_no_ep(Position& pos, int *success)
         else
             end = generate<EVASIONS>(pos, stack);
 
-        for (moves = stack; moves < end; moves++) {
+        for (moves = stack; moves < end; ++moves) {
             int v;
             Move move = moves->move;
 
@@ -2113,7 +2109,7 @@ int Tablebases::probe_dtz(Position& pos, int *success)
 
     CheckInfo ci(pos);
 
-    for (moves = stack; moves < end; moves++) {
+    for (moves = stack; moves < end; ++moves) {
         Move capture = moves->move;
 
         if (type_of(capture) != ENPASSANT
@@ -2148,7 +2144,7 @@ int Tablebases::probe_dtz(Position& pos, int *success)
         } else if (v1 >= 0) {
             v = v1;
         } else {
-            for (moves = stack; moves < end; moves++) {
+            for (moves = stack; moves < end; ++moves) {
                 Move move = moves->move;
 
                 if (type_of(move) == ENPASSANT) continue;
@@ -2160,7 +2156,7 @@ int Tablebases::probe_dtz(Position& pos, int *success)
             if (moves == end && !pos.checkers()) {
                 end = generate<QUIETS>(pos, end);
 
-                for (; moves < end; moves++) {
+                for (; moves < end; ++moves) {
                     Move move = moves->move;
 
                     if (pos.legal(move, ci.pinned))
@@ -2220,7 +2216,7 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves, Value& 
     CheckInfo ci(pos);
 
     // Probe each move
-    for (size_t i = 0; i < rootMoves.size(); i++) {
+    for (size_t i = 0; i < rootMoves.size(); ++i) {
         Move move = rootMoves[i].pv[0];
         pos.do_move(move, st, pos.gives_check(move, ci));
         int v = 0;
@@ -2237,9 +2233,9 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves, Value& 
                 v = -Tablebases::probe_dtz(pos, &success);
 
                 if (v > 0)
-                    v++;
+                    ++v;
                 else if (v < 0)
-                    v--;
+                    --v;
             } else {
                 v = -Tablebases::probe_wdl(pos, &success);
                 v = wdl_to_dtz[v + 2];
@@ -2284,7 +2280,7 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves, Value& 
     if (dtz > 0) { // winning (or 50-move rule draw)
         int best = 0xffff;
 
-        for (size_t i = 0; i < rootMoves.size(); i++) {
+        for (size_t i = 0; i < rootMoves.size(); ++i) {
             int v = rootMoves[i].score;
 
             if (v > 0 && v < best)
@@ -2298,7 +2294,7 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves, Value& 
         if (!has_repeated(st.previous) && best + cnt50 <= 99)
             max = 99 - cnt50;
 
-        for (size_t i = 0; i < rootMoves.size(); i++) {
+        for (size_t i = 0; i < rootMoves.size(); ++i) {
             int v = rootMoves[i].score;
 
             if (v > 0 && v <= max)
@@ -2307,7 +2303,7 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves, Value& 
     } else if (dtz < 0) { // losing (or 50-move rule draw)
         int best = 0;
 
-        for (size_t i = 0; i < rootMoves.size(); i++) {
+        for (size_t i = 0; i < rootMoves.size(); ++i) {
             int v = rootMoves[i].score;
 
             if (v < best)
@@ -2318,13 +2314,13 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves, Value& 
         if (-best * 2 + cnt50 < 100)
             return true;
 
-        for (size_t i = 0; i < rootMoves.size(); i++) {
+        for (size_t i = 0; i < rootMoves.size(); ++i) {
             if (rootMoves[i].score == best)
                 rootMoves[j++] = rootMoves[i];
         }
     } else { // drawing
         // Try all moves that preserve the draw.
-        for (size_t i = 0; i < rootMoves.size(); i++) {
+        for (size_t i = 0; i < rootMoves.size(); ++i) {
             if (rootMoves[i].score == 0)
                 rootMoves[j++] = rootMoves[i];
         }
@@ -2357,7 +2353,7 @@ bool Tablebases::root_probe_wdl(Position& pos, Search::RootMoves& rootMoves, Val
     int best = -2;
 
     // Probe each move
-    for (size_t i = 0; i < rootMoves.size(); i++) {
+    for (size_t i = 0; i < rootMoves.size(); ++i) {
         Move move = rootMoves[i].pv[0];
         pos.do_move(move, st, pos.gives_check(move, ci));
         int v = -Tablebases::probe_wdl(pos, &success);
@@ -2374,7 +2370,7 @@ bool Tablebases::root_probe_wdl(Position& pos, Search::RootMoves& rootMoves, Val
 
     size_t j = 0;
 
-    for (size_t i = 0; i < rootMoves.size(); i++) {
+    for (size_t i = 0; i < rootMoves.size(); ++i) {
         if (rootMoves[i].score == best)
             rootMoves[j++] = rootMoves[i];
     }
