@@ -48,6 +48,8 @@
 #define DTZSUFFIX ".rtbz"
 #define TBPIECES 6
 
+using namespace Tablebases;
+
 int Tablebases::MaxCardinality = 0;
 
 namespace Zobrist {
@@ -57,6 +59,9 @@ extern Key psq[COLOR_NB][PIECE_TYPE_NB][SQUARE_NB];
 namespace {
 
 typedef uint64_t base_t;
+
+inline WDLScore operator-(WDLScore d) { return WDLScore(-int(d)); }
+inline WDLScore operator+(WDLScore d1, WDLScore d2) { return WDLScore(int(d1) + int(d2)); }
 
 struct PairsData {
     char *indextable;
@@ -1482,17 +1487,17 @@ std::string prt_str(Position& pos, bool mirror)
     return s;
 }
 
-int probe_wdl_table(Position& pos, int* success)
+WDLScore probe_wdl_table(Position& pos, int* success)
 {
     Key key = pos.material_key();
 
     if (pos.count<ALL_PIECES>(WHITE) + pos.count<ALL_PIECES>(BLACK) == 2)
-        return 0; // KvK
+        return WDLDraw; // KvK
 
     TBEntry* ptr = TBHash[key];
     if (!ptr) {
         *success = 0;
-        return 0;
+        return WDLDraw;
     }
 
     // Init table at first access attempt
@@ -1502,7 +1507,7 @@ int probe_wdl_table(Position& pos, int* success)
             if (!init_table_wdl(ptr, prt_str(pos, ptr->key != key))) {
                 // Was ptr2->key = 0ULL;  Just leave !ptr->ready condition
                 *success = 0;
-                return 0;
+                return WDLDraw;
             }
             ptr->ready = 1;
         }
@@ -1544,7 +1549,7 @@ int probe_wdl_table(Position& pos, int* success)
         }
 
         uint64_t idx = encode_piece(entry, entry->norm[bside], squares, entry->factor[bside]);
-        return decompress_pairs(entry->precomp[bside], idx) - 2;
+        return WDLScore(decompress_pairs(entry->precomp[bside], idx) - 2);
     } else {
         TBEntry_pawn* entry = (TBEntry_pawn*)ptr;
         Piece pc = Piece(entry->file[0].pieces[0][0] ^ cmirror);
@@ -1565,7 +1570,7 @@ int probe_wdl_table(Position& pos, int* success)
         }
 
         uint64_t idx = encode_pawn(entry, entry->file[f].norm[bside], squares, entry->file[f].factor[bside]);
-        return decompress_pairs(entry->file[f].precomp[bside], idx) - 2;
+        return WDLScore(decompress_pairs(entry->file[f].precomp[bside], idx) - 2);
     }
 }
 
@@ -1719,9 +1724,9 @@ ExtMove *add_underprom_caps(Position& pos, ExtMove *stack, ExtMove *end)
     return extra;
 }
 
-int probe_ab(Position& pos, int alpha, int beta, int *success)
+WDLScore probe_ab(Position& pos, WDLScore alpha, WDLScore beta, int *success)
 {
-    int v;
+    WDLScore value;
     ExtMove stack[64];
     ExtMove *moves, *end;
     StateInfo st;
@@ -1740,38 +1745,39 @@ int probe_ab(Position& pos, int alpha, int beta, int *success)
     for (moves = stack; moves < end; ++moves) {
         Move capture = moves->move;
 
-        if (!pos.capture(capture) || type_of(capture) == ENPASSANT
-                || !pos.legal(capture, ci.pinned))
+        if (   !pos.capture(capture)
+            ||  type_of(capture) == ENPASSANT
+            || !pos.legal(capture, ci.pinned))
             continue;
 
         pos.do_move(capture, st, pos.gives_check(capture, ci));
-        v = -probe_ab(pos, -beta, -alpha, success);
+        value = -probe_ab(pos, -beta, -alpha, success);
         pos.undo_move(capture);
 
         if (*success == 0)
-            return 0;
+            return WDLDraw;
 
-        if (v > alpha) {
-            if (v >= beta) {
+        if (value > alpha) {
+            if (value >= beta) {
                 *success = 2;
-                return v;
+                return value;
             }
 
-            alpha = v;
+            alpha = value;
         }
     }
 
-    v = probe_wdl_table(pos, success);
+    value = probe_wdl_table(pos, success);
 
     if (*success == 0)
-        return 0;
+        return WDLDraw;
 
-    if (alpha >= v) {
+    if (alpha >= value) {
         *success = 1 + (alpha > 0);
         return alpha;
     } else {
         *success = 1;
-        return v;
+        return value;
     }
 }
 
@@ -1861,22 +1867,20 @@ void Tablebases::init(const std::string& paths)
 //  0 : draw
 //  1 : win, but draw under 50-move rule
 //  2 : win
-int Tablebases::probe_wdl(Position& pos, int *success)
+WDLScore Tablebases::probe_wdl(Position& pos, int *success)
 {
-    int v;
-
     *success = 1;
-    v = probe_ab(pos, -2, 2, success);
+    WDLScore v = probe_ab(pos, WDLHardLoss, WDLHardWin, success);
 
     // If en passant is not possible, we are done.
     if (pos.ep_square() == SQ_NONE)
         return v;
 
     if (*success == 0)
-        return 0;
+        return WDLDraw;
 
     // Now handle en passant.
-    int v1 = -3;
+    WDLScore v1 = WDLScore(-3); // FIXME use a proper enum value here
     // Generate (at least) all legal en passant captures.
     ExtMove stack[MAX_MOVES];
     ExtMove *moves, *end;
@@ -1897,11 +1901,11 @@ int Tablebases::probe_wdl(Position& pos, int *success)
             continue;
 
         pos.do_move(capture, st, pos.gives_check(capture, ci));
-        int v0 = -probe_ab(pos, -2, 2, success);
+        WDLScore v0 = -probe_ab(pos, WDLHardLoss, WDLHardWin, success);
         pos.undo_move(capture);
 
         if (*success == 0)
-            return 0;
+            return WDLDraw;
 
         if (v0 > v1) v1 = v0;
     }
@@ -1942,16 +1946,16 @@ int Tablebases::probe_wdl(Position& pos, int *success)
 // This routine treats a position with en passant captures as one without.
 static int probe_dtz_no_ep(Position& pos, int *success)
 {
-    int wdl, dtz;
+    int dtz;
 
-    wdl = probe_ab(pos, -2, 2, success);
+    WDLScore wdl = probe_ab(pos, WDLHardLoss, WDLHardWin, success);
 
     if (*success == 0) return 0;
 
-    if (wdl == 0) return 0;
+    if (wdl == WDLDraw) return 0;
 
     if (*success == 2)
-        return wdl == 2 ? 1 : 101;
+        return wdl == WDLHardWin ? 1 : 101;
 
     ExtMove stack[MAX_MOVES];
     ExtMove *moves, *end = NULL;
@@ -1969,18 +1973,19 @@ static int probe_dtz_no_ep(Position& pos, int *success)
         for (moves = stack; moves < end; ++moves) {
             Move move = moves->move;
 
-            if (type_of(pos.moved_piece(move)) != PAWN || pos.capture(move)
-                    || !pos.legal(move, ci.pinned))
+            if (   type_of(pos.moved_piece(move)) != PAWN
+                || pos.capture(move)
+                || !pos.legal(move, ci.pinned))
                 continue;
 
             pos.do_move(move, st, pos.gives_check(move, ci));
-            int v = -probe_ab(pos, -2, -wdl + 1, success);
+            WDLScore v = -probe_ab(pos, WDLHardLoss, -wdl + WDLSoftWin, success);
             pos.undo_move(move);
 
             if (*success == 0) return 0;
 
             if (v == wdl)
-                return v == 2 ? 1 : 101;
+                return v == WDLHardWin ? 1 : 101;
         }
     }
 
@@ -2034,7 +2039,7 @@ static int probe_dtz_no_ep(Position& pos, int *success)
             if (st.rule50 == 0) {
                 if (wdl == -2) v = -1;
                 else {
-                    v = probe_ab(pos, 1, 2, success);
+                    v = probe_ab(pos, WDLSoftWin, WDLHardWin, success);
                     v = (v == 2) ? 0 : -101;
                 }
             } else {
@@ -2117,7 +2122,7 @@ int Tablebases::probe_dtz(Position& pos, int *success)
             continue;
 
         pos.do_move(capture, st, pos.gives_check(capture, ci));
-        int v0 = -probe_ab(pos, -2, 2, success);
+        WDLScore v0 = -probe_ab(pos, WDLHardLoss, WDLHardWin, success);
         pos.undo_move(capture);
 
         if (*success == 0)
@@ -2340,7 +2345,7 @@ bool Tablebases::root_probe_wdl(Position& pos, Search::RootMoves& rootMoves, Val
 {
     int success;
 
-    int wdl = Tablebases::probe_wdl(pos, &success);
+    WDLScore wdl = Tablebases::probe_wdl(pos, &success);
 
     if (!success)
         return false;
@@ -2350,13 +2355,13 @@ bool Tablebases::root_probe_wdl(Position& pos, Search::RootMoves& rootMoves, Val
     StateInfo st;
     CheckInfo ci(pos);
 
-    int best = -2;
+    int best = WDLHardLoss;
 
     // Probe each move
     for (size_t i = 0; i < rootMoves.size(); ++i) {
         Move move = rootMoves[i].pv[0];
         pos.do_move(move, st, pos.gives_check(move, ci));
-        int v = -Tablebases::probe_wdl(pos, &success);
+        WDLScore v = -Tablebases::probe_wdl(pos, &success);
         pos.undo_move(move);
 
         if (!success)
