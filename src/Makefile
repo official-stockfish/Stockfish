@@ -260,7 +260,9 @@ ifeq ($(optimize),yes)
 	endif
 
 	ifeq ($(comp),icc)
-		CXXFLAGS += -mdynamic-no-pic
+		ifeq ($(UNAME),Darwin)
+			CXXFLAGS += -mdynamic-no-pic
+		endif
 	endif
 
 	ifeq ($(comp),clang)
