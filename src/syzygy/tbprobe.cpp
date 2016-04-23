@@ -84,7 +84,7 @@ struct TBEntry_piece {
     uint8_t num;
     uint8_t symmetric;
     uint8_t has_pawns;
-    uint8_t enc_type;
+    uint8_t hasUniquePieces;
     PairsData *precomp[2];
     int factor[2][TBPIECES];
     uint8_t pieces[2][TBPIECES];
@@ -116,7 +116,7 @@ struct DTZEntry_piece {
     uint8_t num;
     uint8_t symmetric;
     uint8_t has_pawns;
-    uint8_t enc_type;
+    uint8_t hasUniquePieces;
     PairsData *precomp;
     int factor[TBPIECES];
     uint8_t pieces[TBPIECES];
@@ -627,12 +627,11 @@ void HashTable::insert(const std::vector<PieceType>& pieces)
                            + (popcount(pos.pieces(BLACK, pt)) == 1);
 
         if (uniquePieces >= 3)
-            ptr->enc_type = 0;
+            ptr->hasUniquePieces = 1;
         else {
-            // W_KING and B_KING are the only unique pieces
+            // No unique pieces, other than W_KING and B_KING
             assert(uniquePieces == 2);
-
-            ptr->enc_type = 2;
+            ptr->hasUniquePieces = 0;
         }
 
         entry = (TBEntry*)ptr;
@@ -669,13 +668,12 @@ uint64_t encode_piece(TBEntry_piece* ptr, uint8_t* norm, int* pos, int* factor)
         if (Offdiag[pos[i]])
             break;
 
-    if (i < (ptr->enc_type == 0 ? 3 : 2) && Offdiag[pos[i]] > 0)
+    if (i < (ptr->hasUniquePieces ? 3 : 2) && Offdiag[pos[i]] > 0)
         for (i = 0; i < n; ++i)
             pos[i] = Flipdiag[pos[i]];
 
-    if (ptr->enc_type == 0) {
+    if (ptr->hasUniquePieces) {
         // There are unique pieces other than W_KING and B_KING
-
         i = pos[1] > pos[0];
         int j = (pos[2] > pos[0]) + (pos[2] > pos[1]);
 
@@ -690,9 +688,7 @@ uint64_t encode_piece(TBEntry_piece* ptr, uint8_t* norm, int* pos, int* factor)
 
         i = 3;
     } else {
-        // The only unique pieces are W_KING and B_KING
-        assert(ptr->enc_type == 2);
-
+        assert(!ptr->hasUniquePieces);
         idx = KK_idx[Triangle[pos[0]]][pos[1]];
         i = 2;
     }
@@ -804,12 +800,12 @@ uint64_t encode_pawn(TBEntry_pawn *ptr, uint8_t *norm, int *pos, int *factor)
 // place k like pieces on n squares
 int subfactor(int k, int n)
 {
-    int i, f, l;
+    assert(n > 0 && k > 0 && k <= n);
 
-    f = n;
-    l = 1;
+    int f = n;
+    int l = 1;
 
-    for (i = 1; i < k; ++i) {
+    for (int i = 1; i < k; ++i) {
         f *= n - i;
         l *= i + 1;
     }
@@ -817,22 +813,17 @@ int subfactor(int k, int n)
     return f / l;
 }
 
-uint64_t calc_factors_piece(int *factor, int num, int order, uint8_t *norm, uint8_t enc_type)
+uint64_t calc_factors_piece(int *factor, int num, int order, uint8_t *norm, uint8_t hasUniquePieces)
 {
-    int i, k, n;
-    uint64_t f;
-    static int pivfac[] = { 31332, 0, 462 };
+    int n = 64 - norm[0];
+    uint64_t f = 1;
 
-    n = 64 - norm[0];
-
-    f = 1;
-
-    for (i = norm[0], k = 0; i < num || k == order; ++k) {
+    for (int i = norm[0], k = 0; i < num || k == order; ++k) {
         if (k == order) {
-            factor[0] = (int)(f);
-            f *= pivfac[enc_type];
+            factor[0] = (int)f;
+            f *= hasUniquePieces ? 31332 : 462;
         } else {
-            factor[i] = (int)(f);
+            factor[i] = (int)f;
             f *= subfactor(norm[i], n);
             n -= norm[i];
             i += norm[i];
@@ -844,18 +835,15 @@ uint64_t calc_factors_piece(int *factor, int num, int order, uint8_t *norm, uint
 
 uint64_t calc_factors_pawn(int *factor, int num, int order, int order2, uint8_t *norm, int file)
 {
-    int i, k, n;
-    uint64_t f;
+    int i = norm[0];
 
-    i = norm[0];
+    if (order2 < 0x0f)
+        i += norm[i];
 
-    if (order2 < 0x0f) i += norm[i];
+    int n = 64 - i;
+    uint64_t f = 1;
 
-    n = 64 - i;
-
-    f = 1;
-
-    for (k = 0; i < num || k == order || k == order2; ++k) {
+    for (int k = 0; i < num || k == order || k == order2; ++k) {
         if (k == order) {
             factor[0] = (int)(f);
             f *= Pfactor[norm[0] - 1][file];
@@ -880,7 +868,7 @@ void set_norm_piece(TBEntry_piece *ptr, uint8_t *norm, uint8_t *pieces)
     for (i = 0; i < ptr->num; ++i)
         norm[i] = 0;
 
-    norm[0] = ptr->enc_type == 0 ? 3 : 2;
+    norm[0] = ptr->hasUniquePieces ? 3 : 2;
 
     for (i = norm[0]; i < ptr->num; i += norm[i])
         for (j = i; j < ptr->num && pieces[j] == pieces[i]; ++j)
@@ -913,14 +901,14 @@ void setup_pieces_piece(TBEntry_piece *ptr, unsigned char *data, uint64_t *tb_si
 
     order = data[0] & 0x0f;
     set_norm_piece(ptr, ptr->norm[0], ptr->pieces[0]);
-    tb_size[0] = calc_factors_piece(ptr->factor[0], ptr->num, order, ptr->norm[0], ptr->enc_type);
+    tb_size[0] = calc_factors_piece(ptr->factor[0], ptr->num, order, ptr->norm[0], ptr->hasUniquePieces);
 
     for (i = 0; i < ptr->num; ++i)
         ptr->pieces[1][i] = uint8_t(data[i + 1] >> 4);
 
     order = data[0] >> 4;
     set_norm_piece(ptr, ptr->norm[1], ptr->pieces[1]);
-    tb_size[1] = calc_factors_piece(ptr->factor[1], ptr->num, order, ptr->norm[1], ptr->enc_type);
+    tb_size[1] = calc_factors_piece(ptr->factor[1], ptr->num, order, ptr->norm[1], ptr->hasUniquePieces);
 }
 
 void setup_pieces_piece_dtz(DTZEntry_piece *ptr, unsigned char *data, uint64_t *tb_size)
@@ -933,7 +921,7 @@ void setup_pieces_piece_dtz(DTZEntry_piece *ptr, unsigned char *data, uint64_t *
 
     order = data[0] & 0x0f;
     set_norm_piece((TBEntry_piece *)ptr, ptr->norm, ptr->pieces);
-    tb_size[0] = calc_factors_piece(ptr->factor, ptr->num, order, ptr->norm, ptr->enc_type);
+    tb_size[0] = calc_factors_piece(ptr->factor, ptr->num, order, ptr->norm, ptr->hasUniquePieces);
 }
 
 void setup_pieces_pawn(TBEntry_pawn *ptr, unsigned char *data, uint64_t *tb_size, int f)
@@ -1442,7 +1430,7 @@ void load_dtz_table(const std::string& fname, uint64_t key1, uint64_t key2)
         entry->pawns[1] = ((TBEntry_pawn *)ptr)->pawns[1];
     } else {
         DTZEntry_piece *entry = (DTZEntry_piece *)ptr3;
-        entry->enc_type = ((TBEntry_piece *)ptr)->enc_type;
+        entry->hasUniquePieces = ((TBEntry_piece *)ptr)->hasUniquePieces;
     }
 
     if (!init_table_dtz(ptr3))
