@@ -36,8 +36,6 @@
 #include <windows.h>
 #endif
 
-#define WDLSUFFIX ".rtbw"
-#define DTZSUFFIX ".rtbz"
 #define TBPIECES 6
 
 using namespace Tablebases;
@@ -537,6 +535,22 @@ Key get_key(uint8_t* pcs, bool mirror)
     return key;
 }
 
+// Given a position with 6 or fewer pieces, produce a text string
+// of the form KQPvKRP, where "KQP" represents the white pieces if
+// mirror == false and the black pieces if mirror == true.
+std::string file_name(const Position& pos, bool mirror)
+{
+    std::string w, b;
+
+    for (PieceType pt = KING; pt >= PAWN; --pt)
+    {
+        w += std::string(popcount(pos.pieces(WHITE, pt)), PieceChar[pt]);
+        b += std::string(popcount(pos.pieces(BLACK, pt)), PieceChar[pt]);
+    }
+
+    return mirror ? b + 'v' + w : w + 'v' + b;
+}
+
 void free_wdl_entry(TBEntry_piece* entry)
 {
     TBFile::unmap(entry->data, entry->mapping);
@@ -589,7 +603,7 @@ void init_tb(const std::vector<PieceType>& pieces)
         fname += PieceChar[pt];
     }
 
-    TBFile f(fname + WDLSUFFIX);
+    TBFile f(fname + ".rtbw");
 
     if (!f.is_open())
         return;
@@ -1082,7 +1096,7 @@ PairsData *setup_pairs(unsigned char *data, uint64_t tb_size, uint64_t *size, un
     return d;
 }
 
-int init_table_wdl(TBEntry *entry, const std::string& str)
+int init_table_wdl(TBEntry *entry, const std::string& fname)
 {
     uint8_t *next;
     int f, s;
@@ -1090,10 +1104,10 @@ int init_table_wdl(TBEntry *entry, const std::string& str)
     uint64_t size[8 * 3];
     uint8_t flags;
 
-    TBFile file(str + WDLSUFFIX);
+    TBFile file(fname);
 
     if (!file.is_open()) {
-        std::cerr << "Could not find " << str + WDLSUFFIX << std::endl;
+        std::cerr << "Could not find " << fname << std::endl;
         return 0;
     }
 
@@ -1420,7 +1434,7 @@ int decompress_pairs(PairsData* d, uint64_t idx)
     return sympat[3 * sym];
 }
 
-void load_dtz_table(const std::string& str, uint64_t key1, uint64_t key2)
+void load_dtz_table(const std::string& fname, uint64_t key1, uint64_t key2)
 {
     DTZ_table[0].key1 = key1;
     DTZ_table[0].key2 = key2;
@@ -1435,7 +1449,7 @@ void load_dtz_table(const std::string& str, uint64_t key1, uint64_t key2)
                              ? sizeof(DTZEntry_pawn)
                              : sizeof(DTZEntry_piece));
 
-    TBFile file(str + DTZSUFFIX);
+    TBFile file(fname);
 
     ptr3->data = file.is_open() ? file.map(&ptr3->mapping) : nullptr;
     ptr3->key = ptr->key;
@@ -1458,28 +1472,6 @@ void load_dtz_table(const std::string& str, uint64_t key1, uint64_t key2)
         DTZ_table[0].entry = ptr3;
 }
 
-
-// Given a position with 6 or fewer pieces, produce a text string
-// of the form KQPvKRP, where "KQP" represents the white pieces if
-// mirror == false and the black pieces if mirror == true.
-std::string prt_str(Position& pos, bool mirror)
-{
-    std::string s;
-
-    for (int i = 0; i <= 1; ++i) {
-        Color color = Color(i ^ mirror);
-
-        for (PieceType pt = KING; pt >= PAWN; --pt)
-            for (Bitboard b = pos.pieces(color, pt); b; b &= b - 1)
-                s += PieceChar[pt];
-
-        if (i == 0)
-            s += 'v';
-    }
-
-    return s;
-}
-
 WDLScore probe_wdl_table(Position& pos, int* success)
 {
     Key key = pos.material_key();
@@ -1497,7 +1489,7 @@ WDLScore probe_wdl_table(Position& pos, int* success)
     if (!ptr->ready) {
         std::unique_lock<Mutex> lk(TB_mutex);
         if (!ptr->ready) {
-            if (!init_table_wdl(ptr, prt_str(pos, ptr->key != key))) {
+            if (!init_table_wdl(ptr, file_name(pos, ptr->key != key) + ".rtbw")) {
                 // Was ptr2->key = 0ULL;  Just leave !ptr->ready condition
                 *success = 0;
                 return WDLDraw;
@@ -1595,7 +1587,6 @@ int probe_dtz_table(Position& pos, int wdl, int *success)
             }
 
             bool mirror = (ptr->key != key);
-            std::string s = prt_str(pos, mirror);
 
             if (DTZ_table[DTZ_ENTRIES - 1].entry)
                 free_dtz_entry(DTZ_table[DTZ_ENTRIES-1].entry);
@@ -1603,7 +1594,8 @@ int probe_dtz_table(Position& pos, int wdl, int *success)
             for (i = DTZ_ENTRIES - 1; i > 0; --i)
                 DTZ_table[i] = DTZ_table[i - 1];
 
-            load_dtz_table(s, get_key(pos, mirror), get_key(pos, !mirror));
+            std::string fname = file_name(pos, mirror) + ".rtbz";
+            load_dtz_table(fname, get_key(pos, mirror), get_key(pos, !mirror));
         }
     }
 
