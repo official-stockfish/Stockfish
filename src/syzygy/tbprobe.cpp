@@ -36,14 +36,6 @@
 #include <windows.h>
 #endif
 
-#ifndef _MSC_VER
-#define BSWAP32(v) __builtin_bswap32(v)
-#define BSWAP64(v) __builtin_bswap64(v)
-#else
-#define BSWAP32(v) _byteswap_ulong(v)
-#define BSWAP64(v) _byteswap_uint64(v)
-#endif
-
 #define WDLSUFFIX ".rtbw"
 #define DTZSUFFIX ".rtbz"
 #define TBPIECES 6
@@ -236,7 +228,7 @@ const uint8_t Ptwist[] = {
     41, 29, 17,  5,  4, 16, 28, 40,
     39, 27, 15,  3,  2, 14, 26, 38,
     37, 25, 13,  1,  0, 12, 24, 36,
-     0,  0,  0,  0,  0, 0,  0,  0
+     0,  0,  0,  0,  0,  0,  0,  0
 };
 
 const uint8_t Invflap[] = {
@@ -356,7 +348,8 @@ const short KK_idx[10][64] = {
 const uint8_t WDL_MAGIC[] = { 0x71, 0xE8, 0x23, 0x5D };
 const uint8_t DTZ_MAGIC[] = { 0xD7, 0x66, 0x0C, 0xA5 };
 
-const int   wdl_to_map[] = { 1, 3, 0, 2, 0 };
+const int wdl_to_dtz[] = { -1, -101, 0, 101, 1 };
+const int wdl_to_map[] = { 1, 3, 0, 2, 0 };
 const uint8_t pa_flags[] = { 8, 0, 0, 0, 4 };
 
 const Value WDL_to_value[] = {
@@ -1326,47 +1319,55 @@ int init_table_dtz(TBEntry *entry)
     return 1;
 }
 
-template<bool LittleEndian>
-uint8_t decompress_pairs(PairsData *d, uint64_t idx)
+template<typename T, int Half = sizeof(T)/2, int End = sizeof(T)-1>
+inline void byteSwap(T& x)
 {
+    char tmp, *c = (char*)(&x);
+    for (int i = 0; i < Half; ++i)
+        tmp = c[i], c[i] = c[End-i], c[End-i] = tmp;
+}
+
+int decompress_pairs(PairsData* d, uint64_t idx)
+{
+    const union { uint32_t i; char c[4]; } LE = { 0x01020304 };
+    const bool LittleEndian = (LE.c[0] == 4);
+
     if (!d->idxbits)
-        return uint8_t(d->min_len);
+        return d->min_len;
 
-    uint32_t mainidx = (uint32_t)(idx >> d->idxbits);
+    // idx = blockidx | litidx where litidx is a signed number of lenght d->idxbits
+    uint32_t blockidx = (uint32_t)(idx >> d->idxbits);
     int litidx = (idx & ((1ULL << d->idxbits) - 1)) - (1ULL << (d->idxbits - 1));
-    uint32_t block = *(uint32_t *)(d->indextable + 6 * mainidx);
 
-    if (!LittleEndian)
-        block = BSWAP32(block);
+    // indextable points to an array of blocks of 6 bytes representing numbers in
+    // little endian. The low 4 bytes are the block, the high 2 bytes the idxOffset.
+    uint32_t block = *(uint32_t *)(d->indextable + 6 * blockidx);
+    uint16_t idxOffset = *(uint16_t *)(d->indextable + 6 * blockidx + 4);
 
-    uint16_t idxOffset = *(uint16_t *)(d->indextable + 6 * mainidx + 4);
-
-    if (!LittleEndian)
-        idxOffset = uint16_t((idxOffset << 8) | (idxOffset >> 8));
+    if (!LittleEndian) {
+        byteSwap(block);
+        byteSwap(idxOffset);
+    }
 
     litidx += idxOffset;
 
-    if (litidx < 0) {
-        do {
-            litidx += d->sizetable[--block] + 1;
-        } while (litidx < 0);
-    } else {
-        while (litidx > d->sizetable[block])
-            litidx -= d->sizetable[block++] + 1;
-    }
+    while (litidx < 0)
+        litidx += d->sizetable[--block] + 1;
 
-    uint32_t *ptr = (uint32_t *)(d->data + (block << d->blocksize));
+    while (litidx > d->sizetable[block])
+        litidx -= d->sizetable[block++] + 1;
+
+    uint32_t* ptr = (uint32_t*)(d->data + (block << d->blocksize));
+    uint64_t code = *((uint64_t*)ptr);
+
+    if (LittleEndian)
+        byteSwap(code);
 
     int m = d->min_len;
     uint16_t *offset = d->offset;
-    base_t *base = d->base - m;
-    uint8_t *symlen = d->symlen;
+    base_t* base = d->base - m;
+    uint8_t* symlen = d->symlen;
     int sym, bitcnt;
-
-    uint64_t code = *((uint64_t *)ptr);
-
-    if (LittleEndian)
-        code = BSWAP64(code);
 
     ptr += 2;
     bitcnt = 0; // number of "empty bits" in code
@@ -1396,7 +1397,7 @@ uint8_t decompress_pairs(PairsData *d, uint64_t idx)
             uint32_t tmp = *ptr++;
 
             if (LittleEndian)
-                tmp = BSWAP32(tmp);
+                byteSwap(tmp);
 
             code |= (uint64_t)tmp << bitcnt;
         }
@@ -1417,14 +1418,6 @@ uint8_t decompress_pairs(PairsData *d, uint64_t idx)
     }
 
     return sympat[3 * sym];
-}
-
-uint8_t decompress_pairs(PairsData *d, uint64_t idx)
-{
-    const union { uint32_t i; char c[4]; } bint = {0x01020304};
-    const bool isLittleEndian = (bint.c[0] == 4);
-    return isLittleEndian ? decompress_pairs<true >(d, idx)
-                          : decompress_pairs<false>(d, idx);
 }
 
 void load_dtz_table(const std::string& str, uint64_t key1, uint64_t key2)
@@ -2058,10 +2051,6 @@ static int probe_dtz_no_ep(Position& pos, int *success)
         return best;
     }
 }
-
-static int wdl_to_dtz[] = {
-    -1, -101, 0, 101, 1
-};
 
 // Probe the DTZ table for a particular position.
 // If *success != 0, the probe was successful.
