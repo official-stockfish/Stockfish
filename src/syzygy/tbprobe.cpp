@@ -1776,7 +1776,7 @@ WDLScore probe_ab(Position& pos, WDLScore alpha, WDLScore beta, int *success)
 
 } // namespace
 
-void Tablebases::init(const std::string& paths)
+void Tablebases::free()
 {
     for (int i = 0; i < TBnum_piece; ++i)
         free_wdl_entry(&TB_piece[i]);
@@ -1794,6 +1794,12 @@ void Tablebases::init(const std::string& paths)
 
     TBnum_piece = TBnum_pawn = 0;
     MaxCardinality = 0;
+}
+
+void Tablebases::init(const std::string& paths)
+{
+
+    Tablebases::free();
     TBPaths = paths;
 
     if (TBPaths.empty() || TBPaths == "<empty>")
@@ -2373,4 +2379,3 @@ bool Tablebases::root_probe_wdl(Position& pos, Search::RootMoves& rootMoves, Val
 
     return true;
 }
-

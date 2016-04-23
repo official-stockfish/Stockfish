@@ -41,12 +41,13 @@ int main(int argc, char* argv[]) {
   Search::init();
   Eval::init();
   Pawns::init();
-  Threads.init();
   Tablebases::init(Options["SyzygyPath"]);
   TT.resize(Options["Hash"]);
+  Threads.init();
 
   UCI::loop(argc, argv);
 
   Threads.exit();
+  Tablebases::free();
   return 0;
 }
