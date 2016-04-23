@@ -388,6 +388,20 @@ class HashTable {
 
     Entry table[1 << TBHASHBITS][HSHMAX];
 
+    void insert(Key key, TBEntry* ptr) {
+        Entry* entry = table[key >> (64 - TBHASHBITS)];
+
+        for (int i = 0; i < HSHMAX; ++i, ++entry)
+            if (!entry->ptr || entry->key == key) {
+                entry->key = key;
+                entry->ptr = ptr;
+                return;
+            }
+
+        std::cerr << "HSHMAX too low!" << std::endl;
+        exit(1);
+    }
+
 public:
   TBEntry* operator[](Key key) {
       Entry* entry = table[key >> (64 - TBHASHBITS)];
@@ -399,21 +413,8 @@ public:
       return nullptr;
   }
 
-  void insert(TBEntry* ptr, Key key) {
-      Entry* entry = table[key >> (64 - TBHASHBITS)];
-
-      for (int i = 0; i < HSHMAX; ++i, ++entry)
-          if (!entry->ptr) {
-              entry->key = key;
-              entry->ptr = ptr;
-              return;
-          }
-
-      std::cerr << "HSHMAX too low!" << std::endl;
-      exit(1);
-  }
-
   void clear() { std::memset(table, 0, sizeof(table)); }
+  void insert(const std::vector<PieceType>& pieces);
 };
 
 HashTable TBHash;
@@ -519,22 +520,6 @@ Key get_key(Position& pos, bool mirror)
     return key;
 }
 
-// Produce a 64-bit material key corresponding to the material combination
-// defined by pcs[16], where pcs[1], ..., pcs[6] is the number of white
-// pawns, ..., kings and pcs[9], ..., pcs[14] is the number of black
-// pawns, ..., kings.
-Key get_key(uint8_t* pcs, bool mirror)
-{
-    Key key = 0;
-
-    for (Color c = WHITE; c <= BLACK; ++c)
-        for (PieceType pt = PAWN; pt <= KING; ++pt)
-            for (int cnt = 0; cnt < pcs[8 * (c ^ mirror) + pt]; ++cnt)
-                key ^= Zobrist::psq[c][pt][cnt];
-
-    return key;
-}
-
 // Given a position with 6 or fewer pieces, produce a text string
 // of the form KQPvKRP, where "KQP" represents the white pieces if
 // mirror == false and the black pieces if mirror == true.
@@ -582,38 +567,31 @@ void free_dtz_entry(TBEntry* entry)
     free(entry);
 }
 
-void init_tb(const std::vector<PieceType>& pieces)
+void HashTable::insert(const std::vector<PieceType>& pieces)
 {
     TBEntry* entry;
-    std::string fname;
-    Color c = BLACK;
-    uint8_t pcs[PIECE_NB] = {0};
-    int num = 0;
+    StateInfo st;
+    Position pos;
+    std::string code;
 
-    for (PieceType pt : pieces) {
-        if (pt == KING) {
-            c = ~c;
+    for (PieceType pt : pieces)
+        code += PieceChar[pt];
 
-            if (!fname.empty())
-                fname += 'v';
-        }
-
-        ++pcs[make_piece(c, pt)];
-        ++num;
-        fname += PieceChar[pt];
-    }
-
-    TBFile f(fname + ".rtbw");
+    int bk = code.find('K', 1); // Black king
+    TBFile f(code.substr(0, bk) + 'v' + code.substr(bk) + ".rtbw");
 
     if (!f.is_open())
         return;
 
     f.close();
 
+    pos.set(code, WHITE, &st);
+
+    int num = pos.count<ALL_PIECES>(WHITE) + pos.count<ALL_PIECES>(BLACK);
+    bool hasPawns = pos.count<PAWN>(WHITE) + pos.count<PAWN>(BLACK);
+
     if (num > Tablebases::MaxCardinality)
         Tablebases::MaxCardinality = num;
-
-    bool hasPawns = pcs[W_PAWN] + pcs[B_PAWN];
 
     if (hasPawns) {
         if (TBnum_pawn == TBMAX_PAWN) {
@@ -622,14 +600,16 @@ void init_tb(const std::vector<PieceType>& pieces)
         }
 
         TBEntry_pawn* ptr = &TB_pawn[TBnum_pawn++];
-        ptr->pawns[0] = pcs[W_PAWN];
-        ptr->pawns[1] = pcs[B_PAWN];
 
         // FIXME: What it means this one?
-        if (    pcs[B_PAWN] > 0
-            && (pcs[W_PAWN] == 0 || pcs[B_PAWN] < pcs[W_PAWN])) {
-            ptr->pawns[0] = pcs[B_PAWN];
-            ptr->pawns[1] = pcs[W_PAWN];
+        if (   !pos.count<PAWN>(BLACK)
+            || (   pos.count<PAWN>(WHITE)
+                && pos.count<PAWN>(BLACK) >= pos.count<PAWN>(WHITE))) {
+            ptr->pawns[0] = pos.count<PAWN>(WHITE);
+            ptr->pawns[1] = pos.count<PAWN>(BLACK);
+        } else {
+            ptr->pawns[0] = pos.count<PAWN>(BLACK);
+            ptr->pawns[1] = pos.count<PAWN>(WHITE);
         }
 
         entry = (TBEntry*)ptr;
@@ -642,23 +622,24 @@ void init_tb(const std::vector<PieceType>& pieces)
         TBEntry_piece* ptr = &TB_piece[TBnum_piece++];
         int uniquePieces = 0;
 
-        for (auto n : pcs)
-            if (n == 1)
-                ++uniquePieces;
+        for (PieceType pt = PAWN; pt <= KING; ++pt)
+            uniquePieces +=  (popcount(pos.pieces(WHITE, pt)) == 1)
+                           + (popcount(pos.pieces(BLACK, pt)) == 1);
 
         if (uniquePieces >= 3)
             ptr->enc_type = 0;
         else {
             // W_KING and B_KING are the only unique pieces
             assert(uniquePieces == 2);
+
             ptr->enc_type = 2;
         }
 
         entry = (TBEntry*)ptr;
     }
 
-    Key key1 = get_key(pcs, 0);
-    Key key2 = get_key(pcs, 1);
+    Key key1 = pos.material_key();
+    Key key2 = pos.set(code, BLACK, &st).material_key();
 
     entry->key = key1;
     entry->ready = 0;
@@ -666,10 +647,8 @@ void init_tb(const std::vector<PieceType>& pieces)
     entry->symmetric = (key1 == key2);
     entry->has_pawns = hasPawns;
 
-    TBHash.insert(entry, key1);
-
-    if (key2 != key1) // Asymmetric distribution
-        TBHash.insert(entry, key2);
+    insert(key1, entry);
+    insert(key2, entry);
 }
 
 uint64_t encode_piece(TBEntry_piece* ptr, uint8_t* norm, int* pos, int* factor)
@@ -1822,28 +1801,28 @@ void Tablebases::init(const std::string& paths)
     }
 
     for (PieceType p1 = PAWN; p1 < KING; ++p1) {
-        init_tb({KING, p1, KING});
+        TBHash.insert({KING, p1, KING});
 
         for (PieceType p2 = PAWN; p2 <= p1; ++p2) {
-            init_tb({KING, p1, p2, KING});
-            init_tb({KING, p1, KING, p2});
+            TBHash.insert({KING, p1, p2, KING});
+            TBHash.insert({KING, p1, KING, p2});
 
             for (PieceType p3 = PAWN; p3 < KING; ++p3)
-                init_tb({KING, p1, p2, KING, p3});
+                TBHash.insert({KING, p1, p2, KING, p3});
 
             for (PieceType p3 = PAWN; p3 <= p2; ++p3) {
-                init_tb({KING, p1, p2, p3, KING});
+                TBHash.insert({KING, p1, p2, p3, KING});
 
                 for (PieceType p4 = PAWN; p4 <= p3; ++p4)
-                    init_tb({KING, p1, p2, p3, p4, KING});
+                    TBHash.insert({KING, p1, p2, p3, p4, KING});
 
                 for (PieceType p4 = PAWN; p4 < KING; ++p4)
-                    init_tb({KING, p1, p2, p3, KING, p4});
+                    TBHash.insert({KING, p1, p2, p3, KING, p4});
             }
 
             for (PieceType p3 = PAWN; p3 <= p1; ++p3)
                 for (PieceType p4 = PAWN; p4 <= (p1 == p3 ? p2 : p3); ++p4)
-                    init_tb({KING, p1, p2, KING, p3, p4});
+                    TBHash.insert({KING, p1, p2, KING, p3, p4});
         }
     }
 
