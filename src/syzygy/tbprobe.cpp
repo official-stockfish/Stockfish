@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <cstring>   // For std::memset
 #include <deque>
+#include <list>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -148,7 +149,7 @@ struct DTZEntry_pawn {
     uint8_t *map;
 };
 
-struct DTZTableEntry {
+struct DTZEntry {
     uint64_t key1;
     uint64_t key2;
     TBEntry *entry;
@@ -345,15 +346,13 @@ const Value WDL_to_value[] = {
     VALUE_MATE - MAX_PLY - 1
 };
 
-const int DTZ_ENTRIES = 64;
-
 const std::string PieceChar = " PNBRQK";
 
 Mutex TB_mutex;
 std::string TBPaths;
 std::deque<TBEntry_piece> TB_piece;
 std::deque<TBEntry_pawn> TB_pawn;
-DTZTableEntry DTZ_table[DTZ_ENTRIES];
+std::list<DTZEntry> DTZ_list;
 
 int Binomial[5][64];
 int Pawnidx[5][24];
@@ -446,7 +445,7 @@ public:
         int fd = ::open(fname.c_str(), O_RDONLY);
         fstat(fd, &statbuf);
         *mapping = statbuf.st_size;
-        char* data = (char*)mmap(NULL, statbuf.st_size, PROT_READ, MAP_SHARED, fd, 0);
+        char* data = (char*)mmap(nullptr, statbuf.st_size, PROT_READ, MAP_SHARED, fd, 0);
         ::close(fd);
 
         if (data == (char*)(-1)) {
@@ -454,11 +453,11 @@ public:
             exit(1);
         }
 #else
-        HANDLE fd = CreateFile(fname.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL,
-                               OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+        HANDLE fd = CreateFile(fname.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr,
+                               OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
         DWORD size_high;
         DWORD size_low = GetFileSize(fd, &size_high);
-        HANDLE mmap = CreateFileMapping(fd, NULL, PAGE_READONLY, size_high, size_low, NULL);
+        HANDLE mmap = CreateFileMapping(fd, nullptr, PAGE_READONLY, size_high, size_low, nullptr);
         CloseHandle(fd);
 
         if (!mmap) {
@@ -518,35 +517,35 @@ std::string file_name(const Position& pos, bool mirror)
     return mirror ? b + 'v' + w : w + 'v' + b;
 }
 
-void free_wdl_entry(TBEntry_piece* entry)
+void free_wdl_entry(TBEntry_piece& entry)
 {
-    TBFile::unmap(entry->data, entry->mapping);
+    TBFile::unmap(entry.data, entry.mapping);
 
-    free(entry->precomp[0]);
-    free(entry->precomp[1]);
+    free(entry.precomp[0]);
+    free(entry.precomp[1]);
 }
 
-void free_wdl_entry(TBEntry_pawn* entry)
+void free_wdl_entry(TBEntry_pawn& entry)
 {
-    TBFile::unmap(entry->data, entry->mapping);
+    TBFile::unmap(entry.data, entry.mapping);
 
     for (File f = FILE_A; f <= FILE_D; ++f) {
-        free(entry->file[f].precomp[0]);
-        free(entry->file[f].precomp[1]);
+        free(entry.file[f].precomp[0]);
+        free(entry.file[f].precomp[1]);
     }
 }
 
-void free_dtz_entry(TBEntry* entry)
+void free_dtz_entry(DTZEntry& e)
 {
-    TBFile::unmap(entry->data, entry->mapping);
+    TBFile::unmap(e.entry->data, e.entry->mapping);
 
-    if (!entry->has_pawns)
-        free(((DTZEntry_piece*)entry)->precomp);
+    if (!e.entry->has_pawns)
+        free(((DTZEntry_piece*)e.entry)->precomp);
     else
         for (File f = FILE_A; f <= FILE_D; ++f)
-            free(((DTZEntry_pawn*)entry)->file[f].precomp);
+            free(((DTZEntry_pawn*)e.entry)->file[f].precomp);
 
-    free(entry);
+    free(e.entry);
 }
 
 void HashTable::insert(const std::vector<PieceType>& pieces)
@@ -1085,7 +1084,7 @@ int init_table_wdl(TBEntry *entry, const std::string& fname)
             ptr->precomp[1] = setup_pairs(data, tb_size[1], &size[3], &next, &flags, 1);
             data = next;
         } else
-            ptr->precomp[1] = NULL;
+            ptr->precomp[1] = nullptr;
 
         ptr->precomp[0]->indextable = (char *)data;
         data += size[0];
@@ -1130,7 +1129,7 @@ int init_table_wdl(TBEntry *entry, const std::string& fname)
                 ptr->file[f].precomp[1] = setup_pairs(data, tb_size[2 * f + 1], &size[6 * f + 3], &next, &flags, 1);
                 data = next;
             } else
-                ptr->file[f].precomp[1] = NULL;
+                ptr->file[f].precomp[1] = nullptr;
         }
 
         for (File f = FILE_A; f <= maxFile; ++f) {
@@ -1374,9 +1373,9 @@ int decompress_pairs(PairsData* d, uint64_t idx)
 
 void load_dtz_table(const std::string& fname, uint64_t key1, uint64_t key2)
 {
-    DTZ_table[0].key1 = key1;
-    DTZ_table[0].key2 = key2;
-    DTZ_table[0].entry = NULL;
+    DTZ_list.front().key1 = key1;
+    DTZ_list.front().key2 = key2;
+    DTZ_list.front().entry = nullptr;
 
     TBEntry* ptr = TBHash[key1];
 
@@ -1407,7 +1406,7 @@ void load_dtz_table(const std::string& fname, uint64_t key1, uint64_t key2)
     if (!init_table_dtz(ptr3))
         free(ptr3);
     else
-        DTZ_table[0].entry = ptr3;
+        DTZ_list.front().entry = ptr3;
 }
 
 WDLScore probe_wdl_table(Position& pos, int* success)
@@ -1505,39 +1504,33 @@ int probe_dtz_table(const Position& pos, int wdl, int *success)
 
     Key key = pos.material_key();
 
-    if (DTZ_table[0].key1 != key && DTZ_table[0].key2 != key) {
-        for (i = 1; i < DTZ_ENTRIES; ++i)
-            if (DTZ_table[i].key1 == key)
+    // Enforce "Least Recently Used" (LRU) order for DTZ_list
+    if (   DTZ_list.front().key1 != key
+        && DTZ_list.front().key2 != key) {
+
+        for (auto it = DTZ_list.begin(); it != DTZ_list.end(); ++it)
+            if (it->key1 == key) {
+                DTZ_list.push_front(*it);
+                DTZ_list.erase(it);
                 break;
+            }
 
-        if (i < DTZ_ENTRIES) {
-            DTZTableEntry table_entry = DTZ_table[i];
-
-            for (; i > 0; --i)
-                DTZ_table[i] = DTZ_table[i - 1];
-
-            DTZ_table[0] = table_entry;
-        } else {
+        if (DTZ_list.front().key1 != key) { // Still not found
             TBEntry* ptr = TBHash[key];
             if (!ptr) {
                 *success = 0;
                 return 0;
             }
 
+            DTZ_list.push_front(DTZEntry());
+
             bool mirror = (ptr->key != key);
-
-            if (DTZ_table[DTZ_ENTRIES - 1].entry)
-                free_dtz_entry(DTZ_table[DTZ_ENTRIES-1].entry);
-
-            for (i = DTZ_ENTRIES - 1; i > 0; --i)
-                DTZ_table[i] = DTZ_table[i - 1];
-
             std::string fname = file_name(pos, mirror) + ".rtbz";
             load_dtz_table(fname, get_key(pos, mirror), get_key(pos, !mirror));
         }
     }
 
-    TBEntry* ptr = DTZ_table[0].entry;
+    TBEntry* ptr = DTZ_list.front().entry;
 
     if (!ptr) {
         *success = 0;
@@ -1721,7 +1714,7 @@ int probe_dtz_no_ep(Position& pos, int *success)
         return wdl == WDLHardWin ? 1 : 101;
 
     ExtMove stack[MAX_MOVES];
-    ExtMove *moves, *end = NULL;
+    ExtMove *moves, *end = nullptr;
     StateInfo st;
     CheckInfo ci(pos);
 
@@ -1940,18 +1933,16 @@ int probe_dtz(Position& pos, int *success)
 
 void Tablebases::free()
 {
-    for (size_t i = 0; i < TB_piece.size(); ++i)
-        free_wdl_entry(&TB_piece[i]);
+    for (auto& e : TB_piece)
+        free_wdl_entry(e);
 
-    for (size_t i = 0; i < TB_pawn.size(); ++i)
-        free_wdl_entry(&TB_pawn[i]);
+    for (auto& e : TB_pawn)
+        free_wdl_entry(e);
 
-    for (int i = 0; i < DTZ_ENTRIES; ++i)
-        if (DTZ_table[i].entry) {
-            free_dtz_entry(DTZ_table[i].entry);
-            DTZ_table[i].entry = nullptr;
-        }
+    for (auto& e : DTZ_list)
+        free_dtz_entry(e);
 
+    DTZ_list.clear();
     TB_piece.clear();
     TB_pawn.clear();
     TBHash.clear();
