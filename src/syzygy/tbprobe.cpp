@@ -54,6 +54,94 @@ inline WDLScore operator+(WDLScore d1, WDLScore d2) { return WDLScore(int(d1) + 
 inline Square operator^=(Square& s, int i) { return s = Square(int(s) ^ i); }
 inline Square operator^(Square s, int i) { return Square(int(s) ^ i); }
 
+std::string TBPaths;
+
+class TBFile : public std::ifstream {
+
+    std::string fname;
+
+public:
+    // Open the file with the given name found among the TBPaths. TBPaths stores
+    // the paths to directories where the .rtbw and .rtbz files can be found.
+    // Multiple directories are separated by ";" on Windows and by ":" on
+    // Unix-based operating systems.
+    //
+    // Example:
+    // C:\tb\wdl345;C:\tb\wdl6;D:\tb\dtz345;D:\tb\dtz6
+    TBFile(const std::string& f) {
+
+#ifndef _WIN32
+        const char SepChar = ':';
+#else
+        const char SepChar = ';';
+#endif
+        std::stringstream ss(TBPaths);
+        std::string path;
+
+        while (std::getline(ss, path, SepChar)) {
+            fname = path + "/" + f;
+            std::ifstream::open(fname);
+
+            if (is_open())
+                return;
+        }
+    }
+
+    // Memory map the file. File is closed after mapping
+    char* map(uint64_t* mapping) {
+
+        assert(is_open());
+
+        close();
+
+#ifndef _WIN32
+        struct stat statbuf;
+        int fd = ::open(fname.c_str(), O_RDONLY);
+        fstat(fd, &statbuf);
+        *mapping = statbuf.st_size;
+        char* data = (char*)mmap(NULL, statbuf.st_size, PROT_READ, MAP_SHARED, fd, 0);
+        ::close(fd);
+
+        if (data == (char*)(-1)) {
+            std::cerr << "Could not mmap() " << fname << std::endl;
+            exit(1);
+        }
+#else
+        HANDLE fd = CreateFile(fname.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL,
+                               OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+        DWORD size_high;
+        DWORD size_low = GetFileSize(fd, &size_high);
+        HANDLE mmap = CreateFileMapping(fd, NULL, PAGE_READONLY, size_high, size_low, NULL);
+        CloseHandle(fd);
+
+        if (!mmap) {
+            std::cerr << "CreateFileMapping() failed" << std::endl;
+            exit(1);
+        }
+
+        *mapping = (uint64_t)mmap;
+        char* data = (char*)MapViewOfFile(mmap, FILE_MAP_READ, 0, 0, 0);
+
+        if (!data) {
+            std::cerr << "MapViewOfFile() failed, name = " << fname
+                      << ", error = " << GetLastError() << std::endl;
+            exit(1);
+        }
+#endif
+        return data;
+    }
+
+    static void unmap(char* data, uint64_t mapping) {
+
+#ifndef _WIN32
+        munmap(data, mapping);
+#else
+        UnmapViewOfFile(data);
+        CloseHandle((HANDLE)mapping);
+#endif
+    }
+};
+
 struct PairsData {
     char *indextable;
     uint16_t *sizetable;
@@ -90,6 +178,15 @@ struct TBEntry_piece {
     int factor[2][TBPIECES];
     uint8_t pieces[2][TBPIECES];
     uint8_t norm[2][TBPIECES];
+
+    ~TBEntry_piece() {
+        if (key) { // HACK: because destruction of TB_piece[] may go beyond TBnum_piece
+            TBFile::unmap(data, mapping);
+
+            free(precomp[0]);
+            free(precomp[1]);
+        }
+    }
 };
 
 struct TBEntry_pawn {
@@ -107,6 +204,17 @@ struct TBEntry_pawn {
         uint8_t pieces[2][TBPIECES];
         uint8_t norm[2][TBPIECES];
     } file[4];
+
+    ~TBEntry_pawn() {
+        if (key) { // HACK: because destruction of TB_pawn[] may go beyond TBnum_pawn
+            TBFile::unmap(data, mapping);
+
+            for (File f = FILE_A; f <= FILE_D; ++f) {
+                free(file[f].precomp[0]);
+                free(file[f].precomp[1]);
+            }
+        }
+    }
 };
 
 struct DTZEntry_piece {
@@ -364,7 +472,6 @@ const std::string PieceChar = " PNBRQK";
 int TBnum_piece;
 int TBnum_pawn;
 Mutex TB_mutex;
-std::string TBPaths;
 TBEntry_piece TB_piece[TBMAX_PIECE];
 TBEntry_pawn TB_pawn[TBMAX_PAWN];
 DTZTableEntry DTZ_table[DTZ_ENTRIES];
@@ -416,93 +523,6 @@ public:
 
 HashTable TBHash;
 
-
-class TBFile : public std::ifstream {
-
-    std::string fname;
-
-public:
-    // Open the file with the given name found among the TBPaths. TBPaths stores
-    // the paths to directories where the .rtbw and .rtbz files can be found.
-    // Multiple directories are separated by ";" on Windows and by ":" on
-    // Unix-based operating systems.
-    //
-    // Example:
-    // C:\tb\wdl345;C:\tb\wdl6;D:\tb\dtz345;D:\tb\dtz6
-    TBFile(const std::string& f) {
-
-#ifndef _WIN32
-        const char SepChar = ':';
-#else
-        const char SepChar = ';';
-#endif
-        std::stringstream ss(TBPaths);
-        std::string path;
-
-        while (std::getline(ss, path, SepChar)) {
-            fname = path + "/" + f;
-            std::ifstream::open(fname);
-
-            if (is_open())
-                return;
-        }
-    }
-
-    // Memory map the file. File is closed after mapping
-    char* map(uint64_t* mapping) {
-
-        assert(is_open());
-
-        close();
-
-#ifndef _WIN32
-        struct stat statbuf;
-        int fd = ::open(fname.c_str(), O_RDONLY);
-        fstat(fd, &statbuf);
-        *mapping = statbuf.st_size;
-        char* data = (char*)mmap(NULL, statbuf.st_size, PROT_READ, MAP_SHARED, fd, 0);
-        ::close(fd);
-
-        if (data == (char*)(-1)) {
-            std::cerr << "Could not mmap() " << fname << std::endl;
-            exit(1);
-        }
-#else
-        HANDLE fd = CreateFile(fname.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL,
-                               OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-        DWORD size_high;
-        DWORD size_low = GetFileSize(fd, &size_high);
-        HANDLE mmap = CreateFileMapping(fd, NULL, PAGE_READONLY, size_high, size_low, NULL);
-        CloseHandle(fd);
-
-        if (!mmap) {
-            std::cerr << "CreateFileMapping() failed" << std::endl;
-            exit(1);
-        }
-
-        *mapping = (uint64_t)mmap;
-        char* data = (char*)MapViewOfFile(mmap, FILE_MAP_READ, 0, 0, 0);
-
-        if (!data) {
-            std::cerr << "MapViewOfFile() failed, name = " << fname
-                      << ", error = " << GetLastError() << std::endl;
-            exit(1);
-        }
-#endif
-        return data;
-    }
-
-    static void unmap(char* data, uint64_t mapping) {
-
-#ifndef _WIN32
-        munmap(data, mapping);
-#else
-        UnmapViewOfFile(data);
-        CloseHandle((HANDLE)mapping);
-#endif
-    }
-};
-
 // Given a position, produce a 64-bit material signature key. If the engine
 // supports such a key, it should equal the engine's key.
 Key get_key(Position& pos, bool mirror)
@@ -530,24 +550,6 @@ std::string file_name(const Position& pos, bool mirror)
     }
 
     return mirror ? b + 'v' + w : w + 'v' + b;
-}
-
-void free_wdl_entry(TBEntry_piece* entry)
-{
-    TBFile::unmap(entry->data, entry->mapping);
-
-    free(entry->precomp[0]);
-    free(entry->precomp[1]);
-}
-
-void free_wdl_entry(TBEntry_pawn* entry)
-{
-    TBFile::unmap(entry->data, entry->mapping);
-
-    for (File f = FILE_A; f <= FILE_D; ++f) {
-        free(entry->file[f].precomp[0]);
-        free(entry->file[f].precomp[1]);
-    }
 }
 
 void free_dtz_entry(TBEntry* entry)
@@ -1731,12 +1733,6 @@ WDLScore probe_ab(Position& pos, WDLScore alpha, WDLScore beta, int *success)
 
 void Tablebases::free()
 {
-    for (int i = 0; i < TBnum_piece; ++i)
-        free_wdl_entry(&TB_piece[i]);
-
-    for (int i = 0; i < TBnum_pawn; ++i)
-        free_wdl_entry(&TB_pawn[i]);
-
     for (int i = 0; i < DTZ_ENTRIES; ++i)
         if (DTZ_table[i].entry) {
             free_dtz_entry(DTZ_table[i].entry);
@@ -1751,7 +1747,6 @@ void Tablebases::free()
 
 void Tablebases::init(const std::string& paths)
 {
-
     Tablebases::free();
     TBPaths = paths;
 
