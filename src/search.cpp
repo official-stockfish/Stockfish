@@ -1006,6 +1006,11 @@ moves_loop: // When in check search starts from here
           Depth r = reduction<PvNode>(improving, depth, moveCount);
           Value hValue = thisThread->history[pos.piece_on(to_sq(move))][to_sq(move)];
           Value cmhValue = cmh[pos.piece_on(to_sq(move))][to_sq(move)];
+          
+          const CounterMoveStats* fm = (ss - 2)->counterMoves;
+          const CounterMoveStats* fm2 = (ss - 4)->counterMoves;
+          Value fmValue = (fm ? (*fm)[pos.piece_on(to_sq(move))][to_sq(move)] : VALUE_ZERO);
+          Value fm2Value = (fm2 ? (*fm2)[pos.piece_on(to_sq(move))][to_sq(move)] : VALUE_ZERO);
 
           // Increase reduction for cut nodes and moves with a bad history
           if (   (!PvNode && cutNode)
@@ -1013,7 +1018,7 @@ moves_loop: // When in check search starts from here
               r += ONE_PLY;
 
           // Decrease/increase reduction for moves with a good/bad history
-          int rHist = (hValue + cmhValue) / 14980;
+          int rHist = (hValue + cmhValue + fmValue + fm2Value) / 20000;
           r = std::max(DEPTH_ZERO, r - rHist * ONE_PLY);
 
           // Decrease reduction for moves that escape a capture. Filter out

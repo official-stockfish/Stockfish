@@ -523,8 +523,7 @@ bool Position::legal(Move m, Bitboard pinned) const {
 
   // A non-king move is legal if and only if it is not pinned or it
   // is moving along the ray towards or away from the king.
-  return   !pinned
-        || !(pinned & from)
+  return   !(pinned & from)
         ||  aligned(from, to_sq(m), square<KING>(us));
 }
 
@@ -617,8 +616,7 @@ bool Position::gives_check(Move m, const CheckInfo& ci) const {
       return true;
 
   // Is there a discovered check?
-  if (    ci.dcCandidates
-      && (ci.dcCandidates & from)
+  if (   (ci.dcCandidates & from)
       && !aligned(from, to, ci.ksq))
       return true;
 

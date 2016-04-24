@@ -234,7 +234,7 @@ namespace {
     {
         ei.kingRing[Them] = b | shift_bb<Down>(b);
         b &= ei.attackedBy[Us][PAWN];
-        ei.kingAttackersCount[Us] = b ? popcount(b) : 0;
+        ei.kingAttackersCount[Us] = popcount(b);
         ei.kingAdjacentZoneAttacksCount[Us] = ei.kingAttackersWeight[Us] = 0;
     }
     else
@@ -276,9 +276,7 @@ namespace {
         {
             ei.kingAttackersCount[Us]++;
             ei.kingAttackersWeight[Us] += KingAttackWeights[Pt];
-            bb = b & ei.attackedBy[Them][KING];
-            if (bb)
-                ei.kingAdjacentZoneAttacksCount[Us] += popcount(bb);
+            ei.kingAdjacentZoneAttacksCount[Us] += popcount(b & ei.attackedBy[Them][KING]);
         }
 
         if (Pt == QUEEN)
@@ -331,11 +329,7 @@ namespace {
         {
             // Bonus for aligning with enemy pawns on the same rank/file
             if (relative_rank(Us, s) >= RANK_5)
-            {
-                Bitboard alignedPawns = pos.pieces(Them, PAWN) & PseudoAttacks[ROOK][s];
-                if (alignedPawns)
-                    score += RookOnPawn * popcount(alignedPawns);
-            }
+                score += RookOnPawn * popcount(pos.pieces(Them, PAWN) & PseudoAttacks[ROOK][s]);
 
             // Bonus when on an open or semi-open file
             if (ei.pi->semiopen_file(Us, file_of(s)))
@@ -417,8 +411,7 @@ namespace {
                 | ei.attackedBy[Them][BISHOP] | ei.attackedBy[Them][ROOK]
                 | ei.attackedBy[Them][KING];
 
-            if (b)
-                attackUnits += QueenContactCheck * popcount(b);
+            attackUnits += QueenContactCheck * popcount(b);
         }
 
         // Analyse the enemy's safe distance checks for sliders and knights
@@ -514,9 +507,7 @@ namespace {
         while (b)
             score += Threat[Rook ][type_of(pos.piece_on(pop_lsb(&b)))];
 
-        b = weak & ~ei.attackedBy[Them][ALL_PIECES];
-        if (b)
-            score += Hanging * popcount(b);
+        score += Hanging * popcount(weak & ~ei.attackedBy[Them][ALL_PIECES]);
 
         b = weak & ei.attackedBy[Us][KING];
         if (b)
@@ -535,8 +526,7 @@ namespace {
        &  pos.pieces(Them)
        & ~ei.attackedBy[Us][PAWN];
 
-    if (b)
-        score += ThreatByPawnPush * popcount(b);
+    score += ThreatByPawnPush * popcount(b);
 
     if (DoTrace)
         Trace::add(THREAT, Us, score);
