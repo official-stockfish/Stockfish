@@ -13,8 +13,6 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
-#include <stdlib.h>
-#include <string.h>
 
 #include "../bitboard.h"
 #include "../movegen.h"
@@ -234,10 +232,6 @@ const uint8_t Invflap[] = {
      9, 17, 25, 33, 41, 49,
     10, 18, 26, 34, 42, 50,
     11, 19, 27, 35, 43, 51
-};
-
-const uint8_t file_to_file[] = { // TODO: Remove it
-    0, 1, 2, 3, 3, 2, 1, 0
 };
 
 const short KK_idx[10][64] = {
@@ -548,7 +542,7 @@ void free_wdl_entry(TBEntry_pawn* entry)
 {
     TBFile::unmap(entry->data, entry->mapping);
 
-    for (int f = 0; f < 4; ++f) {
+    for (File f = FILE_A; f <= FILE_D; ++f) {
         free(entry->file[f].precomp[0]);
         free(entry->file[f].precomp[1]);
     }
@@ -561,7 +555,7 @@ void free_dtz_entry(TBEntry* entry)
     if (!entry->has_pawns)
         free(((DTZEntry_piece*)entry)->precomp);
     else
-        for (int f = 0; f < 4; ++f)
+        for (File f = FILE_A; f <= FILE_D; ++f)
             free(((DTZEntry_pawn*)entry)->file[f].precomp);
 
     free(entry);
@@ -719,11 +713,13 @@ uint64_t encode_piece(TBEntry_piece* ptr, uint8_t* norm, int* pos, int* factor)
 }
 
 // determine file of leftmost pawn and sort pawns
-int pawn_file(TBEntry_pawn *ptr, int *pos)
+File pawn_file(TBEntry_pawn *ptr, int *pos)
 {
-    int i;
+    static const File file_to_file[] = {
+        FILE_A, FILE_B, FILE_C, FILE_D, FILE_D, FILE_C, FILE_B, FILE_A
+    };
 
-    for (i = 1; i < ptr->pawns[0]; ++i)
+    for (int i = 1; i < ptr->pawns[0]; ++i)
         if (Flap[pos[0]] > Flap[pos[i]])
             std::swap(pos[0], pos[i]);
 
@@ -802,63 +798,65 @@ int subfactor(int k, int n)
 {
     assert(n > 0 && k > 0 && k <= n);
 
-    int f = n;
-    int l = 1;
+    int numerator = n;
+    int denominator = 1;
 
     for (int i = 1; i < k; ++i) {
-        f *= n - i;
-        l *= i + 1;
+        numerator *= n - i;
+        denominator *= i + 1;
     }
 
-    return f / l;
+    return numerator / denominator;
 }
 
 uint64_t calc_factors_piece(int *factor, int num, int order, uint8_t *norm, uint8_t hasUniquePieces)
 {
     int n = 64 - norm[0];
-    uint64_t f = 1;
+    uint64_t result = 1;
 
     for (int i = norm[0], k = 0; i < num || k == order; ++k) {
         if (k == order) {
-            factor[0] = (int)f;
-            f *= hasUniquePieces ? 31332 : 462;
+            factor[0] = (int)result;
+            result *= hasUniquePieces ? 31332 : 462;
         } else {
-            factor[i] = (int)f;
-            f *= subfactor(norm[i], n);
+            factor[i] = (int)result;
+            result *= subfactor(norm[i], n);
             n -= norm[i];
             i += norm[i];
         }
     }
 
-    return f;
+    return result;
 }
 
-uint64_t calc_factors_pawn(int *factor, int num, int order, int order2, uint8_t *norm, int file)
+uint64_t calc_factors_pawn(int *factor, int num, int order, int order2, uint8_t *norm, File f)
 {
+    assert(FILE_A <= f && f <= FILE_D);
+
     int i = norm[0];
 
     if (order2 < 0x0f)
         i += norm[i];
 
     int n = 64 - i;
-    uint64_t f = 1;
+    uint64_t result = 1;
 
     for (int k = 0; i < num || k == order || k == order2; ++k) {
         if (k == order) {
-            factor[0] = (int)(f);
-            f *= Pfactor[norm[0] - 1][file];
+            factor[0] = (int)result;
+            result *= Pfactor[norm[0] - 1][f];
         } else if (k == order2) {
-            factor[norm[0]] = (int)(f);
-            f *= subfactor(norm[norm[0]], 48 - norm[0]);
+            factor[norm[0]] = (int)result;
+            result *= subfactor(norm[norm[0]], 48 - norm[0]);
         } else {
-            factor[i] = (int)(f);
-            f *= subfactor(norm[i], n);
+            factor[i] = (int)result;
+            result *= subfactor(norm[i], n);
             n -= norm[i];
             i += norm[i];
         }
     }
 
-    return f;
+    return result;
 }
 
 void set_norm_piece(TBEntry_piece *ptr, uint8_t *norm, uint8_t *pieces)
@@ -913,27 +911,23 @@ void setup_pieces_piece(TBEntry_piece *ptr, unsigned char *data, uint64_t *tb_si
 
 void setup_pieces_piece_dtz(DTZEntry_piece *ptr, unsigned char *data, uint64_t *tb_size)
 {
-    int i;
-    int order;
-
-    for (i = 0; i < ptr->num; ++i)
+    for (int i = 0; i < ptr->num; ++i)
         ptr->pieces[i] = uint8_t(data[i + 1] & 0x0f);
 
-    order = data[0] & 0x0f;
+    int order = data[0] & 0x0f;
     set_norm_piece((TBEntry_piece *)ptr, ptr->norm, ptr->pieces);
     tb_size[0] = calc_factors_piece(ptr->factor, ptr->num, order, ptr->norm, ptr->hasUniquePieces);
 }
 
-void setup_pieces_pawn(TBEntry_pawn *ptr, unsigned char *data, uint64_t *tb_size, int f)
+void setup_pieces_pawn(TBEntry_pawn *ptr, unsigned char *data, uint64_t *tb_size, File f)
 {
-    int i, j;
-    int order, order2;
+    assert(FILE_A <= f && f <= FILE_D);
 
-    j = 1 + (ptr->pawns[1] > 0);
-    order = data[0] & 0x0f;
-    order2 = ptr->pawns[1] ? (data[1] & 0x0f) : 0x0f;
+    int j = 1 + (ptr->pawns[1] > 0);
+    int order = data[0] & 0x0f;
+    int order2 = ptr->pawns[1] ? (data[1] & 0x0f) : 0x0f;
 
-    for (i = 0; i < ptr->num; ++i)
+    for (int i = 0; i < ptr->num; ++i)
         ptr->file[f].pieces[0][i] = uint8_t(data[i + j] & 0x0f);
 
     set_norm_pawn(ptr, ptr->file[f].norm[0], ptr->file[f].pieces[0]);
@@ -942,23 +936,22 @@ void setup_pieces_pawn(TBEntry_pawn *ptr, unsigned char *data, uint64_t *tb_size
     order = data[0] >> 4;
     order2 = ptr->pawns[1] ? (data[1] >> 4) : 0x0f;
 
-    for (i = 0; i < ptr->num; ++i)
+    for (int i = 0; i < ptr->num; ++i)
         ptr->file[f].pieces[1][i] = uint8_t(data[i + j] >> 4);
 
     set_norm_pawn(ptr, ptr->file[f].norm[1], ptr->file[f].pieces[1]);
     tb_size[1] = calc_factors_pawn(ptr->file[f].factor[1], ptr->num, order, order2, ptr->file[f].norm[1], f);
 }
 
-void setup_pieces_pawn_dtz(DTZEntry_pawn *ptr, unsigned char *data, uint64_t *tb_size, int f)
+void setup_pieces_pawn_dtz(DTZEntry_pawn *ptr, unsigned char *data, uint64_t *tb_size, File f)
 {
-    int i, j;
-    int order, order2;
+    assert(FILE_A <= f && f <= FILE_D);
 
-    j = 1 + (ptr->pawns[1] > 0);
-    order = data[0] & 0x0f;
-    order2 = ptr->pawns[1] ? (data[1] & 0x0f) : 0x0f;
+    int j = 1 + (ptr->pawns[1] > 0);
+    int order = data[0] & 0x0f;
+    int order2 = ptr->pawns[1] ? (data[1] & 0x0f) : 0x0f;
 
-    for (i = 0; i < ptr->num; ++i)
+    for (int i = 0; i < ptr->num; ++i)
         ptr->file[f].pieces[i] = uint8_t(data[i + j] & 0x0f);
 
     set_norm_pawn((TBEntry_pawn *)ptr, ptr->file[f].norm, ptr->file[f].pieces);
@@ -977,9 +970,11 @@ void calc_symlen(PairsData *d, int s, char *tmp)
     else {
         s1 = ((w[1] & 0xf) << 8) | w[0];
 
-        if (!tmp[s1]) calc_symlen(d, s1, tmp);
+        if (!tmp[s1])
+            calc_symlen(d, s1, tmp);
 
-        if (!tmp[s2]) calc_symlen(d, s2, tmp);
+        if (!tmp[s2])
+            calc_symlen(d, s2, tmp);
 
         d->symlen[s] = uint8_t(d->symlen[s1] + d->symlen[s2] + 1);
     }
@@ -1066,7 +1061,7 @@ PairsData *setup_pairs(unsigned char *data, uint64_t tb_size, uint64_t *size, un
 int init_table_wdl(TBEntry *entry, const std::string& fname)
 {
     uint8_t *next;
-    int f, s;
+    int s;
     uint64_t tb_size[8];
     uint64_t size[8 * 3];
     uint8_t flags;
@@ -1094,7 +1089,7 @@ int init_table_wdl(TBEntry *entry, const std::string& fname)
     }
 
     int split = data[4] & 1;
-    int files = data[4] & 2 ? 4 : 1;
+    File maxFile = data[4] & 2 ? FILE_D : FILE_A;
 
     data += 5;
 
@@ -1141,14 +1136,14 @@ int init_table_wdl(TBEntry *entry, const std::string& fname)
         TBEntry_pawn *ptr = (TBEntry_pawn *)entry;
         s = 1 + (ptr->pawns[1] > 0);
 
-        for (f = 0; f < 4; ++f) {
+        for (File f = FILE_A; f <= FILE_D; ++f) {
             setup_pieces_pawn((TBEntry_pawn *)ptr, data, &tb_size[2 * f], f);
             data += ptr->num + s;
         }
 
         data += (uintptr_t)data & 1;
 
-        for (f = 0; f < files; ++f) {
+        for (File f = FILE_A; f <= maxFile; ++f) {
             ptr->file[f].precomp[0] = setup_pairs(data, tb_size[2 * f], &size[6 * f], &next, &flags, 1);
             data = next;
 
@@ -1159,7 +1154,7 @@ int init_table_wdl(TBEntry *entry, const std::string& fname)
                 ptr->file[f].precomp[1] = NULL;
         }
 
-        for (f = 0; f < files; ++f) {
+        for (File f = FILE_A; f <= maxFile; ++f) {
             ptr->file[f].precomp[0]->indextable = (char *)data;
             data += size[6 * f];
 
@@ -1169,7 +1164,7 @@ int init_table_wdl(TBEntry *entry, const std::string& fname)
             }
         }
 
-        for (f = 0; f < files; ++f) {
+        for (File f = FILE_A; f <= maxFile; ++f) {
             ptr->file[f].precomp[0]->sizetable = (uint16_t *)data;
             data += size[6 * f + 1];
 
@@ -1179,7 +1174,7 @@ int init_table_wdl(TBEntry *entry, const std::string& fname)
             }
         }
 
-        for (f = 0; f < files; ++f) {
+        for (File f = FILE_A; f <= maxFile; ++f) {
             data = (uint8_t *)(((uintptr_t)data + 0x3f) & ~0x3f);
             ptr->file[f].precomp[0]->data = data;
             data += size[6 * f + 2];
@@ -1199,7 +1194,7 @@ int init_table_dtz(TBEntry *entry)
 {
     uint8_t *data = (uint8_t *)entry->data;
     uint8_t *next;
-    int f, s;
+    int s;
     uint64_t tb_size[4];
     uint64_t size[4 * 3];
 
@@ -1214,7 +1209,7 @@ int init_table_dtz(TBEntry *entry)
         return 0;
     }
 
-    int files = data[4] & 2 ? 4 : 1;
+    File maxFile = data[4] & 2 ? FILE_D : FILE_A;
 
     data += 5;
 
@@ -1253,44 +1248,41 @@ int init_table_dtz(TBEntry *entry)
         DTZEntry_pawn *ptr = (DTZEntry_pawn *)entry;
         s = 1 + (ptr->pawns[1] > 0);
 
-        for (f = 0; f < 4; ++f) {
+        for (File f = FILE_A; f <= FILE_D; ++f) {
             setup_pieces_pawn_dtz(ptr, data, &tb_size[f], f);
             data += ptr->num + s;
         }
 
         data += (uintptr_t)data & 1;
 
-        for (f = 0; f < files; ++f) {
+        for (File f = FILE_A; f <= maxFile; ++f) {
             ptr->file[f].precomp = setup_pairs(data, tb_size[f], &size[3 * f], &next, &(ptr->flags[f]), 0);
             data = next;
         }
 
         ptr->map = data;
 
-        for (f = 0; f < files; ++f) {
-            if (ptr->flags[f] & 2) {
-                int i;
-
-                for (i = 0; i < 4; ++i) {
+        for (File f = FILE_A; f <= maxFile; ++f) {
+            if (ptr->flags[f] & 2)
+                for (int i = 0; i < 4; ++i) {
                     ptr->map_idx[f][i] = (uint16_t)(data + 1 - ptr->map);
                     data += 1 + data[0];
                 }
-            }
         }
 
         data += (uintptr_t)data & 1;
 
-        for (f = 0; f < files; ++f) {
+        for (File f = FILE_A; f <= maxFile; ++f) {
             ptr->file[f].precomp->indextable = (char *)data;
             data += size[3 * f];
         }
 
-        for (f = 0; f < files; ++f) {
+        for (File f = FILE_A; f <= maxFile; ++f) {
             ptr->file[f].precomp->sizetable = (uint16_t *)data;
             data += size[3 * f + 1];
         }
 
-        for (f = 0; f < files; ++f) {
+        for (File f = FILE_A; f <= maxFile; ++f) {
             data = (uint8_t *)(((uintptr_t)data + 0x3f) & ~0x3f);
             ptr->file[f].precomp->data = data;
             data += size[3 * f + 2];
@@ -1511,7 +1503,7 @@ WDLScore probe_wdl_table(Position& pos, int* success)
             squares[i++] = pop_lsb(&b) ^ smirror;
         while (b);
 
-        int f = pawn_file(entry, squares);
+        File f = pawn_file(entry, squares);
 
         for ( ; i < entry->num; ) {
             pc = Piece(entry->file[f].pieces[bside][i] ^ cmirror);
@@ -1627,7 +1619,7 @@ int probe_dtz_table(Position& pos, int wdl, int *success)
             p[i++] = pop_lsb(&bb) ^ mirror;
         } while (bb);
 
-        int f = pawn_file((TBEntry_pawn *)entry, p);
+        File f = pawn_file((TBEntry_pawn *)entry, p);
 
         if ((entry->flags[f] & 1) != bside) {
             *success = -1;
