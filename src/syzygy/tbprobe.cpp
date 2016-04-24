@@ -42,10 +42,6 @@ using namespace Tablebases;
 
 int Tablebases::MaxCardinality = 0;
 
-namespace Zobrist {
-extern Key psq[COLOR_NB][PIECE_TYPE_NB][SQUARE_NB];
-}
-
 namespace {
 
 typedef uint64_t base_t;
@@ -487,20 +483,6 @@ public:
 #endif
     }
 };
-
-// Given a position, produce a 64-bit material signature key. If the engine
-// supports such a key, it should equal the engine's key.
-Key get_key(const Position& pos, bool mirror)
-{
-    Key key = 0;
-
-    for (Color c = WHITE; c <= BLACK; ++c)
-        for (PieceType pt = PAWN; pt <= KING; ++pt)
-            for (int j = popcount(pos.pieces(Color(c ^ mirror), pt)); j > 0; --j)
-                key ^= Zobrist::psq[c][pt][j - 1];
-
-    return key;
-}
 
 // Given a position with 6 or fewer pieces, produce a text string
 // of the form KQPvKRP, where "KQP" represents the white pieces if
@@ -1513,7 +1495,15 @@ int probe_dtz_table(const Position& pos, int wdl, int *success)
             entry->symmetric = ptr->symmetric;
             entry->has_pawns = ptr->has_pawns;
 
-            DTZEntry dtz = { get_key(pos, mirror), get_key(pos, !mirror), nullptr };
+            StateInfo st;
+            Position p;
+            std::string code = file_name(pos, mirror);
+            code.erase(code.find('v'), 1);
+
+            Key k1 = p.set(code, WHITE, &st).material_key();
+            Key k2 = p.set(code, BLACK, &st).material_key();
+
+            DTZEntry dtz = { k1, k2, nullptr };
 
             if (!init_table_dtz(entry))
                 free(entry);
