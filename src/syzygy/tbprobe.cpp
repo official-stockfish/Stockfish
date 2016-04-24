@@ -153,7 +153,7 @@ struct DTZTableEntry {
     TBEntry *entry;
 };
 
-const signed char Offdiag[] = {
+const signed char OffdiagA1H8[] = {
     0,-1,-1,-1,-1,-1,-1,-1,
     1, 0,-1,-1,-1,-1,-1,-1,
     1, 1, 0,-1,-1,-1,-1,-1,
@@ -173,17 +173,6 @@ const uint8_t Triangle[] = {
     1, 3, 8, 5, 5, 8, 3, 1,
     0, 7, 3, 4, 4, 3, 7, 0,
     6, 0, 1, 2, 2, 1, 0, 6
-};
-
-const int Flipdiag[] = {
-    0,  8, 16, 24, 32, 40, 48, 56,
-    1,  9, 17, 25, 33, 41, 49, 57,
-    2, 10, 18, 26, 34, 42, 50, 58,
-    3, 11, 19, 27, 35, 43, 51, 59,
-    4, 12, 20, 28, 36, 44, 52, 60,
-    5, 13, 21, 29, 37, 45, 53, 61,
-    6, 14, 22, 30, 38, 46, 54, 62,
-    7, 15, 23, 31, 39, 47, 55, 63
 };
 
 const uint8_t Lower[] = {
@@ -652,39 +641,38 @@ uint64_t encode_piece(TBEntry_piece* ptr, uint8_t* norm, Square* pos, int* facto
     int i;
     int n = ptr->num;
 
-    if (pos[0] & 4)
+    if (file_of(pos[0]) > FILE_D)
         for (i = 0; i < n; ++i)
-            pos[i] ^= 7;
+            pos[i] ^= 7; // Mirror SQ_H1 -> SQ_A1
 
-    if (pos[0] & 0x20)
+    if (rank_of(pos[0]) > RANK_4)
         for (i = 0; i < n; ++i)
-            pos[i] ^= 070;
+            pos[i] ^= 070; // Vertical flip SQ_A8 -> SQ_A1
 
     for (i = 0; i < n; ++i)
-        if (Offdiag[pos[i]])
-            break;
+        if (OffdiagA1H8[pos[i]])
+            break; // First piece not on A1-H8 diagonal
 
-    if (i < (ptr->hasUniquePieces ? 3 : 2) && Offdiag[pos[i]] > 0)
+    if (i < (ptr->hasUniquePieces ? 3 : 2) && OffdiagA1H8[pos[i]] > 0)
         for (i = 0; i < n; ++i)
-            pos[i] = (Square)Flipdiag[pos[i]];
+            pos[i] = Square(((pos[i] >> 3) | (pos[i] << 3)) & 63); // Flip about the A1-H8 diagonal
 
     if (ptr->hasUniquePieces) {
         // There are unique pieces other than W_KING and B_KING
         i = pos[1] > pos[0];
         int j = (pos[2] > pos[0]) + (pos[2] > pos[1]);
 
-        if (Offdiag[pos[0]])
+        if (OffdiagA1H8[pos[0]])
             idx = Triangle[pos[0]] * 63*62 + (pos[1] - i) * 62 + (pos[2] - j);
-        else if (Offdiag[pos[1]])
+        else if (OffdiagA1H8[pos[1]])
             idx = 6*63*62 + Diag[pos[0]] * 28*62 + Lower[pos[1]] * 62 + pos[2] - j;
-        else if (Offdiag[pos[2]])
+        else if (OffdiagA1H8[pos[2]])
             idx = 6*63*62 + 4*28*62 + (Diag[pos[0]]) * 7*28 + (Diag[pos[1]] - i) * 28 + Lower[pos[2]];
         else
             idx = 6*63*62 + 4*28*62 + 4*7*28 + (Diag[pos[0]] * 7*6) + (Diag[pos[1]] - i) * 6 + (Diag[pos[2]] - j);
 
         i = 3;
     } else {
-        assert(!ptr->hasUniquePieces);
         idx = KK_idx[Triangle[pos[0]]][pos[1]];
         i = 2;
     }
@@ -1983,7 +1971,6 @@ void Tablebases::free()
 
 void Tablebases::init(const std::string& paths)
 {
-
     Tablebases::free();
     TBPaths = paths;
 
