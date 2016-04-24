@@ -2177,7 +2177,6 @@ static int has_repeated(StateInfo *st)
 bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves, Value& score)
 {
     int success;
-
     int dtz = probe_dtz(pos, &success);
 
     if (!success)
