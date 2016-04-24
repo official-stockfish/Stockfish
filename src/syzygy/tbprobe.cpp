@@ -1713,7 +1713,7 @@ WDLScore probe_ab(Position& pos, WDLScore alpha, WDLScore beta, int *success)
         }
     }
 
-    value = probe_wdl_table(pos, success);
+    value = probe_wdl_table(pos, success); // FIXME why this is not at the beginning?
 
     if (*success == 0)
         return WDLDraw;
