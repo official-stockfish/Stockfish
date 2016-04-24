@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <cstring>   // For std::memset
+#include <deque>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -345,17 +346,13 @@ const Value WDL_to_value[] = {
 };
 
 const int DTZ_ENTRIES = 64;
-const int TBMAX_PIECE = 254;
-const int TBMAX_PAWN  = 256;
 
 const std::string PieceChar = " PNBRQK";
 
-int TBnum_piece;
-int TBnum_pawn;
 Mutex TB_mutex;
 std::string TBPaths;
-TBEntry_piece TB_piece[TBMAX_PIECE];
-TBEntry_pawn TB_pawn[TBMAX_PAWN];
+std::deque<TBEntry_piece> TB_piece;
+std::deque<TBEntry_pawn> TB_pawn;
 DTZTableEntry DTZ_table[DTZ_ENTRIES];
 
 int Binomial[5][64];
@@ -579,12 +576,8 @@ void HashTable::insert(const std::vector<PieceType>& pieces)
         Tablebases::MaxCardinality = num;
 
     if (hasPawns) {
-        if (TBnum_pawn == TBMAX_PAWN) {
-            std::cerr << "TBMAX_PAWN limit too low!" << std::endl;
-            exit(1);
-        }
-
-        TBEntry_pawn* ptr = &TB_pawn[TBnum_pawn++];
+        TB_pawn.push_back(TBEntry_pawn());
+        TBEntry_pawn* ptr = &TB_pawn.back();
 
         // FIXME: What it means this one?
         if (   !pos.count<PAWN>(BLACK)
@@ -599,12 +592,8 @@ void HashTable::insert(const std::vector<PieceType>& pieces)
 
         entry = (TBEntry*)ptr;
     } else {
-        if (TBnum_piece == TBMAX_PIECE) {
-            std::cerr << "TBMAX_PIECE limit too low!" << std::endl;
-            exit(1);
-        }
-
-        TBEntry_piece* ptr = &TB_piece[TBnum_piece++];
+        TB_piece.push_back(TBEntry_piece());
+        TBEntry_piece* ptr = &TB_piece.back();
         int uniquePieces = 0;
 
         for (PieceType pt = PAWN; pt <= KING; ++pt)
@@ -1951,10 +1940,10 @@ int probe_dtz(Position& pos, int *success)
 
 void Tablebases::free()
 {
-    for (int i = 0; i < TBnum_piece; ++i)
+    for (size_t i = 0; i < TB_piece.size(); ++i)
         free_wdl_entry(&TB_piece[i]);
 
-    for (int i = 0; i < TBnum_pawn; ++i)
+    for (size_t i = 0; i < TB_pawn.size(); ++i)
         free_wdl_entry(&TB_pawn[i]);
 
     for (int i = 0; i < DTZ_ENTRIES; ++i)
@@ -1963,9 +1952,10 @@ void Tablebases::free()
             DTZ_table[i].entry = nullptr;
         }
 
+    TB_piece.clear();
+    TB_pawn.clear();
     TBHash.clear();
 
-    TBnum_piece = TBnum_pawn = 0;
     MaxCardinality = 0;
 }
 
@@ -2027,7 +2017,7 @@ void Tablebases::init(const std::string& paths)
         }
     }
 
-    std::cerr << "info string Found " << TBnum_piece + TBnum_pawn << " tablebases" << std::endl;
+    std::cerr << "info string Found " << TB_piece.size() + TB_pawn.size() << " tablebases" << std::endl;
 }
 
 // Probe the WDL table for a particular position.
