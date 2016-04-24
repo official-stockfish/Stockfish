@@ -51,6 +51,9 @@ typedef uint64_t base_t;
 inline WDLScore operator-(WDLScore d) { return WDLScore(-int(d)); }
 inline WDLScore operator+(WDLScore d1, WDLScore d2) { return WDLScore(int(d1) + int(d2)); }
 
+inline Square operator^(Square s, int i) { return Square(int(s) ^ i); }
+inline Square operator^=(Square& s, int i) { return s = s ^ i; }
+
 struct PairsData {
     char *indextable;
     uint16_t *sizetable;
@@ -521,8 +524,7 @@ std::string file_name(const Position& pos, bool mirror)
 {
     std::string w, b;
 
-    for (PieceType pt = KING; pt >= PAWN; --pt)
-    {
+    for (PieceType pt = KING; pt >= PAWN; --pt) {
         w += std::string(popcount(pos.pieces(WHITE, pt)), PieceChar[pt]);
         b += std::string(popcount(pos.pieces(BLACK, pt)), PieceChar[pt]);
     }
@@ -644,7 +646,7 @@ void HashTable::insert(const std::vector<PieceType>& pieces)
     insert(key2, entry);
 }
 
-uint64_t encode_piece(TBEntry_piece* ptr, uint8_t* norm, int* pos, int* factor)
+uint64_t encode_piece(TBEntry_piece* ptr, uint8_t* norm, Square* pos, int* factor)
 {
     uint64_t idx;
     int i;
@@ -664,7 +666,7 @@ uint64_t encode_piece(TBEntry_piece* ptr, uint8_t* norm, int* pos, int* factor)
 
     if (i < (ptr->hasUniquePieces ? 3 : 2) && Offdiag[pos[i]] > 0)
         for (i = 0; i < n; ++i)
-            pos[i] = Flipdiag[pos[i]];
+            pos[i] = (Square)Flipdiag[pos[i]];
 
     if (ptr->hasUniquePieces) {
         // There are unique pieces other than W_KING and B_KING
@@ -713,7 +715,7 @@ uint64_t encode_piece(TBEntry_piece* ptr, uint8_t* norm, int* pos, int* factor)
 }
 
 // determine file of leftmost pawn and sort pawns
-File pawn_file(TBEntry_pawn *ptr, int *pos)
+File pawn_file(TBEntry_pawn *ptr, Square *pos)
 {
     static const File file_to_file[] = {
         FILE_A, FILE_B, FILE_C, FILE_D, FILE_D, FILE_C, FILE_B, FILE_A
@@ -726,7 +728,7 @@ File pawn_file(TBEntry_pawn *ptr, int *pos)
     return file_to_file[pos[0] & 7];
 }
 
-uint64_t encode_pawn(TBEntry_pawn *ptr, uint8_t *norm, int *pos, int *factor)
+uint64_t encode_pawn(TBEntry_pawn *ptr, uint8_t *norm, Square *pos, int *factor)
 {
     int i;
     int n = ptr->num;
@@ -1457,7 +1459,7 @@ WDLScore probe_wdl_table(Position& pos, int* success)
         }
     }
 
-    int squares[TBPIECES];
+    Square squares[TBPIECES];
     int bside, smirror, cmirror;
 
     assert(key == ptr->key || !ptr->symmetric);
@@ -1522,7 +1524,7 @@ int probe_dtz_table(Position& pos, int wdl, int *success)
 {
     uint64_t idx;
     int i, res;
-    int p[TBPIECES];
+    Square squares[TBPIECES];
 
     Key key = pos.material_key();
 
@@ -1597,11 +1599,11 @@ int probe_dtz_table(Position& pos, int wdl, int *success)
                                      (PieceType)(pc[i] & 7));
 
             do {
-                p[i++] = pop_lsb(&bb);
+                squares[i++] = pop_lsb(&bb);
             } while (bb);
         }
 
-        idx = encode_piece((TBEntry_piece *)entry, entry->norm, p, entry->factor);
+        idx = encode_piece((TBEntry_piece *)entry, entry->norm, squares, entry->factor);
         res = decompress_pairs(entry->precomp, idx);
 
         if (entry->flags & 2)
@@ -1616,10 +1618,10 @@ int probe_dtz_table(Position& pos, int wdl, int *success)
         i = 0;
 
         do {
-            p[i++] = pop_lsb(&bb) ^ mirror;
+            squares[i++] = pop_lsb(&bb) ^ mirror;
         } while (bb);
 
-        File f = pawn_file((TBEntry_pawn *)entry, p);
+        File f = pawn_file((TBEntry_pawn *)entry, squares);
 
         if ((entry->flags[f] & 1) != bside) {
             *success = -1;
@@ -1633,11 +1635,11 @@ int probe_dtz_table(Position& pos, int wdl, int *success)
                             (PieceType)(pc[i] & 7));
 
             do {
-                p[i++] = pop_lsb(&bb) ^ mirror;
+                squares[i++] = pop_lsb(&bb) ^ mirror;
             } while (bb);
         }
 
-        idx = encode_pawn((TBEntry_pawn *)entry, entry->file[f].norm, p, entry->file[f].factor);
+        idx = encode_pawn((TBEntry_pawn *)entry, entry->file[f].norm, squares, entry->file[f].factor);
         res = decompress_pairs(entry->file[f].precomp, idx);
 
         if (entry->flags[f] & 2)
