@@ -1168,9 +1168,9 @@ int init_table_wdl(TBEntry *entry, const std::string& fname)
     return 1;
 }
 
-int init_table_dtz(TBEntry *entry)
+int init_table_dtz(TBEntry* entry)
 {
-    uint8_t *data = (uint8_t *)entry->data;
+    uint8_t *data = (uint8_t*)entry->data;
     uint8_t *next;
     int s;
     uint64_t tb_size[4];
@@ -1180,9 +1180,9 @@ int init_table_dtz(TBEntry *entry)
         return 0;
 
     if (data[0] != DTZ_MAGIC[0] ||
-            data[1] != DTZ_MAGIC[1] ||
-            data[2] != DTZ_MAGIC[2] ||
-            data[3] != DTZ_MAGIC[3]) {
+        data[1] != DTZ_MAGIC[1] ||
+        data[2] != DTZ_MAGIC[2] ||
+        data[3] != DTZ_MAGIC[3]) {
         std::cerr << "Corrupted table" << std::endl;
         return 0;
     }
@@ -1371,44 +1371,6 @@ int decompress_pairs(PairsData* d, uint64_t idx)
     return sympat[3 * sym];
 }
 
-void load_dtz_table(const std::string& fname, uint64_t key1, uint64_t key2)
-{
-    DTZ_list.front().key1 = key1;
-    DTZ_list.front().key2 = key2;
-    DTZ_list.front().entry = nullptr;
-
-    TBEntry* ptr = TBHash[key1];
-
-    if (!ptr)
-        return;
-
-    TBEntry* ptr3 = (TBEntry*)malloc(ptr->has_pawns
-                             ? sizeof(DTZEntry_pawn)
-                             : sizeof(DTZEntry_piece));
-
-    TBFile file(fname);
-
-    ptr3->data = file.is_open() ? file.map(&ptr3->mapping) : nullptr;
-    ptr3->key = ptr->key;
-    ptr3->num = ptr->num;
-    ptr3->symmetric = ptr->symmetric;
-    ptr3->has_pawns = ptr->has_pawns;
-
-    if (ptr3->has_pawns) {
-        DTZEntry_pawn *entry = (DTZEntry_pawn *)ptr3;
-        entry->pawns[0] = ((TBEntry_pawn *)ptr)->pawns[0];
-        entry->pawns[1] = ((TBEntry_pawn *)ptr)->pawns[1];
-    } else {
-        DTZEntry_piece *entry = (DTZEntry_piece *)ptr3;
-        entry->hasUniquePieces = ((TBEntry_piece *)ptr)->hasUniquePieces;
-    }
-
-    if (!init_table_dtz(ptr3))
-        free(ptr3);
-    else
-        DTZ_list.front().entry = ptr3;
-}
-
 WDLScore probe_wdl_table(Position& pos, int* success)
 {
     Key key = pos.material_key();
@@ -1498,16 +1460,12 @@ WDLScore probe_wdl_table(Position& pos, int* success)
 
 int probe_dtz_table(const Position& pos, int wdl, int *success)
 {
-    uint64_t idx;
-    int i, res;
-    Square squares[TBPIECES];
-
     Key key = pos.material_key();
 
-    // Enforce "Least Recently Used" (LRU) order for DTZ_list
     if (   DTZ_list.front().key1 != key
         && DTZ_list.front().key2 != key) {
 
+        // Enforce "Least Recently Used" (LRU) order for DTZ_list
         for (auto it = DTZ_list.begin(); it != DTZ_list.end(); ++it)
             if (it->key1 == key) {
                 DTZ_list.push_front(*it);
@@ -1515,18 +1473,54 @@ int probe_dtz_table(const Position& pos, int wdl, int *success)
                 break;
             }
 
-        if (DTZ_list.front().key1 != key) { // Still not found
+        // If still not found, add a new one
+        if (DTZ_list.front().key1 != key) {
+
             TBEntry* ptr = TBHash[key];
             if (!ptr) {
                 *success = 0;
                 return 0;
             }
 
-            DTZ_list.push_front(DTZEntry());
-
             bool mirror = (ptr->key != key);
             std::string fname = file_name(pos, mirror) + ".rtbz";
-            load_dtz_table(fname, get_key(pos, mirror), get_key(pos, !mirror));
+            TBFile file(fname);
+
+            if (!file.is_open()) {
+                std::cerr << "Could not find " << fname << std::endl;
+                *success = 0;
+                return 0;
+            }
+
+            // We are going to add a new entry to DTZ_list, because we already
+            // have a corresponding TBHash entry, copy some data from there.
+            TBEntry* entry;
+
+            if (ptr->has_pawns) {
+                DTZEntry_pawn* dtz = (DTZEntry_pawn*)malloc(sizeof(DTZEntry_pawn));
+                dtz->pawns[0] = ((TBEntry_pawn*)ptr)->pawns[0];
+                dtz->pawns[1] = ((TBEntry_pawn*)ptr)->pawns[1];
+                entry = (TBEntry*)dtz;
+            } else {
+                DTZEntry_piece* dtz = (DTZEntry_piece*)malloc(sizeof(DTZEntry_piece));
+                dtz->hasUniquePieces = ((TBEntry_piece*)ptr)->hasUniquePieces;
+                entry = (TBEntry*)dtz;
+            }
+
+            entry->data = file.map(&entry->mapping);
+            entry->key = ptr->key;
+            entry->num = ptr->num;
+            entry->symmetric = ptr->symmetric;
+            entry->has_pawns = ptr->has_pawns;
+
+            DTZEntry dtz = { get_key(pos, mirror), get_key(pos, !mirror), nullptr };
+
+            if (!init_table_dtz(entry))
+                free(entry);
+            else
+                dtz.entry = entry;
+
+            DTZ_list.push_front(dtz);
         }
     }
 
@@ -1537,6 +1531,9 @@ int probe_dtz_table(const Position& pos, int wdl, int *success)
         return 0;
     }
 
+    uint64_t idx;
+    int i, res;
+    Square squares[TBPIECES];
     int bside, mirror, cmirror;
 
     if (!ptr->symmetric) {
