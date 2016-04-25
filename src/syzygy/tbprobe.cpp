@@ -122,6 +122,7 @@ struct DTZEntry_pawn {
 };
 
 struct DTZEntry {
+    uint64_t keys[2];
     char *data;
     uint64_t key;
     uint64_t mapping;
@@ -133,12 +134,6 @@ struct DTZEntry {
         DTZEntry_piece piece;
         DTZEntry_pawn pawn;
     };
-};
-
-struct DTZEntryList {
-    uint64_t key1;
-    uint64_t key2;
-    DTZEntry* entry;
 };
 
 const signed char OffdiagA1H8[] = {
@@ -337,7 +332,7 @@ const std::string PieceChar = " PNBRQK";
 Mutex TB_mutex;
 std::string TBPaths;
 std::deque<TBEntry> TB_entry;
-std::list<DTZEntryList> DTZ_list;
+std::list<DTZEntry> DTZ_list;
 
 int Binomial[5][64];
 int Pawnidx[5][24];
@@ -503,17 +498,15 @@ void free_wdl_entry(TBEntry& entry)
     }
 }
 
-void free_dtz_entry(DTZEntry* entry)
+void free_dtz_entry(DTZEntry& entry)
 {
-    TBFile::unmap(entry->data, entry->mapping);
+    TBFile::unmap(entry.data, entry.mapping);
 
-    if (entry->has_pawns)
+    if (entry.has_pawns)
         for (File f = FILE_A; f <= FILE_D; ++f)
-            free(entry->pawn.file[f].precomp);
+            free(entry.pawn.file[f].precomp);
     else
-        free(entry->piece.precomp);
-
-    free(entry);
+        free(entry.piece.precomp);
 }
 
 void HashTable::insert(const std::vector<PieceType>& pieces)
@@ -1125,9 +1118,9 @@ int init_table_wdl(TBEntry* entry, const std::string& fname)
     return 1;
 }
 
-int init_table_dtz(DTZEntry* entry)
+int init_table_dtz(DTZEntry& entry)
 {
-    uint8_t *data = (uint8_t*)entry->data;
+    uint8_t *data = (uint8_t*)entry.data;
     uint8_t *next;
     int s;
     uint64_t tb_size[4];
@@ -1141,6 +1134,7 @@ int init_table_dtz(DTZEntry* entry)
         || data[2] != DTZ_MAGIC[2]
         || data[3] != DTZ_MAGIC[3]) {
         std::cerr << "Corrupted table" << std::endl;
+        data = nullptr;
         return 0;
     }
 
@@ -1148,10 +1142,10 @@ int init_table_dtz(DTZEntry* entry)
 
     data += 5;
 
-    if (!entry->has_pawns) {
-        DTZEntry_piece* ptr = &entry->piece;
-        setup_pieces_piece_dtz(ptr, data, &tb_size[0], entry->num);
-        data += entry->num + 1;
+    if (!entry.has_pawns) {
+        DTZEntry_piece* ptr = &entry.piece;
+        setup_pieces_piece_dtz(ptr, data, &tb_size[0], entry.num);
+        data += entry.num + 1;
         data += (uintptr_t)data & 1;
 
         ptr->precomp = setup_pairs(data, tb_size[0], &size[0], &next, &(ptr->flags), 0);
@@ -1180,12 +1174,12 @@ int init_table_dtz(DTZEntry* entry)
         ptr->precomp->data = data;
         data += size[2];
     } else {
-        DTZEntry_pawn *ptr = &entry->pawn;
+        DTZEntry_pawn *ptr = &entry.pawn;
         s = 1 + (ptr->pawns[1] > 0);
 
         for (File f = FILE_A; f <= FILE_D; ++f) {
-            setup_pieces_pawn_dtz(ptr, data, &tb_size[f], f, entry->num);
-            data += entry->num + s;
+            setup_pieces_pawn_dtz(ptr, data, &tb_size[f], f, entry.num);
+            data += entry.num + s;
         }
 
         data += (uintptr_t)data & 1;
@@ -1416,19 +1410,19 @@ int probe_dtz_table(const Position& pos, int wdl, int *success)
 {
     Key key = pos.material_key();
 
-    if (   DTZ_list.front().key1 != key
-        && DTZ_list.front().key2 != key) {
+    if (   DTZ_list.front().keys[0] != key
+        && DTZ_list.front().keys[1] != key) {
 
-        // Enforce "Least Recently Used" (LRU) order for DTZ_list
+        // Enforce "Most Recently Used" (MRU) order for DTZ_list
         for (auto it = DTZ_list.begin(); it != DTZ_list.end(); ++it)
-            if (it->key1 == key) {
+            if (it->keys[0] == key) {
                 DTZ_list.push_front(*it);
                 DTZ_list.erase(it);
                 break;
             }
 
         // If still not found, add a new one
-        if (DTZ_list.front().key1 != key) {
+        if (DTZ_list.front().keys[0] != key) {
 
             TBEntry* ptr = TBHash[key];
             if (!ptr) {
@@ -1448,52 +1442,44 @@ int probe_dtz_table(const Position& pos, int wdl, int *success)
 
             // We are going to add a new entry to DTZ_list, because we already
             // have a corresponding TBHash entry, copy some data from there.
-            DTZEntry* entry = (DTZEntry*)malloc(sizeof(DTZEntry));
+            DTZ_list.push_front(DTZEntry());
+
+            DTZEntry& entry = DTZ_list.front();
+            entry.data = file.map(&entry.mapping);
+            entry.key = ptr->key;
+            entry.num = ptr->num;
+            entry.symmetric = ptr->symmetric;
+            entry.has_pawns = ptr->has_pawns;
 
             if (ptr->has_pawns) {
-                entry->pawn.pawns[0] = ptr->pawn.pawns[0];
-                entry->pawn.pawns[1] = ptr->pawn.pawns[1];
+                entry.pawn.pawns[0] = ptr->pawn.pawns[0];
+                entry.pawn.pawns[1] = ptr->pawn.pawns[1];
             } else
-                entry->piece.hasUniquePieces = ptr->piece.hasUniquePieces;
-
-            entry->data = file.map(&entry->mapping);
-            entry->key = ptr->key;
-            entry->num = ptr->num;
-            entry->symmetric = ptr->symmetric;
-            entry->has_pawns = ptr->has_pawns;
+                entry.piece.hasUniquePieces = ptr->piece.hasUniquePieces;
 
             StateInfo st;
             Position p;
             std::string code = file_name(pos, mirror);
             code.erase(code.find('v'), 1);
 
-            Key k1 = p.set(code, WHITE, &st).material_key();
-            Key k2 = p.set(code, BLACK, &st).material_key();
+            entry.keys[0] = p.set(code, WHITE, &st).material_key();
+            entry.keys[1] = p.set(code, BLACK, &st).material_key();
 
-            DTZEntryList dtz = { k1, k2, nullptr };
-
-            if (!init_table_dtz(entry))
-                free(entry);
-            else
-                dtz.entry = entry;
-
-            DTZ_list.push_front(dtz);
+            init_table_dtz(entry);
 
             // Keep list size within 64 entries
             // FIXME remove it when we will know what we are doing
             if (DTZ_list.size() > 64)
             {
-                if (DTZ_list.back().entry)
-                    free_dtz_entry(DTZ_list.back().entry);
-
-                DTZ_list.pop_back();
+               free_dtz_entry(DTZ_list.back());
+               DTZ_list.pop_back();
             }
         }
     }
 
-    DTZEntry* ptr = DTZ_list.front().entry;
+    DTZEntry* ptr = &DTZ_list.front();
 
-    if (!ptr) {
+    if (!ptr->data) {
         *success = 0;
         return 0;
     }
@@ -1901,7 +1887,7 @@ void Tablebases::free()
         free_wdl_entry(e);
 
     for (auto& e : DTZ_list)
-        free_dtz_entry(e.entry);
+        free_dtz_entry(e);
 
     DTZ_list.clear();
     TB_entry.clear();
