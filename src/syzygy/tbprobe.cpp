@@ -1511,6 +1511,16 @@ int probe_dtz_table(const Position& pos, int wdl, int *success)
                 dtz.entry = entry;
 
             DTZ_list.push_front(dtz);
+
+            // Keep list size within 64 entries
+            // FIXME remove it when we will know what we are doing
+            if (DTZ_list.size() > 64)
+            {
+                if (DTZ_list.back().entry)
+                    free_dtz_entry(DTZ_list.back());
+
+                DTZ_list.pop_back();
+            }
         }
     }
 
