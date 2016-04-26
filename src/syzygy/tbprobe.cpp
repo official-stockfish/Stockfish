@@ -65,30 +65,16 @@ struct PairsData {
     base_t base[1]; // C++ complains about base[]...
 };
 
-struct WDLPiece {
-    uint8_t hasUniquePieces;
-    PairsData *precomp[2];
-    int factor[2][TBPIECES];
-    uint8_t pieces[2][TBPIECES];
-    uint8_t norm[2][TBPIECES];
-};
+class WDLEntry {
 
-struct WDLPawn {
-    uint8_t pawns[2];
-    struct {
-        PairsData *precomp[2];
-        int factor[2][TBPIECES];
-        uint8_t pieces[2][TBPIECES];
-        uint8_t norm[2][TBPIECES];
-    } file[4];
-};
+    static constexpr uint8_t TB_MAGIC[] = { 0x71, 0xE8, 0x23, 0x5D };
 
-struct WDLEntry {
+public:
     WDLEntry(const Position& pos, Key keys[]);
    ~WDLEntry();
     bool init(const std::string& fname);
 
-    char *baseAddress;
+    char* baseAddress;
     uint64_t key;
     uint64_t mapping;
     uint8_t ready;
@@ -96,42 +82,37 @@ struct WDLEntry {
     uint8_t symmetric;
     uint8_t has_pawns;
     union {
-        WDLPiece piece;
-        WDLPawn pawn;
+        struct {
+            uint8_t hasUniquePieces;
+            PairsData* precomp[2];
+            int factor[2][TBPIECES];
+            uint8_t pieces[2][TBPIECES];
+            uint8_t norm[2][TBPIECES];
+        } piece;
+
+        struct {
+            uint8_t pawns[2];
+            struct {
+                PairsData* precomp[2];
+                int factor[2][TBPIECES];
+                uint8_t pieces[2][TBPIECES];
+                uint8_t norm[2][TBPIECES];
+            } file[4];
+        } pawn;
     };
 };
 
-struct DTZPiece {
-    uint8_t hasUniquePieces;
-    PairsData *precomp;
-    int factor[TBPIECES];
-    uint8_t pieces[TBPIECES];
-    uint8_t norm[TBPIECES];
-    uint8_t flags; // accurate, mapped, side
-    uint16_t map_idx[4];
-    uint8_t *map;
-};
+class DTZEntry {
 
-struct DTZPawn {
-    uint8_t pawns[2];
-    struct {
-        PairsData *precomp;
-        int factor[TBPIECES];
-        uint8_t pieces[TBPIECES];
-        uint8_t norm[TBPIECES];
-    } file[4];
-    uint8_t flags[4];
-    uint16_t map_idx[4][4];
-    uint8_t *map;
-};
+    static constexpr uint8_t TB_MAGIC[] = { 0xD7, 0x66, 0x0C, 0xA5 };
 
-struct DTZEntry {
-    DTZEntry(WDLEntry* wdl, Key keys[]);
+public:
+    DTZEntry(const WDLEntry& wdl, Key keys[]);
    ~DTZEntry();
     bool init(const std::string& fname);
 
     uint64_t keys[2];
-    char *baseAddress;
+    char* baseAddress;
     uint64_t key;
     uint64_t mapping;
     uint8_t ready;
@@ -139,8 +120,29 @@ struct DTZEntry {
     uint8_t symmetric;
     uint8_t has_pawns;
     union {
-        DTZPiece piece;
-        DTZPawn pawn;
+        struct {
+            uint8_t hasUniquePieces;
+            PairsData* precomp;
+            int factor[TBPIECES];
+            uint8_t pieces[TBPIECES];
+            uint8_t norm[TBPIECES];
+            uint8_t flags; // accurate, mapped, side
+            uint16_t map_idx[4];
+            uint8_t* map;
+        } piece;
+
+        struct {
+            uint8_t pawns[2];
+            struct {
+                PairsData* precomp;
+                int factor[TBPIECES];
+                uint8_t pieces[TBPIECES];
+                uint8_t norm[TBPIECES];
+            } file[4];
+            uint8_t flags[4];
+            uint16_t map_idx[4][4];
+            uint8_t* map;
+        } pawn;
     };
 };
 
@@ -319,9 +321,6 @@ const short KK_idx[10][64] = {
          -1, -1, -1, -1, -1, -1, -1,461
     }
 };
-
-const uint8_t WDL_MAGIC[] = { 0x71, 0xE8, 0x23, 0x5D };
-const uint8_t DTZ_MAGIC[] = { 0xD7, 0x66, 0x0C, 0xA5 };
 
 const int wdl_to_dtz[] = { -1, -101, 0, 101, 1 };
 const int wdl_to_map[] = { 1, 3, 0, 2, 0 };
@@ -516,22 +515,22 @@ WDLEntry::~WDLEntry()
     }
 }
 
-DTZEntry::DTZEntry(WDLEntry* wdl, Key k[])
+DTZEntry::DTZEntry(const WDLEntry& wdl, Key k[])
 {
     memset(this, 0, sizeof(DTZEntry));
 
     keys[0] = k[0];
     keys[1] = k[1];
-    key = wdl->key;
-    num = wdl->num;
-    symmetric = wdl->symmetric;
-    has_pawns = wdl->has_pawns;
+    key = wdl.key;
+    num = wdl.num;
+    symmetric = wdl.symmetric;
+    has_pawns = wdl.has_pawns;
 
     if (has_pawns) {
-        pawn.pawns[0] = wdl->pawn.pawns[0];
-        pawn.pawns[1] = wdl->pawn.pawns[1];
+        pawn.pawns[0] = wdl.pawn.pawns[0];
+        pawn.pawns[1] = wdl.pawn.pawns[1];
     } else
-        piece.hasUniquePieces = wdl->piece.hasUniquePieces;
+        piece.hasUniquePieces = wdl.piece.hasUniquePieces;
 }
 
 DTZEntry::~DTZEntry()
@@ -832,75 +831,6 @@ void set_norm_pawn(uint8_t pawns[], uint8_t *norm, uint8_t *pieces, int num)
             ++norm[i];
 }
 
-void setup_pieces_piece(WDLPiece *ptr, unsigned char *data, uint64_t *tb_size, int num)
-{
-    int i;
-    int order;
-
-    for (i = 0; i < num; ++i)
-        ptr->pieces[0][i] = uint8_t(data[i + 1] & 0x0f);
-
-    order = data[0] & 0x0f;
-    set_norm_piece(ptr->hasUniquePieces, ptr->norm[0], ptr->pieces[0], num);
-    tb_size[0] = calc_factors_piece(ptr->factor[0], num, order, ptr->norm[0], ptr->hasUniquePieces);
-
-    for (i = 0; i < num; ++i)
-        ptr->pieces[1][i] = uint8_t(data[i + 1] >> 4);
-
-    order = data[0] >> 4;
-    set_norm_piece(ptr->hasUniquePieces, ptr->norm[1], ptr->pieces[1], num);
-    tb_size[1] = calc_factors_piece(ptr->factor[1], num, order, ptr->norm[1], ptr->hasUniquePieces);
-}
-
-void setup_pieces_piece_dtz(DTZPiece *ptr, unsigned char *data, uint64_t *tb_size, int num)
-{
-    for (int i = 0; i < num; ++i)
-        ptr->pieces[i] = uint8_t(data[i + 1] & 0x0f);
-
-    int order = data[0] & 0x0f;
-    set_norm_piece(ptr->hasUniquePieces, ptr->norm, ptr->pieces, num);
-    tb_size[0] = calc_factors_piece(ptr->factor, num, order, ptr->norm, ptr->hasUniquePieces);
-}
-
-void setup_pieces_pawn(WDLPawn *ptr, unsigned char *data, uint64_t *tb_size, File f, int num)
-{
-    assert(FILE_A <= f && f <= FILE_D);
-
-    int j = 1 + (ptr->pawns[1] > 0);
-    int order = data[0] & 0x0f;
-    int order2 = ptr->pawns[1] ? (data[1] & 0x0f) : 0x0f;
-
-    for (int i = 0; i < num; ++i)
-        ptr->file[f].pieces[0][i] = uint8_t(data[i + j] & 0x0f);
-
-    set_norm_pawn(ptr->pawns, ptr->file[f].norm[0], ptr->file[f].pieces[0], num);
-    tb_size[0] = calc_factors_pawn(ptr->file[f].factor[0], num, order, order2, ptr->file[f].norm[0], f);
-
-    order = data[0] >> 4;
-    order2 = ptr->pawns[1] ? (data[1] >> 4) : 0x0f;
-
-    for (int i = 0; i < num; ++i)
-        ptr->file[f].pieces[1][i] = uint8_t(data[i + j] >> 4);
-
-    set_norm_pawn(ptr->pawns, ptr->file[f].norm[1], ptr->file[f].pieces[1], num);
-    tb_size[1] = calc_factors_pawn(ptr->file[f].factor[1], num, order, order2, ptr->file[f].norm[1], f);
-}
-
-void setup_pieces_pawn_dtz(DTZPawn *ptr, unsigned char *data, uint64_t *tb_size, File f, int num)
-{
-    assert(FILE_A <= f && f <= FILE_D);
-
-    int j = 1 + (ptr->pawns[1] > 0);
-    int order = data[0] & 0x0f;
-    int order2 = ptr->pawns[1] ? (data[1] & 0x0f) : 0x0f;
-
-    for (int i = 0; i < num; ++i)
-        ptr->file[f].pieces[i] = uint8_t(data[i + j] & 0x0f);
-
-    set_norm_pawn(ptr->pawns, ptr->file[f].norm, ptr->file[f].pieces, num);
-    tb_size[0] = calc_factors_pawn(ptr->file[f].factor, num, order, order2, ptr->file[f].norm, f);
-}
-
 void calc_symlen(PairsData *d, int s, char *tmp)
 {
     int s1, s2;
@@ -1020,10 +950,10 @@ bool WDLEntry::init(const std::string& fname)
 
     uint8_t* data = (uint8_t*)baseAddress;
 
-    if (   data[0] != WDL_MAGIC[0]
-        || data[1] != WDL_MAGIC[1]
-        || data[2] != WDL_MAGIC[2]
-        || data[3] != WDL_MAGIC[3]) {
+    if (   data[0] != TB_MAGIC[0]
+        || data[1] != TB_MAGIC[1]
+        || data[2] != TB_MAGIC[2]
+        || data[3] != TB_MAGIC[3]) {
         std::cerr << "Corrupted table" << std::endl;
         TBFile::unmap(baseAddress, mapping);
         baseAddress = nullptr;
@@ -1036,7 +966,20 @@ bool WDLEntry::init(const std::string& fname)
     data += 5;
 
     if (!has_pawns) {
-        setup_pieces_piece(&piece, data, &tb_size[0], num);
+        for (int i = 0; i < num; ++i)
+            piece.pieces[0][i] = uint8_t(data[i + 1] & 0x0f);
+
+        int order = data[0] & 0x0f;
+        set_norm_piece(piece.hasUniquePieces, piece.norm[0], piece.pieces[0], num);
+        tb_size[0] = calc_factors_piece(piece.factor[0], num, order, piece.norm[0], piece.hasUniquePieces);
+
+        for (int i = 0; i < num; ++i)
+            piece.pieces[1][i] = uint8_t(data[i + 1] >> 4);
+
+        order = data[0] >> 4;
+        set_norm_piece(piece.hasUniquePieces, piece.norm[1], piece.pieces[1], num);
+        tb_size[1] = calc_factors_piece(piece.factor[1], num, order, piece.norm[1], piece.hasUniquePieces);
+
         data += num + 1;
         data += (uintptr_t)data & 1;
 
@@ -1077,7 +1020,25 @@ bool WDLEntry::init(const std::string& fname)
         s = 1 + (pawn.pawns[1] > 0);
 
         for (File f = FILE_A; f <= FILE_D; ++f) {
-            setup_pieces_pawn(&pawn, data, &tb_size[2 * f], f, num);
+            int j = 1 + (pawn.pawns[1] > 0);
+            int order = data[0] & 0x0f;
+            int order2 = pawn.pawns[1] ? (data[1] & 0x0f) : 0x0f;
+
+            for (int i = 0; i < num; ++i)
+                pawn.file[f].pieces[0][i] = uint8_t(data[i + j] & 0x0f);
+
+            set_norm_pawn(pawn.pawns, pawn.file[f].norm[0], pawn.file[f].pieces[0], num);
+            tb_size[2 * f] = calc_factors_pawn(pawn.file[f].factor[0], num, order, order2, pawn.file[f].norm[0], f);
+
+            order = data[0] >> 4;
+            order2 = pawn.pawns[1] ? (data[1] >> 4) : 0x0f;
+
+            for (int i = 0; i < num; ++i)
+                pawn.file[f].pieces[1][i] = uint8_t(data[i + j] >> 4);
+
+            set_norm_pawn(pawn.pawns, pawn.file[f].norm[1], pawn.file[f].pieces[1], num);
+            tb_size[2 * f + 1] = calc_factors_pawn(pawn.file[f].factor[1], num, order, order2, pawn.file[f].norm[1], f);
+
             data += num + s;
         }
 
@@ -1148,10 +1109,10 @@ bool DTZEntry::init(const std::string& fname)
 
     uint8_t* data = (uint8_t*)baseAddress;
 
-    if (   data[0] != DTZ_MAGIC[0]
-        || data[1] != DTZ_MAGIC[1]
-        || data[2] != DTZ_MAGIC[2]
-        || data[3] != DTZ_MAGIC[3]) {
+    if (   data[0] != TB_MAGIC[0]
+        || data[1] != TB_MAGIC[1]
+        || data[2] != TB_MAGIC[2]
+        || data[3] != TB_MAGIC[3]) {
         std::cerr << "Corrupted table" << std::endl;
         TBFile::unmap(baseAddress, mapping);
         baseAddress = 0;
@@ -1163,7 +1124,13 @@ bool DTZEntry::init(const std::string& fname)
     data += 5;
 
     if (!has_pawns) {
-        setup_pieces_piece_dtz(&piece, data, &tb_size[0], num);
+        for (int i = 0; i < num; ++i)
+            piece.pieces[i] = uint8_t(data[i + 1] & 0x0f);
+
+        int order = data[0] & 0x0f;
+        set_norm_piece(piece.hasUniquePieces, piece.norm, piece.pieces, num);
+        tb_size[0] = calc_factors_piece(piece.factor, num, order, piece.norm, piece.hasUniquePieces);
+
         data += num + 1;
         data += (uintptr_t)data & 1;
 
@@ -1196,7 +1163,16 @@ bool DTZEntry::init(const std::string& fname)
         s = 1 + (pawn.pawns[1] > 0);
 
         for (File f = FILE_A; f <= FILE_D; ++f) {
-            setup_pieces_pawn_dtz(&pawn, data, &tb_size[f], f, num);
+            int j = 1 + (pawn.pawns[1] > 0);
+            int order = data[0] & 0x0f;
+            int order2 = pawn.pawns[1] ? (data[1] & 0x0f) : 0x0f;
+
+            for (int i = 0; i < num; ++i)
+                pawn.file[f].pieces[i] = uint8_t(data[i + j] & 0x0f);
+
+            set_norm_pawn(pawn.pawns, pawn.file[f].norm, pawn.file[f].pieces, num);
+            tb_size[f] = calc_factors_pawn(pawn.file[f].factor, num, order, order2, pawn.file[f].norm, f);
+
             data += num + s;
         }
 
@@ -1458,7 +1434,7 @@ int probe_dtz_table(const Position& pos, int wdl, int *success)
             Key keys[] = { p.set(code, WHITE, &st).material_key(),
                            p.set(code, BLACK, &st).material_key() };
 
-            DTZTable.push_front(DTZEntry(ptr, keys));
+            DTZTable.push_front(DTZEntry(*ptr, keys));
 
             if (!DTZTable.front().init(fname)) {
                 // In case file is not found init() fails, but we leave
@@ -1505,14 +1481,12 @@ int probe_dtz_table(const Position& pos, int wdl, int *success)
     }
 
     if (!ptr->has_pawns) {
-        DTZPiece* entry = &ptr->piece;
-
-        if ((entry->flags & 1) != bside && !ptr->symmetric) {
+        if ((ptr->piece.flags & 1) != bside && !ptr->symmetric) {
             *success = -1;
             return 0;
         }
 
-        uint8_t *pc = entry->pieces;
+        uint8_t *pc = ptr->piece.pieces;
 
         for (i = 0; i < ptr->num;) {
             Bitboard bb = pos.pieces((Color)((pc[i] ^ cmirror) >> 3),
@@ -1523,17 +1497,16 @@ int probe_dtz_table(const Position& pos, int wdl, int *success)
             } while (bb);
         }
 
-        idx = encode_piece(entry->hasUniquePieces, entry->norm, squares, entry->factor, ptr->num);
-        res = decompress_pairs(entry->precomp, idx);
+        idx = encode_piece(ptr->piece.hasUniquePieces, ptr->piece.norm, squares, ptr->piece.factor, ptr->num);
+        res = decompress_pairs(ptr->piece.precomp, idx);
 
-        if (entry->flags & 2)
-            res = entry->map[entry->map_idx[wdl_to_map[wdl + 2]] + res];
+        if (ptr->piece.flags & 2)
+            res = ptr->piece.map[ptr->piece.map_idx[wdl_to_map[wdl + 2]] + res];
 
-        if (!(entry->flags & pa_flags[wdl + 2]) || (wdl & 1))
+        if (!(ptr->piece.flags & pa_flags[wdl + 2]) || (wdl & 1))
             res *= 2;
     } else {
-        DTZPawn* entry = &ptr->pawn;
-        int k = entry->file[0].pieces[0] ^ cmirror;
+        int k = ptr->pawn.file[0].pieces[0] ^ cmirror;
         Bitboard bb = pos.pieces((Color)(k >> 3), (PieceType)(k & 7));
         i = 0;
 
@@ -1541,14 +1514,14 @@ int probe_dtz_table(const Position& pos, int wdl, int *success)
             squares[i++] = pop_lsb(&bb) ^ mirror;
         } while (bb);
 
-        File f = pawn_file(entry->pawns, squares);
+        File f = pawn_file(ptr->pawn.pawns, squares);
 
-        if ((entry->flags[f] & 1) != bside) {
+        if ((ptr->pawn.flags[f] & 1) != bside) {
             *success = -1;
             return 0;
         }
 
-        uint8_t *pc = entry->file[f].pieces;
+        uint8_t *pc = ptr->pawn.file[f].pieces;
 
         for (; i < ptr->num;) {
             bb = pos.pieces((Color)((pc[i] ^ cmirror) >> 3),
@@ -1559,13 +1532,13 @@ int probe_dtz_table(const Position& pos, int wdl, int *success)
             } while (bb);
         }
 
-        idx = encode_pawn(entry->pawns, entry->file[f].norm, squares, entry->file[f].factor, ptr->num);
-        res = decompress_pairs(entry->file[f].precomp, idx);
+        idx = encode_pawn(ptr->pawn.pawns, ptr->pawn.file[f].norm, squares, ptr->pawn.file[f].factor, ptr->num);
+        res = decompress_pairs(ptr->pawn.file[f].precomp, idx);
 
-        if (entry->flags[f] & 2)
-            res = entry->map[entry->map_idx[f][wdl_to_map[wdl + 2]] + res];
+        if (ptr->pawn.flags[f] & 2)
+            res = ptr->pawn.map[ptr->pawn.map_idx[f][wdl_to_map[wdl + 2]] + res];
 
-        if (!(entry->flags[f] & pa_flags[wdl + 2]) || (wdl & 1))
+        if (!(ptr->pawn.flags[f] & pa_flags[wdl + 2]) || (wdl & 1))
             res *= 2;
     }
 
