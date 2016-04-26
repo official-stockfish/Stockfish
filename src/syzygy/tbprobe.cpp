@@ -65,7 +65,7 @@ struct PairsData {
     base_t base[1]; // C++ complains about base[]...
 };
 
-struct TBEntry_piece {
+struct WDLPiece {
     uint8_t hasUniquePieces;
     PairsData *precomp[2];
     int factor[2][TBPIECES];
@@ -73,7 +73,7 @@ struct TBEntry_piece {
     uint8_t norm[2][TBPIECES];
 };
 
-struct TBEntry_pawn {
+struct WDLPawn {
     uint8_t pawns[2];
     struct {
         PairsData *precomp[2];
@@ -83,7 +83,7 @@ struct TBEntry_pawn {
     } file[4];
 };
 
-struct TBEntry {
+struct WDLEntry {
     char *data;
     uint64_t key;
     uint64_t mapping;
@@ -92,14 +92,14 @@ struct TBEntry {
     uint8_t symmetric;
     uint8_t has_pawns;
     union {
-        TBEntry_piece piece;
-        TBEntry_pawn pawn;
+        WDLPiece piece;
+        WDLPawn pawn;
     };
 
-    ~TBEntry();
+    ~WDLEntry();
 };
 
-struct DTZEntry_piece {
+struct DTZPiece {
     uint8_t hasUniquePieces;
     PairsData *precomp;
     int factor[TBPIECES];
@@ -110,7 +110,7 @@ struct DTZEntry_piece {
     uint8_t *map;
 };
 
-struct DTZEntry_pawn {
+struct DTZPawn {
     uint8_t pawns[2];
     struct {
         PairsData *precomp;
@@ -133,8 +133,8 @@ struct DTZEntry {
     uint8_t symmetric;
     uint8_t has_pawns;
     union {
-        DTZEntry_piece piece;
-        DTZEntry_pawn pawn;
+        DTZPiece piece;
+        DTZPawn pawn;
     };
 
     ~DTZEntry();
@@ -331,12 +331,12 @@ const Value WDL_to_value[] = {
     VALUE_MATE - MAX_PLY - 1
 };
 
-const std::string PieceChar = " PNBRQK";
+const std::string PieceToChar = " PNBRQK";
 
 Mutex TB_mutex;
 std::string TBPaths;
-std::deque<TBEntry> TB_entry;
-std::list<DTZEntry> DTZ_list;
+std::deque<WDLEntry> WDLTable;
+std::list<DTZEntry> DTZTable;
 
 int Binomial[5][64];
 int Pawnidx[5][24];
@@ -346,7 +346,7 @@ class HashTable {
 
     struct Entry {
         Key key;
-        TBEntry* ptr;
+        WDLEntry* ptr;
     };
 
     static const int TBHASHBITS = 10;
@@ -354,7 +354,7 @@ class HashTable {
 
     Entry table[1 << TBHASHBITS][HSHMAX];
 
-    void insert(Key key, TBEntry* ptr) {
+    void insert(Key key, WDLEntry* ptr) {
         Entry* entry = table[key >> (64 - TBHASHBITS)];
 
         for (int i = 0; i < HSHMAX; ++i, ++entry)
@@ -369,7 +369,7 @@ class HashTable {
     }
 
 public:
-  TBEntry* operator[](Key key) {
+  WDLEntry* operator[](Key key) {
       Entry* entry = table[key >> (64 - TBHASHBITS)];
 
       for (int i = 0; i < HSHMAX; ++i, ++entry)
@@ -383,7 +383,7 @@ public:
   void insert(const std::vector<PieceType>& pieces);
 };
 
-HashTable TBHash;
+HashTable WDLHash;
 
 
 class TBFile : public std::ifstream {
@@ -472,7 +472,7 @@ public:
     }
 };
 
-TBEntry::~TBEntry()
+WDLEntry::~WDLEntry()
 {
     TBFile::unmap(data, mapping);
 
@@ -506,8 +506,8 @@ std::string file_name(const Position& pos, bool mirror)
     std::string w, b;
 
     for (PieceType pt = KING; pt >= PAWN; --pt) {
-        w += std::string(popcount(pos.pieces(WHITE, pt)), PieceChar[pt]);
-        b += std::string(popcount(pos.pieces(BLACK, pt)), PieceChar[pt]);
+        w += std::string(popcount(pos.pieces(WHITE, pt)), PieceToChar[pt]);
+        b += std::string(popcount(pos.pieces(BLACK, pt)), PieceToChar[pt]);
     }
 
     return mirror ? b + 'v' + w : w + 'v' + b;
@@ -520,7 +520,7 @@ void HashTable::insert(const std::vector<PieceType>& pieces)
     std::string code;
 
     for (PieceType pt : pieces)
-        code += PieceChar[pt];
+        code += PieceToChar[pt];
 
     int bk = code.find('K', 1); // Black king
     TBFile f(code.substr(0, bk) + 'v' + code.substr(bk) + ".rtbw");
@@ -538,8 +538,8 @@ void HashTable::insert(const std::vector<PieceType>& pieces)
     if (num > Tablebases::MaxCardinality)
         Tablebases::MaxCardinality = num;
 
-    TB_entry.push_back(TBEntry());
-    TBEntry* entry = &TB_entry.back();
+    WDLTable.push_back(WDLEntry());
+    WDLEntry* entry = &WDLTable.back();
 
     if (hasPawns) {
         // FIXME: What it means this one?
@@ -821,7 +821,7 @@ void set_norm_pawn(uint8_t pawns[], uint8_t *norm, uint8_t *pieces, int num)
             ++norm[i];
 }
 
-void setup_pieces_piece(TBEntry_piece *ptr, unsigned char *data, uint64_t *tb_size, int num)
+void setup_pieces_piece(WDLPiece *ptr, unsigned char *data, uint64_t *tb_size, int num)
 {
     int i;
     int order;
@@ -841,7 +841,7 @@ void setup_pieces_piece(TBEntry_piece *ptr, unsigned char *data, uint64_t *tb_si
     tb_size[1] = calc_factors_piece(ptr->factor[1], num, order, ptr->norm[1], ptr->hasUniquePieces);
 }
 
-void setup_pieces_piece_dtz(DTZEntry_piece *ptr, unsigned char *data, uint64_t *tb_size, int num)
+void setup_pieces_piece_dtz(DTZPiece *ptr, unsigned char *data, uint64_t *tb_size, int num)
 {
     for (int i = 0; i < num; ++i)
         ptr->pieces[i] = uint8_t(data[i + 1] & 0x0f);
@@ -851,7 +851,7 @@ void setup_pieces_piece_dtz(DTZEntry_piece *ptr, unsigned char *data, uint64_t *
     tb_size[0] = calc_factors_piece(ptr->factor, num, order, ptr->norm, ptr->hasUniquePieces);
 }
 
-void setup_pieces_pawn(TBEntry_pawn *ptr, unsigned char *data, uint64_t *tb_size, File f, int num)
+void setup_pieces_pawn(WDLPawn *ptr, unsigned char *data, uint64_t *tb_size, File f, int num)
 {
     assert(FILE_A <= f && f <= FILE_D);
 
@@ -875,7 +875,7 @@ void setup_pieces_pawn(TBEntry_pawn *ptr, unsigned char *data, uint64_t *tb_size
     tb_size[1] = calc_factors_pawn(ptr->file[f].factor[1], num, order, order2, ptr->file[f].norm[1], f);
 }
 
-void setup_pieces_pawn_dtz(DTZEntry_pawn *ptr, unsigned char *data, uint64_t *tb_size, File f, int num)
+void setup_pieces_pawn_dtz(DTZPawn *ptr, unsigned char *data, uint64_t *tb_size, File f, int num)
 {
     assert(FILE_A <= f && f <= FILE_D);
 
@@ -990,7 +990,7 @@ PairsData *setup_pairs(unsigned char *data, uint64_t tb_size, uint64_t *size, un
     return d;
 }
 
-int init_table_wdl(TBEntry* entry, const std::string& fname)
+int init_table_wdl(WDLEntry* entry, const std::string& fname)
 {
     uint8_t *next;
     int s;
@@ -1026,7 +1026,7 @@ int init_table_wdl(TBEntry* entry, const std::string& fname)
     data += 5;
 
     if (!entry->has_pawns) {
-        TBEntry_piece* ptr = &entry->piece;
+        WDLPiece* ptr = &entry->piece;
         setup_pieces_piece(ptr, data, &tb_size[0], entry->num);
         data += entry->num + 1;
         data += (uintptr_t)data & 1;
@@ -1065,7 +1065,7 @@ int init_table_wdl(TBEntry* entry, const std::string& fname)
             ptr->precomp[1]->data = data;
         }
     } else {
-        TBEntry_pawn* ptr = &entry->pawn;
+        WDLPawn* ptr = &entry->pawn;
         s = 1 + (ptr->pawns[1] > 0);
 
         for (File f = FILE_A; f <= FILE_D; ++f) {
@@ -1147,7 +1147,7 @@ int init_table_dtz(DTZEntry& entry)
     data += 5;
 
     if (!entry.has_pawns) {
-        DTZEntry_piece* ptr = &entry.piece;
+        DTZPiece* ptr = &entry.piece;
         setup_pieces_piece_dtz(ptr, data, &tb_size[0], entry.num);
         data += entry.num + 1;
         data += (uintptr_t)data & 1;
@@ -1178,7 +1178,7 @@ int init_table_dtz(DTZEntry& entry)
         ptr->precomp->data = data;
         data += size[2];
     } else {
-        DTZEntry_pawn *ptr = &entry.pawn;
+        DTZPawn *ptr = &entry.pawn;
         s = 1 + (ptr->pawns[1] > 0);
 
         for (File f = FILE_A; f <= FILE_D; ++f) {
@@ -1333,7 +1333,7 @@ WDLScore probe_wdl_table(Position& pos, int* success)
     if (pos.count<ALL_PIECES>(WHITE) + pos.count<ALL_PIECES>(BLACK) == 2)
         return WDLDraw; // KvK
 
-    TBEntry* entry = TBHash[key];
+    WDLEntry* entry = WDLHash[key];
     if (!entry) {
         *success = 0;
         return WDLDraw;
@@ -1414,21 +1414,21 @@ int probe_dtz_table(const Position& pos, int wdl, int *success)
 {
     Key key = pos.material_key();
 
-    if (   DTZ_list.front().keys[0] != key
-        && DTZ_list.front().keys[1] != key) {
+    if (   DTZTable.front().keys[0] != key
+        && DTZTable.front().keys[1] != key) {
 
         // Enforce "Most Recently Used" (MRU) order for DTZ_list
-        for (auto it = DTZ_list.begin(); it != DTZ_list.end(); ++it)
+        for (auto it = DTZTable.begin(); it != DTZTable.end(); ++it)
             if (it->keys[0] == key) {
                 // Move to front without deleting the element
-                DTZ_list.splice(DTZ_list.begin(),DTZ_list, it);
+                DTZTable.splice(DTZTable.begin(),DTZTable, it);
                 break;
             }
 
         // If still not found, add a new one
-        if (DTZ_list.front().keys[0] != key) {
+        if (DTZTable.front().keys[0] != key) {
 
-            TBEntry* ptr = TBHash[key];
+            WDLEntry* ptr = WDLHash[key];
             if (!ptr) {
                 *success = 0;
                 return 0;
@@ -1446,9 +1446,9 @@ int probe_dtz_table(const Position& pos, int wdl, int *success)
 
             // We are going to add a new entry to DTZ_list, because we already
             // have a corresponding TBHash entry, copy some data from there.
-            DTZ_list.push_front(DTZEntry());
+            DTZTable.push_front(DTZEntry());
 
-            DTZEntry& entry = DTZ_list.front();
+            DTZEntry& entry = DTZTable.front();
             entry.data = file.map(&entry.mapping);
             entry.key = ptr->key;
             entry.num = ptr->num;
@@ -1473,12 +1473,12 @@ int probe_dtz_table(const Position& pos, int wdl, int *success)
 
             // Keep list size within 64 entries
             // FIXME remove it when we will know what we are doing
-            if (DTZ_list.size() > 64)
-               DTZ_list.pop_back();
+            if (DTZTable.size() > 64)
+               DTZTable.pop_back();
         }
     }
 
-    DTZEntry* ptr = &DTZ_list.front();
+    DTZEntry* ptr = &DTZTable.front();
 
     if (!ptr->data) {
         *success = 0;
@@ -1506,7 +1506,7 @@ int probe_dtz_table(const Position& pos, int wdl, int *success)
     }
 
     if (!ptr->has_pawns) {
-        DTZEntry_piece* entry = &ptr->piece;
+        DTZPiece* entry = &ptr->piece;
 
         if ((entry->flags & 1) != bside && !ptr->symmetric) {
             *success = -1;
@@ -1533,7 +1533,7 @@ int probe_dtz_table(const Position& pos, int wdl, int *success)
         if (!(entry->flags & pa_flags[wdl + 2]) || (wdl & 1))
             res *= 2;
     } else {
-        DTZEntry_pawn* entry = &ptr->pawn;
+        DTZPawn* entry = &ptr->pawn;
         int k = entry->file[0].pieces[0] ^ cmirror;
         Bitboard bb = pos.pieces((Color)(k >> 3), (PieceType)(k & 7));
         i = 0;
@@ -1884,9 +1884,9 @@ int probe_dtz(Position& pos, int *success)
 
 void Tablebases::init(const std::string& paths)
 {
-    DTZ_list.clear();
-    TB_entry.clear();
-    TBHash.clear();
+    DTZTable.clear();
+    WDLTable.clear();
+    WDLHash.clear();
 
     MaxCardinality = 0;
     TBPaths = paths;
@@ -1919,32 +1919,32 @@ void Tablebases::init(const std::string& paths)
     }
 
     for (PieceType p1 = PAWN; p1 < KING; ++p1) {
-        TBHash.insert({KING, p1, KING});
+        WDLHash.insert({KING, p1, KING});
 
         for (PieceType p2 = PAWN; p2 <= p1; ++p2) {
-            TBHash.insert({KING, p1, p2, KING});
-            TBHash.insert({KING, p1, KING, p2});
+            WDLHash.insert({KING, p1, p2, KING});
+            WDLHash.insert({KING, p1, KING, p2});
 
             for (PieceType p3 = PAWN; p3 < KING; ++p3)
-                TBHash.insert({KING, p1, p2, KING, p3});
+                WDLHash.insert({KING, p1, p2, KING, p3});
 
             for (PieceType p3 = PAWN; p3 <= p2; ++p3) {
-                TBHash.insert({KING, p1, p2, p3, KING});
+                WDLHash.insert({KING, p1, p2, p3, KING});
 
                 for (PieceType p4 = PAWN; p4 <= p3; ++p4)
-                    TBHash.insert({KING, p1, p2, p3, p4, KING});
+                    WDLHash.insert({KING, p1, p2, p3, p4, KING});
 
                 for (PieceType p4 = PAWN; p4 < KING; ++p4)
-                    TBHash.insert({KING, p1, p2, p3, KING, p4});
+                    WDLHash.insert({KING, p1, p2, p3, KING, p4});
             }
 
             for (PieceType p3 = PAWN; p3 <= p1; ++p3)
                 for (PieceType p4 = PAWN; p4 <= (p1 == p3 ? p2 : p3); ++p4)
-                    TBHash.insert({KING, p1, p2, KING, p3, p4});
+                    WDLHash.insert({KING, p1, p2, KING, p3, p4});
         }
     }
 
-    std::cerr << "info string Found " << TB_entry.size() << " tablebases" << std::endl;
+    std::cerr << "info string Found " << WDLTable.size() << " tablebases" << std::endl;
 }
 
 // Probe the WDL table for a particular position.
