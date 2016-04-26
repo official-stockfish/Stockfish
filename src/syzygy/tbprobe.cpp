@@ -138,6 +138,7 @@ struct DTZEntry {
         DTZPawn pawn;
     };
 
+    DTZEntry() { std::memset(this, 0, sizeof *this); }
     ~DTZEntry();
 };
 
@@ -475,8 +476,10 @@ public:
 
 WDLEntry::WDLEntry(const Position& pos, Key keys[])
 {
-    key = keys[WHITE];
+    std::memset(this, 0, sizeof *this);
+
     ready = 0;
+    key = keys[WHITE];
     num = pos.count<ALL_PIECES>(WHITE) + pos.count<ALL_PIECES>(BLACK);
     symmetric = (keys[WHITE] == keys[BLACK]);
     has_pawns = pos.count<PAWN>(WHITE) + pos.count<PAWN>(BLACK);
@@ -489,26 +492,17 @@ WDLEntry::WDLEntry(const Position& pos, Key keys[])
 
         pawn.pawns[0] = pos.count<PAWN>(c ? WHITE : BLACK);
         pawn.pawns[1] = pos.count<PAWN>(c ? BLACK : WHITE);
-    } else {
-        int uniquePieces = 0;
-
-        for (PieceType pt = PAWN; pt <= KING; ++pt)
-            uniquePieces +=  (popcount(pos.pieces(WHITE, pt)) == 1)
-                           + (popcount(pos.pieces(BLACK, pt)) == 1);
-
-        if (uniquePieces >= 3)
-            piece.hasUniquePieces = 1;
-        else {
-            // No unique pieces, other than W_KING and B_KING
-            assert(uniquePieces == 2);
-            piece.hasUniquePieces = 0;
-        }
-    }
+    } else
+        for (PieceType pt = PAWN; pt < KING; ++pt)
+            for (Color c = WHITE; c <= BLACK; ++c)
+                if (popcount(pos.pieces(c, pt)) == 1)
+                    piece.hasUniquePieces = true;
 }
 
 WDLEntry::~WDLEntry()
 {
-    TBFile::unmap(data, mapping);
+    if (data)
+        TBFile::unmap(data, mapping);
 
     if (has_pawns)
         for (File f = FILE_A; f <= FILE_D; ++f) {
@@ -523,7 +517,8 @@ WDLEntry::~WDLEntry()
 
 DTZEntry::~DTZEntry()
 {
-    TBFile::unmap(data, mapping);
+    if (data)
+        TBFile::unmap(data, mapping);
 
     if (has_pawns)
         for (File f = FILE_A; f <= FILE_D; ++f)
