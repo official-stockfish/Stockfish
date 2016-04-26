@@ -84,7 +84,11 @@ struct WDLPawn {
 };
 
 struct WDLEntry {
-    char *data;
+    WDLEntry(const Position& pos, Key keys[]);
+   ~WDLEntry();
+    bool init(const std::string& fname);
+
+    char *baseAddress;
     uint64_t key;
     uint64_t mapping;
     uint8_t ready;
@@ -95,9 +99,6 @@ struct WDLEntry {
         WDLPiece piece;
         WDLPawn pawn;
     };
-
-    WDLEntry(const Position& pos, Key keys[]);
-   ~WDLEntry();
 };
 
 struct DTZPiece {
@@ -125,8 +126,12 @@ struct DTZPawn {
 };
 
 struct DTZEntry {
+    DTZEntry(WDLEntry* wdl, Key keys[]);
+   ~DTZEntry();
+    bool init(const std::string& fname);
+
     uint64_t keys[2];
-    char *data;
+    char *baseAddress;
     uint64_t key;
     uint64_t mapping;
     uint8_t ready;
@@ -137,8 +142,6 @@ struct DTZEntry {
         DTZPiece piece;
         DTZPawn pawn;
     };
-
-    ~DTZEntry();
 };
 
 const signed char OffdiagA1H8[] = {
@@ -475,6 +478,8 @@ public:
 
 WDLEntry::WDLEntry(const Position& pos, Key keys[])
 {
+    memset(this, 0, sizeof(WDLEntry));
+
     key = keys[WHITE];
     ready = 0;
     num = pos.count<ALL_PIECES>(WHITE) + pos.count<ALL_PIECES>(BLACK);
@@ -508,7 +513,7 @@ WDLEntry::WDLEntry(const Position& pos, Key keys[])
 
 WDLEntry::~WDLEntry()
 {
-    TBFile::unmap(data, mapping);
+    TBFile::unmap(baseAddress, mapping);
 
     if (has_pawns)
         for (File f = FILE_A; f <= FILE_D; ++f) {
@@ -521,9 +526,27 @@ WDLEntry::~WDLEntry()
     }
 }
 
+DTZEntry::DTZEntry(WDLEntry* wdl, Key k[])
+{
+    memset(this, 0, sizeof(DTZEntry));
+
+    keys[0] = k[0];
+    keys[1] = k[1];
+    key = wdl->key;
+    num = wdl->num;
+    symmetric = wdl->symmetric;
+    has_pawns = wdl->has_pawns;
+
+    if (has_pawns) {
+        pawn.pawns[0] = wdl->pawn.pawns[0];
+        pawn.pawns[1] = wdl->pawn.pawns[1];
+    } else
+        piece.hasUniquePieces = wdl->piece.hasUniquePieces;
+}
+
 DTZEntry::~DTZEntry()
 {
-    TBFile::unmap(data, mapping);
+    TBFile::unmap(baseAddress, mapping);
 
     if (has_pawns)
         for (File f = FILE_A; f <= FILE_D; ++f)
@@ -987,7 +1010,7 @@ PairsData *setup_pairs(unsigned char *data, uint64_t tb_size, uint64_t *size, un
     return d;
 }
 
-int init_table_wdl(WDLEntry* entry, const std::string& fname)
+bool WDLEntry::init(const std::string& fname)
 {
     uint8_t *next;
     int s;
@@ -1002,18 +1025,17 @@ int init_table_wdl(WDLEntry* entry, const std::string& fname)
         return 0;
     }
 
-    // First mmap the table into memory
-    entry->data = file.map(&entry->mapping);
+    baseAddress = file.map(&mapping); // Map the table into memory
 
-    uint8_t *data = (uint8_t *)entry->data;
+    uint8_t *data = (uint8_t*)baseAddress;
 
     if (   data[0] != WDL_MAGIC[0]
         || data[1] != WDL_MAGIC[1]
         || data[2] != WDL_MAGIC[2]
         || data[3] != WDL_MAGIC[3]) {
         std::cerr << "Corrupted table" << std::endl;
-        TBFile::unmap(entry->data, entry->mapping);
-        entry->data = 0;
+        TBFile::unmap(baseAddress, mapping);
+        baseAddress = 0;
         return 0;
     }
 
@@ -1022,10 +1044,10 @@ int init_table_wdl(WDLEntry* entry, const std::string& fname)
 
     data += 5;
 
-    if (!entry->has_pawns) {
-        WDLPiece* ptr = &entry->piece;
-        setup_pieces_piece(ptr, data, &tb_size[0], entry->num);
-        data += entry->num + 1;
+    if (!has_pawns) {
+        WDLPiece* ptr = &piece;
+        setup_pieces_piece(ptr, data, &tb_size[0], num);
+        data += num + 1;
         data += (uintptr_t)data & 1;
 
         ptr->precomp[0] = setup_pairs(data, tb_size[0], &size[0], &next, &flags, 1);
@@ -1062,12 +1084,12 @@ int init_table_wdl(WDLEntry* entry, const std::string& fname)
             ptr->precomp[1]->data = data;
         }
     } else {
-        WDLPawn* ptr = &entry->pawn;
+        WDLPawn* ptr = &pawn;
         s = 1 + (ptr->pawns[1] > 0);
 
         for (File f = FILE_A; f <= FILE_D; ++f) {
-            setup_pieces_pawn(ptr, data, &tb_size[2 * f], f, entry->num);
-            data += entry->num + s;
+            setup_pieces_pawn(ptr, data, &tb_size[2 * f], f, num);
+            data += num + s;
         }
 
         data += (uintptr_t)data & 1;
@@ -1119,34 +1141,42 @@ int init_table_wdl(WDLEntry* entry, const std::string& fname)
     return 1;
 }
 
-int init_table_dtz(DTZEntry& entry)
+bool DTZEntry::init(const std::string& fname)
 {
-    uint8_t *data = (uint8_t*)entry.data;
     uint8_t *next;
     int s;
     uint64_t tb_size[4];
     uint64_t size[4 * 3];
 
-    if (!data)
-        return 0;
+    TBFile file(fname);
+
+    if (!file.is_open()) {
+        std::cerr << "Could not find " << fname << std::endl;
+        return false;
+    }
+
+    baseAddress = file.map(&mapping); // Map the table into memory
+
+    uint8_t* data = (uint8_t*)baseAddress;
 
     if (   data[0] != DTZ_MAGIC[0]
         || data[1] != DTZ_MAGIC[1]
         || data[2] != DTZ_MAGIC[2]
         || data[3] != DTZ_MAGIC[3]) {
         std::cerr << "Corrupted table" << std::endl;
-        data = nullptr;
-        return 0;
+        TBFile::unmap(baseAddress, mapping);
+        baseAddress = 0;
+        return false;
     }
 
     File maxFile = data[4] & 2 ? FILE_D : FILE_A;
 
     data += 5;
 
-    if (!entry.has_pawns) {
-        DTZPiece* ptr = &entry.piece;
-        setup_pieces_piece_dtz(ptr, data, &tb_size[0], entry.num);
-        data += entry.num + 1;
+    if (!has_pawns) {
+        DTZPiece* ptr = &piece;
+        setup_pieces_piece_dtz(ptr, data, &tb_size[0], num);
+        data += num + 1;
         data += (uintptr_t)data & 1;
 
         ptr->precomp = setup_pairs(data, tb_size[0], &size[0], &next, &(ptr->flags), 0);
@@ -1175,12 +1205,12 @@ int init_table_dtz(DTZEntry& entry)
         ptr->precomp->data = data;
         data += size[2];
     } else {
-        DTZPawn *ptr = &entry.pawn;
+        DTZPawn *ptr = &pawn;
         s = 1 + (ptr->pawns[1] > 0);
 
         for (File f = FILE_A; f <= FILE_D; ++f) {
-            setup_pieces_pawn_dtz(ptr, data, &tb_size[f], f, entry.num);
-            data += entry.num + s;
+            setup_pieces_pawn_dtz(ptr, data, &tb_size[f], f, num);
+            data += num + s;
         }
 
         data += (uintptr_t)data & 1;
@@ -1219,7 +1249,7 @@ int init_table_dtz(DTZEntry& entry)
         }
     }
 
-    return 1;
+    return true;
 }
 
 template<typename T, int Half = sizeof(T)/2, int End = sizeof(T)-1>
@@ -1340,7 +1370,8 @@ WDLScore probe_wdl_table(Position& pos, int* success)
     if (!entry->ready) {
         std::unique_lock<Mutex> lk(TB_mutex);
         if (!entry->ready) {
-            if (!init_table_wdl(entry, file_name(pos, entry->key != key) + ".rtbw")) {
+            std::string fname = file_name(pos, entry->key != key) + ".rtbw";
+            if (!entry->init(fname)) {
                 // Was ptr2->key = 0ULL;  Just leave !ptr->ready condition
                 *success = 0;
                 return WDLDraw;
@@ -1431,42 +1462,26 @@ int probe_dtz_table(const Position& pos, int wdl, int *success)
                 return 0;
             }
 
-            bool mirror = (ptr->key != key);
-            std::string fname = file_name(pos, mirror) + ".rtbz";
-            TBFile file(fname);
+            StateInfo st;
+            Position p;
+            std::string code = file_name(pos, ptr->key != key);
+            std::string fname = code + ".rtbz";
+            code.erase(code.find('v'), 1);
 
-            if (!file.is_open()) {
-                std::cerr << "Could not find " << fname << std::endl;
+            Key keys[] = { p.set(code, WHITE, &st).material_key(),
+                           p.set(code, BLACK, &st).material_key() };
+
+            DTZTable.push_front(DTZEntry(ptr, keys));
+
+            if (!DTZTable.front().init(fname)) {
+                // In case file is not found init() fails, but we leave
+                // the entry so to avoid rechecking at every probe (same
+                // functionality as WDL case).
+                // FIXME: This is different form original functionality!
+                /* DTZTable.pop_front(); */
                 *success = 0;
                 return 0;
             }
-
-            // We are going to add a new entry to DTZ_list, because we already
-            // have a corresponding TBHash entry, copy some data from there.
-            DTZTable.push_front(DTZEntry());
-
-            DTZEntry& entry = DTZTable.front();
-            entry.data = file.map(&entry.mapping);
-            entry.key = ptr->key;
-            entry.num = ptr->num;
-            entry.symmetric = ptr->symmetric;
-            entry.has_pawns = ptr->has_pawns;
-
-            if (ptr->has_pawns) {
-                entry.pawn.pawns[0] = ptr->pawn.pawns[0];
-                entry.pawn.pawns[1] = ptr->pawn.pawns[1];
-            } else
-                entry.piece.hasUniquePieces = ptr->piece.hasUniquePieces;
-
-            StateInfo st;
-            Position p;
-            std::string code = file_name(pos, mirror);
-            code.erase(code.find('v'), 1);
-
-            entry.keys[0] = p.set(code, WHITE, &st).material_key();
-            entry.keys[1] = p.set(code, BLACK, &st).material_key();
-
-            init_table_dtz(entry);
 
             // Keep list size within 64 entries
             // FIXME remove it when we will know what we are doing
@@ -1477,7 +1492,7 @@ int probe_dtz_table(const Position& pos, int wdl, int *success)
 
     DTZEntry* ptr = &DTZTable.front();
 
-    if (!ptr->data) {
+    if (!ptr->baseAddress) {
         *success = 0;
         return 0;
     }
