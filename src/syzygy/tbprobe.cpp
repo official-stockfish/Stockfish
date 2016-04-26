@@ -96,7 +96,8 @@ struct WDLEntry {
         WDLPawn pawn;
     };
 
-    ~WDLEntry();
+    WDLEntry(const Position& pos, Key keys[]);
+   ~WDLEntry();
 };
 
 struct DTZPiece {
@@ -472,6 +473,39 @@ public:
     }
 };
 
+WDLEntry::WDLEntry(const Position& pos, Key keys[])
+{
+    key = keys[WHITE];
+    ready = 0;
+    num = pos.count<ALL_PIECES>(WHITE) + pos.count<ALL_PIECES>(BLACK);
+    symmetric = (keys[WHITE] == keys[BLACK]);
+    has_pawns = pos.count<PAWN>(WHITE) + pos.count<PAWN>(BLACK);
+
+    if (has_pawns) {
+        // FIXME: What it means this one?
+        bool c = (   !pos.count<PAWN>(BLACK)
+                  || (   pos.count<PAWN>(WHITE)
+                      && pos.count<PAWN>(BLACK) >= pos.count<PAWN>(WHITE)));
+
+        pawn.pawns[0] = pos.count<PAWN>(c ? WHITE : BLACK);
+        pawn.pawns[1] = pos.count<PAWN>(c ? BLACK : WHITE);
+    } else {
+        int uniquePieces = 0;
+
+        for (PieceType pt = PAWN; pt <= KING; ++pt)
+            uniquePieces +=  (popcount(pos.pieces(WHITE, pt)) == 1)
+                           + (popcount(pos.pieces(BLACK, pt)) == 1);
+
+        if (uniquePieces >= 3)
+            piece.hasUniquePieces = 1;
+        else {
+            // No unique pieces, other than W_KING and B_KING
+            assert(uniquePieces == 2);
+            piece.hasUniquePieces = 0;
+        }
+    }
+}
+
 WDLEntry::~WDLEntry()
 {
     TBFile::unmap(data, mapping);
@@ -530,53 +564,16 @@ void HashTable::insert(const std::vector<PieceType>& pieces)
 
     f.close();
 
-    pos.set(code, WHITE, &st);
+    if (int(pieces.size()) > Tablebases::MaxCardinality)
+        Tablebases::MaxCardinality = pieces.size();
 
-    int num = pos.count<ALL_PIECES>(WHITE) + pos.count<ALL_PIECES>(BLACK);
-    bool hasPawns = pos.count<PAWN>(WHITE) + pos.count<PAWN>(BLACK);
+    Key keys[] = { pos.set(code, WHITE, &st).material_key(),
+                   pos.set(code, BLACK, &st).material_key() };
 
-    if (num > Tablebases::MaxCardinality)
-        Tablebases::MaxCardinality = num;
+    WDLTable.push_back(WDLEntry(pos.set(code, WHITE, &st), keys));
 
-    WDLTable.push_back(WDLEntry());
-    WDLEntry* entry = &WDLTable.back();
-
-    if (hasPawns) {
-        // FIXME: What it means this one?
-        bool c = (   !pos.count<PAWN>(BLACK)
-                  || (   pos.count<PAWN>(WHITE)
-                      && pos.count<PAWN>(BLACK) >= pos.count<PAWN>(WHITE)));
-
-            entry->pawn.pawns[0] = pos.count<PAWN>(c ? WHITE : BLACK);
-            entry->pawn.pawns[1] = pos.count<PAWN>(c ? BLACK : WHITE);
-    } else {
-
-        int uniquePieces = 0;
-
-        for (PieceType pt = PAWN; pt <= KING; ++pt)
-            uniquePieces +=  (popcount(pos.pieces(WHITE, pt)) == 1)
-                           + (popcount(pos.pieces(BLACK, pt)) == 1);
-
-        if (uniquePieces >= 3)
-            entry->piece.hasUniquePieces = 1;
-        else {
-            // No unique pieces, other than W_KING and B_KING
-            assert(uniquePieces == 2);
-            entry->piece.hasUniquePieces = 0;
-        }
-    }
-
-    Key key1 = pos.material_key();
-    Key key2 = pos.set(code, BLACK, &st).material_key();
-
-    entry->key = key1;
-    entry->ready = 0;
-    entry->num = num;
-    entry->symmetric = (key1 == key2);
-    entry->has_pawns = hasPawns;
-
-    insert(key1, entry);
-    insert(key2, entry);
+    insert(keys[WHITE], &WDLTable.back());
+    insert(keys[BLACK], &WDLTable.back());
 }
 
 uint64_t encode_piece(uint8_t hasUniquePieces, uint8_t* norm, Square* pos, int* factor, int n)
