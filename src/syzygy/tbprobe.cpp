@@ -84,11 +84,11 @@ public:
     union {
         struct {
             uint8_t hasUniquePieces;
-            PairsData* precomp[2];
-            int factor[2][TBPIECES];
-            uint8_t pieces[2][TBPIECES];
-            uint8_t norm[2][TBPIECES];
-        } piece;
+            PairsData* precomp;
+            int factor[TBPIECES];
+            uint8_t pieces[TBPIECES];
+            uint8_t norm[TBPIECES];
+        } piece[2];
 
         struct {
             uint8_t pawns[2];
@@ -496,7 +496,7 @@ WDLEntry::WDLEntry(const Position& pos, Key keys[])
         for (Color c = WHITE; c <= BLACK; ++c)
             for (PieceType pt = PAWN; pt < KING; ++pt)
                 if (popcount(pos.pieces(c, pt)) == 1)
-                    piece.hasUniquePieces = true;
+                    piece[0].hasUniquePieces = piece[1].hasUniquePieces = true;
 }
 
 WDLEntry::~WDLEntry()
@@ -510,8 +510,8 @@ WDLEntry::~WDLEntry()
             free(pawn.file[f].precomp[1]);
         }
     else {
-        free(piece.precomp[0]);
-        free(piece.precomp[1]);
+        free(piece[0].precomp);
+        free(piece[1].precomp);
     }
 }
 
@@ -530,7 +530,7 @@ DTZEntry::DTZEntry(const WDLEntry& wdl, Key k[])
         pawn.pawns[0] = wdl.pawn.pawns[0];
         pawn.pawns[1] = wdl.pawn.pawns[1];
     } else
-        piece.hasUniquePieces = wdl.piece.hasUniquePieces;
+        piece.hasUniquePieces = wdl.piece[0].hasUniquePieces;
 }
 
 DTZEntry::~DTZEntry()
@@ -751,20 +751,21 @@ int subfactor(int k, int n)
     return numerator / denominator;
 }
 
-uint64_t calc_factors_piece(int *factor, int num, int order, uint8_t *norm, uint8_t hasUniquePieces)
+template<typename T>
+uint64_t set_factors(T& p, int num, int order)
 {
-    int n = 64 - norm[0];
+    int n = 64 - p.norm[0];
     uint64_t result = 1;
 
-    for (int i = norm[0], k = 0; i < num || k == order; ++k) {
+    for (int i = p.norm[0], k = 0; i < num || k == order; ++k) {
         if (k == order) {
-            factor[0] = (int)result;
-            result *= hasUniquePieces ? 31332 : 462;
+            p.factor[0] = (int)result;
+            result *= p.hasUniquePieces ? 31332 : 462;
         } else {
-            factor[i] = (int)result;
-            result *= subfactor(norm[i], n);
-            n -= norm[i];
-            i += norm[i];
+            p.factor[i] = (int)result;
+            result *= subfactor(p.norm[i], n);
+            n -= p.norm[i];
+            i += p.norm[i];
         }
     }
 
@@ -801,18 +802,17 @@ uint64_t calc_factors_pawn(int *factor, int num, int order, int order2, uint8_t 
     return result;
 }
 
-void set_norm_piece(uint8_t hasUniquePieces, uint8_t *norm, uint8_t *pieces, int num)
+template<typename T>
+void set_norms(T& p, int num)
 {
-    int i, j;
+    for (int i = 0; i < num; ++i)
+        p.norm[i] = 0;
 
-    for (i = 0; i < num; ++i)
-        norm[i] = 0;
+    p.norm[0] = p.hasUniquePieces ? 3 : 2;
 
-    norm[0] = hasUniquePieces ? 3 : 2;
-
-    for (i = norm[0]; i < num; i += norm[i])
-        for (j = i; j < num && pieces[j] == pieces[i]; ++j)
-            ++norm[i];
+    for (int i = p.norm[0]; i < num; i += p.norm[i])
+        for (int j = i; j < num && p.pieces[j] == p.pieces[i]; ++j)
+            ++p.norm[i];
 }
 
 void set_norm_pawn(uint8_t pawns[], uint8_t *norm, uint8_t *pieces, int num)
@@ -950,71 +950,71 @@ bool WDLEntry::init(const std::string& fname)
 
     uint8_t* data = (uint8_t*)baseAddress;
 
-    if (   data[0] != TB_MAGIC[0]
-        || data[1] != TB_MAGIC[1]
-        || data[2] != TB_MAGIC[2]
-        || data[3] != TB_MAGIC[3]) {
+    if (   *data++ != TB_MAGIC[0]
+        || *data++ != TB_MAGIC[1]
+        || *data++ != TB_MAGIC[2]
+        || *data++ != TB_MAGIC[3]) {
         std::cerr << "Corrupted table" << std::endl;
         TBFile::unmap(baseAddress, mapping);
         baseAddress = nullptr;
         return false;
     }
 
-    int split = data[4] & 1;
-    File maxFile = data[4] & 2 ? FILE_D : FILE_A;
+    int split = *data & 1;
+    File maxFile = *data & 2 ? FILE_D : FILE_A;
 
-    data += 5;
+    data++;
 
     if (!has_pawns) {
-        for (int i = 0; i < num; ++i)
-            piece.pieces[0][i] = uint8_t(data[i + 1] & 0x0f);
 
-        int order = data[0] & 0x0f;
-        set_norm_piece(piece.hasUniquePieces, piece.norm[0], piece.pieces[0], num);
-        tb_size[0] = calc_factors_piece(piece.factor[0], num, order, piece.norm[0], piece.hasUniquePieces);
+        int order[] = { *data & 0xF, *data >> 4 };
 
-        for (int i = 0; i < num; ++i)
-            piece.pieces[1][i] = uint8_t(data[i + 1] >> 4);
+        data++;
 
-        order = data[0] >> 4;
-        set_norm_piece(piece.hasUniquePieces, piece.norm[1], piece.pieces[1], num);
-        tb_size[1] = calc_factors_piece(piece.factor[1], num, order, piece.norm[1], piece.hasUniquePieces);
+        for (int i = 0; i < num; ++i, ++data) {
+            piece[0].pieces[i] = *data & 0xF;
+            piece[1].pieces[i] = *data >> 4;
+        }
 
-        data += num + 1;
+        for (int i = 0; i < 2; ++i) {
+            set_norms(piece[i], num);
+            tb_size[i] = set_factors(piece[i], num, order[i]);
+        }
+
         data += (uintptr_t)data & 1;
 
-        piece.precomp[0] = setup_pairs(data, tb_size[0], &size[0], &next, &flags, 1);
+        piece[0].precomp = setup_pairs(data, tb_size[0], &size[0], &next, &flags, 1);
         data = next;
 
         if (split) {
-            piece.precomp[1] = setup_pairs(data, tb_size[1], &size[3], &next, &flags, 1);
+            piece[1].precomp = setup_pairs(data, tb_size[1], &size[3], &next, &flags, 1);
             data = next;
         } else
-            piece.precomp[1] = nullptr;
+            piece[1].precomp = nullptr;
 
-        piece.precomp[0]->indextable = (char *)data;
+        piece[0].precomp->indextable = (char*)data;
         data += size[0];
 
         if (split) {
-            piece.precomp[1]->indextable = (char *)data;
+            piece[1].precomp->indextable = (char*)data;
             data += size[3];
         }
 
-        piece.precomp[0]->sizetable = (uint16_t *)data;
+        piece[0].precomp->sizetable = (uint16_t*)data;
         data += size[1];
 
         if (split) {
-            piece.precomp[1]->sizetable = (uint16_t *)data;
+            piece[1].precomp->sizetable = (uint16_t*)data;
             data += size[4];
         }
 
-        data = (uint8_t *)(((uintptr_t)data + 0x3f) & ~0x3f);
-        piece.precomp[0]->data = data;
+        data = (uint8_t*)(((uintptr_t)data + 0x3f) & ~0x3F);
+        piece[0].precomp->data = data;
         data += size[2];
 
         if (split) {
-            data = (uint8_t *)(((uintptr_t)data + 0x3f) & ~0x3f);
-            piece.precomp[1]->data = data;
+            data = (uint8_t*)(((uintptr_t)data + 0x3F) & ~0x3F);
+            piece[1].precomp->data = data;
         }
     } else {
         s = 1 + (pawn.pawns[1] > 0);
@@ -1127,9 +1127,9 @@ bool DTZEntry::init(const std::string& fname)
         for (int i = 0; i < num; ++i)
             piece.pieces[i] = uint8_t(data[i + 1] & 0x0f);
 
-        int order = data[0] & 0x0f;
-        set_norm_piece(piece.hasUniquePieces, piece.norm, piece.pieces, num);
-        tb_size[0] = calc_factors_piece(piece.factor, num, order, piece.norm, piece.hasUniquePieces);
+        int order = data[0] & 0xF;
+        set_norms(piece, num);
+        tb_size[0] = set_factors(piece, num, order);
 
         data += num + 1;
         data += (uintptr_t)data & 1;
@@ -1369,15 +1369,15 @@ WDLScore probe_wdl_table(Position& pos, int* success)
     // Pieces of the same type are guaranteed to be consecutive.
     if (!entry->has_pawns) {
         for (int i = 0; i < entry->num; ) {
-            Piece pc = Piece(entry->piece.pieces[bside][i] ^ cmirror);
+            Piece pc = Piece(entry->piece[bside].pieces[i] ^ cmirror);
             Bitboard b = pos.pieces(color_of(pc), type_of(pc));
             do
                 squares[i++] = pop_lsb(&b);
             while (b);
         }
 
-        uint64_t idx = encode_piece(entry->piece.hasUniquePieces, entry->piece.norm[bside], squares, entry->piece.factor[bside], entry->num);
-        return WDLScore(decompress_pairs(entry->piece.precomp[bside], idx) - 2);
+        uint64_t idx = encode_piece(entry->piece[bside].hasUniquePieces, entry->piece[bside].norm, squares, entry->piece[bside].factor, entry->num);
+        return WDLScore(decompress_pairs(entry->piece[bside].precomp, idx) - 2);
     } else {
         Piece pc = Piece(entry->pawn.file[0].pieces[0][0] ^ cmirror);
         Bitboard b = pos.pieces(color_of(pc), type_of(pc));
