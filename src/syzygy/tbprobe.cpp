@@ -138,9 +138,9 @@ public:
                 int factor[TBPIECES];
                 uint8_t pieces[TBPIECES];
                 uint8_t norm[TBPIECES];
+                uint8_t flags;
+                uint16_t map_idx[4];
             } file[4];
-            uint8_t flags[4];
-            uint16_t map_idx[4][4];
             uint8_t* map;
         } pawn;
     };
@@ -1179,16 +1179,16 @@ bool DTZEntry::init(const std::string& fname)
         data += (uintptr_t)data & 1;
 
         for (File f = FILE_A; f <= maxFile; ++f) {
-            pawn.file[f].precomp = setup_pairs(data, tb_size[f], &size[3 * f], &next, &(pawn.flags[f]), 0);
+            pawn.file[f].precomp = setup_pairs(data, tb_size[f], &size[3 * f], &next, &(pawn.file[f].flags), 0);
             data = next;
         }
 
         pawn.map = data;
 
         for (File f = FILE_A; f <= maxFile; ++f) {
-            if (pawn.flags[f] & 2)
+            if (pawn.file[f].flags & 2)
                 for (int i = 0; i < 4; ++i) {
-                    pawn.map_idx[f][i] = (uint16_t)(data + 1 - pawn.map);
+                    pawn.file[f].map_idx[i] = (uint16_t)(data + 1 - pawn.map);
                     data += 1 + data[0];
                 }
         }
@@ -1516,7 +1516,7 @@ int probe_dtz_table(const Position& pos, int wdl, int *success)
 
         File f = pawn_file(ptr->pawn.pawns, squares);
 
-        if ((ptr->pawn.flags[f] & 1) != bside) {
+        if ((ptr->pawn.file[f].flags & 1) != bside) {
             *success = -1;
             return 0;
         }
@@ -1535,10 +1535,10 @@ int probe_dtz_table(const Position& pos, int wdl, int *success)
         idx = encode_pawn(ptr->pawn.pawns, ptr->pawn.file[f].norm, squares, ptr->pawn.file[f].factor, ptr->num);
         res = decompress_pairs(ptr->pawn.file[f].precomp, idx);
 
-        if (ptr->pawn.flags[f] & 2)
-            res = ptr->pawn.map[ptr->pawn.map_idx[f][wdl_to_map[wdl + 2]] + res];
+        if (ptr->pawn.file[f].flags & 2)
+            res = ptr->pawn.map[ptr->pawn.file[f].map_idx[wdl_to_map[wdl + 2]] + res];
 
-        if (!(ptr->pawn.flags[f] & pa_flags[wdl + 2]) || (wdl & 1))
+        if (!(ptr->pawn.file[f].flags & pa_flags[wdl + 2]) || (wdl & 1))
             res *= 2;
     }
 
