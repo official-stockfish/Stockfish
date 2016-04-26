@@ -481,7 +481,6 @@ WDLEntry::WDLEntry(const Position& pos, Key keys[])
     memset(this, 0, sizeof(WDLEntry));
 
     key = keys[WHITE];
-    ready = 0;
     num = pos.count<ALL_PIECES>(WHITE) + pos.count<ALL_PIECES>(BLACK);
     symmetric = (keys[WHITE] == keys[BLACK]);
     has_pawns = pos.count<PAWN>(WHITE) + pos.count<PAWN>(BLACK);
@@ -494,26 +493,17 @@ WDLEntry::WDLEntry(const Position& pos, Key keys[])
 
         pawn.pawns[0] = pos.count<PAWN>(c ? WHITE : BLACK);
         pawn.pawns[1] = pos.count<PAWN>(c ? BLACK : WHITE);
-    } else {
-        int uniquePieces = 0;
-
-        for (PieceType pt = PAWN; pt <= KING; ++pt)
-            uniquePieces +=  (popcount(pos.pieces(WHITE, pt)) == 1)
-                           + (popcount(pos.pieces(BLACK, pt)) == 1);
-
-        if (uniquePieces >= 3)
-            piece.hasUniquePieces = 1;
-        else {
-            // No unique pieces, other than W_KING and B_KING
-            assert(uniquePieces == 2);
-            piece.hasUniquePieces = 0;
-        }
-    }
+    } else
+        for (Color c = WHITE; c <= BLACK; ++c)
+            for (PieceType pt = PAWN; pt < KING; ++pt)
+                if (popcount(pos.pieces(c, pt)) == 1)
+                    piece.hasUniquePieces = true;
 }
 
 WDLEntry::~WDLEntry()
 {
-    TBFile::unmap(baseAddress, mapping);
+    if (baseAddress)
+        TBFile::unmap(baseAddress, mapping);
 
     if (has_pawns)
         for (File f = FILE_A; f <= FILE_D; ++f) {
@@ -546,7 +536,8 @@ DTZEntry::DTZEntry(WDLEntry* wdl, Key k[])
 
 DTZEntry::~DTZEntry()
 {
-    TBFile::unmap(baseAddress, mapping);
+    if (baseAddress)
+        TBFile::unmap(baseAddress, mapping);
 
     if (has_pawns)
         for (File f = FILE_A; f <= FILE_D; ++f)
