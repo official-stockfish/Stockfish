@@ -95,6 +95,8 @@ struct TBEntry {
         TBEntry_piece piece;
         TBEntry_pawn pawn;
     };
+
+    ~TBEntry();
 };
 
 struct DTZEntry_piece {
@@ -134,6 +136,8 @@ struct DTZEntry {
         DTZEntry_piece piece;
         DTZEntry_pawn pawn;
     };
+
+    ~DTZEntry();
 };
 
 const signed char OffdiagA1H8[] = {
@@ -468,6 +472,32 @@ public:
     }
 };
 
+TBEntry::~TBEntry()
+{
+    TBFile::unmap(data, mapping);
+
+    if (has_pawns)
+        for (File f = FILE_A; f <= FILE_D; ++f) {
+            free(pawn.file[f].precomp[0]);
+            free(pawn.file[f].precomp[1]);
+        }
+    else {
+        free(piece.precomp[0]);
+        free(piece.precomp[1]);
+    }
+}
+
+DTZEntry::~DTZEntry()
+{
+    TBFile::unmap(data, mapping);
+
+    if (has_pawns)
+        for (File f = FILE_A; f <= FILE_D; ++f)
+            free(pawn.file[f].precomp);
+    else
+        free(piece.precomp);
+}
+
 // Given a position with 6 or fewer pieces, produce a text string
 // of the form KQPvKRP, where "KQP" represents the white pieces if
 // mirror == false and the black pieces if mirror == true.
@@ -481,32 +511,6 @@ std::string file_name(const Position& pos, bool mirror)
     }
 
     return mirror ? b + 'v' + w : w + 'v' + b;
-}
-
-void free_wdl_entry(TBEntry& entry)
-{
-    TBFile::unmap(entry.data, entry.mapping);
-
-    if (entry.has_pawns)
-        for (File f = FILE_A; f <= FILE_D; ++f) {
-            free(entry.pawn.file[f].precomp[0]);
-            free(entry.pawn.file[f].precomp[1]);
-        }
-    else {
-        free(entry.piece.precomp[0]);
-        free(entry.piece.precomp[1]);
-    }
-}
-
-void free_dtz_entry(DTZEntry& entry)
-{
-    TBFile::unmap(entry.data, entry.mapping);
-
-    if (entry.has_pawns)
-        for (File f = FILE_A; f <= FILE_D; ++f)
-            free(entry.pawn.file[f].precomp);
-    else
-        free(entry.piece.precomp);
 }
 
 void HashTable::insert(const std::vector<PieceType>& pieces)
@@ -1416,8 +1420,8 @@ int probe_dtz_table(const Position& pos, int wdl, int *success)
         // Enforce "Most Recently Used" (MRU) order for DTZ_list
         for (auto it = DTZ_list.begin(); it != DTZ_list.end(); ++it)
             if (it->keys[0] == key) {
-                DTZ_list.push_front(*it);
-                DTZ_list.erase(it);
+                // Move to front without deleting the element
+                DTZ_list.splice(DTZ_list.begin(),DTZ_list, it);
                 break;
             }
 
@@ -1470,10 +1474,7 @@ int probe_dtz_table(const Position& pos, int wdl, int *success)
             // Keep list size within 64 entries
             // FIXME remove it when we will know what we are doing
             if (DTZ_list.size() > 64)
-            {
-               free_dtz_entry(DTZ_list.back());
                DTZ_list.pop_back();
-            }
         }
     }
 
@@ -1881,24 +1882,13 @@ int probe_dtz(Position& pos, int *success)
 
 } // namespace
 
-void Tablebases::free()
+void Tablebases::init(const std::string& paths)
 {
-    for (auto& e : TB_entry)
-        free_wdl_entry(e);
-
-    for (auto& e : DTZ_list)
-        free_dtz_entry(e);
-
     DTZ_list.clear();
     TB_entry.clear();
     TBHash.clear();
 
     MaxCardinality = 0;
-}
-
-void Tablebases::init(const std::string& paths)
-{
-    Tablebases::free();
     TBPaths = paths;
 
     if (TBPaths.empty() || TBPaths == "<empty>")

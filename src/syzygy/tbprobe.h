@@ -16,7 +16,6 @@ enum WDLScore {
 extern int MaxCardinality;
 
 void init(const std::string& paths);
-void free();
 WDLScore probe_wdl(Position& pos, int* success);
 bool root_probe(Position& pos, Search::RootMoves& rootMoves, Value& score);
 bool root_probe_wdl(Position& pos, Search::RootMoves& rootMoves, Value& score);
