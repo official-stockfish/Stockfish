@@ -341,7 +341,7 @@ std::string TBPaths;
 std::deque<WDLEntry> WDLTable;
 std::list<DTZEntry> DTZTable;
 
-int Binomial[5][64];
+int Binomial[6][64];
 int Pawnidx[5][24];
 int Pfactor[5][4];
 
@@ -661,7 +661,7 @@ uint64_t encode_piece(uint8_t hasUniquePieces, uint8_t* norm, Square* pos, int* 
             for (int k = 0; k < i; ++k)
                 j += pos[l] > pos[k];
 
-            s += Binomial[l - i][pos[l] - j];
+            s += Binomial[l - i + 1][pos[l] - j];
         }
 
         idx += s * factor[i];
@@ -702,7 +702,7 @@ uint64_t encode_pawn(uint8_t pawns[], uint8_t *norm, Square *pos, int *factor, i
     uint64_t idx = Pawnidx[t][Flap[pos[0]]];
 
     for (i = t; i > 0; --i)
-        idx += Binomial[t - i][Ptwist[pos[i]]];
+        idx += Binomial[t - i + 1][Ptwist[pos[i]]];
 
     idx *= factor[0];
 
@@ -721,7 +721,7 @@ uint64_t encode_pawn(uint8_t pawns[], uint8_t *norm, Square *pos, int *factor, i
             for (int k = 0; k < i; ++k)
                 j += pos[m] > pos[k];
 
-            s += Binomial[m - i][pos[m] - j - 8];
+            s += Binomial[m - i + 1][pos[m] - j - 8];
         }
 
         idx += s * factor[i];
@@ -741,7 +741,7 @@ uint64_t encode_pawn(uint8_t pawns[], uint8_t *norm, Square *pos, int *factor, i
             for (int k = 0; k < i; ++k)
                 j += pos[l] > pos[k];
 
-            s += Binomial[l - i][pos[l] - j];
+            s += Binomial[l - i + 1][pos[l] - j];
         }
 
         idx += s * factor[i];
@@ -763,7 +763,7 @@ uint64_t set_factors(T& p, int num, int order)
             result *= p.hasUniquePieces ? 31332 : 462;
         } else {
             p.factor[i] = (int)result;
-            result *= Binomial[p.norm[i] - 1][n];
+            result *= Binomial[p.norm[i]][n];
             n -= p.norm[i];
             i += p.norm[i];
         }
@@ -790,10 +790,10 @@ uint64_t calc_factors_pawn(int *factor, int num, int order, int order2, uint8_t 
             result *= Pfactor[norm[0] - 1][f];
         } else if (k == order2) {
             factor[norm[0]] = (int)result;
-            result *= Binomial[norm[norm[0]] - 1][48 - norm[0]];
+            result *= Binomial[norm[norm[0]]][48 - norm[0]];
         } else {
             factor[i] = (int)result;
-            result *= Binomial[norm[i] - 1][n];
+            result *= Binomial[norm[i]][n];
             n -= norm[i];
             i += norm[i];
         }
@@ -1835,14 +1835,13 @@ void Tablebases::init(const std::string& paths)
     if (TBPaths.empty() || TBPaths == "<empty>")
         return;
 
-    // Fill binomial[] with the Binomial Coefficents using pascal triangle
-    // so that binomial[k-1][n] = Binomial(n, k).
-    for (int k = 0; k < 5; ++k) {
-        Binomial[k][0] = 0;
+    // Fill binomial[] with the Binomial Coefficents using Pascal triangle
+    Binomial[0][0] = 1;
 
-        for (int n = 1; n < 64; ++n)
-            Binomial[k][n] = (k ? Binomial[k-1][n-1] : 1) + Binomial[k][n-1];
-    }
+    for (int n = 1; n < 64; n++)
+        for (int k = 0; k < 6 && k <= n; ++k)
+            Binomial[k][n] = (k > 0 ? Binomial[k-1][n-1] : 0)
+                           + (k < n ? Binomial[k][n-1] : 0);
 
     for (int i = 0; i < 5; ++i) {
         int k = 0;
@@ -1852,7 +1851,7 @@ void Tablebases::init(const std::string& paths)
 
             for ( ; k < 6 * j; ++k) {
                 Pawnidx[i][k] = s;
-                s += (i ? Binomial[i - 1][Ptwist[Invflap[k]]] : 1);
+                s += Binomial[i][Ptwist[Invflap[k]]];
             }
 
             Pfactor[i][j - 1] = s;
