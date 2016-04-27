@@ -934,7 +934,6 @@ PairsData *setup_pairs(uint8_t *data, uint64_t tb_size, uint64_t *size, unsigned
 bool WDLEntry::init(const std::string& fname)
 {
     uint8_t* next;
-    int s;
     uint64_t tb_size[8];
     uint64_t size[8 * 3];
     uint8_t flags;
@@ -1000,29 +999,27 @@ bool WDLEntry::init(const std::string& fname)
             piece[1].precomp->data = data;
         }
     } else {
-        s = 1 + (pawn.pawns[1] > 0);
+        bool p = (pawn.pawns[1] > 0);
 
         for (File f = FILE_A; f <= FILE_D; ++f) {
-            int j = 1 + (pawn.pawns[1] > 0);
-            int order = data[0] & 0x0f;
-            int order2 = pawn.pawns[1] ? (data[1] & 0x0f) : 0x0f;
 
-            for (int i = 0; i < num; ++i)
-                pawn.file[f].pieces[0][i] = uint8_t(data[i + j] & 0x0f);
+            int order1[] = { *data & 0x0F, *data >> 4 };
 
-            set_norm_pawn(pawn.pawns, pawn.file[f].norm[0], pawn.file[f].pieces[0], num);
-            tb_size[2 * f] = calc_factors_pawn(pawn.file[f].factor[0], num, order, order2, pawn.file[f].norm[0], f);
+            data++;
 
-            order = data[0] >> 4;
-            order2 = pawn.pawns[1] ? (data[1] >> 4) : 0x0f;
+            int order2[] = { p ? *data & 0xF : 0xF,
+                             p ? *data >> 4  : 0xF };
+            data += p;
 
-            for (int i = 0; i < num; ++i)
-                pawn.file[f].pieces[1][i] = uint8_t(data[i + j] >> 4);
+            for (int i = 0; i < num; ++i, ++data) {
+                pawn.file[f].pieces[0][i] = *data & 0xF;
+                pawn.file[f].pieces[1][i] = *data >> 4;
+            }
 
-            set_norm_pawn(pawn.pawns, pawn.file[f].norm[1], pawn.file[f].pieces[1], num);
-            tb_size[2 * f + 1] = calc_factors_pawn(pawn.file[f].factor[1], num, order, order2, pawn.file[f].norm[1], f);
-
-            data += num + s;
+            for (int i = 0; i < 2; ++i) {
+                set_norm_pawn(pawn.pawns, pawn.file[f].norm[i], pawn.file[f].pieces[i], num);
+                tb_size[2 * f + i] = calc_factors_pawn(pawn.file[f].factor[i], num, order1[i], order2[i], pawn.file[f].norm[i], f);
+            }
         }
 
         data += (uintptr_t)data & 1;
@@ -1077,7 +1074,6 @@ bool WDLEntry::init(const std::string& fname)
 bool DTZEntry::init(const std::string& fname)
 {
     uint8_t *next;
-    int s;
     uint64_t tb_size[4];
     uint64_t size[4 * 3];
 
@@ -1129,20 +1125,18 @@ bool DTZEntry::init(const std::string& fname)
         piece.precomp->data = data;
         data += size[2];
     } else {
-        s = 1 + (pawn.pawns[1] > 0);
+        bool p = (pawn.pawns[1] > 0);
 
         for (File f = FILE_A; f <= FILE_D; ++f) {
-            int j = 1 + (pawn.pawns[1] > 0);
-            int order = data[0] & 0x0f;
-            int order2 = pawn.pawns[1] ? (data[1] & 0x0f) : 0x0f;
 
-            for (int i = 0; i < num; ++i)
-                pawn.file[f].pieces[i] = uint8_t(data[i + j] & 0x0f);
+            int order1 = *data++ & 0xF;
+            int order2 = p ? *data++ & 0xF : 0xF;
+
+            for (int i = 0; i < num; ++i, ++data)
+                pawn.file[f].pieces[i] = *data & 0xF;
 
             set_norm_pawn(pawn.pawns, pawn.file[f].norm, pawn.file[f].pieces, num);
-            tb_size[f] = calc_factors_pawn(pawn.file[f].factor, num, order, order2, pawn.file[f].norm, f);
-
-            data += num + s;
+            tb_size[f] = calc_factors_pawn(pawn.file[f].factor, num, order1, order2, pawn.file[f].norm, f);
         }
 
         data += (uintptr_t)data & 1;
