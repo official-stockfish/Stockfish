@@ -751,22 +751,6 @@ uint64_t encode_pawn(uint8_t pawns[], uint8_t *norm, Square *pos, int *factor, i
     return idx;
 }
 
-// place k like pieces on n squares
-int subfactor(int k, int n)
-{
-    assert(n > 0 && k > 0 && k <= n);
-
-    int numerator = n;
-    int denominator = 1;
-
-    for (int i = 1; i < k; ++i) {
-        numerator *= n - i;
-        denominator *= i + 1;
-    }
-
-    return numerator / denominator;
-}
-
 template<typename T>
 uint64_t set_factors(T& p, int num, int order)
 {
@@ -779,7 +763,7 @@ uint64_t set_factors(T& p, int num, int order)
             result *= p.hasUniquePieces ? 31332 : 462;
         } else {
             p.factor[i] = (int)result;
-            result *= subfactor(p.norm[i], n);
+            result *= Binomial[p.norm[i] - 1][n];
             n -= p.norm[i];
             i += p.norm[i];
         }
@@ -806,10 +790,10 @@ uint64_t calc_factors_pawn(int *factor, int num, int order, int order2, uint8_t 
             result *= Pfactor[norm[0] - 1][f];
         } else if (k == order2) {
             factor[norm[0]] = (int)result;
-            result *= subfactor(norm[norm[0]], 48 - norm[0]);
+            result *= Binomial[norm[norm[0]] - 1][48 - norm[0]];
         } else {
             factor[i] = (int)result;
-            result *= subfactor(norm[i], n);
+            result *= Binomial[norm[i] - 1][n];
             n -= norm[i];
             i += norm[i];
         }
