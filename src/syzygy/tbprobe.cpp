@@ -93,11 +93,11 @@ public:
         struct {
             uint8_t pawns[2];
             struct {
-                PairsData* precomp[2];
-                int factor[2][TBPIECES];
-                uint8_t pieces[2][TBPIECES];
-                uint8_t norm[2][TBPIECES];
-            } file[4];
+                PairsData* precomp;
+                int factor[TBPIECES];
+                uint8_t pieces[TBPIECES];
+                uint8_t norm[TBPIECES];
+            } file[2][4];
         } pawn;
     };
 };
@@ -522,8 +522,8 @@ WDLEntry::~WDLEntry()
 
     if (has_pawns)
         for (File f = FILE_A; f <= FILE_D; ++f) {
-            free(pawn.file[f].precomp[0]);
-            free(pawn.file[f].precomp[1]);
+            free(pawn.file[0][f].precomp);
+            free(pawn.file[1][f].precomp);
         }
     else {
         free(piece[0].precomp);
@@ -772,30 +772,29 @@ uint64_t set_factors(T& p, int num, int order)
     return result;
 }
 
-uint64_t calc_factors_pawn(int *factor, int num, int order, int order2, uint8_t *norm, File f)
+template<typename T>
+uint64_t set_factors(T& p, int num, int order, int order2, File f)
 {
-    assert(FILE_A <= f && f <= FILE_D);
+    int i = p.norm[0];
 
-    int i = norm[0];
-
-    if (order2 < 0x0f)
-        i += norm[i];
+    if (order2 < 0x0F)
+        i += p.norm[i];
 
     int n = 64 - i;
     uint64_t result = 1;
 
     for (int k = 0; i < num || k == order || k == order2; ++k) {
         if (k == order) {
-            factor[0] = (int)result;
-            result *= Pfactor[norm[0] - 1][f];
+            p.factor[0] = (int)result;
+            result *= Pfactor[p.norm[0] - 1][f];
         } else if (k == order2) {
-            factor[norm[0]] = (int)result;
-            result *= Binomial[norm[norm[0]]][48 - norm[0]];
+            p.factor[p.norm[0]] = (int)result;
+            result *= Binomial[p.norm[p.norm[0]]][48 - p.norm[0]];
         } else {
-            factor[i] = (int)result;
-            result *= Binomial[norm[i]][n];
-            n -= norm[i];
-            i += norm[i];
+            p.factor[i] = (int)result;
+            result *= Binomial[p.norm[i]][n];
+            n -= p.norm[i];
+            i += p.norm[i];
         }
     }
 
@@ -815,20 +814,20 @@ void set_norms(T& p, int num)
             ++p.norm[i];
 }
 
-void set_norm_pawn(uint8_t pawns[], uint8_t *norm, uint8_t *pieces, int num)
+template<typename T>
+void set_norms(T& p, int num, uint8_t pawns[])
 {
-    int i, j;
+    for (int i = 0; i < num; ++i)
+        p.norm[i] = 0;
 
-    for (i = 0; i < num; ++i)
-        norm[i] = 0;
+    p.norm[0] = pawns[0];
 
-    norm[0] = pawns[0];
+    if (pawns[1])
+        p.norm[pawns[0]] = pawns[1];
 
-    if (pawns[1]) norm[pawns[0]] = pawns[1];
-
-    for (i = pawns[0] + pawns[1]; i < num; i += norm[i])
-        for (j = i; j < num && pieces[j] == pieces[i]; ++j)
-            ++norm[i];
+    for (int i = pawns[0] + pawns[1]; i < num; i += p.norm[i])
+        for (int j = i; j < num && p.pieces[j] == p.pieces[i]; ++j)
+            ++p.norm[i];
 }
 
 void calc_symlen(PairsData *d, int s, char *tmp)
@@ -990,7 +989,7 @@ bool WDLEntry::init(const std::string& fname)
             data += size[4];
         }
 
-        data = (uint8_t*)(((uintptr_t)data + 0x3f) & ~0x3F);
+        data = (uint8_t*)(((uintptr_t)data + 0x3F) & ~0x3F);
         piece[0].precomp->data = data;
         data += size[2];
 
@@ -1012,57 +1011,57 @@ bool WDLEntry::init(const std::string& fname)
             data += p;
 
             for (int i = 0; i < num; ++i, ++data) {
-                pawn.file[f].pieces[0][i] = *data & 0xF;
-                pawn.file[f].pieces[1][i] = *data >> 4;
+                pawn.file[0][f].pieces[i] = *data & 0xF;
+                pawn.file[1][f].pieces[i] = *data >> 4;
             }
 
             for (int i = 0; i < 2; ++i) {
-                set_norm_pawn(pawn.pawns, pawn.file[f].norm[i], pawn.file[f].pieces[i], num);
-                tb_size[2 * f + i] = calc_factors_pawn(pawn.file[f].factor[i], num, order1[i], order2[i], pawn.file[f].norm[i], f);
+                set_norms(pawn.file[i][f], num, pawn.pawns);
+                tb_size[2 * f + i] = set_factors(pawn.file[i][f], num, order1[i], order2[i], f);
             }
         }
 
         data += (uintptr_t)data & 1;
 
         for (File f = FILE_A; f <= maxFile; ++f) {
-            pawn.file[f].precomp[0] = setup_pairs(data, tb_size[2 * f], &size[6 * f], &next, &flags, 1);
+            pawn.file[0][f].precomp = setup_pairs(data, tb_size[2 * f], &size[6 * f], &next, &flags, 1);
             data = next;
 
             if (split) {
-                pawn.file[f].precomp[1] = setup_pairs(data, tb_size[2 * f + 1], &size[6 * f + 3], &next, &flags, 1);
+                pawn.file[1][f].precomp = setup_pairs(data, tb_size[2 * f + 1], &size[6 * f + 3], &next, &flags, 1);
                 data = next;
             } else
-                pawn.file[f].precomp[1] = nullptr;
+                pawn.file[1][f].precomp = nullptr;
         }
 
         for (File f = FILE_A; f <= maxFile; ++f) {
-            pawn.file[f].precomp[0]->indextable = (char *)data;
+            pawn.file[0][f].precomp->indextable = (char*)data;
             data += size[6 * f];
 
             if (split) {
-                pawn.file[f].precomp[1]->indextable = (char *)data;
+                pawn.file[1][f].precomp->indextable = (char*)data;
                 data += size[6 * f + 3];
             }
         }
 
         for (File f = FILE_A; f <= maxFile; ++f) {
-            pawn.file[f].precomp[0]->sizetable = (uint16_t *)data;
+            pawn.file[0][f].precomp->sizetable = (uint16_t*)data;
             data += size[6 * f + 1];
 
             if (split) {
-                pawn.file[f].precomp[1]->sizetable = (uint16_t *)data;
+                pawn.file[1][f].precomp->sizetable = (uint16_t*)data;
                 data += size[6 * f + 4];
             }
         }
 
         for (File f = FILE_A; f <= maxFile; ++f) {
-            data = (uint8_t *)(((uintptr_t)data + 0x3f) & ~0x3f);
-            pawn.file[f].precomp[0]->data = data;
+            data = (uint8_t*)(((uintptr_t)data + 0x3F) & ~0x3F);
+            pawn.file[0][f].precomp->data = data;
             data += size[6 * f + 2];
 
             if (split) {
-                data = (uint8_t *)(((uintptr_t)data + 0x3f) & ~0x3f);
-                pawn.file[f].precomp[1]->data = data;
+                data = (uint8_t*)(((uintptr_t)data + 0x3F) & ~0x3F);
+                pawn.file[1][f].precomp->data = data;
                 data += size[6 * f + 5];
             }
         }
@@ -1115,10 +1114,10 @@ bool DTZEntry::init(const std::string& fname)
             data += (uintptr_t)data & 1;
         }
 
-        piece.precomp->indextable = (char *)data;
+        piece.precomp->indextable = (char*)data;
         data += size[0];
 
-        piece.precomp->sizetable = (uint16_t *)data;
+        piece.precomp->sizetable = (uint16_t*)data;
         data += size[1];
 
         data = (uint8_t*)(((uintptr_t)data + 0x3F) & ~0x3F);
@@ -1129,14 +1128,19 @@ bool DTZEntry::init(const std::string& fname)
 
         for (File f = FILE_A; f <= FILE_D; ++f) {
 
-            int order1 = *data++ & 0xF;
-            int order2 = p ? *data++ & 0xF : 0xF;
+            int order1 = *data & 0xF;
+
+            data++;
+
+            int order2 = p ? *data & 0xF : 0xF;
+
+            data += p;
 
             for (int i = 0; i < num; ++i, ++data)
                 pawn.file[f].pieces[i] = *data & 0xF;
 
-            set_norm_pawn(pawn.pawns, pawn.file[f].norm, pawn.file[f].pieces, num);
-            tb_size[f] = calc_factors_pawn(pawn.file[f].factor, num, order1, order2, pawn.file[f].norm, f);
+            set_norms(pawn.file[f], num, pawn.pawns);
+            tb_size[f] = set_factors(pawn.file[f], num, order1, order2, f);
         }
 
         data += (uintptr_t)data & 1;
@@ -1159,17 +1163,17 @@ bool DTZEntry::init(const std::string& fname)
         data += (uintptr_t)data & 1;
 
         for (File f = FILE_A; f <= maxFile; ++f) {
-            pawn.file[f].precomp->indextable = (char *)data;
+            pawn.file[f].precomp->indextable = (char*)data;
             data += size[3 * f];
         }
 
         for (File f = FILE_A; f <= maxFile; ++f) {
-            pawn.file[f].precomp->sizetable = (uint16_t *)data;
+            pawn.file[f].precomp->sizetable = (uint16_t*)data;
             data += size[3 * f + 1];
         }
 
         for (File f = FILE_A; f <= maxFile; ++f) {
-            data = (uint8_t *)(((uintptr_t)data + 0x3f) & ~0x3f);
+            data = (uint8_t*)(((uintptr_t)data + 0x3F) & ~0x3F);
             pawn.file[f].precomp->data = data;
             data += size[3 * f + 2];
         }
@@ -1342,7 +1346,7 @@ WDLScore probe_wdl_table(Position& pos, int* success)
         uint64_t idx = encode_piece(entry->piece[bside].hasUniquePieces, entry->piece[bside].norm, squares, entry->piece[bside].factor, entry->num);
         return WDLScore(decompress_pairs(entry->piece[bside].precomp, idx) - 2);
     } else {
-        Piece pc = Piece(entry->pawn.file[0].pieces[0][0] ^ cmirror);
+        Piece pc = Piece(entry->pawn.file[0][0].pieces[0] ^ cmirror);
         Bitboard b = pos.pieces(color_of(pc), type_of(pc));
         int i = 0;
         do
@@ -1352,15 +1356,15 @@ WDLScore probe_wdl_table(Position& pos, int* success)
         File f = pawn_file(entry->pawn.pawns, squares);
 
         for ( ; i < entry->num; ) {
-            pc = Piece(entry->pawn.file[f].pieces[bside][i] ^ cmirror);
+            pc = Piece(entry->pawn.file[bside][f].pieces[i] ^ cmirror);
             b = pos.pieces(color_of(pc), type_of(pc));
             do
                 squares[i++] = pop_lsb(&b) ^ smirror;
             while (b);
         }
 
-        uint64_t idx = encode_pawn(entry->pawn.pawns, entry->pawn.file[f].norm[bside], squares, entry->pawn.file[f].factor[bside], entry->num);
-        return WDLScore(decompress_pairs(entry->pawn.file[f].precomp[bside], idx) - 2);
+        uint64_t idx = encode_pawn(entry->pawn.pawns, entry->pawn.file[bside][f].norm, squares, entry->pawn.file[bside][f].factor, entry->num);
+        return WDLScore(decompress_pairs(entry->pawn.file[bside][f].precomp, idx) - 2);
     }
 }
 
