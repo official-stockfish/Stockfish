@@ -420,11 +420,15 @@ public:
         }
     }
 
-    // Memory map the file. File is closed after mapping
-    char* map(uint64_t* mapping) {
+    // Memory map the file and check it. File should be already open and
+    // will be closed after mapping.
+    uint8_t* map(char** baseAddress, uint64_t* mapping, const uint8_t TB_MAGIC[]) {
 
-        assert(is_open());
-
+        if (!is_open()) {
+            std::cerr << "Could not find " << fname << std::endl;
+            *baseAddress = nullptr;
+            return nullptr;
+        }
         close();
 
 #ifndef _WIN32
@@ -432,10 +436,10 @@ public:
         int fd = ::open(fname.c_str(), O_RDONLY);
         fstat(fd, &statbuf);
         *mapping = statbuf.st_size;
-        char* data = (char*)mmap(nullptr, statbuf.st_size, PROT_READ, MAP_SHARED, fd, 0);
+        *baseAddress = (char*)mmap(nullptr, statbuf.st_size, PROT_READ, MAP_SHARED, fd, 0);
         ::close(fd);
 
-        if (data == (char*)(-1)) {
+        if (*baseAddress == (char*)(-1)) {
             std::cerr << "Could not mmap() " << fname << std::endl;
             exit(1);
         }
@@ -453,23 +457,35 @@ public:
         }
 
         *mapping = (uint64_t)mmap;
-        char* data = (char*)MapViewOfFile(mmap, FILE_MAP_READ, 0, 0, 0);
+        *baseAddress = (char*)MapViewOfFile(mmap, FILE_MAP_READ, 0, 0, 0);
 
-        if (!data) {
+        if (!*baseAddress) {
             std::cerr << "MapViewOfFile() failed, name = " << fname
                       << ", error = " << GetLastError() << std::endl;
             exit(1);
         }
 #endif
+        uint8_t* data = (uint8_t*)*baseAddress;
+
+        if (   *data++ != TB_MAGIC[0]
+            || *data++ != TB_MAGIC[1]
+            || *data++ != TB_MAGIC[2]
+            || *data++ != TB_MAGIC[3]) {
+            std::cerr << "Corrupted table in file " << fname << std::endl;
+            unmap(*baseAddress, *mapping);
+            *baseAddress = nullptr;
+            return nullptr;
+        }
+
         return data;
     }
 
-    static void unmap(char* data, uint64_t mapping) {
+    static void unmap(char* baseAddress, uint64_t mapping) {
 
 #ifndef _WIN32
-        munmap(data, mapping);
+        munmap(baseAddress, mapping);
 #else
-        UnmapViewOfFile(data);
+        UnmapViewOfFile(baseAddress);
         CloseHandle((HANDLE)mapping);
 #endif
     }
@@ -939,26 +955,9 @@ bool WDLEntry::init(const std::string& fname)
     uint64_t size[8 * 3];
     uint8_t flags;
 
-    TBFile file(fname);
-
-    if (!file.is_open()) {
-        std::cerr << "Could not find " << fname << std::endl;
+    uint8_t* data = TBFile(fname).map(&baseAddress, &mapping, TB_MAGIC);
+    if (!data)
         return false;
-    }
-
-    baseAddress = file.map(&mapping); // Map the table into memory
-
-    uint8_t* data = (uint8_t*)baseAddress;
-
-    if (   *data++ != TB_MAGIC[0]
-        || *data++ != TB_MAGIC[1]
-        || *data++ != TB_MAGIC[2]
-        || *data++ != TB_MAGIC[3]) {
-        std::cerr << "Corrupted table" << std::endl;
-        TBFile::unmap(baseAddress, mapping);
-        baseAddress = nullptr;
-        return false;
-    }
 
     int split = *data & 1;
     File maxFile = *data & 2 ? FILE_D : FILE_A;
@@ -1098,40 +1097,26 @@ bool DTZEntry::init(const std::string& fname)
     uint64_t tb_size[4];
     uint64_t size[4 * 3];
 
-    TBFile file(fname);
-
-    if (!file.is_open()) {
-        std::cerr << "Could not find " << fname << std::endl;
+    uint8_t* data = TBFile(fname).map(&baseAddress, &mapping, TB_MAGIC);
+    if (!data)
         return false;
-    }
 
-    baseAddress = file.map(&mapping); // Map the table into memory
+    File maxFile = *data & 2 ? FILE_D : FILE_A;
 
-    uint8_t* data = (uint8_t*)baseAddress;
-
-    if (   data[0] != TB_MAGIC[0]
-        || data[1] != TB_MAGIC[1]
-        || data[2] != TB_MAGIC[2]
-        || data[3] != TB_MAGIC[3]) {
-        std::cerr << "Corrupted table" << std::endl;
-        TBFile::unmap(baseAddress, mapping);
-        baseAddress = 0;
-        return false;
-    }
-
-    File maxFile = data[4] & 2 ? FILE_D : FILE_A;
-
-    data += 5;
+    data++;
 
     if (!has_pawns) {
-        for (int i = 0; i < num; ++i)
-            piece.pieces[i] = uint8_t(data[i + 1] & 0x0f);
 
-        int order = data[0] & 0xF;
+        int order = *data & 0xF;
+
+        data++;
+
+        for (int i = 0; i < num; ++i, ++data)
+            piece.pieces[i] = *data & 0x0F;
+
         set_norms(piece, num);
         tb_size[0] = set_factors(piece, num, order);
 
-        data += num + 1;
         data += (uintptr_t)data & 1;
 
         piece.precomp = setup_pairs(data, tb_size[0], &size[0], &next, &(piece.flags), 0);
@@ -1156,7 +1141,7 @@ bool DTZEntry::init(const std::string& fname)
         piece.precomp->sizetable = (uint16_t *)data;
         data += size[1];
 
-        data = (uint8_t *)(((uintptr_t)data + 0x3f) & ~0x3f);
+        data = (uint8_t*)(((uintptr_t)data + 0x3F) & ~0x3F);
         piece.precomp->data = data;
         data += size[2];
     } else {
