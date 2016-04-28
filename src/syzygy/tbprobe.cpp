@@ -68,11 +68,7 @@ struct PairsData {
     std::vector<uint8_t> symlen;
 };
 
-class WDLEntry {
-
-    static constexpr uint8_t TB_MAGIC[] = { 0x71, 0xE8, 0x23, 0x5D };
-
-public:
+struct WDLEntry {
     WDLEntry(const Position& pos, Key keys[]);
    ~WDLEntry();
     bool init(const std::string& fname);
@@ -105,11 +101,7 @@ public:
     };
 };
 
-class DTZEntry {
-
-    static constexpr uint8_t TB_MAGIC[] = { 0xD7, 0x66, 0x0C, 0xA5 };
-
-public:
+struct DTZEntry {
     DTZEntry(const WDLEntry& wdl, Key keys[]);
    ~DTZEntry();
     bool init(const std::string& fname);
@@ -324,6 +316,9 @@ const short KK_idx[10][64] = {
          -1, -1, -1, -1, -1, -1, -1,461
     }
 };
+
+const uint8_t WDL_MAGIC[] = { 0x71, 0xE8, 0x23, 0x5D };
+const uint8_t DTZ_MAGIC[] = { 0xD7, 0x66, 0x0C, 0xA5 };
 
 const int wdl_to_dtz[] = { -1, -101, 0, 101, 1 };
 const int wdl_to_map[] = { 1, 3, 0, 2, 0 };
@@ -936,7 +931,7 @@ bool WDLEntry::init(const std::string& fname)
     uint64_t size[8 * 3];
     uint8_t flags;
 
-    uint8_t* data = TBFile(fname).map(&baseAddress, &mapping, TB_MAGIC);
+    uint8_t* data = TBFile(fname).map(&baseAddress, &mapping, WDL_MAGIC);
     if (!data)
         return false;
 
@@ -1075,7 +1070,7 @@ bool DTZEntry::init(const std::string& fname)
     uint64_t tb_size[4];
     uint64_t size[4 * 3];
 
-    uint8_t* data = TBFile(fname).map(&baseAddress, &mapping, TB_MAGIC);
+    uint8_t* data = TBFile(fname).map(&baseAddress, &mapping, DTZ_MAGIC);
     if (!data)
         return false;
 
