@@ -862,11 +862,12 @@ uint32_t ReadUint32(uint8_t* d)
     return d[0] | (d[1] << 8) | (d[2] << 16) | (d[3] << 24);
 }
 
-PairsData* setup_pairs(uint8_t *data, uint64_t tb_size, uint64_t *size, unsigned char **next, uint8_t *flags, int wdl)
+PairsData* setup_pairs(uint8_t *data, uint64_t tb_size, uint64_t *size, unsigned char **next, int wdl, uint8_t* flags = nullptr)
 {
     int i;
 
-    *flags = data[0];
+    if (flags)
+        *flags = data[0];
 
     if (data[0] & 0x80) {
         PairsData* d = new PairsData();
@@ -929,7 +930,6 @@ bool WDLEntry::init(const std::string& fname)
     uint8_t* next;
     uint64_t tb_size[8];
     uint64_t size[8 * 3];
-    uint8_t flags;
 
     uint8_t* data = TBFile(fname).map(&baseAddress, &mapping, WDL_MAGIC);
     if (!data)
@@ -958,38 +958,25 @@ bool WDLEntry::init(const std::string& fname)
 
         data += (uintptr_t)data & 1;
 
-        piece[0].precomp = setup_pairs(data, tb_size[0], &size[0], &next, &flags, 1);
-        data = next;
-
-        if (split) {
-            piece[1].precomp = setup_pairs(data, tb_size[1], &size[3], &next, &flags, 1);
+        for (int k = 0; k <= split; k++) {
+            piece[k].precomp = setup_pairs(data, tb_size[k], &size[3*k], &next, 1);
             data = next;
-        } else
-            piece[1].precomp = nullptr;
-
-        piece[0].precomp->indextable = (char*)data;
-        data += size[0];
-
-        if (split) {
-            piece[1].precomp->indextable = (char*)data;
-            data += size[3];
         }
 
-        piece[0].precomp->sizetable = (uint16_t*)data;
-        data += size[1];
-
-        if (split) {
-            piece[1].precomp->sizetable = (uint16_t*)data;
-            data += size[4];
+        for (int k = 0; k <= split; k++) {
+            piece[k].precomp->indextable = (char*)data;
+            data += size[3 * k];
         }
 
-        data = (uint8_t*)(((uintptr_t)data + 0x3F) & ~0x3F);
-        piece[0].precomp->data = data;
-        data += size[2];
+        for (int k = 0; k <= split; k++) {
+            piece[k].precomp->sizetable = (uint16_t*)data;
+            data += size[3 * k + 1];
+        }
 
-        if (split) {
+        for (int k = 0; k <= split; k++) {
             data = (uint8_t*)(((uintptr_t)data + 0x3F) & ~0x3F);
-            piece[1].precomp->data = data;
+            piece[k].precomp->data = data;
+            data += size[2];
         }
     } else {
         bool p = (pawn.pawns[1] > 0);
@@ -1017,48 +1004,30 @@ bool WDLEntry::init(const std::string& fname)
 
         data += (uintptr_t)data & 1;
 
-        for (File f = FILE_A; f <= maxFile; ++f) {
-            pawn.file[0][f].precomp = setup_pairs(data, tb_size[2 * f], &size[6 * f], &next, &flags, 1);
-            data = next;
-
-            if (split) {
-                pawn.file[1][f].precomp = setup_pairs(data, tb_size[2 * f + 1], &size[6 * f + 3], &next, &flags, 1);
+        for (File f = FILE_A; f <= maxFile; ++f)
+            for (int k = 0; k <= split; k++) {
+                pawn.file[k][f].precomp = setup_pairs(data, tb_size[2 * f + k], &size[6 * f + 3 * k], &next, 1);
                 data = next;
-            } else
-                pawn.file[1][f].precomp = nullptr;
-        }
-
-        for (File f = FILE_A; f <= maxFile; ++f) {
-            pawn.file[0][f].precomp->indextable = (char*)data;
-            data += size[6 * f];
-
-            if (split) {
-                pawn.file[1][f].precomp->indextable = (char*)data;
-                data += size[6 * f + 3];
             }
-        }
 
-        for (File f = FILE_A; f <= maxFile; ++f) {
-            pawn.file[0][f].precomp->sizetable = (uint16_t*)data;
-            data += size[6 * f + 1];
-
-            if (split) {
-                pawn.file[1][f].precomp->sizetable = (uint16_t*)data;
-                data += size[6 * f + 4];
+        for (File f = FILE_A; f <= maxFile; ++f)
+            for (int k = 0; k <= split; k++) {
+                pawn.file[k][f].precomp->indextable = (char*)data;
+                data += size[6 * f + 3 * k];
             }
-        }
 
-        for (File f = FILE_A; f <= maxFile; ++f) {
-            data = (uint8_t*)(((uintptr_t)data + 0x3F) & ~0x3F);
-            pawn.file[0][f].precomp->data = data;
-            data += size[6 * f + 2];
+        for (File f = FILE_A; f <= maxFile; ++f)
+            for (int k = 0; k <= split; k++) {
+                pawn.file[k][f].precomp->sizetable = (uint16_t*)data;
+                data += size[6 * f + 1 + 3 * k];
+            }
 
-            if (split) {
+        for (File f = FILE_A; f <= maxFile; ++f)
+            for (int k = 0; k <= split; k++) {
                 data = (uint8_t*)(((uintptr_t)data + 0x3F) & ~0x3F);
-                pawn.file[1][f].precomp->data = data;
-                data += size[6 * f + 5];
+                pawn.file[k][f].precomp->data = data;
+                data += size[6 * f + 2 + 3 * k];
             }
-        }
     }
 
     return true;
@@ -1092,7 +1061,7 @@ bool DTZEntry::init(const std::string& fname)
 
         data += (uintptr_t)data & 1;
 
-        piece.precomp = setup_pairs(data, tb_size[0], &size[0], &next, &(piece.flags), 0);
+        piece.precomp = setup_pairs(data, tb_size[0], &size[0], &next, 0, &(piece.flags));
         data = next;
 
         piece.map = data;
@@ -1140,7 +1109,7 @@ bool DTZEntry::init(const std::string& fname)
         data += (uintptr_t)data & 1;
 
         for (File f = FILE_A; f <= maxFile; ++f) {
-            pawn.file[f].precomp = setup_pairs(data, tb_size[f], &size[3 * f], &next, &(pawn.file[f].flags), 0);
+            pawn.file[f].precomp = setup_pairs(data, tb_size[f], &size[3 * f], &next, 0, &(pawn.file[f].flags));
             data = next;
         }
 
