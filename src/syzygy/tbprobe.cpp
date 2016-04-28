@@ -53,16 +53,19 @@ inline Square operator^=(Square& s, int i) { return s = Square(int(s) ^ i); }
 inline Square operator^(Square s, int i) { return Square(int(s) ^ i); }
 
 struct PairsData {
-    char *indextable;
-    uint16_t *sizetable;
-    uint8_t *data;
-    uint16_t *offset;
-    uint8_t *symlen;
-    uint8_t *sympat;
+    char* indextable;
+    uint16_t* sizetable;
+    uint8_t* data;
+    uint16_t* offset;
+    uint8_t* sympat;
     int blocksize;
     int idxbits;
+    int real_num_blocks;
+    int num_blocks;
+    int max_len;
     int min_len;
-    base_t base[1]; // C++ complains about base[]...
+    std::vector<base_t> base;
+    std::vector<uint8_t> symlen;
 };
 
 class WDLEntry {
@@ -522,12 +525,12 @@ WDLEntry::~WDLEntry()
 
     if (has_pawns)
         for (File f = FILE_A; f <= FILE_D; ++f) {
-            free(pawn.file[0][f].precomp);
-            free(pawn.file[1][f].precomp);
+            delete pawn.file[0][f].precomp;
+            delete pawn.file[1][f].precomp;
         }
     else {
-        free(piece[0].precomp);
-        free(piece[1].precomp);
+        delete piece[0].precomp;
+        delete piece[1].precomp;
     }
 }
 
@@ -556,9 +559,9 @@ DTZEntry::~DTZEntry()
 
     if (has_pawns)
         for (File f = FILE_A; f <= FILE_D; ++f)
-            free(pawn.file[f].precomp);
+            delete pawn.file[f].precomp;
     else
-        free(piece.precomp);
+        delete piece.precomp;
 }
 
 // Given a position with 6 or fewer pieces, produce a text string
@@ -830,7 +833,7 @@ void set_norms(T& p, int num, uint8_t pawns[])
             ++p.norm[i];
 }
 
-void calc_symlen(PairsData *d, int s, char *tmp)
+void calc_symlen(PairsData* d, int s, std::vector<char>& tmp)
 {
     int s1, s2;
 
@@ -864,15 +867,14 @@ uint32_t ReadUint32(uint8_t* d)
     return d[0] | (d[1] << 8) | (d[2] << 16) | (d[3] << 24);
 }
 
-PairsData *setup_pairs(uint8_t *data, uint64_t tb_size, uint64_t *size, unsigned char **next, uint8_t *flags, int wdl)
+PairsData* setup_pairs(uint8_t *data, uint64_t tb_size, uint64_t *size, unsigned char **next, uint8_t *flags, int wdl)
 {
-    PairsData *d;
     int i;
 
     *flags = data[0];
 
     if (data[0] & 0x80) {
-        d = (PairsData *)malloc(sizeof(PairsData));
+        PairsData* d = new PairsData();
         d->idxbits = 0;
 
         if (wdl)
@@ -885,33 +887,30 @@ PairsData *setup_pairs(uint8_t *data, uint64_t tb_size, uint64_t *size, unsigned
         return d;
     }
 
-    int blocksize = data[1];
-    int idxbits = data[2];
-    int real_num_blocks = ReadUint32(&data[4]);
-    int num_blocks = real_num_blocks + *(uint8_t *)(&data[3]);
-    int max_len = data[8];
-    int min_len = data[9];
-    int h = max_len - min_len + 1;
-    int num_syms = ReadUshort(&data[10 + 2 * h]);
-    d = (PairsData *)malloc(sizeof(PairsData) + (h - 1) * sizeof(base_t) + num_syms);
-    d->blocksize = blocksize;
-    d->idxbits = idxbits;
+    PairsData* d = new PairsData();
+    d->blocksize = data[1];
+    d->idxbits = data[2];
+    d->real_num_blocks = ReadUint32(&data[4]);
+    d->num_blocks = d->real_num_blocks + *(uint8_t *)(&data[3]);
+    d->max_len = data[8];
+    d->min_len = data[9];
     d->offset = (uint16_t*)(&data[10]);
-    d->symlen = ((uint8_t *)d) + sizeof(PairsData) + (h - 1) * sizeof(base_t);
+
+    int h = d->max_len - d->min_len + 1;
+    int num_syms = ReadUshort(&data[10 + 2 * h]);
+
     d->sympat = &data[12 + 2 * h];
-    d->min_len = min_len;
+    d->base.resize(h);
+    d->symlen.resize(num_syms);
+
     *next = &data[12 + 2 * h + 3 * num_syms + (num_syms & 1)];
 
-    uint64_t num_indices = (tb_size + (1ULL << idxbits) - 1) >> idxbits;
+    uint64_t num_indices = (tb_size + (1ULL << d->idxbits) - 1) >> d->idxbits;
     size[0] = 6ULL * num_indices;
-    size[1] = 2ULL * num_blocks;
-    size[2] = (1ULL << blocksize) * real_num_blocks;
+    size[1] = 2ULL * d->num_blocks;
+    size[2] = (1ULL << d->blocksize) * d->real_num_blocks;
 
-    // char tmp[num_syms];
-    char tmp[4096];
-
-    for (i = 0; i < num_syms; ++i)
-        tmp[i] = 0;
+    std::vector<char> tmp(num_syms);
 
     for (i = 0; i < num_syms; ++i)
         if (!tmp[i])
@@ -923,7 +922,7 @@ PairsData *setup_pairs(uint8_t *data, uint64_t tb_size, uint64_t *size, unsigned
         d->base[i] = (d->base[i + 1] + ReadUshort((uint8_t*)(d->offset + i)) - ReadUshort((uint8_t*)(d->offset + i + 1))) / 2;
 
     for (i = 0; i < h; ++i)
-        d->base[i] <<= 64 - (min_len + i);
+        d->base[i] <<= 64 - (d->min_len + i);
 
     d->offset -= d->min_len;
 
@@ -1228,8 +1227,6 @@ int decompress_pairs(PairsData* d, uint64_t idx)
 
     int m = d->min_len;
     uint16_t *offset = d->offset;
-    base_t* base = d->base - m;
-    uint8_t* symlen = d->symlen;
     int sym, bitcnt;
 
     ptr += 2;
@@ -1238,7 +1235,7 @@ int decompress_pairs(PairsData* d, uint64_t idx)
     for (;;) {
         int l = m;
 
-        while (code < base[l])
+        while (code < d->base[l - d->min_len])
             ++l;
 
         sym = offset[l];
@@ -1246,12 +1243,12 @@ int decompress_pairs(PairsData* d, uint64_t idx)
         if (!LittleEndian)
             sym = ((sym & 0xff) << 8) | (sym >> 8);
 
-        sym += (int)((code - base[l]) >> (64 - l));
+        sym += (int)((code - d->base[l - d->min_len]) >> (64 - l));
 
-        if (litidx < (int)symlen[sym] + 1)
+        if (litidx < (int)d->symlen[sym] + 1)
             break;
 
-        litidx -= (int)symlen[sym] + 1;
+        litidx -= (int)d->symlen[sym] + 1;
         code <<= l;
         bitcnt += l;
 
@@ -1268,14 +1265,14 @@ int decompress_pairs(PairsData* d, uint64_t idx)
 
     uint8_t *sympat = d->sympat;
 
-    while (symlen[sym] != 0) {
+    while (d->symlen[sym] != 0) {
         uint8_t* w = sympat + (3 * sym);
         int s1 = ((w[1] & 0xf) << 8) | w[0];
 
-        if (litidx < (int)symlen[s1] + 1)
+        if (litidx < (int)d->symlen[s1] + 1)
             sym = s1;
         else {
-            litidx -= (int)symlen[s1] + 1;
+            litidx -= (int)d->symlen[s1] + 1;
             sym = (w[2] << 4) | (w[1] >> 4);
         }
     }
