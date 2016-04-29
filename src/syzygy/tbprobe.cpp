@@ -83,6 +83,8 @@ struct WDLEntry {
     uint8_t has_pawns;
     union {
         struct {
+            typedef int Piece;
+
             uint8_t hasUniquePieces;
             PairsData* precomp;
             int factor[TBPIECES];
@@ -93,6 +95,8 @@ struct WDLEntry {
         struct {
             uint8_t pawns[2];
             struct {
+                typedef int Pawn;
+
                 PairsData* precomp;
                 int factor[TBPIECES];
                 uint8_t pieces[TBPIECES];
@@ -117,6 +121,8 @@ struct DTZEntry {
     uint8_t has_pawns;
     union {
         struct {
+            typedef int Piece;
+
             uint8_t hasUniquePieces;
             PairsData* precomp;
             int factor[TBPIECES];
@@ -130,6 +136,8 @@ struct DTZEntry {
         struct {
             uint8_t pawns[2];
             struct {
+                typedef int Pawn;
+
                 PairsData* precomp;
                 int factor[TBPIECES];
                 uint8_t pieces[TBPIECES];
@@ -751,32 +759,20 @@ uint64_t encode_pawn(uint8_t pawns[], uint8_t *norm, Square *pos, int *factor, i
 }
 
 template<typename T>
-uint64_t set_factors(T& p, int num, int order)
-{
-    int n = 64 - p.norm[0];
-    uint64_t result = 1;
-
-    for (int i = p.norm[0], k = 0; i < num || k == order; ++k) {
-        if (k == order) {
-            p.factor[0] = (int)result;
-            result *= p.hasUniquePieces ? 31332 : 462;
-        } else {
-            p.factor[i] = (int)result;
-            result *= Binomial[p.norm[i]][n];
-            n -= p.norm[i];
-            i += p.norm[i];
-        }
-    }
-
-    return result;
-}
+int get_pfactor(const T& p, File, typename T::Piece = 0)
+{ return p.hasUniquePieces ? 31332 : 462; }
 
 template<typename T>
-uint64_t set_factors(T& p, int num, int order, int order2, File f)
+int get_pfactor(const T& p, File f, typename T::Pawn = 0)
+{ return Pfactor[p.norm[0] - 1][f]; }
+
+
+template<typename T>
+uint64_t set_factors(T& p, int num, int order, int order2 = 0xF, File f = FILE_A)
 {
     int i = p.norm[0];
 
-    if (order2 < 0x0F)
+    if (order2 < 0xF)
         i += p.norm[i];
 
     int n = 64 - i;
@@ -785,7 +781,7 @@ uint64_t set_factors(T& p, int num, int order, int order2, File f)
     for (int k = 0; i < num || k == order || k == order2; ++k) {
         if (k == order) {
             p.factor[0] = (int)result;
-            result *= Pfactor[p.norm[0] - 1][f];
+            result *= get_pfactor(p, f);
         } else if (k == order2) {
             p.factor[p.norm[0]] = (int)result;
             result *= Binomial[p.norm[p.norm[0]]][48 - p.norm[0]];
