@@ -111,6 +111,7 @@ struct DTZEntry {
     DTZEntry(const WDLEntry& wdl, Key keys[]);
    ~DTZEntry();
     bool init(const std::string& fname);
+    template<typename T> void do_init(T& e, uint8_t* data);
 
     uint64_t keys[2];
     char* baseAddress;
@@ -914,11 +915,11 @@ PairsData* set_pairs(uint8_t** dataPtr, uint64_t tb_size, uint8_t* flags = nullp
     return d;
 }
 
-template<typename T> auto item(T(&e)[2], int k, int) -> decltype(e[k])&
-{ return e[k]; }
+typedef decltype(WDLEntry::piece) WDLPiece;
+typedef decltype(WDLEntry::pawn ) WDLPawn;
 
-template<typename T> auto item(T& e, int k, int f) -> decltype(e.file[k][f])&
-{ return e.file[k][f]; }
+auto item(WDLPiece& e, int k, int  ) -> decltype(e[k])& { return e[k]; }
+auto item(WDLPawn&  e, int k, int f) -> decltype(e.file[k][f])& { return e.file[k][f]; }
 
 template<typename T>
 void WDLEntry::do_init(T& e, uint8_t* data)
@@ -934,7 +935,7 @@ void WDLEntry::do_init(T& e, uint8_t* data)
 
     for (File f = FILE_A; f <= (has_pawns ? FILE_D : FILE_A); ++f) {
 
-        int order1[] = { *data & 0x0F, *data >> 4 };
+        int order1[] = { *data & 0xF, *data >> 4 };
 
         data++;
 
@@ -989,108 +990,81 @@ bool WDLEntry::init(const std::string& fname)
     return true;
 }
 
+typedef decltype(DTZEntry::piece) DTZPiece;
+typedef decltype(DTZEntry::pawn ) DTZPawn;
+
+auto item(DTZPiece& e, int  ) -> decltype(e)& { return e; }
+auto item(DTZPawn&  e, int f) -> decltype(e.file[f])& { return e.file[f]; }
+
+template<typename T>
+void DTZEntry::do_init(T& e, uint8_t* data)
+{
+    PairsData* d;
+    uint64_t tb_size[8];
+
+    File maxFile = has_pawns && (*data & 2) ? FILE_D : FILE_A;
+    bool p = (has_pawns && pawn.pawns[1] > 0);
+
+    data++;
+
+    for (File f = FILE_A; f <= (has_pawns ? FILE_D : FILE_A); ++f) {
+
+        int order1 = *data & 0xF;
+
+        data++;
+
+        int order2 = p ? *data & 0xF : 0xF;
+
+        data += p;
+
+        for (int i = 0; i < num; ++i, ++data)
+            item(e, f).pieces[i] = *data & 0xF;
+
+        set_norms(item(e, f), num, pawn.pawns);
+        tb_size[f] = set_factors(item(e, f), num, order1, order2, f);
+    }
+
+    data += (uintptr_t)data & 1;
+
+    for (File f = FILE_A; f <= maxFile; ++f)
+        item(e, f).precomp = set_pairs(&data, tb_size[f], &item(e, f).flags);
+
+    e.map = data;
+
+    for (File f = FILE_A; f <= maxFile; ++f) {
+        if (item(e, f).flags & 2)
+            for (int i = 0; i < 4; ++i) {
+                item(e, f).map_idx[i] = (uint16_t)(data + 1 - e.map);
+                data += 1 + data[0];
+            }
+    }
+
+    data += (uintptr_t)data & 1;
+
+    for (File f = FILE_A; f <= maxFile; ++f) {
+        (d = item(e, f).precomp)->indextable = (char*)data;
+        data += d->idxbits ? 6ULL * d->num_indices : 0;
+    }
+
+    for (File f = FILE_A; f <= maxFile; ++f) {
+        (d = item(e, f).precomp)->sizetable = (uint16_t*)data;
+        data += d->idxbits ? 2ULL * d->num_blocks : 0;
+    }
+
+    for (File f = FILE_A; f <= maxFile; ++f) {
+        data = (uint8_t*)(((uintptr_t)data + 0x3F) & ~0x3F);
+        (d = item(e, f).precomp)->data = data;
+        data += d->idxbits ? (1ULL << d->blocksize) * d->real_num_blocks : 0;
+    }
+}
+
 bool DTZEntry::init(const std::string& fname)
 {
-    uint64_t tb_size[4];
-    PairsData* d;
-
     uint8_t* data = TBFile(fname).map(&baseAddress, &mapping, DTZ_MAGIC);
     if (!data)
         return false;
 
-    File maxFile = *data & 2 ? FILE_D : FILE_A;
-
-    data++;
-
-    if (!has_pawns) {
-
-        int order = *data & 0xF;
-
-        data++;
-
-        for (int i = 0; i < num; ++i, ++data)
-            piece.pieces[i] = *data & 0x0F;
-
-        set_norms(piece, num, pawn.pawns);
-        tb_size[0] = set_factors(piece, num, order, 0xF, FILE_A);
-
-        data += (uintptr_t)data & 1;
-
-        piece.precomp = set_pairs(&data, tb_size[0], &piece.flags);
-        piece.map = data;
-
-        if (piece.flags & 2) {
-            for (int i = 0; i < 4; ++i) {
-                piece.map_idx[i] = (uint16_t)(data + 1 - piece.map);
-                data += 1 + data[0];
-            }
-
-            data += (uintptr_t)data & 1;
-        }
-
-        (d = piece.precomp)->indextable = (char*)data;
-        data += d->idxbits ? 6ULL * d->num_indices : 0;
-
-        (d = piece.precomp)->sizetable = (uint16_t*)data;
-        data += d->idxbits ? 2ULL * d->num_blocks : 0;
-
-        data = (uint8_t*)(((uintptr_t)data + 0x3F) & ~0x3F);
-        (d = piece.precomp)->data = data;
-        data += d->idxbits ? (1ULL << d->blocksize) * d->real_num_blocks : 0;
-    } else {
-        bool p = (pawn.pawns[1] > 0);
-
-        for (File f = FILE_A; f <= FILE_D; ++f) {
-
-            int order1 = *data & 0xF;
-
-            data++;
-
-            int order2 = p ? *data & 0xF : 0xF;
-
-            data += p;
-
-            for (int i = 0; i < num; ++i, ++data)
-                pawn.file[f].pieces[i] = *data & 0xF;
-
-            set_norms(pawn.file[f], num, pawn.pawns);
-            tb_size[f] = set_factors(pawn.file[f], num, order1, order2, f);
-        }
-
-        data += (uintptr_t)data & 1;
-
-        for (File f = FILE_A; f <= maxFile; ++f)
-            pawn.file[f].precomp = set_pairs(&data, tb_size[f], &pawn.file[f].flags);
-
-        pawn.map = data;
-
-        for (File f = FILE_A; f <= maxFile; ++f) {
-            if (pawn.file[f].flags & 2)
-                for (int i = 0; i < 4; ++i) {
-                    pawn.file[f].map_idx[i] = (uint16_t)(data + 1 - pawn.map);
-                    data += 1 + data[0];
-                }
-        }
-
-        data += (uintptr_t)data & 1;
-
-        for (File f = FILE_A; f <= maxFile; ++f) {
-            (d = pawn.file[f].precomp)->indextable = (char*)data;
-            data += d->idxbits ? 6ULL * d->num_indices : 0;
-        }
-
-        for (File f = FILE_A; f <= maxFile; ++f) {
-            (d = pawn.file[f].precomp)->sizetable = (uint16_t*)data;
-            data += d->idxbits ? 2ULL * d->num_blocks : 0;
-        }
-
-        for (File f = FILE_A; f <= maxFile; ++f) {
-            data = (uint8_t*)(((uintptr_t)data + 0x3F) & ~0x3F);
-            (d = pawn.file[f].precomp)->data = data;
-            data += d->idxbits ? (1ULL << d->blocksize) * d->real_num_blocks : 0;
-        }
-    }
-
+    has_pawns ? do_init(pawn, data) : do_init(piece, data);
     return true;
 }
 
