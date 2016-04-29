@@ -799,20 +799,7 @@ uint64_t set_factors(T& p, int num, int order, int order2, File f)
 }
 
 template<typename T>
-void set_norms(T& p, int num, uint8_t [], typename T::Piece = 0)
-{
-    for (int i = 0; i < num; ++i)
-        p.norm[i] = 0;
-
-    p.norm[0] = p.hasUniquePieces ? 3 : 2;
-
-    for (int i = p.norm[0]; i < num; i += p.norm[i])
-        for (int j = i; j < num && p.pieces[j] == p.pieces[i]; ++j)
-            ++p.norm[i];
-}
-
-template<typename T>
-void set_norms(T& p, int num, uint8_t pawns[], typename T::Pawn = 0)
+void set_norms(T& p, int num, const uint8_t pawns[])
 {
     for (int i = 0; i < num; ++i)
         p.norm[i] = 0;
@@ -948,8 +935,10 @@ void WDLEntry::do_init(T& e, uint8_t* data)
             item(e, 1, f).pieces[i] = *data >> 4;
         }
 
+        uint8_t pn[] = { uint8_t(piece[0].hasUniquePieces ? 3 : 2), 0 };
+
         for (int i = 0; i < 2; ++i) {
-            set_norms(item(e, i, f), num, pawn.pawns);
+            set_norms(item(e, i, f), num, has_pawns ? pawn.pawns : pn);
             tb_size[2 * f + i] = set_factors(item(e, i, f), num, order1[i], order2[i], f);
         }
     }
@@ -1020,7 +1009,9 @@ void DTZEntry::do_init(T& e, uint8_t* data)
         for (int i = 0; i < num; ++i, ++data)
             item(e, f).pieces[i] = *data & 0xF;
 
-        set_norms(item(e, f), num, pawn.pawns);
+        uint8_t pn[] = { uint8_t(piece.hasUniquePieces ? 3 : 2), 0 };
+
+        set_norms(item(e, f), num, has_pawns ? pawn.pawns : pn);
         tb_size[f] = set_factors(item(e, f), num, order1, order2, f);
     }
 
