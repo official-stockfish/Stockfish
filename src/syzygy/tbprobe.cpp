@@ -791,21 +791,21 @@ int get_pfactor(const T& p, File f, typename T::Pawn = 0)
 
 
 template<typename T>
-uint64_t set_factors(T& p, int num, int order, int order2, File f)
+uint64_t set_factors(T& p, int num, int order[], File f)
 {
     int i = p.norm[0];
 
-    if (order2 < 0xF)
+    if (order[1] < 0xF)
         i += p.norm[i];
 
     int n = 64 - i;
     uint64_t result = 1;
 
-    for (int k = 0; i < num || k == order || k == order2; ++k) {
-        if (k == order) {
+    for (int k = 0; i < num || k == order[0] || k == order[1]; ++k) {
+        if (k == order[0]) {
             p.factor[0] = (int)result;
             result *= get_pfactor(p, f);
-        } else if (k == order2) {
+        } else if (k == order[1]) {
             p.factor[p.norm[0]] = (int)result;
             result *= Binomial[p.norm[p.norm[0]]][48 - p.norm[0]];
         } else {
@@ -859,18 +859,14 @@ void calc_symlen(PairsData* d, int s, std::vector<char>& tmp)
     tmp[s] = 1;
 }
 
-PairsData* set_pairs(uint8_t** dataPtr, uint64_t tb_size, uint8_t* flags = nullptr)
+PairsData* set_pairs(uint8_t** dataPtr, uint64_t tb_size)
 {
     uint8_t* data = *dataPtr;
 
-    if (flags)
-        *flags = data[0];
-
     if (data[0] & 0x80) {
         PairsData* d = new PairsData();
-        d->idxbits = 0;
-        d->min_len = !flags ? data[1] : 0;
-        *dataPtr = data + 2;
+        d->min_len = data[1];
+        *dataPtr += 2;
         return d;
     }
 
@@ -925,32 +921,36 @@ void WDLEntry::do_init(T& e, uint8_t* data)
     PairsData* d;
     uint64_t tb_size[8];
 
-    int split = *data & 1;
-    File maxFile = has_pawns && (*data & 2) ? FILE_D : FILE_A;
-    bool p = (has_pawns && pawn.pawns[1] > 0);
+    enum { Split = 1, HasPawns = 2 };
 
-    data++;
+    uint8_t flags = *data++;
 
-    for (File f = FILE_A; f <= (has_pawns ? FILE_D : FILE_A); ++f) {
+    int split    = (flags & Split);
+    File maxFile = (flags & HasPawns) ? FILE_D : FILE_A;
 
-        int order1[] = { *data & 0xF, *data >> 4 };
+    assert(!!has_pawns == !!(flags & HasPawns));
+    assert(!!symmetric != !!(flags & Split));
 
-        data++;
+    bool pp = (flags & HasPawns) && pawn.pawns[1]; // Pawns on both sides
 
-        int order2[] = { p ? *data & 0xF : 0xF,
-                         p ? *data >> 4  : 0xF };
-        data += p;
+    assert(!pp || pawn.pawns[0]);
+
+    for (File f = FILE_A; f <= maxFile; ++f) {
+
+        int order[][2] = { { *data & 0xF, pp ? *(data + 1) & 0xF : 0xF },
+                           { *data >>  4, pp ? *(data + 1) >>  4 : 0xF } };
+        data += 1 + pp;
 
         for (int i = 0; i < num; ++i, ++data) {
             item(e, 0, f).pieces[i] = *data & 0xF;
-            item(e, 1, f).pieces[i] = *data >> 4;
+            item(e, 1, f).pieces[i] = *data >>  4;
         }
 
         uint8_t pn[] = { uint8_t(piece[0].hasUniquePieces ? 3 : 2), 0 };
 
         for (int i = 0; i < 2; ++i) {
-            set_norms(item(e, i, f), num, has_pawns ? pawn.pawns : pn);
-            tb_size[2 * f + i] = set_factors(item(e, i, f), num, order1[i], order2[i], f);
+            set_norms(item(e, i, f), num, (flags & HasPawns) ? pawn.pawns : pn);
+            tb_size[2 * f + i] = set_factors(item(e, i, f), num, order[i], f);
         }
     }
 
@@ -963,20 +963,20 @@ void WDLEntry::do_init(T& e, uint8_t* data)
     for (File f = FILE_A; f <= maxFile; ++f)
         for (int k = 0; k <= split; k++) {
             (d = item(e, k, f).precomp)->indextable = (char*)data;
-            data += d->idxbits ? 6ULL * d->num_indices : 0;
+            data += 6ULL * d->num_indices;
         }
 
     for (File f = FILE_A; f <= maxFile; ++f)
         for (int k = 0; k <= split; k++) {
             (d = item(e, k, f).precomp)->sizetable = (uint16_t*)data;
-            data += d->idxbits ? 2ULL * d->num_blocks : 0;
+            data += 2ULL * d->num_blocks;
         }
 
     for (File f = FILE_A; f <= maxFile; ++f)
         for (int k = 0; k <= split; k++) {
             data = (uint8_t*)(((uintptr_t)data + 0x3F) & ~0x3F);
             (d = item(e, k, f).precomp)->data = data;
-            data += d->idxbits ? (1ULL << d->blocksize) * d->real_num_blocks : 0;
+            data += (1ULL << d->blocksize) * d->real_num_blocks;
         }
 }
 
@@ -1002,34 +1002,43 @@ void DTZEntry::do_init(T& e, uint8_t* data)
     PairsData* d;
     uint64_t tb_size[8];
 
-    File maxFile = has_pawns && (*data & 2) ? FILE_D : FILE_A;
-    bool p = (has_pawns && pawn.pawns[1] > 0);
+    enum { Split = 1, HasPawns = 2 };
 
-    data++;
+    uint8_t flags = *data++;
 
-    for (File f = FILE_A; f <= (has_pawns ? FILE_D : FILE_A); ++f) {
+    File maxFile = (flags & HasPawns) ? FILE_D : FILE_A;
 
-        int order1 = *data & 0xF;
+    assert(!!has_pawns == !!(flags & HasPawns));
+    assert(!!symmetric != !!(flags & Split));
 
-        data++;
+    bool pp = (flags & HasPawns) && pawn.pawns[1]; // Pawns on both sides
 
-        int order2 = p ? *data & 0xF : 0xF;
+    assert(!pp || pawn.pawns[0]);
 
-        data += p;
+    for (File f = FILE_A; f <= maxFile; ++f) {
+
+        int order[][2] = { { *data & 0xF, pp ? *(data + 1) & 0xF : 0xF },
+                           { *data >>  4, pp ? *(data + 1) >>  4 : 0xF } };
+        data += 1 + pp;
 
         for (int i = 0; i < num; ++i, ++data)
             item(e, f).pieces[i] = *data & 0xF;
 
         uint8_t pn[] = { uint8_t(piece.hasUniquePieces ? 3 : 2), 0 };
 
-        set_norms(item(e, f), num, has_pawns ? pawn.pawns : pn);
-        tb_size[f] = set_factors(item(e, f), num, order1, order2, f);
+        set_norms(item(e, f), num, (flags & HasPawns) ? pawn.pawns : pn);
+        tb_size[f] = set_factors(item(e, f), num, order[0], f);
     }
 
     data += (uintptr_t)data & 1;
 
-    for (File f = FILE_A; f <= maxFile; ++f)
-        item(e, f).precomp = set_pairs(&data, tb_size[f], &item(e, f).flags);
+    for (File f = FILE_A; f <= maxFile; ++f) {
+        item(e, f).flags = *data;
+
+        assert(!(*data & 0x80));
+
+        item(e, f).precomp = set_pairs(&data, tb_size[f]);
+    }
 
     e.map = data;
 
@@ -1037,7 +1046,7 @@ void DTZEntry::do_init(T& e, uint8_t* data)
         if (item(e, f).flags & 2)
             for (int i = 0; i < 4; ++i) {
                 item(e, f).map_idx[i] = (uint16_t)(data + 1 - e.map);
-                data += 1 + data[0];
+                data += 1 + *data;
             }
     }
 
@@ -1045,18 +1054,18 @@ void DTZEntry::do_init(T& e, uint8_t* data)
 
     for (File f = FILE_A; f <= maxFile; ++f) {
         (d = item(e, f).precomp)->indextable = (char*)data;
-        data += d->idxbits ? 6ULL * d->num_indices : 0;
+        data += 6ULL * d->num_indices;
     }
 
     for (File f = FILE_A; f <= maxFile; ++f) {
         (d = item(e, f).precomp)->sizetable = (uint16_t*)data;
-        data += d->idxbits ? 2ULL * d->num_blocks : 0;
+        data += 2ULL * d->num_blocks;
     }
 
     for (File f = FILE_A; f <= maxFile; ++f) {
         data = (uint8_t*)(((uintptr_t)data + 0x3F) & ~0x3F);
         (d = item(e, f).precomp)->data = data;
-        data += d->idxbits ? (1ULL << d->blocksize) * d->real_num_blocks : 0;
+        data += (1ULL << d->blocksize) * d->real_num_blocks;
     }
 }
 
