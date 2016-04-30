@@ -354,6 +354,27 @@ int Binomial[6][64];
 int Pawnidx[5][24];
 int Pfactor[5][4];
 
+enum { BigEndian, LittleEndian };
+
+template<typename T, int Half = sizeof(T)/2, int End = sizeof(T) - 1>
+inline void swap_byte(T& x)
+{
+    char tmp, *c = (char*)(&x);
+    for (int i = 0; i < Half; ++i)
+        tmp = c[i], c[i] = c[End - i], c[End - i] = tmp;
+}
+
+template<typename T, int LE> T number(void* addr) {
+
+    const union { uint32_t i; char c[4]; } Le = { 0x01020304 };
+    const bool IsLittleEndian = (Le.c[0] == 4);
+
+    T v = *((T*)addr);
+    if (LE != IsLittleEndian)
+        swap_byte(v);
+    return v;
+}
+
 class HashTable {
 
     struct Entry {
@@ -838,16 +859,6 @@ void calc_symlen(PairsData* d, int s, std::vector<char>& tmp)
     tmp[s] = 1;
 }
 
-uint16_t ReadUshort(uint8_t* d)
-{
-    return uint16_t(d[0] | (d[1] << 8));
-}
-
-uint32_t ReadUint32(uint8_t* d)
-{
-    return d[0] | (d[1] << 8) | (d[2] << 16) | (d[3] << 24);
-}
-
 PairsData* set_pairs(uint8_t** dataPtr, uint64_t tb_size, uint8_t* flags = nullptr)
 {
     uint8_t* data = *dataPtr;
@@ -866,14 +877,14 @@ PairsData* set_pairs(uint8_t** dataPtr, uint64_t tb_size, uint8_t* flags = nullp
     PairsData* d = new PairsData();
     d->blocksize = data[1];
     d->idxbits = data[2];
-    d->real_num_blocks = ReadUint32(&data[4]);
-    d->num_blocks = d->real_num_blocks + *(uint8_t *)(&data[3]);
+    d->real_num_blocks = number<uint32_t, LittleEndian>(data + 4);
+    d->num_blocks = d->real_num_blocks + number<uint8_t, LittleEndian>(data + 3);
     d->max_len = data[8];
     d->min_len = data[9];
     d->offset = (uint16_t*)(&data[10]);
 
     int h = d->max_len - d->min_len + 1;
-    int num_syms = ReadUshort(&data[10 + 2 * h]);
+    int num_syms = number<uint16_t, LittleEndian>(data + 10 + 2 * h);
 
     d->sympat = &data[12 + 2 * h];
     d->base.resize(h);
@@ -892,8 +903,8 @@ PairsData* set_pairs(uint8_t** dataPtr, uint64_t tb_size, uint8_t* flags = nullp
     d->base[h - 1] = 0;
 
     for (int i = h - 2; i >= 0; --i)
-        d->base[i] = (d->base[i + 1] + ReadUshort((uint8_t*)(d->offset + i)) - ReadUshort((uint8_t*)(d->offset + i + 1))) / 2;
-
+        d->base[i] = (d->base[i + 1] + number<uint16_t, LittleEndian>(d->offset + i)
+                                     - number<uint16_t, LittleEndian>(d->offset + i + 1)) / 2;
     for (int i = 0; i < h; ++i)
         d->base[i] <<= 64 - (d->min_len + i);
 
@@ -1059,19 +1070,8 @@ bool DTZEntry::init(const std::string& fname)
     return true;
 }
 
-template<typename T, int Half = sizeof(T)/2, int End = sizeof(T)-1>
-inline void byteSwap(T& x)
-{
-    char tmp, *c = (char*)(&x);
-    for (int i = 0; i < Half; ++i)
-        tmp = c[i], c[i] = c[End-i], c[End-i] = tmp;
-}
-
 int decompress_pairs(PairsData* d, uint64_t idx)
 {
-    const union { uint32_t i; char c[4]; } LE = { 0x01020304 };
-    const bool LittleEndian = (LE.c[0] == 4);
-
     if (!d->idxbits)
         return d->min_len;
 
@@ -1081,15 +1081,8 @@ int decompress_pairs(PairsData* d, uint64_t idx)
 
     // indextable points to an array of blocks of 6 bytes representing numbers in
     // little endian. The low 4 bytes are the block, the high 2 bytes the idxOffset.
-    uint32_t block = *(uint32_t *)(d->indextable + 6 * blockidx);
-    uint16_t idxOffset = *(uint16_t *)(d->indextable + 6 * blockidx + 4);
-
-    if (!LittleEndian) {
-        byteSwap(block);
-        byteSwap(idxOffset);
-    }
-
-    litidx += idxOffset;
+    uint32_t block = number<uint32_t, LittleEndian>(d->indextable + 6 * blockidx);
+    litidx += number<uint16_t, LittleEndian>(d->indextable + 6 * blockidx + 4);
 
     while (litidx < 0)
         litidx += d->sizetable[--block] + 1;
@@ -1098,10 +1091,7 @@ int decompress_pairs(PairsData* d, uint64_t idx)
         litidx -= d->sizetable[block++] + 1;
 
     uint32_t* ptr = (uint32_t*)(d->data + (block << d->blocksize));
-    uint64_t code = *((uint64_t*)ptr);
-
-    if (LittleEndian)
-        byteSwap(code);
+    uint64_t code = number<uint64_t, BigEndian>(ptr);
 
     int m = d->min_len;
     uint16_t *offset = d->offset;
@@ -1116,11 +1106,7 @@ int decompress_pairs(PairsData* d, uint64_t idx)
         while (code < d->base[l - d->min_len])
             ++l;
 
-        sym = offset[l];
-
-        if (!LittleEndian)
-            sym = ((sym & 0xff) << 8) | (sym >> 8);
-
+        sym = number<uint16_t, LittleEndian>(offset + l);
         sym += (int)((code - d->base[l - d->min_len]) >> (64 - l));
 
         if (litidx < (int)d->symlen[sym] + 1)
@@ -1132,12 +1118,7 @@ int decompress_pairs(PairsData* d, uint64_t idx)
 
         if (bitcnt >= 32) {
             bitcnt -= 32;
-            uint32_t tmp = *ptr++;
-
-            if (LittleEndian)
-                byteSwap(tmp);
-
-            code |= (uint64_t)tmp << bitcnt;
+            code |= (uint64_t)number<uint32_t, BigEndian>(ptr++) << bitcnt;
         }
     }
 
