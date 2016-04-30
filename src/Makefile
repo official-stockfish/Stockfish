@@ -309,7 +309,7 @@ endif
 ifeq ($(pext),yes)
 	CXXFLAGS += -DUSE_PEXT
 	ifeq ($(comp),$(filter $(comp),gcc clang mingw))
-		CXXFLAGS += -mbmi -mbmi2
+		CXXFLAGS += -mbmi2
 	endif
 endif
 
