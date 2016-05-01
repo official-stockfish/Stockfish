@@ -44,8 +44,6 @@ int Tablebases::MaxCardinality = 0;
 
 namespace {
 
-typedef uint64_t base_t;
-
 inline WDLScore operator-(WDLScore d) { return WDLScore(-int(d)); }
 inline WDLScore operator+(WDLScore d1, WDLScore d2) { return WDLScore(int(d1) + int(d2)); }
 
@@ -62,10 +60,10 @@ struct PairsData {
     int min_len;
     uint16_t* offset;
     uint8_t* sympat;
-    char* indextable;
+    uint8_t* indextable;
     uint16_t* sizetable;
     uint8_t* data;
-    std::vector<base_t> base;
+    std::vector<uint64_t> base;
     std::vector<uint8_t> symlen;
     uint8_t pieces[TBPIECES];
     uint8_t norm[TBPIECES];
@@ -78,7 +76,7 @@ struct WDLEntry {
     bool init(const std::string& fname);
     template<typename T> void do_init(T& e, uint8_t* data);
 
-    char* baseAddress;
+    void* baseAddress;
     uint64_t key;
     uint64_t mapping;
     uint8_t ready;
@@ -111,7 +109,7 @@ struct DTZEntry {
     template<typename T> void do_init(T& e, uint8_t* data);
 
     uint64_t keys[2];
-    char* baseAddress;
+    void* baseAddress;
     uint64_t key;
     uint64_t mapping;
     uint8_t ready;
@@ -443,7 +441,7 @@ public:
 
     // Memory map the file and check it. File should be already open and
     // will be closed after mapping.
-    uint8_t* map(char** baseAddress, uint64_t* mapping, const uint8_t TB_MAGIC[]) {
+    uint8_t* map(void** baseAddress, uint64_t* mapping, const uint8_t TB_MAGIC[]) {
 
         if (!is_open()) {
             std::cerr << "Could not find " << fname << std::endl;
@@ -457,10 +455,10 @@ public:
         int fd = ::open(fname.c_str(), O_RDONLY);
         fstat(fd, &statbuf);
         *mapping = statbuf.st_size;
-        *baseAddress = (char*)mmap(nullptr, statbuf.st_size, PROT_READ, MAP_SHARED, fd, 0);
+        *baseAddress = mmap(nullptr, statbuf.st_size, PROT_READ, MAP_SHARED, fd, 0);
         ::close(fd);
 
-        if (*baseAddress == (char*)(-1)) {
+        if (*baseAddress == MAP_FAILED) {
             std::cerr << "Could not mmap() " << fname << std::endl;
             exit(1);
         }
@@ -478,7 +476,7 @@ public:
         }
 
         *mapping = (uint64_t)mmap;
-        *baseAddress = (char*)MapViewOfFile(mmap, FILE_MAP_READ, 0, 0, 0);
+        *baseAddress = MapViewOfFile(mmap, FILE_MAP_READ, 0, 0, 0);
 
         if (!*baseAddress) {
             std::cerr << "MapViewOfFile() failed, name = " << fname
@@ -501,7 +499,7 @@ public:
         return data;
     }
 
-    static void unmap(char* baseAddress, uint64_t mapping) {
+    static void unmap(void* baseAddress, uint64_t mapping) {
 
 #ifndef _WIN32
         munmap(baseAddress, mapping);
@@ -791,32 +789,28 @@ uint64_t set_factors(T& p, int num, int order[], File f)
         i += d->norm[i];
 
     int n = 64 - i;
-    uint64_t result = 1;
+    int size = 1;
 
-    for (int k = 0; i < num || k == order[0] || k == order[1]; ++k) {
+    for (int k = 0; i < num || k == order[0] || k == order[1]; ++k)
         if (k == order[0]) {
-            d->factor[0] = (int)result;
-            result *= get_pfactor(p, f);
+            d->factor[0] = size;
+            size *= get_pfactor(p, f);
         } else if (k == order[1]) {
-            d->factor[d->norm[0]] = (int)result;
-            result *= Binomial[d->norm[d->norm[0]]][48 - d->norm[0]];
+            d->factor[d->norm[0]] = size;
+            size *= Binomial[d->norm[d->norm[0]]][48 - d->norm[0]];
         } else {
-            d->factor[i] = (int)result;
-            result *= Binomial[d->norm[i]][n];
+            d->factor[i] = size;
+            size *= Binomial[d->norm[i]][n];
             n -= d->norm[i];
             i += d->norm[i];
         }
-    }
 
-    return result;
+    return size;
 }
 
 template<typename T>
 void set_norms(T* p, int num, const uint8_t pawns[])
 {
-    for (int i = 0; i < num; ++i)
-        p->norm[i] = 0;
-
     p->norm[0] = pawns[0];
 
     if (pawns[1])
@@ -827,17 +821,17 @@ void set_norms(T* p, int num, const uint8_t pawns[])
             ++p->norm[i];
 }
 
-void calc_symlen(PairsData* d, int s, std::vector<char>& tmp)
+void calc_symlen(PairsData* d, size_t s, std::vector<uint8_t>& tmp)
 {
     int s1, s2;
 
     uint8_t* w = d->sympat + 3 * s;
     s2 = (w[2] << 4) | (w[1] >> 4);
 
-    if (s2 == 0x0fff)
+    if (s2 == 0xFFF)
         d->symlen[s] = 0;
     else {
-        s1 = ((w[1] & 0xf) << 8) | w[0];
+        s1 = ((w[1] & 0xF) << 8) | w[0];
 
         if (!tmp[s1])
             calc_symlen(d, s1, tmp);
@@ -845,7 +839,7 @@ void calc_symlen(PairsData* d, int s, std::vector<char>& tmp)
         if (!tmp[s2])
             calc_symlen(d, s2, tmp);
 
-        d->symlen[s] = uint8_t(d->symlen[s1] + d->symlen[s2] + 1);
+        d->symlen[s] = d->symlen[s1] + d->symlen[s2] + 1;
     }
 
     tmp[s] = 1;
@@ -853,44 +847,42 @@ void calc_symlen(PairsData* d, int s, std::vector<char>& tmp)
 
 uint8_t* set_sizes(PairsData* d, uint8_t* data, uint64_t tb_size)
 {
-    if (data[0] & 0x80) {
-        d->min_len = data[1];
-        return data + 2;
+    if (*data++ & 0x80) {
+        d->min_len = *data++;
+        return data;
     }
 
-    d->blocksize = data[1];
-    d->idxbits = data[2];
-    d->num_indices = (tb_size + (1ULL << d->idxbits) - 1) >> d->idxbits;
-    d->real_num_blocks = number<uint32_t, LittleEndian>(data + 4);
-    d->num_blocks = d->real_num_blocks + number<uint8_t, LittleEndian>(data + 3);
-    d->max_len = data[8];
-    d->min_len = data[9];
-    d->offset = (uint16_t*)(&data[10]);
+    d->blocksize = *data++;
+    d->idxbits = *data++;
+    d->num_indices = (tb_size + (1ULL << d->idxbits) - 1) >> d->idxbits; // Divide and round upward, like ceil()
+    d->num_blocks = number<uint8_t, LittleEndian>(data++);
+    d->real_num_blocks = number<uint32_t, LittleEndian>(data); data += sizeof(uint32_t);
+    d->num_blocks += d->real_num_blocks;
+    d->max_len = *data++;
+    d->min_len = *data++;
+    d->offset = (uint16_t*)data;
+    d->base.resize(d->max_len - d->min_len + 1);
 
-    int h = d->max_len - d->min_len + 1;
-    int num_syms = number<uint16_t, LittleEndian>(data + 10 + 2 * h);
-
-    d->sympat = &data[12 + 2 * h];
-    d->base.resize(h);
-    d->symlen.resize(num_syms);
-
-    std::vector<char> tmp(num_syms);
-
-    for (int i = 0; i < num_syms; ++i)
-        if (!tmp[i])
-            calc_symlen(d, i, tmp);
-
-    d->base[h - 1] = 0;
-
-    for (int i = h - 2; i >= 0; --i)
+    for (int i = d->base.size() - 2; i >= 0; --i)
         d->base[i] = (d->base[i + 1] + number<uint16_t, LittleEndian>(d->offset + i)
                                      - number<uint16_t, LittleEndian>(d->offset + i + 1)) / 2;
-    for (int i = 0; i < h; ++i)
-        d->base[i] <<= 64 - (d->min_len + i);
+
+    for (size_t i = 0; i < d->base.size(); ++i)
+        d->base[i] <<= (64 - d->min_len) - i;
 
     d->offset -= d->min_len;
 
-    return data + 12 + 2 * h + 3 * num_syms + (num_syms & 1);
+    data += d->base.size() * sizeof(*d->offset);
+    d->symlen.resize(number<uint16_t, LittleEndian>(data)); data += sizeof(uint16_t);
+    d->sympat = data;
+
+    std::vector<uint8_t> tmp(d->symlen.size());
+
+    for (size_t i = 0; i < d->symlen.size(); ++i)
+        if (!tmp[i])
+            calc_symlen(d, i, tmp);
+
+    return data + 3 * d->symlen.size() + (d->symlen.size() & 1);
 }
 
 typedef decltype(WDLEntry::piece) WDLPiece;
@@ -949,7 +941,7 @@ void WDLEntry::do_init(T& e, uint8_t* data)
 
     for (File f = FILE_A; f <= maxFile; ++f)
         for (int k = 0; k <= split; k++) {
-            (d = item(e, k, f).precomp)->indextable = (char*)data;
+            (d = item(e, k, f).precomp)->indextable = data;
             data += 6ULL * d->num_indices;
         }
 
@@ -961,7 +953,7 @@ void WDLEntry::do_init(T& e, uint8_t* data)
 
     for (File f = FILE_A; f <= maxFile; ++f)
         for (int k = 0; k <= split; k++) {
-            data = (uint8_t*)(((uintptr_t)data + 0x3F) & ~0x3F);
+            data = (uint8_t*)(((uintptr_t)data + 0x3F) & ~0x3F); // 64 byte alignment
             (d = item(e, k, f).precomp)->data = data;
             data += (1ULL << d->blocksize) * d->real_num_blocks;
         }
@@ -1022,10 +1014,9 @@ void DTZEntry::do_init(T& e, uint8_t* data)
     data += (uintptr_t)data & 1; // Word alignment
 
     for (File f = FILE_A; f <= maxFile; ++f) {
-        item(e, f).flags = *data;
-
         assert(!(*data & 0x80));
 
+        item(e, f).flags = *data;
         data = set_sizes(item(e, f).precomp, data, tb_size[f]);
     }
 
@@ -1042,7 +1033,7 @@ void DTZEntry::do_init(T& e, uint8_t* data)
     data += (uintptr_t)data & 1;
 
     for (File f = FILE_A; f <= maxFile; ++f) {
-        (d = item(e, f).precomp)->indextable = (char*)data;
+        (d = item(e, f).precomp)->indextable = data;
         data += 6ULL * d->num_indices;
     }
 
@@ -1052,7 +1043,7 @@ void DTZEntry::do_init(T& e, uint8_t* data)
     }
 
     for (File f = FILE_A; f <= maxFile; ++f) {
-        data = (uint8_t*)(((uintptr_t)data + 0x3F) & ~0x3F);
+        data = (uint8_t*)(((uintptr_t)data + 0x3F) & ~0x3F); // 64 byte alignment
         (d = item(e, f).precomp)->data = data;
         data += (1ULL << d->blocksize) * d->real_num_blocks;
     }
