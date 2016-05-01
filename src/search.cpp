@@ -1013,13 +1013,12 @@ moves_loop: // When in check search starts from here
           Value fmValue = (fm ? (*fm)[pos.piece_on(to_sq(move))][to_sq(move)] : VALUE_ZERO);
           Value fm2Value = (fm2 ? (*fm2)[pos.piece_on(to_sq(move))][to_sq(move)] : VALUE_ZERO);
 
-          // Increase reduction for cut nodes and moves with a bad history
-          if (   (!PvNode && cutNode)
-              || (hValue < VALUE_ZERO && cmhValue <= VALUE_ZERO))
+          // Increase reduction for cut nodes
+          if (!PvNode && cutNode)
               r += ONE_PLY;
 
           // Decrease/increase reduction for moves with a good/bad history
-          int rHist = (hValue + cmhValue + fmValue + fm2Value) / 20000;
+          int rHist = (hValue + cmhValue + fmValue + fm2Value - 10000) / 20000;
           r = std::max(DEPTH_ZERO, r - rHist * ONE_PLY);
 
           // Decrease reduction for moves that escape a capture. Filter out
