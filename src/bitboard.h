@@ -270,7 +270,7 @@ inline int popcount(Bitboard b) {
 
 #elif defined(_MSC_VER) || defined(__INTEL_COMPILER)
 
-  return _mm_popcnt_u64(b);
+  return (int)_mm_popcnt_u64(b);
 
 #elif defined(_MSC_VER)
 
