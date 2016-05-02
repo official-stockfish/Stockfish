@@ -102,6 +102,12 @@ struct WDLEntry {
     };
 };
 
+typedef decltype(WDLEntry::piece) WDLPiece;
+typedef decltype(WDLEntry::pawn ) WDLPawn;
+
+auto item(WDLPiece& e, int k, int  ) -> decltype(e[k])& { return e[k]; }
+auto item(WDLPawn&  e, int k, int f) -> decltype(e.file[k][f])& { return e.file[k][f]; }
+
 struct DTZEntry {
     DTZEntry(const WDLEntry& wdl, Key keys[]);
    ~DTZEntry();
@@ -141,6 +147,12 @@ struct DTZEntry {
     };
 };
 
+typedef decltype(DTZEntry::piece) DTZPiece;
+typedef decltype(DTZEntry::pawn ) DTZPawn;
+
+auto item(DTZPiece& e, int  , int = 0) -> decltype(e)& { return e; }
+auto item(DTZPawn&  e, int f, int = 0) -> decltype(e.file[f])& { return e.file[f]; }
+
 const signed char OffdiagA1H8[] = {
     0,-1,-1,-1,-1,-1,-1,-1,
     1, 0,-1,-1,-1,-1,-1,-1,
@@ -152,7 +164,7 @@ const signed char OffdiagA1H8[] = {
     1, 1, 1, 1, 1, 1, 1, 0
 };
 
-const uint8_t Triangle[] = {
+const uint8_t MapB1D1D3[] = {
     6, 0, 1, 2, 2, 1, 0, 6,
     0, 7, 3, 4, 4, 3, 7, 0,
     1, 3, 8, 5, 5, 8, 3, 1,
@@ -163,7 +175,7 @@ const uint8_t Triangle[] = {
     6, 0, 1, 2, 2, 1, 0, 6
 };
 
-const uint8_t Lower[] = {
+const uint8_t MapB1H1H7[] = {
     28, 0,  1,  2,  3,  4,  5,  6,
     0, 29,  7,  8,  9, 10, 11, 12,
     1,  7, 30, 13, 14, 15, 16, 17,
@@ -174,7 +186,7 @@ const uint8_t Lower[] = {
     6, 12, 17, 21, 24, 26, 27, 35
 };
 
-const uint8_t Diag[] = {
+const uint8_t MapA1D4[] = {
     0,  0,  0,  0,  0,  0,  0,  8,
     0,  1,  0,  0,  0,  0,  9,  0,
     0,  0,  2,  0,  0, 10,  0,  0,
@@ -332,7 +344,7 @@ const Value WDL_to_value[] = {
     VALUE_MATE - MAX_PLY - 1
 };
 
-const std::string PieceToChar = " PNBRQK";
+const std::string PieceToChar = " PNBRQK  pnbrqk";
 
 Mutex TB_mutex;
 std::string TBPaths;
@@ -624,67 +636,172 @@ void HashTable::insert(const std::vector<PieceType>& pieces)
     insert(keys[BLACK], &WDLTable.back());
 }
 
-uint64_t encode_piece(uint8_t hasUniquePieces, PairsData* precomp, Square* pos, int n)
+template<typename Entry>
+uint64_t encode_position(const Position& pos,  Entry* entry)
 {
+    Square squares[TBPIECES];
+    Piece pieces[TBPIECES];
     uint64_t idx;
-    int i;
+    int next, stm, flipColor = 0, flipSquares = 0, size = 0;
 
-    if (file_of(pos[0]) > FILE_D)
-        for (i = 0; i < n; ++i)
-            pos[i] ^= 7; // Mirror SQ_H1 -> SQ_A1
+    // A given TB entry like KRK has associated two material keys: KRvk and Kvkr.
+    // If both sides have the same pieces we have a symmetric material and the
+    // keys are equal. The stored TB entry is calculated always with WHITE side
+    // to move and if the position to lookup has instead BLACK to move, we need
+    // to switch color and flip the squares before the lookup:
+    if (entry->symmetric) {
+        flipColor = pos.side_to_move() * 8;     // Switch color
+        flipSquares = pos.side_to_move() * 070; // Vertical flip: SQ_A8 -> SQ_A1
+        stm = WHITE;
+    }
+    // In case of sides with different pieces, if the position to look up has a
+    // different key form the stored one (entry->key), then we have to switch
+    // color and flip the squares:
+    else {
+        flipColor   = (pos.material_key() != entry->key) * 8;
+        flipSquares = (pos.material_key() != entry->key) * 070;
 
-    if (rank_of(pos[0]) > RANK_4)
-        for (i = 0; i < n; ++i)
-            pos[i] ^= 070; // Vertical flip SQ_A8 -> SQ_A1
-
-    for (i = 0; i < n; ++i)
-        if (OffdiagA1H8[pos[i]])
-            break; // First piece not on A1-H8 diagonal
-
-    if (i < (hasUniquePieces ? 3 : 2) && OffdiagA1H8[pos[i]] > 0)
-        for (i = 0; i < n; ++i)
-            pos[i] = Square(((pos[i] >> 3) | (pos[i] << 3)) & 63); // Flip about the A1-H8 diagonal
-
-    if (hasUniquePieces) {
-        // There are unique pieces other than W_KING and B_KING
-        i = pos[1] > pos[0];
-        int j = (pos[2] > pos[0]) + (pos[2] > pos[1]);
-
-        if (OffdiagA1H8[pos[0]])
-            idx = Triangle[pos[0]] * 63*62 + (pos[1] - i) * 62 + (pos[2] - j);
-        else if (OffdiagA1H8[pos[1]])
-            idx = 6*63*62 + Diag[pos[0]] * 28*62 + Lower[pos[1]] * 62 + pos[2] - j;
-        else if (OffdiagA1H8[pos[2]])
-            idx = 6*63*62 + 4*28*62 + (Diag[pos[0]]) * 7*28 + (Diag[pos[1]] - i) * 28 + Lower[pos[2]];
-        else
-            idx = 6*63*62 + 4*28*62 + 4*7*28 + (Diag[pos[0]] * 7*6) + (Diag[pos[1]] - i) * 6 + (Diag[pos[2]] - j);
-
-        i = 3;
-    } else {
-        idx = KK_idx[Triangle[pos[0]]][pos[1]];
-        i = 2;
+        // TB entry is stored with WHITE as stronger side, so side to move has
+        // to be flipped accordingly, for example Kvkr (white to move) maps to
+        // KRvk (black to move).
+        stm = (pos.material_key() != entry->key) ^ pos.side_to_move();
     }
 
+    // Now we are ready to get all the position pieces and directly map them
+    // to the correct color and square:
+    Bitboard b = pos.pieces();
+    for ( ; b; ++size) {
+        Square sq = pop_lsb(&b);
+        squares[size] = sq ^ flipSquares;
+        pieces[size] = Piece(pos.piece_on(sq) ^ flipColor);
+    }
+
+    // Then we reorder the pieces to have the same sequence as the one stored
+    // in entry->piece[stm].precomp->pieces[i], this is important for the next
+    // step. The sequence stored is the one that ensures the best compression.
+    const uint8_t* tbPieces = item(entry->piece, stm, 0).precomp->pieces;
+    for (int i = 0; i < size; ++i)
+        for (int j = i; j < size; ++j)
+            if (tbPieces[i] == pieces[j])
+            {
+                std::swap(pieces[i], pieces[j]);
+                std::swap(squares[i], squares[j]);
+                break;
+            }
+
+    // Now we map again the squares so that the square of the lead piece is in
+    // the triangle A1-D1-D4. We take care that the condition on the diagonal
+    // flip is checked after horizontal and vertical flips are already done.
+    if (file_of(squares[0]) > FILE_D)
+        for (int i = 0; i < size; ++i)
+            squares[i] ^= 7; // Horizontal flip: SQ_H1 -> SQ_A1
+
+    if (rank_of(squares[0]) > RANK_4)
+        for (int i = 0; i < size; ++i)
+            squares[i] ^= 070; // Vertical flip: SQ_A8 -> SQ_A1
+
+    // Look for the first piece not on the A1-D4 diagonal and ensure it is
+    // mapped below the diagonal.
+    bool hasUniquePieces = item(entry->piece, stm, 0).hasUniquePieces;
+
+    for (int i = 0; i < size; ++i) {
+        if (!OffdiagA1H8[squares[i]])
+            continue;
+
+        if (OffdiagA1H8[squares[i]] > 0 && i < (hasUniquePieces ? 3 : 2))
+            for (int j = i; j < size; ++j) // A1-H8 diagonal flip: SQ_A3 -> SQ_C3
+                squares[j] = Square(((squares[j] >> 3) | (squares[j] << 3)) & 63);
+        break;
+    }
+
+    // The encoding function maps a position to its index into the table.
+    // Suppose we have KRvK. Let's say the pieces are on square numbers wK, wR
+    // and bK (each 0...63). The simplest way to map this position to an index
+    // is like this:
+    //
+    //   index = wK * 64*64 + wR * 64 + bK;
+    //
+    // But this way the TB is going to have 64*64*64 = 262144 positions, with
+    // lots of positions being equivalent (because they are mirrors of each
+    // other) and lots of positions being invalid (two pieces on one square,
+    // adjacent kings, etc.).
+    // Usually the first step is to take the wK and bK together. There are just
+    // 462 ways legal and not-mirrored ways to place the wK and bK on the board.
+    // Once we have placed the wK and bK, there are 62 squares left for the wR
+    // Mapping it's square from 0..63 to 0..61 can be done like:
+    //
+    //   wR -= (wR > wK) + (wR > bK);
+    //
+    // In words: if wR "comes later" than wK, we deduct 1, and the same if wR
+    // "comes later" than bK. In case of two same pieces like KRRvK we want to
+    // place the two Rs "together". If we have 62 squares left, we can place two
+    // Rs "together" in 62*61/2 ways.
+
+    // In case we have at least 3 unique pieces (inlcuded kings) we encode them
+    // together.
+    if (hasUniquePieces) {
+
+        int adjust1 =  squares[1] > squares[0];
+        int adjust2 = (squares[2] > squares[0]) + (squares[2] > squares[1]);
+
+        // MapB1D1D3[] maps the b1-d1-d3 triangle to 0...5. There are 63 squares
+        // for second piece and and 62 (mapped to 0...61) for the third.
+        if (OffdiagA1H8[squares[0]])
+            idx =   MapB1D1D3[squares[0]] * 63 * 62
+                 + (squares[1] - adjust1) * 62
+                 +  squares[2] - adjust2;
+
+        // First piece is on diagonal: map to 6, EncodeA1D4 maps diagonal to
+        // 0...3 and MapB1H1H7[] maps the b1-h1-h7 triangle to 0..27
+        else if (OffdiagA1H8[squares[1]])
+            idx =                      6 * 63 * 62
+                 + MapA1D4[squares[0]]   * 28 * 62
+                 + MapB1H1H7[squares[1]] * 62
+                 + squares[2] - adjust2;
+
+        // First 2 pieces are on the diagonal a1-h8
+        else if (OffdiagA1H8[squares[2]])
+            idx =  6 * 63 * 62 + 4 * 28 * 62
+                 +  MapA1D4[squares[0]]        * 7 * 28
+                 + (MapA1D4[squares[1]] - adjust1) * 28
+                 +  MapB1H1H7[squares[2]];
+
+        // All 3 pieces on the diagonal a1-h8
+        else
+            idx = 6 * 63 * 62 + 4 * 28 * 62 + 4 * 7 * 28
+                 +  MapA1D4[squares[0]]         * 7 * 6
+                 + (MapA1D4[squares[1]] - adjust1)  * 6
+                 + (MapA1D4[squares[2]] - adjust2);
+
+        next = 3; // Continue encoding form piece[3]
+    } else {
+        // We don't have at least 3 unique pieces, like in KRRvKBB, just map
+        // the kings and set next to 2.
+        idx = KK_idx[MapB1D1D3[squares[0]]][squares[1]];
+        next = 2;
+    }
+
+    PairsData* precomp = item(entry->piece, stm, 0).precomp;
     idx *= precomp->factor[0];
 
-    while (i < n) {
-        int t = precomp->norm[i];
+    while (next < size) {
+        int t = precomp->norm[next];
 
-        std::sort(&pos[i], &pos[i + t]);
+        std::sort(&squares[next], &squares[next + t]);
 
         uint64_t s = 0;
 
-        for (int l = i; l < i + t; ++l) {
+        for (int l = next; l < next + t; ++l) {
             int j = 0;
 
-            for (int k = 0; k < i; ++k)
-                j += pos[l] > pos[k];
+            for (int k = 0; k < next; ++k)
+                j += squares[l] > squares[k];
 
-            s += Binomial[l - i + 1][pos[l] - j];
+            s += Binomial[l - next + 1][squares[l] - j];
         }
 
-        idx += s * precomp->factor[i];
-        i += t;
+        idx += s * precomp->factor[next];
+        next += t;
     }
 
     return idx;
@@ -885,12 +1002,6 @@ uint8_t* set_sizes(PairsData* d, uint8_t* data, uint64_t tb_size)
     return data + 3 * d->symlen.size() + (d->symlen.size() & 1);
 }
 
-typedef decltype(WDLEntry::piece) WDLPiece;
-typedef decltype(WDLEntry::pawn ) WDLPawn;
-
-auto item(WDLPiece& e, int k, int  ) -> decltype(e[k])& { return e[k]; }
-auto item(WDLPawn&  e, int k, int f) -> decltype(e.file[k][f])& { return e.file[k][f]; }
-
 template<typename T>
 void WDLEntry::do_init(T& e, uint8_t* data)
 {
@@ -968,12 +1079,6 @@ bool WDLEntry::init(const std::string& fname)
     has_pawns ? do_init(pawn, data) : do_init(piece, data);
     return true;
 }
-
-typedef decltype(DTZEntry::piece) DTZPiece;
-typedef decltype(DTZEntry::pawn ) DTZPawn;
-
-auto item(DTZPiece& e, int  ) -> decltype(e)& { return e; }
-auto item(DTZPawn&  e, int f) -> decltype(e.file[f])& { return e.file[f]; }
 
 template<typename T>
 void DTZEntry::do_init(T& e, uint8_t* data)
@@ -1180,15 +1285,7 @@ WDLScore probe_wdl_table(Position& pos, int* success)
     // pc[i] ^ cmirror, where 1 = white pawn, ..., 14 = black king.
     // Pieces of the same type are guaranteed to be consecutive.
     if (!entry->has_pawns) {
-        for (int i = 0; i < entry->num; ) {
-            Piece pc = Piece(entry->piece[bside].precomp->pieces[i] ^ cmirror);
-            Bitboard b = pos.pieces(color_of(pc), type_of(pc));
-            do
-                squares[i++] = pop_lsb(&b);
-            while (b);
-        }
-
-        uint64_t idx = encode_piece(entry->piece[bside].hasUniquePieces, entry->piece[bside].precomp, squares, entry->num);
+        uint64_t idx = encode_position(pos, entry);
         return WDLScore(decompress_pairs(entry->piece[bside].precomp, idx) - 2);
     } else {
         Piece pc = Piece(entry->pawn.file[0][0].precomp->pieces[0] ^ cmirror);
@@ -1298,18 +1395,7 @@ int probe_dtz_table(const Position& pos, int wdl, int *success)
             return 0;
         }
 
-        uint8_t *pc = ptr->piece.precomp->pieces;
-
-        for (i = 0; i < ptr->num;) {
-            Bitboard bb = pos.pieces((Color)((pc[i] ^ cmirror) >> 3),
-                                     (PieceType)(pc[i] & 7));
-
-            do {
-                squares[i++] = pop_lsb(&bb);
-            } while (bb);
-        }
-
-        idx = encode_piece(ptr->piece.hasUniquePieces, ptr->piece.precomp, squares, ptr->num);
+        idx = encode_position(pos, ptr);
         res = decompress_pairs(ptr->piece.precomp, idx);
 
         if (ptr->piece.flags & 2)
