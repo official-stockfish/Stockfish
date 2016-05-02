@@ -268,9 +268,9 @@ inline int popcount(Bitboard b) {
   union { Bitboard bb; uint16_t u[4]; } v = { b };
   return PopCnt16[v.u[0]] + PopCnt16[v.u[1]] + PopCnt16[v.u[2]] + PopCnt16[v.u[3]];
 
-#elif defined(_MSC_VER) && defined(__INTEL_COMPILER)
+#elif defined(_MSC_VER) || defined(__INTEL_COMPILER)
 
-  return _mm_popcnt_u64(b);
+  return (int)_mm_popcnt_u64(b);
 
 #elif defined(_MSC_VER)
 
