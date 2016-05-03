@@ -153,48 +153,21 @@ typedef decltype(DTZEntry::pawn ) DTZPawn;
 auto item(DTZPiece& e, int  , int = 0) -> decltype(e)& { return e; }
 auto item(DTZPawn&  e, int f, int = 0) -> decltype(e.file[f])& { return e.file[f]; }
 
-const signed char OffdiagA1H8[] = {
-    0,-1,-1,-1,-1,-1,-1,-1,
-    1, 0,-1,-1,-1,-1,-1,-1,
-    1, 1, 0,-1,-1,-1,-1,-1,
-    1, 1, 1, 0,-1,-1,-1,-1,
-    1, 1, 1, 1, 0,-1,-1,-1,
-    1, 1, 1, 1, 1, 0,-1,-1,
-    1, 1, 1, 1, 1, 1, 0,-1,
-    1, 1, 1, 1, 1, 1, 1, 0
-};
-
-const uint8_t MapB1D1D3[] = {
-    6, 0, 1, 2, 2, 1, 0, 6,
-    0, 7, 3, 4, 4, 3, 7, 0,
-    1, 3, 8, 5, 5, 8, 3, 1,
-    2, 4, 5, 9, 9, 5, 4, 2,
-    2, 4, 5, 9, 9, 5, 4, 2,
-    1, 3, 8, 5, 5, 8, 3, 1,
-    0, 7, 3, 4, 4, 3, 7, 0,
-    6, 0, 1, 2, 2, 1, 0, 6
+const uint8_t MapA1D1D4[] = {
+    6, 0, 1, 2, 0, 0, 0, 0,
+    0, 7, 3, 4, 0, 0, 0, 0,
+    0, 0, 8, 5, 0, 0, 0, 0,
+    0, 0, 0, 9
 };
 
 const uint8_t MapB1H1H7[] = {
-    28, 0,  1,  2,  3,  4,  5,  6,
-    0, 29,  7,  8,  9, 10, 11, 12,
-    1,  7, 30, 13, 14, 15, 16, 17,
-    2,  8, 13, 31, 18, 19, 20, 21,
-    3,  9, 14, 18, 32, 22, 23, 24,
-    4, 10, 15, 19, 22, 33, 25, 26,
-    5, 11, 16, 20, 23, 25, 34, 27,
-    6, 12, 17, 21, 24, 26, 27, 35
-};
-
-const uint8_t MapA1D4[] = {
-    0,  0,  0,  0,  0,  0,  0,  8,
-    0,  1,  0,  0,  0,  0,  9,  0,
-    0,  0,  2,  0,  0, 10,  0,  0,
-    0,  0,  0,  3, 11,  0,  0,  0,
-    0,  0,  0, 12,  4,  0,  0,  0,
-    0,  0, 13,  0,  0,  5,  0,  0,
-    0, 14,  0,  0,  0,  0,  6,  0,
-    15, 0,  0,  0,  0,  0,  0,  7
+    0, 0, 1,  2,  3,  4,  5,  6,
+    0, 0, 7,  8,  9, 10, 11, 12,
+    0, 0, 0, 13, 14, 15, 16, 17,
+    0, 0, 0,  0, 18, 19, 20, 21,
+    0, 0, 0,  0,  0, 22, 23, 24,
+    0, 0, 0,  0,  0,  0, 25, 26,
+    0, 0, 0,  0,  0,  0,  0, 27
 };
 
 const uint8_t Flap[] = {
@@ -636,6 +609,8 @@ void HashTable::insert(const std::vector<PieceType>& pieces)
     insert(keys[BLACK], &WDLTable.back());
 }
 
+int off_A1H8(Square sq) { return int(rank_of(sq)) - file_of(sq); }
+
 template<typename Entry>
 uint64_t encode_position(const Position& pos,  Entry* entry)
 {
@@ -705,10 +680,10 @@ uint64_t encode_position(const Position& pos,  Entry* entry)
     bool hasUniquePieces = item(entry->piece, stm, 0).hasUniquePieces;
 
     for (int i = 0; i < size; ++i) {
-        if (!OffdiagA1H8[squares[i]])
+        if (!off_A1H8(squares[i]))
             continue;
 
-        if (OffdiagA1H8[squares[i]] > 0 && i < (hasUniquePieces ? 3 : 2))
+        if (off_A1H8(squares[i]) > 0 && i < (hasUniquePieces ? 3 : 2))
             for (int j = i; j < size; ++j) // A1-H8 diagonal flip: SQ_A3 -> SQ_C3
                 squares[j] = Square(((squares[j] >> 3) | (squares[j] << 3)) & 63);
         break;
@@ -744,40 +719,40 @@ uint64_t encode_position(const Position& pos,  Entry* entry)
         int adjust1 =  squares[1] > squares[0];
         int adjust2 = (squares[2] > squares[0]) + (squares[2] > squares[1]);
 
-        // MapB1D1D3[] maps the b1-d1-d3 triangle to 0...5. There are 63 squares
+        // MapA1D1D4[] maps the b1-d1-d3 triangle to 0...5. There are 63 squares
         // for second piece and and 62 (mapped to 0...61) for the third.
-        if (OffdiagA1H8[squares[0]])
-            idx =   MapB1D1D3[squares[0]] * 63 * 62
+        if (off_A1H8(squares[0]))
+            idx =   MapA1D1D4[squares[0]] * 63 * 62
                  + (squares[1] - adjust1) * 62
                  +  squares[2] - adjust2;
 
-        // First piece is on diagonal: map to 6, EncodeA1D4 maps diagonal to
-        // 0...3 and MapB1H1H7[] maps the b1-h1-h7 triangle to 0..27
-        else if (OffdiagA1H8[squares[1]])
+        // First piece is on diagonal: map to 6, rank_of() maps a1-d4 diagonal
+        // to 0...3 and MapB1H1H7[] maps the b1-h1-h7 triangle to 0..27
+        else if (off_A1H8(squares[1]))
             idx =                      6 * 63 * 62
-                 + MapA1D4[squares[0]]   * 28 * 62
+                 + rank_of(squares[0])   * 28 * 62
                  + MapB1H1H7[squares[1]] * 62
                  + squares[2] - adjust2;
 
         // First 2 pieces are on the diagonal a1-h8
-        else if (OffdiagA1H8[squares[2]])
+        else if (off_A1H8(squares[2]))
             idx =  6 * 63 * 62 + 4 * 28 * 62
-                 +  MapA1D4[squares[0]]        * 7 * 28
-                 + (MapA1D4[squares[1]] - adjust1) * 28
+                 +  rank_of(squares[0])        * 7 * 28
+                 + (rank_of(squares[1]) - adjust1) * 28
                  +  MapB1H1H7[squares[2]];
 
         // All 3 pieces on the diagonal a1-h8
         else
             idx = 6 * 63 * 62 + 4 * 28 * 62 + 4 * 7 * 28
-                 +  MapA1D4[squares[0]]         * 7 * 6
-                 + (MapA1D4[squares[1]] - adjust1)  * 6
-                 + (MapA1D4[squares[2]] - adjust2);
+                 +  rank_of(squares[0])         * 7 * 6
+                 + (rank_of(squares[1]) - adjust1)  * 6
+                 + (rank_of(squares[2]) - adjust2);
 
         next = 3; // Continue encoding form piece[3]
     } else {
         // We don't have at least 3 unique pieces, like in KRRvKBB, just map
         // the kings and set next to 2.
-        idx = KK_idx[MapB1D1D3[squares[0]]][squares[1]];
+        idx = KK_idx[MapA1D1D4[squares[0]]][squares[1]];
         next = 2;
     }
 
