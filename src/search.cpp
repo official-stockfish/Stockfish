@@ -1012,7 +1012,7 @@ moves_loop: // When in check search starts from here
           Value fmValue = (fm ? (*fm)[pos.piece_on(to_sq(move))][to_sq(move)] : VALUE_ZERO);
           Value fm2Value = (fm2 ? (*fm2)[pos.piece_on(to_sq(move))][to_sq(move)] : VALUE_ZERO);
 
-          // Increase reduction for cut nodes and moves with a bad history
+          // Increase reduction for cut nodes.
           if (!PvNode && cutNode)
               r += ONE_PLY;
 
