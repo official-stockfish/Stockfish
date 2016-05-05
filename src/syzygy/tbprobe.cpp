@@ -92,7 +92,7 @@ struct WDLEntry {
         } piece[2];
 
         struct {
-            uint8_t pawns[2];
+            uint8_t pawnCount[2];
             struct {
                 typedef int Pawn;
 
@@ -101,12 +101,6 @@ struct WDLEntry {
         } pawn;
     };
 };
-
-typedef decltype(WDLEntry::piece) WDLPiece;
-typedef decltype(WDLEntry::pawn ) WDLPawn;
-
-auto item(WDLPiece& e, int k, int  ) -> decltype(e[k])& { return e[k]; }
-auto item(WDLPawn&  e, int k, int f) -> decltype(e.file[k][f])& { return e.file[k][f]; }
 
 struct DTZEntry {
     DTZEntry(const WDLEntry& wdl, Key keys[]);
@@ -134,7 +128,7 @@ struct DTZEntry {
         } piece;
 
         struct {
-            uint8_t pawns[2];
+            uint8_t pawnCount[2];
             struct {
                 typedef int Pawn;
 
@@ -147,11 +141,15 @@ struct DTZEntry {
     };
 };
 
+typedef decltype(WDLEntry::piece) WDLPiece;
 typedef decltype(DTZEntry::piece) DTZPiece;
+typedef decltype(WDLEntry::pawn ) WDLPawn;
 typedef decltype(DTZEntry::pawn ) DTZPawn;
 
-auto item(DTZPiece& e, int  , int = 0) -> decltype(e)& { return e; }
-auto item(DTZPawn&  e, int f, int = 0) -> decltype(e.file[f])& { return e.file[f]; }
+auto item(WDLPiece& e, int stm, int  ) -> decltype(e[stm])& { return e[stm]; }
+auto item(DTZPiece& e, int    , int  ) -> decltype(e)& { return e; }
+auto item(WDLPawn&  e, int stm, int f) -> decltype(e.file[stm][f])& { return e.file[stm][f]; }
+auto item(DTZPawn&  e, int    , int f) -> decltype(e.file[f])& { return e.file[f]; }
 
 const uint8_t MapA1D1D4[] = {
     6, 0, 1, 2, 0, 0, 0, 0,
@@ -510,8 +508,8 @@ WDLEntry::WDLEntry(const Position& pos, Key keys[])
                   || (   pos.count<PAWN>(WHITE)
                       && pos.count<PAWN>(BLACK) >= pos.count<PAWN>(WHITE)));
 
-        pawn.pawns[0] = pos.count<PAWN>(c ? WHITE : BLACK);
-        pawn.pawns[1] = pos.count<PAWN>(c ? BLACK : WHITE);
+        pawn.pawnCount[0] = pos.count<PAWN>(c ? WHITE : BLACK);
+        pawn.pawnCount[1] = pos.count<PAWN>(c ? BLACK : WHITE);
     } else
         for (Color c = WHITE; c <= BLACK; ++c)
             for (PieceType pt = PAWN; pt < KING; ++pt)
@@ -547,8 +545,8 @@ DTZEntry::DTZEntry(const WDLEntry& wdl, Key k[])
     has_pawns = wdl.has_pawns;
 
     if (has_pawns) {
-        pawn.pawns[0] = wdl.pawn.pawns[0];
-        pawn.pawns[1] = wdl.pawn.pawns[1];
+        pawn.pawnCount[0] = wdl.pawn.pawnCount[0];
+        pawn.pawnCount[1] = wdl.pawn.pawnCount[1];
     } else
         piece.hasUniquePieces = wdl.piece[0].hasUniquePieces;
 }
@@ -612,12 +610,15 @@ void HashTable::insert(const std::vector<PieceType>& pieces)
 int off_A1H8(Square sq) { return int(rank_of(sq)) - file_of(sq); }
 
 template<typename Entry>
-uint64_t encode_position(const Position& pos,  Entry* entry)
+uint64_t encode_position(const Position& pos,  Entry* entry, PairsData** precomp2 = 0)
 {
     Square squares[TBPIECES];
     Piece pieces[TBPIECES];
     uint64_t idx;
-    int next, stm, flipColor = 0, flipSquares = 0, size = 0;
+    int stm, next = 0, flipColor = 0, flipSquares = 0, size = 0, leadPawnsCnt = 0;
+    bool hasUniquePieces;
+    PairsData* precomp;
+    Bitboard b, leadPawns = 0;
 
     // A given TB entry like KRK has associated two material keys: KRvk and Kvkr.
     // If both sides have the same pieces we have a symmetric material and the
@@ -642,9 +643,37 @@ uint64_t encode_position(const Position& pos,  Entry* entry)
         stm = (pos.material_key() != entry->key) ^ pos.side_to_move();
     }
 
-    // Now we are ready to get all the position pieces and directly map them
-    // to the correct color and square:
-    Bitboard b = pos.pieces();
+    // For pawns, TB files store separate tables according if leading pawn is on
+    // file a, b, c or d after reordering. To determine which of the 4 tables
+    // must be probed we need to extract the position's pawns then reorder them
+    // and finally get the correct tbFile. The new pawn order should be preserved
+    // because needed for next steps.
+    if (entry->has_pawns) {
+        Piece pc = Piece(item(entry->pawn, 0, 0).precomp->pieces[0] ^ flipColor);
+
+        assert(type_of(pc) == PAWN);
+
+        leadPawns = b = pos.pieces(color_of(pc), PAWN);
+        while (b)
+            squares[size++] = pop_lsb(&b) ^ flipSquares;
+
+        leadPawnsCnt = size;
+
+        for (int i = 1; i < size; ++i)
+            if (Flap[squares[0]] > Flap[squares[i]])
+                std::swap(squares[0], squares[i]);
+
+        File f = std::min(file_of(squares[0]), FILE_H - file_of(squares[0]));
+        precomp = item(entry->pawn, stm, f).precomp;
+    } else
+        precomp = item(entry->piece, stm, 0).precomp;
+
+    if (precomp2)
+        *precomp2 = precomp;
+
+    // Now we are ready to get all the position pieces (but the lead pawns) and
+    // directly map them to the correct color and square.
+    b = pos.pieces() ^ leadPawns;
     for ( ; b; ++size) {
         Square sq = pop_lsb(&b);
         squares[size] = sq ^ flipSquares;
@@ -652,12 +681,11 @@ uint64_t encode_position(const Position& pos,  Entry* entry)
     }
 
     // Then we reorder the pieces to have the same sequence as the one stored
-    // in entry->piece[stm].precomp->pieces[i], this is important for the next
-    // step. The sequence stored is the one that ensures the best compression.
-    const uint8_t* tbPieces = item(entry->piece, stm, 0).precomp->pieces;
-    for (int i = 0; i < size; ++i)
+    // in precomp->pieces[i], this is important for the next step. The sequence
+    // stored is the one that ensures the best compression.
+    for (int i = leadPawnsCnt; i < size; ++i)
         for (int j = i; j < size; ++j)
-            if (tbPieces[i] == pieces[j])
+            if (precomp->pieces[i] == pieces[j])
             {
                 std::swap(pieces[i], pieces[j]);
                 std::swap(squares[i], squares[j]);
@@ -671,13 +699,28 @@ uint64_t encode_position(const Position& pos,  Entry* entry)
         for (int i = 0; i < size; ++i)
             squares[i] ^= 7; // Horizontal flip: SQ_H1 -> SQ_A1
 
+    // Positions with pawns have a special ordering
+    if (entry->has_pawns) {
+        for (int i = 1; i < leadPawnsCnt; ++i)
+            for (int j = i + 1; j < leadPawnsCnt; ++j)
+                if (Ptwist[squares[i]] < Ptwist[squares[j]])
+                    std::swap(squares[i], squares[j]);
+
+        idx = Pawnidx[leadPawnsCnt - 1][Flap[squares[0]]];
+
+        for (int i = leadPawnsCnt - 1; i > 0; --i)
+            idx += Binomial[leadPawnsCnt - i][Ptwist[squares[i]]];
+
+        goto tail;
+    }
+
     if (rank_of(squares[0]) > RANK_4)
         for (int i = 0; i < size; ++i)
             squares[i] ^= 070; // Vertical flip: SQ_A8 -> SQ_A1
 
     // Look for the first piece not on the A1-D4 diagonal and ensure it is
     // mapped below the diagonal.
-    bool hasUniquePieces = item(entry->piece, stm, 0).hasUniquePieces;
+    hasUniquePieces = item(entry->piece, stm, 0).hasUniquePieces;
 
     for (int i = 0; i < size; ++i) {
         if (!off_A1H8(squares[i]))
@@ -756,9 +799,34 @@ uint64_t encode_position(const Position& pos,  Entry* entry)
         next = 2;
     }
 
-    PairsData* precomp = item(entry->piece, stm, 0).precomp;
+tail:
     idx *= precomp->factor[0];
 
+    // Order remainig pawns
+    if (entry->has_pawns) {
+        next = leadPawnsCnt;
+        int pawnsCnt = pos.count<PAWN>(WHITE) + pos.count<PAWN>(BLACK);
+
+        if (pawnsCnt > next) {
+            std::sort(&squares[next], &squares[pawnsCnt]);
+
+            uint64_t s = 0;
+
+            for (int m = next; m < pawnsCnt; ++m) {
+                int j = 0;
+
+                for (int k = 0; k < next; ++k)
+                    j += squares[m] > squares[k];
+
+                s += Binomial[m - next + 1][squares[m] - j - 8];
+            }
+
+            idx += s * precomp->factor[next];
+            next = pawnsCnt;
+        }
+    }
+
+    // Order remainig pieces
     while (next < size) {
         int t = precomp->norm[next];
 
@@ -794,72 +862,6 @@ File pawn_file(uint8_t pawns[], Square *pos)
             std::swap(pos[0], pos[i]);
 
     return file_to_file[pos[0] & 7];
-}
-
-uint64_t encode_pawn(uint8_t pawns[], PairsData* precomp, Square *pos, int n)
-{
-    int i;
-
-    if (pos[0] & 4)
-        for (i = 0; i < n; ++i)
-            pos[i] ^= 7;
-
-    for (i = 1; i < pawns[0]; ++i)
-        for (int j = i + 1; j < pawns[0]; ++j)
-            if (Ptwist[pos[i]] < Ptwist[pos[j]])
-                std::swap(pos[i], pos[j]);
-
-    int t = pawns[0] - 1;
-    uint64_t idx = Pawnidx[t][Flap[pos[0]]];
-
-    for (i = t; i > 0; --i)
-        idx += Binomial[t - i + 1][Ptwist[pos[i]]];
-
-    idx *= precomp->factor[0];
-
-    // remaining pawns
-    i = pawns[0];
-    t = i + pawns[1];
-
-    if (t > i) {
-        std::sort(&pos[i], &pos[t]);
-
-        uint64_t s = 0;
-
-        for (int m = i; m < t; ++m) {
-            int j = 0;
-
-            for (int k = 0; k < i; ++k)
-                j += pos[m] > pos[k];
-
-            s += Binomial[m - i + 1][pos[m] - j - 8];
-        }
-
-        idx += s * precomp->factor[i];
-        i = t;
-    }
-
-    while (i < n) {
-        t = precomp->norm[i];
-
-        std::sort(&pos[i], &pos[i + t]);
-
-        uint64_t s = 0;
-
-        for (int l = i; l < i + t; ++l) {
-            int j = 0;
-
-            for (int k = 0; k < i; ++k)
-                j += pos[l] > pos[k];
-
-            s += Binomial[l - i + 1][pos[l] - j];
-        }
-
-        idx += s * precomp->factor[i];
-        i += t;
-    }
-
-    return idx;
 }
 
 template<typename T>
@@ -993,9 +995,9 @@ void WDLEntry::do_init(T& e, uint8_t* data)
     assert(!!has_pawns == !!(flags & HasPawns));
     assert(!!symmetric != !!(flags & Split));
 
-    bool pp = (flags & HasPawns) && pawn.pawns[1]; // Pawns on both sides
+    bool pp = (flags & HasPawns) && pawn.pawnCount[1]; // Pawns on both sides
 
-    assert(!pp || pawn.pawns[0]);
+    assert(!pp || pawn.pawnCount[0]);
 
     for (File f = FILE_A; f <= maxFile; ++f) {
 
@@ -1014,7 +1016,7 @@ void WDLEntry::do_init(T& e, uint8_t* data)
         uint8_t pn[] = { uint8_t(piece[0].hasUniquePieces ? 3 : 2), 0 };
 
         for (int i = 0; i < 2; ++i) {
-            set_norms(item(e, i, f).precomp, num, (flags & HasPawns) ? pawn.pawns : pn);
+            set_norms(item(e, i, f).precomp, num, (flags & HasPawns) ? pawn.pawnCount : pn);
             tb_size[2 * f + i] = set_factors(item(e, i, f), num, order[i], f);
         }
     }
@@ -1070,25 +1072,25 @@ void DTZEntry::do_init(T& e, uint8_t* data)
     assert(!!has_pawns == !!(flags & HasPawns));
     assert(!!symmetric != !!(flags & Split));
 
-    bool pp = (flags & HasPawns) && pawn.pawns[1]; // Pawns on both sides
+    bool pp = (flags & HasPawns) && pawn.pawnCount[1]; // Pawns on both sides
 
-    assert(!pp || pawn.pawns[0]);
+    assert(!pp || pawn.pawnCount[0]);
 
     for (File f = FILE_A; f <= maxFile; ++f) {
 
-        item(e, f).precomp = new PairsData();
+        item(e, 0, f).precomp = new PairsData();
 
         int order[][2] = { { *data & 0xF, pp ? *(data + 1) & 0xF : 0xF },
                            { *data >>  4, pp ? *(data + 1) >>  4 : 0xF } };
         data += 1 + pp;
 
         for (int i = 0; i < num; ++i, ++data)
-            item(e, f).precomp->pieces[i] = *data & 0xF;
+            item(e, 0, f).precomp->pieces[i] = *data & 0xF;
 
         uint8_t pn[] = { uint8_t(piece.hasUniquePieces ? 3 : 2), 0 };
 
-        set_norms(item(e, f).precomp, num, (flags & HasPawns) ? pawn.pawns : pn);
-        tb_size[f] = set_factors(item(e, f), num, order[0], f);
+        set_norms(item(e, 0, f).precomp, num, (flags & HasPawns) ? pawn.pawnCount : pn);
+        tb_size[f] = set_factors(item(e, 0, f), num, order[0], f);
     }
 
     data += (uintptr_t)data & 1; // Word alignment
@@ -1096,16 +1098,16 @@ void DTZEntry::do_init(T& e, uint8_t* data)
     for (File f = FILE_A; f <= maxFile; ++f) {
         assert(!(*data & 0x80));
 
-        item(e, f).flags = *data;
-        data = set_sizes(item(e, f).precomp, data, tb_size[f]);
+        item(e, 0, f).flags = *data;
+        data = set_sizes(item(e, 0, f).precomp, data, tb_size[f]);
     }
 
     e.map = data;
 
     for (File f = FILE_A; f <= maxFile; ++f) {
-        if (item(e, f).flags & 2)
+        if (item(e, 0, f).flags & 2)
             for (int i = 0; i < 4; ++i) { // Sequence like 3,x,x,x,1,x,0,2,x,x
-                item(e, f).map_idx[i] = (uint16_t)(data - e.map + 1);
+                item(e, 0, f).map_idx[i] = (uint16_t)(data - e.map + 1);
                 data += *data + 1;
             }
     }
@@ -1113,18 +1115,18 @@ void DTZEntry::do_init(T& e, uint8_t* data)
     data += (uintptr_t)data & 1;
 
     for (File f = FILE_A; f <= maxFile; ++f) {
-        (d = item(e, f).precomp)->indextable = data;
+        (d = item(e, 0, f).precomp)->indextable = data;
         data += 6ULL * d->num_indices;
     }
 
     for (File f = FILE_A; f <= maxFile; ++f) {
-        (d = item(e, f).precomp)->sizetable = (uint16_t*)data;
+        (d = item(e, 0, f).precomp)->sizetable = (uint16_t*)data;
         data += 2ULL * d->num_blocks;
     }
 
     for (File f = FILE_A; f <= maxFile; ++f) {
         data = (uint8_t*)(((uintptr_t)data + 0x3F) & ~0x3F); // 64 byte alignment
-        (d = item(e, f).precomp)->data = data;
+        (d = item(e, 0, f).precomp)->data = data;
         data += (1ULL << d->blocksize) * d->real_num_blocks;
     }
 }
@@ -1235,53 +1237,16 @@ WDLScore probe_wdl_table(Position& pos, int* success)
         }
     }
 
-    Square squares[TBPIECES];
-    int bside, smirror, cmirror;
-
     assert(key == entry->key || !entry->symmetric);
 
-    // Entries are stored from point of view of white, so in case of a symmetric
-    // material distribution, we just need to lookup the relative TB entry in
-    // case we are black. Instead in case of asymmetric distribution, because
-    // stored entry is the same for both keys, we have first to verify if the
-    // entry is stored according to our key, otherwise we have to lookup
-    // the relative entry.
-    if (entry->symmetric) {
-        cmirror = pos.side_to_move() * 8;
-        smirror = pos.side_to_move() * 070;
-        bside = WHITE;
-    } else {
-        cmirror = (key != entry->key) * 8;   // Switch color
-        smirror = (key != entry->key) * 070; // Vertical flip SQ_A1 -> SQ_A8
-        bside   = (key != entry->key) ^ pos.side_to_move();
-    }
+    PairsData* precomp;
 
-    // squares[i] is to contain the square 0-63 (A1-H8) for a piece of type
-    // pc[i] ^ cmirror, where 1 = white pawn, ..., 14 = black king.
-    // Pieces of the same type are guaranteed to be consecutive.
     if (!entry->has_pawns) {
-        uint64_t idx = encode_position(pos, entry);
-        return WDLScore(decompress_pairs(entry->piece[bside].precomp, idx) - 2);
+        uint64_t idx = encode_position(pos, entry, &precomp);
+        return WDLScore(decompress_pairs(precomp, idx) - 2);
     } else {
-        Piece pc = Piece(entry->pawn.file[0][0].precomp->pieces[0] ^ cmirror);
-        Bitboard b = pos.pieces(color_of(pc), type_of(pc));
-        int i = 0;
-        do
-            squares[i++] = pop_lsb(&b) ^ smirror;
-        while (b);
-
-        File f = pawn_file(entry->pawn.pawns, squares);
-
-        for ( ; i < entry->num; ) {
-            pc = Piece(entry->pawn.file[bside][f].precomp->pieces[i] ^ cmirror);
-            b = pos.pieces(color_of(pc), type_of(pc));
-            do
-                squares[i++] = pop_lsb(&b) ^ smirror;
-            while (b);
-        }
-
-        uint64_t idx = encode_pawn(entry->pawn.pawns, entry->pawn.file[bside][f].precomp, squares, entry->num);
-        return WDLScore(decompress_pairs(entry->pawn.file[bside][f].precomp, idx) - 2);
+        uint64_t idx = encode_position(pos, entry, &precomp);
+        return WDLScore(decompress_pairs(precomp, idx) - 2);
     }
 }
 
@@ -1387,25 +1352,14 @@ int probe_dtz_table(const Position& pos, int wdl, int *success)
             squares[i++] = pop_lsb(&bb) ^ mirror;
         } while (bb);
 
-        File f = pawn_file(ptr->pawn.pawns, squares);
+        File f = pawn_file(ptr->pawn.pawnCount, squares);
 
         if ((ptr->pawn.file[f].flags & 1) != bside) {
             *success = -1;
             return 0;
         }
 
-        uint8_t *pc = ptr->pawn.file[f].precomp->pieces;
-
-        for (; i < ptr->num;) {
-            bb = pos.pieces((Color)((pc[i] ^ cmirror) >> 3),
-                            (PieceType)(pc[i] & 7));
-
-            do {
-                squares[i++] = pop_lsb(&bb) ^ mirror;
-            } while (bb);
-        }
-
-        idx = encode_pawn(ptr->pawn.pawns, ptr->pawn.file[f].precomp, squares, ptr->num);
+        idx = encode_position(pos, ptr);
         res = decompress_pairs(ptr->pawn.file[f].precomp, idx);
 
         if (ptr->pawn.file[f].flags & 2)
