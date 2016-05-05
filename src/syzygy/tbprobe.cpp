@@ -881,7 +881,7 @@ uint64_t set_factors(T& p, int num, int order[], File f)
         i += d->norm[i];
 
     int n = 64 - i;
-    int size = 1;
+    uint64_t size = 1;
 
     for (int k = 0; i < num || k == order[0] || k == order[1]; ++k)
         if (k == order[0]) {
