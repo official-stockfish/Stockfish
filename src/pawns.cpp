@@ -31,12 +31,8 @@ namespace {
   #define V Value
   #define S(mg, eg) make_score(mg, eg)
 
-  // Isolated pawn penalty by opposed flag and file
-  const Score Isolated[2][FILE_NB] = {
-    { S(31, 36), S(45, 41), S(50, 41), S(50, 41),
-      S(50, 41), S(50, 41), S(45, 41), S(31, 36) },
-    { S(21, 24), S(30, 28), S(33, 28), S(33, 28),
-      S(33, 28), S(33, 28), S(30, 28), S(21, 24) } };
+  // Isolated pawn penalty by opposed flag
+  const Score Isolated[2] = { S(45, 40), S(30, 27) };
 
   // Backward pawn penalty by opposed flag
   const Score Backward[2] = { S(56, 33), S(41, 19) };
@@ -161,7 +157,7 @@ namespace {
 
         // Score this pawn
         if (!neighbours)
-            score -= Isolated[opposed][f];
+            score -= Isolated[opposed];
 
         else if (backward)
             score -= Backward[opposed];

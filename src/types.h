@@ -60,12 +60,12 @@
 /// _WIN64             Building on Windows 64 bit
 
 #if defined(_WIN64) && defined(_MSC_VER) // No Makefile used
-#  include <intrin.h> // MSVC popcnt and bsfq instrinsics
+#  include <intrin.h> // Microsoft header for _BitScanForward64()
 #  define IS_64BIT
 #endif
 
-#if defined(USE_POPCNT) && defined(__INTEL_COMPILER) && defined(_MSC_VER)
-#  include <nmmintrin.h> // Intel header for _mm_popcnt_u64() intrinsic
+#if defined(USE_POPCNT) && (defined(__INTEL_COMPILER) || defined(_MSC_VER))
+#  include <nmmintrin.h> // Intel and Microsoft header for _mm_popcnt_u64()
 #endif
 
 #if !defined(NO_PREFETCH) && (defined(__INTEL_COMPILER) || defined(_MSC_VER))
@@ -426,3 +426,5 @@ inline bool is_ok(Move m) {
 }
 
 #endif // #ifndef TYPES_H_INCLUDED
+
+#include "tune.h" // Global visibility to tuning setup
