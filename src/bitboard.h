@@ -272,10 +272,6 @@ inline int popcount(Bitboard b) {
 
   return (int)_mm_popcnt_u64(b);
 
-#elif defined(_MSC_VER)
-
-  return (int)__popcnt64(b);
-
 #else // Assumed gcc or compatible compiler
 
   return __builtin_popcountll(b);
