@@ -26,7 +26,7 @@
 namespace {
 
   enum Stages {
-    MAIN_SEARCH, GOOD_CAPTURES, KILLERS, GOOD_QUIETS, BAD_QUIETS, BAD_CAPTURES,
+    MAIN_SEARCH, GOOD_CAPTURES, KILLERS, QUIET, BAD_CAPTURES,
     EVASION, ALL_EVASIONS,
     QSEARCH_WITH_CHECKS, QCAPTURES_1, CHECKS,
     QSEARCH_WITHOUT_CHECKS, QCAPTURES_2,
@@ -199,17 +199,15 @@ void MovePicker::generate_next_stage() {
       endMoves = cur + 2 + (countermove != killers[0] && countermove != killers[1]);
       break;
 
-  case GOOD_QUIETS:
-      endQuiets = endMoves = generate<QUIETS>(pos, moves);
+  case QUIET:
+      endMoves = generate<QUIETS>(pos, moves);
       score<QUIETS>();
-      endMoves = std::partition(cur, endMoves, [](const ExtMove& m) { return m.value > VALUE_ZERO; });
-      insertion_sort(cur, endMoves);
-      break;
-
-  case BAD_QUIETS:
-      cur = endMoves;
-      endMoves = endQuiets;
-      if (depth >= 3 * ONE_PLY)
+      if (depth < 3 * ONE_PLY)
+      {
+          ExtMove* goodQuiet = std::partition(cur, endMoves, [](const ExtMove& m)
+                                             { return m.value > VALUE_ZERO; });
+          insertion_sort(cur, goodQuiet);
+      } else
           insertion_sort(cur, endMoves);
       break;
 
@@ -282,7 +280,7 @@ Move MovePicker::next_move() {
               return move;
           break;
 
-      case GOOD_QUIETS: case BAD_QUIETS:
+      case QUIET:
           move = *cur++;
           if (   move != ttMove
               && move != killers[0]
