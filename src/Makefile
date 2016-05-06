@@ -145,7 +145,11 @@ endif
 ifeq ($(COMP),gcc)
 	comp=gcc
 	CXX=g++
-	CXXFLAGS += -pedantic -Wextra -Wshadow -m$(bits)
+	ifeq ($(ARCH),armv7)
+		CXXFLAGS += -pedantic -Wextra -Wshadow
+	else
+		CXXFLAGS += -pedantic -Wextra -Wshadow -m$(bits)
+	endif
 	ifneq ($(UNAME),Darwin)
 	   LDFLAGS += -Wl,--no-as-needed
 	endif
