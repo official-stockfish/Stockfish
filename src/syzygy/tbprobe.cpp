@@ -607,10 +607,79 @@ void HashTable::insert(const std::vector<PieceType>& pieces)
     insert(keys[BLACK], &WDLTable.back());
 }
 
+int decompress_pairs(PairsData* d, uint64_t idx)
+{
+    if (!d->idxbits)
+        return d->min_len;
+
+    // idx = blockidx | litidx where litidx is a signed number of lenght d->idxbits
+    uint32_t blockidx = (uint32_t)(idx >> d->idxbits);
+    int litidx = (idx & ((1ULL << d->idxbits) - 1)) - (1ULL << (d->idxbits - 1));
+
+    // indextable points to an array of blocks of 6 bytes representing numbers in
+    // little endian. The low 4 bytes are the block, the high 2 bytes the idxOffset.
+    uint32_t block = number<uint32_t, LittleEndian>(d->indextable + 6 * blockidx);
+    litidx += number<uint16_t, LittleEndian>(d->indextable + 6 * blockidx + 4);
+
+    while (litidx < 0)
+        litidx += d->sizetable[--block] + 1;
+
+    while (litidx > d->sizetable[block])
+        litidx -= d->sizetable[block++] + 1;
+
+    uint32_t* ptr = (uint32_t*)(d->data + (block << d->blocksize));
+    uint64_t code = number<uint64_t, BigEndian>(ptr);
+
+    int m = d->min_len;
+    uint16_t *offset = d->offset;
+    int sym, bitcnt;
+
+    ptr += 2;
+    bitcnt = 0; // number of "empty bits" in code
+
+    for (;;) {
+        int l = m;
+
+        while (code < d->base[l - d->min_len])
+            ++l;
+
+        sym = number<uint16_t, LittleEndian>(offset + l);
+        sym += (int)((code - d->base[l - d->min_len]) >> (64 - l));
+
+        if (litidx < (int)d->symlen[sym] + 1)
+            break;
+
+        litidx -= (int)d->symlen[sym] + 1;
+        code <<= l;
+        bitcnt += l;
+
+        if (bitcnt >= 32) {
+            bitcnt -= 32;
+            code |= (uint64_t)number<uint32_t, BigEndian>(ptr++) << bitcnt;
+        }
+    }
+
+    uint8_t *sympat = d->sympat;
+
+    while (d->symlen[sym] != 0) {
+        uint8_t* w = sympat + (3 * sym);
+        int s1 = ((w[1] & 0xf) << 8) | w[0];
+
+        if (litidx < (int)d->symlen[s1] + 1)
+            sym = s1;
+        else {
+            litidx -= (int)d->symlen[s1] + 1;
+            sym = (w[2] << 4) | (w[1] >> 4);
+        }
+    }
+
+    return sympat[3 * sym];
+}
+
 int off_A1H8(Square sq) { return int(rank_of(sq)) - file_of(sq); }
 
 template<typename Entry>
-uint64_t encode_position(const Position& pos,  Entry* entry, PairsData** precomp2 = 0)
+uint64_t probe_table(const Position& pos,  Entry* entry)
 {
     Square squares[TBPIECES];
     Piece pieces[TBPIECES];
@@ -667,9 +736,6 @@ uint64_t encode_position(const Position& pos,  Entry* entry, PairsData** precomp
         precomp = item(entry->pawn, stm, f).precomp;
     } else
         precomp = item(entry->piece, stm, 0).precomp;
-
-    if (precomp2)
-        *precomp2 = precomp;
 
     // Now we are ready to get all the position pieces (but the lead pawns) and
     // directly map them to the correct color and square.
@@ -847,7 +913,8 @@ tail:
         next += t;
     }
 
-    return idx;
+    // Now that we have the index, decompress teh pair
+    return decompress_pairs(precomp, idx);
 }
 
 // determine file of leftmost pawn and sort pawns
@@ -1141,75 +1208,6 @@ bool DTZEntry::init(const std::string& fname)
     return true;
 }
 
-int decompress_pairs(PairsData* d, uint64_t idx)
-{
-    if (!d->idxbits)
-        return d->min_len;
-
-    // idx = blockidx | litidx where litidx is a signed number of lenght d->idxbits
-    uint32_t blockidx = (uint32_t)(idx >> d->idxbits);
-    int litidx = (idx & ((1ULL << d->idxbits) - 1)) - (1ULL << (d->idxbits - 1));
-
-    // indextable points to an array of blocks of 6 bytes representing numbers in
-    // little endian. The low 4 bytes are the block, the high 2 bytes the idxOffset.
-    uint32_t block = number<uint32_t, LittleEndian>(d->indextable + 6 * blockidx);
-    litidx += number<uint16_t, LittleEndian>(d->indextable + 6 * blockidx + 4);
-
-    while (litidx < 0)
-        litidx += d->sizetable[--block] + 1;
-
-    while (litidx > d->sizetable[block])
-        litidx -= d->sizetable[block++] + 1;
-
-    uint32_t* ptr = (uint32_t*)(d->data + (block << d->blocksize));
-    uint64_t code = number<uint64_t, BigEndian>(ptr);
-
-    int m = d->min_len;
-    uint16_t *offset = d->offset;
-    int sym, bitcnt;
-
-    ptr += 2;
-    bitcnt = 0; // number of "empty bits" in code
-
-    for (;;) {
-        int l = m;
-
-        while (code < d->base[l - d->min_len])
-            ++l;
-
-        sym = number<uint16_t, LittleEndian>(offset + l);
-        sym += (int)((code - d->base[l - d->min_len]) >> (64 - l));
-
-        if (litidx < (int)d->symlen[sym] + 1)
-            break;
-
-        litidx -= (int)d->symlen[sym] + 1;
-        code <<= l;
-        bitcnt += l;
-
-        if (bitcnt >= 32) {
-            bitcnt -= 32;
-            code |= (uint64_t)number<uint32_t, BigEndian>(ptr++) << bitcnt;
-        }
-    }
-
-    uint8_t *sympat = d->sympat;
-
-    while (d->symlen[sym] != 0) {
-        uint8_t* w = sympat + (3 * sym);
-        int s1 = ((w[1] & 0xf) << 8) | w[0];
-
-        if (litidx < (int)d->symlen[s1] + 1)
-            sym = s1;
-        else {
-            litidx -= (int)d->symlen[s1] + 1;
-            sym = (w[2] << 4) | (w[1] >> 4);
-        }
-    }
-
-    return sympat[3 * sym];
-}
-
 WDLScore probe_wdl_table(Position& pos, int* success)
 {
     Key key = pos.material_key();
@@ -1239,15 +1237,7 @@ WDLScore probe_wdl_table(Position& pos, int* success)
 
     assert(key == entry->key || !entry->symmetric);
 
-    PairsData* precomp;
-
-    if (!entry->has_pawns) {
-        uint64_t idx = encode_position(pos, entry, &precomp);
-        return WDLScore(decompress_pairs(precomp, idx) - 2);
-    } else {
-        uint64_t idx = encode_position(pos, entry, &precomp);
-        return WDLScore(decompress_pairs(precomp, idx) - 2);
-    }
+    return WDLScore(probe_table(pos, entry) - 2);
 }
 
 int probe_dtz_table(const Position& pos, int wdl, int *success)
@@ -1335,8 +1325,7 @@ int probe_dtz_table(const Position& pos, int wdl, int *success)
             return 0;
         }
 
-        idx = encode_position(pos, ptr);
-        res = decompress_pairs(ptr->piece.precomp, idx);
+        res = probe_table(pos, ptr);
 
         if (ptr->piece.flags & 2)
             res = ptr->piece.map[ptr->piece.map_idx[wdl_to_map[wdl + 2]] + res];
@@ -1359,8 +1348,7 @@ int probe_dtz_table(const Position& pos, int wdl, int *success)
             return 0;
         }
 
-        idx = encode_position(pos, ptr);
-        res = decompress_pairs(ptr->pawn.file[f].precomp, idx);
+        res = probe_table(pos, ptr);
 
         if (ptr->pawn.file[f].flags & 2)
             res = ptr->pawn.map[ptr->pawn.file[f].map_idx[wdl_to_map[wdl + 2]] + res];
