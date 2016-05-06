@@ -676,48 +676,45 @@ int decompress_pairs(PairsData* d, uint64_t idx)
     return sympat[3 * sym];
 }
 
-int off_A1H8(Square sq) { return int(rank_of(sq)) - file_of(sq); }
-
 template<typename Entry>
 bool check_flags(Entry*, File, int) { return true; }
 
 template<>
 bool check_flags(DTZEntry* entry, File f, int stm) {
 
-    if (!entry->has_pawns && (entry->piece.flags & 1) != stm && !entry->symmetric)
-        return false;
+    uint8_t flags = entry->has_pawns ? entry->pawn.file[f].flags
+                                     : entry->piece.flags;
 
-    if (entry->has_pawns && (entry->pawn.file[f].flags & 1) != stm)
-        return false;
-
-    return true;
+    return (flags & 1) == stm || (entry->symmetric && !entry->has_pawns);
 }
 
 template<typename Entry>
-int update_map(Entry*, File, int res, int) { return res; }
+int map_score(Entry*, File, int res, int) { return res; }
 
 template<>
-int update_map(DTZEntry* entry, File f, int res, int wdl) {
+int map_score(DTZEntry* entry, File f, int res, int wdl) {
 
-    if (!entry->has_pawns) {
-        if (entry->piece.flags & 2)
-            res = entry->piece.map[entry->piece.map_idx[wdl_to_map[wdl + 2]] + res];
+    uint8_t flags = entry->has_pawns ? entry->pawn.file[f].flags
+                                     : entry->piece.flags;
 
-        if (!(entry->piece.flags & pa_flags[wdl + 2]) || (wdl & 1))
-            res *= 2;
-    } else {
-        if (entry->pawn.file[f].flags & 2)
-            res = entry->pawn.map[entry->pawn.file[f].map_idx[wdl_to_map[wdl + 2]] + res];
+    uint8_t* map  = entry->has_pawns ? entry->pawn.map
+                                     : entry->piece.map;
 
-        if (!(entry->pawn.file[f].flags & pa_flags[wdl + 2]) || (wdl & 1))
-            res *= 2;
-    }
+    uint16_t* idx = entry->has_pawns ? entry->pawn.file[f].map_idx
+                                     : entry->piece.map_idx;
+    if (flags & 2)
+        res = map[idx[wdl_to_map[wdl + 2]] + res];
+
+    if (!(flags & pa_flags[wdl + 2]) || (wdl & 1))
+        res *= 2;
+
     return res;
 }
 
+int off_A1H8(Square sq) { return int(rank_of(sq)) - file_of(sq); }
 
 template<typename Entry>
-uint64_t probe_table(const Position& pos,  Entry* entry, int wdl = 0, int* success = nullptr)
+uint64_t probe_table(const Position& pos,  Entry* entry, int wdlScore = 0, int* success = nullptr)
 {
     Square squares[TBPIECES];
     Piece pieces[TBPIECES];
@@ -958,23 +955,8 @@ tail:
         next += t;
     }
 
-    // Now that we have the index, decompress the pair
-    int res = decompress_pairs(precomp, idx);
-    return update_map(entry, tbFile, res, wdl);
-}
-
-// determine file of leftmost pawn and sort pawns
-File pawn_file(uint8_t pawns[], Square *pos)
-{
-    static const File file_to_file[] = {
-        FILE_A, FILE_B, FILE_C, FILE_D, FILE_D, FILE_C, FILE_B, FILE_A
-    };
-
-    for (int i = 1; i < pawns[0]; ++i)
-        if (Flap[pos[0]] > Flap[pos[i]])
-            std::swap(pos[0], pos[i]);
-
-    return file_to_file[pos[0] & 7];
+    // Now that we have the index, decompress the pair and get the score
+    return map_score(entry, tbFile, decompress_pairs(precomp, idx), wdlScore);
 }
 
 template<typename T>
