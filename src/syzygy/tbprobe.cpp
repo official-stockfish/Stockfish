@@ -679,7 +679,45 @@ int decompress_pairs(PairsData* d, uint64_t idx)
 int off_A1H8(Square sq) { return int(rank_of(sq)) - file_of(sq); }
 
 template<typename Entry>
-uint64_t probe_table(const Position& pos,  Entry* entry)
+bool check_flags(Entry*, File, int) { return true; }
+
+template<>
+bool check_flags(DTZEntry* entry, File f, int stm) {
+
+    if (!entry->has_pawns && (entry->piece.flags & 1) != stm && !entry->symmetric)
+        return false;
+
+    if (entry->has_pawns && (entry->pawn.file[f].flags & 1) != stm)
+        return false;
+
+    return true;
+}
+
+template<typename Entry>
+int update_map(Entry*, File, int res, int) { return res; }
+
+template<>
+int update_map(DTZEntry* entry, File f, int res, int wdl) {
+
+    if (!entry->has_pawns) {
+        if (entry->piece.flags & 2)
+            res = entry->piece.map[entry->piece.map_idx[wdl_to_map[wdl + 2]] + res];
+
+        if (!(entry->piece.flags & pa_flags[wdl + 2]) || (wdl & 1))
+            res *= 2;
+    } else {
+        if (entry->pawn.file[f].flags & 2)
+            res = entry->pawn.map[entry->pawn.file[f].map_idx[wdl_to_map[wdl + 2]] + res];
+
+        if (!(entry->pawn.file[f].flags & pa_flags[wdl + 2]) || (wdl & 1))
+            res *= 2;
+    }
+    return res;
+}
+
+
+template<typename Entry>
+uint64_t probe_table(const Position& pos,  Entry* entry, int wdl = 0, int* success = nullptr)
 {
     Square squares[TBPIECES];
     Piece pieces[TBPIECES];
@@ -688,6 +726,7 @@ uint64_t probe_table(const Position& pos,  Entry* entry)
     bool hasUniquePieces;
     PairsData* precomp;
     Bitboard b, leadPawns = 0;
+    File tbFile = FILE_A;
 
     // A given TB entry like KRK has associated two material keys: KRvk and Kvkr.
     // If both sides have the same pieces we have a symmetric material and the
@@ -732,10 +771,16 @@ uint64_t probe_table(const Position& pos,  Entry* entry)
             if (Flap[squares[0]] > Flap[squares[i]])
                 std::swap(squares[0], squares[i]);
 
-        File f = std::min(file_of(squares[0]), FILE_H - file_of(squares[0]));
-        precomp = item(entry->pawn, stm, f).precomp;
+        tbFile = std::min(file_of(squares[0]), FILE_H - file_of(squares[0]));
+        precomp = item(entry->pawn, stm, tbFile).precomp;
     } else
         precomp = item(entry->piece, stm, 0).precomp;
+
+    // Check for DTZ tables if look up is available
+    if (success && !check_flags(entry, tbFile, stm)) {
+        *success = -1;
+        return 0;
+    }
 
     // Now we are ready to get all the position pieces (but the lead pawns) and
     // directly map them to the correct color and square.
@@ -913,8 +958,9 @@ tail:
         next += t;
     }
 
-    // Now that we have the index, decompress teh pair
-    return decompress_pairs(precomp, idx);
+    // Now that we have the index, decompress the pair
+    int res = decompress_pairs(precomp, idx);
+    return update_map(entry, tbFile, res, wdl);
 }
 
 // determine file of leftmost pawn and sort pawns
@@ -1299,65 +1345,7 @@ int probe_dtz_table(const Position& pos, int wdl, int *success)
         return 0;
     }
 
-    uint64_t idx;
-    int i, res;
-    Square squares[TBPIECES];
-    int bside, mirror, cmirror;
-
-    if (!ptr->symmetric) {
-        if (key != ptr->key) {
-            cmirror = 8;
-            mirror = 070;
-            bside = (pos.side_to_move() == WHITE);
-        } else {
-            cmirror = mirror = 0;
-            bside = !(pos.side_to_move() == WHITE);
-        }
-    } else {
-        cmirror = pos.side_to_move() == WHITE ? 0 : 8;
-        mirror = pos.side_to_move() == WHITE ? 0 : 070;
-        bside = 0;
-    }
-
-    if (!ptr->has_pawns) {
-        if ((ptr->piece.flags & 1) != bside && !ptr->symmetric) {
-            *success = -1;
-            return 0;
-        }
-
-        res = probe_table(pos, ptr);
-
-        if (ptr->piece.flags & 2)
-            res = ptr->piece.map[ptr->piece.map_idx[wdl_to_map[wdl + 2]] + res];
-
-        if (!(ptr->piece.flags & pa_flags[wdl + 2]) || (wdl & 1))
-            res *= 2;
-    } else {
-        int k = ptr->pawn.file[0].precomp->pieces[0] ^ cmirror;
-        Bitboard bb = pos.pieces((Color)(k >> 3), (PieceType)(k & 7));
-        i = 0;
-
-        do {
-            squares[i++] = pop_lsb(&bb) ^ mirror;
-        } while (bb);
-
-        File f = pawn_file(ptr->pawn.pawnCount, squares);
-
-        if ((ptr->pawn.file[f].flags & 1) != bside) {
-            *success = -1;
-            return 0;
-        }
-
-        res = probe_table(pos, ptr);
-
-        if (ptr->pawn.file[f].flags & 2)
-            res = ptr->pawn.map[ptr->pawn.file[f].map_idx[wdl_to_map[wdl + 2]] + res];
-
-        if (!(ptr->pawn.file[f].flags & pa_flags[wdl + 2]) || (wdl & 1))
-            res *= 2;
-    }
-
-    return res;
+    return probe_table(pos, ptr, wdl, success);
 }
 
 // Add underpromotion captures to list of captures.
