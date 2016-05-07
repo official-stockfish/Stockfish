@@ -750,8 +750,9 @@ uint64_t probe_table(const Position& pos,  Entry* entry, int wdlScore = 0, int* 
 
     // For pawns, TB files store separate tables according if leading pawn is on
     // file a, b, c or d after reordering. To determine which of the 4 tables
-    // must be probed we need to extract the position's pawns then reorder them
-    // and finally get the correct tbFile. The new pawn order should be preserved
+    // must be probed we need to extract the position's leading pawns then order
+    // them according to Flap table, in ascending order and finally pick the file
+    // of the pawn with minimum Flap[]. The new pawn order should be preserved
     // because needed for next steps.
     if (entry->has_pawns) {
         Piece pc = Piece(item(entry->pawn, 0, 0).precomp->pieces[0] ^ flipColor);
@@ -764,11 +765,13 @@ uint64_t probe_table(const Position& pos,  Entry* entry, int wdlScore = 0, int* 
 
         leadPawnsCnt = size;
 
-        for (int i = 1; i < size; ++i)
-            if (Flap[squares[0]] > Flap[squares[i]])
-                std::swap(squares[0], squares[i]);
+        auto flap = [] (Square i, Square j) { return Flap[i] < Flap[j]; };
+        std::sort(squares, squares + size, flap);
 
-        tbFile = std::min(file_of(squares[0]), FILE_H - file_of(squares[0]));
+        tbFile = file_of(squares[0]);
+        if (tbFile > FILE_D)
+            tbFile = file_of(squares[0] ^ 7); // Horizontal flip: SQ_H1 -> SQ_A1
+
         precomp = item(entry->pawn, stm, tbFile).precomp;
     } else
         precomp = item(entry->piece, stm, 0).precomp;
@@ -807,19 +810,20 @@ uint64_t probe_table(const Position& pos,  Entry* entry, int wdlScore = 0, int* 
         for (int i = 0; i < size; ++i)
             squares[i] ^= 7; // Horizontal flip: SQ_H1 -> SQ_A1
 
-    // Positions with pawns have a special ordering
+    // Reorder the leading pawns according to Ptwist table, in descending order,
+    // and encode them.
     if (entry->has_pawns) {
-        for (int i = 1; i < leadPawnsCnt; ++i)
-            for (int j = i + 1; j < leadPawnsCnt; ++j)
-                if (Ptwist[squares[i]] < Ptwist[squares[j]])
-                    std::swap(squares[i], squares[j]);
+
+        auto ptwist = [] (Square i, Square j) { return Ptwist[i] > Ptwist[j]; };
+        std::sort(squares + 1, squares + leadPawnsCnt, ptwist);
 
         idx = Pawnidx[leadPawnsCnt - 1][Flap[squares[0]]];
 
-        for (int i = leadPawnsCnt - 1; i > 0; --i)
-            idx += Binomial[leadPawnsCnt - i][Ptwist[squares[i]]];
+        for (int i = 1; i < leadPawnsCnt; ++i)
+            idx += Binomial[i][Ptwist[squares[i]]];
 
-        goto tail;
+        next = leadPawnsCnt;
+        goto encode_remaining; // With pawns we have finished special treatments
     }
 
     if (rank_of(squares[0]) > RANK_4)
@@ -854,7 +858,7 @@ uint64_t probe_table(const Position& pos,  Entry* entry, int wdlScore = 0, int* 
     // Usually the first step is to take the wK and bK together. There are just
     // 462 ways legal and not-mirrored ways to place the wK and bK on the board.
     // Once we have placed the wK and bK, there are 62 squares left for the wR
-    // Mapping it's square from 0..63 to 0..61 can be done like:
+    // Mapping its square from 0..63 to 0..61 can be done like:
     //
     //   wR -= (wR > wK) + (wR > bK);
     //
@@ -907,52 +911,33 @@ uint64_t probe_table(const Position& pos,  Entry* entry, int wdlScore = 0, int* 
         next = 2;
     }
 
-tail:
+encode_remaining:
     idx *= precomp->factor[0];
 
-    // Order remainig pawns
-    if (entry->has_pawns) {
-        next = leadPawnsCnt;
-        int pawnsCnt = pos.count<PAWN>(WHITE) + pos.count<PAWN>(BLACK);
+    // Reorder remainig pawns then pieces according to square, in ascending order
+    int remainingPawns = entry->has_pawns ? entry->pawn.pawnCount[1] : 0;
 
-        if (pawnsCnt > next) {
-            std::sort(&squares[next], &squares[pawnsCnt]);
-
-            uint64_t s = 0;
-
-            for (int m = next; m < pawnsCnt; ++m) {
-                int j = 0;
-
-                for (int k = 0; k < next; ++k)
-                    j += squares[m] > squares[k];
-
-                s += Binomial[m - next + 1][squares[m] - j - 8];
-            }
-
-            idx += s * precomp->factor[next];
-            next = pawnsCnt;
-        }
-    }
-
-    // Order remainig pieces
     while (next < size) {
-        int t = precomp->norm[next];
 
-        std::sort(&squares[next], &squares[next + t]);
+        int end = next + (remainingPawns ? remainingPawns : precomp->norm[next]);
+
+        std::sort(squares + next, squares + end);
 
         uint64_t s = 0;
 
-        for (int l = next; l < next + t; ++l) {
-            int j = 0;
+        // Map squares to lower index if "come later" than previous (as done earlier for pieces)
+        for (int i = next; i < end; ++i) {
+            int adjust = 0;
 
-            for (int k = 0; k < next; ++k)
-                j += squares[l] > squares[k];
+            for (int j = 0; j < next; ++j)
+                adjust += squares[i] > squares[j];
 
-            s += Binomial[l - next + 1][squares[l] - j];
+            s += Binomial[i - next + 1][squares[i] - adjust - (remainingPawns ? 8 : 0)];
         }
 
+        remainingPawns = 0;
         idx += s * precomp->factor[next];
-        next += t;
+        next = end;
     }
 
     // Now that we have the index, decompress the pair and get the score
