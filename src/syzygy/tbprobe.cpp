@@ -107,7 +107,7 @@ struct DTZEntry {
 
     enum Flag { STM = 1, Mapped = 2, WinPlies = 4, LossPlies = 8 };
 
-    DTZEntry(const WDLEntry& wdl, Key keys[]);
+    DTZEntry(const WDLEntry& wdl, Key wdlKeys[]);
    ~DTZEntry();
     bool init(const std::string& fname);
     template<typename T> void do_init(T& e, uint8_t* data);
@@ -535,12 +535,12 @@ WDLEntry::~WDLEntry()
     }
 }
 
-DTZEntry::DTZEntry(const WDLEntry& wdl, Key keys[])
+DTZEntry::DTZEntry(const WDLEntry& wdl, Key wdlKeys[])
 {
     memset(this, 0, sizeof(DTZEntry));
 
-    key  = keys[WHITE];
-    key2 = keys[BLACK];
+    key  = wdlKeys[0];
+    key2 = wdlKeys[1];
 
     assert(key == wdl.key);
 
@@ -1279,33 +1279,34 @@ int probe_dtz_table(const Position& pos, WDLScore wdl, int *success)
     Key key = pos.material_key();
 
     if (DTZTable.front().key != key && DTZTable.front().key2 != key) {
-        // Enforce "Most Recently Used" (MRU) order for DTZ_list
+
+        // Enforce "Most Recently Used" (MRU) order for DTZ list
         for (auto it = DTZTable.begin(); it != DTZTable.end(); ++it)
             if (it->key == key) {
                 // Move to front without deleting the element
-                DTZTable.splice(DTZTable.begin(),DTZTable, it);
+                DTZTable.splice(DTZTable.begin(), DTZTable, it);
                 break;
             }
 
         // If still not found, add a new one
         if (DTZTable.front().key != key) {
 
-            WDLEntry* ptr = WDLHash[key];
-            if (!ptr) {
+            WDLEntry* wdlEntry = WDLHash[key];
+            if (!wdlEntry) {
                 *success = 0;
                 return 0;
             }
 
             StateInfo st;
             Position p;
-            std::string code = file_name(pos, ptr->key != key);
-            std::string fname = code + ".rtbz";
-            code.erase(code.find('v'), 1);
+            std::string wdlCode = file_name(pos, wdlEntry->key != key);
+            std::string fname = wdlCode + ".rtbz";
+            wdlCode.erase(wdlCode.find('v'), 1);
 
-            Key keys[] = { p.set(code, WHITE, &st).material_key(),
-                           p.set(code, BLACK, &st).material_key() };
+            Key wdlKeys[] = { p.set(wdlCode, WHITE, &st).material_key(),
+                              p.set(wdlCode, BLACK, &st).material_key() };
 
-            DTZTable.push_front(DTZEntry(*ptr, keys));
+            DTZTable.push_front(DTZEntry(*wdlEntry, wdlKeys));
 
             if (!DTZTable.front().init(fname)) {
                 // In case file is not found init() fails, but we leave
@@ -1324,14 +1325,12 @@ int probe_dtz_table(const Position& pos, WDLScore wdl, int *success)
         }
     }
 
-    DTZEntry* ptr = &DTZTable.front();
-
-    if (!ptr->baseAddress) {
+    if (!DTZTable.front().baseAddress) {
         *success = 0;
         return 0;
     }
 
-    return probe_table(pos, ptr, wdl, success);
+    return probe_table(pos, &DTZTable.front(), wdl, success);
 }
 
 // Add underpromotion captures to list of captures.
@@ -1418,9 +1417,11 @@ int probe_dtz_no_ep(Position& pos, int *success)
 
     WDLScore wdl = probe_ab(pos, WDLLoss, WDLWin, success);
 
-    if (*success == 0) return 0;
+    if (!*success)
+        return 0;
 
-    if (wdl == WDLDraw) return 0;
+    if (wdl == WDLDraw)
+        return 0;
 
     if (*success == 2)
         return wdl == WDLWin ? 1 : 101;
