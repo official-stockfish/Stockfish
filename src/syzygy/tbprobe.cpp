@@ -15,6 +15,7 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#include <type_traits>
 
 #include "../bitboard.h"
 #include "../movegen.h"
@@ -304,8 +305,6 @@ const uint8_t WDL_MAGIC[] = { 0x71, 0xE8, 0x23, 0x5D };
 const uint8_t DTZ_MAGIC[] = { 0xD7, 0x66, 0x0C, 0xA5 };
 
 const int wdl_to_dtz[] = { -1, -101, 0, 101, 1 };
-const int wdl_to_map[] = { 1, 3, 0, 2, 0 };
-const uint8_t pa_flags[] = { 8, 0, 0, 0, 4 };
 
 const Value WDL_to_value[] = {
     -VALUE_MATE + MAX_PLY + 1,
@@ -503,10 +502,11 @@ WDLEntry::WDLEntry(const Position& pos, Key keys[])
     has_pawns = pos.count<PAWN>(WHITE) + pos.count<PAWN>(BLACK);
 
     if (has_pawns) {
-        // FIXME: What it means this one?
-        bool c = (   !pos.count<PAWN>(BLACK)
-                  || (   pos.count<PAWN>(WHITE)
-                      && pos.count<PAWN>(BLACK) >= pos.count<PAWN>(WHITE)));
+        // Set the leading color. In case both sides have pawns the leading color
+        // is the side with less pawns because this leads to a better compression.
+        bool c =   !pos.count<PAWN>(BLACK)
+                || (   pos.count<PAWN>(WHITE)
+                    && pos.count<PAWN>(BLACK) >= pos.count<PAWN>(WHITE));
 
         pawn.pawnCount[0] = pos.count<PAWN>(c ? WHITE : BLACK);
         pawn.pawnCount[1] = pos.count<PAWN>(c ? BLACK : WHITE);
@@ -677,10 +677,10 @@ int decompress_pairs(PairsData* d, uint64_t idx)
 }
 
 template<typename Entry>
-bool check_flags(Entry*, File, int) { return true; }
+bool check_dtz_stm(Entry*, File, int) { return true; }
 
 template<>
-bool check_flags(DTZEntry* entry, File f, int stm) {
+bool check_dtz_stm(DTZEntry* entry, File f, int stm) {
 
     uint8_t flags = entry->has_pawns ? entry->pawn.file[f].flags
                                      : entry->piece.flags;
@@ -688,11 +688,18 @@ bool check_flags(DTZEntry* entry, File f, int stm) {
     return (flags & 1) == stm || (entry->symmetric && !entry->has_pawns);
 }
 
+// DTZ scores are sorted by frequency of occurrence and then assigned the
+// values 0, 1, 2, 3, ... in order of decreasing frequency. This is done
+// in each of the four ranges. The mapping information necessary to
+// reconstruct the original values is stored in the TB file and used to
+// initialise the map[] array during initialisation of the TB.
 template<typename Entry>
-int map_score(Entry*, File, int res, int) { return res; }
+int map_score(Entry*, File, int value, WDLScore) { return value - 2; }
 
 template<>
-int map_score(DTZEntry* entry, File f, int res, int wdl) {
+int map_score(DTZEntry* entry, File f, int value, WDLScore wdl) {
+
+    const int WDLMap[]  = { 1, 3, 0, 2, 0 };
 
     uint8_t flags = entry->has_pawns ? entry->pawn.file[f].flags
                                      : entry->piece.flags;
@@ -703,18 +710,24 @@ int map_score(DTZEntry* entry, File f, int res, int wdl) {
     uint16_t* idx = entry->has_pawns ? entry->pawn.file[f].map_idx
                                      : entry->piece.map_idx;
     if (flags & 2)
-        res = map[idx[wdl_to_map[wdl + 2]] + res];
+        value = map[idx[WDLMap[wdl + 2]] + value];
 
-    if (!(flags & pa_flags[wdl + 2]) || (wdl & 1))
-        res *= 2;
+    // DTZ tables store distance to zero in number of moves but
+    // under some conditions we want to return plies, so we have
+    // to multiply score by 2.
+    if (   (wdl == WDLWin  && !(flags & 4))
+        || (wdl == WDLLoss && !(flags & 8))
+        ||  wdl == WDLCursedWin
+        ||  wdl == WDLCursedLoss)
+        value *= 2;
 
-    return res;
+    return value;
 }
 
 int off_A1H8(Square sq) { return int(rank_of(sq)) - file_of(sq); }
 
 template<typename Entry>
-uint64_t probe_table(const Position& pos,  Entry* entry, int wdlScore = 0, int* success = nullptr)
+uint64_t probe_table(const Position& pos,  Entry* entry, WDLScore wdl = WDLDraw, int* success = nullptr)
 {
     Square squares[TBPIECES];
     Piece pieces[TBPIECES];
@@ -776,8 +789,11 @@ uint64_t probe_table(const Position& pos,  Entry* entry, int wdlScore = 0, int* 
     } else
         precomp = item(entry->piece, stm, 0).precomp;
 
-    // Check for DTZ tables if look up is available
-    if (success && !check_flags(entry, tbFile, stm)) {
+    // DTZ tables are one-sided, i.e. they store positions only for white to
+    // move or only for black to move, so check for side to move to be stm,
+    // early exit otherwise.
+    if (    std::is_same<Entry, DTZEntry>::value
+        && !check_dtz_stm(entry, tbFile, stm)) {
         *success = -1;
         return 0;
     }
@@ -941,7 +957,7 @@ encode_remaining:
     }
 
     // Now that we have the index, decompress the pair and get the score
-    return map_score(entry, tbFile, decompress_pairs(precomp, idx), wdlScore);
+    return map_score(entry, tbFile, decompress_pairs(precomp, idx), wdl);
 }
 
 template<typename T>
@@ -1250,10 +1266,10 @@ WDLScore probe_wdl_table(Position& pos, int* success)
 
     assert(key == entry->key || !entry->symmetric);
 
-    return WDLScore(probe_table(pos, entry) - 2);
+    return (WDLScore)probe_table(pos, entry);
 }
 
-int probe_dtz_table(const Position& pos, int wdl, int *success)
+int probe_dtz_table(const Position& pos, WDLScore wdl, int *success)
 {
     Key key = pos.material_key();
 
@@ -1397,14 +1413,14 @@ int probe_dtz_no_ep(Position& pos, int *success)
 {
     int dtz;
 
-    WDLScore wdl = probe_ab(pos, WDLHardLoss, WDLHardWin, success);
+    WDLScore wdl = probe_ab(pos, WDLLoss, WDLWin, success);
 
     if (*success == 0) return 0;
 
     if (wdl == WDLDraw) return 0;
 
     if (*success == 2)
-        return wdl == WDLHardWin ? 1 : 101;
+        return wdl == WDLWin ? 1 : 101;
 
     ExtMove stack[MAX_MOVES];
     ExtMove *moves, *end = nullptr;
@@ -1428,13 +1444,13 @@ int probe_dtz_no_ep(Position& pos, int *success)
                 continue;
 
             pos.do_move(move, st, pos.gives_check(move, ci));
-            WDLScore v = -probe_ab(pos, WDLHardLoss, -wdl + WDLSoftWin, success);
+            WDLScore v = -probe_ab(pos, WDLLoss, -wdl + WDLCursedWin, success);
             pos.undo_move(move);
 
             if (*success == 0) return 0;
 
             if (v == wdl)
-                return v == WDLHardWin ? 1 : 101;
+                return v == WDLWin ? 1 : 101;
         }
     }
 
@@ -1488,7 +1504,7 @@ int probe_dtz_no_ep(Position& pos, int *success)
             if (st.rule50 == 0) {
                 if (wdl == -2) v = -1;
                 else {
-                    v = probe_ab(pos, WDLSoftWin, WDLHardWin, success);
+                    v = probe_ab(pos, WDLCursedWin, WDLWin, success);
                     v = (v == 2) ? 0 : -101;
                 }
             } else {
@@ -1567,7 +1583,7 @@ int probe_dtz(Position& pos, int *success)
             continue;
 
         pos.do_move(capture, st, pos.gives_check(capture, ci));
-        WDLScore v0 = -probe_ab(pos, WDLHardLoss, WDLHardWin, success);
+        WDLScore v0 = -probe_ab(pos, WDLLoss, WDLWin, success);
         pos.undo_move(capture);
 
         if (*success == 0)
@@ -1699,7 +1715,7 @@ void Tablebases::init(const std::string& paths)
 WDLScore Tablebases::probe_wdl(Position& pos, int *success)
 {
     *success = 1;
-    WDLScore v = probe_ab(pos, WDLHardLoss, WDLHardWin, success);
+    WDLScore v = probe_ab(pos, WDLLoss, WDLWin, success);
 
     // If en passant is not possible, we are done.
     if (pos.ep_square() == SQ_NONE)
@@ -1730,7 +1746,7 @@ WDLScore Tablebases::probe_wdl(Position& pos, int *success)
             continue;
 
         pos.do_move(capture, st, pos.gives_check(capture, ci));
-        WDLScore v0 = -probe_ab(pos, WDLHardLoss, WDLHardWin, success);
+        WDLScore v0 = -probe_ab(pos, WDLLoss, WDLWin, success);
         pos.undo_move(capture);
 
         if (*success == 0)
@@ -1949,7 +1965,7 @@ bool Tablebases::root_probe_wdl(Position& pos, Search::RootMoves& rootMoves, Val
     StateInfo st;
     CheckInfo ci(pos);
 
-    int best = WDLHardLoss;
+    int best = WDLLoss;
 
     // Probe each move
     for (size_t i = 0; i < rootMoves.size(); ++i) {

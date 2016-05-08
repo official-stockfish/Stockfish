@@ -6,11 +6,11 @@
 namespace Tablebases {
 
 enum WDLScore {
-    WDLHardLoss = -2, // Loss
-    WDLSoftLoss = -1, // Loss, but draw under 50-move rule
-    WDLDraw     =  0, // Draw
-    WDLSoftWin  =  1, // Win, but draw under 50-move rule
-    WDLHardWin  =  2, // Win
+    WDLLoss       = -2, // Loss
+    WDLCursedLoss = -1, // Loss, but draw under 50-move rule
+    WDLDraw       =  0, // Draw
+    WDLCursedWin  =  1, // Win, but draw under 50-move rule
+    WDLWin        =  2, // Win
 };
 
 extern int MaxCardinality;
