@@ -76,7 +76,7 @@ struct PairsData {
 // because default one is not compatible with std::atomic_bool.
 struct Atomic {
     Atomic() = default;
-    Atomic(const Atomic& e) : ready(e.ready.load()) {}
+    Atomic(const Atomic& e) { ready = e.ready.load(); } // MSVC 2013 wants assignment within body
     std::atomic_bool ready;
 };
 
