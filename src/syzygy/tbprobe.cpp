@@ -162,23 +162,6 @@ auto item(DTZPiece& e, int    , int  ) -> decltype(e)& { return e; }
 auto item(WDLPawn&  e, int stm, int f) -> decltype(e.file[stm][f])& { return e.file[stm][f]; }
 auto item(DTZPawn&  e, int    , int f) -> decltype(e.file[f])& { return e.file[f]; }
 
-const uint8_t MapA1D1D4[64] = {
-    6, 0, 1, 2, 0, 0, 0, 0,
-    0, 7, 3, 4, 0, 0, 0, 0,
-    0, 0, 8, 5, 0, 0, 0, 0,
-    0, 0, 0, 9
-};
-
-const uint8_t MapB1H1H7[] = {
-    0, 0, 1,  2,  3,  4,  5,  6,
-    0, 0, 7,  8,  9, 10, 11, 12,
-    0, 0, 0, 13, 14, 15, 16, 17,
-    0, 0, 0,  0, 18, 19, 20, 21,
-    0, 0, 0,  0,  0, 22, 23, 24,
-    0, 0, 0,  0,  0,  0, 25, 26,
-    0, 0, 0,  0,  0,  0,  0, 27
-};
-
 const uint8_t Flap[] = {
     0,  0,  0,  0,  0,  0, 0,  0,
     0,  6, 12, 18, 18, 12, 6,  0,
@@ -208,7 +191,9 @@ const uint8_t Invflap[] = {
     11, 19, 27, 35, 43, 51
 };
 
-int KK_idx[10][64];
+int MapB1H1H7[SQUARE_NB];
+int MapA1D1D4[SQUARE_NB];
+int KK_idx[10][SQUARE_NB]; // [MapA1D1D4][SQUARE_NB]
 
 const uint8_t WDL_MAGIC[] = { 0x71, 0xE8, 0x23, 0x5D };
 const uint8_t DTZ_MAGIC[] = { 0xD7, 0x66, 0x0C, 0xA5 };
@@ -1588,12 +1573,31 @@ void Tablebases::init(const std::string& paths)
         }
     }
 
+    // Compute MapB1H1H7[] that encodes a square below a1-h8 diagonal to 0..27
+    int code = 0;
+    for (Square s = SQ_A1; s <= SQ_H8; ++s)
+        if (off_A1H8(s) < 0)
+            MapB1H1H7[s] = code++;
+
+    // Compute MapA1D1D4[] that encodes a square on the a1-d1-d4 triangle to 0..9
+    std::vector<Square> diagonal;
+    code = 0;
+    for (Square s = SQ_A1; s <= SQ_H8; ++s)
+        if (off_A1H8(s) < 0 && file_of(s) <= FILE_D && rank_of(s) <= RANK_4)
+            MapA1D1D4[s] = code++;
+
+        else if (!off_A1H8(s) && file_of(s) <= FILE_D)
+            diagonal.push_back(s);
+
+    // Diagonal squares are encoded as last ones
+    for (auto s : diagonal)
+        MapA1D1D4[s] = code++;
+
     // Compute KK_idx[] that encodes all the 461 possible legal positions of a couple of
     // kings where first king is on a1-d1-d4 triangle. When first king is on the a1-d4
     // diagonal, second king is assumed not to be above the a1-h8 diagonal.
-    int code = 0;
     std::vector<std::pair<int, Square>> bothOnDiagonal;
-
+    code = 0;
     for (int idx = 0; idx < 10; idx++)
         for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1)
             if (idx == MapA1D1D4[s1] && (idx || s1 == SQ_B1)) // SQ_B1 is mapped to 0
