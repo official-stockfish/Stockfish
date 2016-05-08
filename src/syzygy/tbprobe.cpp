@@ -8,6 +8,7 @@
 */
 
 #include <algorithm>
+#include <atomic>
 #include <cstdint>
 #include <cstring>   // For std::memset
 #include <deque>
@@ -71,7 +72,15 @@ struct PairsData {
     uint8_t norm[TBPIECES];
 };
 
-struct WDLEntry {
+// Helper struct to avoid manually define WDLEntry copy c'tor as we should
+// because default one is not compatible with std::atomic_bool.
+struct Atomic {
+    Atomic() = default;
+    Atomic(const Atomic& e) : ready(e.ready.load()) {}
+    std::atomic_bool ready;
+};
+
+struct WDLEntry : Atomic {
     WDLEntry(const Position& pos, Key keys[]);
    ~WDLEntry();
     bool init(const std::string& fname);
@@ -81,7 +90,6 @@ struct WDLEntry {
     uint64_t mapping;
     Key key;
     int pieceCount;
-    bool ready;
     bool symmetric;
     bool hasPawns;
     union {
@@ -1255,17 +1263,19 @@ WDLScore probe_wdl_table(Position& pos, int* success)
         return WDLDraw;
     }
 
-    // Init table at first access attempt
-    if (!entry->ready) {
+    // Init table at first access attempt. Special care to avoid
+    // one thread reads ready == 1 while the other is still in
+    // init(), this could happen due to compiler reordering.
+    if (!entry->ready.load(std::memory_order_acquire)) {
         std::unique_lock<Mutex> lk(TB_mutex);
-        if (!entry->ready) {
+        if (!entry->ready.load(std::memory_order_relaxed)) {
             std::string fname = file_name(pos, entry->key != key) + ".rtbw";
             if (!entry->init(fname)) {
                 // Was ptr2->key = 0ULL;  Just leave !ptr->ready condition
                 *success = 0;
                 return WDLDraw;
             }
-            entry->ready = 1;
+            entry->ready.store(1, std::memory_order_release);
         }
     }
 
