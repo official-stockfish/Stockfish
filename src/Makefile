@@ -145,7 +145,11 @@ endif
 ifeq ($(COMP),gcc)
 	comp=gcc
 	CXX=g++
-	CXXFLAGS += -pedantic -Wextra -Wshadow -m$(bits)
+	ifeq ($(ARCH),armv7)
+		CXXFLAGS += -pedantic -Wextra -Wshadow
+	else
+		CXXFLAGS += -pedantic -Wextra -Wshadow -m$(bits)
+	endif
 	ifneq ($(UNAME),Darwin)
 	   LDFLAGS += -Wl,--no-as-needed
 	endif
@@ -185,8 +189,12 @@ endif
 ifeq ($(COMP),clang)
 	comp=clang
 	CXX=clang++
-	CXXFLAGS += -pedantic -Wextra -Wshadow -m$(bits)
-	LDFLAGS += -m$(bits)
+	ifeq ($(ARCH),armv7)
+		CXXFLAGS += -pedantic -Wextra -Wshadow
+	else
+		CXXFLAGS += -pedantic -Wextra -Wshadow -m$(bits)
+		LDFLAGS += -m$(bits)
+	endif
 	ifeq ($(UNAME),Darwin)
 		CXXFLAGS += -stdlib=libc++
 		DEPENDFLAGS += -stdlib=libc++
@@ -277,6 +285,9 @@ ifeq ($(optimize),yes)
 			ifeq ($(arch),x86_64)
 				CXXFLAGS += -mdynamic-no-pic
 			endif
+		endif
+		ifeq ($(arch),armv7)
+			CXXFLAGS += -mthumb -march=armv7-a -mfloat-abi=softfp
 		endif
 	endif
 endif
