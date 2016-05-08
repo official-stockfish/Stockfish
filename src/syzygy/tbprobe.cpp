@@ -162,35 +162,8 @@ auto item(DTZPiece& e, int    , int  ) -> decltype(e)& { return e; }
 auto item(WDLPawn&  e, int stm, int f) -> decltype(e.file[stm][f])& { return e.file[stm][f]; }
 auto item(DTZPawn&  e, int    , int f) -> decltype(e.file[f])& { return e.file[f]; }
 
-const uint8_t Flap[] = {
-    0,  0,  0,  0,  0,  0, 0,  0,
-    0,  6, 12, 18, 18, 12, 6,  0,
-    1,  7, 13, 19, 19, 13, 7,  1,
-    2,  8, 14, 20, 20, 14, 8,  2,
-    3,  9, 15, 21, 21, 15, 9,  3,
-    4, 10, 16, 22, 22, 16, 10, 4,
-    5, 11, 17, 23, 23, 17, 11, 5,
-    0,  0,  0,  0,  0,  0,  0, 0
-};
-
-const uint8_t Ptwist[] = {
-     0,  0,  0,  0,  0,  0,  0,  0,
-    47, 35, 23, 11, 10, 22, 34, 46,
-    45, 33, 21,  9,  8, 20, 32, 44,
-    43, 31, 19,  7,  6, 18, 30, 42,
-    41, 29, 17,  5,  4, 16, 28, 40,
-    39, 27, 15,  3,  2, 14, 26, 38,
-    37, 25, 13,  1,  0, 12, 24, 36,
-     0,  0,  0,  0,  0,  0,  0,  0
-};
-
-const uint8_t Invflap[] = {
-     8, 16, 24, 32, 40, 48,
-     9, 17, 25, 33, 41, 49,
-    10, 18, 26, 34, 42, 50,
-    11, 19, 27, 35, 43, 51
-};
-
+int Flap[SQUARE_NB];
+int Ptwist[SQUARE_NB];
 int MapB1H1H7[SQUARE_NB];
 int MapA1D1D4[SQUARE_NB];
 int KK_idx[10][SQUARE_NB]; // [MapA1D1D4][SQUARE_NB]
@@ -1556,29 +1529,6 @@ void Tablebases::init(const std::string& paths)
     if (TBPaths.empty() || TBPaths == "<empty>")
         return;
 
-    // Fill binomial[] with the Binomial Coefficents using Pascal triangle
-    Binomial[0][0] = 1;
-
-    for (int n = 1; n < 64; n++)
-        for (int k = 0; k < 6 && k <= n; ++k)
-            Binomial[k][n] = (k > 0 ? Binomial[k-1][n-1] : 0)
-                           + (k < n ? Binomial[k][n-1] : 0);
-
-    for (int i = 0; i < 5; ++i) {
-        int k = 0;
-
-        for (int j = 1; j <= 4; ++j) {
-            int s = 0;
-
-            for ( ; k < 6 * j; ++k) {
-                Pawnidx[i][k] = s;
-                s += Binomial[i][Ptwist[Invflap[k]]];
-            }
-
-            Pfactor[i][j - 1] = s;
-        }
-    }
-
     // Compute MapB1H1H7[] that encodes a square below a1-h8 diagonal to 0..27
     int code = 0;
     for (Square s = SQ_A1; s <= SQ_H8; ++s)
@@ -1625,6 +1575,40 @@ void Tablebases::init(const std::string& paths)
     // Legal positions with both kings on diagonal are encoded as last ones
     for (auto p : bothOnDiagonal)
         KK_idx[p.first][p.second] = code++;
+
+    // Compute Flap[] that encodes (mirrored) squares a2-h7 to 0..23 and is
+    // used to find the file of the leading pawn. The pawn with minimum Flap[]
+    // is the leading pawn: this is the pawn nearest to edge and with lowest
+    // rank. Ptwist[] is the opposite of Flap[] and is not mirrored so squares
+    // are encoded to 0..46, with highest values near edge and bottom rank.
+    for (Square s = SQ_A2; s <= SQ_H7; ++s) {
+            Square ss = file_of(s) > FILE_D ? Square(s ^ 7) : s;
+            Flap[s] = 6 * file_of(ss) + rank_of(ss) - RANK_2;
+            Ptwist[s] = 46 + (file_of(s) <= FILE_D) - 2 * Flap[s];
+        }
+
+    // Fill binomial[] with the Binomial Coefficents using Pascal triangle
+    Binomial[0][0] = 1;
+
+    for (int n = 1; n < 64; n++)
+        for (int k = 0; k < 6 && k <= n; ++k)
+            Binomial[k][n] = (k > 0 ? Binomial[k-1][n-1] : 0)
+                           + (k < n ? Binomial[k][n-1] : 0);
+
+    for (int i = 0; i < 5; ++i) {
+        int k = 0;
+
+        for (int j = 1; j <= 4; ++j) {
+            int s = 0;
+
+            for ( ; k < 6 * j; ++k) {
+                Pawnidx[i][k] = s;
+                s += Binomial[i][Ptwist[8 * (k % 6) + k / 6 + 8]];
+            }
+
+            Pfactor[i][j - 1] = s;
+        }
+    }
 
     for (PieceType p1 = PAWN; p1 < KING; ++p1) {
         WDLHash.insert({KING, p1, KING});
