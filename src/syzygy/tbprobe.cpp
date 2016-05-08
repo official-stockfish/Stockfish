@@ -201,7 +201,7 @@ const uint8_t DTZ_MAGIC[] = { 0xD7, 0x66, 0x0C, 0xA5 };
 const int wdl_to_dtz[] = { -1, -101, 0, 101, 1 };
 
 const Value WDL_to_value[] = {
-    -VALUE_MATE + MAX_PLY + 1,
+   -VALUE_MATE + MAX_PLY + 1,
     VALUE_DRAW - 2,
     VALUE_DRAW,
     VALUE_DRAW + 2,
@@ -1176,14 +1176,14 @@ int probe_dtz_table(const Position& pos, WDLScore wdl, int *success)
 
         // Enforce "Most Recently Used" (MRU) order for DTZ list
         for (auto it = DTZTable.begin(); it != DTZTable.end(); ++it)
-            if (it->key == key) {
+            if (it->key == key || it->key2 == key) {
                 // Move to front without deleting the element
                 DTZTable.splice(DTZTable.begin(), DTZTable, it);
                 break;
             }
 
         // If still not found, add a new one
-        if (DTZTable.front().key != key) {
+        if (DTZTable.front().key != key && DTZTable.front().key2 != key) {
 
             WDLEntry* wdlEntry = WDLHash[key];
             if (!wdlEntry) {
