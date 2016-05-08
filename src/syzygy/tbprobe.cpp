@@ -899,6 +899,9 @@ uint64_t set_factors(T& p, int num, int order[], File f)
 template<typename T>
 void set_norms(T* p, int num, const uint8_t pawns[])
 {
+    for (int i = 0; i < num; ++i) // Broken MSVC zero-init
+        p->norm[i] = 0;
+
     p->norm[0] = pawns[0];
 
     if (pawns[1])
@@ -936,6 +939,8 @@ void calc_symlen(PairsData* d, size_t s, std::vector<uint8_t>& tmp)
 uint8_t* set_sizes(PairsData* d, uint8_t* data, uint64_t tb_size)
 {
     if (*data++ & 0x80) {
+        d->idxbits = d->real_num_blocks =
+        d->num_blocks = d->num_indices = 0; // Broken MSVC zero-init
         d->min_len = *data++;
         return data;
     }
