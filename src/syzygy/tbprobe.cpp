@@ -696,13 +696,9 @@ uint64_t probe_table(const Position& pos,  Entry* entry, WDLScore wdl = WDLDraw,
         for (int i = 0; i < size; ++i)
             squares[i] ^= 7; // Horizontal flip: SQ_H1 -> SQ_A1
 
-    // Reorder the leading pawns according to Ptwist table, in descending order,
-    // and encode them.
+    // Encode leading pawns. Note that any previous horizontal flip preserves
+    // the order because MapToEdges[] is (almost) flip invariant.
     if (entry->hasPawns) {
-
-        auto comp = [] (Square i, Square j) { return MapToEdges[i] > MapToEdges[j]; };
-        std::sort(squares + 1, squares + leadPawnsCnt, comp);
-
         idx = Pawnidx[leadPawnsCnt - 1][23 - MapToEdges[squares[0]] / 2];
 
         for (int i = 1; i < leadPawnsCnt; ++i)
