@@ -12,9 +12,9 @@
 #include <cstdint>
 #include <cstring>   // For std::memset
 #include <deque>
-#include <list>
 #include <fstream>
 #include <iostream>
+#include <list>
 #include <sstream>
 #include <type_traits>
 
@@ -42,7 +42,7 @@
 
 using namespace Tablebases;
 
-int Tablebases::MaxCardinality = 0;
+size_t Tablebases::MaxCardinality;
 
 namespace {
 
@@ -80,7 +80,7 @@ struct Atomic {
     std::atomic_bool ready;
 };
 
-struct WDLEntry : Atomic {
+struct WDLEntry : public Atomic {
     WDLEntry(const Position& pos, Key keys[]);
    ~WDLEntry();
     bool init(const std::string& fname);
@@ -215,10 +215,7 @@ template<typename T, int LE> T number(void* addr) {
 
 class HashTable {
 
-    struct Entry {
-        Key key;
-        WDLEntry* ptr;
-    };
+    typedef std::pair<Key, WDLEntry*> Entry;
 
     static const int TBHASHBITS = 10;
     static const int HSHMAX     = 5;
@@ -229,9 +226,8 @@ class HashTable {
         Entry* entry = table[key >> (64 - TBHASHBITS)];
 
         for (int i = 0; i < HSHMAX; ++i, ++entry)
-            if (!entry->ptr || entry->key == key) {
-                entry->key = key;
-                entry->ptr = ptr;
+            if (!entry->second || entry->first == key) {
+                *entry = std::make_pair(key, ptr);
                 return;
             }
 
@@ -244,8 +240,8 @@ public:
       Entry* entry = table[key >> (64 - TBHASHBITS)];
 
       for (int i = 0; i < HSHMAX; ++i, ++entry)
-          if (entry->key == key)
-              return entry->ptr;
+          if (entry->first == key)
+              return entry->second;
 
       return nullptr;
   }
@@ -262,10 +258,9 @@ class TBFile : public std::ifstream {
     std::string fname;
 
 public:
-    // Open the file with the given name found among the TBPaths. TBPaths stores
-    // the paths to directories where the .rtbw and .rtbz files can be found.
-    // Multiple directories are separated by ";" on Windows and by ":" on
-    // Unix-based operating systems.
+    // Open the file with the given name found among the TBPaths directories
+    // where the .rtbw and .rtbz files can be found. Multiple directories are
+    // separated by ";" on Windows and by ":" on Unix-based operating systems.
     //
     // Example:
     // C:\tb\wdl345;C:\tb\wdl6;D:\tb\dtz345;D:\tb\dtz6
@@ -282,7 +277,6 @@ public:
         while (std::getline(ss, path, SepChar)) {
             fname = path + "/" + f;
             std::ifstream::open(fname);
-
             if (is_open())
                 return;
         }
@@ -389,15 +383,12 @@ WDLEntry::~WDLEntry()
     if (baseAddress)
         TBFile::unmap(baseAddress, mapping);
 
-    if (hasPawns)
-        for (File f = FILE_A; f <= FILE_D; ++f) {
-            delete pawn.file[0][f].precomp;
-            delete pawn.file[1][f].precomp;
-        }
-    else {
-        delete piece[0].precomp;
-        delete piece[1].precomp;
-    }
+    for (int i = 0; i < 2; ++i)
+        if (hasPawns)
+            for (File f = FILE_A; f <= FILE_D; ++f)
+                delete pawn.file[i][f].precomp;
+        else
+            delete piece[i].precomp;
 }
 
 DTZEntry::DTZEntry(const WDLEntry& wdl, Key wdlKeys[])
@@ -432,10 +423,9 @@ DTZEntry::~DTZEntry()
         delete piece.precomp;
 }
 
-// Given a position with 6 or fewer pieces, produce a text string
-// of the form KQPvKRP, where "KQP" represents the white pieces if
-// mirror == false and the black pieces if mirror == true.
-std::string file_name(const Position& pos, bool mirror)
+// Given a position return a string of the form KQPvKRP, where KQP represents
+// the white pieces if mirror == false and the black pieces if mirror == true.
+std::string str_code(const Position& pos, bool mirror = false)
 {
     std::string w, b;
 
@@ -456,16 +446,14 @@ void HashTable::insert(const std::vector<PieceType>& pieces)
     for (PieceType pt : pieces)
         code += PieceToChar[pt];
 
-    int bk = code.find('K', 1); // Black king
-    TBFile f(code.substr(0, bk) + 'v' + code.substr(bk) + ".rtbw");
+    TBFile file(str_code(pos.set(code, WHITE, &st)) + ".rtbw");
 
-    if (!f.is_open())
+    if (!file.is_open())
         return;
 
-    f.close();
+    file.close();
 
-    if (int(pieces.size()) > Tablebases::MaxCardinality)
-        Tablebases::MaxCardinality = pieces.size();
+    MaxCardinality = std::max(pieces.size(), MaxCardinality);
 
     Key keys[] = { pos.set(code, WHITE, &st).material_key(),
                    pos.set(code, BLACK, &st).material_key() };
@@ -1127,7 +1115,7 @@ WDLScore probe_wdl_table(Position& pos, int* success)
     if (!entry->ready.load(std::memory_order_acquire)) {
         std::unique_lock<Mutex> lk(TB_mutex);
         if (!entry->ready.load(std::memory_order_relaxed)) {
-            std::string fname = file_name(pos, entry->key != key) + ".rtbw";
+            std::string fname = str_code(pos, entry->key != key) + ".rtbw";
             if (!entry->init(fname)) {
                 // Was ptr2->key = 0ULL;  Just leave !ptr->ready condition
                 *success = 0;
@@ -1167,7 +1155,7 @@ int probe_dtz_table(const Position& pos, WDLScore wdl, int *success)
 
             StateInfo st;
             Position p;
-            std::string wdlCode = file_name(pos, wdlEntry->key != key);
+            std::string wdlCode = str_code(pos, wdlEntry->key != key);
             std::string fname = wdlCode + ".rtbz";
             wdlCode.erase(wdlCode.find('v'), 1);
 
@@ -1533,8 +1521,8 @@ void Tablebases::init(const std::string& paths)
     // Compute MapA1D1D4[] that encodes a square on the a1-d1-d4 triangle to 0..9
     std::vector<Square> diagonal;
     code = 0;
-    for (Square s = SQ_A1; s <= SQ_H8; ++s)
-        if (off_A1H8(s) < 0 && file_of(s) <= FILE_D && rank_of(s) <= RANK_4)
+    for (Square s = SQ_A1; s <= SQ_D4; ++s)
+        if (off_A1H8(s) < 0 && file_of(s) <= FILE_D)
             MapA1D1D4[s] = code++;
 
         else if (!off_A1H8(s) && file_of(s) <= FILE_D)
@@ -1544,16 +1532,15 @@ void Tablebases::init(const std::string& paths)
     for (auto s : diagonal)
         MapA1D1D4[s] = code++;
 
-    // Compute KK_idx[] that encodes all the 461 possible legal positions of a couple of
-    // kings where first king is on a1-d1-d4 triangle. When first king is on the a1-d4
-    // diagonal, second king is assumed not to be above the a1-h8 diagonal.
+    // Compute MapKK[] that encodes all the 461 possible legal positions of a
+    // couple of kings where the first is on a1-d1-d4 triangle. If first king is
+    // on the a1-d4 diagonal, the other is assumed not to be above the a1-h8 diagonal.
     std::vector<std::pair<int, Square>> bothOnDiagonal;
     code = 0;
     for (int idx = 0; idx < 10; idx++)
-        for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1)
+        for (Square s1 = SQ_A1; s1 <= SQ_D4; ++s1)
             if (idx == MapA1D1D4[s1] && (idx || s1 == SQ_B1)) // SQ_B1 is mapped to 0
                 for (Square s2 = SQ_A1; s2 <= SQ_H8; ++s2)
-                {
                     if ((StepAttacksBB[KING][s1] | s1) & s2) // Illegal position
                         MapKK[idx][s2] = -1;
 
@@ -1565,7 +1552,6 @@ void Tablebases::init(const std::string& paths)
 
                     else
                         MapKK[idx][s2] = code++;
-                }
 
     // Legal positions with both kings on diagonal are encoded as last ones
     for (auto p : bothOnDiagonal)

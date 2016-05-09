@@ -13,7 +13,7 @@ enum WDLScore {
     WDLWin        =  2, // Win
 };
 
-extern int MaxCardinality;
+extern size_t MaxCardinality;
 
 void init(const std::string& paths);
 WDLScore probe_wdl(Position& pos, int* success);

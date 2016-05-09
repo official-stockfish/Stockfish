@@ -268,7 +268,7 @@ void MainThread::search() {
   TB::Cardinality = Options["SyzygyProbeLimit"];
 
   // Skip TB probing when no TB found: !TBLargest -> !TB::Cardinality
-  if (TB::Cardinality > TB::MaxCardinality)
+  if (TB::Cardinality > int(TB::MaxCardinality))
   {
       TB::Cardinality = TB::MaxCardinality;
       TB::ProbeDepth = DEPTH_ZERO;
@@ -1006,7 +1006,7 @@ moves_loop: // When in check search starts from here
           Depth r = reduction<PvNode>(improving, depth, moveCount);
           Value hValue = thisThread->history[pos.piece_on(to_sq(move))][to_sq(move)];
           Value cmhValue = cmh[pos.piece_on(to_sq(move))][to_sq(move)];
-          
+
           const CounterMoveStats* fm = (ss - 2)->counterMoves;
           const CounterMoveStats* fm2 = (ss - 4)->counterMoves;
           Value fmValue = (fm ? (*fm)[pos.piece_on(to_sq(move))][to_sq(move)] : VALUE_ZERO);
