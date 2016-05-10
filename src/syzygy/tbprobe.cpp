@@ -92,19 +92,15 @@ struct WDLEntry : public Atomic {
     Key key2;
     int pieceCount;
     bool hasPawns;
+    bool hasUniquePieces;
     union {
         struct {
-            typedef int Piece;
-
-            bool hasUniquePieces;
             PairsData* precomp;
         } piece[2];
 
         struct {
             uint8_t pawnCount[2];
             struct {
-                typedef int Pawn;
-
                 PairsData* precomp;
             } file[2][4];
         } pawn;
@@ -126,11 +122,9 @@ struct DTZEntry {
     Key key2;
     int pieceCount;
     bool hasPawns;
+    bool hasUniquePieces;
     union {
         struct {
-            typedef int Piece;
-
-            bool hasUniquePieces;
             PairsData* precomp;
             uint8_t flags;
             uint16_t map_idx[4];
@@ -140,8 +134,6 @@ struct DTZEntry {
         struct {
             uint8_t pawnCount[2];
             struct {
-                typedef int Pawn;
-
                 PairsData* precomp;
                 uint8_t flags;
                 uint16_t map_idx[4];
@@ -374,7 +366,7 @@ WDLEntry::WDLEntry(const Position& pos, Key keys[])
         for (Color c = WHITE; c <= BLACK; ++c)
             for (PieceType pt = PAWN; pt < KING; ++pt)
                 if (popcount(pos.pieces(c, pt)) == 1)
-                    piece[0].hasUniquePieces = piece[1].hasUniquePieces = true;
+                    hasUniquePieces = true;
 }
 
 WDLEntry::~WDLEntry()
@@ -398,12 +390,12 @@ DTZEntry::DTZEntry(const WDLEntry& wdl)
     key2 = wdl.key2;
     pieceCount = wdl.pieceCount;
     hasPawns = wdl.hasPawns;
+    hasUniquePieces = wdl.hasUniquePieces;
 
     if (hasPawns) {
         pawn.pawnCount[0] = wdl.pawn.pawnCount[0];
         pawn.pawnCount[1] = wdl.pawn.pawnCount[1];
-    } else
-        piece.hasUniquePieces = wdl.piece[0].hasUniquePieces;
+    }
 }
 
 DTZEntry::~DTZEntry()
@@ -586,7 +578,6 @@ uint64_t probe_table(const Position& pos,  Entry* entry, WDLScore wdl = WDLDraw,
     Piece pieces[TBPIECES];
     uint64_t idx;
     int stm, next = 0, flipColor = 0, flipSquares = 0, size = 0, leadPawnsCnt = 0;
-    bool hasUniquePieces;
     PairsData* precomp;
     Bitboard b, leadPawns = 0;
     File tbFile = FILE_A;
@@ -697,13 +688,11 @@ uint64_t probe_table(const Position& pos,  Entry* entry, WDLScore wdl = WDLDraw,
 
     // Look for the first piece not on the A1-D4 diagonal and ensure it is
     // mapped below the diagonal.
-    hasUniquePieces = item(entry->piece, stm, 0).hasUniquePieces;
-
     for (int i = 0; i < size; ++i) {
         if (!off_A1H8(squares[i]))
             continue;
 
-        if (off_A1H8(squares[i]) > 0 && i < (hasUniquePieces ? 3 : 2))
+        if (off_A1H8(squares[i]) > 0 && i < (entry->hasUniquePieces ? 3 : 2))
             for (int j = i; j < size; ++j) // A1-H8 diagonal flip: SQ_A3 -> SQ_C3
                 squares[j] = Square(((squares[j] >> 3) | (squares[j] << 3)) & 63);
         break;
@@ -734,7 +723,7 @@ uint64_t probe_table(const Position& pos,  Entry* entry, WDLScore wdl = WDLDraw,
 
     // In case we have at least 3 unique pieces (inlcuded kings) we encode them
     // together.
-    if (hasUniquePieces) {
+    if (entry->hasUniquePieces) {
 
         int adjust1 =  squares[1] > squares[0];
         int adjust2 = (squares[2] > squares[0]) + (squares[2] > squares[1]);
@@ -810,18 +799,8 @@ encode_remaining:
 }
 
 template<typename T>
-int get_pfactor(const T& p, File, typename T::Piece = 0)
-{ return p.hasUniquePieces ? 31332 : 462; }
-
-template<typename T>
-int get_pfactor(const T& p, File f, typename T::Pawn = 0)
-{ return Pfactor[p.precomp->norm[0] - 1][f]; }
-
-
-template<typename T>
-uint64_t set_factors(T& p, int num, int order[], File f)
+uint64_t set_factors(T* e, PairsData* d, int num, int order[], File f)
 {
-    PairsData* d = p.precomp;
     int i = d->norm[0];
 
     if (order[1] < 0xF)
@@ -833,7 +812,10 @@ uint64_t set_factors(T& p, int num, int order[], File f)
     for (int k = 0; i < num || k == order[0] || k == order[1]; ++k)
         if (k == order[0]) {
             d->factor[0] = size;
-            size *= get_pfactor(p, f);
+
+            size *=         e->hasPawns ? Pfactor[d->norm[0] - 1][f]
+                   : e->hasUniquePieces ? 31332 : 462;
+
         } else if (k == order[1]) {
             d->factor[d->norm[0]] = size;
             size *= Binomial[d->norm[d->norm[0]]][48 - d->norm[0]];
@@ -963,11 +945,12 @@ void WDLEntry::do_init(T& e, uint8_t* data)
             item(e, 1, f).precomp->pieces[i] = Piece(*data >>  4);
         }
 
-        uint8_t pn[] = { uint8_t(piece[0].hasUniquePieces ? 3 : 2), 0 };
+        uint8_t pn[] = { uint8_t(hasUniquePieces ? 3 : 2), 0 };
 
         for (int i = 0; i < 2; ++i) {
-            set_norms(item(e, i, f).precomp, pieceCount, (flags & HasPawns) ? pawn.pawnCount : pn);
-            tb_size[2 * f + i] = set_factors(item(e, i, f), pieceCount, order[i], f);
+            d = item(e, i, f).precomp;
+            set_norms(d, pieceCount, (flags & HasPawns) ? pawn.pawnCount : pn);
+            tb_size[2 * f + i] = set_factors(this, d, pieceCount, order[i], f);
         }
     }
 
@@ -1028,19 +1011,19 @@ void DTZEntry::do_init(T& e, uint8_t* data)
 
     for (File f = FILE_A; f <= maxFile; ++f) {
 
-        item(e, 0, f).precomp = new PairsData();
+        d = item(e, 0, f).precomp = new PairsData();
 
         int order[][2] = { { *data & 0xF, pp ? *(data + 1) & 0xF : 0xF },
                            { *data >>  4, pp ? *(data + 1) >>  4 : 0xF } };
         data += 1 + pp;
 
         for (int i = 0; i < pieceCount; ++i, ++data)
-            item(e, 0, f).precomp->pieces[i] = Piece(*data & 0xF);
+            d->pieces[i] = Piece(*data & 0xF);
 
-        uint8_t pn[] = { uint8_t(piece.hasUniquePieces ? 3 : 2), 0 };
+        uint8_t pn[] = { uint8_t(hasUniquePieces ? 3 : 2), 0 };
 
-        set_norms(item(e, 0, f).precomp, pieceCount, (flags & HasPawns) ? pawn.pawnCount : pn);
-        tb_size[f] = set_factors(item(e, 0, f), pieceCount, order[0], f);
+        set_norms(d, pieceCount, (flags & HasPawns) ? pawn.pawnCount : pn);
+        tb_size[f] = set_factors(this, d, pieceCount, order[0], f);
     }
 
     data += (uintptr_t)data & 1; // Word alignment
