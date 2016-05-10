@@ -690,7 +690,7 @@ uint64_t probe_table(const Position& pos,  Entry* entry, WDLScore wdl = WDLDraw,
         idx = Pawnidx[leadPawnsCnt - 1][23 - MapToEdges[squares[0]] / 2];
 
         for (int i = 1; i < leadPawnsCnt; ++i)
-            idx += Binomial[i][MapToEdges[squares[i]]];
+            idx += Binomial[i][MapToEdges[squares[leadPawnsCnt- i]]];
 
         next = leadPawnsCnt;
         goto encode_remaining; // With pawns we have finished special treatments
