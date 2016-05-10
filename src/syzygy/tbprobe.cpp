@@ -89,8 +89,8 @@ struct WDLEntry : public Atomic {
     void* baseAddress;
     uint64_t mapping;
     Key key;
+    Key key2;
     int pieceCount;
-    bool symmetric;
     bool hasPawns;
     union {
         struct {
@@ -115,7 +115,7 @@ struct DTZEntry {
 
     enum Flag { STM = 1, Mapped = 2, WinPlies = 4, LossPlies = 8 };
 
-    DTZEntry(const WDLEntry& wdl, Key wdlKeys[]);
+    DTZEntry(const WDLEntry& wdl);
    ~DTZEntry();
     bool init(const std::string& fname);
     template<typename T> void do_init(T& e, uint8_t* data);
@@ -125,7 +125,6 @@ struct DTZEntry {
     Key key;
     Key key2;
     int pieceCount;
-    bool symmetric;
     bool hasPawns;
     union {
         struct {
@@ -358,8 +357,8 @@ WDLEntry::WDLEntry(const Position& pos, Key keys[])
     memset(this, 0, sizeof(WDLEntry));
 
     key = keys[WHITE];
+    key2 = keys[BLACK];
     pieceCount = pos.count<ALL_PIECES>(WHITE) + pos.count<ALL_PIECES>(BLACK);
-    symmetric = (keys[WHITE] == keys[BLACK]);
     hasPawns = pos.pieces(PAWN);
 
     if (hasPawns) {
@@ -391,17 +390,13 @@ WDLEntry::~WDLEntry()
             delete piece[i].precomp;
 }
 
-DTZEntry::DTZEntry(const WDLEntry& wdl, Key wdlKeys[])
+DTZEntry::DTZEntry(const WDLEntry& wdl)
 {
     memset(this, 0, sizeof(DTZEntry));
 
-    key  = wdlKeys[0];
-    key2 = wdlKeys[1];
-
-    assert(key == wdl.key);
-
+    key = wdl.key;
+    key2 = wdl.key2;
     pieceCount = wdl.pieceCount;
-    symmetric = wdl.symmetric;
     hasPawns = wdl.hasPawns;
 
     if (hasPawns) {
@@ -425,7 +420,7 @@ DTZEntry::~DTZEntry()
 
 // Given a position return a string of the form KQPvKRP, where KQP represents
 // the white pieces if mirror == false and the black pieces if mirror == true.
-std::string str_code(const Position& pos, bool mirror = false)
+std::string pos_code(const Position& pos, bool mirror = false)
 {
     std::string w, b;
 
@@ -446,7 +441,7 @@ void HashTable::insert(const std::vector<PieceType>& pieces)
     for (PieceType pt : pieces)
         code += PieceToChar[pt];
 
-    TBFile file(str_code(pos.set(code, WHITE, &st)) + ".rtbw");
+    TBFile file(pos_code(pos.set(code, WHITE, &st)) + ".rtbw");
 
     if (!file.is_open())
         return;
@@ -543,7 +538,7 @@ bool check_dtz_stm(DTZEntry* entry, File f, int stm) {
                                     : entry->piece.flags;
 
     return   (flags & DTZEntry::Flag::STM) == stm
-          || (entry->symmetric && !entry->hasPawns);
+          || ((entry->key == entry->key2) && !entry->hasPawns);
 }
 
 // DTZ scores are sorted by frequency of occurrence and then assigned the
@@ -601,7 +596,7 @@ uint64_t probe_table(const Position& pos,  Entry* entry, WDLScore wdl = WDLDraw,
     // keys are equal. The stored TB entry is calculated always with WHITE side
     // to move and if the position to lookup has instead BLACK to move, we need
     // to switch color and flip the squares before the lookup:
-    if (entry->symmetric) {
+    if (entry->key == entry->key2) {
         flipColor = pos.side_to_move() * 8;     // Switch color
         flipSquares = pos.side_to_move() * 070; // Vertical flip: SQ_A8 -> SQ_A1
         stm = WHITE;
@@ -947,8 +942,8 @@ void WDLEntry::do_init(T& e, uint8_t* data)
     int split    = (flags & Split);
     File maxFile = (flags & HasPawns) ? FILE_D : FILE_A;
 
-    assert(hasPawns  == !!(flags & HasPawns));
-    assert(symmetric != !!(flags & Split));
+    assert(hasPawns      == !!(flags & HasPawns));
+    assert((key != key2) == !!(flags & Split));
 
     bool pp = (flags & HasPawns) && pawn.pawnCount[1]; // Pawns on both sides
 
@@ -1024,8 +1019,8 @@ void DTZEntry::do_init(T& e, uint8_t* data)
 
     File maxFile = (flags & HasPawns) ? FILE_D : FILE_A;
 
-    assert(hasPawns  == !!(flags & HasPawns));
-    assert(symmetric != !!(flags & Split));
+    assert(hasPawns      == !!(flags & HasPawns));
+    assert((key != key2) == !!(flags & Split));
 
     bool pp = (flags & HasPawns) && pawn.pawnCount[1]; // Pawns on both sides
 
@@ -1115,7 +1110,7 @@ WDLScore probe_wdl_table(Position& pos, int* success)
     if (!entry->ready.load(std::memory_order_acquire)) {
         std::unique_lock<Mutex> lk(TB_mutex);
         if (!entry->ready.load(std::memory_order_relaxed)) {
-            std::string fname = str_code(pos, entry->key != key) + ".rtbw";
+            std::string fname = pos_code(pos, entry->key != key) + ".rtbw";
             if (!entry->init(fname)) {
                 // Was ptr2->key = 0ULL;  Just leave !ptr->ready condition
                 *success = 0;
@@ -1125,12 +1120,10 @@ WDLScore probe_wdl_table(Position& pos, int* success)
         }
     }
 
-    assert(key == entry->key || !entry->symmetric);
-
     return (WDLScore)probe_table(pos, entry);
 }
 
-int probe_dtz_table(const Position& pos, WDLScore wdl, int *success)
+int probe_dtz_table(const Position& pos, WDLScore wdl, int* success)
 {
     Key key = pos.material_key();
 
@@ -1153,17 +1146,9 @@ int probe_dtz_table(const Position& pos, WDLScore wdl, int *success)
                 return 0;
             }
 
-            StateInfo st;
-            Position p;
-            std::string wdlCode = str_code(pos, wdlEntry->key != key);
-            std::string fname = wdlCode + ".rtbz";
-            wdlCode.erase(wdlCode.find('v'), 1);
+            DTZTable.push_front(DTZEntry(*wdlEntry));
 
-            Key wdlKeys[] = { p.set(wdlCode, WHITE, &st).material_key(),
-                              p.set(wdlCode, BLACK, &st).material_key() };
-
-            DTZTable.push_front(DTZEntry(*wdlEntry, wdlKeys));
-
+            std::string fname = pos_code(pos, wdlEntry->key != key) + ".rtbz";
             if (!DTZTable.front().init(fname)) {
                 // In case file is not found init() fails, but we leave
                 // the entry so to avoid rechecking at every probe (same
