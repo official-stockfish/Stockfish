@@ -52,20 +52,31 @@ inline WDLScore operator+(WDLScore d1, WDLScore d2) { return WDLScore(int(d1) + 
 inline Square operator^=(Square& s, int i) { return s = Square(int(s) ^ i); }
 inline Square operator^(Square s, int i) { return Square(int(s) ^ i); }
 
+// Each table has a set of flags: all of them refer to DTZ tables, the last one to WDL tables
+enum TBFlag { STM = 1, Mapped = 2, WinPlies = 4, LossPlies = 8, SingleValue = 128 };
+
+// Little endian numbers of index in blockLenghts[] and offet within the block
+struct SparseEntry {
+    char block[4];
+    char offset[2];
+};
+
+static_assert(sizeof(SparseEntry) == 6, "SparseEntry must be 6 bytes");
+
 struct PairsData {
     int flags;
-    int blocksize;
-    int idxbits;
-    int num_indices;
+    size_t sizeofBlock;         // Block size in bytes
+    int idxbits;                // Every 1 << idxbits index values there is a blockEntryIndex[] entry
     int real_num_blocks;
     int num_blocks;
     int max_len;
     int min_len;
     uint16_t* offset;
     uint8_t* sympat;
-    uint8_t* indextable;
-    uint16_t* sizetable;
-    uint8_t* data;
+    uint16_t* blockLenghts;    // Number of stored positions (minus one) for each block
+    SparseEntry* sparseIndex;  // Partial indices into blockLenghts[]
+    int num_indices;           // Size of SparseIndex[] table
+    uint8_t* data;             // Start of Huffman compressed data
     std::vector<uint64_t> base;
     std::vector<uint8_t> symlen;
     Piece pieces[TBPIECES];
@@ -107,9 +118,6 @@ struct WDLEntry : public Atomic {
 };
 
 struct DTZEntry {
-
-    enum Flag { STM = 1, Mapped = 2, WinPlies = 4, LossPlies = 8 };
-
     DTZEntry(const WDLEntry& wdl);
    ~DTZEntry();
 
@@ -447,27 +455,68 @@ void HashTable::insert(const std::vector<PieceType>& pieces)
     insert(keys[BLACK], &WDLTable.back());
 }
 
+// TB are compressed with canonical Huffman code. The the compressed data is divided into
+// blocks of size d->blocksize, and each block stores a variable number of symbols.
+// Each symbol represents either a WDL or (remapped) DTZ value, or a pair of other symbols
+// (recursively). If you keep expanding the symbols in a block, you end up with up to 65536
+// WDL or DTZ values. Each symbol represents up to 256 values and will correspond after
+// Huffman coding to at least 1 bit. So a block of 32 bytes corresponds to at most
+// 32 x 8 x 256 = 65536 values. This maximum is only reached for tables that consist mostly
+// of draws or mostly of wins, but such tables are actually quite common. In principle, the
+// blocks in WDL tables are 64 bytes long (and will be aligned on cache lines). But for
+// mostly-draw or mostly-win tables this can leave many 64-byte blocks only half-filled, so
+// in such cases blocks are 32 bytes long. The blocks of DTZ tables are up to 1024 bytes long.
+// The generator picks the size that leads to the smallest table. The "book" of symbols and
+// Huffman codes is the same for all blocks in the table (a non-symmetric pawnless TB file
+// will have one table for wtm and one for btm, a TB file with pawns will have tables per
+// file a,b,c,d).
 int decompress_pairs(PairsData* d, uint64_t idx)
 {
-    if (!d->idxbits)
+    // Special case where all table positions store the same value
+    if (d->flags & TBFlag::SingleValue)
         return d->min_len;
 
-    // idx = blockidx | litidx where litidx is a signed number of lenght d->idxbits
-    uint32_t blockidx = (uint32_t)(idx >> d->idxbits);
-    int litidx = (idx & ((1ULL << d->idxbits) - 1)) - (1ULL << (d->idxbits - 1));
+    // First we need to locate the right block that stores the value at index "idx".
+    // Because each block n stores blockLenghts[n] + 1 values, the index i of the block
+    // that contains the value at position idx is:
+    //
+    //                      for (i = 0; idx < sum; i++)
+    //                          sum += blockLenghts[i] + 1;
+    //
+    // This can be slow, so we use SparseIndex[] populated with a set of SparseEntry that
+    // point to known indices into blockLenghts[]. Namely SparseIndex[k] is a SparseEntry
+    // that stores the blockLenghts[] index and the offset within that block of the value
+    // with index N(k), where:
+    //
+    //       N(k) = k * (1 << d->idxbits) + (1 << (d->idxbits - 1))           (1)
 
-    // indextable points to an array of blocks of 6 bytes representing numbers in
-    // little endian. The low 4 bytes are the block, the high 2 bytes the idxOffset.
-    uint32_t block = number<uint32_t, LittleEndian>(d->indextable + 6 * blockidx);
-    litidx += number<uint16_t, LittleEndian>(d->indextable + 6 * blockidx + 4);
+    // First step is to get the 'k' of the N(k) nearest to our idx, using defintion (1)
+    uint32_t k = (uint32_t)(idx >> d->idxbits);
 
-    while (litidx < 0)
-        litidx += d->sizetable[--block] + 1;
+    // Then we read the corresponding SparseIndex[] entry
+    uint32_t block = number<uint32_t, LittleEndian>(&d->sparseIndex[k].block);
+    int idxOffset  = number<uint16_t, LittleEndian>(&d->sparseIndex[k].offset);
 
-    while (litidx > d->sizetable[block])
-        litidx -= d->sizetable[block++] + 1;
+    // Now compute the difference idx - N(k). From defintion of k we know that
+    //
+    //       idx = k * (1 << d->idxbits) + (idx & ((1ULL << d->idxbits) - 1))   (2)
+    //
+    // So, from (2) and (1) we can compute idx - N(K):
+    int diff = (idx & ((1ULL << d->idxbits) - 1))  - (1 << (d->idxbits - 1));
 
-    uint32_t* ptr = (uint32_t*)(d->data + (block << d->blocksize));
+    // Sum to idxOffset to find the offset corresponding to our idx
+    idxOffset += diff;
+
+    // Move to previous or next block, until we reach the correct block that contains idx,
+    // that is when 0 <= idxOffset <= d->sizetable[block]
+    while (idxOffset < 0)
+        idxOffset += d->blockLenghts[--block] + 1;
+
+    while (idxOffset > d->blockLenghts[block])
+        idxOffset -= d->blockLenghts[block++] + 1;
+
+    // Finally, we find the start address of our block
+    uint32_t* ptr = (uint32_t*)(d->data + block * d->sizeofBlock);
     uint64_t code = number<uint64_t, BigEndian>(ptr);
 
     int m = d->min_len;
@@ -486,10 +535,10 @@ int decompress_pairs(PairsData* d, uint64_t idx)
         sym = number<uint16_t, LittleEndian>(offset + l);
         sym += (int)((code - d->base[l - d->min_len]) >> (64 - l));
 
-        if (litidx < (int)d->symlen[sym] + 1)
+        if (idxOffset < (int)d->symlen[sym] + 1)
             break;
 
-        litidx -= (int)d->symlen[sym] + 1;
+        idxOffset -= (int)d->symlen[sym] + 1;
         code <<= l;
         bitcnt += l;
 
@@ -505,10 +554,10 @@ int decompress_pairs(PairsData* d, uint64_t idx)
         uint8_t* w = sympat + (3 * sym);
         int s1 = ((w[1] & 0xf) << 8) | w[0];
 
-        if (litidx < (int)d->symlen[s1] + 1)
+        if (idxOffset < (int)d->symlen[s1] + 1)
             sym = s1;
         else {
-            litidx -= (int)d->symlen[s1] + 1;
+            idxOffset -= (int)d->symlen[s1] + 1;
             sym = (w[2] << 4) | (w[1] >> 4);
         }
     }
@@ -525,7 +574,7 @@ bool check_dtz_stm(DTZEntry* entry, File f, int stm) {
     int flags = entry->hasPawns ? entry->pawn.file[f].precomp->flags
                                 : entry->piece.precomp->flags;
 
-    return   (flags & DTZEntry::Flag::STM) == stm
+    return   (flags & TBFlag::STM) == stm
           || ((entry->key == entry->key2) && !entry->hasPawns);
 }
 
@@ -550,14 +599,14 @@ int map_score(DTZEntry* entry, File f, int value, WDLScore wdl) {
 
     uint16_t* idx = entry->hasPawns ? entry->pawn.file[f].map_idx
                                     : entry->piece.map_idx;
-    if (flags & DTZEntry::Flag::Mapped)
+    if (flags & TBFlag::Mapped)
         value = map[idx[WDLMap[wdl + 2]] + value];
 
     // DTZ tables store distance to zero in number of moves but
     // under some conditions we want to return plies, so we have
     // to multiply score by 2.
-    if (   (wdl == WDLWin  && !(flags & DTZEntry::Flag::WinPlies))
-        || (wdl == WDLLoss && !(flags & DTZEntry::Flag::LossPlies))
+    if (   (wdl == WDLWin  && !(flags & TBFlag::WinPlies))
+        || (wdl == WDLLoss && !(flags & TBFlag::LossPlies))
         ||  wdl == WDLCursedWin
         ||  wdl == WDLCursedLoss)
         value *= 2;
@@ -869,14 +918,14 @@ uint8_t* set_sizes(PairsData* d, uint8_t* data, uint64_t tb_size)
 {
     d->flags = *data++;
 
-    if (d->flags & 0x80) {
+    if (d->flags & TBFlag::SingleValue) {
         d->idxbits = d->real_num_blocks =
         d->num_blocks = d->num_indices = 0; // Broken MSVC zero-init
         d->min_len = *data++;
         return data;
     }
 
-    d->blocksize = *data++;
+    d->sizeofBlock = 1 << *data++;
     d->idxbits = *data++;
     d->num_indices = (tb_size + (1ULL << d->idxbits) - 1) >> d->idxbits; // Divide and round upward, like ceil()
     d->num_blocks = number<uint8_t, LittleEndian>(data++);
@@ -918,7 +967,7 @@ uint8_t* set_dtz_map(DTZEntry&, T& p, uint8_t* data, File maxFile) {
     p.map = data;
 
     for (File f = FILE_A; f <= maxFile; ++f) {
-        if (item(p, 0, f).precomp->flags & DTZEntry::Flag::Mapped)
+        if (item(p, 0, f).precomp->flags & TBFlag::Mapped)
             for (int i = 0; i < 4; ++i) { // Sequence like 3,x,x,x,1,x,0,2,x,x
                 item(p, 0, f).map_idx[i] = (uint16_t)(data - p.map + 1);
                 data += *data + 1;
@@ -984,21 +1033,21 @@ void do_init(Entry& e, T& p, uint8_t* data)
 
     for (File f = FILE_A; f <= maxFile; ++f)
         for (int k = 0; k <= split; k++) {
-            (d = item(p, k, f).precomp)->indextable = data;
-            data += 6ULL * d->num_indices;
+            (d = item(p, k, f).precomp)->sparseIndex = (SparseEntry*)data;
+            data += d->num_indices * sizeof(SparseEntry) ;
         }
 
     for (File f = FILE_A; f <= maxFile; ++f)
         for (int k = 0; k <= split; k++) {
-            (d = item(p, k, f).precomp)->sizetable = (uint16_t*)data;
-            data += 2ULL * d->num_blocks;
+            (d = item(p, k, f).precomp)->blockLenghts = (uint16_t*)data;
+            data += d->num_blocks * sizeof(uint16_t);
         }
 
     for (File f = FILE_A; f <= maxFile; ++f)
         for (int k = 0; k <= split; k++) {
             data = (uint8_t*)(((uintptr_t)data + 0x3F) & ~0x3F); // 64 byte alignment
             (d = item(p, k, f).precomp)->data = data;
-            data += (1ULL << d->blocksize) * d->real_num_blocks;
+            data += d->real_num_blocks * d->sizeofBlock;
         }
 }
 
