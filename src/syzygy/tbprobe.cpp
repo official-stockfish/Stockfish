@@ -84,7 +84,6 @@ struct Atomic {
 struct WDLEntry : public Atomic {
     WDLEntry(const Position& pos, Key keys[]);
    ~WDLEntry();
-    bool init(const std::string& fname);
     template<typename T> uint8_t* set_map(T&, uint8_t* data, File) { return data; }
 
     void* baseAddress;
@@ -114,7 +113,6 @@ struct DTZEntry {
 
     DTZEntry(const WDLEntry& wdl);
    ~DTZEntry();
-    bool init(const std::string& fname);
     template<typename T> uint8_t* set_map(T& p, uint8_t* data, File maxFile);
 
     void* baseAddress;
@@ -798,7 +796,7 @@ encode_remaining:
 }
 
 template<typename T>
-uint64_t set_factors(T* e, PairsData* d, int num, int order[], File f)
+uint64_t set_factors(T& e, PairsData* d, int num, int order[], File f)
 {
     int i = d->norm[0];
 
@@ -812,8 +810,8 @@ uint64_t set_factors(T* e, PairsData* d, int num, int order[], File f)
         if (k == order[0]) {
             d->factor[0] = size;
 
-            size *=         e->hasPawns ? Pfactor[d->norm[0] - 1][f]
-                   : e->hasUniquePieces ? 31332 : 462;
+            size *=         e.hasPawns ? Pfactor[d->norm[0] - 1][f]
+                   : e.hasUniquePieces ? 31332 : 462;
 
         } else if (k == order[1]) {
             d->factor[d->norm[0]] = size;
@@ -929,7 +927,7 @@ uint8_t* DTZEntry::set_map(T& e, uint8_t* data, File maxFile) {
 }
 
 template<typename Entry, typename T>
-void init_entry(Entry* e, T& p, uint8_t* data)
+void do_init(Entry& e, T& p, uint8_t* data)
 {
     const int K = std::is_same<Entry, WDLEntry>::value ? 2 : 1;
 
@@ -940,15 +938,15 @@ void init_entry(Entry* e, T& p, uint8_t* data)
 
     uint8_t flags = *data++;
 
-    assert(e->hasPawns         == !!(flags & HasPawns));
-    assert((e->key != e->key2) == !!(flags & Split));
+    assert(e.hasPawns        == !!(flags & HasPawns));
+    assert((e.key != e.key2) == !!(flags & Split));
 
-    int split    = (K == 2) && (e->key != e->key2);
-    File maxFile = e->hasPawns ? FILE_D : FILE_A;
+    int split    = (K == 2) && (e.key != e.key2);
+    File maxFile = e.hasPawns ? FILE_D : FILE_A;
 
-    bool pp = e->hasPawns && e->pawn.pawnCount[1]; // Pawns on both sides
+    bool pp = e.hasPawns && e.pawn.pawnCount[1]; // Pawns on both sides
 
-    assert(!pp || e->pawn.pawnCount[0]);
+    assert(!pp || e.pawn.pawnCount[0]);
 
     for (File f = FILE_A; f <= maxFile; ++f) {
 
@@ -959,16 +957,16 @@ void init_entry(Entry* e, T& p, uint8_t* data)
                            { *data >>  4, pp ? *(data + 1) >>  4 : 0xF } };
         data += 1 + pp;
 
-        for (int i = 0; i < e->pieceCount; ++i, ++data)
+        for (int i = 0; i < e.pieceCount; ++i, ++data)
             for (int k = 0; k < K; k++)
                 item(p, k, f).precomp->pieces[i] = Piece(k ? *data >>  4 : *data & 0xF);
 
-        uint8_t pn[] = { uint8_t(e->hasUniquePieces ? 3 : 2), 0 };
+        uint8_t pn[] = { uint8_t(e.hasUniquePieces ? 3 : 2), 0 };
 
         for (int i = 0; i < K; ++i) {
             d = item(p, i, f).precomp;
-            set_norms(d, e->pieceCount, e->hasPawns ? e->pawn.pawnCount : pn);
-            tb_size[K * f + i] = set_factors(e, d, e->pieceCount, order[i], f);
+            set_norms(d, e.pieceCount, e.hasPawns ? e.pawn.pawnCount : pn);
+            tb_size[K * f + i] = set_factors(e, d, e.pieceCount, order[i], f);
         }
     }
 
@@ -978,7 +976,7 @@ void init_entry(Entry* e, T& p, uint8_t* data)
         for (int k = 0; k <= split; k++)
             data = set_sizes(item(p, k, f).precomp, data, tb_size[2 * f + k]);
 
-    data = e->set_map(p, data, maxFile);
+    data = e.set_map(p, data, maxFile);
 
     for (File f = FILE_A; f <= maxFile; ++f)
         for (int k = 0; k <= split; k++) {
@@ -1000,23 +998,16 @@ void init_entry(Entry* e, T& p, uint8_t* data)
         }
 }
 
-bool WDLEntry::init(const std::string& fname)
+template<typename Entry>
+bool init(Entry& e, const std::string& fname)
 {
-    uint8_t* data = TBFile(fname).map(&baseAddress, &mapping, WDL_MAGIC);
+    const uint8_t* MAGIC = std::is_same<Entry, DTZEntry>::value ? DTZ_MAGIC : WDL_MAGIC;
+
+    uint8_t* data = TBFile(fname).map(&e.baseAddress, &e.mapping, MAGIC);
     if (!data)
         return false;
 
-    hasPawns ? init_entry(this, pawn, data) : init_entry(this, piece, data);
-    return true;
-}
-
-bool DTZEntry::init(const std::string& fname)
-{
-    uint8_t* data = TBFile(fname).map(&baseAddress, &mapping, DTZ_MAGIC);
-    if (!data)
-        return false;
-
-    hasPawns ? init_entry(this, pawn, data) : init_entry(this, piece, data);
+    e.hasPawns ? do_init(e, e.pawn, data) : do_init(e, e.piece, data);
     return true;
 }
 
@@ -1040,7 +1031,7 @@ WDLScore probe_wdl_table(Position& pos, int* success)
         std::unique_lock<Mutex> lk(TB_mutex);
         if (!entry->ready.load(std::memory_order_relaxed)) {
             std::string fname = pos_code(pos, entry->key != key) + ".rtbw";
-            if (!entry->init(fname)) {
+            if (!init(*entry, fname)) {
                 // Was ptr2->key = 0ULL;  Just leave !ptr->ready condition
                 *success = 0;
                 return WDLDraw;
@@ -1078,7 +1069,7 @@ int probe_dtz_table(const Position& pos, WDLScore wdl, int* success)
             DTZTable.push_front(DTZEntry(*wdlEntry));
 
             std::string fname = pos_code(pos, wdlEntry->key != key) + ".rtbz";
-            if (!DTZTable.front().init(fname)) {
+            if (!init(DTZTable.front(), fname)) {
                 // In case file is not found init() fails, but we leave
                 // the entry so to avoid rechecking at every probe (same
                 // functionality as WDL case).
