@@ -350,6 +350,11 @@ WDLEntry::WDLEntry(const Position& pos, Key keys[])
     pieceCount = pos.count<ALL_PIECES>(WHITE) + pos.count<ALL_PIECES>(BLACK);
     hasPawns = pos.pieces(PAWN);
 
+    for (Color c = WHITE; c <= BLACK; ++c)
+        for (PieceType pt = PAWN; pt < KING; ++pt)
+            if (popcount(pos.pieces(c, pt)) == 1)
+                hasUniquePieces = true;
+
     if (hasPawns) {
         // Set the leading color. In case both sides have pawns the leading color
         // is the side with less pawns because this leads to a better compression.
@@ -359,11 +364,7 @@ WDLEntry::WDLEntry(const Position& pos, Key keys[])
 
         pawn.pawnCount[0] = pos.count<PAWN>(c ? WHITE : BLACK);
         pawn.pawnCount[1] = pos.count<PAWN>(c ? BLACK : WHITE);
-    } else
-        for (Color c = WHITE; c <= BLACK; ++c)
-            for (PieceType pt = PAWN; pt < KING; ++pt)
-                if (popcount(pos.pieces(c, pt)) == 1)
-                    hasUniquePieces = true;
+    }
 }
 
 WDLEntry::~WDLEntry()
