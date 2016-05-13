@@ -178,6 +178,7 @@ void MovePicker::score<EVASIONS>() {
 /// when there are no more moves to try for the current stage.
 
 void MovePicker::generate_next_stage() {
+  ExtMove* endMovesToSort;
 
   assert(stage != STOP);
 
@@ -200,15 +201,12 @@ void MovePicker::generate_next_stage() {
       break;
 
   case QUIET:
-      endMoves = generate<QUIETS>(pos, moves);
+      endMovesToSort = endMoves = generate<QUIETS>(pos, moves);
       score<QUIETS>();
       if (depth < 3 * ONE_PLY)
-      {
-          ExtMove* goodQuiet = std::partition(cur, endMoves, [](const ExtMove& m)
-                                             { return m.value > VALUE_ZERO; });
-          insertion_sort(cur, goodQuiet);
-      } else
-          insertion_sort(cur, endMoves);
+          endMovesToSort = std::partition(cur, endMoves, [](const ExtMove& m)
+                                          { return m.value > VALUE_ZERO; });
+      insertion_sort(cur, endMovesToSort);
       break;
 
   case BAD_CAPTURES:
