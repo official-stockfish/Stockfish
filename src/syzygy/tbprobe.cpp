@@ -84,7 +84,6 @@ struct Atomic {
 struct WDLEntry : public Atomic {
     WDLEntry(const Position& pos, Key keys[]);
    ~WDLEntry();
-    template<typename T> uint8_t* set_map(T&, uint8_t* data, File) { return data; }
 
     void* baseAddress;
     uint64_t mapping;
@@ -113,7 +112,6 @@ struct DTZEntry {
 
     DTZEntry(const WDLEntry& wdl);
    ~DTZEntry();
-    template<typename T> uint8_t* set_map(T& p, uint8_t* data, File maxFile);
 
     void* baseAddress;
     uint64_t mapping;
@@ -911,15 +909,18 @@ uint8_t* set_sizes(PairsData* d, uint8_t* data, uint64_t tb_size)
     return data + 3 * d->symlen.size() + (d->symlen.size() & 1);
 }
 
-template<typename T>
-uint8_t* DTZEntry::set_map(T& e, uint8_t* data, File maxFile) {
+template<typename Entry, typename T>
+uint8_t* set_dtz_map(Entry&, T&, uint8_t*, File) { return nullptr; }
 
-    e.map = data;
+template<typename T>
+uint8_t* set_dtz_map(DTZEntry&, T& p, uint8_t* data, File maxFile) {
+
+    p.map = data;
 
     for (File f = FILE_A; f <= maxFile; ++f) {
-        if (item(e, 0, f).precomp->flags & Flag::Mapped)
+        if (item(p, 0, f).precomp->flags & DTZEntry::Flag::Mapped)
             for (int i = 0; i < 4; ++i) { // Sequence like 3,x,x,x,1,x,0,2,x,x
-                item(e, 0, f).map_idx[i] = (uint16_t)(data - e.map + 1);
+                item(p, 0, f).map_idx[i] = (uint16_t)(data - p.map + 1);
                 data += *data + 1;
             }
     }
@@ -930,7 +931,8 @@ uint8_t* DTZEntry::set_map(T& e, uint8_t* data, File maxFile) {
 template<typename Entry, typename T>
 void do_init(Entry& e, T& p, uint8_t* data)
 {
-    const int K = std::is_same<Entry, WDLEntry>::value ? 2 : 1;
+    const bool IsDTZ = std::is_same<Entry, DTZEntry>::value;
+    const int K = IsDTZ ? 1 : 2;
 
     PairsData* d;
     uint64_t tb_size[8];
@@ -942,7 +944,7 @@ void do_init(Entry& e, T& p, uint8_t* data)
     assert(e.hasPawns        == !!(flags & HasPawns));
     assert((e.key != e.key2) == !!(flags & Split));
 
-    int split    = (K == 2) && (e.key != e.key2);
+    int split    = !IsDTZ && (e.key != e.key2);
     File maxFile = e.hasPawns ? FILE_D : FILE_A;
 
     bool pp = e.hasPawns && e.pawn.pawnCount[1]; // Pawns on both sides
@@ -977,7 +979,8 @@ void do_init(Entry& e, T& p, uint8_t* data)
         for (int k = 0; k <= split; k++)
             data = set_sizes(item(p, k, f).precomp, data, tb_size[2 * f + k]);
 
-    data = e.set_map(p, data, maxFile);
+    if (IsDTZ)
+        data = set_dtz_map(e, p, data, maxFile);
 
     for (File f = FILE_A; f <= maxFile; ++f)
         for (int k = 0; k <= split; k++) {
