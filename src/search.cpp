@@ -751,7 +751,15 @@ namespace {
     if (ss->skipEarlyPruning)
         goto moves_loop;
 
-    // Step 6. Razoring (skipped when in check)
+    // Step 6. Futility pruning: child node (skipped when in check)
+    if (   !rootNode
+        &&  depth < 7 * ONE_PLY
+        &&  eval - futility_margin(depth) >= beta
+        &&  eval < VALUE_KNOWN_WIN  // Do not return unproven wins
+        &&  pos.non_pawn_material(pos.side_to_move()))
+        return eval - futility_margin(depth);
+
+    // Step 7. Razoring (skipped when in check)
     if (   !PvNode
         &&  depth < 4 * ONE_PLY
         &&  eval + razor_margin[depth] <= alpha
@@ -766,14 +774,6 @@ namespace {
         if (v <= ralpha)
             return v;
     }
-
-    // Step 7. Futility pruning: child node (skipped when in check)
-    if (   !rootNode
-        &&  depth < 7 * ONE_PLY
-        &&  eval - futility_margin(depth) >= beta
-        &&  eval < VALUE_KNOWN_WIN  // Do not return unproven wins
-        &&  pos.non_pawn_material(pos.side_to_move()))
-        return eval - futility_margin(depth);
 
     // Step 8. Null move search with verification search (is omitted in PV nodes)
     if (   !PvNode
