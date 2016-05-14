@@ -926,25 +926,24 @@ void set_norms(T* p, int num, const uint8_t pawns[])
             ++p->norm[i];
 }
 
-void calc_symlen(PairsData* d, size_t s, std::vector<uint8_t>& tmp)
+uint8_t set_symlen(PairsData* d, size_t s, std::vector<bool>& visited)
 {
+    visited[s] = true; // We can set now because tree is acyclic
     int sr = d->btree[s].get<LR::Right>();
 
     if (sr == 0xFFF)
-        d->symlen[s] = 0;
+        return 0;
     else {
         int sl = d->btree[s].get<LR::Left>();
 
-        if (!tmp[sl])
-            calc_symlen(d, sl, tmp);
+        if (!visited[sl])
+            d->symlen[sl] = set_symlen(d, sl, visited);
 
-        if (!tmp[sr])
-            calc_symlen(d, sr, tmp);
+        if (!visited[sr])
+            d->symlen[sr] = set_symlen(d, sr, visited);
 
-        d->symlen[s] = d->symlen[sl] + d->symlen[sr] + 1;
+        return d->symlen[sl] + d->symlen[sr] + 1;
     }
-
-    tmp[s] = 1;
 }
 
 uint8_t* set_sizes(PairsData* d, uint8_t* data, uint64_t tb_size)
@@ -982,11 +981,11 @@ uint8_t* set_sizes(PairsData* d, uint8_t* data, uint64_t tb_size)
     d->symlen.resize(number<uint16_t, LittleEndian>(data)); data += sizeof(uint16_t);
     d->btree = (LR*)data;
 
-    std::vector<uint8_t> tmp(d->symlen.size());
+    std::vector<bool> visited(d->symlen.size());
 
-    for (size_t i = 0; i < d->symlen.size(); ++i)
-        if (!tmp[i])
-            calc_symlen(d, i, tmp);
+    for (size_t sym = 0; sym < d->symlen.size(); ++sym)
+        if (!visited[sym])
+            d->symlen[sym] = set_symlen(d, sym, visited);
 
     return data + 3 * d->symlen.size() + (d->symlen.size() & 1);
 }
