@@ -1081,7 +1081,7 @@ void do_init(Entry& e, T& p, uint8_t* data)
 
     for (File f = FILE_A; f <= maxFile; ++f)
         for (int k = 0; k <= split; k++)
-            data = set_sizes(item(p, k, f).precomp, data, tb_size[2 * f + k]);
+            data = set_sizes(item(p, k, f).precomp, data, tb_size[K * f + k]);
 
     if (IsDTZ)
         data = set_dtz_map(e, p, data, maxFile);
