@@ -65,8 +65,8 @@ static_assert(sizeof(SparseEntry) == 6, "SparseEntry must be 6 bytes");
 
 struct PairsData {
     int flags;
-    size_t sizeofBlock;         // Block size in bytes
-    int idxbits;                // Every 1 << idxbits index values there is a blockEntryIndex[] entry
+    size_t sizeofBlock;        // Block size in bytes
+    size_t span;               // About every span values there is a SparseIndex[] entry
     int real_num_blocks;
     int num_blocks;
     int max_len;
@@ -75,7 +75,7 @@ struct PairsData {
     uint8_t* sympat;
     uint16_t* blockLenghts;    // Number of stored positions (minus one) for each block
     SparseEntry* sparseIndex;  // Partial indices into blockLenghts[]
-    int num_indices;           // Size of SparseIndex[] table
+    size_t sparseIndexSize;    // Size of SparseIndex[] table
     uint8_t* data;             // Start of Huffman compressed data
     std::vector<uint64_t> base;
     std::vector<uint8_t> symlen;
@@ -488,10 +488,10 @@ int decompress_pairs(PairsData* d, uint64_t idx)
     // that stores the blockLenghts[] index and the offset within that block of the value
     // with index N(k), where:
     //
-    //       N(k) = k * (1 << d->idxbits) + (1 << (d->idxbits - 1))           (1)
+    //       N(k) = k * d->span + d->span / 2      (1)
 
     // First step is to get the 'k' of the N(k) nearest to our idx, using defintion (1)
-    uint32_t k = (uint32_t)(idx >> d->idxbits);
+    uint32_t k = idx / d->span;
 
     // Then we read the corresponding SparseIndex[] entry
     uint32_t block = number<uint32_t, LittleEndian>(&d->sparseIndex[k].block);
@@ -499,10 +499,10 @@ int decompress_pairs(PairsData* d, uint64_t idx)
 
     // Now compute the difference idx - N(k). From defintion of k we know that
     //
-    //       idx = k * (1 << d->idxbits) + (idx & ((1ULL << d->idxbits) - 1))   (2)
+    //       idx = k * d->span + idx % d->span    (2)
     //
-    // So, from (2) and (1) we can compute idx - N(K):
-    int diff = (idx & ((1ULL << d->idxbits) - 1))  - (1 << (d->idxbits - 1));
+    // So we can compute idx - N(K):
+    int diff = idx % d->span - d->span / 2;
 
     // Sum to idxOffset to find the offset corresponding to our idx
     idxOffset += diff;
@@ -919,15 +919,15 @@ uint8_t* set_sizes(PairsData* d, uint8_t* data, uint64_t tb_size)
     d->flags = *data++;
 
     if (d->flags & TBFlag::SingleValue) {
-        d->idxbits = d->real_num_blocks =
-        d->num_blocks = d->num_indices = 0; // Broken MSVC zero-init
+        d->real_num_blocks = d->span =
+        d->num_blocks = d->sparseIndexSize = 0; // Broken MSVC zero-init
         d->min_len = *data++;
         return data;
     }
 
-    d->sizeofBlock = 1 << *data++;
-    d->idxbits = *data++;
-    d->num_indices = (tb_size + (1ULL << d->idxbits) - 1) >> d->idxbits; // Divide and round upward, like ceil()
+    d->sizeofBlock = 1ULL << *data++;
+    d->span = 1ULL << *data++;
+    d->sparseIndexSize = (tb_size + d->span - 1) / d->span; // Round up
     d->num_blocks = number<uint8_t, LittleEndian>(data++);
     d->real_num_blocks = number<uint32_t, LittleEndian>(data); data += sizeof(uint32_t);
     d->num_blocks += d->real_num_blocks;
@@ -1034,7 +1034,7 @@ void do_init(Entry& e, T& p, uint8_t* data)
     for (File f = FILE_A; f <= maxFile; ++f)
         for (int k = 0; k <= split; k++) {
             (d = item(p, k, f).precomp)->sparseIndex = (SparseEntry*)data;
-            data += d->num_indices * sizeof(SparseEntry) ;
+            data += d->sparseIndexSize * sizeof(SparseEntry) ;
         }
 
     for (File f = FILE_A; f <= maxFile; ++f)
