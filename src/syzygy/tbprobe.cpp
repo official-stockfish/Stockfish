@@ -55,7 +55,7 @@ inline Square operator^(Square s, int i) { return Square(int(s) ^ i); }
 // Each table has a set of flags: all of them refer to DTZ tables, the last one to WDL tables
 enum TBFlag { STM = 1, Mapped = 2, WinPlies = 4, LossPlies = 8, SingleValue = 128 };
 
-// Little endian numbers of index in blockLenghts[] and offet within the block
+// Little endian numbers of index in blockLengths[] and offet within the block
 struct SparseEntry {
     char block[4];
     char offset[2];
@@ -65,20 +65,20 @@ static_assert(sizeof(SparseEntry) == 6, "SparseEntry must be 6 bytes");
 
 struct PairsData {
     int flags;
-    size_t sizeofBlock;        // Block size in bytes
-    size_t span;               // About every span values there is a SparseIndex[] entry
+    size_t sizeofBlock;            // Block size in bytes
+    size_t span;                   // About every span values there is a SparseIndex[] entry
     int real_num_blocks;
-    int num_blocks;
-    int max_len;
-    int min_len;
-    uint16_t* offset;
+    int max_sym_len;               // Maximum length in bits of the Huffman symbols
+    int min_sym_len;               // Minimum length in bits of the Huffman symbols
+    uint16_t* lowestSym;           // Value of the lowest symbol of length l is lowestSym[l]
     uint8_t* sympat;
-    uint16_t* blockLenghts;    // Number of stored positions (minus one) for each block
-    SparseEntry* sparseIndex;  // Partial indices into blockLenghts[]
-    size_t sparseIndexSize;    // Size of SparseIndex[] table
-    uint8_t* data;             // Start of Huffman compressed data
-    std::vector<uint64_t> base;
-    std::vector<uint8_t> symlen;
+    uint16_t* blockLengths;        // Number of stored positions (minus one) for each block
+    int blockLengthsSize;          // Size of blockLengths[] table
+    SparseEntry* sparseIndex;      // Partial indices into blockLengths[]
+    size_t sparseIndexSize;        // Size of SparseIndex[] table
+    uint8_t* data;                 // Start of Huffman compressed data
+    std::vector<uint64_t> base;    // Smallest symbol of length l padded to 64 bits is at base[l - min_sym_len]
+    std::vector<uint8_t> symlen;   // Number of values (-1) represented by a given Huffman symbol: 1..256
     Piece pieces[TBPIECES];
     uint64_t factor[TBPIECES];
     uint8_t norm[TBPIECES];
@@ -474,18 +474,18 @@ int decompress_pairs(PairsData* d, uint64_t idx)
 {
     // Special case where all table positions store the same value
     if (d->flags & TBFlag::SingleValue)
-        return d->min_len;
+        return d->min_sym_len;
 
     // First we need to locate the right block that stores the value at index "idx".
-    // Because each block n stores blockLenghts[n] + 1 values, the index i of the block
+    // Because each block n stores blockLengths[n] + 1 values, the index i of the block
     // that contains the value at position idx is:
     //
     //                      for (i = 0; idx < sum; i++)
-    //                          sum += blockLenghts[i] + 1;
+    //                          sum += blockLengths[i] + 1;
     //
     // This can be slow, so we use SparseIndex[] populated with a set of SparseEntry that
-    // point to known indices into blockLenghts[]. Namely SparseIndex[k] is a SparseEntry
-    // that stores the blockLenghts[] index and the offset within that block of the value
+    // point to known indices into blockLengths[]. Namely SparseIndex[k] is a SparseEntry
+    // that stores the blockLengths[] index and the offset within that block of the value
     // with index N(k), where:
     //
     //       N(k) = k * d->span + d->span / 2      (1)
@@ -501,7 +501,7 @@ int decompress_pairs(PairsData* d, uint64_t idx)
     //
     //       idx = k * d->span + idx % d->span    (2)
     //
-    // So we can compute idx - N(K):
+    // So from (1) and (2) we can compute idx - N(K):
     int diff = idx % d->span - d->span / 2;
 
     // Sum to idxOffset to find the offset corresponding to our idx
@@ -510,41 +510,49 @@ int decompress_pairs(PairsData* d, uint64_t idx)
     // Move to previous or next block, until we reach the correct block that contains idx,
     // that is when 0 <= idxOffset <= d->sizetable[block]
     while (idxOffset < 0)
-        idxOffset += d->blockLenghts[--block] + 1;
+        idxOffset += d->blockLengths[--block] + 1;
 
-    while (idxOffset > d->blockLenghts[block])
-        idxOffset -= d->blockLenghts[block++] + 1;
+    while (idxOffset > d->blockLengths[block])
+        idxOffset -= d->blockLengths[block++] + 1;
 
-    // Finally, we find the start address of our block
+    // Finally, we find the start address of our block of canonical Huffman coded symbols
     uint32_t* ptr = (uint32_t*)(d->data + block * d->sizeofBlock);
-    uint64_t code = number<uint64_t, BigEndian>(ptr);
 
-    int m = d->min_len;
-    uint16_t *offset = d->offset;
-    int sym, bitcnt;
-
-    ptr += 2;
-    bitcnt = 0; // number of "empty bits" in code
+    // Read the first 64 bits in our block. We still don't know the symbol length but
+    // we know is at the beginning of this 64 bits sequence.
+    uint64_t buf64 = number<uint64_t, BigEndian>(ptr); ptr += 2;
+    int sym, buf64Size = 64;
 
     for (;;) {
-        int l = m;
+        int len = d->min_sym_len;
 
-        while (code < d->base[l - d->min_len])
-            ++l;
+        // Now get the symbol length. Given two symbols of length l1 and l2, where
+        // l1 < l2 then d->base[l1] > d->base[l2]. Moreover, any symbol of length l
+        // right-padded to 64 bits is >= d->base[l] so we can find the symbol length
+        // iterating through base[] starting from minimum length.
+        while (buf64 < d->base[len - d->min_sym_len])
+            ++len;
 
-        sym = number<uint16_t, LittleEndian>(offset + l);
-        sym += (int)((code - d->base[l - d->min_len]) >> (64 - l));
+        // Symbols of same length are mapped to consecutive numbers, so we can compute
+        // the offset of our symbol of length len, stored at the beginning of buf64.
+        sym = (buf64 - d->base[len - d->min_sym_len]) >> (64 - len);
 
+        // Now add the value of the lowest symbol of length len to get our symbol
+        sym += number<uint16_t, LittleEndian>(&d->lowestSym[len]);
+
+        // If our offset is within the number of values represented by symbol sym
+        // we are done...
         if (idxOffset < (int)d->symlen[sym] + 1)
             break;
 
-        idxOffset -= (int)d->symlen[sym] + 1;
-        code <<= l;
-        bitcnt += l;
+        // ...otherwise update the offset and continue to iterate
+        idxOffset -= d->symlen[sym] + 1;
+        buf64 <<= len;  // Consume the just processed symbol
+        buf64Size -= len;
 
-        if (bitcnt >= 32) {
-            bitcnt -= 32;
-            code |= (uint64_t)number<uint32_t, BigEndian>(ptr++) << bitcnt;
+        if (buf64Size <= 32) { // Refill the buffer
+            buf64Size += 32;
+            buf64 |= (uint64_t)number<uint32_t, BigEndian>(ptr++) << (64 - buf64Size);
         }
     }
 
@@ -920,32 +928,32 @@ uint8_t* set_sizes(PairsData* d, uint8_t* data, uint64_t tb_size)
 
     if (d->flags & TBFlag::SingleValue) {
         d->real_num_blocks = d->span =
-        d->num_blocks = d->sparseIndexSize = 0; // Broken MSVC zero-init
-        d->min_len = *data++;
+        d->blockLengthsSize = d->sparseIndexSize = 0; // Broken MSVC zero-init
+        d->min_sym_len = *data++;
         return data;
     }
 
     d->sizeofBlock = 1ULL << *data++;
     d->span = 1ULL << *data++;
     d->sparseIndexSize = (tb_size + d->span - 1) / d->span; // Round up
-    d->num_blocks = number<uint8_t, LittleEndian>(data++);
+    d->blockLengthsSize = number<uint8_t, LittleEndian>(data++);
     d->real_num_blocks = number<uint32_t, LittleEndian>(data); data += sizeof(uint32_t);
-    d->num_blocks += d->real_num_blocks;
-    d->max_len = *data++;
-    d->min_len = *data++;
-    d->offset = (uint16_t*)data;
-    d->base.resize(d->max_len - d->min_len + 1);
+    d->blockLengthsSize += d->real_num_blocks;
+    d->max_sym_len = *data++;
+    d->min_sym_len = *data++;
+    d->lowestSym = (uint16_t*)data;
+    d->base.resize(d->max_sym_len - d->min_sym_len + 1);
 
     for (int i = d->base.size() - 2; i >= 0; --i)
-        d->base[i] = (d->base[i + 1] + number<uint16_t, LittleEndian>(d->offset + i)
-                                     - number<uint16_t, LittleEndian>(d->offset + i + 1)) / 2;
+        d->base[i] = (d->base[i + 1] + number<uint16_t, LittleEndian>(&d->lowestSym[i])
+                                     - number<uint16_t, LittleEndian>(&d->lowestSym[i + 1])) / 2;
 
     for (size_t i = 0; i < d->base.size(); ++i)
-        d->base[i] <<= (64 - d->min_len) - i;
+        d->base[i] <<= (64 - d->min_sym_len) - i; // Right-padding to 64 bits
 
-    d->offset -= d->min_len;
+    d->lowestSym -= d->min_sym_len;
 
-    data += d->base.size() * sizeof(*d->offset);
+    data += d->base.size() * sizeof(*d->lowestSym);
     d->symlen.resize(number<uint16_t, LittleEndian>(data)); data += sizeof(uint16_t);
     d->sympat = data;
 
@@ -1039,8 +1047,8 @@ void do_init(Entry& e, T& p, uint8_t* data)
 
     for (File f = FILE_A; f <= maxFile; ++f)
         for (int k = 0; k <= split; k++) {
-            (d = item(p, k, f).precomp)->blockLenghts = (uint16_t*)data;
-            data += d->num_blocks * sizeof(uint16_t);
+            (d = item(p, k, f).precomp)->blockLengths = (uint16_t*)data;
+            data += d->blockLengthsSize * sizeof(uint16_t);
         }
 
     for (File f = FILE_A; f <= maxFile; ++f)
