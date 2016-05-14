@@ -551,18 +551,18 @@ int decompress_pairs(PairsData* d, uint64_t idx)
     int buf64Size = 64;
     Sym sym;
 
-    for (;;) {
-        int len = d->min_sym_len;
+    while (true) {
+        int len = 0; // This is the symbol length - d->min_sym_len
 
         // Now get the symbol length. For any symbol s64 of length l right-padded
         // to 64 bits holds d->base64[l-1] >= s64 >= d->base64[l] so we can find
         // the symbol length iterating through base64[].
-        while (buf64 < d->base64[len - d->min_sym_len])
+        while (buf64 < d->base64[len])
             ++len;
 
         // Symbols of same length are mapped to consecutive numbers, so we can compute
         // the offset of our symbol of length len, stored at the beginning of buf64.
-        sym = (buf64 - d->base64[len - d->min_sym_len]) >> (64 - len);
+        sym = (buf64 - d->base64[len]) >> (64 - len - d->min_sym_len);
 
         // Now add the value of the lowest symbol of length len to get our symbol
         sym += number<Sym, LittleEndian>(&d->lowestSym[len]);
@@ -574,7 +574,8 @@ int decompress_pairs(PairsData* d, uint64_t idx)
 
         // ...otherwise update the offset and continue to iterate
         idxOffset -= d->symlen[sym] + 1;
-        buf64 <<= len;  // Consume the just processed symbol
+        len += d->min_sym_len; // Get the real length
+        buf64 <<= len;         // Consume the just processed symbol
         buf64Size -= len;
 
         if (buf64Size <= 32) { // Refill the buffer
@@ -988,8 +989,6 @@ uint8_t* set_sizes(PairsData* d, uint8_t* data, uint64_t tb_size)
     // and right-padded to 64 bits holds d->base64[i-1] >= s64 >= d->base64[i].
     for (size_t i = 0; i < d->base64.size(); ++i)
         d->base64[i] <<= 64 - i - d->min_sym_len; // Right-padding to 64 bits
-
-    d->lowestSym -= d->min_sym_len;
 
     data += d->base64.size() * sizeof(Sym);
     d->symlen.resize(number<uint16_t, LittleEndian>(data)); data += sizeof(uint16_t);
