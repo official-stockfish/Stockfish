@@ -44,10 +44,8 @@ namespace {
   // Connected pawn bonus by opposed, phalanx, twice supported and rank
   Score Connected[2][2][2][RANK_NB];
 
-  // Doubled pawn penalty by file
-  const Score Doubled[FILE_NB] = {
-    S(11, 34), S(17, 38), S(19, 38), S(19, 38),
-    S(19, 38), S(19, 38), S(17, 38), S(11, 34) };
+  // Doubled pawn penalty
+  const Score Doubled = S(18,38);
 
   // Lever bonus by rank
   const Score Lever[RANK_NB] = {
@@ -145,7 +143,7 @@ namespace {
             // either there is a stopper in the way on this rank, or there is a
             // stopper on adjacent file which controls the way to that rank.
             backward = (b | shift_bb<Up>(b & adjacent_files_bb(f))) & stoppers;
-            
+
             assert(!backward || !(pawn_attack_span(Them, s + Up) & neighbours));
         }
 
@@ -169,7 +167,7 @@ namespace {
             score += Connected[opposed][!!phalanx][more_than_one(supported)][relative_rank(Us, s)];
 
         if (doubled)
-            score -= Doubled[f] / distance<Rank>(s, frontmost_sq(Us, doubled));
+            score -= Doubled / distance<Rank>(s, frontmost_sq(Us, doubled));
 
         if (lever)
             score += Lever[relative_rank(Us, s)];
