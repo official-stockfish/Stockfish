@@ -507,7 +507,7 @@ void Thread::search() {
           std::stable_sort(rootMoves.begin(), rootMoves.begin() + PVIdx + 1);
 
           if (!mainThread)
-              break;
+              continue;
 
           if (Signals.stop)
               sync_cout << "info nodes " << Threads.nodes_searched()
