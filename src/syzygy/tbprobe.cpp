@@ -102,19 +102,19 @@ struct PairsData {
     int flags;
     size_t sizeofBlock;            // Block size in bytes
     size_t span;                   // About every span values there is a SparseIndex[] entry
-    int real_num_blocks;
+    int blocksNum;                 // Number of blocks in the TB file
     int maxSymLen;                 // Maximum length in bits of the Huffman symbols
     int minSymLen;                 // Minimum length in bits of the Huffman symbols
     Sym* lowestSym;                // Value of the lowest symbol of length l is lowestSym[l]
     LR* btree;                     // btree[sym] stores the left and right symbols that expand sym
     uint16_t* blockLength;         // Number of stored positions (minus one) for each block: 1..65536
-    int blockLengthSize;           // Size of blockLength[] table
+    int blockLengthSize;           // Size of blockLength[] table: padded so it's bigger than blocksNum
     SparseEntry* sparseIndex;      // Partial indices into blockLength[]
     size_t sparseIndexSize;        // Size of SparseIndex[] table
     uint8_t* data;                 // Start of Huffman compressed data
     std::vector<uint64_t> base64;  // Smallest symbol of length l padded to 64 bits is at base64[l - min_sym_len]
     std::vector<uint8_t> symlen;   // Number of values (-1) represented by a given Huffman symbol: 1..256
-    Piece pieces[TBPIECES];
+    Piece pieces[TBPIECES];        // Sequence of the pieces: order is critical to ensure the best compression
     uint64_t groupSize[TBPIECES];  // Size needed by a given subset of pieces: KRKN -> (KRK) + (N)
     uint8_t groupLen[TBPIECES];    // Number of pieces in a given group: KRKN -> (3) + (1)
 };
@@ -972,7 +972,7 @@ uint8_t* set_sizes(PairsData* d, uint8_t* data, uint64_t tb_size)
     d->flags = *data++;
 
     if (d->flags & TBFlag::SingleValue) {
-        d->real_num_blocks = d->span =
+        d->blocksNum = d->span =
         d->blockLengthSize = d->sparseIndexSize = 0; // Broken MSVC zero-init
         d->minSymLen = *data++; // Here we store the single value
         return data;
@@ -981,9 +981,10 @@ uint8_t* set_sizes(PairsData* d, uint8_t* data, uint64_t tb_size)
     d->sizeofBlock = 1ULL << *data++;
     d->span = 1ULL << *data++;
     d->sparseIndexSize = (tb_size + d->span - 1) / d->span; // Round up
-    d->blockLengthSize = number<uint8_t, LittleEndian>(data++);
-    d->real_num_blocks = number<uint32_t, LittleEndian>(data); data += sizeof(uint32_t);
-    d->blockLengthSize += d->real_num_blocks;
+    int padding = number<uint8_t, LittleEndian>(data++);
+    d->blocksNum = number<uint32_t, LittleEndian>(data); data += sizeof(uint32_t);
+    d->blockLengthSize = d->blocksNum + padding; // Padded to ensure SparseIndex[]
+                                                 // does not go out of range.
     d->maxSymLen = *data++;
     d->minSymLen = *data++;
     d->lowestSym = (Sym*)data;
@@ -1105,7 +1106,7 @@ void do_init(Entry& e, T& p, uint8_t* data)
         for (int k = 0; k <= split; k++) {
             data = (uint8_t*)(((uintptr_t)data + 0x3F) & ~0x3F); // 64 byte alignment
             (d = item(p, k, f).precomp)->data = data;
-            data += d->real_num_blocks * d->sizeofBlock;
+            data += d->blocksNum * d->sizeofBlock;
         }
 }
 
