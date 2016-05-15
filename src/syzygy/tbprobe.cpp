@@ -1584,26 +1584,27 @@ void Tablebases::init(const std::string& paths)
         MapToEdges[s] = 48 - f - 2 * rank_of(s);
     }
 
-    // Fill Binomial[] with the Binomial Coefficents using Pascal triangle
+    // Fill Binomial[] with the Binomial Coefficents using Pascal rule. There
+    // are Binomial[k][n] ways to choose k elements from a set of n elements.
     Binomial[0][0] = 1;
 
-    for (int n = 1; n < 64; n++)
-        for (int k = 0; k < 6 && k <= n; ++k)
-            Binomial[k][n] = (k > 0 ? Binomial[k-1][n-1] : 0)
-                           + (k < n ? Binomial[k][n-1] : 0);
+    for (int n = 1; n < 64; n++) // Squares
+        for (int k = 0; k < 6 && k <= n; ++k) // Pieces
+            Binomial[k][n] =  (k > 0 ? Binomial[k - 1][n - 1] : 0)
+                            + (k < n ? Binomial[k    ][n - 1] : 0);
 
-    for (int i = 0; i < 5; ++i) {
-        int k = 0;
+    for (int k = 0; k < 5; ++k) {
+        int n = 0;
 
-        for (int j = 1; j <= 4; ++j) {
+        for (int f = 1; f <= 4; ++f) {
             int s = 0;
 
-            for ( ; k < 6 * j; ++k) {
-                Pawnidx[i][k] = s;
-                s += Binomial[i][MapToEdges[8 * (k % 6) + k / 6 + 8]];
+            for ( ; n < 6 * f; ++n) {
+                Pawnidx[k][n] = s;
+                s += Binomial[k][47 - 2 * n];
             }
 
-            Pfactor[i][j - 1] = s;
+            Pfactor[k][f - 1] = s;
         }
     }
 
