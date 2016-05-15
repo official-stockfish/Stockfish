@@ -65,7 +65,7 @@ inline Square operator^(Square s, int i) { return Square(int(s) ^ i); }
 // Each table has a set of flags: all of them refer to DTZ tables, the last one to WDL tables
 enum TBFlag { STM = 1, Mapped = 2, WinPlies = 4, LossPlies = 8, SingleValue = 128 };
 
-// Little endian numbers of one index in blockLengths[] and the offset within the block
+// Little endian numbers of one index in blockLength[] and the offset within the block
 struct SparseEntry {
     char block[4];
     char offset[2];
@@ -73,7 +73,7 @@ struct SparseEntry {
 
 static_assert(sizeof(SparseEntry) == 6, "SparseEntry must be 6 bytes");
 
-typedef uint16_t Sym;
+typedef uint16_t Sym; // Huffman symbol
 
 struct LR {
 
@@ -103,20 +103,20 @@ struct PairsData {
     size_t sizeofBlock;            // Block size in bytes
     size_t span;                   // About every span values there is a SparseIndex[] entry
     int real_num_blocks;
-    int max_sym_len;               // Maximum length in bits of the Huffman symbols
-    int min_sym_len;               // Minimum length in bits of the Huffman symbols
+    int maxSymLen;                 // Maximum length in bits of the Huffman symbols
+    int minSymLen;                 // Minimum length in bits of the Huffman symbols
     Sym* lowestSym;                // Value of the lowest symbol of length l is lowestSym[l]
     LR* btree;                     // btree[sym] stores the left and right symbols that expand sym
-    uint16_t* blockLengths;        // Number of stored positions (minus one) for each block
-    int blockLengthsSize;          // Size of blockLengths[] table
-    SparseEntry* sparseIndex;      // Partial indices into blockLengths[]
+    uint16_t* blockLength;         // Number of stored positions (minus one) for each block: 1..65536
+    int blockLengthSize;           // Size of blockLength[] table
+    SparseEntry* sparseIndex;      // Partial indices into blockLength[]
     size_t sparseIndexSize;        // Size of SparseIndex[] table
     uint8_t* data;                 // Start of Huffman compressed data
     std::vector<uint64_t> base64;  // Smallest symbol of length l padded to 64 bits is at base64[l - min_sym_len]
     std::vector<uint8_t> symlen;   // Number of values (-1) represented by a given Huffman symbol: 1..256
     Piece pieces[TBPIECES];
-    uint64_t factor[TBPIECES];
-    uint8_t norm[TBPIECES];
+    uint64_t groupSize[TBPIECES];  // Size needed by a given subset of pieces: KRKN -> (KRK) + (N)
+    uint8_t groupLen[TBPIECES];    // Number of pieces in a given group: KRKN -> (3) + (1)
 };
 
 // Helper struct to avoid manually define WDLEntry copy c'tor as we should
@@ -511,18 +511,18 @@ int decompress_pairs(PairsData* d, uint64_t idx)
 {
     // Special case where all table positions store the same value
     if (d->flags & TBFlag::SingleValue)
-        return d->min_sym_len;
+        return d->minSymLen;
 
     // First we need to locate the right block that stores the value at index "idx".
-    // Because each block n stores blockLengths[n] + 1 values, the index i of the block
+    // Because each block n stores blockLength[n] + 1 values, the index i of the block
     // that contains the value at position idx is:
     //
     //                      for (i = 0; idx < sum; i++)
-    //                          sum += blockLengths[i] + 1;
+    //                          sum += blockLength[i] + 1;
     //
     // This can be slow, so we use SparseIndex[] populated with a set of SparseEntry that
-    // point to known indices into blockLengths[]. Namely SparseIndex[k] is a SparseEntry
-    // that stores the blockLengths[] index and the offset within that block of the value
+    // point to known indices into blockLength[]. Namely SparseIndex[k] is a SparseEntry
+    // that stores the blockLength[] index and the offset within that block of the value
     // with index N(k), where:
     //
     //       N(k) = k * d->span + d->span / 2      (1)
@@ -545,12 +545,12 @@ int decompress_pairs(PairsData* d, uint64_t idx)
     idxOffset += diff;
 
     // Move to previous/next block, until we reach the correct block that contains idx,
-    // that is when 0 <= idxOffset <= d->blockLengths[block]
+    // that is when 0 <= idxOffset <= d->blockLength[block]
     while (idxOffset < 0)
-        idxOffset += d->blockLengths[--block] + 1;
+        idxOffset += d->blockLength[--block] + 1;
 
-    while (idxOffset > d->blockLengths[block])
-        idxOffset -= d->blockLengths[block++] + 1;
+    while (idxOffset > d->blockLength[block])
+        idxOffset -= d->blockLength[block++] + 1;
 
     // Finally, we find the start address of our block of canonical Huffman coded symbols
     uint32_t* ptr = (uint32_t*)(d->data + block * d->sizeofBlock);
@@ -572,7 +572,7 @@ int decompress_pairs(PairsData* d, uint64_t idx)
 
         // Symbols of same length are mapped to consecutive numbers, so we can compute
         // the offset of our symbol of length len, stored at the beginning of buf64.
-        sym = (buf64 - d->base64[len]) >> (64 - len - d->min_sym_len);
+        sym = (buf64 - d->base64[len]) >> (64 - len - d->minSymLen);
 
         // Now add the value of the lowest symbol of length len to get our symbol
         sym += number<Sym, LittleEndian>(&d->lowestSym[len]);
@@ -584,8 +584,8 @@ int decompress_pairs(PairsData* d, uint64_t idx)
 
         // ...otherwise update the offset and continue to iterate
         idxOffset -= d->symlen[sym] + 1;
-        len += d->min_sym_len; // Get the real length
-        buf64 <<= len;         // Consume the just processed symbol
+        len += d->minSymLen; // Get the real length
+        buf64 <<= len;       // Consume the just processed symbol
         buf64Size -= len;
 
         if (buf64Size <= 32) { // Refill the buffer
@@ -860,14 +860,14 @@ uint64_t probe_table(const Position& pos,  Entry* entry, WDLScore wdl = WDLDraw,
     }
 
 encode_remaining:
-    idx *= precomp->factor[0];
+    idx *= precomp->groupSize[0];
 
     // Reorder remainig pawns then pieces according to square, in ascending order
     int remainingPawns = entry->hasPawns ? entry->pawn.pawnCount[1] : 0;
 
     while (next < size) {
 
-        int end = next + (remainingPawns ? remainingPawns : precomp->norm[next]);
+        int end = next + (remainingPawns ? remainingPawns : precomp->groupLen[next]);
 
         std::sort(squares + next, squares + end);
 
@@ -884,7 +884,7 @@ encode_remaining:
         }
 
         remainingPawns = 0;
-        idx += s * precomp->factor[next];
+        idx += s * precomp->groupSize[next];
         next = end;
     }
 
@@ -892,51 +892,59 @@ encode_remaining:
     return map_score(entry, tbFile, decompress_pairs(precomp, idx), wdl);
 }
 
+// Group together pieces that will be encoded together. For instance in
+// KRKN the encoder will default on '111', so the groups will be (3,1)
+// and for easy of parsing the resulting groupLen[] will be (3, 0, 0, 1).
+// In case of pawns, they will be encoded as first, starting with the
+// leading ones, then the remaining pieces. Then calculate the size, in
+// number of possible combinations, needed to store them in the TB file.
 template<typename T>
-uint64_t set_factors(T& e, PairsData* d, int num, int order[], File f)
+uint64_t set_groups(T& e, PairsData* d, int order[], File f)
 {
-    int i = d->norm[0];
+    for (int i = 0; i < e.pieceCount; ++i) // Broken MSVC zero-init
+        d->groupLen[i] = 0;
 
-    if (order[1] < 0xF)
-        i += d->norm[i];
+    // Set leading pawns or pieces
+    int len = d->groupLen[0] =         e.hasPawns ? e.pawn.pawnCount[0]
+                              : e.hasUniquePieces ? 3 : 2;
+    // Set remaining pawns, if any
+    if (e.hasPawns)
+        len += d->groupLen[len] = e.pawn.pawnCount[1];
 
-    int n = 64 - i;
+    // Set remaining pieces. If 2 pieces are equal, they are grouped together.
+    // They are ensured to be consecutive in pieces[].
+    for (int k = len ; k < e.pieceCount; k += d->groupLen[k])
+        for (int j = k; j < e.pieceCount && d->pieces[j] == d->pieces[k]; ++j)
+            ++d->groupLen[k];
+
+    // Now calculate the size needed for each group, according to the order
+    // given by order[]. In general the order is a per-table value and could
+    // not follow the canonical leading pawns -> remainig pawns -> pieces.
+    int freeSquares = 64 - len;
     uint64_t size = 1;
 
-    for (int k = 0; i < num || k == order[0] || k == order[1]; ++k)
-        if (k == order[0]) {
-            d->factor[0] = size;
+    for (int k = 0; len < e.pieceCount || k == order[0] || k == order[1]; ++k)
+        if (k == order[0]) // Leading pawns or pieces
+        {
+            d->groupSize[0] = size;
 
-            size *=         e.hasPawns ? Pfactor[d->norm[0] - 1][f]
+            size *=         e.hasPawns ? Pfactor[d->groupLen[0] - 1][f]
                    : e.hasUniquePieces ? 31332 : 462;
-
-        } else if (k == order[1]) {
-            d->factor[d->norm[0]] = size;
-            size *= Binomial[d->norm[d->norm[0]]][48 - d->norm[0]];
-        } else {
-            d->factor[i] = size;
-            size *= Binomial[d->norm[i]][n];
-            n -= d->norm[i];
-            i += d->norm[i];
+        }
+        else if (k == order[1]) // Remaining pawns
+        {
+            d->groupSize[d->groupLen[0]] = size;
+            size *= Binomial[d->groupLen[d->groupLen[0]]][48 - d->groupLen[0]];
+        }
+        else // Remainig pieces
+        {
+            d->groupSize[len] = size;
+            size *= Binomial[d->groupLen[len]][freeSquares];
+            freeSquares -= d->groupLen[len];
+            len += d->groupLen[len];
         }
 
     return size;
-}
-
-template<typename T>
-void set_norms(T* p, int num, const uint8_t pawns[])
-{
-    for (int i = 0; i < num; ++i) // Broken MSVC zero-init
-        p->norm[i] = 0;
-
-    p->norm[0] = pawns[0];
-
-    if (pawns[1])
-        p->norm[pawns[0]] = pawns[1];
-
-    for (int i = pawns[0] + pawns[1]; i < num; i += p->norm[i])
-        for (int j = i; j < num && p->pieces[j] == p->pieces[i]; ++j)
-            ++p->norm[i];
 }
 
 uint8_t set_symlen(PairsData* d, Sym s, std::vector<bool>& visited)
@@ -965,21 +973,21 @@ uint8_t* set_sizes(PairsData* d, uint8_t* data, uint64_t tb_size)
 
     if (d->flags & TBFlag::SingleValue) {
         d->real_num_blocks = d->span =
-        d->blockLengthsSize = d->sparseIndexSize = 0; // Broken MSVC zero-init
-        d->min_sym_len = *data++; // Here we store the single value
+        d->blockLengthSize = d->sparseIndexSize = 0; // Broken MSVC zero-init
+        d->minSymLen = *data++; // Here we store the single value
         return data;
     }
 
     d->sizeofBlock = 1ULL << *data++;
     d->span = 1ULL << *data++;
     d->sparseIndexSize = (tb_size + d->span - 1) / d->span; // Round up
-    d->blockLengthsSize = number<uint8_t, LittleEndian>(data++);
+    d->blockLengthSize = number<uint8_t, LittleEndian>(data++);
     d->real_num_blocks = number<uint32_t, LittleEndian>(data); data += sizeof(uint32_t);
-    d->blockLengthsSize += d->real_num_blocks;
-    d->max_sym_len = *data++;
-    d->min_sym_len = *data++;
+    d->blockLengthSize += d->real_num_blocks;
+    d->maxSymLen = *data++;
+    d->minSymLen = *data++;
     d->lowestSym = (Sym*)data;
-    d->base64.resize(d->max_sym_len - d->min_sym_len + 1);
+    d->base64.resize(d->maxSymLen - d->minSymLen + 1);
 
     // The canonical code is ordered such that longer symbols (in terms of
     // the number of bits of their Huffman code) have lower numeric value,
@@ -998,7 +1006,7 @@ uint8_t* set_sizes(PairsData* d, uint8_t* data, uint64_t tb_size)
     // d->base64[i] >= d->base64[i+1]. Moreover for any symbol s64 of length i
     // and right-padded to 64 bits holds d->base64[i-1] >= s64 >= d->base64[i].
     for (size_t i = 0; i < d->base64.size(); ++i)
-        d->base64[i] <<= 64 - i - d->min_sym_len; // Right-padding to 64 bits
+        d->base64[i] <<= 64 - i - d->minSymLen; // Right-padding to 64 bits
 
     data += d->base64.size() * sizeof(Sym);
     d->symlen.resize(number<uint16_t, LittleEndian>(data)); data += sizeof(uint16_t);
@@ -1068,13 +1076,8 @@ void do_init(Entry& e, T& p, uint8_t* data)
             for (int k = 0; k < K; k++)
                 item(p, k, f).precomp->pieces[i] = Piece(k ? *data >>  4 : *data & 0xF);
 
-        uint8_t pn[] = { uint8_t(e.hasUniquePieces ? 3 : 2), 0 };
-
-        for (int i = 0; i < K; ++i) {
-            d = item(p, i, f).precomp;
-            set_norms(d, e.pieceCount, e.hasPawns ? e.pawn.pawnCount : pn);
-            tb_size[K * f + i] = set_factors(e, d, e.pieceCount, order[i], f);
-        }
+        for (int i = 0; i < K; ++i)
+            tb_size[K * f + i] = set_groups(e, item(p, i, f).precomp, order[i], f);
     }
 
     data += (uintptr_t)data & 1; // Word alignment
@@ -1094,8 +1097,8 @@ void do_init(Entry& e, T& p, uint8_t* data)
 
     for (File f = FILE_A; f <= maxFile; ++f)
         for (int k = 0; k <= split; k++) {
-            (d = item(p, k, f).precomp)->blockLengths = (uint16_t*)data;
-            data += d->blockLengthsSize * sizeof(uint16_t);
+            (d = item(p, k, f).precomp)->blockLength = (uint16_t*)data;
+            data += d->blockLengthSize * sizeof(uint16_t);
         }
 
     for (File f = FILE_A; f <= maxFile; ++f)
