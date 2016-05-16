@@ -218,9 +218,9 @@ std::string TBPaths;
 std::deque<WDLEntry> WDLTable;
 std::list<DTZEntry> DTZTable;
 
-int Binomial[6][64];
-int Pawnidx[5][24];
-int Pfactor[5][4];
+int Binomial[6][64];          // [k][n] k elements from a set of n elements
+int LeadPawnIdx[4][24];       // [leadPawnsCnt - 1][MapToEdges[Sq]]
+int LeadPawnsGroupSize[4][4]; // [leadPawnsCnt - 1][FILE_A..FILE_D]
 
 enum { BigEndian, LittleEndian };
 
@@ -767,7 +767,7 @@ uint64_t probe_table(const Position& pos,  Entry* entry, WDLScore wdl = WDLDraw,
     // Encode leading pawns. Note that any previous horizontal flip preserves
     // the order because MapToEdges[] is (almost) flip invariant.
     if (entry->hasPawns) {
-        idx = Pawnidx[leadPawnsCnt - 1][23 - MapToEdges[squares[0]] / 2];
+        idx = LeadPawnIdx[leadPawnsCnt - 1][23 - MapToEdges[squares[0]] / 2];
 
         for (int i = 1; i < leadPawnsCnt; ++i)
             idx += Binomial[i][MapToEdges[squares[leadPawnsCnt- i]]];
@@ -928,7 +928,7 @@ uint64_t set_groups(T& e, PairsData* d, int order[], File f)
         {
             d->groupSize[0] = size;
 
-            size *=         e.hasPawns ? Pfactor[d->groupLen[0] - 1][f]
+            size *=         e.hasPawns ? LeadPawnsGroupSize[d->groupLen[0] - 1][f]
                    : e.hasUniquePieces ? 31332 : 462;
         }
         else if (k == order[1]) // Remaining pawns
@@ -1594,18 +1594,32 @@ void Tablebases::init(const std::string& paths)
             Binomial[k][n] =  (k > 0 ? Binomial[k - 1][n - 1] : 0)
                             + (k < n ? Binomial[k    ][n - 1] : 0);
 
-    for (int k = 0; k < 5; ++k) {
-        int n = 0;
+    // Init tables for the encoding of leading pawns group: with 6-men TB we
+    // can have up to 4 leading pawns (KPPPPK).
+    for (int leadPawnsCnt = 1; leadPawnsCnt <= 4; ++leadPawnsCnt)
+    {
+        int mappedLeadSq = 0; // From a2 to d7 (a2a7...d2d7) mapped to 0..23
 
-        for (int f = 1; f <= 4; ++f) {
-            int s = 0;
+        for (File f = FILE_A; f <= FILE_D; ++f)
+        {
+            // Restart the index at every file because TB table is splitted
+            // by file, so we can reuse the same index for different files.
+            int idx = 0;
 
-            for ( ; n < 6 * f; ++n) {
-                Pawnidx[k][n] = s;
-                s += Binomial[k][47 - 2 * n];
+            // Sum all possible combinations for a given file, starting with
+            // the leading pawn on rank 2 and increasing the rank.
+            for (Rank r = RANK_2; r <= RANK_7; ++r, ++mappedLeadSq)
+            {
+                LeadPawnIdx[leadPawnsCnt - 1][mappedLeadSq] = idx;
+
+                // Given the leadSq any other pawn cannot be below or more
+                // toward the edge of leadSq. Start with 47 available squares
+                // when lead pawn is in a2 and after an increase the number is
+                // reduced by two due to mirroring, e.g. a3 -> no a2, h2
+                idx += Binomial[leadPawnsCnt - 1][47 - 2 * mappedLeadSq];
             }
-
-            Pfactor[k][f - 1] = s;
+            // After a file is traversed, store the cumulated per-file index
+            LeadPawnsGroupSize[leadPawnsCnt - 1][f] = idx;
         }
     }
 
