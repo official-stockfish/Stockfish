@@ -218,9 +218,9 @@ std::string TBPaths;
 std::deque<WDLEntry> WDLTable;
 std::list<DTZEntry> DTZTable;
 
-int Binomial[6][64];          // [k][n] k elements from a set of n elements
-int LeadPawnIdx[4][24];       // [leadPawnsCnt - 1][MapToEdges[Sq]]
-int LeadPawnsGroupSize[4][4]; // [leadPawnsCnt - 1][FILE_A..FILE_D]
+int Binomial[6][SQUARE_NB];    // [k][n] k elements from a set of n elements
+int LeadPawnIdx[4][SQUARE_NB]; // [leadPawnsCnt - 1][SQUARE_NB]
+int LeadPawnsGroupSize[4][4];  // [leadPawnsCnt - 1][FILE_A..FILE_D]
 
 enum { BigEndian, LittleEndian };
 
@@ -767,7 +767,7 @@ uint64_t probe_table(const Position& pos,  Entry* entry, WDLScore wdl = WDLDraw,
     // Encode leading pawns. Note that any previous horizontal flip preserves
     // the order because MapToEdges[] is (almost) flip invariant.
     if (entry->hasPawns) {
-        idx = LeadPawnIdx[leadPawnsCnt - 1][23 - MapToEdges[squares[0]] / 2];
+        idx = LeadPawnIdx[leadPawnsCnt - 1][squares[0]];
 
         for (int i = 1; i < leadPawnsCnt; ++i)
             idx += Binomial[i][MapToEdges[squares[leadPawnsCnt- i]]];
@@ -1574,17 +1574,6 @@ void Tablebases::init(const std::string& paths)
     for (auto p : bothOnDiagonal)
         MapKK[p.first][p.second] = code++;
 
-    // Compute MapToEdges[] that encodes squares a2-h7 to 0..47 and is used
-    // to find the file of the leading pawn. The pawn with highest MapToEdges[]
-    // is the leading pawn: this is the pawn nearest the edge and, among pawns
-    // with same file, the one with lowest rank.
-    for (Square s = SQ_A2; s <= SQ_H7; ++s) {
-        int f = file_of(s) > FILE_D ? 12 * file_of(Square(s ^ 7)) // Flip
-                                    : 12 * file_of(s) - 1;
-
-        MapToEdges[s] = 48 - f - 2 * rank_of(s);
-    }
-
     // Fill Binomial[] with the Binomial Coefficents using Pascal rule. There
     // are Binomial[k][n] ways to choose k elements from a set of n elements.
     Binomial[0][0] = 1;
@@ -1594,12 +1583,15 @@ void Tablebases::init(const std::string& paths)
             Binomial[k][n] =  (k > 0 ? Binomial[k - 1][n - 1] : 0)
                             + (k < n ? Binomial[k    ][n - 1] : 0);
 
-    // Init tables for the encoding of leading pawns group: with 6-men TB we
+    // MapToEdges[s] encodes squares a2-h7 to 0..47. It is the number of possible
+    // available squares when the leading one is in 's'. Moreover the pawn with
+    // highest MapToEdges[] is the leading pawn, the one nearest the edge and,
+    // among pawns with same file, the one with lowest rank.
+    int availableSquares = 47; // Available squares when lead pawn is in a2
+
+    // Init the tables for the encoding of leading pawns group: with 6-men TB we
     // can have up to 4 leading pawns (KPPPPK).
     for (int leadPawnsCnt = 1; leadPawnsCnt <= 4; ++leadPawnsCnt)
-    {
-        int mappedLeadSq = 0; // From a2 to d7 (a2a7...d2d7) mapped to 0..23
-
         for (File f = FILE_A; f <= FILE_D; ++f)
         {
             // Restart the index at every file because TB table is splitted
@@ -1608,20 +1600,26 @@ void Tablebases::init(const std::string& paths)
 
             // Sum all possible combinations for a given file, starting with
             // the leading pawn on rank 2 and increasing the rank.
-            for (Rank r = RANK_2; r <= RANK_7; ++r, ++mappedLeadSq)
+            for (Rank r = RANK_2; r <= RANK_7; ++r)
             {
-                LeadPawnIdx[leadPawnsCnt - 1][mappedLeadSq] = idx;
+                Square sq = make_square(f, r);
 
-                // Given the leadSq any other pawn cannot be below or more
-                // toward the edge of leadSq. Start with 47 available squares
-                // when lead pawn is in a2 and after an increase the number is
-                // reduced by two due to mirroring, e.g. a3 -> no a2, h2
-                idx += Binomial[leadPawnsCnt - 1][47 - 2 * mappedLeadSq];
+                // Compute MapToEdges[] at first pass.
+                // If sq is the leading pawn square, any other pawn cannot be
+                // below or more toward the edge of sq. There are 47 available
+                // squares when sq = a2 and reduced by 2 for any rank increase
+                // due to mirroring: sq == a3 -> no a2, h2, so MapToEdges[a3] = 45
+                if (leadPawnsCnt == 1)
+                {
+                    MapToEdges[sq] = availableSquares--;
+                    MapToEdges[sq ^ 7] = availableSquares--; // Horizontal flip
+                }
+                LeadPawnIdx[leadPawnsCnt - 1][sq] = idx;
+                idx += Binomial[leadPawnsCnt - 1][MapToEdges[sq]];
             }
             // After a file is traversed, store the cumulated per-file index
             LeadPawnsGroupSize[leadPawnsCnt - 1][f] = idx;
         }
-    }
 
     for (PieceType p1 = PAWN; p1 < KING; ++p1) {
         WDLHash.insert({KING, p1, KING});
