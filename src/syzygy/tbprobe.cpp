@@ -517,8 +517,8 @@ int decompress_pairs(PairsData* d, uint64_t idx)
     // Because each block n stores blockLength[n] + 1 values, the index i of the block
     // that contains the value at position idx is:
     //
-    //                      for (i = 0; idx < sum; i++)
-    //                          sum += blockLength[i] + 1;
+    //                    for (i = -1, sum = 0; sum <= idx; i++)
+    //                        sum += blockLength[i + 1] + 1;
     //
     // This can be slow, so we use SparseIndex[] populated with a set of SparseEntry that
     // point to known indices into blockLength[]. Namely SparseIndex[k] is a SparseEntry
@@ -665,6 +665,12 @@ int map_score(DTZEntry* entry, File f, int value, WDLScore wdl) {
     return value;
 }
 
+// Compute a unique index out of a position and use it to probe the TB file. To
+// encode k pieces of same type and color, first sort the pieces by square in
+// ascending order s1 <= s2 <= ... <= sk then compute the unique index as:
+//
+//      idx = Binomial[1][s1] + Binomial[2][s2] + ... + Binomial[k][sk]
+//
 template<typename Entry>
 uint64_t probe_table(const Position& pos,  Entry* entry, WDLScore wdl = WDLDraw, int* success = nullptr)
 {
@@ -770,7 +776,7 @@ uint64_t probe_table(const Position& pos,  Entry* entry, WDLScore wdl = WDLDraw,
         idx = LeadPawnIdx[leadPawnsCnt - 1][squares[0]];
 
         for (int i = 1; i < leadPawnsCnt; ++i)
-            idx += Binomial[i][MapToEdges[squares[leadPawnsCnt- i]]];
+            idx += Binomial[i][MapToEdges[squares[leadPawnsCnt - i]]];
 
         next = leadPawnsCnt;
         goto encode_remaining; // With pawns we have finished special treatments
