@@ -193,10 +193,13 @@ auto item(DTZPawn&  e, int    , int f) -> decltype(e.file[f])& { return e.file[f
 
 int off_A1H8(Square sq) { return int(rank_of(sq)) - file_of(sq); }
 
-int MapToEdges[SQUARE_NB];
+int MapPawns[SQUARE_NB];
 int MapB1H1H7[SQUARE_NB];
 int MapA1D1D4[SQUARE_NB];
 int MapKK[10][SQUARE_NB]; // [MapA1D1D4][SQUARE_NB]
+
+// Comparison function to sort leading pawns in ascending MapPawns[] order
+auto pawns_comp = [] (Square i, Square j) { return MapPawns[i] < MapPawns[j]; };
 
 const uint8_t WDL_MAGIC[] = { 0x71, 0xE8, 0x23, 0x5D };
 const uint8_t DTZ_MAGIC[] = { 0xD7, 0x66, 0x0C, 0xA5 };
@@ -707,10 +710,7 @@ uint64_t probe_table(const Position& pos,  Entry* entry, WDLScore wdl = WDLDraw,
 
     // For pawns, TB files store separate tables according if leading pawn is on
     // file a, b, c or d after reordering. To determine which of the 4 tables
-    // must be probed we need to extract the position's leading pawns then order
-    // them according to MapToEdges table, in descending order and finally
-    // pick the file of the pawn with maximum MapToEdges[]. The new pawn order
-    // should be preserved because needed for next steps.
+    // must be probed we pick the file of the pawn with maximum MapPawns[].
     if (entry->hasPawns) {
         Piece pc = Piece(item(entry->pawn, 0, 0).precomp->pieces[0] ^ flipColor);
 
@@ -722,8 +722,7 @@ uint64_t probe_table(const Position& pos,  Entry* entry, WDLScore wdl = WDLDraw,
 
         leadPawnsCnt = size;
 
-        auto comp = [] (Square i, Square j) { return MapToEdges[i] > MapToEdges[j]; };
-        std::sort(squares, squares + size, comp);
+        std::swap(squares[0], *std::max_element(squares, squares + leadPawnsCnt, pawns_comp));
 
         tbFile = file_of(squares[0]);
         if (tbFile > FILE_D)
@@ -752,8 +751,7 @@ uint64_t probe_table(const Position& pos,  Entry* entry, WDLScore wdl = WDLDraw,
     }
 
     // Then we reorder the pieces to have the same sequence as the one stored
-    // in precomp->pieces[i], this is important for the next step. The sequence
-    // stored is the one that ensures the best compression.
+    // in precomp->pieces[i]. The sequence ensures the best compression.
     for (int i = leadPawnsCnt; i < size; ++i)
         for (int j = i; j < size; ++j)
             if (precomp->pieces[i] == pieces[j])
@@ -770,13 +768,15 @@ uint64_t probe_table(const Position& pos,  Entry* entry, WDLScore wdl = WDLDraw,
         for (int i = 0; i < size; ++i)
             squares[i] ^= 7; // Horizontal flip: SQ_H1 -> SQ_A1
 
-    // Encode leading pawns. Note that any previous horizontal flip preserves
-    // the order because MapToEdges[] is (almost) flip invariant.
+    // Encode leading pawns starting with the one with minimum MapPawns[] and
+    // proceeding in ascending order.
     if (entry->hasPawns) {
         idx = LeadPawnIdx[leadPawnsCnt - 1][squares[0]];
 
+        std::sort(squares + 1, squares + leadPawnsCnt, pawns_comp);
+
         for (int i = 1; i < leadPawnsCnt; ++i)
-            idx += Binomial[i][MapToEdges[squares[leadPawnsCnt - i]]];
+            idx += Binomial[i][MapPawns[squares[i]]];
 
         next = leadPawnsCnt;
         goto encode_remaining; // With pawns we have finished special treatments
@@ -1535,13 +1535,13 @@ void Tablebases::init(const std::string& paths)
     if (TBPaths.empty() || TBPaths == "<empty>")
         return;
 
-    // Compute MapB1H1H7[] that encodes a square below a1-h8 diagonal to 0..27
+    // Init MapB1H1H7[] that encodes a square below a1-h8 diagonal to 0..27
     int code = 0;
     for (Square s = SQ_A1; s <= SQ_H8; ++s)
         if (off_A1H8(s) < 0)
             MapB1H1H7[s] = code++;
 
-    // Compute MapA1D1D4[] that encodes a square on the a1-d1-d4 triangle to 0..9
+    // Init MapA1D1D4[] that encodes a square in the a1-d1-d4 triangle to 0..9
     std::vector<Square> diagonal;
     code = 0;
     for (Square s = SQ_A1; s <= SQ_D4; ++s)
@@ -1555,9 +1555,9 @@ void Tablebases::init(const std::string& paths)
     for (auto s : diagonal)
         MapA1D1D4[s] = code++;
 
-    // Compute MapKK[] that encodes all the 461 possible legal positions of a
-    // couple of kings where the first is on a1-d1-d4 triangle. If first king is
-    // on the a1-d4 diagonal, the other is assumed not to be above the a1-h8 diagonal.
+    // Init MapKK[] that encodes all the 461 possible legal positions of two
+    // kings where the first is in the a1-d1-d4 triangle. If the first king is
+    // on the a1-d4 diagonal, the other shall not to be above the a1-h8 diagonal.
     std::vector<std::pair<int, Square>> bothOnDiagonal;
     code = 0;
     for (int idx = 0; idx < 10; idx++)
@@ -1568,7 +1568,7 @@ void Tablebases::init(const std::string& paths)
                         MapKK[idx][s2] = -1;
 
                     else if (!off_A1H8(s1) && off_A1H8(s2) > 0)
-                        MapKK[idx][s2] = -1; // First king on diagonal, second above
+                        MapKK[idx][s2] = -1; // First on diagonal, second above
 
                     else if (!off_A1H8(s1) && !off_A1H8(s2))
                         bothOnDiagonal.push_back(std::make_pair(idx, s2));
@@ -1580,7 +1580,7 @@ void Tablebases::init(const std::string& paths)
     for (auto p : bothOnDiagonal)
         MapKK[p.first][p.second] = code++;
 
-    // Fill Binomial[] with the Binomial Coefficents using Pascal rule. There
+    // Init Binomial[] with the Binomial Coefficents using Pascal rule. There
     // are Binomial[k][n] ways to choose k elements from a set of n elements.
     Binomial[0][0] = 1;
 
@@ -1589,9 +1589,9 @@ void Tablebases::init(const std::string& paths)
             Binomial[k][n] =  (k > 0 ? Binomial[k - 1][n - 1] : 0)
                             + (k < n ? Binomial[k    ][n - 1] : 0);
 
-    // MapToEdges[s] encodes squares a2-h7 to 0..47. It is the number of possible
+    // MapPawns[s] encodes squares a2-h7 to 0..47. It is the number of possible
     // available squares when the leading one is in 's'. Moreover the pawn with
-    // highest MapToEdges[] is the leading pawn, the one nearest the edge and,
+    // highest MapPawns[] is the leading pawn, the one nearest the edge and,
     // among pawns with same file, the one with lowest rank.
     int availableSquares = 47; // Available squares when lead pawn is in a2
 
@@ -1610,18 +1610,18 @@ void Tablebases::init(const std::string& paths)
             {
                 Square sq = make_square(f, r);
 
-                // Compute MapToEdges[] at first pass.
+                // Compute MapPawns[] at first pass.
                 // If sq is the leading pawn square, any other pawn cannot be
                 // below or more toward the edge of sq. There are 47 available
                 // squares when sq = a2 and reduced by 2 for any rank increase
-                // due to mirroring: sq == a3 -> no a2, h2, so MapToEdges[a3] = 45
+                // due to mirroring: sq == a3 -> no a2, h2, so MapPawns[a3] = 45
                 if (leadPawnsCnt == 1)
                 {
-                    MapToEdges[sq] = availableSquares--;
-                    MapToEdges[sq ^ 7] = availableSquares--; // Horizontal flip
+                    MapPawns[sq] = availableSquares--;
+                    MapPawns[sq ^ 7] = availableSquares--; // Horizontal flip
                 }
                 LeadPawnIdx[leadPawnsCnt - 1][sq] = idx;
-                idx += Binomial[leadPawnsCnt - 1][MapToEdges[sq]];
+                idx += Binomial[leadPawnsCnt - 1][MapPawns[sq]];
             }
             // After a file is traversed, store the cumulated per-file index
             LeadPawnsGroupSize[leadPawnsCnt - 1][f] = idx;
