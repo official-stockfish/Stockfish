@@ -48,8 +48,6 @@
 #include <windows.h>
 #endif
 
-#define TBPIECES 6
-
 using namespace Tablebases;
 
 size_t Tablebases::MaxCardinality;
@@ -76,27 +74,22 @@ static_assert(sizeof(SparseEntry) == 6, "SparseEntry must be 6 bytes");
 typedef uint16_t Sym; // Huffman symbol
 
 struct LR {
-
     enum Side { Left, Right, Value };
 
-    uint8_t lr[3]; // The first 12 bits is the left-hand symbol,
-                   // the second 12 bits is the right-hand symbol.
-                   // If symbol has length 1, then the first byte
-                   // is the stored value.
+    uint8_t lr[3]; // The first 12 bits is the left-hand symbol, the second 12
+                   // bits is the right-hand symbol. If symbol has length 1,
+                   // then the first byte is the stored value.
     template<Side S>
     Sym get() {
-        if (S == Left)
-            return ((lr[1] & 0xF) << 8) | lr[0];
-        if (S == Right)
-            return (lr[2] << 4) | (lr[1] >> 4);
-        if (S == Value)
-            return lr[0];
-
-        assert(0);
+        return S == Left  ? ((lr[1] & 0xF) << 8) | lr[0] :
+               S == Right ?  (lr[2] << 4) | (lr[1] >> 4) :
+               S == Value ?   lr[0] : (assert(false), Sym(-1));
     }
 };
 
 static_assert(sizeof(LR) == 3, "LR tree entry must be 3 bytes");
+
+const int TBPIECES = 6;
 
 struct PairsData {
     int flags;
@@ -105,7 +98,7 @@ struct PairsData {
     int blocksNum;                 // Number of blocks in the TB file
     int maxSymLen;                 // Maximum length in bits of the Huffman symbols
     int minSymLen;                 // Minimum length in bits of the Huffman symbols
-    Sym* lowestSym;                // Value of the lowest symbol of length l is lowestSym[l]
+    Sym* lowestSym;                // lowestSym[l] is the value of the lowest symbol of length l
     LR* btree;                     // btree[sym] stores the left and right symbols that expand sym
     uint16_t* blockLength;         // Number of stored positions (minus one) for each block: 1..65536
     int blockLengthSize;           // Size of blockLength[] table: padded so it's bigger than blocksNum
@@ -119,7 +112,7 @@ struct PairsData {
     uint8_t groupLen[TBPIECES];    // Number of pieces in a given group: KRKN -> (3) + (1)
 };
 
-// Helper struct to avoid manually define WDLEntry copy c'tor as we should
+// Helper struct to avoid to manually define WDLEntry copy c'tor as we should
 // because default one is not compatible with std::atomic_bool.
 struct Atomic {
     Atomic() = default;
@@ -166,7 +159,7 @@ struct DTZEntry {
     union {
         struct {
             PairsData* precomp;
-            uint16_t map_idx[4];
+            uint16_t map_idx[4]; // WDLWin, WDLLoss, WDLCursedWin, WDLCursedLoss
             uint8_t* map;
         } piece;
 
@@ -227,17 +220,17 @@ int LeadPawnsGroupSize[4][4];  // [leadPawnsCnt - 1][FILE_A..FILE_D]
 
 enum { BigEndian, LittleEndian };
 
-template<typename T, int Half = sizeof(T)/2, int End = sizeof(T) - 1>
+template<typename T, int Half = sizeof(T) / 2, int End = sizeof(T) - 1>
 inline void swap_byte(T& x)
 {
-    char tmp, *c = (char*)(&x);
+    char tmp, *c = (char*)&x;
     if (Half) // Fix a MSVC 2015 warning
         for (int i = 0; i < Half; ++i)
             tmp = c[i], c[i] = c[End - i], c[End - i] = tmp;
 }
 
-template<typename T, int LE> T number(void* addr) {
-
+template<typename T, int LE> T number(void* addr)
+{
     const union { uint32_t i; char c[4]; } Le = { 0x01020304 };
     const bool IsLittleEndian = (Le.c[0] == 4);
 
@@ -393,7 +386,7 @@ WDLEntry::WDLEntry(const Position& pos, Key keys[])
 
     key = keys[WHITE];
     key2 = keys[BLACK];
-    pieceCount = pos.count<ALL_PIECES>(WHITE) + pos.count<ALL_PIECES>(BLACK);
+    pieceCount = popcount(pos.pieces());
     hasPawns = pos.pieces(PAWN);
 
     for (Color c = WHITE; c <= BLACK; ++c)
@@ -403,7 +396,7 @@ WDLEntry::WDLEntry(const Position& pos, Key keys[])
 
     if (hasPawns) {
         // Set the leading color. In case both sides have pawns the leading color
-        // is the side with less pawns because this leads to a better compression.
+        // is the side with less pawns because this leads to better compression.
         bool c =   !pos.count<PAWN>(BLACK)
                 || (   pos.count<PAWN>(WHITE)
                     && pos.count<PAWN>(BLACK) >= pos.count<PAWN>(WHITE));
@@ -623,8 +616,8 @@ template<typename Entry>
 bool check_dtz_stm(Entry*, File, int) { return true; }
 
 template<>
-bool check_dtz_stm(DTZEntry* entry, File f, int stm) {
-
+bool check_dtz_stm(DTZEntry* entry, File f, int stm)
+{
     int flags = entry->hasPawns ? entry->pawn.file[f].precomp->flags
                                 : entry->piece.precomp->flags;
 
@@ -633,16 +626,15 @@ bool check_dtz_stm(DTZEntry* entry, File f, int stm) {
 }
 
 // DTZ scores are sorted by frequency of occurrence and then assigned the
-// values 0, 1, 2, 3, ... in order of decreasing frequency. This is done
-// in each of the four ranges. The mapping information necessary to
-// reconstruct the original values is stored in the TB file and used to
-// initialise the map[] array during initialisation of the TB.
+// values 0, 1, 2, ... in order of decreasing frequency. This is done for each
+// of the four WDLScore values. The mapping information necessary to reconstruct
+// the original values is stored in the TB file and read during map[] init.
 template<typename Entry>
 int map_score(Entry*, File, int value, WDLScore) { return value - 2; }
 
 template<>
-int map_score(DTZEntry* entry, File f, int value, WDLScore wdl) {
-
+int map_score(DTZEntry* entry, File f, int value, WDLScore wdl)
+{
     const int WDLMap[]  = { 1, 3, 0, 2, 0 };
 
     int flags = entry->hasPawns ? entry->pawn.file[f].precomp->flags
@@ -960,17 +952,16 @@ uint8_t set_symlen(PairsData* d, Sym s, std::vector<bool>& visited)
 
     if (sr == 0xFFF)
         return 0;
-    else {
-        Sym sl = d->btree[s].get<LR::Left>();
 
-        if (!visited[sl])
-            d->symlen[sl] = set_symlen(d, sl, visited);
+    Sym sl = d->btree[s].get<LR::Left>();
 
-        if (!visited[sr])
-            d->symlen[sr] = set_symlen(d, sr, visited);
+    if (!visited[sl])
+        d->symlen[sl] = set_symlen(d, sl, visited);
 
-        return d->symlen[sl] + d->symlen[sr] + 1;
-    }
+    if (!visited[sr])
+        d->symlen[sr] = set_symlen(d, sr, visited);
+
+    return d->symlen[sl] + d->symlen[sr] + 1;
 }
 
 uint8_t* set_sizes(PairsData* d, uint8_t* data, uint64_t tb_size)
@@ -990,7 +981,7 @@ uint8_t* set_sizes(PairsData* d, uint8_t* data, uint64_t tb_size)
     int padding = number<uint8_t, LittleEndian>(data++);
     d->blocksNum = number<uint32_t, LittleEndian>(data); data += sizeof(uint32_t);
     d->blockLengthSize = d->blocksNum + padding; // Padded to ensure SparseIndex[]
-                                                 // does not go out of range.
+                                                 // does not point out of range.
     d->maxSymLen = *data++;
     d->minSymLen = *data++;
     d->lowestSym = (Sym*)data;
@@ -1028,12 +1019,12 @@ uint8_t* set_sizes(PairsData* d, uint8_t* data, uint64_t tb_size)
     return data + d->symlen.size() * sizeof(LR) + (d->symlen.size() & 1);
 }
 
-template<typename Entry, typename T>
-uint8_t* set_dtz_map(Entry&, T&, uint8_t*, File) { return nullptr; }
+template<typename T>
+uint8_t* set_dtz_map(WDLEntry&, T&, uint8_t*, File) { return nullptr; }
 
 template<typename T>
-uint8_t* set_dtz_map(DTZEntry&, T& p, uint8_t* data, File maxFile) {
-
+uint8_t* set_dtz_map(DTZEntry&, T& p, uint8_t* data, File maxFile)
+{
     p.map = data;
 
     for (File f = FILE_A; f <= maxFile; ++f) {
@@ -1044,7 +1035,7 @@ uint8_t* set_dtz_map(DTZEntry&, T& p, uint8_t* data, File maxFile) {
             }
     }
 
-    return data += (uintptr_t)data & 1;
+    return data += (uintptr_t)data & 1; // Word alignment
 }
 
 template<typename Entry, typename T>
@@ -1562,13 +1553,13 @@ void Tablebases::init(const std::string& paths)
     code = 0;
     for (int idx = 0; idx < 10; idx++)
         for (Square s1 = SQ_A1; s1 <= SQ_D4; ++s1)
-            if (idx == MapA1D1D4[s1] && (idx || s1 == SQ_B1)) // SQ_B1 is mapped to 0
+            if (MapA1D1D4[s1] == idx && (idx || s1 == SQ_B1)) // SQ_B1 is mapped to 0
                 for (Square s2 = SQ_A1; s2 <= SQ_H8; ++s2)
-                    if ((StepAttacksBB[KING][s1] | s1) & s2) // Illegal position
-                        MapKK[idx][s2] = -1;
+                    if ((StepAttacksBB[KING][s1] | s1) & s2)
+                        continue; // Illegal position
 
                     else if (!off_A1H8(s1) && off_A1H8(s2) > 0)
-                        MapKK[idx][s2] = -1; // First on diagonal, second above
+                        continue; // First on diagonal, second above
 
                     else if (!off_A1H8(s1) && !off_A1H8(s2))
                         bothOnDiagonal.push_back(std::make_pair(idx, s2));
