@@ -63,10 +63,10 @@ inline Square operator^(Square s, int i) { return Square(int(s) ^ i); }
 // Each table has a set of flags: all of them refer to DTZ tables, the last one to WDL tables
 enum TBFlag { STM = 1, Mapped = 2, WinPlies = 4, LossPlies = 8, SingleValue = 128 };
 
-// Little endian numbers of one index in blockLength[] and the offset within the block
+// Numbers in Little Endian format used by sparseIndex[] to point into blockLength[]
 struct SparseEntry {
-    char block[4];
-    char offset[2];
+    char block[4];   // Number of block
+    char offset[2];  // Offset within the block
 };
 
 static_assert(sizeof(SparseEntry) == 6, "SparseEntry must be 6 bytes");
@@ -134,7 +134,7 @@ struct WDLEntry : public Atomic {
     union {
         struct {
             PairsData* precomp;
-        } piece[2];
+        } piece[2]; // One for each side to move
 
         struct {
             uint8_t pawnCount[2];
@@ -184,15 +184,14 @@ auto item(DTZPiece& e, int    , int  ) -> decltype(e)& { return e; }
 auto item(WDLPawn&  e, int stm, int f) -> decltype(e.file[stm][f])& { return e.file[stm][f]; }
 auto item(DTZPawn&  e, int    , int f) -> decltype(e.file[f])& { return e.file[f]; }
 
-int off_A1H8(Square sq) { return int(rank_of(sq)) - file_of(sq); }
-
 int MapPawns[SQUARE_NB];
 int MapB1H1H7[SQUARE_NB];
 int MapA1D1D4[SQUARE_NB];
 int MapKK[10][SQUARE_NB]; // [MapA1D1D4][SQUARE_NB]
 
 // Comparison function to sort leading pawns in ascending MapPawns[] order
-auto pawns_comp = [] (Square i, Square j) { return MapPawns[i] < MapPawns[j]; };
+bool pawns_comp(Square i, Square j) { return MapPawns[i] < MapPawns[j]; }
+int off_A1H8(Square sq) { return int(rank_of(sq)) - file_of(sq); }
 
 const uint8_t WDL_MAGIC[] = { 0x71, 0xE8, 0x23, 0x5D };
 const uint8_t DTZ_MAGIC[] = { 0xD7, 0x66, 0x0C, 0xA5 };
@@ -1041,8 +1040,8 @@ uint8_t* set_dtz_map(DTZEntry&, T& p, uint8_t* data, File maxFile)
 template<typename Entry, typename T>
 void do_init(Entry& e, T& p, uint8_t* data)
 {
-    const bool IsDTZ = std::is_same<Entry, DTZEntry>::value;
-    const int K = IsDTZ ? 1 : 2;
+    const bool IsWDL = std::is_same<Entry, WDLEntry>::value;
+    const int Sides = IsWDL ? 2 : 1;
 
     PairsData* d;
     uint64_t tb_size[8];
@@ -1054,7 +1053,7 @@ void do_init(Entry& e, T& p, uint8_t* data)
     assert(e.hasPawns        == !!(flags & HasPawns));
     assert((e.key != e.key2) == !!(flags & Split));
 
-    int split    = !IsDTZ && (e.key != e.key2);
+    int keysNum  = IsWDL && (e.key != e.key2);
     File maxFile = e.hasPawns ? FILE_D : FILE_A;
 
     bool pp = e.hasPawns && e.pawn.pawnCount[1]; // Pawns on both sides
@@ -1063,46 +1062,46 @@ void do_init(Entry& e, T& p, uint8_t* data)
 
     for (File f = FILE_A; f <= maxFile; ++f) {
 
-        for (int k = 0; k < K; k++)
-            item(p, k, f).precomp = new PairsData();
+        for (int i = 0; i < Sides; i++)
+            item(p, i, f).precomp = new PairsData();
 
         int order[][2] = { { *data & 0xF, pp ? *(data + 1) & 0xF : 0xF },
                            { *data >>  4, pp ? *(data + 1) >>  4 : 0xF } };
         data += 1 + pp;
 
-        for (int i = 0; i < e.pieceCount; ++i, ++data)
-            for (int k = 0; k < K; k++)
-                item(p, k, f).precomp->pieces[i] = Piece(k ? *data >>  4 : *data & 0xF);
+        for (int k = 0; k < e.pieceCount; ++k, ++data)
+            for (int i = 0; i < Sides; i++)
+                item(p, i, f).precomp->pieces[k] = Piece(i ? *data >>  4 : *data & 0xF);
 
-        for (int i = 0; i < K; ++i)
-            tb_size[K * f + i] = set_groups(e, item(p, i, f).precomp, order[i], f);
+        for (int i = 0; i < Sides; ++i)
+            tb_size[Sides * f + i] = set_groups(e, item(p, i, f).precomp, order[i], f);
     }
 
     data += (uintptr_t)data & 1; // Word alignment
 
     for (File f = FILE_A; f <= maxFile; ++f)
-        for (int k = 0; k <= split; k++)
-            data = set_sizes(item(p, k, f).precomp, data, tb_size[K * f + k]);
+        for (int i = 0; i <= keysNum; i++)
+            data = set_sizes(item(p, i, f).precomp, data, tb_size[Sides * f + i]);
 
-    if (IsDTZ)
+    if (!IsWDL)
         data = set_dtz_map(e, p, data, maxFile);
 
     for (File f = FILE_A; f <= maxFile; ++f)
-        for (int k = 0; k <= split; k++) {
-            (d = item(p, k, f).precomp)->sparseIndex = (SparseEntry*)data;
+        for (int i = 0; i <= keysNum; i++) {
+            (d = item(p, i, f).precomp)->sparseIndex = (SparseEntry*)data;
             data += d->sparseIndexSize * sizeof(SparseEntry) ;
         }
 
     for (File f = FILE_A; f <= maxFile; ++f)
-        for (int k = 0; k <= split; k++) {
-            (d = item(p, k, f).precomp)->blockLength = (uint16_t*)data;
+        for (int i = 0; i <= keysNum; i++) {
+            (d = item(p, i, f).precomp)->blockLength = (uint16_t*)data;
             data += d->blockLengthSize * sizeof(uint16_t);
         }
 
     for (File f = FILE_A; f <= maxFile; ++f)
-        for (int k = 0; k <= split; k++) {
+        for (int i = 0; i <= keysNum; i++) {
             data = (uint8_t*)(((uintptr_t)data + 0x3F) & ~0x3F); // 64 byte alignment
-            (d = item(p, k, f).precomp)->data = data;
+            (d = item(p, i, f).precomp)->data = data;
             data += d->blocksNum * d->sizeofBlock;
         }
 }
