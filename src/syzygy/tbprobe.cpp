@@ -1041,7 +1041,6 @@ template<typename Entry, typename T>
 void do_init(Entry& e, T& p, uint8_t* data)
 {
     const bool IsWDL = std::is_same<Entry, WDLEntry>::value;
-    const int Sides = IsWDL ? 2 : 1;
 
     PairsData* d;
     uint64_t tb_size[8];
@@ -1053,14 +1052,14 @@ void do_init(Entry& e, T& p, uint8_t* data)
     assert(e.hasPawns        == !!(flags & HasPawns));
     assert((e.key != e.key2) == !!(flags & Split));
 
-    int keysNum  = IsWDL && (e.key != e.key2);
-    File maxFile = e.hasPawns ? FILE_D : FILE_A;
+    const int Sides = IsWDL && (e.key != e.key2) ? 2 : 1;
+    const File MaxFile = e.hasPawns ? FILE_D : FILE_A;
 
     bool pp = e.hasPawns && e.pawn.pawnCount[1]; // Pawns on both sides
 
     assert(!pp || e.pawn.pawnCount[0]);
 
-    for (File f = FILE_A; f <= maxFile; ++f) {
+    for (File f = FILE_A; f <= MaxFile; ++f) {
 
         for (int i = 0; i < Sides; i++)
             item(p, i, f).precomp = new PairsData();
@@ -1079,27 +1078,27 @@ void do_init(Entry& e, T& p, uint8_t* data)
 
     data += (uintptr_t)data & 1; // Word alignment
 
-    for (File f = FILE_A; f <= maxFile; ++f)
-        for (int i = 0; i <= keysNum; i++)
+    for (File f = FILE_A; f <= MaxFile; ++f)
+        for (int i = 0; i < Sides; i++)
             data = set_sizes(item(p, i, f).precomp, data, tb_size[Sides * f + i]);
 
     if (!IsWDL)
-        data = set_dtz_map(e, p, data, maxFile);
+        data = set_dtz_map(e, p, data, MaxFile);
 
-    for (File f = FILE_A; f <= maxFile; ++f)
-        for (int i = 0; i <= keysNum; i++) {
+    for (File f = FILE_A; f <= MaxFile; ++f)
+        for (int i = 0; i < Sides; i++) {
             (d = item(p, i, f).precomp)->sparseIndex = (SparseEntry*)data;
             data += d->sparseIndexSize * sizeof(SparseEntry) ;
         }
 
-    for (File f = FILE_A; f <= maxFile; ++f)
-        for (int i = 0; i <= keysNum; i++) {
+    for (File f = FILE_A; f <= MaxFile; ++f)
+        for (int i = 0; i < Sides; i++) {
             (d = item(p, i, f).precomp)->blockLength = (uint16_t*)data;
             data += d->blockLengthSize * sizeof(uint16_t);
         }
 
-    for (File f = FILE_A; f <= maxFile; ++f)
-        for (int i = 0; i <= keysNum; i++) {
+    for (File f = FILE_A; f <= MaxFile; ++f)
+        for (int i = 0; i < Sides; i++) {
             data = (uint8_t*)(((uintptr_t)data + 0x3F) & ~0x3F); // 64 byte alignment
             (d = item(p, i, f).precomp)->data = data;
             data += d->blocksNum * d->sizeofBlock;
