@@ -1235,6 +1235,12 @@ WDLScore search(Position& pos, WDLScore alpha, WDLScore beta, int *success)
     ExtMove *moves, *end;
     StateInfo st;
 
+    WDLScore best1 = WDLScore(-1000);
+    WDLScore best2 = best1;
+
+    WDLScore alpha2 = alpha;
+    WDLScore beta2 = beta;
+
     // Generate (at least) all legal non-ep captures including (under)promotions.
     // It is OK to generate more, as long as they are filtered out below.
     if (!pos.checkers()) {
@@ -1266,12 +1272,43 @@ WDLScore search(Position& pos, WDLScore alpha, WDLScore beta, int *success)
         if (value > alpha) {
             if (value >= beta) {
                 *success = 2;
-                return value;
+                if (value > best1)
+                    best1 = value;
             }
-
             alpha = value;
         }
     }
+
+    alpha = alpha2;
+    beta = beta2;
+
+    for (const Move& move : MoveList<LEGAL>(pos))
+    {
+        if (!pos.capture(move) ||  type_of(move) == ENPASSANT)
+            continue;
+
+        pos.do_move(move, st, pos.gives_check(move, ci));
+        value = -search(pos, -beta, -alpha, success);
+        pos.undo_move(move);
+
+        if (*success == 0)
+            return WDLDraw;
+
+        if (value > alpha) {
+            if (value >= beta) {
+                *success = 2;
+                if (value > best2)
+                    best2 = value;
+            }
+            alpha = value;
+        }
+    }
+
+    // Ensure loops are equivalent
+    assert(best1 == best2);
+
+    if (best1 != WDLScore(-1000))
+        return best1;
 
     // Then probe the position, accessing a bigger file table
     value = probe_wdl_table(pos, success);
