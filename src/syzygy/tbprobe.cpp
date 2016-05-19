@@ -1219,7 +1219,16 @@ ExtMove *add_underprom_caps(Position& pos, ExtMove *stack, ExtMove *end)
     return extra;
 }
 
-WDLScore probe_ab(Position& pos, WDLScore alpha, WDLScore beta, int *success)
+// For a position where the side to move has a winning capture it is not necessary
+// to store a winning value so the generator treats such positions as "don't cares"
+// and tries to assign to it a value that improves the compression ratio. Similarly,
+// if the side to move has a drawing capture, then the position is at least drawn.
+// If the position is won, then the TB needs to store a win value. But if the
+// position is drawn, the TB may store a loss value if that is better for compression.
+// All of this means that during probing, the engine must look at captures and probe
+// their results and must probe the position itself. The "best" result of these
+// probes is the correct result for the position.
+WDLScore search(Position& pos, WDLScore alpha, WDLScore beta, int *success)
 {
     WDLScore value;
     ExtMove stack[64];
@@ -1237,6 +1246,8 @@ WDLScore probe_ab(Position& pos, WDLScore alpha, WDLScore beta, int *success)
 
     CheckInfo ci(pos);
 
+    // Search caputures first accessing smaller tb tables, that potentially are
+    // easier to be RAM cached.
     for (moves = stack; moves < end; ++moves) {
         Move capture = moves->move;
 
@@ -1246,7 +1257,7 @@ WDLScore probe_ab(Position& pos, WDLScore alpha, WDLScore beta, int *success)
             continue;
 
         pos.do_move(capture, st, pos.gives_check(capture, ci));
-        value = -probe_ab(pos, -beta, -alpha, success);
+        value = -search(pos, -beta, -alpha, success);
         pos.undo_move(capture);
 
         if (*success == 0)
@@ -1262,7 +1273,8 @@ WDLScore probe_ab(Position& pos, WDLScore alpha, WDLScore beta, int *success)
         }
     }
 
-    value = probe_wdl_table(pos, success); // FIXME why this is not at the beginning?
+    // Then probe the position, accessing a bigger file table
+    value = probe_wdl_table(pos, success);
 
     if (*success == 0)
         return WDLDraw;
@@ -1283,7 +1295,7 @@ int probe_dtz_no_ep(Position& pos, int *success)
 {
     int dtz;
 
-    WDLScore wdl = probe_ab(pos, WDLLoss, WDLWin, success);
+    WDLScore wdl = search(pos, WDLLoss, WDLWin, success);
 
     if (!*success)
         return 0;
@@ -1316,7 +1328,7 @@ int probe_dtz_no_ep(Position& pos, int *success)
                 continue;
 
             pos.do_move(move, st, pos.gives_check(move, ci));
-            WDLScore v = -probe_ab(pos, WDLLoss, -wdl + WDLCursedWin, success);
+            WDLScore v = -search(pos, WDLLoss, -wdl + WDLCursedWin, success);
             pos.undo_move(move);
 
             if (*success == 0) return 0;
@@ -1376,7 +1388,7 @@ int probe_dtz_no_ep(Position& pos, int *success)
             if (st.rule50 == 0) {
                 if (wdl == -2) v = -1;
                 else {
-                    v = probe_ab(pos, WDLCursedWin, WDLWin, success);
+                    v = search(pos, WDLCursedWin, WDLWin, success);
                     v = (v == 2) ? 0 : -101;
                 }
             } else {
@@ -1455,7 +1467,7 @@ int probe_dtz(Position& pos, int *success)
             continue;
 
         pos.do_move(capture, st, pos.gives_check(capture, ci));
-        WDLScore v0 = -probe_ab(pos, WDLLoss, WDLWin, success);
+        WDLScore v0 = -search(pos, WDLLoss, WDLWin, success);
         pos.undo_move(capture);
 
         if (*success == 0)
@@ -1656,7 +1668,7 @@ void Tablebases::init(const std::string& paths)
 WDLScore Tablebases::probe_wdl(Position& pos, int *success)
 {
     *success = 1;
-    WDLScore v = probe_ab(pos, WDLLoss, WDLWin, success);
+    WDLScore v = search(pos, WDLLoss, WDLWin, success);
 
     // If en passant is not possible, we are done.
     if (pos.ep_square() == SQ_NONE)
@@ -1687,7 +1699,7 @@ WDLScore Tablebases::probe_wdl(Position& pos, int *success)
             continue;
 
         pos.do_move(capture, st, pos.gives_check(capture, ci));
-        WDLScore v0 = -probe_ab(pos, WDLLoss, WDLWin, success);
+        WDLScore v0 = -search(pos, WDLLoss, WDLWin, success);
         pos.undo_move(capture);
 
         if (*success == 0)
