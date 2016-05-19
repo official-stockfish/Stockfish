@@ -1201,24 +1201,6 @@ int probe_dtz_table(const Position& pos, WDLScore wdl, int* success)
     return probe_table(pos, &DTZTable.front(), wdl, success);
 }
 
-// Add underpromotion captures to list of captures.
-ExtMove *add_underprom_caps(Position& pos, ExtMove *stack, ExtMove *end)
-{
-    ExtMove *moves, *extra = end;
-
-    for (moves = stack; moves < end; ++moves) {
-        Move move = moves->move;
-
-        if (type_of(move) == PROMOTION && !pos.empty(to_sq(move))) {
-            (*extra++).move = (Move)(move - (1 << 12));
-            (*extra++).move = (Move)(move - (2 << 12));
-            (*extra++).move = (Move)(move - (3 << 12));
-        }
-    }
-
-    return extra;
-}
-
 // For a position where the side to move has a winning capture it is not necessary
 // to store a winning value so the generator treats such positions as "don't cares"
 // and tries to assign to it a value that improves the compression ratio. Similarly,
@@ -1231,60 +1213,14 @@ ExtMove *add_underprom_caps(Position& pos, ExtMove *stack, ExtMove *end)
 WDLScore search(Position& pos, WDLScore alpha, WDLScore beta, int *success)
 {
     WDLScore value;
-    ExtMove stack[64];
-    ExtMove *moves, *end;
     StateInfo st;
-
-    WDLScore best1 = WDLScore(-1000);
-    WDLScore best2 = best1;
-
-    WDLScore alpha2 = alpha;
-    WDLScore beta2 = beta;
-
-    // Generate (at least) all legal non-ep captures including (under)promotions.
-    // It is OK to generate more, as long as they are filtered out below.
-    if (!pos.checkers()) {
-        end = generate<CAPTURES>(pos, stack);
-        // Since underpromotion captures are not included, we need to add them.
-        end = add_underprom_caps(pos, stack, end);
-    } else
-        end = generate<EVASIONS>(pos, stack);
-
     CheckInfo ci(pos);
 
     // Search caputures first accessing smaller tb tables, that potentially are
     // easier to be RAM cached.
-    for (moves = stack; moves < end; ++moves) {
-        Move capture = moves->move;
-
-        if (   !pos.capture(capture)
-            ||  type_of(capture) == ENPASSANT
-            || !pos.legal(capture, ci.pinned))
-            continue;
-
-        pos.do_move(capture, st, pos.gives_check(capture, ci));
-        value = -search(pos, -beta, -alpha, success);
-        pos.undo_move(capture);
-
-        if (*success == 0)
-            return WDLDraw;
-
-        if (value > alpha) {
-            if (value >= beta) {
-                *success = 2;
-                if (value > best1)
-                    best1 = value;
-            }
-            alpha = value;
-        }
-    }
-
-    alpha = alpha2;
-    beta = beta2;
-
     for (const Move& move : MoveList<LEGAL>(pos))
     {
-        if (!pos.capture(move) ||  type_of(move) == ENPASSANT)
+        if (!pos.capture(move) || type_of(move) == ENPASSANT)
             continue;
 
         pos.do_move(move, st, pos.gives_check(move, ci));
@@ -1294,21 +1230,12 @@ WDLScore search(Position& pos, WDLScore alpha, WDLScore beta, int *success)
         if (*success == 0)
             return WDLDraw;
 
-        if (value > alpha) {
-            if (value >= beta) {
-                *success = 2;
-                if (value > best2)
-                    best2 = value;
-            }
+        if (value >= beta)
+            return *success = 2, value;
+
+        if (value > alpha)
             alpha = value;
-        }
     }
-
-    // Ensure loops are equivalent
-    assert(best1 == best2);
-
-    if (best1 != WDLScore(-1000))
-        return best1;
 
     // Then probe the position, accessing a bigger file table
     value = probe_wdl_table(pos, success);
@@ -1316,13 +1243,10 @@ WDLScore search(Position& pos, WDLScore alpha, WDLScore beta, int *success)
     if (*success == 0)
         return WDLDraw;
 
-    if (alpha >= value) {
-        *success = 1 + (alpha > 0);
-        return alpha;
-    } else {
-        *success = 1;
-        return value;
-    }
+    if (alpha >= value)
+        return *success = 1 + (alpha > WDLDraw), alpha;
+
+    return *success = 1, value;
 }
 
 int probe_dtz(Position& pos, int *success);
