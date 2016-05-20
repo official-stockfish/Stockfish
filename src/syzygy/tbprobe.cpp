@@ -1212,15 +1212,17 @@ int probe_dtz_table(const Position& pos, WDLScore wdl, int* success)
 // probes is the correct result for the position.
 WDLScore search(Position& pos, WDLScore alpha, WDLScore beta, int *success)
 {
-    WDLScore value;
+    WDLScore value, epValue = WDLScoreNone;
     StateInfo st;
     CheckInfo ci(pos);
 
     // Search caputures first accessing smaller tb tables, that potentially are
     // easier to be RAM cached.
-    for (const Move& move : MoveList<LEGAL>(pos))
+    auto moveList = MoveList<LEGAL>(pos);
+    size_t moveCount = moveList.size();
+    for (const Move& move : moveList)
     {
-        if (!pos.capture(move) || type_of(move) == ENPASSANT)
+        if (!pos.capture(move))
             continue;
 
         pos.do_move(move, st, pos.gives_check(move, ci));
@@ -1229,6 +1231,9 @@ WDLScore search(Position& pos, WDLScore alpha, WDLScore beta, int *success)
 
         if (*success == 0)
             return WDLDraw;
+
+        if (type_of(move) == ENPASSANT)
+            epValue = value;
 
         if (value >= beta)
             return *success = 2, value;
@@ -1243,10 +1248,17 @@ WDLScore search(Position& pos, WDLScore alpha, WDLScore beta, int *success)
     if (*success == 0)
         return WDLDraw;
 
-    if (alpha >= value)
-        return *success = 1 + (alpha > WDLDraw), alpha;
+    // The tables do not contain information on position with ep rights, so in
+    // this case probe_wdl_table could be wrong. In particular could be higher
+    // then epValue and if epValue is the only move then we are forced to play
+    // the losing ep capture.
+    if (epValue != WDLScoreNone && (moveCount == 1))
+        value = epValue;
 
-    return *success = 1, value;
+    if (value > alpha)
+        return *success = 1, value;
+
+    return *success = 1 + (alpha > WDLDraw), alpha;
 }
 
 int probe_dtz(Position& pos, int *success);
@@ -1629,77 +1641,7 @@ void Tablebases::init(const std::string& paths)
 WDLScore Tablebases::probe_wdl(Position& pos, int *success)
 {
     *success = 1;
-    WDLScore v = search(pos, WDLLoss, WDLWin, success);
-
-    // If en passant is not possible, we are done.
-    if (pos.ep_square() == SQ_NONE)
-        return v;
-
-    if (*success == 0)
-        return WDLDraw;
-
-    // Now handle en passant.
-    WDLScore v1 = WDLScore(-3); // FIXME use a proper enum value here
-    // Generate (at least) all legal en passant captures.
-    ExtMove stack[MAX_MOVES];
-    ExtMove *moves, *end;
-    StateInfo st;
-
-    if (!pos.checkers())
-        end = generate<CAPTURES>(pos, stack);
-    else
-        end = generate<EVASIONS>(pos, stack);
-
-    CheckInfo ci(pos);
-
-    for (moves = stack; moves < end; ++moves) {
-        Move capture = moves->move;
-
-        if (type_of(capture) != ENPASSANT
-                || !pos.legal(capture, ci.pinned))
-            continue;
-
-        pos.do_move(capture, st, pos.gives_check(capture, ci));
-        WDLScore v0 = -search(pos, WDLLoss, WDLWin, success);
-        pos.undo_move(capture);
-
-        if (*success == 0)
-            return WDLDraw;
-
-        if (v0 > v1) v1 = v0;
-    }
-
-    if (v1 > -3) {
-        if (v1 >= v) v = v1;
-        else if (v == 0) {
-            // Check whether there is at least one legal non-ep move.
-            for (moves = stack; moves < end; ++moves) {
-                Move capture = moves->move;
-
-                if (type_of(capture) == ENPASSANT) continue;
-
-                if (pos.legal(capture, ci.pinned))
-                    break;
-            }
-
-            if (moves == end && !pos.checkers()) {
-                end = generate<QUIETS>(pos, end);
-
-                for (; moves < end; ++moves) {
-                    Move move = moves->move;
-
-                    if (pos.legal(move, ci.pinned))
-                        break;
-                }
-            }
-
-            // If not, then we are forced to play the losing ep capture.
-            if (moves == end)
-                v = v1;
-        }
-    }
-
-    return v;
+    return search(pos, WDLLoss, WDLWin, success);
 }
 
 // Check whether there has been at least one repetition of positions
