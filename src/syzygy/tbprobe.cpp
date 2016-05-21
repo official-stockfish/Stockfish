@@ -1210,17 +1210,20 @@ int probe_dtz_table(const Position& pos, WDLScore wdl, ProbeState* result)
 // All of this means that during probing, the engine must look at captures and probe
 // their results and must probe the position itself. The "best" result of these
 // probes is the correct result for the position.
+template<bool CheckPawnMoves = false>
 WDLScore search(Position& pos, WDLScore alpha, WDLScore beta, ProbeState* result)
 {
     WDLScore value, epValue = WDLScoreNone;
     StateInfo st;
     CheckInfo ci(pos);
+    Move bestMove = MOVE_NONE;
 
     auto moveList = MoveList<LEGAL>(pos);
     size_t moveCount = moveList.size();
     for (const Move& move : moveList)
     {
-        if (!pos.capture(move))
+        if (   !pos.capture(move)
+            && (!CheckPawnMoves || type_of(pos.moved_piece(move)) != PAWN))
             continue;
 
         pos.do_move(move, st, pos.gives_check(move, ci));
@@ -1238,10 +1241,16 @@ WDLScore search(Position& pos, WDLScore alpha, WDLScore beta, ProbeState* result
         }
 
         if (value >= beta)
-            return *result = WINNING_CAPTURE, value;
+        {
+            *result = (!CheckPawnMoves || pos.capture(move)) ? WIN_CAPTURE : WIN_PAWN_MOVE;
+            return value;
+        }
 
         if (value > alpha)
+        {
             alpha = value;
+            bestMove = move;
+        }
     }
 
     value = probe_wdl_table(pos, result);
@@ -1249,77 +1258,58 @@ WDLScore search(Position& pos, WDLScore alpha, WDLScore beta, ProbeState* result
     if (*result == FAIL)
         return WDLDraw;
 
-    // The tables do not contain information on position with ep rights, so in
+    // TB tables do not contain information on position with ep rights, so in
     // this case probe_wdl_table could be wrong. In particular could be higher
     // then epValue and if epValue is the only move then we are forced to play
     // the losing ep capture.
     if (epValue != WDLScoreNone && !moveCount)
         value = epValue;
 
+    // Here alpha stores the best value out of the previous search
     if (value > alpha)
-        return *result = (value == epValue ? WINNING_CAPTURE : OK), value;
+        return *result = (value == epValue && value > WDLDraw ? WIN_CAPTURE : OK), value;
 
-    return *result = (alpha > WDLDraw ? WINNING_CAPTURE : OK), alpha;
+    if (bestMove && alpha > WDLDraw)
+        *result = (!CheckPawnMoves || pos.capture(bestMove)) ? WIN_CAPTURE : WIN_PAWN_MOVE;
+    else
+        *result = OK;
+
+    return alpha;
 }
 
-int probe_dtz(Position& pos, ProbeState *result);
+int probe_dtz(Position& pos, ProbeState* result);
 
 // This routine treats a position with en passant captures as one without.
-int probe_dtz_no_ep(Position& pos, ProbeState *result)
+int probe_dtz_no_ep(Position& pos, ProbeState* result)
 {
     int dtz;
 
-    WDLScore wdl = search(pos, WDLLoss, WDLWin, result);
+    WDLScore wdl = search<true>(pos, WDLLoss, WDLWin, result);
 
     if (*result == FAIL)
         return 0;
 
-    if (wdl == WDLDraw) // DTZ tables have no draws
+    if (wdl == WDLDraw) // DTZ tables don't store draws
         return 0;
 
-    if (*result == WINNING_CAPTURE) // DTZ tables store random value in this case
-        return wdl == WDLWin ? 1 : 101;
+    if (   *result == WIN_CAPTURE       // DTZ tables store a 'don't care' value in this case
+        || *result == WIN_PAWN_MOVE)
+        return wdl == WDLWin ? 1 : 101; // DTZ scores for immediate win or cursed win
+
+    dtz = 1 + probe_dtz_table(pos, wdl, result); // Probe the table!
+
+    if (*result != CHANGE_STM)
+    {
+        if (wdl == WDLCursedLoss || wdl == WDLCursedWin)
+            dtz += 100;
+
+        return wdl > WDLDraw ? dtz : -dtz;
+    }
 
     ExtMove stack[MAX_MOVES];
     ExtMove *moves, *end = nullptr;
     StateInfo st;
     CheckInfo ci(pos);
-
-    if (wdl > 0) {
-        // Generate at least all legal non-capturing pawn moves
-        // including non-capturing promotions.
-        if (!pos.checkers())
-            end = generate<NON_EVASIONS>(pos, stack);
-        else
-            end = generate<EVASIONS>(pos, stack);
-
-        for (moves = stack; moves < end; ++moves) {
-            Move move = moves->move;
-
-            if (   type_of(pos.moved_piece(move)) != PAWN
-                || pos.capture(move)
-                || !pos.legal(move, ci.pinned))
-                continue;
-
-            pos.do_move(move, st, pos.gives_check(move, ci));
-            WDLScore v = -search(pos, WDLLoss, -wdl + WDLCursedWin, result);
-            pos.undo_move(move);
-
-            if (*result == FAIL)
-                return 0;
-
-            if (v == wdl)
-                return v == WDLWin ? 1 : 101;
-        }
-    }
-
-    dtz = 1 + probe_dtz_table(pos, wdl, result);
-
-    if (*result >= 0) {
-        if (wdl & 1) dtz += 100;
-
-        return wdl >= 0 ? dtz : -dtz;
-    }
 
     if (wdl > 0) {
         int best = 0xffff;

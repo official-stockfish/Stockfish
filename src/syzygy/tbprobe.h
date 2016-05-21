@@ -36,10 +36,11 @@ enum WDLScore {
 
 // Possible states after a probing operation
 enum ProbeState {
-    FAIL            =  0, // Probe failed (missing file table)
-    OK              =  1, // Probe succesful
-    CHANGE_STM      = -1, // WDL probe succesful but DTZ should check the other side
-    WINNING_CAPTURE =  2  // WDL probe succesful but position's DTZ value is invalid
+    FAIL           =  0, // Probe failed (missing file table)
+    OK             =  1, // Probe succesful
+    CHANGE_STM     = -1, // WDL probe succesful but DTZ should check the other side
+    WIN_CAPTURE    =  2, // WDL probe succesful but position's DTZ value is invalid
+    WIN_PAWN_MOVE  =  3  // WDL probe succesful but position's DTZ value is invalid
 };
 
 extern size_t MaxCardinality;
