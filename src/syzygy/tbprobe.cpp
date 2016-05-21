@@ -54,14 +54,14 @@ size_t Tablebases::MaxCardinality;
 
 namespace {
 
+// Each table has a set of flags: all of them refer to DTZ tables, the last one to WDL tables
+enum TBFlag { STM = 1, Mapped = 2, WinPlies = 4, LossPlies = 8, SingleValue = 128 };
+
 inline WDLScore operator-(WDLScore d) { return WDLScore(-int(d)); }
 inline WDLScore operator+(WDLScore d1, WDLScore d2) { return WDLScore(int(d1) + int(d2)); }
 
 inline Square operator^=(Square& s, int i) { return s = Square(int(s) ^ i); }
 inline Square operator^(Square s, int i) { return Square(int(s) ^ i); }
-
-// Each table has a set of flags: all of them refer to DTZ tables, the last one to WDL tables
-enum TBFlag { STM = 1, Mapped = 2, WinPlies = 4, LossPlies = 8, SingleValue = 128 };
 
 // Numbers in Little Endian format used by sparseIndex[] to point into blockLength[]
 struct SparseEntry {
@@ -666,7 +666,7 @@ int map_score(DTZEntry* entry, File f, int value, WDLScore wdl)
 //      idx = Binomial[1][s1] + Binomial[2][s2] + ... + Binomial[k][sk]
 //
 template<typename Entry>
-uint64_t probe_table(const Position& pos,  Entry* entry, WDLScore wdl = WDLDraw, int* success = nullptr)
+uint64_t probe_table(const Position& pos,  Entry* entry, WDLScore wdl = WDLDraw, ProbeState* result = nullptr)
 {
     Square squares[TBPIECES];
     Piece pieces[TBPIECES];
@@ -728,7 +728,7 @@ uint64_t probe_table(const Position& pos,  Entry* entry, WDLScore wdl = WDLDraw,
     // early exit otherwise.
     if (    std::is_same<Entry, DTZEntry>::value
         && !check_dtz_stm(entry, tbFile, stm)) {
-        *success = -1;
+        *result = CHANGE_STM;
         return 0;
     }
 
@@ -1118,7 +1118,7 @@ bool init(Entry& e, const std::string& fname)
     return true;
 }
 
-WDLScore probe_wdl_table(Position& pos, int* success)
+WDLScore probe_wdl_table(Position& pos, ProbeState* result)
 {
     Key key = pos.material_key();
 
@@ -1127,7 +1127,7 @@ WDLScore probe_wdl_table(Position& pos, int* success)
 
     WDLEntry* entry = WDLHash[key];
     if (!entry) {
-        *success = 0;
+        *result = FAIL;
         return WDLDraw;
     }
 
@@ -1140,7 +1140,7 @@ WDLScore probe_wdl_table(Position& pos, int* success)
             std::string fname = pos_code(pos, entry->key != key) + ".rtbw";
             if (!init(*entry, fname)) {
                 // Was ptr2->key = 0ULL;  Just leave !ptr->ready condition
-                *success = 0;
+                *result = FAIL;
                 return WDLDraw;
             }
             entry->ready.store(1, std::memory_order_release);
@@ -1150,7 +1150,7 @@ WDLScore probe_wdl_table(Position& pos, int* success)
     return (WDLScore)probe_table(pos, entry);
 }
 
-int probe_dtz_table(const Position& pos, WDLScore wdl, int* success)
+int probe_dtz_table(const Position& pos, WDLScore wdl, ProbeState* result)
 {
     Key key = pos.material_key();
 
@@ -1169,7 +1169,7 @@ int probe_dtz_table(const Position& pos, WDLScore wdl, int* success)
 
             WDLEntry* wdlEntry = WDLHash[key];
             if (!wdlEntry) {
-                *success = 0;
+                *result = FAIL;
                 return 0;
             }
 
@@ -1182,7 +1182,7 @@ int probe_dtz_table(const Position& pos, WDLScore wdl, int* success)
                 // functionality as WDL case).
                 // FIXME: This is different form original functionality!
                 /* DTZTable.pop_front(); */
-                *success = 0;
+                *result = FAIL;
                 return 0;
             }
 
@@ -1194,11 +1194,11 @@ int probe_dtz_table(const Position& pos, WDLScore wdl, int* success)
     }
 
     if (!DTZTable.front().baseAddress) {
-        *success = 0;
+        *result = FAIL;
         return 0;
     }
 
-    return probe_table(pos, &DTZTable.front(), wdl, success);
+    return probe_table(pos, &DTZTable.front(), wdl, result);
 }
 
 // For a position where the side to move has a winning capture it is not necessary
@@ -1210,7 +1210,7 @@ int probe_dtz_table(const Position& pos, WDLScore wdl, int* success)
 // All of this means that during probing, the engine must look at captures and probe
 // their results and must probe the position itself. The "best" result of these
 // probes is the correct result for the position.
-WDLScore search(Position& pos, WDLScore alpha, WDLScore beta, int *success)
+WDLScore search(Position& pos, WDLScore alpha, WDLScore beta, ProbeState* result)
 {
     WDLScore value, epValue = WDLScoreNone;
     StateInfo st;
@@ -1224,10 +1224,10 @@ WDLScore search(Position& pos, WDLScore alpha, WDLScore beta, int *success)
             continue;
 
         pos.do_move(move, st, pos.gives_check(move, ci));
-        value = -search(pos, -beta, -alpha, success);
+        value = -search(pos, -beta, -alpha, result);
         pos.undo_move(move);
 
-        if (*success == 0)
+        if (*result == FAIL)
             return WDLDraw;
 
         if (type_of(move) == ENPASSANT)
@@ -1238,15 +1238,15 @@ WDLScore search(Position& pos, WDLScore alpha, WDLScore beta, int *success)
         }
 
         if (value >= beta)
-            return *success = 2, value;
+            return *result = WINNING_CAPTURE, value;
 
         if (value > alpha)
             alpha = value;
     }
 
-    value = probe_wdl_table(pos, success);
+    value = probe_wdl_table(pos, result);
 
-    if (*success == 0)
+    if (*result == FAIL)
         return WDLDraw;
 
     // The tables do not contain information on position with ep rights, so in
@@ -1257,27 +1257,27 @@ WDLScore search(Position& pos, WDLScore alpha, WDLScore beta, int *success)
         value = epValue;
 
     if (value > alpha)
-        return *success = 1, value;
+        return *result = (value == epValue ? WINNING_CAPTURE : OK), value;
 
-    return *success = 1 + (alpha > WDLDraw), alpha;
+    return *result = (alpha > WDLDraw ? WINNING_CAPTURE : OK), alpha;
 }
 
-int probe_dtz(Position& pos, int *success);
+int probe_dtz(Position& pos, ProbeState *result);
 
 // This routine treats a position with en passant captures as one without.
-int probe_dtz_no_ep(Position& pos, int *success)
+int probe_dtz_no_ep(Position& pos, ProbeState *result)
 {
     int dtz;
 
-    WDLScore wdl = search(pos, WDLLoss, WDLWin, success);
+    WDLScore wdl = search(pos, WDLLoss, WDLWin, result);
 
-    if (!*success)
+    if (*result == FAIL)
         return 0;
 
-    if (wdl == WDLDraw)
+    if (wdl == WDLDraw) // DTZ tables have no draws
         return 0;
 
-    if (*success == 2)
+    if (*result == WINNING_CAPTURE) // DTZ tables store random value in this case
         return wdl == WDLWin ? 1 : 101;
 
     ExtMove stack[MAX_MOVES];
@@ -1302,19 +1302,20 @@ int probe_dtz_no_ep(Position& pos, int *success)
                 continue;
 
             pos.do_move(move, st, pos.gives_check(move, ci));
-            WDLScore v = -search(pos, WDLLoss, -wdl + WDLCursedWin, success);
+            WDLScore v = -search(pos, WDLLoss, -wdl + WDLCursedWin, result);
             pos.undo_move(move);
 
-            if (*success == 0) return 0;
+            if (*result == FAIL)
+                return 0;
 
             if (v == wdl)
                 return v == WDLWin ? 1 : 101;
         }
     }
 
-    dtz = 1 + probe_dtz_table(pos, wdl, success);
+    dtz = 1 + probe_dtz_table(pos, wdl, result);
 
-    if (*success >= 0) {
+    if (*result >= 0) {
         if (wdl & 1) dtz += 100;
 
         return wdl >= 0 ? dtz : -dtz;
@@ -1331,10 +1332,10 @@ int probe_dtz_no_ep(Position& pos, int *success)
                 continue;
 
             pos.do_move(move, st, pos.gives_check(move, ci));
-            int v = -probe_dtz(pos, success);
+            int v = -probe_dtz(pos, result);
             pos.undo_move(move);
 
-            if (*success == 0)
+            if (*result == FAIL)
                 return 0;
 
             if (v > 0 && v + 1 < best)
@@ -1362,16 +1363,16 @@ int probe_dtz_no_ep(Position& pos, int *success)
             if (st.rule50 == 0) {
                 if (wdl == -2) v = -1;
                 else {
-                    v = search(pos, WDLCursedWin, WDLWin, success);
+                    v = search(pos, WDLCursedWin, WDLWin, result);
                     v = (v == 2) ? 0 : -101;
                 }
             } else {
-                v = -probe_dtz(pos, success) - 1;
+                v = -probe_dtz(pos, result) - 1;
             }
 
             pos.undo_move(move);
 
-            if (*success == 0)
+            if (*result == FAIL)
                 return 0;
 
             if (v < best)
@@ -1383,7 +1384,7 @@ int probe_dtz_no_ep(Position& pos, int *success)
 }
 
 // Probe the DTZ table for a particular position.
-// If *success != 0, the probe was successful.
+// If *result != FAIL, the probe was successful.
 // The return value is from the point of view of the side to move:
 //         n < -100 : loss, but draw under 50-move rule
 // -100 <= n < -1   : loss in n ply (assuming 50-move counter == 0)
@@ -1408,15 +1409,15 @@ int probe_dtz_no_ep(Position& pos, int *success)
 // In short, if a move is available resulting in dtz + 50-move-counter <= 99,
 // then do not accept moves leading to dtz + 50-move-counter == 100.
 //
-int probe_dtz(Position& pos, int *success)
+int probe_dtz(Position& pos, ProbeState *result)
 {
-    *success = 1;
-    int v = probe_dtz_no_ep(pos, success);
+    *result = OK;
+    int v = probe_dtz_no_ep(pos, result);
 
     if (pos.ep_square() == SQ_NONE)
         return v;
 
-    if (*success == 0)
+    if (*result == FAIL)
         return 0;
 
     // Now handle en passant.
@@ -1441,10 +1442,10 @@ int probe_dtz(Position& pos, int *success)
             continue;
 
         pos.do_move(capture, st, pos.gives_check(capture, ci));
-        WDLScore v0 = -search(pos, WDLLoss, WDLWin, success);
+        WDLScore v0 = -search(pos, WDLLoss, WDLWin, result);
         pos.undo_move(capture);
 
-        if (*success == 0)
+        if (*result == 0)
             return 0;
 
         if (v0 > v1) v1 = v0;
@@ -1632,17 +1633,17 @@ void Tablebases::init(const std::string& paths)
 }
 
 // Probe the WDL table for a particular position.
-// If *success != 0, the probe was successful.
+// If *result != FAIL, the probe was successful.
 // The return value is from the point of view of the side to move:
 // -2 : loss
 // -1 : loss, but draw under 50-move rule
 //  0 : draw
 //  1 : win, but draw under 50-move rule
 //  2 : win
-WDLScore Tablebases::probe_wdl(Position& pos, int *success)
+WDLScore Tablebases::probe_wdl(Position& pos, ProbeState* result)
 {
-    *success = 1;
-    return search(pos, WDLLoss, WDLWin, success);
+    *result = OK;
+    return search(pos, WDLLoss, WDLWin, result);
 }
 
 // Check whether there has been at least one repetition of positions
@@ -1678,10 +1679,10 @@ static int has_repeated(StateInfo *st)
 // no moves were filtered out.
 bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves, Value& score)
 {
-    int success;
-    int dtz = probe_dtz(pos, &success);
+    ProbeState result;
+    int dtz = probe_dtz(pos, &result);
 
-    if (!success)
+    if (result == FAIL)
         return false;
 
     StateInfo st;
@@ -1702,21 +1703,21 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves, Value& 
 
         if (!v) {
             if (st.rule50 != 0) {
-                v = -probe_dtz(pos, &success);
+                v = -probe_dtz(pos, &result);
 
                 if (v > 0)
                     ++v;
                 else if (v < 0)
                     --v;
             } else {
-                v = -probe_wdl(pos, &success);
+                v = -probe_wdl(pos, &result);
                 v = wdl_to_dtz[v + 2];
             }
         }
 
         pos.undo_move(move);
 
-        if (!success)
+        if (result == FAIL)
             return false;
 
         rootMoves[i].score = (Value)v;
@@ -1810,11 +1811,11 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves, Value& 
 // no moves were filtered out.
 bool Tablebases::root_probe_wdl(Position& pos, Search::RootMoves& rootMoves, Value& score)
 {
-    int success;
+    ProbeState result;
 
-    WDLScore wdl = Tablebases::probe_wdl(pos, &success);
+    WDLScore wdl = Tablebases::probe_wdl(pos, &result);
 
-    if (!success)
+    if (result == FAIL)
         return false;
 
     score = WDL_to_value[wdl + 2];
@@ -1828,10 +1829,10 @@ bool Tablebases::root_probe_wdl(Position& pos, Search::RootMoves& rootMoves, Val
     for (size_t i = 0; i < rootMoves.size(); ++i) {
         Move move = rootMoves[i].pv[0];
         pos.do_move(move, st, pos.gives_check(move, ci));
-        WDLScore v = -Tablebases::probe_wdl(pos, &success);
+        WDLScore v = -Tablebases::probe_wdl(pos, &result);
         pos.undo_move(move);
 
-        if (!success)
+        if (result == FAIL)
             return false;
 
         rootMoves[i].score = (Value)v;

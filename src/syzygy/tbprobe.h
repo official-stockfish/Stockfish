@@ -34,10 +34,18 @@ enum WDLScore {
     WDLScoreNone  = -1000
 };
 
+// Possible states after a probing operation
+enum ProbeState {
+    FAIL            =  0, // Probe failed (missing file table)
+    OK              =  1, // Probe succesful
+    CHANGE_STM      = -1, // WDL probe succesful but DTZ should check the other side
+    WINNING_CAPTURE =  2  // WDL probe succesful but position's DTZ value is invalid
+};
+
 extern size_t MaxCardinality;
 
 void init(const std::string& paths);
-WDLScore probe_wdl(Position& pos, int* success);
+WDLScore probe_wdl(Position& pos, ProbeState* result);
 bool root_probe(Position& pos, Search::RootMoves& rootMoves, Value& score);
 bool root_probe_wdl(Position& pos, Search::RootMoves& rootMoves, Value& score);
 
