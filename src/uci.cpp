@@ -29,6 +29,7 @@
 #include "thread.h"
 #include "timeman.h"
 #include "uci.h"
+#include "syzygy/tbprobe.h"
 
 using namespace std;
 
@@ -187,6 +188,18 @@ void UCI::loop(int argc, char* argv[]) {
       {
           Search::clear();
           Time.availableNodes = 0;
+      }
+      else if (token == "wdl")
+      {
+          Tablebases::ProbeState err;
+          Tablebases::WDLScore v = Tablebases::probe_wdl(pos, &err);
+          sync_cout << v << " (" << err << ")" << sync_endl;
+      }
+      else if (token == "dtz")
+      {
+          Tablebases::ProbeState err;
+          int dtz = Tablebases::probe_dtz(pos, &err);
+          sync_cout << dtz << " (" << err << ")" << sync_endl;
       }
       else if (token == "isready")    sync_cout << "readyok" << sync_endl;
       else if (token == "go")         go(pos, is);

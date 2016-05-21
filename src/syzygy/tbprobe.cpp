@@ -1277,98 +1277,6 @@ WDLScore search(Position& pos, WDLScore alpha, WDLScore beta, ProbeState* result
     return alpha;
 }
 
-// Probe the DTZ table for a particular position.
-// If *result != FAIL, the probe was successful.
-// The return value is from the point of view of the side to move:
-//         n < -100 : loss, but draw under 50-move rule
-// -100 <= n < -1   : loss in n ply (assuming 50-move counter == 0)
-//         0        : draw
-//     1 < n <= 100 : win in n ply (assuming 50-move counter == 0)
-//   100 < n        : win, but draw under 50-move rule
-//
-// The return value n can be off by 1: a return value -n can mean a loss
-// in n+1 ply and a return value +n can mean a win in n+1 ply. This
-// cannot happen for tables with positions exactly on the "edge" of
-// the 50-move rule.
-//
-// This implies that if dtz > 0 is returned, the position is certainly
-// a win if dtz + 50-move-counter <= 99. Care must be taken that the engine
-// picks moves that preserve dtz + 50-move-counter <= 99.
-//
-// If n = 100 immediately after a capture or pawn move, then the position
-// is also certainly a win, and during the whole phase until the next
-// capture or pawn move, the inequality to be preserved is
-// dtz + 50-movecounter <= 100.
-//
-// In short, if a move is available resulting in dtz + 50-move-counter <= 99,
-// then do not accept moves leading to dtz + 50-move-counter == 100.
-int probe_dtz(Position& pos, ProbeState* result)
-{
-    WDLScore wdl = search<true>(pos, WDLLoss, WDLWin, result);
-
-    if (*result == FAIL)
-        return 0;
-
-    if (wdl == WDLDraw) // DTZ tables don't store draws
-        return 0;
-
-    if (   *result == WIN_CAPTURE       // DTZ tables store a 'don't care' value in this case
-        || *result == WIN_PAWN_MOVE)
-        return wdl == WDLWin ? 1 : 101; // DTZ scores for immediate win or cursed win
-
-    int dtz = 1 + probe_dtz_table(pos, wdl, result); // Probe the table!
-
-    if (*result != CHANGE_STM)
-    {
-        if (wdl == WDLCursedLoss || wdl == WDLCursedWin)
-            dtz += 100;
-
-        return wdl > WDLDraw ? dtz : -dtz;
-    }
-
-    // DTZ stores results for the other STM, so we need to do a 1-ply search and
-    // find the winning move that minimizes DTZ.
-    StateInfo st;
-    CheckInfo ci(pos);
-    int minDTZ = 0xFFFF;
-
-    for (const Move& move : MoveList<LEGAL>(pos))
-    {
-        // When winning, we don't need to probe for captures and pawn
-        // moves because we already know are losing.
-        if (    wdl > 0
-            && (pos.capture(move) || type_of(pos.moved_piece(move)) == PAWN))
-            continue;
-
-        pos.do_move(move, st, pos.gives_check(move, ci));
-
-        if (wdl > 0)
-            dtz = -probe_dtz(pos, result);
-
-        else if (st.rule50 > 0) // Not a capture or pawn move
-            dtz = -probe_dtz(pos, result) - 1;
-
-        else if (wdl == WDLLoss)
-            dtz = -1;
-
-        else
-            dtz = search(pos, WDLCursedWin, WDLWin, result) == WDLWin ? 0 : -101;
-
-        pos.undo_move(move);
-
-        if (*result == FAIL)
-            return 0;
-
-        if (wdl > 0 && dtz > 0 && dtz + 1 < minDTZ)
-            minDTZ = dtz + 1;
-
-        else if (wdl < 0  && dtz < minDTZ)
-            minDTZ = dtz;
-    }
-
-    return minDTZ;
-}
-
 } // namespace
 
 void Tablebases::init(const std::string& paths)
@@ -1516,6 +1424,98 @@ WDLScore Tablebases::probe_wdl(Position& pos, ProbeState* result)
 {
     *result = OK;
     return search(pos, WDLLoss, WDLWin, result);
+}
+
+// Probe the DTZ table for a particular position.
+// If *result != FAIL, the probe was successful.
+// The return value is from the point of view of the side to move:
+//         n < -100 : loss, but draw under 50-move rule
+// -100 <= n < -1   : loss in n ply (assuming 50-move counter == 0)
+//         0        : draw
+//     1 < n <= 100 : win in n ply (assuming 50-move counter == 0)
+//   100 < n        : win, but draw under 50-move rule
+//
+// The return value n can be off by 1: a return value -n can mean a loss
+// in n+1 ply and a return value +n can mean a win in n+1 ply. This
+// cannot happen for tables with positions exactly on the "edge" of
+// the 50-move rule.
+//
+// This implies that if dtz > 0 is returned, the position is certainly
+// a win if dtz + 50-move-counter <= 99. Care must be taken that the engine
+// picks moves that preserve dtz + 50-move-counter <= 99.
+//
+// If n = 100 immediately after a capture or pawn move, then the position
+// is also certainly a win, and during the whole phase until the next
+// capture or pawn move, the inequality to be preserved is
+// dtz + 50-movecounter <= 100.
+//
+// In short, if a move is available resulting in dtz + 50-move-counter <= 99,
+// then do not accept moves leading to dtz + 50-move-counter == 100.
+int Tablebases::probe_dtz(Position& pos, ProbeState* result)
+{
+    WDLScore wdl = search<true>(pos, WDLLoss, WDLWin, result);
+
+    if (*result == FAIL)
+        return 0;
+
+    if (wdl == WDLDraw) // DTZ tables don't store draws
+        return 0;
+
+    if (   *result == WIN_CAPTURE       // DTZ tables store a 'don't care' value in this case
+        || *result == WIN_PAWN_MOVE)
+        return wdl == WDLWin ? 1 : 101; // DTZ scores for immediate win or cursed win
+
+    int dtz = 1 + probe_dtz_table(pos, wdl, result); // Probe the table!
+
+    if (*result != CHANGE_STM)
+    {
+        if (wdl == WDLCursedLoss || wdl == WDLCursedWin)
+            dtz += 100;
+
+        return wdl > WDLDraw ? dtz : -dtz;
+    }
+
+    // DTZ stores results for the other STM, so we need to do a 1-ply search and
+    // find the winning move that minimizes DTZ.
+    StateInfo st;
+    CheckInfo ci(pos);
+    int minDTZ = 0xFFFF;
+
+    for (const Move& move : MoveList<LEGAL>(pos))
+    {
+        // When winning, we don't need to probe for captures and pawn
+        // moves because we already know are losing.
+        if (    wdl > 0
+            && (pos.capture(move) || type_of(pos.moved_piece(move)) == PAWN))
+            continue;
+
+        pos.do_move(move, st, pos.gives_check(move, ci));
+
+        if (wdl > 0)
+            dtz = -probe_dtz(pos, result);
+
+        else if (st.rule50 > 0) // Not a capture or pawn move
+            dtz = -probe_dtz(pos, result) - 1;
+
+        else if (wdl == WDLLoss)
+            dtz = -1;
+
+        else
+            dtz = search(pos, WDLCursedWin, WDLWin, result) == WDLWin ? 0 : -101;
+
+        pos.undo_move(move);
+
+        if (*result == FAIL)
+            return 0;
+
+        if (wdl > 0 && dtz > 0 && dtz + 1 < minDTZ)
+            minDTZ = dtz + 1;
+
+        else if (wdl < 0  && dtz < minDTZ)
+            minDTZ = dtz;
+    }
+
+    return minDTZ;
 }
 
 // Check whether there has been at least one repetition of positions

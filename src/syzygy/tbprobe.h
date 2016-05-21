@@ -20,6 +20,8 @@
 #ifndef TBPROBE_H
 #define TBPROBE_H
 
+#include <ostream>
+
 #include "../search.h"
 
 namespace Tablebases {
@@ -47,8 +49,31 @@ extern size_t MaxCardinality;
 
 void init(const std::string& paths);
 WDLScore probe_wdl(Position& pos, ProbeState* result);
+int probe_dtz(Position& pos, ProbeState* result);
 bool root_probe(Position& pos, Search::RootMoves& rootMoves, Value& score);
 bool root_probe_wdl(Position& pos, Search::RootMoves& rootMoves, Value& score);
+
+inline std::ostream& operator<<(std::ostream& os, const WDLScore v) {
+
+    os << (v == WDLLoss       ? "Loss" :
+           v == WDLCursedLoss ? "Cursed loss" :
+           v == WDLDraw       ? "Draw" :
+           v == WDLCursedWin  ? "Cursed win" :
+           v == WDLWin        ? "Win" : "None");
+
+    return os;
+}
+
+inline std::ostream& operator<<(std::ostream& os, const ProbeState v) {
+
+    os << (v == FAIL          ? "Failed" :
+           v == OK            ? "Success" :
+           v == CHANGE_STM    ? "Probed opponent side" :
+           v == WIN_CAPTURE   ? "Found a winning capture" :
+           v == WIN_PAWN_MOVE ? "Found a winning pawn move" : "None");
+
+    return os;
+}
 
 }
 
