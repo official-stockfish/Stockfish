@@ -1216,8 +1216,6 @@ WDLScore search(Position& pos, WDLScore alpha, WDLScore beta, int *success)
     StateInfo st;
     CheckInfo ci(pos);
 
-    // Search caputures first accessing smaller tb tables, that potentially are
-    // easier to be RAM cached.
     auto moveList = MoveList<LEGAL>(pos);
     size_t moveCount = moveList.size();
     for (const Move& move : moveList)
@@ -1233,7 +1231,11 @@ WDLScore search(Position& pos, WDLScore alpha, WDLScore beta, int *success)
             return WDLDraw;
 
         if (type_of(move) == ENPASSANT)
-            epValue = value;
+        {
+            moveCount--; // We can have up to 2 ep
+            if (value > epValue)
+                epValue = value;
+        }
 
         if (value >= beta)
             return *success = 2, value;
@@ -1242,7 +1244,6 @@ WDLScore search(Position& pos, WDLScore alpha, WDLScore beta, int *success)
             alpha = value;
     }
 
-    // Then probe the position, accessing a bigger file table
     value = probe_wdl_table(pos, success);
 
     if (*success == 0)
@@ -1252,7 +1253,7 @@ WDLScore search(Position& pos, WDLScore alpha, WDLScore beta, int *success)
     // this case probe_wdl_table could be wrong. In particular could be higher
     // then epValue and if epValue is the only move then we are forced to play
     // the losing ep capture.
-    if (epValue != WDLScoreNone && (moveCount == 1))
+    if (epValue != WDLScoreNone && !moveCount)
         value = epValue;
 
     if (value > alpha)
