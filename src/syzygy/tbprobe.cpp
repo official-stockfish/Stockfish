@@ -1277,10 +1277,32 @@ WDLScore search(Position& pos, WDLScore alpha, WDLScore beta, ProbeState* result
     return alpha;
 }
 
-int probe_dtz(Position& pos, ProbeState* result);
-
-// This routine treats a position with en passant captures as one without.
-int probe_dtz_no_ep(Position& pos, ProbeState* result)
+// Probe the DTZ table for a particular position.
+// If *result != FAIL, the probe was successful.
+// The return value is from the point of view of the side to move:
+//         n < -100 : loss, but draw under 50-move rule
+// -100 <= n < -1   : loss in n ply (assuming 50-move counter == 0)
+//         0        : draw
+//     1 < n <= 100 : win in n ply (assuming 50-move counter == 0)
+//   100 < n        : win, but draw under 50-move rule
+//
+// The return value n can be off by 1: a return value -n can mean a loss
+// in n+1 ply and a return value +n can mean a win in n+1 ply. This
+// cannot happen for tables with positions exactly on the "edge" of
+// the 50-move rule.
+//
+// This implies that if dtz > 0 is returned, the position is certainly
+// a win if dtz + 50-move-counter <= 99. Care must be taken that the engine
+// picks moves that preserve dtz + 50-move-counter <= 99.
+//
+// If n = 100 immediately after a capture or pawn move, then the position
+// is also certainly a win, and during the whole phase until the next
+// capture or pawn move, the inequality to be preserved is
+// dtz + 50-movecounter <= 100.
+//
+// In short, if a move is available resulting in dtz + 50-move-counter <= 99,
+// then do not accept moves leading to dtz + 50-move-counter == 100.
+int probe_dtz(Position& pos, ProbeState* result)
 {
     WDLScore wdl = search<true>(pos, WDLLoss, WDLWin, result);
 
@@ -1312,7 +1334,6 @@ int probe_dtz_no_ep(Position& pos, ProbeState* result)
     int minDTZ = 0xFFFF;
 
     if (wdl > 0)
-    {
         // Find the winning move that minimizes DTZ. We don't need to probe for
         // captures and pawn moves because we already know are losing.
         for (const Move& move : MoveList<LEGAL>(pos))
@@ -1330,149 +1351,32 @@ int probe_dtz_no_ep(Position& pos, ProbeState* result)
             if (dtz > 0 && dtz + 1 < minDTZ)
                 minDTZ = dtz + 1;
         }
+    else
+        // Find the losing move that maximizes DTZ. Of course, all moves will
+        // return a negative dtz value because the position is known to lose.
+        for (const Move& move : MoveList<LEGAL>(pos))
+        {
+            pos.do_move(move, st, pos.gives_check(move, ci));
 
-        return minDTZ;
-    }
+            if (st.rule50 > 0) // Not a capture or pawn move
+                dtz = -probe_dtz(pos, result) - 1;
 
-    // Find the losing move that maximizes DTZ. Of course, all moves will
-    // return a negative dtz value because the position is known to lose.
-    for (const Move& move : MoveList<LEGAL>(pos))
-    {
-        pos.do_move(move, st, pos.gives_check(move, ci));
+            else if (wdl == WDLLoss)
+                dtz = -1;
 
-        if (st.rule50 > 0) // Not a capture or pawn move
-            dtz = -probe_dtz(pos, result) - 1;
+            else
+                dtz = search(pos, WDLCursedWin, WDLWin, result) == WDLWin ? 0 : -101;
 
-        else if (wdl == WDLLoss)
-            dtz = -1;
+            pos.undo_move(move);
 
-        else
-            dtz = search(pos, WDLCursedWin, WDLWin, result) == WDLWin ? 0 : -101;
+            if (*result == FAIL)
+                return 0;
 
-        pos.undo_move(move);
-
-        if (*result == FAIL)
-            return 0;
-
-        if (dtz < minDTZ)
-            minDTZ = dtz;
-    }
+            if (dtz < minDTZ)
+                minDTZ = dtz;
+        }
 
     return minDTZ;
-}
-
-// Probe the DTZ table for a particular position.
-// If *result != FAIL, the probe was successful.
-// The return value is from the point of view of the side to move:
-//         n < -100 : loss, but draw under 50-move rule
-// -100 <= n < -1   : loss in n ply (assuming 50-move counter == 0)
-//         0        : draw
-//     1 < n <= 100 : win in n ply (assuming 50-move counter == 0)
-//   100 < n        : win, but draw under 50-move rule
-//
-// The return value n can be off by 1: a return value -n can mean a loss
-// in n+1 ply and a return value +n can mean a win in n+1 ply. This
-// cannot happen for tables with positions exactly on the "edge" of
-// the 50-move rule.
-//
-// This implies that if dtz > 0 is returned, the position is certainly
-// a win if dtz + 50-move-counter <= 99. Care must be taken that the engine
-// picks moves that preserve dtz + 50-move-counter <= 99.
-//
-// If n = 100 immediately after a capture or pawn move, then the position
-// is also certainly a win, and during the whole phase until the next
-// capture or pawn move, the inequality to be preserved is
-// dtz + 50-movecounter <= 100.
-//
-// In short, if a move is available resulting in dtz + 50-move-counter <= 99,
-// then do not accept moves leading to dtz + 50-move-counter == 100.
-//
-int probe_dtz(Position& pos, ProbeState *result)
-{
-    *result = OK;
-    int v = probe_dtz_no_ep(pos, result);
-
-    if (pos.ep_square() == SQ_NONE)
-        return v;
-
-    if (*result == FAIL)
-        return 0;
-
-    // Now handle en passant.
-    int v1 = -3;
-
-    ExtMove stack[MAX_MOVES];
-    ExtMove *moves, *end;
-    StateInfo st;
-
-    if (!pos.checkers())
-        end = generate<CAPTURES>(pos, stack);
-    else
-        end = generate<EVASIONS>(pos, stack);
-
-    CheckInfo ci(pos);
-
-    for (moves = stack; moves < end; ++moves) {
-        Move capture = moves->move;
-
-        if (type_of(capture) != ENPASSANT
-                || !pos.legal(capture, ci.pinned))
-            continue;
-
-        pos.do_move(capture, st, pos.gives_check(capture, ci));
-        WDLScore v0 = -search(pos, WDLLoss, WDLWin, result);
-        pos.undo_move(capture);
-
-        if (*result == 0)
-            return 0;
-
-        if (v0 > v1) v1 = v0;
-    }
-
-    if (v1 > -3) {
-        v1 = wdl_to_dtz[v1 + 2];
-
-        if (v < -100) {
-            if (v1 >= 0)
-                v = v1;
-        } else if (v < 0) {
-            if (v1 >= 0 || v1 < -100)
-                v = v1;
-        } else if (v > 100) {
-            if (v1 > 0)
-                v = v1;
-        } else if (v > 0) {
-            if (v1 == 1)
-                v = v1;
-        } else if (v1 >= 0) {
-            v = v1;
-        } else {
-            for (moves = stack; moves < end; ++moves) {
-                Move move = moves->move;
-
-                if (type_of(move) == ENPASSANT) continue;
-
-                if (pos.legal(move, ci.pinned))
-                    break;
-            }
-
-            if (moves == end && !pos.checkers()) {
-                end = generate<QUIETS>(pos, end);
-
-                for (; moves < end; ++moves) {
-                    Move move = moves->move;
-
-                    if (pos.legal(move, ci.pinned))
-                        break;
-                }
-            }
-
-            if (moves == end)
-                v = v1;
-        }
-    }
-
-    return v;
 }
 
 } // namespace
