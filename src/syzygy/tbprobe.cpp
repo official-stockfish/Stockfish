@@ -656,7 +656,7 @@ int map_score(DTZEntry* entry, File f, int value, WDLScore wdl)
         ||  wdl == WDLCursedLoss)
         value *= 2;
 
-    return value;
+    return value + 1;
 }
 
 // Compute a unique index out of a position and use it to probe the TB file. To
@@ -1465,7 +1465,7 @@ int Tablebases::probe_dtz(Position& pos, ProbeState* result)
         || *result == WIN_PAWN_MOVE)
         return wdl == WDLWin ? 1 : 101; // DTZ scores for immediate win or cursed win
 
-    int dtz = 1 + probe_dtz_table(pos, wdl, result); // Probe the table!
+    int dtz = probe_dtz_table(pos, wdl, result); // Probe the table!
 
     if (*result != CHANGE_STM)
     {
