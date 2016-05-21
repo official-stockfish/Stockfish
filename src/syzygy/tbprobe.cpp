@@ -1486,7 +1486,7 @@ int Tablebases::probe_dtz(Position& pos, ProbeState* result)
         pos.do_move(move, st, pos.gives_check(move, ci));
 
         if (wdl > WDLDraw)
-            dtz = -probe_dtz(pos, result);
+            dtz = -probe_dtz(pos, result) + 1;
 
         else if (st.rule50 > 0) // Not a capture or pawn move
             dtz = -probe_dtz(pos, result) - 1;
@@ -1502,10 +1502,7 @@ int Tablebases::probe_dtz(Position& pos, ProbeState* result)
         if (*result == FAIL)
             return 0;
 
-        if (wdl > 0 && dtz > 0 && dtz + 1 < minDTZ)
-            minDTZ = dtz + 1;
-
-        else if (wdl < 0  && dtz < minDTZ)
+        if (dtz < minDTZ && (wdl < WDLDraw || dtz > 1)) // Avoid the case of a draw
             minDTZ = dtz;
     }
 
