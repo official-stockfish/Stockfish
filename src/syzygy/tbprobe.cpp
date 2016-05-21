@@ -1265,12 +1265,12 @@ WDLScore search(Position& pos, WDLScore alpha, WDLScore beta, ProbeState* result
     if (epValue != WDLScoreNone && !moveCount)
         value = epValue;
 
-    // Here alpha stores the best value out of the previous search
-    if (value > alpha)
-        return *result = (value == epValue ? ZEROING_MOVE : OK), value;
+    // Here alpha stores the best value of the ply-1 search, note that in case
+    // we only have a losing ep move alpha == value.
+    if (alpha >= value)
+        return *result = (alpha > WDLDraw || alpha == epValue ? ZEROING_MOVE : OK), alpha;
 
-    *result = alpha > WDLDraw ? ZEROING_MOVE : OK;
-    return alpha;
+    return *result = OK, value;
 }
 
 } // namespace
