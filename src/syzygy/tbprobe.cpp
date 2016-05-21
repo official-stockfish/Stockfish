@@ -1475,7 +1475,7 @@ int Tablebases::probe_dtz(Position& pos, ProbeState* result)
         return wdl > WDLDraw ? dtz : -dtz;
     }
 
-    // DTZ stores results for the other STM, so we need to do a 1-ply search and
+    // DTZ stores results for the other side, so we need to do a 1-ply search and
     // find the winning move that minimizes DTZ.
     StateInfo st;
     CheckInfo ci(pos);
@@ -1483,15 +1483,9 @@ int Tablebases::probe_dtz(Position& pos, ProbeState* result)
 
     for (const Move& move : MoveList<LEGAL>(pos))
     {
-        // When winning, we don't need to probe for captures and pawn
-        // moves because we already know are losing.
-        if (    wdl > 0
-            && (pos.capture(move) || type_of(pos.moved_piece(move)) == PAWN))
-            continue;
-
         pos.do_move(move, st, pos.gives_check(move, ci));
 
-        if (wdl > 0)
+        if (wdl > WDLDraw)
             dtz = -probe_dtz(pos, result);
 
         else if (st.rule50 > 0) // Not a capture or pawn move
