@@ -38,11 +38,10 @@ enum WDLScore {
 
 // Possible states after a probing operation
 enum ProbeState {
-    FAIL           =  0, // Probe failed (missing file table)
-    OK             =  1, // Probe succesful
-    CHANGE_STM     = -1, // WDL probe succesful but DTZ should check the other side
-    WIN_CAPTURE    =  2, // WDL probe succesful but position's DTZ value is invalid
-    WIN_PAWN_MOVE  =  3  // WDL probe succesful but position's DTZ value is invalid
+    FAIL         =  0, // Probe failed (missing file table)
+    OK           =  1, // Probe succesful
+    CHANGE_STM   = -1, // DTZ should check the other side
+    ZEROING_MOVE =  2  // Best move zeroes DTZ (capture or pawn move)
 };
 
 extern size_t MaxCardinality;
@@ -69,8 +68,7 @@ inline std::ostream& operator<<(std::ostream& os, const ProbeState v) {
     os << (v == FAIL          ? "Failed" :
            v == OK            ? "Success" :
            v == CHANGE_STM    ? "Probed opponent side" :
-           v == WIN_CAPTURE   ? "Found a winning capture" :
-           v == WIN_PAWN_MOVE ? "Found a winning pawn move" : "None");
+           v == ZEROING_MOVE   ? "Missing DTZ value"    : "None");
 
     return os;
 }

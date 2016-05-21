@@ -1210,20 +1210,23 @@ int probe_dtz_table(const Position& pos, WDLScore wdl, ProbeState* result)
 // All of this means that during probing, the engine must look at captures and probe
 // their results and must probe the position itself. The "best" result of these
 // probes is the correct result for the position.
-template<bool CheckPawnMoves = false>
+// DTZ table don't store values when a following move is a zeroing winning move
+// (winning capture or winning pawn move). Also DTZ store wrong values for positions
+// where the best move is an ep-move (even if losing). So in all these cases set
+// the state to ZEROING_MOVE.
+template<bool CheckZeroingMoves = false>
 WDLScore search(Position& pos, WDLScore alpha, WDLScore beta, ProbeState* result)
 {
     WDLScore value, epValue = WDLScoreNone;
     StateInfo st;
     CheckInfo ci(pos);
-    Move bestMove = MOVE_NONE;
 
     auto moveList = MoveList<LEGAL>(pos);
     size_t moveCount = moveList.size();
     for (const Move& move : moveList)
     {
         if (   !pos.capture(move)
-            && (!CheckPawnMoves || type_of(pos.moved_piece(move)) != PAWN))
+            && (!CheckZeroingMoves || type_of(pos.moved_piece(move)) != PAWN))
             continue;
 
         pos.do_move(move, st, pos.gives_check(move, ci));
@@ -1242,15 +1245,12 @@ WDLScore search(Position& pos, WDLScore alpha, WDLScore beta, ProbeState* result
 
         if (value >= beta)
         {
-            *result = (!CheckPawnMoves || pos.capture(move)) ? WIN_CAPTURE : WIN_PAWN_MOVE;
+            *result = ZEROING_MOVE; // Winning DTZ-zeroing move
             return value;
         }
 
         if (value > alpha)
-        {
             alpha = value;
-            bestMove = move;
-        }
     }
 
     value = probe_wdl_table(pos, result);
@@ -1267,13 +1267,9 @@ WDLScore search(Position& pos, WDLScore alpha, WDLScore beta, ProbeState* result
 
     // Here alpha stores the best value out of the previous search
     if (value > alpha)
-        return *result = (value == epValue && value > WDLDraw ? WIN_CAPTURE : OK), value;
+        return *result = (value == epValue ? ZEROING_MOVE : OK), value;
 
-    if (bestMove && alpha > WDLDraw)
-        *result = (!CheckPawnMoves || pos.capture(bestMove)) ? WIN_CAPTURE : WIN_PAWN_MOVE;
-    else
-        *result = OK;
-
+    *result = alpha > WDLDraw ? ZEROING_MOVE : OK;
     return alpha;
 }
 
@@ -1461,9 +1457,13 @@ int Tablebases::probe_dtz(Position& pos, ProbeState* result)
     if (wdl == WDLDraw) // DTZ tables don't store draws
         return 0;
 
-    if (   *result == WIN_CAPTURE       // DTZ tables store a 'don't care' value in this case
-        || *result == WIN_PAWN_MOVE)
-        return wdl == WDLWin ? 1 : 101; // DTZ scores for immediate win or cursed win
+    // DTZ table stores a 'don't care' value in this case, or even a plain wrong
+    // one as in case the best move is a losing ep, so it cannot be probed.
+    if (*result == ZEROING_MOVE)
+        return wdl == WDLWin        ?  1   :
+               wdl == WDLCursedWin  ?  101 :
+               wdl == WDLCursedLoss ? -101 :
+               wdl == WDLLoss       ? -1   : 0;
 
     int dtz = probe_dtz_table(pos, wdl, result); // Probe the table!
 
