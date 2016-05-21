@@ -1282,8 +1282,6 @@ int probe_dtz(Position& pos, ProbeState* result);
 // This routine treats a position with en passant captures as one without.
 int probe_dtz_no_ep(Position& pos, ProbeState* result)
 {
-    int dtz;
-
     WDLScore wdl = search<true>(pos, WDLLoss, WDLWin, result);
 
     if (*result == FAIL)
@@ -1296,7 +1294,7 @@ int probe_dtz_no_ep(Position& pos, ProbeState* result)
         || *result == WIN_PAWN_MOVE)
         return wdl == WDLWin ? 1 : 101; // DTZ scores for immediate win or cursed win
 
-    dtz = 1 + probe_dtz_table(pos, wdl, result); // Probe the table!
+    int dtz = 1 + probe_dtz_table(pos, wdl, result); // Probe the table!
 
     if (*result != CHANGE_STM)
     {
@@ -1306,71 +1304,61 @@ int probe_dtz_no_ep(Position& pos, ProbeState* result)
         return wdl > WDLDraw ? dtz : -dtz;
     }
 
-    ExtMove stack[MAX_MOVES];
-    ExtMove *moves, *end = nullptr;
+   // DTZ stores results for the other STM, so we need to do a 1-ply search.
+   // Because of the structure of the dtz values, it is easier to distinguish
+   // between wdl > 0 and wdl < 0.
     StateInfo st;
     CheckInfo ci(pos);
+    int minDTZ = 0xFFFF;
 
-    if (wdl > 0) {
-        int best = 0xffff;
-
-        for (moves = stack; moves < end; ++moves) {
-            Move move = moves->move;
-
-            if (pos.capture(move) || type_of(pos.moved_piece(move)) == PAWN
-                    || !pos.legal(move, ci.pinned))
+    if (wdl > 0)
+    {
+        // Find the winning move that minimizes DTZ. We don't need to probe for
+        // captures and pawn moves because we already know are losing.
+        for (const Move& move : MoveList<LEGAL>(pos))
+        {
+            if (pos.capture(move) || type_of(pos.moved_piece(move)) == PAWN)
                 continue;
 
             pos.do_move(move, st, pos.gives_check(move, ci));
-            int v = -probe_dtz(pos, result);
+            dtz = -probe_dtz(pos, result);
             pos.undo_move(move);
 
             if (*result == FAIL)
                 return 0;
 
-            if (v > 0 && v + 1 < best)
-                best = v + 1;
+            if (dtz > 0 && dtz + 1 < minDTZ)
+                minDTZ = dtz + 1;
         }
 
-        return best;
-    } else {
-        int best = -1;
-
-        if (!pos.checkers())
-            end = generate<NON_EVASIONS>(pos, stack);
-        else
-            end = generate<EVASIONS>(pos, stack);
-
-        for (moves = stack; moves < end; ++moves) {
-            int v;
-            Move move = moves->move;
-
-            if (!pos.legal(move, ci.pinned))
-                continue;
-
-            pos.do_move(move, st, pos.gives_check(move, ci));
-
-            if (st.rule50 == 0) {
-                if (wdl == -2) v = -1;
-                else {
-                    v = search(pos, WDLCursedWin, WDLWin, result);
-                    v = (v == 2) ? 0 : -101;
-                }
-            } else {
-                v = -probe_dtz(pos, result) - 1;
-            }
-
-            pos.undo_move(move);
-
-            if (*result == FAIL)
-                return 0;
-
-            if (v < best)
-                best = v;
-        }
-
-        return best;
+        return minDTZ;
     }
+
+    // Find the losing move that maximizes DTZ. Of course, all moves will
+    // return a negative dtz value because the position is known to lose.
+    for (const Move& move : MoveList<LEGAL>(pos))
+    {
+        pos.do_move(move, st, pos.gives_check(move, ci));
+
+        if (st.rule50 > 0) // Not a capture or pawn move
+            dtz = -probe_dtz(pos, result) - 1;
+
+        else if (wdl == WDLLoss)
+            dtz = -1;
+
+        else
+            dtz = search(pos, WDLCursedWin, WDLWin, result) == WDLWin ? 0 : -101;
+
+        pos.undo_move(move);
+
+        if (*result == FAIL)
+            return 0;
+
+        if (dtz < minDTZ)
+            minDTZ = dtz;
+    }
+
+    return minDTZ;
 }
 
 // Probe the DTZ table for a particular position.
