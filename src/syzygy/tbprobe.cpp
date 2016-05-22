@@ -383,6 +383,8 @@ WDLEntry::WDLEntry(const Position& pos, Key keys[])
 {
     memset(this, 0, sizeof(WDLEntry));
 
+    ready = false;
+
     key = keys[WHITE];
     key2 = keys[BLACK];
     pieceCount = popcount(pos.pieces());
