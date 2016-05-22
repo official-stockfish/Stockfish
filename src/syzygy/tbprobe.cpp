@@ -1487,29 +1487,17 @@ int Tablebases::probe_dtz(Position& pos, ProbeState* result)
     for (const Move& move : MoveList<LEGAL>(pos))
     {
         pos.do_move(move, st, pos.gives_check(move, ci));
-
-        if (wdl > WDLDraw)
-            dtz = -probe_dtz(pos, result) + 1;
-
-        else if (st.rule50 > 0) // Not a capture or pawn move
-            dtz = -probe_dtz(pos, result) - 1;
-
-        else if (wdl == WDLLoss)
-            dtz = -1;
-
-        else
-            dtz = search(pos, WDLCursedWin, WDLWin, result) == WDLWin ? 0 : -101;
-
+        dtz = -probe_dtz(pos, result);
         pos.undo_move(move);
 
         if (*result == FAIL)
             return 0;
 
-        if (dtz < minDTZ && (wdl < WDLDraw || dtz > 1)) // Avoid the case of a draw
+        if (dtz < minDTZ && dtz) // Skip the draw case
             minDTZ = dtz;
     }
 
-    return minDTZ;
+    return minDTZ > 0 ? minDTZ + 1 : minDTZ - 1; // Convert result from 1-ply search
 }
 
 // Check whether there has been at least one repetition of positions
