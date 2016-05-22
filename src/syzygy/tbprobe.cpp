@@ -1449,6 +1449,7 @@ WDLScore Tablebases::probe_wdl(Position& pos, ProbeState* result)
 // then do not accept moves leading to dtz + 50-move-counter == 100.
 int Tablebases::probe_dtz(Position& pos, ProbeState* result)
 {
+    *result = OK;
     WDLScore wdl = search<true>(pos, WDLLoss, WDLWin, result);
 
     if (*result == FAIL)
