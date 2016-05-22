@@ -63,6 +63,22 @@ inline WDLScore operator+(WDLScore d1, WDLScore d2) { return WDLScore(int(d1) + 
 inline Square operator^=(Square& s, int i) { return s = Square(int(s) ^ i); }
 inline Square operator^(Square s, int i) { return Square(int(s) ^ i); }
 
+// DTZ tables don't store valid scoers for moves that reset the rule50 counter
+// like captures and pawn moves. Luckily we can easily recover the correct dtz
+// if we know the position's WDL score.
+int zeroing_move_dtz(WDLScore wdl)
+{
+    return wdl == WDLWin        ?  1   :
+           wdl == WDLCursedWin  ?  101 :
+           wdl == WDLCursedLoss ? -101 :
+           wdl == WDLLoss       ? -1   : 0;
+}
+
+// Returns the sign of a number (-1, 0, 1)
+template <typename T> int sign_of(T val) {
+    return (T(0) < val) - (val < T(0));
+}
+
 // Numbers in Little Endian format used by sparseIndex[] to point into blockLength[]
 struct SparseEntry {
     char block[4];   // Number of block
@@ -1247,7 +1263,7 @@ WDLScore search(Position& pos, WDLScore alpha, WDLScore beta, ProbeState* result
 
         if (value >= beta)
         {
-            *result = ZEROING_MOVE; // Winning DTZ-zeroing move
+            *result = ZEROING_BEST_MOVE; // Winning DTZ-zeroing move
             return value;
         }
 
@@ -1270,7 +1286,7 @@ WDLScore search(Position& pos, WDLScore alpha, WDLScore beta, ProbeState* result
     // Here alpha stores the best value of the ply-1 search, note that in case
     // we only have a losing ep move alpha == value.
     if (alpha >= value)
-        return *result = (alpha > WDLDraw || alpha == epValue ? ZEROING_MOVE : OK), alpha;
+        return *result = (alpha > WDLDraw || alpha == epValue ? ZEROING_BEST_MOVE : OK), alpha;
 
     return *result = OK, value;
 }
@@ -1462,11 +1478,8 @@ int Tablebases::probe_dtz(Position& pos, ProbeState* result)
 
     // DTZ table stores a 'don't care' value in this case, or even a plain wrong
     // one as in case the best move is a losing ep, so it cannot be probed.
-    if (*result == ZEROING_MOVE)
-        return wdl == WDLWin        ?  1   :
-               wdl == WDLCursedWin  ?  101 :
-               wdl == WDLCursedLoss ? -101 :
-               wdl == WDLLoss       ? -1   : 0;
+    if (*result == ZEROING_BEST_MOVE)
+        return zeroing_move_dtz(wdl);
 
     int dtz = probe_dtz_table(pos, wdl, result); // Probe the table!
 
@@ -1486,14 +1499,17 @@ int Tablebases::probe_dtz(Position& pos, ProbeState* result)
 
     for (const Move& move : MoveList<LEGAL>(pos))
     {
+        bool isZeroingMove = pos.capture(move) || type_of(pos.moved_piece(move)) == PAWN;
+
         pos.do_move(move, st, pos.gives_check(move, ci));
-        dtz = -probe_dtz(pos, result);
+        dtz = isZeroingMove ? -zeroing_move_dtz(wdl) : -probe_dtz(pos, result);
         pos.undo_move(move);
 
         if (*result == FAIL)
             return 0;
 
-        if (dtz < minDTZ && dtz) // Skip the draw case
+        // Skip the draws and ensure that if we are winning we pick only positive dtz
+        if (dtz < minDTZ && sign_of(dtz) == sign_of(wdl))
             minDTZ = dtz;
     }
 
