@@ -1499,21 +1499,28 @@ int Tablebases::probe_dtz(Position& pos, ProbeState* result)
 
     for (const Move& move : MoveList<LEGAL>(pos))
     {
-        bool isZeroingMove = pos.capture(move) || type_of(pos.moved_piece(move)) == PAWN;
+        bool zeroing = pos.capture(move) || type_of(pos.moved_piece(move)) == PAWN;
 
         pos.do_move(move, st, pos.gives_check(move, ci));
-        dtz = isZeroingMove ? -zeroing_move_dtz(wdl) : -probe_dtz(pos, result);
+
+        // For zeroing moves we want the dtz of the move _before_ doing it,
+        // otherwise we will get the dtz of the next move sequence. Search the
+        // position after the move to get the score sign (because even in a
+        // winning position we could make a losing capture or going for a draw).
+        dtz = zeroing ? -zeroing_move_dtz(search(pos, WDLLoss, WDLWin, result))
+                      : -probe_dtz(pos, result);
+
         pos.undo_move(move);
 
         if (*result == FAIL)
             return 0;
 
-        // Skip the draws and ensure that if we are winning we pick only positive dtz
+        // Skip the draws and if we are winning only pick positive dtz
         if (dtz < minDTZ && sign_of(dtz) == sign_of(wdl))
             minDTZ = dtz;
     }
 
-    return minDTZ > 0 ? minDTZ + 1 : minDTZ - 1; // Convert result from 1-ply search
+    return minDTZ + sign_of(minDTZ); // Convert result from 1-ply search
 }
 
 // Check whether there has been at least one repetition of positions
