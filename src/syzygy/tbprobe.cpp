@@ -1520,7 +1520,10 @@ int Tablebases::probe_dtz(Position& pos, ProbeState* result)
             minDTZ = dtz;
     }
 
-    return minDTZ + sign_of(minDTZ); // Convert result from 1-ply search
+    // Convert result from 1-ply search. Special handle a mate position, when
+    // there are no legal moves. Return value is somewhat arbitrary, so stick
+    // to the original TB code that returns -1 in this case.
+    return minDTZ == 0xFFFF ? - 1 : minDTZ + sign_of(minDTZ);
 }
 
 // Check whether there has been at least one repetition of positions
