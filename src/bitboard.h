@@ -61,7 +61,6 @@ const Bitboard Rank8BB = Rank1BB << (8 * 7);
 
 extern int SquareDistance[SQUARE_NB][SQUARE_NB];
 
-extern Bitboard SquareBB[SQUARE_NB];
 extern Bitboard FileBB[FILE_NB];
 extern Bitboard RankBB[RANK_NB];
 extern Bitboard AdjacentFilesBB[FILE_NB];
@@ -79,24 +78,28 @@ extern Bitboard PseudoAttacks[PIECE_TYPE_NB][SQUARE_NB];
 /// Overloads of bitwise operators between a Bitboard and a Square for testing
 /// whether a given bit is set in a bitboard, and for setting and clearing bits.
 
+inline Bitboard make_bb(Square s) {
+    return 1ULL << s;
+}
+
 inline Bitboard operator&(Bitboard b, Square s) {
-  return b & SquareBB[s];
+  return b & make_bb(s);
 }
 
 inline Bitboard operator|(Bitboard b, Square s) {
-  return b | SquareBB[s];
+  return b | make_bb(s);
 }
 
 inline Bitboard operator^(Bitboard b, Square s) {
-  return b ^ SquareBB[s];
+  return b ^ make_bb(s);
 }
 
 inline Bitboard& operator|=(Bitboard& b, Square s) {
-  return b |= SquareBB[s];
+  return b |= make_bb(s);
 }
 
 inline Bitboard& operator^=(Bitboard& b, Square s) {
-  return b ^= SquareBB[s];
+  return b ^= make_bb(s);
 }
 
 inline bool more_than_one(Bitboard b) {
