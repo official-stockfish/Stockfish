@@ -1486,12 +1486,7 @@ int Tablebases::probe_dtz(Position& pos, ProbeState* result)
     int dtz = probe_dtz_table(pos, wdl, result); // Probe the table!
 
     if (*result != CHANGE_STM)
-    {
-        if (wdl == WDLCursedLoss || wdl == WDLCursedWin)
-            dtz += 100;
-
-        return wdl > WDLDraw ? dtz : -dtz;
-    }
+        return (dtz + 100 * (wdl == WDLCursedLoss || wdl == WDLCursedWin)) * sign_of(wdl);
 
     // DTZ stores results for the other side, so we need to do a 1-ply search and
     // find the winning move that minimizes DTZ.
