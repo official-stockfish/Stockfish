@@ -1235,17 +1235,20 @@ int probe_dtz_table(const Position& pos, WDLScore wdl, ProbeState* result)
 template<bool CheckZeroingMoves = false>
 WDLScore search(Position& pos, WDLScore alpha, WDLScore beta, ProbeState* result)
 {
-    WDLScore value, epValue = WDLScoreNone;
+    WDLScore value;
     StateInfo st;
     CheckInfo ci(pos);
 
     auto moveList = MoveList<LEGAL>(pos);
-    size_t moveCount = moveList.size();
+    size_t totalCount = moveList.size();
+    size_t moveCount = 0;
     for (const Move& move : moveList)
     {
         if (   !pos.capture(move)
             && (!CheckZeroingMoves || type_of(pos.moved_piece(move)) != PAWN))
             continue;
+
+        moveCount++;
 
         pos.do_move(move, st, pos.gives_check(move, ci));
         value = -search(pos, -beta, -alpha, result);
@@ -1253,13 +1256,6 @@ WDLScore search(Position& pos, WDLScore alpha, WDLScore beta, ProbeState* result
 
         if (*result == FAIL)
             return WDLDraw;
-
-        if (type_of(move) == ENPASSANT)
-        {
-            moveCount--; // We can have up to 2 ep
-            if (value > epValue)
-                epValue = value;
-        }
 
         if (value >= beta)
         {
@@ -1271,22 +1267,28 @@ WDLScore search(Position& pos, WDLScore alpha, WDLScore beta, ProbeState* result
             alpha = value;
     }
 
-    value = probe_wdl_table(pos, result);
+    // In case we have already searched all the legal moves we don't have to probe
+    // the TB because the stored score could be wrong. For instance TB tables
+    // do not contain information on position with ep rights, so in this case
+    // the result of probe_wdl_table is wrong. Also in case of only capture
+    // moves, for instance here 4K3/4q3/6p1/2k5/6p1/8/8/8 w - - 0 7, we have to
+    // return with ZEROING_BEST_MOVE set.
+    bool noMoreMoves = (moveCount && moveCount == totalCount);
 
-    if (*result == FAIL)
-        return WDLDraw;
+    if (noMoreMoves)
+        value = alpha;
+    else
+    {
+        value = probe_wdl_table(pos, result);
 
-    // TB tables do not contain information on position with ep rights, so in
-    // this case probe_wdl_table could be wrong. In particular could be higher
-    // then epValue and if epValue is the only move then we are forced to play
-    // the losing ep capture.
-    if (epValue != WDLScoreNone && !moveCount)
-        value = epValue;
+        if (*result == FAIL)
+            return WDLDraw;
+    }
 
     // Here alpha stores the best value of the ply-1 search, note that in case
-    // we only have a losing ep move alpha == value.
+    // we have already searched all the possible moves alpha == value.
     if (alpha >= value)
-        return *result = (alpha > WDLDraw || alpha == epValue ? ZEROING_BEST_MOVE : OK), alpha;
+        return *result = (alpha > WDLDraw || noMoreMoves ? ZEROING_BEST_MOVE : OK), alpha;
 
     return *result = OK, value;
 }
