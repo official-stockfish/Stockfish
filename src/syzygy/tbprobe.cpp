@@ -63,23 +63,23 @@ inline WDLScore operator+(WDLScore d1, WDLScore d2) { return WDLScore(int(d1) + 
 inline Square operator^=(Square& s, int i) { return s = Square(int(s) ^ i); }
 inline Square operator^(Square s, int i) { return Square(int(s) ^ i); }
 
-// DTZ tables don't store valid scoers for moves that reset the rule50 counter
-// like captures and pawn moves. Luckily we can easily recover the correct dtz
-// if we know the position's WDL score.
-int zeroing_move_dtz(WDLScore wdl)
-{
+// DTZ tables don't store valid scores for moves that reset the rule50 counter
+// like captures and pawn moves but we can easily recover the correct dtz if we
+// know the position's WDL score.
+int zeroing_move_dtz(WDLScore wdl) {
+
     return wdl == WDLWin        ?  1   :
            wdl == WDLCursedWin  ?  101 :
            wdl == WDLCursedLoss ? -101 :
            wdl == WDLLoss       ? -1   : 0;
 }
 
-// Returns the sign of a number (-1, 0, 1)
+// Return the sign of a number (-1, 0, 1)
 template <typename T> int sign_of(T val) {
     return (T(0) < val) - (val < T(0));
 }
 
-// Numbers in Little Endian format used by sparseIndex[] to point into blockLength[]
+// Numbers in little endian used by sparseIndex[] to point into blockLength[]
 struct SparseEntry {
     char block[4];   // Number of block
     char offset[2];  // Offset within the block
@@ -114,14 +114,14 @@ struct PairsData {
     int blocksNum;                 // Number of blocks in the TB file
     int maxSymLen;                 // Maximum length in bits of the Huffman symbols
     int minSymLen;                 // Minimum length in bits of the Huffman symbols
-    Sym* lowestSym;                // lowestSym[l] is the value of the lowest symbol of length l
+    Sym* lowestSym;                // lowestSym[l] is the symbol of length l with the lowest value
     LR* btree;                     // btree[sym] stores the left and right symbols that expand sym
     uint16_t* blockLength;         // Number of stored positions (minus one) for each block: 1..65536
     int blockLengthSize;           // Size of blockLength[] table: padded so it's bigger than blocksNum
     SparseEntry* sparseIndex;      // Partial indices into blockLength[]
     size_t sparseIndexSize;        // Size of SparseIndex[] table
     uint8_t* data;                 // Start of Huffman compressed data
-    std::vector<uint64_t> base64;  // Smallest symbol of length l padded to 64 bits is at base64[l - min_sym_len]
+    std::vector<uint64_t> base64;  // base64[l - min_sym_len] is the 64bit-padded lowest symbol of length l
     std::vector<uint8_t> symlen;   // Number of values (-1) represented by a given Huffman symbol: 1..256
     Piece pieces[TBPIECES];        // Sequence of the pieces: order is critical to ensure the best compression
     uint64_t groupSize[TBPIECES];  // Size needed by a given subset of pieces: KRKN -> (KRK) + (N)
@@ -150,13 +150,13 @@ struct WDLEntry : public Atomic {
     union {
         struct {
             PairsData* precomp;
-        } piece[2]; // One for each side to move
+        } piece[2]; // [Side to move]
 
         struct {
-            uint8_t pawnCount[2];
+            uint8_t pawnCount[2]; // [Lead color / weak color]
             struct {
                 PairsData* precomp;
-            } file[2][4];
+            } file[2][4]; // [Side to move][FILE_A..FILE_D]
         } pawn;
     };
 };
@@ -211,8 +211,6 @@ int off_A1H8(Square sq) { return int(rank_of(sq)) - file_of(sq); }
 
 const uint8_t WDL_MAGIC[] = { 0x71, 0xE8, 0x23, 0x5D };
 const uint8_t DTZ_MAGIC[] = { 0xD7, 0x66, 0x0C, 0xA5 };
-
-const int wdl_to_dtz[] = { -1, -101, 0, 101, 1 };
 
 const Value WDL_to_value[] = {
    -VALUE_MATE + MAX_PLY + 1,
@@ -300,9 +298,9 @@ class TBFile : public std::ifstream {
     std::string fname;
 
 public:
-    // Open the file with the given name found among the TBPaths directories
-    // where the .rtbw and .rtbz files can be found. Multiple directories are
-    // separated by ";" on Windows and by ":" on Unix-based operating systems.
+    // Look for and open the file among the TBPaths directories where the .rtbw
+    // and .rtbz files can be found. Multiple directories are separated by ";"
+    // on Windows and by ":" on Unix-based operating systems.
     //
     // Example:
     // C:\tb\wdl345;C:\tb\wdl6;D:\tb\dtz345;D:\tb\dtz6
@@ -324,8 +322,8 @@ public:
         }
     }
 
-    // Memory map the file and check it. File should be already open and
-    // will be closed after mapping.
+    // Memory map the file and check it. File should be already open and will be
+    // closed after mapping.
     uint8_t* map(void** baseAddress, uint64_t* mapping, const uint8_t TB_MAGIC[]) {
 
         if (!is_open()) {
@@ -1588,7 +1586,7 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves, Value& 
                     --v;
             } else {
                 v = -probe_wdl(pos, &result);
-                v = wdl_to_dtz[v + 2];
+                v = zeroing_move_dtz(WDLScore(v));
             }
         }
 
