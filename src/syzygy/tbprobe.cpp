@@ -225,7 +225,7 @@ const std::string PieceToChar = " PNBRQK  pnbrqk";
 Mutex TB_mutex;
 std::string TBPaths;
 std::deque<WDLEntry> WDLTable;
-std::list<DTZEntry> DTZTable;
+std::deque<DTZEntry> DTZTable;
 
 int Binomial[6][SQUARE_NB];    // [k][n] k elements from a set of n elements
 int LeadPawnIdx[4][SQUARE_NB]; // [leadPawnsCnt - 1][SQUARE_NB]
@@ -255,19 +255,20 @@ template<typename T, int LE> T number(void* addr)
 
 class HashTable {
 
-    typedef std::pair<Key, WDLEntry*> Entry;
+    typedef std::pair<WDLEntry*, DTZEntry*> Data;
+    typedef std::pair<Key, Data> Entry;
 
     static const int TBHASHBITS = 10;
     static const int HSHMAX     = 5;
 
     Entry table[1 << TBHASHBITS][HSHMAX];
 
-    void insert(Key key, WDLEntry* ptr) {
+    void insert(Key key, WDLEntry* wdl, DTZEntry* dtz) {
         Entry* entry = table[key >> (64 - TBHASHBITS)];
 
         for (int i = 0; i < HSHMAX; ++i, ++entry)
-            if (!entry->second || entry->first == key) {
-                *entry = std::make_pair(key, ptr);
+            if (!entry->second.first || entry->first == key) {
+                *entry = std::make_pair(key, std::make_pair(wdl, dtz));
                 return;
             }
 
@@ -276,12 +277,13 @@ class HashTable {
     }
 
 public:
-  WDLEntry* operator[](Key key) {
+  template<typename E, int I = std::is_same<E, WDLEntry>::value ? 0 : 1>
+  E* get(Key key) {
       Entry* entry = table[key >> (64 - TBHASHBITS)];
 
       for (int i = 0; i < HSHMAX; ++i, ++entry)
           if (entry->first == key)
-              return entry->second;
+              return std::get<I>(entry->second);
 
       return nullptr;
   }
@@ -290,7 +292,7 @@ public:
   void insert(const std::vector<PieceType>& pieces);
 };
 
-HashTable WDLHash;
+HashTable Hash;
 
 
 class TBFile : public std::ifstream {
@@ -486,8 +488,18 @@ void HashTable::insert(const std::vector<PieceType>& pieces) {
 
     WDLTable.push_back(WDLEntry(code));
 
-    insert(WDLTable.back().key , &WDLTable.back());
-    insert(WDLTable.back().key2, &WDLTable.back());
+    DTZEntry* dtz = nullptr;
+    TBFile file2(code.insert(code.find('K', 1), "v") + ".rtbz");
+
+    if (file2.is_open()) {
+        DTZTable.push_back(DTZEntry(WDLTable.back()));
+        dtz = &DTZTable.back();
+    }
+
+    file2.close();
+
+    insert(WDLTable.back().key , &WDLTable.back(), dtz);
+    insert(WDLTable.back().key2, &WDLTable.back(), dtz);
 }
 
 // TB are compressed with canonical Huffman code. The compressed data is divided into
@@ -665,7 +677,7 @@ int map_score(DTZEntry* entry, File f, int value, WDLScore wdl)
 //      idx = Binomial[1][s1] + Binomial[2][s2] + ... + Binomial[k][sk]
 //
 template<typename Entry>
-int probe_table(const Position& pos,  Entry* entry, WDLScore wdl = WDLDraw, ProbeState* result = nullptr)
+int do_probe_table(const Position& pos,  Entry* entry, ProbeState* result, WDLScore wdl)
 {
     Square squares[TBPIECES];
     Piece pieces[TBPIECES];
@@ -1140,77 +1152,25 @@ bool init(Entry& e, const Position& pos)
     return true;
 }
 
-WDLScore probe_wdl_table(Position& pos, ProbeState* result) {
+template<typename E> struct Ret { typedef int type; };
+template<> struct Ret<WDLEntry> { typedef WDLScore type; };
+
+template<typename E, typename T = typename Ret<E>::type>
+T probe_table(Position& pos, ProbeState* result, WDLScore wdl = WDLDraw) {
+
+    const bool IsWDL = std::is_same<E, WDLEntry>::value;
 
     Key key = pos.material_key();
 
-    if (!(pos.pieces() ^ pos.pieces(KING)))
-        return WDLDraw; // KvK
+    if (IsWDL && !(pos.pieces() ^ pos.pieces(KING)))
+        return T(0); // KvK
 
-    WDLEntry* entry = WDLHash[key];
-    if (!entry) {
-        *result = FAIL;
-        return WDLDraw;
-    }
+    E* entry = Hash.get<E>(key);
+    if (entry && init(*entry, pos))
+        return T(do_probe_table(pos, entry, result, wdl));
 
-    // Init table at first access attempt, init() is thread safe
-    if (!init(*entry, pos)) {
-        *result = FAIL;
-        return WDLDraw;
-    }
-
-    return (WDLScore)probe_table(pos, entry);
-}
-
-int probe_dtz_table(const Position& pos, WDLScore wdl, ProbeState* result) {
-
-    Key key = pos.material_key();
-
-    if (DTZTable.front().key != key && DTZTable.front().key2 != key) {
-
-        // Enforce "Most Recently Used" (MRU) order for DTZ list
-        for (auto it = DTZTable.begin(); it != DTZTable.end(); ++it)
-            if (it->key == key || it->key2 == key) {
-                // Move to front without deleting the element
-                DTZTable.splice(DTZTable.begin(), DTZTable, it);
-                break;
-            }
-
-        // If still not found, add a new one
-        if (DTZTable.front().key != key && DTZTable.front().key2 != key) {
-
-            WDLEntry* wdlEntry = WDLHash[key];
-            if (!wdlEntry) {
-                *result = FAIL;
-                return 0;
-            }
-
-            DTZTable.push_front(DTZEntry(*wdlEntry));
-
-            if (!init(DTZTable.front(), pos)) {
-                // In case file is not found init() fails, but we leave
-                // the entry so to avoid rechecking at every probe (same
-                // functionality as WDL case).
-                // FIXME: This is different form original functionality!
-                /* DTZTable.pop_front(); */
-                *result = FAIL;
-                return 0;
-            }
-
-            // Keep list size within 64 entries to avoid huge mapped memory.
-            // DTZ are huge and probed only at root, so normally we have only
-            // few of them mapped in real games.
-            if (DTZTable.size() > 64)
-               DTZTable.pop_back();
-        }
-    }
-
-    if (!DTZTable.front().baseAddress) {
-        *result = FAIL;
-        return 0;
-    }
-
-    return probe_table(pos, &DTZTable.front(), wdl, result);
+    *result = FAIL;
+    return T(0);
 }
 
 // For a position where the side to move has a winning capture it is not necessary
@@ -1273,7 +1233,7 @@ WDLScore search(Position& pos, WDLScore alpha, WDLScore beta, ProbeState* result
         value = alpha;
     else
     {
-        value = probe_wdl_table(pos, result);
+        value = probe_table<WDLEntry>(pos, result);
 
         if (*result == FAIL)
             return WDLDraw;
@@ -1293,7 +1253,7 @@ void Tablebases::init(const std::string& paths)
 {
     DTZTable.clear();
     WDLTable.clear();
-    WDLHash.clear();
+    Hash.clear();
 
     MaxCardinality = 0;
     TBPaths = paths;
@@ -1394,28 +1354,28 @@ void Tablebases::init(const std::string& paths)
         }
 
     for (PieceType p1 = PAWN; p1 < KING; ++p1) {
-        WDLHash.insert({KING, p1, KING});
+        Hash.insert({KING, p1, KING});
 
         for (PieceType p2 = PAWN; p2 <= p1; ++p2) {
-            WDLHash.insert({KING, p1, p2, KING});
-            WDLHash.insert({KING, p1, KING, p2});
+            Hash.insert({KING, p1, p2, KING});
+            Hash.insert({KING, p1, KING, p2});
 
             for (PieceType p3 = PAWN; p3 < KING; ++p3)
-                WDLHash.insert({KING, p1, p2, KING, p3});
+                Hash.insert({KING, p1, p2, KING, p3});
 
             for (PieceType p3 = PAWN; p3 <= p2; ++p3) {
-                WDLHash.insert({KING, p1, p2, p3, KING});
+                Hash.insert({KING, p1, p2, p3, KING});
 
                 for (PieceType p4 = PAWN; p4 <= p3; ++p4)
-                    WDLHash.insert({KING, p1, p2, p3, p4, KING});
+                    Hash.insert({KING, p1, p2, p3, p4, KING});
 
                 for (PieceType p4 = PAWN; p4 < KING; ++p4)
-                    WDLHash.insert({KING, p1, p2, p3, KING, p4});
+                    Hash.insert({KING, p1, p2, p3, KING, p4});
             }
 
             for (PieceType p3 = PAWN; p3 <= p1; ++p3)
                 for (PieceType p4 = PAWN; p4 <= (p1 == p3 ? p2 : p3); ++p4)
-                    WDLHash.insert({KING, p1, p2, KING, p3, p4});
+                    Hash.insert({KING, p1, p2, KING, p3, p4});
         }
     }
 
@@ -1477,7 +1437,7 @@ int Tablebases::probe_dtz(Position& pos, ProbeState* result)
     if (*result == ZEROING_BEST_MOVE)
         return zeroing_move_dtz(wdl);
 
-    int dtz = probe_dtz_table(pos, wdl, result); // Probe the table!
+    int dtz = probe_table<DTZEntry>(pos, result, wdl); // Probe the table!
 
     if (*result != CHANGE_STM)
         return (dtz + 100 * (wdl == WDLCursedLoss || wdl == WDLCursedWin)) * sign_of(wdl);
