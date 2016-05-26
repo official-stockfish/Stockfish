@@ -1110,7 +1110,7 @@ void do_init(Entry& e, T& p, uint8_t* data)
 }
 
 template<typename Entry>
-bool init(Entry& e, const Position& pos)
+void* init(Entry& e, const Position& pos)
 {
     const bool IsWDL = std::is_same<Entry, WDLEntry>::value;
     const uint8_t* MAGIC = IsWDL ? WDL_MAGIC : DTZ_MAGIC;
@@ -1118,12 +1118,12 @@ bool init(Entry& e, const Position& pos)
     // Avoid a thread reads 'ready' == true while another is still in do_init(),
     // this could happen due to compiler reordering.
     if (e.ready.load(std::memory_order_acquire))
-        return true;
+        return e.baseAddress;
 
     std::unique_lock<Mutex> lk(TB_mutex);
 
     if (e.ready.load(std::memory_order_relaxed)) // Recheck under lock
-        return true;
+        return e.baseAddress;
 
     std::string fname, w, b;
 
@@ -1137,12 +1137,11 @@ bool init(Entry& e, const Position& pos)
            + (IsWDL ? ".rtbw" : ".rtbz");
 
     uint8_t* data = TBFile(fname).map(&e.baseAddress, &e.mapping, MAGIC);
-    if (!data)
-        return false;
+    if (data)
+        e.hasPawns ? do_init(e, e.pawn, data) : do_init(e, e.piece, data);
 
-    e.hasPawns ? do_init(e, e.pawn, data) : do_init(e, e.piece, data);
     e.ready.store(true, std::memory_order_release);
-    return true;
+    return e.baseAddress;
 }
 
 template<typename E, typename T = typename Ret<E>::type>
