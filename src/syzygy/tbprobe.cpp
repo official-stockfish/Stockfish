@@ -466,20 +466,6 @@ DTZEntry::~DTZEntry() {
         delete piece.precomp;
 }
 
-// Given a position return a string of the form KQPvKRP, where KQP represents
-// the white pieces if mirror == false and the black pieces if mirror == true.
-std::string pos_code(const Position& pos, bool mirror = false) {
-
-    std::string w, b;
-
-    for (PieceType pt = KING; pt >= PAWN; --pt) {
-        w += std::string(popcount(pos.pieces(WHITE, pt)), PieceToChar[pt]);
-        b += std::string(popcount(pos.pieces(BLACK, pt)), PieceToChar[pt]);
-    }
-
-    return mirror ? b + 'v' + w : w + 'v' + b;
-}
-
 void HashTable::insert(const std::vector<PieceType>& pieces) {
 
     std::string code;
@@ -1122,8 +1108,16 @@ bool init(Entry& e, const Position& pos)
     const bool IsWDL = std::is_same<Entry, WDLEntry>::value;
     const uint8_t* MAGIC = IsWDL ? WDL_MAGIC : DTZ_MAGIC;
 
-    std::string fname =   pos_code(pos, e.key != pos.material_key())
-                       + (IsWDL ? ".rtbw" : ".rtbz");
+    std::string fname, w, b;
+
+    // Position pieces in decreasing order for each color, like ("KPP","KR")
+    for (PieceType pt = KING; pt >= PAWN; --pt) {
+        w += std::string(popcount(pos.pieces(WHITE, pt)), PieceToChar[pt]);
+        b += std::string(popcount(pos.pieces(BLACK, pt)), PieceToChar[pt]);
+    }
+
+    fname =  (e.key == pos.material_key() ? w + 'v' + b : b + 'v' + w)
+           + (IsWDL ? ".rtbw" : ".rtbz");
 
     uint8_t* data = TBFile(fname).map(&e.baseAddress, &e.mapping, MAGIC);
     if (!data)
