@@ -1118,9 +1118,13 @@ void do_init(Entry& e, T& p, uint8_t* data)
 }
 
 template<typename Entry>
-bool init(Entry& e, const std::string& fname)
+bool init(Entry& e, const Position& pos)
 {
-    const uint8_t* MAGIC = std::is_same<Entry, DTZEntry>::value ? DTZ_MAGIC : WDL_MAGIC;
+    const bool IsWDL = std::is_same<Entry, WDLEntry>::value;
+    const uint8_t* MAGIC = IsWDL ? WDL_MAGIC : DTZ_MAGIC;
+
+    std::string fname =   pos_code(pos, e.key != pos.material_key())
+                       + (IsWDL ? ".rtbw" : ".rtbz");
 
     uint8_t* data = TBFile(fname).map(&e.baseAddress, &e.mapping, MAGIC);
     if (!data)
@@ -1130,8 +1134,8 @@ bool init(Entry& e, const std::string& fname)
     return true;
 }
 
-WDLScore probe_wdl_table(Position& pos, ProbeState* result)
-{
+WDLScore probe_wdl_table(Position& pos, ProbeState* result) {
+
     Key key = pos.material_key();
 
     if (!(pos.pieces() ^ pos.pieces(KING)))
@@ -1143,14 +1147,13 @@ WDLScore probe_wdl_table(Position& pos, ProbeState* result)
         return WDLDraw;
     }
 
-    // Init table at first access attempt. Special care to avoid
-    // one thread reads ready == 1 while the other is still in
-    // init(), this could happen due to compiler reordering.
+    // Init table at first access attempt. Special care should be taken to avoid
+    // one thread reads ready == 1 while the other is still in init(), this could
+    // happen due to compiler reordering.
     if (!entry->ready.load(std::memory_order_acquire)) {
         std::unique_lock<Mutex> lk(TB_mutex);
         if (!entry->ready.load(std::memory_order_relaxed)) {
-            std::string fname = pos_code(pos, entry->key != key) + ".rtbw";
-            if (!init(*entry, fname)) {
+            if (!init(*entry, pos)) {
                 // Was ptr2->key = 0ULL;  Just leave !ptr->ready condition
                 *result = FAIL;
                 return WDLDraw;
@@ -1162,8 +1165,8 @@ WDLScore probe_wdl_table(Position& pos, ProbeState* result)
     return (WDLScore)probe_table(pos, entry);
 }
 
-int probe_dtz_table(const Position& pos, WDLScore wdl, ProbeState* result)
-{
+int probe_dtz_table(const Position& pos, WDLScore wdl, ProbeState* result) {
+
     Key key = pos.material_key();
 
     if (DTZTable.front().key != key && DTZTable.front().key2 != key) {
@@ -1187,8 +1190,7 @@ int probe_dtz_table(const Position& pos, WDLScore wdl, ProbeState* result)
 
             DTZTable.push_front(DTZEntry(*wdlEntry));
 
-            std::string fname = pos_code(pos, wdlEntry->key != key) + ".rtbz";
-            if (!init(DTZTable.front(), fname)) {
+            if (!init(DTZTable.front(), pos)) {
                 // In case file is not found init() fails, but we leave
                 // the entry so to avoid rechecking at every probe (same
                 // functionality as WDL case).
@@ -1198,8 +1200,9 @@ int probe_dtz_table(const Position& pos, WDLScore wdl, ProbeState* result)
                 return 0;
             }
 
-            // Keep list size within 64 entries
-            // FIXME remove it when we will know what we are doing
+            // Keep list size within 64 entries to avoid huge mapped memory.
+            // DTZ are huge and probed only at root, so normally we have only
+            // few of them mapped in real games.
             if (DTZTable.size() > 64)
                DTZTable.pop_back();
         }
