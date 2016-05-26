@@ -200,6 +200,9 @@ auto item(DTZPiece& e, int    , int  ) -> decltype(e)& { return e; }
 auto item(WDLPawn&  e, int stm, int f) -> decltype(e.file[stm][f])& { return e.file[stm][f]; }
 auto item(DTZPawn&  e, int    , int f) -> decltype(e.file[f])& { return e.file[f]; }
 
+template<typename E> struct Ret { typedef int type; };
+template<> struct Ret<WDLEntry> { typedef WDLScore type; };
+
 int MapPawns[SQUARE_NB];
 int MapB1H1H7[SQUARE_NB];
 int MapA1D1D4[SQUARE_NB];
@@ -255,19 +258,20 @@ template<typename T, int LE> T number(void* addr)
 
 class HashTable {
 
-    typedef std::pair<Key, WDLEntry*> Entry;
+    typedef std::pair<WDLEntry*, DTZEntry*> Data;
+    typedef std::pair<Key, Data> Entry;
 
     static const int TBHASHBITS = 10;
     static const int HSHMAX     = 5;
 
     Entry table[1 << TBHASHBITS][HSHMAX];
 
-    void insert(Key key, WDLEntry* ptr) {
+    void insert(Key key, WDLEntry* wdl, DTZEntry* dtz) {
         Entry* entry = table[key >> (64 - TBHASHBITS)];
 
         for (int i = 0; i < HSHMAX; ++i, ++entry)
-            if (!entry->second || entry->first == key) {
-                *entry = std::make_pair(key, ptr);
+            if (!entry->second.first || entry->first == key) {
+                *entry = std::make_pair(key, std::make_pair(wdl, dtz));
                 return;
             }
 
@@ -276,12 +280,13 @@ class HashTable {
     }
 
 public:
-  WDLEntry* operator[](Key key) {
+    template<typename E, int I = std::is_same<E, WDLEntry>::value ? 0 : 1>
+    E* get(Key key) {
       Entry* entry = table[key >> (64 - TBHASHBITS)];
 
       for (int i = 0; i < HSHMAX; ++i, ++entry)
           if (entry->first == key)
-              return entry->second;
+              return std::get<I>(entry->second);
 
       return nullptr;
   }
@@ -290,7 +295,7 @@ public:
   void insert(const std::vector<PieceType>& pieces);
 };
 
-HashTable WDLHash;
+HashTable Hash;
 
 
 class TBFile : public std::ifstream {
@@ -486,8 +491,8 @@ void HashTable::insert(const std::vector<PieceType>& pieces) {
 
     WDLTable.push_back(WDLEntry(code));
 
-    insert(WDLTable.back().key , &WDLTable.back());
-    insert(WDLTable.back().key2, &WDLTable.back());
+    insert(WDLTable.back().key , &WDLTable.back(), nullptr);
+    insert(WDLTable.back().key2, &WDLTable.back(), nullptr);
 }
 
 // TB are compressed with canonical Huffman code. The compressed data is divided into
@@ -629,7 +634,7 @@ bool check_dtz_stm(DTZEntry* entry, File f, int stm)
 // values 0, 1, 2, ... in order of decreasing frequency. This is done for each
 // of the four WDLScore values. The mapping information necessary to reconstruct
 // the original values is stored in the TB file and read during map[] init.
-int map_score(WDLEntry*, File, int value, WDLScore) { return value - 2; }
+WDLScore map_score(WDLEntry*, File, int value, WDLScore) { return WDLScore(value - 2); }
 
 int map_score(DTZEntry* entry, File f, int value, WDLScore wdl)
 {
@@ -664,8 +669,8 @@ int map_score(DTZEntry* entry, File f, int value, WDLScore wdl)
 //
 //      idx = Binomial[1][s1] + Binomial[2][s2] + ... + Binomial[k][sk]
 //
-template<typename Entry>
-int probe_table(const Position& pos,  Entry* entry, WDLScore wdl = WDLDraw, ProbeState* result = nullptr)
+template<typename Entry, typename T = typename Ret<Entry>::type>
+T do_probe_table(const Position& pos,  Entry* entry, WDLScore wdl = WDLDraw, ProbeState* result = nullptr)
 {
     Square squares[TBPIECES];
     Piece pieces[TBPIECES];
@@ -728,7 +733,7 @@ int probe_table(const Position& pos,  Entry* entry, WDLScore wdl = WDLDraw, Prob
     if (    std::is_same<Entry, DTZEntry>::value
         && !check_dtz_stm(entry, tbFile, stm)) {
         *result = CHANGE_STM;
-        return 0;
+        return T(0);
     }
 
     // Now we are ready to get all the position pieces (but the lead pawns) and
@@ -1140,26 +1145,19 @@ bool init(Entry& e, const Position& pos)
     return true;
 }
 
-WDLScore probe_wdl_table(Position& pos, ProbeState* result) {
+template<typename E, typename T = typename Ret<E>::type>
+T probe_table(Position& pos, ProbeState* result) {
 
     Key key = pos.material_key();
 
     if (!(pos.pieces() ^ pos.pieces(KING)))
-        return WDLDraw; // KvK
+        return T(0); // KvK
 
-    WDLEntry* entry = WDLHash[key];
-    if (!entry) {
-        *result = FAIL;
-        return WDLDraw;
-    }
+    WDLEntry* entry = Hash.get<WDLEntry>(key);
+    if (entry && init(*entry, pos))
+        return do_probe_table(pos, entry);
 
-    // Init table at first access attempt, init() is thread safe
-    if (!init(*entry, pos)) {
-        *result = FAIL;
-        return WDLDraw;
-    }
-
-    return (WDLScore)probe_table(pos, entry);
+    return *result = FAIL, T(0);
 }
 
 int probe_dtz_table(const Position& pos, WDLScore wdl, ProbeState* result) {
@@ -1179,7 +1177,7 @@ int probe_dtz_table(const Position& pos, WDLScore wdl, ProbeState* result) {
         // If still not found, add a new one
         if (DTZTable.front().key != key && DTZTable.front().key2 != key) {
 
-            WDLEntry* wdlEntry = WDLHash[key];
+            WDLEntry* wdlEntry = Hash.get<WDLEntry>(key);
             if (!wdlEntry) {
                 *result = FAIL;
                 return 0;
@@ -1210,7 +1208,7 @@ int probe_dtz_table(const Position& pos, WDLScore wdl, ProbeState* result) {
         return 0;
     }
 
-    return probe_table(pos, &DTZTable.front(), wdl, result);
+    return do_probe_table(pos, &DTZTable.front(), wdl, result);
 }
 
 // For a position where the side to move has a winning capture it is not necessary
@@ -1273,7 +1271,7 @@ WDLScore search(Position& pos, WDLScore alpha, WDLScore beta, ProbeState* result
         value = alpha;
     else
     {
-        value = probe_wdl_table(pos, result);
+        value = probe_table<WDLEntry>(pos, result);
 
         if (*result == FAIL)
             return WDLDraw;
@@ -1293,7 +1291,7 @@ void Tablebases::init(const std::string& paths)
 {
     DTZTable.clear();
     WDLTable.clear();
-    WDLHash.clear();
+    Hash.clear();
 
     MaxCardinality = 0;
     TBPaths = paths;
@@ -1394,28 +1392,28 @@ void Tablebases::init(const std::string& paths)
         }
 
     for (PieceType p1 = PAWN; p1 < KING; ++p1) {
-        WDLHash.insert({KING, p1, KING});
+        Hash.insert({KING, p1, KING});
 
         for (PieceType p2 = PAWN; p2 <= p1; ++p2) {
-            WDLHash.insert({KING, p1, p2, KING});
-            WDLHash.insert({KING, p1, KING, p2});
+            Hash.insert({KING, p1, p2, KING});
+            Hash.insert({KING, p1, KING, p2});
 
             for (PieceType p3 = PAWN; p3 < KING; ++p3)
-                WDLHash.insert({KING, p1, p2, KING, p3});
+                Hash.insert({KING, p1, p2, KING, p3});
 
             for (PieceType p3 = PAWN; p3 <= p2; ++p3) {
-                WDLHash.insert({KING, p1, p2, p3, KING});
+                Hash.insert({KING, p1, p2, p3, KING});
 
                 for (PieceType p4 = PAWN; p4 <= p3; ++p4)
-                    WDLHash.insert({KING, p1, p2, p3, p4, KING});
+                    Hash.insert({KING, p1, p2, p3, p4, KING});
 
                 for (PieceType p4 = PAWN; p4 < KING; ++p4)
-                    WDLHash.insert({KING, p1, p2, p3, KING, p4});
+                    Hash.insert({KING, p1, p2, p3, KING, p4});
             }
 
             for (PieceType p3 = PAWN; p3 <= p1; ++p3)
                 for (PieceType p4 = PAWN; p4 <= (p1 == p3 ? p2 : p3); ++p4)
-                    WDLHash.insert({KING, p1, p2, KING, p3, p4});
+                    Hash.insert({KING, p1, p2, KING, p3, p4});
         }
     }
 
