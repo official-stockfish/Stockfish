@@ -227,9 +227,6 @@ const std::string PieceToChar = " PNBRQK  pnbrqk";
 
 Mutex TB_mutex;
 std::string TBPaths;
-std::deque<WDLEntry> WDLTable;
-std::deque<DTZEntry> DTZTable2;
-std::list<DTZEntry> DTZTable;
 
 int Binomial[6][SQUARE_NB];    // [k][n] k elements from a set of n elements
 int LeadPawnIdx[4][SQUARE_NB]; // [leadPawnsCnt - 1][SQUARE_NB]
@@ -265,10 +262,13 @@ class HashTable {
     static const int TBHASHBITS = 10;
     static const int HSHMAX     = 5;
 
-    Entry table[1 << TBHASHBITS][HSHMAX];
+    Entry hashTable[1 << TBHASHBITS][HSHMAX];
+
+    std::deque<WDLEntry> wdlTable;
+    std::deque<DTZEntry> dtzTable;
 
     void insert(Key key, WDLEntry* wdl, DTZEntry* dtz) {
-        Entry* entry = table[key >> (64 - TBHASHBITS)];
+        Entry* entry = hashTable[key >> (64 - TBHASHBITS)];
 
         for (int i = 0; i < HSHMAX; ++i, ++entry)
             if (!entry->second.first || entry->first == key) {
@@ -283,7 +283,7 @@ class HashTable {
 public:
     template<typename E, int I = std::is_same<E, WDLEntry>::value ? 0 : 1>
     E* get(Key key) {
-      Entry* entry = table[key >> (64 - TBHASHBITS)];
+      Entry* entry = hashTable[key >> (64 - TBHASHBITS)];
 
       for (int i = 0; i < HSHMAX; ++i, ++entry)
           if (entry->first == key)
@@ -292,11 +292,16 @@ public:
       return nullptr;
   }
 
-  void clear() { std::memset(table, 0, sizeof(table)); }
+  void clear() {
+      std::memset(hashTable, 0, sizeof(hashTable));
+      wdlTable.clear();
+      dtzTable.clear();
+  }
+  size_t size() const { return wdlTable.size(); }
   void insert(const std::vector<PieceType>& pieces);
 };
 
-HashTable Hash;
+HashTable EntryTable;
 
 
 class TBFile : public std::ifstream {
@@ -490,11 +495,11 @@ void HashTable::insert(const std::vector<PieceType>& pieces) {
 
     MaxCardinality = std::max(pieces.size(), MaxCardinality);
 
-    WDLTable.push_back(WDLEntry(code));
-    DTZTable2.push_back(DTZEntry(WDLTable.back()));
+    wdlTable.push_back(WDLEntry(code));
+    dtzTable.push_back(DTZEntry(wdlTable.back()));
 
-    insert(WDLTable.back().key , &WDLTable.back(), &DTZTable2.back());
-    insert(WDLTable.back().key2, &WDLTable.back(), &DTZTable2.back());
+    insert(wdlTable.back().key , &wdlTable.back(), &dtzTable.back());
+    insert(wdlTable.back().key2, &wdlTable.back(), &dtzTable.back());
 }
 
 // TB are compressed with canonical Huffman code. The compressed data is divided into
@@ -1152,7 +1157,7 @@ T probe_table(const Position& pos, ProbeState* result, WDLScore wdl = WDLDraw) {
     if (!(pos.pieces() ^ pos.pieces(KING)))
         return T(0); // KvK
 
-    E* entry = Hash.get<E>(pos.material_key());
+    E* entry = EntryTable.get<E>(pos.material_key());
 
     if (!entry || !init(*entry, pos))
         return *result = FAIL, T(0);
@@ -1238,10 +1243,7 @@ WDLScore search(Position& pos, WDLScore alpha, WDLScore beta, ProbeState* result
 
 void Tablebases::init(const std::string& paths)
 {
-    DTZTable.clear();
-    WDLTable.clear();
-    Hash.clear();
-
+    EntryTable.clear();
     MaxCardinality = 0;
     TBPaths = paths;
 
@@ -1341,32 +1343,32 @@ void Tablebases::init(const std::string& paths)
         }
 
     for (PieceType p1 = PAWN; p1 < KING; ++p1) {
-        Hash.insert({KING, p1, KING});
+        EntryTable.insert({KING, p1, KING});
 
         for (PieceType p2 = PAWN; p2 <= p1; ++p2) {
-            Hash.insert({KING, p1, p2, KING});
-            Hash.insert({KING, p1, KING, p2});
+            EntryTable.insert({KING, p1, p2, KING});
+            EntryTable.insert({KING, p1, KING, p2});
 
             for (PieceType p3 = PAWN; p3 < KING; ++p3)
-                Hash.insert({KING, p1, p2, KING, p3});
+                EntryTable.insert({KING, p1, p2, KING, p3});
 
             for (PieceType p3 = PAWN; p3 <= p2; ++p3) {
-                Hash.insert({KING, p1, p2, p3, KING});
+                EntryTable.insert({KING, p1, p2, p3, KING});
 
                 for (PieceType p4 = PAWN; p4 <= p3; ++p4)
-                    Hash.insert({KING, p1, p2, p3, p4, KING});
+                    EntryTable.insert({KING, p1, p2, p3, p4, KING});
 
                 for (PieceType p4 = PAWN; p4 < KING; ++p4)
-                    Hash.insert({KING, p1, p2, p3, KING, p4});
+                    EntryTable.insert({KING, p1, p2, p3, KING, p4});
             }
 
             for (PieceType p3 = PAWN; p3 <= p1; ++p3)
                 for (PieceType p4 = PAWN; p4 <= (p1 == p3 ? p2 : p3); ++p4)
-                    Hash.insert({KING, p1, p2, KING, p3, p4});
+                    EntryTable.insert({KING, p1, p2, KING, p3, p4});
         }
     }
 
-    std::cerr << "info string Found " << WDLTable.size() << " tablebases" << std::endl;
+    std::cerr << "info string Found " << EntryTable.size() << " tablebases" << std::endl;
 }
 
 // Probe the WDL table for a particular position.
