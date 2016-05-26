@@ -137,7 +137,7 @@ struct Atomic {
 };
 
 struct WDLEntry : public Atomic {
-    WDLEntry(const Position& pos, Key keys[]);
+    WDLEntry(const std::string& code);
    ~WDLEntry();
 
     void* baseAddress;
@@ -393,14 +393,16 @@ public:
     }
 };
 
-WDLEntry::WDLEntry(const Position& pos, Key keys[])
-{
+WDLEntry::WDLEntry(const std::string& code) {
+
+    StateInfo st;
+    Position pos;
+
     memset(this, 0, sizeof(WDLEntry));
 
     ready = false;
 
-    key = keys[WHITE];
-    key2 = keys[BLACK];
+    key = pos.set(code, WHITE, &st).material_key();
     pieceCount = popcount(pos.pieces());
     hasPawns = pos.pieces(PAWN);
 
@@ -419,10 +421,12 @@ WDLEntry::WDLEntry(const Position& pos, Key keys[])
         pawn.pawnCount[0] = pos.count<PAWN>(c ? WHITE : BLACK);
         pawn.pawnCount[1] = pos.count<PAWN>(c ? BLACK : WHITE);
     }
+
+    key2 = pos.set(code, BLACK, &st).material_key();
 }
 
-WDLEntry::~WDLEntry()
-{
+WDLEntry::~WDLEntry() {
+
     if (baseAddress)
         TBFile::unmap(baseAddress, mapping);
 
@@ -434,8 +438,8 @@ WDLEntry::~WDLEntry()
             delete piece[i].precomp;
 }
 
-DTZEntry::DTZEntry(const WDLEntry& wdl)
-{
+DTZEntry::DTZEntry(const WDLEntry& wdl) {
+
     memset(this, 0, sizeof(DTZEntry));
 
     key = wdl.key;
@@ -450,8 +454,8 @@ DTZEntry::DTZEntry(const WDLEntry& wdl)
     }
 }
 
-DTZEntry::~DTZEntry()
-{
+DTZEntry::~DTZEntry() {
+
     if (baseAddress)
         TBFile::unmap(baseAddress, mapping);
 
@@ -464,8 +468,8 @@ DTZEntry::~DTZEntry()
 
 // Given a position return a string of the form KQPvKRP, where KQP represents
 // the white pieces if mirror == false and the black pieces if mirror == true.
-std::string pos_code(const Position& pos, bool mirror = false)
-{
+std::string pos_code(const Position& pos, bool mirror = false) {
+
     std::string w, b;
 
     for (PieceType pt = KING; pt >= PAWN; --pt) {
@@ -476,16 +480,14 @@ std::string pos_code(const Position& pos, bool mirror = false)
     return mirror ? b + 'v' + w : w + 'v' + b;
 }
 
-void HashTable::insert(const std::vector<PieceType>& pieces)
-{
-    StateInfo st;
-    Position pos;
+void HashTable::insert(const std::vector<PieceType>& pieces) {
+
     std::string code;
 
     for (PieceType pt : pieces)
         code += PieceToChar[pt];
 
-    TBFile file(pos_code(pos.set(code, WHITE, &st)) + ".rtbw");
+    TBFile file(code.insert(code.find('K', 1), "v") + ".rtbw"); // KRK -> KRvK
 
     if (!file.is_open())
         return;
@@ -494,13 +496,10 @@ void HashTable::insert(const std::vector<PieceType>& pieces)
 
     MaxCardinality = std::max(pieces.size(), MaxCardinality);
 
-    Key keys[] = { pos.set(code, WHITE, &st).material_key(),
-                   pos.set(code, BLACK, &st).material_key() };
+    WDLTable.push_back(WDLEntry(code));
 
-    WDLTable.push_back(WDLEntry(pos.set(code, WHITE, &st), keys));
-
-    insert(keys[WHITE], &WDLTable.back());
-    insert(keys[BLACK], &WDLTable.back());
+    insert(WDLTable.back().key , &WDLTable.back());
+    insert(WDLTable.back().key2, &WDLTable.back());
 }
 
 // TB are compressed with canonical Huffman code. The compressed data is divided into
