@@ -672,7 +672,7 @@ int map_score(DTZEntry* entry, File f, int value, WDLScore wdl)
 //      idx = Binomial[1][s1] + Binomial[2][s2] + ... + Binomial[k][sk]
 //
 template<typename Entry, typename T = typename Ret<Entry>::type>
-T do_probe_table(const Position& pos,  Entry* entry, WDLScore wdl = WDLDraw, ProbeState* result = nullptr)
+T do_probe_table(const Position& pos,  Entry* entry, WDLScore wdl, ProbeState* result)
 {
     Square squares[TBPIECES];
     Piece pieces[TBPIECES];
@@ -1147,82 +1147,17 @@ void* init(Entry& e, const Position& pos)
 }
 
 template<typename E, typename T = typename Ret<E>::type>
-T probe_table(Position& pos, ProbeState* result) {
-
-    Key key = pos.material_key();
+T probe_table(const Position& pos, ProbeState* result, WDLScore wdl = WDLDraw) {
 
     if (!(pos.pieces() ^ pos.pieces(KING)))
         return T(0); // KvK
 
-    WDLEntry* entry = Hash.get<WDLEntry>(key);
-    if (entry && init(*entry, pos))
-        return do_probe_table(pos, entry);
+    E* entry = Hash.get<E>(pos.material_key());
 
-    return *result = FAIL, T(0);
-}
+    if (!entry || !init(*entry, pos))
+        return *result = FAIL, T(0);
 
-int probe_dtz_table(const Position& pos, WDLScore wdl, ProbeState* result) {
-
-    Key key = pos.material_key();
-
-    if (DTZTable.front().key != key && DTZTable.front().key2 != key) {
-
-        // Enforce "Most Recently Used" (MRU) order for DTZ list
-        for (auto it = DTZTable.begin(); it != DTZTable.end(); ++it)
-            if (it->key == key || it->key2 == key) {
-                // Move to front without deleting the element
-                DTZTable.splice(DTZTable.begin(), DTZTable, it);
-                break;
-            }
-
-        // If still not found, add a new one
-        if (DTZTable.front().key != key && DTZTable.front().key2 != key) {
-
-            WDLEntry* wdlEntry = Hash.get<WDLEntry>(key);
-            if (!wdlEntry) {
-                *result = FAIL;
-                return 0;
-            }
-
-            DTZTable.push_front(DTZEntry(*wdlEntry));
-
-            if (!init(DTZTable.front(), pos)) {
-                // In case file is not found init() fails, but we leave
-                // the entry so to avoid rechecking at every probe (same
-                // functionality as WDL case).
-                // FIXME: This is different form original functionality!
-                /* DTZTable.pop_front(); */
-                *result = FAIL;
-                return 0;
-            }
-
-            DTZEntry* dtzEntry = Hash.get<DTZEntry>(key);
-
-            assert(dtzEntry && init(*dtzEntry, pos));
-
-            // Keep list size within 64 entries to avoid huge mapped memory.
-            // DTZ are huge and probed only at root, so normally we have only
-            // few of them mapped in real games.
-            if (DTZTable.size() > 64)
-               DTZTable.pop_back();
-        }
-    }
-
-    if (!DTZTable.front().baseAddress) {
-        *result = FAIL;
-        return 0;
-    }
-
-    DTZEntry* dtzEntry = Hash.get<DTZEntry>(key);
-
-    assert(dtzEntry);
-
-    int s1 = do_probe_table(pos, dtzEntry, wdl, result);
-    int s2 = do_probe_table(pos, &DTZTable.front(), wdl, result);
-
-    assert(s1 == s2);
-
-    return s2;
+    return do_probe_table(pos, entry, wdl, result);
 }
 
 // For a position where the side to move has a winning capture it is not necessary
@@ -1489,7 +1424,10 @@ int Tablebases::probe_dtz(Position& pos, ProbeState* result)
     if (*result == ZEROING_BEST_MOVE)
         return zeroing_move_dtz(wdl);
 
-    int dtz = probe_dtz_table(pos, wdl, result); // Probe the table!
+    int dtz = probe_table<DTZEntry>(pos, result, wdl); // Probe the table!
+
+    if (*result == FAIL)
+        return 0;
 
     if (*result != CHANGE_STM)
         return (dtz + 100 * (wdl == WDLCursedLoss || wdl == WDLCursedWin)) * sign_of(wdl);
