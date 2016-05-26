@@ -627,10 +627,8 @@ int decompress_pairs(PairsData* d, uint64_t idx)
     return d->btree[sym].get<LR::Value>();
 }
 
-template<typename Entry>
-bool check_dtz_stm(Entry*, File, int) { return true; }
+bool check_dtz_stm(WDLEntry*, File, int) { return true; }
 
-template<>
 bool check_dtz_stm(DTZEntry* entry, File f, int stm)
 {
     int flags = entry->hasPawns ? entry->pawn.file[f].precomp->flags
@@ -644,13 +642,11 @@ bool check_dtz_stm(DTZEntry* entry, File f, int stm)
 // values 0, 1, 2, ... in order of decreasing frequency. This is done for each
 // of the four WDLScore values. The mapping information necessary to reconstruct
 // the original values is stored in the TB file and read during map[] init.
-template<typename Entry>
-int map_score(Entry*, File, int value, WDLScore) { return value - 2; }
+int map_score(WDLEntry*, File, int value, WDLScore) { return value - 2; }
 
-template<>
 int map_score(DTZEntry* entry, File f, int value, WDLScore wdl)
 {
-    const int WDLMap[]  = { 1, 3, 0, 2, 0 };
+    const int WDLMap[] = { 1, 3, 0, 2, 0 };
 
     int flags = entry->hasPawns ? entry->pawn.file[f].precomp->flags
                                 : entry->piece.precomp->flags;
@@ -682,7 +678,7 @@ int map_score(DTZEntry* entry, File f, int value, WDLScore wdl)
 //      idx = Binomial[1][s1] + Binomial[2][s2] + ... + Binomial[k][sk]
 //
 template<typename Entry>
-uint64_t probe_table(const Position& pos,  Entry* entry, WDLScore wdl = WDLDraw, ProbeState* result = nullptr)
+int probe_table(const Position& pos,  Entry* entry, WDLScore wdl = WDLDraw, ProbeState* result = nullptr)
 {
     Square squares[TBPIECES];
     Piece pieces[TBPIECES];
@@ -1305,13 +1301,13 @@ void Tablebases::init(const std::string& paths)
     if (TBPaths.empty() || TBPaths == "<empty>")
         return;
 
-    // Init MapB1H1H7[] that encodes a square below a1-h8 diagonal to 0..27
+    // MapB1H1H7[] encodes a square below a1-h8 diagonal to 0..27
     int code = 0;
     for (Square s = SQ_A1; s <= SQ_H8; ++s)
         if (off_A1H8(s) < 0)
             MapB1H1H7[s] = code++;
 
-    // Init MapA1D1D4[] that encodes a square in the a1-d1-d4 triangle to 0..9
+    // MapA1D1D4[] encodes a square in the a1-d1-d4 triangle to 0..9
     std::vector<Square> diagonal;
     code = 0;
     for (Square s = SQ_A1; s <= SQ_D4; ++s)
@@ -1325,9 +1321,9 @@ void Tablebases::init(const std::string& paths)
     for (auto s : diagonal)
         MapA1D1D4[s] = code++;
 
-    // Init MapKK[] that encodes all the 461 possible legal positions of two
-    // kings where the first is in the a1-d1-d4 triangle. If the first king is
-    // on the a1-d4 diagonal, the other shall not to be above the a1-h8 diagonal.
+    // MapKK[] encodes all the 461 possible legal positions of two kings where
+    // the first is in the a1-d1-d4 triangle. If the first king is on the a1-d4
+    // diagonal, the other one shall not to be above the a1-h8 diagonal.
     std::vector<std::pair<int, Square>> bothOnDiagonal;
     code = 0;
     for (int idx = 0; idx < 10; idx++)
@@ -1350,7 +1346,7 @@ void Tablebases::init(const std::string& paths)
     for (auto p : bothOnDiagonal)
         MapKK[p.first][p.second] = code++;
 
-    // Init Binomial[] with the Binomial Coefficents using Pascal rule. There
+    // Binomial[] stores the Binomial Coefficents using Pascal rule. There
     // are Binomial[k][n] ways to choose k elements from a set of n elements.
     Binomial[0][0] = 1;
 
@@ -1359,7 +1355,7 @@ void Tablebases::init(const std::string& paths)
             Binomial[k][n] =  (k > 0 ? Binomial[k - 1][n - 1] : 0)
                             + (k < n ? Binomial[k    ][n - 1] : 0);
 
-    // MapPawns[s] encodes squares a2-h7 to 0..47. It is the number of possible
+    // MapPawns[s] encodes squares a2-h7 to 0..47. This is the number of possible
     // available squares when the leading one is in 's'. Moreover the pawn with
     // highest MapPawns[] is the leading pawn, the one nearest the edge and,
     // among pawns with same file, the one with lowest rank.
