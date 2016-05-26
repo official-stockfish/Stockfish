@@ -128,7 +128,7 @@ struct PairsData {
     uint8_t groupLen[TBPIECES];    // Number of pieces in a given group: KRKN -> (3) + (1)
 };
 
-// Helper struct to avoid to manually define WDLEntry copy c'tor as we should
+// Helper struct to avoid to manually define entry copy c'tor as we should
 // because default one is not compatible with std::atomic_bool.
 struct Atomic {
     Atomic() = default;
@@ -161,7 +161,7 @@ struct WDLEntry : public Atomic {
     };
 };
 
-struct DTZEntry {
+struct DTZEntry : public Atomic {
     DTZEntry(const WDLEntry& wdl);
    ~DTZEntry();
 
@@ -441,6 +441,8 @@ WDLEntry::~WDLEntry() {
 DTZEntry::DTZEntry(const WDLEntry& wdl) {
 
     memset(this, 0, sizeof(DTZEntry));
+
+    ready = false;
 
     key = wdl.key;
     key2 = wdl.key2;
@@ -1108,6 +1110,16 @@ bool init(Entry& e, const Position& pos)
     const bool IsWDL = std::is_same<Entry, WDLEntry>::value;
     const uint8_t* MAGIC = IsWDL ? WDL_MAGIC : DTZ_MAGIC;
 
+    // Avoid a thread reads 'ready' == true while another is still in do_init(),
+    // this could happen due to compiler reordering.
+    if (e.ready.load(std::memory_order_acquire))
+        return true;
+
+    std::unique_lock<Mutex> lk(TB_mutex);
+
+    if (e.ready.load(std::memory_order_relaxed)) // Recheck under lock
+        return true;
+
     std::string fname, w, b;
 
     // Position pieces in decreasing order for each color, like ("KPP","KR")
@@ -1124,6 +1136,7 @@ bool init(Entry& e, const Position& pos)
         return false;
 
     e.hasPawns ? do_init(e, e.pawn, data) : do_init(e, e.piece, data);
+    e.ready.store(true, std::memory_order_release);
     return true;
 }
 
@@ -1140,19 +1153,10 @@ WDLScore probe_wdl_table(Position& pos, ProbeState* result) {
         return WDLDraw;
     }
 
-    // Init table at first access attempt. Special care should be taken to avoid
-    // one thread reads ready == 1 while the other is still in init(), this could
-    // happen due to compiler reordering.
-    if (!entry->ready.load(std::memory_order_acquire)) {
-        std::unique_lock<Mutex> lk(TB_mutex);
-        if (!entry->ready.load(std::memory_order_relaxed)) {
-            if (!init(*entry, pos)) {
-                // Was ptr2->key = 0ULL;  Just leave !ptr->ready condition
-                *result = FAIL;
-                return WDLDraw;
-            }
-            entry->ready.store(1, std::memory_order_release);
-        }
+    // Init table at first access attempt, init() is thread safe
+    if (!init(*entry, pos)) {
+        *result = FAIL;
+        return WDLDraw;
     }
 
     return (WDLScore)probe_table(pos, entry);
