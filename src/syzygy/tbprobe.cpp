@@ -228,6 +228,7 @@ const std::string PieceToChar = " PNBRQK  pnbrqk";
 Mutex TB_mutex;
 std::string TBPaths;
 std::deque<WDLEntry> WDLTable;
+std::deque<DTZEntry> DTZTable2;
 std::list<DTZEntry> DTZTable;
 
 int Binomial[6][SQUARE_NB];    // [k][n] k elements from a set of n elements
@@ -490,9 +491,10 @@ void HashTable::insert(const std::vector<PieceType>& pieces) {
     MaxCardinality = std::max(pieces.size(), MaxCardinality);
 
     WDLTable.push_back(WDLEntry(code));
+    DTZTable2.push_back(DTZEntry(WDLTable.back()));
 
-    insert(WDLTable.back().key , &WDLTable.back(), nullptr);
-    insert(WDLTable.back().key2, &WDLTable.back(), nullptr);
+    insert(WDLTable.back().key , &WDLTable.back(), &DTZTable2.back());
+    insert(WDLTable.back().key2, &WDLTable.back(), &DTZTable2.back());
 }
 
 // TB are compressed with canonical Huffman code. The compressed data is divided into
@@ -1194,6 +1196,10 @@ int probe_dtz_table(const Position& pos, WDLScore wdl, ProbeState* result) {
                 return 0;
             }
 
+            DTZEntry* dtzEntry = Hash.get<DTZEntry>(key);
+
+            assert(dtzEntry && init(*dtzEntry, pos));
+
             // Keep list size within 64 entries to avoid huge mapped memory.
             // DTZ are huge and probed only at root, so normally we have only
             // few of them mapped in real games.
@@ -1207,7 +1213,16 @@ int probe_dtz_table(const Position& pos, WDLScore wdl, ProbeState* result) {
         return 0;
     }
 
-    return do_probe_table(pos, &DTZTable.front(), wdl, result);
+    DTZEntry* dtzEntry = Hash.get<DTZEntry>(key);
+
+    assert(dtzEntry);
+
+    int s1 = do_probe_table(pos, dtzEntry, wdl, result);
+    int s2 = do_probe_table(pos, &DTZTable.front(), wdl, result);
+
+    assert(s1 == s2);
+
+    return s2;
 }
 
 // For a position where the side to move has a winning capture it is not necessary
