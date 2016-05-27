@@ -212,7 +212,7 @@ private:
   bool chess960;
 };
 
-extern std::ostream& operator<<(std::ostream& os, const Position& pos);
+extern std::ostream& operator<<(std::ostream& os, Position& pos);
 
 inline Color Position::side_to_move() const {
   return sideToMove;

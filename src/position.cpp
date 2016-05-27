@@ -31,6 +31,7 @@
 #include "thread.h"
 #include "tt.h"
 #include "uci.h"
+#include "syzygy/tbprobe.h"
 
 using std::string;
 
@@ -102,7 +103,7 @@ CheckInfo::CheckInfo(const Position& pos) {
 
 /// operator<<(Position) returns an ASCII representation of the position
 
-std::ostream& operator<<(std::ostream& os, const Position& pos) {
+std::ostream& operator<<(std::ostream& os, Position& pos) {
 
   os << "\n +---+---+---+---+---+---+---+---+\n";
 
@@ -115,10 +116,21 @@ std::ostream& operator<<(std::ostream& os, const Position& pos) {
   }
 
   os << "\nFen: " << pos.fen() << "\nKey: " << std::hex << std::uppercase
-     << std::setfill('0') << std::setw(16) << pos.key() << std::dec << "\nCheckers: ";
+     << std::setfill('0') << std::setw(16) << pos.key()
+     << std::setfill(' ') << std::dec << "\nCheckers: ";
 
   for (Bitboard b = pos.checkers(); b; )
       os << UCI::square(pop_lsb(&b)) << " ";
+
+  if (    int(Tablebases::MaxCardinality) >= popcount(pos.pieces())
+      && !pos.can_castle(ANY_CASTLING))
+  {
+      Tablebases::ProbeState s1, s2;
+      Tablebases::WDLScore wdl = Tablebases::probe_wdl(pos, &s1);
+      int dtz = Tablebases::probe_dtz(pos, &s2);
+      os << "\nTablebases WDL: " << std::setw(4) << wdl << " (" << s1 << ")"
+         << "\nTablebases DTZ: " << std::setw(4) << dtz << " (" << s2 << ")";
+  }
 
   return os;
 }

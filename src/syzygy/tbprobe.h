@@ -68,7 +68,7 @@ inline std::ostream& operator<<(std::ostream& os, const ProbeState v) {
     os << (v == FAIL              ? "Failed" :
            v == OK                ? "Success" :
            v == CHANGE_STM        ? "Probed opponent side" :
-           v == ZEROING_BEST_MOVE ? "Missing DTZ value"    : "None");
+           v == ZEROING_BEST_MOVE ? "Best move zeroes DTZ" : "None");
 
     return os;
 }
