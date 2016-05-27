@@ -67,7 +67,6 @@ inline Square operator^(Square s, int i) { return Square(int(s) ^ i); }
 // like captures and pawn moves but we can easily recover the correct dtz if we
 // know the position's WDL score.
 int zeroing_move_dtz(WDLScore wdl) {
-
     return wdl == WDLWin        ?  1   :
            wdl == WDLCursedWin  ?  101 :
            wdl == WDLCursedLoss ? -101 :
@@ -212,9 +211,6 @@ int MapKK[10][SQUARE_NB]; // [MapA1D1D4][SQUARE_NB]
 bool pawns_comp(Square i, Square j) { return MapPawns[i] < MapPawns[j]; }
 int off_A1H8(Square sq) { return int(rank_of(sq)) - file_of(sq); }
 
-const uint8_t WDL_MAGIC[] = { 0x71, 0xE8, 0x23, 0x5D };
-const uint8_t DTZ_MAGIC[] = { 0xD7, 0x66, 0x0C, 0xA5 };
-
 const Value WDL_to_value[] = {
    -VALUE_MATE + MAX_PLY + 1,
     VALUE_DRAW - 2,
@@ -224,9 +220,6 @@ const Value WDL_to_value[] = {
 };
 
 const std::string PieceToChar = " PNBRQK  pnbrqk";
-
-Mutex TB_mutex;
-std::string TBPaths;
 
 int Binomial[6][SQUARE_NB];    // [k][n] k elements from a set of n elements
 int LeadPawnIdx[4][SQUARE_NB]; // [leadPawnsCnt - 1][SQUARE_NB]
@@ -256,8 +249,8 @@ template<typename T, int LE> T number(void* addr)
 
 class HashTable {
 
-    typedef std::pair<WDLEntry*, DTZEntry*> Data;
-    typedef std::pair<Key, Data> Entry;
+    typedef std::pair<WDLEntry*, DTZEntry*> EntryPair;
+    typedef std::pair<Key, EntryPair> Entry;
 
     static const int TBHASHBITS = 10;
     static const int HSHMAX     = 5;
@@ -309,12 +302,14 @@ class TBFile : public std::ifstream {
     std::string fname;
 
 public:
-    // Look for and open the file among the TBPaths directories where the .rtbw
+    // Look for and open the file among the Paths directories where the .rtbw
     // and .rtbz files can be found. Multiple directories are separated by ";"
     // on Windows and by ":" on Unix-based operating systems.
     //
     // Example:
     // C:\tb\wdl345;C:\tb\wdl6;D:\tb\dtz345;D:\tb\dtz6
+    static std::string Paths;
+
     TBFile(const std::string& f) {
 
 #ifndef _WIN32
@@ -322,7 +317,7 @@ public:
 #else
         const char SepChar = ';';
 #endif
-        std::stringstream ss(TBPaths);
+        std::stringstream ss(Paths);
         std::string path;
 
         while (std::getline(ss, path, SepChar)) {
@@ -404,6 +399,8 @@ public:
     }
 };
 
+std::string TBFile::Paths;
+
 WDLEntry::WDLEntry(const std::string& code) {
 
     StateInfo st;
@@ -412,7 +409,6 @@ WDLEntry::WDLEntry(const std::string& code) {
     memset(this, 0, sizeof(WDLEntry));
 
     ready = false;
-
     key = pos.set(code, WHITE, &st).material_key();
     pieceCount = popcount(pos.pieces());
     hasPawns = pos.pieces(PAWN);
@@ -454,7 +450,6 @@ DTZEntry::DTZEntry(const WDLEntry& wdl) {
     memset(this, 0, sizeof(DTZEntry));
 
     ready = false;
-
     key = wdl.key;
     key2 = wdl.key2;
     pieceCount = wdl.pieceCount;
@@ -740,7 +735,7 @@ T do_probe_table(const Position& pos,  Entry* entry, WDLScore wdl, ProbeState* r
     if (    std::is_same<Entry, DTZEntry>::value
         && !check_dtz_stm(entry, tbFile, stm)) {
         *result = CHANGE_STM;
-        return T(0);
+        return T();
     }
 
     // Now we are ready to get all the position pieces (but the lead pawns) and
@@ -1120,30 +1115,33 @@ template<typename Entry>
 void* init(Entry& e, const Position& pos)
 {
     const bool IsWDL = std::is_same<Entry, WDLEntry>::value;
-    const uint8_t* MAGIC = IsWDL ? WDL_MAGIC : DTZ_MAGIC;
+
+    static Mutex mutex;
 
     // Avoid a thread reads 'ready' == true while another is still in do_init(),
     // this could happen due to compiler reordering.
     if (e.ready.load(std::memory_order_acquire))
         return e.baseAddress;
 
-    std::unique_lock<Mutex> lk(TB_mutex);
+    std::unique_lock<Mutex> lk(mutex);
 
     if (e.ready.load(std::memory_order_relaxed)) // Recheck under lock
         return e.baseAddress;
 
+    // Pieces strings in decreasing order for each color, like ("KPP","KR")
     std::string fname, w, b;
-
-    // Position pieces in decreasing order for each color, like ("KPP","KR")
     for (PieceType pt = KING; pt >= PAWN; --pt) {
         w += std::string(popcount(pos.pieces(WHITE, pt)), PieceToChar[pt]);
         b += std::string(popcount(pos.pieces(BLACK, pt)), PieceToChar[pt]);
     }
 
+    const uint8_t MAGIC[][4] = { { 0xD7, 0x66, 0x0C, 0xA5 },
+                                 { 0x71, 0xE8, 0x23, 0x5D } };
+
     fname =  (e.key == pos.material_key() ? w + 'v' + b : b + 'v' + w)
            + (IsWDL ? ".rtbw" : ".rtbz");
 
-    uint8_t* data = TBFile(fname).map(&e.baseAddress, &e.mapping, MAGIC);
+    uint8_t* data = TBFile(fname).map(&e.baseAddress, &e.mapping, MAGIC[IsWDL]);
     if (data)
         e.hasPawns ? do_init(e, e.pawn, data) : do_init(e, e.piece, data);
 
@@ -1155,12 +1153,12 @@ template<typename E, typename T = typename Ret<E>::type>
 T probe_table(const Position& pos, ProbeState* result, WDLScore wdl = WDLDraw) {
 
     if (!(pos.pieces() ^ pos.pieces(KING)))
-        return T(0); // KvK
+        return T(WDLDraw); // KvK
 
     E* entry = EntryTable.get<E>(pos.material_key());
 
     if (!entry || !init(*entry, pos))
-        return *result = FAIL, T(0);
+        return *result = FAIL, T();
 
     return do_probe_table(pos, entry, wdl, result);
 }
@@ -1177,7 +1175,7 @@ T probe_table(const Position& pos, ProbeState* result, WDLScore wdl = WDLDraw) {
 // DTZ table don't store values when a following move is a zeroing winning move
 // (winning capture or winning pawn move). Also DTZ store wrong values for positions
 // where the best move is an ep-move (even if losing). So in all these cases set
-// the state to ZEROING_MOVE.
+// the state to ZEROING_BEST_MOVE.
 template<bool CheckZeroingMoves = false>
 WDLScore search(Position& pos, WDLScore alpha, WDLScore beta, ProbeState* result)
 {
@@ -1186,8 +1184,8 @@ WDLScore search(Position& pos, WDLScore alpha, WDLScore beta, ProbeState* result
     CheckInfo ci(pos);
 
     auto moveList = MoveList<LEGAL>(pos);
-    size_t totalCount = moveList.size();
-    size_t moveCount = 0;
+    size_t totalCount = moveList.size(), moveCount = 0;
+
     for (const Move& move : moveList)
     {
         if (   !pos.capture(move)
@@ -1245,9 +1243,9 @@ void Tablebases::init(const std::string& paths)
 {
     EntryTable.clear();
     MaxCardinality = 0;
-    TBPaths = paths;
+    TBFile::Paths = paths;
 
-    if (TBPaths.empty() || TBPaths == "<empty>")
+    if (paths.empty() || paths == "<empty>")
         return;
 
     // MapB1H1H7[] encodes a square below a1-h8 diagonal to 0..27
@@ -1464,8 +1462,8 @@ int Tablebases::probe_dtz(Position& pos, ProbeState* result)
     }
 
     // Convert result from 1-ply search. Special handle a mate position, when
-    // there are no legal moves. Return value is somewhat arbitrary, so stick
-    // to the original TB code that returns -1 in this case.
+    // there are no legal moves, in this case return value is somewhat arbitrary,
+    // so stick to the original TB code that returns -1 in this case.
     return minDTZ == 0xFFFF ? - 1 : minDTZ + sign_of(minDTZ);
 }
 
