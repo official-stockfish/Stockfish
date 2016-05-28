@@ -970,17 +970,9 @@ moves_loop: // When in check search starts from here
 
           predictedDepth = std::max(newDepth - reduction<PvNode>(improving, depth, moveCount), DEPTH_ZERO);
 
-          // Futility pruning: parent node
-          if (predictedDepth < 7 * ONE_PLY)
-          {
-              futilityValue = ss->staticEval + futility_margin(predictedDepth) + 256;
-
-              if (futilityValue <= alpha)
-              {
-                  bestValue = std::max(bestValue, futilityValue);
-                  continue;
-              }
-          }
+          if (   predictedDepth < 7 * ONE_PLY
+              && ss->staticEval + futility_margin(predictedDepth) + 256 <= alpha)
+              continue;
 
           // Prune moves with negative SEE at low depths
           if (predictedDepth < 4 * ONE_PLY && pos.see_sign(move) < VALUE_ZERO)
