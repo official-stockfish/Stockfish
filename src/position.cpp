@@ -429,7 +429,10 @@ Phase Position::game_phase() const {
 
 Bitboard Position::slider_blockers(Bitboard target, Bitboard sliders, Square s) const {
 
-  Bitboard b, pinners, result = 0;
+  if (!sliders)
+      return 0;
+
+  Bitboard b, pinners, result = 0, p = pieces();
 
   // Pinners are sliders that attack 's' when a pinned piece is removed
   pinners = (  (PseudoAttacks[ROOK  ][s] & pieces(QUEEN, ROOK))
@@ -437,12 +440,12 @@ Bitboard Position::slider_blockers(Bitboard target, Bitboard sliders, Square s) 
 
   while (pinners)
   {
-      b = between_bb(s, pop_lsb(&pinners)) & pieces();
+      b = between_bb(s, pop_lsb(&pinners)) & p;
 
       if (!more_than_one(b))
-          result |= b & target;
+          result |= b;
   }
-  return result;
+  return result & target;
 }
 
 
