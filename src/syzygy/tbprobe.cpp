@@ -58,8 +58,6 @@ namespace {
 enum TBFlag { STM = 1, Mapped = 2, WinPlies = 4, LossPlies = 8, SingleValue = 128 };
 
 inline WDLScore operator-(WDLScore d) { return WDLScore(-int(d)); }
-inline WDLScore operator+(WDLScore d1, WDLScore d2) { return WDLScore(int(d1) + int(d2)); }
-
 inline Square operator^=(Square& s, int i) { return s = Square(int(s) ^ i); }
 inline Square operator^(Square s, int i) { return Square(int(s) ^ i); }
 
@@ -149,14 +147,14 @@ struct WDLEntry : public Atomic {
     union {
         struct {
             PairsData* precomp;
-        } piece[2]; // [Side to move]
+        } pieceTable[2]; // [wtm / btm]
 
         struct {
-            uint8_t pawnCount[2]; // [Lead color / weak color]
+            uint8_t pawnCount[2]; // [Lead color / other color]
             struct {
                 PairsData* precomp;
-            } file[2][4]; // [Side to move][FILE_A..FILE_D]
-        } pawn;
+            } file[2][4]; // [wtm / btm][FILE_A..FILE_D]
+        } pawnTable;
     };
 };
 
@@ -176,7 +174,7 @@ struct DTZEntry : public Atomic {
             PairsData* precomp;
             uint16_t map_idx[4]; // WDLWin, WDLLoss, WDLCursedWin, WDLCursedLoss
             uint8_t* map;
-        } piece;
+        } pieceTable;
 
         struct {
             uint8_t pawnCount[2];
@@ -185,19 +183,19 @@ struct DTZEntry : public Atomic {
                 uint16_t map_idx[4];
             } file[4];
             uint8_t* map;
-        } pawn;
+        } pawnTable;
     };
 };
 
-typedef decltype(WDLEntry::piece) WDLPiece;
-typedef decltype(DTZEntry::piece) DTZPiece;
-typedef decltype(WDLEntry::pawn ) WDLPawn;
-typedef decltype(DTZEntry::pawn ) DTZPawn;
+typedef decltype(WDLEntry::pieceTable) WDLPieceTable;
+typedef decltype(DTZEntry::pieceTable) DTZPieceTable;
+typedef decltype(WDLEntry::pawnTable ) WDLPawnTable;
+typedef decltype(DTZEntry::pawnTable ) DTZPawnTable;
 
-auto item(WDLPiece& e, int stm, int  ) -> decltype(e[stm])& { return e[stm]; }
-auto item(DTZPiece& e, int    , int  ) -> decltype(e)& { return e; }
-auto item(WDLPawn&  e, int stm, int f) -> decltype(e.file[stm][f])& { return e.file[stm][f]; }
-auto item(DTZPawn&  e, int    , int f) -> decltype(e.file[f])& { return e.file[f]; }
+auto item(WDLPieceTable& e, int stm, int  ) -> decltype(e[stm])& { return e[stm]; }
+auto item(DTZPieceTable& e, int    , int  ) -> decltype(e)& { return e; }
+auto item(WDLPawnTable&  e, int stm, int f) -> decltype(e.file[stm][f])& { return e.file[stm][f]; }
+auto item(DTZPawnTable&  e, int    , int f) -> decltype(e.file[f])& { return e.file[f]; }
 
 template<typename E> struct Ret { typedef int type; };
 template<> struct Ret<WDLEntry> { typedef WDLScore type; };
@@ -296,7 +294,6 @@ public:
 
 HashTable EntryTable;
 
-
 class TBFile : public std::ifstream {
 
     std::string fname;
@@ -330,14 +327,11 @@ public:
 
     // Memory map the file and check it. File should be already open and will be
     // closed after mapping.
-    uint8_t* map(void** baseAddress, uint64_t* mapping, const uint8_t TB_MAGIC[]) {
+    uint8_t* map(void** baseAddress, uint64_t* mapping, const uint8_t* TB_MAGIC) {
 
-        if (!is_open()) {
-            std::cerr << "Could not find " << fname << std::endl;
-            *baseAddress = nullptr;
-            return nullptr;
-        }
-        close();
+        assert(is_open());
+
+        close(); // Need to re-open to get native file descriptor
 
 #ifndef _WIN32
         struct stat statbuf;
@@ -375,10 +369,10 @@ public:
 #endif
         uint8_t* data = (uint8_t*)*baseAddress;
 
-        if (   *data++ != TB_MAGIC[0]
-            || *data++ != TB_MAGIC[1]
-            || *data++ != TB_MAGIC[2]
-            || *data++ != TB_MAGIC[3]) {
+        if (   *data++ != *TB_MAGIC++
+            || *data++ != *TB_MAGIC++
+            || *data++ != *TB_MAGIC++
+            || *data++ != *TB_MAGIC) {
             std::cerr << "Corrupted table in file " << fname << std::endl;
             unmap(*baseAddress, *mapping);
             *baseAddress = nullptr;
@@ -425,8 +419,8 @@ WDLEntry::WDLEntry(const std::string& code) {
                 || (   pos.count<PAWN>(WHITE)
                     && pos.count<PAWN>(BLACK) >= pos.count<PAWN>(WHITE));
 
-        pawn.pawnCount[0] = pos.count<PAWN>(c ? WHITE : BLACK);
-        pawn.pawnCount[1] = pos.count<PAWN>(c ? BLACK : WHITE);
+        pawnTable.pawnCount[0] = pos.count<PAWN>(c ? WHITE : BLACK);
+        pawnTable.pawnCount[1] = pos.count<PAWN>(c ? BLACK : WHITE);
     }
 
     key2 = pos.set(code, BLACK, &st).material_key();
@@ -440,9 +434,9 @@ WDLEntry::~WDLEntry() {
     for (int i = 0; i < 2; ++i)
         if (hasPawns)
             for (File f = FILE_A; f <= FILE_D; ++f)
-                delete pawn.file[i][f].precomp;
+                delete pawnTable.file[i][f].precomp;
         else
-            delete piece[i].precomp;
+            delete pieceTable[i].precomp;
 }
 
 DTZEntry::DTZEntry(const WDLEntry& wdl) {
@@ -457,8 +451,8 @@ DTZEntry::DTZEntry(const WDLEntry& wdl) {
     hasUniquePieces = wdl.hasUniquePieces;
 
     if (hasPawns) {
-        pawn.pawnCount[0] = wdl.pawn.pawnCount[0];
-        pawn.pawnCount[1] = wdl.pawn.pawnCount[1];
+        pawnTable.pawnCount[0] = wdl.pawnTable.pawnCount[0];
+        pawnTable.pawnCount[1] = wdl.pawnTable.pawnCount[1];
     }
 }
 
@@ -469,9 +463,9 @@ DTZEntry::~DTZEntry() {
 
     if (hasPawns)
         for (File f = FILE_A; f <= FILE_D; ++f)
-            delete pawn.file[f].precomp;
+            delete pawnTable.file[f].precomp;
     else
-        delete piece.precomp;
+        delete pieceTable.precomp;
 }
 
 void HashTable::insert(const std::vector<PieceType>& pieces) {
@@ -497,9 +491,9 @@ void HashTable::insert(const std::vector<PieceType>& pieces) {
     insert(wdlTable.back().key2, &wdlTable.back(), &dtzTable.back());
 }
 
-// TB are compressed with canonical Huffman code. The compressed data is divided into
+// TB tables are compressed with canonical Huffman code. The compressed data is divided into
 // blocks of size d->sizeofBlock, and each block stores a variable number of symbols.
-// Each symbol represents either a WDL or (remapped) DTZ value, or a pair of other symbols
+// Each symbol represents either a WDL or a (remapped) DTZ value, or a pair of other symbols
 // (recursively). If you keep expanding the symbols in a block, you end up with up to 65536
 // WDL or DTZ values. Each symbol represents up to 256 values and will correspond after
 // Huffman coding to at least 1 bit. So a block of 32 bytes corresponds to at most
@@ -509,9 +503,9 @@ void HashTable::insert(const std::vector<PieceType>& pieces) {
 // mostly-draw or mostly-win tables this can leave many 64-byte blocks only half-filled, so
 // in such cases blocks are 32 bytes long. The blocks of DTZ tables are up to 1024 bytes long.
 // The generator picks the size that leads to the smallest table. The "book" of symbols and
-// Huffman codes is the same for all blocks in the table (a non-symmetric pawnless TB file
+// Huffman codes is the same for all blocks in the table. A non-symmetric pawnless TB file
 // will have one table for wtm and one for btm, a TB file with pawns will have tables per
-// file a,b,c,d).
+// file a,b,c,d also in this case one set for wtm and one for btm.
 int decompress_pairs(PairsData* d, uint64_t idx)
 {
     // Special case where all table positions store the same value
@@ -528,40 +522,41 @@ int decompress_pairs(PairsData* d, uint64_t idx)
     // This can be slow, so we use SparseIndex[] populated with a set of SparseEntry that
     // point to known indices into blockLength[]. Namely SparseIndex[k] is a SparseEntry
     // that stores the blockLength[] index and the offset within that block of the value
-    // with index N(k), where:
+    // with index I(k), where:
     //
-    //       N(k) = k * d->span + d->span / 2      (1)
+    //       I(k) = k * d->span + d->span / 2      (1)
 
-    // First step is to get the 'k' of the N(k) nearest to our idx, using defintion (1)
+    // First step is to get the 'k' of the I(k) nearest to our idx, using defintion (1)
     uint32_t k = idx / d->span;
 
     // Then we read the corresponding SparseIndex[] entry
     uint32_t block = number<uint32_t, LittleEndian>(&d->sparseIndex[k].block);
-    int idxOffset  = number<uint16_t, LittleEndian>(&d->sparseIndex[k].offset);
+    int offset     = number<uint16_t, LittleEndian>(&d->sparseIndex[k].offset);
 
-    // Now compute the difference idx - N(k). From defintion of k we know that
+    // Now compute the difference idx - I(k). From defintion of k we know that
     //
     //       idx = k * d->span + idx % d->span    (2)
     //
-    // So from (1) and (2) we can compute idx - N(K):
+    // So from (1) and (2) we can compute idx - I(K):
     int diff = idx % d->span - d->span / 2;
 
-    // Sum to idxOffset to find the offset corresponding to our idx
-    idxOffset += diff;
+    // Sum the above to offset to find the offset corresponding to our idx
+    offset += diff;
 
     // Move to previous/next block, until we reach the correct block that contains idx,
-    // that is when 0 <= idxOffset <= d->blockLength[block]
-    while (idxOffset < 0)
-        idxOffset += d->blockLength[--block] + 1;
+    // that is when 0 <= offset <= d->blockLength[block]
+    while (offset < 0)
+        offset += d->blockLength[--block] + 1;
 
-    while (idxOffset > d->blockLength[block])
-        idxOffset -= d->blockLength[block++] + 1;
+    while (offset > d->blockLength[block])
+        offset -= d->blockLength[block++] + 1;
 
-    // Finally, we find the start address of our block of canonical Huffman coded symbols
+    // Finally, we find the start address of our block of canonical Huffman symbols
     uint32_t* ptr = (uint32_t*)(d->data + block * d->sizeofBlock);
 
-    // Read the first 64 bits in our block. We still don't know the symbol length but
-    // we know is at the beginning of this 64 bits sequence.
+    // Read the first 64 bits in our block, this is a (truncated) sequence of
+    // unknown number of symbols of unknown length but we know the first one
+    // is at the beginning of this 64 bits sequence.
     uint64_t buf64 = number<uint64_t, BigEndian>(ptr); ptr += 2;
     int buf64Size = 64;
     Sym sym;
@@ -570,8 +565,8 @@ int decompress_pairs(PairsData* d, uint64_t idx)
         int len = 0; // This is the symbol length - d->min_sym_len
 
         // Now get the symbol length. For any symbol s64 of length l right-padded
-        // to 64 bits holds d->base64[l-1] >= s64 >= d->base64[l] so we can find
-        // the symbol length iterating through base64[].
+        // to 64 bits we know that d->base64[l-1] >= s64 >= d->base64[l] so we
+        // can find the symbol length iterating through base64[].
         while (buf64 < d->base64[len])
             ++len;
 
@@ -584,11 +579,11 @@ int decompress_pairs(PairsData* d, uint64_t idx)
 
         // If our offset is within the number of values represented by symbol sym
         // we are done...
-        if (idxOffset < (int)d->symlen[sym] + 1)
+        if (offset < d->symlen[sym] + 1)
             break;
 
         // ...otherwise update the offset and continue to iterate
-        idxOffset -= d->symlen[sym] + 1;
+        offset -= d->symlen[sym] + 1;
         len += d->minSymLen; // Get the real length
         buf64 <<= len;       // Consume the just processed symbol
         buf64Size -= len;
@@ -607,13 +602,13 @@ int decompress_pairs(PairsData* d, uint64_t idx)
 
         // Each btree[] entry expands in a left-handed and right-handed pair of
         // additional symbols. We keep expanding recursively picking the symbol
-        // that contains our idxOffset.
-        Sym sl = d->btree[sym].get<LR::Left>();
+        // that contains our offset.
+        Sym left = d->btree[sym].get<LR::Left>();
 
-        if (idxOffset < (int)d->symlen[sl] + 1)
-            sym = sl;
+        if (offset < d->symlen[left] + 1)
+            sym = left;
         else {
-            idxOffset -= d->symlen[sl] + 1;
+            offset -= d->symlen[left] + 1;
             sym = d->btree[sym].get<LR::Right>();
         }
     }
@@ -625,8 +620,8 @@ bool check_dtz_stm(WDLEntry*, File, int) { return true; }
 
 bool check_dtz_stm(DTZEntry* entry, File f, int stm)
 {
-    int flags = entry->hasPawns ? entry->pawn.file[f].precomp->flags
-                                : entry->piece.precomp->flags;
+    int flags = entry->hasPawns ? entry->pawnTable.file[f].precomp->flags
+                                : entry->pieceTable.precomp->flags;
 
     return   (flags & TBFlag::STM) == stm
           || ((entry->key == entry->key2) && !entry->hasPawns);
@@ -642,20 +637,19 @@ int map_score(DTZEntry* entry, File f, int value, WDLScore wdl)
 {
     const int WDLMap[] = { 1, 3, 0, 2, 0 };
 
-    int flags = entry->hasPawns ? entry->pawn.file[f].precomp->flags
-                                : entry->piece.precomp->flags;
+    int flags = entry->hasPawns ? entry->pawnTable.file[f].precomp->flags
+                                : entry->pieceTable.precomp->flags;
 
-    uint8_t* map = entry->hasPawns ? entry->pawn.map
-                                   : entry->piece.map;
+    uint8_t* map = entry->hasPawns ? entry->pawnTable.map
+                                   : entry->pieceTable.map;
 
-    uint16_t* idx = entry->hasPawns ? entry->pawn.file[f].map_idx
-                                    : entry->piece.map_idx;
+    uint16_t* idx = entry->hasPawns ? entry->pawnTable.file[f].map_idx
+                                    : entry->pieceTable.map_idx;
     if (flags & TBFlag::Mapped)
         value = map[idx[WDLMap[wdl + 2]] + value];
 
-    // DTZ tables store distance to zero in number of moves but
-    // under some conditions we want to return plies, so we have
-    // to multiply score by 2.
+    // DTZ tables store distance to zero in number of moves or plies. We
+    // want to return plies, so we have convert to plies when needed.
     if (   (wdl == WDLWin  && !(flags & TBFlag::WinPlies))
         || (wdl == WDLLoss && !(flags & TBFlag::LossPlies))
         ||  wdl == WDLCursedWin
@@ -683,33 +677,26 @@ T do_probe_table(const Position& pos,  Entry* entry, WDLScore wdl, ProbeState* r
     File tbFile = FILE_A;
 
     // A given TB entry like KRK has associated two material keys: KRvk and Kvkr.
-    // If both sides have the same pieces we have a symmetric material and the
-    // keys are equal. The stored TB entry is calculated always with WHITE side
-    // to move and if the position to lookup has instead BLACK to move, we need
-    // to switch color and flip the squares before the lookup:
-    if (entry->key == entry->key2) {
-        flipColor = pos.side_to_move() * 8;     // Switch color
-        flipSquares = pos.side_to_move() * 070; // Vertical flip: SQ_A8 -> SQ_A1
-        stm = WHITE;
-    }
-    // In case of sides with different pieces, if the position to look up has a
-    // different key form the stored one (entry->key), then we have to switch
-    // color and flip the squares:
-    else {
-        flipColor   = (pos.material_key() != entry->key) * 8;
-        flipSquares = (pos.material_key() != entry->key) * 070;
+    // If both sides have the same pieces keys are equal. In this case TB tables
+    // only store the 'white to move' case, so if the position to lookup has black
+    // to move, we need to switch the color and flip the squares before to lookup.
+    bool symmetricBlackToMove = (entry->key == entry->key2 && pos.side_to_move());
 
-        // TB entry is stored with WHITE as stronger side, so side to move has
-        // to be flipped accordingly, for example Kvkr (white to move) maps to
-        // KRvk (black to move).
-        stm = (pos.material_key() != entry->key) ^ pos.side_to_move();
-    }
+    // TB files are calculated for white as stronger side. For instance we have
+    // KRvK, not KvKR. A position where stronger side is white will have its
+    // material key == entry->key, otherwise we have to switch the color and
+    // flip the squares before to lookup.
+    bool blackStronger = (pos.material_key() != entry->key);
+
+    flipColor   = (symmetricBlackToMove || blackStronger) * 8;
+    flipSquares = (symmetricBlackToMove || blackStronger) * 070;
+    stm         = (symmetricBlackToMove || blackStronger) ^ pos.side_to_move();
 
     // For pawns, TB files store separate tables according if leading pawn is on
     // file a, b, c or d after reordering. To determine which of the 4 tables
     // must be probed we pick the file of the pawn with maximum MapPawns[].
     if (entry->hasPawns) {
-        Piece pc = Piece(item(entry->pawn, 0, 0).precomp->pieces[0] ^ flipColor);
+        Piece pc = Piece(item(entry->pawnTable, 0, 0).precomp->pieces[0] ^ flipColor);
 
         assert(type_of(pc) == PAWN);
 
@@ -725,9 +712,9 @@ T do_probe_table(const Position& pos,  Entry* entry, WDLScore wdl, ProbeState* r
         if (tbFile > FILE_D)
             tbFile = file_of(squares[0] ^ 7); // Horizontal flip: SQ_H1 -> SQ_A1
 
-        precomp = item(entry->pawn, stm, tbFile).precomp;
+        precomp = item(entry->pawnTable, stm, tbFile).precomp;
     } else
-        precomp = item(entry->piece, stm, 0).precomp;
+        precomp = item(entry->pieceTable, stm, 0).precomp;
 
     // DTZ tables are one-sided, i.e. they store positions only for white to
     // move or only for black to move, so check for side to move to be stm,
@@ -866,7 +853,7 @@ encode_remaining:
     idx *= precomp->groupSize[0];
 
     // Reorder remainig pawns then pieces according to square, in ascending order
-    int remainingPawns = entry->hasPawns ? entry->pawn.pawnCount[1] : 0;
+    int remainingPawns = entry->hasPawns ? entry->pawnTable.pawnCount[1] : 0;
 
     while (next < size) {
 
@@ -908,11 +895,11 @@ uint64_t set_groups(T& e, PairsData* d, int order[], File f)
         d->groupLen[i] = 0;
 
     // Set leading pawns or pieces
-    int len = d->groupLen[0] =         e.hasPawns ? e.pawn.pawnCount[0]
+    int len = d->groupLen[0] =         e.hasPawns ? e.pawnTable.pawnCount[0]
                               : e.hasUniquePieces ? 3 : 2;
     // Set remaining pawns, if any
     if (e.hasPawns)
-        len += d->groupLen[len] = e.pawn.pawnCount[1];
+        len += d->groupLen[len] = e.pawnTable.pawnCount[1];
 
     // Set remaining pieces. If 2 pieces are equal, they are grouped together.
     // They are ensured to be consecutive in pieces[].
@@ -1061,9 +1048,9 @@ void do_init(Entry& e, T& p, uint8_t* data)
     const int Sides = IsWDL && (e.key != e.key2) ? 2 : 1;
     const File MaxFile = e.hasPawns ? FILE_D : FILE_A;
 
-    bool pp = e.hasPawns && e.pawn.pawnCount[1]; // Pawns on both sides
+    bool pp = e.hasPawns && e.pawnTable.pawnCount[1]; // Pawns on both sides
 
-    assert(!pp || e.pawn.pawnCount[0]);
+    assert(!pp || e.pawnTable.pawnCount[0]);
 
     for (File f = FILE_A; f <= MaxFile; ++f) {
 
@@ -1135,15 +1122,15 @@ void* init(Entry& e, const Position& pos)
         b += std::string(popcount(pos.pieces(BLACK, pt)), PieceToChar[pt]);
     }
 
-    const uint8_t MAGIC[][4] = { { 0xD7, 0x66, 0x0C, 0xA5 },
-                                 { 0x71, 0xE8, 0x23, 0x5D } };
+    const uint8_t TB_MAGIC[][4] = { { 0xD7, 0x66, 0x0C, 0xA5 },
+                                    { 0x71, 0xE8, 0x23, 0x5D } };
 
     fname =  (e.key == pos.material_key() ? w + 'v' + b : b + 'v' + w)
            + (IsWDL ? ".rtbw" : ".rtbz");
 
-    uint8_t* data = TBFile(fname).map(&e.baseAddress, &e.mapping, MAGIC[IsWDL]);
+    uint8_t* data = TBFile(fname).map(&e.baseAddress, &e.mapping, TB_MAGIC[IsWDL]);
     if (data)
-        e.hasPawns ? do_init(e, e.pawn, data) : do_init(e, e.piece, data);
+        e.hasPawns ? do_init(e, e.pawnTable, data) : do_init(e, e.pieceTable, data);
 
     e.ready.store(true, std::memory_order_release);
     return e.baseAddress;
