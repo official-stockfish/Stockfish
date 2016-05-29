@@ -668,10 +668,12 @@ int map_score(DTZEntry* entry, File f, int value, WDLScore wdl)
 template<typename Entry, typename T = typename Ret<Entry>::type>
 T do_probe_table(const Position& pos,  Entry* entry, WDLScore wdl, ProbeState* result)
 {
+    const bool IsWDL = std::is_same<Entry, WDLEntry>::value;
+
     Square squares[TBPIECES];
     Piece pieces[TBPIECES];
     uint64_t idx;
-    int stm, next = 0, flipColor = 0, flipSquares = 0, size = 0, leadPawnsCnt = 0;
+    int next = 0, size = 0, leadPawnsCnt = 0;
     PairsData* precomp;
     Bitboard b, leadPawns = 0;
     File tbFile = FILE_A;
@@ -688,14 +690,17 @@ T do_probe_table(const Position& pos,  Entry* entry, WDLScore wdl, ProbeState* r
     // flip the squares before to lookup.
     bool blackStronger = (pos.material_key() != entry->key);
 
-    flipColor   = (symmetricBlackToMove || blackStronger) * 8;
-    flipSquares = (symmetricBlackToMove || blackStronger) * 070;
-    stm         = (symmetricBlackToMove || blackStronger) ^ pos.side_to_move();
+    int flipColor   = (symmetricBlackToMove || blackStronger) * 8;
+    int flipSquares = (symmetricBlackToMove || blackStronger) * 070;
+    int stm         = (symmetricBlackToMove || blackStronger) ^ pos.side_to_move();
 
-    // For pawns, TB files store separate tables according if leading pawn is on
-    // file a, b, c or d after reordering. To determine which of the 4 tables
-    // must be probed we pick the file of the pawn with maximum MapPawns[].
+    // For pawns, TB files store 4 separate tables according if leading pawn is on
+    // file a, b, c or d after reordering. The leading pawn is the one with maximum
+    // MapPawns[] value, that is the one most toward the edges and with lowest rank.
     if (entry->hasPawns) {
+
+        // In all the 4 tables, pawns are at the beginning of the piece sequence and
+        // their color is the reference one. So we just pick the first one.
         Piece pc = Piece(item(entry->pawnTable, 0, 0).precomp->pieces[0] ^ flipColor);
 
         assert(type_of(pc) == PAWN);
@@ -712,26 +717,23 @@ T do_probe_table(const Position& pos,  Entry* entry, WDLScore wdl, ProbeState* r
         if (tbFile > FILE_D)
             tbFile = file_of(squares[0] ^ 7); // Horizontal flip: SQ_H1 -> SQ_A1
 
-        precomp = item(entry->pawnTable, stm, tbFile).precomp;
+        precomp = item(entry->pawnTable , stm, tbFile).precomp;
     } else
-        precomp = item(entry->pieceTable, stm, 0).precomp;
+        precomp = item(entry->pieceTable, stm, tbFile).precomp;
 
     // DTZ tables are one-sided, i.e. they store positions only for white to
     // move or only for black to move, so check for side to move to be stm,
     // early exit otherwise.
-    if (    std::is_same<Entry, DTZEntry>::value
-        && !check_dtz_stm(entry, tbFile, stm)) {
-        *result = CHANGE_STM;
-        return T();
-    }
+    if (!IsWDL && !check_dtz_stm(entry, tbFile, stm))
+        return *result = CHANGE_STM, T();
 
     // Now we are ready to get all the position pieces (but the lead pawns) and
     // directly map them to the correct color and square.
     b = pos.pieces() ^ leadPawns;
-    for ( ; b; ++size) {
-        Square sq = pop_lsb(&b);
-        squares[size] = sq ^ flipSquares;
-        pieces[size] = Piece(pos.piece_on(sq) ^ flipColor);
+    while (b) {
+        Square s = pop_lsb(&b);
+        squares[size] = s ^ flipSquares;
+        pieces[size++] = Piece(pos.piece_on(s) ^ flipColor);
     }
 
     // Then we reorder the pieces to have the same sequence as the one stored
