@@ -495,7 +495,7 @@ static int probe_dtz_no_ep(Position& pos, int *success)
                 || !pos.legal(move, ci.pinned))
         continue;
       pos.do_move(move, st, pos.gives_check(move, ci));
-      int v = -probe_ab(pos, -2, -wdl + 1, success);
+      int v = -Tablebases::probe_wdl(pos, success);
       pos.undo_move(move);
       if (*success == 0) return 0;
       if (v == wdl)
