@@ -121,7 +121,7 @@ struct PairsData {
     std::vector<uint64_t> base64;  // base64[l - min_sym_len] is the 64bit-padded lowest symbol of length l
     std::vector<uint8_t> symlen;   // Number of values (-1) represented by a given Huffman symbol: 1..256
     Piece pieces[TBPIECES];        // Sequence of the pieces: order is critical to ensure the best compression
-    uint64_t groupSize[TBPIECES];  // Size needed by a given subset of pieces: KRKN -> (KRK) + (N)
+    uint64_t groupIdx[TBPIECES];   // Start index for the encoding of the group
     uint8_t groupLen[TBPIECES];    // Number of pieces in a given group: KRKN -> (3) + (1)
 };
 
@@ -856,7 +856,7 @@ T do_probe_table(const Position& pos,  Entry* entry, WDLScore wdl, ProbeState* r
     }
 
 encode_remaining:
-    idx *= d->groupSize[0];
+    idx *= d->groupIdx[0];
 
     // Encode remainig pawns then pieces according to square, in ascending order
     bool remainingPawns = entry->hasPawns && entry->pawnTable.pawnCount[1];
@@ -871,13 +871,13 @@ encode_remaining:
         // groups (similar to what done earlier for leading group pieces).
         for (int i = 0; i < d->groupLen[next]; ++i)
         {
-            auto f = [&](Square s){ return groupSq[i] > s; };
-            int adjust = std::count_if(squares, groupSq, f);
+            auto f = [&](Square s) { return groupSq[i] > s; };
+            int adjust = std::count_if(squares, squares + next, f);
             n += Binomial[i + 1][groupSq[i] - adjust - 8 * remainingPawns];
         }
 
         remainingPawns = false;
-        idx += n * d->groupSize[next];
+        idx += n * d->groupIdx[next];
         next += d->groupLen[next];
     }
 
@@ -885,59 +885,71 @@ encode_remaining:
     return map_score(entry, tbFile, decompress_pairs(d, idx), wdl);
 }
 
-// Group together pieces that will be encoded together. For instance in
-// KRKN the encoder will default on '111', so the groups will be (3,1)
-// and for easy of parsing the resulting groupLen[] will be (3, 0, 0, 1).
-// In case of pawns, they will be encoded as first, starting with the
-// leading ones, then the remaining pieces. Then calculate the size, in
-// number of possible combinations, needed to store them in the TB file.
+// Group together pieces that will be encoded together. The general rule is that
+// a group contains pieces of same type and color. The exception is the leading
+// group that, in case of positions withouth pawns, can be formed by 3 different
+// pieces (default) or by the king pair when there is not a unique piece apart
+// from the kings. When there are pawns, pawns are always first in pieces[].
+//
+// As example KRKN -> KRK + N, KNNK -> KK + NN, KPPKP -> P + PP + K + K
+//
+// The actual grouping depends on the TB generator and can be inferred from the
+// sequence of pieces in piece[] array.
 template<typename T>
 uint64_t set_groups(T& e, PairsData* d, int order[], File f)
 {
     for (int i = 0; i < e.pieceCount; ++i) // Broken MSVC zero-init
         d->groupLen[i] = 0;
 
-    // Set leading pawns or pieces
-    int len = d->groupLen[0] =         e.hasPawns ? e.pawnTable.pawnCount[0]
-                              : e.hasUniquePieces ? 3 : 2;
-    // Set remaining pawns, if any
-    if (e.hasPawns)
-        len += d->groupLen[len] = e.pawnTable.pawnCount[1];
+    int next = 0, firstLen = e.hasPawns ? 0 : e.hasUniquePieces ? 3 : 2;
+    d->groupLen[next] = 1;
 
-    // Set remaining pieces. If 2 pieces are equal, they are grouped together.
-    // They are ensured to be consecutive in pieces[].
-    for (int k = len ; k < e.pieceCount; k += d->groupLen[k])
-        for (int j = k; j < e.pieceCount && d->pieces[j] == d->pieces[k]; ++j)
-            ++d->groupLen[k];
+    // Number of pieces per group is stored in groupLen[], for instance in KRKN
+    // the encoder will default on '111', so the groups will be (3, 1) and the
+    // resulting groupLen[] will have the form (3, 0, 0, 1).
+    for (int i = 1; i < e.pieceCount; ++i)
+        if (--firstLen > 0 || d->pieces[i] == d->pieces[i-1])
+            d->groupLen[next]++;
+        else
+            d->groupLen[next += d->groupLen[next]] = 1;
 
-    // Now calculate the size needed for each group, according to the order
-    // given by order[]. In general the order is a per-table value and could
-    // not follow the canonical leading pawns -> remainig pawns -> pieces.
-    int freeSquares = 64 - len;
-    uint64_t size = 1;
+    // The sequence in pieces[] defines the groups, but not the order in which
+    // they are encoded. If the pieces in a group g can be combined on the board
+    // in N(g) different ways, then the position encoding will be of the form:
+    //
+    //           g1 * N(g2) * N(g3) + g2 * N(g3) + g3
+    //
+    // This ensures unique encoding for the whole position. The order of the
+    // groups is a per-table parameter and could not follow the canonical leading
+    // pawns/pieces -> remainig pawns -> remaining pieces. In particular the
+    // first group is at order[0] position and the remaining pawns, when present,
+    // are at order[1] position.
+    next = d->groupLen[0] + e.hasPawns * e.pawnTable.pawnCount[1];
+    int freeSquares = 64 - next;
+    int leadPawnsLen = d->groupLen[0];
+    uint64_t idx = 1;
 
-    for (int k = 0; len < e.pieceCount || k == order[0] || k == order[1]; ++k)
+    for (int k = 0; next < e.pieceCount || k == order[0] || k == order[1]; ++k)
         if (k == order[0]) // Leading pawns or pieces
         {
-            d->groupSize[0] = size;
-
-            size *=         e.hasPawns ? LeadPawnsGroupSize[d->groupLen[0] - 1][f]
-                   : e.hasUniquePieces ? 31332 : 462;
+            d->groupIdx[0] = idx;
+            idx *=         e.hasPawns ? LeadPawnsGroupSize[leadPawnsLen - 1][f]
+                  : e.hasUniquePieces ? 31332 : 462;
         }
         else if (k == order[1]) // Remaining pawns
         {
-            d->groupSize[d->groupLen[0]] = size;
-            size *= Binomial[d->groupLen[d->groupLen[0]]][48 - d->groupLen[0]];
+            d->groupIdx[leadPawnsLen] = idx;
+            idx *= Binomial[d->groupLen[leadPawnsLen]][48 - leadPawnsLen];
         }
         else // Remainig pieces
         {
-            d->groupSize[len] = size;
-            size *= Binomial[d->groupLen[len]][freeSquares];
-            freeSquares -= d->groupLen[len];
-            len += d->groupLen[len];
+            d->groupIdx[next] = idx;
+            idx *= Binomial[d->groupLen[next]][freeSquares];
+            freeSquares -= d->groupLen[next];
+            next += d->groupLen[next];
         }
 
-    return size;
+    return idx;
 }
 
 uint8_t set_symlen(PairsData* d, Sym s, std::vector<bool>& visited)
