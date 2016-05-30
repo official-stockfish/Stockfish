@@ -616,9 +616,9 @@ int decompress_pairs(PairsData* d, uint64_t idx)
     return d->btree[sym].get<LR::Value>();
 }
 
-bool check_dtz_stm(WDLEntry*, File, int) { return true; }
+bool check_dtz_stm(WDLEntry*, int, File) { return true; }
 
-bool check_dtz_stm(DTZEntry* entry, File f, int stm)
+bool check_dtz_stm(DTZEntry* entry, int stm, File f)
 {
     int flags = entry->hasPawns ? entry->pawnTable.file[f].precomp->flags
                                 : entry->pieceTable.precomp->flags;
@@ -674,7 +674,7 @@ T do_probe_table(const Position& pos,  Entry* entry, WDLScore wdl, ProbeState* r
     Piece pieces[TBPIECES];
     uint64_t idx;
     int next = 0, size = 0, leadPawnsCnt = 0;
-    PairsData* precomp;
+    PairsData* d;
     Bitboard b, leadPawns = 0;
     File tbFile = FILE_A;
 
@@ -717,14 +717,14 @@ T do_probe_table(const Position& pos,  Entry* entry, WDLScore wdl, ProbeState* r
         if (tbFile > FILE_D)
             tbFile = file_of(squares[0] ^ 7); // Horizontal flip: SQ_H1 -> SQ_A1
 
-        precomp = item(entry->pawnTable , stm, tbFile).precomp;
+        d = item(entry->pawnTable , stm, tbFile).precomp;
     } else
-        precomp = item(entry->pieceTable, stm, tbFile).precomp;
+        d = item(entry->pieceTable, stm, tbFile).precomp;
 
     // DTZ tables are one-sided, i.e. they store positions only for white to
     // move or only for black to move, so check for side to move to be stm,
     // early exit otherwise.
-    if (!IsWDL && !check_dtz_stm(entry, tbFile, stm))
+    if (!IsWDL && !check_dtz_stm(entry, stm, tbFile))
         return *result = CHANGE_STM, T();
 
     // Now we are ready to get all the position pieces (but the lead pawns) and
@@ -737,10 +737,10 @@ T do_probe_table(const Position& pos,  Entry* entry, WDLScore wdl, ProbeState* r
     }
 
     // Then we reorder the pieces to have the same sequence as the one stored
-    // in precomp->pieces[i]. The sequence ensures the best compression.
+    // in precomp->pieces[i]: the sequence that ensures the best compression.
     for (int i = leadPawnsCnt; i < size; ++i)
         for (int j = i; j < size; ++j)
-            if (precomp->pieces[i] == pieces[j])
+            if (d->pieces[i] == pieces[j])
             {
                 std::swap(pieces[i], pieces[j]);
                 std::swap(squares[i], squares[j]);
@@ -748,8 +748,7 @@ T do_probe_table(const Position& pos,  Entry* entry, WDLScore wdl, ProbeState* r
             }
 
     // Now we map again the squares so that the square of the lead piece is in
-    // the triangle A1-D1-D4. We take care that the condition on the diagonal
-    // flip is checked after horizontal and vertical flips are already done.
+    // the triangle A1-D1-D4.
     if (file_of(squares[0]) > FILE_D)
         for (int i = 0; i < size; ++i)
             squares[i] ^= 7; // Horizontal flip: SQ_H1 -> SQ_A1
@@ -768,28 +767,31 @@ T do_probe_table(const Position& pos,  Entry* entry, WDLScore wdl, ProbeState* r
         goto encode_remaining; // With pawns we have finished special treatments
     }
 
+    // In positions withouth pawns, we further flip the squares to ensure leading
+    // piece is below RANK_5.
     if (rank_of(squares[0]) > RANK_4)
         for (int i = 0; i < size; ++i)
             squares[i] ^= 070; // Vertical flip: SQ_A8 -> SQ_A1
 
-    // Look for the first piece not on the A1-D4 diagonal and ensure it is
-    // mapped below the diagonal.
-    for (int i = 0; i < size; ++i) {
+    // Look for the first piece of the leading group not on the A1-D4 diagonal
+    // and ensure it is mapped below the diagonal.
+    for (int i = 0; i < d->groupLen[0]; ++i) {
         if (!off_A1H8(squares[i]))
             continue;
 
-        if (off_A1H8(squares[i]) > 0 && i < (entry->hasUniquePieces ? 3 : 2))
-            for (int j = i; j < size; ++j) // A1-H8 diagonal flip: SQ_A3 -> SQ_C3
+        if (off_A1H8(squares[i]) > 0) // A1-H8 diagonal flip: SQ_A3 -> SQ_C3
+            for (int j = i; j < size; ++j)
                 squares[j] = Square(((squares[j] >> 3) | (squares[j] << 3)) & 63);
         break;
     }
 
-    // The encoding function maps a position to its index into the table.
+    // Encode the leading group.
+    //
     // Suppose we have KRvK. Let's say the pieces are on square numbers wK, wR
     // and bK (each 0...63). The simplest way to map this position to an index
     // is like this:
     //
-    //   index = wK * 64*64 + wR * 64 + bK;
+    //   index = wK * 64 * 64 + wR * 64 + bK;
     //
     // But this way the TB is going to have 64*64*64 = 262144 positions, with
     // lots of positions being equivalent (because they are mirrors of each
@@ -798,15 +800,16 @@ T do_probe_table(const Position& pos,  Entry* entry, WDLScore wdl, ProbeState* r
     // Usually the first step is to take the wK and bK together. There are just
     // 462 ways legal and not-mirrored ways to place the wK and bK on the board.
     // Once we have placed the wK and bK, there are 62 squares left for the wR
-    // Mapping its square from 0..63 to 0..61 can be done like:
+    // Mapping its square from 0..63 to available squares 0..61 can be done like:
     //
     //   wR -= (wR > wK) + (wR > bK);
     //
     // In words: if wR "comes later" than wK, we deduct 1, and the same if wR
     // "comes later" than bK. In case of two same pieces like KRRvK we want to
     // place the two Rs "together". If we have 62 squares left, we can place two
-    // Rs "together" in 62*61/2 ways.
-
+    // Rs "together" in 62 * 61 / 2 ways (we divide by 2 because rooks can be
+    // swapped and still get the same position.)
+    //
     // In case we have at least 3 unique pieces (inlcuded kings) we encode them
     // together.
     if (entry->hasUniquePieces) {
@@ -814,22 +817,23 @@ T do_probe_table(const Position& pos,  Entry* entry, WDLScore wdl, ProbeState* r
         int adjust1 =  squares[1] > squares[0];
         int adjust2 = (squares[2] > squares[0]) + (squares[2] > squares[1]);
 
-        // MapA1D1D4[] maps the b1-d1-d3 triangle to 0...5. There are 63 squares
-        // for second piece and and 62 (mapped to 0...61) for the third.
+        // First piece is below a1-h8 diagonal. MapA1D1D4[] maps the b1-d1-d3
+        // triangle to 0...5. There are 63 squares for second piece and and 62
+        // (mapped to 0...61) for the third.
         if (off_A1H8(squares[0]))
-            idx =   MapA1D1D4[squares[0]] * 63 * 62
-                 + (squares[1] - adjust1) * 62
-                 +  squares[2] - adjust2;
+            idx = (   MapA1D1D4[squares[0]]  * 63
+                   + (squares[1] - adjust1)) * 62
+                   +  squares[2] - adjust2;
 
-        // First piece is on diagonal: map to 6, rank_of() maps a1-d4 diagonal
-        // to 0...3 and MapB1H1H7[] maps the b1-h1-h7 triangle to 0..27
+        // First piece is on a1-h8 diagonal, second below: map this occurence to
+        // 6 to differentiate from the above case, rank_of() maps a1-d4 diagonal
+        // to 0...3 and finally MapB1H1H7[] maps the b1-h1-h7 triangle to 0..27.
         else if (off_A1H8(squares[1]))
-            idx =                      6 * 63 * 62
-                 + rank_of(squares[0])   * 28 * 62
-                 + MapB1H1H7[squares[1]] * 62
-                 + squares[2] - adjust2;
+            idx = (  6 * 63 + rank_of(squares[0]) * 28
+                   + MapB1H1H7[squares[1]])       * 62
+                   + squares[2] - adjust2;
 
-        // First 2 pieces are on the diagonal a1-h8
+        // First two pieces are on a1-h8 diagonal, third below
         else if (off_A1H8(squares[2]))
             idx =  6 * 63 * 62 + 4 * 28 * 62
                  +  rank_of(squares[0])        * 7 * 28
@@ -852,36 +856,33 @@ T do_probe_table(const Position& pos,  Entry* entry, WDLScore wdl, ProbeState* r
     }
 
 encode_remaining:
-    idx *= precomp->groupSize[0];
+    idx *= d->groupSize[0];
 
-    // Reorder remainig pawns then pieces according to square, in ascending order
-    int remainingPawns = entry->hasPawns ? entry->pawnTable.pawnCount[1] : 0;
+    // Encode remainig pawns then pieces according to square, in ascending order
+    bool remainingPawns = entry->hasPawns && entry->pawnTable.pawnCount[1];
 
-    while (next < size) {
+    while (next < size)
+    {
+        Square* groupSq = squares + next;
+        std::sort(groupSq, groupSq + d->groupLen[next]);
+        uint64_t n = 0;
 
-        int end = next + (remainingPawns ? remainingPawns : precomp->groupLen[next]);
-
-        std::sort(squares + next, squares + end);
-
-        uint64_t s = 0;
-
-        // Map squares to lower index if "come later" than previous (as done earlier for pieces)
-        for (int i = next; i < end; ++i) {
-            int adjust = 0;
-
-            for (int j = 0; j < next; ++j)
-                adjust += squares[i] > squares[j];
-
-            s += Binomial[i - next + 1][squares[i] - adjust - (remainingPawns ? 8 : 0)];
+        // Map down a square if "comes later" than a square in the previous
+        // groups (similar to what done earlier for leading group pieces).
+        for (int i = 0; i < d->groupLen[next]; ++i)
+        {
+            auto f = [&](Square s){ return groupSq[i] > s; };
+            int adjust = std::count_if(squares, groupSq, f);
+            n += Binomial[i + 1][groupSq[i] - adjust - 8 * remainingPawns];
         }
 
-        remainingPawns = 0;
-        idx += s * precomp->groupSize[next];
-        next = end;
+        remainingPawns = false;
+        idx += n * d->groupSize[next];
+        next += d->groupLen[next];
     }
 
     // Now that we have the index, decompress the pair and get the score
-    return map_score(entry, tbFile, decompress_pairs(precomp, idx), wdl);
+    return map_score(entry, tbFile, decompress_pairs(d, idx), wdl);
 }
 
 // Group together pieces that will be encoded together. For instance in
