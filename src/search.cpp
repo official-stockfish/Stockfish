@@ -1017,7 +1017,7 @@ moves_loop: // When in check search starts from here
 
           // Increase reduction for cut nodes
           if (!PvNode && cutNode)
-              r += ONE_PLY;
+              r += 2 * ONE_PLY;
 
           // Decrease/increase reduction for moves with a good/bad history
           int rHist = (val - 10000) / 20000;
