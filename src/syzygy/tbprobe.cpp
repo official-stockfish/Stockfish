@@ -122,7 +122,7 @@ struct PairsData {
     std::vector<uint8_t> symlen;   // Number of values (-1) represented by a given Huffman symbol: 1..256
     Piece pieces[TBPIECES];        // Sequence of the pieces: order is critical to ensure the best compression
     uint64_t groupIdx[TBPIECES];   // Start index for the encoding of the group
-    uint8_t groupLen[TBPIECES];    // Number of pieces in a given group: KRKN -> (3) + (1)
+    uint8_t groupLen[TBPIECES];    // Number of pieces in a given group: KRKN -> (3, 1)
 };
 
 // Helper struct to avoid to manually define entry copy c'tor as we should
@@ -763,7 +763,6 @@ T do_probe_table(const Position& pos,  Entry* entry, WDLScore wdl, ProbeState* r
         for (int i = 1; i < leadPawnsCnt; ++i)
             idx += Binomial[i][MapPawns[squares[i]]];
 
-        next = leadPawnsCnt;
         goto encode_remaining; // With pawns we have finished special treatments
     }
 
@@ -846,24 +845,20 @@ T do_probe_table(const Position& pos,  Entry* entry, WDLScore wdl, ProbeState* r
                  +  rank_of(squares[0])         * 7 * 6
                  + (rank_of(squares[1]) - adjust1)  * 6
                  + (rank_of(squares[2]) - adjust2);
-
-        next = 3; // Continue encoding form piece[3]
-    } else {
+    } else
         // We don't have at least 3 unique pieces, like in KRRvKBB, just map
         // the kings.
         idx = MapKK[MapA1D1D4[squares[0]]][squares[1]];
-        next = 2;
-    }
 
 encode_remaining:
     idx *= d->groupIdx[0];
+    Square* groupSq = squares + d->groupLen[0];
 
     // Encode remainig pawns then pieces according to square, in ascending order
     bool remainingPawns = entry->hasPawns && entry->pawnTable.pawnCount[1];
 
-    while (next < size)
+    while (d->groupLen[++next])
     {
-        Square* groupSq = squares + next;
         std::sort(groupSq, groupSq + d->groupLen[next]);
         uint64_t n = 0;
 
@@ -872,13 +867,13 @@ encode_remaining:
         for (int i = 0; i < d->groupLen[next]; ++i)
         {
             auto f = [&](Square s) { return groupSq[i] > s; };
-            int adjust = std::count_if(squares, squares + next, f);
+            int adjust = std::count_if(squares, groupSq, f);
             n += Binomial[i + 1][groupSq[i] - adjust - 8 * remainingPawns];
         }
 
         remainingPawns = false;
         idx += n * d->groupIdx[next];
-        next += d->groupLen[next];
+        groupSq += d->groupLen[next];
     }
 
     // Now that we have the index, decompress the pair and get the score
@@ -898,20 +893,18 @@ encode_remaining:
 template<typename T>
 uint64_t set_groups(T& e, PairsData* d, int order[], File f)
 {
-    for (int i = 0; i < e.pieceCount; ++i) // Broken MSVC zero-init
-        d->groupLen[i] = 0;
-
-    int next = 0, firstLen = e.hasPawns ? 0 : e.hasUniquePieces ? 3 : 2;
-    d->groupLen[next] = 1;
+    int n = 0, firstLen = e.hasPawns ? 0 : e.hasUniquePieces ? 3 : 2;
+    d->groupLen[n] = 1;
 
     // Number of pieces per group is stored in groupLen[], for instance in KRKN
-    // the encoder will default on '111', so the groups will be (3, 1) and the
-    // resulting groupLen[] will have the form (3, 0, 0, 1).
+    // the encoder will default on '111', so groupLen[] will be (3, 1).
     for (int i = 1; i < e.pieceCount; ++i)
-        if (--firstLen > 0 || d->pieces[i] == d->pieces[i-1])
-            d->groupLen[next]++;
+        if (--firstLen > 0 || d->pieces[i] == d->pieces[i - 1])
+            d->groupLen[n]++;
         else
-            d->groupLen[next += d->groupLen[next]] = 1;
+            d->groupLen[++n] = 1;
+
+    d->groupLen[++n] = 0; // Zero-terminated
 
     // The sequence in pieces[] defines the groups, but not the order in which
     // they are encoded. If the pieces in a group g can be combined on the board
@@ -924,29 +917,28 @@ uint64_t set_groups(T& e, PairsData* d, int order[], File f)
     // pawns/pieces -> remainig pawns -> remaining pieces. In particular the
     // first group is at order[0] position and the remaining pawns, when present,
     // are at order[1] position.
-    next = d->groupLen[0] + e.hasPawns * e.pawnTable.pawnCount[1];
-    int freeSquares = 64 - next;
-    int leadPawnsLen = d->groupLen[0];
+    bool pp = e.hasPawns && e.pawnTable.pawnCount[1]; // Pawns on both sides
+    int next = pp ? 2 : 1;
+    int freeSquares = 64 - d->groupLen[0] - (pp ? d->groupLen[1] : 0);
     uint64_t idx = 1;
 
-    for (int k = 0; next < e.pieceCount || k == order[0] || k == order[1]; ++k)
+    for (int k = 0; next < n || k == order[0] || k == order[1]; ++k)
         if (k == order[0]) // Leading pawns or pieces
         {
             d->groupIdx[0] = idx;
-            idx *=         e.hasPawns ? LeadPawnsGroupSize[leadPawnsLen - 1][f]
+            idx *=         e.hasPawns ? LeadPawnsGroupSize[d->groupLen[0] - 1][f]
                   : e.hasUniquePieces ? 31332 : 462;
         }
         else if (k == order[1]) // Remaining pawns
         {
-            d->groupIdx[leadPawnsLen] = idx;
-            idx *= Binomial[d->groupLen[leadPawnsLen]][48 - leadPawnsLen];
+            d->groupIdx[1] = idx;
+            idx *= Binomial[d->groupLen[1]][48 - d->groupLen[0]];
         }
         else // Remainig pieces
         {
             d->groupIdx[next] = idx;
             idx *= Binomial[d->groupLen[next]][freeSquares];
-            freeSquares -= d->groupLen[next];
-            next += d->groupLen[next];
+            freeSquares -= d->groupLen[next++];
         }
 
     return idx;
