@@ -122,7 +122,7 @@ struct PairsData {
     std::vector<uint8_t> symlen;   // Number of values (-1) represented by a given Huffman symbol: 1..256
     Piece pieces[TBPIECES];        // Sequence of the pieces: order is critical to ensure the best compression
     uint64_t groupIdx[TBPIECES];   // Start index for the encoding of the group
-    uint8_t groupLen[TBPIECES];    // Number of pieces in a given group: KRKN -> (3, 1)
+    int groupLen[TBPIECES+1];      // Number of pieces in a given group: KRKN -> (3, 1)
 };
 
 // Helper struct to avoid to manually define entry copy c'tor as we should
