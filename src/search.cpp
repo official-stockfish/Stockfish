@@ -606,7 +606,7 @@ namespace {
     Key posKey;
     Move ttMove, move, excludedMove, bestMove;
     Depth extension, newDepth, predictedDepth;
-    Value bestValue, value, ttValue, eval, nullValue, futilityValue;
+    Value bestValue, value, ttValue, eval, nullValue;
     bool ttHit, inCheck, givesCheck, singularExtensionNode, improving;
     bool captureOrPromotion, doFullDepthSearch;
     Piece moved_piece;
@@ -971,16 +971,9 @@ moves_loop: // When in check search starts from here
           predictedDepth = std::max(newDepth - reduction<PvNode>(improving, depth, moveCount), DEPTH_ZERO);
 
           // Futility pruning: parent node
-          if (predictedDepth < 7 * ONE_PLY)
-          {
-              futilityValue = ss->staticEval + futility_margin(predictedDepth) + 256;
-
-              if (futilityValue <= alpha)
-              {
-                  bestValue = std::max(bestValue, futilityValue);
-                  continue;
-              }
-          }
+          if (   predictedDepth < 7 * ONE_PLY
+              && ss->staticEval + futility_margin(predictedDepth) + 256 <= alpha)
+              continue;
 
           // Prune moves with negative SEE at low depths
           if (predictedDepth < 4 * ONE_PLY && pos.see_sign(move) < VALUE_ZERO)
@@ -1019,19 +1012,18 @@ moves_loop: // When in check search starts from here
           if (!PvNode && cutNode)
               r += ONE_PLY;
 
-          // Decrease/increase reduction for moves with a good/bad history
-          int rHist = (val - 10000) / 20000;
-          r = std::max(DEPTH_ZERO, r - rHist * ONE_PLY);
-
           // Decrease reduction for moves that escape a capture. Filter out
           // castling moves, because they are coded as "king captures rook" and
           // hence break make_move(). Also use see() instead of see_sign(),
           // because the destination square is empty.
-          if (   r
-              && type_of(move) == NORMAL
-              && type_of(pos.piece_on(to_sq(move))) != PAWN
-              && pos.see(make_move(to_sq(move), from_sq(move))) < VALUE_ZERO)
-              r = std::max(DEPTH_ZERO, r - ONE_PLY);
+          else if (   type_of(move) == NORMAL
+                   && type_of(pos.piece_on(to_sq(move))) != PAWN
+                   && pos.see(make_move(to_sq(move), from_sq(move))) < VALUE_ZERO)
+              r -= ONE_PLY;
+
+          // Decrease/increase reduction for moves with a good/bad history
+          int rHist = (val - 10000) / 20000;
+          r = std::max(DEPTH_ZERO, r - rHist * ONE_PLY);
 
           Depth d = std::max(newDepth - r, ONE_PLY);
 
