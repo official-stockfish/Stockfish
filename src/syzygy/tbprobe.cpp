@@ -1174,9 +1174,9 @@ T probe_table(const Position& pos, ProbeState* result, WDLScore wdl = WDLDraw) {
 // where the best move is an ep-move (even if losing). So in all these cases set
 // the state to ZEROING_BEST_MOVE.
 template<bool CheckZeroingMoves = false>
-WDLScore search(Position& pos, WDLScore alpha, WDLScore beta, ProbeState* result) {
+WDLScore search(Position& pos, ProbeState* result) {
 
-    WDLScore value;
+    WDLScore value, bestValue = WDLLoss;
     StateInfo st;
     CheckInfo ci(pos);
 
@@ -1192,20 +1192,22 @@ WDLScore search(Position& pos, WDLScore alpha, WDLScore beta, ProbeState* result
         moveCount++;
 
         pos.do_move(move, st, pos.gives_check(move, ci));
-        value = -search(pos, -beta, -alpha, result);
+        value = -search(pos, result);
         pos.undo_move(move);
 
         if (*result == FAIL)
             return WDLDraw;
 
-        if (value >= beta)
+        if (value > bestValue)
         {
-            *result = ZEROING_BEST_MOVE; // Winning DTZ-zeroing move
-            return value;
-        }
+            bestValue = value;
 
-        if (value > alpha)
-            alpha = value;
+            if (value >= WDLWin)
+            {
+                *result = ZEROING_BEST_MOVE; // Winning DTZ-zeroing move
+                return value;
+            }
+        }
     }
 
     // In case we have already searched all the legal moves we don't have to probe
@@ -1217,7 +1219,7 @@ WDLScore search(Position& pos, WDLScore alpha, WDLScore beta, ProbeState* result
     bool noMoreMoves = (moveCount && moveCount == totalCount);
 
     if (noMoreMoves)
-        value = alpha;
+        value = bestValue;
     else
     {
         value = probe_table<WDLEntry>(pos, result);
@@ -1226,10 +1228,10 @@ WDLScore search(Position& pos, WDLScore alpha, WDLScore beta, ProbeState* result
             return WDLDraw;
     }
 
-    // Here alpha stores the best value of the ply-1 search, note that in case
-    // we have already searched all the possible moves alpha == value.
-    if (alpha >= value)
-        return *result = (alpha > WDLDraw || noMoreMoves ? ZEROING_BEST_MOVE : OK), alpha;
+    // DTZ stores a "don't care" value if bestValue is a win
+    if (bestValue >= value)
+        return *result = (   bestValue > WDLDraw
+                          || noMoreMoves ? ZEROING_BEST_MOVE : OK), bestValue;
 
     return *result = OK, value;
 }
@@ -1377,7 +1379,7 @@ void Tablebases::init(const std::string& paths) {
 WDLScore Tablebases::probe_wdl(Position& pos, ProbeState* result) {
 
     *result = OK;
-    return search(pos, WDLLoss, WDLWin, result);
+    return search(pos, result);
 }
 
 // Probe the DTZ table for a particular position.
@@ -1408,7 +1410,7 @@ WDLScore Tablebases::probe_wdl(Position& pos, ProbeState* result) {
 int Tablebases::probe_dtz(Position& pos, ProbeState* result) {
 
     *result = OK;
-    WDLScore wdl = search<true>(pos, WDLLoss, WDLWin, result);
+    WDLScore wdl = search<true>(pos, result);
 
     if (*result == FAIL)
         return 0;
@@ -1445,7 +1447,7 @@ int Tablebases::probe_dtz(Position& pos, ProbeState* result) {
         // otherwise we will get the dtz of the next move sequence. Search the
         // position after the move to get the score sign (because even in a
         // winning position we could make a losing capture or going for a draw).
-        dtz = zeroing ? -zeroing_move_dtz(search(pos, WDLLoss, WDLWin, result))
+        dtz = zeroing ? -zeroing_move_dtz(search(pos, result))
                       : -probe_dtz(pos, result);
 
         pos.undo_move(move);
