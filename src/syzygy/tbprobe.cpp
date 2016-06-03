@@ -120,8 +120,8 @@ struct PairsData {
     uint8_t* data;                 // Start of Huffman compressed data
     std::vector<uint64_t> base64;  // base64[l - min_sym_len] is the 64bit-padded lowest symbol of length l
     std::vector<uint8_t> symlen;   // Number of values (-1) represented by a given Huffman symbol: 1..256
-    Piece pieces[TBPIECES];        // Sequence of the pieces: order is critical to ensure the best compression
-    uint64_t groupIdx[TBPIECES+1]; // Start index for the encoding of the group
+    Piece pieces[TBPIECES];        // Position pieces: the order of pieces defines the groups
+    uint64_t groupIdx[TBPIECES+1]; // Start index used for the encoding of the group's pieces
     int groupLen[TBPIECES+1];      // Number of pieces in a given group: KRKN -> (3, 1)
 };
 
@@ -570,8 +570,9 @@ int decompress_pairs(PairsData* d, uint64_t idx) {
         while (buf64 < d->base64[len])
             ++len;
 
-        // Symbols of same length are mapped to consecutive numbers, so we can compute
-        // the offset of our symbol of length len, stored at the beginning of buf64.
+        // All the symbols of a given length are consecutive integers (numerical
+        // sequence property), so we can compute the offset of our symbol of
+        // length len, stored at the beginning of buf64.
         sym = (buf64 - d->base64[len]) >> (64 - len - d->minSymLen);
 
         // Now add the value of the lowest symbol of length len to get our symbol
@@ -594,17 +595,18 @@ int decompress_pairs(PairsData* d, uint64_t idx) {
         }
     }
 
-    // Ok, now we have our symbol that stores d->symlen[sym] values, the score we are
-    // looking for is among those values. We binary-search for it expanding the symbol
-    // in a pair of left and right child symbols and continue recursively until we are
-    // at a symbol of length 1 (symlen[sym] + 1 == 1), which is the value we need.
+    // Ok, now we have our symbol that expands into d->symlen[sym] + 1 symbols.
+    // We binary-search for our value recursively expanding into the left and
+    // right child symbols until we reach a leaf node where symlen[sym] + 1 == 1
+    // that will store the value we need.
     while (d->symlen[sym]) {
 
-        // Each btree[] entry expands in a left-handed and right-handed pair of
-        // additional symbols. We keep expanding recursively picking the symbol
-        // that contains our offset.
         Sym left = d->btree[sym].get<LR::Left>();
 
+        // If a symbol contains 36 sub-symbols (d->symlen[sym] + 1 = 36) and
+        // expands in a pair (d->symlen[left] = 23, d->symlen[right] = 11), then
+        // we know that, for instance the ten-th value (offset = 10) will be on
+        // the left side because in Recursive Pairing child symbols are adjacent.
         if (offset < d->symlen[left] + 1)
             sym = left;
         else {
@@ -944,6 +946,9 @@ void set_groups(T& e, PairsData* d, int order[], File f) {
     d->groupIdx[n] = idx;
 }
 
+// In Recursive Pairing each symbol represents a pair of childern symbols. So
+// read d->btree[] symbols data and expand each one in his left and right child
+// symbol until reaching the leafs that represent the symbol value.
 uint8_t set_symlen(PairsData* d, Sym s, std::vector<bool>& visited) {
 
     visited[s] = true; // We can set it now because tree is acyclic
@@ -994,7 +999,8 @@ uint8_t* set_sizes(PairsData* d, uint8_t* data) {
     // the number of bits of their Huffman code) have lower numeric value,
     // so that d->lowestSym[i] >= d->lowestSym[i+1] (when read as LittleEndian).
     // Starting from this we compute a base64[] table indexed by symbol length
-    // and containing 64 bit values so that d->base64[i] >= d->base64[i+1]
+    // and containing 64 bit values so that d->base64[i] >= d->base64[i+1].
+    // See http://www.eecs.harvard.edu/~michaelm/E210/huffman.pdf
     for (int i = d->base64.size() - 2; i >= 0; --i) {
         d->base64[i] = (d->base64[i + 1] + number<Sym, LittleEndian>(&d->lowestSym[i])
                                          - number<Sym, LittleEndian>(&d->lowestSym[i + 1])) / 2;
@@ -1013,6 +1019,11 @@ uint8_t* set_sizes(PairsData* d, uint8_t* data) {
     d->symlen.resize(number<uint16_t, LittleEndian>(data)); data += sizeof(uint16_t);
     d->btree = (LR*)data;
 
+    // The comrpession scheme used is "Recursive Pairing", that replaces the most
+    // frequent adjacent pair of symbols in the source message by a new symbol,
+    // reevaluating the frequencies of all of the symbol pairs with respect to
+    // the extended alphabet, and then repeating the process.
+    // See http://www.larsson.dogma.net/dcc99.pdf
     std::vector<bool> visited(d->symlen.size());
 
     for (Sym sym = 0; sym < d->symlen.size(); ++sym)
@@ -1412,18 +1423,15 @@ int Tablebases::probe_dtz(Position& pos, ProbeState* result) {
     *result = OK;
     WDLScore wdl = search<true>(pos, result);
 
-    if (*result == FAIL)
+    if (*result == FAIL || wdl == WDLDraw) // DTZ tables don't store draws
         return 0;
 
-    if (wdl == WDLDraw) // DTZ tables don't store draws
-        return 0;
-
-    // DTZ table stores a 'don't care' value in this case, or even a plain wrong
+    // DTZ stores a 'don't care' value in this case, or even a plain wrong
     // one as in case the best move is a losing ep, so it cannot be probed.
     if (*result == ZEROING_BEST_MOVE)
         return zeroing_move_dtz(wdl);
 
-    int dtz = probe_table<DTZEntry>(pos, result, wdl); // Probe the table!
+    int dtz = probe_table<DTZEntry>(pos, result, wdl);
 
     if (*result == FAIL)
         return 0;
