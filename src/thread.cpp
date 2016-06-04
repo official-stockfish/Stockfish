@@ -25,6 +25,7 @@
 #include "search.h"
 #include "thread.h"
 #include "uci.h"
+#include "syzygy/tbprobe.h"
 
 ThreadPool Threads; // Global object
 
@@ -169,7 +170,7 @@ int64_t ThreadPool::nodes_searched() {
 /// ThreadPool::start_thinking() wakes up the main thread sleeping in idle_loop()
 /// and starts a new search, then returns immediately.
 
-void ThreadPool::start_thinking(const Position& pos, StateListPtr& states,
+void ThreadPool::start_thinking(Position& pos, StateListPtr& states,
                                 const Search::LimitsType& limits) {
 
   main()->wait_for_search_finished();
@@ -182,6 +183,8 @@ void ThreadPool::start_thinking(const Position& pos, StateListPtr& states,
       if (   limits.searchmoves.empty()
           || std::count(limits.searchmoves.begin(), limits.searchmoves.end(), m))
           rootMoves.push_back(Search::RootMove(m));
+
+  Tablebases::filter_root_moves(pos, rootMoves);
 
   // After ownership transfer 'states' becomes empty, so if we stop the search
   // and call 'go' again without setting a new position states.get() == NULL.
