@@ -348,6 +348,13 @@ namespace {
                     score -= (TrappedRook - make_score(mob * 22, 0)) * (1 + !pos.can_castle(Us));
             }
         }
+
+        if (Pt == QUEEN)
+        {
+            // Penalty if any relative pin or discovered attack against the queen
+            if (pos.slider_blockers(pos.pieces(), pos.pieces(Them, ROOK, BISHOP), s))
+                score -= WeakQueen;
+        }
     }
 
     if (DoTrace)
@@ -488,13 +495,6 @@ namespace {
     if (   (pos.pieces(Them) ^ pos.pieces(Them, QUEEN, KING))
         & ~(ei.attackedBy[Us][ALL_PIECES] | ei.attackedBy[Them][ALL_PIECES]))
         score += LooseEnemies;
-
-    // Bonus for pin or discovered attack on the opponent queen
-    if (   pos.count<QUEEN>(Them) == 1
-        && pos.slider_blockers(pos.pieces(),
-                               pos.pieces(Us, ROOK, BISHOP),
-                               pos.square<QUEEN>(Them)))
-        score += WeakQueen;
 
     // Non-pawn enemies attacked by a pawn
     weak = (pos.pieces(Them) ^ pos.pieces(Them, PAWN)) & ei.attackedBy[Us][PAWN];
