@@ -1061,7 +1061,9 @@ void do_init(Entry& e, T& p, uint8_t* data) {
 
     enum { Split = 1, HasPawns = 2 };
 
+#ifndef NDEBUG
     uint8_t flags = *data++;
+#endif
 
     assert(e.hasPawns        == !!(flags & HasPawns));
     assert((e.key != e.key2) == !!(flags & Split));
