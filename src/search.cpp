@@ -608,7 +608,7 @@ namespace {
     Depth extension, newDepth, predictedDepth;
     Value bestValue, value, ttValue, eval, nullValue;
     bool ttHit, inCheck, givesCheck, singularExtensionNode, improving;
-    bool captureOrPromotion, doFullDepthSearch;
+    bool captureOrPromotion, doFullDepthSearch, moveCountPruning;
     Piece moved_piece;
     int moveCount, quietCount;
 
@@ -919,8 +919,13 @@ moves_loop: // When in check search starts from here
                   ? ci.checkSquares[type_of(pos.piece_on(from_sq(move)))] & to_sq(move)
                   : pos.gives_check(move, ci);
 
+      moveCountPruning =   depth < 16 * ONE_PLY
+                        && moveCount >= FutilityMoveCounts[improving][depth];
+
       // Step 12. Extend checks
-      if (givesCheck && pos.see_sign(move) >= VALUE_ZERO)
+      if (   givesCheck
+          && (    moveCount == 1
+              || (!moveCountPruning && pos.see_sign(move) >= VALUE_ZERO)))
           extension = ONE_PLY;
 
       // Singular extension search. If all moves but one fail low on a search of
@@ -956,8 +961,7 @@ moves_loop: // When in check search starts from here
           &&  bestValue > VALUE_MATED_IN_MAX_PLY)
       {
           // Move count based pruning
-          if (   depth < 16 * ONE_PLY
-              && moveCount >= FutilityMoveCounts[improving][depth])
+          if (moveCountPruning)
               continue;
 
           // Countermoves based pruning
