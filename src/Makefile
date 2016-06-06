@@ -245,6 +245,8 @@ ifeq ($(optimize),yes)
 
 	ifeq ($(comp),gcc)
 
+		CXXFLAGS += --param max-inline-insns-auto=100 --param inline-min-speedup=25
+
 		ifeq ($(UNAME),Darwin)
 			ifeq ($(arch),i386)
 				CXXFLAGS += -mdynamic-no-pic
@@ -257,6 +259,10 @@ ifeq ($(optimize),yes)
 		ifeq ($(arch),armv7)
 			CXXFLAGS += -fno-gcse -mthumb -march=armv7-a -mfloat-abi=softfp
 		endif
+	endif
+
+	ifeq ($(comp),mingw)
+		CXXFLAGS += --param max-inline-insns-auto=100 --param inline-min-speedup=25
 	endif
 
 	ifeq ($(comp),icc)
