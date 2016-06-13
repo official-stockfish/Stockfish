@@ -65,23 +65,23 @@ struct Tie: public streambuf { // MSVC requires split streambuf for cin and cout
 class Logger {
 
   Logger() : in(cin.rdbuf(), file.rdbuf()), out(cout.rdbuf(), file.rdbuf()) {}
- ~Logger() { start(false); }
+ ~Logger() { start(""); }
 
   ofstream file;
   Tie in, out;
 
 public:
-  static void start(bool b) {
+  static void start(const std::string& s) {
 
     static Logger l;
 
-    if (b && !l.file.is_open())
+    if (!s.empty() && !l.file.is_open())
     {
-        l.file.open("io_log.txt", ifstream::out);
+        l.file.open(s, ifstream::out);
         cin.rdbuf(&l.in);
         cout.rdbuf(&l.out);
     }
-    else if (!b && l.file.is_open())
+    else if (s.empty() && l.file.is_open())
     {
         cout.rdbuf(l.out.buf);
         cin.rdbuf(l.in.buf);
@@ -157,7 +157,7 @@ std::ostream& operator<<(std::ostream& os, SyncCout sc) {
 
 
 /// Trampoline helper to avoid moving Logger to misc.h
-void start_logger(bool b) { Logger::start(b); }
+void start_logger(const std::string& s) { Logger::start(s); }
 
 
 /// prefetch() preloads the given address in L1/L2 cache. This is a non-blocking
