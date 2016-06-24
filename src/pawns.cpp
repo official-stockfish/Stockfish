@@ -147,10 +147,9 @@ namespace {
             assert(!backward || !(pawn_attack_span(Them, s + Up) & neighbours));
         }
 
-        // Passed pawns will be properly scored in evaluation because we need
-        // full attack info to evaluate them. Only the frontmost passed
-        // pawn on each file is considered a true passed pawn.
-        if (!(stoppers | doubled)) // FIXME this is just doubled by adjacent pawn
+        // Passed pawns will be scored in evaluation because we need full attack
+        // info to evaluate them properly.
+        if (!stoppers)
             e->passedPawns[Us] |= s;
 
         // Score this pawn
