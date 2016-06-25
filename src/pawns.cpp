@@ -148,9 +148,8 @@ namespace {
         }
 
         // Passed pawns will be properly scored in evaluation because we need
-        // full attack info to evaluate them. Only the frontmost passed
-        // pawn on each file is considered a true passed pawn.
-        if (!(stoppers | doubled)) // FIXME this is just doubled by adjacent pawn
+        // full attack info to evaluate them.
+        if (!stoppers && !(ourPawns & forward_bb(Us, s)))
             e->passedPawns[Us] |= s;
 
         // Score this pawn

@@ -577,6 +577,7 @@ namespace {
         Square s = pop_lsb(&b);
 
         assert(pos.pawn_passed(Us, s));
+        assert(!(pos.pieces(PAWN) & forward_bb(Us, s)));
 
         int r = relative_rank(Us, s) - RANK_2;
         int rr = r * (r - 1);
