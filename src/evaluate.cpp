@@ -446,9 +446,9 @@ namespace {
             score -= OtherCheck;
 
         // For minors, also consider the square safe if attacked twice, and only supported by a rook
-        safe |=  ei.attackedBy2[Them] 
-               & ~(ei.attackedBy2[Us] | pos.pieces(Them))
-               & ei.attackedBy[Us][ROOK];
+        //safe |=  ei.attackedBy2[Them] 
+        //       & ~(ei.attackedBy2[Us] | pos.pieces(Them))
+        //       & ei.attackedBy[Us][ROOK];
 
         // Enemy bishops safe and other checks
         if (b2 & ei.attackedBy[Them][BISHOP] & safe)
