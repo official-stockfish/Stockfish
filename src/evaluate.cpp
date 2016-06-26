@@ -433,10 +433,10 @@ namespace {
         if ((b1 | b2) & ei.attackedBy[Them][QUEEN] & safe)
             attackUnits += QueenCheck, score -= SafeCheck;
 
-        // For other pieces, also consider the square safe if attacked twice, and only supported by a queen or king.
+        // For other pieces, also consider the square safe if attacked twice, and only supported by a queen.
         safe |=  ei.attackedBy2[Them] 
                & ~(ei.attackedBy2[Us] | pos.pieces(Them))
-               & (ei.attackedBy[Us][QUEEN] | ei.attackedBy[Us][KING]);
+               & ei.attackedBy[Us][QUEEN]; // | ei.attackedBy[Us][KING]);
 
         // Enemy rooks safe and other checks
         if (b1 & ei.attackedBy[Them][ROOK] & safe)
