@@ -304,7 +304,7 @@ ifeq ($(popcnt),yes)
 	    else
 	    CXXFLAGS += -msse3 -DUSE_POPCNT
 	    endif
-        endif
+       endif
 	ifeq ($(comp),$(filter $(comp),gcc clang mingw))
 	    ifeq ($(pext),yes)
 	    CXXFLAGS += -msse4 -mpopcnt -DUSE_POPCNT
