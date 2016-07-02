@@ -438,7 +438,7 @@ namespace {
             attackUnits += QueenCheck, score -= SafeCheck;
 
         // For other pieces, also consider the square safe if attacked twice, and only supported by a queen.
-        safe |=  ei.attackedBy2[Them] 
+        safe |=  ei.attackedBy2[Them]
                & ~(ei.attackedBy2[Us] | pos.pieces(Them))
                & ei.attackedBy[Us][QUEEN];
 
