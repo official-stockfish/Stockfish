@@ -76,6 +76,10 @@ namespace {
     // attackedBy[color][piece type] is a bitboard representing all squares
     // attacked by a given color and piece type (can be also ALL_PIECES).
     Bitboard attackedBy[COLOR_NB][PIECE_TYPE_NB];
+    
+    // attackedBy2[color] are the squares attacked by 2 pieces of given color,
+    // possibly via x-ray or by one pawn and one piece. Diagonal x-ray through
+    // pawn or squares attacked by 2 pawns are not explicitly added.
     Bitboard attackedBy2[COLOR_NB];
 
     // kingRing[color] is the zone around the king which is considered
@@ -436,7 +440,7 @@ namespace {
         // For other pieces, also consider the square safe if attacked twice, and only supported by a queen.
         safe |=  ei.attackedBy2[Them] 
                & ~(ei.attackedBy2[Us] | pos.pieces(Them))
-               & ei.attackedBy[Us][QUEEN]; // | ei.attackedBy[Us][KING]);
+               & ei.attackedBy[Us][QUEEN];
 
         // Enemy rooks safe and other checks
         if (b1 & ei.attackedBy[Them][ROOK] & safe)
@@ -444,11 +448,6 @@ namespace {
 
         else if (b1 & ei.attackedBy[Them][ROOK] & other)
             score -= OtherCheck;
-
-        // For minors, also consider the square safe if attacked twice, and only supported by a rook
-        //safe |=  ei.attackedBy2[Them] 
-        //       & ~(ei.attackedBy2[Us] | pos.pieces(Them))
-        //       & ei.attackedBy[Us][ROOK];
 
         // Enemy bishops safe and other checks
         if (b2 & ei.attackedBy[Them][BISHOP] & safe)
