@@ -113,8 +113,8 @@ namespace {
           std::copy(newPv.begin(), newPv.begin() + 3, pv);
 
           StateInfo st[2];
-          pos.do_move(newPv[0], st[0], pos.gives_check(newPv[0], CheckInfo(pos)));
-          pos.do_move(newPv[1], st[1], pos.gives_check(newPv[1], CheckInfo(pos)));
+          pos.do_move(newPv[0], st[0], pos.gives_check(newPv[0]));
+          pos.do_move(newPv[1], st[1], pos.gives_check(newPv[1]));
           expectedPosKey = pos.key();
           pos.undo_move(newPv[1]);
           pos.undo_move(newPv[0]);
@@ -228,7 +228,6 @@ uint64_t Search::perft(Position& pos, Depth depth) {
 
   StateInfo st;
   uint64_t cnt, nodes = 0;
-  CheckInfo ci(pos);
   const bool leaf = (depth == 2 * ONE_PLY);
 
   for (const auto& m : MoveList<LEGAL>(pos))
@@ -237,7 +236,7 @@ uint64_t Search::perft(Position& pos, Depth depth) {
           cnt = 1, nodes++;
       else
       {
-          pos.do_move(m, st, pos.gives_check(m, ci));
+          pos.do_move(m, st, pos.gives_check(m));
           cnt = leaf ? MoveList<LEGAL>(pos).size() : perft<false>(pos, depth - ONE_PLY);
           nodes += cnt;
           pos.undo_move(m);
@@ -804,14 +803,13 @@ namespace {
         assert((ss-1)->currentMove != MOVE_NULL);
 
         MovePicker mp(pos, ttMove, PieceValue[MG][pos.captured_piece_type()]);
-        CheckInfo ci(pos);
 
         while ((move = mp.next_move()) != MOVE_NONE)
-            if (pos.legal(move, ci.pinned))
+            if (pos.legal(move))
             {
                 ss->currentMove = move;
                 ss->counterMoves = &CounterMoveHistory[pos.moved_piece(move)][to_sq(move)];
-                pos.do_move(move, st, pos.gives_check(move, ci));
+                pos.do_move(move, st, pos.gives_check(move));
                 value = -search<NonPV>(pos, ss+1, -rbeta, -rbeta+1, rdepth, !cutNode);
                 pos.undo_move(move);
                 if (value >= rbeta)
@@ -840,7 +838,6 @@ moves_loop: // When in check search starts from here
     const CounterMoveStats* fmh2 = (ss-4)->counterMoves;
 
     MovePicker mp(pos, ttMove, depth, ss);
-    CheckInfo ci(pos);
     value = bestValue; // Workaround a bogus 'uninitialized' warning under gcc
     improving =   ss->staticEval >= (ss-2)->staticEval
             /* || ss->staticEval == VALUE_NONE Already implicit in the previous condition */
@@ -885,9 +882,9 @@ moves_loop: // When in check search starts from here
       captureOrPromotion = pos.capture_or_promotion(move);
       moved_piece = pos.moved_piece(move);
 
-      givesCheck =  type_of(move) == NORMAL && !ci.dcCandidates
-                  ? ci.checkSquares[type_of(pos.piece_on(from_sq(move)))] & to_sq(move)
-                  : pos.gives_check(move, ci);
+      givesCheck =  type_of(move) == NORMAL && !pos.discovered_check_candidates()
+                  ? pos.check_info().checkSquares[type_of(pos.piece_on(from_sq(move)))] & to_sq(move)
+                  : pos.gives_check(move);
 
       moveCountPruning =   depth < 16 * ONE_PLY
                         && moveCount >= FutilityMoveCounts[improving][depth / ONE_PLY];
@@ -906,7 +903,7 @@ moves_loop: // When in check search starts from here
       if (    singularExtensionNode
           &&  move == ttMove
           && !extension
-          &&  pos.legal(move, ci.pinned))
+          &&  pos.legal(move))
       {
           Value rBeta = ttValue - 2 * depth / ONE_PLY;
           Depth d = (depth / (2 * ONE_PLY)) * ONE_PLY;
@@ -966,7 +963,7 @@ moves_loop: // When in check search starts from here
       prefetch(TT.first_entry(pos.key_after(move)));
 
       // Check for legality just before making the move
-      if (!rootNode && !pos.legal(move, ci.pinned))
+      if (!rootNode && !pos.legal(move))
       {
           ss->moveCount = --moveCount;
           continue;
@@ -1281,16 +1278,15 @@ moves_loop: // When in check search starts from here
     // queen promotions and checks (only if depth >= DEPTH_QS_CHECKS) will
     // be generated.
     MovePicker mp(pos, ttMove, depth, to_sq((ss-1)->currentMove));
-    CheckInfo ci(pos);
 
     // Loop through the moves until no moves remain or a beta cutoff occurs
     while ((move = mp.next_move()) != MOVE_NONE)
     {
       assert(is_ok(move));
 
-      givesCheck =  type_of(move) == NORMAL && !ci.dcCandidates
-                  ? ci.checkSquares[type_of(pos.piece_on(from_sq(move)))] & to_sq(move)
-                  : pos.gives_check(move, ci);
+      givesCheck =  type_of(move) == NORMAL && !pos.discovered_check_candidates()
+                  ? pos.check_info().checkSquares[type_of(pos.piece_on(from_sq(move)))] & to_sq(move)
+                  : pos.gives_check(move);
 
       // Futility pruning
       if (   !InCheck
@@ -1330,7 +1326,7 @@ moves_loop: // When in check search starts from here
       prefetch(TT.first_entry(pos.key_after(move)));
 
       // Check for legality just before making the move
-      if (!pos.legal(move, ci.pinned))
+      if (!pos.legal(move))
           continue;
 
       ss->currentMove = move;
@@ -1602,7 +1598,7 @@ bool RootMove::extract_ponder_from_tt(Position& pos)
 
     assert(pv.size() == 1);
 
-    pos.do_move(pv[0], st, pos.gives_check(pv[0], CheckInfo(pos)));
+    pos.do_move(pv[0], st, pos.gives_check(pv[0]));
     TTEntry* tte = TT.probe(pos.key(), ttHit);
 
     if (ttHit)
