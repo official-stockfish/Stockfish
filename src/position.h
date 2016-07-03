@@ -46,7 +46,7 @@ namespace PSQT {
 
 struct CheckInfo {
 
-  explicit CheckInfo(const Position&);
+  void set(const Position&);
 
   Bitboard dcCandidates;
   Bitboard pinned;
@@ -76,6 +76,7 @@ struct StateInfo {
   Bitboard   checkersBB;
   PieceType  capturedType;
   StateInfo* previous;
+  CheckInfo  ci;
 };
 
 // In a std::deque references to elements are unaffected upon resizing
@@ -124,6 +125,7 @@ public:
   Bitboard checkers() const;
   Bitboard discovered_check_candidates() const;
   Bitboard pinned_pieces(Color c) const;
+  const CheckInfo& check_info() const;
 
   // Attacks to/from a given square
   Bitboard attackers_to(Square s) const;
@@ -134,11 +136,11 @@ public:
   Bitboard slider_blockers(Bitboard target, Bitboard sliders, Square s) const;
 
   // Properties of moves
-  bool legal(Move m, Bitboard pinned) const;
+  bool legal(Move m) const;
   bool pseudo_legal(const Move m) const;
   bool capture(Move m) const;
   bool capture_or_promotion(Move m) const;
-  bool gives_check(Move m, const CheckInfo& ci) const;
+  bool gives_check(Move m) const;
   bool advanced_pawn_push(Move m) const;
   Piece moved_piece(Move m) const;
   PieceType captured_piece_type() const;
@@ -316,6 +318,10 @@ inline Bitboard Position::discovered_check_candidates() const {
 
 inline Bitboard Position::pinned_pieces(Color c) const {
   return slider_blockers(pieces(c), pieces(~c), square<KING>(c));
+}
+
+inline const CheckInfo& Position::check_info() const {
+  return st->ci;
 }
 
 inline bool Position::pawn_passed(Color c, Square s) const {
