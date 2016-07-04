@@ -304,7 +304,7 @@ void MainThread::search() {
   // Check if there are threads with a better score than main thread
   Thread* bestThread = this;
   if (   !this->easyMovePlayed
-      &&  Options["MultiPV"] == 1
+      && (Options["MultiPV"] == 1 || Options["Thread Analysis"])
       && !Limits.depth
       && !Skill(Options["Skill Level"]).enabled()
       &&  rootMoves[0].pv[0] != MOVE_NONE)
@@ -356,7 +356,8 @@ void Thread::search() {
       TT.new_search();
   }
 
-  size_t multiPV = Options["MultiPV"];
+  size_t threadsToShow = Options["Thread Analysis"] ? (size_t)Options["MultiPV"] : 1;
+  size_t multiPV       = Options["Thread Analysis"] ? 1 : (size_t)Options["MultiPV"];
   Skill skill(Options["Skill Level"]);
 
   // When playing with strength handicap enable MultiPV search that we will
@@ -456,15 +457,17 @@ void Thread::search() {
           // Sort the PV lines searched so far and update the GUI
           std::stable_sort(rootMoves.begin(), rootMoves.begin() + PVIdx + 1);
 
-          if (!mainThread)
-              continue;
-
-          if (Signals.stop)
+       
+          if (Signals.stop && mainThread)
               sync_cout << "info nodes " << Threads.nodes_searched()
                         << " time " << Time.elapsed() << sync_endl;
 
-          else if (PVIdx + 1 == multiPV || Time.elapsed() > 3000)
-              sync_cout << UCI::pv(rootPos, rootDepth, alpha, beta) << sync_endl;
+          else if ( (mainThread || (Options["Thread Analysis"] && idx < threadsToShow))
+                   && (PVIdx + 1 == multiPV || Time.elapsed() > 3000) )
+              sync_cout << UCI::pv(rootPos, rootDepth, alpha, beta, idx) << sync_endl;
+
+          if (!mainThread)
+              continue;
       }
 
       if (!Signals.stop)
@@ -1508,13 +1511,13 @@ moves_loop: // When in check search starts from here
 /// UCI::pv() formats PV information according to the UCI protocol. UCI requires
 /// that all (if any) unsearched PV lines are sent using a previous search score.
 
-string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
+string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta, size_t thread_id) {
 
   std::stringstream ss;
   int elapsed = Time.elapsed() + 1;
   const RootMoves& rootMoves = pos.this_thread()->rootMoves;
   size_t PVIdx = pos.this_thread()->PVIdx;
-  size_t multiPV = std::min((size_t)Options["MultiPV"], rootMoves.size());
+  size_t multiPV = Options["Thread Analysis"] ? 1 : std::min((size_t)Options["MultiPV"], rootMoves.size());
   uint64_t nodes_searched = Threads.nodes_searched();
 
   for (size_t i = 0; i < multiPV; ++i)
@@ -1536,7 +1539,7 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
       ss << "info"
          << " depth "    << d / ONE_PLY
          << " seldepth " << pos.this_thread()->maxPly
-         << " multipv "  << i + 1
+         << " multipv "  << i + 1 + thread_id
          << " score "    << UCI::value(v);
 
       if (!tb && i == PVIdx)
