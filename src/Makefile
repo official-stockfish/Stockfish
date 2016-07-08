@@ -145,7 +145,7 @@ endif
 ifeq ($(COMP),gcc)
 	comp=gcc
 	CXX=g++
-	CXXFLAGS += -pedantic -Wextra -Wshadow -m$(bits)
+	CXXFLAGS += -ftree-loop-distribution -pedantic -Wextra -Wshadow -m$(bits)
 	ifneq ($(UNAME),Darwin)
 	   LDFLAGS += -Wl,--no-as-needed
 	endif
@@ -172,7 +172,7 @@ ifeq ($(COMP),mingw)
 		CXX=g++
 	endif
 
-	CXXFLAGS += -Wextra -Wshadow
+	CXXFLAGS += -ftree-loop-distribution -Wextra -Wshadow
 	LDFLAGS += -static
 endif
 
@@ -301,7 +301,7 @@ ifeq ($(popcnt),yes)
 	ifeq ($(comp),icc)
 		CXXFLAGS += -msse3 -DUSE_POPCNT
 	else
-		CXXFLAGS += -msse3 -mpopcnt -DUSE_POPCNT
+		CXXFLAGS += -mavx -msse3 -mpopcnt -DUSE_POPCNT
 	endif
 endif
 
