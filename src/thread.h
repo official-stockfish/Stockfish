@@ -77,10 +77,6 @@ public:
 
 struct MainThread : public Thread {
   virtual void search();
-
-  bool easyMovePlayed, failedLow;
-  double bestMoveChanges;
-  Value previousScore;
 };
 
 
@@ -97,6 +93,10 @@ struct ThreadPool : public std::vector<Thread*> {
   void start_thinking(Position&, StateListPtr&, const Search::LimitsType&);
   void read_uci_options();
   int64_t nodes_searched();
+  Thread* stop_thread;
+  Value previous_score;
+  std::vector<double> time_factor;
+  bool easyMovePlayed;
 
 private:
   StateListPtr setupStates;
