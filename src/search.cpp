@@ -1568,7 +1568,7 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
 bool RootMove::extract_ponder_from_tt(Position& pos)
 {
     StateInfo st;
-    bool ttHit, success;
+    bool ttHit;
 
     assert(pv.size() == 1);
 
@@ -1579,15 +1579,11 @@ bool RootMove::extract_ponder_from_tt(Position& pos)
     {
         Move m = tte->move(); // Local copy to be SMP safe
         if (MoveList<LEGAL>(pos).contains(m))
-        {
             pv.push_back(m);
-            success = true;
-        }
     }
 
     pos.undo_move(pv[0]);
-
-    return success;
+    return pv.size() > 1;
 }
 
 void Tablebases::filter_root_moves(Position& pos, Search::RootMoves& rootMoves) {
