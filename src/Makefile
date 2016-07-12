@@ -284,6 +284,8 @@ endif
 ### 3.4 Bits
 ifeq ($(bits),64)
 	CXXFLAGS += -DIS_64BIT
+else
+	CXXFLAGS += -mstackrealign
 endif
 
 ### 3.5 prefetch

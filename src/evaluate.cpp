@@ -498,7 +498,7 @@ namespace {
     const Bitboard CenterFiles = TheirCamp & (FileCBB | FileDBB | FileEBB | FileFBB);
     const Bitboard KingSide    = TheirCamp & (FileEBB | FileFBB | FileGBB | FileHBB);
 
-    const Bitboard KingFlank[FILE_NB] = {
+    static const Bitboard KingFlank[FILE_NB] = {
       QueenSide, QueenSide, QueenSide, CenterFiles,
       CenterFiles, KingSide, KingSide, KingSide
     };
