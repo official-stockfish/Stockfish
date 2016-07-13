@@ -231,6 +231,17 @@ ifneq ($(comp),mingw)
 	endif
 endif
 
+### Stack misalignment bug fix for SSE 32-bit compiles
+ifeq ($(ARCH),x86-32)
+	ifeq ($(COMP),gcc)
+		CXXFLAGS += -mstackrealign
+	else
+		ifeq ($(COMP),mingw)
+		CXXFLAGS += -mstackrealign
+		endif
+	endif
+endif
+
 ### 3.2 Debugging
 ifeq ($(debug),no)
 	CXXFLAGS += -DNDEBUG
