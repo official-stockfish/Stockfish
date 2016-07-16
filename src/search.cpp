@@ -670,9 +670,10 @@ namespace {
             &&  pos.rule50_count() == 0
             && !pos.can_castle(ANY_CASTLING))
         {
-            int found, v = Tablebases::probe_wdl(pos, &found);
+            TB::ProbeState err;
+            TB::WDLScore v = Tablebases::probe_wdl(pos, &err);
 
-            if (found)
+            if (err != TB::ProbeState::FAIL)
             {
                 TB::Hits++;
 
