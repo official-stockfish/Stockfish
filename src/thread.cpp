@@ -123,7 +123,7 @@ void Thread::idle_loop() {
 void ThreadPool::init() {
 
   push_back(new MainThread);
-  read_uci_options();
+  read_uci_threads_num();
 }
 
 
@@ -133,20 +133,24 @@ void ThreadPool::init() {
 
 void ThreadPool::exit() {
 
+  main()->wait_for_search_finished();
+
   while (size())
       delete back(), pop_back();
 }
 
 
-/// ThreadPool::read_uci_options() updates internal threads parameters from the
-/// corresponding UCI options and creates/destroys threads to match requested
+/// ThreadPool::read_uci_threads_num() updates internal threads parameters from
+/// the corresponding UCI options and creates/destroys threads to match requested
 /// number. Thread objects are dynamically allocated.
 
-void ThreadPool::read_uci_options() {
+void ThreadPool::read_uci_threads_num() {
 
   size_t requested = Options["Threads"];
 
   assert(requested > 0);
+
+  main()->wait_for_search_finished();
 
   while (size() < requested)
       push_back(new Thread);
