@@ -38,6 +38,7 @@
 
 namespace Search {
 
+  Value fromTo[COLOR_NB][SQUARE_NB][SQUARE_NB];
   SignalsType Signals;
   LimitsType Limits;
 }
@@ -170,7 +171,7 @@ namespace {
   void update_pv(Move* pv, Move move, Move* childPv);
   void update_stats(const Position& pos, Stack* ss, Move move, Depth depth, Move* quiets, int quietsCnt);
   void check_time();
-
+  void update_fromTo(Move m, Color c, Value b);
 } // namespace
 
 
@@ -214,6 +215,12 @@ void Search::clear() {
       th->history.clear();
       th->counterMoves.clear();
   }
+
+  for (Color c = WHITE; c < COLOR_NB; ++c)
+	for (Square f = SQ_A1; f < SQUARE_NB; ++f)
+	   for (Square t = SQ_A1; t < SQUARE_NB; ++t)
+	   fromTo[c][f][t] = VALUE_ZERO;
+
 
   Threads.main()->previousScore = VALUE_INFINITE;
 }
@@ -961,7 +968,8 @@ moves_loop: // When in check search starts from here
           Value val = thisThread->history[moved_piece][to_sq(move)]
                      +    (cmh  ? (*cmh )[moved_piece][to_sq(move)] : VALUE_ZERO)
                      +    (fmh  ? (*fmh )[moved_piece][to_sq(move)] : VALUE_ZERO)
-                     +    (fmh2 ? (*fmh2)[moved_piece][to_sq(move)] : VALUE_ZERO);
+                     +    (fmh2 ? (*fmh2)[moved_piece][to_sq(move)] : VALUE_ZERO)
+			         +     fromTo[~pos.side_to_move()][from_sq(move)][to_sq(move)];
 
           // Increase reduction for cut nodes
           if (cutNode)
@@ -1390,6 +1398,9 @@ moves_loop: // When in check search starts from here
         ss->killers[0] = move;
     }
 
+	Color c = color_of(pos.moved_piece(move));
+
+
     Value bonus = Value((depth / ONE_PLY) * (depth / ONE_PLY) + 2 * depth / ONE_PLY - 2);
 
     Square prevSq = to_sq((ss-1)->currentMove);
@@ -1399,6 +1410,7 @@ moves_loop: // When in check search starts from here
     Thread* thisThread = pos.this_thread();
 
     thisThread->history.update(pos.moved_piece(move), to_sq(move), bonus);
+	update_fromTo(move, c, bonus);
 
     if (cmh)
     {
@@ -1416,6 +1428,7 @@ moves_loop: // When in check search starts from here
     for (int i = 0; i < quietsCnt; ++i)
     {
         thisThread->history.update(pos.moved_piece(quiets[i]), to_sq(quiets[i]), -bonus);
+		update_fromTo(quiets[i], c, -bonus);
 
         if (cmh)
             cmh->update(pos.moved_piece(quiets[i]), to_sq(quiets[i]), -bonus);
@@ -1439,6 +1452,18 @@ moves_loop: // When in check search starts from here
         if ((ss-5)->counterMoves)
             (ss-5)->counterMoves->update(pos.piece_on(prevSq), prevSq, -bonus - 2 * (depth + 1) / ONE_PLY - 1);
     }
+  }
+
+  void update_fromTo(Move m, Color c, Value v)
+  {
+	  if (abs(int(v)) >= 324)
+		  return;
+	  
+	  Square t = to_sq(m);
+	  Square f = from_sq(m);
+
+	  fromTo[c][f][t] -= fromTo[c][f][t] * abs(int(v)) / 324;
+	  fromTo[c][f][t] += int(v) * 16;
   }
 
 
