@@ -1463,7 +1463,7 @@ moves_loop: // When in check search starts from here
 	  Square f = from_sq(m);
 
 	  fromTo[c][f][t] -= fromTo[c][f][t] * abs(int(v)) / 324;
-	  fromTo[c][f][t] += int(v) * 16;
+	  fromTo[c][f][t] += int(v) * 32;
   }
 
 
