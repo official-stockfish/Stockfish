@@ -32,6 +32,7 @@
 #include "thread.h"
 #include "tt.h"
 #include "uci.h"
+#include "syzygy/tbprobe.h"
 
 using std::string;
 
@@ -85,7 +86,7 @@ PieceType min_attacker<KING>(const Bitboard*, Square, Bitboard, Bitboard&, Bitbo
 
 /// operator<<(Position) returns an ASCII representation of the position
 
-std::ostream& operator<<(std::ostream& os, const Position& pos) {
+std::ostream& operator<<(std::ostream& os, Position& pos) {
 
   os << "\n +---+---+---+---+---+---+---+---+\n";
 
@@ -98,10 +99,21 @@ std::ostream& operator<<(std::ostream& os, const Position& pos) {
   }
 
   os << "\nFen: " << pos.fen() << "\nKey: " << std::hex << std::uppercase
-     << std::setfill('0') << std::setw(16) << pos.key() << std::dec << "\nCheckers: ";
+     << std::setfill('0') << std::setw(16) << pos.key()
+     << std::setfill(' ') << std::dec << "\nCheckers: ";
 
   for (Bitboard b = pos.checkers(); b; )
       os << UCI::square(pop_lsb(&b)) << " ";
+
+  if (    int(Tablebases::MaxCardinality) >= popcount(pos.pieces())
+      && !pos.can_castle(ANY_CASTLING))
+  {
+      Tablebases::ProbeState s1, s2;
+      Tablebases::WDLScore wdl = Tablebases::probe_wdl(pos, &s1);
+      int dtz = Tablebases::probe_dtz(pos, &s2);
+      os << "\nTablebases WDL: " << std::setw(4) << wdl << " (" << s1 << ")"
+         << "\nTablebases DTZ: " << std::setw(4) << dtz << " (" << s2 << ")";
+  }
 
   return os;
 }
@@ -354,6 +366,28 @@ void Position::set_state(StateInfo* si) const {
       for (int cnt = 0; cnt < pieceCount[pc]; ++cnt)
           si->materialKey ^= Zobrist::psq[pc][cnt];
   }
+}
+
+
+/// Position::set() is an overload to initialize the position object with
+/// the given endgame code string like "KBPKN". It is manily an helper to
+/// get the material key out of an endgame code. Position is not playable,
+/// indeed is even not guaranteed to be legal.
+
+Position& Position::set(const string& code, Color c, StateInfo* si) {
+
+  assert(code.length() > 0 && code.length() < 8);
+  assert(code[0] == 'K');
+
+  string sides[] = { code.substr(code.find('K', 1)),      // Weak
+                     code.substr(0, code.find('K', 1)) }; // Strong
+
+  std::transform(sides[c].begin(), sides[c].end(), sides[c].begin(), tolower);
+
+  string fenStr =  sides[0] + char(8 - sides[0].length() + '0') + "/8/8/8/8/8/8/"
+                 + sides[1] + char(8 - sides[1].length() + '0') + " w - - 0 10";
+
+  return set(fenStr, false, si, nullptr);
 }
 
 
