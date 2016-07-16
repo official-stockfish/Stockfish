@@ -163,6 +163,7 @@ void MovePicker::score<EVASIONS>() {
   // by history value, then bad captures and quiet moves with a negative SEE ordered
   // by SEE value.
   const HistoryStats& history = pos.this_thread()->history;
+  Color c = pos.side_to_move();
   Value see;
 
   for (auto& m : *this)
@@ -173,7 +174,7 @@ void MovePicker::score<EVASIONS>() {
           m.value =  PieceValue[MG][pos.piece_on(to_sq(m))]
                    - Value(type_of(pos.moved_piece(m))) + HistoryStats::Max;
       else
-          m.value = history[pos.moved_piece(m)][to_sq(m)];
+          m.value = history[pos.moved_piece(m)][to_sq(m)]+Search::fromTo[c][from_sq(m)][to_sq(m)];;
 }
 
 
