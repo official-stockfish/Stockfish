@@ -41,12 +41,10 @@ namespace PSQT {
   void init();
 }
 
-/// CheckInfo struct is initialized at constructor time and keeps info used to
-/// detect if a move gives check.
+
+/// CheckInfo struct keeps info used to detect if a move gives check
 
 struct CheckInfo {
-
-  void set(const Position&);
 
   Bitboard dcCandidates;
   Bitboard pinned;
@@ -187,6 +185,7 @@ private:
   // Initialization helpers (used while setting up a position)
   void set_castling_right(Color c, Square rfrom);
   void set_state(StateInfo* si) const;
+  void set_check_info(CheckInfo* ci) const;
 
   // Other helpers
   void put_piece(Color c, PieceType pt, Square s);

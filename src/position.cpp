@@ -81,25 +81,6 @@ PieceType min_attacker<KING>(const Bitboard*, Square, Bitboard, Bitboard&, Bitbo
 } // namespace
 
 
-/// Set CheckInfo of the given position
-
-void CheckInfo::set(const Position& pos) {
-
-  Color them = ~pos.side_to_move();
-  ksq = pos.square<KING>(them);
-
-  pinned = pos.pinned_pieces(pos.side_to_move());
-  dcCandidates = pos.discovered_check_candidates();
-
-  checkSquares[PAWN]   = pos.attacks_from<PAWN>(ksq, them);
-  checkSquares[KNIGHT] = pos.attacks_from<KNIGHT>(ksq);
-  checkSquares[BISHOP] = pos.attacks_from<BISHOP>(ksq);
-  checkSquares[ROOK]   = pos.attacks_from<ROOK>(ksq);
-  checkSquares[QUEEN]  = checkSquares[BISHOP] | checkSquares[ROOK];
-  checkSquares[KING]   = 0;
-}
-
-
 /// operator<<(Position) returns an ASCII representation of the position
 
 std::ostream& operator<<(std::ostream& os, const Position& pos) {
@@ -311,6 +292,24 @@ void Position::set_castling_right(Color c, Square rfrom) {
 }
 
 
+/// Position::set_check_info() sets king attacks to detect if a move gives check
+
+void Position::set_check_info(CheckInfo* ci) const {
+
+  ci->pinned = pinned_pieces(sideToMove);
+  ci->dcCandidates = discovered_check_candidates();
+
+  Square ksq = ci->ksq = square<KING>(~sideToMove);
+
+  ci->checkSquares[PAWN]   = attacks_from<PAWN>(ksq, ~sideToMove);
+  ci->checkSquares[KNIGHT] = attacks_from<KNIGHT>(ksq);
+  ci->checkSquares[BISHOP] = attacks_from<BISHOP>(ksq);
+  ci->checkSquares[ROOK]   = attacks_from<ROOK>(ksq);
+  ci->checkSquares[QUEEN]  = ci->checkSquares[BISHOP] | ci->checkSquares[ROOK];
+  ci->checkSquares[KING]   = 0;
+}
+
+
 /// Position::set_state() computes the hash keys of the position, and other
 /// data that once computed is updated incrementally as moves are made.
 /// The function is only used when a new position is set up, and to verify
@@ -321,9 +320,9 @@ void Position::set_state(StateInfo* si) const {
   si->key = si->pawnKey = si->materialKey = 0;
   si->nonPawnMaterial[WHITE] = si->nonPawnMaterial[BLACK] = VALUE_ZERO;
   si->psq = SCORE_ZERO;
-  si->ci.set(*this);
-
   si->checkersBB = attackers_to(square<KING>(sideToMove)) & pieces(~sideToMove);
+
+  set_check_info(&si->ci);
 
   for (Bitboard b = pieces(); b; )
   {
@@ -802,8 +801,8 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
 
   sideToMove = ~sideToMove;
 
-  // Calculate CheckInfo
-  st->ci.set(*this);
+  // Update CheckInfo
+  set_check_info(&st->ci);
 
   assert(pos_is_ok());
 }
@@ -918,7 +917,7 @@ void Position::do_null_move(StateInfo& newSt) {
 
   sideToMove = ~sideToMove;
 
-  st->ci.set(*this);
+  set_check_info(&st->ci);
 
   assert(pos_is_ok());
 }
