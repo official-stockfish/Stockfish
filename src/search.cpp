@@ -930,9 +930,16 @@ moves_loop: // When in check search starts from here
               && ss->staticEval + futility_margin(predictedDepth) + 256 <= alpha)
               continue;
 
-          // Prune moves with negative SEE at low depths
-          if (predictedDepth < 4 * ONE_PLY && pos.see_sign(move) < VALUE_ZERO)
-              continue;
+          // Prune moves with negative SEE at low depths and below a decreasing
+          // threshold at higher depths.
+          if (predictedDepth < 8 * ONE_PLY)
+          {
+              Value see_v = predictedDepth < 4 * ONE_PLY ? VALUE_ZERO
+                            : -PawnValueMg * 2 * int(predictedDepth - 3 * ONE_PLY);
+
+              if (pos.see_sign(move) < see_v)
+                  continue;
+          }
       }
 
       // Speculative prefetch as early as possible
