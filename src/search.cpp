@@ -931,7 +931,8 @@ moves_loop: // When in check search starts from here
               continue;
 
           // Prune moves with negative SEE at low depths
-          if (predictedDepth < 4 * ONE_PLY && pos.see_sign(move) < VALUE_ZERO)
+          Value see_v = predictedDepth < 4*ONE_PLY? VALUE_ZERO: -2*PawnValueMg*(int(predictedDepth) - 3);
+          if (predictedDepth < 8 * ONE_PLY && pos.see_sign(move) < see_v)
               continue;
       }
 
