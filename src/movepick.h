@@ -66,6 +66,26 @@ typedef Stats<Value, false> HistoryStats;
 typedef Stats<Value,  true> CounterMoveStats;
 typedef Stats<CounterMoveStats> CounterMoveHistoryStats;
 
+struct FromToStats {
+
+    Value get(Color c, Move m) const { return table[c][from_sq(m)][to_sq(m)]; }
+    void clear() { std::memset(table, 0, sizeof(table)); }
+
+    void update(Color c, Move m, Value v)
+    {
+        if (abs(int(v)) >= 324)
+            return;
+
+        Square f = from_sq(m);
+        Square t = to_sq(m);
+
+        table[c][f][t] -= table[c][f][t] * abs(int(v)) / 324;
+        table[c][f][t] += int(v) * 32;
+    }
+
+private:
+    Value table[COLOR_NB][SQUARE_NB][SQUARE_NB];
+};
 
 /// MovePicker class is used to pick one pseudo legal move at a time from the
 /// current position. The most important method is next_move(), which returns a
