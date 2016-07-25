@@ -1408,7 +1408,7 @@ moves_loop: // When in check search starts from here
 
     if (cmh)
     {
-        thisThread->counterMoves.update(pos.piece_on(prevSq), prevSq, move);
+        thisThread->counterMoves[pos.piece_on(prevSq)][prevSq] = move;
         cmh->update(pos.moved_piece(move), to_sq(move), bonus);
     }
 
