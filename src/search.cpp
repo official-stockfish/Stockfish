@@ -35,6 +35,7 @@
 #include "tt.h"
 #include "uci.h"
 #include "syzygy/tbprobe.h"
+#include "evaluate.h"
 
 namespace Search {
 
@@ -562,6 +563,7 @@ namespace {
     bool captureOrPromotion, doFullDepthSearch, moveCountPruning;
     Piece moved_piece;
     int moveCount, quietCount;
+    EvalInfo ei;
 
     // Step 1. Initialize node
     Thread* thisThread = pos.this_thread();
@@ -592,7 +594,7 @@ namespace {
     {
         // Step 2. Check for aborted search and immediate draw
         if (Signals.stop.load(std::memory_order_relaxed) || pos.is_draw() || ss->ply >= MAX_PLY)
-            return ss->ply >= MAX_PLY && !inCheck ? evaluate(pos)
+            return ss->ply >= MAX_PLY && !inCheck ? evaluate(pos, ei)
                                                   : DrawValue[pos.side_to_move()];
 
         // Step 3. Mate distance pruning. Even if we mate at the next move our score
@@ -683,7 +685,7 @@ namespace {
     {
         // Never assume anything on values stored in TT
         if ((ss->staticEval = eval = tte->eval()) == VALUE_NONE)
-            eval = ss->staticEval = evaluate(pos);
+            eval = ss->staticEval = evaluate(pos, ei);
 
         // Can ttValue be used as a better position evaluation?
         if (ttValue != VALUE_NONE)
@@ -693,7 +695,7 @@ namespace {
     else
     {
         eval = ss->staticEval =
-        (ss-1)->currentMove != MOVE_NULL ? evaluate(pos)
+        (ss-1)->currentMove != MOVE_NULL ? evaluate(pos, ei)
                                          : -(ss-1)->staticEval + 2 * Eval::Tempo;
 
         tte->save(posKey, VALUE_NONE, BOUND_NONE, DEPTH_NONE, MOVE_NONE,
@@ -1160,6 +1162,7 @@ moves_loop: // When in check search starts from here
     Value bestValue, value, ttValue, futilityValue, futilityBase, oldAlpha;
     bool ttHit, givesCheck, evasionPrunable;
     Depth ttDepth;
+    EvalInfo ei;
 
     if (PvNode)
     {
@@ -1173,7 +1176,7 @@ moves_loop: // When in check search starts from here
 
     // Check for an instant draw or if the maximum ply has been reached
     if (pos.is_draw() || ss->ply >= MAX_PLY)
-        return ss->ply >= MAX_PLY && !InCheck ? evaluate(pos)
+        return ss->ply >= MAX_PLY && !InCheck ? evaluate(pos, ei)
                                               : DrawValue[pos.side_to_move()];
 
     assert(0 <= ss->ply && ss->ply < MAX_PLY);
@@ -1213,7 +1216,7 @@ moves_loop: // When in check search starts from here
         {
             // Never assume anything on values stored in TT
             if ((ss->staticEval = bestValue = tte->eval()) == VALUE_NONE)
-                ss->staticEval = bestValue = evaluate(pos);
+                ss->staticEval = bestValue = evaluate(pos, ei);
 
             // Can ttValue be used as a better position evaluation?
             if (ttValue != VALUE_NONE)
@@ -1222,7 +1225,7 @@ moves_loop: // When in check search starts from here
         }
         else
             ss->staticEval = bestValue =
-            (ss-1)->currentMove != MOVE_NULL ? evaluate(pos)
+            (ss-1)->currentMove != MOVE_NULL ? evaluate(pos, ei)
                                              : -(ss-1)->staticEval + 2 * Eval::Tempo;
 
         // Stand pat. Return immediately if static value is at least beta
