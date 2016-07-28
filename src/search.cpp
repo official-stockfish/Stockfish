@@ -502,6 +502,7 @@ void Thread::search() {
                                && Time.elapsed() > Time.optimum() * 5 / 42;
 
               if (   rootMoves.size() == 1
+                  || (TB::RootInTB && Time.elapsed() > Time.optimum() / 10)
                   || Time.elapsed() > Time.optimum() * unstablePvFactor * improvingFactor / 628
                   || (mainThread->easyMovePlayed = doEasyMove))
               {
