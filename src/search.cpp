@@ -926,7 +926,7 @@ moves_loop: // When in check search starts from here
 
           // Futility pruning: parent node
           if (   predictedDepth < 7 * ONE_PLY
-              && ss->staticEval + 256 + 200 * predictedDepth / ONE_PLY <= alpha)
+              && ss->staticEval + 256 + 200 * predictedDepth <= alpha)
               continue;
 
           // Prune moves with negative SEE at low depths and below a decreasing
