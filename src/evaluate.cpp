@@ -703,10 +703,9 @@ namespace {
 
     // ...count safe + (behind & safe) with a single popcount
     int bonus = popcount((Us == WHITE ? safe << 32 : safe >> 32) | (behind & safe));
-    int weight =  pos.count<KNIGHT>(Us) + pos.count<BISHOP>(Us)
-                + pos.count<KNIGHT>(Them) + pos.count<BISHOP>(Them);
+    int weight = pos.count<ALL_PIECES>(Us);
 
-    return make_score(bonus * weight * weight * 2 / 11, 0);
+    return make_score(bonus * weight * weight  / 22, 0);
   }
 
 
