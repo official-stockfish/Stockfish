@@ -705,7 +705,7 @@ namespace {
     int bonus = popcount((Us == WHITE ? safe << 32 : safe >> 32) | (behind & safe));
     int weight = pos.count<ALL_PIECES>(Us);
  
-    return make_score((bonus * weight * weight)  / (11 * 2), 0);
+    return make_score(bonus * weight * weight  / 22, 0);
   }
 
 
