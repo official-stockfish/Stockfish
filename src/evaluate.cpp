@@ -702,7 +702,7 @@ namespace {
     assert(unsigned(safe >> (Us == WHITE ? 32 : 0)) == 0);
 
     // ...count safe + (behind & safe) with a single popcount
-    int bonus = popcount((Us == WHITE ? safe << 32 : safe >> 32) | (behind & safe));
+    int bonus = std::min(16, popcount((Us == WHITE ? safe << 32 : safe >> 32) | (behind & safe)));
     int weight = pos.count<ALL_PIECES>(Us);
 
     return make_score(bonus * weight * weight  / 22, 0);
