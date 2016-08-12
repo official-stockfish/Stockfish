@@ -657,7 +657,7 @@ namespace {
                 mbonus += k * rr, ebonus += k * rr;
             }
             else if (pos.pieces(Us) & blockSq)
-                mbonus += rr + r * 2, ebonus += rr + r * 2;
+                mbonus += rr, ebonus += rr + r * 2;
         } // rr != 0
 
         score += make_score(mbonus, ebonus) + PassedFile[file_of(s)];
