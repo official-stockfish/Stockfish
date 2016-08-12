@@ -365,6 +365,7 @@ ScaleFactor Endgame<KBPsK>::operator()(const Position& pos) const {
 
   Bitboard pawns = pos.pieces(strongSide, PAWN);
   File pawnsFile = file_of(lsb(pawns));
+  Square weakKingSq = pos.square<KING>(weakSide);
 
   // All pawns are on a single rook file?
   if (    (pawnsFile == FILE_A || pawnsFile == FILE_H)
@@ -372,10 +373,9 @@ ScaleFactor Endgame<KBPsK>::operator()(const Position& pos) const {
   {
       Square bishopSq = pos.square<BISHOP>(strongSide);
       Square queeningSq = relative_square(strongSide, make_square(pawnsFile, RANK_8));
-      Square kingSq = pos.square<KING>(weakSide);
 
       if (   opposite_colors(queeningSq, bishopSq)
-          && distance(queeningSq, kingSq) <= 1)
+          && distance(queeningSq, weakKingSq) <= 1)
           return SCALE_FACTOR_DRAW;
   }
 
@@ -389,7 +389,6 @@ ScaleFactor Endgame<KBPsK>::operator()(const Position& pos) const {
       Square weakPawnSq = backmost_sq(weakSide, pos.pieces(weakSide, PAWN));
 
       Square strongKingSq = pos.square<KING>(strongSide);
-      Square weakKingSq = pos.square<KING>(weakSide);
       Square bishopSq = pos.square<BISHOP>(strongSide);
 
       // There's potential for a draw if our pawn is blocked on the 7th rank,
@@ -410,6 +409,64 @@ ScaleFactor Endgame<KBPsK>::operator()(const Position& pos) const {
           if (   relative_rank(strongSide, weakKingSq) >= RANK_7
               && weakKingDist <= 2
               && weakKingDist <= strongKingDist)
+              return SCALE_FACTOR_DRAW;
+      }
+  }
+
+  // Detection of a fortress position:
+  // when 2 weak pawns are on the 7th rank on the A and C or F and H files
+  // and all strong pawns are also on these files
+  // and the attacking bishop is on squares of opposite color of these pawns
+  // and the defending king is close to both pawns on the 8th rank.
+  if (pos.count<PAWN>(weakSide) == 2 && relative_rank(strongSide, weakKingSq) > RANK_7)
+  {
+      // Get weakSide pawn squares
+      Square wpsq1 = pos.squares<PAWN>(weakSide)[0];
+      Square wpsq2 = pos.squares<PAWN>(weakSide)[1];
+      int weakKingDist1 = distance(wpsq1, weakKingSq);
+      int weakKingDist2 = distance(wpsq2, weakKingSq);
+
+      Square bishopSq = pos.square<BISHOP>(strongSide);
+      if (   relative_rank(strongSide, wpsq1) == RANK_7
+          && relative_rank(strongSide, wpsq2) == RANK_7
+          && opposite_colors(bishopSq, wpsq1)
+          && opposite_colors(bishopSq, wpsq2)
+          && weakKingDist1 <= 2
+          && weakKingDist2 <= 2)
+      {
+          // Get the pawn files
+          File wpf1 = file_of(wpsq1);
+          File wpf2 = file_of(wpsq2);
+          bool allBlocked = true;
+          if ((wpf1 == FILE_A && wpf2 == FILE_C) || (wpf1 == FILE_C && wpf2 == FILE_A))
+          {
+              const Square* pl = pos.squares<PAWN>(strongSide);
+              Square s;
+              while ((s = *pl++) != SQ_NONE)
+              {
+                  File spf = file_of(s);
+                  if (!(spf == FILE_A || spf == FILE_C))
+                  {
+                      allBlocked = false;
+                      break;
+                  }
+              }
+          }
+          else if ((wpf1 == FILE_F && wpf2 == FILE_H) || (wpf1 == FILE_H && wpf2 == FILE_F))
+          {
+              const Square* pl = pos.squares<PAWN>(strongSide);
+              Square s;
+              while ((s = *pl++) != SQ_NONE)
+              {
+                  File spf = file_of(s);
+                  if (!(spf == FILE_F || spf == FILE_H))
+                  {
+                      allBlocked = false;
+                      break;
+                  }
+              }
+          }
+          if (allBlocked)
               return SCALE_FACTOR_DRAW;
       }
   }
