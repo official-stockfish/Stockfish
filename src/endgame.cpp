@@ -804,6 +804,14 @@ ScaleFactor Endgame<KBPPKB>::operator()(const Position& pos) const {
             || distance(r1, r2) >= 2))
         return SCALE_FACTOR_DRAW;
 
+    else if (   ksq == blockSq2
+             && opposite_colors(ksq, wbsq)
+             && (   bbsq == blockSq1
+                 || (pos.attacks_from<BISHOP>(blockSq1) & pos.pieces(weakSide, BISHOP))))
+        return SCALE_FACTOR_DRAW;
+    else
+        return SCALE_FACTOR_NONE;
+
   case 2:
       // Pawns separated by a file. It's a draw if the defender firmly controls the
       // squares in front of both pawn's path.
