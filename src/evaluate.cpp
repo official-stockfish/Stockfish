@@ -221,8 +221,6 @@ namespace {
   const int BishopCheck       = 48;
   const int KnightCheck       = 78;
 
-  // Space bonus as a function of the square count for space evaluation
-  int SpaceBonus[25];
 
   // eval_init() initializes king and attack bitboards for a given color
   // adding pawn attacks. To be done at the beginning of the evaluation.
@@ -704,10 +702,10 @@ namespace {
     assert(unsigned(safe >> (Us == WHITE ? 32 : 0)) == 0);
 
     // ...count safe + (behind & safe) with a single popcount
-    int bonus = SpaceBonus[popcount((Us == WHITE ? safe << 32 : safe >> 32) | (behind & safe))];
+    int bonus = std::min(16, popcount((Us == WHITE ? safe << 32 : safe >> 32) | (behind & safe)));
     int weight = pos.count<ALL_PIECES>(Us);
 
-    return make_score(bonus * weight * weight  / 256, 0);
+    return make_score(bonus * weight * weight  / 22, 0);
   }
 
 
@@ -933,10 +931,5 @@ void Eval::init() {
   {
       t = std::min(Peak, std::min(i * i - 16, t + MaxSlope));
       KingDanger[i] = make_score(t * 268 / 7700, 0);
-  }
-
-  for (int i = 0; i <= 24; ++i)
-  {
-      SpaceBonus[i] = 218.0 * (1.0 - exp(-double(i) / 10.0));
   }
 }
