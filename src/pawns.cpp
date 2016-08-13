@@ -103,12 +103,15 @@ namespace {
     Bitboard ourPawns   = pos.pieces(Us  , PAWN);
     Bitboard theirPawns = pos.pieces(Them, PAWN);
 
+    e->count[Us] = pos.count<PAWN>(Us);
+
     e->passedPawns[Us] = e->pawnAttacksSpan[Us] = 0;
     e->kingSquares[Us] = SQ_NONE;
     e->semiopenFiles[Us] = 0xFF;
     e->pawnAttacks[Us] = shift_bb<Right>(ourPawns) | shift_bb<Left>(ourPawns);
     e->pawnsOnSquares[Us][BLACK] = popcount(ourPawns & DarkSquares);
-    e->pawnsOnSquares[Us][WHITE] = pos.count<PAWN>(Us) - e->pawnsOnSquares[Us][BLACK];
+    e->pawnsOnSquares[Us][WHITE] = e->count[Us] - e->pawnsOnSquares[Us][BLACK];
+
 
     // Loop through all pawns of the current color and score each pawn
     while ((s = *pl++) != SQ_NONE)
@@ -217,7 +220,7 @@ Entry* probe(const Position& pos) {
 
   e->key = key;
   e->score = evaluate<WHITE>(pos, e) - evaluate<BLACK>(pos, e);
-  e->asymmetry = popcount(e->semiopenFiles[WHITE] ^ e->semiopenFiles[BLACK]);
+  e->initiative = 12 * (e->count[WHITE] + e->count[BLACK]) + 8 * popcount(e->semiopenFiles[WHITE] ^ e->semiopenFiles[BLACK]) - 120;
   return e;
 }
 
