@@ -217,7 +217,7 @@ Entry* probe(const Position& pos) {
 
   e->key = key;
   e->score = evaluate<WHITE>(pos, e) - evaluate<BLACK>(pos, e);
-  e->asymmetry = popcount(e->semiopenFiles[WHITE] ^ e->semiopenFiles[BLACK]);
+  e->initiative = 12 * (pos.count<PAWN>(WHITE) + pos.count<PAWN>(BLACK)) + 8 * popcount(e->semiopenFiles[WHITE] ^ e->semiopenFiles[BLACK]) - 120;
   return e;
 }
 
