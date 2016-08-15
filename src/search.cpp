@@ -914,6 +914,8 @@ moves_loop: // When in check search starts from here
           // Move count based pruning
           if (moveCountPruning)
               continue;
+              
+          predictedDepth = std::max(newDepth - reduction<PvNode>(improving, depth, moveCount), DEPTH_ZERO);
 
           predictedDepth = std::max(newDepth - reduction<PvNode>(improving, depth, moveCount), DEPTH_ZERO);
 
