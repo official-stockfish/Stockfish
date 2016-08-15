@@ -418,27 +418,76 @@ ScaleFactor Endgame<KBPsK>::operator()(const Position& pos) const {
   // and all strong pawns are also on these files
   // and the attacking bishop is on squares of opposite color of these pawns
   // and the defending king is close to both pawns on the 8th rank.
-  if (pos.count<PAWN>(weakSide) == 2 && relative_rank(strongSide, weakKingSq) > RANK_7)
+  if (relative_rank(strongSide, weakKingSq) > RANK_7)
   {
-      // Get weakSide pawn squares
-      Square wpsq1 = pos.squares<PAWN>(weakSide)[0];
-      Square wpsq2 = pos.squares<PAWN>(weakSide)[1];
-      int weakKingDist1 = distance(wpsq1, weakKingSq);
-      int weakKingDist2 = distance(wpsq2, weakKingSq);
-
+      Bitboard weakPawns = pos.pieces(weakSide, PAWN);
       Square bishopSq = pos.square<BISHOP>(strongSide);
-      if (   relative_rank(strongSide, wpsq1) == RANK_7
-          && relative_rank(strongSide, wpsq2) == RANK_7
-          && opposite_colors(bishopSq, wpsq1)
-          && opposite_colors(bishopSq, wpsq2)
-          && weakKingDist1 <= 2
-          && weakKingDist2 <= 2)
+      bool whiteLeft  = weakSide == WHITE && (weakPawns & SQ_A2) && (weakPawns & SQ_C2) && opposite_colors(bishopSq, SQ_A2) && distance(SQ_A2, weakKingSq) <= 2 && distance(SQ_C2, weakKingSq) <= 2;
+      bool whiteRight = weakSide == WHITE && (weakPawns & SQ_F2) && (weakPawns & SQ_H2) && opposite_colors(bishopSq, SQ_F2) && distance(SQ_F2, weakKingSq) <= 2 && distance(SQ_H2, weakKingSq) <= 2;
+      bool blackLeft  = weakSide == BLACK && (weakPawns & SQ_A7) && (weakPawns & SQ_C7) && opposite_colors(bishopSq, SQ_A7) && distance(SQ_A7, weakKingSq) <= 2 && distance(SQ_C7, weakKingSq) <= 2;
+      bool blackRight = weakSide == BLACK && (weakPawns & SQ_F7) && (weakPawns & SQ_H7) && opposite_colors(bishopSq, SQ_F7) && distance(SQ_F7, weakKingSq) <= 2 && distance(SQ_H7, weakKingSq) <= 2;
+
+      bool allBlocked = true;
+      if (pos.count<PAWN>(weakSide) == 3)
       {
-          // Get the pawn files
-          File wpf1 = file_of(wpsq1);
-          File wpf2 = file_of(wpsq2);
-          bool allBlocked = true;
-          if ((wpf1 == FILE_A && wpf2 == FILE_C) || (wpf1 == FILE_C && wpf2 == FILE_A))
+          if (whiteLeft && (weakPawns & SQ_B3))
+          {
+              const Square* pl = pos.squares<PAWN>(strongSide);
+              Square s;
+              while ((s = *pl++) != SQ_NONE)
+              {
+                  if (!(s == SQ_A3 || s == SQ_B4 || s == SQ_C3))
+                  {
+                      allBlocked = false;
+                      break;
+                  }
+              }
+          }
+          else if (whiteRight && (weakPawns & SQ_G3))
+          {
+              const Square* pl = pos.squares<PAWN>(strongSide);
+              Square s;
+              while ((s = *pl++) != SQ_NONE)
+              {
+                  if (!(s == SQ_F3 || s == SQ_G4 || s == SQ_H3))
+                  {
+                      allBlocked = false;
+                      break;
+                  }
+              }
+          }
+          else if (blackLeft && (weakPawns & SQ_B6))
+          {
+              const Square* pl = pos.squares<PAWN>(strongSide);
+              Square s;
+              while ((s = *pl++) != SQ_NONE)
+              {
+                  if (!(s == SQ_A6 || s == SQ_B5 || s == SQ_C6))
+                  {
+                      allBlocked = false;
+                      break;
+                  }
+              }
+          }
+          else if (blackRight && (weakPawns & SQ_G6))
+          {
+              const Square* pl = pos.squares<PAWN>(strongSide);
+              Square s;
+              while ((s = *pl++) != SQ_NONE)
+              {
+                  if (!(s == SQ_F6 || s == SQ_G5 || s == SQ_H6))
+                  {
+                      allBlocked = false;
+                      break;
+                  }
+              }
+          }
+          else
+              allBlocked = false;
+      }
+      else if (pos.count<PAWN>(weakSide) == 2)
+      {
+          if (whiteLeft || blackLeft)
           {
               const Square* pl = pos.squares<PAWN>(strongSide);
               Square s;
@@ -452,7 +501,7 @@ ScaleFactor Endgame<KBPsK>::operator()(const Position& pos) const {
                   }
               }
           }
-          else if ((wpf1 == FILE_F && wpf2 == FILE_H) || (wpf1 == FILE_H && wpf2 == FILE_F))
+          else if (whiteRight || blackRight)
           {
               const Square* pl = pos.squares<PAWN>(strongSide);
               Square s;
@@ -466,9 +515,14 @@ ScaleFactor Endgame<KBPsK>::operator()(const Position& pos) const {
                   }
               }
           }
-          if (allBlocked)
-              return SCALE_FACTOR_DRAW;
+          else
+              allBlocked = false;
       }
+      else
+          allBlocked = false;
+
+      if (allBlocked)
+          return SCALE_FACTOR_DRAW;
   }
 
   return SCALE_FACTOR_NONE;
