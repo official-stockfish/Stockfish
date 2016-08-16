@@ -24,7 +24,6 @@
 #include <cassert>
 #include <cstddef>  // For offsetof()
 #include <deque>
-#include <memory>   // For std::unique_ptr
 #include <string>
 #include <vector>
 
@@ -79,7 +78,7 @@ struct StateInfo {
 };
 
 // In a std::deque references to elements are unaffected upon resizing
-typedef std::unique_ptr<std::deque<StateInfo>> StateListPtr;
+typedef std::deque<StateInfo> StateList;
 
 
 /// Position class stores information regarding the board representation as

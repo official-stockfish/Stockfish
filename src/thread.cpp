@@ -170,7 +170,7 @@ int64_t ThreadPool::nodes_searched() {
 /// ThreadPool::start_thinking() wakes up the main thread sleeping in idle_loop()
 /// and starts a new search, then returns immediately.
 
-void ThreadPool::start_thinking(Position& pos, StateListPtr& states,
+void ThreadPool::start_thinking(Position& pos, StateList& states,
                                 const Search::LimitsType& limits) {
 
   main()->wait_for_search_finished();
@@ -186,24 +186,17 @@ void ThreadPool::start_thinking(Position& pos, StateListPtr& states,
 
   Tablebases::filter_root_moves(pos, rootMoves);
 
-  // After ownership transfer 'states' becomes empty, so if we stop the search
-  // and call 'go' again without setting a new position states.get() == NULL.
-  assert(states.get() || setupStates.get());
-
-  if (states.get())
-      setupStates = std::move(states); // Ownership transfer, states is now empty
-
-  StateInfo tmp = setupStates->back();
+  StateInfo tmp = states.back();
 
   for (Thread* th : Threads)
   {
       th->maxPly = 0;
       th->rootDepth = DEPTH_ZERO;
       th->rootMoves = rootMoves;
-      th->rootPos.set(pos.fen(), pos.is_chess960(), &setupStates->back(), th);
+      th->rootPos.set(pos.fen(), pos.is_chess960(), &states.back(), th);
   }
 
-  setupStates->back() = tmp; // Restore st->previous, cleared by Position::set()
+  states.back() = tmp; // Restore st->previous, cleared by Position::set()
 
   main()->start_searching();
 }
