@@ -413,27 +413,29 @@ ScaleFactor Endgame<KBPsK>::operator()(const Position& pos) const {
       }
   }
 
+  int weakCount = pos.count<PAWN>(weakSide);
+
   // Detection of a fortress position:
   // when 2 weak pawns are on the 7th rank on the A and C or F and H files
   // and all strong pawns are also on these files
   // and the attacking bishop is on squares of opposite color of these pawns
   // and the defending king is close to both pawns on the 8th rank.
-  if (relative_rank(strongSide, weakKingSq) > RANK_7)
+  if ((weakCount == 2 || weakCount == 3) && relative_rank(strongSide, weakKingSq) > RANK_7)
   {
       Bitboard weakPawns = pos.pieces(weakSide, PAWN);
       Square bishopSq = pos.square<BISHOP>(strongSide);
-      bool whiteLeft  = weakSide == WHITE && (weakPawns & SQ_A2) && (weakPawns & SQ_C2) && opposite_colors(bishopSq, SQ_A2) && distance(SQ_A2, weakKingSq) <= 2 && distance(SQ_C2, weakKingSq) <= 2;
-      bool whiteRight = weakSide == WHITE && (weakPawns & SQ_F2) && (weakPawns & SQ_H2) && opposite_colors(bishopSq, SQ_F2) && distance(SQ_F2, weakKingSq) <= 2 && distance(SQ_H2, weakKingSq) <= 2;
-      bool blackLeft  = weakSide == BLACK && (weakPawns & SQ_A7) && (weakPawns & SQ_C7) && opposite_colors(bishopSq, SQ_A7) && distance(SQ_A7, weakKingSq) <= 2 && distance(SQ_C7, weakKingSq) <= 2;
-      bool blackRight = weakSide == BLACK && (weakPawns & SQ_F7) && (weakPawns & SQ_H7) && opposite_colors(bishopSq, SQ_F7) && distance(SQ_F7, weakKingSq) <= 2 && distance(SQ_H7, weakKingSq) <= 2;
+      bool whiteLeft  = weakSide == WHITE && (weakPawns & SQ_A2) && (weakPawns & SQ_C2) && opposite_colors(bishopSq, SQ_A2) && distance(SQ_A2, weakKingSq) <= 2;
+      bool whiteRight = weakSide == WHITE && (weakPawns & SQ_F2) && (weakPawns & SQ_H2) && opposite_colors(bishopSq, SQ_F2) && distance(SQ_H2, weakKingSq) <= 2;
+      bool blackLeft  = weakSide == BLACK && (weakPawns & SQ_A7) && (weakPawns & SQ_C7) && opposite_colors(bishopSq, SQ_A7) && distance(SQ_A7, weakKingSq) <= 2;
+      bool blackRight = weakSide == BLACK && (weakPawns & SQ_F7) && (weakPawns & SQ_H7) && opposite_colors(bishopSq, SQ_F7) && distance(SQ_H7, weakKingSq) <= 2;
 
       bool allBlocked = true;
-      if (pos.count<PAWN>(weakSide) == 3)
+      Square s;
+      if (weakCount == 3)
       {
           if (whiteLeft && (weakPawns & SQ_B3))
           {
               const Square* pl = pos.squares<PAWN>(strongSide);
-              Square s;
               while ((s = *pl++) != SQ_NONE)
               {
                   if (!(s == SQ_A3 || s == SQ_B4 || s == SQ_C3))
@@ -446,7 +448,6 @@ ScaleFactor Endgame<KBPsK>::operator()(const Position& pos) const {
           else if (whiteRight && (weakPawns & SQ_G3))
           {
               const Square* pl = pos.squares<PAWN>(strongSide);
-              Square s;
               while ((s = *pl++) != SQ_NONE)
               {
                   if (!(s == SQ_F3 || s == SQ_G4 || s == SQ_H3))
@@ -459,7 +460,6 @@ ScaleFactor Endgame<KBPsK>::operator()(const Position& pos) const {
           else if (blackLeft && (weakPawns & SQ_B6))
           {
               const Square* pl = pos.squares<PAWN>(strongSide);
-              Square s;
               while ((s = *pl++) != SQ_NONE)
               {
                   if (!(s == SQ_A6 || s == SQ_B5 || s == SQ_C6))
@@ -472,7 +472,6 @@ ScaleFactor Endgame<KBPsK>::operator()(const Position& pos) const {
           else if (blackRight && (weakPawns & SQ_G6))
           {
               const Square* pl = pos.squares<PAWN>(strongSide);
-              Square s;
               while ((s = *pl++) != SQ_NONE)
               {
                   if (!(s == SQ_F6 || s == SQ_G5 || s == SQ_H6))
@@ -485,12 +484,11 @@ ScaleFactor Endgame<KBPsK>::operator()(const Position& pos) const {
           else
               allBlocked = false;
       }
-      else if (pos.count<PAWN>(weakSide) == 2)
+      else // weakCount == 2
       {
           if (whiteLeft || blackLeft)
           {
               const Square* pl = pos.squares<PAWN>(strongSide);
-              Square s;
               while ((s = *pl++) != SQ_NONE)
               {
                   File spf = file_of(s);
@@ -504,7 +502,6 @@ ScaleFactor Endgame<KBPsK>::operator()(const Position& pos) const {
           else if (whiteRight || blackRight)
           {
               const Square* pl = pos.squares<PAWN>(strongSide);
-              Square s;
               while ((s = *pl++) != SQ_NONE)
               {
                   File spf = file_of(s);
@@ -518,8 +515,6 @@ ScaleFactor Endgame<KBPsK>::operator()(const Position& pos) const {
           else
               allBlocked = false;
       }
-      else
-          allBlocked = false;
 
       if (allBlocked)
           return SCALE_FACTOR_DRAW;
