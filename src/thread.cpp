@@ -153,6 +153,20 @@ void ThreadPool::read_uci_options() {
 
   while (size() > requested)
       delete back(), pop_back();
+
+  time_factor.resize(requested);
+  
+  typedef std::vector<double> Row;
+  const Row factors[] = {
+    {1},
+    {1, 100},
+    {1.17, 1.30, 1.35} 
+  };
+  const size_t factorsSize = std::extent<decltype(factors)>::value;
+
+  const Row& row = factors[std::min(requested,factorsSize) - 1];
+  for(size_t i=0; i<requested; i++)
+    time_factor[i] = i < factorsSize ? row[i % factorsSize] : 100;
 }
 
 
