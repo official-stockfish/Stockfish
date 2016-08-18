@@ -69,9 +69,9 @@ namespace {
 
   // Futility and reductions lookup tables, initialized at startup
   int FutilityMoveCounts[2][16];  // [improving][depth]
-  Depth Reductions[2][2][64][64]; // [pv][improving][depth][moveNumber]
+  double Reductions[2][2][64][64]; // [pv][improving][depth][moveNumber]
 
-  template <bool PvNode> Depth reduction(bool i, Depth d, int mn) {
+  template <bool PvNode> double reduction(bool i, Depth d, int mn) {
     return Reductions[PvNode][i][std::min(d, 63 * ONE_PLY)][std::min(mn, 63)];
   }
 
@@ -183,15 +183,8 @@ void Search::init() {
           for (int mc = 1; mc < 64; ++mc)
           {
               double r = log(d) * log(mc) / 2;
-              if (r < 0.80)
-                continue;
-
-              Reductions[NonPV][imp][d][mc] = int(std::round(r)) * ONE_PLY;
-              Reductions[PV][imp][d][mc] = std::max(Reductions[NonPV][imp][d][mc] - ONE_PLY, DEPTH_ZERO);
-
-              // Increase reduction for non-PV nodes when eval is not improving
-              if (!imp && Reductions[NonPV][imp][d][mc] >= 2 * ONE_PLY)
-                Reductions[NonPV][imp][d][mc] += ONE_PLY;
+              Reductions[NonPV][imp][d][mc] = r + !imp;
+              Reductions[PV][imp][d][mc] = r - 1.0;
           }
 
   for (int d = 0; d < 16; ++d)
@@ -915,7 +908,7 @@ moves_loop: // When in check search starts from here
           if (moveCountPruning)
               continue;
 
-          predictedDepth = std::max(newDepth - reduction<PvNode>(improving, depth, moveCount), DEPTH_ZERO);
+          predictedDepth = std::max(newDepth - Depth(int(reduction<PvNode>(improving, depth, moveCount))), DEPTH_ZERO);
 
           // Countermoves based pruning
           if (   predictedDepth < 3 * ONE_PLY
@@ -964,16 +957,18 @@ moves_loop: // When in check search starts from here
           &&  moveCount > 1
           && !captureOrPromotion)
       {
-          Depth r = reduction<PvNode>(improving, depth, moveCount);
           Value val = thisThread->history[moved_piece][to_sq(move)]
                      +    (cmh  ? (*cmh )[moved_piece][to_sq(move)] : VALUE_ZERO)
                      +    (fmh  ? (*fmh )[moved_piece][to_sq(move)] : VALUE_ZERO)
                      +    (fmh2 ? (*fmh2)[moved_piece][to_sq(move)] : VALUE_ZERO)
                      +    thisThread->fromTo.get(~pos.side_to_move(), move);
 
+          // Double-valued reduction including history contribution
+          double r_d = reduction<PvNode>(improving, depth, moveCount) - int(val) / 20000.0;
+
           // Increase reduction for cut nodes
           if (cutNode)
-              r += 2 * ONE_PLY;
+              r_d += 1.90;
 
           // Decrease reduction for moves that escape a capture. Filter out
           // castling moves, because they are coded as "king captures rook" and
@@ -982,11 +977,10 @@ moves_loop: // When in check search starts from here
           else if (   type_of(move) == NORMAL
                    && type_of(pos.piece_on(to_sq(move))) != PAWN
                    && pos.see(make_move(to_sq(move), from_sq(move))) < VALUE_ZERO)
-              r -= 2 * ONE_PLY;
+              r_d -= 2.0;
 
-          // Decrease/increase reduction for moves with a good/bad history
-          int rHist = (val - 10000) / 20000;
-          r = std::max(DEPTH_ZERO, r - rHist * ONE_PLY);
+          Depth r = Depth(std::round(r_d));
+          r = std::max(DEPTH_ZERO, r);
 
           Depth d = std::max(newDepth - r, ONE_PLY);
 
