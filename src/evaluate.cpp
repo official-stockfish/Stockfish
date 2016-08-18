@@ -231,7 +231,8 @@ namespace {
     const Color  Them = (Us == WHITE ? BLACK   : WHITE);
     const Square Down = (Us == WHITE ? DELTA_S : DELTA_N);
 
-    ei.pinnedPieces[Us] = pos.pinned_pieces(Us);
+    ei.pinnedPieces[Us] = Us == pos.side_to_move() ? pos.check_info().pinned
+                                                   : pos.pinned_pieces(Us);
     Bitboard b = ei.attackedBy[Them][KING];
     ei.attackedBy[Them][ALL_PIECES] |= b;
     ei.attackedBy[Us][ALL_PIECES] |= ei.attackedBy[Us][PAWN] = ei.pi->pawn_attacks(Us);
