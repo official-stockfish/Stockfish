@@ -95,12 +95,9 @@ struct ThreadPool : public std::vector<Thread*> {
   void exit(); // be initialized and valid during the whole thread lifetime.
 
   MainThread* main() { return static_cast<MainThread*>(at(0)); }
-  void start_thinking(Position&, StateListPtr&, const Search::LimitsType&);
+  void start_thinking(Position&, StateList&, const Search::LimitsType&);
   void read_uci_options();
   int64_t nodes_searched();
-
-private:
-  StateListPtr setupStates;
 };
 
 extern ThreadPool Threads;
