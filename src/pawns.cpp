@@ -172,7 +172,6 @@ namespace {
             score += Lever[relative_rank(Us, s)];
     }
 
-    b = e->semiopenFiles[Us] ^ 0xFF;
     return score;
   }
 
