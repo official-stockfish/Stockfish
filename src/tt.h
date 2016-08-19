@@ -44,8 +44,7 @@ struct TTEntry {
 
   void save(Key k, Value v, Bound b, Depth d, Move m, Value ev, uint8_t g) {
 
-    // Convert to integer
-    d /= ONE_PLY;
+    assert(d / ONE_PLY * ONE_PLY == d);
 
     // Preserve any existing move for the same position
     if (m || (k >> 48) != key16)
@@ -53,7 +52,7 @@ struct TTEntry {
 
     // Don't overwrite more valuable entries
     if (  (k >> 48) != key16
-        || d > depth8 - 4
+        || d / ONE_PLY > depth8 - 4
      /* || g != (genBound8 & 0xFC) // Matching non-zero keys are already refreshed by probe() */
         || b == BOUND_EXACT)
     {
@@ -61,7 +60,7 @@ struct TTEntry {
         value16   = (int16_t)v;
         eval16    = (int16_t)ev;
         genBound8 = (uint8_t)(g | b);
-        depth8    = (int8_t)d;
+        depth8    = (int8_t)d / ONE_PLY;
     }
   }
 

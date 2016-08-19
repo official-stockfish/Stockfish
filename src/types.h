@@ -218,6 +218,8 @@ enum Depth {
   DEPTH_MAX  = MAX_PLY * ONE_PLY
 };
 
+static_assert(!(ONE_PLY & (ONE_PLY - 1)), "ONE_PLY is not power of 2");
+
 enum Square {
   SQ_A1, SQ_B1, SQ_C1, SQ_D1, SQ_E1, SQ_F1, SQ_G1, SQ_H1,
   SQ_A2, SQ_B2, SQ_C2, SQ_D2, SQ_E2, SQ_F2, SQ_G2, SQ_H2,
