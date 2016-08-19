@@ -289,9 +289,15 @@ namespace {
         }
 
         if (Pt == QUEEN)
+        {
             b &= ~(  ei.attackedBy[Them][KNIGHT]
                    | ei.attackedBy[Them][BISHOP]
                    | ei.attackedBy[Them][ROOK]);
+                   
+            // Penalty if any relative pin or discovered attack against the queen
+            if (pos.slider_blockers(pos.pieces(), pos.pieces(Them, ROOK, BISHOP), s))
+                score -= WeakQueen;
+        }
 
         int mob = popcount(b & mobilityArea[Us]);
 
@@ -354,13 +360,6 @@ namespace {
                     && !ei.pi->semiopen_side(Us, file_of(ksq), file_of(s) < file_of(ksq)))
                     score -= (TrappedRook - make_score(mob * 22, 0)) * (1 + !pos.can_castle(Us));
             }
-        }
-
-        if (Pt == QUEEN)
-        {
-            // Penalty if any relative pin or discovered attack against the queen
-            if (pos.slider_blockers(pos.pieces(), pos.pieces(Them, ROOK, BISHOP), s))
-                score -= WeakQueen;
         }
     }
 
