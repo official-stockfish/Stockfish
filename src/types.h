@@ -209,14 +209,16 @@ enum Depth {
 
   ONE_PLY = 1,
 
-  DEPTH_ZERO          =  0,
-  DEPTH_QS_CHECKS     =  0,
-  DEPTH_QS_NO_CHECKS  = -1,
-  DEPTH_QS_RECAPTURES = -5,
+  DEPTH_ZERO          =  0 * ONE_PLY,
+  DEPTH_QS_CHECKS     =  0 * ONE_PLY,
+  DEPTH_QS_NO_CHECKS  = -1 * ONE_PLY,
+  DEPTH_QS_RECAPTURES = -5 * ONE_PLY,
 
-  DEPTH_NONE = -6,
-  DEPTH_MAX  = MAX_PLY
+  DEPTH_NONE = -6 * ONE_PLY,
+  DEPTH_MAX  = MAX_PLY * ONE_PLY
 };
+
+static_assert(!(ONE_PLY & (ONE_PLY - 1)), "ONE_PLY is not a power of 2");
 
 enum Square {
   SQ_A1, SQ_B1, SQ_C1, SQ_D1, SQ_E1, SQ_F1, SQ_G1, SQ_H1,
