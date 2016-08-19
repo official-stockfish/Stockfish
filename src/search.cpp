@@ -63,6 +63,13 @@ namespace {
   // Different node types, used as a template parameter
   enum NodeType { NonPV, PV };
 
+  // ELO values corresponded to every of Skill Level values
+  const int elo[21] = {
+	  1250, 1380, 1515, 1635, 1750, 1830, 1900,
+	  1970, 2060, 2150, 2200, 2270, 2310, 2380,
+	  2450, 2500, 2580, 2660, 2720, 2780, 3350
+  };
+
   // Razoring and futility margin based on depth
   const int razor_margin[4] = { 483, 570, 603, 554 };
   Value futility_margin(Depth d) { return Value(150 * d); }
@@ -358,7 +365,21 @@ void Thread::search() {
   }
 
   size_t multiPV = Options["MultiPV"];
-  Skill skill(Options["Skill Level"]);
+  int SkillLevel = Options["Skill Level"];
+  
+  // Add support for the "UCI_LimitStrength" feature
+  if (Options["UCI_LimitStrength"]) {
+	  int UCIElo = Options["UCI_Elo"];
+
+	  for (idx = 0; idx < 20; ++idx)
+		  if (UCIElo < elo[idx + 1]) {
+			  SkillLevel = idx;
+
+			  break;
+		  }
+  }
+
+  Skill skill(SkillLevel);
 
   // When playing with strength handicap enable MultiPV search that we will
   // use behind the scenes to retrieve a set of possible moves.
