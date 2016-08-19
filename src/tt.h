@@ -39,10 +39,13 @@ struct TTEntry {
   Move  move()  const { return (Move )move16; }
   Value value() const { return (Value)value16; }
   Value eval()  const { return (Value)eval16; }
-  Depth depth() const { return (Depth)depth8; }
+  Depth depth() const { return (Depth)(depth8 * ONE_PLY); }
   Bound bound() const { return (Bound)(genBound8 & 0x3); }
 
   void save(Key k, Value v, Bound b, Depth d, Move m, Value ev, uint8_t g) {
+
+    // Convert to integer
+    d /= ONE_PLY;
 
     // Preserve any existing move for the same position
     if (m || (k >> 48) != key16)

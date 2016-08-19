@@ -65,14 +65,14 @@ namespace {
 
   // Razoring and futility margin based on depth
   const int razor_margin[4] = { 483, 570, 603, 554 };
-  Value futility_margin(Depth d) { return Value(150 * d); }
+  Value futility_margin(Depth d) { return Value(150 * d / ONE_PLY); }
 
   // Futility and reductions lookup tables, initialized at startup
   int FutilityMoveCounts[2][16];  // [improving][depth]
   Depth Reductions[2][2][64][64]; // [pv][improving][depth][moveNumber]
 
   template <bool PvNode> Depth reduction(bool i, Depth d, int mn) {
-    return Reductions[PvNode][i][std::min(d, 63 * ONE_PLY)][std::min(mn, 63)];
+    return Reductions[PvNode][i][std::min(d / ONE_PLY, 63)][std::min(mn, 63)];
   }
 
   // Skill structure is used to implement strength limit
@@ -367,15 +367,17 @@ void Thread::search() {
 
   multiPV = std::min(multiPV, rootMoves.size());
 
-  // Iterative deepening loop until requested to stop or the target depth is reached.
-  while (++rootDepth < DEPTH_MAX && !Signals.stop && (!Limits.depth || Threads.main()->rootDepth <= Limits.depth))
+  // Iterative deepening loop until requested to stop or the target depth is reached
+  while (   (rootDepth += ONE_PLY) < DEPTH_MAX
+         && !Signals.stop
+         && (!Limits.depth || Threads.main()->rootDepth / ONE_PLY <= Limits.depth))
   {
       // Set up the new depths for the helper threads skipping on average every
       // 2nd ply (using a half-density matrix).
       if (!mainThread)
       {
           const Row& row = HalfDensity[(idx - 1) % HalfDensitySize];
-          if (row[(rootDepth + rootPos.game_ply()) % row.size()])
+          if (row[(rootDepth / ONE_PLY + rootPos.game_ply()) % row.size()])
              continue;
       }
 
@@ -648,7 +650,7 @@ namespace {
         int piecesCnt = pos.count<ALL_PIECES>(WHITE) + pos.count<ALL_PIECES>(BLACK);
 
         if (    piecesCnt <= TB::Cardinality
-            && (piecesCnt <  TB::Cardinality || depth >= TB::ProbeDepth)
+            && (piecesCnt <  TB::Cardinality || depth / ONE_PLY >= TB::ProbeDepth)
             &&  pos.rule50_count() == 0
             && !pos.can_castle(ANY_CASTLING))
         {
@@ -707,14 +709,14 @@ namespace {
     // Step 6. Razoring (skipped when in check)
     if (   !PvNode
         &&  depth < 4 * ONE_PLY
-        &&  eval + razor_margin[depth] <= alpha
+        &&  eval + razor_margin[depth / ONE_PLY] <= alpha
         &&  ttMove == MOVE_NONE)
     {
         if (   depth <= ONE_PLY
             && eval + razor_margin[3 * ONE_PLY] <= alpha)
             return qsearch<NonPV, false>(pos, ss, alpha, beta, DEPTH_ZERO);
 
-        Value ralpha = alpha - razor_margin[depth];
+        Value ralpha = alpha - razor_margin[depth / ONE_PLY];
         Value v = qsearch<NonPV, false>(pos, ss, ralpha, ralpha+1, DEPTH_ZERO);
         if (v <= ralpha)
             return v;
@@ -740,7 +742,7 @@ namespace {
         assert(eval - beta >= 0);
 
         // Null move dynamic reduction based on depth and value
-        Depth R = ((823 + 67 * depth) / 256 + std::min((eval - beta) / PawnValueMg, 3)) * ONE_PLY;
+        Depth R = ((823 + 67 * depth / ONE_PLY) / 256 + std::min((eval - beta) / PawnValueMg, 3)) * ONE_PLY;
 
         pos.do_null_move(st);
         (ss+1)->skipEarlyPruning = true;
@@ -870,7 +872,7 @@ moves_loop: // When in check search starts from here
                   : pos.gives_check(move, ci);
 
       moveCountPruning =   depth < 16 * ONE_PLY
-                        && moveCount >= FutilityMoveCounts[improving][depth];
+                        && moveCount >= FutilityMoveCounts[improving][depth / ONE_PLY];
 
       // Step 12. Extend checks
       if (    givesCheck
@@ -1404,7 +1406,8 @@ moves_loop: // When in check search starts from here
     }
 
     Color c = pos.side_to_move();
-    Value bonus = Value((depth / ONE_PLY) * (depth / ONE_PLY) + 2 * depth / ONE_PLY - 2);
+    int d = depth / ONE_PLY;
+    Value bonus = Value(d * d + 2 * d - 2);
 
     Square prevSq = to_sq((ss-1)->currentMove);
     CounterMoveStats* cmh  = (ss-1)->counterMoves;
@@ -1447,13 +1450,13 @@ moves_loop: // When in check search starts from here
     if ((ss-1)->moveCount == 1 && !pos.captured_piece_type())
     {
         if ((ss-2)->counterMoves)
-            (ss-2)->counterMoves->update(pos.piece_on(prevSq), prevSq, -bonus - 2 * (depth + 1) / ONE_PLY - 1);
+            (ss-2)->counterMoves->update(pos.piece_on(prevSq), prevSq, -bonus - 2 * (d + ONE_PLY) / ONE_PLY - 1);
 
         if ((ss-3)->counterMoves)
-            (ss-3)->counterMoves->update(pos.piece_on(prevSq), prevSq, -bonus - 2 * (depth + 1) / ONE_PLY - 1);
+            (ss-3)->counterMoves->update(pos.piece_on(prevSq), prevSq, -bonus - 2 * (d + ONE_PLY) / ONE_PLY - 1);
 
         if ((ss-5)->counterMoves)
-            (ss-5)->counterMoves->update(pos.piece_on(prevSq), prevSq, -bonus - 2 * (depth + 1) / ONE_PLY - 1);
+            (ss-5)->counterMoves->update(pos.piece_on(prevSq), prevSq, -bonus - 2 * (d + ONE_PLY) / ONE_PLY - 1);
     }
   }
 
