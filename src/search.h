@@ -42,6 +42,8 @@ struct Stack {
   int ply;
   Move currentMove;
   Move excludedMove;
+  Piece pc;
+  Square toSq;
   Move killers[2];
   Value staticEval;
   bool skipEarlyPruning;
