@@ -636,7 +636,7 @@ namespace {
         ss->currentMove = ttMove; // Can be MOVE_NONE
 
         // If ttMove is quiet, update killers, history, counter move on TT hit
-        if (ttValue >= beta && ttMove && !pos.capture_or_promotion(ttMove))
+        if (ttValue >= beta && ttMove)
             update_stats(pos, ss, ttMove, depth, nullptr, 0);
 
         return ttValue;
@@ -989,7 +989,7 @@ moves_loop: // When in check search starts from here
                   r -= 2 * ONE_PLY;
 
               // Decrease/increase reduction for moves with a good/bad history
-              int rHist = (val - 10000) / 20000;
+              int rHist = (val - 8000) / 20000;
               r = std::max(DEPTH_ZERO, r - rHist * ONE_PLY);
           }
 
@@ -1113,12 +1113,11 @@ moves_loop: // When in check search starts from here
                    :     inCheck ? mated_in(ss->ply) : DrawValue[pos.side_to_move()];
 
     // Quiet best move: update killers, history and countermoves
-    else if (bestMove && !pos.capture_or_promotion(bestMove))
+    else if (bestMove)
         update_stats(pos, ss, bestMove, depth, quietsSearched, quietCount);
 
     // Bonus for prior countermove that caused the fail low
     else if (    depth >= 3 * ONE_PLY
-             && !bestMove
              && !pos.captured_piece_type()
              && is_ok((ss-1)->currentMove))
     {
@@ -1397,19 +1396,39 @@ moves_loop: // When in check search starts from here
   void update_stats(const Position& pos, Stack* ss, Move move,
                     Depth depth, Move* quiets, int quietsCnt) {
 
+    Value bonus = Value((depth / ONE_PLY) * (depth / ONE_PLY) + 2 * depth / ONE_PLY - 2);
+    Square prevSq = to_sq((ss-1)->currentMove);
+
+    // Extra penalty for a quiet TT move in previous ply when it gets refuted
+    if ((ss-1)->moveCount == 1 && !pos.captured_piece_type())
+    {
+        CounterMoveStats* fmh   = (ss-2)->counterMoves;
+        CounterMoveStats* cmh2  = (ss-3)->counterMoves;
+        CounterMoveStats* cmh3  = (ss-5)->counterMoves;
+
+        if (fmh)
+            fmh->update(pos.piece_on(prevSq), prevSq, -bonus - 2 * (depth + 1) / ONE_PLY - 1);
+
+        if (cmh2)
+            cmh2->update(pos.piece_on(prevSq), prevSq, -bonus - 2 * (depth + 1) / ONE_PLY - 1);
+
+        if (cmh3)
+            cmh3->update(pos.piece_on(prevSq), prevSq, -bonus - 2 * (depth + 1) / ONE_PLY - 1);
+    }
+
+    if (pos.capture_or_promotion(move))
+        return;
+
     if (ss->killers[0] != move)
     {
         ss->killers[1] = ss->killers[0];
         ss->killers[0] = move;
     }
 
-    Color c = pos.side_to_move();
-    Value bonus = Value((depth / ONE_PLY) * (depth / ONE_PLY) + 2 * depth / ONE_PLY - 2);
-
-    Square prevSq = to_sq((ss-1)->currentMove);
     CounterMoveStats* cmh  = (ss-1)->counterMoves;
     CounterMoveStats* fmh  = (ss-2)->counterMoves;
     CounterMoveStats* fmh2 = (ss-4)->counterMoves;
+    Color c = pos.side_to_move();
     Thread* thisThread = pos.this_thread();
 
     thisThread->history.update(pos.moved_piece(move), to_sq(move), bonus);
@@ -1441,19 +1460,6 @@ moves_loop: // When in check search starts from here
 
         if (fmh2)
             fmh2->update(pos.moved_piece(quiets[i]), to_sq(quiets[i]), -bonus);
-    }
-
-    // Extra penalty for a quiet TT move in previous ply when it gets refuted
-    if ((ss-1)->moveCount == 1 && !pos.captured_piece_type())
-    {
-        if ((ss-2)->counterMoves)
-            (ss-2)->counterMoves->update(pos.piece_on(prevSq), prevSq, -bonus - 2 * (depth + 1) / ONE_PLY - 1);
-
-        if ((ss-3)->counterMoves)
-            (ss-3)->counterMoves->update(pos.piece_on(prevSq), prevSq, -bonus - 2 * (depth + 1) / ONE_PLY - 1);
-
-        if ((ss-5)->counterMoves)
-            (ss-5)->counterMoves->update(pos.piece_on(prevSq), prevSq, -bonus - 2 * (depth + 1) / ONE_PLY - 1);
     }
   }
 
