@@ -296,8 +296,8 @@ void Position::set_castling_right(Color c, Square rfrom) {
 
 void Position::set_check_info(CheckInfo* ci) const {
 
-  ci->blockers[WHITE] = slider_blockers(pieces(), pieces(BLACK), square<KING>(WHITE));
-  ci->blockers[BLACK] = slider_blockers(pieces(), pieces(WHITE), square<KING>(BLACK));
+  ci->blockers[WHITE] = slider_blockers(pieces(BLACK), square<KING>(WHITE));
+  ci->blockers[BLACK] = slider_blockers(pieces(WHITE), square<KING>(BLACK));
   
   ci->pinned       = pieces(sideToMove) & ci->blockers[sideToMove];
   ci->dcCandidates = pieces(sideToMove) & ci->blockers[~sideToMove];
@@ -423,14 +423,14 @@ Phase Position::game_phase() const {
 }
 
 
-/// Position::slider_blockers() returns a bitboard of all the pieces in 'target' that
+/// Position::slider_blockers() returns a bitboard of all the pieces (both colors) that
 /// are blocking attacks on the square 's' from 'sliders'. A piece blocks a slider
 /// if removing that piece from the board would result in a position where square 's'
 /// is attacked. For example, a king-attack blocking piece can be either a pinned or
 /// a discovered check piece, according if its color is the opposite or the same of
 /// the color of the slider.
 
-Bitboard Position::slider_blockers(Bitboard target, Bitboard sliders, Square s) const {
+Bitboard Position::slider_blockers(Bitboard sliders, Square s) const {
 
   Bitboard b, pinners, result = 0;
 
@@ -443,7 +443,7 @@ Bitboard Position::slider_blockers(Bitboard target, Bitboard sliders, Square s) 
       b = between_bb(s, pop_lsb(&pinners)) & pieces();
 
       if (!more_than_one(b))
-          result |= b & target;
+          result |= b;
   }
   return result;
 }

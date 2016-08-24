@@ -359,7 +359,7 @@ namespace {
         if (Pt == QUEEN)
         {
             // Penalty if any relative pin or discovered attack against the queen
-            if (pos.slider_blockers(pos.pieces(), pos.pieces(Them, ROOK, BISHOP), s))
+            if (pos.slider_blockers(pos.pieces(Them, ROOK, BISHOP), s))
                 score -= WeakQueen;
         }
     }
