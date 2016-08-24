@@ -481,8 +481,8 @@ namespace {
   // evaluate_threats() assigns bonuses according to the types of the attacking
   // and the attacked pieces.
 
-  const Bitboard WhiteCamp = Rank4BB | Rank5BB | Rank6BB | Rank7BB | Rank8BB;
-  const Bitboard BlackCamp = Rank5BB | Rank4BB | Rank3BB | Rank2BB | Rank1BB;
+  const Bitboard WhiteCamp = Rank1BB | Rank2BB | Rank3BB | Rank4BB | Rank5BB;
+  const Bitboard BlackCamp = Rank8BB | Rank7BB | Rank6BB | Rank5BB | Rank4BB;
   const Bitboard QueenSide   = FileABB | FileBBB | FileCBB | FileDBB;
   const Bitboard CenterFiles = FileCBB | FileDBB | FileEBB | FileFBB;
   const Bitboard KingSide    = FileEBB | FileFBB | FileGBB | FileHBB;
@@ -572,7 +572,7 @@ namespace {
     score += ThreatByPawnPush * popcount(b);
 
     // King tropism: firstly, find squares that we attack in the enemy king flank
-    b = ei.attackedBy[Us][ALL_PIECES] & KingFlank[Us][file_of(pos.square<KING>(Them))];
+    b = ei.attackedBy[Us][ALL_PIECES] & KingFlank[Them][file_of(pos.square<KING>(Them))];
 
     // Secondly, add to the bitboard the squares which we attack twice in that flank
     // but which are not protected by a enemy pawn. Note the trick to shift away the
