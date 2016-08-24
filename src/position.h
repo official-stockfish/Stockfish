@@ -46,6 +46,7 @@ namespace PSQT {
 
 struct CheckInfo {
 
+  Bitboard blockers[COLOR_NB];
   Bitboard dcCandidates;
   Bitboard pinned;
   Bitboard checkSquares[PIECE_TYPE_NB];
