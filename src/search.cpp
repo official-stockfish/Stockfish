@@ -168,7 +168,7 @@ namespace {
   Value value_to_tt(Value v, int ply);
   Value value_from_tt(Value v, int ply);
   void update_pv(Move* pv, Move move, Move* childPv);
-  void update_stats(const Position& pos, Stack* ss, Move move, Depth depth, Move* quiets, int quietsCnt, bool captureOrPromotion);
+  void update_stats(const Position& pos, Stack* ss, Move move, Depth depth, Move* quiets, int quietsCnt);
   void check_time();
 
 } // namespace
@@ -637,7 +637,7 @@ namespace {
 
         // If ttMove is quiet, update killers, history, counter move on TT hit
         if (ttValue >= beta && ttMove)
-            update_stats(pos, ss, ttMove, depth, nullptr, 0, pos.capture_or_promotion(ttMove));
+            update_stats(pos, ss, ttMove, depth, nullptr, 0);
 
         return ttValue;
     }
@@ -1114,7 +1114,7 @@ moves_loop: // When in check search starts from here
 
     // Quiet best move: update killers, history and countermoves
     else if (bestMove)
-        update_stats(pos, ss, bestMove, depth, quietsSearched, quietCount, pos.capture_or_promotion(bestMove));
+        update_stats(pos, ss, bestMove, depth, quietsSearched, quietCount);
 
     // Bonus for prior countermove that caused the fail low
     else if (    depth >= 3 * ONE_PLY
@@ -1394,7 +1394,7 @@ moves_loop: // When in check search starts from here
   // follow-up move history when a new quiet best move is found.
 
   void update_stats(const Position& pos, Stack* ss, Move move,
-                    Depth depth, Move* quiets, int quietsCnt, bool captureOrPromotion) {
+                    Depth depth, Move* quiets, int quietsCnt) {
 
     Value bonus = Value((depth / ONE_PLY) * (depth / ONE_PLY) + 2 * depth / ONE_PLY - 2);
     Square prevSq = to_sq((ss-1)->currentMove);
@@ -1402,7 +1402,7 @@ moves_loop: // When in check search starts from here
     CounterMoveStats* fmh  = (ss-2)->counterMoves;
     CounterMoveStats* fmh2 = (ss-4)->counterMoves;
 
-    if (!captureOrPromotion)
+    if (!pos.capture_or_promotion(move))
     {
         Color c = pos.side_to_move();
         Thread* thisThread = pos.this_thread();
