@@ -296,8 +296,8 @@ void Position::set_castling_right(Color c, Square rfrom) {
 
 void Position::set_check_info(CheckInfo* ci) const {
 
-  ci->blockers[WHITE] = slider_blockers(pieces(BLACK), square<KING>(WHITE));
-  ci->blockers[BLACK] = slider_blockers(pieces(WHITE), square<KING>(BLACK));
+  ci->blockersForKing[WHITE] = slider_blockers(pieces(BLACK), square<KING>(WHITE));
+  ci->blockersForKing[BLACK] = slider_blockers(pieces(WHITE), square<KING>(BLACK));
 
   Square ksq = ci->ksq = square<KING>(~sideToMove);
 
