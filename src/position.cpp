@@ -298,9 +298,6 @@ void Position::set_check_info(CheckInfo* ci) const {
 
   ci->blockers[WHITE] = slider_blockers(pieces(BLACK), square<KING>(WHITE));
   ci->blockers[BLACK] = slider_blockers(pieces(WHITE), square<KING>(BLACK));
-  
-  ci->pinned       = pieces(sideToMove) & ci->blockers[sideToMove];
-  ci->dcCandidates = pieces(sideToMove) & ci->blockers[~sideToMove];
 
   Square ksq = ci->ksq = square<KING>(~sideToMove);
 
@@ -468,7 +465,6 @@ Bitboard Position::attackers_to(Square s, Bitboard occupied) const {
 bool Position::legal(Move m) const {
 
   assert(is_ok(m));
-  assert(st->ci.pinned == pinned_pieces(sideToMove));
 
   Color us = sideToMove;
   Square from = from_sq(m);
@@ -503,7 +499,7 @@ bool Position::legal(Move m) const {
 
   // A non-king move is legal if and only if it is not pinned or it
   // is moving along the ray towards or away from the king.
-  return   !(st->ci.pinned & from)
+  return   !(pinned_pieces(us) & from)
         ||  aligned(from, to_sq(m), square<KING>(us));
 }
 
@@ -585,7 +581,6 @@ bool Position::pseudo_legal(const Move m) const {
 bool Position::gives_check(Move m) const {
 
   assert(is_ok(m));
-  assert(st->ci.dcCandidates == discovered_check_candidates());
   assert(color_of(moved_piece(m)) == sideToMove);
 
   Square from = from_sq(m);
@@ -596,7 +591,7 @@ bool Position::gives_check(Move m) const {
       return true;
 
   // Is there a discovered check?
-  if (   (st->ci.dcCandidates & from)
+  if (   (discovered_check_candidates() & from)
       && !aligned(from, to, st->ci.ksq))
       return true;
 

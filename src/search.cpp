@@ -862,7 +862,7 @@ moves_loop: // When in check search starts from here
       captureOrPromotion = pos.capture_or_promotion(move);
       moved_piece = pos.moved_piece(move);
 
-      givesCheck =  type_of(move) == NORMAL && !pos.check_info().dcCandidates
+      givesCheck =  type_of(move) == NORMAL && !pos.discovered_check_candidates()
                   ? pos.check_info().checkSquares[type_of(pos.piece_on(from_sq(move)))] & to_sq(move)
                   : pos.gives_check(move);
 
@@ -1255,7 +1255,7 @@ moves_loop: // When in check search starts from here
     {
       assert(is_ok(move));
 
-      givesCheck =  type_of(move) == NORMAL && !pos.check_info().dcCandidates
+      givesCheck =  type_of(move) == NORMAL && !pos.discovered_check_candidates()
                   ? pos.check_info().checkSquares[type_of(pos.piece_on(from_sq(move)))] & to_sq(move)
                   : pos.gives_check(move);
 

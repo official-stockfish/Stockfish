@@ -47,8 +47,6 @@ namespace PSQT {
 struct CheckInfo {
 
   Bitboard blockers[COLOR_NB];
-  Bitboard dcCandidates;
-  Bitboard pinned;
   Bitboard checkSquares[PIECE_TYPE_NB];
   Square   ksq;
 };
@@ -313,11 +311,11 @@ inline Bitboard Position::checkers() const {
 }
 
 inline Bitboard Position::discovered_check_candidates() const {
-  return slider_blockers(pieces(sideToMove), square<KING>(~sideToMove)) & pieces(sideToMove);
+  return st->ci.blockers[~sideToMove] & pieces(sideToMove);
 }
 
 inline Bitboard Position::pinned_pieces(Color c) const {
-  return slider_blockers(pieces(~c), square<KING>(c)) & pieces(c);
+  return st->ci.blockers[c] & pieces(c);
 }
 
 inline const CheckInfo& Position::check_info() const {

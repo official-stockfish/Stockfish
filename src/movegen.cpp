@@ -133,9 +133,10 @@ namespace {
             // if the pawn is not on the same file as the enemy king, because we
             // don't generate captures. Note that a possible discovery check
             // promotion has been already generated amongst the captures.
-            if (pawnsNotOn7 & pos.check_info().dcCandidates)
+            Bitboard dcCandidates = pos.discovered_check_candidates();
+            if (pawnsNotOn7 & dcCandidates)
             {
-                Bitboard dc1 = shift_bb<Up>(pawnsNotOn7 & pos.check_info().dcCandidates) & emptySquares & ~file_bb(ksq);
+                Bitboard dc1 = shift_bb<Up>(pawnsNotOn7 & dcCandidates) & emptySquares & ~file_bb(ksq);
                 Bitboard dc2 = shift_bb<Up>(dc1 & TRank3BB) & emptySquares;
 
                 b1 |= dc1;
@@ -237,7 +238,7 @@ namespace {
                 && !(PseudoAttacks[Pt][from] & target & pos.check_info().checkSquares[Pt]))
                 continue;
 
-            if (pos.check_info().dcCandidates & from)
+            if (pos.discovered_check_candidates() & from)
                 continue;
         }
 
@@ -332,7 +333,7 @@ ExtMove* generate<QUIET_CHECKS>(const Position& pos, ExtMove* moveList) {
   assert(!pos.checkers());
 
   Color us = pos.side_to_move();
-  Bitboard dc = pos.check_info().dcCandidates;
+  Bitboard dc = pos.discovered_check_candidates();
 
   while (dc)
   {
@@ -399,7 +400,7 @@ ExtMove* generate<EVASIONS>(const Position& pos, ExtMove* moveList) {
 template<>
 ExtMove* generate<LEGAL>(const Position& pos, ExtMove* moveList) {
 
-  Bitboard pinned = pos.check_info().pinned;
+  Bitboard pinned = pos.pinned_pieces(pos.side_to_move());
   Square ksq = pos.square<KING>(pos.side_to_move());
   ExtMove* cur = moveList;
 
