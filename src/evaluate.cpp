@@ -188,6 +188,7 @@ namespace {
   const Score BishopPawns         = S( 8, 12);
   const Score RookOnPawn          = S( 8, 24);
   const Score TrappedRook         = S(92,  0);
+  const Score CloseEnemies        = S( 7,  0);
   const Score SafeCheck           = S(20, 20);
   const Score OtherCheck          = S(10, 10);
   const Score ThreatByHangingPawn = S(71, 61);
@@ -379,6 +380,19 @@ namespace {
 
   // evaluate_king() assigns bonuses and penalties to a king of a given color
 
+  const Bitboard WhiteCamp = Rank1BB | Rank2BB | Rank3BB | Rank4BB | Rank5BB;
+  const Bitboard BlackCamp = Rank8BB | Rank7BB | Rank6BB | Rank5BB | Rank4BB;
+  const Bitboard QueenSide   = FileABB | FileBBB | FileCBB | FileDBB;
+  const Bitboard CenterFiles = FileCBB | FileDBB | FileEBB | FileFBB;
+  const Bitboard KingSide    = FileEBB | FileFBB | FileGBB | FileHBB;
+
+  const Bitboard KingFlank[COLOR_NB][FILE_NB] = {
+    { QueenSide   & WhiteCamp, QueenSide & WhiteCamp, QueenSide & WhiteCamp, CenterFiles & WhiteCamp,
+      CenterFiles & WhiteCamp, KingSide  & WhiteCamp, KingSide  & WhiteCamp, KingSide    & WhiteCamp },
+    { QueenSide   & BlackCamp, QueenSide & BlackCamp, QueenSide & BlackCamp, CenterFiles & BlackCamp,
+      CenterFiles & BlackCamp, KingSide  & BlackCamp, KingSide  & BlackCamp, KingSide    & BlackCamp },
+  };
+
   template<Color Us, bool DoTrace>
   Score evaluate_king(const Position& pos, const EvalInfo& ei) {
 
@@ -471,6 +485,19 @@ namespace {
         score -= KingDanger[std::max(std::min(attackUnits, 399), 0)];
     }
 
+    // King tropism: firstly, find squares that opponent attacks in our king flank
+    b = ei.attackedBy[Them][ALL_PIECES] & KingFlank[Us][file_of(ksq)];
+
+    assert(((Us == WHITE ? b << 4 : b >> 4) & b) == 0);
+    assert(popcount(Us == WHITE ? b << 4 : b >> 4) == popcount(b));
+
+    // Secondly, add the squares which are attacked twice in that flank and
+    // which are not defended by our pawns.
+    b =  (Us == WHITE ? b << 4 : b >> 4)
+       | (b & ei.attackedBy2[Them] & ~ei.attackedBy[Us][PAWN]);
+
+    score -= CloseEnemies * popcount(b);
+
     if (DoTrace)
         Trace::add(KING, Us, score);
 
@@ -480,19 +507,6 @@ namespace {
 
   // evaluate_threats() assigns bonuses according to the types of the attacking
   // and the attacked pieces.
-
-  const Bitboard WhiteCamp = Rank1BB | Rank2BB | Rank3BB | Rank4BB | Rank5BB;
-  const Bitboard BlackCamp = Rank8BB | Rank7BB | Rank6BB | Rank5BB | Rank4BB;
-  const Bitboard QueenSide   = FileABB | FileBBB | FileCBB | FileDBB;
-  const Bitboard CenterFiles = FileCBB | FileDBB | FileEBB | FileFBB;
-  const Bitboard KingSide    = FileEBB | FileFBB | FileGBB | FileHBB;
-
-  const Bitboard KingFlank[COLOR_NB][FILE_NB] = {
-    { QueenSide   & WhiteCamp, QueenSide & WhiteCamp, QueenSide & WhiteCamp, CenterFiles & WhiteCamp,
-      CenterFiles & WhiteCamp, KingSide  & WhiteCamp, KingSide  & WhiteCamp, KingSide    & WhiteCamp },
-    { QueenSide   & BlackCamp, QueenSide & BlackCamp, QueenSide & BlackCamp, CenterFiles & BlackCamp,
-      CenterFiles & BlackCamp, KingSide  & BlackCamp, KingSide  & BlackCamp, KingSide    & BlackCamp },
-  };
 
   template<Color Us, bool DoTrace>
   Score evaluate_threats(const Position& pos, const EvalInfo& ei) {
@@ -570,18 +584,6 @@ namespace {
        & ~ei.attackedBy[Us][PAWN];
 
     score += ThreatByPawnPush * popcount(b);
-
-    // King tropism: firstly, find squares that we attack in the enemy king flank
-    b = ei.attackedBy[Us][ALL_PIECES] & KingFlank[Them][file_of(pos.square<KING>(Them))];
-
-    // Secondly, add to the bitboard the squares which we attack twice in that flank
-    // but which are not protected by a enemy pawn. Note the trick to shift away the
-    // previous attack bits to the empty part of the bitboard.
-    b =  (b & ei.attackedBy2[Us] & ~ei.attackedBy[Them][PAWN])
-       | (Us == WHITE ? b >> 4 : b << 4);
-
-    // Count all these squares with a single popcount
-    score += make_score(7 * popcount(b), 0);
 
     if (DoTrace)
         Trace::add(THREAT, Us, score);
