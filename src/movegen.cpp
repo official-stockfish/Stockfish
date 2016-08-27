@@ -82,6 +82,8 @@ namespace {
     // that's not already included in the queen promotion.
     if (Type == QUIET_CHECKS && (StepAttacksBB[W_KNIGHT][to] & ksq))
         *moveList++ = make<PROMOTION>(to - Delta, to, KNIGHT);
+    else
+        (void)ksq; // Silence a warning under MSVC
 
     return moveList;
   }
