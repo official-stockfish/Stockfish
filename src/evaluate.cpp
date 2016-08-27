@@ -67,8 +67,6 @@ namespace {
     }
   }
 
-  //using namespace Trace;
-
   // Struct EvalInfo contains various information computed and collected
   // by the evaluation functions.
   struct EvalInfo {
