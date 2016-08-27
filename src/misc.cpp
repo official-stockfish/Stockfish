@@ -26,8 +26,6 @@
 #include "misc.h"
 #include "thread.h"
 
-//using namespace std;
-
 namespace {
 
 /// Version number. If Version is left empty, then compile date in the format
