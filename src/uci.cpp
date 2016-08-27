@@ -73,7 +73,7 @@ namespace {
     while (is >> token && (m = UCI::to_move(pos, token)) != MOVE_NONE)
     {
         States->push_back(StateInfo());
-        pos.do_move(m, States->back(), pos.gives_check(m, CheckInfo(pos)));
+        pos.do_move(m, States->back(), pos.gives_check(m));
     }
   }
 
@@ -106,7 +106,8 @@ namespace {
   // the thinking time and other parameters from the input string, then starts
   // the search.
 
-  void go(const Position& pos, std::istringstream& is) {
+void go(Position& pos, std::istringstream& is) {
+
 
     Search::LimitsType limits;
     std::string token;

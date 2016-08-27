@@ -148,9 +148,8 @@ namespace {
         }
 
         // Passed pawns will be properly scored in evaluation because we need
-        // full attack info to evaluate them. Only the frontmost passed
-        // pawn on each file is considered a true passed pawn.
-        if (!(stoppers | doubled)) // FIXME this is just doubled by adjacent pawn
+        // full attack info to evaluate them.
+        if (!stoppers && !(ourPawns & forward_bb(Us, s)))
             e->passedPawns[Us] |= s;
 
         // Score this pawn
@@ -172,9 +171,6 @@ namespace {
         if (lever)
             score += Lever[relative_rank(Us, s)];
     }
-
-    b = e->semiopenFiles[Us] ^ 0xFF;
-    e->pawnSpan[Us] = b ? int(msb(b) - lsb(b)) : 0;
 
     return score;
   }

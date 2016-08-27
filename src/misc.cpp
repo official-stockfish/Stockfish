@@ -73,23 +73,23 @@ class Logger {
 	file.rdbuf()
     )
     {}
- ~Logger() { start(false); }
+ ~Logger() { start(""); }
 
   std::ofstream file;
   Tie in, out;
 
 public:
-  static void start(bool b) {
+  static void start(const std::string& fname) {
 
     static Logger l;
 
-    if (b && !l.file.is_open())
+    if (!fname.empty() && !l.file.is_open())
     {
-        l.file.open("io_log.txt", std::ifstream::out);
+        l.file.open(fname, std::ifstream::out);
 	std::cin.rdbuf(&l.in);
 	std::cout.rdbuf(&l.out);
     }
-    else if (!b && l.file.is_open())
+    else if (fname.empty() && l.file.is_open())
     {
         std::cout.rdbuf(l.out.buf);
 	std::cin.rdbuf(l.in.buf);
@@ -166,7 +166,7 @@ std::ostream& operator<<(std::ostream& os, SyncCout sc) {
 
 
 /// Trampoline helper to avoid moving Logger to misc.h
-void start_logger(bool b) { Logger::start(b); }
+void start_logger(const std::string& fname) { Logger::start(fname); }
 
 
 /// prefetch() preloads the given address in L1/L2 cache. This is a non-blocking
