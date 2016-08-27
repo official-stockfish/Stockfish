@@ -42,16 +42,6 @@ namespace PSQT {
 }
 
 
-/// CheckInfo struct keeps info used to detect if a move gives check
-
-struct CheckInfo {
-
-  Bitboard blockersForKing[COLOR_NB];
-  Bitboard checkSquares[PIECE_TYPE_NB];
-  Square   ksq;
-};
-
-
 /// StateInfo struct stores information needed to restore a Position object to
 /// its previous state when we retract a move. Whenever a move is made on the
 /// board (by calling Position::do_move), a StateInfo object must be passed.
@@ -73,7 +63,8 @@ struct StateInfo {
   Bitboard   checkersBB;
   PieceType  capturedType;
   StateInfo* previous;
-  CheckInfo  ci;
+  Bitboard   blockersForKing[COLOR_NB];
+  Bitboard   checkSquares[PIECE_TYPE_NB];
 };
 
 // In a std::deque references to elements are unaffected upon resizing
@@ -122,7 +113,7 @@ public:
   Bitboard checkers() const;
   Bitboard discovered_check_candidates() const;
   Bitboard pinned_pieces(Color c) const;
-  const CheckInfo& check_info() const;
+  Bitboard check_squares(PieceType pt) const;
 
   // Attacks to/from a given square
   Bitboard attackers_to(Square s) const;
@@ -184,7 +175,7 @@ private:
   // Initialization helpers (used while setting up a position)
   void set_castling_right(Color c, Square rfrom);
   void set_state(StateInfo* si) const;
-  void set_check_info(CheckInfo* ci) const;
+  void set_check_info(StateInfo* si) const;
 
   // Other helpers
   void put_piece(Color c, PieceType pt, Square s);
@@ -311,15 +302,15 @@ inline Bitboard Position::checkers() const {
 }
 
 inline Bitboard Position::discovered_check_candidates() const {
-  return st->ci.blockersForKing[~sideToMove] & pieces(sideToMove);
+  return st->blockersForKing[~sideToMove] & pieces(sideToMove);
 }
 
 inline Bitboard Position::pinned_pieces(Color c) const {
-  return st->ci.blockersForKing[c] & pieces(c);
+  return st->blockersForKing[c] & pieces(c);
 }
 
-inline const CheckInfo& Position::check_info() const {
-  return st->ci;
+inline Bitboard Position::check_squares(PieceType pt) const {
+  return st->checkSquares[pt];
 }
 
 inline bool Position::pawn_passed(Color c, Square s) const {

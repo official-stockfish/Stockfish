@@ -238,7 +238,7 @@ namespace {
         if (Checks)
         {
             if (    (Pt == BISHOP || Pt == ROOK || Pt == QUEEN)
-                && !(PseudoAttacks[Pt][from] & target & pos.check_info().checkSquares[Pt]))
+                && !(PseudoAttacks[Pt][from] & target & pos.check_squares(Pt)))
                 continue;
 
             if (pos.discovered_check_candidates() & from)
@@ -248,7 +248,7 @@ namespace {
         Bitboard b = pos.attacks_from<Pt>(from) & target;
 
         if (Checks)
-            b &= pos.check_info().checkSquares[Pt];
+            b &= pos.check_squares(Pt);
 
         while (b)
             *moveList++ = make_move(from, pop_lsb(&b));
