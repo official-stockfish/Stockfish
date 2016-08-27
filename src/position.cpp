@@ -32,8 +32,6 @@
 #include "tt.h"
 #include "uci.h"
 
-using std::string;
-
 namespace Zobrist {
 
   Key psq[COLOR_NB][PIECE_TYPE_NB][SQUARE_NB];
@@ -47,7 +45,7 @@ Key Position::exclusion_key() const { return st->key ^ Zobrist::exclusion; }
 
 namespace {
 
-const string PieceToChar(" PNBRQK  pnbrqk");
+const std::string PieceToChar(" PNBRQK  pnbrqk");
 
 // min_attacker() is a helper function used by see() to locate the least
 // valuable attacker for the side to move, remove the attacker we just found
@@ -159,7 +157,10 @@ void Position::init() {
 /// This function is not very robust - make sure that input FENs are correct,
 /// this is assumed to be the responsibility of the GUI.
 
-Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Thread* th) {
+Position& Position::set(const std::string& fenStr,
+			bool isChess960,
+			StateInfo* si,
+			Thread* th) {
 /*
    A FEN string defines a particular position using only the ASCII character set.
 
@@ -215,7 +216,7 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
       else if (token == '/')
           sq -= Square(16);
 
-      else if ((idx = PieceToChar.find(token)) != string::npos)
+      else if ((idx = PieceToChar.find(token)) != std::string::npos)
       {
           put_piece(color_of(Piece(idx)), type_of(Piece(idx)), sq);
           ++sq;
@@ -360,7 +361,7 @@ void Position::set_state(StateInfo* si) const {
 /// Position::fen() returns a FEN representation of the position. In case of
 /// Chess960 the Shredder-FEN notation is used. This is mainly a debugging function.
 
-const string Position::fen() const {
+const std::string Position::fen() const {
 
   int emptyCnt;
   std::ostringstream ss;
@@ -1058,7 +1059,7 @@ bool Position::is_draw() const {
 
 void Position::flip() {
 
-  string f, token;
+  std::string f, token;
   std::stringstream ss(fen());
 
   for (Rank r = RANK_8; r >= RANK_1; --r) // Piece placement

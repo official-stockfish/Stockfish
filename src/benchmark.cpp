@@ -29,11 +29,9 @@
 #include "thread.h"
 #include "uci.h"
 
-using namespace std;
-
 namespace {
 
-const vector<string> Defaults = {
+const std::vector<std::string> Defaults = {
   "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
   "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 10",
   "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 11",
@@ -89,18 +87,18 @@ const vector<string> Defaults = {
 /// format (defaults are the positions defined above) and the type of the
 /// limit value: depth (default), time in millisecs or number of nodes.
 
-void benchmark(const Position& current, istream& is) {
+void benchmark(const Position& current, std::istream& is) {
 
-  string token;
-  vector<string> fens;
+  std::string token;
+  std::vector<std::string> fens;
   Search::LimitsType limits;
 
   // Assign default values to missing arguments
-  string ttSize    = (is >> token) ? token : "16";
-  string threads   = (is >> token) ? token : "1";
-  string limit     = (is >> token) ? token : "13";
-  string fenFile   = (is >> token) ? token : "default";
-  string limitType = (is >> token) ? token : "depth";
+  std::string ttSize    = (is >> token) ? token : "16";
+  std::string threads   = (is >> token) ? token : "1";
+  std::string limit     = (is >> token) ? token : "13";
+  std::string fenFile   = (is >> token) ? token : "default";
+  std::string limitType = (is >> token) ? token : "depth";
 
   Options["Hash"]    = ttSize;
   Options["Threads"] = threads;
@@ -126,12 +124,12 @@ void benchmark(const Position& current, istream& is) {
 
   else
   {
-      string fen;
-      ifstream file(fenFile);
+      std::string fen;
+      std::ifstream file(fenFile);
 
       if (!file.is_open())
       {
-          cerr << "Unable to open file " << fenFile << endl;
+	  std::cerr << "Unable to open file " << fenFile << std::endl;
           return;
       }
 
@@ -151,7 +149,7 @@ void benchmark(const Position& current, istream& is) {
       StateListPtr states(new std::deque<StateInfo>(1));
       pos.set(fens[i], Options["UCI_Chess960"], &states->back(), Threads.main());
 
-      cerr << "\nPosition: " << i + 1 << '/' << fens.size() << endl;
+      std::cerr << "\nPosition: " << i + 1 << '/' << fens.size() << std::endl;
 
       if (limitType == "perft")
           nodes += Search::perft(pos, limits.depth * ONE_PLY);
@@ -169,8 +167,8 @@ void benchmark(const Position& current, istream& is) {
 
   dbg_print(); // Just before exiting
 
-  cerr << "\n==========================="
-       << "\nTotal time (ms) : " << elapsed
-       << "\nNodes searched  : " << nodes
-       << "\nNodes/second    : " << 1000 * nodes / elapsed << endl;
+  std::cerr << "\n==========================="
+	    << "\nTotal time (ms) : " << elapsed
+	    << "\nNodes searched  : " << nodes
+	    << "\nNodes/second    : " << 1000 * nodes / elapsed << std::endl;
 }

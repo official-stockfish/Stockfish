@@ -25,8 +25,6 @@
 #include "endgame.h"
 #include "movegen.h"
 
-using std::string;
-
 namespace {
 
   // Table used to drive the king towards the edge of the board
@@ -86,18 +84,19 @@ namespace {
   // Get the material key of Position out of the given endgame key code
   // like "KBPKN". The trick here is to first forge an ad-hoc FEN string
   // and then let a Position object do the work for us.
-  Key key(const string& code, Color c) {
+  Key key(const std::string& code, Color c) {
 
     assert(code.length() > 0 && code.length() < 8);
     assert(code[0] == 'K');
 
-    string sides[] = { code.substr(code.find('K', 1)),      // Weak
-                       code.substr(0, code.find('K', 1)) }; // Strong
+    std::string sides[] = { code.substr(code.find('K', 1)),      // Weak
+			    code.substr(0, code.find('K', 1)) }; // Strong
 
     std::transform(sides[c].begin(), sides[c].end(), sides[c].begin(), tolower);
 
-    string fen =  sides[0] + char(8 - sides[0].length() + '0') + "/8/8/8/8/8/8/"
-                + sides[1] + char(8 - sides[1].length() + '0') + " w - - 0 10";
+    std::string fen
+      =  sides[0] + char(8 - sides[0].length() + '0') + "/8/8/8/8/8/8/"
+      + sides[1] + char(8 - sides[1].length() + '0') + " w - - 0 10";
 
     StateInfo st;
     return Position().set(fen, false, &st, nullptr).material_key();
@@ -131,7 +130,7 @@ Endgames::Endgames() {
 
 
 template<EndgameType E, typename T>
-void Endgames::add(const string& code) {
+void Endgames::add(const std::string& code) {
   map<T>()[key(code, WHITE)] = std::unique_ptr<EndgameBase<T>>(new Endgame<E>(WHITE));
   map<T>()[key(code, BLACK)] = std::unique_ptr<EndgameBase<T>>(new Endgame<E>(BLACK));
 }
