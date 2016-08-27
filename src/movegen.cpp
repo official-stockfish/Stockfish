@@ -38,7 +38,6 @@ namespace {
     Square kfrom = pos.square<KING>(us);
     Square rfrom = pos.castling_rook_square(Cr);
     Square kto = relative_square(us, KingSide ? SQ_G1 : SQ_C1);
-    Bitboard enemies = pos.pieces(~us);
 
     assert(!pos.checkers());
 
@@ -46,7 +45,7 @@ namespace {
                               : KingSide    ? DELTA_W : DELTA_E;
 
     for (Square s = kto; s != kfrom; s += K)
-        if (pos.attackers_to(s) & enemies)
+        if (pos.under_attack(s, ~us))
             return moveList;
 
     // Because we generate only legal castling moves we need to verify that

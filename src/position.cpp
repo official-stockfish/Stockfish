@@ -495,7 +495,7 @@ bool Position::legal(Move m) const {
   // square is attacked by the opponent. Castling moves are checked
   // for legality during move generation.
   if (type_of(piece_on(from)) == KING)
-      return type_of(m) == CASTLING || !(attackers_to(to_sq(m)) & pieces(~us));
+      return type_of(m) == CASTLING || !(under_attack(to_sq(m), ~us));
 
   // A non-king move is legal if and only if it is not pinned or it
   // is moving along the ray towards or away from the king.
@@ -1116,7 +1116,7 @@ bool Position::pos_is_ok(int* failedStep) const {
       if (step == King)
           if (   std::count(board, board + SQUARE_NB, W_KING) != 1
               || std::count(board, board + SQUARE_NB, B_KING) != 1
-              || attackers_to(square<KING>(~sideToMove)) & pieces(sideToMove))
+              || under_attack(square<KING>(~sideToMove), sideToMove))
               return false;
 
       if (step == Bitboards)

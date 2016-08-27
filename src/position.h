@@ -127,6 +127,7 @@ public:
   // Attacks to/from a given square
   Bitboard attackers_to(Square s) const;
   Bitboard attackers_to(Square s, Bitboard occupied) const;
+  bool under_attack(Square s, Color c) const;
   Bitboard attacks_from(Piece pc, Square s) const;
   template<PieceType> Bitboard attacks_from(Square s) const;
   template<PieceType> Bitboard attacks_from(Square s, Color c) const;
@@ -304,6 +305,14 @@ inline Bitboard Position::attacks_from(Piece pc, Square s) const {
 
 inline Bitboard Position::attackers_to(Square s) const {
   return attackers_to(s, byTypeBB[ALL_PIECES]);
+}
+
+inline bool Position::under_attack(Square s, Color c) const {
+   return    (attacks_from<PAWN>(s, ~c)                   & pieces(c, PAWN))
+          || (attacks_from<KNIGHT>(s)                     & pieces(c, KNIGHT))
+          || (attacks_bb<ROOK  >(s, byTypeBB[ALL_PIECES]) & pieces(c, ROOK,   QUEEN))
+          || (attacks_bb<BISHOP>(s, byTypeBB[ALL_PIECES]) & pieces(c, BISHOP, QUEEN))
+          || (attacks_from<KING>(s)                       & pieces(c, KING));
 }
 
 inline Bitboard Position::checkers() const {
