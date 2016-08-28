@@ -67,8 +67,6 @@ namespace {
     }
   }
 
-  using namespace Trace;
-
   // Struct EvalInfo contains various information computed and collected
   // by the evaluation functions.
   struct EvalInfo {
@@ -584,7 +582,7 @@ namespace {
     score += make_score(7 * popcount(b), 0);
 
     if (DoTrace)
-        Trace::add(THREAT, Us, score);
+        Trace::add(Trace::THREAT, Us, score);
 
     return score;
   }
@@ -664,7 +662,7 @@ namespace {
     }
 
     if (DoTrace)
-        Trace::add(PASSED, Us, score);
+        Trace::add(Trace::PASSED, Us, score);
 
     // Add the scores to the middlegame and endgame eval
     return score;
@@ -866,13 +864,13 @@ Value Eval::evaluate(const Position& pos) {
   // In case of tracing add all remaining individual evaluation terms
   if (DoTrace)
   {
-      Trace::add(MATERIAL, pos.psq_score());
-      Trace::add(IMBALANCE, ei.me->imbalance());
+      Trace::add(Trace::MATERIAL, pos.psq_score());
+      Trace::add(Trace::IMBALANCE, ei.me->imbalance());
       Trace::add(PAWN, ei.pi->pawns_score());
-      Trace::add(MOBILITY, mobility[WHITE], mobility[BLACK]);
-      Trace::add(SPACE, evaluate_space<WHITE>(pos, ei)
+      Trace::add(Trace::MOBILITY, mobility[WHITE], mobility[BLACK]);
+      Trace::add(Trace::SPACE, evaluate_space<WHITE>(pos, ei)
                       , evaluate_space<BLACK>(pos, ei));
-      Trace::add(TOTAL, score);
+      Trace::add(Trace::TOTAL, score);
   }
 
   return (pos.side_to_move() == WHITE ? v : -v) + Eval::Tempo; // Side to move point of view
@@ -889,7 +887,7 @@ template Value Eval::evaluate<false>(const Position&);
 
 std::string Eval::trace(const Position& pos) {
 
-  std::memset(scores, 0, sizeof(scores));
+  std::memset(Trace::scores, 0, sizeof(Trace::scores));
 
   Value v = evaluate<true>(pos);
   v = pos.side_to_move() == WHITE ? v : -v; // White's point of view
@@ -899,22 +897,22 @@ std::string Eval::trace(const Position& pos) {
      << "      Eval term |    White    |    Black    |    Total    \n"
      << "                |   MG    EG  |   MG    EG  |   MG    EG  \n"
      << "----------------+-------------+-------------+-------------\n"
-     << "       Material | " << Term(MATERIAL)
-     << "      Imbalance | " << Term(IMBALANCE)
-     << "          Pawns | " << Term(PAWN)
-     << "        Knights | " << Term(KNIGHT)
-     << "         Bishop | " << Term(BISHOP)
-     << "          Rooks | " << Term(ROOK)
-     << "         Queens | " << Term(QUEEN)
-     << "       Mobility | " << Term(MOBILITY)
-     << "    King safety | " << Term(KING)
-     << "        Threats | " << Term(THREAT)
-     << "   Passed pawns | " << Term(PASSED)
-     << "          Space | " << Term(SPACE)
+     << "       Material | " << Trace::Term(Trace::MATERIAL)
+     << "      Imbalance | " << Trace::Term(Trace::IMBALANCE)
+     << "          Pawns | " << Trace::Term(PAWN)
+     << "        Knights | " << Trace::Term(KNIGHT)
+     << "         Bishop | " << Trace::Term(BISHOP)
+     << "          Rooks | " << Trace::Term(ROOK)
+     << "         Queens | " << Trace::Term(QUEEN)
+     << "       Mobility | " << Trace::Term(Trace::MOBILITY)
+     << "    King safety | " << Trace::Term(KING)
+     << "        Threats | " << Trace::Term(Trace::THREAT)
+     << "   Passed pawns | " << Trace::Term(Trace::PASSED)
+     << "          Space | " << Trace::Term(Trace::SPACE)
      << "----------------+-------------+-------------+-------------\n"
-     << "          Total | " << Term(TOTAL);
+     << "          Total | " << Trace::Term(Trace::TOTAL);
 
-  ss << "\nTotal Evaluation: " << to_cp(v) << " (white side)\n";
+  ss << "\nTotal Evaluation: " << Trace::to_cp(v) << " (white side)\n";
 
   return ss.str();
 }

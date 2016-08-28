@@ -26,13 +26,11 @@
 #include "misc.h"
 #include "thread.h"
 
-using namespace std;
-
 namespace {
 
 /// Version number. If Version is left empty, then compile date in the format
 /// DD-MM-YY and show in engine_info.
-const string Version = "";
+const std::string Version = "";
 
 /// Our fancy logging facility. The trick here is to replace cin.rdbuf() and
 /// cout.rdbuf() with two Tie objects that tie cin and cout to a file stream. We
@@ -40,16 +38,16 @@ const string Version = "";
 /// usual I/O functionality, all without changing a single line of code!
 /// Idea from http://groups.google.com/group/comp.lang.c++/msg/1d941c0f26ea0d81
 
-struct Tie: public streambuf { // MSVC requires split streambuf for cin and cout
+struct Tie: public std::streambuf { // MSVC requires split streambuf for cin and cout
 
-  Tie(streambuf* b, streambuf* l) : buf(b), logBuf(l) {}
+  Tie(std::streambuf* b, std::streambuf* l) : buf(b), logBuf(l) {}
 
   int sync() { return logBuf->pubsync(), buf->pubsync(); }
   int overflow(int c) { return log(buf->sputc((char)c), "<< "); }
   int underflow() { return buf->sgetc(); }
   int uflow() { return log(buf->sbumpc(), ">> "); }
 
-  streambuf *buf, *logBuf;
+  std::streambuf *buf, *logBuf;
 
   int log(int c, const char* prefix) {
 
@@ -64,10 +62,18 @@ struct Tie: public streambuf { // MSVC requires split streambuf for cin and cout
 
 class Logger {
 
-  Logger() : in(cin.rdbuf(), file.rdbuf()), out(cout.rdbuf(), file.rdbuf()) {}
+  Logger()
+    :
+    in(std::cin.rdbuf(),
+       file.rdbuf()
+    ),
+    out(std::cout.rdbuf(),
+	file.rdbuf()
+    )
+    {}
  ~Logger() { start(""); }
 
-  ofstream file;
+  std::ofstream file;
   Tie in, out;
 
 public:
@@ -77,14 +83,14 @@ public:
 
     if (!fname.empty() && !l.file.is_open())
     {
-        l.file.open(fname, ifstream::out);
-        cin.rdbuf(&l.in);
-        cout.rdbuf(&l.out);
+        l.file.open(fname, std::ifstream::out);
+	std::cin.rdbuf(&l.in);
+	std::cout.rdbuf(&l.out);
     }
     else if (fname.empty() && l.file.is_open())
     {
-        cout.rdbuf(l.out.buf);
-        cin.rdbuf(l.in.buf);
+        std::cout.rdbuf(l.out.buf);
+	std::cin.rdbuf(l.in.buf);
         l.file.close();
     }
   }
@@ -97,18 +103,19 @@ public:
 /// the program was compiled) or "Stockfish <Version>", depending on whether
 /// Version is empty.
 
-const string engine_info(bool to_uci) {
+const std::string engine_info(bool to_uci) {
 
-  const string months("Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec");
-  string month, day, year;
-  stringstream ss, date(__DATE__); // From compiler, format is "Sep 21 2008"
+  const std::string months("Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec");
+  std::string month, day, year;
+  std::stringstream ss, date(__DATE__); // From compiler, format is "Sep 21 2008"
 
-  ss << "Stockfish " << Version << setfill('0');
+  ss << "Stockfish " << Version << std::setfill('0');
 
   if (Version.empty())
   {
       date >> month >> day >> year;
-      ss << setw(2) << day << setw(2) << (1 + months.find(month) / 4) << year.substr(2);
+      ss << std::setw(2) << day << std::setw(2)
+	 << (1 + months.find(month) / 4) << year.substr(2);
   }
 
   ss << (Is64Bit ? " 64" : "")
@@ -130,12 +137,12 @@ void dbg_mean_of(int v) { ++means[0]; means[1] += v; }
 void dbg_print() {
 
   if (hits[0])
-      cerr << "Total " << hits[0] << " Hits " << hits[1]
-           << " hit rate (%) " << 100 * hits[1] / hits[0] << endl;
+      std::cerr << "Total " << hits[0] << " Hits " << hits[1]
+		<< " hit rate (%) " << 100 * hits[1] / hits[0] << std::endl;
 
   if (means[0])
-      cerr << "Total " << means[0] << " Mean "
-           << (double)means[1] / means[0] << endl;
+      std::cerr << "Total " << means[0] << " Mean "
+		<< (double)means[1] / means[0] << std::endl;
 }
 
 

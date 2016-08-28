@@ -29,8 +29,6 @@
 #include "uci.h"
 #include "syzygy/tbprobe.h"
 
-using std::string;
-
 UCI::OptionsMap Options; // Global object
 
 namespace UCI {
@@ -44,7 +42,8 @@ void on_tb_path(const Option& o) { Tablebases::init(o); }
 
 
 /// Our case insensitive less() function as required by UCI protocol
-bool CaseInsensitiveLess::operator() (const string& s1, const string& s2) const {
+bool CaseInsensitiveLess::operator() (const std::string& s1,
+				      const std::string& s2) const {
 
   return std::lexicographical_compare(s1.begin(), s1.end(), s2.begin(), s2.end(),
          [](char c1, char c2) { return tolower(c1) < tolower(c2); });
@@ -142,7 +141,7 @@ void Option::operator<<(const Option& o) {
 /// the GUI to check for option's limits, but we could receive the new value from
 /// the user by console window, so let's check the bounds anyway.
 
-Option& Option::operator=(const string& v) {
+Option& Option::operator=(const std::string& v) {
 
   assert(!type.empty());
 

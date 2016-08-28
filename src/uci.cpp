@@ -30,9 +30,7 @@
 #include "timeman.h"
 #include "uci.h"
 
-using namespace std;
-
-extern void benchmark(const Position& pos, istream& is);
+extern void benchmark(const Position& pos, std::istream& is);
 
 namespace {
 
@@ -50,10 +48,10 @@ namespace {
   // or the starting position ("startpos") and then makes the moves given in the
   // following move list ("moves").
 
-  void position(Position& pos, istringstream& is) {
+  void position(Position& pos, std::istringstream& is) {
 
     Move m;
-    string token, fen;
+    std::string token, fen;
 
     is >> token;
 
@@ -83,19 +81,19 @@ namespace {
   // setoption() is called when engine receives the "setoption" UCI command. The
   // function updates the UCI option ("name") to the given value ("value").
 
-  void setoption(istringstream& is) {
+  void setoption(std::istringstream& is) {
 
-    string token, name, value;
+    std::string token, name, value;
 
     is >> token; // Consume "name" token
 
     // Read option name (can contain spaces)
     while (is >> token && token != "value")
-        name += string(" ", name.empty() ? 0 : 1) + token;
+        name += std::string(" ", name.empty() ? 0 : 1) + token;
 
     // Read option value (can contain spaces)
     while (is >> token)
-        value += string(" ", value.empty() ? 0 : 1) + token;
+        value += std::string(" ", value.empty() ? 0 : 1) + token;
 
     if (Options.count(name))
         Options[name] = value;
@@ -108,10 +106,11 @@ namespace {
   // the thinking time and other parameters from the input string, then starts
   // the search.
 
-  void go(Position& pos, istringstream& is) {
+void go(Position& pos, std::istringstream& is) {
+
 
     Search::LimitsType limits;
-    string token;
+    std::string token;
 
     limits.startTime = now(); // As early as possible!
 
@@ -147,7 +146,7 @@ namespace {
 void UCI::loop(int argc, char* argv[]) {
 
   Position pos;
-  string token, cmd;
+  std::string token, cmd;
 
   pos.set(StartFEN, false, &States->back(), Threads.main());
 
@@ -155,13 +154,14 @@ void UCI::loop(int argc, char* argv[]) {
       cmd += std::string(argv[i]) + " ";
 
   do {
-      if (argc == 1 && !getline(cin, cmd)) // Block here waiting for input or EOF
+      if (argc == 1 && !getline(std::cin, cmd))
+	// Block here waiting for input or EOF
           cmd = "quit";
 
-      istringstream is(cmd);
+      std::istringstream is(cmd);
 
       token.clear(); // getline() could return empty or blank line
-      is >> skipws >> token;
+      is >> std::skipws >> token;
 
       // The GUI sends 'ponderhit' to tell us to ponder on the same move the
       // opponent has played. In case Signals.stopOnPonderhit is set we are
@@ -201,7 +201,7 @@ void UCI::loop(int argc, char* argv[]) {
       else if (token == "perft")
       {
           int depth;
-          stringstream ss;
+	  std::stringstream ss;
 
           is >> depth;
           ss << Options["Hash"]    << " "
@@ -225,9 +225,9 @@ void UCI::loop(int argc, char* argv[]) {
 /// mate <y>  Mate in y moves, not plies. If the engine is getting mated
 ///           use negative values for y.
 
-string UCI::value(Value v) {
+std::string UCI::value(Value v) {
 
-  stringstream ss;
+  std::stringstream ss;
 
   if (abs(v) < VALUE_MATE - MAX_PLY)
       ss << "cp " << v * 100 / PawnValueEg;
@@ -250,7 +250,7 @@ std::string UCI::square(Square s) {
 /// normal chess mode, and in e1h1 notation in chess960 mode. Internally all
 /// castling moves are always encoded as 'king captures rook'.
 
-string UCI::move(Move m, bool chess960) {
+std::string UCI::move(Move m, bool chess960) {
 
   Square from = from_sq(m);
   Square to = to_sq(m);
@@ -264,7 +264,7 @@ string UCI::move(Move m, bool chess960) {
   if (type_of(m) == CASTLING && !chess960)
       to = make_square(to > from ? FILE_G : FILE_C, rank_of(from));
 
-  string move = UCI::square(from) + UCI::square(to);
+  std::string move = UCI::square(from) + UCI::square(to);
 
   if (type_of(m) == PROMOTION)
       move += " pnbrqk"[promotion_type(m)];
@@ -276,7 +276,7 @@ string UCI::move(Move m, bool chess960) {
 /// UCI::to_move() converts a string representing a move in coordinate notation
 /// (g1f3, a7a8q) to the corresponding legal Move, if any.
 
-Move UCI::to_move(const Position& pos, string& str) {
+Move UCI::to_move(const Position& pos, std::string& str) {
 
   if (str.length() == 5) // Junior could send promotion piece in uppercase
       str[4] = char(tolower(str[4]));

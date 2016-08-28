@@ -54,7 +54,6 @@ namespace Tablebases {
 
 namespace TB = Tablebases;
 
-using std::string;
 using Eval::evaluate;
 using namespace Search;
 
@@ -1534,7 +1533,7 @@ moves_loop: // When in check search starts from here
 /// UCI::pv() formats PV information according to the UCI protocol. UCI requires
 /// that all (if any) unsearched PV lines are sent using a previous search score.
 
-string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
+std::string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
 
   std::stringstream ss;
   int elapsed = Time.elapsed() + 1;
