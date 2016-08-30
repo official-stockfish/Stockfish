@@ -595,7 +595,7 @@ namespace {
     if (!rootNode)
     {
         // Step 2. Check for aborted search and immediate draw
-        if (Signals.stop.load(std::memory_order_relaxed) || pos.is_draw() || ss->ply >= MAX_PLY)
+        if (Signals.stop.load(std::memory_order_relaxed) || ss->ply >= MAX_PLY || pos.is_draw())
             return ss->ply >= MAX_PLY && !inCheck ? evaluate(pos)
                                                   : DrawValue[pos.side_to_move()];
 
@@ -725,8 +725,8 @@ namespace {
     // Step 6. Razoring (skipped when in check)
     if (   !PvNode
         &&  depth < 4 * ONE_PLY
-        &&  eval + razor_margin[depth / ONE_PLY] <= alpha
-        &&  ttMove == MOVE_NONE)
+        &&  ttMove == MOVE_NONE
+        &&  eval + razor_margin[depth / ONE_PLY] <= alpha)
     {
         if (   depth <= ONE_PLY
             && eval + razor_margin[3 * ONE_PLY] <= alpha)
@@ -741,8 +741,8 @@ namespace {
     // Step 7. Futility pruning: child node (skipped when in check)
     if (   !rootNode
         &&  depth < 7 * ONE_PLY
-        &&  eval - futility_margin(depth) >= beta
         &&  eval < VALUE_KNOWN_WIN  // Do not return unproven wins
+        &&  eval - futility_margin(depth) >= beta
         &&  pos.non_pawn_material(pos.side_to_move()))
         return eval - futility_margin(depth);
 
@@ -924,8 +924,8 @@ moves_loop: // When in check search starts from here
           && !captureOrPromotion
           && !inCheck
           && !givesCheck
-          && !pos.advanced_pawn_push(move)
-          &&  bestValue > VALUE_MATED_IN_MAX_PLY)
+          &&  bestValue > VALUE_MATED_IN_MAX_PLY
+          && !pos.advanced_pawn_push(move))
       {
           // Move count based pruning
           if (moveCountPruning)
@@ -1202,7 +1202,7 @@ moves_loop: // When in check search starts from here
     ss->ply = (ss-1)->ply + 1;
 
     // Check for an instant draw or if the maximum ply has been reached
-    if (pos.is_draw() || ss->ply >= MAX_PLY)
+    if (ss->ply >= MAX_PLY || pos.is_draw())
         return ss->ply >= MAX_PLY && !InCheck ? evaluate(pos)
                                               : DrawValue[pos.side_to_move()];
 
@@ -1222,8 +1222,8 @@ moves_loop: // When in check search starts from here
 
     if (  !PvNode
         && ttHit
-        && tte->depth() >= ttDepth
         && ttValue != VALUE_NONE // Only in case of TT access race
+        && tte->depth() >= ttDepth
         && (ttValue >= beta ? (tte->bound() &  BOUND_LOWER)
                             : (tte->bound() &  BOUND_UPPER)))
     {
