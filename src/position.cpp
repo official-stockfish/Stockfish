@@ -40,10 +40,7 @@ namespace Zobrist {
   Key enpassant[FILE_NB];
   Key castling[CASTLING_RIGHT_NB];
   Key side;
-  Key exclusion;
 }
-
-Key Position::exclusion_key() const { return st->key ^ Zobrist::exclusion; }
 
 namespace {
 
@@ -132,7 +129,6 @@ void Position::init() {
   }
 
   Zobrist::side = rng.rand<Key>();
-  Zobrist::exclusion  = rng.rand<Key>();
 }
 
 
