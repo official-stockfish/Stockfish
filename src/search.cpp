@@ -935,7 +935,6 @@ moves_loop: // When in check search starts from here
 
           // Countermoves based pruning
           if (   predictedDepth < 3 * ONE_PLY
-              && move != ss->killers[0]
               && (!cmh  || (*cmh )[moved_piece][to_sq(move)] < VALUE_ZERO)
               && (!fmh  || (*fmh )[moved_piece][to_sq(move)] < VALUE_ZERO)
               && (!fmh2 || (*fmh2)[moved_piece][to_sq(move)] < VALUE_ZERO || (cmh && fmh)))
