@@ -31,13 +31,10 @@ namespace {
 
   // Polynomial material imbalance parameters
 
-  //                      pair  pawn knight bishop rook queen
-  const int Linear[6] = { 1667, -168, -1027, -166,  238, -138 };
-
   const int QuadraticOurs[][PIECE_TYPE_NB] = {
     //            OUR PIECES
     // pair pawn knight bishop rook queen
-    {   0                               }, // Bishop pair
+    {1667                               }, // Bishop pair
     {  40,    2                         }, // Pawn
     {  32,  255,  -3                    }, // Knight      OUR PIECES
     {   0,  104,   4,    0              }, // Bishop
@@ -100,7 +97,7 @@ namespace {
         if (!pieceCount[Us][pt1])
             continue;
 
-        int v = Linear[pt1];
+        int v = 0;
 
         for (int pt2 = NO_PIECE_TYPE; pt2 <= pt1; ++pt2)
             v +=  QuadraticOurs[pt1][pt2] * pieceCount[Us][pt2]
