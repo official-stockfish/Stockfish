@@ -1125,9 +1125,7 @@ moves_loop: // When in check search starts from here
     {
         // Quiet best move: update killers, history and countermoves
         if (!pos.capture_or_promotion(bestMove))
-        {
             update_stats(pos, ss, bestMove, quietsSearched, quietCount, stats_value(depth, true));
-        }
 
         // Extra penalty for a quiet TT move in previous ply when it gets refuted
         if ((ss-1)->moveCount == 1 && !pos.captured_piece_type())
