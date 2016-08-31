@@ -926,7 +926,6 @@ moves_loop: // When in check search starts from here
           && !givesCheck
           &&  bestValue > VALUE_MATED_IN_MAX_PLY
           && !pos.advanced_pawn_push(move))
-
       {
           // Move count based pruning
           if (moveCountPruning)
