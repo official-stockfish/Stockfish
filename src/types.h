@@ -353,7 +353,7 @@ inline Square make_square(File f, Rank r) {
 }
 
 inline Piece make_piece(Color c, PieceType pt) {
-  return Piece((c << 3) | pt);
+  return Piece((c << 3) + pt);
 }
 
 inline PieceType type_of(Piece pc) {
