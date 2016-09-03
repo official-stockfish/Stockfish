@@ -99,7 +99,7 @@ const Score Bonus[][RANK_NB][int(FILE_NB) / 2] = {
 
 #undef S
 
-Score psq[COLOR_NB][PIECE_TYPE_NB][SQUARE_NB];
+Score psq[PIECE_NB][SQUARE_NB];
 
 // init() initializes piece-square tables: the white halves of the tables are
 // copied from Bonus[] adding the piece value, then the black halves of the
@@ -116,8 +116,8 @@ void init() {
       for (Square s = SQ_A1; s <= SQ_H8; ++s)
       {
           File f = std::min(file_of(s), FILE_H - file_of(s));
-          psq[WHITE][pt][ s] = v + Bonus[pt][rank_of(s)][f];
-          psq[BLACK][pt][~s] = -psq[WHITE][pt][s];
+          psq[make_piece(WHITE, pt)][ s] = v + Bonus[pt][rank_of(s)][f];
+          psq[make_piece(BLACK, pt)][~s] = -psq[make_piece(WHITE, pt)][s];
       }
   }
 }

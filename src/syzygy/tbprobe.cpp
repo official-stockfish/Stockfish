@@ -22,7 +22,7 @@
 #include "tbcore.cpp"
 
 namespace Zobrist {
-  extern Key psq[COLOR_NB][PIECE_TYPE_NB][SQUARE_NB];
+  extern Key psq[PIECE_NB][SQUARE_NB];
 }
 
 int Tablebases::MaxCardinality = 0;
@@ -60,11 +60,11 @@ static uint64 calc_key(Position& pos, int mirror)
   color = !mirror ? WHITE : BLACK;
   for (pt = PAWN; pt <= KING; ++pt)
     for (i = popcount(pos.pieces(color, pt)); i > 0; i--)
-      key ^= Zobrist::psq[WHITE][pt][i - 1];
+      key ^= Zobrist::psq[make_piece(WHITE, pt)][i - 1];
   color = ~color;
   for (pt = PAWN; pt <= KING; ++pt)
     for (i = popcount(pos.pieces(color, pt)); i > 0; i--)
-      key ^= Zobrist::psq[BLACK][pt][i - 1];
+      key ^= Zobrist::psq[make_piece(BLACK, pt)][i - 1];
 
   return key;
 }
@@ -83,11 +83,11 @@ static uint64 calc_key_from_pcs(int *pcs, int mirror)
   color = !mirror ? 0 : 8;
   for (pt = PAWN; pt <= KING; ++pt)
     for (i = 0; i < pcs[color + pt]; i++)
-      key ^= Zobrist::psq[WHITE][pt][i];
+      key ^= Zobrist::psq[make_piece(WHITE, pt)][i];
   color ^= 8;
   for (pt = PAWN; pt <= KING; ++pt)
     for (i = 0; i < pcs[color + pt]; i++)
-      key ^= Zobrist::psq[BLACK][pt][i];
+      key ^= Zobrist::psq[make_piece(BLACK, pt)][i];
 
   return key;
 }
@@ -123,7 +123,7 @@ static int probe_wdl_table(Position& pos, int *success)
   key = pos.material_key();
 
   // Test for KvK.
-  if (key == (Zobrist::psq[WHITE][KING][0] ^ Zobrist::psq[BLACK][KING][0]))
+  if (key == (Zobrist::psq[W_KING][0] ^ Zobrist::psq[B_KING][0]))
     return 0;
 
   ptr2 = TB_hash[key >> (64 - TBHASHBITS)];
