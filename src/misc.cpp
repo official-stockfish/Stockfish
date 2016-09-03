@@ -127,7 +127,7 @@ void dbg_hit_on(bool b) { ++hits[0]; if (b) ++hits[1]; }
 void dbg_hit_on(bool c, bool b) { if (c) dbg_hit_on(b); }
 void dbg_mean_of(int v) { ++means[0]; means[1] += v; }
 
-static std::vector<double> Samples, Sums, Covariances;
+static std::vector<double> Samples, Sums, Covariances, Moments;
 static size_t samplesCnt;
 
 void dbg_stats_add_sample(double p) { Samples.push_back(p); }
@@ -143,13 +143,15 @@ void dbg_stats_of() {
       Sums.resize(N);
       Covariances.clear();
       Covariances.resize(N * N);
+      Moments.clear();
+      Moments.resize(N * N);
   }
 
   for (size_t i = 0; i < N; ++i)
   {
       Sums[i] += Samples[i];
       for (size_t j = 0; j < N; ++j)
-          Covariances[i * N + j] += Samples[i] * Samples[j];
+          Moments[i * N + j] += Samples[i] * Samples[j];
   }
 
   samplesCnt++;
@@ -179,17 +181,19 @@ void dbg_print() {
 
       std::cerr << "\n\nCovariances:\n";
 
-      for (size_t i = 0; i < Covariances.size(); ++i)
+      for (size_t i = 0; i < Moments.size(); ++i)
       {
           if (i % N == 0)
               std::cerr << "\n";
 
+          Covariances[i] = (Moments[i] - Sums[i % N] * Sums[i/N] / samplesCnt) / samplesCnt;
           std::cerr << showpoint << noshowpos << fixed << setprecision(2) << std::setw(15)
-                    << (Covariances[i] - Sums[i % N] * Sums[i/N] / samplesCnt) / samplesCnt
+                    << Covariances[i]
                     << " ";
       }
 
       std::cerr << "\n";
+      std::cerr << "Search/eval correlation: " << 100*Covariances[1] / (sqrt(Covariances[0]*Covariances[3])) << "\n\n";
   }
 }
 
