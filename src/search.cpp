@@ -1641,7 +1641,7 @@ void Tablebases::filter_root_moves(Position& pos, Search::RootMoves& rootMoves) 
         RootInTB = root_probe_wdl(pos, rootMoves, TB::Score);
 
         // Only probe during search if winning
-        if (TB::Score <= VALUE_DRAW)
+        if (RootInTB && TB::Score <= VALUE_DRAW)
             Cardinality = 0;
     }
 
