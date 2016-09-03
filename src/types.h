@@ -336,6 +336,10 @@ inline Square operator~(Square s) {
   return Square(s ^ SQ_A8); // Vertical flip SQ_A1 -> SQ_A8
 }
 
+inline Piece operator~(Piece pc) {
+  return Piece(pc ^ 8);
+}
+
 inline CastlingRight operator|(Color c, CastlingSide s) {
   return CastlingRight(WHITE_OO << ((s == QUEEN_SIDE) + 2 * c));
 }
@@ -353,7 +357,7 @@ inline Square make_square(File f, Rank r) {
 }
 
 inline Piece make_piece(Color c, PieceType pt) {
-  return Piece((c << 3) | pt);
+  return Piece((c << 3) + pt);
 }
 
 inline PieceType type_of(Piece pc) {
