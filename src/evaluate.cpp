@@ -206,21 +206,20 @@ namespace {
   #undef S
   #undef V
 
-  // King danger constants and variables. The king danger scores are looked-up
-  // in KingDanger[]. Various little "meta-bonuses" measuring the strength
-  // of the enemy attack are added up into an integer, which is used as an
-  // index to KingDanger[].
-  Score KingDanger[400];
+  // Used in converting king danger scores (various little "meta-bonuses"
+  // measuring the strength of the enemy attack) into king evaluation score.
+  const int MaxUnits = 2517;
+  const int QuadUnits = 1734;
 
   // KingAttackWeights[PieceType] contains king attack weights by piece type
-  const int KingAttackWeights[PIECE_TYPE_NB] = { 0, 0, 7, 5, 4, 1 };
+  const int KingAttackWeights[PIECE_TYPE_NB] = { 0, 0, 77, 55, 44, 11 };
 
   // Penalties for enemy's safe checks
-  const int QueenContactCheck = 89;
-  const int QueenCheck        = 62;
-  const int RookCheck         = 57;
-  const int BishopCheck       = 48;
-  const int KnightCheck       = 78;
+  const int QueenContactCheck = 979;
+  const int QueenCheck        = 682;
+  const int RookCheck         = 627;
+  const int BishopCheck       = 528;
+  const int KnightCheck       = 858;
 
 
   // eval_init() initializes king and attack bitboards for a given color
@@ -418,17 +417,17 @@ namespace {
         b =  ei.attackedBy[Them][ALL_PIECES] & ~ei.attackedBy[Us][ALL_PIECES]
            & ei.kingRing[Us] & ~pos.pieces(Them);
 
-        // Initialize the 'attackUnits' variable, which is used later on as an
-        // index into the KingDanger[] array. The initial value is based on the
+        // Initialize the 'attackUnits' variable, which is transformed
+        // later on into resulting score. The initial value is based on the
         // number and types of the enemy's attacking pieces, the number of
         // attacked and undefended squares around our king and the quality of
         // the pawn shelter (current 'score' value).
-        attackUnits =  std::min(72, ei.kingAttackersCount[Them] * ei.kingAttackersWeight[Them])
-                     +  9 * ei.kingAdjacentZoneAttacksCount[Them]
-                     + 21 * popcount(undefended)
-                     + 12 * (popcount(b) + !!ei.pinnedPieces[Us])
-                     - 64 * !pos.count<QUEEN>(Them)
-                     - mg_value(score) / 8;
+        attackUnits =  std::min(792, ei.kingAttackersCount[Them] * ei.kingAttackersWeight[Them])
+                     +  99 * ei.kingAdjacentZoneAttacksCount[Them]
+                     + 231 * popcount(undefended)
+                     + 132 * (popcount(b) + !!ei.pinnedPieces[Us])
+                     - 704 * !pos.count<QUEEN>(Them)
+                     -  11 * mg_value(score) / 8;
 
         // Analyse the enemy's safe queen contact checks. Firstly, find the
         // undefended squares around the king reachable by the enemy queen...
@@ -480,9 +479,10 @@ namespace {
         else if (b & other)
             score -= OtherCheck;
 
-        // Finally, extract the king danger score from the KingDanger[]
-        // array and subtract the score from the evaluation.
-        score -= KingDanger[std::max(std::min(attackUnits, 399), 0)];
+        // Compute king danger score and subtract from the evaluation.
+        attackUnits = std::max(std::min(attackUnits, MaxUnits), 0);
+        score -= attackUnits <= QuadUnits ? make_score(attackUnits * attackUnits / (QuadUnits * 2), 0)
+                                          : make_score(attackUnits - (QuadUnits / 2), 0);
     }
 
     // King tropism: firstly, find squares that opponent attacks in our king flank
@@ -919,20 +919,4 @@ std::string Eval::trace(const Position& pos) {
   ss << "\nTotal Evaluation: " << to_cp(v) << " (white side)\n";
 
   return ss.str();
-}
-
-
-/// init() computes evaluation weights, usually at startup
-
-void Eval::init() {
-
-  const int MaxSlope = 322;
-  const int Peak = 47410;
-  int t = 0;
-
-  for (int i = 0; i < 400; ++i)
-  {
-      t = std::min(Peak, std::min(i * i - 16, t + MaxSlope));
-      KingDanger[i] = make_score(t * 268 / 7700, 0);
-  }
 }
