@@ -208,18 +208,18 @@ namespace {
 
   // Used in converting king danger scores (various little "meta-bonuses"
   // measuring the strength of the enemy attack) into king evaluation score.
-  const int MaxUnits = 2517;
-  const int QuadUnits = 1734;
+  const int MaxUnits = 2543;
+  const int QuadUnits = 1786;
 
   // KingAttackWeights[PieceType] contains king attack weights by piece type
-  const int KingAttackWeights[PIECE_TYPE_NB] = { 0, 0, 77, 55, 44, 11 };
+  const int KingAttackWeights[PIECE_TYPE_NB] = { 0, 0, 78, 56, 45, 11 };
 
   // Penalties for enemy's safe checks
-  const int QueenContactCheck = 979;
-  const int QueenCheck        = 682;
-  const int RookCheck         = 627;
-  const int BishopCheck       = 528;
-  const int KnightCheck       = 858;
+  const int QueenContactCheck = 997;
+  const int QueenCheck        = 695;
+  const int RookCheck         = 638;
+  const int BishopCheck       = 538;
+  const int KnightCheck       = 874;
 
 
   // eval_init() initializes king and attack bitboards for a given color
@@ -422,12 +422,12 @@ namespace {
         // number and types of the enemy's attacking pieces, the number of
         // attacked and undefended squares around our king and the quality of
         // the pawn shelter (current 'score' value).
-        attackUnits =  std::min(792, ei.kingAttackersCount[Them] * ei.kingAttackersWeight[Them])
-                     +  99 * ei.kingAdjacentZoneAttacksCount[Them]
-                     + 231 * popcount(undefended)
-                     + 132 * (popcount(b) + !!ei.pinnedPieces[Us])
-                     - 704 * !pos.count<QUEEN>(Them)
-                     -  11 * mg_value(score) / 8;
+        attackUnits =  std::min(807, ei.kingAttackersCount[Them] * ei.kingAttackersWeight[Them])
+                     + 101 * ei.kingAdjacentZoneAttacksCount[Them]
+                     + 235 * popcount(undefended)
+                     + 134 * (popcount(b) + !!ei.pinnedPieces[Us])
+                     - 717 * !pos.count<QUEEN>(Them)
+                     -  7 * mg_value(score) / 5 - 5;
 
         // Analyse the enemy's safe queen contact checks. Firstly, find the
         // undefended squares around the king reachable by the enemy queen...
@@ -481,8 +481,8 @@ namespace {
 
         // Compute king danger score and subtract from the evaluation.
         attackUnits = std::max(std::min(attackUnits, MaxUnits), 0);
-        score -= attackUnits <= QuadUnits ? make_score(attackUnits * attackUnits / (QuadUnits * 2), 0)
-                                          : make_score(attackUnits - (QuadUnits / 2), 0);
+        score -= make_score(attackUnits <= QuadUnits ? attackUnits * attackUnits / (QuadUnits * 2)
+                                                     : attackUnits - (QuadUnits / 2), 0);
     }
 
     // King tropism: firstly, find squares that opponent attacks in our king flank
