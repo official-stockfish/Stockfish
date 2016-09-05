@@ -427,7 +427,7 @@ namespace {
                      + 235 * popcount(undefended)
                      + 134 * (popcount(b) + !!ei.pinnedPieces[Us])
                      - 717 * !pos.count<QUEEN>(Them)
-                     -  7 * mg_value(score) / 5 - 5;
+                     -   7 * mg_value(score) / 5 - 5;
 
         // Analyse the enemy's safe queen contact checks. Firstly, find the
         // undefended squares around the king reachable by the enemy queen...
@@ -479,7 +479,7 @@ namespace {
         else if (b & other)
             score -= OtherCheck;
 
-        // Compute king danger score and subtract from the evaluation.
+        // Compute king danger score and subtract from the evaluation
         attackUnits = std::max(std::min(attackUnits, MaxUnits), 0);
         score -= make_score(attackUnits <= QuadUnits ? attackUnits * attackUnits / (QuadUnits * 2)
                                                      : attackUnits - (QuadUnits / 2), 0);
