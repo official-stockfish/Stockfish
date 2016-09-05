@@ -136,7 +136,7 @@ const std::string Bitboards::pretty(Bitboard b) {
 
   for (Rank r = RANK_8; r >= RANK_1; --r)
   {
-      for (File f = FILE_A; f <= FILE_H; ++f)
+      for (File f : Files())
           s += b & make_square(f, r) ? "| X " : "|   ";
 
       s += "|\n+---+---+---+---+---+---+---+---+\n";
@@ -154,7 +154,7 @@ void Bitboards::init() {
   for (unsigned i = 0; i < (1 << 16); ++i)
       PopCnt16[i] = (uint8_t) popcount16(i);
 
-  for (Square s = SQ_A1; s <= SQ_H8; ++s)
+  for (Square s : Squares())
   {
       SquareBB[s] = 1ULL << s;
       BSFTable[bsf_index(SquareBB[s])] = s;
@@ -163,28 +163,29 @@ void Bitboards::init() {
   for (Bitboard b = 2; b < 256; ++b)
       MSBTable[b] = MSBTable[b - 1] + !more_than_one(b);
 
-  for (File f = FILE_A; f <= FILE_H; ++f)
+  for (File f : Files())
       FileBB[f] = f > FILE_A ? FileBB[f - 1] << 1 : FileABB;
 
-  for (Rank r = RANK_1; r <= RANK_8; ++r)
+  for (Rank r : Ranks())
       RankBB[r] = r > RANK_1 ? RankBB[r - 1] << 8 : Rank1BB;
 
-  for (File f = FILE_A; f <= FILE_H; ++f)
+  for (File f : Files())
       AdjacentFilesBB[f] = (f > FILE_A ? FileBB[f - 1] : 0) | (f < FILE_H ? FileBB[f + 1] : 0);
 
-  for (Rank r = RANK_1; r < RANK_8; ++r)
-      InFrontBB[WHITE][r] = ~(InFrontBB[BLACK][r + 1] = InFrontBB[BLACK][r] | RankBB[r]);
+  for (Rank r : Ranks())
+      if (r != RANK_8)
+          InFrontBB[WHITE][r] = ~(InFrontBB[BLACK][r + 1] = InFrontBB[BLACK][r] | RankBB[r]);
 
-  for (Color c = WHITE; c <= BLACK; ++c)
-      for (Square s = SQ_A1; s <= SQ_H8; ++s)
+  for (Color c : Colors())
+      for (Square s : Squares())
       {
           ForwardBB[c][s]      = InFrontBB[c][rank_of(s)] & FileBB[file_of(s)];
           PawnAttackSpan[c][s] = InFrontBB[c][rank_of(s)] & AdjacentFilesBB[file_of(s)];
           PassedPawnMask[c][s] = ForwardBB[c][s] | PawnAttackSpan[c][s];
       }
 
-  for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1)
-      for (Square s2 = SQ_A1; s2 <= SQ_H8; ++s2)
+  for (Square s1 : Squares())
+      for (Square s2 : Squares())
           if (s1 != s2)
           {
               SquareDistance[s1][s2] = std::max(distance<File>(s1, s2), distance<Rank>(s1, s2));
@@ -194,9 +195,9 @@ void Bitboards::init() {
   int steps[][9] = { {}, { 7, 9 }, { 17, 15, 10, 6, -6, -10, -15, -17 },
                      {}, {}, {}, { 9, 7, -7, -9, 8, 1, -1, -8 } };
 
-  for (Color c = WHITE; c <= BLACK; ++c)
-      for (PieceType pt = PAWN; pt <= KING; ++pt)
-          for (Square s = SQ_A1; s <= SQ_H8; ++s)
+  for (Color c : Colors())
+      for (PieceType pt : PieceTypes())
+          for (Square s : Squares())
               for (int i = 0; steps[pt][i]; ++i)
               {
                   Square to = s + Square(c == WHITE ? steps[pt][i] : -steps[pt][i]);
@@ -211,13 +212,13 @@ void Bitboards::init() {
   init_magics(RookTable, RookAttacks, RookMagics, RookMasks, RookShifts, RookDeltas, magic_index<ROOK>);
   init_magics(BishopTable, BishopAttacks, BishopMagics, BishopMasks, BishopShifts, BishopDeltas, magic_index<BISHOP>);
 
-  for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1)
+  for (Square s1 : Squares())
   {
       PseudoAttacks[QUEEN][s1]  = PseudoAttacks[BISHOP][s1] = attacks_bb<BISHOP>(s1, 0);
       PseudoAttacks[QUEEN][s1] |= PseudoAttacks[  ROOK][s1] = attacks_bb<  ROOK>(s1, 0);
 
-      for (Piece pc = W_BISHOP; pc <= W_ROOK; ++pc)
-          for (Square s2 = SQ_A1; s2 <= SQ_H8; ++s2)
+      for (Piece pc : Range<Piece, W_BISHOP, W_ROOK>())
+          for (Square s2 : Squares())
           {
               if (!(PseudoAttacks[pc][s1] & s2))
                   continue;
@@ -267,7 +268,7 @@ namespace {
     // attacks[s] is a pointer to the beginning of the attacks table for square 's'
     attacks[SQ_A1] = table;
 
-    for (Square s = SQ_A1; s <= SQ_H8; ++s)
+    for (Square s : Squares())
     {
         // Board edges are not considered in the relevant occupancies
         edges = ((Rank1BB | Rank8BB) & ~rank_bb(s)) | ((FileABB | FileHBB) & ~file_bb(s));

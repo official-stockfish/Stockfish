@@ -86,7 +86,7 @@ std::ostream& operator<<(std::ostream& os, const Position& pos) {
 
   for (Rank r = RANK_8; r >= RANK_1; --r)
   {
-      for (File f = FILE_A; f <= FILE_H; ++f)
+      for (File f : Files())
           os << " | " << PieceToChar[pos.piece_on(make_square(f, r))];
 
       os << " |\n +---+---+---+---+---+---+---+---+\n";
@@ -110,10 +110,10 @@ void Position::init() {
   PRNG rng(1070372);
 
   for (Piece pc : Pieces)
-      for (Square s = SQ_A1; s <= SQ_H8; ++s)
+      for (Square s : Squares())
           Zobrist::psq[pc][s] = rng.rand<Key>();
 
-  for (File f = FILE_A; f <= FILE_H; ++f)
+  for (File f : Files())
       Zobrist::enpassant[f] = rng.rand<Key>();
 
   for (int cr = NO_CASTLING; cr <= ANY_CASTLING; ++cr)
@@ -1120,8 +1120,8 @@ bool Position::pos_is_ok(int* failedStep) const {
               ||(pieces(WHITE) | pieces(BLACK)) != pieces())
               return false;
 
-          for (PieceType p1 = PAWN; p1 <= KING; ++p1)
-              for (PieceType p2 = PAWN; p2 <= KING; ++p2)
+          for (PieceType p1 : PieceTypes())
+              for (PieceType p2 : PieceTypes())
                   if (p1 != p2 && (pieces(p1) & pieces(p2)))
                       return false;
       }
@@ -1146,7 +1146,7 @@ bool Position::pos_is_ok(int* failedStep) const {
           }
 
       if (step == Castling)
-          for (Color c = WHITE; c <= BLACK; ++c)
+          for (Color c : Colors())
               for (CastlingSide s = KING_SIDE; s <= QUEEN_SIDE; s = CastlingSide(s + 1))
               {
                   if (!can_castle(c | s))

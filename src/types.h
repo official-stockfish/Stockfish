@@ -38,6 +38,7 @@
 /// -DUSE_PEXT    | Add runtime support for use of pext asm-instruction. Works
 ///               | only in 64-bit mode and requires hardware with pext support.
 
+#include <array>
 #include <cassert>
 #include <cctype>
 #include <climits>
@@ -257,6 +258,24 @@ enum Rank {
   RANK_1, RANK_2, RANK_3, RANK_4, RANK_5, RANK_6, RANK_7, RANK_8, RANK_NB
 };
 
+/// Some template magic to build a compile-time sequence of Enum values, to
+/// be used in loops.
+template<typename Ret, typename T, T From, T To, T... Seq>
+struct make_sequence : make_sequence<Ret, T, From, T(To-1), To, Seq...> {};
+
+template<typename Ret, typename T, T From, T... Seq>
+struct make_sequence<Ret, T, From, From, Seq...> {
+  static Ret range() { return Ret{{ From, Seq... }}; }
+};
+
+template<typename T, T From, T To, typename Ret = std::array<T, int(To) - int(From) + 1>>
+constexpr Ret Range() { return make_sequence<Ret, T, From, To>::range(); }
+
+const auto Colors = Range<Color, WHITE, BLACK>;
+const auto PieceTypes = Range<PieceType, PAWN, KING>;
+const auto Squares = Range<Square, SQ_A1, SQ_H8>;
+const auto Files = Range<File, FILE_A, FILE_H>;
+const auto Ranks = Range<Rank, RANK_1, RANK_8>;
 
 /// Score enum stores a middlegame and an endgame value in a single integer
 /// (enum). The least significant 16 bits are used to store the endgame value

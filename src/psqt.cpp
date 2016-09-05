@@ -106,14 +106,15 @@ Score psq[PIECE_NB][SQUARE_NB];
 // tables are initialized by flipping and changing the sign of the white scores.
 void init() {
 
-  for (Piece pc = W_PAWN; pc <= W_KING; ++pc)
+  for (Piece pc : Range<Piece, W_PAWN, W_KING>())
+
   {
       PieceValue[MG][~pc] = PieceValue[MG][pc];
       PieceValue[EG][~pc] = PieceValue[EG][pc];
 
       Score v = make_score(PieceValue[MG][pc], PieceValue[EG][pc]);
 
-      for (Square s = SQ_A1; s <= SQ_H8; ++s)
+      for (Square s : Squares())
       {
           File f = std::min(file_of(s), FILE_H - file_of(s));
           psq[ pc][ s] = v + Bonus[pc][rank_of(s)][f];
