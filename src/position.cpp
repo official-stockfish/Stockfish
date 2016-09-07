@@ -109,10 +109,9 @@ void Position::init() {
 
   PRNG rng(1070372);
 
-  for (Color c = WHITE; c <= BLACK; ++c)
-      for (PieceType pt = PAWN; pt <= KING; ++pt)
-          for (Square s = SQ_A1; s <= SQ_H8; ++s)
-              Zobrist::psq[make_piece(c, pt)][s] = rng.rand<Key>();
+  for (Piece pc : Pieces)
+      for (Square s = SQ_A1; s <= SQ_H8; ++s)
+          Zobrist::psq[pc][s] = rng.rand<Key>();
 
   for (File f = FILE_A; f <= FILE_H; ++f)
       Zobrist::enpassant[f] = rng.rand<Key>();
@@ -342,14 +341,14 @@ void Position::set_state(StateInfo* si) const {
       si->pawnKey ^= Zobrist::psq[piece_on(s)][s];
   }
 
-  for (Color c = WHITE; c <= BLACK; ++c)
-      for (PieceType pt = PAWN; pt <= KING; ++pt)
-          for (int cnt = 0; cnt < pieceCount[make_piece(c, pt)]; ++cnt)
-              si->materialKey ^= Zobrist::psq[make_piece(c, pt)][cnt];
+  for (Piece pc : Pieces)
+  {
+      if (type_of(pc) != PAWN && type_of(pc) != KING)
+          si->nonPawnMaterial[color_of(pc)] += pieceCount[pc] * PieceValue[MG][pc];
 
-  for (Color c = WHITE; c <= BLACK; ++c)
-      for (PieceType pt = KNIGHT; pt <= QUEEN; ++pt)
-          si->nonPawnMaterial[c] += pieceCount[make_piece(c, pt)] * PieceValue[MG][pt];
+      for (int cnt = 0; cnt < pieceCount[pc]; ++cnt)
+          si->materialKey ^= Zobrist::psq[pc][cnt];
+  }
 }
 
 
@@ -1136,18 +1135,15 @@ bool Position::pos_is_ok(int* failedStep) const {
       }
 
       if (step == Lists)
-          for (Color c = WHITE; c <= BLACK; ++c)
-              for (PieceType pt = PAWN; pt <= KING; ++pt)
-              {
-                  Piece pc = make_piece(c, pt);
+          for (Piece pc : Pieces)
+          {
+              if (pieceCount[pc] != popcount(pieces(color_of(pc), type_of(pc))))
+                  return false;
 
-                  if (pieceCount[pc] != popcount(pieces(c, pt)))
+              for (int i = 0; i < pieceCount[pc]; ++i)
+                  if (board[pieceList[pc][i]] != pc || index[pieceList[pc][i]] != i)
                       return false;
-
-                  for (int i = 0; i < pieceCount[pc]; ++i)
-                      if (board[pieceList[pc][i]] != pc || index[pieceList[pc][i]] != i)
-                          return false;
-              }
+          }
 
       if (step == Castling)
           for (Color c = WHITE; c <= BLACK; ++c)
