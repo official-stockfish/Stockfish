@@ -958,7 +958,8 @@ moves_loop: // When in check search starts from here
               }
           }
           else if (   depth < 3 * ONE_PLY
-                   && pos.see_sign(move) < VALUE_ZERO)
+                   && (     mp.see_sign() < 0
+                       || (!mp.see_sign() && pos.see_sign(move) < VALUE_ZERO)))
               continue;
       }
 
