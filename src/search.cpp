@@ -836,6 +836,8 @@ moves_loop: // When in check search starts from here
     const CounterMoveStats* fmh  = (ss-2)->counterMoves;
     const CounterMoveStats* fmh2 = (ss-4)->counterMoves;
 
+	Value see;
+
     MovePicker mp(pos, ttMove, depth, ss);
     value = bestValue; // Workaround a bogus 'uninitialized' warning under gcc
     improving =   ss->staticEval >= (ss-2)->staticEval
@@ -888,10 +890,12 @@ moves_loop: // When in check search starts from here
       moveCountPruning =   depth < 16 * ONE_PLY
                         && moveCount >= FutilityMoveCounts[improving][depth / ONE_PLY];
 
+	  see = VALUE_KNOWN_WIN;
+
       // Step 12. Extend checks
       if (    givesCheck
           && !moveCountPruning
-          &&  pos.see_sign(move) >= VALUE_ZERO)
+          &&  (see = pos.see_sign(move)) >= VALUE_ZERO)
           extension = ONE_PLY;
 
       // Singular extension search. If all moves but one fail low on a search of
@@ -958,7 +962,8 @@ moves_loop: // When in check search starts from here
               }
           }
           else if (   depth < 3 * ONE_PLY
-                   && (     mp.see_sign() < 0
+                   && (  see < VALUE_ZERO     
+					   ||  mp.see_sign() < 0
                        || (!mp.see_sign() && pos.see_sign(move) < VALUE_ZERO)))
               continue;
       }
