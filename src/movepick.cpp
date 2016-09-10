@@ -336,6 +336,7 @@ int MovePicker::see_sign(Move move) const
 {
   return  stage == GOOD_CAPTURES ?  1
         : stage == BAD_CAPTURES  ? -1 
+        : stage == ALL_EVASIONS && (cur-1)->value < -HistoryStats::Max ? -1
         : pos.see_sign(move);
 }
 
