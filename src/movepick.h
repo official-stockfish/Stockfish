@@ -109,7 +109,7 @@ public:
 private:
   template<GenType> void score();
   void generate_next_stage();
-  ExtMove* begin() { return moves; }
+  ExtMove* begin() { return cur; }
   ExtMove* end() { return endMoves; }
 
   const Position& pos;
