@@ -779,22 +779,21 @@ Value Eval::evaluate(const Position& pos) {
 
   assert(!pos.checkers());
 
+  Score mobility[COLOR_NB] = { SCORE_ZERO, SCORE_ZERO };
   EvalInfo ei;
-  Score score, mobility[COLOR_NB] = { SCORE_ZERO, SCORE_ZERO };
-
-  // Initialize score by reading the incrementally updated scores included in
-  // the position object (material + piece square tables). Score is computed
-  // internally from the white point of view.
-  score = pos.psq_score();
 
   // Probe the material hash table
   ei.me = Material::probe(pos);
-  score += ei.me->imbalance();
 
   // If we have a specialized evaluation function for the current material
   // configuration, call it and return.
   if (ei.me->specialized_eval_exists())
       return ei.me->evaluate(pos);
+
+  // Initialize score by reading the incrementally updated scores included in
+  // the position object (material + piece square tables) and the material
+  // imbalance. Score is computed internally from the white point of view.
+  Score score = pos.psq_score() + ei.me->imbalance();
 
   // Probe the pawn hash table
   ei.pi = Pawns::probe(pos);
