@@ -108,8 +108,7 @@ public:
 
 private:
   template<GenType> void score();
-  void generate_next_stage();
-  ExtMove* begin() { return moves; }
+  ExtMove* begin() { return cur; }
   ExtMove* end() { return endMoves; }
 
   const Position& pos;
@@ -117,12 +116,11 @@ private:
   Move countermove;
   Depth depth;
   Move ttMove;
-  ExtMove killers[3];
   Square recaptureSquare;
   Value threshold;
   int stage;
-  ExtMove* endBadCaptures = moves + MAX_MOVES - 1;
-  ExtMove moves[MAX_MOVES], *cur = moves, *endMoves = moves;
+  ExtMove* cur, *endMoves, *endBadCaptures;
+  ExtMove moves[MAX_MOVES];
 };
 
 #endif // #ifndef MOVEPICK_H_INCLUDED
