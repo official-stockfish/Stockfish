@@ -104,7 +104,7 @@ public:
   MovePicker(const Position&, Move, Depth, Search::Stack*);
 
   Move next_move();
-  int see_sign() const;
+  int capture_see_sign() const;
 
 private:
   template<GenType> void score();
