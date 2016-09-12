@@ -997,20 +997,17 @@ Value Position::see(Move m) const {
   // If the opponent has no attackers we are finished
   stm = ~stm;
   stmAttackers = attackers & pieces(stm);
-  if (!stmAttackers)
-      return swapList[0];
+  occupied ^= to; // For the case when captured piece is a pinner
 
   // Don't allow pinned pieces to attack as long all pinners (this includes also
   // potential ones) are on their original square. When a pinner moves to the
   // exchange-square or get captured on it, we fall back to standard SEE behaviour.
-  else if (   (stmAttackers & st->blockersForKing[stm])
-           && ((st->pinnersForKing[stm] & (occupied ^ (occupied & to))) == st->pinnersForKing[stm]))
-  {
-      // Pinned pieces can't attack so remove them from attackers
-      stmAttackers ^= (stmAttackers & st->blockersForKing[stm]);
-      if (!stmAttackers)
-          return swapList[0];
-  }
+  if (   (stmAttackers & pinned_pieces(stm))
+      && (st->pinnersForKing[stm] & occupied) == st->pinnersForKing[stm])
+      stmAttackers &= ~pinned_pieces(stm);
+
+  if (!stmAttackers)
+        return swapList[0];
 
   // The destination square is defended, which makes things rather more
   // difficult to compute. We proceed by building up a "swap list" containing
@@ -1030,10 +1027,9 @@ Value Position::see(Move m) const {
       captured = min_attacker<PAWN>(byTypeBB, to, stmAttackers, occupied, attackers);
       stm = ~stm;
       stmAttackers = attackers & pieces(stm);
-      if (    stmAttackers
-          && (stmAttackers & st->blockersForKing[stm])
-          && ((st->pinnersForKing[stm] & (occupied ^ (occupied & to))) == st->pinnersForKing[stm]))
-          stmAttackers ^= (stmAttackers & st->blockersForKing[stm]);
+      if (   (stmAttackers & pinned_pieces(stm))
+          && (st->pinnersForKing[stm] & occupied) == st->pinnersForKing[stm])
+          stmAttackers &= ~pinned_pieces(stm);
 
       ++slIndex;
 
