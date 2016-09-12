@@ -243,7 +243,7 @@ void MovePicker::generate_next_stage() {
   }
 }
 
-int MovePicker::see_sign() const
+int MovePicker::capture_see_sign() const
 {
   return  stage == GOOD_CAPTURES ?  1
         : stage == BAD_CAPTURES  ? -1 : 0;
