@@ -206,7 +206,8 @@ void MovePicker::generate_next_stage() {
       break;
 
   case QUIET:
-      endMoves = generate<QUIETS>(pos, moves);
+      cur = endBadCaptures;
+      endMoves = generate<QUIETS>(pos, endBadCaptures);
       score<QUIETS>();
       if (depth < 3 * ONE_PLY)
       {
@@ -218,8 +219,8 @@ void MovePicker::generate_next_stage() {
       break;
 
   case BAD_CAPTURES:
-      // Just pick them in reverse order to get correct ordering
-      cur = moves + MAX_MOVES - 1;
+      // Bad captures are already ordered during insertion
+      cur = moves;
       endMoves = endBadCaptures;
       break;
 
@@ -277,8 +278,8 @@ Move MovePicker::next_move() {
               if (pos.see_sign(move) >= VALUE_ZERO)
                   return move;
 
-              // Losing capture, move it to the tail of the array
-              *endBadCaptures-- = move;
+              // Losing capture, move it to the head of the array
+              *endBadCaptures++ = move;
           }
           break;
 
@@ -301,7 +302,7 @@ Move MovePicker::next_move() {
           break;
 
       case BAD_CAPTURES:
-          return *cur--;
+          return *cur++;
 
       case ALL_EVASIONS: case QCAPTURES_1: case QCAPTURES_2:
           move = pick_best(cur++, endMoves);

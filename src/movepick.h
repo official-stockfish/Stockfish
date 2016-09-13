@@ -121,8 +121,7 @@ private:
   Square recaptureSquare;
   Value threshold;
   int stage;
-  ExtMove* endBadCaptures = moves + MAX_MOVES - 1;
-  ExtMove moves[MAX_MOVES], *cur = moves, *endMoves = moves;
+  ExtMove moves[MAX_MOVES], *cur = moves, *endBadCaptures = moves, *endMoves = moves;
 };
 
 #endif // #ifndef MOVEPICK_H_INCLUDED
