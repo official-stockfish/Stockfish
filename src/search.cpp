@@ -948,19 +948,13 @@ moves_loop: // When in check search starts from here
 
               // Prune moves with negative SEE at low depths and below a decreasing
               // threshold at higher depths.
-              if (predictedDepth < 8 * ONE_PLY)
-              {
-                  Value see_v = predictedDepth < 4 * ONE_PLY ? VALUE_ZERO
-                              : -PawnValueMg * 2 * int(predictedDepth - 3 * ONE_PLY) / ONE_PLY;
-
-                  if (pos.see_sign(move) < see_v)
-                      continue;
-              }
+              if (   predictedDepth < 8 * ONE_PLY 
+                  && pos.see_sign(move) < Value(-35 * predictedDepth / ONE_PLY * predictedDepth / ONE_PLY))
+                  continue;
           }
-          else if (   depth < 3 * ONE_PLY
-                   && (     mp.see_sign() < 0
-                       || (!mp.see_sign() && pos.see_sign(move) < VALUE_ZERO)))
-              continue;
+          else if (   depth < 7 * ONE_PLY 
+                  && pos.see_sign(move) < Value(-35 * depth / ONE_PLY * depth / ONE_PLY))
+                  continue;
       }
 
       // Speculative prefetch as early as possible
