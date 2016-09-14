@@ -179,11 +179,6 @@ void MovePicker::score<EVASIONS>() {
           m.value = history[pos.moved_piece(m)][to_sq(m)] + fromTo.get(c, m);
 }
 
-int MovePicker::see_sign() const
-{
-  return  stage == GOOD_CAPTURES ?  1
-        : stage == BAD_CAPTURES  ? -1 : 0;
-}
 
 /// next_move() is the most important method of the MovePicker class. It returns
 /// a new pseudo legal move every time it is called, until there are no more moves
