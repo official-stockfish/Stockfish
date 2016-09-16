@@ -21,7 +21,6 @@
 #include <iostream>
 
 #include "bitboard.h"
-#include "evaluate.h"
 #include "position.h"
 #include "search.h"
 #include "thread.h"
@@ -39,7 +38,6 @@ int main(int argc, char* argv[]) {
   Position::init();
   Bitbases::init();
   Search::init();
-  Eval::init();
   Pawns::init();
   Threads.init();
   Tablebases::init(Options["SyzygyPath"]);
