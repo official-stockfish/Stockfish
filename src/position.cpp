@@ -969,6 +969,7 @@ Value Position::see_sign(Move m) const {
 Value Position::see(Move m) const {
 
   Square from, to;
+  Piece pc;
   Bitboard occupied, attackers, stmAttackers;
   Value swapList[32];
   int slIndex = 1;
@@ -980,14 +981,21 @@ Value Position::see(Move m) const {
   from = from_sq(m);
   to = to_sq(m);
   swapList[0] = PieceValue[MG][piece_on(to)];
-  stm = color_of(piece_on(from));
+  pc = piece_on(from);
+  stm = color_of(pc);
   occupied = pieces() ^ from;
+
+  Key seeKey = st->key ^ Zobrist::psq[pc][from] ^ Zobrist::psq[pc][to];
+
+  if (thisThread->seeTable[seeKey]->first == seeKey)
+      return thisThread->seeTable[seeKey]->second;
+  thisThread->seeTable[seeKey]->first = seeKey;
 
   // Castling moves are implemented as king capturing the rook so cannot
   // be handled correctly. Simply return VALUE_ZERO that is always correct
   // unless in the rare case the rook ends up under attack.
   if (type_of(m) == CASTLING)
-      return VALUE_ZERO;
+      return thisThread->seeTable[seeKey]->second = VALUE_ZERO;
 
   if (type_of(m) == ENPASSANT)
   {
@@ -1012,7 +1020,7 @@ Value Position::see(Move m) const {
       stmAttackers &= ~pinned_pieces(stm);
 
   if (!stmAttackers)
-        return swapList[0];
+        return thisThread->seeTable[seeKey]->second = swapList[0];
 
   // The destination square is defended, which makes things rather more
   // difficult to compute. We proceed by building up a "swap list" containing
@@ -1045,7 +1053,7 @@ Value Position::see(Move m) const {
   while (--slIndex)
       swapList[slIndex - 1] = std::min(-swapList[slIndex], swapList[slIndex - 1]);
 
-  return swapList[0];
+  return thisThread->seeTable[seeKey]->second = swapList[0];
 }
 
 

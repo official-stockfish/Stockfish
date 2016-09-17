@@ -60,6 +60,7 @@ public:
   Pawns::Table pawnsTable;
   Material::Table materialTable;
   Endgames endgames;
+  HashTable<std::pair<Key, Value>, 256> seeTable;
   size_t idx, PVIdx;
   int maxPly, callsCnt;
 
