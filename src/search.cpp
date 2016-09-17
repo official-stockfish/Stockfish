@@ -29,6 +29,7 @@
 #include "misc.h"
 #include "movegen.h"
 #include "movepick.h"
+#include "position.h"
 #include "search.h"
 #include "timeman.h"
 #include "thread.h"

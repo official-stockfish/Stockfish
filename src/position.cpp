@@ -20,7 +20,8 @@
 
 #include <algorithm>
 #include <cassert>
-#include <cstring>   // For std::memset, std::memcmp
+#include <cstddef> // For offsetof()
+#include <cstring> // For std::memset, std::memcmp
 #include <iomanip>
 #include <sstream>
 
@@ -33,6 +34,10 @@
 #include "uci.h"
 
 using std::string;
+
+namespace PSQT {
+  extern Score psq[PIECE_NB][SQUARE_NB];
+}
 
 namespace Zobrist {
 

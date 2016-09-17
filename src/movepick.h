@@ -26,7 +26,6 @@
 
 #include "movegen.h"
 #include "position.h"
-#include "search.h"
 #include "types.h"
 
 
@@ -45,9 +44,7 @@ struct Stats {
   const T* operator[](Piece pc) const { return table[pc]; }
   T* operator[](Piece pc) { return table[pc]; }
   void clear() { std::memset(table, 0, sizeof(table)); }
-
   void update(Piece pc, Square to, Move m) { table[pc][to] = m; }
-
   void update(Piece pc, Square to, Value v) {
 
     if (abs(int(v)) >= 324)
@@ -68,24 +65,24 @@ typedef Stats<CounterMoveStats> CounterMoveHistoryStats;
 
 struct FromToStats {
 
-    Value get(Color c, Move m) const { return table[c][from_sq(m)][to_sq(m)]; }
-    void clear() { std::memset(table, 0, sizeof(table)); }
+  Value get(Color c, Move m) const { return table[c][from_sq(m)][to_sq(m)]; }
+  void clear() { std::memset(table, 0, sizeof(table)); }
+  void update(Color c, Move m, Value v) {
 
-    void update(Color c, Move m, Value v)
-    {
-        if (abs(int(v)) >= 324)
-            return;
+    if (abs(int(v)) >= 324)
+        return;
 
-        Square f = from_sq(m);
-        Square t = to_sq(m);
+    Square from = from_sq(m);
+    Square to = to_sq(m);
 
-        table[c][f][t] -= table[c][f][t] * abs(int(v)) / 324;
-        table[c][f][t] += int(v) * 32;
-    }
+    table[c][from][to] -= table[c][from][to] * abs(int(v)) / 324;
+    table[c][from][to] += int(v) * 32;
+  }
 
 private:
-    Value table[COLOR_NB][SQUARE_NB][SQUARE_NB];
+  Value table[COLOR_NB][SQUARE_NB][SQUARE_NB];
 };
+
 
 /// MovePicker class is used to pick one pseudo legal move at a time from the
 /// current position. The most important method is next_move(), which returns a
@@ -93,6 +90,7 @@ private:
 /// when MOVE_NONE is returned. In order to improve the efficiency of the alpha
 /// beta algorithm, MovePicker attempts to return the moves which are most likely
 /// to get a cut-off first.
+namespace Search { struct Stack; }
 
 class MovePicker {
 public:
@@ -118,7 +116,7 @@ private:
   Square recaptureSquare;
   Value threshold;
   int stage;
-  ExtMove* cur, *endMoves, *endBadCaptures;
+  ExtMove *cur, *endMoves, *endBadCaptures;
   ExtMove moves[MAX_MOVES];
 };
 

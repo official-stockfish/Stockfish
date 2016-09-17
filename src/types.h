@@ -207,6 +207,7 @@ enum Piece {
 
 const Piece Pieces[] = { W_PAWN, W_KNIGHT, W_BISHOP, W_ROOK, W_QUEEN, W_KING,
                          B_PAWN, B_KNIGHT, B_BISHOP, B_ROOK, B_QUEEN, B_KING };
+extern Value PieceValue[PHASE_NB][PIECE_NB];
 
 enum Depth {
 
@@ -329,8 +330,6 @@ inline Score operator/(Score s, int i) {
   return make_score(mg_value(s) / i, eg_value(s) / i);
 }
 
-extern Value PieceValue[PHASE_NB][PIECE_NB];
-
 inline Color operator~(Color c) {
   return Color(c ^ BLACK); // Toggle color
 }
@@ -356,7 +355,7 @@ inline Value mated_in(int ply) {
 }
 
 inline Square make_square(File f, Rank r) {
-  return Square((r << 3) | f);
+  return Square((r << 3) + f);
 }
 
 inline Piece make_piece(Color c, PieceType pt) {
@@ -422,12 +421,12 @@ inline PieceType promotion_type(Move m) {
 }
 
 inline Move make_move(Square from, Square to) {
-  return Move(to | (from << 6));
+  return Move((from << 6) + to);
 }
 
 template<MoveType T>
 inline Move make(Square from, Square to, PieceType pt = KNIGHT) {
-  return Move(to | (from << 6) | T | ((pt - KNIGHT) << 12));
+  return Move(T + ((pt - KNIGHT) << 12) + (from << 6) + to);
 }
 
 inline bool is_ok(Move m) {
