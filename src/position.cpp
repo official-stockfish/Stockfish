@@ -321,6 +321,7 @@ void Position::set_state(StateInfo* si) const {
   si->nonPawnMaterial[WHITE] = si->nonPawnMaterial[BLACK] = VALUE_ZERO;
   si->psq = SCORE_ZERO;
   si->checkersBB = attackers_to(square<KING>(sideToMove)) & pieces(~sideToMove);
+  si->cachedSEE.first = MOVE_NONE;
 
   set_check_info(si);
 
@@ -657,6 +658,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   ++gamePly;
   ++st->rule50;
   ++st->pliesFromNull;
+  st->cachedSEE.first = MOVE_NONE;
 
   Color us = sideToMove;
   Color them = ~us;
@@ -977,6 +979,10 @@ Value Position::see(Move m) const {
 
   assert(is_ok(m));
 
+  if (st->cachedSEE.first == m)
+      return st->cachedSEE.second;
+  st->cachedSEE.first = m;
+
   from = from_sq(m);
   to = to_sq(m);
   swapList[0] = PieceValue[MG][piece_on(to)];
@@ -987,7 +993,7 @@ Value Position::see(Move m) const {
   // be handled correctly. Simply return VALUE_ZERO that is always correct
   // unless in the rare case the rook ends up under attack.
   if (type_of(m) == CASTLING)
-      return VALUE_ZERO;
+      return st->cachedSEE.second = VALUE_ZERO;
 
   if (type_of(m) == ENPASSANT)
   {
@@ -1012,7 +1018,7 @@ Value Position::see(Move m) const {
       stmAttackers &= ~pinned_pieces(stm);
 
   if (!stmAttackers)
-        return swapList[0];
+        return st->cachedSEE.second = swapList[0];
 
   // The destination square is defended, which makes things rather more
   // difficult to compute. We proceed by building up a "swap list" containing
@@ -1045,7 +1051,7 @@ Value Position::see(Move m) const {
   while (--slIndex)
       swapList[slIndex - 1] = std::min(-swapList[slIndex], swapList[slIndex - 1]);
 
-  return swapList[0];
+  return st->cachedSEE.second = swapList[0];
 }
 
 
