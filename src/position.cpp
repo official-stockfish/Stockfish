@@ -133,6 +133,10 @@ void Position::init() {
   }
 
   Zobrist::side = rng.rand<Key>();
+
+  for (Piece see : std::vector<Piece>{SEE_FROM, SEE_TO})
+      for (Square s = SQ_A1; s <= SQ_H8; ++s)
+          Zobrist::psq[see][s] = rng.rand<Key>();
 }
 
 
@@ -987,7 +991,7 @@ Value Position::see(Move m) const {
   assert(pc != NO_PIECE);
 
   // The same position can be tested with move and reversed move
-  Key seeKey = st->key ^ Zobrist::psq[pc][from] ^ Zobrist::psq[~pc][to];
+  Key seeKey = st->key ^ Zobrist::psq[SEE_FROM][from] ^ Zobrist::psq[SEE_TO][to];
   auto entry = thisThread->seeTable[seeKey];
 
   if (entry->first == seeKey)
