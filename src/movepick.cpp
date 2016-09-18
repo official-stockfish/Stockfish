@@ -184,9 +184,9 @@ void MovePicker::score<EVASIONS>() {
 /// left. It picks the move with the biggest value from a list of generated moves
 /// taking care not to return the ttMove if it has already been searched.
 
-Move MovePicker::next_move() {
+ExtMove MovePicker::next_move() {
 
-  Move move;
+  ExtMove move;
 
   switch (stage) {
 
@@ -207,7 +207,7 @@ Move MovePicker::next_move() {
           move = pick_best(cur++, endMoves);
           if (move != ttMove)
           {
-              if (pos.see_sign(move) >= VALUE_ZERO)
+              if ((move.value = pos.see_sign(move)) >= VALUE_ZERO)
                   return move;
 
               // Losing capture, move it to the beginning of the array
@@ -353,5 +353,6 @@ Move MovePicker::next_move() {
       assert(false);
   }
 
-  return MOVE_NONE;
+  ttMove.move = MOVE_NONE;
+  return ttMove;
 }

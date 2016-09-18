@@ -101,7 +101,7 @@ public:
   MovePicker(const Position&, Move, Depth, Square);
   MovePicker(const Position&, Move, Depth, Search::Stack*);
 
-  Move next_move();
+  ExtMove next_move();
 
 private:
   template<GenType> void score();
@@ -112,7 +112,7 @@ private:
   const Search::Stack* ss;
   Move countermove;
   Depth depth;
-  Move ttMove;
+  ExtMove ttMove;
   Square recaptureSquare;
   Value threshold;
   int stage;
