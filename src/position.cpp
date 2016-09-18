@@ -976,8 +976,6 @@ Value Position::see(Move m) const {
   PieceType captured;
   Color stm;
 
-  assert(is_ok(m));
-
   from = from_sq(m);
   to = to_sq(m);
   swapList[0] = PieceValue[MG][piece_on(to)];
@@ -985,17 +983,23 @@ Value Position::see(Move m) const {
   stm = color_of(pc);
   occupied = pieces() ^ from;
 
-  Key seeKey = st->key ^ Zobrist::psq[pc][from] ^ Zobrist::psq[pc][to];
+  assert(is_ok(m));
+  assert(pc != NO_PIECE);
 
-  if (thisThread->seeTable[seeKey]->first == seeKey)
-      return thisThread->seeTable[seeKey]->second;
-  thisThread->seeTable[seeKey]->first = seeKey;
+  // The same position can be tested with move and reversed move
+  Key seeKey = st->key ^ Zobrist::psq[pc][from] ^ Zobrist::psq[~pc][to];
+  auto entry = thisThread->seeTable[seeKey];
+
+  if (entry->first == seeKey)
+      return entry->second;
+
+  entry->first = seeKey;
 
   // Castling moves are implemented as king capturing the rook so cannot
   // be handled correctly. Simply return VALUE_ZERO that is always correct
   // unless in the rare case the rook ends up under attack.
   if (type_of(m) == CASTLING)
-      return thisThread->seeTable[seeKey]->second = VALUE_ZERO;
+      return entry->second = VALUE_ZERO;
 
   if (type_of(m) == ENPASSANT)
   {
@@ -1020,7 +1024,7 @@ Value Position::see(Move m) const {
       stmAttackers &= ~pinned_pieces(stm);
 
   if (!stmAttackers)
-        return thisThread->seeTable[seeKey]->second = swapList[0];
+      return entry->second = swapList[0];
 
   // The destination square is defended, which makes things rather more
   // difficult to compute. We proceed by building up a "swap list" containing
@@ -1053,7 +1057,7 @@ Value Position::see(Move m) const {
   while (--slIndex)
       swapList[slIndex - 1] = std::min(-swapList[slIndex], swapList[slIndex - 1]);
 
-  return thisThread->seeTable[seeKey]->second = swapList[0];
+  return entry->second = swapList[0];
 }
 
 
