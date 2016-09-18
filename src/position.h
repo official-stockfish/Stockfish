@@ -50,6 +50,7 @@ struct StateInfo {
   Key        key;
   Bitboard   checkersBB;
   Piece      capturedPiece;
+  std::pair<Move, Value> cachedSEE;
   StateInfo* previous;
   Bitboard   blockersForKing[COLOR_NB];
   Bitboard   pinnersForKing[COLOR_NB];
