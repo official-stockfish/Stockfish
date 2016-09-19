@@ -29,11 +29,14 @@
 #include <vector>
 
 #include "material.h"
+#include "misc.h"
 #include "movepick.h"
 #include "pawns.h"
 #include "position.h"
 #include "search.h"
 #include "thread_win32.h"
+
+typedef HashTable<std::pair<Key, Value>, 256> SEETable;
 
 
 /// Thread struct keeps together all the thread-related stuff. We also use
@@ -59,6 +62,7 @@ public:
 
   Pawns::Table pawnsTable;
   Material::Table materialTable;
+  SEETable seeTable;
   Endgames endgames;
   size_t idx, PVIdx;
   int maxPly, callsCnt;
