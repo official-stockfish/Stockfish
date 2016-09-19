@@ -425,23 +425,27 @@ Phase Position::game_phase() const {
 /// slider if removing that piece from the board would result in a position where
 /// square 's' is attacked. For example, a king-attack blocking piece can be either
 /// a pinned or a discovered check piece, according if its color is the opposite
-/// or the same of the color of the slider. The pinners bitboard get filled with
-/// real and potential pinners.
+/// or the same of the color of the slider.
 
 Bitboard Position::slider_blockers(Bitboard sliders, Square s, Bitboard& pinners) const {
 
-  Bitboard b, p, result = 0;
+  Bitboard result = 0;
+  pinners = 0;
 
-  // Pinners are sliders that attack 's' when a pinned piece is removed
-  pinners = p = (  (PseudoAttacks[ROOK  ][s] & pieces(QUEEN, ROOK))
-                 | (PseudoAttacks[BISHOP][s] & pieces(QUEEN, BISHOP))) & sliders;
+  // Snipers are sliders that attack 's' when a piece is removed
+  Bitboard snipers = (  (PseudoAttacks[ROOK  ][s] & pieces(QUEEN, ROOK))
+                      | (PseudoAttacks[BISHOP][s] & pieces(QUEEN, BISHOP))) & sliders;
 
-  while (p)
+  while (snipers)
   {
-      b = between_bb(s, pop_lsb(&p)) & pieces();
-
-      if (!more_than_one(b))
-          result |= b;
+    Square sniperSquare = pop_lsb(&snipers);
+    Bitboard b = between_bb(s, sniperSquare) & pieces();
+    if (!more_than_one(b))
+    {
+        result |= b;
+        if (b & pieces(color_of(piece_on(s))))
+            pinners |= sniperSquare;
+    }
   }
   return result;
 }
@@ -1004,9 +1008,8 @@ Value Position::see(Move m) const {
   stmAttackers = attackers & pieces(stm);
   occupied ^= to; // For the case when captured piece is a pinner
 
-  // Don't allow pinned pieces to attack as long all pinners (this includes also
-  // potential ones) are on their original square. When a pinner moves to the
-  // exchange-square or get captured on it, we fall back to standard SEE behaviour.
+  // Don't allow pinned pieces to attack pieces except the king as long all pinners are on their original square.
+  // When a pinner moves to the exchange-square or get captured on it, we fall back to standard SEE behaviour.
   if (   (stmAttackers & pinned_pieces(stm))
       && (st->pinnersForKing[stm] & occupied) == st->pinnersForKing[stm])
       stmAttackers &= ~pinned_pieces(stm);
@@ -1032,7 +1035,8 @@ Value Position::see(Move m) const {
       captured = min_attacker<PAWN>(byTypeBB, to, stmAttackers, occupied, attackers);
       stm = ~stm;
       stmAttackers = attackers & pieces(stm);
-      if (   (stmAttackers & pinned_pieces(stm))
+      if ( captured != KING
+          && (stmAttackers & pinned_pieces(stm))
           && (st->pinnersForKing[stm] & occupied) == st->pinnersForKing[stm])
           stmAttackers &= ~pinned_pieces(stm);
 
