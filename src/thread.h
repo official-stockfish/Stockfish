@@ -36,7 +36,7 @@
 #include "search.h"
 #include "thread_win32.h"
 
-typedef HashTable<std::pair<Key, Value>, 16384> SEETable;
+typedef HashTable<std::pair<Key, Value>, 256> SEETable;
 
 
 /// Thread struct keeps together all the thread-related stuff. We also use
