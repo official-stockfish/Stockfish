@@ -277,7 +277,7 @@ Move MovePicker::next_move() {
   case EVASIONS_INIT:
       cur = moves;
       endMoves = generate<EVASIONS>(pos, cur);
-      if (endMoves - cur > 1)
+      if (endMoves - cur - (ttMove != MOVE_NONE) > 1)
           score<EVASIONS>();
       ++stage;
 

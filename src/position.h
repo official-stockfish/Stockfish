@@ -22,24 +22,12 @@
 #define POSITION_H_INCLUDED
 
 #include <cassert>
-#include <cstddef>  // For offsetof()
 #include <deque>
-#include <memory>   // For std::unique_ptr
+#include <memory> // For std::unique_ptr
 #include <string>
-#include <vector>
 
 #include "bitboard.h"
 #include "types.h"
-
-class Position;
-class Thread;
-
-namespace PSQT {
-
-  extern Score psq[PIECE_NB][SQUARE_NB];
-
-  void init();
-}
 
 
 /// StateInfo struct stores information needed to restore a Position object to
@@ -58,7 +46,7 @@ struct StateInfo {
   Score  psq;
   Square epSquare;
 
-  // Not copied when making a move
+  // Not copied when making a move (will be recomputed anyhow)
   Key        key;
   Bitboard   checkersBB;
   Piece      capturedPiece;
@@ -76,9 +64,9 @@ typedef std::unique_ptr<std::deque<StateInfo>> StateListPtr;
 /// pieces, side to move, hash keys, castling info, etc. Important methods are
 /// do_move() and undo_move(), used by the search to update node info when
 /// traversing the search tree.
+class Thread;
 
 class Position {
-
 public:
   static void init();
 
@@ -144,7 +132,7 @@ public:
   void do_null_move(StateInfo& st);
   void undo_null_move();
 
-  // Static exchange evaluation
+  // Static Exchange Evaluation
   Value see(Move m) const;
   Value see_sign(Move m) const;
 
@@ -369,15 +357,13 @@ inline bool Position::is_chess960() const {
 }
 
 inline bool Position::capture_or_promotion(Move m) const {
-
   assert(is_ok(m));
   return type_of(m) != NORMAL ? type_of(m) != CASTLING : !empty(to_sq(m));
 }
 
 inline bool Position::capture(Move m) const {
-
-  // Castling is encoded as "king captures the rook"
   assert(is_ok(m));
+  // Castling is encoded as "king captures rook"
   return (!empty(to_sq(m)) && type_of(m) != CASTLING) || type_of(m) == ENPASSANT;
 }
 
@@ -405,7 +391,7 @@ inline void Position::remove_piece(Piece pc, Square s) {
   // WARNING: This is not a reversible operation. If we remove a piece in
   // do_move() and then replace it in undo_move() we will put it at the end of
   // the list and not in its original place, it means index[] and pieceList[]
-  // are not guaranteed to be invariant to a do_move() + undo_move() sequence.
+  // are not invariant to a do_move() + undo_move() sequence.
   byTypeBB[ALL_PIECES] ^= s;
   byTypeBB[type_of(pc)] ^= s;
   byColorBB[color_of(pc)] ^= s;
