@@ -1010,10 +1010,8 @@ Value Position::see(Move m) const {
   occupied ^= to; // For the case when captured piece is a pinner
 
   // Don't allow pinned pieces to attack pieces except the king as long all
-  // pinners are on their original square. When a pinner moves to the
-  // exchange-square or get captured on it, we fall back to standard SEE behaviour.
-  if (   (stmAttackers & pinned_pieces(stm))
-      && (st->pinnersForKing[stm] & occupied) == st->pinnersForKing[stm])
+  // pinners are on their original square.
+  if ((st->pinnersForKing[stm] & ~occupied) == 0)
       stmAttackers &= ~pinned_pieces(stm);
 
   if (!stmAttackers)
@@ -1037,9 +1035,10 @@ Value Position::see(Move m) const {
       nextVictim = min_attacker<PAWN>(byTypeBB, to, stmAttackers, occupied, attackers);
       stm = ~stm;
       stmAttackers = attackers & pieces(stm);
-      if (    nextVictim != KING
-          && (stmAttackers & pinned_pieces(stm))
-          && (st->pinnersForKing[stm] & occupied) == st->pinnersForKing[stm])
+      
+      // Don't allow pinned pieces to attack pieces except the king
+      if (   nextVictim != KING
+          && (st->pinnersForKing[stm] & ~occupied) == 0)
           stmAttackers &= ~pinned_pieces(stm);
 
       ++slIndex;
