@@ -128,9 +128,9 @@ inline Bitboard file_bb(Square s) {
 
 template<Square Delta>
 inline Bitboard shift(Bitboard b) {
-  return  Delta == DELTA_N  ?  b             << 8 : Delta == DELTA_S  ?  b             >> 8
-        : Delta == DELTA_NE ? (b & ~FileHBB) << 9 : Delta == DELTA_SE ? (b & ~FileHBB) >> 7
-        : Delta == DELTA_NW ? (b & ~FileABB) << 7 : Delta == DELTA_SW ? (b & ~FileABB) >> 9
+  return  Delta == NORTH      ?  b             << 8 : Delta == SOUTH      ?  b             >> 8
+        : Delta == NORTH_EAST ? (b & ~FileHBB) << 9 : Delta == SOUTH_EAST ? (b & ~FileHBB) >> 7
+        : Delta == NORTH_WEST ? (b & ~FileABB) << 7 : Delta == SOUTH_WEST ? (b & ~FileABB) >> 9
         : 0;
 }
 

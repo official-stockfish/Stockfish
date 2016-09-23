@@ -123,9 +123,9 @@ namespace {
     // Immediate win if a pawn can be promoted without getting captured
     else if (   us == WHITE
              && rank_of(psq) == RANK_7
-             && ksq[us] != psq + DELTA_N
-             && (    distance(ksq[~us], psq + DELTA_N) > 1
-                 || (StepAttacksBB[KING][ksq[us]] & (psq + DELTA_N))))
+             && ksq[us] != psq + NORTH
+             && (    distance(ksq[~us], psq + NORTH) > 1
+                 || (StepAttacksBB[KING][ksq[us]] & (psq + NORTH))))
         result = WIN;
 
     // Immediate draw if it is a stalemate or a king captures undefended pawn
@@ -166,12 +166,12 @@ namespace {
     if (Us == WHITE)
     {
         if (rank_of(psq) < RANK_7)      // Single push
-            r |= db[index(Them, ksq[Them], ksq[Us], psq + DELTA_N)];
+            r |= db[index(Them, ksq[Them], ksq[Us], psq + NORTH)];
 
         if (   rank_of(psq) == RANK_2   // Double push
-            && psq + DELTA_N != ksq[Us]
-            && psq + DELTA_N != ksq[Them])
-            r |= db[index(Them, ksq[Them], ksq[Us], psq + DELTA_N + DELTA_N)];
+            && psq + NORTH != ksq[Us]
+            && psq + NORTH != ksq[Them])
+            r |= db[index(Them, ksq[Them], ksq[Us], psq + NORTH + NORTH)];
     }
 
     return result = r & Good  ? Good  : r & UNKNOWN ? UNKNOWN : Bad;
