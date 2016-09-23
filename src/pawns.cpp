@@ -106,7 +106,7 @@ namespace {
     e->passedPawns[Us] = e->pawnAttacksSpan[Us] = 0;
     e->kingSquares[Us] = SQ_NONE;
     e->semiopenFiles[Us] = 0xFF;
-    e->pawnAttacks[Us] = shift_bb<Right>(ourPawns) | shift_bb<Left>(ourPawns);
+    e->pawnAttacks[Us] = shift<Right>(ourPawns) | shift<Left>(ourPawns);
     e->pawnsOnSquares[Us][BLACK] = popcount(ourPawns & DarkSquares);
     e->pawnsOnSquares[Us][WHITE] = pos.count<PAWN>(Us) - e->pawnsOnSquares[Us][BLACK];
 
@@ -142,7 +142,7 @@ namespace {
             // The pawn is backward when it cannot safely progress to that rank:
             // either there is a stopper in the way on this rank, or there is a
             // stopper on adjacent file which controls the way to that rank.
-            backward = (b | shift_bb<Up>(b & adjacent_files_bb(f))) & stoppers;
+            backward = (b | shift<Up>(b & adjacent_files_bb(f))) & stoppers;
 
             assert(!backward || !(pawn_attack_span(Them, s + Up) & neighbours));
         }
