@@ -100,11 +100,11 @@ TTEntry* TranspositionTable::probe(const Key key, bool& found) const {
 }
 
 
-/// Returns an approximation of the hashtable occupation during a search. The
-/// hash is x permill full, as per UCI protocol.
+/// TranspositionTable::hashfull() returns an approximation of the hashtable
+/// occupation during a search. The hash is x permill full, as per UCI protocol.
 
-int TranspositionTable::hashfull() const
-{
+int TranspositionTable::hashfull() const {
+
   int cnt = 0;
   for (int i = 0; i < 1000 / ClusterSize; i++)
   {

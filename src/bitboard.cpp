@@ -205,8 +205,8 @@ void Bitboards::init() {
                       StepAttacksBB[make_piece(c, pt)][s] |= to;
               }
 
-  Square RookDeltas[] = { DELTA_N,  DELTA_E,  DELTA_S,  DELTA_W  };
-  Square BishopDeltas[] = { DELTA_NE, DELTA_SE, DELTA_SW, DELTA_NW };
+  Square RookDeltas[] = { NORTH,  EAST,  SOUTH,  WEST  };
+  Square BishopDeltas[] = { NORTH_EAST, SOUTH_EAST, SOUTH_WEST, NORTH_WEST };
 
   init_magics(RookTable, RookAttacks, RookMagics, RookMasks, RookShifts, RookDeltas, magic_index<ROOK>);
   init_magics(BishopTable, BishopAttacks, BishopMagics, BishopMasks, BishopShifts, BishopDeltas, magic_index<BISHOP>);

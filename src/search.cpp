@@ -1588,8 +1588,8 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
 /// fail high at root. We try hard to have a ponder move to return to the GUI,
 /// otherwise in case of 'ponder on' we have nothing to think on.
 
-bool RootMove::extract_ponder_from_tt(Position& pos)
-{
+bool RootMove::extract_ponder_from_tt(Position& pos) {
+
     StateInfo st;
     bool ttHit;
 
