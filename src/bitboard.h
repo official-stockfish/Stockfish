@@ -124,13 +124,13 @@ inline Bitboard file_bb(Square s) {
 }
 
 
-/// shift_bb() moves a bitboard one step along direction Delta. Mainly for pawns
+/// shift() moves a bitboard one step along direction Delta. Mainly for pawns
 
 template<Square Delta>
-inline Bitboard shift_bb(Bitboard b) {
-  return  Delta == DELTA_N  ?  b             << 8 : Delta == DELTA_S  ?  b             >> 8
-        : Delta == DELTA_NE ? (b & ~FileHBB) << 9 : Delta == DELTA_SE ? (b & ~FileHBB) >> 7
-        : Delta == DELTA_NW ? (b & ~FileABB) << 7 : Delta == DELTA_SW ? (b & ~FileABB) >> 9
+inline Bitboard shift(Bitboard b) {
+  return  Delta == NORTH      ?  b             << 8 : Delta == SOUTH      ?  b             >> 8
+        : Delta == NORTH_EAST ? (b & ~FileHBB) << 9 : Delta == SOUTH_EAST ? (b & ~FileHBB) >> 7
+        : Delta == NORTH_WEST ? (b & ~FileABB) << 7 : Delta == SOUTH_WEST ? (b & ~FileABB) >> 9
         : 0;
 }
 
