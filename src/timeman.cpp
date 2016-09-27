@@ -52,8 +52,8 @@ namespace {
   }
 
   template<TimeType T>
-  int remaining(int myTime, int movesToGo, int ply, int slowMover)
-  {
+  int remaining(int myTime, int movesToGo, int ply, int slowMover) {
+
     const double TMaxRatio   = (T == OptimumTime ? 1 : MaxRatio);
     const double TStealRatio = (T == OptimumTime ? 0 : StealRatio);
 
@@ -81,8 +81,8 @@ namespace {
 ///  inc >  0 && movestogo == 0 means: x basetime + z increment
 ///  inc >  0 && movestogo != 0 means: x moves in y minutes + z increment
 
-void TimeManagement::init(Search::LimitsType& limits, Color us, int ply)
-{
+void TimeManagement::init(Search::LimitsType& limits, Color us, int ply) {
+
   int minThinkingTime = Options["Minimum Thinking Time"];
   int moveOverhead    = Options["Move Overhead"];
   int slowMover       = Options["Slow Mover"];
