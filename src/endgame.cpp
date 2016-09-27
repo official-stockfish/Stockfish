@@ -681,6 +681,8 @@ ScaleFactor Endgame<KBPKB>::operator()(const Position& pos) const {
           if (  (pos.attacks_from<BISHOP>(weakBishopSq) & path)
               && distance(weakBishopSq, pawnSq) >= 3)
               return SCALE_FACTOR_DRAW;
+
+	  return ScaleFactor(9);
       }
   }
   return SCALE_FACTOR_NONE;
