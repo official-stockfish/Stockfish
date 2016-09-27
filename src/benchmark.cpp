@@ -76,7 +76,14 @@ const vector<string> Defaults = {
   "8/8/3P3k/8/1p6/8/1P6/1K3n2 b - - 0 1",  // Nd2 - draw
 
   // 7-man positions
-  "8/R7/2q5/8/6k1/8/1P5p/K6R w - - 0 124"  // Draw
+  "8/R7/2q5/8/6k1/8/1P5p/K6R w - - 0 124", // Draw
+
+  // Mate and stalemate positions
+  "8/8/8/8/8/6k1/6p1/6K1 w - -",
+  "5k2/5P2/5K2/8/8/8/8/8 b - -",
+  "8/8/8/8/8/4k3/4p3/4K3 w - -",
+  "8/8/8/8/8/5K2/8/3Q1k2 b - -",
+  "7k/7P/6K1/8/3B4/8/8/8 b - -"
 };
 
 } // namespace

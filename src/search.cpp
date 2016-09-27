@@ -845,8 +845,7 @@ moves_loop: // When in check search starts from here
     singularExtensionNode =   !rootNode
                            &&  depth >= 8 * ONE_PLY
                            &&  ttMove != MOVE_NONE
-                       /*  &&  ttValue != VALUE_NONE Already implicit in the next condition */
-                           &&  abs(ttValue) < VALUE_KNOWN_WIN
+                           &&  ttValue != VALUE_NONE
                            && !excludedMove // Recursive singular search is not allowed
                            && (tte->bound() & BOUND_LOWER)
                            &&  tte->depth() >= depth - 3 * ONE_PLY;
@@ -904,7 +903,7 @@ moves_loop: // When in check search starts from here
           && !extension
           &&  pos.legal(move))
       {
-          Value rBeta = ttValue - 2 * depth / ONE_PLY;
+          Value rBeta = std::max(ttValue - 2 * depth / ONE_PLY, -VALUE_MATE);
           Depth d = (depth / (2 * ONE_PLY)) * ONE_PLY;
           ss->excludedMove = move;
           ss->skipEarlyPruning = true;
@@ -1589,12 +1588,15 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
 /// fail high at root. We try hard to have a ponder move to return to the GUI,
 /// otherwise in case of 'ponder on' we have nothing to think on.
 
-bool RootMove::extract_ponder_from_tt(Position& pos)
-{
+bool RootMove::extract_ponder_from_tt(Position& pos) {
+
     StateInfo st;
     bool ttHit;
 
     assert(pv.size() == 1);
+
+    if (!pv[0])
+        return false;
 
     pos.do_move(pv[0], st, pos.gives_check(pv[0]));
     TTEntry* tte = TT.probe(pos.key(), ttHit);

@@ -237,17 +237,15 @@ enum Square {
 
   SQUARE_NB = 64,
 
-  DELTA_N =  8,
-  DELTA_E =  1,
-  DELTA_S = -8,
-  DELTA_W = -1,
+  NORTH =  8,
+  EAST  =  1,
+  SOUTH = -8,
+  WEST  = -1,
 
-  DELTA_NN = DELTA_N + DELTA_N,
-  DELTA_NE = DELTA_N + DELTA_E,
-  DELTA_SE = DELTA_S + DELTA_E,
-  DELTA_SS = DELTA_S + DELTA_S,
-  DELTA_SW = DELTA_S + DELTA_W,
-  DELTA_NW = DELTA_N + DELTA_W
+  NORTH_EAST = NORTH + EAST,
+  SOUTH_EAST = SOUTH + EAST,
+  SOUTH_WEST = SOUTH + WEST,
+  NORTH_WEST = NORTH + WEST
 };
 
 enum File {
@@ -401,7 +399,7 @@ inline bool opposite_colors(Square s1, Square s2) {
 }
 
 inline Square pawn_push(Color c) {
-  return c == WHITE ? DELTA_N : DELTA_S;
+  return c == WHITE ? NORTH : SOUTH;
 }
 
 inline Square from_sq(Move m) {
