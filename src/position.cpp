@@ -597,7 +597,7 @@ bool Position::gives_check(Move m) const {
       return true;
 
   // Is there a discovered check?
-  if (   (discovered_check_candidates() & from)
+  if (   (st->blockersForKing[~sideToMove] & from)
       && !aligned(from, to, square<KING>(~sideToMove)))
       return true;
 
