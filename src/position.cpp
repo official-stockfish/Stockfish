@@ -958,25 +958,19 @@ Key Position::key_after(Move m) const {
 /// Position::see() is a static exchange evaluator: It tries to estimate the
 /// material gain or loss resulting from a move.
 
-Value Position::see_sign(Move m) const {
+bool Position::see_ge(Move m, Value value) const {
 
   assert(is_ok(m));
+  return see(m, value - 1, value) == value;
 
-  // Early return if SEE cannot be negative because captured piece value
-  // is not less then capturing one. Note that king moves always return
-  // here because king midgame value is set to 0.
-  if (PieceValue[MG][moved_piece(m)] <= PieceValue[MG][piece_on(to_sq(m))])
-      return VALUE_KNOWN_WIN;
-
-  return see(m);
 }
 
-Value Position::see(Move m) const {
+Value Position::see(Move m, Value alpha = -VALUE_INFINITE, Value beta = VALUE_INFINITE) const {
 
   Square from, to;
   Bitboard occupied, attackers, stmAttackers;
-  Value swapList[32];
-  int slIndex = 1;
+  Value balance;
+  int slIndex = 0;
   PieceType nextVictim;
   Color stm;
 
@@ -984,7 +978,7 @@ Value Position::see(Move m) const {
 
   from = from_sq(m);
   to = to_sq(m);
-  swapList[0] = PieceValue[MG][piece_on(to)];
+  balance = PieceValue[MG][piece_on(to)];
   stm = color_of(piece_on(from));
   occupied = pieces() ^ from;
 
@@ -997,7 +991,7 @@ Value Position::see(Move m) const {
   if (type_of(m) == ENPASSANT)
   {
       occupied ^= to - pawn_push(stm); // Remove the captured pawn
-      swapList[0] = PieceValue[MG][PAWN];
+      balance = PieceValue[MG][PAWN];
   }
 
   // Find all attackers to the destination square, with the moving piece
@@ -1013,43 +1007,48 @@ Value Position::see(Move m) const {
   // new X-ray attacks from behind the capturing piece.
   nextVictim = type_of(piece_on(from));
 
-
-
-
   do {
-      assert(slIndex < 32);
+      assert(slIndex < 31);
 // If the opponent has no attackers we are finished
+
+    if (slIndex % 2) {
+      if (balance >= beta)
+        return beta;
+      else if (balance > alpha)
+        alpha = balance;
+      balance += PieceValue[MG][nextVictim];
+    } else {
+      if (balance <= alpha)
+        return alpha;
+      else if (balance < beta)
+        beta = balance;
+      balance -= PieceValue[MG][nextVictim];
+    }
+    ++slIndex;
+    if (nextVictim == KING)
+      break;
     stm = ~stm;
     stmAttackers = attackers & pieces(stm);
 
   // Don't allow pinned pieces to attack pieces except the king as long all
   // pinners are on their original square.
-    if (!(st->pinnersForKing[stm] & ~occupied))
-      stmAttackers &= ~st->blockersForKing[stm];
+      if (!(st->pinnersForKing[stm] & ~occupied))
+        stmAttackers &= ~st->blockersForKing[stm];
 
       if (!stmAttackers)
         break;
 
       // Add the new entry to the swap list
-      swapList[slIndex] = -swapList[slIndex - 1] + PieceValue[MG][nextVictim];
-      ++slIndex;
+
       // Locate and remove the next least valuable attacker
       nextVictim = min_attacker<PAWN>(byTypeBB, to, stmAttackers, occupied, attackers);
 
+  } while (nextVictim != KING || !(attackers & pieces(~stm))); // Stop before a king capture
 
-
-  } while (nextVictim != KING); // Stop before a king capture
-
-  if (stmAttackers && attackers & pieces(~stm)) {
-
-      --slIndex;
-  }
   // Having built the swap list, we negamax through it to find the best
   // achievable score from the point of view of the side to move.
-  while (--slIndex)
-      swapList[slIndex - 1] = std::min(-swapList[slIndex], swapList[slIndex - 1]);
 
-  return swapList[0];
+  return slIndex % 2 ? beta : alpha;
 }
 /// Position::is_draw() tests whether the position is drawn by 50-move rule
 /// or by repetition. It does not detect stalemates.
