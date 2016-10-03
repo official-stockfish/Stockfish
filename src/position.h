@@ -175,7 +175,6 @@ private:
 
   // Data members
   Piece board[SQUARE_NB];
-  Bitboard byTypeBB[PIECE_TYPE_NB];
   Bitboard byPieceBB[PIECE_NB];
   Bitboard byColorBB[COLOR_NB];
   int pieceCount[PIECE_NB];
@@ -384,7 +383,6 @@ inline Thread* Position::this_thread() const {
 inline void Position::put_piece(Piece pc, Square s) {
 
   board[s] = pc;
-  byTypeBB[type_of(pc)] |= s;
   byPieceBB[ALL_PIECES]   |= s;
   byPieceBB[pc]           |= s;
   byColorBB[color_of(pc)] |= s;
@@ -399,7 +397,6 @@ inline void Position::remove_piece(Piece pc, Square s) {
   // do_move() and then replace it in undo_move() we will put it at the end of
   // the list and not in its original place, it means index[] and pieceList[]
   // are not invariant to a do_move() + undo_move() sequence.
-  byTypeBB[type_of(pc)] ^= s;
   byPieceBB[ALL_PIECES]   ^= s;
   byPieceBB[pc]           ^= s;
   byColorBB[color_of(pc)] ^= s;
@@ -416,7 +413,6 @@ inline void Position::move_piece(Piece pc, Square from, Square to) {
   // index[from] is not updated and becomes stale. This works as long as index[]
   // is accessed just by known occupied squares.
   Bitboard from_to_bb = SquareBB[from] ^ SquareBB[to];
-  byTypeBB[type_of(pc)] ^= from_to_bb;
   byPieceBB[ALL_PIECES]   ^= from_to_bb;
   byPieceBB[pc]           ^= from_to_bb;
   byColorBB[color_of(pc)] ^= from_to_bb;

@@ -55,28 +55,28 @@ const string PieceToChar(" PNBRQK  pnbrqk");
 // valuable attacker for the side to move, remove the attacker we just found
 // from the bitboards and scan for new X-ray attacks behind it.
 
-template<int Pt>
-PieceType min_attacker(const Bitboard* bb, Square to, Bitboard stmAttackers,
+template<int Pt = PAWN>
+PieceType min_attacker(const Bitboard* bb, int offset, Square to, Bitboard stmAttackers,
                        Bitboard& occupied, Bitboard& attackers) {
 
-  Bitboard b = stmAttackers & bb[Pt];
+  Bitboard b = stmAttackers & bb[Pt + offset];
   if (!b)
-      return min_attacker<Pt+1>(bb, to, stmAttackers, occupied, attackers);
+      return min_attacker<Pt+1>(bb, offset, to, stmAttackers, occupied, attackers);
 
   occupied ^= b & ~(b - 1);
 
   if (Pt == PAWN || Pt == BISHOP || Pt == QUEEN)
-      attackers |= attacks_bb<BISHOP>(to, occupied) & (bb[BISHOP] | bb[QUEEN]);
+      attackers |= attacks_bb<BISHOP>(to, occupied) & (bb[W_BISHOP] | bb[W_QUEEN] | bb[B_BISHOP] | bb[B_QUEEN]);
 
   if (Pt == ROOK || Pt == QUEEN)
-      attackers |= attacks_bb<ROOK>(to, occupied) & (bb[ROOK] | bb[QUEEN]);
+      attackers |= attacks_bb<ROOK>(to, occupied) & (bb[W_ROOK] | bb[W_QUEEN] | bb[B_ROOK] | bb[B_QUEEN]);
 
   attackers &= occupied; // After X-ray that may add already processed pieces
   return (PieceType)Pt;
 }
 
 template<>
-PieceType min_attacker<KING>(const Bitboard*, Square, Bitboard, Bitboard&, Bitboard&) {
+PieceType min_attacker<KING>(const Bitboard*, int, Square, Bitboard, Bitboard&, Bitboard&) {
   return KING; // No need to update bitboards: it is the last cycle
 }
 
@@ -1024,9 +1024,6 @@ Value Position::see(Move m) const {
   // capture with the least valuable piece. After each capture, we look for
   // new X-ray attacks from behind the capturing piece.
   nextVictim = type_of(piece_on(from));
-  
-  //const Bitboard* bb[COLOR_NB] = { &byTypeBB [PAWN - 1]   , &byTypeBB [PAWN - 1]   };
-  //const Bitboard* bb[COLOR_NB] = { &byPieceBB[W_PAWN - 1] , &byPieceBB[B_PAWN - 1] };
 
   do {
       assert(slIndex < 32);
@@ -1035,10 +1032,8 @@ Value Position::see(Move m) const {
       swapList[slIndex] = -swapList[slIndex - 1] + PieceValue[MG][nextVictim];
 
       // Locate and remove the next least valuable attacker
-      nextVictim = min_attacker<PAWN>(byTypeBB, to, stmAttackers, occupied, attackers);
-      
-      //nextVictim = min_attacker<PAWN>(bb[stm], to, stmAttackers, occupied, attackers);
-      
+      nextVictim = min_attacker(byPieceBB, 8 * stm, to, stmAttackers, occupied, attackers);
+
       stm = ~stm;
       stmAttackers = attackers & pieces(stm);
 
