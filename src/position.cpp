@@ -965,7 +965,20 @@ bool Position::see_ge(Move m, Value value) const {
 
 }
 
-Value Position::see(Move m, Value alpha = -VALUE_INFINITE, Value beta = VALUE_INFINITE) const {
+Value Position::see_sign(Move m) const {
+
+  assert(is_ok(m));
+
+  // Early return if SEE cannot be negative because captured piece value
+  // is not less then capturing one. Note that king moves always return
+  // here because king midgame value is set to 0.
+  if (PieceValue[MG][moved_piece(m)] <= PieceValue[MG][piece_on(to_sq(m))])
+      return VALUE_KNOWN_WIN;
+
+  return see(m);
+}
+
+Value Position::see(Move m, Value alpha, Value beta) const {
 
   Square from, to;
   Bitboard occupied, attackers, stmAttackers;

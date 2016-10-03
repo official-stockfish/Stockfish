@@ -133,8 +133,9 @@ public:
   void undo_null_move();
 
   // Static Exchange Evaluation
-  Value see(Move m) const;
+  Value see(Move m, Value alpha = -VALUE_INFINITE, Value beta = VALUE_INFINITE) const;
   Value see_sign(Move m) const;
+  bool see_ge(Move m, Value value) const;
 
   // Accessing hash keys
   Key key() const;
