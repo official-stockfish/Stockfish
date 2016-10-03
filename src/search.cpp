@@ -946,11 +946,6 @@ moves_loop: // When in check search starts from here
                   continue;
 
               // Prune moves with negative SEE
-              /* if (!pos.see_ge(move, Value(-35 * lmrDepth * lmrDepth)) != (pos.see_sign(move) <
-              Value(-35 * lmrDepth * lmrDepth))) {
-                    sync_cout << pos.fen() << UCI::move(move, false) << pos.see_ge(move, Value(-35 * lmrDepth * lmrDepth)) << pos.see_sign(move) << sync_endl;
-                    std::exit(0);
-              } */
               if (   lmrDepth < 8
                   && !pos.see_ge(move, Value(-35 * lmrDepth * lmrDepth)))
                   continue;
