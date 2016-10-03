@@ -80,6 +80,7 @@ public:
 
   // Position representation
   Bitboard pieces() const;
+  Bitboard pieces(Piece pc) const;
   Bitboard pieces(PieceType pt) const;
   Bitboard pieces(PieceType pt1, PieceType pt2) const;
   Bitboard pieces(Color c) const;
@@ -175,6 +176,7 @@ private:
   // Data members
   Piece board[SQUARE_NB];
   Bitboard byTypeBB[PIECE_TYPE_NB];
+  Bitboard byPieceBB[PIECE_NB];
   Bitboard byColorBB[COLOR_NB];
   int pieceCount[PIECE_NB];
   Square pieceList[PIECE_NB][16];
@@ -209,15 +211,15 @@ inline Piece Position::moved_piece(Move m) const {
 }
 
 inline Bitboard Position::pieces() const {
-  return byTypeBB[ALL_PIECES];
+  return byPieceBB[ALL_PIECES];
 }
 
 inline Bitboard Position::pieces(PieceType pt) const {
-  return byTypeBB[pt];
+  return byPieceBB[make_piece(WHITE, pt)] | byPieceBB[make_piece(BLACK, pt)];
 }
 
 inline Bitboard Position::pieces(PieceType pt1, PieceType pt2) const {
-  return byTypeBB[pt1] | byTypeBB[pt2];
+  return pieces(pt1) | pieces(pt2);
 }
 
 inline Bitboard Position::pieces(Color c) const {
@@ -225,11 +227,15 @@ inline Bitboard Position::pieces(Color c) const {
 }
 
 inline Bitboard Position::pieces(Color c, PieceType pt) const {
-  return byColorBB[c] & byTypeBB[pt];
+  return byPieceBB[make_piece(c, pt)];
+}
+
+inline Bitboard Position::pieces(Piece pc) const {
+  return byPieceBB[pc];
 }
 
 inline Bitboard Position::pieces(Color c, PieceType pt1, PieceType pt2) const {
-  return byColorBB[c] & (byTypeBB[pt1] | byTypeBB[pt2]);
+  return pieces(c, pt1) | pieces(c, pt2);
 }
 
 template<PieceType Pt> inline int Position::count(Color c) const {
@@ -258,7 +264,7 @@ inline int Position::can_castle(Color c) const {
 }
 
 inline bool Position::castling_impeded(CastlingRight cr) const {
-  return byTypeBB[ALL_PIECES] & castlingPath[cr];
+  return pieces() & castlingPath[cr];
 }
 
 inline Square Position::castling_rook_square(CastlingRight cr) const {
@@ -267,7 +273,7 @@ inline Square Position::castling_rook_square(CastlingRight cr) const {
 
 template<PieceType Pt>
 inline Bitboard Position::attacks_from(Square s) const {
-  return  Pt == BISHOP || Pt == ROOK ? attacks_bb<Pt>(s, byTypeBB[ALL_PIECES])
+  return  Pt == BISHOP || Pt == ROOK ? attacks_bb<Pt>(s, pieces())
         : Pt == QUEEN  ? attacks_from<ROOK>(s) | attacks_from<BISHOP>(s)
         : StepAttacksBB[Pt][s];
 }
@@ -278,11 +284,11 @@ inline Bitboard Position::attacks_from<PAWN>(Square s, Color c) const {
 }
 
 inline Bitboard Position::attacks_from(Piece pc, Square s) const {
-  return attacks_bb(pc, s, byTypeBB[ALL_PIECES]);
+  return attacks_bb(pc, s, pieces());
 }
 
 inline Bitboard Position::attackers_to(Square s) const {
-  return attackers_to(s, byTypeBB[ALL_PIECES]);
+  return attackers_to(s, pieces());
 }
 
 inline Bitboard Position::checkers() const {
@@ -378,8 +384,9 @@ inline Thread* Position::this_thread() const {
 inline void Position::put_piece(Piece pc, Square s) {
 
   board[s] = pc;
-  byTypeBB[ALL_PIECES] |= s;
   byTypeBB[type_of(pc)] |= s;
+  byPieceBB[ALL_PIECES]   |= s;
+  byPieceBB[pc]           |= s;
   byColorBB[color_of(pc)] |= s;
   index[s] = pieceCount[pc]++;
   pieceList[pc][index[s]] = s;
@@ -392,8 +399,9 @@ inline void Position::remove_piece(Piece pc, Square s) {
   // do_move() and then replace it in undo_move() we will put it at the end of
   // the list and not in its original place, it means index[] and pieceList[]
   // are not invariant to a do_move() + undo_move() sequence.
-  byTypeBB[ALL_PIECES] ^= s;
   byTypeBB[type_of(pc)] ^= s;
+  byPieceBB[ALL_PIECES]   ^= s;
+  byPieceBB[pc]           ^= s;
   byColorBB[color_of(pc)] ^= s;
   /* board[s] = NO_PIECE;  Not needed, overwritten by the capturing one */
   Square lastSquare = pieceList[pc][--pieceCount[pc]];
@@ -408,8 +416,9 @@ inline void Position::move_piece(Piece pc, Square from, Square to) {
   // index[from] is not updated and becomes stale. This works as long as index[]
   // is accessed just by known occupied squares.
   Bitboard from_to_bb = SquareBB[from] ^ SquareBB[to];
-  byTypeBB[ALL_PIECES] ^= from_to_bb;
   byTypeBB[type_of(pc)] ^= from_to_bb;
+  byPieceBB[ALL_PIECES]   ^= from_to_bb;
+  byPieceBB[pc]           ^= from_to_bb;
   byColorBB[color_of(pc)] ^= from_to_bb;
   board[from] = NO_PIECE;
   board[to] = pc;

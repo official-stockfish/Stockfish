@@ -1024,6 +1024,9 @@ Value Position::see(Move m) const {
   // capture with the least valuable piece. After each capture, we look for
   // new X-ray attacks from behind the capturing piece.
   nextVictim = type_of(piece_on(from));
+  
+  //const Bitboard* bb[COLOR_NB] = { &byTypeBB [PAWN - 1]   , &byTypeBB [PAWN - 1]   };
+  //const Bitboard* bb[COLOR_NB] = { &byPieceBB[W_PAWN - 1] , &byPieceBB[B_PAWN - 1] };
 
   do {
       assert(slIndex < 32);
@@ -1033,6 +1036,9 @@ Value Position::see(Move m) const {
 
       // Locate and remove the next least valuable attacker
       nextVictim = min_attacker<PAWN>(byTypeBB, to, stmAttackers, occupied, attackers);
+      
+      //nextVictim = min_attacker<PAWN>(bb[stm], to, stmAttackers, occupied, attackers);
+      
       stm = ~stm;
       stmAttackers = attackers & pieces(stm);
 
@@ -1161,7 +1167,7 @@ bool Position::pos_is_ok(int* failedStep) const {
       if (step == Lists)
           for (Piece pc : Pieces)
           {
-              if (pieceCount[pc] != popcount(pieces(color_of(pc), type_of(pc))))
+              if (pieceCount[pc] != popcount(pieces(pc)))
                   return false;
 
               for (int i = 0; i < pieceCount[pc]; ++i)
