@@ -168,7 +168,7 @@ void MovePicker::score<EVASIONS>() {
   Value see;
 
   for (auto& m : *this)
-      if ((see = pos.see(m, -VALUE_INFINITE, VALUE_ZERO)) < VALUE_ZERO)
+      if ((see = pos.see_sign(m)) < VALUE_ZERO)
           m.value = see - HistoryStats::Max; // At the bottom
 
       else if (pos.capture(m))
