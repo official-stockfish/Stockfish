@@ -999,7 +999,7 @@ Value Position::see(Move m, Value alpha, Value beta) const {
   // be handled correctly. Simply return VALUE_ZERO that is always correct
   // unless in the rare case the rook ends up under attack.
   if (type_of(m) == CASTLING)
-      return VALUE_ZERO;
+      return std::min(std::max(VALUE_ZERO, alpha), beta);
 
   if (type_of(m) == ENPASSANT)
   {
