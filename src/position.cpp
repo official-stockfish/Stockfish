@@ -1003,21 +1003,9 @@ Value Position::see(Move m) const {
   // Find all attackers to the destination square, with the moving piece
   // removed, but possibly an X-ray attacker added behind it.
   attackers = attackers_to(to, occupied) & occupied;
-
-  // If the opponent has no attackers we are finished
-  stm = ~stm;
-  stmAttackers = attackers & pieces(stm);
   occupied ^= to; // For the case when captured piece is a pinner
 
-  // Don't allow pinned pieces to attack pieces except the king as long all
-  // pinners are on their original square.
-  if (!(st->pinnersForKing[stm] & ~occupied))
-      stmAttackers &= ~st->blockersForKing[stm];
-
-  if (!stmAttackers)
-        return swapList[0];
-
-  // The destination square is defended, which makes things rather more
+   // The destination square is defended, which makes things rather more
   // difficult to compute. We proceed by building up a "swap list" containing
   // the material gain or loss at each stop in a sequence of captures to the
   // destination square, where the sides alternately capture, and always
@@ -1025,26 +1013,37 @@ Value Position::see(Move m) const {
   // new X-ray attacks from behind the capturing piece.
   nextVictim = type_of(piece_on(from));
 
+
+
+
   do {
       assert(slIndex < 32);
+// If the opponent has no attackers we are finished
+    stm = ~stm;
+    stmAttackers = attackers & pieces(stm);
+
+  // Don't allow pinned pieces to attack pieces except the king as long all
+  // pinners are on their original square.
+    if (!(st->pinnersForKing[stm] & ~occupied))
+      stmAttackers &= ~st->blockersForKing[stm];
+
+      if (!stmAttackers)
+        break;
 
       // Add the new entry to the swap list
       swapList[slIndex] = -swapList[slIndex - 1] + PieceValue[MG][nextVictim];
-
+      ++slIndex;
       // Locate and remove the next least valuable attacker
       nextVictim = min_attacker<PAWN>(byTypeBB, to, stmAttackers, occupied, attackers);
-      stm = ~stm;
-      stmAttackers = attackers & pieces(stm);
 
-      // Don't allow pinned pieces to attack pieces except the king
-      if (   nextVictim != KING
-          && !(st->pinnersForKing[stm] & ~occupied))
-          stmAttackers &= ~st->blockersForKing[stm];
 
-      ++slIndex;
 
-  } while (stmAttackers && (nextVictim != KING || (--slIndex, false))); // Stop before a king capture
+  } while (nextVictim != KING); // Stop before a king capture
 
+  if (stmAttackers && attackers & pieces(~stm)) {
+
+      --slIndex;
+  }
   // Having built the swap list, we negamax through it to find the best
   // achievable score from the point of view of the side to move.
   while (--slIndex)
@@ -1052,8 +1051,6 @@ Value Position::see(Move m) const {
 
   return swapList[0];
 }
-
-
 /// Position::is_draw() tests whether the position is drawn by 50-move rule
 /// or by repetition. It does not detect stalemates.
 
