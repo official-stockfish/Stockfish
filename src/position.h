@@ -136,6 +136,7 @@ public:
   Value see(Move m) const;
   Value see_sign(Move m) const;
   bool see_ge(Move m, Value value) const;
+  bool see_gen(Move m, Value v) const;
 
   // Accessing hash keys
   Key key() const;

@@ -18,6 +18,8 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <iostream>
+
 #include <algorithm>
 #include <cassert>
 #include <cstddef> // For offsetof()
@@ -1134,15 +1136,24 @@ Value Position::see(Move m) const {
   return swapList[0];
 }
 
-bool Position::see_ge(Move m, Value beta) const {
+bool Position::see_ge(Move m, Value v) const {
   assert(is_ok(m));
+  bool res;
+  if ((res = see_gen(m, v)) != see(m) >= v) {
+    sync_cout << fen() << UCI::move(m, false) << sync_endl;
+    std::exit(0);
+  }
+  return res;
 
+}
+bool Position::see_gen(Move m, Value v) const {
+  assert(is_ok(m));
 
   // Castling moves are implemented as king capturing the rook so cannot
   // be handled correctly. Simply return VALUE_ZERO that is always correct
   // unless in the rare case the rook ends up under attack.
   if (type_of(m) == CASTLING)
-      return VALUE_ZERO >= beta;
+      return VALUE_ZERO >= v;
   Square from, to;
   Bitboard occupied, attackers, stmAttackers;
   Value balance;
@@ -1170,12 +1181,12 @@ bool Position::see_ge(Move m, Value beta) const {
   // removed, but possibly an X-ray attacker added behind it.
   attackers = attackers_to(to, occupied) & occupied;
   // For the case when captured piece is a pinner
-   if (balance < beta)
+   if (balance < v)
         return false;
     if (nextVictim == KING)
       return true;
     balance -= PieceValue[MG][nextVictim];
-  if (balance >= beta)
+  if (balance >= v)
         return true;
   relativeStm = true;
 
@@ -1203,7 +1214,7 @@ bool Position::see_ge(Move m, Value beta) const {
     if (nextVictim == KING)
       return relativeStm;
     balance = relativeStm ? balance - PieceValue[MG][nextVictim] : balance + PieceValue[MG][nextVictim];
-    if (relativeStm == (balance >= beta))
+    if (relativeStm == (balance >= v))
       return relativeStm;
   }
 
