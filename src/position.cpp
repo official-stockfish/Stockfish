@@ -972,8 +972,6 @@ bool Position::see_ge(Move m, Value v) const {
 
   PieceType nextVictim = type_of(piece_on(from));
 
-  // Not ~side_to_move(), because of a bug when the field sideToMove isn't initialised
-  // if it's absent in the input fen.
   // We'll first consider a move by the opponent
   Color stm = ~color_of(piece_on(from));
 
