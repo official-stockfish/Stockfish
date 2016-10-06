@@ -972,7 +972,7 @@ bool Position::see_ge(Move m, Value v) const {
 
   PieceType nextVictim = type_of(piece_on(from));
 
-  // Not ~side_to_move(), because of a bug that not always assign this value
+  // Not ~side_to_move(), because of a bug when the field sideToMove isn't initialised
   // if it's absent in the input fen.
   // We'll first consider a move by the opponent
   Color stm = ~color_of(piece_on(from));
@@ -1033,13 +1033,12 @@ bool Position::see_ge(Move m, Value v) const {
           return relativeStm == bool(attackers & pieces(~stm));
 
       balance = relativeStm ? balance + PieceValue[MG][nextVictim] : balance - PieceValue[MG][nextVictim];
-
       relativeStm = !relativeStm;
+
       if (relativeStm == (balance >= v))
           return relativeStm;
 
       stm = ~stm;
-
   }
 }
 
