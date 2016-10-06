@@ -978,31 +978,41 @@ bool Position::see_ge(Move m, Value v) const {
   Color stm = ~color_of(piece_on(from));
 
   // the sum of the values of the pieces taken by us minus the corresponding sum of the opponent
-  Value balance = PieceValue[MG][piece_on(to)];
+  Value balance;
 
-  Bitboard occupied = pieces() ^ from ^ to;
+  Bitboard occupied;
 
   if (type_of(m) == ENPASSANT)
   {
-      occupied ^= to - pawn_push(~stm); // Remove the captured pawn
+      occupied = SquareBB[to - pawn_push(~stm)]; // Remove the captured pawn
       balance = PieceValue[MG][PAWN];
   }
-
-  // Find all attackers to the destination square, with the moving piece
-  // removed, but possibly an X-ray attacker added behind it.
-  Bitboard attackers = attackers_to(to, occupied) & occupied;
+  else
+  {
+      balance = PieceValue[MG][piece_on(to)];
+      occupied = 0;
+  }
 
   if (balance < v)
     return false;
+
   if (nextVictim == KING)
     return true;
+
   balance -= PieceValue[MG][nextVictim];
+
   if (balance >= v)
     return true;
 
   // true if the opponent is to move and false if we are to move
   bool relativeStm = true;
   Bitboard stmAttackers;
+
+  occupied ^= pieces() ^ from ^ to;
+
+  // Find all attackers to the destination square, with the moving piece
+  // removed, but possibly an X-ray attacker added behind it.
+  Bitboard attackers = attackers_to(to, occupied) & occupied;
 
   while (true)
   {
@@ -1019,19 +1029,17 @@ bool Position::see_ge(Move m, Value v) const {
       // Locate and remove the next least valuable attacker
       nextVictim = min_attacker<PAWN>(byTypeBB, to, stmAttackers, occupied, attackers);
 
-      if (nextVictim == KING && attackers & pieces(~stm))
-          return relativeStm;
+      if (nextVictim == KING)
+          return relativeStm == bool(attackers & pieces(~stm));
+
+      balance = relativeStm ? balance + PieceValue[MG][nextVictim] : balance - PieceValue[MG][nextVictim];
 
       relativeStm = !relativeStm;
-      stm = ~stm;
-
-      if (nextVictim == KING)
-          return relativeStm;
-
-      balance = relativeStm ? balance - PieceValue[MG][nextVictim] : balance + PieceValue[MG][nextVictim];
-
       if (relativeStm == (balance >= v))
           return relativeStm;
+
+      stm = ~stm;
+
   }
 }
 
