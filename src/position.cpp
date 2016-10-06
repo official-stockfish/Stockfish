@@ -976,7 +976,7 @@ Value Position::see(Move m) const {
   Square from, to;
   Bitboard occupied, attackers, stmAttackers;
   Value swapList[32];
-  int slIndex = 1;
+  int slIndex = 0;
   PieceType nextVictim;
   Color stm;
 
@@ -986,7 +986,7 @@ Value Position::see(Move m) const {
   to = to_sq(m);
   swapList[0] = PieceValue[MG][piece_on(to)];
   stm = color_of(piece_on(from));
-  occupied = pieces() ^ from;
+  occupied = pieces() ^ from ^ to; // flip 'to' for the case captured piece is a pinner
 
   // Castling moves are implemented as king capturing the rook so cannot
   // be handled correctly. Simply return VALUE_ZERO that is always correct
@@ -1000,50 +1000,42 @@ Value Position::see(Move m) const {
       swapList[0] = PieceValue[MG][PAWN];
   }
 
+  nextVictim = type_of(piece_on(from));
+
   // Find all attackers to the destination square, with the moving piece
   // removed, but possibly an X-ray attacker added behind it.
   attackers = attackers_to(to, occupied) & occupied;
 
-  // If the opponent has no attackers we are finished
-  stm = ~stm;
-  stmAttackers = attackers & pieces(stm);
-  occupied ^= to; // For the case when captured piece is a pinner
+  while (true) {
+      assert(slIndex < 31);
 
-  // Don't allow pinned pieces to attack pieces except the king as long all
-  // pinners are on their original square.
-  if (!(st->pinnersForKing[stm] & ~occupied))
-      stmAttackers &= ~st->blockersForKing[stm];
+      stm = ~stm;
+      stmAttackers = attackers & pieces(stm);
+      if (slIndex && stmAttackers && nextVictim == KING)
+           break; // King went into check by last recapture so ignore it
+      ++slIndex;
 
-  if (!stmAttackers)
-        return swapList[0];
+      // Don't allow pinned pieces to attack as long all
+      // pinners are on their original square.
+      if (!(st->pinnersForKing[stm] & ~occupied))
+          stmAttackers &= ~st->blockersForKing[stm];
 
-  // The destination square is defended, which makes things rather more
-  // difficult to compute. We proceed by building up a "swap list" containing
-  // the material gain or loss at each stop in a sequence of captures to the
-  // destination square, where the sides alternately capture, and always
-  // capture with the least valuable piece. After each capture, we look for
-  // new X-ray attacks from behind the capturing piece.
-  nextVictim = type_of(piece_on(from));
+      if (!stmAttackers)
+           break; // If the opponent has no attackers we are finished
 
-  do {
-      assert(slIndex < 32);
+      // The destination square is defended, which makes things rather more
+      // difficult to compute. We proceed by building up a "swap list" containing
+      // the material gain or loss at each stop in a sequence of captures to the
+      // destination square, where the sides alternately capture, and always
+      // capture with the least valuable piece. After each capture, we look for
+      // new X-ray attacks from behind the capturing piece.
 
       // Add the new entry to the swap list
       swapList[slIndex] = -swapList[slIndex - 1] + PieceValue[MG][nextVictim];
 
       // Locate and remove the next least valuable attacker
       nextVictim = min_attacker<PAWN>(byTypeBB, to, stmAttackers, occupied, attackers);
-      stm = ~stm;
-      stmAttackers = attackers & pieces(stm);
-
-      // Don't allow pinned pieces to attack pieces except the king
-      if (   nextVictim != KING
-          && !(st->pinnersForKing[stm] & ~occupied))
-          stmAttackers &= ~st->blockersForKing[stm];
-
-      ++slIndex;
-
-  } while (stmAttackers && (nextVictim != KING || (--slIndex, false))); // Stop before a king capture
+  }
 
   // Having built the swap list, we negamax through it to find the best
   // achievable score from the point of view of the side to move.
