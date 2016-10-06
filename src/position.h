@@ -133,8 +133,7 @@ public:
   void undo_null_move();
 
   // Static Exchange Evaluation
-  Value see(Move m) const;
-  Value see_sign(Move m) const;
+  bool see_ge(Move m, Value value) const;
 
   // Accessing hash keys
   Key key() const;
@@ -374,6 +373,7 @@ inline Piece Position::captured_piece() const {
 inline Thread* Position::this_thread() const {
   return thisThread;
 }
+
 
 inline void Position::put_piece(Piece pc, Square s) {
 
