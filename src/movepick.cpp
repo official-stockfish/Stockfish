@@ -159,9 +159,7 @@ void MovePicker::score<QUIETS>() {
 
 template<>
 void MovePicker::score<EVASIONS>() {
-  // Try winning and equal captures ordered by MVV/LVA, then non-captures ordered
-  // by history value, then bad captures and quiet moves with a negative SEE ordered
-  // by SEE value.
+  // Try captures ordered by MVV/LVA, then non-captures ordered by history value
   const HistoryStats& history = pos.this_thread()->history;
   const FromToStats& fromTo = pos.this_thread()->fromTo;
   Color c = pos.side_to_move();
