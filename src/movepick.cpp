@@ -48,13 +48,24 @@ namespace {
     }
   }
 
-  // pick_best() finds the best move in the range (begin, end) and moves it to
-  // the front. It's faster than sorting all the moves in advance when there
+  // pick_best() finds the best move in the range (begin, end) and returns it
+  // front move replaces best move on its position
+  // It's faster than sorting all the moves in advance when there
   // are few moves, e.g., the possible captures.
   Move pick_best(ExtMove* begin, ExtMove* end)
   {
-      std::swap(*begin, *std::max_element(begin, end));
-      return *begin;
+      assert(begin < end);
+
+      ExtMove *ptr = begin;
+      ExtMove *iter = begin;
+
+      while (++iter < end)
+          if (*ptr < *iter)
+              ptr = iter;
+
+      ExtMove res = *ptr;
+      *ptr = *begin;
+      return res;
   }
 
 } // namespace
