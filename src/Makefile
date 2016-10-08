@@ -276,7 +276,7 @@ ifeq ($(optimize),yes)
 			endif
 		endif
 
-		ifeq ($(arch),armv7)
+		ifeq ($(OS), Android)
 			CXXFLAGS += -fno-gcse -mthumb -march=armv7-a -mfloat-abi=softfp
 		endif
 	endif
