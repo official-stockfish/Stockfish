@@ -1,0 +1,36 @@
+version: 1.0.{build}
+clone_depth: 5
+
+branches:
+  only:
+    - master
+    - appveyor
+
+# Operating system (build VM template)
+os: Visual Studio 2015
+
+platform:
+  - x86
+  - x64
+
+# Build configuration, i.e. Debug, Release, etc.
+configuration:
+  - Debug
+  - Release
+
+# Scripts that are called at very beginning, before repo cloning
+init:
+  - cmd: cmake --version
+  - cmd: msbuild /version
+
+# Scripts to run before build
+before_build:
+  - cmd: cd src
+  - cmd: echo project (Stockfish) >> CMakeLists.txt
+  - cmd: echo add_executable(stockfish benchmark.cpp bitbase.cpp bitboard.cpp endgame.cpp evaluate.cpp >> CMakeLists.txt
+  - cmd: echo main.cpp material.cpp misc.cpp movegen.cpp movepick.cpp pawns.cpp position.cpp psqt.cpp >> CMakeLists.txt
+  - cmd: echo search.cpp thread.cpp timeman.cpp tt.cpp uci.cpp ucioption.cpp syzygy/tbprobe.cpp) >> CMakeLists.txt
+
+build_script:
+  - cmake -G "Visual Studio 14 2015 Win64" .
+  - cmake --build .
