@@ -9,28 +9,37 @@ branches:
 # Operating system (build VM template)
 os: Visual Studio 2015
 
+# Build platform, i.e. x86, x64, AnyCPU. This setting is optional.
 platform:
   - x86
   - x64
+  - Any CPU
 
-# Build configuration, i.e. Debug, Release, etc.
-configuration:
-  - Debug
-  - Release
+# build Configuration, i.e. Debug, Release, etc.
+configuration: Debug
+
+matrix:
+  # The build fail immediately once one of the job fails
+  fast_finish: true
 
 # Scripts that are called at very beginning, before repo cloning
 init:
-  - cmd: cmake --version
-  - cmd: msbuild /version
+  - cmake --version
+  - msbuild /version
 
-# Scripts to run before build
 before_build:
-  - cmd: cd src
-  - cmd: echo project (Stockfish) >> CMakeLists.txt
-  - cmd: echo add_executable(stockfish benchmark.cpp bitbase.cpp bitboard.cpp endgame.cpp evaluate.cpp >> CMakeLists.txt
-  - cmd: echo main.cpp material.cpp misc.cpp movegen.cpp movepick.cpp pawns.cpp position.cpp psqt.cpp >> CMakeLists.txt
-  - cmd: echo search.cpp thread.cpp timeman.cpp tt.cpp uci.cpp ucioption.cpp syzygy/tbprobe.cpp) >> CMakeLists.txt
+  - cd src
+  - echo project (Stockfish) >> CMakeLists.txt
+  - echo add_executable(stockfish benchmark.cpp bitbase.cpp bitboard.cpp endgame.cpp evaluate.cpp >> CMakeLists.txt
+  - echo main.cpp material.cpp misc.cpp movegen.cpp movepick.cpp pawns.cpp position.cpp psqt.cpp >> CMakeLists.txt
+  - echo search.cpp thread.cpp timeman.cpp tt.cpp uci.cpp ucioption.cpp syzygy/tbprobe.cpp) >> CMakeLists.txt
+  - echo set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/src) >> CMakeLists.txt
+#   - echo target_compile_options(stockfish PUBLIC "/Ox") >> CMakeLists.txt
 
 build_script:
   - cmake -G "Visual Studio 14 2015 Win64" .
   - cmake --build .
+
+before_test:
+  - cd Debug
+  - stockfish.exe bench > null
