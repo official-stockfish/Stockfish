@@ -22,10 +22,7 @@
 ### ==========================================================================
 
 ### Establish the operating system name
-KERNEL = $(shell uname -s)
-ifneq ($(KERNEL),Darwin)
-	OS = $(shell uname -o)
-endif
+UNAME = $(shell uname)
 
 ### Executable name
 EXE = stockfish
@@ -148,17 +145,8 @@ endif
 ifeq ($(COMP),gcc)
 	comp=gcc
 	CXX=g++
-	CXXFLAGS += -pedantic -Wextra -Wshadow
-
-	ifeq ($(ARCH),armv7)
-		ifeq ($(OS),Android)
-			CXXFLAGS += -m$(bits)
-		endif
-	else
-		CXXFLAGS += -m$(bits)
-	endif
-
-	ifneq ($(KERNEL),Darwin)
+	CXXFLAGS += -pedantic -Wextra -Wshadow -m$(bits)
+	ifneq ($(UNAME),Darwin)
 	   LDFLAGS += -Wl,--no-as-needed
 	endif
 endif
@@ -166,7 +154,7 @@ endif
 ifeq ($(COMP),mingw)
 	comp=mingw
 
-	ifeq ($(KERNEL),Linux)
+	ifeq ($(UNAME),Linux)
 		ifeq ($(bits),64)
 			ifeq ($(shell which x86_64-w64-mingw32-c++-posix),)
 				CXX=x86_64-w64-mingw32-c++
@@ -197,19 +185,9 @@ endif
 ifeq ($(COMP),clang)
 	comp=clang
 	CXX=clang++
-	CXXFLAGS += -pedantic -Wextra -Wshadow
-
-	ifeq ($(ARCH),armv7)
-		ifeq ($(OS),Android)
-			CXXFLAGS += -m$(bits)
-			LDFLAGS += -m$(bits)
-		endif
-	else
-		CXXFLAGS += -m$(bits)
-		LDFLAGS += -m$(bits)
-	endif
-
-	ifeq ($(KERNEL),Darwin)
+	CXXFLAGS += -pedantic -Wextra -Wshadow -m$(bits)
+	LDFLAGS += -m$(bits)
+	ifeq ($(UNAME),Darwin)
 		CXXFLAGS += -stdlib=libc++
 		DEPENDFLAGS += -stdlib=libc++
 	endif
@@ -227,7 +205,7 @@ else
 	profile_clean = gcc-profile-clean
 endif
 
-ifeq ($(KERNEL),Darwin)
+ifeq ($(UNAME),Darwin)
 	CXXFLAGS += -arch $(arch) -mmacosx-version-min=10.9
 	LDFLAGS += -arch $(arch) -mmacosx-version-min=10.9
 endif
@@ -245,9 +223,9 @@ endif
 ### On mingw use Windows threads, otherwise POSIX
 ifneq ($(comp),mingw)
 	# On Android Bionic's C library comes with its own pthread implementation bundled in
-	ifneq ($(OS),Android)
+	ifneq ($(arch),armv7)
 		# Haiku has pthreads in its libroot, so only link it in on other platforms
-		ifneq ($(KERNEL),Haiku)
+		ifneq ($(UNAME),Haiku)
 			LDFLAGS += -lpthread
 		endif
 	endif
@@ -267,7 +245,7 @@ ifeq ($(optimize),yes)
 
 	ifeq ($(comp),gcc)
 
-		ifeq ($(KERNEL),Darwin)
+		ifeq ($(UNAME),Darwin)
 			ifeq ($(arch),i386)
 				CXXFLAGS += -mdynamic-no-pic
 			endif
@@ -276,19 +254,19 @@ ifeq ($(optimize),yes)
 			endif
 		endif
 
-		ifeq ($(OS), Android)
+		ifeq ($(arch),armv7)
 			CXXFLAGS += -fno-gcse -mthumb -march=armv7-a -mfloat-abi=softfp
 		endif
 	endif
 
 	ifeq ($(comp),icc)
-		ifeq ($(KERNEL),Darwin)
+		ifeq ($(UNAME),Darwin)
 			CXXFLAGS += -mdynamic-no-pic
 		endif
 	endif
 
 	ifeq ($(comp),clang)
-		ifeq ($(KERNEL),Darwin)
+		ifeq ($(UNAME),Darwin)
 			ifeq ($(pext),no)
 				CXXFLAGS += -flto
 				LDFLAGS += $(CXXFLAGS)
@@ -348,7 +326,7 @@ ifeq ($(comp),gcc)
 endif
 
 ifeq ($(comp),mingw)
-	ifeq ($(KERNEL),Linux)
+	ifeq ($(UNAME),Linux)
 	ifeq ($(optimize),yes)
 	ifeq ($(debug),no)
 		CXXFLAGS += -flto
@@ -360,7 +338,7 @@ endif
 
 ### 3.9 Android 5 can only run position independent executables. Note that this
 ### breaks Android 4.0 and earlier.
-ifeq ($(OS), Android)
+ifeq ($(arch),armv7)
 	CXXFLAGS += -fPIE
 	LDFLAGS += -fPIE -pie
 endif
@@ -468,8 +446,6 @@ config-sanity:
 	@echo "optimize: '$(optimize)'"
 	@echo "arch: '$(arch)'"
 	@echo "bits: '$(bits)'"
-	@echo "kernel: '$(KERNEL)'"
-	@echo "os: '$(OS)'"
 	@echo "prefetch: '$(prefetch)'"
 	@echo "popcnt: '$(popcnt)'"
 	@echo "sse: '$(sse)'"
