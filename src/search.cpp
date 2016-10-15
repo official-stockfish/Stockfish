@@ -636,8 +636,6 @@ namespace {
         && (ttValue >= beta ? (tte->bound() & BOUND_LOWER)
                             : (tte->bound() & BOUND_UPPER)))
     {
-        ss->currentMove = ttMove; // Can be MOVE_NONE
-
         // If ttMove is quiet, update killers, history, counter move on TT hit
         if (ttValue >= beta && ttMove)
         {
@@ -1228,10 +1226,7 @@ moves_loop: // When in check search starts from here
         && ttValue != VALUE_NONE // Only in case of TT access race
         && (ttValue >= beta ? (tte->bound() &  BOUND_LOWER)
                             : (tte->bound() &  BOUND_UPPER)))
-    {
-        ss->currentMove = ttMove; // Can be MOVE_NONE
         return ttValue;
-    }
 
     // Evaluate the position statically
     if (InCheck)
