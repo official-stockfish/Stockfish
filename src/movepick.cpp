@@ -54,9 +54,14 @@ namespace {
   // are few moves, e.g., the possible captures.
   Move pick_best(ExtMove* begin, ExtMove* end)
   {
-    ExtMove* ptrBest = std::max_element( begin, end );
+    ExtMove* ptrBest = begin;
+    ExtMove* iter = begin;
 
-    Move best = *ptrBest;
+    while(++iter != end)
+        if(ptrBest->value < iter->value)
+            ptrBest = iter;
+
+    Move best = ptrBest->move;
     *ptrBest = *begin;
     return best;
   }
