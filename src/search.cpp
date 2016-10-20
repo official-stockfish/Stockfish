@@ -46,7 +46,6 @@ namespace Search {
 namespace Tablebases {
 
   int Cardinality;
-  uint64_t Hits;
   bool RootInTB;
   bool UseRule50;
   Depth ProbeDepth;
@@ -672,7 +671,7 @@ namespace {
 
             if (found)
             {
-                TB::Hits++;
+                thisThread->TBHits++;
 
                 int drawScore = TB::UseRule50 ? 1 : 0;
 
@@ -1537,6 +1536,7 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
   size_t PVIdx = pos.this_thread()->PVIdx;
   size_t multiPV = std::min((size_t)Options["MultiPV"], rootMoves.size());
   uint64_t nodes_searched = Threads.nodes_searched();
+  uint64_t tb_hits = Threads.tb_hits();
 
   for (size_t i = 0; i < multiPV; ++i)
   {
@@ -1569,7 +1569,7 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
       if (elapsed > 1000) // Earlier makes little sense
           ss << " hashfull " << TT.hashfull();
 
-      ss << " tbhits "   << TB::Hits
+      ss << " tbhits "   << tb_hits
          << " time "     << elapsed
          << " pv";
 
@@ -1612,7 +1612,6 @@ bool RootMove::extract_ponder_from_tt(Position& pos) {
 
 void Tablebases::filter_root_moves(Position& pos, Search::RootMoves& rootMoves) {
 
-    Hits = 0;
     RootInTB = false;
     UseRule50 = Options["Syzygy50MoveRule"];
     ProbeDepth = Options["SyzygyProbeDepth"] * ONE_PLY;
@@ -1645,13 +1644,8 @@ void Tablebases::filter_root_moves(Position& pos, Search::RootMoves& rootMoves) 
             Cardinality = 0;
     }
 
-    if (RootInTB)
-    {
-        Hits = rootMoves.size();
-
-        if (!UseRule50)
-            TB::Score =  TB::Score > VALUE_DRAW ?  VALUE_MATE - MAX_PLY - 1
-                       : TB::Score < VALUE_DRAW ? -VALUE_MATE + MAX_PLY + 1
-                                                :  VALUE_DRAW;
-    }
+    if (RootInTB && !UseRule50)
+        TB::Score =  TB::Score > VALUE_DRAW ?  VALUE_MATE - MAX_PLY - 1
+                   : TB::Score < VALUE_DRAW ? -VALUE_MATE + MAX_PLY + 1
+                                            :  VALUE_DRAW;
 }

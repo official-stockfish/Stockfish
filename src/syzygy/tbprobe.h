@@ -6,6 +6,7 @@
 namespace Tablebases {
 
 extern int MaxCardinality;
+extern bool RootInTB;
 
 void init(const std::string& path);
 int probe_wdl(Position& pos, int *success);
