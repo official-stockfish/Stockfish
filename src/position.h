@@ -149,6 +149,8 @@ public:
   Thread* this_thread() const;
   uint64_t nodes_searched() const;
   void set_nodes_searched(uint64_t n);
+  uint64_t tb_hits() const;
+  void count_tb_hit();
   bool is_draw() const;
   int rule50_count() const;
   Score psq_score() const;
@@ -182,6 +184,7 @@ private:
   Square castlingRookSquare[CASTLING_RIGHT_NB];
   Bitboard castlingPath[CASTLING_RIGHT_NB];
   uint64_t nodes;
+  uint64_t tbHits;
   int gamePly;
   Color sideToMove;
   Thread* thisThread;
@@ -343,6 +346,14 @@ inline uint64_t Position::nodes_searched() const {
 
 inline void Position::set_nodes_searched(uint64_t n) {
   nodes = n;
+}
+
+inline uint64_t Position::tb_hits() const {
+  return tbHits;
+}
+
+inline void Position::count_tb_hit() {
+  tbHits++;
 }
 
 inline bool Position::opposite_bishops() const {
