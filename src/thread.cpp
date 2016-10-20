@@ -35,7 +35,7 @@ ThreadPool Threads; // Global object
 Thread::Thread() {
 
   resetCalls = exit = false;
-  maxPly = callsCnt = 0;
+  maxPly = callsCnt = tbHits = 0;
   history.clear();
   counterMoves.clear();
   idx = Threads.size(); // Start from 0
@@ -158,12 +158,23 @@ void ThreadPool::read_uci_options() {
 
 /// ThreadPool::nodes_searched() returns the number of nodes searched
 
-int64_t ThreadPool::nodes_searched() {
+uint64_t ThreadPool::nodes_searched() {
 
-  int64_t nodes = 0;
+  uint64_t nodes = 0;
   for (Thread* th : *this)
       nodes += th->rootPos.nodes_searched();
   return nodes;
+}
+
+
+/// ThreadPool::tb_hits() returns the number of TB hits
+
+uint64_t ThreadPool::tb_hits() {
+
+  uint64_t hits = 0;
+  for (Thread* th : *this)
+      hits += th->tbHits;
+  return hits;
 }
 
 
