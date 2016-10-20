@@ -158,12 +158,23 @@ void ThreadPool::read_uci_options() {
 
 /// ThreadPool::nodes_searched() returns the number of nodes searched
 
-int64_t ThreadPool::nodes_searched() {
+int64_t ThreadPool::nodes_searched() const {
 
   int64_t nodes = 0;
   for (Thread* th : *this)
       nodes += th->rootPos.nodes_searched();
   return nodes;
+}
+
+
+/// ThreadPool::tb_hits() returns the number of TB hits
+
+int64_t ThreadPool::tb_hits() const {
+
+    int64_t TBHits = 0;
+    for (Thread* th : *this)
+        TBHits += th->TBHits;
+    return TBHits;
 }
 
 
@@ -202,6 +213,7 @@ void ThreadPool::start_thinking(Position& pos, StateListPtr& states,
       th->rootDepth = DEPTH_ZERO;
       th->rootMoves = rootMoves;
       th->rootPos.set(pos.fen(), pos.is_chess960(), &setupStates->back(), th);
+      th->TBHits = (Tablebases::RootInTB && th->idx == 0) ? rootMoves.size() : 0;
   }
 
   setupStates->back() = tmp; // Restore st->previous, cleared by Position::set()

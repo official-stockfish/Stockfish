@@ -62,6 +62,7 @@ public:
   Endgames endgames;
   size_t idx, PVIdx;
   int maxPly, callsCnt;
+  uint64_t TBHits;
 
   Position rootPos;
   Search::RootMoves rootMoves;
@@ -98,7 +99,8 @@ struct ThreadPool : public std::vector<Thread*> {
   MainThread* main() { return static_cast<MainThread*>(at(0)); }
   void start_thinking(Position&, StateListPtr&, const Search::LimitsType&);
   void read_uci_options();
-  int64_t nodes_searched();
+  int64_t nodes_searched() const;
+  int64_t tb_hits() const;
 
 private:
   StateListPtr setupStates;
