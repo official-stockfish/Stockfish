@@ -167,6 +167,17 @@ int64_t ThreadPool::nodes_searched() {
 }
 
 
+/// ThreadPool::tb_hits() returns the number of TB hits.
+
+int64_t ThreadPool::tb_hits() {
+
+  int64_t hits = 0;
+  for (Thread* th : *this)
+      hits += th->rootPos.tb_hits();
+  return hits;
+}
+
+
 /// ThreadPool::start_thinking() wakes up the main thread sleeping in idle_loop()
 /// and starts a new search, then returns immediately.
 
