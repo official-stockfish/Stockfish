@@ -115,7 +115,7 @@ const int MAX_PLY   = 128;
 /// any normal move destination square is always different from origin square
 /// while MOVE_NONE and MOVE_NULL have the same origin and destination square.
 
-enum Move {
+enum Move : int {
   MOVE_NONE,
   MOVE_NULL = 65
 };
@@ -248,22 +248,23 @@ enum Square {
   NORTH_WEST = NORTH + WEST
 };
 
-enum File {
+enum File : int {
   FILE_A, FILE_B, FILE_C, FILE_D, FILE_E, FILE_F, FILE_G, FILE_H, FILE_NB
 };
 
-enum Rank {
+enum Rank : int {
   RANK_1, RANK_2, RANK_3, RANK_4, RANK_5, RANK_6, RANK_7, RANK_8, RANK_NB
 };
 
 
 /// Score enum stores a middlegame and an endgame value in a single integer
 /// (enum). The least significant 16 bits are used to store the endgame value
-/// and the upper 16 bits are used to store the middlegame value.
+/// and the upper 16 bits are used to store the middlegame value. Take some
+/// care to avoid left-shifting a signed int to avoid undefined behavior.
 enum Score : int { SCORE_ZERO };
 
 inline Score make_score(int mg, int eg) {
-  return Score((eg << 16) + mg);
+  return Score((int)((unsigned int)eg << 16) + mg);
 }
 
 /// Extracting the signed lower and upper 16 bits is not so trivial because
