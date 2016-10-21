@@ -381,6 +381,8 @@ const string Position::fen() const {
 
       if (r > RANK_1)
           ss << '/';
+      else
+          break; // decrementing RANK_1 would be undefined behavior
   }
 
   ss << (sideToMove == WHITE ? " w " : " b ");
