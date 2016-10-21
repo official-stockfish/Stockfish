@@ -263,7 +263,8 @@ enum Rank {
 enum Score : int { SCORE_ZERO };
 
 inline Score make_score(int mg, int eg) {
-  return Score((eg << 16) + mg);
+  // Left-shifting a negative signed int would be undefined behavior.
+  return Score((int)((unsigned int)eg << 16) + mg);
 }
 
 /// Extracting the signed lower and upper 16 bits is not so trivial because
