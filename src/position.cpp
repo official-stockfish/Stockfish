@@ -379,10 +379,9 @@ const string Position::fen() const {
               ss << PieceToChar[piece_on(make_square(f, r))];
       }
 
-      if (r > RANK_1)
-          ss << '/';
-      else
-          break; // decrementing RANK_1 would be undefined behavior
+      if (r == RANK_1) break; 
+
+      ss << '/';
   }
 
   ss << (sideToMove == WHITE ? " w " : " b ");
