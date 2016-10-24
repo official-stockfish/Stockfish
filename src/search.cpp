@@ -988,7 +988,7 @@ moves_loop: // When in check search starts from here
                          +    (fmh  ? (*fmh )[moved_piece][to_sq(move)] : VALUE_ZERO)
                          +    (fmh2 ? (*fmh2)[moved_piece][to_sq(move)] : VALUE_ZERO)
                          +    thisThread->fromTo.get(~pos.side_to_move(), move)
-                         -    10000;  // Correction Factor
+                         -    8000;  // Correction Factor
               ss->statTot=val;
 
               // Increase reduction for cut nodes
