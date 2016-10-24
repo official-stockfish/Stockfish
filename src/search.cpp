@@ -570,6 +570,7 @@ namespace {
     Thread* thisThread = pos.this_thread();
     inCheck = pos.checkers();
     moveCount = quietCount =  ss->moveCount = 0;
+    ss->history = VALUE_ZERO;
     bestValue = -VALUE_INFINITE;
     ss->ply = (ss-1)->ply + 1;
 
@@ -994,14 +995,22 @@ moves_loop: // When in check search starts from here
                        && !pos.see_ge(make_move(to_sq(move), from_sq(move)),  VALUE_ZERO))
                   r -= 2 * ONE_PLY;
 
+              ss->history = thisThread->history[moved_piece][to_sq(move)]
+                           +    (cmh  ? (*cmh )[moved_piece][to_sq(move)] : VALUE_ZERO)
+                           +    (fmh  ? (*fmh )[moved_piece][to_sq(move)] : VALUE_ZERO)
+                           +    (fmh2 ? (*fmh2)[moved_piece][to_sq(move)] : VALUE_ZERO)
+                           +    thisThread->fromTo.get(~pos.side_to_move(), move)
+                           -    8000; // Correction factor
+
+              // Decrease/increase reduction by comparing opponent's stat score
+              if (ss->history > VALUE_ZERO && (ss-1)->history < VALUE_ZERO)
+                  r -= ONE_PLY;
+
+              else if (ss->history < VALUE_ZERO && (ss-1)->history > VALUE_ZERO)
+                  r += ONE_PLY;
+
               // Decrease/increase reduction for moves with a good/bad history
-              Value val = thisThread->history[moved_piece][to_sq(move)]
-                         +    (cmh  ? (*cmh )[moved_piece][to_sq(move)] : VALUE_ZERO)
-                         +    (fmh  ? (*fmh )[moved_piece][to_sq(move)] : VALUE_ZERO)
-                         +    (fmh2 ? (*fmh2)[moved_piece][to_sq(move)] : VALUE_ZERO)
-                         +    thisThread->fromTo.get(~pos.side_to_move(), move);
-              int rHist = (val - 8000) / 20000;
-              r = std::max(DEPTH_ZERO, (r / ONE_PLY - rHist) * ONE_PLY);
+              r = std::max(DEPTH_ZERO, (r / ONE_PLY - ss->history / 20000) * ONE_PLY);
           }
 
           Depth d = std::max(newDepth - r, ONE_PLY);
