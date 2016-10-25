@@ -321,6 +321,9 @@ void MainThread::search() {
   if (bestThread != this)
       sync_cout << UCI::pv(bestThread->rootPos, bestThread->completedDepth, -VALUE_INFINITE, VALUE_INFINITE) << sync_endl;
 
+  else if (lastPvMoveDisplayed != rootMoves[0].pv[0])
+      sync_cout << UCI::pv(rootPos, rootDepth, -VALUE_INFINITE, VALUE_INFINITE) << sync_endl;
+
   sync_cout << "bestmove " << UCI::move(bestThread->rootMoves[0].pv[0], rootPos.is_chess960());
 
   if (bestThread->rootMoves[0].pv.size() > 1 || bestThread->rootMoves[0].extract_ponder_from_tt(rootPos))
@@ -354,6 +357,7 @@ void Thread::search() {
       mainThread->easyMovePlayed = mainThread->failedLow = false;
       mainThread->bestMoveChanges = 0;
       TT.new_search();
+      mainThread->lastPvMoveDisplayed = MOVE_NONE;
   }
 
   size_t multiPV = Options["MultiPV"];
@@ -367,8 +371,8 @@ void Thread::search() {
   multiPV = std::min(multiPV, rootMoves.size());
 
   // Iterative deepening loop until requested to stop or the target depth is reached
-  while (   (rootDepth += ONE_PLY) < DEPTH_MAX
-         && !Signals.stop
+  while (   !Signals.stop
+         && (rootDepth += ONE_PLY) < DEPTH_MAX
          && (!Limits.depth || Threads.main()->rootDepth / ONE_PLY <= Limits.depth))
   {
       // Set up the new depths for the helper threads skipping on average every
@@ -466,7 +470,10 @@ void Thread::search() {
                         << " time " << Time.elapsed() << sync_endl;
 
           else if (PVIdx + 1 == multiPV || Time.elapsed() > 3000)
+          {
               sync_cout << UCI::pv(rootPos, rootDepth, alpha, beta) << sync_endl;
+              mainThread->lastPvMoveDisplayed = rootMoves[0].pv[0];
+          }
       }
 
       if (!Signals.stop)
