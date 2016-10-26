@@ -9,9 +9,9 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['g++-multilib', 'valgrind']
+          packages: ['g++-6', 'g++-6-multilib', 'g++-multilib', 'valgrind']
       env:
-        - COMPILER=g++
+        - COMPILER=g++-6
         - COMP=gcc
 
     - os: linux
@@ -51,3 +51,5 @@ script:
   - test ! -s result
   # if valgrind is available check the build is without error, reduce depth to speedup testing, but not too shallow to catch more cases.
   - if [ -x "$(command -v valgrind )" ] ; then make clean && make ARCH=x86-64 debug=yes build && valgrind --error-exitcode=42 ./stockfish bench 128 1 10 default depth 1>/dev/null ; fi
+  # use g++-6 as a proxy for having sanitizers ... might need revision as they become available for more recent versions of clang/gcc than trusty provides
+  - if [[ "$COMPILER" == "g++-6" ]]; then make clean && make ARCH=x86-64 sanitize=yes build && ! ./stockfish bench 2>&1 | grep "runtime error:" ; fi
