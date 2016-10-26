@@ -50,6 +50,7 @@ OBJS = benchmark.o bitbase.o bitboard.o endgame.o evaluate.o main.o \
 # ----------------------------------------------------------------------------
 #
 # debug = yes/no      --- -DNDEBUG         --- Enable/Disable debug mode
+# sanitize = yes/no   --- (-fsanitize )    --- enable undefined behavior checks
 # optimize = yes/no   --- (-O3/-fast etc.) --- Enable/Disable optimizations
 # arch = (name)       --- (-arch)          --- Target architecture
 # bits = 64/32        --- -DIS_64BIT       --- 64-/32-bit operating system
@@ -65,6 +66,7 @@ OBJS = benchmark.o bitbase.o bitboard.o endgame.o evaluate.o main.o \
 ### 2.1. General and architecture defaults
 optimize = yes
 debug = no
+sanitize = no
 bits = 32
 prefetch = no
 popcnt = no
@@ -253,11 +255,16 @@ ifneq ($(comp),mingw)
 	endif
 endif
 
-### 3.2 Debugging
+### 3.2.1 Debugging
 ifeq ($(debug),no)
 	CXXFLAGS += -DNDEBUG
 else
 	CXXFLAGS += -g
+endif
+
+### 3.2.2 Debugging with undefined behavior sanitizers
+ifeq ($(sanitize),yes)
+	CXXFLAGS += -g3 -fsanitize=undefined
 endif
 
 ### 3.3 Optimization
