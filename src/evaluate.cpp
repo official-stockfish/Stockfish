@@ -199,6 +199,7 @@ namespace {
   const Score ThreatByPawnPush    = S(38, 22);
   const Score Unstoppable         = S( 0, 20);
   const Score PawnlessFlank       = S(20, 80);
+  const Score HinderPassedPawn    = S( 7,  0);
 
   // Penalty for a bishop on a1/h1 (a8/h8 for black) which is trapped by
   // a friendly pawn on b2/g2 (b7/g7 for black). This can obviously only
@@ -601,7 +602,7 @@ namespace {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
 
-    Bitboard b, squaresToQueen, defendedSquares, unsafeSquares;
+    Bitboard b, bb, squaresToQueen, defendedSquares, unsafeSquares;
     Score score = SCORE_ZERO;
 
     b = ei.pi->passed_pawns(Us);
@@ -612,6 +613,9 @@ namespace {
 
         assert(pos.pawn_passed(Us, s));
         assert(!(pos.pieces(PAWN) & forward_bb(Us, s)));
+
+        bb = forward_bb(Us, s) & (ei.attackedBy[Them][ALL_PIECES] | pos.pieces(Them));
+        score -= HinderPassedPawn * popcount(bb);
 
         int r = relative_rank(Us, s) - RANK_2;
         int rr = r * (r - 1);
@@ -638,7 +642,7 @@ namespace {
                 // in the pawn's path attacked or occupied by the enemy.
                 defendedSquares = unsafeSquares = squaresToQueen = forward_bb(Us, s);
 
-                Bitboard bb = forward_bb(Them, s) & pos.pieces(ROOK, QUEEN) & pos.attacks_from<ROOK>(s);
+                bb = forward_bb(Them, s) & pos.pieces(ROOK, QUEEN) & pos.attacks_from<ROOK>(s);
 
                 if (!(pos.pieces(Us) & bb))
                     defendedSquares &= ei.attackedBy[Us][ALL_PIECES];
