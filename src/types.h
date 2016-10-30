@@ -258,28 +258,29 @@ enum Rank : int {
 
 
 /// Score enum stores a middlegame and an endgame value in a single integer
-/// (enum). The least significant 16 bits are used to store the endgame value
-/// and the upper 16 bits are used to store the middlegame value. Take some
-/// care to avoid left-shifting a signed int to avoid undefined behavior.
-enum Score : int { SCORE_ZERO };
+/// (enum). The most significant 16 bits are used to store the endgame value
+/// and the lower 16 bits are used to store the middlegame value. Take some
+/// care to avoid undefined behavior (such as left-shifting a negative int)
+/// and relying on implementation-defined behavior (such as casting to signed
+/// ints).
+enum Score : uint32_t { SCORE_ZERO };
 
 inline Score make_score(int mg, int eg) {
-  return Score((int)((unsigned int)eg << 16) + mg);
+  return Score(((unsigned int)eg << 16) + mg);
 }
 
-/// Extracting the signed lower and upper 16 bits is not so trivial because
-/// according to the standard a simple cast to short is implementation defined
-/// and so is a right shift of a signed integer.
-inline Value eg_value(Score s) {
+/// Helper function for correctly casting uint16_t to int16_t.
+/// The compiler will optimize this to a no-operation.
+inline int16_t cast_to_int16_t(uint16_t v) {
+  return v < 0x8000 ? v : v - 0x10000;
+}
 
-  union { uint16_t u; int16_t s; } eg = { uint16_t(unsigned(s + 0x8000) >> 16) };
-  return Value(eg.s);
+inline Value eg_value(Score s) {
+  return Value(cast_to_int16_t((s + 0x8000) >> 16));
 }
 
 inline Value mg_value(Score s) {
-
-  union { uint16_t u; int16_t s; } mg = { uint16_t(unsigned(s)) };
-  return Value(mg.s);
+  return Value(cast_to_int16_t(s));
 }
 
 #define ENABLE_BASE_OPERATORS_ON(T)                             \
