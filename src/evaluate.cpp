@@ -500,6 +500,10 @@ namespace {
     if (!(pos.pieces(PAWN) & (KingFlank[WHITE][kf] | KingFlank[BLACK][kf])))
         score -= PawnlessFlank;
 
+    // Penalty when our queen is on a pawnless flank
+    if (!(pos.pieces(PAWN) & (QueenFlank[WHITE][file_of(qsq)] | QueenFlank[BLACK][file_of(qsq)])))
+        score -= PawnlessFlank;
+
     if (DoTrace)
         Trace::add(KING, Us, score);
 
