@@ -1232,7 +1232,8 @@ static ubyte decompress_pairs(struct PairsData *d, uint64 idx)
 
   uint32 mainidx = static_cast<uint32>(idx >> d->idxbits);
   int litidx = (idx & ((1ULL << d->idxbits) - 1)) - (1ULL << (d->idxbits - 1));
-  uint32 block = *(uint32 *)(d->indextable + 6 * mainidx);
+  uint32 block;
+  memcpy(&block, d->indextable + 6 * mainidx, sizeof(uint32));
   if (!LittleEndian)
     block = BSWAP32(block);
 
