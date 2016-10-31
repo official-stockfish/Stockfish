@@ -264,7 +264,8 @@ endif
 
 ### 3.2.2 Debugging with undefined behavior sanitizers
 ifeq ($(sanitize),yes)
-	CXXFLAGS += -g3 -fsanitize=undefined
+        CXXFLAGS += -g3 -fsanitize=undefined
+        LDFLAGS += -fsanitize=undefined
 endif
 
 ### 3.3 Optimization
@@ -472,6 +473,7 @@ config-sanity:
 	@echo ""
 	@echo "Config:"
 	@echo "debug: '$(debug)'"
+	@echo "sanitize: '$(sanitize)'"
 	@echo "optimize: '$(optimize)'"
 	@echo "arch: '$(arch)'"
 	@echo "bits: '$(bits)'"
@@ -490,6 +492,7 @@ config-sanity:
 	@echo "Testing config sanity. If this fails, try 'make help' ..."
 	@echo ""
 	@test "$(debug)" = "yes" || test "$(debug)" = "no"
+	@test "$(sanitize)" = "yes" || test "$(sanitize)" = "no"
 	@test "$(optimize)" = "yes" || test "$(optimize)" = "no"
 	@test "$(arch)" = "any" || test "$(arch)" = "x86_64" || test "$(arch)" = "i386" || \
 	 test "$(arch)" = "ppc64" || test "$(arch)" = "ppc" || test "$(arch)" = "armv7"
