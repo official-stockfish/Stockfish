@@ -49,7 +49,6 @@ namespace Tablebases {
   bool RootInTB;
   bool UseRule50;
   Depth ProbeDepth;
-  Value Score;
 }
 
 namespace TB = Tablebases;
@@ -389,9 +388,20 @@ void Thread::search() {
       for (RootMove& rm : rootMoves)
           rm.previousScore = rm.score;
 
+      size_t PVFirst = 0;
+      PVLast = 0;
+
       // MultiPV loop. We perform a full root search for each PV line
       for (PVIdx = 0; PVIdx < multiPV && !Signals.stop; ++PVIdx)
       {
+          if (PVIdx == PVLast)
+          {
+              PVFirst = PVLast;
+              for (PVLast++; PVLast < rootMoves.size(); PVLast++)
+                  if (rootMoves[PVLast].TBRank != rootMoves[PVFirst].TBRank)
+                      break;
+          }
+
           // Reset aspiration window starting size
           if (rootDepth >= 5 * ONE_PLY)
           {
@@ -413,7 +423,7 @@ void Thread::search() {
               // and we want to keep the same order for all the moves except the
               // new PV that goes to the front. Note that in case of MultiPV
               // search the already searched PV lines are preserved.
-              std::stable_sort(rootMoves.begin() + PVIdx, rootMoves.end());
+              std::stable_sort(rootMoves.begin() + PVIdx, rootMoves.begin() + PVLast);
 
               // If search has been stopped, break immediately. Sorting and
               // writing PV back to TT is safe because RootMoves is still
@@ -456,7 +466,7 @@ void Thread::search() {
           }
 
           // Sort the PV lines searched so far and update the GUI
-          std::stable_sort(rootMoves.begin(), rootMoves.begin() + PVIdx + 1);
+          std::stable_sort(rootMoves.begin() + PVFirst, rootMoves.begin() + PVIdx + 1);
 
           if (!mainThread)
               continue;
@@ -854,9 +864,10 @@ moves_loop: // When in check search starts from here
 
       // At root obey the "searchmoves" option and skip moves not listed in Root
       // Move List. As a consequence any illegal move is also skipped. In MultiPV
-      // mode we also skip PV moves which have been already searched.
+      // mode we also skip PV moves which have been already searched and those
+      // of lower "TB rank" if we are in a TB root position.
       if (rootNode && !std::count(thisThread->rootMoves.begin() + thisThread->PVIdx,
-                                  thisThread->rootMoves.end(), move))
+                                  thisThread->rootMoves.begin() + thisThread->PVLast, move))
           continue;
 
       ss->moveCount = ++moveCount;
@@ -1554,7 +1565,7 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
       Value v = updated ? rootMoves[i].score : rootMoves[i].previousScore;
 
       bool tb = TB::RootInTB && abs(v) < VALUE_MATE - MAX_PLY;
-      v = tb ? TB::Score : v;
+      v = tb ? rootMoves[i].TBScore : v;
 
       if (ss.rdbuf()->in_avail()) // Not at first line
           ss << "\n";
@@ -1615,12 +1626,13 @@ bool RootMove::extract_ponder_from_tt(Position& pos) {
     return pv.size() > 1;
 }
 
-void Tablebases::filter_root_moves(Position& pos, Search::RootMoves& rootMoves) {
+void Tablebases::rank_root_moves(Position& pos, Search::RootMoves& rootMoves) {
 
     RootInTB = false;
     UseRule50 = Options["Syzygy50MoveRule"];
     ProbeDepth = Options["SyzygyProbeDepth"] * ONE_PLY;
     Cardinality = Options["SyzygyProbeLimit"];
+    bool dtz_available = true;
 
     // Skip TB probing when no TB found: !TBLargest -> !TB::Cardinality
     if (Cardinality > MaxCardinality)
@@ -1629,28 +1641,34 @@ void Tablebases::filter_root_moves(Position& pos, Search::RootMoves& rootMoves) 
         ProbeDepth = DEPTH_ZERO;
     }
 
-    if (Cardinality < popcount(pos.pieces()) || pos.can_castle(ANY_CASTLING))
-        return;
-
-    // If the current root position is in the tablebases, then RootMoves
-    // contains only moves that preserve the draw or the win.
-    RootInTB = root_probe(pos, rootMoves, TB::Score);
-
-    if (RootInTB)
-        Cardinality = 0; // Do not probe tablebases during the search
-
-    else // If DTZ tables are missing, use WDL tables as a fallback
+    if (Cardinality >= popcount(pos.pieces()) && !pos.can_castle(ANY_CASTLING))
     {
-        // Filter out moves that do not preserve the draw or the win.
-        RootInTB = root_probe_wdl(pos, rootMoves, TB::Score);
+        // If the current root position is in the tablebases, then RootMoves
+        // contains only moves that preserve the draw or the win.
+        RootInTB = root_probe(pos, rootMoves);
 
-        // Only probe during search if winning
-        if (RootInTB && TB::Score <= VALUE_DRAW)
-            Cardinality = 0;
+        if (!RootInTB)
+        {
+            // DTZ tables are missing, try ranking moves using WDL tables.
+            dtz_available = false;
+            RootInTB = root_probe_wdl(pos, rootMoves);
+        }
     }
 
-    if (RootInTB && !UseRule50)
-        TB::Score =  TB::Score > VALUE_DRAW ?  VALUE_MATE - MAX_PLY - 1
-                   : TB::Score < VALUE_DRAW ? -VALUE_MATE + MAX_PLY + 1
-                                            :  VALUE_DRAW;
+    if (RootInTB)
+    {
+        // Sort moves according to TB rank.
+        std::sort(rootMoves.begin(), rootMoves.end(),
+                  [](const RootMove &a, const RootMove &b) { return a.TBRank > b.TBRank; } );
+
+        // Only probe during search if DTZ is not available and we are winning.
+        if (dtz_available || rootMoves[0].TBScore <= VALUE_DRAW)
+            Cardinality = 0;
+    }
+    else
+    {
+        // Assign the same rank to all moves.
+        for (auto& m : rootMoves)
+            m.TBRank = 0;
+    }
 }
