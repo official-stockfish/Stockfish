@@ -652,17 +652,15 @@ ScaleFactor Endgame<KBPKB>::operator()(const Position& pos) const {
 
       if (relative_rank(strongSide, pawnSq) <= RANK_5)
           return SCALE_FACTOR_DRAW;
-      else
-      {
-          Bitboard path = forward_bb(strongSide, pawnSq);
+      
+      Bitboard path = forward_bb(strongSide, pawnSq);
 
-          if (path & pos.pieces(weakSide, KING))
-              return SCALE_FACTOR_DRAW;
+      if (path & pos.pieces(weakSide, KING))
+          return SCALE_FACTOR_DRAW;
 
-          if (  (pos.attacks_from<BISHOP>(weakBishopSq) & path)
-              && distance(weakBishopSq, pawnSq) >= 3)
-              return SCALE_FACTOR_DRAW;
-      }
+      if (  (pos.attacks_from<BISHOP>(weakBishopSq) & path)
+          && distance(weakBishopSq, pawnSq) >= 3)
+          return SCALE_FACTOR_DRAW;
   }
   return SCALE_FACTOR_NONE;
 }
