@@ -49,7 +49,7 @@ public:
   Option(OnChange = nullptr);
   Option(bool v, OnChange = nullptr);
   Option(const char* v, OnChange = nullptr);
-  Option(int v, int min, int max, OnChange = nullptr);
+  Option(int v, int minv, int maxv, OnChange = nullptr);
 
   Option& operator=(const std::string&);
   void operator<<(const Option&);

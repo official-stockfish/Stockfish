@@ -55,7 +55,7 @@ public:
   void idle_loop();
   void start_searching(bool resume = false);
   void wait_for_search_finished();
-  void wait(std::atomic_bool& b);
+  void wait(std::atomic_bool& condition);
 
   Pawns::Table pawnsTable;
   Material::Table materialTable;
