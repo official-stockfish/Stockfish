@@ -1285,6 +1285,7 @@ void Tablebases::init(const std::string& paths) {
     for (int idx = 0; idx < 10; idx++)
         for (Square s1 = SQ_A1; s1 <= SQ_D4; ++s1)
             if (MapA1D1D4[s1] == idx && (idx || s1 == SQ_B1)) // SQ_B1 is mapped to 0
+            {
                 for (Square s2 = SQ_A1; s2 <= SQ_H8; ++s2)
                     if ((StepAttacksBB[KING][s1] | s1) & s2)
                         continue; // Illegal position
@@ -1297,6 +1298,7 @@ void Tablebases::init(const std::string& paths) {
 
                     else
                         MapKK[idx][s2] = code++;
+            }
 
     // Legal positions with both kings on diagonal are encoded as last ones
     for (auto p : bothOnDiagonal)
