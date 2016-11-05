@@ -239,7 +239,8 @@ template<typename T, int LE> T number(void* addr)
     const union { uint32_t i; char c[4]; } Le = { 0x01020304 };
     const bool IsLittleEndian = (Le.c[0] == 4);
 
-    T v = *((T*)addr);
+    T v;
+    std::memcpy(&v,addr,sizeof(T));  // potentially unaligned loads
     if (LE != IsLittleEndian)
         swap_byte(v);
     return v;
@@ -1061,10 +1062,10 @@ void do_init(Entry& e, T& p, uint8_t* data) {
 
     enum { Split = 1, HasPawns = 2 };
 
-    uint8_t flags = *data++;
+    data++;
 
-    assert(e.hasPawns        == !!(flags & HasPawns));
-    assert((e.key != e.key2) == !!(flags & Split));
+    assert(e.hasPawns        == !!(*data & HasPawns));
+    assert((e.key != e.key2) == !!(*data & Split));
 
     const int Sides = IsWDL && (e.key != e.key2) ? 2 : 1;
     const File MaxFile = e.hasPawns ? FILE_D : FILE_A;
