@@ -239,7 +239,13 @@ template<typename T, int LE> T number(void* addr)
     const union { uint32_t i; char c[4]; } Le = { 0x01020304 };
     const bool IsLittleEndian = (Le.c[0] == 4);
 
-    T v = *((T*)addr);
+    T v;
+
+    if ((uintptr_t)addr & (alignof(T) - 1)) // Unaligned pointer (very rare)
+        std::memcpy(&v, addr, sizeof(T));
+    else
+        v = *((T*)addr);
+
     if (LE != IsLittleEndian)
         swap_byte(v);
     return v;
