@@ -1,50 +1,44 @@
-# Generated with 'git shortlog -sn | cut -c8-', which sorts by commits (manually ordered the first four authors)
+# Generated with 'git shortlog -sn | cut -c8-', which sorts by commits, manually ordered the first four authors, merged duplicates
 
 Tord Romstad
-Marco Costalba
-Joona Kiiski
-Gary Linscott
-lucasart
-VoyagerOne
+Marco Costalba (mcostalba)
+Joona Kiiski (zamar)
+Gary Linscott (glinscott)
+Lucas Braesch (lucasart)
+Bill Henry (VoyagerOne)
 mstembera
-Stéphane Nicolet
+Stéphane Nicolet (Stephane Nicolet, snicolet)
 Stefan Geschwentner
-Lucas Braesch
-Alain SAVARD
-joergoster
+Alain SAVARD (Rocky640)
+Jörg Oster (Joerg Oster, joergoster)
 Reuven Peleg
-Chris Caino
+Chris Caino (Chris Cain, ceebo)
 Jean-Francois Romang
 homoSapiensSapiens
 Leonid Pechenik
-Stefano80
+Stefano Cardanobile (Stefano80)
 Arjun Temurnikar
-Uri Blass
+Uri Blass (uriblass)
 jundery
-ajithcj
+Ajith (ajithcj)
 hxim
-snicolet
-Ralph Stößer
-Ajith
+Ralph Stößer (Ralph Stoesser)
 Guenther Demetz
-Jonathan Calovski
+Jonathan Calovski (Mysseno)
 Tom Vijlbrief
 mbootsector
 Daylen Yang
 ElbertoOne
 Henri Wiechers
 loco-loco
-Joost Vandevondele
-syzygy
+Joost VandeVondele (Joost Vandevondele)
+Ronald de Man (syzygy)
 DU-jdto
 David Zar
 Eelco de Groot
 Jerry Donald
-Joerg Oster
-Jörg Oster
 NicklasPersson
 Ryan Schmitt
-mcostalba
 Alexander Kure
 Dan Schmidt
 H. Felix Wittmann
@@ -56,29 +50,22 @@ Luca Brivio
 Lyudmil Antonov
 Rodrigo Exterckötter Tjäder
 Ron Britvich
-Ronald de Man
 RyanTaker
-Stefano Cardanobile
 Vince Negri
-ceebo
 erbsenzaehler
-jhellis3
+Joseph Hellis (jhellis3)
 shane31
 Andrew Grant
 Andy Duplain
 Auguste Pop
 Balint Pfliegel
-Chris Cain
 Dariusz Orzechowski
 DiscanX
 Ernesto Gatti
 Gregor Cramer
-Hiraoka Takuya
-HiraokaTakuya
+Hiraoka Takuya (HiraokaTakuya)
 Hongzhi Cheng
 IIvec
-Joost VandeVondele
-Joseph Hellis
 Kelly Wilson
 Ken T Takusagawa
 Kojirion
@@ -87,17 +74,13 @@ Matt Sullivan
 Matthew Lai
 Matthew Sullivan
 Michel Van den Bergh
-Mysseno
 Niklas Fiekas
 Oskar Werkelin Ahlin
 Pablo Vazquez
 Pascal Romaret
-Ralph Stoesser
-Ralph St��er
 Raminder Singh
 Richard Lloyd
 Ryan Takker
-Stephane Nicolet
 Thanar2
 absimaldata
 atumanian
@@ -112,4 +95,4 @@ renouve
 sf-x
 thaspel
 unknown
-uriblass
+
