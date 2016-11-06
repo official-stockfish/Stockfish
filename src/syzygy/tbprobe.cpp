@@ -1061,10 +1061,10 @@ void do_init(Entry& e, T& p, uint8_t* data) {
 
     enum { Split = 1, HasPawns = 2 };
 
-    uint8_t flags = *data++;
+    assert(e.hasPawns        == !!(*data & HasPawns));
+    assert((e.key != e.key2) == !!(*data & Split));
 
-    assert(e.hasPawns        == !!(flags & HasPawns));
-    assert((e.key != e.key2) == !!(flags & Split));
+    data++; // First byte stores flags
 
     const int Sides = IsWDL && (e.key != e.key2) ? 2 : 1;
     const File MaxFile = e.hasPawns ? FILE_D : FILE_A;
