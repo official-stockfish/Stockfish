@@ -54,10 +54,10 @@ namespace {
 
   // Weakness of our pawn shelter in front of the king by [distance from edge][rank]
   const Value ShelterWeakness[][RANK_NB] = {
-    { V( 97), V(21), V(26), V(51), V(87), V( 89), V( 99) },
-    { V(120), V( 0), V(28), V(76), V(88), V(103), V(104) },
-    { V(101), V( 7), V(54), V(78), V(77), V( 92), V(101) },
-    { V( 80), V(11), V(44), V(68), V(87), V( 90), V(119) }
+    { V(100), V(20), V(10), V(46), V(81), V( 87), V( 98) },
+    { V(117), V( 5), V(28), V(87), V(94), V(107), V(104) },
+    { V(110), V( 1), V(59), V(87), V(63), V( 91), V(116) },
+    { V( 75), V(12), V(43), V(59), V(90), V( 84), V(113) }
   };
 
   // Danger of enemy pawns moving toward our king by [type][distance from edge][rank]
