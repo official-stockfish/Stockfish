@@ -575,7 +575,7 @@ namespace {
         thisThread->resetCalls = false;
         thisThread->callsCnt = 0;
     }
-    if (++thisThread->callsCnt > 4096)
+    if (++thisThread->callsCnt > Limits.callsCnt)
     {
         for (Thread* th : Threads)
             th->resetCalls = true;

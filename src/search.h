@@ -78,7 +78,7 @@ struct LimitsType {
 
   LimitsType() { // Init explicitly due to broken value-initialization of non POD in MSVC
     nodes = time[WHITE] = time[BLACK] = inc[WHITE] = inc[BLACK] =
-    npmsec = movestogo = depth = movetime = mate = infinite = ponder = 0;
+    npmsec = movestogo = depth = movetime = mate = infinite = ponder = callsCnt = 0;
   }
 
   bool use_time_management() const {
@@ -86,7 +86,7 @@ struct LimitsType {
   }
 
   std::vector<Move> searchmoves;
-  int time[COLOR_NB], inc[COLOR_NB], npmsec, movestogo, depth, movetime, mate, infinite, ponder;
+  int time[COLOR_NB], inc[COLOR_NB], npmsec, movestogo, depth, movetime, mate, infinite, ponder, callsCnt;
   int64_t nodes;
   TimePoint startTime;
 };
