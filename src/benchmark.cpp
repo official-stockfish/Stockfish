@@ -117,7 +117,7 @@ void benchmark(const Position& current, istream& is) {
       limits.movetime = stoi(limit); // movetime is in millisecs
 
   else if (limitType == "nodes")
-      limits.nodes = stoi(limit);
+      limits.nodes = stoll(limit);
 
   else if (limitType == "mate")
       limits.mate = stoi(limit);
