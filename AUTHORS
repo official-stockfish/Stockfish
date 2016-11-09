@@ -1,98 +1,98 @@
-# Generated with git shortlog -sn | cut -c8-', which sorts by commits (manually ordered the first four authors)
+# Generated with 'git shortlog -sn | cut -c8-', which sorts by commits, manually ordered the first four authors, merged duplicates
 
 Tord Romstad
-Marco Costalba
-Joona Kiiski
-Gary Linscott
-lucasart
+Marco Costalba (mcostalba)
+Joona Kiiski (zamar)
+Gary Linscott (glinscott)
+Lucas Braesch (lucasart)
+Bill Henry (VoyagerOne)
 mstembera
-Lucas Braesch
+Stéphane Nicolet (Stephane Nicolet, snicolet)
 Stefan Geschwentner
+Alain SAVARD (Rocky640)
+Jörg Oster (Joerg Oster, joergoster)
 Reuven Peleg
-Chris Caino
-joergoster
-VoyagerOne
+Chris Caino (Chris Cain, ceebo)
 Jean-Francois Romang
 homoSapiensSapiens
-Alain SAVARD
-Arjun Temurnikar
-Stéphane Nicolet
-Uri Blass
-jundery
-Ralph Stößer
-Ajith
 Leonid Pechenik
-Stefano80
-Tom Vijlbrief
+Stefano Cardanobile (Stefano80)
+Arjun Temurnikar
+Uri Blass (uriblass)
+jundery
+Ajith (ajithcj)
 hxim
-snicolet
-Daylen Yang
-Henri Wiechers
-Jonathan Calovski
+Ralph Stößer (Ralph Stoesser)
+Guenther Demetz
+Jonathan Calovski (Mysseno)
+Tom Vijlbrief
 mbootsector
+Daylen Yang
+ElbertoOne
+Henri Wiechers
+loco-loco
+Joost VandeVondele (Joost Vandevondele)
+Ronald de Man (syzygy)
+DU-jdto
 David Zar
 Eelco de Groot
 Jerry Donald
-Joerg Oster
-Jörg Oster
+NicklasPersson
 Ryan Schmitt
-mcostalba
 Alexander Kure
 Dan Schmidt
 H. Felix Wittmann
+Jacques
 Joseph R. Prostko
 Justin Blanchard
 Linus Arver
-NicklasPersson
+Luca Brivio
+Lyudmil Antonov
 Rodrigo Exterckötter Tjäder
 Ron Britvich
-Ronald de Man
 RyanTaker
 Vince Negri
-ceebo
-jhellis3
-ppigazzini
+erbsenzaehler
+Joseph Hellis (jhellis3)
 shane31
+Andrew Grant
 Andy Duplain
 Auguste Pop
 Balint Pfliegel
-Chris Cain
-DU-jdto
 Dariusz Orzechowski
 DiscanX
 Ernesto Gatti
 Gregor Cramer
-Guenther Demetz
-Hiraoka Takuya
+Hiraoka Takuya (HiraokaTakuya)
 Hongzhi Cheng
-Joseph Hellis
+IIvec
 Kelly Wilson
 Ken T Takusagawa
 Kojirion
-Luca Brivio
+Krgp
 Matt Sullivan
 Matthew Lai
 Matthew Sullivan
 Michel Van den Bergh
-Mysseno
+Niklas Fiekas
 Oskar Werkelin Ahlin
 Pablo Vazquez
 Pascal Romaret
-Ralph Stoesser
-Ralph St��er
 Raminder Singh
 Richard Lloyd
 Ryan Takker
-Stephane Nicolet
 Thanar2
 absimaldata
+atumanian
 braich
+fanon
+gamander
 gguliash
 kinderchocolate
-loco-loco
 pellanda
+ppigazzini
 renouve
 sf-x
 thaspel
 unknown
-uriblass
+
