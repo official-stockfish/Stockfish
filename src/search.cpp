@@ -113,8 +113,8 @@ namespace {
           std::copy(newPv.begin(), newPv.begin() + 3, pv);
 
           StateInfo st[2];
-          pos.do_move(newPv[0], st[0], pos.gives_check(newPv[0]));
-          pos.do_move(newPv[1], st[1], pos.gives_check(newPv[1]));
+          pos.do_move(newPv[0], st[0]);
+          pos.do_move(newPv[1], st[1]);
           expectedPosKey = pos.key();
           pos.undo_move(newPv[1]);
           pos.undo_move(newPv[0]);
@@ -234,7 +234,7 @@ uint64_t Search::perft(Position& pos, Depth depth) {
           cnt = 1, nodes++;
       else
       {
-          pos.do_move(m, st, pos.gives_check(m));
+          pos.do_move(m, st);
           cnt = leaf ? MoveList<LEGAL>(pos).size() : perft<false>(pos, depth - ONE_PLY);
           nodes += cnt;
           pos.undo_move(m);
@@ -801,7 +801,7 @@ namespace {
             {
                 ss->currentMove = move;
                 ss->counterMoves = &thisThread->counterMoveHistory[pos.moved_piece(move)][to_sq(move)];
-                pos.do_move(move, st, pos.gives_check(move));
+                pos.do_move(move, st);
                 value = -search<NonPV>(pos, ss+1, -rbeta, -rbeta+1, rdepth, !cutNode);
                 pos.undo_move(move);
                 if (value >= rbeta)
@@ -1600,7 +1600,7 @@ bool RootMove::extract_ponder_from_tt(Position& pos) {
     if (!pv[0])
         return false;
 
-    pos.do_move(pv[0], st, pos.gives_check(pv[0]));
+    pos.do_move(pv[0], st);
     TTEntry* tte = TT.probe(pos.key(), ttHit);
 
     if (ttHit)

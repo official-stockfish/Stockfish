@@ -1207,7 +1207,7 @@ WDLScore search(Position& pos, ProbeState* result) {
 
         moveCount++;
 
-        pos.do_move(move, st, pos.gives_check(move));
+        pos.do_move(move, st);
         value = -search(pos, result);
         pos.undo_move(move);
 
@@ -1455,7 +1455,7 @@ int Tablebases::probe_dtz(Position& pos, ProbeState* result) {
     {
         bool zeroing = pos.capture(move) || type_of(pos.moved_piece(move)) == PAWN;
 
-        pos.do_move(move, st, pos.gives_check(move));
+        pos.do_move(move, st);
 
         // For zeroing moves we want the dtz of the move _before_ doing it,
         // otherwise we will get the dtz of the next move sequence. Search the
@@ -1529,7 +1529,7 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves, Value& 
     // Probe each move
     for (size_t i = 0; i < rootMoves.size(); ++i) {
         Move move = rootMoves[i].pv[0];
-        pos.do_move(move, st, pos.gives_check(move));
+        pos.do_move(move, st);
         int v = 0;
 
         if (pos.checkers() && dtz > 0) {
@@ -1665,7 +1665,7 @@ bool Tablebases::root_probe_wdl(Position& pos, Search::RootMoves& rootMoves, Val
     // Probe each move
     for (size_t i = 0; i < rootMoves.size(); ++i) {
         Move move = rootMoves[i].pv[0];
-        pos.do_move(move, st, pos.gives_check(move));
+        pos.do_move(move, st);
         WDLScore v = -Tablebases::probe_wdl(pos, &result);
         pos.undo_move(move);
 
