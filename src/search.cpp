@@ -944,10 +944,15 @@ moves_loop: // When in check search starts from here
                   && !pos.see_ge(move, Value(-35 * lmrDepth * lmrDepth)))
                   continue;
           }
-          else if (   depth < 7 * ONE_PLY
-                   && !extension
-                   && !pos.see_ge(move, Value(-35 * depth / ONE_PLY * depth / ONE_PLY)))
+          else if (depth < 7 * ONE_PLY && !extension)
+          {
+              Value v = Value(-35 * depth / ONE_PLY * depth / ONE_PLY);
+              if (ss->staticEval != VALUE_NONE)
+                  v += ss->staticEval - alpha - 200;
+
+              if (!pos.see_ge(move, v))
                   continue;
+          }
       }
 
       // Speculative prefetch as early as possible
