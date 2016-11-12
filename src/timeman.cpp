@@ -103,6 +103,9 @@ void TimeManagement::init(Search::LimitsType& limits, Color us, int ply) {
       limits.npmsec = npmsec;
   }
 
+  // At low node count increase the checking rate to about 0.1% otherwise use a default value
+  limits.callsCnt = limits.nodes ? std::min((int64_t)4096, limits.nodes / 1000) : 4096;
+
   startTime = limits.startTime;
   optimumTime = maximumTime = std::max(limits.time[us], minThinkingTime);
 

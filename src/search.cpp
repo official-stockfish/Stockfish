@@ -573,9 +573,9 @@ namespace {
     if (thisThread->resetCalls.load(std::memory_order_relaxed))
     {
         thisThread->resetCalls = false;
-        thisThread->callsCnt = 0;
+        thisThread->callsCnt = Limits.callsCnt;
     }
-    if (++thisThread->callsCnt > 4096)
+    if (--thisThread->callsCnt <= 0)
     {
         for (Thread* th : Threads)
             th->resetCalls = true;
