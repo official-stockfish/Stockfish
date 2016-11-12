@@ -947,7 +947,7 @@ moves_loop: // When in check search starts from here
           else if (   depth < 7 * ONE_PLY
                    && !extension
                    && !pos.see_ge(move,  Value(-35 * depth / ONE_PLY * depth / ONE_PLY)
-                                       + (ss->staticEval != VALUE_NONE ? ss->staticEval - alpha - 100 : VALUE_ZERO)))
+                                       + (ss->staticEval != VALUE_NONE ? ss->staticEval - alpha - 200 : VALUE_ZERO)))
                   continue;
       }
 
