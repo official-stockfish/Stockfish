@@ -125,18 +125,39 @@ struct PairsData {
     int groupLen[TBPIECES+1];      // Number of pieces in a given group: KRKN -> (3, 1)
 };
 
-// Helper struct to avoid to manually define entry copy c'tor as we should
-// because default one is not compatible with std::atomic_bool.
+// Helper struct to avoid manually defining entry copy constructor as we
+// should because the default one is not compatible with std::atomic_bool.
 struct Atomic {
     Atomic() = default;
     Atomic(const Atomic& e) { ready = e.ready.load(); } // MSVC 2013 wants assignment within body
     std::atomic_bool ready;
 };
 
-struct WDLEntry : public Atomic {
-    WDLEntry(const std::string& code);
-   ~WDLEntry();
+// We define types for the different parts of the WLDEntry and DTZEntry with
+// corresponding specializations for pieces or pawns.
 
+struct WLDEntryPiece {
+    PairsData* precomp;
+};
+
+struct WDLEntryPawn {
+    uint8_t pawnCount[2];     // [Lead color / other color]
+    WLDEntryPiece file[2][4]; // [wtm / btm][FILE_A..FILE_D]
+};
+
+struct DTZEntryPiece {
+    PairsData* precomp;
+    uint16_t map_idx[4]; // WDLWin, WDLLoss, WDLCursedWin, WDLCursedLoss
+    uint8_t* map;
+};
+
+struct DTZEntryPawn {
+    uint8_t pawnCount[2];
+    DTZEntryPiece file[4];
+    uint8_t* map;
+};
+
+struct TBEntry : public Atomic {
     void* baseAddress;
     uint64_t mapping;
     Key key;
@@ -144,46 +165,24 @@ struct WDLEntry : public Atomic {
     int pieceCount;
     bool hasPawns;
     bool hasUniquePieces;
-    union {
-        struct {
-            PairsData* precomp;
-        } pieceTable[2]; // [wtm / btm]
+};
 
-        struct {
-            uint8_t pawnCount[2]; // [Lead color / other color]
-            struct {
-                PairsData* precomp;
-            } file[2][4]; // [wtm / btm][FILE_A..FILE_D]
-        } pawnTable;
+// Now the main types: WDLEntry and DTZEntry
+struct WDLEntry : public TBEntry {
+    WDLEntry(const std::string& code);
+   ~WDLEntry();
+    union {
+        WLDEntryPiece pieceTable[2]; // [wtm / btm]
+        WDLEntryPawn  pawnTable;
     };
 };
 
-struct DTZEntry : public Atomic {
+struct DTZEntry : public TBEntry {
     DTZEntry(const WDLEntry& wdl);
    ~DTZEntry();
-
-    void* baseAddress;
-    uint64_t mapping;
-    Key key;
-    Key key2;
-    int pieceCount;
-    bool hasPawns;
-    bool hasUniquePieces;
     union {
-        struct {
-            PairsData* precomp;
-            uint16_t map_idx[4]; // WDLWin, WDLLoss, WDLCursedWin, WDLCursedLoss
-            uint8_t* map;
-        } pieceTable;
-
-        struct {
-            uint8_t pawnCount[2];
-            struct {
-                PairsData* precomp;
-                uint16_t map_idx[4];
-            } file[4];
-            uint8_t* map;
-        } pawnTable;
+        DTZEntryPiece pieceTable;
+        DTZEntryPawn  pawnTable;
     };
 };
 
