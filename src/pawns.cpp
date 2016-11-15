@@ -37,9 +37,8 @@ namespace {
   // Backward pawn penalty by opposed flag
   const Score Backward[2] = { S(56, 33), S(41, 19) };
 
-  // Unsupported pawn penalty for pawns which are neither isolated or backward,
-  // by number of pawns it supports [less than 2 / exactly 2].
-  const Score Unsupported[2] = { S(17, 8), S(21, 12) };
+  // Unsupported pawn penalty for pawns which are neither isolated or backward
+  const Score Unsupported = S(17, 8);
 
   // Connected pawn bonus by opposed, phalanx, twice supported and rank
   Score Connected[2][2][2][RANK_NB];
@@ -50,14 +49,16 @@ namespace {
   // Lever bonus by rank
   const Score Lever[RANK_NB] = {
     S( 0,  0), S( 0,  0), S(0, 0), S(0, 0),
-    S(17, 16), S(33, 32), S(0, 0), S(0, 0) };
+    S(17, 16), S(33, 32), S(0, 0), S(0, 0)
+  };
 
   // Weakness of our pawn shelter in front of the king by [distance from edge][rank]
   const Value ShelterWeakness[][RANK_NB] = {
     { V( 97), V(21), V(26), V(51), V(87), V( 89), V( 99) },
     { V(120), V( 0), V(28), V(76), V(88), V(103), V(104) },
     { V(101), V( 7), V(54), V(78), V(77), V( 92), V(101) },
-    { V( 80), V(11), V(44), V(68), V(87), V( 90), V(119) } };
+    { V( 80), V(11), V(44), V(68), V(87), V( 90), V(119) }
+  };
 
   // Danger of enemy pawns moving toward our king by [type][distance from edge][rank]
   const Value StormDanger[][4][RANK_NB] = {
@@ -76,7 +77,8 @@ namespace {
     { { V( 0),  V(-283), V(-281), V(57), V(31) },
       { V( 0),  V(  58), V( 141), V(39), V(18) },
       { V( 0),  V(  65), V( 142), V(48), V(32) },
-      { V( 0),  V(  60), V( 126), V(51), V(19) } } };
+      { V( 0),  V(  60), V( 126), V(51), V(19) } }
+  };
 
   // Max bonus for king safety. Corresponds to start position with all the pawns
   // in front of the king and no enemy pawn on the horizon.
@@ -88,10 +90,10 @@ namespace {
   template<Color Us>
   Score evaluate(const Position& pos, Pawns::Entry* e) {
 
-    const Color  Them  = (Us == WHITE ? BLACK    : WHITE);
-    const Square Up    = (Us == WHITE ? DELTA_N  : DELTA_S);
-    const Square Right = (Us == WHITE ? DELTA_NE : DELTA_SW);
-    const Square Left  = (Us == WHITE ? DELTA_NW : DELTA_SE);
+    const Color  Them  = (Us == WHITE ? BLACK      : WHITE);
+    const Square Up    = (Us == WHITE ? NORTH      : SOUTH);
+    const Square Right = (Us == WHITE ? NORTH_EAST : SOUTH_WEST);
+    const Square Left  = (Us == WHITE ? NORTH_WEST : SOUTH_EAST);
 
     Bitboard b, neighbours, stoppers, doubled, supported, phalanx;
     Square s;
@@ -103,10 +105,10 @@ namespace {
     Bitboard ourPawns   = pos.pieces(Us  , PAWN);
     Bitboard theirPawns = pos.pieces(Them, PAWN);
 
-    e->passedPawns[Us] = e->pawnAttacksSpan[Us] = 0;
-    e->kingSquares[Us] = SQ_NONE;
+    e->passedPawns[Us]   = e->pawnAttacksSpan[Us] = 0;
     e->semiopenFiles[Us] = 0xFF;
-    e->pawnAttacks[Us] = shift_bb<Right>(ourPawns) | shift_bb<Left>(ourPawns);
+    e->kingSquares[Us]   = SQ_NONE;
+    e->pawnAttacks[Us]   = shift<Right>(ourPawns) | shift<Left>(ourPawns);
     e->pawnsOnSquares[Us][BLACK] = popcount(ourPawns & DarkSquares);
     e->pawnsOnSquares[Us][WHITE] = pos.count<PAWN>(Us) - e->pawnsOnSquares[Us][BLACK];
 
@@ -117,7 +119,7 @@ namespace {
 
         File f = file_of(s);
 
-        e->semiopenFiles[Us] &= ~(1 << f);
+        e->semiopenFiles[Us]   &= ~(1 << f);
         e->pawnAttacksSpan[Us] |= pawn_attack_span(Us, s);
 
         // Flag the pawn
@@ -142,7 +144,7 @@ namespace {
             // The pawn is backward when it cannot safely progress to that rank:
             // either there is a stopper in the way on this rank, or there is a
             // stopper on adjacent file which controls the way to that rank.
-            backward = (b | shift_bb<Up>(b & adjacent_files_bb(f))) & stoppers;
+            backward = (b | shift<Up>(b & adjacent_files_bb(f))) & stoppers;
 
             assert(!backward || !(pawn_attack_span(Them, s + Up) & neighbours));
         }
@@ -160,7 +162,7 @@ namespace {
             score -= Backward[opposed];
 
         else if (!supported)
-            score -= Unsupported[more_than_one(neighbours & pawnAttacksBB[s])];
+            score -= Unsupported;
 
         if (connected)
             score += Connected[opposed][!!phalanx][more_than_one(supported)][relative_rank(Us, s)];
@@ -183,8 +185,8 @@ namespace Pawns {
 /// hard-coded tables, when makes sense, we prefer to calculate them with a formula
 /// to reduce independent parameters and to allow easier tuning and better insight.
 
-void init()
-{
+void init() {
+
   static const int Seed[RANK_NB] = { 0, 8, 19, 13, 71, 94, 169, 324 };
 
   for (int opposed = 0; opposed <= 1; ++opposed)

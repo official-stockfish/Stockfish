@@ -55,13 +55,14 @@ public:
   void idle_loop();
   void start_searching(bool resume = false);
   void wait_for_search_finished();
-  void wait(std::atomic_bool& b);
+  void wait(std::atomic_bool& condition);
 
   Pawns::Table pawnsTable;
   Material::Table materialTable;
   Endgames endgames;
   size_t idx, PVIdx;
   int maxPly, callsCnt;
+  uint64_t tbHits;
 
   Position rootPos;
   Search::RootMoves rootMoves;
@@ -98,7 +99,8 @@ struct ThreadPool : public std::vector<Thread*> {
   MainThread* main() { return static_cast<MainThread*>(at(0)); }
   void start_thinking(Position&, StateListPtr&, const Search::LimitsType&);
   void read_uci_options();
-  int64_t nodes_searched();
+  uint64_t nodes_searched() const;
+  uint64_t tb_hits() const;
 
 private:
   StateListPtr setupStates;

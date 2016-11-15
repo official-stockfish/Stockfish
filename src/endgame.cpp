@@ -83,26 +83,6 @@ namespace {
     return sq;
   }
 
-  // Get the material key of Position out of the given endgame key code
-  // like "KBPKN". The trick here is to first forge an ad-hoc FEN string
-  // and then let a Position object do the work for us.
-  Key key(const string& code, Color c) {
-
-    assert(code.length() > 0 && code.length() < 8);
-    assert(code[0] == 'K');
-
-    string sides[] = { code.substr(code.find('K', 1)),      // Weak
-                       code.substr(0, code.find('K', 1)) }; // Strong
-
-    std::transform(sides[c].begin(), sides[c].end(), sides[c].begin(), tolower);
-
-    string fen =  sides[0] + char(8 - sides[0].length() + '0') + "/8/8/8/8/8/8/"
-                + sides[1] + char(8 - sides[1].length() + '0') + " w - - 0 10";
-
-    StateInfo st;
-    return Position().set(fen, false, &st, nullptr).material_key();
-  }
-
 } // namespace
 
 
@@ -132,8 +112,9 @@ Endgames::Endgames() {
 
 template<EndgameType E, typename T>
 void Endgames::add(const string& code) {
-  map<T>()[key(code, WHITE)] = std::unique_ptr<EndgameBase<T>>(new Endgame<E>(WHITE));
-  map<T>()[key(code, BLACK)] = std::unique_ptr<EndgameBase<T>>(new Endgame<E>(BLACK));
+  StateInfo st;
+  map<T>()[Position().set(code, WHITE, &st).material_key()] = std::unique_ptr<EndgameBase<T>>(new Endgame<E>(WHITE));
+  map<T>()[Position().set(code, BLACK, &st).material_key()] = std::unique_ptr<EndgameBase<T>>(new Endgame<E>(BLACK));
 }
 
 
@@ -259,8 +240,8 @@ Value Endgame<KRKP>::operator()(const Position& pos) const {
       result = Value(80) - 8 * distance(wksq, psq);
 
   else
-      result =  Value(200) - 8 * (  distance(wksq, psq + DELTA_S)
-                                  - distance(bksq, psq + DELTA_S)
+      result =  Value(200) - 8 * (  distance(wksq, psq + SOUTH)
+                                  - distance(bksq, psq + SOUTH)
                                   - distance(psq, queeningSq));
 
   return strongSide == pos.side_to_move() ? result : -result;
@@ -496,7 +477,7 @@ ScaleFactor Endgame<KRPKR>::operator()(const Position& pos) const {
   // If the defending king blocks the pawn and the attacking king is too far
   // away, it's a draw.
   if (   r <= RANK_5
-      && bksq == wpsq + DELTA_N
+      && bksq == wpsq + NORTH
       && distance(wksq, wpsq) - tempo >= 2
       && distance(wksq, brsq) - tempo >= 2)
       return SCALE_FACTOR_DRAW;
@@ -517,10 +498,10 @@ ScaleFactor Endgame<KRPKR>::operator()(const Position& pos) const {
       && file_of(wrsq) == f
       && wrsq < wpsq
       && (distance(wksq, queeningSq) < distance(bksq, queeningSq) - 2 + tempo)
-      && (distance(wksq, wpsq + DELTA_N) < distance(bksq, wpsq + DELTA_N) - 2 + tempo)
+      && (distance(wksq, wpsq + NORTH) < distance(bksq, wpsq + NORTH) - 2 + tempo)
       && (  distance(bksq, wrsq) + tempo >= 3
           || (    distance(wksq, queeningSq) < distance(bksq, wrsq) + tempo
-              && (distance(wksq, wpsq + DELTA_N) < distance(bksq, wrsq) + tempo))))
+              && (distance(wksq, wpsq + NORTH) < distance(bksq, wrsq) + tempo))))
       return ScaleFactor(  SCALE_FACTOR_MAX
                          - 8 * distance(wpsq, queeningSq)
                          - 2 * distance(wksq, queeningSq));
@@ -671,17 +652,15 @@ ScaleFactor Endgame<KBPKB>::operator()(const Position& pos) const {
 
       if (relative_rank(strongSide, pawnSq) <= RANK_5)
           return SCALE_FACTOR_DRAW;
-      else
-      {
-          Bitboard path = forward_bb(strongSide, pawnSq);
+      
+      Bitboard path = forward_bb(strongSide, pawnSq);
 
-          if (path & pos.pieces(weakSide, KING))
-              return SCALE_FACTOR_DRAW;
+      if (path & pos.pieces(weakSide, KING))
+          return SCALE_FACTOR_DRAW;
 
-          if (  (pos.attacks_from<BISHOP>(weakBishopSq) & path)
-              && distance(weakBishopSq, pawnSq) >= 3)
-              return SCALE_FACTOR_DRAW;
-      }
+      if (  (pos.attacks_from<BISHOP>(weakBishopSq) & path)
+          && distance(weakBishopSq, pawnSq) >= 3)
+          return SCALE_FACTOR_DRAW;
   }
   return SCALE_FACTOR_NONE;
 }

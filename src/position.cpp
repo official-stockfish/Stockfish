@@ -32,6 +32,7 @@
 #include "thread.h"
 #include "tt.h"
 #include "uci.h"
+#include "syzygy/tbprobe.h"
 
 using std::string;
 
@@ -51,7 +52,7 @@ namespace {
 
 const string PieceToChar(" PNBRQK  pnbrqk");
 
-// min_attacker() is a helper function used by see() to locate the least
+// min_attacker() is a helper function used by see_ge() to locate the least
 // valuable attacker for the side to move, remove the attacker we just found
 // from the bitboards and scan for new X-ray attacks behind it.
 
@@ -85,7 +86,7 @@ PieceType min_attacker<KING>(const Bitboard*, Square, Bitboard, Bitboard&, Bitbo
 
 /// operator<<(Position) returns an ASCII representation of the position
 
-std::ostream& operator<<(std::ostream& os, const Position& pos) {
+std::ostream& operator<<(std::ostream& os, Position& pos) {
 
   os << "\n +---+---+---+---+---+---+---+---+\n";
 
@@ -98,10 +99,21 @@ std::ostream& operator<<(std::ostream& os, const Position& pos) {
   }
 
   os << "\nFen: " << pos.fen() << "\nKey: " << std::hex << std::uppercase
-     << std::setfill('0') << std::setw(16) << pos.key() << std::dec << "\nCheckers: ";
+     << std::setfill('0') << std::setw(16) << pos.key()
+     << std::setfill(' ') << std::dec << "\nCheckers: ";
 
   for (Bitboard b = pos.checkers(); b; )
       os << UCI::square(pop_lsb(&b)) << " ";
+
+  if (    int(Tablebases::MaxCardinality) >= popcount(pos.pieces())
+      && !pos.can_castle(ANY_CASTLING))
+  {
+      Tablebases::ProbeState s1, s2;
+      Tablebases::WDLScore wdl = Tablebases::probe_wdl(pos, &s1);
+      int dtz = Tablebases::probe_dtz(pos, &s2);
+      os << "\nTablebases WDL: " << std::setw(4) << wdl << " (" << s1 << ")"
+         << "\nTablebases DTZ: " << std::setw(4) << dtz << " (" << s2 << ")";
+  }
 
   return os;
 }
@@ -164,8 +176,9 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
 
    4) En passant target square (in algebraic notation). If there's no en passant
       target square, this is "-". If a pawn has just made a 2-square move, this
-      is the position "behind" the pawn. This is recorded regardless of whether
-      there is a pawn in position to make an en passant capture.
+      is the position "behind" the pawn. This is recorded only if there is a pawn
+      in position to make an en passant capture, and if there really is a pawn
+      that might have advanced two squares.
 
    5) Halfmove clock. This is the number of halfmoves since the last pawn advance
       or capture. This is used to determine if a draw can be claimed under the
@@ -242,7 +255,8 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
   {
       st->epSquare = make_square(File(col - 'a'), Rank(row - '1'));
 
-      if (!(attackers_to(st->epSquare) & pieces(sideToMove, PAWN)))
+      if (   !(attackers_to(st->epSquare) & pieces(sideToMove, PAWN))
+          || !(pieces(~sideToMove, PAWN) & (st->epSquare + pawn_push(~sideToMove))))
           st->epSquare = SQ_NONE;
   }
   else
@@ -354,6 +368,28 @@ void Position::set_state(StateInfo* si) const {
       for (int cnt = 0; cnt < pieceCount[pc]; ++cnt)
           si->materialKey ^= Zobrist::psq[pc][cnt];
   }
+}
+
+
+/// Position::set() is an overload to initialize the position object with
+/// the given endgame code string like "KBPKN". It is manily an helper to
+/// get the material key out of an endgame code. Position is not playable,
+/// indeed is even not guaranteed to be legal.
+
+Position& Position::set(const string& code, Color c, StateInfo* si) {
+
+  assert(code.length() > 0 && code.length() < 8);
+  assert(code[0] == 'K');
+
+  string sides[] = { code.substr(code.find('K', 1)),      // Weak
+                     code.substr(0, code.find('K', 1)) }; // Strong
+
+  std::transform(sides[c].begin(), sides[c].end(), sides[c].begin(), tolower);
+
+  string fenStr =  sides[0] + char(8 - sides[0].length() + '0') + "/8/8/8/8/8/8/"
+                 + sides[1] + char(8 - sides[1].length() + '0') + " w - - 0 10";
+
+  return set(fenStr, false, si, nullptr);
 }
 
 
@@ -955,103 +991,83 @@ Key Position::key_after(Move m) const {
 }
 
 
-/// Position::see() is a static exchange evaluator: It tries to estimate the
-/// material gain or loss resulting from a move.
+/// Position::see_ge (Static Exchange Evaluation Greater or Equal) tests if the
+/// SEE value of move is greater or equal to the given value. We'll use an
+/// algorithm similar to alpha-beta pruning with a null window.
 
-Value Position::see_sign(Move m) const {
-
-  assert(is_ok(m));
-
-  // Early return if SEE cannot be negative because captured piece value
-  // is not less then capturing one. Note that king moves always return
-  // here because king midgame value is set to 0.
-  if (PieceValue[MG][moved_piece(m)] <= PieceValue[MG][piece_on(to_sq(m))])
-      return VALUE_KNOWN_WIN;
-
-  return see(m);
-}
-
-Value Position::see(Move m) const {
-
-  Square from, to;
-  Bitboard occupied, attackers, stmAttackers;
-  Value swapList[32];
-  int slIndex = 1;
-  PieceType nextVictim;
-  Color stm;
+bool Position::see_ge(Move m, Value v) const {
 
   assert(is_ok(m));
 
-  from = from_sq(m);
-  to = to_sq(m);
-  swapList[0] = PieceValue[MG][piece_on(to)];
-  stm = color_of(piece_on(from));
-  occupied = pieces() ^ from;
-
-  // Castling moves are implemented as king capturing the rook so cannot
-  // be handled correctly. Simply return VALUE_ZERO that is always correct
-  // unless in the rare case the rook ends up under attack.
+  // Castling moves are implemented as king capturing the rook so cannot be
+  // handled correctly. Simply assume the SEE value is VALUE_ZERO that is always
+  // correct unless in the rare case the rook ends up under attack.
   if (type_of(m) == CASTLING)
-      return VALUE_ZERO;
+      return VALUE_ZERO >= v;
+
+  Square from = from_sq(m), to = to_sq(m);
+  PieceType nextVictim = type_of(piece_on(from));
+  Color stm = ~color_of(piece_on(from)); // First consider opponent's move
+  Value balance; // Values of the pieces taken by us minus opponent's ones
+  Bitboard occupied, stmAttackers;
 
   if (type_of(m) == ENPASSANT)
   {
-      occupied ^= to - pawn_push(stm); // Remove the captured pawn
-      swapList[0] = PieceValue[MG][PAWN];
+      occupied = SquareBB[to - pawn_push(~stm)]; // Remove the captured pawn
+      balance = PieceValue[MG][PAWN];
+  }
+  else
+  {
+      balance = PieceValue[MG][piece_on(to)];
+      occupied = 0;
   }
 
-  // Find all attackers to the destination square, with the moving piece
-  // removed, but possibly an X-ray attacker added behind it.
-  attackers = attackers_to(to, occupied) & occupied;
+  if (balance < v)
+      return false;
 
-  // If the opponent has no attackers we are finished
-  stm = ~stm;
-  stmAttackers = attackers & pieces(stm);
-  occupied ^= to; // For the case when captured piece is a pinner
+  if (nextVictim == KING)
+      return true;
 
-  // Don't allow pinned pieces to attack pieces except the king as long all
-  // pinners are on their original square. When a pinner moves to the
-  // exchange-square or get captured on it, we fall back to standard SEE behaviour.
-  if (   (stmAttackers & pinned_pieces(stm))
-      && (st->pinnersForKing[stm] & occupied) == st->pinnersForKing[stm])
-      stmAttackers &= ~pinned_pieces(stm);
+  balance -= PieceValue[MG][nextVictim];
 
-  if (!stmAttackers)
-        return swapList[0];
+  if (balance >= v)
+      return true;
 
-  // The destination square is defended, which makes things rather more
-  // difficult to compute. We proceed by building up a "swap list" containing
-  // the material gain or loss at each stop in a sequence of captures to the
-  // destination square, where the sides alternately capture, and always
-  // capture with the least valuable piece. After each capture, we look for
-  // new X-ray attacks from behind the capturing piece.
-  nextVictim = type_of(piece_on(from));
+  bool relativeStm = true; // True if the opponent is to move
+  occupied ^= pieces() ^ from ^ to;
 
-  do {
-      assert(slIndex < 32);
+  // Find all attackers to the destination square, with the moving piece removed,
+  // but possibly an X-ray attacker added behind it.
+  Bitboard attackers = attackers_to(to, occupied) & occupied;
 
-      // Add the new entry to the swap list
-      swapList[slIndex] = -swapList[slIndex - 1] + PieceValue[MG][nextVictim];
+  while (true)
+  {
+      stmAttackers = attackers & pieces(stm);
+
+      // Don't allow pinned pieces to attack pieces except the king as long all
+      // pinners are on their original square.
+      if (!(st->pinnersForKing[stm] & ~occupied))
+          stmAttackers &= ~st->blockersForKing[stm];
+
+      if (!stmAttackers)
+          return relativeStm;
 
       // Locate and remove the next least valuable attacker
       nextVictim = min_attacker<PAWN>(byTypeBB, to, stmAttackers, occupied, attackers);
+
+      if (nextVictim == KING)
+          return relativeStm == bool(attackers & pieces(~stm));
+
+      balance += relativeStm ?  PieceValue[MG][nextVictim]
+                             : -PieceValue[MG][nextVictim];
+
+      relativeStm = !relativeStm;
+
+      if (relativeStm == (balance >= v))
+          return relativeStm;
+
       stm = ~stm;
-      stmAttackers = attackers & pieces(stm);
-      if (    nextVictim != KING
-          && (stmAttackers & pinned_pieces(stm))
-          && (st->pinnersForKing[stm] & occupied) == st->pinnersForKing[stm])
-          stmAttackers &= ~pinned_pieces(stm);
-
-      ++slIndex;
-
-  } while (stmAttackers && (nextVictim != KING || (--slIndex, false))); // Stop before a king capture
-
-  // Having built the swap list, we negamax through it to find the best
-  // achievable score from the point of view of the side to move.
-  while (--slIndex)
-      swapList[slIndex - 1] = std::min(-swapList[slIndex], swapList[slIndex - 1]);
-
-  return swapList[0];
+  }
 }
 
 
