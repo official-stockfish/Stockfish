@@ -1079,14 +1079,20 @@ bool Position::is_draw() const {
   if (st->rule50 > 99 && (!checkers() || MoveList<LEGAL>(*this).size()))
       return true;
 
-  StateInfo* stp = st;
-  for (int i = 2, e = std::min(st->rule50, st->pliesFromNull); i <= e; i += 2)
-  {
+  int e = std::min(st->rule50, st->pliesFromNull);
+
+  if (e < 4)
+    return false;
+
+  StateInfo* stp = st->previous->previous;
+
+  do {
       stp = stp->previous->previous;
 
       if (stp->key == st->key)
           return true; // Draw at first repetition
-  }
+
+  } while ((e -= 2) >= 4);
 
   return false;
 }
