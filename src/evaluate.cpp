@@ -496,6 +496,9 @@ namespace {
        | (b & ei.attackedBy2[Them] & ~ei.attackedBy[Us][PAWN]);
 
     score -= CloseEnemies * popcount(b);
+    
+    b = ~ei.attackedBy[Them][ALL_PIECES] & pos.pieces(Them) & KingFlank[Us][kf];
+    score -= CloseEnemies * popcount(b);
 
     // Penalty when our king is on a pawnless flank
     if (!(pos.pieces(PAWN) & (KingFlank[WHITE][kf] | KingFlank[BLACK][kf])))
