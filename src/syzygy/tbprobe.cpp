@@ -228,10 +228,10 @@ template<typename T, int Half = sizeof(T) / 2, int End = sizeof(T) - 1>
 inline void swap_byte(T& x)
 {
     char tmp, *c = (char*)&x;
-    if (Half) // Fix a MSVC 2015 warning
-        for (int i = 0; i < Half; ++i)
-            tmp = c[i], c[i] = c[End - i], c[End - i] = tmp;
+    for (int i = 0; i < Half; ++i)
+        tmp = c[i], c[i] = c[End - i], c[End - i] = tmp;
 }
+template<> inline void swap_byte<uint8_t, 0, 0>(uint8_t&) {}
 
 template<typename T, int LE> T number(void* addr)
 {
