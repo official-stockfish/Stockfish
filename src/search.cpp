@@ -575,7 +575,7 @@ namespace {
         thisThread->resetCalls = false;
         // At low node count increase the checking rate to about 0.1% of nodes
         // otherwise use a default value.
-        thisThread->callsCnt = Limits.nodes ? std::min(4096LL, Limits.nodes / 1024)
+        thisThread->callsCnt = Limits.nodes ? std::min((int64_t)4096, Limits.nodes / 1024)
                                             : 4096;
     }
 
