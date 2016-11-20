@@ -218,15 +218,11 @@ ifeq ($(COMP),clang)
 endif
 
 ifeq ($(comp),icc)
-	profile_prepare = icc-profile-prepare
 	profile_make = icc-profile-make
 	profile_use = icc-profile-use
-	profile_clean = icc-profile-clean
 else
-	profile_prepare = gcc-profile-prepare
 	profile_make = gcc-profile-make
 	profile_use = gcc-profile-use
-	profile_clean = gcc-profile-clean
 endif
 
 ifeq ($(KERNEL),Darwin)
@@ -424,30 +420,26 @@ help:
 	@echo ""
 
 
-.PHONY: build profile-build
-build:
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) config-sanity
+.PHONY: help build profile-build strip install clean objclean profileclean help \
+        config-sanity icc-profile-use icc-profile-make gcc-profile-use gcc-profile-make
+
+build: config-sanity
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) all
 
-profile-build:
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) config-sanity
+profile-build: config-sanity objclean profileclean
 	@echo ""
-	@echo "Step 0/4. Preparing for profile build."
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_prepare)
-	@echo ""
-	@echo "Step 1/4. Building executable for benchmark ..."
-	@touch *.cpp *.h syzygy/*.cpp syzygy/*.h
+	@echo "Step 1/4. Building instrumented executable ..."
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_make)
 	@echo ""
 	@echo "Step 2/4. Running benchmark for pgo-build ..."
 	$(PGOBENCH) > /dev/null
 	@echo ""
-	@echo "Step 3/4. Building final executable ..."
-	@touch *.cpp *.h syzygy/*.cpp syzygy/*.h
+	@echo "Step 3/4. Building optimized executable ..."
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) objclean
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_use)
 	@echo ""
 	@echo "Step 4/4. Deleting profile data ..."
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_clean)
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) profileclean
 
 strip:
 	strip $(EXE)
@@ -457,8 +449,18 @@ install:
 	-cp $(EXE) $(BINDIR)
 	-strip $(BINDIR)/$(EXE)
 
-clean:
-	$(RM) $(EXE) $(EXE).exe *.o .depend *~ core bench.txt *.gcda ./syzygy/*.o ./syzygy/*.gcda
+#clean all
+clean: objclean profileclean
+	@rm -f .depend *~ core 
+
+# clean binaries and objects
+objclean:
+	@rm -f $(EXE) $(EXE).exe *.o ./syzygy/*.o
+
+# clean auxiliary profiling files
+profileclean:
+	@rm -rf profdir
+	@rm -f bench.txt *.gcda ./syzygy/*.gcda *.gcno ./syzygy/*.gcno
 
 default:
 	help
@@ -506,9 +508,6 @@ config-sanity:
 $(EXE): $(OBJS)
 	$(CXX) -o $@ $(OBJS) $(LDFLAGS)
 
-gcc-profile-prepare:
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) gcc-profile-clean
-
 gcc-profile-make:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
 	EXTRACXXFLAGS='-fprofile-generate' \
@@ -521,14 +520,8 @@ gcc-profile-use:
 	EXTRALDFLAGS='-lgcov' \
 	all
 
-gcc-profile-clean:
-	@rm -rf *.gcda *.gcno syzygy/*.gcda syzygy/*.gcno bench.txt
-
-icc-profile-prepare:
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) icc-profile-clean
-	@mkdir profdir
-
 icc-profile-make:
+	@mkdir -p profdir
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
 	EXTRACXXFLAGS='-prof-gen=srcpos -prof_dir ./profdir' \
 	all
@@ -537,9 +530,6 @@ icc-profile-use:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
 	EXTRACXXFLAGS='-prof_use -prof_dir ./profdir' \
 	all
-
-icc-profile-clean:
-	@rm -rf profdir bench.txt
 
 .depend:
 	-@$(CXX) $(DEPENDFLAGS) -MM $(OBJS:.o=.cpp) > $@ 2> /dev/null
