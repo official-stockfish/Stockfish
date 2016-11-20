@@ -210,11 +210,6 @@ ifeq ($(COMP),clang)
 		CXXFLAGS += -m$(bits)
 		LDFLAGS += -m$(bits)
 	endif
-
-	ifeq ($(KERNEL),Darwin)
-		CXXFLAGS += -stdlib=libc++
-		DEPENDFLAGS += -stdlib=libc++
-	endif
 endif
 
 ifeq ($(comp),icc)
@@ -293,10 +288,8 @@ ifeq ($(optimize),yes)
 
 	ifeq ($(comp),clang)
 		ifeq ($(KERNEL),Darwin)
-			ifeq ($(pext),no)
 				CXXFLAGS += -flto
 				LDFLAGS += $(CXXFLAGS)
-			endif
 			ifeq ($(arch),i386)
 				CXXFLAGS += -mdynamic-no-pic
 			endif
