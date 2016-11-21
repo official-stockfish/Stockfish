@@ -113,8 +113,8 @@ namespace {
           std::copy(newPv.begin(), newPv.begin() + 3, pv);
 
           StateInfo st[2];
-          pos.do_move(newPv[0], st[0], pos.gives_check(newPv[0]));
-          pos.do_move(newPv[1], st[1], pos.gives_check(newPv[1]));
+          pos.do_move(newPv[0], st[0]);
+          pos.do_move(newPv[1], st[1]);
           expectedPosKey = pos.key();
           pos.undo_move(newPv[1]);
           pos.undo_move(newPv[0]);
@@ -234,7 +234,7 @@ uint64_t Search::perft(Position& pos, Depth depth) {
           cnt = 1, nodes++;
       else
       {
-          pos.do_move(m, st, pos.gives_check(m));
+          pos.do_move(m, st);
           cnt = leaf ? MoveList<LEGAL>(pos).size() : perft<false>(pos, depth - ONE_PLY);
           nodes += cnt;
           pos.undo_move(m);
@@ -574,9 +574,13 @@ namespace {
     if (thisThread->resetCalls.load(std::memory_order_relaxed))
     {
         thisThread->resetCalls = false;
-        thisThread->callsCnt = 0;
+        // At low node count increase the checking rate to about 0.1% of nodes
+        // otherwise use a default value.
+        thisThread->callsCnt = Limits.nodes ? std::min((int64_t)4096, Limits.nodes / 1024)
+                                            : 4096;
     }
-    if (++thisThread->callsCnt > 4096)
+
+    if (--thisThread->callsCnt <= 0)
     {
         for (Thread* th : Threads)
             th->resetCalls = true;
@@ -802,7 +806,7 @@ namespace {
             {
                 ss->currentMove = move;
                 ss->counterMoves = &thisThread->counterMoveHistory[pos.moved_piece(move)][to_sq(move)];
-                pos.do_move(move, st, pos.gives_check(move));
+                pos.do_move(move, st);
                 value = -search<NonPV>(pos, ss+1, -rbeta, -rbeta+1, rdepth, !cutNode);
                 pos.undo_move(move);
                 if (value >= rbeta)
@@ -945,10 +949,15 @@ moves_loop: // When in check search starts from here
                   && !pos.see_ge(move, Value(-35 * lmrDepth * lmrDepth)))
                   continue;
           }
-          else if (   depth < 7 * ONE_PLY
-                   && !extension
-                   && !pos.see_ge(move, Value(-35 * depth / ONE_PLY * depth / ONE_PLY)))
+          else if (depth < 7 * ONE_PLY && !extension)
+          {
+              Value v = Value(-35 * depth / ONE_PLY * depth / ONE_PLY);
+              if (ss->staticEval != VALUE_NONE)
+                  v += ss->staticEval - alpha - 200;
+
+              if (!pos.see_ge(move, v))
                   continue;
+          }
       }
 
       // Speculative prefetch as early as possible
@@ -1601,7 +1610,7 @@ bool RootMove::extract_ponder_from_tt(Position& pos) {
     if (!pv[0])
         return false;
 
-    pos.do_move(pv[0], st, pos.gives_check(pv[0]));
+    pos.do_move(pv[0], st);
     TTEntry* tte = TT.probe(pos.key(), ttHit);
 
     if (ttHit)

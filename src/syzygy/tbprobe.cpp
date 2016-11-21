@@ -125,18 +125,39 @@ struct PairsData {
     int groupLen[TBPIECES+1];      // Number of pieces in a given group: KRKN -> (3, 1)
 };
 
-// Helper struct to avoid to manually define entry copy c'tor as we should
-// because default one is not compatible with std::atomic_bool.
+// Helper struct to avoid manually defining entry copy constructor as we
+// should because the default one is not compatible with std::atomic_bool.
 struct Atomic {
     Atomic() = default;
     Atomic(const Atomic& e) { ready = e.ready.load(); } // MSVC 2013 wants assignment within body
     std::atomic_bool ready;
 };
 
-struct WDLEntry : public Atomic {
-    WDLEntry(const std::string& code);
-   ~WDLEntry();
+// We define types for the different parts of the WLDEntry and DTZEntry with
+// corresponding specializations for pieces or pawns.
 
+struct WLDEntryPiece {
+    PairsData* precomp;
+};
+
+struct WDLEntryPawn {
+    uint8_t pawnCount[2];     // [Lead color / other color]
+    WLDEntryPiece file[2][4]; // [wtm / btm][FILE_A..FILE_D]
+};
+
+struct DTZEntryPiece {
+    PairsData* precomp;
+    uint16_t map_idx[4]; // WDLWin, WDLLoss, WDLCursedWin, WDLCursedLoss
+    uint8_t* map;
+};
+
+struct DTZEntryPawn {
+    uint8_t pawnCount[2];
+    DTZEntryPiece file[4];
+    uint8_t* map;
+};
+
+struct TBEntry : public Atomic {
     void* baseAddress;
     uint64_t mapping;
     Key key;
@@ -144,46 +165,24 @@ struct WDLEntry : public Atomic {
     int pieceCount;
     bool hasPawns;
     bool hasUniquePieces;
-    union {
-        struct {
-            PairsData* precomp;
-        } pieceTable[2]; // [wtm / btm]
+};
 
-        struct {
-            uint8_t pawnCount[2]; // [Lead color / other color]
-            struct {
-                PairsData* precomp;
-            } file[2][4]; // [wtm / btm][FILE_A..FILE_D]
-        } pawnTable;
+// Now the main types: WDLEntry and DTZEntry
+struct WDLEntry : public TBEntry {
+    WDLEntry(const std::string& code);
+   ~WDLEntry();
+    union {
+        WLDEntryPiece pieceTable[2]; // [wtm / btm]
+        WDLEntryPawn  pawnTable;
     };
 };
 
-struct DTZEntry : public Atomic {
+struct DTZEntry : public TBEntry {
     DTZEntry(const WDLEntry& wdl);
    ~DTZEntry();
-
-    void* baseAddress;
-    uint64_t mapping;
-    Key key;
-    Key key2;
-    int pieceCount;
-    bool hasPawns;
-    bool hasUniquePieces;
     union {
-        struct {
-            PairsData* precomp;
-            uint16_t map_idx[4]; // WDLWin, WDLLoss, WDLCursedWin, WDLCursedLoss
-            uint8_t* map;
-        } pieceTable;
-
-        struct {
-            uint8_t pawnCount[2];
-            struct {
-                PairsData* precomp;
-                uint16_t map_idx[4];
-            } file[4];
-            uint8_t* map;
-        } pawnTable;
+        DTZEntryPiece pieceTable;
+        DTZEntryPawn  pawnTable;
     };
 };
 
@@ -229,10 +228,10 @@ template<typename T, int Half = sizeof(T) / 2, int End = sizeof(T) - 1>
 inline void swap_byte(T& x)
 {
     char tmp, *c = (char*)&x;
-    if (Half) // Fix a MSVC 2015 warning
-        for (int i = 0; i < Half; ++i)
-            tmp = c[i], c[i] = c[End - i], c[End - i] = tmp;
+    for (int i = 0; i < Half; ++i)
+        tmp = c[i], c[i] = c[End - i], c[End - i] = tmp;
 }
+template<> inline void swap_byte<uint8_t, 0, 0>(uint8_t&) {}
 
 template<typename T, int LE> T number(void* addr)
 {
@@ -1207,7 +1206,7 @@ WDLScore search(Position& pos, ProbeState* result) {
 
         moveCount++;
 
-        pos.do_move(move, st, pos.gives_check(move));
+        pos.do_move(move, st);
         value = -search(pos, result);
         pos.undo_move(move);
 
@@ -1455,7 +1454,7 @@ int Tablebases::probe_dtz(Position& pos, ProbeState* result) {
     {
         bool zeroing = pos.capture(move) || type_of(pos.moved_piece(move)) == PAWN;
 
-        pos.do_move(move, st, pos.gives_check(move));
+        pos.do_move(move, st);
 
         // For zeroing moves we want the dtz of the move _before_ doing it,
         // otherwise we will get the dtz of the next move sequence. Search the
@@ -1529,7 +1528,7 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves, Value& 
     // Probe each move
     for (size_t i = 0; i < rootMoves.size(); ++i) {
         Move move = rootMoves[i].pv[0];
-        pos.do_move(move, st, pos.gives_check(move));
+        pos.do_move(move, st);
         int v = 0;
 
         if (pos.checkers() && dtz > 0) {
@@ -1665,7 +1664,7 @@ bool Tablebases::root_probe_wdl(Position& pos, Search::RootMoves& rootMoves, Val
     // Probe each move
     for (size_t i = 0; i < rootMoves.size(); ++i) {
         Move move = rootMoves[i].pv[0];
-        pos.do_move(move, st, pos.gives_check(move));
+        pos.do_move(move, st);
         WDLScore v = -Tablebases::probe_wdl(pos, &result);
         pos.undo_move(move);
 
