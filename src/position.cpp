@@ -45,7 +45,7 @@ namespace Zobrist {
   Key psq[PIECE_NB][SQUARE_NB];
   Key enpassant[FILE_NB];
   Key castling[CASTLING_RIGHT_NB];
-  Key side;
+  Key side, noPawns;
 }
 
 namespace {
@@ -145,6 +145,7 @@ void Position::init() {
   }
 
   Zobrist::side = rng.rand<Key>();
+  Zobrist::noPawns = rng.rand<Key>();
 }
 
 
@@ -331,7 +332,8 @@ void Position::set_check_info(StateInfo* si) const {
 
 void Position::set_state(StateInfo* si) const {
 
-  si->key = si->pawnKey = si->materialKey = 0;
+  si->key = si->materialKey = 0;
+  si->pawnKey = Zobrist::noPawns;
   si->nonPawnMaterial[WHITE] = si->nonPawnMaterial[BLACK] = VALUE_ZERO;
   si->psq = SCORE_ZERO;
   si->checkersBB = attackers_to(square<KING>(sideToMove)) & pieces(~sideToMove);
