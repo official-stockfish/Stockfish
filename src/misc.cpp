@@ -18,10 +18,19 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#ifdef _WIN32
+#if _WIN32_WINNT < 0x0601
+#undef  _WIN32_WINNT
+#define _WIN32_WINNT 0x0601 // Force to include newest API (Win 7 or later)
+#endif
+#include <windows.h> // For processor groups
+#endif
+
 #include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
+#include <vector>
 
 #include "misc.h"
 #include "thread.h"
@@ -185,3 +194,101 @@ void prefetch(void* addr) {
 }
 
 #endif
+
+namespace WinProcGroup {
+
+#ifndef _WIN32
+
+void bindThisThread(size_t) {}
+
+#else
+
+/// get_group() retrieves logical processor information using Windows specific
+/// API and returns the best group id for the thread with index idx. Original
+/// code from Texel by Peter Österlund.
+
+int get_group(size_t idx) {
+
+  int threads = 0;
+  int nodes = 0;
+  int cores = 0;
+  DWORD returnLength = 0;
+  DWORD byteOffset = 0;
+
+  // Early exit if the needed API are not available at runtime
+  HMODULE k32 = GetModuleHandle("Kernel32.dll");
+  if (   !GetProcAddress(k32, "GetLogicalProcessorInformationEx")
+      || !GetProcAddress(k32, "GetNumaNodeProcessorMaskEx")
+      || !GetProcAddress(k32, "SetThreadGroupAffinity"))
+      return -1;
+
+  // First call to get returnLength. We expect it to fail due to null buffer
+  if (GetLogicalProcessorInformationEx(RelationAll, nullptr, &returnLength))
+      return -1;
+
+  // Once we know returnLength, allocate the buffer
+  SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX *buffer, *ptr;
+  ptr = buffer = (SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX*)malloc(returnLength);
+
+  // Second call, now we expect to succeed
+  if (!GetLogicalProcessorInformationEx(RelationAll, buffer, &returnLength))
+  {
+      free(buffer);
+      return -1;
+  }
+
+  while (ptr->Size > 0 && byteOffset + ptr->Size <= returnLength)
+  {
+      if (ptr->Relationship == RelationNumaNode)
+          nodes++;
+
+      else if (ptr->Relationship == RelationProcessorCore)
+      {
+          cores++;
+          threads += (ptr->Processor.Flags == LTP_PC_SMT) ? 2 : 1;
+      }
+
+      byteOffset += ptr->Size;
+      ptr = (SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX*)(((char*)ptr) + ptr->Size);
+  }
+
+  free(buffer);
+
+  std::vector<int> groups;
+
+  // Run as many threads as possible on the same node until core limit is
+  // reached, then move on filling the next node.
+  for (int n = 0; n < nodes; n++)
+      for (int i = 0; i < cores / nodes; i++)
+          groups.push_back(n);
+
+  // In case a core has more than one logical processor (we assume 2) and we
+  // have still threads to allocate, then spread them evenly across available
+  // nodes.
+  for (int t = 0; t < threads - cores; t++)
+      groups.push_back(t % nodes);
+
+  // If we still have more threads than the total number of logical processors
+  // then return -1 and let the OS to decide what to do.
+  return idx < groups.size() ? groups[idx] : -1;
+}
+
+
+/// bindThisThread() set the group affinity of the current thread
+
+void bindThisThread(size_t idx) {
+
+  // Use a local variable instead of a static: slower but thread-safe
+  int group = get_group(idx);
+
+  if (group == -1)
+      return;
+
+  GROUP_AFFINITY mask;
+  if (GetNumaNodeProcessorMaskEx(group, &mask))
+      SetThreadGroupAffinity(GetCurrentThread(), &mask, nullptr);
+}
+
+#endif
+
+} // namespace WinProcGroup
