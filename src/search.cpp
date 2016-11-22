@@ -213,6 +213,8 @@ void Search::clear() {
       th->fromTo.clear();
       th->counterMoveHistory.clear();
       th->resetCalls = true;
+      th->pawnsTable.clear();
+      th->materialTable.clear();
   }
 
   Threads.main()->previousScore = VALUE_INFINITE;
