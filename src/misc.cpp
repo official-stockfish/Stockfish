@@ -19,12 +19,6 @@
 */
 
 #ifdef _WIN32
-/*
-#if _WIN32_WINNT < 0x0601
-#undef  _WIN32_WINNT
-#define _WIN32_WINNT 0x0601 // Force to include newest API (Win 7 or later)
-#endif
-*/
 #include <windows.h> // For processor groups
 #endif
 
@@ -199,17 +193,13 @@ void prefetch(void* addr) {
 
 namespace WinProcGroup {
 
-//template<int factorial> 
-//struct _{ operator char() { return factorial + 256; } }; //always overflow
-//char(_<_WIN32_WINNT>());
-//static_assert(_WIN32_WINNT  >= 0x0601, " >= 0x0601");
-//#warning _WIN32_WINNT
-
 #ifndef _WIN32
 
 void bindThisThread(size_t) {}
 
 #elif _WIN32_WINNT < 0x0601
+
+// One older windows versions the newest API (Win 7 or later) is not supported.
 
 void bindThisThread(size_t) {}
 
