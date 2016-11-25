@@ -19,10 +19,6 @@
 */
 
 #ifdef _WIN32
-#if _WIN32_WINNT < 0x0601
-#undef  _WIN32_WINNT
-#define _WIN32_WINNT 0x0601 // Force to include newest API (Win 7 or later)
-#endif
 #include <windows.h> // For processor groups
 #endif
 
@@ -198,6 +194,12 @@ void prefetch(void* addr) {
 namespace WinProcGroup {
 
 #ifndef _WIN32
+
+void bindThisThread(size_t) {}
+
+#elif _WIN32_WINNT < 0x0601
+
+// One older windows versions the newest API (Win 7 or later) is not supported.
 
 void bindThisThread(size_t) {}
 
