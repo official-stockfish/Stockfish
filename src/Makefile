@@ -216,8 +216,13 @@ ifeq ($(comp),icc)
 	profile_make = icc-profile-make
 	profile_use = icc-profile-use
 else
+ifeq ($(comp),clang)
+	profile_make = clang-profile-make
+	profile_use = clang-profile-use
+else
 	profile_make = gcc-profile-make
 	profile_use = gcc-profile-use
+endif
 endif
 
 ifeq ($(KERNEL),Darwin)
@@ -414,7 +419,8 @@ help:
 
 
 .PHONY: help build profile-build strip install clean objclean profileclean help \
-        config-sanity icc-profile-use icc-profile-make gcc-profile-use gcc-profile-make
+        config-sanity icc-profile-use icc-profile-make gcc-profile-use gcc-profile-make \
+        clang-profile-use clang-profile-make
 
 build: config-sanity
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) all
@@ -454,6 +460,7 @@ objclean:
 profileclean:
 	@rm -rf profdir
 	@rm -f bench.txt *.gcda ./syzygy/*.gcda *.gcno ./syzygy/*.gcno
+	@rm -f stockfish.profdata *.profraw
 
 default:
 	help
@@ -501,9 +508,22 @@ config-sanity:
 $(EXE): $(OBJS)
 	$(CXX) -o $@ $(OBJS) $(LDFLAGS)
 
+clang-profile-make:
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
+	EXTRACXXFLAGS='-fprofile-instr-generate ' \
+	EXTRALDFLAGS=' -fprofile-instr-generate' \
+	all
+
+clang-profile-use:
+	llvm-profdata merge -output=stockfish.profdata *.profraw
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
+	EXTRACXXFLAGS='-fprofile-instr-use=stockfish.profdata' \
+	EXTRALDFLAGS='-fprofile-use ' \
+	all
+
 gcc-profile-make:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS='-fprofile-generate' \
+	EXTRACXXFLAGS='-fprofile-generate'\
 	EXTRALDFLAGS='-lgcov' \
 	all
 
