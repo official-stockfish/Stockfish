@@ -425,7 +425,8 @@ help:
 
 
 .PHONY: help build profile-build strip install clean objclean profileclean help \
-        config-sanity icc-profile-use icc-profile-make gcc-profile-use gcc-profile-make
+        config-sanity icc-profile-use icc-profile-make gcc-profile-use gcc-profile-make \
+        clang-profile-use clang-profile-make
 
 build: config-sanity
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) all
