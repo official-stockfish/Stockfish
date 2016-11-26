@@ -32,6 +32,12 @@
 #include <sstream>
 #include <vector>
 
+#ifdef __linux__
+extern "C" {
+#include <sched.h>
+}
+#endif
+
 #include "misc.h"
 #include "thread.h"
 
@@ -197,11 +203,7 @@ void prefetch(void* addr) {
 
 namespace WinProcGroup {
 
-#ifndef _WIN32
-
-void bindThisThread(size_t) {}
-
-#else
+#if defined(_WIN32)
 
 /// get_group() retrieves logical processor information using Windows specific
 /// API and returns the best group id for the thread with index idx. Original
@@ -287,6 +289,20 @@ void bindThisThread(size_t idx) {
   GROUP_AFFINITY mask;
   if (GetNumaNodeProcessorMaskEx(group, &mask))
       SetThreadGroupAffinity(GetCurrentThread(), &mask, nullptr);
+}
+
+#elif defined(__linux__)
+
+void bindThisThread(size_t idx) {
+  cpu_set_t set;
+  CPU_ZERO(&set);
+  CPU_SET(idx, &set);
+  sched_setaffinity(0, sizeof(set), &set);
+}
+
+#else
+
+void bindThisThread(size_t) {
 }
 
 #endif
