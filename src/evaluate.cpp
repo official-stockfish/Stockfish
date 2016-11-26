@@ -888,8 +888,9 @@ Value Eval::evaluate(const Position& pos) {
       Trace::add(IMBALANCE, ei.me->imbalance());
       Trace::add(PAWN, ei.pi->pawns_score());
       Trace::add(MOBILITY, mobility[WHITE], mobility[BLACK]);
-      Trace::add(SPACE, evaluate_space<WHITE>(pos, ei)
-                      , evaluate_space<BLACK>(pos, ei));
+      if (pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK) >= 12222)
+          Trace::add(SPACE, evaluate_space<WHITE>(pos, ei)
+                          , evaluate_space<BLACK>(pos, ei));
       Trace::add(TOTAL, score);
   }
 
