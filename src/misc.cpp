@@ -32,6 +32,12 @@
 #include <sstream>
 #include <vector>
 
+#ifndef _WIN32
+extern "C" {
+#include <sched.h>
+}
+#endif
+
 #include "misc.h"
 #include "thread.h"
 
@@ -199,7 +205,12 @@ namespace WinProcGroup {
 
 #ifndef _WIN32
 
-void bindThisThread(size_t) {}
+void bindThisThread(size_t idx) {
+  cpu_set_t set;
+  CPU_ZERO(&set);
+  CPU_SET(idx, &set);
+  sched_setaffinity(0, sizeof(set), &set);
+}
 
 #else
 
