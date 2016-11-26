@@ -219,12 +219,6 @@ else
 ifeq ($(comp),clang)
 	profile_make = clang-profile-make
 	profile_use = clang-profile-use
-        ifeq ($(shell which llvm-profdata),)
-          # if llvm-profdata doesn't exist in the path find it in the directory where clang resides
-          PROFDATA = $(shell /bin/bash -c 'echo $$(dirname $$(readlink -f $$(which clang)))/llvm-profdata')
-        else
-          PROFDATA = llvm-profdata
-        endif
 else
 	profile_make = gcc-profile-make
 	profile_use = gcc-profile-use
@@ -521,7 +515,7 @@ clang-profile-make:
 	all
 
 clang-profile-use:
-	$(PROFDATA) merge -output=stockfish.profdata *.profraw
+	llvm-profdata merge -output=stockfish.profdata *.profraw
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
 	EXTRACXXFLAGS='-fprofile-instr-use=stockfish.profdata' \
 	EXTRALDFLAGS='-fprofile-use ' \
