@@ -216,8 +216,13 @@ ifeq ($(comp),icc)
 	profile_make = icc-profile-make
 	profile_use = icc-profile-use
 else
+ifeq ($(comp),clang)
+	profile_make = clang-profile-make
+	profile_use = clang-profile-use
+else
 	profile_make = gcc-profile-make
 	profile_use = gcc-profile-use
+endif
 endif
 
 ifeq ($(KERNEL),Darwin)
@@ -417,19 +422,19 @@ help:
         config-sanity icc-profile-use icc-profile-make gcc-profile-use gcc-profile-make
 
 build: config-sanity
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) all
+	$(MAKE) -j ARCH=$(ARCH) COMP=$(COMP) all
 
 profile-build: config-sanity objclean profileclean
 	@echo ""
 	@echo "Step 1/4. Building instrumented executable ..."
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_make)
+	$(MAKE) -j ARCH=$(ARCH) COMP=$(COMP) $(profile_make)
 	@echo ""
 	@echo "Step 2/4. Running benchmark for pgo-build ..."
 	$(PGOBENCH) > /dev/null
 	@echo ""
 	@echo "Step 3/4. Building optimized executable ..."
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) objclean
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_use)
+	$(MAKE) -j ARCH=$(ARCH) COMP=$(COMP) $(profile_use)
 	@echo ""
 	@echo "Step 4/4. Deleting profile data ..."
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) profileclean
@@ -501,14 +506,28 @@ config-sanity:
 $(EXE): $(OBJS)
 	$(CXX) -o $@ $(OBJS) $(LDFLAGS)
 
-gcc-profile-make:
+clang-profile-make:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS='-fprofile-generate' \
+	EXTRACXXFLAGS='-fprofile-instr-generate ' \
+	EXTRALDFLAGS=' -fprofile-instr-generate' \
+	all
+
+clang-profile-use:
+	llvm-profdata merge -output=stockfish.profdata *.profraw
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
+	EXTRACXXFLAGS='-fprofile-instr-use=stockfish.profdata' \
+	EXTRALDFLAGS='-fprofile-use ' \
+	all
+
+
+gcc-profile-make:
+	$(MAKE) -j ARCH=$(ARCH) COMP=$(COMP) \
+	EXTRACXXFLAGS='-fprofile-generate'\
 	EXTRALDFLAGS='-lgcov' \
 	all
 
 gcc-profile-use:
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
+	$(MAKE) -j ARCH=$(ARCH) COMP=$(COMP) \
 	EXTRACXXFLAGS='-fprofile-use -fno-peel-loops -fno-tracer' \
 	EXTRALDFLAGS='-lgcov' \
 	all
