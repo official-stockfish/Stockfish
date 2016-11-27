@@ -118,6 +118,10 @@ std::ostream& operator<<(std::ostream& os, Position& pos) {
   return os;
 }
 
+std::ostream& operator<<(std::ostream& os, const Position& pos) {
+  return os << const_cast<Position&>(pos);
+}
+
 
 /// Position::init() initializes at startup the various arrays used to compute
 /// hash keys.
