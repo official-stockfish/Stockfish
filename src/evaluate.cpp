@@ -200,6 +200,7 @@ namespace {
   const Score Unstoppable         = S( 0, 20);
   const Score PawnlessFlank       = S(20, 80);
   const Score HinderPassedPawn    = S( 7,  0);
+  const Score ThreatByRank        = S(16,  3);
 
   // Penalty for a bishop on a1/h1 (a8/h8 for black) which is trapped by
   // a friendly pawn on b2/g2 (b7/g7 for black). This can obviously only
@@ -348,7 +349,6 @@ namespace {
                 Square ksq = pos.square<KING>(Us);
 
                 if (   ((file_of(ksq) < FILE_E) == (file_of(s) < file_of(ksq)))
-                    && (rank_of(ksq) == rank_of(s) || relative_rank(Us, ksq) == RANK_1)
                     && !ei.pi->semiopen_side(Us, file_of(ksq), file_of(s) < file_of(ksq)))
                     score -= (TrappedRook - make_score(mob * 22, 0)) * (1 + !pos.can_castle(Us));
             }
@@ -561,11 +561,21 @@ namespace {
     {
         b = (defended | weak) & (ei.attackedBy[Us][KNIGHT] | ei.attackedBy[Us][BISHOP]);
         while (b)
-            score += Threat[Minor][type_of(pos.piece_on(pop_lsb(&b)))];
+        {
+            Square s = pop_lsb(&b);
+            score += Threat[Minor][type_of(pos.piece_on(s))];
+            if (type_of(pos.piece_on(s)) != PAWN)
+                score += ThreatByRank * (int)relative_rank(Them, s);
+        }
 
         b = (pos.pieces(Them, QUEEN) | weak) & ei.attackedBy[Us][ROOK];
         while (b)
-            score += Threat[Rook ][type_of(pos.piece_on(pop_lsb(&b)))];
+        {
+            Square s = pop_lsb(&b);
+            score += Threat[Rook][type_of(pos.piece_on(s))];
+            if (type_of(pos.piece_on(s)) != PAWN)
+                score += ThreatByRank * (int)relative_rank(Them, s);
+        }
 
         score += Hanging * popcount(weak & ~ei.attackedBy[Them][ALL_PIECES]);
 
@@ -877,8 +887,9 @@ Value Eval::evaluate(const Position& pos) {
       Trace::add(IMBALANCE, ei.me->imbalance());
       Trace::add(PAWN, ei.pi->pawns_score());
       Trace::add(MOBILITY, mobility[WHITE], mobility[BLACK]);
-      Trace::add(SPACE, evaluate_space<WHITE>(pos, ei)
-                      , evaluate_space<BLACK>(pos, ei));
+      if (pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK) >= 12222)
+          Trace::add(SPACE, evaluate_space<WHITE>(pos, ei)
+                          , evaluate_space<BLACK>(pos, ei));
       Trace::add(TOTAL, score);
   }
 
