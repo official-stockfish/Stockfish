@@ -45,7 +45,7 @@ namespace Zobrist {
   Key psq[PIECE_NB][SQUARE_NB];
   Key enpassant[FILE_NB];
   Key castling[CASTLING_RIGHT_NB];
-  Key side;
+  Key side, noPawns;
 }
 
 namespace {
@@ -86,7 +86,7 @@ PieceType min_attacker<KING>(const Bitboard*, Square, Bitboard, Bitboard&, Bitbo
 
 /// operator<<(Position) returns an ASCII representation of the position
 
-std::ostream& operator<<(std::ostream& os, Position& pos) {
+std::ostream& operator<<(std::ostream& os, const Position& pos) {
 
   os << "\n +---+---+---+---+---+---+---+---+\n";
 
@@ -108,9 +108,12 @@ std::ostream& operator<<(std::ostream& os, Position& pos) {
   if (    int(Tablebases::MaxCardinality) >= popcount(pos.pieces())
       && !pos.can_castle(ANY_CASTLING))
   {
+      StateInfo st;
+      Position p;
+      p.set(pos.fen(), pos.is_chess960(), &st, pos.this_thread());
       Tablebases::ProbeState s1, s2;
-      Tablebases::WDLScore wdl = Tablebases::probe_wdl(pos, &s1);
-      int dtz = Tablebases::probe_dtz(pos, &s2);
+      Tablebases::WDLScore wdl = Tablebases::probe_wdl(p, &s1);
+      int dtz = Tablebases::probe_dtz(p, &s2);
       os << "\nTablebases WDL: " << std::setw(4) << wdl << " (" << s1 << ")"
          << "\nTablebases DTZ: " << std::setw(4) << dtz << " (" << s2 << ")";
   }
@@ -145,6 +148,7 @@ void Position::init() {
   }
 
   Zobrist::side = rng.rand<Key>();
+  Zobrist::noPawns = rng.rand<Key>();
 }
 
 
@@ -331,7 +335,8 @@ void Position::set_check_info(StateInfo* si) const {
 
 void Position::set_state(StateInfo* si) const {
 
-  si->key = si->pawnKey = si->materialKey = 0;
+  si->key = si->materialKey = 0;
+  si->pawnKey = Zobrist::noPawns;
   si->nonPawnMaterial[WHITE] = si->nonPawnMaterial[BLACK] = VALUE_ZERO;
   si->psq = SCORE_ZERO;
   si->checkersBB = attackers_to(square<KING>(sideToMove)) & pieces(~sideToMove);
