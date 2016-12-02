@@ -950,9 +950,10 @@ moves_loop: // When in check search starts from here
           }
           else if (depth < 7 * ONE_PLY && !extension)
           {
-              Value v = Value(-35 * depth / ONE_PLY * depth / ONE_PLY);
-              if (ss->staticEval != VALUE_NONE)
-                  v += ss->staticEval - alpha - 200;
+              Value v = -Value(399 + 35 * depth / ONE_PLY * depth / ONE_PLY);
+
+              if (PvNode)
+                  v += beta - alpha - 1;
 
               if (!pos.see_ge(move, v))
                   continue;
