@@ -81,7 +81,7 @@ PieceType min_attacker<KING>(const Bitboard*, Square, Bitboard, Bitboard&, Bitbo
   return KING; // No need to update bitboards: it is the last cycle
 }
 
-} // namespace
+} // namespace Zobrist
 
 
 /// operator<<(Position) returns an ASCII representation of the position
@@ -605,7 +605,7 @@ bool Position::pseudo_legal(const Move m) const {
   {
       if (type_of(pc) != KING)
       {
-          // Double check? In this case a king move is required
+          // Double check case. A king move is required
           if (more_than_one(checkers()))
               return false;
 
@@ -633,11 +633,11 @@ bool Position::gives_check(Move m) const {
   Square from = from_sq(m);
   Square to = to_sq(m);
 
-  // Is there a direct check?
+  // Direct check
   if (st->checkSquares[type_of(piece_on(from))] & to)
       return true;
 
-  // Is there a discovered check?
+  // Discovered check?
   if (   (discovered_check_candidates() & from)
       && !aligned(from, to, square<KING>(~sideToMove)))
       return true;
@@ -650,7 +650,7 @@ bool Position::gives_check(Move m) const {
   case PROMOTION:
       return attacks_bb(Piece(promotion_type(m)), to, pieces() ^ from) & square<KING>(~sideToMove);
 
-  // En passant capture with check? We have already handled the case
+  // En passant capture with check. We have already handled the case
   // of direct checks and ordinary discovered check, so the only case we
   // need to handle is the unusual case of a discovered check through
   // the captured pawn.
@@ -801,7 +801,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
           st->epSquare = (from + to) / 2;
           k ^= Zobrist::enpassant[file_of(st->epSquare)];
       }
-
+      // Promotion
       else if (type_of(m) == PROMOTION)
       {
           Piece promotion = make_piece(us, promotion_type(m));
@@ -1143,7 +1143,7 @@ void Position::flip() {
 
 bool Position::pos_is_ok(int* failedStep) const {
 
-  const bool Fast = true; // Quick (default) or full check?
+  const bool Fast = true; // Quick (default) or full check
 
   enum { Default, King, Bitboards, State, Lists, Castling };
 
