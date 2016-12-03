@@ -291,7 +291,7 @@ inline Square lsb(Bitboard b) {
 
 inline Square msb(Bitboard b) {
   assert(b);
-  return Square(63 - __builtin_clzll(b));
+  return Square(63 ^ __builtin_clzll(b));
 }
 
 #elif defined(_WIN64) && defined(_MSC_VER)
