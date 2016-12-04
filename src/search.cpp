@@ -619,6 +619,7 @@ namespace {
     ss->counterMoves = nullptr;
     (ss+1)->skipEarlyPruning = false;
     (ss+2)->killers[0] = (ss+2)->killers[1] = MOVE_NONE;
+    Square prevSq = to_sq((ss-1)->currentMove);
 
     // Step 4. Transposition table lookup. We don't want the score of a partial
     // search to overwrite a previous full search TT value, so we use a different
@@ -641,18 +642,12 @@ namespace {
         // If ttMove is quiet, update killers, history, counter move on TT hit
         if (ttValue >= beta && ttMove)
         {
-
             if (!pos.capture_or_promotion(ttMove))
-            {
                 update_stats(pos, ss, ttMove, nullptr, 0, bonus(depth));
-            }
 
             // Extra penalty for a quiet TT move in previous ply when it gets refuted
             if ((ss-1)->moveCount == 1 && !pos.captured_piece())
-            {
-                Square prevSq = to_sq((ss-1)->currentMove);
                 update_cm_stats(ss-1, pos.piece_on(prevSq), prevSq, penalty(depth));
-            }
         }
         return ttValue;
     }
@@ -1143,25 +1138,17 @@ moves_loop: // When in check search starts from here
 
         // Quiet best move: update killers, history and countermoves
         if (!pos.capture_or_promotion(bestMove))
-        {
             update_stats(pos, ss, bestMove, quietsSearched, quietCount, bonus(depth));
-        }
 
         // Extra penalty for a quiet TT move in previous ply when it gets refuted
         if ((ss-1)->moveCount == 1 && !pos.captured_piece())
-        {
-            Square prevSq = to_sq((ss-1)->currentMove);
             update_cm_stats(ss-1, pos.piece_on(prevSq), prevSq, penalty(depth));
-        }
     }
     // Bonus for prior countermove that caused the fail low
     else if (    depth >= 3 * ONE_PLY
              && !pos.captured_piece()
              && is_ok((ss-1)->currentMove))
-    {
-        Square prevSq = to_sq((ss-1)->currentMove);
         update_cm_stats(ss-1, pos.piece_on(prevSq), prevSq, bonus(depth));
-    }
 
     tte->save(posKey, value_to_tt(bestValue, ss->ply),
               bestValue >= beta ? BOUND_LOWER :
