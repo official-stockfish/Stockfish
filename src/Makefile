@@ -42,6 +42,12 @@ OBJS = movegen.o search.o evaluate.o material.o bitbase.o bitboard.o \
        pawns.o position.o psqt.o movepick.o endgame.o thread.o timeman.o tt.o \
        syzygy/tbprobe.o uci.o ucioption.o main.o misc.o benchmark.o
 
+default:
+	make -j profile-build ARCH=x86-64-modern COMP=gcc COMPCXX=g++
+
+clang:
+	make -j profile-build ARCH=x86-64-modern COMP=clang COMPCXX=clang++
+
 ### ==========================================================================
 ### Section 2. High-level Configuration
 ### ==========================================================================
