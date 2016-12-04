@@ -21,6 +21,12 @@
 ### Section 1. General Configuration
 ### ==========================================================================
 
+default:
+	make -j profile-build ARCH=x86-64-modern COMP=gcc COMPCXX=g++
+
+clang:
+	make -j profile-build ARCH=x86-64-modern COMP=clang COMPCXX=clang++
+
 ### Establish the operating system name
 KERNEL = $(shell uname -s)
 ifeq ($(KERNEL),Linux)
@@ -28,7 +34,7 @@ ifeq ($(KERNEL),Linux)
 endif
 
 ### Executable name
-EXE = stockfish
+EXE = macfish-master
 
 ### Installation dir definitions
 PREFIX = /usr/local
@@ -42,11 +48,6 @@ OBJS = movegen.o search.o evaluate.o material.o bitbase.o bitboard.o \
        pawns.o position.o psqt.o movepick.o endgame.o thread.o timeman.o tt.o \
        syzygy/tbprobe.o uci.o ucioption.o main.o misc.o benchmark.o
 
-default:
-	make -j profile-build ARCH=x86-64-modern COMP=gcc COMPCXX=g++
-
-clang:
-	make -j profile-build ARCH=x86-64-modern COMP=clang COMPCXX=clang++
 
 ### ==========================================================================
 ### Section 2. High-level Configuration
@@ -468,8 +469,8 @@ profileclean:
 	@rm -f bench.txt *.gcda ./syzygy/*.gcda *.gcno ./syzygy/*.gcno
 	@rm -f stockfish.profdata *.profraw
 
-default:
-	help
+###default:
+###	help
 
 ### ==========================================================================
 ### Section 5. Private targets
