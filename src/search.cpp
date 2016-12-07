@@ -557,7 +557,7 @@ namespace {
     TTEntry* tte;
     Key posKey;
     Move ttMove, move, excludedMove, bestMove;
-    Depth extension, newDepth;
+    Depth newDepth;
     Value bestValue, value, ttValue, eval, nullValue;
     bool ttHit, inCheck, givesCheck, singularExtensionNode, improving;
     bool captureOrPromotion, doFullDepthSearch, moveCountPruning;
@@ -868,7 +868,7 @@ moves_loop: // When in check search starts from here
       if (PvNode)
           (ss+1)->pv = nullptr;
 
-      extension = DEPTH_ZERO;
+      newDepth = depth - ONE_PLY;
       captureOrPromotion = pos.capture_or_promotion(move);
       moved_piece = pos.moved_piece(move);
 
@@ -883,32 +883,7 @@ moves_loop: // When in check search starts from here
       if (    givesCheck
           && !moveCountPruning
           &&  pos.see_ge(move, VALUE_ZERO))
-          extension = ONE_PLY;
-
-      // Singular extension search. If all moves but one fail low on a search of
-      // (alpha-s, beta-s), and just one fails high on (alpha, beta), then that move
-      // is singular and should be extended. To verify this we do a reduced search
-      // on all the other moves but the ttMove and if the result is lower than
-      // ttValue minus a margin then we extend the ttMove.
-      if (    singularExtensionNode
-          &&  move == ttMove
-          && !extension
-          &&  pos.legal(move))
-      {
-          Value rBeta = std::max(ttValue - 2 * depth / ONE_PLY, -VALUE_MATE);
-          Depth d = (depth / (2 * ONE_PLY)) * ONE_PLY;
-          ss->excludedMove = move;
-          ss->skipEarlyPruning = true;
-          value = search<NonPV>(pos, ss, rBeta - 1, rBeta, d, cutNode);
-          ss->skipEarlyPruning = false;
-          ss->excludedMove = MOVE_NONE;
-
-          if (value < rBeta)
-              extension = ONE_PLY;
-      }
-
-      // Update the current move (this must be done after singular extension search)
-      newDepth = depth - ONE_PLY + extension;
+          newDepth += ONE_PLY;
 
       // Step 13. Pruning at shallow depth
       if (  !rootNode
@@ -957,6 +932,33 @@ moves_loop: // When in check search starts from here
 
       // Speculative prefetch as early as possible
       prefetch(TT.first_entry(pos.key_after(move)));
+
+      // Singular extension search. If all moves but one fail low on a search of
+      // (alpha-s, beta-s), and just one fails high on (alpha, beta), then that move
+      // is singular and should be extended. To verify this we do a reduced search
+      // on all the other moves but the ttMove and if the result is lower than
+      // ttValue minus a margin then we extend the ttMove.
+      if (    singularExtensionNode
+          &&  move == ttMove
+          &&  newDepth < depth
+          &&  pos.legal(move))
+      {
+          Value rBeta = std::max(ttValue - 2 * depth / ONE_PLY, -VALUE_MATE);
+          Depth d = (depth / (2 * ONE_PLY)) * ONE_PLY;
+          ss->excludedMove = move;
+          ss->skipEarlyPruning = true;
+          value = search<NonPV>(pos, ss, rBeta - 1, rBeta, d, cutNode);
+          ss->skipEarlyPruning = false;
+          ss->excludedMove = MOVE_NONE;
+          singularExtensionNode = false;
+
+          if (value < rBeta)
+              newDepth += ONE_PLY;
+
+          // Speculative prefetch as early as possible
+          prefetch(TT.first_entry(pos.key_after(move)));
+
+      }
 
       // Check for legality just before making the move
       if (!rootNode && !pos.legal(move))
