@@ -257,8 +257,8 @@ enum Rank : int {
 };
 
 
-/// Score enum stores a middlegame and an endgame value in a single integer
-/// (enum). The least significant 16 bits are used to store the endgame value
+/// Score enum stores a middlegame and an endgame value in a single integer.
+/// The least significant 16 bits are used to store the endgame value
 /// and the upper 16 bits are used to store the middlegame value. Take some
 /// care to avoid left-shifting a signed int to avoid undefined behavior.
 const int SCORE_ZERO = 0;
