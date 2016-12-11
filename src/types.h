@@ -261,6 +261,7 @@ enum Rank : int {
 /// The least significant 16 bits are used to store the endgame value
 /// and the upper 16 bits are used to store the middlegame value. Take some
 /// care to avoid left-shifting a signed int to avoid undefined behavior.
+/// Also do not multiply or divide Score, it has to be done by a special code.
 typedef int Score;
 const int SCORE_ZERO = 0;
 
