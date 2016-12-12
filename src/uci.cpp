@@ -77,6 +77,7 @@ namespace {
     {
         States->push_back(StateInfo());
         pos.do_move(m, States->back());
+        pos.calc_draw();
     }
   }
 
