@@ -597,7 +597,7 @@ namespace {
     if (!rootNode)
     {
         // Step 2. Check for aborted search and immediate draw
-        if (Signals.stop.load(std::memory_order_relaxed) || pos.is_draw() || ss->ply >= MAX_PLY)
+        if (Signals.stop.load(std::memory_order_relaxed) || pos.is_draw(ss->ply) || ss->ply >= MAX_PLY)
             return ss->ply >= MAX_PLY && !inCheck ? evaluate(pos)
                                                   : DrawValue[pos.side_to_move()];
 
@@ -1180,7 +1180,7 @@ moves_loop: // When in check search starts from here
     ss->ply = (ss-1)->ply + 1;
 
     // Check for an instant draw or if the maximum ply has been reached
-    if (pos.is_draw() || ss->ply >= MAX_PLY)
+    if (pos.is_draw(ss->ply) || ss->ply >= MAX_PLY)
         return ss->ply >= MAX_PLY && !InCheck ? evaluate(pos)
                                               : DrawValue[pos.side_to_move()];
 
