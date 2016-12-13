@@ -839,6 +839,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   // Set capture piece
   st->capturedPiece = captured;
 
+  // Draw at first repetition
   st->draw = true;
 
   // Update the key with the final value
@@ -962,6 +963,8 @@ void Position::do_null_move(StateInfo& newSt) {
 
   ++st->rule50;
   st->drawDepth = 0;
+
+  // Draw at first repetition
   st->draw = true;
 
   sideToMove = ~sideToMove;
@@ -1079,8 +1082,9 @@ bool Position::see_ge(Move m, Value v) const {
 }
 
 
-/// Position::calc_draw()
-///
+/// Position::calc_draw() calculates the value of st->draw - the boolean meaning
+/// the position occurred before in the game. This function is called for positions
+/// up to the root, so recursion into some of them becomes possible during search.
 
 void Position::calc_draw() {
 
