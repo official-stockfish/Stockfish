@@ -710,7 +710,7 @@ namespace {
     }
   }
 
-    if (!incheck && !skipEarlyPruning)
+    if (!inCheck && !skipEarlyPruning)
   {
 
     // Step 6. Razoring (skipped when in check)
