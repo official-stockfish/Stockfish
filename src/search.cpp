@@ -684,13 +684,11 @@ namespace {
     }
 
     // Step 5. Evaluate the position statically
-    if (inCheck)
-    {
-        ss->staticEval = eval = VALUE_NONE;
-        goto moves_loop;
-    }
+  if (!inCheck)
+  {
+       
 
-    else if (ttHit)
+    if (ttHit)
     {
         // Never assume anything on values stored in TT
         if ((ss->staticEval = eval = tte->eval()) == VALUE_NONE)
@@ -710,9 +708,10 @@ namespace {
         tte->save(posKey, VALUE_NONE, BOUND_NONE, DEPTH_NONE, MOVE_NONE,
                   ss->staticEval, TT.generation());
     }
+  }
 
-    if (skipEarlyPruning)
-        goto moves_loop;
+    if (!incheck && !skipEarlyPruning)
+  {
 
     // Step 6. Razoring (skipped when in check)
     if (   !PvNode
@@ -814,8 +813,8 @@ namespace {
         tte = TT.probe(posKey, ttHit);
         ttMove = ttHit ? tte->move() : MOVE_NONE;
     }
-
-moves_loop: // When in check search starts from here
+  }
+    if (inCheck)  ss->staticEval = eval = VALUE_NONE;// When in check search starts from here
 
     const CounterMoveStats* cmh  = (ss-1)->counterMoves;
     const CounterMoveStats* fmh  = (ss-2)->counterMoves;
