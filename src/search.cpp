@@ -934,12 +934,10 @@ moves_loop: // When in check search starts from here
                   && !pos.see_ge(move, Value(-35 * lmrDepth * lmrDepth)))
                   continue;
           }
-          else if (depth < 7 * ONE_PLY && !extension)
-          {
-              Value v = -Value(400 - 100 * PvNode + 35 * depth / ONE_PLY * depth / ONE_PLY);
-              if (!pos.see_ge(move, v))
+          else if (    depth < 7 * ONE_PLY
+                   && !extension
+                   && !pos.see_ge(move, -PawnValueEg * (depth / ONE_PLY)))
                   continue;
-          }
       }
 
       // Speculative prefetch as early as possible
