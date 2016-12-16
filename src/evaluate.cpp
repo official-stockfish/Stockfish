@@ -197,7 +197,7 @@ namespace {
   const Score WeakQueen           = S(50, 10);
   const Score Hanging             = S(48, 27);
   const Score ThreatByPawnPush    = S(38, 22);
-  const Score Unstoppable         = S( 0, 45);
+  const Score Unstoppable         = S( 0,196);
   const Score PawnlessFlank       = S(20, 80);
   const Score HinderPassedPawn    = S( 7,  0);
   const Score ThreatByRank        = S(16,  3);
@@ -618,7 +618,9 @@ namespace {
     b = ei.pi->passed_pawns(Us);
 
     // Bonus for potentially unstoppable pawn
-    if (b && !pos.non_pawn_material(Them))
+    if (   b
+        && pos.non_pawn_material(Us  ) <= KnightValueMg
+        && pos.non_pawn_material(Them) <= KnightValueMg)
         score += Unstoppable;
 
     while (b)
