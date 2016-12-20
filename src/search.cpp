@@ -62,19 +62,21 @@ namespace {
 
   // Different node types, used as a template parameter
   enum NodeType { NonPV, PV };
-  enum MarginType {Razor, FutilityChild, FutilityParent, Null, MarginsNB = 4};
+  enum MarginType {Razor, FutilityChild, FutilityParent, Null, SeeRoot, SeeNonRoot, MarginsNB = 6};
 
   // Razoring and futility margin based on depth
   const int razor_margin[4] = { 483, 570, 603, 554 };
-  const int Margins[MarginsNB][2] = {
-      { 500,  30},  // Razor
-      { 0,   150},  // Futility child
-      { 256, 200},  // Futility parent
-      {-210,  35}   // Static null
+  const int Margins[MarginsNB][3] = {
+      { 500,   30,    0},  // Razor
+      { 0,    150,    0},  // Futility child
+      { 256,  200,    0},  // Futility parent
+      {-210,   35,    0},  // Static null
+      {   0, -248,    0},  // See at root
+      {   0,    0,  -35}   // See at non root
   };
 
   template <MarginType mt> Value margin(Depth d){
-    return Value((Margins[mt][0] + d * Margins[mt][1])/ONE_PLY);
+    return Value((Margins[mt][0] + d * Margins[mt][1] + int(d) * d * Margins[mt][2])/ONE_PLY);
   }
 
   // Futility and reductions lookup tables, initialized at startup
@@ -943,12 +945,12 @@ moves_loop: // When in check search starts from here
 
               // Prune moves with negative SEE
               if (   lmrDepth < 8 * ONE_PLY
-                  && !pos.see_ge(move, Value(-35 * (lmrDepth / ONE_PLY) * (lmrDepth / ONE_PLY))))
+                  && !pos.see_ge(move, margin<SeeNonRoot>(lmrDepth)))
                   continue;
           }
           else if (    depth < 7 * ONE_PLY
                    && !extension
-                   && !pos.see_ge(move, -PawnValueEg * (depth / ONE_PLY)))
+                   && !pos.see_ge(move, margin<SeeRoot>(depth)))
                   continue;
       }
 
