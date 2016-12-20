@@ -926,24 +926,24 @@ moves_loop: // When in check search starts from here
                   continue;
 
               // Reduced depth of the next LMR search
-              int lmrDepth = std::max(newDepth - reduction<PvNode>(improving, depth, moveCount), DEPTH_ZERO) / ONE_PLY;
+              Depth lmrDepth = std::max(newDepth - reduction<PvNode>(improving, depth, moveCount), DEPTH_ZERO);
 
               // Countermoves based pruning
-              if (   lmrDepth < 3
+              if (   lmrDepth < 3 * ONE_PLY
                   && (!cmh  || (*cmh )[moved_piece][to_sq(move)] < VALUE_ZERO)
                   && (!fmh  || (*fmh )[moved_piece][to_sq(move)] < VALUE_ZERO)
                   && (!fmh2 || (*fmh2)[moved_piece][to_sq(move)] < VALUE_ZERO || (cmh && fmh)))
                   continue;
 
               // Futility pruning: parent node
-              if (   lmrDepth < 7
+              if (   lmrDepth < 7 * ONE_PLY
                   && !inCheck
-                  && ss->staticEval + margin<FutilityParent>(lmrDepth * ONE_PLY) <= alpha)
+                  && ss->staticEval + margin<FutilityParent>(lmrDepth) <= alpha)
                   continue;
 
               // Prune moves with negative SEE
-              if (   lmrDepth < 8
-                  && !pos.see_ge(move, Value(-35 * lmrDepth * lmrDepth)))
+              if (   lmrDepth < 8 * ONE_PLY
+                  && !pos.see_ge(move, Value(-35 * (lmrDepth / ONE_PLY) * (lmrDepth / ONE_PLY))))
                   continue;
           }
           else if (    depth < 7 * ONE_PLY
