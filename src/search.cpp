@@ -62,10 +62,11 @@ namespace {
 
   // Different node types, used as a template parameter
   enum NodeType { NonPV, PV };
-  enum MarginType {Razor, Futility};
+  enum MarginType {Razor, Futility, Null, MarginsNB = 3};
 
   // Razoring and futility margin based on depth
-  const int Margins[2][2] = {{500, 30}, {0, 150}};
+  //                                 Razor      Futility  Null move
+  const int Margins[MarginsNB][2] = {{500, 30}, {0, 150}, {-210, 35}};
 
   template <MarginType mt> Value margin(Depth d){
     return Value((Margins[mt][0] + d * Margins[mt][1])/ONE_PLY);
@@ -744,7 +745,7 @@ namespace {
     // Step 8. Null move search with verification search (is omitted in PV nodes)
     if (   !PvNode
         &&  eval >= beta
-        && (ss->staticEval >= beta - 35 * (depth / ONE_PLY - 6) || depth >= 13 * ONE_PLY)
+        && (ss->staticEval >= beta - margin<Null>(depth) || depth >= 13 * ONE_PLY)
         &&  pos.non_pawn_material(pos.side_to_move()))
     {
         ss->currentMove = MOVE_NULL;
