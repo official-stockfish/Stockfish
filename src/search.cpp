@@ -62,11 +62,15 @@ namespace {
 
   // Different node types, used as a template parameter
   enum NodeType { NonPV, PV };
-  enum MarginType {Razor, Futility, Null, MarginsNB = 3};
+  enum MarginType {Razor, FutilityChild, FutilityParent, Null, MarginsNB = 4};
 
   // Razoring and futility margin based on depth
-  //                                 Razor      Futility  Null move
-  const int Margins[MarginsNB][2] = {{500, 30}, {0, 150}, {-210, 35}};
+  const int Margins[MarginsNB][2] = {
+      { 500,  30},  // Razor
+      { 0,   150},  // Futility child
+      { 256, 200},  // Futility parent
+      {-210,  35}   // Static null
+  };
 
   template <MarginType mt> Value margin(Depth d){
     return Value((Margins[mt][0] + d * Margins[mt][1])/ONE_PLY);
@@ -737,7 +741,7 @@ namespace {
     // Step 7. Futility pruning: child node (skipped when in check)
     if (   !rootNode
         &&  depth < 7 * ONE_PLY
-        &&  eval - margin<Futility>(depth) >= beta
+        &&  eval - margin<FutilityChild>(depth) >= beta
         &&  eval < VALUE_KNOWN_WIN  // Do not return unproven wins
         &&  pos.non_pawn_material(pos.side_to_move()))
         return eval;
@@ -931,7 +935,7 @@ moves_loop: // When in check search starts from here
               // Futility pruning: parent node
               if (   lmrDepth < 7
                   && !inCheck
-                  && ss->staticEval + 256 + 200 * lmrDepth <= alpha)
+                  && ss->staticEval + margin<FutilityParent>(lmrDepth * ONE_PLY) <= alpha)
                   continue;
 
               // Prune moves with negative SEE
