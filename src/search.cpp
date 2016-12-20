@@ -65,6 +65,7 @@ namespace {
   enum MarginType {Razor, FutilityChild, FutilityParent, Null, MarginsNB = 4};
 
   // Razoring and futility margin based on depth
+  const int razor_margin[4] = { 483, 570, 603, 554 };
   const int Margins[MarginsNB][2] = {
       { 500,  30},  // Razor
       { 0,   150},  // Futility child
@@ -727,7 +728,8 @@ namespace {
     if (   !PvNode
         &&  depth < 4 * ONE_PLY
         &&  ttMove == MOVE_NONE
-        &&  eval + margin<Razor>(depth) <= alpha)
+        &&  eval + razor_margin[depth])
+//        &&  eval + margin<Razor>(depth) <= alpha)
     {
         if (depth <= ONE_PLY)
             return qsearch<NonPV, false>(pos, ss, alpha, beta, DEPTH_ZERO);
