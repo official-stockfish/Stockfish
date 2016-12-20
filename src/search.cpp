@@ -66,7 +66,7 @@ namespace {
 
   // Razoring and futility margin based on depth
   const int razor_margin[4] = { 483, 570, 603, 554 };
-  const int Margins[MarginsNB][3] = {
+  const int PruningMargins[MarginsNB][3] = {
       { 500,   30,    0},  // Razor
       { 0,    150,    0},  // Futility child
       { 256,  200,    0},  // Futility parent
@@ -76,7 +76,7 @@ namespace {
   };
 
   template <MarginType mt> Value margin(Depth d){
-    return Value((Margins[mt][0] + d * Margins[mt][1] + int(d) * d * Margins[mt][2])/ONE_PLY);
+    return Value((PruningMargins[mt][0] + d * PruningMargins[mt][1] + int(d) * d * PruningMargins[mt][2])/ONE_PLY);
   }
 
   // Futility and reductions lookup tables, initialized at startup
