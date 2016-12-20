@@ -728,7 +728,7 @@ namespace {
     if (   !PvNode
         &&  depth < 4 * ONE_PLY
         &&  ttMove == MOVE_NONE
-        &&  eval + razor_margin[depth])
+        &&  eval + razor_margin[depth / ONE_PLY] <= alpha)
 //        &&  eval + margin<Razor>(depth) <= alpha)
     {
         if (depth <= ONE_PLY)
