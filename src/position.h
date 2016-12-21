@@ -42,7 +42,7 @@ struct StateInfo {
   Value  nonPawnMaterial[COLOR_NB];
   int    castlingRights;
   int    rule50;
-  int    drawDepth;
+  int    pliesFromNull;
   Score  psq;
   Square epSquare;
 

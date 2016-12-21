@@ -702,7 +702,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   // in case of a capture or a pawn move.
   ++gamePly;
   ++st->rule50;
-  ++st->drawDepth;
+  ++st->pliesFromNull;
 
   Color us = sideToMove;
   Color them = ~us;
@@ -765,8 +765,8 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       // Update incremental scores
       st->psq -= PSQT::psq[captured][capsq];
 
-      // Reset rule 50 counter and draw search depth
-      st->rule50 = st->drawDepth = 0;
+      // Reset rule 50 counter
+      st->rule50 = 0;
   }
 
   // Update hash key
@@ -829,8 +829,8 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       st->pawnKey ^= Zobrist::psq[pc][from] ^ Zobrist::psq[pc][to];
       prefetch(thisThread->pawnsTable[st->pawnKey]);
 
-      // Reset rule 50 counter and draw search depth
-      st->rule50 = st->drawDepth = 0;
+      // Reset rule 50 draw counter
+      st->rule50 = 0;
   }
 
   // Update incremental scores
@@ -962,7 +962,7 @@ void Position::do_null_move(StateInfo& newSt) {
   prefetch(TT.first_entry(st->key));
 
   ++st->rule50;
-  st->drawDepth = 0;
+  st->pliesFromNull = 0;
 
   // Draw at first repetition
   st->draw = true;
@@ -1089,8 +1089,9 @@ bool Position::see_ge(Move m, Value v) const {
 void Position::calc_draw() {
 
   StateInfo* stp = st;
+  int e = std::min(st->rule50, st->pliesFromNull);
 
-  for (int i = 2; i <= st->drawDepth; i += 2)
+  for (int i = 2; i <= e; i += 2)
   {
       stp = stp->previous->previous;
 
@@ -1112,7 +1113,7 @@ bool Position::is_draw() const {
   if (st->rule50 > 99 && (!checkers() || MoveList<LEGAL>(*this).size()))
       return true;
 
-  int e = st->drawDepth;
+  int e = std::min(st->rule50, st->pliesFromNull);
 
   if (e < 4)
     return false;
