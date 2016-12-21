@@ -79,7 +79,7 @@ namespace {
   struct Skill {
     Skill(int l) : level(l) {}
     bool enabled() const { return level < 10; }
-    bool time_to_pick(Depth depth) const { return depth / ONE_PLY == 1 + level; }
+    bool time_to_pick(Depth depth) const { return depth / ONE_PLY == 1 + level + level / 3; }
     Move best_move(size_t multiPV) { return best ? best : pick_best(multiPV); }
     Move pick_best(size_t multiPV);
 
