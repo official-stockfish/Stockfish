@@ -679,7 +679,7 @@ namespace {
 
         // Assign a small bonus when no pieces left (unstoppable)
         if (!pos.non_pawn_material(Us) && !pos.non_pawn_material(Them))
-            ebonus += 12;
+            ebonus += 20;
 
         score += make_score(mbonus, ebonus) + PassedFile[file_of(s)];
     }
