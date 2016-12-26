@@ -197,7 +197,6 @@ namespace {
   const Score WeakQueen           = S(50, 10);
   const Score Hanging             = S(48, 27);
   const Score ThreatByPawnPush    = S(38, 22);
-  const Score Unstoppable         = S( 0, 45);
   const Score PawnlessFlank       = S(20, 80);
   const Score HinderPassedPawn    = S( 7,  0);
   const Score ThreatByRank        = S(16,  3);
@@ -678,6 +677,10 @@ namespace {
                 mbonus += rr + r * 2, ebonus += rr + r * 2;
         } // rr != 0
 
+        // Assign a small bonus when no pieces left (unstoppable)
+        if (!pos.non_pawn_material(Us) && !pos.non_pawn_material(Them))
+            ebonus += 20;
+
         score += make_score(mbonus, ebonus) + PassedFile[file_of(s)];
     }
 
@@ -851,16 +854,6 @@ Value Eval::evaluate(const Position& pos) {
   // Evaluate passed pawns, we need full attack information including king
   score +=  evaluate_passed_pawns<WHITE, DoTrace>(pos, ei)
           - evaluate_passed_pawns<BLACK, DoTrace>(pos, ei);
-
-  // If both sides have only pawns, score for potential unstoppable pawns
-  if (!pos.non_pawn_material(WHITE) && !pos.non_pawn_material(BLACK))
-  {
-      if (ei.pi->passed_pawns(WHITE))
-          score += Unstoppable;
-
-      if (ei.pi->passed_pawns(BLACK))
-          score -= Unstoppable;
-  }
 
   // Evaluate space for both sides, only during opening
   if (pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK) >= 12222)
