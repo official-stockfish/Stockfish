@@ -27,11 +27,11 @@
 namespace Tablebases {
 
 enum WDLScore {
-    WDLLoss       = -2, // Loss
-    WDLCursedLoss = -1, // Loss, but draw under 50-move rule
-    WDLDraw       =  0, // Draw
-    WDLCursedWin  =  1, // Win, but draw under 50-move rule
-    WDLWin        =  2, // Win
+    WDLLoss        = -2, // Loss
+    WDLBlessedLoss = -1, // Loss, but draw under 50-move rule
+    WDLDraw        =  0, // Draw
+    WDLCursedWin   =  1, // Win, but draw under 50-move rule
+    WDLWin         =  2, // Win
 
     WDLScoreNone  = -1000
 };
@@ -55,11 +55,11 @@ void filter_root_moves(Position& pos, Search::RootMoves& rootMoves);
 
 inline std::ostream& operator<<(std::ostream& os, const WDLScore v) {
 
-    os << (v == WDLLoss       ? "Loss" :
-           v == WDLCursedLoss ? "Cursed loss" :
-           v == WDLDraw       ? "Draw" :
-           v == WDLCursedWin  ? "Cursed win" :
-           v == WDLWin        ? "Win" : "None");
+    os << (v == WDLLoss        ? "Loss" :
+           v == WDLBlessedLoss ? "Blessed loss" :
+           v == WDLDraw        ? "Draw" :
+           v == WDLCursedWin   ? "Cursed win" :
+           v == WDLWin         ? "Win" : "None");
 
     return os;
 }
