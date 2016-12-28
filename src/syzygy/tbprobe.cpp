@@ -1566,12 +1566,12 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves, Value& 
 
     // Use 50-move counter to determine whether the root position is
     // won, lost or drawn.
-    int wdl = 0;
+    WDLScore wdl = WDLDraw;
 
     if (dtz > 0)
-        wdl = (dtz + cnt50 <= 100) ? 2 : 1;
+        wdl = (dtz + cnt50 <= 100) ? WDLWin : WDLCursedWin;
     else if (dtz < 0)
-        wdl = (-dtz + cnt50 <= 100) ? -2 : -1;
+        wdl = (-dtz + cnt50 <= 100) ? WDLLoss : WDLBlessedLoss;
 
     // Determine the score to report to the user.
     score = WDL_to_value[wdl + 2];
@@ -1579,9 +1579,9 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves, Value& 
     // If the position is winning or losing, but too few moves left, adjust the
     // score to show how close it is to winning or losing.
     // NOTE: int(PawnValueEg) is used as scaling factor in score_to_uci().
-    if (wdl == 1 && dtz <= 100)
+    if (wdl == WDLCursedWin && dtz <= 100)
         score = (Value)(((200 - dtz - cnt50) * int(PawnValueEg)) / 200);
-    else if (wdl == -1 && dtz >= -100)
+    else if (wdl == WDLBlessedLoss && dtz >= -100)
         score = -(Value)(((200 + dtz - cnt50) * int(PawnValueEg)) / 200);
 
     // Now be a bit smart about filtering out moves.
