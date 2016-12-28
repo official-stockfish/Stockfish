@@ -63,7 +63,6 @@ extern int SquareDistance[SQUARE_NB][SQUARE_NB];
 
 extern Bitboard SquareBB[SQUARE_NB];
 extern Bitboard StepAttacksBB[PIECE_NB][SQUARE_NB];
-extern Bitboard LineBB[SQUARE_NB][SQUARE_NB];
 extern Bitboard DistanceRingBB[SQUARE_NB][8];
 extern Bitboard PseudoAttacks[PIECE_TYPE_NB][SQUARE_NB];
 
@@ -158,12 +157,10 @@ Bitboard pawn_attack_span(Color c, Square s);
 Bitboard passed_pawn_mask(Color c, Square s);
 
 
-/// aligned() returns true if the squares s1, s2 and s3 are aligned either on a
-/// straight or on a diagonal line.
+/// line() returns the line that joins s1 and s2, if the squares can be joined by a
+/// vertical, horizontal or diagonal line. Otherwise the result is zero.
 
-inline bool aligned(Square s1, Square s2, Square s3) {
-  return LineBB[s1][s2] & s3;
-}
+Bitboard line(Square s1, Square s2);
 
 
 /// distance() functions return the distance between x and y, defined as the
