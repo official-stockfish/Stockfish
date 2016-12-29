@@ -26,22 +26,22 @@
 uint8_t PopCnt16[1 << 16];
 int SquareDistance[SQUARE_NB][SQUARE_NB];
 
-Bitboard  RookMasks  [SQUARE_NB];
-Bitboard  RookMagics [SQUARE_NB];
-Bitboard* RookAttacks[SQUARE_NB];
-unsigned  RookShifts [SQUARE_NB];
-
-Bitboard  BishopMasks  [SQUARE_NB];
-Bitboard  BishopMagics [SQUARE_NB];
-Bitboard* BishopAttacks[SQUARE_NB];
-unsigned  BishopShifts [SQUARE_NB];
-
 Bitboard SquareBB[SQUARE_NB];
 Bitboard StepAttacksBB[PIECE_NB][SQUARE_NB];
 Bitboard DistanceRingBB[SQUARE_NB][8];
 Bitboard PseudoAttacks[PIECE_TYPE_NB][SQUARE_NB];
 
 namespace {
+
+  Bitboard  RookMasks  [SQUARE_NB];
+  Bitboard  RookMagics [SQUARE_NB];
+  Bitboard* RookAttacks[SQUARE_NB];
+  unsigned  RookShifts [SQUARE_NB];
+
+  Bitboard  BishopMasks  [SQUARE_NB];
+  Bitboard  BishopMagics [SQUARE_NB];
+  Bitboard* BishopAttacks[SQUARE_NB];
+  unsigned  BishopShifts [SQUARE_NB];
 
   Bitboard FileBB[FILE_NB];
   Bitboard RankBB[RANK_NB];
@@ -147,6 +147,27 @@ const std::string Bitboards::pretty(Bitboard b) {
 }
 
 
+/// magic_index() is a helper to look up the index using the 'magic bitboards' approach
+
+template<PieceType Pt>
+unsigned magic_index(Square s, Bitboard occupied) {
+
+  Bitboard* const Masks  = Pt == ROOK ? RookMasks  : BishopMasks;
+  Bitboard* const Magics = Pt == ROOK ? RookMagics : BishopMagics;
+  unsigned* const Shifts = Pt == ROOK ? RookShifts : BishopShifts;
+
+  if (HasPext)
+      return unsigned(pext(occupied, Masks[s]));
+
+  if (Is64Bit)
+      return unsigned(((occupied & Masks[s]) * Magics[s]) >> Shifts[s]);
+
+  unsigned lo = unsigned(occupied) & unsigned(Masks[s]);
+  unsigned hi = unsigned(occupied >> 32) & unsigned(Masks[s] >> 32);
+  return (lo * unsigned(Magics[s]) ^ hi * unsigned(Magics[s] >> 32)) >> Shifts[s];
+}
+
+
 /// Bitboards::init() initializes various bitboard tables. It is called at
 /// startup and relies on global objects to be already zero-initialized.
 
@@ -244,6 +265,26 @@ Bitboard pawn_attack_span(Color c, Square s) { return PawnAttackSpan[c][s]; }
 Bitboard passed_pawn_mask(Color c, Square s) { return PassedPawnMask[c][s]; }
 
 Bitboard line(Square s1, Square s2) { return LineBB[s1][s2]; }
+
+template<PieceType Pt>
+Bitboard attacks_bb(Square s, Bitboard occupied) {
+  return (Pt == ROOK ? RookAttacks : BishopAttacks)[s][magic_index<Pt>(s, occupied)];
+}
+
+template Bitboard attacks_bb<BISHOP>(Square s, Bitboard occupied);
+template Bitboard attacks_bb<ROOK>(Square s, Bitboard occupied);
+
+Bitboard attacks_bb(Piece pc, Square s, Bitboard occupied) {
+
+  switch (type_of(pc))
+  {
+  case BISHOP: return attacks_bb<BISHOP>(s, occupied);
+  case ROOK  : return attacks_bb<ROOK>(s, occupied);
+  case QUEEN : return attacks_bb<BISHOP>(s, occupied) | attacks_bb<ROOK>(s, occupied);
+  default    : return StepAttacksBB[pc][s];
+  }
+}
+
 
 namespace {
 
