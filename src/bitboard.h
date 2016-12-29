@@ -116,50 +116,37 @@ inline Bitboard shift(Bitboard b) {
 
 /// adjacent_files_bb() returns a bitboard representing all the squares on the
 /// adjacent files of the given one.
-
 Bitboard adjacent_files_bb(File f);
-
 
 /// between_bb() returns a bitboard representing all the squares between the two
 /// given ones. For instance, between_bb(SQ_C4, SQ_F7) returns a bitboard with
 /// the bits for square d5 and e6 set. If s1 and s2 are not on the same rank, file
 /// or diagonal, 0 is returned.
-
 Bitboard between_bb(Square s1, Square s2);
-
 
 /// in_front_bb() returns a bitboard representing all the squares on all the ranks
 /// in front of the given one, from the point of view of the given color. For
 /// instance, in_front_bb(BLACK, RANK_3) will return the squares on ranks 1 and 2.
-
 Bitboard in_front_bb(Color c, Rank r);
-
 
 /// forward_bb() returns a bitboard representing all the squares along the line
 /// in front of the given one, from the point of view of the given color:
 ///        ForwardBB[c][s] = in_front_bb(c, rank_of(s)) & file_bb(s)
-
 Bitboard forward_bb(Color c, Square s);
-
 
 /// pawn_attack_span() returns a bitboard representing all the squares that can be
 /// attacked by a pawn of the given color when it moves along its file, starting
 /// from the given square:
 ///       PawnAttackSpan[c][s] = in_front_bb(c, rank_of(s)) & adjacent_files_bb(s);
-
 Bitboard pawn_attack_span(Color c, Square s);
-
 
 /// passed_pawn_mask() returns a bitboard mask which can be used to test if a
 /// pawn of the given color and on the given square is a passed pawn:
 ///       PassedPawnMask[c][s] = pawn_attack_span(c, s) | forward_bb(c, s)
-
 Bitboard passed_pawn_mask(Color c, Square s);
-
 
 /// line() returns the line that joins s1 and s2, if the squares can be joined by a
 /// vertical, horizontal or diagonal line. Otherwise the result is zero.
-
 Bitboard line(Square s1, Square s2);
 
 
