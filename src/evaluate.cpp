@@ -481,6 +481,17 @@ namespace {
         if (kingDanger > 0)
             score -= make_score(std::min(kingDanger * kingDanger / 4096,  2 * int(BishopValueMg)), 0);
     }
+    
+    // King tropism: firstly, find squares that are attacked by the opponent in our king flank
+    b = ei.attackedBy[Them][ALL_PIECES] & KingFlank[Us][file_of(ksq)];
+
+    // Secondly, add the squares which are attacked twice in that flank
+    // and which are not defended by our pawns. Note the trick to shift away the
+    // previous attack bits to the empty part of the bitboard.
+    b =  (b & ei.attackedBy2[Them] & ~ei.attackedBy[Us][PAWN])
+       | (Us == WHITE ? b << 4 : b >> 4);
+
+    score -= CloseEnemies * popcount(b);
 
     // King tropism: firstly, find squares that opponent attacks in our king flank
     File kf = file_of(ksq);
