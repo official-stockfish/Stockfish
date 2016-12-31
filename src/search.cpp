@@ -312,8 +312,10 @@ void MainThread::search() {
       &&  rootMoves[0].pv[0] != MOVE_NONE)
   {
       for (Thread* th : Threads)
-          if (   th->completedDepth > bestThread->completedDepth
-              && th->rootMoves[0].score > bestThread->rootMoves[0].score)
+          if (  (th->completedDepth > bestThread->completedDepth
+              && th->rootMoves[0].score >= bestThread->rootMoves[0].score) 
+			  ||(th->rootMoves[0].score > bestThread->rootMoves[0].score 
+			  && th->completedDepth >= bestThread->completedDepth))
               bestThread = th;
   }
 
