@@ -839,6 +839,9 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   // Set capture piece
   st->capturedPiece = captured;
 
+  // Draw at first repetition
+  st->draw = true;
+
   // Update the key with the final value
   st->key = k;
 
@@ -961,6 +964,9 @@ void Position::do_null_move(StateInfo& newSt) {
   ++st->rule50;
   st->pliesFromNull = 0;
 
+  // Draw at first repetition
+  st->draw = true;
+
   sideToMove = ~sideToMove;
 
   set_check_info(st);
@@ -1076,6 +1082,29 @@ bool Position::see_ge(Move m, Value v) const {
 }
 
 
+/// Position::calc_draw() calculates the value of st->draw - the boolean meaning
+/// the position occurred before in the game. This function is called for positions
+/// up to the root, so recursion into some of them becomes possible during search.
+
+void Position::calc_draw() {
+
+  StateInfo* stp = st;
+  int e = std::min(st->rule50, st->pliesFromNull);
+
+  for (int i = 2; i <= e; i += 2)
+  {
+      stp = stp->previous->previous;
+
+      if (stp->key == st->key) {
+          st->draw = true;
+          return;
+      }
+  }
+
+  st->draw = false;
+}
+
+
 /// Position::is_draw() tests whether the position is drawn by 50-move rule
 /// or by repetition. It does not detect stalemates.
 
@@ -1095,7 +1124,7 @@ bool Position::is_draw() const {
       stp = stp->previous->previous;
 
       if (stp->key == st->key)
-          return true; // Draw at first repetition
+          return stp->draw;
 
   } while ((e -= 2) >= 4);
 
