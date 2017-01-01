@@ -65,10 +65,10 @@ inline Square operator^(Square s, int i) { return Square(int(s) ^ i); }
 // like captures and pawn moves but we can easily recover the correct dtz of the
 // previous move if we know the position's WDL score.
 int dtz_before_zeroing(WDLScore wdl) {
-    return wdl == WDLWin        ?  1   :
-           wdl == WDLCursedWin  ?  101 :
-           wdl == WDLCursedLoss ? -101 :
-           wdl == WDLLoss       ? -1   : 0;
+    return wdl == WDLWin         ?  1   :
+           wdl == WDLCursedWin   ?  101 :
+           wdl == WDLBlessedLoss ? -101 :
+           wdl == WDLLoss        ? -1   : 0;
 }
 
 // Return the sign of a number (-1, 0, 1)
@@ -147,7 +147,7 @@ struct WDLEntryPawn {
 
 struct DTZEntryPiece {
     PairsData* precomp;
-    uint16_t map_idx[4]; // WDLWin, WDLLoss, WDLCursedWin, WDLCursedLoss
+    uint16_t map_idx[4]; // WDLWin, WDLLoss, WDLCursedWin, WDLBlessedLoss
     uint8_t* map;
 };
 
@@ -660,7 +660,7 @@ int map_score(DTZEntry* entry, File f, int value, WDLScore wdl) {
     if (   (wdl == WDLWin  && !(flags & TBFlag::WinPlies))
         || (wdl == WDLLoss && !(flags & TBFlag::LossPlies))
         ||  wdl == WDLCursedWin
-        ||  wdl == WDLCursedLoss)
+        ||  wdl == WDLBlessedLoss)
         value *= 2;
 
     return value + 1;
@@ -1443,7 +1443,7 @@ int Tablebases::probe_dtz(Position& pos, ProbeState* result) {
         return 0;
 
     if (*result != CHANGE_STM)
-        return (dtz + 100 * (wdl == WDLCursedLoss || wdl == WDLCursedWin)) * sign_of(wdl);
+        return (dtz + 100 * (wdl == WDLBlessedLoss || wdl == WDLCursedWin)) * sign_of(wdl);
 
     // DTZ stores results for the other side, so we need to do a 1-ply search and
     // find the winning move that minimizes DTZ.
@@ -1566,12 +1566,12 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves, Value& 
 
     // Use 50-move counter to determine whether the root position is
     // won, lost or drawn.
-    int wdl = 0;
+    WDLScore wdl = WDLDraw;
 
     if (dtz > 0)
-        wdl = (dtz + cnt50 <= 100) ? 2 : 1;
+        wdl = (dtz + cnt50 <= 100) ? WDLWin : WDLCursedWin;
     else if (dtz < 0)
-        wdl = (-dtz + cnt50 <= 100) ? -2 : -1;
+        wdl = (-dtz + cnt50 <= 100) ? WDLLoss : WDLBlessedLoss;
 
     // Determine the score to report to the user.
     score = WDL_to_value[wdl + 2];
@@ -1579,9 +1579,9 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves, Value& 
     // If the position is winning or losing, but too few moves left, adjust the
     // score to show how close it is to winning or losing.
     // NOTE: int(PawnValueEg) is used as scaling factor in score_to_uci().
-    if (wdl == 1 && dtz <= 100)
+    if (wdl == WDLCursedWin && dtz <= 100)
         score = (Value)(((200 - dtz - cnt50) * int(PawnValueEg)) / 200);
-    else if (wdl == -1 && dtz >= -100)
+    else if (wdl == WDLBlessedLoss && dtz >= -100)
         score = -(Value)(((200 + dtz - cnt50) * int(PawnValueEg)) / 200);
 
     // Now be a bit smart about filtering out moves.
