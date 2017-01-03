@@ -46,7 +46,7 @@ int main(int argc, char* argv[]) {
   Threads.init();
   Tablebases::init(Options["SyzygyPath"]);
   TT.resize(Options["Hash"]);
-
+  Search::clear();
   UCI::loop(argc, argv);
 
   Threads.exit();
