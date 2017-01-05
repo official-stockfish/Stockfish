@@ -66,6 +66,7 @@ typedef Stats<CounterMoveStats> CounterMoveHistoryStats;
 
 struct FromToStats {
 
+  FromToStats() { clear(); }
   Value get(Color c, Move m) const { return table[c][from_sq(m)][to_sq(m)]; }
   void clear() { std::memset(table, 0, sizeof(table)); }
   void update(Color c, Move m, Value v) {
