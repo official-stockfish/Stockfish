@@ -153,10 +153,10 @@ namespace {
     {1, 0, 0, 0, 0, 1, 1 ,1},
   };
 
+  const size_t HalfDensitySize = std::extent<decltype(HalfDensity)>::value;
+
   Value bonus(Depth depth)   { int d = depth / ONE_PLY ; return  Value(d * d + 2 * d - 2); }
   Value penalty(Depth depth) { int d = depth / ONE_PLY ; return -Value(d * d + 4 * d + 1); }
-
-  const size_t HalfDensitySize = std::extent<decltype(HalfDensity)>::value;
 
   EasyMoveManager EasyMove;
   Value DrawValue[COLOR_NB];
