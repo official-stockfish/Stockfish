@@ -79,6 +79,7 @@ public:
 /// MainThread is a derived class with a specific overload for the main thread
 
 struct MainThread : public Thread {
+  MainThread() { previousScore = VALUE_INFINITE; }
   virtual void search();
 
   bool easyMovePlayed, failedLow;
