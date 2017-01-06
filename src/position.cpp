@@ -1079,25 +1079,30 @@ bool Position::see_ge(Move m, Value v) const {
 /// Position::is_draw() tests whether the position is drawn by 50-move rule
 /// or by repetition. It does not detect stalemates.
 
-bool Position::is_draw() const {
+bool Position::is_draw(int ply) const {
 
   if (st->rule50 > 99 && (!checkers() || MoveList<LEGAL>(*this).size()))
       return true;
 
-  int e = std::min(st->rule50, st->pliesFromNull);
+  int end = std::min(st->rule50, st->pliesFromNull);
 
-  if (e < 4)
+  if (end < 4)
     return false;
 
   StateInfo* stp = st->previous->previous;
+  int cnt = 0;
 
-  do {
+  for (int i = 4; i <= end; i += 2)
+  {
       stp = stp->previous->previous;
 
-      if (stp->key == st->key)
-          return true; // Draw at first repetition
-
-  } while ((e -= 2) >= 4);
+      // At root position ply is 1, so return a draw score if a position
+      // repeats once earlier but after or at the root, or repeats twice
+      // strictly before the root.
+      if (   stp->key == st->key
+          && ++cnt + (ply - i > 0) == 2)
+          return true;
+  }
 
   return false;
 }

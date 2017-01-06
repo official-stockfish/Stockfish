@@ -37,8 +37,6 @@ Thread::Thread() {
   resetCalls = exit = false;
   maxPly = callsCnt = 0;
   tbHits = 0;
-  history.clear();
-  counterMoves.clear();
   idx = Threads.size(); // Start from 0
 
   std::unique_lock<Mutex> lk(mutex);
