@@ -40,7 +40,7 @@ template<typename T, bool CM = false>
 struct Stats {
 
   static const Value Max = Value(1 << 28);
-
+	
   Stats() { clear(); }
   const T* operator[](Piece pc) const { return table[pc]; }
   T* operator[](Piece pc) { return table[pc]; }
