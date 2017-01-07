@@ -123,7 +123,7 @@ void Thread::idle_loop() {
 
 void ThreadPool::init() {
 
-  push_back(new MainThread);
+  push_back(new MainThread());
   read_uci_options();
 }
 
@@ -150,7 +150,7 @@ void ThreadPool::read_uci_options() {
   assert(requested > 0);
 
   while (size() < requested)
-      push_back(new Thread);
+      push_back(new Thread());
 
   while (size() > requested)
       delete back(), pop_back();
