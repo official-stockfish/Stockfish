@@ -56,4 +56,6 @@ do
 
 done
 
+rm repeat.exp
+
 echo "reprosearch testing OK"
