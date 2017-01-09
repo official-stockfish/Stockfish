@@ -36,11 +36,10 @@
 /// Countermoves store the move that refute a previous one. Entries are stored
 /// using only the moving piece and destination square, hence two moves with
 /// different origin but same destination and piece will be considered identical.
+static const Value StatsMax = Value(1 << 28);
+
 template<typename T, bool CM = false>
 struct Stats {
-
-  static const Value Max = Value(1 << 28);
-
   const T* operator[](Piece pc) const { return table[pc]; }
   T* operator[](Piece pc) { return table[pc]; }
   void clear() { std::memset(table, 0, sizeof(table)); }
@@ -59,8 +58,7 @@ private:
 };
 
 typedef Stats<Move> MoveStats;
-typedef Stats<Value, false> HistoryStats;
-typedef Stats<Value,  true> CounterMoveStats;
+typedef Stats<Value, true> CounterMoveStats;
 typedef Stats<CounterMoveStats> CounterMoveHistoryStats;
 
 struct FromToStats {
