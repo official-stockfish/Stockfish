@@ -441,7 +441,7 @@ profile-build: config-sanity objclean profileclean
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) profileclean
 
 test:
-	@../tests/signature.sh $(shell cat ../bench)
+	@../tests/signature.sh $(shell cat ../bench.txt)
 
 strip:
 	strip $(EXE)
