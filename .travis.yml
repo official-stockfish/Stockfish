@@ -47,13 +47,9 @@ script:
   #
   # checking bench for various build types
   #
-  # obtain reference from git log
-  - git log | grep "\b[Bb]ench[ :]\+[0-9]\{7\}" | head -n 1 | sed -rn "s/[^0-9]*([0-9]+)/\1/p" > git_sig
-  - export benchref=$(cat git_sig)
-  - echo "Reference bench:" $benchref
-  # verify against reference
-  - make clean && make ARCH=x86-64 build > /dev/null && ../tests/signature.sh $benchref
-  - make clean && make ARCH=x86-32 build > /dev/null && ../tests/signature.sh $benchref
+  - make clean && make ARCH=x86-64 build optimize=no debug=yes > /dev/null && make test
+  - make clean && make ARCH=x86-64 build                       > /dev/null && make test
+  - make clean && make ARCH=x86-32 build                       > /dev/null && make test
   #
   # perft
   #
