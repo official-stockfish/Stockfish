@@ -38,9 +38,6 @@
 /// different origin but same destination and piece will be considered identical.
 template<typename T, bool CM = false>
 struct Stats {
-
-  static const Value Max = Value(1 << 28);
-
   const T* operator[](Piece pc) const { return table[pc]; }
   T* operator[](Piece pc) { return table[pc]; }
   void clear() { std::memset(table, 0, sizeof(table)); }
@@ -59,11 +56,12 @@ private:
 };
 
 typedef Stats<Move> MoveStats;
-typedef Stats<Value, false> HistoryStats;
-typedef Stats<Value,  true> CounterMoveStats;
+typedef Stats<Value, true> CounterMoveStats;
 typedef Stats<CounterMoveStats> CounterMoveHistoryStats;
 
 struct FromToStats {
+
+  static const Value Max = Value(1 << 28);
 
   Value get(Color c, Move m) const { return table[c][from_sq(m)][to_sq(m)]; }
   void clear() { std::memset(table, 0, sizeof(table)); }
