@@ -1,0 +1,3 @@
+HTTP: http://tablebase.sesse.net/syzygy/
+BitTorrent: http://oics.olympuschess.com/tracker/index.php
+eMule: http://kirill-kryukov.com/chess/tablebases-online/
