@@ -17,6 +17,7 @@ if [ $# -gt 0 ]; then
    # compare to given reference
    if [ "$1" != "$signature" ]; then
       echo "signature mismatch: reference $1 obtained $signature"
+      exit 1
    else
       echo "signature OK: $signature"
    fi
