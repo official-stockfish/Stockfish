@@ -257,11 +257,13 @@ enum Rank : int {
 };
 
 
-/// Score enum stores a middlegame and an endgame value in a single integer
-/// (enum). The least significant 16 bits are used to store the endgame value
+/// Score stores a middlegame and an endgame value in a single integer.
+/// The least significant 16 bits are used to store the endgame value
 /// and the upper 16 bits are used to store the middlegame value. Take some
 /// care to avoid left-shifting a signed int to avoid undefined behavior.
-enum Score : int { SCORE_ZERO };
+/// Also do not multiply or divide Score, it has to be done by a special code.
+typedef int Score;
+const int SCORE_ZERO = 0;
 
 inline Score make_score(int mg, int eg) {
   return Score((int)((unsigned int)eg << 16) + mg);
@@ -282,7 +284,7 @@ inline Value mg_value(Score s) {
   return Value(mg.s);
 }
 
-#define ENABLE_BASE_OPERATORS_ON(T)                             \
+#define ENABLE_OPERATORS_ON(T)                             \
 inline T operator+(T d1, T d2) { return T(int(d1) + int(d2)); } \
 inline T operator-(T d1, T d2) { return T(int(d1) - int(d2)); } \
 inline T operator*(int i, T d) { return T(i * int(d)); }        \
@@ -290,44 +292,29 @@ inline T operator*(T d, int i) { return T(int(d) * i); }        \
 inline T operator-(T d) { return T(-int(d)); }                  \
 inline T& operator+=(T& d1, T d2) { return d1 = d1 + d2; }      \
 inline T& operator-=(T& d1, T d2) { return d1 = d1 - d2; }      \
-inline T& operator*=(T& d, int i) { return d = T(int(d) * i); }
-
-#define ENABLE_FULL_OPERATORS_ON(T)                             \
-ENABLE_BASE_OPERATORS_ON(T)                                     \
+inline T& operator*=(T& d, int i) { return d = T(int(d) * i); } \
 inline T& operator++(T& d) { return d = T(int(d) + 1); }        \
 inline T& operator--(T& d) { return d = T(int(d) - 1); }        \
 inline T operator/(T d, int i) { return T(int(d) / i); }        \
 inline int operator/(T d1, T d2) { return int(d1) / int(d2); }  \
 inline T& operator/=(T& d, int i) { return d = T(int(d) / i); }
 
-ENABLE_FULL_OPERATORS_ON(Value)
-ENABLE_FULL_OPERATORS_ON(PieceType)
-ENABLE_FULL_OPERATORS_ON(Piece)
-ENABLE_FULL_OPERATORS_ON(Color)
-ENABLE_FULL_OPERATORS_ON(Depth)
-ENABLE_FULL_OPERATORS_ON(Square)
-ENABLE_FULL_OPERATORS_ON(File)
-ENABLE_FULL_OPERATORS_ON(Rank)
+ENABLE_OPERATORS_ON(Value)
+ENABLE_OPERATORS_ON(PieceType)
+ENABLE_OPERATORS_ON(Piece)
+ENABLE_OPERATORS_ON(Color)
+ENABLE_OPERATORS_ON(Depth)
+ENABLE_OPERATORS_ON(Square)
+ENABLE_OPERATORS_ON(File)
+ENABLE_OPERATORS_ON(Rank)
 
-ENABLE_BASE_OPERATORS_ON(Score)
-
-#undef ENABLE_FULL_OPERATORS_ON
-#undef ENABLE_BASE_OPERATORS_ON
+#undef ENABLE_OPERATORS_ON
 
 /// Additional operators to add integers to a Value
 inline Value operator+(Value v, int i) { return Value(int(v) + i); }
 inline Value operator-(Value v, int i) { return Value(int(v) - i); }
 inline Value& operator+=(Value& v, int i) { return v = v + i; }
 inline Value& operator-=(Value& v, int i) { return v = v - i; }
-
-/// Only declared but not defined. We don't want to multiply two scores due to
-/// a very high risk of overflow. So user should explicitly convert to integer.
-inline Score operator*(Score s1, Score s2);
-
-/// Division of a Score must be handled separately for each term
-inline Score operator/(Score s, int i) {
-  return make_score(mg_value(s) / i, eg_value(s) / i);
-}
 
 inline Color operator~(Color c) {
   return Color(c ^ BLACK); // Toggle color
