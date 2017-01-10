@@ -29,13 +29,37 @@
 #include "types.h"
 
 
-/// The Stats struct stores moves statistics. According to the template parameter
-/// the class can store History and Countermoves. History records how often
-/// different moves have been successful or unsuccessful during the current search
-/// and is used for reduction and move ordering decisions.
-/// Countermoves store the move that refute a previous one. Entries are stored
-/// using only the moving piece and destination square, hence two moves with
-/// different origin but same destination and piece will be considered identical.
+/// HistoryStats records how often quiet moves have been successful or unsuccessful
+/// during the current search, and is used for reduction and move ordering decisions.
+struct HistoryStats {
+
+  static const Value Max = Value(1 << 28);
+
+  Value get(Color c, Move m) const { return table[c][from_sq(m)][to_sq(m)]; }
+  void clear() { std::memset(table, 0, sizeof(table)); }
+  void update(Color c, Move m, Value v) {
+
+    if (abs(int(v)) >= 324)
+        return;
+
+    Square from = from_sq(m);
+    Square to = to_sq(m);
+
+    table[c][from][to] -= table[c][from][to] * abs(int(v)) / 324;
+    table[c][from][to] += int(v) * 32;
+  }
+
+private:
+  Value table[COLOR_NB][SQUARE_NB][SQUARE_NB];
+};
+
+
+/// A template struct, used to generate MoveStats and CounterMoveHistoryStats:
+/// MoveStats store the move that refute a previous one.
+/// CounterMoveHistoryStats is like HistoryStats, but with two consecutive moves.
+/// Entries are stored using only the moving piece and destination square, hence
+/// two moves with different origin but same destination and piece will be
+/// considered identical.
 template<typename T, bool CM = false>
 struct Stats {
   const T* operator[](Piece pc) const { return table[pc]; }
@@ -58,28 +82,6 @@ private:
 typedef Stats<Move> MoveStats;
 typedef Stats<Value, true> CounterMoveStats;
 typedef Stats<CounterMoveStats> CounterMoveHistoryStats;
-
-struct FromToStats {
-
-  static const Value Max = Value(1 << 28);
-
-  Value get(Color c, Move m) const { return table[c][from_sq(m)][to_sq(m)]; }
-  void clear() { std::memset(table, 0, sizeof(table)); }
-  void update(Color c, Move m, Value v) {
-
-    if (abs(int(v)) >= 324)
-        return;
-
-    Square from = from_sq(m);
-    Square to = to_sq(m);
-
-    table[c][from][to] -= table[c][from][to] * abs(int(v)) / 324;
-    table[c][from][to] += int(v) * 32;
-  }
-
-private:
-  Value table[COLOR_NB][SQUARE_NB][SQUARE_NB];
-};
 
 
 /// MovePicker class is used to pick one pseudo legal move at a time from the
