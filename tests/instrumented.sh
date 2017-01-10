@@ -75,6 +75,9 @@ cat << EOF > syzygy.exp
  send "uci\n"
  send "setoption name SyzygyPath value ../tests/data/syzygy/\n"
  send "bench 128 1 10 default depth\n"
+ # root in TB
+ send "position fen 4k3/R7/8/8/8/8/n7/5K2 w - - 0 1\n"
+ send "go nodes 1000\n"
  send "quit\n"
  expect eof
 
