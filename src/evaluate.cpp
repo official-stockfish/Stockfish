@@ -812,6 +812,11 @@ Value Eval::evaluate(const Position& pos) {
   // Probe the pawn hash table
   ei.pi = Pawns::probe(pos);
   score += ei.pi->pawns_score();
+  
+  // Early exit if score is high
+  Value lazyValue = mg_value(score);
+  if (abs(lazyValue) > 1500)
+     return (pos.side_to_move() == WHITE ? lazyValue : -lazyValue);
 
   // Initialize attack and king safety bitboards
   ei.attackedBy[WHITE][ALL_PIECES] = ei.attackedBy[BLACK][ALL_PIECES] = 0;
