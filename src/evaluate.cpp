@@ -221,6 +221,8 @@ namespace {
   const int BishopCheck       = 588;
   const int KnightCheck       = 924;
 
+  // Advantage parameters for lazy eval
+  Value advantageThreshold = Value(1500);
 
   // eval_init() initializes king and attack bitboards for a given color
   // adding pawn attacks. To be done at the beginning of the evaluation.
@@ -782,6 +784,20 @@ namespace {
     return sf;
   }
 
+  int evaluate_advantage(Score score, Value threshold){
+    if(mg_value(score) > threshold && eg_value(score) > threshold)
+        return 1;
+    else if(mg_value(score) < -threshold && eg_value(score) < -threshold)
+        return -1;
+
+    return 0;
+  }
+
+  Value lazy_eval(int advantage, Score score){
+    Value v = (mg_value(score) + eg_value(score))/2;
+    Value u = advantage * (advantageThreshold + (abs(v) - advantageThreshold)/4);
+    return u;
+  }
 } // namespace
 
 
@@ -812,6 +828,12 @@ Value Eval::evaluate(const Position& pos) {
   // Probe the pawn hash table
   ei.pi = Pawns::probe(pos);
   score += ei.pi->pawns_score();
+
+  // We have taken into account all cheap evaluation terms. If score exceeds a threshold
+  // return a lazy evaluation.
+  int advantage = evaluate_advantage(score, advantageThreshold);
+  if(advantage)
+      return pos.side_to_move() == WHITE? lazy_eval(advantage, score): -lazy_eval(advantage, score);
 
   // Initialize attack and king safety bitboards
   ei.attackedBy[WHITE][ALL_PIECES] = ei.attackedBy[BLACK][ALL_PIECES] = 0;
