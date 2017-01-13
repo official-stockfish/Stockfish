@@ -812,9 +812,9 @@ Value Eval::evaluate(const Position& pos) {
   // Probe the pawn hash table
   ei.pi = Pawns::probe(pos);
   score += ei.pi->pawns_score();
-  
+
   // Early exit if score is high
-  Value lazyValue = mg_value(score);
+  Value lazyValue = (mg_value(score) + eg_value(score)) / 2;
   if (abs(lazyValue) > 1500)
      return (pos.side_to_move() == WHITE ? lazyValue : -lazyValue);
 
