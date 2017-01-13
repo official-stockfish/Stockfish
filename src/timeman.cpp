@@ -20,6 +20,7 @@
 
 #include <algorithm>
 #include <cfloat>
+#include <cmath>
 
 #include "timeman.h"
 #include "uci.h"
