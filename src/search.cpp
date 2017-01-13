@@ -26,9 +26,7 @@
 #include <sstream>
 
 #include "evaluate.h"
-#include "misc.h"
 #include "movegen.h"
-#include "movepick.h"
 #include "position.h"
 #include "search.h"
 #include "timeman.h"

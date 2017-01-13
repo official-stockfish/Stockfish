@@ -25,7 +25,6 @@
 #include <iomanip>
 #include <sstream>
 
-#include "bitboard.h"
 #include "misc.h"
 #include "movegen.h"
 #include "position.h"
