@@ -875,10 +875,14 @@ moves_loop: // When in check search starts from here
       moveCountPruning =   depth < 16 * ONE_PLY
                         && moveCount >= FutilityMoveCounts[improving][depth / ONE_PLY];
 
-      // Step 12. Extend checks
-      if (    givesCheck
+      // Step 12. Extend checks and pawn pushes to the 7th/8th rank
+      if (givesCheck
           && !moveCountPruning
           &&  pos.see_ge(move, VALUE_ZERO))
+          extension = ONE_PLY;
+       else if (pos.pawn_push_extension(move)
+			    && !moveCountPruning
+			    &&  pos.see_ge(move, VALUE_ZERO))
           extension = ONE_PLY;
 
       // Singular extension search. If all moves but one fail low on a search of
