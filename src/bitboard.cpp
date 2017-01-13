@@ -37,20 +37,21 @@ Bitboard* BishopAttacks[SQUARE_NB];
 unsigned  BishopShifts [SQUARE_NB];
 
 Bitboard SquareBB[SQUARE_NB];
-Bitboard FileBB[FILE_NB];
-Bitboard RankBB[RANK_NB];
-Bitboard AdjacentFilesBB[FILE_NB];
-Bitboard InFrontBB[COLOR_NB][RANK_NB];
 Bitboard StepAttacksBB[PIECE_NB][SQUARE_NB];
-Bitboard BetweenBB[SQUARE_NB][SQUARE_NB];
-Bitboard LineBB[SQUARE_NB][SQUARE_NB];
 Bitboard DistanceRingBB[SQUARE_NB][8];
-Bitboard ForwardBB[COLOR_NB][SQUARE_NB];
-Bitboard PassedPawnMask[COLOR_NB][SQUARE_NB];
-Bitboard PawnAttackSpan[COLOR_NB][SQUARE_NB];
 Bitboard PseudoAttacks[PIECE_TYPE_NB][SQUARE_NB];
 
 namespace {
+
+  Bitboard FileBB[FILE_NB];
+  Bitboard RankBB[RANK_NB];
+  Bitboard InFrontBB[COLOR_NB][RANK_NB];
+  Bitboard ForwardBB[COLOR_NB][SQUARE_NB];
+  Bitboard AdjacentFilesBB[FILE_NB];
+  Bitboard BetweenBB[SQUARE_NB][SQUARE_NB];
+  Bitboard PassedPawnMask[COLOR_NB][SQUARE_NB];
+  Bitboard PawnAttackSpan[COLOR_NB][SQUARE_NB];
+  Bitboard LineBB[SQUARE_NB][SQUARE_NB];
 
   // De Bruijn sequences. See chessprogramming.wikispaces.com/BitScan
   const uint64_t DeBruijn64 = 0x3F79D71B4CB0A89ULL;
@@ -228,6 +229,21 @@ void Bitboards::init() {
   }
 }
 
+Bitboard rank_bb(Rank r)   { return RankBB[r]; }
+Bitboard rank_bb(Square s) { return RankBB[rank_of(s)]; }
+Bitboard file_bb(File f)   { return FileBB[f]; }
+Bitboard file_bb(Square s) { return FileBB[file_of(s)]; }
+
+Bitboard in_front_bb(Color c, Rank r)  { return InFrontBB[c][r]; }
+Bitboard forward_bb(Color c, Square s) { return ForwardBB[c][s]; }
+
+Bitboard adjacent_files_bb(File f) { return AdjacentFilesBB[f]; }
+Bitboard between_bb(Square s1, Square s2) { return BetweenBB[s1][s2]; }
+
+Bitboard pawn_attack_span(Color c, Square s) { return PawnAttackSpan[c][s]; }
+Bitboard passed_pawn_mask(Color c, Square s) { return PassedPawnMask[c][s]; }
+
+Bitboard line(Square s1, Square s2) { return LineBB[s1][s2]; }
 
 namespace {
 

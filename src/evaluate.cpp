@@ -277,7 +277,7 @@ namespace {
                          : pos.attacks_from<Pt>(s);
 
         if (ei.pinnedPieces[Us] & s)
-            b &= LineBB[pos.square<KING>(Us)][s];
+            b &= line(pos.square<KING>(Us), s);
 
         ei.attackedBy2[Us] |= ei.attackedBy[Us][ALL_PIECES] & b;
         ei.attackedBy[Us][ALL_PIECES] |= ei.attackedBy[Us][Pt] |= b;

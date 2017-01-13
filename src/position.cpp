@@ -547,7 +547,7 @@ bool Position::legal(Move m) const {
   // A non-king move is legal if and only if it is not pinned or it
   // is moving along the ray towards or away from the king.
   return   !(pinned_pieces(us) & from)
-        ||  aligned(from, to_sq(m), square<KING>(us));
+        ||  (line(from, to_sq(m)) & square<KING>(us));
 }
 
 
@@ -639,7 +639,7 @@ bool Position::gives_check(Move m) const {
 
   // Is there a discovered check?
   if (   (discovered_check_candidates() & from)
-      && !aligned(from, to, square<KING>(~sideToMove)))
+      && !(line(from, to) & square<KING>(~sideToMove)))
       return true;
 
   switch (type_of(m))

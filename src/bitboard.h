@@ -62,17 +62,8 @@ const Bitboard Rank8BB = Rank1BB << (8 * 7);
 extern int SquareDistance[SQUARE_NB][SQUARE_NB];
 
 extern Bitboard SquareBB[SQUARE_NB];
-extern Bitboard FileBB[FILE_NB];
-extern Bitboard RankBB[RANK_NB];
-extern Bitboard AdjacentFilesBB[FILE_NB];
-extern Bitboard InFrontBB[COLOR_NB][RANK_NB];
 extern Bitboard StepAttacksBB[PIECE_NB][SQUARE_NB];
-extern Bitboard BetweenBB[SQUARE_NB][SQUARE_NB];
-extern Bitboard LineBB[SQUARE_NB][SQUARE_NB];
 extern Bitboard DistanceRingBB[SQUARE_NB][8];
-extern Bitboard ForwardBB[COLOR_NB][SQUARE_NB];
-extern Bitboard PassedPawnMask[COLOR_NB][SQUARE_NB];
-extern Bitboard PawnAttackSpan[COLOR_NB][SQUARE_NB];
 extern Bitboard PseudoAttacks[PIECE_TYPE_NB][SQUARE_NB];
 
 
@@ -107,22 +98,10 @@ inline bool more_than_one(Bitboard b) {
 /// rank_bb() and file_bb() return a bitboard representing all the squares on
 /// the given file or rank.
 
-inline Bitboard rank_bb(Rank r) {
-  return RankBB[r];
-}
-
-inline Bitboard rank_bb(Square s) {
-  return RankBB[rank_of(s)];
-}
-
-inline Bitboard file_bb(File f) {
-  return FileBB[f];
-}
-
-inline Bitboard file_bb(Square s) {
-  return FileBB[file_of(s)];
-}
-
+Bitboard rank_bb(Rank r);
+Bitboard rank_bb(Square s);
+Bitboard file_bb(File f);
+Bitboard file_bb(Square s);
 
 /// shift() moves a bitboard one step along direction D. Mainly for pawns
 
@@ -137,65 +116,38 @@ inline Bitboard shift(Bitboard b) {
 
 /// adjacent_files_bb() returns a bitboard representing all the squares on the
 /// adjacent files of the given one.
-
-inline Bitboard adjacent_files_bb(File f) {
-  return AdjacentFilesBB[f];
-}
-
+Bitboard adjacent_files_bb(File f);
 
 /// between_bb() returns a bitboard representing all the squares between the two
 /// given ones. For instance, between_bb(SQ_C4, SQ_F7) returns a bitboard with
 /// the bits for square d5 and e6 set. If s1 and s2 are not on the same rank, file
 /// or diagonal, 0 is returned.
-
-inline Bitboard between_bb(Square s1, Square s2) {
-  return BetweenBB[s1][s2];
-}
-
+Bitboard between_bb(Square s1, Square s2);
 
 /// in_front_bb() returns a bitboard representing all the squares on all the ranks
 /// in front of the given one, from the point of view of the given color. For
 /// instance, in_front_bb(BLACK, RANK_3) will return the squares on ranks 1 and 2.
-
-inline Bitboard in_front_bb(Color c, Rank r) {
-  return InFrontBB[c][r];
-}
-
+Bitboard in_front_bb(Color c, Rank r);
 
 /// forward_bb() returns a bitboard representing all the squares along the line
 /// in front of the given one, from the point of view of the given color:
-///        ForwardBB[c][s] = in_front_bb(c, s) & file_bb(s)
-
-inline Bitboard forward_bb(Color c, Square s) {
-  return ForwardBB[c][s];
-}
-
+///        ForwardBB[c][s] = in_front_bb(c, rank_of(s)) & file_bb(s)
+Bitboard forward_bb(Color c, Square s);
 
 /// pawn_attack_span() returns a bitboard representing all the squares that can be
 /// attacked by a pawn of the given color when it moves along its file, starting
 /// from the given square:
-///       PawnAttackSpan[c][s] = in_front_bb(c, s) & adjacent_files_bb(s);
-
-inline Bitboard pawn_attack_span(Color c, Square s) {
-  return PawnAttackSpan[c][s];
-}
-
+///       PawnAttackSpan[c][s] = in_front_bb(c, rank_of(s)) & adjacent_files_bb(s);
+Bitboard pawn_attack_span(Color c, Square s);
 
 /// passed_pawn_mask() returns a bitboard mask which can be used to test if a
 /// pawn of the given color and on the given square is a passed pawn:
 ///       PassedPawnMask[c][s] = pawn_attack_span(c, s) | forward_bb(c, s)
+Bitboard passed_pawn_mask(Color c, Square s);
 
-inline Bitboard passed_pawn_mask(Color c, Square s) {
-  return PassedPawnMask[c][s];
-}
-
-
-/// aligned() returns true if the squares s1, s2 and s3 are aligned either on a
-/// straight or on a diagonal line.
-
-inline bool aligned(Square s1, Square s2, Square s3) {
-  return LineBB[s1][s2] & s3;
-}
+/// line() returns the line that joins s1 and s2, if the squares can be joined by a
+/// vertical, horizontal or diagonal line. Otherwise the result is zero.
+Bitboard line(Square s1, Square s2);
 
 
 /// distance() functions return the distance between x and y, defined as the
