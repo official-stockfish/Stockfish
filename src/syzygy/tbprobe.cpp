@@ -17,10 +17,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <algorithm>
 #include <atomic>
-#include <cstdint>
-#include <cstring>   // For memset
 #include <deque>
 #include <fstream>
 #include <iostream>
