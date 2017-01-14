@@ -21,7 +21,6 @@
 #include <fstream>
 #include <iostream>
 #include <istream>
-#include <vector>
 
 #include "misc.h"
 #include "position.h"

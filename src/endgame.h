@@ -22,7 +22,6 @@
 #define ENDGAME_H_INCLUDED
 
 #include <map>
-#include <string>
 #include <type_traits>
 
 #include "position.h"

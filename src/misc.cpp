@@ -40,7 +40,6 @@ typedef bool(*fun3_t)(HANDLE, CONST GROUP_AFFINITY*, PGROUP_AFFINITY);
 #include <iomanip>
 #include <iostream>
 #include <sstream>
-#include <vector>
 
 #include "misc.h"
 #include "thread.h"

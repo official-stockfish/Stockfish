@@ -43,6 +43,10 @@
 #include <climits>
 #include <cstdint>
 #include <cstdlib>
+#include <cstring>   // For std::memset
+#include <algorithm> // For std::max
+#include <vector>
+#include <string>
 
 #if defined(_MSC_VER)
 // Disable some silly and noisy warning from MSVC compiler

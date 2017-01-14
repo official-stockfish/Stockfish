@@ -25,7 +25,6 @@
 #include <condition_variable>
 #include <mutex>
 #include <thread>
-#include <vector>
 
 #include "material.h"
 #include "movepick.h"

@@ -20,7 +20,6 @@
 
 #include <iostream>
 #include <sstream>
-#include <string>
 
 #include "evaluate.h"
 #include "movegen.h"

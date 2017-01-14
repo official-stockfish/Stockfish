@@ -18,8 +18,6 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <algorithm>
-
 #include "types.h"
 
 Value PieceValue[PHASE_NB][PIECE_NB] = {

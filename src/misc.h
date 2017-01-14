@@ -21,11 +21,8 @@
 #ifndef MISC_H_INCLUDED
 #define MISC_H_INCLUDED
 
-#include <cassert>
 #include <chrono>
 #include <ostream>
-#include <string>
-#include <vector>
 
 #include "types.h"
 
