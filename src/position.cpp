@@ -30,8 +30,6 @@
 #include "uci.h"
 #include "syzygy/tbprobe.h"
 
-using std::string;
-
 namespace PSQT {
   extern Score psq[PIECE_NB][SQUARE_NB];
 }
@@ -46,7 +44,7 @@ namespace Zobrist {
 
 namespace {
 
-const string PieceToChar(" PNBRQK  pnbrqk");
+const std::string PieceToChar(" PNBRQK  pnbrqk");
 
 // min_attacker() is a helper function used by see_ge() to locate the least
 // valuable attacker for the side to move, remove the attacker we just found
@@ -152,7 +150,7 @@ void Position::init() {
 /// This function is not very robust - make sure that input FENs are correct,
 /// this is assumed to be the responsibility of the GUI.
 
-Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Thread* th) {
+Position& Position::set(const std::string& fenStr, bool isChess960, StateInfo* si, Thread* th) {
 /*
    A FEN string defines a particular position using only the ASCII character set.
 
@@ -209,7 +207,7 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
       else if (token == '/')
           sq -= Square(16);
 
-      else if ((idx = PieceToChar.find(token)) != string::npos)
+      else if ((idx = PieceToChar.find(token)) != std::string::npos)
       {
           put_piece(Piece(idx), sq);
           ++sq;
@@ -377,18 +375,18 @@ void Position::set_state(StateInfo* si) const {
 /// get the material key out of an endgame code. Position is not playable,
 /// indeed is even not guaranteed to be legal.
 
-Position& Position::set(const string& code, Color c, StateInfo* si) {
+Position& Position::set(const std::string& code, Color c, StateInfo* si) {
 
   assert(code.length() > 0 && code.length() < 8);
   assert(code[0] == 'K');
 
-  string sides[] = { code.substr(code.find('K', 1)),      // Weak
-                     code.substr(0, code.find('K', 1)) }; // Strong
+  std::string sides[] = { code.substr(code.find('K', 1)),      // Weak
+                          code.substr(0, code.find('K', 1)) }; // Strong
 
   std::transform(sides[c].begin(), sides[c].end(), sides[c].begin(), tolower);
 
-  string fenStr =  sides[0] + char(8 - sides[0].length() + '0') + "/8/8/8/8/8/8/"
-                 + sides[1] + char(8 - sides[1].length() + '0') + " w - - 0 10";
+  std::string fenStr =  sides[0] + char(8 - sides[0].length() + '0') + "/8/8/8/8/8/8/"
+                      + sides[1] + char(8 - sides[1].length() + '0') + " w - - 0 10";
 
   return set(fenStr, false, si, nullptr);
 }
@@ -397,7 +395,7 @@ Position& Position::set(const string& code, Color c, StateInfo* si) {
 /// Position::fen() returns a FEN representation of the position. In case of
 /// Chess960 the Shredder-FEN notation is used. This is mainly a debugging function.
 
-const string Position::fen() const {
+const std::string Position::fen() const {
 
   int emptyCnt;
   std::ostringstream ss;
@@ -1109,7 +1107,7 @@ bool Position::is_draw(int ply) const {
 
 void Position::flip() {
 
-  string f, token;
+  std::string f, token;
   std::stringstream ss(fen());
 
   for (Rank r = RANK_8; r >= RANK_1; --r) // Piece placement
