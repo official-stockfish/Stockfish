@@ -416,7 +416,7 @@ namespace {
         // number and types of the enemy's attacking pieces, the number of
         // attacked and undefended squares around our king and the quality of
         // the pawn shelter (current 'score' value).
-        kingDanger =  std::min(807, ei.kingAttackersCount[Them] * ei.kingAttackersWeight[Them])
+        kingDanger =  min(807, ei.kingAttackersCount[Them] * ei.kingAttackersWeight[Them])
                     + 101 * ei.kingAdjacentZoneAttacksCount[Them]
                     + 235 * popcount(undefended)
                     + 134 * (popcount(b) + !!ei.pinnedPieces[Us])
@@ -475,7 +475,7 @@ namespace {
 
         // Compute the king danger score and subtract it from the evaluation
         if (kingDanger > 0)
-            score -= make_score(std::min(kingDanger * kingDanger / 4096,  2 * int(BishopValueMg)), 0);
+            score -= make_score(min(kingDanger * kingDanger / 4096,  2 * int(BishopValueMg)), 0);
     }
 
     // King tropism: firstly, find squares that opponent attacks in our king flank
@@ -718,7 +718,7 @@ namespace {
 
     // ...count safe + (behind & safe) with a single popcount
     int bonus = popcount((Us == WHITE ? safe << 32 : safe >> 32) | (behind & safe));
-    bonus = std::min(16, bonus);
+    bonus = min(16, bonus);
     int weight = pos.count<ALL_PIECES>(Us) - 2 * ei.pi->open_files();
 
     return make_score(bonus * weight * weight / 18, 0);
@@ -740,7 +740,7 @@ namespace {
     // Now apply the bonus: note that we find the attacking side by extracting
     // the sign of the endgame value, and that we carefully cap the bonus so
     // that the endgame score will never be divided by more than two.
-    int value = ((eg > 0) - (eg < 0)) * std::max(initiative, -abs(eg / 2));
+    int value = ((eg > 0) - (eg < 0)) * max(initiative, -abs(eg / 2));
 
     return make_score(0, value);
   }
@@ -909,9 +909,9 @@ template Value Eval::evaluate<false>(const Position&);
 /// a string (suitable for outputting to stdout) that contains the detailed
 /// descriptions and values of each evaluation term. Useful for debugging.
 
-std::string Eval::trace(const Position& pos) {
+string Eval::trace(const Position& pos) {
 
-  std::memset(scores, 0, sizeof(scores));
+  memset(scores, 0, sizeof(scores));
 
   Value v = evaluate<true>(pos);
   v = pos.side_to_move() == WHITE ? v : -v; // White's point of view

@@ -44,7 +44,7 @@ namespace Zobrist {
 
 namespace {
 
-const std::string PieceToChar(" PNBRQK  pnbrqk");
+const string PieceToChar(" PNBRQK  pnbrqk");
 
 // min_attacker() is a helper function used by see_ge() to locate the least
 // valuable attacker for the side to move, remove the attacker we just found
@@ -150,7 +150,7 @@ void Position::init() {
 /// This function is not very robust - make sure that input FENs are correct,
 /// this is assumed to be the responsibility of the GUI.
 
-Position& Position::set(const std::string& fenStr, bool isChess960, StateInfo* si, Thread* th) {
+Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Thread* th) {
 /*
    A FEN string defines a particular position using only the ASCII character set.
 
@@ -191,8 +191,8 @@ Position& Position::set(const std::string& fenStr, bool isChess960, StateInfo* s
   Square sq = SQ_A8;
   std::istringstream ss(fenStr);
 
-  std::memset(this, 0, sizeof(Position));
-  std::memset(si, 0, sizeof(StateInfo));
+  memset(this, 0, sizeof(Position));
+  memset(si, 0, sizeof(StateInfo));
   std::fill_n(&pieceList[0][0], sizeof(pieceList) / sizeof(Square), SQ_NONE);
   st = si;
 
@@ -207,7 +207,7 @@ Position& Position::set(const std::string& fenStr, bool isChess960, StateInfo* s
       else if (token == '/')
           sq -= Square(16);
 
-      else if ((idx = PieceToChar.find(token)) != std::string::npos)
+      else if ((idx = PieceToChar.find(token)) != string::npos)
       {
           put_piece(Piece(idx), sq);
           ++sq;
@@ -265,7 +265,7 @@ Position& Position::set(const std::string& fenStr, bool isChess960, StateInfo* s
 
   // Convert from fullmove starting from 1 to ply starting from 0,
   // handle also common incorrect FEN with fullmove = 0.
-  gamePly = std::max(2 * (gamePly - 1), 0) + (sideToMove == BLACK);
+  gamePly = max(2 * (gamePly - 1), 0) + (sideToMove == BLACK);
 
   chess960 = isChess960;
   thisThread = th;
@@ -294,11 +294,11 @@ void Position::set_castling_right(Color c, Square rfrom) {
   Square kto = relative_square(c, cs == KING_SIDE ? SQ_G1 : SQ_C1);
   Square rto = relative_square(c, cs == KING_SIDE ? SQ_F1 : SQ_D1);
 
-  for (Square s = std::min(rfrom, rto); s <= std::max(rfrom, rto); ++s)
+  for (Square s = min(rfrom, rto); s <= max(rfrom, rto); ++s)
       if (s != kfrom && s != rfrom)
           castlingPath[cr] |= s;
 
-  for (Square s = std::min(kfrom, kto); s <= std::max(kfrom, kto); ++s)
+  for (Square s = min(kfrom, kto); s <= max(kfrom, kto); ++s)
       if (s != kfrom && s != rfrom)
           castlingPath[cr] |= s;
 }
@@ -375,17 +375,17 @@ void Position::set_state(StateInfo* si) const {
 /// get the material key out of an endgame code. Position is not playable,
 /// indeed is even not guaranteed to be legal.
 
-Position& Position::set(const std::string& code, Color c, StateInfo* si) {
+Position& Position::set(const string& code, Color c, StateInfo* si) {
 
   assert(code.length() > 0 && code.length() < 8);
   assert(code[0] == 'K');
 
-  std::string sides[] = { code.substr(code.find('K', 1)),      // Weak
+  string sides[] = { code.substr(code.find('K', 1)),      // Weak
                           code.substr(0, code.find('K', 1)) }; // Strong
 
   std::transform(sides[c].begin(), sides[c].end(), sides[c].begin(), tolower);
 
-  std::string fenStr =  sides[0] + char(8 - sides[0].length() + '0') + "/8/8/8/8/8/8/"
+  string fenStr =  sides[0] + char(8 - sides[0].length() + '0') + "/8/8/8/8/8/8/"
                       + sides[1] + char(8 - sides[1].length() + '0') + " w - - 0 10";
 
   return set(fenStr, false, si, nullptr);
@@ -395,7 +395,7 @@ Position& Position::set(const std::string& code, Color c, StateInfo* si) {
 /// Position::fen() returns a FEN representation of the position. In case of
 /// Chess960 the Shredder-FEN notation is used. This is mainly a debugging function.
 
-const std::string Position::fen() const {
+const string Position::fen() const {
 
   int emptyCnt;
   std::ostringstream ss;
@@ -449,7 +449,7 @@ Phase Position::game_phase() const {
 
   Value npm = st->nonPawnMaterial[WHITE] + st->nonPawnMaterial[BLACK];
 
-  npm = std::max(EndgameLimit, std::min(npm, MidgameLimit));
+  npm = max(EndgameLimit, min(npm, MidgameLimit));
 
   return Phase(((npm - EndgameLimit) * PHASE_MIDGAME) / (MidgameLimit - EndgameLimit));
 }
@@ -688,7 +688,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   // Copy some fields of the old state to our new StateInfo object except the
   // ones which are going to be recalculated from scratch anyway and then switch
   // our state pointer to point to the new (ready to be updated) state.
-  std::memcpy(&newSt, st, offsetof(StateInfo, key));
+  memcpy(&newSt, st, offsetof(StateInfo, key));
   newSt.previous = st;
   st = &newSt;
 
@@ -939,7 +939,7 @@ void Position::do_null_move(StateInfo& newSt) {
   assert(!checkers());
   assert(&newSt != st);
 
-  std::memcpy(&newSt, st, sizeof(StateInfo));
+  memcpy(&newSt, st, sizeof(StateInfo));
   newSt.previous = st;
   st = &newSt;
 
@@ -1078,7 +1078,7 @@ bool Position::is_draw(int ply) const {
   if (st->rule50 > 99 && (!checkers() || MoveList<LEGAL>(*this).size()))
       return true;
 
-  int end = std::min(st->rule50, st->pliesFromNull);
+  int end = min(st->rule50, st->pliesFromNull);
 
   if (end < 4)
     return false;
@@ -1107,7 +1107,7 @@ bool Position::is_draw(int ply) const {
 
 void Position::flip() {
 
-  std::string f, token;
+  string f, token;
   std::stringstream ss(fen());
 
   for (Rank r = RANK_8; r >= RANK_1; --r) // Piece placement

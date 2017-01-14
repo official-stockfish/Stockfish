@@ -30,7 +30,7 @@
 
 namespace {
 
-const std::vector<std::string> Defaults = {
+const vector<string> Defaults = {
   "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
   "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 10",
   "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 11",
@@ -95,16 +95,16 @@ const std::vector<std::string> Defaults = {
 
 void benchmark(const Position& current, std::istream& is) {
 
-  std::string token;
-  std::vector<std::string> fens;
+  string token;
+  vector<string> fens;
   Search::LimitsType limits;
 
   // Assign default values to missing arguments
-  std::string ttSize    = (is >> token) ? token : "16";
-  std::string threads   = (is >> token) ? token : "1";
-  std::string limit     = (is >> token) ? token : "13";
-  std::string fenFile   = (is >> token) ? token : "default";
-  std::string limitType = (is >> token) ? token : "depth";
+  string ttSize    = (is >> token) ? token : "16";
+  string threads   = (is >> token) ? token : "1";
+  string limit     = (is >> token) ? token : "13";
+  string fenFile   = (is >> token) ? token : "default";
+  string limitType = (is >> token) ? token : "depth";
 
   Options["Hash"]    = ttSize;
   Options["Threads"] = threads;
@@ -130,7 +130,7 @@ void benchmark(const Position& current, std::istream& is) {
 
   else
   {
-      std::string fen;
+      string fen;
       std::ifstream file(fenFile);
 
       if (!file.is_open())

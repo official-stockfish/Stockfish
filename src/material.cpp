@@ -120,7 +120,7 @@ Entry* probe(const Position& pos) {
   if (e->key == key)
       return e;
 
-  std::memset(e, 0, sizeof(Entry));
+  memset(e, 0, sizeof(Entry));
   e->key = key;
   e->factor[WHITE] = e->factor[BLACK] = (uint8_t)SCALE_FACTOR_NORMAL;
   e->gamePhase = pos.game_phase();

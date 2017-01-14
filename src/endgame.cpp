@@ -105,7 +105,7 @@ Endgames::Endgames() {
 
 
 template<EndgameType E, typename T>
-void Endgames::add(const std::string& code) {
+void Endgames::add(const string& code) {
   StateInfo st;
   map<T>()[Position().set(code, WHITE, &st).material_key()] = std::unique_ptr<EndgameBase<T>>(new Endgame<E>(WHITE));
   map<T>()[Position().set(code, BLACK, &st).material_key()] = std::unique_ptr<EndgameBase<T>>(new Endgame<E>(BLACK));
@@ -139,7 +139,7 @@ Value Endgame<KXK>::operator()(const Position& pos) const {
       ||(pos.count<BISHOP>(strongSide) && pos.count<KNIGHT>(strongSide))
       ||(pos.count<BISHOP>(strongSide) > 1 && opposite_colors(pos.squares<BISHOP>(strongSide)[0],
                                                               pos.squares<BISHOP>(strongSide)[1])))
-      result = std::min(result + VALUE_KNOWN_WIN, VALUE_MATE_IN_MAX_PLY - 1);
+      result = min(result + VALUE_KNOWN_WIN, VALUE_MATE_IN_MAX_PLY - 1);
 
   return strongSide == pos.side_to_move() ? result : -result;
 }
@@ -573,7 +573,7 @@ ScaleFactor Endgame<KRPPKRP>::operator()(const Position& pos) const {
   if (pos.pawn_passed(strongSide, wpsq1) || pos.pawn_passed(strongSide, wpsq2))
       return SCALE_FACTOR_NONE;
 
-  Rank r = std::max(relative_rank(strongSide, wpsq1), relative_rank(strongSide, wpsq2));
+  Rank r = max(relative_rank(strongSide, wpsq1), relative_rank(strongSide, wpsq2));
 
   if (   distance<File>(bksq, wpsq1) <= 1
       && distance<File>(bksq, wpsq2) <= 1

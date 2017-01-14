@@ -20,7 +20,7 @@
 #include <algorithm>
 #include <atomic>
 #include <cstdint>
-#include <cstring>   // For std::memset
+#include <cstring>   // For memset
 #include <deque>
 #include <fstream>
 #include <iostream>
@@ -117,8 +117,8 @@ struct PairsData {
     SparseEntry* sparseIndex;      // Partial indices into blockLength[]
     size_t sparseIndexSize;        // Size of SparseIndex[] table
     uint8_t* data;                 // Start of Huffman compressed data
-    std::vector<uint64_t> base64;  // base64[l - min_sym_len] is the 64bit-padded lowest symbol of length l
-    std::vector<uint8_t> symlen;   // Number of values (-1) represented by a given Huffman symbol: 1..256
+    vector<uint64_t> base64;  // base64[l - min_sym_len] is the 64bit-padded lowest symbol of length l
+    vector<uint8_t> symlen;   // Number of values (-1) represented by a given Huffman symbol: 1..256
     Piece pieces[TBPIECES];        // Position pieces: the order of pieces defines the groups
     uint64_t groupIdx[TBPIECES+1]; // Start index used for the encoding of the group's pieces
     int groupLen[TBPIECES+1];      // Number of pieces in a given group: KRKN -> (3, 1)
@@ -168,7 +168,7 @@ struct TBEntry : public Atomic {
 
 // Now the main types: WDLEntry and DTZEntry
 struct WDLEntry : public TBEntry {
-    WDLEntry(const std::string& code);
+    WDLEntry(const string& code);
    ~WDLEntry();
     union {
         WLDEntryPiece pieceTable[2]; // [wtm / btm]
@@ -215,7 +215,7 @@ const Value WDL_to_value[] = {
     VALUE_MATE - MAX_PLY - 1
 };
 
-const std::string PieceToChar = " PNBRQK  pnbrqk";
+const string PieceToChar = " PNBRQK  pnbrqk";
 
 int Binomial[6][SQUARE_NB];    // [k][n] k elements from a set of n elements
 int LeadPawnIdx[5][SQUARE_NB]; // [leadPawnsCnt][SQUARE_NB]
@@ -240,7 +240,7 @@ template<typename T, int LE> T number(void* addr)
     T v;
 
     if ((uintptr_t)addr & (alignof(T) - 1)) // Unaligned pointer (very rare)
-        std::memcpy(&v, addr, sizeof(T));
+        memcpy(&v, addr, sizeof(T));
     else
         v = *((T*)addr);
 
@@ -288,19 +288,19 @@ public:
   }
 
   void clear() {
-      std::memset(hashTable, 0, sizeof(hashTable));
+      memset(hashTable, 0, sizeof(hashTable));
       wdlTable.clear();
       dtzTable.clear();
   }
   size_t size() const { return wdlTable.size(); }
-  void insert(const std::vector<PieceType>& pieces);
+  void insert(const vector<PieceType>& pieces);
 };
 
 HashTable EntryTable;
 
 class TBFile : public std::ifstream {
 
-    std::string fname;
+    string fname;
 
 public:
     // Look for and open the file among the Paths directories where the .rtbw
@@ -309,9 +309,9 @@ public:
     //
     // Example:
     // C:\tb\wdl345;C:\tb\wdl6;D:\tb\dtz345;D:\tb\dtz6
-    static std::string Paths;
+    static string Paths;
 
-    TBFile(const std::string& f) {
+    TBFile(const string& f) {
 
 #ifndef _WIN32
         const char SepChar = ':';
@@ -319,7 +319,7 @@ public:
         const char SepChar = ';';
 #endif
         std::stringstream ss(Paths);
-        std::string path;
+        string path;
 
         while (std::getline(ss, path, SepChar)) {
             fname = path + "/" + f;
@@ -397,9 +397,9 @@ public:
     }
 };
 
-std::string TBFile::Paths;
+string TBFile::Paths;
 
-WDLEntry::WDLEntry(const std::string& code) {
+WDLEntry::WDLEntry(const string& code) {
 
     StateInfo st;
     Position pos;
@@ -472,9 +472,9 @@ DTZEntry::~DTZEntry() {
         delete pieceTable.precomp;
 }
 
-void HashTable::insert(const std::vector<PieceType>& pieces) {
+void HashTable::insert(const vector<PieceType>& pieces) {
 
-    std::string code;
+    string code;
 
     for (PieceType pt : pieces)
         code += PieceToChar[pt];
@@ -486,7 +486,7 @@ void HashTable::insert(const std::vector<PieceType>& pieces) {
 
     file.close();
 
-    MaxCardinality = std::max((int)pieces.size(), MaxCardinality);
+    MaxCardinality = max((int)pieces.size(), MaxCardinality);
 
     wdlTable.push_back(WDLEntry(code));
     dtzTable.push_back(DTZEntry(wdlTable.back()));
@@ -953,7 +953,7 @@ void set_groups(T& e, PairsData* d, int order[], File f) {
 // In Recursive Pairing each symbol represents a pair of childern symbols. So
 // read d->btree[] symbols data and expand each one in his left and right child
 // symbol until reaching the leafs that represent the symbol value.
-uint8_t set_symlen(PairsData* d, Sym s, std::vector<bool>& visited) {
+uint8_t set_symlen(PairsData* d, Sym s, vector<bool>& visited) {
 
     visited[s] = true; // We can set it now because tree is acyclic
     Sym sr = d->btree[s].get<LR::Right>();
@@ -1028,7 +1028,7 @@ uint8_t* set_sizes(PairsData* d, uint8_t* data) {
     // reevaluating the frequencies of all of the symbol pairs with respect to
     // the extended alphabet, and then repeating the process.
     // See http://www.larsson.dogma.net/dcc99.pdf
-    std::vector<bool> visited(d->symlen.size());
+    vector<bool> visited(d->symlen.size());
 
     for (Sym sym = 0; sym < d->symlen.size(); ++sym)
         if (!visited[sym])
@@ -1141,10 +1141,10 @@ void* init(Entry& e, const Position& pos) {
         return e.baseAddress;
 
     // Pieces strings in decreasing order for each color, like ("KPP","KR")
-    std::string fname, w, b;
+    string fname, w, b;
     for (PieceType pt = KING; pt >= PAWN; --pt) {
-        w += std::string(popcount(pos.pieces(WHITE, pt)), PieceToChar[pt]);
-        b += std::string(popcount(pos.pieces(BLACK, pt)), PieceToChar[pt]);
+        w += string(popcount(pos.pieces(WHITE, pt)), PieceToChar[pt]);
+        b += string(popcount(pos.pieces(BLACK, pt)), PieceToChar[pt]);
     }
 
     const uint8_t TB_MAGIC[][4] = { { 0xD7, 0x66, 0x0C, 0xA5 },
@@ -1252,7 +1252,7 @@ WDLScore search(Position& pos, ProbeState* result) {
 
 } // namespace
 
-void Tablebases::init(const std::string& paths) {
+void Tablebases::init(const string& paths) {
 
     EntryTable.clear();
     MaxCardinality = 0;
@@ -1268,7 +1268,7 @@ void Tablebases::init(const std::string& paths) {
             MapB1H1H7[s] = code++;
 
     // MapA1D1D4[] encodes a square in the a1-d1-d4 triangle to 0..9
-    std::vector<Square> diagonal;
+    vector<Square> diagonal;
     code = 0;
     for (Square s = SQ_A1; s <= SQ_D4; ++s)
         if (off_A1H8(s) < 0 && file_of(s) <= FILE_D)
@@ -1284,7 +1284,7 @@ void Tablebases::init(const std::string& paths) {
     // MapKK[] encodes all the 461 possible legal positions of two kings where
     // the first is in the a1-d1-d4 triangle. If the first king is on the a1-d4
     // diagonal, the other one shall not to be above the a1-h8 diagonal.
-    std::vector<std::pair<int, Square>> bothOnDiagonal;
+    vector<std::pair<int, Square>> bothOnDiagonal;
     code = 0;
     for (int idx = 0; idx < 10; idx++)
         for (Square s1 = SQ_A1; s1 <= SQ_D4; ++s1)
@@ -1488,7 +1488,7 @@ int Tablebases::probe_dtz(Position& pos, ProbeState* result) {
 static int has_repeated(StateInfo *st)
 {
     while (1) {
-        int i = 4, e = std::min(st->rule50, st->pliesFromNull);
+        int i = 4, e = min(st->rule50, st->pliesFromNull);
 
         if (e < i)
             return 0;

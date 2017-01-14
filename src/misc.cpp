@@ -48,7 +48,7 @@ namespace {
 
 /// Version number. If Version is left empty, then compile date in the format
 /// DD-MM-YY and show in engine_info.
-const std::string Version = "";
+const string Version = "";
 
 /// Our fancy logging facility. The trick here is to replace cin.rdbuf() and
 /// cout.rdbuf() with two Tie objects that tie cin and cout to a file stream. We
@@ -87,7 +87,7 @@ class Logger {
   Tie in, out;
 
 public:
-  static void start(const std::string& fname) {
+  static void start(const string& fname) {
 
     static Logger l;
 
@@ -113,10 +113,10 @@ public:
 /// the program was compiled) or "Stockfish <Version>", depending on whether
 /// Version is empty.
 
-const std::string engine_info(bool to_uci) {
+const string engine_info(bool to_uci) {
 
-  const std::string months("Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec");
-  std::string month, day, year;
+  const string months("Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec");
+  string month, day, year;
   std::stringstream ss, date(__DATE__); // From compiler, format is "Sep 21 2008"
 
   ss << "Stockfish " << Version << std::setfill('0');
@@ -173,7 +173,7 @@ std::ostream& operator<<(std::ostream& os, SyncCout sc) {
 
 
 /// Trampoline helper to avoid moving Logger to misc.h
-void start_logger(const std::string& fname) { Logger::start(fname); }
+void start_logger(const string& fname) { Logger::start(fname); }
 
 
 /// prefetch() preloads the given address in L1/L2 cache. This is a non-blocking
@@ -260,7 +260,7 @@ int get_group(size_t idx) {
 
   free(buffer);
 
-  std::vector<int> groups;
+  vector<int> groups;
 
   // Run as many threads as possible on the same node until core limit is
   // reached, then move on filling the next node.

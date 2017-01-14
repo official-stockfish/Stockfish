@@ -88,7 +88,7 @@ struct MainThread : public Thread {
 /// parking and, most importantly, launching a thread. All the access to threads
 /// data is done through this class.
 
-struct ThreadPool : public std::vector<Thread*> {
+struct ThreadPool : public vector<Thread*> {
 
   void init(); // No constructor and destructor, threads rely on globals that should
   void exit(); // be initialized and valid during the whole thread lifetime.

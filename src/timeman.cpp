@@ -64,7 +64,7 @@ namespace {
     double ratio1 = (TMaxRatio * moveImportance) / (TMaxRatio * moveImportance + otherMovesImportance);
     double ratio2 = (moveImportance + TStealRatio * otherMovesImportance) / (moveImportance + otherMovesImportance);
 
-    return int(myTime * std::min(ratio1, ratio2)); // Intel C++ asks for an explicit cast
+    return int(myTime * min(ratio1, ratio2)); // Intel C++ asks for an explicit cast
   }
 
 } // namespace
@@ -102,9 +102,9 @@ void TimeManagement::init(Search::LimitsType& limits, Color us, int ply) {
   }
 
   startTime = limits.startTime;
-  optimumTime = maximumTime = std::max(limits.time[us], minThinkingTime);
+  optimumTime = maximumTime = max(limits.time[us], minThinkingTime);
 
-  const int MaxMTG = limits.movestogo ? std::min(limits.movestogo, MoveHorizon) : MoveHorizon;
+  const int MaxMTG = limits.movestogo ? min(limits.movestogo, MoveHorizon) : MoveHorizon;
 
   // We calculate optimum time usage for different hypothetical "moves to go"-values
   // and choose the minimum of calculated search time values. Usually the greatest
@@ -114,15 +114,15 @@ void TimeManagement::init(Search::LimitsType& limits, Color us, int ply) {
       // Calculate thinking time for hypothetical "moves to go"-value
       int hypMyTime =  limits.time[us]
                      + limits.inc[us] * (hypMTG - 1)
-                     - moveOverhead * (2 + std::min(hypMTG, 40));
+                     - moveOverhead * (2 + min(hypMTG, 40));
 
-      hypMyTime = std::max(hypMyTime, 0);
+      hypMyTime = max(hypMyTime, 0);
 
       int t1 = minThinkingTime + remaining<OptimumTime>(hypMyTime, hypMTG, ply, slowMover);
       int t2 = minThinkingTime + remaining<MaxTime    >(hypMyTime, hypMTG, ply, slowMover);
 
-      optimumTime = std::min(t1, optimumTime);
-      maximumTime = std::min(t2, maximumTime);
+      optimumTime = min(t1, optimumTime);
+      maximumTime = min(t2, maximumTime);
   }
 
   if (Options["Ponder"])

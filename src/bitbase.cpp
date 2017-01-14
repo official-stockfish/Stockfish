@@ -55,10 +55,10 @@ namespace {
     KPKPosition() = default;
     explicit KPKPosition(unsigned idx);
     operator Result() const { return result; }
-    Result classify(const std::vector<KPKPosition>& db)
+    Result classify(const vector<KPKPosition>& db)
     { return us == WHITE ? classify<WHITE>(db) : classify<BLACK>(db); }
 
-    template<Color Us> Result classify(const std::vector<KPKPosition>& db);
+    template<Color Us> Result classify(const vector<KPKPosition>& db);
 
     Color us;
     Square ksq[COLOR_NB], psq;
@@ -79,7 +79,7 @@ bool Bitbases::probe(Square wksq, Square wpsq, Square bksq, Color us) {
 
 void Bitbases::init() {
 
-  std::vector<KPKPosition> db(MAX_INDEX);
+  vector<KPKPosition> db(MAX_INDEX);
   unsigned idx, repeat = 1;
 
   // Initialize db with known win / draw positions
@@ -135,7 +135,7 @@ namespace {
   }
 
   template<Color Us>
-  Result KPKPosition::classify(const std::vector<KPKPosition>& db) {
+  Result KPKPosition::classify(const vector<KPKPosition>& db) {
 
     // White to move: If one move leads to a position classified as WIN, the result
     // of the current position is WIN. If all moves lead to positions classified
