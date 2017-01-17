@@ -53,7 +53,7 @@ namespace {
   };
 
   // Weakness of our pawn shelter in front of the king by [distance from edge][rank].
-  // RANK_1 = 0 is used for files where we have no pawns, or where our pawn is behind our king.
+  // RANK_1 = 0 is used for files where we have no pawns or our pawn is behind our king.
   const Value ShelterWeakness[][RANK_NB] = {
     { V(100), V(20), V(10), V(46), V(82), V( 86), V( 98) },
     { V(116), V( 4), V(28), V(87), V(94), V(108), V(104) },
@@ -63,7 +63,7 @@ namespace {
 
   // Danger of enemy pawns moving toward our king by [type][distance from edge][rank].
   // For the unopposed and unblocked cases, RANK_1 = 0 is used when opponent has no pawn
-  // on the given file, or his pawn his behind our king.
+  // on the given file, or is pawn his behind our king.
   const Value StormDanger[][4][RANK_NB] = {
     { { V( 0),  V(-290), V(-274), V(57), V(41) },  //BlockedByKing
       { V( 0),  V(  60), V( 144), V(39), V(13) },
