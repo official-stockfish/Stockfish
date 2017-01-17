@@ -44,7 +44,7 @@ namespace {
   Score Connected[2][2][2][RANK_NB];
 
   // Doubled pawn penalty
-  const Score Doubled = S(18,38);
+  const Score Doubled = S(18, 38);
 
   // Lever bonus by rank
   const Score Lever[RANK_NB] = {
@@ -63,7 +63,7 @@ namespace {
 
   // Danger of enemy pawns moving toward our king by [type][distance from edge][rank].
   // For the unopposed and unblocked cases, RANK_1 = 0 is used when opponent has no pawn
-  // on the given file, or is pawn his behind our king.
+  // on the given file, or their pawn is behind our king.
   const Value StormDanger[][4][RANK_NB] = {
     { { V( 0),  V(-290), V(-274), V(57), V(41) },  //BlockedByKing
       { V( 0),  V(  60), V( 144), V(39), V(13) },
