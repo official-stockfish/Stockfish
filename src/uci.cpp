@@ -20,7 +20,6 @@
 
 #include <iostream>
 #include <sstream>
-#include <string>
 
 #include "evaluate.h"
 #include "movegen.h"
@@ -31,9 +30,7 @@
 #include "uci.h"
 #include "syzygy/tbprobe.h"
 
-using namespace std;
-
-extern void benchmark(const Position& pos, istream& is);
+extern void benchmark(const Position& pos, std::istream& is);
 
 namespace {
 
@@ -51,7 +48,7 @@ namespace {
   // or the starting position ("startpos") and then makes the moves given in the
   // following move list ("moves").
 
-  void position(Position& pos, istringstream& is) {
+  void position(Position& pos, std::istringstream& is) {
 
     Move m;
     string token, fen;
@@ -84,7 +81,7 @@ namespace {
   // setoption() is called when engine receives the "setoption" UCI command. The
   // function updates the UCI option ("name") to the given value ("value").
 
-  void setoption(istringstream& is) {
+  void setoption(std::istringstream& is) {
 
     string token, name, value;
 
@@ -109,7 +106,7 @@ namespace {
   // the thinking time and other parameters from the input string, then starts
   // the search.
 
-  void go(Position& pos, istringstream& is) {
+  void go(Position& pos, std::istringstream& is) {
 
     Search::LimitsType limits;
     string token;
@@ -153,16 +150,16 @@ void UCI::loop(int argc, char* argv[]) {
   pos.set(StartFEN, false, &States->back(), Threads.main());
 
   for (int i = 1; i < argc; ++i)
-      cmd += std::string(argv[i]) + " ";
+      cmd += string(argv[i]) + " ";
 
   do {
-      if (argc == 1 && !getline(cin, cmd)) // Block here waiting for input or EOF
+      if (argc == 1 && !getline(std::cin, cmd)) // Block here waiting for input or EOF
           cmd = "quit";
 
-      istringstream is(cmd);
+      std::istringstream is(cmd);
 
       token.clear(); // getline() could return empty or blank line
-      is >> skipws >> token;
+      is >> std::skipws >> token;
 
       // The GUI sends 'ponderhit' to tell us to ponder on the same move the
       // opponent has played. In case Signals.stopOnPonderhit is set we are
@@ -203,7 +200,7 @@ void UCI::loop(int argc, char* argv[]) {
       else if (token == "perft")
       {
           int depth;
-          stringstream ss;
+          std::stringstream ss;
 
           is >> depth;
           ss << Options["Hash"]    << " "
@@ -229,7 +226,7 @@ void UCI::loop(int argc, char* argv[]) {
 
 string UCI::value(Value v) {
 
-  stringstream ss;
+  std::stringstream ss;
 
   if (abs(v) < VALUE_MATE - MAX_PLY)
       ss << "cp " << v * 100 / PawnValueEg;
@@ -242,8 +239,8 @@ string UCI::value(Value v) {
 
 /// UCI::square() converts a Square to a string in algebraic notation (g1, a7, etc.)
 
-std::string UCI::square(Square s) {
-  return std::string{ char('a' + file_of(s)), char('1' + rank_of(s)) };
+string UCI::square(Square s) {
+  return string{ char('a' + file_of(s)), char('1' + rank_of(s)) };
 }
 
 

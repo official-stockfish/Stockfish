@@ -18,14 +18,10 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <algorithm>
-#include <cassert>
 #include <cstddef> // For offsetof()
-#include <cstring> // For std::memset, std::memcmp
 #include <iomanip>
 #include <sstream>
 
-#include "bitboard.h"
 #include "misc.h"
 #include "movegen.h"
 #include "position.h"
@@ -33,8 +29,6 @@
 #include "tt.h"
 #include "uci.h"
 #include "syzygy/tbprobe.h"
-
-using std::string;
 
 namespace PSQT {
   extern Score psq[PIECE_NB][SQUARE_NB];
@@ -197,8 +191,8 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
   Square sq = SQ_A8;
   std::istringstream ss(fenStr);
 
-  std::memset(this, 0, sizeof(Position));
-  std::memset(si, 0, sizeof(StateInfo));
+  memset(this, 0, sizeof(Position));
+  memset(si, 0, sizeof(StateInfo));
   std::fill_n(&pieceList[0][0], sizeof(pieceList) / sizeof(Square), SQ_NONE);
   st = si;
 
@@ -271,7 +265,7 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
 
   // Convert from fullmove starting from 1 to ply starting from 0,
   // handle also common incorrect FEN with fullmove = 0.
-  gamePly = std::max(2 * (gamePly - 1), 0) + (sideToMove == BLACK);
+  gamePly = max(2 * (gamePly - 1), 0) + (sideToMove == BLACK);
 
   chess960 = isChess960;
   thisThread = th;
@@ -300,11 +294,11 @@ void Position::set_castling_right(Color c, Square rfrom) {
   Square kto = relative_square(c, cs == KING_SIDE ? SQ_G1 : SQ_C1);
   Square rto = relative_square(c, cs == KING_SIDE ? SQ_F1 : SQ_D1);
 
-  for (Square s = std::min(rfrom, rto); s <= std::max(rfrom, rto); ++s)
+  for (Square s = min(rfrom, rto); s <= max(rfrom, rto); ++s)
       if (s != kfrom && s != rfrom)
           castlingPath[cr] |= s;
 
-  for (Square s = std::min(kfrom, kto); s <= std::max(kfrom, kto); ++s)
+  for (Square s = min(kfrom, kto); s <= max(kfrom, kto); ++s)
       if (s != kfrom && s != rfrom)
           castlingPath[cr] |= s;
 }
@@ -387,12 +381,12 @@ Position& Position::set(const string& code, Color c, StateInfo* si) {
   assert(code[0] == 'K');
 
   string sides[] = { code.substr(code.find('K', 1)),      // Weak
-                     code.substr(0, code.find('K', 1)) }; // Strong
+                          code.substr(0, code.find('K', 1)) }; // Strong
 
   std::transform(sides[c].begin(), sides[c].end(), sides[c].begin(), tolower);
 
   string fenStr =  sides[0] + char(8 - sides[0].length() + '0') + "/8/8/8/8/8/8/"
-                 + sides[1] + char(8 - sides[1].length() + '0') + " w - - 0 10";
+                      + sides[1] + char(8 - sides[1].length() + '0') + " w - - 0 10";
 
   return set(fenStr, false, si, nullptr);
 }
@@ -455,7 +449,7 @@ Phase Position::game_phase() const {
 
   Value npm = st->nonPawnMaterial[WHITE] + st->nonPawnMaterial[BLACK];
 
-  npm = std::max(EndgameLimit, std::min(npm, MidgameLimit));
+  npm = max(EndgameLimit, min(npm, MidgameLimit));
 
   return Phase(((npm - EndgameLimit) * PHASE_MIDGAME) / (MidgameLimit - EndgameLimit));
 }
@@ -694,7 +688,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   // Copy some fields of the old state to our new StateInfo object except the
   // ones which are going to be recalculated from scratch anyway and then switch
   // our state pointer to point to the new (ready to be updated) state.
-  std::memcpy(&newSt, st, offsetof(StateInfo, key));
+  memcpy(&newSt, st, offsetof(StateInfo, key));
   newSt.previous = st;
   st = &newSt;
 
@@ -945,7 +939,7 @@ void Position::do_null_move(StateInfo& newSt) {
   assert(!checkers());
   assert(&newSt != st);
 
-  std::memcpy(&newSt, st, sizeof(StateInfo));
+  memcpy(&newSt, st, sizeof(StateInfo));
   newSt.previous = st;
   st = &newSt;
 
@@ -1084,7 +1078,7 @@ bool Position::is_draw(int ply) const {
   if (st->rule50 > 99 && (!checkers() || MoveList<LEGAL>(*this).size()))
       return true;
 
-  int end = std::min(st->rule50, st->pliesFromNull);
+  int end = min(st->rule50, st->pliesFromNull);
 
   if (end < 4)
     return false;

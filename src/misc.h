@@ -21,17 +21,14 @@
 #ifndef MISC_H_INCLUDED
 #define MISC_H_INCLUDED
 
-#include <cassert>
 #include <chrono>
 #include <ostream>
-#include <string>
-#include <vector>
 
 #include "types.h"
 
-const std::string engine_info(bool to_uci = false);
+const string engine_info(bool to_uci = false);
 void prefetch(void* addr);
-void start_logger(const std::string& fname);
+void start_logger(const string& fname);
 
 void dbg_hit_on(bool b);
 void dbg_hit_on(bool c, bool b);
@@ -50,7 +47,7 @@ struct HashTable {
   Entry* operator[](Key key) { return &table[(uint32_t)key & (Size - 1)]; }
 
 private:
-  std::vector<Entry> table = std::vector<Entry>(Size);
+  vector<Entry> table = vector<Entry>(Size);
 };
 
 

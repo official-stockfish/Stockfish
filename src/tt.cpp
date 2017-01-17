@@ -18,7 +18,6 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <cstring>   // For std::memset
 #include <iostream>
 
 #include "bitboard.h"
@@ -60,7 +59,7 @@ void TranspositionTable::resize(size_t mbSize) {
 
 void TranspositionTable::clear() {
 
-  std::memset(table, 0, clusterCount * sizeof(Cluster));
+  memset(table, 0, clusterCount * sizeof(Cluster));
 }
 
 

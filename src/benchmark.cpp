@@ -21,15 +21,12 @@
 #include <fstream>
 #include <iostream>
 #include <istream>
-#include <vector>
 
 #include "misc.h"
 #include "position.h"
 #include "search.h"
 #include "thread.h"
 #include "uci.h"
-
-using namespace std;
 
 namespace {
 
@@ -96,7 +93,7 @@ const vector<string> Defaults = {
 /// format (defaults are the positions defined above) and the type of the
 /// limit value: depth (default), time in millisecs or number of nodes.
 
-void benchmark(const Position& current, istream& is) {
+void benchmark(const Position& current, std::istream& is) {
 
   string token;
   vector<string> fens;
@@ -134,11 +131,11 @@ void benchmark(const Position& current, istream& is) {
   else
   {
       string fen;
-      ifstream file(fenFile);
+      std::ifstream file(fenFile);
 
       if (!file.is_open())
       {
-          cerr << "Unable to open file " << fenFile << endl;
+          std::cerr << "Unable to open file " << fenFile << std::endl;
           return;
       }
 
@@ -158,7 +155,7 @@ void benchmark(const Position& current, istream& is) {
       StateListPtr states(new std::deque<StateInfo>(1));
       pos.set(fens[i], Options["UCI_Chess960"], &states->back(), Threads.main());
 
-      cerr << "\nPosition: " << i + 1 << '/' << fens.size() << endl;
+      std::cerr << "\nPosition: " << i + 1 << '/' << fens.size() << std::endl;
 
       if (limitType == "perft")
           nodes += Search::perft(pos, limits.depth * ONE_PLY);
@@ -176,8 +173,8 @@ void benchmark(const Position& current, istream& is) {
 
   dbg_print(); // Just before exiting
 
-  cerr << "\n==========================="
-       << "\nTotal time (ms) : " << elapsed
-       << "\nNodes searched  : " << nodes
-       << "\nNodes/second    : " << 1000 * nodes / elapsed << endl;
+  std::cerr << "\n==========================="
+            << "\nTotal time (ms) : " << elapsed
+            << "\nNodes searched  : " << nodes
+            << "\nNodes/second    : " << 1000 * nodes / elapsed << std::endl;
 }

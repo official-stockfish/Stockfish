@@ -18,8 +18,6 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <algorithm>
-
 #include "types.h"
 
 Value PieceValue[PHASE_NB][PIECE_NB] = {
@@ -116,7 +114,7 @@ void init() {
 
       for (Square s = SQ_A1; s <= SQ_H8; ++s)
       {
-          File f = std::min(file_of(s), FILE_H - file_of(s));
+          File f = min(file_of(s), FILE_H - file_of(s));
           psq[ pc][ s] = v + Bonus[pc][rank_of(s)][f];
           psq[~pc][~s] = -psq[pc][s];
       }

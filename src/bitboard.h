@@ -21,8 +21,6 @@
 #ifndef BITBOARD_H_INCLUDED
 #define BITBOARD_H_INCLUDED
 
-#include <string>
-
 #include "types.h"
 
 namespace Bitbases {
@@ -35,7 +33,7 @@ bool probe(Square wksq, Square wpsq, Square bksq, Color us);
 namespace Bitboards {
 
 void init();
-const std::string pretty(Bitboard b);
+const string pretty(Bitboard b);
 
 }
 

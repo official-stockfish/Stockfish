@@ -22,10 +22,7 @@
 #define ENDGAME_H_INCLUDED
 
 #include <map>
-#include <memory>
-#include <string>
 #include <type_traits>
-#include <utility>
 
 #include "position.h"
 #include "types.h"
@@ -104,7 +101,7 @@ class Endgames {
   template<typename T> using Map = std::map<Key, std::unique_ptr<EndgameBase<T>>>;
 
   template<EndgameType E, typename T = eg_type<E>>
-  void add(const std::string& code);
+  void add(const string& code);
 
   template<typename T>
   Map<T>& map() {

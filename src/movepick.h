@@ -21,9 +21,6 @@
 #ifndef MOVEPICK_H_INCLUDED
 #define MOVEPICK_H_INCLUDED
 
-#include <algorithm> // For std::max
-#include <cstring>   // For std::memset
-
 #include "movegen.h"
 #include "position.h"
 #include "types.h"
@@ -36,7 +33,7 @@ struct HistoryStats {
   static const Value Max = Value(1 << 28);
 
   Value get(Color c, Move m) const { return table[c][from_sq(m)][to_sq(m)]; }
-  void clear() { std::memset(table, 0, sizeof(table)); }
+  void clear() { memset(table, 0, sizeof(table)); }
   void update(Color c, Move m, Value v) {
 
     if (abs(int(v)) >= 324)
@@ -64,7 +61,7 @@ template<typename T>
 struct Stats {
   const T* operator[](Piece pc) const { return table[pc]; }
   T* operator[](Piece pc) { return table[pc]; }
-  void clear() { std::memset(table, 0, sizeof(table)); }
+  void clear() { memset(table, 0, sizeof(table)); }
   void update(Piece pc, Square to, Move m) { table[pc][to] = m; }
   void update(Piece pc, Square to, Value v) {
 

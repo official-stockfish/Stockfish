@@ -18,8 +18,6 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <algorithm>
-#include <cassert>
 #include <ostream>
 
 #include "misc.h"
@@ -28,8 +26,6 @@
 #include "tt.h"
 #include "uci.h"
 #include "syzygy/tbprobe.h"
-
-using std::string;
 
 UCI::OptionsMap Options; // Global object
 
@@ -121,7 +117,7 @@ Option::operator int() const {
   return (type == "spin" ? stoi(currentValue) : currentValue == "true");
 }
 
-Option::operator std::string() const {
+Option::operator string() const {
   assert(type == "string");
   return currentValue;
 }

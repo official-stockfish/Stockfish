@@ -44,6 +44,18 @@
 #include <cstdint>
 #include <cstdlib>
 
+#include <cstring>   // For memset, memcpy
+#include <algorithm> // For max, min
+#include <vector>    // For vector
+#include <string>    // For string
+
+using std::memset;
+using std::memcpy;
+using std::max;
+using std::min;
+using std::vector;
+using std::string;
+
 #if defined(_MSC_VER)
 // Disable some silly and noisy warning from MSVC compiler
 #pragma warning(disable: 4127) // Conditional expression is constant

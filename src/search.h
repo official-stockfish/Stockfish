@@ -22,7 +22,6 @@
 #define SEARCH_H_INCLUDED
 
 #include <atomic>
-#include <vector>
 
 #include "misc.h"
 #include "movepick.h"
@@ -63,10 +62,10 @@ struct RootMove {
 
   Value score = -VALUE_INFINITE;
   Value previousScore = -VALUE_INFINITE;
-  std::vector<Move> pv;
+  vector<Move> pv;
 };
 
-typedef std::vector<RootMove> RootMoves;
+typedef vector<RootMove> RootMoves;
 
 
 /// LimitsType struct stores information sent by GUI about available time to
@@ -84,7 +83,7 @@ struct LimitsType {
     return !(mate | movetime | depth | nodes | infinite);
   }
 
-  std::vector<Move> searchmoves;
+  vector<Move> searchmoves;
   int time[COLOR_NB], inc[COLOR_NB], npmsec, movestogo, depth, movetime, mate, infinite, ponder;
   int64_t nodes;
   TimePoint startTime;

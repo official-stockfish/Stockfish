@@ -21,10 +21,8 @@
 #ifndef POSITION_H_INCLUDED
 #define POSITION_H_INCLUDED
 
-#include <cassert>
 #include <deque>
 #include <memory> // For std::unique_ptr
-#include <string>
 
 #include "bitboard.h"
 #include "types.h"
@@ -75,9 +73,9 @@ public:
   Position& operator=(const Position&) = delete;
 
   // FEN string input/output
-  Position& set(const std::string& fenStr, bool isChess960, StateInfo* si, Thread* th);
-  Position& set(const std::string& code, Color c, StateInfo* si);
-  const std::string fen() const;
+  Position& set(const string& fenStr, bool isChess960, StateInfo* si, Thread* th);
+  Position& set(const string& code, Color c, StateInfo* si);
+  const string fen() const;
 
   // Position representation
   Bitboard pieces() const;

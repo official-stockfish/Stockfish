@@ -18,8 +18,6 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <algorithm>
-
 #include "bitboard.h"
 #include "misc.h"
 
@@ -130,9 +128,9 @@ Square msb(Bitboard b) {
 /// Bitboards::pretty() returns an ASCII representation of a bitboard suitable
 /// to be printed to standard output. Useful for debugging.
 
-const std::string Bitboards::pretty(Bitboard b) {
+const string Bitboards::pretty(Bitboard b) {
 
-  std::string s = "+---+---+---+---+---+---+---+---+\n";
+  string s = "+---+---+---+---+---+---+---+---+\n";
 
   for (Rank r = RANK_8; r >= RANK_1; --r)
   {
@@ -187,7 +185,7 @@ void Bitboards::init() {
       for (Square s2 = SQ_A1; s2 <= SQ_H8; ++s2)
           if (s1 != s2)
           {
-              SquareDistance[s1][s2] = std::max(distance<File>(s1, s2), distance<Rank>(s1, s2));
+              SquareDistance[s1][s2] = max(distance<File>(s1, s2), distance<Rank>(s1, s2));
               DistanceRingBB[s1][SquareDistance[s1][s2] - 1] |= s2;
           }
 

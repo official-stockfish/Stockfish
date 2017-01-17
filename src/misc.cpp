@@ -40,12 +40,9 @@ typedef bool(*fun3_t)(HANDLE, CONST GROUP_AFFINITY*, PGROUP_AFFINITY);
 #include <iomanip>
 #include <iostream>
 #include <sstream>
-#include <vector>
 
 #include "misc.h"
 #include "thread.h"
-
-using namespace std;
 
 namespace {
 
@@ -59,16 +56,16 @@ const string Version = "";
 /// usual I/O functionality, all without changing a single line of code!
 /// Idea from http://groups.google.com/group/comp.lang.c++/msg/1d941c0f26ea0d81
 
-struct Tie: public streambuf { // MSVC requires split streambuf for cin and cout
+struct Tie: public std::streambuf { // MSVC requires split streambuf for cin and cout
 
-  Tie(streambuf* b, streambuf* l) : buf(b), logBuf(l) {}
+  Tie(std::streambuf* b, std::streambuf* l) : buf(b), logBuf(l) {}
 
   int sync() { return logBuf->pubsync(), buf->pubsync(); }
   int overflow(int c) { return log(buf->sputc((char)c), "<< "); }
   int underflow() { return buf->sgetc(); }
   int uflow() { return log(buf->sbumpc(), ">> "); }
 
-  streambuf *buf, *logBuf;
+  std::streambuf *buf, *logBuf;
 
   int log(int c, const char* prefix) {
 
@@ -83,27 +80,27 @@ struct Tie: public streambuf { // MSVC requires split streambuf for cin and cout
 
 class Logger {
 
-  Logger() : in(cin.rdbuf(), file.rdbuf()), out(cout.rdbuf(), file.rdbuf()) {}
+  Logger() : in(std::cin.rdbuf(), file.rdbuf()), out(std::cout.rdbuf(), file.rdbuf()) {}
  ~Logger() { start(""); }
 
-  ofstream file;
+  std::ofstream file;
   Tie in, out;
 
 public:
-  static void start(const std::string& fname) {
+  static void start(const string& fname) {
 
     static Logger l;
 
     if (!fname.empty() && !l.file.is_open())
     {
-        l.file.open(fname, ifstream::out);
-        cin.rdbuf(&l.in);
-        cout.rdbuf(&l.out);
+        l.file.open(fname, std::ifstream::out);
+        std::cin.rdbuf(&l.in);
+        std::cout.rdbuf(&l.out);
     }
     else if (fname.empty() && l.file.is_open())
     {
-        cout.rdbuf(l.out.buf);
-        cin.rdbuf(l.in.buf);
+        std::cout.rdbuf(l.out.buf);
+        std::cin.rdbuf(l.in.buf);
         l.file.close();
     }
   }
@@ -120,14 +117,14 @@ const string engine_info(bool to_uci) {
 
   const string months("Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec");
   string month, day, year;
-  stringstream ss, date(__DATE__); // From compiler, format is "Sep 21 2008"
+  std::stringstream ss, date(__DATE__); // From compiler, format is "Sep 21 2008"
 
-  ss << "Stockfish " << Version << setfill('0');
+  ss << "Stockfish " << Version << std::setfill('0');
 
   if (Version.empty())
   {
       date >> month >> day >> year;
-      ss << setw(2) << day << setw(2) << (1 + months.find(month) / 4) << year.substr(2);
+      ss << std::setw(2) << day << std::setw(2) << (1 + months.find(month) / 4) << year.substr(2);
   }
 
   ss << (Is64Bit ? " 64" : "")
@@ -149,12 +146,12 @@ void dbg_mean_of(int v) { ++means[0]; means[1] += v; }
 void dbg_print() {
 
   if (hits[0])
-      cerr << "Total " << hits[0] << " Hits " << hits[1]
-           << " hit rate (%) " << 100 * hits[1] / hits[0] << endl;
+      std::cerr << "Total " << hits[0] << " Hits " << hits[1]
+                << " hit rate (%) " << 100 * hits[1] / hits[0] << std::endl;
 
   if (means[0])
-      cerr << "Total " << means[0] << " Mean "
-           << (double)means[1] / means[0] << endl;
+      std::cerr << "Total " << means[0] << " Mean "
+                << (double)means[1] / means[0] << std::endl;
 }
 
 
@@ -176,7 +173,7 @@ std::ostream& operator<<(std::ostream& os, SyncCout sc) {
 
 
 /// Trampoline helper to avoid moving Logger to misc.h
-void start_logger(const std::string& fname) { Logger::start(fname); }
+void start_logger(const string& fname) { Logger::start(fname); }
 
 
 /// prefetch() preloads the given address in L1/L2 cache. This is a non-blocking
@@ -263,7 +260,7 @@ int get_group(size_t idx) {
 
   free(buffer);
 
-  std::vector<int> groups;
+  vector<int> groups;
 
   // Run as many threads as possible on the same node until core limit is
   // reached, then move on filling the next node.
