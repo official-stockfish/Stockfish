@@ -98,9 +98,9 @@ namespace {
     const Square Right = (Us == WHITE ? NORTH_EAST : SOUTH_WEST);
     const Square Left  = (Us == WHITE ? NORTH_WEST : SOUTH_EAST);
 
-    Bitboard b, neighbours, stoppers, doubled, supported, phalanx;
+    Bitboard b, neighbours, stoppers, doubled, supported, phalanx, lever;
     Square s;
-    bool opposed, lever, connected, backward;
+    bool opposed, connected, backward;
     Score score = SCORE_ZERO;
     const Square* pl = pos.squares<PAWN>(Us);
     const Bitboard* pawnAttacksBB = StepAttacksBB[make_piece(Us, PAWN)];
@@ -153,14 +153,11 @@ namespace {
         }
 
         // Passed pawns will be properly scored in evaluation because we need
-        // full attack info to evaluate them.
-        if (!stoppers && !(ourPawns & forward_bb(Us, s)))
-            e->passedPawns[Us] |= s;
-
-        // Pawns which are able to become a passed pawn.
-        else if (   !more_than_one(stoppers)
-                 && supported && lever
-                 && !(ourPawns & forward_bb(Us, s)))
+        // full attack info to evaluate them. Also pawns which could become passed
+        // after a pawn push and are not attacked more times than defended are considered.
+        if (   !(stoppers ^ lever)
+            && !(ourPawns & forward_bb(Us, s))
+            && popcount(supported) >= popcount(lever))
             e->passedPawns[Us] |= s;
 
         // Score this pawn
