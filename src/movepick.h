@@ -41,9 +41,8 @@ struct Stats {
 
   static const Value Max = Value(1 << 28);
 	
-  Stats() { clear(); }
-  const T* operator[](Piece pc) const { return table[pc]; }
-  T* operator[](Piece pc) { return table[pc]; }
+  Value get(Color c, Move m) const { return table[c][from_sq(m)][to_sq(m)]; }
+ 
   void clear() { std::memset(table, 0, sizeof(table)); }
   void update(Piece pc, Square to, Move m) { table[pc][to] = m; }
   void update(Piece pc, Square to, Value v) {
