@@ -44,20 +44,30 @@ before_script:
   - cd src
 
 script:
-  - make clean && make build ARCH=x86-64 && ./stockfish bench 2>&1 >/dev/null | grep 'Nodes searched' | tee bench1
-  - make clean && make build ARCH=x86-32 && ./stockfish bench 2>&1 >/dev/null | grep 'Nodes searched' | tee bench2
-  - echo "Checking for same bench numbers..."
-  - diff bench1 bench2 > result
-  - test ! -s result
-  # verify perft numbers (positions from https://chessprogramming.wikispaces.com/Perft+Results)
-  - printf ' set timeout 10\n lassign $argv pos depth result\n spawn ./stockfish\n send "position $pos\\n perft $depth\\n"\n expect "Nodes searched  ? $result" {} timeout {exit 1} \n send "quit\\n"\n expect eof\n' > perft.exp
-  - expect perft.exp startpos 5 4865609 > /dev/null
-  - expect perft.exp "fen r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -" 5 193690690 > /dev/null
-  - expect perft.exp "fen 8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -" 6 11030083 > /dev/null
-  - expect perft.exp "fen r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1" 5 15833292 > /dev/null
-  - expect perft.exp "fen rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8" 5 89941194 > /dev/null
-  - expect perft.exp "fen r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10" 5 164075551 > /dev/null
-  # if valgrind is available check the build is without error, reduce depth to speedup testing, but not too shallow to catch more cases.
-  - if [ -x "$(command -v valgrind )" ] ; then make clean && make ARCH=x86-64 debug=yes build && valgrind --error-exitcode=42 ./stockfish bench 128 1 10 default depth 1>/dev/null ; fi
-  # use g++-6 as a proxy for having sanitizers ... might need revision as they become available for more recent versions of clang/gcc than trusty provides
-  - if [[ "$COMPILER" == "g++-6" ]]; then make clean && make ARCH=x86-64 sanitize=yes build && ! ./stockfish bench 2>&1 | grep "runtime error:" ; fi
+  #
+  # checking bench for various build types
+  #
+  # obtain reference from git log
+  - git log HEAD | grep "\b[Bb]ench[ :]\+[0-9]\{7\}" | head -n 1 | sed "s/[^0-9]*\([0-9][0-9]*\)/\1/g" > git_sig
+  - export benchref=$(cat git_sig)
+  - echo "Reference bench:" $benchref
+  # verify against reference
+  - make clean && make ARCH=x86-64 build > /dev/null && ../tests/signature.sh $benchref
+  - make clean && make ARCH=x86-32 build > /dev/null && ../tests/signature.sh $benchref
+  #
+  # perft
+  #
+  - make clean && make ARCH=x86-64 build > /dev/null && ../tests/perft.sh
+  #
+  # reproducible search
+  #
+  - make clean && make ARCH=x86-64 build > /dev/null && ../tests/reprosearch.sh
+  #
+  # valgrind
+  #
+  - if [ -x "$(command -v valgrind )" ]; then make clean && make ARCH=x86-64 debug=yes optimize=no build > /dev/null && ../tests/instrumented.sh --valgrind; fi
+  #
+  # sanitizer
+  #
+  # use g++-6 as a proxy for having sanitizers, might need revision as they become available for more recent versions of clang/gcc
+  - if [[ "$COMPILER" == "g++-6" ]]; then make clean && make ARCH=x86-64 sanitize=yes build > /dev/null && ../tests/instrumented.sh --sanitizer; fi

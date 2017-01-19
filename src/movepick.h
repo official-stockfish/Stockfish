@@ -2,7 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2016 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2015-2017 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -29,41 +29,11 @@
 #include "types.h"
 
 
-/// The Stats struct stores moves statistics. According to the template parameter
-/// the class can store History and Countermoves. History records how often
-/// different moves have been successful or unsuccessful during the current search
-/// and is used for reduction and move ordering decisions.
-/// Countermoves store the move that refute a previous one. Entries are stored
-/// using only the moving piece and destination square, hence two moves with
-/// different origin but same destination and piece will be considered identical.
-template<typename T, bool CM = false>
-struct Stats {
+/// HistoryStats records how often quiet moves have been successful or unsuccessful
+/// during the current search, and is used for reduction and move ordering decisions.
+struct HistoryStats {
 
   static const Value Max = Value(1 << 28);
-
-  const T* operator[](Piece pc) const { return table[pc]; }
-  T* operator[](Piece pc) { return table[pc]; }
-  void clear() { std::memset(table, 0, sizeof(table)); }
-  void update(Piece pc, Square to, Move m) { table[pc][to] = m; }
-  void update(Piece pc, Square to, Value v) {
-
-    if (abs(int(v)) >= 324)
-        return;
-
-    table[pc][to] -= table[pc][to] * abs(int(v)) / (CM ? 936 : 324);
-    table[pc][to] += int(v) * 32;
-  }
-
-private:
-  T table[PIECE_NB][SQUARE_NB];
-};
-
-typedef Stats<Move> MoveStats;
-typedef Stats<Value, false> HistoryStats;
-typedef Stats<Value,  true> CounterMoveStats;
-typedef Stats<CounterMoveStats> CounterMoveHistoryStats;
-
-struct FromToStats {
 
   Value get(Color c, Move m) const { return table[c][from_sq(m)][to_sq(m)]; }
   void clear() { std::memset(table, 0, sizeof(table)); }
@@ -82,6 +52,36 @@ struct FromToStats {
 private:
   Value table[COLOR_NB][SQUARE_NB][SQUARE_NB];
 };
+
+
+/// A template struct, used to generate MoveStats and CounterMoveHistoryStats:
+/// MoveStats store the move that refute a previous one.
+/// CounterMoveHistoryStats is like HistoryStats, but with two consecutive moves.
+/// Entries are stored using only the moving piece and destination square, hence
+/// two moves with different origin but same destination and piece will be
+/// considered identical.
+template<typename T>
+struct Stats {
+  const T* operator[](Piece pc) const { return table[pc]; }
+  T* operator[](Piece pc) { return table[pc]; }
+  void clear() { std::memset(table, 0, sizeof(table)); }
+  void update(Piece pc, Square to, Move m) { table[pc][to] = m; }
+  void update(Piece pc, Square to, Value v) {
+
+    if (abs(int(v)) >= 324)
+        return;
+
+    table[pc][to] -= table[pc][to] * abs(int(v)) / 936;
+    table[pc][to] += int(v) * 32;
+  }
+
+private:
+  T table[PIECE_NB][SQUARE_NB];
+};
+
+typedef Stats<Move> MoveStats;
+typedef Stats<Value> CounterMoveStats;
+typedef Stats<CounterMoveStats> CounterMoveHistoryStats;
 
 
 /// MovePicker class is used to pick one pseudo legal move at a time from the
