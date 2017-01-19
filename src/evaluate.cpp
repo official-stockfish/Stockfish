@@ -135,19 +135,13 @@ namespace {
       S(118,174), S(119,177), S(123,191), S(128,199) }
   };
 
-  // Outpost[knight/bishop][supported by pawn] contains bonuses for knights and
-  // bishops outposts, bigger if outpost piece is supported by a pawn.
+  // Outpost[knight/bishop][supported by pawn] contains bonuses for minor
+  // pieces if they can reach an outpost square, bigger if that square is
+  // supported by a pawn. If the minor piece occupies an outpost square
+  // then score is doubled.
   const Score Outpost[][2] = {
-    { S(43,11), S(65,20) }, // Knights
-    { S(20, 3), S(29, 8) }  // Bishops
-  };
-
-  // ReachableOutpost[knight/bishop][supported by pawn] contains bonuses for
-  // knights and bishops which can reach an outpost square in one move, bigger
-  // if outpost square is supported by a pawn.
-  const Score ReachableOutpost[][2] = {
-    { S(21, 5), S(35, 8) }, // Knights
-    { S( 8, 0), S(14, 4) }  // Bishops
+    { S(22, 6), S(33, 9) }, // Knight
+    { S( 9, 2), S(14, 4) }  // Bishop
   };
 
   // RookOnFile[semiopen/open] contains bonuses for each rook when there is no
@@ -316,12 +310,12 @@ namespace {
             // Bonus for outpost squares
             bb = OutpostRanks & ~ei.pe->pawn_attacks_span(Them);
             if (bb & s)
-                score += Outpost[Pt == BISHOP][!!(ei.attackedBy[Us][PAWN] & s)];
+                score += Outpost[Pt == BISHOP][!!(ei.attackedBy[Us][PAWN] & s)] * 2;
             else
             {
                 bb &= b & ~pos.pieces(Us);
                 if (bb)
-                   score += ReachableOutpost[Pt == BISHOP][!!(ei.attackedBy[Us][PAWN] & bb)];
+                   score += Outpost[Pt == BISHOP][!!(ei.attackedBy[Us][PAWN] & bb)];
             }
 
             // Bonus when behind a pawn
