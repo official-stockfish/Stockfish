@@ -28,7 +28,7 @@ ifeq ($(KERNEL),Linux)
 endif
 
 ### Executable name
-EXE = McBrain_2017-v1.0
+EXE = McBrain_2017-v1.1
 
 ### Installation dir definitions
 PREFIX = /usr/local
