@@ -159,7 +159,7 @@ namespace {
 
         // Pawns which are able to become a passed pawn.
         else if (   !more_than_one(stoppers)
-                 && !opposed && supported && lever
+                 && supported && lever
                  && !(ourPawns & forward_bb(Us, s)))
             e->passedPawns[Us] |= s;
 
