@@ -2,7 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2016 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2015-2017 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -141,7 +141,6 @@ template<>
 void MovePicker::score<QUIETS>() {
 
   const HistoryStats& history = pos.this_thread()->history;
-  const FromToStats& fromTo = pos.this_thread()->fromTo;
 
   const CounterMoveStats* cmh = (ss-1)->counterMoves;
   const CounterMoveStats* fmh = (ss-2)->counterMoves;
@@ -150,18 +149,16 @@ void MovePicker::score<QUIETS>() {
   Color c = pos.side_to_move();
 
   for (auto& m : *this)
-      m.value =          history[pos.moved_piece(m)][to_sq(m)]
-               + (cmh  ?  (*cmh)[pos.moved_piece(m)][to_sq(m)] : VALUE_ZERO)
+      m.value =  (cmh  ?  (*cmh)[pos.moved_piece(m)][to_sq(m)] : VALUE_ZERO)
                + (fmh  ?  (*fmh)[pos.moved_piece(m)][to_sq(m)] : VALUE_ZERO)
                + (fmh2 ? (*fmh2)[pos.moved_piece(m)][to_sq(m)] : VALUE_ZERO)
-               + fromTo.get(c, m);
+               + history.get(c, m);
 }
 
 template<>
 void MovePicker::score<EVASIONS>() {
-  // Try captures ordered by MVV/LVA, then non-captures ordered by history value
+  // Try captures ordered by MVV/LVA, then non-captures ordered by stats heuristics
   const HistoryStats& history = pos.this_thread()->history;
-  const FromToStats& fromTo = pos.this_thread()->fromTo;
   Color c = pos.side_to_move();
 
   for (auto& m : *this)
@@ -169,7 +166,7 @@ void MovePicker::score<EVASIONS>() {
           m.value =  PieceValue[MG][pos.piece_on(to_sq(m))]
                    - Value(type_of(pos.moved_piece(m))) + HistoryStats::Max;
       else
-          m.value = history[pos.moved_piece(m)][to_sq(m)] + fromTo.get(c, m);
+          m.value = history.get(c, m);
 }
 
 
