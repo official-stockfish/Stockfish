@@ -157,6 +157,12 @@ namespace {
         if (!stoppers && !(ourPawns & forward_bb(Us, s)))
             e->passedPawns[Us] |= s;
 
+        // Pawns which are able to become a passed pawn.
+        else if (   !more_than_one(stoppers)
+                 && !opposed && supported && lever
+                 && !(ourPawns & forward_bb(Us, s)))
+            e->passedPawns[Us] |= s;
+
         // Score this pawn
         if (!neighbours)
             score -= Isolated[opposed];
