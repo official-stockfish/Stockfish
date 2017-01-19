@@ -25,6 +25,7 @@
 #include "misc.h"
 #include "search.h"
 #include "thread.h"
+#include "tzbook.h"
 #include "tt.h"
 #include "uci.h"
 #include "syzygy/tbprobe.h"
@@ -41,6 +42,8 @@ void on_hash_size(const Option& o) { TT.resize(o); }
 void on_logger(const Option& o) { start_logger(o); }
 void on_threads(const Option&) { Threads.read_uci_options(); }
 void on_tb_path(const Option& o) { Tablebases::init(o); }
+void on_brainbook_path(const Option& o) { tzbook.init(o); }
+void on_book_move2_prob(const Option& o) { tzbook.set_book_move2_probability(o); }
 
 
 /// Our case insensitive less() function as required by UCI protocol
@@ -57,14 +60,22 @@ void init(OptionsMap& o) {
 
   const int MaxHashMB = Is64Bit ? 1024 * 1024 : 2048;
 
-  o["Debug Log File"]        << Option("", on_logger);
+  o["Book Move2 Probability"]<< Option(0, 0, 100, on_book_move2_prob);
+  o["BookPath"]              << Option("<empty>", on_brainbook_path);
+  o["Clean Search"]          << Option(false);
+  o["Clear Hash"]            << Option(on_clear_hash);
   o["Contempt"]              << Option(0, -100, 100);
+  o["Fast_Play"]             << Option(false);
   o["Threads"]               << Option(1, 1, 128, on_threads);
   o["Hash"]                  << Option(16, 1, MaxHashMB, on_hash_size);
-  o["Clear Hash"]            << Option(on_clear_hash);
   o["Ponder"]                << Option(false);
   o["MultiPV"]               << Option(1, 1, 500);
+  o["Show_Info"]             << Option(false);
   o["Skill Level"]           << Option(20, 0, 20);
+  o["Study"]                 << Option(false);
+  o["UCI_Limit_Strength"]    << Option(false);
+  o["UCI_Elo_Delay"]         << Option(false);
+  o["UCI_Elo"]               << Option(1200, 800, 2800);
   o["Move Overhead"]         << Option(30, 0, 5000);
   o["Minimum Thinking Time"] << Option(20, 0, 5000);
   o["Slow Mover"]            << Option(89, 10, 1000);
@@ -74,6 +85,8 @@ void init(OptionsMap& o) {
   o["SyzygyProbeDepth"]      << Option(1, 1, 100);
   o["Syzygy50MoveRule"]      << Option(true);
   o["SyzygyProbeLimit"]      << Option(6, 0, 6);
+  o["Debug Log File"]        << Option("", on_logger);
+
 }
 
 
