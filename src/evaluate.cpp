@@ -678,6 +678,9 @@ namespace {
         if (!pos.non_pawn_material(Them))
             ebonus += 20;
 
+        if (!pos.pawn_passed(Us, s + pawn_push(Us)))
+            mbonus /= 2, ebonus /= 2;
+
         score += make_score(mbonus, ebonus) + PassedFile[file_of(s)];
     }
 
