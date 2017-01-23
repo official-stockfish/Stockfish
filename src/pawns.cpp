@@ -159,7 +159,7 @@ namespace {
         if (   !(stoppers ^ lever ^ leverPush)
             && !(ourPawns & forward_bb(Us, s))
             && popcount(supported) >= popcount(lever)
-            && popcount(phalanx) >= popcount(leverPush))
+            && popcount(phalanx)   >= popcount(leverPush))
             e->passedPawns[Us] |= s;
 
         // Score this pawn
