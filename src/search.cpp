@@ -653,7 +653,7 @@ namespace {
                 if ((ss-1)->moveCount == 1 && !pos.captured_piece())
                   update_cm_stats(ss-1, pos.piece_on(prevSq), prevSq, penalty(depth));
             }
-                // Penalty if ttMove is fail low
+                // Penalty if ttMove fails low
             else if (ttValue < alpha && !pos.capture_or_promotion(ttMove))
             {
                   Color c = pos.side_to_move();
