@@ -642,14 +642,24 @@ namespace {
                             : (tte->bound() & BOUND_UPPER)))
     {
         // If ttMove is quiet, update move sorting heuristics on TT hit
-        if (ttValue >= beta && ttMove)
+        if (ttMove)
         {
-            if (!pos.capture_or_promotion(ttMove))
-                update_stats(pos, ss, ttMove, nullptr, 0, bonus(depth));
+            if (ttValue >= beta)
+            {
+                if (!pos.capture_or_promotion(ttMove))
+                  update_stats(pos, ss, ttMove, nullptr, 0, bonus(depth));
 
-            // Extra penalty for a quiet TT move in previous ply when it gets refuted
-            if ((ss-1)->moveCount == 1 && !pos.captured_piece())
-                update_cm_stats(ss-1, pos.piece_on(prevSq), prevSq, penalty(depth));
+                // Extra penalty for a quiet TT move in previous ply when it gets refuted
+                if ((ss-1)->moveCount == 1 && !pos.captured_piece())
+                  update_cm_stats(ss-1, pos.piece_on(prevSq), prevSq, penalty(depth));
+            }
+                // Penalty if ttMove is fail low
+            else if (ttValue < alpha && !pos.capture_or_promotion(ttMove))
+            {
+                  Color c = pos.side_to_move();
+                  thisThread->history.update(c, ttMove, penalty(depth));
+                  update_cm_stats(ss, pos.moved_piece(ttMove), to_sq(ttMove), penalty(depth));
+            }    
         }
         return ttValue;
     }
@@ -988,7 +998,7 @@ moves_loop: // When in check search starts from here
                            + (fmh  ? (*fmh )[moved_piece][to_sq(move)] : VALUE_ZERO)
                            + (fmh2 ? (*fmh2)[moved_piece][to_sq(move)] : VALUE_ZERO)
                            + thisThread->history.get(~pos.side_to_move(), move)
-                           - 8000; // Correction factor
+                           - 4000; // Correction factor
 
               // Decrease/increase reduction by comparing opponent's stat score
               if (ss->history > VALUE_ZERO && (ss-1)->history < VALUE_ZERO)
