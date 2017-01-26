@@ -24,6 +24,7 @@
 #include <cassert>
 #include <chrono>
 #include <ostream>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -57,8 +58,14 @@ private:
 enum SyncCout { IO_LOCK, IO_UNLOCK };
 std::ostream& operator<<(std::ostream&, SyncCout);
 
-#define sync_cout std::cout << IO_LOCK
-#define sync_endl std::endl << IO_UNLOCK
+// Modified by JStockfish
+extern std::stringstream sync_ss;
+#define sync_cout sync_ss << IO_LOCK
+#define sync_endl IO_UNLOCK
+
+// The default implementation is in misc_sync_cout.cpp.
+// Programs can easily replace this implementation with their own.
+void uci_out(std::string out);
 
 
 /// xorshift64star Pseudo-Random Number Generator

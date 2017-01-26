@@ -39,7 +39,7 @@ PGOBENCH = ./$(EXE) bench
 
 ### Object files
 OBJS = benchmark.o bitbase.o bitboard.o endgame.o evaluate.o main.o \
-	material.o misc.o movegen.o movepick.o pawns.o position.o psqt.o \
+	material.o misc.o misc_sync_cout.o movegen.o movepick.o pawns.o position.o positionstate.o psqt.o \
 	search.o thread.o timeman.o tt.o uci.o ucioption.o syzygy/tbprobe.o
 
 ### ==========================================================================
@@ -450,7 +450,7 @@ install:
 
 #clean all
 clean: objclean profileclean
-	@rm -f .depend *~ core 
+	@rm -f .depend *~ core
 
 # clean binaries and objects
 objclean:

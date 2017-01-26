@@ -30,6 +30,7 @@
 #include "movegen.h"
 #include "movepick.h"
 #include "position.h"
+#include "positionstate.h"
 #include "search.h"
 #include "timeman.h"
 #include "thread.h"
@@ -329,12 +330,30 @@ void MainThread::search() {
   if (bestThread != this)
       sync_cout << UCI::pv(bestThread->rootPos, bestThread->completedDepth, -VALUE_INFINITE, VALUE_INFINITE) << sync_endl;
 
-  sync_cout << "bestmove " << UCI::move(bestThread->rootMoves[0].pv[0], rootPos.is_chess960());
+  Move bestMove = bestThread->rootMoves[0].pv[0];
 
-  if (bestThread->rootMoves[0].pv.size() > 1 || bestThread->rootMoves[0].extract_ponder_from_tt(rootPos))
-      std::cout << " ponder " << UCI::move(bestThread->rootMoves[0].pv[1], rootPos.is_chess960());
+  bool moveBestMove = Options["Info State"] || Options["Info FEN"];
+  if (moveBestMove) {
+    StateInfo st;
+    rootPos.do_move(bestMove, st);
 
-  std::cout << sync_endl;
+    if (Options["Info State"])
+        sync_cout << "info state " << positionstate(rootPos) << sync_endl;
+
+    if (Options["Info FEN"])
+        sync_cout << "info fen " << rootPos.fen() << sync_endl;
+
+    rootPos.undo_move(bestMove);
+  }
+
+  sync_cout << "bestmove " << UCI::move(bestMove, rootPos.is_chess960());
+
+  if (bestThread->rootMoves[0].pv.size() > 1 || bestThread->rootMoves[0].extract_ponder_from_tt(rootPos)) {
+      Move ponderMove = bestThread->rootMoves[0].pv[1];
+      sync_ss << " ponder " << UCI::move(ponderMove, rootPos.is_chess960());
+  }
+
+  sync_ss << sync_endl;
 }
 
 

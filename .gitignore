@@ -1,0 +1,7 @@
+jni/src/main/cpp/*.h
+jni/build
+jni/target
+
+src/*.o
+src/stockfish
+src/syzygy/*.o

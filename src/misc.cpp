@@ -161,6 +161,7 @@ void dbg_print() {
 /// Used to serialize access to std::cout to avoid multiple threads writing at
 /// the same time.
 
+std::stringstream sync_ss;
 std::ostream& operator<<(std::ostream& os, SyncCout sc) {
 
   static Mutex m;
@@ -168,8 +169,17 @@ std::ostream& operator<<(std::ostream& os, SyncCout sc) {
   if (sc == IO_LOCK)
       m.lock();
 
-  if (sc == IO_UNLOCK)
+  if (sc == IO_UNLOCK) {
+      string out = sync_ss.str();
+
+      // Reset sync_ss
+      sync_ss.str("");
+      sync_ss.clear();
+
+      // Unlock before calling uci_out because m may not be reentrant
       m.unlock();
+      uci_out(out);
+  }
 
   return os;
 }
