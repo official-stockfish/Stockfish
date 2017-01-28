@@ -606,7 +606,8 @@ namespace {
   }
 
 
-  // evaluate_passed_pawns() evaluates the passed pawns of the given color
+  // evaluate_passed_pawns() evaluates the passed pawns and candidate passed pawns
+  // of the given color.
 
   template<Color Us, bool DoTrace>
   Score evaluate_passed_pawns(const Position& pos, const EvalInfo& ei) {
@@ -622,7 +623,6 @@ namespace {
     {
         Square s = pop_lsb(&b);
 
-        assert(pos.pawn_passed(Us, s));
         assert(!(pos.pieces(PAWN) & forward_bb(Us, s)));
 
         bb = forward_bb(Us, s) & (ei.attackedBy[Them][ALL_PIECES] | pos.pieces(Them));
@@ -682,6 +682,10 @@ namespace {
         // Assign a small bonus when the opponent has no pieces left
         if (!pos.non_pawn_material(Them))
             ebonus += 20;
+
+        // Scale down bonus for candidate passers which need more than one pawn push to become passed.
+        if (!pos.pawn_passed(Us, s + pawn_push(Us)))
+            mbonus /= 2, ebonus /= 2;
 
         score += make_score(mbonus, ebonus) + PassedFile[file_of(s)];
     }
