@@ -657,7 +657,7 @@ namespace {
                     update_cm_stats(ss-1, pos.piece_on(prevSq), prevSq, -stat_bonus(depth + ONE_PLY));
             }
             // Penalty for a quiet ttMove that fails low
-            else if (ttValue < alpha && !pos.capture_or_promotion(ttMove))
+            else if (!pos.capture_or_promotion(ttMove))
             {
                 Value penalty = -stat_bonus(depth + ONE_PLY);
                 thisThread->history.update(pos.side_to_move(), ttMove, penalty);
