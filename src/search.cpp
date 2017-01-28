@@ -1520,7 +1520,8 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
   int elapsed = Time.elapsed() + 1;
   const RootMoves& rootMoves = pos.this_thread()->rootMoves;
   size_t PVIdx = pos.this_thread()->PVIdx;
-  size_t multiPV = std::min((size_t)Options["MultiPV"], rootMoves.size());
+  size_t multiPVOpt = (size_t)Options["MultiPV"];
+  size_t multiPV = std::min(multiPVOpt, rootMoves.size());
   uint64_t nodesSearched = Threads.nodes_searched();
   uint64_t tbHits = Threads.tb_hits() + (TB::RootInTB ? rootMoves.size() : 0);
 
@@ -1561,6 +1562,10 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
 
       for (Move m : rootMoves[i].pv)
           ss << " " << UCI::move(m, pos.is_chess960());
+  }
+  
+  if (multiPV < multiPVOpt && ss.rdbuf()->in_avail()) {
+      ss << "\ninfo multipv end";
   }
 
   return ss.str();
