@@ -75,7 +75,6 @@ namespace {
 
     Material::Entry* me;
     Pawns::Entry* pe;
-    Bitboard pinnedPieces[COLOR_NB];
     Bitboard mobilityArea[COLOR_NB];
 
     // attackedBy[color][piece type] is a bitboard representing all squares
@@ -230,8 +229,6 @@ namespace {
     const Square Down = (Us == WHITE ? SOUTH : NORTH);
     const Bitboard LowRanks = (Us == WHITE ? Rank2BB | Rank3BB: Rank7BB | Rank6BB);
 
-    ei.pinnedPieces[Us] = pos.pinned_pieces(Us);
-
     // Find our pawns on the first two ranks, and those which are blocked
     Bitboard b = pos.pieces(Us, PAWN) & (shift<Down>(pos.pieces()) | LowRanks);
 
@@ -283,7 +280,7 @@ namespace {
           : Pt ==   ROOK ? attacks_bb<  ROOK>(s, pos.pieces() ^ pos.pieces(Us, ROOK, QUEEN))
                          : pos.attacks_from<Pt>(s);
 
-        if (ei.pinnedPieces[Us] & s)
+        if (pos.pinned_pieces(Us) & s)
             b &= LineBB[pos.square<KING>(Us)][s];
 
         ei.attackedBy2[Us] |= ei.attackedBy[Us][ALL_PIECES] & b;
@@ -429,7 +426,7 @@ namespace {
         kingDanger =  std::min(807, ei.kingAttackersCount[Them] * ei.kingAttackersWeight[Them])
                     + 101 * ei.kingAdjacentZoneAttacksCount[Them]
                     + 235 * popcount(undefended)
-                    + 134 * (popcount(b) + !!ei.pinnedPieces[Us])
+                    + 134 * (popcount(b) + !!pos.pinned_pieces(Us))
                     - 717 * !pos.count<QUEEN>(Them)
                     -   7 * mg_value(score) / 5 - 5;
 
