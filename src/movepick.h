@@ -2,7 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2016 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2015-2017 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -60,7 +60,7 @@ private:
 /// Entries are stored using only the moving piece and destination square, hence
 /// two moves with different origin but same destination and piece will be
 /// considered identical.
-template<typename T, bool CM = false>
+template<typename T>
 struct Stats {
   const T* operator[](Piece pc) const { return table[pc]; }
   T* operator[](Piece pc) { return table[pc]; }
@@ -71,7 +71,7 @@ struct Stats {
     if (abs(int(v)) >= 324)
         return;
 
-    table[pc][to] -= table[pc][to] * abs(int(v)) / (CM ? 936 : 324);
+    table[pc][to] -= table[pc][to] * abs(int(v)) / 936;
     table[pc][to] += int(v) * 32;
   }
 
@@ -80,7 +80,7 @@ private:
 };
 
 typedef Stats<Move> MoveStats;
-typedef Stats<Value, true> CounterMoveStats;
+typedef Stats<Value> CounterMoveStats;
 typedef Stats<CounterMoveStats> CounterMoveHistoryStats;
 
 
