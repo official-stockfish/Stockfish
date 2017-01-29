@@ -49,10 +49,11 @@ struct StateInfo {
   // Not copied when making a move (will be recomputed anyhow)
   Key        key;
   Bitboard   checkersBB;
-  Piece      capturedPiece;
-  StateInfo* previous;
   Bitboard   blockersForKing[COLOR_NB];
   Bitboard   pinnersForKing[COLOR_NB];
+  // Not copied when making a null move (will be recomputed anyhow)
+  Piece      capturedPiece;
+  StateInfo* previous;
   Bitboard   checkSquares[PIECE_TYPE_NB];
 };
 
@@ -164,6 +165,7 @@ private:
   void set_castling_right(Color c, Square rfrom);
   void set_state(StateInfo* si) const;
   void set_check_info(StateInfo* si) const;
+  void update_check_info(StateInfo* si) const;
 
   // Other helpers
   void put_piece(Piece pc, Square s);
