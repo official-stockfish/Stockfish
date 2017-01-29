@@ -174,7 +174,7 @@ namespace {
   Value value_from_tt(Value v, int ply);
   void update_pv(Move* pv, Move move, Move* childPv);
   void update_cm_stats(Stack* ss, Piece pc, Square s, Value bonus);
-  void update_stats(const Position& pos, Stack* ss, Move move, Move* quiets, int quietsCnt, Value bonus);
+  void update_stats(const Position& pos, Stack* ss, Move move, Move* quiets, int quietsCnt, Value bonus, bool pvPenalty);
   void check_time();
 
 } // namespace
@@ -647,6 +647,7 @@ namespace {
         // If ttMove is quiet, update move sorting heuristics on TT hit
         if (ttMove)
         {
+
             if (ttValue >= beta)
             {
                 if (!pos.capture_or_promotion(ttMove))
@@ -663,6 +664,7 @@ namespace {
                 thisThread->history.update(pos.side_to_move(), ttMove, penalty);
                 update_cm_stats(ss, pos.moved_piece(ttMove), to_sq(ttMove), penalty);
             }
+
         }
         return ttValue;
     }
@@ -1133,7 +1135,9 @@ moves_loop: // When in check search starts from here
 
         // Quiet best move: update move sorting heuristics
         if (!pos.capture_or_promotion(bestMove))
+
             update_stats(pos, ss, bestMove, quietsSearched, quietCount, stat_bonus(depth));
+
 
         // Extra penalty for a quiet TT move in previous ply when it gets refuted
         if ((ss-1)->moveCount == 1 && !pos.captured_piece())
@@ -1420,9 +1424,9 @@ moves_loop: // When in check search starts from here
   // update_stats() updates move sorting heuristics when a new quiet best move is found
 
   void update_stats(const Position& pos, Stack* ss, Move move,
-                    Move* quiets, int quietsCnt, Value bonus) {
+                    Move* quiets, int quietsCnt, Value bonus, bool pvPenalty) {
 
-    if (ss->killers[0] != move)
+    if (ss->killers[0] != move && !pvPenalty)
     {
         ss->killers[1] = ss->killers[0];
         ss->killers[0] = move;
@@ -1433,7 +1437,7 @@ moves_loop: // When in check search starts from here
     thisThread->history.update(c, move, bonus);
     update_cm_stats(ss, pos.moved_piece(move), to_sq(move), bonus);
 
-    if ((ss-1)->counterMoves)
+    if (!pvPenalty && (ss-1)->counterMoves)
     {
         Square prevSq = to_sq((ss-1)->currentMove);
         thisThread->counterMoves.update(pos.piece_on(prevSq), prevSq, move);
