@@ -34,6 +34,7 @@
 #include "timeman.h"
 #include "thread.h"
 #include "tt.h"
+#include "tzbook.h"
 #include "uci.h"
 #include "syzygy/tbprobe.h"
 
@@ -73,12 +74,6 @@ namespace {
 
   template <bool PvNode> Depth reduction(bool i, Depth d, int mn) {
     return Reductions[PvNode][i][std::min(d / ONE_PLY, 63)][std::min(mn, 63)] * ONE_PLY;
-  }
-
-  // History and stats update bonus, based on depth
-  Value stat_bonus(Depth depth) {
-    int d = depth / ONE_PLY ;
-    return Value(d * d + 2 * d - 2);
   }
 
   // Skill structure is used to implement strength limit
@@ -158,8 +153,13 @@ namespace {
     {1, 1, 0, 0, 0, 0, 1 ,1},
     {1, 0, 0, 0, 0, 1, 1 ,1},
   };
-
+	
   const size_t HalfDensitySize = std::extent<decltype(HalfDensity)>::value;
+
+
+  Value bonus(Depth depth)   { int d = depth / ONE_PLY ; return  Value(d * d + 2 * d - 2); }
+  Value penalty(Depth depth) { int d = depth / ONE_PLY ; return -Value(d * d + 4 * d + 1); }
+
 
   EasyMoveManager EasyMove;
   Value DrawValue[COLOR_NB];
@@ -174,7 +174,7 @@ namespace {
   Value value_from_tt(Value v, int ply);
   void update_pv(Move* pv, Move move, Move* childPv);
   void update_cm_stats(Stack* ss, Piece pc, Square s, Value bonus);
-  void update_stats(const Position& pos, Stack* ss, Move move, Move* quiets, int quietsCnt, Value bonus, bool pvPenalty);
+  void update_stats(const Position& pos, Stack* ss, Move move, Move* quiets, int quietsCnt, Value bonus);
   void check_time();
 
 } // namespace
@@ -265,21 +265,49 @@ void MainThread::search() {
   DrawValue[ us] = VALUE_DRAW - Value(contempt);
   DrawValue[~us] = VALUE_DRAW + Value(contempt);
 
-  if (rootMoves.empty())
-  {
-      rootMoves.push_back(RootMove(MOVE_NONE));
-      sync_cout << "info depth 0 score "
-                << UCI::value(rootPos.checkers() ? -VALUE_MATE : VALUE_DRAW)
-                << sync_endl;
-  }
-  else
-  {
-      for (Thread* th : Threads)
-          if (th != this)
-              th->start_searching();
+	if (Options["UCI_Limit_Strength"])
+	{
+		
+		int uci_elo = (Options["UCI_Elo"]);
+ 	int lower_elo = uci_elo - 75;
+		int upper_elo = uci_elo + 75;
+		
+		int use_rating = rand() % (upper_elo - lower_elo +1 ) + lower_elo;
+		int NodesToSearch   = pow(1.0069555500567,(((use_rating)/1200) -1 )
+								  + (use_rating - 1200)) * 64 ;
+		Limits.nodes = NodesToSearch;
+		
+		if (Options["UCI_Elo_Delay"])
+		std::this_thread::sleep_for (std::chrono::seconds(Time.optimum()/1000));
+	}
+	
+	if (rootMoves.empty())
+	{
+		rootMoves.push_back(RootMove(MOVE_NONE));
+		sync_cout << "info depth 0 score "
+		<< UCI::value(rootPos.checkers() ? -VALUE_MATE : VALUE_DRAW)
+		<< sync_endl;
+	}
+	else//start cerebeluum
+	{
+		Move bookMove = MOVE_NONE;
+		
+		if (!Limits.infinite && !Limits.mate)
+		bookMove = tzbook.probe2(rootPos);
+		if (bookMove && std::count(rootMoves.begin(), rootMoves.end(), bookMove))
+		{
+			std::swap(rootMoves[0], *std::find(rootMoves.begin(), rootMoves.end(), bookMove));
+		}//end cerebeluum
+		else
+		{
+			for (Thread* th : Threads)
+			if (th != this)
+			th->start_searching();
+			
+			Thread::search(); // Let's start searching!
+		}
+	}//cerebellum
 
-      Thread::search(); // Let's start searching!
-  }
 
   // When playing in 'nodes as time' mode, subtract the searched nodes from
   // the available ones before exiting.
@@ -366,6 +394,7 @@ void Thread::search() {
 
   size_t multiPV = Options["MultiPV"];
   Skill skill(Options["Skill Level"]);
+  if (Options["Study"]) multiPV=256;
 
   // When playing with strength handicap enable MultiPV search that we will
   // use behind the scenes to retrieve a set of possible moves.
@@ -482,6 +511,19 @@ void Thread::search() {
       // If skill level is enabled and time is up, pick a sub-optimal best move
       if (skill.enabled() && skill.time_to_pick(rootDepth))
           skill.pick_best(multiPV);
+	  
+	  if (Options["Fast_Play"])
+	  {
+		  if ( Time.elapsed() > Time.optimum() / 256
+			  && ( abs(bestValue) > 12300 ||  abs(bestValue) >= VALUE_MATE_IN_MAX_PLY ))
+		  Signals.stop = true;
+	  }
+	  
+	  // Have we found a "mate in x"?
+	  if (   Limits.mate
+		  && bestValue >= VALUE_MATE_IN_MAX_PLY
+		  && VALUE_MATE - bestValue <= 2 * Limits.mate)
+	  Signals.stop = true;
 
       // Have we found a "mate in x"?
       if (   Limits.mate
@@ -645,26 +687,14 @@ namespace {
                             : (tte->bound() & BOUND_UPPER)))
     {
         // If ttMove is quiet, update move sorting heuristics on TT hit
-        if (ttMove)
+        if (ttValue >= beta && ttMove)
         {
+            if (!pos.capture_or_promotion(ttMove))
+                update_stats(pos, ss, ttMove, nullptr, 0, bonus(depth));
 
-            if (ttValue >= beta)
-            {
-                if (!pos.capture_or_promotion(ttMove))
-                    update_stats(pos, ss, ttMove, nullptr, 0, stat_bonus(depth));
-
-                // Extra penalty for a quiet TT move in previous ply when it gets refuted
-                if ((ss-1)->moveCount == 1 && !pos.captured_piece())
-                    update_cm_stats(ss-1, pos.piece_on(prevSq), prevSq, -stat_bonus(depth + ONE_PLY));
-            }
-            // Penalty for a quiet ttMove that fails low
-            else if (!pos.capture_or_promotion(ttMove))
-            {
-                Value penalty = -stat_bonus(depth + ONE_PLY);
-                thisThread->history.update(pos.side_to_move(), ttMove, penalty);
-                update_cm_stats(ss, pos.moved_piece(ttMove), to_sq(ttMove), penalty);
-            }
-
+            // Extra penalty for a quiet TT move in previous ply when it gets refuted
+            if ((ss-1)->moveCount == 1 && !pos.captured_piece())
+                update_cm_stats(ss-1, pos.piece_on(prevSq), prevSq, penalty(depth));
         }
         return ttValue;
     }
@@ -715,9 +745,11 @@ namespace {
             eval = ss->staticEval = evaluate(pos);
 
         // Can ttValue be used as a better position evaluation?
-        if (ttValue != VALUE_NONE)
-            if (tte->bound() & (ttValue > eval ? BOUND_LOWER : BOUND_UPPER))
-                eval = ttValue;
+		if (tte->bound() & (ttValue > eval ? BOUND_LOWER : BOUND_UPPER))
+			eval = ttValue;
+		if (ttValue + PawnValueMg < ss->staticEval)
+			skipEarlyPruning  = true;
+
     }
     else
     {
@@ -871,7 +903,8 @@ moves_loop: // When in check search starts from here
 
       ss->moveCount = ++moveCount;
 
-      if (rootNode && thisThread == Threads.main() && Time.elapsed() > 3000)
+      if (rootNode && thisThread == Threads.main() && Time.elapsed() > 3000
+		  && Options["Show_Info"])
           sync_cout << "info depth " << depth / ONE_PLY
                     << " currmove " << UCI::move(move, pos.is_chess960())
                     << " currmovenumber " << moveCount + thisThread->PVIdx << sync_endl;
@@ -1003,7 +1036,7 @@ moves_loop: // When in check search starts from here
                            + (fmh  ? (*fmh )[moved_piece][to_sq(move)] : VALUE_ZERO)
                            + (fmh2 ? (*fmh2)[moved_piece][to_sq(move)] : VALUE_ZERO)
                            + thisThread->history.get(~pos.side_to_move(), move)
-                           - 4000; // Correction factor
+                           - 8000; // Correction factor
 
               // Decrease/increase reduction by comparing opponent's stat score
               if (ss->history > VALUE_ZERO && (ss-1)->history < VALUE_ZERO)
@@ -1015,6 +1048,14 @@ moves_loop: // When in check search starts from here
               // Decrease/increase reduction for moves with a good/bad history
               r = std::max(DEPTH_ZERO, (r / ONE_PLY - ss->history / 20000) * ONE_PLY);
           }
+
+/*The "Study" option looks Stockfish to look at more positions per search depth, but Stockfish will play
+weaker overall.  It also sets the "MultiPV" option to 256 to allow Stockfiish to look at more nodes per
+depth and may help in analysis.  Stockfish will play  weaker using the Study, it is for analysis. .*/
+		  
+		  if ( ( ss->ply < depth / 2 - ONE_PLY) && Options["Study"] )
+		    r = DEPTH_ZERO;
+
 
           Depth d = std::max(newDepth - r, ONE_PLY);
 
@@ -1135,19 +1176,17 @@ moves_loop: // When in check search starts from here
 
         // Quiet best move: update move sorting heuristics
         if (!pos.capture_or_promotion(bestMove))
-
-            update_stats(pos, ss, bestMove, quietsSearched, quietCount, stat_bonus(depth));
-
+            update_stats(pos, ss, bestMove, quietsSearched, quietCount, bonus(depth));
 
         // Extra penalty for a quiet TT move in previous ply when it gets refuted
         if ((ss-1)->moveCount == 1 && !pos.captured_piece())
-            update_cm_stats(ss-1, pos.piece_on(prevSq), prevSq, -stat_bonus(depth + ONE_PLY));
+            update_cm_stats(ss-1, pos.piece_on(prevSq), prevSq, penalty(depth));
     }
     // Bonus for prior countermove that caused the fail low
     else if (    depth >= 3 * ONE_PLY
              && !pos.captured_piece()
              && is_ok((ss-1)->currentMove))
-        update_cm_stats(ss-1, pos.piece_on(prevSq), prevSq, stat_bonus(depth));
+        update_cm_stats(ss-1, pos.piece_on(prevSq), prevSq, bonus(depth));
 
     tte->save(posKey, value_to_tt(bestValue, ss->ply),
               bestValue >= beta ? BOUND_LOWER :
@@ -1424,9 +1463,9 @@ moves_loop: // When in check search starts from here
   // update_stats() updates move sorting heuristics when a new quiet best move is found
 
   void update_stats(const Position& pos, Stack* ss, Move move,
-                    Move* quiets, int quietsCnt, Value bonus, bool pvPenalty) {
+                    Move* quiets, int quietsCnt, Value bonus) {
 
-    if (ss->killers[0] != move && !pvPenalty)
+    if (ss->killers[0] != move)
     {
         ss->killers[1] = ss->killers[0];
         ss->killers[0] = move;
@@ -1437,7 +1476,7 @@ moves_loop: // When in check search starts from here
     thisThread->history.update(c, move, bonus);
     update_cm_stats(ss, pos.moved_piece(move), to_sq(move), bonus);
 
-    if (!pvPenalty && (ss-1)->counterMoves)
+    if ((ss-1)->counterMoves)
     {
         Square prevSq = to_sq((ss-1)->currentMove);
         thisThread->counterMoves.update(pos.piece_on(prevSq), prevSq, move);
@@ -1550,7 +1589,7 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
          << " multipv "  << i + 1
          << " score "    << UCI::value(v);
 
-      if (!tb && i == PVIdx)
+      if (!tb && i == PVIdx &&  Options["Show_Info"])
           ss << (v >= beta ? " lowerbound" : v <= alpha ? " upperbound" : "");
 
       ss << " nodes "    << nodesSearched
