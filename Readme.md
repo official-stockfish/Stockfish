@@ -97,6 +97,19 @@ set/unset some switches in the compiler command line; see file *types.h*
 for a quick reference.
 
 
+### How to contribute
+
+Stockfish is a collaborative effort of many years and everyone is
+welcome to contribute.  When submitting a pull request:
+
+  * Be sure your patch compiles fine
+
+  * Explain the reason of your patch (not only what it does, but why)
+
+  * If is a patch that adds code then a test with SPRT[0, 5] is required
+    for it to be accepted
+
+
 ### Terms of use
 
 Stockfish is free, and distributed under the **GNU General Public License**
