@@ -209,7 +209,6 @@ namespace {
   const int KingAttackWeights[PIECE_TYPE_NB] = { 0, 0, 78, 56, 45, 11 };
 
   // Penalties for enemy's safe checks
-  const int QueenContactCheck = 997;
   const int QueenCheck        = 745;
   const int RookCheck         = 688;
   const int BishopCheck       = 588;
@@ -430,15 +429,9 @@ namespace {
                     - 717 * !pos.count<QUEEN>(Them)
                     -   7 * mg_value(score) / 5 - 5;
 
-        // Analyse the enemy's safe queen contact checks. Firstly, find the
-        // undefended squares around our king reachable by the enemy queen...
-        b = undefended & ei.attackedBy[Them][QUEEN] & ~pos.pieces(Them);
-
-        // ...and keep squares supported by another enemy piece.
-        kingDanger += QueenContactCheck * popcount(b & ei.attackedBy2[Them]);
-
         // Analyse the safe enemy's checks which are possible on next move
-        safe  = ~(ei.attackedBy[Us][ALL_PIECES] | pos.pieces(Them));
+        safe  = ~pos.pieces(Them);
+        safe &= ~ei.attackedBy[Us][ALL_PIECES] | (undefended & ei.attackedBy2[Them]);
 
         b1 = pos.attacks_from<ROOK  >(ksq);
         b2 = pos.attacks_from<BISHOP>(ksq);
