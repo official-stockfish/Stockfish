@@ -100,14 +100,19 @@ for a quick reference.
 ### How to contribute
 
 Stockfish is a collaborative effort of many years and everyone is
-welcome to contribute.  When submitting a pull request:
+welcome to contribute.  Before submitting a pull request, please:
+
+  * Read the testing guide: https://github.com/glinscott/fishtest/wiki/Creating-my-first-test
 
   * Be sure your patch compiles fine
 
   * Explain the reason of your patch (not only what it does, but why)
 
-  * If is a patch that adds code then a test with SPRT[0, 5] is required
-    for it to be accepted
+  * If is a patch that adds code, then a test with SPRT[0, 5] is
+    required for it to be accepted
+
+  * For questions/discussion please see the FishCooking group:
+    https://groups.google.com/forum/#!forum/fishcooking
 
 
 ### Terms of use
