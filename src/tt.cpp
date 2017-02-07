@@ -2,7 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2017 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2015-2016 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -23,8 +23,14 @@
 
 #include "bitboard.h"
 #include "tt.h"
+#include <fstream>
 
+using namespace std;
 TranspositionTable TT; // Our global transposition table
+
+TranspositionTable EXP;
+
+unsigned int hashsize;
 
 
 /// TranspositionTable::resize() sets the size of the transposition table,
@@ -100,11 +106,11 @@ TTEntry* TranspositionTable::probe(const Key key, bool& found) const {
 }
 
 
-/// TranspositionTable::hashfull() returns an approximation of the hashtable
-/// occupation during a search. The hash is x permill full, as per UCI protocol.
+/// Returns an approximation of the hashtable occupation during a search. The
+/// hash is x permill full, as per UCI protocol.
 
-int TranspositionTable::hashfull() const {
-
+int TranspositionTable::hashfull() const
+{
   int cnt = 0;
   for (int i = 0; i < 1000 / ClusterSize; i++)
   {
@@ -114,4 +120,115 @@ int TranspositionTable::hashfull() const {
               cnt++;
   }
   return cnt;
+}
+
+
+
+void EXPresize(size_t mbSize) {
+
+	EXP.new_search();
+	ifstream myFile("experience.bin", ios::in | ios::binary);
+
+
+	int load = 1;
+	while (load)
+	{
+		ExpEntry tempExpEntry;
+		tempExpEntry.depth = Depth(0);
+		tempExpEntry.hashkey = 0;
+		tempExpEntry.move = Move(0);
+		tempExpEntry.score = Value(0);
+
+		myFile.read((char*)&tempExpEntry, sizeof(tempExpEntry));
+
+		if (tempExpEntry.hashkey)
+		{
+			TTEntry* tte;
+			bool ttHit;
+			tte = EXP.probe(tempExpEntry.hashkey, ttHit);
+			tte->save(tempExpEntry.hashkey, tempExpEntry.score, BOUND_EXACT,
+				tempExpEntry.depth,
+				tempExpEntry.move, VALUE_NONE, EXP.generation());
+		}
+		else
+			load = 0;
+
+
+
+		if (!tempExpEntry.hashkey)
+			load = 0;
+	}
+	myFile.close();
+
+}
+void EXPawnresize() {
+
+	ifstream myFile("pawngame.bin", ios::in | ios::binary);
+
+
+	int load = 1;
+	while (load)
+	{
+		ExpEntry tempExpEntry;
+		tempExpEntry.depth = Depth(0);
+		tempExpEntry.hashkey = 0;
+		tempExpEntry.move = Move(0);
+		tempExpEntry.score = Value(0);
+
+		myFile.read((char*)&tempExpEntry, sizeof(tempExpEntry));
+
+		if (tempExpEntry.hashkey)
+		{
+			TTEntry* tte;
+			bool ttHit;
+			tte = EXP.probe(tempExpEntry.hashkey, ttHit);
+			tte->save(tempExpEntry.hashkey, tempExpEntry.score, BOUND_EXACT,
+				tempExpEntry.depth,
+				tempExpEntry.move, VALUE_NONE, EXP.generation());
+		}
+		else
+			load = 0;
+
+
+		if (!tempExpEntry.hashkey)
+			load = 0;
+	}
+	myFile.close();
+
+}
+void EXPload(char* fen)
+{
+
+	ifstream myFile(fen, ios::in | ios::binary);
+
+
+
+
+	int load = 1;
+
+	while (load)
+	{
+		ExpEntry tempExpEntry;
+		tempExpEntry.depth = Depth(0);
+		tempExpEntry.hashkey = 0;
+		tempExpEntry.move = Move(0);
+		tempExpEntry.score = Value(0);
+		myFile.read((char*)&tempExpEntry, sizeof(tempExpEntry));
+
+		if (tempExpEntry.hashkey)
+		{
+			TTEntry* tte;
+			bool ttHit;
+			tte = EXP.probe(tempExpEntry.hashkey, ttHit);
+			tte->save(tempExpEntry.hashkey, tempExpEntry.score, BOUND_EXACT,
+				tempExpEntry.depth,
+				tempExpEntry.move, VALUE_NONE, EXP.generation());
+		}
+			load = 0;
+
+
+		if (!tempExpEntry.hashkey)
+			load = 0;
+	}
+	myFile.close();
 }

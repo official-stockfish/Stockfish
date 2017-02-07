@@ -2,7 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2017 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2015-2016 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -100,6 +100,7 @@ const bool Is64Bit = false;
 typedef uint64_t Key;
 typedef uint64_t Bitboard;
 
+
 const int MAX_MOVES = 256;
 const int MAX_PLY   = 128;
 
@@ -115,7 +116,7 @@ const int MAX_PLY   = 128;
 /// any normal move destination square is always different from origin square
 /// while MOVE_NONE and MOVE_NULL have the same origin and destination square.
 
-enum Move : int {
+enum Move {
   MOVE_NONE,
   MOVE_NULL = 65
 };
@@ -207,9 +208,8 @@ enum Piece {
 
 const Piece Pieces[] = { W_PAWN, W_KNIGHT, W_BISHOP, W_ROOK, W_QUEEN, W_KING,
                          B_PAWN, B_KNIGHT, B_BISHOP, B_ROOK, B_QUEEN, B_KING };
-extern Value PieceValue[PHASE_NB][PIECE_NB];
 
-enum Depth : int {
+enum Depth {
 
   ONE_PLY = 1,
 
@@ -237,67 +237,68 @@ enum Square {
 
   SQUARE_NB = 64,
 
-  NORTH =  8,
-  EAST  =  1,
-  SOUTH = -8,
-  WEST  = -1,
+  DELTA_N =  8,
+  DELTA_E =  1,
+  DELTA_S = -8,
+  DELTA_W = -1,
 
-  NORTH_EAST = NORTH + EAST,
-  SOUTH_EAST = SOUTH + EAST,
-  SOUTH_WEST = SOUTH + WEST,
-  NORTH_WEST = NORTH + WEST
+  DELTA_NN = DELTA_N + DELTA_N,
+  DELTA_NE = DELTA_N + DELTA_E,
+  DELTA_SE = DELTA_S + DELTA_E,
+  DELTA_SS = DELTA_S + DELTA_S,
+  DELTA_SW = DELTA_S + DELTA_W,
+  DELTA_NW = DELTA_N + DELTA_W
 };
 
-enum File : int {
+enum File {
   FILE_A, FILE_B, FILE_C, FILE_D, FILE_E, FILE_F, FILE_G, FILE_H, FILE_NB
 };
 
-enum Rank : int {
+enum Rank {
   RANK_1, RANK_2, RANK_3, RANK_4, RANK_5, RANK_6, RANK_7, RANK_8, RANK_NB
 };
 
 
 /// Score enum stores a middlegame and an endgame value in a single integer
 /// (enum). The least significant 16 bits are used to store the endgame value
-/// and the upper 16 bits are used to store the middlegame value. Take some
-/// care to avoid left-shifting a signed int to avoid undefined behavior.
+/// and the upper 16 bits are used to store the middlegame value.
 enum Score : int { SCORE_ZERO };
 
 inline Score make_score(int mg, int eg) {
-  return Score((int)((unsigned int)eg << 16) + mg);
+  return Score((mg << 16) + eg);
 }
 
 /// Extracting the signed lower and upper 16 bits is not so trivial because
 /// according to the standard a simple cast to short is implementation defined
 /// and so is a right shift of a signed integer.
-inline Value eg_value(Score s) {
-
-  union { uint16_t u; int16_t s; } eg = { uint16_t(unsigned(s + 0x8000) >> 16) };
-  return Value(eg.s);
-}
-
 inline Value mg_value(Score s) {
 
-  union { uint16_t u; int16_t s; } mg = { uint16_t(unsigned(s)) };
+  union { uint16_t u; int16_t s; } mg = { uint16_t(unsigned(s + 0x8000) >> 16) };
   return Value(mg.s);
+}
+
+inline Value eg_value(Score s) {
+
+  union { uint16_t u; int16_t s; } eg = { uint16_t(unsigned(s)) };
+  return Value(eg.s);
 }
 
 #define ENABLE_BASE_OPERATORS_ON(T)                             \
 inline T operator+(T d1, T d2) { return T(int(d1) + int(d2)); } \
 inline T operator-(T d1, T d2) { return T(int(d1) - int(d2)); } \
+inline T operator*(int i, T d) { return T(i * int(d)); }        \
+inline T operator*(T d, int i) { return T(int(d) * i); }        \
 inline T operator-(T d) { return T(-int(d)); }                  \
 inline T& operator+=(T& d1, T d2) { return d1 = d1 + d2; }      \
 inline T& operator-=(T& d1, T d2) { return d1 = d1 - d2; }      \
+inline T& operator*=(T& d, int i) { return d = T(int(d) * i); }
 
 #define ENABLE_FULL_OPERATORS_ON(T)                             \
 ENABLE_BASE_OPERATORS_ON(T)                                     \
-inline T operator*(int i, T d) { return T(i * int(d)); }        \
-inline T operator*(T d, int i) { return T(int(d) * i); }        \
 inline T& operator++(T& d) { return d = T(int(d) + 1); }        \
 inline T& operator--(T& d) { return d = T(int(d) - 1); }        \
 inline T operator/(T d, int i) { return T(int(d) / i); }        \
 inline int operator/(T d1, T d2) { return int(d1) / int(d2); }  \
-inline T& operator*=(T& d, int i) { return d = T(int(d) * i); } \
 inline T& operator/=(T& d, int i) { return d = T(int(d) / i); }
 
 ENABLE_FULL_OPERATORS_ON(Value)
@@ -329,16 +330,7 @@ inline Score operator/(Score s, int i) {
   return make_score(mg_value(s) / i, eg_value(s) / i);
 }
 
-/// Multiplication of a Score by an integer. We check for overflow in debug mode.
-inline Score operator*(Score s, int i) {
-  Score result = Score(int(s) * i);
-
-  assert(eg_value(result) == (i * eg_value(s)));
-  assert(mg_value(result) == (i * mg_value(s)));
-  assert((i == 0) || (result / i) == s );
-
-  return result;
-}
+extern Value PieceValue[PHASE_NB][PIECE_NB];
 
 inline Color operator~(Color c) {
   return Color(c ^ BLACK); // Toggle color
@@ -365,7 +357,7 @@ inline Value mated_in(int ply) {
 }
 
 inline Square make_square(File f, Rank r) {
-  return Square((r << 3) + f);
+  return Square((r << 3) | f);
 }
 
 inline Piece make_piece(Color c, PieceType pt) {
@@ -411,7 +403,7 @@ inline bool opposite_colors(Square s1, Square s2) {
 }
 
 inline Square pawn_push(Color c) {
-  return c == WHITE ? NORTH : SOUTH;
+  return c == WHITE ? DELTA_N : DELTA_S;
 }
 
 inline Square from_sq(Move m) {
@@ -431,12 +423,12 @@ inline PieceType promotion_type(Move m) {
 }
 
 inline Move make_move(Square from, Square to) {
-  return Move((from << 6) + to);
+  return Move(to | (from << 6));
 }
 
 template<MoveType T>
 inline Move make(Square from, Square to, PieceType pt = KNIGHT) {
-  return Move(T + ((pt - KNIGHT) << 12) + (from << 6) + to);
+  return Move(to | (from << 6) | T | ((pt - KNIGHT) << 12));
 }
 
 inline bool is_ok(Move m) {

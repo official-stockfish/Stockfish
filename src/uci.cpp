@@ -2,7 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2017 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2015-2016 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -29,7 +29,6 @@
 #include "thread.h"
 #include "timeman.h"
 #include "uci.h"
-#include "syzygy/tbprobe.h"
 
 using namespace std;
 
@@ -51,33 +50,80 @@ namespace {
   // or the starting position ("startpos") and then makes the moves given in the
   // following move list ("moves").
 
-  void position(Position& pos, istringstream& is) {
+  bool startposition=false;
+  Key * OpFileKey;
+  Key FileKey=0;
 
-    Move m;
-    string token, fen;
+  void position(Position& pos, istringstream& is){
 
-    is >> token;
+	  Move m = MOVE_NONE;
+	  string token, fen, Newfen;	 
 
-    if (token == "startpos")
-    {
-        fen = StartFEN;
-        is >> token; // Consume "moves" token if any
-    }
-    else if (token == "fen")
-        while (is >> token && token != "moves")
-            fen += token + " ";
-    else
-        return;
+	  is >> token;
 
-    States = StateListPtr(new std::deque<StateInfo>(1));
-    pos.set(fen, Options["UCI_Chess960"], &States->back(), Threads.main());
+	  if (token == "startpos")
+	  {
+		  startposition = true;
+		  fen = StartFEN;
+		  Newfen = fen;
+		  is >> token; // Consume "moves" token if any
+	  }
+	  else if (token == "fen")
+	  {
+		  startposition = false;
+		  Newfen = token;
+		  while (is >> token && token != "moves")
+			  fen += token + " ";
+	  }
+	  else
+		  return;
+	  States = StateListPtr(new std::deque<StateInfo>(1));
+	  pos.set(fen, Options["UCI_Chess960"], &States->back(), Threads.main());
+	  int movesplayed = 0;
+	  int OPmoves = 0;
+	  
 
-    // Parse move list (if any)
-    while (is >> token && (m = UCI::to_move(pos, token)) != MOVE_NONE)
-    {
-        States->push_back(StateInfo());
-        pos.do_move(m, States->back());
-    }
+	//  OpFileKey[0] = 0;
+	//  OpFileKey[1] = 0;
+	  //OpFileKey[2] = 0;
+	 // OpFileKey[3] = 0;
+	 // OpFileKey[4] = 0;
+	  if (StartFEN != Newfen)
+	  {
+		  startposition = false;
+		  FileKey = pos.key();
+	  }
+	  else
+	  {
+		  startposition = true;
+		  FileKey = 0;
+	  }
+	  // Parse move list (if any)
+	  while (is >> token && (m = UCI::to_move(pos, token)) != MOVE_NONE)
+	  {
+		  States->push_back(StateInfo());
+
+		  if (!FileKey)
+		  {
+			  if ((movesplayed == 2 || movesplayed == 4 || movesplayed == 6 || movesplayed == 8 || movesplayed == 10 || movesplayed == 12) && Newfen == StartFEN)
+			  {
+				  files(OPmoves, pos.key());
+				  OPmoves++;
+				  kelly(startposition, FileKey);
+				  record(true);
+			  }
+			  else
+				  record(false);
+			  if (movesplayed == 12 && Newfen == StartFEN)
+			  {
+				  FileKey = pos.key();
+				  kelly(startposition, FileKey);
+			  }
+		  }
+		  pos.do_move(m, States->back(), pos.gives_check(m));
+		  movesplayed++;
+
+	  }
   }
 
 
@@ -187,7 +233,6 @@ void UCI::loop(int argc, char* argv[]) {
       else if (token == "ucinewgame")
       {
           Search::clear();
-          Tablebases::init(Options["SyzygyPath"]);
           Time.availableNodes = 0;
       }
       else if (token == "isready")    sync_cout << "readyok" << sync_endl;
