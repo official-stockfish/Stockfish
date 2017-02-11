@@ -51,7 +51,7 @@ namespace {
 
 /// Version number. If Version is left empty, then compile date in the format
 /// DD-MM-YY and show in engine_info.
-const string Version = "";
+const string Version = "v1.1";
 
 /// Our fancy logging facility. The trick here is to replace cin.rdbuf() and
 /// cout.rdbuf() with two Tie objects that tie cin and cout to a file stream. We
@@ -122,7 +122,7 @@ const string engine_info(bool to_uci) {
   string month, day, year;
   stringstream ss, date(__DATE__); // From compiler, format is "Sep 21 2008"
 
-  ss << "Stockfish " << Version << setfill('0');
+  ss << "McBrain 2017 " << Version << setfill('0');
 
   if (Version.empty())
   {
@@ -132,8 +132,8 @@ const string engine_info(bool to_uci) {
 
   ss << (Is64Bit ? " 64" : "")
      << (HasPext ? " BMI2" : (HasPopCnt ? " POPCNT" : ""))
-     << (to_uci  ? "\nid author ": " by ")
-     << "T. Romstad, M. Costalba, J. Kiiski, G. Linscott";
+	<< (to_uci  ? "\nid author ": " by ")
+	<< "T. Romstad, M. Costalba, J. Kiiski, G. Linscott";
 
   return ss.str();
 }
