@@ -423,7 +423,7 @@ void Thread::search() {
               // search the already searched PV lines are preserved.
               std::stable_sort(rootMoves.begin() + PVIdx, rootMoves.end());
 
-              // If search has been stopped, break immediately. Sorting and
+              // If search has been stopped, we break immediately. Sorting and
               // writing PV back to TT is safe because RootMoves is still
               // valid, although it refers to the previous iteration.
               if (Signals.stop)
