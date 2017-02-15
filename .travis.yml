@@ -54,6 +54,8 @@ script:
   # verify against reference
   - make clean && make ARCH=x86-64 build > /dev/null && ../tests/signature.sh $benchref
   - make clean && make ARCH=x86-32 build > /dev/null && ../tests/signature.sh $benchref
+  - make clean && make ARCH=x86-64 optimize=no debug=yes build > /dev/null && ../tests/signature.sh $benchref
+  - make clean && make ARCH=x86-32 optimize=no debug=yes build > /dev/null && ../tests/signature.sh $benchref
   #
   # perft
   #
