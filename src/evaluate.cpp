@@ -377,11 +377,12 @@ namespace {
 
   // evaluate_king() assigns bonuses and penalties to a king of a given color
 
+  const Bitboard QueenSide   = FileABB | FileBBB | FileCBB | FileDBB;
   const Bitboard CenterFiles = FileCBB | FileDBB | FileEBB | FileFBB;
+  const Bitboard KingSide    = FileEBB | FileFBB | FileGBB | FileHBB;
 
   const Bitboard KingFlank[FILE_NB] = {
-    CenterFiles >> 2, CenterFiles >> 2, CenterFiles >> 2, CenterFiles, CenterFiles,
-    CenterFiles << 2, CenterFiles << 2, CenterFiles << 2
+    QueenSide, QueenSide, QueenSide, CenterFiles, CenterFiles, KingSide, KingSide, KingSide
   };
 
   template<Color Us, bool DoTrace>
@@ -724,14 +725,15 @@ namespace {
     int kingDistance =  distance<File>(pos.square<KING>(WHITE), pos.square<KING>(BLACK))
                       - distance<Rank>(pos.square<KING>(WHITE), pos.square<KING>(BLACK));
     int pawns = pos.count<PAWN>(WHITE) + pos.count<PAWN>(BLACK);
+    bool bothFlanks = (pos.pieces(PAWN) & QueenSide) && (pos.pieces(PAWN) & KingSide);
 
     // Compute the initiative bonus for the attacking side
-    int initiative = 8 * (asymmetry + kingDistance - 15) + 12 * pawns;
+    int initiative = 8 * (asymmetry + kingDistance - 17) + 12 * pawns + 16 * bothFlanks;
 
     // Now apply the bonus: note that we find the attacking side by extracting
     // the sign of the endgame value, and that we carefully cap the bonus so
-    // that the endgame score will never be divided by more than two.
-    int value = ((eg > 0) - (eg < 0)) * std::max(initiative, -abs(eg / 2));
+    // that the endgame score will never change sign after the bonus.
+    int value = ((eg > 0) - (eg < 0)) * std::max(initiative, -abs(eg));
 
     return make_score(0, value);
   }
