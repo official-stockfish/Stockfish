@@ -119,19 +119,19 @@ namespace {
   // indexed by piece type and number of attacked squares in the mobility area.
   const Score MobilityBonus[][32] = {
     {}, {},
-    { S(-75,-76), S(-56,-54), S( -9,-26), S( -2,-10), S(  6,  5), S( 15, 11), // Knights
-      S( 22, 26), S( 30, 28), S( 36, 29) },
-    { S(-48,-58), S(-21,-19), S( 16, -2), S( 26, 12), S( 37, 22), S( 51, 42), // Bishops
-      S( 54, 54), S( 63, 58), S( 65, 63), S( 71, 70), S( 79, 74), S( 81, 86),
-      S( 92, 90), S( 97, 94) },
-    { S(-56,-78), S(-25,-18), S(-11, 26), S( -5, 55), S( -4, 70), S( -1, 81), // Rooks
-      S(  8,109), S( 14,120), S( 21,128), S( 23,143), S( 31,154), S( 32,160),
-      S( 43,165), S( 49,168), S( 59,169) },
-    { S(-40,-35), S(-25,-12), S(  2,  7), S(  4, 19), S( 14, 37), S( 24, 55), // Queens
-      S( 25, 62), S( 40, 76), S( 43, 79), S( 47, 87), S( 54, 94), S( 56,102),
-      S( 60,111), S( 70,116), S( 72,118), S( 73,122), S( 75,128), S( 77,130),
-      S( 85,133), S( 94,136), S( 99,140), S(108,157), S(112,158), S(113,161),
-      S(118,174), S(119,177), S(123,191), S(128,199) }
+    { S(-75,-76), S(-57,-54), S( -9,-28), S( -2,-10), S(  6,  5), S( 14, 12), // Knights
+      S( 22, 26), S( 29, 29), S( 36, 29) },
+    { S(-48,-59), S(-20,-23), S( 16, -3), S( 26, 13), S( 38, 24), S( 51, 42), // Bishops
+      S( 55, 54), S( 63, 57), S( 63, 65), S( 68, 73), S( 81, 78), S( 81, 86),
+      S( 91, 88), S( 98, 97) },
+    { S(-60,-77), S(-26,-20), S(-11, 27), S( -6, 57), S( -3, 69), S( -1, 82), // Rooks
+      S( 10,109), S( 16,121), S( 24,131), S( 25,143), S( 32,155), S( 32,163),
+      S( 43,167), S( 48,171), S( 56,173) },
+    { S(-39,-36), S(-21,-15), S(  3,  8), S(  3, 18), S( 14, 34), S( 22, 54), // Queens
+      S( 28, 61), S( 41, 73), S( 43, 79), S( 48, 92), S( 56, 94), S( 60,104),
+      S( 60,113), S( 66,120), S( 67,123), S( 70,126), S( 71,133), S( 73,136),
+      S( 79,140), S( 88,143), S( 88,148), S( 99,166), S(102,170), S(102,175),
+      S(106,184), S(109,191), S(113,206), S(116,212) }
   };
 
   // Outpost[knight/bishop][supported by pawn] contains bonuses for minor
@@ -377,11 +377,12 @@ namespace {
 
   // evaluate_king() assigns bonuses and penalties to a king of a given color
 
+  const Bitboard QueenSide   = FileABB | FileBBB | FileCBB | FileDBB;
   const Bitboard CenterFiles = FileCBB | FileDBB | FileEBB | FileFBB;
+  const Bitboard KingSide    = FileEBB | FileFBB | FileGBB | FileHBB;
 
   const Bitboard KingFlank[FILE_NB] = {
-    CenterFiles >> 2, CenterFiles >> 2, CenterFiles >> 2, CenterFiles, CenterFiles,
-    CenterFiles << 2, CenterFiles << 2, CenterFiles << 2
+    QueenSide, QueenSide, QueenSide, CenterFiles, CenterFiles, KingSide, KingSide, KingSide
   };
 
   template<Color Us, bool DoTrace>
@@ -724,14 +725,15 @@ namespace {
     int kingDistance =  distance<File>(pos.square<KING>(WHITE), pos.square<KING>(BLACK))
                       - distance<Rank>(pos.square<KING>(WHITE), pos.square<KING>(BLACK));
     int pawns = pos.count<PAWN>(WHITE) + pos.count<PAWN>(BLACK);
+    bool bothFlanks = (pos.pieces(PAWN) & QueenSide) && (pos.pieces(PAWN) & KingSide);
 
     // Compute the initiative bonus for the attacking side
-    int initiative = 8 * (asymmetry + kingDistance - 15) + 12 * pawns;
+    int initiative = 8 * (asymmetry + kingDistance - 17) + 12 * pawns + 16 * bothFlanks;
 
     // Now apply the bonus: note that we find the attacking side by extracting
     // the sign of the endgame value, and that we carefully cap the bonus so
-    // that the endgame score will never be divided by more than two.
-    int value = ((eg > 0) - (eg < 0)) * std::max(initiative, -abs(eg / 2));
+    // that the endgame score will never change sign after the bonus.
+    int value = ((eg > 0) - (eg < 0)) * std::max(initiative, -abs(eg));
 
     return make_score(0, value);
   }
