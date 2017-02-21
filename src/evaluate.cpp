@@ -181,15 +181,11 @@ namespace {
     S(-20,-12), S( 1, -8), S( 2, 10), S(  9, 10)
   };
   
-  // Protective bonuses, depending on the distance from the own King and 
-  // Attack bonuses, depending on the distance from opponent's King
-  const Score KnightProtection[8] = { S(10, 0),  S(7, 9),  S(7,  1),  S(1,  5), S(-10,-4), S(-1, -4), S(-7, -3),  S(-16,-10) };
-
-  const Score BishopProtection[8] = { S(15, 7),  S(11,8),  S(-7,-1),  S(-1,-2), S(-1, -7), S(-11,-3), S(-9, -1),  S(-16, -1) };
-
-  const Score RookProtection[8]   = { S(9, 7),   S(10, 0), S(-2, 2),  S(-5, 4), S(-6,  2), S(-14,-3), S(-2, -9),  S(-12, -7)};
-
-  const Score QueenProtection[8]  = { S(4,  2),  S(3,-5),  S(2,-5),   S(-4, 0), S(-9,-6),  S(-4, 7),  S(-13,-7),  S(-10, -7) };
+  // Protective bonuses, depending on the distance from the own King 
+  const Score KnightProtection[8] = { S(10, 0), S( 7, 9), S( 7, 1), S( 1, 5), S(-10,-4), S( -1,-4), S( -7,-3), S(-16,-10) };
+  const Score BishopProtection[8] = { S(15, 7), S(11, 8), S(-7,-1), S(-1,-2), S( -1,-7), S(-11,-3), S( -9,-1), S(-16, -1) };
+  const Score RookProtection[8]   = { S( 9, 7), S(10, 0), S(-2, 2), S(-5, 4), S( -6, 2), S(-14,-3), S( -2,-9), S(-12, -7) };
+  const Score QueenProtection[8]  = { S( 4, 2), S( 3,-5), S( 2,-5), S(-4, 0), S( -9,-6),  S(-4, 7), S(-13,-7), S(-10, -7) };
 
 
   // Assorted bonuses and penalties used by evaluation
@@ -379,8 +375,8 @@ namespace {
         if (Pt == QUEEN)
         {
             // Queen King distance      
-               if (Pt == QUEEN)
-               score += QueenProtection[distance(s, pos.square<KING>(Us))];
+            if (Pt == QUEEN)
+                score += QueenProtection[distance(s, pos.square<KING>(Us))];
                  
             // Penalty if any relative pin or discovered attack against the queen
             Bitboard pinners;
