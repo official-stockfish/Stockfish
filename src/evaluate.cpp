@@ -180,6 +180,13 @@ namespace {
     S(  9, 10), S( 2, 10), S( 1, -8), S(-20,-12),
     S(-20,-12), S( 1, -8), S( 2, 10), S(  9, 10)
   };
+  
+  // Protective bonuses, depending on the distance from the own King 
+  const Score KnightProtection[8] = { S(10, 0), S( 7, 9), S( 7, 1), S( 1, 5), S(-10,-4), S( -1,-4), S( -7,-3), S(-16,-10) };
+  const Score BishopProtection[8] = { S(15, 7), S(11, 8), S(-7,-1), S(-1,-2), S( -1,-7), S(-11,-3), S( -9,-1), S(-16, -1) };
+  const Score RookProtection[8]   = { S( 9, 7), S(10, 0), S(-2, 2), S(-5, 4), S( -6, 2), S(-14,-3), S( -2,-9), S(-12, -7) };
+  const Score QueenProtection[8]  = { S( 4, 2), S( 3,-5), S( 2,-5), S(-4, 0), S( -9,-6),  S(-4, 7), S(-13,-7), S(-10, -7) };
+
 
   // Assorted bonuses and penalties used by evaluation
   const Score MinorBehindPawn     = S(16,  0);
@@ -294,7 +301,11 @@ namespace {
         int mob = popcount(b & ei.mobilityArea[Us]);
 
         mobility[Us] += MobilityBonus[Pt][mob];
-
+        
+        // Knight King distance
+        if (Pt == KNIGHT)
+            score += KnightProtection[distance(s, pos.square<KING>(Us))];
+                       
         if (Pt == BISHOP || Pt == KNIGHT)
         {
             // Bonus for outpost squares
@@ -316,7 +327,11 @@ namespace {
             // Penalty for pawns on the same color square as the bishop
             if (Pt == BISHOP)
                 score -= BishopPawns * ei.pe->pawns_on_same_color_squares(Us, s);
-
+                
+             // Bishop King distance
+            if (Pt == BISHOP)
+                score += BishopProtection[distance(s, pos.square<KING>(Us))];
+                       
             // An important Chess960 pattern: A cornered bishop blocked by a friendly
             // pawn diagonally in front of it is a very serious problem, especially
             // when that pawn is also blocked.
@@ -337,7 +352,11 @@ namespace {
             // Bonus for aligning with enemy pawns on the same rank/file
             if (relative_rank(Us, s) >= RANK_5)
                 score += RookOnPawn * popcount(pos.pieces(Them, PAWN) & PseudoAttacks[ROOK][s]);
-
+                
+            // Rook King distance
+            if (Pt == ROOK)
+                score += RookProtection[distance(s, pos.square<KING>(Us))];
+                       
             // Bonus when on an open or semi-open file
             if (ei.pe->semiopen_file(Us, file_of(s)))
                 score += RookOnFile[!!ei.pe->semiopen_file(Them, file_of(s))];
@@ -355,6 +374,10 @@ namespace {
 
         if (Pt == QUEEN)
         {
+            // Queen King distance      
+            if (Pt == QUEEN)
+                score += QueenProtection[distance(s, pos.square<KING>(Us))];
+                 
             // Penalty if any relative pin or discovered attack against the queen
             Bitboard pinners;
             if (pos.slider_blockers(pos.pieces(Them, ROOK, BISHOP), s, pinners))
