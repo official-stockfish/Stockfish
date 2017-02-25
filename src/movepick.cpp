@@ -137,22 +137,34 @@ void MovePicker::score<CAPTURES>() {
                - Value(200 * relative_rank(pos.side_to_move(), to_sq(m)));
 }
 
-template<>
-void MovePicker::score<QUIETS>() {
+/// optimize for the commom case of cmh, fmh, and fmh2 all being associated.
+template<bool all>
+void MovePicker::quiet_score(const CounterMoveStats* cmh, const CounterMoveStats* fmh,
+                             const CounterMoveStats* fmh2) {
 
   const HistoryStats& history = pos.this_thread()->history;
+  Color c = pos.side_to_move();
+
+  for (auto& m : *this)
+      m.value =  (all || cmh  ?  (*cmh)[pos.moved_piece(m)][to_sq(m)] : VALUE_ZERO)
+               + (all || fmh  ?  (*fmh)[pos.moved_piece(m)][to_sq(m)] : VALUE_ZERO)
+               + (all || fmh2 ? (*fmh2)[pos.moved_piece(m)][to_sq(m)] : VALUE_ZERO)
+               + history.get(c, m);
+
+}
+
+template<>
+void MovePicker::score<QUIETS>() {
 
   const CounterMoveStats* cmh = (ss-1)->counterMoves;
   const CounterMoveStats* fmh = (ss-2)->counterMoves;
   const CounterMoveStats* fmh2 = (ss-4)->counterMoves;
 
-  Color c = pos.side_to_move();
+  if (cmh && fmh && fmh2)
+     quiet_score<true>(cmh,fmh,fmh2);
+  else
+     quiet_score<false>(cmh,fmh,fmh2);
 
-  for (auto& m : *this)
-      m.value =  (cmh  ?  (*cmh)[pos.moved_piece(m)][to_sq(m)] : VALUE_ZERO)
-               + (fmh  ?  (*fmh)[pos.moved_piece(m)][to_sq(m)] : VALUE_ZERO)
-               + (fmh2 ? (*fmh2)[pos.moved_piece(m)][to_sq(m)] : VALUE_ZERO)
-               + history.get(c, m);
 }
 
 template<>
