@@ -181,10 +181,10 @@ namespace {
     S(-20,-12), S( 1, -8), S( 2, 10), S(  9, 10)
   };
   
-  // Protector[PieceType][distance] contains a protecting bonus for our king, 
+  // Protector[PieceType][distance] contains a protecting bonus for our king,
   // indexed by piece type and distance between the piece and the king.
   const Score Protector[PIECE_TYPE_NB][8] = {
-  {}, {},
+    {}, {},
     { S(0, 0), S( 7, 9), S( 7, 1), S( 1, 5), S(-10,-4), S( -1,-4), S( -7,-3), S(-16,-10) }, // Knight
     { S(0, 0), S(11, 8), S(-7,-1), S(-1,-2), S( -1,-7), S(-11,-3), S( -9,-1), S(-16, -1) }, // Bishop
     { S(0, 0), S(10, 0), S(-2, 2), S(-5, 4), S( -6, 2), S(-14,-3), S( -2,-9), S(-12, -7) }, // Rook
@@ -525,7 +525,7 @@ namespace {
     const Bitboard TRank2BB = (Us == WHITE ? Rank2BB    : Rank7BB);
     const Bitboard TRank7BB = (Us == WHITE ? Rank7BB    : Rank2BB);
 
-    Bitboard b, weak, defended, safeThreats;
+    Bitboard b, weak, defended, stronglyProtected, safeThreats;
     Score score = SCORE_ZERO;
 
     // Non-pawn enemies attacked by a pawn
@@ -545,12 +545,18 @@ namespace {
             score += ThreatBySafePawn[type_of(pos.piece_on(pop_lsb(&safeThreats)))];
     }
 
-    // Non-pawn enemies defended by a pawn
-    defended = (pos.pieces(Them) ^ pos.pieces(Them, PAWN)) & ei.attackedBy[Them][PAWN];
+    // Squares strongly protected by the opponent, either because they attack the
+    // square with a pawn, or because they attack the square twice and we don't.
+    stronglyProtected =  ei.attackedBy[Them][PAWN]
+                       | (ei.attackedBy2[Them] & ~ei.attackedBy2[Us]);
 
-    // Enemies not defended by a pawn and under our attack
+    // Non-pawn enemies, strongly protected
+    defended =  (pos.pieces(Them) ^ pos.pieces(Them, PAWN))
+              & stronglyProtected;
+
+    // Enemies not strongly protected and under our attack
     weak =   pos.pieces(Them)
-          & ~ei.attackedBy[Them][PAWN]
+          & ~stronglyProtected
           &  ei.attackedBy[Us][ALL_PIECES];
 
     // Add a bonus according to the kind of attacking pieces
@@ -675,8 +681,8 @@ namespace {
                 mbonus += rr + r * 2, ebonus += rr + r * 2;
         } // rr != 0
 
-        // Scale down bonus for candidate passers which need more than one pawn
-        // push to become passed.
+        // Scale down bonus for candidate passers which need more than one
+        // pawn push to become passed.
         if (!pos.pawn_passed(Us, s + pawn_push(Us)))
             mbonus /= 2, ebonus /= 2;
 
@@ -686,7 +692,6 @@ namespace {
     if (DoTrace)
         Trace::add(PASSED, Us, score);
 
-    // Add the scores to the middlegame and endgame eval
     return score;
   }
 
