@@ -827,7 +827,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
 
       // Update pawn hash key and prefetch access to pawnsTable
       st->pawnKey ^= Zobrist::psq[pc][from] ^ Zobrist::psq[pc][to];
-      prefetch(thisThread->pawnsTable[st->pawnKey]);
+      prefetch2(thisThread->pawnsTable[st->pawnKey]);
 
       // Reset rule 50 draw counter
       st->rule50 = 0;
