@@ -1384,14 +1384,9 @@ moves_loop: // When in check search starts from here
 
   void update_cm_stats(Stack* ss, Piece pc, Square s, Value bonus) {
 
-    if (is_ok((ss-1)->currentMove))
-        (ss-1)->counterMoves->update(pc, s, bonus);
-
-    if (is_ok((ss-2)->currentMove))
-        (ss-2)->counterMoves->update(pc, s, bonus);
-
-    if (is_ok((ss-4)->currentMove))
-        (ss-4)->counterMoves->update(pc, s, bonus);
+    for (int i:{1, 2, 4})
+         if (is_ok((ss-i)->currentMove))
+             (ss-i)->counterMoves->update(pc, s, bonus);
   }
 
 
