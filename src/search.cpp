@@ -545,7 +545,7 @@ namespace {
     Depth extension, newDepth;
     Value bestValue, value, ttValue, eval;
     bool ttHit, inCheck, givesCheck, singularExtensionNode, improving;
-    bool captureOrPromotion, doFullDepthSearch, moveCountPruning, advancePawnPush;
+    bool captureOrPromotion, doFullDepthSearch, moveCountPruning;
     Piece moved_piece;
     int moveCount, quietCount;
 
@@ -896,17 +896,13 @@ moves_loop: // When in check search starts from here
       // Calculate new depth for this move
       newDepth = depth - ONE_PLY + extension;
 
-      advancePawnPush =   moveCount > 1
-                       && pos.advanced_pawn_push(move)
-                       && pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK) < 5000;
-
       // Step 13. Pruning at shallow depth
       if (  !rootNode
           && bestValue > VALUE_MATED_IN_MAX_PLY)
       {
           if (   !captureOrPromotion
               && !givesCheck
-              && !advancePawnPush)
+              && (!pos.advanced_pawn_push(move) || pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK) >= 5000))
           {
               // Move count based pruning
               if (moveCountPruning)
