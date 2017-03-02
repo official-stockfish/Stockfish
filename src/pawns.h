@@ -31,7 +31,7 @@ namespace Pawns {
 /// to the pawn hash table (performed by calling the probe function) returns a
 /// pointer to an Entry object.
 
-struct Entry {
+struct alignas(128) Entry {
 
   Score pawns_score() const { return score; }
   Bitboard pawn_attacks(Color c) const { return pawnAttacks[c]; }
