@@ -334,8 +334,8 @@ void Thread::search() {
   MainThread* mainThread = (this == Threads.main() ? Threads.main() : nullptr);
 
   std::memset(ss-4, 0, 7 * sizeof(Stack));
-  for(int i=-4;i<0;i++) // use as sentinel.
-     (ss+i)->counterMoves = &this->counterMoveHistory[NO_PIECE][SQ_NONE];
+  for(int i = -4; i < 0; i++) 
+     (ss+i)->counterMoves = &this->counterMoveHistory[NO_PIECE][0]; // use as sentinel.
 
   bestValue = delta = alpha = -VALUE_INFINITE;
   beta = VALUE_INFINITE;
@@ -603,7 +603,7 @@ namespace {
     assert(0 <= ss->ply && ss->ply < MAX_PLY);
 
     ss->currentMove = (ss+1)->excludedMove = bestMove = MOVE_NONE;
-    ss->counterMoves = &thisThread->counterMoveHistory[NO_PIECE][SQ_NONE];
+    ss->counterMoves = &thisThread->counterMoveHistory[NO_PIECE][0];
     (ss+2)->killers[0] = (ss+2)->killers[1] = MOVE_NONE;
     Square prevSq = to_sq((ss-1)->currentMove);
 
@@ -746,7 +746,8 @@ namespace {
         Depth R = ((823 + 67 * depth / ONE_PLY) / 256 + std::min((eval - beta) / PawnValueMg, 3)) * ONE_PLY;
 
         ss->currentMove = MOVE_NULL;
-        ss->counterMoves = &thisThread->counterMoveHistory[NO_PIECE][SQ_NONE];
+        ss->counterMoves = &thisThread->counterMoveHistory[NO_PIECE][0];
+
         pos.do_null_move(st);
         Value nullValue = depth-R < ONE_PLY ? -qsearch<NonPV, false>(pos, ss+1, -beta, -beta+1)
                                             : - search<NonPV>(pos, ss+1, -beta, -beta+1, depth-R, !cutNode, true);
@@ -790,6 +791,7 @@ namespace {
             {
                 ss->currentMove = move;
                 ss->counterMoves = &thisThread->counterMoveHistory[pos.moved_piece(move)][to_sq(move)];
+
                 pos.do_move(move, st);
                 value = -search<NonPV>(pos, ss+1, -rbeta, -rbeta+1, rdepth, !cutNode, false);
                 pos.undo_move(move);
@@ -1384,7 +1386,7 @@ moves_loop: // When in check search starts from here
 
   void update_cm_stats(Stack* ss, Piece pc, Square s, Value bonus) {
 
-    for (int i:{1, 2, 4})
+    for (int i : {1, 2, 4})
          if (is_ok((ss-i)->currentMove))
              (ss-i)->counterMoves->update(pc, s, bonus);
   }
