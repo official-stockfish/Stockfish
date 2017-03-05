@@ -31,7 +31,7 @@ namespace Pawns {
 /// to the pawn hash table (performed by calling the probe function) returns a
 /// pointer to an Entry object.
 
-struct alignas(128) Entry {
+struct Entry {
 
   Score pawns_score() const { return score; }
   Bitboard pawn_attacks(Color c) const { return pawnAttacks[c]; }
@@ -76,6 +76,7 @@ struct alignas(128) Entry {
   int pawnsOnSquares[COLOR_NB][COLOR_NB]; // [color][light/dark squares]
   int asymmetry;
   int openFiles;
+  char padding[8];
 };
 
 typedef HashTable<Entry, 16384> Table;

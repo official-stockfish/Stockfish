@@ -51,8 +51,7 @@ struct HashTable {
   Entry* operator[](Key key) { return &table[(uint32_t)key & (Size - 1)]; }
 
 private:
-  uint8_t mem[Size * sizeof(Entry) + 63];
-  Entry* table = (Entry*)((uintptr_t(mem) + 63) & ~63);
+  alignas(128) std::vector<Entry> table = std::vector<Entry>(Size);
 };
 
 
