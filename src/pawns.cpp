@@ -256,12 +256,13 @@ Value Entry::shelter_storm(const Position& pos, Square ksq) {
       b  = theirPawns & file_bb(f);
       Rank rkThem = b ? relative_rank(Us, frontmost_sq(Them, b)) : RANK_1;
 
-      safety -=  ShelterWeakness[std::min(f, FILE_H - f)][rkUs]
+      int d = std::min(f, FILE_H - f);
+      safety -=  ShelterWeakness[d][rkUs]
                + StormDanger
                  [f == file_of(ksq) && rkThem == relative_rank(Us, ksq) + 1 ? BlockedByKing  :
                   rkUs   == RANK_1                                          ? Unopposed :
                   rkThem == rkUs + 1                                        ? BlockedByPawn  : Unblocked]
-                 [std::min(f, FILE_H - f)][rkThem];
+                 [d][rkThem];
   }
 
   return safety;
