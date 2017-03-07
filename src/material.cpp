@@ -55,7 +55,7 @@ namespace {
 
   // PawnsSet[count] contains a bonus/malus indexed by number of pawns
   const int PawnsSet[9] = { 
-     0, -12, -8, -4,  0,  5, 12, 14, 16
+     0, 5, -1, 3, 21, -5, -11, 1, 9
   };
 
   // Endgame evaluation and scaling functions are accessed directly and not through
