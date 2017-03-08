@@ -828,7 +828,8 @@ moves_loop: // When in check search starts from here
                            && !excludedMove // Recursive singular search is not allowed
                            && (tte->bound() & BOUND_LOWER)
                            &&  tte->depth() >= depth - 3 * ONE_PLY;
-	skipQuiets = false;
+    skipQuiets = false;
+
     // Step 11. Loop through moves
     // Loop through all pseudo-legal moves until no moves remain or a beta cutoff occurs
     while ((move = mp.next_move(skipQuiets)) != MOVE_NONE)
