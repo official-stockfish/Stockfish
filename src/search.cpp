@@ -132,19 +132,6 @@ namespace {
     Move pv[3];
   };
 
-  // skip half of the plies in blocks depending on the helper thread idx.
-  bool skip_ply(int idx, int ply) {
-
-    idx = (idx - 1) % 20 + 1; // cycle after 20 threads.
-
-    // number of successive plies to skip, depending on idx.
-    int ones = 1;
-    while (ones * (ones + 1) < idx)
-        ones++;
-
-    return ((ply + idx - 1) / ones - ones) % 2 == 0;
-  }
-
   EasyMoveManager EasyMove;
   Value DrawValue[COLOR_NB];
 
@@ -321,6 +308,9 @@ void MainThread::search() {
   std::cout << sync_endl;
 }
 
+// Sizes and phases of the skip-blocks, used for distributing search depths across the threads.
+static int skipsize[20] = {1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4};
+static int phase   [20] = {0, 1, 0, 1, 2, 3, 0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5, 6, 7};
 
 // Thread::search() is the main iterative deepening loop. It calls search()
 // repeatedly with increasing depth until the allocated thinking time has been
@@ -358,13 +348,15 @@ void Thread::search() {
 
   multiPV = std::min(multiPV, rootMoves.size());
 
+  int hIdx = (idx - 1) % 20; // helper index, cycle after 20 threads
+
   // Iterative deepening loop until requested to stop or the target depth is reached
   while (   (rootDepth += ONE_PLY) < DEPTH_MAX
          && !Signals.stop
          && (!Limits.depth || Threads.main()->rootDepth / ONE_PLY <= Limits.depth))
   {
-      // skip plies for helper threads
-      if (idx && skip_ply(idx, rootDepth / ONE_PLY + rootPos.game_ply()))
+      // skip half of the plies in blocks depending on game ply and helper index.
+      if (idx && ((rootDepth / ONE_PLY + rootPos.game_ply() + phase[hIdx]) / skipsize[hIdx]) % 2)
           continue;
 
       // Age out PV variability metric
