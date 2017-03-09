@@ -643,7 +643,7 @@ namespace {
     // Step 4a. Tablebase probe
     if (!rootNode && TB::Cardinality)
     {
-        int piecesCount = pos.count<ALL_PIECES>(WHITE) + pos.count<ALL_PIECES>(BLACK);
+        int piecesCount = pos.count<ALL_PIECES>();
 
         if (    piecesCount <= TB::Cardinality
             && (piecesCount <  TB::Cardinality || depth >= TB::ProbeDepth)
@@ -900,7 +900,7 @@ moves_loop: // When in check search starts from here
       {
           if (   !captureOrPromotion
               && !givesCheck
-              && (!pos.advanced_pawn_push(move) || pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK) >= 5000))
+              && (!pos.advanced_pawn_push(move) || pos.non_pawn_material() >= 5000))
           {
               // Move count based pruning
               if (moveCountPruning)
