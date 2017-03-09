@@ -105,6 +105,7 @@ public:
 
 private:
   template<GenType> void score();
+  template<bool> void quiet_score(const CounterMoveStats*, const CounterMoveStats*, const CounterMoveStats*);
   ExtMove* begin() { return cur; }
   ExtMove* end() { return endMoves; }
 
