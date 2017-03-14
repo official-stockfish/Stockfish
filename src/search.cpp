@@ -69,16 +69,16 @@ namespace {
 
   // Futility and reductions lookup tables, initialized at startup
   int FutilityMoveCounts[2][16]; // [improving][depth]
-  int Reductions[2][2][64][64];  // [pv][improving][depth][moveNumber]
+  int Reductions[2][2][128][64];  // [pv][improving][depth][moveNumber]
 
   template <bool PvNode> Depth reduction(bool i, Depth d, int mn) {
-    return Reductions[PvNode][i][std::min(d / ONE_PLY, 63)][std::min(mn, 63)] * ONE_PLY;
+    return Reductions[PvNode][i][std::min(d / ONE_PLY, 127)][std::min(mn, 63)] * ONE_PLY;
   }
 
   // History and stats update bonus, based on depth
   Value stat_bonus(Depth depth) {
     int d = depth / ONE_PLY ;
-    return Value(d * d + 2 * d - 2);
+    return Value(int(360 * d * (1.0 - exp(-8.5 / d))));
   }
 
   // Skill structure is used to implement strength limit
@@ -156,10 +156,10 @@ namespace {
 void Search::init() {
 
   for (int imp = 0; imp <= 1; ++imp)
-      for (int d = 1; d < 64; ++d)
+      for (int d = 1; d < 128; ++d)
           for (int mc = 1; mc < 64; ++mc)
           {
-              double r = log(d) * log(mc) / 2;
+              double r = 0.22 * d * (1.0 - exp(-8.5 / d)) * log(mc);
 
               Reductions[NonPV][imp][d][mc] = int(std::round(r));
               Reductions[PV][imp][d][mc] = std::max(Reductions[NonPV][imp][d][mc] - 1, 0);
@@ -376,9 +376,10 @@ void Thread::search() {
           // Reset aspiration window starting size
           if (rootDepth >= 5 * ONE_PLY)
           {
-              delta = Value(18);
-              alpha = std::max(rootMoves[PVIdx].previousScore - delta,-VALUE_INFINITE);
-              beta  = std::min(rootMoves[PVIdx].previousScore + delta, VALUE_INFINITE);
+              Value prevScore = rootMoves[PVIdx].previousScore;
+              delta = Value(int(17.0 + 0.025 * abs(prevScore)));
+              alpha = std::max(prevScore - delta,-VALUE_INFINITE);
+              beta  = std::min(prevScore + delta, VALUE_INFINITE);
           }
 
           // Start with a small aspiration window and, in the case of a fail
@@ -912,8 +913,7 @@ moves_loop: // When in check search starts from here
               int lmrDepth = std::max(newDepth - reduction<PvNode>(improving, depth, moveCount), DEPTH_ZERO) / ONE_PLY;
 
               // Countermoves based pruning
-              if (   lmrDepth < 3
-                  && (((*cmh )[moved_piece][to_sq(move)] < VALUE_ZERO) || !cm_ok)
+              if (   lmrDepth < 3                  && (((*cmh )[moved_piece][to_sq(move)] < VALUE_ZERO) || !cm_ok)
                   && (((*fmh )[moved_piece][to_sq(move)] < VALUE_ZERO) || !fm_ok)
                   && (((*fmh2)[moved_piece][to_sq(move)] < VALUE_ZERO) || !fm2_ok || (cm_ok && fm_ok)))
                   continue;
@@ -923,7 +923,6 @@ moves_loop: // When in check search starts from here
                   && !inCheck
                   && ss->staticEval + 256 + 200 * lmrDepth <= alpha)
                   continue;
-
               // Prune moves with negative SEE
               if (   lmrDepth < 8
                   && !pos.see_ge(move, Value(-35 * lmrDepth * lmrDepth)))
@@ -934,7 +933,6 @@ moves_loop: // When in check search starts from here
                    && !pos.see_ge(move, -PawnValueEg * (depth / ONE_PLY)))
                   continue;
       }
-
       // Speculative prefetch as early as possible
       prefetch(TT.first_entry(pos.key_after(move)));
 
@@ -945,8 +943,7 @@ moves_loop: // When in check search starts from here
           continue;
       }
 
-      // Update the current move (this must be done after singular extension search)
-      ss->currentMove = move;
+      // Update the current move (this must be done after singular extension search)      ss->currentMove = move;
       ss->counterMoves = &thisThread->counterMoveHistory[moved_piece][to_sq(move)];
 
       // Step 14. Make the move
