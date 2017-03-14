@@ -35,7 +35,7 @@ namespace {
     //            OUR PIECES
     // pair pawn knight bishop rook queen
     {1667                               }, // Bishop pair
-    {  40,    2                         }, // Pawn
+    {  40,    0                         }, // Pawn
     {  32,  255,  -3                    }, // Knight      OUR PIECES
     {   0,  104,   4,    0              }, // Bishop
     { -26,   -2,  47,   105,  -149      }, // Rook
@@ -51,6 +51,11 @@ namespace {
     {  59,   65,  42,     0             }, // Bishop
     {  46,   39,  24,   -24,    0       }, // Rook
     { 101,  100, -37,   141,  268,    0 }  // Queen
+  };
+
+  // PawnsSet[count] contains a bonus/malus indexed by number of pawns
+  const int PawnsSet[9] = { 
+     24, -32, 107, -51, 117, -9, -126, -21, 31
   };
 
   // Endgame evaluation and scaling functions are accessed directly and not through
@@ -89,7 +94,7 @@ namespace {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
 
-    int bonus = 0;
+    int bonus = PawnsSet[pieceCount[Us][PAWN]];
 
     // Second-degree polynomial material imbalance by Tord Romstad
     for (int pt1 = NO_PIECE_TYPE; pt1 <= QUEEN; ++pt1)
