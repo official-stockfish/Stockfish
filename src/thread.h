@@ -61,7 +61,7 @@ public:
   Material::Table materialTable;
   Endgames endgames;
   size_t idx, PVIdx;
-  int maxPly, callsCnt;
+  int maxPly, callsCnt, nmp_ply, pair;
   uint64_t tbHits;
 
   Position rootPos;
