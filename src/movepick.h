@@ -101,7 +101,7 @@ public:
   MovePicker(const Position&, Move, Depth, Square);
   MovePicker(const Position&, Move, Depth, Search::Stack*);
 
-  Move next_move();
+  Move next_move(bool skipQuiets);
 
 private:
   template<GenType> void score();
