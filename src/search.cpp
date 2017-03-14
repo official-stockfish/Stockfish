@@ -540,7 +540,7 @@ namespace {
     Depth extension, newDepth;
     Value bestValue, value, ttValue, eval;
     bool ttHit, inCheck, givesCheck, singularExtensionNode, improving;
-    bool captureOrPromotion, doFullDepthSearch, moveCountPruning;
+    bool captureOrPromotion, doFullDepthSearch, moveCountPruning, skipQuiets;
     Piece moved_piece;
     int moveCount, quietCount;
 
@@ -779,7 +779,7 @@ namespace {
 
         MovePicker mp(pos, ttMove, rbeta - ss->staticEval);
 
-        while ((move = mp.next_move()) != MOVE_NONE)
+        while ((move = mp.next_move(false)) != MOVE_NONE)
             if (pos.legal(move))
             {
                 ss->currentMove = move;
@@ -827,10 +827,11 @@ moves_loop: // When in check search starts from here
                            && !excludedMove // Recursive singular search is not allowed
                            && (tte->bound() & BOUND_LOWER)
                            &&  tte->depth() >= depth - 3 * ONE_PLY;
+    skipQuiets = false;
 
     // Step 11. Loop through moves
     // Loop through all pseudo-legal moves until no moves remain or a beta cutoff occurs
-    while ((move = mp.next_move()) != MOVE_NONE)
+    while ((move = mp.next_move(skipQuiets)) != MOVE_NONE)
     {
       assert(is_ok(move));
 
@@ -903,6 +904,7 @@ moves_loop: // When in check search starts from here
               && !givesCheck
               && (!pos.advanced_pawn_push(move) || pos.non_pawn_material() >= 5000))
           {
+			  skipQuiets = moveCountPruning;
               // Move count based pruning
               if (moveCountPruning)
                   continue;
@@ -911,8 +913,7 @@ moves_loop: // When in check search starts from here
               int lmrDepth = std::max(newDepth - reduction<PvNode>(improving, depth, moveCount), DEPTH_ZERO) / ONE_PLY;
 
               // Countermoves based pruning
-              if (   lmrDepth < 3
-                  && (((*cmh )[moved_piece][to_sq(move)] < VALUE_ZERO) || !cm_ok)
+              if (   lmrDepth < 3                  && (((*cmh )[moved_piece][to_sq(move)] < VALUE_ZERO) || !cm_ok)
                   && (((*fmh )[moved_piece][to_sq(move)] < VALUE_ZERO) || !fm_ok)
                   && (((*fmh2)[moved_piece][to_sq(move)] < VALUE_ZERO) || !fm2_ok || (cm_ok && fm_ok)))
                   continue;
@@ -922,7 +923,6 @@ moves_loop: // When in check search starts from here
                   && !inCheck
                   && ss->staticEval + 256 + 200 * lmrDepth <= alpha)
                   continue;
-
               // Prune moves with negative SEE
               if (   lmrDepth < 8
                   && !pos.see_ge(move, Value(-35 * lmrDepth * lmrDepth)))
@@ -933,7 +933,6 @@ moves_loop: // When in check search starts from here
                    && !pos.see_ge(move, -PawnValueEg * (depth / ONE_PLY)))
                   continue;
       }
-
       // Speculative prefetch as early as possible
       prefetch(TT.first_entry(pos.key_after(move)));
 
@@ -944,8 +943,7 @@ moves_loop: // When in check search starts from here
           continue;
       }
 
-      // Update the current move (this must be done after singular extension search)
-      ss->currentMove = move;
+      // Update the current move (this must be done after singular extension search)      ss->currentMove = move;
       ss->counterMoves = &thisThread->counterMoveHistory[moved_piece][to_sq(move)];
 
       // Step 14. Make the move
@@ -1239,7 +1237,7 @@ moves_loop: // When in check search starts from here
     MovePicker mp(pos, ttMove, depth, to_sq((ss-1)->currentMove));
 
     // Loop through the moves until no moves remain or a beta cutoff occurs
-    while ((move = mp.next_move()) != MOVE_NONE)
+    while ((move = mp.next_move(false)) != MOVE_NONE)
     {
       assert(is_ok(move));
 
