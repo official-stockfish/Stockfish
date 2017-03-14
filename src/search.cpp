@@ -731,8 +731,10 @@ namespace {
     if (   !PvNode
         &&  eval >= beta
         && (ss->staticEval >= beta - 35 * (depth / ONE_PLY - 6) || depth >= 13 * ONE_PLY)
-		&& pos.non_pawn_material(pos.side_to_move())
-		&& (ss->ply >= thisThread->nmp_ply || ss->ply % 2 == thisThread->pair))
+        && thisThread->maxPly + 5 * ONE_PLY > thisThread->rootDepth
+        && !(depth > 12 * ONE_PLY && MoveList<LEGAL>(pos).size() < 4)
+        && pos.non_pawn_material(pos.side_to_move()) > (depth > 12 * ONE_PLY) * BishopValueMg
+        && (ss->ply >= thisThread->nmp_ply || ss->ply % 2 == thisThread->pair))
     {
 
         assert(eval - beta >= 0);
