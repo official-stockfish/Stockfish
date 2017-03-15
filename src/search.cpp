@@ -63,6 +63,10 @@ namespace {
   // Different node types, used as a template parameter
   enum NodeType { NonPV, PV };
 
+  // Sizes and phases of the skip-blocks, used for distributing search depths across the threads
+  const int skipSize[]  = { 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4 };
+  const int skipPhase[] = { 0, 1, 0, 1, 2, 3, 0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5, 6, 7 };
+
   // Razoring and futility margin based on depth
   const int razor_margin[4] = { 483, 570, 603, 554 };
   Value futility_margin(Depth d) { return Value(150 * d / ONE_PLY); }
@@ -308,13 +312,10 @@ void MainThread::search() {
   std::cout << sync_endl;
 }
 
-// Sizes and phases of the skip-blocks, used for distributing search depths across the threads.
-static int skipsize[20] = {1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4};
-static int phase   [20] = {0, 1, 0, 1, 2, 3, 0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5, 6, 7};
 
-// Thread::search() is the main iterative deepening loop. It calls search()
-// repeatedly with increasing depth until the allocated thinking time has been
-// consumed, the user stops the search, or the maximum search depth is reached.
+/// Thread::search() is the main iterative deepening loop. It calls search()
+/// repeatedly with increasing depth until the allocated thinking time has been
+/// consumed, the user stops the search, or the maximum search depth is reached.
 
 void Thread::search() {
 
@@ -324,8 +325,8 @@ void Thread::search() {
   MainThread* mainThread = (this == Threads.main() ? Threads.main() : nullptr);
 
   std::memset(ss-4, 0, 7 * sizeof(Stack));
-  for(int i = -4; i < 0; i++) 
-     (ss+i)->counterMoves = &this->counterMoveHistory[NO_PIECE][0]; // use as sentinel.
+  for(int i = 4; i > 0; i--)
+     (ss-i)->counterMoves = &this->counterMoveHistory[NO_PIECE][0]; // Use as sentinel
 
   bestValue = delta = alpha = -VALUE_INFINITE;
   beta = VALUE_INFINITE;
@@ -350,16 +351,18 @@ void Thread::search() {
 
   multiPV = std::min(multiPV, rootMoves.size());
 
-  int hIdx = (idx - 1) % 20; // helper index, cycle after 20 threads
-
   // Iterative deepening loop until requested to stop or the target depth is reached
   while (   (rootDepth += ONE_PLY) < DEPTH_MAX
          && !Signals.stop
          && (!Limits.depth || Threads.main()->rootDepth / ONE_PLY <= Limits.depth))
   {
-      // skip half of the plies in blocks depending on game ply and helper index.
-      if (idx && ((rootDepth / ONE_PLY + rootPos.game_ply() + phase[hIdx]) / skipsize[hIdx]) % 2)
-          continue;
+      // Distribute search depths across the threads
+      if (idx)
+      {
+          int i = (idx - 1) % 20;
+          if (((rootDepth / ONE_PLY + rootPos.game_ply() + skipPhase[i]) / skipSize[i]) % 2)
+              continue;
+      }
 
       // Age out PV variability metric
       if (mainThread)
@@ -806,12 +809,12 @@ namespace {
 
 moves_loop: // When in check search starts from here
 
-    const CounterMoveStats* cmh  = (ss-1)->counterMoves;
-    const CounterMoveStats* fmh  = (ss-2)->counterMoves;
-    const CounterMoveStats* fmh2 = (ss-4)->counterMoves;
+    const CounterMoveStats& cmh = *(ss-1)->counterMoves;
+    const CounterMoveStats& fmh = *(ss-2)->counterMoves;
+    const CounterMoveStats& fm2 = *(ss-4)->counterMoves;
     const bool cm_ok = is_ok((ss-1)->currentMove);
     const bool fm_ok = is_ok((ss-2)->currentMove);
-    const bool fm2_ok = is_ok((ss-4)->currentMove);
+    const bool f2_ok = is_ok((ss-4)->currentMove);
 
     MovePicker mp(pos, ttMove, depth, ss);
     value = bestValue; // Workaround a bogus 'uninitialized' warning under gcc
@@ -911,9 +914,9 @@ moves_loop: // When in check search starts from here
 
               // Countermoves based pruning
               if (   lmrDepth < 3
-                  && (((*cmh )[moved_piece][to_sq(move)] < VALUE_ZERO) || !cm_ok)
-                  && (((*fmh )[moved_piece][to_sq(move)] < VALUE_ZERO) || !fm_ok)
-                  && (((*fmh2)[moved_piece][to_sq(move)] < VALUE_ZERO) || !fm2_ok || (cm_ok && fm_ok)))
+                  && ((cmh[moved_piece][to_sq(move)] < VALUE_ZERO) || !cm_ok)
+                  && ((fmh[moved_piece][to_sq(move)] < VALUE_ZERO) || !fm_ok)
+                  && ((fm2[moved_piece][to_sq(move)] < VALUE_ZERO) || !f2_ok || (cm_ok && fm_ok)))
                   continue;
 
               // Futility pruning: parent node
@@ -973,9 +976,9 @@ moves_loop: // When in check search starts from here
                        && !pos.see_ge(make_move(to_sq(move), from_sq(move)),  VALUE_ZERO))
                   r -= 2 * ONE_PLY;
 
-              ss->history =  (*cmh )[moved_piece][to_sq(move)]
-                           + (*fmh )[moved_piece][to_sq(move)]
-                           + (*fmh2)[moved_piece][to_sq(move)]
+              ss->history =  cmh[moved_piece][to_sq(move)]
+                           + fmh[moved_piece][to_sq(move)]
+                           + fm2[moved_piece][to_sq(move)]
                            + thisThread->history.get(~pos.side_to_move(), move)
                            - 4000; // Correction factor
 
@@ -1379,8 +1382,8 @@ moves_loop: // When in check search starts from here
   void update_cm_stats(Stack* ss, Piece pc, Square s, Value bonus) {
 
     for (int i : {1, 2, 4})
-         if (is_ok((ss-i)->currentMove))
-             (ss-i)->counterMoves->update(pc, s, bonus);
+        if (is_ok((ss-i)->currentMove))
+            (ss-i)->counterMoves->update(pc, s, bonus);
   }
 
 
