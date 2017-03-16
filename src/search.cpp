@@ -322,6 +322,8 @@ void Thread::search() {
   Value bestValue, alpha, beta, delta;
   Move easyMove = MOVE_NONE;
   MainThread* mainThread = (this == Threads.main() ? Threads.main() : nullptr);
+  int lastNodesSearched = 0; 
+  Depth measureDepth = rootDepth;
 
   std::memset(ss-4, 0, 7 * sizeof(Stack));
   for(int i = -4; i < 0; i++) 
@@ -388,6 +390,19 @@ void Thread::search() {
           while (true)
           {
               bestValue = ::search<PV>(rootPos, ss, alpha, beta, rootDepth, false, false);
+
+              // Measure branching factor  
+              if (lastNodesSearched && rootDepth > measureDepth)
+              {  
+                  double b = double(Threads.nodes_searched())/double(lastNodesSearched);  
+                  
+                  std::cout << "branching " << b << "\n";
+              } 
+              if (rootDepth > measureDepth)
+              { 
+                  lastNodesSearched = Threads.nodes_searched();
+                  measureDepth = rootDepth;
+              }
 
               // Bring the best move to the front. It is critical that sorting
               // is done with a stable algorithm because all the values but the
