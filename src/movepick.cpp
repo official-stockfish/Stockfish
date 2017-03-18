@@ -251,8 +251,8 @@ Move MovePicker::next_move(bool skipQuiets) {
       while (cur < endMoves)
       {
           
-		  if (skipQuiets && cur->value < VALUE_ZERO)
-			  break;
+          if (skipQuiets && cur->value < VALUE_ZERO)
+              break;
 
 		  move = *cur++;
 
