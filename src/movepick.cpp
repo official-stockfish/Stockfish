@@ -253,8 +253,8 @@ Move MovePicker::next_move(bool skipQuiets) {
           
           if (skipQuiets && cur->value < VALUE_ZERO)
               break;
-
-		  move = *cur++;
+	  
+	  move = *cur++;
 
           if (   move != ttMove
               && move != ss->killers[0]
