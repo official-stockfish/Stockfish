@@ -31,6 +31,7 @@
 
 const std::string engine_info(bool to_uci = false);
 void prefetch(void* addr);
+void prefetch2(void* addr);
 void start_logger(const std::string& fname);
 
 void dbg_hit_on(bool b);
