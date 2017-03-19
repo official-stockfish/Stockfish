@@ -40,8 +40,8 @@ struct HistoryStats {
   void update(Color c, Move m, Value v) {
 
 
-	  if (abs(int(v)) >= 324)  // value must NOT excced the denominator in formula below
-		  return;
+    if (abs(int(v)) >= 324)  // value must NOT excced the denominator in formula below
+        return;
 
     Square from = from_sq(m);
     Square to = to_sq(m);
@@ -69,8 +69,8 @@ struct Stats {
   void update(Piece pc, Square to, Move m) { table[pc][to] = m; }
   void update(Piece pc, Square to, Value v) {
 
-	  if (abs(int(v)) >= 324)  // value must NOT excced the denominator in formula below
-		  return;
+    if (abs(int(v)) >= 324)  // value must NOT excced the denominator in formula below
+        return;
 
     table[pc][to] -= table[pc][to] * abs(int(v)) / 936;
     table[pc][to] += int(v) * 32;
