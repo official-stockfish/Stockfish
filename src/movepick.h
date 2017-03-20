@@ -44,7 +44,7 @@ struct HistoryStats {
 
     const int denom = 324;
 
-    assert(abs(int(v))<=denom); // Needed for stability.
+    assert(abs(int(v)) <= denom); // Needed for stability.
 
     table[c][from][to] -= table[c][from][to] * abs(int(v)) / denom;
     table[c][from][to] += int(v) * 32;
@@ -71,7 +71,7 @@ struct Stats {
 
     const int denom = 936;
 
-    assert(abs(int(v))<=denom); // Needed for stability.
+    assert(abs(int(v)) <= denom); // Needed for stability.
 
     table[pc][to] -= table[pc][to] * abs(int(v)) / denom;
     table[pc][to] += int(v) * 32;
