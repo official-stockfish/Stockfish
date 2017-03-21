@@ -814,7 +814,6 @@ moves_loop: // When in check search starts from here
     const CounterMoveStats& fm2 = *(ss-4)->counterMoves;
     const bool cm_ok = is_ok((ss-1)->currentMove);
     const bool fm_ok = is_ok((ss-2)->currentMove);
-    const bool f2_ok = is_ok((ss-4)->currentMove);
 
     MovePicker mp(pos, ttMove, depth, ss);
     value = bestValue; // Workaround a bogus 'uninitialized' warning under gcc
@@ -919,7 +918,7 @@ moves_loop: // When in check search starts from here
               if (   lmrDepth < 3
                   && ((cmh[moved_piece][to_sq(move)] < VALUE_ZERO) || !cm_ok)
                   && ((fmh[moved_piece][to_sq(move)] < VALUE_ZERO) || !fm_ok)
-                  && ((fm2[moved_piece][to_sq(move)] < VALUE_ZERO) || !f2_ok || (cm_ok && fm_ok)))
+                  && ((fm2[moved_piece][to_sq(move)] <= VALUE_ZERO)|| (cm_ok && fm_ok)))
                   continue;
 
               // Futility pruning: parent node
