@@ -146,12 +146,6 @@ namespace {
   // friendly pawn on the rook file.
   const Score RookOnFile[2] = { S(20, 7), S(45, 20) };
 
-  // ThreatBySafePawn[PieceType] contains bonuses according to which piece
-  // type is attacked by a pawn which is protected or is not attacked.
-  const Score ThreatBySafePawn[PIECE_TYPE_NB] = {
-    S(0, 0), S(0, 0), S(176, 139), S(131, 127), S(217, 218), S(203, 215)
-  };
-
   // ThreatByMinor/ByRook[attacked PieceType] contains bonuses according to
   // which piece type attacks which one. Attacks on lesser pieces which are
   // pawn-defended are not considered.
@@ -190,19 +184,20 @@ namespace {
   };
 
   // Assorted bonuses and penalties used by evaluation
-  const Score MinorBehindPawn     = S(16,  0);
-  const Score BishopPawns         = S( 8, 12);
-  const Score RookOnPawn          = S( 8, 24);
-  const Score TrappedRook         = S(92,  0);
-  const Score WeakQueen           = S(50, 10);
-  const Score OtherCheck          = S(10, 10);
-  const Score CloseEnemies        = S( 7,  0);
-  const Score PawnlessFlank       = S(20, 80);
-  const Score ThreatByHangingPawn = S(71, 61);
-  const Score ThreatByRank        = S(16,  3);
-  const Score Hanging             = S(48, 27);
-  const Score ThreatByPawnPush    = S(38, 22);
-  const Score HinderPassedPawn    = S( 7,  0);
+  const Score MinorBehindPawn     = S( 16,  0);
+  const Score BishopPawns         = S(  8, 12);
+  const Score RookOnPawn          = S(  8, 24);
+  const Score TrappedRook         = S( 92,  0);
+  const Score WeakQueen           = S( 50, 10);
+  const Score OtherCheck          = S( 10, 10);
+  const Score CloseEnemies        = S(  7,  0);
+  const Score PawnlessFlank       = S( 20, 80);
+  const Score ThreatByHangingPawn = S( 71, 61);
+  const Score ThreatBySafePawn    = S(182,175);
+  const Score ThreatByRank        = S( 16,  3);
+  const Score Hanging             = S( 48, 27);
+  const Score ThreatByPawnPush    = S( 38, 22);
+  const Score HinderPassedPawn    = S(  7,  0);
 
   // Penalty for a bishop on a1/h1 (a8/h8 for black) which is trapped by
   // a friendly pawn on b2/g2 (b7/g7 for black). This can obviously only
@@ -539,8 +534,7 @@ namespace {
         if (weak ^ safeThreats)
             score += ThreatByHangingPawn;
 
-        while (safeThreats)
-            score += ThreatBySafePawn[type_of(pos.piece_on(pop_lsb(&safeThreats)))];
+        score += ThreatBySafePawn * popcount(safeThreats);
     }
 
     // Squares strongly protected by the opponent, either because they attack the
