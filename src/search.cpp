@@ -605,13 +605,23 @@ namespace {
     // Step 4. Transposition table lookup. We don't want the score of a partial
     // search to overwrite a previous full search TT value, so we use a different
     // position key in case of an excluded move.
-    excludedMove = ss->excludedMove;
-    posKey = pos.key() ^ Key(excludedMove);
+
+	excludedMove = ss->excludedMove;
+	if (excludedMove)
+	{
+		ttMove = MOVE_NONE;
+		ttValue = VALUE_NONE;
+		ttHit = false;
+	}
+	else
+	{
+
+    posKey = pos.key();
     tte = TT.probe(posKey, ttHit);
     ttValue = ttHit ? value_from_tt(tte->value(), ss->ply) : VALUE_NONE;
     ttMove =  rootNode ? thisThread->rootMoves[thisThread->PVIdx].pv[0]
             : ttHit    ? tte->move() : MOVE_NONE;
-
+	}
     // At non-PV nodes we check for an early TT cutoff
     if (  !PvNode
         && ttHit
@@ -698,7 +708,7 @@ namespace {
         eval = ss->staticEval =
         (ss-1)->currentMove != MOVE_NULL ? evaluate(pos)
                                          : -(ss-1)->staticEval + 2 * Eval::Tempo;
-
+		if(!excludedMove)
         tte->save(posKey, VALUE_NONE, BOUND_NONE, DEPTH_NONE, MOVE_NONE,
                   ss->staticEval, TT.generation());
     }
@@ -1124,7 +1134,7 @@ moves_loop: // When in check search starts from here
              && !pos.captured_piece()
              && cm_ok)
         update_cm_stats(ss-1, pos.piece_on(prevSq), prevSq, stat_bonus(depth));
-
+	if(!excludedMove)
     tte->save(posKey, value_to_tt(bestValue, ss->ply),
               bestValue >= beta ? BOUND_LOWER :
               PvNode && bestMove ? BOUND_EXACT : BOUND_UPPER,
