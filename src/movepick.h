@@ -28,63 +28,28 @@
 #include "position.h"
 #include "types.h"
 
-
-/// HistoryStats records how often quiet moves have been successful or unsuccessful
-/// during the current search, and is used for reduction and move ordering decisions.
-struct HistoryStats {
-
-  static const Value Max = Value(1 << 28);
-
-  Value get(Color c, Move m) const { return table[c][from_sq(m)][to_sq(m)]; }
-  void clear() { std::memset(table, 0, sizeof(table)); }
-  void update(Color c, Move m, Value v) {
-
-    Square from = from_sq(m);
-    Square to = to_sq(m);
-
-    const int denom = 324;
-
-    assert(abs(int(v)) <= denom); // Needed for stability.
-
-    table[c][from][to] -= table[c][from][to] * abs(int(v)) / denom;
-    table[c][from][to] += int(v) * 32;
-  }
-
-private:
-  Value table[COLOR_NB][SQUARE_NB][SQUARE_NB];
-};
-
-
-/// A template struct, used to generate MoveStats and CounterMoveHistoryStats:
-/// MoveStats store the move that refute a previous one.
-/// CounterMoveHistoryStats is like HistoryStats, but with two consecutive moves.
-/// Entries are stored using only the moving piece and destination square, hence
-/// two moves with different origin but same destination and piece will be
-/// considered identical.
-template<typename T>
+/// A template struct, used to collect various move statistics
+template<typename T, unsigned int d1, unsigned int d2>
 struct Stats {
+
+  T get(Square from, Square to) const { return table[from][to]; }
   const T* operator[](Piece pc) const { return table[pc]; }
   T* operator[](Piece pc) { return table[pc]; }
   void clear() { std::memset(table, 0, sizeof(table)); }
-  void update(Piece pc, Square to, Move m) { table[pc][to] = m; }
-  void update(Piece pc, Square to, Value v) {
-
-    const int denom = 936;
-
-    assert(abs(int(v)) <= denom); // Needed for stability.
-
-    table[pc][to] -= table[pc][to] * abs(int(v)) / denom;
-    table[pc][to] += int(v) * 32;
-  }
+  void update(Piece pc, Square to, T);
+  void update(Square from, Square to, T);
 
 private:
-  T table[PIECE_NB][SQUARE_NB];
+  T table[d1][d2];
 };
 
-typedef Stats<Move> MoveStats;
-typedef Stats<Value> CounterMoveStats;
-typedef Stats<CounterMoveStats> CounterMoveHistoryStats;
-
+// MoveStats store the move that refute a previous one.
+typedef Stats<Move,             PIECE_NB, SQUARE_NB> MoveStats;
+// HistoryStats stores a bonus for quiet moves that have been successful or unsuccessful.
+typedef Stats<Value,            SQUARE_NB, SQUARE_NB> HistoryStats;
+// like HistoryStats, but allowing, via CounterMoveHistoryStats, for two consecutive moves.
+typedef Stats<Value,            PIECE_NB, SQUARE_NB> CounterMoveStats;
+typedef Stats<CounterMoveStats, PIECE_NB, SQUARE_NB> CounterMoveHistoryStats;
 
 /// MovePicker class is used to pick one pseudo legal move at a time from the
 /// current position. The most important method is next_move(), which returns a

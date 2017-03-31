@@ -190,7 +190,8 @@ void Search::clear() {
   for (Thread* th : Threads)
   {
       th->counterMoves.clear();
-      th->history.clear();
+      th->history[WHITE].clear();
+      th->history[BLACK].clear();
       th->counterMoveHistory.clear();
       th->resetCalls = true;
   }
@@ -636,7 +637,7 @@ namespace {
             else if (!pos.capture_or_promotion(ttMove))
             {
                 Value penalty = -stat_bonus(depth + ONE_PLY);
-                thisThread->history.update(pos.side_to_move(), ttMove, penalty);
+                thisThread->history[pos.side_to_move()].update(from_sq(ttMove), to_sq(ttMove), penalty);
                 update_cm_stats(ss, pos.moved_piece(ttMove), to_sq(ttMove), penalty);
             }
         }
@@ -812,6 +813,7 @@ moves_loop: // When in check search starts from here
     const CounterMoveStats& cmh = *(ss-1)->counterMoves;
     const CounterMoveStats& fmh = *(ss-2)->counterMoves;
     const CounterMoveStats& fm2 = *(ss-4)->counterMoves;
+    const HistoryStats& history = thisThread->history[pos.side_to_move()];
     const bool cm_ok = is_ok((ss-1)->currentMove);
     const bool fm_ok = is_ok((ss-2)->currentMove);
     const bool f2_ok = is_ok((ss-4)->currentMove);
@@ -980,7 +982,7 @@ moves_loop: // When in check search starts from here
               ss->history =  cmh[moved_piece][to_sq(move)]
                            + fmh[moved_piece][to_sq(move)]
                            + fm2[moved_piece][to_sq(move)]
-                           + thisThread->history.get(~pos.side_to_move(), move)
+                           + history.get(from_sq(move),to_sq(move))
                            - 4000; // Correction factor
 
               // Decrease/increase reduction by comparing opponent's stat score
@@ -1399,9 +1401,9 @@ moves_loop: // When in check search starts from here
         ss->killers[0] = move;
     }
 
-    Color c = pos.side_to_move();
     Thread* thisThread = pos.this_thread();
-    thisThread->history.update(c, move, bonus);
+    HistoryStats& history = thisThread->history[pos.side_to_move()];
+    history.update(from_sq(move), to_sq(move), bonus);
     update_cm_stats(ss, pos.moved_piece(move), to_sq(move), bonus);
 
     if (is_ok((ss-1)->currentMove))
@@ -1413,7 +1415,7 @@ moves_loop: // When in check search starts from here
     // Decrease all the other played quiet moves
     for (int i = 0; i < quietsCnt; ++i)
     {
-        thisThread->history.update(c, quiets[i], -bonus);
+        history.update(from_sq(quiets[i]), to_sq(quiets[i]), -bonus);
         update_cm_stats(ss, pos.moved_piece(quiets[i]), to_sq(quiets[i]), -bonus);
     }
   }
