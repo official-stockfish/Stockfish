@@ -610,6 +610,8 @@ namespace {
         ttMove = MOVE_NONE;
         ttValue = VALUE_NONE;
         ttHit = false;
+        tte = nullptr;
+        posKey = 0;
     }
     else
     {
@@ -652,7 +654,7 @@ namespace {
     }
 
     // Step 4a. Tablebase probe
-    if (!rootNode && TB::Cardinality)
+    if (!rootNode && TB::Cardinality && !excludedMove)
     {
         int piecesCount = pos.count<ALL_PIECES>();
 
@@ -1132,8 +1134,9 @@ moves_loop: // When in check search starts from here
              && !pos.captured_piece()
              && cm_ok)
         update_cm_stats(ss-1, pos.piece_on(prevSq), prevSq, stat_bonus(depth));
-	if(!excludedMove)
-    tte->save(posKey, value_to_tt(bestValue, ss->ply),
+
+    if(!excludedMove)
+            tte->save(posKey, value_to_tt(bestValue, ss->ply),
               bestValue >= beta ? BOUND_LOWER :
               PvNode && bestMove ? BOUND_EXACT : BOUND_UPPER,
               depth, bestMove, ss->staticEval, TT.generation());
