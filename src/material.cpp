@@ -54,7 +54,7 @@ namespace {
   };
 
   // PawnsSet[count] contains a bonus/malus indexed by number of pawns
-  const int PawnsSet[9] = { 
+  const int PawnsSet[FILE_NB + 1] = {
      24, -32, 107, -51, 117, -9, -126, -21, 31
   };
 
