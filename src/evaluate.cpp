@@ -804,14 +804,14 @@ Value Eval::evaluate(const Position& pos) {
   if (ei.me->specialized_eval_exists())
       return ei.me->evaluate(pos);
 
-  // Initialize score by reading the incrementally updated scores included in
-  // the position object (material + piece square tables) and the material
-  // imbalance. Score is computed internally from the white point of view.
-  Score score = pos.psq_score() + ei.me->imbalance();
-
   // Probe the pawn hash table
   ei.pe = Pawns::probe(pos);
-  score += ei.pe->pawns_score();
+
+  // Initialize score by reading the incrementally updated scores included in
+  // the position object (material + piece square tables), the material
+  // imbalance and the pawn score.
+  // Score is computed internally from the white point of view.
+  Score score = pos.psq_score() + ei.me->imbalance() + ei.pe->pawns_score();
 
   // Early exit if score is high
   v = (mg_value(score) + eg_value(score)) / 2;
