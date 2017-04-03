@@ -59,6 +59,34 @@ namespace {
 
 } // namespace
 
+/// specializations for the stats class.
+template<>
+void Stats<Value, PIECE_NB, SQUARE_NB>::update(Piece pc, Square to, Value v) {
+
+    const int denom = 936;
+
+    assert(abs(int(v)) <= denom); // Needed for stability.
+
+    table[pc][to] -= table[pc][to] * abs(int(v)) / denom;
+    table[pc][to] += 32 * int(v);
+}
+
+template<>
+void Stats<Value, SQUARE_NB, SQUARE_NB>::update(Square from, Square to, Value v) {
+
+    const int denom = 324;
+
+    assert(abs(int(v)) <= denom); // Needed for stability.
+
+    table[from][to] -= table[from][to] * abs(int(v)) / denom;
+    table[from][to] += 32 * int(v);
+}
+
+template<>
+void Stats<Move, PIECE_NB, SQUARE_NB>::update(Piece pc, Square to, Move m) {
+
+     table[pc][to] = m;
+}
 
 /// Constructors of the MovePicker class. As arguments we pass information
 /// to help it to return the (presumably) good moves first, to decide which
@@ -140,33 +168,30 @@ void MovePicker::score<CAPTURES>() {
 template<>
 void MovePicker::score<QUIETS>() {
 
-  const HistoryStats& history = pos.this_thread()->history;
-
+  const HistoryStats& history = pos.this_thread()->history[pos.side_to_move()];
   const CounterMoveStats& cmh = *(ss-1)->counterMoves;
   const CounterMoveStats& fmh = *(ss-2)->counterMoves;
   const CounterMoveStats& fm2 = *(ss-4)->counterMoves;
 
-  Color c = pos.side_to_move();
 
   for (auto& m : *this)
       m.value =  cmh[pos.moved_piece(m)][to_sq(m)]
                + fmh[pos.moved_piece(m)][to_sq(m)]
                + fm2[pos.moved_piece(m)][to_sq(m)]
-               + history.get(c, m);
+               + history.get(from_sq(m), to_sq(m));
 }
 
 template<>
 void MovePicker::score<EVASIONS>() {
   // Try captures ordered by MVV/LVA, then non-captures ordered by stats heuristics
-  const HistoryStats& history = pos.this_thread()->history;
-  Color c = pos.side_to_move();
+  const HistoryStats& history = pos.this_thread()->history[pos.side_to_move()];
 
   for (auto& m : *this)
       if (pos.capture(m))
           m.value =  PieceValue[MG][pos.piece_on(to_sq(m))]
-                   - Value(type_of(pos.moved_piece(m))) + HistoryStats::Max;
+                   - Value(type_of(pos.moved_piece(m))) + Value(1 << 28);
       else
-          m.value = history.get(c, m);
+          m.value = history.get(from_sq(m), to_sq(m));
 }
 
 
