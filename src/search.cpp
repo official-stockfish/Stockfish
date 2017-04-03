@@ -1125,10 +1125,11 @@ moves_loop: // When in check search starts from here
              && cm_ok)
         update_cm_stats(ss-1, pos.piece_on(prevSq), prevSq, stat_bonus(depth));
 
-    tte->save(posKey, value_to_tt(bestValue, ss->ply),
-              bestValue >= beta ? BOUND_LOWER :
-              PvNode && bestMove ? BOUND_EXACT : BOUND_UPPER,
-              depth, bestMove, ss->staticEval, TT.generation());
+    if(!excludedMove)
+        tte->save(posKey, value_to_tt(bestValue, ss->ply),
+                      bestValue >= beta ? BOUND_LOWER :
+                      PvNode && bestMove ? BOUND_EXACT : BOUND_UPPER,
+                      depth, bestMove, ss->staticEval, TT.generation());
 
     assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
 
