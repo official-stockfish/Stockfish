@@ -1500,7 +1500,8 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
   {
       bool updated = (i <= PVIdx && rootMoves[i].score != -VALUE_INFINITE);
 
-      if (depth == ONE_PLY && !updated)
+      if (   !updated
+          && (depth == ONE_PLY || rootMoves[i].previousScore == -VALUE_INFINITE))
           continue;
 
       Depth d = updated ? depth : depth - ONE_PLY;
