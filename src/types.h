@@ -99,7 +99,6 @@ const bool Is64Bit = false;
 
 typedef uint64_t Key;
 typedef uint64_t Bitboard;
-typedef uint64_t Processing;
 
 const int MAX_MOVES = 256;
 const int MAX_PLY   = 128;
@@ -155,7 +154,7 @@ template<Color C, CastlingSide S> struct MakeCastling {
 enum Phase {
   PHASE_ENDGAME,
   PHASE_MIDGAME = 128,
-  MG = 0, EG = 1, PHASE_NB = 2
+  MG = 0, EG = 1, PHASE_NB = 4
 };
 
 enum ScaleFactor {
@@ -271,7 +270,7 @@ inline Score make_score(int mg, int eg) {
 /// Extracting the signed lower and upper 16 bits is not so trivial because
 /// according to the standard a simple cast to short is implementation defined
 /// and so is a right shift of a signed integer.
-inline Value eg_value(Score s) {
+inline Value eg_value(Score s Processing) {
 
   union { uint16_t u; int16_t s; } eg = { uint16_t(unsigned(s + 0x8000) >> 16) };
   return Value(eg.s);
