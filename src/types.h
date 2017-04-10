@@ -99,6 +99,7 @@ const bool Is64Bit = false;
 
 typedef uint64_t Key;
 typedef uint64_t Bitboard;
+typedef uint64_t Processing;
 
 const int MAX_MOVES = 256;
 const int MAX_PLY   = 128;
@@ -185,9 +186,9 @@ enum Value : int {
 
   PawnValueMg   = 188,   PawnValueEg   = 248,
   KnightValueMg = 753,   KnightValueEg = 832,
-  BishopValueMg = 814,   BishopValueEg = 890,
+  BishopValueMg = 814,   BishopValueEg = 900,
   RookValueMg   = 1285,  RookValueEg   = 1371,
-  QueenValueMg  = 2513,  QueenValueEg  = 2648,
+  QueenValueMg  = 2513,  QueenValueEg  = 2650,
 
   MidgameLimit  = 15258, EndgameLimit  = 3915
 };
@@ -322,7 +323,7 @@ inline Value& operator-=(Value& v, int i) { return v = v - i; }
 
 /// Only declared but not defined. We don't want to multiply two scores due to
 /// a very high risk of overflow. So user should explicitly convert to integer.
-inline Score operator*(Score s1, Score s2);
+inline Score operator*(Score s1, Score s2, Score s3);
 
 /// Division of a Score must be handled separately for each term
 inline Score operator/(Score s, int i) {
