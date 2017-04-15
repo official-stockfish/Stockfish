@@ -38,7 +38,7 @@ namespace {
   void partial_insertion_sort(ExtMove* begin, ExtMove* end, Value limit)
   {
       for (ExtMove *sortedEnd = begin + 1, *p = begin + 1; p < end; ++p)
-          if (p->value > limit)
+          if (p->value >= limit)
           {
               ExtMove tmp = *p, *q;
               *p = *sortedEnd;
@@ -241,7 +241,7 @@ Move MovePicker::next_move(bool skipQuiets) {
       score<QUIETS>();
 
       partial_insertion_sort(cur, endMoves,
-                             depth < 3 * ONE_PLY ? VALUE_ZERO : -VALUE_INFINITE);
+                             depth < 3 * ONE_PLY ? VALUE_ZERO : Value(INT_MIN));
       ++stage;
 
   case QUIET:
