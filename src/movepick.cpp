@@ -242,8 +242,7 @@ Move MovePicker::next_move(bool skipQuiets) {
       endMoves = generate<QUIETS>(pos, cur);
       score<QUIETS>();
 
-      partial_insertion_sort(cur, endMoves,
-                             depth < 3 * ONE_PLY ? VALUE_ZERO : Value(INT_MIN));
+      partial_insertion_sort(cur, endMoves, Value(-4000 * depth / ONE_PLY));
       ++stage;
 
   case QUIET:
