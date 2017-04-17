@@ -75,6 +75,7 @@ namespace {
   int FutilityMoveCounts[2][16]; // [improving][depth]
   int Reductions[2][2][64][64];  // [pv][improving][depth][moveNumber]
 
+  // Threshold used for countermoves based pruning.
   const int cmThreshold = VALUE_ZERO;
 
   template <bool PvNode> Depth reduction(bool i, Depth d, int mn) {
