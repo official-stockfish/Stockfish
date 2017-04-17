@@ -75,6 +75,8 @@ namespace {
   int FutilityMoveCounts[2][16]; // [improving][depth]
   int Reductions[2][2][64][64];  // [pv][improving][depth][moveNumber]
 
+  const int cmThreshold = VALUE_ZERO;
+
   template <bool PvNode> Depth reduction(bool i, Depth d, int mn) {
     return Reductions[PvNode][i][std::min(d / ONE_PLY, 63)][std::min(mn, 63)] * ONE_PLY;
   }
@@ -192,7 +194,7 @@ void Search::clear() {
       th->counterMoves.clear();
       th->history.clear();
       th->counterMoveHistory.clear();
-      th->counterMoveHistory[NO_PIECE][0].minusOne();
+      th->counterMoveHistory[NO_PIECE][0].fill(Value(cmThreshold-1));
       th->resetCalls = true;
   }
 
@@ -914,8 +916,8 @@ moves_loop: // When in check search starts from here
 
               // Countermoves based pruning
               if (   lmrDepth < 3
-                  && (cmh[moved_piece][to_sq(move)] < VALUE_ZERO)
-                  && (fmh[moved_piece][to_sq(move)] < VALUE_ZERO))
+                  && (cmh[moved_piece][to_sq(move)] < cmThreshold)
+                  && (fmh[moved_piece][to_sq(move)] < cmThreshold))
                   continue;
 
               // Futility pruning: parent node
