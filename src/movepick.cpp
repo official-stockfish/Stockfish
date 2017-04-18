@@ -51,29 +51,30 @@ namespace {
   // Our non-stable partition function
   ExtMove *partition(ExtMove *first, ExtMove *last, Value v)
   {
-	  ExtMove tmp;
+    ExtMove tmp;
 
-	  while (1) {
-		  while (1)
-			  if (first == last)
-				  return first;
-			  else if (first->value > v)
-				  first++;
-			  else
-				  break;
-		  last--;
-		  while (1)
-			  if (first == last)
-				  return first;
-			  else if (!(last->value > v))
-				  last--;
-			  else
-				  break;
-		  tmp = *first;
-		  *first = *last;
-		  *last = tmp;
-		  first++;
-	  }
+    while (1) 
+    {
+        while (1)
+            if (first == last)
+                return first;
+            else if (first->value > v)
+                first++;
+            else
+                break;
+            last--;
+        while (1)
+            if (first == last)
+                return first;
+            else if (!(last->value > v))
+                 last--;
+            else
+                 break;
+        tmp = *first;
+        *first = *last;
+        *last = tmp;
+        first++;
+    }
   }
 
   // pick_best() finds the best move in the range (begin, end) and moves it to
