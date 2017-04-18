@@ -34,7 +34,7 @@ namespace {
     QSEARCH_RECAPTURES, QRECAPTURES
   };
 
-  // Our insertion sort, which is guaranteed to be stable, as it should be
+  // Our stable insertion sort
   void insertion_sort(ExtMove* begin, ExtMove* end)
   {
     ExtMove tmp, *p, *q;
@@ -45,6 +45,35 @@ namespace {
         for (q = p; q != begin && *(q-1) < tmp; --q)
             *q = *(q-1);
         *q = tmp;
+    }
+  }
+
+  // Our non-stable partition function
+  ExtMove *partition(ExtMove *first, ExtMove *last, Value v)
+  {
+    ExtMove tmp;
+
+    while (1) 
+    {
+        while (1)
+            if (first == last)
+                return first;
+            else if (first->value > v)
+                first++;
+            else
+                break;
+            last--;
+        while (1)
+            if (first == last)
+                return first;
+            else if (!(last->value > v))
+                 last--;
+            else
+                 break;
+        tmp = *first;
+        *first = *last;
+        *last = tmp;
+        first++;
     }
   }
 
@@ -240,8 +269,7 @@ Move MovePicker::next_move(bool skipQuiets) {
       score<QUIETS>();
       if (depth < 3 * ONE_PLY)
       {
-          ExtMove* goodQuiet = std::partition(cur, endMoves, [](const ExtMove& m)
-                                             { return m.value > VALUE_ZERO; });
+		  ExtMove* goodQuiet = partition(cur, endMoves, VALUE_ZERO);
           insertion_sort(cur, goodQuiet);
       } else
           insertion_sort(cur, endMoves);
