@@ -34,7 +34,7 @@ namespace {
     QSEARCH_RECAPTURES, QRECAPTURES
   };
 
-  // Our insertion sort, which is guaranteed to be stable, as it should be
+  // Our stable insertion sort
   void insertion_sort(ExtMove* begin, ExtMove* end)
   {
     ExtMove tmp, *p, *q;
