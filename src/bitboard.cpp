@@ -36,7 +36,6 @@ Bitboard  BishopMagics [SQUARE_NB];
 Bitboard* BishopAttacks[SQUARE_NB];
 unsigned  BishopShifts [SQUARE_NB];
 
-Bitboard SquareBB[SQUARE_NB];
 Bitboard FileBB[FILE_NB];
 Bitboard RankBB[RANK_NB];
 Bitboard AdjacentFilesBB[FILE_NB];
@@ -155,10 +154,7 @@ void Bitboards::init() {
       PopCnt16[i] = (uint8_t) popcount16(i);
 
   for (Square s = SQ_A1; s <= SQ_H8; ++s)
-  {
-      SquareBB[s] = 1ULL << s;
-      BSFTable[bsf_index(SquareBB[s])] = s;
-  }
+      BSFTable[bsf_index(make_bb(s))] = s;
 
   for (Bitboard b = 2; b < 256; ++b)
       MSBTable[b] = MSBTable[b - 1] + !more_than_one(b);
@@ -223,7 +219,7 @@ void Bitboards::init() {
                   continue;
 
               LineBB[s1][s2] = (attacks_bb(pc, s1, 0) & attacks_bb(pc, s2, 0)) | s1 | s2;
-              BetweenBB[s1][s2] = attacks_bb(pc, s1, SquareBB[s2]) & attacks_bb(pc, s2, SquareBB[s1]);
+              BetweenBB[s1][s2] = attacks_bb(pc, s1, make_bb(s2)) & attacks_bb(pc, s2, make_bb(s1));
           }
   }
 }
