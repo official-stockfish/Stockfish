@@ -48,6 +48,34 @@ namespace {
     }
   }
 
+  // Our non-stable partition function
+  ExtMove *partition(ExtMove *first, ExtMove *last, Value v)
+  {
+	  ExtMove tmp;
+
+	  while (1) {
+		  while (1)
+			  if (first == last)
+				  return first;
+			  else if (first->value > v)
+				  first++;
+			  else
+				  break;
+		  last--;
+		  while (1)
+			  if (first == last)
+				  return first;
+			  else if (!(last->value > v))
+				  last--;
+			  else
+				  break;
+		  tmp = *first;
+		  *first = *last;
+		  *last = tmp;
+		  first++;
+	  }
+  }
+
   // pick_best() finds the best move in the range (begin, end) and moves it to
   // the front. It's faster than sorting all the moves in advance when there
   // are few moves, e.g., the possible captures.
@@ -240,8 +268,7 @@ Move MovePicker::next_move(bool skipQuiets) {
       score<QUIETS>();
       if (depth < 3 * ONE_PLY)
       {
-          ExtMove* goodQuiet = std::partition(cur, endMoves, [](const ExtMove& m)
-                                             { return m.value > VALUE_ZERO; });
+		  ExtMove* goodQuiet = partition(cur, endMoves, VALUE_ZERO);
           insertion_sort(cur, goodQuiet);
       } else
           insertion_sort(cur, endMoves);
