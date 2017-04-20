@@ -209,7 +209,7 @@ Move MovePicker::next_move(bool skipQuiets) {
   case KILLERS:
 	  while (stage < COUNTERMOVE)
 	  {
-		 ++stage;
+         ++stage;
          move = ss->killers[stage - KILLERS];
          if (    move != MOVE_NONE
              &&  move != ttMove
