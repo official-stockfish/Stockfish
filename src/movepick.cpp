@@ -155,7 +155,7 @@ void MovePicker::score<QUIETS>() {
       m.value =  cmh[pos.moved_piece(m)][to_sq(m)]
                + fmh[pos.moved_piece(m)][to_sq(m)]
                + fm2[pos.moved_piece(m)][to_sq(m)]
-               + history.get(c, m);
+               + history[m][c];
 }
 
 template<>
@@ -169,7 +169,7 @@ void MovePicker::score<EVASIONS>() {
           m.value =  PieceValue[MG][pos.piece_on(to_sq(m))]
                    - Value(type_of(pos.moved_piece(m))) + HistoryStats::Max;
       else
-          m.value = history.get(c, m);
+          m.value = history[m][c];
 }
 
 

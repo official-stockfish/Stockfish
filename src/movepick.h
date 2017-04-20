@@ -28,63 +28,48 @@
 #include "position.h"
 #include "types.h"
 
-
-/// HistoryStats records how often quiet moves have been successful or unsuccessful
-/// during the current search, and is used for reduction and move ordering decisions.
-struct HistoryStats {
-
-  static const Value Max = Value(1 << 28);
-
-  Value get(Color c, Move m) const { return table[c][from_sq(m)][to_sq(m)]; }
-  void clear() { std::memset(table, 0, sizeof(table)); }
-  void update(Color c, Move m, Value v) {
-
-    Square from = from_sq(m);
-    Square to = to_sq(m);
-
-    const int denom = 324;
-
-    assert(abs(int(v)) <= denom); // Needed for stability.
-
-    table[c][from][to] -= table[c][from][to] * abs(int(v)) / denom;
-    table[c][from][to] += int(v) * 32;
-  }
-
-private:
-  Value table[COLOR_NB][SQUARE_NB][SQUARE_NB];
-};
-
-
 /// A template struct, used to generate MoveStats and CounterMoveHistoryStats:
 /// MoveStats store the move that refute a previous one.
 /// CounterMoveHistoryStats is like HistoryStats, but with two consecutive moves.
+/// HistoryStats records how often quiet moves have been successful or unsuccessful
+/// during the current search, and is used for reduction and move ordering decisions.
 /// Entries are stored using only the moving piece and destination square, hence
 /// two moves with different origin but same destination and piece will be
 /// considered identical.
-template<typename T>
+template<typename T, int D1=PIECE_NB, int D2=SQUARE_NB>
 struct Stats {
+  static const Value Max = Value(1 << 28);
+
   const T* operator[](Piece pc) const { return table[pc]; }
   T* operator[](Piece pc) { return table[pc]; }
+  const T* operator[](Move m) const { return table[fromto_bits(m)]; }
   void clear() { std::memset(table, 0, sizeof(table)); }
   void fill(const Value& v) { std::fill(&table[0][0], &table[PIECE_NB-1][SQUARE_NB-1]+1, v); };
   void update(Piece pc, Square to, Move m) { table[pc][to] = m; }
+  template<int Denom>
+  void update(int i, int j, Value v) {
+      assert(abs(int(v)) <= Denom); // Needed for stability.
+
+      table[i][j] -= table[i][j] * abs(int(v)) / Denom;
+      table[i][j] += int(v) * 32;
+  }
   void update(Piece pc, Square to, Value v) {
 
-    const int denom = 936;
+      update<936>(pc, to, v);
+  }
+  void update(Color c, Move m, Value v) {
 
-    assert(abs(int(v)) <= denom); // Needed for stability.
-
-    table[pc][to] -= table[pc][to] * abs(int(v)) / denom;
-    table[pc][to] += int(v) * 32;
+      update<324>(fromto_bits(m), c, v);
   }
 
 private:
-  T table[PIECE_NB][SQUARE_NB];
+  T table[D1][D2];
 };
 
 typedef Stats<Move> MoveStats;
 typedef Stats<Value> CounterMoveStats;
 typedef Stats<CounterMoveStats> CounterMoveHistoryStats;
+typedef Stats<Value, 1<<12, COLOR_NB> HistoryStats;
 
 
 /// MovePicker class is used to pick one pseudo legal move at a time from the
