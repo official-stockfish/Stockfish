@@ -34,18 +34,21 @@ namespace {
     QSEARCH_RECAPTURES, QRECAPTURES
   };
 
-  // Our insertion sort, which is guaranteed to be stable, as it should be
-  void insertion_sort(ExtMove* begin, ExtMove* end)
+  // An insertion sort, which sorts moves in descending order up to and including a given limit.
+  // The order of moves smaller than the limit is left unspecified.
+  // To keep the implementation simple, *begin is always included in the list of sorted moves.
+  void partial_insertion_sort(ExtMove* begin, ExtMove* end, Value limit)
   {
-    ExtMove tmp, *p, *q;
-
-    for (p = begin + 1; p < end; ++p)
-    {
-        tmp = *p;
-        for (q = p; q != begin && *(q-1) < tmp; --q)
-            *q = *(q-1);
-        *q = tmp;
-    }
+    for (ExtMove *sortedEnd = begin + 1, *p = begin + 1; p < end; ++p)
+        if (p->value >= limit)
+        {
+            ExtMove tmp = *p, *q;
+            *p = *sortedEnd;
+            for (q = sortedEnd; q != begin && *(q-1) < tmp; --q)
+                *q = *(q-1);
+            *q = tmp;
+            ++sortedEnd;
+        }
   }
 
   // pick_best() finds the best move in the range (begin, end) and moves it to
@@ -238,13 +241,9 @@ Move MovePicker::next_move(bool skipQuiets) {
       cur = endBadCaptures;
       endMoves = generate<QUIETS>(pos, cur);
       score<QUIETS>();
-      if (depth < 3 * ONE_PLY)
-      {
-          ExtMove* goodQuiet = std::partition(cur, endMoves, [](const ExtMove& m)
-                                             { return m.value > VALUE_ZERO; });
-          insertion_sort(cur, goodQuiet);
-      } else
-          insertion_sort(cur, endMoves);
+
+      partial_insertion_sort(cur, endMoves,
+                             depth < 3 * ONE_PLY ? VALUE_ZERO : Value(INT_MIN));
       ++stage;
 
   case QUIET:
