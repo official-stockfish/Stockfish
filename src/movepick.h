@@ -66,6 +66,7 @@ struct Stats {
   const T* operator[](Piece pc) const { return table[pc]; }
   T* operator[](Piece pc) { return table[pc]; }
   void clear() { std::memset(table, 0, sizeof(table)); }
+  void fill(const Value& v) { std::fill(&table[0][0], &table[PIECE_NB-1][SQUARE_NB-1]+1, v); };
   void update(Piece pc, Square to, Move m) { table[pc][to] = m; }
   void update(Piece pc, Square to, Value v) {
 
