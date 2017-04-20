@@ -72,7 +72,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, Search::Stack* s)
   assert(d > DEPTH_ZERO);
 
   Square prevSq = to_sq((ss-1)->currentMove);
-  countermove = pos.this_thread()->counterMoves[pos.piece_on(prevSq)][prevSq];
+  killers[2] = pos.this_thread()->counterMoves[pos.piece_on(prevSq)][prevSq];
 
   stage = pos.checkers() ? EVASION : MAIN_SEARCH;
   ttMove = ttm && pos.pseudo_legal(ttm) ? ttm : MOVE_NONE;
@@ -206,33 +206,23 @@ Move MovePicker::next_move(bool skipQuiets) {
           }
       }
 
-      ++stage;
-      move = ss->killers[0];  // First killer move
-      if (    move != MOVE_NONE
-          &&  move != ttMove
-          &&  pos.pseudo_legal(move)
-          && !pos.capture(move))
-          return move;
+      killers[0] = ss->killers[0];
+      killers[1] = ss->killers[1];
+      if (killers[2] == killers[0] || killers[2] == killers[1])
+    	  killers[2] = MOVE_NONE;
 
   case KILLERS:
-      ++stage;
-      move = ss->killers[1]; // Second killer move
-      if (    move != MOVE_NONE
-          &&  move != ttMove
-          &&  pos.pseudo_legal(move)
-          && !pos.capture(move))
-          return move;
-
   case COUNTERMOVE:
-      ++stage;
-      move = countermove;
-      if (    move != MOVE_NONE
-          &&  move != ttMove
-          &&  move != ss->killers[0]
-          &&  move != ss->killers[1]
-          &&  pos.pseudo_legal(move)
-          && !pos.capture(move))
-          return move;
+      while (stage < QUIET_INIT)
+      {
+         ++stage;
+         move = killers[stage - KILLERS];
+         if (    move != MOVE_NONE
+             &&  move != ttMove
+             &&  pos.pseudo_legal(move)
+             && !pos.capture(move))
+             return move;
+      }
 
   case QUIET_INIT:
       cur = endBadCaptures;
@@ -254,9 +244,9 @@ Move MovePicker::next_move(bool skipQuiets) {
           move = *cur++;
 
           if (   move != ttMove
-              && move != ss->killers[0]
-              && move != ss->killers[1]
-              && move != countermove)
+              && move != killers[0]
+              && move != killers[1]
+              && move != killers[2])
               return move;
       }
       ++stage;
