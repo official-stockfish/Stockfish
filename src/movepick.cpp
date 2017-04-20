@@ -207,8 +207,8 @@ Move MovePicker::next_move(bool skipQuiets) {
       }
 
   case KILLERS:
-	  while (stage < COUNTERMOVE)
-	  {
+      while (stage < COUNTERMOVE)
+      {
          ++stage;
          move = ss->killers[stage - KILLERS];
          if (    move != MOVE_NONE
@@ -216,7 +216,7 @@ Move MovePicker::next_move(bool skipQuiets) {
              &&  pos.pseudo_legal(move)
              && !pos.capture(move))
              return move;
-	  }
+      }
 
   case COUNTERMOVE:
       ++stage;
