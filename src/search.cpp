@@ -76,7 +76,7 @@ namespace {
   int Reductions[2][2][64][64];  // [pv][improving][depth][moveNumber]
 
   // Threshold used for countermoves based pruning.
-  const int CounterMovePruneThreshold = VALUE_ZERO;
+  const int CounterMovePruneThreshold = 0;
 
   template <bool PvNode> Depth reduction(bool i, Depth d, int mn) {
     return Reductions[PvNode][i][std::min(d / ONE_PLY, 63)][std::min(mn, 63)] * ONE_PLY;
@@ -195,7 +195,7 @@ void Search::clear() {
       th->counterMoves.clear();
       th->history.clear();
       th->counterMoveHistory.clear();
-      th->counterMoveHistory[NO_PIECE][0].fill(Value(CounterMovePruneThreshold-1));
+      th->counterMoveHistory[NO_PIECE][0].fill(CounterMovePruneThreshold-1);
       th->resetCalls = true;
   }
 
