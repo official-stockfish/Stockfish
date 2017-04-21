@@ -32,7 +32,7 @@ before_build:
   - echo project (Stockfish) >> CMakeLists.txt
   - echo add_executable(stockfish benchmark.cpp bitbase.cpp bitboard.cpp endgame.cpp evaluate.cpp >> CMakeLists.txt
   - echo main.cpp material.cpp misc.cpp movegen.cpp movepick.cpp pawns.cpp position.cpp psqt.cpp >> CMakeLists.txt
-  - echo search.cpp thread.cpp timeman.cpp tt.cpp uci.cpp ucioption.cpp syzygy/tbprobe.cpp) >> CMakeLists.txt
+  - echo search.cpp thread.cpp timeman.cpp tt.cpp uci.cpp ucioption.cpp tbprobe.cpp) >> CMakeLists.txt
   - echo set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/src) >> CMakeLists.txt
 #   - echo target_compile_options(stockfish PUBLIC "/Ox") >> CMakeLists.txt
 

@@ -28,12 +28,12 @@
 #include <sstream>
 #include <type_traits>
 
-#include "../bitboard.h"
-#include "../movegen.h"
-#include "../position.h"
-#include "../search.h"
-#include "../thread_win32.h"
-#include "../types.h"
+#include "bitboard.h"
+#include "movegen.h"
+#include "position.h"
+#include "search.h"
+#include "thread_win32.h"
+#include "types.h"
 
 #include "tbprobe.h"
 
