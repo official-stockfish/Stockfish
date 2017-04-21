@@ -21,7 +21,6 @@
 #ifndef TT_H_INCLUDED
 #define TT_H_INCLUDED
 
-#include "misc.h"
 #include "types.h"
 
 /// TTEntry struct is the 10 bytes transposition table entry, defined as below:

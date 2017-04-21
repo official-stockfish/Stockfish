@@ -22,7 +22,6 @@
 #define UCI_H_INCLUDED
 
 #include <map>
-#include <string>
 
 #include "types.h"
 
