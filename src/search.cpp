@@ -197,6 +197,8 @@ void Search::clear() {
       th->counterMoveHistory.clear();
       th->counterMoveHistory[NO_PIECE][0].fill(Value(CounterMovePruneThreshold-1));
       th->resetCalls = true;
+      th->pawnsTable.clear();
+      th->materialTable.clear();
   }
 
   Threads.main()->previousScore = VALUE_INFINITE;
