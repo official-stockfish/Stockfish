@@ -34,11 +34,11 @@ namespace {
     QSEARCH_RECAPTURES, QRECAPTURES
   };
 
-  // An insertion sort, which sorts moves in descending order up to and including a given limit.
-  // The order of moves smaller than the limit is left unspecified.
-  // To keep the implementation simple, *begin is always included in the list of sorted moves.
-  void partial_insertion_sort(ExtMove* begin, ExtMove* end, int limit)
-  {
+  // partial_insertion_sort() sorts moves in descending order up to and including
+  // a given limit. The order of moves smaller than the limit is left unspecified.
+  // To keep the implementation simple, *begin is always included in the sorted moves.
+  void partial_insertion_sort(ExtMove* begin, ExtMove* end, int limit) {
+
     for (ExtMove *sortedEnd = begin + 1, *p = begin + 1; p < end; ++p)
         if (p->value >= limit)
         {
@@ -54,10 +54,10 @@ namespace {
   // pick_best() finds the best move in the range (begin, end) and moves it to
   // the front. It's faster than sorting all the moves in advance when there
   // are few moves, e.g., the possible captures.
-  Move pick_best(ExtMove* begin, ExtMove* end)
-  {
-      std::swap(*begin, *std::max_element(begin, end));
-      return *begin;
+  Move pick_best(ExtMove* begin, ExtMove* end) {
+
+    std::swap(*begin, *std::max_element(begin, end));
+    return *begin;
   }
 
 } // namespace
@@ -118,7 +118,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, Value th)
   ttMove =   ttm
           && pos.pseudo_legal(ttm)
           && pos.capture(ttm)
-          && pos.see_ge(ttm, threshold)? ttm : MOVE_NONE;
+          && pos.see_ge(ttm, threshold) ? ttm : MOVE_NONE;
 
   stage += (ttMove == MOVE_NONE);
 }
@@ -241,7 +241,6 @@ Move MovePicker::next_move(bool skipQuiets) {
       cur = endBadCaptures;
       endMoves = generate<QUIETS>(pos, cur);
       score<QUIETS>();
-
       partial_insertion_sort(cur, endMoves, -4000 * depth / ONE_PLY);
       ++stage;
 
