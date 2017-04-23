@@ -991,7 +991,15 @@ moves_loop: // When in check search starts from here
               else if (ss->history < VALUE_ZERO && (ss-1)->history > VALUE_ZERO)
                   r += ONE_PLY;
 
-              // Decrease/increase reduction for moves with a good/bad history
+			  // Reduce depth if the move returns a piece to the square it occupied last turn.
+			  if (ss->ply >= 2)
+			  {
+				  auto ourLastMove = (ss - 2)->currentMove;
+				  if (to_sq(move) == from_sq(ourLastMove) && from_sq(move) == to_sq(ourLastMove))
+					  r += ONE_PLY;
+			  }
+
+			  // Decrease/increase reduction for moves with a good/bad history
               r = std::max(DEPTH_ZERO, (r / ONE_PLY - ss->history / 20000) * ONE_PLY);
           }
 
