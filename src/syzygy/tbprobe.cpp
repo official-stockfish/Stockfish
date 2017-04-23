@@ -978,8 +978,8 @@ uint8_t* set_sizes(PairsData* d, uint8_t* data) {
     d->flags = *data++;
 
     if (d->flags & TBFlag::SingleValue) {
-        d->blocksNum = d->span =
-        d->blockLengthSize = d->sparseIndexSize = 0; // Broken MSVC zero-init
+        d->blocksNum = d->blockLengthSize = 0;
+        d->span = d->sparseIndexSize = 0; // Broken MSVC zero-init
         d->minSymLen = *data++; // Here we store the single value
         return data;
     }

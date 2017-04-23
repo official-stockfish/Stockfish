@@ -1192,7 +1192,6 @@ bool Position::pos_is_ok(int* failedStep) const {
       }
 
       if (step == Lists)
-      {
           for (Piece pc : Pieces)
           {
               if (pieceCount[pc] != popcount(pieces(color_of(pc), type_of(pc))))
@@ -1202,9 +1201,6 @@ bool Position::pos_is_ok(int* failedStep) const {
                   if (board[pieceList[pc][i]] != pc || index[pieceList[pc][i]] != i)
                       return false;
           }
-          if (pieceCount[PAWN] > FILE_NB)
-              return false;
-      }
 
       if (step == Castling)
           for (Color c = WHITE; c <= BLACK; ++c)

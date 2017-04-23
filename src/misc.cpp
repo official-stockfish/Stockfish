@@ -207,8 +207,8 @@ void prefetch(void* addr) {
 
 void prefetch2(void* addr) {
 
-    prefetch(addr);
-    prefetch((uint8_t*)addr + 64);
+  prefetch(addr);
+  prefetch((uint8_t*)addr + 64);
 }
 
 namespace WinProcGroup {
