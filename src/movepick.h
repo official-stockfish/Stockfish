@@ -33,11 +33,11 @@
 /// during the current search, and is used for reduction and move ordering decisions.
 struct HistoryStats {
 
-  static const Value Max = Value(1 << 28);
+  static const int Max = 1 << 28;
 
-  Value get(Color c, Move m) const { return table[c][from_sq(m)][to_sq(m)]; }
+  int get(Color c, Move m) const { return table[c][from_sq(m)][to_sq(m)]; }
   void clear() { std::memset(table, 0, sizeof(table)); }
-  void update(Color c, Move m, Value v) {
+  void update(Color c, Move m, int v) {
 
     Square from = from_sq(m);
     Square to = to_sq(m);
@@ -51,7 +51,7 @@ struct HistoryStats {
   }
 
 private:
-  Value table[COLOR_NB][SQUARE_NB][SQUARE_NB];
+  int table[COLOR_NB][SQUARE_NB][SQUARE_NB];
 };
 
 
@@ -66,9 +66,9 @@ struct Stats {
   const T* operator[](Piece pc) const { return table[pc]; }
   T* operator[](Piece pc) { return table[pc]; }
   void clear() { std::memset(table, 0, sizeof(table)); }
-  void fill(const Value& v) { std::fill(&table[0][0], &table[PIECE_NB-1][SQUARE_NB-1]+1, v); };
+  void fill(const int& v) { std::fill(&table[0][0], &table[PIECE_NB-1][SQUARE_NB-1]+1, v); };
   void update(Piece pc, Square to, Move m) { table[pc][to] = m; }
-  void update(Piece pc, Square to, Value v) {
+  void update(Piece pc, Square to, int v) {
 
     const int denom = 936;
 
@@ -83,7 +83,7 @@ private:
 };
 
 typedef Stats<Move> MoveStats;
-typedef Stats<Value> CounterMoveStats;
+typedef Stats<int> CounterMoveStats;
 typedef Stats<CounterMoveStats> CounterMoveHistoryStats;
 
 
