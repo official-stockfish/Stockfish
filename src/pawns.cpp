@@ -32,10 +32,10 @@ namespace {
   #define S(mg, eg) make_score(mg, eg)
 
   // Isolated pawn penalty by opposed flag
-  const Score Isolated[2] = { S(45, 40), S(30, 27) };
+  const Score Isolated[] = { S(45, 40), S(30, 27) };
 
   // Backward pawn penalty by opposed flag
-  const Score Backward[2] = { S(56, 33), S(41, 19) };
+  const Score Backward[] = { S(56, 33), S(41, 19) };
 
   // Unsupported pawn penalty for pawns which are neither isolated or backward
   const Score Unsupported = S(17, 8);
