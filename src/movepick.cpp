@@ -209,22 +209,17 @@ Move MovePicker::next_move(bool skipQuiets) {
           }
       }
 
-      ++stage;
-      move = ss->killers[0];  // First killer move
-      if (    move != MOVE_NONE
-          &&  move != ttMove
-          &&  pos.pseudo_legal(move)
-          && !pos.capture(move))
-          return move;
-
   case KILLERS:
-      ++stage;
-      move = ss->killers[1]; // Second killer move
-      if (    move != MOVE_NONE
-          &&  move != ttMove
-          &&  pos.pseudo_legal(move)
-          && !pos.capture(move))
-          return move;
+      while (stage < COUNTERMOVE)
+      {
+         ++stage;
+         move = ss->killers[stage - KILLERS];
+         if (    move != MOVE_NONE
+             &&  move != ttMove
+             &&  pos.pseudo_legal(move)
+             && !pos.capture(move))
+             return move;
+      }
 
   case COUNTERMOVE:
       ++stage;
