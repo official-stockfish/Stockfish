@@ -47,9 +47,6 @@ namespace {
   // Doubled pawn penalty
   const Score Doubled = S(18, 38);
 
-  // Pawn break creating a passed pawn
-  const Score PassedPawnBreak = S(0, 25);
-
   // Lever bonus by rank
   const Score Lever[RANK_NB] = {
     S( 0,  0), S( 0,  0), S(0, 0), S(0, 0),
@@ -173,7 +170,7 @@ namespace {
                  && (b = (shift<Up>(supported) & ~theirPawns)))
             while(b)
                 if(!more_than_one(theirPawns & pawnAttacksBB[pop_lsb(&b)]))
-                    score += PassedPawnBreak;
+                    e->passedPawns[Us] |= s;
 
         // Score this pawn
         if (!neighbours)
