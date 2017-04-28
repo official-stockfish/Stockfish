@@ -1261,6 +1261,7 @@ moves_loop: // When in check search starts from here
       // Futility pruning
       if (   !InCheck
           && !givesCheck
+          &&  depth != DEPTH_ZERO
           &&  futilityBase > -VALUE_KNOWN_WIN
           && !pos.advanced_pawn_push(move))
       {
