@@ -25,6 +25,7 @@
 #include "pawns.h"
 #include "position.h"
 #include "thread.h"
+#include "misc.h"
 
 namespace {
 
@@ -167,9 +168,8 @@ namespace {
             && popcount(phalanx)   >= popcount(leverPush))
             e->passedPawns[Us] |= s;
 
-        else if (   (theirPawns & (s + Up))
+        else if (    stoppers == SquareBB[s + Up]
                  &&  relative_rank(Us, s) >= RANK_5
-                 && !more_than_one(stoppers)
                  && (b = (shift<Up>(supported) & ~theirPawns)))
             while(b)
                 if(!more_than_one(theirPawns & pawnAttacksBB[pop_lsb(&b)]))
