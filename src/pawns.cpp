@@ -168,7 +168,7 @@ namespace {
                  &&  relative_rank(Us, s) >= RANK_5
                  && (b = (shift<Up>(supported) & ~theirPawns)))
             while(b)
-                if(!more_than_one(theirPawns & pawnAttacksBB[pop_lsb(&b)]))
+                if(!more_than_one(theirPawns & PawnAttacks[Us][pop_lsb(&b)]))
                     e->passedPawns[Us] |= s;
 
         // Score this pawn
