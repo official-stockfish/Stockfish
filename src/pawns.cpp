@@ -25,7 +25,6 @@
 #include "pawns.h"
 #include "position.h"
 #include "thread.h"
-#include "misc.h"
 
 namespace {
 
