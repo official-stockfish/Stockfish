@@ -879,7 +879,7 @@ moves_loop: // When in check search starts from here
       // (alpha-s, beta-s), and just one fails high on (alpha, beta), then that move
       // is singular and should be extended. To verify this we do a reduced search
       // on all the other moves but the ttMove and if the result is lower than
-      // ttValue minus a margin then we extend the ttMove.
+      // ttValue minus a margin then we will extend the ttMove.
       if (    singularExtensionNode
           &&  move == ttMove
           &&  pos.legal(move))
@@ -1283,6 +1283,7 @@ moves_loop: // When in check search starts from here
 
       // Detect non-capture evasions that are candidates to be pruned
       evasionPrunable =    InCheck
+                       &&  depth != DEPTH_ZERO
                        &&  bestValue > VALUE_MATED_IN_MAX_PLY
                        && !pos.capture(move);
 
