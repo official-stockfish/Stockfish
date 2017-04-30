@@ -2,7 +2,6 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2017 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -162,7 +161,7 @@ enum ScaleFactor {
   SCALE_FACTOR_ONEPAWN = 48,
   SCALE_FACTOR_NORMAL  = 64,
   SCALE_FACTOR_MAX     = 128,
-  SCALE_FACTOR_NONE    = 255
+  SCALE_FACTOR_NONE    = 256
 };
 
 enum Bound {
@@ -184,10 +183,10 @@ enum Value : int {
   VALUE_MATED_IN_MAX_PLY = -VALUE_MATE + 2 * MAX_PLY,
 
   PawnValueMg   = 188,   PawnValueEg   = 248,
-  KnightValueMg = 753,   KnightValueEg = 832,
-  BishopValueMg = 814,   BishopValueEg = 890,
-  RookValueMg   = 1285,  RookValueEg   = 1371,
-  QueenValueMg  = 2513,  QueenValueEg  = 2648,
+  KnightValueMg = 753,   KnightValueEg = 837,
+  BishopValueMg = 814,   BishopValueEg = 897,
+  RookValueMg   = 1285,  RookValueEg   = 1373,
+  QueenValueMg  = 2513,  QueenValueEg  = 2651,
 
   MidgameLimit  = 15258, EndgameLimit  = 3915
 };
