@@ -1341,7 +1341,7 @@ moves_loop: // When in check search starts from here
     if (InCheck && bestValue == -VALUE_INFINITE)
         return mated_in(ss->ply); // Plies to mate from the root
 
-    tte->save(posKey, value_to_tt(bestValue, ss->ply),
+    tte->save(posKey, bestValue,
               PvNode && bestValue > oldAlpha ? BOUND_EXACT : BOUND_UPPER,
               ttDepth, bestMove, ss->staticEval, TT.generation());
 
