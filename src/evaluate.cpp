@@ -211,9 +211,9 @@ namespace {
   const int KingAttackWeights[PIECE_TYPE_NB] = { 0, 0, 78, 56, 45, 11 };
 
   // Penalties for enemy's safe checks
-  const int QueenCheck  = 810;
-  const int RookCheck   = 888;
-  const int BishopCheck = 400;
+  const int QueenCheck  = 780;
+  const int RookCheck   = 880;
+  const int BishopCheck = 435;
   const int KnightCheck = 790;
 
   // Threshold for lazy and space evaluation
