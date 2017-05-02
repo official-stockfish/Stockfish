@@ -595,7 +595,7 @@ bool Position::pseudo_legal(const Move m) const {
                && empty(to - pawn_push(us))))
           return false;
   }
-  else if (!(attacks_from(pc, from) & to))
+  else if (!(attacks_from(type_of(pc), from) & to))
       return false;
 
   // Evasions generator already takes care to avoid some kind of illegal moves
@@ -648,7 +648,7 @@ bool Position::gives_check(Move m) const {
       return false;
 
   case PROMOTION:
-      return attacks_bb(Piece(promotion_type(m)), to, pieces() ^ from) & square<KING>(~sideToMove);
+      return attacks_bb(promotion_type(m), to, pieces() ^ from) & square<KING>(~sideToMove);
 
   // En passant capture with check? We have already handled the case
   // of direct checks and ordinary discovered check, so the only case we
@@ -1192,7 +1192,6 @@ bool Position::pos_is_ok(int* failedStep) const {
       }
 
       if (step == Lists)
-      {
           for (Piece pc : Pieces)
           {
               if (pieceCount[pc] != popcount(pieces(color_of(pc), type_of(pc))))
@@ -1202,9 +1201,6 @@ bool Position::pos_is_ok(int* failedStep) const {
                   if (board[pieceList[pc][i]] != pc || index[pieceList[pc][i]] != i)
                       return false;
           }
-          if (pieceCount[PAWN] > FILE_NB)
-              return false;
-      }
 
       if (step == Castling)
           for (Color c = WHITE; c <= BLACK; ++c)

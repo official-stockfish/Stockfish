@@ -978,8 +978,8 @@ uint8_t* set_sizes(PairsData* d, uint8_t* data) {
     d->flags = *data++;
 
     if (d->flags & TBFlag::SingleValue) {
-        d->blocksNum = d->span =
-        d->blockLengthSize = d->sparseIndexSize = 0; // Broken MSVC zero-init
+        d->blocksNum = d->blockLengthSize = 0;
+        d->span = d->sparseIndexSize = 0; // Broken MSVC zero-init
         d->minSymLen = *data++; // Here we store the single value
         return data;
     }
@@ -1292,7 +1292,7 @@ void Tablebases::init(const std::string& paths) {
             if (MapA1D1D4[s1] == idx && (idx || s1 == SQ_B1)) // SQ_B1 is mapped to 0
             {
                 for (Square s2 = SQ_A1; s2 <= SQ_H8; ++s2)
-                    if ((StepAttacksBB[KING][s1] | s1) & s2)
+                    if ((PseudoAttacks[KING][s1] | s1) & s2)
                         continue; // Illegal position
 
                     else if (!off_A1H8(s1) && off_A1H8(s2) > 0)
