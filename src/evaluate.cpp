@@ -174,10 +174,8 @@ namespace {
     S(-20,-12), S( 1, -8), S( 2, 10), S(  9, 10)
   };
 
-  // Protector[PieceType-2]contains the slope of penalty/bonus for going further away from our king,
-  // indexed by piece type.
-  
-  const Score Protector[] = {S(-3, -5), S(-4, -3),S(-3,  0),S(-1,  1) };
+  // KingProtector[PieceType-2] contains distance to king factors for each piece type
+  const Score KingProtector[] = {S(-3, -5), S(-4, -3), S(-3, 0), S(-1, 1) };
 
   // Assorted bonuses and penalties used by evaluation
   const Score MinorBehindPawn     = S( 16,  0);
@@ -295,8 +293,7 @@ namespace {
 
         mobility[Us] += MobilityBonus[Pt-2][mob];
 
-        // Bonus for this piece as a king protector
-        score += Protector[Pt-2] * distance(s, pos.square<KING>(Us));
+        score += KingProtector[Pt-2] * distance(s, pos.square<KING>(Us));
 
         if (Pt == BISHOP || Pt == KNIGHT)
         {
