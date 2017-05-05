@@ -156,7 +156,7 @@ void benchmark(const Position& current, istream& is) {
   for (size_t i = 0; i < fens.size(); ++i)
   {
       StateListPtr states(new std::deque<StateInfo>(1));
-      pos.set(fens[i], Options["UCI_Chess960"], &states->back(), Threads.main());
+      pos.set(fens[i], Options["UCI_Chess960"], &states->back());
 
       cerr << "\nPosition: " << i + 1 << '/' << fens.size() << endl;
 

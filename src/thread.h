@@ -74,7 +74,6 @@ public:
   CounterMoveHistoryStats counterMoveHistory;
 };
 
-
 /// MainThread is a derived class with a specific overload for the main thread
 
 struct MainThread : public Thread {
@@ -106,5 +105,6 @@ private:
 };
 
 extern ThreadPool Threads;
+extern thread_local Thread* thisThread;
 
 #endif // #ifndef THREAD_H_INCLUDED
