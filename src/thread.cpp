@@ -127,6 +127,9 @@ void Thread::idle_loop() {
 void ThreadPool::init() {
 
   push_back(new MainThread());
+  // The controlling thread executes perft/eval and in those cases
+  // needs a pointer to the MainThread data structure.
+  thisThread = back();
   read_uci_options();
 }
 
