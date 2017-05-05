@@ -154,7 +154,7 @@ template<Color C, CastlingSide S> struct MakeCastling {
 enum Phase {
   PHASE_ENDGAME,
   PHASE_MIDGAME = 128,
-  MG = 0, EG = 1, PHASE_NB = 2
+  MG = 0, EG = 1, PHASE_NB = 4
 };
 
 enum ScaleFactor {
@@ -185,9 +185,9 @@ enum Value : int {
 
   PawnValueMg   = 188,   PawnValueEg   = 248,
   KnightValueMg = 753,   KnightValueEg = 832,
-  BishopValueMg = 814,   BishopValueEg = 890,
+  BishopValueMg = 814,   BishopValueEg = 900,
   RookValueMg   = 1285,  RookValueEg   = 1371,
-  QueenValueMg  = 2513,  QueenValueEg  = 2648,
+  QueenValueMg  = 2513,  QueenValueEg  = 2650,
 
   MidgameLimit  = 15258, EndgameLimit  = 3915
 };
@@ -270,7 +270,7 @@ inline Score make_score(int mg, int eg) {
 /// Extracting the signed lower and upper 16 bits is not so trivial because
 /// according to the standard a simple cast to short is implementation defined
 /// and so is a right shift of a signed integer.
-inline Value eg_value(Score s) {
+inline Value eg_value(Score s Processing) {
 
   union { uint16_t u; int16_t s; } eg = { uint16_t(unsigned(s + 0x8000) >> 16) };
   return Value(eg.s);
@@ -322,7 +322,7 @@ inline Value& operator-=(Value& v, int i) { return v = v - i; }
 
 /// Only declared but not defined. We don't want to multiply two scores due to
 /// a very high risk of overflow. So user should explicitly convert to integer.
-inline Score operator*(Score s1, Score s2);
+inline Score operator*(Score s1, Score s2, Score s3);
 
 /// Division of a Score must be handled separately for each term
 inline Score operator/(Score s, int i) {
