@@ -28,6 +28,7 @@
 #include "position.h"
 #include "search.h"
 #include "thread.h"
+#include "tt.h"
 #include "timeman.h"
 #include "uci.h"
 #include "syzygy/tbprobe.h"
@@ -137,6 +138,15 @@ namespace {
     Threads.start_thinking(pos, States, limits);
   }
 
+  // On ucinewgame following steps are needed to reset the state
+  void newgame() {
+
+    TT.resize(Options["Hash"]);
+    Search::clear();
+    Tablebases::init(Options["SyzygyPath"]);
+    Time.availableNodes = 0;
+  }
+
 } // namespace
 
 
@@ -150,6 +160,8 @@ void UCI::loop(int argc, char* argv[]) {
 
   Position pos;
   string token, cmd;
+
+  newgame(); // Implied ucinewgame before the first position command
 
   pos.set(StartFEN, false, &States->back(), Threads.main());
 
@@ -185,12 +197,7 @@ void UCI::loop(int argc, char* argv[]) {
                     << "\n"       << Options
                     << "\nuciok"  << sync_endl;
 
-      else if (token == "ucinewgame")
-      {
-          Search::clear();
-          Tablebases::init(Options["SyzygyPath"]);
-          Time.availableNodes = 0;
-      }
+      else if (token == "ucinewgame") newgame();
       else if (token == "isready")    sync_cout << "readyok" << sync_endl;
       else if (token == "go")         go(pos, is);
       else if (token == "position")   position(pos, is);
