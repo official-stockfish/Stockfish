@@ -25,15 +25,17 @@ matrix:
         - COMP=clang
 
     - os: osx
+      osx_image: xcode8.3
       compiler: gcc
       env:
         - COMPILER=g++
         - COMP=gcc
 
     - os: osx
+      osx_image: xcode8.3
       compiler: clang
       env:
-        - COMPILER=clang++ V='Apple LLVM 6.0' # Apple LLVM version 6.0 (clang-600.0.54) (based on LLVM 3.5svn)
+        - COMPILER=clang++
         - COMP=clang
 
 branches:
