@@ -24,7 +24,6 @@
 #include "position.h"
 #include "search.h"
 #include "thread.h"
-#include "tt.h"
 #include "uci.h"
 #include "syzygy/tbprobe.h"
 
@@ -44,8 +43,6 @@ int main(int argc, char* argv[]) {
   Search::init();
   Pawns::init();
   Threads.init();
-  Tablebases::init(Options["SyzygyPath"]);
-  TT.resize(Options["Hash"]);
 
   UCI::loop(argc, argv);
 
