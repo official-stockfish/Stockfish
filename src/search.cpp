@@ -218,7 +218,10 @@ uint64_t Search::perft(Position& pos, Depth depth) {
   for (const auto& m : MoveList<LEGAL>(pos))
   {
       if (Root && depth <= ONE_PLY)
-          cnt = 1, nodes++;
+      {
+          cnt = 1;
+          nodes++;
+      }
       else
       {
           pos.do_move(m, st);

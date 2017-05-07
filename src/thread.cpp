@@ -135,7 +135,10 @@ void ThreadPool::init() {
 void ThreadPool::exit() {
 
   while (size())
-      delete back(), pop_back();
+  {
+      delete back();
+      pop_back();
+  }
 }
 
 

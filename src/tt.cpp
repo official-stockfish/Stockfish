@@ -82,7 +82,8 @@ TTEntry* TranspositionTable::probe(const Key key, bool& found) const {
           if ((tte[i].genBound8 & 0xFC) != generation8 && tte[i].key16)
               tte[i].genBound8 = uint8_t(generation8 | tte[i].bound()); // Refresh
 
-          return found = (bool)tte[i].key16, &tte[i];
+          found = (bool)tte[i].key16;
+          return &tte[i];
       }
 
   // Find an entry to be replaced according to the replacement strategy
@@ -96,7 +97,8 @@ TTEntry* TranspositionTable::probe(const Key key, bool& found) const {
           >   tte[i].depth8 - ((259 + generation8 -   tte[i].genBound8) & 0xFC) * 2)
           replace = &tte[i];
 
-  return found = false, replace;
+  found = false;
+  return replace;
 }
 
 
