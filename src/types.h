@@ -76,7 +76,7 @@
 #  include <immintrin.h> // Header for _pext_u64() intrinsic
 #  define pext(b, m) _pext_u64(b, m)
 #else
-#  define pext(b, m) (0)
+#  define pext(b, m) 0
 #endif
 
 #ifdef USE_POPCNT
@@ -205,8 +205,6 @@ enum Piece {
   PIECE_NB = 16
 };
 
-const Piece Pieces[] = { W_PAWN, W_KNIGHT, W_BISHOP, W_ROOK, W_QUEEN, W_KING,
-                         B_PAWN, B_KNIGHT, B_BISHOP, B_ROOK, B_QUEEN, B_KING };
 extern Value PieceValue[PHASE_NB][PIECE_NB];
 
 enum Depth : int {
@@ -239,8 +237,8 @@ enum Square {
 
   NORTH =  8,
   EAST  =  1,
-  SOUTH = -8,
-  WEST  = -1,
+  SOUTH = -NORTH,
+  WEST  = -EAST,
 
   NORTH_EAST = NORTH + EAST,
   SOUTH_EAST = SOUTH + EAST,
@@ -331,6 +329,7 @@ inline Score operator/(Score s, int i) {
 
 /// Multiplication of a Score by an integer. We check for overflow in debug mode.
 inline Score operator*(Score s, int i) {
+
   Score result = Score(int(s) * i);
 
   assert(eg_value(result) == (i * eg_value(s)));
