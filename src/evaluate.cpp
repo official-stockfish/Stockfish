@@ -618,7 +618,7 @@ namespace {
     {
         Square s = pop_lsb(&b);
 
-        assert(!(pos.pieces(PAWN) & forward_bb(Us, s)));
+        assert(!(pos.pieces(Them, PAWN) & forward_bb(Us, s + pawn_push(Us))));
 
         bb = forward_bb(Us, s) & (ei.attackedBy[Them][ALL_PIECES] | pos.pieces(Them));
         score -= HinderPassedPawn * popcount(bb);
@@ -675,8 +675,8 @@ namespace {
         } // rr != 0
 
         // Scale down bonus for candidate passers which need more than one
-        // pawn push to become passed.
-        if (!pos.pawn_passed(Us, s + pawn_push(Us)))
+        // pawn push to become passed or have a pawn in front of them.
+        if (!pos.pawn_passed(Us, s + pawn_push(Us)) || (pos.pieces(PAWN) & forward_bb(Us, s)))
             mbonus /= 2, ebonus /= 2;
 
         score += make_score(mbonus, ebonus) + PassedFile[file_of(s)];
