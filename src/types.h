@@ -21,6 +21,11 @@
 #ifndef TYPES_H_INCLUDED
 #define TYPES_H_INCLUDED
 
+.depend:
+	-@$(CXX) $(DEPENDFLAGS) -MM $(OBJS:.o=.cpp) > $@ 2> /dev/null
+
+-include .depend
+
 /// When compiling with provided Makefile (e.g. for Linux and OSX), configuration
 /// is done automatically. To get started type 'make help'.
 ///
@@ -183,10 +188,10 @@ enum Value : int {
   VALUE_MATE_IN_MAX_PLY  =  VALUE_MATE - 2 * MAX_PLY,
   VALUE_MATED_IN_MAX_PLY = -VALUE_MATE + 2 * MAX_PLY,
 
-  PawnValueMg   = 188,   PawnValueEg   = 248,
+  PawnValueMg   = 188,   PawnValueEg   = 252,
   KnightValueMg = 753,   KnightValueEg = 832,
-  BishopValueMg = 814,   BishopValueEg = 890,
-  RookValueMg   = 1285,  RookValueEg   = 1371,
+  BishopValueMg = 814,   BishopValueEg = 892,
+  RookValueMg   = 1285,  RookValueEg   = 1373,
   QueenValueMg  = 2513,  QueenValueEg  = 2648,
 
   MidgameLimit  = 15258, EndgameLimit  = 3915

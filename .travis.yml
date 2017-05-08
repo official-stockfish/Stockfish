@@ -1,3 +1,4 @@
+install: make get-deps
 language: cpp
 sudo: required
 dist: trusty
@@ -43,8 +44,8 @@ branches:
 before_script:
   - cd src
 
-script:
-  #
+script:scons
+ 
   # checking bench for various build types
   #
   # obtain reference from git log
