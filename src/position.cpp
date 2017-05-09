@@ -65,7 +65,7 @@ PieceType min_attacker(const Bitboard* bb, Square to, Bitboard stmAttackers,
 
   Bitboard b = stmAttackers & bb[Pt];
   if (!b)
-      return min_attacker<Pt+1>(bb, to, stmAttackers, occupied, attackers);
+      return min_attacker<Pt + 1>(bb, to, stmAttackers, occupied, attackers);
 
   occupied ^= b & ~(b - 1);
 
