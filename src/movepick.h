@@ -43,10 +43,10 @@ struct HistoryStats {
 
     const int D = 324;
 
-    assert(abs(int(v)) <= D); // Consistency check for below formula
+    assert(abs(v) <= D); // Consistency check for below formula
 
-    table[c][from][to] -= table[c][from][to] * abs(int(v)) / D;
-    table[c][from][to] += int(v) * 32;
+    table[c][from][to] -= table[c][from][to] * abs(v) / D;
+    table[c][from][to] += v * 32;
   }
 
 private:
@@ -70,10 +70,10 @@ struct Stats {
 
     const int D = 936;
 
-    assert(abs(int(v)) <= D); // Consistency check for below formula
+    assert(abs(v) <= D); // Consistency check for below formula
 
-    table[pc][to] -= table[pc][to] * abs(int(v)) / D;
-    table[pc][to] += int(v) * 32;
+    table[pc][to] -= table[pc][to] * abs(v) / D;
+    table[pc][to] += v * 32;
   }
 
 private:
