@@ -27,7 +27,9 @@
 #include "uci.h"
 #include "syzygy/tbprobe.h"
 
-ThreadPool Threads; // Global object
+// Global objects
+ThreadPool Threads;
+thread_local Thread* thisThread;
 
 /// Thread constructor launches the thread and then waits until it goes to sleep
 /// in idle_loop().
@@ -95,6 +97,7 @@ void Thread::start_searching(bool resume) {
 void Thread::idle_loop() {
 
   WinProcGroup::bindThisThread(idx);
+  thisThread = this;
 
   while (!exit)
   {
@@ -124,6 +127,9 @@ void Thread::idle_loop() {
 void ThreadPool::init() {
 
   push_back(new MainThread());
+  // The controlling thread executes perft/eval and in those cases
+  // needs a pointer to the MainThread data structure.
+  thisThread = back();
   read_uci_options();
 }
 
@@ -214,7 +220,7 @@ void ThreadPool::start_thinking(Position& pos, StateListPtr& states,
       th->tbHits = 0;
       th->rootDepth = DEPTH_ZERO;
       th->rootMoves = rootMoves;
-      th->rootPos.set(pos.fen(), pos.is_chess960(), &setupStates->back(), th);
+      th->rootPos.set(pos.fen(), pos.is_chess960(), &setupStates->back());
   }
 
   setupStates->back() = tmp; // Restore st->previous, cleared by Position::set()

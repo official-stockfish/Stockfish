@@ -73,7 +73,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, Search::Stack* s)
   assert(d > DEPTH_ZERO);
 
   Square prevSq = to_sq((ss-1)->currentMove);
-  countermove = pos.this_thread()->counterMoves[pos.piece_on(prevSq)][prevSq];
+  countermove = thisThread->counterMoves[pos.piece_on(prevSq)][prevSq];
   killers[0] = ss->killers[0];
   killers[1] = ss->killers[1];
 
@@ -143,7 +143,7 @@ void MovePicker::score<CAPTURES>() {
 template<>
 void MovePicker::score<QUIETS>() {
 
-  const HistoryStats& history = pos.this_thread()->history;
+  const HistoryStats& history = thisThread->history;
 
   const CounterMoveStats& cmh = *(ss-1)->counterMoves;
   const CounterMoveStats& fmh = *(ss-2)->counterMoves;
@@ -161,7 +161,7 @@ void MovePicker::score<QUIETS>() {
 template<>
 void MovePicker::score<EVASIONS>() {
   // Try captures ordered by MVV/LVA, then non-captures ordered by stats heuristics
-  const HistoryStats& history = pos.this_thread()->history;
+  const HistoryStats& history = thisThread->history;
   Color c = pos.side_to_move();
 
   for (auto& m : *this)

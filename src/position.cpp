@@ -113,7 +113,7 @@ std::ostream& operator<<(std::ostream& os, const Position& pos) {
   {
       StateInfo st;
       Position p;
-      p.set(pos.fen(), pos.is_chess960(), &st, pos.this_thread());
+      p.set(pos.fen(), pos.is_chess960(), &st);
       Tablebases::ProbeState s1, s2;
       Tablebases::WDLScore wdl = Tablebases::probe_wdl(p, &s1);
       int dtz = Tablebases::probe_dtz(p, &s2);
@@ -159,7 +159,7 @@ void Position::init() {
 /// This function is not very robust - make sure that input FENs are correct,
 /// this is assumed to be the responsibility of the GUI.
 
-Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Thread* th) {
+Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si) {
 /*
    A FEN string defines a particular position using only the ASCII character set.
 
@@ -277,7 +277,6 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
   gamePly = std::max(2 * (gamePly - 1), 0) + (sideToMove == BLACK);
 
   chess960 = isChess960;
-  thisThread = th;
   set_state(st);
 
   assert(pos_is_ok());
@@ -397,7 +396,7 @@ Position& Position::set(const string& code, Color c, StateInfo* si) {
   string fenStr =  sides[0] + char(8 - sides[0].length() + '0') + "/8/8/8/8/8/8/"
                  + sides[1] + char(8 - sides[1].length() + '0') + " w - - 0 10";
 
-  return set(fenStr, false, si, nullptr);
+  return set(fenStr, false, si);
 }
 
 
@@ -1140,7 +1139,7 @@ void Position::flip() {
   std::getline(ss, token); // Half and full moves
   f += token;
 
-  set(f, is_chess960(), st, this_thread());
+  set(f, is_chess960(), st);
 
   assert(pos_is_ok());
 }
