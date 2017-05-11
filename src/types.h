@@ -421,6 +421,10 @@ inline Square to_sq(Move m) {
   return Square(m & 0x3F);
 }
 
+inline int from_to(Move m) {
+ return m & 0xFFF;
+}
+
 inline MoveType type_of(Move m) {
   return MoveType(m & (3 << 14));
 }
