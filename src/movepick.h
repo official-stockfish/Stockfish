@@ -22,68 +22,55 @@
 #define MOVEPICK_H_INCLUDED
 
 #include <cstring>   // For std::memset
+#include <array>
 
 #include "movegen.h"
 #include "position.h"
 #include "types.h"
 
+/// MoveStats store the move that refute a previous one.
+typedef std::array<std::array<Move,SQUARE_NB>,PIECE_NB> MoveStats;
 
 /// HistoryStats records how often quiet moves have been successful or unsuccessful
 /// during the current search, and is used for reduction and move ordering decisions.
 struct HistoryStats {
 
-  static const int Max = 1 << 28;
-
-  int get(Color c, Move m) const { return table[c][from_sq(m)][to_sq(m)]; }
-  void clear() { std::memset(table, 0, sizeof(table)); }
+  int get(Color c, Move m) const { return table[c][from_to_bits(m)]; }
   void update(Color c, Move m, int v) {
-
-    Square from = from_sq(m);
-    Square to = to_sq(m);
 
     const int D = 324;
 
     assert(abs(v) <= D); // Consistency check for below formula
 
-    table[c][from][to] -= table[c][from][to] * abs(v) / D;
-    table[c][from][to] += v * 32;
+    // Elements of table remain in the range [-32 * D, 32 * D]
+    table[c][from_to_bits(m)] -= table[c][from_to_bits(m)] * abs(v) / D - v * 32;
   }
 
 private:
-  int table[COLOR_NB][SQUARE_NB][SQUARE_NB];
+  int table[COLOR_NB][FROM_TO_NB];
 };
 
-
-/// A template struct, used to generate MoveStats and CounterMoveHistoryStats:
-/// MoveStats store the move that refute a previous one.
 /// CounterMoveHistoryStats is like HistoryStats, but with two consecutive moves.
 /// Entries are stored using only the moving piece and destination square, hence
 /// two moves with different origin but same destination and piece will be
 /// considered identical.
-template<typename T>
-struct Stats {
-  const T* operator[](Piece pc) const { return table[pc]; }
-  T* operator[](Piece pc) { return table[pc]; }
-  void clear() { std::memset(table, 0, sizeof(table)); }
-  void update(Piece pc, Square to, Move m) { table[pc][to] = m; }
+struct CounterMoveStats {
+  const int* operator[](Piece pc) const { return table[pc]; }
+  int* operator[](Piece pc) { return table[pc]; }
   void update(Piece pc, Square to, int v) {
 
     const int D = 936;
 
     assert(abs(v) <= D); // Consistency check for below formula
 
-    table[pc][to] -= table[pc][to] * abs(v) / D;
-    table[pc][to] += v * 32;
+    // Elements of table remain in the range [-32 * D, 32 * D]
+    table[pc][to] -= table[pc][to] * abs(v) / D - v * 32;
   }
-
 private:
-  T table[PIECE_NB][SQUARE_NB];
+  int table[PIECE_NB][SQUARE_NB];
 };
 
-typedef Stats<Move> MoveStats;
-typedef Stats<int> CounterMoveStats;
-typedef Stats<CounterMoveStats> CounterMoveHistoryStats;
-
+typedef std::array<std::array<CounterMoveStats,SQUARE_NB>,PIECE_NB> CounterMoveHistoryStats;
 
 /// MovePicker class is used to pick one pseudo legal move at a time from the
 /// current position. The most important method is next_move(), which returns a
