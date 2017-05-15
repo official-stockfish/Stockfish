@@ -475,7 +475,7 @@ namespace {
 
         // Transform the kingDanger units into a Score, and substract it from the evaluation
         if (kingDanger > 0)
-            score -= make_score(kingDanger * kingDanger / 4096, 0);
+            score -= make_score(kingDanger * kingDanger / 4096, kingDanger / 16);
     }
 
     // King tropism: firstly, find squares that opponent attacks in our king flank
