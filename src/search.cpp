@@ -1302,7 +1302,7 @@ moves_loop: // When in check search starts from here
       // Check for legality just before making the move
       if (!pos.legal(move))
       {
-          moveCount++;
+          moveCount--;
           continue;
       }
           
