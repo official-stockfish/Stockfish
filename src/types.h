@@ -397,7 +397,7 @@ inline Square relative_square(Color c, Square s) {
 }
 
 inline Rank relative_rank(Color c, Rank r) {
-  return Rank(r ^ (c * 7));
+	return Rank(c == BLACK ? RANK_8 - r : r);
 }
 
 inline Rank relative_rank(Color c, Square s) {
