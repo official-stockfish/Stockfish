@@ -84,9 +84,14 @@ namespace {
 void TimeManagement::init(Search::LimitsType& limits, Color us, int ply) {
 
   int minThinkingTime = Options["Minimum Thinking Time"];
-  int moveOverhead    = Options["Move Overhead"];
   int slowMover       = Options["Slow Mover"];
   int npmsec          = Options["nodestime"];
+
+  // Move overhead takes in account the time lag between engine and GUI, this is
+  // difficult to account correctly becuase it depends in subtle ways on the
+  // hardware/platform used. As a general guideline use a safer and bigger one
+  // when we have more time on the clock.
+  int moveOverhead = std::min(30 + limits.time[us] / 200, 1000);
 
   // If we have to play in 'nodes as time' mode, then convert from time
   // to nodes, and use resulting values in time management formulas.
