@@ -1165,6 +1165,7 @@ moves_loop: // When in check search starts from here
     Value bestValue, value, ttValue, futilityValue, futilityBase, oldAlpha;
     bool ttHit, givesCheck, evasionPrunable;
     Depth ttDepth;
+    int moveCount;
 
     if (PvNode)
     {
@@ -1175,6 +1176,7 @@ moves_loop: // When in check search starts from here
 
     ss->currentMove = bestMove = MOVE_NONE;
     ss->ply = (ss-1)->ply + 1;
+    moveCount = 0;
 
     // Check for an instant draw or if the maximum ply has been reached
     if (pos.is_draw(ss->ply) || ss->ply >= MAX_PLY)
@@ -1258,6 +1260,8 @@ moves_loop: // When in check search starts from here
                   ? pos.check_squares(type_of(pos.piece_on(from_sq(move)))) & to_sq(move)
                   : pos.gives_check(move);
 
+      moveCount++;
+
       // Futility pruning
       if (   !InCheck
           && !givesCheck
@@ -1283,7 +1287,7 @@ moves_loop: // When in check search starts from here
 
       // Detect non-capture evasions that are candidates to be pruned
       evasionPrunable =    InCheck
-                       &&  depth != DEPTH_ZERO
+                       &&  (depth != DEPTH_ZERO || moveCount > 2)
                        &&  bestValue > VALUE_MATED_IN_MAX_PLY
                        && !pos.capture(move);
 
@@ -1298,7 +1302,10 @@ moves_loop: // When in check search starts from here
 
       // Check for legality just before making the move
       if (!pos.legal(move))
+      {
+          moveCount--;
           continue;
+      }
 
       ss->currentMove = move;
 
