@@ -848,6 +848,11 @@ Value Eval::evaluate(const Position& pos) {
   // Evaluate scale factor for the winning side
   ScaleFactor sf = evaluate_scale_factor(pos, ei, eg_value(score));
 
+  // Scale endgame by number of pawns
+  int p = pos.count<PAWN>(WHITE) + pos.count<PAWN>(BLACK);
+  int v_eg = 1 + abs(int(eg_value(score)));
+  sf = ScaleFactor(std::max(sf / 2, sf - 7 * SCALE_FACTOR_NORMAL * (14 - p) / v_eg));
+
   // Interpolate between a middlegame and a (scaled by 'sf') endgame score
   v =  mg_value(score) * int(ei.me->game_phase())
      + eg_value(score) * int(PHASE_MIDGAME - ei.me->game_phase()) * sf / SCALE_FACTOR_NORMAL;
