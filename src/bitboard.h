@@ -284,7 +284,7 @@ inline int popcount(Bitboard b) {
 
 /// lsb() and msb() return the least/most significant bit in a non-zero bitboard
 
-#if defined(__GNUC__)
+#if defined(__GNUC__) && defined(IS_64BIT)
 
 inline Square lsb(Bitboard b) {
   assert(b);
