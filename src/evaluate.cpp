@@ -895,7 +895,7 @@ std::string Eval::trace(const Position& pos) {
      << "      Imbalance | " << Term(IMBALANCE)
      << "          Pawns | " << Term(PAWN)
      << "        Knights | " << Term(KNIGHT)
-     << "         Bishop | " << Term(BISHOP)
+     << "        Bishops | " << Term(BISHOP)
      << "          Rooks | " << Term(ROOK)
      << "         Queens | " << Term(QUEEN)
      << "       Mobility | " << Term(MOBILITY)
