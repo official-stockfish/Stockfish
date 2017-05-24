@@ -1075,6 +1075,8 @@ moves_loop: // When in check search starts from here
       if (value > bestValue)
       {
           bestValue = value;
+          if(doFullDepthSearch)
+            dbg_stats_of(bestValue, ss->staticEval);
 
           if (value > alpha)
           {
@@ -1478,7 +1480,7 @@ moves_loop: // When in check search starts from here
     int elapsed = Time.elapsed();
     TimePoint tick = Limits.startTime + elapsed;
 
-    if (tick - lastInfoTime >= 1000)
+    if (tick - lastInfoTime >= 100)
     {
         lastInfoTime = tick;
         dbg_print();
