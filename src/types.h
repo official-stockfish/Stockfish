@@ -246,6 +246,8 @@ enum Square {
   NORTH_WEST = NORTH + WEST
 };
 
+const int FROM_TO_NB = 4096;
+
 enum File : int {
   FILE_A, FILE_B, FILE_C, FILE_D, FILE_E, FILE_F, FILE_G, FILE_H, FILE_NB
 };
@@ -419,6 +421,10 @@ inline Square from_sq(Move m) {
 
 inline Square to_sq(Move m) {
   return Square(m & 0x3F);
+}
+
+inline int from_to_bits(Move m) {
+ return m & 0xFFF;
 }
 
 inline MoveType type_of(Move m) {
