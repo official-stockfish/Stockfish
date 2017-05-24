@@ -943,6 +943,12 @@ moves_loop: // When in check search starts from here
                    && !pos.see_ge(move, -PawnValueEg * (depth / ONE_PLY)))
                   continue;
       }
+      else if(    depth < 3 * ONE_PLY
+              && !inCheck
+              &&  bestValue > VALUE_MATED_IN_MAX_PLY
+              && !rootNode
+              &&  pos.see_sign(move) < VALUE_ZERO)
+              continue;
 
       // Speculative prefetch as early as possible
       prefetch(TT.first_entry(pos.key_after(move)));
