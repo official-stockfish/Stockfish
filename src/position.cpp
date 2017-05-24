@@ -423,8 +423,9 @@ const string Position::fen() const {
               ss << PieceToChar[piece_on(make_square(f, r))];
       }
 
-      if (r > RANK_1)
-          ss << '/';
+      if (r == RANK_1) break; 
+
+      ss << '/';
   }
 
   ss << (sideToMove == WHITE ? " w " : " b ");
