@@ -43,11 +43,6 @@ race:TranspositionTable::probe
 race:TranspositionTable::generation
 race:TranspositionTable::hashfull
 
-# four races to be fixed.
-# race:ThreadPool::nodes_searched
-# race:ThreadPool::tb_hits
-# race:check_time
-# race:Thread::search
 EOF
 
     export TSAN_OPTIONS="suppressions=./tsan.supp"

@@ -134,6 +134,8 @@ public:
   void undo_move(Move m);
   void do_null_move(StateInfo& newSt);
   void undo_null_move();
+  void increment_nodes();
+  void increment_tbHits();
 
   // Static Exchange Evaluation
   bool see_ge(Move m, Value value = VALUE_ZERO) const;
@@ -151,6 +153,7 @@ public:
   bool is_chess960() const;
   Thread* this_thread() const;
   uint64_t nodes_searched() const;
+  uint64_t tb_hits() const;
   bool is_draw(int ply) const;
   int rule50_count() const;
   Score psq_score() const;
@@ -185,6 +188,7 @@ private:
   Square castlingRookSquare[CASTLING_RIGHT_NB];
   Bitboard castlingPath[CASTLING_RIGHT_NB];
   uint64_t nodes;
+  uint64_t tbHits;
   int gamePly;
   Color sideToMove;
   Thread* thisThread;
@@ -351,6 +355,18 @@ inline int Position::rule50_count() const {
 
 inline uint64_t Position::nodes_searched() const {
   return nodes;
+}
+
+inline void Position::increment_nodes() {
+  nodes++;
+}
+
+inline uint64_t Position::tb_hits() const {
+  return tbHits;
+}
+
+inline void Position::increment_tbHits() {
+  tbHits++;
 }
 
 inline bool Position::opposite_bishops() const {

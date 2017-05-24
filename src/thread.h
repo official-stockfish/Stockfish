@@ -61,11 +61,12 @@ public:
   Endgames endgames;
   size_t idx, PVIdx;
   int maxPly, callsCnt;
-  uint64_t tbHits;
+  std::atomic<uint64_t> tbHits;
+  std::atomic<uint64_t> nodes;
 
   Position rootPos;
   Search::RootMoves rootMoves;
-  Depth rootDepth;
+  std::atomic<Depth> rootDepth;
   Depth completedDepth;
   std::atomic_bool resetCalls;
   CounterMoveStat counterMoves;
