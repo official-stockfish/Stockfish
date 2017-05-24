@@ -87,6 +87,7 @@ ifeq ($(ARCH),x86-32)
 	arch = i386
 	prefetch = yes
 	sse = yes
+	CXXFLAGS += -mstackrealign
 endif
 
 ifeq ($(ARCH),general-64)
