@@ -21,68 +21,70 @@
 #ifndef MOVEPICK_H_INCLUDED
 #define MOVEPICK_H_INCLUDED
 
-#include <cstring>   // For std::memset
+#include <array>
 
 #include "movegen.h"
 #include "position.h"
 #include "types.h"
 
+/// StatBoards is a generic 2-dimensional array used to store various statistics
+template<int Size1, int Size2, typename T = int>
+struct StatBoards : public std::array<std::array<T, Size2>, Size1> {
 
-/// HistoryStats records how often quiet moves have been successful or unsuccessful
-/// during the current search, and is used for reduction and move ordering decisions.
-struct HistoryStats {
+  void fill(const T& v) {
+    T* p = &(*this)[0][0];
+    std::fill(p, p + sizeof(*this) / sizeof(*p), v);
+  }
+};
 
-  static const int Max = 1 << 28;
+/// ButterflyBoards are 2 tables (one for each color) indexed by the move's from
+/// and to squares, see chessprogramming.wikispaces.com/Butterfly+Boards
+typedef StatBoards<COLOR_NB, int(SQUARE_NB) * int(SQUARE_NB)> ButterflyBoards;
 
-  int get(Color c, Move m) const { return table[c][from_sq(m)][to_sq(m)]; }
-  void clear() { std::memset(table, 0, sizeof(table)); }
+/// PieceToBoards are addressed by a move's [piece][to] information
+typedef StatBoards<PIECE_NB, SQUARE_NB> PieceToBoards;
+
+/// ButterflyHistory records how often quiet moves have been successful or
+/// unsuccessful during the current search, and is used for reduction and move
+/// ordering decisions. It uses ButterflyBoards as backing store.
+struct ButterflyHistory : public ButterflyBoards {
+
   void update(Color c, Move m, int v) {
 
-    Square from = from_sq(m);
-    Square to = to_sq(m);
-
     const int D = 324;
+    int& entry = (*this)[c][from_to(m)];
 
     assert(abs(v) <= D); // Consistency check for below formula
 
-    table[c][from][to] -= table[c][from][to] * abs(v) / D;
-    table[c][from][to] += v * 32;
-  }
+    entry += v * 32 - entry * abs(v) / D;
 
-private:
-  int table[COLOR_NB][SQUARE_NB][SQUARE_NB];
+    assert(abs(entry) <= 32 * D);
+  }
 };
 
+/// PieceToHistory is like ButterflyHistory, but is based on PieceToBoards
+struct PieceToHistory : public PieceToBoards {
 
-/// A template struct, used to generate MoveStats and CounterMoveHistoryStats:
-/// MoveStats store the move that refute a previous one.
-/// CounterMoveHistoryStats is like HistoryStats, but with two consecutive moves.
-/// Entries are stored using only the moving piece and destination square, hence
-/// two moves with different origin but same destination and piece will be
-/// considered identical.
-template<typename T>
-struct Stats {
-  const T* operator[](Piece pc) const { return table[pc]; }
-  T* operator[](Piece pc) { return table[pc]; }
-  void clear() { std::memset(table, 0, sizeof(table)); }
-  void update(Piece pc, Square to, Move m) { table[pc][to] = m; }
   void update(Piece pc, Square to, int v) {
 
     const int D = 936;
+    int& entry = (*this)[pc][to];
 
     assert(abs(v) <= D); // Consistency check for below formula
 
-    table[pc][to] -= table[pc][to] * abs(v) / D;
-    table[pc][to] += v * 32;
-  }
+    entry += v * 32 - entry * abs(v) / D;
 
-private:
-  T table[PIECE_NB][SQUARE_NB];
+    assert(abs(entry) <= 32 * D);
+  }
 };
 
-typedef Stats<Move> MoveStats;
-typedef Stats<int> CounterMoveStats;
-typedef Stats<CounterMoveStats> CounterMoveHistoryStats;
+/// CounterMoveStat stores counter moves indexed by [piece][to] of the previous
+/// move, see chessprogramming.wikispaces.com/Countermove+Heuristic
+typedef StatBoards<PIECE_NB, SQUARE_NB, Move> CounterMoveStat;
+
+/// CounterMoveHistoryStat is like CounterMoveStat but instead of a move it
+/// stores a full history (based on PieceTo boards instead of ButterflyBoards).
+typedef StatBoards<PIECE_NB, SQUARE_NB, PieceToHistory> CounterMoveHistoryStat;
 
 
 /// MovePicker class is used to pick one pseudo legal move at a time from the
