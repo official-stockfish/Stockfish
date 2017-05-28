@@ -73,14 +73,31 @@ cat << EOF > game.exp
  exit \$value
 EOF
 
-for exps in game.exp
+cat << EOF > syzygy.exp
+ set timeout 240
+ spawn $exeprefix ./stockfish
+ send "uci\n"
+ send "setoption name SyzygyPath value ../tests/data/syzygy/\n"
+ send "bench 128 1 10 default depth\n"
+ # root in TB
+ send "position fen 4k3/R7/8/8/8/8/n7/5K2 w - - 0 1\n"
+ send "go nodes 1000\n"
+ send "quit\n"
+ expect eof
+
+ # return error code of the spawned program, useful for valgrind
+ lassign [wait] pid spawnid os_error_flag value
+ exit \$value
+EOF
+
+for exp in game.exp syzygy.exp
 do
 
-  echo "$prefix expect game.exp $postfix"
-  eval "$prefix expect game.exp $postfix"
+  echo "$prefix expect $exp $postfix"
+  eval "$prefix expect $exp $postfix"
+
+  rm $exp
 
 done
-
-rm game.exp
 
 echo "instrumented testing OK"
