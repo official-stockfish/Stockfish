@@ -321,7 +321,6 @@ void Position::set_check_info(StateInfo* si) const {
   si->blockersForKing[BLACK] = slider_blockers(pieces(WHITE), square<KING>(BLACK), si->pinnersForKing[BLACK]);
 
   Square ksq = square<KING>(~sideToMove);
-
   si->checkSquares[PAWN]   = attacks_from<PAWN>(ksq, ~sideToMove);
   si->checkSquares[KNIGHT] = attacks_from<KNIGHT>(ksq);
   si->checkSquares[BISHOP] = attacks_from<BISHOP>(ksq);
@@ -330,6 +329,16 @@ void Position::set_check_info(StateInfo* si) const {
   si->checkSquares[KING]   = 0;
 }
 
+void Position::update_check_info(StateInfo* si) const {
+
+  Square ksq = square<KING>(~sideToMove);
+  si->checkSquares[PAWN]   = attacks_from<PAWN>(ksq, ~sideToMove);
+  si->checkSquares[KNIGHT] = attacks_from<KNIGHT>(ksq);
+  si->checkSquares[BISHOP] = attacks_from<BISHOP>(ksq);
+  si->checkSquares[ROOK]   = attacks_from<ROOK>(ksq);
+  si->checkSquares[QUEEN]  = si->checkSquares[BISHOP] | si->checkSquares[ROOK];
+  si->checkSquares[KING]   = 0;
+}
 
 /// Position::set_state() computes the hash keys of the position, and other
 /// data that once computed is updated incrementally as moves are made.
@@ -844,7 +853,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
 
   // Update the key with the final value
   st->key = k;
-
+  prefetch(TT.first_entry(k));
   // Calculate checkers bitboard (if move gives check)
   st->checkersBB = givesCheck ? attackers_to(square<KING>(them)) & pieces(us) : 0;
 
@@ -948,7 +957,7 @@ void Position::do_null_move(StateInfo& newSt) {
   assert(!checkers());
   assert(&newSt != st);
 
-  std::memcpy(&newSt, st, sizeof(StateInfo));
+  std::memcpy(&newSt, st, offsetof(StateInfo, capturedPiece));
   newSt.previous = st;
   st = &newSt;
 
@@ -966,7 +975,7 @@ void Position::do_null_move(StateInfo& newSt) {
 
   sideToMove = ~sideToMove;
 
-  set_check_info(st);
+  update_check_info(st);
 
   assert(pos_is_ok());
 }
