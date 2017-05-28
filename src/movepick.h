@@ -52,7 +52,7 @@ struct ButterflyHistory : public ButterflyBoards {
   void update(Color c, Move m, int v) {
 
     const int D = 324;
-    int& entry = (*this)[c][from_to(m)];
+    auto& entry = (*this)[c][from_to(m)];
 
     assert(abs(v) <= D); // Consistency check for below formula
 
@@ -68,7 +68,7 @@ struct PieceToHistory : public PieceToBoards {
   void update(Piece pc, Square to, int v) {
 
     const int D = 936;
-    int& entry = (*this)[pc][to];
+    auto& entry = (*this)[pc][to];
 
     assert(abs(v) <= D); // Consistency check for below formula
 
