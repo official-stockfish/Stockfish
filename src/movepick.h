@@ -28,7 +28,7 @@
 #include "types.h"
 
 /// StatBoards is a generic 2-dimensional array used to store various statistics
-template<int Size1, int Size2, typename T = int>
+template<int Size1, int Size2, typename T = int16_t>
 struct StatBoards : public std::array<std::array<T, Size2>, Size1> {
 
   void fill(const T& v) {
@@ -52,7 +52,7 @@ struct ButterflyHistory : public ButterflyBoards {
   void update(Color c, Move m, int v) {
 
     const int D = 324;
-    int& entry = (*this)[c][from_to(m)];
+    auto& entry = (*this)[c][from_to(m)];
 
     assert(abs(v) <= D); // Consistency check for below formula
 
@@ -68,7 +68,7 @@ struct PieceToHistory : public PieceToBoards {
   void update(Piece pc, Square to, int v) {
 
     const int D = 936;
-    int& entry = (*this)[pc][to];
+    auto& entry = (*this)[pc][to];
 
     assert(abs(v) <= D); // Consistency check for below formula
 
