@@ -816,6 +816,11 @@ Value Eval::evaluate(const Position& pos) {
   if (abs(v) > LazyThreshold)
      return pos.side_to_move() == WHITE ? v : -v;
 
+  // Early exit if score is high
+  Value lazyValue = (mg_value(score) + eg_value(score)) / 2;
+  if (abs(lazyValue) > 1500)
+     return (pos.side_to_move() == WHITE ? lazyValue : -lazyValue);
+
   // Initialize attack and king safety bitboards
   eval_init<WHITE>(pos, ei);
   eval_init<BLACK>(pos, ei);
