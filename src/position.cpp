@@ -315,13 +315,15 @@ void Position::set_castling_right(Color c, Square rfrom) {
 
 /// Position::set_check_info() sets king attacks to detect if a move gives check
 
+template<bool NotNull>
 void Position::set_check_info(StateInfo* si) const {
 
-  si->blockersForKing[WHITE] = slider_blockers(pieces(BLACK), square<KING>(WHITE), si->pinnersForKing[WHITE]);
-  si->blockersForKing[BLACK] = slider_blockers(pieces(WHITE), square<KING>(BLACK), si->pinnersForKing[BLACK]);
+  if (NotNull) {
+	si->blockersForKing[WHITE] = slider_blockers(pieces(BLACK), square<KING>(WHITE), si->pinnersForKing[WHITE]);
+	si->blockersForKing[BLACK] = slider_blockers(pieces(WHITE), square<KING>(BLACK), si->pinnersForKing[BLACK]);
+  }
 
   Square ksq = square<KING>(~sideToMove);
-
   si->checkSquares[PAWN]   = attacks_from<PAWN>(ksq, ~sideToMove);
   si->checkSquares[KNIGHT] = attacks_from<KNIGHT>(ksq);
   si->checkSquares[BISHOP] = attacks_from<BISHOP>(ksq);
@@ -344,7 +346,7 @@ void Position::set_state(StateInfo* si) const {
   si->psq = SCORE_ZERO;
   si->checkersBB = attackers_to(square<KING>(sideToMove)) & pieces(~sideToMove);
 
-  set_check_info(si);
+  set_check_info<true>(si);
 
   for (Bitboard b = pieces(); b; )
   {
@@ -844,14 +846,14 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
 
   // Update the key with the final value
   st->key = k;
-
+  prefetch(TT.first_entry(k));
   // Calculate checkers bitboard (if move gives check)
   st->checkersBB = givesCheck ? attackers_to(square<KING>(them)) & pieces(us) : 0;
 
   sideToMove = ~sideToMove;
 
   // Update king attacks used for fast check detection
-  set_check_info(st);
+  set_check_info<true>(st);
 
   assert(pos_is_ok());
 }
@@ -948,7 +950,7 @@ void Position::do_null_move(StateInfo& newSt) {
   assert(!checkers());
   assert(&newSt != st);
 
-  std::memcpy(&newSt, st, sizeof(StateInfo));
+  std::memcpy(&newSt, st, offsetof(StateInfo, capturedPiece));
   newSt.previous = st;
   st = &newSt;
 
@@ -966,7 +968,7 @@ void Position::do_null_move(StateInfo& newSt) {
 
   sideToMove = ~sideToMove;
 
-  set_check_info(st);
+  set_check_info<false>(st);
 
   assert(pos_is_ok());
 }
