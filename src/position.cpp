@@ -1083,10 +1083,16 @@ bool Position::see_ge(Move m, Value v) const {
 /// or by repetition. It does not detect stalemates.
 
 bool Position::is_draw(int ply) const {
+  return
+    is_draw_rule50() ||
+    is_draw_repetition(ply);  // ply = 2: Draw at first repetition
+}
 
-  if (st->rule50 > 99 && (!checkers() || MoveList<LEGAL>(*this).size()))
-      return true;
+bool Position::is_draw_rule50() const {
+  return st->rule50 > 99 && (!checkers() || MoveList<LEGAL>(*this).size());
+}
 
+bool Position::is_draw_repetition(int ply) const {
   int end = std::min(st->rule50, st->pliesFromNull);
 
   if (end < 4)
