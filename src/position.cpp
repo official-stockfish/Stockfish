@@ -132,6 +132,8 @@ void Position::init() {
 
   PRNG rng(1070372);
 
+  std::memset(&Zobrist::psq, 0, (size_t)SQUARE_NB * sizeof(Key));
+
   for (Piece pc : Pieces)
       for (Square s = SQ_A1; s <= SQ_H8; ++s)
           Zobrist::psq[pc][s] = rng.rand<Key>();
@@ -990,12 +992,9 @@ Key Position::key_after(Move m) const {
   Square to = to_sq(m);
   Piece pc = piece_on(from);
   Piece captured = piece_on(to);
-  Key k = st->key ^ Zobrist::side;
 
-  if (captured)
-      k ^= Zobrist::psq[captured][to];
-
-  return k ^ Zobrist::psq[pc][to] ^ Zobrist::psq[pc][from];
+  return st->key ^ Zobrist::side          ^ Zobrist::psq[pc][to]
+                 ^ Zobrist::psq[pc][from] ^ Zobrist::psq[captured][to];
 }
 
 
