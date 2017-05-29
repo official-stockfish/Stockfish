@@ -783,11 +783,10 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   }
 
   // Update castling rights if needed
-  if (st->castlingRights && (castlingRightsMask[from] | castlingRightsMask[to]))
+  if (int removedCR = st->castlingRights & (castlingRightsMask[from] | castlingRightsMask[to]))
   {
-      int cr = castlingRightsMask[from] | castlingRightsMask[to];
-      k ^= Zobrist::castling[st->castlingRights & cr];
-      st->castlingRights &= ~cr;
+      k ^= Zobrist::castling[removedCR];
+      st->castlingRights &= ~removedCR;
   }
 
   // Move the piece. The tricky Chess960 castling is handled earlier
