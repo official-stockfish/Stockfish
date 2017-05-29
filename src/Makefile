@@ -204,7 +204,9 @@ ifeq ($(COMP),clang)
 	comp=clang
 	CXX=clang++
 	CXXFLAGS += -pedantic -Wextra -Wshadow
+ifneq ($(KERNEL),Darwin)
 	LDFLAGS += -latomic
+endif
 
 	ifeq ($(ARCH),armv7)
 		ifeq ($(OS),Android)
