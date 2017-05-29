@@ -364,11 +364,11 @@ inline Value mated_in(int ply) {
 }
 
 inline Square make_square(File f, Rank r) {
-  return Square((r << 3) + f);
+  return Square((r << 3) | f);
 }
 
 inline Piece make_piece(Color c, PieceType pt) {
-  return Piece((c << 3) + pt);
+  return Piece((c << 3) | pt);
 }
 
 inline PieceType type_of(Piece pc) {
@@ -434,12 +434,12 @@ inline PieceType promotion_type(Move m) {
 }
 
 inline Move make_move(Square from, Square to) {
-  return Move((from << 6) + to);
+  return Move((from << 6) | to);
 }
 
 template<MoveType T>
 inline Move make(Square from, Square to, PieceType pt = KNIGHT) {
-  return Move(T + ((pt - KNIGHT) << 12) + (from << 6) + to);
+  return Move(T | ((pt - KNIGHT) << 12) | make_move(from, to));
 }
 
 inline bool is_ok(Move m) {
