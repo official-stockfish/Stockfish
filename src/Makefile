@@ -264,8 +264,8 @@ endif
 
 ### 3.2.2 Debugging with undefined behavior sanitizers
 ifneq ($(sanitize),no)
-        CXXFLAGS += -g3 -fsanitize=$(sanitize)
-        LDFLAGS += -fsanitize=$(sanitize)
+        CXXFLAGS += -g3 -fsanitize=$(sanitize) -fuse-ld=gold
+        LDFLAGS += -fsanitize=$(sanitize) -fuse-ld=gold
 endif
 
 ### 3.3 Optimization
