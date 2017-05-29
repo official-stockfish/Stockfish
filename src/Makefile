@@ -38,9 +38,9 @@ BINDIR = $(PREFIX)/bin
 PGOBENCH = ./$(EXE) bench
 
 ### Object files
-OBJS = benchmark.o bitbase.o bitboard.o endgame.o evaluate.o main.o \
-	material.o misc.o movegen.o movepick.o pawns.o position.o psqt.o \
-	search.o thread.o timeman.o tt.o uci.o ucioption.o syzygy/tbprobe.o
+OBJS = movegen.o search.o evaluate.o material.o bitbase.o bitboard.o \
+       pawns.o position.o psqt.o movepick.o endgame.o thread.o timeman.o tt.o \
+       syzygy/tbprobe.o uci.o ucioption.o main.o misc.o benchmark.o
 
 ### ==========================================================================
 ### Section 2. High-level Configuration
