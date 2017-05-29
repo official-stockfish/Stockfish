@@ -219,6 +219,7 @@ void UCI::loop(int argc, char* argv[]) {
 
           benchmark(pos, ss);
       }
+      else if (token == "show")       sync_cout << pos.show() << sync_endl;
       else
           sync_cout << "Unknown command: " << cmd << sync_endl;
 

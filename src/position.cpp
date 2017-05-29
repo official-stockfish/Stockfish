@@ -450,6 +450,33 @@ const string Position::fen() const {
   return ss.str();
 }
 
+/// Position::show() returns a board representation of the position. 
+const string Position::show() const {
+
+  std::ostringstream ss;
+  int cnt = 0;
+
+  ss << "+--------+" << std::endl;
+  for (Rank r = RANK_8; r >= RANK_1; --r)
+  {
+      ss << "|";
+      for (File f = FILE_A; f <= FILE_H; ++f)
+      {
+          char color = ( cnt & 1 ) ? '#' : ' ';
+          Square s = make_square(f, r);
+          if (empty(s))
+              ss << color;
+          else
+              ss << PieceToChar[piece_on(s)];
+          cnt++;
+      }
+      ss << "|" << std::endl;
+  }
+  ss << "+========+" << std::endl;
+
+  return ss.str();
+}
+
 
 /// Position::game_phase() calculates the game phase interpolating total non-pawn
 /// material between endgame and midgame limits.
