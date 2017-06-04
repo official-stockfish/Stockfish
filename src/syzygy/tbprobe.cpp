@@ -531,14 +531,14 @@ int decompress_pairs(PairsData* d, uint64_t idx) {
     //
     //       I(k) = k * d->span + d->span / 2      (1)
 
-    // First step is to get the 'k' of the I(k) nearest to our idx, using defintion (1)
+    // First step is to get the 'k' of the I(k) nearest to our idx, using definition (1)
     uint32_t k = idx / d->span;
 
     // Then we read the corresponding SparseIndex[] entry
     uint32_t block = number<uint32_t, LittleEndian>(&d->sparseIndex[k].block);
     int offset     = number<uint16_t, LittleEndian>(&d->sparseIndex[k].offset);
 
-    // Now compute the difference idx - I(k). From defintion of k we know that
+    // Now compute the difference idx - I(k). From definition of k we know that
     //
     //       idx = k * d->span + idx % d->span    (2)
     //

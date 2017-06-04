@@ -155,7 +155,7 @@ Entry* probe(const Position& pos) {
 
   if ((sf = pos.this_thread()->endgames.probe<ScaleFactor>(key)) != nullptr)
   {
-      e->scalingFunction[sf->strong_side()] = sf; // Only strong color assigned
+      e->scalingFunction[sf->strongSide] = sf; // Only strong color assigned
       return e;
   }
 
