@@ -26,9 +26,6 @@
 uint8_t PopCnt16[1 << 16];
 int SquareDistance[SQUARE_NB][SQUARE_NB];
 
-Magic RookMagics[SQUARE_NB];
-Magic BishopMagics[SQUARE_NB];
-
 Bitboard SquareBB[SQUARE_NB];
 Bitboard FileBB[FILE_NB];
 Bitboard RankBB[RANK_NB];
@@ -43,6 +40,9 @@ Bitboard PawnAttackSpan[COLOR_NB][SQUARE_NB];
 Bitboard PseudoAttacks[PIECE_TYPE_NB][SQUARE_NB];
 Bitboard PawnAttacks[COLOR_NB][SQUARE_NB];
 
+Magic RookMagics[SQUARE_NB];
+Magic BishopMagics[SQUARE_NB];
+
 namespace {
 
   // De Bruijn sequences. See chessprogramming.wikispaces.com/BitScan
@@ -54,7 +54,7 @@ namespace {
   Bitboard RookTable[0x19000];  // To store rook attacks
   Bitboard BishopTable[0x1480]; // To store bishop attacks
 
-  typedef unsigned (Fn)(Square, Bitboard);
+  typedef unsigned (Fn)(const Magic&, Bitboard);
 
   void init_magics(Bitboard table[], Magic magics[], Square deltas[], Fn index);
 
@@ -204,8 +204,8 @@ void Bitboards::init() {
   Square RookDeltas[] = { NORTH,  EAST,  SOUTH,  WEST };
   Square BishopDeltas[] = { NORTH_EAST, SOUTH_EAST, SOUTH_WEST, NORTH_WEST };
 
-  init_magics(RookTable, RookMagics, RookDeltas, magic_index<ROOK>);
-  init_magics(BishopTable, BishopMagics, BishopDeltas, magic_index<BISHOP>);
+  init_magics(RookTable, RookMagics, RookDeltas, magic_index);
+  init_magics(BishopTable, BishopMagics, BishopDeltas, magic_index);
 
   for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1)
   {
@@ -257,10 +257,7 @@ namespace {
                              {  728, 10316, 55013, 32803, 12281, 15100,  16645,   255 } };
 
     Bitboard occupancy[4096], reference[4096], edges, b;
-    int age[4096] = {0}, current = 0, i, size;
-
-    // attacks[s] is a pointer to the beginning of the attacks table for square 's'
-    magics[SQ_A1].attacks = table;
+    int epoch[4096] = {}, cnt = 0, size = 0;
 
     for (Square s = SQ_A1; s <= SQ_H8; ++s)
     {
@@ -272,8 +269,13 @@ namespace {
         // all the attacks for each possible subset of the mask and so is 2 power
         // the number of 1s of the mask. Hence we deduce the size of the shift to
         // apply to the 64 or 32 bits word to get the index.
-        magics[s].mask  = sliding_attack(deltas, s, 0) & ~edges;
-        magics[s].shift = (Is64Bit ? 64 : 32) - popcount(magics[s].mask);
+        Magic& m = magics[s];
+        m.mask  = sliding_attack(deltas, s, 0) & ~edges;
+        m.shift = (Is64Bit ? 64 : 32) - popcount(m.mask);
+
+        // Set the offset for the attacks table of the square. We have individual
+        // table sizes for each square with "Fancy Magic Bitboards".
+        m.attacks = s == SQ_A1 ? table : magics[s - 1].attacks + size;
 
         // Use Carry-Rippler trick to enumerate all subsets of masks[s] and
         // store the corresponding sliding attack bitboard in reference[].
@@ -283,16 +285,11 @@ namespace {
             reference[size] = sliding_attack(deltas, s, b);
 
             if (HasPext)
-                magics[s].attacks[pext(b, magics[s].mask)] = reference[size];
+                m.attacks[pext(b, m.mask)] = reference[size];
 
             size++;
-            b = (b - magics[s].mask) & magics[s].mask;
+            b = (b - m.mask) & m.mask;
         } while (b);
-
-        // Set the offset for the table of the next square. We have individual
-        // table sizes for each square with "Fancy Magic Bitboards".
-        if (s < SQ_H8)
-            magics[s + 1].attacks = magics[s].attacks + size;
 
         if (HasPext)
             continue;
@@ -301,28 +298,30 @@ namespace {
 
         // Find a magic for square 's' picking up an (almost) random number
         // until we find the one that passes the verification test.
-        do {
-            do
-                magics[s].magic = rng.sparse_rand<Bitboard>();
-            while (popcount((magics[s].magic * magics[s].mask) >> 56) < 6);
+        for (int i = 0; i < size; )
+        {
+            for (m.magic = 0; popcount((m.magic * m.mask) >> 56) < 6; )
+                m.magic = rng.sparse_rand<Bitboard>();
 
             // A good magic must map every possible occupancy to an index that
             // looks up the correct sliding attack in the attacks[s] database.
             // Note that we build up the database for square 's' as a side
-            // effect of verifying the magic.
-            for (++current, i = 0; i < size; ++i)
+            // effect of verifying the magic. Keep track of the attempt count
+            // and save it in epoch[], little speed-up trick to avoid resetting
+            // m.attacks[] after every failed attempt.
+            for (++cnt, i = 0; i < size; ++i)
             {
-                unsigned idx = index(s, occupancy[i]);
+                unsigned idx = index(m, occupancy[i]);
 
-                if (age[idx] < current)
+                if (epoch[idx] < cnt)
                 {
-                    age[idx] = current;
-                    magics[s].attacks[idx] = reference[i];
+                    epoch[idx] = cnt;
+                    m.attacks[idx] = reference[i];
                 }
-                else if (magics[s].attacks[idx] != reference[i])
+                else if (m.attacks[idx] != reference[i])
                     break;
             }
-        } while (i < size);
+        }
     }
   }
 }
