@@ -737,7 +737,7 @@ namespace {
     // Compute the initiative bonus for the attacking side
     int initiative = 8 * (asymmetry + kingDistance - 17) + 12 * pos.count<PAWN>() + 16 * bothFlanks;
 
-    // Return the bonus for the attacking side
+    // Return the bonus or malus for the attacking side
     return make_score(0, ((eg > 0) - (eg < 0)) * initiative);
   }
 
