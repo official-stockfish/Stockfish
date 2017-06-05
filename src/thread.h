@@ -2,7 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2016 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2015-2017 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -55,22 +55,23 @@ public:
   void idle_loop();
   void start_searching(bool resume = false);
   void wait_for_search_finished();
-  void wait(std::atomic_bool& b);
+  void wait(std::atomic_bool& condition);
 
   Pawns::Table pawnsTable;
   Material::Table materialTable;
   Endgames endgames;
   size_t idx, PVIdx;
   int maxPly, callsCnt;
+  uint64_t tbHits;
 
   Position rootPos;
   Search::RootMoves rootMoves;
   Depth rootDepth;
-  HistoryStats history;
-  MoveStats counterMoves;
-  FromToStats fromTo;
   Depth completedDepth;
   std::atomic_bool resetCalls;
+  MoveStats counterMoves;
+  HistoryStats history;
+  CounterMoveHistoryStats counterMoveHistory;
 };
 
 
@@ -97,7 +98,8 @@ struct ThreadPool : public std::vector<Thread*> {
   MainThread* main() { return static_cast<MainThread*>(at(0)); }
   void start_thinking(Position&, StateListPtr&, const Search::LimitsType&);
   void read_uci_options();
-  int64_t nodes_searched();
+  uint64_t nodes_searched() const;
+  uint64_t tb_hits() const;
 
 private:
   StateListPtr setupStates;

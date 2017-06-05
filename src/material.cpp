@@ -2,7 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2016 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2015-2017 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -35,7 +35,7 @@ namespace {
     //            OUR PIECES
     // pair pawn knight bishop rook queen
     {1667                               }, // Bishop pair
-    {  40,    2                         }, // Pawn
+    {  40,    0                         }, // Pawn
     {  32,  255,  -3                    }, // Knight      OUR PIECES
     {   0,  104,   4,    0              }, // Bishop
     { -26,   -2,  47,   105,  -149      }, // Rook
@@ -51,6 +51,11 @@ namespace {
     {  59,   65,  42,     0             }, // Bishop
     {  46,   39,  24,   -24,    0       }, // Rook
     { 101,  100, -37,   141,  268,    0 }  // Queen
+  };
+
+  // PawnSet[pawn count] contains a bonus/malus indexed by number of pawns
+  const int PawnSet[] = {
+    24, -32, 107, -51, 117, -9, -126, -21, 31
   };
 
   // Endgame evaluation and scaling functions are accessed directly and not through
@@ -89,7 +94,7 @@ namespace {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
 
-    int bonus = 0;
+    int bonus = PawnSet[pieceCount[Us][PAWN]];
 
     // Second-degree polynomial material imbalance by Tord Romstad
     for (int pt1 = NO_PIECE_TYPE; pt1 <= QUEEN; ++pt1)

@@ -2,7 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2016 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2015-2017 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -29,6 +29,7 @@
 #include "thread.h"
 #include "timeman.h"
 #include "uci.h"
+#include "syzygy/tbprobe.h"
 
 using namespace std;
 
@@ -50,14 +51,14 @@ namespace {
   // or the starting position ("startpos") and then makes the moves given in the
   // following move list ("moves").
 
-  bool startposition=false;
+  bool startposition = false;
   Key * OpFileKey;
-  Key FileKey=0;
+  Key FileKey = 0;
 
   void position(Position& pos, istringstream& is){
 
 	  Move m = MOVE_NONE;
-	  string token, fen, Newfen;	 
+	  string token, fen, Newfen;
 
 	  is >> token;
 
@@ -81,13 +82,13 @@ namespace {
 	  pos.set(fen, Options["UCI_Chess960"], &States->back(), Threads.main());
 	  int movesplayed = 0;
 	  int OPmoves = 0;
-	  
 
-	//  OpFileKey[0] = 0;
-	//  OpFileKey[1] = 0;
+
+	  //  OpFileKey[0] = 0;
+	  //  OpFileKey[1] = 0;
 	  //OpFileKey[2] = 0;
-	 // OpFileKey[3] = 0;
-	 // OpFileKey[4] = 0;
+	  // OpFileKey[3] = 0;
+	  // OpFileKey[4] = 0;
 	  if (StartFEN != Newfen)
 	  {
 		  startposition = false;
@@ -105,16 +106,14 @@ namespace {
 
 		  if (!FileKey)
 		  {
-			  if ((movesplayed == 2 || movesplayed == 4 || movesplayed == 6 || movesplayed == 8 || movesplayed == 10 || movesplayed == 12) && Newfen == StartFEN)
+			  if ((movesplayed == 2 || movesplayed == 4 || movesplayed == 6 || movesplayed == 8 || movesplayed == 10 || movesplayed == 12 || movesplayed == 14 || movesplayed == 16) && Newfen == StartFEN)
 			  {
 				  files(OPmoves, pos.key());
 				  OPmoves++;
 				  kelly(startposition, FileKey);
-				  record(true);
+				  
 			  }
-			  else
-				  record(false);
-			  if (movesplayed == 12 && Newfen == StartFEN)
+			  if (movesplayed == 16 && Newfen == StartFEN)
 			  {
 				  FileKey = pos.key();
 				  kelly(startposition, FileKey);
@@ -125,7 +124,6 @@ namespace {
 
 	  }
   }
-
 
   // setoption() is called when engine receives the "setoption" UCI command. The
   // function updates the UCI option ("name") to the given value ("value").
@@ -233,6 +231,7 @@ void UCI::loop(int argc, char* argv[]) {
       else if (token == "ucinewgame")
       {
           Search::clear();
+          Tablebases::init(Options["SyzygyPath"]);
           Time.availableNodes = 0;
       }
       else if (token == "isready")    sync_cout << "readyok" << sync_endl;

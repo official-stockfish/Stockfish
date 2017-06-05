@@ -2,7 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2016 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2015-2017 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -25,11 +25,10 @@
 #include <vector>
 
 #include "misc.h"
-#include "position.h"
+#include "movepick.h"
 #include "types.h"
 
-template<typename T, bool CM> struct Stats;
-typedef Stats<Value, true> CounterMoveStats;
+class Position;
 
 namespace Search {
 
@@ -39,16 +38,16 @@ namespace Search {
 
 struct Stack {
   Move* pv;
+  CounterMoveStats* counterMoves;
   int ply;
   Move currentMove;
   Move excludedMove;
-  Move expMove;
   Move killers[2];
   Value staticEval;
-  bool skipEarlyPruning;
+  int history;
   int moveCount;
-  CounterMoveStats* counterMoves;
 };
+
 
 /// RootMove struct is used for moves at the root of the tree. For each root move
 /// we store a score and a PV (really a refutation in the case of moves which
@@ -68,6 +67,7 @@ struct RootMove {
 };
 
 typedef std::vector<RootMove> RootMoves;
+
 
 /// LimitsType struct stores information sent by GUI about available time to
 /// search the current move, maximum depth/time, if we are in analysis mode or
@@ -90,8 +90,9 @@ struct LimitsType {
   TimePoint startTime;
 };
 
-/// The SignalsType struct stores atomic flags updated during the search
-/// typically in an async fashion e.g. to stop the search by the GUI.
+
+/// SignalsType struct stores atomic flags updated during the search, typically
+/// in an async fashion e.g. to stop the search by the GUI.
 
 struct SignalsType {
   std::atomic_bool stop, stopOnPonderhit;
@@ -99,8 +100,6 @@ struct SignalsType {
 
 extern SignalsType Signals;
 extern LimitsType Limits;
-
-
 
 void init();
 void clear();
