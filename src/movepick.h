@@ -28,7 +28,7 @@
 #include "types.h"
 
 /// StatBoards is a generic 2-dimensional array used to store various statistics
-template<int Size1, int Size2, typename T = int>
+template<int Size1, int Size2, typename T = int16_t>
 struct StatBoards : public std::array<std::array<T, Size2>, Size1> {
 
   void fill(const T& v) {
