@@ -1367,8 +1367,7 @@ moves_loop: // When in check search starts from here
 
     assert(v != VALUE_NONE);
 
-    return  v >= VALUE_MATE_IN_MAX_PLY  ? v + ply
-          : v <= VALUE_MATED_IN_MAX_PLY ? v - ply : v;
+    return v + ((v >= VALUE_MATE_IN_MAX_PLY) - (v <= VALUE_MATED_IN_MAX_PLY)) * ply;
   }
 
 
@@ -1378,9 +1377,8 @@ moves_loop: // When in check search starts from here
 
   Value value_from_tt(Value v, int ply) {
 
-    return  v == VALUE_NONE             ? VALUE_NONE
-          : v >= VALUE_MATE_IN_MAX_PLY  ? v - ply
-          : v <= VALUE_MATED_IN_MAX_PLY ? v + ply : v;
+    return  v + (v != VALUE_NONE) 
+          * ((v <= VALUE_MATED_IN_MAX_PLY) - (v >= VALUE_MATE_IN_MAX_PLY)) * ply;
   }
 
 
