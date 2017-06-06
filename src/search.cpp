@@ -244,6 +244,7 @@ void MainThread::search() {
 
   Color us = rootPos.side_to_move();
   Time.init(Limits, us, rootPos.game_ply());
+  TT.new_search();
 
   int contempt = Options["Contempt"] * PawnValueEg / 100; // From centipawns
   DrawValue[ us] = VALUE_DRAW - Value(contempt);
@@ -347,7 +348,6 @@ void Thread::search() {
       EasyMove.clear();
       mainThread->easyMovePlayed = mainThread->failedLow = false;
       mainThread->bestMoveChanges = 0;
-      TT.new_search();
   }
 
   size_t multiPV = Options["MultiPV"];
