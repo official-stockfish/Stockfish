@@ -214,6 +214,16 @@ void Search::init() {
 void Search::clear() {
 
   TT.clear();
+  EXP.clear();
+  EXPresize(Options["Hash"]);
+
+  UseExp = true;
+  Movesplayed = 0;
+  startpoint = false;
+  openingswritten = 0;
+  for (int x = 0; x < 8; x++)
+	  OpFileKey[x] = 0;
+  pawnending = false;
 
   for (Thread* th : Threads)
   {
@@ -385,6 +395,10 @@ void Thread::search() {
   {
 	  pawnending = true;
 	  EXPawnresize();
+  }
+  if (piecesCnt <= 6)
+  {
+	  UseExp = true;
   }
   // When playing with strength handicap enable MultiPV search that we will
   // use behind the scenes to retrieve a set of possible moves.
@@ -1045,6 +1059,9 @@ moves_loop: // When in check search starts from here
       // is singular and should be extended. To verify this we do a reduced search
       // on all the other moves but the ttMove and if the result is lower than
       // ttValue minus a margin then we extend the ttMove.
+	  if (!extension && exp1 && move == expttMove  &&  depth >= 7 * ONE_PLY)
+		  extension = ONE_PLY;
+	  else
       if (    singularExtensionNode
           &&  move == ttMove
           &&  pos.legal(move))
@@ -1062,6 +1079,7 @@ moves_loop: // When in check search starts from here
                && !moveCountPruning
                &&  pos.see_ge(move, VALUE_ZERO))
           extension = ONE_PLY;
+	  
 
       // Calculate new depth for this move
       newDepth = depth - ONE_PLY + extension;

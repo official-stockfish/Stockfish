@@ -231,6 +231,9 @@ void UCI::loop(int argc, char* argv[]) {
       else if (token == "ucinewgame")
       {
           Search::clear();
+		  startposition = false;
+		  FileKey = 0;
+
           Tablebases::init(Options["SyzygyPath"]);
           Time.availableNodes = 0;
       }
