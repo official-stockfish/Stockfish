@@ -69,14 +69,14 @@ namespace {
 
   using namespace Trace;
 
-  // Struct EvalInfo contains various information computed and collected
+  // Struct Evaluation contains various information computed and collected
   // by the evaluation functions.
-  struct EvalInfo {
+  struct Evaluation {
 
+    const Position& pos;
     Material::Entry* me;
     Pawns::Entry* pe;
     Bitboard mobilityArea[COLOR_NB];
-    const Position& pos;
 
     // attackedBy[color][piece type] is a bitboard representing all squares
     // attacked by a given color and piece type (can be also ALL_PIECES).
@@ -112,7 +112,11 @@ namespace {
     // to kingAdjacentZoneAttacksCount[WHITE].
     int kingAdjacentZoneAttacksCount[COLOR_NB];
 
+    // Constructors
+    Evaluation() = delete;
+    Evaluation(const Position& p) : pos(p) {};
 
+    // Helpers
     template<Color Us> 
        void eval_init();
 
@@ -133,10 +137,9 @@ namespace {
 
     Score evaluate_initiative(int asymmetry, Value eg);
     ScaleFactor evaluate_scale_factor(Value eg);
-    
-    EvalInfo() = delete;
-    EvalInfo(const Position& p) : pos(p) {};
 
+    template<bool DoTrace>
+       Value value();
   };
 
   #define V(v) Value(v)
@@ -245,7 +248,7 @@ namespace {
   // adding pawn attacks. To be done at the beginning of the evaluation.
 
   template<Color Us>
-  void EvalInfo::eval_init() {
+  void Evaluation::eval_init() {
 
     const Color  Them = (Us == WHITE ? BLACK : WHITE);
     const Square Up   = (Us == WHITE ? NORTH : SOUTH);
@@ -285,7 +288,7 @@ namespace {
   // color and type.
 
   template<bool DoTrace, Color Us, PieceType Pt>
-  Score EvalInfo::evaluate_pieces(Score* mobility) {
+  Score Evaluation::evaluate_pieces(Score* mobility) {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
     const PieceType NextPt = (Us == WHITE ? Pt : PieceType(Pt + 1));
@@ -401,9 +404,9 @@ namespace {
   }
 
   template<>
-  Score EvalInfo::evaluate_pieces<false, WHITE, KING>(Score*) { return SCORE_ZERO; }
+  Score Evaluation::evaluate_pieces<false, WHITE, KING>(Score*) { return SCORE_ZERO; }
   template<>
-  Score EvalInfo::evaluate_pieces< true, WHITE, KING>(Score*) { return SCORE_ZERO; }
+  Score Evaluation::evaluate_pieces< true, WHITE, KING>(Score*) { return SCORE_ZERO; }
 
 
   // evaluate_king() assigns bonuses and penalties to a king of a given color
@@ -417,7 +420,7 @@ namespace {
   };
 
   template<Color Us, bool DoTrace>
-  Score EvalInfo::evaluate_king() {
+  Score Evaluation::evaluate_king() {
 
     const Color Them    = (Us == WHITE ? BLACK : WHITE);
     const Square Up     = (Us == WHITE ? NORTH : SOUTH);
@@ -535,7 +538,7 @@ namespace {
   // and the attacked pieces.
 
   template<Color Us, bool DoTrace>
-  Score EvalInfo::evaluate_threats() {
+  Score Evaluation::evaluate_threats() {
 
     const Color Them        = (Us == WHITE ? BLACK      : WHITE);
     const Square Up         = (Us == WHITE ? NORTH      : SOUTH);
@@ -630,7 +633,7 @@ namespace {
   // pawns of the given color.
 
   template<Color Us, bool DoTrace>
-  Score EvalInfo::evaluate_passer_pawns() {
+  Score Evaluation::evaluate_passer_pawns() {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
 
@@ -721,7 +724,7 @@ namespace {
   // twice. Finally, the space bonus is multiplied by a weight. The aim is to
   // improve play on game opening.
   template<Color Us>
-  Score EvalInfo::evaluate_space() {
+  Score Evaluation::evaluate_space() {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
     const Bitboard SpaceMask =
@@ -755,7 +758,7 @@ namespace {
   // evaluate_initiative() computes the initiative correction value for the
   // position, i.e., second order bonus/malus based on the known attacking/defending
   // status of the players.
-  Score EvalInfo::evaluate_initiative(int asymmetry, Value eg) {
+  Score Evaluation::evaluate_initiative(int asymmetry, Value eg) {
 
     int kingDistance =  distance<File>(pos.square<KING>(WHITE), pos.square<KING>(BLACK))
                       - distance<Rank>(pos.square<KING>(WHITE), pos.square<KING>(BLACK));
@@ -774,7 +777,7 @@ namespace {
 
 
   // evaluate_scale_factor() computes the scale factor for the winning side
-  ScaleFactor EvalInfo::evaluate_scale_factor(Value eg) {
+  ScaleFactor Evaluation::evaluate_scale_factor(Value eg) {
 
     Color strongSide = eg > VALUE_DRAW ? WHITE : BLACK;
     ScaleFactor sf = me->scale_factor(pos, strongSide);
@@ -806,101 +809,101 @@ namespace {
     return sf;
   }
 
+  // value() returns the evaluation of the position for the side to move
+  template<bool DoTrace>
+  Value Evaluation::value() {
+
+    assert(!pos.checkers());
+
+    Score mobility[COLOR_NB] = { SCORE_ZERO, SCORE_ZERO };
+    Value v;
+
+    // Probe the material hash table
+    me = Material::probe(pos);
+
+    // If we have a specialized evaluation function for the current material
+    // configuration, call it and return.
+    if (me->specialized_eval_exists())
+        return me->evaluate(pos);
+
+    // Initialize score by reading the incrementally updated scores included in
+    // the position object (material + piece square tables) and the material
+    // imbalance. Score is computed internally from the white point of view.
+    Score score = pos.psq_score() + me->imbalance();
+
+    // Probe the pawn hash table
+    pe = Pawns::probe(pos);
+    score += pe->pawns_score();
+
+    // Early exit if score is high
+    v = (mg_value(score) + eg_value(score)) / 2;
+    if (abs(v) > LazyThreshold)
+       return pos.side_to_move() == WHITE ? v : -v;
+
+    // Initialize attack and king safety bitboards
+    eval_init<WHITE>();
+    eval_init<BLACK>();
+
+    // Evaluate all pieces but king and pawns
+    score += evaluate_pieces<DoTrace>(mobility);
+    score += mobility[WHITE] - mobility[BLACK];
+
+    // Evaluate kings after all other pieces because we need full attack
+    // information when computing the king safety evaluation.
+    score +=  evaluate_king<WHITE, DoTrace>()
+            - evaluate_king<BLACK, DoTrace>();
+
+    // Evaluate tactical threats, we need full attack information including king
+    score +=  evaluate_threats<WHITE, DoTrace>()
+            - evaluate_threats<BLACK, DoTrace>();
+
+    // Evaluate passed pawns, we need full attack information including king
+    score +=  evaluate_passer_pawns<WHITE, DoTrace>()
+            - evaluate_passer_pawns<BLACK, DoTrace>();
+
+    // Evaluate space for both sides, only during opening
+    if (pos.non_pawn_material() >= SpaceThreshold)
+        score +=  evaluate_space<WHITE>()
+                - evaluate_space<BLACK>();
+
+    // Evaluate position potential for the winning side
+    score += evaluate_initiative(pe->pawn_asymmetry(), eg_value(score));
+
+    // Evaluate scale factor for the winning side
+    ScaleFactor sf = evaluate_scale_factor(eg_value(score));
+
+    // Interpolate between a middlegame and a (scaled by 'sf') endgame score
+    v =  mg_value(score) * int(me->game_phase())
+       + eg_value(score) * int(PHASE_MIDGAME - me->game_phase()) * sf / SCALE_FACTOR_NORMAL;
+
+    v /= int(PHASE_MIDGAME);
+
+    // In case of tracing add all remaining individual evaluation terms
+    if (DoTrace)
+    {
+        Trace::add(MATERIAL, pos.psq_score());
+        Trace::add(IMBALANCE, me->imbalance());
+        Trace::add(PAWN, pe->pawns_score());
+        Trace::add(MOBILITY, mobility[WHITE], mobility[BLACK]);
+        if (pos.non_pawn_material() >= SpaceThreshold)
+            Trace::add(SPACE, evaluate_space<WHITE>()
+                            , evaluate_space<BLACK>());
+        Trace::add(TOTAL, score);
+    }
+
+    return (pos.side_to_move() == WHITE ? v : -v) + Eval::Tempo; // Side to move point of view
+  }
+
 } // namespace
 
 
 /// evaluate() is the main evaluation function. It returns a static evaluation
 /// of the position from the point of view of the side to move.
 
-template<bool DoTrace>
-Value Eval::evaluate(const Position& pos) {
-
-  assert(!pos.checkers());
-
-  Score mobility[COLOR_NB] = { SCORE_ZERO, SCORE_ZERO };
-  Value v;
-  EvalInfo ei(pos);
-
-  // Probe the material hash table
-  ei.me = Material::probe(pos);
-
-  // If we have a specialized evaluation function for the current material
-  // configuration, call it and return.
-  if (ei.me->specialized_eval_exists())
-      return ei.me->evaluate(pos);
-
-  // Initialize score by reading the incrementally updated scores included in
-  // the position object (material + piece square tables) and the material
-  // imbalance. Score is computed internally from the white point of view.
-  Score score = pos.psq_score() + ei.me->imbalance();
-
-  // Probe the pawn hash table
-  ei.pe = Pawns::probe(pos);
-  score += ei.pe->pawns_score();
-
-  // Early exit if score is high
-  v = (mg_value(score) + eg_value(score)) / 2;
-  if (abs(v) > LazyThreshold)
-     return pos.side_to_move() == WHITE ? v : -v;
-
-  // Initialize attack and king safety bitboards
-  ei.eval_init<WHITE>();
-  ei.eval_init<BLACK>();
-
-  // Evaluate all pieces but king and pawns
-  score += ei.evaluate_pieces<DoTrace>(mobility);
-  score += mobility[WHITE] - mobility[BLACK];
-
-  // Evaluate kings after all other pieces because we need full attack
-  // information when computing the king safety evaluation.
-  score +=  ei.evaluate_king<WHITE, DoTrace>()
-          - ei.evaluate_king<BLACK, DoTrace>();
-
-  // Evaluate tactical threats, we need full attack information including king
-  score +=  ei.evaluate_threats<WHITE, DoTrace>()
-          - ei.evaluate_threats<BLACK, DoTrace>();
-
-  // Evaluate passed pawns, we need full attack information including king
-  score +=  ei.evaluate_passer_pawns<WHITE, DoTrace>()
-          - ei.evaluate_passer_pawns<BLACK, DoTrace>();
-
-  // Evaluate space for both sides, only during opening
-  if (pos.non_pawn_material() >= SpaceThreshold)
-      score +=  ei.evaluate_space<WHITE>()
-              - ei.evaluate_space<BLACK>();
-
-  // Evaluate position potential for the winning side
-  score += ei.evaluate_initiative(ei.pe->pawn_asymmetry(), eg_value(score));
-
-  // Evaluate scale factor for the winning side
-  ScaleFactor sf = ei.evaluate_scale_factor(eg_value(score));
-
-  // Interpolate between a middlegame and a (scaled by 'sf') endgame score
-  v =  mg_value(score) * int(ei.me->game_phase())
-     + eg_value(score) * int(PHASE_MIDGAME - ei.me->game_phase()) * sf / SCALE_FACTOR_NORMAL;
-
-  v /= int(PHASE_MIDGAME);
-
-  // In case of tracing add all remaining individual evaluation terms
-  if (DoTrace)
-  {
-      Trace::add(MATERIAL, pos.psq_score());
-      Trace::add(IMBALANCE, ei.me->imbalance());
-      Trace::add(PAWN, ei.pe->pawns_score());
-      Trace::add(MOBILITY, mobility[WHITE], mobility[BLACK]);
-      if (pos.non_pawn_material() >= SpaceThreshold)
-          Trace::add(SPACE, ei.evaluate_space<WHITE>()
-                          , ei.evaluate_space<BLACK>());
-      Trace::add(TOTAL, score);
-  }
-
-  return (pos.side_to_move() == WHITE ? v : -v) + Eval::Tempo; // Side to move point of view
+Value Eval::evaluate(const Position& pos)
+{
+   return Evaluation(pos).value<false>();
 }
-
-// Explicit template instantiations
-template Value Eval::evaluate<true >(const Position&);
-template Value Eval::evaluate<false>(const Position&);
-
 
 /// trace() is like evaluate(), but instead of returning a value, it returns
 /// a string (suitable for outputting to stdout) that contains the detailed
@@ -910,7 +913,7 @@ std::string Eval::trace(const Position& pos) {
 
   std::memset(scores, 0, sizeof(scores));
 
-  Value v = evaluate<true>(pos);
+  Value v = Evaluation(pos).value<true>();
   v = pos.side_to_move() == WHITE ? v : -v; // White's point of view
 
   std::stringstream ss;
