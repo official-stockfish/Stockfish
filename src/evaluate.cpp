@@ -124,6 +124,15 @@ namespace {
     template<Color Us, bool DoTrace>
        Score evaluate_threats(const Position& pos);
 
+    template<Color Us, bool DoTrace>
+       Score evaluate_passer_pawns(const Position& pos);
+
+    template<Color Us>
+       Score evaluate_space(const Position& pos);
+
+    Score evaluate_initiative(const Position& pos, int asymmetry, Value eg);
+    ScaleFactor evaluate_scale_factor(const Position& pos, Value eg);
+
   };
 
   #define V(v) Value(v)
@@ -617,14 +626,14 @@ namespace {
   // pawns of the given color.
 
   template<Color Us, bool DoTrace>
-  Score evaluate_passer_pawns(const Position& pos, const EvalInfo& ei) {
+  Score EvalInfo::evaluate_passer_pawns(const Position& pos) {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
 
     Bitboard b, bb, squaresToQueen, defendedSquares, unsafeSquares;
     Score score = SCORE_ZERO;
 
-    b = ei.pe->passed_pawns(Us);
+    b = pe->passed_pawns(Us);
 
     while (b)
     {
@@ -632,7 +641,7 @@ namespace {
 
         assert(!(pos.pieces(Them, PAWN) & forward_bb(Us, s + pawn_push(Us))));
 
-        bb = forward_bb(Us, s) & (ei.attackedBy[Them][ALL_PIECES] | pos.pieces(Them));
+        bb = forward_bb(Us, s) & (attackedBy[Them][ALL_PIECES] | pos.pieces(Them));
         score -= HinderPassedPawn * popcount(bb);
 
         int r = relative_rank(Us, s) - RANK_2;
@@ -663,10 +672,10 @@ namespace {
                 bb = forward_bb(Them, s) & pos.pieces(ROOK, QUEEN) & pos.attacks_from<ROOK>(s);
 
                 if (!(pos.pieces(Us) & bb))
-                    defendedSquares &= ei.attackedBy[Us][ALL_PIECES];
+                    defendedSquares &= attackedBy[Us][ALL_PIECES];
 
                 if (!(pos.pieces(Them) & bb))
-                    unsafeSquares &= ei.attackedBy[Them][ALL_PIECES] | pos.pieces(Them);
+                    unsafeSquares &= attackedBy[Them][ALL_PIECES] | pos.pieces(Them);
 
                 // If there aren't any enemy attacks, assign a big bonus. Otherwise
                 // assign a smaller bonus if the block square isn't attacked.
@@ -708,7 +717,7 @@ namespace {
   // twice. Finally, the space bonus is multiplied by a weight. The aim is to
   // improve play on game opening.
   template<Color Us>
-  Score evaluate_space(const Position& pos, const EvalInfo& ei) {
+  Score EvalInfo::evaluate_space(const Position& pos) {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
     const Bitboard SpaceMask =
@@ -720,8 +729,8 @@ namespace {
     // pawn, or if it is undefended and attacked by an enemy piece.
     Bitboard safe =   SpaceMask
                    & ~pos.pieces(Us, PAWN)
-                   & ~ei.attackedBy[Them][PAWN]
-                   & (ei.attackedBy[Us][ALL_PIECES] | ~ei.attackedBy[Them][ALL_PIECES]);
+                   & ~attackedBy[Them][PAWN]
+                   & (attackedBy[Us][ALL_PIECES] | ~attackedBy[Them][ALL_PIECES]);
 
     // Find all squares which are at most three squares behind some friendly pawn
     Bitboard behind = pos.pieces(Us, PAWN);
@@ -733,7 +742,7 @@ namespace {
 
     // ...count safe + (behind & safe) with a single popcount.
     int bonus = popcount((Us == WHITE ? safe << 32 : safe >> 32) | (behind & safe));
-    int weight = pos.count<ALL_PIECES>(Us) - 2 * ei.pe->open_files();
+    int weight = pos.count<ALL_PIECES>(Us) - 2 * pe->open_files();
 
     return make_score(bonus * weight * weight / 16, 0);
   }
@@ -742,7 +751,7 @@ namespace {
   // evaluate_initiative() computes the initiative correction value for the
   // position, i.e., second order bonus/malus based on the known attacking/defending
   // status of the players.
-  Score evaluate_initiative(const Position& pos, int asymmetry, Value eg) {
+  Score EvalInfo::evaluate_initiative(const Position& pos, int asymmetry, Value eg) {
 
     int kingDistance =  distance<File>(pos.square<KING>(WHITE), pos.square<KING>(BLACK))
                       - distance<Rank>(pos.square<KING>(WHITE), pos.square<KING>(BLACK));
@@ -761,10 +770,10 @@ namespace {
 
 
   // evaluate_scale_factor() computes the scale factor for the winning side
-  ScaleFactor evaluate_scale_factor(const Position& pos, const EvalInfo& ei, Value eg) {
+  ScaleFactor EvalInfo::evaluate_scale_factor(const Position& pos, Value eg) {
 
     Color strongSide = eg > VALUE_DRAW ? WHITE : BLACK;
-    ScaleFactor sf = ei.me->scale_factor(pos, strongSide);
+    ScaleFactor sf = me->scale_factor(pos, strongSide);
 
     // If we don't already have an unusual scale factor, check for certain
     // types of endgames, and use a lower scale for those.
@@ -848,19 +857,19 @@ Value Eval::evaluate(const Position& pos) {
           - ei.evaluate_threats<BLACK, DoTrace>(pos);
 
   // Evaluate passed pawns, we need full attack information including king
-  score +=  evaluate_passer_pawns<WHITE, DoTrace>(pos, ei)
-          - evaluate_passer_pawns<BLACK, DoTrace>(pos, ei);
+  score +=  ei.evaluate_passer_pawns<WHITE, DoTrace>(pos)
+          - ei.evaluate_passer_pawns<BLACK, DoTrace>(pos);
 
   // Evaluate space for both sides, only during opening
   if (pos.non_pawn_material() >= SpaceThreshold)
-      score +=  evaluate_space<WHITE>(pos, ei)
-              - evaluate_space<BLACK>(pos, ei);
+      score +=  ei.evaluate_space<WHITE>(pos)
+              - ei.evaluate_space<BLACK>(pos);
 
   // Evaluate position potential for the winning side
-  score += evaluate_initiative(pos, ei.pe->pawn_asymmetry(), eg_value(score));
+  score += ei.evaluate_initiative(pos, ei.pe->pawn_asymmetry(), eg_value(score));
 
   // Evaluate scale factor for the winning side
-  ScaleFactor sf = evaluate_scale_factor(pos, ei, eg_value(score));
+  ScaleFactor sf = ei.evaluate_scale_factor(pos, eg_value(score));
 
   // Interpolate between a middlegame and a (scaled by 'sf') endgame score
   v =  mg_value(score) * int(ei.me->game_phase())
@@ -876,8 +885,8 @@ Value Eval::evaluate(const Position& pos) {
       Trace::add(PAWN, ei.pe->pawns_score());
       Trace::add(MOBILITY, mobility[WHITE], mobility[BLACK]);
       if (pos.non_pawn_material() >= SpaceThreshold)
-          Trace::add(SPACE, evaluate_space<WHITE>(pos, ei)
-                          , evaluate_space<BLACK>(pos, ei));
+          Trace::add(SPACE, ei.evaluate_space<WHITE>(pos)
+                          , ei.evaluate_space<BLACK>(pos));
       Trace::add(TOTAL, score);
   }
 
