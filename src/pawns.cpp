@@ -132,26 +132,6 @@ namespace {
         leverPush  = theirPawns & PawnAttacks[Us][s + Up];
         doubled    = ourPawns   & (s - Up);
         neighbours = ourPawns   & adjacent_files_bb(f);
-        phalanx    = neighbours & rank_bb(s);
-        supported  = neighbours & rank_bb(s - Up);
-        connected  = supported | phalanx;
-
-        // A pawn is backward when it is behind all pawns of the same color on the
-        // adjacent files and cannot be safely advanced.
-        if (!neighbours || lever || relative_rank(Us, s) >= RANK_5)
-            backward = false;
-        else
-        {
-            // Find the backmost rank with neighbours or stoppers
-            b = rank_bb(backmost_sq(Us, neighbours | stoppers));
-
-            // The pawn is backward when it cannot safely progress to that rank:
-            // either there is a stopper in the way on this rank, or there is a
-            // stopper on adjacent file which controls the way to that rank.
-            backward = (b | shift<Up>(b & adjacent_files_bb(f))) & stoppers;
-
-            assert(!backward || !(pawn_attack_span(Them, s + Up) & neighbours));
-        }
 
         // Passed pawns will be properly scored in evaluation because we need
         // full attack info to evaluate them. Include also not passed pawns
@@ -175,15 +155,38 @@ namespace {
         // Score this pawn
         if (!neighbours)
             score -= Isolated[opposed];
+        else
+        {
+            phalanx    = neighbours & rank_bb(s);
+            supported  = neighbours & rank_bb(s - Up);
+            connected  = supported | phalanx;
 
-        else if (backward)
-            score -= Backward[opposed];
+            // A pawn is backward when it is behind all pawns of the same color on the
+            // adjacent files and cannot be safely advanced.
+            if (lever || relative_rank(Us, s) >= RANK_5)
+                backward = false;
+            else
+            {
+                // Find the backmost rank with neighbours or stoppers
+                b = rank_bb(backmost_sq(Us, neighbours | stoppers));
 
-        else if (!supported)
-            score -= Unsupported;
+                // The pawn is backward when it cannot safely progress to that rank:
+                // either there is a stopper in the way on this rank, or there is a
+                // stopper on adjacent file which controls the way to that rank.
+                backward = (b | shift<Up>(b & adjacent_files_bb(f))) & stoppers;
 
-        if (connected)
-            score += Connected[opposed][!!phalanx][more_than_one(supported)][relative_rank(Us, s)];
+                assert(!backward || !(pawn_attack_span(Them, s + Up) & neighbours));
+            }
+
+            if (backward)
+                score -= Backward[opposed];
+
+            else if (!supported)
+                score -= Unsupported;
+
+            if (connected)
+                score += Connected[opposed][!!phalanx][more_than_one(supported)][relative_rank(Us, s)];
+        }
 
         if (doubled && !supported)
             score -= Doubled;
