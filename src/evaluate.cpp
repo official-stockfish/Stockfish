@@ -113,10 +113,10 @@ namespace {
     int kingAdjacentZoneAttacksCount[COLOR_NB];
 
     // Helpers
-    template<Color Us> 
+    template<Color Us>
        void eval_init();
 
-    template<bool DoTrace, Color Us = WHITE, PieceType Pt = KNIGHT> 
+    template<bool DoTrace, Color Us = WHITE, PieceType Pt = KNIGHT>
        Score evaluate_pieces(Score* mobility);
 
     template<Color Us, bool DoTrace>
@@ -900,7 +900,7 @@ namespace {
 } // namespace
 
 
-/// evaluate() is the main evaluation function for the outer world. It returns 
+/// evaluate() is the main evaluation function for the outer world. It returns
 /// a static evaluation of the position from the point of view of the side to move.
 
 Value Eval::evaluate(const Position& pos)
