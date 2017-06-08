@@ -76,6 +76,7 @@ namespace {
     Material::Entry* me;
     Pawns::Entry* pe;
     Bitboard mobilityArea[COLOR_NB];
+    const Position& pos;
 
     // attackedBy[color][piece type] is a bitboard representing all squares
     // attacked by a given color and piece type (can be also ALL_PIECES).
@@ -113,25 +114,28 @@ namespace {
 
 
     template<Color Us> 
-       void eval_init(const Position& pos);
+       void eval_init();
 
     template<bool DoTrace, Color Us = WHITE, PieceType Pt = KNIGHT> 
-       Score evaluate_pieces(const Position& pos, Score* mobility);
+       Score evaluate_pieces(Score* mobility);
 
     template<Color Us, bool DoTrace>
-       Score evaluate_king(const Position& pos);
+       Score evaluate_king();
 
     template<Color Us, bool DoTrace>
-       Score evaluate_threats(const Position& pos);
+       Score evaluate_threats();
 
     template<Color Us, bool DoTrace>
-       Score evaluate_passer_pawns(const Position& pos);
+       Score evaluate_passer_pawns();
 
     template<Color Us>
-       Score evaluate_space(const Position& pos);
+       Score evaluate_space();
 
-    Score evaluate_initiative(const Position& pos, int asymmetry, Value eg);
-    ScaleFactor evaluate_scale_factor(const Position& pos, Value eg);
+    Score evaluate_initiative(int asymmetry, Value eg);
+    ScaleFactor evaluate_scale_factor(Value eg);
+    
+    EvalInfo() = delete;
+    EvalInfo(const Position& p) : pos(p) {};
 
   };
 
@@ -241,7 +245,7 @@ namespace {
   // adding pawn attacks. To be done at the beginning of the evaluation.
 
   template<Color Us>
-  void EvalInfo::eval_init(const Position& pos) {
+  void EvalInfo::eval_init() {
 
     const Color  Them = (Us == WHITE ? BLACK : WHITE);
     const Square Up   = (Us == WHITE ? NORTH : SOUTH);
@@ -281,7 +285,7 @@ namespace {
   // color and type.
 
   template<bool DoTrace, Color Us, PieceType Pt>
-  Score EvalInfo::evaluate_pieces(const Position& pos, Score* mobility) {
+  Score EvalInfo::evaluate_pieces(Score* mobility) {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
     const PieceType NextPt = (Us == WHITE ? Pt : PieceType(Pt + 1));
@@ -393,13 +397,13 @@ namespace {
         Trace::add(Pt, Us, score);
 
     // Recursively call evaluate_pieces() of next piece type until KING is excluded
-    return score - evaluate_pieces<DoTrace, Them, NextPt>(pos, mobility);
+    return score - evaluate_pieces<DoTrace, Them, NextPt>(mobility);
   }
 
   template<>
-  Score EvalInfo::evaluate_pieces<false, WHITE, KING>(const Position&, Score*) { return SCORE_ZERO; }
+  Score EvalInfo::evaluate_pieces<false, WHITE, KING>(Score*) { return SCORE_ZERO; }
   template<>
-  Score EvalInfo::evaluate_pieces< true, WHITE, KING>(const Position&, Score*) { return SCORE_ZERO; }
+  Score EvalInfo::evaluate_pieces< true, WHITE, KING>(Score*) { return SCORE_ZERO; }
 
 
   // evaluate_king() assigns bonuses and penalties to a king of a given color
@@ -413,7 +417,7 @@ namespace {
   };
 
   template<Color Us, bool DoTrace>
-  Score EvalInfo::evaluate_king(const Position& pos) {
+  Score EvalInfo::evaluate_king() {
 
     const Color Them    = (Us == WHITE ? BLACK : WHITE);
     const Square Up     = (Us == WHITE ? NORTH : SOUTH);
@@ -531,7 +535,7 @@ namespace {
   // and the attacked pieces.
 
   template<Color Us, bool DoTrace>
-  Score EvalInfo::evaluate_threats(const Position& pos) {
+  Score EvalInfo::evaluate_threats() {
 
     const Color Them        = (Us == WHITE ? BLACK      : WHITE);
     const Square Up         = (Us == WHITE ? NORTH      : SOUTH);
@@ -626,7 +630,7 @@ namespace {
   // pawns of the given color.
 
   template<Color Us, bool DoTrace>
-  Score EvalInfo::evaluate_passer_pawns(const Position& pos) {
+  Score EvalInfo::evaluate_passer_pawns() {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
 
@@ -717,7 +721,7 @@ namespace {
   // twice. Finally, the space bonus is multiplied by a weight. The aim is to
   // improve play on game opening.
   template<Color Us>
-  Score EvalInfo::evaluate_space(const Position& pos) {
+  Score EvalInfo::evaluate_space() {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
     const Bitboard SpaceMask =
@@ -751,7 +755,7 @@ namespace {
   // evaluate_initiative() computes the initiative correction value for the
   // position, i.e., second order bonus/malus based on the known attacking/defending
   // status of the players.
-  Score EvalInfo::evaluate_initiative(const Position& pos, int asymmetry, Value eg) {
+  Score EvalInfo::evaluate_initiative(int asymmetry, Value eg) {
 
     int kingDistance =  distance<File>(pos.square<KING>(WHITE), pos.square<KING>(BLACK))
                       - distance<Rank>(pos.square<KING>(WHITE), pos.square<KING>(BLACK));
@@ -770,7 +774,7 @@ namespace {
 
 
   // evaluate_scale_factor() computes the scale factor for the winning side
-  ScaleFactor EvalInfo::evaluate_scale_factor(const Position& pos, Value eg) {
+  ScaleFactor EvalInfo::evaluate_scale_factor(Value eg) {
 
     Color strongSide = eg > VALUE_DRAW ? WHITE : BLACK;
     ScaleFactor sf = me->scale_factor(pos, strongSide);
@@ -815,7 +819,7 @@ Value Eval::evaluate(const Position& pos) {
 
   Score mobility[COLOR_NB] = { SCORE_ZERO, SCORE_ZERO };
   Value v;
-  EvalInfo ei;
+  EvalInfo ei(pos);
 
   // Probe the material hash table
   ei.me = Material::probe(pos);
@@ -840,36 +844,36 @@ Value Eval::evaluate(const Position& pos) {
      return pos.side_to_move() == WHITE ? v : -v;
 
   // Initialize attack and king safety bitboards
-  ei.eval_init<WHITE>(pos);
-  ei.eval_init<BLACK>(pos);
+  ei.eval_init<WHITE>();
+  ei.eval_init<BLACK>();
 
   // Evaluate all pieces but king and pawns
-  score += ei.evaluate_pieces<DoTrace>(pos, mobility);
+  score += ei.evaluate_pieces<DoTrace>(mobility);
   score += mobility[WHITE] - mobility[BLACK];
 
   // Evaluate kings after all other pieces because we need full attack
   // information when computing the king safety evaluation.
-  score +=  ei.evaluate_king<WHITE, DoTrace>(pos)
-          - ei.evaluate_king<BLACK, DoTrace>(pos);
+  score +=  ei.evaluate_king<WHITE, DoTrace>()
+          - ei.evaluate_king<BLACK, DoTrace>();
 
   // Evaluate tactical threats, we need full attack information including king
-  score +=  ei.evaluate_threats<WHITE, DoTrace>(pos)
-          - ei.evaluate_threats<BLACK, DoTrace>(pos);
+  score +=  ei.evaluate_threats<WHITE, DoTrace>()
+          - ei.evaluate_threats<BLACK, DoTrace>();
 
   // Evaluate passed pawns, we need full attack information including king
-  score +=  ei.evaluate_passer_pawns<WHITE, DoTrace>(pos)
-          - ei.evaluate_passer_pawns<BLACK, DoTrace>(pos);
+  score +=  ei.evaluate_passer_pawns<WHITE, DoTrace>()
+          - ei.evaluate_passer_pawns<BLACK, DoTrace>();
 
   // Evaluate space for both sides, only during opening
   if (pos.non_pawn_material() >= SpaceThreshold)
-      score +=  ei.evaluate_space<WHITE>(pos)
-              - ei.evaluate_space<BLACK>(pos);
+      score +=  ei.evaluate_space<WHITE>()
+              - ei.evaluate_space<BLACK>();
 
   // Evaluate position potential for the winning side
-  score += ei.evaluate_initiative(pos, ei.pe->pawn_asymmetry(), eg_value(score));
+  score += ei.evaluate_initiative(ei.pe->pawn_asymmetry(), eg_value(score));
 
   // Evaluate scale factor for the winning side
-  ScaleFactor sf = ei.evaluate_scale_factor(pos, eg_value(score));
+  ScaleFactor sf = ei.evaluate_scale_factor(eg_value(score));
 
   // Interpolate between a middlegame and a (scaled by 'sf') endgame score
   v =  mg_value(score) * int(ei.me->game_phase())
@@ -885,8 +889,8 @@ Value Eval::evaluate(const Position& pos) {
       Trace::add(PAWN, ei.pe->pawns_score());
       Trace::add(MOBILITY, mobility[WHITE], mobility[BLACK]);
       if (pos.non_pawn_material() >= SpaceThreshold)
-          Trace::add(SPACE, ei.evaluate_space<WHITE>(pos)
-                          , ei.evaluate_space<BLACK>(pos));
+          Trace::add(SPACE, ei.evaluate_space<WHITE>()
+                          , ei.evaluate_space<BLACK>());
       Trace::add(TOTAL, score);
   }
 
