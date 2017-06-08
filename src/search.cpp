@@ -550,7 +550,7 @@ namespace {
     Move ttMove, move, excludedMove, bestMove;
     Depth extension, newDepth;
     Value bestValue, value, ttValue, eval;
-    bool ttHit, inCheck, givesCheck, singularExtensionNode, improving;
+    bool ttHit, inCheck, givesCheck, improving;
     bool captureOrPromotion, doFullDepthSearch, moveCountPruning, skipQuiets;
     Piece moved_piece;
     int moveCount, quietCount;
@@ -829,13 +829,6 @@ moves_loop: // When in check search starts from here
             /* || ss->staticEval == VALUE_NONE Already implicit in the previous condition */
                ||(ss-2)->staticEval == VALUE_NONE;
 
-    singularExtensionNode =   !rootNode
-                           &&  depth >= 8 * ONE_PLY
-                           &&  ttMove != MOVE_NONE
-                           &&  ttValue != VALUE_NONE
-                           && !excludedMove // Recursive singular search is not allowed
-                           && (tte->bound() & BOUND_LOWER)
-                           &&  tte->depth() >= depth - 3 * ONE_PLY;
     skipQuiets = false;
 
     // Step 11. Loop through moves
@@ -882,8 +875,13 @@ moves_loop: // When in check search starts from here
       // is singular and should be extended. To verify this we do a reduced search
       // on all the other moves but the ttMove and if the result is lower than
       // ttValue minus a margin then we will extend the ttMove.
-      if (    singularExtensionNode
-          &&  move == ttMove
+      if (!rootNode
+          && move == ttMove
+          &&  depth >= 8 * ONE_PLY
+          &&  ttValue != VALUE_NONE
+          && !excludedMove // Recursive singular search is not allowed
+          && (tte->bound() & BOUND_LOWER)
+          &&  tte->depth() >= depth - 3 * ONE_PLY
           &&  pos.legal(move))
       {
           Value rBeta = std::max(ttValue - 2 * depth / ONE_PLY, -VALUE_MATE);
