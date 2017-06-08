@@ -69,14 +69,14 @@ namespace {
 
   using namespace Trace;
 
-  // Struct Evaluation contains various information computed and collected
+  // Evaluation class contains various information computed and collected
   // by the evaluation functions.
-  struct Evaluation {
+  class Evaluation {
 
-    const Position& pos;
     Material::Entry* me;
     Pawns::Entry* pe;
     Bitboard mobilityArea[COLOR_NB];
+    const Position& pos;
 
     // attackedBy[color][piece type] is a bitboard representing all squares
     // attacked by a given color and piece type (can be also ALL_PIECES).
@@ -112,10 +112,6 @@ namespace {
     // to kingAdjacentZoneAttacksCount[WHITE].
     int kingAdjacentZoneAttacksCount[COLOR_NB];
 
-    // Constructors
-    Evaluation() = delete;
-    Evaluation(const Position& p) : pos(p) {};
-
     // Helpers
     template<Color Us> 
        void eval_init();
@@ -138,8 +134,14 @@ namespace {
     Score evaluate_initiative(int asymmetry, Value eg);
     ScaleFactor evaluate_scale_factor(Value eg);
 
+    public:
+
     template<bool DoTrace>
        Value value();
+
+    // Constructors
+    Evaluation() = delete;
+    Evaluation(const Position& p) : pos(p) {};
   };
 
   #define V(v) Value(v)
@@ -809,7 +811,8 @@ namespace {
     return sf;
   }
 
-  // value() returns the evaluation of the position for the side to move
+  // value() computes the various parts of the evaluation and returns
+  // the value of the position from the point of view of the side to move.
   template<bool DoTrace>
   Value Evaluation::value() {
 
@@ -897,8 +900,8 @@ namespace {
 } // namespace
 
 
-/// evaluate() is the main evaluation function. It returns a static evaluation
-/// of the position from the point of view of the side to move.
+/// evaluate() is the main evaluation function for the outer world. It returns 
+/// a static evaluation of the position from the point of view of the side to move.
 
 Value Eval::evaluate(const Position& pos)
 {
