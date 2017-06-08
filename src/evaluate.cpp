@@ -110,6 +110,9 @@ namespace {
     // a white knight on g5 and black's king is on g8, this white knight adds 2
     // to kingAdjacentZoneAttacksCount[WHITE].
     int kingAdjacentZoneAttacksCount[COLOR_NB];
+    
+
+    template<Color Us> void eval_init(const Position& pos);
   };
 
   #define V(v) Value(v)
@@ -218,7 +221,7 @@ namespace {
   // adding pawn attacks. To be done at the beginning of the evaluation.
 
   template<Color Us>
-  void eval_init(const Position& pos, EvalInfo& ei) {
+  void EvalInfo::eval_init(const Position& pos) {
 
     const Color  Them = (Us == WHITE ? BLACK : WHITE);
     const Square Up   = (Us == WHITE ? NORTH : SOUTH);
@@ -230,27 +233,27 @@ namespace {
 
     // Squares occupied by those pawns, by our king, or controlled by enemy pawns
     // are excluded from the mobility area.
-    ei.mobilityArea[Us] = ~(b | pos.square<KING>(Us) | ei.pe->pawn_attacks(Them));
+    mobilityArea[Us] = ~(b | pos.square<KING>(Us) | pe->pawn_attacks(Them));
 
     // Initialise the attack bitboards with the king and pawn information
-    b = ei.attackedBy[Us][KING] = pos.attacks_from<KING>(pos.square<KING>(Us));
-    ei.attackedBy[Us][PAWN] = ei.pe->pawn_attacks(Us);
+    b = attackedBy[Us][KING] = pos.attacks_from<KING>(pos.square<KING>(Us));
+    attackedBy[Us][PAWN] = pe->pawn_attacks(Us);
 
-    ei.attackedBy2[Us]            = b & ei.attackedBy[Us][PAWN];
-    ei.attackedBy[Us][ALL_PIECES] = b | ei.attackedBy[Us][PAWN];
+    attackedBy2[Us]            = b & attackedBy[Us][PAWN];
+    attackedBy[Us][ALL_PIECES] = b | attackedBy[Us][PAWN];
 
     // Init our king safety tables only if we are going to use them
     if (pos.non_pawn_material(Them) >= RookValueMg + KnightValueMg)
     {
-        ei.kingRing[Us] = b;
+        kingRing[Us] = b;
         if (relative_rank(Us, pos.square<KING>(Us)) == RANK_1)
-            ei.kingRing[Us] |= shift<Up>(b);
+            kingRing[Us] |= shift<Up>(b);
 
-        ei.kingAttackersCount[Them] = popcount(b & ei.pe->pawn_attacks(Them));
-        ei.kingAdjacentZoneAttacksCount[Them] = ei.kingAttackersWeight[Them] = 0;
+        kingAttackersCount[Them] = popcount(b & pe->pawn_attacks(Them));
+        kingAdjacentZoneAttacksCount[Them] = kingAttackersWeight[Them] = 0;
     }
     else
-        ei.kingRing[Us] = ei.kingAttackersCount[Them] = 0;
+        kingRing[Us] = kingAttackersCount[Them] = 0;
   }
 
 
@@ -817,8 +820,8 @@ Value Eval::evaluate(const Position& pos) {
      return pos.side_to_move() == WHITE ? v : -v;
 
   // Initialize attack and king safety bitboards
-  eval_init<WHITE>(pos, ei);
-  eval_init<BLACK>(pos, ei);
+  ei.eval_init<WHITE>(pos);
+  ei.eval_init<BLACK>(pos);
 
   // Evaluate all pieces but king and pawns
   score += evaluate_pieces<DoTrace>(pos, ei, mobility);
