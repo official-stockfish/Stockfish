@@ -110,9 +110,12 @@ namespace {
     // a white knight on g5 and black's king is on g8, this white knight adds 2
     // to kingAdjacentZoneAttacksCount[WHITE].
     int kingAdjacentZoneAttacksCount[COLOR_NB];
-    
+
 
     template<Color Us> void eval_init(const Position& pos);
+    template<bool DoTrace, Color Us = WHITE, PieceType Pt = KNIGHT> 
+    Score evaluate_pieces(const Position& pos, Score* mobility);
+
   };
 
   #define V(v) Value(v)
@@ -260,8 +263,8 @@ namespace {
   // evaluate_pieces() assigns bonuses and penalties to the pieces of a given
   // color and type.
 
-  template<bool DoTrace, Color Us = WHITE, PieceType Pt = KNIGHT>
-  Score evaluate_pieces(const Position& pos, EvalInfo& ei, Score* mobility) {
+  template<bool DoTrace, Color Us, PieceType Pt>
+  Score EvalInfo::evaluate_pieces(const Position& pos, Score* mobility) {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
     const PieceType NextPt = (Us == WHITE ? Pt : PieceType(Pt + 1));
@@ -273,7 +276,7 @@ namespace {
     Square s;
     Score score = SCORE_ZERO;
 
-    ei.attackedBy[Us][Pt] = 0;
+    attackedBy[Us][Pt] = 0;
 
     while ((s = *pl++) != SQ_NONE)
     {
@@ -285,17 +288,17 @@ namespace {
         if (pos.pinned_pieces(Us) & s)
             b &= LineBB[pos.square<KING>(Us)][s];
 
-        ei.attackedBy2[Us] |= ei.attackedBy[Us][ALL_PIECES] & b;
-        ei.attackedBy[Us][ALL_PIECES] |= ei.attackedBy[Us][Pt] |= b;
+        attackedBy2[Us] |= attackedBy[Us][ALL_PIECES] & b;
+        attackedBy[Us][ALL_PIECES] |= attackedBy[Us][Pt] |= b;
 
-        if (b & ei.kingRing[Them])
+        if (b & kingRing[Them])
         {
-            ei.kingAttackersCount[Us]++;
-            ei.kingAttackersWeight[Us] += KingAttackWeights[Pt];
-            ei.kingAdjacentZoneAttacksCount[Us] += popcount(b & ei.attackedBy[Them][KING]);
+            kingAttackersCount[Us]++;
+            kingAttackersWeight[Us] += KingAttackWeights[Pt];
+            kingAdjacentZoneAttacksCount[Us] += popcount(b & attackedBy[Them][KING]);
         }
 
-        int mob = popcount(b & ei.mobilityArea[Us]);
+        int mob = popcount(b & mobilityArea[Us]);
 
         mobility[Us] += MobilityBonus[Pt - 2][mob];
 
@@ -305,14 +308,14 @@ namespace {
         if (Pt == BISHOP || Pt == KNIGHT)
         {
             // Bonus for outpost squares
-            bb = OutpostRanks & ~ei.pe->pawn_attacks_span(Them);
+            bb = OutpostRanks & ~pe->pawn_attacks_span(Them);
             if (bb & s)
-                score += Outpost[Pt == BISHOP][!!(ei.attackedBy[Us][PAWN] & s)] * 2;
+                score += Outpost[Pt == BISHOP][!!(attackedBy[Us][PAWN] & s)] * 2;
             else
             {
                 bb &= b & ~pos.pieces(Us);
                 if (bb)
-                   score += Outpost[Pt == BISHOP][!!(ei.attackedBy[Us][PAWN] & bb)];
+                   score += Outpost[Pt == BISHOP][!!(attackedBy[Us][PAWN] & bb)];
             }
 
             // Bonus when behind a pawn
@@ -322,7 +325,7 @@ namespace {
 
             // Penalty for pawns on the same color square as the bishop
             if (Pt == BISHOP)
-                score -= BishopPawns * ei.pe->pawns_on_same_color_squares(Us, s);
+                score -= BishopPawns * pe->pawns_on_same_color_squares(Us, s);
 
             // An important Chess960 pattern: A cornered bishop blocked by a friendly
             // pawn diagonally in front of it is a very serious problem, especially
@@ -346,8 +349,8 @@ namespace {
                 score += RookOnPawn * popcount(pos.pieces(Them, PAWN) & PseudoAttacks[ROOK][s]);
 
             // Bonus when on an open or semi-open file
-            if (ei.pe->semiopen_file(Us, file_of(s)))
-                score += RookOnFile[!!ei.pe->semiopen_file(Them, file_of(s))];
+            if (pe->semiopen_file(Us, file_of(s)))
+                score += RookOnFile[!!pe->semiopen_file(Them, file_of(s))];
 
             // Penalty when trapped by the king, even more if the king cannot castle
             else if (mob <= 3)
@@ -355,7 +358,7 @@ namespace {
                 Square ksq = pos.square<KING>(Us);
 
                 if (   ((file_of(ksq) < FILE_E) == (file_of(s) < file_of(ksq)))
-                    && !ei.pe->semiopen_side(Us, file_of(ksq), file_of(s) < file_of(ksq)))
+                    && !pe->semiopen_side(Us, file_of(ksq), file_of(s) < file_of(ksq)))
                     score -= (TrappedRook - make_score(mob * 22, 0)) * (1 + !pos.can_castle(Us));
             }
         }
@@ -373,13 +376,13 @@ namespace {
         Trace::add(Pt, Us, score);
 
     // Recursively call evaluate_pieces() of next piece type until KING is excluded
-    return score - evaluate_pieces<DoTrace, Them, NextPt>(pos, ei, mobility);
+    return score - evaluate_pieces<DoTrace, Them, NextPt>(pos, mobility);
   }
 
   template<>
-  Score evaluate_pieces<false, WHITE, KING>(const Position&, EvalInfo&, Score*) { return SCORE_ZERO; }
+  Score EvalInfo::evaluate_pieces<false, WHITE, KING>(const Position&, Score*) { return SCORE_ZERO; }
   template<>
-  Score evaluate_pieces< true, WHITE, KING>(const Position&, EvalInfo&, Score*) { return SCORE_ZERO; }
+  Score EvalInfo::evaluate_pieces< true, WHITE, KING>(const Position&, Score*) { return SCORE_ZERO; }
 
 
   // evaluate_king() assigns bonuses and penalties to a king of a given color
@@ -824,7 +827,7 @@ Value Eval::evaluate(const Position& pos) {
   ei.eval_init<BLACK>(pos);
 
   // Evaluate all pieces but king and pawns
-  score += evaluate_pieces<DoTrace>(pos, ei, mobility);
+  score += ei.evaluate_pieces<DoTrace>(pos, mobility);
   score += mobility[WHITE] - mobility[BLACK];
 
   // Evaluate kings after all other pieces because we need full attack
