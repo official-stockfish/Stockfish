@@ -73,10 +73,10 @@ namespace {
   // by the evaluation functions.
   class Evaluation {
 
+    const Position& pos;
     Material::Entry* me;
     Pawns::Entry* pe;
     Bitboard mobilityArea[COLOR_NB];
-    const Position& pos;
 
     // attackedBy[color][piece type] is a bitboard representing all squares
     // attacked by a given color and piece type (can be also ALL_PIECES).
@@ -134,14 +134,15 @@ namespace {
     Score evaluate_initiative(int asymmetry, Value eg);
     ScaleFactor evaluate_scale_factor(Value eg);
 
-    public:
+public:
 
-    template<bool DoTrace>
+    template<bool DoTrace = false>
        Value value();
 
     // Constructors
     Evaluation() = delete;
     Evaluation(const Position& p) : pos(p) {};
+    
   };
 
   #define V(v) Value(v)
@@ -905,7 +906,7 @@ namespace {
 
 Value Eval::evaluate(const Position& pos)
 {
-   return Evaluation(pos).value<false>();
+   return Evaluation(pos).value();
 }
 
 /// trace() is like evaluate(), but instead of returning a value, it returns
