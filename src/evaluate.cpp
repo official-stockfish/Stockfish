@@ -134,7 +134,7 @@ namespace {
     Score evaluate_initiative(int asymmetry, Value eg);
     ScaleFactor evaluate_scale_factor(Value eg);
 
-public:
+  public:
 
     template<bool DoTrace = false>
        Value value();
@@ -142,7 +142,6 @@ public:
     // Constructors
     Evaluation() = delete;
     Evaluation(const Position& p) : pos(p) {};
-    
   };
 
   #define V(v) Value(v)
