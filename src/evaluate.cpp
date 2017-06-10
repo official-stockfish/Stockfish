@@ -124,7 +124,7 @@ namespace {
     template<Color Us>               Score evaluate_space();
     template<Color Us, PieceType Pt> Score evaluate_pieces();
     ScaleFactor evaluate_scale_factor(Value eg);
-    Score       evaluate_initiative(int asymmetry, Value eg);
+    Score evaluate_initiative(Value eg);
 
   public:
 
@@ -281,7 +281,7 @@ namespace {
   // evaluate_pieces() assigns bonuses and penalties to the pieces of a given
   // color and type.
 
-  template<Tracing T> template<Color Us, PieceType Pt>
+  template<Tracing T>  template<Color Us, PieceType Pt>
   Score Evaluation<T>::evaluate_pieces() {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
@@ -406,7 +406,7 @@ namespace {
     QueenSide, QueenSide, QueenSide, CenterFiles, CenterFiles, KingSide, KingSide, KingSide
   };
 
-  template<Tracing T> template<Color Us>
+  template<Tracing T>  template<Color Us>
   Score Evaluation<T>::evaluate_king() {
 
     const Color Them    = (Us == WHITE ? BLACK : WHITE);
@@ -524,7 +524,7 @@ namespace {
   // evaluate_threats() assigns bonuses according to the types of the attacking
   // and the attacked pieces.
 
-  template<Tracing T> template<Color Us>
+  template<Tracing T>  template<Color Us>
   Score Evaluation<T>::evaluate_threats() {
 
     const Color Them        = (Us == WHITE ? BLACK      : WHITE);
@@ -619,7 +619,7 @@ namespace {
   // evaluate_passer_pawns() evaluates the passed pawns and candidate passed
   // pawns of the given color.
 
-  template<Tracing T> template<Color Us>
+  template<Tracing T>  template<Color Us>
   Score Evaluation<T>::evaluate_passer_pawns() {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
@@ -711,7 +711,7 @@ namespace {
   // twice. Finally, the space bonus is multiplied by a weight. The aim is to
   // improve play on game opening.
   
-  template<Tracing T> template<Color Us>
+  template<Tracing T>  template<Color Us>
   Score Evaluation<T>::evaluate_space() {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
@@ -748,14 +748,14 @@ namespace {
   // status of the players.
   
   template<Tracing T>
-  Score Evaluation<T>::evaluate_initiative(int asymmetry, Value eg) {
+  Score Evaluation<T>::evaluate_initiative(Value eg) {
 
     int kingDistance =  distance<File>(pos.square<KING>(WHITE), pos.square<KING>(BLACK))
                       - distance<Rank>(pos.square<KING>(WHITE), pos.square<KING>(BLACK));
     bool bothFlanks = (pos.pieces(PAWN) & QueenSide) && (pos.pieces(PAWN) & KingSide);
 
     // Compute the initiative bonus for the attacking side
-    int initiative = 8 * (asymmetry + kingDistance - 17) + 12 * pos.count<PAWN>() + 16 * bothFlanks;
+    int initiative = 8 * (pe->pawn_asymmetry() + kingDistance - 17) + 12 * pos.count<PAWN>() + 16 * bothFlanks;
 
     // Now apply the bonus: note that we find the attacking side by extracting
     // the sign of the endgame value, and that we carefully cap the bonus so
@@ -857,7 +857,7 @@ namespace {
         score +=  evaluate_space<WHITE>()
                 - evaluate_space<BLACK>();
 
-    score += evaluate_initiative(pe->pawn_asymmetry(), eg_value(score));
+    score += evaluate_initiative(eg_value(score));
 
     // Interpolate between a middlegame and a (scaled by 'sf') endgame score
     ScaleFactor sf = evaluate_scale_factor(eg_value(score));
