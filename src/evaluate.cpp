@@ -33,6 +33,8 @@ namespace {
 
   namespace Trace {
 
+    enum Tracing {NO_TRACE, TRACE};
+
     enum Term { // The first 8 entries are for PieceType
       MATERIAL = 8, IMBALANCE, MOBILITY, THREAT, PASSED, SPACE, TOTAL, TERM_NB
     };
@@ -71,7 +73,7 @@ namespace {
 
   // Evaluation class contains various information computed and collected
   // by the evaluation functions.
-  template<bool Trace>
+  template<Tracing T = NO_TRACE>
   class Evaluation {
 
     const Position& pos;
@@ -239,7 +241,7 @@ namespace {
   // initialization() initializes king and attack bitboards for a given color
   // adding pawn attacks. To be done at the beginning of the evaluation.
 
-  template<bool T> template<Color Us>
+  template<Tracing T> template<Color Us>
   void Evaluation<T>::initialization() {
 
     const Color  Them = (Us == WHITE ? BLACK : WHITE);
@@ -279,8 +281,8 @@ namespace {
   // evaluate_pieces() assigns bonuses and penalties to the pieces of a given
   // color and type.
 
-  template<bool Trace> template<Color Us, PieceType Pt>
-  Score Evaluation<Trace>::evaluate_pieces() {
+  template<Tracing T> template<Color Us, PieceType Pt>
+  Score Evaluation<T>::evaluate_pieces() {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
     const Bitboard OutpostRanks = (Us == WHITE ? Rank4BB | Rank5BB | Rank6BB
@@ -387,7 +389,7 @@ namespace {
         }
     }
 
-    if (Trace)
+    if (T)
         Trace::add(Pt, Us, score);
 
     return score;
@@ -404,8 +406,8 @@ namespace {
     QueenSide, QueenSide, QueenSide, CenterFiles, CenterFiles, KingSide, KingSide, KingSide
   };
 
-  template<bool Trace> template<Color Us>
-  Score Evaluation<Trace>::evaluate_king() {
+  template<Tracing T> template<Color Us>
+  Score Evaluation<T>::evaluate_king() {
 
     const Color Them    = (Us == WHITE ? BLACK : WHITE);
     const Square Up     = (Us == WHITE ? NORTH : SOUTH);
@@ -512,7 +514,7 @@ namespace {
     if (!(pos.pieces(PAWN) & KingFlank[kf]))
         score -= PawnlessFlank;
 
-    if (Trace)
+    if (T)
         Trace::add(KING, Us, score);
 
     return score;
@@ -522,8 +524,8 @@ namespace {
   // evaluate_threats() assigns bonuses according to the types of the attacking
   // and the attacked pieces.
 
-  template<bool Trace> template<Color Us>
-  Score Evaluation<Trace>::evaluate_threats() {
+  template<Tracing T> template<Color Us>
+  Score Evaluation<T>::evaluate_threats() {
 
     const Color Them        = (Us == WHITE ? BLACK      : WHITE);
     const Square Up         = (Us == WHITE ? NORTH      : SOUTH);
@@ -607,7 +609,7 @@ namespace {
 
     score += ThreatByPawnPush * popcount(b);
 
-    if (Trace)
+    if (T)
         Trace::add(THREAT, Us, score);
 
     return score;
@@ -617,8 +619,8 @@ namespace {
   // evaluate_passer_pawns() evaluates the passed pawns and candidate passed
   // pawns of the given color.
 
-  template<bool Trace> template<Color Us>
-  Score Evaluation<Trace>::evaluate_passer_pawns() {
+  template<Tracing T> template<Color Us>
+  Score Evaluation<T>::evaluate_passer_pawns() {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
 
@@ -695,7 +697,7 @@ namespace {
         score += make_score(mbonus, ebonus) + PassedFile[file_of(s)];
     }
 
-    if (Trace)
+    if (T)
         Trace::add(PASSED, Us, score);
 
     return score;
@@ -709,7 +711,7 @@ namespace {
   // twice. Finally, the space bonus is multiplied by a weight. The aim is to
   // improve play on game opening.
   
-  template<bool T> template<Color Us>
+  template<Tracing T> template<Color Us>
   Score Evaluation<T>::evaluate_space() {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
@@ -745,7 +747,7 @@ namespace {
   // position, i.e., second order bonus/malus based on the known attacking/defending
   // status of the players.
   
-  template<bool T>
+  template<Tracing T>
   Score Evaluation<T>::evaluate_initiative(int asymmetry, Value eg) {
 
     int kingDistance =  distance<File>(pos.square<KING>(WHITE), pos.square<KING>(BLACK))
@@ -766,7 +768,7 @@ namespace {
 
   // evaluate_scale_factor() computes the scale factor for the winning side
   
-  template<bool T>
+  template<Tracing T>
   ScaleFactor Evaluation<T>::evaluate_scale_factor(Value eg) {
 
     Color strongSide = eg > VALUE_DRAW ? WHITE : BLACK;
@@ -803,8 +805,8 @@ namespace {
   // value() computes the various parts of the evaluation and returns
   // the value of the position from the point of view of the side to move.
   
-  template<bool Trace>
-  Value Evaluation<Trace>::value() {
+  template<Tracing T>
+  Value Evaluation<T>::value() {
 
     assert(!pos.checkers());
 
@@ -865,7 +867,7 @@ namespace {
     v /= int(PHASE_MIDGAME);
 
     // In case of tracing add all remaining individual evaluation terms
-    if (Trace)
+    if (T)
     {
         Trace::add(MATERIAL, pos.psq_score());
         Trace::add(IMBALANCE, me->imbalance());
@@ -888,7 +890,7 @@ namespace {
 
 Value Eval::evaluate(const Position& pos)
 {
-   return Evaluation<false>(pos).value();
+   return Evaluation<>(pos).value();
 }
 
 /// trace() is like evaluate(), but instead of returning a value, it returns
@@ -899,7 +901,7 @@ std::string Eval::trace(const Position& pos) {
 
   std::memset(scores, 0, sizeof(scores));
 
-  Value v = Evaluation<true>(pos).value();
+  Value v = Evaluation<TRACE>(pos).value();
   v = pos.side_to_move() == WHITE ? v : -v; // White's point of view
 
   std::stringstream ss;
