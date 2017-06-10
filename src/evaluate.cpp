@@ -76,6 +76,25 @@ namespace {
   template<Tracing T = NO_TRACE>
   class Evaluation {
 
+  public:
+    Evaluation() = delete;
+    Evaluation(const Position& p) : pos(p) {};
+    Evaluation& operator=(const Evaluation&) = delete;
+
+    Value value();
+
+  private:
+    // Evaluation helpers (used when calling value())
+    template<Color Us> void initialize();
+    template<Color Us> Score evaluate_king();
+    template<Color Us> Score evaluate_threats();
+    template<Color Us> Score evaluate_passer_pawns();
+    template<Color Us> Score evaluate_space();
+    template<Color Us, PieceType Pt> Score evaluate_pieces();
+    ScaleFactor evaluate_scale_factor(Value eg);
+    Score evaluate_initiative(Value eg);
+
+    // Data members
     const Position& pos;
     Material::Entry* me;
     Pawns::Entry* pe;
@@ -115,24 +134,6 @@ namespace {
     // a white knight on g5 and black's king is on g8, this white knight adds 2
     // to kingAdjacentZoneAttacksCount[WHITE].
     int kingAdjacentZoneAttacksCount[COLOR_NB];
-
-    // Helpers
-    template<Color Us>               void  initialization();
-    template<Color Us>               Score evaluate_king();
-    template<Color Us>               Score evaluate_threats();
-    template<Color Us>               Score evaluate_passer_pawns();
-    template<Color Us>               Score evaluate_space();
-    template<Color Us, PieceType Pt> Score evaluate_pieces();
-    ScaleFactor evaluate_scale_factor(Value eg);
-    Score evaluate_initiative(Value eg);
-
-  public:
-
-    Value value();
-
-    // Constructors
-    Evaluation() = delete;
-    Evaluation(const Position& p) : pos(p) {};
   };
 
   #define V(v) Value(v)
@@ -238,11 +239,11 @@ namespace {
   const Value SpaceThreshold = Value(12222);
 
 
-  // initialization() initializes king and attack bitboards for a given color
-  // adding pawn attacks. To be done at the beginning of the evaluation.
+  // initialize() computes king and pawn attacks, and the king ring bitboard
+  // for a given color. This is done at the beginning of the evaluation.
 
   template<Tracing T> template<Color Us>
-  void Evaluation<T>::initialization() {
+  void Evaluation<T>::initialize() {
 
     const Color  Them = (Us == WHITE ? BLACK : WHITE);
     const Square Up   = (Us == WHITE ? NORTH : SOUTH);
@@ -760,9 +761,9 @@ namespace {
     // Now apply the bonus: note that we find the attacking side by extracting
     // the sign of the endgame value, and that we carefully cap the bonus so
     // that the endgame score will never change sign after the bonus.
-    int value = ((eg > 0) - (eg < 0)) * std::max(initiative, -abs(eg));
+    int v = ((eg > 0) - (eg < 0)) * std::max(initiative, -abs(eg));
 
-    return make_score(0, value);
+    return make_score(0, v);
   }
 
 
@@ -802,8 +803,9 @@ namespace {
   }
 
 
-  // value() computes the various parts of the evaluation and returns
-  // the value of the position from the point of view of the side to move.
+  // value() is the main function of the class. It computes the various parts of 
+  // the evaluation and returns the value of the position from the point of view
+  // of the side to move.
   
   template<Tracing T>
   Value Evaluation<T>::value() {
@@ -834,8 +836,8 @@ namespace {
 
     // Main evaluation begins here
 
-    initialization<WHITE>();
-    initialization<BLACK>();
+    initialize<WHITE>();
+    initialize<BLACK>();
 
     score += evaluate_pieces<WHITE, KNIGHT>() - evaluate_pieces<BLACK, KNIGHT>();
     score += evaluate_pieces<WHITE, BISHOP>() - evaluate_pieces<BLACK, BISHOP>();
@@ -885,8 +887,8 @@ namespace {
 } // namespace
 
 
-/// evaluate() is the main evaluation function for the outer world. It returns
-/// a static evaluation of the position from the point of view of the side to move.
+/// evaluate() is the evaluator for the outer world. It returns a static evaluation
+/// of the position from the point of view of the side to move.
 
 Value Eval::evaluate(const Position& pos)
 {
