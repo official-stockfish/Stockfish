@@ -105,7 +105,7 @@ namespace {
     Score score = SCORE_ZERO;
     const Square* pl = pos.squares<PAWN>(Us);
 
-    Bitboard ourPawns   = pos.pieces(Us  , PAWN);
+    Bitboard ourPawns   = pos.pieces(  Us, PAWN);
     Bitboard theirPawns = pos.pieces(Them, PAWN);
 
     e->passedPawns[Us]   = e->pawnAttacksSpan[Us] = 0;

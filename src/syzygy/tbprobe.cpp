@@ -673,7 +673,7 @@ int map_score(DTZEntry* entry, File f, int value, WDLScore wdl) {
 //      idx = Binomial[1][s1] + Binomial[2][s2] + ... + Binomial[k][sk]
 //
 template<typename Entry, typename T = typename Ret<Entry>::type>
-T do_probe_table(const Position& pos,  Entry* entry, WDLScore wdl, ProbeState* result) {
+T do_probe_table(const Position& pos, Entry* entry, WDLScore wdl, ProbeState* result) {
 
     const bool IsWDL = std::is_same<Entry, WDLEntry>::value;
 
@@ -1107,7 +1107,7 @@ void do_init(Entry& e, T& p, uint8_t* data) {
     for (File f = FILE_A; f <= MaxFile; ++f)
         for (int i = 0; i < Sides; i++) {
             (d = item(p, i, f).precomp)->sparseIndex = (SparseEntry*)data;
-            data += d->sparseIndexSize * sizeof(SparseEntry) ;
+            data += d->sparseIndexSize * sizeof(SparseEntry);
         }
 
     for (File f = FILE_A; f <= MaxFile; ++f)
