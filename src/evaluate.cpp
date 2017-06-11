@@ -711,7 +711,7 @@ namespace {
   // squares one, two or three squares behind a friendly pawn are counted
   // twice. Finally, the space bonus is multiplied by a weight. The aim is to
   // improve play on game opening.
-  
+
   template<Tracing T>  template<Color Us>
   Score Evaluation<T>::evaluate_space() {
 
@@ -747,7 +747,7 @@ namespace {
   // evaluate_initiative() computes the initiative correction value for the
   // position, i.e., second order bonus/malus based on the known attacking/defending
   // status of the players.
-  
+
   template<Tracing T>
   Score Evaluation<T>::evaluate_initiative(Value eg) {
 
@@ -768,7 +768,7 @@ namespace {
 
 
   // evaluate_scale_factor() computes the scale factor for the winning side
-  
+
   template<Tracing T>
   ScaleFactor Evaluation<T>::evaluate_scale_factor(Value eg) {
 
@@ -803,10 +803,10 @@ namespace {
   }
 
 
-  // value() is the main function of the class. It computes the various parts of 
+  // value() is the main function of the class. It computes the various parts of
   // the evaluation and returns the value of the position from the point of view
   // of the side to move.
-  
+
   template<Tracing T>
   Value Evaluation<T>::value() {
 
