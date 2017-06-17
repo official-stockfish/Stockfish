@@ -186,7 +186,7 @@ inline Bitboard file_forward_bb(Color c, Square s) {
 /// pawn_attack_span() returns a bitboard representing all the squares that can be
 /// attacked by a pawn of the given color when it moves along its file, starting
 /// from the given square:
-///      PawnAttackSpan[c][s] = in_front_bb(c, s) & adjacent_files_bb(file_of(s));
+///      PawnAttackSpan[c][s] = ranks_forward_bb(c, s) & adjacent_files_bb(file_of(s));
 
 inline Bitboard pawn_attack_span(Color c, Square s) {
   return PawnAttackSpan[c][s];
