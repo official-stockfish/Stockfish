@@ -252,7 +252,7 @@ inline Bitboard attacks_bb(PieceType pt, Square s, Bitboard occupied) {
   {
   case BISHOP: return attacks_bb<BISHOP>(s, occupied);
   case ROOK  : return attacks_bb<ROOK>(s, occupied);
-  case QUEEN : return attacks_bb<BISHOP>(s, occupied) | attacks_bb<ROOK>(s, occupied);
+  case QUEEN : return attacks_bb<BISHOP>(s, occupied) ^ attacks_bb<ROOK>(s, occupied);
   default    : return PseudoAttacks[pt][s];
   }
 }
