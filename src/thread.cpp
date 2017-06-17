@@ -163,7 +163,7 @@ uint64_t ThreadPool::nodes_searched() const {
 
   uint64_t nodes = 0;
   for (Thread* th : *this)
-      nodes += th->rootPos.nodes_searched();
+      nodes += th->nodes;
   return nodes;
 }
 
@@ -212,6 +212,7 @@ void ThreadPool::start_thinking(Position& pos, StateListPtr& states,
   {
       th->maxPly = 0;
       th->tbHits = 0;
+      th->nodes = 0;
       th->rootDepth = DEPTH_ZERO;
       th->rootMoves = rootMoves;
       th->rootPos.set(pos.fen(), pos.is_chess960(), &setupStates->back(), th);
