@@ -54,9 +54,7 @@ namespace {
   Bitboard RookTable[0x19000];  // To store rook attacks
   Bitboard BishopTable[0x1480]; // To store bishop attacks
 
-  typedef unsigned (Fn)(const Magic&, Bitboard);
-
-  void init_magics(Bitboard table[], Magic magics[], Square deltas[], Fn index);
+  void init_magics(Bitboard table[], Magic magics[], Square deltas[]);
 
   // bsf_index() returns the index into BSFTable[] to look up the bitscan. Uses
   // Matt Taylor's folding for 32 bit case, extended to 64 bit by Kim Walisch.
@@ -204,8 +202,8 @@ void Bitboards::init() {
   Square RookDeltas[] = { NORTH,  EAST,  SOUTH,  WEST };
   Square BishopDeltas[] = { NORTH_EAST, SOUTH_EAST, SOUTH_WEST, NORTH_WEST };
 
-  init_magics(RookTable, RookMagics, RookDeltas, magic_index);
-  init_magics(BishopTable, BishopMagics, BishopDeltas, magic_index);
+  init_magics(RookTable, RookMagics, RookDeltas);
+  init_magics(BishopTable, BishopMagics, BishopDeltas);
 
   for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1)
   {
@@ -251,7 +249,7 @@ namespace {
   // chessprogramming.wikispaces.com/Magic+Bitboards. In particular, here we
   // use the so called "fancy" approach.
 
-  void init_magics(Bitboard table[], Magic magics[], Square deltas[], Fn index) {
+  void init_magics(Bitboard table[], Magic magics[], Square deltas[]) {
 
     int seeds[][RANK_NB] = { { 8977, 44560, 54343, 38998,  5731, 95205, 104912, 17020 },
                              {  728, 10316, 55013, 32803, 12281, 15100,  16645,   255 } };
@@ -311,7 +309,7 @@ namespace {
             // m.attacks[] after every failed attempt.
             for (++cnt, i = 0; i < size; ++i)
             {
-                unsigned idx = index(m, occupancy[i]);
+                unsigned idx = m.index(occupancy[i]);
 
                 if (epoch[idx] < cnt)
                 {
