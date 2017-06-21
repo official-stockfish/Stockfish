@@ -956,12 +956,11 @@ moves_loop: // When in check search starts from here
       }
       
       if (moveCount == 1 && captureOrPromotion && ttMove)
-		   ttCapture = true;
+          ttCapture = true;
 
       // Update the current move (this must be done after singular extension search)
       ss->currentMove = move;
       ss->history = &thisThread->counterMoveHistory[moved_piece][to_sq(move)];
-
 
       // Step 14. Make the move
       pos.do_move(move, st, givesCheck);
