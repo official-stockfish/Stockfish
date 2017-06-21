@@ -955,7 +955,7 @@ moves_loop: // When in check search starts from here
           continue;
       }
       
-      if (moveCount == 1 && captureOrPromotion && ttMove)
+      if (move == ttMove && captureOrPromotion)
           ttCapture = true;
 
       // Update the current move (this must be done after singular extension search)
