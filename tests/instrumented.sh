@@ -15,18 +15,45 @@ case $1 in
     prefix=''
     exeprefix='valgrind --error-exitcode=42'
     postfix='1>/dev/null'
+    threads="1"
   ;;
-  --sanitizer)
+  --sanitizer-undefined)
     echo "sanitizer testing started"
     prefix='!'
     exeprefix=''
     postfix='2>&1 | grep "runtime error:"'
+    threads="1"
+  ;;
+  --sanitizer-thread)
+    echo "sanitizer testing started"
+    prefix='!'
+    exeprefix=''
+    postfix='2>&1 | grep "WARNING: ThreadSanitizer:"'
+    threads="2"
+
+cat << EOF > tsan.supp
+race:TTEntry::move
+race:TTEntry::depth
+race:TTEntry::bound
+race:TTEntry::save
+race:TTEntry::value
+race:TTEntry::eval
+
+race:TranspositionTable::probe
+race:TranspositionTable::generation
+race:TranspositionTable::hashfull
+
+EOF
+
+    export TSAN_OPTIONS="suppressions=./tsan.supp"
+
   ;;
   *)
     echo "unknown testing started"
     prefix=''
     exeprefix=''
     postfix=''
+    threads="1"
   ;;
 esac
 
@@ -36,7 +63,7 @@ for args in "eval" \
             "go depth 10" \
             "go movetime 1000" \
             "go wtime 8000 btime 8000 winc 500 binc 500" \
-            "bench 128 1 10 default depth"
+            "bench 128 $threads 10 default depth"
 do
 
    echo "$prefix $exeprefix ./stockfish $args $postfix"
@@ -51,6 +78,8 @@ cat << EOF > game.exp
 
  send "uci\n"
  expect "uciok"
+
+ send "setoption name Threads value $threads\n"
 
  send "ucinewgame\n"
  send "position startpos\n"
@@ -76,11 +105,13 @@ EOF
 for exps in game.exp
 do
 
-  echo "$prefix expect game.exp $postfix"
-  eval "$prefix expect game.exp $postfix"
+  echo "$prefix expect $exps $postfix"
+  eval "$prefix expect $exps $postfix"
+
+  rm $exps
 
 done
 
-rm game.exp
+rm -f tsan.supp
 
 echo "instrumented testing OK"

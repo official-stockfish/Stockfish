@@ -72,4 +72,5 @@ script:
   # sanitizer
   #
   # use g++-6 as a proxy for having sanitizers, might need revision as they become available for more recent versions of clang/gcc
-  - if [[ "$COMPILER" == "g++-6" ]]; then make clean && make ARCH=x86-64 sanitize=yes build > /dev/null && ../tests/instrumented.sh --sanitizer; fi
+  - if [[ "$COMPILER" == "g++-6" ]]; then make clean && make ARCH=x86-64 sanitize=undefined optimize=no debug=yes build > /dev/null && ../tests/instrumented.sh --sanitizer-undefined; fi
+  - if [[ "$COMPILER" == "g++-6" ]]; then make clean && make ARCH=x86-64 sanitize=thread optimize=no debug=yes build > /dev/null && ../tests/instrumented.sh --sanitizer-thread; fi
