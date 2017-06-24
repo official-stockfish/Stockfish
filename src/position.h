@@ -138,7 +138,7 @@ public:
   void increment_tbHits();
 
   // Static Exchange Evaluation
-  bool see_ge(Move m, Value value = VALUE_ZERO) const;
+  bool see_ge(Move m, Value threshold = VALUE_ZERO) const;
 
   // Accessing hash keys
   Key key() const;
@@ -161,7 +161,7 @@ public:
   Value non_pawn_material() const;
 
   // Position consistency check, for debugging
-  bool pos_is_ok(int* failedStep = nullptr) const;
+  bool pos_is_ok() const;
   void flip();
 
 private:
