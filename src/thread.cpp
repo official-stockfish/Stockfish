@@ -34,9 +34,9 @@ ThreadPool Threads; // Global object
 
 Thread::Thread() {
 
-  resetCalls = exit = false;
-  maxPly = callsCnt = 0;
-  tbHits = 0;
+  exit = false;
+  maxPly = 0;
+  nodes = tbHits = 0;
   idx = Threads.size(); // Start from 0
 
   std::unique_lock<Mutex> lk(mutex);
@@ -163,7 +163,7 @@ uint64_t ThreadPool::nodes_searched() const {
 
   uint64_t nodes = 0;
   for (Thread* th : *this)
-      nodes += th->nodes;
+      nodes += th->nodes.load(std::memory_order_relaxed);
   return nodes;
 }
 
@@ -174,7 +174,7 @@ uint64_t ThreadPool::tb_hits() const {
 
   uint64_t hits = 0;
   for (Thread* th : *this)
-      hits += th->tbHits;
+      hits += th->tbHits.load(std::memory_order_relaxed);
   return hits;
 }
 
@@ -211,8 +211,8 @@ void ThreadPool::start_thinking(Position& pos, StateListPtr& states,
   for (Thread* th : Threads)
   {
       th->maxPly = 0;
-      th->tbHits = 0;
       th->nodes = 0;
+      th->tbHits = 0;
       th->rootDepth = DEPTH_ZERO;
       th->rootMoves = rootMoves;
       th->rootPos.set(pos.fen(), pos.is_chess960(), &setupStates->back(), th);
