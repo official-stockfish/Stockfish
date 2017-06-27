@@ -101,8 +101,8 @@ namespace {
 
     int bonus = PawnSet[pieceCount[Us][PAWN]];
     
-    if   (pieceCount[Us][QUEEN] == 1 
-       && pieceCount[Them][QUEEN] == 0)
+    if  (pieceCount[Us][QUEEN] == 1 
+      && pieceCount[Them][QUEEN] == 0)
          
     bonus += QueenMinorsImblance[pieceCount[Them][KNIGHT] + pieceCount[Them][BISHOP]];
 
