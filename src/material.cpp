@@ -237,3 +237,5 @@ Entry* probe(const Position& pos) {
 }
 
 } // namespace Material
+
+Fixed code. bench 6258930
