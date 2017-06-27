@@ -58,8 +58,8 @@ namespace {
       24, -32, 107, -51, 117, -9, -126, -21, 31
   };
   
-  // QueenMinorsImblance
-   const int QueenMinorsImblance[16] = { 
+  // QueenMinorsImbalance
+   const int QueenMinorsImbalance[16] = { 
       31, -8, -15, -25, -5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0  
   };
   
@@ -103,7 +103,7 @@ namespace {
     
     if  (pieceCount[Us][QUEEN] == 1 && pieceCount[Them][QUEEN] == 0)
          
-    bonus += QueenMinorsImblance[pieceCount[Them][KNIGHT] + pieceCount[Them][BISHOP]];
+    bonus += QueenMinorsImbalance[pieceCount[Them][KNIGHT] + pieceCount[Them][BISHOP]];
 
     // Second-degree polynomial material imbalance by Tord Romstad
     for (int pt1 = NO_PIECE_TYPE; pt1 <= QUEEN; ++pt1)
