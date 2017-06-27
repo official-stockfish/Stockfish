@@ -55,12 +55,12 @@ namespace {
 
   // PawnSet[pawn count] contains a bonus/malus indexed by number of pawns
   const int PawnSet[] = {
-     24, -32, 107, -51, 117, -9, -126, -21, 31
+      24, -32, 107, -51, 117, -9, -126, -21, 31
   };
   
   // QueenMinorsImblance
    const int QueenMinorsImblance[16] = { 
-     31, -8, -15, -25, -5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0  
+      31, -8, -15, -25, -5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0  
   };
   
   // Endgame evaluation and scaling functions are accessed directly and not through
