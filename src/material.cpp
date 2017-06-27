@@ -58,6 +58,7 @@ namespace {
     24, -32, 107, -51, 117, -9, -126, -21, 31
   };
   
+  // QueenMinorsImblance
    const int QueenMinorsImblance[16] = { 
      31, -8, -15, -25, -5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0  
   };
