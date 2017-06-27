@@ -55,7 +55,7 @@ namespace {
 
   // PawnSet[pawn count] contains a bonus/malus indexed by number of pawns
   const int PawnSet[] = {
-    24, -32, 107, -51, 117, -9, -126, -21, 31
+     24, -32, 107, -51, 117, -9, -126, -21, 31
   };
   
   // QueenMinorsImblance
