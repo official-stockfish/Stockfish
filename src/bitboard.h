@@ -82,6 +82,20 @@ struct Magic {
   Bitboard  magic;
   Bitboard* attacks;
   unsigned  shift;
+
+  /// looks up the index using the 'magic bitboards' approach.
+  unsigned index(Bitboard occupied) const {
+
+      if (HasPext)
+          return unsigned(pext(occupied, mask));
+
+      if (Is64Bit)
+          return unsigned(((occupied & mask) * magic) >> shift);
+
+      unsigned lo = unsigned(occupied) & unsigned(mask);
+      unsigned hi = unsigned(occupied >> 32) & unsigned(mask >> 32);
+      return (lo * unsigned(magic) ^ hi * unsigned(magic >> 32)) >> shift;
+  }
 };
 
 extern Magic RookMagics[SQUARE_NB];
@@ -222,26 +236,13 @@ template<> inline int distance<Rank>(Square x, Square y) { return distance(rank_
 
 
 /// attacks_bb() returns a bitboard representing all the squares attacked by a
-/// piece of type Pt (bishop or rook) placed on 's'. The helper magic_index()
-/// looks up the index using the 'magic bitboards' approach.
-inline unsigned magic_index(const Magic& m, Bitboard occupied) {
-
-  if (HasPext)
-      return unsigned(pext(occupied, m.mask));
-
-  if (Is64Bit)
-      return unsigned(((occupied & m.mask) * m.magic) >> m.shift);
-
-  unsigned lo = unsigned(occupied) & unsigned(m.mask);
-  unsigned hi = unsigned(occupied >> 32) & unsigned(m.mask >> 32);
-  return (lo * unsigned(m.magic) ^ hi * unsigned(m.magic >> 32)) >> m.shift;
-}
+/// piece of type Pt (bishop or rook) placed on 's'.
 
 template<PieceType Pt>
 inline Bitboard attacks_bb(Square s, Bitboard occupied) {
 
   const Magic& M = Pt == ROOK ? RookMagics[s] : BishopMagics[s];
-  return M.attacks[magic_index(M, occupied)];
+  return M.attacks[M.index(occupied)];
 }
 
 inline Bitboard attacks_bb(PieceType pt, Square s, Bitboard occupied) {
