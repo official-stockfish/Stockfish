@@ -40,7 +40,6 @@ race:TTEntry::value
 race:TTEntry::eval
 
 race:TranspositionTable::probe
-race:TranspositionTable::generation
 race:TranspositionTable::hashfull
 
 EOF
