@@ -21,7 +21,6 @@
 #include <cassert>
 
 #include "movepick.h"
-#include "thread.h"
 
 namespace {
 
@@ -67,23 +66,21 @@ namespace {
 /// search captures, promotions, and some checks) and how important good move
 /// ordering is at the current node.
 
-MovePicker::MovePicker(const Position& p, Move ttm, Depth d, Search::Stack* s)
-           : pos(p), ss(s), depth(d) {
+MovePicker::MovePicker(const Position& p, Move ttm, Depth d, Move cm, Move kllrs[2],
+                       const ButterflyHistory* h, const PieceToHistory* pth1,
+                       const PieceToHistory* pth2, const PieceToHistory* pth4)
+           : pos(p), depth(d), history(h), cmh(pth1), fmh(pth2), fm2(pth4),
+             killers{kllrs[0],kllrs[1]}, countermove(cm){
 
   assert(d > DEPTH_ZERO);
-
-  Square prevSq = to_sq((ss-1)->currentMove);
-  countermove = pos.this_thread()->counterMoves[pos.piece_on(prevSq)][prevSq];
-  killers[0] = ss->killers[0];
-  killers[1] = ss->killers[1];
 
   stage = pos.checkers() ? EVASION : MAIN_SEARCH;
   ttMove = ttm && pos.pseudo_legal(ttm) ? ttm : MOVE_NONE;
   stage += (ttMove == MOVE_NONE);
 }
 
-MovePicker::MovePicker(const Position& p, Move ttm, Depth d, Square s)
-           : pos(p) {
+MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const ButterflyHistory* h, Square s)
+           : pos(p), history(h) {
 
   assert(d <= DEPTH_ZERO);
 
@@ -143,25 +140,18 @@ void MovePicker::score<CAPTURES>() {
 template<>
 void MovePicker::score<QUIETS>() {
 
-  const ButterflyHistory& history = pos.this_thread()->history;
-
-  const PieceToHistory& cmh = *(ss-1)->history;
-  const PieceToHistory& fmh = *(ss-2)->history;
-  const PieceToHistory& fm2 = *(ss-4)->history;
-
   Color c = pos.side_to_move();
 
   for (auto& m : *this)
-      m.value =  cmh[pos.moved_piece(m)][to_sq(m)]
-               + fmh[pos.moved_piece(m)][to_sq(m)]
-               + fm2[pos.moved_piece(m)][to_sq(m)]
-               + history[c][from_to(m)];
+      m.value =  (*cmh)[pos.moved_piece(m)][to_sq(m)]
+               + (*fmh)[pos.moved_piece(m)][to_sq(m)]
+               + (*fm2)[pos.moved_piece(m)][to_sq(m)]
+               + (*history)[c][from_to(m)];
 }
 
 template<>
 void MovePicker::score<EVASIONS>() {
   // Try captures ordered by MVV/LVA, then non-captures ordered by stats heuristics
-  const ButterflyHistory& history = pos.this_thread()->history;
   Color c = pos.side_to_move();
 
   for (auto& m : *this)
@@ -169,7 +159,7 @@ void MovePicker::score<EVASIONS>() {
           m.value =  PieceValue[MG][pos.piece_on(to_sq(m))]
                    - Value(type_of(pos.moved_piece(m))) + (1 << 28);
       else
-          m.value = history[c][from_to(m)];
+          m.value = (*history)[c][from_to(m)];
 }
 
 

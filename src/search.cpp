@@ -807,8 +807,10 @@ moves_loop: // When in check search starts from here
     const PieceToHistory& cmh = *(ss-1)->history;
     const PieceToHistory& fmh = *(ss-2)->history;
     const PieceToHistory& fm2 = *(ss-4)->history;
+    const ButterflyHistory& history = thisThread->history;
+    Move countermove = thisThread->counterMoves[pos.piece_on(prevSq)][prevSq];
 
-    MovePicker mp(pos, ttMove, depth, ss);
+    MovePicker mp(pos, ttMove, depth, countermove, ss->killers, &history, &cmh, &fmh, &fm2);
     value = bestValue; // Workaround a bogus 'uninitialized' warning under gcc
     improving =   ss->staticEval >= (ss-2)->staticEval
             /* || ss->staticEval == VALUE_NONE Already implicit in the previous condition */
@@ -981,7 +983,7 @@ moves_loop: // When in check search starts from here
               ss->statScore =  cmh[moved_piece][to_sq(move)]
                              + fmh[moved_piece][to_sq(move)]
                              + fm2[moved_piece][to_sq(move)]
-                             + thisThread->history[~pos.side_to_move()][from_to(move)]
+                             + history[~pos.side_to_move()][from_to(move)]
                              - 4000; // Correction factor
 
               // Decrease/increase reduction by comparing opponent's stat score
@@ -1244,7 +1246,7 @@ moves_loop: // When in check search starts from here
     // to search the moves. Because the depth is <= 0 here, only captures,
     // queen promotions and checks (only if depth >= DEPTH_QS_CHECKS) will
     // be generated.
-    MovePicker mp(pos, ttMove, depth, to_sq((ss-1)->currentMove));
+    MovePicker mp(pos, ttMove, depth, &pos.this_thread()->history, to_sq((ss-1)->currentMove));
 
     // Loop through the moves until no moves remain or a beta cutoff occurs
     while ((move = mp.next_move()) != MOVE_NONE)

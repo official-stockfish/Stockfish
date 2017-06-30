@@ -93,7 +93,6 @@ typedef StatBoards<PIECE_NB, SQUARE_NB, PieceToHistory> CounterMoveHistoryStat;
 /// when MOVE_NONE is returned. In order to improve the efficiency of the alpha
 /// beta algorithm, MovePicker attempts to return the moves which are most likely
 /// to get a cut-off first.
-namespace Search { struct Stack; }
 
 class MovePicker {
 public:
@@ -101,8 +100,9 @@ public:
   MovePicker& operator=(const MovePicker&) = delete;
 
   MovePicker(const Position&, Move, Value);
-  MovePicker(const Position&, Move, Depth, Square);
-  MovePicker(const Position&, Move, Depth, Search::Stack*);
+  MovePicker(const Position&, Move, Depth, const ButterflyHistory*, Square);
+  MovePicker(const Position&, Move, Depth, Move, Move kllrs[2], const ButterflyHistory*,
+             const PieceToHistory*, const PieceToHistory*, const PieceToHistory*);
 
   Move next_move(bool skipQuiets = false);
 
@@ -112,10 +112,13 @@ private:
   ExtMove* end() { return endMoves; }
 
   const Position& pos;
-  const Search::Stack* ss;
+  Depth depth;
+  const ButterflyHistory* history;
+  const PieceToHistory* cmh;
+  const PieceToHistory* fmh;
+  const PieceToHistory* fm2;
   Move killers[2];
   Move countermove;
-  Depth depth;
   Move ttMove;
   Square recaptureSquare;
   Value threshold;
