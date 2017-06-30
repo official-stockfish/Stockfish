@@ -37,7 +37,7 @@ namespace Search {
 
 struct Stack {
   Move* pv;
-  PieceToHistory* history;
+  PieceToHistory* contHistory;
   int ply;
   Move currentMove;
   Move excludedMove;
