@@ -930,9 +930,9 @@ moves_loop: // When in check search starts from here
         	  //dbg_hit_on(ttSingular && depth < (7 + 5 * ttSingular) * ONE_PLY  && !extension && !pos.see_ge(move, 7 * ttSingular * PawnValueEg - PawnValueEg * (depth / ONE_PLY)));
         	  // Total 1051806 Hits 2579
         	  // At depths 8,9,10,11 also prune moves with negative SEE when ttMove was singular extended
-        	  if (    depth < (7 + 5 * ttSingular) * ONE_PLY
+        	  if (    depth < (7 + 6 * ttSingular) * ONE_PLY
                    && !extension
-                   && !pos.see_ge(move, 7 * ttSingular * PawnValueEg - PawnValueEg * (depth / ONE_PLY)))
+                   && !pos.see_ge(move, 8 * ttSingular * PawnValueEg - PawnValueEg * (depth / ONE_PLY)))
                   continue;
           }
       }
