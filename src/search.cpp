@@ -932,7 +932,7 @@ moves_loop: // When in check search starts from here
         	  // At depths 8,9,10,11 also prune moves with negative SEE when ttMove was singular extended
         	  if (    depth < (7 + 6 * ttSingular) * ONE_PLY
                    && !extension
-                   && !pos.see_ge(move, 8 * ttSingular * PawnValueEg - PawnValueEg * (depth / ONE_PLY)))
+                   && !pos.see_ge(move, 6 * ttSingular * PawnValueEg - PawnValueEg * (depth / ONE_PLY)))
                   continue;
           }
       }
