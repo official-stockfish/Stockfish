@@ -317,9 +317,6 @@ void Position::set_castling_right(Color c, Square rfrom) {
 
 void Position::set_check_info(StateInfo* si) const {
 
-  si->blockersForKing[WHITE] = slider_blockers(pieces(BLACK), square<KING>(WHITE), si->pinnersForKing[WHITE]);
-  si->blockersForKing[BLACK] = slider_blockers(pieces(WHITE), square<KING>(BLACK), si->pinnersForKing[BLACK]);
-
   Square ksq = square<KING>(~sideToMove);
 
   si->checkSquares[PAWN]   = attacks_from<PAWN>(ksq, ~sideToMove);
@@ -343,6 +340,8 @@ void Position::set_state(StateInfo* si) const {
   si->nonPawnMaterial[WHITE] = si->nonPawnMaterial[BLACK] = VALUE_ZERO;
   si->psq = SCORE_ZERO;
   si->checkersBB = attackers_to(square<KING>(sideToMove)) & pieces(~sideToMove);
+  si->blockersForKing[WHITE] = slider_blockers(pieces(BLACK), square<KING>(WHITE), si->pinnersForKing[WHITE]);
+  si->blockersForKing[BLACK] = slider_blockers(pieces(WHITE), square<KING>(BLACK), si->pinnersForKing[BLACK]);
 
   set_check_info(si);
 
@@ -846,6 +845,10 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
 
   // Calculate checkers bitboard (if move gives check)
   st->checkersBB = givesCheck ? attackers_to(square<KING>(them)) & pieces(us) : 0;
+
+  // Prepare discovered checks and pinned pieces information
+  st->blockersForKing[WHITE] = slider_blockers(pieces(BLACK), square<KING>(WHITE), st->pinnersForKing[WHITE]);
+  st->blockersForKing[BLACK] = slider_blockers(pieces(WHITE), square<KING>(BLACK), st->pinnersForKing[BLACK]);
 
   sideToMove = ~sideToMove;
 
