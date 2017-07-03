@@ -251,6 +251,7 @@ namespace {
 
   void init_magics(Bitboard table[], Magic magics[], Square deltas[]) {
 
+    // Optimal PRNG seeds to pick the correct magics in the shortest time
     int seeds[][RANK_NB] = { { 8977, 44560, 54343, 38998,  5731, 95205, 104912, 17020 },
                              {  728, 10316, 55013, 32803, 12281, 15100,  16645,   255 } };
 
