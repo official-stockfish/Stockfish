@@ -567,8 +567,7 @@ namespace {
         static_cast<MainThread*>(thisThread)->check_time();
 
     // Used to send selDepth info to GUI
-    if (PvNode && thisThread->maxPly < ss->ply)
-        thisThread->maxPly = ss->ply;
+    thisThread->maxPly = std::max(ss->ply, thisThread->maxPly);
 
     if (!rootNode)
     {
@@ -834,9 +833,14 @@ moves_loop: // When in check search starts from here
       // At root obey the "searchmoves" option and skip moves not listed in Root
       // Move List. As a consequence any illegal move is also skipped. In MultiPV
       // mode we also skip PV moves which have been already searched.
-      if (rootNode && !std::count(thisThread->rootMoves.begin() + thisThread->PVIdx,
+      if (rootNode)
+      {
+          if (!std::count(thisThread->rootMoves.begin() + thisThread->PVIdx,
                                   thisThread->rootMoves.end(), move))
-          continue;
+              continue;
+
+          thisThread->maxPly = 1;
+      }
 
       ss->moveCount = ++moveCount;
 
@@ -1044,6 +1048,7 @@ moves_loop: // When in check search starts from here
           if (moveCount == 1 || value > alpha)
           {
               rm.score = value;
+              rm.maxPly = thisThread->maxPly;
               rm.pv.resize(1);
 
               assert((ss+1)->pv);
@@ -1526,7 +1531,7 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
 
       ss << "info"
          << " depth "    << d / ONE_PLY
-         << " seldepth " << pos.this_thread()->maxPly
+         << " seldepth " << rootMoves[i].maxPly
          << " multipv "  << i + 1
          << " score "    << UCI::value(v);
 
