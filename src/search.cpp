@@ -1490,7 +1490,7 @@ moves_loop: // When in check search starts from here
 
     if (   (Limits.use_time_management() && elapsed > Time.maximum() - 10)
         || (Limits.movetime && elapsed >= Limits.movetime)
-        || (Limits.nodes && Threads.nodes_searched() >= (uint64_t)Limits.nodes))
+        || (Limits.nodes && Threads.nodes_searched() >= Limits.nodes))
             Signals.stop = true;
   }
 
