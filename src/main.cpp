@@ -27,7 +27,7 @@
 #include "uci.h"
 #include "syzygy/tbprobe.h"
 
-namespace PSQT {
+namespace PSQ {
   void init();
 }
 
@@ -36,7 +36,7 @@ int main(int argc, char* argv[]) {
   std::cout << engine_info() << std::endl;
 
   UCI::init(Options);
-  PSQT::init();
+  PSQ::init();
   Bitboards::init();
   Position::init();
   Bitbases::init();

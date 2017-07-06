@@ -37,9 +37,6 @@ namespace {
   // Backward pawn penalty by opposed flag
   const Score Backward[] = { S(40, 26), S(24, 12) };
 
-  // Connected pawn bonus by opposed, phalanx, #support and rank
-  Score Connected[2][2][3][RANK_NB];
-
   // Doubled pawn penalty
   const Score Doubled = S(18, 38);
 
@@ -79,6 +76,9 @@ namespace {
       { V(23),  V(  29), V(  96), V(41), V(15) },
       { V(21),  V(  23), V( 116), V(41), V(15) } }
   };
+
+  // Connected pawn bonus by opposed, phalanx, supporting count and rank
+  Score Connected[2][2][3][RANK_NB];
 
   // Max bonus for king safety. Corresponds to start position with all the pawns
   // in front of the king and no enemy pawn on the horizon.
@@ -132,8 +132,8 @@ namespace {
         phalanx    = neighbours & rank_bb(s);
         supported  = neighbours & rank_bb(s - Up);
 
-        // A pawn is backward when it is behind all pawns of the same color on the
-        // adjacent files and cannot be safely advanced.
+        // A pawn is backward when it is behind all pawns of the same color on
+        // the adjacent files and cannot be safely advanced.
         if (!neighbours || lever || relative_rank(Us, s) >= RANK_5)
             backward = false;
         else
@@ -200,9 +200,9 @@ void init() {
 
   static const int Seed[RANK_NB] = { 0, 13, 24, 18, 76, 100, 175, 330 };
 
-  for (int opposed = 0; opposed <= 1; ++opposed)
-      for (int phalanx = 0; phalanx <= 1; ++phalanx)
-          for (int support = 0; support <= 2; ++support)
+  for (int opposed : { 0, 1 })
+      for (int phalanx : { 0, 1 })
+          for (int support : { 0, 1, 2 })
               for (Rank r = RANK_2; r < RANK_8; ++r)
   {
       int v = 17 * support;
@@ -215,8 +215,8 @@ void init() {
 
 /// Pawns::probe() looks up the current position's pawns configuration in
 /// the pawns hash table. It returns a pointer to the Entry if the position
-/// is found. Otherwise a new Entry is computed and stored there, so we don't
-/// have to recompute all when the same pawns configuration occurs again.
+/// is found, otherwise a new Entry is computed and stored there, so we don't
+/// have to recompute it all when the same pawns configuration occurs again.
 
 Entry* probe(const Position& pos) {
 
