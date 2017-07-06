@@ -277,6 +277,7 @@ ifeq ($(optimize),yes)
 	CXXFLAGS += -O3
 
 	ifeq ($(comp),gcc)
+	  CXXFLAGS += -fno-peel-loops -fno-tracer
 
 		ifeq ($(KERNEL),Darwin)
 			ifeq ($(arch),i386)
@@ -536,7 +537,7 @@ gcc-profile-make:
 
 gcc-profile-use:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS='-fprofile-use -fno-peel-loops -fno-tracer' \
+	EXTRACXXFLAGS='-fprofile-use' \
 	EXTRALDFLAGS='-lgcov' \
 	all
 
