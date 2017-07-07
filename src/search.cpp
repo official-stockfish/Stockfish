@@ -836,7 +836,7 @@ moves_loop: // When in check search starts from here
       if (rootNode)
       {
           if (!std::count(thisThread->rootMoves.begin() + thisThread->PVIdx,
-                                  thisThread->rootMoves.end(), move))
+                          thisThread->rootMoves.end(), move))
               continue;
 
           thisThread->maxPly = 1;
