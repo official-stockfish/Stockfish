@@ -21,7 +21,6 @@
 #ifndef SEARCH_H_INCLUDED
 #define SEARCH_H_INCLUDED
 
-#include <atomic>
 #include <vector>
 
 #include "misc.h"
@@ -92,15 +91,6 @@ struct LimitsType {
   TimePoint startTime;
 };
 
-
-/// SignalsType struct stores atomic flags updated during the search, typically
-/// in an async fashion e.g. to stop the search by the GUI.
-
-struct SignalsType {
-  std::atomic_bool stop, stopOnPonderhit;
-};
-
-extern SignalsType Signals;
 extern LimitsType Limits;
 
 void init();
