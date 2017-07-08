@@ -274,10 +274,11 @@ endif
 ### 3.3 Optimization
 ifeq ($(optimize),yes)
 
+# Optimization options for official stockfish should be
+# consistent, easy, future proof and simple.
 	CXXFLAGS += -O3
 
 	ifeq ($(comp),gcc)
-
 		ifeq ($(KERNEL),Darwin)
 			ifeq ($(arch),i386)
 				CXXFLAGS += -mdynamic-no-pic
@@ -536,7 +537,7 @@ gcc-profile-make:
 
 gcc-profile-use:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS='-fprofile-use -fno-peel-loops -fno-tracer' \
+	EXTRACXXFLAGS='-fprofile-use' \
 	EXTRALDFLAGS='-lgcov' \
 	all
 
