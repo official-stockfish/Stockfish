@@ -60,8 +60,8 @@ namespace {
 
   // QueenMinorsImbalance[opp_minor_count] is applied when only one side has a queen.
   // It contains a bonus/malus for the side with the queen.
-  const int QueenMinorsImbalance[16] = { 
-    31, -8, -15, -25, -5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+  const int QueenMinorsImbalance[13] = {
+    31, -8, -15, -25, -5
   };
 
   // Endgame evaluation and scaling functions are accessed directly and not through
@@ -144,7 +144,13 @@ Entry* probe(const Position& pos) {
   std::memset(e, 0, sizeof(Entry));
   e->key = key;
   e->factor[WHITE] = e->factor[BLACK] = (uint8_t)SCALE_FACTOR_NORMAL;
-  e->gamePhase = pos.game_phase();
+
+  Value npm_w = pos.non_pawn_material(WHITE);
+  Value npm_b = pos.non_pawn_material(BLACK);
+  Value npm = std::max(EndgameLimit, std::min(npm_w + npm_b, MidgameLimit));
+
+  // Map total non-pawn material into [PHASE_ENDGAME, PHASE_MIDGAME]
+  e->gamePhase = Phase(((npm - EndgameLimit) * PHASE_MIDGAME) / (MidgameLimit - EndgameLimit));
 
   // Let's look if we have a specialized evaluation function for this particular
   // material configuration. Firstly we look for a fixed configuration one, then
@@ -180,9 +186,6 @@ Entry* probe(const Position& pos) {
     else if (is_KQKRPs(pos, c))
         e->scalingFunction[c] = &ScaleKQKRPs[c];
   }
-
-  Value npm_w = pos.non_pawn_material(WHITE);
-  Value npm_b = pos.non_pawn_material(BLACK);
 
   if (npm_w + npm_b == VALUE_ZERO && pos.pieces(PAWN)) // Only pawns on the board
   {

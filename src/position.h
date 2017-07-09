@@ -146,7 +146,6 @@ public:
 
   // Other properties of the position
   Color side_to_move() const;
-  Phase game_phase() const;
   int game_ply() const;
   bool is_chess960() const;
   Thread* this_thread() const;

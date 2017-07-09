@@ -450,19 +450,6 @@ const string Position::fen() const {
 }
 
 
-/// Position::game_phase() calculates the game phase interpolating total non-pawn
-/// material between endgame and midgame limits.
-
-Phase Position::game_phase() const {
-
-  Value npm = st->nonPawnMaterial[WHITE] + st->nonPawnMaterial[BLACK];
-
-  npm = std::max(EndgameLimit, std::min(npm, MidgameLimit));
-
-  return Phase(((npm - EndgameLimit) * PHASE_MIDGAME) / (MidgameLimit - EndgameLimit));
-}
-
-
 /// Position::slider_blockers() returns a bitboard of all the pieces (both colors)
 /// that are blocking attacks on the square 's' from 'sliders'. A piece blocks a
 /// slider if removing that piece from the board would result in a position where
