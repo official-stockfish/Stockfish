@@ -839,7 +839,7 @@ moves_loop: // When in check search starts from here
       // mode we also skip PV moves which have been already searched.
       if (rootNode && !std::count(thisThread->rootMoves.begin() + thisThread->PVIdx,
                                   thisThread->rootMoves.end(), move))
-              continue;
+          continue;
 
       ss->moveCount = ++moveCount;
 
