@@ -30,11 +30,11 @@ Bitboard SquareBB[SQUARE_NB];
 Bitboard FileBB[FILE_NB];
 Bitboard RankBB[RANK_NB];
 Bitboard AdjacentFilesBB[FILE_NB];
-Bitboard InFrontBB[COLOR_NB][RANK_NB];
+Bitboard ForwardRanksBB[COLOR_NB][RANK_NB];
 Bitboard BetweenBB[SQUARE_NB][SQUARE_NB];
 Bitboard LineBB[SQUARE_NB][SQUARE_NB];
 Bitboard DistanceRingBB[SQUARE_NB][8];
-Bitboard ForwardBB[COLOR_NB][SQUARE_NB];
+Bitboard ForwardFileBB[COLOR_NB][SQUARE_NB];
 Bitboard PassedPawnMask[COLOR_NB][SQUARE_NB];
 Bitboard PawnAttackSpan[COLOR_NB][SQUARE_NB];
 Bitboard PseudoAttacks[PIECE_TYPE_NB][SQUARE_NB];
@@ -163,14 +163,14 @@ void Bitboards::init() {
       AdjacentFilesBB[f] = (f > FILE_A ? FileBB[f - 1] : 0) | (f < FILE_H ? FileBB[f + 1] : 0);
 
   for (Rank r = RANK_1; r < RANK_8; ++r)
-      InFrontBB[WHITE][r] = ~(InFrontBB[BLACK][r + 1] = InFrontBB[BLACK][r] | RankBB[r]);
+      ForwardRanksBB[WHITE][r] = ~(ForwardRanksBB[BLACK][r + 1] = ForwardRanksBB[BLACK][r] | RankBB[r]);
 
   for (Color c = WHITE; c <= BLACK; ++c)
       for (Square s = SQ_A1; s <= SQ_H8; ++s)
       {
-          ForwardBB[c][s]      = InFrontBB[c][rank_of(s)] & FileBB[file_of(s)];
-          PawnAttackSpan[c][s] = InFrontBB[c][rank_of(s)] & AdjacentFilesBB[file_of(s)];
-          PassedPawnMask[c][s] = ForwardBB[c][s] | PawnAttackSpan[c][s];
+          ForwardFileBB [c][s] = ForwardRanksBB[c][rank_of(s)] & FileBB[file_of(s)];
+          PawnAttackSpan[c][s] = ForwardRanksBB[c][rank_of(s)] & AdjacentFilesBB[file_of(s)];
+          PassedPawnMask[c][s] = ForwardFileBB [c][s] | PawnAttackSpan[c][s];
       }
 
   for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1)
@@ -251,6 +251,7 @@ namespace {
 
   void init_magics(Bitboard table[], Magic magics[], Square deltas[]) {
 
+    // Optimal PRNG seeds to pick the correct magics in the shortest time
     int seeds[][RANK_NB] = { { 8977, 44560, 54343, 38998,  5731, 95205, 104912, 17020 },
                              {  728, 10316, 55013, 32803, 12281, 15100,  16645,   255 } };
 

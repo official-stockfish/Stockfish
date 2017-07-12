@@ -65,11 +65,11 @@ extern Bitboard SquareBB[SQUARE_NB];
 extern Bitboard FileBB[FILE_NB];
 extern Bitboard RankBB[RANK_NB];
 extern Bitboard AdjacentFilesBB[FILE_NB];
-extern Bitboard InFrontBB[COLOR_NB][RANK_NB];
+extern Bitboard ForwardRanksBB[COLOR_NB][RANK_NB];
 extern Bitboard BetweenBB[SQUARE_NB][SQUARE_NB];
 extern Bitboard LineBB[SQUARE_NB][SQUARE_NB];
 extern Bitboard DistanceRingBB[SQUARE_NB][8];
-extern Bitboard ForwardBB[COLOR_NB][SQUARE_NB];
+extern Bitboard ForwardFileBB[COLOR_NB][SQUARE_NB];
 extern Bitboard PassedPawnMask[COLOR_NB][SQUARE_NB];
 extern Bitboard PawnAttackSpan[COLOR_NB][SQUARE_NB];
 extern Bitboard PseudoAttacks[PIECE_TYPE_NB][SQUARE_NB];
@@ -83,18 +83,18 @@ struct Magic {
   Bitboard* attacks;
   unsigned  shift;
 
-  /// looks up the index using the 'magic bitboards' approach.
+  // Compute the attack's index using the 'magic bitboards' approach
   unsigned index(Bitboard occupied) const {
 
-      if (HasPext)
-          return unsigned(pext(occupied, mask));
+    if (HasPext)
+        return unsigned(pext(occupied, mask));
 
-      if (Is64Bit)
-          return unsigned(((occupied & mask) * magic) >> shift);
+    if (Is64Bit)
+        return unsigned(((occupied & mask) * magic) >> shift);
 
-      unsigned lo = unsigned(occupied) & unsigned(mask);
-      unsigned hi = unsigned(occupied >> 32) & unsigned(mask >> 32);
-      return (lo * unsigned(magic) ^ hi * unsigned(magic >> 32)) >> shift;
+    unsigned lo = unsigned(occupied) & unsigned(mask);
+    unsigned hi = unsigned(occupied >> 32) & unsigned(mask >> 32);
+    return (lo * unsigned(magic) ^ hi * unsigned(magic >> 32)) >> shift;
   }
 };
 
@@ -179,28 +179,28 @@ inline Bitboard between_bb(Square s1, Square s2) {
 }
 
 
-/// in_front_bb() returns a bitboard representing all the squares on all the ranks
+/// forward_ranks_bb() returns a bitboard representing all the squares on all the ranks
 /// in front of the given one, from the point of view of the given color. For
-/// instance, in_front_bb(BLACK, RANK_3) will return the squares on ranks 1 and 2.
+/// instance, forward_ranks_bb(BLACK, SQ_D3) will return the 16 squares on ranks 1 and 2.
 
-inline Bitboard in_front_bb(Color c, Rank r) {
-  return InFrontBB[c][r];
+inline Bitboard forward_ranks_bb(Color c, Square s) {
+  return ForwardRanksBB[c][rank_of(s)];
 }
 
 
-/// forward_bb() returns a bitboard representing all the squares along the line
+/// forward_file_bb() returns a bitboard representing all the squares along the line
 /// in front of the given one, from the point of view of the given color:
-///        ForwardBB[c][s] = in_front_bb(c, rank_of(s)) & file_bb(s)
+///      ForwardFileBB[c][s] = forward_ranks_bb(c, s) & file_bb(s)
 
-inline Bitboard forward_bb(Color c, Square s) {
-  return ForwardBB[c][s];
+inline Bitboard forward_file_bb(Color c, Square s) {
+  return ForwardFileBB[c][s];
 }
 
 
 /// pawn_attack_span() returns a bitboard representing all the squares that can be
 /// attacked by a pawn of the given color when it moves along its file, starting
 /// from the given square:
-///       PawnAttackSpan[c][s] = in_front_bb(c, rank_of(s)) & adjacent_files_bb(file_of(s));
+///      PawnAttackSpan[c][s] = forward_ranks_bb(c, s) & adjacent_files_bb(file_of(s));
 
 inline Bitboard pawn_attack_span(Color c, Square s) {
   return PawnAttackSpan[c][s];
@@ -209,7 +209,7 @@ inline Bitboard pawn_attack_span(Color c, Square s) {
 
 /// passed_pawn_mask() returns a bitboard mask which can be used to test if a
 /// pawn of the given color and on the given square is a passed pawn:
-///       PassedPawnMask[c][s] = pawn_attack_span(c, s) | forward_bb(c, s)
+///      PassedPawnMask[c][s] = pawn_attack_span(c, s) | forward_file_bb(c, s)
 
 inline Bitboard passed_pawn_mask(Color c, Square s) {
   return PassedPawnMask[c][s];
@@ -241,8 +241,8 @@ template<> inline int distance<Rank>(Square x, Square y) { return distance(rank_
 template<PieceType Pt>
 inline Bitboard attacks_bb(Square s, Bitboard occupied) {
 
-  const Magic& M = Pt == ROOK ? RookMagics[s] : BishopMagics[s];
-  return M.attacks[M.index(occupied)];
+  const Magic& m = Pt == ROOK ? RookMagics[s] : BishopMagics[s];
+  return m.attacks[m.index(occupied)];
 }
 
 inline Bitboard attacks_bb(PieceType pt, Square s, Bitboard occupied) {
