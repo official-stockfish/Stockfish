@@ -101,6 +101,8 @@ struct ThreadPool : public std::vector<Thread*> {
   uint64_t nodes_searched() const;
   uint64_t tb_hits() const;
 
+  std::atomic_bool stop, stopOnPonderhit;
+
 private:
   StateListPtr setupStates;
 };
