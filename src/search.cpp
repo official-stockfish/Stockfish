@@ -1058,8 +1058,8 @@ moves_loop: // When in check search starts from here
                   ++static_cast<MainThread*>(thisThread)->bestMoveChanges;
           }
           else
-              // All other moves but the PV are set to the lowest value: this is
-              // not a problem when sorting because the sort is stable and the
+              // All other moves but the PV are set to the lowest value: this
+              // is not a problem when sorting because the sort is stable and the
               // move position in the list is preserved - just the PV is pushed up.
               rm.score = -VALUE_INFINITE;
       }
