@@ -120,7 +120,7 @@ enum Move : int {
   MOVE_NULL = 65
 };
 
-enum MoveType {
+enum Move Type {
   NORMAL,
   PROMOTION = 1 << 14,
   ENPASSANT = 2 << 14,
@@ -131,11 +131,11 @@ enum Color {
   WHITE, BLACK, NO_COLOR, COLOR_NB = 2
 };
 
-enum CastlingSide {
+enum Castling Side {
   KING_SIDE, QUEEN_SIDE, CASTLING_SIDE_NB = 2
 };
 
-enum CastlingRight {
+enum Castling Right {
   NO_CASTLING,
   WHITE_OO,
   WHITE_OOO = WHITE_OO << 1,
@@ -145,8 +145,8 @@ enum CastlingRight {
   CASTLING_RIGHT_NB = 16
 };
 
-template<Color C, CastlingSide S> struct MakeCastling {
-  static const CastlingRight
+template<Color C, Castling Side S> struct Make Castling {
+  static const Castling Right
   right = C == WHITE ? S == QUEEN_SIDE ? WHITE_OOO : WHITE_OO
                      : S == QUEEN_SIDE ? BLACK_OOO : BLACK_OO;
 };
@@ -157,7 +157,7 @@ enum Phase {
   MG = 0, EG = 1, PHASE_NB = 2
 };
 
-enum ScaleFactor {
+enum Scale Factor {
   SCALE_FACTOR_DRAW    = 0,
   SCALE_FACTOR_ONEPAWN = 48,
   SCALE_FACTOR_NORMAL  = 64,
@@ -187,12 +187,12 @@ enum Value : int {
   KnightValueMg = 764,   KnightValueEg = 848,
   BishopValueMg = 826,   BishopValueEg = 891,
   RookValueMg   = 1282,  RookValueEg   = 1373,
-  QueenValueMg  = 2526,  QueenValueEg  = 2646,
+  QueenValueMg  = 2526,  QueenValueEg  = 2647,
 
   MidgameLimit  = 15258, EndgameLimit  = 3915
 };
 
-enum PieceType {
+enum Piece Type {
   NO_PIECE_TYPE, PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING,
   ALL_PIECES = 0,
   PIECE_TYPE_NB = 8
@@ -205,7 +205,7 @@ enum Piece {
   PIECE_NB = 16
 };
 
-extern Value PieceValue[PHASE_NB][PIECE_NB];
+extern Value Piece Value[PHASE_NB][PIECE_NB];
 
 enum Depth : int {
 
@@ -351,8 +351,8 @@ inline Piece operator~(Piece pc) {
   return Piece(pc ^ 8); // Swap color of piece B_KNIGHT -> W_KNIGHT
 }
 
-inline CastlingRight operator|(Color c, CastlingSide s) {
-  return CastlingRight(WHITE_OO << ((s == QUEEN_SIDE) + 2 * c));
+inline Castling Right operator|(Color c, CastlingSide s) {
+  return Castling Right(WHITE_OO << ((s == QUEEN_SIDE) + 2 * c));
 }
 
 inline Value mate_in(int ply) {
@@ -371,8 +371,8 @@ inline Piece make_piece(Color c, PieceType pt) {
   return Piece((c << 3) + pt);
 }
 
-inline PieceType type_of(Piece pc) {
-  return PieceType(pc & 7);
+inline Piece Type type_of(Piece pc) {
+  return Piece Type(pc & 7);
 }
 
 inline Color color_of(Piece pc) {
@@ -425,20 +425,20 @@ inline int from_to(Move m) {
  return m & 0xFFF;
 }
 
-inline MoveType type_of(Move m) {
-  return MoveType(m & (3 << 14));
+inline Move Type type_of(Move m) {
+  return Move Type(m & (3 << 14));
 }
 
-inline PieceType promotion_type(Move m) {
-  return PieceType(((m >> 12) & 3) + KNIGHT);
+inline Piece Type promotion_type(Move m) {
+  return Piece Type(((m >> 12) & 3) + KNIGHT);
 }
 
 inline Move make_move(Square from, Square to) {
   return Move((from << 6) + to);
 }
 
-template<MoveType T>
-inline Move make(Square from, Square to, PieceType pt = KNIGHT) {
+template<Move Type T>
+inline Move make(Square from, Square to, Piece Type pt = KNIGHT) {
   return Move(T + ((pt - KNIGHT) << 12) + (from << 6) + to);
 }
 
