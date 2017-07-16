@@ -19,6 +19,7 @@
 */
 
 #include <algorithm>
+#include <iostream>
 
 #include "bitboard.h"
 #include "misc.h"
@@ -202,8 +203,15 @@ void Bitboards::init() {
   Square RookDeltas[] = { NORTH,  EAST,  SOUTH,  WEST };
   Square BishopDeltas[] = { NORTH_EAST, SOUTH_EAST, SOUTH_WEST, NORTH_WEST };
 
-  init_magics(RookTable, RookMagics, RookDeltas);
-  init_magics(BishopTable, BishopMagics, BishopDeltas);
+  const auto start = std::chrono::high_resolution_clock::now();
+
+  for (int tmp = 0; tmp < 1000; tmp++) {
+      init_magics(RookTable, RookMagics, RookDeltas);
+      init_magics(BishopTable, BishopMagics, BishopDeltas);
+  }
+
+  const int msec = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start).count();
+  std::cout << "time = " << msec << "ms" << std::endl;
 
   for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1)
   {
@@ -251,8 +259,7 @@ namespace {
 
   void init_magics(Bitboard table[], Magic magics[], Square deltas[]) {
 
-    int seeds[][RANK_NB] = { { 8977, 44560, 54343, 38998,  5731, 95205, 104912, 17020 },
-                             {  728, 10316, 55013, 32803, 12281, 15100,  16645,   255 } };
+    PRNG rng(1);
 
     Bitboard occupancy[4096], reference[4096], edges, b;
     int epoch[4096] = {}, cnt = 0, size = 0;
@@ -292,14 +299,12 @@ namespace {
         if (HasPext)
             continue;
 
-        PRNG rng(seeds[Is64Bit][rank_of(s)]);
-
-        // Find a magic for square 's' picking up an (almost) random number
-        // until we find the one that passes the verification test.
+        // Find a magic for square 's', by trying random numbers until we find
+        // one that passes the verification test.
         for (int i = 0; i < size; )
         {
             for (m.magic = 0; popcount((m.magic * m.mask) >> 56) < 6; )
-                m.magic = rng.sparse_rand<Bitboard>();
+                m.magic = rng.rand<Bitboard>();
 
             // A good magic must map every possible occupancy to an index that
             // looks up the correct sliding attack in the attacks[s] database.
