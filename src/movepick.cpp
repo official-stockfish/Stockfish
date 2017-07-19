@@ -66,11 +66,9 @@ namespace {
 /// search captures, promotions, and some checks) and how important good move
 /// ordering is at the current node.
 
-MovePicker::MovePicker(const Position& p, Move ttm, Depth d, Move cm, Move kllrs[2],
-                       const ButterflyHistory* h, const PieceToHistory* pth1,
-                       const PieceToHistory* pth2, const PieceToHistory* pth4)
-           : pos(p), depth(d), history(h), cmh(pth1), fmh(pth2), fm2(pth4),
-             killers{kllrs[0],kllrs[1]}, countermove(cm){
+MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const HistoryCollection* hc_p,
+                       Move cm, Move* killers_p)
+           : pos(p), killers{killers_p[0], killers_p[1]}, countermove(cm), hc(hc_p), depth(d){
 
   assert(d > DEPTH_ZERO);
 
@@ -79,8 +77,8 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, Move cm, Move kllrs
   stage += (ttMove == MOVE_NONE);
 }
 
-MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const ButterflyHistory* h, Square s)
-           : pos(p), history(h) {
+MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const HistoryCollection* hc_p, Square s)
+           : pos(p), hc(hc_p) {
 
   assert(d <= DEPTH_ZERO);
 
@@ -140,26 +138,19 @@ void MovePicker::score<CAPTURES>() {
 template<>
 void MovePicker::score<QUIETS>() {
 
-  Color c = pos.side_to_move();
-
   for (auto& m : *this)
-      m.value =  (*cmh)[pos.moved_piece(m)][to_sq(m)]
-               + (*fmh)[pos.moved_piece(m)][to_sq(m)]
-               + (*fm2)[pos.moved_piece(m)][to_sq(m)]
-               + (*history)[c][from_to(m)];
+      m.value = hc->score(pos.side_to_move(), pos.moved_piece(m), m);
 }
 
 template<>
 void MovePicker::score<EVASIONS>() {
   // Try captures ordered by MVV/LVA, then non-captures ordered by stats heuristics
-  Color c = pos.side_to_move();
-
   for (auto& m : *this)
       if (pos.capture(m))
           m.value =  PieceValue[MG][pos.piece_on(to_sq(m))]
                    - Value(type_of(pos.moved_piece(m))) + (1 << 28);
       else
-          m.value = (*history)[c][from_to(m)];
+          m.value = hc->score(pos.side_to_move(), m);
 }
 
 
