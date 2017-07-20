@@ -204,7 +204,7 @@ void init() {
               for (Rank r = RANK_2; r < RANK_8; ++r)
   {
       int v = (Seed[r] + (phalanx ? (Seed[r + 1] - Seed[r]) / 2 : 0)) >> opposed;
-      v += (support == 2 ? v / 2 : 17 * support);
+      v += 17 * support;
       Connected[opposed][phalanx][support][r] = make_score(v, v * (r - 2) / 4);
   }
 }
