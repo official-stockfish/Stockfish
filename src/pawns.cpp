@@ -32,10 +32,10 @@ namespace {
   #define S(mg, eg) make_score(mg, eg)
 
   // Isolated pawn penalty by opposed flag
-  const Score Isolated[] = { S(44-17, 38-8), S(30-17, 26-8) };
+  const Score Isolated[] = { S(27, 30), S(13, 18) };
 
   // Backward pawn penalty by opposed flag
-  const Score Backward[] = { S(57-17, 34-8), S(41-17, 20-8) };
+  const Score Backward[] = { S(40, 26), S(24, 12) };
 
   // Connected pawn bonus by opposed, phalanx, #support and rank
   Score Connected[2][2][3][RANK_NB];
@@ -171,8 +171,10 @@ namespace {
         // Score this pawn
         if (supported | phalanx)
             score += Connected[opposed][!!phalanx][popcount(supported)][relative_rank(Us, s)];
+
         else if (!neighbours)
             score -= Isolated[opposed];
+
         else if (backward)
             score -= Backward[opposed];
 
@@ -203,8 +205,9 @@ void init() {
           for (int support = 0; support <= 2; ++support)
               for (Rank r = RANK_2; r < RANK_8; ++r)
   {
-      int v = (Seed[r] + (phalanx ? (Seed[r + 1] - Seed[r]) / 2 : 0)) >> opposed;
-      v += 17 * support;
+      int v = 17 * support;
+      v += (Seed[r] + (phalanx ? (Seed[r + 1] - Seed[r]) / 2 : 0)) >> opposed;
+
       Connected[opposed][phalanx][support][r] = make_score(v, v * (r - 2) / 4);
   }
 }
