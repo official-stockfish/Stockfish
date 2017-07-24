@@ -71,7 +71,7 @@ script:
   #
   # lcov
   #
-  - if [ -x "$(command -v lcov )" -a "$COMP" == "gcc" ]; then make clean && make ARCH=x86-64 profile-build lcov=yes optimize=no > /dev/null && printf "Coverage: Lines %s of %s (%s%%), Functions %s of %s (%s%%)\n" `grep headerCovTableEntry coveragedir/src/index.html | grep -o '[0-9\.][0-9\.]*' `; fi
+  - if [ -x "$(command -v lcov )" -a "$COMPILER" == "g++-6" ]; then make clean && make GCOVTOOL=gcov-6 ARCH=x86-64 profile-build lcov=yes optimize=no && grep headerCovTableEntry coveragedir/src/index.html | grep -o '[0-9\.][0-9\.]*' | xargs printf 'Coverage for lines %s of %s (%s%%), for Functions %s of %s (%s%%)\n'; fi
   # sanitizer
   #
   # use g++-6 as a proxy for having sanitizers, might need revision as they become available for more recent versions of clang/gcc
