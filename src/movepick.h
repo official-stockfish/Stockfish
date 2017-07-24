@@ -86,6 +86,30 @@ typedef StatBoards<PIECE_NB, SQUARE_NB, Move> CounterMoveStat;
 /// stores a full history (based on PieceTo boards instead of ButterflyBoards).
 typedef StatBoards<PIECE_NB, SQUARE_NB, PieceToHistory> CounterMoveHistoryStat;
 
+/// Collect StatBoards used together for scoring and pruning moves.
+class HistoryCollection {
+public:
+    HistoryCollection(const ButterflyHistory* history_p, const PieceToHistory* cmh_p,
+                     const PieceToHistory* fmh_p, const PieceToHistory* fm2_p) :
+                     history(history_p), cmh(cmh_p), fmh(fmh_p), fm2(fm2_p) {};
+
+    int score(Color c, Move m) const { return (*history)[c][from_to(m)]; }
+
+    int score(Color c, Piece pc, Move m) const {
+
+        return   (*cmh)[pc][to_sq(m)] + (*fmh)[pc][to_sq(m)]
+               + (*fm2)[pc][to_sq(m)] + (*history)[c][from_to(m)];
+    }
+
+    bool should_prune(Piece pc, Move m, int threshold) const {
+
+        return (*cmh)[pc][to_sq(m)] < threshold && (*fmh)[pc][to_sq(m)] < threshold;
+    }
+private:
+    const ButterflyHistory* history;
+    const PieceToHistory *cmh, *fmh, *fm2;
+};
+
 
 /// MovePicker class is used to pick one pseudo legal move at a time from the
 /// current position. The most important method is next_move(), which returns a
@@ -93,17 +117,14 @@ typedef StatBoards<PIECE_NB, SQUARE_NB, PieceToHistory> CounterMoveHistoryStat;
 /// when MOVE_NONE is returned. In order to improve the efficiency of the alpha
 /// beta algorithm, MovePicker attempts to return the moves which are most likely
 /// to get a cut-off first.
-namespace Search { struct Stack; }
 
 class MovePicker {
 public:
   MovePicker(const MovePicker&) = delete;
   MovePicker& operator=(const MovePicker&) = delete;
-
   MovePicker(const Position&, Move, Value);
-  MovePicker(const Position&, Move, Depth, Square);
-  MovePicker(const Position&, Move, Depth, Search::Stack*);
-
+  MovePicker(const Position&, Move, Depth, const HistoryCollection*, Square);
+  MovePicker(const Position&, Move, Depth, const HistoryCollection*, Move, Move*);
   Move next_move(bool skipQuiets = false);
 
 private:
@@ -112,15 +133,13 @@ private:
   ExtMove* end() { return endMoves; }
 
   const Position& pos;
-  const Search::Stack* ss;
-  Move killers[2];
-  Move countermove;
-  Depth depth;
-  Move ttMove;
+  Move ttMove, killers[2], countermove;
+  const HistoryCollection* hc;
+  ExtMove *cur, *endMoves, *endBadCaptures;
+  int stage;
   Square recaptureSquare;
   Value threshold;
-  int stage;
-  ExtMove *cur, *endMoves, *endBadCaptures;
+  Depth depth;
   ExtMove moves[MAX_MOVES];
 };
 
