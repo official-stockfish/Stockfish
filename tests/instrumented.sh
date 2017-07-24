@@ -58,6 +58,7 @@ esac
 
 # simple command line testing
 for args in "eval" \
+            "perft 4" \
             "go nodes 1000" \
             "go depth 10" \
             "go movetime 1000" \
@@ -72,7 +73,7 @@ done
 
 # more general testing, following an uci protocol exchange
 cat << EOF > game.exp
- set timeout 10
+ set timeout 60
  spawn $exeprefix ./stockfish
 
  send "uci\n"
@@ -87,6 +88,24 @@ cat << EOF > game.exp
 
  send "position startpos moves e2e4 e7e6\n"
  send "go nodes 1000\n"
+ expect "bestmove"
+
+ send "setoption name Clear Hash\n"
+ send "position startpos moves e2e4 e7e6\n"
+ send "d\n"
+ send "go nodes 1000\n"
+ expect "bestmove"
+
+ send "ucinewgame\n"
+ send "position startpos\n"
+ send "setoption name Skill Level value 7\n"
+ send "go wtime 8000 btime 8000 winc 500 binc 500\n"
+ expect "bestmove"
+
+ send "ucinewgame\n"
+ send "setoption name UCI_Chess960 value true\n"
+ send "position startpos\n"
+ send "go depth 10\n"
  expect "bestmove"
 
  send "position fen 5rk1/1K4p1/8/8/3B4/8/8/8 b - - 0 1\n"
