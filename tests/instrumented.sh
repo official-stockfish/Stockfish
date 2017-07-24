@@ -42,6 +42,9 @@ race:TTEntry::eval
 race:TranspositionTable::probe
 race:TranspositionTable::hashfull
 
+# TODO fix races
+race:Search::clear
+
 EOF
 
     export TSAN_OPTIONS="suppressions=./tsan.supp"
