@@ -21,14 +21,14 @@ case $1 in
     echo "sanitizer testing started"
     prefix='!'
     exeprefix=''
-    postfix='2>&1 | grep "runtime error:"'
+    postfix='2>&1 | grep -B40 -A40 "runtime error:"'
     threads="1"
   ;;
   --sanitizer-thread)
     echo "sanitizer testing started"
     prefix='!'
     exeprefix=''
-    postfix='2>&1 | grep "WARNING: ThreadSanitizer:"'
+    postfix='2>&1 | grep -B40 -A40 "WARNING: ThreadSanitizer:"'
     threads="2"
 
 cat << EOF > tsan.supp
@@ -42,12 +42,9 @@ race:TTEntry::eval
 race:TranspositionTable::probe
 race:TranspositionTable::hashfull
 
-# TODO fix races
-race:Search::clear
-
 EOF
 
-    export TSAN_OPTIONS="suppressions=./tsan.supp"
+    export TSAN_OPTIONS="halt_on_error=1 suppressions=./tsan.supp"
 
   ;;
   *)
@@ -84,7 +81,6 @@ cat << EOF > game.exp
 
  send "setoption name Threads value $threads\n"
 
- send "ucinewgame\n"
  send "position startpos\n"
  send "go nodes 1000\n"
  expect "bestmove"
@@ -93,19 +89,23 @@ cat << EOF > game.exp
  send "go nodes 1000\n"
  expect "bestmove"
 
- send "setoption name Clear Hash\n"
- send "position startpos moves e2e4 e7e6\n"
  send "d\n"
- send "go nodes 1000\n"
- expect "bestmove"
 
- send "ucinewgame\n"
  send "position startpos\n"
  send "setoption name Skill Level value 7\n"
  send "go wtime 8000 btime 8000 winc 500 binc 500\n"
  expect "bestmove"
 
- send "ucinewgame\n"
+ send "setoption name Skill Level value 20\n"
+
+ send "position startpos\n"
+ send "go wtime 8000 btime 8000 winc 500 binc 500 nodestime 200\n"
+ expect "bestmove"
+
+ send "position fen 8/8/8/7k/3BBK2/4P3/8/8 w - - 0 1\n"
+ send "go mate 7\n"
+ expect "bestmove"
+
  send "setoption name UCI_Chess960 value true\n"
  send "position startpos\n"
  send "go depth 10\n"
