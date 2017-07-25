@@ -569,24 +569,11 @@ namespace {
     if (PvNode && thisThread->selDepth < ss->ply)
         thisThread->selDepth = ss->ply;
 
-    if (!rootNode)
-    {
-        // Step 2. Check for aborted search and immediate draw
-        if (Threads.stop.load(std::memory_order_relaxed) || pos.is_draw(ss->ply) || ss->ply >= MAX_PLY)
-            return ss->ply >= MAX_PLY && !inCheck ? evaluate(pos)
-                                                  : DrawValue[pos.side_to_move()];
-
-        // Step 3. Mate distance pruning. Even if we mate at the next move our score
-        // would be at best mate_in(ss->ply+1), but if alpha is already bigger because
-        // a shorter mate was found upward in the tree then there is no need to search
-        // because we will never beat the current alpha. Same logic but with reversed
-        // signs applies also in the opposite condition of being mated instead of giving
-        // mate. In this case return a fail-high score.
-        alpha = std::max(mated_in(ss->ply), alpha);
-        beta = std::min(mate_in(ss->ply+1), beta);
-        if (alpha >= beta)
-            return alpha;
-    }
+    // Step 2. Check for aborted search and immediate draw
+    if (  !rootNode && (Threads.stop.load(std::memory_order_relaxed)
+                        || pos.is_draw(ss->ply) || ss->ply >= MAX_PLY))
+        return ss->ply >= MAX_PLY && !inCheck ? evaluate(pos)
+                                              : DrawValue[pos.side_to_move()];
 
     assert(0 <= ss->ply && ss->ply < MAX_PLY);
 
@@ -595,7 +582,7 @@ namespace {
     (ss+2)->killers[0] = (ss+2)->killers[1] = MOVE_NONE;
     Square prevSq = to_sq((ss-1)->currentMove);
 
-    // Step 4. Transposition table lookup. We don't want the score of a partial
+    // Step 3. Transposition table lookup. We don't want the score of a partial
     // search to overwrite a previous full search TT value, so we use a different
     // position key in case of an excluded move.
     excludedMove = ss->excludedMove;
@@ -636,7 +623,7 @@ namespace {
         return ttValue;
     }
 
-    // Step 4a. Tablebase probe
+    // Step 4. Tablebase probe
     if (!rootNode && TB::Cardinality)
     {
         int piecesCount = pos.count<ALL_PIECES>();
