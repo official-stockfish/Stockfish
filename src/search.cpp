@@ -214,16 +214,6 @@ void Search::init() {
 void Search::clear() {
 
   TT.clear();
-  EXP.clear();
-  EXPresize(Options["Hash"]);
-
-  UseExp = true;
-  Movesplayed = 0;
-  startpoint = false;
-  openingswritten = 0;
-  for (int x = 0; x < 8; x++)
-	  OpFileKey[x] = 0;
-  pawnending = false;
 
   for (Thread* th : Threads)
   {
@@ -716,7 +706,7 @@ namespace {
             : ttHit    ? tte->move() : MOVE_NONE;
 
     // At non-PV nodes we check for an early TT cutoff
-    if (  !PvNode
+	if ((!PvNode|| kellyNode == 3)
         && ttHit
         && tte->depth() >= depth
         && ttValue != VALUE_NONE // Possible in case of TT access race
@@ -793,42 +783,7 @@ namespace {
 			return expttValue;
 
 		}
-		else if (PvNode
-			&& expttHit
-			&& exptte->depth() >= depth)
-		{
-			// If ttMove is quiet, update move sorting heuristics on TT hit
-			if (expttMove)
-			{
-				if (expttValue >= beta)
-				{
-					if (!pos.capture_or_promotion(expttMove))
-						update_stats(pos, ss, ttMove, nullptr, 0, stat_bonus(depth));
-
-					// Extra penalty for a quiet TT move in previous ply when it gets refuted
-					if ((ss - 1)->moveCount == 1 && !pos.captured_piece())
-						update_cm_stats(ss - 1, pos.piece_on(prevSq), prevSq, -stat_bonus(depth + ONE_PLY));
-				}
-				// Penalty for a quiet ttMove that fails low
-				else if (!pos.capture_or_promotion(expttMove))
-				{
-					int penalty = -stat_bonus(depth);
-					thisThread->history.update(pos.side_to_move(), expttMove, penalty);
-					update_cm_stats(ss, pos.moved_piece(expttMove), to_sq(expttMove), penalty);
-				}
-			}
-
-		}
-		
 	}
-
-
-	if (kellyNode == 3)
-	{
-
-		return alpha;
-	}
-
 
     // Step 4a. Tablebase probe
     if (!rootNode && TB::Cardinality)
@@ -894,7 +849,7 @@ namespace {
         goto moves_loop;
 
     // Step 6. Razoring (skipped when in check)
-	if (!PvNode
+	if ((!PvNode || kellyNode == 3)
         &&  depth < 4 * ONE_PLY
         &&  eval + razor_margin[depth / ONE_PLY] <= alpha)
     {
@@ -908,7 +863,7 @@ namespace {
     }
 
     // Step 7. Futility pruning: child node (skipped when in check)
-	if (!rootNode
+	if ((!rootNode || kellyNode == 3)
         &&  depth < 7 * ONE_PLY
         &&  eval - futility_margin(depth) >= beta
         &&  eval < VALUE_KNOWN_WIN  // Do not return unproven wins
@@ -916,7 +871,7 @@ namespace {
         return eval;
 
     // Step 8. Null move search with verification search (is omitted in PV nodes)
-	if (!PvNode
+	if ((!PvNode || kellyNode == 2)
         &&  eval >= beta
         && (ss->staticEval >= beta - 35 * (depth / ONE_PLY - 6) || depth >= 13 * ONE_PLY)
         &&  pos.non_pawn_material(pos.side_to_move()))
@@ -956,7 +911,7 @@ namespace {
     // Step 9. ProbCut (skipped when in check)
     // If we have a good enough capture and a reduced search returns a value
     // much above beta, we can (almost) safely prune the previous move.
-	if (!PvNode
+	if ((!PvNode)
         &&  depth >= 5 * ONE_PLY
         &&  abs(beta) < VALUE_MATE_IN_MAX_PLY)
     {
@@ -983,7 +938,7 @@ namespace {
     }
 
     // Step 10. Internal iterative deepening (skipped when in check)
-	if (depth >= 6 * ONE_PLY && !(kellyNode == 2 || kellyNode == 3)
+	if (depth >= 6 * ONE_PLY
         && !ttMove
         && (PvNode || ss->staticEval + 256 >= beta))
     {
@@ -1014,6 +969,7 @@ moves_loop: // When in check search starts from here
                            && (tte->bound() & BOUND_LOWER)
                            &&  tte->depth() >= depth - 3 * ONE_PLY;
     skipQuiets = false;
+	bool expPruning = false;
 
     // Step 11. Loop through moves
     // Loop through all pseudo-legal moves until no moves remain or a beta cutoff occurs
@@ -1059,26 +1015,29 @@ moves_loop: // When in check search starts from here
       // is singular and should be extended. To verify this we do a reduced search
       // on all the other moves but the ttMove and if the result is lower than
       // ttValue minus a margin then we extend the ttMove.
-	  if (!extension && exp1 && move == expttMove  &&  depth >= 7 * ONE_PLY)
+	  if (!captureOrPromotion
+		  && exp1 && move == expttMove
+		  || kellyNode == 1 && moveCount <= 1 && captureOrPromotion
+		  && PvNode)
 		  extension = ONE_PLY;
 	  else
-      if (    singularExtensionNode
-          &&  move == ttMove
-          &&  pos.legal(move))
-      {
-          Value rBeta = std::max(ttValue - 2 * depth / ONE_PLY, -VALUE_MATE);
-          Depth d = (depth / (2 * ONE_PLY)) * ONE_PLY;
-          ss->excludedMove = move;
-          value = search<NonPV>(pos, ss, rBeta - 1, rBeta, d, cutNode, true, kellyNode);
-          ss->excludedMove = MOVE_NONE;
+		  if (singularExtensionNode
+			  &&  move == ttMove
+			  &&  pos.legal(move))
+		  {
+			  Value rBeta = std::max(ttValue - 2 * depth / ONE_PLY, -VALUE_MATE);
+			  Depth d = (depth / (2 * ONE_PLY)) * ONE_PLY;
+			  ss->excludedMove = move;
+			  value = search<NonPV>(pos, ss, rBeta - 1, rBeta, d, cutNode, true, kellyNode);
+			  ss->excludedMove = MOVE_NONE;
 
-          if (value < rBeta)
-              extension = ONE_PLY;
-      }
-      else if (    givesCheck
-               && !moveCountPruning
-               &&  pos.see_ge(move, VALUE_ZERO))
-          extension = ONE_PLY;
+			  if (value < rBeta)
+				  extension = ONE_PLY;
+		  }
+		  else if (givesCheck
+			  && !moveCountPruning
+			  &&  pos.see_ge(move, VALUE_ZERO))
+			  extension = ONE_PLY;
 	  
 
       // Calculate new depth for this move
@@ -1094,12 +1053,12 @@ moves_loop: // When in check search starts from here
               && (!pos.advanced_pawn_push(move) || pos.non_pawn_material() >= Value(5000)))
           {
               // Move count based pruning
-              if (moveCountPruning)
+			  if (moveCountPruning)
               {
                   skipQuiets = true;
                   continue;
-              }
-
+              }			  
+			
               // Reduced depth of the next LMR search
               int lmrDepth = std::max(newDepth - reduction<PvNode>(improving, depth, moveCount), DEPTH_ZERO) / ONE_PLY;
 
@@ -1142,6 +1101,9 @@ moves_loop: // When in check search starts from here
 
       // Step 14. Make the move
       pos.do_move(move, st, givesCheck);
+
+	  if (exp1 && move == expttMove)
+		  expPruning = true;
 	  
 	  int myNode = 4;
 
@@ -1153,7 +1115,6 @@ moves_loop: // When in check search starts from here
 		  myNode = 3;
 	  if (kellyNode == 3)
 		  myNode = 2;
-	  
       // Step 15. Reduced depth search (LMR). If the move fails high it will be
       // re-searched at full depth.
       if (    depth >= 3 * ONE_PLY
@@ -1206,8 +1167,6 @@ moves_loop: // When in check search starts from here
       // Step 16. Full depth search when LMR is skipped or fails high
 	  if (doFullDepthSearch)
 	  {
-		  if (kellyNode == 1 || kellyNode == 2)
-			  myNode = 1;
 		  value = newDepth <   ONE_PLY ?
 			  givesCheck ? -qsearch<NonPV, true>(pos, ss + 1, -(alpha + 1), -alpha)
 			  : -qsearch<NonPV, false>(pos, ss + 1, -(alpha + 1), -alpha)
@@ -1219,7 +1178,7 @@ moves_loop: // When in check search starts from here
       // parent node fail low with value <= alpha and try another move.
       if (PvNode && (moveCount == 1 || (value > alpha && (rootNode || value < beta))))
       {
-		  if (kellyNode == 1 || kellyNode == 2)
+		  if (myNode == 3 || myNode == 2)
 			  myNode = 1;
           (ss+1)->pv = pv;
           (ss+1)->pv[0] = MOVE_NONE;
