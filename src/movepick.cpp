@@ -34,20 +34,34 @@ namespace {
     QSEARCH_RECAPTURES, QRECAPTURES
   };
 
-  // partial_insertion_sort() sorts moves in descending order up to and including
-  // a given limit. The order of moves smaller than the limit is left unspecified.
-  void partial_insertion_sort(ExtMove* begin, ExtMove* end, int limit) {
 
-    for (ExtMove *sortedEnd = begin, *p = begin + 1; p < end; ++p)
-        if (p->value >= limit)
+  // partial_insertion_sort() sorts moves whose value is above the "limit" 
+  // leaving moves whose value is below the limit unsorted.  
+  // It is important that moves below the limit are left in their current order.
+
+  // This method is very fast because it divides ones above the from the ones
+  // below the limit and simultaneously sorts those above the limit
+  // using a typical insertion sorting algorithm.
+
+  void partial_insertion_sort(ExtMove* begin, ExtMove* end, int limit)
+  {
+     ExtMove* sortedEnd = begin;
+     for (ExtMove* idx = begin +1; idx < end; ++idx) 
+     {
+        if (idx->value >= limit) //move this current move left
         {
-            ExtMove tmp = *p, *q;
-            *p = *++sortedEnd;
-            for (q = sortedEnd; q != begin && *(q - 1) < tmp; --q)
-                *q = *(q - 1);
-            *q = tmp;
+            ExtMove tmp = *idx, *dest;
+            *idx = *++sortedEnd;
+
+            //shift moves to right to make room for current move up where it belongs
+            for (dest = sortedEnd; (dest != begin) && (*(dest-1) < tmp); --dest)
+                *dest = *(dest-1);
+
+            *dest = tmp;
         }
+     }
   }
+
 
   // pick_best() finds the best move in the range (begin, end) and moves it to
   // the front. It's faster than sorting all the moves in advance when there
