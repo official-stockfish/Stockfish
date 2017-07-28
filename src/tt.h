@@ -98,12 +98,16 @@ class TranspositionTable {
 public:
  ~TranspositionTable() { free(mem); }
   void new_search() { generation8 += 4; } // Lower 2 bits are used by Bound
+  void infinite_search() { generation8 = 4; }
   uint8_t generation() const { return generation8; }
   TTEntry* probe(const Key key, bool& found) const;
   int hashfull() const;
   void resize(size_t mbSize);
   void clear();
-
+  void set_hash_file_name(const std::string& fname);
+  bool save();
+  void load();
+  std::string hashfilename = "hash.hsh";
   // The lowest order bits of the key are used to get the index of the cluster
   TTEntry* first_entry(const Key key) const {
     return &table[(size_t)key & (clusterCount - 1)].entry[0];

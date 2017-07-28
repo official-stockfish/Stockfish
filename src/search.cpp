@@ -187,8 +187,9 @@ void Search::init() {
 
 void Search::clear() {
 
+  if (Options["NeverClearHash"])
+	return;
   TT.clear();
-
   for (Thread* th : Threads)
   {
       th->counterMoves.fill(MOVE_NONE);
@@ -242,8 +243,10 @@ void MainThread::search() {
 
   Color us = rootPos.side_to_move();
   Time.init(Limits, us, rootPos.game_ply());
-  TT.new_search();
-
+  if (!Limits.infinite)
+	TT.new_search();
+  else
+	TT.infinite_search();
   int contempt = Options["Contempt"] * PawnValueEg / 100; // From centipawns
   DrawValue[ us] = VALUE_DRAW - Value(contempt);
   DrawValue[~us] = VALUE_DRAW + Value(contempt);
