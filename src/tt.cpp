@@ -20,7 +20,8 @@
 
 #include <cstring>   // For std::memset
 #include <iostream>
-
+#include <fstream>
+#include "uci.h"
 #include "bitboard.h"
 #include "tt.h"
 
@@ -63,6 +64,26 @@ void TranspositionTable::clear() {
   std::memset(table, 0, clusterCount * sizeof(Cluster));
 }
 
+void TranspositionTable::set_hash_file_name(const std::string& fname) { hashfilename = fname; }
+
+bool TranspositionTable::save() {
+	std::ofstream b_stream(hashfilename,
+		std::fstream::out | std::fstream::binary);
+	if (b_stream)
+	{
+		b_stream.write(reinterpret_cast<char const *>(table), clusterCount * sizeof(Cluster));
+		return (b_stream.good());
+	}
+	return false;
+}
+
+void TranspositionTable::load() {
+	std::ifstream file(hashfilename, std::ios::binary | std::ios::ate);
+	std::streamsize size = file.tellg();
+	resize(size / 1024 / 1024);
+	file.seekg(0, std::ios::beg);
+	file.read(reinterpret_cast<char *>(table), clusterCount * sizeof(Cluster));
+}
 
 /// TranspositionTable::probe() looks up the current position in the transposition
 /// table. It returns true and a pointer to the TTEntry if the position is found.
