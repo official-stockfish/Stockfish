@@ -151,6 +151,7 @@ void benchmark(const Position& current, istream& is) {
 
   uint64_t nodes = 0;
   TimePoint elapsed = now();
+  Threads.ponder = false;
   Position pos;
 
   for (size_t i = 0; i < fens.size(); ++i)
