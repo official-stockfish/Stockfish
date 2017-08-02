@@ -88,6 +88,8 @@ namespace {
 
   void setoption(istringstream& is) {
 
+    Threads.main()->wait_for_search_finished();
+
     string token, name, value;
 
     is >> token; // Consume "name" token
@@ -112,6 +114,8 @@ namespace {
   // the search.
 
   void go(Position& pos, istringstream& is) {
+
+    Threads.main()->wait_for_search_finished();
 
     Search::LimitsType limits;
     string token;
@@ -140,6 +144,8 @@ namespace {
 
   // On ucinewgame following steps are needed to reset the state
   void newgame() {
+
+    Threads.main()->wait_for_search_finished();
 
     TT.resize(Options["Hash"]);
     Search::clear();
