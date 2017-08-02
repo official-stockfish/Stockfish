@@ -72,14 +72,13 @@ typedef std::vector<RootMove> RootMoves;
 
 
 /// LimitsType struct stores information sent by GUI about available time to
-/// search the current move, maximum depth/time, if we are in analysis mode or
-/// if we have to ponder while it's our opponent's turn to move.
+/// search the current move, maximum depth/time, or if we are in analysis mode.
 
 struct LimitsType {
 
   LimitsType() { // Init explicitly due to broken value-initialization of non POD in MSVC
     nodes = time[WHITE] = time[BLACK] = inc[WHITE] = inc[BLACK] =
-    npmsec = movestogo = depth = movetime = mate = infinite = ponder = 0;
+    npmsec = movestogo = depth = movetime = mate = infinite = 0;
   }
 
   bool use_time_management() const {
@@ -87,7 +86,7 @@ struct LimitsType {
   }
 
   std::vector<Move> searchmoves;
-  int time[COLOR_NB], inc[COLOR_NB], npmsec, movestogo, depth, movetime, mate, infinite, ponder;
+  int time[COLOR_NB], inc[COLOR_NB], npmsec, movestogo, depth, movetime, mate, infinite;
   int64_t nodes;
   TimePoint startTime;
 };

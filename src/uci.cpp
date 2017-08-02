@@ -117,6 +117,7 @@ namespace {
     string token;
 
     limits.startTime = now(); // As early as possible!
+    Threads.ponder = false;
 
     while (is >> token)
         if (token == "searchmoves")
@@ -133,7 +134,7 @@ namespace {
         else if (token == "movetime")  is >> limits.movetime;
         else if (token == "mate")      is >> limits.mate;
         else if (token == "infinite")  limits.infinite = 1;
-        else if (token == "ponder")    limits.ponder = 1;
+        else if (token == "ponder")    Threads.ponder = true;
 
     Threads.start_thinking(pos, States, limits);
   }
