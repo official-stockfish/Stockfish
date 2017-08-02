@@ -88,8 +88,6 @@ namespace {
 
   void setoption(istringstream& is) {
 
-    Threads.main()->wait_for_search_finished();
-
     string token, name, value;
 
     is >> token; // Consume "name" token
@@ -114,8 +112,6 @@ namespace {
   // the search.
 
   void go(Position& pos, istringstream& is) {
-
-    Threads.main()->wait_for_search_finished();
 
     Search::LimitsType limits;
     string token;
@@ -144,8 +140,6 @@ namespace {
 
   // On ucinewgame following steps are needed to reset the state
   void newgame() {
-
-    Threads.main()->wait_for_search_finished();
 
     TT.resize(Options["Hash"]);
     Search::clear();
@@ -182,6 +176,13 @@ void UCI::loop(int argc, char* argv[]) {
 
       token.clear(); // getline() could return empty or blank line
       is >> skipws >> token;
+
+      // the folowing commands can not be executed unless the search is finished.
+      if (   token == "go"
+          || token == "bench"
+          || token == "setoption"
+          || token == "ucinewgame")
+          Threads.main()->wait_for_search_finished();
 
       // The GUI sends 'ponderhit' to tell us to ponder on the same move the
       // opponent has played. In case Threads.stopOnPonderhit is set we are
