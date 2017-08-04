@@ -176,10 +176,8 @@ void UCI::loop(int argc, char* argv[]) {
       if (    token == "quit"
           ||  token == "stop"
           || (token == "ponderhit" && Threads.stopOnPonderhit))
-      {
           Threads.stop = true;
-          Threads.main()->start_searching(true); // Could be sleeping
-      }
+
       else if (token == "ponderhit")
           Threads.ponder = false; // Switch to normal search
 

@@ -52,9 +52,8 @@ public:
   virtual ~Thread();
   virtual void search();
   void idle_loop();
-  void start_searching(bool resume = false);
+  void start_searching();
   void wait_for_search_finished();
-  void wait(std::atomic_bool& condition);
 
   Pawns::Table pawnsTable;
   Material::Table materialTable;
