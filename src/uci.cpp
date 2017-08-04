@@ -180,6 +180,8 @@ void UCI::loop(int argc, char* argv[]) {
       // the folowing commands can not be executed unless the search is finished.
       if (   token == "go"
           || token == "bench"
+          || token == "perft"
+          || token == "eval"
           || token == "setoption"
           || token == "ucinewgame")
           Threads.main()->wait_for_search_finished();
