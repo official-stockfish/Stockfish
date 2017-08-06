@@ -9,7 +9,7 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['g++-6', 'g++-6-multilib', 'g++-multilib', 'valgrind', 'expect']
+          packages: ['g++-6', 'g++-6-multilib', 'g++-multilib', 'valgrind', 'expect', 'lcov']
       env:
         - COMPILER=g++-6
         - COMP=gcc
@@ -52,25 +52,28 @@ script:
   - export benchref=$(cat git_sig)
   - echo "Reference bench:" $benchref
   # verify against reference
-  - make clean && make ARCH=x86-64 build > /dev/null && ../tests/signature.sh $benchref
-  - make clean && make ARCH=x86-32 build > /dev/null && ../tests/signature.sh $benchref
-  - make clean && make ARCH=x86-64 optimize=no debug=yes build > /dev/null && ../tests/signature.sh $benchref
-  - make clean && make ARCH=x86-32 optimize=no debug=yes build > /dev/null && ../tests/signature.sh $benchref
+  - make clean && make -j2 ARCH=x86-64 build > /dev/null && ../tests/signature.sh $benchref
+  - make clean && make -j2 ARCH=x86-32 build > /dev/null && ../tests/signature.sh $benchref
+  - make clean && make -j2 ARCH=x86-64 optimize=no debug=yes build > /dev/null && ../tests/signature.sh $benchref
+  - make clean && make -j2 ARCH=x86-32 optimize=no debug=yes build > /dev/null && ../tests/signature.sh $benchref
   #
   # perft
   #
-  - make clean && make ARCH=x86-64 build > /dev/null && ../tests/perft.sh
+  - make clean && make -j2 ARCH=x86-64 build > /dev/null && ../tests/perft.sh
   #
   # reproducible search
   #
-  - make clean && make ARCH=x86-64 build > /dev/null && ../tests/reprosearch.sh
+  - make clean && make -j2 ARCH=x86-64 build > /dev/null && ../tests/reprosearch.sh
   #
   # valgrind
   #
-  - if [ -x "$(command -v valgrind )" ]; then make clean && make ARCH=x86-64 debug=yes optimize=no build > /dev/null && ../tests/instrumented.sh --valgrind; fi
+  - if [ -x "$(command -v valgrind )" ]; then make clean && make -j2 ARCH=x86-64 debug=yes optimize=no build > /dev/null && ../tests/instrumented.sh --valgrind; fi
   #
+  # lcov
+  #
+  - if [ -x "$(command -v lcov )" -a "$COMPILER" == "g++-6" ]; then make clean && make -j2 GCOVTOOL=gcov-6 ARCH=x86-64 profile-build lcov=yes optimize=no && grep headerCovTableEntry coveragedir/src/index.html | grep -o '[0-9\.][0-9\.]*' | xargs printf 'Coverage for lines %s of %s (%s%%), for Functions %s of %s (%s%%)\n'; fi
   # sanitizer
   #
   # use g++-6 as a proxy for having sanitizers, might need revision as they become available for more recent versions of clang/gcc
-  - if [[ "$COMPILER" == "g++-6" ]]; then make clean && make ARCH=x86-64 sanitize=undefined optimize=no debug=yes build > /dev/null && ../tests/instrumented.sh --sanitizer-undefined; fi
-  - if [[ "$COMPILER" == "g++-6" ]]; then make clean && make ARCH=x86-64 sanitize=thread optimize=no debug=yes build > /dev/null && ../tests/instrumented.sh --sanitizer-thread; fi
+  - if [[ "$COMPILER" == "g++-6" ]]; then make clean && make -j2 ARCH=x86-64 sanitize=undefined optimize=no debug=yes build > /dev/null && ../tests/instrumented.sh --sanitizer-undefined; fi
+  - if [[ "$COMPILER" == "g++-6" ]]; then make clean && make -j2 ARCH=x86-64 sanitize=thread optimize=no debug=yes build > /dev/null && ../tests/instrumented.sh --sanitizer-thread; fi

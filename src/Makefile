@@ -1,7 +1,7 @@
 # Stockfish, a UCI chess playing engine derived from Glaurung 2.1
 # Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
 # Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-# Copyright (C) 2015-2016 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+# Copyright (C) 2015-2017 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 #
 # Stockfish is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -60,6 +60,9 @@ OBJS = benchmark.o bitbase.o bitboard.o endgame.o evaluate.o main.o \
 # popcnt = yes/no     --- -DUSE_POPCNT     --- Use popcnt asm-instruction
 # sse = yes/no        --- -msse            --- Use Intel Streaming SIMD Extensions
 # pext = yes/no       --- -DUSE_PEXT       --- Use pext x86_64 asm-instruction
+# lcov = yes/no       --- ( coverage )     --- Use lcov to generate coverage info.
+#                                              Generates coveragedir/index.html .
+#                                              Requires currently a gcc build.
 #
 # Note that Makefile is space sensitive, so when adding new architectures
 # or modifying existing flags, you have to make sure there are no extra spaces
@@ -74,6 +77,7 @@ prefetch = no
 popcnt = no
 sse = no
 pext = no
+lcov = no
 
 ### 2.2 Architecture specific
 
@@ -230,6 +234,20 @@ else
 	profile_make = gcc-profile-make
 	profile_use = gcc-profile-use
 endif
+endif
+
+ifeq ($(lcov),yes)
+       lcov_generate = lcovgen
+       gcc-profile-make-flags = -fprofile-generate -ftest-coverage
+       PGOBENCH = ../tests/instrumented.sh
+ifdef GCOVTOOL
+      GCOV=$(GCOVTOOL)
+else
+      GCOV=gcov
+endif
+else
+       lcov_generate = lcovclean
+       gcc-profile-make-flags = -fprofile-generate
 endif
 
 ifeq ($(KERNEL),Darwin)
@@ -441,6 +459,7 @@ profile-build: config-sanity objclean profileclean
 	$(PGOBENCH) > /dev/null
 	@echo ""
 	@echo "Step 3/4. Building optimized executable ..."
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(lcov_generate)
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) objclean
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_use)
 	@echo ""
@@ -456,7 +475,7 @@ install:
 	-strip $(BINDIR)/$(EXE)
 
 #clean all
-clean: objclean profileclean
+clean: objclean profileclean lcovclean
 	@rm -f .depend *~ core
 
 # clean binaries and objects
@@ -492,6 +511,7 @@ config-sanity:
 	@echo "popcnt: '$(popcnt)'"
 	@echo "sse: '$(sse)'"
 	@echo "pext: '$(pext)'"
+	@echo "lcov: '$(lcov)'"
 	@echo ""
 	@echo "Flags:"
 	@echo "CXX: $(CXX)"
@@ -510,6 +530,7 @@ config-sanity:
 	@test "$(popcnt)" = "yes" || test "$(popcnt)" = "no"
 	@test "$(sse)" = "yes" || test "$(sse)" = "no"
 	@test "$(pext)" = "yes" || test "$(pext)" = "no"
+	@test "$(lcov)" = "yes" || test "$(lcov)" = "no"
 	@test "$(comp)" = "gcc" || test "$(comp)" = "icc" || test "$(comp)" = "mingw" || test "$(comp)" = "clang"
 
 $(EXE): $(OBJS)
@@ -530,7 +551,7 @@ clang-profile-use:
 
 gcc-profile-make:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS='-fprofile-generate' \
+	EXTRACXXFLAGS="$(gcc-profile-make-flags)" \
 	EXTRALDFLAGS='-lgcov' \
 	all
 
@@ -539,6 +560,14 @@ gcc-profile-use:
 	EXTRACXXFLAGS='-fprofile-use -fno-peel-loops -fno-tracer' \
 	EXTRALDFLAGS='-lgcov' \
 	all
+
+lcovclean:
+	@rm -rf coverage.info coveragedir
+
+lcovgen: lcovclean
+	@lcov --capture --directory . --no-external --gcov-tool $(GCOV) --output-file coverage.info > /dev/null
+	@genhtml coverage.info --output-directory coveragedir > /dev/null
+	@echo "Generated coveragedir/index.html"
 
 icc-profile-make:
 	@mkdir -p profdir
