@@ -109,9 +109,9 @@ void benchmark(const Position& current, istream& is) {
   string fenFile   = (is >> token) ? token : "default";
   string limitType = (is >> token) ? token : "depth";
 
-  Options["Hash"]    = ttSize;
+  Search::clear(); // Wait for search finished
   Options["Threads"] = threads;
-  Search::clear();
+  Options["Hash"]    = ttSize;
 
   if (limitType == "time")
       limits.movetime = stoi(limit); // movetime is in millisecs

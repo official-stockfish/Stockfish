@@ -138,15 +138,6 @@ namespace {
     Threads.start_thinking(pos, States, limits);
   }
 
-  // On ucinewgame following steps are needed to reset the state
-  void newgame() {
-
-    TT.resize(Options["Hash"]);
-    Search::clear();
-    Tablebases::init(Options["SyzygyPath"]);
-    Time.availableNodes = 0;
-  }
-
 } // namespace
 
 
@@ -160,10 +151,9 @@ void UCI::loop(int argc, char* argv[]) {
 
   Position pos;
   string token, cmd;
+  Thread* uiThread = new Thread();
 
-  newgame(); // Implied ucinewgame before the first position command
-
-  pos.set(StartFEN, false, &States->back(), Threads.main());
+  pos.set(StartFEN, false, &States->back(), uiThread);
 
   for (int i = 1; i < argc; ++i)
       cmd += std::string(argv[i]) + " ";
@@ -197,7 +187,7 @@ void UCI::loop(int argc, char* argv[]) {
                     << "\n"       << Options
                     << "\nuciok"  << sync_endl;
 
-      else if (token == "ucinewgame") newgame();
+      else if (token == "ucinewgame") Search::clear();
       else if (token == "isready")    sync_cout << "readyok" << sync_endl;
       else if (token == "go")         go(pos, is);
       else if (token == "position")   position(pos, is);
@@ -225,6 +215,7 @@ void UCI::loop(int argc, char* argv[]) {
   } while (token != "quit" && argc == 1); // Passed args have one-shot behaviour
 
   Threads.main()->wait_for_search_finished();
+  delete uiThread;
 }
 
 
