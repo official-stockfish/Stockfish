@@ -183,10 +183,13 @@ void Search::init() {
 }
 
 
-/// Search::clear() resets search state to its initial value, to obtain reproducible results
+/// Search::clear() resets search state to its initial value
 
 void Search::clear() {
 
+  Threads.main()->wait_for_search_finished();
+
+  Time.availableNodes = 0;
   TT.clear();
 
   for (Thread* th : Threads)

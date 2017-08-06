@@ -88,6 +88,10 @@ namespace {
 
   void setoption(istringstream& is) {
 
+    // Don't block: this is potentially racy in case an option is
+    // changed during a long search, but avoids to stall the UI.
+    /* Threads.main()->wait_for_search_finished(); */
+
     string token, name, value;
 
     is >> token; // Consume "name" token
@@ -138,15 +142,6 @@ namespace {
     Threads.start_thinking(pos, States, limits);
   }
 
-  // On ucinewgame following steps are needed to reset the state
-  void newgame() {
-
-    TT.resize(Options["Hash"]);
-    Search::clear();
-    Tablebases::init(Options["SyzygyPath"]);
-    Time.availableNodes = 0;
-  }
-
 } // namespace
 
 
@@ -160,8 +155,6 @@ void UCI::loop(int argc, char* argv[]) {
 
   Position pos;
   string token, cmd;
-
-  newgame(); // Implied ucinewgame before the first position command
 
   pos.set(StartFEN, false, &States->back(), Threads.main());
 
@@ -197,7 +190,7 @@ void UCI::loop(int argc, char* argv[]) {
                     << "\n"       << Options
                     << "\nuciok"  << sync_endl;
 
-      else if (token == "ucinewgame") newgame();
+      else if (token == "ucinewgame") Search::clear();
       else if (token == "isready")    sync_cout << "readyok" << sync_endl;
       else if (token == "go")         go(pos, is);
       else if (token == "position")   position(pos, is);
