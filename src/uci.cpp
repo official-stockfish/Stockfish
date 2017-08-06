@@ -155,8 +155,9 @@ void UCI::loop(int argc, char* argv[]) {
 
   Position pos;
   string token, cmd;
+  Thread* uiThread = new Thread();
 
-  pos.set(StartFEN, false, &States->back(), Threads.main());
+  pos.set(StartFEN, false, &States->back(), uiThread);
 
   for (int i = 1; i < argc; ++i)
       cmd += std::string(argv[i]) + " ";
@@ -218,6 +219,7 @@ void UCI::loop(int argc, char* argv[]) {
   } while (token != "quit" && argc == 1); // Passed args have one-shot behaviour
 
   Threads.main()->wait_for_search_finished();
+  delete uiThread;
 }
 
 
