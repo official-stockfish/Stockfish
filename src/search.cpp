@@ -73,13 +73,13 @@ namespace {
 
   // Futility and reductions lookup tables, initialized at startup
   int FutilityMoveCounts[2][16]; // [improving][depth]
-  int Reductions[2][2][64][64];  // [pv][improving][depth][moveNumber]
+  int8_t Reductions[2][2][64][64];  // [pv][improving][depth][moveNumber]
 
   // Threshold used for countermoves based pruning
   const int CounterMovePruneThreshold = 0;
 
   template <bool PvNode> Depth reduction(bool i, Depth d, int mn) {
-    return Reductions[PvNode][i][std::min(d / ONE_PLY, 63)][std::min(mn, 63)] * ONE_PLY;
+    return (int)Reductions[PvNode][i][std::min(d / ONE_PLY, 63)][std::min(mn, 63)] * ONE_PLY;
   }
 
   // History and stats update bonus, based on depth
