@@ -120,44 +120,26 @@ MovePicker::MovePicker(const Position& p, Move ttm, Value th)
   stage += (ttMove == MOVE_NONE);
 }
 
-
-/// score() assigns a numerical value to each move in a move list. The moves with
-/// highest values will be picked first.
-template<>
-void MovePicker::score<CAPTURES>() {
-  // Winning and equal captures in the main search are ordered by MVV, preferring
-  // captures near our home rank. Surprisingly, this appears to perform slightly
-  // better than SEE-based move ordering: exchanging big pieces before capturing
-  // a hanging piece probably helps to reduce the subtree size.
-  // In the main search we want to push captures with negative SEE values to the
-  // badCaptures[] array, but instead of doing it now we delay until the move
-  // has been picked up, saving some SEE calls in case we get a cutoff.
-  for (auto& m : *this)
-      m.value =  PieceValue[MG][pos.piece_on(to_sq(m))]
-               - Value(200 * relative_rank(pos.side_to_move(), to_sq(m)));
-}
-
-template<>
-void MovePicker::score<QUIETS>() {
+/// score() assigns a numerical value to each move in a list, used for sorting.
+/// Captures are ordered by Most Valuable Victim (MVV), preferring captures
+/// near our home rank. Quiets are ordered using the histories.
+template<GenType T>
+void MovePicker::score() {
 
   for (auto& m : *this)
-      m.value =  (*mainHistory)[pos.side_to_move()][from_to(m)]
-               + (*contHistory[0])[pos.moved_piece(m)][to_sq(m)]
-               + (*contHistory[1])[pos.moved_piece(m)][to_sq(m)]
-               + (*contHistory[3])[pos.moved_piece(m)][to_sq(m)];
-}
+      if (T == CAPTURES || (T == EVASIONS && pos.capture(m)))
+          m.value =   PieceValue[MG][pos.piece_on(to_sq(m))]
+                   - (T == EVASIONS ? Value(type_of(pos.moved_piece(m)))
+                                    : Value(200 * relative_rank(pos.side_to_move(), to_sq(m))));
+      else if (T == QUIETS)
+          m.value =  (*mainHistory)[pos.side_to_move()][from_to(m)]
+                   + (*contHistory[0])[pos.moved_piece(m)][to_sq(m)]
+                   + (*contHistory[1])[pos.moved_piece(m)][to_sq(m)]
+                   + (*contHistory[3])[pos.moved_piece(m)][to_sq(m)];
 
-template<>
-void MovePicker::score<EVASIONS>() {
-  // Try captures ordered by MVV/LVA, then non-captures ordered by stats heuristics
-  for (auto& m : *this)
-      if (pos.capture(m))
-          m.value =  PieceValue[MG][pos.piece_on(to_sq(m))]
-                   - Value(type_of(pos.moved_piece(m))) + (1 << 28);
-      else
-          m.value = (*mainHistory)[pos.side_to_move()][from_to(m)];
+      else // Quiet evasions
+          m.value = (*mainHistory)[pos.side_to_move()][from_to(m)] - (1 << 28);
 }
-
 
 /// next_move() is the most important method of the MovePicker class. It returns
 /// a new pseudo legal move every time it is called, until there are no more moves
