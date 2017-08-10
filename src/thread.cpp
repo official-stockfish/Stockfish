@@ -185,8 +185,6 @@ uint64_t ThreadPool::tb_hits() const {
 void ThreadPool::start_thinking(Position& pos, StateListPtr& states,
                                 const Search::LimitsType& limits) {
 
-  main()->wait_for_search_finished();
-
   stopOnPonderhit = stop = false;
   Search::Limits = limits;
   Search::RootMoves rootMoves;

@@ -167,6 +167,15 @@ void UCI::loop(int argc, char* argv[]) {
       token.clear(); // getline() could return empty or blank line
       is >> skipws >> token;
 
+      // the folowing commands can not be executed unless the search is finished.
+      if (   token == "go"
+          || token == "bench"
+          || token == "perft"
+          || token == "eval"
+          || token == "setoption"
+          || token == "ucinewgame")
+          Threads.main()->wait_for_search_finished();
+
       // The GUI sends 'ponderhit' to tell us to ponder on the same move the
       // opponent has played. In case Threads.stopOnPonderhit is set we are
       // waiting for 'ponderhit' to stop the search (for instance because we
