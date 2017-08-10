@@ -117,6 +117,7 @@ namespace {
     string token;
 
     limits.startTime = now(); // As early as possible!
+    Threads.ponder = false;
 
     while (is >> token)
         if (token == "searchmoves")
