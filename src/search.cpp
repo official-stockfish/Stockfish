@@ -549,7 +549,7 @@ namespace {
     Depth extension, newDepth;
     Value bestValue, value, ttValue, eval;
     bool ttHit, inCheck, givesCheck, singularExtensionNode, improving;
-    bool captureOrPromotion, doFullDepthSearch, moveCountPruning, skipQuiets, ttCapture;
+    bool captureOrPromotion, doFullDepthSearch, moveCountPruning, skipQuiets, ttCapture, ttSingular;
     Piece moved_piece;
     int moveCount, quietCount;
 
@@ -818,7 +818,7 @@ moves_loop: // When in check search starts from here
                            && (tte->bound() & BOUND_LOWER)
                            &&  tte->depth() >= depth - 3 * ONE_PLY;
     skipQuiets = false;
-    ttCapture = false;
+    ttCapture = ttSingular = false;
 
     // Step 11. Loop through moves
     // Loop through all pseudo-legal moves until no moves remain or a beta cutoff occurs
@@ -874,8 +874,10 @@ moves_loop: // When in check search starts from here
           value = search<NonPV>(pos, ss, rBeta - 1, rBeta, d, cutNode, true);
           ss->excludedMove = MOVE_NONE;
 
-          if (value < rBeta)
+          if (value < rBeta) {
               extension = ONE_PLY;
+              ttSingular = true;
+          }
       }
       else if (    givesCheck
                && !moveCountPruning
@@ -884,6 +886,7 @@ moves_loop: // When in check search starts from here
 
       // Calculate new depth for this move
       newDepth = depth - ONE_PLY + extension;
+
 
       // Step 13. Pruning at shallow depth
       if (  !rootNode
@@ -921,10 +924,13 @@ moves_loop: // When in check search starts from here
                   && !pos.see_ge(move, Value(-35 * lmrDepth * lmrDepth)))
                   continue;
           }
-          else if (    depth < 7 * ONE_PLY
+          else {
+        	  // At depths 8,9,10,11 also prune moves with negative SEE when ttMove was singular extended
+        	  if (    depth < (7 + 6 * ttSingular) * ONE_PLY
                    && !extension
-                   && !pos.see_ge(move, -PawnValueEg * (depth / ONE_PLY)))
+                   && !pos.see_ge(move, 5 * ttSingular * PawnValueEg - PawnValueEg * (depth / ONE_PLY)))
                   continue;
+          }
       }
 
       // Speculative prefetch as early as possible
