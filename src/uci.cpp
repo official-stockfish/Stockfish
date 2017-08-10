@@ -133,7 +133,7 @@ namespace {
         else if (token == "movetime")  is >> limits.movetime;
         else if (token == "mate")      is >> limits.mate;
         else if (token == "infinite")  limits.infinite = 1;
-        else if (token == "ponder")    Threads.ponder = true;
+        else if (token == "ponder")    limits.ponder = 1;
 
     Threads.start_thinking(pos, States, limits);
   }
@@ -180,7 +180,7 @@ void UCI::loop(int argc, char* argv[]) {
           Threads.main()->start_searching(true); // Could be sleeping
       }
       else if (token == "ponderhit")
-          Threads.ponder = false; // Switch to normal search
+          Search::Limits.ponder = 0; // Switch to normal search
 
       else if (token == "uci")
           sync_cout << "id name " << engine_info(true)

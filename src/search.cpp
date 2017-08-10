@@ -277,7 +277,7 @@ void MainThread::search() {
   // the UCI protocol states that we shouldn't print the best move before the
   // GUI sends a "stop" or "ponderhit" command. We therefore simply wait here
   // until the GUI sends one of those commands (which also raises Threads.stop).
-  if (!Threads.stop && (Threads.ponder || Limits.infinite))
+  if (!Threads.stop && (Limits.ponder || Limits.infinite))
   {
       Threads.stopOnPonderhit = true;
       wait(Threads.stop);
@@ -499,7 +499,7 @@ void Thread::search() {
               {
                   // If we are allowed to ponder do not stop the search now but
                   // keep pondering until the GUI sends "ponderhit" or "stop".
-                  if (Threads.ponder)
+                  if (Limits.ponder)
                       Threads.stopOnPonderhit = true;
                   else
                       Threads.stop = true;
@@ -1489,7 +1489,7 @@ moves_loop: // When in check search starts from here
     }
 
     // An engine may not stop pondering until told so by the GUI
-    if (Threads.ponder)
+    if (Limits.ponder)
         return;
 
     if (   (Limits.use_time_management() && elapsed > Time.maximum() - 10)
