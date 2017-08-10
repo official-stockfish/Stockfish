@@ -115,6 +115,7 @@ namespace {
 
     Search::LimitsType limits;
     string token;
+    bool ponderMode = false;
 
     limits.startTime = now(); // As early as possible!
 
@@ -133,9 +134,9 @@ namespace {
         else if (token == "movetime")  is >> limits.movetime;
         else if (token == "mate")      is >> limits.mate;
         else if (token == "infinite")  limits.infinite = 1;
-        else if (token == "ponder")    limits.ponder = 1;
+        else if (token == "ponder")    ponderMode = true;
 
-    Threads.start_thinking(pos, States, limits);
+    Threads.start_thinking(pos, States, limits, ponderMode);
   }
 
 } // namespace
@@ -167,11 +168,11 @@ void UCI::loop(int argc, char* argv[]) {
       token.clear(); // getline() could return empty or blank line
       is >> skipws >> token;
 
-      // The GUI sends 'ponderhit' to tell us to ponder on the same move the
-      // opponent has played. In case Threads.stopOnPonderhit is set we are
-      // waiting for 'ponderhit' to stop the search (for instance because we
-      // already ran out of time), otherwise we should continue searching but
-      // switching from pondering to normal search.
+      // The GUI sends 'ponderhit' to tell us the user has played the expected move.
+      // So 'ponderhit' will be sent if we were told to ponder on the same move the
+      // user has played. We should continue searching but switch from pondering to
+      // normal search. In case Threads.stopOnPonderhit is set we are waiting for
+      // 'ponderhit' to stop the search, for instance if max search depth is reached.
       if (    token == "quit"
           ||  token == "stop"
           || (token == "ponderhit" && Threads.stopOnPonderhit))
@@ -180,7 +181,7 @@ void UCI::loop(int argc, char* argv[]) {
           Threads.main()->start_searching(true); // Could be sleeping
       }
       else if (token == "ponderhit")
-          Search::Limits.ponder = 0; // Switch to normal search
+          Threads.ponder = false; // Switch to normal search
 
       else if (token == "uci")
           sync_cout << "id name " << engine_info(true)
