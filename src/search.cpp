@@ -341,7 +341,6 @@ void Thread::search() {
 
   bestValue = delta = alpha = -VALUE_INFINITE;
   beta = VALUE_INFINITE;
-  completedDepth = DEPTH_ZERO;
 
   if (mainThread)
   {
