@@ -42,18 +42,13 @@ namespace {
   // FEN string of the initial position, normal chess
   const char* StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
-  // A list to keep track of the position states along the setup moves (from the
-  // start position to the position just before the search starts). Needed by
-  // 'draw by repetition' detection.
-  StateListPtr States(new std::deque<StateInfo>(1));
-
 
   // position() is called when engine receives the "position" UCI command.
   // The function sets up the position described in the given FEN string ("fen")
   // or the starting position ("startpos") and then makes the moves given in the
   // following move list ("moves").
 
-  void position(Position& pos, istringstream& is) {
+  void position(Position& pos, istringstream& is, StateListPtr& states) {
 
     Move m;
     string token, fen;
@@ -71,14 +66,14 @@ namespace {
     else
         return;
 
-    States = StateListPtr(new std::deque<StateInfo>(1));
-    pos.set(fen, Options["UCI_Chess960"], &States->back(), Threads.main());
+    states = StateListPtr(new std::deque<StateInfo>(1)); // Drop old and create a new one
+    pos.set(fen, Options["UCI_Chess960"], &states->back(), Threads.main());
 
     // Parse move list (if any)
     while (is >> token && (m = UCI::to_move(pos, token)) != MOVE_NONE)
     {
-        States->push_back(StateInfo());
-        pos.do_move(m, States->back());
+        states->emplace_back();
+        pos.do_move(m, states->back());
     }
   }
 
@@ -111,7 +106,7 @@ namespace {
   // the thinking time and other parameters from the input string, then starts
   // the search.
 
-  void go(Position& pos, istringstream& is) {
+  void go(Position& pos, istringstream& is, StateListPtr& states) {
 
     Search::LimitsType limits;
     string token;
@@ -136,7 +131,7 @@ namespace {
         else if (token == "infinite")  limits.infinite = 1;
         else if (token == "ponder")    ponderMode = true;
 
-    Threads.start_thinking(pos, States, limits, ponderMode);
+    Threads.start_thinking(pos, states, limits, ponderMode);
   }
 
 } // namespace
@@ -152,9 +147,10 @@ void UCI::loop(int argc, char* argv[]) {
 
   Position pos;
   string token, cmd;
-  Thread* uiThread = new Thread();
+  StateListPtr states(new std::deque<StateInfo>(1));
+  auto uiThread = std::make_shared<Thread>(0);
 
-  pos.set(StartFEN, false, &States->back(), uiThread);
+  pos.set(StartFEN, false, &states->back(), uiThread.get());
 
   for (int i = 1; i < argc; ++i)
       cmd += std::string(argv[i]) + " ";
@@ -165,7 +161,7 @@ void UCI::loop(int argc, char* argv[]) {
 
       istringstream is(cmd);
 
-      token.clear(); // getline() could return empty or blank line
+      token.clear(); // Avoid a stale if getline() returns empty or blank line
       is >> skipws >> token;
 
       // The GUI sends 'ponderhit' to tell us the user has played the expected move.
@@ -186,35 +182,32 @@ void UCI::loop(int argc, char* argv[]) {
                     << "\n"       << Options
                     << "\nuciok"  << sync_endl;
 
+      else if (token == "setoption")  setoption(is);
+      else if (token == "go")         go(pos, is, states);
+      else if (token == "position")   position(pos, is, states);
       else if (token == "ucinewgame") Search::clear();
       else if (token == "isready")    sync_cout << "readyok" << sync_endl;
-      else if (token == "go")         go(pos, is);
-      else if (token == "position")   position(pos, is);
-      else if (token == "setoption")  setoption(is);
 
-      // Additional custom non-UCI commands, useful for debugging
-      else if (token == "flip")       pos.flip();
-      else if (token == "bench")      benchmark(pos, is);
-      else if (token == "d")          sync_cout << pos << sync_endl;
-      else if (token == "eval")       sync_cout << Eval::trace(pos) << sync_endl;
+      // Additional custom non-UCI commands, mainly for debugging
+      else if (token == "flip")  pos.flip();
+      else if (token == "bench") benchmark(pos, is);
+      else if (token == "d")     sync_cout << pos << sync_endl;
+      else if (token == "eval")  sync_cout << Eval::trace(pos) << sync_endl;
       else if (token == "perft")
       {
           int depth;
           stringstream ss;
 
           is >> depth;
-          ss << Options["Hash"]    << " "
-             << Options["Threads"] << " " << depth << " current perft";
+          ss << Options["Hash"] << " " << Options["Threads"]
+             << " " << depth << " current perft";
 
           benchmark(pos, ss);
       }
       else
           sync_cout << "Unknown command: " << cmd << sync_endl;
 
-  } while (token != "quit" && argc == 1); // Passed args have one-shot behaviour
-
-  Threads.main()->wait_for_search_finished();
-  delete uiThread;
+  } while (token != "quit" && argc == 1); // Command line args are one-shot
 }
 
 
