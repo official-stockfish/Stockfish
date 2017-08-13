@@ -56,7 +56,10 @@ struct StateInfo {
   Bitboard   checkSquares[PIECE_TYPE_NB];
 };
 
-// In a std::deque references to elements are unaffected upon resizing
+/// A list to keep track of the position states along the setup moves (from the
+/// start position to the position just before the search starts). Needed by
+/// 'draw by repetition' detection. Use a std::deque because pointers to
+/// elements are not invalidated upon list resizing.
 typedef std::unique_ptr<std::deque<StateInfo>> StateListPtr;
 
 
