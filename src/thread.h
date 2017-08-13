@@ -78,7 +78,7 @@ struct MainThread : public Thread {
 
   using Thread::Thread;
 
-  virtual void search();
+  void search() override;
   void check_time();
 
   bool easyMovePlayed, failedLow;
