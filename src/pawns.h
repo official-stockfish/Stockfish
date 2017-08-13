@@ -65,17 +65,17 @@ struct Entry {
   Value shelter_storm(const Position& pos, Square ksq);
 
   Key key;
-  Score score;
   Bitboard passedPawns[COLOR_NB];
   Bitboard pawnAttacks[COLOR_NB];
   Bitboard pawnAttacksSpan[COLOR_NB];
+  Score score;
   Square kingSquares[COLOR_NB];
   Score kingSafety[COLOR_NB];
-  int castlingRights[COLOR_NB];
-  int semiopenFiles[COLOR_NB];
-  int pawnsOnSquares[COLOR_NB][COLOR_NB]; // [color][light/dark squares]
-  int asymmetry;
-  int openFiles;
+  int8_t castlingRights[COLOR_NB];
+  uint8_t semiopenFiles[COLOR_NB];
+  int8_t pawnsOnSquares[COLOR_NB][COLOR_NB]; // [color][light/dark squares]
+  int8_t asymmetry;
+  int8_t openFiles;
 };
 
 typedef HashTable<Entry, 16384> Table;
