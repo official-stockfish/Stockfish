@@ -158,10 +158,12 @@ void ThreadPool::start_thinking(Position& pos, StateListPtr& states,
   if (states.get())
       setupStates = std::move(states); // Ownership transfer, states is now empty
 
-  // We use Position::set() to set root position across threads. So we
-  // need to save and later to restore st->previous, cleared by set().
-  // Note that setupStates is shared by threads but is accessed in read-only mode.
-  StateInfo* previous = setupStates->back().previous;
+  // We use Position::set() to set root position across threads. But there are
+  // some StateInfo fields (previous, pliesFromNull, capturedPiece) that cannot
+  // be deduced from a fen string, so set() clears them and to not lose the info
+  // we need to backup and later restore setupStates->back(). Note that setupStates
+  // is shared by threads but is accessed in read-only mode.
+  StateInfo tmp = setupStates->back();
 
   for (Thread* th : Threads)
   {
@@ -171,7 +173,7 @@ void ThreadPool::start_thinking(Position& pos, StateListPtr& states,
       th->rootPos.set(pos.fen(), pos.is_chess960(), &setupStates->back(), th);
   }
 
-  setupStates->back().previous = previous;
+  setupStates->back() = tmp;
 
   main()->start_searching();
 }
