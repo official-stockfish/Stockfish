@@ -23,10 +23,7 @@
 #include <istream>
 #include <vector>
 
-#include "misc.h"
 #include "position.h"
-#include "search.h"
-#include "thread.h"
 #include "uci.h"
 
 using namespace std;
@@ -88,19 +85,17 @@ const vector<string> Defaults = {
 
 } // namespace
 
-/// benchmark() runs a simple benchmark by letting Stockfish analyze a set
-/// of positions for a given limit each. There are five parameters: the
-/// transposition table size, the number of search threads that should
+/// setup_bench() builds a list of UCI commands to be run by bench. There
+/// are five parameters: TT size, number of search threads that should
 /// be used, the limit value spent for each position (optional, default is
 /// depth 13), an optional file name where to look for positions in FEN
 /// format (defaults are the positions defined above) and the type of the
 /// limit value: depth (default), time in millisecs or number of nodes.
 
-void benchmark(const Position& current, istream& is) {
+std::vector<string> setup_bench(const Position& current , istream& is) {
 
-  string token;
-  vector<string> fens;
-  Search::LimitsType limits;
+  vector<string> fens, list;
+  string go, token;
 
   // Assign default values to missing arguments
   string ttSize    = (is >> token) ? token : "16";
@@ -109,22 +104,10 @@ void benchmark(const Position& current, istream& is) {
   string fenFile   = (is >> token) ? token : "default";
   string limitType = (is >> token) ? token : "depth";
 
-  Search::clear(); // Wait for search finished
-  Options["Threads"] = threads;
-  Options["Hash"]    = ttSize;
+  // Build 'go' string (movetime is in millisecs)
+  go = "go " + limitType + " " + limit;
 
-  if (limitType == "time")
-      limits.movetime = stoi(limit); // movetime is in millisecs
-
-  else if (limitType == "nodes")
-      limits.nodes = stoll(limit);
-
-  else if (limitType == "mate")
-      limits.mate = stoi(limit);
-
-  else
-      limits.depth = stoi(limit);
-
+  // Get test positions fens
   if (fenFile == "default")
       fens = Defaults;
 
@@ -139,7 +122,7 @@ void benchmark(const Position& current, istream& is) {
       if (!file.is_open())
       {
           cerr << "Unable to open file " << fenFile << endl;
-          return;
+          exit(EXIT_FAILURE);
       }
 
       while (getline(file, fen))
@@ -149,35 +132,16 @@ void benchmark(const Position& current, istream& is) {
       file.close();
   }
 
-  uint64_t nodes = 0;
-  TimePoint elapsed = now();
-  Position pos;
+  // Build UCI command list
+  list.emplace_back("ucinewgame");
+  list.emplace_back("setoption name Threads value " + threads);
+  list.emplace_back("setoption name Hash value " + ttSize);
 
-  for (size_t i = 0; i < fens.size(); ++i)
+  for (const string& fen : fens)
   {
-      StateListPtr states(new std::deque<StateInfo>(1));
-      pos.set(fens[i], Options["UCI_Chess960"], &states->back(), Threads.main());
-
-      cerr << "\nPosition: " << i + 1 << '/' << fens.size() << endl;
-
-      if (limitType == "perft")
-          nodes += Search::perft(pos, limits.depth * ONE_PLY);
-
-      else
-      {
-          limits.startTime = now();
-          Threads.start_thinking(pos, states, limits);
-          Threads.main()->wait_for_search_finished();
-          nodes += Threads.nodes_searched();
-      }
+      list.emplace_back("position fen " + fen);
+      list.emplace_back(go);
   }
 
-  elapsed = now() - elapsed + 1; // Ensure positivity to avoid a 'divide by zero'
-
-  dbg_print(); // Just before exiting
-
-  cerr << "\n==========================="
-       << "\nTotal time (ms) : " << elapsed
-       << "\nNodes searched  : " << nodes
-       << "\nNodes/second    : " << 1000 * nodes / elapsed << endl;
+  return list;
 }

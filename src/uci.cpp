@@ -35,7 +35,7 @@
 
 using namespace std;
 
-extern void benchmark(const Position& pos, istream& is);
+extern std::vector<string> setup_bench(const Position&, istream&);
 
 namespace {
 
@@ -134,6 +134,48 @@ namespace {
     Threads.start_thinking(pos, states, limits, ponderMode);
   }
 
+
+  // bench() is called when engine receives the "bench" command. Firstly
+  // a list of UCI commands is setup according to bench parameters, then
+  // it is run one by one printing summaries at the end.
+
+  void bench(Position& pos, istream& args, StateListPtr& states) {
+
+    string token;
+    uint64_t num, nodes = 0, cnt = 1;
+
+    vector<string> list = setup_bench(pos, args);
+    num = count_if (list.begin(), list.end(), [](string s) { return s.find("go ") == 0; });
+
+    TimePoint elapsed = now();
+
+    for (const auto& cmd : list)
+    {
+        istringstream is(cmd);
+        is >> skipws >> token;
+
+        if (token == "go")
+        {
+            cerr << "\nPosition: " << cnt++ << '/' << num << endl;
+            go(pos, is, states);
+            Threads.main()->wait_for_search_finished();
+            nodes += Threads.nodes_searched();
+        }
+        else if (token == "setoption")  setoption(is);
+        else if (token == "position")   position(pos, is, states);
+        else if (token == "ucinewgame") Search::clear();
+    }
+
+    elapsed = now() - elapsed + 1; // Ensure positivity to avoid a 'divide by zero'
+
+    dbg_print(); // Just before exiting
+
+    cerr << "\n==========================="
+         << "\nTotal time (ms) : " << elapsed
+         << "\nNodes searched  : " << nodes
+         << "\nNodes/second    : " << 1000 * nodes / elapsed << endl;
+  }
+
 } // namespace
 
 
@@ -190,7 +232,7 @@ void UCI::loop(int argc, char* argv[]) {
 
       // Additional custom non-UCI commands, mainly for debugging
       else if (token == "flip")  pos.flip();
-      else if (token == "bench") benchmark(pos, is);
+      else if (token == "bench") bench(pos, is, states);
       else if (token == "d")     sync_cout << pos << sync_endl;
       else if (token == "eval")  sync_cout << Eval::trace(pos) << sync_endl;
       else if (token == "perft")
@@ -202,7 +244,7 @@ void UCI::loop(int argc, char* argv[]) {
           ss << Options["Hash"] << " " << Options["Threads"]
              << " " << depth << " current perft";
 
-          benchmark(pos, ss);
+          // TODO benchmark(pos, ss);
       }
       else
           sync_cout << "Unknown command: " << cmd << sync_endl;
