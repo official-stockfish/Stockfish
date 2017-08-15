@@ -14,8 +14,8 @@ cat << EOF > perft.exp
    set timeout 10
    lassign \$argv pos depth result
    spawn ./stockfish
-   send "position \$pos\\n perft \$depth\\n"
-   expect "Nodes searched  ? \$result" {} timeout {exit 1}
+   send "position \$pos\\ngo perft \$depth\\n"
+   expect "Nodes searched? \$result" {} timeout {exit 1}
    send "quit\\n"
    expect eof
 EOF

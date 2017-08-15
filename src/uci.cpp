@@ -128,6 +128,7 @@ namespace {
         else if (token == "nodes")     is >> limits.nodes;
         else if (token == "movetime")  is >> limits.movetime;
         else if (token == "mate")      is >> limits.mate;
+        else if (token == "perft")     is >> limits.perft;
         else if (token == "infinite")  limits.infinite = 1;
         else if (token == "ponder")    ponderMode = true;
 
@@ -137,7 +138,7 @@ namespace {
 
   // bench() is called when engine receives the "bench" command. Firstly
   // a list of UCI commands is setup according to bench parameters, then
-  // it is run one by one printing summaries at the end.
+  // it is run one by one printing a summary at the end.
 
   void bench(Position& pos, istream& args, StateListPtr& states) {
 
@@ -145,7 +146,7 @@ namespace {
     uint64_t num, nodes = 0, cnt = 1;
 
     vector<string> list = setup_bench(pos, args);
-    num = count_if (list.begin(), list.end(), [](string s) { return s.find("go ") == 0; });
+    num = count_if(list.begin(), list.end(), [](string s) { return s.find("go ") == 0; });
 
     TimePoint elapsed = now();
 
@@ -235,17 +236,6 @@ void UCI::loop(int argc, char* argv[]) {
       else if (token == "bench") bench(pos, is, states);
       else if (token == "d")     sync_cout << pos << sync_endl;
       else if (token == "eval")  sync_cout << Eval::trace(pos) << sync_endl;
-      else if (token == "perft")
-      {
-          int depth;
-          stringstream ss;
-
-          is >> depth;
-          ss << Options["Hash"] << " " << Options["Threads"]
-             << " " << depth << " current perft";
-
-          // TODO benchmark(pos, ss);
-      }
       else
           sync_cout << "Unknown command: " << cmd << sync_endl;
 
