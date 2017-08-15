@@ -749,6 +749,12 @@ namespace {
 
         if (nullValue >= beta)
         {
+            if (nullValue >= VALUE_MATE_IN_MAX_PLY)
+            {
+                std::cerr << pos.fen() << std::endl;
+                exit(0);
+            }
+
             // Do not return unproven mate scores
             if (nullValue >= VALUE_MATE_IN_MAX_PLY)
                 nullValue = beta;
