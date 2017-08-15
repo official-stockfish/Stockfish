@@ -35,7 +35,7 @@
 
 using namespace std;
 
-extern std::vector<string> setup_bench(const Position&, istream&);
+extern vector<string> setup_bench(const Position&, istream&);
 
 namespace {
 
