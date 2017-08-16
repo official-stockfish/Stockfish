@@ -44,33 +44,28 @@ before_script:
   - cd src
 
 script:
-  #
-  # checking bench for various build types
-  #
-  # obtain reference from git log
+  # Obtain bench reference from git log
   - git log HEAD | grep "\b[Bb]ench[ :]\+[0-9]\{7\}" | head -n 1 | sed "s/[^0-9]*\([0-9][0-9]*\)/\1/g" > git_sig
   - export benchref=$(cat git_sig)
   - echo "Reference bench:" $benchref
-  # verify against reference
-  - make clean && make ARCH=x86-64 build > /dev/null && ../tests/signature.sh $benchref
-  - make clean && make ARCH=x86-32 build > /dev/null && ../tests/signature.sh $benchref
-  - make clean && make ARCH=x86-64 optimize=no debug=yes build > /dev/null && ../tests/signature.sh $benchref
-  - make clean && make ARCH=x86-32 optimize=no debug=yes build > /dev/null && ../tests/signature.sh $benchref
   #
-  # perft
+  # Verify bench number against various builds
+  - make clean && make -j2 ARCH=x86-64 optimize=no debug=yes build > /dev/null && ../tests/signature.sh $benchref
+  - make clean && make -j2 ARCH=x86-32 optimize=no debug=yes build > /dev/null && ../tests/signature.sh $benchref
+  - make clean && make -j2 ARCH=x86-32 build > /dev/null && ../tests/signature.sh $benchref
+  - make clean && make -j2 ARCH=x86-64 build > /dev/null && ../tests/signature.sh $benchref
   #
-  - make clean && make ARCH=x86-64 build > /dev/null && ../tests/perft.sh
+  # Check perft and reproducible search
+  - ../tests/perft.sh
+  - ../tests/reprosearch.sh
   #
-  # reproducible search
+  # Valgrind
   #
-  - make clean && make ARCH=x86-64 build > /dev/null && ../tests/reprosearch.sh
+  - export CXXFLAGS=-O1
+  - if [ -x "$(command -v valgrind )" ]; then make clean && make -j2 ARCH=x86-64 debug=yes optimize=no build > /dev/null && ../tests/instrumented.sh --valgrind; fi
   #
-  # valgrind
+  # Sanitizer
   #
-  - if [ -x "$(command -v valgrind )" ]; then make clean && make ARCH=x86-64 debug=yes optimize=no build > /dev/null && ../tests/instrumented.sh --valgrind; fi
-  #
-  # sanitizer
-  #
-  # use g++-6 as a proxy for having sanitizers, might need revision as they become available for more recent versions of clang/gcc
-  - if [[ "$COMPILER" == "g++-6" ]]; then make clean && make ARCH=x86-64 sanitize=undefined optimize=no debug=yes build > /dev/null && ../tests/instrumented.sh --sanitizer-undefined; fi
-  - if [[ "$COMPILER" == "g++-6" ]]; then make clean && make ARCH=x86-64 sanitize=thread optimize=no debug=yes build > /dev/null && ../tests/instrumented.sh --sanitizer-thread; fi
+  # Use g++-6 as a proxy for having sanitizers, might need revision as they become available for more recent versions of clang/gcc
+  - if [[ "$COMPILER" == "g++-6" ]]; then make clean && make -j2 ARCH=x86-64 sanitize=undefined optimize=no debug=yes build > /dev/null && ../tests/instrumented.sh --sanitizer-undefined; fi
+  - if [[ "$COMPILER" == "g++-6" ]]; then make clean && make -j2 ARCH=x86-64 sanitize=thread    optimize=no debug=yes build > /dev/null && ../tests/instrumented.sh --sanitizer-thread; fi

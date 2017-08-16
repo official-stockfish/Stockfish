@@ -62,7 +62,7 @@ for args in "eval" \
             "go depth 10" \
             "go movetime 1000" \
             "go wtime 8000 btime 8000 winc 500 binc 500" \
-            "bench 128 $threads 9 default depth"
+            "bench 128 $threads 10 default depth"
 do
 
    echo "$prefix $exeprefix ./stockfish $args $postfix"
