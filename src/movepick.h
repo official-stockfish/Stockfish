@@ -35,6 +35,20 @@ struct StatBoards : public std::array<std::array<T, Size2>, Size1> {
     T* p = &(*this)[0][0];
     std::fill(p, p + sizeof(*this) / sizeof(*p), v);
   }
+
+  void update(T& entry, int bonus, const int D) {
+
+    assert([&]{
+      int v = entry + bonus * 32 - entry * abs(bonus) / D;
+      return INT16_MIN < v && v < INT16_MAX;
+    }());
+
+    assert(abs(bonus) <= D); // Consistency check for below formula
+
+    entry += bonus * 32 - entry * abs(bonus) / D;
+
+    assert(abs(entry) <= 32 * D);
+  }
 };
 
 /// ButterflyBoards are 2 tables (one for each color) indexed by the move's from
@@ -50,19 +64,7 @@ typedef StatBoards<PIECE_NB, SQUARE_NB> PieceToBoards;
 struct ButterflyHistory : public ButterflyBoards {
 
   void update(Color c, Move m, int bonus) {
-
-    const int D = 324;
-    auto& entry = (*this)[c][from_to(m)];
-
-    assert(abs(bonus) <= D); // Consistency check for below formula
-    assert([&]{
-      int v = entry + bonus * 32 - entry * abs(bonus) / D;
-      return INT16_MIN < v && v < INT16_MAX;
-    }());
-
-    entry += bonus * 32 - entry * abs(bonus) / D;
-
-    assert(abs(entry) <= 32 * D);
+    StatBoards::update((*this)[c][from_to(m)], bonus, 324);
   }
 };
 
@@ -70,19 +72,7 @@ struct ButterflyHistory : public ButterflyBoards {
 struct PieceToHistory : public PieceToBoards {
 
   void update(Piece pc, Square to, int bonus) {
-
-    const int D = 936;
-    auto& entry = (*this)[pc][to];
-
-    assert(abs(bonus) <= D); // Consistency check for below formula
-    assert([&]{
-      int v = entry + bonus * 32 - entry * abs(bonus) / D;
-      return INT16_MIN < v && v < INT16_MAX;
-    }());
-
-    entry += bonus * 32 - entry * abs(bonus) / D;
-
-    assert(abs(entry) <= 32 * D);
+    StatBoards::update((*this)[pc][to], bonus, 936);
   }
 };
 
