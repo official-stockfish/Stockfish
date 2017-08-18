@@ -19,8 +19,6 @@
 */
 
 #include <algorithm>
-#include <cfloat>
-#include <cmath>
 
 #include "search.h"
 #include "timeman.h"
@@ -32,14 +30,14 @@ namespace {
 
   enum TimeType { OptimumTime, MaxTime };
 
-  int remaining(int myTime, int myInc, int moveOverhead,
-                int movesToGo, int ply, TimeType type) {
+  int remaining(int myTime, int myInc, int moveOverhead, int movesToGo,
+                int ply, bool ponder, TimeType type) {
 
     if (myTime <= 0)
         return 0;
 
     int moveNumber = (ply + 1) / 2;
-    double ratio;    // Which ratio of myTime we are going to use. It is <= 1
+    double ratio; // Which ratio of myTime we are going to use. It's <= 1 if not ponder
     double sd = 8.5;
 
     // Usage of increment follows quadratic distribution with the maximum at move 25
@@ -65,7 +63,17 @@ namespace {
 
     ratio = std::min(1.0, ratio * (1 + inc / (myTime * sd)));
 
-    return int(ratio * std::max(0, myTime - moveOverhead));
+    assert(ratio <= 1);
+
+    if (ponder && type == OptimumTime)
+        ratio *= 1.25;
+
+    int time = int(ratio * (myTime - moveOverhead));
+
+    if (type == OptimumTime)
+        time -= 10; // Keep always at least 10 millisecs on the clock
+
+    return std::max(0, time);
   }
 
 } // namespace
@@ -82,8 +90,9 @@ namespace {
 
 void TimeManagement::init(Search::LimitsType& limits, Color us, int ply)
 {
-  int moveOverhead    = Options["Move Overhead"];
-  int npmsec          = Options["nodestime"];
+  int moveOverhead = Options["Move Overhead"];
+  int npmsec       = Options["nodestime"];
+  bool ponder      = Options["Ponder"];
 
   // If we have to play in 'nodes as time' mode, then convert from time
   // to nodes, and use resulting values in time management formulas.
@@ -101,9 +110,8 @@ void TimeManagement::init(Search::LimitsType& limits, Color us, int ply)
   }
 
   startTime = limits.startTime;
-  optimumTime = remaining(limits.time[us], limits.inc[us], moveOverhead, limits.movestogo, ply, OptimumTime);
-  maximumTime = remaining(limits.time[us], limits.inc[us], moveOverhead, limits.movestogo, ply, MaxTime);
-
-  if (Options["Ponder"])
-      optimumTime += optimumTime / 4;
+  optimumTime = remaining(limits.time[us], limits.inc[us], moveOverhead,
+                          limits.movestogo, ply, ponder, OptimumTime);
+  maximumTime = remaining(limits.time[us], limits.inc[us], moveOverhead,
+                          limits.movestogo, ply, ponder, MaxTime);
 }
