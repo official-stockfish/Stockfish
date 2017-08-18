@@ -33,6 +33,7 @@
 #include "position.h"
 #include "search.h"
 #include "thread_win32.h"
+#include "timeman.h"
 
 
 /// Thread class keeps together all the thread-related stuff. We use
@@ -85,6 +86,7 @@ struct MainThread : public Thread {
   double bestMoveChanges;
   Value previousScore;
   int callsCnt;
+  TimeManagement time;
 };
 
 

@@ -137,6 +137,9 @@ void ThreadPool::start_thinking(Position& pos, StateListPtr& states,
                                 const Search::LimitsType& limits, bool ponderMode) {
 
   main()->wait_for_search_finished();
+  main()->time.elapsed=[](){
+      return int(Search::Limits.npmsec ? Threads.nodes_searched() : now() - Search::Limits.startTime);
+  };
 
   stopOnPonderhit = stop = false;
   ponder = ponderMode;
