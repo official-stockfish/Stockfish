@@ -38,12 +38,8 @@ struct StatBoards : public std::array<std::array<T, Size2>, Size1> {
 
   void update(T& entry, int bonus, const int D) {
 
-    assert([&]{
-      int v = entry + bonus * 32 - entry * abs(bonus) / D;
-      return INT16_MIN < v && v < INT16_MAX;
-    }());
-
-    assert(abs(bonus) <= D); // Consistency check for below formula
+    assert(abs(bonus) <= D); // Ensure range is [-32 * D, 32 * D]
+    assert(abs(32 * D) < INT16_MAX); // Ensure we don't overflow
 
     entry += bonus * 32 - entry * abs(bonus) / D;
 
