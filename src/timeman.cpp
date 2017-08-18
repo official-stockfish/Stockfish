@@ -26,8 +26,6 @@
 #include "timeman.h"
 #include "uci.h"
 
-TimeManagement Time; // Our global time management object
-
 namespace {
 
   enum TimeType { OptimumTime, MaxTime };
@@ -100,7 +98,6 @@ void TimeManagement::init(Search::LimitsType& limits, Color us, int ply)
       limits.npmsec = npmsec;
   }
 
-  startTime = limits.startTime;
   optimumTime = remaining(limits.time[us], limits.inc[us], moveOverhead, limits.movestogo, ply, OptimumTime);
   maximumTime = remaining(limits.time[us], limits.inc[us], moveOverhead, limits.movestogo, ply, MaxTime);
 
