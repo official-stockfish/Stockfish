@@ -31,17 +31,15 @@ namespace {
   enum TimeType { OptimumTime, MaxTime };
 
   int remaining(int myTime, int myInc, int moveOverhead, int movesToGo,
-                int ply, bool ponder, TimeType type) {
+                int moveNum, bool ponder, TimeType type) {
 
     if (myTime <= 0)
         return 0;
 
-    int moveNumber = (ply + 1) / 2;
-    double ratio; // Which ratio of myTime we are going to use. It's <= 1 if not ponder
-    double sd = 8.5;
+    double ratio; // Which ratio of myTime we are going to use
 
     // Usage of increment follows quadratic distribution with the maximum at move 25
-    double inc = myInc * std::max(55.0, 120.0 - 0.12 * (moveNumber - 25) * (moveNumber - 25));
+    double inc = myInc * std::max(55.0, 120 - 0.12 * (moveNum - 25) * (moveNum - 25));
 
     // In moves-to-go we distribute time according to a quadratic function with
     // the maximum around move 20 for 40 moves in y time case.
@@ -49,28 +47,26 @@ namespace {
     {
         ratio = (type == OptimumTime ? 1.0 : 6.0) / std::min(50, movesToGo);
 
-        if (moveNumber <= 40)
-            ratio *= 1.1 - 0.001 * (moveNumber - 20) * (moveNumber - 20);
+        if (moveNum <= 40)
+            ratio *= 1.1 - 0.001 * (moveNum - 20) * (moveNum - 20);
         else
             ratio *= 1.5;
+
+        ratio *= 1 + inc / (myTime * 8.5);
     }
     // Otherwise we increase usage of remaining time as the game goes on
     else
     {
-        sd = 1 + 20 * moveNumber / (500.0 + moveNumber);
-        ratio = (type == OptimumTime ? 0.017 : 0.07) * sd;
+        double k = 1 + 20 * moveNum / (500.0 + moveNum);
+        ratio = (type == OptimumTime ? 0.017 : 0.07) * (k + inc / myTime);
     }
 
-    ratio = std::min(1.0, ratio * (1 + inc / (myTime * sd)));
+    int time = int(std::min(1.0, ratio) * std::max(0, myTime - moveOverhead));
 
-    assert(ratio <= 1);
+    if (type == OptimumTime && ponder)
+        time *= 1.25;
 
-    if (ponder && type == OptimumTime)
-        ratio *= 1.25;
-
-    int time = int(ratio * (myTime - moveOverhead));
-
-    if (type == OptimumTime)
+    if (type == MaxTime)
         time -= 10; // Keep always at least 10 millisecs on the clock
 
     return std::max(0, time);
@@ -109,9 +105,11 @@ void TimeManagement::init(Search::LimitsType& limits, Color us, int ply)
       limits.npmsec = npmsec;
   }
 
+  int moveNum = (ply + 1) / 2;
+
   startTime = limits.startTime;
   optimumTime = remaining(limits.time[us], limits.inc[us], moveOverhead,
-                          limits.movestogo, ply, ponder, OptimumTime);
+                          limits.movestogo, moveNum, ponder, OptimumTime);
   maximumTime = remaining(limits.time[us], limits.inc[us], moveOverhead,
-                          limits.movestogo, ply, ponder, MaxTime);
+                          limits.movestogo, moveNum, ponder, MaxTime);
 }
