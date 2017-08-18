@@ -308,7 +308,9 @@ void MainThread::search() {
           Depth depthDiff = th->completedDepth - bestThread->completedDepth;
           Value scoreDiff = th->rootMoves[0].score - bestThread->rootMoves[0].score;
 
-          if (scoreDiff > 0 && depthDiff >= 0)
+          // Select the thread with the best score, always if it is a mate
+          if (    scoreDiff > 0
+              && (depthDiff >= 0 || th->rootMoves[0].score >= VALUE_MATE_IN_MAX_PLY))
               bestThread = th;
       }
   }
@@ -455,15 +457,19 @@ void Thread::search() {
           // Sort the PV lines searched so far and update the GUI
           std::stable_sort(rootMoves.begin(), rootMoves.begin() + PVIdx + 1);
 
-          if (!mainThread)
-              continue;
-
-          if (Threads.stop || PVIdx + 1 == multiPV || Time.elapsed() > 3000)
+          if (    mainThread
+              && (Threads.stop || PVIdx + 1 == multiPV || Time.elapsed() > 3000))
               sync_cout << UCI::pv(rootPos, rootDepth, alpha, beta) << sync_endl;
       }
 
       if (!Threads.stop)
           completedDepth = rootDepth;
+
+      // Have we found a "mate in x"?
+      if (   Limits.mate
+          && bestValue >= VALUE_MATE_IN_MAX_PLY
+          && VALUE_MATE - bestValue <= 2 * Limits.mate)
+          Threads.stop = true;
 
       if (!mainThread)
           continue;
@@ -471,12 +477,6 @@ void Thread::search() {
       // If skill level is enabled and time is up, pick a sub-optimal best move
       if (skill.enabled() && skill.time_to_pick(rootDepth))
           skill.pick_best(multiPV);
-
-      // Have we found a "mate in x"?
-      if (   Limits.mate
-          && bestValue >= VALUE_MATE_IN_MAX_PLY
-          && VALUE_MATE - bestValue <= 2 * Limits.mate)
-          Threads.stop = true;
 
       // Do we have time for the next iteration? Can we stop searching now?
       if (Limits.use_time_management())
