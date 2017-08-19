@@ -78,7 +78,7 @@ namespace {
 
   public:
     Evaluation() = delete;
-    Evaluation(const Position& p) : pos(p) {};
+    Evaluation(const Position& p) : pos(p) {}
     Evaluation& operator=(const Evaluation&) = delete;
 
     Value value();
