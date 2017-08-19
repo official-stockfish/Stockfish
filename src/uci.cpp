@@ -29,7 +29,6 @@
 #include "search.h"
 #include "thread.h"
 #include "tt.h"
-#include "timeman.h"
 #include "uci.h"
 #include "syzygy/tbprobe.h"
 

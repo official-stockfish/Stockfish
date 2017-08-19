@@ -20,11 +20,8 @@
 
 #include <algorithm>
 
-#include "search.h"
-#include "timeman.h"
+#include "thread.h"
 #include "uci.h"
-
-TimeManagement Time; // Our global time management object
 
 namespace {
 
@@ -74,8 +71,15 @@ namespace {
 
 } // namespace
 
+/// return elapsed time, which could be nodes or milliseconds.
+int MainThread::elapsed_time()
+{
 
-/// init() is called at the beginning of the search and calculates the allowed
+      return int(Search::Limits.npmsec ? Threads.nodes_searched() : now() - Search::Limits.startTime);
+}
+
+
+/// init_time() is called at the beginning of the search and calculates the allowed
 /// thinking time out of the time control and current game ply. We support four
 /// different kinds of time controls, passed in 'limits':
 ///
@@ -84,7 +88,7 @@ namespace {
 ///  inc >  0 && movestogo == 0 means: x basetime + z increment
 ///  inc >  0 && movestogo != 0 means: x moves in y minutes + z increment
 
-void TimeManagement::init(Search::LimitsType& limits, Color us, int ply)
+void MainThread::init_time(Search::LimitsType& limits, Color us, int ply)
 {
   int moveOverhead = Options["Move Overhead"];
   int npmsec       = Options["nodestime"];
@@ -106,10 +110,41 @@ void TimeManagement::init(Search::LimitsType& limits, Color us, int ply)
   }
 
   int moveNum = (ply + 1) / 2;
-
-  startTime = limits.startTime;
   optimumTime = remaining(limits.time[us], limits.inc[us], moveOverhead,
                           limits.movestogo, moveNum, ponder, OptimumTime);
   maximumTime = remaining(limits.time[us], limits.inc[us], moveOverhead,
                           limits.movestogo, moveNum, ponder, MaxTime);
+}
+
+/// check_time() is used to print debug info and, more importantly, to detect
+/// when we are out of available time and thus stop the search.
+
+void MainThread::check_time() {
+
+  if (--callsCnt > 0)
+      return;
+
+  // At low node count increase the checking rate to about 0.1% of nodes
+  // otherwise use a default value.
+  callsCnt = Search::Limits.nodes ? std::min(4096, int(Search::Limits.nodes / 1024)) : 4096;
+
+  static TimePoint lastInfoTime = now();
+
+  int elapsed = elapsed_time();
+  TimePoint tick = Search::Limits.startTime + elapsed;
+
+  if (tick - lastInfoTime >= 1000)
+  {
+      lastInfoTime = tick;
+      dbg_print();
+  }
+
+  // An engine may not stop pondering until told so by the GUI
+  if (Threads.ponder)
+      return;
+
+  if (   (Search::Limits.use_time_management() && elapsed > maximumTime)
+      || (Search::Limits.movetime && elapsed >= Search::Limits.movetime)
+      || (Search::Limits.nodes && Threads.nodes_searched() >= (uint64_t)Search::Limits.nodes))
+          Threads.stop = true;
 }

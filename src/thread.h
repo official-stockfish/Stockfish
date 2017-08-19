@@ -80,11 +80,17 @@ struct MainThread : public Thread {
 
   void search() override;
   void check_time();
+  void init_time(Search::LimitsType& limits, Color us, int ply);
+  int elapsed_time();
 
   bool easyMovePlayed, failedLow;
   double bestMoveChanges;
   Value previousScore;
   int callsCnt;
+  int64_t availableNodes; // When in 'nodes as time' mode
+  int optimumTime;
+  int maximumTime;
+
 };
 
 
