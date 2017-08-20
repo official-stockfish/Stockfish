@@ -127,18 +127,15 @@ template<GenType T>
 void MovePicker::score() {
 
   for (auto& m : *this)
-      if (T == CAPTURES || (T == EVASIONS && pos.capture(m)))
-          m.value =   PieceValue[MG][pos.piece_on(to_sq(m))]
-                   - (T == EVASIONS ? Value(type_of(pos.moved_piece(m)))
-                                    : Value(200 * relative_rank(pos.side_to_move(), to_sq(m))));
-      else if (T == QUIETS)
+      if (T != QUIETS && (T == CAPTURES || pos.capture(m)))
+          m.value =  (1 << 28) + PieceValue[MG][pos.piece_on(to_sq(m))]
+                   - Value(type_of(pos.moved_piece(m)))
+                   - Value(200 * relative_rank(pos.side_to_move(), to_sq(m)));
+      else
           m.value =  (*mainHistory)[pos.side_to_move()][from_to(m)]
                    + (*contHistory[0])[pos.moved_piece(m)][to_sq(m)]
                    + (*contHistory[1])[pos.moved_piece(m)][to_sq(m)]
                    + (*contHistory[3])[pos.moved_piece(m)][to_sq(m)];
-
-      else // Quiet evasions
-          m.value = (*mainHistory)[pos.side_to_move()][from_to(m)] - (1 << 28);
 }
 
 /// next_move() is the most important method of the MovePicker class. It returns
