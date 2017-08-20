@@ -65,7 +65,7 @@ void init(OptionsMap& o) {
   o["Ponder"]                << Option(false);
   o["MultiPV"]               << Option(1, 1, 500);
   o["Skill Level"]           << Option(20, 0, 20);
-  o["Move Overhead"]         << Option(30, 0, 5000);
+  o["Move Overhead"]         << Option(60, 0, 5000);
   o["nodestime"]             << Option(0, 0, 10000);
   o["UCI_Chess960"]          << Option(false);
   o["SyzygyPath"]            << Option("<empty>", on_tb_path);

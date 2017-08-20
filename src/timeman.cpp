@@ -66,10 +66,7 @@ namespace {
     if (type == OptimumTime && ponder)
         time *= 1.25;
 
-    if (type == MaxTime)
-        time -= 10; // Keep always at least 10 millisecs on the clock
-
-    return std::max(0, time);
+    return time;
   }
 
 } // namespace
