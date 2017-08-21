@@ -640,8 +640,6 @@ namespace {
             &&  pos.rule50_count() == 0
             && !pos.can_castle(ANY_CASTLING))
         {
-            dbg_hit_on(ttHit, tte->tb());
-
             TB::ProbeState err;
             TB::WDLScore v = Tablebases::probe_wdl(pos, &err);
 
@@ -655,13 +653,9 @@ namespace {
                        : v >  drawScore ?  VALUE_MATE - MAX_PLY - ss->ply
                                         :  VALUE_DRAW + 2 * v * drawScore;
 
-                TTEntry::TBScore tbs =  v < 0 ? TTEntry::TBScore::Loss
-                                      : v > 0 ? TTEntry::TBScore::Win
-                                              : TTEntry::TBScore::Draw;
-
                 tte->save(posKey, value_to_tt(value, ss->ply), BOUND_EXACT,
                           std::min(DEPTH_MAX - ONE_PLY, depth + 6 * ONE_PLY),
-                          MOVE_NONE, VALUE_NONE, TT.generation(), tbs);
+                          MOVE_NONE, VALUE_NONE, TT.generation());
 
                 return value;
             }
