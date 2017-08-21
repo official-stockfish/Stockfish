@@ -66,6 +66,7 @@ namespace {
 /// search captures, promotions, and some checks) and how important good move
 /// ordering is at the current node.
 
+/// MovePicker constructor for the main search
 MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const ButterflyHistory* mh,
                        const PieceToHistory** ch, Move cm, Move* killers_p)
            : pos(p), mainHistory(mh), contHistory(ch), countermove(cm),
@@ -78,9 +79,9 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const ButterflyHist
   stage += (ttMove == MOVE_NONE);
 }
 
-MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const ButterflyHistory* mh,
-                       const PieceToHistory** ch, Square s)
-           : pos(p), mainHistory(mh), contHistory(ch) {
+/// MovePicker constructor for quiescence search 
+MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const ButterflyHistory* mh, Square s)
+           : pos(p), mainHistory(mh) {
 
   assert(d <= DEPTH_ZERO);
 
@@ -104,14 +105,14 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const ButterflyHist
   stage += (ttMove == MOVE_NONE);
 }
 
+/// MovePicker constructor for Probcut: we generate captures with SEE
+/// higher than or equal to the given threshold
 MovePicker::MovePicker(const Position& p, Move ttm, Value th)
            : pos(p), threshold(th) {
 
   assert(!pos.checkers());
 
   stage = PROBCUT;
-
-  // In ProbCut we generate captures with SEE higher than or equal to the given threshold
   ttMove =   ttm
           && pos.pseudo_legal(ttm)
           && pos.capture(ttm)
@@ -123,6 +124,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, Value th)
 /// score() assigns a numerical value to each move in a list, used for sorting.
 /// Captures are ordered by Most Valuable Victim (MVV), preferring captures
 /// near our home rank. Quiets are ordered using the histories.
+
 template<GenType T>
 void MovePicker::score() {
 
