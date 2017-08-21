@@ -408,8 +408,8 @@ namespace {
 
     const Color Them    = (Us == WHITE ? BLACK : WHITE);
     const Square Up     = (Us == WHITE ? NORTH : SOUTH);
-    const Bitboard Camp = (Us == WHITE ? ~Bitboard(0) ^ Rank6BB ^ Rank7BB ^ Rank8BB
-                                       : ~Bitboard(0) ^ Rank1BB ^ Rank2BB ^ Rank3BB);
+    const Bitboard Camp = (Us == WHITE ? AllSquares ^ Rank6BB ^ Rank7BB ^ Rank8BB
+                                       : AllSquares ^ Rank1BB ^ Rank2BB ^ Rank3BB);
 
     const Square ksq = pos.square<KING>(Us);
     Bitboard kingOnlyDefended, undefended, b, b1, b2, safe, other;
