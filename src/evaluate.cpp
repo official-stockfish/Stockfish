@@ -216,11 +216,7 @@ namespace {
   const Score Hanging             = S( 48, 27);
   const Score ThreatByPawnPush    = S( 38, 22);
   const Score HinderPassedPawn    = S(  7,  0);
-
-  // Penalty for a bishop on a1/h1 (a8/h8 for black) which is trapped by
-  // a friendly pawn on b2/g2 (b7/g7 for black). This can obviously only
-  // happen in Chess960 games.
-  const Score TrappedBishopA1H1 = S(50, 50);
+  const Score TrappedBishopA1H1   = S( 50, 50);
 
   #undef S
   #undef V
@@ -412,11 +408,11 @@ namespace {
 
     const Color Them    = (Us == WHITE ? BLACK : WHITE);
     const Square Up     = (Us == WHITE ? NORTH : SOUTH);
-    const Bitboard Camp = (Us == WHITE ? ~Bitboard(0) ^ Rank6BB ^ Rank7BB ^ Rank8BB
-                                       : ~Bitboard(0) ^ Rank1BB ^ Rank2BB ^ Rank3BB);
+    const Bitboard Camp = (Us == WHITE ? AllSquares ^ Rank6BB ^ Rank7BB ^ Rank8BB
+                                       : AllSquares ^ Rank1BB ^ Rank2BB ^ Rank3BB);
 
     const Square ksq = pos.square<KING>(Us);
-    Bitboard kingOnlyDefended, b, b1, b2, safe, other;
+    Bitboard kingOnlyDefended, undefended, b, b1, b2, safe, other;
     int kingDanger;
 
     // King shelter and enemy pawns storm
@@ -431,8 +427,10 @@ namespace {
                           & ~attackedBy2[Us];
 
         // ... and those which are not defended at all in the larger king ring
-        b =  attackedBy[Them][ALL_PIECES] & ~attackedBy[Us][ALL_PIECES]
-           & kingRing[Us] & ~pos.pieces(Them);
+        undefended =   attackedBy[Them][ALL_PIECES]
+                    & ~attackedBy[Us][ALL_PIECES]
+                    &  kingRing[Us]
+                    & ~pos.pieces(Them);
 
         // Initialize the 'kingDanger' variable, which will be transformed
         // later into a king danger score. The initial value is based on the
@@ -442,7 +440,7 @@ namespace {
         kingDanger =        kingAttackersCount[Them] * kingAttackersWeight[Them]
                     + 102 * kingAdjacentZoneAttacksCount[Them]
                     + 201 * popcount(kingOnlyDefended)
-                    + 143 * (popcount(b) + !!pos.pinned_pieces(Us))
+                    + 143 * (popcount(undefended) + !!pos.pinned_pieces(Us))
                     - 848 * !pos.count<QUEEN>(Them)
                     -   9 * mg_value(score) / 8
                     +  40;
