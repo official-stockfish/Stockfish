@@ -79,7 +79,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const ButterflyHist
   stage += (ttMove == MOVE_NONE);
 }
 
-/// MovePicker constructor for quiescence search 
+/// MovePicker constructor for quiescence search
 MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const ButterflyHistory* mh, Square s)
            : pos(p), mainHistory(mh) {
 
