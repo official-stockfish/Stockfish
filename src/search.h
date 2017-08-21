@@ -49,6 +49,7 @@ struct Stack {
   Value staticEval;
   int statScore;
   int moveCount;
+  int tbCardinality;
 };
 
 
@@ -69,6 +70,7 @@ struct RootMove {
   Value score = -VALUE_INFINITE;
   Value previousScore = -VALUE_INFINITE;
   int selDepth = 0;
+  int dtz;
   std::vector<Move> pv;
 };
 
