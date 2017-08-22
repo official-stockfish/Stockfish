@@ -31,7 +31,6 @@
 #include "movepick.h"
 #include "position.h"
 #include "search.h"
-#include "timeman.h"
 #include "thread.h"
 #include "tt.h"
 #include "uci.h"
@@ -215,7 +214,10 @@ void Search::clear() {
 
   Threads.main()->wait_for_search_finished();
 
-  Time.availableNodes = 0;
+  Threads.main()->availableNodes = 0;
+  Threads.main()->callsCnt = 0;
+  Threads.main()->previousScore = VALUE_INFINITE;
+
   TT.clear();
 
   for (Thread* th : Threads)
@@ -229,9 +231,6 @@ void Search::clear() {
 
       th->contHistory[NO_PIECE][0].fill(CounterMovePruneThreshold - 1);
   }
-
-  Threads.main()->callsCnt = 0;
-  Threads.main()->previousScore = VALUE_INFINITE;
 }
 
 
@@ -248,7 +247,7 @@ void MainThread::search() {
   }
 
   Color us = rootPos.side_to_move();
-  Time.init(Limits, us, rootPos.game_ply());
+  init_time(Limits, us, rootPos.game_ply());
   TT.new_search();
 
   int contempt = Options["Contempt"] * PawnValueEg / 100; // From centipawns
@@ -274,7 +273,7 @@ void MainThread::search() {
   // When playing in 'nodes as time' mode, subtract the searched nodes from
   // the available ones before exiting.
   if (Limits.npmsec)
-      Time.availableNodes += Limits.inc[us] - Threads.nodes_searched();
+      availableNodes += Limits.inc[us] - Threads.nodes_searched();
 
   // When we reach the maximum depth, we can arrive here without a raise of
   // Threads.stop. However, if we are pondering or in an infinite search,
@@ -317,7 +316,8 @@ void MainThread::search() {
 
   // Send new PV when needed
   if (bestThread != this)
-      sync_cout << UCI::pv(bestThread->rootPos, bestThread->completedDepth, -VALUE_INFINITE, VALUE_INFINITE) << sync_endl;
+      sync_cout << UCI::pv(bestThread->rootPos, bestThread->completedDepth,
+                           -VALUE_INFINITE, VALUE_INFINITE, elapsed_time()) << sync_endl;
 
   sync_cout << "bestmove " << UCI::move(bestThread->rootMoves[0].pv[0], rootPos.is_chess960());
 
@@ -426,8 +426,8 @@ void Thread::search() {
               if (   mainThread
                   && multiPV == 1
                   && (bestValue <= alpha || bestValue >= beta)
-                  && Time.elapsed() > 3000)
-                  sync_cout << UCI::pv(rootPos, rootDepth, alpha, beta) << sync_endl;
+                  && mainThread->elapsed_time() > 3000)
+                  sync_cout << UCI::pv(rootPos, rootDepth, alpha, beta, mainThread->elapsed_time()) << sync_endl;
 
               // In case of failing low/high increase aspiration window and
               // re-search, otherwise exit the loop.
@@ -458,8 +458,8 @@ void Thread::search() {
           if (!mainThread)
               continue;
 
-          if (Threads.stop || PVIdx + 1 == multiPV || Time.elapsed() > 3000)
-              sync_cout << UCI::pv(rootPos, rootDepth, alpha, beta) << sync_endl;
+          if (Threads.stop || PVIdx + 1 == multiPV || mainThread->elapsed_time() > 3000)
+              sync_cout << UCI::pv(rootPos, rootDepth, alpha, beta, mainThread->elapsed_time()) << sync_endl;
       }
 
       if (!Threads.stop)
@@ -494,10 +494,10 @@ void Thread::search() {
 
               bool doEasyMove =   rootMoves[0].pv[0] == easyMove
                                && mainThread->bestMoveChanges < 0.03
-                               && Time.elapsed() > Time.optimum() * 5 / 44;
+                               && mainThread->elapsed_time() > mainThread->optimumTime * 5 / 44;
 
               if (   rootMoves.size() == 1
-                  || Time.elapsed() > Time.optimum() * unstablePvFactor * improvingFactor / 628
+                  || mainThread->elapsed_time() > mainThread->optimumTime * unstablePvFactor * improvingFactor / 628
                   || (mainThread->easyMovePlayed = doEasyMove, doEasyMove))
               {
                   // If we are allowed to ponder do not stop the search now but
@@ -844,7 +844,7 @@ moves_loop: // When in check search starts from here
 
       ss->moveCount = ++moveCount;
 
-      if (rootNode && thisThread == Threads.main() && Time.elapsed() > 3000)
+      if (rootNode && thisThread == Threads.main() && Threads.main()->elapsed_time() > 3000)
           sync_cout << "info depth " << depth / ONE_PLY
                     << " currmove " << UCI::move(move, pos.is_chess960())
                     << " currmovenumber " << moveCount + thisThread->PVIdx << sync_endl;
@@ -1467,47 +1467,12 @@ moves_loop: // When in check search starts from here
 
 } // namespace
 
-  // check_time() is used to print debug info and, more importantly, to detect
-  // when we are out of available time and thus stop the search.
-
-  void MainThread::check_time() {
-
-    if (--callsCnt > 0)
-        return;
-
-    // At low node count increase the checking rate to about 0.1% of nodes
-    // otherwise use a default value.
-    callsCnt = Limits.nodes ? std::min(4096, int(Limits.nodes / 1024)) : 4096;
-
-    static TimePoint lastInfoTime = now();
-
-    int elapsed = Time.elapsed();
-    TimePoint tick = Limits.startTime + elapsed;
-
-    if (tick - lastInfoTime >= 1000)
-    {
-        lastInfoTime = tick;
-        dbg_print();
-    }
-
-    // An engine may not stop pondering until told so by the GUI
-    if (Threads.ponder)
-        return;
-
-    if (   (Limits.use_time_management() && elapsed > Time.maximum())
-        || (Limits.movetime && elapsed >= Limits.movetime)
-        || (Limits.nodes && Threads.nodes_searched() >= (uint64_t)Limits.nodes))
-            Threads.stop = true;
-  }
-
-
 /// UCI::pv() formats PV information according to the UCI protocol. UCI requires
 /// that all (if any) unsearched PV lines are sent using a previous search score.
 
-string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
+string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta, int elapsed) {
 
   std::stringstream ss;
-  int elapsed = Time.elapsed() + 1;
   const RootMoves& rootMoves = pos.this_thread()->rootMoves;
   size_t PVIdx = pos.this_thread()->PVIdx;
   size_t multiPV = std::min((size_t)Options["MultiPV"], rootMoves.size());
@@ -1540,7 +1505,7 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
           ss << (v >= beta ? " lowerbound" : v <= alpha ? " upperbound" : "");
 
       ss << " nodes "    << nodesSearched
-         << " nps "      << nodesSearched * 1000 / elapsed;
+         << " nps "      << nodesSearched * 1000 / std::max(1, elapsed);
 
       if (elapsed > 1000) // Earlier makes little sense
           ss << " hashfull " << TT.hashfull();
