@@ -631,12 +631,12 @@ namespace {
     }
 
     // Step 4a. Tablebase probe
-    if (!rootNode && thisThread->tbCardinality)
+    if (!rootNode && TB::Cardinality)
     {
         int piecesCount = pos.count<ALL_PIECES>();
 
-        if (    piecesCount <= thisThread->tbCardinality
-            && (piecesCount <  thisThread->tbCardinality || depth >= TB::ProbeDepth)
+        if (    piecesCount <= TB::Cardinality
+            && (piecesCount <  TB::Cardinality || depth >= TB::ProbeDepth)
             &&  pos.rule50_count() == 0
             && !pos.can_castle(ANY_CASTLING))
         {

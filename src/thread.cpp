@@ -185,7 +185,6 @@ void ThreadPool::start_thinking(Position& pos, StateListPtr& states,
       th->nodes = th->tbHits = 0;
       th->rootDepth = th->completedDepth = DEPTH_ZERO;
       th->rootMoves = rootMoves;
-      th->tbCardinality = Tablebases::Cardinality;
       th->rootPos.set(pos.fen(), pos.is_chess960(), &setupStates->back(), th);
   }
 

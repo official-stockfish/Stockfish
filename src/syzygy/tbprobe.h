@@ -45,7 +45,6 @@ enum ProbeState {
 };
 
 extern int MaxCardinality;
-extern int Cardinality;
 
 void init(const std::string& paths);
 WDLScore probe_wdl(Position& pos, ProbeState* result);
