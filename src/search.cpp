@@ -643,7 +643,7 @@ namespace {
             && !pos.can_castle(ANY_CASTLING))
         {
             TB::ProbeState err;
-            TB::WDLScore v = Tablebases::probe_wdl(pos, &err);
+            TB::WDLScore wdl = Tablebases::probe_wdl(pos, &err);
 
             if (err != TB::ProbeState::FAIL)
             {
@@ -651,23 +651,28 @@ namespace {
 
                 int drawScore = TB::UseRule50 ? 1 : 0;
 
-                value =  v < -drawScore ? -VALUE_MATE + MAX_PLY + ss->ply
-                       : v >  drawScore ?  VALUE_MATE - MAX_PLY - ss->ply
-                                        :  VALUE_DRAW + 2 * v * drawScore;
+                value =  wdl < -drawScore ? -VALUE_MATE + MAX_PLY + ss->ply
+                       : wdl >  drawScore ?  VALUE_MATE - MAX_PLY - ss->ply
+                                          :  VALUE_DRAW + 2 * wdl * drawScore;
 
-                // In case of a draw or a loss, save TB score in TT and return
-                // In case of a winning position keep searching the sub-tree
-                // with a much reduced depth and do not probe TB anymore.
-                if (value <= VALUE_DRAW)
+                // Use TB scores win/loss as bounds (like TT upperbound and
+                // lowerbound scores), a draw score is always considered.
+                if (value >= beta ? wdl >= TB::WDLDraw : wdl <= TB::WDLDraw)
                 {
-                    tte->save(posKey, value_to_tt(value, ss->ply), BOUND_EXACT,
-                              std::min(DEPTH_MAX - ONE_PLY, depth + 6 * ONE_PLY),
-                              MOVE_NONE, VALUE_NONE, TT.generation());
-                    return value;
-                }
+                    // In case of a draw or a loss, save TB score in TT and return
+                    // In case of a winning position keep searching the sub-tree
+                    // with a much reduced depth and do not probe TB anymore.
+                    if (value <= VALUE_DRAW)
+                    {
+                        tte->save(posKey, value_to_tt(value, ss->ply), BOUND_EXACT,
+                                  std::min(DEPTH_MAX - ONE_PLY, depth + 6 * ONE_PLY),
+                                  MOVE_NONE, VALUE_NONE, TT.generation());
+                        return value;
+                    }
 
-                depth = std::max(depth / 2, ONE_PLY);
-                ss->tbCardinality = 0;
+                    depth = std::max(depth / 2, ONE_PLY);
+                    ss->tbCardinality = 0;
+                }
             }
         }
     }
