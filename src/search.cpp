@@ -649,7 +649,6 @@ namespace {
 
         if (    piecesCount <= ss->tbCardinality
             && (piecesCount <  ss->tbCardinality || depth >= TB::ProbeDepth)
-            &&  pos.rule50_count() == 0
             && !pos.can_castle(ANY_CASTLING))
         {
             TB::ProbeState err;
