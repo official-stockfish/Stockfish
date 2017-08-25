@@ -48,7 +48,6 @@ namespace Tablebases {
   bool RootInTB;
   bool UseRule50;
   Depth ProbeDepth;
-  Value Score;
 }
 
 namespace TB = Tablebases;
@@ -1528,9 +1527,6 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
       Depth d = updated ? depth : depth - ONE_PLY;
       Value v = updated ? rootMoves[i].score : rootMoves[i].previousScore;
 
-      bool tb = TB::RootInTB && abs(v) < VALUE_MATE - MAX_PLY;
-      v = tb ? TB::Score : v;
-
       if (ss.rdbuf()->in_avail()) // Not at first line
           ss << "\n";
 
@@ -1540,7 +1536,7 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
          << " multipv "  << i + 1
          << " score "    << UCI::value(v);
 
-      if (!tb && i == PVIdx)
+      if (i == PVIdx)
           ss << (v >= beta ? " lowerbound" : v <= alpha ? " upperbound" : "");
 
       ss << " nodes "    << nodesSearched
@@ -1593,6 +1589,7 @@ bool RootMove::extract_ponder_from_tt(Position& pos) {
 void Tablebases::filter_root_moves(Position& pos, Search::RootMoves& rootMoves) {
 
     RootInTB = false;
+    Value tbScore;
     UseRule50 = Options["Syzygy50MoveRule"];
     ProbeDepth = Options["SyzygyProbeDepth"] * ONE_PLY;
     Cardinality = Options["SyzygyProbeLimit"];
@@ -1609,7 +1606,7 @@ void Tablebases::filter_root_moves(Position& pos, Search::RootMoves& rootMoves) 
 
     // If the current root position is in the tablebases, then RootMoves
     // contains only moves that preserve the draw or the win.
-    RootInTB = root_probe(pos, rootMoves, TB::Score);
+    RootInTB = root_probe(pos, rootMoves, tbScore);
 
     if (RootInTB)
         Cardinality = 0; // Do not probe tablebases during the search
@@ -1617,15 +1614,10 @@ void Tablebases::filter_root_moves(Position& pos, Search::RootMoves& rootMoves) 
     else // If DTZ tables are missing, use WDL tables as a fallback
     {
         // Filter out moves that do not preserve the draw or the win.
-        RootInTB = root_probe_wdl(pos, rootMoves, TB::Score);
+        RootInTB = root_probe_wdl(pos, rootMoves, tbScore);
 
         // Only probe during search if winning
-        if (RootInTB && TB::Score <= VALUE_DRAW)
+        if (RootInTB && tbScore <= VALUE_DRAW)
             Cardinality = 0;
     }
-
-    if (RootInTB && !UseRule50)
-        TB::Score =  TB::Score > VALUE_DRAW ?  VALUE_MATE - MAX_PLY - 1
-                   : TB::Score < VALUE_DRAW ? -VALUE_MATE + MAX_PLY + 1
-                                            :  VALUE_DRAW;
 }
