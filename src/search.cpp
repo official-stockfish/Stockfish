@@ -45,7 +45,6 @@ namespace Search {
 namespace Tablebases {
 
   int Cardinality;
-  bool RootInTB;
   bool UseRule50;
   Depth ProbeDepth;
 }
@@ -241,6 +240,18 @@ void MainThread::search() {
   int contempt = Options["Contempt"] * PawnValueEg / 100; // From centipawns
   DrawValue[ us] = VALUE_DRAW - Value(contempt);
   DrawValue[~us] = VALUE_DRAW + Value(contempt);
+
+  // Set TB probing parameters
+  TB::UseRule50 = Options["Syzygy50MoveRule"];
+  TB::ProbeDepth = Options["SyzygyProbeDepth"] * ONE_PLY;
+  TB::Cardinality = Options["SyzygyProbeLimit"];
+
+  // Skip TB probing when no TB found: !TBLargest -> !TB::Cardinality
+  if (TB::Cardinality > TB::MaxCardinality)
+  {
+      TB::Cardinality = TB::MaxCardinality;
+      TB::ProbeDepth = DEPTH_ZERO; // Hack!
+  }
 
   if (rootMoves.empty())
   {
@@ -1515,7 +1526,7 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
   size_t PVIdx = pos.this_thread()->PVIdx;
   size_t multiPV = std::min((size_t)Options["MultiPV"], rootMoves.size());
   uint64_t nodesSearched = Threads.nodes_searched();
-  uint64_t tbHits = Threads.tb_hits() + (TB::RootInTB ? rootMoves.size() : 0);
+  uint64_t tbHits = Threads.tb_hits();
 
   for (size_t i = 0; i < multiPV; ++i)
   {
@@ -1584,40 +1595,4 @@ bool RootMove::extract_ponder_from_tt(Position& pos) {
 
     pos.undo_move(pv[0]);
     return pv.size() > 1;
-}
-
-void Tablebases::filter_root_moves(Position& pos, Search::RootMoves& rootMoves) {
-
-    RootInTB = false;
-    Value tbScore;
-    UseRule50 = Options["Syzygy50MoveRule"];
-    ProbeDepth = Options["SyzygyProbeDepth"] * ONE_PLY;
-    Cardinality = Options["SyzygyProbeLimit"];
-
-    // Skip TB probing when no TB found: !TBLargest -> !TB::Cardinality
-    if (Cardinality > MaxCardinality)
-    {
-        Cardinality = MaxCardinality;
-        ProbeDepth = DEPTH_ZERO;
-    }
-
-    if (Cardinality < popcount(pos.pieces()) || pos.can_castle(ANY_CASTLING))
-        return;
-
-    // If the current root position is in the tablebases, then RootMoves
-    // contains only moves that preserve the draw or the win.
-    RootInTB = root_probe(pos, rootMoves, tbScore);
-
-    if (RootInTB)
-        Cardinality = 0; // Do not probe tablebases during the search
-
-    else // If DTZ tables are missing, use WDL tables as a fallback
-    {
-        // Filter out moves that do not preserve the draw or the win.
-        RootInTB = root_probe_wdl(pos, rootMoves, tbScore);
-
-        // Only probe during search if winning
-        if (RootInTB && tbScore <= VALUE_DRAW)
-            Cardinality = 0;
-    }
 }

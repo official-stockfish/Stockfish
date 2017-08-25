@@ -163,9 +163,6 @@ void ThreadPool::start_thinking(Position& pos, StateListPtr& states,
           || std::count(limits.searchmoves.begin(), limits.searchmoves.end(), m))
           rootMoves.emplace_back(m);
 
-  if (!rootMoves.empty())
-      Tablebases::filter_root_moves(pos, rootMoves);
-
   // After ownership transfer 'states' becomes empty, so if we stop the search
   // and call 'go' again without setting a new position states.get() == NULL.
   assert(states.get() || setupStates.get());
