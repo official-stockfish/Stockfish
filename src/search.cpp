@@ -73,14 +73,16 @@ namespace {
 
   // Futility and reductions lookup tables, initialized at startup
   int FutilityMoveCounts[2][16]; // [improving][depth]
-  int Reductions[2][2][64][64];  // [pv][improving][depth][moveNumber]
+  int Reductions[2][2][64][64];  // [pv][improving][depth][moveCount]
+
+  template <bool PvNode> 
+  Depth reduction(Stack* ss, bool i, Depth d) {
+    int moveCount = std::max(1, std::min(63, ss->moveCount - (ss-1)->moveCount / 16));
+    return Reductions[PvNode][i][std::min(d / ONE_PLY, 63)][moveCount] * ONE_PLY;
+  }
 
   // Threshold used for countermoves based pruning
   const int CounterMovePruneThreshold = 0;
-
-  template <bool PvNode> Depth reduction(bool i, Depth d, int mn) {
-    return Reductions[PvNode][i][std::min(d / ONE_PLY, 63)][std::min(mn, 63)] * ONE_PLY;
-  }
 
   // History and stats update bonus, based on depth
   int stat_bonus(Depth depth) {
@@ -908,8 +910,7 @@ moves_loop: // When in check search starts from here
               }
 
               // Reduced depth of the next LMR search
-              int mch = std::max(1, moveCount - (ss-1)->moveCount / 16);
-              int lmrDepth = std::max(newDepth - reduction<PvNode>(improving, depth, mch), DEPTH_ZERO) / ONE_PLY;
+              int lmrDepth = std::max(newDepth - reduction<PvNode>(ss, improving, depth), DEPTH_ZERO) / ONE_PLY;
 
               // Countermoves based pruning
               if (   lmrDepth < 3
@@ -960,8 +961,7 @@ moves_loop: // When in check search starts from here
           &&  moveCount > 1
           && (!captureOrPromotion || moveCountPruning))
       {
-          int mch = std::max(1, moveCount - (ss-1)->moveCount / 16);
-          Depth r = reduction<PvNode>(improving, depth, mch);
+          Depth r = reduction<PvNode>(ss, improving, depth);
 
           if (captureOrPromotion)
               r -= r ? ONE_PLY : DEPTH_ZERO;
