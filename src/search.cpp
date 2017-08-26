@@ -668,16 +668,18 @@ namespace {
                 // lowerbound scores), a draw score is always considered.
                 if (value >= beta ? wdl >= TB::WDLDraw : wdl <= TB::WDLDraw)
                 {
-                    // In case of a draw or a loss, save TB score in TT and return
-                    // In case of a winning position keep searching the sub-tree
-                    // with a much reduced depth and do not probe TB anymore.
+                    Bound b =  wdl > TB::WDLDraw ? BOUND_LOWER
+                             : wdl < TB::WDLDraw ? BOUND_UPPER : BOUND_EXACT;
+
+                    tte->save(posKey, value_to_tt(value, ss->ply), b,
+                              std::min(DEPTH_MAX - ONE_PLY, depth + 6 * ONE_PLY),
+                              MOVE_NONE, VALUE_NONE, TT.generation());
+
+                    // In case of a draw or a loss return. In case of a winning
+                    // position keep searching the sub-tree with a much reduced
+                    // depth and do not probe TB anymore.
                     if (value <= VALUE_DRAW)
-                    {
-                        tte->save(posKey, value_to_tt(value, ss->ply), BOUND_EXACT,
-                                  std::min(DEPTH_MAX - ONE_PLY, depth + 6 * ONE_PLY),
-                                  MOVE_NONE, VALUE_NONE, TT.generation());
                         return value;
-                    }
 
                     depth = std::max(depth / 2, ONE_PLY);
                     ss->tbCardinality = 0;
