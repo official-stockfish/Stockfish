@@ -643,7 +643,7 @@ namespace {
     }
 
     // Step 4a. Tablebase probe
-    if (!PvNode && ss->tbCardinality)
+    if (!rootNode && ss->tbCardinality)
     {
         int piecesCount = pos.count<ALL_PIECES>();
 
@@ -674,7 +674,8 @@ namespace {
                     // In case of a draw or a loss, save TB score in TT and return
                     // In case of a winning position keep searching the sub-tree
                     // with a much reduced depth and do not probe TB anymore.
-                    if (value <= VALUE_DRAW)
+                    if (   (!PvNode && value <= VALUE_DRAW)
+                        || ( PvNode && value == VALUE_DRAW))
                     {
                         tte->save(posKey, value_to_tt(value, ss->ply), b,
                                   std::min(DEPTH_MAX - ONE_PLY, depth + 6 * ONE_PLY),
@@ -682,8 +683,11 @@ namespace {
                         return value;
                     }
 
-                    depth = std::max(depth / 2, ONE_PLY);
-                    ss->tbCardinality = 0;
+                    if (!PvNode)
+                    {
+                        depth = std::max(depth / 2, ONE_PLY);
+                        ss->tbCardinality = 0;
+                    }
                 }
             }
         }
