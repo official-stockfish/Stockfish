@@ -340,6 +340,7 @@ void Thread::search() {
   MainThread* mainThread = (this == Threads.main() ? Threads.main() : nullptr);
 
   std::memset(ss-4, 0, 7 * sizeof(Stack));
+  ss->tbCardinality = TB::Cardinality;
   for (int i = 4; i > 0; i--)
      (ss-i)->contHistory = &this->contHistory[NO_PIECE][0]; // Use as sentinel
 
@@ -597,6 +598,7 @@ namespace {
     ss->currentMove = (ss+1)->excludedMove = bestMove = MOVE_NONE;
     ss->contHistory = &thisThread->contHistory[NO_PIECE][0];
     (ss+2)->killers[0] = (ss+2)->killers[1] = MOVE_NONE;
+    (ss+1)->tbCardinality = ss->tbCardinality;
     Square prevSq = to_sq((ss-1)->currentMove);
 
     // Step 4. Transposition table lookup. We don't want the score of a partial
@@ -641,12 +643,12 @@ namespace {
     }
 
     // Step 4a. Tablebase probe
-    if (!PvNode && TB::Cardinality)
+    if (!PvNode && ss->tbCardinality)
     {
         int piecesCount = pos.count<ALL_PIECES>();
 
-        if (    piecesCount <= TB::Cardinality
-            && (piecesCount <  TB::Cardinality || depth >= TB::ProbeDepth)
+        if (    piecesCount <= ss->tbCardinality
+            && (piecesCount <  ss->tbCardinality || depth >= TB::ProbeDepth)
             && !pos.can_castle(ANY_CASTLING))
         {
             TB::ProbeState err;
@@ -669,8 +671,10 @@ namespace {
                     Bound b =  wdl > TB::WDLDraw ? BOUND_LOWER
                              : wdl < TB::WDLDraw ? BOUND_UPPER : BOUND_EXACT;
 
-                    // In case of a draw or a loss, save TB score in TT and return
-                    if (wdl <= TB::WDLDraw)
+                    bool farFromRoot = ss->ply - depth / (2 * ONE_PLY) >= 0;
+
+                    // When draw or in midgame save TB score in TT and return
+                    if (farFromRoot || wdl == TB::WDLDraw)
                     {
                         tte->save(posKey, value_to_tt(value, ss->ply), b,
                                   std::min(DEPTH_MAX - ONE_PLY, depth + 6 * ONE_PLY),
@@ -678,10 +682,9 @@ namespace {
                         return value;
                     }
 
-                    // In case of a winning position return immediately with a
-                    // qsearch score instead of the TB win score.
-                    return inCheck ? qsearch<NonPV,  true>(pos, ss, alpha, alpha+1)
-                                   : qsearch<NonPV, false>(pos, ss, alpha, alpha+1);
+                    // When in endgame proceed with a reduced search
+                    depth = depth / 2;
+                    ss->tbCardinality = 0;
                 }
             }
         }
