@@ -643,7 +643,7 @@ namespace {
     }
 
     // Step 4a. Tablebase probe
-    if (!PvNode && ss->tbCardinality)
+    if (!rootNode && ss->tbCardinality)
     {
         int piecesCount = pos.count<ALL_PIECES>();
 
@@ -683,7 +683,7 @@ namespace {
                     }
 
                     // When in endgame proceed with a reduced search
-                    depth = depth / 2;
+                    depth = std::max(depth / 2, ONE_PLY);
                     ss->tbCardinality = 0;
                 }
             }
