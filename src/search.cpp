@@ -641,7 +641,7 @@ namespace {
     }
 
     // Step 4a. Tablebase probe
-    if (!rootNode && TB::Cardinality)
+    if (!PvNode && TB::Cardinality)
     {
         int piecesCount = pos.count<ALL_PIECES>();
 
@@ -670,10 +670,7 @@ namespace {
                              : wdl < TB::WDLDraw ? BOUND_UPPER : BOUND_EXACT;
 
                     // In case of a draw or a loss, save TB score in TT and return
-                    // In case of a winning position keep searching the sub-tree
-                    // with a much reduced depth and do not probe TB anymore.
-                    if (   (!PvNode && wdl <= TB::WDLDraw)
-                        || ( PvNode && wdl == TB::WDLDraw))
+                    if (wdl <= TB::WDLDraw)
                     {
                         tte->save(posKey, value_to_tt(value, ss->ply), b,
                                   std::min(DEPTH_MAX - ONE_PLY, depth + 6 * ONE_PLY),
@@ -681,9 +678,10 @@ namespace {
                         return value;
                     }
 
-                    if (!PvNode)
-                        return inCheck ? qsearch<NonPV,  true>(pos, ss, alpha, alpha+1)
-                                       : qsearch<NonPV, false>(pos, ss, alpha, alpha+1);
+                    // In case of a winning position return immediately with a
+                    // qsearch score instead of the TB win score.
+                    return inCheck ? qsearch<NonPV,  true>(pos, ss, alpha, alpha+1)
+                                   : qsearch<NonPV, false>(pos, ss, alpha, alpha+1);
                 }
             }
         }
