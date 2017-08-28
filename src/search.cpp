@@ -553,7 +553,7 @@ namespace {
     Key posKey;
     Move ttMove, move, excludedMove, bestMove;
     Depth extension, newDepth;
-    Value bestValue, value, ttValue, eval;
+    Value bestValue, value, ttValue, eval, maxValue;
     bool ttHit, inCheck, givesCheck, singularExtensionNode, improving;
     bool captureOrPromotion, doFullDepthSearch, moveCountPruning, skipQuiets, ttCapture;
     Piece movedPiece;
@@ -565,6 +565,7 @@ namespace {
     moveCount = quietCount = ss->moveCount = 0;
     ss->statScore = 0;
     bestValue = -VALUE_INFINITE;
+    maxValue = VALUE_INFINITE;
     ss->ply = (ss-1)->ply + 1;
 
     // Check for the available remaining time
@@ -665,11 +666,30 @@ namespace {
                        : v >  drawScore ?  VALUE_MATE - MAX_PLY - ss->ply
                                         :  VALUE_DRAW + 2 * v * drawScore;
 
-                tte->save(posKey, value_to_tt(value, ss->ply), BOUND_EXACT,
-                          std::min(DEPTH_MAX - ONE_PLY, depth + 6 * ONE_PLY),
-                          MOVE_NONE, VALUE_NONE, TT.generation());
+                if (abs(v) <= drawScore) {
+                    tte->save(posKey, value_to_tt(value, ss->ply), BOUND_EXACT,
+                              depth, MOVE_NONE, VALUE_NONE, TT.generation());
+                    return value;
+                }
+                else if (v < -drawScore) {
+                    if (alpha >= value) {
+                        tte->save(posKey, value_to_tt(value, ss->ply),
+                                  BOUND_UPPER, depth, MOVE_NONE, VALUE_NONE,
+                                  TT.generation());
+                        return value;
+                    }
+                    maxValue = value;
+                }
+                else {
+                    if (beta <= value) {
+                        tte->save(posKey, value_to_tt(value, ss->ply),
+                                  BOUND_LOWER, depth, MOVE_NONE, VALUE_NONE,
+                                  TT.generation());
+                        return value;
+                    }
+                    bestValue = value;
+                }
 
-                return value;
             }
         }
     }
@@ -1129,6 +1149,9 @@ moves_loop: // When in check search starts from here
              && !pos.captured_piece()
              && is_ok((ss-1)->currentMove))
         update_continuation_histories(ss-1, pos.piece_on(prevSq), prevSq, stat_bonus(depth));
+
+    if (PvNode && bestValue > maxValue)
+        bestValue = maxValue;
 
     if (!excludedMove)
         tte->save(posKey, value_to_tt(bestValue, ss->ply),
@@ -1626,4 +1649,9 @@ void Tablebases::filter_root_moves(Position& pos, Search::RootMoves& rootMoves) 
         TB::Score =  TB::Score > VALUE_DRAW ?  VALUE_MATE - MAX_PLY - 1
                    : TB::Score < VALUE_DRAW ? -VALUE_MATE + MAX_PLY + 1
                                             :  VALUE_DRAW;
+
+    // Since root_probe() and root_probe_wdl() dirty the root move scores,
+    // we reset them to -VALUE_INFINITE
+    for (size_t i = 0; i < rootMoves.size(); ++i)
+        rootMoves[i].score = -VALUE_INFINITE;
 }
