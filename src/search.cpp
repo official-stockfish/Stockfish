@@ -688,6 +688,8 @@ namespace {
                         return value;
                     }
                     bestValue = value;
+                    if (PvNode && bestValue > alpha)
+                        alpha = bestValue;
                 }
 
             }
