@@ -675,6 +675,9 @@ namespace {
                     || (value <= alpha && b == BOUND_UPPER)
                     ||  b == BOUND_EXACT)
                 {
+                    // It is far if ply >= (RootDepth - LMR) / 3, so that at a
+                    // given ply, nodes with high LMR are considered farther
+                    // from root than nodes near the PV line.
                     bool farFromRoot = ss->ply - depth / (2 * ONE_PLY) >= 0;
 
                     // When in midgame or is a draw save in TT and return
