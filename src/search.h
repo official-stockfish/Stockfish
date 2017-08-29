@@ -97,6 +97,9 @@ extern LimitsType Limits;
 void init();
 void clear();
 
+/// Threshold used for countermoves based pruning
+const int CounterMovePruneThreshold = 0;
+
 } // namespace Search
 
 #endif // #ifndef SEARCH_H_INCLUDED
