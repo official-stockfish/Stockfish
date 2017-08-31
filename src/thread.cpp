@@ -35,6 +35,7 @@ ThreadPool Threads; // Global object
 Thread::Thread(size_t n) : idx(n), stdThread(&Thread::idle_loop, this) {
 
   wait_for_search_finished();
+  clear(); // Zero-init histories (based on std::array)
 }
 
 
@@ -50,6 +51,20 @@ Thread::~Thread() {
   stdThread.join();
 }
 
+
+/// Thread::clear() reset histories, usually before a new game
+
+void Thread::clear() {
+
+  counterMoves.fill(MOVE_NONE);
+  mainHistory.fill(0);
+
+  for (auto& to : contHistory)
+      for (auto& h : to)
+          h.fill(0);
+
+  contHistory[NO_PIECE][0].fill(Search::CounterMovePruneThreshold - 1);
+}
 
 /// Thread::start_searching() wakes up the thread that will start the search
 
