@@ -96,6 +96,7 @@ struct ThreadPool : public std::vector<Thread*> {
 
   void init(size_t); // No constructor and destructor, threads rely on globals that should
   void exit();       // be initialized and valid during the whole thread lifetime.
+  void clear();
   void start_thinking(Position&, StateListPtr&, const Search::LimitsType&, bool = false);
   void set(size_t);
 

@@ -127,6 +127,27 @@ void ThreadPool::set(size_t requested) {
 
   while (size() > requested)
       delete back(), pop_back();
+
+  if (requested>0)
+      clear();
+}
+
+void ThreadPool::clear() {
+
+  for (Thread* th : *this)
+  {
+      th->counterMoves.fill(MOVE_NONE);
+      th->mainHistory.fill(0);
+
+      for (auto& to : th->contHistory)
+          for (auto& h : to)
+              h.fill(0);
+
+      th->contHistory[NO_PIECE][0].fill(Search::CounterMovePruneThreshold - 1);
+  }
+
+  main()->callsCnt = 0;
+  main()->previousScore = VALUE_INFINITE;
 }
 
 
