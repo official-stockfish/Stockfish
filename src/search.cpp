@@ -75,9 +75,6 @@ namespace {
   int FutilityMoveCounts[2][16]; // [improving][depth]
   int Reductions[2][2][64][64];  // [pv][improving][depth][moveNumber]
 
-  // Threshold used for countermoves based pruning
-  const int CounterMovePruneThreshold = 0;
-
   template <bool PvNode> Depth reduction(bool i, Depth d, int mn) {
     return Reductions[PvNode][i][std::min(d / ONE_PLY, 63)][std::min(mn, 63)] * ONE_PLY;
   }
@@ -219,16 +216,7 @@ void Search::clear() {
   TT.clear();
 
   for (Thread* th : Threads)
-  {
-      th->counterMoves.fill(MOVE_NONE);
-      th->mainHistory.fill(0);
-
-      for (auto& to : th->contHistory)
-          for (auto& h : to)
-              h.fill(0);
-
-      th->contHistory[NO_PIECE][0].fill(CounterMovePruneThreshold - 1);
-  }
+      th->clear();
 
   Threads.main()->callsCnt = 0;
   Threads.main()->previousScore = VALUE_INFINITE;
