@@ -17,15 +17,22 @@ case $1 in
     postfix='1>/dev/null'
     threads="1"
   ;;
+  --valgrind-thread)
+    echo "valgrind-thread testing started"
+    prefix=''
+    exeprefix='valgrind --error-exitcode=42'
+    postfix='1>/dev/null'
+    threads="2"
+  ;;
   --sanitizer-undefined)
-    echo "sanitizer testing started"
+    echo "sanitizer-undefined testing started"
     prefix='!'
     exeprefix=''
     postfix='2>&1 | grep "runtime error:"'
     threads="1"
   ;;
   --sanitizer-thread)
-    echo "sanitizer testing started"
+    echo "sanitizer-thread testing started"
     prefix='!'
     exeprefix=''
     postfix='2>&1 | grep "WARNING: ThreadSanitizer:"'
