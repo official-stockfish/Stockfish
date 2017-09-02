@@ -142,8 +142,8 @@ namespace {
 
   void bench(Position& pos, istream& args, StateListPtr& states) {
 
-    string token;
-    uint64_t num, nodes = 0, cnt = 1;
+    string token, tbh;
+    uint64_t num, nodes = 0, tbHits = 0, cnt = 1;
 
     vector<string> list = setup_bench(pos, args);
     num = count_if(list.begin(), list.end(), [](string s) { return s.find("go ") == 0; });
@@ -160,7 +160,8 @@ namespace {
             cerr << "\nPosition: " << cnt++ << '/' << num << endl;
             go(pos, is, states);
             Threads.main()->wait_for_search_finished();
-            nodes += Threads.nodes_searched();
+            nodes  += Threads.nodes_searched();
+            tbHits += Threads.tb_hits();
         }
         else if (token == "setoption")  setoption(is);
         else if (token == "position")   position(pos, is, states);
@@ -171,10 +172,13 @@ namespace {
 
     dbg_print(); // Just before exiting
 
+    if (tbHits)
+        tbh = "\nTB hits         : " + std::to_string(tbHits);
+
     cerr << "\n==========================="
          << "\nTotal time (ms) : " << elapsed
          << "\nNodes searched  : " << nodes
-         << "\nNodes/second    : " << 1000 * nodes / elapsed << endl;
+         << "\nNodes/second    : " << 1000 * nodes / elapsed << tbh << endl;
   }
 
 } // namespace

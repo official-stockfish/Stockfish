@@ -45,10 +45,8 @@ namespace Search {
 namespace Tablebases {
 
   int Cardinality;
-  bool RootInTB;
   bool UseRule50;
   Depth ProbeDepth;
-  Value Score;
 }
 
 namespace TB = Tablebases;
@@ -243,6 +241,18 @@ void MainThread::search() {
   DrawValue[ us] = VALUE_DRAW - Value(contempt);
   DrawValue[~us] = VALUE_DRAW + Value(contempt);
 
+  // Set TB probing parameters
+  TB::UseRule50 = Options["Syzygy50MoveRule"];
+  TB::ProbeDepth = Options["SyzygyProbeDepth"] * ONE_PLY;
+  TB::Cardinality = Options["SyzygyProbeLimit"];
+
+  // Skip TB probing when no TB found: !TBLargest -> !TB::Cardinality
+  if (TB::Cardinality > TB::MaxCardinality)
+  {
+      TB::Cardinality = TB::MaxCardinality;
+      TB::ProbeDepth = DEPTH_ZERO; // Hack!
+  }
+
   if (rootMoves.empty())
   {
       rootMoves.emplace_back(MOVE_NONE);
@@ -330,6 +340,7 @@ void Thread::search() {
   MainThread* mainThread = (this == Threads.main() ? Threads.main() : nullptr);
 
   std::memset(ss-4, 0, 7 * sizeof(Stack));
+  ss->tbCardinality = TB::Cardinality;
   for (int i = 4; i > 0; i--)
      (ss-i)->contHistory = &this->contHistory[NO_PIECE][0]; // Use as sentinel
 
@@ -587,6 +598,7 @@ namespace {
     ss->currentMove = (ss+1)->excludedMove = bestMove = MOVE_NONE;
     ss->contHistory = &thisThread->contHistory[NO_PIECE][0];
     (ss+2)->killers[0] = (ss+2)->killers[1] = MOVE_NONE;
+    (ss+1)->tbCardinality = ss->tbCardinality;
     Square prevSq = to_sq((ss-1)->currentMove);
 
     // Step 4. Transposition table lookup. We don't want the score of a partial
@@ -631,17 +643,16 @@ namespace {
     }
 
     // Step 4a. Tablebase probe
-    if (!rootNode && TB::Cardinality)
+    if (!rootNode && ss->tbCardinality && ss->ply > 6)
     {
         int piecesCount = pos.count<ALL_PIECES>();
 
-        if (    piecesCount <= TB::Cardinality
-            && (piecesCount <  TB::Cardinality || depth >= TB::ProbeDepth)
-            &&  pos.rule50_count() == 0
+        if (    piecesCount <= ss->tbCardinality
+            && (piecesCount <  ss->tbCardinality || depth >= TB::ProbeDepth)
             && !pos.can_castle(ANY_CASTLING))
         {
             TB::ProbeState err;
-            TB::WDLScore v = Tablebases::probe_wdl(pos, &err);
+            TB::WDLScore wdl = Tablebases::probe_wdl(pos, &err);
 
             if (err != TB::ProbeState::FAIL)
             {
@@ -649,15 +660,32 @@ namespace {
 
                 int drawScore = TB::UseRule50 ? 1 : 0;
 
-                value =  v < -drawScore ? -VALUE_MATE + MAX_PLY + ss->ply
-                       : v >  drawScore ?  VALUE_MATE - MAX_PLY - ss->ply
-                                        :  VALUE_DRAW + 2 * v * drawScore;
+                value =  wdl < -drawScore ? -VALUE_MATE + MAX_PLY + ss->ply
+                       : wdl >  drawScore ?  VALUE_MATE - MAX_PLY - ss->ply
+                                          :  VALUE_DRAW + 2 * wdl * drawScore;
 
-                tte->save(posKey, value_to_tt(value, ss->ply), BOUND_EXACT,
-                          std::min(DEPTH_MAX - ONE_PLY, depth + 6 * ONE_PLY),
-                          MOVE_NONE, VALUE_NONE, TT.generation());
+                // Use TB scores win/loss as bounds (like TT upperbound and
+                // lowerbound scores), a draw score is always considered.
+                if (value >= beta ? wdl >= TB::WDLDraw : wdl <= TB::WDLDraw)
+                {
+                    Bound b =  wdl > TB::WDLDraw ? BOUND_LOWER
+                             : wdl < TB::WDLDraw ? BOUND_UPPER : BOUND_EXACT;
 
-                return value;
+                    bool farFromRoot = ss->ply - depth / (2 * ONE_PLY) >= 0;
+
+                    // When draw or in midgame save TB score in TT and return
+                    if (farFromRoot || wdl == TB::WDLDraw)
+                    {
+                        tte->save(posKey, value_to_tt(value, ss->ply), b,
+                                  std::min(DEPTH_MAX - ONE_PLY, depth + 6 * ONE_PLY),
+                                  MOVE_NONE, VALUE_NONE, TT.generation());
+                        return value;
+                    }
+
+                    // When in endgame proceed with a reduced search
+                    depth = std::max(depth / 2, ONE_PLY);
+                    ss->tbCardinality = 0;
+                }
             }
         }
     }
@@ -1501,7 +1529,7 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
   size_t PVIdx = pos.this_thread()->PVIdx;
   size_t multiPV = std::min((size_t)Options["MultiPV"], rootMoves.size());
   uint64_t nodesSearched = Threads.nodes_searched();
-  uint64_t tbHits = Threads.tb_hits() + (TB::RootInTB ? rootMoves.size() : 0);
+  uint64_t tbHits = Threads.tb_hits();
 
   for (size_t i = 0; i < multiPV; ++i)
   {
@@ -1513,9 +1541,6 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
       Depth d = updated ? depth : depth - ONE_PLY;
       Value v = updated ? rootMoves[i].score : rootMoves[i].previousScore;
 
-      bool tb = TB::RootInTB && abs(v) < VALUE_MATE - MAX_PLY;
-      v = tb ? TB::Score : v;
-
       if (ss.rdbuf()->in_avail()) // Not at first line
           ss << "\n";
 
@@ -1525,7 +1550,7 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
          << " multipv "  << i + 1
          << " score "    << UCI::value(v);
 
-      if (!tb && i == PVIdx)
+      if (i == PVIdx)
           ss << (v >= beta ? " lowerbound" : v <= alpha ? " upperbound" : "");
 
       ss << " nodes "    << nodesSearched
@@ -1573,44 +1598,4 @@ bool RootMove::extract_ponder_from_tt(Position& pos) {
 
     pos.undo_move(pv[0]);
     return pv.size() > 1;
-}
-
-void Tablebases::filter_root_moves(Position& pos, Search::RootMoves& rootMoves) {
-
-    RootInTB = false;
-    UseRule50 = Options["Syzygy50MoveRule"];
-    ProbeDepth = Options["SyzygyProbeDepth"] * ONE_PLY;
-    Cardinality = Options["SyzygyProbeLimit"];
-
-    // Skip TB probing when no TB found: !TBLargest -> !TB::Cardinality
-    if (Cardinality > MaxCardinality)
-    {
-        Cardinality = MaxCardinality;
-        ProbeDepth = DEPTH_ZERO;
-    }
-
-    if (Cardinality < popcount(pos.pieces()) || pos.can_castle(ANY_CASTLING))
-        return;
-
-    // If the current root position is in the tablebases, then RootMoves
-    // contains only moves that preserve the draw or the win.
-    RootInTB = root_probe(pos, rootMoves, TB::Score);
-
-    if (RootInTB)
-        Cardinality = 0; // Do not probe tablebases during the search
-
-    else // If DTZ tables are missing, use WDL tables as a fallback
-    {
-        // Filter out moves that do not preserve the draw or the win.
-        RootInTB = root_probe_wdl(pos, rootMoves, TB::Score);
-
-        // Only probe during search if winning
-        if (RootInTB && TB::Score <= VALUE_DRAW)
-            Cardinality = 0;
-    }
-
-    if (RootInTB && !UseRule50)
-        TB::Score =  TB::Score > VALUE_DRAW ?  VALUE_MATE - MAX_PLY - 1
-                   : TB::Score < VALUE_DRAW ? -VALUE_MATE + MAX_PLY + 1
-                                            :  VALUE_DRAW;
 }
