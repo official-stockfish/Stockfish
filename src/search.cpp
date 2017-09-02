@@ -643,7 +643,7 @@ namespace {
     }
 
     // Step 4a. Tablebase probe
-    if (!rootNode && ss->tbCardinality)
+    if (!rootNode && ss->tbCardinality && ss->ply > 6)
     {
         int piecesCount = pos.count<ALL_PIECES>();
 
