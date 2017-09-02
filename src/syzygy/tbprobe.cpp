@@ -341,6 +341,13 @@ public:
 #ifndef _WIN32
         struct stat statbuf;
         int fd = ::open(fname.c_str(), O_RDONLY);
+
+        if (fd == -1)
+        {
+            *baseAddress = nullptr;
+            return nullptr;
+        }
+
         fstat(fd, &statbuf);
         *mapping = statbuf.st_size;
         *baseAddress = mmap(nullptr, statbuf.st_size, PROT_READ, MAP_SHARED, fd, 0);
@@ -353,6 +360,13 @@ public:
 #else
         HANDLE fd = CreateFile(fname.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr,
                                OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+
+        if (fd == INVALID_HANDLE_VALUE)
+        {
+            *baseAddress = nullptr;
+            return nullptr;
+        }
+
         DWORD size_high;
         DWORD size_low = GetFileSize(fd, &size_high);
         HANDLE mmap = CreateFileMapping(fd, nullptr, PAGE_READONLY, size_high, size_low, nullptr);
