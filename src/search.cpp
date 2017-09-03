@@ -656,10 +656,11 @@ namespace {
 
             thisThread->tbHits.fetch_add(1, std::memory_order_relaxed);
 
+            if (err == TB::ProbeState::FAIL)
+            {}
             // Win or loss scores are reliable only if we are probing after a
             // rule50 reset move. Instead draw scores are reliable in any case.
-            if (    err != TB::ProbeState::FAIL
-                && (pos.rule50_count() == 0 || abs(wdl) <= TB::DrawScore))
+            else if (pos.rule50_count() == 0 || abs(wdl) <= TB::DrawScore)
             {
                 value =  wdl >  TB::DrawScore ?  VALUE_MATE - MAX_PLY - ss->ply
                        : wdl < -TB::DrawScore ? -VALUE_MATE + MAX_PLY + ss->ply
@@ -688,6 +689,34 @@ namespace {
                     // When in endgame proceed with a reduced search
                     depth = std::max(depth / 2, ONE_PLY);
                     ss->tbCardinality = 0;
+                }
+            }
+            // If rootPos is in TB and we can't rely on WDL score, then we have
+            // to use the big artillery to differentiate between a win/loss and
+            // a cursed/blessed draw. This is critical because search alone will
+            // detect it only at ply 101...too late.
+            else if (   (ss-1)->ply == 1
+                     && pos.rule50_count() > 0
+                     && TB::DrawScore == TB::WDLCursedWin)
+            {
+                assert(abs(wdl) > TB::DrawScore);
+                assert(!pos.captured_piece()); // Root is in TB
+
+                int dtz = Tablebases::probe_dtz(pos, &err);
+
+                assert(dtz != 0 || err == TB::ProbeState::FAIL);
+
+                // If it is a draw under 50-move rule save in TT and return
+                if (   err != TB::ProbeState::FAIL
+                    && abs(dtz) + pos.rule50_count() > 99)
+                {
+                    wdl = dtz > 0 ? TB::WDLCursedWin : TB::WDLBlessedLoss;
+                    value = VALUE_DRAW + 2 * wdl;
+
+                    tte->save(posKey, value_to_tt(value, ss->ply), BOUND_EXACT,
+                              std::min(DEPTH_MAX - ONE_PLY, depth + 6 * ONE_PLY),
+                              MOVE_NONE, VALUE_NONE, TT.generation());
+                    return value;
                 }
             }
         }

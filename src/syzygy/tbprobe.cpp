@@ -29,6 +29,7 @@
 #include <type_traits>
 
 #include "../bitboard.h"
+#include "../misc.h"
 #include "../movegen.h"
 #include "../position.h"
 #include "../search.h"
@@ -203,6 +204,9 @@ int MapPawns[SQUARE_NB];
 int MapB1H1H7[SQUARE_NB];
 int MapA1D1D4[SQUARE_NB];
 int MapKK[10][SQUARE_NB]; // [MapA1D1D4][SQUARE_NB]
+
+typedef std::pair<Key, std::pair<int, ProbeState>> CacheEntry;
+HashTable<CacheEntry, 32768> DTZCache;
 
 // Comparison function to sort leading pawns in ascending MapPawns[] order
 bool pawns_comp(Square i, Square j) { return MapPawns[i] < MapPawns[j]; }
@@ -1436,24 +1440,35 @@ WDLScore Tablebases::probe_wdl(Position& pos, ProbeState* result) {
 // then do not accept moves leading to dtz + 50-move-counter == 100.
 int Tablebases::probe_dtz(Position& pos, ProbeState* result) {
 
+    Key key = pos.key();
+    CacheEntry* e = DTZCache[key];
+    auto& p = e->second;
+
+    if (e->first == key)
+        return *result = p.second, p.first;
+
+    e->first = key;
+
     *result = OK;
     WDLScore wdl = search<true>(pos, result);
+    p.second = *result;
 
     if (*result == FAIL || wdl == WDLDraw) // DTZ tables don't store draws
-        return 0;
+        return p.first = 0;
 
     // DTZ stores a 'don't care' value in this case, or even a plain wrong
     // one as in case the best move is a losing ep, so it cannot be probed.
     if (*result == ZEROING_BEST_MOVE)
-        return dtz_before_zeroing(wdl);
+        return p.first = dtz_before_zeroing(wdl);
 
     int dtz = probe_table<DTZEntry>(pos, result, wdl);
+    p.second = *result;
 
     if (*result == FAIL)
-        return 0;
+        return p.first = 0;
 
     if (*result != CHANGE_STM)
-        return (dtz + 100 * (wdl == WDLBlessedLoss || wdl == WDLCursedWin)) * sign_of(wdl);
+        return p.first = (dtz + 100 * (wdl == WDLBlessedLoss || wdl == WDLCursedWin)) * sign_of(wdl);
 
     // DTZ stores results for the other side, so we need to do a 1-ply search and
     // find the winning move that minimizes DTZ.
@@ -1472,11 +1487,11 @@ int Tablebases::probe_dtz(Position& pos, ProbeState* result) {
         // winning position we could make a losing capture or going for a draw).
         dtz = zeroing ? -dtz_before_zeroing(search(pos, result))
                       : -probe_dtz(pos, result);
-
+        p.second = *result;
         pos.undo_move(move);
 
         if (*result == FAIL)
-            return 0;
+            return p.first = 0;
 
         // Convert result from 1-ply search. Zeroing moves are already accounted
         // by dtz_before_zeroing() that returns the DTZ of the previous move.
@@ -1491,5 +1506,5 @@ int Tablebases::probe_dtz(Position& pos, ProbeState* result) {
     // Special handle a mate position, when there are no legal moves, in this
     // case return value is somewhat arbitrary, so stick to the original TB code
     // that returns -1 in this case.
-    return minDTZ == 0xFFFF ? -1 : minDTZ;
+    return p.first = (minDTZ == 0xFFFF ? -1 : minDTZ);
 }
