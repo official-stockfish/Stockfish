@@ -45,8 +45,8 @@ namespace Search {
 namespace Tablebases {
 
   int Cardinality;
-  bool UseRule50;
   Depth ProbeDepth;
+  WDLScore DrawScore;
 }
 
 namespace TB = Tablebases;
@@ -242,7 +242,7 @@ void MainThread::search() {
   DrawValue[~us] = VALUE_DRAW + Value(contempt);
 
   // Set TB probing parameters
-  TB::UseRule50 = Options["Syzygy50MoveRule"];
+  TB::DrawScore = Options["Syzygy50MoveRule"] ? TB::WDLCursedWin : TB::WDLDraw;
   TB::ProbeDepth = Options["SyzygyProbeDepth"] * ONE_PLY;
   TB::Cardinality = Options["SyzygyProbeLimit"];
 
@@ -651,8 +651,6 @@ namespace {
             && (piecesCount <  ss->tbCardinality || depth >= TB::ProbeDepth)
             && !pos.can_castle(ANY_CASTLING))
         {
-            const auto DrawScore = TB::UseRule50 ? TB::WDLCursedWin : TB::WDLDraw;
-
             TB::ProbeState err;
             TB::WDLScore wdl = Tablebases::probe_wdl(pos, &err);
 
@@ -661,14 +659,14 @@ namespace {
             // Win or loss scores are reliable only if we are probing after a
             // rule50 reset move. Instead draw scores are reliable in any case.
             if (    err != TB::ProbeState::FAIL
-                && (pos.rule50_count() == 0 || abs(wdl) <= DrawScore))
+                && (pos.rule50_count() == 0 || abs(wdl) <= TB::DrawScore))
             {
-                value =  wdl >  DrawScore ?  VALUE_MATE - MAX_PLY - ss->ply
-                       : wdl < -DrawScore ? -VALUE_MATE + MAX_PLY + ss->ply
-                                          :  VALUE_DRAW + 2 * wdl;
+                value =  wdl >  TB::DrawScore ?  VALUE_MATE - MAX_PLY - ss->ply
+                       : wdl < -TB::DrawScore ? -VALUE_MATE + MAX_PLY + ss->ply
+                                              :  VALUE_DRAW + 2 * wdl;
 
-                Bound b =  wdl >  DrawScore ? BOUND_LOWER
-                         : wdl < -DrawScore ? BOUND_UPPER : BOUND_EXACT;
+                Bound b =  wdl >  TB::DrawScore ? BOUND_LOWER
+                         : wdl < -TB::DrawScore ? BOUND_UPPER : BOUND_EXACT;
 
                 // Use TB scores as lower/upper bounds, a draw score is BOUND_EXACT
                 // and is always considered even if value is within (alpha, beta)
