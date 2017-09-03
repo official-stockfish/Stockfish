@@ -649,18 +649,20 @@ namespace {
 
         if (    piecesCount <= ss->tbCardinality
             && (piecesCount <  ss->tbCardinality || depth >= TB::ProbeDepth)
-            &&  pos.rule50_count() == 0 // Ensures WDL score is always correct
             && !pos.can_castle(ANY_CASTLING))
         {
+            const auto DrawScore = TB::UseRule50 ? TB::WDLCursedWin : TB::WDLDraw;
+
             TB::ProbeState err;
             TB::WDLScore wdl = Tablebases::probe_wdl(pos, &err);
 
-            if (err != TB::ProbeState::FAIL)
+            thisThread->tbHits.fetch_add(1, std::memory_order_relaxed);
+
+            // Win or loss scores are reliable only if we are probing after a
+            // rule50 reset move. Instead draw scores are reliable in any case.
+            if (    err != TB::ProbeState::FAIL
+                && (pos.rule50_count() == 0 || abs(wdl) <= DrawScore))
             {
-                thisThread->tbHits.fetch_add(1, std::memory_order_relaxed);
-
-                const auto DrawScore = TB::UseRule50 ? TB::WDLCursedWin : TB::WDLDraw;
-
                 value =  wdl >  DrawScore ?  VALUE_MATE - MAX_PLY - ss->ply
                        : wdl < -DrawScore ? -VALUE_MATE + MAX_PLY + ss->ply
                                           :  VALUE_DRAW + 2 * wdl;
