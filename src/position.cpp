@@ -1004,13 +1004,9 @@ bool Position::see_ge(Move m, Value threshold) const {
   Bitboard occupied, stmAttackers;
 
   balance = PieceValue[MG][piece_on(to)];
-  occupied = 0;
 
   if (balance < threshold)
       return false;
-
-  if (nextVictim == KING)
-      return true;
 
   balance -= PieceValue[MG][nextVictim];
 
@@ -1018,7 +1014,7 @@ bool Position::see_ge(Move m, Value threshold) const {
       return true;
 
   bool relativeStm = true; // True if the opponent is to move
-  occupied ^= pieces() ^ from ^ to;
+  occupied = pieces() ^ from ^ to;
 
   // Find all attackers to the destination square, with the moving piece removed,
   // but possibly an X-ray attacker added behind it.
