@@ -659,11 +659,11 @@ namespace {
             {
                 thisThread->tbHits.fetch_add(1, std::memory_order_relaxed);
 
-                int drawScore = TB::UseRule50 ? 1 : 0;
+                const auto DrawScore = TB::UseRule50 ? TB::WDLCursedWin : TB::WDLDraw;
 
-                value =  wdl < -drawScore ? -VALUE_MATE + MAX_PLY + ss->ply
-                       : wdl >  drawScore ?  VALUE_MATE - MAX_PLY - ss->ply
-                                          :  VALUE_DRAW + 2 * wdl * drawScore;
+                value =  wdl < -DrawScore ? -VALUE_MATE + MAX_PLY + ss->ply
+                       : wdl >  DrawScore ?  VALUE_MATE - MAX_PLY - ss->ply
+                                          :  VALUE_DRAW + 2 * wdl;
 
                 // Use TB scores win/loss as bounds (like TT upperbound and
                 // lowerbound scores), a draw score is always considered.
