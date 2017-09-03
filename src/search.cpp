@@ -642,7 +642,7 @@ namespace {
             && !pos.can_castle(ANY_CASTLING))
         {
             TB::ProbeState err;
-            TB::WDLScore v = Tablebases::probe_wdl(pos, &err);
+            TB::WDLScore wdl = Tablebases::probe_wdl(pos, &err);
 
             if (err != TB::ProbeState::FAIL)
             {
@@ -650,36 +650,30 @@ namespace {
 
                 int drawScore = TB::UseRule50 ? 1 : 0;
 
-                value =  v < -drawScore ? -VALUE_MATE + MAX_PLY + ss->ply
-                       : v >  drawScore ?  VALUE_MATE - MAX_PLY - ss->ply
-                                        :  VALUE_DRAW + 2 * v * drawScore;
+                value =  wdl < -drawScore ? -VALUE_MATE + MAX_PLY + ss->ply
+                       : wdl >  drawScore ?  VALUE_MATE - MAX_PLY - ss->ply
+                                          :  VALUE_DRAW + 2 * wdl * drawScore;
 
-                if (abs(v) <= drawScore) {
-                    tte->save(posKey, value_to_tt(value, ss->ply), BOUND_EXACT,
-                              depth, MOVE_NONE, VALUE_NONE, TT.generation());
+                Bound b =  wdl < -drawScore ? BOUND_UPPER
+                         : wdl >  drawScore ? BOUND_LOWER : BOUND_EXACT;
+
+                if (    b == BOUND_EXACT
+                    || (b == BOUND_LOWER ? value >= beta : value <= alpha))
+                {
+                    tte->save(posKey, value_to_tt(value, ss->ply), b,
+                              std::min(DEPTH_MAX - ONE_PLY, depth + 6 * ONE_PLY),
+                              MOVE_NONE, VALUE_NONE, TT.generation());
+
                     return value;
                 }
-                else if (v < -drawScore) {
-                    if (alpha >= value) {
-                        tte->save(posKey, value_to_tt(value, ss->ply),
-                                  BOUND_UPPER, depth, MOVE_NONE, VALUE_NONE,
-                                  TT.generation());
-                        return value;
-                    }
-                    maxValue = value;
-                }
-                else {
-                    if (beta <= value) {
-                        tte->save(posKey, value_to_tt(value, ss->ply),
-                                  BOUND_LOWER, depth, MOVE_NONE, VALUE_NONE,
-                                  TT.generation());
-                        return value;
-                    }
-                    bestValue = value;
-                    if (PvNode && bestValue > alpha)
-                        alpha = bestValue;
-                }
 
+                if (PvNode)
+                {
+                    if (b == BOUND_LOWER)
+                        bestValue = value, alpha = std::max(alpha, bestValue);
+                    else
+                        maxValue = value;
+                }
             }
         }
     }
@@ -1139,8 +1133,8 @@ moves_loop: // When in check search starts from here
              && is_ok((ss-1)->currentMove))
         update_continuation_histories(ss-1, pos.piece_on(prevSq), prevSq, stat_bonus(depth));
 
-    if (PvNode && bestValue > maxValue)
-        bestValue = maxValue;
+    if (PvNode)
+        bestValue = std::min(bestValue, maxValue);
 
     if (!excludedMove)
         tte->save(posKey, value_to_tt(bestValue, ss->ply),
@@ -1641,6 +1635,6 @@ void Tablebases::filter_root_moves(Position& pos, Search::RootMoves& rootMoves) 
 
     // Since root_probe() and root_probe_wdl() dirty the root move scores,
     // we reset them to -VALUE_INFINITE
-    for (size_t i = 0; i < rootMoves.size(); ++i)
-        rootMoves[i].score = -VALUE_INFINITE;
+    for (RootMove& rm : rootMoves)
+        rm.score = -VALUE_INFINITE;
 }
