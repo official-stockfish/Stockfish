@@ -667,15 +667,15 @@ namespace {
 
                 // Use TB scores win/loss as bounds (like TT upperbound and
                 // lowerbound scores), a draw score is always considered.
-                if (value >= beta ? wdl >= TB::WDLDraw : wdl <= TB::WDLDraw)
+                if (value >= beta ? wdl >= DrawScore : wdl <= DrawScore)
                 {
-                    Bound b =  wdl > TB::WDLDraw ? BOUND_LOWER
-                             : wdl < TB::WDLDraw ? BOUND_UPPER : BOUND_EXACT;
+                    Bound b =  wdl >  DrawScore ? BOUND_LOWER
+                             : wdl < -DrawScore ? BOUND_UPPER : BOUND_EXACT;
 
                     bool farFromRoot = ss->ply - depth / (2 * ONE_PLY) >= 0;
 
-                    // When draw or in midgame save TB score in TT and return
-                    if (farFromRoot || wdl == TB::WDLDraw)
+                    // When in midgame or is a draw save in TT and return
+                    if (farFromRoot || b == BOUND_EXACT)
                     {
                         tte->save(posKey, value_to_tt(value, ss->ply), b,
                                   std::min(DEPTH_MAX - ONE_PLY, depth + 6 * ONE_PLY),
