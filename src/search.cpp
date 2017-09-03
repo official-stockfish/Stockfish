@@ -661,17 +661,19 @@ namespace {
 
                 const auto DrawScore = TB::UseRule50 ? TB::WDLCursedWin : TB::WDLDraw;
 
-                value =  wdl < -DrawScore ? -VALUE_MATE + MAX_PLY + ss->ply
-                       : wdl >  DrawScore ?  VALUE_MATE - MAX_PLY - ss->ply
+                value =  wdl >  DrawScore ?  VALUE_MATE - MAX_PLY - ss->ply
+                       : wdl < -DrawScore ? -VALUE_MATE + MAX_PLY + ss->ply
                                           :  VALUE_DRAW + 2 * wdl;
 
-                // Use TB scores win/loss as bounds (like TT upperbound and
-                // lowerbound scores), a draw score is always considered.
-                if (value >= beta ? wdl >= DrawScore : wdl <= DrawScore)
-                {
-                    Bound b =  wdl >  DrawScore ? BOUND_LOWER
-                             : wdl < -DrawScore ? BOUND_UPPER : BOUND_EXACT;
+                Bound b =  wdl >  DrawScore ? BOUND_LOWER
+                         : wdl < -DrawScore ? BOUND_UPPER : BOUND_EXACT;
 
+                // Use TB scores as lower/upper bounds, a draw score is BOUND_EXACT
+                // and is always considered even if value is within (alpha, beta)
+                if (   (value >= beta  && b == BOUND_LOWER)
+                    || (value <= alpha && b == BOUND_UPPER)
+                    ||  b == BOUND_EXACT)
+                {
                     bool farFromRoot = ss->ply - depth / (2 * ONE_PLY) >= 0;
 
                     // When in midgame or is a draw save in TT and return
