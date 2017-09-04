@@ -953,11 +953,6 @@ moves_loop: // When in check search starts from here
               r -= r ? ONE_PLY : DEPTH_ZERO;
           else
           {
-                    
-              // Decrease reduction if opponent's move count is high
-              if ((ss-1)->moveCount > 15)
-                  r -= ONE_PLY;
-          
               // Increase reduction if ttMove is a capture
               if (ttCapture)
                   r += ONE_PLY;
@@ -965,13 +960,21 @@ moves_loop: // When in check search starts from here
               // Increase reduction for cut nodes
               if (cutNode)
                   r += 2 * ONE_PLY;
+			  else
+			  {
 
-              // Decrease reduction for moves that escape a capture. Filter out
-              // castling moves, because they are coded as "king captures rook" and
-              // hence break make_move().
-              else if (    type_of(move) == NORMAL
-                       && !pos.see_ge(make_move(to_sq(move), from_sq(move))))
-                  r -= 2 * ONE_PLY;
+				  // Decrease reduction if opponent's move count is high
+				  if ((ss - 1)->moveCount > 15 && !cutNode)
+					  r -= ONE_PLY;
+
+				  // Decrease reduction for moves that escape a capture. Filter out
+				  // castling moves, because they are coded as "king captures rook" and
+				  // hence break make_move().
+				  if (type_of(move) == NORMAL
+					  && !pos.see_ge(make_move(to_sq(move), from_sq(move))))
+					  r -= 2 * ONE_PLY;
+
+			  }
 
               ss->statScore =  thisThread->mainHistory[~pos.side_to_move()][from_to(move)]
                              + (*contHist[0])[movedPiece][to_sq(move)]
