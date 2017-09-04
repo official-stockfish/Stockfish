@@ -148,6 +148,7 @@ namespace {
   void update_pv(Move* pv, Move move, Move* childPv);
   void update_continuation_histories(Stack* ss, Piece pc, Square to, int bonus);
   void update_stats(const Position& pos, Stack* ss, Move move, Move* quiets, int quietsCnt, int bonus);
+  Value probe_tb(Position& pos, Stack* ss, Value alpha, Value beta, Depth* depth, TTEntry* tte);
 
   // perft() is our utility to verify move generation. All the leaf nodes up
   // to the given depth are generated and counted, and the sum is returned.
@@ -651,77 +652,10 @@ namespace {
             && (piecesCount <  ss->tbCardinality || depth >= TB::ProbeDepth)
             && !pos.can_castle(ANY_CASTLING))
         {
-            TB::ProbeState err;
-            TB::WDLScore wdl = Tablebases::probe_wdl(pos, &err);
+            value = probe_tb(pos, ss, alpha, beta, &depth, tte);
 
-            thisThread->tbHits.fetch_add(1, std::memory_order_relaxed);
-
-            if (err == TB::ProbeState::FAIL)
-            {}
-            // Win or loss scores are reliable only if we are probing after a
-            // rule50 reset move. Instead draw scores are reliable in any case.
-            else if (pos.rule50_count() == 0 || abs(wdl) <= TB::DrawScore)
-            {
-                value =  wdl >  TB::DrawScore ?  VALUE_MATE - MAX_PLY - ss->ply
-                       : wdl < -TB::DrawScore ? -VALUE_MATE + MAX_PLY + ss->ply
-                                              :  VALUE_DRAW + 2 * wdl;
-
-                Bound b =  wdl >  TB::DrawScore ? BOUND_LOWER
-                         : wdl < -TB::DrawScore ? BOUND_UPPER : BOUND_EXACT;
-
-                // Use TB scores as lower/upper bounds, a draw score is BOUND_EXACT
-                // and is always considered even if value is within (alpha, beta)
-                if (   (value >= beta  && b == BOUND_LOWER)
-                    || (value <= alpha && b == BOUND_UPPER)
-                    ||  b == BOUND_EXACT)
-                {
-                    // It is far if ply >= (RootDepth - LMR) / 3, so that at a
-                    // given ply, nodes with high LMR are considered farther
-                    // from root than nodes near the PV line.
-                    bool farFromRoot = ss->ply - depth / (2 * ONE_PLY) >= 0;
-
-                    // When in midgame or is a draw save in TT and return
-                    if (farFromRoot || b == BOUND_EXACT)
-                    {
-                        tte->save(posKey, value_to_tt(value, ss->ply), b,
-                                  std::min(DEPTH_MAX - ONE_PLY, depth + 6 * ONE_PLY),
-                                  MOVE_NONE, VALUE_NONE, TT.generation());
-                        return value;
-                    }
-
-                    // When in endgame proceed with a reduced search
-                    depth = std::max(depth / 2, ONE_PLY);
-                    ss->tbCardinality = 0;
-                }
-            }
-            // If rootPos is in TB and we can't rely on WDL score, then we have
-            // to use the big artillery to differentiate between a win/loss and
-            // a cursed/blessed draw. This is critical because search alone will
-            // detect it only at ply 101...too late.
-            else if (   (ss-1)->ply == 1
-                     && pos.rule50_count() > 0
-                     && TB::DrawScore == TB::WDLCursedWin)
-            {
-                assert(abs(wdl) > TB::DrawScore);
-                assert(!pos.captured_piece()); // Root is in TB
-
-                int dtz = Tablebases::probe_dtz(pos, &err);
-
-                assert(dtz != 0 || err == TB::ProbeState::FAIL);
-
-                // If it is a draw under 50-move rule save in TT and return
-                if (   err != TB::ProbeState::FAIL
-                    && abs(dtz) + pos.rule50_count() > 99)
-                {
-                    wdl = dtz > 0 ? TB::WDLCursedWin : TB::WDLBlessedLoss;
-                    value = VALUE_DRAW + 2 * wdl;
-
-                    tte->save(posKey, value_to_tt(value, ss->ply), BOUND_EXACT,
-                              std::min(DEPTH_MAX - ONE_PLY, depth + 6 * ONE_PLY),
-                              MOVE_NONE, VALUE_NONE, TT.generation());
-                    return value;
-                }
-            }
+            if (value != VALUE_NONE)
+                return value;
         }
     }
 
@@ -1516,6 +1450,91 @@ moves_loop: // When in check search starts from here
 
     return best;
   }
+
+
+  // probe_tb() is called by search after TT probe to look up the position in
+  // tablebases, if it is found we return immediately or continue the search
+  // eventually with reduced depth according to the case.
+
+  Value probe_tb(Position& pos, Stack* ss, Value alpha, Value beta, Depth* depth, TTEntry* tte) {
+
+    Key posKey = pos.key() ^ Key(ss->excludedMove);
+    Thread* thisThread = pos.this_thread();
+
+    TB::ProbeState err;
+    TB::WDLScore wdl = Tablebases::probe_wdl(pos, &err);
+
+    thisThread->tbHits.fetch_add(1, std::memory_order_relaxed);
+
+    if (err == TB::ProbeState::FAIL)
+    {}
+    // Win or loss scores are reliable only if we are probing after a
+    // rule50 reset move. Instead draw scores are reliable in any case.
+    else if (pos.rule50_count() == 0 || abs(wdl) <= TB::DrawScore)
+    {
+        Value value =  wdl >  TB::DrawScore ?  VALUE_MATE - MAX_PLY - ss->ply
+                     : wdl < -TB::DrawScore ? -VALUE_MATE + MAX_PLY + ss->ply
+                                            :  VALUE_DRAW + 2 * wdl;
+
+        Bound b =  wdl >  TB::DrawScore ? BOUND_LOWER
+                 : wdl < -TB::DrawScore ? BOUND_UPPER : BOUND_EXACT;
+
+        // Use TB scores as lower/upper bounds, a draw score is BOUND_EXACT
+        // and is always considered even if value is within (alpha, beta)
+        if (   (value >= beta  && b == BOUND_LOWER)
+            || (value <= alpha && b == BOUND_UPPER)
+            ||  b == BOUND_EXACT)
+        {
+            // It is far if ply >= (RootDepth - LMR) / 3, so that at a
+            // given ply, nodes with high LMR are considered farther
+            // from root than nodes near the PV line.
+            bool farFromRoot = ss->ply - *depth / (2 * ONE_PLY) >= 0;
+
+            // When in midgame or is a draw save in TT and return
+            if (farFromRoot || b == BOUND_EXACT)
+            {
+                tte->save(posKey, value_to_tt(value, ss->ply), b,
+                          std::min(DEPTH_MAX - ONE_PLY, *depth + 6 * ONE_PLY),
+                          MOVE_NONE, VALUE_NONE, TT.generation());
+                return value;
+            }
+
+            // When in endgame proceed with a reduced search
+            *depth = std::max(*depth / 2, ONE_PLY);
+            ss->tbCardinality = 0;
+        }
+    }
+    // If rootPos is in TB and we can't rely on WDL score, then we have
+    // to use the big artillery to differentiate between a win/loss and
+    // a cursed/blessed draw. This is critical because search alone will
+    // detect it only at ply 101...too late.
+    else if (   (ss-1)->ply == 1
+             && pos.rule50_count() > 0
+             && TB::DrawScore == TB::WDLCursedWin)
+    {
+        assert(abs(wdl) > TB::DrawScore);
+        assert(!pos.captured_piece()); // Root is in TB
+
+        int dtz = Tablebases::probe_dtz(pos, &err);
+
+        assert(dtz != 0 || err == TB::ProbeState::FAIL);
+
+        // If it is a draw under 50-move rule save in TT and return
+        if (   err != TB::ProbeState::FAIL
+            && abs(dtz) + pos.rule50_count() > 99)
+        {
+            wdl = dtz > 0 ? TB::WDLCursedWin : TB::WDLBlessedLoss;
+            Value value = VALUE_DRAW + 2 * wdl;
+
+            tte->save(posKey, value_to_tt(value, ss->ply), BOUND_EXACT,
+                      std::min(DEPTH_MAX - ONE_PLY, *depth + 6 * ONE_PLY),
+                      MOVE_NONE, VALUE_NONE, TT.generation());
+            return value;
+        }
+    }
+    return VALUE_NONE;
+  }
+
 
 } // namespace
 
