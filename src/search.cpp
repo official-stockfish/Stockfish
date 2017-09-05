@@ -1521,7 +1521,7 @@ moves_loop: // When in check search starts from here
 
         // If it is a draw under 50-move rule save in TT and return
         if (   err != TB::ProbeState::FAIL
-            && abs(dtz) + pos.rule50_count() > 99)
+            && abs(dtz) + pos.rule50_count() > 100)
         {
             wdl = dtz > 0 ? TB::WDLCursedWin : TB::WDLBlessedLoss;
             Value value = VALUE_DRAW + 2 * wdl;
