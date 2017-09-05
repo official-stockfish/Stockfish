@@ -62,6 +62,8 @@ struct StateInfo {
 /// elements are not invalidated upon list resizing.
 typedef std::unique_ptr<std::deque<StateInfo>> StateListPtr;
 
+class Position;
+typedef std::pair<const Position&, Move> SEE;
 
 /// Position class stores information regarding the board representation as
 /// pieces, side to move, hash keys, castling info, etc. Important methods are
@@ -139,7 +141,8 @@ public:
   void undo_null_move();
 
   // Static Exchange Evaluation
-  bool see_ge(Move m, Value threshold = VALUE_ZERO) const;
+  bool see_ge(Move m, Value threshold) const;
+  inline const SEE see(Move m) const { return SEE(*this, m); }
 
   // Accessing hash keys
   Key key() const;
@@ -423,5 +426,14 @@ inline void Position::move_piece(Piece pc, Square from, Square to) {
 inline void Position::do_move(Move m, StateInfo& newSt) {
   do_move(m, newSt, gives_check(m));
 }
+
+// Syntactic sugar around Position::see_ge(), so that we can use the more readable
+// pos.see(move) >= threshold instead of pos.see_ge(move, threshold), and similar
+// readable code for the other operators.
+inline bool operator>=(const SEE& s, Value threshold) { return  s.first.see_ge(s.second, threshold);}
+inline bool operator> (const SEE& s, Value threshold) { return  (s >= threshold + 1); }
+inline bool operator< (const SEE& s, Value threshold) { return !(s >= threshold); }
+inline bool operator<=(const SEE& s, Value threshold) { return !(s >= threshold + 1); }
+
 
 #endif // #ifndef POSITION_H_INCLUDED
