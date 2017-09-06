@@ -47,6 +47,7 @@ namespace Tablebases {
   int Cardinality;
   Depth ProbeDepth;
   WDLScore DrawScore;
+  int RootPosDTZ;
 }
 
 namespace TB = Tablebases;
@@ -247,11 +248,18 @@ void MainThread::search() {
   TB::ProbeDepth = Options["SyzygyProbeDepth"] * ONE_PLY;
   TB::Cardinality = Options["SyzygyProbeLimit"];
 
-  // Skip TB probing when no TB found: !TBLargest -> !TB::Cardinality
   if (TB::Cardinality > TB::MaxCardinality)
   {
       TB::Cardinality = TB::MaxCardinality;
       TB::ProbeDepth = DEPTH_ZERO; // Hack!
+  }
+
+  // Save DTZ score of rootPos to evaluate move improvement later
+  if (    rootPos.count<ALL_PIECES>() <= TB::Cardinality
+      && !rootPos.can_castle(ANY_CASTLING))
+  {
+      TB::ProbeState err;
+      TB::RootPosDTZ = Tablebases::probe_dtz(rootPos, &err);
   }
 
   if (rootMoves.empty())
@@ -1522,9 +1530,10 @@ moves_loop: // When in check search starts from here
 
         assert(dtz != 0 || err == TB::ProbeState::FAIL);
 
-        // If it is a draw under 50-move rule save in TT and return
-        if (   err != TB::ProbeState::FAIL
-            && abs(dtz) + pos.rule50_count() > 100)
+        if (err == TB::ProbeState::FAIL)
+        {}
+        // If it is a draw under 50-move rule save in TT and return...
+        else if (abs(dtz) + pos.rule50_count() > 100)
         {
             wdl = dtz > 0 ? TB::WDLCursedWin : TB::WDLBlessedLoss;
             Value value = VALUE_DRAW + 2 * wdl;
@@ -1534,7 +1543,11 @@ moves_loop: // When in check search starts from here
                       MOVE_NONE, VALUE_NONE, TT.generation());
             return value;
         }
+        // ...otherwise search with a reduced depth if is a not-improving move
+        else if (TB::RootPosDTZ && dtz >= TB::RootPosDTZ)
+            *depth = std::max(*depth / 2, ONE_PLY);
     }
+
     return VALUE_NONE;
   }
 
