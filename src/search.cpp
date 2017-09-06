@@ -1469,83 +1469,85 @@ moves_loop: // When in check search starts from here
 
   Value probe_tb(Position& pos, Stack* ss, Value alpha, Value beta, Depth* depth, TTEntry* tte) {
 
-    Key posKey = pos.key() ^ Key(ss->excludedMove);
-    Thread* thisThread = pos.this_thread();
-
     TB::ProbeState err;
-    TB::WDLScore wdl = Tablebases::probe_wdl(pos, &err);
+    TB::WDLScore wdl;
+    int dtz = 0;
+    bool tbHit = false, farFromRoot = false, reduceDepth = true;
 
+    Thread* thisThread = pos.this_thread();
     thisThread->tbHits.fetch_add(1, std::memory_order_relaxed);
 
-    if (err == TB::ProbeState::FAIL)
-    {}
-    // Win or loss scores are reliable only if we are probing after a
-    // rule50 reset move. Instead draw scores are reliable in any case.
-    else if (pos.rule50_count() == 0 || abs(wdl) <= TB::DrawScore)
+    // If rootPos is in TB we probe DTZ to differentiate between a win/loss and
+    // a cursed/blessed draw. This is critical because WDL is reliable only if
+    // rule50 counter is zero and search alone would detect it only at ply 101.
+    if ((ss-1)->ply == 1 && pos.rule50_count() > 0)
+    {
+        assert(!pos.captured_piece()); // Root is in TB
+
+        dtz = Tablebases::probe_dtz(pos, &err);
+
+        if (err != TB::ProbeState::FAIL)
+        {
+            bool cursed = abs(dtz) + pos.rule50_count() > 100;
+
+            wdl =  dtz > 0 ? (cursed ? TB::WDLCursedWin   : TB::WDLWin)
+                 : dtz < 0 ? (cursed ? TB::WDLBlessedLoss : TB::WDLLoss)
+                           : TB::WDLDraw;
+
+            reduceDepth = TB::RootPosDTZ && dtz >= TB::RootPosDTZ;
+            tbHit = true;
+        }
+    }
+    else
+    {
+        wdl = Tablebases::probe_wdl(pos, &err);
+
+        // Win or loss scores are reliable only if we are probing after a
+        // rule50 reset move. Instead draw scores are reliable in any case.
+        if (   err != TB::ProbeState::FAIL
+            && (pos.rule50_count() == 0 || abs(wdl) <= TB::DrawScore))
+        {
+            // It is far if ply >= (RootDepth - LMR) / 3, so that at a
+            // given ply, nodes with high LMR are considered farther
+            // from root than nodes near the PV line.
+            farFromRoot = ss->ply - *depth / (2 * ONE_PLY) >= 0;
+            tbHit = true;
+        }
+    }
+
+    if (tbHit)
     {
         Value value =  wdl >  TB::DrawScore ?  VALUE_MATE - MAX_PLY - ss->ply
                      : wdl < -TB::DrawScore ? -VALUE_MATE + MAX_PLY + ss->ply
                                             :  VALUE_DRAW + 2 * wdl;
 
-        Bound b =  wdl >  TB::DrawScore ? BOUND_LOWER
-                 : wdl < -TB::DrawScore ? BOUND_UPPER : BOUND_EXACT;
+        Bound bound =  wdl >  TB::DrawScore ? BOUND_LOWER
+                     : wdl < -TB::DrawScore ? BOUND_UPPER : BOUND_EXACT;
 
         // Use TB scores as lower/upper bounds, a draw score is BOUND_EXACT
         // and is always considered even if value is within (alpha, beta)
-        if (   (value >= beta  && b == BOUND_LOWER)
-            || (value <= alpha && b == BOUND_UPPER)
-            ||  b == BOUND_EXACT)
+        if (   (value >= beta  && bound == BOUND_LOWER)
+            || (value <= alpha && bound == BOUND_UPPER)
+            ||  bound == BOUND_EXACT)
         {
-            // It is far if ply >= (RootDepth - LMR) / 3, so that at a
-            // given ply, nodes with high LMR are considered farther
-            // from root than nodes near the PV line.
-            bool farFromRoot = ss->ply - *depth / (2 * ONE_PLY) >= 0;
-
-            // When in midgame or is a draw save in TT and return
-            if (farFromRoot || b == BOUND_EXACT)
+            // When in midgame or is a draw save in TT and return...
+            if (bound == BOUND_EXACT || farFromRoot)
             {
-                tte->save(posKey, value_to_tt(value, ss->ply), b,
+                Key posKey = pos.key() ^ Key(ss->excludedMove);
+                tte->save(posKey, value_to_tt(value, ss->ply), bound,
                           std::min(DEPTH_MAX - ONE_PLY, *depth + 6 * ONE_PLY),
                           MOVE_NONE, VALUE_NONE, TT.generation());
                 return value;
             }
+            // ...otherwise search win/loss with a reduced depth after a WDL
+            // look-up or after a DTZ look-up if it is a not-improving move.
+            else if (reduceDepth)
+                *depth = std::max(*depth / 2, ONE_PLY);
 
-            // When in endgame proceed with a reduced search
-            *depth = std::max(*depth / 2, ONE_PLY);
-            ss->tbCardinality = 0;
+            // In case of WDL don't probe again in the sub-tree
+            if (!dtz)
+                ss->tbCardinality = 0;
         }
-    }
-    // If rootPos is in TB and we can't rely on WDL score, then we have
-    // to use the heavy artillery to differentiate between a win/loss and
-    // a cursed/blessed draw. This is critical because search alone will
-    // detect it only at ply 101...too late.
-    else if (   (ss-1)->ply == 1
-             && pos.rule50_count() > 0
-             && TB::DrawScore == TB::WDLCursedWin)
-    {
-        assert(abs(wdl) > TB::DrawScore);
-        assert(!pos.captured_piece()); // Root is in TB
-
-        int dtz = Tablebases::probe_dtz(pos, &err);
-
-        assert(dtz != 0 || err == TB::ProbeState::FAIL);
-
-        if (err == TB::ProbeState::FAIL)
-        {}
-        // If it is a draw under 50-move rule save in TT and return...
-        else if (abs(dtz) + pos.rule50_count() > 100)
-        {
-            wdl = dtz > 0 ? TB::WDLCursedWin : TB::WDLBlessedLoss;
-            Value value = VALUE_DRAW + 2 * wdl;
-
-            tte->save(posKey, value_to_tt(value, ss->ply), BOUND_EXACT,
-                      std::min(DEPTH_MAX - ONE_PLY, *depth + 6 * ONE_PLY),
-                      MOVE_NONE, VALUE_NONE, TT.generation());
-            return value;
-        }
-        // ...otherwise search with a reduced depth if is a not-improving move
-        else if (TB::RootPosDTZ && dtz >= TB::RootPosDTZ)
-            *depth = std::max(*depth / 2, ONE_PLY);
     }
 
     return VALUE_NONE;
