@@ -48,6 +48,7 @@ namespace Tablebases {
   Depth ProbeDepth;
   WDLScore DrawScore;
   int RootPosDTZ;
+  std::vector<Move> BestMovesDTZ;
 }
 
 namespace TB = Tablebases;
@@ -244,6 +245,7 @@ void MainThread::search() {
   DrawValue[~us] = VALUE_DRAW + Value(contempt);
 
   // Set TB probing parameters
+  TB::BestMovesDTZ.clear();
   TB::DrawScore = Options["Syzygy50MoveRule"] ? TB::WDLCursedWin : TB::WDLDraw;
   TB::ProbeDepth = Options["SyzygyProbeDepth"] * ONE_PLY;
   TB::Cardinality = Options["SyzygyProbeLimit"];
@@ -324,8 +326,25 @@ void MainThread::search() {
 
   previousScore = bestThread->rootMoves[0].score;
 
+  // In case of starting from a DTZ position and search was not able to find
+  // DTZ correct move nor a mate then send to GUI the DTZ best move.
+  if (  !TB::BestMovesDTZ.empty()
+      && abs(bestThread->rootMoves[0].score) < VALUE_MATE_IN_MAX_PLY)
+  {
+      if (std::find(TB::BestMovesDTZ.begin(), TB::BestMovesDTZ.end(),
+                    bestThread->rootMoves[0].pv[0]) == TB::BestMovesDTZ.end())
+      {
+          bestThread->rootMoves[0].pv.clear();
+          bestThread->rootMoves[0].pv.push_back(TB::BestMovesDTZ.front());
+      }
+      assert(TB::RootPosDTZ != 0);
+
+      bestThread->rootMoves[0].score = TB::RootPosDTZ > 0 ?  PawnValueEg * 99
+                                                          : -PawnValueEg * 99;
+  }
+
   // Send new PV when needed
-  if (bestThread != this)
+  if (bestThread != this || !TB::BestMovesDTZ.empty())
       sync_cout << UCI::pv(bestThread->rootPos, bestThread->completedDepth, -VALUE_INFINITE, VALUE_INFINITE) << sync_endl;
 
   sync_cout << "bestmove " << UCI::move(bestThread->rootMoves[0].pv[0], rootPos.is_chess960());
@@ -1488,14 +1507,19 @@ moves_loop: // When in check search starts from here
 
         if (err != TB::ProbeState::FAIL)
         {
+            tbHit = true;
             bool cursed = abs(dtz) + pos.rule50_count() > 100;
 
             wdl =  dtz > 0 ? (cursed ? TB::WDLCursedWin   : TB::WDLWin)
                  : dtz < 0 ? (cursed ? TB::WDLBlessedLoss : TB::WDLLoss)
                            : TB::WDLDraw;
 
-            reduceDepth = TB::RootPosDTZ && dtz >= TB::RootPosDTZ;
-            tbHit = true;
+            // Search at reduced depth all the moves but the optimal ones
+            reduceDepth = TB::RootPosDTZ && abs(dtz) >= abs(TB::RootPosDTZ);
+
+            // If is not a draw position and this moves improves DTZ save it
+            if (abs(wdl) > TB::DrawScore && !reduceDepth)
+                TB::BestMovesDTZ.push_back((ss-1)->currentMove);
         }
     }
     else
@@ -1507,11 +1531,12 @@ moves_loop: // When in check search starts from here
         if (   err != TB::ProbeState::FAIL
             && (pos.rule50_count() == 0 || abs(wdl) <= TB::DrawScore))
         {
+            tbHit = true;
+
             // It is far if ply >= (RootDepth - LMR) / 3, so that at a
             // given ply, nodes with high LMR are considered farther
             // from root than nodes near the PV line.
             farFromRoot = ss->ply - *depth / (2 * ONE_PLY) >= 0;
-            tbHit = true;
         }
     }
 
