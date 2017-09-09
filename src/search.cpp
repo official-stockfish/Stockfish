@@ -48,7 +48,6 @@ namespace Tablebases {
   Depth ProbeDepth;
   WDLScore DrawScore;
   int RootPosDTZ;
-  std::vector<Move> BestMovesDTZ;
 }
 
 namespace TB = Tablebases;
@@ -245,7 +244,6 @@ void MainThread::search() {
   DrawValue[~us] = VALUE_DRAW + Value(contempt);
 
   // Set TB probing parameters
-  TB::BestMovesDTZ.clear();
   TB::DrawScore = Options["Syzygy50MoveRule"] ? TB::WDLCursedWin : TB::WDLDraw;
   TB::ProbeDepth = Options["SyzygyProbeDepth"] * ONE_PLY;
   TB::Cardinality = Options["SyzygyProbeLimit"];
@@ -326,25 +324,43 @@ void MainThread::search() {
 
   previousScore = bestThread->rootMoves[0].score;
 
-  // In case of starting from a DTZ position and search was not able to find
-  // DTZ correct move nor a mate then send to GUI the DTZ best move.
-  if (  !TB::BestMovesDTZ.empty()
+  // When starting from a DTZ position ensure we return DTZ optimal move or a mate
+  if (   TB::RootPosDTZ
       && abs(bestThread->rootMoves[0].score) < VALUE_MATE_IN_MAX_PLY)
   {
-      if (std::find(TB::BestMovesDTZ.begin(), TB::BestMovesDTZ.end(),
-                    bestThread->rootMoves[0].pv[0]) == TB::BestMovesDTZ.end())
-      {
-          bestThread->rootMoves[0].pv.clear();
-          bestThread->rootMoves[0].pv.push_back(TB::BestMovesDTZ.front());
-      }
-      assert(TB::RootPosDTZ != 0);
+      bool isBest = false;
 
-      bestThread->rootMoves[0].score = TB::RootPosDTZ > 0 ?  PawnValueEg * 99
-                                                          : -PawnValueEg * 99;
+      for (Thread* th : Threads)
+      {
+          isBest = std::find(th->rootMoves.begin(), th->rootMoves.end(),
+                             bestThread->rootMoves[0].pv[0])->isDTZBest;
+          if (isBest)
+              break;
+      }
+
+      if (!isBest) // If is not an optimal one find and force a DTZ best move
+          for (Thread* th : Threads)
+          {
+              auto it = std::find_if(th->rootMoves.begin(), th->rootMoves.end(),
+                                     [](const RootMove& rm){ return rm.isDTZBest; });
+
+              if (it != th->rootMoves.end())
+              {
+                  bestThread->rootMoves[0].pv.clear();
+                  bestThread->rootMoves[0].pv.push_back(it->pv[0]);
+                  break;
+              }
+          }
+
+      static_assert(int(PawnValueEg) * 120 < VALUE_MATE_IN_MAX_PLY, "DTZ overflow");
+
+      // Signal the GUI we are in TB and codify DTZ count into output score
+      bestThread->rootMoves[0].score = TB::RootPosDTZ > 0 ?  PawnValueEg * (120 - TB::RootPosDTZ / 2)
+                                                          : -PawnValueEg * (120 + TB::RootPosDTZ / 2);
   }
 
   // Send new PV when needed
-  if (bestThread != this || !TB::BestMovesDTZ.empty())
+  if (bestThread != this || TB::RootPosDTZ)
       sync_cout << UCI::pv(bestThread->rootPos, bestThread->completedDepth, -VALUE_INFINITE, VALUE_INFINITE) << sync_endl;
 
   sync_cout << "bestmove " << UCI::move(bestThread->rootMoves[0].pv[0], rootPos.is_chess960());
@@ -1517,9 +1533,10 @@ moves_loop: // When in check search starts from here
             // Search at reduced depth all the moves but the optimal ones
             reduceDepth = TB::RootPosDTZ && abs(dtz) >= abs(TB::RootPosDTZ);
 
-            // If is not a draw position and this moves improves DTZ save it
+            // If is not a draw position and this moves improves DTZ flag it
             if (abs(wdl) > TB::DrawScore && !reduceDepth)
-                TB::BestMovesDTZ.push_back((ss-1)->currentMove);
+                std::find(thisThread->rootMoves.begin(), thisThread->rootMoves.end(),
+                          (ss-1)->currentMove)->isDTZBest = true;
         }
     }
     else

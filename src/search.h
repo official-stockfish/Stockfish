@@ -70,6 +70,7 @@ struct RootMove {
   Value score = -VALUE_INFINITE;
   Value previousScore = -VALUE_INFINITE;
   int selDepth = 0;
+  int isDTZBest = false;
   std::vector<Move> pv;
 };
 
