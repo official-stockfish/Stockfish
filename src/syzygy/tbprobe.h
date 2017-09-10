@@ -48,12 +48,15 @@ enum ProbeState {
 
 extern int MaxCardinality;
 extern int RootPosDTZ;
+extern WDLScore RootWDL;
+extern bool CanProbeDTZ;
 
 void init(const std::string& paths);
 WDLScore probe_wdl(Position& pos, ProbeState* result);
 int probe_dtz(Position& pos, ProbeState* result);
 void dtz_score(Position& pos, Search::RootMoves& rootMoves);
 bool is_shortest(const Search::RootMove& rm);
+WDLScore dtz_to_wdl(int dtz, int r50);
 
 inline std::ostream& operator<<(std::ostream& os, const WDLScore v) {
 

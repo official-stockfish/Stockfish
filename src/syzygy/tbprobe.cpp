@@ -208,14 +208,6 @@ int MapKK[10][SQUARE_NB]; // [MapA1D1D4][SQUARE_NB]
 bool pawns_comp(Square i, Square j) { return MapPawns[i] < MapPawns[j]; }
 int off_A1H8(Square sq) { return int(rank_of(sq)) - file_of(sq); }
 
-const Value WDL_to_value[] = {
-   -VALUE_MATE + MAX_PLY + 1,
-    VALUE_DRAW - 2,
-    VALUE_DRAW,
-    VALUE_DRAW + 2,
-    VALUE_MATE - MAX_PLY - 1
-};
-
 const std::string PieceToChar = " PNBRQK  pnbrqk";
 
 int Binomial[6][SQUARE_NB];    // [k][n] k elements from a set of n elements
@@ -1494,6 +1486,12 @@ int Tablebases::probe_dtz(Position& pos, ProbeState* result) {
     return minDTZ == 0xFFFF ? -1 : minDTZ;
 }
 
+WDLScore Tablebases::dtz_to_wdl(int dtz, int r50) {
+
+  bool cursed = abs(dtz) + r50 > 100;
+  return  dtz > 0 ? (cursed ? WDLCursedWin   : WDLWin)
+        : dtz < 0 ? (cursed ? WDLBlessedLoss : WDLLoss) : WDLDraw;
+}
 
 // Call probe_dtz() for each root move and store the result
 void Tablebases::dtz_score(Position& pos, Search::RootMoves& rootMoves) {
@@ -1520,15 +1518,17 @@ void Tablebases::dtz_score(Position& pos, Search::RootMoves& rootMoves) {
   }
 }
 
+// Return true if rm is among the shortest moves of the position that preserve
+// the score.
 bool Tablebases::is_shortest(const Search::RootMove& rm) {
 
-  assert(RootPosDTZ && RootPosDTZ != DTZ_NONE);
+  assert(CanProbeDTZ);
 
   if (rm.dtz == DTZ_NONE)
       return true; // If we miss DTZ info do not assume anything
 
-  return   RootPosDTZ * rm.dtz < 0 // Preserve the win
-        && (  !rm.r50
-            || abs(RootPosDTZ) == 1 || abs(RootPosDTZ) == 101 // Zeroing best move
-            || RootPosDTZ == -rm.dtz + (rm.dtz < 0 ? 1 : -1));
+  auto bestWdl = -dtz_to_wdl(rm.dtz, rm.r50);
+
+  return   bestWdl == RootWDL
+        && (!rm.r50 || RootPosDTZ == -rm.dtz + (rm.dtz < 0 ? 1 : -1));
 }

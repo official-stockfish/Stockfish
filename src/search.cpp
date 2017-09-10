@@ -47,8 +47,9 @@ namespace Tablebases {
   int Cardinality;
   Depth ProbeDepth;
   WDLScore DrawScore;
+  WDLScore RootWDL;
   int RootPosDTZ;
-  bool ProbeDTZ;
+  bool CanProbeDTZ;
 }
 
 namespace TB = Tablebases;
@@ -256,10 +257,12 @@ void MainThread::search() {
   }
 
   // Enable probing of DTZ only when WDL is not enough
-  TB::ProbeDTZ =   TB::RootPosDTZ != TB::DTZ_NONE // Only if root is in TB
-                && TB::DrawScore != TB::WDLDraw   // Only if rule50 is enabled
-                && TB::RootPosDTZ                 // Not a draw
-                && rootPos.rule50_count() > 0;    // Not after a resetting move
+  TB::CanProbeDTZ =   TB::RootPosDTZ != TB::DTZ_NONE // Only if root is in TB
+                   && TB::DrawScore != TB::WDLDraw   // Only if rule50 is enabled
+                   && TB::RootPosDTZ;                 // Not a draw
+
+  TB::RootWDL = TB::CanProbeDTZ ? TB::dtz_to_wdl(TB::RootPosDTZ, rootPos.rule50_count())
+                                : TB::WDLScoreNone;
 
   if (rootMoves.empty())
   {
@@ -327,10 +330,16 @@ void MainThread::search() {
   // When starting from a DTZ position ensure we return DTZ optimal move or a
   // mate. We don't need DTZ post-processing for draw positions or after a rule50
   // zeroing move because WDL will do the job.
-  if (TB::ProbeDTZ && abs(bestMove.score) < VALUE_MATE_IN_MAX_PLY)
+  if (TB::CanProbeDTZ && abs(bestMove.score) < VALUE_MATE_IN_MAX_PLY)
   {
-      // If is not an optimal one find and force a DTZ best move
-      if (!TB::is_shortest(bestMove))
+      auto bestWdl = -TB::dtz_to_wdl(bestMove.dtz, bestMove.r50);
+
+      // Force a DTZ best move if we don't preserve the WDL score or if we are
+      // winning but we don't follow the shortest path to zero, the latter
+      // condition is to avoid a possible draw by repetition.
+      // When losing we don't enforce anything so to lose with naturalness :-)
+      if (    bestWdl < TB::RootWDL
+          || (TB::RootWDL > TB::DrawScore && !TB::is_shortest(bestMove)))
       {
           auto it = std::find_if(rootMoves.begin(), rootMoves.end(), [&](const RootMove& rm) {
                                  return TB::is_shortest(rm); });
@@ -1498,7 +1507,6 @@ moves_loop: // When in check search starts from here
 
     TB::ProbeState err;
     TB::WDLScore wdl;
-    int dtz = 0;
     bool tbHit = false, farFromRoot = false, reduceDepth = true;
 
     Thread* thisThread = pos.this_thread();
@@ -1507,23 +1515,20 @@ moves_loop: // When in check search starts from here
     // If rootPos is in TB we probe DTZ to differentiate between a win/loss and
     // a cursed/blessed draw. This is critical because WDL is reliable only if
     // rule50 counter is zero and search alone would detect it only at ply 101.
-    if (TB::ProbeDTZ && (ss-1)->ply == 1)
+    if (TB::CanProbeDTZ && (ss-1)->ply == 1)
     {
         RootMove& rm = *std::find(thisThread->rootMoves.begin(),
                                   thisThread->rootMoves.end(), (ss-1)->currentMove);
-        dtz = rm.dtz;
-        if (dtz != TB::DTZ_NONE)
+
+        if (rm.dtz != TB::DTZ_NONE)
         {
             assert(rm.r50 == pos.rule50_count());
 
             tbHit = true;
-            bool cursed = abs(dtz) + pos.rule50_count() > 100;
+            wdl = TB::dtz_to_wdl(rm.dtz, rm.r50);
 
-            wdl =  dtz > 0 ? (cursed ? TB::WDLCursedWin   : TB::WDLWin)
-                 : dtz < 0 ? (cursed ? TB::WDLBlessedLoss : TB::WDLLoss)
-                           : TB::WDLDraw;
-
-            // Search at reduced depth all the moves but the shortest ones
+            // Search at full depth only moves that preserve the score and if
+            // is a non-resetting move then should be among the shortests.
             reduceDepth = !TB::is_shortest(rm);
         }
     }
@@ -1585,7 +1590,6 @@ moves_loop: // When in check search starts from here
 
     return VALUE_NONE;
   }
-
 
 } // namespace
 
