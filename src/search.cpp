@@ -48,6 +48,7 @@ namespace Tablebases {
   Depth ProbeDepth;
   WDLScore DrawScore;
   int RootPosDTZ;
+  bool ProbeDTZ;
 }
 
 namespace TB = Tablebases;
@@ -254,6 +255,12 @@ void MainThread::search() {
       TB::ProbeDepth = DEPTH_ZERO; // Hack!
   }
 
+  // Enable probing of DTZ only when WDL is not enough
+  TB::ProbeDTZ =   TB::RootPosDTZ != TB::DTZ_NONE // Only if root is in TB
+                && TB::DrawScore != TB::WDLDraw   // Only if rule50 is enabled
+                && TB::RootPosDTZ                 // Not a draw
+                && rootPos.rule50_count() > 0;    // Not after a resetting move
+
   if (rootMoves.empty())
   {
       rootMoves.emplace_back(MOVE_NONE);
@@ -314,44 +321,44 @@ void MainThread::search() {
       }
   }
 
-  previousScore = bestThread->rootMoves[0].score;
+  RootMove& bestMove = bestThread->rootMoves[0];
+  previousScore = bestMove.score;
 
   // When starting from a DTZ position ensure we return DTZ optimal move or a
-  // mate. We don't need DTZ post-processing for draw positions.
-  if (   TB::RootPosDTZ != TB::DTZ_NONE
-      && TB::RootPosDTZ
-      && abs(bestThread->rootMoves[0].score) < VALUE_MATE_IN_MAX_PLY)
+  // mate. We don't need DTZ post-processing for draw positions or after a rule50
+  // zeroing move because WDL will do the job.
+  if (TB::ProbeDTZ && abs(bestMove.score) < VALUE_MATE_IN_MAX_PLY)
   {
-      int dtz = std::find(rootMoves.begin(), rootMoves.end(),
-                          bestThread->rootMoves[0].pv[0])->dtz;
-
       // If is not an optimal one find and force a DTZ best move
-      if (!TB::is_optimal(dtz))
+      if (!TB::is_shortest(bestMove))
       {
-          auto it = std::find_if(rootMoves.begin(), rootMoves.end(),
-                                 [](const RootMove& rm){ return TB::is_optimal(rm.dtz); });
+          auto it = std::find_if(rootMoves.begin(), rootMoves.end(), [&](const RootMove& rm) {
+                                 return TB::is_shortest(rm); });
 
           assert(it != rootMoves.end());
 
-          bestThread->rootMoves[0].pv.clear();
-          bestThread->rootMoves[0].pv.push_back(it->pv[0]);
+          bestMove.pv.clear();
+          bestMove.pv.push_back(it->pv[0]);
       }
 
       static_assert(int(PawnValueEg) * 120 < VALUE_MATE_IN_MAX_PLY, "DTZ overflow");
 
       // Signal the GUI we are in TB and codify DTZ count into output score
-      bestThread->rootMoves[0].score = TB::RootPosDTZ > 0 ?  PawnValueEg * (120 - TB::RootPosDTZ / 2)
-                                                          : -PawnValueEg * (120 + TB::RootPosDTZ / 2);
+      if (abs(TB::RootPosDTZ) + rootPos.rule50_count() > 100)
+          bestMove.score = VALUE_DRAW; // Cursed win / blessed loss
+      else
+          bestMove.score = TB::RootPosDTZ > 0 ?  PawnValueEg * (120 - TB::RootPosDTZ / 2)
+                                              : -PawnValueEg * (120 + TB::RootPosDTZ / 2);
   }
 
   // Send new PV when needed
   if (bestThread != this || TB::RootPosDTZ != TB::DTZ_NONE)
       sync_cout << UCI::pv(bestThread->rootPos, bestThread->completedDepth, -VALUE_INFINITE, VALUE_INFINITE) << sync_endl;
 
-  sync_cout << "bestmove " << UCI::move(bestThread->rootMoves[0].pv[0], rootPos.is_chess960());
+  sync_cout << "bestmove " << UCI::move(bestMove.pv[0], rootPos.is_chess960());
 
   if (bestThread->rootMoves[0].pv.size() > 1 || bestThread->rootMoves[0].extract_ponder_from_tt(rootPos))
-      std::cout << " ponder " << UCI::move(bestThread->rootMoves[0].pv[1], rootPos.is_chess960());
+      std::cout << " ponder " << UCI::move(bestMove.pv[1], rootPos.is_chess960());
 
   std::cout << sync_endl;
 }
@@ -1500,16 +1507,15 @@ moves_loop: // When in check search starts from here
     // If rootPos is in TB we probe DTZ to differentiate between a win/loss and
     // a cursed/blessed draw. This is critical because WDL is reliable only if
     // rule50 counter is zero and search alone would detect it only at ply 101.
-    if (   TB::RootPosDTZ != TB::DTZ_NONE
-        && (ss-1)->ply == 1
-        && pos.rule50_count() > 0)
+    if (TB::ProbeDTZ && (ss-1)->ply == 1)
     {
-        assert(!pos.captured_piece()); // Root is in TB
-
-        dtz = std::find(thisThread->rootMoves.begin(), thisThread->rootMoves.end(),
-                        (ss-1)->currentMove)->dtz;
+        RootMove& rm = *std::find(thisThread->rootMoves.begin(),
+                                  thisThread->rootMoves.end(), (ss-1)->currentMove);
+        dtz = rm.dtz;
         if (dtz != TB::DTZ_NONE)
         {
+            assert(rm.r50 == pos.rule50_count());
+
             tbHit = true;
             bool cursed = abs(dtz) + pos.rule50_count() > 100;
 
@@ -1517,8 +1523,8 @@ moves_loop: // When in check search starts from here
                  : dtz < 0 ? (cursed ? TB::WDLBlessedLoss : TB::WDLLoss)
                            : TB::WDLDraw;
 
-            // Search at reduced depth all the moves but the optimal ones
-            reduceDepth = !TB::is_optimal(dtz);
+            // Search at reduced depth all the moves but the shortest ones
+            reduceDepth = !TB::is_shortest(rm);
         }
     }
     else
@@ -1536,6 +1542,10 @@ moves_loop: // When in check search starts from here
             // given ply, nodes with high LMR are considered farther
             // from root than nodes near the PV line.
             farFromRoot = ss->ply - *depth / (2 * ONE_PLY) >= 0;
+
+            // Don't save in TT and don't reduce if root is in TB
+            if (TB::RootPosDTZ != TB::DTZ_NONE)
+                farFromRoot = reduceDepth = false;
         }
     }
 
@@ -1568,9 +1578,8 @@ moves_loop: // When in check search starts from here
             else if (reduceDepth)
                 *depth = std::max(*depth / 2, ONE_PLY);
 
-            // In case of WDL don't probe again in the sub-tree
-            if (!dtz)
-                ss->tbCardinality = 0;
+            // Don't probe in the win/loss sub-tree (draws cut-off immediately)
+            ss->tbCardinality = 0;
         }
     }
 

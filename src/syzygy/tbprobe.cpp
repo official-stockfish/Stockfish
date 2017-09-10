@@ -1208,17 +1208,17 @@ WDLScore search(Position& pos, ProbeState* result) {
     auto moveList = MoveList<LEGAL>(pos);
     size_t totalCount = moveList.size(), moveCount = 0;
 
-    for (const Move& move : moveList)
+    for (const auto& m : moveList)
     {
-        if (   !pos.capture(move)
-            && (!CheckZeroingMoves || type_of(pos.moved_piece(move)) != PAWN))
+        if (   !pos.capture(m)
+            && (!CheckZeroingMoves || type_of(pos.moved_piece(m)) != PAWN))
             continue;
 
         moveCount++;
 
-        pos.do_move(move, st);
+        pos.do_move(m, st);
         value = -search(pos, result);
-        pos.undo_move(move);
+        pos.undo_move(m);
 
         if (*result == FAIL)
             return WDLDraw;
@@ -1460,11 +1460,11 @@ int Tablebases::probe_dtz(Position& pos, ProbeState* result) {
     StateInfo st;
     int minDTZ = 0xFFFF;
 
-    for (const Move& move : MoveList<LEGAL>(pos))
+    for (const auto& m : MoveList<LEGAL>(pos))
     {
-        bool zeroing = pos.capture(move) || type_of(pos.moved_piece(move)) == PAWN;
+        bool zeroing = pos.capture(m) || type_of(pos.moved_piece(m)) == PAWN;
 
-        pos.do_move(move, st);
+        pos.do_move(m, st);
 
         // For zeroing moves we want the dtz of the move _before_ doing it,
         // otherwise we will get the dtz of the next move sequence. Search the
@@ -1473,7 +1473,7 @@ int Tablebases::probe_dtz(Position& pos, ProbeState* result) {
         dtz = zeroing ? -dtz_before_zeroing(search(pos, result))
                       : -probe_dtz(pos, result);
 
-        pos.undo_move(move);
+        pos.undo_move(m);
 
         if (*result == FAIL)
             return 0;
@@ -1495,7 +1495,7 @@ int Tablebases::probe_dtz(Position& pos, ProbeState* result) {
 }
 
 
-// DTZ probe each root move and store the score
+// Call probe_dtz() for each root move and store the result
 void Tablebases::dtz_score(Position& pos, Search::RootMoves& rootMoves) {
 
   StateInfo st;
@@ -1508,14 +1508,27 @@ void Tablebases::dtz_score(Position& pos, Search::RootMoves& rootMoves) {
       return;
 
   int dtz = Tablebases::probe_dtz(pos, &err);
-  RootPosDTZ = err != ProbeState::FAIL ? dtz : DTZ_NONE;
+  RootPosDTZ = err == ProbeState::FAIL ? DTZ_NONE : dtz;
 
   for (Search::RootMove& rm : rootMoves)
   {
       pos.do_move(rm.pv[0], st);
       dtz = Tablebases::probe_dtz(pos, &err);
-      rm.dtz = err != ProbeState::FAIL ? dtz : DTZ_NONE;
+      rm.dtz = err == ProbeState::FAIL ? DTZ_NONE : dtz;
+      rm.r50 = pos.rule50_count();
       pos.undo_move(rm.pv[0]);
   }
 }
 
+bool Tablebases::is_shortest(const Search::RootMove& rm) {
+
+  assert(RootPosDTZ && RootPosDTZ != DTZ_NONE);
+
+  if (rm.dtz == DTZ_NONE)
+      return true; // If we miss DTZ info do not assume anything
+
+  return   RootPosDTZ * rm.dtz < 0 // Preserve the win
+        && (  !rm.r50
+            || abs(RootPosDTZ) == 1 || abs(RootPosDTZ) == 101 // Zeroing best move
+            || RootPosDTZ == -rm.dtz + (rm.dtz < 0 ? 1 : -1));
+}
