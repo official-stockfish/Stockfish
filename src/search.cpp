@@ -1527,9 +1527,8 @@ moves_loop: // When in check search starts from here
             tbHit = true;
             wdl = TB::dtz_to_wdl(rm.dtz, rm.r50);
 
-            // Search at full depth only moves that preserve the score and if
-            // is a non-resetting move then should be among the shortests.
-            reduceDepth = !TB::is_shortest(rm);
+            // Search at reduced depth moves that don't preserve the score
+            reduceDepth = -wdl < TB::RootWDL;
         }
     }
     else
