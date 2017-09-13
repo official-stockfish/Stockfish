@@ -1520,7 +1520,7 @@ moves_loop: // When in check search starts from here
         tbHit = true;
         RootMove& rm = *std::find(thisThread->rootMoves.begin(), thisThread->rootMoves.end(),
                                   (ss-1)->currentMove);
-        wdl = TB::dtz_to_wdl(rm.dtz, pos.rule50_count());
+        wdl = TB::dtz_to_wdl(rm.dtz, thisThread->rootPos.rule50_count());
 
         // Search at reduced depth moves that don't preserve the score
         reduceDepth = -wdl < TB::RootWDL;
