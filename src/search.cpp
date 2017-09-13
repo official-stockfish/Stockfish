@@ -332,17 +332,17 @@ void MainThread::search() {
   // zeroing move because WDL will do the job.
   if (TB::CanProbeDTZ && abs(bestMove.score) < VALUE_MATE_IN_MAX_PLY)
   {
-      auto bestWdl = -TB::dtz_to_wdl(bestMove.dtz, bestMove.r50);
+      auto bestWdl = -TB::dtz_to_wdl(bestMove.dtz, rootPos.rule50_count());
 
       // Force a DTZ best move if we don't preserve the WDL score or if we are
       // winning but we don't follow the shortest path to zero, the latter
       // condition is to avoid a possible draw by repetition.
       // When losing we don't enforce anything so to lose with naturalness :-)
       if (    bestWdl < TB::RootWDL
-          || (TB::RootWDL > TB::DrawScore && !TB::is_shortest(bestMove)))
+          || (TB::RootWDL > TB::DrawScore && TB::RootPosDTZ != bestMove.dtz))
       {
           auto it = std::find_if(rootMoves.begin(), rootMoves.end(), [&](const RootMove& rm) {
-                                 return TB::is_shortest(rm); });
+                                 return TB::RootPosDTZ == rm.dtz; });
 
           assert(it != rootMoves.end());
 
@@ -1517,19 +1517,13 @@ moves_loop: // When in check search starts from here
     // rule50 counter is zero and search alone would detect it only at ply 101.
     if (TB::CanProbeDTZ && (ss-1)->ply == 1)
     {
-        RootMove& rm = *std::find(thisThread->rootMoves.begin(),
-                                  thisThread->rootMoves.end(), (ss-1)->currentMove);
+        tbHit = true;
+        RootMove& rm = *std::find(thisThread->rootMoves.begin(), thisThread->rootMoves.end(),
+                                  (ss-1)->currentMove);
+        wdl = TB::dtz_to_wdl(rm.dtz, pos.rule50_count());
 
-        if (rm.dtz != TB::DTZ_NONE)
-        {
-            assert(rm.r50 == pos.rule50_count());
-
-            tbHit = true;
-            wdl = TB::dtz_to_wdl(rm.dtz, rm.r50);
-
-            // Search at reduced depth moves that don't preserve the score
-            reduceDepth = -wdl < TB::RootWDL;
-        }
+        // Search at reduced depth moves that don't preserve the score
+        reduceDepth = -wdl < TB::RootWDL;
     }
     else
     {
