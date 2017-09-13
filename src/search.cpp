@@ -45,10 +45,11 @@ namespace Search {
 namespace Tablebases {
 
   int Cardinality;
-  bool RootInTB;
-  bool UseRule50;
   Depth ProbeDepth;
-  Value Score;
+  WDLScore DrawScore;
+  WDLScore RootWDL;
+  int RootPosDTZ;
+  bool CanProbeDTZ;
 }
 
 namespace TB = Tablebases;
@@ -150,6 +151,7 @@ namespace {
   void update_pv(Move* pv, Move move, Move* childPv);
   void update_continuation_histories(Stack* ss, Piece pc, Square to, int bonus);
   void update_stats(const Position& pos, Stack* ss, Move move, Move* quiets, int quietsCnt, int bonus);
+  Value probe_tb(Position& pos, Stack* ss, Value alpha, Value beta, Depth* depth, TTEntry* tte);
 
   // perft() is our utility to verify move generation. All the leaf nodes up
   // to the given depth are generated and counted, and the sum is returned.
@@ -243,6 +245,25 @@ void MainThread::search() {
   DrawValue[ us] = VALUE_DRAW - Value(contempt);
   DrawValue[~us] = VALUE_DRAW + Value(contempt);
 
+  // Set TB probing parameters
+  TB::DrawScore = Options["Syzygy50MoveRule"] ? TB::WDLCursedWin : TB::WDLDraw;
+  TB::ProbeDepth = Options["SyzygyProbeDepth"] * ONE_PLY;
+  TB::Cardinality = Options["SyzygyProbeLimit"];
+
+  if (TB::Cardinality > TB::MaxCardinality)
+  {
+      TB::Cardinality = TB::MaxCardinality;
+      TB::ProbeDepth = DEPTH_ZERO; // Hack!
+  }
+
+  // Enable probing of DTZ only when WDL is not enough
+  TB::CanProbeDTZ =   TB::RootPosDTZ != TB::DTZ_NONE // Only if root is in TB
+                   && TB::DrawScore != TB::WDLDraw   // Only if rule50 is enabled
+                   && TB::RootPosDTZ;                 // Not a draw
+
+  TB::RootWDL = TB::CanProbeDTZ ? TB::dtz_to_wdl(TB::RootPosDTZ, rootPos.rule50_count())
+                                : TB::WDLScoreNone;
+
   if (rootMoves.empty())
   {
       rootMoves.emplace_back(MOVE_NONE);
@@ -303,16 +324,50 @@ void MainThread::search() {
       }
   }
 
-  previousScore = bestThread->rootMoves[0].score;
+  RootMove& bestMove = bestThread->rootMoves[0];
+  previousScore = bestMove.score;
+
+  // When starting from a DTZ position ensure we return DTZ optimal move or a
+  // mate. We don't need DTZ post-processing for draw positions or after a rule50
+  // zeroing move because WDL will do the job.
+  if (TB::CanProbeDTZ && abs(bestMove.score) < VALUE_MATE_IN_MAX_PLY)
+  {
+      auto bestWdl = -TB::dtz_to_wdl(bestMove.dtz, rootPos.rule50_count());
+
+      // Force a DTZ best move if we don't preserve the WDL score or if we are
+      // winning but we don't follow the shortest path to zero, the latter
+      // condition is to avoid a possible draw by repetition.
+      // When losing we don't enforce anything so to lose with naturalness :-)
+      if (    bestWdl < TB::RootWDL
+          || (TB::RootWDL > TB::DrawScore && TB::RootPosDTZ != bestMove.dtz))
+      {
+          auto it = std::find_if(rootMoves.begin(), rootMoves.end(), [&](const RootMove& rm) {
+                                 return TB::RootPosDTZ == rm.dtz; });
+
+          assert(it != rootMoves.end());
+
+          bestMove.pv.clear();
+          bestMove.pv.push_back(it->pv[0]);
+      }
+
+      static_assert(int(PawnValueEg) * 120 < VALUE_MATE_IN_MAX_PLY, "DTZ overflow");
+
+      // Signal the GUI we are in TB and codify DTZ count into output score
+      if (abs(TB::RootPosDTZ) + rootPos.rule50_count() > 100)
+          bestMove.score = VALUE_DRAW; // Cursed win / blessed loss
+      else
+          bestMove.score = TB::RootPosDTZ > 0 ?  PawnValueEg * (120 - TB::RootPosDTZ / 2)
+                                              : -PawnValueEg * (120 + TB::RootPosDTZ / 2);
+  }
 
   // Send new PV when needed
-  if (bestThread != this)
+  if (bestThread != this || TB::RootPosDTZ != TB::DTZ_NONE)
       sync_cout << UCI::pv(bestThread->rootPos, bestThread->completedDepth, -VALUE_INFINITE, VALUE_INFINITE) << sync_endl;
 
-  sync_cout << "bestmove " << UCI::move(bestThread->rootMoves[0].pv[0], rootPos.is_chess960());
+  sync_cout << "bestmove " << UCI::move(bestMove.pv[0], rootPos.is_chess960());
 
   if (bestThread->rootMoves[0].pv.size() > 1 || bestThread->rootMoves[0].extract_ponder_from_tt(rootPos))
-      std::cout << " ponder " << UCI::move(bestThread->rootMoves[0].pv[1], rootPos.is_chess960());
+      std::cout << " ponder " << UCI::move(bestMove.pv[1], rootPos.is_chess960());
 
   std::cout << sync_endl;
 }
@@ -330,6 +385,7 @@ void Thread::search() {
   MainThread* mainThread = (this == Threads.main() ? Threads.main() : nullptr);
 
   std::memset(ss-4, 0, 7 * sizeof(Stack));
+  ss->tbCardinality = TB::Cardinality;
   for (int i = 4; i > 0; i--)
      (ss-i)->contHistory = &this->contHistory[NO_PIECE][0]; // Use as sentinel
 
@@ -587,6 +643,7 @@ namespace {
     ss->currentMove = (ss+1)->excludedMove = bestMove = MOVE_NONE;
     ss->contHistory = &thisThread->contHistory[NO_PIECE][0];
     (ss+2)->killers[0] = (ss+2)->killers[1] = MOVE_NONE;
+    (ss+1)->tbCardinality = ss->tbCardinality;
     Square prevSq = to_sq((ss-1)->currentMove);
 
     // Step 4. Transposition table lookup. We don't want the score of a partial
@@ -631,34 +688,18 @@ namespace {
     }
 
     // Step 4a. Tablebase probe
-    if (!rootNode && TB::Cardinality)
+    if (!rootNode && ss->tbCardinality)
     {
         int piecesCount = pos.count<ALL_PIECES>();
 
-        if (    piecesCount <= TB::Cardinality
-            && (piecesCount <  TB::Cardinality || depth >= TB::ProbeDepth)
-            &&  pos.rule50_count() == 0
+        if (    piecesCount <= ss->tbCardinality
+            && (piecesCount <  ss->tbCardinality || depth >= TB::ProbeDepth)
             && !pos.can_castle(ANY_CASTLING))
         {
-            TB::ProbeState err;
-            TB::WDLScore v = Tablebases::probe_wdl(pos, &err);
+            value = probe_tb(pos, ss, alpha, beta, &depth, tte);
 
-            if (err != TB::ProbeState::FAIL)
-            {
-                thisThread->tbHits.fetch_add(1, std::memory_order_relaxed);
-
-                int drawScore = TB::UseRule50 ? 1 : 0;
-
-                value =  v < -drawScore ? -VALUE_MATE + MAX_PLY + ss->ply
-                       : v >  drawScore ?  VALUE_MATE - MAX_PLY - ss->ply
-                                        :  VALUE_DRAW + 2 * v * drawScore;
-
-                tte->save(posKey, value_to_tt(value, ss->ply), BOUND_EXACT,
-                          std::min(DEPTH_MAX - ONE_PLY, depth + 6 * ONE_PLY),
-                          MOVE_NONE, VALUE_NONE, TT.generation());
-
+            if (value != VALUE_NONE)
                 return value;
-            }
         }
     }
 
@@ -1457,6 +1498,92 @@ moves_loop: // When in check search starts from here
     return best;
   }
 
+
+  // probe_tb() is called by search after TT probe to look up the position in
+  // tablebases, if it is found we return immediately or continue the search
+  // eventually with reduced depth according to the case.
+
+  Value probe_tb(Position& pos, Stack* ss, Value alpha, Value beta, Depth* depth, TTEntry* tte) {
+
+    TB::ProbeState err;
+    TB::WDLScore wdl;
+    bool tbHit = false, farFromRoot = false, reduceDepth = true;
+
+    Thread* thisThread = pos.this_thread();
+    thisThread->tbHits.fetch_add(1, std::memory_order_relaxed);
+
+    // If rootPos is in TB we probe DTZ to differentiate between a win/loss and
+    // a cursed/blessed draw. This is critical because WDL is reliable only if
+    // rule50 counter is zero and search alone would detect it only at ply 101.
+    if (TB::CanProbeDTZ && (ss-1)->ply == 1)
+    {
+        tbHit = true;
+        RootMove& rm = *std::find(thisThread->rootMoves.begin(), thisThread->rootMoves.end(),
+                                  (ss-1)->currentMove);
+        wdl = TB::dtz_to_wdl(rm.dtz, thisThread->rootPos.rule50_count());
+
+        // Search at reduced depth moves that don't preserve the score
+        reduceDepth = -wdl < TB::RootWDL;
+    }
+    else
+    {
+        wdl = Tablebases::probe_wdl(pos, &err);
+
+        // Win or loss scores are reliable only if we are probing after a
+        // rule50 reset move. Instead draw scores are reliable in any case.
+        if (   err != TB::ProbeState::FAIL
+            && (pos.rule50_count() == 0 || abs(wdl) <= TB::DrawScore))
+        {
+            tbHit = true;
+
+            // It is far if ply >= (RootDepth - LMR) / 3, so that at a
+            // given ply, nodes with high LMR are considered farther
+            // from root than nodes near the PV line.
+            farFromRoot = ss->ply - *depth / (2 * ONE_PLY) >= 0;
+
+            // Don't save in TT and don't reduce if root is in TB
+            if (TB::RootPosDTZ != TB::DTZ_NONE)
+                farFromRoot = reduceDepth = false;
+        }
+    }
+
+    if (tbHit)
+    {
+        Value value =  wdl >  TB::DrawScore ?  VALUE_MATE - MAX_PLY - ss->ply
+                     : wdl < -TB::DrawScore ? -VALUE_MATE + MAX_PLY + ss->ply
+                                            :  VALUE_DRAW + 2 * wdl;
+
+        Bound bound =  wdl >  TB::DrawScore ? BOUND_LOWER
+                     : wdl < -TB::DrawScore ? BOUND_UPPER : BOUND_EXACT;
+
+        // Use TB scores as lower/upper bounds, a draw score is BOUND_EXACT
+        // and is always considered even if value is within (alpha, beta)
+        if (   (value >= beta  && bound == BOUND_LOWER)
+            || (value <= alpha && bound == BOUND_UPPER)
+            ||  bound == BOUND_EXACT)
+        {
+            // When in midgame or is a draw save in TT and return...
+            if (bound == BOUND_EXACT || farFromRoot)
+            {
+                Key posKey = pos.key() ^ Key(ss->excludedMove);
+                tte->save(posKey, value_to_tt(value, ss->ply), bound,
+                          std::min(DEPTH_MAX - ONE_PLY, *depth + 6 * ONE_PLY),
+                          MOVE_NONE, VALUE_NONE, TT.generation());
+                return value;
+            }
+            // ...otherwise search win/loss with a reduced depth after a WDL
+            // look-up or after a DTZ look-up if it is a not-improving move.
+            else if (reduceDepth)
+                *depth = std::max(*depth / 2, ONE_PLY);
+
+            // Don't probe in the win/loss sub-tree (draws cut-off immediately)
+            ss->tbCardinality = 0;
+        }
+    }
+
+    return VALUE_NONE;
+  }
+
 } // namespace
 
   // check_time() is used to print debug info and, more importantly, to detect
@@ -1504,7 +1631,7 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
   size_t PVIdx = pos.this_thread()->PVIdx;
   size_t multiPV = std::min((size_t)Options["MultiPV"], rootMoves.size());
   uint64_t nodesSearched = Threads.nodes_searched();
-  uint64_t tbHits = Threads.tb_hits() + (TB::RootInTB ? rootMoves.size() : 0);
+  uint64_t tbHits = Threads.tb_hits();
 
   for (size_t i = 0; i < multiPV; ++i)
   {
@@ -1516,9 +1643,6 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
       Depth d = updated ? depth : depth - ONE_PLY;
       Value v = updated ? rootMoves[i].score : rootMoves[i].previousScore;
 
-      bool tb = TB::RootInTB && abs(v) < VALUE_MATE - MAX_PLY;
-      v = tb ? TB::Score : v;
-
       if (ss.rdbuf()->in_avail()) // Not at first line
           ss << "\n";
 
@@ -1528,7 +1652,7 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
          << " multipv "  << i + 1
          << " score "    << UCI::value(v);
 
-      if (!tb && i == PVIdx)
+      if (i == PVIdx)
           ss << (v >= beta ? " lowerbound" : v <= alpha ? " upperbound" : "");
 
       ss << " nodes "    << nodesSearched
@@ -1576,44 +1700,4 @@ bool RootMove::extract_ponder_from_tt(Position& pos) {
 
     pos.undo_move(pv[0]);
     return pv.size() > 1;
-}
-
-void Tablebases::filter_root_moves(Position& pos, Search::RootMoves& rootMoves) {
-
-    RootInTB = false;
-    UseRule50 = Options["Syzygy50MoveRule"];
-    ProbeDepth = Options["SyzygyProbeDepth"] * ONE_PLY;
-    Cardinality = Options["SyzygyProbeLimit"];
-
-    // Skip TB probing when no TB found: !TBLargest -> !TB::Cardinality
-    if (Cardinality > MaxCardinality)
-    {
-        Cardinality = MaxCardinality;
-        ProbeDepth = DEPTH_ZERO;
-    }
-
-    if (Cardinality < popcount(pos.pieces()) || pos.can_castle(ANY_CASTLING))
-        return;
-
-    // If the current root position is in the tablebases, then RootMoves
-    // contains only moves that preserve the draw or the win.
-    RootInTB = root_probe(pos, rootMoves, TB::Score);
-
-    if (RootInTB)
-        Cardinality = 0; // Do not probe tablebases during the search
-
-    else // If DTZ tables are missing, use WDL tables as a fallback
-    {
-        // Filter out moves that do not preserve the draw or the win.
-        RootInTB = root_probe_wdl(pos, rootMoves, TB::Score);
-
-        // Only probe during search if winning
-        if (RootInTB && TB::Score <= VALUE_DRAW)
-            Cardinality = 0;
-    }
-
-    if (RootInTB && !UseRule50)
-        TB::Score =  TB::Score > VALUE_DRAW ?  VALUE_MATE - MAX_PLY - 1
-                   : TB::Score < VALUE_DRAW ? -VALUE_MATE + MAX_PLY + 1
-                                            :  VALUE_DRAW;
 }

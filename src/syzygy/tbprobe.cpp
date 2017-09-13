@@ -208,14 +208,6 @@ int MapKK[10][SQUARE_NB]; // [MapA1D1D4][SQUARE_NB]
 bool pawns_comp(Square i, Square j) { return MapPawns[i] < MapPawns[j]; }
 int off_A1H8(Square sq) { return int(rank_of(sq)) - file_of(sq); }
 
-const Value WDL_to_value[] = {
-   -VALUE_MATE + MAX_PLY + 1,
-    VALUE_DRAW - 2,
-    VALUE_DRAW,
-    VALUE_DRAW + 2,
-    VALUE_MATE - MAX_PLY - 1
-};
-
 const std::string PieceToChar = " PNBRQK  pnbrqk";
 
 int Binomial[6][SQUARE_NB];    // [k][n] k elements from a set of n elements
@@ -1200,7 +1192,7 @@ T probe_table(const Position& pos, ProbeState* result, WDLScore wdl = WDLDraw) {
 // where the best move is an ep-move (even if losing). So in all these cases set
 // the state to ZEROING_BEST_MOVE.
 template<bool CheckZeroingMoves = false>
-WDLScore search(Position& pos, ProbeState* result) {
+WDLScore search_wdl(Position& pos, ProbeState* result) {
 
     WDLScore value, bestValue = WDLLoss;
     StateInfo st;
@@ -1208,17 +1200,17 @@ WDLScore search(Position& pos, ProbeState* result) {
     auto moveList = MoveList<LEGAL>(pos);
     size_t totalCount = moveList.size(), moveCount = 0;
 
-    for (const Move& move : moveList)
+    for (const auto& m : moveList)
     {
-        if (   !pos.capture(move)
-            && (!CheckZeroingMoves || type_of(pos.moved_piece(move)) != PAWN))
+        if (   !pos.capture(m)
+            && (!CheckZeroingMoves || type_of(pos.moved_piece(m)) != PAWN))
             continue;
 
         moveCount++;
 
-        pos.do_move(move, st);
-        value = -search(pos, result);
-        pos.undo_move(move);
+        pos.do_move(m, st);
+        value = -search_wdl(pos, result);
+        pos.undo_move(m);
 
         if (*result == FAIL)
             return WDLDraw;
@@ -1261,7 +1253,59 @@ WDLScore search(Position& pos, ProbeState* result) {
     return *result = OK, value;
 }
 
+// Do a 1-ply search probing DTZ values of resulting positions and reporting
+// back the minimum DTZ already converted to the point of view of previous ply.
+// If rootMoves is passed then set the corresponding RootMove dtz field.
+int search_dtz(Position& pos, ProbeState* result, WDLScore wdl, Search::RootMoves* rootMoves) {
+
+  StateInfo st;
+  int minDTZ = 0xFFFF;
+
+  for (const auto& m : MoveList<LEGAL>(pos))
+  {
+      bool zeroing = pos.capture(m) || type_of(pos.moved_piece(m)) == PAWN;
+
+      pos.do_move(m, st);
+
+      // For zeroing moves we want the dtz of the move _before_ doing it,
+      // otherwise we will get the dtz of the next move sequence. Search the
+      // position after the move to get the score sign (because even in a
+      // winning position we could make a losing capture or going for a draw).
+      int dtz = zeroing ? -dtz_before_zeroing(search_wdl(pos, result))
+                        : -probe_dtz(pos, result);
+
+      pos.undo_move(m);
+
+      if (*result == FAIL)
+          return 0;
+
+      // Convert result from 1-ply search. Zeroing moves are already accounted
+      // by dtz_before_zeroing() that returns the DTZ of the previous move.
+      if (!zeroing)
+          dtz += sign_of(dtz);
+
+      // Skip the draws and if we are winning only pick positive dtz
+      if (dtz < minDTZ && sign_of(dtz) == sign_of(wdl))
+          minDTZ = dtz;
+
+      if (rootMoves)
+          std::find(rootMoves->begin(), rootMoves->end(), m)->dtz = dtz;
+  }
+
+  // Special handle a mate position, when there are no legal moves, in this
+  // case return value is somewhat arbitrary, so stick to the original TB code
+  // that returns -1 in this case.
+  return minDTZ == 0xFFFF ? -1 : minDTZ;
+}
+
 } // namespace
+
+WDLScore Tablebases::dtz_to_wdl(int dtz, int r50) {
+
+  bool cursed = abs(dtz) + r50 > 100;
+  return  dtz > 0 ? (cursed ? WDLCursedWin   : WDLWin)
+        : dtz < 0 ? (cursed ? WDLBlessedLoss : WDLLoss) : WDLDraw;
+}
 
 void Tablebases::init(const std::string& paths) {
 
@@ -1406,7 +1450,7 @@ void Tablebases::init(const std::string& paths) {
 WDLScore Tablebases::probe_wdl(Position& pos, ProbeState* result) {
 
     *result = OK;
-    return search(pos, result);
+    return search_wdl(pos, result);
 }
 
 // Probe the DTZ table for a particular position.
@@ -1437,7 +1481,7 @@ WDLScore Tablebases::probe_wdl(Position& pos, ProbeState* result) {
 int Tablebases::probe_dtz(Position& pos, ProbeState* result) {
 
     *result = OK;
-    WDLScore wdl = search<true>(pos, result);
+    WDLScore wdl = search_wdl<true>(pos, result);
 
     if (*result == FAIL || wdl == WDLDraw) // DTZ tables don't store draws
         return 0;
@@ -1457,246 +1501,25 @@ int Tablebases::probe_dtz(Position& pos, ProbeState* result) {
 
     // DTZ stores results for the other side, so we need to do a 1-ply search and
     // find the winning move that minimizes DTZ.
-    StateInfo st;
-    int minDTZ = 0xFFFF;
-
-    for (const Move& move : MoveList<LEGAL>(pos))
-    {
-        bool zeroing = pos.capture(move) || type_of(pos.moved_piece(move)) == PAWN;
-
-        pos.do_move(move, st);
-
-        // For zeroing moves we want the dtz of the move _before_ doing it,
-        // otherwise we will get the dtz of the next move sequence. Search the
-        // position after the move to get the score sign (because even in a
-        // winning position we could make a losing capture or going for a draw).
-        dtz = zeroing ? -dtz_before_zeroing(search(pos, result))
-                      : -probe_dtz(pos, result);
-
-        pos.undo_move(move);
-
-        if (*result == FAIL)
-            return 0;
-
-        // Convert result from 1-ply search. Zeroing moves are already accounted
-        // by dtz_before_zeroing() that returns the DTZ of the previous move.
-        if (!zeroing)
-            dtz += sign_of(dtz);
-
-        // Skip the draws and if we are winning only pick positive dtz
-        if (dtz < minDTZ && sign_of(dtz) == sign_of(wdl))
-            minDTZ = dtz;
-    }
-
-    // Special handle a mate position, when there are no legal moves, in this
-    // case return value is somewhat arbitrary, so stick to the original TB code
-    // that returns -1 in this case.
-    return minDTZ == 0xFFFF ? -1 : minDTZ;
+    return search_dtz(pos, result, wdl, nullptr);
 }
 
-// Check whether there has been at least one repetition of positions
-// since the last capture or pawn move.
-static int has_repeated(StateInfo *st)
-{
-    while (1) {
-        int i = 4, e = std::min(st->rule50, st->pliesFromNull);
+// Call probe_dtz() for each root move and store the result
+void Tablebases::dtz_score(Position& pos, Search::RootMoves& rootMoves) {
 
-        if (e < i)
-            return 0;
+  ProbeState result;
+  RootPosDTZ = DTZ_NONE;
 
-        StateInfo *stp = st->previous->previous;
+  if (   pos.count<ALL_PIECES>() > MaxCardinality
+      || pos.can_castle(ANY_CASTLING)
+      || rootMoves.empty())
+      return;
 
-        do {
-            stp = stp->previous->previous;
+  // Return value of probe_dtz() can be off by 1, so use search_dtz() for RootPosDTZ
+  int dtz = Tablebases::probe_dtz(pos, &result);
+  if (result != FAIL)
+      dtz = search_dtz(pos, &result, dtz_to_wdl(dtz, pos.rule50_count()), &rootMoves);
 
-            if (stp->key == st->key)
-                return 1;
-
-            i += 2;
-        } while (i <= e);
-
-        st = st->previous;
-    }
-}
-
-// Use the DTZ tables to filter out moves that don't preserve the win or draw.
-// If the position is lost, but DTZ is fairly high, only keep moves that
-// maximise DTZ.
-//
-// A return value false indicates that not all probes were successful and that
-// no moves were filtered out.
-bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves, Value& score)
-{
-    assert(rootMoves.size());
-
-    ProbeState result;
-    int dtz = probe_dtz(pos, &result);
-
-    if (result == FAIL)
-        return false;
-
-    StateInfo st;
-
-    // Probe each move
-    for (size_t i = 0; i < rootMoves.size(); ++i) {
-        Move move = rootMoves[i].pv[0];
-        pos.do_move(move, st);
-        int v = 0;
-
-        if (pos.checkers() && dtz > 0) {
-            ExtMove s[MAX_MOVES];
-
-            if (generate<LEGAL>(pos, s) == s)
-                v = 1;
-        }
-
-        if (!v) {
-            if (st.rule50 != 0) {
-                v = -probe_dtz(pos, &result);
-
-                if (v > 0)
-                    ++v;
-                else if (v < 0)
-                    --v;
-            } else {
-                v = -probe_wdl(pos, &result);
-                v = dtz_before_zeroing(WDLScore(v));
-            }
-        }
-
-        pos.undo_move(move);
-
-        if (result == FAIL)
-            return false;
-
-        rootMoves[i].score = (Value)v;
-    }
-
-    // Obtain 50-move counter for the root position.
-    // In Stockfish there seems to be no clean way, so we do it like this:
-    int cnt50 = st.previous ? st.previous->rule50 : 0;
-
-    // Use 50-move counter to determine whether the root position is
-    // won, lost or drawn.
-    WDLScore wdl = WDLDraw;
-
-    if (dtz > 0)
-        wdl = (dtz + cnt50 <= 100) ? WDLWin : WDLCursedWin;
-    else if (dtz < 0)
-        wdl = (-dtz + cnt50 <= 100) ? WDLLoss : WDLBlessedLoss;
-
-    // Determine the score to report to the user.
-    score = WDL_to_value[wdl + 2];
-
-    // If the position is winning or losing, but too few moves left, adjust the
-    // score to show how close it is to winning or losing.
-    // NOTE: int(PawnValueEg) is used as scaling factor in score_to_uci().
-    if (wdl == WDLCursedWin && dtz <= 100)
-        score = (Value)(((200 - dtz - cnt50) * int(PawnValueEg)) / 200);
-    else if (wdl == WDLBlessedLoss && dtz >= -100)
-        score = -(Value)(((200 + dtz - cnt50) * int(PawnValueEg)) / 200);
-
-    // Now be a bit smart about filtering out moves.
-    size_t j = 0;
-
-    if (dtz > 0) { // winning (or 50-move rule draw)
-        int best = 0xffff;
-
-        for (size_t i = 0; i < rootMoves.size(); ++i) {
-            int v = rootMoves[i].score;
-
-            if (v > 0 && v < best)
-                best = v;
-        }
-
-        int max = best;
-
-        // If the current phase has not seen repetitions, then try all moves
-        // that stay safely within the 50-move budget, if there are any.
-        if (!has_repeated(st.previous) && best + cnt50 <= 99)
-            max = 99 - cnt50;
-
-        for (size_t i = 0; i < rootMoves.size(); ++i) {
-            int v = rootMoves[i].score;
-
-            if (v > 0 && v <= max)
-                rootMoves[j++] = rootMoves[i];
-        }
-    } else if (dtz < 0) { // losing (or 50-move rule draw)
-        int best = 0;
-
-        for (size_t i = 0; i < rootMoves.size(); ++i) {
-            int v = rootMoves[i].score;
-
-            if (v < best)
-                best = v;
-        }
-
-        // Try all moves, unless we approach or have a 50-move rule draw.
-        if (-best * 2 + cnt50 < 100)
-            return true;
-
-        for (size_t i = 0; i < rootMoves.size(); ++i) {
-            if (rootMoves[i].score == best)
-                rootMoves[j++] = rootMoves[i];
-        }
-    } else { // drawing
-        // Try all moves that preserve the draw.
-        for (size_t i = 0; i < rootMoves.size(); ++i) {
-            if (rootMoves[i].score == 0)
-                rootMoves[j++] = rootMoves[i];
-        }
-    }
-
-    rootMoves.resize(j, Search::RootMove(MOVE_NONE));
-
-    return true;
-}
-
-// Use the WDL tables to filter out moves that don't preserve the win or draw.
-// This is a fallback for the case that some or all DTZ tables are missing.
-//
-// A return value false indicates that not all probes were successful and that
-// no moves were filtered out.
-bool Tablebases::root_probe_wdl(Position& pos, Search::RootMoves& rootMoves, Value& score)
-{
-    ProbeState result;
-
-    WDLScore wdl = Tablebases::probe_wdl(pos, &result);
-
-    if (result == FAIL)
-        return false;
-
-    score = WDL_to_value[wdl + 2];
-
-    StateInfo st;
-
-    int best = WDLLoss;
-
-    // Probe each move
-    for (size_t i = 0; i < rootMoves.size(); ++i) {
-        Move move = rootMoves[i].pv[0];
-        pos.do_move(move, st);
-        WDLScore v = -Tablebases::probe_wdl(pos, &result);
-        pos.undo_move(move);
-
-        if (result == FAIL)
-            return false;
-
-        rootMoves[i].score = (Value)v;
-
-        if (v > best)
-            best = v;
-    }
-
-    size_t j = 0;
-
-    for (size_t i = 0; i < rootMoves.size(); ++i) {
-        if (rootMoves[i].score == best)
-            rootMoves[j++] = rootMoves[i];
-    }
-
-    rootMoves.resize(j, Search::RootMove(MOVE_NONE));
-
-    return true;
+  if (result != FAIL)
+      RootPosDTZ = dtz;
 }
