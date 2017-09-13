@@ -1515,9 +1515,10 @@ void Tablebases::dtz_score(Position& pos, Search::RootMoves& rootMoves) {
       || rootMoves.empty())
       return;
 
+  // Return value of probe_dtz() can be off by 1, so use search_dtz() for RootPosDTZ
   int dtz = Tablebases::probe_dtz(pos, &result);
   if (result != FAIL)
-      search_dtz(pos, &result, dtz_to_wdl(dtz, pos.rule50_count()), &rootMoves);
+      dtz = search_dtz(pos, &result, dtz_to_wdl(dtz, pos.rule50_count()), &rootMoves);
 
   if (result != FAIL)
       RootPosDTZ = dtz;
