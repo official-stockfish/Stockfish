@@ -32,7 +32,6 @@
 #include "../movegen.h"
 #include "../position.h"
 #include "../search.h"
-#include "../uci.h"
 #include "../thread_win32.h"
 #include "../types.h"
 
@@ -1542,8 +1541,6 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves) {
       pos.undo_move(rootMoves[0].pv[0]);
   }
 
-  int bound = Options["Syzygy50MoveRule"] ? 900 : 1;
-
   // Probe and rank each move.
   for (auto& m : rootMoves)
   {
@@ -1578,15 +1575,6 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves) {
              : v < 0 ? (-v * 2 + cnt50 < 100 ? -1000 : -1000 + (-v + cnt50))
              : 0;
       m.TBRank = r;
-
-      // Determine the score to be displayed for this move. Assign at least
-      // 1 cp to cursed wins and let it grow to 49 cp as the positions gets
-      // closer to a real win.
-      m.TBScore =  r >= bound ? VALUE_MATE - MAX_PLY - 1
-                 : r >  0     ? Value((std::max( 3, r - 800) * int(PawnValueEg)) / 200)
-                 : r == 0     ? VALUE_DRAW
-                 : r > -bound ? Value((std::min(-3, r + 800) * int(PawnValueEg)) / 200)
-                 :             -VALUE_MATE + MAX_PLY + 1;
   }
 
   return true;
@@ -1604,8 +1592,6 @@ bool Tablebases::root_probe_wdl(Position& pos, Search::RootMoves& rootMoves) {
   int v;
   StateInfo st;
 
-  bool rule50 = Options["Syzygy50MoveRule"];
-
   // Probe and rank each move.
   for (auto& m : rootMoves)
   {
@@ -1617,9 +1603,6 @@ bool Tablebases::root_probe_wdl(Position& pos, Search::RootMoves& rootMoves) {
           return false;
 
       m.TBRank = wdl_to_rank[v + 2];
-      if (!rule50)
-          v = v > 0 ? 2 : v < 0 ? -2 : 0;
-      m.TBScore = WDL_to_value[v + 2];
   }
 
   return true;

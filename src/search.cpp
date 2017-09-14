@@ -45,7 +45,6 @@ namespace Search {
 namespace Tablebases {
 
   int Cardinality;
-  bool RootInTB;
   bool UseRule50;
   Depth ProbeDepth;
 }
@@ -1514,7 +1513,7 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
   size_t PVIdx = pos.this_thread()->PVIdx;
   size_t multiPV = std::min((size_t)Options["MultiPV"], rootMoves.size());
   uint64_t nodesSearched = Threads.nodes_searched();
-  uint64_t tbHits = Threads.tb_hits() + (TB::RootInTB ? rootMoves.size() : 0);
+  uint64_t tbHits = Threads.tb_hits();
 
   for (size_t i = 0; i < multiPV; ++i)
   {
@@ -1526,9 +1525,6 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
       Depth d = updated ? depth : depth - ONE_PLY;
       Value v = updated ? rootMoves[i].score : rootMoves[i].previousScore;
 
-      bool tb = TB::RootInTB && abs(v) < VALUE_MATE - MAX_PLY;
-      v = tb ? rootMoves[i].TBScore : v;
-
       if (ss.rdbuf()->in_avail()) // Not at first line
           ss << "\n";
 
@@ -1538,7 +1534,7 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
          << " multipv "  << i + 1
          << " score "    << UCI::value(v);
 
-      if (!tb && i == PVIdx)
+      if (i == PVIdx)
           ss << (v >= beta ? " lowerbound" : v <= alpha ? " upperbound" : "");
 
       ss << " nodes "    << nodesSearched
@@ -1591,11 +1587,9 @@ bool RootMove::extract_ponder_from_tt(Position& pos) {
 
 void Tablebases::rank_root_moves(Position& pos, Search::RootMoves& rootMoves) {
 
-    RootInTB = false;
     UseRule50 = Options["Syzygy50MoveRule"];
     ProbeDepth = Options["SyzygyProbeDepth"] * ONE_PLY;
     Cardinality = Options["SyzygyProbeLimit"];
-    bool dtz_available = true;
 
     // Skip TB probing when no TB found: !TBLargest -> !TB::Cardinality
     if (Cardinality > MaxCardinality)
@@ -1606,30 +1600,20 @@ void Tablebases::rank_root_moves(Position& pos, Search::RootMoves& rootMoves) {
 
     if (Cardinality >= popcount(pos.pieces()) && !pos.can_castle(ANY_CASTLING))
     {
-        // Rank the root moves using DTZ information if possible.
-        RootInTB = root_probe(pos, rootMoves);
-
-        if (!RootInTB)
+        // Rank root moves using DTZ information if possible, else WDL
+        if (root_probe(pos, rootMoves) || root_probe_wdl(pos, rootMoves))
         {
-            // DTZ tables are missing, try ranking moves using WDL tables.
-            dtz_available = false;
-            RootInTB = root_probe_wdl(pos, rootMoves);
-        }
-    }
+            // Sort moves according to TB rank.
+            std::sort(rootMoves.begin(), rootMoves.end());
 
-    if (RootInTB)
-    {
-        // Sort moves according to TB rank.
-        std::sort(rootMoves.begin(), rootMoves.end());
-
-        // Only probe during search if DTZ is not available and we are winning.
-        if (dtz_available || rootMoves[0].TBScore <= VALUE_DRAW)
+            // Don't probe in search
             Cardinality = 0;
-    }
-    else
-    {
-        // Assign the same rank to all moves.
-        for (auto& m : rootMoves)
-            m.TBRank = 0;
+
+        } else {
+
+            // Reset all ranks on failure
+            for (auto& m : rootMoves)
+                m.TBRank = 0;
+        }
     }
 }
