@@ -1071,11 +1071,10 @@ bool Position::is_draw(int ply) const {
   {
       stp = stp->previous->previous;
 
-      // At root position ply is 1, so return a draw score if a position
-      // repeats once earlier but strictly after the root, or repeats twice
-      // before or at the root.
+      // Return a draw score if a position repeats once earlier but strictly
+      // after the root, or repeats twice before or at the root.
       if (   stp->key == st->key
-          && ++cnt + (ply - 1 > i) == 2)
+          && ++cnt + (ply > i) == 2)
           return true;
   }
 

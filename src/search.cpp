@@ -324,7 +324,7 @@ void MainThread::search() {
 
 void Thread::search() {
 
-  Stack stack[MAX_PLY+7], *ss = stack+4; // To allow referencing (ss-4) and (ss+2)
+  Stack stack[MAX_PLY+8], *ss = stack+4; // To allow referencing (ss-4) and (ss+2)
   Value bestValue, alpha, beta, delta;
   Move easyMove = MOVE_NONE;
   MainThread* mainThread = (this == Threads.main() ? Threads.main() : nullptr);
@@ -527,7 +527,7 @@ namespace {
   Value search(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth, bool cutNode, bool skipEarlyPruning) {
 
     const bool PvNode = NT == PV;
-    const bool rootNode = PvNode && (ss-1)->ply == 0;
+    const bool rootNode = PvNode && ss->ply == 0;
 
     assert(-VALUE_INFINITE <= alpha && alpha < beta && beta <= VALUE_INFINITE);
     assert(PvNode || (alpha == beta - 1));
@@ -553,7 +553,6 @@ namespace {
     moveCount = quietCount = ss->moveCount = 0;
     ss->statScore = 0;
     bestValue = -VALUE_INFINITE;
-    ss->ply = (ss-1)->ply + 1;
 
     // Check for the available remaining time
     if (thisThread == Threads.main())
@@ -584,6 +583,7 @@ namespace {
 
     assert(0 <= ss->ply && ss->ply < MAX_PLY);
 
+    (ss+1)->ply = ss->ply + 1;
     ss->currentMove = (ss+1)->excludedMove = bestMove = MOVE_NONE;
     ss->contHistory = &thisThread->contHistory[NO_PIECE][0];
     (ss+2)->killers[0] = (ss+2)->killers[1] = MOVE_NONE;
@@ -649,8 +649,8 @@ namespace {
 
                 int drawScore = TB::UseRule50 ? 1 : 0;
 
-                value =  v < -drawScore ? -VALUE_MATE + MAX_PLY + ss->ply
-                       : v >  drawScore ?  VALUE_MATE - MAX_PLY - ss->ply
+                value =  v < -drawScore ? -VALUE_MATE + MAX_PLY + 1 + ss->ply
+                       : v >  drawScore ?  VALUE_MATE - MAX_PLY - 1 - ss->ply
                                         :  VALUE_DRAW + 2 * v * drawScore;
 
                 tte->save(posKey, value_to_tt(value, ss->ply), BOUND_EXACT,
@@ -1164,7 +1164,6 @@ moves_loop: // When in check search starts from here
     }
 
     ss->currentMove = bestMove = MOVE_NONE;
-    ss->ply = (ss-1)->ply + 1;
     moveCount = 0;
 
     // Check for an instant draw or if the maximum ply has been reached
@@ -1173,6 +1172,8 @@ moves_loop: // When in check search starts from here
                                               : DrawValue[pos.side_to_move()];
 
     assert(0 <= ss->ply && ss->ply < MAX_PLY);
+
+    (ss+1)->ply = ss->ply + 1;
 
     // Decide whether or not to include checks: this fixes also the type of
     // TT entry depth that we are going to use. Note that in qsearch we use
@@ -1524,7 +1525,7 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
 
       ss << "info"
          << " depth "    << d / ONE_PLY
-         << " seldepth " << rootMoves[i].selDepth
+         << " seldepth " << rootMoves[i].selDepth + 1
          << " multipv "  << i + 1
          << " score "    << UCI::value(v);
 
