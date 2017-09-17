@@ -106,8 +106,8 @@ void TimeManagement::init(Search::LimitsType& limits, Color us, int ply)
   int moveNum = (ply + 1) / 2;
 
   startTime = limits.startTime;
-  optimumTime = remaining(limits.time[us], limits.inc[us], moveOverhead, slowMover,
+  optimumTime = remaining(limits.time[us], limits.inc[us], moveOverhead, slowMover
                           limits.movestogo, moveNum, ponder, OptimumTime);
-  maximumTime = remaining(limits.time[us], limits.inc[us], moveOverhead, slowMover,
+  maximumTime = remaining(limits.time[us], limits.inc[us], moveOverhead, slowMover
                           limits.movestogo, moveNum, ponder, MaxTime);
 }
