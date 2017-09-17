@@ -30,7 +30,7 @@ namespace {
 
   enum TimeType { OptimumTime, MaxTime };
 
-  int remaining(int myTime, int myInc, int moveOverhead, int slowMover, int movesToGo,
+  int remaining(int myTime, int myInc, int moveOverhead, int movesToGo,
                 int moveNum, bool ponder, TimeType type) {
 
     if (myTime <= 0)
@@ -57,7 +57,7 @@ namespace {
     // Otherwise we increase usage of remaining time as the game goes on
     else
     {
-        double k = 1 + slowMover * moveNum / (500.0 + moveNum);
+        double k = 1 + 20 * moveNum / (500.0 + moveNum);
         ratio = (type == OptimumTime ? 0.017 : 0.07) * (k + inc / myTime);
     }
 
@@ -84,7 +84,6 @@ namespace {
 void TimeManagement::init(Search::LimitsType& limits, Color us, int ply)
 {
   int moveOverhead = Options["Move Overhead"];
-  int slowMover    = Options["Slow Mover"];
   int npmsec       = Options["nodestime"];
   bool ponder      = Options["Ponder"];
 
@@ -106,8 +105,8 @@ void TimeManagement::init(Search::LimitsType& limits, Color us, int ply)
   int moveNum = (ply + 1) / 2;
 
   startTime = limits.startTime;
-  optimumTime = remaining(limits.time[us], limits.inc[us], moveOverhead, slowMover
+  optimumTime = remaining(limits.time[us], limits.inc[us], moveOverhead,
                           limits.movestogo, moveNum, ponder, OptimumTime);
-  maximumTime = remaining(limits.time[us], limits.inc[us], moveOverhead, slowMover
+  maximumTime = remaining(limits.time[us], limits.inc[us], moveOverhead,
                           limits.movestogo, moveNum, ponder, MaxTime);
 }
