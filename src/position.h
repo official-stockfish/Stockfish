@@ -30,6 +30,9 @@
 #include "types.h"
 
 
+class Position;
+class Thread;
+
 /// StateInfo struct stores information needed to restore a Position object to
 /// its previous state when we retract a move. Whenever a move is made on the
 /// board (by calling Position::do_move), a StateInfo object must be passed.
@@ -62,14 +65,17 @@ struct StateInfo {
 /// elements are not invalidated upon list resizing.
 typedef std::unique_ptr<std::deque<StateInfo>> StateListPtr;
 
-class Position;
+/// An temporary type to help getting a nice syntax for SEE comparisons. Never
+/// use this type directly or assign a value to a variable of this type, instead 
+/// please use the syntax "if (pos.see(move) >= threshold) ..." and similar for
+/// other comparisons.
 typedef std::pair<const Position&, Move> SEE;
+
 
 /// Position class stores information regarding the board representation as
 /// pieces, side to move, hash keys, castling info, etc. Important methods are
 /// do_move() and undo_move(), used by the search to update node info when
 /// traversing the search tree.
-class Thread;
 
 class Position {
 public:
