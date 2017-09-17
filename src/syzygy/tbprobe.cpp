@@ -1252,9 +1252,10 @@ WDLScore search_wdl(Position& pos, ProbeState* result) {
 // Do a 1-ply search probing DTZ values of resulting positions and reporting
 // back the minimum DTZ already converted to the point of view of previous ply.
 // If rootMoves is passed then set the corresponding RootMove dtz field.
-int search_dtz(Position& pos, ProbeState* result, WDLScore wdl, Search::RootMoves* rootMoves) {
+int search_dtz(Position& pos, ProbeState* result, int r50, Search::RootMoves* rootMoves) {
 
     StateInfo st;
+    WDLScore wdl = WDLLoss;
     int minDTZ = 0xFFFF;
 
     for (const auto& m : MoveList<LEGAL>(pos))
@@ -1270,6 +1271,9 @@ int search_dtz(Position& pos, ProbeState* result, WDLScore wdl, Search::RootMove
         int dtz = zeroing ? -dtz_before_zeroing(search_wdl(pos, result))
                           : -probe_dtz(pos, result);
 
+        if (pos.is_draw(1))
+            dtz = 0; // Draw by 3-fold repetition
+
         pos.undo_move(m);
 
         if (*result == FAIL)
@@ -1280,8 +1284,13 @@ int search_dtz(Position& pos, ProbeState* result, WDLScore wdl, Search::RootMove
         if (!zeroing)
             dtz += sign_of(dtz);
 
+        if (dtz_to_wdl(dtz, r50) > wdl)
+        {
+            wdl = dtz_to_wdl(dtz, r50);
+            minDTZ = dtz;
+        }
         // Skip the draws and if we are winning only pick positive dtz
-        if (dtz < minDTZ && sign_of(dtz) == sign_of(wdl))
+        else if (dtz < minDTZ && sign_of(dtz) == sign_of(wdl))
             minDTZ = dtz;
 
         if (rootMoves)
@@ -1497,7 +1506,7 @@ int Tablebases::probe_dtz(Position& pos, ProbeState* result) {
 
     // DTZ stores results for the other side, so we need to do a 1-ply search and
     // find the winning move that minimizes DTZ.
-    return search_dtz(pos, result, wdl, nullptr);
+    return search_dtz(pos, result, pos.rule50_count(), nullptr);
 }
 
 // Probe DTZ tables for each root move and store the result
@@ -1514,7 +1523,7 @@ void Tablebases::dtz_score(Position& pos, Search::RootMoves& rootMoves) {
     // Value of probe_dtz() can be off by 1, so use search_dtz() for RootPosDTZ
     int dtz = Tablebases::probe_dtz(pos, &result);
     if (result != FAIL)
-        dtz = search_dtz(pos, &result, dtz_to_wdl(dtz, pos.rule50_count()), &rootMoves);
+        dtz = search_dtz(pos, &result, pos.rule50_count(), &rootMoves);
 
     if (result != FAIL)
         RootPosDTZ = dtz;
