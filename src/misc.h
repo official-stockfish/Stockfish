@@ -39,6 +39,10 @@ void dbg_hit_on(bool c, bool b);
 void dbg_mean_of(int v);
 void dbg_print();
 
+template <typename T> int sign_of(T val) {
+  return (T(0) < val) - (val < T(0));
+}
+
 typedef std::chrono::milliseconds::rep TimePoint; // A value in milliseconds
 
 inline TimePoint now() {

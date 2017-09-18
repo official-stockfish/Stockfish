@@ -26,6 +26,8 @@
 
 namespace Tablebases {
 
+const int DTZ_NONE = 999;
+
 enum WDLScore {
     WDLLoss        = -2, // Loss
     WDLBlessedLoss = -1, // Loss, but draw under 50-move rule
@@ -45,13 +47,15 @@ enum ProbeState {
 };
 
 extern int MaxCardinality;
+extern int RootPosDTZ;
+extern WDLScore RootWDL;
+extern bool CanProbeDTZ;
 
 void init(const std::string& paths);
 WDLScore probe_wdl(Position& pos, ProbeState* result);
 int probe_dtz(Position& pos, ProbeState* result);
-bool root_probe(Position& pos, Search::RootMoves& rootMoves, Value& score);
-bool root_probe_wdl(Position& pos, Search::RootMoves& rootMoves, Value& score);
-void filter_root_moves(Position& pos, Search::RootMoves& rootMoves);
+void dtz_score(Position& pos, Search::RootMoves& rootMoves);
+WDLScore dtz_to_wdl(int dtz, int r50);
 
 inline std::ostream& operator<<(std::ostream& os, const WDLScore v) {
 
