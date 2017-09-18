@@ -25,6 +25,7 @@
 #include <deque>
 #include <memory> // For std::unique_ptr
 #include <string>
+#include <iostream>
 
 #include "bitboard.h"
 #include "types.h"
@@ -81,9 +82,12 @@ class Position {
 public:
   static void init();
 
-  Position() = default;
-  Position(const Position&) = delete;
-  Position& operator=(const Position&) = delete;
+  Position() {name = "Unknown";};
+  Position(std::string s) {name = s;};
+  
+  ~Position() { std::cerr << "now calling destructor of Position" << name << std::endl;};
+  
+  std::string name;
 
   // FEN string input/output
   Position& set(const std::string& fenStr, bool isChess960, StateInfo* si, Thread* th);
