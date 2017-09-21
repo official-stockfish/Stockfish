@@ -821,23 +821,12 @@ moves_loop: // When in check search starts from here
       if (move == excludedMove)
           continue;
 
-      if (rootNode) {
-          
-          RootMoves rm = thisThread->rootMoves;
-          auto it = std::find(rm.begin() + thisThread->PVIdx, rm.end(), move);
-          
-          // If the move was not found in the root move list then it was
-          // either illegal, already appeared in an earlier multiPV line
-          // or was absent from the UCI "searchmoves" command.
-          if (it == rm.end())
-              continue;
-
-          // When we have TB information at the root we only use search to
-          // differentiate between moves of the same rank. In the case of no
-          // TB information all ranks are identical and we search all moves.
-          if (it->TBRank != rm[thisThread->PVIdx].TBRank)
-              continue;
-      }
+      // At root obey the "searchmoves" option and skip moves not listed in Root
+      // Move List. As a consequence any illegal move is also skipped. In MultiPV
+      // mode we also skip PV moves which have been already searched.
+      if (rootNode && !std::count(thisThread->rootMoves.begin() + thisThread->PVIdx,
+                                  thisThread->rootMoves.end(), move))
+          continue;
 
       ss->moveCount = ++moveCount;
 
