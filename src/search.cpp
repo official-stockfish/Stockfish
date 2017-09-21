@@ -812,6 +812,15 @@ moves_loop: // When in check search starts from here
     skipQuiets = false;
     ttCapture = false;
 
+    int bestTBRank, thisTBRank;
+
+    if (rootNode) {
+        bestTBRank = -1000;
+        RootMoves rm = thisThread->rootMoves;
+        for (auto it = rm.begin() + thisThread->PVIdx; it != rm.end(); it++)
+            bestTBRank = std::max(bestTBRank, it->TBRank);
+    }
+
     // Step 11. Loop through moves
     // Loop through all pseudo-legal moves until no moves remain or a beta cutoff occurs
     while ((move = mp.next_move(skipQuiets)) != MOVE_NONE)
@@ -821,12 +830,19 @@ moves_loop: // When in check search starts from here
       if (move == excludedMove)
           continue;
 
-      // At root obey the "searchmoves" option and skip moves not listed in Root
-      // Move List. As a consequence any illegal move is also skipped. In MultiPV
-      // mode we also skip PV moves which have been already searched.
-      if (rootNode && !std::count(thisThread->rootMoves.begin() + thisThread->PVIdx,
-                                  thisThread->rootMoves.end(), move))
-          continue;
+      if (rootNode) {
+          
+          RootMoves rm = thisThread->rootMoves;
+          auto it = std::find(rm.begin() + thisThread->PVIdx, rm.end(), move);
+          
+          // If the move was not found in the root move list then it was
+          // either illegal, already appeared in an earlier multiPV line
+          // or was absent from the UCI "searchmoves" command.
+          if (it == rm.end())
+              continue;
+
+          thisTBRank = it->TBRank;
+      }
 
       ss->moveCount = ++moveCount;
 
@@ -1059,7 +1075,11 @@ moves_loop: // When in check search starts from here
               rm.score = -VALUE_INFINITE;
       }
 
-      if (value > bestValue)
+      // At the root node only increase bestValue for mates or moves
+      // that have the best possible TBRank.
+      if (value > bestValue && (   !rootNode
+                                || abs(value) >= VALUE_MATE_IN_MAX_PLY
+                                || thisTBRank == bestTBRank))
       {
           bestValue = value;
 
