@@ -1616,5 +1616,3 @@ void Tablebases::filter_root_moves(Position& pos, Search::RootMoves& rootMoves) 
                    : TB::Score < VALUE_DRAW ? -VALUE_MATE + MAX_PLY + 1
                                             :  VALUE_DRAW;
 }
-
-
