@@ -61,6 +61,18 @@ inline WDLScore operator-(WDLScore d) { return WDLScore(-int(d)); }
 inline Square operator^=(Square& s, int i) { return s = Square(int(s) ^ i); }
 inline Square operator^(Square s, int i) { return Square(int(s) ^ i); }
 
+// Return the sign of a number (-1, 0, 1)
+template <typename T> int sign_of(T val) {
+    return (T(0) < val) - (val < T(0));
+}
+
+// Convert from a DTZ to a WDL score, knowing rule50 counter
+WDLScore dtz_to_wdl(int dtz, int r50) {
+    bool cursed = abs(dtz) + r50 > 100;
+    return  dtz > 0 ? (cursed ? WDLCursedWin   : WDLWin)
+          : dtz < 0 ? (cursed ? WDLBlessedLoss : WDLLoss) : WDLDraw;
+}
+
 // DTZ tables don't store valid scores for moves that reset the rule50 counter
 // like captures and pawn moves but we can easily recover the correct dtz of the
 // previous move if we know the position's WDL score.
@@ -69,11 +81,6 @@ int dtz_before_zeroing(WDLScore wdl) {
            wdl == WDLCursedWin   ?  101 :
            wdl == WDLBlessedLoss ? -101 :
            wdl == WDLLoss        ? -1   : 0;
-}
-
-// Return the sign of a number (-1, 0, 1)
-template <typename T> int sign_of(T val) {
-    return (T(0) < val) - (val < T(0));
 }
 
 // Numbers in little endian used by sparseIndex[] to point into blockLength[]
@@ -1253,6 +1260,59 @@ WDLScore search_wdl(Position& pos, ProbeState* result) {
     return *result = OK, value;
 }
 
+// Do a 1-ply search probing DTZ values of resulting positions and reporting
+// back the minimum DTZ already converted to the point of view of previous ply.
+// If rootMoves is passed then set the corresponding RootMove dtz field.
+int search_dtz(Position& pos, ProbeState* result, int r50, Search::RootMoves* rootMoves) {
+
+    StateInfo st;
+    WDLScore wdl = WDLLoss;
+    int minDTZ = 0xFFFF;
+
+    for (const auto& m : MoveList<LEGAL>(pos))
+    {
+        bool zeroing = pos.capture(m) || type_of(pos.moved_piece(m)) == PAWN;
+
+        pos.do_move(m, st);
+
+        // For zeroing moves we want the dtz of the move _before_ doing it,
+        // otherwise we will get the dtz of the next move sequence. Search the
+        // position after the move to get the score sign (because even in a
+        // winning position we could make a losing capture or going for a draw).
+        int dtz = zeroing ? -dtz_before_zeroing(search_wdl(pos, result))
+                          : -probe_dtz(pos, result);
+
+        pos.undo_move(m);
+
+        if (*result == FAIL)
+            return 0;
+
+        // Convert result from 1-ply search. Zeroing moves are already accounted
+        // by dtz_before_zeroing() that returns the DTZ of the previous move.
+        if (!zeroing)
+            dtz += sign_of(dtz);
+
+        if (dtz_to_wdl(dtz, r50) > wdl)
+        {
+            wdl = dtz_to_wdl(dtz, r50);
+            minDTZ = dtz;
+        }
+        // Skip the draws and if we are winning only pick positive dtz
+        else if (dtz < minDTZ && sign_of(dtz) == sign_of(wdl))
+            minDTZ = dtz;
+
+        if (rootMoves)
+        {
+            /* Nothing */
+        }
+    }
+
+    // Special handle a mate position, when there are no legal moves, in this
+    // case return value is somewhat arbitrary, so stick to the original TB code
+    // that returns -1 in this case.
+    return minDTZ == 0xFFFF ? -1 : minDTZ;
+}
+
 } // namespace
 
 void Tablebases::init(const std::string& paths) {
@@ -1449,39 +1509,5 @@ int Tablebases::probe_dtz(Position& pos, ProbeState* result) {
 
     // DTZ stores results for the other side, so we need to do a 1-ply search and
     // find the winning move that minimizes DTZ.
-    StateInfo st;
-    int minDTZ = 0xFFFF;
-
-    for (const auto& move : MoveList<LEGAL>(pos))
-    {
-        bool zeroing = pos.capture(move) || type_of(pos.moved_piece(move)) == PAWN;
-
-        pos.do_move(move, st);
-
-        // For zeroing moves we want the dtz of the move _before_ doing it,
-        // otherwise we will get the dtz of the next move sequence. Search the
-        // position after the move to get the score sign (because even in a
-        // winning position we could make a losing capture or going for a draw).
-        dtz = zeroing ? -dtz_before_zeroing(search_wdl(pos, result))
-                      : -probe_dtz(pos, result);
-
-        pos.undo_move(move);
-
-        if (*result == FAIL)
-            return 0;
-
-        // Convert result from 1-ply search. Zeroing moves are already accounted
-        // by dtz_before_zeroing() that returns the DTZ of the previous move.
-        if (!zeroing)
-            dtz += sign_of(dtz);
-
-        // Skip the draws and if we are winning only pick positive dtz
-        if (dtz < minDTZ && sign_of(dtz) == sign_of(wdl))
-            minDTZ = dtz;
-    }
-
-    // Special handle a mate position, when there are no legal moves, in this
-    // case return value is somewhat arbitrary, so stick to the original TB code
-    // that returns -1 in this case.
-    return minDTZ == 0xFFFF ? -1 : minDTZ;
+    return search_dtz(pos, result, pos.rule50_count(), nullptr);
 }
