@@ -1600,6 +1600,22 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
       Depth d = updated ? depth : depth - ONE_PLY;
       Value v = updated ? rootMoves[i].score : rootMoves[i].previousScore;
 
+      // Signal the GUI we are in TB and codify DTZ info into output score
+      if (TB::RootInTB && abs(v) < VALUE_MATE_IN_MAX_PLY)
+      {
+          if (   TB::DrawScore != TB::WDLDraw // Rule50 enabled
+              && (   rootMoves[i].wdl == TB::WDLBlessedLoss
+                  || rootMoves[i].wdl == TB::WDLCursedWin))
+              v = int(rootMoves[i].wdl) * PawnValueEg / 10;
+          else
+          {
+              static_assert(int(PawnValueEg) * 120 < VALUE_MATE_IN_MAX_PLY, "DTZ overflow");
+
+              auto s = PawnValueEg * (120 - abs(rootMoves[i].dtz) / 2);
+              v = int(rootMoves[i].wdl / 2) * std::max(s, PawnValueEg * 10);
+          }
+      }
+
       if (ss.rdbuf()->in_avail()) // Not at first line
           ss << "\n";
 
