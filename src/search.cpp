@@ -48,6 +48,8 @@ namespace Tablebases {
   bool RootInTB;
   Depth ProbeDepth;
   WDLScore DrawScore;
+  WDLScore RootWDL;
+  int RootDTZ;
 }
 
 namespace TB = Tablebases;
@@ -180,6 +182,20 @@ namespace {
 } // namespace
 
 
+/// Sort root moves in descending order, when root is in TB score according to
+/// TB knwoledge.
+
+bool RootMove::operator<(const RootMove& m) const {
+
+  bool useDTZ = m.dtz != dtz && TB::RootDTZ > 0;
+
+  return  m.wdl != wdl     ? m.wdl < wdl
+        : useDTZ           ? m.dtz > dtz
+        : m.score != score ? m.score < score
+                           : m.previousScore < previousScore;
+}
+
+
 /// Search::init() is called during startup to initialize various lookup tables
 
 void Search::init() {
@@ -302,22 +318,18 @@ void MainThread::search() {
       && !Skill(Options["Skill Level"]).enabled()
       &&  rootMoves[0].pv[0] != MOVE_NONE)
   {
+      // Select the thread with the best score, always if it is a mate
       for (Thread* th : Threads)
-      {
-          Depth depthDiff = th->completedDepth - bestThread->completedDepth;
-          Value scoreDiff = th->rootMoves[0].score - bestThread->rootMoves[0].score;
-
-          // Select the thread with the best score, always if it is a mate
-          if (    scoreDiff > 0
-              && (depthDiff >= 0 || th->rootMoves[0].score >= VALUE_MATE_IN_MAX_PLY))
+          if (   bestThread->rootMoves[0] < th->rootMoves[0]
+              && (   th->completedDepth >= bestThread->completedDepth
+                  || th->rootMoves[0].score >= VALUE_MATE_IN_MAX_PLY))
               bestThread = th;
-      }
   }
 
   previousScore = bestThread->rootMoves[0].score;
 
   // Send new PV when needed
-  if (bestThread != this)
+  if (bestThread != this || TB::RootInTB)
       sync_cout << UCI::pv(bestThread->rootPos, bestThread->completedDepth, -VALUE_INFINITE, VALUE_INFINITE) << sync_endl;
 
   sync_cout << "bestmove " << UCI::move(bestThread->rootMoves[0].pv[0], rootPos.is_chess960());
@@ -408,6 +420,13 @@ void Thread::search() {
           while (true)
           {
               bestValue = ::search<PV>(rootPos, ss, alpha, beta, rootDepth, false, false);
+
+              // If we are in mate territory stop using DTZ to score moves
+              if (   TB::RootInTB
+                  && abs(bestValue) > VALUE_MATE_IN_MAX_PLY
+                  && bestValue > alpha && bestValue < beta)
+                  for (RootMove& rm : rootMoves)
+                      rm.dtz = 0;
 
               // Bring the best move to the front. It is critical that sorting
               // is done with a stable algorithm because all the values but the
@@ -1453,6 +1472,7 @@ moves_loop: // When in check search starts from here
     return best;
   }
 
+
   // probe_tb() is called by search after TT probe to look up the position in
   // tablebases, if it is found we return immediately or continue the search
   // eventually with reduced depth according to the case.
@@ -1466,7 +1486,17 @@ moves_loop: // When in check search starts from here
     Thread* thisThread = pos.this_thread();
     thisThread->tbHits.fetch_add(1, std::memory_order_relaxed);
 
-    wdl = Tablebases::probe_wdl(pos, &err);
+    // If root is in TB then reduce all moves that don't preserve the score
+    if (TB::RootInTB && (ss-1)->ply == 0)
+    {
+        err = TB::ProbeState::OK;
+        RootMove& rm = *std::find(thisThread->rootMoves.begin(),
+                                  thisThread->rootMoves.end(), (ss-1)->currentMove);
+        wdl = TB::WDLScore(-rm.wdl);
+        reduceDepth = -wdl < TB::RootWDL;
+    }
+    else
+        wdl = Tablebases::probe_wdl(pos, &err);
 
     // Win or loss scores are reliable only if we are probing after a
     // rule50 reset move. Instead draw scores are reliable in any case.

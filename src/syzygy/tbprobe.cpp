@@ -1303,7 +1303,9 @@ int search_dtz(Position& pos, ProbeState* result, int r50, Search::RootMoves* ro
 
         if (rootMoves)
         {
-            /* Nothing */
+            auto it = std::find(rootMoves->begin(), rootMoves->end(), m);
+            it->dtz = dtz;
+            it->wdl = dtz_to_wdl(dtz, r50);
         }
     }
 
@@ -1510,4 +1512,25 @@ int Tablebases::probe_dtz(Position& pos, ProbeState* result) {
     // DTZ stores results for the other side, so we need to do a 1-ply search and
     // find the winning move that minimizes DTZ.
     return search_dtz(pos, result, pos.rule50_count(), nullptr);
+}
+
+// Probe DTZ tables for each root move and store the result
+void Tablebases::dtz_score(Position& pos, Search::RootMoves& rootMoves) {
+
+    ProbeState result = OK;
+    RootInTB = false;
+
+    if (   pos.count<ALL_PIECES>() > MaxCardinality
+        || pos.can_castle(ANY_CASTLING)
+        || rootMoves.empty())
+        return;
+
+    // Value of probe_dtz() can be off by 1, so use search_dtz() for RootPosDTZ
+    int dtz = search_dtz(pos, &result, pos.rule50_count(), &rootMoves);
+    if (result == FAIL)
+        return;
+
+    RootDTZ = dtz;
+    RootWDL = dtz_to_wdl(dtz, pos.rule50_count());
+    RootInTB = true;
 }
