@@ -1498,25 +1498,25 @@ int Tablebases::probe_dtz(Position& pos, ProbeState* result) {
 // since the last capture or pawn move.
 static int has_repeated(StateInfo *st)
 {
-    while (1) {
-        int i = 4, e = std::min(st->rule50, st->pliesFromNull);
-
-        if (e < i)
-            return 0;
-
+    // The outer loop steps back by 1 ply per iteration. The inner
+    // loop steps back by 2 ply per iteration starting from 4 ply back
+    // since positions that repeat must be 4, 6, 8, ... ply apart.
+    for (int e = st->rule50; e >= 4; e--)
+    {
         StateInfo *stp = st->previous->previous;
 
-        do {
+        for (int i = 4; i <= e; i += 2)
+        {
             stp = stp->previous->previous;
 
             if (stp->key == st->key)
                 return 1;
-
-            i += 2;
-        } while (i <= e);
+        }
 
         st = st->previous;
     }
+
+    return 0;
 }
 
 // Use the DTZ tables to rank root moves.
