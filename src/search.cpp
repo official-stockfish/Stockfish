@@ -45,7 +45,6 @@ namespace Search {
 namespace Tablebases {
 
   int Cardinality;
-  bool RootInTB;
   bool UseRule50;
   Depth ProbeDepth;
 }
@@ -178,21 +177,6 @@ namespace {
 
 } // namespace
 
-
-bool RootMove::operator<(const RootMove& m) const {
-
-  bool heuristic_only =      abs(score) < VALUE_MATE_IN_MAX_PLY
-                        && abs(m.score) < VALUE_MATE_IN_MAX_PLY;
-  
-  return heuristic_only && m.TBRank != TBRank ? m.TBRank < TBRank :
-                           m.score  != score  ? m.score < score
-                                              : m.previousScore < previousScore;
-}
-
-bool tb_compare(const RootMove& a, const RootMove& b) {
-
-    return b.TBRank < a.TBRank;
-}
 
 /// Search::init() is called during startup to initialize various lookup tables
 
@@ -409,12 +393,6 @@ void Thread::search() {
           // high/low anymore.
           while (true)
           {
-              // If we have TB information then we avoid the scenario where
-              // all moves of highest TBRank fail low by using a simple stable
-              // sort to bring them to the front.
-              if (TB::RootInTB)
-                  std::stable_sort(rootMoves.begin() + PVIdx, rootMoves.end(), tb_compare);
-
               bestValue = ::search<PV>(rootPos, ss, alpha, beta, rootDepth, false, false);
 
               // Bring the best move to the front. It is critical that sorting
@@ -834,6 +812,15 @@ moves_loop: // When in check search starts from here
     skipQuiets = false;
     ttCapture = false;
 
+    int bestTBRank, thisTBRank;
+
+    if (rootNode) {
+        bestTBRank = -1000;
+        RootMoves rm = thisThread->rootMoves;
+        for (auto it = rm.begin() + thisThread->PVIdx; it != rm.end(); it++)
+            bestTBRank = std::max(bestTBRank, it->TBRank);
+    }
+
     // Step 11. Loop through moves
     // Loop through all pseudo-legal moves until no moves remain or a beta cutoff occurs
     while ((move = mp.next_move(skipQuiets)) != MOVE_NONE)
@@ -843,12 +830,19 @@ moves_loop: // When in check search starts from here
       if (move == excludedMove)
           continue;
 
-      // At root obey the "searchmoves" option and skip moves not listed in Root
-      // Move List. As a consequence any illegal move is also skipped. In MultiPV
-      // mode we also skip PV moves which have been already searched.
-      if (rootNode && !std::count(thisThread->rootMoves.begin() + thisThread->PVIdx,
-                                  thisThread->rootMoves.end(), move))
-          continue;
+      if (rootNode) {
+          
+          RootMoves rm = thisThread->rootMoves;
+          auto it = std::find(rm.begin() + thisThread->PVIdx, rm.end(), move);
+          
+          // If the move was not found in the root move list then it was
+          // either illegal, already appeared in an earlier multiPV line
+          // or was absent from the UCI "searchmoves" command.
+          if (it == rm.end())
+              continue;
+
+          thisTBRank = it->TBRank;
+      }
 
       ss->moveCount = ++moveCount;
 
@@ -1081,7 +1075,11 @@ moves_loop: // When in check search starts from here
               rm.score = -VALUE_INFINITE;
       }
 
-      if (value > bestValue)
+      // At the root node only increase bestValue for mates or moves
+      // that have the best possible TBRank.
+      if (value > bestValue && (   !rootNode
+                                || abs(value) >= VALUE_MATE_IN_MAX_PLY
+                                || thisTBRank == bestTBRank))
       {
           bestValue = value;
 
@@ -1598,7 +1596,6 @@ bool RootMove::extract_ponder_from_tt(Position& pos) {
 
 void Tablebases::rank_root_moves(Position& pos, Search::RootMoves& rootMoves) {
 
-    RootInTB = false;
     UseRule50 = Options["Syzygy50MoveRule"];
     ProbeDepth = Options["SyzygyProbeDepth"] * ONE_PLY;
     Cardinality = Options["SyzygyProbeLimit"];
@@ -1615,8 +1612,6 @@ void Tablebases::rank_root_moves(Position& pos, Search::RootMoves& rootMoves) {
         // Rank root moves using DTZ information if possible, else WDL
         if (root_probe(pos, rootMoves) || root_probe_wdl(pos, rootMoves))
         {
-            RootInTB = true;
-
             // Sort moves according to TB rank.
             std::sort(rootMoves.begin(), rootMoves.end());
 
