@@ -436,6 +436,12 @@ void Thread::search() {
               // search the already searched PV lines are preserved.
               std::stable_sort(rootMoves.begin() + PVIdx, rootMoves.end());
 
+              // If DTZ sorting overrides score sorting, it could happen that
+              // first root move does not have always the best score. So ensure
+              // it to avoid any possible artifact.
+              if (TB::RootInTB)
+                  rootMoves[PVIdx].score = bestValue;
+
               // If search has been stopped, we break immediately. Sorting and
               // writing PV back to TT is safe because RootMoves is still
               // valid, although it refers to the previous iteration.
@@ -1599,6 +1605,7 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
 
       Depth d = updated ? depth : depth - ONE_PLY;
       Value v = updated ? rootMoves[i].score : rootMoves[i].previousScore;
+      string bound = v >= beta ? " lowerbound" : v <= alpha ? " upperbound" : "";
 
       // Signal the GUI we are in TB and codify DTZ info into output score
       if (TB::RootInTB && abs(v) < VALUE_MATE_IN_MAX_PLY)
@@ -1626,7 +1633,7 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
          << " score "    << UCI::value(v);
 
       if (i == PVIdx)
-          ss << (v >= beta ? " lowerbound" : v <= alpha ? " upperbound" : "");
+          ss << bound;
 
       ss << " nodes "    << nodesSearched
          << " nps "      << nodesSearched * 1000 / elapsed;
