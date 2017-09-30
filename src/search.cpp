@@ -966,6 +966,10 @@ moves_loop: // When in check search starts from here
               if (ttCapture)
                   r += ONE_PLY;
 
+              // Decrease reduction for exact nodes
+              if (pvExact)
+                  r -= ONE_PLY;
+
               // Increase reduction for cut nodes
               if (cutNode)
                   r += 2 * ONE_PLY;
