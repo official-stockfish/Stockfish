@@ -436,17 +436,18 @@ void Thread::search() {
               // search the already searched PV lines are preserved.
               std::stable_sort(rootMoves.begin() + PVIdx, rootMoves.end());
 
+              // If search has been stopped, we break immediately. Sorting and
+              // writing PV back to TT is safe because RootMoves is still
+              // valid, although it refers to the previous iteration. Instead
+              // bestValue cannot be trusted.
+              if (Threads.stop)
+                  break;
+
               // If DTZ sorting overrides score sorting, it could happen that
               // first root move does not have always the best score. So ensure
               // it to avoid any possible artifact.
               if (TB::RootInTB)
                   rootMoves[PVIdx].score = bestValue;
-
-              // If search has been stopped, we break immediately. Sorting and
-              // writing PV back to TT is safe because RootMoves is still
-              // valid, although it refers to the previous iteration.
-              if (Threads.stop)
-                  break;
 
               // When failing high/low give some update (without cluttering
               // the UI) before a re-search.
