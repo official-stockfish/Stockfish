@@ -31,8 +31,9 @@
 
 namespace {
 
-  const Bitboard LongDiagonals = 0x8142241818244281ULL; // A1..H8 | H1..A8
-  const Bitboard Center        = (FileDBB | FileEBB) & (Rank4BB | Rank5BB);
+  //const Bitboard LongDiagonals      = 0x8142241818244281ULL; // A1..H8 | H1..A8
+  const Bitboard Center             = (FileDBB | FileEBB) & (Rank4BB | Rank5BB);
+  //const Bitboard LargeCenter        = 0x00003C3C3C3C0000ULL;
   const Bitboard QueenSide     = FileABB | FileBBB | FileCBB | FileDBB;
   const Bitboard CenterFiles   = FileCBB | FileDBB | FileEBB | FileFBB;
   const Bitboard KingSide      = FileEBB | FileFBB | FileGBB | FileHBB;
@@ -354,10 +355,9 @@ namespace {
                 // Penalty for pawns on the same color square as the bishop
                 score -= BishopPawns * pe->pawns_on_same_color_squares(Us, s);
 
-                // Bonus for bishop on a long diagonal without pawns in the center
-                if (    (LongDiagonals & s)
-                    && !(attackedBy[Them][PAWN] & s)
-                    && !(Center & PseudoAttacks[BISHOP][s] & pos.pieces(PAWN)))
+                // Bonus for bishop on a long diagonal if it can "see" both center squares
+                if (  !(attackedBy[Them][PAWN] & s)
+                    && (more_than_one(attacks_bb<BISHOP>(s, pos.pieces(PAWN)) & Center)))
                     score += LongRangedBishop;
             }
 
