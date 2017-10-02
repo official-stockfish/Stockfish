@@ -42,6 +42,10 @@ const std::string pretty(Bitboard b);
 const Bitboard AllSquares = ~Bitboard(0);
 const Bitboard DarkSquares = 0xAA55AA55AA55AA55ULL;
 
+const Bitboard LongDiagonals = 0x8142241818244281ULL;
+const Bitboard Center        = 0x0000001818000000ULL;
+const Bitboard LargeCenter   = 0x00003C3C3C3C0000ULL;
+
 const Bitboard FileABB = 0x0101010101010101ULL;
 const Bitboard FileBBB = FileABB << 1;
 const Bitboard FileCBB = FileABB << 2;
