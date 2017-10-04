@@ -794,7 +794,7 @@ namespace {
     // types of endgames, and use a lower scale for those.
     if (sf == SCALE_FACTOR_NORMAL || sf == SCALE_FACTOR_ONEPAWN)
     {
-        if (pos.opposite_bishops()) || (abs(eg) <= BishopValueEg
+        if ((pos.opposite_bishops()) || (abs(eg) <= BishopValueEg
                                         &&  pos.count<PAWN>(strongSide) <= 2
                                         && !pos.pawn_passed(~strongSide, pos.square<KING>(~strongSide)))
         {
