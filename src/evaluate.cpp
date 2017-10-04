@@ -796,7 +796,7 @@ namespace {
     {
         if ((pos.opposite_bishops()) || (abs(eg) <= BishopValueEg
                                         &&  pos.count<PAWN>(strongSide) <= 2
-                                        && !pos.pawn_passed(~strongSide, pos.square<KING>(~strongSide)))
+                                        && !pos.pawn_passed(~strongSide, pos.square<KING>(~strongSide))))
         {
             // Endgame with opposite-colored bishops and no other pieces (ignoring pawns)
             // is almost a draw, in case of KBP vs KB, it is even more a draw.
