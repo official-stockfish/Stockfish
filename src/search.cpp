@@ -259,11 +259,6 @@ void MainThread::search() {
       Thread::search(); // Let's start searching!
   }
 
-  // When playing in 'nodes as time' mode, subtract the searched nodes from
-  // the available ones before exiting.
-  if (Limits.npmsec)
-      Time.availableNodes += Limits.inc[us] - Threads.nodes_searched();
-
   // When we reach the maximum depth, we can arrive here without a raise of
   // Threads.stop. However, if we are pondering or in an infinite search,
   // the UCI protocol states that we shouldn't print the best move before the
@@ -282,6 +277,11 @@ void MainThread::search() {
   for (Thread* th : Threads)
       if (th != this)
           th->wait_for_search_finished();
+
+  // When playing in 'nodes as time' mode, subtract the searched nodes from
+  // the available ones before exiting.
+  if (Limits.npmsec)
+      Time.availableNodes += Limits.inc[us] - Threads.nodes_searched();
 
   // Check if there are threads with a better score than main thread
   Thread* bestThread = this;
@@ -543,7 +543,7 @@ namespace {
     Depth extension, newDepth;
     Value bestValue, value, ttValue, eval, maxValue;
     bool ttHit, inCheck, givesCheck, singularExtensionNode, improving;
-    bool captureOrPromotion, doFullDepthSearch, moveCountPruning, skipQuiets, ttCapture;
+    bool captureOrPromotion, doFullDepthSearch, moveCountPruning, skipQuiets, ttCapture, pvExact;
     Piece movedPiece;
     int moveCount, quietCount;
 
@@ -829,6 +829,7 @@ moves_loop: // When in check search starts from here
                            &&  tte->depth() >= depth - 3 * ONE_PLY;
     skipQuiets = false;
     ttCapture = false;
+    pvExact = PvNode && ttHit && tte->bound() == BOUND_EXACT;
 
     // Step 11. Loop through moves
     // Loop through all pseudo-legal moves until no moves remain or a beta cutoff occurs
@@ -971,6 +972,10 @@ moves_loop: // When in check search starts from here
           {
               // Decrease reduction if opponent's move count is high
               if ((ss-1)->moveCount > 15)
+                  r -= ONE_PLY;
+
+              // Decrease reduction for exact PV nodes
+              if (pvExact)
                   r -= ONE_PLY;
 
               // Increase reduction if ttMove is a capture
