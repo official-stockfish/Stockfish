@@ -794,7 +794,9 @@ namespace {
     // types of endgames, and use a lower scale for those.
     if (sf == SCALE_FACTOR_NORMAL || sf == SCALE_FACTOR_ONEPAWN)
     {
-        if (pos.opposite_bishops())
+        if (pos.opposite_bishops()) || (abs(eg) <= BishopValueEg
+                                        &&  pos.count<PAWN>(strongSide) <= 2
+                                        && !pos.pawn_passed(~strongSide, pos.square<KING>(~strongSide)))
         {
             // Endgame with opposite-colored bishops and no other pieces (ignoring pawns)
             // is almost a draw, in case of KBP vs KB, it is even more a draw.
@@ -804,16 +806,12 @@ namespace {
 
             // Endgame with opposite-colored bishops, but also other pieces. Still
             // a bit drawish, but not as drawish as with only the two bishops.
+            // Endings where weaker side can place his king in front of the opponent's
+            // pawns are drawish.
             return ScaleFactor(46);
-        }
-        // Endings where weaker side can place his king in front of the opponent's
-        // pawns are drawish.
-        else if (    abs(eg) <= BishopValueEg
-                 &&  pos.count<PAWN>(strongSide) <= 2
-                 && !pos.pawn_passed(~strongSide, pos.square<KING>(~strongSide)))
-            return ScaleFactor(37 + 7 * pos.count<PAWN>(strongSide));
+         }
     }
-
+    
     return sf;
   }
 
