@@ -133,16 +133,16 @@ struct Atomic {
     std::atomic_bool ready;
 };
 
-// We define types for the different parts of the WLDEntry and DTZEntry with
+// We define types for the different parts of the WDLEntry and DTZEntry with
 // corresponding specializations for pieces or pawns.
 
-struct WLDEntryPiece {
+struct WDLEntryPiece {
     PairsData* precomp;
 };
 
 struct WDLEntryPawn {
     uint8_t pawnCount[2];     // [Lead color / other color]
-    WLDEntryPiece file[2][4]; // [wtm / btm][FILE_A..FILE_D]
+    WDLEntryPiece file[2][4]; // [wtm / btm][FILE_A..FILE_D]
 };
 
 struct DTZEntryPiece {
@@ -172,7 +172,7 @@ struct WDLEntry : public TBEntry {
     WDLEntry(const std::string& code);
    ~WDLEntry();
     union {
-        WLDEntryPiece pieceTable[2]; // [wtm / btm]
+        WDLEntryPiece pieceTable[2]; // [wtm / btm]
         WDLEntryPawn  pawnTable;
     };
 };
