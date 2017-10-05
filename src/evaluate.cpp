@@ -32,9 +32,9 @@
 namespace {
 
   const Bitboard Center      = (FileDBB | FileEBB) & (Rank4BB | Rank5BB);
-  const Bitboard QueenSide   =  FileABB | FileBBB | FileCBB | FileDBB;
-  const Bitboard CenterFiles =  FileCBB | FileDBB | FileEBB | FileFBB;
-  const Bitboard KingSide    =  FileEBB | FileFBB | FileGBB | FileHBB;
+  const Bitboard QueenSide   =  FileABB | FileBBB  |  FileCBB | FileDBB;
+  const Bitboard CenterFiles =  FileCBB | FileDBB  |  FileEBB | FileFBB;
+  const Bitboard KingSide    =  FileEBB | FileFBB  |  FileGBB | FileHBB;
 
   const Bitboard KingFlank[FILE_NB] = {
     QueenSide, QueenSide, QueenSide, CenterFiles, CenterFiles, KingSide, KingSide, KingSide
@@ -355,7 +355,7 @@ namespace {
 
                 // Bonus for bishop on a long diagonal if it can "see" both center squares
                 if (  !(attackedBy[Them][PAWN] & s)
-                    && (more_than_one((attacks_bb<BISHOP>(s, pos.pieces(PAWN)) | s) & Center)))
+                    && (more_than_one(Center & (attacks_bb<BISHOP>(s, pos.pieces(PAWN)) | s))))
                     score += LongRangedBishop;
             }
 
