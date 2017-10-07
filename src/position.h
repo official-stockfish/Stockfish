@@ -25,10 +25,14 @@
 #include <deque>
 #include <memory> // For std::unique_ptr
 #include <string>
+#include <iostream>
 
 #include "bitboard.h"
 #include "types.h"
 
+
+class Position;
+class Thread;
 
 /// StateInfo struct stores information needed to restore a Position object to
 /// its previous state when we retract a move. Whenever a move is made on the
@@ -62,20 +66,28 @@ struct StateInfo {
 /// elements are not invalidated upon list resizing.
 typedef std::unique_ptr<std::deque<StateInfo>> StateListPtr;
 
+/// An temporary type to help getting a nice syntax for SEE comparisons. Never
+/// use this type directly or assign a value to a variable of this type, instead 
+/// please use the syntax "if (pos.see(move) >= threshold) ..." and similar for
+/// other comparisons.
+typedef std::pair<const Position&, Move> SEE;
+
 
 /// Position class stores information regarding the board representation as
 /// pieces, side to move, hash keys, castling info, etc. Important methods are
 /// do_move() and undo_move(), used by the search to update node info when
 /// traversing the search tree.
-class Thread;
 
 class Position {
 public:
   static void init();
 
-  Position() = default;
-  Position(const Position&) = delete;
-  Position& operator=(const Position&) = delete;
+  Position() {name = "Unknown";};
+  Position(std::string s) {name = s;};
+  
+  ~Position() { std::cerr << "now calling destructor of Position" << name << std::endl;};
+  
+  std::string name;
 
   // FEN string input/output
   Position& set(const std::string& fenStr, bool isChess960, StateInfo* si, Thread* th);
@@ -139,7 +151,8 @@ public:
   void undo_null_move();
 
   // Static Exchange Evaluation
-  bool see_ge(Move m, Value threshold = VALUE_ZERO) const;
+  bool see_ge(Move m, Value threshold) const;
+  inline const SEE see(Move m) const { return SEE(*this, m); }
 
   // Accessing hash keys
   Key key() const;
@@ -423,5 +436,14 @@ inline void Position::move_piece(Piece pc, Square from, Square to) {
 inline void Position::do_move(Move m, StateInfo& newSt) {
   do_move(m, newSt, gives_check(m));
 }
+
+// Syntactic sugar around Position::see_ge(), so that we can use the more readable
+// pos.see(move) >= threshold instead of pos.see_ge(move, threshold), and similar
+// readable code for the other operators.
+inline bool operator>=(const SEE& s, Value threshold) { return  s.first.see_ge(s.second, threshold);}
+inline bool operator> (const SEE& s, Value threshold) { return  (s >= threshold + 1); }
+inline bool operator< (const SEE& s, Value threshold) { return !(s >= threshold); }
+inline bool operator<=(const SEE& s, Value threshold) { return !(s >= threshold + 1); }
+
 
 #endif // #ifndef POSITION_H_INCLUDED

@@ -32,6 +32,24 @@ namespace PSQT {
   void init();
 }
 
+class Foo {
+   public:
+   Foo() { x = 10;};
+
+   
+   int x;
+   Position pos = Position("Foo");
+};
+
+SEE test(const std::string& fen, Move m) {
+  StateInfo st;
+  Foo foo;
+  
+  foo.pos.set(fen, false, &st, nullptr);
+  return foo.pos.see(m);
+}
+
+
 int main(int argc, char* argv[]) {
 
   std::cout << engine_info() << std::endl;
@@ -47,9 +65,13 @@ int main(int argc, char* argv[]) {
   TT.resize(Options["Hash"]);
   Threads.init(Options["Threads"]);
   Search::clear(); // After threads are up
-
+  
+  SEE val = test("8/8/8/8/B6B/8/3k4/K7 w - -", make_move(SQ_A4, SQ_D1));
+  
   UCI::loop(argc, argv);
 
   Threads.exit();
+  
+  std::cerr << "=======> SEE test gives " << (val >= VALUE_ZERO) << std::endl;
   return 0;
 }
