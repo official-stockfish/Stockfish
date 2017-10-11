@@ -513,7 +513,7 @@ void Thread::search() {
       EasyMove.clear();
 
   // If skill level is enabled, swap best PV line with the sub-optimal one
-  if (skill.enabled())
+  if (skill.enabled() && skill.best_move(multiPV) != MOVE_NONE)
       std::swap(rootMoves[0], *std::find(rootMoves.begin(),
                 rootMoves.end(), skill.best_move(multiPV)));
 }
