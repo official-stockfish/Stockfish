@@ -61,7 +61,7 @@ namespace {
         ratio = (type == OptimumTime ? 0.017 : 0.07) * (k + inc / myTime);
     }
 
-    int time = int(std::min(1.0, ratio) * std::max(0, myTime - moveOverhead));
+    int time = int(std::min(0.1 + 0.9 * (myInc ? 1 : 0), ratio) * std::max(0, myTime - moveOverhead));
 
     if (type == OptimumTime && ponder)
         time = 5 * time / 4;
