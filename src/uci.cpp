@@ -256,8 +256,6 @@ string UCI::value(Value v) {
 
   stringstream ss;
 
-  v = PawnValueEg; // to disable early adjudication for wins and draws with cutechess-cli 
-
   if (abs(v) < VALUE_MATE - MAX_PLY)
       ss << "cp " << v * 100 / PawnValueEg;
   else
