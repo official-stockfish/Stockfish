@@ -1588,6 +1588,10 @@ void Tablebases::filter_root_moves(Position& pos, Search::RootMoves& rootMoves) 
     ProbeDepth = Options["SyzygyProbeDepth"] * ONE_PLY;
     Cardinality = Options["SyzygyProbeLimit"];
 
+    // Don't filter any moves if the user requested analysis on multiple
+    if (Options["MultiPV"] != 1)
+        return;
+
     // Skip TB probing when no TB found: !TBLargest -> !TB::Cardinality
     if (Cardinality > MaxCardinality)
     {
