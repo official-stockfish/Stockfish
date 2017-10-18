@@ -87,7 +87,8 @@ namespace {
 
   // break search and throw exception
   void break_search() {
-    Threads.stop = true;
+    if (!(Threads.ponder || Limits.infinite))
+       Threads.stop = true;
     throw 42;
   }
 
@@ -358,10 +359,12 @@ void Thread::search() {
 
   multiPV = std::min(multiPV, rootMoves.size());
 
-  // Iterative deepening loop until the target depth is reached, or an exception thrown.
+  // Iterative deepening loop until an exception is thrown.
   try {
-  while ((rootDepth += ONE_PLY) < (Limits.depth && mainThread ? (Limits.depth + 1) * ONE_PLY : DEPTH_MAX))
+  while (true)
   {
+      rootDepth += ONE_PLY;
+
       // skip plies depending on the thread idx.
       if (idx)
       {
@@ -439,6 +442,10 @@ void Thread::search() {
       }
 
       completedDepth = rootDepth;
+
+      if (   rootDepth >= DEPTH_MAX - ONE_PLY
+          || (Limits.depth && mainThread ? rootDepth >= Limits.depth * ONE_PLY : false))
+         break_search();
 
       // Have we found a "mate in x"?
       if (   Limits.mate
