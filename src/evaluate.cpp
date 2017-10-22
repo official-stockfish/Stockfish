@@ -45,7 +45,7 @@ namespace {
     enum Tracing {NO_TRACE, TRACE};
 
     enum Term { // The first 8 entries are for PieceType
-      MATERIAL = 8, IMBALANCE, MOBILITY, THREAT, PASSED, SPACE, TOTAL, TERM_NB
+      MATERIAL = 8, IMBALANCE, MOBILITY, THREAT, PASSED, SPACE, INITIATIVE, TOTAL, TERM_NB
     };
 
     double scores[TERM_NB][COLOR_NB][PHASE_NB];
@@ -63,7 +63,7 @@ namespace {
 
     std::ostream& operator<<(std::ostream& os, Term t) {
 
-      if (t == MATERIAL || t == IMBALANCE || t == Term(PAWN) || t == TOTAL)
+      if (t == MATERIAL || t == IMBALANCE || t == Term(PAWN) || t == INITIATIVE || t == TOTAL)
           os << "  ---   --- |   ---   --- | ";
       else
           os << std::setw(5) << scores[t][WHITE][MG] << " "
@@ -775,6 +775,9 @@ namespace {
     // that the endgame score will never change sign after the bonus.
     int v = ((eg > 0) - (eg < 0)) * std::max(initiative, -abs(eg));
 
+    if (T)
+        Trace::add(INITIATIVE, make_score(0, v));
+
     return make_score(0, v);
   }
 
@@ -935,6 +938,7 @@ std::string Eval::trace(const Position& pos) {
      << "        Threats | " << Term(THREAT)
      << "   Passed pawns | " << Term(PASSED)
      << "          Space | " << Term(SPACE)
+     << "     Initiative | " << Term(INITIATIVE)
      << "----------------+-------------+-------------+-------------\n"
      << "          Total | " << Term(TOTAL);
 
