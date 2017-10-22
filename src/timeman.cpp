@@ -58,7 +58,10 @@ namespace {
     else
     {
         double k = 1 + 20 * moveNum / (500.0 + moveNum);
-        ratio = (type == OptimumTime ? 0.017 : 0.07) * (k + inc / myTime);
+        double l = (type == OptimumTime ? 0.017 : 0.07);
+        double sratio = k * l; // Ratio of myTime for sudden death case
+        if (moveNum > 60) sratio = std::min(0.1, sratio);
+        ratio = sratio + l * inc / myTime;
     }
 
     int time = int(std::min(1.0, ratio) * std::max(0, myTime - moveOverhead));
