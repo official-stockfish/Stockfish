@@ -100,11 +100,8 @@ Endgames::Endgames() {
   add<KQKR>("KQKR");
 
   add<KNPK>("KNPK");
-  add<KNPKB>("KNPKB");
   add<KRPKR>("KRPKR");
   add<KRPKB>("KRPKB");
-  add<KBPKB>("KBPKB");
-  add<KBPKN>("KBPKN");
   add<KBPPKB>("KBPPKB");
   add<KRPPKRP>("KRPPKRP");
 }
@@ -606,58 +603,6 @@ ScaleFactor Endgame<KPsK>::operator()(const Position& pos) const {
   return SCALE_FACTOR_NONE;
 }
 
-
-/// KBP vs KB. There are two rules: if the defending king is somewhere along the
-/// path of the pawn, and the square of the king is not of the same color as the
-/// stronger side's bishop, it's a draw. If the two bishops have opposite color,
-/// it's almost always a draw.
-template<>
-ScaleFactor Endgame<KBPKB>::operator()(const Position& pos) const {
-
-  assert(verify_material(pos, strongSide, BishopValueMg, 1));
-  assert(verify_material(pos, weakSide,   BishopValueMg, 0));
-
-  Square pawnSq = pos.square<PAWN>(strongSide);
-  Square strongBishopSq = pos.square<BISHOP>(strongSide);
-  Square weakBishopSq = pos.square<BISHOP>(weakSide);
-  Square weakKingSq = pos.square<KING>(weakSide);
-
-  // Case 1: Defending king blocks the pawn, and cannot be driven away
-  if (   file_of(weakKingSq) == file_of(pawnSq)
-      && relative_rank(strongSide, pawnSq) < relative_rank(strongSide, weakKingSq)
-      && (   opposite_colors(weakKingSq, strongBishopSq)
-          || relative_rank(strongSide, weakKingSq) <= RANK_6))
-      return SCALE_FACTOR_DRAW;
-
-  // Case 2: Opposite colored bishops
-  if (opposite_colors(strongBishopSq, weakBishopSq))
-  {
-      // We assume that the position is drawn in the following three situations:
-      //
-      //   a. The pawn is on rank 5 or further back.
-      //   b. The defending king is somewhere in the pawn's path.
-      //   c. The defending bishop attacks some square along the pawn's path,
-      //      and is at least three squares away from the pawn.
-      //
-      // These rules are probably not perfect, but in practice they work
-      // reasonably well.
-
-      if (relative_rank(strongSide, pawnSq) <= RANK_5)
-          return SCALE_FACTOR_DRAW;
-
-      Bitboard path = forward_file_bb(strongSide, pawnSq);
-
-      if (path & pos.pieces(weakSide, KING))
-          return SCALE_FACTOR_DRAW;
-
-      if (  (pos.attacks_from<BISHOP>(weakBishopSq) & path)
-          && distance(weakBishopSq, pawnSq) >= 3)
-          return SCALE_FACTOR_DRAW;
-  }
-  return SCALE_FACTOR_NONE;
-}
-
-
 /// KBPP vs KB. It detects a few basic draws with opposite-colored bishops
 template<>
 ScaleFactor Endgame<KBPPKB>::operator()(const Position& pos) const {
@@ -726,30 +671,6 @@ ScaleFactor Endgame<KBPPKB>::operator()(const Position& pos) const {
   }
 }
 
-
-/// KBP vs KN. There is a single rule: If the defending king is somewhere along
-/// the path of the pawn, and the square of the king is not of the same color as
-/// the stronger side's bishop, it's a draw.
-template<>
-ScaleFactor Endgame<KBPKN>::operator()(const Position& pos) const {
-
-  assert(verify_material(pos, strongSide, BishopValueMg, 1));
-  assert(verify_material(pos, weakSide, KnightValueMg, 0));
-
-  Square pawnSq = pos.square<PAWN>(strongSide);
-  Square strongBishopSq = pos.square<BISHOP>(strongSide);
-  Square weakKingSq = pos.square<KING>(weakSide);
-
-  if (   file_of(weakKingSq) == file_of(pawnSq)
-      && relative_rank(strongSide, pawnSq) < relative_rank(strongSide, weakKingSq)
-      && (   opposite_colors(weakKingSq, strongBishopSq)
-          || relative_rank(strongSide, weakKingSq) <= RANK_6))
-      return SCALE_FACTOR_DRAW;
-
-  return SCALE_FACTOR_NONE;
-}
-
-
 /// KNP vs K. There is a single rule: if the pawn is a rook pawn on the 7th rank
 /// and the defending king prevents the pawn from advancing, the position is drawn.
 template<>
@@ -767,25 +688,6 @@ ScaleFactor Endgame<KNPK>::operator()(const Position& pos) const {
 
   return SCALE_FACTOR_NONE;
 }
-
-
-/// KNP vs KB. If knight can block bishop from taking pawn, it's a win.
-/// Otherwise the position is drawn.
-template<>
-ScaleFactor Endgame<KNPKB>::operator()(const Position& pos) const {
-
-  Square pawnSq = pos.square<PAWN>(strongSide);
-  Square bishopSq = pos.square<BISHOP>(weakSide);
-  Square weakKingSq = pos.square<KING>(weakSide);
-
-  // King needs to get close to promoting pawn to prevent knight from blocking.
-  // Rules for this are very tricky, so just approximate.
-  if (forward_file_bb(strongSide, pawnSq) & pos.attacks_from<BISHOP>(bishopSq))
-      return ScaleFactor(distance(weakKingSq, pawnSq));
-
-  return SCALE_FACTOR_NONE;
-}
-
 
 /// KP vs KP. This is done by removing the weakest side's pawn and probing the
 /// KP vs K bitbase: If the weakest side has a draw without the pawn, it probably
