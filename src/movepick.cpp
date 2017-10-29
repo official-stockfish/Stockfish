@@ -48,15 +48,6 @@ namespace {
         }
   }
 
-  // pick_best() finds the best move in the range (begin, end) and moves it to
-  // the front. It's faster than sorting all the moves in advance when there
-  // are few moves, e.g., the possible captures.
-  Move pick_best(ExtMove* begin, ExtMove* end) {
-
-    std::swap(*begin, *std::max_element(begin, end));
-    return *begin;
-  }
-
 } // namespace
 
 
@@ -158,6 +149,7 @@ void MovePicker::score() {
 Move MovePicker::next_move(bool skipQuiets) {
 
   Move move;
+  int limit = -4000 * depth / ONE_PLY;
 
   switch (stage) {
 
@@ -170,13 +162,14 @@ Move MovePicker::next_move(bool skipQuiets) {
       endBadCaptures = cur = moves;
       endMoves = generate<CAPTURES>(pos, cur);
       score<CAPTURES>();
+      partial_insertion_sort(cur, endMoves, limit);
       ++stage;
       /* fallthrough */
 
   case GOOD_CAPTURES:
       while (cur < endMoves)
       {
-          move = pick_best(cur++, endMoves);
+          move = *cur++;
           if (move != ttMove)
           {
               if (pos.see_ge(move))
@@ -222,7 +215,7 @@ Move MovePicker::next_move(bool skipQuiets) {
       cur = endBadCaptures;
       endMoves = generate<QUIETS>(pos, cur);
       score<QUIETS>();
-      partial_insertion_sort(cur, endMoves, -4000 * depth / ONE_PLY);
+      partial_insertion_sort(cur, endMoves, limit);
       ++stage;
       /* fallthrough */
 
@@ -251,13 +244,14 @@ Move MovePicker::next_move(bool skipQuiets) {
       cur = moves;
       endMoves = generate<EVASIONS>(pos, cur);
       score<EVASIONS>();
+      partial_insertion_sort(cur, endMoves, limit);
       ++stage;
       /* fallthrough */
 
   case ALL_EVASIONS:
       while (cur < endMoves)
       {
-          move = pick_best(cur++, endMoves);
+          move = *cur++;
           if (move != ttMove)
               return move;
       }
@@ -267,13 +261,14 @@ Move MovePicker::next_move(bool skipQuiets) {
       cur = moves;
       endMoves = generate<CAPTURES>(pos, cur);
       score<CAPTURES>();
+      partial_insertion_sort(cur, endMoves, limit);
       ++stage;
       /* fallthrough */
 
   case PROBCUT_CAPTURES:
       while (cur < endMoves)
       {
-          move = pick_best(cur++, endMoves);
+          move = *cur++;
           if (   move != ttMove
               && pos.see_ge(move, threshold))
               return move;
@@ -284,13 +279,14 @@ Move MovePicker::next_move(bool skipQuiets) {
       cur = moves;
       endMoves = generate<CAPTURES>(pos, cur);
       score<CAPTURES>();
+      partial_insertion_sort(cur, endMoves, limit);
       ++stage;
       /* fallthrough */
 
   case QCAPTURES_1: case QCAPTURES_2:
       while (cur < endMoves)
       {
-          move = pick_best(cur++, endMoves);
+          move = *cur++;
           if (move != ttMove)
               return move;
       }
@@ -314,13 +310,14 @@ Move MovePicker::next_move(bool skipQuiets) {
       cur = moves;
       endMoves = generate<CAPTURES>(pos, cur);
       score<CAPTURES>();
+      partial_insertion_sort(cur, endMoves, limit);
       ++stage;
       /* fallthrough */
 
   case QRECAPTURES:
       while (cur < endMoves)
       {
-          move = pick_best(cur++, endMoves);
+          move = *cur++;
           if (to_sq(move) == recaptureSquare)
               return move;
       }
