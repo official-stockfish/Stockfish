@@ -1016,7 +1016,7 @@ moves_loop: // When in check search starts from here
                                        : -qsearch<NonPV, false>(pos, ss+1, -(alpha+1), -alpha)
                                        : - search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth, !cutNode, false);
 
-      // For PV nodes only, do a full PV search on the first move or after a fail
+      // For PV nodes only,  do a full PV search on the first move or after a fail
       // high, otherwise let the parent node fail low with value <= alpha and try another move.
       if (PvNode && (moveCount == 1 || value > alpha))
       {
