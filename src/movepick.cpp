@@ -182,6 +182,11 @@ Move MovePicker::next_move(bool skipQuiets) {
               if (pos.see_ge(move))
                   return move;
 
+              if (   type_of(pos.piece_on(to_sq(move))) == KNIGHT
+                  && type_of(pos.moved_piece(move)) == BISHOP
+                  && (cur-1)->value > 1090)
+                  return move;
+
               // Losing capture, move it to the beginning of the array
               *endBadCaptures++ = move;
           }
