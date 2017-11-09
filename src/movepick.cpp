@@ -179,12 +179,7 @@ Move MovePicker::next_move(bool skipQuiets) {
           move = pick_best(cur++, endMoves);
           if (move != ttMove)
           {
-              if (pos.see_ge(move))
-                  return move;
-
-              if (   type_of(pos.piece_on(to_sq(move))) == KNIGHT
-                  && type_of(pos.moved_piece(move)) == BISHOP
-                  && (cur-1)->value > 1090)
+              if (pos.see_ge(move, (cur-1)->value > 1090 ? KnightValueMg - BishopValueMg  : VALUE_ZERO))
                   return move;
 
               // Losing capture, move it to the beginning of the array
