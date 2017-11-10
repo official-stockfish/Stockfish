@@ -22,6 +22,7 @@
 #define MOVEPICK_H_INCLUDED
 
 #include <array>
+#include <limits>
 
 #include "movegen.h"
 #include "position.h"
@@ -39,11 +40,31 @@ struct StatBoards : public std::array<std::array<T, Size2>, Size1> {
   void update(T& entry, int bonus, const int D) {
 
     assert(abs(bonus) <= D); // Ensure range is [-32 * D, 32 * D]
-    assert(abs(32 * D) < INT16_MAX); // Ensure we don't overflow
+    assert(abs(32 * D) < (std::numeric_limits<T>::max)()); // Ensure we don't overflow
 
     entry += bonus * 32 - entry * abs(bonus) / D;
 
     assert(abs(entry) <= 32 * D);
+  }
+};
+
+/// StatCubes is a generic 3-dimensional array used to store various statistics
+template<int Size1, int Size2, int Size3, typename T = int16_t>
+struct StatCubes : public std::array<std::array<std::array<T, Size3>, Size2>, Size1> {
+
+  void fill(const T& v) {
+    T* p = &(*this)[0][0][0];
+    std::fill(p, p + sizeof(*this) / sizeof(*p), v);
+  }
+
+  void update(T& entry, int bonus, const int D, const int W) {
+
+    assert(abs(bonus) <= D); // Ensure range is [-W * D, W * D]
+    assert(abs(W * D) < (std::numeric_limits<T>::max)()); // Ensure we don't overflow
+
+    entry += bonus * W - entry * abs(bonus) / D;
+
+    assert(abs(entry) <= W * D);
   }
 };
 
@@ -53,6 +74,9 @@ typedef StatBoards<COLOR_NB, int(SQUARE_NB) * int(SQUARE_NB)> ButterflyBoards;
 
 /// PieceToBoards are addressed by a move's [piece][to] information
 typedef StatBoards<PIECE_NB, SQUARE_NB> PieceToBoards;
+
+/// CapturePieceToBoards are addressed by a move's [piece][to][captured piece type] information
+typedef StatCubes<PIECE_NB, SQUARE_NB, PIECE_TYPE_NB> CapturePieceToBoards;
 
 /// ButterflyHistory records how often quiet moves have been successful or
 /// unsuccessful during the current search, and is used for reduction and move
@@ -69,6 +93,14 @@ struct PieceToHistory : public PieceToBoards {
 
   void update(Piece pc, Square to, int bonus) {
     StatBoards::update((*this)[pc][to], bonus, 936);
+  }
+};
+
+/// CapturePieceToHistory is like PieceToHistory, but is based on CapturePieceToBoards
+struct CapturePieceToHistory : public CapturePieceToBoards {
+
+  void update(Piece pc, Square to, PieceType captured, int bonus) {
+    StatCubes::update((*this)[pc][to][captured], bonus, 324, 2);
   }
 };
 
@@ -93,9 +125,9 @@ class MovePicker {
 public:
   MovePicker(const MovePicker&) = delete;
   MovePicker& operator=(const MovePicker&) = delete;
-  MovePicker(const Position&, Move, Value);
-  MovePicker(const Position&, Move, Depth, const ButterflyHistory*, Square);
-  MovePicker(const Position&, Move, Depth, const ButterflyHistory*, const PieceToHistory**, Move, Move*);
+  MovePicker(const Position&, Move, Value, const CapturePieceToHistory*);
+  MovePicker(const Position&, Move, Depth, const ButterflyHistory*,  const CapturePieceToHistory*, Square);
+  MovePicker(const Position&, Move, Depth, const ButterflyHistory*, const CapturePieceToHistory*, const PieceToHistory**, Move, Move*);
   Move next_move(bool skipQuiets = false);
 
 private:
@@ -105,6 +137,7 @@ private:
 
   const Position& pos;
   const ButterflyHistory* mainHistory;
+  const CapturePieceToHistory* captureHistory;
   const PieceToHistory** contHistory;
   Move ttMove, countermove, killers[2];
   ExtMove *cur, *endMoves, *endBadCaptures;

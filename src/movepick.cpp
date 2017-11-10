@@ -68,8 +68,8 @@ namespace {
 
 /// MovePicker constructor for the main search
 MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const ButterflyHistory* mh,
-                       const PieceToHistory** ch, Move cm, Move* killers_p)
-           : pos(p), mainHistory(mh), contHistory(ch), countermove(cm),
+                       const CapturePieceToHistory* cph, const PieceToHistory** ch, Move cm, Move* killers_p)
+           : pos(p), mainHistory(mh), captureHistory(cph), contHistory(ch), countermove(cm),
              killers{killers_p[0], killers_p[1]}, depth(d){
 
   assert(d > DEPTH_ZERO);
@@ -80,8 +80,8 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const ButterflyHist
 }
 
 /// MovePicker constructor for quiescence search
-MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const ButterflyHistory* mh, Square s)
-           : pos(p), mainHistory(mh) {
+MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const ButterflyHistory* mh,  const CapturePieceToHistory* cph, Square s)
+           : pos(p), mainHistory(mh), captureHistory(cph) {
 
   assert(d <= DEPTH_ZERO);
 
@@ -107,8 +107,8 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const ButterflyHist
 
 /// MovePicker constructor for ProbCut: we generate captures with SEE higher
 /// than or equal to the given threshold.
-MovePicker::MovePicker(const Position& p, Move ttm, Value th)
-           : pos(p), threshold(th) {
+MovePicker::MovePicker(const Position& p, Move ttm, Value th, const CapturePieceToHistory* cph)
+           : pos(p), captureHistory(cph), threshold(th) {
 
   assert(!pos.checkers());
 
@@ -132,7 +132,7 @@ void MovePicker::score() {
   for (auto& m : *this)
       if (Type == CAPTURES)
           m.value =  PieceValue[MG][pos.piece_on(to_sq(m))]
-                   - Value(200 * relative_rank(pos.side_to_move(), to_sq(m)));
+                   + Value((*captureHistory)[pos.moved_piece(m)][to_sq(m)][type_of(pos.piece_on(to_sq(m)))]);
 
       else if (Type == QUIETS)
           m.value =  (*mainHistory)[pos.side_to_move()][from_to(m)]
@@ -180,6 +180,11 @@ Move MovePicker::next_move(bool skipQuiets) {
           if (move != ttMove)
           {
               if (pos.see_ge(move))
+                  return move;
+
+              if (   type_of(pos.piece_on(to_sq(move))) == KNIGHT
+                  && type_of(pos.moved_piece(move)) == BISHOP
+                  && (cur-1)->value > 1090)
                   return move;
 
               // Losing capture, move it to the beginning of the array
