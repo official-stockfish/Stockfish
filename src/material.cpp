@@ -53,11 +53,6 @@ namespace {
     { 101,  100, -37,   141,  268,    0 }  // Queen
   };
 
-  // PawnSet[pawn count] contains a bonus/malus indexed by number of pawns
-  const int PawnSet[] = {
-    24, -32, 107, -51, 117, -9, -126, -21, 31
-  };
-
   // QueenMinorsImbalance[opp_minor_count] is applied when only one side has a queen.
   // It contains a bonus/malus for the side with the queen.
   const int QueenMinorsImbalance[13] = {
@@ -100,9 +95,9 @@ namespace {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
 
-    int bonus = PawnSet[pieceCount[Us][PAWN]];
+    int bonus = 0;
 
-    // Second-degree polynomial material imbalance by Tord Romstad
+    // Second-degree polynomial material imbalance, by Tord Romstad
     for (int pt1 = NO_PIECE_TYPE; pt1 <= QUEEN; ++pt1)
     {
         if (!pieceCount[Us][pt1])
