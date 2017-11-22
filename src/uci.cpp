@@ -179,7 +179,6 @@ namespace {
 
 } // namespace
 
-
 /// UCI::loop() waits for a command from stdin, parses it and calls the appropriate
 /// function. Also intercepts EOF from stdin to ensure gracefully exiting if the
 /// GUI dies unexpectedly. When called with some command line arguments, e.g. to
@@ -314,3 +313,68 @@ Move UCI::to_move(const Position& pos, string& str) {
 
   return MOVE_NONE;
 }
+
+// MARK: macOS test
+
+void exec(const char* cmd) {
+    std::istringstream input(cmd);
+    std::cin.rdbuf(input.rdbuf());
+}
+
+std::string ucistring = "empty";
+
+void UCI::performMove(const string& move) {
+    static std::string uciString = "startpos moves";
+    sync_cout << "bestmove " << move << sync_endl;
+    uciString += (" " + move);
+    sync_cout << "ucistring " << uciString << sync_endl;
+    ucistring = uciString;
+}
+
+// A function for testing infinite moves automatically.
+
+// The workflow goes as follows:
+// 0. send command "go movetime 1000" --> (wait for the best move) -->
+// 1a. best move received, send commands "startpos moves ???"
+// 1b. then send commands "go movetime 1000" --> (wait for the best move) -->
+// ...
+// repeat 1a. and 1b.
+// ...
+// until the game is over or the programme crashes.
+void UCI::infiniteMove() {
+    
+    Position pos;
+    StateListPtr states(new std::deque<StateInfo>(1));
+    auto uiThread = std::make_shared<Thread>(0);
+    
+    pos.set(StartFEN, false, &states->back(), uiThread.get());
+    
+    bool executedMoveTime = false;
+    string lastUciString;
+    
+    do {
+        // using "do-while" clause to yeild the `main()` to return.
+        if (ucistring != "empty") {
+            if (ucistring == lastUciString) {
+                continue;
+            } else {
+                lastUciString = ucistring;
+                executedMoveTime = false;
+                istringstream is(ucistring);
+                position(pos, is, states);
+            }
+        } else {
+            if (executedMoveTime) {
+                continue;
+            } else {
+                executedMoveTime = true;
+                // wait the engine 1 second to calculate the best move,
+                // you may customize the amount here
+                istringstream is("movetime 1000");
+                go(pos, is, states);
+            }
+        }
+        ucistring = "empty";
+    } while (true);
+}
+
