@@ -48,8 +48,15 @@ int main(int argc, char* argv[]) {
   Threads.init(Options["Threads"]);
   Search::clear(); // After threads are up
 
-  UCI::loop(argc, argv);
+  // MARK: macOS test
+  //UCI::loop(argc, argv);
+  UCI::infiniteMove();
 
   Threads.exit();
   return 0;
 }
+
+
+
+
+
