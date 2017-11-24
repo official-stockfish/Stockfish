@@ -86,9 +86,9 @@ public:
   Bitboard pieces() const;
   Bitboard pieces(PieceType pt) const;
   Bitboard pieces(PieceType pt1, PieceType pt2) const;
-  Bitboard pieces(Color c) const;
-  Bitboard pieces(Color c, PieceType pt) const;
-  Bitboard pieces(Color c, PieceType pt1, PieceType pt2) const;
+  Bitboard pieces(bColor c) const;
+  Bitboard pieces(bColor c, PieceType pt) const;
+  Bitboard pieces(bColor c, PieceType pt1, PieceType pt2) const;
   Piece piece_on(Square s) const;
   Square ep_square() const;
   bool empty(Square s) const;
@@ -222,15 +222,15 @@ inline Bitboard Position::pieces(PieceType pt1, PieceType pt2) const {
   return byTypeBB[pt1] | byTypeBB[pt2];
 }
 
-inline Bitboard Position::pieces(Color c) const {
+inline Bitboard Position::pieces(bColor c) const {
   return byColorBB[c];
 }
 
-inline Bitboard Position::pieces(Color c, PieceType pt) const {
+inline Bitboard Position::pieces(bColor c, PieceType pt) const {
   return byColorBB[c] & byTypeBB[pt];
 }
 
-inline Bitboard Position::pieces(Color c, PieceType pt1, PieceType pt2) const {
+inline Bitboard Position::pieces(bColor c, PieceType pt1, PieceType pt2) const {
   return byColorBB[c] & (byTypeBB[pt1] | byTypeBB[pt2]);
 }
 
