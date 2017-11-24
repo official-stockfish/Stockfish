@@ -443,7 +443,7 @@ void Thread::search() {
                                 bestValue - mainThread->previousScore };
               int improvingFactor = std::max(229, std::min(715, 357 + 119 * F[0] - 6 * F[1]));
 
-              bColor us = (Color)rootPos.side_to_move();
+              bColor us = rootPos.side_to_move();
               bool thinkHard =    DrawValue[us] == bestValue
                                && Limits.time[us] - Time.elapsed() > Limits.time[!us]
                                && ::pv_is_draw(rootPos);
@@ -1398,7 +1398,7 @@ moves_loop: // When in check search starts from here
         ss->killers[0] = move;
     }
 
-    bColor c = (Color)pos.side_to_move();
+    bColor c = pos.side_to_move();
     Thread* thisThread = pos.this_thread();
     thisThread->mainHistory.update((Color)c, move, bonus);
     update_continuation_histories(ss, pos.moved_piece(move), to_sq(move), bonus);

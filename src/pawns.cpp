@@ -91,10 +91,10 @@ namespace {
   #undef S
   #undef V
 
-  template<Color Us>
+  template<bColor Us>
   Score evaluate(const Position& pos, Pawns::Entry* e) {
 
-    const Color  Them  = (Us == WHITE ? BLACK      : WHITE);
+    const bColor Them  = (Us == WHITE ? BLACK      : WHITE);
     const Square Up    = (Us == WHITE ? NORTH      : SOUTH);
     const Square Right = (Us == WHITE ? NORTH_EAST : SOUTH_WEST);
     const Square Left  = (Us == WHITE ? NORTH_WEST : SOUTH_EAST);
@@ -241,10 +241,10 @@ Entry* probe(const Position& pos) {
 /// Entry::shelter_storm() calculates shelter and storm penalties for the file
 /// the king is on, as well as the two closest files.
 
-template<Color Us>
+template<bColor Us>
 Value Entry::shelter_storm(const Position& pos, Square ksq) {
 
-  const Color Them = (Us == WHITE ? BLACK : WHITE);
+  const bColor Them = (Us == WHITE ? BLACK : WHITE);
 
   enum { BlockedByKing, Unopposed, BlockedByPawn, Unblocked };
 
@@ -278,7 +278,7 @@ Value Entry::shelter_storm(const Position& pos, Square ksq) {
 /// Entry::do_king_safety() calculates a bonus for king safety. It is called only
 /// when king square changes, which is about 20% of total king_safety() calls.
 
-template<Color Us>
+template<bColor Us>
 Score Entry::do_king_safety(const Position& pos, Square ksq) {
 
   kingSquares[Us] = ksq;

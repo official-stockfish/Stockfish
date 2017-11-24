@@ -84,7 +84,7 @@ namespace {
 ///  inc >  0 && movestogo == 0 means: x basetime + z increment
 ///  inc >  0 && movestogo != 0 means: x moves in y minutes + z increment
 
-void TimeManagement::init(Search::LimitsType& limits, Color us, int ply)
+void TimeManagement::init(Search::LimitsType& limits, bColor us, int ply)
 {
   int moveOverhead = Options["Move Overhead"];
   int npmsec       = Options["nodestime"];

@@ -52,7 +52,7 @@ namespace {
 
     double to_cp(Value v) { return double(v) / PawnValueEg; }
 
-    void add(int idx, Color c, Score s) {
+    void add(int idx, bColor c, Score s) {
       scores[idx][c][MG] = to_cp(mg_value(s));
       scores[idx][c][EG] = to_cp(eg_value(s));
     }
@@ -94,12 +94,12 @@ namespace {
 
   private:
     // Evaluation helpers (used when calling value())
-    template<Color Us> void initialize();
-    template<Color Us> Score evaluate_king();
-    template<Color Us> Score evaluate_threats();
-    template<Color Us> Score evaluate_passed_pawns();
-    template<Color Us> Score evaluate_space();
-    template<Color Us, PieceType Pt> Score evaluate_pieces();
+    template<bColor Us> void initialize();
+    template<bColor Us> Score evaluate_king();
+    template<bColor Us> Score evaluate_threats();
+    template<bColor Us> Score evaluate_passed_pawns();
+    template<bColor Us> Score evaluate_space();
+    template<bColor Us, PieceType Pt> Score evaluate_pieces();
     ScaleFactor evaluate_scale_factor(Value eg);
     Score evaluate_initiative(Value eg);
 
@@ -249,10 +249,10 @@ namespace {
   // initialize() computes king and pawn attacks, and the king ring bitboard
   // for a given color. This is done at the beginning of the evaluation.
 
-  template<Tracing T> template<Color Us>
+  template<Tracing T> template<bColor Us>
   void Evaluation<T>::initialize() {
 
-    const Color  Them = (Us == WHITE ? BLACK : WHITE);
+    const bColor Them = (Us == WHITE ? BLACK : WHITE);
     const Square Up   = (Us == WHITE ? NORTH : SOUTH);
     const Square Down = (Us == WHITE ? SOUTH : NORTH);
     const Bitboard LowRanks = (Us == WHITE ? Rank2BB | Rank3BB: Rank7BB | Rank6BB);
@@ -289,7 +289,7 @@ namespace {
   // evaluate_pieces() assigns bonuses and penalties to the pieces of a given
   // color and type.
 
-  template<Tracing T>  template<Color Us, PieceType Pt>
+  template<Tracing T>  template<bColor Us, PieceType Pt>
   Score Evaluation<T>::evaluate_pieces() {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
@@ -412,10 +412,10 @@ namespace {
 
   // evaluate_king() assigns bonuses and penalties to a king of a given color
 
-  template<Tracing T>  template<Color Us>
+  template<Tracing T>  template<bColor Us>
   Score Evaluation<T>::evaluate_king() {
 
-    const Color Them    = (Us == WHITE ? BLACK : WHITE);
+    const bColor Them   = (Us == WHITE ? BLACK : WHITE);
     const Square Up     = (Us == WHITE ? NORTH : SOUTH);
     const Bitboard Camp = (Us == WHITE ? AllSquares ^ Rank6BB ^ Rank7BB ^ Rank8BB
                                        : AllSquares ^ Rank1BB ^ Rank2BB ^ Rank3BB);
@@ -520,10 +520,10 @@ namespace {
   // evaluate_threats() assigns bonuses according to the types of the attacking
   // and the attacked pieces.
 
-  template<Tracing T>  template<Color Us>
+  template<Tracing T>  template<bColor Us>
   Score Evaluation<T>::evaluate_threats() {
 
-    const Color Them        = (Us == WHITE ? BLACK      : WHITE);
+    const bColor Them       = (Us == WHITE ? BLACK      : WHITE);
     const Square Up         = (Us == WHITE ? NORTH      : SOUTH);
     const Square Left       = (Us == WHITE ? NORTH_WEST : SOUTH_EAST);
     const Square Right      = (Us == WHITE ? NORTH_EAST : SOUTH_WEST);
@@ -619,11 +619,11 @@ namespace {
   // evaluate_passed_pawns() evaluates the passed pawns and candidate passed
   // pawns of the given color.
 
-  template<Tracing T>  template<Color Us>
+  template<Tracing T>  template<bColor Us>
   Score Evaluation<T>::evaluate_passed_pawns() {
 
-    const Color Them = (Us == WHITE ? BLACK : WHITE);
-    const Square Up  = (Us == WHITE ? NORTH : SOUTH);
+    const bColor Them = (Us == WHITE ? BLACK : WHITE);
+    const Square Up   = (Us == WHITE ? NORTH : SOUTH);
 
     Bitboard b, bb, squaresToQueen, defendedSquares, unsafeSquares;
     Score score = SCORE_ZERO;
@@ -712,10 +712,10 @@ namespace {
   // twice. Finally, the space bonus is multiplied by a weight. The aim is to
   // improve play on game opening.
 
-  template<Tracing T>  template<Color Us>
+  template<Tracing T>  template<bColor Us>
   Score Evaluation<T>::evaluate_space() {
 
-    const Color Them = (Us == WHITE ? BLACK : WHITE);
+    const bColor Them = (Us == WHITE ? BLACK : WHITE);
     const Bitboard SpaceMask =
       Us == WHITE ? CenterFiles & (Rank2BB | Rank3BB | Rank4BB)
                   : CenterFiles & (Rank7BB | Rank6BB | Rank5BB);
@@ -775,7 +775,7 @@ namespace {
   template<Tracing T>
   ScaleFactor Evaluation<T>::evaluate_scale_factor(Value eg) {
 
-    Color strongSide = eg > VALUE_DRAW ? WHITE : BLACK;
+    bColor strongSide = eg > VALUE_DRAW ? WHITE : BLACK;
     ScaleFactor sf = me->scale_factor(pos, strongSide);
 
     // If we don't already have an unusual scale factor, check for certain
