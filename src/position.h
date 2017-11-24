@@ -106,7 +106,7 @@ public:
   // Checking
   Bitboard checkers() const;
   Bitboard discovered_check_candidates() const;
-  Bitboard pinned_pieces(Color c) const;
+  Bitboard pinned_pieces(bColor c) const;
   Bitboard check_squares(PieceType pt) const;
 
   // Attacks to/from a given square
@@ -114,7 +114,7 @@ public:
   Bitboard attackers_to(Square s, Bitboard occupied) const;
   Bitboard attacks_from(PieceType pt, Square s) const;
   template<PieceType> Bitboard attacks_from(Square s) const;
-  template<PieceType> Bitboard attacks_from(Square s, Color c) const;
+  template<PieceType> Bitboard attacks_from(Square s, bColor c) const;
   Bitboard slider_blockers(Bitboard sliders, Square s, Bitboard& pinners) const;
 
   // Properties of moves
@@ -280,7 +280,7 @@ inline Bitboard Position::attacks_from(Square s) const {
 }
 
 template<>
-inline Bitboard Position::attacks_from<PAWN>(Square s, Color c) const {
+inline Bitboard Position::attacks_from<PAWN>(Square s, bColor c) const {
   return PawnAttacks[c][s];
 }
 
@@ -300,7 +300,7 @@ inline Bitboard Position::discovered_check_candidates() const {
   return st->blockersForKing[~sideToMove] & pieces(sideToMove);
 }
 
-inline Bitboard Position::pinned_pieces(Color c) const {
+inline Bitboard Position::pinned_pieces(bColor c) const {
   return st->blockersForKing[c] & pieces(c);
 }
 
