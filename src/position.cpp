@@ -236,7 +236,7 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
   while ((ss >> token) && !isspace(token))
   {
       Square rsq;
-      Color c = islower(token) ? BLACK : WHITE;
+      bColor c = islower(token) ? BLACK : WHITE;
       Piece rook = make_piece(c, ROOK);
 
       token = char(toupper(token));
@@ -291,7 +291,7 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
 
 void Position::set_castling_right(bColor c, Square rfrom) {
 
-  Square kfrom = square<KING>((Color)c);
+  Square kfrom = square<KING>(c);
   CastlingSide cs = kfrom < rfrom ? KING_SIDE : QUEEN_SIDE;
   CastlingRight cr = (c | cs);
 
@@ -474,7 +474,7 @@ Bitboard Position::slider_blockers(Bitboard sliders, Square s, Bitboard& pinners
     if (!more_than_one(b))
     {
         result |= b;
-        if (b & pieces((Color)color_of(piece_on(s))))
+        if (b & pieces(color_of(piece_on(s))))
             pinners |= sniperSq;
     }
   }
@@ -502,7 +502,7 @@ bool Position::legal(Move m) const {
 
   assert(is_ok(m));
 
-  Color us = (Color)sideToMove;
+  bColor us = sideToMove;
   Square from = from_sq(m);
 
   assert(color_of(moved_piece(m)) == us);
@@ -523,15 +523,15 @@ bool Position::legal(Move m) const {
       assert(piece_on(capsq) == make_piece(~us, PAWN));
       assert(piece_on(to) == NO_PIECE);
 
-      return   !(attacks_bb<  ROOK>(ksq, occupied) & pieces(~us, QUEEN, ROOK))
-            && !(attacks_bb<BISHOP>(ksq, occupied) & pieces(~us, QUEEN, BISHOP));
+      return   !(attacks_bb<  ROOK>(ksq, occupied) & pieces(!us, QUEEN, ROOK))
+            && !(attacks_bb<BISHOP>(ksq, occupied) & pieces(!us, QUEEN, BISHOP));
   }
 
   // If the moving piece is a king, check whether the destination
   // square is attacked by the opponent. Castling moves are checked
   // for legality during move generation.
   if (type_of(piece_on(from)) == KING)
-      return type_of(m) == CASTLING || !(attackers_to(to_sq(m)) & pieces(~us));
+      return type_of(m) == CASTLING || !(attackers_to(to_sq(m)) & pieces(!us));
 
   // A non-king move is legal if and only if it is not pinned or it
   // is moving along the ray towards or away from the king.
@@ -546,7 +546,7 @@ bool Position::legal(Move m) const {
 
 bool Position::pseudo_legal(const Move m) const {
 
-  Color us = (Color)sideToMove;
+  bColor us = sideToMove;
   Square from = from_sq(m);
   Square to = to_sq(m);
   Piece pc = moved_piece(m);
@@ -604,7 +604,7 @@ bool Position::pseudo_legal(const Move m) const {
       }
       // In case of king moves under check we have to remove king so as to catch
       // invalid moves like b1a1 when opposite queen is on c1.
-      else if (attackers_to(to, pieces() ^ from) & pieces(~us))
+      else if (attackers_to(to, pieces() ^ from) & pieces(!us))
           return false;
   }
 
@@ -693,8 +693,8 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   ++st->rule50;
   ++st->pliesFromNull;
 
-  Color us = (Color)sideToMove;
-  Color them = ~us;
+  bColor us = sideToMove;
+  bColor them = !us;
   Square from = from_sq(m);
   Square to = to_sq(m);
   Piece pc = piece_on(from);
@@ -852,7 +852,7 @@ void Position::undo_move(Move m) {
 
   sideToMove = !sideToMove;
 
-  Color us = (Color)sideToMove;
+  bColor us = sideToMove;
   Square from = from_sq(m);
   Square to = to_sq(m);
   Piece pc = piece_on(to);
@@ -1189,7 +1189,7 @@ bool Position::pos_is_ok() const {
 
   for (Piece pc : Pieces)
   {
-      if (   pieceCount[pc] != popcount(pieces((Color)color_of(pc), type_of(pc)))
+      if (   pieceCount[pc] != popcount(pieces(color_of(pc), type_of(pc)))
           || pieceCount[pc] != std::count(board, board + SQUARE_NB, pc))
           assert(0 && "pos_is_ok: Pieces");
 
@@ -1207,7 +1207,7 @@ bool Position::pos_is_ok() const {
 
           if (   piece_on(castlingRookSquare[(bColor)c | s]) != make_piece(c, ROOK)
               || castlingRightsMask[castlingRookSquare[(bColor)c | s]] != ((bColor)c | s)
-              || (castlingRightsMask[square<KING>((Color)c)] & ((bColor)c | s)) != ((bColor)c | s))
+              || (castlingRightsMask[square<KING>(c)] & ((bColor)c | s)) != ((bColor)c | s))
               assert(0 && "pos_is_ok: Castling");
       }
 
