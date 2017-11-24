@@ -94,7 +94,8 @@ namespace {
   template<bColor Us>
   Score evaluate(const Position& pos, Pawns::Entry* e) {
 
-    const bColor Them  = (Us == WHITE ? BLACK      : WHITE);
+    //const bColor Them  = (Us == WHITE ? BLACK      : WHITE);
+    const bColor Them = !Us;
     const Square Up    = (Us == WHITE ? NORTH      : SOUTH);
     const Square Right = (Us == WHITE ? NORTH_EAST : SOUTH_WEST);
     const Square Left  = (Us == WHITE ? NORTH_WEST : SOUTH_EAST);
@@ -244,7 +245,8 @@ Entry* probe(const Position& pos) {
 template<bColor Us>
 Value Entry::shelter_storm(const Position& pos, Square ksq) {
 
-  const bColor Them = (Us == WHITE ? BLACK : WHITE);
+  //const bColor Them = (Us == WHITE ? BLACK : WHITE);
+  const bColor Them = !Us;
 
   enum { BlockedByKing, Unopposed, BlockedByPawn, Unblocked };
 

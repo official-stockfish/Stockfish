@@ -252,7 +252,8 @@ namespace {
   template<Tracing T> template<bColor Us>
   void Evaluation<T>::initialize() {
 
-    const bColor Them = (Us == WHITE ? BLACK : WHITE);
+    //const bColor Them = (Us == WHITE ? BLACK : WHITE);
+    const bColor Them = !Us;
     const Square Up   = (Us == WHITE ? NORTH : SOUTH);
     const Square Down = (Us == WHITE ? SOUTH : NORTH);
     const Bitboard LowRanks = (Us == WHITE ? Rank2BB | Rank3BB: Rank7BB | Rank6BB);
@@ -292,7 +293,8 @@ namespace {
   template<Tracing T>  template<bColor Us, PieceType Pt>
   Score Evaluation<T>::evaluate_pieces() {
 
-    const bColor Them = (Us == WHITE ? BLACK : WHITE);
+    //const bColor Them = (Us == WHITE ? BLACK : WHITE);
+    const bColor Them = !Us;
     const Bitboard OutpostRanks = (Us == WHITE ? Rank4BB | Rank5BB | Rank6BB
                                                : Rank5BB | Rank4BB | Rank3BB);
     const Square* pl = pos.squares<Pt>(Us);
@@ -415,7 +417,8 @@ namespace {
   template<Tracing T>  template<bColor Us>
   Score Evaluation<T>::evaluate_king() {
 
-    const bColor Them   = (Us == WHITE ? BLACK : WHITE);
+    //const bColor Them   = (Us == WHITE ? BLACK : WHITE);
+    const bColor Them = !Us;
     const Square Up     = (Us == WHITE ? NORTH : SOUTH);
     const Bitboard Camp = (Us == WHITE ? AllSquares ^ Rank6BB ^ Rank7BB ^ Rank8BB
                                        : AllSquares ^ Rank1BB ^ Rank2BB ^ Rank3BB);
@@ -523,7 +526,8 @@ namespace {
   template<Tracing T>  template<bColor Us>
   Score Evaluation<T>::evaluate_threats() {
 
-    const bColor Them       = (Us == WHITE ? BLACK      : WHITE);
+    //const bColor Them       = (Us == WHITE ? BLACK      : WHITE);
+    const bColor Them = !Us;
     const Square Up         = (Us == WHITE ? NORTH      : SOUTH);
     const Square Left       = (Us == WHITE ? NORTH_WEST : SOUTH_EAST);
     const Square Right      = (Us == WHITE ? NORTH_EAST : SOUTH_WEST);
@@ -622,7 +626,8 @@ namespace {
   template<Tracing T>  template<bColor Us>
   Score Evaluation<T>::evaluate_passed_pawns() {
 
-    const bColor Them = (Us == WHITE ? BLACK : WHITE);
+    //const bColor Them = (Us == WHITE ? BLACK : WHITE);
+    const bColor Them = !Us;
     const Square Up   = (Us == WHITE ? NORTH : SOUTH);
 
     Bitboard b, bb, squaresToQueen, defendedSquares, unsafeSquares;
@@ -715,7 +720,8 @@ namespace {
   template<Tracing T>  template<bColor Us>
   Score Evaluation<T>::evaluate_space() {
 
-    const bColor Them = (Us == WHITE ? BLACK : WHITE);
+    //const bColor Them = (Us == WHITE ? BLACK : WHITE);
+    const bColor Them = !Us;
     const Bitboard SpaceMask =
       Us == WHITE ? CenterFiles & (Rank2BB | Rank3BB | Rank4BB)
                   : CenterFiles & (Rank7BB | Rank6BB | Rank5BB);

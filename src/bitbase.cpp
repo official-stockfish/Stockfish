@@ -152,7 +152,8 @@ namespace {
     // as WIN, the position is classified as WIN, otherwise the current position is
     // classified as UNKNOWN.
 
-    const bColor  Them = (Us == WHITE ? BLACK : WHITE);
+    //const bColor  Them = (Us == WHITE ? BLACK : WHITE);
+    const bColor Them = !Us;
     const Result Good = (Us == WHITE ? WIN   : DRAW);
     const Result Bad  = (Us == WHITE ? DRAW  : WIN);
 
