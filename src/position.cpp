@@ -520,7 +520,7 @@ bool Position::legal(Move m) const {
 
       assert(to == ep_square());
       assert(moved_piece(m) == make_piece(us, PAWN));
-      assert(piece_on(capsq) == make_piece(!us, PAWN));
+      assert(piece_on(capsq) == make_piece(~us, PAWN));
       assert(piece_on(to) == NO_PIECE);
 
       return   !(attacks_bb<  ROOK>(ksq, occupied) & pieces(!us, QUEEN, ROOK))
@@ -576,7 +576,7 @@ bool Position::pseudo_legal(const Move m) const {
       if (rank_of(to) == relative_rank(us, RANK_8))
           return false;
 
-      if (   !(attacks_from<PAWN>(from, us) & pieces(!us) & to) // Not a capture
+      if (   !(attacks_from<PAWN>(from, us) & pieces(~us) & to) // Not a capture
           && !((from + pawn_push(us) == to) && empty(to))       // Not a single push
           && !(   (from + 2 * pawn_push(us) == to)              // Not a double push
                && (rank_of(from) == relative_rank(us, RANK_2))
@@ -892,7 +892,7 @@ void Position::undo_move(Move m) {
               assert(to == st->previous->epSquare);
               assert(relative_rank(us, to) == RANK_6);
               assert(piece_on(capsq) == NO_PIECE);
-              assert(st->capturedPiece == make_piece(!us, PAWN));
+              assert(st->capturedPiece == make_piece(~us, PAWN));
           }
 
           put_piece(st->capturedPiece, capsq); // Restore the captured piece
@@ -999,7 +999,6 @@ bool Position::see_ge(Move m, Value threshold) const {
 
   Square from = from_sq(m), to = to_sq(m);
   PieceType nextVictim = type_of(piece_on(from));
-  //Color stm = ~((Color)color_of(piece_on(from))); // First consider opponent's move
   bColor stm = !(color_of(piece_on(from))); // First consider opponent's move
   Value balance; // Values of the pieces taken by us minus opponent's ones
   Bitboard occupied, stmAttackers;
@@ -1198,16 +1197,15 @@ bool Position::pos_is_ok() const {
               assert(0 && "pos_is_ok: Index");
   }
 
-  //for (Color c = WHITE; c <= BLACK; ++c)
-  for (int c = WHITE; c <= BLACK; ++c)
+  for (bool c: { WHITE, BLACK})
       for (CastlingSide s = KING_SIDE; s <= QUEEN_SIDE; s = CastlingSide(s + 1))
       {
-          if (!can_castle((bColor)c | s))
+          if (!can_castle(c | s))
               continue;
 
-          if (   piece_on(castlingRookSquare[(bColor)c | s]) != make_piece(c, ROOK)
-              || castlingRightsMask[castlingRookSquare[(bColor)c | s]] != ((bColor)c | s)
-              || (castlingRightsMask[square<KING>(c)] & ((bColor)c | s)) != ((bColor)c | s))
+          if (   piece_on(castlingRookSquare[c | s]) != make_piece(c, ROOK)
+              || castlingRightsMask[castlingRookSquare[c | s]] != (c | s)
+              || (castlingRightsMask[square<KING>(c)] & (c | s)) != (c | s))
               assert(0 && "pos_is_ok: Castling");
       }
 

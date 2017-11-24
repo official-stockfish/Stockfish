@@ -127,10 +127,6 @@ enum MoveType {
   CASTLING  = 3 << 14
 };
 
-//enum Color {
-  //WHITE, BLACK, COLOR_NB = 2
-//};
-
 typedef bool bColor;
 const bool WHITE = false;
 const bool BLACK = true;
@@ -306,7 +302,6 @@ inline T& operator/=(T& d, int i) { return d = T(int(d) / i); }
 ENABLE_FULL_OPERATORS_ON(Value)
 ENABLE_FULL_OPERATORS_ON(PieceType)
 ENABLE_FULL_OPERATORS_ON(Piece)
-//ENABLE_FULL_OPERATORS_ON(Color)
 ENABLE_FULL_OPERATORS_ON(Depth)
 ENABLE_FULL_OPERATORS_ON(Square)
 ENABLE_FULL_OPERATORS_ON(File)

@@ -20,7 +20,6 @@
 
 #include <algorithm>
 #include <cassert>
-#include <iostream>
 
 #include "bitboard.h"
 #include "endgame.h"
@@ -327,8 +326,6 @@ template<> Value Endgame<KNNK>::operator()(const Position&) const { return VALUE
 template<>
 ScaleFactor Endgame<KBPsK>::operator()(const Position& pos) const {
  
-  ////std::cout << "<F20>";
-
   assert(pos.non_pawn_material(strongSide) == BishopValueMg);
   assert(pos.count<PAWN>(strongSide) >= 1);
 
@@ -351,7 +348,6 @@ ScaleFactor Endgame<KBPsK>::operator()(const Position& pos) const {
           return SCALE_FACTOR_DRAW;
   }
 
-  //std::cout << "<F20.1>";
   // If all the pawns are on the same B or G file, then it's potentially a draw
   if (    (pawnsFile == FILE_B || pawnsFile == FILE_G)
       && !(pos.pieces(PAWN) & ~file_bb(pawnsFile))
@@ -387,7 +383,6 @@ ScaleFactor Endgame<KBPsK>::operator()(const Position& pos) const {
       }
   }
 
-  //std::cout << "<F20.2>";
   return SCALE_FACTOR_NONE;
 }
 
@@ -396,8 +391,6 @@ ScaleFactor Endgame<KBPsK>::operator()(const Position& pos) const {
 /// the third rank defended by a pawn.
 template<>
 ScaleFactor Endgame<KQKRPs>::operator()(const Position& pos) const {
-
-  //std::cout << "<F2>";
 
   assert(verify_material(pos, strongSide, QueenValueMg, 0));
   assert(pos.count<ROOK>(weakSide) == 1);
@@ -427,7 +420,6 @@ ScaleFactor Endgame<KQKRPs>::operator()(const Position& pos) const {
 template<>
 ScaleFactor Endgame<KRPKR>::operator()(const Position& pos) const {
 
-  //std::cout << "<F3>";
   assert(verify_material(pos, strongSide, RookValueMg, 1));
   assert(verify_material(pos, weakSide,   RookValueMg, 0));
 
@@ -521,7 +513,6 @@ ScaleFactor Endgame<KRPKR>::operator()(const Position& pos) const {
 
 template<>
 ScaleFactor Endgame<KRPKB>::operator()(const Position& pos) const {
-  //std::cout << "<F4>";
 
   assert(verify_material(pos, strongSide, RookValueMg, 1));
   assert(verify_material(pos, weakSide, BishopValueMg, 0));
@@ -569,7 +560,6 @@ ScaleFactor Endgame<KRPKB>::operator()(const Position& pos) const {
 template<>
 ScaleFactor Endgame<KRPPKRP>::operator()(const Position& pos) const {
 
-  //std::cout << "<F5>";
   assert(verify_material(pos, strongSide, RookValueMg, 2));
   assert(verify_material(pos, weakSide,   RookValueMg, 1));
 
@@ -598,7 +588,6 @@ ScaleFactor Endgame<KRPPKRP>::operator()(const Position& pos) const {
 /// are on the same rook file and are blocked by the defending king, it's a draw.
 template<>
 ScaleFactor Endgame<KPsK>::operator()(const Position& pos) const {
-  //std::cout << "<F6>";
 
   assert(pos.non_pawn_material(strongSide) == VALUE_ZERO);
   assert(pos.count<PAWN>(strongSide) >= 2);
@@ -624,7 +613,6 @@ ScaleFactor Endgame<KPsK>::operator()(const Position& pos) const {
 /// it's almost always a draw.
 template<>
 ScaleFactor Endgame<KBPKB>::operator()(const Position& pos) const {
-  //std::cout << "<F7>";
 
   assert(verify_material(pos, strongSide, BishopValueMg, 1));
   assert(verify_material(pos, weakSide,   BishopValueMg, 0));
@@ -673,7 +661,6 @@ ScaleFactor Endgame<KBPKB>::operator()(const Position& pos) const {
 /// KBPP vs KB. It detects a few basic draws with opposite-colored bishops
 template<>
 ScaleFactor Endgame<KBPPKB>::operator()(const Position& pos) const {
-  //std::cout << "<F8>";
 
   assert(verify_material(pos, strongSide, BishopValueMg, 2));
   assert(verify_material(pos, weakSide,   BishopValueMg, 0));
@@ -745,7 +732,6 @@ ScaleFactor Endgame<KBPPKB>::operator()(const Position& pos) const {
 /// the stronger side's bishop, it's a draw.
 template<>
 ScaleFactor Endgame<KBPKN>::operator()(const Position& pos) const {
-  //std::cout << "<F9>";
 
   assert(verify_material(pos, strongSide, BishopValueMg, 1));
   assert(verify_material(pos, weakSide, KnightValueMg, 0));
@@ -769,7 +755,6 @@ ScaleFactor Endgame<KBPKN>::operator()(const Position& pos) const {
 template<>
 ScaleFactor Endgame<KNPK>::operator()(const Position& pos) const {
 
-  //std::cout << "<F10>";
   assert(verify_material(pos, strongSide, KnightValueMg, 1));
   assert(verify_material(pos, weakSide, VALUE_ZERO, 0));
 
@@ -788,7 +773,6 @@ ScaleFactor Endgame<KNPK>::operator()(const Position& pos) const {
 /// Otherwise the position is drawn.
 template<>
 ScaleFactor Endgame<KNPKB>::operator()(const Position& pos) const {
-  //std::cout << "<F11>";
 
   Square pawnSq = pos.square<PAWN>(strongSide);
   Square bishopSq = pos.square<BISHOP>(weakSide);
@@ -811,8 +795,6 @@ ScaleFactor Endgame<KNPKB>::operator()(const Position& pos) const {
 template<>
 ScaleFactor Endgame<KPKP>::operator()(const Position& pos) const {
 
-  //std::cout << "<F12>";
-
   assert(verify_material(pos, strongSide, VALUE_ZERO, 1));
   assert(verify_material(pos, weakSide,   VALUE_ZERO, 1));
 
@@ -830,6 +812,5 @@ ScaleFactor Endgame<KPKP>::operator()(const Position& pos) const {
 
   // Probe the KPK bitbase with the weakest side's pawn removed. If it's a draw,
   // it's probably at least a draw even with the pawn.
-  //std::cout << "<F12.5>";
   return Bitbases::probe(wksq, psq, bksq, us) ? SCALE_FACTOR_NONE : SCALE_FACTOR_DRAW;
 }

@@ -63,7 +63,7 @@ namespace {
     Result classify(const std::vector<KPKPosition>& db)
     { return us == WHITE ? classify<WHITE>(db) : classify<BLACK>(db); }
 
-    template<bColor Us> Result classify(const std::vector<KPKPosition>& db);
+    template<bColor us> Result classify(const std::vector<KPKPosition>& db);
 
     bColor us;
     Square ksq[COLOR_NB], psq;
@@ -139,7 +139,7 @@ namespace {
         result = UNKNOWN;
   }
 
-  template<bColor Us>
+  template<bColor us>
   Result KPKPosition::classify(const std::vector<KPKPosition>& db) {
 
     // White to move: If one move leads to a position classified as WIN, the result
@@ -152,27 +152,26 @@ namespace {
     // as WIN, the position is classified as WIN, otherwise the current position is
     // classified as UNKNOWN.
 
-    //const bColor  Them = (Us == WHITE ? BLACK : WHITE);
-    const bColor Them = !Us;
-    const Result Good = (Us == WHITE ? WIN   : DRAW);
-    const Result Bad  = (Us == WHITE ? DRAW  : WIN);
+    const bColor  them = !us;
+    const Result Good = (us == WHITE ? WIN   : DRAW);
+    const Result Bad  = (us == WHITE ? DRAW  : WIN);
 
     Result r = INVALID;
-    Bitboard b = PseudoAttacks[KING][ksq[Us]];
+    Bitboard b = PseudoAttacks[KING][ksq[us]];
 
     while (b)
-        r |= Us == WHITE ? db[index(Them, ksq[Them]  , pop_lsb(&b), psq)]
-                         : db[index(Them, pop_lsb(&b), ksq[Them]  , psq)];
+        r |= us == WHITE ? db[index(them, ksq[them]  , pop_lsb(&b), psq)]
+                         : db[index(them, pop_lsb(&b), ksq[them]  , psq)];
 
-    if (Us == WHITE)
+    if (us == WHITE)
     {
         if (rank_of(psq) < RANK_7)      // Single push
-            r |= db[index(Them, ksq[Them], ksq[Us], psq + NORTH)];
+            r |= db[index(them, ksq[them], ksq[us], psq + NORTH)];
 
         if (   rank_of(psq) == RANK_2   // Double push
-            && psq + NORTH != ksq[Us]
-            && psq + NORTH != ksq[Them])
-            r |= db[index(Them, ksq[Them], ksq[Us], psq + NORTH + NORTH)];
+            && psq + NORTH != ksq[us]
+            && psq + NORTH != ksq[them])
+            r |= db[index(them, ksq[them], ksq[us], psq + NORTH + NORTH)];
     }
 
     return result = r & Good  ? Good  : r & UNKNOWN ? UNKNOWN : Bad;
