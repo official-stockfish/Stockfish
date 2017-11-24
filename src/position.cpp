@@ -236,24 +236,24 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
   while ((ss >> token) && !isspace(token))
   {
       Square rsq;
-      Color c = islower(token) ? BLACK : WHITE;
-      Piece rook = make_piece(c, ROOK);
+      bColor c = islower(token) ? BLACK : WHITE;
+      Piece rook = make_piece((Color)c, ROOK);
 
       token = char(toupper(token));
 
       if (token == 'K')
-          for (rsq = relative_square(c, SQ_H1); piece_on(rsq) != rook; --rsq) {}
+          for (rsq = relative_square((Color)c, SQ_H1); piece_on(rsq) != rook; --rsq) {}
 
       else if (token == 'Q')
-          for (rsq = relative_square(c, SQ_A1); piece_on(rsq) != rook; ++rsq) {}
+          for (rsq = relative_square((Color)c, SQ_A1); piece_on(rsq) != rook; ++rsq) {}
 
       else if (token >= 'A' && token <= 'H')
-          rsq = make_square(File(token - 'A'), relative_rank(c, RANK_1));
+          rsq = make_square(File(token - 'A'), relative_rank((Color)c, RANK_1));
 
       else
           continue;
 
-      set_castling_right(c, rsq);
+      set_castling_right((Color)c, rsq);
   }
 
   // 4. En passant square. Ignore if no pawn capture is possible
@@ -289,9 +289,9 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
 /// Position::set_castling_right() is a helper function used to set castling
 /// rights given the corresponding color and the rook starting square.
 
-void Position::set_castling_right(Color c, Square rfrom) {
+void Position::set_castling_right(bColor c, Square rfrom) {
 
-  Square kfrom = square<KING>(c);
+  Square kfrom = square<KING>((Color)c);
   CastlingSide cs = kfrom < rfrom ? KING_SIDE : QUEEN_SIDE;
   CastlingRight cr = (c | cs);
 
@@ -300,8 +300,8 @@ void Position::set_castling_right(Color c, Square rfrom) {
   castlingRightsMask[rfrom] |= cr;
   castlingRookSquare[cr] = rfrom;
 
-  Square kto = relative_square(c, cs == KING_SIDE ? SQ_G1 : SQ_C1);
-  Square rto = relative_square(c, cs == KING_SIDE ? SQ_F1 : SQ_D1);
+  Square kto = relative_square((Color)c, cs == KING_SIDE ? SQ_G1 : SQ_C1);
+  Square rto = relative_square((Color)c, cs == KING_SIDE ? SQ_F1 : SQ_D1);
 
   for (Square s = std::min(rfrom, rto); s <= std::max(rfrom, rto); ++s)
       if (s != kfrom && s != rfrom)
@@ -429,16 +429,16 @@ const string Position::fen() const {
   ss << (sideToMove == WHITE ? " w " : " b ");
 
   if (can_castle(WHITE_OO))
-      ss << (chess960 ? char('A' + file_of(castling_rook_square(WHITE |  KING_SIDE))) : 'K');
+      ss << (chess960 ? char('A' + file_of(castling_rook_square(bWHITE |  KING_SIDE))) : 'K');
 
   if (can_castle(WHITE_OOO))
-      ss << (chess960 ? char('A' + file_of(castling_rook_square(WHITE | QUEEN_SIDE))) : 'Q');
+      ss << (chess960 ? char('A' + file_of(castling_rook_square(bWHITE | QUEEN_SIDE))) : 'Q');
 
   if (can_castle(BLACK_OO))
-      ss << (chess960 ? char('a' + file_of(castling_rook_square(BLACK |  KING_SIDE))) : 'k');
+      ss << (chess960 ? char('a' + file_of(castling_rook_square(bBLACK |  KING_SIDE))) : 'k');
 
   if (can_castle(BLACK_OOO))
-      ss << (chess960 ? char('a' + file_of(castling_rook_square(BLACK | QUEEN_SIDE))) : 'q');
+      ss << (chess960 ? char('a' + file_of(castling_rook_square(bBLACK | QUEEN_SIDE))) : 'q');
 
   if (!can_castle(WHITE) && !can_castle(BLACK))
       ss << '-';
@@ -1188,7 +1188,7 @@ bool Position::pos_is_ok() const {
 
   for (Piece pc : Pieces)
   {
-      if (   pieceCount[pc] != popcount(pieces(color_of(pc), type_of(pc)))
+      if (   pieceCount[pc] != popcount(pieces((Color)color_of(pc), type_of(pc)))
           || pieceCount[pc] != std::count(board, board + SQUARE_NB, pc))
           assert(0 && "pos_is_ok: Pieces");
 
@@ -1200,12 +1200,12 @@ bool Position::pos_is_ok() const {
   for (Color c = WHITE; c <= BLACK; ++c)
       for (CastlingSide s = KING_SIDE; s <= QUEEN_SIDE; s = CastlingSide(s + 1))
       {
-          if (!can_castle(c | s))
+          if (!can_castle((bColor)c | s))
               continue;
 
-          if (   piece_on(castlingRookSquare[c | s]) != make_piece(c, ROOK)
-              || castlingRightsMask[castlingRookSquare[c | s]] != (c | s)
-              || (castlingRightsMask[square<KING>(c)] & (c | s)) != (c | s))
+          if (   piece_on(castlingRookSquare[(bColor)c | s]) != make_piece(c, ROOK)
+              || castlingRightsMask[castlingRookSquare[(bColor)c | s]] != ((bColor)c | s)
+              || (castlingRightsMask[square<KING>(c)] & ((bColor)c | s)) != ((bColor)c | s))
               assert(0 && "pos_is_ok: Castling");
       }
 

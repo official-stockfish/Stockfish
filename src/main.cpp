@@ -37,15 +37,25 @@ int main(int argc, char* argv[]) {
   std::cout << engine_info() << std::endl;
 
   UCI::init(Options);
+  std::cout << "<UCI>" << std::endl;
   PSQT::init();
+  std::cout << "<PSQT>" << std::endl;
   Bitboards::init();
+  std::cout << "<Bitboards>" << std::endl;
   Position::init();
+  std::cout << "<position>" << std::endl;
   Bitbases::init();
+  std::cout << "<bitbases>" << std::endl;
   Search::init();
+  std::cout << "<search>" << std::endl;
   Pawns::init();
+  std::cout << "<pawns>" << std::endl;
   Tablebases::init(Options["SyzygyPath"]);
+  std::cout << "<tablebases>" << std::endl;
   TT.resize(Options["Hash"]);
+  std::cout << "<TT>" << std::endl;
   Threads.init(Options["Threads"]);
+  std::cout << "<Threads>" << std::endl;
   Search::clear(); // After threads are up
 
   UCI::loop(argc, argv);

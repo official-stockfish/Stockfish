@@ -98,7 +98,7 @@ public:
   template<PieceType Pt> Square square(Color c) const;
 
   // Castling
-  int can_castle(Color c) const;
+  int can_castle(bColor c) const;
   int can_castle(CastlingRight cr) const;
   bool castling_impeded(CastlingRight cr) const;
   Square castling_rook_square(CastlingRight cr) const;
@@ -164,7 +164,7 @@ public:
 
 private:
   // Initialization helpers (used while setting up a position)
-  void set_castling_right(Color c, Square rfrom);
+  void set_castling_right(bColor c, Square rfrom);
   void set_state(StateInfo* si) const;
   void set_check_info(StateInfo* si) const;
 
@@ -259,7 +259,7 @@ inline int Position::can_castle(CastlingRight cr) const {
   return st->castlingRights & cr;
 }
 
-inline int Position::can_castle(Color c) const {
+inline int Position::can_castle(bColor c) const {
   return st->castlingRights & ((WHITE_OO | WHITE_OOO) << (2 * c));
 }
 

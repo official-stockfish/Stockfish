@@ -131,6 +131,12 @@ enum Color {
   WHITE, BLACK, COLOR_NB = 2
 };
 
+typedef bool bColor;
+
+const bool bWHITE = false;
+const bool bBLACK = true;
+const int bCOLOR_NB = 2;
+
 enum CastlingSide {
   KING_SIDE, QUEEN_SIDE, CASTLING_SIDE_NB = 2
 };
@@ -145,10 +151,10 @@ enum CastlingRight {
   CASTLING_RIGHT_NB = 16
 };
 
-template<Color C, CastlingSide S> struct MakeCastling {
+template<bColor C, CastlingSide S> struct MakeCastling {
   static const CastlingRight
-  right = C == WHITE ? S == QUEEN_SIDE ? WHITE_OOO : WHITE_OO
-                     : S == QUEEN_SIDE ? BLACK_OOO : BLACK_OO;
+  right = C == bWHITE ? S == QUEEN_SIDE ? WHITE_OOO : WHITE_OO
+                      : S == QUEEN_SIDE ? BLACK_OOO : BLACK_OO;
 };
 
 enum Phase {
@@ -351,7 +357,7 @@ inline Piece operator~(Piece pc) {
   return Piece(pc ^ 8); // Swap color of piece B_KNIGHT -> W_KNIGHT
 }
 
-inline CastlingRight operator|(Color c, CastlingSide s) {
+inline CastlingRight operator|(bColor c, CastlingSide s) {
   return CastlingRight(WHITE_OO << ((s == QUEEN_SIDE) + 2 * c));
 }
 
@@ -367,7 +373,7 @@ inline Square make_square(File f, Rank r) {
   return Square((r << 3) + f);
 }
 
-inline Piece make_piece(Color c, PieceType pt) {
+inline Piece make_piece(bColor c, PieceType pt) {
   return Piece((c << 3) + pt);
 }
 

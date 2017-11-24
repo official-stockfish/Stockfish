@@ -21,6 +21,7 @@
 #include <algorithm> // For std::min
 #include <cassert>
 #include <cstring>   // For std::memset
+#include <iostream>
 
 #include "material.h"
 #include "thread.h"
@@ -153,8 +154,9 @@ Entry* probe(const Position& pos) {
   if ((e->evaluationFunction = pos.this_thread()->endgames.probe<Value>(key)) != nullptr)
       return e;
 
-  for (Color c = WHITE; c <= BLACK; ++c)
-      if (is_KXK(pos, c))
+  //for (Color c = WHITE; c <= BLACK; ++c)
+  for (int c = WHITE; c <= BLACK; ++c)
+      if (is_KXK(pos, (Color)c))
       {
           e->evaluationFunction = &EvaluateKXK[c];
           return e;
@@ -173,12 +175,13 @@ Entry* probe(const Position& pos) {
   // We didn't find any specialized scaling function, so fall back on generic
   // ones that refer to more than one material distribution. Note that in this
   // case we don't return after setting the function.
-  for (Color c = WHITE; c <= BLACK; ++c)
+  //for (Color c = WHITE; c <= BLACK; ++c)
+  for (int c = WHITE; c <= BLACK; ++c)
   {
-    if (is_KBPsKs(pos, c))
+    if (is_KBPsKs(pos, (Color)c))
         e->scalingFunction[c] = &ScaleKBPsK[c];
 
-    else if (is_KQKRPs(pos, c))
+    else if (is_KQKRPs(pos, (Color)c))
         e->scalingFunction[c] = &ScaleKQKRPs[c];
   }
 

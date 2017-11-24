@@ -203,7 +203,7 @@ void MainThread::search() {
 
   int contempt = Options["Contempt"] * PawnValueEg / 100; // From centipawns
   DrawValue[ us] = VALUE_DRAW - Value(contempt);
-  DrawValue[~us] = VALUE_DRAW + Value(contempt);
+  DrawValue[!us] = VALUE_DRAW + Value(contempt);
 
   if (rootMoves.empty())
   {
@@ -445,7 +445,7 @@ void Thread::search() {
 
               Color us = rootPos.side_to_move();
               bool thinkHard =    DrawValue[us] == bestValue
-                               && Limits.time[us] - Time.elapsed() > Limits.time[~us]
+                               && Limits.time[us] - Time.elapsed() > Limits.time[!us]
                                && ::pv_is_draw(rootPos);
 
               double unstablePvFactor = 1 + mainThread->bestMoveChanges + thinkHard;
