@@ -502,7 +502,7 @@ bool Position::legal(Move m) const {
 
   assert(is_ok(m));
 
-  Color us = sideToMove;
+  Color us = (Color)sideToMove;
   Square from = from_sq(m);
 
   assert(color_of(moved_piece(m)) == us);
@@ -546,7 +546,7 @@ bool Position::legal(Move m) const {
 
 bool Position::pseudo_legal(const Move m) const {
 
-  Color us = sideToMove;
+  Color us = (Color)sideToMove;
   Square from = from_sq(m);
   Square to = to_sq(m);
   Piece pc = moved_piece(m);
@@ -693,7 +693,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   ++st->rule50;
   ++st->pliesFromNull;
 
-  Color us = sideToMove;
+  Color us = (Color)sideToMove;
   Color them = ~us;
   Square from = from_sq(m);
   Square to = to_sq(m);
@@ -852,7 +852,7 @@ void Position::undo_move(Move m) {
 
   sideToMove = ~sideToMove;
 
-  Color us = sideToMove;
+  Color us = (Color)sideToMove;
   Square from = from_sq(m);
   Square to = to_sq(m);
   Piece pc = piece_on(to);

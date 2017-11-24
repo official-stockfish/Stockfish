@@ -128,7 +128,7 @@ public:
   Piece captured_piece() const;
 
   // Piece specific
-  bool pawn_passed(Color c, Square s) const;
+  bool pawn_passed(bColor c, Square s) const;
   bool opposite_bishops() const;
 
   // Doing and undoing moves
@@ -155,7 +155,7 @@ public:
   bool is_draw(int ply) const;
   int rule50_count() const;
   Score psq_score() const;
-  Value non_pawn_material(Color c) const;
+  Value non_pawn_material(bColor c) const;
   Value non_pawn_material() const;
 
   // Position consistency check, for debugging
@@ -308,8 +308,8 @@ inline Bitboard Position::check_squares(PieceType pt) const {
   return st->checkSquares[pt];
 }
 
-inline bool Position::pawn_passed(Color c, Square s) const {
-  return !(pieces(~c, PAWN) & passed_pawn_mask(c, s));
+inline bool Position::pawn_passed(bColor c, Square s) const {
+  return !(pieces(!c, PAWN) & passed_pawn_mask(c, s));
 }
 
 inline bool Position::advanced_pawn_push(Move m) const {
@@ -333,7 +333,7 @@ inline Score Position::psq_score() const {
   return st->psq;
 }
 
-inline Value Position::non_pawn_material(Color c) const {
+inline Value Position::non_pawn_material(bColor c) const {
   return st->nonPawnMaterial[c];
 }
 
