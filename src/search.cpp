@@ -197,8 +197,8 @@ void MainThread::search() {
       return;
   }
 
-  Color us = (Color)rootPos.side_to_move();
-  Time.init(Limits, us, rootPos.game_ply());
+  bColor us = rootPos.side_to_move();
+  Time.init(Limits, (Color)us, (Color)rootPos.game_ply());
   TT.new_search();
 
   int contempt = Options["Contempt"] * PawnValueEg / 100; // From centipawns
@@ -443,7 +443,7 @@ void Thread::search() {
                                 bestValue - mainThread->previousScore };
               int improvingFactor = std::max(229, std::min(715, 357 + 119 * F[0] - 6 * F[1]));
 
-              Color us = (Color)rootPos.side_to_move();
+              bColor us = (Color)rootPos.side_to_move();
               bool thinkHard =    DrawValue[us] == bestValue
                                && Limits.time[us] - Time.elapsed() > Limits.time[!us]
                                && ::pv_is_draw(rootPos);
@@ -943,7 +943,7 @@ moves_loop: // When in check search starts from here
                        && !pos.see_ge(make_move(to_sq(move), from_sq(move))))
                   r -= 2 * ONE_PLY;
 
-              ss->statScore =  thisThread->mainHistory[~pos.side_to_move()][from_to(move)]
+              ss->statScore =  thisThread->mainHistory[!pos.side_to_move()][from_to(move)]
                              + (*contHist[0])[movedPiece][to_sq(move)]
                              + (*contHist[1])[movedPiece][to_sq(move)]
                              + (*contHist[3])[movedPiece][to_sq(move)]
@@ -1398,9 +1398,9 @@ moves_loop: // When in check search starts from here
         ss->killers[0] = move;
     }
 
-    Color c = (Color)pos.side_to_move();
+    bColor c = (Color)pos.side_to_move();
     Thread* thisThread = pos.this_thread();
-    thisThread->mainHistory.update(c, move, bonus);
+    thisThread->mainHistory.update((Color)c, move, bonus);
     update_continuation_histories(ss, pos.moved_piece(move), to_sq(move), bonus);
 
     if (is_ok((ss-1)->currentMove))
@@ -1412,7 +1412,7 @@ moves_loop: // When in check search starts from here
     // Decrease all the other played quiet moves
     for (int i = 0; i < quietsCnt; ++i)
     {
-        thisThread->mainHistory.update(c, quiets[i], -bonus);
+        thisThread->mainHistory.update((Color)c, quiets[i], -bonus);
         update_continuation_histories(ss, pos.moved_piece(quiets[i]), to_sq(quiets[i]), -bonus);
     }
   }

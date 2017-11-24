@@ -185,7 +185,7 @@ Value Endgame<KPK>::operator()(const Position& pos) const {
   Square bksq = normalize(pos, strongSide, pos.square<KING>(weakSide));
   Square psq  = normalize(pos, strongSide, pos.square<PAWN>(strongSide));
 
-  Color us = strongSide == pos.side_to_move() ? WHITE : BLACK;
+  bColor us = strongSide == pos.side_to_move() ? WHITE : BLACK;
 
   if (!Bitbases::probe(wksq, psq, bksq, us))
       return VALUE_DRAW;

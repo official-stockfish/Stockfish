@@ -148,7 +148,7 @@ public:
   Key pawn_key() const;
 
   // Other properties of the position
-  Color side_to_move() const;
+  bColor side_to_move() const;
   int game_ply() const;
   bool is_chess960() const;
   Thread* this_thread() const;
@@ -186,7 +186,7 @@ private:
   Square castlingRookSquare[CASTLING_RIGHT_NB];
   Bitboard castlingPath[CASTLING_RIGHT_NB];
   int gamePly;
-  Color sideToMove;
+  bColor sideToMove;
   Thread* thisThread;
   StateInfo* st;
   bool chess960;
@@ -194,7 +194,7 @@ private:
 
 extern std::ostream& operator<<(std::ostream& os, const Position& pos);
 
-inline Color Position::side_to_move() const {
+inline bColor Position::side_to_move() const {
   return sideToMove;
 }
 
@@ -297,7 +297,7 @@ inline Bitboard Position::checkers() const {
 }
 
 inline Bitboard Position::discovered_check_candidates() const {
-  return st->blockersForKing[~sideToMove] & pieces(sideToMove);
+  return st->blockersForKing[!sideToMove] & pieces(sideToMove);
 }
 
 inline Bitboard Position::pinned_pieces(bColor c) const {
