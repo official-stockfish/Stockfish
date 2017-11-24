@@ -381,9 +381,9 @@ inline PieceType type_of(Piece pc) {
   return PieceType(pc & 7);
 }
 
-inline Color color_of(Piece pc) {
+inline bColor color_of(Piece pc) {
   assert(pc != NO_PIECE);
-  return Color(pc >> 3);
+  return bColor(pc >> 3);
 }
 
 inline bool is_ok(Square s) {
@@ -398,15 +398,15 @@ inline Rank rank_of(Square s) {
   return Rank(s >> 3);
 }
 
-inline Square relative_square(Color c, Square s) {
+inline Square relative_square(bColor c, Square s) {
   return Square(s ^ (c * 56));
 }
 
-inline Rank relative_rank(Color c, Rank r) {
+inline Rank relative_rank(bColor c, Rank r) {
   return Rank(r ^ (c * 7));
 }
 
-inline Rank relative_rank(Color c, Square s) {
+inline Rank relative_rank(bColor c, Square s) {
   return relative_rank(c, rank_of(s));
 }
 
@@ -415,7 +415,7 @@ inline bool opposite_colors(Square s1, Square s2) {
   return ((s >> 3) ^ s) & 1;
 }
 
-inline Square pawn_push(Color c) {
+inline Square pawn_push(bColor c) {
   return c == WHITE ? NORTH : SOUTH;
 }
 

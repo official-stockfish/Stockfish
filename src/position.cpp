@@ -474,7 +474,7 @@ Bitboard Position::slider_blockers(Bitboard sliders, Square s, Bitboard& pinners
     if (!more_than_one(b))
     {
         result |= b;
-        if (b & pieces(color_of(piece_on(s))))
+        if (b & pieces((Color)color_of(piece_on(s))))
             pinners |= sniperSq;
     }
   }
@@ -999,7 +999,7 @@ bool Position::see_ge(Move m, Value threshold) const {
 
   Square from = from_sq(m), to = to_sq(m);
   PieceType nextVictim = type_of(piece_on(from));
-  Color stm = ~color_of(piece_on(from)); // First consider opponent's move
+  Color stm = ~(Color)(color_of(piece_on(from))); // First consider opponent's move
   Value balance; // Values of the pieces taken by us minus opponent's ones
   Bitboard occupied, stmAttackers;
 
