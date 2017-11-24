@@ -292,7 +292,7 @@ namespace {
   template<Tracing T>  template<bColor Us, PieceType Pt>
   Score Evaluation<T>::evaluate_pieces() {
 
-    const Color Them = (Us == WHITE ? BLACK : WHITE);
+    const bColor Them = (Us == WHITE ? BLACK : WHITE);
     const Bitboard OutpostRanks = (Us == WHITE ? Rank4BB | Rank5BB | Rank6BB
                                                : Rank5BB | Rank4BB | Rank3BB);
     const Square* pl = pos.squares<Pt>(Us);

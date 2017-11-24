@@ -198,7 +198,7 @@ void MainThread::search() {
   }
 
   bColor us = rootPos.side_to_move();
-  Time.init(Limits, (Color)us, (Color)rootPos.game_ply());
+  Time.init(Limits, us, rootPos.game_ply());
   TT.new_search();
 
   int contempt = Options["Contempt"] * PawnValueEg / 100; // From centipawns
@@ -589,7 +589,7 @@ namespace {
             else if (!pos.capture_or_promotion(ttMove))
             {
                 int penalty = -stat_bonus(depth);
-                thisThread->mainHistory.update((Color)pos.side_to_move(), ttMove, penalty);
+                thisThread->mainHistory.update(pos.side_to_move(), ttMove, penalty);
                 update_continuation_histories(ss, pos.moved_piece(ttMove), to_sq(ttMove), penalty);
             }
         }
@@ -1400,7 +1400,7 @@ moves_loop: // When in check search starts from here
 
     bColor c = pos.side_to_move();
     Thread* thisThread = pos.this_thread();
-    thisThread->mainHistory.update((Color)c, move, bonus);
+    thisThread->mainHistory.update(c, move, bonus);
     update_continuation_histories(ss, pos.moved_piece(move), to_sq(move), bonus);
 
     if (is_ok((ss-1)->currentMove))
@@ -1412,7 +1412,7 @@ moves_loop: // When in check search starts from here
     // Decrease all the other played quiet moves
     for (int i = 0; i < quietsCnt; ++i)
     {
-        thisThread->mainHistory.update((Color)c, quiets[i], -bonus);
+        thisThread->mainHistory.update(c, quiets[i], -bonus);
         update_continuation_histories(ss, pos.moved_piece(quiets[i]), to_sq(quiets[i]), -bonus);
     }
   }

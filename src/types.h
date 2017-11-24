@@ -127,15 +127,14 @@ enum MoveType {
   CASTLING  = 3 << 14
 };
 
-enum Color {
-  WHITE, BLACK, COLOR_NB = 2
-};
+//enum Color {
+  //WHITE, BLACK, COLOR_NB = 2
+//};
 
 typedef bool bColor;
-
-const bool bWHITE = false;
-const bool bBLACK = true;
-const int bCOLOR_NB = 2;
+const bool WHITE = false;
+const bool BLACK = true;
+const int COLOR_NB = 2;
 
 enum CastlingSide {
   KING_SIDE, QUEEN_SIDE, CASTLING_SIDE_NB = 2
@@ -153,8 +152,8 @@ enum CastlingRight {
 
 template<bColor C, CastlingSide S> struct MakeCastling {
   static const CastlingRight
-  right = C == bWHITE ? S == QUEEN_SIDE ? WHITE_OOO : WHITE_OO
-                      : S == QUEEN_SIDE ? BLACK_OOO : BLACK_OO;
+  right = C == WHITE ? S == QUEEN_SIDE ? WHITE_OOO : WHITE_OO
+                     : S == QUEEN_SIDE ? BLACK_OOO : BLACK_OO;
 };
 
 enum Phase {
@@ -307,7 +306,7 @@ inline T& operator/=(T& d, int i) { return d = T(int(d) / i); }
 ENABLE_FULL_OPERATORS_ON(Value)
 ENABLE_FULL_OPERATORS_ON(PieceType)
 ENABLE_FULL_OPERATORS_ON(Piece)
-ENABLE_FULL_OPERATORS_ON(Color)
+//ENABLE_FULL_OPERATORS_ON(Color)
 ENABLE_FULL_OPERATORS_ON(Depth)
 ENABLE_FULL_OPERATORS_ON(Square)
 ENABLE_FULL_OPERATORS_ON(File)
@@ -345,9 +344,9 @@ inline Score operator*(Score s, int i) {
   return result;
 }
 
-inline Color operator~(Color c) {
-  return Color(c ^ BLACK); // Toggle color
-}
+//inline Color operator~(Color c) {
+  //return Color(c ^ BLACK); // Toggle color
+//}
 
 inline Square operator~(Square s) {
   return Square(s ^ SQ_A8); // Vertical flip SQ_A1 -> SQ_A8

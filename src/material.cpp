@@ -70,18 +70,18 @@ namespace {
   Endgame<KPKP>   ScaleKPKP[]   = { Endgame<KPKP>(WHITE),   Endgame<KPKP>(BLACK) };
 
   // Helper used to detect a given material distribution
-  bool is_KXK(const Position& pos, Color us) {
+  bool is_KXK(const Position& pos, bColor us) {
     return  !more_than_one(pos.pieces(~us))
           && pos.non_pawn_material(us) >= RookValueMg;
   }
 
-  bool is_KBPsKs(const Position& pos, Color us) {
+  bool is_KBPsKs(const Position& pos, bColor us) {
     return   pos.non_pawn_material(us) == BishopValueMg
           && pos.count<BISHOP>(us) == 1
           && pos.count<PAWN  >(us) >= 1;
   }
 
-  bool is_KQKRPs(const Position& pos, Color us) {
+  bool is_KQKRPs(const Position& pos, bColor us) {
     return  !pos.count<PAWN>(us)
           && pos.non_pawn_material(us) == QueenValueMg
           && pos.count<QUEEN>(us)  == 1
@@ -91,10 +91,10 @@ namespace {
 
   /// imbalance() calculates the imbalance by comparing the piece count of each
   /// piece type for both colors.
-  template<Color Us>
+  template<bColor Us>
   int imbalance(const int pieceCount[][PIECE_TYPE_NB]) {
 
-    const Color Them = (Us == WHITE ? BLACK : WHITE);
+    const bColor Them = (Us == WHITE ? BLACK : WHITE);
 
     int bonus = 0;
 
@@ -156,7 +156,7 @@ Entry* probe(const Position& pos) {
 
   //for (Color c = WHITE; c <= BLACK; ++c)
   for (int c = WHITE; c <= BLACK; ++c)
-      if (is_KXK(pos, (Color)c))
+      if (is_KXK(pos, c))
       {
           e->evaluationFunction = &EvaluateKXK[c];
           return e;
@@ -178,10 +178,10 @@ Entry* probe(const Position& pos) {
   //for (Color c = WHITE; c <= BLACK; ++c)
   for (int c = WHITE; c <= BLACK; ++c)
   {
-    if (is_KBPsKs(pos, (Color)c))
+    if (is_KBPsKs(pos, c))
         e->scalingFunction[c] = &ScaleKBPsK[c];
 
-    else if (is_KQKRPs(pos, (Color)c))
+    else if (is_KQKRPs(pos, c))
         e->scalingFunction[c] = &ScaleKQKRPs[c];
   }
 

@@ -429,16 +429,16 @@ const string Position::fen() const {
   ss << (sideToMove == WHITE ? " w " : " b ");
 
   if (can_castle(WHITE_OO))
-      ss << (chess960 ? char('A' + file_of(castling_rook_square(bWHITE |  KING_SIDE))) : 'K');
+      ss << (chess960 ? char('A' + file_of(castling_rook_square(WHITE |  KING_SIDE))) : 'K');
 
   if (can_castle(WHITE_OOO))
-      ss << (chess960 ? char('A' + file_of(castling_rook_square(bWHITE | QUEEN_SIDE))) : 'Q');
+      ss << (chess960 ? char('A' + file_of(castling_rook_square(WHITE | QUEEN_SIDE))) : 'Q');
 
   if (can_castle(BLACK_OO))
-      ss << (chess960 ? char('a' + file_of(castling_rook_square(bBLACK |  KING_SIDE))) : 'k');
+      ss << (chess960 ? char('a' + file_of(castling_rook_square(BLACK |  KING_SIDE))) : 'k');
 
   if (can_castle(BLACK_OOO))
-      ss << (chess960 ? char('a' + file_of(castling_rook_square(bBLACK | QUEEN_SIDE))) : 'q');
+      ss << (chess960 ? char('a' + file_of(castling_rook_square(BLACK | QUEEN_SIDE))) : 'q');
 
   if (!can_castle(WHITE) && !can_castle(BLACK))
       ss << '-';
@@ -520,7 +520,7 @@ bool Position::legal(Move m) const {
 
       assert(to == ep_square());
       assert(moved_piece(m) == make_piece(us, PAWN));
-      assert(piece_on(capsq) == make_piece(~us, PAWN));
+      assert(piece_on(capsq) == make_piece(!us, PAWN));
       assert(piece_on(to) == NO_PIECE);
 
       return   !(attacks_bb<  ROOK>(ksq, occupied) & pieces(!us, QUEEN, ROOK))
@@ -576,7 +576,7 @@ bool Position::pseudo_legal(const Move m) const {
       if (rank_of(to) == relative_rank(us, RANK_8))
           return false;
 
-      if (   !(attacks_from<PAWN>(from, us) & pieces(~us) & to) // Not a capture
+      if (   !(attacks_from<PAWN>(from, us) & pieces(!us) & to) // Not a capture
           && !((from + pawn_push(us) == to) && empty(to))       // Not a single push
           && !(   (from + 2 * pawn_push(us) == to)              // Not a double push
                && (rank_of(from) == relative_rank(us, RANK_2))
@@ -892,7 +892,7 @@ void Position::undo_move(Move m) {
               assert(to == st->previous->epSquare);
               assert(relative_rank(us, to) == RANK_6);
               assert(piece_on(capsq) == NO_PIECE);
-              assert(st->capturedPiece == make_piece(~us, PAWN));
+              assert(st->capturedPiece == make_piece(!us, PAWN));
           }
 
           put_piece(st->capturedPiece, capsq); // Restore the captured piece
@@ -999,8 +999,8 @@ bool Position::see_ge(Move m, Value threshold) const {
 
   Square from = from_sq(m), to = to_sq(m);
   PieceType nextVictim = type_of(piece_on(from));
-  //Color stm = !(color_of(piece_on(from))); // First consider opponent's move
-  Color stm = ~((Color)color_of(piece_on(from))); // First consider opponent's move
+  //Color stm = ~((Color)color_of(piece_on(from))); // First consider opponent's move
+  bColor stm = !(color_of(piece_on(from))); // First consider opponent's move
   Value balance; // Values of the pieces taken by us minus opponent's ones
   Bitboard occupied, stmAttackers;
 
@@ -1052,7 +1052,7 @@ bool Position::see_ge(Move m, Value threshold) const {
           // Our only attacker is the king. If the opponent still has
           // attackers we must give up. Otherwise we make the move and
           // (having no more attackers) the opponent must give up.
-          if (!(attackers & pieces(~stm)))
+          if (!(attackers & pieces(!stm)))
               opponentToMove = !opponentToMove;
           break;
       }
@@ -1069,7 +1069,7 @@ bool Position::see_ge(Move m, Value threshold) const {
       // all negative numbers with non-negative numbers. The compiler
       // probably knows that it is just the bitwise negation ~balance.
       balance = -balance-1;
-      stm = ~stm;
+      stm = !stm;
   }
 
   // If the opponent gave up we win, otherwise we lose.
