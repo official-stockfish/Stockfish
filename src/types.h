@@ -128,8 +128,8 @@ enum MoveType {
 };
 
 typedef bool bColor;
-const bool WHITE = false;
-const bool BLACK = true;
+const bColor WHITE = false;
+const bColor BLACK = true;
 const int COLOR_NB = 2;
 
 enum CastlingSide {

@@ -419,8 +419,7 @@ WDLEntry::WDLEntry(const std::string& code) {
     pieceCount = popcount(pos.pieces());
     hasPawns = pos.pieces(PAWN);
 
-    //for (Color c = WHITE; c <= BLACK; ++c)
-    for (int c = WHITE; c <= BLACK; ++c)
+    for (bColor c : {WHITE, BLACK})
         for (PieceType pt = PAWN; pt < KING; ++pt)
             if (popcount(pos.pieces(c, pt)) == 1)
                 hasUniquePieces = true;
