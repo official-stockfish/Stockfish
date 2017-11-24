@@ -142,6 +142,7 @@ namespace {
 
   void bench(Position& pos, istream& args, StateListPtr& states) {
 
+    std::cout << "<BENCH2>" << std::endl;
     string token;
     uint64_t num, nodes = 0, cnt = 1;
 
@@ -188,6 +189,8 @@ namespace {
 
 void UCI::loop(int argc, char* argv[]) {
 
+  std::cout << "<UCILOOP>" << std::endl;
+
   Position pos;
   string token, cmd;
   StateListPtr states(new std::deque<StateInfo>(1));
@@ -233,7 +236,11 @@ void UCI::loop(int argc, char* argv[]) {
 
       // Additional custom non-UCI commands, mainly for debugging
       else if (token == "flip")  pos.flip();
-      else if (token == "bench") bench(pos, is, states);
+      else if (token == "bench") 
+      {
+         std::cout << "<BENCH1>";
+         bench(pos, is, states);
+      }
       else if (token == "d")     sync_cout << pos << sync_endl;
       else if (token == "eval")  sync_cout << Eval::trace(pos) << sync_endl;
       else

@@ -43,7 +43,7 @@ namespace {
   // bit    12: side to move (WHITE or BLACK)
   // bit 13-14: white pawn file (from FILE_A to FILE_D)
   // bit 15-17: white pawn RANK_7 - rank (from RANK_7 - RANK_7 to RANK_7 - RANK_2)
-  unsigned index(Color us, Square bksq, Square wksq, Square psq) {
+  unsigned index(bColor us, Square bksq, Square wksq, Square psq) {
     return wksq | (bksq << 6) | (us << 12) | (file_of(psq) << 13) | ((RANK_7 - rank_of(psq)) << 15);
   }
 
@@ -63,9 +63,9 @@ namespace {
     Result classify(const std::vector<KPKPosition>& db)
     { return us == WHITE ? classify<WHITE>(db) : classify<BLACK>(db); }
 
-    template<Color Us> Result classify(const std::vector<KPKPosition>& db);
+    template<bColor Us> Result classify(const std::vector<KPKPosition>& db);
 
-    Color us;
+    bColor us;
     Square ksq[COLOR_NB], psq;
     Result result;
   };
@@ -73,7 +73,7 @@ namespace {
 } // namespace
 
 
-bool Bitbases::probe(Square wksq, Square wpsq, Square bksq, Color us) {
+bool Bitbases::probe(Square wksq, Square wpsq, Square bksq, bColor us) {
 
   assert(file_of(wpsq) <= FILE_D);
 
@@ -110,7 +110,7 @@ namespace {
 
     ksq[WHITE] = Square((idx >>  0) & 0x3F);
     ksq[BLACK] = Square((idx >>  6) & 0x3F);
-    us         = Color ((idx >> 12) & 0x01);
+    us         = bColor ((idx >> 12) & 0x01);
     psq        = make_square(File((idx >> 13) & 0x3), RANK_7 - Rank((idx >> 15) & 0x7));
 
     // Check if two pieces are on the same square or if a king can be captured
@@ -139,7 +139,7 @@ namespace {
         result = UNKNOWN;
   }
 
-  template<Color Us>
+  template<bColor Us>
   Result KPKPosition::classify(const std::vector<KPKPosition>& db) {
 
     // White to move: If one move leads to a position classified as WIN, the result
@@ -152,7 +152,8 @@ namespace {
     // as WIN, the position is classified as WIN, otherwise the current position is
     // classified as UNKNOWN.
 
-    const Color  Them = (Us == WHITE ? BLACK : WHITE);
+    //const bColor  Them = (Us == WHITE ? BLACK : WHITE);
+    const bColor Them = !Us;
     const Result Good = (Us == WHITE ? WIN   : DRAW);
     const Result Bad  = (Us == WHITE ? DRAW  : WIN);
 

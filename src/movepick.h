@@ -83,7 +83,7 @@ typedef StatCubes<PIECE_NB, SQUARE_NB, PIECE_TYPE_NB> CapturePieceToBoards;
 /// ordering decisions. It uses ButterflyBoards as backing store.
 struct ButterflyHistory : public ButterflyBoards {
 
-  void update(Color c, Move m, int bonus) {
+  void update(bColor c, Move m, int bonus) {
     StatBoards::update((*this)[c][from_to(m)], bonus, 324);
   }
 };
