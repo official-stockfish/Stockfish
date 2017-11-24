@@ -419,7 +419,8 @@ WDLEntry::WDLEntry(const std::string& code) {
     pieceCount = popcount(pos.pieces());
     hasPawns = pos.pieces(PAWN);
 
-    for (Color c = WHITE; c <= BLACK; ++c)
+    //for (Color c = WHITE; c <= BLACK; ++c)
+    for (int c = WHITE; c <= BLACK; ++c)
         for (PieceType pt = PAWN; pt < KING; ++pt)
             if (popcount(pos.pieces(c, pt)) == 1)
                 hasUniquePieces = true;
@@ -719,7 +720,7 @@ T do_probe_table(const Position& pos, Entry* entry, WDLScore wdl, ProbeState* re
 
         assert(type_of(pc) == PAWN);
 
-        leadPawns = b = pos.pieces((Color)color_of(pc), PAWN);
+        leadPawns = b = pos.pieces(color_of(pc), PAWN);
         do
             squares[size++] = pop_lsb(&b) ^ flipSquares;
         while (b);

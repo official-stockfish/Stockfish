@@ -344,10 +344,6 @@ inline Score operator*(Score s, int i) {
   return result;
 }
 
-//inline Color operator~(Color c) {
-  //return Color(c ^ BLACK); // Toggle color
-//}
-
 inline Square operator~(Square s) {
   return Square(s ^ SQ_A8); // Vertical flip SQ_A1 -> SQ_A8
 }
