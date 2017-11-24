@@ -79,7 +79,7 @@ public:
 
   // FEN string input/output
   Position& set(const std::string& fenStr, bool isChess960, StateInfo* si, Thread* th);
-  Position& set(const std::string& code, Color c, StateInfo* si);
+  Position& set(const std::string& code, bColor c, StateInfo* si);
   const std::string fen() const;
 
   // Position representation
@@ -173,7 +173,7 @@ private:
   void remove_piece(Piece pc, Square s);
   void move_piece(Piece pc, Square from, Square to);
   template<bool Do>
-  void do_castling(Color us, Square from, Square& to, Square& rfrom, Square& rto);
+  void do_castling(bColor us, Square from, Square& to, Square& rfrom, Square& rto);
 
   // Data members
   Piece board[SQUARE_NB];

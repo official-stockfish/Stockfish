@@ -312,7 +312,7 @@ ExtMove* generate(const Position& pos, ExtMove* moveList) {
   assert(Type == CAPTURES || Type == QUIETS || Type == NON_EVASIONS);
   assert(!pos.checkers());
 
-  Color us = pos.side_to_move();
+  Color us = (Color)pos.side_to_move();
 
   Bitboard target =  Type == CAPTURES     ?  pos.pieces(~us)
                    : Type == QUIETS       ? ~pos.pieces()
@@ -335,7 +335,7 @@ ExtMove* generate<QUIET_CHECKS>(const Position& pos, ExtMove* moveList) {
 
   assert(!pos.checkers());
 
-  Color us = pos.side_to_move();
+  Color us = (Color)pos.side_to_move();
   Bitboard dc = pos.discovered_check_candidates();
 
   while (dc)
@@ -367,7 +367,7 @@ ExtMove* generate<EVASIONS>(const Position& pos, ExtMove* moveList) {
 
   assert(pos.checkers());
 
-  Color us = pos.side_to_move();
+  Color us = (Color)pos.side_to_move();
   Square ksq = pos.square<KING>(us);
   Bitboard sliderAttacks = 0;
   Bitboard sliders = pos.checkers() & ~pos.pieces(KNIGHT, PAWN);

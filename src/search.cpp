@@ -197,7 +197,7 @@ void MainThread::search() {
       return;
   }
 
-  Color us = rootPos.side_to_move();
+  Color us = (Color)rootPos.side_to_move();
   Time.init(Limits, us, rootPos.game_ply());
   TT.new_search();
 
@@ -443,7 +443,7 @@ void Thread::search() {
                                 bestValue - mainThread->previousScore };
               int improvingFactor = std::max(229, std::min(715, 357 + 119 * F[0] - 6 * F[1]));
 
-              Color us = rootPos.side_to_move();
+              Color us = (Color)rootPos.side_to_move();
               bool thinkHard =    DrawValue[us] == bestValue
                                && Limits.time[us] - Time.elapsed() > Limits.time[!us]
                                && ::pv_is_draw(rootPos);
@@ -589,7 +589,7 @@ namespace {
             else if (!pos.capture_or_promotion(ttMove))
             {
                 int penalty = -stat_bonus(depth);
-                thisThread->mainHistory.update(pos.side_to_move(), ttMove, penalty);
+                thisThread->mainHistory.update((Color)pos.side_to_move(), ttMove, penalty);
                 update_continuation_histories(ss, pos.moved_piece(ttMove), to_sq(ttMove), penalty);
             }
         }
@@ -1398,7 +1398,7 @@ moves_loop: // When in check search starts from here
         ss->killers[0] = move;
     }
 
-    Color c = pos.side_to_move();
+    Color c = (Color)pos.side_to_move();
     Thread* thisThread = pos.this_thread();
     thisThread->mainHistory.update(c, move, bonus);
     update_continuation_histories(ss, pos.moved_piece(move), to_sq(move), bonus);

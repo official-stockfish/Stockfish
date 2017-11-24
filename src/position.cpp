@@ -236,24 +236,24 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
   while ((ss >> token) && !isspace(token))
   {
       Square rsq;
-      bColor c = islower(token) ? BLACK : WHITE;
-      Piece rook = make_piece((Color)c, ROOK);
+      Color c = islower(token) ? BLACK : WHITE;
+      Piece rook = make_piece(c, ROOK);
 
       token = char(toupper(token));
 
       if (token == 'K')
-          for (rsq = relative_square((Color)c, SQ_H1); piece_on(rsq) != rook; --rsq) {}
+          for (rsq = relative_square(c, SQ_H1); piece_on(rsq) != rook; --rsq) {}
 
       else if (token == 'Q')
-          for (rsq = relative_square((Color)c, SQ_A1); piece_on(rsq) != rook; ++rsq) {}
+          for (rsq = relative_square(c, SQ_A1); piece_on(rsq) != rook; ++rsq) {}
 
       else if (token >= 'A' && token <= 'H')
-          rsq = make_square(File(token - 'A'), relative_rank((Color)c, RANK_1));
+          rsq = make_square(File(token - 'A'), relative_rank(c, RANK_1));
 
       else
           continue;
 
-      set_castling_right((Color)c, rsq);
+      set_castling_right(c, rsq);
   }
 
   // 4. En passant square. Ignore if no pawn capture is possible
@@ -300,8 +300,8 @@ void Position::set_castling_right(bColor c, Square rfrom) {
   castlingRightsMask[rfrom] |= cr;
   castlingRookSquare[cr] = rfrom;
 
-  Square kto = relative_square((Color)c, cs == KING_SIDE ? SQ_G1 : SQ_C1);
-  Square rto = relative_square((Color)c, cs == KING_SIDE ? SQ_F1 : SQ_D1);
+  Square kto = relative_square(c, cs == KING_SIDE ? SQ_G1 : SQ_C1);
+  Square rto = relative_square(c, cs == KING_SIDE ? SQ_F1 : SQ_D1);
 
   for (Square s = std::min(rfrom, rto); s <= std::max(rfrom, rto); ++s)
       if (s != kfrom && s != rfrom)
@@ -383,7 +383,7 @@ void Position::set_state(StateInfo* si) const {
 /// the given endgame code string like "KBPKN". It is mainly a helper to
 /// get the material key out of an endgame code.
 
-Position& Position::set(const string& code, Color c, StateInfo* si) {
+Position& Position::set(const string& code, bColor c, StateInfo* si) {
 
   assert(code.length() > 0 && code.length() < 8);
   assert(code[0] == 'K');
@@ -910,7 +910,7 @@ void Position::undo_move(Move m) {
 /// Position::do_castling() is a helper used to do/undo a castling move. This
 /// is a bit tricky in Chess960 where from/to squares can overlap.
 template<bool Do>
-void Position::do_castling(Color us, Square from, Square& to, Square& rfrom, Square& rto) {
+void Position::do_castling(bColor us, Square from, Square& to, Square& rfrom, Square& rto) {
 
   bool kingSide = to > from;
   rfrom = to; // Castling is encoded as "king captures friendly rook"
@@ -999,7 +999,8 @@ bool Position::see_ge(Move m, Value threshold) const {
 
   Square from = from_sq(m), to = to_sq(m);
   PieceType nextVictim = type_of(piece_on(from));
-  Color stm = ~(Color)(color_of(piece_on(from))); // First consider opponent's move
+  //Color stm = !(color_of(piece_on(from))); // First consider opponent's move
+  Color stm = ~((Color)color_of(piece_on(from))); // First consider opponent's move
   Value balance; // Values of the pieces taken by us minus opponent's ones
   Bitboard occupied, stmAttackers;
 
@@ -1197,7 +1198,8 @@ bool Position::pos_is_ok() const {
               assert(0 && "pos_is_ok: Index");
   }
 
-  for (Color c = WHITE; c <= BLACK; ++c)
+  //for (Color c = WHITE; c <= BLACK; ++c)
+  for (int c = WHITE; c <= BLACK; ++c)
       for (CastlingSide s = KING_SIDE; s <= QUEEN_SIDE; s = CastlingSide(s + 1))
       {
           if (!can_castle((bColor)c | s))
@@ -1205,7 +1207,7 @@ bool Position::pos_is_ok() const {
 
           if (   piece_on(castlingRookSquare[(bColor)c | s]) != make_piece(c, ROOK)
               || castlingRightsMask[castlingRookSquare[(bColor)c | s]] != ((bColor)c | s)
-              || (castlingRightsMask[square<KING>(c)] & ((bColor)c | s)) != ((bColor)c | s))
+              || (castlingRightsMask[square<KING>((Color)c)] & ((bColor)c | s)) != ((bColor)c | s))
               assert(0 && "pos_is_ok: Castling");
       }
 
