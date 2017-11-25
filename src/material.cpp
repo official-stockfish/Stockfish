@@ -69,52 +69,52 @@ namespace {
   Endgame<KPKP>   ScaleKPKP[]   = { Endgame<KPKP>(WHITE),   Endgame<KPKP>(BLACK) };
 
   // Helper used to detect a given material distribution
-  bool is_KXK(const Position& pos, Color us) {
-    return  !more_than_one(pos.pieces(~us))
+  bool is_KXK(const Position& pos, bColor us) {
+    return  !more_than_one(pos.pieces(!us))
           && pos.non_pawn_material(us) >= RookValueMg;
   }
 
-  bool is_KBPsKs(const Position& pos, Color us) {
+  bool is_KBPsKs(const Position& pos, bColor us) {
     return   pos.non_pawn_material(us) == BishopValueMg
           && pos.count<BISHOP>(us) == 1
           && pos.count<PAWN  >(us) >= 1;
   }
 
-  bool is_KQKRPs(const Position& pos, Color us) {
+  bool is_KQKRPs(const Position& pos, bColor us) {
     return  !pos.count<PAWN>(us)
           && pos.non_pawn_material(us) == QueenValueMg
           && pos.count<QUEEN>(us)  == 1
-          && pos.count<ROOK>(~us) == 1
-          && pos.count<PAWN>(~us) >= 1;
+          && pos.count<ROOK>(!us) == 1
+          && pos.count<PAWN>(!us) >= 1;
   }
 
   /// imbalance() calculates the imbalance by comparing the piece count of each
   /// piece type for both colors.
-  template<Color Us>
+  template<bColor us>
   int imbalance(const int pieceCount[][PIECE_TYPE_NB]) {
 
-    const Color Them = (Us == WHITE ? BLACK : WHITE);
+    const bColor them = !us;
 
     int bonus = 0;
 
     // Second-degree polynomial material imbalance, by Tord Romstad
     for (int pt1 = NO_PIECE_TYPE; pt1 <= QUEEN; ++pt1)
     {
-        if (!pieceCount[Us][pt1])
+        if (!pieceCount[us][pt1])
             continue;
 
         int v = 0;
 
         for (int pt2 = NO_PIECE_TYPE; pt2 <= pt1; ++pt2)
-            v +=  QuadraticOurs[pt1][pt2] * pieceCount[Us][pt2]
-                + QuadraticTheirs[pt1][pt2] * pieceCount[Them][pt2];
+            v +=  QuadraticOurs[pt1][pt2] * pieceCount[us][pt2]
+                + QuadraticTheirs[pt1][pt2] * pieceCount[them][pt2];
 
-        bonus += pieceCount[Us][pt1] * v;
+        bonus += pieceCount[us][pt1] * v;
     }
 
     // Special handling of Queen vs. Minors
-    if  (pieceCount[Us][QUEEN] == 1 && pieceCount[Them][QUEEN] == 0)
-         bonus += QueenMinorsImbalance[pieceCount[Them][KNIGHT] + pieceCount[Them][BISHOP]];
+    if  (pieceCount[us][QUEEN] == 1 && pieceCount[them][QUEEN] == 0)
+         bonus += QueenMinorsImbalance[pieceCount[them][KNIGHT] + pieceCount[them][BISHOP]];
 
     return bonus;
   }
@@ -153,7 +153,7 @@ Entry* probe(const Position& pos) {
   if ((e->evaluationFunction = pos.this_thread()->endgames.probe<Value>(key)) != nullptr)
       return e;
 
-  for (Color c = WHITE; c <= BLACK; ++c)
+  for (bColor c : {WHITE, BLACK})
       if (is_KXK(pos, c))
       {
           e->evaluationFunction = &EvaluateKXK[c];
@@ -173,7 +173,7 @@ Entry* probe(const Position& pos) {
   // We didn't find any specialized scaling function, so fall back on generic
   // ones that refer to more than one material distribution. Note that in this
   // case we don't return after setting the function.
-  for (Color c = WHITE; c <= BLACK; ++c)
+  for (bColor c : {WHITE, BLACK})
   {
     if (is_KBPsKs(pos, c))
         e->scalingFunction[c] = &ScaleKBPsK[c];

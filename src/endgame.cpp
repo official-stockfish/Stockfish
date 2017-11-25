@@ -63,14 +63,14 @@ namespace {
   const int KRPPKRPScaleFactors[RANK_NB] = { 0, 9, 10, 14, 21, 44, 0, 0 };
 
 #ifndef NDEBUG
-  bool verify_material(const Position& pos, Color c, Value npm, int pawnsCnt) {
+  bool verify_material(const Position& pos, bColor c, Value npm, int pawnsCnt) {
     return pos.non_pawn_material(c) == npm && pos.count<PAWN>(c) == pawnsCnt;
   }
 #endif
 
   // Map the square as if strongSide is white and strongSide's only pawn
   // is on the left half of the board.
-  Square normalize(const Position& pos, Color strongSide, Square sq) {
+  Square normalize(const Position& pos, bColor strongSide, Square sq) {
 
     assert(pos.count<PAWN>(strongSide) == 1);
 
@@ -184,7 +184,7 @@ Value Endgame<KPK>::operator()(const Position& pos) const {
   Square bksq = normalize(pos, strongSide, pos.square<KING>(weakSide));
   Square psq  = normalize(pos, strongSide, pos.square<PAWN>(strongSide));
 
-  Color us = strongSide == pos.side_to_move() ? WHITE : BLACK;
+  bColor us = strongSide == pos.side_to_move() ? WHITE : BLACK;
 
   if (!Bitbases::probe(wksq, psq, bksq, us))
       return VALUE_DRAW;
@@ -325,7 +325,7 @@ template<> Value Endgame<KNNK>::operator()(const Position&) const { return VALUE
 /// will be used.
 template<>
 ScaleFactor Endgame<KBPsK>::operator()(const Position& pos) const {
-
+ 
   assert(pos.non_pawn_material(strongSide) == BishopValueMg);
   assert(pos.count<PAWN>(strongSide) >= 1);
 
@@ -803,7 +803,7 @@ ScaleFactor Endgame<KPKP>::operator()(const Position& pos) const {
   Square bksq = normalize(pos, strongSide, pos.square<KING>(weakSide));
   Square psq  = normalize(pos, strongSide, pos.square<PAWN>(strongSide));
 
-  Color us = strongSide == pos.side_to_move() ? WHITE : BLACK;
+  bColor us = strongSide == pos.side_to_move() ? WHITE : BLACK;
 
   // If the pawn has advanced to the fifth rank or further, and is not a
   // rook pawn, it's too dangerous to assume that it's at least a draw.

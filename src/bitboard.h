@@ -28,7 +28,7 @@
 namespace Bitbases {
 
 void init();
-bool probe(Square wksq, Square wpsq, Square bksq, Color us);
+bool probe(Square wksq, Square wpsq, Square bksq, bColor us);
 
 }
 
@@ -184,7 +184,7 @@ inline Bitboard between_bb(Square s1, Square s2) {
 /// in front of the given one, from the point of view of the given color. For
 /// instance, forward_ranks_bb(BLACK, SQ_D3) will return the 16 squares on ranks 1 and 2.
 
-inline Bitboard forward_ranks_bb(Color c, Square s) {
+inline Bitboard forward_ranks_bb(bColor c, Square s) {
   return ForwardRanksBB[c][rank_of(s)];
 }
 
@@ -193,7 +193,7 @@ inline Bitboard forward_ranks_bb(Color c, Square s) {
 /// in front of the given one, from the point of view of the given color:
 ///      ForwardFileBB[c][s] = forward_ranks_bb(c, s) & file_bb(s)
 
-inline Bitboard forward_file_bb(Color c, Square s) {
+inline Bitboard forward_file_bb(bColor c, Square s) {
   return ForwardFileBB[c][s];
 }
 
@@ -203,7 +203,7 @@ inline Bitboard forward_file_bb(Color c, Square s) {
 /// from the given square:
 ///      PawnAttackSpan[c][s] = forward_ranks_bb(c, s) & adjacent_files_bb(file_of(s));
 
-inline Bitboard pawn_attack_span(Color c, Square s) {
+inline Bitboard pawn_attack_span(bColor c, Square s) {
   return PawnAttackSpan[c][s];
 }
 
@@ -212,7 +212,7 @@ inline Bitboard pawn_attack_span(Color c, Square s) {
 /// pawn of the given color and on the given square is a passed pawn:
 ///      PassedPawnMask[c][s] = pawn_attack_span(c, s) | forward_file_bb(c, s)
 
-inline Bitboard passed_pawn_mask(Color c, Square s) {
+inline Bitboard passed_pawn_mask(bColor c, Square s) {
   return PassedPawnMask[c][s];
 }
 
@@ -334,7 +334,7 @@ inline Square pop_lsb(Bitboard* b) {
 /// frontmost_sq() and backmost_sq() return the square corresponding to the
 /// most/least advanced bit relative to the given color.
 
-inline Square frontmost_sq(Color c, Bitboard b) { return c == WHITE ? msb(b) : lsb(b); }
-inline Square  backmost_sq(Color c, Bitboard b) { return c == WHITE ? lsb(b) : msb(b); }
+inline Square frontmost_sq(bColor c, Bitboard b) { return c == WHITE ? msb(b) : lsb(b); }
+inline Square  backmost_sq(bColor c, Bitboard b) { return c == WHITE ? lsb(b) : msb(b); }
 
 #endif // #ifndef BITBOARD_H_INCLUDED

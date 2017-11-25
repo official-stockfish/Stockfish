@@ -197,13 +197,13 @@ void MainThread::search() {
       return;
   }
 
-  Color us = rootPos.side_to_move();
+  bColor us = rootPos.side_to_move();
   Time.init(Limits, us, rootPos.game_ply());
   TT.new_search();
 
   int contempt = Options["Contempt"] * PawnValueEg / 100; // From centipawns
   DrawValue[ us] = VALUE_DRAW - Value(contempt);
-  DrawValue[~us] = VALUE_DRAW + Value(contempt);
+  DrawValue[!us] = VALUE_DRAW + Value(contempt);
 
   if (rootMoves.empty())
   {
@@ -443,9 +443,9 @@ void Thread::search() {
                                 bestValue - mainThread->previousScore };
               int improvingFactor = std::max(229, std::min(715, 357 + 119 * F[0] - 6 * F[1]));
 
-              Color us = rootPos.side_to_move();
+              bColor us = rootPos.side_to_move();
               bool thinkHard =    DrawValue[us] == bestValue
-                               && Limits.time[us] - Time.elapsed() > Limits.time[~us]
+                               && Limits.time[us] - Time.elapsed() > Limits.time[!us]
                                && ::pv_is_draw(rootPos);
 
               double unstablePvFactor = 1 + mainThread->bestMoveChanges + thinkHard;
@@ -943,7 +943,7 @@ moves_loop: // When in check search starts from here
                        && !pos.see_ge(make_move(to_sq(move), from_sq(move))))
                   r -= 2 * ONE_PLY;
 
-              ss->statScore =  thisThread->mainHistory[~pos.side_to_move()][from_to(move)]
+              ss->statScore =  thisThread->mainHistory[!pos.side_to_move()][from_to(move)]
                              + (*contHist[0])[movedPiece][to_sq(move)]
                              + (*contHist[1])[movedPiece][to_sq(move)]
                              + (*contHist[3])[movedPiece][to_sq(move)]
@@ -1398,7 +1398,7 @@ moves_loop: // When in check search starts from here
         ss->killers[0] = move;
     }
 
-    Color c = pos.side_to_move();
+    bColor c = pos.side_to_move();
     Thread* thisThread = pos.this_thread();
     thisThread->mainHistory.update(c, move, bonus);
     update_continuation_histories(ss, pos.moved_piece(move), to_sq(move), bonus);

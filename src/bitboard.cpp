@@ -165,7 +165,7 @@ void Bitboards::init() {
   for (Rank r = RANK_1; r < RANK_8; ++r)
       ForwardRanksBB[WHITE][r] = ~(ForwardRanksBB[BLACK][r + 1] = ForwardRanksBB[BLACK][r] | RankBB[r]);
 
-  for (Color c = WHITE; c <= BLACK; ++c)
+  for (bColor c : {WHITE, BLACK})
       for (Square s = SQ_A1; s <= SQ_H8; ++s)
       {
           ForwardFileBB [c][s] = ForwardRanksBB[c][rank_of(s)] & FileBB[file_of(s)];
@@ -183,7 +183,7 @@ void Bitboards::init() {
 
   int steps[][5] = { {}, { 7, 9 }, { 6, 10, 15, 17 }, {}, {}, {}, { 1, 7, 8, 9 } };
 
-  for (Color c = WHITE; c <= BLACK; ++c)
+  for (bColor c : {WHITE, BLACK})
       for (PieceType pt : { PAWN, KNIGHT, KING })
           for (Square s = SQ_A1; s <= SQ_H8; ++s)
               for (int i = 0; steps[pt][i]; ++i)

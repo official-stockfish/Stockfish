@@ -127,9 +127,10 @@ enum MoveType {
   CASTLING  = 3 << 14
 };
 
-enum Color {
-  WHITE, BLACK, COLOR_NB = 2
-};
+typedef int bColor;
+const bColor WHITE = 0;
+const bColor BLACK = 1;
+const int COLOR_NB = 2;
 
 enum CastlingSide {
   KING_SIDE, QUEEN_SIDE, CASTLING_SIDE_NB = 2
@@ -145,7 +146,7 @@ enum CastlingRight {
   CASTLING_RIGHT_NB = 16
 };
 
-template<Color C, CastlingSide S> struct MakeCastling {
+template<bColor C, CastlingSide S> struct MakeCastling {
   static const CastlingRight
   right = C == WHITE ? S == QUEEN_SIDE ? WHITE_OOO : WHITE_OO
                      : S == QUEEN_SIDE ? BLACK_OOO : BLACK_OO;
@@ -301,7 +302,6 @@ inline T& operator/=(T& d, int i) { return d = T(int(d) / i); }
 ENABLE_FULL_OPERATORS_ON(Value)
 ENABLE_FULL_OPERATORS_ON(PieceType)
 ENABLE_FULL_OPERATORS_ON(Piece)
-ENABLE_FULL_OPERATORS_ON(Color)
 ENABLE_FULL_OPERATORS_ON(Depth)
 ENABLE_FULL_OPERATORS_ON(Square)
 ENABLE_FULL_OPERATORS_ON(File)
@@ -339,10 +339,6 @@ inline Score operator*(Score s, int i) {
   return result;
 }
 
-inline Color operator~(Color c) {
-  return Color(c ^ BLACK); // Toggle color
-}
-
 inline Square operator~(Square s) {
   return Square(s ^ SQ_A8); // Vertical flip SQ_A1 -> SQ_A8
 }
@@ -351,7 +347,7 @@ inline Piece operator~(Piece pc) {
   return Piece(pc ^ 8); // Swap color of piece B_KNIGHT -> W_KNIGHT
 }
 
-inline CastlingRight operator|(Color c, CastlingSide s) {
+inline CastlingRight operator|(bColor c, CastlingSide s) {
   return CastlingRight(WHITE_OO << ((s == QUEEN_SIDE) + 2 * c));
 }
 
@@ -367,7 +363,7 @@ inline Square make_square(File f, Rank r) {
   return Square((r << 3) + f);
 }
 
-inline Piece make_piece(Color c, PieceType pt) {
+inline Piece make_piece(bColor c, PieceType pt) {
   return Piece((c << 3) + pt);
 }
 
@@ -375,9 +371,9 @@ inline PieceType type_of(Piece pc) {
   return PieceType(pc & 7);
 }
 
-inline Color color_of(Piece pc) {
+inline bColor color_of(Piece pc) {
   assert(pc != NO_PIECE);
-  return Color(pc >> 3);
+  return bColor(pc >> 3);
 }
 
 inline bool is_ok(Square s) {
@@ -392,15 +388,15 @@ inline Rank rank_of(Square s) {
   return Rank(s >> 3);
 }
 
-inline Square relative_square(Color c, Square s) {
+inline Square relative_square(bColor c, Square s) {
   return Square(s ^ (c * 56));
 }
 
-inline Rank relative_rank(Color c, Rank r) {
+inline Rank relative_rank(bColor c, Rank r) {
   return Rank(r ^ (c * 7));
 }
 
-inline Rank relative_rank(Color c, Square s) {
+inline Rank relative_rank(bColor c, Square s) {
   return relative_rank(c, rank_of(s));
 }
 
@@ -409,7 +405,7 @@ inline bool opposite_colors(Square s1, Square s2) {
   return ((s >> 3) ^ s) & 1;
 }
 
-inline Square pawn_push(Color c) {
+inline Square pawn_push(bColor c) {
   return c == WHITE ? NORTH : SOUTH;
 }
 

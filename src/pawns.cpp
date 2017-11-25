@@ -91,46 +91,46 @@ namespace {
   #undef S
   #undef V
 
-  template<Color Us>
+  template<bColor us>
   Score evaluate(const Position& pos, Pawns::Entry* e) {
 
-    const Color  Them  = (Us == WHITE ? BLACK      : WHITE);
-    const Square Up    = (Us == WHITE ? NORTH      : SOUTH);
-    const Square Right = (Us == WHITE ? NORTH_EAST : SOUTH_WEST);
-    const Square Left  = (Us == WHITE ? NORTH_WEST : SOUTH_EAST);
+    const bColor them  = !us;
+    const Square Up    = (us == WHITE ? NORTH      : SOUTH);
+    const Square Right = (us == WHITE ? NORTH_EAST : SOUTH_WEST);
+    const Square Left  = (us == WHITE ? NORTH_WEST : SOUTH_EAST);
 
     Bitboard b, neighbours, stoppers, doubled, supported, phalanx;
     Bitboard lever, leverPush;
     Square s;
     bool opposed, backward;
     Score score = SCORE_ZERO;
-    const Square* pl = pos.squares<PAWN>(Us);
+    const Square* pl = pos.squares<PAWN>(us);
 
-    Bitboard ourPawns   = pos.pieces(  Us, PAWN);
-    Bitboard theirPawns = pos.pieces(Them, PAWN);
+    Bitboard ourPawns   = pos.pieces(  us, PAWN);
+    Bitboard theirPawns = pos.pieces(them, PAWN);
 
-    e->passedPawns[Us] = e->pawnAttacksSpan[Us] = e->weakUnopposed[Us] = 0;
-    e->semiopenFiles[Us] = 0xFF;
-    e->kingSquares[Us]   = SQ_NONE;
-    e->pawnAttacks[Us]   = shift<Right>(ourPawns) | shift<Left>(ourPawns);
-    e->pawnsOnSquares[Us][BLACK] = popcount(ourPawns & DarkSquares);
-    e->pawnsOnSquares[Us][WHITE] = pos.count<PAWN>(Us) - e->pawnsOnSquares[Us][BLACK];
+    e->passedPawns[us] = e->pawnAttacksSpan[us] = e->weakUnopposed[us] = 0;
+    e->semiopenFiles[us] = 0xFF;
+    e->kingSquares[us]   = SQ_NONE;
+    e->pawnAttacks[us]   = shift<Right>(ourPawns) | shift<Left>(ourPawns);
+    e->pawnsOnSquares[us][BLACK] = popcount(ourPawns & DarkSquares);
+    e->pawnsOnSquares[us][WHITE] = pos.count<PAWN>(us) - e->pawnsOnSquares[us][BLACK];
 
     // Loop through all pawns of the current color and score each pawn
     while ((s = *pl++) != SQ_NONE)
     {
-        assert(pos.piece_on(s) == make_piece(Us, PAWN));
+        assert(pos.piece_on(s) == make_piece(us, PAWN));
 
         File f = file_of(s);
 
-        e->semiopenFiles[Us]   &= ~(1 << f);
-        e->pawnAttacksSpan[Us] |= pawn_attack_span(Us, s);
+        e->semiopenFiles[us]   &= ~(1 << f);
+        e->pawnAttacksSpan[us] |= pawn_attack_span(us, s);
 
         // Flag the pawn
-        opposed    = theirPawns & forward_file_bb(Us, s);
-        stoppers   = theirPawns & passed_pawn_mask(Us, s);
-        lever      = theirPawns & PawnAttacks[Us][s];
-        leverPush  = theirPawns & PawnAttacks[Us][s + Up];
+        opposed    = theirPawns & forward_file_bb(us, s);
+        stoppers   = theirPawns & passed_pawn_mask(us, s);
+        lever      = theirPawns & PawnAttacks[us][s];
+        leverPush  = theirPawns & PawnAttacks[us][s + Up];
         doubled    = ourPawns   & (s - Up);
         neighbours = ourPawns   & adjacent_files_bb(f);
         phalanx    = neighbours & rank_bb(s);
@@ -138,19 +138,19 @@ namespace {
 
         // A pawn is backward when it is behind all pawns of the same color on the
         // adjacent files and cannot be safely advanced.
-        if (!neighbours || lever || relative_rank(Us, s) >= RANK_5)
+        if (!neighbours || lever || relative_rank(us, s) >= RANK_5)
             backward = false;
         else
         {
             // Find the backmost rank with neighbours or stoppers
-            b = rank_bb(backmost_sq(Us, neighbours | stoppers));
+            b = rank_bb(backmost_sq(us, neighbours | stoppers));
 
             // The pawn is backward when it cannot safely progress to that rank:
             // either there is a stopper in the way on this rank, or there is a
             // stopper on adjacent file which controls the way to that rank.
             backward = (b | shift<Up>(b & adjacent_files_bb(f))) & stoppers;
 
-            assert(!(backward && (forward_ranks_bb(Them, s + Up) & neighbours)));
+            assert(!(backward && (forward_ranks_bb(them, s + Up) & neighbours)));
         }
 
         // Passed pawns will be properly scored in evaluation because we need
@@ -158,35 +158,35 @@ namespace {
         // which could become passed after one or two pawn pushes when are
         // not attacked more times than defended.
         if (   !(stoppers ^ lever ^ leverPush)
-            && !(ourPawns & forward_file_bb(Us, s))
+            && !(ourPawns & forward_file_bb(us, s))
             && popcount(supported) >= popcount(lever)
             && popcount(phalanx)   >= popcount(leverPush))
-            e->passedPawns[Us] |= s;
+            e->passedPawns[us] |= s;
 
         else if (   stoppers == SquareBB[s + Up]
-                 && relative_rank(Us, s) >= RANK_5)
+                 && relative_rank(us, s) >= RANK_5)
         {
             b = shift<Up>(supported) & ~theirPawns;
             while (b)
-                if (!more_than_one(theirPawns & PawnAttacks[Us][pop_lsb(&b)]))
-                    e->passedPawns[Us] |= s;
+                if (!more_than_one(theirPawns & PawnAttacks[us][pop_lsb(&b)]))
+                    e->passedPawns[us] |= s;
         }
 
         // Score this pawn
         if (supported | phalanx)
-            score += Connected[opposed][!!phalanx][popcount(supported)][relative_rank(Us, s)];
+            score += Connected[opposed][!!phalanx][popcount(supported)][relative_rank(us, s)];
 
         else if (!neighbours)
-            score -= Isolated, e->weakUnopposed[Us] += !opposed;
+            score -= Isolated, e->weakUnopposed[us] += !opposed;
 
         else if (backward)
-            score -= Backward, e->weakUnopposed[Us] += !opposed;
+            score -= Backward, e->weakUnopposed[us] += !opposed;
 
         if (doubled && !supported)
             score -= Doubled;
 
         if (lever)
-            score += Lever[relative_rank(Us, s)];
+            score += Lever[relative_rank(us, s)];
     }
 
     return score;
@@ -241,31 +241,31 @@ Entry* probe(const Position& pos) {
 /// Entry::shelter_storm() calculates shelter and storm penalties for the file
 /// the king is on, as well as the two closest files.
 
-template<Color Us>
+template<bColor us>
 Value Entry::shelter_storm(const Position& pos, Square ksq) {
 
-  const Color Them = (Us == WHITE ? BLACK : WHITE);
+  const bColor them = !us;
 
   enum { BlockedByKing, Unopposed, BlockedByPawn, Unblocked };
 
-  Bitboard b = pos.pieces(PAWN) & (forward_ranks_bb(Us, ksq) | rank_bb(ksq));
-  Bitboard ourPawns = b & pos.pieces(Us);
-  Bitboard theirPawns = b & pos.pieces(Them);
+  Bitboard b = pos.pieces(PAWN) & (forward_ranks_bb(us, ksq) | rank_bb(ksq));
+  Bitboard ourPawns = b & pos.pieces(us);
+  Bitboard theirPawns = b & pos.pieces(them);
   Value safety = MaxSafetyBonus;
   File center = std::max(FILE_B, std::min(FILE_G, file_of(ksq)));
 
   for (File f = center - File(1); f <= center + File(1); ++f)
   {
       b = ourPawns & file_bb(f);
-      Rank rkUs = b ? relative_rank(Us, backmost_sq(Us, b)) : RANK_1;
+      Rank rkUs = b ? relative_rank(us, backmost_sq(us, b)) : RANK_1;
 
       b = theirPawns & file_bb(f);
-      Rank rkThem = b ? relative_rank(Us, frontmost_sq(Them, b)) : RANK_1;
+      Rank rkThem = b ? relative_rank(us, frontmost_sq(them, b)) : RANK_1;
 
       int d = std::min(f, FILE_H - f);
       safety -=  ShelterWeakness[f == file_of(ksq)][d][rkUs]
                + StormDanger
-                 [f == file_of(ksq) && rkThem == relative_rank(Us, ksq) + 1 ? BlockedByKing  :
+                 [f == file_of(ksq) && rkThem == relative_rank(us, ksq) + 1 ? BlockedByKing  :
                   rkUs   == RANK_1                                          ? Unopposed :
                   rkThem == rkUs + 1                                        ? BlockedByPawn  : Unblocked]
                  [d][rkThem];
@@ -278,25 +278,25 @@ Value Entry::shelter_storm(const Position& pos, Square ksq) {
 /// Entry::do_king_safety() calculates a bonus for king safety. It is called only
 /// when king square changes, which is about 20% of total king_safety() calls.
 
-template<Color Us>
+template<bColor us>
 Score Entry::do_king_safety(const Position& pos, Square ksq) {
 
-  kingSquares[Us] = ksq;
-  castlingRights[Us] = pos.can_castle(Us);
+  kingSquares[us] = ksq;
+  castlingRights[us] = pos.can_castle(us);
   int minKingPawnDistance = 0;
 
-  Bitboard pawns = pos.pieces(Us, PAWN);
+  Bitboard pawns = pos.pieces(us, PAWN);
   if (pawns)
       while (!(DistanceRingBB[ksq][minKingPawnDistance++] & pawns)) {}
 
-  Value bonus = shelter_storm<Us>(pos, ksq);
+  Value bonus = shelter_storm<us>(pos, ksq);
 
   // If we can castle use the bonus after the castling if it is bigger
-  if (pos.can_castle(MakeCastling<Us, KING_SIDE>::right))
-      bonus = std::max(bonus, shelter_storm<Us>(pos, relative_square(Us, SQ_G1)));
+  if (pos.can_castle(MakeCastling<us, KING_SIDE>::right))
+      bonus = std::max(bonus, shelter_storm<us>(pos, relative_square(us, SQ_G1)));
 
-  if (pos.can_castle(MakeCastling<Us, QUEEN_SIDE>::right))
-      bonus = std::max(bonus, shelter_storm<Us>(pos, relative_square(Us, SQ_C1)));
+  if (pos.can_castle(MakeCastling<us, QUEEN_SIDE>::right))
+      bonus = std::max(bonus, shelter_storm<us>(pos, relative_square(us, SQ_C1)));
 
   return make_score(bonus, -16 * minKingPawnDistance);
 }
