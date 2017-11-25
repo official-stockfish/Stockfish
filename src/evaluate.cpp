@@ -523,7 +523,7 @@ namespace {
   template<Tracing T>  template<Color Us>
   Score Evaluation<T>::evaluate_threats() {
 
-    const Color Them        = (Us == WHITE ? BLACK : WHITE);
+    const Color Them        = (Us == WHITE ? BLACK      : WHITE);
     const Square Up         = (Us == WHITE ? NORTH      : SOUTH);
     const Square Left       = (Us == WHITE ? NORTH_WEST : SOUTH_EAST);
     const Square Right      = (Us == WHITE ? NORTH_EAST : SOUTH_WEST);
