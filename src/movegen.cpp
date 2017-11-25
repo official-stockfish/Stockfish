@@ -94,7 +94,7 @@ namespace {
 
     // Compute our parametrized parameters at compile time, named according to
     // the point of view of white side.
-    const Color    Them     = !Us;
+    const Color    Them     = (Us == WHITE ? BLACK      : WHITE);
     const Bitboard TRank8BB = (Us == WHITE ? Rank8BB    : Rank1BB);
     const Bitboard TRank7BB = (Us == WHITE ? Rank7BB    : Rank2BB);
     const Bitboard TRank3BB = (Us == WHITE ? Rank3BB    : Rank6BB);
