@@ -70,7 +70,7 @@ namespace {
 
   // Helper used to detect a given material distribution
   bool is_KXK(const Position& pos, Color us) {
-    return  !more_than_one(pos.pieces(~us))
+    return  !more_than_one(pos.pieces(!us))
           && pos.non_pawn_material(us) >= RookValueMg;
   }
 
@@ -84,8 +84,8 @@ namespace {
     return  !pos.count<PAWN>(us)
           && pos.non_pawn_material(us) == QueenValueMg
           && pos.count<QUEEN>(us)  == 1
-          && pos.count<ROOK>(~us) == 1
-          && pos.count<PAWN>(~us) >= 1;
+          && pos.count<ROOK>(!us) == 1
+          && pos.count<PAWN>(!us) >= 1;
   }
 
   /// imbalance() calculates the imbalance by comparing the piece count of each
@@ -93,7 +93,7 @@ namespace {
   template<Color Us>
   int imbalance(const int pieceCount[][PIECE_TYPE_NB]) {
 
-    const Color Them = (Us == WHITE ? BLACK : WHITE);
+    const Color Them = !Us;
 
     int bonus = 0;
 

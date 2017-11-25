@@ -38,7 +38,7 @@ namespace {
     Square kfrom = pos.square<KING>(us);
     Square rfrom = pos.castling_rook_square(Cr);
     Square kto = relative_square(us, KingSide ? SQ_G1 : SQ_C1);
-    Bitboard enemies = pos.pieces(~us);
+    Bitboard enemies = pos.pieces(!us);
 
     assert(!pos.checkers());
 
@@ -52,7 +52,7 @@ namespace {
     // Because we generate only legal castling moves we need to verify that
     // when moving the castling rook we do not discover some hidden checker.
     // For instance an enemy queen in SQ_A1 when castling rook is in SQ_B1.
-    if (Chess960 && (attacks_bb<ROOK>(kto, pos.pieces() ^ rfrom) & pos.pieces(~us, ROOK, QUEEN)))
+    if (Chess960 && (attacks_bb<ROOK>(kto, pos.pieces() ^ rfrom) & pos.pieces(!us, ROOK, QUEEN)))
         return moveList;
 
     Move m = make<CASTLING>(kfrom, rfrom);
@@ -94,7 +94,7 @@ namespace {
 
     // Compute our parametrized parameters at compile time, named according to
     // the point of view of white side.
-    const Color    Them     = (Us == WHITE ? BLACK      : WHITE);
+    const Color    Them     = !Us;
     const Bitboard TRank8BB = (Us == WHITE ? Rank8BB    : Rank1BB);
     const Bitboard TRank7BB = (Us == WHITE ? Rank7BB    : Rank2BB);
     const Bitboard TRank3BB = (Us == WHITE ? Rank3BB    : Rank6BB);
@@ -314,7 +314,7 @@ ExtMove* generate(const Position& pos, ExtMove* moveList) {
 
   Color us = pos.side_to_move();
 
-  Bitboard target =  Type == CAPTURES     ?  pos.pieces(~us)
+  Bitboard target =  Type == CAPTURES     ?  pos.pieces(!us)
                    : Type == QUIETS       ? ~pos.pieces()
                    : Type == NON_EVASIONS ? ~pos.pieces(us) : 0;
 
@@ -349,7 +349,7 @@ ExtMove* generate<QUIET_CHECKS>(const Position& pos, ExtMove* moveList) {
      Bitboard b = pos.attacks_from(pt, from) & ~pos.pieces();
 
      if (pt == KING)
-         b &= ~PseudoAttacks[QUEEN][pos.square<KING>(~us)];
+         b &= ~PseudoAttacks[QUEEN][pos.square<KING>(!us)];
 
      while (b)
          *moveList++ = make_move(from, pop_lsb(&b));
