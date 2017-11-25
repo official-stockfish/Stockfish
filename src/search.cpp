@@ -812,7 +812,7 @@ moves_loop: // When in check search starts from here
       movedPiece = pos.moved_piece(move);
 
       givesCheck =  type_of(move) == NORMAL && !pos.discovered_check_candidates()
-                  ? pos.check_squares(type_of(pos.piece_on(from_sq(move)))) & to_sq(move)
+                  ? pos.check_squares(type_of(movedPiece)) & to_sq(move)
                   : pos.gives_check(move);
 
       moveCountPruning =   depth < 16 * ONE_PLY
@@ -1196,7 +1196,7 @@ moves_loop: // When in check search starts from here
         if (bestValue >= beta)
         {
             if (!ttHit)
-                tte->save(pos.key(), value_to_tt(bestValue, ss->ply), BOUND_LOWER,
+                tte->save(posKey, value_to_tt(bestValue, ss->ply), BOUND_LOWER,
                           DEPTH_NONE, MOVE_NONE, ss->staticEval, TT.generation());
 
             return bestValue;
@@ -1220,7 +1220,7 @@ moves_loop: // When in check search starts from here
       assert(is_ok(move));
 
       givesCheck =  type_of(move) == NORMAL && !pos.discovered_check_candidates()
-                  ? pos.check_squares(type_of(pos.piece_on(from_sq(move)))) & to_sq(move)
+                  ? pos.check_squares(type_of(pos.moved_piece(move))) & to_sq(move)
                   : pos.gives_check(move);
 
       moveCount++;
@@ -1375,7 +1375,7 @@ moves_loop: // When in check search starts from here
       CapturePieceToHistory& captureHistory =  pos.this_thread()->captureHistory;
       Piece moved_piece = pos.moved_piece(move);
       PieceType captured = type_of(pos.piece_on(to_sq(move)));
-      captureHistory.update(moved_piece,to_sq(move), captured, bonus);
+      captureHistory.update(moved_piece, to_sq(move), captured, bonus);
 
       // Decrease all the other played capture moves
       for (int i = 0; i < captureCnt; ++i)
