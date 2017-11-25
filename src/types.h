@@ -339,8 +339,8 @@ inline Score operator*(Score s, int i) {
   return result;
 }
 
-inline Color operator~(Color c) {
-  return Color(c ^ BLACK); // Toggle color
+inline Color operator!(Color c) {
+   return Color(c ^ BLACK);
 }
 
 inline Square operator~(Square s) {
