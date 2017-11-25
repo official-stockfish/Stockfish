@@ -124,14 +124,14 @@ namespace {
     else if (   us == WHITE
              && rank_of(psq) == RANK_7
              && ksq[us] != psq + NORTH
-             && (    distance(ksq[~us], psq + NORTH) > 1
+             && (    distance(ksq[!us], psq + NORTH) > 1
                  || (PseudoAttacks[KING][ksq[us]] & (psq + NORTH))))
         result = WIN;
 
     // Immediate draw if it is a stalemate or a king captures undefended pawn
     else if (   us == BLACK
-             && (  !(PseudoAttacks[KING][ksq[us]] & ~(PseudoAttacks[KING][ksq[~us]] | PawnAttacks[~us][psq]))
-                 || (PseudoAttacks[KING][ksq[us]] & psq & ~PseudoAttacks[KING][ksq[~us]])))
+             && (  !(PseudoAttacks[KING][ksq[us]] & ~(PseudoAttacks[KING][ksq[!us]] | PawnAttacks[!us][psq]))
+                 || (PseudoAttacks[KING][ksq[us]] & psq & ~PseudoAttacks[KING][ksq[!us]])))
         result = DRAW;
 
     // Position will be classified later
