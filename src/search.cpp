@@ -836,6 +836,12 @@ namespace {
             if (tte->bound() & (ttValue > eval ? BOUND_LOWER : BOUND_UPPER))
                 eval = ttValue;
     }
+	else if (expttHit)
+	{
+
+		eval = expttValue;
+		ss->staticEval = eval;
+	}
     else
     {
         eval = ss->staticEval =
@@ -846,8 +852,8 @@ namespace {
                   ss->staticEval, TT.generation());
     }
 
-    if (skipEarlyPruning)
-        goto moves_loop;
+	if (skipEarlyPruning || kellyNode == 1)
+		goto moves_loop;
 
     // Step 6. Razoring (skipped when in check)
 	if ((!PvNode || kellyNode == 3)
@@ -1110,15 +1116,20 @@ moves_loop: // When in check search starts from here
 	  int myNode = 4;
 	  if (!rootNode)
 	  {
-		  if (kellyNode == 1 && moveCount <= 1)
+		  if (move==expttMove)
 			  myNode = 1;
+		  else
+		  {
+			  if (kellyNode == 1 && moveCount <= 1)
+				  myNode = 1;
 
-		  if (kellyNode == 1 && moveCount > 1)
-			  myNode = 2;
-		  if (kellyNode == 2)
-			  myNode = 3;
-		  if (kellyNode == 3)
-			  myNode = 2;
+			  if (kellyNode == 1 && moveCount > 1)
+				  myNode = 2;
+			  if (kellyNode == 2)
+				  myNode = 3;
+			  if (kellyNode == 3)
+				  myNode = 2;
+		  }
 	  }
       // Step 15. Reduced depth search (LMR). If the move fails high it will be
       // re-searched at full depth.
