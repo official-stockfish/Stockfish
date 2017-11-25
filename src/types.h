@@ -127,9 +127,9 @@ enum MoveType {
   CASTLING  = 3 << 14
 };
 
-typedef bool bColor;
-const bColor WHITE = false;
-const bColor BLACK = true;
+typedef int bColor;
+const bColor WHITE = 0;
+const bColor BLACK = 1;
 const int COLOR_NB = 2;
 
 enum CastlingSide {
