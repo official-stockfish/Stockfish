@@ -326,7 +326,7 @@ inline Value operator-(Value v, int i) { return Value(int(v) - i); }
 inline Value& operator+=(Value& v, int i) { return v = v + i; }
 inline Value& operator-=(Value& v, int i) { return v = v - i; }
 
-/// Additional operators to add a Delta to a Square, a File
+/// Additional operators to add a Delta to a Square
 inline Square operator+(Square s, Delta d) { return Square(int(s) + int(d)); }
 inline Square operator-(Square s, Delta d) { return Square(int(s) - int(d)); }
 inline Square& operator+=(Square &s, Delta d) { return s = s + d; }
