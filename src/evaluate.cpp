@@ -252,9 +252,9 @@ namespace {
   template<Tracing T> template<Color Us>
   void Evaluation<T>::initialize() {
 
-    const Color  Them = (Us == WHITE ? BLACK : WHITE);
-    const Square Up   = (Us == WHITE ? NORTH : SOUTH);
-    const Square Down = (Us == WHITE ? SOUTH : NORTH);
+    const Color Them = (Us == WHITE ? BLACK : WHITE);
+    const Delta Up   = (Us == WHITE ? NORTH : SOUTH);
+    const Delta Down = (Us == WHITE ? SOUTH : NORTH);
     const Bitboard LowRanks = (Us == WHITE ? Rank2BB | Rank3BB: Rank7BB | Rank6BB);
 
     // Find our pawns on the first two ranks, and those which are blocked
@@ -365,7 +365,7 @@ namespace {
                 && pos.is_chess960()
                 && (s == relative_square(Us, SQ_A1) || s == relative_square(Us, SQ_H1)))
             {
-                Square d = pawn_push(Us) + (file_of(s) == FILE_A ? EAST : WEST);
+                Delta d = pawn_push(Us) + (file_of(s) == FILE_A ? EAST : WEST);
                 if (pos.piece_on(s + d) == make_piece(Us, PAWN))
                     score -= !pos.empty(s + d + pawn_push(Us))                ? TrappedBishopA1H1 * 4
                             : pos.piece_on(s + d + d) == make_piece(Us, PAWN) ? TrappedBishopA1H1 * 2
@@ -416,7 +416,7 @@ namespace {
   Score Evaluation<T>::evaluate_king() {
 
     const Color Them    = (Us == WHITE ? BLACK : WHITE);
-    const Square Up     = (Us == WHITE ? NORTH : SOUTH);
+    const Delta Up      = (Us == WHITE ? NORTH : SOUTH);
     const Bitboard Camp = (Us == WHITE ? AllSquares ^ Rank6BB ^ Rank7BB ^ Rank8BB
                                        : AllSquares ^ Rank1BB ^ Rank2BB ^ Rank3BB);
 
@@ -524,9 +524,9 @@ namespace {
   Score Evaluation<T>::evaluate_threats() {
 
     const Color Them        = (Us == WHITE ? BLACK      : WHITE);
-    const Square Up         = (Us == WHITE ? NORTH      : SOUTH);
-    const Square Left       = (Us == WHITE ? NORTH_WEST : SOUTH_EAST);
-    const Square Right      = (Us == WHITE ? NORTH_EAST : SOUTH_WEST);
+    const Delta Up          = (Us == WHITE ? NORTH      : SOUTH);
+    const Delta Left        = (Us == WHITE ? NORTH_WEST : SOUTH_EAST);
+    const Delta Right       = (Us == WHITE ? NORTH_EAST : SOUTH_WEST);
     const Bitboard TRank3BB = (Us == WHITE ? Rank3BB    : Rank6BB);
 
     Bitboard b, weak, defended, stronglyProtected, safeThreats;
@@ -623,7 +623,7 @@ namespace {
   Score Evaluation<T>::evaluate_passed_pawns() {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
-    const Square Up  = (Us == WHITE ? NORTH : SOUTH);
+    const Delta Up   = (Us == WHITE ? NORTH : SOUTH);
 
     Bitboard b, bb, squaresToQueen, defendedSquares, unsafeSquares;
     Score score = SCORE_ZERO;

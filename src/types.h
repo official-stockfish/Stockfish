@@ -233,8 +233,10 @@ enum Square {
   SQ_A8, SQ_B8, SQ_C8, SQ_D8, SQ_E8, SQ_F8, SQ_G8, SQ_H8,
   SQ_NONE,
 
-  SQUARE_NB = 64,
+  SQUARE_NB = 64
+};
 
+enum Delta {
   NORTH =  8,
   EAST  =  1,
   SOUTH = -NORTH,
@@ -285,31 +287,37 @@ inline T operator+(T d1, T d2) { return T(int(d1) + int(d2)); } \
 inline T operator-(T d1, T d2) { return T(int(d1) - int(d2)); } \
 inline T operator-(T d) { return T(-int(d)); }                  \
 inline T& operator+=(T& d1, T d2) { return d1 = d1 + d2; }      \
-inline T& operator-=(T& d1, T d2) { return d1 = d1 - d2; }      \
+inline T& operator-=(T& d1, T d2) { return d1 = d1 - d2; }
+
+#define ENABLE_INCR_OPERATORS_ON(T)                             \
+inline T& operator++(T& d) { return d = T(int(d) + 1); }        \
+inline T& operator--(T& d) { return d = T(int(d) - 1); }
 
 #define ENABLE_FULL_OPERATORS_ON(T)                             \
 ENABLE_BASE_OPERATORS_ON(T)                                     \
+ENABLE_INCR_OPERATORS_ON(T)                                     \
 inline T operator*(int i, T d) { return T(i * int(d)); }        \
 inline T operator*(T d, int i) { return T(int(d) * i); }        \
-inline T& operator++(T& d) { return d = T(int(d) + 1); }        \
-inline T& operator--(T& d) { return d = T(int(d) - 1); }        \
 inline T operator/(T d, int i) { return T(int(d) / i); }        \
 inline int operator/(T d1, T d2) { return int(d1) / int(d2); }  \
 inline T& operator*=(T& d, int i) { return d = T(int(d) * i); } \
 inline T& operator/=(T& d, int i) { return d = T(int(d) / i); }
 
 ENABLE_FULL_OPERATORS_ON(Value)
-ENABLE_FULL_OPERATORS_ON(PieceType)
-ENABLE_FULL_OPERATORS_ON(Piece)
-ENABLE_FULL_OPERATORS_ON(Color)
 ENABLE_FULL_OPERATORS_ON(Depth)
-ENABLE_FULL_OPERATORS_ON(Square)
-ENABLE_FULL_OPERATORS_ON(File)
-ENABLE_FULL_OPERATORS_ON(Rank)
+ENABLE_FULL_OPERATORS_ON(Delta)
+
+ENABLE_INCR_OPERATORS_ON(PieceType)
+ENABLE_INCR_OPERATORS_ON(Piece)
+ENABLE_INCR_OPERATORS_ON(Color)
+ENABLE_INCR_OPERATORS_ON(Square)
+ENABLE_INCR_OPERATORS_ON(File)
+ENABLE_INCR_OPERATORS_ON(Rank)
 
 ENABLE_BASE_OPERATORS_ON(Score)
 
 #undef ENABLE_FULL_OPERATORS_ON
+#undef ENABLE_INCR_OPERATORS_ON
 #undef ENABLE_BASE_OPERATORS_ON
 
 /// Additional operators to add integers to a Value
@@ -317,6 +325,12 @@ inline Value operator+(Value v, int i) { return Value(int(v) + i); }
 inline Value operator-(Value v, int i) { return Value(int(v) - i); }
 inline Value& operator+=(Value& v, int i) { return v = v + i; }
 inline Value& operator-=(Value& v, int i) { return v = v - i; }
+
+/// Additional operators to add a Delta to a Square, a File
+inline Square operator+(Square s, Delta d) { return Square(int(s) + int(d)); }
+inline Square operator-(Square s, Delta d) { return Square(int(s) - int(d)); }
+inline Square& operator+=(Square &s, Delta d) { return s = s + d; }
+inline Square& operator-=(Square &s, Delta d) { return s = s - d; }
 
 /// Only declared but not defined. We don't want to multiply two scores due to
 /// a very high risk of overflow. So user should explicitly convert to integer.
@@ -345,6 +359,10 @@ inline Color operator~(Color c) {
 
 inline Square operator~(Square s) {
   return Square(s ^ SQ_A8); // Vertical flip SQ_A1 -> SQ_A8
+}
+
+inline File operator~(File f) {
+  return File(f ^ FILE_H); // Horizontal flip FILE_A -> FILE_H
 }
 
 inline Piece operator~(Piece pc) {
@@ -409,7 +427,7 @@ inline bool opposite_colors(Square s1, Square s2) {
   return ((s >> 3) ^ s) & 1;
 }
 
-inline Square pawn_push(Color c) {
+inline Delta pawn_push(Color c) {
   return c == WHITE ? NORTH : SOUTH;
 }
 

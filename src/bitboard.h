@@ -153,7 +153,7 @@ inline Bitboard file_bb(Square s) {
 
 /// shift() moves a bitboard one step along direction D. Mainly for pawns
 
-template<Square D>
+template<Delta D>
 inline Bitboard shift(Bitboard b) {
   return  D == NORTH      ?  b             << 8 : D == SOUTH      ?  b             >> 8
         : D == NORTH_EAST ? (b & ~FileHBB) << 9 : D == SOUTH_EAST ? (b & ~FileHBB) >> 7

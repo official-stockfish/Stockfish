@@ -54,7 +54,7 @@ namespace {
   Bitboard RookTable[0x19000];  // To store rook attacks
   Bitboard BishopTable[0x1480]; // To store bishop attacks
 
-  void init_magics(Bitboard table[], Magic magics[], Square deltas[]);
+  void init_magics(Bitboard table[], Magic magics[], Delta deltas[]);
 
   // bsf_index() returns the index into BSFTable[] to look up the bitscan. Uses
   // Matt Taylor's folding for 32 bit case, extended to 64 bit by Kim Walisch.
@@ -188,7 +188,7 @@ void Bitboards::init() {
           for (Square s = SQ_A1; s <= SQ_H8; ++s)
               for (int i = 0; steps[pt][i]; ++i)
               {
-                  Square to = s + Square(c == WHITE ? steps[pt][i] : -steps[pt][i]);
+                  Square to = s + Delta(c == WHITE ? steps[pt][i] : -steps[pt][i]);
 
                   if (is_ok(to) && distance(s, to) < 3)
                   {
@@ -199,8 +199,8 @@ void Bitboards::init() {
                   }
               }
 
-  Square RookDeltas[] = { NORTH,  EAST,  SOUTH,  WEST };
-  Square BishopDeltas[] = { NORTH_EAST, SOUTH_EAST, SOUTH_WEST, NORTH_WEST };
+  Delta RookDeltas[] = { NORTH,  EAST,  SOUTH,  WEST };
+  Delta BishopDeltas[] = { NORTH_EAST, SOUTH_EAST, SOUTH_WEST, NORTH_WEST };
 
   init_magics(RookTable, RookMagics, RookDeltas);
   init_magics(BishopTable, BishopMagics, BishopDeltas);
@@ -225,7 +225,7 @@ void Bitboards::init() {
 
 namespace {
 
-  Bitboard sliding_attack(Square deltas[], Square sq, Bitboard occupied) {
+  Bitboard sliding_attack(Delta deltas[], Square sq, Bitboard occupied) {
 
     Bitboard attack = 0;
 
@@ -249,7 +249,7 @@ namespace {
   // chessprogramming.wikispaces.com/Magic+Bitboards. In particular, here we
   // use the so called "fancy" approach.
 
-  void init_magics(Bitboard table[], Magic magics[], Square deltas[]) {
+  void init_magics(Bitboard table[], Magic magics[], Delta deltas[]) {
 
     // Optimal PRNG seeds to pick the correct magics in the shortest time
     int seeds[][RANK_NB] = { { 8977, 44560, 54343, 38998,  5731, 95205, 104912, 17020 },
