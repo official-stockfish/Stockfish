@@ -36,11 +36,11 @@
 
 struct TTEntry {
 
-  Move  move()  const { return (Move )move16; }
-  Value value() const { return (Value)value16; }
-  Value eval()  const { return (Value)eval16; }
-  Depth depth() const { return (Depth)(depth8 * int(ONE_PLY)); }
-  Bound bound() const { return (Bound)(genBound8 & 0x3); }
+  constexpr Move  move()  const { return (Move )move16; }
+  constexpr Value value() const { return (Value)value16; }
+  constexpr Value eval()  const { return (Value)eval16; }
+  constexpr Depth depth() const { return (Depth)(depth8 * int(ONE_PLY)); }
+  constexpr Bound bound() const { return (Bound)(genBound8 & 0x3); }
 
   void save(Key k, Value v, Bound b, Depth d, Move m, Value ev, uint8_t g) {
 
@@ -85,8 +85,8 @@ private:
 
 class TranspositionTable {
 
-  static const int CacheLineSize = 64;
-  static const int ClusterSize = 3;
+  static constexpr int CacheLineSize = 64;
+  static constexpr int ClusterSize = 3;
 
   struct Cluster {
     TTEntry entry[ClusterSize];

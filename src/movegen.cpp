@@ -94,13 +94,13 @@ namespace {
 
     // Compute our parametrized parameters at compile time, named according to
     // the point of view of white side.
-    const Color    Them     = (Us == WHITE ? BLACK      : WHITE);
-    const Bitboard TRank8BB = (Us == WHITE ? Rank8BB    : Rank1BB);
-    const Bitboard TRank7BB = (Us == WHITE ? Rank7BB    : Rank2BB);
-    const Bitboard TRank3BB = (Us == WHITE ? Rank3BB    : Rank6BB);
-    const Square   Up       = (Us == WHITE ? NORTH      : SOUTH);
-    const Square   Right    = (Us == WHITE ? NORTH_EAST : SOUTH_WEST);
-    const Square   Left     = (Us == WHITE ? NORTH_WEST : SOUTH_EAST);
+    constexpr Color    Them     = (Us == WHITE ? BLACK      : WHITE);
+    constexpr Bitboard TRank8BB = (Us == WHITE ? Rank8BB    : Rank1BB);
+    constexpr Bitboard TRank7BB = (Us == WHITE ? Rank7BB    : Rank2BB);
+    constexpr Bitboard TRank3BB = (Us == WHITE ? Rank3BB    : Rank6BB);
+    constexpr Square   Up       = (Us == WHITE ? NORTH      : SOUTH);
+    constexpr Square   Right    = (Us == WHITE ? NORTH_EAST : SOUTH_WEST);
+    constexpr Square   Left     = (Us == WHITE ? NORTH_WEST : SOUTH_EAST);
 
     Bitboard emptySquares;
 
@@ -261,7 +261,7 @@ namespace {
   template<Color Us, GenType Type>
   ExtMove* generate_all(const Position& pos, ExtMove* moveList, Bitboard target) {
 
-    const bool Checks = Type == QUIET_CHECKS;
+    constexpr bool Checks = Type == QUIET_CHECKS;
 
     moveList = generate_pawn_moves<Us, Type>(pos, moveList, target);
     moveList = generate_moves<KNIGHT, Checks>(pos, moveList, Us, target);

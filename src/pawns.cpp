@@ -32,26 +32,26 @@ namespace {
   #define S(mg, eg) make_score(mg, eg)
 
   // Isolated pawn penalty
-  const Score Isolated = S(13, 18);
+  constexpr Score Isolated = S(13, 18);
 
   // Backward pawn penalty
-  const Score Backward = S(24, 12);
+  constexpr Score Backward = S(24, 12);
 
   // Connected pawn bonus by opposed, phalanx, #support and rank
   Score Connected[2][2][3][RANK_NB];
 
   // Doubled pawn penalty
-  const Score Doubled = S(18, 38);
+  constexpr Score Doubled = S(18, 38);
 
   // Lever bonus by rank
-  const Score Lever[RANK_NB] = {
+  constexpr Score Lever[RANK_NB] = {
     S( 0,  0), S( 0,  0), S(0, 0), S(0, 0),
     S(17, 16), S(33, 32), S(0, 0), S(0, 0)
   };
 
   // Weakness of our pawn shelter in front of the king by [isKingFile][distance from edge][rank].
   // RANK_1 = 0 is used for files where we have no pawns or our pawn is behind our king.
-  const Value ShelterWeakness[][int(FILE_NB) / 2][RANK_NB] = {
+  constexpr Value ShelterWeakness[][int(FILE_NB) / 2][RANK_NB] = {
     { { V( 97), V(17), V( 9), V(44), V( 84), V( 87), V( 99) }, // Not On King file
       { V(106), V( 6), V(33), V(86), V( 87), V(104), V(112) },
       { V(101), V( 2), V(65), V(98), V( 58), V( 89), V(115) },
@@ -65,7 +65,7 @@ namespace {
   // Danger of enemy pawns moving toward our king by [type][distance from edge][rank].
   // For the unopposed and unblocked cases, RANK_1 = 0 is used when opponent has
   // no pawn on the given file, or their pawn is behind our king.
-  const Value StormDanger[][4][RANK_NB] = {
+  constexpr Value StormDanger[][4][RANK_NB] = {
     { { V( 0),  V(-290), V(-274), V(57), V(41) },  // BlockedByKing
       { V( 0),  V(  60), V( 144), V(39), V(13) },
       { V( 0),  V(  65), V( 141), V(41), V(34) },
@@ -86,7 +86,7 @@ namespace {
 
   // Max bonus for king safety. Corresponds to start position with all the pawns
   // in front of the king and no enemy pawn on the horizon.
-  const Value MaxSafetyBonus = V(258);
+  constexpr Value MaxSafetyBonus = V(258);
 
   #undef S
   #undef V
@@ -94,10 +94,10 @@ namespace {
   template<Color Us>
   Score evaluate(const Position& pos, Pawns::Entry* e) {
 
-    const Color  Them  = (Us == WHITE ? BLACK      : WHITE);
-    const Square Up    = (Us == WHITE ? NORTH      : SOUTH);
-    const Square Right = (Us == WHITE ? NORTH_EAST : SOUTH_WEST);
-    const Square Left  = (Us == WHITE ? NORTH_WEST : SOUTH_EAST);
+    constexpr Color  Them  = (Us == WHITE ? BLACK      : WHITE);
+    constexpr Square Up    = (Us == WHITE ? NORTH      : SOUTH);
+    constexpr Square Right = (Us == WHITE ? NORTH_EAST : SOUTH_WEST);
+    constexpr Square Left  = (Us == WHITE ? NORTH_WEST : SOUTH_EAST);
 
     Bitboard b, neighbours, stoppers, doubled, supported, phalanx;
     Bitboard lever, leverPush;
@@ -244,7 +244,7 @@ Entry* probe(const Position& pos) {
 template<Color Us>
 Value Entry::shelter_storm(const Position& pos, Square ksq) {
 
-  const Color Them = (Us == WHITE ? BLACK : WHITE);
+  constexpr Color Them = (Us == WHITE ? BLACK : WHITE);
 
   enum { BlockedByKing, Unopposed, BlockedByPawn, Unblocked };
 
