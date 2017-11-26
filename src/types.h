@@ -146,7 +146,7 @@ enum CastlingRight {
 };
 
 template<Color C, CastlingSide S> struct MakeCastling {
-  static const CastlingRight
+  static constexpr CastlingRight
   right = C == WHITE ? S == QUEEN_SIDE ? WHITE_OOO : WHITE_OO
                      : S == QUEEN_SIDE ? BLACK_OOO : BLACK_OO;
 };
@@ -262,7 +262,7 @@ enum Rank : int {
 /// care to avoid left-shifting a signed int to avoid undefined behavior.
 enum Score : int { SCORE_ZERO };
 
-inline Score make_score(int mg, int eg) {
+constexpr Score make_score(int mg, int eg) {
   return Score((int)((unsigned int)eg << 16) + mg);
 }
 
@@ -270,33 +270,31 @@ inline Score make_score(int mg, int eg) {
 /// according to the standard a simple cast to short is implementation defined
 /// and so is a right shift of a signed integer.
 inline Value eg_value(Score s) {
-
   union { uint16_t u; int16_t s; } eg = { uint16_t(unsigned(s + 0x8000) >> 16) };
   return Value(eg.s);
 }
 
 inline Value mg_value(Score s) {
-
   union { uint16_t u; int16_t s; } mg = { uint16_t(unsigned(s)) };
   return Value(mg.s);
 }
 
-#define ENABLE_BASE_OPERATORS_ON(T)                             \
-inline T operator+(T d1, T d2) { return T(int(d1) + int(d2)); } \
-inline T operator-(T d1, T d2) { return T(int(d1) - int(d2)); } \
-inline T operator-(T d) { return T(-int(d)); }                  \
-inline T& operator+=(T& d1, T d2) { return d1 = d1 + d2; }      \
-inline T& operator-=(T& d1, T d2) { return d1 = d1 - d2; }      \
+#define ENABLE_BASE_OPERATORS_ON(T)                                \
+constexpr T operator+(T d1, T d2) { return T(int(d1) + int(d2)); } \
+constexpr T operator-(T d1, T d2) { return T(int(d1) - int(d2)); } \
+constexpr T operator-(T d) { return T(-int(d)); }                  \
+inline T& operator+=(T& d1, T d2) { return d1 = d1 + d2; }         \
+inline T& operator-=(T& d1, T d2) { return d1 = d1 - d2; }         \
 
-#define ENABLE_FULL_OPERATORS_ON(T)                             \
-ENABLE_BASE_OPERATORS_ON(T)                                     \
-inline T operator*(int i, T d) { return T(i * int(d)); }        \
-inline T operator*(T d, int i) { return T(int(d) * i); }        \
-inline T& operator++(T& d) { return d = T(int(d) + 1); }        \
-inline T& operator--(T& d) { return d = T(int(d) - 1); }        \
-inline T operator/(T d, int i) { return T(int(d) / i); }        \
-inline int operator/(T d1, T d2) { return int(d1) / int(d2); }  \
-inline T& operator*=(T& d, int i) { return d = T(int(d) * i); } \
+#define ENABLE_FULL_OPERATORS_ON(T)                                \
+ENABLE_BASE_OPERATORS_ON(T)                                        \
+constexpr T operator*(int i, T d) { return T(i * int(d)); }        \
+constexpr T operator*(T d, int i) { return T(int(d) * i); }        \
+inline T& operator++(T& d) { return d = T(int(d) + 1); }           \
+inline T& operator--(T& d) { return d = T(int(d) - 1); }           \
+constexpr T operator/(T d, int i) { return T(int(d) / i); }        \
+constexpr int operator/(T d1, T d2) { return int(d1) / int(d2); }  \
+inline T& operator*=(T& d, int i) { return d = T(int(d) * i); }    \
 inline T& operator/=(T& d, int i) { return d = T(int(d) / i); }
 
 ENABLE_FULL_OPERATORS_ON(Value)
@@ -314,14 +312,14 @@ ENABLE_BASE_OPERATORS_ON(Score)
 #undef ENABLE_BASE_OPERATORS_ON
 
 /// Additional operators to add integers to a Value
-inline Value operator+(Value v, int i) { return Value(int(v) + i); }
-inline Value operator-(Value v, int i) { return Value(int(v) - i); }
+constexpr Value operator+(Value v, int i) { return Value(int(v) + i); }
+constexpr Value operator-(Value v, int i) { return Value(int(v) - i); }
 inline Value& operator+=(Value& v, int i) { return v = v + i; }
 inline Value& operator-=(Value& v, int i) { return v = v - i; }
 
 /// Only declared but not defined. We don't want to multiply two scores due to
 /// a very high risk of overflow. So user should explicitly convert to integer.
-inline Score operator*(Score s1, Score s2);
+Score operator*(Score s1, Score s2) = delete;
 
 /// Division of a Score must be handled separately for each term
 inline Score operator/(Score s, int i) {
@@ -340,39 +338,39 @@ inline Score operator*(Score s, int i) {
   return result;
 }
 
-inline Color operator~(Color c) {
+constexpr Color operator~(Color c) {
   return Color(c ^ BLACK); // Toggle color
 }
 
-inline Square operator~(Square s) {
+constexpr Square operator~(Square s) {
   return Square(s ^ SQ_A8); // Vertical flip SQ_A1 -> SQ_A8
 }
 
-inline Piece operator~(Piece pc) {
+constexpr Piece operator~(Piece pc) {
   return Piece(pc ^ 8); // Swap color of piece B_KNIGHT -> W_KNIGHT
 }
 
-inline CastlingRight operator|(Color c, CastlingSide s) {
+constexpr CastlingRight operator|(Color c, CastlingSide s) {
   return CastlingRight(WHITE_OO << ((s == QUEEN_SIDE) + 2 * c));
 }
 
-inline Value mate_in(int ply) {
+constexpr Value mate_in(int ply) {
   return VALUE_MATE - ply;
 }
 
-inline Value mated_in(int ply) {
+constexpr Value mated_in(int ply) {
   return -VALUE_MATE + ply;
 }
 
-inline Square make_square(File f, Rank r) {
+constexpr Square make_square(File f, Rank r) {
   return Square((r << 3) + f);
 }
 
-inline Piece make_piece(Color c, PieceType pt) {
+constexpr Piece make_piece(Color c, PieceType pt) {
   return Piece((c << 3) + pt);
 }
 
-inline PieceType type_of(Piece pc) {
+constexpr PieceType type_of(Piece pc) {
   return PieceType(pc & 7);
 }
 
@@ -381,27 +379,27 @@ inline Color color_of(Piece pc) {
   return Color(pc >> 3);
 }
 
-inline bool is_ok(Square s) {
+constexpr bool is_ok(Square s) {
   return s >= SQ_A1 && s <= SQ_H8;
 }
 
-inline File file_of(Square s) {
+constexpr File file_of(Square s) {
   return File(s & 7);
 }
 
-inline Rank rank_of(Square s) {
+constexpr Rank rank_of(Square s) {
   return Rank(s >> 3);
 }
 
-inline Square relative_square(Color c, Square s) {
+constexpr Square relative_square(Color c, Square s) {
   return Square(s ^ (c * 56));
 }
 
-inline Rank relative_rank(Color c, Rank r) {
+constexpr Rank relative_rank(Color c, Rank r) {
   return Rank(r ^ (c * 7));
 }
 
-inline Rank relative_rank(Color c, Square s) {
+constexpr Rank relative_rank(Color c, Square s) {
   return relative_rank(c, rank_of(s));
 }
 
@@ -410,27 +408,27 @@ inline bool opposite_colors(Square s1, Square s2) {
   return ((s >> 3) ^ s) & 1;
 }
 
-inline Square pawn_push(Color c) {
+constexpr Square pawn_push(Color c) {
   return c == WHITE ? NORTH : SOUTH;
 }
 
-inline Square from_sq(Move m) {
+constexpr Square from_sq(Move m) {
   return Square((m >> 6) & 0x3F);
 }
 
-inline Square to_sq(Move m) {
+constexpr Square to_sq(Move m) {
   return Square(m & 0x3F);
 }
 
-inline int from_to(Move m) {
+constexpr int from_to(Move m) {
  return m & 0xFFF;
 }
 
-inline MoveType type_of(Move m) {
+constexpr MoveType type_of(Move m) {
   return MoveType(m & (3 << 14));
 }
 
-inline PieceType promotion_type(Move m) {
+constexpr PieceType promotion_type(Move m) {
   return PieceType(((m >> 12) & 3) + KNIGHT);
 }
 
@@ -439,11 +437,11 @@ inline Move make_move(Square from, Square to) {
 }
 
 template<MoveType T>
-inline Move make(Square from, Square to, PieceType pt = KNIGHT) {
+constexpr Move make(Square from, Square to, PieceType pt = KNIGHT) {
   return Move(T + ((pt - KNIGHT) << 12) + (from << 6) + to);
 }
 
-inline bool is_ok(Move m) {
+constexpr bool is_ok(Move m) {
   return from_sq(m) != to_sq(m); // Catch MOVE_NULL and MOVE_NONE
 }
 
