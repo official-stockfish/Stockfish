@@ -130,7 +130,6 @@ constexpr bool more_than_one(Bitboard b) {
   return b & (b - 1);
 }
 
-
 /// rank_bb() and file_bb() return a bitboard representing all the squares on
 /// the given file or rank.
 
