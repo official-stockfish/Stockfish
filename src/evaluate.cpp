@@ -452,7 +452,7 @@ namespace {
                     + 191 * popcount(kingRing[Us] & weak)
                     + 143 * !!pos.pinned_pieces(Us)
                     - 848 * !pos.count<QUEEN>(Them)
-                    -   9 * mg_value(score) / 8
+                   // -   9 * mg_value(score) / 8
                     +  40;
 
         // Analyse the safe enemy's checks which are possible on next move
@@ -847,9 +847,9 @@ namespace {
     score += pe->pawns_score();
 
     // Early exit if score is high
-    Value v = (mg_value(score) + eg_value(score)) / 2;
-    if (abs(v) > LazyThreshold)
-       return pos.side_to_move() == WHITE ? v : -v;
+    //Value v = (mg_value(score) + eg_value(score)) / 2;
+    //if (abs(v) > LazyThreshold)
+    //   return pos.side_to_move() == WHITE ? v : -v;
 
     // Main evaluation begins here
 
@@ -880,8 +880,8 @@ namespace {
 
     // Interpolate between a middlegame and a (scaled by 'sf') endgame score
     ScaleFactor sf = evaluate_scale_factor(eg_value(score));
-    v =  mg_value(score) * int(me->game_phase())
-       + eg_value(score) * int(PHASE_MIDGAME - me->game_phase()) * sf / SCALE_FACTOR_NORMAL;
+    Value v =  mg_value(score) * int(me->game_phase())
+             + eg_value(score) * int(PHASE_MIDGAME - me->game_phase()) * sf / SCALE_FACTOR_NORMAL;
 
     v /= int(PHASE_MIDGAME);
 
