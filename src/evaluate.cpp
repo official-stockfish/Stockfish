@@ -211,23 +211,24 @@ namespace {
   const Score KingProtector[] = { S(-3, -5), S(-4, -3), S(-3, 0), S(-1, 1) };
 
   // Assorted bonuses and penalties used by evaluation
-  const Score MinorBehindPawn     = S( 16,  0);
-  const Score BishopPawns         = S(  8, 12);
-  const Score LongRangedBishop    = S( 22,  0);
-  const Score RookOnPawn          = S(  8, 24);
-  const Score TrappedRook         = S( 92,  0);
-  const Score WeakQueen           = S( 50, 10);
-  const Score OtherCheck          = S( 10, 10);
-  const Score CloseEnemies        = S(  7,  0);
-  const Score PawnlessFlank       = S( 20, 80);
-  const Score ThreatByHangingPawn = S( 71, 61);
-  const Score ThreatBySafePawn    = S(192,175);
-  const Score ThreatByRank        = S( 16,  3);
-  const Score Hanging             = S( 48, 27);
-  const Score WeakUnopposedPawn   = S(  5, 25);
-  const Score ThreatByPawnPush    = S( 38, 22);
-  const Score HinderPassedPawn    = S(  7,  0);
-  const Score TrappedBishopA1H1   = S( 50, 50);
+  const Score MinorBehindPawn       = S( 16,  0);
+  const Score BishopPawns           = S(  8, 12);
+  const Score LongRangedBishop      = S( 22,  0);
+  const Score RookOnPawn            = S(  8, 24);
+  const Score TrappedRook           = S( 92,  0);
+  const Score WeakQueen             = S( 50, 10);
+  const Score OtherCheck            = S( 10, 10);
+  const Score CloseEnemies          = S(  7,  0);
+  const Score PawnlessFlank         = S( 20, 80);
+  const Score ThreatByHangingPawn   = S( 71, 61);
+  const Score ThreatBySafePawn      = S(192,175);
+  const Score ThreatByRank          = S( 16,  3);
+  const Score Hanging               = S( 48, 27);
+  const Score WeakUnopposedPawn     = S(  5, 25);
+  const Score ThreatByPawnPush      = S( 38, 22);
+  const Score ThreatByAttackOnQueen = S( 38, 22);
+  const Score HinderPassedPawn      = S(  7,  0);
+  const Score TrappedBishopA1H1     = S( 50, 50);
 
   #undef S
   #undef V
@@ -252,9 +253,9 @@ namespace {
   template<Tracing T> template<Color Us>
   void Evaluation<T>::initialize() {
 
-    const Color Them = (Us == WHITE ? BLACK : WHITE);
-    const Delta Up   = (Us == WHITE ? NORTH : SOUTH);
-    const Delta Down = (Us == WHITE ? SOUTH : NORTH);
+    const Color     Them = (Us == WHITE ? BLACK : WHITE);
+    const Direction Up   = (Us == WHITE ? NORTH : SOUTH);
+    const Direction Down = (Us == WHITE ? SOUTH : NORTH);
     const Bitboard LowRanks = (Us == WHITE ? Rank2BB | Rank3BB: Rank7BB | Rank6BB);
 
     // Find our pawns on the first two ranks, and those which are blocked
@@ -303,6 +304,9 @@ namespace {
 
     attackedBy[Us][Pt] = 0;
 
+    if (Pt == QUEEN)
+        attackedBy[Us][QUEEN_DIAGONAL] = 0;
+
     while ((s = *pl++) != SQ_NONE)
     {
         // Find attacked squares, including x-ray attacks for bishops and rooks
@@ -315,6 +319,9 @@ namespace {
 
         attackedBy2[Us] |= attackedBy[Us][ALL_PIECES] & b;
         attackedBy[Us][ALL_PIECES] |= attackedBy[Us][Pt] |= b;
+
+        if (Pt == QUEEN)
+            attackedBy[Us][QUEEN_DIAGONAL] |= b & PseudoAttacks[BISHOP][s];
 
         if (b & kingRing[Them])
         {
@@ -335,12 +342,12 @@ namespace {
             // Bonus for outpost squares
             bb = OutpostRanks & ~pe->pawn_attacks_span(Them);
             if (bb & s)
-                score += Outpost[Pt == BISHOP][!!(attackedBy[Us][PAWN] & s)] * 2;
+                score += Outpost[Pt == BISHOP][bool(attackedBy[Us][PAWN] & s)] * 2;
             else
             {
                 bb &= b & ~pos.pieces(Us);
                 if (bb)
-                   score += Outpost[Pt == BISHOP][!!(attackedBy[Us][PAWN] & bb)];
+                   score += Outpost[Pt == BISHOP][bool(attackedBy[Us][PAWN] & bb)];
             }
 
             // Bonus when behind a pawn
@@ -365,7 +372,7 @@ namespace {
                 && pos.is_chess960()
                 && (s == relative_square(Us, SQ_A1) || s == relative_square(Us, SQ_H1)))
             {
-                Delta d = pawn_push(Us) + (file_of(s) == FILE_A ? EAST : WEST);
+                Direction d = pawn_push(Us) + (file_of(s) == FILE_A ? EAST : WEST);
                 if (pos.piece_on(s + d) == make_piece(Us, PAWN))
                     score -= !pos.empty(s + d + pawn_push(Us))                ? TrappedBishopA1H1 * 4
                             : pos.piece_on(s + d + d) == make_piece(Us, PAWN) ? TrappedBishopA1H1 * 2
@@ -381,7 +388,7 @@ namespace {
 
             // Bonus when on an open or semi-open file
             if (pe->semiopen_file(Us, file_of(s)))
-                score += RookOnFile[!!pe->semiopen_file(Them, file_of(s))];
+                score += RookOnFile[bool(pe->semiopen_file(Them, file_of(s)))];
 
             // Penalty when trapped by the king, even more if the king cannot castle
             else if (mob <= 3)
@@ -415,10 +422,10 @@ namespace {
   template<Tracing T>  template<Color Us>
   Score Evaluation<T>::evaluate_king() {
 
-    const Color Them    = (Us == WHITE ? BLACK : WHITE);
-    const Delta Up      = (Us == WHITE ? NORTH : SOUTH);
-    const Bitboard Camp = (Us == WHITE ? AllSquares ^ Rank6BB ^ Rank7BB ^ Rank8BB
-                                       : AllSquares ^ Rank1BB ^ Rank2BB ^ Rank3BB);
+    const Color     Them = (Us == WHITE ? BLACK : WHITE);
+    const Direction Up   = (Us == WHITE ? NORTH : SOUTH);
+    const Bitboard  Camp = (Us == WHITE ? AllSquares ^ Rank6BB ^ Rank7BB ^ Rank8BB
+                                        : AllSquares ^ Rank1BB ^ Rank2BB ^ Rank3BB);
 
     const Square ksq = pos.square<KING>(Us);
     Bitboard weak, b, b1, b2, safe, other;
@@ -443,7 +450,7 @@ namespace {
         kingDanger =        kingAttackersCount[Them] * kingAttackersWeight[Them]
                     + 102 * kingAdjacentZoneAttacksCount[Them]
                     + 191 * popcount(kingRing[Us] & weak)
-                    + 143 * !!pos.pinned_pieces(Us)
+                    + 143 * bool(pos.pinned_pieces(Us))
                     - 848 * !pos.count<QUEEN>(Them)
                     -   9 * mg_value(score) / 8
                     +  40;
@@ -523,11 +530,11 @@ namespace {
   template<Tracing T>  template<Color Us>
   Score Evaluation<T>::evaluate_threats() {
 
-    const Color Them        = (Us == WHITE ? BLACK      : WHITE);
-    const Delta Up          = (Us == WHITE ? NORTH      : SOUTH);
-    const Delta Left        = (Us == WHITE ? NORTH_WEST : SOUTH_EAST);
-    const Delta Right       = (Us == WHITE ? NORTH_EAST : SOUTH_WEST);
-    const Bitboard TRank3BB = (Us == WHITE ? Rank3BB    : Rank6BB);
+    const Color     Them     = (Us == WHITE ? BLACK      : WHITE);
+    const Direction Up       = (Us == WHITE ? NORTH      : SOUTH);
+    const Direction Left     = (Us == WHITE ? NORTH_WEST : SOUTH_EAST);
+    const Direction Right    = (Us == WHITE ? NORTH_EAST : SOUTH_WEST);
+    const Bitboard  TRank3BB = (Us == WHITE ? Rank3BB    : Rank6BB);
 
     Bitboard b, weak, defended, stronglyProtected, safeThreats;
     Score score = SCORE_ZERO;
@@ -609,6 +616,13 @@ namespace {
 
     score += ThreatByPawnPush * popcount(b);
 
+    // Add a bonus for safe slider attack threats on opponent queen
+    safeThreats = ~pos.pieces(Us) & ~attackedBy2[Them] & attackedBy2[Us];
+    b =  (attackedBy[Us][BISHOP] & attackedBy[Them][QUEEN_DIAGONAL])
+       | (attackedBy[Us][ROOK  ] & attackedBy[Them][QUEEN] & ~attackedBy[Them][QUEEN_DIAGONAL]);
+
+    score += ThreatByAttackOnQueen * popcount(b & safeThreats);
+
     if (T)
         Trace::add(THREAT, Us, score);
 
@@ -622,8 +636,8 @@ namespace {
   template<Tracing T>  template<Color Us>
   Score Evaluation<T>::evaluate_passed_pawns() {
 
-    const Color Them = (Us == WHITE ? BLACK : WHITE);
-    const Delta Up   = (Us == WHITE ? NORTH : SOUTH);
+    const Color     Them = (Us == WHITE ? BLACK : WHITE);
+    const Direction Up   = (Us == WHITE ? NORTH : SOUTH);
 
     Bitboard b, bb, squaresToQueen, defendedSquares, unsafeSquares;
     Score score = SCORE_ZERO;

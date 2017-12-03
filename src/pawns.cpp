@@ -94,10 +94,10 @@ namespace {
   template<Color Us>
   Score evaluate(const Position& pos, Pawns::Entry* e) {
 
-    const Color Them  = (Us == WHITE ? BLACK      : WHITE);
-    const Delta Up    = (Us == WHITE ? NORTH      : SOUTH);
-    const Delta Right = (Us == WHITE ? NORTH_EAST : SOUTH_WEST);
-    const Delta Left  = (Us == WHITE ? NORTH_WEST : SOUTH_EAST);
+    const Color     Them  = (Us == WHITE ? BLACK      : WHITE);
+    const Direction Up    = (Us == WHITE ? NORTH      : SOUTH);
+    const Direction Right = (Us == WHITE ? NORTH_EAST : SOUTH_WEST);
+    const Direction Left  = (Us == WHITE ? NORTH_WEST : SOUTH_EAST);
 
     Bitboard b, neighbours, stoppers, doubled, supported, phalanx;
     Bitboard lever, leverPush;
@@ -174,7 +174,7 @@ namespace {
 
         // Score this pawn
         if (supported | phalanx)
-            score += Connected[opposed][!!phalanx][popcount(supported)][relative_rank(Us, s)];
+            score += Connected[opposed][bool(phalanx)][popcount(supported)][relative_rank(Us, s)];
 
         else if (!neighbours)
             score -= Isolated, e->weakUnopposed[Us] += !opposed;
