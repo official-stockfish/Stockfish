@@ -55,7 +55,7 @@ namespace {
 
   // QueenMinorsImbalance[opp_minor_count] is applied when only one side has a queen.
   // It contains a bonus/malus for the side with the queen.
-  const int QueenMinorsImbalance[13] = {
+  const int QueenMinorsImbalance[] = {
     31, -8, -15, -25, -5
   };
 
@@ -114,7 +114,7 @@ namespace {
 
     // Special handling of Queen vs. Minors
     if  (pieceCount[Us][QUEEN] == 1 && pieceCount[Them][QUEEN] == 0)
-         bonus += QueenMinorsImbalance[pieceCount[Them][KNIGHT] + pieceCount[Them][BISHOP]];
+         bonus += QueenMinorsImbalance[std::min(pieceCount[Them][KNIGHT] + pieceCount[Them][BISHOP], 4)];
 
     return bonus;
   }
