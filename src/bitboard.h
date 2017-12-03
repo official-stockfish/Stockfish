@@ -126,7 +126,7 @@ inline Bitboard& operator^=(Bitboard& b, Square s) {
   return b ^= SquareBB[s];
 }
 
-inline bool more_than_one(Bitboard b) {
+constexpr bool more_than_one(Bitboard b) {
   return b & (b - 1);
 }
 
@@ -154,7 +154,7 @@ inline Bitboard file_bb(Square s) {
 /// shift() moves a bitboard one step along direction D. Mainly for pawns
 
 template<Square D>
-inline Bitboard shift(Bitboard b) {
+constexpr Bitboard shift(Bitboard b) {
   return  D == NORTH      ?  b             << 8 : D == SOUTH      ?  b             >> 8
         : D == NORTH_EAST ? (b & ~FileHBB) << 9 : D == SOUTH_EAST ? (b & ~FileHBB) >> 7
         : D == NORTH_WEST ? (b & ~FileABB) << 7 : D == SOUTH_WEST ? (b & ~FileABB) >> 9
@@ -228,12 +228,12 @@ inline bool aligned(Square s1, Square s2, Square s3) {
 /// distance() functions return the distance between x and y, defined as the
 /// number of steps for a king in x to reach y. Works with squares, ranks, files.
 
-template<typename T> inline int distance(T x, T y) { return x < y ? y - x : x - y; }
+template<typename T> constexpr int distance(T x, T y) { return x < y ? y - x : x - y; }
 template<> inline int distance<Square>(Square x, Square y) { return SquareDistance[x][y]; }
 
 template<typename T1, typename T2> inline int distance(T2 x, T2 y);
-template<> inline int distance<File>(Square x, Square y) { return distance(file_of(x), file_of(y)); }
-template<> inline int distance<Rank>(Square x, Square y) { return distance(rank_of(x), rank_of(y)); }
+template<> constexpr int distance<File>(Square x, Square y) { return distance(file_of(x), file_of(y)); }
+template<> constexpr int distance<Rank>(Square x, Square y) { return distance(rank_of(x), rank_of(y)); }
 
 
 /// attacks_bb() returns a bitboard representing all the squares attacked by a
