@@ -31,12 +31,12 @@
 
 namespace {
 
-  constexpr Bitboard Center      = (FileDBB | FileEBB) & (Rank4BB | Rank5BB);
-  constexpr Bitboard QueenSide   = FileABB | FileBBB | FileCBB | FileDBB;
-  constexpr Bitboard CenterFiles = FileCBB | FileDBB | FileEBB | FileFBB;
-  constexpr Bitboard KingSide    = FileEBB | FileFBB | FileGBB | FileHBB;
+  const Bitboard Center      = (FileDBB | FileEBB) & (Rank4BB | Rank5BB);
+  const Bitboard QueenSide   = FileABB | FileBBB | FileCBB | FileDBB;
+  const Bitboard CenterFiles = FileCBB | FileDBB | FileEBB | FileFBB;
+  const Bitboard KingSide    = FileEBB | FileFBB | FileGBB | FileHBB;
 
-  constexpr Bitboard KingFlank[FILE_NB] = {
+  const Bitboard KingFlank[FILE_NB] = {
     QueenSide, QueenSide, QueenSide, CenterFiles, CenterFiles, KingSide, KingSide, KingSide
   };
 
@@ -150,7 +150,7 @@ namespace {
 
   // MobilityBonus[PieceType-2][attacked] contains bonuses for middle and end game,
   // indexed by piece type and number of attacked squares in the mobility area.
-  constexpr Score MobilityBonus[][32] = {
+  const Score MobilityBonus[][32] = {
     { S(-75,-76), S(-57,-54), S( -9,-28), S( -2,-10), S(  6,  5), S( 14, 12), // Knights
       S( 22, 26), S( 29, 29), S( 36, 29) },
     { S(-48,-59), S(-20,-23), S( 16, -3), S( 26, 13), S( 38, 24), S( 51, 42), // Bishops
@@ -170,80 +170,80 @@ namespace {
   // pieces if they can reach an outpost square, bigger if that square is
   // supported by a pawn. If the minor piece occupies an outpost square
   // then score is doubled.
-  constexpr Score Outpost[][2] = {
+  const Score Outpost[][2] = {
     { S(22, 6), S(36,12) }, // Knight
     { S( 9, 2), S(15, 5) }  // Bishop
   };
 
   // RookOnFile[semiopen/open] contains bonuses for each rook when there is no
   // friendly pawn on the rook file.
-  constexpr Score RookOnFile[] = { S(20, 7), S(45, 20) };
+  const Score RookOnFile[] = { S(20, 7), S(45, 20) };
 
   // ThreatByMinor/ByRook[attacked PieceType] contains bonuses according to
   // which piece type attacks which one. Attacks on lesser pieces which are
   // pawn-defended are not considered.
-  constexpr Score ThreatByMinor[PIECE_TYPE_NB] = {
+  const Score ThreatByMinor[PIECE_TYPE_NB] = {
     S(0, 0), S(0, 33), S(45, 43), S(46, 47), S(72, 107), S(48, 118)
   };
 
-  constexpr Score ThreatByRook[PIECE_TYPE_NB] = {
+  const Score ThreatByRook[PIECE_TYPE_NB] = {
     S(0, 0), S(0, 25), S(40, 62), S(40, 59), S(0, 34), S(35, 48)
   };
 
   // ThreatByKing[on one/on many] contains bonuses for king attacks on
   // pawns or pieces which are not pawn-defended.
-  constexpr Score ThreatByKing[] = { S(3, 62), S(9, 138) };
+  const Score ThreatByKing[] = { S(3, 62), S(9, 138) };
 
   // Passed[mg/eg][Rank] contains midgame and endgame bonuses for passed pawns.
   // We don't use a Score because we process the two components independently.
-  constexpr Value Passed[][RANK_NB] = {
+  const Value Passed[][RANK_NB] = {
     { V(5), V( 5), V(31), V(73), V(166), V(252) },
     { V(7), V(14), V(38), V(73), V(166), V(252) }
   };
 
   // PassedFile[File] contains a bonus according to the file of a passed pawn
-  constexpr Score PassedFile[FILE_NB] = {
+  const Score PassedFile[FILE_NB] = {
     S(  9, 10), S( 2, 10), S( 1, -8), S(-20,-12),
     S(-20,-12), S( 1, -8), S( 2, 10), S(  9, 10)
   };
 
   // KingProtector[PieceType-2] contains a bonus according to distance from king
-  constexpr Score KingProtector[] = { S(-3, -5), S(-4, -3), S(-3, 0), S(-1, 1) };
+  const Score KingProtector[] = { S(-3, -5), S(-4, -3), S(-3, 0), S(-1, 1) };
 
   // Assorted bonuses and penalties used by evaluation
-  constexpr Score MinorBehindPawn     = S( 16,  0);
-  constexpr Score BishopPawns         = S(  8, 12);
-  constexpr Score LongRangedBishop    = S( 22,  0);
-  constexpr Score RookOnPawn          = S(  8, 24);
-  constexpr Score TrappedRook         = S( 92,  0);
-  constexpr Score WeakQueen           = S( 50, 10);
-  constexpr Score OtherCheck          = S( 10, 10);
-  constexpr Score CloseEnemies        = S(  7,  0);
-  constexpr Score PawnlessFlank       = S( 20, 80);
-  constexpr Score ThreatByHangingPawn = S( 71, 61);
-  constexpr Score ThreatBySafePawn    = S(192,175);
-  constexpr Score ThreatByRank        = S( 16,  3);
-  constexpr Score Hanging             = S( 48, 27);
-  constexpr Score WeakUnopposedPawn   = S(  5, 25);
-  constexpr Score ThreatByPawnPush    = S( 38, 22);
-  constexpr Score HinderPassedPawn    = S(  7,  0);
-  constexpr Score TrappedBishopA1H1   = S( 50, 50);
+  const Score MinorBehindPawn     = S( 16,  0);
+  const Score BishopPawns         = S(  8, 12);
+  const Score LongRangedBishop    = S( 22,  0);
+  const Score RookOnPawn          = S(  8, 24);
+  const Score TrappedRook         = S( 92,  0);
+  const Score WeakQueen           = S( 50, 10);
+  const Score OtherCheck          = S( 10, 10);
+  const Score CloseEnemies        = S(  7,  0);
+  const Score PawnlessFlank       = S( 20, 80);
+  const Score ThreatByHangingPawn = S( 71, 61);
+  const Score ThreatBySafePawn    = S(192,175);
+  const Score ThreatByRank        = S( 16,  3);
+  const Score Hanging             = S( 48, 27);
+  const Score WeakUnopposedPawn   = S(  5, 25);
+  const Score ThreatByPawnPush    = S( 38, 22);
+  const Score HinderPassedPawn    = S(  7,  0);
+  const Score TrappedBishopA1H1   = S( 50, 50);
 
   #undef S
   #undef V
 
   // KingAttackWeights[PieceType] contains king attack weights by piece type
-  constexpr int KingAttackWeights[PIECE_TYPE_NB] = { 0, 0, 78, 56, 45, 11 };
+  const int KingAttackWeights[PIECE_TYPE_NB] = { 0, 0, 78, 56, 45, 11 };
 
   // Penalties for enemy's safe checks
-  constexpr int QueenCheck  = 780;
-  constexpr int RookCheck   = 880;
-  constexpr int BishopCheck = 435;
-  constexpr int KnightCheck = 790;
+  const int QueenCheck  = 780;
+  const int RookCheck   = 880;
+  const int BishopCheck = 435;
+  const int KnightCheck = 790;
 
   // Threshold for lazy and space evaluation
-  constexpr Value LazyThreshold  = Value(1500);
-  constexpr Value SpaceThreshold = Value(12222);
+  const Value LazyThreshold  = Value(1500);
+  const Value SpaceThreshold = Value(12222);
 
 
   // initialize() computes king and pawn attacks, and the king ring bitboard
@@ -252,10 +252,10 @@ namespace {
   template<Tracing T> template<Color Us>
   void Evaluation<T>::initialize() {
 
-    constexpr Color  Them = (Us == WHITE ? BLACK : WHITE);
-    constexpr Square Up   = (Us == WHITE ? NORTH : SOUTH);
-    constexpr Square Down = (Us == WHITE ? SOUTH : NORTH);
-    constexpr Bitboard LowRanks = (Us == WHITE ? Rank2BB | Rank3BB: Rank7BB | Rank6BB);
+    const Color  Them = (Us == WHITE ? BLACK : WHITE);
+    const Square Up   = (Us == WHITE ? NORTH : SOUTH);
+    const Square Down = (Us == WHITE ? SOUTH : NORTH);
+    const Bitboard LowRanks = (Us == WHITE ? Rank2BB | Rank3BB: Rank7BB | Rank6BB);
 
     // Find our pawns on the first two ranks, and those which are blocked
     Bitboard b = pos.pieces(Us, PAWN) & (shift<Down>(pos.pieces()) | LowRanks);
@@ -292,9 +292,9 @@ namespace {
   template<Tracing T>  template<Color Us, PieceType Pt>
   Score Evaluation<T>::evaluate_pieces() {
 
-    constexpr Color Them = (Us == WHITE ? BLACK : WHITE);
-    constexpr Bitboard OutpostRanks = (Us == WHITE ? Rank4BB | Rank5BB | Rank6BB
-                                                   : Rank5BB | Rank4BB | Rank3BB);
+    const Color Them = (Us == WHITE ? BLACK : WHITE);
+    const Bitboard OutpostRanks = (Us == WHITE ? Rank4BB | Rank5BB | Rank6BB
+                                               : Rank5BB | Rank4BB | Rank3BB);
     const Square* pl = pos.squares<Pt>(Us);
 
     Bitboard b, bb;
@@ -415,10 +415,10 @@ namespace {
   template<Tracing T>  template<Color Us>
   Score Evaluation<T>::evaluate_king() {
 
-    constexpr Color Them    = (Us == WHITE ? BLACK : WHITE);
-    constexpr Square Up     = (Us == WHITE ? NORTH : SOUTH);
-    constexpr Bitboard Camp = (Us == WHITE ? AllSquares ^ Rank6BB ^ Rank7BB ^ Rank8BB
-                                           : AllSquares ^ Rank1BB ^ Rank2BB ^ Rank3BB);
+    const Color Them    = (Us == WHITE ? BLACK : WHITE);
+    const Square Up     = (Us == WHITE ? NORTH : SOUTH);
+    const Bitboard Camp = (Us == WHITE ? AllSquares ^ Rank6BB ^ Rank7BB ^ Rank8BB
+                                       : AllSquares ^ Rank1BB ^ Rank2BB ^ Rank3BB);
 
     const Square ksq = pos.square<KING>(Us);
     Bitboard weak, b, b1, b2, safe, other;
@@ -523,11 +523,11 @@ namespace {
   template<Tracing T>  template<Color Us>
   Score Evaluation<T>::evaluate_threats() {
 
-    constexpr Color Them        = (Us == WHITE ? BLACK      : WHITE);
-    constexpr Square Up         = (Us == WHITE ? NORTH      : SOUTH);
-    constexpr Square Left       = (Us == WHITE ? NORTH_WEST : SOUTH_EAST);
-    constexpr Square Right      = (Us == WHITE ? NORTH_EAST : SOUTH_WEST);
-    constexpr Bitboard TRank3BB = (Us == WHITE ? Rank3BB    : Rank6BB);
+    const Color Them        = (Us == WHITE ? BLACK      : WHITE);
+    const Square Up         = (Us == WHITE ? NORTH      : SOUTH);
+    const Square Left       = (Us == WHITE ? NORTH_WEST : SOUTH_EAST);
+    const Square Right      = (Us == WHITE ? NORTH_EAST : SOUTH_WEST);
+    const Bitboard TRank3BB = (Us == WHITE ? Rank3BB    : Rank6BB);
 
     Bitboard b, weak, defended, stronglyProtected, safeThreats;
     Score score = SCORE_ZERO;
@@ -622,8 +622,8 @@ namespace {
   template<Tracing T>  template<Color Us>
   Score Evaluation<T>::evaluate_passed_pawns() {
 
-    constexpr Color Them = (Us == WHITE ? BLACK : WHITE);
-    constexpr Square Up  = (Us == WHITE ? NORTH : SOUTH);
+    const Color Them = (Us == WHITE ? BLACK : WHITE);
+    const Square Up  = (Us == WHITE ? NORTH : SOUTH);
 
     Bitboard b, bb, squaresToQueen, defendedSquares, unsafeSquares;
     Score score = SCORE_ZERO;
@@ -715,8 +715,8 @@ namespace {
   template<Tracing T>  template<Color Us>
   Score Evaluation<T>::evaluate_space() {
 
-    constexpr Color Them = (Us == WHITE ? BLACK : WHITE);
-    constexpr Bitboard SpaceMask =
+    const Color Them = (Us == WHITE ? BLACK : WHITE);
+    const Bitboard SpaceMask =
       Us == WHITE ? CenterFiles & (Rank2BB | Rank3BB | Rank4BB)
                   : CenterFiles & (Rank7BB | Rank6BB | Rank5BB);
 

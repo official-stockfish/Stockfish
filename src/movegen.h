@@ -40,7 +40,7 @@ struct ExtMove {
   Move move;
   int value;
 
-  constexpr operator Move() const { return move; }
+  operator Move() const { return move; }
   void operator=(Move m) { move = m; }
 
   // Inhibit unwanted implicit conversions to Move
