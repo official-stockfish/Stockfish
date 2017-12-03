@@ -50,7 +50,7 @@ struct Entry {
   }
 
   int pawns_on_same_color_squares(Color c, Square s) const {
-    return pawnsOnSquares[c][!!(DarkSquares & s)];
+    return pawnsOnSquares[c][bool(DarkSquares & s)];
   }
 
   template<Color Us>
