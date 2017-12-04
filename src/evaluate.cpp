@@ -828,7 +828,6 @@ namespace {
   Value Evaluation<T>::value() {
 
     assert(!pos.checkers());
-    prefetch(&(Eval::Contempt));
 
     // Probe the material hash table
     me = Material::probe(pos);
