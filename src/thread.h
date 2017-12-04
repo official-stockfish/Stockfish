@@ -56,6 +56,7 @@ public:
   void idle_loop();
   void start_searching();
   void wait_for_search_finished();
+  void check_break();
 
   Pawns::Table pawnsTable;
   Material::Table materialTable;
@@ -63,6 +64,7 @@ public:
   size_t PVIdx;
   int selDepth;
   std::atomic<uint64_t> nodes, tbHits;
+  uint64_t nodesTime;
 
   Position rootPos;
   Search::RootMoves rootMoves;
@@ -81,12 +83,10 @@ struct MainThread : public Thread {
   using Thread::Thread;
 
   void search() override;
-  void check_time();
 
   bool failedLow;
   double bestMoveChanges, previousTimeReduction;
   Value previousScore;
-  int callsCnt;
 };
 
 
