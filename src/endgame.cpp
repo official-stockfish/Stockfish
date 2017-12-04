@@ -524,7 +524,7 @@ ScaleFactor Endgame<KRPKB>::operator()(const Position& pos) const {
       Square bsq = pos.square<BISHOP>(weakSide);
       Square psq = pos.square<PAWN>(strongSide);
       Rank rk = relative_rank(strongSide, psq);
-      Square push = pawn_push(strongSide);
+      Direction push = pawn_push(strongSide);
 
       // If the pawn is on the 5th rank and the pawn (currently) is on
       // the same color square as the bishop then there is a chance of
