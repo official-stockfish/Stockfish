@@ -36,7 +36,7 @@ BINDIR = $(PREFIX)/bin
 PGOBENCH = ./$(EXE) bench
 
 ### Object files
-OBJS = benchmark.o bitbase.o bitboard.o endgame.o evaluate.o main.o \
+OBJS = benchmark.o bitbase.o bitboard.o cluster.o endgame.o evaluate.o main.o \
 	material.o misc.o movegen.o movepick.o pawns.o position.o psqt.o \
 	search.o thread.o timeman.o tt.o uci.o ucioption.o syzygy/tbprobe.o
 
@@ -64,6 +64,7 @@ endif
 # popcnt = yes/no     --- -DUSE_POPCNT     --- Use popcnt asm-instruction
 # sse = yes/no        --- -msse            --- Use Intel Streaming SIMD Extensions
 # pext = yes/no       --- -DUSE_PEXT       --- Use pext x86_64 asm-instruction
+# mpi = yes/no        --- -DUSE_MPI        --- Use Message Passing Interface
 #
 # Note that Makefile is space sensitive, so when adding new architectures
 # or modifying existing flags, you have to make sure there are no extra spaces
@@ -78,6 +79,7 @@ prefetch = no
 popcnt = no
 sse = no
 pext = no
+mpi = no
 
 ### 2.2 Architecture specific
 
@@ -354,6 +356,15 @@ ifeq ($(OS), Android)
 	LDFLAGS += -fPIE -pie
 endif
 
+### 3.10 MPI
+ifeq ($(CXX),$(filter $(CXX),mpicxx mpic++ mpiCC))
+	mpi = yes
+endif
+
+ifeq ($(mpi),yes)
+	CXXFLAGS += -DUSE_MPI
+endif
+
 
 ### ==========================================================================
 ### Section 4. Public targets
@@ -472,6 +483,7 @@ config-sanity:
 	@echo "popcnt: '$(popcnt)'"
 	@echo "sse: '$(sse)'"
 	@echo "pext: '$(pext)'"
+	@echo "mpi: '$(mpi)'"
 	@echo ""
 	@echo "Flags:"
 	@echo "CXX: $(CXX)"
