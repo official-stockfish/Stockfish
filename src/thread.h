@@ -27,6 +27,7 @@
 #include <thread>
 #include <vector>
 
+#include "cluster.h"
 #include "material.h"
 #include "movepick.h"
 #include "pawns.h"
@@ -73,6 +74,13 @@ public:
   CapturePieceToHistory captureHistory;
   ContinuationHistory continuationHistory;
   Score contempt;
+
+#ifdef USE_MPI
+  struct {
+      Mutex mutex;
+      Cluster::TTSendBuffer<Cluster::TTSendBufferSize> buffer = {};
+  } ttBuffer;
+#endif
 };
 
 

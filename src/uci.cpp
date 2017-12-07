@@ -24,6 +24,7 @@
 #include <string>
 
 #include "evaluate.h"
+#include "cluster.h"
 #include "movegen.h"
 #include "position.h"
 #include "search.h"
@@ -97,7 +98,7 @@ namespace {
 
     if (Options.count(name))
         Options[name] = value;
-    else
+    else if (Cluster::is_root())
         sync_cout << "No such option: " << name << sync_endl;
   }
 
@@ -199,7 +200,7 @@ void UCI::loop(int argc, char* argv[]) {
       cmd += std::string(argv[i]) + " ";
 
   do {
-      if (argc == 1 && !getline(cin, cmd)) // Block here waiting for input or EOF
+      if (argc == 1 && !Cluster::getline(cin, cmd)) // Block here waiting for input or EOF
           cmd = "quit";
 
       istringstream is(cmd);
@@ -220,7 +221,7 @@ void UCI::loop(int argc, char* argv[]) {
       else if (token == "ponderhit")
           Threads.ponder = false; // Switch to normal search
 
-      else if (token == "uci")
+      else if (token == "uci" && Cluster::is_root())
           sync_cout << "id name " << engine_info(true)
                     << "\n"       << Options
                     << "\nuciok"  << sync_endl;
@@ -229,14 +230,17 @@ void UCI::loop(int argc, char* argv[]) {
       else if (token == "go")         go(pos, is, states);
       else if (token == "position")   position(pos, is, states);
       else if (token == "ucinewgame") Search::clear();
-      else if (token == "isready")    sync_cout << "readyok" << sync_endl;
+      else if (token == "isready" && Cluster::is_root())
+          sync_cout << "readyok" << sync_endl;
 
       // Additional custom non-UCI commands, mainly for debugging
       else if (token == "flip")  pos.flip();
       else if (token == "bench") bench(pos, is, states);
-      else if (token == "d")     sync_cout << pos << sync_endl;
-      else if (token == "eval")  sync_cout << Eval::trace(pos) << sync_endl;
-      else
+      else if (token == "d" && Cluster::is_root())
+          sync_cout << pos << sync_endl;
+      else if (token == "eval" && Cluster::is_root())
+          sync_cout << Eval::trace(pos) << sync_endl;
+      else if (Cluster::is_root())
           sync_cout << "Unknown command: " << cmd << sync_endl;
 
   } while (token != "quit" && argc == 1); // Command line args are one-shot

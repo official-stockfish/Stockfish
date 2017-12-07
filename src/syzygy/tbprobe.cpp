@@ -29,6 +29,7 @@
 #include <type_traits>
 
 #include "../bitboard.h"
+#include "../cluster.h"
 #include "../movegen.h"
 #include "../position.h"
 #include "../search.h"
@@ -1373,7 +1374,8 @@ void Tablebases::init(const std::string& paths) {
         }
     }
 
-    sync_cout << "info string Found " << TBTables.size() << " tablebases" << sync_endl;
+    if (Cluster::is_root())
+        sync_cout << "info string Found " << TBTables.size() << " tablebases" << sync_endl;
 }
 
 // Probe the WDL table for a particular position.

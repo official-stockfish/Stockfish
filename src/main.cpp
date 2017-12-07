@@ -27,6 +27,7 @@
 #include "tt.h"
 #include "uci.h"
 #include "syzygy/tbprobe.h"
+#include "cluster.h"
 
 namespace PSQT {
   void init();
@@ -34,7 +35,9 @@ namespace PSQT {
 
 int main(int argc, char* argv[]) {
 
-  std::cout << engine_info() << std::endl;
+  Cluster::init();
+  if (Cluster::is_root())
+      std::cout << engine_info() << std::endl;
 
   UCI::init(Options);
   PSQT::init();
@@ -49,5 +52,6 @@ int main(int argc, char* argv[]) {
   UCI::loop(argc, argv);
 
   Threads.set(0);
+  Cluster::finalize();
   return 0;
 }

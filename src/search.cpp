@@ -25,6 +25,7 @@
 #include <iostream>
 #include <sstream>
 
+#include "cluster.h"
 #include "evaluate.h"
 #include "misc.h"
 #include "movegen.h"
@@ -143,7 +144,7 @@ namespace {
             nodes += cnt;
             pos.undo_move(m);
         }
-        if (Root)
+        if (Root && Cluster::is_root())
             sync_cout << UCI::move(m, pos.is_chess960()) << ": " << cnt << sync_endl;
     }
     return nodes;
@@ -199,7 +200,8 @@ void MainThread::search() {
   if (Limits.perft)
   {
       nodes = perft<true>(rootPos, Limits.perft * ONE_PLY);
-      sync_cout << "\nNodes searched: " << nodes << "\n" << sync_endl;
+      if (Cluster::is_root())
+          sync_cout << "\nNodes searched: " << nodes << "\n" << sync_endl;
       return;
   }
 
@@ -210,9 +212,10 @@ void MainThread::search() {
   if (rootMoves.empty())
   {
       rootMoves.emplace_back(MOVE_NONE);
-      sync_cout << "info depth 0 score "
-                << UCI::value(rootPos.checkers() ? -VALUE_MATE : VALUE_DRAW)
-                << sync_endl;
+      if (Cluster::is_root())
+          sync_cout << "info depth 0 score "
+                    << UCI::value(rootPos.checkers() ? -VALUE_MATE : VALUE_DRAW)
+                    << sync_endl;
   }
   else
   {
@@ -282,18 +285,25 @@ void MainThread::search() {
       }
   }
 
-  previousScore = bestThread->rootMoves[0].score;
+  Cluster::MoveInfo mi{bestThread->completedDepth,
+                       bestThread->rootMoves[0].score,
+                       Cluster::rank()};
+  Cluster::reduce_moves(mi);
+
+  previousScore = static_cast<Value>(mi.score);
 
   // Send again PV info if we have a new best thread
-  if (bestThread != this)
-      sync_cout << UCI::pv(bestThread->rootPos, bestThread->completedDepth, -VALUE_INFINITE, VALUE_INFINITE) << sync_endl;
+  if (mi.rank == Cluster::rank()) {
+      if (bestThread != this)
+          sync_cout << UCI::pv(bestThread->rootPos, bestThread->completedDepth, -VALUE_INFINITE, VALUE_INFINITE) << sync_endl;
 
-  sync_cout << "bestmove " << UCI::move(bestThread->rootMoves[0].pv[0], rootPos.is_chess960());
+      sync_cout << "bestmove " << UCI::move(bestThread->rootMoves[0].pv[0], rootPos.is_chess960());
 
-  if (bestThread->rootMoves[0].pv.size() > 1 || bestThread->rootMoves[0].extract_ponder_from_tt(rootPos))
-      std::cout << " ponder " << UCI::move(bestThread->rootMoves[0].pv[1], rootPos.is_chess960());
+      if (bestThread->rootMoves[0].pv.size() > 1 || bestThread->rootMoves[0].extract_ponder_from_tt(rootPos))
+          std::cout << " ponder " << UCI::move(bestThread->rootMoves[0].pv[1], rootPos.is_chess960());
 
-  std::cout << sync_endl;
+      std::cout << sync_endl;
+  }
 }
 
 
@@ -358,9 +368,9 @@ void Thread::search() {
          && !(Limits.depth && mainThread && rootDepth / ONE_PLY > Limits.depth))
   {
       // Distribute search depths across the helper threads
-      if (idx > 0)
+      if (idx + Cluster::rank() > 0)
       {
-          int i = (idx - 1) % 20;
+          int i = (idx + Cluster::rank() - 1) % 20;
           if (((rootDepth / ONE_PLY + SkipPhase[i]) / SkipSize[i]) % 2)
               continue;  // Retry with an incremented rootDepth
       }
@@ -431,7 +441,8 @@ void Thread::search() {
 
               // When failing high/low give some update (without cluttering
               // the UI) before a re-search.
-              if (   mainThread
+              if (   Cluster::is_root()
+                  && mainThread
                   && multiPV == 1
                   && (bestValue <= alpha || bestValue >= beta)
                   && Time.elapsed() > 3000)
@@ -468,7 +479,7 @@ void Thread::search() {
           // Sort the PV lines searched so far and update the GUI
           std::stable_sort(rootMoves.begin() + pvFirst, rootMoves.begin() + pvIdx + 1);
 
-          if (    mainThread
+          if (    Cluster::is_root() && mainThread
               && (Threads.stop || pvIdx + 1 == multiPV || Time.elapsed() > 3000))
               sync_cout << UCI::pv(rootPos, rootDepth, alpha, beta) << sync_endl;
       }
@@ -709,9 +720,10 @@ namespace {
                 if (    b == BOUND_EXACT
                     || (b == BOUND_LOWER ? value >= beta : value <= alpha))
                 {
-                    tte->save(posKey, value_to_tt(value, ss->ply), b,
-                              std::min(DEPTH_MAX - ONE_PLY, depth + 6 * ONE_PLY),
-                              MOVE_NONE, VALUE_NONE);
+                    Cluster::save(thisThread, tte,
+                                  posKey, value_to_tt(value, ss->ply), b,
+                                  std::min(DEPTH_MAX - ONE_PLY, depth + 6 * ONE_PLY),
+                                  MOVE_NONE, VALUE_NONE);
 
                     return value;
                 }
@@ -760,7 +772,9 @@ namespace {
         else
             ss->staticEval = eval = pureStaticEval = -(ss-1)->staticEval + 2 * Eval::Tempo;
 
-        tte->save(posKey, VALUE_NONE, BOUND_NONE, DEPTH_NONE, MOVE_NONE, pureStaticEval);
+        Cluster::save(thisThread, tte,
+                      posKey, VALUE_NONE, BOUND_NONE, DEPTH_NONE, MOVE_NONE,
+                      pureStaticEval);
     }
 
     // Step 7. Razoring (~2 Elo)
@@ -912,7 +926,7 @@ moves_loop: // When in check, search starts from here
 
       ss->moveCount = ++moveCount;
 
-      if (rootNode && thisThread == Threads.main() && Time.elapsed() > 3000)
+      if (rootNode && Cluster::is_root() && thisThread == Threads.main() && Time.elapsed() > 3000)
           sync_cout << "info depth " << depth / ONE_PLY
                     << " currmove " << UCI::move(move, pos.is_chess960())
                     << " currmovenumber " << moveCount + thisThread->pvIdx << sync_endl;
@@ -1209,10 +1223,11 @@ moves_loop: // When in check, search starts from here
         bestValue = std::min(bestValue, maxValue);
 
     if (!excludedMove)
-        tte->save(posKey, value_to_tt(bestValue, ss->ply),
-                  bestValue >= beta ? BOUND_LOWER :
-                  PvNode && bestMove ? BOUND_EXACT : BOUND_UPPER,
-                  depth, bestMove, pureStaticEval);
+        Cluster::save(thisThread, tte,
+                      posKey, value_to_tt(bestValue, ss->ply),
+                      bestValue >= beta ? BOUND_LOWER :
+                      PvNode && bestMove ? BOUND_EXACT : BOUND_UPPER,
+                      depth, bestMove, pureStaticEval);
 
     assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
 
@@ -1310,8 +1325,9 @@ moves_loop: // When in check, search starts from here
         if (bestValue >= beta)
         {
             if (!ttHit)
-                tte->save(posKey, value_to_tt(bestValue, ss->ply), BOUND_LOWER,
-                          DEPTH_NONE, MOVE_NONE, ss->staticEval);
+                Cluster::save(thisThread, tte,
+                              posKey, value_to_tt(bestValue, ss->ply), BOUND_LOWER,
+                              DEPTH_NONE, MOVE_NONE, ss->staticEval);
 
             return bestValue;
         }
@@ -1421,10 +1437,11 @@ moves_loop: // When in check, search starts from here
     if (inCheck && bestValue == -VALUE_INFINITE)
         return mated_in(ss->ply); // Plies to mate from the root
 
-    tte->save(posKey, value_to_tt(bestValue, ss->ply),
-              bestValue >= beta ? BOUND_LOWER :
-              PvNode && bestValue > oldAlpha  ? BOUND_EXACT : BOUND_UPPER,
-              ttDepth, bestMove, ss->staticEval);
+    Cluster::save(thisThread, tte,
+                  posKey, value_to_tt(bestValue, ss->ply),
+                  bestValue >= beta ? BOUND_LOWER :
+                  PvNode && bestValue > oldAlpha  ? BOUND_EXACT : BOUND_UPPER,
+                  ttDepth, bestMove, ss->staticEval);
 
     assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
 
