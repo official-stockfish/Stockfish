@@ -24,6 +24,11 @@
 #include "misc.h"
 #include "types.h"
 
+namespace Cluster {
+  void init();
+}
+//void Cluster::init();
+
 /// TTEntry struct is the 10 bytes transposition table entry, defined as below:
 ///
 /// key        16 bit
@@ -36,11 +41,13 @@
 
 struct TTEntry {
 
+  Key   key()   const { return (Key  )(key16) << 48; }
   Move  move()  const { return (Move )move16; }
   Value value() const { return (Value)value16; }
   Value eval()  const { return (Value)eval16; }
   Depth depth() const { return (Depth)(depth8 * int(ONE_PLY)); }
   Bound bound() const { return (Bound)(genBound8 & 0x3); }
+  uint8_t gen() const { return (uint8_t)(genBound8 & 0xFC); }
 
   void save(Key k, Value v, Bound b, Depth d, Move m, Value ev, uint8_t g) {
 
@@ -66,6 +73,7 @@ struct TTEntry {
 
 private:
   friend class TranspositionTable;
+  friend void Cluster::init();
 
   uint16_t key16;
   uint16_t move16;
@@ -84,6 +92,8 @@ private:
 /// prefetched, as soon as possible.
 
 class TranspositionTable {
+
+  friend void Cluster::init();
 
   static constexpr int CacheLineSize = 64;
   static constexpr int ClusterSize = 3;
