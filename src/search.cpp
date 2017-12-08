@@ -683,7 +683,6 @@ namespace {
         &&  eval >= beta
         &&  ss->staticEval >= beta - 36 * depth / ONE_PLY + 225)
     {
-
         assert(eval - beta >= 0);
 
         // Null move dynamic reduction based on depth and value
