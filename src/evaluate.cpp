@@ -428,7 +428,7 @@ namespace {
                                         : AllSquares ^ Rank1BB ^ Rank2BB ^ Rank3BB);
 
     const Square ksq = pos.square<KING>(Us);
-    Bitboard weak, b, b1, b2, safe, other;
+    Bitboard weak, b, b1, b2, safe, otherChecks;
     int kingDanger;
 
     // King shelter and enemy pawns storm
@@ -442,17 +442,7 @@ namespace {
               & ~attackedBy2[Us]
               & (attackedBy[Us][KING] | attackedBy[Us][QUEEN] | ~attackedBy[Us][ALL_PIECES]);
 
-        // Initialize the 'kingDanger' variable, which will be transformed
-        // later into a king danger score. The initial value is based on the
-        // number and types of the enemy's attacking pieces, the number of
-        // attacked and weak squares around our king, the absence of queen and
-        // the quality of the pawn shelter (current 'score' value).
-        kingDanger =        kingAttackersCount[Them] * kingAttackersWeight[Them]
-                    + 102 * kingAdjacentZoneAttacksCount[Them]
-                    + 191 * popcount(kingRing[Us] & weak)
-                    - 848 * !pos.count<QUEEN>(Them)
-                    -   9 * mg_value(score) / 8
-                    +  40;
+        kingDanger = otherChecks = 0;
 
         // Analyse the safe enemy's checks which are possible on next move
         safe  = ~pos.pieces(Them);
@@ -465,38 +455,41 @@ namespace {
         if ((b1 | b2) & attackedBy[Them][QUEEN] & safe & ~attackedBy[Us][QUEEN])
             kingDanger += QueenCheck;
 
-        other = 0;
+        b1 &= attackedBy[Them][ROOK];
+        b2 &= attackedBy[Them][BISHOP];
 
-        // Enemy rooks safe and other checks
-        if (b1 & attackedBy[Them][ROOK] & safe)
+        // Enemy rooks checks
+        if (b1 & safe)
             kingDanger += RookCheck;
-
         else
-            other |= b1 & attackedBy[Them][ROOK];
+            otherChecks |= b1;
 
-        // Enemy bishops safe and other checks
-        if (b2 & attackedBy[Them][BISHOP] & safe)
+        // Enemy bishops checks
+        if (b2 & safe)
             kingDanger += BishopCheck;
-
         else
-            other |= b2 & attackedBy[Them][BISHOP];
+            otherChecks |= b2;
 
-        // Enemy knights safe and other checks
+        // Enemy knights checks
         b = pos.attacks_from<KNIGHT>(ksq) & attackedBy[Them][KNIGHT];
         if (b & safe)
             kingDanger += KnightCheck;
-
         else
-            other |= b;
+            otherChecks |= b;
 
-        // Unsafe or occupied checking squares are also considered,
-        // as long as the square is not defended by our pawns, 
+        // Unsafe or occupied checking squares will also be considered,
+        // as long as the square is not defended by our pawns,
         // or occupied by a blocked pawn.
-        other &= ~(   attackedBy[Us][PAWN]
-                   | (pos.pieces(Them, PAWN) & shift<Up>(pos.pieces(PAWN))));
+        otherChecks &= ~(   attackedBy[Us][PAWN]
+                         | (pos.pieces(Them, PAWN) & shift<Up>(pos.pieces(PAWN))));
 
-        // Use same bonus for pinned squares and those other squares
-        kingDanger += 143 * popcount(pos.pinned_pieces(Us) | other);
+        kingDanger +=        kingAttackersCount[Them] * kingAttackersWeight[Them]
+                     + 102 * kingAdjacentZoneAttacksCount[Them]
+                     + 191 * popcount(kingRing[Us] & weak)
+                     + 143 * popcount(pos.pinned_pieces(Us) | otherChecks)
+                     - 848 * !pos.count<QUEEN>(Them)
+                     -   9 * mg_value(score) / 8
+                     +  40;
 
         // Transform the kingDanger units into a Score, and substract it from the evaluation
         if (kingDanger > 0)
