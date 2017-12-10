@@ -654,7 +654,7 @@ namespace {
                   ss->staticEval, TT.generation());
     }
 
-    if (skipEarlyPruning || !pos.non_pawn_material(pos.side_to_move()))
+    if (skipEarlyPruning || !pos.non_pawn_material())
         goto moves_loop;
 
     // Step 6. Razoring (skipped when in check)
@@ -683,7 +683,6 @@ namespace {
         &&  eval >= beta
         &&  ss->staticEval >= beta - 36 * depth / ONE_PLY + 225)
     {
-
         assert(eval - beta >= 0);
 
         // Null move dynamic reduction based on depth and value
