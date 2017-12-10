@@ -891,7 +891,7 @@ namespace {
         Trace::add(TOTAL, score);
     }
 
-    return (pos.side_to_move() == WHITE ? v : -v) + Eval::Tempo; // Side to move point of view
+    return pos.side_to_move() == WHITE ? v : -v; // Side to move point of view
   }
 
 } // namespace
@@ -903,7 +903,7 @@ Score Eval::Contempt = SCORE_ZERO;
 
 Value Eval::evaluate(const Position& pos)
 {
-   return Evaluation<>(pos).value();
+   return Evaluation<>(pos).value() + Eval::Tempo;
 }
 
 /// trace() is like evaluate(), but instead of returning a value, it returns
@@ -914,7 +914,7 @@ std::string Eval::trace(const Position& pos) {
 
   std::memset(scores, 0, sizeof(scores));
 
-  Value v = Evaluation<TRACE>(pos).value();
+  Value v = Evaluation<TRACE>(pos).value() + Eval::Tempo;
   v = pos.side_to_move() == WHITE ? v : -v; // White's point of view
 
   std::stringstream ss;
