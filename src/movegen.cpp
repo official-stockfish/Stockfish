@@ -42,8 +42,8 @@ namespace {
 
     assert(!pos.checkers());
 
-    const Square K = Chess960 ? kto > kfrom ? WEST : EAST
-                              : KingSide    ? WEST : EAST;
+    const Direction K = Chess960 ? kto > kfrom ? WEST : EAST
+                                 : KingSide    ? WEST : EAST;
 
     for (Square s = kto; s != kfrom; s += K)
         if (pos.attackers_to(s) & enemies)
@@ -65,7 +65,7 @@ namespace {
   }
 
 
-  template<GenType Type, Square D>
+  template<GenType Type, Direction D>
   ExtMove* make_promotions(ExtMove* moveList, Square to, Square ksq) {
 
     if (Type == CAPTURES || Type == EVASIONS || Type == NON_EVASIONS)
@@ -94,13 +94,13 @@ namespace {
 
     // Compute our parametrized parameters at compile time, named according to
     // the point of view of white side.
-    const Color    Them     = (Us == WHITE ? BLACK      : WHITE);
-    const Bitboard TRank8BB = (Us == WHITE ? Rank8BB    : Rank1BB);
-    const Bitboard TRank7BB = (Us == WHITE ? Rank7BB    : Rank2BB);
-    const Bitboard TRank3BB = (Us == WHITE ? Rank3BB    : Rank6BB);
-    const Square   Up       = (Us == WHITE ? NORTH      : SOUTH);
-    const Square   Right    = (Us == WHITE ? NORTH_EAST : SOUTH_WEST);
-    const Square   Left     = (Us == WHITE ? NORTH_WEST : SOUTH_EAST);
+    const Color     Them     = (Us == WHITE ? BLACK      : WHITE);
+    const Bitboard  TRank8BB = (Us == WHITE ? Rank8BB    : Rank1BB);
+    const Bitboard  TRank7BB = (Us == WHITE ? Rank7BB    : Rank2BB);
+    const Bitboard  TRank3BB = (Us == WHITE ? Rank3BB    : Rank6BB);
+    const Direction Up       = (Us == WHITE ? NORTH      : SOUTH);
+    const Direction Right    = (Us == WHITE ? NORTH_EAST : SOUTH_WEST);
+    const Direction Left     = (Us == WHITE ? NORTH_WEST : SOUTH_EAST);
 
     Bitboard emptySquares;
 

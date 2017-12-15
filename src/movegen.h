@@ -45,7 +45,7 @@ struct ExtMove {
 
   // Inhibit unwanted implicit conversions to Move
   // with an ambiguity that yields to a compile error.
-  operator float() const;
+  operator float() const = delete;
 };
 
 inline bool operator<(const ExtMove& f, const ExtMove& s) {
