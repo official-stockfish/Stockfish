@@ -293,14 +293,6 @@ int get_group(size_t idx) {
 
 void bindThisThread(size_t idx) {
 
-  // If OS already scheduled us on a different group than 0 then don't overwrite
-  // the choice, eventually we are one of many one-threaded processes running on
-  // some Windows NUMA hardware, for instance in fishtest. To make it simple,
-  // just check if running threads are below a threshold, in this case all this
-  // NUMA machinery is not needed.
-  if (Threads.size() < 8)
-      return;
-
   // Use only local variables to be thread-safe
   int group = get_group(idx);
 
