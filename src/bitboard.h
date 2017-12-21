@@ -82,20 +82,17 @@ struct Magic {
   Bitboard  mask;
   Bitboard  magic;
   Bitboard* attacks;
-  unsigned  shift;
 
   // Compute the attack's index using the 'magic bitboards' approach
+  template<PieceType Pt>
   unsigned index(Bitboard occupied) const {
 
     if (HasPext)
         return unsigned(pext(occupied, mask));
 
-    if (Is64Bit)
-        return unsigned(((occupied & mask) * magic) >> shift);
+    unsigned shift = 64 - (Pt == ROOK ? 12 : 9);
 
-    unsigned lo = unsigned(occupied) & unsigned(mask);
-    unsigned hi = unsigned(occupied >> 32) & unsigned(mask >> 32);
-    return (lo * unsigned(magic) ^ hi * unsigned(magic >> 32)) >> shift;
+    return unsigned(((occupied & mask) * magic) >> shift);
   }
 };
 
@@ -263,7 +260,7 @@ template<PieceType Pt>
 inline Bitboard attacks_bb(Square s, Bitboard occupied) {
 
   const Magic& m = Pt == ROOK ? RookMagics[s] : BishopMagics[s];
-  return m.attacks[m.index(occupied)];
+  return m.attacks[m.index<Pt>(occupied)];
 }
 
 inline Bitboard attacks_bb(PieceType pt, Square s, Bitboard occupied) {
