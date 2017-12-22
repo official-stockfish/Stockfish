@@ -39,7 +39,7 @@ namespace {
     {  32,  255,  -3                    }, // Knight      OUR PIECES
     {   0,  104,   4,    0              }, // Bishop
     { -26,   -2,  47,   105,  -149      }, // Rook
-    {-185,   24, 122,   137,  -134,   0 }  // Queen
+    {-189,   24, 117,   133,  -134, -10 }  // Queen
   };
 
   const int QuadraticTheirs[][PIECE_TYPE_NB] = {
@@ -50,13 +50,7 @@ namespace {
     {   9,   63,   0                    }, // Knight      OUR PIECES
     {  59,   65,  42,     0             }, // Bishop
     {  46,   39,  24,   -24,    0       }, // Rook
-    { 101,  100, -37,   141,  268,    0 }  // Queen
-  };
-
-  // QueenMinorsImbalance[opp_minor_count] is applied when only one side has a queen.
-  // It contains a bonus/malus for the side with the queen.
-  const int QueenMinorsImbalance[13] = {
-    31, -8, -15, -25, -5
+    {  97,  100, -42,   137,  268,    0 }  // Queen
   };
 
   // Endgame evaluation and scaling functions are accessed directly and not through
@@ -111,10 +105,6 @@ namespace {
 
         bonus += pieceCount[Us][pt1] * v;
     }
-
-    // Special handling of Queen vs. Minors
-    if  (pieceCount[Us][QUEEN] == 1 && pieceCount[Them][QUEEN] == 0)
-         bonus += QueenMinorsImbalance[pieceCount[Them][KNIGHT] + pieceCount[Them][BISHOP]];
 
     return bonus;
   }

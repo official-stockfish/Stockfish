@@ -139,7 +139,6 @@ constexpr bool more_than_one(Bitboard b) {
   return b & (b - 1);
 }
 
-
 /// rank_bb() and file_bb() return a bitboard representing all the squares on
 /// the given file or rank.
 
@@ -162,7 +161,7 @@ inline Bitboard file_bb(Square s) {
 
 /// shift() moves a bitboard one step along direction D. Mainly for pawns
 
-template<Square D>
+template<Direction D>
 constexpr Bitboard shift(Bitboard b) {
   return  D == NORTH      ?  b             << 8 : D == SOUTH      ?  b             >> 8
         : D == NORTH_EAST ? (b & ~FileHBB) << 9 : D == SOUTH_EAST ? (b & ~FileHBB) >> 7

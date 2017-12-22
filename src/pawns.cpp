@@ -96,10 +96,10 @@ namespace {
   template<Color Us>
   Score evaluate(const Position& pos, Pawns::Entry* e) {
 
-    const Color  Them  = (Us == WHITE ? BLACK      : WHITE);
-    const Square Up    = (Us == WHITE ? NORTH      : SOUTH);
-    const Square Right = (Us == WHITE ? NORTH_EAST : SOUTH_WEST);
-    const Square Left  = (Us == WHITE ? NORTH_WEST : SOUTH_EAST);
+    const Color     Them  = (Us == WHITE ? BLACK      : WHITE);
+    const Direction Up    = (Us == WHITE ? NORTH      : SOUTH);
+    const Direction Right = (Us == WHITE ? NORTH_EAST : SOUTH_WEST);
+    const Direction Left  = (Us == WHITE ? NORTH_WEST : SOUTH_EAST);
 
     Bitboard b, neighbours, stoppers, doubled, supported, phalanx;
     Bitboard lever, leverPush;
@@ -176,7 +176,7 @@ namespace {
 
         // Score this pawn
         if (supported | phalanx)
-            score += Connected[opposed][!!phalanx][popcount(supported)][relative_rank(Us, s)];
+            score += Connected[opposed][bool(phalanx)][popcount(supported)][relative_rank(Us, s)];
 
         else if (!neighbours)
             score -= Isolated, e->weakUnopposed[Us] += !opposed;
@@ -257,7 +257,7 @@ Value Entry::shelter_storm(const Position& pos, Square ksq) {
   File kf = file_of(ksq);
   File center = std::max(FILE_B, std::min(FILE_G, kf));
 
-  for (File f = center - File(1); f <= center + File(1); ++f)
+  for (File f = File(center - 1); f <= File(center + 1); ++f)
   {
       b = ourPawns & file_bb(f);
       Rank rkUs = b ? relative_rank(Us, backmost_sq(Us, b)) : RANK_1;
@@ -265,7 +265,8 @@ Value Entry::shelter_storm(const Position& pos, Square ksq) {
       b = theirPawns & file_bb(f);
       Rank rkThem = b ? relative_rank(Us, frontmost_sq(Them, b)) : RANK_1;
 
-      int d = std::min(f, FILE_H - f);
+
+      int d = std::min(f, ~f);
       safety -=  ShelterWeakness[f == kf][d][rkUs]
                + StormDanger
                  [f == kf && rkThem == relative_rank(Us, ksq) + 1 ? BlockedByKing  :
