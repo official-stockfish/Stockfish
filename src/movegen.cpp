@@ -42,8 +42,8 @@ namespace {
 
     assert(!pos.checkers());
 
-    const Direction K = Chess960 ? kto > kfrom   ? WEST : EAST
-                                 : KingSideCr    ? WEST : EAST;
+    const Direction K = Chess960 ? kto > kfrom ? WEST : EAST
+                                 : KingSideCr  ? WEST : EAST;
 
     for (Square s = kto; s != kfrom; s += K)
         if (pos.attackers_to(s) & enemies)
