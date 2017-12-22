@@ -42,7 +42,6 @@ namespace {
 
     assert(!pos.checkers());
 
-
     const Direction K = Chess960 ? kto > kfrom   ? WEST : EAST
                                  : KingSideCr    ? WEST : EAST;
 
