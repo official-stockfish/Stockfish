@@ -391,8 +391,9 @@ namespace {
                 score += RookOnFile[bool(pe->semiopen_file(Them, file_of(s)))];
 
             // Penalty when trapped by the king, even more if the king cannot castle
-            else if (mob <= 3 && !pe->semiopen_side(Us, file_of(ksq), file_of(s) < file_of(ksq)))
-                score -= make_score((4 - mob) * 25, 0) * (1 + !pos.can_castle(Us) && ((file_of(ksq) < FILE_E) == (file_of(s) < file_of(ksq))));
+            else if (mob < 4 && ((file_of(ksq) < FILE_E) == (file_of(s) < file_of(ksq)))
+                && !pe->semiopen_side(Us, file_of(ksq), file_of(s) < file_of(ksq)))
+                    score -= make_score((4 - mob) * 23, 0) * (1 + !pos.can_castle(Us));
         }
 
         if (Pt == QUEEN)
