@@ -216,6 +216,7 @@ namespace {
   const Score BishopPawns           = S(  8, 12);
   const Score LongRangedBishop      = S( 22,  0);
   const Score RookOnPawn            = S(  8, 24);
+  const Score TrappedRook           = S( 23,  0);
   const Score WeakQueen             = S( 50, 10);
   const Score CloseEnemies          = S(  7,  0);
   const Score PawnlessFlank         = S( 20, 80);
@@ -393,7 +394,7 @@ namespace {
             // Penalty when trapped by the king, even more if the king cannot castle
             else if (mob < 4 && ((file_of(ksq) < FILE_E) == (file_of(s) < file_of(ksq)))
                 && !pe->semiopen_side(Us, file_of(ksq), file_of(s) < file_of(ksq)))
-                    score -= make_score((4 - mob) * 23, 0) * (1 + !pos.can_castle(Us));
+                    score -= TrappedRook * (4 - mob) * (1 + !pos.can_castle(Us));
         }
 
         if (Pt == QUEEN)
