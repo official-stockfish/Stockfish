@@ -304,7 +304,7 @@ Score Entry::do_king_safety(const Position& pos, Square ksq) {
 
   bool haspawns = pos.pieces(PAWN) & KingFlank[file_of(ksq)];
 
-  return make_score(bonus, -16 * minKingPawnDistance) - (PawnLessKing * !haspawns);
+  return make_score(bonus, -16 * minKingPawnDistance) - (haspawns ? SCORE_ZERO : PawnLessKing);
 }
 
 // Explicit template instantiation
