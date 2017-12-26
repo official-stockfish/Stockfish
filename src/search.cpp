@@ -173,13 +173,7 @@ void Search::clear() {
 
   Time.availableNodes = 0;
   TT.clear();
-
-  for (Thread* th : Threads)
-      th->clear();
-
-  Threads.main()->callsCnt = 0;
-  Threads.main()->previousScore = VALUE_INFINITE;
-  Threads.main()->previousTimeReduction = 1;
+  Threads.clear();
 }
 
 

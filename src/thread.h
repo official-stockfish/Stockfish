@@ -96,9 +96,8 @@ struct MainThread : public Thread {
 
 struct ThreadPool : public std::vector<Thread*> {
 
-  void init(size_t); // No constructor and destructor, threads rely on globals that should
-  void exit();       // be initialized and valid during the whole thread lifetime.
   void start_thinking(Position&, StateListPtr&, const Search::LimitsType&, bool = false);
+  void clear();
   void set(size_t);
 
   MainThread* main()        const { return static_cast<MainThread*>(front()); }

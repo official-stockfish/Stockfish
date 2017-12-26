@@ -24,6 +24,7 @@
 #include "movegen.h"
 #include "search.h"
 #include "thread.h"
+#include "uci.h"
 #include "syzygy/tbprobe.h"
 
 ThreadPool Threads; // Global object
@@ -35,7 +36,6 @@ ThreadPool Threads; // Global object
 Thread::Thread(size_t n) : idx(n), stdThread(&Thread::idle_loop, this) {
 
   wait_for_search_finished();
-  clear(); // Zero-init histories (based on std::array)
 }
 
 
@@ -92,7 +92,13 @@ void Thread::wait_for_search_finished() {
 
 void Thread::idle_loop() {
 
-  WinProcGroup::bindThisThread(idx);
+  // If OS already scheduled us on a different group than 0 then don't overwrite
+  // the choice, eventually we are one of many one-threaded processes running on
+  // some Windows NUMA hardware, for instance in fishtest. To make it simple,
+  // just check if running threads are below a threshold, in this case all this
+  // NUMA machinery is not needed.
+  if (Options["Threads"] >= 8)
+      WinProcGroup::bindThisThread(idx);
 
   while (true)
   {
@@ -110,41 +116,39 @@ void Thread::idle_loop() {
   }
 }
 
-
-/// ThreadPool::init() creates and launches the threads that will go
-/// immediately to sleep in idle_loop. We cannot use the constructor because
-/// Threads is a static object and we need a fully initialized engine at
-/// this point due to allocation of Endgames in the Thread constructor.
-
-void ThreadPool::init(size_t requested) {
-
-  push_back(new MainThread(0));
-  set(requested);
-}
-
-
-/// ThreadPool::exit() terminates threads before the program exits. Cannot be
-/// done in the destructor because threads must be terminated before deleting
-/// any static object, so before main() returns.
-
-void ThreadPool::exit() {
-
-  main()->wait_for_search_finished();
-  set(0);
-}
-
-
-/// ThreadPool::set() creates/destroys threads to match the requested number
+/// ThreadPool::set() creates/destroys threads to match the requested number.
+/// Created and launced threads wil go immediately to sleep in idle_loop.
+/// Upon resizing, threads are recreated to allow for binding if necessary.
 
 void ThreadPool::set(size_t requested) {
 
-  while (size() < requested)
-      push_back(new Thread(size()));
+  if (size() > 0) { // destroy any existing thread(s)
+      main()->wait_for_search_finished();
 
-  while (size() > requested)
-      delete back(), pop_back();
+      while (size() > 0)
+          delete back(), pop_back();
+  }
+
+  if (requested > 0) { // create new thread(s)
+      push_back(new MainThread(0));
+
+      while (size() < requested)
+          push_back(new Thread(size()));
+      clear();
+  }
 }
 
+/// ThreadPool::clear() sets threadPool data to initial values.
+
+void ThreadPool::clear() {
+
+  for (Thread* th : *this)
+      th->clear();
+
+  main()->callsCnt = 0;
+  main()->previousScore = VALUE_INFINITE;
+  main()->previousTimeReduction = 1;
+}
 
 /// ThreadPool::start_thinking() wakes up main thread waiting in idle_loop() and
 /// returns immediately. Main thread will wake up other threads and start the search.
@@ -181,7 +185,7 @@ void ThreadPool::start_thinking(Position& pos, StateListPtr& states,
   // is shared by threads but is accessed in read-only mode.
   StateInfo tmp = setupStates->back();
 
-  for (Thread* th : Threads)
+  for (Thread* th : *this)
   {
       th->nodes = th->tbHits = 0;
       th->rootDepth = th->completedDepth = DEPTH_ZERO;
