@@ -83,6 +83,8 @@ namespace {
       { V(23),  V(  29), V(  96), V(41), V(15) },
       { V(21),  V(  23), V( 116), V(41), V(15) } }
   };
+  
+  const Score PawnLessKing = S(20, 80);
 
   // Max bonus for king safety. Corresponds to start position with all the pawns
   // in front of the king and no enemy pawn on the horizon.
@@ -252,7 +254,8 @@ Value Entry::shelter_storm(const Position& pos, Square ksq) {
   Bitboard ourPawns = b & pos.pieces(Us);
   Bitboard theirPawns = b & pos.pieces(Them);
   Value safety = MaxSafetyBonus;
-  File center = std::max(FILE_B, std::min(FILE_G, file_of(ksq)));
+  File kf = file_of(ksq);
+  File center = std::max(FILE_B, std::min(FILE_G, kf));
 
   for (File f = File(center - 1); f <= File(center + 1); ++f)
   {
@@ -262,12 +265,13 @@ Value Entry::shelter_storm(const Position& pos, Square ksq) {
       b = theirPawns & file_bb(f);
       Rank rkThem = b ? relative_rank(Us, frontmost_sq(Them, b)) : RANK_1;
 
+
       int d = std::min(f, ~f);
-      safety -=  ShelterWeakness[f == file_of(ksq)][d][rkUs]
+      safety -=  ShelterWeakness[f == kf][d][rkUs]
                + StormDanger
-                 [f == file_of(ksq) && rkThem == relative_rank(Us, ksq) + 1 ? BlockedByKing  :
-                  rkUs   == RANK_1                                          ? Unopposed :
-                  rkThem == rkUs + 1                                        ? BlockedByPawn  : Unblocked]
+                 [f == kf && rkThem == relative_rank(Us, ksq) + 1 ? BlockedByKing  :
+                  rkUs   == RANK_1                                ? Unopposed :
+                  rkThem == rkUs + 1                              ? BlockedByPawn  : Unblocked]
                  [d][rkThem];
   }
 
@@ -298,7 +302,9 @@ Score Entry::do_king_safety(const Position& pos, Square ksq) {
   if (pos.can_castle(MakeCastling<Us, QUEEN_SIDE>::right))
       bonus = std::max(bonus, shelter_storm<Us>(pos, relative_square(Us, SQ_C1)));
 
-  return make_score(bonus, -16 * minKingPawnDistance);
+  bool haspawns = pos.pieces(PAWN) & KingFlank[file_of(ksq)];
+
+  return make_score(bonus, -16 * minKingPawnDistance) - (haspawns ? SCORE_ZERO : PawnLessKing);
 }
 
 // Explicit template instantiation

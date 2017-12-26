@@ -31,15 +31,6 @@
 
 namespace {
 
-  const Bitboard Center      = (FileDBB | FileEBB) & (Rank4BB | Rank5BB);
-  const Bitboard QueenSide   = FileABB | FileBBB | FileCBB | FileDBB;
-  const Bitboard CenterFiles = FileCBB | FileDBB | FileEBB | FileFBB;
-  const Bitboard KingSide    = FileEBB | FileFBB | FileGBB | FileHBB;
-
-  const Bitboard KingFlank[FILE_NB] = {
-    QueenSide, QueenSide, QueenSide, CenterFiles, CenterFiles, KingSide, KingSide, KingSide
-  };
-
   namespace Trace {
 
     enum Tracing {NO_TRACE, TRACE};
@@ -219,7 +210,6 @@ namespace {
   const Score TrappedRook           = S( 92,  0);
   const Score WeakQueen             = S( 50, 10);
   const Score CloseEnemies          = S(  7,  0);
-  const Score PawnlessFlank         = S( 20, 80);
   const Score ThreatByHangingPawn   = S( 71, 61);
   const Score ThreatBySafePawn      = S(192,175);
   const Score ThreatByRank          = S( 16,  3);
@@ -361,7 +351,7 @@ namespace {
                 score -= BishopPawns * pe->pawns_on_same_color_squares(Us, s);
 
                 // Bonus for bishop on a long diagonal which can "see" both center squares
-                if (more_than_one(Center & (attacks_bb<BISHOP>(s, pos.pieces(PAWN)) | s)))
+                if (more_than_one(Center & attacks_bb<BISHOP>(s, pos.pieces(PAWN))))
                     score += LongRangedBishop;
             }
 
@@ -505,10 +495,6 @@ namespace {
        | (b & attackedBy2[Them] & ~attackedBy[Us][PAWN]);
 
     score -= CloseEnemies * popcount(b);
-
-    // Penalty when our king is on a pawnless flank
-    if (!(pos.pieces(PAWN) & KingFlank[kf]))
-        score -= PawnlessFlank;
 
     if (T)
         Trace::add(KING, Us, score);
