@@ -61,7 +61,7 @@ public:
   Material::Table materialTable;
   Endgames endgames;
   size_t PVIdx;
-  int selDepth;
+  int selDepth, nmp_ply, pair;
   std::atomic<uint64_t> nodes, tbHits;
 
   Position rootPos;
@@ -69,6 +69,7 @@ public:
   Depth rootDepth, completedDepth;
   CounterMoveHistory counterMoves;
   ButterflyHistory mainHistory;
+  CapturePieceToHistory captureHistory;
   ContinuationHistory contHistory;
 };
 
@@ -82,8 +83,8 @@ struct MainThread : public Thread {
   void search() override;
   void check_time();
 
-  bool easyMovePlayed, failedLow;
-  double bestMoveChanges;
+  bool failedLow;
+  double bestMoveChanges, previousTimeReduction;
   Value previousScore;
   int callsCnt;
 };
@@ -95,9 +96,8 @@ struct MainThread : public Thread {
 
 struct ThreadPool : public std::vector<Thread*> {
 
-  void init(size_t); // No constructor and destructor, threads rely on globals that should
-  void exit();       // be initialized and valid during the whole thread lifetime.
   void start_thinking(Position&, StateListPtr&, const Search::LimitsType&, bool = false);
+  void clear();
   void set(size_t);
 
   MainThread* main()        const { return static_cast<MainThread*>(front()); }
