@@ -95,7 +95,7 @@ namespace {
   private:
     // Evaluation helpers (used when calling value())
     template<Color Us> void initialize();
-    template<Color Us> Score evaluate_king();
+    template<Color Us> Score evaluate_king(int mobilityDanger);
     template<Color Us> Score evaluate_threats();
     template<Color Us> Score evaluate_passed_pawns();
     template<Color Us> Score evaluate_space();
@@ -419,7 +419,7 @@ namespace {
   // evaluate_king() assigns bonuses and penalties to a king of a given color
 
   template<Tracing T>  template<Color Us>
-  Score Evaluation<T>::evaluate_king() {
+  Score Evaluation<T>::evaluate_king(int mobilityDanger) {
 
     const Color     Them = (Us == WHITE ? BLACK : WHITE);
     const Bitboard  Camp = (Us == WHITE ? AllSquares ^ Rank6BB ^ Rank7BB ^ Rank8BB
@@ -488,7 +488,10 @@ namespace {
 
         // Transform the kingDanger units into a Score, and substract it from the evaluation
         if (kingDanger > 0)
+        {
+            kingDanger += mobilityDanger;
             score -= make_score(kingDanger * kingDanger / 4096, kingDanger / 16);
+        }
     }
 
     // King tropism: firstly, find squares that opponent attacks in our king flank
@@ -852,8 +855,8 @@ namespace {
 
     score += mobility[WHITE] - mobility[BLACK];
 
-    score +=  evaluate_king<WHITE>()
-            - evaluate_king<BLACK>();
+    score +=  evaluate_king<WHITE>(mg_value(mobility[BLACK] - mobility[WHITE]))
+            - evaluate_king<BLACK>(mg_value(mobility[WHITE] - mobility[BLACK]));
 
     score +=  evaluate_threats<WHITE>()
             - evaluate_threats<BLACK>();
