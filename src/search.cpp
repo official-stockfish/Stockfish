@@ -1497,7 +1497,7 @@ moves_loop: // When in check search starts from here
     if (Threads.ponder)
         return;
 
-    if (   (Limits.use_time_management() && elapsed > Time.maximum())
+    if (   (Limits.use_time_management() && elapsed > Time.maximum() - 10)
         || (Limits.movetime && elapsed >= Limits.movetime)
         || (Limits.nodes && Threads.nodes_searched() >= (uint64_t)Limits.nodes))
             Threads.stop = true;
