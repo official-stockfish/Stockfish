@@ -486,7 +486,7 @@ namespace {
                      -   9 * mg_value(score) / 8
                      +  40;
 
-        // Transform the kingDanger units into a Score, and substract it from the evaluation.
+        // Transform the kingDanger units into a Score, and substract it from the evaluation
         if (kingDanger > 0)
         {
             int mobilityDanger = mg_value(mobility[Them] - mobility[Us]);
