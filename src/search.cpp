@@ -192,10 +192,15 @@ void MainThread::search() {
   Time.init(Limits, us, rootPos.game_ply());
   TT.new_search();
 
-  int contempt = Options["Contempt"] * PawnValueEg / 100; // From centipawns
+  // Use the contempt setting only for playing, not for analysis
+  if (Limits.use_time_management()) {
+      int contempt = Options["Contempt"] * PawnValueEg / 100; // From centipawns
 
-  Eval::Contempt = (us == WHITE ?  make_score(contempt, contempt / 2)
-                                : -make_score(contempt, contempt / 2));
+      Eval::Contempt = (us == WHITE ?  make_score(contempt, contempt / 2)
+                                    : -make_score(contempt, contempt / 2));
+  }
+  else
+      Eval::Contempt = SCORE_ZERO;
 
   if (rootMoves.empty())
   {
