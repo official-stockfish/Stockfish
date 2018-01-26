@@ -198,8 +198,8 @@ namespace {
   // Passed[mg/eg][Rank] contains midgame and endgame bonuses for passed pawns.
   // We don't use a Score because we process the two components independently.
   const Value Passed[][RANK_NB] = {
-    { V(5), V( 5), V(31), V(73), V(166), V(252) },
-    { V(7), V(14), V(38), V(73), V(166), V(252) }
+    { V(0), V(5), V( 5), V(31), V(73), V(166), V(252) },
+    { V(0), V(7), V(14), V(38), V(73), V(166), V(252) }
   };
 
   // PassedFile[File] contains a bonus according to the file of a passed pawn
@@ -207,6 +207,25 @@ namespace {
     S(  9, 10), S( 2, 10), S( 1, -8), S(-20,-12),
     S(-20,-12), S( 1, -8), S( 2, 10), S(  9, 10)
   };
+  
+  //distance between king and target square
+  //master was something like this (must divide by 10)
+  //int D5[RANK_NB] = {0,50,100,150,200,250,300,350}; //for opponent king
+  //int D2[RANK_NB] = {0,20,40,60,80,100,120,140};    //for our king (2.5 less)
+
+  //tuned values:
+  const int D5[RANK_NB] = {0,40,102,153,224,255,257,278};  //for opponent king
+  const int D2[RANK_NB] = {0,20, 39, 63, 78, 96,105,128};  //for our king
+
+  //master was something like this (must divide by 10)
+  //int R5[RANK_NB] = {0, 0, 0, 20, 60, 120, 200}; //for opponent king
+  //int R2[RANK_NB] = {0, 0, 0, 20, 60, 120, 200}; //for our king
+  //tuned values
+  //const int R5[RANK_NB] = {0, 0, 0, 20, 60, 111, 158}; //for opponent king
+  //const int R2[RANK_NB] = {0, 0, 0, 22, 61, 106, 155}; //for our king
+
+  //tuned values are almost the same for both king, use the original scale
+  const int R[RANK_NB] = {0, 0, 0, 2, 6, 11, 16};
 
   // KingProtector[PieceType-2] contains a bonus according to distance from king
   const Score KingProtector[] = { S(-3, -5), S(-4, -3), S(-3, 0), S(-1, 1) };
@@ -646,8 +665,8 @@ namespace {
         bb = forward_file_bb(Us, s) & (attackedBy[Them][ALL_PIECES] | pos.pieces(Them));
         score -= HinderPassedPawn * popcount(bb);
 
-        int r = relative_rank(Us, s) - RANK_2;
-        int rr = r * (r - 1);
+        int r = relative_rank(Us, s);
+        int rr = R[r];
 
         Value mbonus = Passed[MG][r], ebonus = Passed[EG][r];
 
@@ -656,12 +675,11 @@ namespace {
             Square blockSq = s + Up;
 
             // Adjust bonus based on the king's proximity
-            ebonus +=  distance(pos.square<KING>(Them), blockSq) * 5 * rr
-                     - distance(pos.square<KING>(  Us), blockSq) * 2 * rr;
+            ebonus += ((D5[distance(pos.square<KING>(Them), blockSq)] - D2[distance(pos.square<KING>(  Us), blockSq)]) * rr) / 10;
 
             // If blockSq is not the queening square then consider also a second push
             if (relative_rank(Us, blockSq) != RANK_8)
-                ebonus -= distance(pos.square<KING>(Us), blockSq + Up) * rr;
+                ebonus -= (D2[distance(pos.square<KING>(Us), blockSq + Up)] * rr) / 20;
 
             // If the pawn is free to advance, then increase the bonus
             if (pos.empty(blockSq))
