@@ -21,6 +21,7 @@
 #ifndef POSITION_H_INCLUDED
 #define POSITION_H_INCLUDED
 
+#include <algorithm>
 #include <cassert>
 #include <deque>
 #include <memory> // For std::unique_ptr
@@ -258,8 +259,7 @@ inline Square Position::ep_square() const {
 
 // helper used by evaluation to get a distance between a king of color c and a blocking square s
 inline int Position::king_distance(Color c, Square s) const {
-  int d = distance(square<KING>(c), s);
-  return std::min(d, 5);
+  return std::min(distance(square<KING>(c), s), 5);
 }
 
 inline int Position::can_castle(CastlingRight cr) const {
