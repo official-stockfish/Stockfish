@@ -97,6 +97,7 @@ namespace {
     template<Color Us> void initialize();
     template<Color Us> Score evaluate_king();
     template<Color Us> Score evaluate_threats();
+    int king_distance(Color c, Square s);
     template<Color Us> Score evaluate_passed_pawns();
     template<Color Us> Score evaluate_space();
     template<Color Us, PieceType Pt> Score evaluate_pieces();
@@ -625,6 +626,12 @@ namespace {
     return score;
   }
 
+  // helper used by evaluate_passed_pawns to cap the distance
+  template<Tracing T>
+  int Evaluation<T>::king_distance(Color c, Square s) {
+    return std::min(distance(pos.square<KING>(c), s), 5);
+  }
+
   // evaluate_passed_pawns() evaluates the passed pawns and candidate passed
   // pawns of the given color.
 
@@ -658,11 +665,11 @@ namespace {
             Square blockSq = s + Up;
 
             // Adjust bonus based on the king's proximity
-            ebonus += (pos.king_distance(Them, blockSq) * 5 - pos.king_distance(Us, blockSq) * 2) * rr;
+            ebonus += (king_distance(Them, blockSq) * 5 - king_distance(Us, blockSq) * 2) * rr;
 
             // If blockSq is not the queening square then consider also a second push
             if (r != RANK_7)
-                ebonus -= pos.king_distance(Us, blockSq + Up) * rr;
+                ebonus -= king_distance(Us, blockSq + Up) * rr;
 
             // If the pawn is free to advance, then increase the bonus
             if (pos.empty(blockSq))

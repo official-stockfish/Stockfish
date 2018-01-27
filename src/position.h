@@ -21,7 +21,6 @@
 #ifndef POSITION_H_INCLUDED
 #define POSITION_H_INCLUDED
 
-#include <algorithm>
 #include <cassert>
 #include <deque>
 #include <memory> // For std::unique_ptr
@@ -158,7 +157,6 @@ public:
   Score psq_score() const;
   Value non_pawn_material(Color c) const;
   Value non_pawn_material() const;
-  int king_distance(Color c, Square s) const;
 
   // Position consistency check, for debugging
   bool pos_is_ok() const;
@@ -255,11 +253,6 @@ template<PieceType Pt> inline Square Position::square(Color c) const {
 
 inline Square Position::ep_square() const {
   return st->epSquare;
-}
-
-// helper used by evaluation to get a distance between a king of color c and a blocking square s
-inline int Position::king_distance(Color c, Square s) const {
-  return std::min(distance(square<KING>(c), s), 5);
 }
 
 inline int Position::can_castle(CastlingRight cr) const {
