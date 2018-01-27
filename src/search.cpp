@@ -621,7 +621,7 @@ namespace {
 
     // Step 5. Evaluate the position statically
     ss->staticEval = eval = VALUE_NONE;
-    if (!inCheck)
+    if (!inCheck) //if we're in check, skip to Step 11
     {
        if (ttHit)
        {
@@ -644,9 +644,9 @@ namespace {
                      ss->staticEval, TT.generation());
        }
 
+       //only do Steps 6-10 if ...
        if (!skipEarlyPruning && pos.non_pawn_material(pos.side_to_move()))
        {
-
           // Step 6. Razoring (skipped when in check)
           if (   !PvNode
               &&  depth < 4 * ONE_PLY
@@ -751,9 +751,10 @@ namespace {
               tte = TT.probe(posKey, ttHit);
               ttMove = ttHit ? tte->move() : MOVE_NONE;
           }
-       } //!earlyPruning and pos.material
-    } // !inCheck
+       }
+    } 
       
+    // Step 11. Loop through moves
     const PieceToHistory* contHist[] = { (ss-1)->contHistory, (ss-2)->contHistory, nullptr, (ss-4)->contHistory };
     Move countermove = thisThread->counterMoves[pos.piece_on(prevSq)][prevSq];
 
@@ -774,7 +775,6 @@ namespace {
     ttCapture = false;
     pvExact = PvNode && ttHit && tte->bound() == BOUND_EXACT;
 
-    // Step 11. Loop through moves
     // Loop through all pseudo-legal moves until no moves remain or a beta cutoff occurs
     while ((move = mp.next_move(skipQuiets)) != MOVE_NONE)
     {
