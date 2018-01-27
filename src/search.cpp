@@ -751,8 +751,8 @@ namespace {
               tte = TT.probe(posKey, ttHit);
               ttMove = ttHit ? tte->move() : MOVE_NONE;
           }
-       }
-    } 
+       } //steps 6-10
+    }  // if we're in check or not
       
     // Step 11. Loop through moves
     const PieceToHistory* contHist[] = { (ss-1)->contHistory, (ss-2)->contHistory, nullptr, (ss-4)->contHistory };
