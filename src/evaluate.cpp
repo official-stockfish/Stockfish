@@ -97,6 +97,7 @@ namespace {
     template<Color Us> void initialize();
     template<Color Us> Score evaluate_king();
     template<Color Us> Score evaluate_threats();
+    int king_distance(Color c, Square s);
     template<Color Us> Score evaluate_passed_pawns();
     template<Color Us> Score evaluate_space();
     template<Color Us, PieceType Pt> Score evaluate_pieces();
@@ -198,8 +199,8 @@ namespace {
   // Passed[mg/eg][Rank] contains midgame and endgame bonuses for passed pawns.
   // We don't use a Score because we process the two components independently.
   const Value Passed[][RANK_NB] = {
-    { V(5), V( 5), V(31), V(73), V(166), V(252) },
-    { V(7), V(14), V(38), V(73), V(166), V(252) }
+    { V(0), V(5), V( 5), V(31), V(73), V(166), V(252) },
+    { V(0), V(7), V(14), V(38), V(73), V(166), V(252) }
   };
 
   // PassedFile[File] contains a bonus according to the file of a passed pawn
@@ -207,6 +208,9 @@ namespace {
     S(  9, 10), S( 2, 10), S( 1, -8), S(-20,-12),
     S(-20,-12), S( 1, -8), S( 2, 10), S(  9, 10)
   };
+
+  // Rank factor applied on some bonus for passed pawn on rank 4 or beyond
+  const int RankFactor[RANK_NB] = {0, 0, 0, 2, 6, 11, 16};
 
   // KingProtector[PieceType-2] contains a bonus according to distance from king
   const Score KingProtector[] = { S(-3, -5), S(-4, -3), S(-3, 0), S(-1, 1) };
@@ -486,7 +490,7 @@ namespace {
                      -   9 * mg_value(score) / 8
                      +  40;
 
-        // Transform the kingDanger units into a Score, and substract it from the evaluation
+        // Transform the kingDanger units into a Score, and subtract it from the evaluation
         if (kingDanger > 0)
         {
             int mobilityDanger = mg_value(mobility[Them] - mobility[Us]);
@@ -622,6 +626,11 @@ namespace {
     return score;
   }
 
+  // helper used by evaluate_passed_pawns to cap the distance
+  template<Tracing T>
+  int Evaluation<T>::king_distance(Color c, Square s) {
+    return std::min(distance(pos.square<KING>(c), s), 5);
+  }
 
   // evaluate_passed_pawns() evaluates the passed pawns and candidate passed
   // pawns of the given color.
@@ -646,8 +655,8 @@ namespace {
         bb = forward_file_bb(Us, s) & (attackedBy[Them][ALL_PIECES] | pos.pieces(Them));
         score -= HinderPassedPawn * popcount(bb);
 
-        int r = relative_rank(Us, s) - RANK_2;
-        int rr = r * (r - 1);
+        int r = relative_rank(Us, s);
+        int rr = RankFactor[r];
 
         Value mbonus = Passed[MG][r], ebonus = Passed[EG][r];
 
@@ -656,12 +665,11 @@ namespace {
             Square blockSq = s + Up;
 
             // Adjust bonus based on the king's proximity
-            ebonus +=  distance(pos.square<KING>(Them), blockSq) * 5 * rr
-                     - distance(pos.square<KING>(  Us), blockSq) * 2 * rr;
+            ebonus += (king_distance(Them, blockSq) * 5 - king_distance(Us, blockSq) * 2) * rr;
 
             // If blockSq is not the queening square then consider also a second push
-            if (relative_rank(Us, blockSq) != RANK_8)
-                ebonus -= distance(pos.square<KING>(Us), blockSq + Up) * rr;
+            if (r != RANK_7)
+                ebonus -= king_distance(Us, blockSq + Up) * rr;
 
             // If the pawn is free to advance, then increase the bonus
             if (pos.empty(blockSq))
