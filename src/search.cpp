@@ -636,143 +636,141 @@ namespace {
     }
 
     // Step 5. Evaluate the position statically
-    if (inCheck)
+    ss->staticEval = eval = VALUE_NONE;
+    if (!inCheck) //if we're in check, skip to Step 11
     {
-        ss->staticEval = eval = VALUE_NONE;
-        goto moves_loop;
-    }
+       if (ttHit)
+       {
+           // Never assume anything on values stored in TT
+           if ((ss->staticEval = eval = tte->eval()) == VALUE_NONE)
+               eval = ss->staticEval = evaluate(pos);
+   
+           // Can ttValue be used as a better position evaluation?
+           if (   ttValue != VALUE_NONE
+               && (tte->bound() & (ttValue > eval ? BOUND_LOWER : BOUND_UPPER)))
+               eval = ttValue;
+       }
+       else
+       {
+           eval = ss->staticEval =
+           (ss-1)->currentMove != MOVE_NULL ? evaluate(pos)
+                                            : -(ss-1)->staticEval + 2 * Eval::Tempo;
+   
+           tte->save(posKey, VALUE_NONE, BOUND_NONE, DEPTH_NONE, MOVE_NONE,
+                     ss->staticEval, TT.generation());
+       }
 
-    else if (ttHit)
-    {
-        // Never assume anything on values stored in TT
-        if ((ss->staticEval = eval = tte->eval()) == VALUE_NONE)
-            eval = ss->staticEval = evaluate(pos);
-
-        // Can ttValue be used as a better position evaluation?
-        if (   ttValue != VALUE_NONE
-            && (tte->bound() & (ttValue > eval ? BOUND_LOWER : BOUND_UPPER)))
-            eval = ttValue;
-    }
-    else
-    {
-        eval = ss->staticEval =
-        (ss-1)->currentMove != MOVE_NULL ? evaluate(pos)
-                                         : -(ss-1)->staticEval + 2 * Eval::Tempo;
-
-        tte->save(posKey, VALUE_NONE, BOUND_NONE, DEPTH_NONE, MOVE_NONE,
-                  ss->staticEval, TT.generation());
-    }
-
-    if (skipEarlyPruning || !pos.non_pawn_material(pos.side_to_move()))
-        goto moves_loop;
-
-    // Step 6. Razoring (skipped when in check)
-    if (   !PvNode
-        &&  depth < 4 * ONE_PLY
-        &&  eval + razor_margin <= alpha)
-    {
-        if (depth <= ONE_PLY)
-            return qsearch<NonPV, false>(pos, ss, alpha, alpha+1);
-
-        Value ralpha = alpha - razor_margin;
-        Value v = qsearch<NonPV, false>(pos, ss, ralpha, ralpha+1);
-        if (v <= ralpha)
-            return v;
-    }
-
-    // Step 7. Futility pruning: child node (skipped when in check)
-    if (   !rootNode
-        &&  depth < 7 * ONE_PLY
-        &&  eval - futility_margin(depth) >= beta
-        &&  eval < VALUE_KNOWN_WIN)  // Do not return unproven wins
-        return eval;
-
-    // Step 8. Null move search with verification search (is omitted in PV nodes)
-    if (   !PvNode
-        &&  eval >= beta
-        &&  ss->staticEval >= beta - 36 * depth / ONE_PLY + 225
-        && (ss->ply >= thisThread->nmp_ply || ss->ply % 2 != thisThread->nmp_odd))
-    {
-
-        assert(eval - beta >= 0);
-
-        // Null move dynamic reduction based on depth and value
-        Depth R = ((823 + 67 * depth / ONE_PLY) / 256 + std::min((eval - beta) / PawnValueMg, 3)) * ONE_PLY;
-
-        ss->currentMove = MOVE_NULL;
-        ss->contHistory = &thisThread->contHistory[NO_PIECE][0];
-
-        pos.do_null_move(st);
-        Value nullValue = depth-R < ONE_PLY ? -qsearch<NonPV, false>(pos, ss+1, -beta, -beta+1)
-                                            : - search<NonPV>(pos, ss+1, -beta, -beta+1, depth-R, !cutNode, true);
-        pos.undo_null_move();
-
-        if (nullValue >= beta)
-        {
-            // Do not return unproven mate scores
-            if (nullValue >= VALUE_MATE_IN_MAX_PLY)
-                nullValue = beta;
-
-            if (abs(beta) < VALUE_KNOWN_WIN && (depth < 12 * ONE_PLY || thisThread->nmp_ply))
-                return nullValue;
-
-            // Do verification search at high depths
-            // disable null move pruning for side to move for the first part of the remaining search tree
-            thisThread->nmp_ply = ss->ply + 3 * (depth-R) / 4;
-            thisThread->nmp_odd = ss->ply % 2;
-
-            Value v = depth-R < ONE_PLY ? qsearch<NonPV, false>(pos, ss, beta-1, beta)
-                                        :  search<NonPV>(pos, ss, beta-1, beta, depth-R, false, true);
-
-            thisThread->nmp_odd = thisThread->nmp_ply = 0;
-
-            if (v >= beta)
-                return nullValue;
-        }
-    }
-
-    // Step 9. ProbCut (skipped when in check)
-    // If we have a good enough capture and a reduced search returns a value
-    // much above beta, we can (almost) safely prune the previous move.
-    if (   !PvNode
-        &&  depth >= 5 * ONE_PLY
-        &&  abs(beta) < VALUE_MATE_IN_MAX_PLY)
-    {
-        Value rbeta = std::min(beta + 200, VALUE_INFINITE);
-
-        assert(is_ok((ss-1)->currentMove));
-
-        MovePicker mp(pos, ttMove, rbeta - ss->staticEval, &thisThread->captureHistory);
-
-        while ((move = mp.next_move()) != MOVE_NONE)
-            if (pos.legal(move))
-            {
-                ss->currentMove = move;
-                ss->contHistory = &thisThread->contHistory[pos.moved_piece(move)][to_sq(move)];
-
-                assert(depth >= 5 * ONE_PLY);
-                pos.do_move(move, st);
-                value = -search<NonPV>(pos, ss+1, -rbeta, -rbeta+1, depth - 4 * ONE_PLY, !cutNode, false);
-                pos.undo_move(move);
-                if (value >= rbeta)
-                    return value;
-            }
-    }
-
-    // Step 10. Internal iterative deepening (skipped when in check)
-    if (    depth >= 6 * ONE_PLY
-        && !ttMove
-        && (PvNode || ss->staticEval + 256 >= beta))
-    {
-        Depth d = (3 * depth / (4 * ONE_PLY) - 2) * ONE_PLY;
-        search<NT>(pos, ss, alpha, beta, d, cutNode, true);
-
-        tte = TT.probe(posKey, ttHit);
-        ttMove = ttHit ? tte->move() : MOVE_NONE;
-    }
-
-moves_loop: // When in check search starts from here
-
+       //only do Steps 6-10 if ...
+       if (!skipEarlyPruning && pos.non_pawn_material(pos.side_to_move()))
+       {
+          // Step 6. Razoring (skipped when in check)
+          if (   !PvNode
+              &&  depth < 4 * ONE_PLY
+              &&  eval + razor_margin <= alpha)
+          {
+              if (depth <= ONE_PLY)
+                  return qsearch<NonPV, false>(pos, ss, alpha, alpha+1);
+      
+              Value ralpha = alpha - razor_margin;
+              Value v = qsearch<NonPV, false>(pos, ss, ralpha, ralpha+1);
+              if (v <= ralpha)
+                  return v;
+          }
+      
+          // Step 7. Futility pruning: child node (skipped when in check)
+          if (   !rootNode
+              &&  depth < 7 * ONE_PLY
+              &&  eval - futility_margin(depth) >= beta
+              &&  eval < VALUE_KNOWN_WIN)  // Do not return unproven wins
+              return eval;
+      
+          // Step 8. Null move search with verification search (is omitted in PV nodes)
+          if (   !PvNode
+              &&  eval >= beta
+              &&  ss->staticEval >= beta - 36 * depth / ONE_PLY + 225
+              && (ss->ply >= thisThread->nmp_ply || ss->ply % 2 != thisThread->nmp_odd))
+          {
+      
+              assert(eval - beta >= 0);
+      
+              // Null move dynamic reduction based on depth and value
+              Depth R = ((823 + 67 * depth / ONE_PLY) / 256 + std::min((eval - beta) / PawnValueMg, 3)) * ONE_PLY;
+      
+              ss->currentMove = MOVE_NULL;
+              ss->contHistory = &thisThread->contHistory[NO_PIECE][0];
+      
+              pos.do_null_move(st);
+              Value nullValue = depth-R < ONE_PLY ? -qsearch<NonPV, false>(pos, ss+1, -beta, -beta+1)
+                                                  : - search<NonPV>(pos, ss+1, -beta, -beta+1, depth-R, !cutNode, true);
+              pos.undo_null_move();
+      
+              if (nullValue >= beta)
+              {
+                  // Do not return unproven mate scores
+                  if (nullValue >= VALUE_MATE_IN_MAX_PLY)
+                      nullValue = beta;
+      
+                  if (abs(beta) < VALUE_KNOWN_WIN && (depth < 12 * ONE_PLY || thisThread->nmp_ply))
+                      return nullValue;
+      
+                  // Do verification search at high depths
+                  // disable null move pruning for side to move for the first part of the remaining search tree
+                  thisThread->nmp_ply = ss->ply + 3 * (depth-R) / 4;
+                  thisThread->nmp_odd = ss->ply % 2;
+      
+                  Value v = depth-R < ONE_PLY ? qsearch<NonPV, false>(pos, ss, beta-1, beta)
+                                              :  search<NonPV>(pos, ss, beta-1, beta, depth-R, false, true);
+      
+                  thisThread->nmp_odd = thisThread->nmp_ply = 0;
+      
+                  if (v >= beta)
+                      return nullValue;
+              }
+          }
+      
+          // Step 9. ProbCut (skipped when in check)
+          // If we have a good enough capture and a reduced search returns a value
+          // much above beta, we can (almost) safely prune the previous move.
+          if (   !PvNode
+              &&  depth >= 5 * ONE_PLY
+              &&  abs(beta) < VALUE_MATE_IN_MAX_PLY)
+          {
+              Value rbeta = std::min(beta + 200, VALUE_INFINITE);
+      
+              assert(is_ok((ss-1)->currentMove));
+      
+              MovePicker mp(pos, ttMove, rbeta - ss->staticEval, &thisThread->captureHistory);
+      
+              while ((move = mp.next_move()) != MOVE_NONE)
+                  if (pos.legal(move))
+                  {
+                      ss->currentMove = move;
+                      ss->contHistory = &thisThread->contHistory[pos.moved_piece(move)][to_sq(move)];
+      
+                      assert(depth >= 5 * ONE_PLY);
+                      pos.do_move(move, st);
+                      value = -search<NonPV>(pos, ss+1, -rbeta, -rbeta+1, depth - 4 * ONE_PLY, !cutNode, false);
+                      pos.undo_move(move);
+                      if (value >= rbeta)
+                          return value;
+                  }
+          }
+      
+          // Step 10. Internal iterative deepening (skipped when in check)
+          if (    depth >= 6 * ONE_PLY
+              && !ttMove
+              && (PvNode || ss->staticEval + 256 >= beta))
+          {
+              Depth d = (3 * depth / (4 * ONE_PLY) - 2) * ONE_PLY;
+              search<NT>(pos, ss, alpha, beta, d, cutNode, true);
+      
+              tte = TT.probe(posKey, ttHit);
+              ttMove = ttHit ? tte->move() : MOVE_NONE;
+          }
+       } //steps 6-10
+    }  // if we're in check or not
+      
+    // Step 11. Loop through moves
     const PieceToHistory* contHist[] = { (ss-1)->contHistory, (ss-2)->contHistory, nullptr, (ss-4)->contHistory };
     Move countermove = thisThread->counterMoves[pos.piece_on(prevSq)][prevSq];
 
@@ -793,7 +791,6 @@ moves_loop: // When in check search starts from here
     ttCapture = false;
     pvExact = PvNode && ttHit && tte->bound() == BOUND_EXACT;
 
-    // Step 11. Loop through moves
     // Loop through all pseudo-legal moves until no moves remain or a beta cutoff occurs
     while ((move = mp.next_move(skipQuiets)) != MOVE_NONE)
     {
