@@ -21,6 +21,7 @@
 #include <algorithm> // For std::count
 #include <cassert>
 
+#include "evaluate.h"
 #include "movegen.h"
 #include "search.h"
 #include "thread.h"
@@ -162,6 +163,19 @@ void ThreadPool::start_thinking(Position& pos, StateListPtr& states,
   ponder = ponderMode;
   Search::Limits = limits;
   Search::RootMoves rootMoves;
+
+  bool analyseMode = Options["UCI_AnalyseMode"];
+
+  if (analyseMode && !Options["Analysis Contempt"])
+      Eval::Contempt = SCORE_ZERO;
+  else {
+      // In the analysis mode when the "Analysis Contempt" option is checked
+      // the "Contempt" option is applied from white's perspective.
+      // In the playing mode it is applied from the perspective of the side to move.
+      int contempt = (analyseMode || pos.side_to_move() == WHITE ?
+                      int(Options["Contempt"]) : -Options["Contempt"]) * PawnValueEg / 100; // From centipawns
+      Eval::Contempt = make_score(contempt, contempt / 2);
+  }
 
   for (const auto& m : MoveList<LEGAL>(pos))
       if (   limits.searchmoves.empty()
