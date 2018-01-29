@@ -74,7 +74,17 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const ButterflyHist
 
   assert(d > DEPTH_ZERO);
 
-  stage = pos.checkers() ? EVASION : MAIN_SEARCH;
+  if (pos.checkers())
+  {
+     stage = EVASION;
+     fpNextMove = &MovePicker::next_move_evasion;
+  }
+  else 
+  {
+     stage = MAIN_SEARCH;
+     fpNextMove = &MovePicker::next_move_main;
+  }
+
   ttMove = ttm && pos.pseudo_legal(ttm) ? ttm : MOVE_NONE;
   stage += (ttMove == MOVE_NONE);
 }
@@ -86,19 +96,25 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const ButterflyHist
   assert(d <= DEPTH_ZERO);
 
   if (pos.checkers())
+  {
       stage = EVASION;
-
-  else if (d > DEPTH_QS_NO_CHECKS)
-      stage = QSEARCH_WITH_CHECKS;
-
-  else if (d > DEPTH_QS_RECAPTURES)
-      stage = QSEARCH_NO_CHECKS;
-
+      fpNextMove = &MovePicker::next_move_evasion;
+  }
   else
   {
-      stage = QSEARCH_RECAPTURES;
-      recaptureSquare = s;
-      return;
+     fpNextMove = &MovePicker::next_move_qsearch;
+     if (d > DEPTH_QS_NO_CHECKS)
+         stage = QSEARCH_WITH_CHECKS;
+   
+     else if (d > DEPTH_QS_RECAPTURES)
+         stage = QSEARCH_NO_CHECKS;
+   
+     else
+     {
+         stage = QSEARCH_RECAPTURES;
+         recaptureSquare = s;
+         return;
+     }
   }
 
   ttMove = ttm && pos.pseudo_legal(ttm) ? ttm : MOVE_NONE;
@@ -119,6 +135,8 @@ MovePicker::MovePicker(const Position& p, Move ttm, Value th, const CapturePiece
           && pos.see_ge(ttm, threshold) ? ttm : MOVE_NONE;
 
   stage += (ttMove == MOVE_NONE);
+
+  fpNextMove = &MovePicker::next_move_probcut;
 }
 
 /// score() assigns a numerical value to each move in a list, used for sorting.
@@ -154,15 +172,18 @@ void MovePicker::score() {
 /// a new pseudo legal move every time it is called, until there are no more moves
 /// left. It picks the move with the biggest value from a list of generated moves
 /// taking care not to return the ttMove if it has already been searched.
+Move MovePicker::next_move(bool sq) {
+  skipQuiets = sq;
+  return (this->*fpNextMove)();
+}
 
-Move MovePicker::next_move(bool skipQuiets) {
-
+Move MovePicker::next_move_main()
+{
   Move move;
 
   switch (stage) {
 
-  case MAIN_SEARCH: case EVASION: case QSEARCH_WITH_CHECKS:
-  case QSEARCH_NO_CHECKS: case PROBCUT:
+  case MAIN_SEARCH: 
       ++stage;
       return ttMove;
 
@@ -247,38 +268,74 @@ Move MovePicker::next_move(bool skipQuiets) {
           return *cur++;
       break;
 
-  case EVASIONS_INIT:
-      cur = moves;
-      endMoves = generate<EVASIONS>(pos, cur);
-      score<EVASIONS>();
+  default:
+      assert(false);
+  }
+  return MOVE_NONE;
+}
+
+Move MovePicker::next_move_evasion()
+{
+  if (stage > EVASION)
+  {
+     if (stage == EVASIONS_INIT)
+     {
+        cur = moves;
+        endMoves = generate<EVASIONS>(pos, cur);
+        score<EVASIONS>();
+        ++stage;
+     }
+     while (cur < endMoves)
+     {
+         Move move = pick_best(cur++, endMoves);
+         if (move != ttMove)
+             return move;
+     }
+  }
+  else
+  {
       ++stage;
-      /* fallthrough */
+      return ttMove;
+  }
+  return MOVE_NONE;
+}
 
-  case ALL_EVASIONS:
-      while (cur < endMoves)
-      {
-          move = pick_best(cur++, endMoves);
-          if (move != ttMove)
-              return move;
-      }
-      break;
+Move MovePicker::next_move_probcut()
+{
+  if (stage > PROBCUT)
+  {
+     if (stage == PROBCUT_INIT)
+     {
+        cur = moves;
+        endMoves = generate<CAPTURES>(pos, cur);
+        score<CAPTURES>();
+        ++stage;
+     }
+     while (cur < endMoves)
+     {
+         Move move = pick_best(cur++, endMoves);
+         if (   move != ttMove
+             && pos.see_ge(move, threshold))
+             return move;
+     }
+  }
+  else
+  {
+     ++stage;
+     return ttMove;
+  }
+  return MOVE_NONE;
+}
 
-  case PROBCUT_INIT:
-      cur = moves;
-      endMoves = generate<CAPTURES>(pos, cur);
-      score<CAPTURES>();
+Move MovePicker::next_move_qsearch()
+{
+  Move move;
+
+  switch (stage) {
+
+  case QSEARCH_WITH_CHECKS: case QSEARCH_NO_CHECKS:
       ++stage;
-      /* fallthrough */
-
-  case PROBCUT_CAPTURES:
-      while (cur < endMoves)
-      {
-          move = pick_best(cur++, endMoves);
-          if (   move != ttMove
-              && pos.see_ge(move, threshold))
-              return move;
-      }
-      break;
+      return ttMove;
 
   case QCAPTURES_1_INIT: case QCAPTURES_2_INIT:
       cur = moves;
@@ -329,6 +386,7 @@ Move MovePicker::next_move(bool skipQuiets) {
   default:
       assert(false);
   }
-
   return MOVE_NONE;
 }
+
+

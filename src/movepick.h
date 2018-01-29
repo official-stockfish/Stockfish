@@ -131,6 +131,11 @@ public:
   Move next_move(bool skipQuiets = false);
 
 private:
+  Move next_move_main();
+  Move next_move_evasion();
+  Move next_move_probcut();
+  Move next_move_qsearch();
+  Move (MovePicker::*fpNextMove)();
   template<GenType> void score();
   ExtMove* begin() { return cur; }
   ExtMove* end() { return endMoves; }
@@ -145,6 +150,7 @@ private:
   Square recaptureSquare;
   Value threshold;
   Depth depth;
+  bool skipQuiets;
   ExtMove moves[MAX_MOVES];
 };
 
