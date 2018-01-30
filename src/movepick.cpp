@@ -190,7 +190,7 @@ Move MovePicker::next_move(bool skipQuiets) {
       /* fallthrough */
 
   case KILLERS:
-      while (killersIndex < 2)
+      while (killersIndex < NUM_KILLERS)
       {
          move = killers[killersIndex++];
          if (    move != MOVE_NONE

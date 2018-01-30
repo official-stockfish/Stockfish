@@ -26,6 +26,7 @@
 #include "misc.h"
 #include "movepick.h"
 #include "types.h"
+#include "movepick.h"
 
 class Position;
 
@@ -45,7 +46,7 @@ struct Stack {
   int ply;
   Move currentMove;
   Move excludedMove;
-  Move killers[2];
+  Move killers[NUM_KILLERS];
   Value staticEval;
   int statScore;
   int moveCount;
