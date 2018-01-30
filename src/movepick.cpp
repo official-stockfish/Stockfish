@@ -70,7 +70,7 @@ namespace {
 MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const ButterflyHistory* mh,
                        const CapturePieceToHistory* cph, const PieceToHistory** ch, Move cm, Move* killers_p)
            : pos(p), mainHistory(mh), captureHistory(cph), contHistory(ch), countermove(cm),
-             killers{killers_p[0], killers_p[1]}, depth(d){
+             killers{killers_p[0], killers_p[1]}, killersIndex(0), depth(d){
 
   assert(d > DEPTH_ZERO);
 
@@ -186,24 +186,20 @@ Move MovePicker::next_move(bool skipQuiets) {
               *endBadCaptures++ = move;
           }
       }
-
       ++stage;
-      move = killers[0];  // First killer move
-      if (    move != MOVE_NONE
-          &&  move != ttMove
-          &&  pos.pseudo_legal(move)
-          && !pos.capture(move))
-          return move;
       /* fallthrough */
 
   case KILLERS:
+      while (killersIndex < 2)
+      {
+         move = killers[killersIndex++];
+         if (    move != MOVE_NONE
+             &&  move != ttMove
+             &&  pos.pseudo_legal(move)
+             && !pos.capture(move))
+             return move;
+      }
       ++stage;
-      move = killers[1]; // Second killer move
-      if (    move != MOVE_NONE
-          &&  move != ttMove
-          &&  pos.pseudo_legal(move)
-          && !pos.capture(move))
-          return move;
       /* fallthrough */
 
   case COUNTERMOVE:

@@ -142,6 +142,7 @@ private:
   Move ttMove, countermove, killers[2];
   ExtMove *cur, *endMoves, *endBadCaptures;
   int stage;
+  int killersIndex;
   Square recaptureSquare;
   Value threshold;
   Depth depth;
