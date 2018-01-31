@@ -113,7 +113,6 @@ typedef StatBoards<PIECE_NB, SQUARE_NB, Move> CounterMoveHistory;
 /// instead of ButterflyBoards.
 typedef StatBoards<PIECE_NB, SQUARE_NB, PieceToHistory> ContinuationHistory;
 
-
 /// MovePicker class is used to pick one pseudo legal move at a time from the
 /// current position. The most important method is next_move(), which returns a
 /// new pseudo legal move each time it is called, until there are no moves left,
@@ -139,9 +138,10 @@ private:
   const ButterflyHistory* mainHistory;
   const CapturePieceToHistory* captureHistory;
   const PieceToHistory** contHistory;
-  Move ttMove, countermove, killers[2];
+  Move ttMove, special[3];
   ExtMove *cur, *endMoves, *endBadCaptures;
   int stage;
+  int specialIndex;
   Square recaptureSquare;
   Value threshold;
   Depth depth;
