@@ -138,8 +138,8 @@ private:
   const ButterflyHistory* mainHistory;
   const CapturePieceToHistory* captureHistory;
   const PieceToHistory** contHistory;
-  Move ttMove, countermove, special[3];
-  ExtMove *cur, *endMoves, *endBadCaptures; //, special[3];
+  Move ttMove, special[3];
+  ExtMove *cur, *endMoves, *endBadCaptures;
   int stage;
   int specialIndex;
   Square recaptureSquare;

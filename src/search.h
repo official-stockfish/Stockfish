@@ -26,7 +26,6 @@
 #include "misc.h"
 #include "movepick.h"
 #include "types.h"
-#include "movepick.h"
 
 class Position;
 

@@ -186,14 +186,18 @@ Move MovePicker::next_move(bool skipQuiets) {
               *endBadCaptures++ = move;
           }
       }
-      if ((special[2] == special[0]) || 
-          (special[2] == special[1])) special[2] = MOVE_NONE;
       ++stage;
       /* fallthrough */
 
   case SPECIAL: //killers and countermoves
       while (specialIndex < 3)
       {
+         //break if countermove is same as a killer move
+         if (specialIndex == 2)
+         {
+            if (special[2] == special[0]) break;
+            else if (special[2] == special[1]) break;
+         }
          move = special[specialIndex++];
          if (    move != MOVE_NONE
              &&  move != ttMove
