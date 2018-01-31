@@ -59,6 +59,7 @@ script:
   # Check perft and reproducible search
   - ../tests/perft.sh
   - ../tests/reprosearch.sh
+  - ../tests/skill.sh
   #
   # Valgrind
   #
