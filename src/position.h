@@ -146,6 +146,7 @@ public:
   Key key_after(Move m) const;
   Key material_key() const;
   Key pawn_key() const;
+  void set_key_for_root_color(Color c);
 
   // Other properties of the position
   Color side_to_move() const;
