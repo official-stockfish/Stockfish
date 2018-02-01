@@ -45,7 +45,7 @@ namespace Zobrist {
   Key psq[PIECE_NB][SQUARE_NB];
   Key enpassant[FILE_NB];
   Key castling[CASTLING_RIGHT_NB];
-  Key side, noPawns;
+  Key side, noPawns, rootSwap;
 }
 
 namespace {
@@ -152,6 +152,7 @@ void Position::init() {
 
   Zobrist::side = rng.rand<Key>();
   Zobrist::noPawns = rng.rand<Key>();
+  Zobrist::rootSwap = rng.rand<Key>();
 }
 
 
@@ -985,6 +986,27 @@ Key Position::key_after(Move m) const {
 }
 
 
+/// Position::set_key_for_root_color() sets an alternate hash key at the root
+/// position of a search, in case we want different hash paths for search trees
+/// rooted with Black or White.
+
+void Position::set_key_for_root_color(Color c)
+{
+   StateInfo si;
+   Position p;
+   p.set(fen(), is_chess960(), &si, this_thread());
+
+   assert(   (p.key() ^ key()) == 0
+          || (p.key() ^ key()) == Zobrist::rootSwap);
+
+   // The Zobrist key is calculated in p.set() for White rooted trees,
+   // so change the key of the current position if necessary.
+   if (   (BLACK == c && (key() ^ p.key()) == 0)
+       || (WHITE == c && (key() ^ p.key()) == Zobrist::rootSwap))
+       st->key ^= Zobrist::rootSwap;
+}
+
+
 /// Position::see_ge (Static Exchange Evaluation Greater or Equal) tests if the
 /// SEE value of move is greater or equal to the given threshold. We'll use an
 /// algorithm similar to alpha-beta pruning with a null window.
@@ -1181,9 +1203,12 @@ bool Position::pos_is_ok() const {
           if (p1 != p2 && (pieces(p1) & pieces(p2)))
               assert(0 && "pos_is_ok: Bitboards");
 
-  StateInfo si = *st;
-  set_state(&si);
-  if (std::memcmp(&si, st, sizeof(StateInfo)))
+  StateInfo s1 = *st, s2 = *st;
+  set_state(&s1);
+  set_state(&s2);
+  s2.key ^= Zobrist::rootSwap;
+  if (   std::memcmp(&s1, st, sizeof(StateInfo))
+      && std::memcmp(&s2, st, sizeof(StateInfo)))
       assert(0 && "pos_is_ok: State");
 
   for (Piece pc : Pieces)
