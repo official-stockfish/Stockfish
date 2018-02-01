@@ -905,7 +905,7 @@ namespace {
 
 } // namespace
 
-Score Eval::Contempt = SCORE_ZERO;
+std::atomic<Score> Eval::Contempt;
 
 /// evaluate() is the evaluator for the outer world. It returns a static evaluation
 /// of the position from the point of view of the side to move.
