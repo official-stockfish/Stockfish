@@ -98,7 +98,7 @@ for a quick reference.
 
 ### Resource For Understanding the Code Base
 
-* [Chess Programing Wiki](https://chessprogramming.wikispaces.com) has good overall chess engines explanations 
+* [Chess Programming Wiki](https://chessprogramming.wikispaces.com) has good overall chess engines explanations 
 (techniques used here are well explained like hash maps etc), it was 
 also recommended by the [support team at stockfish.](http://support.stockfishchess.org/discussions/questions/1132-how-to-understand-stockfish-sources)
 
