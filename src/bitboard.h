@@ -42,14 +42,16 @@ const std::string pretty(Bitboard b);
 const Bitboard AllSquares = ~Bitboard(0);
 const Bitboard DarkSquares = 0xAA55AA55AA55AA55ULL;
 
-const Bitboard FileABB = 0x0101010101010101ULL;
-const Bitboard FileBBB = FileABB << 1;
-const Bitboard FileCBB = FileABB << 2;
-const Bitboard FileDBB = FileABB << 3;
-const Bitboard FileEBB = FileABB << 4;
-const Bitboard FileFBB = FileABB << 5;
-const Bitboard FileGBB = FileABB << 6;
-const Bitboard FileHBB = FileABB << 7;
+const Bitboard FileABB    =  0x0101010101010101ULL;
+const Bitboard FileBBB    =  FileABB << 1;
+const Bitboard FileCBB    =  FileABB << 2;
+const Bitboard FileDBB    =  FileABB << 3;
+const Bitboard FileEBB    =  FileABB << 4;
+const Bitboard FileFBB    =  FileABB << 5;
+const Bitboard FileGBB    =  FileABB << 6;
+const Bitboard FileHBB    =  FileABB << 7;
+const Bitboard NOTFileABB = ~FileABB;
+const Bitboard NOTFileHBB = ~FileHBB;
 
 const Bitboard Rank1BB = 0xFF;
 const Bitboard Rank2BB = Rank1BB << (8 * 1);
@@ -155,8 +157,8 @@ inline Bitboard file_bb(Square s) {
 template<Direction D>
 constexpr Bitboard shift(Bitboard b) {
   return  D == NORTH      ?  b             << 8 : D == SOUTH      ?  b             >> 8
-        : D == NORTH_EAST ? (b & ~FileHBB) << 9 : D == SOUTH_EAST ? (b & ~FileHBB) >> 7
-        : D == NORTH_WEST ? (b & ~FileABB) << 7 : D == SOUTH_WEST ? (b & ~FileABB) >> 9
+        : D == NORTH_EAST ? (b & NOTFileHBB) << 9 : D == SOUTH_EAST ? (b & NOTFileHBB) >> 7
+        : D == NORTH_WEST ? (b & NOTFileABB) << 7 : D == SOUTH_WEST ? (b & NOTFileABB) >> 9
         : 0;
 }
 
