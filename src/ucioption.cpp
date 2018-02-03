@@ -60,8 +60,7 @@ void init(OptionsMap& o) {
 
   o["Debug Log File"]        << Option("", on_logger);
   o["Contempt"]              << Option(20, -100, 100);
-  o["Analysis Contempt"]     << Option("Off var Off var White var Black",
-                                       "Off");
+  o["Analysis Contempt"]     << Option("Off var Off var White var Black var Both", "Off");
   o["Threads"]               << Option(1, 1, 512, on_threads);
   o["Hash"]                  << Option(16, 1, MaxHashMB, on_hash_size);
   o["Clear Hash"]            << Option(on_clear_hash);
