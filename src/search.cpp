@@ -196,16 +196,16 @@ void MainThread::search() {
 
   if (Limits.infinite || Options["UCI_AnalyseMode"])
   {
-    // in analysis mode, let Analysis Contempt control the side with contempt
-    contempt =  Options["Analysis Contempt"] == "Off"   ? 0
-              : Options["Analysis Contempt"] == "White" ? contempt
-              : Options["Analysis Contempt"] == "Black" ? -contempt
-              : us == WHITE ? contempt : -contempt; // "Both" means side to move
+      // in analysis mode, let Analysis Contempt control the side with contempt
+      contempt =  Options["Analysis Contempt"] == "Off"   ? 0
+                : Options["Analysis Contempt"] == "White" ? contempt
+                : Options["Analysis Contempt"] == "Black" ? -contempt
+                : us == WHITE ? contempt : -contempt; // "Both" means side to move
   }
   else
   {
-    // when playing a game, contempt is from the engine's point of view
-    contempt = us == WHITE ? contempt : -contempt;
+      // when playing a game, contempt is from the engine's point of view
+      contempt = us == WHITE ? contempt : -contempt;
   }
 
   Eval::Contempt = make_score(contempt, contempt / 2);
