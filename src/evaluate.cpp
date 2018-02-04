@@ -626,7 +626,8 @@ namespace {
     return score;
   }
 
-  // helper used by evaluate_passed_pawns to cap the distance
+  // king_distance() returns an estimate of the distance that the king
+  // of the given color has to run to reach square s.
   template<Tracing T>
   int Evaluation<T>::king_distance(Color c, Square s) {
     return std::min(distance(pos.square<KING>(c), s), 5);
