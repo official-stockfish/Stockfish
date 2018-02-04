@@ -100,7 +100,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const ButterflyHist
   stage += (ttMove == MOVE_NONE);
 }
 
-/// MovePicker constructor for ProbCut: we generate captures with SEE higher
+/// MovePicker constructor for ProbCut: we generate captures or promotions with SEE higher
 /// than or equal to the given threshold.
 MovePicker::MovePicker(const Position& p, Move ttm, Value th, const CapturePieceToHistory* cph)
            : pos(p), captureHistory(cph), threshold(th) {
@@ -110,7 +110,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, Value th, const CapturePiece
   stage = PROBCUT;
   ttMove =   ttm
           && pos.pseudo_legal(ttm)
-          && pos.capture(ttm)
+          && pos.capture_or_qpromotion(ttm)
           && pos.see_ge(ttm, threshold) ? ttm : MOVE_NONE;
 
   stage += (ttMove == MOVE_NONE);
@@ -171,6 +171,7 @@ Move MovePicker::next_move(bool skipQuiets) {
       while (cur < endMoves)
       {
           move = pick_best(cur++, endMoves);
+          assert(pos.capture_or_qpromotion(move));
           if (move != ttMove)
           {
               if (pos.see_ge(move, Value(-55 * (cur-1)->value / 1024)))
@@ -186,7 +187,7 @@ Move MovePicker::next_move(bool skipQuiets) {
       if (    move != MOVE_NONE
           &&  move != ttMove
           &&  pos.pseudo_legal(move)
-          && !pos.capture(move))
+          && !pos.capture_or_qpromotion(move))
           return move;
       /* fallthrough */
 
@@ -196,7 +197,7 @@ Move MovePicker::next_move(bool skipQuiets) {
       if (    move != MOVE_NONE
           &&  move != ttMove
           &&  pos.pseudo_legal(move)
-          && !pos.capture(move))
+          && !pos.capture_or_qpromotion(move))
           return move;
       /* fallthrough */
 
@@ -208,7 +209,7 @@ Move MovePicker::next_move(bool skipQuiets) {
           &&  move != killers[0]
           &&  move != killers[1]
           &&  pos.pseudo_legal(move)
-          && !pos.capture(move))
+          && !pos.capture_or_qpromotion(move))
           return move;
       /* fallthrough */
 
@@ -225,6 +226,7 @@ Move MovePicker::next_move(bool skipQuiets) {
              && (!skipQuiets || cur->value >= VALUE_ZERO))
       {
           move = *cur++;
+          assert(!pos.capture_or_qpromotion(move));
 
           if (   move != ttMove
               && move != killers[0]

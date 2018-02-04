@@ -570,7 +570,7 @@ namespace {
         {
             if (ttValue >= beta)
             {
-                if (!pos.capture_or_promotion(ttMove))
+                if (!pos.capture_or_qpromotion(ttMove))
                     update_stats(pos, ss, ttMove, nullptr, 0, stat_bonus(depth));
 
                 // Extra penalty for a quiet TT move in previous ply when it gets refuted
@@ -578,7 +578,7 @@ namespace {
                     update_continuation_histories(ss-1, pos.piece_on(prevSq), prevSq, -stat_bonus(depth + ONE_PLY));
             }
             // Penalty for a quiet ttMove that fails low
-            else if (!pos.capture_or_promotion(ttMove))
+            else if (!pos.capture_or_qpromotion(ttMove))
             {
                 int penalty = -stat_bonus(depth);
                 thisThread->mainHistory.update(pos.side_to_move(), ttMove, penalty);
@@ -820,7 +820,7 @@ moves_loop: // When in check search starts from here
           (ss+1)->pv = nullptr;
 
       extension = DEPTH_ZERO;
-      captureOrPromotion = pos.capture_or_promotion(move);
+      captureOrPromotion = pos.capture_or_qpromotion(move);
       movedPiece = pos.moved_piece(move);
 
       givesCheck =  type_of(move) == NORMAL && !pos.discovered_check_candidates()
@@ -1092,7 +1092,7 @@ moves_loop: // When in check search starts from here
     else if (bestMove)
     {
         // Quiet best move: update move sorting heuristics
-        if (!pos.capture_or_promotion(bestMove))
+        if (!pos.capture_or_qpromotion(bestMove))
             update_stats(pos, ss, bestMove, quietsSearched, quietCount, stat_bonus(depth));
         else
             update_capture_stats(pos, bestMove, capturesSearched, captureCount, stat_bonus(depth));
