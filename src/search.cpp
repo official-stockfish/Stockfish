@@ -1543,6 +1543,10 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
 
       bool tb = TB::RootInTB && abs(v) < VALUE_MATE - MAX_PLY;
       v = tb ? TB::Score : v;
+      Value reduce = pos.side_to_move()==WHITE
+                     ? eg_value(Eval::Contempt) : -eg_value(Eval::Contempt);
+      Value vdisp = tb ? TB::Score
+                       : (v == VALUE_DRAW) ? VALUE_DRAW : v - reduce;
 
       if (ss.rdbuf()->in_avail()) // Not at first line
           ss << "\n";
@@ -1551,7 +1555,7 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
          << " depth "    << d / ONE_PLY
          << " seldepth " << rootMoves[i].selDepth
          << " multipv "  << i + 1
-         << " score "    << UCI::value(v);
+         << " score "    << UCI::value(vdisp);
 
       if (!tb && i == PVIdx)
           ss << (v >= beta ? " lowerbound" : v <= alpha ? " upperbound" : "");
