@@ -297,7 +297,7 @@ void Thread::search() {
       mainThread->bestMoveChanges = 0;
   }
 
-  multiPV = Options["MultiPV"];
+  size_t multiPV = Options["MultiPV"];
   Skill skill(Options["Skill Level"]);
 
   // When playing with strength handicap enable MultiPV search that we will
@@ -802,20 +802,12 @@ moves_loop: // When in check search starts from here
       if (move == excludedMove)
           continue;
 
-      if (rootNode)
-      {
-          // At root obey the "searchmoves" option and skip moves not listed in Root
-          // Move List. As a consequence any illegal move is also skipped.
-          if (!std::count(thisThread->rootMoves.begin() + thisThread->PVIdx,
-                          thisThread->rootMoves.end(), move))
-              continue;
-
-          // In MultiPV mode we not only skip PV moves which have already been searched,
-          // but also any other move except we have reached the last PV line.
-          if (   thisThread->PVIdx + 1 < thisThread->multiPV
-              && move != ttMove)
-              continue;
-      }
+      // At root obey the "searchmoves" option and skip moves not listed in Root
+      // Move List. As a consequence any illegal move is also skipped. In MultiPV
+      // mode we also skip PV moves which have been already searched.
+      if (rootNode && !std::count(thisThread->rootMoves.begin() + thisThread->PVIdx,
+                                  thisThread->rootMoves.end(), move))
+          continue;
 
       ss->moveCount = ++moveCount;
 
@@ -1535,7 +1527,7 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
   int elapsed = Time.elapsed() + 1;
   const RootMoves& rootMoves = pos.this_thread()->rootMoves;
   size_t PVIdx = pos.this_thread()->PVIdx;
-  size_t multiPV = pos.this_thread()->multiPV;
+  size_t multiPV = std::min((size_t)Options["MultiPV"], rootMoves.size());
   uint64_t nodesSearched = Threads.nodes_searched();
   uint64_t tbHits = Threads.tb_hits() + (TB::RootInTB ? rootMoves.size() : 0);
 
