@@ -358,6 +358,15 @@ ifeq ($(comp),gcc)
 	endif
 endif
 
+ifeq ($(comp),clang)
+	ifeq ($(optimize),yes)
+	ifeq ($(debug),no)
+		CXXFLAGS += -flto
+		LDFLAGS += $(CXXFLAGS)
+	endif
+	endif
+endif
+
 ifeq ($(comp),mingw)
 	ifeq ($(KERNEL),Linux)
 	ifeq ($(optimize),yes)
