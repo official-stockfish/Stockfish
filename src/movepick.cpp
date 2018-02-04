@@ -28,9 +28,7 @@ namespace {
     MAIN_SEARCH, CAPTURES_INIT, GOOD_CAPTURES, KILLERS, COUNTERMOVE, QUIET_INIT, QUIET, BAD_CAPTURES,
     EVASION, EVASIONS_INIT, ALL_EVASIONS,
     PROBCUT, PROBCUT_INIT, PROBCUT_CAPTURES,
-    QSEARCH_WITH_CHECKS, QCAPTURES_1_INIT, QCAPTURES_1, QCHECKS,
-    QSEARCH_NO_CHECKS, QCAPTURES_2_INIT, QCAPTURES_2,
-    QSEARCH_RECAPTURES, QRECAPTURES
+    QSEARCH, QCAPTURES_INIT, QCAPTURES, QCHECKS, QSEARCH_RECAPTURES, QRECAPTURES
   };
 
   // partial_insertion_sort() sorts moves in descending order up to and including
@@ -81,18 +79,15 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const ButterflyHist
 
 /// MovePicker constructor for quiescence search
 MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const ButterflyHistory* mh,  const CapturePieceToHistory* cph, Square s)
-           : pos(p), mainHistory(mh), captureHistory(cph) {
+           : pos(p), mainHistory(mh), captureHistory(cph), depth(d) {
 
   assert(d <= DEPTH_ZERO);
 
   if (pos.checkers())
       stage = EVASION;
 
-  else if (d > DEPTH_QS_NO_CHECKS)
-      stage = QSEARCH_WITH_CHECKS;
-
   else if (d > DEPTH_QS_RECAPTURES)
-      stage = QSEARCH_NO_CHECKS;
+      stage = QSEARCH;
 
   else
   {
@@ -161,8 +156,7 @@ Move MovePicker::next_move(bool skipQuiets) {
 
   switch (stage) {
 
-  case MAIN_SEARCH: case EVASION: case QSEARCH_WITH_CHECKS:
-  case QSEARCH_NO_CHECKS: case PROBCUT:
+  case MAIN_SEARCH: case EVASION: case QSEARCH: case PROBCUT:
       ++stage;
       return ttMove;
 
@@ -280,21 +274,21 @@ Move MovePicker::next_move(bool skipQuiets) {
       }
       break;
 
-  case QCAPTURES_1_INIT: case QCAPTURES_2_INIT:
+  case QCAPTURES_INIT:
       cur = moves;
       endMoves = generate<CAPTURES>(pos, cur);
       score<CAPTURES>();
       ++stage;
       /* fallthrough */
 
-  case QCAPTURES_1: case QCAPTURES_2:
+  case QCAPTURES:
       while (cur < endMoves)
       {
           move = pick_best(cur++, endMoves);
           if (move != ttMove)
               return move;
       }
-      if (stage == QCAPTURES_2)
+      if (depth <= DEPTH_QS_NO_CHECKS)
           break;
       cur = moves;
       endMoves = generate<QUIET_CHECKS>(pos, cur);
