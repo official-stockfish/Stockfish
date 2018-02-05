@@ -2,7 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2016 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2015-2018 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -31,6 +31,7 @@
 
 const std::string engine_info(bool to_uci = false);
 void prefetch(void* addr);
+void prefetch2(void* addr);
 void start_logger(const std::string& fname);
 
 void dbg_hit_on(bool b);
@@ -96,5 +97,16 @@ public:
   template<typename T> T sparse_rand()
   { return T(rand64() & rand64() & rand64()); }
 };
+
+
+/// Under Windows it is not possible for a process to run on more than one
+/// logical processor group. This usually means to be limited to use max 64
+/// cores. To overcome this, some special platform specific API should be
+/// called to set group affinity for each thread. Original code from Texel by
+/// Peter Österlund.
+
+namespace WinProcGroup {
+  void bindThisThread(size_t idx);
+}
 
 #endif // #ifndef MISC_H_INCLUDED
