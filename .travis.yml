@@ -18,11 +18,12 @@ matrix:
       compiler: clang
       addons:
         apt:
-          sources: ['ubuntu-toolchain-r-test']
-          packages: ['clang', 'g++-multilib', 'valgrind', 'expect']
+          sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-5.0']
+          packages: ['clang-5.0', 'llvm-5.0-dev', 'g++-multilib', 'valgrind', 'expect']
       env:
-        - COMPILER=clang++
+        - COMPILER=clang++-5.0
         - COMP=clang
+        - LDFLAGS=-fuse-ld=gold
 
     - os: osx
       compiler: gcc
