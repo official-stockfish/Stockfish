@@ -221,8 +221,8 @@ Move MovePicker::next_move(bool skipQuiets) {
       /* fallthrough */
 
   case QUIET:
-      while (    cur < endMoves
-             && (!skipQuiets || cur->value >= VALUE_ZERO))
+      if (!skipQuiets)
+      while ( cur < endMoves )
       {
           move = *cur++;
 
