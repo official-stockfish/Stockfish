@@ -107,7 +107,6 @@ namespace {
   void update_continuation_histories(Stack* ss, Piece pc, Square to, int bonus);
   void update_stats(const Position& pos, Stack* ss, Move move, Move* quiets, int quietsCnt, int bonus);
   void update_capture_stats(const Position& pos, Move move, Move* captures, int captureCnt, int bonus);
-  bool pv_is_draw(Position& pos);
 
   // perft() is our utility to verify move generation. All the leaf nodes up
   // to the given depth are generated and counted, and the sum is returned.
@@ -435,24 +434,19 @@ void Thread::search() {
                                 bestValue - mainThread->previousScore };
               int improvingFactor = std::max(229, std::min(715, 357 + 119 * F[0] - 6 * F[1]));
 
-              Color us = rootPos.side_to_move();
-              bool thinkHard =    bestValue == VALUE_DRAW
-                               && Limits.time[us] - Time.elapsed() > Limits.time[~us]
-                               && ::pv_is_draw(rootPos);
-
-              double unstablePvFactor = 1 + mainThread->bestMoveChanges + thinkHard;
+              double unstablePvFactor = 1 + mainThread->bestMoveChanges;
 
               // if the bestMove is stable over several iterations, reduce time for this move,
               // the longer the move has been stable, the more.
               // Use part of the gained time from a previous stable move for the current move.
               timeReduction = 1;
               for (int i : {3, 4, 5})
-                  if (lastBestMoveDepth * i < completedDepth && !thinkHard)
+                  if (lastBestMoveDepth * i < completedDepth )
                      timeReduction *= 1.3;
               unstablePvFactor *=  std::pow(mainThread->previousTimeReduction, 0.51) / timeReduction;
 
               if (   rootMoves.size() == 1
-                  || Time.elapsed() > Time.optimum() * unstablePvFactor * improvingFactor / 628)
+                  || Time.elapsed() > Time.optimum() * unstablePvFactor * improvingFactor / 605)
               {
                   // If we are allowed to ponder do not stop the search now but
                   // keep pondering until the GUI sends "ponderhit" or "stop".
@@ -1429,25 +1423,6 @@ moves_loop: // When in check search starts from here
         update_continuation_histories(ss, pos.moved_piece(quiets[i]), to_sq(quiets[i]), -bonus);
     }
   }
-
-
-  // Is the PV leading to a draw position? Assumes all pv moves are legal
-  bool pv_is_draw(Position& pos) {
-
-    StateInfo st[MAX_PLY];
-    auto& pv = pos.this_thread()->rootMoves[0].pv;
-
-    for (size_t i = 0; i < pv.size(); ++i)
-        pos.do_move(pv[i], st[i]);
-
-    bool isDraw = pos.is_draw(pv.size());
-
-    for (size_t i = pv.size(); i > 0; --i)
-        pos.undo_move(pv[i-1]);
-
-    return isDraw;
-  }
-
 
   // When playing with strength handicap, choose best move among a set of RootMoves
   // using a statistical rule dependent on 'level'. Idea by Heinz van Saanen.
