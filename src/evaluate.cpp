@@ -29,7 +29,7 @@
 #include "material.h"
 #include "pawns.h"
 
-namespace {
+namespace {  // testing Trevis
 
   const Bitboard Center      = (FileDBB | FileEBB) & (Rank4BB | Rank5BB);
   const Bitboard QueenSide   = FileABB | FileBBB | FileCBB | FileDBB;
