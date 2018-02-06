@@ -35,6 +35,8 @@ ThreadPool Threads; // Global object
 
 Thread::Thread(size_t n) : idx(n), stdThread(&Thread::idle_loop, this) {
 
+  contemptScore = SCORE_ZERO;
+
   wait_for_search_finished();
 }
 

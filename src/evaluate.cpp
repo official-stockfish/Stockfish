@@ -28,8 +28,7 @@
 #include "evaluate.h"
 #include "material.h"
 #include "pawns.h"
-
-std::atomic<Score> Eval::Contempt;
+#include "thread.h"
 
 namespace Trace {
 
@@ -844,7 +843,7 @@ namespace {
     // Initialize score by reading the incrementally updated scores included in
     // the position object (material + piece square tables) and the material
     // imbalance. Score is computed internally from the white point of view.
-    Score score = pos.psq_score() + me->imbalance() + Eval::Contempt;
+    Score score = pos.psq_score() + me->imbalance() + pos.this_thread()->contemptScore;
 
     // Probe the pawn hash table
     pe = Pawns::probe(pos);
@@ -914,8 +913,6 @@ Value Eval::evaluate(const Position& pos) {
 std::string Eval::trace(const Position& pos) {
 
   std::memset(scores, 0, sizeof(scores));
-
-  Eval::Contempt = SCORE_ZERO; // Reset any dynamic contempt
 
   Value v = Evaluation<TRACE>(pos).value();
 
