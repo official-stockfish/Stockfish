@@ -297,8 +297,8 @@ namespace {
 } // namespace
 
 
-/// generate<CAPTURES> generates all pseudo-legal captures and queen
-/// promotions. Returns a pointer to the end of the move list.
+/// generate<CAPTURES> generates all pseudo-legal captures (except capturing underpromotions)
+/// and queen promotions. Returns a pointer to the end of the move list.
 ///
 /// generate<QUIETS> generates all pseudo-legal non-captures and
 /// underpromotions. Returns a pointer to the end of the move list.
