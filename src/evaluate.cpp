@@ -185,22 +185,22 @@ namespace {
   // which piece type attacks which one. Attacks on lesser pieces which are
   // pawn-defended are not considered.
   const Score ThreatByMinor[PIECE_TYPE_NB] = {
-    S(0, 0), S(0, 33), S(45, 43), S(46, 47), S(72, 107), S(48, 118)
+    S(0, 0), S(0, 31), S(39, 42), S(57, 44), S(68, 112), S(47, 120)
   };
 
   const Score ThreatByRook[PIECE_TYPE_NB] = {
-    S(0, 0), S(0, 25), S(40, 62), S(40, 59), S(0, 34), S(35, 48)
+    S(0, 0), S(0, 24), S(38, 71), S(38, 61), S(0, 38), S(36, 38)
   };
 
   // ThreatByKing[on one/on many] contains bonuses for king attacks on
   // pawns or pieces which are not pawn-defended.
-  const Score ThreatByKing[] = { S(3, 62), S(9, 138) };
+  const Score ThreatByKing[] = { S(3, 65), S(9, 145) };
 
   // Passed[mg/eg][Rank] contains midgame and endgame bonuses for passed pawns.
   // We don't use a Score because we process the two components independently.
   const Value Passed[][RANK_NB] = {
-    { V(0), V(5), V( 5), V(31), V(73), V(166), V(252) },
-    { V(0), V(7), V(14), V(38), V(73), V(166), V(252) }
+    { V(0), V(5), V( 5), V(32), V(70), V(172), V(217) },
+    { V(0), V(7), V(13), V(42), V(70), V(170), V(269) }
   };
 
   // PassedFile[File] contains a bonus according to the file of a passed pawn
@@ -210,7 +210,7 @@ namespace {
   };
 
   // Rank factor applied on some bonus for passed pawn on rank 4 or beyond
-  const int RankFactor[RANK_NB] = {0, 0, 0, 2, 6, 11, 16};
+  const int RankFactor[RANK_NB] = {0, 0, 0, 2, 7, 12, 19};
 
   // KingProtector[PieceType-2] contains a bonus according to distance from king
   const Score KingProtector[] = { S(-3, -5), S(-4, -3), S(-3, 0), S(-1, 1) };
@@ -224,13 +224,13 @@ namespace {
   const Score WeakQueen             = S( 50, 10);
   const Score CloseEnemies          = S(  7,  0);
   const Score PawnlessFlank         = S( 20, 80);
-  const Score ThreatBySafePawn      = S(192,175);
+  const Score ThreatBySafePawn      = S(175,168);
   const Score ThreatByRank          = S( 16,  3);
-  const Score Hanging               = S( 48, 27);
+  const Score Hanging               = S( 52, 30);
   const Score WeakUnopposedPawn     = S(  5, 25);
-  const Score ThreatByPawnPush      = S( 38, 22);
-  const Score ThreatByAttackOnQueen = S( 38, 22);
-  const Score HinderPassedPawn      = S(  7,  0);
+  const Score ThreatByPawnPush      = S( 47, 26);
+  const Score ThreatByAttackOnQueen = S( 42, 21);
+  const Score HinderPassedPawn      = S(  8,  1);
   const Score TrappedBishopA1H1     = S( 50, 50);
 
   #undef S
@@ -690,7 +690,7 @@ namespace {
 
                 // If there aren't any enemy attacks, assign a big bonus. Otherwise
                 // assign a smaller bonus if the block square isn't attacked.
-                int k = !unsafeSquares ? 18 : !(unsafeSquares & blockSq) ? 8 : 0;
+                int k = !unsafeSquares ? 20 : !(unsafeSquares & blockSq) ? 9 : 0;
 
                 // If the path to the queen is fully defended, assign a big bonus.
                 // Otherwise assign a smaller bonus if the block square is defended.
