@@ -134,9 +134,8 @@ void MovePicker::score() {
       }
 }
 
-// pick_best() finds the best move in the range (begin, end) and moves it to
-// the front. It's faster than sorting all the moves in advance when there
-// are few moves, e.g., the possible captures.
+// pick_best() finds the next best (non ttMove) move and moves it to the front. 
+// It's faster than sorting all the moves in advance when we may cutoff. 
 Move MovePicker::pick_best()
 {
    while (cur < endMoves)
@@ -147,7 +146,6 @@ Move MovePicker::pick_best()
    }
    return MOVE_NONE;
 }
-
 
 /// next_move() is the most important method of the MovePicker class. It returns
 /// a new pseudo legal move every time it is called, until there are no more moves
