@@ -46,7 +46,7 @@ before_script:
 
 script:
   # Obtain bench reference from git log
-  - git log HEAD | grep "\b[Bb]ench[ :]\+[0-9]\{7\}" | head -n 1 | sed "s/[^0-9]*\([0-9][0-9]*\)/\1/g" > git_sig
+  - git log HEAD | grep "\b[Bb]ench[ :]\+[0-9]\{7\}" | head -n 1 | sed "s/[^0-9]*\([0-9]*\).*/\1/g" > git_sig
   - export benchref=$(cat git_sig)
   - echo "Reference bench:" $benchref
   #
