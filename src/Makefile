@@ -310,6 +310,10 @@ ifeq ($(optimize),yes)
 			endif
 		endif
 	endif
+
+	ifeq ($(comp),mingw)
+		CXXFLAGS += -fno-ipa-cp-clone
+	endif
 endif
 
 ### 3.4 Bits
