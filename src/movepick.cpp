@@ -136,7 +136,7 @@ void MovePicker::score() {
 
 // pick_best() finds the next best (non ttMove) move and moves it to the front. 
 // It's faster than sorting all the moves in advance when we may cutoff. 
-Move MovePicker::pick_best()
+inline Move MovePicker::pick_best()
 {
    while (cur < endMoves)
    {
