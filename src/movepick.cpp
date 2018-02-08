@@ -45,18 +45,7 @@ namespace {
             *q = tmp;
         }
   }
-
-  // pick_best() finds the best move in the range (begin, end) and moves it to
-  // the front. It's faster than sorting all the moves in advance when there
-  // are few moves, e.g., the possible captures.
-  Move pick_best(ExtMove* begin, ExtMove* end) {
-
-    std::swap(*begin, *std::max_element(begin, end));
-    return *begin;
-  }
-
 } // namespace
-
 
 /// Constructors of the MovePicker class. As arguments we pass information
 /// to help it to return the (presumably) good moves first, to decide which
@@ -145,6 +134,21 @@ void MovePicker::score() {
       }
 }
 
+// pick_best() finds the best move in the range (begin, end) and moves it to
+// the front. It's faster than sorting all the moves in advance when there
+// are few moves, e.g., the possible captures.
+Move MovePicker::pick_best()
+{
+   while (cur < endMoves)
+   {
+      std::swap(*cur, *std::max_element(cur, endMoves));
+      if (*cur++ != ttMove)
+         return *(cur-1);
+   }
+   return MOVE_NONE;
+}
+
+
 /// next_move() is the most important method of the MovePicker class. It returns
 /// a new pseudo legal move every time it is called, until there are no more moves
 /// left. It picks the move with the biggest value from a list of generated moves
@@ -168,19 +172,14 @@ Move MovePicker::next_move(bool skipQuiets) {
       /* fallthrough */
 
   case GOOD_CAPTURES:
-      while (cur < endMoves)
+      while ((move = pick_best()) != MOVE_NONE)
       {
-          move = pick_best(cur++, endMoves);
-          if (move != ttMove)
-          {
-              if (pos.see_ge(move, Value(-55 * (cur-1)->value / 1024)))
-                  return move;
+         if (pos.see_ge(move, Value(-55 * (cur-1)->value / 1024)))
+             return move;
 
-              // Losing capture, move it to the beginning of the array
-              *endBadCaptures++ = move;
-          }
+         // Losing capture, move it to the beginning of the array
+         *endBadCaptures++ = move;
       }
-
       ++stage;
       move = killers[0];  // First killer move
       if (    move != MOVE_NONE
@@ -249,12 +248,8 @@ Move MovePicker::next_move(bool skipQuiets) {
       /* fallthrough */
 
   case ALL_EVASIONS:
-      while (cur < endMoves)
-      {
-          move = pick_best(cur++, endMoves);
-          if (move != ttMove)
-              return move;
-      }
+      while ((move = pick_best()) != MOVE_NONE)
+         return move;
       break;
 
   case PROBCUT_INIT:
@@ -265,13 +260,9 @@ Move MovePicker::next_move(bool skipQuiets) {
       /* fallthrough */
 
   case PROBCUT_CAPTURES:
-      while (cur < endMoves)
-      {
-          move = pick_best(cur++, endMoves);
-          if (   move != ttMove
-              && pos.see_ge(move, threshold))
-              return move;
-      }
+      while ((move = pick_best()) != MOVE_NONE)
+         if (pos.see_ge(move, threshold))
+            return move;
       break;
 
   case QCAPTURES_INIT:
@@ -282,12 +273,8 @@ Move MovePicker::next_move(bool skipQuiets) {
       /* fallthrough */
 
   case QCAPTURES:
-      while (cur < endMoves)
-      {
-          move = pick_best(cur++, endMoves);
-          if (move != ttMove)
-              return move;
-      }
+      while ((move = pick_best()) != MOVE_NONE)
+         return move;
       if (depth <= DEPTH_QS_NO_CHECKS)
           break;
       cur = moves;
