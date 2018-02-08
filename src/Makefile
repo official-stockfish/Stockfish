@@ -169,8 +169,8 @@ ifeq ($(COMP),gcc)
 	endif
 endif
 
-ifeq ($(COMP),mingw)
-	comp=mingw
+ifeq ($(COMP),$(filter $(COMP),mingw mingw-new))
+	comp=$(COMP)
 
 	ifeq ($(KERNEL),Linux)
 		ifeq ($(bits),64)
@@ -191,7 +191,10 @@ ifeq ($(COMP),mingw)
 	endif
 
 	CXXFLAGS += -Wextra -Wshadow
-	LDFLAGS += -static
+	
+	ifeq ($(comp),mingw)
+		LDFLAGS += -static
+	endif
 endif
 
 ifeq ($(COMP),icc)
@@ -250,7 +253,7 @@ ifdef COMPCXX
 endif
 
 ### On mingw use Windows threads, otherwise POSIX
-ifneq ($(comp),mingw)
+ifneq ($(comp),$(filter $(comp),mingw mingw-new))
 	# On Android Bionic's C library comes with its own pthread implementation bundled in
 	ifneq ($(OS),Android)
 		# Haiku has pthreads in its libroot, so only link it in on other platforms
@@ -310,6 +313,10 @@ ifeq ($(optimize),yes)
 			endif
 		endif
 	endif
+
+	ifeq ($(comp),$(filter $(comp),mingw mingw-new))
+		CXXFLAGS += -fno-ipa-cp-clone
+	endif
 endif
 
 ### 3.4 Bits
@@ -339,7 +346,7 @@ endif
 ### 3.7 pext
 ifeq ($(pext),yes)
 	CXXFLAGS += -DUSE_PEXT
-	ifeq ($(comp),$(filter $(comp),gcc clang mingw))
+	ifeq ($(comp),$(filter $(comp),gcc clang mingw mingw-new))
 		CXXFLAGS += -mbmi2
 	endif
 endif
@@ -349,7 +356,7 @@ endif
 ### needs access to the optimization flags.
 ifeq ($(optimize),yes)
 ifeq ($(debug), no)
-	ifeq ($(comp),$(filter $(comp),gcc clang))
+	ifeq ($(comp),$(filter $(comp),gcc clang mingw-new))
 		CXXFLAGS += -flto
 		LDFLAGS += $(CXXFLAGS)
 	endif
@@ -405,7 +412,8 @@ help:
 	@echo "Supported compilers:"
 	@echo ""
 	@echo "gcc                     > Gnu compiler (default)"
-	@echo "mingw                   > Gnu compiler with MinGW under Windows"
+	@echo "mingw                   > Old Gnu compiler with MinGW under Windows"
+	@echo "mingw-new               > MinGW Gnu compiler later than version 5"
 	@echo "clang                   > LLVM Clang compiler"
 	@echo "icc                     > Intel compiler"
 	@echo ""
@@ -506,7 +514,7 @@ config-sanity:
 	@test "$(popcnt)" = "yes" || test "$(popcnt)" = "no"
 	@test "$(sse)" = "yes" || test "$(sse)" = "no"
 	@test "$(pext)" = "yes" || test "$(pext)" = "no"
-	@test "$(comp)" = "gcc" || test "$(comp)" = "icc" || test "$(comp)" = "mingw" || test "$(comp)" = "clang"
+	@test "$(comp)" = "gcc" || test "$(comp)" = "icc" || test "$(comp)" = "mingw"  || test "$(comp)" = "mingw-new" || test "$(comp)" = "clang"
 
 $(EXE): $(OBJS)
 	$(CXX) -o $@ $(OBJS) $(LDFLAGS)
