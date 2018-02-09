@@ -1,22 +1,23 @@
 /*
-  Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
-  Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2018 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
-
-  Stockfish is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
-
-  Stockfish is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
-
-  You should have received a copy of the GNU General Public License
-  along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
+ McBrain, a UCI chess playing engine derived from Stockfish and Glaurung 2.1
+ Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
+ Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad (Stockfish Authors)
+ Copyright (C) 2015-2016 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad (Stockfish Authors)
+ Copyright (C) 2017-2018 Michael Byrne, Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad (McBrain Authors)
+ 
+ McBrain is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+ 
+ McBrain is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+ 
+ You should have received a copy of the GNU General Public License
+ along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
 #include <algorithm>
 #include <cassert>
@@ -185,23 +186,23 @@ namespace {
   // which piece type attacks which one. Attacks on lesser pieces which are
   // pawn-defended are not considered.
   const Score ThreatByMinor[PIECE_TYPE_NB] = {
-    S(0, 0), S(0, 33), S(45, 43), S(46, 47), S(72, 107), S(48, 118)
-  };
+    S(0, 0), S(0, 31), S(39, 42), S(57, 44), S(68, 112), S(47, 120)
+  };  //Fauzi Akram
 
   const Score ThreatByRook[PIECE_TYPE_NB] = {
-    S(0, 0), S(0, 25), S(40, 62), S(40, 59), S(0, 34), S(35, 48)
-  };
+    S(0, 0), S(0, 24), S(38, 71), S(38, 61), S(0, 38), S(36, 38)
+  };   //Fauzi Akram
 
   // ThreatByKing[on one/on many] contains bonuses for king attacks on
   // pawns or pieces which are not pawn-defended.
-  const Score ThreatByKing[] = { S(3, 62), S(9, 138) };
+  const Score ThreatByKing[] = { S(3, 65), S(9, 145) };  //Fauzi Akram
 
   // Passed[mg/eg][Rank] contains midgame and endgame bonuses for passed pawns.
   // We don't use a Score because we process the two components independently.
   const Value Passed[][RANK_NB] = {
-    { V(0), V(5), V( 5), V(31), V(73), V(166), V(252) },
-    { V(0), V(7), V(14), V(38), V(73), V(166), V(252) }
-  };
+    { V(0), V(5), V( 5), V(32), V(70), V(172), V(217) },
+    { V(0), V(7), V(13), V(42), V(70), V(170), V(269) }
+  };   //Fauzi Akram
 
   // PassedFile[File] contains a bonus according to the file of a passed pawn
   const Score PassedFile[FILE_NB] = {
@@ -210,7 +211,7 @@ namespace {
   };
 
   // Rank factor applied on some bonus for passed pawn on rank 4 or beyond
-  const int RankFactor[RANK_NB] = {0, 0, 0, 2, 6, 11, 16};
+  const int RankFactor[RANK_NB] = {0, 0, 0, 2, 7, 12, 19};    //Fauzi Akram
 
   // KingProtector[PieceType-2] contains a bonus according to distance from king
   const Score KingProtector[] = { S(-3, -5), S(-4, -3), S(-3, 0), S(-1, 1) };
@@ -224,13 +225,13 @@ namespace {
   const Score WeakQueen             = S( 50, 10);
   const Score CloseEnemies          = S(  7,  0);
   const Score PawnlessFlank         = S( 20, 80);
-  const Score ThreatBySafePawn      = S(192,175);
+  const Score ThreatBySafePawn      = S(175,168);  //Fauzi Akram
   const Score ThreatByRank          = S( 16,  3);
-  const Score Hanging               = S( 48, 27);
+  const Score Hanging               = S( 52, 30);  //Fauzi Akram
   const Score WeakUnopposedPawn     = S(  5, 25);
-  const Score ThreatByPawnPush      = S( 38, 22);
-  const Score ThreatByAttackOnQueen = S( 38, 22);
-  const Score HinderPassedPawn      = S(  7,  0);
+  const Score ThreatByPawnPush      = S( 47, 26);  //Fauzi Akram
+  const Score ThreatByAttackOnQueen = S( 42, 21);  //Fauzi Akram
+  const Score HinderPassedPawn      = S(  8,  1);  //Fauzi Akram
   const Score TrappedBishopA1H1     = S( 50, 50);
 
   #undef S
@@ -299,6 +300,7 @@ namespace {
     const Color Them = (Us == WHITE ? BLACK : WHITE);
     const Bitboard OutpostRanks = (Us == WHITE ? Rank4BB | Rank5BB | Rank6BB
                                                : Rank5BB | Rank4BB | Rank3BB);
+    const Bitboard TRank8BB = (Us == WHITE ? Rank8BB    : Rank1BB);
     const Square* pl = pos.squares<Pt>(Us);
 
     Bitboard b, bb;
@@ -402,6 +404,9 @@ namespace {
                     && !pe->semiopen_side(Us, file_of(ksq), file_of(s) < file_of(ksq)))
                     score -= (TrappedRook - make_score(mob * 22, 0)) * (1 + !pos.can_castle(Us));
             }
+		        // Bonus when rook can see the enemy back rank and has enough mobility.
+			    else if (relative_rank(Us, s) <= RANK_5 && (pos.attacks_from<ROOK>(s) & TRank8BB))
+					score += RookOnFile[0];
         }
 
         if (Pt == QUEEN)
@@ -434,6 +439,20 @@ namespace {
 
     // King shelter and enemy pawns storm
     Score score = pe->king_safety<Us>(pos, ksq);
+
+    // King tropism: firstly, find squares that opponent attacks in our king flank
+    File kf = file_of(ksq);
+    b = attackedBy[Them][ALL_PIECES] & KingFlank[kf] & Camp;
+
+    assert(((Us == WHITE ? b << 4 : b >> 4) & b) == 0);
+    assert(popcount(Us == WHITE ? b << 4 : b >> 4) == popcount(b));
+
+    // Secondly, add the squares which are attacked twice in that flank and
+    // which are not defended by our pawns.
+    b =  (Us == WHITE ? b << 4 : b >> 4)
+       | (b & attackedBy2[Them] & ~attackedBy[Us][PAWN]);
+
+    int tropism = popcount(b);
 
     // Main king safety evaluation
     if (kingAttackersCount[Them] > (1 - pos.count<QUEEN>(Them)))
@@ -488,30 +507,18 @@ namespace {
                      + 143 * popcount(pos.pinned_pieces(Us) | unsafeChecks)
                      - 848 * !pos.count<QUEEN>(Them)
                      -   9 * mg_value(score) / 8
-                     +  40;
+                     +   4 * tropism;
 
         // Transform the kingDanger units into a Score, and subtract it from the evaluation
         if (kingDanger > 0)
         {
-            int mobilityDanger = mg_value(mobility[Them] - mobility[Us]);
+            int mobilityDanger = (mg_value(mobility[Them] - mobility[Us])) * 2;
             kingDanger = std::max(0, kingDanger + mobilityDanger);
             score -= make_score(kingDanger * kingDanger / 4096, kingDanger / 16);
         }
     }
 
-    // King tropism: firstly, find squares that opponent attacks in our king flank
-    File kf = file_of(ksq);
-    b = attackedBy[Them][ALL_PIECES] & KingFlank[kf] & Camp;
-
-    assert(((Us == WHITE ? b << 4 : b >> 4) & b) == 0);
-    assert(popcount(Us == WHITE ? b << 4 : b >> 4) == popcount(b));
-
-    // Secondly, add the squares which are attacked twice in that flank and
-    // which are not defended by our pawns.
-    b =  (Us == WHITE ? b << 4 : b >> 4)
-       | (b & attackedBy2[Them] & ~attackedBy[Us][PAWN]);
-
-    score -= CloseEnemies * popcount(b);
+    score -= CloseEnemies * tropism;
 
     // Penalty when our king is on a pawnless flank
     if (!(pos.pieces(PAWN) & KingFlank[kf]))
@@ -689,7 +696,7 @@ namespace {
 
                 // If there aren't any enemy attacks, assign a big bonus. Otherwise
                 // assign a smaller bonus if the block square isn't attacked.
-                int k = !unsafeSquares ? 18 : !(unsafeSquares & blockSq) ? 8 : 0;
+                int k = !unsafeSquares ? 20 : !(unsafeSquares & blockSq) ? 9 : 0;  //Fauzi Akram
 
                 // If the path to the queen is fully defended, assign a big bonus.
                 // Otherwise assign a smaller bonus if the block square is defended.
