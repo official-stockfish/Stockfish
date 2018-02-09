@@ -923,7 +923,10 @@ std::string Eval::trace(const Position& pos) {
 
   std::memset(scores, 0, sizeof(scores));
 
-  Value v = Evaluation<TRACE>(pos).value() + Eval::Tempo;
+  Eval::Contempt = SCORE_ZERO;
+
+  Value v = Eval::Tempo + Evaluation<TRACE>(pos).value();
+
   v = pos.side_to_move() == WHITE ? v : -v; // White's point of view
 
   std::stringstream ss;
