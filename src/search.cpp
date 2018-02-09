@@ -191,11 +191,6 @@ void MainThread::search() {
   Time.init(Limits, us, rootPos.game_ply());
   TT.new_search();
 
-  int contempt = Options["Contempt"] * PawnValueEg / 100; // From centipawns
-
-  Eval::Contempt = (us == WHITE ?  make_score(contempt, contempt / 2)
-                                : -make_score(contempt, contempt / 2));
-
   if (rootMoves.empty())
   {
       rootMoves.emplace_back(MOVE_NONE);
@@ -282,6 +277,7 @@ void Thread::search() {
   Depth lastBestMoveDepth = DEPTH_ZERO;
   MainThread* mainThread = (this == Threads.main() ? Threads.main() : nullptr);
   double timeReduction = 1.0;
+  Color us = rootPos.side_to_move();
 
   std::memset(ss-4, 0, 7 * sizeof(Stack));
   for (int i = 4; i > 0; i--)
@@ -305,6 +301,10 @@ void Thread::search() {
       multiPV = std::max(multiPV, (size_t)4);
 
   multiPV = std::min(multiPV, rootMoves.size());
+
+  int contempt = Options["Contempt"] * PawnValueEg / 100;  // From centipawns
+  Eval::Contempt = (us == WHITE ?  make_score(contempt, contempt / 2)
+                                : -make_score(contempt, contempt / 2));
 
   // Iterative deepening loop until requested to stop or the target depth is reached
   while (   (rootDepth += ONE_PLY) < DEPTH_MAX
@@ -340,6 +340,15 @@ void Thread::search() {
               delta = Value(18);
               alpha = std::max(rootMoves[PVIdx].previousScore - delta,-VALUE_INFINITE);
               beta  = std::min(rootMoves[PVIdx].previousScore + delta, VALUE_INFINITE);
+
+              // Adjust contempt based on current situation
+              contempt  = Options["Contempt"] * PawnValueEg / 100;  // From centipawns
+              contempt += bestValue >  500 ?  50:                   // Dynamic contempt
+                          bestValue < -500 ? -50:
+                          bestValue / 10;
+
+              Eval::Contempt = (us == WHITE ?  make_score(contempt, contempt / 2)
+                                            : -make_score(contempt, contempt / 2));
           }
 
           // Start with a small aspiration window and, in the case of a fail

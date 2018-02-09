@@ -21,6 +21,7 @@
 #ifndef EVALUATE_H_INCLUDED
 #define EVALUATE_H_INCLUDED
 
+#include <atomic>
 #include <string>
 
 #include "types.h"
@@ -31,7 +32,7 @@ namespace Eval {
 
 const Value Tempo = Value(20); // Must be visible to search
 
-extern Score Contempt;
+extern std::atomic<Score> Contempt;
 
 std::string trace(const Position& pos);
 
