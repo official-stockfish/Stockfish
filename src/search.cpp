@@ -191,19 +191,6 @@ void MainThread::search() {
   Time.init(Limits, us, rootPos.game_ply());
   TT.new_search();
 
-  int contempt = Options["Contempt"] * PawnValueEg / 100; // From centipawns
-
-  // In analysis mode, adjust contempt in accordance with user preference
-  if (Limits.infinite || Options["UCI_AnalyseMode"])
-      contempt =  Options["Analysis Contempt"] == "Off" ?  0
-                : Options["Analysis Contempt"] == "White" && us == BLACK ? -contempt
-                : Options["Analysis Contempt"] == "Black" && us == WHITE ? -contempt
-                : contempt; // contempt remains with the side to move
-
-  // Eval::Contempt is from white's point of view
-  Eval::Contempt = (us == WHITE ?  make_score(contempt, contempt / 2)
-                                : -make_score(contempt, contempt / 2));
-
   if (rootMoves.empty())
   {
       rootMoves.emplace_back(MOVE_NONE);
