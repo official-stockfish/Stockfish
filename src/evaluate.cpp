@@ -187,22 +187,26 @@ namespace {
   // pawn-defended are not considered.
   const Score ThreatByMinor[PIECE_TYPE_NB] = {
     S(0, 0), S(0, 31), S(39, 42), S(57, 44), S(68, 112), S(47, 120)
-  };  //Fauzi Akram
+
+  };
 
   const Score ThreatByRook[PIECE_TYPE_NB] = {
     S(0, 0), S(0, 24), S(38, 71), S(38, 61), S(0, 38), S(36, 38)
-  };   //Fauzi Akram
+  };
 
   // ThreatByKing[on one/on many] contains bonuses for king attacks on
   // pawns or pieces which are not pawn-defended.
-  const Score ThreatByKing[] = { S(3, 65), S(9, 145) };  //Fauzi Akram
+  const Score ThreatByKing[] = { S(3, 65), S(9, 145) };
+
 
   // Passed[mg/eg][Rank] contains midgame and endgame bonuses for passed pawns.
   // We don't use a Score because we process the two components independently.
   const Value Passed[][RANK_NB] = {
     { V(0), V(5), V( 5), V(32), V(70), V(172), V(217) },
     { V(0), V(7), V(13), V(42), V(70), V(170), V(269) }
-  };   //Fauzi Akram
+
+  };
+
 
   // PassedFile[File] contains a bonus according to the file of a passed pawn
   const Score PassedFile[FILE_NB] = {
@@ -211,7 +215,9 @@ namespace {
   };
 
   // Rank factor applied on some bonus for passed pawn on rank 4 or beyond
-  const int RankFactor[RANK_NB] = {0, 0, 0, 2, 7, 12, 19};    //Fauzi Akram
+
+  const int RankFactor[RANK_NB] = {0, 0, 0, 2, 7, 12, 19};
+
 
   // KingProtector[PieceType-2] contains a bonus according to distance from king
   const Score KingProtector[] = { S(-3, -5), S(-4, -3), S(-3, 0), S(-1, 1) };
@@ -225,13 +231,15 @@ namespace {
   const Score WeakQueen             = S( 50, 10);
   const Score CloseEnemies          = S(  7,  0);
   const Score PawnlessFlank         = S( 20, 80);
-  const Score ThreatBySafePawn      = S(175,168);  //Fauzi Akram
+
+  const Score ThreatBySafePawn      = S(175,168);
   const Score ThreatByRank          = S( 16,  3);
-  const Score Hanging               = S( 52, 30);  //Fauzi Akram
+  const Score Hanging               = S( 52, 30);
   const Score WeakUnopposedPawn     = S(  5, 25);
-  const Score ThreatByPawnPush      = S( 47, 26);  //Fauzi Akram
-  const Score ThreatByAttackOnQueen = S( 42, 21);  //Fauzi Akram
-  const Score HinderPassedPawn      = S(  8,  1);  //Fauzi Akram
+  const Score ThreatByPawnPush      = S( 47, 26);
+  const Score ThreatByAttackOnQueen = S( 42, 21);
+  const Score HinderPassedPawn      = S(  8,  1);
+
   const Score TrappedBishopA1H1     = S( 50, 50);
 
   #undef S
@@ -696,7 +704,9 @@ namespace {
 
                 // If there aren't any enemy attacks, assign a big bonus. Otherwise
                 // assign a smaller bonus if the block square isn't attacked.
-                int k = !unsafeSquares ? 20 : !(unsafeSquares & blockSq) ? 9 : 0;  //Fauzi Akram
+
+                int k = !unsafeSquares ? 20 : !(unsafeSquares & blockSq) ? 9 : 0;
+
 
                 // If the path to the queen is fully defended, assign a big bonus.
                 // Otherwise assign a smaller bonus if the block square is defended.
@@ -911,7 +921,7 @@ namespace {
 
 } // namespace
 
-Score Eval::Contempt = SCORE_ZERO;
+std::atomic<Score> Eval::Contempt;
 
 /// evaluate() is the evaluator for the outer world. It returns a static evaluation
 /// of the position from the point of view of the side to move.
@@ -929,7 +939,10 @@ std::string Eval::trace(const Position& pos) {
 
   std::memset(scores, 0, sizeof(scores));
 
-  Value v = Evaluation<TRACE>(pos).value() + Eval::Tempo;
+  Eval::Contempt = SCORE_ZERO;
+
+  Value v = Eval::Tempo + Evaluation<TRACE>(pos).value();
+
   v = pos.side_to_move() == WHITE ? v : -v; // White's point of view
 
   std::stringstream ss;

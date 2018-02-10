@@ -64,7 +64,7 @@ void init(OptionsMap& o) {
   const int MaxHashMB = Is64Bit ? 131072 : 2048;
 
   o["Debug Log File"]        << Option("", on_logger);
-  o["Contempt"]              << Option(20, -100, 100);
+  o["Contempt"]              << Option(18, -100, 100);
   o["Analysis Contempt"]     << Option("Off var Off var White var Black var Both", "Off");
   o["UCI_AnalyseMode"]       << Option(false);
   o["Tactical"]              << Option(0, 0,  8);
