@@ -18,11 +18,12 @@ matrix:
       compiler: clang
       addons:
         apt:
-          sources: ['ubuntu-toolchain-r-test']
-          packages: ['clang', 'g++-multilib', 'valgrind', 'expect']
+          sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-5.0']
+          packages: ['clang-5.0', 'llvm-5.0-dev', 'g++-multilib', 'valgrind', 'expect']
       env:
-        - COMPILER=clang++
+        - COMPILER=clang++-5.0
         - COMP=clang
+        - LDFLAGS=-fuse-ld=gold
 
     - os: osx
       compiler: gcc
@@ -45,7 +46,7 @@ before_script:
 
 script:
   # Obtain bench reference from git log
-  - git log HEAD | grep "\b[Bb]ench[ :]\+[0-9]\{7\}" | head -n 1 | sed "s/[^0-9]*\([0-9][0-9]*\)/\1/g" > git_sig
+  - git log HEAD | grep "\b[Bb]ench[ :]\+[0-9]\{7\}" | head -n 1 | sed "s/[^0-9]*\([0-9]*\).*/\1/g" > git_sig
   - export benchref=$(cat git_sig)
   - echo "Reference bench:" $benchref
   #
