@@ -89,11 +89,11 @@ namespace {
 
     // Read option name (can contain spaces)
     while (is >> token && token != "value")
-        name += string(" ", name.empty() ? 0 : 1) + token;
+        name += (name.empty() ? "" : " ") + token;
 
     // Read option value (can contain spaces)
     while (is >> token)
-        value += string(" ", value.empty() ? 0 : 1) + token;
+        value += (value.empty() ? "" : " ") + token;
 
     if (Options.count(name))
         Options[name] = value;
