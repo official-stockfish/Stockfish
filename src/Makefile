@@ -1,22 +1,24 @@
-# Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-# Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
-# Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-# Copyright (C) 2015-2018 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
-#
-# Stockfish is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# Stockfish is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+### ==========================================================================
+### Copyright Notice and License Information
+### ==========================================================================
+#   McBrain, a UCI chess playing engine derived from Stockfish and Glaurung 2.1
+#   Copyright (C) 2004-2008 Tord Romstad (Glaurung Author)
+#   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad (Stockfish Authors)
+#   Copyright (C) 2015-2016 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad (Stockfish Authors)
+#   Copyright (C) 2017-2018 Michael Byrne, Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad (McBrain Authors)
 
+#   McBrain is free software: you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published by
+#   the Free Software Foundation, either version 3 of the License, or
+#   (at your option) any later version.
 
+#   McBrain is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#   GNU General Public License for more details.
+
+#   You should have received a copy of the GNU General Public License
+#   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ### ==========================================================================
 ### Section 1. General Configuration
 ### ==========================================================================
@@ -28,7 +30,8 @@ ifeq ($(KERNEL),Linux)
 endif
 
 ### Executable name
-EXE = stockfish
+EXE = McBrain-9
+### bench nodes ->  Nodes searched  :  6655973
 
 ### Installation dir definitions
 PREFIX = /usr/local
@@ -36,11 +39,12 @@ BINDIR = $(PREFIX)/bin
 
 ### Built-in benchmark for pgo-builds
 PGOBENCH = ./$(EXE) bench
+PGOBENCH2 = ./$(EXE) bench 16 2 10
 
 ### Object files
 OBJS = benchmark.o bitbase.o bitboard.o endgame.o evaluate.o main.o \
 	material.o misc.o movegen.o movepick.o pawns.o position.o psqt.o \
-	search.o thread.o timeman.o tt.o uci.o ucioption.o syzygy/tbprobe.o
+	search.o thread.o timeman.o tt.o uci.o ucioption.o polybook.o tbprobe.o
 
 ### ==========================================================================
 ### Section 2. High-level Configuration
@@ -276,7 +280,7 @@ endif
 ### 3.3 Optimization
 ifeq ($(optimize),yes)
 
-	CXXFLAGS += -O3
+	CXXFLAGS += -O3 -mtune=native
 
 	ifeq ($(comp),gcc)
 
@@ -302,8 +306,6 @@ ifeq ($(optimize),yes)
 
 	ifeq ($(comp),clang)
 		ifeq ($(KERNEL),Darwin)
-				CXXFLAGS += -flto
-				LDFLAGS += $(CXXFLAGS)
 			ifeq ($(arch),i386)
 				CXXFLAGS += -mdynamic-no-pic
 			endif
@@ -349,24 +351,20 @@ endif
 ### 3.8 Link Time Optimization, it works since gcc 4.5 but not on mingw under Windows.
 ### This is a mix of compile and link time options because the lto link phase
 ### needs access to the optimization flags.
-ifeq ($(comp),gcc)
-	ifeq ($(optimize),yes)
-	ifeq ($(debug),no)
+ifeq ($(optimize),yes)
+ifeq ($(debug), no)
+	ifeq ($(comp),$(filter $(comp),gcc clang))
+		CXXFLAGS += -flto
+		LDFLAGS += $(CXXFLAGS)
+	endif
+
+	ifeq ($(comp),mingw)
+	ifeq ($(KERNEL),Linux)
 		CXXFLAGS += -flto
 		LDFLAGS += $(CXXFLAGS)
 	endif
 	endif
 endif
-
-ifeq ($(comp),mingw)
-	ifeq ($(KERNEL),Linux)
-	ifeq ($(optimize),yes)
-	ifeq ($(debug),no)
-		CXXFLAGS += -flto
-		LDFLAGS += $(CXXFLAGS)
-	endif
-	endif
-	endif
 endif
 
 ### 3.9 Android 5 can only run position independent executables. Note that this
@@ -433,21 +431,32 @@ help:
 
 build: config-sanity
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) all
+	strip $(EXE)
 
 profile-build: config-sanity objclean profileclean
 	@echo ""
-	@echo "Step 1/4. Building instrumented executable ..."
+	@echo "Step 1/5. Building instrumented executable ..."
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_make)
 	@echo ""
-	@echo "Step 2/4. Running benchmark for pgo-build ..."
+	@echo "Step 2/5. Running benchmark for pgo-build ..."
 	$(PGOBENCH) > /dev/null
 	@echo ""
-	@echo "Step 3/4. Building optimized executable ..."
+	@echo "Step 3/5. Running benchmark for pgo-build ..."
+	$(PGOBENCH2) > /dev/null
+	@echo ""
+	@echo "Step 4/5. Building optimized executable ..."
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) objclean
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_use)
 	@echo ""
-	@echo "Step 4/4. Deleting profile data ..."
+	@echo "Step 5/5. Deleting profile data ..."
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) profileclean
+	strip $(EXE)
+
+cprom:
+	make -j profile-build ARCH=x86-64-modern COMP=clang
+
+cprob:
+	make -j profile-build ARCH=x86-64-bmi2 COMP=clang
 
 strip:
 	strip $(EXE)
@@ -538,7 +547,7 @@ gcc-profile-make:
 
 gcc-profile-use:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS='-fprofile-use -fno-peel-loops -fno-tracer' \
+	EXTRACXXFLAGS='-fprofile-use -fprofile-correction  -fno-peel-loops -fno-tracer' \
 	EXTRALDFLAGS='-lgcov' \
 	all
 
