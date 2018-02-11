@@ -9,9 +9,9 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['g++-6', 'g++-6-multilib', 'g++-multilib', 'valgrind', 'expect']
+          packages: ['g++-7', 'g++-7-multilib', 'g++-multilib', 'valgrind', 'expect']
       env:
-        - COMPILER=g++-6
+        - COMPILER=g++-7
         - COMP=gcc
 
     - os: linux
@@ -69,6 +69,6 @@ script:
   #
   # Sanitizer
   #
-  # Use g++-6 as a proxy for having sanitizers, might need revision as they become available for more recent versions of clang/gcc
-  - if [[ "$COMPILER" == "g++-6" ]]; then make clean && make -j2 ARCH=x86-64 sanitize=undefined optimize=no debug=yes build > /dev/null && ../tests/instrumented.sh --sanitizer-undefined; fi
-  - if [[ "$COMPILER" == "g++-6" ]]; then make clean && make -j2 ARCH=x86-64 sanitize=thread    optimize=no debug=yes build > /dev/null && ../tests/instrumented.sh --sanitizer-thread; fi
+  # Use g++-7 as a proxy for having sanitizers, might need revision as they become available for more recent versions of clang/gcc
+  - if [[ "$COMPILER" == "g++-7" ]]; then make clean && make -j2 ARCH=x86-64 sanitize=undefined optimize=no debug=yes build > /dev/null && ../tests/instrumented.sh --sanitizer-undefined; fi
+  - if [[ "$COMPILER" == "g++-7" ]]; then make clean && make -j2 ARCH=x86-64 sanitize=thread    optimize=no debug=yes build > /dev/null && ../tests/instrumented.sh --sanitizer-thread; fi
