@@ -31,7 +31,7 @@ endif
 
 ### Executable name
 EXE = McBrain-9
-### bench nodes ->  Nodes searched  :  6655973
+### bench nodes ->  Nodes searched  :  6871658
 
 ### Installation dir definitions
 PREFIX = /usr/local

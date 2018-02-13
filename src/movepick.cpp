@@ -223,17 +223,17 @@ Move MovePicker::next_move(bool skipQuiets) {
       /* fallthrough */
 
   case QUIET:
-      if (!skipQuiets)
-         while (cur < endMoves)
-         {
-             move = *cur++;
+      while (    cur < endMoves
+             && (!skipQuiets || cur->value >= VALUE_ZERO))
+      {
+          move = *cur++;
 
-             if (   move != ttMove
-                 && move != killers[0]
-                 && move != killers[1]
-                 && move != countermove)
-                 return move;
-         }
+          if (   move != ttMove
+              && move != killers[0]
+              && move != killers[1]
+              && move != countermove)
+              return move;
+      }
       ++stage;
       cur = moves; // Point to beginning of bad captures
       /* fallthrough */
