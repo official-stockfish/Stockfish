@@ -396,10 +396,9 @@ namespace {
             // Penalty when trapped by the king, even more if the king cannot castle
             else if (mob <= 3)
             {
-                Square ksq = pos.square<KING>(Us);
+                File kf = file_of(pos.square<KING>(Us));
 
-                if (   ((file_of(ksq) < FILE_E) == (file_of(s) < file_of(ksq)))
-                    && !pe->semiopen_side(Us, file_of(ksq), file_of(s) < file_of(ksq)))
+                if ((kf < FILE_E) == (file_of(s) < kf))
                     score -= (TrappedRook - make_score(mob * 22, 0)) * (1 + !pos.can_castle(Us));
             }
         }
