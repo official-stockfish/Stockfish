@@ -200,7 +200,7 @@ namespace {
     template<Color Us, PieceType Pt> Score pieces();
     template<Color Us> Score king() const;
     template<Color Us> Score threats() const;
-    template<Color Us> Score passed_pawns() const;
+    template<Color Us> Score passed() const;
     template<Color Us> Score space() const;
     ScaleFactor scale_factor(Value eg) const;
     Score initiative(Value eg) const;
@@ -620,11 +620,11 @@ namespace {
     return score;
   }
 
-  // Evaluation::passed_pawns() evaluates the passed pawns and candidate passed
+  // Evaluation::passed() evaluates the passed pawns and candidate passed
   // pawns of the given color.
 
   template<Tracing T> template<Color Us>
-  Score Evaluation<T>::passed_pawns() const {
+  Score Evaluation<T>::passed() const {
 
     const Color     Them = (Us == WHITE ? BLACK : WHITE);
     const Direction Up   = (Us == WHITE ? NORTH : SOUTH);
@@ -716,7 +716,7 @@ namespace {
   // twice. Finally, the space bonus is multiplied by a weight. The aim is to
   // improve play on game opening.
 
-  template<Tracing T>  template<Color Us>
+  template<Tracing T> template<Color Us>
   Score Evaluation<T>::space() const {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
@@ -748,19 +748,25 @@ namespace {
   }
 
 
-  // Evaluation::initiative() computes the initiative correction value for the
-  // position, i.e., second order bonus/malus based on the known attacking/defending
-  // status of the players.
+  // Evaluation::initiative() computes the initiative correction value for
+  // the position, i.e., second order bonus/malus based on the known
+  // attacking/defending status of the players.
 
   template<Tracing T>
   Score Evaluation<T>::initiative(Value eg) const {
 
-    int kingDistance =  distance<File>(pos.square<KING>(WHITE), pos.square<KING>(BLACK))
-                      - distance<Rank>(pos.square<KING>(WHITE), pos.square<KING>(BLACK));
-    bool bothFlanks = (pos.pieces(PAWN) & QueenSide) && (pos.pieces(PAWN) & KingSide);
+    int kingsDistance =  distance<File>(pos.square<KING>(WHITE), pos.square<KING>(BLACK))
+                       - distance<Rank>(pos.square<KING>(WHITE), pos.square<KING>(BLACK)); // FIXME this is not the distance!
+
+    bool pawnsOnBothFlanks =   (pos.pieces(PAWN) & QueenSide)
+                            && (pos.pieces(PAWN) & KingSide);
 
     // Compute the initiative bonus for the attacking side
-    int initiative = 8 * (pe->pawn_asymmetry() + kingDistance - 17) + 12 * pos.count<PAWN>() + 16 * bothFlanks;
+    int initiative =   8 * kingsDistance
+                    +  8 * pe->pawn_asymmetry()
+                    + 12 * pos.count<PAWN>()
+                    + 16 * pawnsOnBothFlanks
+                    -136;
 
     // Now apply the bonus: note that we find the attacking side by extracting
     // the sign of the endgame value, and that we carefully cap the bonus so
@@ -805,7 +811,6 @@ namespace {
                  && !pos.pawn_passed(~strongSide, pos.square<KING>(~strongSide)))
             return ScaleFactor(37 + 7 * pos.count<PAWN>(strongSide));
     }
-
     return sf;
   }
 
@@ -846,6 +851,7 @@ namespace {
     initialize<WHITE>();
     initialize<BLACK>();
 
+    // Order of evaluations should be preserved
     score += pieces<WHITE, KNIGHT>() - pieces<BLACK, KNIGHT>();
     score += pieces<WHITE, BISHOP>() - pieces<BLACK, BISHOP>();
     score += pieces<WHITE, ROOK  >() - pieces<BLACK, ROOK  >();
@@ -853,18 +859,13 @@ namespace {
 
     score += mobility[WHITE] - mobility[BLACK];
 
-    score +=  king<WHITE>()
-            - king<BLACK>();
-
-    score +=  threats<WHITE>()
-            - threats<BLACK>();
-
-    score +=  passed_pawns<WHITE>()
-            - passed_pawns<BLACK>();
+    // Evaluation tables are now filled: order is not important
+    score +=  king<   WHITE>() - king<   BLACK>()
+            + threats<WHITE>() - threats<BLACK>()
+            + passed< WHITE>() - passed< BLACK>();
 
     if (pos.non_pawn_material() >= SpaceThreshold)
-        score +=  space<WHITE>()
-                - space<BLACK>();
+        score += space<WHITE>() - space<BLACK>();
 
     score += initiative(eg_value(score));
 
@@ -893,13 +894,14 @@ namespace {
 
 } // namespace
 
+
 /// evaluate() is the evaluator for the outer world. It returns a static
 /// evaluation of the position from the point of view of the side to move.
 
-Value Eval::evaluate(const Position& pos)
-{
-   return Evaluation<NO_TRACE>(pos).value() + Eval::Tempo;
+Value Eval::evaluate(const Position& pos) {
+  return Evaluation<NO_TRACE>(pos).value() + Eval::Tempo;
 }
+
 
 /// trace() is like evaluate(), but instead of returning a value, it returns
 /// a string (suitable for outputting to stdout) that contains the detailed
@@ -909,11 +911,11 @@ std::string Eval::trace(const Position& pos) {
 
   std::memset(scores, 0, sizeof(scores));
 
-  Eval::Contempt = SCORE_ZERO;
+  Eval::Contempt = SCORE_ZERO; // Reset any dynamic contempt
 
-  Value v = Eval::Tempo + Evaluation<TRACE>(pos).value();
+  Value v = Evaluation<TRACE>(pos).value() + Eval::Tempo;
 
-  v = pos.side_to_move() == WHITE ? v : -v; // White's point of view
+  v = pos.side_to_move() == WHITE ? v : -v; // Always from white's point of view
 
   std::stringstream ss;
   ss << std::showpoint << std::noshowpos << std::fixed << std::setprecision(2)
