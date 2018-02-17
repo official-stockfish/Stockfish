@@ -146,11 +146,9 @@ namespace {
   // pawns or pieces which are not pawn-defended.
   const Score ThreatByKing[] = { S(3, 65), S(9, 145) };
 
-  // Passed[MG/EG][Rank] contains midgame and endgame bonuses for passed pawns.
-  // We don't use a Score because we process the two components independently.
-  const Value Passed[][RANK_NB] = {
-    { V(0), V(5), V( 5), V(32), V(70), V(172), V(217) },
-    { V(0), V(7), V(13), V(42), V(70), V(170), V(269) }
+  // Passed[Rank] contains base bonuses for passed pawns
+  const Score Passed[RANK_NB] = {
+    S(0, 0), S(5, 7), S(5, 13), S(32, 42), S(70, 70), S(172, 170), S(217, 269)
   };
 
   // PassedFile[File] contains a bonus according to the file of a passed pawn
@@ -625,7 +623,7 @@ namespace {
   // Evaluation::passed_pawns() evaluates the passed pawns and candidate passed
   // pawns of the given color.
 
-  template<Tracing T>  template<Color Us>
+  template<Tracing T> template<Color Us>
   Score Evaluation<T>::passed_pawns() const {
 
     const Color     Them = (Us == WHITE ? BLACK : WHITE);
@@ -648,18 +646,19 @@ namespace {
         int r = relative_rank(Us, s);
         int rr = RankFactor[r];
 
-        Value mbonus = Passed[MG][r], ebonus = Passed[EG][r];
+        Score bonus = Passed[r];
 
         if (rr)
         {
             Square blockSq = s + Up;
 
             // Adjust bonus based on the king's proximity
-            ebonus += (king_distance(Them, blockSq) * 5 - king_distance(Us, blockSq) * 2) * rr;
+            bonus += make_score(0, (  king_distance(Them, blockSq) * 5
+                                    - king_distance(Us,   blockSq) * 2) * rr);
 
             // If blockSq is not the queening square then consider also a second push
             if (r != RANK_7)
-                ebonus -= king_distance(Us, blockSq + Up) * rr;
+                bonus -= make_score(0, king_distance(Us, blockSq + Up) * rr);
 
             // If the pawn is free to advance, then increase the bonus
             if (pos.empty(blockSq))
@@ -689,18 +688,18 @@ namespace {
                 else if (defendedSquares & blockSq)
                     k += 4;
 
-                mbonus += k * rr, ebonus += k * rr;
+                bonus += make_score(k * rr, k * rr);
             }
             else if (pos.pieces(Us) & blockSq)
-                mbonus += rr + r * 2, ebonus += rr + r * 2;
+                bonus += make_score(rr + r * 2, rr + r * 2);
         } // rr != 0
 
         // Scale down bonus for candidate passers which need more than one
         // pawn push to become passed or have a pawn in front of them.
         if (!pos.pawn_passed(Us, s + Up) || (pos.pieces(PAWN) & forward_file_bb(Us, s)))
-            mbonus /= 2, ebonus /= 2;
+            bonus = bonus / 2;
 
-        score += make_score(mbonus, ebonus) + PassedFile[file_of(s)];
+        score += bonus + PassedFile[file_of(s)];
     }
 
     if (T)
