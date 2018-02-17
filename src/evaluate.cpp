@@ -98,7 +98,6 @@ namespace {
   const int BishopSafeCheck = 435;
   const int KnightSafeCheck = 790;
 
-#define V(v) Value(v)
 #define S(mg, eg) make_score(mg, eg)
 
   // MobilityBonus[PieceType-2][attacked] contains bonuses for middle and end game,
@@ -153,15 +152,15 @@ namespace {
 
   // PassedFile[File] contains a bonus according to the file of a passed pawn
   const Score PassedFile[FILE_NB] = {
-    S(  9, 10), S( 2, 10), S( 1, -8), S(-20,-12),
-    S(-20,-12), S( 1, -8), S( 2, 10), S(  9, 10)
+    S(  9, 10), S(2, 10), S(1, -8), S(-20,-12),
+    S(-20,-12), S(1, -8), S(2, 10), S(  9, 10)
   };
 
-  // Rank factor contains a bonus for passed pawn on rank 4 or beyond
-  const int RankFactor[RANK_NB] = { 0, 0, 0, 2, 7, 12, 19 };
+  // PassedRank[Rank] contains a bonus according to the rank of a passed pawn
+  const int PassedRank[RANK_NB] = { 0, 0, 0, 2, 7, 12, 19 };
 
-  // KingProtector[PieceType-2] contains a bonus according to distance from king
-  const Score KingProtector[] = { S(-3, -5), S(-4, -3), S(-3, 0), S(-1, 1) };
+  // FarKing[PieceType-2] contains a penalty according to distance from king
+  const Score FarKing[] = { S(3, 5), S(4, 3), S(3, 0), S(1, -1) };
 
   // Assorted bonuses and penalties
   const Score BishopPawns       = S(  8, 12);
@@ -182,16 +181,14 @@ namespace {
   const Score WeakUnopposedPawn = S(  5, 25);
 
 #undef S
-#undef V
 
   // Evaluation class computes and stores attacks tables and other working data
-  // used by evaluation.
   template<Tracing T>
   class Evaluation {
 
   public:
     Evaluation() = delete;
-    Evaluation(const Position& p) : pos(p) {}
+    explicit Evaluation(const Position& p) : pos(p) {}
     Evaluation& operator=(const Evaluation&) = delete;
     Value value();
 
@@ -204,7 +201,6 @@ namespace {
     template<Color Us> Score space() const;
     ScaleFactor scale_factor(Value eg) const;
     Score initiative(Value eg) const;
-    int king_distance(Color c, Square s) const;
 
     const Position& pos;
     Material::Entry* me;
@@ -249,14 +245,6 @@ namespace {
   };
 
 
-  // Evaluation::king_distance() returns an estimate of the distance that
-  // the king of the given color has to run to reach square s.
-  template<Tracing T>
-  int Evaluation<T>::king_distance(Color c, Square s) const {
-    return std::min(distance(pos.square<KING>(c), s), 5);
-  }
-
-
   // Evaluation::initialize() computes king and pawn attacks, and the king ring
   // bitboard for a given color. This is done at the beginning of the evaluation.
   template<Tracing T> template<Color Us>
@@ -295,8 +283,7 @@ namespace {
   }
 
 
-  // Evaluation::pieces() assigns bonuses and penalties to the pieces
-  // of a given color and type.
+  // Evaluation::pieces() scores pieces of a given color and type
   template<Tracing T> template<Color Us, PieceType Pt>
   Score Evaluation<T>::pieces() {
 
@@ -342,8 +329,8 @@ namespace {
 
         mobility[Us] += MobilityBonus[Pt - 2][mob];
 
-        // Bonus for this piece as a king protector
-        score += KingProtector[Pt - 2] * distance(s, pos.square<KING>(Us));
+        // Penalty if the piece is far from the king
+        score -= FarKing[Pt - 2] * distance(s, pos.square<KING>(Us));
 
         if (Pt == BISHOP || Pt == KNIGHT)
         {
@@ -412,7 +399,6 @@ namespace {
                 score -= WeakQueen;
         }
     }
-
     if (T)
         Trace::add(Pt, Us, score);
 
@@ -629,6 +615,10 @@ namespace {
     const Color     Them = (Us == WHITE ? BLACK : WHITE);
     const Direction Up   = (Us == WHITE ? NORTH : SOUTH);
 
+    auto king_proximity = [&](Color c, Square s) {
+      return std::min(distance(pos.square<KING>(c), s), 5);
+    };
+
     Bitboard b, bb, squaresToQueen, defendedSquares, unsafeSquares;
     Score score = SCORE_ZERO;
 
@@ -644,7 +634,7 @@ namespace {
         score -= HinderPassedPawn * popcount(bb);
 
         int r = relative_rank(Us, s);
-        int rr = RankFactor[r];
+        int rr = PassedRank[r];
 
         Score bonus = Passed[r];
 
@@ -653,12 +643,12 @@ namespace {
             Square blockSq = s + Up;
 
             // Adjust bonus based on the king's proximity
-            bonus += make_score(0, (  king_distance(Them, blockSq) * 5
-                                    - king_distance(Us,   blockSq) * 2) * rr);
+            bonus += make_score(0, (  king_proximity(Them, blockSq) * 5
+                                    - king_proximity(Us,   blockSq) * 2) * rr);
 
             // If blockSq is not the queening square then consider also a second push
             if (r != RANK_7)
-                bonus -= make_score(0, king_distance(Us, blockSq + Up) * rr);
+                bonus -= make_score(0, king_proximity(Us, blockSq + Up) * rr);
 
             // If the pawn is free to advance, then increase the bonus
             if (pos.empty(blockSq))
