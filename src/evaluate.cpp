@@ -145,8 +145,8 @@ namespace {
   // pawns or pieces which are not pawn-defended.
   const Score ThreatByKing[] = { S(3, 65), S(9, 145) };
 
-  // Passed[Rank] contains base bonuses for passed pawns
-  const Score Passed[RANK_NB] = {
+  // PassedRank[Rank] contains a bonus according to the rank of a passed pawn
+  const Score PassedRank[RANK_NB] = {
     S(0, 0), S(5, 7), S(5, 13), S(32, 42), S(70, 70), S(172, 170), S(217, 269)
   };
 
@@ -156,11 +156,11 @@ namespace {
     S(-20,-12), S(1, -8), S(2, 10), S(  9, 10)
   };
 
-  // PassedRank[Rank] contains a bonus according to the rank of a passed pawn
-  const int PassedRank[RANK_NB] = { 0, 0, 0, 2, 7, 12, 19 };
+  // PassedDanger[Rank] contains a term to weight the passed score
+  const int PassedDanger[RANK_NB] = { 0, 0, 0, 2, 7, 12, 19 };
 
-  // FarKing[PieceType-2] contains a penalty according to distance from king
-  const Score FarKing[] = { S(3, 5), S(4, 3), S(3, 0), S(1, -1) };
+  // KingProtector[PieceType-2] contains a penalty according to distance from king
+  const Score KingProtector[] = { S(3, 5), S(4, 3), S(3, 0), S(1, -1) };
 
   // Assorted bonuses and penalties
   const Score BishopPawns       = S(  8, 12);
@@ -330,7 +330,7 @@ namespace {
         mobility[Us] += MobilityBonus[Pt - 2][mob];
 
         // Penalty if the piece is far from the king
-        score -= FarKing[Pt - 2] * distance(s, pos.square<KING>(Us));
+        score -= KingProtector[Pt - 2] * distance(s, pos.square<KING>(Us));
 
         if (Pt == BISHOP || Pt == KNIGHT)
         {
@@ -634,21 +634,21 @@ namespace {
         score -= HinderPassedPawn * popcount(bb);
 
         int r = relative_rank(Us, s);
-        int rr = PassedRank[r];
+        int w = PassedDanger[r];
 
-        Score bonus = Passed[r];
+        Score bonus = PassedRank[r];
 
-        if (rr)
+        if (w)
         {
             Square blockSq = s + Up;
 
             // Adjust bonus based on the king's proximity
             bonus += make_score(0, (  king_proximity(Them, blockSq) * 5
-                                    - king_proximity(Us,   blockSq) * 2) * rr);
+                                    - king_proximity(Us,   blockSq) * 2) * w);
 
             // If blockSq is not the queening square then consider also a second push
             if (r != RANK_7)
-                bonus -= make_score(0, king_proximity(Us, blockSq + Up) * rr);
+                bonus -= make_score(0, king_proximity(Us, blockSq + Up) * w);
 
             // If the pawn is free to advance, then increase the bonus
             if (pos.empty(blockSq))
@@ -678,10 +678,10 @@ namespace {
                 else if (defendedSquares & blockSq)
                     k += 4;
 
-                bonus += make_score(k * rr, k * rr);
+                bonus += make_score(k * w, k * w);
             }
             else if (pos.pieces(Us) & blockSq)
-                bonus += make_score(rr + r * 2, rr + r * 2);
+                bonus += make_score(w + r * 2, w + r * 2);
         } // rr != 0
 
         // Scale down bonus for candidate passers which need more than one
@@ -745,14 +745,14 @@ namespace {
   template<Tracing T>
   Score Evaluation<T>::initiative(Value eg) const {
 
-    int kingsDistance =  distance<File>(pos.square<KING>(WHITE), pos.square<KING>(BLACK))
-                       - distance<Rank>(pos.square<KING>(WHITE), pos.square<KING>(BLACK)); // FIXME this is not the distance!
+    int outflanking =  distance<File>(pos.square<KING>(WHITE), pos.square<KING>(BLACK))
+                     - distance<Rank>(pos.square<KING>(WHITE), pos.square<KING>(BLACK));
 
     bool pawnsOnBothFlanks =   (pos.pieces(PAWN) & QueenSide)
                             && (pos.pieces(PAWN) & KingSide);
 
     // Compute the initiative bonus for the attacking side
-    int initiative =   8 * kingsDistance
+    int initiative =   8 * outflanking
                     +  8 * pe->pawn_asymmetry()
                     + 12 * pos.count<PAWN>()
                     + 16 * pawnsOnBothFlanks
@@ -841,15 +841,14 @@ namespace {
     initialize<WHITE>();
     initialize<BLACK>();
 
-    // Order of evaluations should be preserved
-    score += pieces<WHITE, KNIGHT>() - pieces<BLACK, KNIGHT>();
-    score += pieces<WHITE, BISHOP>() - pieces<BLACK, BISHOP>();
-    score += pieces<WHITE, ROOK  >() - pieces<BLACK, ROOK  >();
-    score += pieces<WHITE, QUEEN >() - pieces<BLACK, QUEEN >();
+    // Pieces should be evaluated first (populate attack tables)
+    score +=  pieces<WHITE, KNIGHT>() - pieces<BLACK, KNIGHT>()
+            + pieces<WHITE, BISHOP>() - pieces<BLACK, BISHOP>()
+            + pieces<WHITE, ROOK  >() - pieces<BLACK, ROOK  >()
+            + pieces<WHITE, QUEEN >() - pieces<BLACK, QUEEN >();
 
     score += mobility[WHITE] - mobility[BLACK];
 
-    // Evaluation tables are now filled: order is not important
     score +=  king<   WHITE>() - king<   BLACK>()
             + threats<WHITE>() - threats<BLACK>()
             + passed< WHITE>() - passed< BLACK>();
