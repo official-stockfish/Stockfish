@@ -39,33 +39,33 @@ namespace Trace {
     MATERIAL = 8, IMBALANCE, MOBILITY, THREAT, PASSED, SPACE, INITIATIVE, TOTAL, TERM_NB
   };
 
-  double scores[TERM_NB][COLOR_NB][PHASE_NB];
+  Score scores[TERM_NB][COLOR_NB];
 
   double to_cp(Value v) { return double(v) / PawnValueEg; }
 
   void add(int idx, Color c, Score s) {
-    scores[idx][c][MG] = to_cp(mg_value(s));
-    scores[idx][c][EG] = to_cp(eg_value(s));
+    scores[idx][c] = s;
   }
 
   void add(int idx, Score w, Score b = SCORE_ZERO) {
-    add(idx, WHITE, w);
-    add(idx, BLACK, b);
+    scores[idx][WHITE] = w;
+    scores[idx][BLACK] = b;
+  }
+
+  std::ostream& operator<<(std::ostream& os, Score s) {
+    os << std::setw(5) << to_cp(mg_value(s)) << " "
+       << std::setw(5) << to_cp(eg_value(s));
+    return os;
   }
 
   std::ostream& operator<<(std::ostream& os, Term t) {
 
-    if (t == MATERIAL || t == IMBALANCE || t == Term(PAWN) || t == INITIATIVE || t == TOTAL)
-        os << "  ---   --- |   ---   --- | ";
+    if (t == MATERIAL || t == IMBALANCE || t == INITIATIVE || t == TOTAL)
+        os << " ----  ----"    << " | " << " ----  ----";
     else
-        os << std::setw(5) << scores[t][WHITE][MG] << " "
-           << std::setw(5) << scores[t][WHITE][EG] << " | "
-           << std::setw(5) << scores[t][BLACK][MG] << " "
-           << std::setw(5) << scores[t][BLACK][EG] << " | ";
+        os << scores[t][WHITE] << " | " << scores[t][BLACK];
 
-    os << std::setw(5) << scores[t][WHITE][MG] - scores[t][BLACK][MG] << " "
-       << std::setw(5) << scores[t][WHITE][EG] - scores[t][BLACK][EG] << " \n";
-
+    os << " | " << scores[t][WHITE] - scores[t][BLACK] << "\n";
     return os;
   }
 }
@@ -714,6 +714,9 @@ namespace {
       Us == WHITE ? CenterFiles & (Rank2BB | Rank3BB | Rank4BB)
                   : CenterFiles & (Rank7BB | Rank6BB | Rank5BB);
 
+    if (pos.non_pawn_material() < SpaceThreshold)
+        return SCORE_ZERO;
+
     // Find the safe squares for our pieces inside the area defined by
     // SpaceMask. A square is unsafe if it is attacked by an enemy
     // pawn, or if it is undefended and attacked by an enemy piece.
@@ -733,8 +736,12 @@ namespace {
     // ...count safe + (behind & safe) with a single popcount.
     int bonus = popcount((Us == WHITE ? safe << 32 : safe >> 32) | (behind & safe));
     int weight = pos.count<ALL_PIECES>(Us) - 2 * pe->open_files();
+    Score score = make_score(bonus * weight * weight / 16, 0);
 
-    return make_score(bonus * weight * weight / 16, 0);
+    if (T)
+        Trace::add(SPACE, Us, score);
+
+    return score;
   }
 
 
@@ -829,7 +836,7 @@ namespace {
 
     // Probe the pawn hash table
     pe = Pawns::probe(pos);
-    score += pe->pawns_score();
+    score += pe->pawn_scores(WHITE) - pe->pawn_scores(BLACK);
 
     // Early exit if score is high
     Value v = (mg_value(score) + eg_value(score)) / 2;
@@ -851,10 +858,8 @@ namespace {
 
     score +=  king<   WHITE>() - king<   BLACK>()
             + threats<WHITE>() - threats<BLACK>()
-            + passed< WHITE>() - passed< BLACK>();
-
-    if (pos.non_pawn_material() >= SpaceThreshold)
-        score += space<WHITE>() - space<BLACK>();
+            + passed< WHITE>() - passed< BLACK>()
+            + space<  WHITE>() - space<  BLACK>();
 
     score += initiative(eg_value(score));
 
@@ -870,14 +875,10 @@ namespace {
     {
         Trace::add(MATERIAL, pos.psq_score());
         Trace::add(IMBALANCE, me->imbalance());
-        Trace::add(PAWN, pe->pawns_score());
+        Trace::add(PAWN, pe->pawn_scores(WHITE), pe->pawn_scores(BLACK));
         Trace::add(MOBILITY, mobility[WHITE], mobility[BLACK]);
-        if (pos.non_pawn_material() >= SpaceThreshold)
-            Trace::add(SPACE, space<WHITE>()
-                            , space<BLACK>());
         Trace::add(TOTAL, score);
     }
-
     return pos.side_to_move() == WHITE ? v : -v; // Side to move point of view
   }
 
@@ -908,26 +909,26 @@ std::string Eval::trace(const Position& pos) {
 
   std::stringstream ss;
   ss << std::showpoint << std::noshowpos << std::fixed << std::setprecision(2)
-     << "      Eval term |    White    |    Black    |    Total    \n"
-     << "                |   MG    EG  |   MG    EG  |   MG    EG  \n"
-     << "----------------+-------------+-------------+-------------\n"
-     << "       Material | " << Term(MATERIAL)
-     << "      Imbalance | " << Term(IMBALANCE)
-     << "          Pawns | " << Term(PAWN)
-     << "        Knights | " << Term(KNIGHT)
-     << "        Bishops | " << Term(BISHOP)
-     << "          Rooks | " << Term(ROOK)
-     << "         Queens | " << Term(QUEEN)
-     << "       Mobility | " << Term(MOBILITY)
-     << "    King safety | " << Term(KING)
-     << "        Threats | " << Term(THREAT)
-     << "   Passed pawns | " << Term(PASSED)
-     << "          Space | " << Term(SPACE)
-     << "     Initiative | " << Term(INITIATIVE)
-     << "----------------+-------------+-------------+-------------\n"
-     << "          Total | " << Term(TOTAL);
+     << "     Term    |    White    |    Black    |    Total   \n"
+     << "             |   MG    EG  |   MG    EG  |   MG    EG \n"
+     << " ------------+-------------+-------------+------------\n"
+     << "    Material | " << Term(MATERIAL)
+     << "   Imbalance | " << Term(IMBALANCE)
+     << "  Initiative | " << Term(INITIATIVE)
+     << "       Pawns | " << Term(PAWN)
+     << "     Knights | " << Term(KNIGHT)
+     << "     Bishops | " << Term(BISHOP)
+     << "       Rooks | " << Term(ROOK)
+     << "      Queens | " << Term(QUEEN)
+     << "    Mobility | " << Term(MOBILITY)
+     << " King safety | " << Term(KING)
+     << "     Threats | " << Term(THREAT)
+     << "      Passed | " << Term(PASSED)
+     << "       Space | " << Term(SPACE)
+     << " ------------+-------------+-------------+------------\n"
+     << "       Total | " << Term(TOTAL);
 
-  ss << "\nTotal Evaluation: " << to_cp(v) << " (white side)\n";
+  ss << "\nTotal evaluation: " << to_cp(v) << " (white side)\n";
 
   return ss.str();
 }
