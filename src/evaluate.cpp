@@ -218,12 +218,10 @@ namespace {
     // pawn or squares attacked by 2 pawns are not explicitly added.
     Bitboard attackedBy2[COLOR_NB];
 
-    // kingRing[color] is the zone around the king which is considered
-    // by the king safety evaluation. This consists of the squares directly
-    // adjacent to the king, and (only for a king on its first rank) the
-    // squares two ranks in front of the king. For instance, if black's king
-    // is on g8, kingRing[BLACK] is a bitboard containing the squares f8, h8,
-    // f7, g7, h7, f6, g6 and h6.
+    // kingRing[color] are the squares adjacent to the king, plus (only for a
+    // king on its first rank) the squares two ranks in front. For instance,
+    // if black's king is on g8, kingRing[BLACK] is f8, h8, f7, g7, h7, f6, g6
+    // and h6. It is set to 0 when king safety evaluation is skipped.
     Bitboard kingRing[COLOR_NB];
 
     // kingAttackersCount[color] is the number of pieces of the given color
@@ -535,7 +533,7 @@ namespace {
         score += ThreatBySafePawn * popcount(safeThreats);
     }
 
-    // Squares strongly protected by the opponent, either because they defend the
+    // Squares strongly protected by the enemy, either because they defend the
     // square with a pawn, or because they defend the square twice and we don't.
     stronglyProtected =  attackedBy[Them][PAWN]
                        | (attackedBy2[Them] & ~attackedBy2[Us]);
@@ -546,7 +544,7 @@ namespace {
     // Enemies not strongly protected and under our attack
     weak = pos.pieces(Them) & ~stronglyProtected & attackedBy[Us][ALL_PIECES];
 
-    // Add a bonus according to the kind of attacking pieces
+    // Bonus according to the kind of attacking pieces
     if (defended | weak)
     {
         b = (defended | weak) & (attackedBy[Us][KNIGHT] | attackedBy[Us][BISHOP]);
@@ -574,7 +572,7 @@ namespace {
             score += ThreatByKing[more_than_one(b)];
     }
 
-    // Bonus for opponent unopposed weak pawns
+    // Bonus for enemy unopposed weak pawns
     if (pos.pieces(Us, ROOK, QUEEN))
         score += WeakUnopposedPawn * pe->weak_unopposed(Them);
 
@@ -586,14 +584,14 @@ namespace {
     b &= ~attackedBy[Them][PAWN]
         & (attackedBy[Us][ALL_PIECES] | ~attackedBy[Them][ALL_PIECES]);
 
-    // Add a bonus for each new pawn threats from those squares
+    // Bonus for safe pawn threats on the next move
     b =  (shift<Left>(b) | shift<Right>(b))
        &  pos.pieces(Them)
        & ~attackedBy[Us][PAWN];
 
     score += ThreatByPawnPush * popcount(b);
 
-    // Add a bonus for safe slider attack threats on opponent queen
+    // Bonus for safe slider threats on the next move toward enemy queen
     safeThreats = ~pos.pieces(Us) & ~attackedBy2[Them] & attackedBy2[Us];
     b =  (attackedBy[Us][BISHOP] & attackedBy[Them][QUEEN_DIAGONAL])
        | (attackedBy[Us][ROOK  ] & attackedBy[Them][QUEEN] & ~attackedBy[Them][QUEEN_DIAGONAL]);
@@ -801,7 +799,7 @@ namespace {
             // a bit drawish, but not as drawish as with only the two bishops.
             return ScaleFactor(46);
         }
-        // Endings where weaker side can place his king in front of the opponent's
+        // Endings where weaker side can place his king in front of the enemy's
         // pawns are drawish.
         else if (    abs(eg) <= BishopValueEg
                  &&  pos.count<PAWN>(strongSide) <= 2
