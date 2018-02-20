@@ -348,9 +348,10 @@ void Thread::search() {
 
               // Adjust contempt based on current bestValue
               ct =  Options["Contempt"] * PawnValueEg / 100 // From centipawns
-                  + (bestValue >  500 ?  50:                // Dynamic contempt
-                     bestValue < -500 ? -50:
-                     bestValue / 10);
+                  + (bestValue >  500 ?  70:                // Dynamic contempt
+                     bestValue < -500 ? -70:
+                     bestValue > 0    ? bestValue / 10 + int(std::round(3.22 * log(1 + abs(bestValue)))) :
+                                        bestValue / 10 - int(std::round(3.22 * log(1 + abs(bestValue)))));
 
               Eval::Contempt = (us == WHITE ?  make_score(ct, ct / 2)
                                             : -make_score(ct, ct / 2));
