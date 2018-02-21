@@ -115,7 +115,6 @@ public:
   Bitboard attacks_from(PieceType pt, Square s) const;
   template<PieceType> Bitboard attacks_from(Square s) const;
   template<PieceType> Bitboard attacks_from(Square s, Color c) const;
-  template<Color> Bitboard pawn_attacks(Bitboard b) const;
   Bitboard slider_blockers(Bitboard sliders, Square s, Bitboard& pinners) const;
 
   // Properties of moves
@@ -287,12 +286,6 @@ inline Bitboard Position::attacks_from<PAWN>(Square s, Color c) const {
 
 inline Bitboard Position::attacks_from(PieceType pt, Square s) const {
   return attacks_bb(pt, s, byTypeBB[ALL_PIECES]);
-}
-
-template<Color c>
-inline Bitboard Position::pawn_attacks(Bitboard b) const {
-  return c == WHITE ? shift<NORTH_WEST>(b) | shift<NORTH_EAST>(b)
-                    : shift<SOUTH_WEST>(b) | shift<SOUTH_EAST>(b);
 }
 
 inline Bitboard Position::attackers_to(Square s) const {

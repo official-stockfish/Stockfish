@@ -527,7 +527,7 @@ namespace {
         b =  pos.pieces(Us, PAWN)
            & (~attackedBy[Them][ALL_PIECES] | attackedBy[Us][ALL_PIECES]);
 
-        safeThreats = pos.pawn_attacks<Us>(b) & weak;
+        safeThreats = pawn_attacks_bb<Us>(b) & weak;
         score += ThreatBySafePawn * popcount(safeThreats);
     }
 
@@ -583,7 +583,7 @@ namespace {
         & (attackedBy[Us][ALL_PIECES] | ~attackedBy[Them][ALL_PIECES]);
 
     // Bonus for safe pawn threats on the next move
-    b =   pos.pawn_attacks<Us>(b)
+    b =   pawn_attacks_bb<Us>(b)
        &  pos.pieces(Them)
        & ~attackedBy[Us][PAWN];
 
