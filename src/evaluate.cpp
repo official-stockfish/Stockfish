@@ -585,7 +585,7 @@ namespace {
     b &= ~attackedBy[Them][PAWN]
         & (attackedBy[Us][ALL_PIECES] | ~attackedBy[Them][ALL_PIECES]);
 
-    // Bonus for safe pawn threats on the next move
+    // Add a bonus for each new pawn threats from those squares
     b =  (shift<UpLeft>(b) | shift<UpRight>(b))
        &  pos.pieces(Them)
        & ~attackedBy[Us][PAWN];
