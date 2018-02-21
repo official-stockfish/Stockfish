@@ -531,8 +531,8 @@ namespace {
 
     const Color     Them     = (Us == WHITE ? BLACK      : WHITE);
     const Direction Up       = (Us == WHITE ? NORTH      : SOUTH);
-    const Direction Left     = (Us == WHITE ? NORTH_WEST : SOUTH_EAST);
-    const Direction Right    = (Us == WHITE ? NORTH_EAST : SOUTH_WEST);
+    const Direction UpLeft   = (Us == WHITE ? NORTH_WEST : SOUTH_EAST);
+    const Direction UpRight  = (Us == WHITE ? NORTH_EAST : SOUTH_WEST);
     const Bitboard  TRank3BB = (Us == WHITE ? Rank3BB    : Rank6BB);
 
     Bitboard b, weak, defended, stronglyProtected, safeThreats;
@@ -546,7 +546,7 @@ namespace {
         b = pos.pieces(Us, PAWN) & ( ~attackedBy[Them][ALL_PIECES]
                                     | attackedBy[Us][ALL_PIECES]);
 
-        safeThreats = (shift<Right>(b) | shift<Left>(b)) & weak;
+        safeThreats = (shift<UpRight>(b) | shift<UpLeft>(b)) & weak;
 
         score += ThreatBySafePawn * popcount(safeThreats);
     }
@@ -606,7 +606,7 @@ namespace {
         & (attackedBy[Us][ALL_PIECES] | ~attackedBy[Them][ALL_PIECES]);
 
     // Add a bonus for each new pawn threats from those squares
-    b =  (shift<Left>(b) | shift<Right>(b))
+    b =  (shift<UpLeft>(b) | shift<UpRight>(b))
        &  pos.pieces(Them)
        & ~attackedBy[Us][PAWN];
 
