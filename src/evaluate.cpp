@@ -530,7 +530,6 @@ namespace {
            & (~attackedBy[Them][ALL_PIECES] | attackedBy[Us][ALL_PIECES]);
 
         safeThreats = (shift<UpRight>(b) | shift<UpLeft>(b)) & weak;
-
         score += ThreatBySafePawn * popcount(safeThreats);
     }
 
