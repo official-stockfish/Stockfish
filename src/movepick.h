@@ -23,26 +23,33 @@
 
 #include <array>
 #include <limits>
+#include <type_traits>
 
 #include "movegen.h"
 #include "position.h"
 #include "types.h"
 
-/// Stats is a generic N-dimensional array of T used to store various statistics
-template <typename T, int W, int D, int Size, int... Sizes>
-struct Stats : public std::array<Stats<T, W, D, Sizes...>, Size>
-{
-  T& front() { return (*this)[0].front(); }
+/// StatsEntry stores the stat table value. It is usually a number but could
+/// be a move or even a nested history. We use a class instead of naked value
+/// to directly call history update operator<<() on the entry so to use stats
+/// tables at caller sites as simple multi-dim arrays.
+template<typename T, int W, int D>
+class StatsEntry {
 
-  void fill(const T& v) {
-    T* p = &front();
-    std::fill(p, p + sizeof(*this) / sizeof(*p), v);
-  }
+  static const bool IsInt = std::is_integral<T>::value;
+  typedef typename std::conditional<IsInt, int, T>::type TT;
 
-  void update(T& entry, int bonus) {
+  T entry;
+
+public:
+  T* get() { return &entry; }
+  void operator=(const T& v) { entry = v; }
+  operator TT() const { return entry; }
+
+  void operator<<(int bonus) {
 
     assert(abs(bonus) <= D); // Ensure range is [-W * D, W * D]
-    assert(abs(W * D) < (std::numeric_limits<T>::max)()); // Ensure we don't overflow
+    assert(abs(W * D) < std::numeric_limits<T>::max()); // Ensure we don't overflow
 
     entry += bonus * W - entry * abs(bonus) / D;
 
@@ -50,55 +57,45 @@ struct Stats : public std::array<Stats<T, W, D, Sizes...>, Size>
   }
 };
 
+/// Stats is a generic N-dimensional array of T used to store various statistics
+template <typename T, int W, int D, int Size, int... Sizes>
+struct Stats : public std::array<Stats<T, W, D, Sizes...>, Size>
+{
+  T* get() { return this->at(0).get(); }
+
+  void fill(const T& v) {
+    T* p = get();
+    std::fill(p, p + sizeof(*this) / sizeof(*p), v);
+  }
+};
+
 template <typename T, int W, int D, int Size>
-struct Stats<T, W, D, Size> : public std::array<T, Size> {};
+struct Stats<T, W, D, Size> : public std::array<StatsEntry<T, W, D>, Size> {
+  T* get() { return this->at(0).get(); }
+};
 
 /// Different tables use different W/D parameter, name them to ease readibility
 enum StatsParams { W2 = 2, W32 = 32, D324 = 324, D936 = 936, NOT_USED = 0 };
 
-/// ButterflyBoards are 2 tables (one for each color) indexed by the move's from
-/// and to squares, see chessprogramming.wikispaces.com/Butterfly+Boards
-typedef Stats<int16_t, W32, D324, COLOR_NB, int(SQUARE_NB) * int(SQUARE_NB)> ButterflyBoards;
-
-/// PieceToBoards are addressed by a move's [piece][to] information
-typedef Stats<int16_t, W32, D936, PIECE_NB, SQUARE_NB> PieceToBoards;
-
-/// CapturePieceToBoards are addressed by a move's [piece][to][captured piece type] information
-typedef Stats<int16_t, W2, D324, PIECE_NB, SQUARE_NB, PIECE_TYPE_NB> CapturePieceToBoards;
-
 /// ButterflyHistory records how often quiet moves have been successful or
 /// unsuccessful during the current search, and is used for reduction and move
-/// ordering decisions. It uses ButterflyBoards as backing store.
-struct ButterflyHistory : public ButterflyBoards {
-
-  void update(Color c, Move m, int bonus) {
-    ButterflyBoards::update((*this)[c][from_to(m)], bonus);
-  }
-};
-
-/// PieceToHistory is like ButterflyHistory, but is based on PieceToBoards
-struct PieceToHistory : public PieceToBoards {
-
-  void update(Piece pc, Square to, int bonus) {
-    PieceToBoards::update((*this)[pc][to], bonus);
-  }
-};
-
-/// CapturePieceToHistory is like PieceToHistory, but is based on CapturePieceToBoards
-struct CapturePieceToHistory : public CapturePieceToBoards {
-
-  void update(Piece pc, Square to, PieceType captured, int bonus) {
-    CapturePieceToBoards::update((*this)[pc][to][captured], bonus);
-  }
-};
+/// ordering decisions. It uses 2 tables (one for each color) indexed by
+/// the move's from and to squares, see chessprogramming.wikispaces.com/Butterfly+Boards
+typedef Stats<int16_t, W32, D324, COLOR_NB, int(SQUARE_NB) * int(SQUARE_NB)> ButterflyHistory;
 
 /// CounterMoveHistory stores counter moves indexed by [piece][to] of the previous
 /// move, see chessprogramming.wikispaces.com/Countermove+Heuristic
 typedef Stats<Move, W32, NOT_USED, PIECE_NB, SQUARE_NB> CounterMoveHistory;
 
-/// ContinuationHistory is the history of a given pair of moves, usually the
-/// current one given a previous one. History table is based on PieceToBoards
-/// instead of ButterflyBoards.
+/// CapturePieceToHistory is addressed by a move's [piece][to][captured piece type]
+typedef Stats<int16_t, W2, D324, PIECE_NB, SQUARE_NB, PIECE_TYPE_NB> CapturePieceToHistory;
+
+/// PieceToHistory is like ButterflyHistory but is addressed by a move's [piece][to]
+typedef Stats<int16_t, W32, D936, PIECE_NB, SQUARE_NB> PieceToHistory;
+
+/// ContinuationHistory is the combined history of a given pair of moves, usually
+/// the current one given a previous one. The nested history table is based on
+/// PieceToHistory instead of ButterflyBoards.
 typedef Stats<PieceToHistory, W32, NOT_USED, PIECE_NB, SQUARE_NB> ContinuationHistory;
 
 
