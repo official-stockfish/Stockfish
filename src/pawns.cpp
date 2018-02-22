@@ -92,7 +92,7 @@ namespace {
     const Direction Up   = (Us == WHITE ? NORTH      : SOUTH);
 
     Bitboard b, neighbours, stoppers, doubled, supported, phalanx;
-    Bitboard lever, leverPush;
+    Bitboard lever;
     Square s;
     bool opposed, backward;
     Score score = SCORE_ZERO;
@@ -122,7 +122,6 @@ namespace {
         opposed    = theirPawns & forward_file_bb(Us, s);
         stoppers   = theirPawns & passed_pawn_mask(Us, s);
         lever      = theirPawns & PawnAttacks[Us][s];
-        leverPush  = theirPawns & PawnAttacks[Us][s + Up];
         doubled    = ourPawns   & (s - Up);
         neighbours = ourPawns   & adjacent_files_bb(f);
         phalanx    = neighbours & rank_bb(s);
@@ -149,10 +148,9 @@ namespace {
         // full attack info to evaluate them. Include also not passed pawns
         // which could become passed after one or two pawn pushes when are
         // not attacked more times than defended.
-        if (   !(stoppers ^ lever ^ leverPush)
+        if (   !(stoppers ^ lever)
             && !(ourPawns & forward_file_bb(Us, s))
-            && popcount(supported) >= popcount(lever)
-            && popcount(phalanx)   >= popcount(leverPush))
+            && popcount(supported) >= popcount(lever))
             e->passedPawns[Us] |= s;
 
         else if (   stoppers == SquareBB[s + Up]
