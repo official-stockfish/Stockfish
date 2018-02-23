@@ -510,9 +510,9 @@ namespace {
   template<Tracing T> template<Color Us>
   Score Evaluation<T>::threats() const {
 
-    const Color     Them     = (Us == WHITE ? BLACK      : WHITE);
-    const Direction Up       = (Us == WHITE ? NORTH      : SOUTH);
-    const Bitboard  TRank3BB = (Us == WHITE ? Rank3BB    : Rank6BB);
+    const Color     Them     = (Us == WHITE ? BLACK   : WHITE);
+    const Direction Up       = (Us == WHITE ? NORTH   : SOUTH);
+    const Bitboard  TRank3BB = (Us == WHITE ? Rank3BB : Rank6BB);
 
     Bitboard b, weak, defended, nonPawnEnemies, stronglyProtected, safeThreats;
     Score score = SCORE_ZERO;

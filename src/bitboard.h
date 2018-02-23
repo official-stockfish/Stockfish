@@ -160,14 +160,16 @@ constexpr Bitboard shift(Bitboard b) {
         : 0;
 }
 
+
 /// pawn_attacks_bb() returns the pawn attacks for the given color from the
 /// squares in the given bitboard.
 
-template<Color c>
+template<Color C>
 constexpr Bitboard pawn_attacks_bb(Bitboard b) {
-  return c == WHITE ? shift<NORTH_WEST>(b) | shift<NORTH_EAST>(b)
+  return C == WHITE ? shift<NORTH_WEST>(b) | shift<NORTH_EAST>(b)
                     : shift<SOUTH_WEST>(b) | shift<SOUTH_EAST>(b);
 }
+
 
 /// adjacent_files_bb() returns a bitboard representing all the squares on the
 /// adjacent files of the given one.
@@ -187,9 +189,9 @@ inline Bitboard between_bb(Square s1, Square s2) {
 }
 
 
-/// forward_ranks_bb() returns a bitboard representing all the squares on all the ranks
-/// in front of the given one, from the point of view of the given color. For
-/// instance, forward_ranks_bb(BLACK, SQ_D3) will return the 16 squares on ranks 1 and 2.
+/// forward_ranks_bb() returns a bitboard representing the squares on all the ranks
+/// in front of the given one, from the point of view of the given color. For instance,
+/// forward_ranks_bb(BLACK, SQ_D3) will return the 16 squares on ranks 1 and 2.
 
 inline Bitboard forward_ranks_bb(Color c, Square s) {
   return ForwardRanksBB[c][rank_of(s)];

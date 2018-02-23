@@ -88,8 +88,8 @@ namespace {
   template<Color Us>
   Score evaluate(const Position& pos, Pawns::Entry* e) {
 
-    const Color     Them = (Us == WHITE ? BLACK      : WHITE);
-    const Direction Up   = (Us == WHITE ? NORTH      : SOUTH);
+    const Color     Them = (Us == WHITE ? BLACK : WHITE);
+    const Direction Up   = (Us == WHITE ? NORTH : SOUTH);
 
     Bitboard b, neighbours, stoppers, doubled, supported, phalanx;
     Bitboard lever, leverPush;
