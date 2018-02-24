@@ -603,7 +603,7 @@ namespace {
 
             if (err != TB::ProbeState::FAIL)
             {
-                thisThread->tbHits.fetch_add(1, std::memory_order_relaxed);
+                thisThread->increment(&Thread::tbHits);
 
                 int drawScore = TB::UseRule50 ? 1 : 0;
 
