@@ -260,6 +260,11 @@ Value Entry::shelter_storm(const Position& pos, Square ksq) {
                   rkUs   == RANK_1                                          ? Unopposed :
                   rkThem == rkUs + 1                                        ? BlockedByPawn  : Unblocked]
                  [d][rkThem];
+
+      // Less penalty for storming pawn at a6/h6 if surrounded by opponent pawns at a7/h7 and b6/g6
+      if (    d == 0 && rkThem == RANK_3 && rkThem == rkUs + 1
+          && (ourPawns & make_square(f == FILE_H ? FILE_G : FILE_B, relative_rank(Us, rkThem))))
+          safety += 100;
   }
 
   return safety;
