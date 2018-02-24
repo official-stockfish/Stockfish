@@ -1,0 +1,28 @@
+vector<int> localOptimize(const vector<int>&initialGuess) {
+const int nParams = initialGuess.size ();
+double bestE=E(initialGuess);
+vector<int>bestParValues = initialGuess;
+bool improved=true;
+while ( improved ) {
+improved=false;
+for (int pi=0; pi<nParams;pi++) {
+vector<int> newParValues=bestParValues
+newParValues [pi] +=1;
+double newE=E(newParValues);
+if (newE<bestE) {
+bestE=newE;
+bestParValues=newParValues;
+improved=true;
+} else {
+newParValues [pi]-=2;
+newE=E(newParValues);
+if (newE<bestE) {
+bestE=newE;
+bestParValues=newParValues;
+improved=true;
+}
+}
+}
+}
+return bestParValues;
+}
