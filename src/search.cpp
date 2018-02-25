@@ -742,10 +742,17 @@ namespace {
                 assert(depth >= 5 * ONE_PLY);
 
                 pos.do_move(move, st);
-                value = -search<NonPV>(pos, ss+1, -rbeta, -rbeta+1, depth - 4 * ONE_PLY, !cutNode, false);
+                
+                // Perform a preliminary depth one search to verify that the move holds
+                value = -search<NonPV>(pos, ss+1, -rbeta, -rbeta+1, ONE_PLY, !cutNode, true);
+                
+                // If the preliminary search held, perform the regular reduced search
+                if (value >= rbeta)
+                    value = -search<NonPV>(pos, ss+1, -rbeta, -rbeta+1, depth - 4 * ONE_PLY, !cutNode, false);
+                
                 pos.undo_move(move);
                 if (value >= rbeta)
-                    return value;
+                    return rbeta;
             }
     }
 
