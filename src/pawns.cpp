@@ -164,6 +164,9 @@ namespace {
                     e->passedPawns[Us] |= s;
         }
 
+        if (e->passedPawns[Us] & s)
+            e->asymmetry++;
+
         // Score this pawn
         if (supported | phalanx)
             score += Connected[opposed][bool(phalanx)][popcount(supported)][relative_rank(Us, s)];
@@ -220,10 +223,11 @@ Entry* probe(const Position& pos) {
       return e;
 
   e->key = key;
+  e->asymmetry = 0;
   e->scores[WHITE] = evaluate<WHITE>(pos, e);
   e->scores[BLACK] = evaluate<BLACK>(pos, e);
-  e->asymmetry = popcount(e->semiopenFiles[WHITE] ^ e->semiopenFiles[BLACK]);
-  e->openFiles = popcount(e->semiopenFiles[WHITE] & e->semiopenFiles[BLACK]);
+  e->asymmetry += popcount(e->semiopenFiles[WHITE] ^ e->semiopenFiles[BLACK]);
+  e->openFiles  = popcount(e->semiopenFiles[WHITE] & e->semiopenFiles[BLACK]);
 
   return e;
 }
