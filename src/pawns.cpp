@@ -266,7 +266,7 @@ Value Entry::shelter_storm(const Position& pos, Square ksq) {
           && (ourPawns   & make_square(File(f == FILE_H ? f - 1 : f + 1), relative_rank(Us, rkThem)))
           && (ourPawns   & make_square(File(f == FILE_H ? f - 2 : f + 2), relative_rank(Us, rkUs  )))
           && (theirPawns & make_square(File(f == FILE_H ? f - 2 : f + 2), relative_rank(Us, rkThem))))
-          safety += 200;
+          safety += 300;
   }
 
   return safety;
