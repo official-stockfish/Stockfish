@@ -226,7 +226,6 @@ Move MovePicker::next_move(bool skipQuiets) {
          while (cur < endMoves)
          {
              move = *cur++;
-
              if (   move != ttMove
                  && move != killers[0]
                  && move != killers[1]
