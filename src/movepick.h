@@ -53,15 +53,18 @@ struct Stats : public std::array<Stats<T, W, D, Sizes...>, Size>
 template <typename T, int W, int D, int Size>
 struct Stats<T, W, D, Size> : public std::array<T, Size> {};
 
+/// Different tables use different W/D parameter, name them to ease readibility
+enum StatsParams { W2 = 2, W32 = 32, D324 = 324, D936 = 936, NOT_USED = 0 };
+
 /// ButterflyBoards are 2 tables (one for each color) indexed by the move's from
 /// and to squares, see chessprogramming.wikispaces.com/Butterfly+Boards
-typedef Stats<int16_t, 32, 324, COLOR_NB, int(SQUARE_NB) * int(SQUARE_NB)> ButterflyBoards;
+typedef Stats<int16_t, W32, D324, COLOR_NB, int(SQUARE_NB) * int(SQUARE_NB)> ButterflyBoards;
 
 /// PieceToBoards are addressed by a move's [piece][to] information
-typedef Stats<int16_t, 32, 936, PIECE_NB, SQUARE_NB> PieceToBoards;
+typedef Stats<int16_t, W32, D936, PIECE_NB, SQUARE_NB> PieceToBoards;
 
 /// CapturePieceToBoards are addressed by a move's [piece][to][captured piece type] information
-typedef Stats<int16_t, 2, 324, PIECE_NB, SQUARE_NB, PIECE_TYPE_NB> CapturePieceToBoards;
+typedef Stats<int16_t, W2, D324, PIECE_NB, SQUARE_NB, PIECE_TYPE_NB> CapturePieceToBoards;
 
 /// ButterflyHistory records how often quiet moves have been successful or
 /// unsuccessful during the current search, and is used for reduction and move
@@ -91,12 +94,12 @@ struct CapturePieceToHistory : public CapturePieceToBoards {
 
 /// CounterMoveHistory stores counter moves indexed by [piece][to] of the previous
 /// move, see chessprogramming.wikispaces.com/Countermove+Heuristic
-typedef Stats<Move, 32, 0, PIECE_NB, SQUARE_NB> CounterMoveHistory;
+typedef Stats<Move, W32, NOT_USED, PIECE_NB, SQUARE_NB> CounterMoveHistory;
 
 /// ContinuationHistory is the history of a given pair of moves, usually the
 /// current one given a previous one. History table is based on PieceToBoards
 /// instead of ButterflyBoards.
-typedef Stats<PieceToHistory, 32, 0, PIECE_NB, SQUARE_NB> ContinuationHistory;
+typedef Stats<PieceToHistory, W32, NOT_USED, PIECE_NB, SQUARE_NB> ContinuationHistory;
 
 
 /// MovePicker class is used to pick one pseudo legal move at a time from the
