@@ -25,9 +25,9 @@
 namespace {
 
   enum Stages {
-    MAIN_SEARCH, CAPTURES_INIT, GOOD_CAPTURES, KILLERS, COUNTERMOVE, QUIET_INIT, QUIET, BAD_CAPTURES,
+    MAIN_SEARCH, CAPTURES_INIT, GOOD_CAPTURES, KILLER0, KILLER1, COUNTERMOVE, QUIET_INIT, QUIET, BAD_CAPTURES,
     EVASION, EVASIONS_INIT, ALL_EVASIONS,
-    PROBCUT, PROBCUT_INIT, PROBCUT_CAPTURES,
+    PROBCUT, PROBCUT_CAPTURES_INIT, PROBCUT_CAPTURES,
     QSEARCH, QCAPTURES_INIT, QCAPTURES, QCHECKS, QSEARCH_RECAPTURES, QRECAPTURES
   };
 
@@ -161,11 +161,16 @@ Move MovePicker::next_move(bool skipQuiets) {
       return ttMove;
 
   case CAPTURES_INIT:
+  case PROBCUT_CAPTURES_INIT:
+  case QCAPTURES_INIT:
+  case QSEARCH_RECAPTURES:
       endBadCaptures = cur = moves;
       endMoves = generate<CAPTURES>(pos, cur);
       score<CAPTURES>();
       ++stage;
-      /* fallthrough */
+
+      // Rebranch at the top of the switch via a recursive call
+      return next_move(skipQuiets);
 
   case GOOD_CAPTURES:
       while (cur < endMoves)
@@ -180,24 +185,20 @@ Move MovePicker::next_move(bool skipQuiets) {
               *endBadCaptures++ = move;
           }
       }
-
       ++stage;
-      move = killers[0];  // First killer move
-      if (    move != MOVE_NONE
-          &&  move != ttMove
-          &&  pos.pseudo_legal(move)
-          && !pos.capture(move))
-          return move;
       /* fallthrough */
 
-  case KILLERS:
-      ++stage;
-      move = killers[1]; // Second killer move
-      if (    move != MOVE_NONE
-          &&  move != ttMove
-          &&  pos.pseudo_legal(move)
-          && !pos.capture(move))
-          return move;
+  case KILLER0:
+  case KILLER1:
+      do
+      {
+          move = killers[++stage - KILLER1];
+          if (    move != MOVE_NONE
+              &&  move != ttMove
+              &&  pos.pseudo_legal(move)
+              && !pos.capture(move))
+              return move;
+      } while (stage <= KILLER1);
       /* fallthrough */
 
   case COUNTERMOVE:
@@ -257,13 +258,6 @@ Move MovePicker::next_move(bool skipQuiets) {
       }
       break;
 
-  case PROBCUT_INIT:
-      cur = moves;
-      endMoves = generate<CAPTURES>(pos, cur);
-      score<CAPTURES>();
-      ++stage;
-      /* fallthrough */
-
   case PROBCUT_CAPTURES:
       while (cur < endMoves)
       {
@@ -273,13 +267,6 @@ Move MovePicker::next_move(bool skipQuiets) {
               return move;
       }
       break;
-
-  case QCAPTURES_INIT:
-      cur = moves;
-      endMoves = generate<CAPTURES>(pos, cur);
-      score<CAPTURES>();
-      ++stage;
-      /* fallthrough */
 
   case QCAPTURES:
       while (cur < endMoves)
@@ -303,12 +290,6 @@ Move MovePicker::next_move(bool skipQuiets) {
               return move;
       }
       break;
-
-  case QSEARCH_RECAPTURES:
-      cur = moves;
-      endMoves = generate<CAPTURES>(pos, cur);
-      ++stage;
-      /* fallthrough */
 
   case QRECAPTURES:
       while (cur < endMoves)
