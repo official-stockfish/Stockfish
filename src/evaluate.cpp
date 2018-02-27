@@ -880,7 +880,8 @@ namespace {
         Trace::add(TOTAL, score);
     }
 
-    return pos.side_to_move() == WHITE ? v : -v; // Side to move point of view
+    return  (pos.side_to_move() == WHITE ? v : -v) // Side to move point of view
+           + Eval::Tempo;
   }
 
 } // namespace
@@ -890,7 +891,7 @@ namespace {
 /// evaluation of the position from the point of view of the side to move.
 
 Value Eval::evaluate(const Position& pos) {
-  return Evaluation<NO_TRACE>(pos).value() + Eval::Tempo;
+  return Evaluation<NO_TRACE>(pos).value();
 }
 
 
@@ -904,7 +905,7 @@ std::string Eval::trace(const Position& pos) {
 
   Eval::Contempt = SCORE_ZERO; // Reset any dynamic contempt
 
-  Value v = Evaluation<TRACE>(pos).value() + Eval::Tempo;
+  Value v = Evaluation<TRACE>(pos).value();
 
   v = pos.side_to_move() == WHITE ? v : -v; // Trace scores are from white's point of view
 
