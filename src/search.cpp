@@ -514,9 +514,15 @@ namespace {
     Thread* thisThread = pos.this_thread();
     inCheck = pos.checkers();
     moveCount = captureCount = quietCount = ss->moveCount = 0;
-    ss->statScore = 0;
     bestValue = -VALUE_INFINITE;
     maxValue = VALUE_INFINITE;
+
+    // Initialize statScore to zero for the childs of the current position.
+    // So statScore is shared between sibling positions and only the first sibling
+    // starts with statScore = 0. Later siblings start with the last calculated
+    // statScore of the previous sibling. This influences in LMR the reduction rules
+    // which based on the statScore of parent position.
+    (ss+1)->statScore = 0;
 
     // Check for the available remaining time
     if (thisThread == Threads.main())
