@@ -464,7 +464,7 @@ const string Position::fen() const {
 
 Bitboard Position::slider_blockers(Bitboard sliders, Square s, Bitboard& pinners) const {
 
-  Bitboard result = 0;
+  Bitboard blockers = 0;
   pinners = 0;
 
   // Snipers are sliders that attack 's' when a piece is removed
@@ -476,14 +476,14 @@ Bitboard Position::slider_blockers(Bitboard sliders, Square s, Bitboard& pinners
     Square sniperSq = pop_lsb(&snipers);
     Bitboard b = between_bb(s, sniperSq) & pieces();
 
-    if (!more_than_one(b))
+    if (b && !more_than_one(b))
     {
-        result |= b;
+        blockers |= b;
         if (b & pieces(color_of(piece_on(s))))
             pinners |= sniperSq;
     }
   }
-  return result;
+  return blockers;
 }
 
 
@@ -540,7 +540,7 @@ bool Position::legal(Move m) const {
 
   // A non-king move is legal if and only if it is not pinned or it
   // is moving along the ray towards or away from the king.
-  return   !(pinned_pieces(us) & from)
+  return   !(blockers_for_king(us) & from)
         ||  aligned(from, to_sq(m), square<KING>(us));
 }
 
@@ -632,7 +632,7 @@ bool Position::gives_check(Move m) const {
       return true;
 
   // Is there a discovered check?
-  if (   (discovered_check_candidates() & from)
+  if (   (st->blockersForKing[~sideToMove] & from)
       && !aligned(from, to, square<KING>(~sideToMove)))
       return true;
 
