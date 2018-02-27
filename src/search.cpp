@@ -572,7 +572,7 @@ namespace {
             : ttHit    ? tte->move() : MOVE_NONE;
 
     // At non-PV nodes we check for an early TT cutoff
-    if ( (!PvNode || (ttValue != VALUE_NONE && thisThread != Threads.main() && ttValue >= beta + Value(thisThread->idx)))
+    if ( (!PvNode || (ttValue != VALUE_NONE && thisThread != Threads.main() && ttValue >= beta + 20/Value(thisThread->idx)))
         && ttHit
         && tte->depth() >= depth
         && ttValue != VALUE_NONE // Possible in case of TT access race
