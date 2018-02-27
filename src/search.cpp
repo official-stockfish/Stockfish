@@ -560,6 +560,13 @@ namespace {
     (ss+2)->killers[0] = (ss+2)->killers[1] = MOVE_NONE;
     Square prevSq = to_sq((ss-1)->currentMove);
 
+    // Initialize statScore to zero for the grandchilds of the current position.
+    // So statScore is shared between all grandchilds and only the first grandchild
+    // starts with statScore = 0. Later grandchilds start with the last calculated
+    // statScore of the previous grandchild. This influences in LMR the reduction rules
+    // which based on the statScore of parent position.
+    (ss+2)->statScore = 0;
+
     // Step 4. Transposition table lookup. We don't want the score of a partial
     // search to overwrite a previous full search TT value, so we use a different
     // position key in case of an excluded move.
