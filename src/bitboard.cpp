@@ -86,10 +86,15 @@ Square lsb(Bitboard b) {
 
 Square msb(Bitboard b) {
 
-   //msb of b = mantissa of a double representing b
-   union {double x; uint32_t y[2];};
-   x = b;
-   return Square((y[1] >> 20) - 1023);
+  //turn off all bits but the MSB, then return LSB
+  b |= (b >> 1);
+  b |= (b >> 2);
+  b |= (b >> 4);
+  b |= (b >> 8);
+  b |= (b >> 16);
+  b |= (b >> 32);
+
+  return lsb(b & ~(b >> 1));
 }
 
 #endif // ifdef NO_BSF
