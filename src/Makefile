@@ -279,35 +279,14 @@ ifeq ($(optimize),yes)
 	CXXFLAGS += -O3
 
 	ifeq ($(comp),gcc)
-
-		ifeq ($(KERNEL),Darwin)
-			ifeq ($(arch),i386)
-				CXXFLAGS += -mdynamic-no-pic
-			endif
-			ifeq ($(arch),x86_64)
-				CXXFLAGS += -mdynamic-no-pic
-			endif
-		endif
-
 		ifeq ($(OS), Android)
 			CXXFLAGS += -fno-gcse -mthumb -march=armv7-a -mfloat-abi=softfp
 		endif
 	endif
-
-	ifeq ($(comp),icc)
+	
+	ifeq ($(comp),$(filter $(comp),gcc clang icc))
 		ifeq ($(KERNEL),Darwin)
 			CXXFLAGS += -mdynamic-no-pic
-		endif
-	endif
-
-	ifeq ($(comp),clang)
-		ifeq ($(KERNEL),Darwin)
-			ifeq ($(arch),i386)
-				CXXFLAGS += -mdynamic-no-pic
-			endif
-			ifeq ($(arch),x86_64)
-				CXXFLAGS += -mdynamic-no-pic
-			endif
 		endif
 	endif
 endif

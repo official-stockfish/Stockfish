@@ -108,6 +108,13 @@ namespace {
   void update_quiet_stats(const Position& pos, Stack* ss, Move move, Move* quiets, int quietsCnt, int bonus);
   void update_capture_stats(const Position& pos, Move move, Move* captures, int captureCnt, int bonus);
 
+  inline bool gives_check(const Position& pos, Move move) {
+    Color us = pos.side_to_move();
+    return  type_of(move) == NORMAL && !(pos.blockers_for_king(~us) & pos.pieces(us))
+          ? pos.check_squares(type_of(pos.moved_piece(move))) & to_sq(move)
+          : pos.gives_check(move);
+  }
+
   // perft() is our utility to verify move generation. All the leaf nodes up
   // to the given depth are generated and counted, and the sum is returned.
   template<bool Root>
@@ -823,10 +830,7 @@ moves_loop: // When in check, search starts from here
       extension = DEPTH_ZERO;
       captureOrPromotion = pos.capture_or_promotion(move);
       movedPiece = pos.moved_piece(move);
-
-      givesCheck =  type_of(move) == NORMAL && !pos.discovered_check_candidates()
-                  ? pos.check_squares(type_of(movedPiece)) & to_sq(move)
-                  : pos.gives_check(move);
+      givesCheck = gives_check(pos, move);
 
       moveCountPruning =   depth < 16 * ONE_PLY
                         && moveCount >= FutilityMoveCounts[improving][depth / ONE_PLY];
@@ -1238,9 +1242,7 @@ moves_loop: // When in check, search starts from here
     {
       assert(is_ok(move));
 
-      givesCheck =  type_of(move) == NORMAL && !pos.discovered_check_candidates()
-                  ? pos.check_squares(type_of(pos.moved_piece(move))) & to_sq(move)
-                  : pos.gives_check(move);
+      givesCheck = gives_check(pos, move);
 
       moveCount++;
 
