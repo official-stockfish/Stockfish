@@ -49,12 +49,12 @@ namespace {
   const uint64_t DeBruijn64 = 0x3F79D71B4CB0A89ULL;
   const uint32_t DeBruijn32 = 0x783A9B23;
 
-  int MSBTable[256];            // To implement software msb()
   Square BSFTable[SQUARE_NB];   // To implement software bitscan
   Bitboard RookTable[0x19000];  // To store rook attacks
   Bitboard BishopTable[0x1480]; // To store bishop attacks
 
   void init_magics(Bitboard table[], Magic magics[], Direction directions[]);
+
 
   // bsf_index() returns the index into BSFTable[] to look up the bitscan. Uses
   // Matt Taylor's folding for 32 bit case, extended to 64 bit by Kim Walisch.
@@ -64,7 +64,6 @@ namespace {
     return Is64Bit ? (b * DeBruijn64) >> 58
                    : ((unsigned(b) ^ unsigned(b >> 32)) * DeBruijn32) >> 26;
   }
-
 
   // popcount16() counts the non-zero bits using SWAR-Popcount algorithm
 
@@ -87,31 +86,10 @@ Square lsb(Bitboard b) {
 
 Square msb(Bitboard b) {
 
-  assert(b);
-  unsigned b32;
-  int result = 0;
-
-  if (b > 0xFFFFFFFF)
-  {
-      b >>= 32;
-      result = 32;
-  }
-
-  b32 = unsigned(b);
-
-  if (b32 > 0xFFFF)
-  {
-      b32 >>= 16;
-      result += 16;
-  }
-
-  if (b32 > 0xFF)
-  {
-      b32 >>= 8;
-      result += 8;
-  }
-
-  return Square(result + MSBTable[b32]);
+   //msb of b = mantissa of a double representing b
+   union {double x; uint32_t y[2];};
+   x = b;
+   return Square((y[1] >> 20) - 1023);
 }
 
 #endif // ifdef NO_BSF
@@ -149,9 +127,6 @@ void Bitboards::init() {
       SquareBB[s] = 1ULL << s;
       BSFTable[bsf_index(SquareBB[s])] = s;
   }
-
-  for (Bitboard b = 2; b < 256; ++b)
-      MSBTable[b] = MSBTable[b - 1] + !more_than_one(b);
 
   for (File f = FILE_A; f <= FILE_H; ++f)
       FileBB[f] = f > FILE_A ? FileBB[f - 1] << 1 : FileABB;
