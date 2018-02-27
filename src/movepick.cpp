@@ -28,7 +28,7 @@ namespace {
     MAIN_SEARCH, CAPTURES_INIT, GOOD_CAPTURES, KILLER0, KILLER1, COUNTERMOVE, QUIET_INIT, QUIET, BAD_CAPTURES,
     EVASION, EVASIONS_INIT, ALL_EVASIONS,
     PROBCUT, PROBCUT_CAPTURES_INIT, PROBCUT_CAPTURES,
-    QSEARCH, QCAPTURES_INIT, QCAPTURES, QCHECKS, QSEARCH_RECAPTURES, QRECAPTURES
+    QSEARCH, QCAPTURES_INIT, QCAPTURES, QCHECKS
   };
 
   // partial_insertion_sort() sorts moves in descending order up to and including
@@ -79,24 +79,14 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const ButterflyHist
 
 /// MovePicker constructor for quiescence search
 MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const ButterflyHistory* mh,  const CapturePieceToHistory* cph, Square s)
-           : pos(p), mainHistory(mh), captureHistory(cph), depth(d) {
+           : pos(p), mainHistory(mh), captureHistory(cph), recaptureSquare(s), depth(d) {
 
   assert(d <= DEPTH_ZERO);
 
-  if (pos.checkers())
-      stage = EVASION;
-
-  else if (d > DEPTH_QS_RECAPTURES)
-      stage = QSEARCH;
-
-  else
-  {
-      stage = QSEARCH_RECAPTURES;
-      recaptureSquare = s;
-      return;
-  }
-
-  ttMove = ttm && pos.pseudo_legal(ttm) ? ttm : MOVE_NONE;
+  stage = pos.checkers() ? EVASION : QSEARCH;
+  ttMove =    ttm
+           && pos.pseudo_legal(ttm)
+           && (depth > DEPTH_QS_RECAPTURES || to_sq(ttm) == recaptureSquare) ? ttm : MOVE_NONE;
   stage += (ttMove == MOVE_NONE);
 }
 
@@ -112,7 +102,6 @@ MovePicker::MovePicker(const Position& p, Move ttm, Value th, const CapturePiece
           && pos.pseudo_legal(ttm)
           && pos.capture(ttm)
           && pos.see_ge(ttm, threshold) ? ttm : MOVE_NONE;
-
   stage += (ttMove == MOVE_NONE);
 }
 
@@ -163,7 +152,6 @@ Move MovePicker::next_move(bool skipQuiets) {
   case CAPTURES_INIT:
   case PROBCUT_CAPTURES_INIT:
   case QCAPTURES_INIT:
-  case QSEARCH_RECAPTURES:
       endBadCaptures = cur = moves;
       endMoves = generate<CAPTURES>(pos, cur);
       score<CAPTURES>();
@@ -223,16 +211,15 @@ Move MovePicker::next_move(bool skipQuiets) {
 
   case QUIET:
       if (!skipQuiets)
-         while (cur < endMoves)
-         {
-             move = *cur++;
-
-             if (   move != ttMove
-                 && move != killers[0]
-                 && move != killers[1]
-                 && move != countermove)
-                 return move;
-         }
+          while (cur < endMoves)
+          {
+              move = *cur++;
+              if (   move != ttMove
+                  && move != killers[0]
+                  && move != killers[1]
+                  && move != countermove)
+                  return move;
+          }
       ++stage;
       cur = moves; // Point to beginning of bad captures
       /* fallthrough */
@@ -272,7 +259,8 @@ Move MovePicker::next_move(bool skipQuiets) {
       while (cur < endMoves)
       {
           move = pick_best(cur++, endMoves);
-          if (move != ttMove)
+          if (   move != ttMove
+              && (depth > DEPTH_QS_RECAPTURES || to_sq(move) == recaptureSquare))
               return move;
       }
       if (depth <= DEPTH_QS_NO_CHECKS)
@@ -285,17 +273,8 @@ Move MovePicker::next_move(bool skipQuiets) {
   case QCHECKS:
       while (cur < endMoves)
       {
-          move = cur++->move;
-          if (move != ttMove)
-              return move;
-      }
-      break;
-
-  case QRECAPTURES:
-      while (cur < endMoves)
-      {
           move = *cur++;
-          if (to_sq(move) == recaptureSquare)
+          if (move != ttMove)
               return move;
       }
       break;
