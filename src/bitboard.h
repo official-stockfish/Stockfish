@@ -293,6 +293,7 @@ inline int popcount(Bitboard b) {
 
 /// lsb() and msb() return the least/most significant bit in a non-zero bitboard
 
+/*
 #if defined(__GNUC__)
 
 inline Square lsb(Bitboard b) {
@@ -322,13 +323,14 @@ inline Square msb(Bitboard b) {
 }
 
 #else
+*/
 
 #define NO_BSF // Fallback on software implementation for other cases
 
 Square lsb(Bitboard b);
 Square msb(Bitboard b);
 
-#endif
+//#endif
 
 
 /// pop_lsb() finds and clears the least significant bit in a non-zero bitboard
