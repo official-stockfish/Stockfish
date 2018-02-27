@@ -482,22 +482,20 @@ namespace {
             score -= make_score(kingDanger * kingDanger / 4096, kingDanger / 16);
         }
     }
+
+    Bitboard kf = KingFlank[file_of(ksq)];
+
     // Penalty when our king is on a pawnless flank
-    if (!(pos.pieces(PAWN) & KingFlank[file_of(ksq)]))
+    if (!(pos.pieces(PAWN) & kf))
         score -= PawnlessFlank;
 
-    // King tropism: firstly, find attacked squares in our king flank
-    b = attackedBy[Them][ALL_PIECES] & KingFlank[file_of(ksq)] & Camp;
+    // Find the squares that opponent attacks in our king flank, and the squares  
+    // which are attacked twice in that flank but not defended by our pawns.
+    b1 = attackedBy[Them][ALL_PIECES] & kf & Camp;
+    b2 = b1 & attackedBy2[Them] & ~attackedBy[Us][PAWN];
 
-    assert(((Us == WHITE ? b << 4 : b >> 4) & b) == 0);
-    assert(popcount(Us == WHITE ? b << 4 : b >> 4) == popcount(b));
-
-    // Secondly, add the squares which are attacked twice in that flank and
-    // which are not defended by our pawns.
-    b =  (Us == WHITE ? b << 4 : b >> 4)
-       | (b & attackedBy2[Them] & ~attackedBy[Us][PAWN]);
-
-    score -= CloseEnemies * popcount(b);
+    // King tropism, to anticipate slow motion attacks on our king
+    score -= CloseEnemies * (popcount(b1) + popcount(b2));
 
     if (T)
         Trace::add(KING, Us, score);
