@@ -28,36 +28,18 @@
 #include "position.h"
 #include "types.h"
 
-/// StatBoards is a generic 2-dimensional array used to store various statistics
-template<int Size1, int Size2, typename T = int16_t>
-struct StatBoards : public std::array<std::array<T, Size2>, Size1> {
+/// Stats is a generic N-dimensional array of T used to store various statistics
+template <typename T, int W, int D, int Size, int... Sizes>
+struct Stats : public std::array<Stats<T, W, D, Sizes...>, Size>
+{
+  T& front() { return (*this)[0].front(); }
 
   void fill(const T& v) {
-    T* p = &(*this)[0][0];
+    T* p = &front();
     std::fill(p, p + sizeof(*this) / sizeof(*p), v);
   }
 
-  void update(T& entry, int bonus, const int D) {
-
-    assert(abs(bonus) <= D); // Ensure range is [-32 * D, 32 * D]
-    assert(abs(32 * D) < (std::numeric_limits<T>::max)()); // Ensure we don't overflow
-
-    entry += bonus * 32 - entry * abs(bonus) / D;
-
-    assert(abs(entry) <= 32 * D);
-  }
-};
-
-/// StatCubes is a generic 3-dimensional array used to store various statistics
-template<int Size1, int Size2, int Size3, typename T = int16_t>
-struct StatCubes : public std::array<std::array<std::array<T, Size3>, Size2>, Size1> {
-
-  void fill(const T& v) {
-    T* p = &(*this)[0][0][0];
-    std::fill(p, p + sizeof(*this) / sizeof(*p), v);
-  }
-
-  void update(T& entry, int bonus, const int D, const int W) {
+  void update(T& entry, int bonus) {
 
     assert(abs(bonus) <= D); // Ensure range is [-W * D, W * D]
     assert(abs(W * D) < (std::numeric_limits<T>::max)()); // Ensure we don't overflow
@@ -68,15 +50,21 @@ struct StatCubes : public std::array<std::array<std::array<T, Size3>, Size2>, Si
   }
 };
 
+template <typename T, int W, int D, int Size>
+struct Stats<T, W, D, Size> : public std::array<T, Size> {};
+
+/// Different tables use different W/D parameter, name them to ease readibility
+enum StatsParams { W2 = 2, W32 = 32, D324 = 324, D936 = 936, NOT_USED = 0 };
+
 /// ButterflyBoards are 2 tables (one for each color) indexed by the move's from
 /// and to squares, see chessprogramming.wikispaces.com/Butterfly+Boards
-typedef StatBoards<COLOR_NB, int(SQUARE_NB) * int(SQUARE_NB)> ButterflyBoards;
+typedef Stats<int16_t, W32, D324, COLOR_NB, int(SQUARE_NB) * int(SQUARE_NB)> ButterflyBoards;
 
 /// PieceToBoards are addressed by a move's [piece][to] information
-typedef StatBoards<PIECE_NB, SQUARE_NB> PieceToBoards;
+typedef Stats<int16_t, W32, D936, PIECE_NB, SQUARE_NB> PieceToBoards;
 
 /// CapturePieceToBoards are addressed by a move's [piece][to][captured piece type] information
-typedef StatCubes<PIECE_NB, SQUARE_NB, PIECE_TYPE_NB> CapturePieceToBoards;
+typedef Stats<int16_t, W2, D324, PIECE_NB, SQUARE_NB, PIECE_TYPE_NB> CapturePieceToBoards;
 
 /// ButterflyHistory records how often quiet moves have been successful or
 /// unsuccessful during the current search, and is used for reduction and move
@@ -84,7 +72,7 @@ typedef StatCubes<PIECE_NB, SQUARE_NB, PIECE_TYPE_NB> CapturePieceToBoards;
 struct ButterflyHistory : public ButterflyBoards {
 
   void update(Color c, Move m, int bonus) {
-    StatBoards::update((*this)[c][from_to(m)], bonus, 324);
+    ButterflyBoards::update((*this)[c][from_to(m)], bonus);
   }
 };
 
@@ -92,7 +80,7 @@ struct ButterflyHistory : public ButterflyBoards {
 struct PieceToHistory : public PieceToBoards {
 
   void update(Piece pc, Square to, int bonus) {
-    StatBoards::update((*this)[pc][to], bonus, 936);
+    PieceToBoards::update((*this)[pc][to], bonus);
   }
 };
 
@@ -100,18 +88,18 @@ struct PieceToHistory : public PieceToBoards {
 struct CapturePieceToHistory : public CapturePieceToBoards {
 
   void update(Piece pc, Square to, PieceType captured, int bonus) {
-    StatCubes::update((*this)[pc][to][captured], bonus, 324, 2);
+    CapturePieceToBoards::update((*this)[pc][to][captured], bonus);
   }
 };
 
 /// CounterMoveHistory stores counter moves indexed by [piece][to] of the previous
 /// move, see chessprogramming.wikispaces.com/Countermove+Heuristic
-typedef StatBoards<PIECE_NB, SQUARE_NB, Move> CounterMoveHistory;
+typedef Stats<Move, W32, NOT_USED, PIECE_NB, SQUARE_NB> CounterMoveHistory;
 
 /// ContinuationHistory is the history of a given pair of moves, usually the
 /// current one given a previous one. History table is based on PieceToBoards
 /// instead of ButterflyBoards.
-typedef StatBoards<PIECE_NB, SQUARE_NB, PieceToHistory> ContinuationHistory;
+typedef Stats<PieceToHistory, W32, NOT_USED, PIECE_NB, SQUARE_NB> ContinuationHistory;
 
 
 /// MovePicker class is used to pick one pseudo legal move at a time from the
