@@ -728,7 +728,7 @@ namespace {
 
     // ...count safe + (behind & safe)
     int weight = pos.count<ALL_PIECES>(Us) - 2 * pe->open_files();
-	return make_score((popcount(safe) + popcount(behind & safe)) * weight * weight / 16, 0);
+    return make_score((popcount(safe) + popcount(behind & safe)) * weight * weight / 16, 0);
   }
 
 
