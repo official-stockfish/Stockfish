@@ -323,10 +323,7 @@ inline Square msb(Bitboard b) {
 
 #else
 
-#define NO_BSF // Fallback on software implementation for other cases
-
-Square lsb(Bitboard b);
-Square msb(Bitboard b);
+#error "Compiler not supported."
 
 #endif
 
