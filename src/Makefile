@@ -204,11 +204,12 @@ ifeq ($(COMP),clang)
 	comp=clang
 	CXX=clang++
 	CXXFLAGS += -pedantic -Wextra -Wshadow
-ifneq ($(KERNEL),Darwin)
-ifneq ($(KERNEL),OpenBSD)
-	LDFLAGS += -latomic
-endif
-endif
+
+    ifneq ($(KERNEL),Darwin)
+        ifneq ($(KERNEL),OpenBSD)
+	        LDFLAGS += -latomic
+        endif
+    endif
 
 	ifeq ($(ARCH),armv7)
 		ifeq ($(OS),Android)
