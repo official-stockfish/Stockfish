@@ -21,12 +21,6 @@
 ### Section 1. General Configuration
 ### ==========================================================================
 
-### Establish the operating system name
-KERNEL = $(shell uname -s)
-ifeq ($(KERNEL),Linux)
-	OS = $(shell uname -o)
-endif
-
 ### Executable name
 EXE = stockfish
 
@@ -41,6 +35,12 @@ PGOBENCH = ./$(EXE) bench
 OBJS = benchmark.o bitbase.o bitboard.o endgame.o evaluate.o main.o \
 	material.o misc.o movegen.o movepick.o pawns.o position.o psqt.o \
 	search.o thread.o timeman.o tt.o uci.o ucioption.o syzygy/tbprobe.o
+
+### Establish the operating system name
+KERNEL = $(shell uname -s)
+ifeq ($(KERNEL),Linux)
+	OS = $(shell uname -o)
+endif
 
 ### ==========================================================================
 ### Section 2. High-level Configuration
@@ -204,11 +204,12 @@ ifeq ($(COMP),clang)
 	comp=clang
 	CXX=clang++
 	CXXFLAGS += -pedantic -Wextra -Wshadow
-ifneq ($(KERNEL),Darwin)
-ifneq ($(KERNEL),OpenBSD)
-	LDFLAGS += -latomic
-endif
-endif
+
+	ifneq ($(KERNEL),Darwin)
+	ifneq ($(KERNEL),OpenBSD)
+		LDFLAGS += -latomic
+	endif
+	endif
 
 	ifeq ($(ARCH),armv7)
 		ifeq ($(OS),Android)
