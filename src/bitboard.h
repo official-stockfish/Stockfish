@@ -149,6 +149,16 @@ inline Bitboard file_bb(Square s) {
   return FileBB[file_of(s)];
 }
 
+/// make_bitboard<>() returns a bitboard from a variadic list of squares
+/// relative to the color specified by the template parameter.
+
+template<Color>
+constexpr Bitboard make_bitboard() { return 0; }
+
+template<Color C, typename ...Squares>
+constexpr Bitboard make_bitboard(Square s, Squares... squares) {
+  return (1ULL << relative_square(C, s)) | make_bitboard<C>(squares...);
+}
 
 /// shift() moves a bitboard one step along direction D. Mainly for pawns
 
