@@ -346,11 +346,13 @@ void Thread::search() {
               alpha = std::max(rootMoves[PVIdx].previousScore - delta,-VALUE_INFINITE);
               beta  = std::min(rootMoves[PVIdx].previousScore + delta, VALUE_INFINITE);
 
-              // Adjust contempt based on current bestValue
-              ct =  Options["Contempt"] * PawnValueEg / 100 // From centipawns
-                  + (bestValue >  500 ?  50:                // Dynamic contempt
-                     bestValue < -500 ? -50:
-                     bestValue / 10);
+              ct =  Options["Contempt"] * PawnValueEg / 100; // From centipawns
+
+              // Adjust contempt based on current bestValue (dynamic contempt)
+              int sign = (bestValue > 0) - (bestValue < 0);
+              ct +=  bestValue >  500 ?  70 :
+                     bestValue < -500 ? -70 :
+                     bestValue / 10 + sign * int(std::round(3.22 * log(1 + abs(bestValue))));
 
               Eval::Contempt = (us == WHITE ?  make_score(ct, ct / 2)
                                             : -make_score(ct, ct / 2));
