@@ -305,7 +305,9 @@ inline Square msb(Bitboard b) {
   return Square(63 ^ __builtin_clzll(b));
 }
 
-#elif defined(_WIN64) && defined(_MSC_VER)
+#elif defined(_MSC_VER)
+
+#ifdef _WIN64  // use 64-bit intrinsics
 
 inline Square lsb(Bitboard b) {
   assert(b);
@@ -320,6 +322,36 @@ inline Square msb(Bitboard b) {
   _BitScanReverse64(&idx, b);
   return (Square) idx;
 }
+
+#else  // use 32-bit intrinsics
+
+inline Square lsb(Bitboard b) {
+  assert(b);
+  unsigned long idx;
+
+  if (b & 0xffffffff) {
+      _BitScanForward(&idx, int32_t(b));
+      return Square(idx);
+  } else {
+      _BitScanForward(&idx, int32_t(b >> 32));
+      return Square(idx + 32);
+  }
+}
+
+inline Square msb(Bitboard b) {
+  assert(b);
+  unsigned long idx;
+
+  if (b >> 32) {
+      _BitScanReverse(&idx, int32_t(b >> 32));
+      return Square(idx + 32);
+  } else {
+      _BitScanReverse(&idx, int32_t(b));
+      return Square(idx);
+  }
+}
+
+#endif
 
 #else
 
