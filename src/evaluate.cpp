@@ -167,7 +167,7 @@ namespace {
   const Score CloseEnemies      = S(  7,  0);
   const Score Hanging           = S( 52, 30);
   const Score HinderPassedPawn  = S(  8,  1);
-  const Score KnightOnQueen     = S( 21, 11);
+  const Score KnightOnQueen     = S( 40,  0);
   const Score LongRangedBishop  = S( 22,  0);
   const Score MinorBehindPawn   = S( 16,  0);
   const Score PawnlessFlank     = S( 20, 80);
