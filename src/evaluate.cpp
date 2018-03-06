@@ -595,6 +595,17 @@ namespace {
 
     score += ThreatOnQueen * popcount(b & safeThreats);
 
+    // Bonus for knight threats on the next move towards enemy queen
+    if (pos.count<QUEEN>(Them) == 1)
+    {
+        b =  pos.attacks_from<KNIGHT>(pos.square<QUEEN>(Them)) 
+           & attackedBy[Us][KNIGHT]
+           & ~pos.pieces(Us, PAWN, KING)
+           & ~stronglyProtected;
+
+        score += ThreatOnQueen * popcount(b);
+    }
+
     if (T)
         Trace::add(THREAT, Us, score);
 
