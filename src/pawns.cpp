@@ -236,11 +236,13 @@ Entry* probe(const Position& pos) {
 template<Color Us>
 Value Entry::shelter_storm(const Position& pos, Square ksq) {
 
-  const Color Them = (Us == WHITE ? BLACK : WHITE);
-  const Bitboard ShelterMask = (Us == WHITE ? 1ULL << SQ_A2 | 1ULL << SQ_B3 | 1ULL << SQ_C2 | 1ULL << SQ_F2 | 1ULL << SQ_G3 | 1ULL << SQ_H2
-                                            : 1ULL << SQ_A7 | 1ULL << SQ_B6 | 1ULL << SQ_C7 | 1ULL << SQ_F7 | 1ULL << SQ_G6 | 1ULL << SQ_H7);
-  const Bitboard StormMask   = (Us == WHITE ? 1ULL << SQ_A3 | 1ULL << SQ_C3 | 1ULL << SQ_F3 | 1ULL << SQ_H3
-                                            : 1ULL << SQ_A6 | 1ULL << SQ_C6 | 1ULL << SQ_F6 | 1ULL << SQ_H6);
+  constexpr Color Them = (Us == WHITE ? BLACK : WHITE);
+  constexpr Bitboard ShelterMask = 
+                Us == WHITE ? make_bitboard(SQ_A2, SQ_B3, SQ_C2, SQ_F2, SQ_G3, SQ_H2)
+                            : make_bitboard(SQ_A7, SQ_B6, SQ_C7, SQ_F7, SQ_G6, SQ_H7);
+  constexpr Bitboard StormMask =
+                Us == WHITE ? make_bitboard(SQ_A3, SQ_C3, SQ_F3, SQ_H3)
+                            : make_bitboard(SQ_A6, SQ_C6, SQ_F6, SQ_H6);
 
   enum { BlockedByKing, Unopposed, BlockedByPawn, Unblocked };
 
