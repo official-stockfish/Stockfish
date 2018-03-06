@@ -167,6 +167,7 @@ namespace {
   const Score CloseEnemies      = S(  7,  0);
   const Score Hanging           = S( 52, 30);
   const Score HinderPassedPawn  = S(  8,  1);
+  const Score KnightOnQueen     = S( 21, 11);
   const Score LongRangedBishop  = S( 22,  0);
   const Score MinorBehindPawn   = S( 16,  0);
   const Score PawnlessFlank     = S( 20, 80);
@@ -600,10 +601,10 @@ namespace {
     {
         b =  pos.attacks_from<KNIGHT>(pos.square<QUEEN>(Them)) 
            & attackedBy[Us][KNIGHT]
-           & ~pos.pieces(Us)
+           & ~pos.pieces(Us, PAWN, KING)
            & ~stronglyProtected;
 
-        score += ThreatOnQueen * popcount(b);
+        score += KnightOnQueen * popcount(b);
     }
 
     if (T)
