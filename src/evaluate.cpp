@@ -167,7 +167,7 @@ namespace {
   const Score CloseEnemies      = S(  7,  0);
   const Score Hanging           = S( 52, 30);
   const Score HinderPassedPawn  = S(  8,  1);
-  const Score KnightOnQueen     = S( 40,  0);
+  const Score KnightOnQueen     = S( 21, 11);
   const Score LongRangedBishop  = S( 22,  0);
   const Score MinorBehindPawn   = S( 16,  0);
   const Score PawnlessFlank     = S( 20, 80);
@@ -490,7 +490,7 @@ namespace {
     if (!(pos.pieces(PAWN) & kf))
         score -= PawnlessFlank;
 
-    // Find the squares that opponent attacks in our king flank, and the squares  
+    // Find the squares that opponent attacks in our king flank, and the squares
     // which are attacked twice in that flank but not defended by our pawns.
     b1 = attackedBy[Them][ALL_PIECES] & kf & Camp;
     b2 = b1 & attackedBy2[Them] & ~attackedBy[Us][PAWN];
@@ -599,7 +599,7 @@ namespace {
     // Bonus for knight threats on the next move towards enemy queen
     if (pos.count<QUEEN>(Them) == 1)
     {
-        b =  pos.attacks_from<KNIGHT>(pos.square<QUEEN>(Them)) 
+        b =  pos.attacks_from<KNIGHT>(pos.square<QUEEN>(Them))
            & attackedBy[Us][KNIGHT]
            & ~pos.pieces(Us, PAWN, KING)
            & ~stronglyProtected;
