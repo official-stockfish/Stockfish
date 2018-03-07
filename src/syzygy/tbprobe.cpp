@@ -1569,14 +1569,7 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves) {
 // A return value false indicates that not all probes were successful.
 bool Tablebases::root_probe_wdl(Position& pos, Search::RootMoves& rootMoves) {
 
-    static const int wdl_to_rank[] = { -1000, -899, 0, 899, 1000 };
-    static const Value wdl_to_Value[] = {
-        -VALUE_MATE + MAX_PLY + 1,
-        VALUE_DRAW - 2,
-        VALUE_DRAW,
-        VALUE_DRAW + 2,
-        VALUE_MATE - MAX_PLY - 1
-    };
+    static const int WDL_to_rank[] = { -1000, -899, 0, 899, 1000 };
 
     ProbeState result;
     StateInfo st;
@@ -1595,12 +1588,12 @@ bool Tablebases::root_probe_wdl(Position& pos, Search::RootMoves& rootMoves) {
         if (result == FAIL)
             return false;
 
-        m.TBRank = wdl_to_rank[wdl + 2];
+        m.TBRank = WDL_to_rank[wdl + 2];
 
         if (!rule50)
             wdl =  wdl > WDLDraw ? WDLWin
                  : wdl < WDLDraw ? WDLLoss : WDLDraw;
-        m.TBScore = wdl_to_Value[wdl + 2];
+        m.TBScore = WDL_to_value[wdl + 2];
     }
 
     return true;
