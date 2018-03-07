@@ -19,7 +19,6 @@
 */
 
 #include <cassert>
-#include <iostream>
 
 #include "movepick.h"
 
@@ -175,6 +174,8 @@ Move MovePicker::next_move(bool skipQuiets) {
           }
       }
       ++stage;
+
+      //if the countermove is the same as a killer, skip it
       if ((specials[2] == specials[0]) || (specials[2] == specials[1]))
          specials[2] = MOVE_NONE;
       /* fallthrough */
