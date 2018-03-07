@@ -99,8 +99,8 @@ namespace {
     const Bitboard  TRank7BB = (Us == WHITE ? Rank7BB    : Rank2BB);
     const Bitboard  TRank3BB = (Us == WHITE ? Rank3BB    : Rank6BB);
     const Direction Up       = (Us == WHITE ? NORTH      : SOUTH);
-    const Direction Right    = (Us == WHITE ? NORTH_EAST : SOUTH_WEST);
-    const Direction Left     = (Us == WHITE ? NORTH_WEST : SOUTH_EAST);
+    const Direction UpRight  = (Us == WHITE ? NORTH_EAST : SOUTH_WEST);
+    const Direction UpLeft   = (Us == WHITE ? NORTH_WEST : SOUTH_EAST);
 
     Bitboard emptySquares;
 
@@ -135,7 +135,7 @@ namespace {
             // if the pawn is not on the same file as the enemy king, because we
             // don't generate captures. Note that a possible discovery check
             // promotion has been already generated amongst the captures.
-            Bitboard dcCandidates = pos.discovered_check_candidates();
+            Bitboard dcCandidates = pos.blockers_for_king(Them);
             if (pawnsNotOn7 & dcCandidates)
             {
                 Bitboard dc1 = shift<Up>(pawnsNotOn7 & dcCandidates) & emptySquares & ~file_bb(ksq);
@@ -168,38 +168,38 @@ namespace {
         if (Type == EVASIONS)
             emptySquares &= target;
 
-        Bitboard b1 = shift<Right>(pawnsOn7) & enemies;
-        Bitboard b2 = shift<Left >(pawnsOn7) & enemies;
-        Bitboard b3 = shift<Up   >(pawnsOn7) & emptySquares;
+        Bitboard b1 = shift<UpRight>(pawnsOn7) & enemies;
+        Bitboard b2 = shift<UpLeft >(pawnsOn7) & enemies;
+        Bitboard b3 = shift<Up     >(pawnsOn7) & emptySquares;
 
         Square ksq = pos.square<KING>(Them);
 
         while (b1)
-            moveList = make_promotions<Type, Right>(moveList, pop_lsb(&b1), ksq);
+            moveList = make_promotions<Type, UpRight>(moveList, pop_lsb(&b1), ksq);
 
         while (b2)
-            moveList = make_promotions<Type, Left >(moveList, pop_lsb(&b2), ksq);
+            moveList = make_promotions<Type, UpLeft >(moveList, pop_lsb(&b2), ksq);
 
         while (b3)
-            moveList = make_promotions<Type, Up   >(moveList, pop_lsb(&b3), ksq);
+            moveList = make_promotions<Type, Up     >(moveList, pop_lsb(&b3), ksq);
     }
 
     // Standard and en-passant captures
     if (Type == CAPTURES || Type == EVASIONS || Type == NON_EVASIONS)
     {
-        Bitboard b1 = shift<Right>(pawnsNotOn7) & enemies;
-        Bitboard b2 = shift<Left >(pawnsNotOn7) & enemies;
+        Bitboard b1 = shift<UpRight>(pawnsNotOn7) & enemies;
+        Bitboard b2 = shift<UpLeft >(pawnsNotOn7) & enemies;
 
         while (b1)
         {
             Square to = pop_lsb(&b1);
-            *moveList++ = make_move(to - Right, to);
+            *moveList++ = make_move(to - UpRight, to);
         }
 
         while (b2)
         {
             Square to = pop_lsb(&b2);
-            *moveList++ = make_move(to - Left, to);
+            *moveList++ = make_move(to - UpLeft, to);
         }
 
         if (pos.ep_square() != SQ_NONE)
@@ -241,7 +241,7 @@ namespace {
                 && !(PseudoAttacks[Pt][from] & target & pos.check_squares(Pt)))
                 continue;
 
-            if (pos.discovered_check_candidates() & from)
+            if (pos.blockers_for_king(~us) & from)
                 continue;
         }
 
@@ -336,7 +336,7 @@ ExtMove* generate<QUIET_CHECKS>(const Position& pos, ExtMove* moveList) {
   assert(!pos.checkers());
 
   Color us = pos.side_to_move();
-  Bitboard dc = pos.discovered_check_candidates();
+  Bitboard dc = pos.blockers_for_king(~us) & pos.pieces(us);
 
   while (dc)
   {
@@ -403,8 +403,9 @@ ExtMove* generate<EVASIONS>(const Position& pos, ExtMove* moveList) {
 template<>
 ExtMove* generate<LEGAL>(const Position& pos, ExtMove* moveList) {
 
-  Bitboard pinned = pos.pinned_pieces(pos.side_to_move());
-  Square ksq = pos.square<KING>(pos.side_to_move());
+  Color us = pos.side_to_move();
+  Bitboard pinned = pos.blockers_for_king(us) & pos.pieces(us);
+  Square ksq = pos.square<KING>(us);
   ExtMove* cur = moveList;
 
   moveList = pos.checkers() ? generate<EVASIONS    >(pos, moveList)

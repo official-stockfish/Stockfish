@@ -62,9 +62,9 @@ void Thread::clear() {
 
   for (auto& to : contHistory)
       for (auto& h : to)
-          h.fill(0);
+          h.get()->fill(0);
 
-  contHistory[NO_PIECE][0].fill(Search::CounterMovePruneThreshold - 1);
+  contHistory[NO_PIECE][0].get()->fill(Search::CounterMovePruneThreshold - 1);
 }
 
 /// Thread::start_searching() wakes up the thread that will start the search
@@ -147,7 +147,7 @@ void ThreadPool::clear() {
 
   main()->callsCnt = 0;
   main()->previousScore = VALUE_INFINITE;
-  main()->previousTimeReduction = 1;
+  main()->previousTimeReduction = 1.0;
 }
 
 /// ThreadPool::start_thinking() wakes up main thread waiting in idle_loop() and

@@ -88,10 +88,8 @@ namespace {
   template<Color Us>
   Score evaluate(const Position& pos, Pawns::Entry* e) {
 
-    const Color     Them  = (Us == WHITE ? BLACK      : WHITE);
-    const Direction Up    = (Us == WHITE ? NORTH      : SOUTH);
-    const Direction Right = (Us == WHITE ? NORTH_EAST : SOUTH_WEST);
-    const Direction Left  = (Us == WHITE ? NORTH_WEST : SOUTH_EAST);
+    const Color     Them = (Us == WHITE ? BLACK : WHITE);
+    const Direction Up   = (Us == WHITE ? NORTH : SOUTH);
 
     Bitboard b, neighbours, stoppers, doubled, supported, phalanx;
     Bitboard lever, leverPush;
@@ -106,7 +104,7 @@ namespace {
     e->passedPawns[Us] = e->pawnAttacksSpan[Us] = e->weakUnopposed[Us] = 0;
     e->semiopenFiles[Us] = 0xFF;
     e->kingSquares[Us]   = SQ_NONE;
-    e->pawnAttacks[Us]   = shift<Right>(ourPawns) | shift<Left>(ourPawns);
+    e->pawnAttacks[Us]   = pawn_attacks_bb<Us>(ourPawns);
     e->pawnsOnSquares[Us][BLACK] = popcount(ourPawns & DarkSquares);
     e->pawnsOnSquares[Us][WHITE] = pos.count<PAWN>(Us) - e->pawnsOnSquares[Us][BLACK];
 
@@ -222,9 +220,12 @@ Entry* probe(const Position& pos) {
       return e;
 
   e->key = key;
-  e->score = evaluate<WHITE>(pos, e) - evaluate<BLACK>(pos, e);
-  e->asymmetry = popcount(e->semiopenFiles[WHITE] ^ e->semiopenFiles[BLACK]);
+  e->scores[WHITE] = evaluate<WHITE>(pos, e);
+  e->scores[BLACK] = evaluate<BLACK>(pos, e);
   e->openFiles = popcount(e->semiopenFiles[WHITE] & e->semiopenFiles[BLACK]);
+  e->asymmetry = popcount(  (e->passedPawns[WHITE]   | e->passedPawns[BLACK])
+                          | (e->semiopenFiles[WHITE] ^ e->semiopenFiles[BLACK]));
+
   return e;
 }
 
@@ -235,15 +236,23 @@ Entry* probe(const Position& pos) {
 template<Color Us>
 Value Entry::shelter_storm(const Position& pos, Square ksq) {
 
-  const Color Them = (Us == WHITE ? BLACK : WHITE);
+  constexpr Color Them = (Us == WHITE ? BLACK : WHITE);
+  constexpr Bitboard ShelterMask =
+                Us == WHITE ? make_bitboard(SQ_A2, SQ_B3, SQ_C2, SQ_F2, SQ_G3, SQ_H2)
+                            : make_bitboard(SQ_A7, SQ_B6, SQ_C7, SQ_F7, SQ_G6, SQ_H7);
+  constexpr Bitboard StormMask =
+                Us == WHITE ? make_bitboard(SQ_A3, SQ_C3, SQ_F3, SQ_H3)
+                            : make_bitboard(SQ_A6, SQ_C6, SQ_F6, SQ_H6);
 
   enum { BlockedByKing, Unopposed, BlockedByPawn, Unblocked };
 
-  Bitboard b = pos.pieces(PAWN) & (forward_ranks_bb(Us, ksq) | rank_bb(ksq));
+  File center = std::max(FILE_B, std::min(FILE_G, file_of(ksq)));
+  Bitboard b =   pos.pieces(PAWN)
+               & (forward_ranks_bb(Us, ksq) | rank_bb(ksq))
+               & (adjacent_files_bb(center) | file_bb(center));
   Bitboard ourPawns = b & pos.pieces(Us);
   Bitboard theirPawns = b & pos.pieces(Them);
   Value safety = MaxSafetyBonus;
-  File center = std::max(FILE_B, std::min(FILE_G, file_of(ksq)));
 
   for (File f = File(center - 1); f <= File(center + 1); ++f)
   {
@@ -261,6 +270,9 @@ Value Entry::shelter_storm(const Position& pos, Square ksq) {
                   rkThem == rkUs + 1                                        ? BlockedByPawn  : Unblocked]
                  [d][rkThem];
   }
+
+  if (popcount((ourPawns & ShelterMask) | (theirPawns & StormMask)) == 5)
+      safety += Value(300);
 
   return safety;
 }
