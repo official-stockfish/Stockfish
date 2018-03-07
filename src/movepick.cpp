@@ -149,9 +149,7 @@ Move MovePicker::next_move(bool skipQuiets) {
       ++stage;
       return ttMove;
 
-  case CAPTURES_INIT:
-  case PROBCUT_CAPTURES_INIT:
-  case QCAPTURES_INIT:
+  case CAPTURES_INIT: case PROBCUT_CAPTURES_INIT: case QCAPTURES_INIT:
       endBadCaptures = cur = moves;
       endMoves = generate<CAPTURES>(pos, cur);
       score<CAPTURES>();
@@ -180,9 +178,7 @@ Move MovePicker::next_move(bool skipQuiets) {
          specials[2] = MOVE_NONE;
       /* fallthrough */
 
-  case KILLER0:
-  case KILLER1:
-  case COUNTERMOVE:
+  case KILLER0: case KILLER1: case COUNTERMOVE:
       do
       {
           move = specials[stage++ - KILLER0];
