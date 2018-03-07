@@ -179,7 +179,7 @@ Move MovePicker::next_move(bool skipQuiets) {
       /* fallthrough */
 
   case KILLER0: case KILLER1: case COUNTERMOVE:
-      do
+      while ( stage <= COUNTERMOVE)
       {
           move = specials[stage++ - KILLER0];
           if (    move != MOVE_NONE
@@ -187,7 +187,7 @@ Move MovePicker::next_move(bool skipQuiets) {
               &&  pos.pseudo_legal(move)
               && !pos.capture(move))
               return move;
-      } while (stage <= COUNTERMOVE);
+      }
       /* fallthrough */
 
   case QUIET_INIT:
