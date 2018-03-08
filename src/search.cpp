@@ -1532,8 +1532,10 @@ void MainThread::check_time() {
   lastElapsed = elapsed;
   lastTimeCheckNodes = nodes;
 
-  // When using nodes, ensure checking rate is not lower than 0.1% of nodes
-  callsCnt = Limits.nodes ? std::min(targetCallsCnt, int(Limits.nodes / 1024))
+  // When using nodes, ensure checking rate is not lower than 0.1% of
+  // remaining nodes
+  int64_t remainingNodes = Limits.nodes - Threads.nodes_searched();
+  callsCnt = Limits.nodes ? std::min(targetCallsCnt, int(remainingNodes / 1024))
                           : targetCallsCnt;
 
   // We should not stop pondering until told so by the GUI
