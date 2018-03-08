@@ -679,7 +679,6 @@ namespace {
     }
 
     improving =   ss->staticEval >= (ss-2)->staticEval
-            /* || ss->staticEval == VALUE_NONE Already implicit in the previous condition */
                ||(ss-2)->staticEval == VALUE_NONE;
 
     if (skipEarlyPruning || !pos.non_pawn_material(pos.side_to_move()))
