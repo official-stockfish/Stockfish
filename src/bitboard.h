@@ -150,7 +150,17 @@ inline Bitboard file_bb(Square s) {
 }
 
 
-/// shift() moves a bitboard one step along direction D. Mainly for pawns
+/// make_bitboard() returns a bitboard from a list of squares
+
+constexpr Bitboard make_bitboard() { return 0; }
+
+template<typename ...Squares>
+constexpr Bitboard make_bitboard(Square s, Squares... squares) {
+  return (1ULL << s) | make_bitboard(squares...);
+}
+
+
+/// shift() moves a bitboard one step along direction D (mainly for pawns)
 
 template<Direction D>
 constexpr Bitboard shift(Bitboard b) {
@@ -158,6 +168,16 @@ constexpr Bitboard shift(Bitboard b) {
         : D == NORTH_EAST ? (b & ~FileHBB) << 9 : D == SOUTH_EAST ? (b & ~FileHBB) >> 7
         : D == NORTH_WEST ? (b & ~FileABB) << 7 : D == SOUTH_WEST ? (b & ~FileABB) >> 9
         : 0;
+}
+
+
+/// pawn_attacks_bb() returns the pawn attacks for the given color from the
+/// squares in the given bitboard.
+
+template<Color C>
+constexpr Bitboard pawn_attacks_bb(Bitboard b) {
+  return C == WHITE ? shift<NORTH_WEST>(b) | shift<NORTH_EAST>(b)
+                    : shift<SOUTH_WEST>(b) | shift<SOUTH_EAST>(b);
 }
 
 
@@ -179,9 +199,9 @@ inline Bitboard between_bb(Square s1, Square s2) {
 }
 
 
-/// forward_ranks_bb() returns a bitboard representing all the squares on all the ranks
-/// in front of the given one, from the point of view of the given color. For
-/// instance, forward_ranks_bb(BLACK, SQ_D3) will return the 16 squares on ranks 1 and 2.
+/// forward_ranks_bb() returns a bitboard representing the squares on all the ranks
+/// in front of the given one, from the point of view of the given color. For instance,
+/// forward_ranks_bb(BLACK, SQ_D3) will return the 16 squares on ranks 1 and 2.
 
 inline Bitboard forward_ranks_bb(Color c, Square s) {
   return ForwardRanksBB[c][rank_of(s)];
