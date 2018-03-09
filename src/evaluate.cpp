@@ -172,10 +172,10 @@ namespace {
   const Score MinorBehindPawn   = S( 16,  0);
   const Score PawnlessFlank     = S( 20, 80);
   const Score RookOnPawn        = S(  8, 24);
+  const Score SliderOnQueen     = S( 42, 21);
   const Score ThreatByPawnPush  = S( 47, 26);
   const Score ThreatByRank      = S( 16,  3);
   const Score ThreatBySafePawn  = S(175,168);
-  const Score ThreatOnQueen     = S( 42, 21);
   const Score TrappedBishopA1H1 = S( 50, 50);
   const Score TrappedRook       = S( 92,  0);
   const Score WeakQueen         = S( 50, 10);
@@ -211,7 +211,7 @@ namespace {
 
     // attackedBy[color][piece type] is a bitboard representing all squares
     // attacked by a given color and piece type. Special "piece types" which
-    // are also calculated are QUEEN_DIAGONAL and ALL_PIECES.
+    // is also calculated is ALL_PIECES.
     Bitboard attackedBy[COLOR_NB][PIECE_TYPE_NB];
 
     // attackedBy2[color] are the squares attacked by 2 pieces of a given color,
@@ -297,9 +297,6 @@ namespace {
 
     attackedBy[Us][Pt] = 0;
 
-    if (Pt == QUEEN)
-        attackedBy[Us][QUEEN_DIAGONAL] = 0;
-
     while ((s = *pl++) != SQ_NONE)
     {
         // Find attacked squares, including x-ray attacks for bishops and rooks
@@ -313,9 +310,6 @@ namespace {
         attackedBy2[Us] |= attackedBy[Us][ALL_PIECES] & b;
         attackedBy[Us][Pt] |= b;
         attackedBy[Us][ALL_PIECES] |= b;
-
-        if (Pt == QUEEN)
-            attackedBy[Us][QUEEN_DIAGONAL] |= b & PseudoAttacks[BISHOP][s];
 
         if (b & kingRing[Them])
         {
@@ -589,22 +583,20 @@ namespace {
 
     score += ThreatByPawnPush * popcount(b);
 
-    // Bonus for safe slider threats on the next move toward enemy queen
-    safeThreats = ~pos.pieces(Us) & ~attackedBy2[Them] & attackedBy2[Us];
-    b =  (attackedBy[Us][BISHOP] & attackedBy[Them][QUEEN_DIAGONAL])
-       | (attackedBy[Us][ROOK  ] & attackedBy[Them][QUEEN] & ~attackedBy[Them][QUEEN_DIAGONAL]);
-
-    score += ThreatOnQueen * popcount(b & safeThreats);
-
-    // Bonus for knight threats on the next moves against enemy queen
+    // Bonus for threats on the next moves against enemy queen
     if (pos.count<QUEEN>(Them) == 1)
     {
-        b =   pos.attacks_from<KNIGHT>(pos.square<QUEEN>(Them))
-           &  attackedBy[Us][KNIGHT]
-           & ~pos.pieces(Us, PAWN, KING)
-           & ~stronglyProtected;
+        Square s = pos.square<QUEEN>(Them);
+        safeThreats = mobilityArea[Us] & ~stronglyProtected;
 
-        score += KnightOnQueen * popcount(b);
+        b = attackedBy[Us][KNIGHT] & pos.attacks_from<KNIGHT>(s);
+
+        score += KnightOnQueen * popcount(b & safeThreats);
+
+        b =  (attackedBy[Us][BISHOP] & pos.attacks_from<BISHOP>(s))
+           | (attackedBy[Us][ROOK  ] & pos.attacks_from<ROOK  >(s));
+
+        score += SliderOnQueen * popcount(b & safeThreats & attackedBy2[Us]);
     }
 
     if (T)
