@@ -611,7 +611,7 @@ namespace {
     }
 
     // Connectedness
-    b = pos.pieces(Us) & attackedBy[Us][ALL_PIECES] 
+    b = pos.pieces(Us) & attackedBy[Us][ALL_PIECES]
                        & ~attackedBy[Us][PAWN]
                        & ~pos.pieces(Us, KING);
     score += Connected * popcount(b);
