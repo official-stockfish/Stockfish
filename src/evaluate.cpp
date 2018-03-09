@@ -127,7 +127,7 @@ namespace {
   };
 
   // Connectedness
-  const Score Connected = S(2,2);
+  const Score Connected = S(3,3);
 
   // RookOnFile[semiopen/open] contains bonuses for each rook when there is
   // no (friendly) pawn on the rook file.
