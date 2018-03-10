@@ -165,6 +165,7 @@ namespace {
   // Assorted bonuses and penalties
   const Score BishopPawns       = S(  8, 12);
   const Score CloseEnemies      = S(  7,  0);
+  const Score Connectivity      = S(  2,  2);
   const Score Hanging           = S( 52, 30);
   const Score HinderPassedPawn  = S(  8,  1);
   const Score KnightOnQueen     = S( 21, 11);
@@ -598,6 +599,10 @@ namespace {
 
         score += SliderOnQueen * popcount(b & safeThreats & attackedBy2[Us]);
     }
+
+    // Connectivity: ensure that knights, bishops, rooks, and queens are protected
+    b = (pos.pieces(Us) ^ pos.pieces(Us, PAWN, KING)) & attackedBy[Us][ALL_PIECES];
+    score += Connectivity * popcount(b);
 
     if (T)
         Trace::add(THREAT, Us, score);
