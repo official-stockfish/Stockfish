@@ -102,7 +102,7 @@ struct LR {
 
 static_assert(sizeof(LR) == 3, "LR tree entry must be 3 bytes");
 
-const int TBPIECES = 6;
+const int TBPIECES = 7;
 
 struct PairsData {
     int flags;
