@@ -303,7 +303,7 @@ inline int popcount(Bitboard b) {
 
 /// lsb() and msb() return the least/most significant bit in a non-zero bitboard
 
-#if defined(__GNUC__)
+#if defined(__GNUC__)  // GCC, Clang, ICC
 
 inline Square lsb(Bitboard b) {
   assert(b);
@@ -315,7 +315,9 @@ inline Square msb(Bitboard b) {
   return Square(63 ^ __builtin_clzll(b));
 }
 
-#elif defined(_WIN64) && defined(_MSC_VER)
+#elif defined(_MSC_VER)  // MSVC
+
+#ifdef _WIN64  // MSVC, WIN64
 
 inline Square lsb(Bitboard b) {
   assert(b);
@@ -331,12 +333,39 @@ inline Square msb(Bitboard b) {
   return (Square) idx;
 }
 
-#else
+#else  // MSVC, WIN32
 
-#define NO_BSF // Fallback on software implementation for other cases
+inline Square lsb(Bitboard b) {
+  assert(b);
+  unsigned long idx;
 
-Square lsb(Bitboard b);
-Square msb(Bitboard b);
+  if (b & 0xffffffff) {
+      _BitScanForward(&idx, int32_t(b));
+      return Square(idx);
+  } else {
+      _BitScanForward(&idx, int32_t(b >> 32));
+      return Square(idx + 32);
+  }
+}
+
+inline Square msb(Bitboard b) {
+  assert(b);
+  unsigned long idx;
+
+  if (b >> 32) {
+      _BitScanReverse(&idx, int32_t(b >> 32));
+      return Square(idx + 32);
+  } else {
+      _BitScanReverse(&idx, int32_t(b));
+      return Square(idx);
+  }
+}
+
+#endif
+
+#else  // Compiler is neither GCC nor MSVC compatible
+
+#error "Compiler not supported."
 
 #endif
 
