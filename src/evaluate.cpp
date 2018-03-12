@@ -165,7 +165,7 @@ namespace {
   // Assorted bonuses and penalties
   const Score BishopPawns       = S(  8, 12);
   const Score CloseEnemies      = S(  7,  0);
-  const Score Connectivity      = S(  2,  2);
+  const Score Connectivity      = S(  3,  1);
   const Score Hanging           = S( 52, 30);
   const Score HinderPassedPawn  = S(  8,  1);
   const Score KnightOnQueen     = S( 21, 11);
