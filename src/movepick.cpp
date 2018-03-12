@@ -67,8 +67,8 @@ namespace {
 /// MovePicker constructor for the main search
 MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const ButterflyHistory* mh,
                        const CapturePieceToHistory* cph, const PieceToHistory** ch, Move cm, Move* killers_p)
-           : pos(p), mainHistory(mh), captureHistory(cph), contHistory(ch), countermove(cm),
-             killers{killers_p[0], killers_p[1]}, depth(d){
+           : pos(p), mainHistory(mh), captureHistory(cph), contHistory(ch),
+             refutations{killers_p[0], killers_p[1], cm}, depth(d){
 
   assert(d > DEPTH_ZERO);
 
@@ -143,9 +143,14 @@ Move MovePicker::next_move(bool skipQuiets) {
 
   Move move;
 
+begin_switch:
+
   switch (stage) {
 
-  case MAIN_SEARCH: case EVASION: case QSEARCH: case PROBCUT:
+  case MAIN_SEARCH:
+  case EVASION:
+  case QSEARCH:
+  case PROBCUT:
       ++stage;
       return ttMove;
 
@@ -157,8 +162,8 @@ Move MovePicker::next_move(bool skipQuiets) {
       score<CAPTURES>();
       ++stage;
 
-      // Rebranch at the top of the switch via a recursive call
-      return next_move(skipQuiets);
+      // Rebranch at the top of the switch
+      goto begin_switch;
 
   case GOOD_CAPTURES:
       while (cur < endMoves)
@@ -174,31 +179,26 @@ Move MovePicker::next_move(bool skipQuiets) {
           }
       }
       ++stage;
+
+      // If the countermove is the same as a killer, skip it
+      if (   refutations[0] == refutations[2]
+          || refutations[1] == refutations[2])
+         refutations[2] = MOVE_NONE;
+
       /* fallthrough */
 
   case KILLER0:
   case KILLER1:
-      do
+  case COUNTERMOVE:
+      while (stage <= COUNTERMOVE)
       {
-          move = killers[++stage - KILLER1];
+          move = refutations[ stage++ - KILLER0 ];
           if (    move != MOVE_NONE
               &&  move != ttMove
               &&  pos.pseudo_legal(move)
               && !pos.capture(move))
               return move;
-      } while (stage <= KILLER1);
-      /* fallthrough */
-
-  case COUNTERMOVE:
-      ++stage;
-      move = countermove;
-      if (    move != MOVE_NONE
-          &&  move != ttMove
-          &&  move != killers[0]
-          &&  move != killers[1]
-          &&  pos.pseudo_legal(move)
-          && !pos.capture(move))
-          return move;
+      }
       /* fallthrough */
 
   case QUIET_INIT:
@@ -215,9 +215,9 @@ Move MovePicker::next_move(bool skipQuiets) {
           {
               move = *cur++;
               if (   move != ttMove
-                  && move != killers[0]
-                  && move != killers[1]
-                  && move != countermove)
+                  && move != refutations[0]
+                  && move != refutations[1]
+                  && move != refutations[2])
                   return move;
           }
       ++stage;
