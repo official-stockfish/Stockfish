@@ -102,7 +102,7 @@ struct LR {
 
 static_assert(sizeof(LR) == 3, "LR tree entry must be 3 bytes");
 
-const int TBPIECES = 6;
+const int TBPIECES = 7;
 
 struct PairsData {
     int flags;
@@ -1379,11 +1379,21 @@ void Tablebases::init(const std::string& paths) {
             for (PieceType p3 = PAWN; p3 <= p2; ++p3) {
                 EntryTable.insert({KING, p1, p2, p3, KING});
 
-                for (PieceType p4 = PAWN; p4 <= p3; ++p4)
+                for (PieceType p4 = PAWN; p4 <= p3; ++p4) {
                     EntryTable.insert({KING, p1, p2, p3, p4, KING});
-
-                for (PieceType p4 = PAWN; p4 < KING; ++p4)
+                    
+                    for (PieceType p5 = PAWN; p5 <= p4; ++p5) {
+                      EntryTable.insert({KING, p1, p2, p3, p4, p5, KING});
+                      EntryTable.insert({KING, p1, p2, p3, p4, KING, p5});
+                    }
+                }
+                
+                for (PieceType p4 = PAWN; p4 < KING; ++p4) {
                     EntryTable.insert({KING, p1, p2, p3, KING, p4});
+                    
+                    for (PieceType p5 = PAWN; p5 <= p4; ++p5)
+                      EntryTable.insert({KING, p1, p2, p3, KING, p4, p5});
+                }
             }
 
             for (PieceType p3 = PAWN; p3 <= p1; ++p3)
