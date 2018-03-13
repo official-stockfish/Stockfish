@@ -782,7 +782,7 @@ namespace {
                 value = pos.checkers() ? -qsearch<NonPV, true>(pos, ss+1, -rbeta, -rbeta+1)
                     : -qsearch<NonPV, false>(pos, ss+1, -rbeta, -rbeta+1);
 
-                // If the qsearch was held, perform the regular search
+                // If the qsearch was held perform the regular search
                 if (value >= rbeta)
                     value = -search<NonPV>(pos, ss+1, -rbeta, -rbeta+1, depth - 4 * ONE_PLY, !cutNode, false);
 
