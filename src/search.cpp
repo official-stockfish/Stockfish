@@ -1496,9 +1496,6 @@ void MainThread::check_time() {
   if (--callsCnt > 0)
       return;
 
-  // When using nodes, ensure checking rate is not lower than 0.1% of nodes
-  callsCnt = Limits.nodes ? std::min(4096, int(Limits.nodes / 1024)) : 4096;
-
   static TimePoint lastInfoTime = now();
 
   int elapsed = Time.elapsed();
@@ -1509,6 +1506,24 @@ void MainThread::check_time() {
       lastInfoTime = tick;
       dbg_print();
   }
+
+  // Determine a suitable node interval for time checking.
+  static int lastElapsed = 0;
+  int timeElapsed = elapsed - lastElapsed;
+  int nodesElapsed = nodes - lastTimeCheckNodes;
+  // Estimate current nodes per second
+  double mtNps = nodesElapsed * 1000.0 / (timeElapsed + 1);
+  // We aim at ~250 checks per second (close to 4096 nodes at 1Mnps),
+  // and suitable for ~30ms move overhead.
+  int targetCallsCnt = 1 + int(mtNps / 250.0);
+  lastElapsed = elapsed;
+  lastTimeCheckNodes = nodes;
+
+  // When using nodes, ensure checking rate is not lower than 0.1% of
+  // remaining nodes
+  int64_t remainingNodes = Limits.nodes - Threads.nodes_searched();
+  callsCnt = Limits.nodes ? std::min(targetCallsCnt, int(remainingNodes / 1024))
+                          : targetCallsCnt;
 
   // We should not stop pondering until told so by the GUI
   if (Threads.ponder)

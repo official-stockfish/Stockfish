@@ -87,6 +87,7 @@ struct MainThread : public Thread {
   double bestMoveChanges, previousTimeReduction;
   Value previousScore;
   int callsCnt;
+  uint64_t lastTimeCheckNodes;
 };
 
 
