@@ -491,6 +491,10 @@ namespace {
   template <NodeType NT>
   Value search(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth, bool cutNode, bool skipEarlyPruning) {
 
+    // Use quiescence search when needed
+    if (depth < ONE_PLY)
+        return qsearch<NT>(pos, ss, alpha, beta);
+
     const bool PvNode = NT == PV;
     const bool rootNode = PvNode && ss->ply == 0;
 
@@ -695,6 +699,7 @@ namespace {
         else if (eval + RazorMargin2 <= alpha)
         {
             Value ralpha = alpha - RazorMargin2;
+
             Value v = qsearch<NonPV>(pos, ss, ralpha, ralpha+1);
 
             if (v <= ralpha)
@@ -724,8 +729,9 @@ namespace {
         ss->contHistory = thisThread->contHistory[NO_PIECE][0].get();
 
         pos.do_null_move(st);
-        Value nullValue = depth-R < ONE_PLY ? -qsearch<NonPV>(pos, ss+1, -beta, -beta+1)
-                                            : - search<NonPV>(pos, ss+1, -beta, -beta+1, depth-R, !cutNode, true);
+
+        Value nullValue = -search<NonPV>(pos, ss+1, -beta, -beta+1, depth-R, !cutNode, true);
+
         pos.undo_null_move();
 
         if (nullValue >= beta)
@@ -742,8 +748,7 @@ namespace {
             thisThread->nmp_ply = ss->ply + 3 * (depth-R) / 4;
             thisThread->nmp_odd = ss->ply % 2;
 
-            Value v = depth-R < ONE_PLY ? qsearch<NonPV>(pos, ss, beta-1, beta)
-                                        :  search<NonPV>(pos, ss, beta-1, beta, depth-R, false, true);
+            Value v = search<NonPV>(pos, ss, beta-1, beta, depth-R, false, true);
 
             thisThread->nmp_odd = thisThread->nmp_ply = 0;
 
@@ -1009,8 +1014,7 @@ moves_loop: // When in check, search starts from here
 
       // Step 17. Full depth search when LMR is skipped or fails high
       if (doFullDepthSearch)
-          value = newDepth < ONE_PLY ? -qsearch<NonPV>(pos, ss+1, -(alpha+1), -alpha)
-                                     : - search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth, !cutNode, false);
+          value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth, !cutNode, false);
 
       // For PV nodes only, do a full PV search on the first move or after a fail
       // high (in the latter case search only if value < beta), otherwise let the
@@ -1020,8 +1024,7 @@ moves_loop: // When in check, search starts from here
           (ss+1)->pv = pv;
           (ss+1)->pv[0] = MOVE_NONE;
 
-          value = newDepth < ONE_PLY ? -qsearch<PV>(pos, ss+1, -beta, -alpha)
-                                     : - search<PV>(pos, ss+1, -beta, -alpha, newDepth, false, false);
+          value = -search<PV>(pos, ss+1, -beta, -alpha, newDepth, false, false);
       }
 
       // Step 18. Undo move
