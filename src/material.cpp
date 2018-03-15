@@ -68,7 +68,7 @@ namespace {
           && pos.non_pawn_material(us) >= RookValueMg;
   }
 
-  bool is_KBPsKs(const Position& pos, Color us) {
+  bool is_KBPsK(const Position& pos, Color us) {
     return   pos.non_pawn_material(us) == BishopValueMg
           && pos.count<BISHOP>(us) == 1
           && pos.count<PAWN  >(us) >= 1;
@@ -165,7 +165,7 @@ Entry* probe(const Position& pos) {
   // case we don't return after setting the function.
   for (Color c = WHITE; c <= BLACK; ++c)
   {
-    if (is_KBPsKs(pos, c))
+    if (is_KBPsK(pos, c))
         e->scalingFunction[c] = &ScaleKBPsK[c];
 
     else if (is_KQKRPs(pos, c))
