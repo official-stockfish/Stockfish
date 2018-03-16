@@ -417,7 +417,8 @@ namespace {
     // Main king safety evaluation
     if (kingAttackersCount[Them] > 1 - pos.count<QUEEN>(Them))
     {
-        int kingDanger = unsafeChecks = 0;
+        int kingDanger = 0;
+        unsafeChecks = 0;
 
         // Attacked squares defended at most once by our queen or king
         weak =  attackedBy[Them][ALL_PIECES]
