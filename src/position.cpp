@@ -21,7 +21,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cstddef> // For offsetof()
-#include <cstring> // For std::memset, std::memcmp
+#include <cstring> // For std::memcmp
 #include <iomanip>
 #include <sstream>
 
@@ -205,9 +205,15 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
   Square sq = SQ_A8;
   std::istringstream ss(fenStr);
 
-  std::memset(this, 0, sizeof(Position));
-  std::memset(si, 0, sizeof(StateInfo));
-  std::fill_n(&pieceList[0][0], sizeof(pieceList) / sizeof(Square), SQ_NONE);
+  // Clear all relevant tables:
+  for (auto& e : board) e = NO_PIECE;
+  for (auto& e : byTypeBB) e = Bitboard();
+  for (auto& e : byColorBB) e = Bitboard();
+  for (auto& e : pieceCount) e = 0;
+  for (auto& r : pieceList) for (auto& e : r) e = SQ_NONE;
+  for (auto& e : castlingRightsMask) e = 0;
+  for (auto& e : castlingPath) e = Bitboard();
+
   st = si;
 
   ss >> std::noskipws;
@@ -238,6 +244,7 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
   // the game instead of KQkq and also X-FEN standard that, in case of Chess960,
   // if an inner rook is associated with the castling right, the castling tag is
   // replaced by the file letter of the involved rook, as for the Shredder-FEN.
+  si->castlingRights = 0;
   while ((ss >> token) && !isspace(token))
   {
       Square rsq;
