@@ -87,7 +87,7 @@ namespace {
   template<Color Us>
   int imbalance(const int pieceCount[][PIECE_TYPE_NB]) {
 
-    const Color Them = (Us == WHITE ? BLACK : WHITE);
+    constexpr Color Them = (Us == WHITE ? BLACK : WHITE);
 
     int bonus = 0;
 
