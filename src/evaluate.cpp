@@ -74,35 +74,35 @@ using namespace Trace;
 
 namespace {
 
-  const Bitboard QueenSide   = FileABB | FileBBB | FileCBB | FileDBB;
-  const Bitboard CenterFiles = FileCBB | FileDBB | FileEBB | FileFBB;
-  const Bitboard KingSide    = FileEBB | FileFBB | FileGBB | FileHBB;
-  const Bitboard Center      = (FileDBB | FileEBB) & (Rank4BB | Rank5BB);
+  constexpr Bitboard QueenSide   = FileABB | FileBBB | FileCBB | FileDBB;
+  constexpr Bitboard CenterFiles = FileCBB | FileDBB | FileEBB | FileFBB;
+  constexpr Bitboard KingSide    = FileEBB | FileFBB | FileGBB | FileHBB;
+  constexpr Bitboard Center      = (FileDBB | FileEBB) & (Rank4BB | Rank5BB);
 
-  const Bitboard KingFlank[FILE_NB] = {
+  constexpr Bitboard KingFlank[FILE_NB] = {
     QueenSide,   QueenSide, QueenSide,
     CenterFiles, CenterFiles,
     KingSide,    KingSide,  KingSide
   };
 
   // Threshold for lazy and space evaluation
-  const Value LazyThreshold  = Value(1500);
-  const Value SpaceThreshold = Value(12222);
+  constexpr Value LazyThreshold  = Value(1500);
+  constexpr Value SpaceThreshold = Value(12222);
 
   // KingAttackWeights[PieceType] contains king attack weights by piece type
-  const int KingAttackWeights[PIECE_TYPE_NB] = { 0, 0, 78, 56, 45, 11 };
+  constexpr int KingAttackWeights[PIECE_TYPE_NB] = { 0, 0, 78, 56, 45, 11 };
 
   // Penalties for enemy's safe checks
-  const int QueenSafeCheck  = 780;
-  const int RookSafeCheck   = 880;
-  const int BishopSafeCheck = 435;
-  const int KnightSafeCheck = 790;
+  constexpr int QueenSafeCheck  = 780;
+  constexpr int RookSafeCheck   = 880;
+  constexpr int BishopSafeCheck = 435;
+  constexpr int KnightSafeCheck = 790;
 
 #define S(mg, eg) make_score(mg, eg)
 
   // MobilityBonus[PieceType-2][attacked] contains bonuses for middle and end game,
   // indexed by piece type and number of attacked squares in the mobility area.
-  const Score MobilityBonus[][32] = {
+  constexpr Score MobilityBonus[][32] = {
     { S(-75,-76), S(-57,-54), S( -9,-28), S( -2,-10), S(  6,  5), S( 14, 12), // Knights
       S( 22, 26), S( 29, 29), S( 36, 29) },
     { S(-48,-59), S(-20,-23), S( 16, -3), S( 26, 13), S( 38, 24), S( 51, 42), // Bishops
@@ -121,66 +121,66 @@ namespace {
   // Outpost[knight/bishop][supported by pawn] contains bonuses for minor
   // pieces if they occupy or can reach an outpost square, bigger if that
   // square is supported by a pawn.
-  const Score Outpost[][2] = {
+  constexpr Score Outpost[][2] = {
     { S(22, 6), S(36,12) }, // Knight
     { S( 9, 2), S(15, 5) }  // Bishop
   };
 
   // RookOnFile[semiopen/open] contains bonuses for each rook when there is
   // no (friendly) pawn on the rook file.
-  const Score RookOnFile[] = { S(20, 7), S(45, 20) };
+  constexpr Score RookOnFile[] = { S(20, 7), S(45, 20) };
 
   // ThreatByMinor/ByRook[attacked PieceType] contains bonuses according to
   // which piece type attacks which one. Attacks on lesser pieces which are
   // pawn-defended are not considered.
-  const Score ThreatByMinor[PIECE_TYPE_NB] = {
+  constexpr Score ThreatByMinor[PIECE_TYPE_NB] = {
     S(0, 0), S(0, 31), S(39, 42), S(57, 44), S(68, 112), S(47, 120)
   };
 
-  const Score ThreatByRook[PIECE_TYPE_NB] = {
+  constexpr Score ThreatByRook[PIECE_TYPE_NB] = {
     S(0, 0), S(0, 24), S(38, 71), S(38, 61), S(0, 38), S(36, 38)
   };
 
   // ThreatByKing[on one/on many] contains bonuses for king attacks on
   // pawns or pieces which are not pawn-defended.
-  const Score ThreatByKing[] = { S(3, 65), S(9, 145) };
+  constexpr Score ThreatByKing[] = { S(3, 65), S(9, 145) };
 
   // PassedRank[Rank] contains a bonus according to the rank of a passed pawn
-  const Score PassedRank[RANK_NB] = {
+  constexpr Score PassedRank[RANK_NB] = {
     S(0, 0), S(5, 7), S(5, 13), S(32, 42), S(70, 70), S(172, 170), S(217, 269)
   };
 
   // PassedFile[File] contains a bonus according to the file of a passed pawn
-  const Score PassedFile[FILE_NB] = {
+  constexpr Score PassedFile[FILE_NB] = {
     S(  9, 10), S(2, 10), S(1, -8), S(-20,-12),
     S(-20,-12), S(1, -8), S(2, 10), S(  9, 10)
   };
 
   // PassedDanger[Rank] contains a term to weight the passed score
-  const int PassedDanger[RANK_NB] = { 0, 0, 0, 2, 7, 12, 19 };
+  constexpr int PassedDanger[RANK_NB] = { 0, 0, 0, 2, 7, 12, 19 };
 
   // KingProtector[PieceType-2] contains a penalty according to distance from king
-  const Score KingProtector[] = { S(3, 5), S(4, 3), S(3, 0), S(1, -1) };
+  constexpr Score KingProtector[] = { S(3, 5), S(4, 3), S(3, 0), S(1, -1) };
 
   // Assorted bonuses and penalties
-  const Score BishopPawns        = S(  8, 12);
-  const Score CloseEnemies       = S(  7,  0);
-  const Score Connectivity       = S(  3,  1);
-  const Score CorneredBishop     = S( 50, 50);
-  const Score Hanging            = S( 52, 30);
-  const Score HinderPassedPawn   = S(  8,  1);
-  const Score KnightOnQueen      = S( 21, 11);
-  const Score LongDiagonalBishop = S( 22,  0);
-  const Score MinorBehindPawn    = S( 16,  0);
-  const Score PawnlessFlank      = S( 20, 80);
-  const Score RookOnPawn         = S(  8, 24);
-  const Score SliderOnQueen      = S( 42, 21);
-  const Score ThreatByPawnPush   = S( 47, 26);
-  const Score ThreatByRank       = S( 16,  3);
-  const Score ThreatBySafePawn   = S(175,168);
-  const Score TrappedRook        = S( 92,  0);
-  const Score WeakQueen          = S( 50, 10);
-  const Score WeakUnopposedPawn  = S(  5, 25);
+  constexpr Score BishopPawns        = S(  8, 12);
+  constexpr Score CloseEnemies       = S(  7,  0);
+  constexpr Score Connectivity       = S(  3,  1);
+  constexpr Score CorneredBishop     = S( 50, 50);
+  constexpr Score Hanging            = S( 52, 30);
+  constexpr Score HinderPassedPawn   = S(  8,  1);
+  constexpr Score KnightOnQueen      = S( 21, 11);
+  constexpr Score LongDiagonalBishop = S( 22,  0);
+  constexpr Score MinorBehindPawn    = S( 16,  0);
+  constexpr Score PawnlessFlank      = S( 20, 80);
+  constexpr Score RookOnPawn         = S(  8, 24);
+  constexpr Score SliderOnQueen      = S( 42, 21);
+  constexpr Score ThreatByPawnPush   = S( 47, 26);
+  constexpr Score ThreatByRank       = S( 16,  3);
+  constexpr Score ThreatBySafePawn   = S(175,168);
+  constexpr Score TrappedRook        = S( 92,  0);
+  constexpr Score WeakQueen          = S( 50, 10);
+  constexpr Score WeakUnopposedPawn  = S(  5, 25);
 
 #undef S
 

@@ -102,7 +102,7 @@ struct LR {
 
 static_assert(sizeof(LR) == 3, "LR tree entry must be 3 bytes");
 
-const int TBPIECES = 6;
+constexpr int TBPIECES = 6;
 
 struct PairsData {
     int flags;
@@ -208,7 +208,7 @@ int MapKK[10][SQUARE_NB]; // [MapA1D1D4][SQUARE_NB]
 bool pawns_comp(Square i, Square j) { return MapPawns[i] < MapPawns[j]; }
 int off_A1H8(Square sq) { return int(rank_of(sq)) - file_of(sq); }
 
-const Value WDL_to_value[] = {
+constexpr Value WDL_to_value[] = {
    -VALUE_MATE + MAX_PLY + 1,
     VALUE_DRAW - 2,
     VALUE_DRAW,
@@ -255,8 +255,8 @@ class HashTable {
     typedef std::pair<WDLEntry*, DTZEntry*> EntryPair;
     typedef std::pair<Key, EntryPair> Entry;
 
-    static const int TBHASHBITS = 10;
-    static const int HSHMAX     = 5;
+    static constexpr int TBHASHBITS = 10;
+    static constexpr int HSHMAX     = 5;
 
     Entry hashTable[1 << TBHASHBITS][HSHMAX];
 
@@ -315,9 +315,9 @@ public:
     TBFile(const std::string& f) {
 
 #ifndef _WIN32
-        const char SepChar = ':';
+        constexpr char SepChar = ':';
 #else
-        const char SepChar = ';';
+        constexpr char SepChar = ';';
 #endif
         std::stringstream ss(Paths);
         std::string path;
@@ -649,7 +649,7 @@ WDLScore map_score(WDLEntry*, File, int value, WDLScore) { return WDLScore(value
 
 int map_score(DTZEntry* entry, File f, int value, WDLScore wdl) {
 
-    const int WDLMap[] = { 1, 3, 0, 2, 0 };
+    constexpr int WDLMap[] = { 1, 3, 0, 2, 0 };
 
     int flags = entry->hasPawns ? entry->pawnTable.file[f].precomp->flags
                                 : entry->pieceTable.precomp->flags;
@@ -1137,7 +1137,7 @@ void do_init(Entry& e, T& p, uint8_t* data) {
 template<typename Entry>
 void* init(Entry& e, const Position& pos) {
 
-    const bool IsWDL = std::is_same<Entry, WDLEntry>::value;
+    constexpr bool IsWDL = std::is_same<Entry, WDLEntry>::value;
 
     static Mutex mutex;
 
@@ -1158,7 +1158,7 @@ void* init(Entry& e, const Position& pos) {
         b += std::string(popcount(pos.pieces(BLACK, pt)), PieceToChar[pt]);
     }
 
-    const uint8_t TB_MAGIC[][4] = { { 0xD7, 0x66, 0x0C, 0xA5 },
+    constexpr uint8_t TB_MAGIC[][4] = { { 0xD7, 0x66, 0x0C, 0xA5 },
                                     { 0x71, 0xE8, 0x23, 0x5D } };
 
     fname =  (e.key == pos.material_key() ? w + 'v' + b : b + 'v' + w)
