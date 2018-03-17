@@ -31,7 +31,7 @@ namespace {
 
   // Table used to drive the king towards the edge of the board
   // in KX vs K and KQ vs KR endgames.
-  const int PushToEdges[SQUARE_NB] = {
+  constexpr int PushToEdges[SQUARE_NB] = {
     100, 90, 80, 70, 70, 80, 90, 100,
      90, 70, 60, 50, 50, 60, 70,  90,
      80, 60, 40, 30, 30, 40, 60,  80,
@@ -44,7 +44,7 @@ namespace {
 
   // Table used to drive the king towards a corner square of the
   // right color in KBN vs K endgames.
-  const int PushToCorners[SQUARE_NB] = {
+  constexpr int PushToCorners[SQUARE_NB] = {
     200, 190, 180, 170, 160, 150, 140, 130,
     190, 180, 170, 160, 150, 140, 130, 140,
     180, 170, 155, 140, 140, 125, 140, 150,
@@ -56,11 +56,11 @@ namespace {
   };
 
   // Tables used to drive a piece towards or away from another piece
-  const int PushClose[8] = { 0, 0, 100, 80, 60, 40, 20, 10 };
-  const int PushAway [8] = { 0, 5, 20, 40, 60, 80, 90, 100 };
+  constexpr int PushClose[8] = { 0, 0, 100, 80, 60, 40, 20, 10 };
+  constexpr int PushAway [8] = { 0, 5, 20, 40, 60, 80, 90, 100 };
 
   // Pawn Rank based scaling factors used in KRPPKRP endgame
-  const int KRPPKRPScaleFactors[RANK_NB] = { 0, 9, 10, 14, 21, 44, 0, 0 };
+  constexpr int KRPPKRPScaleFactors[RANK_NB] = { 0, 9, 10, 14, 21, 44, 0, 0 };
 
 #ifndef NDEBUG
   bool verify_material(const Position& pos, Color c, Value npm, int pawnsCnt) {

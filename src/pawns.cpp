@@ -32,20 +32,20 @@ namespace {
   #define S(mg, eg) make_score(mg, eg)
 
   // Isolated pawn penalty
-  const Score Isolated = S(13, 18);
+  constexpr Score Isolated = S(13, 18);
 
   // Backward pawn penalty
-  const Score Backward = S(24, 12);
+  constexpr Score Backward = S(24, 12);
 
   // Connected pawn bonus by opposed, phalanx, #support and rank
   Score Connected[2][2][3][RANK_NB];
 
   // Doubled pawn penalty
-  const Score Doubled = S(18, 38);
+  constexpr Score Doubled = S(18, 38);
 
   // Weakness of our pawn shelter in front of the king by [isKingFile][distance from edge][rank].
   // RANK_1 = 0 is used for files where we have no pawns or our pawn is behind our king.
-  const Value ShelterWeakness[][int(FILE_NB) / 2][RANK_NB] = {
+  constexpr Value ShelterWeakness[][int(FILE_NB) / 2][RANK_NB] = {
     { { V( 98), V(20), V(11), V(42), V( 83), V( 84), V(101) }, // Not On King file
       { V(103), V( 8), V(33), V(86), V( 87), V(105), V(113) },
       { V(100), V( 2), V(65), V(95), V( 59), V( 89), V(115) },
@@ -59,7 +59,7 @@ namespace {
   // Danger of enemy pawns moving toward our king by [type][distance from edge][rank].
   // For the unopposed and unblocked cases, RANK_1 = 0 is used when opponent has
   // no pawn on the given file, or their pawn is behind our king.
-  const Value StormDanger[][4][RANK_NB] = {
+  constexpr Value StormDanger[][4][RANK_NB] = {
     { { V( 0),  V(-290), V(-274), V(57), V(41) },  // BlockedByKing
       { V( 0),  V(  60), V( 144), V(39), V(13) },
       { V( 0),  V(  65), V( 141), V(41), V(34) },
@@ -80,7 +80,7 @@ namespace {
 
   // Max bonus for king safety. Corresponds to start position with all the pawns
   // in front of the king and no enemy pawn on the horizon.
-  const Value MaxSafetyBonus = V(258);
+  constexpr Value MaxSafetyBonus = V(258);
 
   #undef S
   #undef V
@@ -88,8 +88,8 @@ namespace {
   template<Color Us>
   Score evaluate(const Position& pos, Pawns::Entry* e) {
 
-    const Color     Them = (Us == WHITE ? BLACK : WHITE);
-    const Direction Up   = (Us == WHITE ? NORTH : SOUTH);
+    constexpr Color     Them = (Us == WHITE ? BLACK : WHITE);
+    constexpr Direction Up   = (Us == WHITE ? NORTH : SOUTH);
 
     Bitboard b, neighbours, stoppers, doubled, supported, phalanx;
     Bitboard lever, leverPush;
@@ -191,7 +191,7 @@ namespace Pawns {
 
 void init() {
 
-  static const int Seed[RANK_NB] = { 0, 13, 24, 18, 76, 100, 175, 330 };
+  static constexpr int Seed[RANK_NB] = { 0, 13, 24, 18, 76, 100, 175, 330 };
 
   for (int opposed = 0; opposed <= 1; ++opposed)
       for (int phalanx = 0; phalanx <= 1; ++phalanx)
