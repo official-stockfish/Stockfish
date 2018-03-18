@@ -32,9 +32,9 @@ namespace {
 
   enum TimeType { OptimumTime, MaxTime };
 
-  const int MoveHorizon   = 50;   // Plan time management at most this many moves ahead
-  const double MaxRatio   = 7.3; // When in trouble, we can step over reserved time with this ratio
-  const double StealRatio = 0.34; // However we must not steal time from remaining moves over this ratio
+  constexpr int MoveHorizon   = 50;   // Plan time management at most this many moves ahead
+  constexpr double MaxRatio   = 7.3;  // When in trouble, we can step over reserved time with this ratio
+  constexpr double StealRatio = 0.34; // However we must not steal time from remaining moves over this ratio
 
 
   // move_importance() is a skew-logistic function based on naive statistical
@@ -44,9 +44,9 @@ namespace {
 
   double move_importance(int ply) {
 
-    const double XScale = 6.85;
-    const double XShift = 64.5;
-    const double Skew   = 0.171;
+    constexpr double XScale = 6.85;
+    constexpr double XShift = 64.5;
+    constexpr double Skew   = 0.171;
 
     return pow((1 + exp((ply - XShift) / XScale)), -Skew) + DBL_MIN; // Ensure non-zero
   }
@@ -54,8 +54,8 @@ namespace {
   template<TimeType T>
   int remaining(int myTime, int movesToGo, int ply, int slowMover) {
 
-    const double TMaxRatio   = (T == OptimumTime ? 1 : MaxRatio);
-    const double TStealRatio = (T == OptimumTime ? 0 : StealRatio);
+    constexpr double TMaxRatio   = (T == OptimumTime ? 1 : MaxRatio);
+    constexpr double TStealRatio = (T == OptimumTime ? 0 : StealRatio);
 
     double moveImportance = (move_importance(ply) * slowMover) / 100;
     double otherMovesImportance = 0;
@@ -106,12 +106,12 @@ void TimeManagement::init(Search::LimitsType& limits, Color us, int ply) {
   startTime = limits.startTime;
   optimumTime = maximumTime = std::max(limits.time[us], minThinkingTime);
 
-  const int MaxMTG = limits.movestogo ? std::min(limits.movestogo, MoveHorizon) : MoveHorizon;
+  const int maxMTG = limits.movestogo ? std::min(limits.movestogo, MoveHorizon) : MoveHorizon;
 
   // We calculate optimum time usage for different hypothetical "moves to go"-values
   // and choose the minimum of calculated search time values. Usually the greatest
   // hypMTG gives the minimum values.
-  for (int hypMTG = 1; hypMTG <= MaxMTG; ++hypMTG)
+  for (int hypMTG = 1; hypMTG <= maxMTG; ++hypMTG)
   {
       // Calculate thinking time for hypothetical "moves to go"-value
       int hypMyTime =  limits.time[us]

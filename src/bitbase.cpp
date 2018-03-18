@@ -29,7 +29,7 @@
 namespace {
 
   // There are 24 possible pawn squares: the first 4 files and ranks from 2 to 7
-  const unsigned MAX_INDEX = 2*24*64*64; // stm * psq * wksq * bksq = 196608
+  constexpr unsigned MAX_INDEX = 2*24*64*64; // stm * psq * wksq * bksq = 196608
 
   // Each uint32_t stores results of 32 positions, one per bit
   uint32_t KPKBitbase[MAX_INDEX / 32];
@@ -152,9 +152,9 @@ namespace {
     // as WIN, the position is classified as WIN, otherwise the current position is
     // classified as UNKNOWN.
 
-    const Color  Them = (Us == WHITE ? BLACK : WHITE);
-    const Result Good = (Us == WHITE ? WIN   : DRAW);
-    const Result Bad  = (Us == WHITE ? DRAW  : WIN);
+    constexpr Color  Them = (Us == WHITE ? BLACK : WHITE);
+    constexpr Result Good = (Us == WHITE ? WIN   : DRAW);
+    constexpr Result Bad  = (Us == WHITE ? DRAW  : WIN);
 
     Result r = INVALID;
     Bitboard b = PseudoAttacks[KING][ksq[Us]];
