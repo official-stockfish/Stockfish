@@ -67,8 +67,7 @@ namespace {
   constexpr int SkipPhase[] = { 0, 1, 0, 1, 2, 3, 0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5, 6, 7 };
 
   // Razor and futility margins
-  constexpr int RazorMargin1 = 590;
-  constexpr int RazorMargin2 = 604;
+  constexpr int RazorMargin[] = {0, 590, 604};
   Value futility_margin(Depth d, bool improving) {
     return Value((175 - 50 * improving) * d / ONE_PLY);
   }
@@ -690,21 +689,13 @@ namespace {
 
     // Step 7. Razoring (skipped when in check)
     if (  !PvNode
-        && depth <= 2 * ONE_PLY)
+        && depth <= 2 * ONE_PLY
+        && eval <= alpha - Value(RazorMargin[depth / ONE_PLY]))
     {
-        if (   depth == ONE_PLY
-            && eval + RazorMargin1 <= alpha)
-            return qsearch<NonPV>(pos, ss, alpha, alpha+1);
-
-        else if (eval + RazorMargin2 <= alpha)
-        {
-            Value ralpha = alpha - RazorMargin2;
-
-            Value v = qsearch<NonPV>(pos, ss, ralpha, ralpha+1);
-
-            if (v <= ralpha)
-                return v;
-        }
+        Value ralpha = alpha - Value((depth != ONE_PLY) * RazorMargin[depth / ONE_PLY]);
+        Value v = qsearch<NonPV>(pos, ss, ralpha, ralpha+1);
+        if (depth == ONE_PLY || v <= ralpha)
+            return v;
     }
 
     // Step 8. Futility pruning: child node (skipped when in check)
