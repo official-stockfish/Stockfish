@@ -692,7 +692,7 @@ namespace {
         && depth <= 2 * ONE_PLY
         && eval <= alpha - Value(RazorMargin[depth / ONE_PLY]))
     {
-        Value ralpha = alpha - (depth != ONE_PLY) * Value(RazorMargin[depth / ONE_PLY]);
+        Value ralpha = alpha - Value((depth != ONE_PLY) * RazorMargin[depth / ONE_PLY]);
         Value v = qsearch<NonPV>(pos, ss, ralpha, ralpha+1);
         if (depth == ONE_PLY || v <= ralpha)
             return v;
