@@ -49,7 +49,7 @@ public:
   void operator<<(int bonus) {
 
     assert(abs(bonus) <= D); // Ensure range is [-W * D, W * D]
-    assert(abs(W * D) < std::numeric_limits<T>::max()); // Ensure we don't overflow
+    assert(W * D < std::numeric_limits<T>::max()); // Ensure we don't overflow
 
     entry += bonus * W - entry * abs(bonus) / D;
 
@@ -120,6 +120,7 @@ public:
   Move next_move(bool skipQuiets = false);
 
 private:
+  template<int Best, typename Pred> Move pick(Pred);
   template<GenType> void score();
   ExtMove* begin() { return cur; }
   ExtMove* end() { return endMoves; }
@@ -131,6 +132,7 @@ private:
   Move ttMove, refutations[3];
   ExtMove *cur, *endMoves, *endBadCaptures;
   int stage;
+  Move move;
   Square recaptureSquare;
   Value threshold;
   Depth depth;
