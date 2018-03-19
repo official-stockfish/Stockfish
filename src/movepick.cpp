@@ -25,7 +25,7 @@
 namespace {
 
   enum Stages {
-    MAIN_TT, CAPTURE_INIT, GOOD_CAPTURE, KILLER0, KILLER1, COUNTERMOVE, QUIET_INIT, QUIET, BAD_CAPTURE,
+    MAIN_TT, CAPTURE_INIT, GOOD_CAPTURE, REFUTATION, QUIET_INIT, QUIET, BAD_CAPTURE,
     EVASION_TT, EVASION_INIT, EVASION,
     PROBCUT_TT, PROBCUT_INIT, PROBCUT,
     QSEARCH_TT, QCAPTURE_INIT, QCAPTURE, QCHECK_INIT, QCHECK
@@ -129,7 +129,8 @@ void MovePicker::score() {
       }
 }
 
-/// MovePicker::select_move() returns the next move satisfying a predicate function
+/// MovePicker::select_move() returns the next move satisfying a predicate function.
+/// It never returns the TT move.
 template<PickType T, typename Pred>
 Move MovePicker::select_move(Pred filter) {
 
@@ -176,25 +177,23 @@ top:
                                                  true : (*endBadCaptures++ = move, false); }))
           return move;
 
-      // If the countermove is the same as a killer, skip it
-      if (   refutations[0] == refutations[2]
-          || refutations[1] == refutations[2])
-          refutations[2] = MOVE_NONE;
+      // prepare refutations
+      endMoves = cur = endBadCaptures;
+      *endMoves++ = refutations[0];
+      *endMoves++ = refutations[1];
+      // If the countermove differs from the killers, add it
+      if (   refutations[0] != refutations[2]
+          && refutations[1] != refutations[2])
+          *endMoves++ = refutations[2];
       ++stage;
       /* fallthrough */
 
-  case KILLER0:
-  case KILLER1:
-  case COUNTERMOVE:
-      while (stage <= COUNTERMOVE)
-      {
-          move = refutations[ stage++ - KILLER0];
-          if (    move != MOVE_NONE
-              &&  move != ttMove
-              &&  pos.pseudo_legal(move)
-              && !pos.capture(move))
-              return move;
-      }
+  case REFUTATION:
+      if (select_move<NEXT>([&](){ return     move != MOVE_NONE
+                                          && !pos.capture(move)
+                                          &&  pos.pseudo_legal(move); }))
+          return move;
+      ++stage;
       /* fallthrough */
 
   case QUIET_INIT:
