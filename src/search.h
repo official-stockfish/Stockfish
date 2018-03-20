@@ -82,17 +82,16 @@ struct LimitsType {
 
   LimitsType() { // Init explicitly due to broken value-initialization of non POD in MSVC
     nodes = time[WHITE] = time[BLACK] = inc[WHITE] = inc[BLACK] =
-    npmsec = movestogo = depth = movetime = mate = perft = infinite = 0;
+    movetime = npmsec = movestogo = depth = mate = perft = infinite = 0;
   }
 
   bool use_time_management() const {
-    return !(mate | movetime | depth | nodes | perft | infinite);
+    return !(movetime | nodes | depth | mate | perft | infinite);
   }
 
   std::vector<Move> searchmoves;
-  int time[COLOR_NB], inc[COLOR_NB], npmsec, movestogo, depth,
-      movetime, mate, perft, infinite;
-  int64_t nodes;
+  int64_t nodes, time[COLOR_NB], inc[COLOR_NB], movetime;
+  int npmsec, movestogo, depth, mate, perft, infinite;
   TimePoint startTime;
 };
 

@@ -120,10 +120,10 @@ namespace {
   // perft() is our utility to verify move generation. All the leaf nodes up
   // to the given depth are generated and counted, and the sum is returned.
   template<bool Root>
-  uint64_t perft(Position& pos, Depth depth) {
+  int64_t perft(Position& pos, Depth depth) {
 
     StateInfo st;
-    uint64_t cnt, nodes = 0;
+    int64_t cnt, nodes = 0;
     const bool leaf = (depth == 2 * ONE_PLY);
 
     for (const auto& m : MoveList<LEGAL>(pos))
@@ -1491,11 +1491,13 @@ void MainThread::check_time() {
       return;
 
   // When using nodes, ensure checking rate is not lower than 0.1% of nodes
-  callsCnt = Limits.nodes ? std::min(1024, int(Limits.nodes / 1024)) : 1024;
+  callsCnt = 1024;
+  if (Limits.nodes)
+      callsCnt = std::min(callsCnt, Limits.nodes / 1024);
 
   static TimePoint lastInfoTime = now();
 
-  int elapsed = Time.elapsed();
+  int64_t elapsed = Time.elapsed();
   TimePoint tick = Limits.startTime + elapsed;
 
   if (tick - lastInfoTime >= 1000)
@@ -1510,7 +1512,7 @@ void MainThread::check_time() {
 
   if (   (Limits.use_time_management() && elapsed > Time.maximum() - 10)
       || (Limits.movetime && elapsed >= Limits.movetime)
-      || (Limits.nodes && Threads.nodes_searched() >= (uint64_t)Limits.nodes))
+      || (Limits.nodes && Threads.nodes_searched() >= Limits.nodes))
       Threads.stop = true;
 }
 
@@ -1521,12 +1523,12 @@ void MainThread::check_time() {
 string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
 
   std::stringstream ss;
-  int elapsed = Time.elapsed() + 1;
+  int64_t elapsed = Time.elapsed() + 1;
   const RootMoves& rootMoves = pos.this_thread()->rootMoves;
   size_t PVIdx = pos.this_thread()->PVIdx;
   size_t multiPV = std::min((size_t)Options["MultiPV"], rootMoves.size());
-  uint64_t nodesSearched = Threads.nodes_searched();
-  uint64_t tbHits = Threads.tb_hits() + (TB::RootInTB ? rootMoves.size() : 0);
+  int64_t nodesSearched = Threads.nodes_searched();
+  int64_t tbHits = Threads.tb_hits() + (TB::RootInTB ? rootMoves.size() : 0);
 
   for (size_t i = 0; i < multiPV; ++i)
   {
