@@ -1,7 +1,7 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (c) 2013 Ronald de Man
-  Copyright (C) 2016-2017 Marco Costalba, Lucas Braesch
+  Copyright (C) 2016-2018 Marco Costalba, Lucas Braesch
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -133,16 +133,16 @@ struct Atomic {
     std::atomic_bool ready;
 };
 
-// We define types for the different parts of the WLDEntry and DTZEntry with
+// We define types for the different parts of the WDLEntry and DTZEntry with
 // corresponding specializations for pieces or pawns.
 
-struct WLDEntryPiece {
+struct WDLEntryPiece {
     PairsData* precomp;
 };
 
 struct WDLEntryPawn {
     uint8_t pawnCount[2];     // [Lead color / other color]
-    WLDEntryPiece file[2][4]; // [wtm / btm][FILE_A..FILE_D]
+    WDLEntryPiece file[2][4]; // [wtm / btm][FILE_A..FILE_D]
 };
 
 struct DTZEntryPiece {
@@ -172,7 +172,7 @@ struct WDLEntry : public TBEntry {
     WDLEntry(const std::string& code);
    ~WDLEntry();
     union {
-        WLDEntryPiece pieceTable[2]; // [wtm / btm]
+        WDLEntryPiece pieceTable[2]; // [wtm / btm]
         WDLEntryPawn  pawnTable;
     };
 };
@@ -240,7 +240,7 @@ template<typename T, int LE> T number(void* addr)
 
     T v;
 
-    if ((uintptr_t)addr & (_alignof(T) - 1)) // Unaligned pointer (very rare)
+    if ((uintptr_t)addr & (alignof(T) - 1)) // Unaligned pointer (very rare)
         std::memcpy(&v, addr, sizeof(T));
     else
         v = *((T*)addr);
@@ -341,6 +341,10 @@ public:
 #ifndef _WIN32
         struct stat statbuf;
         int fd = ::open(fname.c_str(), O_RDONLY);
+
+        if (fd == -1)
+            return *baseAddress = nullptr, nullptr;
+
         fstat(fd, &statbuf);
         *mapping = statbuf.st_size;
         *baseAddress = mmap(nullptr, statbuf.st_size, PROT_READ, MAP_SHARED, fd, 0);
@@ -353,6 +357,10 @@ public:
 #else
         HANDLE fd = CreateFile(fname.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr,
                                OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+
+        if (fd == INVALID_HANDLE_VALUE)
+            return *baseAddress = nullptr, nullptr;
+
         DWORD size_high;
         DWORD size_low = GetFileSize(fd, &size_high);
         HANDLE mmap = CreateFileMapping(fd, nullptr, PAGE_READONLY, size_high, size_low, nullptr);
@@ -380,8 +388,7 @@ public:
             || *data++ != *TB_MAGIC) {
             std::cerr << "Corrupted table in file " << fname << std::endl;
             unmap(*baseAddress, *mapping);
-            *baseAddress = nullptr;
-            return nullptr;
+            return *baseAddress = nullptr, nullptr;
         }
 
         return data;
@@ -482,15 +489,15 @@ void HashTable::insert(const std::vector<PieceType>& pieces) {
 
     TBFile file(code.insert(code.find('K', 1), "v") + ".rtbw"); // KRK -> KRvK
 
-    if (!file.is_open())
+    if (!file.is_open()) // Only WDL file is checked
         return;
 
     file.close();
 
     MaxCardinality = std::max((int)pieces.size(), MaxCardinality);
 
-    wdlTable.push_back(WDLEntry(code));
-    dtzTable.push_back(DTZEntry(wdlTable.back()));
+    wdlTable.emplace_back(code);
+    dtzTable.emplace_back(wdlTable.back());
 
     insert(wdlTable.back().key , &wdlTable.back(), &dtzTable.back());
     insert(wdlTable.back().key2, &wdlTable.back(), &dtzTable.back());
@@ -531,14 +538,14 @@ int decompress_pairs(PairsData* d, uint64_t idx) {
     //
     //       I(k) = k * d->span + d->span / 2      (1)
 
-    // First step is to get the 'k' of the I(k) nearest to our idx, using defintion (1)
+    // First step is to get the 'k' of the I(k) nearest to our idx, using definition (1)
     uint32_t k = idx / d->span;
 
     // Then we read the corresponding SparseIndex[] entry
     uint32_t block = number<uint32_t, LittleEndian>(&d->sparseIndex[k].block);
     int offset     = number<uint16_t, LittleEndian>(&d->sparseIndex[k].offset);
 
-    // Now compute the difference idx - I(k). From defintion of k we know that
+    // Now compute the difference idx - I(k). From definition of k we know that
     //
     //       idx = k * d->span + idx % d->span    (2)
     //
@@ -673,7 +680,7 @@ int map_score(DTZEntry* entry, File f, int value, WDLScore wdl) {
 //      idx = Binomial[1][s1] + Binomial[2][s2] + ... + Binomial[k][sk]
 //
 template<typename Entry, typename T = typename Ret<Entry>::type>
-T do_probe_table(const Position& pos,  Entry* entry, WDLScore wdl, ProbeState* result) {
+T do_probe_table(const Position& pos, Entry* entry, WDLScore wdl, ProbeState* result) {
 
     const bool IsWDL = std::is_same<Entry, WDLEntry>::value;
 
@@ -713,8 +720,9 @@ T do_probe_table(const Position& pos,  Entry* entry, WDLScore wdl, ProbeState* r
         assert(type_of(pc) == PAWN);
 
         leadPawns = b = pos.pieces(color_of(pc), PAWN);
-        while (b)
+        do
             squares[size++] = pop_lsb(&b) ^ flipSquares;
+        while (b);
 
         leadPawnsCnt = size;
 
@@ -737,11 +745,13 @@ T do_probe_table(const Position& pos,  Entry* entry, WDLScore wdl, ProbeState* r
     // Now we are ready to get all the position pieces (but the lead pawns) and
     // directly map them to the correct color and square.
     b = pos.pieces() ^ leadPawns;
-    while (b) {
+    do {
         Square s = pop_lsb(&b);
         squares[size] = s ^ flipSquares;
         pieces[size++] = Piece(pos.piece_on(s) ^ flipColor);
-    }
+    } while (b);
+
+    assert(size >= 2);
 
     // Then we reorder the pieces to have the same sequence as the one stored
     // in precomp->pieces[i]: the sequence that ensures the best compression.
@@ -1107,7 +1117,7 @@ void do_init(Entry& e, T& p, uint8_t* data) {
     for (File f = FILE_A; f <= MaxFile; ++f)
         for (int i = 0; i < Sides; i++) {
             (d = item(p, i, f).precomp)->sparseIndex = (SparseEntry*)data;
-            data += d->sparseIndexSize * sizeof(SparseEntry) ;
+            data += d->sparseIndexSize * sizeof(SparseEntry);
         }
 
     for (File f = FILE_A; f <= MaxFile; ++f)
@@ -1292,7 +1302,7 @@ void Tablebases::init(const std::string& paths) {
             if (MapA1D1D4[s1] == idx && (idx || s1 == SQ_B1)) // SQ_B1 is mapped to 0
             {
                 for (Square s2 = SQ_A1; s2 <= SQ_H8; ++s2)
-                    if ((StepAttacksBB[KING][s1] | s1) & s2)
+                    if ((PseudoAttacks[KING][s1] | s1) & s2)
                         continue; // Illegal position
 
                     else if (!off_A1H8(s1) && off_A1H8(s2) > 0)
@@ -1517,6 +1527,8 @@ static int has_repeated(StateInfo *st)
 // no moves were filtered out.
 bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves, Value& score)
 {
+    assert(rootMoves.size());
+
     ProbeState result;
     int dtz = probe_dtz(pos, &result);
 
@@ -1562,7 +1574,7 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves, Value& 
 
     // Obtain 50-move counter for the root position.
     // In Stockfish there seems to be no clean way, so we do it like this:
-    int cnt50 = st.previous->rule50;
+    int cnt50 = st.previous ? st.previous->rule50 : 0;
 
     // Use 50-move counter to determine whether the root position is
     // won, lost or drawn.
