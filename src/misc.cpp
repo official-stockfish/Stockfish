@@ -2,7 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2017 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2015-2018 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -63,10 +63,10 @@ struct Tie: public streambuf { // MSVC requires split streambuf for cin and cout
 
   Tie(streambuf* b, streambuf* l) : buf(b), logBuf(l) {}
 
-  int sync() { return logBuf->pubsync(), buf->pubsync(); }
-  int overflow(int c) { return log(buf->sputc((char)c), "<< "); }
-  int underflow() { return buf->sgetc(); }
-  int uflow() { return log(buf->sbumpc(), ">> "); }
+  int sync() override { return logBuf->pubsync(), buf->pubsync(); }
+  int overflow(int c) override { return log(buf->sputc((char)c), "<< "); }
+  int underflow() override { return buf->sgetc(); }
+  int uflow() override { return log(buf->sbumpc(), ">> "); }
 
   streambuf *buf, *logBuf;
 
@@ -133,8 +133,7 @@ const string engine_info(bool to_uci) {
   ss << (Is64Bit ? " 64" : "")
      << (HasPext ? " BMI2" : (HasPopCnt ? " POPCNT" : ""))
      << (to_uci  ? "\nid author ": " by ")
-     << "T. Romstad, M. Costalba, J. Kiiski, G. Linscott."
-		<< " Learn by Kelly Kinyama";
+     << "T. Romstad, M. Costalba, J. Kiiski, G. Linscott";
 
   return ss.str();
 }
@@ -293,14 +292,6 @@ int get_group(size_t idx) {
 /// bindThisThread() set the group affinity of the current thread
 
 void bindThisThread(size_t idx) {
-
-  // If OS already scheduled us on a different group than 0 then don't overwrite
-  // the choice, eventually we are one of many one-threaded processes running on
-  // some Windows NUMA hardware, for instance in fishtest. To make it simple,
-  // just check if running threads are below a threshold, in this case all this
-  // NUMA machinery is not needed.
-  if (Threads.size() < 8)
-      return;
 
   // Use only local variables to be thread-safe
   int group = get_group(idx);

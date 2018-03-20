@@ -2,7 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2017 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2015-2018 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -20,14 +20,16 @@
 
 #include <cstring>   // For std::memset
 #include <iostream>
+#include <fstream>
 
 #include "bitboard.h"
 #include "tt.h"
-#include <fstream>
 
 using namespace std;
+
 TranspositionTable TT; // Our global transposition table
-TranspositionTable EXP;
+TranspositionTable EXP; // Our global transposition table
+
 
 /// TranspositionTable::resize() sets the size of the transposition table,
 /// measured in megabytes. Transposition table consists of a power of 2 number
@@ -35,7 +37,7 @@ TranspositionTable EXP;
 
 void TranspositionTable::resize(size_t mbSize) {
 
-  size_t newClusterCount = size_t(1) << msb((mbSize * 1024 * 1024) / sizeof(Cluster));
+  size_t newClusterCount = mbSize * 1024 * 1024 / sizeof(Cluster);
 
   if (newClusterCount == clusterCount)
       return;
@@ -43,7 +45,7 @@ void TranspositionTable::resize(size_t mbSize) {
   clusterCount = newClusterCount;
 
   free(mem);
-  mem = calloc(clusterCount * sizeof(Cluster) + CacheLineSize - 1, 1);
+  mem = malloc(clusterCount * sizeof(Cluster) + CacheLineSize - 1);
 
   if (!mem)
   {
@@ -53,6 +55,7 @@ void TranspositionTable::resize(size_t mbSize) {
   }
 
   table = (Cluster*)((uintptr_t(mem) + CacheLineSize - 1) & ~(CacheLineSize - 1));
+  clear();
 }
 
 
@@ -117,7 +120,6 @@ int TranspositionTable::hashfull() const {
   }
   return cnt;
 }
-
 void EXPresize(size_t mbSize) {
 
 	EXP.new_search();
