@@ -48,7 +48,7 @@ namespace {
   // or the starting position ("startpos") and then makes the moves given in the
   // following move list ("moves").
 
-  void position(Position& pos, istringstream& is, StateListPtr& states) {
+  void position(Position& pos, istringstream& is) {
 
     Move m;
     string token, fen;
@@ -66,15 +66,11 @@ namespace {
     else
         return;
 
-    states = StateListPtr(new std::deque<StateInfo>(1)); // Drop old and create a new one
-    pos.set(fen, Options["UCI_Chess960"], &states->back(), Threads.main());
+    pos.set(fen, Options["UCI_Chess960"], Threads.main());
 
     // Parse move list (if any)
     while (is >> token && (m = UCI::to_move(pos, token)) != MOVE_NONE)
-    {
-        states->emplace_back();
-        pos.do_move(m, states->back());
-    }
+        pos.setup_move(m);
   }
 
 
@@ -106,7 +102,7 @@ namespace {
   // the thinking time and other parameters from the input string, then starts
   // the search.
 
-  void go(Position& pos, istringstream& is, StateListPtr& states) {
+  void go(Position& pos, istringstream& is) {
 
     Search::LimitsType limits;
     string token;
@@ -132,7 +128,7 @@ namespace {
         else if (token == "infinite")  limits.infinite = 1;
         else if (token == "ponder")    ponderMode = true;
 
-    Threads.start_thinking(pos, states, limits, ponderMode);
+    Threads.start_thinking(pos, limits, ponderMode);
   }
 
 
@@ -140,7 +136,7 @@ namespace {
   // a list of UCI commands is setup according to bench parameters, then
   // it is run one by one printing a summary at the end.
 
-  void bench(Position& pos, istream& args, StateListPtr& states) {
+  void bench(Position& pos, istream& args) {
 
     string token;
     uint64_t num, nodes = 0, cnt = 1;
@@ -158,12 +154,12 @@ namespace {
         if (token == "go")
         {
             cerr << "\nPosition: " << cnt++ << '/' << num << endl;
-            go(pos, is, states);
+            go(pos, is);
             Threads.main()->wait_for_search_finished();
             nodes += Threads.nodes_searched();
         }
         else if (token == "setoption")  setoption(is);
-        else if (token == "position")   position(pos, is, states);
+        else if (token == "position")   position(pos, is);
         else if (token == "ucinewgame") Search::clear();
     }
 
@@ -190,10 +186,9 @@ void UCI::loop(int argc, char* argv[]) {
 
   Position pos;
   string token, cmd;
-  StateListPtr states(new std::deque<StateInfo>(1));
   auto uiThread = std::make_shared<Thread>(0);
 
-  pos.set(StartFEN, false, &states->back(), uiThread.get());
+  pos.set(StartFEN, false, uiThread.get());
 
   for (int i = 1; i < argc; ++i)
       cmd += std::string(argv[i]) + " ";
@@ -226,14 +221,14 @@ void UCI::loop(int argc, char* argv[]) {
                     << "\nuciok"  << sync_endl;
 
       else if (token == "setoption")  setoption(is);
-      else if (token == "go")         go(pos, is, states);
-      else if (token == "position")   position(pos, is, states);
+      else if (token == "go")         go(pos, is);
+      else if (token == "position")   position(pos, is);
       else if (token == "ucinewgame") Search::clear();
       else if (token == "isready")    sync_cout << "readyok" << sync_endl;
 
       // Additional custom non-UCI commands, mainly for debugging
       else if (token == "flip")  pos.flip();
-      else if (token == "bench") bench(pos, is, states);
+      else if (token == "bench") bench(pos, is);
       else if (token == "d")     sync_cout << pos << sync_endl;
       else if (token == "eval")  sync_cout << Eval::trace(pos) << sync_endl;
       else

@@ -29,40 +29,6 @@
 #include "bitboard.h"
 #include "types.h"
 
-
-/// StateInfo struct stores information needed to restore a Position object to
-/// its previous state when we retract a move. Whenever a move is made on the
-/// board (by calling Position::do_move), a StateInfo object must be passed.
-
-struct StateInfo {
-
-  // Copied when making a move
-  Key    pawnKey;
-  Key    materialKey;
-  Value  nonPawnMaterial[COLOR_NB];
-  int    castlingRights;
-  int    rule50;
-  int    pliesFromNull;
-  Score  psq;
-  Square epSquare;
-
-  // Not copied when making a move (will be recomputed anyhow)
-  Key        key;
-  Bitboard   checkersBB;
-  Piece      capturedPiece;
-  StateInfo* previous;
-  Bitboard   blockersForKing[COLOR_NB];
-  Bitboard   pinners[COLOR_NB];
-  Bitboard   checkSquares[PIECE_TYPE_NB];
-};
-
-/// A list to keep track of the position states along the setup moves (from the
-/// start position to the position just before the search starts). Needed by
-/// 'draw by repetition' detection. Use a std::deque because pointers to
-/// elements are not invalidated upon list resizing.
-typedef std::unique_ptr<std::deque<StateInfo>> StateListPtr;
-
-
 /// Position class stores information regarding the board representation as
 /// pieces, side to move, hash keys, castling info, etc. Important methods are
 /// do_move() and undo_move(), used by the search to update node info when
@@ -78,8 +44,9 @@ public:
   Position& operator=(const Position&) = delete;
 
   // FEN string input/output
-  Position& set(const std::string& fenStr, bool isChess960, StateInfo* si, Thread* th);
-  Position& set(const std::string& code, Color c, StateInfo* si);
+  Position& set(const std::string& fenStr, bool isChess960, Thread* th);
+  Position& set(const std::string& code, Color c);
+  Position& set(const Position&, Thread*);
   const std::string fen() const;
 
   // Position representation
@@ -131,11 +98,12 @@ public:
   bool opposite_bishops() const;
 
   // Doing and undoing moves
-  void do_move(Move m, StateInfo& newSt);
-  void do_move(Move m, StateInfo& newSt, bool givesCheck);
+  void do_move(Move m);
+  void do_move(Move m, bool givesCheck);
   void undo_move(Move m);
-  void do_null_move(StateInfo& newSt);
+  void do_null_move();
   void undo_null_move();
+  void setup_move(Move m);
 
   // Static Exchange Evaluation
   bool see_ge(Move m, Value threshold = VALUE_ZERO) const;
@@ -152,6 +120,7 @@ public:
   bool is_chess960() const;
   Thread* this_thread() const;
   bool is_draw(int ply) const;
+  bool has_repeated(int ply) const;
   int rule50_count() const;
   Score psq_score() const;
   Value non_pawn_material(Color c) const;
@@ -164,8 +133,8 @@ public:
 private:
   // Initialization helpers (used while setting up a position)
   void set_castling_right(Color c, Square rfrom);
-  void set_state(StateInfo* si) const;
-  void set_check_info(StateInfo* si) const;
+  void update_state();
+  void update_check_info();
 
   // Other helpers
   void put_piece(Piece pc, Square s);
@@ -184,7 +153,35 @@ private:
   int castlingRightsMask[SQUARE_NB];
   Square castlingRookSquare[CASTLING_RIGHT_NB];
   Bitboard castlingPath[CASTLING_RIGHT_NB];
-  int gamePly;
+
+/// StateInfo struct stores information needed to restore a Position object to
+/// its previous state when we retract a move. Whenever a move is made on the
+/// board (by calling Position::do_move), a StateInfo object must be passed.
+
+struct StateInfo {
+
+  // Copied when making a move
+  Key    pawnKey;
+  Key    materialKey;
+  Value  nonPawnMaterial[COLOR_NB];
+  int    castlingRights;
+  int    rule50;
+  int    pliesFromNull;
+  Score  psq;
+  Square epSquare;
+
+  // Not copied when making a move (will be recomputed anyhow)
+  Key        key;
+  Bitboard   checkersBB;
+  Piece      capturedPiece;
+  Bitboard   blockersForKing[COLOR_NB];
+  Bitboard   pinners[COLOR_NB];
+  Bitboard   checkSquares[PIECE_TYPE_NB];
+};
+  /// A stack that keep track of the state history of the position.
+  StateInfo stateStack[102 + MAX_PLY];
+
+  int basePly;
   Color sideToMove;
   Thread* thisThread;
   StateInfo* st;
@@ -337,7 +334,7 @@ inline Value Position::non_pawn_material() const {
 }
 
 inline int Position::game_ply() const {
-  return gamePly;
+  return basePly + (st - stateStack);
 }
 
 inline int Position::rule50_count() const {
@@ -415,8 +412,8 @@ inline void Position::move_piece(Piece pc, Square from, Square to) {
   pieceList[pc][index[to]] = to;
 }
 
-inline void Position::do_move(Move m, StateInfo& newSt) {
-  do_move(m, newSt, gives_check(m));
+inline void Position::do_move(Move m) {
+  do_move(m, gives_check(m));
 }
 
 #endif // #ifndef POSITION_H_INCLUDED

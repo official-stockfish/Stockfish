@@ -96,7 +96,7 @@ struct MainThread : public Thread {
 
 struct ThreadPool : public std::vector<Thread*> {
 
-  void start_thinking(Position&, StateListPtr&, const Search::LimitsType&, bool = false);
+  void start_thinking(Position&, const Search::LimitsType&, bool = false);
   void clear();
   void set(size_t);
 
@@ -107,7 +107,6 @@ struct ThreadPool : public std::vector<Thread*> {
   std::atomic_bool stop, ponder, stopOnPonderhit;
 
 private:
-  StateListPtr setupStates;
 
   uint64_t accumulate(std::atomic<uint64_t> Thread::* member) const {
 
