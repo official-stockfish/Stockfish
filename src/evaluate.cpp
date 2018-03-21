@@ -74,10 +74,10 @@ using namespace Trace;
 
 namespace {
 
-  constexpr Bitboard QueenSide   = FileABB | FileBBB | FileCBB | FileDBB;
-  constexpr Bitboard CenterFiles = FileCBB | FileDBB | FileEBB | FileFBB;
-  constexpr Bitboard KingSide    = FileEBB | FileFBB | FileGBB | FileHBB;
-  constexpr Bitboard Center      = (FileDBB | FileEBB) & (Rank4BB | Rank5BB);
+  constexpr Bitboard QueenSide   = make_bitboard(FILE_A, FILE_B, FILE_C, FILE_D);
+  constexpr Bitboard CenterFiles = make_bitboard(FILE_C, FILE_D, FILE_E, FILE_F);
+  constexpr Bitboard KingSide    = make_bitboard(FILE_E, FILE_F, FILE_G, FILE_H);
+  constexpr Bitboard Center      = make_bitboard(SQ_D4, SQ_E4, SQ_D5, SQ_E5);
 
   constexpr Bitboard KingFlank[FILE_NB] = {
     QueenSide,   QueenSide, QueenSide,
@@ -253,7 +253,8 @@ namespace {
     constexpr Color     Them = (Us == WHITE ? BLACK : WHITE);
     constexpr Direction Up   = (Us == WHITE ? NORTH : SOUTH);
     constexpr Direction Down = (Us == WHITE ? SOUTH : NORTH);
-    constexpr Bitboard LowRanks = (Us == WHITE ? Rank2BB | Rank3BB: Rank7BB | Rank6BB);
+    constexpr Bitboard LowRanks = (Us == WHITE ? make_bitboard(RANK_2, RANK_3)
+                                               : make_bitboard(RANK_7, RANK_6));
 
     // Find our pawns that are blocked or on the first two ranks
     Bitboard b = pos.pieces(Us, PAWN) & (shift<Down>(pos.pieces()) | LowRanks);
@@ -288,8 +289,8 @@ namespace {
   Score Evaluation<T>::pieces() {
 
     constexpr Color Them = (Us == WHITE ? BLACK : WHITE);
-    constexpr Bitboard OutpostRanks = (Us == WHITE ? Rank4BB | Rank5BB | Rank6BB
-                                                   : Rank5BB | Rank4BB | Rank3BB);
+    constexpr Bitboard OutpostRanks = (Us == WHITE ? make_bitboard(RANK_4, RANK_5, RANK_6)
+                                                   : make_bitboard(RANK_5, RANK_4, RANK_3));
     const Square* pl = pos.squares<Pt>(Us);
 
     Bitboard b, bb;
@@ -405,8 +406,8 @@ namespace {
   Score Evaluation<T>::king() const {
 
     constexpr Color    Them = (Us == WHITE ? BLACK : WHITE);
-    constexpr Bitboard Camp = (Us == WHITE ? AllSquares ^ Rank6BB ^ Rank7BB ^ Rank8BB
-                                       : AllSquares ^ Rank1BB ^ Rank2BB ^ Rank3BB);
+    constexpr Bitboard Camp = (Us == WHITE ? ~make_bitboard(RANK_6, RANK_7, RANK_8)
+                                           : ~make_bitboard(RANK_1, RANK_2, RANK_3));
 
     const Square ksq = pos.square<KING>(Us);
     Bitboard weak, b, b1, b2, safe, unsafeChecks, pinned;
@@ -506,9 +507,9 @@ namespace {
   template<Tracing T> template<Color Us>
   Score Evaluation<T>::threats() const {
 
-    constexpr Color     Them     = (Us == WHITE ? BLACK   : WHITE);
-    constexpr Direction Up       = (Us == WHITE ? NORTH   : SOUTH);
-    constexpr Bitboard  TRank3BB = (Us == WHITE ? Rank3BB : Rank6BB);
+    constexpr Color     Them     =              (Us == WHITE ? BLACK  : WHITE);
+    constexpr Direction Up       =              (Us == WHITE ? NORTH  : SOUTH);
+    constexpr Bitboard  TRank3BB = make_bitboard(Us == WHITE ? RANK_3 : RANK_6);
 
     Bitboard b, weak, defended, nonPawnEnemies, stronglyProtected, safeThreats;
     Score score = SCORE_ZERO;
@@ -717,8 +718,8 @@ namespace {
 
     constexpr Color Them = (Us == WHITE ? BLACK : WHITE);
     constexpr Bitboard SpaceMask =
-      Us == WHITE ? CenterFiles & (Rank2BB | Rank3BB | Rank4BB)
-                  : CenterFiles & (Rank7BB | Rank6BB | Rank5BB);
+      Us == WHITE ? CenterFiles & make_bitboard(RANK_2, RANK_3, RANK_4)
+                  : CenterFiles & make_bitboard(RANK_7, RANK_6, RANK_5);
 
     if (pos.non_pawn_material() < SpaceThreshold)
         return SCORE_ZERO;

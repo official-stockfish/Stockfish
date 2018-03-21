@@ -39,26 +39,7 @@ const std::string pretty(Bitboard b);
 
 }
 
-constexpr Bitboard AllSquares = ~Bitboard(0);
 constexpr Bitboard DarkSquares = 0xAA55AA55AA55AA55ULL;
-
-constexpr Bitboard FileABB = 0x0101010101010101ULL;
-constexpr Bitboard FileBBB = FileABB << 1;
-constexpr Bitboard FileCBB = FileABB << 2;
-constexpr Bitboard FileDBB = FileABB << 3;
-constexpr Bitboard FileEBB = FileABB << 4;
-constexpr Bitboard FileFBB = FileABB << 5;
-constexpr Bitboard FileGBB = FileABB << 6;
-constexpr Bitboard FileHBB = FileABB << 7;
-
-constexpr Bitboard Rank1BB = 0xFF;
-constexpr Bitboard Rank2BB = Rank1BB << (8 * 1);
-constexpr Bitboard Rank3BB = Rank1BB << (8 * 2);
-constexpr Bitboard Rank4BB = Rank1BB << (8 * 3);
-constexpr Bitboard Rank5BB = Rank1BB << (8 * 4);
-constexpr Bitboard Rank6BB = Rank1BB << (8 * 5);
-constexpr Bitboard Rank7BB = Rank1BB << (8 * 6);
-constexpr Bitboard Rank8BB = Rank1BB << (8 * 7);
 
 extern int SquareDistance[SQUARE_NB][SQUARE_NB];
 
@@ -150,23 +131,36 @@ inline Bitboard file_bb(Square s) {
 }
 
 
-/// make_bitboard() returns a bitboard from a list of squares
+/// make_bitboard() returns a bitboard compile-time constructed from a list of
+/// squares, files and/or ranks
 
 constexpr Bitboard make_bitboard() { return 0; }
 
-template<typename ...Squares>
-constexpr Bitboard make_bitboard(Square s, Squares... squares) {
-  return (1ULL << s) | make_bitboard(squares...);
+template<typename ...Descriptors>
+constexpr Bitboard make_bitboard(Square s, Descriptors... descriptors) {
+  return (1ULL << s) | make_bitboard(descriptors...);
 }
 
+template<typename ...Descriptors>
+constexpr Bitboard make_bitboard(File f, Descriptors... descriptors) {
+  return (0x0101010101010101ULL << f) | make_bitboard(descriptors...);
+}
+
+template<typename ...Descriptors>
+constexpr Bitboard make_bitboard(Rank r, Descriptors... descriptors) {
+  return (0xFFULL << (r * 8)) | make_bitboard(descriptors...);
+}
 
 /// shift() moves a bitboard one step along direction D (mainly for pawns)
 
 template<Direction D>
 constexpr Bitboard shift(Bitboard b) {
-  return  D == NORTH      ?  b             << 8 : D == SOUTH      ?  b             >> 8
-        : D == NORTH_EAST ? (b & ~FileHBB) << 9 : D == SOUTH_EAST ? (b & ~FileHBB) >> 7
-        : D == NORTH_WEST ? (b & ~FileABB) << 7 : D == SOUTH_WEST ? (b & ~FileABB) >> 9
+  return  D == NORTH      ?  b                           << 8
+        : D == SOUTH      ?  b                           >> 8
+        : D == NORTH_EAST ? (b & ~make_bitboard(FILE_H)) << 9
+        : D == SOUTH_EAST ? (b & ~make_bitboard(FILE_H)) >> 7
+        : D == NORTH_WEST ? (b & ~make_bitboard(FILE_A)) << 7
+        : D == SOUTH_WEST ? (b & ~make_bitboard(FILE_A)) >> 9
         : 0;
 }
 

@@ -89,13 +89,13 @@ void Bitboards::init() {
       PopCnt16[i] = (uint8_t) popcount16(i);
 
   for (Square s = SQ_A1; s <= SQ_H8; ++s)
-      SquareBB[s] = 1ULL << s;
+      SquareBB[s] = make_bitboard(s);
 
   for (File f = FILE_A; f <= FILE_H; ++f)
-      FileBB[f] = f > FILE_A ? FileBB[f - 1] << 1 : FileABB;
+      FileBB[f] = f > FILE_A ? FileBB[f - 1] << 1 : make_bitboard(FILE_A);
 
   for (Rank r = RANK_1; r <= RANK_8; ++r)
-      RankBB[r] = r > RANK_1 ? RankBB[r - 1] << 8 : Rank1BB;
+      RankBB[r] = r > RANK_1 ? RankBB[r - 1] << 8 : make_bitboard(RANK_1);
 
   for (File f = FILE_A; f <= FILE_H; ++f)
       AdjacentFilesBB[f] = (f > FILE_A ? FileBB[f - 1] : 0) | (f < FILE_H ? FileBB[f + 1] : 0);
@@ -199,7 +199,8 @@ namespace {
     for (Square s = SQ_A1; s <= SQ_H8; ++s)
     {
         // Board edges are not considered in the relevant occupancies
-        edges = ((Rank1BB | Rank8BB) & ~rank_bb(s)) | ((FileABB | FileHBB) & ~file_bb(s));
+        edges =   (make_bitboard(RANK_1, RANK_8) & ~rank_bb(s))
+                | (make_bitboard(FILE_A, FILE_H) & ~file_bb(s));
 
         // Given a square 's', the mask is the bitboard of sliding attacks from
         // 's' computed on an empty board. The index must be big enough to contain
