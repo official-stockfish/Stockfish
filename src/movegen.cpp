@@ -28,7 +28,7 @@ namespace {
   template<CastlingRight Cr, bool Checks, bool Chess960>
   ExtMove* generate_castling(const Position& pos, ExtMove* moveList, Color us) {
 
-    static constexpr bool KingSide = (Cr == WHITE_OO || Cr == BLACK_OO);
+    constexpr bool KingSide = (Cr == WHITE_OO || Cr == BLACK_OO);
 
     if (pos.castling_impeded(Cr) || !pos.can_castle(Cr))
         return moveList;

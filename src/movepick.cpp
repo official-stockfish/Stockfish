@@ -25,7 +25,7 @@
 namespace {
 
   enum Stages {
-    MAIN_TT, CAPTURE_INIT, GOOD_CAPTURE, KILLER0, KILLER1, COUNTERMOVE, QUIET_INIT, QUIET, BAD_CAPTURE,
+    MAIN_TT, CAPTURE_INIT, GOOD_CAPTURE, REFUTATION, QUIET_INIT, QUIET, BAD_CAPTURE,
     EVASION_TT, EVASION_INIT, EVASION,
     PROBCUT_TT, PROBCUT_INIT, PROBCUT,
     QSEARCH_TT, QCAPTURE_INIT, QCAPTURE, QCHECK_INIT, QCHECK
@@ -60,9 +60,9 @@ namespace {
 
 /// MovePicker constructor for the main search
 MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const ButterflyHistory* mh,
-                       const CapturePieceToHistory* cph, const PieceToHistory** ch, Move cm, Move* killers_p)
+                       const CapturePieceToHistory* cph, const PieceToHistory** ch, Move cm, Move* killers)
            : pos(p), mainHistory(mh), captureHistory(cph), contHistory(ch),
-             refutations{killers_p[0], killers_p[1], cm}, depth(d){
+             refutations{{killers[0], 0}, {killers[1], 0}, {cm, 0}}, depth(d){
 
   assert(d > DEPTH_ZERO);
 
@@ -129,7 +129,8 @@ void MovePicker::score() {
       }
 }
 
-/// MovePicker::select_move() returns the next move satisfying a predicate function
+/// MovePicker::select_move() returns the next move satisfying a predicate function.
+/// It never returns the TT move.
 template<PickType T, typename Pred>
 Move MovePicker::select_move(Pred filter) {
 
@@ -147,8 +148,8 @@ Move MovePicker::select_move(Pred filter) {
 }
 
 /// MovePicker::next_move() is the most important method of the MovePicker class. It
-/// returns a new pseudo legal move every time it is called, until there are no more
-/// moves left. It picks the move with the highest score from a list of generated moves.
+/// returns a new pseudo legal move every time it is called until there are no more
+/// moves left, picking the move with the highest score from a list of generated moves.
 Move MovePicker::next_move(bool skipQuiets) {
 
 top:
@@ -176,25 +177,23 @@ top:
                                                  true : (*endBadCaptures++ = move, false); }))
           return move;
 
+      // Prepare the pointers to loop over the refutations array
+      cur = std::begin(refutations), endMoves = std::end(refutations);
+
       // If the countermove is the same as a killer, skip it
-      if (   refutations[0] == refutations[2]
-          || refutations[1] == refutations[2])
-          refutations[2] = MOVE_NONE;
+      if (   refutations[0].move == refutations[2].move
+          || refutations[1].move == refutations[2].move)
+          --endMoves;
+
       ++stage;
       /* fallthrough */
 
-  case KILLER0:
-  case KILLER1:
-  case COUNTERMOVE:
-      while (stage <= COUNTERMOVE)
-      {
-          move = refutations[ stage++ - KILLER0];
-          if (    move != MOVE_NONE
-              &&  move != ttMove
-              &&  pos.pseudo_legal(move)
-              && !pos.capture(move))
-              return move;
-      }
+  case REFUTATION:
+      if (select_move<NEXT>([&](){ return     move != MOVE_NONE
+                                          && !pos.capture(move)
+                                          &&  pos.pseudo_legal(move); }))
+          return move;
+      ++stage;
       /* fallthrough */
 
   case QUIET_INIT:
@@ -212,7 +211,7 @@ top:
                                             && move != refutations[2];}))
           return move;
 
-      // Point to beginning and end of bad captures
+      // Prepare the pointers to loop over the bad captures
       cur = moves, endMoves = endBadCaptures;
       ++stage;
       /* fallthrough */
