@@ -139,7 +139,6 @@ vector<string> setup_bench(const Position& current, istream& is) {
       file.close();
   }
 
-  list.emplace_back("ucinewgame");
   list.emplace_back("setoption name Threads value " + threads);
   list.emplace_back("setoption name Hash value " + ttSize);
 
@@ -148,6 +147,7 @@ vector<string> setup_bench(const Position& current, istream& is) {
           list.emplace_back(fen);
       else
       {
+          list.emplace_back("ucinewgame");
           list.emplace_back("position fen " + fen);
           list.emplace_back(go);
       }
