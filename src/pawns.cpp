@@ -156,7 +156,7 @@ namespace {
 
         // A pawn is backward when it is behind all pawns of the same color on the
         // adjacent files and cannot be safely advanced.
-        else if (neighbours && !lever && relative_rank(Us, s) < RANK_5)
+        else if (!lever && relative_rank(Us, s) < RANK_5)
         {
             // Find the backmost rank with neighbours or stoppers
             b = rank_bb(backmost_sq(Us, neighbours | stoppers));
