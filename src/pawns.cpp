@@ -164,7 +164,6 @@ namespace {
             // The pawn is backward when it cannot safely progress to that rank:
             // either there is a stopper in the way on this rank, or there is a
             // stopper on adjacent file which controls the way to that rank.
-            //backward = (b | shift<Up>(b & adjacent_files_bb(f))) & stoppers;
             if ((b | shift<Up>(b & adjacent_files_bb(f))) & stoppers)
                score -= Backward, e->weakUnopposed[Us] += !opposed;
         }
