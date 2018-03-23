@@ -94,7 +94,7 @@ namespace {
     Bitboard b, neighbours, stoppers, doubled, supported, phalanx;
     Bitboard lever, leverPush;
     Square s;
-    bool opposed, backward;
+    bool opposed;
     Score score = SCORE_ZERO;
     const Square* pl = pos.squares<PAWN>(Us);
 
@@ -128,23 +128,6 @@ namespace {
         phalanx    = neighbours & rank_bb(s);
         supported  = neighbours & rank_bb(s - Up);
 
-        // A pawn is backward when it is behind all pawns of the same color on the
-        // adjacent files and cannot be safely advanced.
-        if (!neighbours || lever || relative_rank(Us, s) >= RANK_5)
-            backward = false;
-        else
-        {
-            // Find the backmost rank with neighbours or stoppers
-            b = rank_bb(backmost_sq(Us, neighbours | stoppers));
-
-            // The pawn is backward when it cannot safely progress to that rank:
-            // either there is a stopper in the way on this rank, or there is a
-            // stopper on adjacent file which controls the way to that rank.
-            backward = (b | shift<Up>(b & adjacent_files_bb(f))) & stoppers;
-
-            assert(!(backward && (forward_ranks_bb(Them, s + Up) & neighbours)));
-        }
-
         // Passed pawns will be properly scored in evaluation because we need
         // full attack info to evaluate them. Include also not passed pawns
         // which could become passed after one or two pawn pushes when are
@@ -171,8 +154,22 @@ namespace {
         else if (!neighbours)
             score -= Isolated, e->weakUnopposed[Us] += !opposed;
 
-        else if (backward)
-            score -= Backward, e->weakUnopposed[Us] += !opposed;
+        // A pawn is backward when it is behind all pawns of the same color on the
+        // adjacent files and cannot be safely advanced.
+        else if (neighbours && !lever && relative_rank(Us, s) < RANK_5)
+        {
+            // Find the backmost rank with neighbours or stoppers
+            b = rank_bb(backmost_sq(Us, neighbours | stoppers));
+
+            // The pawn is backward when it cannot safely progress to that rank:
+            // either there is a stopper in the way on this rank, or there is a
+            // stopper on adjacent file which controls the way to that rank.
+            //backward = (b | shift<Up>(b & adjacent_files_bb(f))) & stoppers;
+            if ((b | shift<Up>(b & adjacent_files_bb(f))) & stoppers)
+               score -= Backward, e->weakUnopposed[Us] += !opposed;
+
+            assert(!(backward && (forward_ranks_bb(Them, s + Up) & neighbours)));
+        }
 
         if (doubled && !supported)
             score -= Doubled;
