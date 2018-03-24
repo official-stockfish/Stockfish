@@ -31,16 +31,16 @@
 class TimeManagement {
 public:
   void init(Search::LimitsType& limits, Color us, int ply);
-  int optimum() const { return optimumTime; }
-  int maximum() const { return maximumTime; }
-  int elapsed() const { return int(Search::Limits.npmsec ? Threads.nodes_searched() : now() - startTime); }
+  int64_t optimum() const { return optimumTime; }
+  int64_t maximum() const { return maximumTime; }
+  int64_t elapsed() const { return Search::Limits.npmsec ? Threads.nodes_searched() : now() - startTime; }
 
   int64_t availableNodes; // When in 'nodes as time' mode
 
 private:
   TimePoint startTime;
-  int optimumTime;
-  int maximumTime;
+  int64_t optimumTime;
+  int64_t maximumTime;
 };
 
 extern TimeManagement Time;

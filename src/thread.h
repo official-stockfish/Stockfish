@@ -62,7 +62,7 @@ public:
   Endgames endgames;
   size_t PVIdx;
   int selDepth, nmp_ply, nmp_odd;
-  std::atomic<uint64_t> nodes, tbHits;
+  std::atomic<int64_t> nodes, tbHits;
 
   Position rootPos;
   Search::RootMoves rootMoves;
@@ -86,7 +86,7 @@ struct MainThread : public Thread {
   bool failedLow;
   double bestMoveChanges, previousTimeReduction;
   Value previousScore;
-  int callsCnt;
+  int64_t callsCnt;
 };
 
 
@@ -100,18 +100,18 @@ struct ThreadPool : public std::vector<Thread*> {
   void clear();
   void set(size_t);
 
-  MainThread* main()        const { return static_cast<MainThread*>(front()); }
-  uint64_t nodes_searched() const { return accumulate(&Thread::nodes); }
-  uint64_t tb_hits()        const { return accumulate(&Thread::tbHits); }
+  MainThread* main()       const { return static_cast<MainThread*>(front()); }
+  int64_t nodes_searched() const { return accumulate(&Thread::nodes); }
+  int64_t tb_hits()        const { return accumulate(&Thread::tbHits); }
 
   std::atomic_bool stop, ponder, stopOnPonderhit;
 
 private:
   StateListPtr setupStates;
 
-  uint64_t accumulate(std::atomic<uint64_t> Thread::* member) const {
+  int64_t accumulate(std::atomic<int64_t> Thread::* member) const {
 
-    uint64_t sum = 0;
+    int64_t sum = 0;
     for (Thread* th : *this)
         sum += (th->*member).load(std::memory_order_relaxed);
     return sum;
