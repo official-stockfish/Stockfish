@@ -99,7 +99,7 @@ void TimeManagement::init(Search::LimitsType& limits, Color us, int ply) {
           availableNodes = npmsec * limits.time[us]; // Time is in msec
 
       // Convert from millisecs to nodes
-      limits.time[us] = (int)availableNodes;
+      limits.time[us] = TimePoint(availableNodes);
       limits.inc[us] *= npmsec;
       limits.npmsec = npmsec;
   }
