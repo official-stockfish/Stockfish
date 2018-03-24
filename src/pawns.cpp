@@ -46,9 +46,9 @@ namespace {
   // Weakness of our pawn shelter in front of the king by [isKingFile][distance from edge][rank].
   // ShelterWeakness[on/off king file][files by king][rank]
   // RANK_1 = 0 is used for files where we have no pawns or our pawn is behind our king.
-  constexpr Score ShelterRANK1= V(100);
-  constexpr Score ShelterBase = V(-10);
-  constexpr Score ShelterInc  = V(20);
+  constexpr Value ShelterRANK1= V(100);
+  constexpr Value ShelterBase = V(-10);
+  constexpr Value ShelterInc  = V(20);
 
   Value ShelterWeakness[2][int(FILE_NB) / 2][RANK_NB];
 
@@ -208,11 +208,6 @@ void init() {
            ShelterWeakness[kingFile][file][rank] = ShelterBase + ShelterInc * rank;
      }
 }
-
-  constexpr Score ShelterRANK1= V(100);
-  constexpr Score ShelterBase = V(-10);
-  constexpr Score ShelterInc  = V(20);
-
 
 /// Pawns::probe() looks up the current position's pawns configuration in
 /// the pawns hash table. It returns a pointer to the Entry if the position
