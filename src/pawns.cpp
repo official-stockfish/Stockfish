@@ -44,13 +44,12 @@ namespace {
   constexpr Score Doubled = S(18, 38);
 
   // Weakness of our pawn shelter in front of the king by [isKingFile][distance from edge][rank].
-  // ShelterWeakness[on/off king file][files by king][rank]
+  // ShelterWeakness[rank]
   // RANK_1 = 0 is used for files where we have no pawns or our pawn is behind our king.
+  Value ShelterWeakness[RANK_NB];
   constexpr Value ShelterRANK1= V(100);
   constexpr Value ShelterBase = V(-10);
   constexpr Value ShelterInc  = V(20);
-
-  Value ShelterWeakness[2][int(FILE_NB) / 2][RANK_NB];
 
   // Danger of enemy pawns moving toward our king by [type][distance from edge][rank].
   // For the unopposed and unblocked cases, RANK_1 = 0 is used when opponent has
@@ -200,13 +199,9 @@ void init() {
       Connected[opposed][phalanx][support][r] = make_score(v, v * (r - 2) / 4);
   }
 
-  for (int kingFile = 0; kingFile < 2; ++kingFile)
-     for (File file = FILE_A; file < FILE_E; ++file)
-     {
-        ShelterWeakness[kingFile][file][RANK_1] = ShelterRANK1;
-        for (Rank rank = RANK_2; rank < RANK_NB; ++rank)
-           ShelterWeakness[kingFile][file][rank] = ShelterBase + ShelterInc * rank;
-     }
+  ShelterWeakness[RANK_1] = ShelterRANK1;
+  for (Rank rank = RANK_2; rank < RANK_NB; ++rank)
+     ShelterWeakness[rank] = ShelterBase + ShelterInc * rank;
 }
 
 /// Pawns::probe() looks up the current position's pawns configuration in
@@ -266,7 +261,7 @@ Value Entry::shelter_storm(const Position& pos, Square ksq) {
       Rank rkThem = b ? relative_rank(Us, frontmost_sq(Them, b)) : RANK_1;
 
       int d = std::min(f, ~f);
-      safety -=  ShelterWeakness[f == file_of(ksq)][d][rkUs]
+      safety -=  ShelterWeakness[rkUs]
                + StormDanger
                  [f == file_of(ksq) && rkThem == relative_rank(Us, ksq) + 1 ? BlockedByKing  :
                   rkUs   == RANK_1                                          ? Unopposed :
