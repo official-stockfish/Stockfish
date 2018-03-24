@@ -90,10 +90,9 @@ struct LimitsType {
   }
 
   std::vector<Move> searchmoves;
-  int time[COLOR_NB], inc[COLOR_NB], npmsec, movestogo, depth,
-      movetime, mate, perft, infinite;
+  TimePoint time[COLOR_NB], inc[COLOR_NB], npmsec, movetime, startTime;
+  int movestogo, depth, mate, perft, infinite;
   int64_t nodes;
-  TimePoint startTime;
 };
 
 extern LimitsType Limits;

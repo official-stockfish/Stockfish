@@ -52,7 +52,7 @@ namespace {
   }
 
   template<TimeType T>
-  int remaining(int myTime, int movesToGo, int ply, int slowMover) {
+  TimePoint remaining(TimePoint myTime, int movesToGo, int ply, int slowMover) {
 
     constexpr double TMaxRatio   = (T == OptimumTime ? 1 : MaxRatio);
     constexpr double TStealRatio = (T == OptimumTime ? 0 : StealRatio);
@@ -66,7 +66,7 @@ namespace {
     double ratio1 = (TMaxRatio * moveImportance) / (TMaxRatio * moveImportance + otherMovesImportance);
     double ratio2 = (moveImportance + TStealRatio * otherMovesImportance) / (moveImportance + otherMovesImportance);
 
-    return int(myTime * std::min(ratio1, ratio2)); // Intel C++ asks for an explicit cast
+    return TimePoint(myTime * std::min(ratio1, ratio2)); // Intel C++ asks for an explicit cast
   }
 
 } // namespace
@@ -83,10 +83,11 @@ namespace {
 
 void TimeManagement::init(Search::LimitsType& limits, Color us, int ply) {
 
-  int minThinkingTime = Options["Minimum Thinking Time"];
-  int moveOverhead    = Options["Move Overhead"];
-  int slowMover       = Options["Slow Mover"];
-  int npmsec          = Options["nodestime"];
+  TimePoint minThinkingTime = Options["Minimum Thinking Time"];
+  TimePoint moveOverhead    = Options["Move Overhead"];
+  TimePoint slowMover       = Options["Slow Mover"];
+  TimePoint npmsec          = Options["nodestime"];
+  TimePoint hypMyTime;
 
   // If we have to play in 'nodes as time' mode, then convert from time
   // to nodes, and use resulting values in time management formulas.
@@ -114,14 +115,14 @@ void TimeManagement::init(Search::LimitsType& limits, Color us, int ply) {
   for (int hypMTG = 1; hypMTG <= maxMTG; ++hypMTG)
   {
       // Calculate thinking time for hypothetical "moves to go"-value
-      int hypMyTime =  limits.time[us]
-                     + limits.inc[us] * (hypMTG - 1)
-                     - moveOverhead * (2 + std::min(hypMTG, 40));
+      hypMyTime =  limits.time[us]
+                 + limits.inc[us] * (hypMTG - 1)
+                 - moveOverhead * (2 + std::min(hypMTG, 40));
 
-      hypMyTime = std::max(hypMyTime, 0);
+      hypMyTime = std::max(hypMyTime, TimePoint(0));
 
-      int t1 = minThinkingTime + remaining<OptimumTime>(hypMyTime, hypMTG, ply, slowMover);
-      int t2 = minThinkingTime + remaining<MaxTime    >(hypMyTime, hypMTG, ply, slowMover);
+      TimePoint t1 = minThinkingTime + remaining<OptimumTime>(hypMyTime, hypMTG, ply, slowMover);
+      TimePoint t2 = minThinkingTime + remaining<MaxTime    >(hypMyTime, hypMTG, ply, slowMover);
 
       optimumTime = std::min(t1, optimumTime);
       maximumTime = std::min(t2, maximumTime);
