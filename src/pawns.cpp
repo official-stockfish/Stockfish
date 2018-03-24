@@ -166,7 +166,7 @@ namespace {
             if ((b | shift<Up>(b & adjacent_files_bb(f))) & stoppers)
             {
                score -= Backward, e->weakUnopposed[Us] += !opposed;
-               assert (!forward_ranks_bb(Them, s + Up) & neighbours);
+               assert (!(forward_ranks_bb(Them, s + Up) & neighbours));
             }
         }
 
