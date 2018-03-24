@@ -44,17 +44,9 @@ namespace {
   constexpr Score Doubled = S(18, 38);
 
   // Weakness of our pawn shelter in front of the king by [isKingFile][distance from edge][rank].
+  // ShelterWeakness[on/off king file][files by king][rank]
   // RANK_1 = 0 is used for files where we have no pawns or our pawn is behind our king.
-  constexpr Value ShelterWeakness[][int(FILE_NB) / 2][RANK_NB] = {
-    { { V( 98), V(20), V(11), V(42), V( 83), V( 84), V(101) }, // Not On King file
-      { V(103), V( 8), V(33), V(86), V( 87), V(105), V(113) },
-      { V(100), V( 2), V(65), V(95), V( 59), V( 89), V(115) },
-      { V( 72), V( 6), V(52), V(74), V( 83), V( 84), V(112) } },
-    { { V(105), V(19), V( 3), V(27), V( 85), V( 93), V( 84) }, // On King file
-      { V(121), V( 7), V(33), V(95), V(112), V( 86), V( 72) },
-      { V(121), V(26), V(65), V(90), V( 65), V( 76), V(117) },
-      { V( 79), V( 0), V(45), V(65), V( 94), V( 92), V(105) } }
-  };
+  Value ShelterWeakness[2][int(FILE_NB) / 2][RANK_NB];
 
   // Danger of enemy pawns moving toward our king by [type][distance from edge][rank].
   // For the unopposed and unblocked cases, RANK_1 = 0 is used when opponent has
@@ -203,6 +195,14 @@ void init() {
 
       Connected[opposed][phalanx][support][r] = make_score(v, v * (r - 2) / 4);
   }
+
+  for (int kingFile = 0; kingFile < 2; ++kingFile)
+     for (File file = FILE_A; file < FILE_E; ++file)
+     {
+        ShelterWeakness[kingFile][file][RANK_1] = Value(100);
+        for (Rank rank = RANK_2; rank < RANK_NB; ++rank)
+           ShelterWeakness[kingFile][file][rank] = Value(-10 + 20*rank);
+     }
 }
 
 
