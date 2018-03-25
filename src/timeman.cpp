@@ -52,13 +52,13 @@ namespace {
   }
 
   template<TimeType T>
-  TimePoint remaining(TimePoint myTime, int movesToGo, int ply, int slowMover) {
+  TimePoint remaining(TimePoint myTime, int movesToGo, int ply, TimePoint slowMover) {
 
-    constexpr double TMaxRatio   = (T == OptimumTime ? 1 : MaxRatio);
-    constexpr double TStealRatio = (T == OptimumTime ? 0 : StealRatio);
+    constexpr double TMaxRatio   = (T == OptimumTime ? 1.0 : MaxRatio);
+    constexpr double TStealRatio = (T == OptimumTime ? 0.0 : StealRatio);
 
-    double moveImportance = (move_importance(ply) * slowMover) / 100;
-    double otherMovesImportance = 0;
+    double moveImportance = (move_importance(ply) * slowMover) / 100.0;
+    double otherMovesImportance = 0.0;
 
     for (int i = 1; i < movesToGo; ++i)
         otherMovesImportance += move_importance(ply + 2 * i);
