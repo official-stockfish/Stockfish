@@ -91,14 +91,14 @@ void TimeManagement::init(Search::LimitsType& limits, Color us, int ply) {
 
   // If we have to play in 'nodes as time' mode, then convert from time
   // to nodes, and use resulting values in time management formulas.
-  // WARNING: Given npms (nodes per millisecond) must be much lower then
-  // the real engine speed to avoid time losses.
+  // WARNING: to avoid time losses, the given npmsec (nodes per millisecond)
+  // must be much lower than the real engine speed.
   if (npmsec)
   {
       if (!availableNodes) // Only once at game start
           availableNodes = npmsec * limits.time[us]; // Time is in msec
 
-      // Convert from millisecs to nodes
+      // Convert from milliseconds to nodes
       limits.time[us] = TimePoint(availableNodes);
       limits.inc[us] *= npmsec;
       limits.npmsec = npmsec;
@@ -109,7 +109,7 @@ void TimeManagement::init(Search::LimitsType& limits, Color us, int ply) {
 
   const int maxMTG = limits.movestogo ? std::min(limits.movestogo, MoveHorizon) : MoveHorizon;
 
-  // We calculate optimum time usage for different hypothetical "moves to go"-values
+  // We calculate optimum time usage for different hypothetical "moves to go" values
   // and choose the minimum of calculated search time values. Usually the greatest
   // hypMTG gives the minimum values.
   for (int hypMTG = 1; hypMTG <= maxMTG; ++hypMTG)
