@@ -237,12 +237,6 @@ template<Color Us>
 Value Entry::shelter_storm(const Position& pos, Square ksq) {
 
   constexpr Color Them = (Us == WHITE ? BLACK : WHITE);
-  constexpr Bitboard ShelterMask =
-                Us == WHITE ? make_bitboard(SQ_A2, SQ_B3, SQ_C2, SQ_F2, SQ_G3, SQ_H2)
-                            : make_bitboard(SQ_A7, SQ_B6, SQ_C7, SQ_F7, SQ_G6, SQ_H7);
-  constexpr Bitboard StormMask =
-                Us == WHITE ? make_bitboard(SQ_A3, SQ_C3, SQ_F3, SQ_H3)
-                            : make_bitboard(SQ_A6, SQ_C6, SQ_F6, SQ_H6);
 
   enum { BlockedByKing, Unopposed, BlockedByPawn, Unblocked };
 
@@ -270,9 +264,6 @@ Value Entry::shelter_storm(const Position& pos, Square ksq) {
                   rkThem == rkUs + 1                                        ? BlockedByPawn  : Unblocked]
                  [d][rkThem];
   }
-
-  if (popcount((ourPawns & ShelterMask) | (theirPawns & StormMask)) == 5)
-      safety += Value(300);
 
   return safety;
 }
