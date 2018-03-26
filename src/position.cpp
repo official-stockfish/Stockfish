@@ -158,12 +158,12 @@ void Position::init() {
   Zobrist::noPawns = rng.rand<Key>();
 }
 
-/// Position::set() copies a Position object and sets it to a thread objet
+/// Position::set() copies a Position object and sets it to a Thread object
 Position& Position::set(const Position& pos, Thread* th) {
 
-  memcpy(this, &pos, sizeof(pos));
+  set(pos.fen(), pos.is_chess960(), th);
+  memcpy(stateStack, pos.stateStack, (pos.st - pos.stateStack + 1) * sizeof(StateInfo));
   st = stateStack + (pos.st - pos.stateStack);
-  thisThread = th;
   return *this;
 }
 
@@ -687,7 +687,7 @@ bool Position::gives_check(Move m) const {
 
 void Position::do_move(Move m, bool givesCheck) {
 
-  assert((st + 1) < stateStack + 102 + MAX_PLY);
+  assert((st + 1) < stateStack + 100 + MAX_PLY);
   StateInfo* newSt = st + 1;
   assert(is_ok(m));
 
@@ -977,8 +977,10 @@ void Position::undo_null_move() {
   sideToMove = ~sideToMove;
 }
 
-/// Position::setup_move() rebase the state stack when a move
-/// for moves that reset rule50, to limit the stack's growth
+/// Position::setup_move() rebases the state stack 
+/// when m resets rule50. The state stack has a limited size,
+/// using setup_move() prevents the stack from overflowing by remembering only
+/// the setup positions useful for repetition draw.
 void Position::setup_move(Move m) {
 
   do_move(m);

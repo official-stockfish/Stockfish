@@ -155,8 +155,7 @@ private:
   Bitboard castlingPath[CASTLING_RIGHT_NB];
 
 /// StateInfo struct stores information needed to restore a Position object to
-/// its previous state when we retract a move. Whenever a move is made on the
-/// board (by calling Position::do_move), a StateInfo object must be passed.
+/// its previous state when we retract a move, or information expensive to recompute.
 
 struct StateInfo {
 
@@ -179,7 +178,10 @@ struct StateInfo {
   Bitboard   checkSquares[PIECE_TYPE_NB];
 };
   /// A stack that keep track of the state history of the position.
-  StateInfo stateStack[102 + MAX_PLY];
+  /// The size is chosen to prevent overflow. MAX_PLY for the search,
+  /// and 100 is the maximal number of setup moves useful to detect 
+  /// repetion draw, because of the 50 moves rule. (see Position::setup_move())
+  StateInfo stateStack[100 + MAX_PLY];
 
   int basePly;
   Color sideToMove;
