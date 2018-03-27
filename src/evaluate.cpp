@@ -914,6 +914,8 @@ std::string Eval::trace(const Position& pos) {
 
   std::memset(scores, 0, sizeof(scores));
 
+  pos.this_thread()->contemptScore = SCORE_ZERO; // Reset any dynamic contempt
+
   Value v = Evaluation<TRACE>(pos).value();
 
   v = pos.side_to_move() == WHITE ? v : -v; // Trace scores are from white's point of view
