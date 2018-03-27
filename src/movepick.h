@@ -109,10 +109,10 @@ typedef Stats<PieceToHistory, W32, NOT_USED, PIECE_NB, SQUARE_NB> ContinuationHi
 /// when MOVE_NONE is returned. In order to improve the efficiency of the alpha
 /// beta algorithm, MovePicker attempts to return the moves which are most likely
 /// to get a cut-off first.
-
-enum PickType { NEXT, BEST_SCORE };
-
 class MovePicker {
+
+  enum PickType { Next, Best };
+
 public:
   MovePicker(const MovePicker&) = delete;
   MovePicker& operator=(const MovePicker&) = delete;
@@ -122,7 +122,7 @@ public:
   Move next_move(bool skipQuiets = false);
 
 private:
-  template<PickType T, typename Pred> Move select_move(Pred);
+  template<PickType T, typename Pred> Move select(Pred);
   template<GenType> void score();
   ExtMove* begin() { return cur; }
   ExtMove* end() { return endMoves; }
