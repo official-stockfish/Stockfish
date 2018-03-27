@@ -182,7 +182,7 @@ TBEntry<WDL>::TBEntry(const std::string& code) : TBEntry() {
         pawnCount[1] = pos.count<PAWN>(c ? BLACK : WHITE);
     }
 
-    key2 = pos.set(code, BLACK, &st).material_key();
+    key2 = pos.set(code, BLACK).material_key();
 }
 
 template<>
