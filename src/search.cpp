@@ -160,7 +160,7 @@ void Search::init() {
               Reductions[PV][imp][d][mc] = std::max(Reductions[NonPV][imp][d][mc] - 1, 0);
 
               // Increase reduction for non-PV nodes when eval is not improving
-              if (!imp && Reductions[NonPV][imp][d][mc] >= 2)
+              if (!imp && r > 1.0)
                 Reductions[NonPV][imp][d][mc]++;
           }
 
