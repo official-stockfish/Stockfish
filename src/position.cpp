@@ -159,11 +159,14 @@ void Position::init() {
 }
 
 /// Position::set() copies a Position object and sets it to a Thread object
+/// It also copies the keys of the setup positions, to detect repetition.
 Position& Position::set(const Position& pos, Thread* th) {
 
   set(pos.fen(), pos.is_chess960(), th);
-  memcpy(stateStack, pos.stateStack, (pos.st - pos.stateStack + 1) * sizeof(StateInfo));
   st = stateStack + (pos.st - pos.stateStack);
+  memcpy(st,stateStack,sizeof(StateInfo));
+  for(StateInfo *from=pos.st, *to=st ; from>=pos.stateStack ; --from, --to)
+    to->key = from->key;  
   return *this;
 }
 
