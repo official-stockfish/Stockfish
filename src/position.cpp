@@ -163,10 +163,9 @@ void Position::init() {
 Position& Position::set(const Position& pos, Thread* th) {
 
   set(pos.fen(), pos.is_chess960(), th);
-  st = stateStack + (pos.st - pos.stateStack);
-  memcpy(st,stateStack,sizeof(StateInfo));
-  for(StateInfo *from=pos.st, *to=st ; from>=pos.stateStack ; --from, --to)
-    to->key = from->key;  
+  stateStack[pos.st - pos.stateStack] = stateStack[0];
+  for(const StateInfo *from = pos.stateStack; from < pos.st ; ++st, ++from)
+    st->key = from->key;  
   return *this;
 }
 
