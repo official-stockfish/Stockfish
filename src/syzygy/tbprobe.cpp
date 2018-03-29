@@ -57,7 +57,7 @@ namespace {
 constexpr int TBPIECES = 6; // Max number of supported pieces
 
 enum { BigEndian, LittleEndian };
-enum TBType { WDL, DTZ }; // Used as template parameter
+enum TBType { KEY, WDL, DTZ }; // Used as template parameter
 
 // Each table has a set of flags: all of them refer to DTZ tables, the last one to WDL tables
 enum TBFlag { STM = 1, Mapped = 2, WinPlies = 4, LossPlies = 8, SingleValue = 128 };
@@ -250,8 +250,8 @@ public:
 #endif
         uint8_t* data = (uint8_t*)*baseAddress;
 
-        static const uint8_t Magics[][4] = { { 0xD7, 0x66, 0x0C, 0xA5 },
-                                             { 0x71, 0xE8, 0x23, 0x5D } };
+        constexpr uint8_t Magics[][4] = { { 0xD7, 0x66, 0x0C, 0xA5 },
+                                          { 0x71, 0xE8, 0x23, 0x5D } };
 
         if (memcmp(data, Magics[type == WDL], 4)) {
             std::cerr << "Corrupted table in file " << fname << std::endl;
@@ -396,7 +396,7 @@ class TBTables {
 
         // Ensure last element is empty to avoid overflow when looking up
         for ( ; entry - hashTable < Size - 1; ++entry)
-            if (!std::get<1>(*entry) || std::get<0>(*entry) == key) {
+            if (std::get<KEY>(*entry) == key || !std::get<WDL>(*entry)) {
                 *entry = std::make_tuple(key, wdl, dtz);
                 return;
             }
@@ -407,11 +407,9 @@ class TBTables {
 public:
     template<TBType Type>
     TBTable<Type>* get(Key key) {
-        for (Entry* entry = &hashTable[(uint32_t)key & (Size - 1)]; ; ++entry) {
-            if (std::get<0>(*entry) == key)
-                return std::get<Type == WDL ? 1 : 2>(*entry);
-            if (!std::get<1>(*entry))
-                return nullptr;
+        for (const Entry* entry = &hashTable[(uint32_t)key & (Size - 1)]; ; ++entry) {
+            if (std::get<KEY>(*entry) == key || !std::get<Type>(*entry))
+                return std::get<Type>(*entry);
         }
     }
 
