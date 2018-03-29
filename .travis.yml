@@ -9,7 +9,7 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['g++-7', 'g++-7-multilib', 'g++-multilib', 'valgrind', 'expect']
+          packages: ['g++-7', 'g++-7-multilib', 'g++-multilib', 'valgrind', 'expect', 'curl']
       env:
         - COMPILER=g++-7
         - COMP=gcc
@@ -19,7 +19,7 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-5.0']
-          packages: ['clang-5.0', 'llvm-5.0-dev', 'g++-multilib', 'valgrind', 'expect']
+          packages: ['clang-5.0', 'llvm-5.0-dev', 'g++-multilib', 'valgrind', 'expect', 'curl']
       env:
         - COMPILER=clang++-5.0
         - COMP=clang
