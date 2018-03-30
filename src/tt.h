@@ -2,7 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2017 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2015-2018 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -85,8 +85,8 @@ private:
 
 class TranspositionTable {
 
-  static const int CacheLineSize = 64;
-  static const int ClusterSize = 3;
+  static constexpr int CacheLineSize = 64;
+  static constexpr int ClusterSize = 3;
 
   struct Cluster {
     TTEntry entry[ClusterSize];
