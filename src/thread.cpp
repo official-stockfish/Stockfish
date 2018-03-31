@@ -124,16 +124,14 @@ void ThreadPool::set(size_t requested) {
 
   if (size() > 0) { // destroy any existing thread(s)
       main()->wait_for_search_finished();
-
-      while (size() > 0)
-          delete back(), pop_back();
+      resize(0);
   }
 
   if (requested > 0) { // create new thread(s)
-      push_back(new MainThread(0));
+      emplace_back(mainThread = new MainThread(0));
 
       while (size() < requested)
-          push_back(new Thread(size()));
+          emplace_back(new Thread(size()));
       clear();
   }
 }
@@ -142,7 +140,7 @@ void ThreadPool::set(size_t requested) {
 
 void ThreadPool::clear() {
 
-  for (Thread* th : *this)
+  for (auto& th : *this)
       th->clear();
 
   main()->callsCnt = 0;
@@ -185,12 +183,12 @@ void ThreadPool::start_thinking(Position& pos, StateListPtr& states,
   // is shared by threads but is accessed in read-only mode.
   StateInfo tmp = setupStates->back();
 
-  for (Thread* th : *this)
+  for (auto& th : *this)
   {
       th->nodes = th->tbHits = th->nmp_ply = th->nmp_odd = 0;
       th->rootDepth = th->completedDepth = DEPTH_ZERO;
       th->rootMoves = rootMoves;
-      th->rootPos.set(pos.fen(), pos.is_chess960(), &setupStates->back(), th);
+      th->rootPos.set(pos.fen(), pos.is_chess960(), &setupStates->back(), th.get());
   }
 
   setupStates->back() = tmp;

@@ -209,8 +209,8 @@ void MainThread::search() {
   }
   else
   {
-      for (Thread* th : Threads)
-          if (th != this)
+      for (auto& th : Threads)
+          if (th.get() != this)
               th->start_searching();
 
       Thread::search(); // Let's start searching!
@@ -231,8 +231,8 @@ void MainThread::search() {
   Threads.stop = true;
 
   // Wait until all threads have finished
-  for (Thread* th : Threads)
-      if (th != this)
+  for (auto& th : Threads)
+      if (th.get() != this)
           th->wait_for_search_finished();
 
   // When playing in 'nodes as time' mode, subtract the searched nodes from
@@ -247,7 +247,7 @@ void MainThread::search() {
       && !Skill(Options["Skill Level"]).enabled()
       &&  rootMoves[0].pv[0] != MOVE_NONE)
   {
-      for (Thread* th : Threads)
+      for (auto& th : Threads)
       {
           Depth depthDiff = th->completedDepth - bestThread->completedDepth;
           Value scoreDiff = th->rootMoves[0].score - bestThread->rootMoves[0].score;
@@ -255,7 +255,7 @@ void MainThread::search() {
           // Select the thread with the best score, always if it is a mate
           if (    scoreDiff > 0
               && (depthDiff >= 0 || th->rootMoves[0].score >= VALUE_MATE_IN_MAX_PLY))
-              bestThread = th;
+              bestThread = th.get();
       }
   }
 
