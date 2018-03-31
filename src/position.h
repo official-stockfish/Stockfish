@@ -85,10 +85,9 @@ public:
   // Position representation
   Bitboard pieces() const;
   Bitboard pieces(PieceType pt) const;
-  Bitboard pieces(PieceType pt1, PieceType pt2) const;
+  template<typename ...PieceTypes> Bitboard pieces(PieceType pt, PieceTypes... pts) const;
   Bitboard pieces(Color c) const;
-  Bitboard pieces(Color c, PieceType pt) const;
-  Bitboard pieces(Color c, PieceType pt1, PieceType pt2) const;
+  template<typename ...PieceTypes> Bitboard pieces(Color c, PieceTypes... pts) const;
   Piece piece_on(Square s) const;
   Square ep_square() const;
   bool empty(Square s) const;
@@ -217,20 +216,18 @@ inline Bitboard Position::pieces(PieceType pt) const {
   return byTypeBB[pt];
 }
 
-inline Bitboard Position::pieces(PieceType pt1, PieceType pt2) const {
-  return byTypeBB[pt1] | byTypeBB[pt2];
+template<typename ...PieceTypes>
+inline Bitboard Position::pieces(PieceType pt, PieceTypes... pts) const {
+  return pieces(pt) | pieces(pts...);
 }
 
 inline Bitboard Position::pieces(Color c) const {
   return byColorBB[c];
 }
 
-inline Bitboard Position::pieces(Color c, PieceType pt) const {
-  return byColorBB[c] & byTypeBB[pt];
-}
-
-inline Bitboard Position::pieces(Color c, PieceType pt1, PieceType pt2) const {
-  return byColorBB[c] & (byTypeBB[pt1] | byTypeBB[pt2]);
+template<typename ...PieceTypes>
+inline Bitboard Position::pieces(Color c, PieceTypes... pts) const {
+  return pieces(c) & pieces(pts...);
 }
 
 template<PieceType Pt> inline int Position::count(Color c) const {
@@ -238,7 +235,7 @@ template<PieceType Pt> inline int Position::count(Color c) const {
 }
 
 template<PieceType Pt> inline int Position::count() const {
-  return pieceCount[make_piece(WHITE, Pt)] + pieceCount[make_piece(BLACK, Pt)];
+  return count<Pt>(WHITE) + count<Pt>(BLACK);
 }
 
 template<PieceType Pt> inline const Square* Position::squares(Color c) const {
