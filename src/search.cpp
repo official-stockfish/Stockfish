@@ -72,6 +72,9 @@ namespace {
     return Value((175 - 50 * improving) * d / ONE_PLY);
   }
 
+  // shallow depth pruning of captures.
+  constexpr int CaptPruneMargin[] = {0, -253, -250, -231, -249, -228, -223};
+
   // Futility and reductions lookup tables, initialized at startup
   int FutilityMoveCounts[2][16]; // [improving][depth]
   int Reductions[2][2][64][64];  // [pv][improving][depth][moveNumber]
@@ -919,7 +922,7 @@ moves_loop: // When in check, search starts from here
           }
           else if (    depth < 7 * ONE_PLY
                    && !extension
-                   && !pos.see_ge(move, -PawnValueEg * (depth / ONE_PLY)))
+                   && !pos.see_ge(move, Value(CaptPruneMargin[depth / ONE_PLY] * (depth / ONE_PLY))))
                   continue;
       }
 
