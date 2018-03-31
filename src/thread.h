@@ -95,26 +95,27 @@ struct MainThread : public Thread {
 /// parking and, most importantly, launching a thread. All the access to threads
 /// is done through this class.
 
-struct ThreadPool : public std::vector<Thread*> {
+struct ThreadPool : public std::vector<std::unique_ptr<Thread>> {
 
   void start_thinking(Position&, StateListPtr&, const Search::LimitsType&, bool = false);
   void clear();
   void set(size_t);
 
-  MainThread* main()        const { return static_cast<MainThread*>(front()); }
+  MainThread* main()        const { return mainThread; }
   uint64_t nodes_searched() const { return accumulate(&Thread::nodes); }
   uint64_t tb_hits()        const { return accumulate(&Thread::tbHits); }
 
   std::atomic_bool stop, ponder, stopOnPonderhit;
 
 private:
+  MainThread* mainThread;
   StateListPtr setupStates;
 
   uint64_t accumulate(std::atomic<uint64_t> Thread::* member) const {
 
     uint64_t sum = 0;
-    for (Thread* th : *this)
-        sum += (th->*member).load(std::memory_order_relaxed);
+    for (auto& th : *this)
+        sum += (th.get()->*member).load(std::memory_order_relaxed);
     return sum;
   }
 };
