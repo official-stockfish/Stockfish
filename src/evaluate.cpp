@@ -373,7 +373,7 @@ namespace {
 
         if (Pt == ROOK)
         {
-            // Bonus for aligning rook with with enemy pawns on the same rank/file
+            // Bonus for aligning rook with enemy pawns on the same rank/file
             if (relative_rank(Us, s) >= RANK_5)
                 score += RookOnPawn * popcount(pos.pieces(Them, PAWN) & PseudoAttacks[ROOK][s]);
 
@@ -692,7 +692,7 @@ namespace {
             }
             else if (pos.pieces(Us) & blockSq)
                 bonus += make_score(w + r * 2, w + r * 2);
-        } // rr != 0
+        } // w != 0
 
         // Scale down bonus for candidate passers which need more than one
         // pawn push to become passed or have a pawn in front of them.
