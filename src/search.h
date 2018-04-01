@@ -81,8 +81,9 @@ typedef std::vector<RootMove> RootMoves;
 struct LimitsType {
 
   LimitsType() { // Init explicitly due to broken value-initialization of non POD in MSVC
-    nodes = time[WHITE] = time[BLACK] = inc[WHITE] = inc[BLACK] =
-    npmsec = movestogo = depth = movetime = mate = perft = infinite = 0;
+    time[WHITE] = time[BLACK] = inc[WHITE] = inc[BLACK] = npmsec = movetime = TimePoint(0);
+    movestogo = depth = mate = perft = infinite = 0;
+    nodes = 0;
   }
 
   bool use_time_management() const {
