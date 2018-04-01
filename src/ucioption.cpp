@@ -21,7 +21,7 @@
 #include <algorithm>
 #include <cassert>
 #include <ostream>
-
+#include <climits>
 #include "misc.h"
 #include "search.h"
 #include "thread.h"
@@ -75,6 +75,15 @@ void init(OptionsMap& o) {
   o["SyzygyProbeDepth"]      << Option(1, 1, 100);
   o["Syzygy50MoveRule"]      << Option(true);
   o["SyzygyProbeLimit"]      << Option(6, 0, 6);
+  o["A"]              << Option(0, INT_MIN, INT_MAX);
+  o["B"]              << Option(0, INT_MIN, INT_MAX);
+  o["C"]              << Option(0, INT_MIN, INT_MAX);
+  o["D"]              << Option(0, INT_MIN, INT_MAX);
+  o["E"]              << Option(0, INT_MIN, INT_MAX);
+  o["F"]              << Option(0, INT_MIN, INT_MAX);
+  o["G"]              << Option(0, INT_MIN, INT_MAX);
+  o["H"]              << Option(0, INT_MIN, INT_MAX);
+  
 }
 
 
