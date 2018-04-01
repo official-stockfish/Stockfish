@@ -698,7 +698,7 @@ namespace {
     if (skipEarlyPruning || !pos.non_pawn_material(pos.side_to_move()))
         goto moves_loop;
 
-    // Step 7. Razoring (skipped when in check)
+    // Step 7 (~2 Elo). Razoring (skipped when in check)
     if (  !PvNode
         && depth < 3 * ONE_PLY
         && eval <= alpha - RazorMargin[depth / ONE_PLY])
@@ -709,14 +709,14 @@ namespace {
             return v;
     }
 
-    // Step 8. Futility pruning: child node (skipped when in check)
+    // Step 8 (~28 Elo). Futility pruning: child node (skipped when in check)
     if (   !rootNode
         &&  depth < 7 * ONE_PLY
         &&  eval - futility_margin(depth, improving) >= beta
         &&  eval < VALUE_KNOWN_WIN) // Do not return unproven wins
         return eval;
 
-    // Step 9. Null move search with verification search
+    // Step 9 (~38 Elo). Null move search with verification search
     if (   !PvNode
         &&  eval >= beta
         &&  ss->staticEval >= beta - 36 * depth / ONE_PLY + 225
@@ -759,7 +759,7 @@ namespace {
         }
     }
 
-    // Step 10. ProbCut (skipped when in check)
+    // Step 10 (~8 Elo). ProbCut (skipped when in check)
     // If we have a good enough capture and a reduced search returns a value
     // much above beta, we can (almost) safely prune the previous move.
     if (   !PvNode
@@ -799,7 +799,7 @@ namespace {
             }
     }
 
-    // Step 11. Internal iterative deepening (skipped when in check)
+    // Step 11 (~2 Elo). Internal iterative deepening (skipped when in check)
     if (    depth >= 6 * ONE_PLY
         && !ttMove
         && (PvNode || ss->staticEval + 128 >= beta))
@@ -864,9 +864,9 @@ moves_loop: // When in check, search starts from here
       moveCountPruning =   depth < 16 * ONE_PLY
                         && moveCount >= FutilityMoveCounts[improving][depth / ONE_PLY];
 
-      // Step 13. Extensions
+      // Step 13 (~68 Elo). Extensions
 
-      // Singular extension search. If all moves but one fail low on a search
+      // Singular extension search (~62 Elo). If all moves but one fail low on a search
       // of (alpha-s, beta-s), and just one fails high on (alpha, beta), then
       // that move is singular and should be extended. To verify this we do a
       // reduced search on on all the other moves but the ttMove and if the
@@ -883,7 +883,7 @@ moves_loop: // When in check, search starts from here
           if (value < rBeta)
               extension = ONE_PLY;
       }
-      else if (    givesCheck // Check extension
+      else if (    givesCheck // Check extension (~2 Elo)
                && !moveCountPruning
                &&  pos.see_ge(move))
           extension = ONE_PLY;
@@ -891,7 +891,7 @@ moves_loop: // When in check, search starts from here
       // Calculate new depth for this move
       newDepth = depth - ONE_PLY + extension;
 
-      // Step 14. Pruning at shallow depth
+      // Step 14 (~168 Elo). Pruning at shallow depth
       if (  !rootNode
           && pos.non_pawn_material(pos.side_to_move())
           && bestValue > VALUE_MATED_IN_MAX_PLY)
@@ -900,7 +900,7 @@ moves_loop: // When in check, search starts from here
               && !givesCheck
               && (!pos.advanced_pawn_push(move) || pos.non_pawn_material() >= Value(5000)))
           {
-              // Move count based pruning
+              // Move count based pruning (~34 Elo)
               if (moveCountPruning)
               {
                   skipQuiets = true;
@@ -910,24 +910,24 @@ moves_loop: // When in check, search starts from here
               // Reduced depth of the next LMR search
               int lmrDepth = std::max(newDepth - reduction<PvNode>(improving, depth, moveCount), DEPTH_ZERO) / ONE_PLY;
 
-              // Countermoves based pruning
+              // Countermoves based pruning (~19 Elo)
               if (   lmrDepth < 3
                   && (*contHist[0])[movedPiece][to_sq(move)] < CounterMovePruneThreshold
                   && (*contHist[1])[movedPiece][to_sq(move)] < CounterMovePruneThreshold)
                   continue;
 
-              // Futility pruning: parent node
+              // Futility pruning: parent node (~2 Elo)
               if (   lmrDepth < 7
                   && !inCheck
                   && ss->staticEval + 256 + 200 * lmrDepth <= alpha)
                   continue;
 
-              // Prune moves with negative SEE
+              // Prune moves with negative SEE (~10 Elo)
               if (   lmrDepth < 8
                   && !pos.see_ge(move, Value(-35 * lmrDepth * lmrDepth)))
                   continue;
           }
-          else if (    depth < 7 * ONE_PLY
+          else if (    depth < 7 * ONE_PLY // (~18 Elo)
                    && !extension
                    && !pos.see_ge(move, -Value(CapturePruneMargin[depth / ONE_PLY])))
                   continue;
