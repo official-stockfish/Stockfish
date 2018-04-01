@@ -28,7 +28,7 @@
 #include <vector>
 
 #include "types.h"
-
+#include "uci.h"
 const std::string engine_info(bool to_uci = false);
 void prefetch(void* addr);
 void prefetch2(void* addr);
