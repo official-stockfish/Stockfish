@@ -961,27 +961,27 @@ moves_loop: // When in check, search starts from here
       {
           Depth r = reduction<PvNode>(improving, depth, moveCount);
 
-          if (captureOrPromotion)
+          if (captureOrPromotion) // ~4 Elo
               r -= r ? ONE_PLY : DEPTH_ZERO;
           else
           {
-              // Decrease reduction if opponent's move count is high
+              // (~5 Elo) Decrease reduction if opponent's move count is high
               if ((ss-1)->moveCount > 15)
                   r -= ONE_PLY;
 
-              // Decrease reduction for exact PV nodes
+              // (~0 Elo) Decrease reduction for exact PV nodes
               if (pvExact)
                   r -= ONE_PLY;
 
-              // Increase reduction if ttMove is a capture
+              // (~1 Elo) Increase reduction if ttMove is a capture
               if (ttCapture)
                   r += ONE_PLY;
 
-              // Increase reduction for cut nodes
+              //  (~6 Elo) Increase reduction for cut nodes
               if (cutNode)
                   r += 2 * ONE_PLY;
 
-              // Decrease reduction for moves that escape a capture. Filter out
+              // (~3 Elo) Decrease reduction for moves that escape a capture. Filter out
               // castling moves, because they are coded as "king captures rook" and
               // hence break make_move().
               else if (    type_of(move) == NORMAL
@@ -994,14 +994,14 @@ moves_loop: // When in check, search starts from here
                              + (*contHist[3])[movedPiece][to_sq(move)]
                              - 4000;
 
-              // Decrease/increase reduction by comparing opponent's stat score
+              // (~8 Elo) Decrease/increase reduction by comparing opponent's stat score
               if (ss->statScore >= 0 && (ss-1)->statScore < 0)
                   r -= ONE_PLY;
 
               else if ((ss-1)->statScore >= 0 && ss->statScore < 0)
                   r += ONE_PLY;
 
-              // Decrease/increase reduction for moves with a good/bad history
+              // (~27 Elo) Decrease/increase reduction for moves with a good/bad history
               r = std::max(DEPTH_ZERO, (r / ONE_PLY - ss->statScore / 20000) * ONE_PLY);
           }
 
