@@ -28,7 +28,7 @@
 
 #include "bitboard.h"
 #include "types.h"
-
+#include "uci.h"
 
 /// StateInfo struct stores information needed to restore a Position object to
 /// its previous state when we retract a move. Whenever a move is made on the

@@ -25,7 +25,7 @@
 #include <string>
 
 #include "types.h"
-
+#include "uci.h"
 class Position;
 
 namespace Eval {
