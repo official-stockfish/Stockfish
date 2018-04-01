@@ -89,7 +89,7 @@ void Bitboards::init() {
       PopCnt16[i] = (uint8_t) popcount16(i);
 
   for (Square s = SQ_A1; s <= SQ_H8; ++s)
-      SquareBB[s] = 1ULL << s;
+      SquareBB[s] = make_bitboard(s);
 
   for (File f = FILE_A; f <= FILE_H; ++f)
       FileBB[f] = f > FILE_A ? FileBB[f - 1] << 1 : FileABB;
