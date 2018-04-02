@@ -28,8 +28,8 @@
 #include "position.h"
 #include "search.h"
 #include "thread.h"
-#include "tt.h"
 #include "timeman.h"
+#include "tt.h"
 #include "uci.h"
 #include "syzygy/tbprobe.h"
 

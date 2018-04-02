@@ -39,26 +39,26 @@ const std::string pretty(Bitboard b);
 
 }
 
-const Bitboard AllSquares = ~Bitboard(0);
-const Bitboard DarkSquares = 0xAA55AA55AA55AA55ULL;
+constexpr Bitboard AllSquares = ~Bitboard(0);
+constexpr Bitboard DarkSquares = 0xAA55AA55AA55AA55ULL;
 
-const Bitboard FileABB = 0x0101010101010101ULL;
-const Bitboard FileBBB = FileABB << 1;
-const Bitboard FileCBB = FileABB << 2;
-const Bitboard FileDBB = FileABB << 3;
-const Bitboard FileEBB = FileABB << 4;
-const Bitboard FileFBB = FileABB << 5;
-const Bitboard FileGBB = FileABB << 6;
-const Bitboard FileHBB = FileABB << 7;
+constexpr Bitboard FileABB = 0x0101010101010101ULL;
+constexpr Bitboard FileBBB = FileABB << 1;
+constexpr Bitboard FileCBB = FileABB << 2;
+constexpr Bitboard FileDBB = FileABB << 3;
+constexpr Bitboard FileEBB = FileABB << 4;
+constexpr Bitboard FileFBB = FileABB << 5;
+constexpr Bitboard FileGBB = FileABB << 6;
+constexpr Bitboard FileHBB = FileABB << 7;
 
-const Bitboard Rank1BB = 0xFF;
-const Bitboard Rank2BB = Rank1BB << (8 * 1);
-const Bitboard Rank3BB = Rank1BB << (8 * 2);
-const Bitboard Rank4BB = Rank1BB << (8 * 3);
-const Bitboard Rank5BB = Rank1BB << (8 * 4);
-const Bitboard Rank6BB = Rank1BB << (8 * 5);
-const Bitboard Rank7BB = Rank1BB << (8 * 6);
-const Bitboard Rank8BB = Rank1BB << (8 * 7);
+constexpr Bitboard Rank1BB = 0xFF;
+constexpr Bitboard Rank2BB = Rank1BB << (8 * 1);
+constexpr Bitboard Rank3BB = Rank1BB << (8 * 2);
+constexpr Bitboard Rank4BB = Rank1BB << (8 * 3);
+constexpr Bitboard Rank5BB = Rank1BB << (8 * 4);
+constexpr Bitboard Rank6BB = Rank1BB << (8 * 5);
+constexpr Bitboard Rank7BB = Rank1BB << (8 * 6);
+constexpr Bitboard Rank8BB = Rank1BB << (8 * 7);
 
 extern int SquareDistance[SQUARE_NB][SQUARE_NB];
 
@@ -165,8 +165,9 @@ constexpr Bitboard make_bitboard(Square s, Squares... squares) {
 template<Direction D>
 constexpr Bitboard shift(Bitboard b) {
   return  D == NORTH      ?  b             << 8 : D == SOUTH      ?  b             >> 8
-        : D == NORTH_EAST ? (b & ~FileHBB) << 9 : D == SOUTH_EAST ? (b & ~FileHBB) >> 7
-        : D == NORTH_WEST ? (b & ~FileABB) << 7 : D == SOUTH_WEST ? (b & ~FileABB) >> 9
+        : D == EAST       ? (b & ~FileHBB) << 1 : D == WEST       ? (b & ~FileABB) >> 1
+        : D == NORTH_EAST ? (b & ~FileHBB) << 9 : D == NORTH_WEST ? (b & ~FileABB) << 7
+        : D == SOUTH_EAST ? (b & ~FileHBB) >> 7 : D == SOUTH_WEST ? (b & ~FileABB) >> 9
         : 0;
 }
 
@@ -303,7 +304,7 @@ inline int popcount(Bitboard b) {
 
 /// lsb() and msb() return the least/most significant bit in a non-zero bitboard
 
-#if defined(__GNUC__)
+#if defined(__GNUC__)  // GCC, Clang, ICC
 
 inline Square lsb(Bitboard b) {
   assert(b);
@@ -315,7 +316,9 @@ inline Square msb(Bitboard b) {
   return Square(63 ^ __builtin_clzll(b));
 }
 
-#elif defined(_WIN64) && defined(_MSC_VER)
+#elif defined(_MSC_VER)  // MSVC
+
+#ifdef _WIN64  // MSVC, WIN64
 
 inline Square lsb(Bitboard b) {
   assert(b);
@@ -331,12 +334,39 @@ inline Square msb(Bitboard b) {
   return (Square) idx;
 }
 
-#else
+#else  // MSVC, WIN32
 
-#define NO_BSF // Fallback on software implementation for other cases
+inline Square lsb(Bitboard b) {
+  assert(b);
+  unsigned long idx;
 
-Square lsb(Bitboard b);
-Square msb(Bitboard b);
+  if (b & 0xffffffff) {
+      _BitScanForward(&idx, int32_t(b));
+      return Square(idx);
+  } else {
+      _BitScanForward(&idx, int32_t(b >> 32));
+      return Square(idx + 32);
+  }
+}
+
+inline Square msb(Bitboard b) {
+  assert(b);
+  unsigned long idx;
+
+  if (b >> 32) {
+      _BitScanReverse(&idx, int32_t(b >> 32));
+      return Square(idx + 32);
+  } else {
+      _BitScanReverse(&idx, int32_t(b));
+      return Square(idx);
+  }
+}
+
+#endif
+
+#else  // Compiler is neither GCC nor MSVC compatible
+
+#error "Compiler not supported."
 
 #endif
 

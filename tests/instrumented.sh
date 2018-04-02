@@ -108,13 +108,34 @@ cat << EOF > game.exp
  exit \$value
 EOF
 
-for exps in game.exp
+#download TB as needed
+if [ ! -d ../tests/syzygy ]; then
+   curl -sL https://api.github.com/repos/niklasf/python-chess/tarball/9b9aa13f9f36d08aadfabff872882f4ab1494e95 | tar -xzf -
+   mv niklasf-python-chess-9b9aa13 ../tests/syzygy
+fi
+
+cat << EOF > syzygy.exp
+ set timeout 240
+ spawn $exeprefix ./stockfish
+ send "uci\n"
+ send "setoption name SyzygyPath value ../tests/syzygy/\n"
+ expect "info string Found 35 tablebases" {} timeout {exit 1}
+ send "bench 128 1 10 default depth\n"
+ send "quit\n"
+ expect eof
+
+ # return error code of the spawned program, useful for valgrind
+ lassign [wait] pid spawnid os_error_flag value
+ exit \$value
+EOF
+
+for exp in game.exp syzygy.exp
 do
 
-  echo "$prefix expect $exps $postfix"
-  eval "$prefix expect $exps $postfix"
+  echo "$prefix expect $exp $postfix"
+  eval "$prefix expect $exp $postfix"
 
-  rm $exps
+  rm $exp
 
 done
 

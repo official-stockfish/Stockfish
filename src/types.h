@@ -80,28 +80,28 @@
 #endif
 
 #ifdef USE_POPCNT
-const bool HasPopCnt = true;
+constexpr bool HasPopCnt = true;
 #else
-const bool HasPopCnt = false;
+constexpr bool HasPopCnt = false;
 #endif
 
 #ifdef USE_PEXT
-const bool HasPext = true;
+constexpr bool HasPext = true;
 #else
-const bool HasPext = false;
+constexpr bool HasPext = false;
 #endif
 
 #ifdef IS_64BIT
-const bool Is64Bit = true;
+constexpr bool Is64Bit = true;
 #else
-const bool Is64Bit = false;
+constexpr bool Is64Bit = false;
 #endif
 
 typedef uint64_t Key;
 typedef uint64_t Bitboard;
 
-const int MAX_MOVES = 256;
-const int MAX_PLY   = 128;
+constexpr int MAX_MOVES = 256;
+constexpr int MAX_PLY   = 128;
 
 /// A move needs 16 bits to be stored
 ///
@@ -187,7 +187,7 @@ enum Value : int {
   KnightValueMg = 764,   KnightValueEg = 848,
   BishopValueMg = 826,   BishopValueEg = 891,
   RookValueMg   = 1282,  RookValueEg   = 1373,
-  QueenValueMg  = 2526,  QueenValueEg  = 2646,
+  QueenValueMg  = 2500,  QueenValueEg  = 2670,
 
   MidgameLimit  = 15258, EndgameLimit  = 3915
 };
@@ -195,7 +195,6 @@ enum Value : int {
 enum PieceType {
   NO_PIECE_TYPE, PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING,
   ALL_PIECES = 0,
-  QUEEN_DIAGONAL = 7,
   PIECE_TYPE_NB = 8
 };
 
