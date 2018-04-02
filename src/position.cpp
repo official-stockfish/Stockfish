@@ -52,8 +52,8 @@ namespace {
 
 const string PieceToChar(" PNBRQK  pnbrqk");
 
-const Piece Pieces[] = { W_PAWN, W_KNIGHT, W_BISHOP, W_ROOK, W_QUEEN, W_KING,
-                         B_PAWN, B_KNIGHT, B_BISHOP, B_ROOK, B_QUEEN, B_KING };
+constexpr Piece Pieces[] = { W_PAWN, W_KNIGHT, W_BISHOP, W_ROOK, W_QUEEN, W_KING,
+                             B_PAWN, B_KNIGHT, B_BISHOP, B_ROOK, B_QUEEN, B_KING };
 
 // min_attacker() is a helper function used by see_ge() to locate the least
 // valuable attacker for the side to move, remove the attacker we just found
@@ -322,8 +322,8 @@ void Position::set_castling_right(Color c, Square rfrom) {
 
 void Position::set_check_info(StateInfo* si) const {
 
-  si->blockersForKing[WHITE] = slider_blockers(pieces(BLACK), square<KING>(WHITE), si->pinnersForKing[WHITE]);
-  si->blockersForKing[BLACK] = slider_blockers(pieces(WHITE), square<KING>(BLACK), si->pinnersForKing[BLACK]);
+  si->blockersForKing[WHITE] = slider_blockers(pieces(BLACK), square<KING>(WHITE), si->pinners[BLACK]);
+  si->blockersForKing[BLACK] = slider_blockers(pieces(WHITE), square<KING>(BLACK), si->pinners[WHITE]);
 
   Square ksq = square<KING>(~sideToMove);
 
@@ -1037,7 +1037,7 @@ bool Position::see_ge(Move m, Value threshold) const {
 
       // Don't allow pinned pieces to attack (except the king) as long as
       // all pinners are on their original square.
-      if (!(st->pinnersForKing[stm] & ~occupied))
+      if (!(st->pinners[~stm] & ~occupied))
           stmAttackers &= ~st->blockersForKing[stm];
 
       // If stm has no more attackers then give up: stm loses
@@ -1146,7 +1146,7 @@ void Position::flip() {
 
 bool Position::pos_is_ok() const {
 
-  const bool Fast = true; // Quick (default) or full check?
+  constexpr bool Fast = true; // Quick (default) or full check?
 
   if (   (sideToMove != WHITE && sideToMove != BLACK)
       || piece_on(square<KING>(WHITE)) != W_KING

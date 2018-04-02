@@ -35,7 +35,7 @@ namespace PSQT {
 // type on a given square a (middlegame, endgame) score pair is assigned. Table
 // is defined for files A..D and white side: it is symmetric for black side and
 // second half of the files.
-const Score Bonus[][RANK_NB][int(FILE_NB) / 2] = {
+constexpr Score Bonus[][RANK_NB][int(FILE_NB) / 2] = {
   { },
   { // Pawn
    { S(  0, 0), S(  0, 0), S(  0, 0), S( 0, 0) },
@@ -112,12 +112,12 @@ void init() {
       PieceValue[MG][~pc] = PieceValue[MG][pc];
       PieceValue[EG][~pc] = PieceValue[EG][pc];
 
-      Score v = make_score(PieceValue[MG][pc], PieceValue[EG][pc]);
+      Score score = make_score(PieceValue[MG][pc], PieceValue[EG][pc]);
 
       for (Square s = SQ_A1; s <= SQ_H8; ++s)
       {
           File f = std::min(file_of(s), ~file_of(s));
-          psq[ pc][ s] = v + Bonus[pc][rank_of(s)][f];
+          psq[ pc][ s] = score + Bonus[pc][rank_of(s)][f];
           psq[~pc][~s] = -psq[pc][s];
       }
   }
