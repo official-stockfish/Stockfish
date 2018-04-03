@@ -520,17 +520,13 @@ namespace {
 
     // Non-pawn enemies attacked by a pawn
     nonPawnEnemies = pos.pieces(Them) ^ pos.pieces(Them, PAWN);
-    weak = nonPawnEnemies & attackedBy[Us][PAWN];
 
-    if (weak)
-    {
-        // Our safe or protected pawns
-        b =  pos.pieces(Us, PAWN)
-           & (~attackedBy[Them][ALL_PIECES] | attackedBy[Us][ALL_PIECES]);
+    // Our safe or protected pawns
+    b =   pos.pieces(Us, PAWN)
+       & (~attackedBy[Them][ALL_PIECES] | attackedBy[Us][ALL_PIECES]);
 
-        safeThreats = pawn_attacks_bb<Us>(b) & weak;
-        score += ThreatBySafePawn * popcount(safeThreats);
-    }
+    safeThreats = pawn_attacks_bb<Us>(b) & nonPawnEnemies;
+    score += ThreatBySafePawn * popcount(safeThreats);
 
     // Squares strongly protected by the enemy, either because they defend the
     // square with a pawn, or because they defend the square twice and we don't.
