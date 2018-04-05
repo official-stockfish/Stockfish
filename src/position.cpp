@@ -946,7 +946,7 @@ void Position::do_castling(Color us, Square from, Square& to, Square& rfrom, Squ
 
 void Position::do_null_move() {
 
-  assert((st + 1) < stateStack + 102 + MAX_PLY);
+  assert((st + 1) < stateStack + 100 + MAX_PLY);
   StateInfo *newSt = st + 1;
   assert(!checkers());
 
