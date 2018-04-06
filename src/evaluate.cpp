@@ -171,7 +171,7 @@ namespace {
   constexpr Score KnightOnQueen      = S( 21, 11);
   constexpr Score LongDiagonalBishop = S( 22,  0);
   constexpr Score MinorBehindPawn    = S( 16,  0);
-  constexpr Score Overload           = S( 12,  6);
+  constexpr Score Overload           = S( 10,  5);
   constexpr Score PawnlessFlank      = S( 20, 80);
   constexpr Score RookOnPawn         = S(  8, 24);
   constexpr Score SliderOnQueen      = S( 42, 21);
@@ -610,7 +610,7 @@ namespace {
     score += Connectivity * popcount(b);
 
     // Overload: bonus for enemy pieces attacked by us and defended by one enemy.
-    b =   pos.pieces(Them)
+    b =  (pos.pieces(Them) ^ pos.pieces(Them, PAWN))
        &  attackedBy[Us][ALL_PIECES]
        &  attackedBy[Them][ALL_PIECES]
        & ~attackedBy2[Them];
