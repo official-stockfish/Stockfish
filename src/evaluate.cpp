@@ -611,9 +611,8 @@ namespace {
 
     // Overload: bonus for enemy pieces attacked by us and defended by one enemy.
     b =  (pos.pieces(Them) ^ pos.pieces(Them, PAWN))
-       &  attackedBy[Us][ALL_PIECES]
-       &  attackedBy[Them][ALL_PIECES]
-       & ~attackedBy2[Them];
+       &  attackedBy[Us  ][ALL_PIECES] & ~attackedBy2[Us  ]
+       &  attackedBy[Them][ALL_PIECES] & ~attackedBy2[Them];
     score += Overload * popcount(b);
 
     if (T)
