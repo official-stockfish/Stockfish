@@ -132,7 +132,6 @@ namespace {
   template<bool Root>
   uint64_t perft(Position& pos, Depth depth) {
 
-    StateInfo st;
     uint64_t cnt, nodes = 0;
     const bool leaf = (depth == 2 * ONE_PLY);
 
@@ -142,7 +141,7 @@ namespace {
             cnt = 1, nodes++;
         else
         {
-            pos.do_move(m, st);
+            pos.do_move(m);
             cnt = leaf ? MoveList<LEGAL>(pos).size() : perft<false>(pos, depth - ONE_PLY);
             nodes += cnt;
             pos.undo_move(m);
@@ -515,7 +514,6 @@ namespace {
     assert(depth / ONE_PLY * ONE_PLY == depth);
 
     Move pv[MAX_PLY+1], capturesSearched[32], quietsSearched[64];
-    StateInfo st;
     TTEntry* tte;
     Key posKey;
     Move ttMove, move, excludedMove, bestMove;
@@ -730,7 +728,7 @@ namespace {
         ss->currentMove = MOVE_NULL;
         ss->contHistory = thisThread->contHistory[NO_PIECE][0].get();
 
-        pos.do_null_move(st);
+        pos.do_null_move();
 
         Value nullValue = -search<NonPV>(pos, ss+1, -beta, -beta+1, depth-R, !cutNode, true);
 
@@ -783,7 +781,7 @@ namespace {
 
                 assert(depth >= 5 * ONE_PLY);
 
-                pos.do_move(move, st);
+                pos.do_move(move);
 
                 // Perform a preliminary qsearch to verify that the move holds
                 value = -qsearch<NonPV>(pos, ss+1, -rbeta, -rbeta+1);
@@ -949,7 +947,7 @@ moves_loop: // When in check, search starts from here
       ss->contHistory = thisThread->contHistory[movedPiece][to_sq(move)].get();
 
       // Step 15. Make the move
-      pos.do_move(move, st, givesCheck);
+      pos.do_move(move, givesCheck);
 
       // Step 16. Reduced depth search (LMR). If the move fails high it will be
       // re-searched at full depth.
@@ -1165,7 +1163,6 @@ moves_loop: // When in check, search starts from here
     assert(depth / ONE_PLY * ONE_PLY == depth);
 
     Move pv[MAX_PLY+1];
-    StateInfo st;
     TTEntry* tte;
     Key posKey;
     Move ttMove, move, bestMove;
@@ -1314,7 +1311,7 @@ moves_loop: // When in check, search starts from here
       ss->currentMove = move;
 
       // Make and search the move
-      pos.do_move(move, st, givesCheck);
+      pos.do_move(move, givesCheck);
       value = -qsearch<NT>(pos, ss+1, -beta, -alpha, depth - ONE_PLY);
       pos.undo_move(move);
 
@@ -1588,7 +1585,6 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
 
 bool RootMove::extract_ponder_from_tt(Position& pos) {
 
-    StateInfo st;
     bool ttHit;
 
     assert(pv.size() == 1);
@@ -1596,7 +1592,7 @@ bool RootMove::extract_ponder_from_tt(Position& pos) {
     if (!pv[0])
         return false;
 
-    pos.do_move(pv[0], st);
+    pos.do_move(pv[0]);
     TTEntry* tte = TT.probe(pos.key(), ttHit);
 
     if (ttHit)

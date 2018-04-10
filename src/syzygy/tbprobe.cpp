@@ -159,10 +159,9 @@ struct TBEntry {
 template<>
 TBEntry<WDL>::TBEntry(const std::string& code) : TBEntry() {
 
-    StateInfo st;
     Position pos;
 
-    key = pos.set(code, WHITE, &st).material_key();
+    key = pos.set(code, WHITE).material_key();
     pieceCount = popcount(pos.pieces());
     hasPawns = pos.pieces(PAWN);
 
@@ -183,7 +182,7 @@ TBEntry<WDL>::TBEntry(const std::string& code) : TBEntry() {
         pawnCount[1] = pos.count<PAWN>(c ? BLACK : WHITE);
     }
 
-    key2 = pos.set(code, BLACK, &st).material_key();
+    key2 = pos.set(code, BLACK).material_key();
 }
 
 template<>
@@ -1120,7 +1119,6 @@ template<bool CheckZeroingMoves = false>
 WDLScore search(Position& pos, ProbeState* result) {
 
     WDLScore value, bestValue = WDLLoss;
-    StateInfo st;
 
     auto moveList = MoveList<LEGAL>(pos);
     size_t totalCount = moveList.size(), moveCount = 0;
@@ -1133,7 +1131,7 @@ WDLScore search(Position& pos, ProbeState* result) {
 
         moveCount++;
 
-        pos.do_move(move, st);
+        pos.do_move(move);
         value = -search(pos, result);
         pos.undo_move(move);
 
@@ -1374,14 +1372,13 @@ int Tablebases::probe_dtz(Position& pos, ProbeState* result) {
 
     // DTZ stores results for the other side, so we need to do a 1-ply search and
     // find the winning move that minimizes DTZ.
-    StateInfo st;
     int minDTZ = 0xFFFF;
 
     for (const Move& move : MoveList<LEGAL>(pos))
     {
         bool zeroing = pos.capture(move) || type_of(pos.moved_piece(move)) == PAWN;
 
-        pos.do_move(move, st);
+        pos.do_move(move);
 
         // For zeroing moves we want the dtz of the move _before_ doing it,
         // otherwise we will get the dtz of the next move sequence. Search the
@@ -1411,31 +1408,6 @@ int Tablebases::probe_dtz(Position& pos, ProbeState* result) {
     return minDTZ == 0xFFFF ? -1 : minDTZ;
 }
 
-// Check whether there has been at least one repetition of positions
-// since the last capture or pawn move.
-static int has_repeated(StateInfo *st)
-{
-    while (1) {
-        int i = 4, e = std::min(st->rule50, st->pliesFromNull);
-
-        if (e < i)
-            return 0;
-
-        StateInfo *stp = st->previous->previous;
-
-        do {
-            stp = stp->previous->previous;
-
-            if (stp->key == st->key)
-                return 1;
-
-            i += 2;
-        } while (i <= e);
-
-        st = st->previous;
-    }
-}
-
 // Use the DTZ tables to filter out moves that don't preserve the win or draw.
 // If the position is lost, but DTZ is fairly high, only keep moves that
 // maximise DTZ.
@@ -1452,12 +1424,10 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves, Value& 
     if (result == FAIL)
         return false;
 
-    StateInfo st;
-
     // Probe each move
     for (size_t i = 0; i < rootMoves.size(); ++i) {
         Move move = rootMoves[i].pv[0];
-        pos.do_move(move, st);
+        pos.do_move(move);
         int v = 0;
 
         if (pos.checkers() && dtz > 0) {
@@ -1468,7 +1438,7 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves, Value& 
         }
 
         if (!v) {
-            if (st.rule50 != 0) {
+            if (pos.rule50_count() != 0) {
                 v = -probe_dtz(pos, &result);
 
                 if (v > 0)
@@ -1490,8 +1460,7 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves, Value& 
     }
 
     // Obtain 50-move counter for the root position.
-    // In Stockfish there seems to be no clean way, so we do it like this:
-    int cnt50 = st.previous ? st.previous->rule50 : 0;
+    int cnt50 = pos.rule50_count();
 
     // Use 50-move counter to determine whether the root position is
     // won, lost or drawn.
@@ -1530,7 +1499,7 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves, Value& 
 
         // If the current phase has not seen repetitions, then try all moves
         // that stay safely within the 50-move budget, if there are any.
-        if (!has_repeated(st.previous) && best + cnt50 <= 99)
+        if (!pos.has_repeated(INT_MAX) && best + cnt50 <= 99)
             max = 99 - cnt50;
 
         for (size_t i = 0; i < rootMoves.size(); ++i) {
@@ -1586,14 +1555,12 @@ bool Tablebases::root_probe_wdl(Position& pos, Search::RootMoves& rootMoves, Val
 
     score = WDL_to_value[wdl + 2];
 
-    StateInfo st;
-
     int best = WDLLoss;
 
     // Probe each move
     for (size_t i = 0; i < rootMoves.size(); ++i) {
         Move move = rootMoves[i].pv[0];
-        pos.do_move(move, st);
+        pos.do_move(move);
         WDLScore v = -Tablebases::probe_wdl(pos, &result);
         pos.undo_move(move);
 

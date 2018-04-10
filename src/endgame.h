@@ -106,9 +106,8 @@ class Endgames {
   template<EndgameCode E, typename T = eg_type<E>, typename P = Ptr<T>>
   void add(const std::string& code) {
 
-    StateInfo st;
-    map<T>()[Position().set(code, WHITE, &st).material_key()] = P(new Endgame<E>(WHITE));
-    map<T>()[Position().set(code, BLACK, &st).material_key()] = P(new Endgame<E>(BLACK));
+    map<T>()[Position().set(code, WHITE).material_key()] = P(new Endgame<E>(WHITE));
+    map<T>()[Position().set(code, BLACK).material_key()] = P(new Endgame<E>(BLACK));
   }
 
   std::pair<Map<Value>, Map<ScaleFactor>> maps;

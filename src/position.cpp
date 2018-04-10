@@ -116,9 +116,8 @@ std::ostream& operator<<(std::ostream& os, const Position& pos) {
   if (    int(Tablebases::MaxCardinality) >= popcount(pos.pieces())
       && !pos.can_castle(ANY_CASTLING))
   {
-      StateInfo st;
       Position p;
-      p.set(pos.fen(), pos.is_chess960(), &st, pos.this_thread());
+      p.set(pos.fen(), pos.is_chess960(), pos.this_thread());
       Tablebases::ProbeState s1, s2;
       Tablebases::WDLScore wdl = Tablebases::probe_wdl(p, &s1);
       int dtz = Tablebases::probe_dtz(p, &s2);
@@ -159,12 +158,24 @@ void Position::init() {
   Zobrist::noPawns = rng.rand<Key>();
 }
 
+/// Position::set() copies a Position object and sets it to a Thread object
+/// It also copies the keys of the setup positions, to detect repetition.
+Position& Position::set(const Position& pos, Thread* th) {
+
+  set(pos.fen(), pos.is_chess960(), th);
+  if(pos.st > pos.stateStack)
+    stateStack[pos.st - pos.stateStack] = stateStack[0];
+  for(const StateInfo *from = pos.stateStack; from < pos.st ; ++st, ++from)
+    st->key = from->key;  
+  return *this;
+}
+
 
 /// Position::set() initializes the position object with the given FEN string.
 /// This function is not very robust - make sure that input FENs are correct,
 /// this is assumed to be the responsibility of the GUI.
 
-Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Thread* th) {
+Position& Position::set(const string& fenStr, bool isChess960, Thread* th) {
 /*
    A FEN string defines a particular position using only the ASCII character set.
 
@@ -206,10 +217,10 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
   std::istringstream ss(fenStr);
 
   std::memset(this, 0, sizeof(Position));
-  std::memset(si, 0, sizeof(StateInfo));
+  std::memset(stateStack, 0, sizeof(StateInfo));
   std::fill_n(&pieceList[0][0], sizeof(pieceList) / sizeof(Square), SQ_NONE);
-  st = si;
-
+  st = stateStack;
+  
   ss >> std::noskipws;
 
   // 1. Piece placement
@@ -275,15 +286,15 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
       st->epSquare = SQ_NONE;
 
   // 5-6. Halfmove clock and fullmove number
-  ss >> std::skipws >> st->rule50 >> gamePly;
+  ss >> std::skipws >> st->rule50 >> basePly;
 
   // Convert from fullmove starting from 1 to gamePly starting from 0,
   // handle also common incorrect FEN with fullmove = 0.
-  gamePly = std::max(2 * (gamePly - 1), 0) + (sideToMove == BLACK);
+  basePly = std::max(2 * (basePly - 1), 0) + (sideToMove == BLACK);
 
   chess960 = isChess960;
   thisThread = th;
-  set_state(st);
+  update_state();
 
   assert(pos_is_ok());
 
@@ -318,68 +329,68 @@ void Position::set_castling_right(Color c, Square rfrom) {
 }
 
 
-/// Position::set_check_info() sets king attacks to detect if a move gives check
+/// Position::update_check_info() sets king attacks to detect if a move gives check
 
-void Position::set_check_info(StateInfo* si) const {
+void Position::update_check_info() {
 
-  si->blockersForKing[WHITE] = slider_blockers(pieces(BLACK), square<KING>(WHITE), si->pinners[BLACK]);
-  si->blockersForKing[BLACK] = slider_blockers(pieces(WHITE), square<KING>(BLACK), si->pinners[WHITE]);
+  st->blockersForKing[WHITE] = slider_blockers(pieces(BLACK), square<KING>(WHITE), st->pinners[BLACK]);
+  st->blockersForKing[BLACK] = slider_blockers(pieces(WHITE), square<KING>(BLACK), st->pinners[WHITE]);
 
   Square ksq = square<KING>(~sideToMove);
 
-  si->checkSquares[PAWN]   = attacks_from<PAWN>(ksq, ~sideToMove);
-  si->checkSquares[KNIGHT] = attacks_from<KNIGHT>(ksq);
-  si->checkSquares[BISHOP] = attacks_from<BISHOP>(ksq);
-  si->checkSquares[ROOK]   = attacks_from<ROOK>(ksq);
-  si->checkSquares[QUEEN]  = si->checkSquares[BISHOP] | si->checkSquares[ROOK];
-  si->checkSquares[KING]   = 0;
+  st->checkSquares[PAWN]   = attacks_from<PAWN>(ksq, ~sideToMove);
+  st->checkSquares[KNIGHT] = attacks_from<KNIGHT>(ksq);
+  st->checkSquares[BISHOP] = attacks_from<BISHOP>(ksq);
+  st->checkSquares[ROOK]   = attacks_from<ROOK>(ksq);
+  st->checkSquares[QUEEN]  = st->checkSquares[BISHOP] | st->checkSquares[ROOK];
+  st->checkSquares[KING]   = 0;
 }
 
 
-/// Position::set_state() computes the hash keys of the position, and other
+/// Position::update_state() computes the hash keys of the position, and other
 /// data that once computed is updated incrementally as moves are made.
 /// The function is only used when a new position is set up, and to verify
 /// the correctness of the StateInfo data when running in debug mode.
 
-void Position::set_state(StateInfo* si) const {
+void Position::update_state() {
 
-  si->key = si->materialKey = 0;
-  si->pawnKey = Zobrist::noPawns;
-  si->nonPawnMaterial[WHITE] = si->nonPawnMaterial[BLACK] = VALUE_ZERO;
-  si->psq = SCORE_ZERO;
-  si->checkersBB = attackers_to(square<KING>(sideToMove)) & pieces(~sideToMove);
+  st->key = st->materialKey = 0;
+  st->pawnKey = Zobrist::noPawns;
+  st->nonPawnMaterial[WHITE] = st->nonPawnMaterial[BLACK] = VALUE_ZERO;
+  st->psq = SCORE_ZERO;
+  st->checkersBB = attackers_to(square<KING>(sideToMove)) & pieces(~sideToMove);
 
-  set_check_info(si);
+  update_check_info();
 
   for (Bitboard b = pieces(); b; )
   {
       Square s = pop_lsb(&b);
       Piece pc = piece_on(s);
-      si->key ^= Zobrist::psq[pc][s];
-      si->psq += PSQT::psq[pc][s];
+      st->key ^= Zobrist::psq[pc][s];
+      st->psq += PSQT::psq[pc][s];
   }
 
-  if (si->epSquare != SQ_NONE)
-      si->key ^= Zobrist::enpassant[file_of(si->epSquare)];
+  if (st->epSquare != SQ_NONE)
+      st->key ^= Zobrist::enpassant[file_of(st->epSquare)];
 
   if (sideToMove == BLACK)
-      si->key ^= Zobrist::side;
+      st->key ^= Zobrist::side;
 
-  si->key ^= Zobrist::castling[si->castlingRights];
+  st->key ^= Zobrist::castling[st->castlingRights];
 
   for (Bitboard b = pieces(PAWN); b; )
   {
       Square s = pop_lsb(&b);
-      si->pawnKey ^= Zobrist::psq[piece_on(s)][s];
+      st->pawnKey ^= Zobrist::psq[piece_on(s)][s];
   }
 
   for (Piece pc : Pieces)
   {
       if (type_of(pc) != PAWN && type_of(pc) != KING)
-          si->nonPawnMaterial[color_of(pc)] += pieceCount[pc] * PieceValue[MG][pc];
+          st->nonPawnMaterial[color_of(pc)] += pieceCount[pc] * PieceValue[MG][pc];
 
       for (int cnt = 0; cnt < pieceCount[pc]; ++cnt)
-          si->materialKey ^= Zobrist::psq[pc][cnt];
+          st->materialKey ^= Zobrist::psq[pc][cnt];
   }
 }
 
@@ -388,7 +399,7 @@ void Position::set_state(StateInfo* si) const {
 /// the given endgame code string like "KBPKN". It is mainly a helper to
 /// get the material key out of an endgame code.
 
-Position& Position::set(const string& code, Color c, StateInfo* si) {
+Position& Position::set(const string& code, Color c) {
 
   assert(code.length() > 0 && code.length() < 8);
   assert(code[0] == 'K');
@@ -401,7 +412,7 @@ Position& Position::set(const string& code, Color c, StateInfo* si) {
   string fenStr = "8/" + sides[0] + char(8 - sides[0].length() + '0') + "/8/8/8/8/"
                        + sides[1] + char(8 - sides[1].length() + '0') + "/8 w - - 0 10";
 
-  return set(fenStr, false, si, nullptr);
+  return set(fenStr, false, nullptr);
 }
 
 
@@ -449,7 +460,7 @@ const string Position::fen() const {
       ss << '-';
 
   ss << (ep_square() == SQ_NONE ? " - " : " " + UCI::square(ep_square()) + " ")
-     << st->rule50 << " " << 1 + (gamePly - (sideToMove == BLACK)) / 2;
+     << st->rule50 << " " << 1 + (game_ply() - (sideToMove == BLACK)) / 2;
 
   return ss.str();
 }
@@ -677,10 +688,11 @@ bool Position::gives_check(Move m) const {
 /// to a StateInfo object. The move is assumed to be legal. Pseudo-legal
 /// moves should be filtered out before this function is called.
 
-void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
+void Position::do_move(Move m, bool givesCheck) {
 
+  assert((st + 1) < stateStack + 100 + MAX_PLY);
+  StateInfo* newSt = st + 1;
   assert(is_ok(m));
-  assert(&newSt != st);
 
   thisThread->nodes.fetch_add(1, std::memory_order_relaxed);
   Key k = st->key ^ Zobrist::side;
@@ -688,13 +700,11 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   // Copy some fields of the old state to our new StateInfo object except the
   // ones which are going to be recalculated from scratch anyway and then switch
   // our state pointer to point to the new (ready to be updated) state.
-  std::memcpy(&newSt, st, offsetof(StateInfo, key));
-  newSt.previous = st;
-  st = &newSt;
+  std::memcpy(newSt, st, offsetof(StateInfo, key));
+  st = newSt;
 
   // Increment ply counters. In particular, rule50 will be reset to zero later on
   // in case of a capture or a pawn move.
-  ++gamePly;
   ++st->rule50;
   ++st->pliesFromNull;
 
@@ -842,7 +852,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   sideToMove = ~sideToMove;
 
   // Update king attacks used for fast check detection
-  set_check_info(st);
+  update_check_info();
 
   assert(pos_is_ok());
 }
@@ -854,6 +864,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
 void Position::undo_move(Move m) {
 
   assert(is_ok(m));
+  assert(st != stateStack);
 
   sideToMove = ~sideToMove;
 
@@ -894,7 +905,7 @@ void Position::undo_move(Move m) {
               capsq -= pawn_push(us);
 
               assert(type_of(pc) == PAWN);
-              assert(to == st->previous->epSquare);
+              assert(to == (st - 1)->epSquare);
               assert(relative_rank(us, to) == RANK_6);
               assert(piece_on(capsq) == NO_PIECE);
               assert(st->capturedPiece == make_piece(~us, PAWN));
@@ -905,8 +916,7 @@ void Position::undo_move(Move m) {
   }
 
   // Finally point our state pointer back to the previous state
-  st = st->previous;
-  --gamePly;
+  --st;
 
   assert(pos_is_ok());
 }
@@ -934,14 +944,14 @@ void Position::do_castling(Color us, Square from, Square& to, Square& rfrom, Squ
 /// Position::do(undo)_null_move() is used to do(undo) a "null move": It flips
 /// the side to move without executing any move on the board.
 
-void Position::do_null_move(StateInfo& newSt) {
+void Position::do_null_move() {
 
+  assert((st + 1) < stateStack + 100 + MAX_PLY);
+  StateInfo *newSt = st + 1;
   assert(!checkers());
-  assert(&newSt != st);
 
-  std::memcpy(&newSt, st, sizeof(StateInfo));
-  newSt.previous = st;
-  st = &newSt;
+  std::memcpy(newSt, st, sizeof(StateInfo));
+  st = newSt;
 
   if (st->epSquare != SQ_NONE)
   {
@@ -957,7 +967,7 @@ void Position::do_null_move(StateInfo& newSt) {
 
   sideToMove = ~sideToMove;
 
-  set_check_info(st);
+  update_check_info();
 
   assert(pos_is_ok());
 }
@@ -966,8 +976,22 @@ void Position::undo_null_move() {
 
   assert(!checkers());
 
-  st = st->previous;
+  --st;
   sideToMove = ~sideToMove;
+}
+
+/// Position::setup_move() rebases the state stack 
+/// when m resets rule50. The state stack has a limited size,
+/// using setup_move() prevents the stack from overflowing by remembering only
+/// the setup positions useful for repetition draw.
+void Position::setup_move(Move m) {
+
+  do_move(m);
+  if(st->rule50 == 0){
+    memcpy(stateStack, st, sizeof(StateInfo));
+    basePly += st - stateStack;
+    st = stateStack;
+  }
 }
 
 
@@ -1079,21 +1103,26 @@ bool Position::see_ge(Move m, Value threshold) const {
 
 bool Position::is_draw(int ply) const {
 
-  if (st->rule50 > 99 && (!checkers() || MoveList<LEGAL>(*this).size()))
-      return true;
+  return (st->rule50 > 99 && (!checkers() || MoveList<LEGAL>(*this).size()))
+         || has_repeated(ply);
+}
 
-  int end = std::min(st->rule50, st->pliesFromNull);
+/// Position::has_repeated() tests if the position is drawn by repetition
+/// Needed by tbprobe.cpp
+bool Position::has_repeated(int ply) const {
+
+ int end = std::min(st->rule50, st->pliesFromNull);
 
   if (end < 4)
     return false;
 
-  StateInfo* stp = st->previous->previous;
+  StateInfo* stp = st - 2;
   int cnt = 0;
 
   for (int i = 4; i <= end; i += 2)
   {
-      stp = stp->previous->previous;
-
+      stp -= 2;
+      assert(stp >= stateStack);
       // Return a draw score if a position repeats once earlier but strictly
       // after the root, or repeats twice before or at the root.
       if (   stp->key == st->key
@@ -1134,7 +1163,7 @@ void Position::flip() {
   std::getline(ss, token); // Half and full moves
   f += token;
 
-  set(f, is_chess960(), st, this_thread());
+  set(f, is_chess960(), this_thread());
 
   assert(pos_is_ok());
 }
@@ -1178,11 +1207,6 @@ bool Position::pos_is_ok() const {
       for (PieceType p2 = PAWN; p2 <= KING; ++p2)
           if (p1 != p2 && (pieces(p1) & pieces(p2)))
               assert(0 && "pos_is_ok: Bitboards");
-
-  StateInfo si = *st;
-  set_state(&si);
-  if (std::memcmp(&si, st, sizeof(StateInfo)))
-      assert(0 && "pos_is_ok: State");
 
   for (Piece pc : Pieces)
   {

@@ -153,8 +153,8 @@ void ThreadPool::clear() {
 /// ThreadPool::start_thinking() wakes up main thread waiting in idle_loop() and
 /// returns immediately. Main thread will wake up other threads and start the search.
 
-void ThreadPool::start_thinking(Position& pos, StateListPtr& states,
-                                const Search::LimitsType& limits, bool ponderMode) {
+void ThreadPool::start_thinking(Position& pos,const Search::LimitsType& limits, 
+                                bool ponderMode) {
 
   main()->wait_for_search_finished();
 
@@ -171,29 +171,13 @@ void ThreadPool::start_thinking(Position& pos, StateListPtr& states,
   if (!rootMoves.empty())
       Tablebases::filter_root_moves(pos, rootMoves);
 
-  // After ownership transfer 'states' becomes empty, so if we stop the search
-  // and call 'go' again without setting a new position states.get() == NULL.
-  assert(states.get() || setupStates.get());
-
-  if (states.get())
-      setupStates = std::move(states); // Ownership transfer, states is now empty
-
-  // We use Position::set() to set root position across threads. But there are
-  // some StateInfo fields (previous, pliesFromNull, capturedPiece) that cannot
-  // be deduced from a fen string, so set() clears them and to not lose the info
-  // we need to backup and later restore setupStates->back(). Note that setupStates
-  // is shared by threads but is accessed in read-only mode.
-  StateInfo tmp = setupStates->back();
-
   for (Thread* th : *this)
   {
       th->nodes = th->tbHits = th->nmp_ply = th->nmp_odd = 0;
       th->rootDepth = th->completedDepth = DEPTH_ZERO;
       th->rootMoves = rootMoves;
-      th->rootPos.set(pos.fen(), pos.is_chess960(), &setupStates->back(), th);
+      th->rootPos.set(pos, th);
   }
-
-  setupStates->back() = tmp;
 
   main()->start_searching();
 }
