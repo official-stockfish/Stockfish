@@ -747,7 +747,7 @@ namespace {
 
             // Do verification search at high depths. Disable null move pruning
             // for side to move for the first part of the remaining search tree.
-            thisThread->nmp_ply = ss->ply + 3 * (depth-R) / 4;
+            thisThread->nmp_ply = ss->ply + 3 * (depth-R) / (4 * ONE_PLY);
             thisThread->nmp_odd = ss->ply % 2;
 
             Value v = search<NonPV>(pos, ss, beta-1, beta, depth-R, false, true);
