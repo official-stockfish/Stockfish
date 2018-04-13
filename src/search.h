@@ -46,7 +46,7 @@ struct Stack {
   Move currentMove;
   Move excludedMove;
   Move killers[2];
-  Value staticEval;
+  int staticEval;
   int statScore;
   int moveCount;
 };
@@ -66,8 +66,8 @@ struct RootMove {
                             : m.previousScore < previousScore;
   }
 
-  Value score = -VALUE_INFINITE;
-  Value previousScore = -VALUE_INFINITE;
+  int score = -VALUE_INFINITE;
+  int previousScore = -VALUE_INFINITE;
   int selDepth = 0;
   std::vector<Move> pv;
 };

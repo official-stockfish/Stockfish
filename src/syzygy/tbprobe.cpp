@@ -210,7 +210,7 @@ int MapKK[10][SQUARE_NB]; // [MapA1D1D4][SQUARE_NB]
 bool pawns_comp(Square i, Square j) { return MapPawns[i] < MapPawns[j]; }
 int off_A1H8(Square sq) { return int(rank_of(sq)) - file_of(sq); }
 
-constexpr Value WDL_to_value[] = {
+constexpr int WDL_to_value[] = {
    -VALUE_MATE + MAX_PLY + 1,
     VALUE_DRAW - 2,
     VALUE_DRAW,
@@ -1442,7 +1442,7 @@ static int has_repeated(StateInfo *st)
 //
 // A return value false indicates that not all probes were successful and that
 // no moves were filtered out.
-bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves, Value& score)
+bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves, int& score)
 {
     assert(rootMoves.size());
 
@@ -1486,7 +1486,7 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves, Value& 
         if (result == FAIL)
             return false;
 
-        rootMoves[i].score = (Value)v;
+        rootMoves[i].score = v;
     }
 
     // Obtain 50-move counter for the root position.
@@ -1509,9 +1509,9 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves, Value& 
     // score to show how close it is to winning or losing.
     // NOTE: int(PawnValueEg) is used as scaling factor in score_to_uci().
     if (wdl == WDLCursedWin && dtz <= 100)
-        score = (Value)(((200 - dtz - cnt50) * int(PawnValueEg)) / 200);
+        score = (((200 - dtz - cnt50) * PawnValueEg) / 200);
     else if (wdl == WDLBlessedLoss && dtz >= -100)
-        score = -(Value)(((200 + dtz - cnt50) * int(PawnValueEg)) / 200);
+        score = -(((200 + dtz - cnt50) * PawnValueEg) / 200);
 
     // Now be a bit smart about filtering out moves.
     size_t j = 0;
@@ -1575,7 +1575,7 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves, Value& 
 //
 // A return value false indicates that not all probes were successful and that
 // no moves were filtered out.
-bool Tablebases::root_probe_wdl(Position& pos, Search::RootMoves& rootMoves, Value& score)
+bool Tablebases::root_probe_wdl(Position& pos, Search::RootMoves& rootMoves, int& score)
 {
     ProbeState result;
 
@@ -1600,7 +1600,7 @@ bool Tablebases::root_probe_wdl(Position& pos, Search::RootMoves& rootMoves, Val
         if (result == FAIL)
             return false;
 
-        rootMoves[i].score = (Value)v;
+        rootMoves[i].score = v;
 
         if (v > best)
             best = v;

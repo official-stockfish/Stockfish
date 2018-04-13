@@ -65,7 +65,7 @@ enum EndgameCode {
 /// Endgame functions can be of two types depending on whether they return a
 /// Value or a ScaleFactor.
 template<EndgameCode E> using
-eg_type = typename std::conditional<(E < SCALING_FUNCTIONS), Value, ScaleFactor>::type;
+eg_type = typename std::conditional<(E < SCALING_FUNCTIONS), int, ScaleFactor>::type;
 
 
 /// Base and derived functors for endgame evaluation and scaling functions
@@ -111,7 +111,7 @@ class Endgames {
     map<T>()[Position().set(code, BLACK, &st).material_key()] = P(new Endgame<E>(BLACK));
   }
 
-  std::pair<Map<Value>, Map<ScaleFactor>> maps;
+  std::pair<Map<int>, Map<ScaleFactor>> maps;
 
 public:
   Endgames();
