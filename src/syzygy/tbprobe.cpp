@@ -1358,6 +1358,8 @@ WDLScore Tablebases::probe_wdl(Position& pos, ProbeState* result) {
 //     1 < n <= 100 : win in n ply (assuming 50-move counter == 0)
 //   100 < n        : win, but draw under 50-move rule
 //
+// If the position is mate, -1 is returned.
+//
 // The return value n can be off by 1: a return value -n can mean a loss
 // in n+1 ply and a return value +n can mean a win in n+1 ply. This
 // cannot happen for tables with positions exactly on the "edge" of
@@ -1413,10 +1415,9 @@ int Tablebases::probe_dtz(Position& pos, ProbeState* result) {
         dtz = zeroing ? -dtz_before_zeroing(search(pos, result))
                       : -probe_dtz(pos, result);
 
-        pos.undo_move(move);
-
-        if (*result == FAIL)
-            return 0;
+        // If the move mates, force minDTZ to 1
+        if (dtz == 1 && pos.checkers() && MoveList<LEGAL>(pos).size() == 0)
+            minDTZ = 1;
 
         // Convert result from 1-ply search. Zeroing moves are already accounted
         // by dtz_before_zeroing() that returns the DTZ of the previous move.
@@ -1426,11 +1427,15 @@ int Tablebases::probe_dtz(Position& pos, ProbeState* result) {
         // Skip the draws and if we are winning only pick positive dtz
         if (dtz < minDTZ && sign_of(dtz) == sign_of(wdl))
             minDTZ = dtz;
+
+        pos.undo_move(move);
+
+        if (*result == FAIL)
+            return 0;
     }
 
-    // Special handle a mate position, when there are no legal moves, in this
-    // case return value is somewhat arbitrary, so stick to the original TB code
-    // that returns -1 in this case.
+    // Special handle a mate position, when there are no legal moves. In this
+    // case -1 is returned.
     return minDTZ == 0xFFFF ? -1 : minDTZ;
 }
 
