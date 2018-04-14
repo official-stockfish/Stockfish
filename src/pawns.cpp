@@ -31,19 +31,13 @@ namespace {
   #define V Value
   #define S(mg, eg) make_score(mg, eg)
 
-  constexpr Score PawnlessFlank  = S(  6, 80);
-
-  // Isolated pawn penalty
+  constexpr Score PawnlessFlank  = S(  23, 86); //king on a pawnless flank
   constexpr Score Isolated = S(13, 18);
-
-  // Backward pawn penalty
   constexpr Score Backward = S(24, 12);
+  constexpr Score Doubled = S(18, 38);
 
   // Connected pawn bonus by opposed, phalanx, #support and rank
   Score Connected[2][2][3][RANK_NB];
-
-  // Doubled pawn penalty
-  constexpr Score Doubled = S(18, 38);
 
   // Weakness of our pawn shelter in front of the king by [isKingFile][distance from edge][rank].
   // RANK_1 = 0 is used for files where we have no pawns or our pawn is behind our king.
@@ -59,8 +53,7 @@ namespace {
   };
 
   // Danger of enemy pawns moving toward our king by [type][distance from edge][rank].
-  // For the unopposed and unblocked cases, RANK_1 = 0 is used when opponent has
-  // no pawn on the given file, or their pawn is behind our king.
+  // RANK_1 = opponent has no pawn on the given file, or their pawn is behind our king.
   constexpr Value StormDanger[][4][RANK_NB] = {
     { { V( 0),  V(-290), V(-274), V(57), V(41) },  // BlockedByKing
       { V( 0),  V(  60), V( 144), V(39), V(13) },
@@ -93,12 +86,12 @@ namespace {
     constexpr Color     Them = (Us == WHITE ? BLACK : WHITE);
     constexpr Direction Up   = (Us == WHITE ? NORTH : SOUTH);
 
-    Bitboard b, neighbours, stoppers, doubled, supported, phalanx;
-    Bitboard lever, leverPush;
     Square s;
     bool opposed, backward;
     Score score = SCORE_ZERO;
     const Square* pl = pos.squares<PAWN>(Us);
+    Bitboard b, neighbours, stoppers, doubled, supported, phalanx;
+    Bitboard lever, leverPush;
 
     Bitboard ourPawns   = pos.pieces(  Us, PAWN);
     Bitboard theirPawns = pos.pieces(Them, PAWN);
