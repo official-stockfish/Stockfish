@@ -208,8 +208,12 @@ enum Piece {
 extern Value PieceValue[PHASE_NB][PIECE_NB];
 
 enum Depth : int {
-
-  ONE_PLY = 1,
+// ONE_PLY_VALUE can be defined externally,
+// which is currently used in travis CI to check bench invariance.
+#if !defined(ONE_PLY_VALUE)
+#define ONE_PLY_VALUE 1
+#endif
+  ONE_PLY = ONE_PLY_VALUE,
 
   DEPTH_ZERO          =  0 * ONE_PLY,
   DEPTH_QS_CHECKS     =  0 * ONE_PLY,
