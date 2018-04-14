@@ -42,7 +42,7 @@ struct Entry {
   Score imbalance() const { return make_score(value, value); }
   Phase game_phase() const { return gamePhase; }
   bool specialized_eval_exists() const { return evaluationFunction != nullptr; }
-  Value evaluate(const Position& pos) const { return (*evaluationFunction)(pos); }
+  int evaluate(const Position& pos) const { return (*evaluationFunction)(pos); }
 
   // scale_factor takes a position and a color as input and returns a scale factor
   // for the given color. We have to provide the position in addition to the color
@@ -56,7 +56,7 @@ struct Entry {
   }
 
   Key key;
-  EndgameBase<Value>* evaluationFunction;
+  EndgameBase<int>* evaluationFunction;
   EndgameBase<ScaleFactor>* scalingFunction[COLOR_NB]; // Could be one for each
                                                        // side (e.g. KPKP, KBPsKs)
   int16_t value;

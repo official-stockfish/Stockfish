@@ -28,7 +28,6 @@
 
 namespace {
 
-  #define V Value
   #define S(mg, eg) make_score(mg, eg)
 
   // Isolated pawn penalty
@@ -45,45 +44,44 @@ namespace {
 
   // Weakness of our pawn shelter in front of the king by [isKingFile][distance from edge][rank].
   // RANK_1 = 0 is used for files where we have no pawns or our pawn is behind our king.
-  constexpr Value ShelterWeakness[][int(FILE_NB) / 2][RANK_NB] = {
-    { { V( 98), V(20), V(11), V(42), V( 83), V( 84), V(101) }, // Not On King file
-      { V(103), V( 8), V(33), V(86), V( 87), V(105), V(113) },
-      { V(100), V( 2), V(65), V(95), V( 59), V( 89), V(115) },
-      { V( 72), V( 6), V(52), V(74), V( 83), V( 84), V(112) } },
-    { { V(105), V(19), V( 3), V(27), V( 85), V( 93), V( 84) }, // On King file
-      { V(121), V( 7), V(33), V(95), V(112), V( 86), V( 72) },
-      { V(121), V(26), V(65), V(90), V( 65), V( 76), V(117) },
-      { V( 79), V( 0), V(45), V(65), V( 94), V( 92), V(105) } }
+  constexpr int ShelterWeakness[][int(FILE_NB) / 2][RANK_NB] = {
+    { {  98, 20, 11, 42,  83,  84, 101 }, // Not On King file
+      { 103,  8, 33, 86,  87, 105, 113 },
+      { 100,  2, 65, 95,  59,  89, 115 },
+      {  72,  6, 52, 74,  83,  84, 112 } },
+    { { 105, 19,  3, 27,  85,  93,  84 }, // On King file
+      { 121,  7, 33, 95, 112,  86,  72 },
+      { 121, 26, 65, 90,  65,  76, 117 },
+      {  79,  0, 45, 65,  94,  92, 105 } }
   };
 
   // Danger of enemy pawns moving toward our king by [type][distance from edge][rank].
   // For the unopposed and unblocked cases, RANK_1 = 0 is used when opponent has
   // no pawn on the given file, or their pawn is behind our king.
-  constexpr Value StormDanger[][4][RANK_NB] = {
-    { { V( 0),  V(-290), V(-274), V(57), V(41) },  // BlockedByKing
-      { V( 0),  V(  60), V( 144), V(39), V(13) },
-      { V( 0),  V(  65), V( 141), V(41), V(34) },
-      { V( 0),  V(  53), V( 127), V(56), V(14) } },
-    { { V( 4),  V(  73), V( 132), V(46), V(31) },  // Unopposed
-      { V( 1),  V(  64), V( 143), V(26), V(13) },
-      { V( 1),  V(  47), V( 110), V(44), V(24) },
-      { V( 0),  V(  72), V( 127), V(50), V(31) } },
-    { { V( 0),  V(   0), V(  19), V(23), V( 1) },  // BlockedByPawn
-      { V( 0),  V(   0), V(  88), V(27), V( 2) },
-      { V( 0),  V(   0), V( 101), V(16), V( 1) },
-      { V( 0),  V(   0), V( 111), V(22), V(15) } },
-    { { V(22),  V(  45), V( 104), V(62), V( 6) },  // Unblocked
-      { V(31),  V(  30), V(  99), V(39), V(19) },
-      { V(23),  V(  29), V(  96), V(41), V(15) },
-      { V(21),  V(  23), V( 116), V(41), V(15) } }
+  constexpr int StormDanger[][4][RANK_NB] = {
+    { {  0, -290, -274, 57, 41 },  // BlockedByKing
+      {  0,   60,  144, 39, 13 },
+      {  0,   65,  141, 41, 34 },
+      {  0,   53,  127, 56, 14 } },
+    { {  4,   73,  132, 46, 31 },  // Unopposed
+      {  1,   64,  143, 26, 13 },
+      {  1,   47,  110, 44, 24 },
+      {  0,   72,  127, 50, 31 } },
+    { {  0,    0,   19, 23,  1 },  // BlockedByPawn
+      {  0,    0,   88, 27,  2 },
+      {  0,    0,  101, 16,  1 },
+      {  0,    0,  111, 22, 15 } },
+    { { 22,   45,  104, 62,  6 },  // Unblocked
+      { 31,   30,   99, 39, 19 },
+      { 23,   29,   96, 41, 15 },
+      { 21,   23,  116, 41, 15 } }
   };
 
   // Max bonus for king safety. Corresponds to start position with all the pawns
   // in front of the king and no enemy pawn on the horizon.
-  constexpr Value MaxSafetyBonus = V(258);
+  constexpr int MaxSafetyBonus = 258;
 
   #undef S
-  #undef V
 
   template<Color Us>
   Score evaluate(const Position& pos, Pawns::Entry* e) {
@@ -234,7 +232,7 @@ Entry* probe(const Position& pos) {
 /// the king is on, as well as the two closest files.
 
 template<Color Us>
-Value Entry::shelter_storm(const Position& pos, Square ksq) {
+int Entry::shelter_storm(const Position& pos, Square ksq) {
 
   constexpr Color Them = (Us == WHITE ? BLACK : WHITE);
 
@@ -246,7 +244,7 @@ Value Entry::shelter_storm(const Position& pos, Square ksq) {
                & (adjacent_files_bb(center) | file_bb(center));
   Bitboard ourPawns = b & pos.pieces(Us);
   Bitboard theirPawns = b & pos.pieces(Them);
-  Value safety = MaxSafetyBonus;
+  int safety = MaxSafetyBonus;
 
   for (File f = File(center - 1); f <= File(center + 1); ++f)
   {
@@ -283,7 +281,7 @@ Score Entry::do_king_safety(const Position& pos, Square ksq) {
   if (pawns)
       while (!(DistanceRingBB[ksq][minKingPawnDistance++] & pawns)) {}
 
-  Value bonus = shelter_storm<Us>(pos, ksq);
+  int bonus = shelter_storm<Us>(pos, ksq);
 
   // If we can castle use the bonus after the castling if it is bigger
   if (pos.can_castle(MakeCastling<Us, KING_SIDE>::right))
