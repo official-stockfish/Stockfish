@@ -31,6 +31,17 @@ namespace {
   #define V Value
   #define S(mg, eg) make_score(mg, eg)
 
+  constexpr Bitboard QueenSide   = FileABB | FileBBB | FileCBB | FileDBB;
+  constexpr Bitboard CenterFiles = FileCBB | FileDBB | FileEBB | FileFBB;
+  constexpr Bitboard KingSide    = FileEBB | FileFBB | FileGBB | FileHBB;
+  constexpr Bitboard Center      = (FileDBB | FileEBB) & (Rank4BB | Rank5BB);
+  constexpr Bitboard KingFlank[FILE_NB] = {
+    QueenSide,   QueenSide, QueenSide,
+    CenterFiles, CenterFiles,
+    KingSide,    KingSide,  KingSide
+  };
+  constexpr Score PawnlessFlank  = S( 0, 80);
+
   // Isolated pawn penalty
   constexpr Score Isolated = S(13, 18);
 
@@ -291,6 +302,11 @@ Score Entry::do_king_safety(const Position& pos, Square ksq) {
 
   if (pos.can_castle(MakeCastling<Us, QUEEN_SIDE>::right))
       bonus = std::max(bonus, shelter_storm<Us>(pos, relative_square(Us, SQ_C1)));
+
+  // Penalty when our king is on a pawnless flank
+  Bitboard kf = KingFlank[file_of(ksq)];
+  if (!(pos.pieces(PAWN) & kf))
+      bonus -= PawnlessFlank;
 
   return make_score(bonus, -16 * minKingPawnDistance);
 }
