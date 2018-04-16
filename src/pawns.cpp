@@ -292,7 +292,7 @@ Score Entry::do_king_safety(const Position& pos, Square ksq) {
   // Penalty when our king is on a pawnless flank
   Bitboard kf = KingFlank[file_of(ksq)];
   if (!(pos.pieces(PAWN) & kf))
-      bonus -= PawnlessFlank;
+      score -= PawnlessFlank;
 
   return score;
 }
