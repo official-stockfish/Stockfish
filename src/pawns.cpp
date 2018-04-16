@@ -43,6 +43,9 @@ namespace {
   // Doubled pawn penalty
   constexpr Score Doubled = S(18, 38);
 
+  // King shelter/storm bitboards
+  Bitboard KingShelterStormBB[COLOR_NB][SQUARE_NB];
+
   // Weakness of our pawn shelter in front of the king by [isKingFile][distance from edge][rank].
   // RANK_1 = 0 is used for files where we have no pawns or our pawn is behind our king.
   constexpr Value BaseSafety = Value(-72);
@@ -200,6 +203,16 @@ void init() {
 
       Connected[opposed][phalanx][support][r] = make_score(v, v * (r - 2) / 4);
   }
+
+  // King shelter/storm bitboards
+  for (Square s = SQ_A1; s <= SQ_H8; ++s)
+  {
+     File center = std::max(FILE_B, std::min(FILE_G, file_of(s)));
+     KingShelterStormBB[WHITE][s] = (forward_ranks_bb(WHITE, s) | rank_bb(s))
+               & (adjacent_files_bb(center) | file_bb(center));
+     KingShelterStormBB[BLACK][s] = (forward_ranks_bb(BLACK, s) | rank_bb(s))
+               & (adjacent_files_bb(center) | file_bb(center));
+  }
 }
 
 
@@ -238,16 +251,13 @@ Value Entry::shelter_storm(const Position& pos, Square ksq) {
   enum { BlockedByKing, Unopposed, BlockedByPawn, Unblocked };
 
   File center = std::max(FILE_B, std::min(FILE_G, file_of(ksq)));
-  Bitboard b =   pos.pieces(PAWN)
-               & (forward_ranks_bb(Us, ksq) | rank_bb(ksq))
-               & (adjacent_files_bb(center) | file_bb(center));
-  Bitboard ourPawns = b & pos.pieces(Us);
-  Bitboard theirPawns = b & pos.pieces(Them);
+  Bitboard ourPawns = KingShelterStormBB[Us][ksq] & pos.pieces(Us,PAWN);
+  Bitboard theirPawns = KingShelterStormBB[Us][ksq] & pos.pieces(Them,PAWN);
   Value safety = BaseSafety;
 
   for (File f = File(center - 1); f <= File(center + 1); ++f)
   {
-      b = ourPawns & file_bb(f);
+      Bitboard b = ourPawns & file_bb(f);
       Rank rkUs = b ? relative_rank(Us, backmost_sq(Us, b)) : RANK_1;
 
       b = theirPawns & file_bb(f);
