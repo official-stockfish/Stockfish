@@ -236,7 +236,7 @@ Entry* probe(const Position& pos) {
 template<Color Us>
 Value Entry::shelter_storm(const Position& pos, Square ksq) {
 
-  constexpr Color Them   = (Us == WHITE ? BLACK : WHITE);
+  constexpr Color   Them   = (Us == WHITE ? BLACK : WHITE);
   constexpr Direction Down = (Us == WHITE ? SOUTH : NORTH);
 
   enum { BlockedByKing, Unopposed, BlockedByPawn, Unblocked };
@@ -260,9 +260,9 @@ Value Entry::shelter_storm(const Position& pos, Square ksq) {
       int d = std::min(f, ~f);
       safety -=  ShelterWeakness[f == file_of(ksq)][d][rkUs]
                + StormDanger
-                 [(shift<Down>(b) & ksq) ? BlockedByKing  :
-                  rkUs   == RANK_1       ? Unopposed :
-                  rkThem == rkUs + 1     ? BlockedByPawn  : Unblocked]
+                 [(shift<Down>(b) & ksq) ? BlockedByKing :
+                      rkUs   == RANK_1   ? Unopposed     :
+                      rkThem == rkUs + 1 ? BlockedByPawn : Unblocked]
                  [d][rkThem];
   }
 
