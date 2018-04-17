@@ -236,7 +236,7 @@ Entry* probe(const Position& pos) {
 template<Color Us>
 Value Entry::shelter_storm(const Position& pos, Square ksq) {
 
-  constexpr Color   Them   = (Us == WHITE ? BLACK : WHITE);
+  constexpr Color     Them = (Us == WHITE ? BLACK : WHITE);
   constexpr Direction Down = (Us == WHITE ? SOUTH : NORTH);
 
   enum { BlockedByKing, Unopposed, BlockedByPawn, Unblocked };
