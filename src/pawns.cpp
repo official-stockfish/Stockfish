@@ -31,7 +31,7 @@ namespace {
   #define V Value
   #define S(mg, eg) make_score(mg, eg)
 
-  constexpr Score PawnlessFlank  = S(  20, 80); //king on a pawnless flank
+  constexpr Score PawnlessFlank  = S( 24, 80); //king on a pawnless flank
   constexpr Score Isolated = S(13, 18);
   constexpr Score Backward = S(24, 12);
   constexpr Score Doubled = S(18, 38);
@@ -290,8 +290,7 @@ Score Entry::do_king_safety(const Position& pos, Square ksq) {
   Score score = make_score(bonus, -16 * minKingPawnDistance);
 
   // Penalty when our king is on a pawnless flank
-  Bitboard kf = KingFlank[file_of(ksq)];
-  if (!(pos.pieces(PAWN) & kf))
+  if (!(pos.pieces(PAWN) & KingFlank[file_of(ksq)]))
       score -= PawnlessFlank;
 
   return score;
