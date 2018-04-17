@@ -43,17 +43,21 @@ namespace {
   // Doubled pawn penalty
   constexpr Score Doubled = S(18, 38);
 
+  // King shelter/storm bitboards
+  Bitboard KingShelterStormBB[COLOR_NB][SQUARE_NB];
+
   // Weakness of our pawn shelter in front of the king by [isKingFile][distance from edge][rank].
   // RANK_1 = 0 is used for files where we have no pawns or our pawn is behind our king.
-  constexpr Value ShelterWeakness[][int(FILE_NB) / 2][RANK_NB] = {
-    { { V( 98), V(20), V(11), V(42), V( 83), V( 84), V(101) }, // Not On King file
-      { V(103), V( 8), V(33), V(86), V( 87), V(105), V(113) },
-      { V(100), V( 2), V(65), V(95), V( 59), V( 89), V(115) },
-      { V( 72), V( 6), V(52), V(74), V( 83), V( 84), V(112) } },
-    { { V(105), V(19), V( 3), V(27), V( 85), V( 93), V( 84) }, // On King file
-      { V(121), V( 7), V(33), V(95), V(112), V( 86), V( 72) },
-      { V(121), V(26), V(65), V(90), V( 65), V( 76), V(117) },
-      { V( 79), V( 0), V(45), V(65), V( 94), V( 92), V(105) } }
+  constexpr Value BaseSafety = Value(-72);
+  constexpr Value ShelterStrength[][int(FILE_NB) / 2][RANK_NB] = {
+    { { V( 12), V( 90), V( 99), V( 68), V( 27), V( 26), V(  9) }, // Not On King file
+      { V(  7), V(102), V( 77), V( 24), V( 23), V(  5), V( -3) },
+      { V( 10), V(108), V( 45), V( 15), V( 51), V( 21), V( -5) },
+      { V( 38), V(104), V( 58), V( 36), V( 27), V( 26), V( -2) } },
+    { { V(  5), V( 91), V(107), V( 83), V( 25), V( 17), V( 26) }, // On King file
+      { V(-11), V(103), V( 77), V( 15), V( -2), V( 24), V( 38) },
+      { V(-11), V( 84), V( 45), V( 20), V( 45), V( 34), V( -7) },
+      { V( 31), V(110), V( 65), V( 45), V( 16), V( 18), V(  5) } }
   };
 
   // Danger of enemy pawns moving toward our king by [type][distance from edge][rank].
@@ -77,10 +81,6 @@ namespace {
       { V(23),  V(  29), V(  96), V(41), V(15) },
       { V(21),  V(  23), V( 116), V(41), V(15) } }
   };
-
-  // Max bonus for king safety. Corresponds to start position with all the pawns
-  // in front of the king and no enemy pawn on the horizon.
-  constexpr Value MaxSafetyBonus = V(258);
 
   #undef S
   #undef V
@@ -203,6 +203,16 @@ void init() {
 
       Connected[opposed][phalanx][support][r] = make_score(v, v * (r - 2) / 4);
   }
+
+  // King shelter/storm bitboards
+  for (Square s = SQ_A1; s <= SQ_H8; ++s)
+  {
+     File center = std::max(FILE_B, std::min(FILE_G, file_of(s)));
+     KingShelterStormBB[WHITE][s] = (forward_ranks_bb(WHITE, s) | rank_bb(s))
+               & (adjacent_files_bb(center) | file_bb(center));
+     KingShelterStormBB[BLACK][s] = (forward_ranks_bb(BLACK, s) | rank_bb(s))
+               & (adjacent_files_bb(center) | file_bb(center));
+  }
 }
 
 
@@ -241,24 +251,21 @@ Value Entry::shelter_storm(const Position& pos, Square ksq) {
   enum { BlockedByKing, Unopposed, BlockedByPawn, Unblocked };
 
   File center = std::max(FILE_B, std::min(FILE_G, file_of(ksq)));
-  Bitboard b =   pos.pieces(PAWN)
-               & (forward_ranks_bb(Us, ksq) | rank_bb(ksq))
-               & (adjacent_files_bb(center) | file_bb(center));
-  Bitboard ourPawns = b & pos.pieces(Us);
-  Bitboard theirPawns = b & pos.pieces(Them);
-  Value safety = MaxSafetyBonus;
+  Bitboard ourPawns = KingShelterStormBB[Us][ksq] & pos.pieces(Us,PAWN);
+  Bitboard theirPawns = KingShelterStormBB[Us][ksq] & pos.pieces(Them,PAWN);
+  Value safety = BaseSafety;
 
   for (File f = File(center - 1); f <= File(center + 1); ++f)
   {
-      b = ourPawns & file_bb(f);
+      Bitboard b = ourPawns & file_bb(f);
       Rank rkUs = b ? relative_rank(Us, backmost_sq(Us, b)) : RANK_1;
 
       b = theirPawns & file_bb(f);
       Rank rkThem = b ? relative_rank(Us, frontmost_sq(Them, b)) : RANK_1;
 
       int d = std::min(f, ~f);
-      safety -=  ShelterWeakness[f == file_of(ksq)][d][rkUs]
-               + StormDanger
+      safety +=  ShelterStrength[f == file_of(ksq)][d][rkUs]
+               - StormDanger
                  [f == file_of(ksq) && rkThem == relative_rank(Us, ksq) + 1 ? BlockedByKing  :
                   rkUs   == RANK_1                                          ? Unopposed :
                   rkThem == rkUs + 1                                        ? BlockedByPawn  : Unblocked]
