@@ -361,7 +361,7 @@ void Thread::search() {
               ct =  Options["Contempt"] * PawnValueEg / 100; // From centipawns
 
               // Adjust contempt based on root move's previousScore (dynamic contempt)
-              ct += int(std::round(48 * atan(float(previousScore) / 128)));
+              ct += int(std::round(48 * std::atan(float(previousScore) / 128)));
 
               contempt = (us == WHITE ?  make_score(ct, ct / 2)
                                       : -make_score(ct, ct / 2));
