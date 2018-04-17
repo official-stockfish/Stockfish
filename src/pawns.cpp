@@ -260,9 +260,9 @@ Value Entry::shelter_storm(const Position& pos, Square ksq) {
       int d = std::min(f, ~f);
       safety -=  ShelterWeakness[f == file_of(ksq)][d][rkUs]
                + StormDanger
-                 [ksq    == (frontmost_sq(Them,b) - Up) ? BlockedByKing  :
-                  rkUs   == RANK_1                      ? Unopposed :
-                  rkThem == rkUs + 1                    ? BlockedByPawn  : Unblocked]
+                 [b && (ksq == (frontmost_sq(Them,b) - Up)) ? BlockedByKing  :
+                  rkUs   == RANK_1                          ? Unopposed :
+                  rkThem == rkUs + 1                        ? BlockedByPawn  : Unblocked]
                  [d][rkThem];
   }
 
