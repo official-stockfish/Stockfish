@@ -1464,11 +1464,14 @@ static int has_repeated(StateInfo *st)
 
 // Use the DTZ tables to filter out moves that don't preserve the win or draw.
 // If the position is lost, but DTZ is fairly high, only keep moves that
-// maximise DTZ.
+// maximise DTZ. If we are requested to search both optimal and non-optimal
+// moves due to MultiPV, we will not filter but use the tags on the
+// optimal moves.
 //
 // A return value false indicates that not all probes were successful and that
 // no moves were filtered out.
-bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves, Value& score)
+bool Tablebases::root_filter(Position& pos, Search::RootMoves& rootMoves,
+                             Value& score, size_t retainCount)
 {
     assert(rootMoves.size());
 
@@ -1540,7 +1543,7 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves, Value& 
         score = -(Value)(((200 + dtz - cnt50) * int(PawnValueEg)) / 200);
 
     // Now be a bit smart about filtering out moves.
-    size_t j = 0;
+    Search::RootMoves filteredMoves;
 
     if (dtz > 0) { // winning (or 50-move rule draw)
         int best = 0xffff;
@@ -1559,11 +1562,12 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves, Value& 
         if (!has_repeated(st.previous) && best + cnt50 <= 99)
             max = 99 - cnt50;
 
-        for (size_t i = 0; i < rootMoves.size(); ++i) {
-            int v = rootMoves[i].score;
-
-            if (v > 0 && v <= max)
-                rootMoves[j++] = rootMoves[i];
+        for (auto& rootMove: rootMoves) {
+            int v = rootMove.score;
+            if (v > 0 && v <= max) {
+                rootMove.isTBOptimal = true;
+                filteredMoves.emplace_back(rootMove);
+            }
         }
     } else if (dtz < 0) { // losing (or 50-move rule draw)
         int best = 0;
@@ -1576,22 +1580,34 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves, Value& 
         }
 
         // Try all moves, unless we approach or have a 50-move rule draw.
-        if (-best * 2 + cnt50 < 100)
+        if (-best * 2 + cnt50 < 100) {
+            for (auto& rootMove: rootMoves) {
+                rootMove.isTBOptimal = true;
+            }
             return true;
+        }
 
-        for (size_t i = 0; i < rootMoves.size(); ++i) {
-            if (rootMoves[i].score == best)
-                rootMoves[j++] = rootMoves[i];
+        for (auto& rootMove: rootMoves) {
+            if (rootMove.score == best) {
+                rootMove.isTBOptimal = true;
+                filteredMoves.emplace_back(rootMove);
+            }
         }
     } else { // drawing
         // Try all moves that preserve the draw.
-        for (size_t i = 0; i < rootMoves.size(); ++i) {
-            if (rootMoves[i].score == 0)
-                rootMoves[j++] = rootMoves[i];
+        for (auto& rootMove: rootMoves) {
+            if (rootMove.score == 0) {
+                rootMove.isTBOptimal = true;
+                filteredMoves.emplace_back(rootMove);
+            }
         }
     }
 
-    rootMoves.resize(j, Search::RootMove(MOVE_NONE));
+    // If the filtered root move list is big enough to satisfy the minimum
+    // move count, then allow the filtering.
+    if (filteredMoves.size() >= retainCount) {
+        std::swap(rootMoves, filteredMoves);
+    }
 
     return true;
 }
@@ -1601,7 +1617,8 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves, Value& 
 //
 // A return value false indicates that not all probes were successful and that
 // no moves were filtered out.
-bool Tablebases::root_probe_wdl(Position& pos, Search::RootMoves& rootMoves, Value& score)
+bool Tablebases::root_filter_wdl(Position& pos, Search::RootMoves& rootMoves,
+                                 Value& score, size_t retainCount)
 {
     ProbeState result;
 
@@ -1632,14 +1649,22 @@ bool Tablebases::root_probe_wdl(Position& pos, Search::RootMoves& rootMoves, Val
             best = v;
     }
 
-    size_t j = 0;
-
-    for (size_t i = 0; i < rootMoves.size(); ++i) {
-        if (rootMoves[i].score == best)
-            rootMoves[j++] = rootMoves[i];
+    Search::RootMoves filteredMoves;
+    for (auto& rootMove : rootMoves) {
+        // "best" may be less than the root score if uci searchmoves is used
+        if (rootMove.score == score) {
+            rootMove.isTBOptimal = true;
+        }
+        if (rootMove.score == best) {
+            filteredMoves.emplace_back(rootMove);
+        }
     }
 
-    rootMoves.resize(j, Search::RootMove(MOVE_NONE));
+    // If the filtered root move list is big enough to satisfy the minimum
+    // move count, then allow the filtering.
+    if (filteredMoves.size() >= retainCount) {
+        std::swap(rootMoves, filteredMoves);
+    }
 
     return true;
 }

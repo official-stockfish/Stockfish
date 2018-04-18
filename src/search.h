@@ -62,13 +62,19 @@ struct RootMove {
   bool extract_ponder_from_tt(Position& pos);
   bool operator==(const Move& m) const { return pv[0] == m; }
   bool operator<(const RootMove& m) const { // Sort in descending order
-    return m.score != score ? m.score < score
-                            : m.previousScore < previousScore;
+    if (m.isTBOptimal != isTBOptimal) {
+      return m.isTBOptimal < isTBOptimal;
+    } else if (m.score != score) {
+      return m.score < score;
+    } else {
+      return m.previousScore < previousScore;
+    }
   }
 
   Value score = -VALUE_INFINITE;
   Value previousScore = -VALUE_INFINITE;
   int selDepth = 0;
+  bool isTBOptimal = false;
   std::vector<Move> pv;
 };
 

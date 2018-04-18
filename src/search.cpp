@@ -1556,7 +1556,12 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
       Depth d = updated ? depth : depth - ONE_PLY;
       Value v = updated ? rootMoves[i].score : rootMoves[i].previousScore;
 
-      bool tb = TB::RootInTB && abs(v) < VALUE_MATE - MAX_PLY;
+      // If the root position is a TB hit, this move conserves optimality,
+      // and we did not find a real mate, we replace the displayed
+      // evaluation of the move by the TB eval.
+      bool tb = TB::RootInTB
+                && ((abs(v) < VALUE_MATE - MAX_PLY) || (v == -VALUE_INFINITE))
+                && rootMoves[i].isTBOptimal;
       v = tb ? TB::Score : v;
 
       if (ss.rdbuf()->in_avail()) // Not at first line
@@ -1636,21 +1641,18 @@ void Tablebases::filter_root_moves(Position& pos, Search::RootMoves& rootMoves) 
     if (Cardinality < popcount(pos.pieces()) || pos.can_castle(ANY_CASTLING))
         return;
 
-    // Don't filter any moves if the user requested analysis on multiple
-    if (Options["MultiPV"] != 1)
-        return;
-
     // If the current root position is in the tablebases, then RootMoves
-    // contains only moves that preserve the draw or the win.
-    RootInTB = root_probe(pos, rootMoves, TB::Score);
+    // may be filtered to contain only moves that preserve the draw or the win.
+    RootInTB = root_filter(pos, rootMoves, TB::Score, Options["MultiPV"]);
 
     if (RootInTB)
         Cardinality = 0; // Do not probe tablebases during the search
 
     else // If DTZ tables are missing, use WDL tables as a fallback
     {
-        // Filter out moves that do not preserve the draw or the win.
-        RootInTB = root_probe_wdl(pos, rootMoves, TB::Score);
+        // Potentially filter out moves that do not preserve
+        // the draw or the win.
+        RootInTB = root_filter_wdl(pos, rootMoves, TB::Score, Options["MultiPV"]);
 
         // Only probe during search if winning
         if (RootInTB && TB::Score <= VALUE_DRAW)
@@ -1662,7 +1664,7 @@ void Tablebases::filter_root_moves(Position& pos, Search::RootMoves& rootMoves) 
                    : TB::Score < VALUE_DRAW ? -VALUE_MATE + MAX_PLY + 1
                                             :  VALUE_DRAW;
 
-    // Since root_probe() and root_probe_wdl() dirty the root move scores,
+    // Since root_filter() and root_filter_wdl() dirty the root move scores,
     // we reset them to -VALUE_INFINITE
     for (RootMove& rm : rootMoves)
         rm.score = -VALUE_INFINITE;
