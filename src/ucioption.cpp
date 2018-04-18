@@ -60,6 +60,7 @@ void init(OptionsMap& o) {
 
   o["Debug Log File"]        << Option("", on_logger);
   o["Contempt"]              << Option(12, -100, 100);
+  o["Analysis Contempt"]     << Option("Both var Off var White var Black var Both", "Both");
   o["Threads"]               << Option(1, 1, 512, on_threads);
   o["Hash"]                  << Option(16, 1, MaxHashMB, on_hash_size);
   o["Clear Hash"]            << Option(on_clear_hash);
@@ -71,6 +72,7 @@ void init(OptionsMap& o) {
   o["Slow Mover"]            << Option(84, 10, 1000);
   o["nodestime"]             << Option(0, 0, 10000);
   o["UCI_Chess960"]          << Option(false);
+  o["UCI_AnalyseMode"]       << Option(false);
   o["SyzygyPath"]            << Option("<empty>", on_tb_path);
   o["SyzygyProbeDepth"]      << Option(1, 1, 100);
   o["Syzygy50MoveRule"]      << Option(true);
@@ -117,6 +119,9 @@ Option::Option(OnChange f) : type("button"), min(0), max(0), on_change(f)
 Option::Option(int v, int minv, int maxv, OnChange f) : type("spin"), min(minv), max(maxv), on_change(f)
 { defaultValue = currentValue = std::to_string(v); }
 
+Option::Option(const char* v, const char* cur, OnChange f) : type("combo"), min(0), max(0), on_change(f)
+{ defaultValue = v; currentValue = cur; }
+
 Option::operator int() const {
   assert(type == "check" || type == "spin");
   return (type == "spin" ? stoi(currentValue) : currentValue == "true");
@@ -125,6 +130,12 @@ Option::operator int() const {
 Option::operator std::string() const {
   assert(type == "string");
   return currentValue;
+}
+
+bool Option::operator==(const char* s) {
+  assert(type == "combo");
+  return    !CaseInsensitiveLess()(currentValue, s)
+         && !CaseInsensitiveLess()(s, currentValue);
 }
 
 
