@@ -524,13 +524,6 @@ namespace {
     // Non-pawn enemies
     nonPawnEnemies = pos.pieces(Them) ^ pos.pieces(Them, PAWN);
 
-    // Our safe or protected pawns
-    b =   pos.pieces(Us, PAWN)
-       & (~attackedBy[Them][ALL_PIECES] | attackedBy[Us][ALL_PIECES]);
-
-    safeThreats = pawn_attacks_bb<Us>(b) & nonPawnEnemies;
-    score += ThreatBySafePawn * popcount(safeThreats);
-
     // Squares strongly protected by the enemy, either because they defend the
     // square with a pawn, or because they defend the square twice and we don't.
     stronglyProtected =  attackedBy[Them][PAWN]
@@ -563,16 +556,29 @@ namespace {
                 score += ThreatByRank * (int)relative_rank(Them, s);
         }
 
-        score += Hanging * popcount(weak & ~attackedBy[Them][ALL_PIECES]);
-
         b = weak & attackedBy[Us][KING];
         if (b)
             score += ThreatByKing[more_than_one(b)];
+
+        score += Hanging * popcount(weak & ~attackedBy[Them][ALL_PIECES]);
+
+        // Bonus for overload (non-pawn enemies attacked and defended exactly once)
+        b =  nonPawnEnemies
+           & attackedBy[Us][ALL_PIECES]   & ~attackedBy2[Us]
+           & attackedBy[Them][ALL_PIECES] & ~attackedBy2[Them];
+        score += Overload * popcount(b);
     }
 
     // Bonus for enemy unopposed weak pawns
     if (pos.pieces(Us, ROOK, QUEEN))
         score += WeakUnopposedPawn * pe->weak_unopposed(Them);
+
+    // Our safe or protected pawns
+    b =   pos.pieces(Us, PAWN)
+       & (~attackedBy[Them][ALL_PIECES] | attackedBy[Us][ALL_PIECES]);
+
+    safeThreats = pawn_attacks_bb<Us>(b) & nonPawnEnemies;
+    score += ThreatBySafePawn * popcount(safeThreats);
 
     // Find squares where our pawns can push on the next move
     b  = shift<Up>(pos.pieces(Us, PAWN)) & ~pos.pieces();
@@ -608,12 +614,6 @@ namespace {
     // Connectivity: ensure that knights, bishops, rooks, and queens are protected
     b = (pos.pieces(Us) ^ pos.pieces(Us, PAWN, KING)) & attackedBy[Us][ALL_PIECES];
     score += Connectivity * popcount(b);
-
-    // Bonus for overload (non-pawn enemies attacked and defended exactly once)
-    b =  nonPawnEnemies
-       & attackedBy[Us][ALL_PIECES]   & ~attackedBy2[Us]
-       & attackedBy[Them][ALL_PIECES] & ~attackedBy2[Them];
-    score += Overload * popcount(b);
 
     if (T)
         Trace::add(THREAT, Us, score);
