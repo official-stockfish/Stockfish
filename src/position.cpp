@@ -1105,6 +1105,35 @@ bool Position::is_draw(int ply) const {
 }
 
 
+// Position::has_repeated() tests whether there has been at least one repetition
+// of positions since the last capture or pawn move.
+
+bool Position::has_repeated() const {
+
+    StateInfo* stc = st;
+    while (true)
+    {
+        int i = 4, e = std::min(stc->rule50, stc->pliesFromNull);
+
+        if (e < i)
+            return false;
+
+        StateInfo* stp = st->previous->previous;
+
+        do {
+            stp = stp->previous->previous;
+
+            if (stp->key == stc->key)
+                return true;
+
+            i += 2;
+        } while (i <= e);
+
+        stc = stc->previous;
+    }
+}
+
+
 /// Position::flip() flips position with the white and black sides reversed. This
 /// is only useful for debugging e.g. for finding evaluation symmetry bugs.
 
