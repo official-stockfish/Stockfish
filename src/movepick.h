@@ -47,19 +47,18 @@ public:
   operator TT() const { return entry; }
 
   void operator<<(int bonus) {
-    constexpr int W = 32;    // scale the bonus
-    assert(abs(bonus) <= D); // Ensure range is [-W * D, W * D]
-    assert(W * D < std::numeric_limits<T>::max()); // Ensure we don't overflow
+    assert(abs(bonus) <= D); // Ensure range is [-D, D]
+    assert(D < std::numeric_limits<T>::max()); // Ensure we don't overflow
 
-    entry += bonus * W - entry * abs(bonus) / D;
+    entry += bonus - entry * abs(bonus) / D;
 
-    assert(abs(entry) <= W * D);
+    assert(abs(entry) <= D);
   }
 };
 
 /// Stats is a generic N-dimensional array used to store various statistics.
 /// The first template T parameter is the base type of the array,
-/// the D parameter limits the range of updates (range is [-W * D, W * D]), and
+/// the D parameter limits the range of updates (range is [-D, D]), and
 /// the last parameters (Size and Sizes) encode the dimensions of the array.
 template <typename T, int D, int Size, int... Sizes>
 struct Stats : public std::array<Stats<T, D, Sizes...>, Size>
@@ -78,23 +77,23 @@ struct Stats<T, D, Size> : public std::array<StatsEntry<T, D>, Size> {
 };
 
 /// Different tables use different D parameter, name them to ease readibility
-enum StatsParams { D324 = 324, D936 = 936, NOT_USED = 0 };
+enum StatsParams { D10368 = 10368, D29952 = 29952, NOT_USED = 0 };
 
 /// ButterflyHistory records how often quiet moves have been successful or
 /// unsuccessful during the current search, and is used for reduction and move
 /// ordering decisions. It uses 2 tables (one for each color) indexed by
 /// the move's from and to squares, see chessprogramming.wikispaces.com/Butterfly+Boards
-typedef Stats<int16_t, D324, COLOR_NB, int(SQUARE_NB) * int(SQUARE_NB)> ButterflyHistory;
+typedef Stats<int16_t, D10368, COLOR_NB, int(SQUARE_NB) * int(SQUARE_NB)> ButterflyHistory;
 
 /// CounterMoveHistory stores counter moves indexed by [piece][to] of the previous
 /// move, see chessprogramming.wikispaces.com/Countermove+Heuristic
 typedef Stats<Move, NOT_USED, PIECE_NB, SQUARE_NB> CounterMoveHistory;
 
 /// CapturePieceToHistory is addressed by a move's [piece][to][captured piece type]
-typedef Stats<int16_t, D324, PIECE_NB, SQUARE_NB, PIECE_TYPE_NB> CapturePieceToHistory;
+typedef Stats<int16_t, D10368, PIECE_NB, SQUARE_NB, PIECE_TYPE_NB> CapturePieceToHistory;
 
 /// PieceToHistory is like ButterflyHistory but is addressed by a move's [piece][to]
-typedef Stats<int16_t, D936, PIECE_NB, SQUARE_NB> PieceToHistory;
+typedef Stats<int16_t, D29952, PIECE_NB, SQUARE_NB> PieceToHistory;
 
 /// ContinuationHistory is the combined history of a given pair of moves, usually
 /// the current one given a previous one. The nested history table is based on
