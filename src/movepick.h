@@ -33,7 +33,7 @@
 /// be a move or even a nested history. We use a class instead of naked value
 /// to directly call history update operator<<() on the entry so to use stats
 /// tables at caller sites as simple multi-dim arrays.
-template<typename T, int W, int D>
+template<typename T, int D>
 class StatsEntry {
 
   static const bool IsInt = std::is_integral<T>::value;
@@ -47,23 +47,22 @@ public:
   operator TT() const { return entry; }
 
   void operator<<(int bonus) {
+    assert(abs(bonus) <= D);                   // Ensure range is [-D, D]
+    assert(D < std::numeric_limits<T>::max()); // Ensure we don't overflow
 
-    assert(abs(bonus) <= D); // Ensure range is [-W * D, W * D]
-    assert(W * D < std::numeric_limits<T>::max()); // Ensure we don't overflow
+    entry += bonus - entry * abs(bonus) / D;
 
-    entry += bonus * W - entry * abs(bonus) / D;
-
-    assert(abs(entry) <= W * D);
+    assert(abs(entry) <= D);
   }
 };
 
 /// Stats is a generic N-dimensional array used to store various statistics.
-/// The first template T parameter is the base type of the array, the W parameter
-/// is the weight applied to the bonuses when we update values with the << operator,
-/// the D parameter limits the range of updates (range is [-W * D, W * D]), and
-/// the last parameters (Size and Sizes) encode the dimensions of the array.
-template <typename T, int W, int D, int Size, int... Sizes>
-struct Stats : public std::array<Stats<T, W, D, Sizes...>, Size>
+/// The first template parameter T is the base type of the array, the second
+/// template parameter D limits the range of updates in [-D, D] when we update
+/// values with the << operator, while the last parameters (Size and Sizes)
+/// encode the dimensions of the array.
+template <typename T, int D, int Size, int... Sizes>
+struct Stats : public std::array<Stats<T, D, Sizes...>, Size>
 {
   T* get() { return this->at(0).get(); }
 
@@ -73,34 +72,35 @@ struct Stats : public std::array<Stats<T, W, D, Sizes...>, Size>
   }
 };
 
-template <typename T, int W, int D, int Size>
-struct Stats<T, W, D, Size> : public std::array<StatsEntry<T, W, D>, Size> {
+template <typename T, int D, int Size>
+struct Stats<T, D, Size> : public std::array<StatsEntry<T, D>, Size> {
   T* get() { return this->at(0).get(); }
 };
 
-/// Different tables use different W/D parameter, name them to ease readibility
-enum StatsParams { W2 = 2, W32 = 32, D324 = 324, D936 = 936, NOT_USED = 0 };
+/// In stats table, D=0 means that the template parameter is not used
+enum StatsParams { NOT_USED = 0 };
+
 
 /// ButterflyHistory records how often quiet moves have been successful or
 /// unsuccessful during the current search, and is used for reduction and move
 /// ordering decisions. It uses 2 tables (one for each color) indexed by
 /// the move's from and to squares, see chessprogramming.wikispaces.com/Butterfly+Boards
-typedef Stats<int16_t, W32, D324, COLOR_NB, int(SQUARE_NB) * int(SQUARE_NB)> ButterflyHistory;
+typedef Stats<int16_t, 10368, COLOR_NB, int(SQUARE_NB) * int(SQUARE_NB)> ButterflyHistory;
 
 /// CounterMoveHistory stores counter moves indexed by [piece][to] of the previous
 /// move, see chessprogramming.wikispaces.com/Countermove+Heuristic
-typedef Stats<Move, NOT_USED, NOT_USED, PIECE_NB, SQUARE_NB> CounterMoveHistory;
+typedef Stats<Move, NOT_USED, PIECE_NB, SQUARE_NB> CounterMoveHistory;
 
 /// CapturePieceToHistory is addressed by a move's [piece][to][captured piece type]
-typedef Stats<int16_t, W2, D324, PIECE_NB, SQUARE_NB, PIECE_TYPE_NB> CapturePieceToHistory;
+typedef Stats<int16_t, 10368, PIECE_NB, SQUARE_NB, PIECE_TYPE_NB> CapturePieceToHistory;
 
 /// PieceToHistory is like ButterflyHistory but is addressed by a move's [piece][to]
-typedef Stats<int16_t, W32, D936, PIECE_NB, SQUARE_NB> PieceToHistory;
+typedef Stats<int16_t, 29952, PIECE_NB, SQUARE_NB> PieceToHistory;
 
 /// ContinuationHistory is the combined history of a given pair of moves, usually
 /// the current one given a previous one. The nested history table is based on
 /// PieceToHistory instead of ButterflyBoards.
-typedef Stats<PieceToHistory, W32, NOT_USED, PIECE_NB, SQUARE_NB> ContinuationHistory;
+typedef Stats<PieceToHistory, NOT_USED, PIECE_NB, SQUARE_NB> ContinuationHistory;
 
 
 /// MovePicker class is used to pick one pseudo legal move at a time from the
