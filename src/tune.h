@@ -26,17 +26,17 @@
 #include <vector>
 
 typedef std::pair<int, int> Range; // Option's min-max values
-typedef Range (RangeFun) (int);
+typedef Range (RangeFun)(double);
 
 // Default Range function, to calculate Option's min-max values
-inline Range default_range(int v) {
+inline Range default_range(double v) {
   return v > 0 ? Range(0, 2 * v) : Range(2 * v, 0);
 }
 
 struct SetRange {
   explicit SetRange(RangeFun f) : fun(f) {}
   SetRange(int min, int max) : fun(nullptr), range(min, max) {}
-  Range operator()(int v) const { return fun ? fun(v) : range; }
+  Range operator()(double v) const { return fun ? fun(v) : range; }
 
   RangeFun* fun;
   Range range;
@@ -116,10 +116,11 @@ class Tune {
 
     static_assert(!std::is_const<T>::value, "Parameter cannot be const!");
 
-    static_assert(   std::is_same<T,   int>::value
-                  || std::is_same<T, Value>::value
-                  || std::is_same<T, Score>::value
-                  || std::is_same<T, PostUpdate>::value, "Parameter type not supported!");
+    static_assert(   std::is_same<T,    int>::value
+                  || std::is_same<T, double>::value
+                  || std::is_same<T,  Value>::value
+                  || std::is_same<T,  Score>::value
+                  || std::is_same<T,  PostUpdate>::value, "Parameter type not supported!");
 
     Entry(const std::string& n, T& v, const SetRange& r) : name(n), value(v), range(r) {}
     void operator=(const Entry&) = delete; // Because 'value' is a reference

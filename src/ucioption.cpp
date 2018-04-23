@@ -187,7 +187,7 @@ Option& Option::operator=(const string& v) {
 bool Tune::update_on_last;
 const UCI::Option* LastOption = nullptr;
 BoolConditions Conditions;
-static std::map<std::string, int> TuneResults;
+static std::map<std::string, double> TuneResults;
 
 string Tune::next(string& names, bool pop) {
 
@@ -214,32 +214,39 @@ static void on_tune(const UCI::Option& o) {
       Tune::read_options();
 }
 
-static void make_option(const string& n, int v, const SetRange& r) {
+static void make_option(const string& name, double v, const SetRange& r) {
 
   // Do not generate option when there is nothing to tune (ie. min = max)
   if (r(v).first == r(v).second)
       return;
 
-  if (TuneResults.count(n))
-      v = TuneResults[n];
+  if (TuneResults.count(name))
+      v = TuneResults[name];
 
-  Options[n] << UCI::Option(v, r(v).first, r(v).second, on_tune);
-  LastOption = &Options[n];
+  Options[name] << UCI::Option(v, r(v).first, r(v).second, on_tune);
+  LastOption = &Options[name];
 
   // Print formatted parameters, ready to be copy-pasted in fishtest
-  std::cout << n << ","
-            << v << ","
+  std::cout << name << ","
+            << v    << ","
             << r(v).first << "," << r(v).second << ","
             << (r(v).second - r(v).first) / 20.0 << ","
             << "0.0020"
             << std::endl;
 }
 
+template<> void Tune::Entry<double>::init_option() { make_option(name, value, range); }
+
+template<> void Tune::Entry<double>::read_option() {
+  if (Options.count(name))
+      value = Options[name];
+}
+
 template<> void Tune::Entry<int>::init_option() { make_option(name, value, range); }
 
 template<> void Tune::Entry<int>::read_option() {
   if (Options.count(name))
-      value = Options[name];
+      value = int(Options[name]);
 }
 
 template<> void Tune::Entry<Value>::init_option() { make_option(name, value, range); }
