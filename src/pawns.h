@@ -41,7 +41,7 @@ struct Entry {
   int pawn_asymmetry() const { return asymmetry; }
   int open_files() const { return openFiles; }
 
-  int semiopen_file(Color c, File f) const {
+  uint8_t semiopen_file(Color c, File f) const {
     return semiopenFiles[c] & (1 << f);
   }
 
@@ -70,7 +70,7 @@ struct Entry {
   Score kingSafety[COLOR_NB];
   int weakUnopposed[COLOR_NB];
   int castlingRights[COLOR_NB];
-  int semiopenFiles[COLOR_NB];
+  uint8_t semiopenFiles[COLOR_NB];
   int pawnsOnSquares[COLOR_NB][COLOR_NB]; // [color][light/dark squares]
   int asymmetry;
   int openFiles;
