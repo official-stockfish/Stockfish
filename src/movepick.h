@@ -48,7 +48,7 @@ public:
 
   void operator<<(int bonus) {
     assert(abs(bonus) <= D);                   // Ensure range is [-D, D]
-    assert(D < std::numeric_limits<T>::max()); // Ensure we don't overflow
+    static_assert(D <= std::numeric_limits<T>::max(),"D overflows T");
 
     entry += bonus - entry * abs(bonus) / D;
 
