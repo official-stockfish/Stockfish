@@ -794,9 +794,8 @@ namespace {
     Color strongSide = eg > VALUE_DRAW ? WHITE : BLACK;
     int sf = me->scale_factor(pos, strongSide);
 
-    // If we don't already have an unusual scale factor, check for certain
-    // types of endgames, and use a lower scale for those.
-    if (sf == SCALE_FACTOR_NORMAL || sf == SCALE_FACTOR_ONEPAWN)
+    // If scale is not already specific, scale down the endgame via general heuristics
+    if (sf == SCALE_FACTOR_NORMAL)
     {
         if (pos.opposite_bishops())
         {
@@ -810,12 +809,8 @@ namespace {
             else
                 sf = 46;
         }
-        // Endings where weaker side can place his king in front of the enemy's
-        // pawns are drawish.
-        else if (    abs(eg) <= BishopValueEg
-                 &&  pos.count<PAWN>(strongSide) <= 2
-                 && !pos.pawn_passed(~strongSide, pos.square<KING>(~strongSide)))
-            sf = 37 + 7 * pos.count<PAWN>(strongSide);
+        else
+            sf = std::min(40 + 7 * pos.count<PAWN>(strongSide), sf);
     }
 
     return ScaleFactor(sf);
