@@ -117,7 +117,7 @@ void Thread::idle_loop() {
 }
 
 /// ThreadPool::set() creates/destroys threads to match the requested number.
-/// Created and launced threads wil go immediately to sleep in idle_loop.
+/// Created and launched threads wil go immediately to sleep in idle_loop.
 /// Upon resizing, threads are recreated to allow for binding if necessary.
 
 void ThreadPool::set(size_t requested) {

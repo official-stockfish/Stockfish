@@ -835,7 +835,11 @@ moves_loop: // When in check, search starts from here
     const PieceToHistory* contHist[] = { (ss-1)->contHistory, (ss-2)->contHistory, nullptr, (ss-4)->contHistory };
     Move countermove = thisThread->counterMoves[pos.piece_on(prevSq)][prevSq];
 
-    MovePicker mp(pos, ttMove, depth, &thisThread->mainHistory, &thisThread->captureHistory, contHist, countermove, ss->killers);
+    MovePicker mp(pos, ttMove, depth, &thisThread->mainHistory,
+                                      &thisThread->captureHistory,
+                                      contHist,
+                                      countermove,
+                                      ss->killers);
     value = bestValue; // Workaround a bogus 'uninitialized' warning under gcc
 
     skipQuiets = false;
@@ -1275,7 +1279,9 @@ moves_loop: // When in check, search starts from here
     // to search the moves. Because the depth is <= 0 here, only captures,
     // queen promotions and checks (only if depth >= DEPTH_QS_CHECKS) will
     // be generated.
-    MovePicker mp(pos, ttMove, depth, &pos.this_thread()->mainHistory, &pos.this_thread()->captureHistory, to_sq((ss-1)->currentMove));
+    MovePicker mp(pos, ttMove, depth, &pos.this_thread()->mainHistory,
+                                      &pos.this_thread()->captureHistory,
+                                      to_sq((ss-1)->currentMove));
 
     // Loop through the moves until no moves remain or a beta cutoff occurs
     while ((move = mp.next_move()) != MOVE_NONE)

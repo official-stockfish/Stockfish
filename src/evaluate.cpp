@@ -698,7 +698,7 @@ namespace {
         } // w != 0
 
         // Scale down bonus for candidate passers which need more than one
-        // pawn push to become passed or have a pawn in front of them.
+        // pawn push to become passed, or have a pawn in front of them.
         if (   !pos.pawn_passed(Us, s + Up)
             || (pos.pieces(PAWN) & forward_file_bb(Us, s)))
             bonus = bonus / 2;
@@ -731,9 +731,7 @@ namespace {
     if (pos.non_pawn_material() < SpaceThreshold)
         return SCORE_ZERO;
 
-    // Find the safe squares for our pieces inside the area defined by
-    // SpaceMask. A square is unsafe if it is attacked by an enemy
-    // pawn, or if it is undefended and attacked by an enemy piece.
+    // Find the available squares for our pieces inside the area defined by SpaceMask
     Bitboard safe =   SpaceMask
                    & ~pos.pieces(Us, PAWN)
                    & ~attackedBy[Them][PAWN];
