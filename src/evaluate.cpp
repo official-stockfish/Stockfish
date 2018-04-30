@@ -350,6 +350,7 @@ namespace {
             if (Pt == BISHOP)
             {
                 // Penalty according to number of pawns on the same color square as the bishop
+				// More penality if the center files C, D, E and F are blocked with pawns
                 constexpr Direction Down = (Us == WHITE ? SOUTH : NORTH);
 				score -= BishopPawns * (pe->pawns_on_same_color_squares(Us, s)
 				   * (1+popcount(pos.pieces(Us, PAWN) & shift<Down>(pos.pieces()) & CenterFiles)));
