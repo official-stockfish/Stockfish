@@ -224,13 +224,12 @@ Entry* probe(const Position& pos) {
 template<Color Us>
 Value Entry::evaluate_shelter(const Position& pos, Square ksq) {
 
-  enum { Unopposed, BlockedByPawn, Unblocked };
-  constexpr Color     Them = (Us == WHITE ? BLACK : WHITE);
-  constexpr Direction Down = (Us == WHITE ? SOUTH : NORTH);
-  constexpr Bitboard KingSafeBlockMask = (Us == WHITE) ?
-             (FileABB | FileHBB) & (Rank1BB | Rank2BB ) :
-             (FileABB | FileHBB) & (Rank7BB | Rank8BB ) ;
+  constexpr Color     Them             = (Us == WHITE ? BLACK : WHITE);
+  constexpr Direction Down             = (Us == WHITE ? SOUTH : NORTH);
+  constexpr Bitboard KingSafeBlockMask = (FileABB | FileHBB) &
+     (Us == WHITE ? Rank1BB|Rank2BB : Rank7BB|Rank8BB);
 
+  enum { Unopposed, BlockedByPawn, Unblocked };
   Bitboard b = pos.pieces(PAWN) & (forward_ranks_bb(Us, ksq) | rank_bb(ksq));
   Bitboard ourPawns = b & pos.pieces(Us);
   Bitboard theirPawns = b & pos.pieces(Them);
