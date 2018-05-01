@@ -56,10 +56,6 @@ namespace {
   // For the unopposed and unblocked cases, RANK_1 = 0 is used when opponent has
   // no pawn on the given file, or their pawn is behind our king.
   constexpr Value StormDanger[][4][RANK_NB] = {
-    { { V( 0),  V(-290), V(-274), V(57), V(41) },  // BlockedByKing
-      { V( 0),  V(  60), V( 144), V(39), V(13) },
-      { V( 0),  V(  65), V( 141), V(41), V(34) },
-      { V( 0),  V(  53), V( 127), V(56), V(14) } },
     { { V( 4),  V(  73), V( 132), V(46), V(31) },  // Unopposed
       { V( 1),  V(  64), V( 143), V(26), V(13) },
       { V( 1),  V(  47), V( 110), V(44), V(24) },
@@ -228,15 +224,19 @@ Entry* probe(const Position& pos) {
 template<Color Us>
 Value Entry::evaluate_shelter(const Position& pos, Square ksq) {
 
-  enum { BlockedByKing, Unopposed, BlockedByPawn, Unblocked };
+  enum { Unopposed, BlockedByPawn, Unblocked };
   constexpr Color     Them = (Us == WHITE ? BLACK : WHITE);
-  constexpr Direction Down = (Us == WHITE ? SOUTH : NORTH);
+  constexpr Direction Up   = (Us == WHITE ? NORTH : SOUTH);
+  constexpr Bitboard  BlockRanks = (Us == WHITE ? Rank2BB | Rank3BB : Rank7BB | Rank6BB);
 
   Bitboard b = pos.pieces(PAWN) & (forward_ranks_bb(Us, ksq) | rank_bb(ksq));
   Bitboard ourPawns = b & pos.pieces(Us);
   Bitboard theirPawns = b & pos.pieces(Them);
 
   Value safety = (ourPawns & file_bb(ksq)) ? Value(5) : Value(-5);
+
+  if ((theirPawns & (FileABB | FileHBB) & BlockRanks) & (ksq + Up))
+      safety += 374;
 
   File center = std::max(FILE_B, std::min(FILE_G, file_of(ksq)));
   for (File f = File(center - 1); f <= File(center + 1); ++f)
@@ -249,11 +249,9 @@ Value Entry::evaluate_shelter(const Position& pos, Square ksq) {
 
       int d = std::min(f, ~f);
       safety +=  ShelterStrength[d][rkUs]
-               - StormDanger
-                 [(shift<Down>(b) & ksq) ? BlockedByKing :
-                  rkUs   == RANK_1       ? Unopposed     :
-                  rkThem == (rkUs + 1)   ? BlockedByPawn : Unblocked]
-                 [d][rkThem];
+               - StormDanger[rkUs == RANK_1     ? Unopposed     :
+                             rkUs == rkThem - 1 ? BlockedByPawn : Unblocked]
+                            [d][rkThem];
   }
 
   return safety;
