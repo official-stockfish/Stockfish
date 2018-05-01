@@ -227,14 +227,14 @@ Value Entry::evaluate_shelter(const Position& pos, Square ksq) {
   enum { Unopposed, BlockedByPawn, Unblocked };
   constexpr Color     Them = (Us == WHITE ? BLACK : WHITE);
   constexpr Direction Down = (Us == WHITE ? SOUTH : NORTH);
-  constexpr SafeKingBlockSquares = 0x8181000000008181; //A1,A2,A7,A8,H1,H2,H7,H8
+  constexpr Bitboard SafeBlockSquares = 0x8181000000008181; //A1,A2,A7,A8,H1,H2,H7,H8
 
   Bitboard b = pos.pieces(PAWN) & (forward_ranks_bb(Us, ksq) | rank_bb(ksq));
   Bitboard ourPawns = b & pos.pieces(Us);
   Bitboard theirPawns = b & pos.pieces(Them);
 
   Value safety = (ourPawns & file_bb(ksq)) ? Value(5) : Value(-5);
-  if (SafeKingBlockSquares & shift<Down>(theirPawns) & ksq)
+  if (SafeBlockSquares & shift<Down>(theirPawns) & ksq)
        safety += 374;
 
   File center = std::max(FILE_B, std::min(FILE_G, file_of(ksq)));
