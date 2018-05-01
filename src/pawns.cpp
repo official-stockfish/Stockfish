@@ -227,15 +227,14 @@ Value Entry::evaluate_shelter(const Position& pos, Square ksq) {
   enum { Unopposed, BlockedByPawn, Unblocked };
   constexpr Color     Them = (Us == WHITE ? BLACK : WHITE);
   constexpr Direction Down = (Us == WHITE ? SOUTH : NORTH);
+  constexpr SafeKingBlockPawn = 0x8181000000008181; //A1,A2,A7,A8,H1,H2,H7,H8
 
   Bitboard b = pos.pieces(PAWN) & (forward_ranks_bb(Us, ksq) | rank_bb(ksq));
   Bitboard ourPawns = b & pos.pieces(Us);
   Bitboard theirPawns = b & pos.pieces(Them);
 
   Value safety = (ourPawns & file_bb(ksq)) ? Value(5) : Value(-5);
-
-  //safety bonus if king at (A1,A2,A7,A8,H1,H2,H7,H8) blocks an enemy pawn
-  if (0x8181000000008181 & shift<Down>(theirPawns) & ksq)
+  if (SafeKingBlockPawn & shift<Down>(theirPawns) & ksq)
        safety += 374;
 
   File center = std::max(FILE_B, std::min(FILE_G, file_of(ksq)));
