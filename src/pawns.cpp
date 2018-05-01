@@ -236,7 +236,7 @@ Value Entry::evaluate_shelter(const Position& pos, Square ksq) {
 
   Value safety = (ourPawns & file_bb(ksq)) ? Value(5) : Value(-5);
   if ((KingSafeBlockMask & ksq) && (shift<Down>(theirPawns) & ksq))
-       safety += 363 + 43 * relative_rank(Us,ksq); //safety += 380;
+       safety += 363 + 43 * relative_rank(Us,ksq);
 
   File center = std::max(FILE_B, std::min(FILE_G, file_of(ksq)));
   for (File f = File(center - 1); f <= File(center + 1); ++f)
