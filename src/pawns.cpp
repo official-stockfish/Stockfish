@@ -224,18 +224,18 @@ Entry* probe(const Position& pos) {
 template<Color Us>
 Value Entry::evaluate_shelter(const Position& pos, Square ksq) {
 
-  constexpr Color     Them             = (Us == WHITE ? BLACK : WHITE);
-  constexpr Direction Down             = (Us == WHITE ? SOUTH : NORTH);
-  constexpr Bitboard KingSafeBlockMask = (FileABB | FileHBB) &
-     (Us == WHITE ? Rank1BB|Rank2BB : Rank7BB|Rank8BB);
-
   enum { Unopposed, BlockedByPawn, Unblocked };
+  constexpr Color     Them = (Us == WHITE ? BLACK : WHITE);
+  constexpr Direction Down = (Us == WHITE ? SOUTH : NORTH);
+
   Bitboard b = pos.pieces(PAWN) & (forward_ranks_bb(Us, ksq) | rank_bb(ksq));
   Bitboard ourPawns = b & pos.pieces(Us);
   Bitboard theirPawns = b & pos.pieces(Them);
 
   Value safety = (ourPawns & file_bb(ksq)) ? Value(5) : Value(-5);
-  if ((KingSafeBlockMask & ksq) && (shift<Down>(theirPawns) & ksq))
+
+  //give a safety bonus if the king blocks a pawn at (A1,A2,A7,A8,H1,H2,H7,H8)
+  if ((Bitboard(0x8181000000008181) & ksq) && (shift<Down>(theirPawns) & ksq))
        safety += 374;
 
   File center = std::max(FILE_B, std::min(FILE_G, file_of(ksq)));
