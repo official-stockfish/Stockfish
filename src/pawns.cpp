@@ -235,7 +235,7 @@ Value Entry::evaluate_shelter(const Position& pos, Square ksq) {
   Value safety = (ourPawns & file_bb(ksq)) ? Value(5) : Value(-5);
 
   //give a safety bonus if the king blocks a pawn at (A1,A2,A7,A8,H1,H2,H7,H8)
-  if ((Bitboard(0x8181000000008181) & ksq) && (shift<Down>(theirPawns) & ksq))
+  if ((0x8181000000008181 & ksq) && (shift<Down>(theirPawns) & ksq))
        safety += 374;
 
   File center = std::max(FILE_B, std::min(FILE_G, file_of(ksq)));
