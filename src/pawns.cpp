@@ -226,8 +226,8 @@ Value Entry::evaluate_shelter(const Position& pos, Square ksq) {
 
   enum { Unopposed, BlockedByPawn, Unblocked };
   constexpr Color     Them = (Us == WHITE ? BLACK : WHITE);
-  constexpr Direction Up   = (Us == WHITE ? NORTH : SOUTH);
-  constexpr Bitboard  BlockRanks = (Us == WHITE ? Rank2BB | Rank3BB : Rank7BB | Rank6BB);
+  constexpr Direction Down = (Us == WHITE ? SOUTH : NORTH);
+  constexpr Bitboard  BlockRanks = (Us == WHITE ? Rank1BB | Rank2BB : Rank8BB | Rank7BB);
 
   Bitboard b = pos.pieces(PAWN) & (forward_ranks_bb(Us, ksq) | rank_bb(ksq));
   Bitboard ourPawns = b & pos.pieces(Us);
@@ -235,7 +235,7 @@ Value Entry::evaluate_shelter(const Position& pos, Square ksq) {
 
   Value safety = (ourPawns & file_bb(ksq)) ? Value(5) : Value(-5);
 
-  if ((theirPawns & (FileABB | FileHBB) & BlockRanks) & (ksq + Up))
+  if ((shift<Down>(theirPawns) & (FileABB | FileHBB) & BlockRanks) & ksq)
       safety += 374;
 
   File center = std::max(FILE_B, std::min(FILE_G, file_of(ksq)));
@@ -249,7 +249,7 @@ Value Entry::evaluate_shelter(const Position& pos, Square ksq) {
       Rank rkThem = b ? relative_rank(Us, frontmost_sq(Them, b)) : RANK_1;
 
       safety -= StormDanger[!(ourPawns & file_bb(f)) ? Unopposed     :
-                             shift<Up>(ourPawns) & b ? BlockedByPawn : Unblocked]
+                             shift<Down>(b) & ourPawns ? BlockedByPawn : Unblocked]
                             [d][rkThem];
   }
 
