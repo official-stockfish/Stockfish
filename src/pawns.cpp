@@ -235,7 +235,7 @@ Value Entry::evaluate_shelter(const Position& pos, Square ksq) {
 
   Value safety = (ourPawns & file_bb(ksq)) ? Value(5) : Value(-5);
 
-  if ((shift<Down>(theirPawns) & (FileABB | FileHBB) & BlockRanks) & ksq)
+  if (shift<Down>(theirPawns) & (FileABB | FileHBB) & BlockRanks & ksq)
       safety += 374;
 
   File center = std::max(FILE_B, std::min(FILE_G, file_of(ksq)));
