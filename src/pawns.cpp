@@ -111,7 +111,6 @@ namespace {
         stoppers   = theirPawns & passed_pawn_mask(Us, s);
         lever      = theirPawns & PawnAttacks[Us][s];
         leverPush  = theirPawns & PawnAttacks[Us][s + Up];
-        doubled    = ourPawns   & (s - Up);
         neighbours = ourPawns   & adjacent_files_bb(f);
         phalanx    = neighbours & rank_bb(s);
         supported  = neighbours & rank_bb(s - Up);
@@ -161,10 +160,12 @@ namespace {
 
         else if (backward)
             score -= Backward, e->weakUnopposed[Us] += !opposed;
-
-        if (doubled && !supported)
-            score -= Doubled;
     }
+
+    //score all doubled pawns
+    supported = e->pawnAttacks[Us] & ourPawns;
+    doubled = (ourPawns & shift<Up>(ourPawns)) & ~(supported);
+    score -= Doubled * popcount(doubled);
 
     return score;
   }
