@@ -143,7 +143,8 @@ void Bitboards::init() {
       {
          //0 is backward for our pawns, 1 is forward for enemy pawns
          Direction Up = (c == WHITE) ? NORTH : SOUTH;
-         BackwardMasks[0][c][s] = ((ForwardRanksBB[~c][rank_of(s)]) & (FileBB[file_of(s)] | AdjacentFilesBB[file_of(s)])) | (AdjacentFilesBB[file_of(s)] & RankBB[rank_of(s)]);
+         BackwardMasks[0][c][s] = ((ForwardRanksBB[~c][rank_of(s)]) & (FileBB[file_of(s)] | 
+                AdjacentFilesBB[file_of(s)])) | (AdjacentFilesBB[file_of(s)] & RankBB[rank_of(s)]);
          BackwardMasks[1][c][s] = SquareBB[s + Up] | PawnAttacks[c][s + Up];
       }
 
