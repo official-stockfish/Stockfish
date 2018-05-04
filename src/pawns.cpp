@@ -118,8 +118,9 @@ namespace {
 
         // A pawn is backward when it is behind all pawns of the same color
         // on the adjacent files and cannot be safely advanced.
-        backward = !lever && (!(ourPawns & BackwardMasks[0][Us][s])) &&
-                   neighbours && (theirPawns & BackwardMasks[1][Us][s]);
+        backward = !lever && (relative_rank(Us, s) < RANK_5) && neighbours &&
+                   (!(ourPawns & BackwardMasks[0][Us][s])) &&
+                   (theirPawns & BackwardMasks[1][Us][s]);
 
         // Passed pawns will be properly scored in evaluation because we need
         // full attack info to evaluate them. Include also not passed pawns
