@@ -112,7 +112,6 @@ void Bitboards::init() {
           PassedPawnMask[c][s] = ForwardFileBB [c][s] | PawnAttackSpan[c][s];
       }
 
-
   for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1)
       for (Square s2 = SQ_A1; s2 <= SQ_H8; ++s2)
           if (s1 != s2)
@@ -142,11 +141,9 @@ void Bitboards::init() {
   for (Color c = WHITE; c <= BLACK; ++c)
       for (Square s = SQ_A2; s <= SQ_H7; ++s)
       {
-         //used to check if any friendly pawns are beside or behind us
-         BackwardMasks[0][c][s] = ((ForwardRanksBB[~c][rank_of(s)]) & (FileBB[file_of(s)] | AdjacentFilesBB[file_of(s)])) | (AdjacentFilesBB[file_of(s)] & RankBB[rank_of(s)]);
-
-         //used to check if any enemy pawns block our progress
+         //0 is backward for our pawns, 1 is forward for enemy pawns
          Direction Up = (c == WHITE) ? NORTH : SOUTH;
+         BackwardMasks[0][c][s] = ((ForwardRanksBB[~c][rank_of(s)]) & (FileBB[file_of(s)] | AdjacentFilesBB[file_of(s)])) | (AdjacentFilesBB[file_of(s)] & RankBB[rank_of(s)]);
          BackwardMasks[1][c][s] = SquareBB[s + Up] | PawnAttacks[c][s + Up];
       }
 
