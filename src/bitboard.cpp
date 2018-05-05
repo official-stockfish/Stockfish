@@ -39,7 +39,6 @@ Bitboard PassedPawnMask[COLOR_NB][SQUARE_NB];
 Bitboard PawnAttackSpan[COLOR_NB][SQUARE_NB];
 Bitboard PseudoAttacks[PIECE_TYPE_NB][SQUARE_NB];
 Bitboard PawnAttacks[COLOR_NB][SQUARE_NB];
-Bitboard BackwardMasks[2][COLOR_NB][SQUARE_NB];
 
 Magic RookMagics[SQUARE_NB];
 Magic BishopMagics[SQUARE_NB];
@@ -137,16 +136,6 @@ void Bitboards::init() {
                           PseudoAttacks[pt][s] |= to;
                   }
               }
-
-  for (Color c = WHITE; c <= BLACK; ++c)
-      for (Square s = SQ_A2; s <= SQ_H7; ++s)
-      {
-         //0 is backward for our pawns, 1 is forward for enemy pawns
-         Direction Up = (c == WHITE) ? NORTH : SOUTH;
-         BackwardMasks[0][c][s] = ((ForwardRanksBB[~c][rank_of(s)]) & (FileBB[file_of(s)] | 
-                AdjacentFilesBB[file_of(s)])) | (AdjacentFilesBB[file_of(s)] & RankBB[rank_of(s)]);
-         BackwardMasks[1][c][s] = SquareBB[s + Up] | PawnAttacks[c][s + Up];
-      }
 
   Direction RookDirections[] = { NORTH,  EAST,  SOUTH,  WEST };
   Direction BishopDirections[] = { NORTH_EAST, SOUTH_EAST, SOUTH_WEST, NORTH_WEST };
