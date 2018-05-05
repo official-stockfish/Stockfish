@@ -59,7 +59,7 @@ struct Entry {
   Score do_king_safety(const Position& pos, Square ksq);
 
   template<Color Us>
-  Value shelter_storm(const Position& pos, Square ksq);
+  Value evaluate_shelter(const Position& pos, Square ksq);
 
   Key key;
   Score scores[COLOR_NB];
