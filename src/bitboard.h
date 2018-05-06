@@ -76,6 +76,7 @@ extern Bitboard PawnAttackSpan[COLOR_NB][SQUARE_NB];
 extern Bitboard PseudoAttacks[PIECE_TYPE_NB][SQUARE_NB];
 extern Bitboard PawnAttacks[COLOR_NB][SQUARE_NB];
 
+
 /// Magic holds all magic bitboards relevant data for a single square
 struct Magic {
   Bitboard  mask;
