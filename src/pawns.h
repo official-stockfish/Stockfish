@@ -3,7 +3,7 @@
  Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
  Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad (Stockfish Authors)
  Copyright (C) 2015-2016 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad (Stockfish Authors)
- Copyright (C) 2017-218 Michael Byrne, Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad (McBrain Authors)
+ Copyright (C) 2017-2018 Michael Byrne, Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad (McBrain Authors)
  
  McBrain is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -34,7 +34,7 @@ namespace Pawns {
 
 struct Entry {
 
-  Score pawns_score() const { return score; }
+  Score pawn_score(Color c) const { return scores[c]; }
   Bitboard pawn_attacks(Color c) const { return pawnAttacks[c]; }
   Bitboard passed_pawns(Color c) const { return passedPawns[c]; }
   Bitboard pawn_attacks_span(Color c) const { return pawnAttacksSpan[c]; }
@@ -44,10 +44,6 @@ struct Entry {
 
   int semiopen_file(Color c, File f) const {
     return semiopenFiles[c] & (1 << f);
-  }
-
-  int semiopen_side(Color c, File f, bool leftSide) const {
-    return semiopenFiles[c] & (leftSide ? (1 << f) - 1 : ~((1 << (f + 1)) - 1));
   }
 
   int pawns_on_same_color_squares(Color c, Square s) const {
@@ -64,10 +60,10 @@ struct Entry {
   Score do_king_safety(const Position& pos, Square ksq);
 
   template<Color Us>
-  Value shelter_storm(const Position& pos, Square ksq);
+  Value evaluate_shelter(const Position& pos, Square ksq);
 
   Key key;
-  Score score;
+  Score scores[COLOR_NB];
   Bitboard passedPawns[COLOR_NB];
   Bitboard pawnAttacks[COLOR_NB];
   Bitboard pawnAttacksSpan[COLOR_NB];

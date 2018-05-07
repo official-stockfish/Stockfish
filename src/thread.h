@@ -61,8 +61,8 @@ public:
   Pawns::Table pawnsTable;
   Material::Table materialTable;
   Endgames endgames;
-  size_t PVIdx, multiPV;
-  int selDepth, nmp_ply,  pair;
+  size_t PVIdx, PVLast;
+  int selDepth, nmp_ply, nmp_odd;
   std::atomic<uint64_t> nodes, tbHits;
 
   Position rootPos;
@@ -72,6 +72,7 @@ public:
   ButterflyHistory mainHistory;
   CapturePieceToHistory captureHistory;
   ContinuationHistory contHistory;
+  Score contempt;
 };
 
 
@@ -97,8 +98,6 @@ struct MainThread : public Thread {
 
 struct ThreadPool : public std::vector<Thread*> {
 
-  void init(size_t); // No constructor and destructor, threads rely on globals that should
-  void exit();       // be initialized and valid during the whole thread lifetime.
   void start_thinking(Position&, StateListPtr&, const Search::LimitsType&, bool = false);
   void clear();
   void set(size_t);
@@ -106,13 +105,6 @@ struct ThreadPool : public std::vector<Thread*> {
   MainThread* main()        const { return static_cast<MainThread*>(front()); }
   uint64_t nodes_searched() const { return accumulate(&Thread::nodes); }
   uint64_t tb_hits()        const { return accumulate(&Thread::tbHits); }
-  
-  Depth lowestDepth(){
-    Depth lowest = DEPTH_MAX;
-    for (Thread* th: *this)
-        lowest = std::min(lowest, th->rootDepth);
-    return lowest;
-  } 
 
   std::atomic_bool stop, ponder, stopOnPonderhit;
 
