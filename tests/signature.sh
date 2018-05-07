@@ -16,7 +16,11 @@ signature=`./stockfish bench 2>&1 | grep "Nodes searched  : " | awk '{print $4}'
 if [ $# -gt 0 ]; then
    # compare to given reference
    if [ "$1" != "$signature" ]; then
-      echo "signature mismatch: reference $1 obtained $signature"
+      if [ "x$1" == "x" ]; then
+         echo "No signature obtained from bench. Code crashed or assert triggered ?"
+      else
+         echo "signature mismatch: reference $1 obtained: $signature ."
+      fi
       exit 1
    else
       echo "signature OK: $signature"
