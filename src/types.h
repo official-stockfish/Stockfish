@@ -81,28 +81,28 @@
 #endif
 
 #ifdef USE_POPCNT
-constexpr bool HasPopCnt = true;
+const bool HasPopCnt = true;
 #else
-constexpr bool HasPopCnt = false;
+const bool HasPopCnt = false;
 #endif
 
 #ifdef USE_PEXT
-constexpr bool HasPext = true;
+const bool HasPext = true;
 #else
-constexpr bool HasPext = false;
+const bool HasPext = false;
 #endif
 
 #ifdef IS_64BIT
-constexpr bool Is64Bit = true;
+const bool Is64Bit = true;
 #else
-constexpr bool Is64Bit = false;
+const bool Is64Bit = false;
 #endif
 
 typedef uint64_t Key;
 typedef uint64_t Bitboard;
 
-constexpr int MAX_MOVES = 256;
-constexpr int MAX_PLY   = 128;
+const int MAX_MOVES = 256;
+const int MAX_PLY   = 128;
 
 /// A move needs 16 bits to be stored
 ///
@@ -160,6 +160,7 @@ enum Phase {
 
 enum ScaleFactor {
   SCALE_FACTOR_DRAW    = 0,
+  SCALE_FACTOR_ONEPAWN = 48,
   SCALE_FACTOR_NORMAL  = 64,
   SCALE_FACTOR_MAX     = 128,
   SCALE_FACTOR_NONE    = 255
@@ -187,7 +188,7 @@ enum Value : int {
   KnightValueMg = 764,   KnightValueEg = 848,
   BishopValueMg = 826,   BishopValueEg = 891,
   RookValueMg   = 1282,  RookValueEg   = 1373,
-  QueenValueMg  = 2500,  QueenValueEg  = 2670,
+  QueenValueMg  = 2560,  QueenValueEg  = 2680,
 
   MidgameLimit  = 15258, EndgameLimit  = 3915
 };
@@ -195,6 +196,7 @@ enum Value : int {
 enum PieceType {
   NO_PIECE_TYPE, PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING,
   ALL_PIECES = 0,
+  QUEEN_DIAGONAL = 7,
   PIECE_TYPE_NB = 8
 };
 
@@ -257,10 +259,10 @@ enum Rank : int {
 };
 
 
-/// Score enum stores a middlegame and an endgame value in a single integer (enum).
-/// The least significant 16 bits are used to store the middlegame value and the
-/// upper 16 bits are used to store the endgame value. We have to take care to
-/// avoid left-shifting a signed int to avoid undefined behavior.
+/// Score enum stores a middlegame and an endgame value in a single integer
+/// (enum). The least significant 16 bits are used to store the endgame value
+/// and the upper 16 bits are used to store the middlegame value. Take some
+/// care to avoid left-shifting a signed int to avoid undefined behavior.
 enum Score : int { SCORE_ZERO };
 
 constexpr Score make_score(int mg, int eg) {

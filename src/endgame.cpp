@@ -18,7 +18,6 @@
  You should have received a copy of the GNU General Public License
  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-
 #include <algorithm>
 #include <cassert>
 
@@ -32,7 +31,7 @@ namespace {
 
   // Table used to drive the king towards the edge of the board
   // in KX vs K and KQ vs KR endgames.
-  constexpr int PushToEdges[SQUARE_NB] = {
+  const int PushToEdges[SQUARE_NB] = {
     100, 90, 80, 70, 70, 80, 90, 100,
      90, 70, 60, 50, 50, 60, 70,  90,
      80, 60, 40, 30, 30, 40, 60,  80,
@@ -45,7 +44,7 @@ namespace {
 
   // Table used to drive the king towards a corner square of the
   // right color in KBN vs K endgames.
-  constexpr int PushToCorners[SQUARE_NB] = {
+  const int PushToCorners[SQUARE_NB] = {
     200, 190, 180, 170, 160, 150, 140, 130,
     190, 180, 170, 160, 150, 140, 130, 140,
     180, 170, 155, 140, 140, 125, 140, 150,
@@ -57,11 +56,11 @@ namespace {
   };
 
   // Tables used to drive a piece towards or away from another piece
-  constexpr int PushClose[8] = { 0, 0, 100, 80, 60, 40, 20, 10 };
-  constexpr int PushAway [8] = { 0, 5, 20, 40, 60, 80, 90, 100 };
+  const int PushClose[8] = { 0, 0, 100, 80, 60, 40, 20, 10 };
+  const int PushAway [8] = { 0, 5, 20, 40, 60, 80, 90, 100 };
 
   // Pawn Rank based scaling factors used in KRPPKRP endgame
-  constexpr int KRPPKRPScaleFactors[RANK_NB] = { 0, 9, 10, 14, 21, 44, 0, 0 };
+  const int KRPPKRPScaleFactors[RANK_NB] = { 0, 9, 10, 14, 21, 44, 0, 0 };
 
 #ifndef NDEBUG
   bool verify_material(const Position& pos, Color c, Value npm, int pawnsCnt) {
@@ -632,8 +631,29 @@ ScaleFactor Endgame<KBPKB>::operator()(const Position& pos) const {
 
   // Case 2: Opposite colored bishops
   if (opposite_colors(strongBishopSq, weakBishopSq))
-      return SCALE_FACTOR_DRAW;
+  {
+      // We assume that the position is drawn in the following three situations:
+      //
+      //   a. The pawn is on rank 5 or further back.
+      //   b. The defending king is somewhere in the pawn's path.
+      //   c. The defending bishop attacks some square along the pawn's path,
+      //      and is at least three squares away from the pawn.
+      //
+      // These rules are probably not perfect, but in practice they work
+      // reasonably well.
 
+      if (relative_rank(strongSide, pawnSq) <= RANK_5)
+          return SCALE_FACTOR_DRAW;
+
+      Bitboard path = forward_file_bb(strongSide, pawnSq);
+
+      if (path & pos.pieces(weakSide, KING))
+          return SCALE_FACTOR_DRAW;
+
+      if (  (pos.attacks_from<BISHOP>(weakBishopSq) & path)
+          && distance(weakBishopSq, pawnSq) >= 3)
+          return SCALE_FACTOR_DRAW;
+  }
   return SCALE_FACTOR_NONE;
 }
 

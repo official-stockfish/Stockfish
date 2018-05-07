@@ -53,7 +53,7 @@ struct StateInfo {
   Piece      capturedPiece;
   StateInfo* previous;
   Bitboard   blockersForKing[COLOR_NB];
-  Bitboard   pinners[COLOR_NB];
+  Bitboard   pinnersForKing[COLOR_NB];
   Bitboard   checkSquares[PIECE_TYPE_NB];
 };
 
@@ -106,7 +106,8 @@ public:
 
   // Checking
   Bitboard checkers() const;
-  Bitboard blockers_for_king(Color c) const;
+  Bitboard discovered_check_candidates() const;
+  Bitboard pinned_pieces(Color c) const;
   Bitboard check_squares(PieceType pt) const;
 
   // Attacks to/from a given square
@@ -153,8 +154,6 @@ public:
   bool is_chess960() const;
   Thread* this_thread() const;
   bool is_draw(int ply) const;
-  bool has_game_cycle(int ply) const;
-  bool has_repeated() const;
   int rule50_count() const;
   Score psq_score() const;
   Value non_pawn_material(Color c) const;
@@ -298,8 +297,12 @@ inline Bitboard Position::checkers() const {
   return st->checkersBB;
 }
 
-inline Bitboard Position::blockers_for_king(Color c) const {
-  return st->blockersForKing[c];
+inline Bitboard Position::discovered_check_candidates() const {
+  return st->blockersForKing[~sideToMove] & pieces(sideToMove);
+}
+
+inline Bitboard Position::pinned_pieces(Color c) const {
+  return st->blockersForKing[c] & pieces(c);
 }
 
 inline Bitboard Position::check_squares(PieceType pt) const {

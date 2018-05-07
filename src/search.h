@@ -33,7 +33,7 @@ class Position;
 namespace Search {
 
 /// Threshold used for countermoves based pruning
-constexpr int CounterMovePruneThreshold = 0;
+const int CounterMovePruneThreshold = 0;
 
 
 /// Stack struct keeps track of the information we need to remember from nodes
@@ -46,10 +46,13 @@ struct Stack {
   int ply;
   Move currentMove;
   Move excludedMove;
-  Move killers[2];
+  Move killers[4];
   Value staticEval;
   int statScore;
   int moveCount;
+  Depth newDepth;
+  uint8_t forcedMove;
+  uint8_t forcingTree;
 };
 
 
@@ -70,8 +73,6 @@ struct RootMove {
   Value score = -VALUE_INFINITE;
   Value previousScore = -VALUE_INFINITE;
   int selDepth = 0;
-  int TBRank;
-  Value TBScore;
   std::vector<Move> pv;
 };
 
@@ -84,9 +85,8 @@ typedef std::vector<RootMove> RootMoves;
 struct LimitsType {
 
   LimitsType() { // Init explicitly due to broken value-initialization of non POD in MSVC
-    time[WHITE] = time[BLACK] = inc[WHITE] = inc[BLACK] = npmsec = movetime = TimePoint(0);
-    movestogo = depth = mate = perft = infinite = 0;
-    nodes = 0;
+    nodes = time[WHITE] = time[BLACK] = inc[WHITE] = inc[BLACK] =
+    npmsec = movestogo = depth = movetime = mate = perft = infinite = 0;
   }
 
   bool use_time_management() const {
@@ -94,9 +94,10 @@ struct LimitsType {
   }
 
   std::vector<Move> searchmoves;
-  TimePoint time[COLOR_NB], inc[COLOR_NB], npmsec, movetime, startTime;
-  int movestogo, depth, mate, perft, infinite;
+  int time[COLOR_NB], inc[COLOR_NB], npmsec, movestogo, depth,
+      movetime, mate, perft, infinite;
   int64_t nodes;
+  TimePoint startTime;
 };
 
 extern LimitsType Limits;

@@ -24,11 +24,6 @@
 #undef  _WIN32_WINNT
 #define _WIN32_WINNT 0x0601 // Force to include needed API prototypes
 #endif
-
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
-
 #include <windows.h>
 // The needed Windows API for processor groups could be missed from old Windows
 // versions, so instead of calling them directly (forcing the linker to resolve
@@ -57,7 +52,7 @@ namespace {
 
 /// Version number. If Version is left empty, then compile date in the format
 /// DD-MM-YY and show in engine_info.
-const string Version = "9.1";
+const string Version = "9";
 
 /// Our fancy logging facility. The trick here is to replace cin.rdbuf() and
 /// cout.rdbuf() with two Tie objects that tie cin and cout to a file stream. We
@@ -139,7 +134,7 @@ const string engine_info(bool to_uci) {
   ss << (Is64Bit ? " 64" : "")
      << (HasPext ? " BMI2" : (HasPopCnt ? " POPCNT" : ""))
      << (to_uci  ? "\nid author ": " by ")
-     << "M. Byrne, I. Ivec, Stockfish authors and others";
+     << "M. Byrne, Stockfish authors and others";
 
   return ss.str();
 }
