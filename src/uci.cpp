@@ -29,10 +29,10 @@
 #include "position.h"
 #include "search.h"
 #include "thread.h"
-#include "tt.h"
 #include "timeman.h"
+#include "tt.h"
 #include "uci.h"
-#include "tbprobe.h"
+#include "syzygy/tbprobe.h"
 
 using namespace std;
 
@@ -93,11 +93,11 @@ namespace {
 
     // Read option name (can contain spaces)
     while (is >> token && token != "value")
-        name += string(" ", name.empty() ? 0 : 1) + token;
+        name += (name.empty() ? "" : " ") + token;
 
     // Read option value (can contain spaces)
     while (is >> token)
-        value += string(" ", value.empty() ? 0 : 1) + token;
+        value += (value.empty() ? "" : " ") + token;
 
     if (Options.count(name))
         Options[name] = value;
@@ -155,14 +155,14 @@ namespace {
         else if (token == "binc")      is >> limits.inc[BLACK];
         else if (token == "movestogo") is >> limits.movestogo;
         else if (token == "depth")     is >> limits.depth;
-		else if (token == "d")         is >> limits.depth;
+	else if (token == "d")         is >> limits.depth;
         else if (token == "nodes")     is >> limits.nodes;
         else if (token == "movetime")  is >> limits.movetime;
         else if (token == "mate")      is >> limits.mate;
         else if (token == "perft")     is >> limits.perft;
         else if (token == "infinite")  limits.infinite = 1;
-		else if (token == "i")         limits.infinite = 1;
-        else if (token == "ponder")    ponderMode = true;;
+	else if (token == "i")         limits.infinite = 1;
+        else if (token == "ponder")    ponderMode = true;
 
     Threads.start_thinking(pos, states, limits, ponderMode);
   }
@@ -195,7 +195,7 @@ namespace {
             nodes += Threads.nodes_searched();
         }
         else if (token == "setoption")  setoption(is);
-		else if (token == "s")          set(is);
+	else if (token == "s")          set(is);
         else if (token == "position")   position(pos, is, states);
         else if (token == "ucinewgame") Search::clear();
     }

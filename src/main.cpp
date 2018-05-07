@@ -27,7 +27,7 @@
 #include "thread.h"
 #include "tt.h"
 #include "uci.h"
-#include "tbprobe.h"
+#include "syzygy/tbprobe.h"
 #include "polybook.h"
 
 namespace PSQT {
@@ -46,7 +46,7 @@ int main(int argc, char* argv[]) {
   Search::init();
   Pawns::init();
   polybook.init(Options["BookFile"]);
-  Tablebases::init(Options["SyzygyPath"]);
+  Tablebases::init(Options["SyzygyPath"]); // After Bitboards are set
   TT.resize(Options["Hash"]);
   Threads.set(Options["Threads"]);
   Search::clear(); // After threads are up

@@ -3,7 +3,7 @@
  Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
  Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad (Stockfish Authors)
  Copyright (C) 2015-2016 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad (Stockfish Authors)
- Copyright (C) 2017*2018 Michael Byrne, Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad (McBrain Authors)
+ Copyright (C) 2017-2018 Michael Byrne, Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad (McBrain Authors)
  
  McBrain is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 #include "search.h"
 #include "thread.h"
 #include "uci.h"
-#include "tbprobe.h"
+#include "syzygy/tbprobe.h"
 
 ThreadPool Threads; // Global object
 
@@ -63,9 +63,9 @@ void Thread::clear() {
 
   for (auto& to : contHistory)
       for (auto& h : to)
-          h.fill(0);
+          h.get()->fill(0);
 
-  contHistory[NO_PIECE][0].fill(Search::CounterMovePruneThreshold - 1);
+  contHistory[NO_PIECE][0].get()->fill(Search::CounterMovePruneThreshold - 1);
 }
 
 /// Thread::start_searching() wakes up the thread that will start the search
@@ -118,7 +118,7 @@ void Thread::idle_loop() {
 }
 
 /// ThreadPool::set() creates/destroys threads to match the requested number.
-/// Created and launced threads wil go immediately to sleep in idle_loop.
+/// Created and launched threads wil go immediately to sleep in idle_loop.
 /// Upon resizing, threads are recreated to allow for binding if necessary.
 
 void ThreadPool::set(size_t requested) {
@@ -148,7 +148,7 @@ void ThreadPool::clear() {
 
   main()->callsCnt = 0;
   main()->previousScore = VALUE_INFINITE;
-  main()->previousTimeReduction = 1;
+  main()->previousTimeReduction = 1.0;
 }
 
 /// ThreadPool::start_thinking() wakes up main thread waiting in idle_loop() and
@@ -170,7 +170,7 @@ void ThreadPool::start_thinking(Position& pos, StateListPtr& states,
           rootMoves.emplace_back(m);
 
   if (!rootMoves.empty())
-      Tablebases::filter_root_moves(pos, rootMoves);
+      Tablebases::rank_root_moves(pos, rootMoves);
 
   // After ownership transfer 'states' becomes empty, so if we stop the search
   // and call 'go' again without setting a new position states.get() == NULL.
@@ -188,12 +188,10 @@ void ThreadPool::start_thinking(Position& pos, StateListPtr& states,
 
   for (Thread* th : *this)
   {
-      th->nodes = th->tbHits = 0;
+      th->nodes = th->tbHits = th->nmp_ply = th->nmp_odd = 0;
       th->rootDepth = th->completedDepth = DEPTH_ZERO;
       th->rootMoves = rootMoves;
       th->rootPos.set(pos.fen(), pos.is_chess960(), &setupStates->back(), th);
-	  th->nmp_ply = 0;
-	  th->pair = -1;
   }
 
   setupStates->back() = tmp;
