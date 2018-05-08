@@ -713,9 +713,6 @@ namespace {
     improving =   ss->staticEval >= (ss-2)->staticEval
                ||(ss-2)->staticEval == VALUE_NONE;
 
-    if (ss->excludedMove || !pos.non_pawn_material(pos.side_to_move()))
-        goto moves_loop;
-
     // Step 7. Razoring (skipped when in check, ~2 Elo)
     if (  !PvNode
         && depth < 3 * ONE_PLY
@@ -740,6 +737,8 @@ namespace {
         && (ss-1)->statScore < 30000
         &&  eval >= beta
         &&  ss->staticEval >= beta - 36 * depth / ONE_PLY + 225
+        && !ss->excludedMove
+        &&  pos.non_pawn_material(pos.side_to_move())
         && (ss->ply >= thisThread->nmp_ply || ss->ply % 2 != thisThread->nmp_odd))
     {
         assert(eval - beta >= 0);
