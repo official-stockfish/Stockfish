@@ -682,12 +682,12 @@ namespace {
         }
     }
 
-    // Step 6. Evaluate the position statically
+    // Step 6. Static evaluation of the position
     if (inCheck)
     {
         ss->staticEval = eval = VALUE_NONE;
         improving = false;
-        goto moves_loop;
+        goto moves_loop;  // Skip early pruning when in check
     }
     else if (ttHit)
     {
@@ -710,13 +710,7 @@ namespace {
                   ss->staticEval, TT.generation());
     }
 
-    improving =   ss->staticEval >= (ss-2)->staticEval
-               ||(ss-2)->staticEval == VALUE_NONE;
-
-    if (ss->excludedMove || !pos.non_pawn_material(pos.side_to_move()))
-        goto moves_loop;
-
-    // Step 7. Razoring (skipped when in check, ~2 Elo)
+    // Step 7. Razoring (~2 Elo)
     if (  !PvNode
         && depth < 3 * ONE_PLY
         && eval <= alpha - RazorMargin[depth / ONE_PLY])
@@ -727,7 +721,10 @@ namespace {
             return v;
     }
 
-    // Step 8. Futility pruning: child node (skipped when in check, ~30 Elo)
+    improving =   ss->staticEval >= (ss-2)->staticEval
+               || (ss-2)->staticEval == VALUE_NONE;
+
+    // Step 8. Futility pruning: child node (~30 Elo)
     if (   !rootNode
         &&  depth < 7 * ONE_PLY
         &&  eval - futility_margin(depth, improving) >= beta
@@ -740,6 +737,8 @@ namespace {
         && (ss-1)->statScore < 30000
         &&  eval >= beta
         &&  ss->staticEval >= beta - 36 * depth / ONE_PLY + 225
+        && !ss->excludedMove
+        &&  pos.non_pawn_material(pos.side_to_move())
         && (ss->ply >= thisThread->nmp_ply || ss->ply % 2 != thisThread->nmp_odd))
     {
         assert(eval - beta >= 0);
@@ -779,7 +778,7 @@ namespace {
         }
     }
 
-    // Step 10. ProbCut (skipped when in check, ~10 Elo)
+    // Step 10. ProbCut (~10 Elo)
     // If we have a good enough capture and a reduced search returns a value
     // much above beta, we can (almost) safely prune the previous move.
     if (   !PvNode
@@ -817,7 +816,7 @@ namespace {
             }
     }
 
-    // Step 11. Internal iterative deepening (skipped when in check, ~2 Elo)
+    // Step 11. Internal iterative deepening (~2 Elo)
     if (    depth >= 8 * ONE_PLY
         && !ttMove)
     {
