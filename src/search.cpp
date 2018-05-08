@@ -1069,6 +1069,7 @@ moves_loop: // When in check, search starts from here
           if (moveCount == 1 || value > alpha)
           {
               rm.score = value;
+              rm.depth = depth / ONE_PLY;
               rm.selDepth = thisThread->selDepth;
               rm.pv.resize(1);
 
@@ -1229,8 +1230,8 @@ moves_loop: // When in check, search starts from here
         && ttHit
         && tte->depth() >= ttDepth
         && ttValue != VALUE_NONE // Only in case of TT access race
-        && (ttValue >= beta ? (tte->bound() &  BOUND_LOWER)
-                            : (tte->bound() &  BOUND_UPPER)))
+        && (ttValue >= beta ? (tte->bound() & BOUND_LOWER)
+                            : (tte->bound() & BOUND_UPPER)))
         return ttValue;
 
     // Evaluate the position statically
@@ -1563,7 +1564,7 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
 
   for (size_t i = 0; i < multiPV; ++i)
   {
-      bool updated = (i <= PVIdx && rootMoves[i].score != -VALUE_INFINITE);
+      bool updated = (i <= PVIdx && rootMoves[i].score != -VALUE_INFINITE && rootMoves[i].depth >= depth / ONE_PLY);
 
       if (depth == ONE_PLY && !updated)
           continue;
