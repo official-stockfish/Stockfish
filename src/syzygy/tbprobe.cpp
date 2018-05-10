@@ -1153,7 +1153,7 @@ WDLScore search(Position& pos, ProbeState* result) {
         moveCount++;
 
         pos.do_move(move, st);
-        value = -search(pos, result);
+        value = -::search(pos, result);
         pos.undo_move(move);
 
         if (*result == FAIL)
