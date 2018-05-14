@@ -32,8 +32,6 @@ namespace Eval {
 
 constexpr Value Tempo = Value(20); // Must be visible to search
 
-extern std::atomic<Score> Contempt;
-
 std::string trace(const Position& pos);
 
 Value evaluate(const Position& pos);

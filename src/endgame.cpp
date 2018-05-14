@@ -631,29 +631,8 @@ ScaleFactor Endgame<KBPKB>::operator()(const Position& pos) const {
 
   // Case 2: Opposite colored bishops
   if (opposite_colors(strongBishopSq, weakBishopSq))
-  {
-      // We assume that the position is drawn in the following three situations:
-      //
-      //   a. The pawn is on rank 5 or further back.
-      //   b. The defending king is somewhere in the pawn's path.
-      //   c. The defending bishop attacks some square along the pawn's path,
-      //      and is at least three squares away from the pawn.
-      //
-      // These rules are probably not perfect, but in practice they work
-      // reasonably well.
+      return SCALE_FACTOR_DRAW;
 
-      if (relative_rank(strongSide, pawnSq) <= RANK_5)
-          return SCALE_FACTOR_DRAW;
-
-      Bitboard path = forward_file_bb(strongSide, pawnSq);
-
-      if (path & pos.pieces(weakSide, KING))
-          return SCALE_FACTOR_DRAW;
-
-      if (  (pos.attacks_from<BISHOP>(weakBishopSq) & path)
-          && distance(weakBishopSq, pawnSq) >= 3)
-          return SCALE_FACTOR_DRAW;
-  }
   return SCALE_FACTOR_NONE;
 }
 

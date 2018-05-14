@@ -159,7 +159,6 @@ enum Phase {
 
 enum ScaleFactor {
   SCALE_FACTOR_DRAW    = 0,
-  SCALE_FACTOR_ONEPAWN = 48,
   SCALE_FACTOR_NORMAL  = 64,
   SCALE_FACTOR_MAX     = 128,
   SCALE_FACTOR_NONE    = 255
@@ -257,10 +256,10 @@ enum Rank : int {
 };
 
 
-/// Score enum stores a middlegame and an endgame value in a single integer
-/// (enum). The least significant 16 bits are used to store the endgame value
-/// and the upper 16 bits are used to store the middlegame value. Take some
-/// care to avoid left-shifting a signed int to avoid undefined behavior.
+/// Score enum stores a middlegame and an endgame value in a single integer (enum).
+/// The least significant 16 bits are used to store the middlegame value and the
+/// upper 16 bits are used to store the endgame value. We have to take care to
+/// avoid left-shifting a signed int to avoid undefined behavior.
 enum Score : int { SCORE_ZERO };
 
 constexpr Score make_score(int mg, int eg) {
