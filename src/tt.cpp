@@ -73,7 +73,7 @@ void TranspositionTable::clear() {
                    len =    idx != Options["Threads"] - 1 ?
                             stride :
                             clusterCount - start;
-      threads.push_back(std::thread([&]() {
+      threads.push_back(std::thread([this, idx, start, len]() {
           if (Options["Threads"] >= 8)
               WinProcGroup::bindThisThread(idx);
           std::memset(&table[start], 0, len * sizeof(Cluster));
