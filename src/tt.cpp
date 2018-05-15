@@ -23,6 +23,7 @@
 #include <thread>
 
 #include "bitboard.h"
+#include "misc.h"
 #include "tt.h"
 #include "uci.h"
 
@@ -72,7 +73,11 @@ void TranspositionTable::clear() {
                    len =    idx != Options["Threads"] - 1 ?
                             stride :
                             clusterCount - start;
-      threads.push_back(std::thread(std::memset, &table[start], 0, len * sizeof(Cluster)));
+      threads.push_back(std::thread([&]() {
+          if (Options["Threads"] >= 8)
+              WinProcGroup::bindThisThread(idx);
+          std::memset(&table[start], 0, len * sizeof(Cluster));
+      }));
   }
 
   for (std::thread& th: threads)
