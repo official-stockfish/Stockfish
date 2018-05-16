@@ -52,18 +52,16 @@ namespace {
     { V(11), V(83), V(19), V(  8), V(18), V(-21), V(-30) }
   };
 
-  // Danger of enemy pawns moving toward our king.
-  // For calculating the danger of unblocked pawns, for each file, 
-  // multiply a distance from edge to a step value(1) and add it to the base (0);
-  // RANK_1 is used when the opponent has no pawn on the file
-  constexpr Value Unblocked[RANK_NB] = {V(19-19), V(61-19), V(124-19), V(60-19), V(33-19), V( 0-19), V( 0-19)};
+  // Danger of unblocked enemy pawns moving toward our king by rank.
+  // RANK_1 is used when there is no enemy pawn on the file
+  constexpr Value Unblocked[RANK_NB] = {V(19), V(61), V(124), V(60), V(33)};
 
-  // The danger of pawns blocked by pawns by [distance from edge][rank]
+  // Danger of blocked enemy pawns ahead of king by [distance from edge][rank]
   constexpr Value BlockedByPawn[FILE_NB / 2][RANK_NB] =
-    { { V( 0),  V(  0), V( 37-19), V(  5-19), V(-48-19) },
-      { V( 0),  V(  0), V( 68-19), V(-12-19), V( 13-19) },
-      { V( 0),  V(  0), V(111-19), V(-25-19), V( -3-19) },
-      { V( 0),  V(  0), V(108-19), V( 14-19), V( 21-19) } };
+    { { V( 0),  V(  0), V( 37), V(  5), V(-48) },
+      { V( 0),  V(  0), V( 68), V(-12), V( 13) },
+      { V( 0),  V(  0), V(111), V(-25), V( -3) },
+      { V( 0),  V(  0), V(108), V( 14), V( 21) } };
 
   #undef S
   #undef V
@@ -215,7 +213,7 @@ Value Entry::evaluate_shelter(const Position& pos, Square ksq) {
   Bitboard ourPawns = b & pos.pieces(Us);
   Bitboard theirPawns = b & pos.pieces(Them);
 
-  Value safety = (ourPawns & file_bb(ksq)) ? Value(5-19*3) : Value(-5-19*3);
+  Value safety = (ourPawns & file_bb(ksq)) ? Value(5) : Value(-5);
 
   if (shift<Down>(theirPawns) & (FileABB | FileHBB) & BlockRanks & ksq)
       safety += Value(374);
@@ -233,8 +231,8 @@ Value Entry::evaluate_shelter(const Position& pos, Square ksq) {
 
       safety += ShelterStrength[d][ourRank];
       if (ourRank || theirRank)
-         safety -= (ourRank && (ourRank == theirRank - 1)) ? BlockedByPawn[d][theirRank] : 
-                   (Unblocked[theirRank] - 2*d);
+         safety -= (ourRank && (ourRank == theirRank - 1)) ?
+            BlockedByPawn[d][theirRank] : (Unblocked[theirRank] - 2*d);
   }
 
   return safety;
