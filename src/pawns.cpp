@@ -232,7 +232,7 @@ Value Entry::evaluate_shelter(const Position& pos, Square ksq) {
       safety += ShelterStrength[d][ourRank];
       if (ourRank || theirRank)
          safety -= (ourRank && (ourRank == theirRank - 1)) ?
-            BlockedByPawn[d][theirRank] : (Unblocked[theirRank] - 2*d);
+            BlockedByPawn[d][theirRank] : Unblocked[theirRank] - 2*d;
   }
 
   return safety;
