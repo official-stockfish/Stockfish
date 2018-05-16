@@ -52,19 +52,18 @@ namespace {
     { V(11), V(83), V(19), V(  8), V(18), V(-21), V(-30) }
   };
 
-  // Danger of enemy pawns moving toward our king by [type][distance from edge][rank].
-  // For the unblocked case, RANK_1 = 0 is used when opponent has no pawn on the
-  // given file, or their pawn is behind our king.
-  constexpr Value StormDanger[][4][RANK_NB] = {
-    { { V(25),  V( 79), V(107), V( 51), V( 27) },  // UnBlocked
-      { V(15),  V( 45), V(131), V(  8), V( 25) },
-      { V( 0),  V( 42), V(118), V( 56), V( 27) },
-      { V( 3),  V( 54), V(110), V( 55), V( 26) } },
-    { { V( 0),  V(  0), V( 37), V(  5), V(-48) },  // BlockedByPawn
-      { V( 0),  V(  0), V( 68), V(-12), V( 13) },
-      { V( 0),  V(  0), V(111), V(-25), V( -3) },
-      { V( 0),  V(  0), V(108), V( 14), V( 21) } }
-  };
+  // Danger of enemy pawns moving toward our king.
+  // For calculating the danger of unblocked pawns, for each file, 
+  // multiply a distance from edge to a step value(1) and add it to the base (0);
+  // RANK_1 is used when the opponent has no pawn on the file
+  constexpr Value Unblocked[RANK_NB] = {V(19-19), V(61-19), V(124-19), V(60-19), V(33-19), V( 0-19), V( 0-19)};
+
+  // The danger of pawns blocked by pawns by [distance from edge][rank]
+  constexpr Value BlockedByPawn[FILE_NB / 2][RANK_NB] =
+    { { V( 0),  V(  0), V( 37-19), V(  5-19), V(-48-19) },
+      { V( 0),  V(  0), V( 68-19), V(-12-19), V( 13-19) },
+      { V( 0),  V(  0), V(111-19), V(-25-19), V( -3-19) },
+      { V( 0),  V(  0), V(108-19), V( 14-19), V( 21-19) } };
 
   #undef S
   #undef V
@@ -208,7 +207,6 @@ Entry* probe(const Position& pos) {
 template<Color Us>
 Value Entry::evaluate_shelter(const Position& pos, Square ksq) {
 
-  enum { UnBlocked, BlockedByPawn };
   constexpr Color     Them = (Us == WHITE ? BLACK : WHITE);
   constexpr Direction Down = (Us == WHITE ? SOUTH : NORTH);
   constexpr Bitboard  BlockRanks = (Us == WHITE ? Rank1BB | Rank2BB : Rank8BB | Rank7BB);
@@ -217,7 +215,7 @@ Value Entry::evaluate_shelter(const Position& pos, Square ksq) {
   Bitboard ourPawns = b & pos.pieces(Us);
   Bitboard theirPawns = b & pos.pieces(Them);
 
-  Value safety = (ourPawns & file_bb(ksq)) ? Value(5) : Value(-5);
+  Value safety = (ourPawns & file_bb(ksq)) ? Value(5-19*3) : Value(-5-19*3);
 
   if (shift<Down>(theirPawns) & (FileABB | FileHBB) & BlockRanks & ksq)
       safety += Value(374);
@@ -235,7 +233,8 @@ Value Entry::evaluate_shelter(const Position& pos, Square ksq) {
 
       safety += ShelterStrength[d][ourRank];
       if (ourRank || theirRank)
-         safety -= StormDanger[ourRank && (ourRank == theirRank - 1) ? BlockedByPawn : UnBlocked][d][theirRank];
+         safety -= (ourRank && (ourRank == theirRank - 1)) ? BlockedByPawn[d][theirRank] : 
+                   (Unblocked[theirRank] - 2*d);
   }
 
   return safety;
