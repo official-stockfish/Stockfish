@@ -130,8 +130,8 @@ std::ostream& operator<<(std::ostream& os, const Position& pos) {
 }
 
 
-// Marcel van Kervink's cuckoo algorithm for fast detection of "upcoming repetition"/
-// "no progress" situations. Description of the algorithm in the following paper:
+// Marcel van Kervinck's cuckoo algorithm for fast detection of "upcoming repetition"
+// situations. Description of the algorithm in the following paper:
 // https://marcelk.net/2013-04-06/paper/upcoming-rep-v2.pdf
 
 // First and second hash functions for indexing the cuckoo tables
