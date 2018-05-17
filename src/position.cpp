@@ -1183,40 +1183,31 @@ bool Position::has_game_cycle(int ply) const {
 
   Key originalKey = st->key;
   StateInfo* stp = st->previous;
-  Key progressKey = stp->key ^ Zobrist::side;
 
   for (int i = 3; i <= end; i += 2)
   {
-      stp = stp->previous;
-      progressKey ^= stp->key ^ Zobrist::side;
-      stp = stp->previous;
+      stp = stp->previous->previous;
 
-      // "originalKey == " detects upcoming repetition, "progressKey == " detects no-progress
-      if (   originalKey == (progressKey ^ stp->key)
-          || progressKey == Zobrist::side)
+      Key moveKey = originalKey ^ stp->key;
+      if (   (j = H1(moveKey), cuckoo[j] == moveKey)
+          || (j = H2(moveKey), cuckoo[j] == moveKey))
       {
-          Key moveKey = originalKey ^ stp->key;
-          if (   (j = H1(moveKey), cuckoo[j] == moveKey)
-              || (j = H2(moveKey), cuckoo[j] == moveKey))
+          Move m = Move(cuckooMove[j]);
+          if (!(between_bb(from_sq(m), to_sq(m)) & pieces()))
           {
-              Move m = Move(cuckooMove[j]);
-              if (!(between_bb(from_sq(m), to_sq(m)) & pieces()))
-              {
-                  if (ply > i)
-                      return true;
+              if (ply > i)
+                  return true;
 
-                  // For repetitions before or at the root, require one more
-                  StateInfo* next_stp = stp;
-                  for (int k = i + 2; k <= end; k += 2)
-                  {
-                      next_stp = next_stp->previous->previous;
-                      if (next_stp->key == stp->key)
-                         return true;
-                  }
+              // For repetitions before or at the root, require one more
+              StateInfo* next_stp = stp;
+              for (int k = i + 2; k <= end; k += 2)
+              {
+                  next_stp = next_stp->previous->previous;
+                  if (next_stp->key == stp->key)
+                     return true;
               }
           }
       }
-      progressKey ^= stp->key;
   }
   return false;
 }
