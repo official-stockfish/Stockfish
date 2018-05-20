@@ -796,27 +796,13 @@ namespace {
   ScaleFactor Evaluation<T>::scale_factor(Value eg) const {
 
     Color strongSide = eg > VALUE_DRAW ? WHITE : BLACK;
-    int sf = me->scale_factor(pos, strongSide);
+
+    if (me->scale_factor(pos, strongSide) != SCALE_FACTOR_NORMAL)
+       return me->scale_factor(pos, strongSide);
 
     // If scale is not already specific, scale down the endgame via general heuristics
-    if (sf == SCALE_FACTOR_NORMAL)
-    {
-        if (pos.opposite_bishops())
-        {
-            // Endgame with opposite-colored bishops and no other pieces is almost a draw
-            if (   pos.non_pawn_material(WHITE) == BishopValueMg
-                && pos.non_pawn_material(BLACK) == BishopValueMg)
-                sf = 31;
-
-            // Endgame with opposite-colored bishops, but also other pieces. Still
-            // a bit drawish, but not as drawish as with only the two bishops.
-            else
-                sf = 46;
-        }
-        else
-            sf = std::min(40 + 7 * pos.count<PAWN>(strongSide), sf);
-    }
-
+    int sf = pos.opposite_bishops()? me->piece_types() == 1? 31: 46
+                                   : std::min(40 + 7 * pos.count<PAWN>(strongSide), int(SCALE_FACTOR_NORMAL));
     return ScaleFactor(sf);
   }
 
