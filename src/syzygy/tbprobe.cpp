@@ -1131,11 +1131,11 @@ Ret probe_table(const Position& pos, ProbeState* result, WDLScore wdl = WDLDraw)
 // All of this means that during probing, the engine must look at captures and probe
 // their results and must probe the position itself. The "best" result of these
 // probes is the correct result for the position.
-// DTZ table don't store values when a following move is a zeroing winning move
+// DTZ tables do not store values when a following move is a zeroing winning move
 // (winning capture or winning pawn move). Also DTZ store wrong values for positions
 // where the best move is an ep-move (even if losing). So in all these cases set
 // the state to ZEROING_BEST_MOVE.
-template<bool CheckZeroingMoves = false>
+template<bool CheckZeroingMoves>
 WDLScore search(Position& pos, ProbeState* result) {
 
     WDLScore value, bestValue = WDLLoss;
@@ -1153,7 +1153,7 @@ WDLScore search(Position& pos, ProbeState* result) {
         moveCount++;
 
         pos.do_move(move, st);
-        value = -search(pos, result);
+        value = -search<false>(pos, result);
         pos.undo_move(move);
 
         if (*result == FAIL)
@@ -1347,7 +1347,7 @@ void Tablebases::init(const std::string& paths) {
 WDLScore Tablebases::probe_wdl(Position& pos, ProbeState* result) {
 
     *result = OK;
-    return search(pos, result);
+    return search<false>(pos, result);
 }
 
 // Probe the DTZ table for a particular position.
@@ -1412,7 +1412,7 @@ int Tablebases::probe_dtz(Position& pos, ProbeState* result) {
         // otherwise we will get the dtz of the next move sequence. Search the
         // position after the move to get the score sign (because even in a
         // winning position we could make a losing capture or going for a draw).
-        dtz = zeroing ? -dtz_before_zeroing(search(pos, result))
+        dtz = zeroing ? -dtz_before_zeroing(search<false>(pos, result))
                       : -probe_dtz(pos, result);
 
         // If the move mates, force minDTZ to 1
