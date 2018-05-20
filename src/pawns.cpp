@@ -58,10 +58,10 @@ namespace {
 
   // Danger of blocked enemy pawns ahead of king by [distance from edge][rank]
   constexpr Value BlockedByPawn[FILE_NB / 2][RANK_NB] =
-    { { V( 0),  V(  0), V( 37), V(  5), V(-48) }, //, V( 0), V( 0) },
-      { V( 0),  V(  0), V( 70), V(-10), V( 15) }, //, V( 2), V( 2) },
-      { V( 0),  V(  0), V(115), V(-21), V(  1) }, //, V( 4), V( 4) },
-      { V( 0),  V(  0), V(114), V( 20), V( 27) }, }; //, V( 6), V( 6) } };
+    { { V( 0),  V(  0), V( 37), V(  5), V(-48) , V( 0), V( 0) },
+      { V( 0),  V(  0), V( 70), V(-10), V( 15) , V( 2), V( 2) },
+      { V( 0),  V(  0), V(115), V(-21), V(  1) , V( 4), V( 4) },
+      { V( 0),  V(  0), V(114), V( 20), V( 27) , V( 6), V( 6) } };
 
   #undef S
   #undef V
