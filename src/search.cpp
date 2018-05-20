@@ -1117,7 +1117,7 @@ moves_loop: // When in check, search starts from here
               else
               {
                   assert(value >= beta); // Fail high
-                  ss->statScore = std::max(ss->statScore, 0);
+                  ss->statScore = 0;
                   break;
               }
           }
