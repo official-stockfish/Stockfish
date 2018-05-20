@@ -229,9 +229,8 @@ Value Entry::evaluate_shelter(const Position& pos, Square ksq) {
 
       int d = std::min(f, ~f);
 
-      safety += ShelterStrength[d][ourRank];
-      safety -= (ourRank && (ourRank == theirRank - 1)) ?
-            BlockedByPawn[d][theirRank] : Unblocked[theirRank];
+      safety += ShelterStrength[d][ourRank] - (ourRank && (ourRank == theirRank - 1)) ?
+         BlockedByPawn[d][theirRank] : Unblocked[theirRank];
   }
 
   return safety;
