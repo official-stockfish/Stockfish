@@ -1193,14 +1193,15 @@ bool Position::has_game_cycle(int ply) const {
           || (j = H2(moveKey), cuckoo[j] == moveKey))
       {
           Move move = cuckooMove[j];
-
           Square from = from_sq(move);
           Square to = to_sq(move);
-          if (empty(from))
-              move = make_move(to, from);
-          
+
           if (!(between_bb(from, to) & pieces()))
           {
+              // Take care to reverse the move in the no-progress case (opponent to move)
+              if (empty(from))
+                  move = make_move(to, from);
+
               if (ply > i)
                   return true;
 
