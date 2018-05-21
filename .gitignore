@@ -1,0 +1,13 @@
+﻿################################################################################
+# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
+################################################################################
+
+*.json
+*.sqlite
+*.suo
+*.db
+*.opendb
+*.ipch
+/binaries/CMakeCache.txt
+*.exe
+/binaries/CMakeFiles/cmake.check_cache
