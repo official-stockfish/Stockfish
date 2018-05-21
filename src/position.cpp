@@ -130,13 +130,13 @@ std::ostream& operator<<(std::ostream& os, const Position& pos) {
 }
 
 
-// Marcel van Kervink's cuckoo algorithm for fast detection of "upcoming repetition"/
-// "no progress" situations. Description of the algorithm in the following paper:
+// Marcel van Kervinck's cuckoo algorithm for fast detection of "upcoming repetition"
+// situations. Description of the algorithm in the following paper:
 // https://marcelk.net/2013-04-06/paper/upcoming-rep-v2.pdf
 
 // First and second hash functions for indexing the cuckoo tables
-inline Key H1(Key h) { return h & 0x1fff; }
-inline Key H2(Key h) { return (h >> 16) & 0x1fff; }
+inline int H1(Key h) { return h & 0x1fff; }
+inline int H2(Key h) { return (h >> 16) & 0x1fff; }
 
 // Cuckoo tables with Zobrist hashes of valid reversible moves, and the moves themselves
 Key cuckoo[8192];
@@ -180,7 +180,7 @@ void Position::init() {
               {
                   Move move = make_move(s1, s2);
                   Key key = Zobrist::psq[pc][s1] ^ Zobrist::psq[pc][s2] ^ Zobrist::side;
-                  unsigned int i = H1(key);
+                  int i = H1(key);
                   while (true)
                   {
                       std::swap(cuckoo[i], key);
@@ -1148,9 +1148,9 @@ bool Position::has_repeated() const {
     StateInfo* stc = st;
     while (true)
     {
-        int i = 4, e = std::min(stc->rule50, stc->pliesFromNull);
+        int i = 4, end = std::min(stc->rule50, stc->pliesFromNull);
 
-        if (e < i)
+        if (end < i)
             return false;
 
         StateInfo* stp = st->previous->previous;
@@ -1162,7 +1162,7 @@ bool Position::has_repeated() const {
                 return true;
 
             i += 2;
-        } while (i <= e);
+        } while (i <= end);
 
         stc = stc->previous;
     }
@@ -1174,7 +1174,7 @@ bool Position::has_repeated() const {
 
 bool Position::has_game_cycle(int ply) const {
 
-  unsigned int j;
+  int j;
 
   int end = std::min(st->rule50, st->pliesFromNull);
 
@@ -1183,40 +1183,38 @@ bool Position::has_game_cycle(int ply) const {
 
   Key originalKey = st->key;
   StateInfo* stp = st->previous;
-  Key progressKey = stp->key ^ Zobrist::side;
 
   for (int i = 3; i <= end; i += 2)
   {
-      stp = stp->previous;
-      progressKey ^= stp->key ^ Zobrist::side;
-      stp = stp->previous;
+      stp = stp->previous->previous;
 
-      // "originalKey == " detects upcoming repetition, "progressKey == " detects no-progress
-      if (   originalKey == (progressKey ^ stp->key)
-          || progressKey == Zobrist::side)
+      Key moveKey = originalKey ^ stp->key;
+      if (   (j = H1(moveKey), cuckoo[j] == moveKey)
+          || (j = H2(moveKey), cuckoo[j] == moveKey))
       {
-          Key moveKey = originalKey ^ stp->key;
-          if (   (j = H1(moveKey), cuckoo[j] == moveKey)
-              || (j = H2(moveKey), cuckoo[j] == moveKey))
-          {
-              Move m = Move(cuckooMove[j]);
-              if (!(between_bb(from_sq(m), to_sq(m)) & pieces()))
-              {
-                  if (ply > i)
-                      return true;
+          Move move = cuckooMove[j];
+          Square from = from_sq(move);
+          Square to = to_sq(move);
 
-                  // For repetitions before or at the root, require one more
-                  StateInfo* next_stp = stp;
-                  for (int k = i + 2; k <= end; k += 2)
-                  {
-                      next_stp = next_stp->previous->previous;
-                      if (next_stp->key == stp->key)
-                         return true;
-                  }
+          if (!(between_bb(from, to) & pieces()))
+          {
+              // Take care to reverse the move in the no-progress case (opponent to move)
+              if (empty(from))
+                  move = make_move(to, from);
+
+              if (ply > i)
+                  return true;
+
+              // For repetitions before or at the root, require one more
+              StateInfo* next_stp = stp;
+              for (int k = i + 2; k <= end; k += 2)
+              {
+                  next_stp = next_stp->previous->previous;
+                  if (next_stp->key == stp->key)
+                     return true;
               }
           }
       }
-      progressKey ^= stp->key;
   }
   return false;
 }
