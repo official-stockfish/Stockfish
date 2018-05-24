@@ -752,7 +752,7 @@ namespace {
         }
     }
 
-    // Step 6. Evaluate the position statically
+    // Step 6. Static evaluation of the position
     if (inCheck)
     {
         ss->staticEval = eval = VALUE_NONE;
@@ -806,11 +806,14 @@ namespace {
 
     // Step 9. Null move search with verification search, 40 Elo
     if (   !noNULL && !PvNode
+		&& (ss-1)->currentMove != MOVE_NULL
+		&& (ss-1)->statScore < 22500
         &&  eval >= beta
         &&  ss->staticEval >= beta - int(320 * log(depth / ONE_PLY)) + 500  // Ivan Ivec
-	&& (((ss-2)->currentMove != MOVE_NULL) || (ss-2)->staticEval >= beta - 36 * depth / ONE_PLY + 225)// MichaeB7
-	&&  thisThread->selDepth + 3 > thisThread->rootDepth / ONE_PLY  // idea from Corchess/IIvec
-        &&  pos.non_pawn_material(pos.side_to_move()) > BishopValueMg  //Ivam Ivec
+		//&& !ss->excludedMove
+	    //&& (((ss-2)->currentMove != MOVE_NULL) || (ss-2)->staticEval >= beta - 36 * depth / ONE_PLY + 225)// MichaeB7
+	    &&  thisThread->selDepth + 3 > thisThread->rootDepth / ONE_PLY  // idea from Corchess/IIvec
+        &&  pos.non_pawn_material(pos.side_to_move()) > BishopValueMg  //Ivan Ivec
         && (ss->ply >= thisThread->nmp_ply || ss->ply % 2 != thisThread->nmp_odd)
         && !(MoveList<LEGAL>(pos).size() < 4)) //MichaelB7
     {
@@ -851,15 +854,13 @@ namespace {
         }
     }
 
-    // Step 10. ProbCut (skipped when in check), 10 Elo
+    // Step 10. ProbCut (~10 Elo)
     // If we have a good enough capture and a reduced search returns a value
     // much above beta, we can (almost) safely prune the previous move.
     if (   !PvNode
         &&  depth >= 5 * ONE_PLY
         &&  abs(beta) < VALUE_MATE_IN_MAX_PLY)
     {
-        assert(is_ok((ss-1)->currentMove));
-
         Value rbeta = std::min(beta + 216 - 48 * improving, VALUE_INFINITE);
         MovePicker mp(pos, ttMove, rbeta - ss->staticEval, &thisThread->captureHistory);
         int probCutCount = 0;
@@ -950,7 +951,7 @@ moves_loop: // When in check, search starts from here
       moveCountPruning =   depth < 16 * ONE_PLY
                         && moveCount >= FutilityMoveCounts[improving][depth / ONE_PLY];
 
-      // Step 13. Extensions, 70 Elo
+      // Step 13. Extensions (~70 Elo)
 
       // Singular extension search (~60 Elo). If all moves but one fail low on a
       // search of (alpha-s, beta-s), and just one fails high on (alpha, beta),
@@ -989,7 +990,7 @@ moves_loop: // When in check, search starts from here
       // Calculate new depth for this move
       newDepth = depth - ONE_PLY + extension;
 
-      // Step 14. Pruning at shallow depth, 170 Elo
+      // Step 14. Pruning at shallow depth (~170 Elo)
       if (  !rootNode
           && pos.non_pawn_material(pos.side_to_move())
           && bestValue > VALUE_MATED_IN_MAX_PLY)
@@ -1009,24 +1010,24 @@ moves_loop: // When in check, search starts from here
               // Reduced depth of the next LMR search
               int lmrDepth = std::max(newDepth - reduction<PvNode>(improving, depth, moveCount), DEPTH_ZERO) / ONE_PLY;
 
-              // Countermoves based pruning, 20 Elo
+              // Countermoves based pruning (~20 Elo)
               if (   lmrDepth < 3
                   && (*contHist[0])[movedPiece][to_sq(move)] < CounterMovePruneThreshold
                   && (*contHist[1])[movedPiece][to_sq(move)] < CounterMovePruneThreshold)
                   continue;
 
-              // Futility pruning: parent node, 2 Elo
+              // Futility pruning: parent node (~2 Elo)
               if (   lmrDepth < 7
                   && !inCheck
                   && ss->staticEval + 256 + 200 * lmrDepth <= alpha)
                   continue;
 
-              // Prune moves with negative SEE, 10 Elo
+              // Prune moves with negative SEE (~10 Elo)
               if (   lmrDepth < 8
                   && !pos.see_ge(move, Value(-35 * lmrDepth * lmrDepth)))
                   continue;
           }
-          else if (    depth < 7 * ONE_PLY  // 20 Elo
+          else if (    depth < 7 * ONE_PLY // (~20 Elo)
                    && !extension
                    && !pos.see_ge(move, -Value(CapturePruneMargin[depth / ONE_PLY])))
                   continue;
@@ -1061,29 +1062,35 @@ moves_loop: // When in check, search starts from here
       {
           Depth r = reduction<PvNode>(improving, depth, moveCount);
 
-          if (captureOrPromotion) // 5 Elo
+          if (captureOrPromotion) // (~5 Elo)
+          {
+              //Increase reduction by comparing opponent's stat score
+              if ((ss-1)->statScore >= 0 && thisThread->captureHistory[movedPiece][to_sq(move)][type_of(pos.captured_piece())] < 0)
+                  r += ONE_PLY;
+                            
               r -= r ? ONE_PLY : DEPTH_ZERO;
+          }
           else
           {
-              // Decrease reduction if opponent's move count is high , 5 Elo
+              // Decrease reduction if opponent's move count is high (~5 Elo)
               if ((ss-1)->moveCount > 15)
                   r -= ONE_PLY;
 
-              // Decrease reduction for exact PV nodes., 0 Elo)
+              // Decrease reduction for exact PV nodes (~0 Elo)
               if (pvExact)
                   r -= ONE_PLY;
 
-              // Increase reduction if ttMove is a capture ,0 Elo
+              // Increase reduction if ttMove is a capture (~0 Elo)
               if (ttCapture)
                   r += ONE_PLY;
 
-              // Increase reduction for cut nodes, 5 Elo
+              // Increase reduction for cut nodes (~5 Elo)
               if (cutNode)
                   r += 2 * ONE_PLY;
 
               // Decrease reduction for moves that escape a capture. Filter out
               // castling moves, because they are coded as "king captures rook" and
-              // hence break make_move , 5 Elo
+              // hence break make_move(). (~5 Elo)
               else if (    type_of(move) == NORMAL
                        && !pos.see_ge(make_move(to_sq(move), from_sq(move))))
                   r -= 2 * ONE_PLY;
@@ -1094,14 +1101,14 @@ moves_loop: // When in check, search starts from here
                              + (*contHist[3])[movedPiece][to_sq(move)]
                              - 4000;
 
-              // Decrease/increase reduction by comparing opponent's stat score,  10 Elo
+              // Decrease/increase reduction by comparing opponent's stat score (~10 Elo)
               if (ss->statScore >= 0 && (ss-1)->statScore < 0)
                   r -= ONE_PLY;
 
               else if ((ss-1)->statScore >= 0 && ss->statScore < 0)
                   r += ONE_PLY;
 
-              // Decrease/increase reduction for moves with a good/bad history, 30 Elo
+              // Decrease/increase reduction for moves with a good/bad history (~30 Elo)
               r = std::max(DEPTH_ZERO, (r / ONE_PLY - ss->statScore / 20000) * ONE_PLY);
           }
 
@@ -1234,7 +1241,7 @@ moves_loop: // When in check, search starts from here
             update_continuation_histories(ss-1, pos.piece_on(prevSq), prevSq, -stat_bonus(depth + ONE_PLY));
     }
     // Bonus for prior countermove that caused the fail low
-    else if (    depth >= 3 * ONE_PLY
+    else if (   (depth >= 3 * ONE_PLY || PvNode)
              && !pos.captured_piece()
              && is_ok((ss-1)->currentMove))
         update_continuation_histories(ss-1, pos.piece_on(prevSq), prevSq, stat_bonus(depth));

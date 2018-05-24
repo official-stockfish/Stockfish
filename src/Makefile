@@ -23,11 +23,11 @@
 
 ### Executable name
 ifeq ($(COMP),mingw)
-EXE = McBrain-91.exe
+EXE = McBrain-92.exe
 else
-EXE = McBrain-91
+EXE = McBrain-92
 endif
-##### bench nodes:  6045167
+##### bench nodes:   5975584
 
 ### Installation dir definitions
 PREFIX = /usr/local
@@ -165,7 +165,7 @@ ifeq ($(COMP),gcc)
 			LDFLAGS += -m$(bits)
 		endif
 	else
-		CXXFLAGS += -m$(bits)
+		CXXFLAGS += -m$(bits) -mcpu=cortex-a53 -mfloat-abi=hard -mfpu=neon-fp-armv8 -mneon-for-64bits -mtune=cortex-a53
 		LDFLAGS += -m$(bits)
 	endif
 

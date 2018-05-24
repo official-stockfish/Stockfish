@@ -131,11 +131,17 @@ std::ostream& operator<<(std::ostream& os, const Position& pos) {
 }
 
 
-// Marcel Kervinck's algorithm for Deep Blue’s "upcoming repetition" / "no progress" detectors
-Key cuckoo[0x2000];             // Cuckoo table with Zobrist hashes of valid reversible moves
-int16_t cuckooMove[0x2000];     // The move for cuckoo[i]
-#define H1(h)( (h)     &0x1fff) // First hash function for indexing the cuckoo table
-#define H2(h)(((h)>>16)&0x1fff) // Second hash function
+// Marcel van Kervink's cuckoo algorithm for fast detection of "upcoming repetition"/
+// "no progress" situations. Description of the algorithm in the following paper:
+// https://marcelk.net/2013-04-06/paper/upcoming-rep-v2.pdf
+
+// First and second hash functions for indexing the cuckoo tables
+inline Key H1(Key h) { return h & 0x1fff; }
+inline Key H2(Key h) { return (h >> 16) & 0x1fff; }
+
+// Cuckoo tables with Zobrist hashes of valid reversible moves, and the moves themselves
+Key cuckoo[8192];
+Move cuckooMove[8192];
 
 
 /// Position::init() initializes at startup the various arrays used to compute
@@ -166,30 +172,27 @@ void Position::init() {
   Zobrist::side = rng.rand<Key>();
   Zobrist::noPawns = rng.rand<Key>();
 
-  int num = 0;
+  // Prepare the cuckoo tables
+  int count = 0;
   for (Piece pc : Pieces)
-  {
       for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1)
-      {
-          Bitboard b = PseudoAttacks[type_of(pc)][s1] & ~(SquareBB[s1]-1);
-          while (b)
-          {
-              Square s2 = pop_lsb(&b);
-              int16_t move16 = make_move(s1, s2);
-              Key moveKey = Zobrist::psq[pc][s1] ^ Zobrist::psq[pc][s2] ^ Zobrist::side;
-              unsigned int i = H1(moveKey);
-              while(true)
-              {   // Insert in cuckoo table
-                  std::swap(cuckoo[i], moveKey);
-                  std::swap(cuckooMove[i], move16);
-                  if (moveKey == 0) break; // Arrived at empty; slot so we are done for this move
-                  i = (i == H1(moveKey)) ? H2(moveKey) : H1(moveKey); // Push victim to alternative slot
-              }
-              num++;
-          }
-      }
-  }
-  assert(num == 3668);
+          for (Square s2 = Square(s1 + 1); s2 <= SQ_H8; ++s2)
+              if (PseudoAttacks[type_of(pc)][s1] & s2)
+              {
+                  Move move = make_move(s1, s2);
+                  Key key = Zobrist::psq[pc][s1] ^ Zobrist::psq[pc][s2] ^ Zobrist::side;
+                  unsigned int i = H1(key);
+                  while (true)
+                  {
+                      std::swap(cuckoo[i], key);
+                      std::swap(cuckooMove[i], move);
+                      if (move == 0)   // Arrived at empty slot ?
+                          break;
+                      i = (i == H1(key)) ? H2(key) : H1(key); // Push victim to alternative slot
+                  }
+                  count++;
+             }
+  assert(count == 3668);
 }
 
 
@@ -1144,7 +1147,8 @@ bool Position::is_draw(int ply) const {
 bool Position::has_repeated() const {
 
     StateInfo* stc = st;
-    while (true) {
+    while (true)
+    {
         int i = 4, e = std::min(stc->rule50, stc->pliesFromNull);
 
         if (e < i)
@@ -1167,9 +1171,11 @@ bool Position::has_repeated() const {
 
 
 /// Position::has_game_cycle() tests if the position has a move which draws by repetition,
-/// or an earlier position has a move that directly reaches this one.
+/// or an earlier position has a move that directly reaches the current position.
 
 bool Position::has_game_cycle(int ply) const {
+
+  unsigned int j;
 
   int end = std::min(st->rule50, st->pliesFromNull);
 
@@ -1185,20 +1191,24 @@ bool Position::has_game_cycle(int ply) const {
       stp = stp->previous;
       progressKey ^= stp->key ^ Zobrist::side;
       stp = stp->previous;
-      // "originalKey ==" detects upcoming repetition, "progressKey ==" detects no-progress
-      if (originalKey == (progressKey ^ stp->key) || progressKey == Zobrist::side)
+
+      // "originalKey == " detects upcoming repetition, "progressKey == " detects no-progress
+      if (   originalKey == (progressKey ^ stp->key)
+          || progressKey == Zobrist::side)
       {
           Key moveKey = originalKey ^ stp->key;
-          unsigned int j = H1(moveKey);
-          if (cuckoo[j] == moveKey || (j = H2(moveKey), cuckoo[j] == moveKey))
+          if (   (j = H1(moveKey), cuckoo[j] == moveKey)
+              || (j = H2(moveKey), cuckoo[j] == moveKey))
           {
               Move m = Move(cuckooMove[j]);
-              if (!(between_bb(from_sq(m), to_sq(m)) & pieces())) {
+              if (!(between_bb(from_sq(m), to_sq(m)) & pieces()))
+              {
                   if (ply > i)
                       return true;
-                  // For repetitions before or at the root, require one more.
+
+                  // For repetitions before or at the root, require one more
                   StateInfo* next_stp = stp;
-                  for (int k = i+2; k <= end; k += 2)
+                  for (int k = i + 2; k <= end; k += 2)
                   {
                       next_stp = next_stp->previous->previous;
                       if (next_stp->key == stp->key)
