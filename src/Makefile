@@ -161,11 +161,11 @@ ifeq ($(COMP),gcc)
 
 	ifeq ($(ARCH),armv7)
 		ifeq ($(OS),Android)
-			CXXFLAGS += -m$(bits)
+			CXXFLAGS += -m$(bits) -mcpu=cortex-a53 -mfloat-abi=hard -mfpu=neon-fp-armv8 -mneon-for-64bits -mtune=cortex-a53
 			LDFLAGS += -m$(bits)
 		endif
 	else
-		CXXFLAGS += -m$(bits) -mcpu=cortex-a53 -mfloat-abi=hard -mfpu=neon-fp-armv8 -mneon-for-64bits -mtune=cortex-a53
+		CXXFLAGS += -m$(bits) 
 		LDFLAGS += -m$(bits)
 	endif
 
