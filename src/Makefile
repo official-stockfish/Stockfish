@@ -160,8 +160,9 @@ ifeq ($(COMP),gcc)
 	CXXFLAGS += -pedantic -Wextra -Wshadow
 
 	ifeq ($(ARCH),armv7)
+	CXXFLAGS += -mcpu=cortex-a53 -mfloat-abi=hard -mfpu=neon-fp-armv8 -mneon-for-64bits -mtune=cortex-a53
 		ifeq ($(OS),Android)
-			CXXFLAGS += -m$(bits) -mcpu=cortex-a53 -mfloat-abi=hard -mfpu=neon-fp-armv8 -mneon-for-64bits -mtune=cortex-a53
+			CXXFLAGS += -m$(bits)
 			LDFLAGS += -m$(bits)
 		endif
 	else
