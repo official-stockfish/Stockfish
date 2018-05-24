@@ -216,6 +216,11 @@ Entry* probe(const Position& pos) {
     pos.count<BISHOP>(BLACK)    , pos.count<ROOK>(BLACK), pos.count<QUEEN >(BLACK) } };
 
   e->value = int16_t((imbalance<WHITE>(pieceCount) - imbalance<BLACK>(pieceCount)) / 16);
+
+  e->pieceTypes = 0;
+  for (PieceType pt = KNIGHT; pt <= QUEEN; ++pt)
+      e->pieceTypes += (pos.pieces(pt) != 0);
+
   return e;
 }
 
