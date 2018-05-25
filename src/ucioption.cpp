@@ -80,7 +80,6 @@ void init(OptionsMap& o) {
   o["FastPlay"]              << Option(false);
   o["No_Null_Moves"]         << Option(false);
   o["UCI_LimitStrength"]     << Option(false);
-
   o["UCI_ELO"]               << Option(1500, 1500, 2800);
   o["Skill Level"]           << Option(20, 0, 20);
   o["Move Overhead"]         << Option(30, 0, 5000);

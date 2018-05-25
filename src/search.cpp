@@ -244,6 +244,7 @@ void MainThread::search() {
 		}
 		else
 		{
+					
 		  if (limitStrength)
 		  {
 			  int uci_elo = (Options["UCI_ELO"]);
@@ -258,6 +259,10 @@ void MainThread::search() {
 			  Limits.nodes *= Time.optimum()/1000 ;
 			  std::this_thread::sleep_for (std::chrono::seconds(Time.optimum()/1000) * (1 - Limits.nodes/724000));
 		  }
+
+					
+					
+					
 			for (Thread* th : Threads)
 				if (th != this)
 				th->start_searching();
@@ -350,7 +355,6 @@ void Thread::search() {
 
   size_t multiPV = Options["MultiPV"];
   Skill skill(Options["Skill Level"]);
-  if (tactical) multiPV = pow(2, tactical);
 
 
   // When playing with strength handicap enable MultiPV search that we will
