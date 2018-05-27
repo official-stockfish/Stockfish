@@ -36,12 +36,7 @@ TranspositionTable TT; // Our global transposition table
 
 void TranspositionTable::resize(size_t mbSize) {
 
-  size_t newClusterCount = mbSize * 1024 * 1024 / sizeof(Cluster);
-
-  if (newClusterCount == clusterCount)
-      return;
-
-  clusterCount = newClusterCount;
+  clusterCount = mbSize * 1024 * 1024 / sizeof(Cluster);
 
   free(mem);
   mem = malloc(clusterCount * sizeof(Cluster) + CacheLineSize - 1);
