@@ -224,10 +224,12 @@ Value Entry::evaluate_shelter(const Position& pos, Square ksq) {
   for (File f = File(center - 1); f <= File(center + 1); ++f)
   {
       int d = std::min(f, ~f);
-      safety += ShelterStrength[d][relative_rank(Us, backmost_sq(Us, ourPawns & file_bb(f)))];
+      b = ourPawns & file_bb(f);
+      int ourRank = b ? relative_rank(Us, backmost_sq(Us, b)) : RANK_1;
+      safety += ShelterStrength[d][ourRank];
 
       b = theirPawns & file_bb(f);
-      int theirRank = b ? relative_rank(Us, frontmost_sq(Them, b)) : 0;
+      int theirRank = b ? relative_rank(Us, frontmost_sq(Them, b)) : RANK_1;
       safety -= theirRank ? ((shift<Down>(b) & ourPawns) ? BlockedStorm[theirRank]
                                                        : UnblockedStorm[theirRank])
                                                        : PawnlessFile[d];
