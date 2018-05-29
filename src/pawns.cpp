@@ -43,20 +43,16 @@ namespace {
   // Doubled pawn penalty
   constexpr Score Doubled = S(13, 40);
 
-  // Penalty for no pawns on a file by [us/them][file]
-  constexpr Value PawnlessFile[2][FILE_NB/2] = {{ V( 7), V(-13), V(-26), V(-19)},
-                                                { V(25), V(  5), V(-20), V(-27)}};
-
-  // file based king penalty for pawn storm
-  constexpr Value KingStormFile[FILE_NB/2] = { V(-30), V(-30), V(-60), V(-80) };
+  // Penalty for no pawns in shelter on a file by [file]
+  constexpr Value PawnlessFile[FILE_NB/2] = { V(25), V(  5), V(-20), V(-27)};
 
   // Strength of pawn shelter for our king by [distance from edge][rank].
   // RANK_1 = 0 is used for files where we have no pawn, or pawn is behind our king.
   constexpr Value ShelterStrength[int(FILE_NB) / 2][RANK_NB] = {
-    { V(  0), V(76), V( 84), V( 38), V(  7), V( 30), V(-19) },
-    { V(  0), V(83), V( 42), V(-27), V(  2), V(-32), V(-45) },
-    { V(  0), V(63), V(  5), V(-44), V( -5), V(  2), V(-59) },
-    { V(  0), V(53), V(-11), V(-22), V(-12), V(-51), V(-60) }
+    { V(  7), V(76), V( 84), V( 38), V(  7), V( 30), V(-19) },
+    { V(-13-10), V(83-10), V( 42-10), V(-27-10), V(  2-10), V(-32-10), V(-45-10) },
+    { V(-26-20), V(63-20), V(  5-20), V(-44-20), V( -5-20), V(  2-20), V(-59-20) },
+    { V(-19-30), V(53-30), V(-11-30), V(-22-30), V(-12-30), V(-51-30), V(-60-30) }
   };
 
   // Danger of enemy pawns moving toward our king by [distance from edge][rank].
@@ -225,23 +221,16 @@ Value Entry::evaluate_shelter(const Position& pos, Square ksq) {
       safety += Value(374);
 
   File center = std::max(FILE_B, std::min(FILE_G, file_of(ksq)));
-  int d = std::min(center,~center);
-  safety -= KingStormFile[d];
-
   for (File f = File(center - 1); f <= File(center + 1); ++f)
   {
-      d = std::min(f, ~f);
-      safety += (b = ourPawns & file_bb(f)) ? 
-                ShelterStrength[d][relative_rank(Us, backmost_sq(Us, b))] :
-                PawnlessFile[0][d];
+      int d = std::min(f, ~f);
+      safety += ShelterStrength[d][relative_rank(Us, backmost_sq(Us, ourPawns & file_bb(f)))];
 
       b = theirPawns & file_bb(f);
       int theirRank = b ? relative_rank(Us, frontmost_sq(Them, b)) : 0;
-      if (!theirRank)
-          safety -= PawnlessFile[1][d];
-      else 
-          safety -= (shift<Up>(ourPawns) & b) ? BlockedStorm[theirRank]
-                                              : UnblockedStorm[theirRank];
+      safety -= theirRank ? ((shift<Down>(b) & ourPawns) ? BlockedStorm[theirRank]
+                                                       : UnblockedStorm[theirRank])
+                                                       : PawnlessFile[d];
   }
 
   return safety;
