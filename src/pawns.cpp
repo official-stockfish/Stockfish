@@ -67,10 +67,10 @@ namespace {
 
   // Danger of blocked enemy pawns storming our king, by rank
   constexpr Value BlockedStorm[FILE_NB/2][RANK_NB] = {
+    { V(  0), V(  0), V( 95), V( 10), V(  0), V(  0), V(  0) },
+    { V(  0), V(  0), V( 85), V(  0), V(-10), V(-10), V(-10) },
     { V(  0), V(  0), V( 75), V(-10), V(-20), V(-20), V(-20) },
-    { V(  0), V(  0), V( 75), V(-10), V(-20), V(-20), V(-20) },
-    { V(  0), V(  0), V( 75), V(-10), V(-20), V(-20), V(-20) },
-    { V(  0), V(  0), V( 75), V(-10), V(-20), V(-20), V(-20) } };
+    { V(  0), V(  0), V( 65), V(-20), V(-30), V(-30), V(-30) } };
 
   #undef S
   #undef V
@@ -238,7 +238,7 @@ Value Entry::evaluate_shelter(const Position& pos, Square ksq) {
 
       b = theirPawns & file_bb(f);
       int theirRank = b ? relative_rank(Us, frontmost_sq(Them, b)) : RANK_1;
-      safety -= theirRank ? ((ourRank && (ourRank == theirRank - 1)) ? 
+      safety -= theirRank ? ((ourRank && (ourRank == theirRank - 1)) ?
                      BlockedStorm[d][theirRank] : UnblockedStorm[d][theirRank]) :
                      PawnlessFile[d];
   }
