@@ -63,7 +63,7 @@ before_test:
   - cd src/%CONFIGURATION%
   - ps: |
       # Verify bench number
-      ./stockfish bench 2> out.txt
+      ./stockfish bench 2>&1 1> out.txt
       type out.txt
       $s = (gc "./out.txt" | out-string)
       Write-Host $s
