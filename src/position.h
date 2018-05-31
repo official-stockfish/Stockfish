@@ -383,7 +383,8 @@ inline bool Position::cycling_moves(int ply, Move pMove, Move ppMove, Move pppMo
     return st->rule50 >= 3 && st->pliesFromNull >= 3 && ply > 3
            && from_sq(pppMove) == to_sq(pMove)
            && to_sq(pppMove) == from_sq(pMove)
-           && !(between_bb(from_sq(ppMove), to_sq(ppMove)) & to_sq(pMove));
+           && !(between_bb(from_sq(ppMove), to_sq(ppMove)) & to_sq(pMove))
+           && st->previous->castlingRights == st->previous->previous->previous->castlingRights;
 }
 
 inline void Position::put_piece(Piece pc, Square s) {
