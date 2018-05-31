@@ -52,10 +52,10 @@ namespace {
     { V(11), V(83), V( 19), V(  8), V( 18), V(-21), V(-30) }
   };
 
-  // Danger having no enemy pawn on a file by [distance from edge]
+  // Danger having no enemy pawn in pawn storm by file [distance from edge]
   constexpr Value PawnlessFile[FILE_NB/2] = {V(27), V(16), V(-2), V(-8)};
 
-  // Danger of enemy pawns moving toward our king by rank.
+  // Danger of unblocked enemy pawns storming our king by rank
   constexpr Value UnblockedStorm[RANK_NB] =
     { V(  0), V( 64), V(104), V( 45), V( 22), V(-10), V( -6) };
 
