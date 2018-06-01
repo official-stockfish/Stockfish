@@ -1153,7 +1153,7 @@ bool Position::has_repeated() const {
         if (end < i)
             return false;
 
-        StateInfo* stp = st->previous->previous;
+        StateInfo* stp = stc->previous->previous;
 
         do {
             stp = stp->previous->previous;
