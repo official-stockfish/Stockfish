@@ -1536,8 +1536,13 @@ moves_loop: // When in check, search starts from here
 
 void MainThread::check_time() {
 
-  if (--callsCnt > 0)
+  static uint64_t lastTbHits = 0;
+  uint64_t nowTbHits = tbHits.load(std::memory_order_relaxed);
+
+  if (--callsCnt > 0 && nowTbHits == lastTbHits)
       return;
+
+  lastTbHits = nowTbHits;
 
   // When using nodes, ensure checking rate is not lower than 0.1% of nodes
   callsCnt = Limits.nodes ? std::min(1024, int(Limits.nodes / 1024)) : 1024;
