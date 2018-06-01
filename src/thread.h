@@ -83,7 +83,8 @@ struct MainThread : public Thread {
   using Thread::Thread;
 
   void search() override;
-  void check_time();
+  bool should_check_time();
+  bool check_time();
 
   double bestMoveChanges, previousTimeReduction;
   Value previousScore;

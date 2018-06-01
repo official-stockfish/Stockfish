@@ -1467,7 +1467,8 @@ int Tablebases::probe_dtz(Position& pos, ProbeState* result) {
 // Use the DTZ tables to rank root moves.
 //
 // A return value false indicates that not all probes were successful.
-bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves) {
+bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves,
+                            MainThread* main) {
 
     ProbeState result;
     StateInfo st;
@@ -1526,6 +1527,9 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves) {
                    : r == 0     ? VALUE_DRAW
                    : r > -bound ? Value((std::min(-3, r + 800) * int(PawnValueEg)) / 200)
                    :             -VALUE_MATE + MAX_PLY + 1;
+
+        if (main->check_time())
+            return false;
     }
 
     return true;
@@ -1536,7 +1540,8 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves) {
 // This is a fallback for the case that some or all DTZ tables are missing.
 //
 // A return value false indicates that not all probes were successful.
-bool Tablebases::root_probe_wdl(Position& pos, Search::RootMoves& rootMoves) {
+bool Tablebases::root_probe_wdl(Position& pos, Search::RootMoves& rootMoves,
+                                MainThread* main) {
 
     static const int WDL_to_rank[] = { -1000, -899, 0, 899, 1000 };
 
@@ -1563,6 +1568,9 @@ bool Tablebases::root_probe_wdl(Position& pos, Search::RootMoves& rootMoves) {
             wdl =  wdl > WDLDraw ? WDLWin
                  : wdl < WDLDraw ? WDLLoss : WDLDraw;
         m.tbScore = WDL_to_value[wdl + 2];
+
+        if (main->check_time())
+            return false;
     }
 
     return true;

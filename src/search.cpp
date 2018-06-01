@@ -1531,18 +1531,30 @@ moves_loop: // When in check, search starts from here
 
 } // namespace
 
-/// MainThread::check_time() is used to print debug info and, more importantly,
-/// to detect when we are out of available time and thus stop the search.
 
-void MainThread::check_time() {
+// MainThread::should_check_time checks if we have made enough effort
+// to warrant doing a time check. This means either nodes searched or
+// potential disk accesses performed.
 
+bool MainThread::should_check_time() {
   static uint64_t lastTbHits = 0;
   uint64_t nowTbHits = tbHits.load(std::memory_order_relaxed);
 
   if (--callsCnt > 0 && nowTbHits == lastTbHits)
-      return;
+      return false;
 
   lastTbHits = nowTbHits;
+
+  return true;
+}
+
+/// MainThread::check_time() is used to print debug info and, more importantly,
+/// to detect when we are out of available time and thus stop the search.
+
+bool MainThread::check_time() {
+
+  if (!should_check_time())
+      return false;
 
   // When using nodes, ensure checking rate is not lower than 0.1% of nodes
   callsCnt = Limits.nodes ? std::min(1024, int(Limits.nodes / 1024)) : 1024;
@@ -1560,12 +1572,16 @@ void MainThread::check_time() {
 
   // We should not stop pondering until told so by the GUI
   if (Threads.ponder)
-      return;
+      return false;
 
   if (   (Limits.use_time_management() && elapsed > Time.maximum() - 10)
       || (Limits.movetime && elapsed >= Limits.movetime)
-      || (Limits.nodes && Threads.nodes_searched() >= (uint64_t)Limits.nodes))
+      || (Limits.nodes && Threads.nodes_searched() >= (uint64_t)Limits.nodes)) {
       Threads.stop = true;
+      return true;
+  }
+
+  return false;
 }
 
 
@@ -1654,7 +1670,8 @@ bool RootMove::extract_ponder_from_tt(Position& pos) {
     return pv.size() > 1;
 }
 
-void Tablebases::rank_root_moves(Position& pos, Search::RootMoves& rootMoves) {
+void Tablebases::rank_root_moves(Position& pos, Search::RootMoves& rootMoves,
+                                 MainThread* main) {
 
     RootInTB = false;
     UseRule50 = bool(Options["Syzygy50MoveRule"]);
@@ -1673,13 +1690,13 @@ void Tablebases::rank_root_moves(Position& pos, Search::RootMoves& rootMoves) {
     if (Cardinality >= popcount(pos.pieces()) && !pos.can_castle(ANY_CASTLING))
     {
         // Rank moves using DTZ tables
-        RootInTB = root_probe(pos, rootMoves);
+        RootInTB = root_probe(pos, rootMoves, main);
 
         if (!RootInTB)
         {
             // DTZ tables are missing; try to rank moves using WDL tables
             dtz_available = false;
-            RootInTB = root_probe_wdl(pos, rootMoves);
+            RootInTB = root_probe_wdl(pos, rootMoves, main);
         }
     }
 
