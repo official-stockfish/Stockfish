@@ -64,9 +64,7 @@ before_test:
   - ps: |
       # Verify bench number
       ./stockfish bench 2>&1 1> out.txt
-      type out.txt
       $s = (gc "./out.txt" | out-string)
-      Write-Host $s
       $r = ($s -match 'Nodes searched \D+(\d+)' | % { $matches[1] })
       Write-Host "Engine bench:" $r
       Write-Host "Reference bench:" $bench
