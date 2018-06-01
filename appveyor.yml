@@ -63,7 +63,7 @@ before_test:
   - cd src/%CONFIGURATION%
   - ps: |
       # Verify bench number
-      ./stockfish bench 2> out.txt 1> null
+      ./stockfish bench 2>&1 1> out.txt
       $s = (gc "./out.txt" | out-string)
       $r = ($s -match 'Nodes searched \D+(\d+)' | % { $matches[1] })
       Write-Host "Engine bench:" $r
