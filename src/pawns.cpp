@@ -46,25 +46,22 @@ namespace {
   // Strength of pawn shelter for our king by [distance from edge][rank].
   // RANK_1 = 0 is used for files where we have no pawn, or pawn is behind our king.
   constexpr Value ShelterStrength[int(FILE_NB) / 2][RANK_NB] = {
-    { V(  7), V(76), V( 84), V( 38), V(  7), V( 30), V(-19) },
-    { V(-13), V(83), V( 42), V(-27), V(  2), V(-32), V(-45) },
-    { V(-26), V(63), V(  5), V(-44), V( -5), V(  2), V(-59) },
-    { V(-19), V(53), V(-11), V(-22), V(-12), V(-51), V(-60) }
+    { V( 7), V(76), V( 84), V( 38), V(  7), V( 30), V(-19) },
+    { V(-3), V(93), V( 52), V(-17), V( 12), V(-22), V(-35) },
+    { V(-6), V(83), V( 25), V(-24), V( 15), V( 22), V(-39) },
+    { V(11), V(83), V( 19), V(  8), V( 18), V(-21), V(-30) }
   };
 
-  // Danger of enemy pawns moving toward our king by [distance from edge][rank].
-  // RANK_1 = 0 is used for files where the enemy has no pawn, or their pawn 
-  // is behind our king.
-  constexpr Value UnblockedStorm[int(FILE_NB) / 2][RANK_NB] = {
-    { V( 25), V( 79), V(107), V( 51), V( 27), V(  0), V(  0) },
-    { V(  5), V( 35), V(121), V( -2), V( 15), V(-10), V(-10) },
-    { V(-20), V( 22), V( 98), V( 36), V(  7), V(-20), V(-20) },
-    { V(-27), V( 24), V( 80), V( 25), V( -4), V(-30), V(-30) }
-  };
+  // Danger having no enemy pawn in pawn storm by file [distance from edge]
+  constexpr Value PawnlessFile[FILE_NB/2] = {V(27), V(16), V(-2), V(-8)};
 
-  // Danger of blocked enemy pawns storming our king, by rank
+  // Danger of unblocked enemy pawns storming our king by rank
+  constexpr Value UnblockedStorm[RANK_NB] =
+    { V(  0), V( 64), V(104), V( 45), V( 22), V(-10), V( -6) };
+
+  // Danger of blocked enemy pawns storming our king by rank
   constexpr Value BlockedStorm[RANK_NB] =
-    { V(  0), V(  0), V( 75), V(-10), V(-20), V(-20), V(-20) };
+    { V(  0), V(  0), V( 82), V( -4), V( -5), V(  5), V(  1) };
 
   #undef S
   #undef V
@@ -224,16 +221,17 @@ Value Entry::evaluate_shelter(const Position& pos, Square ksq) {
   File center = std::max(FILE_B, std::min(FILE_G, file_of(ksq)));
   for (File f = File(center - 1); f <= File(center + 1); ++f)
   {
+      int d = std::min(f, ~f);
+
       b = ourPawns & file_bb(f);
-      int ourRank = b ? relative_rank(Us, backmost_sq(Us, b)) : 0;
+      int ourRank = b ? relative_rank(Us, backmost_sq(Us, b)) : RANK_1;
+      safety += ShelterStrength[d][ourRank];
 
       b = theirPawns & file_bb(f);
-      int theirRank = b ? relative_rank(Us, frontmost_sq(Them, b)) : 0;
-
-      int d = std::min(f, ~f);
-      safety += ShelterStrength[d][ourRank];
-      safety -= (ourRank && (ourRank == theirRank - 1)) ? BlockedStorm[theirRank]
-                                                        : UnblockedStorm[d][theirRank];
+      int theirRank = b ? relative_rank(Us, frontmost_sq(Them, b)) : RANK_1;
+      safety -= theirRank ? ((ourRank && (ourRank == theirRank - 1)) ?
+                     BlockedStorm[theirRank]: UnblockedStorm[theirRank]) :
+                     PawnlessFile[d];
   }
 
   return safety;
