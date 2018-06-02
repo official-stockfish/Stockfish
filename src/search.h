@@ -69,8 +69,8 @@ struct RootMove {
   Value score = -VALUE_INFINITE;
   Value previousScore = -VALUE_INFINITE;
   int selDepth = 0;
-  int TBRank;
-  Value TBScore;
+  int tbRank;
+  Value tbScore;
   std::vector<Move> pv;
 };
 

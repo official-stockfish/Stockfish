@@ -973,7 +973,7 @@ uint8_t* set_sizes(PairsData* d, uint8_t* data) {
     d->symlen.resize(number<uint16_t, LittleEndian>(data)); data += sizeof(uint16_t);
     d->btree = (LR*)data;
 
-    // The comrpession scheme used is "Recursive Pairing", that replaces the most
+    // The compression scheme used is "Recursive Pairing", that replaces the most
     // frequent adjacent pair of symbols in the source message by a new symbol,
     // reevaluating the frequencies of all of the symbol pairs with respect to
     // the extended alphabet, and then repeating the process.
@@ -1491,12 +1491,12 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves) {
         int r =  dtz > 0 ? (dtz + cnt50 <= 99 && !rep ? 1000 : 1000 - (dtz + cnt50))
                : dtz < 0 ? (-dtz * 2 + cnt50 < 100 ? -1000 : -1000 + (-dtz + cnt50))
                : 0;
-        m.TBRank = r;
+        m.tbRank = r;
 
         // Determine the score to be displayed for this move. Assign at least
         // 1 cp to cursed wins and let it grow to 49 cp as the positions gets
         // closer to a real win.
-        m.TBScore =  r >= bound ? VALUE_MATE - MAX_PLY - 1
+        m.tbScore =  r >= bound ? VALUE_MATE - MAX_PLY - 1
                    : r >  0     ? Value((std::max( 3, r - 800) * int(PawnValueEg)) / 200)
                    : r == 0     ? VALUE_DRAW
                    : r > -bound ? Value((std::min(-3, r + 800) * int(PawnValueEg)) / 200)
@@ -1532,12 +1532,12 @@ bool Tablebases::root_probe_wdl(Position& pos, Search::RootMoves& rootMoves) {
         if (result == FAIL)
             return false;
 
-        m.TBRank = WDL_to_rank[wdl + 2];
+        m.tbRank = WDL_to_rank[wdl + 2];
 
         if (!rule50)
             wdl =  wdl > WDLDraw ? WDLWin
                  : wdl < WDLDraw ? WDLLoss : WDLDraw;
-        m.TBScore = WDL_to_value[wdl + 2];
+        m.tbScore = WDL_to_value[wdl + 2];
     }
 
     return true;
