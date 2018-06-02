@@ -579,11 +579,9 @@ namespace {
         if (alpha >= beta)
             return alpha;
 
-        // Check if there exists a move which draws by repetition, or an alternative
-        // earlier move to this position.
-        if (   pos.rule50_count() >= 3
-            && alpha < VALUE_DRAW
-            && pos.has_game_cycle(ss->ply))
+        // Check if there exists a move which draws by repetition
+        if (alpha < VALUE_DRAW
+            && pos.cycling_moves(ss->ply, (ss-1)->currentMove, (ss-2)->currentMove, (ss-3)->currentMove))
         {
             alpha = VALUE_DRAW;
             if (alpha >= beta)
@@ -1231,6 +1229,15 @@ moves_loop: // When in check, search starts from here
     if (   pos.is_draw(ss->ply)
         || ss->ply >= MAX_PLY)
         return (ss->ply >= MAX_PLY && !inCheck) ? evaluate(pos) : VALUE_DRAW;
+
+    // Check if there exists a move which draws by repetition
+    if (alpha < VALUE_DRAW
+        && pos.cycling_moves(ss->ply, (ss-1)->currentMove, (ss-2)->currentMove, (ss-3)->currentMove))
+    {
+        alpha = VALUE_DRAW;
+        if (alpha >= beta)
+            return alpha;
+    }
 
     assert(0 <= ss->ply && ss->ply < MAX_PLY);
 
