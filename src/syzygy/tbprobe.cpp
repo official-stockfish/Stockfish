@@ -384,9 +384,10 @@ class TBTables {
 
     typedef std::tuple<Key, TBTable<WDL>*, TBTable<DTZ>*> Entry;
 
-    static const int Size = 1 << 16; // 64K table, indexed by key's 16 lsb
+    static const int Size = 1 << 12; // 4K table, indexed by key's 12 lsb
+    static const int Overflow = 1;  // Number of elements allowed to map to the last bucket
 
-    Entry hashTable[Size];
+    Entry hashTable[Size + Overflow];
 
     std::deque<TBTable<WDL>> wdlTable;
     std::deque<TBTable<DTZ>> dtzTable;
@@ -395,7 +396,7 @@ class TBTables {
         Entry* entry = &hashTable[(uint32_t)key & (Size - 1)];
 
         // Ensure last element is empty to avoid overflow when looking up
-        for ( ; entry - hashTable < Size - 1; ++entry)
+        for ( ; entry - hashTable < Size + Overflow - 1; ++entry)
             if (std::get<KEY>(*entry) == key || !std::get<WDL>(*entry)) {
                 *entry = std::make_tuple(key, wdl, dtz);
                 return;
