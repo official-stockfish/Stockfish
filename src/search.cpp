@@ -683,6 +683,10 @@ namespace {
             TB::ProbeState err;
             TB::WDLScore wdl = Tablebases::probe_wdl(pos, &err);
 
+            // Force check of time on the next occasion
+            if (thisThread == Threads.main())
+                static_cast<MainThread*>(thisThread)->callsCnt = 0;
+
             if (err != TB::ProbeState::FAIL)
             {
                 thisThread->tbHits.fetch_add(1, std::memory_order_relaxed);
