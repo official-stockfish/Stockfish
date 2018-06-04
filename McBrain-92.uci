@@ -1,33 +1,14 @@
 [DEFAULT]
-Hash = 192
+Hash = 128
 Skill Level = 20
-Threads = 1
+Threads = 2
 BestBookMove = false
-SyzygyPath = /opt/picochess/tablebases/syzygy
-Book_Enabled = true
 BookFile = /opt/picochess/books/s-cerebellum.bin
+SyzygyPath = /opt/picochess/tablebases/syzygy
 Slow Mover = 84
 Move Overhead = 1000
 UCI_LimitStrength = false
-Ponder = false
-
-[Play Luke]
-BestBookMove = false
-Hash = 16
-UCI_ELO = 1500
-UCI_LimitStrength = true
-Threads = 3
-Skill Level = 3
-Ponder = false
-
-[Play Reid]
-BestBookMove = false
-Hash = 16
-UCI_ELO = 1500
-UCI_LimitStrength = true
-Threads = 1
-Skill Level = 5
-Ponder = false 
+Ponder = true
 
 [Play Ana]
 BestBookMove = false
@@ -44,8 +25,18 @@ Hash = 16
 UCI_ELO = 1500
 UCI_LimitStrength = true
 Threads = 1
-Skill Level = 1
+Skill Level = 4
 Ponder = false
+
+[Play Luke]
+BestBookMove = false
+Hash = 16
+UCI_ELO = 1500
+UCI_LimitStrength = true
+Threads = 1
+Skill Level = 8
+Ponder = false
+
 
 [Play Poppy]
 BestBookMove = false
@@ -53,8 +44,17 @@ Hash = 16
 UCI_ELO = 1500
 UCI_LimitStrength = true
 Threads = 1
-Skill Level = 7
+Skill Level = 12
 Ponder = false
+
+[Play Reid]
+BestBookMove = false
+Hash = 16
+UCI_ELO = 1500
+UCI_LimitStrength = true
+Threads = 1
+Skill Level = 16
+Ponder = false 
 
 [ELO 1500]
 BestBookMove = false
@@ -65,27 +65,27 @@ Threads = 1
 Skill Level = 20
 Ponder = false
 
-[ELO 1675]
+[ELO 1600]
 BestBookMove = false
 Hash = 16
-UCI_ELO = 1675
+UCI_ELO = 1600
 UCI_LimitStrength = true
 Threads = 1
 Skill Level = 20
 Ponder = false
 
-[ELO 1750]
+[ELO 1700]
+BestBookMove = false
 Hash = 16
-UCI_ELO = 1750
+UCI_ELO = 1700
 UCI_LimitStrength = true
 Threads = 1
 Skill Level = 20
 Ponder = false
 
-[ELO 1825]
-BestBookMove = false
+[ELO 1800]
 Hash = 16
-UCI_ELO = 1825
+UCI_ELO = 1800
 UCI_LimitStrength = true
 Threads = 1
 Skill Level = 20
@@ -109,91 +109,82 @@ Threads = 1
 Skill Level = 20
 Ponder = false
 
-[ELO 2075]
+[ELO 2100]
 BestBookMove = false
 Hash = 16
-UCI_ELO = 2075
+UCI_ELO = 2100
 UCI_LimitStrength = true
 Threads = 1
 Skill Level = 20
 Ponder = false
 
-[ELO 2150]
-Hash = 16
-UCI_ELO = 2150
-UCI_LimitStrength = true
-Threads = 1
-Skill Level = 20
-Ponder = false
-
-[ELO 2225]
+[ELO 2200]
 BestBookMove = false
-Hash = 32
-UCI_ELO = 2250
+Hash = 16
+UCI_ELO = 2200
 UCI_LimitStrength = true
 Threads = 1
 Skill Level = 20
 Ponder = false
 
 [ELO 2300]
-BestBookMove = false
-Hash = 32
+Hash = 16
 UCI_ELO = 2300
 UCI_LimitStrength = true
 Threads = 1
 Skill Level = 20
 Ponder = false
 
-[ELO 2450]
+[ELO 2400]
 BestBookMove = false
-Hash = 32
-UCI_ELO = 2425
+Hash = 16
+UCI_ELO = 2400
 UCI_LimitStrength = true
 Threads = 1
 Skill Level = 20
 Ponder = false
 
-[ELO 2600]
+[ELO 2500]
 BestBookMove = false
-Hash = 32
-UCI_ELO = 2550
-UCI_LimitStrength = true
+Hash = 16
+UCI_ELO = 2500
+UCII_LimitStrength = true
 Threads = 1
 Skill Level = 20
 Ponder = false
 
-[ELO 2750]
+[ELO 2650]
 BestBookMove = false
-Hash = 64
+Hash = 16
 UCI_ELO = 2650
 UCI_LimitStrength = true
 Threads = 1
 Skill Level = 20
 Ponder = false
 
-[ELO 2950]
+[ELO 2800]
 BestBookMove = false
-Hash = 64
+Hash = 32
 UCI_ELO = 2800
 UCI_LimitStrength = true
 Threads = 1
 Skill Level = 20
 Ponder = false
 
-[ELO 3050]
+[ELO 3000]
 BestBookMove = true
-Hash = 128
+Hash = 64
 UCI_ELO = 2800
-UCI_LimitStrength = true
-Threads = 2
+UCI_LimitStrength = false
+Threads = 1
 Skill Level = 20
-Ponder = false
+Ponder = True
 
 [ELO 3100]
 BestBookMove = true
-Hash = 192
+Hash = 128
 UCI_ELO = 2800
-UCI_LimitStrength = true
-Threads = 3
+UCI_LimitStrength = false
+Threads = 2
 Skill Level = 20
-Ponder = false
+Ponder = True
