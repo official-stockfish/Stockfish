@@ -157,7 +157,7 @@ namespace {
 
         if (token == "go")
         {
-            cerr << "\nPosition: " << cnt++ << '/' << num << endl;
+            cerr << endl << "Position: " << cnt++ << '/' << num << endl << std::flush;
             go(pos, is, states);
             Threads.main()->wait_for_search_finished();
             nodes += Threads.nodes_searched();
@@ -171,10 +171,10 @@ namespace {
 
     dbg_print(); // Just before exiting
 
-    cerr << "\n==========================="
-         << "\nTotal time (ms) : " << elapsed
-         << "\nNodes searched  : " << nodes
-         << "\nNodes/second    : " << 1000 * nodes / elapsed << endl;
+    cerr << endl << "==========================="   << std::flush;
+    cerr << endl << "Total time (ms) : " << elapsed << std::flush;
+    cerr << endl << "Nodes searched  : " << nodes   << std::flush;
+    cerr << endl << "Nodes/second    : " << 1000 * nodes / elapsed << endl << std::flush;
   }
 
 } // namespace
