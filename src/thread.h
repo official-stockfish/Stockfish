@@ -60,9 +60,9 @@ public:
   Pawns::Table pawnsTable;
   Material::Table materialTable;
   Endgames endgames;
-  size_t PVIdx, PVLast;
-  int selDepth, nmp_min_ply;
-  Color nmp_color;
+  size_t pvIdx, pvLast;
+  int selDepth, nmpMinPly;
+  Color nmpColor;
   std::atomic<uint64_t> nodes, tbHits;
 
   Position rootPos;

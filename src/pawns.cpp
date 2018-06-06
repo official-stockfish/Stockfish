@@ -31,17 +31,13 @@ namespace {
   #define V Value
   #define S(mg, eg) make_score(mg, eg)
 
-  // Isolated pawn penalty
+  // Pawn penalties
   constexpr Score Isolated = S(13, 16);
-
-  // Backward pawn penalty
   constexpr Score Backward = S(17, 11);
+  constexpr Score Doubled = S(13, 40);
 
   // Connected pawn bonus by opposed, phalanx, #support and rank
   Score Connected[2][2][3][RANK_NB];
-
-  // Doubled pawn penalty
-  constexpr Score Doubled = S(13, 40);
 
   // Strength of pawn shelter for our king by [distance from edge][rank].
   // RANK_1 = 0 is used for files where we have no pawn, or pawn is behind our king.
@@ -53,7 +49,7 @@ namespace {
   };
 
   // Danger of enemy pawns moving toward our king by [distance from edge][rank].
-  // RANK_1 = 0 is used for files where the enemy has no pawn, or their pawn 
+  // RANK_1 = 0 is used for files where the enemy has no pawn, or their pawn
   // is behind our king.
   constexpr Value UnblockedStorm[int(FILE_NB) / 2][RANK_NB] = {
     { V( 25), V( 79), V(107), V( 51), V( 27), V(  0), V(  0) },

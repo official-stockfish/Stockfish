@@ -1153,7 +1153,7 @@ bool Position::has_repeated() const {
         if (end < i)
             return false;
 
-        StateInfo* stp = st->previous->previous;
+        StateInfo* stp = stc->previous->previous;
 
         do {
             stp = stp->previous->previous;
@@ -1193,14 +1193,15 @@ bool Position::has_game_cycle(int ply) const {
           || (j = H2(moveKey), cuckoo[j] == moveKey))
       {
           Move move = cuckooMove[j];
-          Square from = from_sq(move);
-          Square to = to_sq(move);
+          Square s1 = from_sq(move);
+          Square s2 = to_sq(move);
 
-          if (!(between_bb(from, to) & pieces()))
+          if (!(between_bb(s1, s2) & pieces()))
           {
-              // Take care to reverse the move in the no-progress case (opponent to move)
-              if (empty(from))
-                  move = make_move(to, from);
+              // In the cuckoo table, both moves Rc1c5 and Rc5c1 are stored in the same
+              // location. We select the legal one by reversing the move variable if necessary.
+              if (empty(s1))
+                  move = make_move(s2, s1);
 
               if (ply > i)
                   return true;

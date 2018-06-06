@@ -20,9 +20,12 @@
 
 #include <cstring>   // For std::memset
 #include <iostream>
+#include <thread>
 
 #include "bitboard.h"
+#include "misc.h"
 #include "tt.h"
+#include "uci.h"
 
 TranspositionTable TT; // Our global transposition table
 
@@ -33,12 +36,7 @@ TranspositionTable TT; // Our global transposition table
 
 void TranspositionTable::resize(size_t mbSize) {
 
-  size_t newClusterCount = mbSize * 1024 * 1024 / sizeof(Cluster);
-
-  if (newClusterCount == clusterCount)
-      return;
-
-  clusterCount = newClusterCount;
+  clusterCount = mbSize * 1024 * 1024 / sizeof(Cluster);
 
   free(mem);
   mem = malloc(clusterCount * sizeof(Cluster) + CacheLineSize - 1);
@@ -58,12 +56,28 @@ void TranspositionTable::resize(size_t mbSize) {
 /// TranspositionTable::clear() overwrites the entire transposition table
 /// with zeros. It is called whenever the table is resized, or when the
 /// user asks the program to clear the table (from the UCI interface).
+/// It starts as many threads as allowed by the Threads option.
 
 void TranspositionTable::clear() {
 
-  std::memset(table, 0, clusterCount * sizeof(Cluster));
-}
+  const size_t stride = clusterCount / Options["Threads"];
+  std::vector<std::thread> threads;
+  for (size_t idx = 0; idx < Options["Threads"]; idx++)
+  {
+      const size_t start =  stride * idx,
+                   len =    idx != Options["Threads"] - 1 ?
+                            stride :
+                            clusterCount - start;
+      threads.push_back(std::thread([this, idx, start, len]() {
+          if (Options["Threads"] >= 8)
+              WinProcGroup::bindThisThread(idx);
+          std::memset(&table[start], 0, len * sizeof(Cluster));
+      }));
+  }
 
+  for (std::thread& th: threads)
+      th.join();
+}
 
 /// TranspositionTable::probe() looks up the current position in the transposition
 /// table. It returns true and a pointer to the TTEntry if the position is found.
