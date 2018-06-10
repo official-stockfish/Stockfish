@@ -207,7 +207,6 @@ Value Endgame<KRKP>::operator()(const Position& pos) const {
 
   Square wksq = relative_square(strongSide, pos.square<KING>(strongSide));
   Square bksq = relative_square(strongSide, pos.square<KING>(weakSide));
-  Square rsq  = relative_square(strongSide, pos.square<ROOK>(strongSide));
   Square psq  = relative_square(strongSide, pos.square<PAWN>(weakSide));
 
   Square queeningSq = make_square(file_of(psq), RANK_1);
@@ -218,7 +217,7 @@ Value Endgame<KRKP>::operator()(const Position& pos) const {
       result = RookValueEg - distance(wksq, psq);
 
   // If the weaker side's king is too far from the pawn, it's a win.
-  else if (distance(bksq, psq) >= 3 + (pos.side_to_move() == weakside))
+  else if (distance(bksq, psq) >= 3 + (pos.side_to_move() == weakSide))
       result = RookValueEg - distance(wksq, psq);
 
   // If the pawn is far advanced and supported by the defending king,
