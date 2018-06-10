@@ -217,10 +217,8 @@ Value Endgame<KRKP>::operator()(const Position& pos) const {
   if (wksq < psq && file_of(wksq) == file_of(psq))
       result = RookValueEg - distance(wksq, psq);
 
-  // If the weaker side's king is too far from the pawn and the rook,
-  // it's a win.
-  else if (   distance(bksq, psq) >= 3 + (pos.side_to_move() == weakSide)
-           && distance(bksq, rsq) >= 3)
+  // If the weaker side's king is too far from the pawn, it's a win.
+  else if (distance(bksq, psq) >= 3 + (pos.side_to_move() == weakside))
       result = RookValueEg - distance(wksq, psq);
 
   // If the pawn is far advanced and supported by the defending king,
