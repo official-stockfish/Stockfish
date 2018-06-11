@@ -197,8 +197,7 @@ Value Endgame<KPK>::operator()(const Position& pos) const {
 
 /// KR vs KP. This is a somewhat tricky endgame to evaluate precisely without
 /// a bitbase. The function below returns drawish scores when the pawn is
-/// far advanced with support of the king, while the attacking king is far
-/// away.
+/// far advanced with support of the king, while the attacking king is far away.
 template<>
 Value Endgame<KRKP>::operator()(const Position& pos) const {
 
