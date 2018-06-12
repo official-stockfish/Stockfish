@@ -951,8 +951,7 @@ moves_loop: // When in check, search starts from here
                   && !pos.see_ge(move, Value(-35 * lmrDepth * lmrDepth)))
                   continue;
           }
-          else if (    depth < 7 * ONE_PLY // (~20 Elo)
-                   && !extension
+          else if (   !extension // (~20 Elo)
                    && !pos.see_ge(move, -Value(PawnValueEg * (depth / ONE_PLY))))
                   continue;
       }
