@@ -197,8 +197,7 @@ Value Endgame<KPK>::operator()(const Position& pos) const {
 
 /// KR vs KP. This is a somewhat tricky endgame to evaluate precisely without
 /// a bitbase. The function below returns drawish scores when the pawn is
-/// far advanced with support of the king, while the attacking king is far
-/// away.
+/// far advanced with support of the king, while the attacking king is far away.
 template<>
 Value Endgame<KRKP>::operator()(const Position& pos) const {
 
@@ -207,7 +206,6 @@ Value Endgame<KRKP>::operator()(const Position& pos) const {
 
   Square wksq = relative_square(strongSide, pos.square<KING>(strongSide));
   Square bksq = relative_square(strongSide, pos.square<KING>(weakSide));
-  Square rsq  = relative_square(strongSide, pos.square<ROOK>(strongSide));
   Square psq  = relative_square(strongSide, pos.square<PAWN>(weakSide));
 
   Square queeningSq = make_square(file_of(psq), RANK_1);
@@ -217,10 +215,8 @@ Value Endgame<KRKP>::operator()(const Position& pos) const {
   if (forward_file_bb(WHITE, wksq) & psq)
       result = RookValueEg - distance(wksq, psq);
 
-  // If the weaker side's king is too far from the pawn and the rook,
-  // it's a win.
-  else if (   distance(bksq, psq) >= 3 + (pos.side_to_move() == weakSide)
-           && distance(bksq, rsq) >= 3)
+  // If the weaker side's king is too far from the pawn, it's a win.
+  else if (distance(bksq, psq) >= 3 + (pos.side_to_move() == weakSide))
       result = RookValueEg - distance(wksq, psq);
 
   // If the pawn is far advanced and supported by the defending king,
