@@ -801,20 +801,13 @@ namespace {
     // If scale is not already specific, scale down the endgame via general heuristics
     if (sf == SCALE_FACTOR_NORMAL)
     {
-        if (pos.opposite_bishops())
-        {
+        if (   pos.opposite_bishops()
+            && pos.non_pawn_material(WHITE) == BishopValueMg
+            && pos.non_pawn_material(BLACK) == BishopValueMg)
             // Endgame with opposite-colored bishops and no other pieces is almost a draw
-            if (   pos.non_pawn_material(WHITE) == BishopValueMg
-                && pos.non_pawn_material(BLACK) == BishopValueMg)
-                sf = 31;
-
-            // Endgame with opposite-colored bishops, but also other pieces. Still
-            // a bit drawish, but not as drawish as with only the two bishops.
-            else
-                sf = 46;
-        }
+            sf = 31;
         else
-            sf = std::min(40 + 7 * pos.count<PAWN>(strongSide), sf);
+            sf = std::min(40 + (pos.opposite_bishops()? 2 : 7) * pos.count<PAWN>(strongSide), sf);
     }
 
     return ScaleFactor(sf);
