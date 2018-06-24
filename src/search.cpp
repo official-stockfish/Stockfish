@@ -332,6 +332,7 @@ void Thread::search() {
   MainThread* mainThread = (this == Threads.main() ? Threads.main() : nullptr);
   double timeReduction = 1.0;
   Color us = rootPos.side_to_move();
+  bool failedLow;
 
   std::memset(ss-4, 0, 7 * sizeof(Stack));
   for (int i = 4; i > 0; i--)
@@ -341,7 +342,7 @@ void Thread::search() {
   beta = VALUE_INFINITE;
 
   if (mainThread)
-      mainThread->bestMoveChanges = 0, mainThread->failedLow = false;
+      mainThread->bestMoveChanges = 0, failedLow = false;
 
   size_t multiPV = Options["MultiPV"];
   Skill skill(Options["Skill Level"]);
@@ -388,24 +389,24 @@ void Thread::search() {
 
       // Age out PV variability metric
       if (mainThread)
-          mainThread->bestMoveChanges *= 0.517, mainThread->failedLow = false;
+          mainThread->bestMoveChanges *= 0.517, failedLow = false;
 
       // Save the last iteration's scores before first PV line is searched and
       // all the move scores except the (new) PV are set to -VALUE_INFINITE.
       for (RootMove& rm : rootMoves)
           rm.previousScore = rm.score;
 
-      size_t PVFirst = 0;
-      PVLast = 0;
+      size_t pvFirst = 0;
+      pvLast = 0;
 
       // MultiPV loop. We perform a full root search for each PV line
-      for (PVIdx = 0; PVIdx < multiPV && !Threads.stop; ++PVIdx)
+      for (pvIdx = 0; pvIdx < multiPV && !Threads.stop; ++pvIdx)
       {
-          if (PVIdx == PVLast)
+          if (pvIdx == pvLast)
           {
-              PVFirst = PVLast;
-              for (PVLast++; PVLast < rootMoves.size(); PVLast++)
-                  if (rootMoves[PVLast].TBRank != rootMoves[PVFirst].TBRank)
+              pvFirst = pvLast;
+              for (pvLast++; pvLast < rootMoves.size(); pvLast++)
+                  if (rootMoves[pvLast].tbRank != rootMoves[pvFirst].tbRank)
                       break;
           }
 
@@ -415,7 +416,7 @@ void Thread::search() {
           // Reset aspiration window starting size
           if (rootDepth >= 5 * ONE_PLY)
           {
-              Value prevScore = rootMoves[PVIdx].previousScore;
+              Value prevScore = rootMoves[pvIdx].previousScore;
               delta1 = (prevScore < 0) ? Value(int(8.0 + 0.1 * abs(prevScore))) : Value(18);
               delta2 = (prevScore > 0) ? Value(int(8.0 + 0.1 * abs(prevScore))) : Value(18);
               alpha = std::max(prevScore - delta1,-VALUE_INFINITE);
@@ -441,7 +442,7 @@ void Thread::search() {
               // and we want to keep the same order for all the moves except the
               // new PV that goes to the front. Note that in case of MultiPV
               // search the already searched PV lines are preserved.
-              std::stable_sort(rootMoves.begin() + PVIdx, rootMoves.begin() + PVLast);
+              std::stable_sort(rootMoves.begin() + pvIdx, rootMoves.begin() + pvLast);
 
               // If search has been stopped, we break immediately. Sorting is
               // safe because RootMoves is still valid, although it refers to
@@ -466,7 +467,7 @@ void Thread::search() {
 
                   if (mainThread)
                   {
-                      mainThread->failedLow = true;
+                      failedLow = true;
                       Threads.stopOnPonderhit = false;
                   }
               }
@@ -479,16 +480,16 @@ void Thread::search() {
 				  
 				  assert(alpha >= -VALUE_INFINITE && beta <= VALUE_INFINITE);
 				  
-				  consecutiveEarlyExits[PVIdx] = (bestValue >= beta) ? consecutiveEarlyExits[PVIdx] + 1 : 0;
+				  consecutiveEarlyExits[pvIdx] = (bestValue >= beta) ? consecutiveEarlyExits[pvIdx] + 1 : 0;
                   break;
               }
           }
 
           // Sort the PV lines searched so far and update the GUI
-          std::stable_sort(rootMoves.begin() + PVFirst, rootMoves.begin() + PVIdx + 1);
+          std::stable_sort(rootMoves.begin() + pvFirst, rootMoves.begin() + pvIdx + 1);
 
           if (    mainThread
-              && (Threads.stop || PVIdx + 1 == multiPV || Time.elapsed() > 3000))
+              && (Threads.stop || pvIdx + 1 == multiPV || Time.elapsed() > 3000))
               sync_cout << UCI::pv(rootPos, rootDepth, alpha, beta) << sync_endl;
       }
 
@@ -525,7 +526,7 @@ void Thread::search() {
           && !Threads.stop
           && !Threads.stopOnPonderhit)
           {
-              const int F[] = { mainThread->failedLow,
+              const int F[] = { failedLow,
                                 bestValue - mainThread->previousScore };
 
               int improvingFactor = std::max(246, std::min(832, 306 + 119 * F[0] - 6 * F[1]));
@@ -667,7 +668,7 @@ namespace {
     posKey = pos.key() ^ Key(excludedMove << 16); // Isn't a very good hash
     tte = TT.probe(posKey, ttHit);
     ttValue = ttHit ? value_from_tt(tte->value(), ss->ply) : VALUE_NONE;
-    ttMove =  rootNode ? thisThread->rootMoves[thisThread->PVIdx].pv[0]
+    ttMove =  rootNode ? thisThread->rootMoves[thisThread->pvIdx].pv[0]
             : ttHit    ? tte->move() : MOVE_NONE;
 
     // At non-PV nodes we check for an early TT cutoff
@@ -926,8 +927,8 @@ moves_loop: // When in check, search starts from here
       // Move List. As a consequence any illegal move is also skipped. In MultiPV
       // mode we also skip PV moves which have been already searched and those
       // of lower "TB rank" if we are in a TB root position.
-      if (rootNode && !std::count(thisThread->rootMoves.begin() + thisThread->PVIdx,
-                                  thisThread->rootMoves.begin() + thisThread->PVLast, move))
+      if (rootNode && !std::count(thisThread->rootMoves.begin() + thisThread->pvIdx,
+                                  thisThread->rootMoves.begin() + thisThread->pvLast, move))
           continue;
 
       ss->moveCount = ++moveCount;
@@ -935,7 +936,7 @@ moves_loop: // When in check, search starts from here
       if (rootNode && thisThread == Threads.main() && Time.elapsed() > 3000)
           sync_cout << "info depth " << depth / ONE_PLY
                     << " currmove " << UCI::move(move, pos.is_chess960())
-                    << " currmovenumber " << moveCount + thisThread->PVIdx << sync_endl;
+                    << " currmovenumber " << moveCount + thisThread->pvIdx << sync_endl;
       if (PvNode)
           (ss+1)->pv = nullptr;
 
@@ -1649,7 +1650,7 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
   int temp = 0;
   TimePoint elapsed = Time.elapsed() + 1;
   const RootMoves& rootMoves = pos.this_thread()->rootMoves;
-  size_t PVIdx = pos.this_thread()->PVIdx;
+  size_t pvIdx = pos.this_thread()->pvIdx;
   size_t multiPV = std::min((size_t)Options["MultiPV"], rootMoves.size());
   uint64_t nodesSearched = Threads.nodes_searched();
   uint64_t tbHits = Threads.tb_hits() + (TB::RootInTB ? rootMoves.size() : 0);
@@ -1662,7 +1663,7 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
 
   for (size_t i = 0; i < multiPV; ++i)
   {
-      bool updated = (i <= PVIdx && rootMoves[i].score != -VALUE_INFINITE);
+      bool updated = (i <= pvIdx && rootMoves[i].score != -VALUE_INFINITE);
 
       if (depth == ONE_PLY && !updated)
           continue;
@@ -1671,7 +1672,7 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
       Value v = updated ? rootMoves[i].score : rootMoves[i].previousScore;
 
       bool tb = TB::RootInTB && abs(v) < VALUE_MATE - MAX_PLY;
-      v = tb ? rootMoves[i].TBScore : v;
+      v = tb ? rootMoves[i].tbScore : v;
 
       if (ss.rdbuf()->in_avail()) // Not at first line
           ss << "\n";
@@ -1682,7 +1683,7 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
          << " multipv "  << i + 1
          << " score "    << UCI::value(v);
 
-      if (!tb && i == PVIdx)
+      if (!tb && i == pvIdx)
           ss << (v >= beta ? " lowerbound" : v <= alpha ? " upperbound" : "");
 
       ss << " nodes "    << nodesSearched
@@ -1765,16 +1766,16 @@ void Tablebases::rank_root_moves(Position& pos, Search::RootMoves& rootMoves) {
     {
         // Sort moves according to TB rank
         std::sort(rootMoves.begin(), rootMoves.end(),
-                  [](const RootMove &a, const RootMove &b) { return a.TBRank > b.TBRank; } );
+                  [](const RootMove &a, const RootMove &b) { return a.tbRank > b.tbRank; } );
 
         // Probe during search only if DTZ is not available and we are winning
-        if (dtz_available || rootMoves[0].TBScore <= VALUE_DRAW)
+        if (dtz_available || rootMoves[0].tbScore <= VALUE_DRAW)
             Cardinality = 0;
     }
     else
     {
         // Assign the same rank to all moves
         for (auto& m : rootMoves)
-            m.TBRank = 0;
+            m.tbRank = 0;
     }
 }

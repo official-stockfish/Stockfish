@@ -37,12 +37,7 @@ TranspositionTable TT; // Our global transposition table
 
 void TranspositionTable::resize(size_t mbSize) {
 
-  size_t newClusterCount = mbSize * 1024 * 1024 / sizeof(Cluster);
-
-  if (newClusterCount == clusterCount)
-      return;
-
-  clusterCount = newClusterCount;
+  clusterCount = mbSize * 1024 * 1024 / sizeof(Cluster);
 
   free(mem);
   mem = malloc(clusterCount * sizeof(Cluster) + CacheLineSize - 1);
@@ -66,20 +61,17 @@ void TranspositionTable::resize(size_t mbSize) {
 
 void TranspositionTable::clear() {
 
-  const size_t stride = clusterCount / Options["Threads"];
   std::vector<std::thread> threads;
   for (size_t idx = 0; idx < Options["Threads"]; idx++)
-  {
-      const size_t start =  stride * idx,
-                   len =    idx != Options["Threads"] - 1 ?
-                            stride :
-                            clusterCount - start;
-      threads.push_back(std::thread([this, idx, start, len]() {
+      threads.push_back(std::thread([this, idx]() {
+          const size_t stride = clusterCount / Options["Threads"],
+                       start  = stride * idx,
+                       len    = idx != Options["Threads"] - 1 ?
+                                stride : clusterCount - start;
           if (Options["Threads"] >= 8)
               WinProcGroup::bindThisThread(idx);
           std::memset(&table[start], 0, len * sizeof(Cluster));
       }));
-  }
 
   for (std::thread& th: threads)
       th.join();

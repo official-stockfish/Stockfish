@@ -23,11 +23,11 @@
 
 ### Executable name
 ifeq ($(COMP),mingw)
-EXE = McBrain-93.exe
+EXE = McBrain-94.exe
 else
-EXE = McBrain-93
+EXE = McBrain-94
 endif
-##### bench nodes:   5975584
+##### bench nodes:   6781468
 
 ### Installation dir definitions
 PREFIX = /usr/local
