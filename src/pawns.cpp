@@ -32,25 +32,21 @@ namespace {
   #define V Value
   #define S(mg, eg) make_score(mg, eg)
 
-  // Isolated pawn penalty
-  constexpr Score Isolated = S(13, 18);
-
-  // Backward pawn penalty
-  constexpr Score Backward = S(24, 12);
+  // Pawn penalties
+  constexpr Score Isolated = S( 4, 20);
+  constexpr Score Backward = S(21, 22);
+  constexpr Score Doubled  = S(12, 54);
 
   // Connected pawn bonus by opposed, phalanx, #support and rank
   Score Connected[2][2][3][RANK_NB];
 
-  // Doubled pawn penalty
-  constexpr Score Doubled = S(18, 38);
-
   // Strength of pawn shelter for our king by [distance from edge][rank].
   // RANK_1 = 0 is used for files where we have no pawn, or pawn is behind our king.
   constexpr Value ShelterStrength[int(FILE_NB) / 2][RANK_NB] = {
-    { V( -9), V(64), V(77), V( 44), V( 4), V( -1), V(-11) },
-    { V(-15), V(83), V(51), V(-10), V( 1), V(-10), V(-28) },
-    { V(-18), V(84), V(27), V(-12), V(21), V( -7), V(-36) },
-    { V( 12), V(79), V(25), V( 19), V( 9), V( -6), V(-33) }
+    { V( 16), V(82), V( 83), V( 47), V( 19), V( 44), V(  4) },
+    { V(-51), V(56), V( 33), V(-58), V(-57), V(-50), V(-39) },
+    { V(-20), V(71), V( 16), V(-10), V( 13), V( 19), V(-30) },
+    { V(-29), V(12), V(-21), V(-40), V(-15), V(-77), V(-91) }
   };
 
   // Danger of enemy pawns moving toward our king by [type][distance from edge][rank].

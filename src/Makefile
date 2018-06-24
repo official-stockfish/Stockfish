@@ -23,9 +23,9 @@
 
 ### Executable name
 ifeq ($(COMP),mingw)
-EXE = McBrain-92.exe
+EXE = McBrain-93.exe
 else
-EXE = McBrain-92
+EXE = McBrain-93
 endif
 ##### bench nodes:   5975584
 
