@@ -88,7 +88,7 @@ public:
   }
 
 private:
-  friend TTEntry;
+  friend struct TTEntry;
 
   size_t clusterCount;
   Cluster* table;
