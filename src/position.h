@@ -187,7 +187,7 @@ private:
   Bitboard castlingPath[CASTLING_RIGHT_NB];
   int gamePly;
   Color sideToMove;
-  Score  psq;
+  Score psq;
   Thread* thisThread;
   StateInfo* st;
   bool chess960;
