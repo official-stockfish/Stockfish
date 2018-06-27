@@ -36,10 +36,6 @@
 
 using std::string;
 
-namespace PSQT {
-  extern Score psq[PIECE_NB][SQUARE_NB];
-}
-
 namespace Zobrist {
 
   Key psq[PIECE_NB][SQUARE_NB];
@@ -381,7 +377,6 @@ void Position::set_state(StateInfo* si) const {
   si->key = si->materialKey = 0;
   si->pawnKey = Zobrist::noPawns;
   si->nonPawnMaterial[WHITE] = si->nonPawnMaterial[BLACK] = VALUE_ZERO;
-  si->psq = SCORE_ZERO;
   si->checkersBB = attackers_to(square<KING>(sideToMove)) & pieces(~sideToMove);
 
   set_check_info(si);
@@ -391,7 +386,6 @@ void Position::set_state(StateInfo* si) const {
       Square s = pop_lsb(&b);
       Piece pc = piece_on(s);
       si->key ^= Zobrist::psq[pc][s];
-      si->psq += PSQT::psq[pc][s];
   }
 
   if (si->epSquare != SQ_NONE)
@@ -752,7 +746,6 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       Square rfrom, rto;
       do_castling<true>(us, from, to, rfrom, rto);
 
-      st->psq += PSQT::psq[captured][rto] - PSQT::psq[captured][rfrom];
       k ^= Zobrist::psq[captured][rfrom] ^ Zobrist::psq[captured][rto];
       captured = NO_PIECE;
   }
@@ -790,9 +783,6 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       k ^= Zobrist::psq[captured][capsq];
       st->materialKey ^= Zobrist::psq[captured][pieceCount[captured]];
       prefetch(thisThread->materialTable[st->materialKey]);
-
-      // Update incremental scores
-      st->psq -= PSQT::psq[captured][capsq];
 
       // Reset rule 50 counter
       st->rule50 = 0;
@@ -847,9 +837,6 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
           st->materialKey ^=  Zobrist::psq[promotion][pieceCount[promotion]-1]
                             ^ Zobrist::psq[pc][pieceCount[pc]];
 
-          // Update incremental score
-          st->psq += PSQT::psq[promotion][to] - PSQT::psq[pc][to];
-
           // Update material
           st->nonPawnMaterial[us] += PieceValue[MG][promotion];
       }
@@ -861,9 +848,6 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       // Reset rule 50 draw counter
       st->rule50 = 0;
   }
-
-  // Update incremental scores
-  st->psq += PSQT::psq[pc][to] - PSQT::psq[pc][from];
 
   // Set capture piece
   st->capturedPiece = captured;
