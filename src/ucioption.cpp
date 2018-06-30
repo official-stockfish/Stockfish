@@ -64,7 +64,6 @@ void init(OptionsMap& o) {
   // at most 2^32 clusters.
   constexpr int MaxHashMB = Is64Bit ? 131072 : 2048;
 
-  o["Debug Log File"]        << Option("", on_logger);
   o["Contempt"]              << Option(21, -150, 150);
   o["Analysis Contempt"]     << Option("Both var Off var White var Black var Both", "Off");
   o["UCI_AnalyseMode"]       << Option(false);
@@ -80,6 +79,7 @@ void init(OptionsMap& o) {
   o["FastPlay"]              << Option(false);
   o["No_Null_Moves"]         << Option(false);
   o["UCI_LimitStrength"]     << Option(false);
+  o["Minimal_Output"]        << Option(false);
   o["UCI_ELO"]               << Option(1500, 1500, 2800);
   o["Skill Level"]           << Option(20, 0, 20);
   o["Move Overhead"]         << Option(30, 0, 5000);
@@ -96,7 +96,7 @@ void init(OptionsMap& o) {
   o["BookFile"]              << Option("<empty>", on_book_file);
   o["BestBookMove"]          << Option(true, on_best_book_move);
   o["BookDepth"]             << Option(255, 1, 255, on_book_depth);
-  o["Debug Log File"]                 << Option("", on_logger);
+  o["Debug Log File"]        << Option("", on_logger);
 }
 
 

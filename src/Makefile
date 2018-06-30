@@ -23,18 +23,18 @@
 
 ### Executable name
 ifeq ($(COMP),mingw)
-EXE = McBrain-94.exe
+EXE = McBrain-95.exe
 else
-EXE = McBrain-94
+EXE = McBrain-95
 endif
-##### bench nodes:   6781468
+##### bench nodes:   5580391
 
 ### Installation dir definitions
 PREFIX = /usr/local
 BINDIR = $(PREFIX)/bin
 
 ### Built-in benchmark for pgo-builds
-PGOBENCH = ./$(EXE) bench
+PGOBENCH = ./$(EXE) bench 16 1 10
 
 ### Object files
 OBJS = benchmark.o bitbase.o bitboard.o endgame.o evaluate.o main.o \

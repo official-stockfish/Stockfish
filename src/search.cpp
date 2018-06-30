@@ -101,6 +101,7 @@ namespace {
   };
 	
   int tactical;
+  bool minOutput;
 	
   bool bookEnabled, bruteForce, limitStrength, noNULL;
 
@@ -207,6 +208,8 @@ void MainThread::search() {
   limitStrength	    = Options["UCI_LimitStrength"];
   noNULL			= Options["No_Null_Moves"];
   tactical		    = Options["Tactical"];
+  minOutput 		= Options["Minimal_Output"];
+	
   bookEnabled       = Options["Book_Enabled"];
 
   Color us = rootPos.side_to_move();
@@ -452,7 +455,7 @@ void Thread::search() {
 
               // When failing high/low give some update (without cluttering
               // the UI) before a re-search.
-              if (   mainThread
+              if (    !minOutput && mainThread
                   && multiPV == 1
                   && (bestValue <= alpha || bestValue >= beta)
                   && Time.elapsed() > 3000)
@@ -593,6 +596,7 @@ namespace {
 	  if (depth < ONE_PLY)
 		  return qsearch<NT>(pos, ss, alpha, beta);
 
+	size_t maxmove = 0;
     assert(-VALUE_INFINITE <= alpha && alpha < beta && beta <= VALUE_INFINITE);
     assert(PvNode || (alpha == beta - 1));
     assert(DEPTH_ZERO < depth && depth < DEPTH_MAX);
@@ -815,9 +819,20 @@ namespace {
         && !(MoveList<LEGAL>(pos).size() < 4)) //MichaelB7
     {
         assert(eval - beta >= 0);
-
+		
+		maxmove = MoveList<LEGAL>(pos).size();
+		static const double dPly = ONE_PLY;
+		static const double dPlyInv = 1.0/dPly;
+		static const double vInv = 1.0 / Value(170);
+		double dDepth = double(depth);
+		//double dR = ((823.0 + 67.0 * dDepth *dPlyInv) * c256_Inv  + std::min((double(eval - beta) * pvInv), 3.0)) * dPly * logistic_mobility_score(maxmove);//DC
+		double dR = (2.6 * log(dDepth * dPlyInv) + std::min(double(eval - beta) * vInv, 3.0)) * dPly * logistic_mobility_score(maxmove);
+		// Null move dynamic reduction based on depth and value
+		Depth R = (Depth(int(dR + 0.5)));//DC
         // Null move dynamic reduction based on depth and value
-        Depth R = (int(2.6 * log(depth / ONE_PLY)) + std::min((eval - beta) / Value(170), 3)) * ONE_PLY; //Ivan Ivec 
+		//Depth R = ((823 + 67 * depth / ONE_PLY) / 256 + std::min((eval - beta) / PawnValueMg, 3)) * ONE_PLY; orig SF
+
+		//Depth R = (int(2.6 * log(depth / ONE_PLY)) + std::min((eval - beta) / Value(170), 3)) * ONE_PLY; //Ivan Ivec
 
         ss->currentMove = MOVE_NULL;
         ss->contHistory = thisThread->contHistory[NO_PIECE][0].get();
@@ -933,7 +948,7 @@ moves_loop: // When in check, search starts from here
 
       ss->moveCount = ++moveCount;
 
-      if (rootNode && thisThread == Threads.main() && Time.elapsed() > 3000)
+      if (!minOutput && rootNode && thisThread == Threads.main() && Time.elapsed() > 3000)
           sync_cout << "info depth " << depth / ONE_PLY
                     << " currmove " << UCI::move(move, pos.is_chess960())
                     << " currmovenumber " << moveCount + thisThread->pvIdx << sync_endl;

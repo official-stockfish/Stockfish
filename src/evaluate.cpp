@@ -159,8 +159,8 @@ namespace {
   // PassedDanger[Rank] contains a term to weight the passed score
   constexpr int PassedDanger[RANK_NB] = { 0, 0, 0, 2, 7, 12, 19 };
 
-  // KingProtector[PieceType-2] contains a penalty according to distance from king
-  constexpr Score KingProtector[] = { S(4, 6), S(6, 3), S(1, 0), S(0, -2) };
+  // KingProtector[knight/bishop] contains a penalty according to distance from king
+  constexpr Score KingProtector[] = { S(4, 6), S(6, 3) };
 
   // Assorted bonuses and penalties
   constexpr Score BishopPawns        = S(  3,  5);
@@ -331,9 +331,6 @@ namespace {
 
         mobility[Us] += MobilityBonus[Pt - 2][mob];
 
-        // Penalty if the piece is far from the king
-        score -= KingProtector[Pt - 2] * distance(s, pos.square<KING>(Us));
-
         if (Pt == BISHOP || Pt == KNIGHT)
         {
             // Bonus if piece is on an outpost square or can reach one
@@ -348,6 +345,9 @@ namespace {
             if (    relative_rank(Us, s) < RANK_5
                 && (pos.pieces(PAWN) & (s + pawn_push(Us))))
                 score += MinorBehindPawn;
+
+            // Penalty if the piece is far from the king
+            score -= KingProtector[Pt == BISHOP] * distance(s, pos.square<KING>(Us));
 
             if (Pt == BISHOP)
             {
@@ -646,7 +646,7 @@ namespace {
     {
         Square s = pop_lsb(&b);
 
-        assert(!(pos.pieces(Them, PAWN) & forward_file_bb(Us, s + Up)));
+        bb = forward_file_bb(Us, s) & pos.pieces(Them);
 
         bb = forward_file_bb(Us, s) & (attackedBy[Them][ALL_PIECES] | pos.pieces(Them));
         score -= HinderPassedPawn * popcount(bb);
@@ -935,4 +935,246 @@ std::string Eval::trace(const Position& pos) {
   ss << "\nTotal evaluation: " << to_cp(v) << " (white side)\n";
 
   return ss.str();
+}
+
+double logistic_mobility_score(size_t mobility)
+{
+	switch (mobility)
+	{
+#ifdef old
+		case 20:
+			return 0.750001;
+		case 21:
+			return 0.750002;
+		case 22:
+			return 0.750005;
+		case 23:
+			return 0.750013;
+		case 24:
+			return 0.750034;
+		case 25:
+			return 0.750093;
+		case 26:
+			return 0.750252;
+		case 27:
+			return 0.750683;
+		case 28:
+			return 0.751854;
+		case 29:
+			return 0.75502;
+		case 30:
+			return 0.76349;
+		case 31:
+			return 0.785569;
+		case 32:
+			return 0.839402;
+		case 33:
+			return 0.951706;
+		case 34:
+			return 1.125;
+		case 35:
+			return 1.29829;
+		case 36:
+			return 1.4106;
+		case 37:
+			return 1.46443;
+		case 38:
+			return 1.48651;
+		case 39:
+			return 1.49498;
+		case 40:
+			return 1.49815;
+		case 41:
+			return 1.49932;
+		case 42:
+			return 1.49975;
+		case 43:
+			return 1.49991;
+		case 44:
+			return 1.49997;
+		case 45:
+			return 1.49999;
+#else
+		case 0:
+			return 0.350198;
+			break;
+		case 1:
+			return 0.350918;
+			break;
+		case 2:
+			return 0.353303;
+			break;
+		case 3:
+			return 0.359504;
+			break;
+		case 4:
+			return 0.37254;
+			break;
+		case 5:
+			return 0.395363;
+			break;
+		case 6:
+			return 0.429588;
+			break;
+		case 7:
+			return 0.474697;
+			break;
+		case 8:
+			return 0.528165;
+			break;
+		case 9:
+			return 0.586295;
+			break;
+		case 10:
+			return 0.64524;
+			break;
+		case 11:
+			return 0.701766;
+			break;
+		case 12:
+			return 0.753616;
+			break;
+		case 13:
+			return 0.799533;
+			break;
+		case 14:
+			return 0.839079;
+			break;
+		case 15:
+			return 0.8724;
+			break;
+		case 16:
+			return 0.899999;
+			break;
+		case 17:
+			return 0.922552;
+			break;
+		case 18:
+			return 0.940788;
+			break;
+		case 19:
+			return 0.955412;
+			break;
+		case 20:
+			return 0.967065;
+			break;
+		case 21:
+			return 0.976302;
+			break;
+		case 22:
+			return 0.983597;
+			break;
+		case 23:
+			return 0.989341;
+			break;
+		case 24:
+			return 0.993851;
+			break;
+		case 25:
+			return 0.997387;
+			break;
+		case 26:
+			return 1.00016;
+			break;
+		case 27:
+			return 1.00232;
+			break;
+		case 28:
+			return 1.00401;
+			break;
+		case 29:
+			return 1.00533;
+			break;
+		case 30:
+			return 1.00636;
+			break;
+		case 31:
+			return 1.00716;
+			break;
+		case 32:
+			return 1.00779;
+			break;
+		case 33:
+			return 1.00828;
+			break;
+		case 34:
+			return 1.00866;
+			break;
+		case 35:
+			return 1.00896;
+			break;
+		case 36:
+			return 1.00919;
+			break;
+		case 37:
+			return 1.00937;
+			break;
+		case 38:
+			return 1.00951;
+			break;
+		case 39:
+			return 1.00962;
+			break;
+		case 40:
+			return 1.0097;
+			break;
+		case 41:
+			return 1.00977;
+			break;
+		case 42:
+			return 1.00982;
+			break;
+		case 43:
+			return 1.00986;
+			break;
+		case 44:
+			return 1.00989;
+			break;
+		case 45:
+			return 1.00991;
+			break;
+		case 46:
+			return 1.00993;
+			break;
+		case 47:
+			return 1.00995;
+			break;
+		case 48:
+			return 1.00996;
+			break;
+		case 49:
+			return 1.00997;
+			break;
+		case 50:
+			return 1.00998;
+			break;
+		case 51:
+			return 1.00998;
+			break;
+		case 52:
+			return 1.00999;
+			break;
+		case 53:
+			return 1.00999;
+			break;
+		case 54:
+			return 1.00999;
+			break;
+		case 55:
+			return 1.00999;
+			break;
+		case 56:
+			return 1.00999;
+			break;
+			
+		default:
+			return 1.01;
+			break;
+			
+#endif
+	}
+	if (mobility < 20) return 0.75;
+	if (mobility > 45) return 1.5;
+	assert(false);
+	return 0;
 }
