@@ -53,24 +53,27 @@ void TranspositionTable::resize(size_t mbSize) {
 }
 
 
-/// TranspositionTable::clear() overwrites the entire transposition table
-/// with zeros. It is called whenever the table is resized, or when the
-/// user asks the program to clear the table (from the UCI interface).
-/// It starts as many threads as allowed by the Threads option.
+/// TranspositionTable::clear() initializes the entire transposition table to zero,
+//  in a multi-threaded way.
 
 void TranspositionTable::clear() {
 
-  const size_t stride = clusterCount / Options["Threads"];
   std::vector<std::thread> threads;
+
   for (size_t idx = 0; idx < Options["Threads"]; idx++)
   {
-      const size_t start =  stride * idx,
-                   len =    idx != Options["Threads"] - 1 ?
-                            stride :
-                            clusterCount - start;
-      threads.push_back(std::thread([this, idx, start, len]() {
+      threads.push_back(std::thread([this, idx]() {
+
+          // Thread binding gives faster search on systems with a first-touch policy
           if (Options["Threads"] >= 8)
               WinProcGroup::bindThisThread(idx);
+
+          // Each thread will zero its part of the hash table
+          const size_t stride = clusterCount / Options["Threads"],
+                       start  = stride * idx,
+                       len    = idx != Options["Threads"] - 1 ?
+                                stride : clusterCount - start;
+
           std::memset(&table[start], 0, len * sizeof(Cluster));
       }));
   }
