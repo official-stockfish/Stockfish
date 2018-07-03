@@ -29,6 +29,28 @@
 
 TranspositionTable TT; // Our global transposition table
 
+/// TTEntry::save saves a TTEntry
+void TTEntry::save(Key k, Value v, Bound b, Depth d, Move m, Value ev) {
+
+  assert(d / ONE_PLY * ONE_PLY == d);
+
+  // Preserve any existing move for the same position
+  if (m || (k >> 48) != key16)
+      move16 = (uint16_t)m;
+
+  // Overwrite less valuable entries
+  if (  (k >> 48) != key16
+      || d / ONE_PLY > depth8 - 4
+      || b == BOUND_EXACT)
+  {
+      key16     = (uint16_t)(k >> 48);
+      value16   = (int16_t)v;
+      eval16    = (int16_t)ev;
+      genBound8 = (uint8_t)(TT.generation8 | b);
+      depth8    = (int8_t)(d / ONE_PLY);
+  }
+}
+
 
 /// TranspositionTable::resize() sets the size of the transposition table,
 /// measured in megabytes. Transposition table consists of a power of 2 number
