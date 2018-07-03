@@ -39,6 +39,7 @@ Bitboard PassedPawnMask[COLOR_NB][SQUARE_NB];
 Bitboard PawnAttackSpan[COLOR_NB][SQUARE_NB];
 Bitboard PseudoAttacks[PIECE_TYPE_NB][SQUARE_NB];
 Bitboard PawnAttacks[COLOR_NB][SQUARE_NB];
+Bitboard KingRing[COLOR_NB][SQUARE_NB];
 
 Magic RookMagics[SQUARE_NB];
 Magic BishopMagics[SQUARE_NB];
@@ -157,6 +158,19 @@ void Bitboards::init() {
               LineBB[s1][s2] = (attacks_bb(pt, s1, 0) & attacks_bb(pt, s2, 0)) | s1 | s2;
               BetweenBB[s1][s2] = attacks_bb(pt, s1, SquareBB[s2]) & attacks_bb(pt, s2, SquareBB[s1]);
           }
+
+      //Calculate KingRings (shift 1 from edges, except RANK_8)
+      for (Color c = WHITE; c <= BLACK; ++c)
+      {
+         KingRing[c][s1] = PseudoAttacks[KING][s1];
+         if (relative_rank(c,s1) == RANK_1)
+            KingRing[c][s1] |= (c == WHITE) ? shift<NORTH>(KingRing[c][s1]):
+                                              shift<SOUTH>(KingRing[c][s1]);
+         if (file_of(s1) == FILE_H)
+            KingRing[c][s1] |= shift<WEST>(KingRing[c][s1]);
+         if (file_of(s1) == FILE_A)
+            KingRing[c][s1] |= shift<EAST>(KingRing[c][s1]);
+      }
   }
 }
 
