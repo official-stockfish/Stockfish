@@ -29,6 +29,28 @@
 
 TranspositionTable TT; // Our global transposition table
 
+/// TTEntry::save saves a TTEntry
+void TTEntry::save(Key k, Value v, Bound b, Depth d, Move m, Value ev) {
+
+  assert(d / ONE_PLY * ONE_PLY == d);
+
+  // Preserve any existing move for the same position
+  if (m || (k >> 48) != key16)
+      move16 = (uint16_t)m;
+
+  // Overwrite less valuable entries
+  if (  (k >> 48) != key16
+      || d / ONE_PLY > depth8 - 4
+      || b == BOUND_EXACT)
+  {
+      key16     = (uint16_t)(k >> 48);
+      value16   = (int16_t)v;
+      eval16    = (int16_t)ev;
+      genBound8 = (uint8_t)(TT.generation8 | b);
+      depth8    = (int8_t)(d / ONE_PLY);
+  }
+}
+
 
 /// TranspositionTable::resize() sets the size of the transposition table,
 /// measured in megabytes. Transposition table consists of a power of 2 number
@@ -53,24 +75,27 @@ void TranspositionTable::resize(size_t mbSize) {
 }
 
 
-/// TranspositionTable::clear() overwrites the entire transposition table
-/// with zeros. It is called whenever the table is resized, or when the
-/// user asks the program to clear the table (from the UCI interface).
-/// It starts as many threads as allowed by the Threads option.
+/// TranspositionTable::clear() initializes the entire transposition table to zero,
+//  in a multi-threaded way.
 
 void TranspositionTable::clear() {
 
-  const size_t stride = clusterCount / Options["Threads"];
   std::vector<std::thread> threads;
+
   for (size_t idx = 0; idx < Options["Threads"]; idx++)
   {
-      const size_t start =  stride * idx,
-                   len =    idx != Options["Threads"] - 1 ?
-                            stride :
-                            clusterCount - start;
-      threads.push_back(std::thread([this, idx, start, len]() {
+      threads.push_back(std::thread([this, idx]() {
+
+          // Thread binding gives faster search on systems with a first-touch policy
           if (Options["Threads"] >= 8)
               WinProcGroup::bindThisThread(idx);
+
+          // Each thread will zero its part of the hash table
+          const size_t stride = clusterCount / Options["Threads"],
+                       start  = stride * idx,
+                       len    = idx != Options["Threads"] - 1 ?
+                                stride : clusterCount - start;
+
           std::memset(&table[start], 0, len * sizeof(Cluster));
       }));
   }
