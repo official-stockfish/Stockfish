@@ -555,6 +555,7 @@ namespace {
                 score += ThreatByRank * (int)relative_rank(Them, s);
         }
 
+        // Bonus for king attacks on pawns or pieces which are not pawn-defended
         if (weak & attackedBy[Us][KING])
             score += ThreatByKing;
 
