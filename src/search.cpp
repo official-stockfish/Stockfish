@@ -293,7 +293,7 @@ void MainThread::search() {
   previousScore = static_cast<Value>(mi.score);
 
   // Send again PV info if we have a new best thread
-  if (mi.rank == Cluster::rank()) {
+  if (Cluster::is_root()) {
       if (bestThread != this)
           sync_cout << UCI::pv(bestThread->rootPos, bestThread->completedDepth, -VALUE_INFINITE, VALUE_INFINITE) << sync_endl;
 
