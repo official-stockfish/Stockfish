@@ -27,7 +27,6 @@
 #include "tt.h"
 #include "uci.h"
 #include "syzygy/tbprobe.h"
-#include "cluster.h"
 
 namespace PSQT {
   void init();

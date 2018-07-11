@@ -37,10 +37,13 @@ namespace Cluster {
 
 static int world_rank = MPI_PROC_NULL;
 static int world_size = 0;
+static bool stop_signal = false;
+static MPI_Request reqStop = MPI_REQUEST_NULL;
 
 static MPI_Comm InputComm = MPI_COMM_NULL;
 static MPI_Comm TTComm = MPI_COMM_NULL;
 static MPI_Comm MoveComm = MPI_COMM_NULL;
+static MPI_Comm StopComm = MPI_COMM_NULL;
 
 static MPI_Datatype TTEntryDatatype = MPI_DATATYPE_NULL;
 static std::vector<TTEntry> TTBuff;
@@ -104,6 +107,7 @@ void init() {
   MPI_Comm_dup(MPI_COMM_WORLD, &InputComm);
   MPI_Comm_dup(MPI_COMM_WORLD, &TTComm);
   MPI_Comm_dup(MPI_COMM_WORLD, &MoveComm);
+  MPI_Comm_dup(MPI_COMM_WORLD, &StopComm);
 }
 
 void finalize() {
@@ -129,6 +133,32 @@ bool getline(std::istream& input, std::string& str) {
       str.assign(vec.begin(), vec.end());
   MPI_Bcast(&state, 1, MPI_CXX_BOOL, 0, InputComm);
   return state;
+}
+
+void sync_start() {
+  stop_signal = false;
+
+  // Start listening to stop signal
+  if (!is_root())
+      MPI_Ibarrier(StopComm, &reqStop);
+}
+
+void sync_stop() {
+  if (is_root()) {
+      if (!stop_signal && Threads.stop) {
+          // Signal the cluster about stopping
+          stop_signal = true;
+          MPI_Ibarrier(StopComm, &reqStop);
+          MPI_Wait(&reqStop, MPI_STATUS_IGNORE);
+      }
+  }
+  else {
+      int flagStop;
+      // Check if we've received any stop signal
+      MPI_Test(&reqStop, &flagStop, MPI_STATUS_IGNORE);
+      if (flagStop)
+          Threads.stop = true;
+  }
 }
 
 int size() {

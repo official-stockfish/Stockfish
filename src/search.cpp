@@ -234,11 +234,14 @@ void MainThread::search() {
   Threads.stopOnPonderhit = true;
 
   while (!Threads.stop && (Threads.ponder || Limits.infinite))
-  {} // Busy wait for a stop or a ponder reset
+  { } // Busy wait for a stop or a ponder reset
 
   // Stop the threads if not already stopped (also raise the stop if
   // "ponderhit" just reset Threads.ponder).
   Threads.stop = true;
+
+  // Finish any outstanding barriers.
+  Cluster::sync_stop();
 
   // Wait until all threads have finished
   for (Thread* th : Threads)
@@ -292,8 +295,8 @@ void MainThread::search() {
 
   previousScore = static_cast<Value>(mi.score);
 
-  // Send again PV info if we have a new best thread
   if (Cluster::is_root()) {
+      // Send again PV info if we have a new best thread
       if (bestThread != this)
           sync_cout << UCI::pv(bestThread->rootPos, bestThread->completedDepth, -VALUE_INFINITE, VALUE_INFINITE) << sync_endl;
 
@@ -1608,6 +1611,9 @@ void MainThread::check_time() {
   if (Threads.ponder)
       return;
 
+  // Check if root has reached a stop barrier
+  Cluster::sync_stop();
+
   if (   (Limits.use_time_management() && elapsed > Time.maximum() - 10)
       || (Limits.movetime && elapsed >= Limits.movetime)
       || (Limits.nodes && Threads.nodes_searched() >= (uint64_t)Limits.nodes))
@@ -1653,8 +1659,8 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
       if (!tb && i == pvIdx)
           ss << (v >= beta ? " lowerbound" : v <= alpha ? " upperbound" : "");
 
-      ss << " nodes "    << nodesSearched
-         << " nps "      << nodesSearched * 1000 / elapsed;
+      ss << " nodes "    << nodesSearched * Cluster::size()
+         << " nps "      << nodesSearched * Cluster::size() * 1000 / elapsed;
 
       if (elapsed > 1000) // Earlier makes little sense
           ss << " hashfull " << TT.hashfull();
