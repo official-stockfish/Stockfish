@@ -159,6 +159,8 @@ void ThreadPool::start_thinking(Position& pos, StateListPtr& states,
   main()->wait_for_search_finished();
 
   stopOnPonderhit = stop = false;
+  Cluster::sync_start();
+
   ponder = ponderMode;
   Search::Limits = limits;
   Search::RootMoves rootMoves;

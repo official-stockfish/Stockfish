@@ -26,6 +26,7 @@
 #include "misc.h"
 #include "movepick.h"
 #include "types.h"
+#include "cluster.h"
 
 class Position;
 
@@ -89,7 +90,7 @@ struct LimitsType {
   }
 
   bool use_time_management() const {
-    return !(mate | movetime | depth | nodes | perft | infinite);
+    return Cluster::is_root() && !(mate | movetime | depth | nodes | perft | infinite);
   }
 
   std::vector<Move> searchmoves;
