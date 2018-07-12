@@ -291,7 +291,7 @@ namespace {
   Score Evaluation<T>::pieces() {
 
     constexpr Color     Them        = (Us == WHITE ? BLACK : WHITE);
-    constexpr Direction Up          = (Us == WHITE ? NORTH : SOUTH);
+    constexpr Direction Down        = (Us == WHITE ? SOUTH : NORTH);
     constexpr Bitboard OutpostRanks = (Us == WHITE ? Rank4BB | Rank5BB | Rank6BB
                                                    : Rank5BB | Rank4BB | Rank3BB);
     const Square* pl = pos.squares<Pt>(Us);
@@ -338,7 +338,7 @@ namespace {
                 score += Outpost[Pt == BISHOP][bool(attackedBy[Us][PAWN] & bb)];
 
             // Bonus when behind a pawn
-            if (pos.pieces(PAWN) & (s + Up))
+            if (shift<Down>(pos.pieces(PAWN)) & s)
                 score += MinorBehindPawn;
 
             // Penalty if the piece is far from the king
@@ -348,7 +348,7 @@ namespace {
             {
                 // Penalty according to number of pawns on the same color square as the
                 // bishop, bigger when the center files are blocked with pawns.
-                Bitboard blocked = shift<Up>(pos.pieces(Us, PAWN)) & pos.pieces();
+                Bitboard blocked = pos.pieces(Us, PAWN) & shift<Down>(pos.pieces());
 
                 score -= BishopPawns * pe->pawns_on_same_color_squares(Us, s)
                                      * (1 + popcount(blocked & CenterFiles));
