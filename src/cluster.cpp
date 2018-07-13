@@ -58,8 +58,8 @@ static void BestMove(void* in, void* inout, int* len, MPI_Datatype* datatype) {
   MoveInfo* r = static_cast<MoveInfo*>(inout);
   for (int i=0; i < *len; ++i)
   {
-      if (    l[i].depth > r[i].depth
-          && (l[i].score >= r[i].score || l[i].score >= VALUE_MATE_IN_MAX_PLY))
+      if (    (l[i].depth > r[i].depth || (l[i].depth == r[i].depth && l[i].rank < r[i].rank))
+          && (l[i].score >= r[i].score))
          r[i] = l[i];
   }
 }
@@ -102,7 +102,7 @@ void init() {
 
   MPI_Type_create_hindexed_block(3, 1, MIdisps.data(), MPI_INT, &MIDatatype);
   MPI_Type_commit(&MIDatatype);
-  MPI_Op_create(BestMove, true, &BestMoveOp);
+  MPI_Op_create(BestMove, false, &BestMoveOp);
 
   MPI_Comm_dup(MPI_COMM_WORLD, &InputComm);
   MPI_Comm_dup(MPI_COMM_WORLD, &TTComm);
