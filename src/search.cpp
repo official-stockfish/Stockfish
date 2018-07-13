@@ -295,7 +295,7 @@ void MainThread::search() {
 
   previousScore = static_cast<Value>(mi.score);
 
-  if (Cluster::is_root()) {
+  if (mi.rank == Cluster::rank()) {
       // Send again PV info if we have a new best thread
       if (bestThread != this)
           sync_cout << UCI::pv(bestThread->rootPos, bestThread->completedDepth, -VALUE_INFINITE, VALUE_INFINITE) << sync_endl;
@@ -373,7 +373,7 @@ void Thread::search() {
       // Distribute search depths across the helper threads
       if (idx + Cluster::rank() > 0)
       {
-          int i = (idx + Cluster::rank() - 1) % 20;
+          int i = (idx + Cluster::rank() * (int)Options["Threads"] - 1) % 20;
           if (((rootDepth / ONE_PLY + SkipPhase[i]) / SkipSize[i]) % 2)
               continue;  // Retry with an incremented rootDepth
       }
