@@ -67,7 +67,7 @@ int size();
 int rank();
 inline bool is_root() { return rank() == 0; }
 void save(Thread* thread, TTEntry* tte,
-          Key k, Value v, Bound b, Depth d, Move m, Value ev, uint8_t g);
+          Key k, Value v, Bound b, Depth d, Move m, Value ev);
 void reduce_moves(MoveInfo& mi);
 void sync_start();
 void sync_stop();
