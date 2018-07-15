@@ -297,7 +297,7 @@ void MainThread::search() {
 
   if (mi.rank == Cluster::rank()) {
       // Send again PV info if we have a new best thread
-      if (bestThread != this)
+      if (!Cluster::is_root() || bestThread != this)
           sync_cout << UCI::pv(bestThread->rootPos, bestThread->completedDepth, -VALUE_INFINITE, VALUE_INFINITE) << sync_endl;
 
       sync_cout << "bestmove " << UCI::move(bestThread->rootMoves[0].pv[0], rootPos.is_chess960());

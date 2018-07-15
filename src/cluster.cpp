@@ -58,8 +58,7 @@ static void BestMove(void* in, void* inout, int* len, MPI_Datatype* datatype) {
   MoveInfo* r = static_cast<MoveInfo*>(inout);
   for (int i=0; i < *len; ++i)
   {
-      if (    (l[i].depth > r[i].depth || (l[i].depth == r[i].depth && l[i].rank < r[i].rank))
-          && (l[i].score >= r[i].score))
+      if (l[i].depth >= r[i].depth && l[i].score >= r[i].score)
          r[i] = l[i];
   }
 }
