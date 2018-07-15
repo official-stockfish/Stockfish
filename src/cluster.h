@@ -83,9 +83,9 @@ constexpr int size() { return 1; }
 constexpr int rank() { return 0; }
 constexpr bool is_root() { return true; }
 inline void save(Thread* thread, TTEntry* tte,
-          Key k, Value v, Bound b, Depth d, Move m, Value ev, uint8_t g) {
+          Key k, Value v, Bound b, Depth d, Move m, Value ev) {
   (void)thread;
-  tte->save(k, v, b, d, m, ev, g);
+  tte->save(k, v, b, d, m, ev);
 }
 inline void reduce_moves(MoveInfo&) { }
 inline void sync_start() { }
