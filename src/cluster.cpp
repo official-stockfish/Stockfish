@@ -169,8 +169,8 @@ int rank() {
 }
 
 void save(Thread* thread, TTEntry* tte,
-          Key k, Value v, Bound b, Depth d, Move m, Value ev, uint8_t g) {
-  tte->save(k, v, b, d, m, ev, g);
+          Key k, Value v, Bound b, Depth d, Move m, Value ev) {
+  tte->save(k, v, b, d, m, ev);
   // Try to add to thread's send buffer
   {
       std::lock_guard<Mutex> lk(thread->ttBuffer.mutex);
@@ -194,7 +194,7 @@ void save(Thread* thread, TTEntry* tte,
           for (auto&& e : TTBuff) {
               replace_tte = TT.probe(e.key(), found);
               replace_tte->save(e.key(), e.value(), e.bound(), e.depth(),
-                                e.move(), e.eval(), e.gen());
+                                e.move(), e.eval());
           }
 
           // Reset send buffer
