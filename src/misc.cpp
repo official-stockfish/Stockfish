@@ -238,7 +238,7 @@ int get_group(size_t idx) {
 
   // Early exit if the needed API is not available at runtime
   HMODULE k32 = GetModuleHandle("Kernel32.dll");
-  auto fun1 = (fun1_t)GetProcAddress(k32, "GetLogicalProcessorInformationEx");
+  auto fun1 = (fun1_t)(void(*)())GetProcAddress(k32, "GetLogicalProcessorInformationEx");
   if (!fun1)
       return -1;
 
@@ -306,8 +306,8 @@ void bindThisThread(size_t idx) {
 
   // Early exit if the needed API are not available at runtime
   HMODULE k32 = GetModuleHandle("Kernel32.dll");
-  auto fun2 = (fun2_t)GetProcAddress(k32, "GetNumaNodeProcessorMaskEx");
-  auto fun3 = (fun3_t)GetProcAddress(k32, "SetThreadGroupAffinity");
+  auto fun2 = (fun2_t)(void(*)())GetProcAddress(k32, "GetNumaNodeProcessorMaskEx");
+  auto fun3 = (fun3_t)(void(*)())GetProcAddress(k32, "SetThreadGroupAffinity");
 
   if (!fun2 || !fun3)
       return;
