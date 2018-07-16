@@ -29,6 +29,13 @@
 #include <string>
 #include <vector>
 
+// For usleep() and Sleep()
+#ifndef _WIN32
+#include <unistd.h>
+#else
+#include <windows.h>
+#endif
+
 #include "cluster.h"
 #include "thread.h"
 #include "tt.h"
@@ -58,8 +65,9 @@ static void BestMove(void* in, void* inout, int* len, MPI_Datatype* datatype) {
   MoveInfo* r = static_cast<MoveInfo*>(inout);
   for (int i=0; i < *len; ++i)
   {
-      if (l[i].depth >= r[i].depth && l[i].score >= r[i].score)
-         r[i] = l[i];
+      if (    (l[i].depth > r[i].depth || (l[i].depth == r[i].depth && l[i].rank < r[i].rank))
+           && (l[i].score > r[i].score || (l[i].score == r[i].score && l[i].rank < r[i].rank)))
+          r[i] = l[i];
   }
 }
 
@@ -127,21 +135,24 @@ bool getline(std::istream& input, std::string& str) {
 
   // Some MPI implementations use busy-wait pooling, while we need yielding
   static MPI_Request reqInput = MPI_REQUEST_NULL;
-  MPI_Ibarrier(InputComm, &reqInput);
+  MPI_Ibcast(&size, 1, MPI_UNSIGNED_LONG, 0, InputComm, &reqInput);
   if (is_root())
       MPI_Wait(&reqInput, MPI_STATUS_IGNORE);
   else {
       while (true) {
-          static int flag;
+          int flag;
           MPI_Test(&reqInput, &flag, MPI_STATUS_IGNORE);
           if (flag)
               break;
-          else
-              std::this_thread::sleep_for(std::chrono::milliseconds(10));
+          else {
+#ifndef _WIN32
+              usleep(1000 * 10);
+#else
+              Sleep(10);
+#endif
+          }
       }
   }
-
-  MPI_Bcast(&size, 1, MPI_UNSIGNED_LONG, 0, InputComm);
   if (!is_root())
       vec.resize(size);
   MPI_Bcast(vec.data(), size, MPI_CHAR, 0, InputComm);
