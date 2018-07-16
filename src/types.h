@@ -324,10 +324,10 @@ inline Value& operator+=(Value& v, int i) { return v = v + i; }
 inline Value& operator-=(Value& v, int i) { return v = v - i; }
 
 /// Additional operators to add a Direction to a Square
-inline Square operator+(Square s, Direction d) { return Square(int(s) + int(d)); }
-inline Square operator-(Square s, Direction d) { return Square(int(s) - int(d)); }
-inline Square& operator+=(Square &s, Direction d) { return s = s + d; }
-inline Square& operator-=(Square &s, Direction d) { return s = s - d; }
+constexpr Square operator+(Square s, Direction d) { return Square(int(s) + int(d)); }
+constexpr Square operator-(Square s, Direction d) { return Square(int(s) - int(d)); }
+inline Square& operator+=(Square& s, Direction d) { return s = s + d; }
+inline Square& operator-=(Square& s, Direction d) { return s = s - d; }
 
 /// Only declared but not defined. We don't want to multiply two scores due to
 /// a very high risk of overflow. So user should explicitly convert to integer.
@@ -345,7 +345,7 @@ inline Score operator*(Score s, int i) {
 
   assert(eg_value(result) == (i * eg_value(s)));
   assert(mg_value(result) == (i * mg_value(s)));
-  assert((i == 0) || (result / i) == s );
+  assert((i == 0) || (result / i) == s);
 
   return result;
 }
@@ -448,7 +448,7 @@ constexpr PieceType promotion_type(Move m) {
   return PieceType(((m >> 12) & 3) + KNIGHT);
 }
 
-inline Move make_move(Square from, Square to) {
+constexpr Move make_move(Square from, Square to) {
   return Move((from << 6) + to);
 }
 
