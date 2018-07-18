@@ -59,7 +59,7 @@ static void BestMove(void* in, void* inout, int* len, MPI_Datatype* datatype) {
   for (int i=0; i < *len; ++i)
   {
       if (l[i].depth >= r[i].depth && l[i].score >= r[i].score)
-         r[i] = l[i];
+          r[i] = l[i];
   }
 }
 
@@ -127,21 +127,20 @@ bool getline(std::istream& input, std::string& str) {
 
   // Some MPI implementations use busy-wait pooling, while we need yielding
   static MPI_Request reqInput = MPI_REQUEST_NULL;
-  MPI_Ibarrier(InputComm, &reqInput);
+  MPI_Ibcast(&size, 1, MPI_UNSIGNED_LONG, 0, InputComm, &reqInput);
   if (is_root())
       MPI_Wait(&reqInput, MPI_STATUS_IGNORE);
   else {
       while (true) {
-          static int flag;
+          int flag;
           MPI_Test(&reqInput, &flag, MPI_STATUS_IGNORE);
           if (flag)
               break;
-          else
+          else {
               std::this_thread::sleep_for(std::chrono::milliseconds(10));
+          }
       }
   }
-
-  MPI_Bcast(&size, 1, MPI_UNSIGNED_LONG, 0, InputComm);
   if (!is_root())
       vec.resize(size);
   MPI_Bcast(vec.data(), size, MPI_CHAR, 0, InputComm);
