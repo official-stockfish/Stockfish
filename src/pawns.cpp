@@ -33,7 +33,7 @@ namespace {
 
   // Pawn penalties
  constexpr Score Isolated = S( 5, 15);
- constexpr Score Backward = S(9, 24);
+ constexpr Score Backward = S( 9, 24);
  constexpr Score Doubled  = S(11, 56);
 
   // Connected pawn bonus by opposed, phalanx, #support and rank
@@ -41,10 +41,10 @@ namespace {
 
   // Strength of pawn shelter for our king by [distance from edge][rank].
   // RANK_1 = 0 is used for files where we have no pawn, or pawn is behind our king.
-  constexpr  Value ShelterStrength[int(FILE_NB) / 2][RANK_NB] = {
-    { V( -3), V(81), V( 93), V( 58), V( 39), V( 18), V(  25) },
-    { V(-40), V(61), V( 35), V(-49), V(-29), V(-11), V(-63) },
-    { V(-7), V(75), V( 23), V(-2), V( 32), V( 3), V(-45) },
+  constexpr Value ShelterStrength[int(FILE_NB) / 2][RANK_NB] = {
+    { V( -3), V( 81), V( 93), V( 58), V( 39), V( 18), V(  25) },
+    { V(-40), V( 61), V( 35), V(-49), V(-29), V(-11), V( -63) },
+    { V( -7), V( 75), V( 23), V( -2), V( 32), V(  3), V( -45) },
     { V(-36), V(-13), V(-29), V(-52), V(-48), V(-67), V(-166) }
   };
 
@@ -52,15 +52,15 @@ namespace {
   // RANK_1 = 0 is used for files where the enemy has no pawn, or their pawn
   // is behind our king.
   constexpr Value UnblockedStorm[int(FILE_NB) / 2][RANK_NB] = {
-    { V(89), V( 107), V( 123), V(93), V(57), V( 45), V( 51) },
-    { V(44), V( -18), V(123), V(46), V(39), V(-7), V(  23) },
-    { V(4), V( 52), V( 162), V(37), V(7), V(-14), V(-2) },
-    { V(-10), V( -14), V( 90), V(15), V( 2), V( -7), V(-16) }
+    { V( 89), V(107), V(123), V(93), V(57), V( 45), V( 51) },
+    { V( 44), V(-18), V(123), V(46), V(39), V( -7), V( 23) },
+    { V(  4), V( 52), V(162), V(37), V( 7), V(-14), V( -2) },
+    { V(-10), V(-14), V( 90), V(15), V( 2), V( -7), V(-16) }
   };
 
   // Danger of blocked enemy pawns storming our king, by rank
   constexpr Value BlockedStorm[RANK_NB] =
-    { V(0), V(0), V( 66), V(6), V(5), V(1), V(15) };
+    { V(0), V(0), V(66), V(6), V(5), V(1), V(15) };
 
   #undef S
   #undef V
