@@ -152,7 +152,7 @@ Entry* probe(const Position& pos) {
 
   // OK, we didn't find any special evaluation function for the current material
   // configuration. Is there a suitable specialized scaling function?
-  EndgameBase<ScaleFactor>* sf;
+  const EndgameBase<ScaleFactor>* sf;
 
   if ((sf = pos.this_thread()->endgames.probe<ScaleFactor>(key)) != nullptr)
   {

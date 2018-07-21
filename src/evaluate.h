@@ -21,7 +21,6 @@
 #ifndef EVALUATE_H_INCLUDED
 #define EVALUATE_H_INCLUDED
 
-#include <atomic>
 #include <string>
 
 #include "types.h"
