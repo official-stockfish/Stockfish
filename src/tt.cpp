@@ -2,7 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2016 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2015-2018 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -20,11 +20,36 @@
 
 #include <cstring>   // For std::memset
 #include <iostream>
+#include <thread>
 
 #include "bitboard.h"
+#include "misc.h"
 #include "tt.h"
+#include "uci.h"
 
 TranspositionTable TT; // Our global transposition table
+
+/// TTEntry::save saves a TTEntry
+void TTEntry::save(Key k, Value v, Bound b, Depth d, Move m, Value ev) {
+
+  assert(d / ONE_PLY * ONE_PLY == d);
+
+  // Preserve any existing move for the same position
+  if (m || (k >> 48) != key16)
+      move16 = (uint16_t)m;
+
+  // Overwrite less valuable entries
+  if (  (k >> 48) != key16
+      || d / ONE_PLY > depth8 - 4
+      || b == BOUND_EXACT)
+  {
+      key16     = (uint16_t)(k >> 48);
+      value16   = (int16_t)v;
+      eval16    = (int16_t)ev;
+      genBound8 = (uint8_t)(TT.generation8 | b);
+      depth8    = (int8_t)(d / ONE_PLY);
+  }
+}
 
 
 /// TranspositionTable::resize() sets the size of the transposition table,
@@ -33,15 +58,10 @@ TranspositionTable TT; // Our global transposition table
 
 void TranspositionTable::resize(size_t mbSize) {
 
-  size_t newClusterCount = size_t(1) << msb((mbSize * 1024 * 1024) / sizeof(Cluster));
-
-  if (newClusterCount == clusterCount)
-      return;
-
-  clusterCount = newClusterCount;
+  clusterCount = mbSize * 1024 * 1024 / sizeof(Cluster);
 
   free(mem);
-  mem = calloc(clusterCount * sizeof(Cluster) + CacheLineSize - 1, 1);
+  mem = malloc(clusterCount * sizeof(Cluster) + CacheLineSize - 1);
 
   if (!mem)
   {
@@ -51,18 +71,38 @@ void TranspositionTable::resize(size_t mbSize) {
   }
 
   table = (Cluster*)((uintptr_t(mem) + CacheLineSize - 1) & ~(CacheLineSize - 1));
+  clear();
 }
 
 
-/// TranspositionTable::clear() overwrites the entire transposition table
-/// with zeros. It is called whenever the table is resized, or when the
-/// user asks the program to clear the table (from the UCI interface).
+/// TranspositionTable::clear() initializes the entire transposition table to zero,
+//  in a multi-threaded way.
 
 void TranspositionTable::clear() {
 
-  std::memset(table, 0, clusterCount * sizeof(Cluster));
-}
+  std::vector<std::thread> threads;
 
+  for (size_t idx = 0; idx < Options["Threads"]; idx++)
+  {
+      threads.push_back(std::thread([this, idx]() {
+
+          // Thread binding gives faster search on systems with a first-touch policy
+          if (Options["Threads"] >= 8)
+              WinProcGroup::bindThisThread(idx);
+
+          // Each thread will zero its part of the hash table
+          const size_t stride = clusterCount / Options["Threads"],
+                       start  = stride * idx,
+                       len    = idx != Options["Threads"] - 1 ?
+                                stride : clusterCount - start;
+
+          std::memset(&table[start], 0, len * sizeof(Cluster));
+      }));
+  }
+
+  for (std::thread& th: threads)
+      th.join();
+}
 
 /// TranspositionTable::probe() looks up the current position in the transposition
 /// table. It returns true and a pointer to the TTEntry if the position is found.
@@ -100,11 +140,11 @@ TTEntry* TranspositionTable::probe(const Key key, bool& found) const {
 }
 
 
-/// Returns an approximation of the hashtable occupation during a search. The
-/// hash is x permill full, as per UCI protocol.
+/// TranspositionTable::hashfull() returns an approximation of the hashtable
+/// occupation during a search. The hash is x permill full, as per UCI protocol.
 
-int TranspositionTable::hashfull() const
-{
+int TranspositionTable::hashfull() const {
+
   int cnt = 0;
   for (int i = 0; i < 1000 / ClusterSize; i++)
   {
