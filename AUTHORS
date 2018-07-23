@@ -1,98 +1,121 @@
-# Generated with git shortlog -sn | cut -c8-', which sorts by commits (manually ordered the first four authors)
+# List of authors for Stockfish, updated just after version 9
 
-Tord Romstad
-Marco Costalba
-Joona Kiiski
-Gary Linscott
-lucasart
-mstembera
-Lucas Braesch
-Stefan Geschwentner
-Reuven Peleg
-Chris Caino
-joergoster
-VoyagerOne
-Jean-Francois Romang
-homoSapiensSapiens
-Alain SAVARD
-Arjun Temurnikar
-Stéphane Nicolet
-Uri Blass
-jundery
-Ralph Stößer
-Ajith
-Leonid Pechenik
-Stefano80
-Tom Vijlbrief
-hxim
-snicolet
-Daylen Yang
-Henri Wiechers
-Jonathan Calovski
-mbootsector
-David Zar
-Eelco de Groot
-Jerry Donald
-Joerg Oster
-Jörg Oster
-Ryan Schmitt
-mcostalba
+Tord Romstad (romstad)
+Marco Costalba (mcostalba)
+Joona Kiiski (zamar)
+Gary Linscott (glinscott)
+
+absimaldata
+Ajith Chandy Jose (ajithcj)
+Alain Savard (Rocky640)
 Alexander Kure
-Dan Schmidt
-H. Felix Wittmann
-Joseph R. Prostko
-Justin Blanchard
-Linus Arver
-NicklasPersson
-Rodrigo Exterckötter Tjäder
-Ron Britvich
-Ronald de Man
-RyanTaker
-Vince Negri
-ceebo
-jhellis3
-ppigazzini
-shane31
+Ali AlZhrani (Cooffe)
+Andrew Grant (AndyGrant)
+Andrey Neporada (nepal)
 Andy Duplain
+Aram Tumanian (atumanian)
+Arjun Temurnikar
 Auguste Pop
 Balint Pfliegel
-Chris Cain
-DU-jdto
+Ben Koshy (BKSpurgeon)
+Bill Henry (VoyagerOne)
+braich
+Brian Sheppard (SapphireBrand)
+Bryan Cross (crossbr)
+Bujun Guo (noobpwnftw)
+Chris Cain (ceebo)
+Dan Schmidt
+Daniel Dugovic (ddugovic)
 Dariusz Orzechowski
+David Zar
+Daylen Yang (daylen)
 DiscanX
+Eelco de Groot
+ElbertoOne
+erbsenzaehler
 Ernesto Gatti
+Fabian Beuke (madnight)
+Fabian Fichter (ianfab)
+fanon
+Fauzi Akram Dabat (FauziAkram)
+Felix Wittmann
+gamander
+gguliash
+Gian-Carlo Pascutto (gcp)
+Gontran Lemaire (gonlem)
+Goodkov Vasiliy Aleksandrovich (goodkov)
 Gregor Cramer
-Guenther Demetz
-Hiraoka Takuya
+Günther Demetz (pb00067, pb00068)
+Guy Vreuls (gvreuls)
+Henri Wiechers
+Hiraoka Takuya (HiraokaTakuya)
+homoSapiensSapiens
 Hongzhi Cheng
-Joseph Hellis
+Ivan Ivec (IIvec)
+Jacques B. (Timshel)
+Jan Ondruš (hxim)
+Jarrod Torriero (DU-jdto)
+Jean-Francois Romang
+Jerry Donald Watson (jerrydonaldwatson)
+Jonathan Calovski (Mysseno)
+Joost VandeVondele (vondele)
+Jörg Oster (joergoster)
+Joseph Ellis (jhellis3)
+Joseph R. Prostko
+jundery
+Justin Blanchard
 Kelly Wilson
-Ken T Takusagawa
+Ken Takusagawa
+kinderchocolate
+Kiran Panditrao (Krgp)
 Kojirion
-Luca Brivio
-Matt Sullivan
-Matthew Lai
+Leonardo Ljubičić (GM)
+Leonid Pechenik (lp--)
+Linus Arver
+loco-loco
+Luca Brivio (lucabrivio)
+Lucas Braesch (lucasart)
+Lyudmil Antonov (lantonov)
+Matthew Lai (matthewlai)
 Matthew Sullivan
-Michel Van den Bergh
-Mysseno
+Mark Tenzer (31m059)
+Michael Byrne (MichaelB7)
+Michael Stembera (mstembera)
+Michel Van den Bergh (vdbergh)
+Miguel Lahoz (miguel-l)
+Mikael Bäckman (mbootsector)
+Mike Whiteley (protonspring)
+Miroslav Fontán (Hexik)
+Moez Jellouli (MJZ1977)
+Mohammed Li (tthsqe12)
+Nathan Rugg (nmrugg)
+Nicklas Persson (NicklasPersson)
+Niklas Fiekas (niklasf)
 Oskar Werkelin Ahlin
 Pablo Vazquez
 Pascal Romaret
-Ralph Stoesser
-Ralph St��er
-Raminder Singh
-Richard Lloyd
-Ryan Takker
-Stephane Nicolet
-Thanar2
-absimaldata
-braich
-gguliash
-kinderchocolate
-loco-loco
+Pasquale Pigazzini (ppigazzini)
+Patrick Jansen (mibere)
 pellanda
+Ralph Stößer (Ralph Stoesser)
+Raminder Singh
 renouve
+Reuven Peleg
+Richard Lloyd
+Rodrigo Exterckötter Tjäder
+Ron Britvich
+Ronald de Man (syzygy1)
+Ryan Schmitt
+Ryan Takker
+Sergei Antonov (saproj)
 sf-x
+shane31
+Stefan Geschwentner (locutus2)
+Stefano Cardanobile (Stefano80)
+Stéphane Nicolet (snicolet)
+Thanar2
 thaspel
-unknown
-uriblass
+Tom Vijlbrief (tomtor)
+Torsten Franz (torfranz)
+Uri Blass (uriblass)
+Vince Negri
