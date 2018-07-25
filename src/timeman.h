@@ -1,7 +1,8 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
-  Copyright (C) 2008-2014 Marco Costalba, Joona Kiiski, Tord Romstad
+  Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
+  Copyright (C) 2015-2018 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -20,20 +21,29 @@
 #ifndef TIMEMAN_H_INCLUDED
 #define TIMEMAN_H_INCLUDED
 
-/// The TimeManager class computes the optimal time to think depending on the
-/// maximum available time, the game move number and other parameters.
+#include "misc.h"
+#include "search.h"
+#include "thread.h"
 
-class TimeManager {
+/// The TimeManagement class computes the optimal time to think depending on
+/// the maximum available time, the game move number and other parameters.
+
+class TimeManagement {
 public:
-  void init(const Search::LimitsType& limits, int currentPly, Color us);
-  void pv_instability(double bestMoveChanges) { unstablePvFactor = 1 + bestMoveChanges; }
-  int available_time() const { return int(optimumSearchTime * unstablePvFactor * 0.71); }
-  int maximum_time() const { return maximumSearchTime; }
+  void init(Search::LimitsType& limits, Color us, int ply);
+  TimePoint optimum() const { return optimumTime; }
+  TimePoint maximum() const { return maximumTime; }
+  TimePoint elapsed() const { return Search::Limits.npmsec ?
+                                     TimePoint(Threads.nodes_searched()) : now() - startTime; }
+
+  int64_t availableNodes; // When in 'nodes as time' mode
 
 private:
-  int optimumSearchTime;
-  int maximumSearchTime;
-  double unstablePvFactor;
+  TimePoint startTime;
+  TimePoint optimumTime;
+  TimePoint maximumTime;
 };
+
+extern TimeManagement Time;
 
 #endif // #ifndef TIMEMAN_H_INCLUDED

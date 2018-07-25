@@ -1,7 +1,8 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
-  Copyright (C) 2008-2014 Marco Costalba, Joona Kiiski, Tord Romstad
+  Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
+  Copyright (C) 2015-2018 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -17,31 +18,50 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <cstring>
+#include <cstring>   // For std::memset
 #include <iostream>
+#include <thread>
 
 #include "bitboard.h"
+#include "misc.h"
 #include "tt.h"
+#include "uci.h"
 
 TranspositionTable TT; // Our global transposition table
+
+/// TTEntry::save saves a TTEntry
+void TTEntry::save(Key k, Value v, Bound b, Depth d, Move m, Value ev) {
+
+  assert(d / ONE_PLY * ONE_PLY == d);
+
+  // Preserve any existing move for the same position
+  if (m || (k >> 48) != key16)
+      move16 = (uint16_t)m;
+
+  // Overwrite less valuable entries
+  if (  (k >> 48) != key16
+      || d / ONE_PLY > depth8 - 4
+      || b == BOUND_EXACT)
+  {
+      key16     = (uint16_t)(k >> 48);
+      value16   = (int16_t)v;
+      eval16    = (int16_t)ev;
+      genBound8 = (uint8_t)(TT.generation8 | b);
+      depth8    = (int8_t)(d / ONE_PLY);
+  }
+}
 
 
 /// TranspositionTable::resize() sets the size of the transposition table,
 /// measured in megabytes. Transposition table consists of a power of 2 number
 /// of clusters and each cluster consists of ClusterSize number of TTEntry.
 
-void TranspositionTable::resize(uint64_t mbSize) {
+void TranspositionTable::resize(size_t mbSize) {
 
-  assert(msb((mbSize << 20) / sizeof(TTEntry)) < 32);
+  clusterCount = mbSize * 1024 * 1024 / sizeof(Cluster);
 
-  uint32_t size = ClusterSize << msb((mbSize << 20) / sizeof(TTEntry[ClusterSize]));
-
-  if (hashMask == size - ClusterSize)
-      return;
-
-  hashMask = size - ClusterSize;
   free(mem);
-  mem = calloc(size * sizeof(TTEntry) + CACHE_LINE_SIZE - 1, 1);
+  mem = malloc(clusterCount * sizeof(Cluster) + CacheLineSize - 1);
 
   if (!mem)
   {
@@ -50,72 +70,88 @@ void TranspositionTable::resize(uint64_t mbSize) {
       exit(EXIT_FAILURE);
   }
 
-  table = (TTEntry*)((uintptr_t(mem) + CACHE_LINE_SIZE - 1) & ~(CACHE_LINE_SIZE - 1));
+  table = (Cluster*)((uintptr_t(mem) + CacheLineSize - 1) & ~(CacheLineSize - 1));
+  clear();
 }
 
 
-/// TranspositionTable::clear() overwrites the entire transposition table
-/// with zeroes. It is called whenever the table is resized, or when the
-/// user asks the program to clear the table (from the UCI interface).
+/// TranspositionTable::clear() initializes the entire transposition table to zero,
+//  in a multi-threaded way.
 
 void TranspositionTable::clear() {
 
-  std::memset(table, 0, (hashMask + ClusterSize) * sizeof(TTEntry));
-}
+  std::vector<std::thread> threads;
 
-
-/// TranspositionTable::probe() looks up the current position in the
-/// transposition table. Returns a pointer to the TTEntry or NULL if
-/// position is not found.
-
-const TTEntry* TranspositionTable::probe(const Key key) const {
-
-  TTEntry* tte = first_entry(key);
-  uint32_t key32 = key >> 32;
-
-  for (unsigned i = 0; i < ClusterSize; ++i, ++tte)
-      if (tte->key32 == key32)
-      {
-          tte->generation8 = generation; // Refresh
-          return tte;
-      }
-
-  return NULL;
-}
-
-
-/// TranspositionTable::store() writes a new entry containing position key and
-/// valuable information of current position. The lowest order bits of position
-/// key are used to decide in which cluster the position will be placed.
-/// When a new entry is written and there are no empty entries available in the
-/// cluster, it replaces the least valuable of the entries. A TTEntry t1 is considered
-/// to be more valuable than a TTEntry t2 if t1 is from the current search and t2
-/// is from a previous search, or if the depth of t1 is bigger than the depth of t2.
-
-void TranspositionTable::store(const Key key, Value v, Bound b, Depth d, Move m, Value statV) {
-
-  TTEntry *tte, *replace;
-  uint32_t key32 = key >> 32; // Use the high 32 bits as key inside the cluster
-
-  tte = replace = first_entry(key);
-
-  for (unsigned i = 0; i < ClusterSize; ++i, ++tte)
+  for (size_t idx = 0; idx < Options["Threads"]; idx++)
   {
-      if (!tte->key32 || tte->key32 == key32) // Empty or overwrite old
-      {
-          if (!m)
-              m = tte->move(); // Preserve any existing ttMove
+      threads.push_back(std::thread([this, idx]() {
 
-          replace = tte;
-          break;
-      }
+          // Thread binding gives faster search on systems with a first-touch policy
+          if (Options["Threads"] >= 8)
+              WinProcGroup::bindThisThread(idx);
 
-      // Implement replace strategy
-      if (  (    tte->generation8 == generation || tte->bound() == BOUND_EXACT)
-          - (replace->generation8 == generation)
-          - (tte->depth16 < replace->depth16) < 0)
-          replace = tte;
+          // Each thread will zero its part of the hash table
+          const size_t stride = clusterCount / Options["Threads"],
+                       start  = stride * idx,
+                       len    = idx != Options["Threads"] - 1 ?
+                                stride : clusterCount - start;
+
+          std::memset(&table[start], 0, len * sizeof(Cluster));
+      }));
   }
 
-  replace->save(key32, v, b, d, m, generation, statV);
+  for (std::thread& th: threads)
+      th.join();
+}
+
+/// TranspositionTable::probe() looks up the current position in the transposition
+/// table. It returns true and a pointer to the TTEntry if the position is found.
+/// Otherwise, it returns false and a pointer to an empty or least valuable TTEntry
+/// to be replaced later. The replace value of an entry is calculated as its depth
+/// minus 8 times its relative age. TTEntry t1 is considered more valuable than
+/// TTEntry t2 if its replace value is greater than that of t2.
+
+TTEntry* TranspositionTable::probe(const Key key, bool& found) const {
+
+  TTEntry* const tte = first_entry(key);
+  const uint16_t key16 = key >> 48;  // Use the high 16 bits as key inside the cluster
+
+  for (int i = 0; i < ClusterSize; ++i)
+      if (!tte[i].key16 || tte[i].key16 == key16)
+      {
+          if ((tte[i].genBound8 & 0xFC) != generation8 && tte[i].key16)
+              tte[i].genBound8 = uint8_t(generation8 | tte[i].bound()); // Refresh
+
+          return found = (bool)tte[i].key16, &tte[i];
+      }
+
+  // Find an entry to be replaced according to the replacement strategy
+  TTEntry* replace = tte;
+  for (int i = 1; i < ClusterSize; ++i)
+      // Due to our packed storage format for generation and its cyclic
+      // nature we add 259 (256 is the modulus plus 3 to keep the lowest
+      // two bound bits from affecting the result) to calculate the entry
+      // age correctly even after generation8 overflows into the next cycle.
+      if (  replace->depth8 - ((259 + generation8 - replace->genBound8) & 0xFC) * 2
+          >   tte[i].depth8 - ((259 + generation8 -   tte[i].genBound8) & 0xFC) * 2)
+          replace = &tte[i];
+
+  return found = false, replace;
+}
+
+
+/// TranspositionTable::hashfull() returns an approximation of the hashtable
+/// occupation during a search. The hash is x permill full, as per UCI protocol.
+
+int TranspositionTable::hashfull() const {
+
+  int cnt = 0;
+  for (int i = 0; i < 1000 / ClusterSize; i++)
+  {
+      const TTEntry* tte = &table[i].entry[0];
+      for (int j = 0; j < ClusterSize; j++)
+          if ((tte[j].genBound8 & 0xFC) == generation8)
+              cnt++;
+  }
+  return cnt;
 }

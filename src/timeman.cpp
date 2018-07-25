@@ -1,7 +1,8 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
-  Copyright (C) 2008-2014 Marco Costalba, Joona Kiiski, Tord Romstad
+  Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
+  Copyright (C) 2015-2018 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -23,104 +24,110 @@
 
 #include "search.h"
 #include "timeman.h"
-#include "ucioption.h"
+#include "uci.h"
+
+TimeManagement Time; // Our global time management object
 
 namespace {
 
   enum TimeType { OptimumTime, MaxTime };
 
-  const int MoveHorizon   = 50;   // Plan time management at most this many moves ahead
-  const double MaxRatio   = 7.0;  // When in trouble, we can step over reserved time with this ratio
-  const double StealRatio = 0.33; // However we must not steal time from remaining moves over this ratio
-
-  const double xscale     = 9.3;
-  const double xshift     = 59.8;
-  const double skewfactor = 0.172;
+  constexpr int MoveHorizon   = 50;   // Plan time management at most this many moves ahead
+  constexpr double MaxRatio   = 7.3;  // When in trouble, we can step over reserved time with this ratio
+  constexpr double StealRatio = 0.34; // However we must not steal time from remaining moves over this ratio
 
 
   // move_importance() is a skew-logistic function based on naive statistical
   // analysis of "how many games are still undecided after n half-moves". Game
   // is considered "undecided" as long as neither side has >275cp advantage.
-  // Data was extracted from CCRL game database with some simple filtering criteria.
+  // Data was extracted from the CCRL game database with some simple filtering criteria.
 
   double move_importance(int ply) {
 
-    return pow((1 + exp((ply - xshift) / xscale)), -skewfactor) + DBL_MIN; // Ensure non-zero
+    constexpr double XScale = 6.85;
+    constexpr double XShift = 64.5;
+    constexpr double Skew   = 0.171;
+
+    return pow((1 + exp((ply - XShift) / XScale)), -Skew) + DBL_MIN; // Ensure non-zero
   }
 
   template<TimeType T>
-  int remaining(int myTime, int movesToGo, int currentPly, int slowMover)
-  {
-    const double TMaxRatio   = (T == OptimumTime ? 1 : MaxRatio);
-    const double TStealRatio = (T == OptimumTime ? 0 : StealRatio);
+  TimePoint remaining(TimePoint myTime, int movesToGo, int ply, TimePoint slowMover) {
 
-    double thisMoveImportance = (move_importance(currentPly) * slowMover) / 100;
-    double otherMovesImportance = 0;
+    constexpr double TMaxRatio   = (T == OptimumTime ? 1.0 : MaxRatio);
+    constexpr double TStealRatio = (T == OptimumTime ? 0.0 : StealRatio);
+
+    double moveImportance = (move_importance(ply) * slowMover) / 100.0;
+    double otherMovesImportance = 0.0;
 
     for (int i = 1; i < movesToGo; ++i)
-        otherMovesImportance += move_importance(currentPly + 2 * i);
+        otherMovesImportance += move_importance(ply + 2 * i);
 
-    double ratio1 = (TMaxRatio * thisMoveImportance) / (TMaxRatio * thisMoveImportance + otherMovesImportance);
-    double ratio2 = (thisMoveImportance + TStealRatio * otherMovesImportance) / (thisMoveImportance + otherMovesImportance);
+    double ratio1 = (TMaxRatio * moveImportance) / (TMaxRatio * moveImportance + otherMovesImportance);
+    double ratio2 = (moveImportance + TStealRatio * otherMovesImportance) / (moveImportance + otherMovesImportance);
 
-    return int(myTime * std::min(ratio1, ratio2));
+    return TimePoint(myTime * std::min(ratio1, ratio2)); // Intel C++ asks for an explicit cast
   }
 
 } // namespace
 
 
-void TimeManager::init(const Search::LimitsType& limits, int currentPly, Color us)
-{
-  /* We support four different kinds of time controls:
+/// init() is called at the beginning of the search and calculates the allowed
+/// thinking time out of the time control and current game ply. We support four
+/// different kinds of time controls, passed in 'limits':
+///
+///  inc == 0 && movestogo == 0 means: x basetime  [sudden death!]
+///  inc == 0 && movestogo != 0 means: x moves in y minutes
+///  inc >  0 && movestogo == 0 means: x basetime + z increment
+///  inc >  0 && movestogo != 0 means: x moves in y minutes + z increment
 
-      increment == 0 && movesToGo == 0 means: x basetime  [sudden death!]
-      increment == 0 && movesToGo != 0 means: x moves in y minutes
-      increment >  0 && movesToGo == 0 means: x basetime + z increment
-      increment >  0 && movesToGo != 0 means: x moves in y minutes + z increment
+void TimeManagement::init(Search::LimitsType& limits, Color us, int ply) {
 
-    Time management is adjusted by following UCI parameters:
+  TimePoint minThinkingTime = Options["Minimum Thinking Time"];
+  TimePoint moveOverhead    = Options["Move Overhead"];
+  TimePoint slowMover       = Options["Slow Mover"];
+  TimePoint npmsec          = Options["nodestime"];
+  TimePoint hypMyTime;
 
-      emergencyMoveHorizon: Be prepared to always play at least this many moves
-      emergencyBaseTime   : Always attempt to keep at least this much time (in ms) at clock
-      emergencyMoveTime   : Plus attempt to keep at least this much time for each remaining emergency move
-      minThinkingTime     : No matter what, use at least this much thinking before doing the move
-  */
+  // If we have to play in 'nodes as time' mode, then convert from time
+  // to nodes, and use resulting values in time management formulas.
+  // WARNING: to avoid time losses, the given npmsec (nodes per millisecond)
+  // must be much lower than the real engine speed.
+  if (npmsec)
+  {
+      if (!availableNodes) // Only once at game start
+          availableNodes = npmsec * limits.time[us]; // Time is in msec
 
-  int hypMTG, hypMyTime, t1, t2;
+      // Convert from milliseconds to nodes
+      limits.time[us] = TimePoint(availableNodes);
+      limits.inc[us] *= npmsec;
+      limits.npmsec = npmsec;
+  }
 
-  // Read uci parameters
-  int emergencyMoveHorizon = Options["Emergency Move Horizon"];
-  int emergencyBaseTime    = Options["Emergency Base Time"];
-  int emergencyMoveTime    = Options["Emergency Move Time"];
-  int minThinkingTime      = Options["Minimum Thinking Time"];
-  int slowMover            = Options["Slow Mover"];
+  startTime = limits.startTime;
+  optimumTime = maximumTime = std::max(limits.time[us], minThinkingTime);
 
-  // Initialize unstablePvFactor to 1 and search times to maximum values
-  unstablePvFactor = 1;
-  optimumSearchTime = maximumSearchTime = std::max(limits.time[us], minThinkingTime);
+  const int maxMTG = limits.movestogo ? std::min(limits.movestogo, MoveHorizon) : MoveHorizon;
 
-  // We calculate optimum time usage for different hypothetical "moves to go"-values and choose the
-  // minimum of calculated search time values. Usually the greatest hypMTG gives the minimum values.
-  for (hypMTG = 1; hypMTG <= (limits.movestogo ? std::min(limits.movestogo, MoveHorizon) : MoveHorizon); ++hypMTG)
+  // We calculate optimum time usage for different hypothetical "moves to go" values
+  // and choose the minimum of calculated search time values. Usually the greatest
+  // hypMTG gives the minimum values.
+  for (int hypMTG = 1; hypMTG <= maxMTG; ++hypMTG)
   {
       // Calculate thinking time for hypothetical "moves to go"-value
       hypMyTime =  limits.time[us]
                  + limits.inc[us] * (hypMTG - 1)
-                 - emergencyBaseTime
-                 - emergencyMoveTime * std::min(hypMTG, emergencyMoveHorizon);
+                 - moveOverhead * (2 + std::min(hypMTG, 40));
 
-      hypMyTime = std::max(hypMyTime, 0);
+      hypMyTime = std::max(hypMyTime, TimePoint(0));
 
-      t1 = minThinkingTime + remaining<OptimumTime>(hypMyTime, hypMTG, currentPly, slowMover);
-      t2 = minThinkingTime + remaining<MaxTime>(hypMyTime, hypMTG, currentPly, slowMover);
+      TimePoint t1 = minThinkingTime + remaining<OptimumTime>(hypMyTime, hypMTG, ply, slowMover);
+      TimePoint t2 = minThinkingTime + remaining<MaxTime    >(hypMyTime, hypMTG, ply, slowMover);
 
-      optimumSearchTime = std::min(optimumSearchTime, t1);
-      maximumSearchTime = std::min(maximumSearchTime, t2);
+      optimumTime = std::min(t1, optimumTime);
+      maximumTime = std::min(t2, maximumTime);
   }
 
   if (Options["Ponder"])
-      optimumSearchTime += optimumSearchTime / 4;
-
-  // Make sure that maxSearchTime is not over absoluteMaxSearchTime
-  optimumSearchTime = std::min(optimumSearchTime, maximumSearchTime);
+      optimumTime += optimumTime / 4;
 }

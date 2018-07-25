@@ -1,0 +1,74 @@
+language: cpp
+sudo: required
+dist: trusty
+
+matrix:
+  include:
+    - os: linux
+      compiler: gcc
+      addons:
+        apt:
+          sources: ['ubuntu-toolchain-r-test']
+          packages: ['g++-7', 'g++-7-multilib', 'g++-multilib', 'valgrind', 'expect', 'curl']
+      env:
+        - COMPILER=g++-7
+        - COMP=gcc
+
+    - os: linux
+      compiler: clang
+      addons:
+        apt:
+          sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-5.0']
+          packages: ['clang-5.0', 'llvm-5.0-dev', 'g++-multilib', 'valgrind', 'expect', 'curl']
+      env:
+        - COMPILER=clang++-5.0
+        - COMP=clang
+        - LDFLAGS=-fuse-ld=gold
+
+    - os: osx
+      compiler: gcc
+      env:
+        - COMPILER=g++
+        - COMP=gcc
+
+    - os: osx
+      compiler: clang
+      env:
+        - COMPILER=clang++ V='Apple LLVM 6.0' # Apple LLVM version 6.0 (clang-600.0.54) (based on LLVM 3.5svn)
+        - COMP=clang
+
+branches:
+  only:
+   - master
+
+before_script:
+  - cd src
+
+script:
+  # Obtain bench reference from git log
+  - git log HEAD | grep "\b[Bb]ench[ :]\+[0-9]\{7\}" | head -n 1 | sed "s/[^0-9]*\([0-9]*\).*/\1/g" > git_sig
+  - export benchref=$(cat git_sig)
+  - echo "Reference bench:" $benchref
+  #
+  # Verify bench number against various builds
+  - export CXXFLAGS=-Werror
+  - make clean && make -j2 ARCH=x86-64 optimize=no debug=yes build && ../tests/signature.sh $benchref
+  - make clean && make -j2 ARCH=x86-32 optimize=no debug=yes build && ../tests/signature.sh $benchref
+  - make clean && make -j2 ARCH=x86-32 build && ../tests/signature.sh $benchref
+  - make clean && make -j2 ARCH=x86-64 build && ../tests/signature.sh $benchref
+  #
+  # Check perft and reproducible search
+  - ../tests/perft.sh
+  - ../tests/reprosearch.sh
+  #
+  # Valgrind
+  #
+  - export CXXFLAGS=-O1
+  - if [ -x "$(command -v valgrind )" ]; then make clean && make -j2 ARCH=x86-64 debug=yes optimize=no build > /dev/null && ../tests/instrumented.sh --valgrind; fi
+  - if [ -x "$(command -v valgrind )" ]; then ../tests/instrumented.sh --valgrind-thread; fi
+  #
+  # Sanitizer
+  #
+  # Use g++-7 as a proxy for having sanitizers, might need revision as they become available for more recent versions of clang/gcc
+  - if [[ "$COMPILER" == "g++-7" ]]; then make clean && make -j2 ARCH=x86-64 sanitize=undefined optimize=no debug=yes build > /dev/null && ../tests/instrumented.sh --sanitizer-undefined; fi
+  - if [[ "$COMPILER" == "g++-7" ]]; then make clean && make -j2 ARCH=x86-64 sanitize=thread    optimize=no debug=yes build > /dev/null && ../tests/instrumented.sh --sanitizer-thread; fi
