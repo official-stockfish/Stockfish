@@ -540,8 +540,6 @@ namespace {
             score += ThreatByMinor[type_of(pos.piece_on(s))];
             if (type_of(pos.piece_on(s)) != PAWN)
                 score += ThreatByRank * (int)relative_rank(Them, s);
-            else
-                score += ThreatByRank * (int)relative_rank(Them, s) / 2;
         }
 
         b = weak & attackedBy[Us][ROOK];
@@ -549,10 +547,9 @@ namespace {
         {
             Square s = pop_lsb(&b);
             score += ThreatByRook[type_of(pos.piece_on(s))];
-            if (type_of(pos.piece_on(s)) != PAWN)
+            if (    type_of(pos.piece_on(s)) != PAWN
+                || (forward_file_bb(Them, s) & pos.pieces(Us, ROOK)))
                 score += ThreatByRank * (int)relative_rank(Them, s);
-            else
-                score += ThreatByRank * (int)relative_rank(Them, s) / 2;
         }
 
         // Bonus for king attacks on pawns or pieces which are not pawn-defended
