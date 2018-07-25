@@ -538,10 +538,9 @@ namespace {
         {
             Square s = pop_lsb(&b);
             score += ThreatByMinor[type_of(pos.piece_on(s))];
-            if (type_of(pos.piece_on(s)) != PAWN)
+            if (    type_of(pos.piece_on(s)) != PAWN
+                || (pos.blockers_for_king(Them) & s))
                 score += ThreatByRank * (int)relative_rank(Them, s);
-            else
-                score += ThreatByRank * (int)relative_rank(Them, s) / 4;
         }
 
         b = weak & attackedBy[Us][ROOK];
@@ -549,10 +548,9 @@ namespace {
         {
             Square s = pop_lsb(&b);
             score += ThreatByRook[type_of(pos.piece_on(s))];
-            if (type_of(pos.piece_on(s)) != PAWN)
+            if (    type_of(pos.piece_on(s)) != PAWN
+                || (pos.blockers_for_king(Them) & s))
                 score += ThreatByRank * (int)relative_rank(Them, s);
-            else
-                score += ThreatByRank * (int)relative_rank(Them, s) / 4;
         }
 
         // Bonus for king attacks on pawns or pieces which are not pawn-defended
