@@ -333,7 +333,12 @@ endif
 ### needs access to the optimization flags.
 ifeq ($(optimize),yes)
 ifeq ($(debug), no)
-	ifeq ($(comp),$(filter $(comp),gcc clang))
+	ifeq ($(comp),clang)
+		CXXFLAGS += -flto
+		LDFLAGS += $(CXXFLAGS)
+	endif
+
+	ifeq ($(comp),gcc)
 		CXXFLAGS += -flto
 		LDFLAGS += $(CXXFLAGS) -flto=jobserver
 	endif
