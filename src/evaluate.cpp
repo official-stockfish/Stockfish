@@ -530,7 +530,7 @@ namespace {
     // Enemies not strongly protected and under our attack
     weak = pos.pieces(Them) & ~stronglyProtected & attackedBy[Us][ALL_PIECES];
 
-    // Safe or protected sqares
+    // Safe or protected squares
     safe = ~attackedBy[Them][ALL_PIECES] | attackedBy[Us][ALL_PIECES];
 
     // Bonus according to the kind of attacking pieces
@@ -585,7 +585,7 @@ namespace {
     score += ThreatByPawnPush * popcount(b);
 
     // Our safe or protected pawns
-    b =   pos.pieces(Us, PAWN) & safe;
+    b = pos.pieces(Us, PAWN) & safe;
 
     safe = pawn_attacks_bb<Us>(b) & nonPawnEnemies;
     score += ThreatBySafePawn * popcount(safe);
