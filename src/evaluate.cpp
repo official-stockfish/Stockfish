@@ -159,7 +159,7 @@ namespace {
   constexpr Score CloseEnemies       = S(  6,  0);
   constexpr Score CorneredBishop     = S( 50, 50);
   constexpr Score Hanging            = S( 52, 30);
-  constexpr Score HinderPassedPawn   = S(  4,  0);
+  constexpr Score HinderPassedPawn   = S(  8,  0);
   constexpr Score KingProtector      = S(  6,  6);
   constexpr Score KnightOnQueen      = S( 21, 11);
   constexpr Score LongDiagonalBishop = S( 22,  0);
@@ -637,7 +637,7 @@ namespace {
         assert(!(pos.pieces(Them, PAWN) & forward_file_bb(Us, s + Up)));
 
         bb = forward_file_bb(Us, s) & pos.pieces(Them);
-        score -= HinderPassedPawn * popcount(bb);
+        score -= HinderPassedPawn * bool(bb);
 
         int r = relative_rank(Us, s);
         int w = PassedDanger[r];
