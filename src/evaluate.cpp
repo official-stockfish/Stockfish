@@ -371,7 +371,7 @@ namespace {
 
         if (Pt == ROOK)
         {
-            // Bonus for aligning rook with enemy pawns on the same rank/file 
+            // Bonus for aligning rook with enemy pawns on the same rank/file
             if (relative_rank(Us, s) >= RANK_5)
                 score += ThreatByRook[PAWN] * popcount(pos.pieces(Them, PAWN) & PseudoAttacks[ROOK][s]);
 
