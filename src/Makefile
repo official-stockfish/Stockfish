@@ -335,13 +335,13 @@ ifeq ($(optimize),yes)
 ifeq ($(debug), no)
 	ifeq ($(comp),$(filter $(comp),gcc clang))
 		CXXFLAGS += -flto
-		LDFLAGS += -flto=jobserver
+		LDFLAGS += $(CXXFLAGS) -flto=jobserver
 	endif
 
 	ifeq ($(comp),mingw)
 	ifeq ($(KERNEL),Linux)
 		CXXFLAGS += -flto
-		LDFLAGS += -flto=jobserver
+		LDFLAGS += $(CXXFLAGS) -flto=jobserver
 	endif
 	endif
 endif
