@@ -36,18 +36,16 @@
 template<typename T, int D>
 class StatsEntry {
 
-  static const bool IsInt = std::is_integral<T>::value;
-  typedef typename std::conditional<IsInt, int, T>::type TT;
-
   T entry;
 
 public:
-  T* get() { return &entry; }
   void operator=(const T& v) { entry = v; }
-  operator TT() const { return entry; }
+  T* operator&() { return &entry; }
+  T* operator->() { return &entry; }
+  operator const T&() const { return entry; }
 
   void operator<<(int bonus) {
-    assert(abs(bonus) <= D);   // Ensure range is [-D, D]
+    assert(abs(bonus) <= D); // Ensure range is [-D, D]
     static_assert(D <= std::numeric_limits<T>::max(), "D overflows T");
 
     entry += bonus - entry * abs(bonus) / D;
@@ -64,18 +62,21 @@ public:
 template <typename T, int D, int Size, int... Sizes>
 struct Stats : public std::array<Stats<T, D, Sizes...>, Size>
 {
-  T* get() { return this->at(0).get(); }
+  typedef Stats<T, D, Size, Sizes...> stats;
 
   void fill(const T& v) {
-    T* p = get();
-    std::fill(p, p + sizeof(*this) / sizeof(*p), v);
+
+    // For standard-layout 'this' points to first struct member
+    assert(std::is_standard_layout<stats>::value);
+
+    typedef StatsEntry<T, D> entry;
+    entry* p = reinterpret_cast<entry*>(this);
+    std::fill(p, p + sizeof(*this) / sizeof(entry), v);
   }
 };
 
 template <typename T, int D, int Size>
-struct Stats<T, D, Size> : public std::array<StatsEntry<T, D>, Size> {
-  T* get() { return this->at(0).get(); }
-};
+struct Stats<T, D, Size> : public std::array<StatsEntry<T, D>, Size> {};
 
 /// In stats table, D=0 means that the template parameter is not used
 enum StatsParams { NOT_USED = 0 };
