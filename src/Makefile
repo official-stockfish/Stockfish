@@ -171,6 +171,9 @@ ifeq ($(COMP),gcc)
 	ifneq ($(KERNEL),Darwin)
 	   LDFLAGS += -Wl,--no-as-needed
 	endif
+
+	gccversion=$(shell gcc --version)
+	gccmasqueraded=$(findstring clang,$(gccversion))
 endif
 
 ifeq ($(COMP),mingw)
@@ -340,7 +343,11 @@ ifeq ($(debug), no)
 
 	ifeq ($(comp),gcc)
 		CXXFLAGS += -flto
+	ifeq ($(gccmasqueraded),)
 		LDFLAGS += $(CXXFLAGS) -flto=jobserver
+	else
+		LDFLAGS += $(CXXFLAGS)
+	endif
 	endif
 
 	ifeq ($(comp),mingw)
