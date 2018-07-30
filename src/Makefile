@@ -174,6 +174,7 @@ ifeq ($(COMP),gcc)
 
 	gccversion=$(shell gcc --version)
 	gccmasqueraded=$(findstring clang,$(gccversion))
+	gccmsys=$(findstring MINGW,$(KERNEL))
 endif
 
 ifeq ($(COMP),mingw)
@@ -333,7 +334,8 @@ endif
 
 ### 3.8 Link Time Optimization, it works since gcc 4.5 but not on mingw under Windows.
 ### This is a mix of compile and link time options because the lto link phase
-### needs access to the optimization flags.
+### needs access to the optimization flags. Parallel LTO doesn't work with clang
+### (not even when it masquerades as gcc) and generates errors under Msys.
 ifeq ($(optimize),yes)
 ifeq ($(debug), no)
 	ifeq ($(comp),clang)
@@ -343,7 +345,9 @@ ifeq ($(debug), no)
 
 	ifeq ($(comp),gcc)
 		CXXFLAGS += -flto
-	ifeq ($(gccmasqueraded),)
+	ifneq ($(gccmsys),)
+		LDFLAGS += $(CXXFLAGS)
+	else ifeq ($(gccmasqueraded),)
 		LDFLAGS += $(CXXFLAGS) -flto=jobserver
 	else
 		LDFLAGS += $(CXXFLAGS)
