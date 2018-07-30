@@ -172,6 +172,7 @@ namespace {
   constexpr Score ThreatByPawnPush   = S( 45, 40);
   constexpr Score ThreatByRank       = S( 16,  3);
   constexpr Score ThreatBySafePawn   = S(173,102);
+  constexpr Score ThreatOnPinnedPawn = S( 16,  3);
   constexpr Score TrappedRook        = S( 92,  0);
   constexpr Score WeakQueen          = S( 50, 10);
   constexpr Score WeakUnopposedPawn  = S(  5, 29);
@@ -538,29 +539,27 @@ namespace {
     // Bonus according to the kind of attacking pieces
     if (defended | weak)
     {
-        b = (defended | weak) & (attackedBy[Us][KNIGHT] | attackedBy[Us][BISHOP]);
+        Bitboard bb = b = (defended | weak) & (attackedBy[Us][KNIGHT] | attackedBy[Us][BISHOP]);
         while (b)
         {
             Square s = pop_lsb(&b);
             score += ThreatByMinor[type_of(pos.piece_on(s))];
             if (type_of(pos.piece_on(s)) != PAWN)
                 score += ThreatByRank * (int)relative_rank(Them, s);
-
-            else if (pos.blockers_for_king(Them) & s)
-                score += ThreatByRank * (int)relative_rank(Them, s) / 2;
         }
 
-        b = weak & attackedBy[Us][ROOK];
+        bb |= b = weak & attackedBy[Us][ROOK];
         while (b)
         {
             Square s = pop_lsb(&b);
             score += ThreatByRook[type_of(pos.piece_on(s))];
             if (type_of(pos.piece_on(s)) != PAWN)
                 score += ThreatByRank * (int)relative_rank(Them, s);
-
-            else if (pos.blockers_for_king(Them) & s)
-                score += ThreatByRank * (int)relative_rank(Them, s) / 2;
         }
+
+        // Bonus for relevant threats against pinned enemy pawns
+        bb &= pos.blockers_for_king(Them) & pos.pieces(Them, PAWN);
+        score += ThreatOnPinnedPawn * popcount(bb);
 
         if (weak & attackedBy[Us][KING])
             score += ThreatByKing;
