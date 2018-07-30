@@ -76,7 +76,7 @@ void init(OptionsMap& o) {
   o["SyzygyPath"]            << Option("<empty>", on_tb_path);
   o["SyzygyProbeDepth"]      << Option(1, 1, 100);
   o["Syzygy50MoveRule"]      << Option(true);
-  o["SyzygyProbeLimit"]      << Option(6, 0, 6);
+  o["SyzygyProbeLimit"]      << Option(7, 0, 7);
 }
 
 
