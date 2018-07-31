@@ -91,7 +91,7 @@ void init(OptionsMap& o) {
   o["SyzygyPath"]            << Option("<empty>", on_tb_path);
   o["SyzygyProbeDepth"]      << Option(1, 1, 100);
   o["Syzygy50MoveRule"]      << Option(true);
-  o["SyzygyProbeLimit"]      << Option(6, 0, 6);
+  o["SyzygyProbeLimit"]      << Option(7, 0, 7);
   o["Book_Enabled"]          << Option(true);
   o["BookFile"]              << Option("<empty>", on_book_file);
   o["BestBookMove"]          << Option(true, on_best_book_move);
@@ -154,7 +154,7 @@ Option::operator std::string() const {
   return currentValue;
 }
 
-bool Option::operator==(const char* s) {
+bool Option::operator==(const char* s) const {
   assert(type == "combo");
   return    !CaseInsensitiveLess()(currentValue, s)
          && !CaseInsensitiveLess()(s, currentValue);

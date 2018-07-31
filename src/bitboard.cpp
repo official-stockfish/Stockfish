@@ -279,7 +279,7 @@ void Bitboards::init() {
                   }
               }
 
-  Direction RookDirections[] = { NORTH,  EAST,  SOUTH,  WEST };
+  Direction RookDirections[] = { NORTH, EAST, SOUTH, WEST };
   Direction BishopDirections[] = { NORTH_EAST, SOUTH_EAST, SOUTH_WEST, NORTH_WEST };
 
   if (HasPext)

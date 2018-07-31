@@ -23,11 +23,11 @@
 
 ### Executable name
 ifeq ($(COMP),mingw)
-EXE = McBrain-95.exe
+EXE = McB-96.exe
 else
-EXE = McBrain-95
+EXE = McB-96
 endif
-##### bench nodes:   5580391
+##### bench nodes:   5187439
 
 ### Installation dir definitions
 PREFIX = /usr/local
@@ -173,6 +173,9 @@ ifeq ($(COMP),gcc)
 	ifneq ($(KERNEL),Darwin)
 	   LDFLAGS += -Wl,--no-as-needed
 	endif
+
+	gccversion=$(shell gcc --version)
+	gccmasqueraded=$(findstring clang,$(gccversion))
 endif
 
 ifeq ($(COMP),mingw)
@@ -335,15 +338,24 @@ endif
 ### needs access to the optimization flags.
 ifeq ($(optimize),yes)
 ifeq ($(debug), no)
-	ifeq ($(comp),$(filter $(comp),gcc clang))
+	ifeq ($(comp),clang)
 		CXXFLAGS += -flto
 		LDFLAGS += $(CXXFLAGS)
+	endif
+
+	ifeq ($(comp),gcc)
+		CXXFLAGS += -flto
+	ifeq ($(gccmasqueraded),)
+		LDFLAGS += $(CXXFLAGS) -flto=jobserver
+	else
+		LDFLAGS += $(CXXFLAGS)
+	endif
 	endif
 
 	ifeq ($(comp),mingw)
 	ifeq ($(KERNEL),Linux)
 		CXXFLAGS += -flto
-		LDFLAGS += $(CXXFLAGS)
+		LDFLAGS += $(CXXFLAGS) -flto=jobserver
 	endif
 	endif
 endif
@@ -443,7 +455,7 @@ clean: objclean profileclean
 
 # clean binaries and objects
 objclean:
-	@rm -f $(EXE) $(EXE).exe *.o ./syzygy/*.o
+	@rm -f $(EXE) *.o ./syzygy/*.o
 
 # clean auxiliary profiling files
 profileclean:
@@ -495,7 +507,7 @@ config-sanity:
 	@test "$(comp)" = "gcc" || test "$(comp)" = "icc" || test "$(comp)" = "mingw" || test "$(comp)" = "clang"
 
 $(EXE): $(OBJS)
-	$(CXX) -o $@ $(OBJS) $(LDFLAGS)
+	+$(CXX) -o $@ $(OBJS) $(LDFLAGS)
 
 clang-profile-make:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
@@ -506,7 +518,7 @@ clang-profile-make:
 clang-profile-use:
 	llvm-profdata merge -output=stockfish.profdata *.profraw
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS='-fprofile-instr-use=stockfish.profdata' \
+	EXTRACXXFLAGS='-fprofile-instr-use=stockfish.profdata -Wno-profile-instr-out-of-date' \
 	EXTRALDFLAGS='-fprofile-use ' \
 	all
 

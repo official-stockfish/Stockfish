@@ -153,7 +153,7 @@ Entry* probe(const Position& pos) {
 
   // OK, we didn't find any special evaluation function for the current material
   // configuration. Is there a suitable specialized scaling function?
-  EndgameBase<ScaleFactor>* sf;
+  const EndgameBase<ScaleFactor>* sf;
 
   if ((sf = pos.this_thread()->endgames.probe<ScaleFactor>(key)) != nullptr)
   {
@@ -207,6 +207,8 @@ Entry* probe(const Position& pos) {
       e->factor[BLACK] = uint8_t(npm_b <  RookValueMg   ? SCALE_FACTOR_DRAW :
                                  npm_w <= BishopValueMg ? 4 : 14);
 
+  if (npm_w != npm_b || pos.count<PAWN>(WHITE) != pos.count<PAWN>(BLACK))
+  {
   // Evaluate the material imbalance. We use PIECE_TYPE_NONE as a place holder
   // for the bishop pair "extended piece", which allows us to be more flexible
   // in defining bishop pair bonuses.
@@ -216,7 +218,7 @@ Entry* probe(const Position& pos) {
   { pos.count<BISHOP>(BLACK) > 1, pos.count<PAWN>(BLACK), pos.count<KNIGHT>(BLACK),
     pos.count<BISHOP>(BLACK)    , pos.count<ROOK>(BLACK), pos.count<QUEEN >(BLACK) } };
 
-  e->value = int16_t((imbalance<WHITE>(pieceCount) - imbalance<BLACK>(pieceCount)) / 16);
+  e->value = int16_t((imbalance<WHITE>(pieceCount) - imbalance<BLACK>(pieceCount)) / 16);}
   return e;
 }
 

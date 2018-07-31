@@ -57,7 +57,7 @@ namespace {
 
 /// Version number. If Version is left empty, then compile date in the format
 /// DD-MM-YY and show in engine_info.
-const string Version = "9.5";
+const string Version = "9.6";
 
 /// Our fancy logging facility. The trick here is to replace cin.rdbuf() and
 /// cout.rdbuf() with two Tie objects that tie cin and cout to a file stream. We
@@ -128,7 +128,7 @@ const string engine_info(bool to_uci) {
   string month, day, year;
   stringstream ss, date(__DATE__); // From compiler, format is "Sep 21 2008"
 
-  ss << "McBrain " << Version << setfill('0');
+  ss << "McB " << Version << setfill('0');
 
   if (Version.empty())
   {
@@ -139,7 +139,7 @@ const string engine_info(bool to_uci) {
   ss << (Is64Bit ? " 64" : "")
      << (HasPext ? " BMI2" : (HasPopCnt ? " POPCNT" : ""))
      << (to_uci  ? "\nid author ": " by ")
-     << "M. Byrne, I. Ivec, Stockfish authors and others";
+     << "M. Byrne & scores of others";
 
   return ss.str();
 }
@@ -225,11 +225,11 @@ void bindThisThread(size_t) {}
 
 #else
 
-/// get_group() retrieves logical processor information using Windows specific
+/// best_group() retrieves logical processor information using Windows specific
 /// API and returns the best group id for the thread with index idx. Original
 /// code from Texel by Peter Österlund.
 
-int get_group(size_t idx) {
+int best_group(size_t idx) {
 
   int threads = 0;
   int nodes = 0;
@@ -300,7 +300,7 @@ int get_group(size_t idx) {
 void bindThisThread(size_t idx) {
 
   // Use only local variables to be thread-safe
-  int group = get_group(idx);
+  int group = best_group(idx);
 
   if (group == -1)
       return;
