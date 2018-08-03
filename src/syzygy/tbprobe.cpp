@@ -1528,6 +1528,8 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves,
                    : r > -bound ? Value((std::min(-3, r + 800) * int(PawnValueEg)) / 200)
                    :             -VALUE_MATE + MAX_PLY + 1;
 
+        // Force time check
+        main->callsCnt = 0;
         if (main->check_time())
             return false;
     }
@@ -1569,6 +1571,8 @@ bool Tablebases::root_probe_wdl(Position& pos, Search::RootMoves& rootMoves,
                  : wdl < WDLDraw ? WDLLoss : WDLDraw;
         m.tbScore = WDL_to_value[wdl + 2];
 
+        // Force time check
+        main->callsCnt = 0;
         if (main->check_time())
             return false;
     }

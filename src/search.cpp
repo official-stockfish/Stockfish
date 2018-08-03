@@ -652,6 +652,10 @@ namespace {
             TB::ProbeState err;
             TB::WDLScore wdl = Tablebases::probe_wdl(pos, &err);
 
+            // Force time check on the next occasion
+            if (thisThread == Threads.main())
+                static_cast<MainThread*>(thisThread)->callsCnt = 0;
+
             if (err != TB::ProbeState::FAIL)
             {
                 thisThread->tbHits.fetch_add(1, std::memory_order_relaxed);
@@ -1532,28 +1536,11 @@ moves_loop: // When in check, search starts from here
 } // namespace
 
 
-// MainThread::should_check_time checks if we have made enough effort
-// to warrant doing a time check. This means either nodes searched or
-// potential disk accesses performed.
-
-bool MainThread::should_check_time() {
-  static uint64_t lastTbHits = 0;
-  uint64_t nowTbHits = tbHits.load(std::memory_order_relaxed);
-
-  if (--callsCnt > 0 && nowTbHits == lastTbHits)
-      return false;
-
-  lastTbHits = nowTbHits;
-
-  return true;
-}
-
 /// MainThread::check_time() is used to print debug info and, more importantly,
 /// to detect when we are out of available time and thus stop the search.
 
 bool MainThread::check_time() {
-
-  if (!should_check_time())
+  if (--callsCnt > 0)
       return false;
 
   // When using nodes, ensure checking rate is not lower than 0.1% of nodes
