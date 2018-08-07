@@ -64,9 +64,9 @@ void Thread::clear() {
 
   for (auto& to : continuationHistory)
       for (auto& h : to)
-          h.get()->fill(0);
+          h->fill(0);
 
-  continuationHistory[NO_PIECE][0].get()->fill(Search::CounterMovePruneThreshold - 1);
+  continuationHistory[NO_PIECE][0]->fill(Search::CounterMovePruneThreshold - 1);
 }
 
 /// Thread::start_searching() wakes up the thread that will start the search
@@ -174,7 +174,7 @@ void ThreadPool::start_thinking(Position& pos, StateListPtr& states,
           rootMoves.emplace_back(m);
 
   if (!rootMoves.empty())
-      Tablebases::rank_root_moves(pos, rootMoves);
+      Tablebases::rank_root_moves(pos, rootMoves, main());
 
   // After ownership transfer 'states' becomes empty, so if we stop the search
   // and call 'go' again without setting a new position states.get() == NULL.
@@ -192,7 +192,7 @@ void ThreadPool::start_thinking(Position& pos, StateListPtr& states,
 
   for (Thread* th : *this)
   {
-      th->nodes = th->tbHits = th->nmp_ply = th->nmp_odd = 0;
+      th->nodes = th->tbHits = th->nmpMinPly = 0;
       th->rootDepth = th->completedDepth = DEPTH_ZERO;
       th->rootMoves = rootMoves;
       th->rootPos.set(pos.fen(), pos.is_chess960(), &setupStates->back(), th);

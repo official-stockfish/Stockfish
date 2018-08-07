@@ -47,7 +47,6 @@ int main(int argc, char* argv[]) {
   Pawns::init();
   polybook.init(Options["BookFile"]);
   Tablebases::init(Options["SyzygyPath"]); // After Bitboards are set
-  TT.resize(Options["Hash"]);
   Threads.set(Options["Threads"]);
   Search::clear(); // After threads are up
 

@@ -1,23 +1,22 @@
 /*
- McBrain, a UCI chess playing engine derived from Stockfish and Glaurung 2.1
- Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
- Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad (Stockfish Authors)
- Copyright (C) 2015-2016 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad (Stockfish Authors)
- Copyright (C) 2017-2018 Michael Byrne, Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad (McBrain Authors)
- 
- McBrain is free software: you can redistribute it and/or modify
- it under the terms of the GNU General Public License as published by
- the Free Software Foundation, either version 3 of the License, or
- (at your option) any later version.
- 
- McBrain is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- GNU General Public License for more details.
- 
- You should have received a copy of the GNU General Public License
- along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
+  Stockfish, a UCI chess playing engine derived from Glaurung 2.1
+  Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
+  Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
+  Copyright (C) 2015-2018 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+
+  Stockfish is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  Stockfish is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
 
 #include <algorithm>
 #include <cassert>
@@ -119,6 +118,26 @@ Value Endgame<KXK>::operator()(const Position& pos) const {
   return strongSide == pos.side_to_move() ? result : -result;
 }
 
+/// Mate with KQX vs KX. This is similar to KX vs K.
+template<>
+Value Endgame<KQXKX>::operator()(const Position& pos) const {
+	
+	assert(pos.non_pawn_material(strongSide) > QueenValueMg + RookValueMg);
+	assert(pos.non_pawn_material(weakSide) <= RookValueMg);
+	
+	Square winnerKSq = pos.square<KING>(strongSide);
+	Square loserKSq = pos.square<KING>(weakSide);
+	
+	Value result =  VALUE_KNOWN_WIN
+	+ pos.non_pawn_material(strongSide)
+	- pos.non_pawn_material(weakSide)
+	+ PushClose[distance(winnerKSq, loserKSq)]
+	+ PushToCorners[loserKSq];
+	
+	result = std::min(result, VALUE_MATE_IN_MAX_PLY - 1);
+	
+	return strongSide == pos.side_to_move() ? result : -result;
+}
 
 /// Mate with KBN vs K. This is similar to KX vs K, but we have to drive the
 /// defending king towards a corner square of the right color.

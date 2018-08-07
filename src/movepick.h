@@ -1,23 +1,22 @@
 /*
- McBrain, a UCI chess playing engine derived from Stockfish and Glaurung 2.1
- Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
- Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad (Stockfish Authors)
- Copyright (C) 2015-2016 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad (Stockfish Authors)
- Copyright (C) 2017-2018 Michael Byrne, Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad (McBrain Authors)
- 
- McBrain is free software: you can redistribute it and/or modify
- it under the terms of the GNU General Public License as published by
- the Free Software Foundation, either version 3 of the License, or
- (at your option) any later version.
- 
- McBrain is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- GNU General Public License for more details.
- 
- You should have received a copy of the GNU General Public License
- along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
+  Stockfish, a UCI chess playing engine derived from Glaurung 2.1
+  Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
+  Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
+  Copyright (C) 2015-2018 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+
+  Stockfish is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  Stockfish is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
 
 #ifndef MOVEPICK_H_INCLUDED
 #define MOVEPICK_H_INCLUDED
@@ -40,12 +39,11 @@ class StatsEntry {
   T entry;
 
 public:
-  T* get() { return &entry; }
   void operator=(const T& v) { entry = v; }
-  operator T() const {
-    assert(std::is_scalar<T>::value); // Ensure no costly hidden copies
-    return entry;
-  }
+  T* operator&() { return &entry; }
+  T* operator->() { return &entry; }
+  operator const T&() const { return entry; }
+
   void operator<<(int bonus) {
     assert(abs(bonus) <= D); // Ensure range is [-D, D]
     static_assert(D <= std::numeric_limits<T>::max(), "D overflows T");
@@ -64,18 +62,21 @@ public:
 template <typename T, int D, int Size, int... Sizes>
 struct Stats : public std::array<Stats<T, D, Sizes...>, Size>
 {
-  T* get() { return this->at(0).get(); }
+  typedef Stats<T, D, Size, Sizes...> stats;
 
   void fill(const T& v) {
-    T* p = get();
-    std::fill(p, p + sizeof(*this) / sizeof(StatsEntry<T, D>), v);
+
+    // For standard-layout 'this' points to first struct member
+    assert(std::is_standard_layout<stats>::value);
+
+    typedef StatsEntry<T, D> entry;
+    entry* p = reinterpret_cast<entry*>(this);
+    std::fill(p, p + sizeof(*this) / sizeof(entry), v);
   }
 };
 
 template <typename T, int D, int Size>
-struct Stats<T, D, Size> : public std::array<StatsEntry<T, D>, Size> {
-  T* get() { return this->at(0).get(); }
-};
+struct Stats<T, D, Size> : public std::array<StatsEntry<T, D>, Size> {};
 
 /// In stats table, D=0 means that the template parameter is not used
 enum StatsParams { NOT_USED = 0 };
@@ -127,7 +128,6 @@ public:
                                            Move,
                                            Move*);
   Move next_move(bool skipQuiets = false);
-  bool is_refutation(Move m) const { return m == refutations[0] || m == refutations[1] || m == refutations[2]; }
 
 private:
   template<PickType T, typename Pred> Move select(Pred);

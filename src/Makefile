@@ -23,11 +23,10 @@
 
 ### Executable name
 ifeq ($(COMP),mingw)
-EXE = McB-96.exe
+EXE = McBrain-961.exe
 else
-EXE = McB-96
+EXE = McBrain-961
 endif
-##### bench nodes:   5187439
 
 ### Installation dir definitions
 PREFIX = /usr/local
@@ -35,6 +34,7 @@ BINDIR = $(PREFIX)/bin
 
 ### Built-in benchmark for pgo-builds
 PGOBENCH = ./$(EXE) bench 16 1 10
+PGOBENCH2 = ./$(EXE) bench 16 2 8
 
 ### Object files
 OBJS = benchmark.o bitbase.o bitboard.o endgame.o evaluate.o main.o \
@@ -166,7 +166,7 @@ ifeq ($(COMP),gcc)
 			LDFLAGS += -m$(bits)
 		endif
 	else
-		CXXFLAGS += -m$(bits) 
+		CXXFLAGS += -m$(bits)
 		LDFLAGS += -m$(bits)
 	endif
 
@@ -433,6 +433,7 @@ profile-build: config-sanity objclean profileclean
 	@echo ""
 	@echo "Step 2/4. Running benchmark for pgo-build ..."
 	$(PGOBENCH) > /dev/null
+	$(PGOBENCH2) > /dev/null
 	@echo ""
 	@echo "Step 3/4. Building optimized executable ..."
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) objclean
@@ -507,7 +508,7 @@ config-sanity:
 	@test "$(comp)" = "gcc" || test "$(comp)" = "icc" || test "$(comp)" = "mingw" || test "$(comp)" = "clang"
 
 $(EXE): $(OBJS)
-	+$(CXX) -o $@ $(OBJS) $(LDFLAGS)
+	$(CXX) -o $@ $(OBJS) $(LDFLAGS)
 
 clang-profile-make:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
@@ -524,13 +525,13 @@ clang-profile-use:
 
 gcc-profile-make:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS='-fprofile-generate' \
+	EXTRACXXFLAGS='-fprofile-generate -fprofile-correction' \
 	EXTRALDFLAGS='-lgcov' \
 	all
 
 gcc-profile-use:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS='-fprofile-use -fno-peel-loops -fno-tracer' \
+	EXTRACXXFLAGS='-fprofile-use -fprofile-correction -fno-peel-loops -fno-tracer' \
 	EXTRALDFLAGS='-lgcov' \
 	all
 
