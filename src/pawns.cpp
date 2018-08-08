@@ -71,7 +71,7 @@ namespace {
     constexpr Color     Them = (Us == WHITE ? BLACK : WHITE);
     constexpr Direction Up   = (Us == WHITE ? NORTH : SOUTH);
 
-    Bitboard b, neighbours, stoppers, doubled, supported, phalanx;
+    Bitboard b, neighbours, stoppers, doubled, support, phalanx;
     Bitboard lever, leverPush;
     Square s;
     bool opposed, backward;
@@ -106,7 +106,7 @@ namespace {
         doubled    = ourPawns   & (s - Up);
         neighbours = ourPawns   & adjacent_files_bb(f);
         phalanx    = neighbours & rank_bb(s);
-        supported  = neighbours & rank_bb(s - Up);
+        support    = neighbours & rank_bb(s - Up);
 
         // A pawn is backward when it is behind all pawns of the same color
         // on the adjacent files and cannot be safely advanced.
@@ -119,22 +119,22 @@ namespace {
         // not attacked more times than defended.
         if (   !(stoppers ^ lever ^ leverPush)
             && !(ourPawns & forward_file_bb(Us, s))
-            && popcount(supported) >= popcount(lever) - 1
+            && (!more_than_one(lever) || bool(support))
             && popcount(phalanx)   >= popcount(leverPush))
             e->passedPawns[Us] |= s;
 
         else if (   stoppers == SquareBB[s + Up]
                  && relative_rank(Us, s) >= RANK_5)
         {
-            b = shift<Up>(supported) & ~theirPawns;
+            b = shift<Up>(support) & ~theirPawns;
             while (b)
                 if (!more_than_one(theirPawns & PawnAttacks[Us][pop_lsb(&b)]))
                     e->passedPawns[Us] |= s;
         }
 
         // Score this pawn
-        if (supported | phalanx)
-            score += Connected[opposed][bool(phalanx)][popcount(supported)][relative_rank(Us, s)];
+        if (support | phalanx)
+            score += Connected[opposed][bool(phalanx)][popcount(support)][relative_rank(Us, s)];
 
         else if (!neighbours)
             score -= Isolated, e->weakUnopposed[Us] += !opposed;
@@ -142,7 +142,7 @@ namespace {
         else if (backward)
             score -= Backward, e->weakUnopposed[Us] += !opposed;
 
-        if (doubled && !supported)
+        if (doubled && !support)
             score -= Doubled;
     }
 
