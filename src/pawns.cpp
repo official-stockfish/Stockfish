@@ -119,7 +119,7 @@ namespace {
         // not attacked more times than defended.
         if (   !(stoppers ^ lever ^ leverPush)
             && !(ourPawns & forward_file_bb(Us, s))
-            && (!more_than_one(lever) || bool(supported))
+            && ((!more_than_one(lever)) | supported)
             && popcount(phalanx)   >= popcount(leverPush))
             e->passedPawns[Us] |= s;
 
