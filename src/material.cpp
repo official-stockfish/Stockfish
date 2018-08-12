@@ -53,8 +53,6 @@ namespace {
     {  97,  100, -42,   137,  268,    0 }  // Queen
   };
 
-  constexpr int PawnCount[] = { 0, 304,  144, -320, -560, -704, -672, -464, -320 };
-
   // Endgame evaluation and scaling functions are accessed directly and not through
   // the function maps because they correspond to more than one material hash key.
   Endgame<KXK>    EvaluateKXK[] = { Endgame<KXK>(WHITE),    Endgame<KXK>(BLACK) };
@@ -91,8 +89,7 @@ namespace {
 
     constexpr Color Them = (Us == WHITE ? BLACK : WHITE);
 
-    int bonus = PawnCount[pieceCount[Us][PAWN]];
-    //int bonus = 0;
+    int bonus = 0;
 
     // Second-degree polynomial material imbalance, by Tord Romstad
     for (int pt1 = NO_PIECE_TYPE; pt1 <= QUEEN; ++pt1)
