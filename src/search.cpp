@@ -263,10 +263,8 @@ void MainThread::search() {
 
       // Select best thread
       int bestVote = votes[this->rootMoves[0].pv[0]];
-      for (Thread* th : Threads)
-      {
-          if (votes[th->rootMoves[0].pv[0]] > bestVote)
-          {
+      for (Thread* th : Threads){
+          if (votes[th->rootMoves[0].pv[0]] > bestVote){
               bestVote = votes[th->rootMoves[0].pv[0]];
               bestThread = th;
           }
