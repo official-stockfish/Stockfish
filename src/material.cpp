@@ -34,11 +34,11 @@ namespace {
   constexpr int QuadraticOurs[][PIECE_TYPE_NB] = {
     //            OUR PIECES
     // pair pawn knight bishop rook queen
-    {1667                               }, // Bishop pair
+    {1443                               }, // Bishop pair
     {  40,    0                         }, // Pawn
-    {  32,  255,  -3                    }, // Knight      OUR PIECES
+    {  32,  255, -67                    }, // Knight      OUR PIECES
     {   0,  104,   4,    0              }, // Bishop
-    { -26,   -2,  47,   105,  -149      }, // Rook
+    { -26,   -2,  47,   105,  -221      }, // Rook
     {-189,   24, 117,   133,  -134, -10 }  // Queen
   };
 
@@ -91,7 +91,8 @@ namespace {
 
     constexpr Color Them = (Us == WHITE ? BLACK : WHITE);
 
-    int bonus = PawnCount[pieceCount[Us][PAWN]];
+    //int bonus = PawnCount[pieceCount[Us][PAWN]];
+    int bonus = 0;
 
     // Second-degree polynomial material imbalance, by Tord Romstad
     for (int pt1 = NO_PIECE_TYPE; pt1 <= QUEEN; ++pt1)
