@@ -184,7 +184,7 @@ enum Value : int {
 
   PawnValueMg   = 175,   PawnValueEg   = 240,
   KnightValueMg = 784,   KnightValueEg = 868,
-  BishopValueMg = 842,   BishopValueEg = 907,
+  BishopValueMg = 831,   BishopValueEg = 919,
   RookValueMg   = 1286,  RookValueEg   = 1378,
   QueenValueMg  = 2527,  QueenValueEg  = 2697,
 
