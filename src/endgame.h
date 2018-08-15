@@ -64,6 +64,7 @@ enum EndgameCode {
 
 /// Endgame functions can be of two types depending on whether they return a
 /// Value or a ScaleFactor.
+
 template<EndgameCode E> using
 eg_type = typename std::conditional<(E < SCALING_FUNCTIONS), Value, ScaleFactor>::type;
 
@@ -103,21 +104,40 @@ class Endgames {
     return std::get<std::is_same<T, ScaleFactor>::value>(maps);
   }
 
-  template<EndgameCode E, typename T = eg_type<E>, typename P = Ptr<T>>
+  template<EndgameCode E, typename T = eg_type<E>>
   void add(const std::string& code) {
 
     StateInfo st;
-    map<T>()[Position().set(code, WHITE, &st).material_key()] = P(new Endgame<E>(WHITE));
-    map<T>()[Position().set(code, BLACK, &st).material_key()] = P(new Endgame<E>(BLACK));
+    map<T>()[Position().set(code, WHITE, &st).material_key()] = Ptr<T>(new Endgame<E>(WHITE));
+    map<T>()[Position().set(code, BLACK, &st).material_key()] = Ptr<T>(new Endgame<E>(BLACK));
   }
 
   std::pair<Map<Value>, Map<ScaleFactor>> maps;
 
 public:
-  Endgames();
+  Endgames() {
+
+    add<KPK>("KPK");
+    add<KNNK>("KNNK");
+    add<KBNK>("KBNK");
+    add<KRKP>("KRKP");
+    add<KRKB>("KRKB");
+    add<KRKN>("KRKN");
+    add<KQKP>("KQKP");
+    add<KQKR>("KQKR");
+
+    add<KNPK>("KNPK");
+    add<KNPKB>("KNPKB");
+    add<KRPKR>("KRPKR");
+    add<KRPKB>("KRPKB");
+    add<KBPKB>("KBPKB");
+    add<KBPKN>("KBPKN");
+    add<KBPPKB>("KBPPKB");
+    add<KRPPKRP>("KRPPKRP");
+  }
 
   template<typename T>
-  EndgameBase<T>* probe(Key key) {
+  const EndgameBase<T>* probe(Key key) {
     return map<T>().count(key) ? map<T>()[key].get() : nullptr;
   }
 };
