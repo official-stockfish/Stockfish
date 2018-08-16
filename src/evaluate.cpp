@@ -882,8 +882,8 @@ namespace {
 /// evaluate() is the evaluator for the outer world. It returns a static
 /// evaluation of the position from the point of view of the side to move.
 
-Value Eval::evaluate(const Position& pos) {
-  return Evaluation<NO_TRACE>(pos).value();
+Value Eval::evaluate(const Position& pos, int oppStatScore) {
+  return Evaluation<NO_TRACE>(pos).value() + (oppStatScore > 0 ? Value(-10) : VALUE_ZERO);
 }
 
 
