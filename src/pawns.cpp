@@ -42,10 +42,10 @@ namespace {
   // Strength of pawn shelter for our king by [distance from edge][rank].
   // RANK_1 = 0 is used for files where we have no pawn, or pawn is behind our king.
   constexpr Value ShelterStrength[int(FILE_NB) / 2][RANK_NB] = {
-    { V( -3), V( 81), V( 93), V( 58), V( 39), V( 18), V(  25) },
-    { V(-40), V( 61), V( 35), V(-49), V(-29), V(-11), V( -63) },
-    { V( -7), V( 75), V( 23), V( -2), V( 32), V(  3), V( -45) },
-    { V(-36), V(-13), V(-29), V(-52), V(-48), V(-67), V(-166) }
+    { V( -6), V( 81), V( 93), V( 58), V( 39), V( 18), V(  25) },
+    { V(-43), V( 61), V( 35), V(-49), V(-29), V(-11), V( -63) },
+    { V(-10), V( 75), V( 23), V( -2), V( 32), V(  3), V( -45) },
+    { V(-39), V(-13), V(-29), V(-52), V(-48), V(-67), V(-166) }
   };
 
   // Danger of enemy pawns moving toward our king by [distance from edge][rank].
@@ -211,10 +211,8 @@ Value Entry::evaluate_shelter(const Position& pos, Square ksq) {
   Bitboard ourPawns = b & pos.pieces(Us);
   Bitboard theirPawns = b & pos.pieces(Them);
 
-  Value safety = (ourPawns & file_bb(ksq)) ? Value(5) : Value(-5);
-
-  if (shift<Down>(theirPawns) & (FileABB | FileHBB) & BlockRanks & ksq)
-      safety += Value(374);
+  Value safety = (shift<Down>(theirPawns) & (FileABB | FileHBB) & BlockRanks & ksq) ?
+                 Value(374) : Value(5);
 
   File center = std::max(FILE_B, std::min(FILE_G, file_of(ksq)));
   for (File f = File(center - 1); f <= File(center + 1); ++f)
