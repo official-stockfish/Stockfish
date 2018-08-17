@@ -725,7 +725,7 @@ namespace {
         int p = (ss-1)->statScore;
 
         ss->staticEval = eval =
-        (ss-1)->currentMove != MOVE_NULL ? evaluate(pos) - (p > 0 ? 5 + p / 1024 : 0)
+        (ss-1)->currentMove != MOVE_NULL ? evaluate(pos) - (5 + p / 1024)
                                          : -(ss-1)->staticEval + 2 * Eval::Tempo;
 
         tte->save(posKey, VALUE_NONE, BOUND_NONE, DEPTH_NONE, MOVE_NONE,
