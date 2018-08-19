@@ -50,8 +50,6 @@ struct Stack {
   Value staticEval;
   int statScore;
   int moveCount;
-  bool skipEarlyPruning;
-  Depth skipEarlyReduction;
 };
 
 

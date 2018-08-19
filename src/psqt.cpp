@@ -1,22 +1,23 @@
 /*
-  Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
-  Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2018 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
-
-  Stockfish is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
-
-  Stockfish is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
-
-  You should have received a copy of the GNU General Public License
-  along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
+ McBrain, a UCI chess playing engine derived from Stockfish and Glaurung 2.1
+ Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
+ Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad (Stockfish Authors)
+ Copyright (C) 2015-2016 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad (Stockfish Authors)
+ Copyright (C) 2017-2018 Michael Byrne, Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad (McBrain Authors)
+ 
+ McBrain is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+ 
+ McBrain is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+ 
+ You should have received a copy of the GNU General Public License
+ along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
 #include <algorithm>
 
@@ -87,14 +88,14 @@ constexpr Score Bonus[][RANK_NB][int(FILE_NB) / 2] = {
    { S(-1,-74), S(-4,-55), S(-1,-43), S( 0,-30) }
   },
   { // King
-   { S(267,  0), S(320, 48), S(270, 75), S(195, 84) },
-   { S(264, 43), S(304, 92), S(238,143), S(180,132) },
-   { S(200, 83), S(245,138), S(176,167), S(110,165) },
-   { S(177,106), S(185,169), S(148,169), S(110,179) },
-   { S(149,108), S(177,163), S(115,200), S( 66,203) },
-   { S(118, 95), S(159,155), S( 84,176), S( 41,174) },
-   { S( 87, 50), S(128, 99), S( 63,122), S( 20,139) },
-   { S( 63,  9), S( 88, 55), S( 47, 80), S(  0, 90) }
+   { S(272,  0), S(325, 41), S(273, 80), S(190, 93) },
+   { S(277, 57), S(305, 98), S(241,138), S(183,131) },
+   { S(198, 86), S(253,138), S(168,165), S(120,173) },
+   { S(169,103), S(191,152), S(136,168), S(108,169) },
+   { S(145, 98), S(176,166), S(112,197), S(69, 194) },
+   { S(122, 87), S(159,164), S(85, 174), S(36, 189) },
+   { S(87,  40), S(120, 99), S(64, 128), S(25, 141) },
+   { S(64,   5), S(87,  60), S(49,  75), S(0,   75) }
   }
 };
 

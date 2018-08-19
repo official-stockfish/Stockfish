@@ -65,7 +65,7 @@ void init(OptionsMap& o) {
   constexpr int MaxHashMB = Is64Bit ? 131072 : 2048;
 
   o["Contempt"]              << Option(21, -150, 150);
-  o["Analysis Contempt"]     << Option("Both var Off var White var Black var Both", "Off");
+  o["Analysis Contempt"]     << Option("Both var Off var White var Black var Both", "Both");
   o["UCI_AnalyseMode"]       << Option(false);
   o["Threads"]               << Option(1, 1, 512, on_threads);
   o["Hash"]                  << Option(16, 1, MaxHashMB, on_hash_size);
@@ -112,11 +112,13 @@ std::ostream& operator<<(std::ostream& os, const OptionsMap& om) {
               const Option& o = it.second;
               os << "\noption name " << it.first << " type " << o.type;
 
-              if (o.type != "button")
+              if (o.type == "string" || o.type == "check" || o.type == "combo")
                   os << " default " << o.defaultValue;
 
               if (o.type == "spin")
-                  os << " min " << o.min << " max " << o.max;
+                  os << " default " << int(stof(o.defaultValue))
+                     << " min "     << o.min
+                     << " max "     << o.max;
 
               break;
           }
@@ -136,15 +138,15 @@ Option::Option(bool v, OnChange f) : type("check"), min(0), max(0), on_change(f)
 Option::Option(OnChange f) : type("button"), min(0), max(0), on_change(f)
 {}
 
-Option::Option(int v, int minv, int maxv, OnChange f) : type("spin"), min(minv), max(maxv), on_change(f)
+Option::Option(double v, int minv, int maxv, OnChange f) : type("spin"), min(minv), max(maxv), on_change(f)
 { defaultValue = currentValue = std::to_string(v); }
 
 Option::Option(const char* v, const char* cur, OnChange f) : type("combo"), min(0), max(0), on_change(f)
 { defaultValue = v; currentValue = cur; }
 
-Option::operator int() const {
+Option::operator double() const {
   assert(type == "check" || type == "spin");
-  return (type == "spin" ? stoi(currentValue) : currentValue == "true");
+  return (type == "spin" ? stof(currentValue) : currentValue == "true");
 }
 
 Option::operator std::string() const {
@@ -180,7 +182,7 @@ Option& Option::operator=(const string& v) {
 
   if (   (type != "button" && v.empty())
       || (type == "check" && v != "true" && v != "false")
-      || (type == "spin" && (stoi(v) < min || stoi(v) > max)))
+      || (type == "spin" && (stof(v) < min || stof(v) > max)))
       return *this;
 
   if (type != "button")

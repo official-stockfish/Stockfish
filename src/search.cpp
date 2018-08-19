@@ -70,7 +70,7 @@ namespace {
   constexpr int SkipPhase[] = { 0, 1, 0, 1, 2, 3, 0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5, 6, 7 };
 
   // Razor and futility margins
-  constexpr int RazorMargin[] = {0, 590, 604};
+  constexpr int RazorMargin = 600;
   Value futility_margin(Depth d, bool improving) {
     return Value((175 - 50 * improving) * d / ONE_PLY);
   }
@@ -86,7 +86,7 @@ namespace {
   // History and stats update bonus, based on depth
   int stat_bonus(Depth depth) {
     int d = depth / ONE_PLY;
-    return d > 17 ? 0 : 33 * d * d + 66 * d - 66;
+    return d > 17 ? 0 : 29 * d * d + 138 * d - 134;
   }
 
   // Skill structure is used to implement strength limit
@@ -159,14 +159,16 @@ namespace {
 void Search::init() {
 
   for (int imp = 0; imp <= 1; ++imp)
-      for (int d = 1; d < 128; ++d)  // MichaelB7
-		  for (int mc = 1; mc < 96; ++mc)  // MichaelB7
+      for (int d = 1; d < 64; ++d)
+          for (int mc = 1; mc < 64; ++mc)
           {
-	      Reductions[NonPV][imp][d][mc] =  int(double (std::round(log(d) * log(mc))))/ 2;
+              double r = log(d) * log(mc) / 1.95;
+
+              Reductions[NonPV][imp][d][mc] = int(std::round(r));
               Reductions[PV][imp][d][mc] = std::max(Reductions[NonPV][imp][d][mc] - 1, 0);
 
               // Increase reduction for non-PV nodes when eval is not improving
-              if (!imp &&  Reductions[NonPV][imp][d][mc] > 1.0)
+              if (!imp && r > 1.0)
                 Reductions[NonPV][imp][d][mc]++;
           }
 
@@ -296,25 +298,28 @@ void MainThread::search() {
       Value minScore = this->rootMoves[0].score;
 
       // Find out minimum score and reset votes for moves which can be voted
-      for (Thread* th: Threads){
+      for (Thread* th: Threads)
+      {
           minScore = std::min(minScore, th->rootMoves[0].score);
           votes[th->rootMoves[0].pv[0]] = 0;
       }
 
       // Vote according to score and depth
       for (Thread* th : Threads)
-          votes[th->rootMoves[0].pv[0]] +=  int(th->rootMoves[0].score - minScore)  + int(th->completedDepth);
+          votes[th->rootMoves[0].pv[0]] +=  int(th->rootMoves[0].score - minScore)
+                                          + int(th->completedDepth);
 
       // Select best thread
       int bestVote = votes[this->rootMoves[0].pv[0]];
-      for (Thread* th : Threads){
-          if (votes[th->rootMoves[0].pv[0]] > bestVote){
-            bestVote = votes[th->rootMoves[0].pv[0]];
-            bestThread = th;
+      for (Thread* th : Threads)
+      {
+          if (votes[th->rootMoves[0].pv[0]] > bestVote)
+          {
+              bestVote = votes[th->rootMoves[0].pv[0]];
+              bestThread = th;
           }
       }
   }
-
 
   previousScore = bestThread->rootMoves[0].score;
 
@@ -367,7 +372,7 @@ void Thread::search() {
 
   multiPV = std::min(multiPV, rootMoves.size());
 
-  int ct = Options["Contempt"] * PawnValueEg / 100; // From centipawns
+  int ct = int(Options["Contempt"]) * PawnValueEg / 100; // From centipawns
 
   // In analysis mode, adjust contempt in accordance with user preference
   if (Limits.infinite || Options["UCI_AnalyseMode"])
@@ -381,8 +386,6 @@ void Thread::search() {
   contempt = (us == WHITE ?  make_score(ct, ct / 2)
                           : -make_score(ct, ct / 2));
 
-  // UCI options specify 256 as the max MultiPv option
-  int consecutiveEarlyExits[257] = {0};
   // Iterative deepening loop until requested to stop or the target depth is reached
   while (   (rootDepth += ONE_PLY) < DEPTH_MAX
          && !Threads.stop
@@ -425,14 +428,14 @@ void Thread::search() {
           // Reset aspiration window starting size
           if (rootDepth >= 5 * ONE_PLY)
           {
-              Value prevScore = rootMoves[pvIdx].previousScore;
-              delta1 = (prevScore < 0) ? Value(int(8.0 + 0.1 * abs(prevScore))) : Value(18);
-              delta2 = (prevScore > 0) ? Value(int(8.0 + 0.1 * abs(prevScore))) : Value(18);
-              alpha = std::max(prevScore - delta1,-VALUE_INFINITE);
-              beta  = std::min(prevScore + delta2, VALUE_INFINITE);
+              Value previousScore = rootMoves[pvIdx].previousScore;
+              delta1 = (previousScore < 0) ? Value(int(8.0 + 0.1 * abs(previousScore))) : Value(18);
+              delta2 = (previousScore > 0) ? Value(int(8.0 + 0.1 * abs(previousScore))) : Value(18);
+              alpha = std::max(previousScore - delta1,-VALUE_INFINITE);
+              beta  = std::min(previousScore + delta2, VALUE_INFINITE);
 
               // Adjust contempt based on root move's previousScore (dynamic contempt)
-              int dct = ct + (ct ? 88 * prevScore / (abs(prevScore) + 200) : 0);
+              int dct = ct + 88 * previousScore / (abs(previousScore) + 200);
 
               contempt = (us == WHITE ?  make_score(dct, dct / 2)
                                       : -make_score(dct, dct / 2));
@@ -490,8 +493,6 @@ void Thread::search() {
 				  
 	      assert(alpha >= -VALUE_INFINITE && beta <= VALUE_INFINITE);
 				  
-	      consecutiveEarlyExits[pvIdx] = (bestValue >= beta) ? consecutiveEarlyExits[pvIdx] + 1 : 0;
-
           }
 
           // Sort the PV lines searched so far and update the GUI
@@ -562,9 +563,6 @@ void Thread::search() {
                       Threads.stop = true;
               }
           }
-        if (mainThread && !Threads.stop)
-		   playout(lastBestMove, ss, bestValue);
-          
   }
 
   if (!mainThread)
@@ -576,43 +574,6 @@ void Thread::search() {
   if (skill.enabled())
       std::swap(rootMoves[0], *std::find(rootMoves.begin(), rootMoves.end(),
                 skill.best ? skill.best : skill.pick_best(multiPV)));
-}
-
-// Playout a game, in the hope of meaningfully filling the TT beyond the horizon
-Value Thread::playout(Move playMove, Stack* ss, Value playoutValue) {
-	StateInfo st;
-	bool ttHit;
-
-    if (     Threads.stop 
-        ||  !rootPos.pseudo_legal(playMove)
-        ||  !rootPos.legal(playMove))
-        return VALUE_NONE;
-
-    if (rootPos.is_draw(ss->ply)) return VALUE_DRAW;
-	
-	ss->currentMove         = playMove;
-	ss->continuationHistory [rootPos.moved_piece(playMove)][to_sq(playMove)];
-	
-	rootPos.do_move(playMove, st);
-	
-	(ss+1)->ply = ss->ply + 1;
-	int d = int(rootDepth) * int(rootDepth) / (rootDepth + 4 * ONE_PLY) - 2;
-	Depth newDepth  = d * ONE_PLY;
-	TTEntry* tte    = TT.probe(rootPos.key(), ttHit);
-	if (!ttHit && MoveList<LEGAL>(rootPos).size()){
-	    playoutValue = ::search<NonPV>(rootPos, ss+1, - playoutValue,  - playoutValue + 1, newDepth, true );
-	    tte    = TT.probe(rootPos.key(), ttHit);
-	   }
-    
-	Move ttMove  = ttHit ? tte->move() : MOVE_NONE;
-	if(  ttHit
-	   && ttMove != MOVE_NONE
-	   && ss->ply < MAX_PLY - 2
-	   && abs(playoutValue) < VALUE_KNOWN_WIN)
-	playoutValue = - playout(ttMove, ss+1, - playoutValue);
-
-    rootPos.undo_move(playMove);
-	return playoutValue;
 }
 
 
@@ -640,9 +601,17 @@ namespace {
 
     // Dive into quiescence search when the depth reaches zero
     if (depth < ONE_PLY)
-		return qsearch<NT>(pos, ss, alpha, beta);
-	
-	size_t maxmove = 0;
+    {
+        int p = (ss-1)->statScore;
+        int malus = p > 0 ? (p + 5000) / 1024 :
+                    p < 0 ? (p - 5000) / 1024 : 0;
+        Value v = qsearch<NT>(pos, ss, alpha, beta);
+        return v == VALUE_DRAW ? v : v - malus;
+    }
+
+    
+
+    size_t maxmove = 0;
     assert(-VALUE_INFINITE <= alpha && alpha < beta && beta <= VALUE_INFINITE);
     assert(PvNode || (alpha == beta - 1));
     assert(DEPTH_ZERO < depth && depth < DEPTH_MAX);
@@ -683,7 +652,8 @@ namespace {
         if (   Threads.stop.load(std::memory_order_relaxed)
             || pos.is_draw(ss->ply)
             || ss->ply >= MAX_PLY)
-            return (ss->ply >= MAX_PLY && !inCheck) ? evaluate(pos) : VALUE_DRAW;
+            return (ss->ply >= MAX_PLY && !inCheck) ? evaluate(pos) - 10 * ((ss-1)->statScore > 0)
+                                                    : VALUE_DRAW;
 
         // Step 3. Mate distance pruning. Even if we mate at the next move our score
         // would be at best mate_in(ss->ply+1), but if alpha is already bigger because
@@ -700,7 +670,6 @@ namespace {
     assert(0 <= ss->ply && ss->ply < MAX_PLY);
 
     (ss+1)->ply = ss->ply + 1;
-	(ss+1)->skipEarlyPruning = false; (ss+1)->skipEarlyReduction = DEPTH_ZERO;
     ss->currentMove = (ss+1)->excludedMove = bestMove = MOVE_NONE;
     ss->continuationHistory = &thisThread->continuationHistory[NO_PIECE][0];
     (ss+2)->killers[0] = (ss+2)->killers[1] = MOVE_NONE;
@@ -767,10 +736,6 @@ namespace {
             TB::ProbeState err;
             TB::WDLScore wdl = Tablebases::probe_wdl(pos, &err);
 
-            // Force time check on the next occasion
-            if (thisThread == Threads.main())
-                static_cast<MainThread*>(thisThread)->callsCnt = 0;
-
             if (err != TB::ProbeState::FAIL)
             {
                 thisThread->tbHits.fetch_add(1, std::memory_order_relaxed);
@@ -806,18 +771,17 @@ namespace {
     }
 
     // Step 6. Static evaluation of the position
-    if (inCheck || ss->skipEarlyPruning)
+    if (inCheck)
     {
         ss->staticEval = eval = VALUE_NONE;
         improving = false;
         goto moves_loop;  // Skip early pruning when in check
     }
-
     else if (ttHit)
     {
         // Never assume anything on values stored in TT
         if ((ss->staticEval = eval = tte->eval()) == VALUE_NONE)
-            eval = ss->staticEval = evaluate(pos);
+            eval = ss->staticEval = evaluate(pos) - 10 * ((ss-1)->statScore > 0);
 
         // Can ttValue be used as a better position evaluation?
         if (    ttValue != VALUE_NONE
@@ -826,24 +790,20 @@ namespace {
     }
     else
     {
-        ss->staticEval = eval =
-        (ss-1)->currentMove != MOVE_NULL ? evaluate(pos)
-                                         : -(ss-1)->staticEval + 2 * Eval::Tempo;
+        int p = (ss-1)->statScore;
+        int malus = p > 0 ? (p + 5000) / 1024 :
+                    p < 0 ? (p - 5000) / 1024 : 0;
 
-        tte->save(posKey, VALUE_NONE, BOUND_NONE, DEPTH_NONE, MOVE_NONE,
-                  ss->staticEval);
+        ss->staticEval = eval = (ss-1)->currentMove != MOVE_NULL ? evaluate(pos) - malus
+                                                                 : -(ss-1)->staticEval + 2 * Eval::Tempo;
+
+        tte->save(posKey, VALUE_NONE, BOUND_NONE, DEPTH_NONE, MOVE_NONE, ss->staticEval);
     }
 
-    // Step 7. Razoring (skipped when in check), 2 Elo
-    if (  !bruteForce && !PvNode
-        && depth < 3 * ONE_PLY
-        && eval <= alpha - RazorMargin[depth / ONE_PLY])
-    {
-        Value ralpha = alpha - (depth >= 2 * ONE_PLY) * RazorMargin[depth / ONE_PLY];
-        Value v = qsearch<NonPV>(pos, ss, ralpha, ralpha+1);
-        if (depth < 2 * ONE_PLY || v <= ralpha)
-            return v;
-    }
+    // Step 7. Razoring (~2 Elo)
+    if (    !bruteForce && depth < 2 * ONE_PLY
+        && eval <= alpha - RazorMargin)
+        return qsearch<NT>(pos, ss, alpha, beta);
 
     improving =   ss->staticEval >= (ss-2)->staticEval
                || (ss-2)->staticEval == VALUE_NONE;
@@ -858,36 +818,32 @@ namespace {
     // Step 9. Null move search with verification search (~40 Elo)
     if (   !noNULL && !PvNode
         && (ss-1)->currentMove != MOVE_NULL
-        && (ss-1)->statScore < 22500
-        && eval >= beta
-		&& ss->staticEval >= beta - 36 * depth / ONE_PLY + 225
-        && ss->staticEval >= beta - int(320 * log(depth / ONE_PLY)) + 500  // Ivan Ivec
+        && (ss-1)->statScore < 23200
+        &&  eval >= beta
+        &&  ss->staticEval >= beta - 36 * depth / ONE_PLY + 225
         && !excludedMove
-        && thisThread->selDepth + 3 > thisThread->rootDepth / ONE_PLY  // idea from Corchess/IIvec
-		&& (((ss-2)->currentMove != MOVE_NULL) || (ss-2)->staticEval >= beta - 36 * depth / ONE_PLY + 225)// MichaeB7
-		&&  pos.non_pawn_material(us)
-		&& pos.non_pawn_material(pos.side_to_move()) > BishopValueMg  //Ivan Ivec
+        && thisThread->selDepth + 5 > thisThread->rootDepth / ONE_PLY  // idea from Corchess/IIvec
+        &&  pos.non_pawn_material(us)
         && (ss->ply >= thisThread->nmpMinPly || us != thisThread->nmpColor)
-        && !(MoveList<LEGAL>(pos).size() < 4)) //MichaelB7
+	&& !(MoveList<LEGAL>(pos).size() < 4)) //MichaelB7
     {
         assert(eval - beta >= 0);
-
+		
 		maxmove = MoveList<LEGAL>(pos).size();
 		static const double dPly = ONE_PLY;
 		static const double dPlyInv = 1.0/dPly;
 		static const double vInv = 1.0 / Value(170);
 		double dDepth = double(depth);
 		double dR = (2.6 * log(dDepth * dPlyInv) + std::min(double(eval - beta) * vInv, 3.0)) * dPly * logistic_mobility_score(maxmove);
+		// Null move dynamic reduction based on depth and value
 		Depth R = (Depth(int(dR + 0.5)));//DC
 
         ss->currentMove = MOVE_NULL;
         ss->continuationHistory = &thisThread->continuationHistory[NO_PIECE][0];
 
         pos.do_null_move(st);
-		(ss+1)->skipEarlyPruning = true;
 
         Value nullValue = -search<NonPV>(pos, ss+1, -beta, -beta+1, depth-R, !cutNode);
-		(ss+1)->skipEarlyPruning = false;
 
         pos.undo_null_move();
 
@@ -906,11 +862,10 @@ namespace {
             // for us, until ply exceeds nmpMinPly.
             thisThread->nmpMinPly = ss->ply + 3 * (depth-R) / 4;
             thisThread->nmpColor = us;
-			ss->skipEarlyPruning = true;
+
             Value v = search<NonPV>(pos, ss, beta-1, beta, depth-R, false);
 
             thisThread->nmpMinPly = 0;
-			ss->skipEarlyPruning = false;
 
             if (v >= beta)
                 return nullValue;
@@ -959,9 +914,7 @@ namespace {
     if (    depth >= 8 * ONE_PLY
         && !ttMove)
     {
-		ss->skipEarlyPruning = true;
         search<NT>(pos, ss, alpha, beta, depth - 7 * ONE_PLY, cutNode);
-		ss->skipEarlyPruning = false;
 
         tte = TT.probe(posKey, ttHit);
         ttValue = ttHit ? value_from_tt(tte->value(), ss->ply) : VALUE_NONE;
@@ -1029,7 +982,6 @@ moves_loop: // When in check, search starts from here
           &&  move == ttMove
           && !rootNode
           && !excludedMove // Recursive singular search is not allowed
-		
           &&  ttValue != VALUE_NONE
           && (tte->bound() & BOUND_LOWER)
           &&  tte->depth() >= depth - 3 * ONE_PLY
@@ -1037,9 +989,7 @@ moves_loop: // When in check, search starts from here
       {
           Value rBeta = std::max(ttValue - 2 * depth / ONE_PLY, -VALUE_MATE);
           ss->excludedMove = move;
-		  ss->skipEarlyPruning = true;
           value = search<NonPV>(pos, ss, rBeta - 1, rBeta, depth / 2, cutNode);
-		  ss->skipEarlyPruning = false;
           ss->excludedMove = MOVE_NONE;
 
           if (value < rBeta)
@@ -1124,23 +1074,16 @@ moves_loop: // When in check, search starts from here
       // re-searched at full depth.
       if (    depth >= 3 * ONE_PLY
           &&  moveCount > 1
-          && (!captureOrPromotion || moveCountPruning)
-	  && !(PvNode && abs(alpha) > VALUE_KNOWN_WIN))
+          && (!captureOrPromotion || moveCountPruning))
       {
-          Depth r = ss->skipEarlyReduction = reduction<PvNode>(improving, depth, moveCount);
+          Depth r = reduction<PvNode>(improving, depth, moveCount);
 
-          if (captureOrPromotion) // (~5 Elo)
-          {
-              // Decrease reduction by comparing opponent's stat score
-              if ((ss-1)->statScore < 0)
-                  r -= ONE_PLY;
-          }
-          else
-          {
-              // Decrease reduction if opponent's move count is high (~5 Elo)
-              if ((ss-1)->moveCount > 15)
-                  r -= ONE_PLY;
+          // Decrease reduction if opponent's move count is high (~10 Elo)
+          if ((ss-1)->moveCount > 15)
+              r -= ONE_PLY;
 
+          if (!captureOrPromotion)
+          {
               // Decrease reduction for exact PV nodes (~0 Elo)
               if (pvExact)
                   r -= ONE_PLY;
@@ -1368,7 +1311,7 @@ moves_loop: // When in check, search starts from here
         || ss->ply >= MAX_PLY)
         return (ss->ply >= MAX_PLY && !inCheck) ? evaluate(pos) : VALUE_DRAW;
 
-    // Check for a move which draws by repetition, or an alternative earlier move to this position
+	// Check for a move which draws by repetition, or an alternative earlier move to this position
     if (   pos.rule50_count() >= 3
         && alpha < VALUE_DRAW
         && pos.has_game_cycle(ss->ply))
@@ -1690,9 +1633,10 @@ moves_loop: // When in check, search starts from here
 /// MainThread::check_time() is used to print debug info and, more importantly,
 /// to detect when we are out of available time and thus stop the search.
 
-bool MainThread::check_time() {
+void MainThread::check_time() {
+
   if (--callsCnt > 0)
-      return false;
+      return;
 
   // When using nodes, ensure checking rate is not lower than 0.1% of nodes
   callsCnt = Limits.nodes ? std::min(1024, int(Limits.nodes / 1024)) : 1024;
@@ -1710,16 +1654,12 @@ bool MainThread::check_time() {
 
   // We should not stop pondering until told so by the GUI
   if (Threads.ponder)
-      return false;
+      return;
 
   if (   (Limits.use_time_management() && elapsed > Time.maximum() - 10)
       || (Limits.movetime && elapsed >= Limits.movetime)
-      || (Limits.nodes && Threads.nodes_searched() >= (uint64_t)Limits.nodes)) {
+      || (Limits.nodes && Threads.nodes_searched() >= (uint64_t)Limits.nodes))
       Threads.stop = true;
-      return true;
-  }
-
-  return false;
 }
 
 
@@ -1737,8 +1677,7 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
   uint64_t nodesSearched = Threads.nodes_searched();
   uint64_t tbHits = Threads.tb_hits() + (TB::RootInTB ? rootMoves.size() : 0);
 	
-  if (tactical)
-	{
+  if (tactical) {
 	  temp = multiPV;
 	  multiPV = 1;
 	}
@@ -1815,13 +1754,12 @@ bool RootMove::extract_ponder_from_tt(Position& pos) {
     return pv.size() > 1;
 }
 
-void Tablebases::rank_root_moves(Position& pos, Search::RootMoves& rootMoves,
-                                 MainThread* main) {
+void Tablebases::rank_root_moves(Position& pos, Search::RootMoves& rootMoves) {
 
     RootInTB = false;
-    UseRule50 = Options["Syzygy50MoveRule"];
-    ProbeDepth = Options["SyzygyProbeDepth"] * ONE_PLY;
-    Cardinality = Options["SyzygyProbeLimit"];
+    UseRule50 = bool(Options["Syzygy50MoveRule"]);
+    ProbeDepth = int(Options["SyzygyProbeDepth"]) * ONE_PLY;
+    Cardinality = int(Options["SyzygyProbeLimit"]);
     bool dtz_available = true;
 
     // Tables with fewer pieces than SyzygyProbeLimit are searched with
@@ -1835,13 +1773,13 @@ void Tablebases::rank_root_moves(Position& pos, Search::RootMoves& rootMoves,
     if (Cardinality >= popcount(pos.pieces()) && !pos.can_castle(ANY_CASTLING))
     {
         // Rank moves using DTZ tables
-        RootInTB = root_probe(pos, rootMoves, main);
+        RootInTB = root_probe(pos, rootMoves);
 
         if (!RootInTB)
         {
             // DTZ tables are missing; try to rank moves using WDL tables
             dtz_available = false;
-            RootInTB = root_probe_wdl(pos, rootMoves, main);
+            RootInTB = root_probe_wdl(pos, rootMoves);
         }
     }
 
