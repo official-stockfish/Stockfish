@@ -116,7 +116,7 @@ void Bitboards::init() {
           if (s1 != s2)
           {
               SquareDistance[s1][s2] = std::max(distance<File>(s1, s2), distance<Rank>(s1, s2));
-              DistanceRingBB[s1][SquareDistance[s1][s2] - 1] |= s2;
+              DistanceRingBB[s1][SquareDistance[s1][s2]] |= s2;
           }
 
   int steps[][5] = { {}, { 7, 9 }, { 6, 10, 15, 17 }, {}, {}, {}, { 1, 7, 8, 9 } };
