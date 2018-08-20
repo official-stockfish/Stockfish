@@ -556,7 +556,7 @@ namespace {
     Key posKey;
     Move ttMove, move, excludedMove, bestMove;
     Depth extension, newDepth;
-    Value bestValue, value, ttValue, eval, maxValue;
+    Value bestValue, value, ttValue, eval, maxValue, pureStaticEval;
     bool ttHit, inCheck, givesCheck, improving;
     bool captureOrPromotion, doFullDepthSearch, moveCountPruning, skipQuiets, ttCapture, pvExact;
     Piece movedPiece;
@@ -705,15 +705,15 @@ namespace {
     // Step 6. Static evaluation of the position
     if (inCheck)
     {
-        ss->staticEval = eval = VALUE_NONE;
+        ss->staticEval = pureStaticEval = eval = VALUE_NONE;
         improving = false;
         goto moves_loop;  // Skip early pruning when in check
     }
     else if (ttHit)
     {
         // Never assume anything on values stored in TT
-        if ((ss->staticEval = eval = tte->eval()) == VALUE_NONE)
-            eval = ss->staticEval = evaluate(pos) - 10 * ((ss-1)->statScore > 0);
+        if ((ss->staticEval = pureStaticEval = eval = tte->eval()) == VALUE_NONE)
+            eval = ss->staticEval = (pureStaticEval = evaluate(pos)) - 10 * ((ss-1)->statScore > 0);
 
         // Can ttValue be used as a better position evaluation?
         if (    ttValue != VALUE_NONE
@@ -726,10 +726,10 @@ namespace {
         int malus = p > 0 ? (p + 5000) / 1024 :
                     p < 0 ? (p - 5000) / 1024 : 0;
 
-        ss->staticEval = eval = (ss-1)->currentMove != MOVE_NULL ? evaluate(pos) - malus
-                                                                 : -(ss-1)->staticEval + 2 * Eval::Tempo;
+        ss->staticEval = eval = (ss-1)->currentMove != MOVE_NULL ? (pureStaticEval = evaluate(pos)) - malus
+                                                                 : (pureStaticEval = -(ss-1)->staticEval + 2 * Eval::Tempo);
 
-        tte->save(posKey, VALUE_NONE, BOUND_NONE, DEPTH_NONE, MOVE_NONE, ss->staticEval);
+        tte->save(posKey, VALUE_NONE, BOUND_NONE, DEPTH_NONE, MOVE_NONE, pureStaticEval);
     }
 
     // Step 7. Razoring (~2 Elo)
@@ -1179,7 +1179,7 @@ moves_loop: // When in check, search starts from here
         tte->save(posKey, value_to_tt(bestValue, ss->ply),
                   bestValue >= beta ? BOUND_LOWER :
                   PvNode && bestMove ? BOUND_EXACT : BOUND_UPPER,
-                  depth, bestMove, ss->staticEval);
+                  depth, bestMove, pureStaticEval);
 
     assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
 
