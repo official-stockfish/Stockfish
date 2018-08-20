@@ -444,7 +444,8 @@ profile-build: config-sanity objclean profileclean
 	@echo "Step 4/4. Deleting profile data ..."
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) profileclean
 	strip $(EXE)
-	cp $(EXE) /Users/michaelbyrne/cluster.mfb
+
+####cp $(EXE) /Users/michaelbyrne/cluster.mfb
 
 strip:
 	strip $(EXE)
