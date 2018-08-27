@@ -620,8 +620,6 @@ namespace {
     excludedMove = ss->excludedMove;
     posKey = pos.key() ^ Key(excludedMove << 16); // Isn't a very good hash
     tte = TT.probe(posKey, ttHit);
-    if (excludedMove)
-       ttHit = false;
     ttValue = ttHit ? value_from_tt(tte->value(), ss->ply) : VALUE_NONE;
     ttMove =  rootNode ? thisThread->rootMoves[thisThread->pvIdx].pv[0]
             : ttHit    ? tte->move() : MOVE_NONE;
@@ -813,6 +811,9 @@ namespace {
                && probCutCount < 3)
             if (pos.legal(move))
             {
+                if (move == excludedMove)
+                    continue;
+
                 probCutCount++;
 
                 ss->currentMove = move;
