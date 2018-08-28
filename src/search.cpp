@@ -705,15 +705,19 @@ namespace {
     // Step 6. Static evaluation of the position
     if (inCheck)
     {
-        ss->staticEval = pureStaticEval = eval = VALUE_NONE;
+        ss->staticEval = eval = pureStaticEval = VALUE_NONE;
         improving = false;
         goto moves_loop;  // Skip early pruning when in check
     }
     else if (ttHit)
     {
         // Never assume anything on values stored in TT
-        if ((ss->staticEval = pureStaticEval = eval = tte->eval()) == VALUE_NONE)
-            eval = ss->staticEval = (pureStaticEval = evaluate(pos)) - 10 * ((ss-1)->statScore > 0);
+        ss->staticEval = eval = pureStaticEval = tte->eval();
+        if (eval == VALUE_NONE)
+        {
+            pureStaticEval = evaluate(pos);
+            ss->staticEval = eval = pureStaticEval - 10 * ((ss-1)->statScore > 0);
+        }
 
         // Can ttValue be used as a better position evaluation?
         if (    ttValue != VALUE_NONE
@@ -722,12 +726,17 @@ namespace {
     }
     else
     {
-        int p = (ss-1)->statScore;
-        int malus = p > 0 ? (p + 5000) / 1024 :
-                    p < 0 ? (p - 5000) / 1024 : 0;
+        if ((ss-1)->currentMove != MOVE_NULL)
+        {
+            int p = (ss-1)->statScore;
+            int malus = p > 0 ? (p + 5000) / 1024 :
+                        p < 0 ? (p - 5000) / 1024 : 0;
 
-        ss->staticEval = eval = (ss-1)->currentMove != MOVE_NULL ? (pureStaticEval = evaluate(pos)) - malus
-                                                                 : (pureStaticEval = -(ss-1)->staticEval + 2 * Eval::Tempo);
+            pureStaticEval = evaluate(pos);
+            ss->staticEval = eval = pureStaticEval - malus;
+        }
+        else
+            ss->staticEval = eval = pureStaticEval = -(ss-1)->staticEval + 2 * Eval::Tempo;
 
         tte->save(posKey, VALUE_NONE, BOUND_NONE, DEPTH_NONE, MOVE_NONE, pureStaticEval);
     }
