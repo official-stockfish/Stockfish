@@ -812,7 +812,7 @@ namespace {
             if (pos.legal(move))
             {
                 if (move == excludedMove)
-                     continue;
+                    continue;
 
                 probCutCount++;
 
