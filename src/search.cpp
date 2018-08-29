@@ -815,6 +815,9 @@ namespace {
 
         while (  (move = mp.next_move()) != MOVE_NONE
                && probCutCount < 3)
+        {
+            if (move == excludedMove)
+                continue;
             if (pos.legal(move))
             {
                 probCutCount++;
@@ -838,6 +841,7 @@ namespace {
                 if (value >= rbeta)
                     return value;
             }
+	     }
     }
 
     // Step 11. Internal iterative deepening (~2 Elo)
