@@ -59,7 +59,7 @@ The "SyzygyProbeLimit" option should normally be left at its default value.
 
 **What to expect**
 If the engine is searching a position that is not in the tablebases (e.g.
-a position with 7 pieces), it will access the tablebases during the search.
+a position with 8 pieces), it will access the tablebases during the search.
 If the engine reports a very large score (typically 123.xx), this means
 that it has found a winning line into a tablebase position.
 
