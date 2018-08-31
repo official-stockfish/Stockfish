@@ -1,0 +1,5 @@
+make clean
+make profile-build ARCH=x86-64 -j14
+strip McBrain
+
+

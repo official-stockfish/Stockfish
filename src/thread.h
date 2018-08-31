@@ -74,6 +74,7 @@ public:
   CapturePieceToHistory captureHistory;
   ContinuationHistory continuationHistory;
   Score contempt;
+  bool pvDraw;
 };
 
 

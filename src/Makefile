@@ -1,11 +1,11 @@
 ### ==========================================================================
 ### Copyright Notice and License Information
 ### ==========================================================================
-#   McBrain, a UCI chess playing engine derived from Stockfish and Glaurung 2.1
+#   McBrain, a UCI chess playing engine derived from SugaR, Stockfish and Glaurung 2.1
 #   Copyright (C) 2004-2008 Tord Romstad (Glaurung Author)
 #   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad (Stockfish Authors)
 #   Copyright (C) 2015-2016 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad (Stockfish Authors)
-#   Copyright (C) 2017 Michael Byrne, Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad (McBrain Authors)
+#   Copyright (C) 2017-2018 Michael Byrne, Marco Zerbinati, Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad (McBrain Authors)
 
 #   McBrain is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -24,10 +24,24 @@
 ### ==========================================================================
 
 ### Executable name
+### McCain bench nodes 4457465
+### McBrain bench nodes 4461951
+VERSION=
+#VERSION=maverick
+ifeq ($(VERSION),maverick)
+CXXFLAGS += -DMaverick
 ifeq ($(COMP),mingw)
-EXE = McBrain-97.exe
+EXE = McCain.exe
 else
-EXE = McBrain-97
+EXE = McCain
+endif
+else
+CXXFLAGS += -DPAWN_SCORES
+ifeq ($(COMP),mingw)
+EXE = McBrain.exe
+else
+EXE = McBrain
+endif
 endif
 
 ### Installation dir definitions
@@ -39,7 +53,7 @@ PGOBENCH = ./$(EXE) bench 16 1 10
 PGOBENCH2 = ./$(EXE) bench 16 2 8
 
 ### Object files
-OBJS = benchmark.o bitbase.o bitboard.o endgame.o evaluate.o main.o \
+OBJS = benchmark.o bitbase.o bitboard.o book.o endgame.o evaluate.o main.o \
 	material.o misc.o movegen.o movepick.o pawns.o position.o psqt.o \
 	search.o thread.o timeman.o tt.o uci.o ucioption.o polybook.o syzygy/tbprobe.o
 
@@ -377,9 +391,13 @@ endif
 
 help:
 	@echo ""
-	@echo "To compile stockfish, type: "
+	@echo "To compile McBrain, type: "
+	@echo "'make <target> ARCH=arch [COMP=compiler] [COMPCXX=cxx]'"
+	@echo "<target> would be 'build' or 'profile-build'"
 	@echo ""
-	@echo "make target ARCH=arch [COMP=compiler] [COMPCXX=cxx]"
+	@echo "To compile McCain, uncomment this line in the makefile: "
+	@echo "'### VERSION=maverick' by remvoing the 3 #(pound signs)"
+	@echo "then type: 'make <target> ARCH=arch [COMP=compiler] [COMPCXX=cxx]'"
 	@echo ""
 	@echo "Supported targets:"
 	@echo ""
@@ -444,8 +462,8 @@ profile-build: config-sanity objclean profileclean
 	@echo "Step 4/4. Deleting profile data ..."
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) profileclean
 	strip $(EXE)
-
-####cp $(EXE) /Users/michaelbyrne/cluster.mfb
+#	cp $(EXE) /Users/michaelbyrne/cluster.mfb
+#	cp $(EXE) /opt/picochess/engines/armv7l
 
 strip:
 	strip $(EXE)
@@ -555,4 +573,3 @@ icc-profile-use:
 	-@$(CXX) $(DEPENDFLAGS) -MM $(OBJS:.o=.cpp) > $@ 2> /dev/null
 
 -include .depend
-

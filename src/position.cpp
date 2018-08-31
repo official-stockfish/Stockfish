@@ -1122,6 +1122,7 @@ bool Position::is_draw(int ply) const {
           && ++cnt + (ply > i) == 2)
           return true;
   }
+
   return false;
 }
 
@@ -1139,7 +1140,7 @@ bool Position::has_repeated() const {
         if (end < i)
             return false;
 
-        StateInfo* stp = stc->previous->previous;
+        StateInfo* stp = st->previous->previous;
 
         do {
             stp = stp->previous->previous;

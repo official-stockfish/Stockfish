@@ -328,6 +328,7 @@ inline Square msb(Bitboard b) {
 }
 
 #else  // MSVC, WIN32
+#include <intrin.h>
 
 inline Square lsb(Bitboard b) {
   assert(b);

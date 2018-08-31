@@ -24,19 +24,27 @@
 #include <cstring>   // For std::memset
 #include <iomanip>
 #include <sstream>
+#include <cmath>
 
 #include "bitboard.h"
 #include "evaluate.h"
 #include "material.h"
 #include "pawns.h"
 #include "thread.h"
+#include "uci.h"
+
+//#define PAWN_SCORES
 
 namespace Trace {
 
   enum Tracing { NO_TRACE, TRACE };
 
   enum Term { // The first 8 entries are reserved for PieceType
-    MATERIAL = 8, IMBALANCE, MOBILITY, THREAT, PASSED, SPACE, INITIATIVE, TOTAL, TERM_NB
+    MATERIAL = 8, IMBALANCE, MOBILITY, THREAT, PASSED, SPACE,
+#ifdef PAWN_SCORES
+	CENTER, 
+#endif
+	INITIATIVE, TOTAL, TERM_NB
   };
 
   Score scores[TERM_NB][COLOR_NB];
@@ -155,6 +163,46 @@ namespace {
   // PassedDanger[Rank] contains a term to weight the passed score
   constexpr int PassedDanger[RANK_NB] = { 0, 0, 0, 3, 7, 11, 20 };
 
+  //  Knight Scores Board
+  constexpr Score KnightScoresBoard[RANK_NB][FILE_NB] = {
+		{ S(-25, -25), S(-10, -10), S(-10, -10), S(-10, -10), S(-10, -10), S(-10, -10), S(-10, -10), S(-25, -25) },
+		{ S(-15, -15), S(- 5, - 5), S(+ 0, + 0), S(+ 0, + 0), S(+ 0, + 0), S(+ 0, + 0), S(- 5, - 5), S(-15, -15) },
+		{ S(-10, -10), S(+ 0, + 0), S(+10, +10), S(+10, +10), S(+10, +10), S(+10, +10), S(+ 0, + 0), S(-10, -10) },
+		{ S(-10, -10), S(+ 0, + 0), S(+10, +10), S(+25, +25), S(+25, +25), S(+10, +10), S(+ 0, + 0), S(-10, -10) },
+		{ S(-10, -10), S(+ 0, + 0), S(+20, +20), S(+30, +30), S(+30, +30), S(+20, +20), S(+ 0, + 0), S(-10, -10) },
+		{ S(-10, -10), S(+ 0, + 0), S(+15, +15), S(+20, +20), S(+20, +20), S(+15, +15), S(+ 0, + 0), S(-10, -10) },
+		{ S(-15, -15), S(+ 0, + 0), S(+ 0, + 0), S(+ 0, + 0), S(+ 0, + 0), S(+ 0, + 0), S(+ 0, + 0), S(-15, -15) },
+		{ S(-20, -20), S(- 5, - 5), S(- 5, - 5), S(- 5, - 5), S(- 5, - 5), S(- 5, - 5), S(- 5, - 5), S(-20, -20) },
+  };
+  //	Pawn for Knight Scores advantage compensation
+  constexpr Score PawnScores = S(+ 4, + 6);
+  //	Bishop for Knight Scores advantage compensation
+  constexpr Score BishopScores = S(+10, +5);
+  //	Rook for Knight Scores advantage compensation
+  constexpr Score RookScores = S(+15, +30);
+  //	Queen for Knight Scores advantage compensation
+  constexpr Score QueenScores = S(+20, +60);
+
+  //	Pawns Shelter for Knight Scores advantage compensation
+  constexpr Score PawnShelterCompensationKnightScores = S(+ 10, + 0);					//	Exact numbers to be determined
+
+#ifdef PAWN_SCORES
+  //  Pawn Scores Board
+  constexpr Score PawnScoresBoard[RANK_NB][FILE_NB] = {
+		{ S(+ 0, + 0), S(+ 0, + 0), S(+ 0, + 0), S(+ 0, + 0), S(+ 0, + 0), S(+ 0, + 0), S(+ 0, + 0), S(+ 0, + 0) },
+		{ S(+ 0, + 0), S(+ 0, + 0), S(+ 0, + 0), S(+ 0, + 0), S(+ 0, + 0), S(+ 0, + 0), S(+ 0, + 0), S(+ 0, + 0) },
+		{ S(+ 0, + 0), S(+ 0, + 0), S(+ 0, + 0), S(+ 0, + 0), S(+ 0, + 0), S(+ 0, + 0), S(+ 0, + 0), S(+ 0, + 0) },
+		{ S(+ 0, + 0), S(+ 0, + 0), S(+ 0, + 0), S(+ 8, + 0), S(+ 8, + 0), S(+ 0, + 0), S(+ 0, + 0), S(+ 0, + 0) },
+		{ S(+ 0, + 0), S(+ 0, + 0), S(+ 0, + 0), S(+10, + 0), S(+10, + 0), S(+ 0, + 0), S(+ 0, + 0), S(+ 0, + 0) },
+		{ S(+ 0, + 0), S(+ 0, + 0), S(+ 0, + 0), S(+ 6, + 0), S(+ 6, + 0), S(+ 0, + 0), S(+ 0, + 0), S(+ 0, + 0) },
+		{ S(+ 0, + 0), S(+ 0, + 0), S(+ 0, + 0), S(+ 0, + 0), S(+ 0, + 0), S(+ 0, + 0), S(+ 0, + 0), S(+ 0, + 0) },
+		{ S(+ 0, + 0), S(+ 0, + 0), S(+ 0, + 0), S(+ 0, + 0), S(+ 0, + 0), S(+ 0, + 0), S(+ 0, + 0), S(+ 0, + 0) },
+  };
+
+  //	Undeveloped Piece Penalty
+  constexpr Score UndevelopedPiecePenalty = S(-20,-10);
+
+#endif
   // Assorted bonuses and penalties
   constexpr Score BishopPawns        = S(  3,  7);
   constexpr Score CloseEnemies       = S(  6,  0);
@@ -196,6 +244,9 @@ namespace {
     template<Color Us> Score threats() const;
     template<Color Us> Score passed() const;
     template<Color Us> Score space() const;
+#ifdef PAWN_SCORES
+	template<Color Us> Score pawn_center() const;
+#endif
     ScaleFactor scale_factor(Value eg) const;
     Score initiative(Value eg) const;
 
@@ -354,6 +405,11 @@ namespace {
                 // Bonus for bishop on a long diagonal which can "see" both center squares
                 if (more_than_one(Center & (attacks_bb<BISHOP>(s, pos.pieces(PAWN)) | s)))
                     score += LongDiagonalBishop;
+
+				if (pos.piece_on(s) == make_piece(Us, BISHOP))
+				{
+					score += BishopScores;
+				}
             }
 
             // An important Chess960 pattern: A cornered bishop blocked by a friendly
@@ -369,6 +425,30 @@ namespace {
                             : pos.piece_on(s + d + d) == make_piece(Us, PAWN) ? CorneredBishop * 2
                                                                               : CorneredBishop;
             }
+
+			if (Pt == KNIGHT)
+			{
+				if (pos.piece_on(s) == make_piece(Us, KNIGHT))
+				{
+					int rank = rank_of(s);
+					int file = file_of(s);
+					if (Us == WHITE)
+					{
+						score += KnightScoresBoard[rank][file];
+					}
+					else
+					{
+						if (Us == BLACK)
+						{
+							score += KnightScoresBoard[RANK_NB - 1 -rank][file];
+						}
+						else
+						{
+							assert(false);
+						}
+					}
+				}
+			}
         }
 
         if (Pt == ROOK)
@@ -388,6 +468,11 @@ namespace {
                 if ((kf < FILE_E) == (file_of(s) < kf))
                     score -= (TrappedRook - make_score(mob * 22, 0)) * (1 + !pos.can_castle(Us));
             }
+
+			if (pos.piece_on(s) == make_piece(Us, ROOK))
+			{
+				score += RookScores;
+			}
         }
 
         if (Pt == QUEEN)
@@ -396,6 +481,11 @@ namespace {
             Bitboard queenPinners;
             if (pos.slider_blockers(pos.pieces(Them, ROOK, BISHOP), s, queenPinners))
                 score -= WeakQueen;
+
+			if (pos.piece_on(s) == make_piece(Us, QUEEN))
+			{
+				score += QueenScores;
+			}
         }
     }
     if (T)
@@ -489,13 +579,27 @@ namespace {
         {
             int mobilityDanger = mg_value(mobility[Them] - mobility[Us]);
             kingDanger = std::max(0, kingDanger + mobilityDanger);
-            score -= make_score(kingDanger * kingDanger / 4096, kingDanger / 16);
+#ifdef Maverick
+            score -= make_score(kingDanger * kingDanger / 3584, kingDanger / 14);
+#else
+			 score -= make_score(kingDanger * kingDanger / 4096, kingDanger / 16);
+#endif
         }
     }
 
     // Penalty when our king is on a pawnless flank
     if (!(pos.pieces(PAWN) & kingFlank))
+    {
         score -= PawnlessFlank;
+	
+		const Square* pl = pos.squares<KNIGHT>(Us);
+		Square s;
+
+		while ((s = *pl++) != SQ_NONE)
+		{
+			score += PawnShelterCompensationKnightScores;
+		}
+    }
 
     // King tropism bonus, to anticipate slow motion attacks on our king
     score -= CloseEnemies * tropism;
@@ -709,6 +813,63 @@ namespace {
   }
 
 
+#ifdef PAWN_SCORES
+  //	Pawn Center evaluation
+
+  template<Tracing T> template<Color Us>
+  Score Evaluation<T>::pawn_center() const {
+
+	  //constexpr Color Them = (Us == WHITE ? BLACK : WHITE);
+
+	  const Square* pl = pos.squares<PAWN>(Us);
+
+	  Square s;
+	  Score score = SCORE_ZERO;
+
+	  while ((s = *pl++) != SQ_NONE)
+	  {
+		  if (pos.piece_on(s) == make_piece(Us, PAWN))
+		  {
+			  int rank = rank_of(s);
+			  int file = file_of(s);
+			  if (Us == WHITE)
+			  {
+				  score += PawnScoresBoard[rank][file];
+			  }
+			  else
+			  {
+				  if (Us == BLACK)
+				  {
+					  score += PawnScoresBoard[RANK_NB - 1 - rank][file];
+				  }
+				  else
+				  {
+					  assert(false);
+				  }
+			  }
+		  }
+	  }
+
+	  //	Evaluation of development
+
+	  const Square* pld = pos.squares<ALL_PIECES>(Us);
+
+	  while ((s = *pld++) != SQ_NONE)
+	  {
+		  if (relative_rank(Us, s) == RANK_1)
+		  {
+			  score += UndevelopedPiecePenalty;
+		  }
+	  }
+
+	  if (T)
+		  Trace::add(CENTER, Us, score);
+
+	  return score;
+  }
+#endif
+
+
   // Evaluation::space() computes the space evaluation for a given side. The
   // space evaluation is a simple bonus based on the number of safe squares
   // available for minor pieces on the central four files on ranks 2--4. Safe
@@ -759,17 +920,26 @@ namespace {
     int outflanking =  distance<File>(pos.square<KING>(WHITE), pos.square<KING>(BLACK))
                      - distance<Rank>(pos.square<KING>(WHITE), pos.square<KING>(BLACK));
 
-    bool pawnsOnBothFlanks =   (pos.pieces(PAWN) & QueenSide)
-                            && (pos.pieces(PAWN) & KingSide);
-
+	bool pawnsOnBothFlanks =   (pos.pieces(PAWN) & QueenSide)
+	  						&& (pos.pieces(PAWN) & KingSide);
+	  
+#ifdef Maverick
+	// Compute the initiative bonus for the attacking side
+	int complexity =   8 * pe->pawn_asymmetry()
+					+ 12 * pos.count<PAWN>()
+	  				+ 12 * outflanking
+					+ 32 * pawnsOnBothFlanks
+	  				+ 48 * !pos.non_pawn_material()
+	  				- 144;
+#else
     // Compute the initiative bonus for the attacking side
     int complexity =   8 * pe->pawn_asymmetry()
                     + 12 * pos.count<PAWN>()
                     + 12 * outflanking
-                    + 16 * pawnsOnBothFlanks
+	  				+ 16 * pawnsOnBothFlanks
                     + 48 * !pos.non_pawn_material()
-                    -136 ;
-
+                    - 136;
+#endif
     // Now apply the bonus: note that we find the attacking side by extracting
     // the sign of the endgame value, and that we carefully cap the bonus so
     // that the endgame score will never change sign after the bonus.
@@ -831,6 +1001,8 @@ namespace {
     pe = Pawns::probe(pos);
     score += pe->pawn_score(WHITE) - pe->pawn_score(BLACK);
 
+	score += PawnScores * pos.count<PAWN>(WHITE) - PawnScores * pos.count<PAWN>(BLACK);
+
     // Early exit if score is high
     Value v = (mg_value(score) + eg_value(score)) / 2;
     if (abs(v) > LazyThreshold)
@@ -847,14 +1019,45 @@ namespace {
             + pieces<WHITE, ROOK  >() - pieces<BLACK, ROOK  >()
             + pieces<WHITE, QUEEN >() - pieces<BLACK, QUEEN >();
 
-    score += mobility[WHITE] - mobility[BLACK];
+	Value v_Dynamic_test = v;
+	
+	constexpr double DYNAMIC_ADVANTAGE_PAWNS_COUNT = 1.0;
+	constexpr Value DYNAMIC_ADVANTAGE_VALUE = Value(int(DYNAMIC_ADVANTAGE_PAWNS_COUNT * double(PawnValueMg + PawnValueEg) / 2.0));
+	constexpr double Dynamic_Scale_Factor_Default = 1.0;
 
-    score +=  king<   WHITE>() - king<   BLACK>()
-            + threats<WHITE>() - threats<BLACK>()
-            + passed< WHITE>() - passed< BLACK>()
-            + space<  WHITE>() - space<  BLACK>();
+	double king_Dynamic_scale = Dynamic_Scale_Factor_Default;
+	double passed_Dynamic_scale = Dynamic_Scale_Factor_Default;
+	  
+	constexpr double Dynamic_Winning_Scale_Factor_Default = 0.05;
+	constexpr double Alpha = 0.5;
+	const double Beta = abs(Dynamic_Winning_Scale_Factor_Default * 2 / (MidgameLimit + EndgameLimit));
 
-    score += initiative(eg_value(score));
+	const double Dynamic_Scale_Factor_Bonus = (-abs(v_Dynamic_test / DYNAMIC_ADVANTAGE_VALUE) + Alpha);
+
+	if (abs(v_Dynamic_test) >= double(PawnValueMg + PawnValueEg) / 2.0)
+	{
+		king_Dynamic_scale = Dynamic_Scale_Factor_Default - Dynamic_Scale_Factor_Bonus * Beta;
+	}
+	else
+	{
+		passed_Dynamic_scale = Dynamic_Scale_Factor_Default + Dynamic_Scale_Factor_Bonus * Beta;
+	}
+
+		score += mobility[WHITE] - mobility[BLACK];
+		Score default_king = king<   WHITE>() - king<   BLACK>();
+		Score score_king = Score(int(double(default_king) * king_Dynamic_scale));
+		score += score_king;
+		score += threats<WHITE>() - threats<BLACK>();
+		Score default_passed = passed< WHITE>() - passed< BLACK>();
+		Score score_passed = Score(int(double(default_passed) * passed_Dynamic_scale));
+		score += score_passed;
+		score += space<  WHITE>() - space<  BLACK>();
+		score += initiative(eg_value(score));
+
+
+#ifdef PAWN_SCORES
+	score += pawn_center<WHITE>() - pawn_center<BLACK>();
+#endif
 
     // Interpolate between a middlegame and a (scaled by 'sf') endgame score
     ScaleFactor sf = scale_factor(eg_value(score));
@@ -911,6 +1114,9 @@ std::string Eval::trace(const Position& pos) {
      << "   Imbalance | " << Term(IMBALANCE)
      << "  Initiative | " << Term(INITIATIVE)
      << "       Pawns | " << Term(PAWN)
+#ifdef PAWN_SCORES
+	 << " Pawns Bonus | " << Term(CENTER)
+#endif
      << "     Knights | " << Term(KNIGHT)
      << "     Bishops | " << Term(BISHOP)
      << "       Rooks | " << Term(ROOK)
@@ -926,246 +1132,4 @@ std::string Eval::trace(const Position& pos) {
   ss << "\nTotal evaluation: " << to_cp(v) << " (white side)\n";
 
   return ss.str();
-}
-
-double logistic_mobility_score(size_t mobility)
-{
-	switch (mobility)
-	{
-#ifdef old
-		case 20:
-			return 0.750001;
-		case 21:
-			return 0.750002;
-		case 22:
-			return 0.750005;
-		case 23:
-			return 0.750013;
-		case 24:
-			return 0.750034;
-		case 25:
-			return 0.750093;
-		case 26:
-			return 0.750252;
-		case 27:
-			return 0.750683;
-		case 28:
-			return 0.751854;
-		case 29:
-			return 0.75502;
-		case 30:
-			return 0.76349;
-		case 31:
-			return 0.785569;
-		case 32:
-			return 0.839402;
-		case 33:
-			return 0.951706;
-		case 34:
-			return 1.125;
-		case 35:
-			return 1.29829;
-		case 36:
-			return 1.4106;
-		case 37:
-			return 1.46443;
-		case 38:
-			return 1.48651;
-		case 39:
-			return 1.49498;
-		case 40:
-			return 1.49815;
-		case 41:
-			return 1.49932;
-		case 42:
-			return 1.49975;
-		case 43:
-			return 1.49991;
-		case 44:
-			return 1.49997;
-		case 45:
-			return 1.49999;
-#else
-		case 0:
-			return 0.350198;
-			break;
-		case 1:
-			return 0.350918;
-			break;
-		case 2:
-			return 0.353303;
-			break;
-		case 3:
-			return 0.359504;
-			break;
-		case 4:
-			return 0.37254;
-			break;
-		case 5:
-			return 0.395363;
-			break;
-		case 6:
-			return 0.429588;
-			break;
-		case 7:
-			return 0.474697;
-			break;
-		case 8:
-			return 0.528165;
-			break;
-		case 9:
-			return 0.586295;
-			break;
-		case 10:
-			return 0.64524;
-			break;
-		case 11:
-			return 0.701766;
-			break;
-		case 12:
-			return 0.753616;
-			break;
-		case 13:
-			return 0.799533;
-			break;
-		case 14:
-			return 0.839079;
-			break;
-		case 15:
-			return 0.8724;
-			break;
-		case 16:
-			return 0.899999;
-			break;
-		case 17:
-			return 0.922552;
-			break;
-		case 18:
-			return 0.940788;
-			break;
-		case 19:
-			return 0.955412;
-			break;
-		case 20:
-			return 0.967065;
-			break;
-		case 21:
-			return 0.976302;
-			break;
-		case 22:
-			return 0.983597;
-			break;
-		case 23:
-			return 0.989341;
-			break;
-		case 24:
-			return 0.993851;
-			break;
-		case 25:
-			return 0.997387;
-			break;
-		case 26:
-			return 1.00016;
-			break;
-		case 27:
-			return 1.00232;
-			break;
-		case 28:
-			return 1.00401;
-			break;
-		case 29:
-			return 1.00533;
-			break;
-		case 30:
-			return 1.00636;
-			break;
-		case 31:
-			return 1.00716;
-			break;
-		case 32:
-			return 1.00779;
-			break;
-		case 33:
-			return 1.00828;
-			break;
-		case 34:
-			return 1.00866;
-			break;
-		case 35:
-			return 1.00896;
-			break;
-		case 36:
-			return 1.00919;
-			break;
-		case 37:
-			return 1.00937;
-			break;
-		case 38:
-			return 1.00951;
-			break;
-		case 39:
-			return 1.00962;
-			break;
-		case 40:
-			return 1.0097;
-			break;
-		case 41:
-			return 1.00977;
-			break;
-		case 42:
-			return 1.00982;
-			break;
-		case 43:
-			return 1.00986;
-			break;
-		case 44:
-			return 1.00989;
-			break;
-		case 45:
-			return 1.00991;
-			break;
-		case 46:
-			return 1.00993;
-			break;
-		case 47:
-			return 1.00995;
-			break;
-		case 48:
-			return 1.00996;
-			break;
-		case 49:
-			return 1.00997;
-			break;
-		case 50:
-			return 1.00998;
-			break;
-		case 51:
-			return 1.00998;
-			break;
-		case 52:
-			return 1.00999;
-			break;
-		case 53:
-			return 1.00999;
-			break;
-		case 54:
-			return 1.00999;
-			break;
-		case 55:
-			return 1.00999;
-			break;
-		case 56:
-			return 1.00999;
-			break;
-			
-		default:
-			return 1.01;
-			break;
-			
-#endif
-	}
-	if (mobility < 20) return 0.75;
-	if (mobility > 45) return 1.5;
-	assert(false);
-	return 0;
 }

@@ -171,7 +171,27 @@ enum Bound {
   BOUND_LOWER,
   BOUND_EXACT = BOUND_UPPER | BOUND_LOWER
 };
-
+#ifdef Maverick //MichaelB7
+enum Value : int {
+	VALUE_ZERO      = 0,
+	VALUE_DRAW      = 0,
+	VALUE_KNOWN_WIN = 10000,
+	VALUE_MATE      = 32000,
+	VALUE_INFINITE  = 32001,
+	VALUE_NONE      = 32002,
+	
+	VALUE_MATE_IN_MAX_PLY  =  VALUE_MATE - 2 * MAX_PLY,
+	VALUE_MATED_IN_MAX_PLY = -VALUE_MATE + 2 * MAX_PLY,
+	
+	PawnValueMg   = 142*10/11,   PawnValueEg   = 207*10/11,
+	KnightValueMg = 784*9/10,   KnightValueEg = 868*9/10,
+	BishopValueMg = 828*9/10,   BishopValueEg = 916*9/10,
+	RookValueMg   = 1286*8/9,  RookValueEg   = 1378*8/9,
+	QueenValueMg  = 2547*7/8,  QueenValueEg  = 2698*7/8,
+	
+	MidgameLimit  = 15258, EndgameLimit  = 3915
+};
+#else
 enum Value : int {
   VALUE_ZERO      = 0,
   VALUE_DRAW      = 0,
@@ -187,11 +207,11 @@ enum Value : int {
   KnightValueMg = 784,   KnightValueEg = 868,
   BishopValueMg = 828,   BishopValueEg = 916,
   RookValueMg   = 1286,  RookValueEg   = 1378,
-  QueenValueMg  = 2528,  QueenValueEg  = 2698,
+  QueenValueMg  = 2547,  QueenValueEg  = 2698,
 
   MidgameLimit  = 15258, EndgameLimit  = 3915
 };
-
+#endif
 enum PieceType {
   NO_PIECE_TYPE, PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING,
   ALL_PIECES = 0,

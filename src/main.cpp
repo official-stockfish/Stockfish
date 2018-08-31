@@ -20,6 +20,12 @@
  */
 
 #include <iostream>
+#include <utility>
+#include <thread>
+#include <chrono>
+#include <functional>
+#include <atomic>
+#include <time.h>
 
 #include "bitboard.h"
 #include "position.h"
@@ -36,14 +42,48 @@ namespace PSQT {
 
 int main(int argc, char* argv[]) {
 
-  std::cout << engine_info() << std::endl;
+	{
+#ifdef _WIN32
+		const size_t time_length_const = 100;
+		char time_local[time_length_const];
+		memset(time_local, char(0), time_length_const);
+		time_t result = time(NULL);
+		tm tm_local;
+		errno_t errno_local = localtime_s(&tm_local, &result);
+		if (errno_local == 0)
+		{
+			errno_local = asctime_s(time_local, time_length_const, &tm_local);
+			if (errno_local == 0)
+			{
+				std::cout << time_local;
+			}
+			else
+			{
+				assert(errno_local != 0);
+			}
+		}
+		else
+		{
+			assert(errno_local != 0);
+		}
+#else
+		std::time_t result = std::time(NULL);
+		std::cout << std::asctime(std::localtime(&result));
+#endif
+	}
+
+	std::cout << hardware_info() << std::endl;
+	std::cout << system_info() << std::endl;
+	std::cout << engine_info() << std::endl;
+	std::cout << cores_info() << std::endl;
 
   UCI::init(Options);
   PSQT::init();
   Bitboards::init();
   Position::init();
   Bitbases::init();
-  Search::init();
+
+  Search::init(Options["Clear Search"]);
   Pawns::init();
   polybook.init(Options["BookFile"]);
   Tablebases::init(Options["SyzygyPath"]); // After Bitboards are set

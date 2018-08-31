@@ -29,7 +29,6 @@
 #include "types.h"
 
 class Position;
-double logistic_mobility_score(size_t mobility);//DC
 namespace Search {
 
 /// Threshold used for countermoves based pruning
@@ -101,7 +100,7 @@ struct LimitsType {
 
 extern LimitsType Limits;
 
-void init();
+void init(bool OptioncleanSearch);
 void clear();
 
 } // namespace Search
