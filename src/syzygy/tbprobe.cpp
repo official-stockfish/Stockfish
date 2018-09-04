@@ -384,22 +384,35 @@ class TBTables {
 
     typedef std::tuple<Key, TBTable<WDL>*, TBTable<DTZ>*> Entry;
 
-    static const int Size = 1 << 16; // 64K table, indexed by key's 16 lsb
+    static constexpr int Size = 1 << 12; // 4K table, indexed by key's 12 lsb
+    static constexpr int Overflow = 1;  // Number of elements allowed to map to the last bucket
 
-    Entry hashTable[Size];
+    Entry hashTable[Size + Overflow];
 
     std::deque<TBTable<WDL>> wdlTable;
     std::deque<TBTable<DTZ>> dtzTable;
 
     void insert(Key key, TBTable<WDL>* wdl, TBTable<DTZ>* dtz) {
-        Entry* entry = &hashTable[(uint32_t)key & (Size - 1)];
+        uint32_t homeBucket = (uint32_t)key & (Size - 1);
+        Entry entry = std::make_tuple(key, wdl, dtz);
 
         // Ensure last element is empty to avoid overflow when looking up
-        for ( ; entry - hashTable < Size - 1; ++entry)
-            if (std::get<KEY>(*entry) == key || !std::get<WDL>(*entry)) {
-                *entry = std::make_tuple(key, wdl, dtz);
+        for (uint32_t bucket = homeBucket; bucket < Size + Overflow - 1; ++bucket) {
+            Key otherKey = std::get<KEY>(hashTable[bucket]);
+            if (otherKey == key || !std::get<WDL>(hashTable[bucket])) {
+                hashTable[bucket] = entry;
                 return;
             }
+
+            // Robin Hood hashing: If we've probed for longer than this element,
+            // insert here and search for a new spot for the other element instead.
+            uint32_t otherHomeBucket = (uint32_t)otherKey & (Size - 1);
+            if (otherHomeBucket > homeBucket) {
+                swap(entry, hashTable[bucket]);
+                key = otherKey;
+                homeBucket = otherHomeBucket;
+            }
+        }
         std::cerr << "TB hash table size too low!" << std::endl;
         exit(1);
     }

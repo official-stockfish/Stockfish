@@ -66,7 +66,7 @@ namespace {
   constexpr int SkipPhase[] = { 0, 1, 0, 1, 2, 3, 0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5, 6, 7 };
 
   // Razor and futility margins
-  constexpr int RazorMargin[] = {0, 590, 604};
+  constexpr int RazorMargin = 600;
   Value futility_margin(Depth d, bool improving) {
     return Value((175 - 50 * improving) * d / ONE_PLY);
   }
@@ -82,7 +82,7 @@ namespace {
   // History and stats update bonus, based on depth
   int stat_bonus(Depth depth) {
     int d = depth / ONE_PLY;
-    return d > 17 ? 0 : 33 * d * d + 66 * d - 66;
+    return d > 17 ? 0 : 29 * d * d + 138 * d - 134;
   }
 
   // Skill structure is used to implement strength limit
@@ -258,7 +258,7 @@ void MainThread::search() {
 
       // Vote according to score and depth
       for (Thread* th : Threads)
-          votes[th->rootMoves[0].pv[0]] +=  int(th->rootMoves[0].score - minScore)  
+          votes[th->rootMoves[0].pv[0]] +=  int(th->rootMoves[0].score - minScore)
                                           + int(th->completedDepth);
 
       // Select best thread
@@ -556,7 +556,7 @@ namespace {
     Key posKey;
     Move ttMove, move, excludedMove, bestMove;
     Depth extension, newDepth;
-    Value bestValue, value, ttValue, eval, maxValue;
+    Value bestValue, value, ttValue, eval, maxValue, pureStaticEval;
     bool ttHit, inCheck, givesCheck, improving;
     bool captureOrPromotion, doFullDepthSearch, moveCountPruning, skipQuiets, ttCapture, pvExact;
     Piece movedPiece;
@@ -584,7 +584,8 @@ namespace {
         if (   Threads.stop.load(std::memory_order_relaxed)
             || pos.is_draw(ss->ply)
             || ss->ply >= MAX_PLY)
-            return (ss->ply >= MAX_PLY && !inCheck) ? evaluate(pos) : VALUE_DRAW;
+            return (ss->ply >= MAX_PLY && !inCheck) ? evaluate(pos) - 10 * ((ss-1)->statScore > 0)
+                                                    : VALUE_DRAW;
 
         // Step 3. Mate distance pruning. Even if we mate at the next move our score
         // would be at best mate_in(ss->ply+1), but if alpha is already bigger because
@@ -704,15 +705,16 @@ namespace {
     // Step 6. Static evaluation of the position
     if (inCheck)
     {
-        ss->staticEval = eval = VALUE_NONE;
+        ss->staticEval = eval = pureStaticEval = VALUE_NONE;
         improving = false;
         goto moves_loop;  // Skip early pruning when in check
     }
     else if (ttHit)
     {
         // Never assume anything on values stored in TT
-        if ((ss->staticEval = eval = tte->eval()) == VALUE_NONE)
-            eval = ss->staticEval = evaluate(pos);
+        ss->staticEval = eval = pureStaticEval = tte->eval();
+        if (eval == VALUE_NONE)
+            ss->staticEval = eval = pureStaticEval = evaluate(pos);
 
         // Can ttValue be used as a better position evaluation?
         if (    ttValue != VALUE_NONE
@@ -721,24 +723,25 @@ namespace {
     }
     else
     {
-        ss->staticEval = eval =
-        (ss-1)->currentMove != MOVE_NULL ? evaluate(pos)
-                                         : -(ss-1)->staticEval + 2 * Eval::Tempo;
+        if ((ss-1)->currentMove != MOVE_NULL)
+        {
+            int p = (ss-1)->statScore;
+            int bonus = p > 0 ? (-p - 2500) / 512 :
+                        p < 0 ? (-p + 2500) / 512 : 0;
 
-        tte->save(posKey, VALUE_NONE, BOUND_NONE, DEPTH_NONE, MOVE_NONE,
-                  ss->staticEval);
+            pureStaticEval = evaluate(pos);
+            ss->staticEval = eval = pureStaticEval + bonus;
+        }
+        else
+            ss->staticEval = eval = pureStaticEval = -(ss-1)->staticEval + 2 * Eval::Tempo;
+
+        tte->save(posKey, VALUE_NONE, BOUND_NONE, DEPTH_NONE, MOVE_NONE, pureStaticEval);
     }
 
     // Step 7. Razoring (~2 Elo)
-    if (  !PvNode
-        && depth < 3 * ONE_PLY
-        && eval <= alpha - RazorMargin[depth / ONE_PLY])
-    {
-        Value ralpha = alpha - (depth >= 2 * ONE_PLY) * RazorMargin[depth / ONE_PLY];
-        Value v = qsearch<NonPV>(pos, ss, ralpha, ralpha+1);
-        if (depth < 2 * ONE_PLY || v <= ralpha)
-            return v;
-    }
+    if (   depth < 2 * ONE_PLY
+        && eval <= alpha - RazorMargin)
+        return qsearch<NT>(pos, ss, alpha, beta);
 
     improving =   ss->staticEval >= (ss-2)->staticEval
                || (ss-2)->staticEval == VALUE_NONE;
@@ -753,7 +756,7 @@ namespace {
     // Step 9. Null move search with verification search (~40 Elo)
     if (   !PvNode
         && (ss-1)->currentMove != MOVE_NULL
-        && (ss-1)->statScore < 22500
+        && (ss-1)->statScore < 23200
         &&  eval >= beta
         &&  ss->staticEval >= beta - 36 * depth / ONE_PLY + 225
         && !excludedMove
@@ -763,7 +766,7 @@ namespace {
         assert(eval - beta >= 0);
 
         // Null move dynamic reduction based on depth and value
-        Depth R = ((823 + 67 * depth / ONE_PLY) / 256 + std::min((eval - beta) / PawnValueMg, 3)) * ONE_PLY;
+        Depth R = ((823 + 67 * depth / ONE_PLY) / 256 + std::min(int(eval - beta) / 200, 3)) * ONE_PLY;
 
         ss->currentMove = MOVE_NULL;
         ss->continuationHistory = &thisThread->continuationHistory[NO_PIECE][0];
@@ -812,7 +815,7 @@ namespace {
 
         while (  (move = mp.next_move()) != MOVE_NONE
                && probCutCount < 3)
-            if (pos.legal(move))
+            if (move != excludedMove && pos.legal(move))
             {
                 probCutCount++;
 
@@ -998,18 +1001,12 @@ moves_loop: // When in check, search starts from here
       {
           Depth r = reduction<PvNode>(improving, depth, moveCount);
 
-          if (captureOrPromotion) // (~5 Elo)
-          {
-              // Decrease reduction by comparing opponent's stat score
-              if ((ss-1)->statScore < 0)
-                  r -= ONE_PLY;
-          }
-          else
-          {
-              // Decrease reduction if opponent's move count is high (~5 Elo)
-              if ((ss-1)->moveCount > 15)
-                  r -= ONE_PLY;
+          // Decrease reduction if opponent's move count is high (~10 Elo)
+          if ((ss-1)->moveCount > 15)
+              r -= ONE_PLY;
 
+          if (!captureOrPromotion)
+          {
               // Decrease reduction for exact PV nodes (~0 Elo)
               if (pvExact)
                   r -= ONE_PLY;
@@ -1188,7 +1185,7 @@ moves_loop: // When in check, search starts from here
         tte->save(posKey, value_to_tt(bestValue, ss->ply),
                   bestValue >= beta ? BOUND_LOWER :
                   PvNode && bestMove ? BOUND_EXACT : BOUND_UPPER,
-                  depth, bestMove, ss->staticEval);
+                  depth, bestMove, pureStaticEval);
 
     assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
 
