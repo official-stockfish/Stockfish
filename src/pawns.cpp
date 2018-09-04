@@ -119,7 +119,7 @@ namespace {
         // not attacked more times than defended.
         if (   !(stoppers ^ lever ^ leverPush)
             && ((!more_than_one(lever)) | supported)
-            && popcount(phalanx)   >= popcount(leverPush))
+            && more_than_one(phalanx) | !leverPush)
             e->passedPawns[Us] |= s;
 
         else if (   stoppers == SquareBB[s + Up]
