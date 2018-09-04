@@ -24,23 +24,23 @@
 ### ==========================================================================
 
 ### Executable name
-### McCain bench nodes 4457465
-### McBrain bench nodes 4461951
+### McCain bench nodes 4717832
+### McBrain bench nodes 4576991
 VERSION=
 #VERSION=maverick
 ifeq ($(VERSION),maverick)
 CXXFLAGS += -DMaverick
 ifeq ($(COMP),mingw)
-EXE = McCain.exe
+EXE = McCain-v2.exe
 else
-EXE = McCain
+EXE = McCain-v2
 endif
 else
 CXXFLAGS += -DPAWN_SCORES
 ifeq ($(COMP),mingw)
-EXE = McBrain.exe
+EXE = McBrain-v99.exe
 else
-EXE = McBrain
+EXE = McBrain-v99
 endif
 endif
 
@@ -302,7 +302,7 @@ endif
 ### 3.3 Optimization
 ifeq ($(optimize),yes)
 
-	CXXFLAGS += -O1
+	CXXFLAGS += -O3
 
 	ifeq ($(comp),gcc)
 		ifeq ($(OS), Android)
@@ -472,6 +472,13 @@ install:
 	-mkdir -p -m 755 $(BINDIR)
 	-cp $(EXE) $(BINDIR)
 	-strip $(BINDIR)/$(EXE)
+
+both:
+	VERSION=
+	ARCH=x86-64-modern
+	COMP=gcc
+	target=build
+	$(MAKE) $(target)
 
 #clean all
 clean: objclean profileclean
