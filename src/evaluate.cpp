@@ -787,6 +787,7 @@ namespace {
   ScaleFactor Evaluation<T>::scale_factor(Value eg) const {
 
     Color strongSide = eg > VALUE_DRAW ? WHITE : BLACK;
+    Color weakSide = eg < VALUE_DRAW ? WHITE : BLACK;
     int sf = me->scale_factor(pos, strongSide);
 
     // If scale is not already specific, scale down the endgame via general heuristics
@@ -795,9 +796,12 @@ namespace {
         if (   pos.opposite_bishops()
             && pos.non_pawn_material(WHITE) == BishopValueMg
             && pos.non_pawn_material(BLACK) == BishopValueMg)
-            sf = 15+4*pe->pawn_asymmetry();
+            sf = 31;
         else
             sf = std::min(40 + (pos.opposite_bishops() ? 2 : 7) * pos.count<PAWN>(strongSide), sf);
+        if (   pos.non_pawn_material(strongSide) == RookValueMg
+            && pos.non_pawn_material(weakSide) == BishopValueMg)
+            sf = 35 + 2 * pe->pawn_asymmetry();
     }
 
     return ScaleFactor(sf);
