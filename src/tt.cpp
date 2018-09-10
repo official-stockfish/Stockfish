@@ -82,7 +82,7 @@ void TranspositionTable::clear() {
 
   std::vector<std::thread> threads;
 
-  for (size_t idx = 0; idx < Options["Threads"]; idx++)
+  for (int idx = 0; idx < Options["Threads"]; idx++)
   {
       threads.push_back(std::thread([this, idx]() {
 
