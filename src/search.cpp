@@ -401,10 +401,10 @@ void Thread::search() {
           // Start with a small aspiration window and, in the case of a fail
           // high/low, re-search with a bigger window until we don't fail
           // high/low anymore.
-          int failHighCnt = 0;
+          bool failedHigh = false;
           while (true)
           {
-              Depth adjustedDepth = std::max(ONE_PLY, rootDepth - failHighCnt * ONE_PLY);
+              Depth adjustedDepth = std::max(ONE_PLY, rootDepth - failedHigh * 2 * ONE_PLY);
               bestValue = ::search<PV>(rootPos, ss, alpha, beta, adjustedDepth, false);
 
               // Bring the best move to the front. It is critical that sorting
@@ -435,7 +435,7 @@ void Thread::search() {
               {
                   beta = (alpha + beta) / 2;
                   alpha = std::max(bestValue - delta, -VALUE_INFINITE);
-                  failHighCnt = 0;
+                  failedHigh = false;
 
                   if (mainThread)
                   {
@@ -446,7 +446,7 @@ void Thread::search() {
               else if (bestValue >= beta)
               {
                   beta = std::min(bestValue + delta, VALUE_INFINITE);
-                  ++failHighCnt;
+                  failedHigh = true;
               }
               else
                   break;
