@@ -368,6 +368,7 @@ void Thread::search() {
 
       size_t pvFirst = 0;
       pvLast = 0;
+      Depth adjustedDepth = rootDepth;
 
       // MultiPV loop. We perform a full root search for each PV line
       for (pvIdx = 0; pvIdx < multiPV && !Threads.stop; ++pvIdx)
@@ -404,7 +405,7 @@ void Thread::search() {
           int failedHighCnt = 0;
           while (true)
           {
-              Depth adjustedDepth = std::max(ONE_PLY, rootDepth - failedHighCnt * ONE_PLY);
+              adjustedDepth = std::max(ONE_PLY, rootDepth - failedHighCnt * ONE_PLY);
               bestValue = ::search<PV>(rootPos, ss, alpha, beta, adjustedDepth, false);
 
               // Bring the best move to the front. It is critical that sorting
@@ -461,15 +462,15 @@ void Thread::search() {
 
           if (    mainThread
               && (Threads.stop || pvIdx + 1 == multiPV || Time.elapsed() > 3000))
-              sync_cout << UCI::pv(rootPos, rootDepth, alpha, beta) << sync_endl;
+              sync_cout << UCI::pv(rootPos, adjustedDepth, alpha, beta) << sync_endl;
       }
 
       if (!Threads.stop)
-          completedDepth = rootDepth;
+          completedDepth = adjustedDepth;
 
       if (rootMoves[0].pv[0] != lastBestMove) {
          lastBestMove = rootMoves[0].pv[0];
-         lastBestMoveDepth = rootDepth;
+         lastBestMoveDepth = adjustedDepth;
       }
 
       // Have we found a "mate in x"?
