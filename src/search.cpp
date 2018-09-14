@@ -85,6 +85,11 @@ namespace {
     return d > 17 ? 0 : 29 * d * d + 138 * d - 134;
   }
 
+  // Add a small random component to draw evaluations to keep search dynamic and to avoid 3fold-blindness
+  Value value_draw(Depth depth, Thread* thisThread) {
+    return depth < 4 ?  VALUE_DRAW : (VALUE_DRAW + Value(2 * (thisThread->nodes.load(std::memory_order_relaxed) % 2) - 1));
+  }
+
   // Skill structure is used to implement strength limit
   struct Skill {
     explicit Skill(int l) : level(l) {}
@@ -527,6 +532,7 @@ namespace {
 
     constexpr bool PvNode = NT == PV;
     const bool rootNode = PvNode && ss->ply == 0;
+    Thread* thisThread = pos.this_thread();
 
     // Check if we have an upcoming move which draws by repetition, or
     // if the opponent had an alternative move earlier to this position.
@@ -535,7 +541,7 @@ namespace {
         && !rootNode
         && pos.has_game_cycle(ss->ply))
     {
-        alpha = VALUE_DRAW;
+        alpha = value_draw(depth, thisThread);
         if (alpha >= beta)
             return alpha;
     }
@@ -563,7 +569,6 @@ namespace {
     int moveCount, captureCount, quietCount;
 
     // Step 1. Initialize node
-    Thread* thisThread = pos.this_thread();
     inCheck = pos.checkers();
     Color us = pos.side_to_move();
     moveCount = captureCount = quietCount = ss->moveCount = 0;
@@ -585,7 +590,7 @@ namespace {
             || pos.is_draw(ss->ply)
             || ss->ply >= MAX_PLY)
             return (ss->ply >= MAX_PLY && !inCheck) ? evaluate(pos) - 10 * ((ss-1)->statScore > 0)
-                                                    : VALUE_DRAW;
+                                                    : value_draw(depth, thisThread);
 
         // Step 3. Mate distance pruning. Even if we mate at the next move our score
         // would be at best mate_in(ss->ply+1), but if alpha is already bigger because
