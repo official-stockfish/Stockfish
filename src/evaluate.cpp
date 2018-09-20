@@ -476,7 +476,7 @@ namespace {
         kingDanger +=        kingAttackersCount[Them] * kingAttackersWeight[Them]
                      +  69 * kingAttacksCount[Them]
                      + 185 * popcount(kingRing[Us] & weak)
-                     + 129 * popcount(pos.blockers_for_king(Us) | unsafeChecks)
+                     + 150 * popcount(pos.blockers_for_king(Us) | unsafeChecks)
                      +   4 * tropism
                      - 873 * !pos.count<QUEEN>(Them)
                      -   6 * mg_value(score) / 8
@@ -544,9 +544,6 @@ namespace {
             score += ThreatByMinor[type_of(pos.piece_on(s))];
             if (type_of(pos.piece_on(s)) != PAWN)
                 score += ThreatByRank * (int)relative_rank(Them, s);
-
-            else if (pos.blockers_for_king(Them) & s)
-                score += ThreatByRank * (int)relative_rank(Them, s) / 2;
         }
 
         b = weak & attackedBy[Us][ROOK];
@@ -556,9 +553,6 @@ namespace {
             score += ThreatByRook[type_of(pos.piece_on(s))];
             if (type_of(pos.piece_on(s)) != PAWN)
                 score += ThreatByRank * (int)relative_rank(Them, s);
-
-            else if (pos.blockers_for_king(Them) & s)
-                score += ThreatByRank * (int)relative_rank(Them, s) / 2;
         }
 
         if (weak & attackedBy[Us][KING])
