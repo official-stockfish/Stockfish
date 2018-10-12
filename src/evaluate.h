@@ -35,6 +35,10 @@ constexpr Value Tempo = Value(20); // Must be visible to search
 std::string trace(const Position& pos);
 
 Value evaluate(const Position& pos);
+
+#ifdef Maverick  //protonspring ps_mobility9_queens (v4, +1)
+void init();
+#endif
 }
 
 #endif // #ifndef EVALUATE_H_INCLUDED

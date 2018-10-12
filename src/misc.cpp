@@ -35,12 +35,10 @@
 // the calls at compile time), try to load them at runtime. To do this we need
 // first to define the corresponding function pointers.
 extern "C" {
-typedef bool(WINAPI *fun1_t)(LOGICAL_PROCESSOR_RELATIONSHIP,
+typedef bool(*fun1_t)(LOGICAL_PROCESSOR_RELATIONSHIP,
                       PSYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX, PDWORD);
-typedef bool(WINAPI *fun2_t)(USHORT, PGROUP_AFFINITY);
-typedef bool(WINAPI *fun3_t)(HANDLE, CONST GROUP_AFFINITY*, PGROUP_AFFINITY);
-
-#include "VersionHelpers.h"
+typedef bool(*fun2_t)(USHORT, PGROUP_AFFINITY);
+typedef bool(*fun3_t)(HANDLE, CONST GROUP_AFFINITY*, PGROUP_AFFINITY);
 }
 #endif
 
@@ -49,7 +47,7 @@ typedef bool(WINAPI *fun3_t)(HANDLE, CONST GROUP_AFFINITY*, PGROUP_AFFINITY);
 #include <iostream>
 #include <sstream>
 #include <vector>
-#include <thread>
+
 #include "misc.h"
 #include "thread.h"
 
@@ -60,10 +58,20 @@ namespace {
 /// Version number. If Version is left empty, then compile date in the format
 /// DD-MM-YY and show in engine_info.
 #ifdef Maverick
-const string Version = "the Maverick";
+#ifdef Matefinder
+const string Version = "v10-MF";
 #else
-const string Version = "9.9";
+const string Version = "v10";
 #endif
+#else
+#ifdef Matefinder
+const string Version = "mf";
+#else
+const string Version = "";
+#endif
+#endif
+	
+
 
 	
 /// Our fancy logging facility. The trick here is to replace cin.rdbuf() and
@@ -124,9 +132,9 @@ public:
 
 } // namespace
 
-/// engine_info() returns the full name of the current SugaR version. This
-/// will be either "SugaR <Tag> DD-MM-YY" (where DD-MM-YY is the date when
-/// the program was compiled) or "SugaR <Version>", depending on whether
+/// engine_info() returns the full name of the current McCain version. This
+/// will be either "McCain <Tag> DD-MM-YY" (where DD-MM-YY is the date when
+/// the program was compiled) or "McCain <Version>", depending on whether
 /// Version is empty.
 
 const string engine_info(bool to_uci) {
@@ -135,9 +143,9 @@ const string engine_info(bool to_uci) {
   string month, day, year;
   stringstream ss, date(__DATE__); // From compiler, format is "Sep 21 2008"
 #ifdef Maverick
-  ss << "McCain-v2 -> " << Version << setfill('0');
+  ss << "McCain " << Version << setfill('0');
 #else
-  ss << "McBrain " << Version << setfill('0');
+  ss << "Stockfish " << Version << setfill('0');
 #endif
 	
   if (Version.empty())
@@ -148,231 +156,16 @@ const string engine_info(bool to_uci) {
 #ifdef Maverick
   ss //<< (Is64Bit ? " 64" : " 32")
      //<< (HasPext ? " BMI2" : (HasPopCnt ? " POPCNT" : ""))
-	<< (to_uci  ? "\nid author ": "->")
-	<< "dedicated to John S McCain, an American Hero.";
+	<< (to_uci  ? "\nid author ": " by ")
+	<< "M. Byrne and scores of others...";
 #else
 	ss << (Is64Bit ? " 64" : " 32")
 	<< (HasPext ? " BMI2" : (HasPopCnt ? " POPCNT" : ""))
 	<< (to_uci  ? "\nid author ": " by ")
-	<< "M. Byrne and scores of others...";
+     << "T. Romstad, M. Costalba, J. Kiiski, G. Linscott";
 #endif
 
-	 return ss.str();
-}
-
-const std::string system_info()
-{
-	std::stringstream result;
-
-#ifdef _WIN32
-	{
-		InitVersion();
-
-		if (IsWindowsXPOrGreater())
-		{
-			if (IsWindowsXPSP1OrGreater())
-			{
-				if (IsWindowsXPSP2OrGreater())
-				{
-					if (IsWindowsXPSP3OrGreater())
-					{
-						if (IsWindowsVistaOrGreater())
-						{
-							if (IsWindowsVistaSP1OrGreater())
-							{
-								if (IsWindowsVistaSP2OrGreater())
-								{
-									if (IsWindows7OrGreater())
-									{
-										if (IsWindows7SP1OrGreater())
-										{
-											if (IsWindows8OrGreater())
-											{
-												if (IsWindows8Point1OrGreater())
-												{
-													if (IsWindows10OrGreater())
-													{
-														result << std::string("Windows 10");
-													}
-													else
-													{
-														result << std::string("Windows 8.1");
-													}
-												}
-												else
-												{
-													result << std::string("Windows 8");
-												}
-											}
-											else
-											{
-												result << std::string("Windows 7 SP1");
-											}
-										}
-										else
-										{
-											result << std::string("Windows 7");
-										}
-									}
-									else
-									{
-										result << std::string("Vista SP2");
-									}
-								}
-								else
-								{
-									result << std::string("Vista SP1");
-								}
-							}
-							else
-							{
-								result << std::string("Vista");
-							}
-						}
-						else
-						{
-							result << std::string("XP SP3");
-						}
-					}
-					else
-					{
-						result << std::string("XP SP2");
-					}
-				}
-				else
-				{
-					result << std::string("XP SP1");
-				}
-			}
-			else
-			{
-				result << std::string("XP");
-			}
-		}
-
-		if (IsWindowsServer())
-		{
-			result << std::string(" Server ");
-		}
-		else
-		{
-			result << std::string(" Client ");
-		}
-
-		result << std::string("Or Greater") << std::endl;
-
-		result << std::endl;
-	}
-#endif
-
-	return result.str();
-}
-
-const std::string hardware_info()
-{
-	std::stringstream result;
-
-#ifdef _WIN32
-	{
-		SYSTEM_INFO siSysInfo;
-
-		// Copy the hardware information to the SYSTEM_INFO structure. 
-
-		GetSystemInfo(&siSysInfo);
-
-		HKEY hKey = HKEY_LOCAL_MACHINE;
-		const DWORD Const_Data_Size = 10000;
-		TCHAR Data[Const_Data_Size];
-
-		ZeroMemory(Data, Const_Data_Size * sizeof(TCHAR));
-
-		DWORD buffersize = Const_Data_Size;
-
-		LONG result_registry_functions = ERROR_SUCCESS;
-
-		result_registry_functions = RegOpenKeyEx(HKEY_LOCAL_MACHINE, TEXT("Hardware\\Description\\System\\CentralProcessor\\0\\"), 0, KEY_READ, &hKey);
-
-		if (result_registry_functions == ERROR_SUCCESS)
-		{
-			// Query the registry value
-			result_registry_functions = RegQueryValueEx(hKey, TEXT("ProcessorNameString"), NULL, NULL, (LPBYTE)&Data, &buffersize);
-
-			if (result_registry_functions == ERROR_SUCCESS)
-			{
-				// Close the Registry Key
-				result_registry_functions = RegCloseKey(hKey);
-
-				assert(result_registry_functions == ERROR_SUCCESS);
-			}
-			else
-			{
-				assert(result_registry_functions == ERROR_SUCCESS);
-			}
-		}
-		else
-		{
-			assert(result_registry_functions == ERROR_SUCCESS);
-		}
-
-		std::string ProcessorName(Data);
-
-		// Display the contents of the SYSTEM_INFO structure. 
-
-		result << std::endl;
-
-		result << "Hardware information : " << std::endl;
-		result << "  CPU Brand          : " << ProcessorName << std::endl;
-		//result << "  CPU Architecture   : " << siSysInfo.wProcessorArchitecture << std::endl;
-		result << "  CPU Core           : " << siSysInfo.dwNumberOfProcessors << std::endl;
-		//result << "  Processor type     : " << siSysInfo.dwProcessorType << std::endl;
-
-		// Used to convert bytes to MB
-		const size_t local_1000_000 = 1000 * 1000;
-
-		MEMORYSTATUSEX statex;
-
-		statex.dwLength = sizeof(statex);
-
-		GlobalMemoryStatusEx(&statex);
-
-		result << "  Total RAM          : " << statex.ullTotalPhys / local_1000_000 << "MB" << std::endl;
-
-		result << std::endl;
-	}
-#endif 
-
-	return result.str();
-}
-
-const std::string cores_info()
-{
-	std::stringstream result;
-
-#ifdef _WIN32
-	{
-		SYSTEM_INFO siSysInfo;
-
-		// Copy the hardware information to the SYSTEM_INFO structure. 
-
-		GetSystemInfo(&siSysInfo);
-
-		result << std::endl;
-
-		DWORD n = DWORD(std::thread::hardware_concurrency());
-		result << "Test running " << n << " Cores\n";
-
-		DWORD local_mask = siSysInfo.dwActiveProcessorMask;
-
-		for (DWORD core_counter = 0; core_counter<n; core_counter++)
-		{
-			result << "Core " << core_counter << (((core_counter + 1) & local_mask) ? " ready\n" : " not ready\n");
-		}
-
-		result << std::endl;
-	}
-#endif 
-
-	return result.str();
+  return ss.str();
 }
 
 

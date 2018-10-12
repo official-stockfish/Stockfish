@@ -120,28 +120,6 @@ Value Endgame<KXK>::operator()(const Position& pos) const {
 }
 
 
-/// Mate with KQX vs KX. This is similar to KX vs K.
-template<>
-Value Endgame<KQXKX>::operator()(const Position& pos) const {
-
-  assert(pos.non_pawn_material(strongSide) > QueenValueMg + RookValueMg);
-  assert(pos.non_pawn_material(weakSide) <= RookValueMg);
-
-  Square winnerKSq = pos.square<KING>(strongSide);
-  Square loserKSq = pos.square<KING>(weakSide);
-
-  Value result =  VALUE_KNOWN_WIN
-                + pos.non_pawn_material(strongSide)
-                - pos.non_pawn_material(weakSide)
-                + PushClose[distance(winnerKSq, loserKSq)]
-                + PushToCorners[loserKSq];
-
-  result = std::min(result, VALUE_MATE_IN_MAX_PLY - 1);
-
-  return strongSide == pos.side_to_move() ? result : -result;
-}
-
-
 /// Mate with KBN vs K. This is similar to KX vs K, but we have to drive the
 /// defending king towards a corner square of the right color.
 template<>
@@ -239,7 +217,7 @@ Value Endgame<KRKP>::operator()(const Position& pos) const {
 }
 
 
-/// KR vs KB. This is very simple, and always returns drawish scores.  The
+/// KR vs KB. This is very simple, and always returns drawish scores. The
 /// score is slightly bigger when the defending king is close to the edge.
 template<>
 Value Endgame<KRKB>::operator()(const Position& pos) const {

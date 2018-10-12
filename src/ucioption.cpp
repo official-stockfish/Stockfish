@@ -22,18 +22,16 @@
 #include <algorithm>
 #include <cassert>
 #include <ostream>
-//Hash		
-#include <iostream>
-//end_Hash
-#include <thread>
 
 #include "misc.h"
+#ifdef Features
+#include "polybook.h"
+#endif
 #include "search.h"
 #include "thread.h"
 #include "tt.h"
 #include "uci.h"
 #include "syzygy/tbprobe.h"
-#include "polybook.h"
 
 using std::string;
 
@@ -44,20 +42,14 @@ namespace UCI {
 /// 'On change' actions, triggered by an option's value change
 void on_clear_hash(const Option&) { Search::clear(); }
 void on_hash_size(const Option& o) { TT.resize(o); }
-void on_large_pages(const Option& o) { TT.resize(o); }  // warning is ok, will be removed
 void on_logger(const Option& o) { start_logger(o); }
 void on_threads(const Option& o) { Threads.set(o); }
 void on_tb_path(const Option& o) { Tablebases::init(o); }
-//Hash	
-void on_HashFile(const Option& o) { TT.set_hash_file_name(o); }
-void SaveHashtoFile(const Option&) { TT.save(); }
-void LoadHashfromFile(const Option&) { TT.load(); }
-void LoadEpdToHash(const Option&) { TT.load_epd_to_hash(); }
-//end_Hash
-
+#ifdef Features
 void on_book_file(const Option& o) { polybook.init(o); }
 void on_best_book_move(const Option& o) { polybook.set_best_book_move(o); }
 void on_book_depth(const Option& o) { polybook.set_book_depth(o); }
+#endif
 
 /// Our case insensitive less() function as required by UCI protocol
 bool CaseInsensitiveLess::operator() (const string& s1, const string& s2) const {
@@ -74,55 +66,51 @@ void init(OptionsMap& o) {
   // at most 2^32 clusters.
   constexpr int MaxHashMB = Is64Bit ? 131072 : 2048;
 
-  unsigned n = std::thread::hardware_concurrency();
-  if (!n) n = 1;
 
-  o["Threads"]               << Option(n, unsigned(1), unsigned(512), on_threads);
-  o["Hash"]                  << Option(16, 1, MaxHashMB, on_hash_size);
+  o["Contempt"]              << Option(21, -100, 100);
   o["Analysis Contempt"]     << Option("Both var Off var White var Black var Both", "Both");
-  o["UCI_Chess960"]          << Option(false);
+  o["Threads"]               << Option(1, 1, 512, on_threads);
+  o["Hash"]                  << Option(16, 1, MaxHashMB, on_hash_size);
+  o["Clear Hash"]            << Option(on_clear_hash);
   o["Ponder"]                << Option(false);
-	o["OwnBook"]               << Option(false);
-	o["Book File"]             << Option("book.bin");
-	o["Best Book Move"]        << Option(false);
-	
-  o["Contempt"]              << Option(21, -150, 150);
-  o["MultiPV"]               << Option(1, 1, 256);
+  o["MultiPV"]               << Option(1, 1, 500);
+
+
+#ifdef Features
+  o["Tactical"]              << Option(0, 0,  8);
   o["Variety"]               << Option (0, 0, 20);
-  o["Clear Search"]          << Option(false);
-  o["Large Pages"]           << Option(false, on_large_pages);
   o["Minimal_Output"]        << Option(false);
-  o["FastPlay"]              << Option(false);
+  o["UCI_AnalyseMode"]       << Option(false);
+  o["Clean_Search"]          << Option(false);
   o["BruteForce"]            << Option(false);
-  o["NullMove"]              << Option(true);
-  o["LMR"]                   << Option(true);
-  o["MaxLMReduction"]        << Option(10, 0, 20);
+  o["FastPlay"]              << Option(false);
+  o["No_Null_Moves"]         << Option(false);
   o["UCI_LimitStrength"]     << Option(false);
   o["UCI_ELO"]               << Option(1500, 1500, 2800);
-  o["ICCF Analysis"]         << Option(0, 0,  8);
-
+#else
+#ifdef Matefinder
+  o["Clean_Search"]          << Option(false);
+#endif
+#endif
+	
+	
   o["Skill Level"]           << Option(20, 0, 20);
   o["Move Overhead"]         << Option(30, 0, 5000);
   o["Minimum Thinking Time"] << Option(20, 0, 5000);
   o["Slow Mover"]            << Option(84, 10, 1000);
   o["nodestime"]             << Option(0, 0, 10000);
-
-  o["Clear_Hash"]            << Option(on_clear_hash);
-  o["SaveHashtoFile"]        << Option(SaveHashtoFile);
-  o["LoadHashfromFile"]      << Option(LoadHashfromFile);
-  o["LoadEpdToHash"]         << Option(LoadEpdToHash);
-  o["NeverClearHash"]        << Option(false);
-  o["HashFile"]              << Option("hash.hsh", on_HashFile);
+  o["UCI_Chess960"]          << Option(false);
   o["UCI_AnalyseMode"]       << Option(false);
   o["SyzygyPath"]            << Option("<empty>", on_tb_path);
   o["SyzygyProbeDepth"]      << Option(1, 1, 100);
   o["Syzygy50MoveRule"]      << Option(true);
   o["SyzygyProbeLimit"]      << Option(7, 0, 7);
-
-  o["Cerebellum Options"]    << Option(true);
+#ifdef Features
   o["Book_Enabled"]          << Option(true);
   o["BookFile"]              << Option("<empty>", on_book_file);
   o["BestBookMove"]          << Option(true, on_best_book_move);
+  o["BookDepth"]             << Option(255, 1, 255, on_book_depth);
+#endif
   o["Debug Log File"]        << Option("", on_logger);
 }
 
@@ -155,10 +143,6 @@ std::ostream& operator<<(std::ostream& os, const OptionsMap& om) {
 
 
 /// Option class constructors and conversion operators
-Option::Option(const char* v, const char* cur, OnChange f) : type("combo"), min(0), max(0), on_change(f)
-{
-	defaultValue = v; currentValue = cur;
-}
 
 Option::Option(const char* v, OnChange f) : type("string"), min(0), max(0), on_change(f)
 { defaultValue = currentValue = v; }
@@ -168,6 +152,17 @@ Option::Option(bool v, OnChange f) : type("check"), min(0), max(0), on_change(f)
 
 Option::Option(OnChange f) : type("button"), min(0), max(0), on_change(f)
 {}
+
+Option::Option(double v, int minv, int maxv, OnChange f) : type("spin"), min(minv), max(maxv), on_change(f)
+{ defaultValue = currentValue = std::to_string(v); }
+
+Option::Option(const char* v, const char* cur, OnChange f) : type("combo"), min(0), max(0), on_change(f)
+{ defaultValue = v; currentValue = cur; }
+
+Option::operator double() const {
+  assert(type == "check" || type == "spin");
+  return (type == "spin" ? stof(currentValue) : currentValue == "true");
+}
 
 Option::operator std::string() const {
   assert(type == "string");

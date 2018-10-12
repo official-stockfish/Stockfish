@@ -100,7 +100,7 @@ struct LimitsType {
 
 extern LimitsType Limits;
 
-void init(bool OptioncleanSearch);
+void init();
 void clear();
 
 } // namespace Search

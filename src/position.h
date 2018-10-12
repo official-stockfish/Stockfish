@@ -123,7 +123,9 @@ public:
   bool capture_or_promotion(Move m) const;
   bool gives_check(Move m) const;
   bool advanced_pawn_push(Move m) const;
+#ifdef Maverick
   bool promotion_pawn_push(Move m) const;
+#endif
   Piece moved_piece(Move m) const;
   Piece captured_piece() const;
 
@@ -134,6 +136,15 @@ public:
   // Doing and undoing moves
   void do_move(Move m, StateInfo& newSt);
   void do_move(Move m, StateInfo& newSt, bool givesCheck);
+#ifdef Maverick //Gunther Demetz zugzwangSolver
+  void removePawn(Square s, StateInfo& newSt);
+  void undo_removePawn(Square s, Color c);
+#else
+#ifdef Matefinder //Gunther Demetz zugzwangSolver
+	void removePawn(Square s, StateInfo& newSt);
+	void undo_removePawn(Square s, Color c);
+#endif
+#endif
   void undo_move(Move m);
   void do_null_move(StateInfo& newSt);
   void undo_null_move();
@@ -319,11 +330,12 @@ inline bool Position::advanced_pawn_push(Move m) const {
   return   type_of(moved_piece(m)) == PAWN
         && relative_rank(sideToMove, from_sq(m)) > RANK_4;
 }
+#ifdef Maverick
 inline bool Position::promotion_pawn_push(Move m) const {
 	return   type_of(moved_piece(m)) == PAWN
-	&& relative_rank(sideToMove, to_sq(m)) == RANK_8;
-}//MichaelB7
-
+	&& relative_rank(sideToMove, from_sq(m)) > RANK_6;
+}
+#endif
 inline Key Position::key() const {
   return st->key;
 }

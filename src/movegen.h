@@ -25,7 +25,13 @@
 #include <algorithm>
 
 #include "types.h"
-
+#ifdef Maverick //Gunther Demetz zugzwangSolver
+#include "position.h"
+#else
+#ifdef Matefinder
+#include "position.h"
+#endif
+#endif 
 class Position;
 
 enum GenType {
@@ -58,10 +64,45 @@ ExtMove* generate(const Position& pos, ExtMove* moveList);
 
 /// The MoveList struct is a simple wrapper around generate(). It sometimes comes
 /// in handy to use this class instead of the low level generate() function.
+#ifdef Maverick //Gunther Demetz zugzwangSolver
+template<GenType T, PieceType P = ALL_PIECES>
+struct MoveList {
+
+  explicit MoveList(const Position& pos) : last(generate<T>(pos, moveList)) {
+
+    if (P != ALL_PIECES)
+    {
+        for (ExtMove* cur = moveList; cur != last; )
+            if (type_of(pos.piece_on(from_sq(cur->move))) != P)
+                *cur = (--last)->move;
+            else
+                ++cur;
+    }
+  }
+
+#else
+#ifdef Matefinder 
+template<GenType T, PieceType P = ALL_PIECES>
+struct MoveList {
+
+  explicit MoveList(const Position& pos) : last(generate<T>(pos, moveList)) {
+
+    if (P != ALL_PIECES)
+    {
+        for (ExtMove* cur = moveList; cur != last; )
+            if (type_of(pos.piece_on(from_sq(cur->move))) != P)
+                *cur = (--last)->move;
+            else
+                ++cur;
+    }
+  }
+#else
 template<GenType T>
 struct MoveList {
 
   explicit MoveList(const Position& pos) : last(generate<T>(pos, moveList)) {}
+#endif
+#endif
   const ExtMove* begin() const { return moveList; }
   const ExtMove* end() const { return last; }
   size_t size() const { return last - moveList; }

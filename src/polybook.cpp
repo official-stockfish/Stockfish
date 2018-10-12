@@ -21,7 +21,7 @@
 // polybook.cpp was written by Thomas Ziproth
 /*
 BrainFish, a UCI chess playing engine derived from Stockfish
-Copyright (C) 2016-2018 Thomas Zipproth
+Copyright (C) 2016-2017 Thomas Zipproth
 
 BrainFish is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -33,8 +33,8 @@ but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
-  You should have received a copy of the GNU General Public License
-  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "polybook.h"
@@ -353,25 +353,17 @@ PolyBook::~PolyBook()
 void PolyBook::init(const std::string& bookfile)
 {
     if (bookfile.length() == 0) return;
-    const char *file_name = bookfile.c_str();
+    const char *fnam = bookfile.c_str();
 
-    if (strcmp(file_name, "<empty>") == 0)
+    if (strcmp(fnam, "<empty>") == 0)
     {
         enabled = false;
         return;
     }
 
-#ifdef _WIN32
-	FILE *fpt;
-	errno_t errno_local = fopen_s(&fpt, file_name, "rb");
-	if (fpt == NULL || errno_local != 0)
-	{
-		assert(errno_local != 0);
-#else
-    FILE *fpt = fopen(file_name, "rb");
+    FILE *fpt = fopen(fnam, "rb");
     if (fpt == NULL)
     {
-#endif
         sync_cout << "info string Could not open " << bookfile << sync_endl;
         enabled = false;
         return;

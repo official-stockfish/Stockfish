@@ -31,10 +31,6 @@
 #include "types.h"
 
 const std::string engine_info(bool to_uci = false);
-const std::string hardware_info();
-const std::string system_info();
-const std::string cores_info();
-
 void prefetch(void* addr);
 void prefetch2(void* addr);
 void start_logger(const std::string& fname);

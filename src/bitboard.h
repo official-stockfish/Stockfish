@@ -83,17 +83,28 @@ struct Magic {
   Bitboard  mask;
   Bitboard  magic;
   Bitboard* attacks;
-
+#ifndef Maverick //Niklas Fiekas fast magics
+  unsigned  shift;
+#endif
   // Compute the attack's index using the 'magic bitboards' approach
+#ifdef Maverick //Niklas Fiekas fast magics
   template<PieceType Pt>
+#endif
   unsigned index(Bitboard occupied) const {
 
     if (HasPext)
         return unsigned(pext(occupied, mask));
+#ifdef Maverick //Niklas Fiekas fast magics
+ unsigned shift = 64 - (Pt == ROOK ? 12 : 9);
+ return unsigned(((occupied & mask) * magic) >> shift);
+#else
+    if (Is64Bit)
+        return unsigned(((occupied & mask) * magic) >> shift);
 
-    unsigned shift = 64 - (Pt == ROOK ? 12 : 9);
-
-    return unsigned(((occupied & mask) * magic) >> shift);
+    unsigned lo = unsigned(occupied) & unsigned(mask);
+    unsigned hi = unsigned(occupied >> 32) & unsigned(mask >> 32);
+    return (lo * unsigned(magic) ^ hi * unsigned(magic >> 32)) >> shift;
+#endif
   }
 };
 
@@ -256,7 +267,11 @@ template<PieceType Pt>
 inline Bitboard attacks_bb(Square s, Bitboard occupied) {
 
   const Magic& m = Pt == ROOK ? RookMagics[s] : BishopMagics[s];
+#ifdef Maverick //Niklas Fiekas fast magics
   return m.attacks[m.index<Pt>(occupied)];
+#else
+  return m.attacks[m.index(occupied)];
+#endif
 }
 
 inline Bitboard attacks_bb(PieceType pt, Square s, Bitboard occupied) {
@@ -328,7 +343,6 @@ inline Square msb(Bitboard b) {
 }
 
 #else  // MSVC, WIN32
-#include <intrin.h>
 
 inline Square lsb(Bitboard b) {
   assert(b);

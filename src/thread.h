@@ -62,7 +62,15 @@ public:
   Material::Table materialTable;
   Endgames endgames;
   size_t pvIdx, pvLast;
+#ifdef Maverick //  Gunther Demetz zugzwangSolver
+  int selDepth, nmpMinPly, zugzwangMates;
+#else
+#ifdef Matefinder //  Gunther Demetz zugzwangSolver
+  int selDepth, nmpMinPly, zugzwangMates;
+#else
   int selDepth, nmpMinPly;
+#endif
+#endif
   Color nmpColor;
   std::atomic<uint64_t> nodes, tbHits;
 
@@ -74,7 +82,6 @@ public:
   CapturePieceToHistory captureHistory;
   ContinuationHistory continuationHistory;
   Score contempt;
-  bool pvDraw;
 };
 
 
