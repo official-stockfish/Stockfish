@@ -1,23 +1,21 @@
 /*
- McBrain, a UCI chess playing engine derived from Stockfish and Glaurung 2.1
- Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
- Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad (Stockfish Authors)
- Copyright (C) 2015-2016 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad (Stockfish Authors)
- Copyright (C) 2017-2018 Michael Byrne, Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad (McBrain Authors)
- 
- McBrain is free software: you can redistribute it and/or modify
- it under the terms of the GNU General Public License as published by
- the Free Software Foundation, either version 3 of the License, or
- (at your option) any later version.
- 
- McBrain is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- GNU General Public License for more details.
- 
- You should have received a copy of the GNU General Public License
- along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
+  Stockfish, a UCI chess playing engine derived from Glaurung 2.1
+  Copyright (c) 2013 Ronald de Man
+  Copyright (C) 2016-2018 Marco Costalba, Lucas Braesch
+
+  Stockfish is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  Stockfish is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
 
 #include <algorithm>
 #include <atomic>
@@ -84,6 +82,8 @@ int LeadPawnsSize[6][4];       // [leadPawnsCnt][FILE_A..FILE_D]
 bool pawns_comp(Square i, Square j) { return MapPawns[i] < MapPawns[j]; }
 int off_A1H8(Square sq) { return int(rank_of(sq)) - file_of(sq); }
 
+	
+#ifndef Matefinder
 constexpr Value WDL_to_value[] = {
    -VALUE_MATE + MAX_PLY + 1,
     VALUE_DRAW - 2,
@@ -91,6 +91,15 @@ constexpr Value WDL_to_value[] = {
     VALUE_DRAW + 2,
     VALUE_MATE - MAX_PLY - 1
 };
+#else
+	constexpr Value WDL_to_value[] = {
+		-VALUE_TB_WIN + 5 * PawnValueEg,
+		VALUE_DRAW - 2,
+		VALUE_DRAW,
+		VALUE_DRAW + 2,
+		VALUE_TB_WIN - 5 * PawnValueEg
+	};
+#endif
 
 template<typename T, int Half = sizeof(T) / 2, int End = sizeof(T) - 1>
 inline void swap_endian(T& x)
@@ -1536,11 +1545,19 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves) {
         // Determine the score to be displayed for this move. Assign at least
         // 1 cp to cursed wins and let it grow to 49 cp as the positions gets
         // closer to a real win.
+#ifndef Matefinder
         m.tbScore =  r >= bound ? VALUE_MATE - MAX_PLY - 1
                    : r >  0     ? Value((std::max( 3, r - 800) * int(PawnValueEg)) / 200)
                    : r == 0     ? VALUE_DRAW
                    : r > -bound ? Value((std::min(-3, r + 800) * int(PawnValueEg)) / 200)
                    :             -VALUE_MATE + MAX_PLY + 1;
+#else
+		m.tbScore =  r >= bound ? VALUE_TB_WIN - PawnValueEg * (1 + popcount(pos.pieces(~pos.side_to_move())))
+					: r >  0     ? Value((std::max( 3, r - 800) * int(PawnValueEg)) / 200)
+					: r == 0     ? VALUE_DRAW
+					: r > -bound ? Value((std::min(-3, r + 800) * int(PawnValueEg)) / 200)
+					:             -VALUE_TB_WIN + PawnValueEg * (1 + popcount(pos.pieces( pos.side_to_move())));
+#endif
     }
 
     return true;
