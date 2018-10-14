@@ -281,13 +281,13 @@ namespace {
     {
         if (pos.is_chess960())
         {
-            moveList = generate_castling<MakeCastling<Us,  KING_SIDE>::right, Checks, true>(pos, moveList, Us);
-            moveList = generate_castling<MakeCastling<Us, QUEEN_SIDE>::right, Checks, true>(pos, moveList, Us);
+            moveList = generate_castling<make_castling<Us,  KING_SIDE>(), Checks, true>(pos, moveList, Us);
+            moveList = generate_castling<make_castling<Us, QUEEN_SIDE>(), Checks, true>(pos, moveList, Us);
         }
         else
         {
-            moveList = generate_castling<MakeCastling<Us,  KING_SIDE>::right, Checks, false>(pos, moveList, Us);
-            moveList = generate_castling<MakeCastling<Us, QUEEN_SIDE>::right, Checks, false>(pos, moveList, Us);
+            moveList = generate_castling<make_castling<Us,  KING_SIDE>(), Checks, false>(pos, moveList, Us);
+            moveList = generate_castling<make_castling<Us, QUEEN_SIDE>(), Checks, false>(pos, moveList, Us);
         }
     }
 
