@@ -1,16 +1,16 @@
 /*
- McBrain, a UCI chess playing engine derived from Stockfish and Glaurung 2.1
+ McCain, a UCI chess playing engine derived from Stockfish and Glaurung 2.1
  Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
  Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad (Stockfish Authors)
  Copyright (C) 2015-2016 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad (Stockfish Authors)
- Copyright (C) 2017-2018 Michael Byrne, Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad (McBrain Authors)
+ Copyright (C) 2017-2018 Michael Byrne, Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad (McCain Authors)
  
- McBrain is free software: you can redistribute it and/or modify
+ McCain is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
  the Free Software Foundation, either version 3 of the License, or
  (at your option) any later version.
  
- McBrain is distributed in the hope that it will be useful,
+ McCain is distributed in the hope that it will be useful,
  but WITHOUT ANY WARRANTY; without even the implied warranty of
  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  GNU General Public License for more details.
@@ -64,7 +64,7 @@ namespace {
     else if (token == "fen")
         while (is >> token && token != "moves")
             fen += token + " ";
-#ifdef Features
+#ifdef Add_Features
     else if (token == "f")
 	while (is >> token && token != "moves")
 	    fen += token + " ";
@@ -106,7 +106,7 @@ namespace {
     else
         sync_cout << "No such option: " << name << sync_endl;
   }
-#ifdef Features	
+#ifdef Add_Features
   // set() is called by typing "s" from the terminal when the user wants to use abbreviated
   // non-UCI comamnds and avoid the uci option protocol "setoption name (option name) value (xxx) ",
   // e.g., instead of typing "setoption name threads value 8" to set cores to 8 at the terminal,
@@ -147,7 +147,7 @@ namespace {
     limits.startTime = now(); // As early as possible!
 
     while (is >> token)
-#ifdef Features
+#ifdef Add_Features
         if (token == "searchmoves" || token == "sm")
 #else
         if (token == "searchmoves")
@@ -167,7 +167,7 @@ namespace {
         else if (token == "perft")     is >> limits.perft;
         else if (token == "infinite")  limits.infinite = 1;
         else if (token == "ponder")    ponderMode = true;
-#ifdef Features
+#ifdef Add_Features
 	else if (token == "d")         is >> limits.depth;
 	else if (token == "i")         limits.infinite = 1;
 #endif
@@ -203,7 +203,7 @@ namespace {
             nodes += Threads.nodes_searched();
         }
         else if (token == "setoption")  setoption(is);
-#ifdef Features
+#ifdef Add_Features
 	else if (token == "s")          set(is);
 #endif
         else if (token == "position")   position(pos, is, states);
@@ -244,7 +244,7 @@ void UCI::loop(int argc, char* argv[]) {
   do {
       if (argc == 1 && !getline(cin, cmd)) // Block here waiting for input or EOF
           cmd = "quit";
-#ifdef Features
+#ifdef Add_Features
 	  else if (token == "q")
 		  cmd = "quit";
 #endif
@@ -261,7 +261,7 @@ void UCI::loop(int argc, char* argv[]) {
       // 'ponderhit' to stop the search, for instance if max search depth is reached.
       if (    token == "quit"
 		  ||  token == "stop"
-#ifdef Features
+#ifdef Add_Features
 		  ||  token == "q"
 		  ||  token == "?"
 #endif
@@ -278,7 +278,8 @@ void UCI::loop(int argc, char* argv[]) {
 
       else if (token == "setoption")  setoption(is);
       else if (token == "go")         go(pos, is, states);
-#ifdef Maverick
+#ifdef Add_Features
+	  else if (token == "b")     bench(pos, is, states);
 	  else if (token == "so")         setoption(is);
 	  else if (token == "set")        set(is);
 	  else if (token == "s")          set(is);
@@ -298,16 +299,7 @@ void UCI::loop(int argc, char* argv[]) {
 			  Search::clear();
 	  }
 #else
-#ifdef Matefinder
-	  else if (token == "position")
-	  {
-		  position(pos, is, states);
-		  if (Options["Clear Search"])
-			  Search::clear();
-	  }
-#else
       else if (token == "position")   position(pos, is, states);
-#endif
 #endif
       else if (token == "ucinewgame") Search::clear();
       else if (token == "isready")    sync_cout << "readyok" << sync_endl;
@@ -315,14 +307,11 @@ void UCI::loop(int argc, char* argv[]) {
       // Additional custom non-UCI commands, mainly for debugging
       else if (token == "flip")  pos.flip();
       else if (token == "bench") bench(pos, is, states);
-#ifdef Features
-      else if (token == "b")     bench(pos, is, states);
-#endif
       else if (token == "d")     sync_cout << pos << sync_endl;
       else if (token == "eval")  sync_cout << Eval::trace(pos) << sync_endl;
       else
           sync_cout << "Unknown command: " << cmd << sync_endl;
-#ifdef Features
+#ifdef Add_Features
   } while (token != "quit" && token != "q" && argc == 1); // Command line args are one-shot
 #else
   } while (token != "quit" && argc == 1); // Command line args are one-shot

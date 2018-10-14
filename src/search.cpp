@@ -1,16 +1,16 @@
 /*
- McBrain, a UCI chess playing engine derived from Stockfish and Glaurung 2.1
+ McCain, a UCI chess playing engine derived from Stockfish and Glaurung 2.1
  Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
  Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad (Stockfish Authors)
  Copyright (C) 2015-2016 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad (Stockfish Authors)
- Copyright (C) 2017-2018 Michael Byrne, Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad (McBrain Authors)
+ Copyright (C) 2017-2018 Michael Byrne, Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad (McCain Authors)
  
- McBrain is free software: you can redistribute it and/or modify
+ McCain is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
  the Free Software Foundation, either version 3 of the License, or
  (at your option) any later version.
  
- McBrain is distributed in the hope that it will be useful,
+ McCain is distributed in the hope that it will be useful,
  but WITHOUT ANY WARRANTY; without even the implied warranty of
  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  GNU General Public License for more details.
@@ -38,7 +38,7 @@
 #include "uci.h"
 #include "syzygy/tbprobe.h"
 
-#ifdef Features
+#ifdef Add_Features
 #include <unistd.h> //for sleep //MichaelB7
 #include <random> // ELO MichaelB7
 #include "polybook.h" // Cerebellum
@@ -103,7 +103,7 @@ namespace {
     int level;
     Move best = MOVE_NONE;
   };
-#ifdef Features
+#ifdef Add_Features
   bool bookEnabled, bruteForce, minOutput, limitStrength, noNULL;
   int tactical, variety;
 #endif
@@ -213,7 +213,7 @@ void MainThread::search() {
       sync_cout << "\nNodes searched: " << nodes << "\n" << sync_endl;
       return;
   }
-#ifdef Features
+#ifdef Add_Features
   limitStrength	= Options["UCI_LimitStrength"];
   bookEnabled   = Options["Book_Enabled"];
   bruteForce	= Options["BruteForce"];
@@ -237,7 +237,7 @@ void MainThread::search() {
   }
   else
   {
-#ifdef Features
+#ifdef Add_Features
 	  Move bookMove = MOVE_NONE;
 	  
 	  if (!Limits.infinite && !Limits.mate)
@@ -271,7 +271,7 @@ void MainThread::search() {
               th->start_searching();
 
       Thread::search(); // Let's start searching!
-#ifdef Features
+#ifdef Add_Features
 	  }
 #endif
   }
@@ -385,7 +385,7 @@ void Thread::search() {
 #endif
 	
 	
-#ifdef Features
+#ifdef Add_Features
   if (tactical) multiPV = pow(2, tactical);
 
 #endif
@@ -499,7 +499,7 @@ void Thread::search() {
               // the UI) before a re-search.
 
               if (  
-#ifdef Features
+#ifdef Add_Features
 		 !minOutput && 
 #endif
   		  mainThread
@@ -593,7 +593,7 @@ void Thread::search() {
 
       if (!mainThread)
           continue;
-#ifdef Features
+#ifdef Add_Features
 	  if (Options["FastPlay"])
 		  {
 			  if ( Time.elapsed() > Time.optimum() / 256
@@ -887,7 +887,7 @@ namespace {
     }
 
     // Step 7. Razoring (~2 Elo)
-#ifdef Features
+#ifdef Add_Features
     if (    !bruteForce && depth < 2 * ONE_PLY
 #else
     if (   depth < 2 * ONE_PLY
@@ -907,7 +907,7 @@ namespace {
     if (   !PvNode
 #else 
     if (   !rootNode
-#ifdef Features
+#ifdef Add_Features
         && !bruteForce
 #endif
 #endif
@@ -917,7 +917,7 @@ namespace {
         return eval;
 
     // Step 9. Null move search with verification search (~40 Elo)
-#ifdef Features
+#ifdef Add_Features
     if (   !noNULL && !PvNode
 #else
     if (   !PvNode
@@ -1216,7 +1216,7 @@ moves_loop: // When in check, search starts from here
 
       ss->moveCount = ++moveCount;
 
-#ifdef Features
+#ifdef Add_Features
       if (!minOutput && rootNode && thisThread == Threads.main() && Time.elapsed() > 3000)
 #else
       if (rootNode && thisThread == Threads.main() && Time.elapsed() > 3000)
@@ -1342,7 +1342,7 @@ moves_loop: // When in check, search starts from here
 
       // Step 16. Reduced depth search (LMR). If the move fails high it will be
       // re-searched at full depth.
-#ifdef Features
+#ifdef Add_Features
       if (    !bruteForce && depth >= 3 * ONE_PLY
 #else
       if (    depth >= 3 * ONE_PLY
@@ -1830,7 +1830,7 @@ moves_loop: // When in check, search starts from here
           }
        }
     }
-#ifdef Features
+#ifdef Add_Features
     if (variety && (bestValue + (variety * PawnValueEg / 100) >= 0 ))
 	  bestValue += rand() % (variety + 1);
 #endif
@@ -2021,7 +2021,7 @@ void MainThread::check_time() {
 string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
 
   std::stringstream ss;
-#ifdef Features
+#ifdef Add_Features
   int temp = 0;
 #endif
   TimePoint elapsed = Time.elapsed() + 1;
@@ -2030,7 +2030,7 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
   size_t multiPV = std::min((size_t)Options["MultiPV"], rootMoves.size());
   uint64_t nodesSearched = Threads.nodes_searched();
   uint64_t tbHits = Threads.tb_hits() + (TB::RootInTB ? rootMoves.size() : 0);
-#ifdef Features
+#ifdef Add_Features
   if (tactical) {
 	  temp = multiPV;
 	  multiPV = 1;
@@ -2074,7 +2074,7 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
       for (Move m : rootMoves[i].pv)
           ss << " " << UCI::move(m, pos.is_chess960());
   }
-#ifdef Features
+#ifdef Add_Features
   if (tactical) multiPV = temp;
 #endif
   return ss.str();

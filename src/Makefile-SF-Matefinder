@@ -34,12 +34,12 @@ VERSION=
 FEATURE1=
 FEATURE2=
 ### Uncomment the line below for McCain
-VERSION=maverick
+### VERSION=maverick
 ### Uncomment the lines below for additional features and to activate matefinder code
 ### for McCain or stockfish
 ### features include : Cerebellum book functionality, play by Elo (UCI limit strength), keyboard shortcuts and a few other items
 FEATURE1=add_features
-### FEATURE2=matefinder
+FEATURE2=matefinder
 ### should be no reason to change anything below here!
 ifeq ($(VERSION),maverick)
 CXXFLAGS += -DMaverick
