@@ -99,9 +99,9 @@ namespace {
 
 #define S(mg, eg) make_score(mg, eg)
 
-  // MobilityBonus[PieceType-2][attacked] contains bonuses for middle and end game,
+  // MobilityBonus[PieceType][attacked] contains bonuses for middle and end game,
   // indexed by piece type and number of attacked squares in the mobility area.
-  constexpr Score MobilityBonus[][32] = {
+  constexpr Score MobilityBonus[][32] = { {  }, {  },  // no mobility for pawns
     { S(-75,-76), S(-57,-54), S( -9,-28), S( -2,-10), S(  6,  5), S( 14, 12), // Knights
       S( 22, 26), S( 29, 29), S( 36, 29) },
     { S(-48,-59), S(-20,-23), S( 16, -3), S( 26, 13), S( 38, 24), S( 51, 42), // Bishops
@@ -321,7 +321,7 @@ namespace {
 
         int mob = popcount(b & mobilityArea[Us]);
 
-        mobility[Us] += MobilityBonus[Pt - 2][mob];
+        mobility[Us] += MobilityBonus[Pt][mob];
 
         if (Pt == BISHOP || Pt == KNIGHT)
         {
