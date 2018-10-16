@@ -65,8 +65,7 @@ void init(OptionsMap& o) {
 
   // at most 2^32 clusters.
   constexpr int MaxHashMB = Is64Bit ? 131072 : 2048;
-
-
+  o["Debug Log File"]        << Option("<empty>", on_logger);
   o["Contempt"]              << Option(21, -100, 100);
   o["Analysis Contempt"]     << Option("Both var Off var White var Black var Both", "Both");
   o["Threads"]               << Option(1, 1, 512, on_threads);
@@ -74,8 +73,6 @@ void init(OptionsMap& o) {
   o["Clear Hash"]            << Option(on_clear_hash);
   o["Ponder"]                << Option(false);
   o["MultiPV"]               << Option(1, 1, 500);
-
-
 #ifdef Add_Features
   o["Tactical"]              << Option(0, 0,  8);
   o["Variety"]               << Option (0, 0, 20);
@@ -111,7 +108,6 @@ void init(OptionsMap& o) {
   o["BestBookMove"]          << Option(true, on_best_book_move);
   o["BookDepth"]             << Option(255, 1, 255, on_book_depth);
 #endif
-  o["Debug Log File"]        << Option("", on_logger);
 }
 
 

@@ -791,19 +791,101 @@ namespace {
 				 // than 7 men.
 
 	// Step 5. Tablebases probe
-
-
-	int piecesCount = pos.count<ALL_PIECES>();
-	if (!rootNode && TB::Cardinality == 7 && ( piecesCount <=6 || ( piecesCount == 7 && ss->ply < 7 )))
+	
+	  if (!rootNode && TB::Cardinality == 7  &&  pos.count<ALL_PIECES>() == 7 && ss->ply < 8 )
 	{
+		int piecesCount = pos.count<ALL_PIECES>();
+		
 		if (    piecesCount <= TB::Cardinality
 			&& (piecesCount <  TB::Cardinality || depth >= TB::ProbeDepth)
 			&&  pos.rule50_count() == 0
 			&& !pos.can_castle(ANY_CASTLING))
+		{
+			TB::ProbeState err;
+			TB::WDLScore wdl = Tablebases::probe_wdl(pos, &err);
+			
+			if (err != TB::ProbeState::FAIL)
+			{
+				thisThread->tbHits.fetch_add(1, std::memory_order_relaxed);
+				
+				int drawScore = TB::UseRule50 ? 1 : 0;
+				
+				value =  wdl < -drawScore ? -VALUE_MATE + MAX_PLY + ss->ply + 1
+				: wdl >  drawScore ?  VALUE_MATE - MAX_PLY - ss->ply - 1
+				:  VALUE_DRAW + 2 * wdl * drawScore;
+				
+				Bound b =  wdl < -drawScore ? BOUND_UPPER
+				: wdl >  drawScore ? BOUND_LOWER : BOUND_EXACT;
+				
+				if (    b == BOUND_EXACT
+					|| (b == BOUND_LOWER ? value >= beta : value <= alpha))
+				{
+					tte->save(posKey, value_to_tt(value, ss->ply), b,
+							  std::min(DEPTH_MAX - ONE_PLY, depth + 6 * ONE_PLY),
+							  MOVE_NONE, VALUE_NONE);
+					
+					return value;
+				}
+				
+				if (PvNode)
+				{
+					if (b == BOUND_LOWER)
+					bestValue = value, alpha = std::max(alpha, bestValue);
+					else
+					maxValue = value;
+				}
+			}
+		}
+	}
+	  else if (!rootNode && TB::Cardinality && TB::Cardinality != 7)
+	  {
+		  int piecesCount = pos.count<ALL_PIECES>();
+		  
+		  if (    piecesCount <= TB::Cardinality
+			  && (piecesCount <  TB::Cardinality || depth >= TB::ProbeDepth)
+			  &&  pos.rule50_count() == 0
+			  && !pos.can_castle(ANY_CASTLING))
+		  {
+			  TB::ProbeState err;
+			  TB::WDLScore wdl = Tablebases::probe_wdl(pos, &err);
+			  
+			  if (err != TB::ProbeState::FAIL)
+			  {
+				  thisThread->tbHits.fetch_add(1, std::memory_order_relaxed);
+				  
+				  int drawScore = TB::UseRule50 ? 1 : 0;
+				  
+				  value =  wdl < -drawScore ? -VALUE_MATE + MAX_PLY + ss->ply + 1
+				  : wdl >  drawScore ?  VALUE_MATE - MAX_PLY - ss->ply - 1
+				  :  VALUE_DRAW + 2 * wdl * drawScore;
+				  
+				  Bound b =  wdl < -drawScore ? BOUND_UPPER
+				  : wdl >  drawScore ? BOUND_LOWER : BOUND_EXACT;
+				  
+				  if (    b == BOUND_EXACT
+					  || (b == BOUND_LOWER ? value >= beta : value <= alpha))
+				  {
+					  tte->save(posKey, value_to_tt(value, ss->ply), b,
+								std::min(DEPTH_MAX - ONE_PLY, depth + 6 * ONE_PLY),
+								MOVE_NONE, VALUE_NONE);
+					  
+					  return value;
+				  }
+				  
+				  if (PvNode)
+				  {
+					  if (b == BOUND_LOWER)
+					  bestValue = value, alpha = std::max(alpha, bestValue);
+					  else
+					  maxValue = value;
+				  }
+			  }
+		  }
+	  }
 #else
 
     // Step 5. Tablebases probe
-    if (!rootNode && TB::Cardinality)
+    if (!rootNode && TB::Cardinality > 0 && TB::Cardinality < 7  )
     {
         int piecesCount = pos.count<ALL_PIECES>();
 
@@ -811,7 +893,7 @@ namespace {
             && (piecesCount <  TB::Cardinality || depth >= TB::ProbeDepth)
             &&  pos.rule50_count() == 0
             && !pos.can_castle(ANY_CASTLING))
-#endif
+
         {
             TB::ProbeState err;
             TB::WDLScore wdl = Tablebases::probe_wdl(pos, &err);
@@ -849,7 +931,7 @@ namespace {
             }
         }
     }
-
+#endif
     // Step 6. Static evaluation of the position
     if (inCheck)
     {
