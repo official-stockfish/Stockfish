@@ -858,13 +858,11 @@ void init() {
 
   for (int m = 0; m < 32; ++m)
   {
-    MobilityBonus[ QUEEN-2][m] = make_score(52-120*(1-log10(m+2)),   48-270*(1-log10(m+5)));
-    MobilityBonus[  ROOK-2][m] = make_score(6.5*m-31,               142-220*(1-log10(m+1)));
-    MobilityBonus[BISHOP-2][m] = make_score(73-110*(1-log10(m+0.8)), 70-145*(1-log10(m+1.3)));
-    MobilityBonus[KNIGHT-2][m] = make_score(44-120*(1-log10(m+1)),   38-160*(1-log10(m+2)));
+    MobilityBonus[ QUEEN-2][m] = make_score(52-120*(1-log10(m+2.0)),  48-270*(1-log10(m+5.0)));
+    MobilityBonus[  ROOK-2][m] = make_score(  m==0 ? -58 : 6.5*m-31, 142-220*(1-log10(m+1.0)));
+    MobilityBonus[BISHOP-2][m] = make_score(73-110*(1-log10(m+0.8)),  70-145*(1-log10(m+1.3)));
+    MobilityBonus[KNIGHT-2][m] = make_score(44-120*(1-log10(m+1.0)),  38-160*(1-log10(m+2.0)));
   }
-
-  MobilityBonus[ROOK-2][0] = make_score(-58, 142-220*(1-log10(1)));
 }
 
 } // namespace
