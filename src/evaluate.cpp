@@ -852,9 +852,8 @@ namespace Eval {
            + Eval::Tempo;
   }
 
-/// Eval::init() initializes some tables needed by evaluation. Instead of using
-/// hard-coded tables, when makes sense, we prefer to calculate them with a formula
-/// to reduce independent parameters and to allow easier tuning and better insight.
+/// Eval::init() initializes some tables needed by evaluation. A formula reduces
+/// indepednent parameters and allows easier tuning.
 void init() {
 
   for (int m = 0; m < 32; ++m)
