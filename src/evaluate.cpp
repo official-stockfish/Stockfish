@@ -853,7 +853,7 @@ namespace Eval {
   }
 
 /// Eval::init() initializes some tables needed by evaluation. A formula reduces
-/// indepednent parameters and allows easier tuning.
+/// independent parameters and allows easier tuning.
 void init() {
 
   for (int m = 0; m < 32; ++m)
