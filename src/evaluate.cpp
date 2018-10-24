@@ -860,16 +860,14 @@ void init() {
   static int   s[8] = {120,  270, -58, 220, 110, 145, 120,  160 }; //eq slopes
   static float f[8] = {2.0,  5.0, 6.5, 1.0, 0.8, 1.3, 1.0,  2.0 }; //eq floats
 
+  auto log_value  = [](int i, int m) {return o[i] + s[i] * log10(m + f[i]);};
+
   for (int m = 0; m < 32; ++m)
   {
-    MobilityBonus[ QUEEN-2][m] = make_score( o[0] + s[0] * log10(m + f[0]),
-                                             o[1] + s[1] * log10(m + f[1]));
-    MobilityBonus[  ROOK-2][m] = make_score( m==0 ? s[2] : f[2]* m + o[2],
-                                             o[3] + s[3] * log10(m + f[3]));
-    MobilityBonus[BISHOP-2][m] = make_score( o[4] + s[4] * log10(m + f[4]),
-                                             o[5] + s[5] * log10(m + f[5]));
-    MobilityBonus[KNIGHT-2][m] = make_score( o[6] + s[6] * log10(m + f[6]),
-                                             o[7] + s[7] * log10(m + f[7]));
+    MobilityBonus[ QUEEN-2][m] = make_score( log_value(0,m), log_value(1,m));
+    MobilityBonus[  ROOK-2][m] = make_score( m==0 ? s[2] : f[2]* m + o[2], log_value(3,m));
+    MobilityBonus[BISHOP-2][m] = make_score( log_value(4,m), log_value(5,m));
+    MobilityBonus[KNIGHT-2][m] = make_score( log_value(6,m), log_value(7,m));
   }
 }
 
