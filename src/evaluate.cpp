@@ -856,12 +856,20 @@ namespace Eval {
 /// independent parameters and allows easier tuning.
 void init() {
 
+  static int   o[8] = {-68, -222, -31, -78, -37, -75, -76, -122 }; //eq offsets
+  static int   s[8] = {120,  270, -58, 220, 110, 145, 120,  160 }; //eq slopes
+  static float f[8] = {2.0,  5.0, 6.5, 1.0, 0.8, 1.3, 1.0,  2.0 }; //eq floats
+
   for (int m = 0; m < 32; ++m)
   {
-    MobilityBonus[ QUEEN-2][m] = make_score(  -68+120*log10(m+2.0), -222+270*log10(m+5.0));
-    MobilityBonus[  ROOK-2][m] = make_score( m==0 ? -58 : 6.5*m-31,  -78+220*log10(m+1.0));
-    MobilityBonus[BISHOP-2][m] = make_score(  -37+110*log10(m+0.8),  -75+145*log10(m+1.3));
-    MobilityBonus[KNIGHT-2][m] = make_score(  -76+120*log10(m+1.0), -122+160*log10(m+2.0));
+    MobilityBonus[ QUEEN-2][m] = make_score( o[0] + s[0] * log10(m + f[0]),
+                                             o[1] + s[1] * log10(m + f[1]));
+    MobilityBonus[  ROOK-2][m] = make_score( m==0 ? s[2] : f[2]* m + o[2],
+                                             o[3] + s[3] * log10(m + f[3]));
+    MobilityBonus[BISHOP-2][m] = make_score( o[4] + s[4] * log10(m + f[4]),
+                                             o[5] + s[5] * log10(m + f[5]));
+    MobilityBonus[KNIGHT-2][m] = make_score( o[6] + s[6] * log10(m + f[6]),
+                                             o[7] + s[7] * log10(m + f[7]));
   }
 }
 
