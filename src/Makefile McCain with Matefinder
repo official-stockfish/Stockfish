@@ -27,7 +27,7 @@
 ### McCain bench nodes 3944828
 ### McCain-mf bench nodes 5056826
 ### stockfish bench nodes 3314347 from this commnit https://github.com/official-stockfish/Stockfish/tree/081af9080542a0d076a5482da37103a96ee15f64
-### stockfish-mf bench nodes 5450439
+### stockfish-mf bench nodes 4636790
 
 ####  Always leave the three lines below as is (any subsequent defines will override)
 VERSION=
