@@ -93,6 +93,15 @@ namespace {
     return d > 17 ? 0 : 29 * d * d + 138 * d - 134;
   }
 
+#ifndef Maverick  //vondele Randomize draw eval
+  // Add a small random component to draw evaluations to keep search dynamic 
+  // and to avoid 3fold-blindness.
+  Value value_draw(Depth depth, Thread* thisThread) {
+    return depth < 4 ? VALUE_DRAW 
+                     : VALUE_DRAW + Value(2 * (thisThread->nodes.load(std::memory_order_relaxed) % 2) - 1);
+  }
+#endif
+
   // Skill structure is used to implement strength limit
   struct Skill {
     explicit Skill(int l) : level(l) {}
@@ -218,10 +227,10 @@ void MainThread::search() {
   bookEnabled   = Options["Book_Enabled"];
   bruteForce	= Options["BruteForce"];
   limitStrength	= Options["UCI_LimitStrength"];
-  noNULL	= Options["No_Null_Moves"];
-  tactical	= Options["Tactical"];
+  noNULL		= Options["No_Null_Moves"];
+  tactical		= Options["Tactical"];
   minOutput 	= Options["Minimal_Output"];
-  variety 	= Options["Variety"];
+  variety 		= Options["Variety"];
 #endif
 	
   Color us = rootPos.side_to_move();
@@ -434,9 +443,7 @@ void Thread::search() {
 
       size_t pvFirst = 0;
       pvLast = 0;
-#ifdef Maverick // mstembera Reduce depth after fail high. #1768
       Depth adjustedDepth = rootDepth;
-#endif
 
       // MultiPV loop. We perform a full root search for each PV line
       for (pvIdx = 0; pvIdx < multiPV && !Threads.stop; ++pvIdx)
@@ -470,17 +477,12 @@ void Thread::search() {
           // Start with a small aspiration window and, in the case of a fail
           // high/low, re-search with a bigger window until we don't fail
           // high/low anymore.
-#ifdef Maverick
-	  int failedHighCnt = 0; //  mstembera Reduce depth after fail high. #1768
-#endif
+          int failedHighCnt = 0;
           while (true)
           {
-#ifdef Maverick
-			  adjustedDepth = std::max(ONE_PLY, rootDepth - failedHighCnt * ONE_PLY);  // mstembera Reduce depth after fail high. #1768
-			  bestValue = ::search<PV>(rootPos, ss, alpha, beta, adjustedDepth, false);  // mstembera Reduce depth after fail high. #1768
-#else
-              bestValue = ::search<PV>(rootPos, ss, alpha, beta, rootDepth, false);
-#endif
+              adjustedDepth = std::max(ONE_PLY, rootDepth - failedHighCnt * ONE_PLY);
+              bestValue = ::search<PV>(rootPos, ss, alpha, beta, adjustedDepth, false);
+
               // Bring the best move to the front. It is critical that sorting
               // is done with a stable algorithm because all the values but the
               // first and eventually the new best one are set to -VALUE_INFINITE
@@ -507,31 +509,29 @@ void Thread::search() {
                   && multiPV == 1
                   && (bestValue <= alpha || bestValue >= beta)
                   && Time.elapsed() > 3000)
-			  
-#ifdef Maverick  //  mstembera Reduce depth after fail high. #1768
-		  sync_cout << UCI::pv(rootPos, adjustedDepth, alpha, beta) << sync_endl;
-#else
-                  sync_cout << UCI::pv(rootPos, rootDepth, alpha, beta) << sync_endl;
-#endif
+                  sync_cout << UCI::pv(rootPos, adjustedDepth, alpha, beta) << sync_endl;
+
               // In case of failing low/high increase aspiration window and
               // re-search, otherwise exit the loop.
               if (bestValue <= alpha)
               {
                   beta = (alpha + beta) / 2;
                   alpha = std::max(bestValue - delta, -VALUE_INFINITE);
-#ifdef Maverick  //  mstembera Reduce depth after fail high. #1768
-                  failedHighCnt = 0;
-#endif
+
                   if (mainThread)
                   {
+                      failedHighCnt = 0;
                       failedLow = true;
                       Threads.stopOnPonderhit = false;
                   }
-
               }
               else if (bestValue >= beta)
               {
-                  beta = std::min(bestValue + delta, VALUE_INFINITE);
+#ifdef Maverick //  Gunther Demetz Skip resolving fail high at low depths, take 3.
+				  if (mainThread && rootDepth < 9 * ONE_PLY )
+				  break;
+#endif
+		  beta = std::min(bestValue + delta, VALUE_INFINITE);
 #ifdef Maverick //  Gunther Demetz zugzwangSolver
                   if (zugzwangMates > 5)
                       zugzwangMates-=100;
@@ -541,12 +541,14 @@ void Thread::search() {
 				  zugzwangMates-=100;
 #endif
 #endif
-
 #ifdef Maverick
-		   ++failedHighCnt;  //  mstembera Reduce depth after fail high. #1768
+				 if (mainThread || (rootMoves[pvIdx].score != VALUE_DRAW && selDepth + 2 * ONE_PLY < adjustedDepth))
+				   ++failedHighCnt;  //  mstembera Reduce depth after fail high. #1768
+#else
+                  if (mainThread)
+                	  ++failedHighCnt;
 #endif
-
-              }
+			    }
               else
                   break;
 
@@ -560,29 +562,15 @@ void Thread::search() {
 
           if (    mainThread
               && (Threads.stop || pvIdx + 1 == multiPV || Time.elapsed() > 3000))
-		  
-#ifdef Maverick //  mstembera Reduce depth after fail high. #1768
               sync_cout << UCI::pv(rootPos, adjustedDepth, alpha, beta) << sync_endl;
-#else
-              sync_cout << UCI::pv(rootPos, rootDepth, alpha, beta) << sync_endl;
-#endif
       }
 
       if (!Threads.stop)
-	  
-#ifdef Maverick //  mstembera Reduce depth after fail high. #1768
           completedDepth = adjustedDepth;
-#else
-          completedDepth = rootDepth;
-#endif
+
       if (rootMoves[0].pv[0] != lastBestMove) {
          lastBestMove = rootMoves[0].pv[0];
-		  
-#ifdef Maverick //  mstembera Reduce depth after fail high. #1768
-		 lastBestMoveDepth = adjustedDepth;
-#else
-         lastBestMoveDepth = rootDepth;
-#endif
+         lastBestMoveDepth = adjustedDepth;
       }
 
       // Have we found a "mate in x"?
@@ -668,7 +656,11 @@ namespace {
         && !rootNode
         && pos.has_game_cycle(ss->ply))
     {
+#ifdef Maverick
         alpha = VALUE_DRAW;
+#else
+        alpha = value_draw(depth, pos.this_thread());  //vondele Randomize draw eval
+#endif
         if (alpha >= beta)
             return alpha;
     }
@@ -717,7 +709,12 @@ namespace {
         if (   Threads.stop.load(std::memory_order_relaxed)
             || pos.is_draw(ss->ply)
             || ss->ply >= MAX_PLY)
+#ifdef Maverick //vondele Randomize draw eval
             return (ss->ply >= MAX_PLY && !inCheck) ? evaluate(pos) : VALUE_DRAW;
+#else
+            return (ss->ply >= MAX_PLY && !inCheck) ? evaluate(pos)    // //vondele Randomize draw eval
+                                                    : value_draw(depth, pos.this_thread());  
+#endif
 
         // Step 3. Mate distance pruning. Even if we mate at the next move our score
         // would be at best mate_in(ss->ply+1), but if alpha is already bigger because
@@ -1007,7 +1004,7 @@ namespace {
         && (ss-1)->currentMove != MOVE_NULL
         && (ss-1)->statScore < 23200
         &&  eval >= beta
-		&&  ss->staticEval >= beta - 36 * depth / ONE_PLY + 225
+        &&  pureStaticEval >= beta - 36 * depth / ONE_PLY + 225
         && !excludedMove
 #ifdef Maverick
         && thisThread->selDepth + 3 > thisThread->rootDepth / ONE_PLY  //idea from Corchess by Ivan Ivec (modfied here)
@@ -1272,11 +1269,7 @@ moves_loop: // When in check, search starts from here
     value = bestValue; // Workaround a bogus 'uninitialized' warning under gcc
 
     skipQuiets = false;
-#ifdef Maverick  //Joost VandeVondele, small ttCapture simplification. #1778
-	ttCapture = ttMove && pos.capture_or_promotion(ttMove);
-#else
-    ttCapture = false;
-#endif
+    ttCapture = ttMove && pos.capture_or_promotion(ttMove);
     pvExact = PvNode && ttHit && tte->bound() == BOUND_EXACT;
 
     // Step 12. Loop through all pseudo-legal moves until no moves remain
@@ -1322,8 +1315,8 @@ moves_loop: // When in check, search starts from here
       // Singular extension search (~60 Elo). If all moves but one fail low on a
       // search of (alpha-s, beta-s), and just one fails high on (alpha, beta),
       // then that move is singular and should be extended. To verify this we do
-      // a reduced search on all the other moves but the ttMove and if the result
-      // is lower than ttValue minus a margin then we will extend the ttMove.
+      // a reduced search on all the other moves but the ttMove and if the
+      // result is lower than ttValue minus a margin then we will extend the ttMove.
       if (    depth >= 8 * ONE_PLY
           &&  move == ttMove
           && !rootNode
@@ -1342,9 +1335,6 @@ moves_loop: // When in check, search starts from here
               extension = ONE_PLY;
       }
       else if (    givesCheck // Check extension (~2 Elo)
-#ifndef Maverick  //  ElbertoOne, Remove the !moveCountPruning condition for check extensions. #1777
-               && !moveCountPruning
-#endif
                &&  pos.see_ge(move))
           extension = ONE_PLY;
 
@@ -1411,10 +1401,7 @@ moves_loop: // When in check, search starts from here
           ss->moveCount = --moveCount;
           continue;
       }
-#ifndef Maverick //Joost VandeVondele, small ttCapture simplification. #1778
-      if (move == ttMove && captureOrPromotion)
-          ttCapture = true;
-#endif
+
       // Update the current move (this must be done after singular extension search)
       ss->currentMove = move;
       ss->continuationHistory = &thisThread->continuationHistory[movedPiece][to_sq(move)];
@@ -1575,36 +1562,7 @@ moves_loop: // When in check, search starts from here
               {
                   assert(value >= beta); // Fail high
                   ss->statScore = 0;
-				  
-/*#ifdef Matefinder  // Gunther Demetz
-				  if (!PvNode
-					  && depth > 6 * ONE_PLY
-					  && !inCheck
-					  && thisThread->zugzwangMates < 20
-					  && make_move(to_sq((ss-2)->currentMove), from_sq((ss-2)->currentMove)) == move
-					  && alpha > VALUE_MATED_IN_MAX_PLY
-					  && MoveList<LEGAL, KING>(pos).size() == 0)
-				  {
-					  int matecount=0;
-					  Move m;
-					  while ((m = mp.next_move(false)) != MOVE_NONE)
-					  {
-						  if (pos.moved_piece(m) != movedPiece || !pos.legal(m))
-						  continue;
-						  StateInfo s;
-						  pos.do_move(m, s);
-						  Value v = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, ONE_PLY, true);
-						  pos.undo_move(m);
-						  if (v < VALUE_MATED_IN_MAX_PLY) // movedPiece must babysit a square and is bouncing
-						  matecount++;
-						  if (matecount > 2)
-						  {
-							  thisThread->zugzwangMates++;
-							  return Value(thisThread->rootMoves[0].score * (thisThread->rootPos.side_to_move() != us ? 1 : -1) - 80);
-						  }
-					  }
-				  }
-#else
+
 #ifdef Matefinder  // Gunther Demetz
 				  if (!PvNode
 					  && depth > 6 * ONE_PLY
@@ -1634,16 +1592,11 @@ moves_loop: // When in check, search starts from here
 					  }
 				  }
 #endif
-#endif
- */
-				  
                   break;
               }
           }
-#ifdef Maverick // Gunther Demetz, Correctly track down pv even in fail-high case. #1771
-		  else if (PvNode && !rootNode && value == alpha)
-		      update_pv(ss->pv, move, (ss+1)->pv);
-#endif
+          else if (PvNode && !rootNode && value == alpha)
+              update_pv(ss->pv, move, (ss+1)->pv);
       }
 
       if (move != bestMove)
@@ -2103,21 +2056,13 @@ void MainThread::check_time() {
 string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
 
   std::stringstream ss;
-#ifdef Add_Features
-  int temp = 0;
-#endif
   TimePoint elapsed = Time.elapsed() + 1;
   const RootMoves& rootMoves = pos.this_thread()->rootMoves;
   size_t pvIdx = pos.this_thread()->pvIdx;
   size_t multiPV = std::min((size_t)Options["MultiPV"], rootMoves.size());
   uint64_t nodesSearched = Threads.nodes_searched();
   uint64_t tbHits = Threads.tb_hits() + (TB::RootInTB ? rootMoves.size() : 0);
-#ifdef Add_Features
-  if (tactical) {
-	  temp = multiPV;
-	  multiPV = 1;
-	}
-#endif
+
   for (size_t i = 0; i < multiPV; ++i)
   {
       bool updated = (i <= pvIdx && rootMoves[i].score != -VALUE_INFINITE);
@@ -2156,9 +2101,6 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
       for (Move m : rootMoves[i].pv)
           ss << " " << UCI::move(m, pos.is_chess960());
   }
-#ifdef Add_Features
-  if (tactical) multiPV = temp;
-#endif
   return ss.str();
 }
 

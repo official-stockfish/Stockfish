@@ -333,7 +333,7 @@ inline bool Position::advanced_pawn_push(Move m) const {
 #ifdef Maverick
 inline bool Position::promotion_pawn_push(Move m) const {
 	return   type_of(moved_piece(m)) == PAWN
-	&& relative_rank(sideToMove, from_sq(m)) > RANK_6;
+	&& relative_rank(sideToMove, from_sq(m)) > RANK_5;
 }
 #endif
 inline Key Position::key() const {

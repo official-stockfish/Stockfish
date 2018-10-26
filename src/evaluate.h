@@ -36,7 +36,7 @@ std::string trace(const Position& pos);
 
 Value evaluate(const Position& pos);
 
-#ifdef Maverick  //protonspring ps_mobility9_queens (v4, +1)
+#ifdef Maverick  // Replace Mobility table with log equations (with rook mg exception). #1784
 void init();
 #endif
 }

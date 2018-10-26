@@ -24,9 +24,9 @@
 #include "bitboard.h"
 #include "position.h"
 #include "search.h"
-//#ifdef Maverick  //protonspring ps_mobility9_queens (v4, +1)
+#ifdef Maverick  //  Replace Mobility table with log equations (with rook mg exception). #1784
 #include "evaluate.h"
-//#endif
+#endif
 #include "thread.h"
 #include "tt.h"
 #include "uci.h"
@@ -50,9 +50,9 @@ int main(int argc, char* argv[]) {
   Bitbases::init();
   Search::init();
   Pawns::init();
-//#ifdef Maverick   //protonspring ps_mobility9_queens (v4, +1)
-//  Eval::init();
-//#endif
+#ifdef Maverick   
+  Eval::init();   //  Replace Mobility table with log equations (with rook mg exception). #1784
+#endif
   Tablebases::init(Options["SyzygyPath"]); // After Bitboards are set
   Threads.set(Options["Threads"]);
   Search::clear(); // After threads are up

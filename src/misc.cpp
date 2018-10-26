@@ -59,9 +59,9 @@ namespace {
 /// DD-MM-YY and show in engine_info.
 #ifdef Maverick
 #ifdef Matefinder
-const string Version = "v10-MF";
+const string Version = "v10.1-MF";
 #else
-const string Version = "v10";
+const string Version = "v10.1";
 #endif
 #else
 #ifdef Matefinder

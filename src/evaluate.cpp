@@ -24,9 +24,9 @@
 #include <cstring>   // For std::memset
 #include <iomanip>
 #include <sstream>
-//#ifdef Maverick  //protonspring ps_mobility9_queens (v4, +1)
-//#include <cmath>
-//#endif
+#ifdef Maverick  //  Replace Mobility table with log equations (with rook mg exception). #1784
+#include <cmath>
+#endif
 #include "bitboard.h"
 #include "evaluate.h"
 #include "material.h"
@@ -73,11 +73,11 @@ namespace Trace {
 }
 
 using namespace Trace;
-//#ifdef Maverick  //protonspring ps_mobility9_queens (v4, +1)
-//namespace Eval {
-//#else
+#ifdef Maverick  //  Replace Mobility table with log equations (with rook mg exception). #1784
+namespace Eval {
+#else
 namespace {
-//#endif
+#endif
 
   constexpr Bitboard QueenSide   = FileABB | FileBBB | FileCBB | FileDBB;
   constexpr Bitboard CenterFiles = FileCBB | FileDBB | FileEBB | FileFBB;
@@ -107,11 +107,10 @@ namespace {
 
   // MobilityBonus[PieceType-2][attacked] contains bonuses for middle and end game,
   // indexed by piece type and number of attacked squares in the mobility area.
-//#ifdef Maverick  //protonspring ps_mobility9_queens (v4, +1)
-//Score MobilityBonus[][32] = {
-//#else
+#ifdef Maverick  //  Replace Mobility table with log equations (with rook mg exception). #1784
+  Score MobilityBonus[PIECE_TYPE_NB - 2][32];
+#else
   constexpr Score MobilityBonus[][32] = {
-//#endif
     { S(-75,-76), S(-57,-54), S( -9,-28), S( -2,-10), S(  6,  5), S( 14, 12), // Knights
       S( 22, 26), S( 29, 29), S( 36, 29) },
     { S(-48,-59), S(-20,-23), S( 16, -3), S( 26, 13), S( 38, 24), S( 51, 42), // Bishops
@@ -126,6 +125,7 @@ namespace {
       S( 79,140), S( 88,143), S( 88,148), S( 99,166), S(102,170), S(102,175),
       S(106,184), S(109,191), S(113,206), S(116,212) }
   };
+#endif
 
   // Outpost[knight/bishop][supported by pawn] contains bonuses for minor
   // pieces if they occupy or can reach an outpost square, bigger if that
@@ -143,11 +143,11 @@ namespace {
   // which piece type attacks which one. Attacks on lesser pieces which are
   // pawn-defended are not considered.
   constexpr Score ThreatByMinor[PIECE_TYPE_NB] = {
-    S(0, 0), S(0, 31), S(39, 42), S(57, 44), S(68, 112), S(47, 120)
+    S(0, 0), S(0, 31), S(39, 42), S(57, 44), S(68, 112), S(62, 120)
   };
 
   constexpr Score ThreatByRook[PIECE_TYPE_NB] = {
-	S(0, 0), S(0, 24), S(38, 71), S(38, 61), S(0, 38), S(36, 38)
+    S(0, 0), S(0, 24), S(38, 71), S(38, 61), S(0, 38), S(51, 38)
   };
 
   // PassedRank[Rank] contains a bonus according to the rank of a passed pawn
@@ -486,7 +486,7 @@ namespace {
         kingDanger +=        kingAttackersCount[Them] * kingAttackersWeight[Them]
                      +  69 * kingAttacksCount[Them]
                      + 185 * popcount(kingRing[Us] & weak)
-                     + 129 * popcount(pos.blockers_for_king(Us) | unsafeChecks)
+                     + 150 * popcount(pos.blockers_for_king(Us) | unsafeChecks)
                      +   4 * tropism
                      - 873 * !pos.count<QUEEN>(Them)
                      -   6 * mg_value(score) / 8
@@ -554,9 +554,6 @@ namespace {
             score += ThreatByMinor[type_of(pos.piece_on(s))];
             if (type_of(pos.piece_on(s)) != PAWN)
                 score += ThreatByRank * (int)relative_rank(Them, s);
-
-            else if (pos.blockers_for_king(Them) & s)
-                score += ThreatByRank * (int)relative_rank(Them, s) / 2;
         }
 
         b = weak & attackedBy[Us][ROOK];
@@ -566,9 +563,6 @@ namespace {
             score += ThreatByRook[type_of(pos.piece_on(s))];
             if (type_of(pos.piece_on(s)) != PAWN)
                 score += ThreatByRank * (int)relative_rank(Them, s);
-
-            else if (pos.blockers_for_king(Them) & s)
-                score += ThreatByRank * (int)relative_rank(Them, s) / 2;
         }
 
         if (weak & attackedBy[Us][KING])
@@ -802,6 +796,7 @@ namespace {
             sf = 8 + 4 * pe->pawn_asymmetry();
         else
             sf = std::min(40 + (pos.opposite_bishops() ? 2 : 7) * pos.count<PAWN>(strongSide), sf);
+
     }
 
     return ScaleFactor(sf);
@@ -879,22 +874,27 @@ namespace {
     return  (pos.side_to_move() == WHITE ? v : -v) // Side to move point of view
            + Eval::Tempo;
   }
-/*#ifdef Maverick  //protonspring ps_mobility9_queens (v4, +1)
-/// Eval::init() initializes some tables needed by evaluation. Instead of using
-/// hard-coded tables, when makes sense, we prefer to calculate them with a formula
-/// to reduce independent parameters and to allow easier tuning and better insight.
+#ifdef Maverick  //  Replace Mobility table with log equations (with rook mg exception). #1784
 
+/// Eval::init() initializes some tables needed by evaluation. A formula reduces
+/// independent parameters and allows easier tuning.
 void init() {
+
+  static int   o[8] = {-68, -222, -31, -78, -37, -75, -76, -122 }; //eq offsets
+  static int   s[8] = {120,  270, -58, 220, 110, 145, 120,  160 }; //eq slopes
+  static float f[8] = {2.0,  5.0, 6.5, 1.0, 0.8, 1.3, 1.0,  2.0 }; //eq floats
+
+  auto log_value  = [](int i, int m) {return o[i] + s[i] * log10(m + f[i]);};
 
   for (int m = 0; m < 32; ++m)
   {
-    MobilityBonus[ QUEEN-2][m] = make_score(52-120*(1-log10(m+2)), 48-270*(1-log10(m+5))); //so far, ony the queen has passed
-    //MobilityBonus[  ROOK-2][m] = make_score(31- 90*(1-log10(m+1)),121-284*(1-log10(m+2)));  
-    //MobilityBonus[BISHOP-2][m] = make_score(72-130*(1-log10(m+1)), 68-130*(1-log10(m+1)));
-    //MobilityBonus[KNIGHT-2][m] = make_score(41-120*(1-log10(m+1)), 35-160*(1-log10(m+2)));
+    MobilityBonus[ QUEEN-2][m] = make_score( log_value(0,m), log_value(1,m));
+    MobilityBonus[  ROOK-2][m] = make_score( m==0 ? s[2] : f[2]* m + o[2], log_value(3,m));
+    MobilityBonus[BISHOP-2][m] = make_score( log_value(4,m), log_value(5,m));
+    MobilityBonus[KNIGHT-2][m] = make_score( log_value(6,m), log_value(7,m));
   }
 }
-#endif*/
+#endif
 
 } // namespace
 
