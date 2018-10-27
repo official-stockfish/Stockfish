@@ -1140,6 +1140,10 @@ moves_loop: // When in check, search starts from here
                   break;
               }
           }
+          // We have a better move though it doesn't raise alpha. At a pv node
+          // and without a best move we must store this move as pv move.
+          else if (PvNode && !rootNode && !bestMove)
+              update_pv(ss->pv, move, (ss+1)->pv);
       }
 
       if (move != bestMove)
