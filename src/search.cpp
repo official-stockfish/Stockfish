@@ -1140,8 +1140,9 @@ moves_loop: // When in check, search starts from here
                   break;
               }
           }
-          // We have a better move though it doesn't raise alpha. At a pv node
-          // and without a best move we must store this move as pv move.
+          // A new move which raises bestValue yet doesn't raise alpha.
+          // At a pv node with no best move we must save this move as
+          // pv move to avoid being left without a pv move at all.
           else if (PvNode && !rootNode && !bestMove)
               update_pv(ss->pv, move, (ss+1)->pv);
       }
