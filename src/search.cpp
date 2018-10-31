@@ -1124,12 +1124,16 @@ moves_loop: // When in check, search starts from here
       {
           bestValue = value;
 
+          // We have a new best move. At PV nodes and if the move
+          // is above alpha or we are still without a 'bestMove'
+          // because all the moves we tried so far failed low, 
+          // we must save this move as PV move.
+          if (PvNode && !rootNode && (value > alpha || !bestMove))
+              update_pv(ss->pv, move, (ss+1)->pv);
+
           if (value > alpha)
           {
               bestMove = move;
-
-              if (PvNode && !rootNode) // Update pv even in fail-high case
-                  update_pv(ss->pv, move, (ss+1)->pv);
 
               if (PvNode && value < beta) // Update alpha! Always alpha < beta
                   alpha = value;
@@ -1140,11 +1144,6 @@ moves_loop: // When in check, search starts from here
                   break;
               }
           }
-          // A new move which raises bestValue yet doesn't raise alpha.
-          // At a pv node with no best move we must save this move as
-          // pv move to avoid being left without a pv move at all.
-          else if (PvNode && !rootNode && !bestMove)
-              update_pv(ss->pv, move, (ss+1)->pv);
       }
 
       if (move != bestMove)
