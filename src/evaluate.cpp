@@ -675,7 +675,7 @@ namespace {
 
                 bonus += make_score(k * w, k * w);
             }
-        } // rank < RANK_4
+        } // rank > RANK_3
 
         // Scale down bonus for candidate passers which need more than one
         // pawn push to become passed, or have a pawn in front of them.
