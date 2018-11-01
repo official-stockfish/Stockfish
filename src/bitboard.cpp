@@ -89,14 +89,14 @@ void Bitboards::init() {
   for (unsigned i = 0; i < (1 << 16); ++i)
       PopCnt16[i] = (uint8_t) popcount16(i);
 
+  for (Square s = SQ_A1; s <= SQ_H8; ++s)
+      SquareBB[s] = (1ULL << s);
+
   for (File f = FILE_A; f <= FILE_H; ++f)
       FileBB[f] = f > FILE_A ? FileBB[f - 1] << 1 : FileABB;
 
   for (Rank r = RANK_1; r <= RANK_8; ++r)
       RankBB[r] = r > RANK_1 ? RankBB[r - 1] << 8 : Rank1BB;
-
-  for (Square s = SQ_A1; s <= SQ_H8; ++s)
-      SquareBB[s] = (1ULL << s);
 
   for (File f = FILE_A; f <= FILE_H; ++f)
       AdjacentFilesBB[f] = (f > FILE_A ? FileBB[f - 1] : 0) | (f < FILE_H ? FileBB[f + 1] : 0);
@@ -137,12 +137,13 @@ void Bitboards::init() {
                           PseudoAttacks[pt][s] |= to;
                   }
               }
+
   for (Square s = SQ_A1; s <= SQ_H8; ++s)
   {
       Square s2 = s;
       s2 += FileABB & s2 ? EAST  : FileHBB & s2 ? WEST  : Direction(0);
       s2 += Rank8BB & s2 ? SOUTH : Rank1BB & s2 ? NORTH : Direction(0);
-      KingRing[s] = PseudoAttacks[KING][s2] | s;
+      KingRing[s] = PseudoAttacks[KING][s] | PseudoAttacks[KING][s2];
   }
 
   Direction RookDirections[] = { NORTH, EAST, SOUTH, WEST };
