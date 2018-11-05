@@ -145,12 +145,6 @@ enum CastlingRight {
   CASTLING_RIGHT_NB = 16
 };
 
-template<Color C, CastlingSide S> struct MakeCastling {
-  static constexpr CastlingRight
-  right = C == WHITE ? S == QUEEN_SIDE ? WHITE_OOO : WHITE_OO
-                     : S == QUEEN_SIDE ? BLACK_OOO : BLACK_OO;
-};
-
 enum Phase {
   PHASE_ENDGAME,
   PHASE_MIDGAME = 128,
@@ -186,7 +180,7 @@ enum Value : int {
   KnightValueMg = 784,   KnightValueEg = 868,
   BishopValueMg = 828,   BishopValueEg = 916,
   RookValueMg   = 1286,  RookValueEg   = 1378,
-  QueenValueMg  = 2528,  QueenValueEg  = 2698,
+  QueenValueMg  = 2529,  QueenValueEg  = 2687,
 
   MidgameLimit  = 15258, EndgameLimit  = 3915
 };
