@@ -856,9 +856,9 @@ namespace Eval {
 /// independent parameters and allows easier tuning.
 void init() {
 
-  static int   o[8] = {-68, -222, -31, -78, -37, -75, -76, -122 }; //eq offsets
-  static int   s[8] = {120,  270, -58, 220, 110, 145, 120,  160 }; //eq slopes
-  static float f[8] = {2.0,  5.0, 6.5, 1.0, 0.8, 1.3, 1.0,  2.0 }; //eq floats
+  static int   o[8] = {-68, -222, -31, -78, -37, -75, -77, -124 }; //eq offsets
+  static int   s[8] = {120,  270, -58, 220, 110, 145, 118,  159 }; //eq slopes
+  static float f[8] = {2.0,  5.0, 6.5, 1.0, 0.8, 1.3, 0.9,  2.1 }; //eq floats
 
   auto log_value  = [](int i, int m) {return o[i] + s[i] * log10(m + f[i]);};
 
