@@ -140,10 +140,12 @@ void Bitboards::init() {
 
   for (Square s = SQ_A1; s <= SQ_H8; ++s)
   {
-      Square s2 = s;
-      s2 += FileABB & s2 ? EAST  : FileHBB & s2 ? WEST  : Direction(0);
-      s2 += Rank8BB & s2 ? SOUTH : Rank1BB & s2 ? NORTH : Direction(0);
-      KingRing[s] = PseudoAttacks[KING][s] | PseudoAttacks[KING][s2] ^ s;
+      Bitboard kr = PseudoAttacks[KING][s];
+      KingRing[s] = kr
+              | shift<NORTH>(kr) * bool(Rank1BB & s)
+              | shift<SOUTH>(kr) * bool(Rank8BB & s)
+              | shift<WEST >(kr) * bool(FileHBB & s)
+              | shift<EAST >(kr) * bool(FileABB & s);
   }
 
   Direction RookDirections[] = { NORTH, EAST, SOUTH, WEST };
