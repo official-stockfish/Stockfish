@@ -87,7 +87,7 @@ void TranspositionTable::clear() {
       threads.push_back(std::thread([this, idx]() {
 
           // Thread binding gives faster search on systems with a first-touch policy
-          if (Options["Threads"] >= 8)
+          if (Options["Threads"] > 8)
               WinProcGroup::bindThisThread(idx);
 
           // Each thread will zero its part of the hash table
@@ -119,8 +119,7 @@ TTEntry* TranspositionTable::probe(const Key key, bool& found) const {
   for (int i = 0; i < ClusterSize; ++i)
       if (!tte[i].key16 || tte[i].key16 == key16)
       {
-          if ((tte[i].genBound8 & 0xFC) != generation8 && tte[i].key16)
-              tte[i].genBound8 = uint8_t(generation8 | tte[i].bound()); // Refresh
+          tte[i].genBound8 = uint8_t(generation8 | tte[i].bound()); // Refresh
 
           return found = (bool)tte[i].key16, &tte[i];
       }

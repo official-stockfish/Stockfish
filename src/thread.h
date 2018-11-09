@@ -72,7 +72,7 @@ public:
   CounterMoveHistory counterMoves;
   ButterflyHistory mainHistory;
   CapturePieceToHistory captureHistory;
-  ContinuationHistory contHistory;
+  ContinuationHistory continuationHistory;
   Score contempt;
 
 #ifdef USE_MPI

@@ -36,18 +36,16 @@
 template<typename T, int D>
 class StatsEntry {
 
-  static const bool IsInt = std::is_integral<T>::value;
-  typedef typename std::conditional<IsInt, int, T>::type TT;
-
   T entry;
 
 public:
-  T* get() { return &entry; }
   void operator=(const T& v) { entry = v; }
-  operator TT() const { return entry; }
+  T* operator&() { return &entry; }
+  T* operator->() { return &entry; }
+  operator const T&() const { return entry; }
 
   void operator<<(int bonus) {
-    assert(abs(bonus) <= D);   // Ensure range is [-D, D]
+    assert(abs(bonus) <= D); // Ensure range is [-D, D]
     static_assert(D <= std::numeric_limits<T>::max(), "D overflows T");
 
     entry += bonus - entry * abs(bonus) / D;
@@ -64,18 +62,21 @@ public:
 template <typename T, int D, int Size, int... Sizes>
 struct Stats : public std::array<Stats<T, D, Sizes...>, Size>
 {
-  T* get() { return this->at(0).get(); }
+  typedef Stats<T, D, Size, Sizes...> stats;
 
   void fill(const T& v) {
-    T* p = get();
-    std::fill(p, p + sizeof(*this) / sizeof(*p), v);
+
+    // For standard-layout 'this' points to first struct member
+    assert(std::is_standard_layout<stats>::value);
+
+    typedef StatsEntry<T, D> entry;
+    entry* p = reinterpret_cast<entry*>(this);
+    std::fill(p, p + sizeof(*this) / sizeof(entry), v);
   }
 };
 
 template <typename T, int D, int Size>
-struct Stats<T, D, Size> : public std::array<StatsEntry<T, D>, Size> {
-  T* get() { return this->at(0).get(); }
-};
+struct Stats<T, D, Size> : public std::array<StatsEntry<T, D>, Size> {};
 
 /// In stats table, D=0 means that the template parameter is not used
 enum StatsParams { NOT_USED = 0 };
@@ -85,14 +86,14 @@ enum StatsParams { NOT_USED = 0 };
 /// unsuccessful during the current search, and is used for reduction and move
 /// ordering decisions. It uses 2 tables (one for each color) indexed by
 /// the move's from and to squares, see chessprogramming.wikispaces.com/Butterfly+Boards
-typedef Stats<int16_t, 10368, COLOR_NB, int(SQUARE_NB) * int(SQUARE_NB)> ButterflyHistory;
+typedef Stats<int16_t, 10692, COLOR_NB, int(SQUARE_NB) * int(SQUARE_NB)> ButterflyHistory;
 
 /// CounterMoveHistory stores counter moves indexed by [piece][to] of the previous
 /// move, see chessprogramming.wikispaces.com/Countermove+Heuristic
 typedef Stats<Move, NOT_USED, PIECE_NB, SQUARE_NB> CounterMoveHistory;
 
 /// CapturePieceToHistory is addressed by a move's [piece][to][captured piece type]
-typedef Stats<int16_t, 10368, PIECE_NB, SQUARE_NB, PIECE_TYPE_NB> CapturePieceToHistory;
+typedef Stats<int16_t, 10692, PIECE_NB, SQUARE_NB, PIECE_TYPE_NB> CapturePieceToHistory;
 
 /// PieceToHistory is like ButterflyHistory but is addressed by a move's [piece][to]
 typedef Stats<int16_t, 29952, PIECE_NB, SQUARE_NB> PieceToHistory;
@@ -119,6 +120,7 @@ public:
   MovePicker(const Position&, Move, Value, const CapturePieceToHistory*);
   MovePicker(const Position&, Move, Depth, const ButterflyHistory*,
                                            const CapturePieceToHistory*,
+                                           const PieceToHistory**,
                                            Square);
   MovePicker(const Position&, Move, Depth, const ButterflyHistory*,
                                            const CapturePieceToHistory*,
@@ -136,7 +138,7 @@ private:
   const Position& pos;
   const ButterflyHistory* mainHistory;
   const CapturePieceToHistory* captureHistory;
-  const PieceToHistory** contHistory;
+  const PieceToHistory** continuationHistory;
   Move ttMove;
   ExtMove refutations[3], *cur, *endMoves, *endBadCaptures;
   int stage;

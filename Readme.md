@@ -59,7 +59,7 @@ The "SyzygyProbeLimit" option should normally be left at its default value.
 
 **What to expect**
 If the engine is searching a position that is not in the tablebases (e.g.
-a position with 7 pieces), it will access the tablebases during the search.
+a position with 8 pieces), it will access the tablebases during the search.
 If the engine reports a very large score (typically 123.xx), this means
 that it has found a winning line into a tablebase position.
 
@@ -98,11 +98,15 @@ for a quick reference.
 
 ### Resource For Understanding the Code Base
 
-* [Chess Programming Wiki](https://chessprogramming.wikispaces.com) has good overall chess engines explanations 
+* [Chess Programming Wiki](https://www.chessprogramming.org/Main_Page) 
+has good overall chess engines explanations 
 (techniques used here are well explained like hash maps etc), it was 
 also recommended by the [support team at stockfish.](http://support.stockfishchess.org/discussions/questions/1132-how-to-understand-stockfish-sources)
 
-* [Here](https://chessprogramming.wikispaces.com/Stockfish) you can find a set of features and techniques used by stockfish and each of them is explained at the wiki, however, it's a generic way rather than focusing on stockfish's own implementation, but it will still help you. 
+* [Here](https://www.chessprogramming.org/Stockfish) you can find a set 
+of features and techniques used by Stockfish and each of them is explained 
+at the wiki, however, it's a generic way rather than focusing on Stockfish's 
+own implementation, but it will still help you.
 
 
 ### Terms of use

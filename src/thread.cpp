@@ -61,11 +61,11 @@ void Thread::clear() {
   mainHistory.fill(0);
   captureHistory.fill(0);
 
-  for (auto& to : contHistory)
+  for (auto& to : continuationHistory)
       for (auto& h : to)
-          h.get()->fill(0);
+          h->fill(0);
 
-  contHistory[NO_PIECE][0].get()->fill(Search::CounterMovePruneThreshold - 1);
+  continuationHistory[NO_PIECE][0]->fill(Search::CounterMovePruneThreshold - 1);
 }
 
 /// Thread::start_searching() wakes up the thread that will start the search
@@ -98,7 +98,7 @@ void Thread::idle_loop() {
   // some Windows NUMA hardware, for instance in fishtest. To make it simple,
   // just check if running threads are below a threshold, in this case all this
   // NUMA machinery is not needed.
-  if (Options["Threads"] >= 8)
+  if (Options["Threads"] > 8)
       WinProcGroup::bindThisThread(idx);
 
   while (true)
