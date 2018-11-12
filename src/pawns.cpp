@@ -58,10 +58,6 @@ namespace {
     { V(-10), V(-14), V( 90), V(15), V( 2), V( -7), V(-16) }
   };
 
-  // Danger of blocked enemy pawns storming our king, by rank
-  constexpr Value BlockedStorm[RANK_NB] =
-    { V(0), V(0), V(66), V(6), V(5), V(1), V(15) };
-
   #undef S
   #undef V
 
@@ -225,8 +221,8 @@ Value Entry::evaluate_shelter(const Position& pos, Square ksq) {
 
       int d = std::min(f, ~f);
       safety += ShelterStrength[d][ourRank];
-      safety -= (ourRank && (ourRank == theirRank - 1)) ? BlockedStorm[theirRank]
-                                                        : UnblockedStorm[d][theirRank];
+      safety -= (ourRank && (ourRank == theirRank - 1)) ?
+          ((theirRank == RANK_3) ? 66 : 0) : UnblockedStorm[d][theirRank];
   }
 
   return safety;
