@@ -954,7 +954,7 @@ moves_loop: // When in check, search starts from here
       // Extension for queen exchange
       if ( type_of(capturedPiece) == QUEEN 
           && type_of(movedPiece) == QUEEN
-          && depth < 12 * ONE_PLY)
+          && depth < 22 * ONE_PLY)
           extension = ONE_PLY;
 		  
       // Calculate new depth for this move
