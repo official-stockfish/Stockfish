@@ -222,7 +222,7 @@ Value Entry::evaluate_shelter(const Position& pos, Square ksq) {
       int d = std::min(f, ~f);
       safety += ShelterStrength[d][ourRank];
       safety -= (ourRank && (ourRank == theirRank - 1)) ?
-          ((theirRank == RANK_3) ? 66 : 0) : UnblockedStorm[d][theirRank];
+          66 * (theirRank == RANK_3) : UnblockedStorm[d][theirRank];
   }
 
   return safety;
