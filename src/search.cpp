@@ -1049,11 +1049,16 @@ moves_loop: // When in check, search starts from here
                              - 4000;
 
               // Decrease/increase reduction by comparing opponent's stat score (~10 Elo)
-              if (ss->statScore >= 0 && (ss-1)->statScore < 0)
-                  r -= ONE_PLY;
-
-              else if ((ss-1)->statScore >= 0 && ss->statScore < 0)
-                  r += ONE_PLY;
+       /*Branchless reduction:
+The booleans are converted to 1:0
+Cases for reductions: 
+ OurScore  TheirScore
+    1           0      1-0=1  -> r-=1
+    1           1      1-1=0  -> r-=0
+    0           1      0-1=-1 -> r-=-1
+    0           0      0-0=0  -> r-=0
+*/
+r -=(int(ss->statScore >= 0)-int((ss-1)->statScore >= 0))*ONE_PLY;
 
               // Decrease/increase reduction for moves with a good/bad history (~30 Elo)
               r -= ss->statScore / 20000 * ONE_PLY;
