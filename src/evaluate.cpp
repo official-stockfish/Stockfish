@@ -252,7 +252,6 @@ namespace {
     attackedBy2[Us]            = attackedBy[Us][KING] & attackedBy[Us][PAWN];
     kingAttacksCount[Them] = kingAttackersWeight[Them] = 0;
     kingAttackersCount[Them] = popcount(KingRing[pos.square<KING>(Us)] & pe->pawn_attacks(Them));
-    }
   }
 
   // Evaluation::pieces() scores pieces of a given color and type
