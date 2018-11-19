@@ -211,7 +211,10 @@ namespace {
     Bitboard attackedBy2[COLOR_NB];
 
     // kingAttackersCount[color] is the number of pieces of the given color
-    // which attack a square in the kingRing of the enemy king.
+    // which attack a square in the kingRing of the enemy king. KingRing[s]
+    // are the squares adjacent to the king, plus (only for a king on edge
+    // ranks) the squares two ranks in front. For instance, if black's king
+    // is on g8, kingRing[BLACK] is f8, h8, f7, g7, h7, f6, g6 and h6.
     int kingAttackersCount[COLOR_NB];
 
     // kingAttackersWeight[color] is the sum of the "weights" of the pieces of
