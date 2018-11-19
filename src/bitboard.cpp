@@ -2,7 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2018 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2015-2019 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -140,12 +140,11 @@ void Bitboards::init() {
 
   for (Square s = SQ_A1; s <= SQ_H8; ++s)
   {
-      Bitboard kr = PseudoAttacks[KING][s];
-      KingRing[s] = kr
-              | shift<NORTH>(kr) * bool(Rank1BB & s)
-              | shift<SOUTH>(kr) * bool(Rank8BB & s)
-              | shift<WEST >(kr) * bool(FileHBB & s)
-              | shift<EAST >(kr) * bool(FileABB & s);
+      KingRing[s] = PseudoAttacks[KING][s];
+      if (Rank1BB & s) KingRing[s] |= shift<NORTH>(KingRing[s]);
+      if (Rank8BB & s) KingRing[s] |= shift<SOUTH>(KingRing[s]);
+      if (FileABB & s) KingRing[s] |= shift< EAST>(KingRing[s]);
+      if (FileHBB & s) KingRing[s] |= shift< WEST>(KingRing[s]);
   }
 
   Direction RookDirections[] = { NORTH, EAST, SOUTH, WEST };
