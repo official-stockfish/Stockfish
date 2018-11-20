@@ -138,15 +138,6 @@ void Bitboards::init() {
                   }
               }
 
-  for (Square s = SQ_A1; s <= SQ_H8; ++s)
-  {
-      KingRing[s] = PseudoAttacks[KING][s];
-      if (Rank1BB & s) KingRing[s] |= shift<NORTH>(KingRing[s]);
-      if (Rank8BB & s) KingRing[s] |= shift<SOUTH>(KingRing[s]);
-      if (FileABB & s) KingRing[s] |= shift< EAST>(KingRing[s]);
-      if (FileHBB & s) KingRing[s] |= shift< WEST>(KingRing[s]);
-  }
-
   Direction RookDirections[] = { NORTH, EAST, SOUTH, WEST };
   Direction BishopDirections[] = { NORTH_EAST, SOUTH_EAST, SOUTH_WEST, NORTH_WEST };
 
@@ -167,6 +158,15 @@ void Bitboards::init() {
               LineBB[s1][s2] = (attacks_bb(pt, s1, 0) & attacks_bb(pt, s2, 0)) | s1 | s2;
               BetweenBB[s1][s2] = attacks_bb(pt, s1, SquareBB[s2]) & attacks_bb(pt, s2, SquareBB[s1]);
           }
+  }
+
+  for (Square s = SQ_A1; s <= SQ_H8; ++s)
+  {
+      KingRing[s] = PseudoAttacks[KING][s];
+      if (Rank1BB & s) KingRing[s] |= shift<NORTH>(KingRing[s]);
+      if (Rank8BB & s) KingRing[s] |= shift<SOUTH>(KingRing[s]);
+      if (FileABB & s) KingRing[s] |= shift< EAST>(KingRing[s]);
+      if (FileHBB & s) KingRing[s] |= shift< WEST>(KingRing[s]);
   }
 }
 
