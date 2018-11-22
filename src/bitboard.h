@@ -49,10 +49,8 @@ constexpr Bitboard FileBB[FILE_NB] = {
     0x0101010101010101ULL << 6, 0x0101010101010101ULL << 7 };
 
 constexpr Bitboard RankBB[RANK_NB] = {
-    Bitboard(0xFF)           , Bitboard(0xFF) << (8 * 1),
-    Bitboard(0xFF) << (8 * 2), Bitboard(0xFF) << (8 * 3),
-    Bitboard(0xFF) << (8 * 4), Bitboard(0xFF) << (8 * 5),
-    Bitboard(0xFF) << (8 * 6), Bitboard(0xFF) << (8 * 7) };
+    0xFFULL         , 0xFFULL << (8*1), 0xFFULL << (8*2), 0xFFULL << (8*3),
+    0xFFULL << (8*4), 0xFFULL << (8*5), 0xFFULL << (8*6), 0xFFULL << (8*7) };
 
 extern int SquareDistance[SQUARE_NB][SQUARE_NB];
 
