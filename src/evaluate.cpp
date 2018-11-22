@@ -466,6 +466,8 @@ namespace {
             kingDanger += KnightSafeCheck;
         else
             unsafeChecks |= b;
+        
+        bool notAttackingQueen = pos.pieces(Them, QUEEN) & ~(attackedBy[Them][QUEEN] & kingFlank & Camp);
 
         // Unsafe or occupied checking squares will also be considered, as long as
         // the square is in the attacker's mobility area.
@@ -475,8 +477,8 @@ namespace {
                      +  69 * kingAttacksCount[Them]
                      + 185 * popcount(kingRing[Us] & weak)
                      + 150 * popcount(pos.blockers_for_king(Us) | unsafeChecks)
-                     +   4 * tropism
                      - 873 * !pos.count<QUEEN>(Them)
+                     - 100 * notAttackingQueen
                      -   6 * mg_value(score) / 8
                      +       mg_value(mobility[Them] - mobility[Us])
                      -   30;
