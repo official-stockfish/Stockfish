@@ -262,7 +262,7 @@ Value Endgame<KQKP>::operator()(const Position& pos) const {
 
   if (   relative_rank(weakSide, pawnSq) != RANK_7
       || distance(loserKSq, pawnSq) != 1
-      || !((FileBB[FILE_A] | FileBB[FILE_B] | FileBB[FILE_F] | FileBB[FILE_H]) & pawnSq))
+      || !((FileBB[FILE_A] | FileBB[FILE_C] | FileBB[FILE_F] | FileBB[FILE_H]) & pawnSq))
       result += QueenValueEg - PawnValueEg;
 
   return strongSide == pos.side_to_move() ? result : -result;
