@@ -467,7 +467,7 @@ namespace {
         else
             unsafeChecks |= b;
         
-        bool notAttackingQueen = pos.pieces(Them, QUEEN) && !(attackedBy[Them][QUEEN] & kingFlank & Camp);
+        bool notAttackingQueen = !((attackedBy[Them][QUEEN] | attackedBy[Them][ROOK]) & kingFlank & Camp);
 
         // Unsafe or occupied checking squares will also be considered, as long as
         // the square is in the attacker's mobility area.
