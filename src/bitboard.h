@@ -48,19 +48,15 @@ constexpr Bitboard FileBB[FILE_NB] = {
     0x0101010101010101ULL << 4, 0x0101010101010101ULL << 5,
     0x0101010101010101ULL << 6, 0x0101010101010101ULL << 7 };
 
-constexpr Bitboard Rank1BB = 0xFF;
-constexpr Bitboard Rank2BB = Rank1BB << (8 * 1);
-constexpr Bitboard Rank3BB = Rank1BB << (8 * 2);
-constexpr Bitboard Rank4BB = Rank1BB << (8 * 3);
-constexpr Bitboard Rank5BB = Rank1BB << (8 * 4);
-constexpr Bitboard Rank6BB = Rank1BB << (8 * 5);
-constexpr Bitboard Rank7BB = Rank1BB << (8 * 6);
-constexpr Bitboard Rank8BB = Rank1BB << (8 * 7);
+constexpr Bitboard RankBB[RANK_NB] = {
+    Bitboard(0xFF)           , Bitboard(0xFF) << (8 * 1),
+    Bitboard(0xFF) << (8 * 2), Bitboard(0xFF) << (8 * 3),
+    Bitboard(0xFF) << (8 * 4), Bitboard(0xFF) << (8 * 5),
+    Bitboard(0xFF) << (8 * 6), Bitboard(0xFF) << (8 * 7) };
 
 extern int SquareDistance[SQUARE_NB][SQUARE_NB];
 
 extern Bitboard SquareBB[SQUARE_NB];
-extern Bitboard RankBB[RANK_NB];
 extern Bitboard AdjacentFilesBB[FILE_NB];
 extern Bitboard ForwardRanksBB[COLOR_NB][RANK_NB];
 extern Bitboard BetweenBB[SQUARE_NB][SQUARE_NB];

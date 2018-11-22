@@ -95,10 +95,10 @@ namespace {
 
     // Compute our parametrized parameters at compile time, named according to
     // the point of view of white side.
-    constexpr Color     Them     = (Us == WHITE ? BLACK      : WHITE);
-    constexpr Bitboard  TRank8BB = (Us == WHITE ? Rank8BB    : Rank1BB);
-    constexpr Bitboard  TRank7BB = (Us == WHITE ? Rank7BB    : Rank2BB);
-    constexpr Bitboard  TRank3BB = (Us == WHITE ? Rank3BB    : Rank6BB);
+    constexpr Color     Them     = (Us == WHITE ? BLACK          : WHITE);
+    constexpr Bitboard  TRank8BB = (Us == WHITE ? RankBB[RANK_8] : RankBB[RANK_1]);
+    constexpr Bitboard  TRank7BB = (Us == WHITE ? RankBB[RANK_7] : RankBB[RANK_2]);
+    constexpr Bitboard  TRank3BB = (Us == WHITE ? RankBB[RANK_3] : RankBB[RANK_6]);
     constexpr Direction Up       = (Us == WHITE ? NORTH      : SOUTH);
     constexpr Direction UpRight  = (Us == WHITE ? NORTH_EAST : SOUTH_WEST);
     constexpr Direction UpLeft   = (Us == WHITE ? NORTH_WEST : SOUTH_EAST);

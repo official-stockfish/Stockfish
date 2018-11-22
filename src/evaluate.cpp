@@ -76,7 +76,7 @@ namespace {
   constexpr Bitboard QueenSide   = FileBB[FILE_A] | FileBB[FILE_B] | FileBB[FILE_C] | FileBB[FILE_D];
   constexpr Bitboard CenterFiles = FileBB[FILE_C] | FileBB[FILE_D] | FileBB[FILE_E] | FileBB[FILE_F];
   constexpr Bitboard KingSide    = FileBB[FILE_E] | FileBB[FILE_F] | FileBB[FILE_G] | FileBB[FILE_H];
-  constexpr Bitboard Center      = (FileBB[FILE_D] | FileBB[FILE_E]) & (Rank4BB | Rank5BB);
+  constexpr Bitboard Center      = (FileBB[FILE_D] | FileBB[FILE_E]) & (RankBB[RANK_4] | RankBB[RANK_5]);
 
   constexpr Bitboard KingFlank[FILE_NB] = {
     QueenSide ^ FileBB[FILE_D], QueenSide, QueenSide,
@@ -244,7 +244,7 @@ namespace {
     constexpr Color     Them = (Us == WHITE ? BLACK : WHITE);
     constexpr Direction Up   = (Us == WHITE ? NORTH : SOUTH);
     constexpr Direction Down = (Us == WHITE ? SOUTH : NORTH);
-    constexpr Bitboard LowRanks = (Us == WHITE ? Rank2BB | Rank3BB: Rank7BB | Rank6BB);
+    constexpr Bitboard LowRanks = (Us == WHITE ? RankBB[RANK_2] | RankBB[RANK_3]: RankBB[RANK_7] | RankBB[RANK_6]);
 
     // Find our pawns that are blocked or on the first two ranks
     Bitboard b = pos.pieces(Us, PAWN) & (shift<Down>(pos.pieces()) | LowRanks);
@@ -286,8 +286,8 @@ namespace {
 
     constexpr Color     Them = (Us == WHITE ? BLACK : WHITE);
     constexpr Direction Down = (Us == WHITE ? SOUTH : NORTH);
-    constexpr Bitboard OutpostRanks = (Us == WHITE ? Rank4BB | Rank5BB | Rank6BB
-                                                   : Rank5BB | Rank4BB | Rank3BB);
+    constexpr Bitboard OutpostRanks = (Us == WHITE ? RankBB[RANK_4] | RankBB[RANK_5] | RankBB[RANK_6]
+                                                   : RankBB[RANK_5] | RankBB[RANK_4] | RankBB[RANK_3]);
     const Square* pl = pos.squares<Pt>(Us);
 
     Bitboard b, bb;
@@ -406,8 +406,8 @@ namespace {
   Score Evaluation<T>::king() const {
 
     constexpr Color    Them = (Us == WHITE ? BLACK : WHITE);
-    constexpr Bitboard Camp = (Us == WHITE ? AllSquares ^ Rank6BB ^ Rank7BB ^ Rank8BB
-                                           : AllSquares ^ Rank1BB ^ Rank2BB ^ Rank3BB);
+    constexpr Bitboard Camp = (Us == WHITE ? AllSquares ^ RankBB[RANK_6] ^ RankBB[RANK_7] ^ RankBB[RANK_8]
+                                           : AllSquares ^ RankBB[RANK_1] ^ RankBB[RANK_2] ^ RankBB[RANK_3]);
 
     const Square ksq = pos.square<KING>(Us);
     Bitboard kingFlank, weak, b, b1, b2, safe, unsafeChecks;
@@ -507,7 +507,7 @@ namespace {
 
     constexpr Color     Them     = (Us == WHITE ? BLACK   : WHITE);
     constexpr Direction Up       = (Us == WHITE ? NORTH   : SOUTH);
-    constexpr Bitboard  TRank3BB = (Us == WHITE ? Rank3BB : Rank6BB);
+    constexpr Bitboard  TRank3BB = (Us == WHITE ? RankBB[RANK_3] : RankBB[RANK_6]);
 
     Bitboard b, weak, defended, nonPawnEnemies, stronglyProtected, safe, restricted;
     Score score = SCORE_ZERO;
@@ -713,8 +713,8 @@ namespace {
 
     constexpr Color Them = (Us == WHITE ? BLACK : WHITE);
     constexpr Bitboard SpaceMask =
-      Us == WHITE ? CenterFiles & (Rank2BB | Rank3BB | Rank4BB)
-                  : CenterFiles & (Rank7BB | Rank6BB | Rank5BB);
+      Us == WHITE ? CenterFiles & (RankBB[RANK_2] | RankBB[RANK_3] | RankBB[RANK_4])
+                  : CenterFiles & (RankBB[RANK_7] | RankBB[RANK_6] | RankBB[RANK_5]);
 
     // Find the available squares for our pieces inside the area defined by SpaceMask
     Bitboard safe =   SpaceMask
