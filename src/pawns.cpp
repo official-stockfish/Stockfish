@@ -207,7 +207,7 @@ Value Entry::evaluate_shelter(const Position& pos, Square ksq) {
   Bitboard ourPawns = b & pos.pieces(Us);
   Bitboard theirPawns = b & pos.pieces(Them);
 
-  Value safety = (shift<Down>(theirPawns) & (FileABB | FileHBB) & BlockRanks & ksq) ?
+  Value safety = (shift<Down>(theirPawns) & (FileBB[FILE_A] | FileBB[FILE_H]) & BlockRanks & ksq) ?
                  Value(374) : Value(5);
 
   File center = std::max(FILE_B, std::min(FILE_G, file_of(ksq)));

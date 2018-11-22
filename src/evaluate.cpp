@@ -73,15 +73,15 @@ using namespace Trace;
 
 namespace {
 
-  constexpr Bitboard QueenSide   = FileABB | FileBBB | FileCBB | FileDBB;
-  constexpr Bitboard CenterFiles = FileCBB | FileDBB | FileEBB | FileFBB;
-  constexpr Bitboard KingSide    = FileEBB | FileFBB | FileGBB | FileHBB;
-  constexpr Bitboard Center      = (FileDBB | FileEBB) & (Rank4BB | Rank5BB);
+  constexpr Bitboard QueenSide   = FileBB[FILE_A] | FileBB[FILE_B] | FileBB[FILE_C] | FileBB[FILE_D];
+  constexpr Bitboard CenterFiles = FileBB[FILE_C] | FileBB[FILE_D] | FileBB[FILE_E] | FileBB[FILE_F];
+  constexpr Bitboard KingSide    = FileBB[FILE_E] | FileBB[FILE_F] | FileBB[FILE_G] | FileBB[FILE_H];
+  constexpr Bitboard Center      = (FileBB[FILE_D] | FileBB[FILE_E]) & (Rank4BB | Rank5BB);
 
   constexpr Bitboard KingFlank[FILE_NB] = {
-    QueenSide ^ FileDBB, QueenSide, QueenSide,
+    QueenSide ^ FileBB[FILE_D], QueenSide, QueenSide,
     CenterFiles, CenterFiles,
-    KingSide, KingSide, KingSide ^ FileEBB
+    KingSide, KingSide, KingSide ^ FileBB[FILE_E]
   };
 
   // Threshold for lazy and space evaluation
