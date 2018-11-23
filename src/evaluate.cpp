@@ -466,8 +466,7 @@ namespace {
             kingDanger += KnightSafeCheck;
         else
             unsafeChecks |= b;
-        Bitboard MajorAttacks = (attackedBy[Them][QUEEN] | attackedBy[Them][ROOK]) & kingFlank & Camp;
-        int notAttackingMajors = 2 - more_than_one(MajorAttacks) - bool (MajorAttacks);
+        bool noQueenAttacks = pos.pieces(Them,QUEEN) && !(attackedBy[Them][QUEEN] & kingFlank);
 
         // Unsafe or occupied checking squares will also be considered, as long as
         // the square is in the attacker's mobility area.
@@ -478,7 +477,7 @@ namespace {
                      + 185 * popcount(kingRing[Us] & weak)
                      + 150 * popcount(pos.blockers_for_king(Us) | unsafeChecks)
                      - 873 * !pos.count<QUEEN>(Them)
-                     - 200 * notAttackingMajors
+                     - 200 * noQueenAttacks
                      -   6 * mg_value(score) / 8
                      +       mg_value(mobility[Them] - mobility[Us])
                      -   30;
