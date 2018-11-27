@@ -353,7 +353,7 @@ void Thread::search() {
           constexpr int skips[]  = { 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4 };
 
           int i = (idx-1) % 20;
-          if (((rootDepth + idx) / skips[i]) % 2)
+          if (((rootDepth / ONE_PLY + idx) / skips[i]) % 2)
              continue;
       }
 
