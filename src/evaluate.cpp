@@ -552,7 +552,7 @@ namespace {
         if (weak & attackedBy[Us][KING])
             score += ThreatByKing;
 
-        score += Hanging * popcount(weak & (~attackedBy[Them][ALL_PIECES] | (nonPawnEnemies & ~attackedBy2[Them] & attackedBy2[Us])));
+        score += Hanging * popcount(weak & (~attackedBy[Them][ALL_PIECES] | (nonPawnEnemies & attackedBy2[Us])));
     }
 
     // Bonus for restricting their piece moves
