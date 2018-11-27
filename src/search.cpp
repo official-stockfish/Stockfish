@@ -61,6 +61,9 @@ namespace {
   // Different node types, used as a template parameter
   enum NodeType { NonPV, PV };
 
+  // Defines the skip-blocks, used for distributing search depths across the threads
+  constexpr int skips[]  = { 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4 };
+
   // Razor and futility margins
   constexpr int RazorMargin = 600;
   Value futility_margin(Depth d, bool improving) {
@@ -349,12 +352,9 @@ void Thread::search() {
       // Distribute search depths across the helper threads
       if (idx > 0)
       {
-          //Helper threads skip some depths according to this skip pattern
-          constexpr int skips[]  = { 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4 };
-
-          int i = (idx-1) % 20;
+          int i = (idx - 1) % 20;
           if (((rootDepth / ONE_PLY + idx) / skips[i]) % 2)
-             continue;
+             continue; //retry with incremented rootDepth
       }
 
       // Age out PV variability metric
