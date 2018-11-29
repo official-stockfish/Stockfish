@@ -2,7 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2018 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2015-2019 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -152,25 +152,26 @@ namespace {
   };
 
   // Assorted bonuses and penalties
-  constexpr Score BishopPawns        = S(  3,  7);
-  constexpr Score CloseEnemies       = S(  6,  0);
+  constexpr Score BishopPawns        = S(  3,  8);
+  constexpr Score CloseEnemies       = S(  7,  0);
   constexpr Score CorneredBishop     = S( 50, 50);
-  constexpr Score Hanging            = S( 57, 32);
-  constexpr Score KingProtector      = S(  6,  6);
-  constexpr Score KnightOnQueen      = S( 21, 11);
-  constexpr Score LongDiagonalBishop = S( 46,  0);
+  constexpr Score Hanging            = S( 62, 34);
+  constexpr Score KingProtector      = S(  6,  7);
+  constexpr Score KnightOnQueen      = S( 20, 12);
+  constexpr Score LongDiagonalBishop = S( 44,  0);
   constexpr Score MinorBehindPawn    = S( 16,  0);
-  constexpr Score Overload           = S( 13,  6);
-  constexpr Score PawnlessFlank      = S( 19, 84);
-  constexpr Score RookOnPawn         = S( 10, 29);
-  constexpr Score SliderOnQueen      = S( 42, 21);
-  constexpr Score ThreatByKing       = S( 22, 78);
-  constexpr Score ThreatByPawnPush   = S( 45, 40);
-  constexpr Score ThreatByRank       = S( 16,  3);
-  constexpr Score ThreatBySafePawn   = S(173,102);
-  constexpr Score TrappedRook        = S( 96,  5);
-  constexpr Score WeakQueen          = S( 50, 10);
-  constexpr Score WeakUnopposedPawn  = S( 15, 19);
+  constexpr Score Overload           = S( 12,  6);
+  constexpr Score PawnlessFlank      = S( 18, 94);
+  constexpr Score RestrictedPiece    = S(  7,  6);
+  constexpr Score RookOnPawn         = S( 10, 28);
+  constexpr Score SliderOnQueen      = S( 49, 21);
+  constexpr Score ThreatByKing       = S( 21, 84);
+  constexpr Score ThreatByPawnPush   = S( 48, 42);
+  constexpr Score ThreatByRank       = S( 14,  3);
+  constexpr Score ThreatBySafePawn   = S(169, 99);
+  constexpr Score TrappedRook        = S( 98,  5);
+  constexpr Score WeakQueen          = S( 51, 10);
+  constexpr Score WeakUnopposedPawn  = S( 14, 20);
 
 #undef S
 
@@ -258,6 +259,8 @@ namespace {
     attackedBy[Us][ALL_PIECES] = attackedBy[Us][KING] | attackedBy[Us][PAWN];
     attackedBy2[Us]            = attackedBy[Us][KING] & attackedBy[Us][PAWN];
 
+    kingRing[Us] = kingAttackersCount[Them] = 0;
+
     // Init our king safety tables only if we are going to use them
     if (pos.non_pawn_material(Them) >= RookValueMg + KnightValueMg)
     {
@@ -274,8 +277,6 @@ namespace {
         kingAttackersCount[Them] = popcount(kingRing[Us] & pe->pawn_attacks(Them));
         kingAttacksCount[Them] = kingAttackersWeight[Them] = 0;
     }
-    else
-        kingRing[Us] = kingAttackersCount[Them] = 0;
   }
 
 
@@ -415,7 +416,7 @@ namespace {
     Score score = pe->king_safety<Us>(pos);
 
     // Find the squares that opponent attacks in our king flank, and the squares
-    // which are attacked twice in that flank but not defended by our pawns.
+    // which are attacked twice in that flank.
     kingFlank = KingFlank[file_of(ksq)];
     b1 = attackedBy[Them][ALL_PIECES] & kingFlank & Camp;
     b2 = b1 & attackedBy2[Them];
@@ -474,7 +475,7 @@ namespace {
                      +  69 * kingAttacksCount[Them]
                      + 185 * popcount(kingRing[Us] & weak)
                      + 150 * popcount(pos.blockers_for_king(Us) | unsafeChecks)
-                     +   4 * tropism
+                     +       tropism * tropism / 4
                      - 873 * !pos.count<QUEEN>(Them)
                      -   6 * mg_value(score) / 8
                      +       mg_value(mobility[Them] - mobility[Us])
@@ -508,7 +509,7 @@ namespace {
     constexpr Direction Up       = (Us == WHITE ? NORTH   : SOUTH);
     constexpr Bitboard  TRank3BB = (Us == WHITE ? Rank3BB : Rank6BB);
 
-    Bitboard b, weak, defended, nonPawnEnemies, stronglyProtected, safe;
+    Bitboard b, weak, defended, nonPawnEnemies, stronglyProtected, safe, restricted;
     Score score = SCORE_ZERO;
 
     // Non-pawn enemies
@@ -557,6 +558,13 @@ namespace {
         b = weak & nonPawnEnemies & attackedBy[Them][ALL_PIECES];
         score += Overload * popcount(b);
     }
+
+    // Bonus for restricting their piece moves
+    restricted =   attackedBy[Them][ALL_PIECES]
+                & ~attackedBy[Them][PAWN]
+                & ~attackedBy2[Them]
+                &  attackedBy[Us][ALL_PIECES];
+    score += RestrictedPiece * popcount(restricted);
 
     // Bonus for enemy unopposed weak pawns
     if (pos.pieces(Us, ROOK, QUEEN))
