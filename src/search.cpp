@@ -965,8 +965,8 @@ moves_loop: // When in check, search starts from here
                &&  pos.see_ge(move))
           extension = ONE_PLY;
 
-      else if (   pos.can_castle(us) // Extension for king moves that change castling rights
-               && type_of(movedPiece) == KING)
+      // Extension if castling
+      else if (type_of(move) == CASTLING)
           extension = ONE_PLY;
 
       // Calculate new depth for this move
@@ -1414,22 +1414,15 @@ moves_loop: // When in check, search starts from here
 
           if (value > alpha)
           {
+              bestMove = move;
+
               if (PvNode) // Update pv even in fail-high case
                   update_pv(ss->pv, move, (ss+1)->pv);
 
               if (PvNode && value < beta) // Update alpha here!
-              {
                   alpha = value;
-                  bestMove = move;
-              }
-              else // Fail high
-              {
-                  Cluster::save(thisThread, tte,
-                                posKey, value_to_tt(value, ss->ply), BOUND_LOWER,
-                                ttDepth, move, ss->staticEval);
-
-                  return value;
-              }
+              else
+                  break; // Fail high
           }
        }
     }
@@ -1441,7 +1434,8 @@ moves_loop: // When in check, search starts from here
 
     Cluster::save(thisThread, tte,
                   posKey, value_to_tt(bestValue, ss->ply),
-                  PvNode && bestValue > oldAlpha ? BOUND_EXACT : BOUND_UPPER,
+                  bestValue >= beta ? BOUND_LOWER :
+                  PvNode && bestValue > oldAlpha  ? BOUND_EXACT : BOUND_UPPER,
                   ttDepth, bestMove, ss->staticEval);
 
     assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
