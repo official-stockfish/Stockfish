@@ -347,9 +347,9 @@ void Thread::search() {
          && !(Limits.depth && mainThread && rootDepth / ONE_PLY > Limits.depth))
   {
       // Distribute search depths across the helper threads
-      if (idx % 20 > 0)
+      if (idx % 21 > 0)
       {
-          int skipSize = sqrt(idx % 20) + 0.5;
+          int skipSize = sqrt(idx % 21) + 0.5;
           if (((rootDepth / ONE_PLY + idx) / skipSize) % 2)
              continue; //retry with incremented rootDepth
       }
