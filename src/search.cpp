@@ -873,12 +873,11 @@ namespace {
 moves_loop: // When in check, search starts from here
 
     const PieceToHistory* contHist[] = { (ss-1)->continuationHistory, (ss-2)->continuationHistory, nullptr, (ss-4)->continuationHistory };
-    Move countermove = thisThread->counterMoves[pos.piece_on(prevSq)][prevSq];
+    ss->killers[2] = thisThread->counterMoves[pos.piece_on(prevSq)][prevSq]; //countermove
 
     MovePicker mp(pos, ttMove, depth, &thisThread->mainHistory,
                                       &thisThread->captureHistory,
                                       contHist,
-                                      countermove,
                                       ss->killers);
     value = bestValue; // Workaround a bogus 'uninitialized' warning under gcc
 
