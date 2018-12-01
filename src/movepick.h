@@ -125,7 +125,7 @@ public:
   MovePicker(const Position&, Move, Depth, const ButterflyHistory*,
                                            const CapturePieceToHistory*,
                                            const PieceToHistory**,
-                                           Move*);
+                                           ExtMove*);
   Move next_move(bool skipQuiets = false);
 
 private:

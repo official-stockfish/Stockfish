@@ -619,7 +619,7 @@ namespace {
     (ss+1)->ply = ss->ply + 1;
     ss->currentMove = (ss+1)->excludedMove = bestMove = MOVE_NONE;
     ss->continuationHistory = &thisThread->continuationHistory[NO_PIECE][0];
-    (ss+2)->killers[0] = (ss+2)->killers[1] = MOVE_NONE;
+    (ss+2)->killers[0].move = (ss+2)->killers[1].move = MOVE_NONE;
     Square prevSq = to_sq((ss-1)->currentMove);
 
     // Initialize statScore to zero for the grandchildren of the current position.
@@ -1191,8 +1191,8 @@ moves_loop: // When in check, search starts from here
             update_continuation_histories(ss-1, pos.piece_on(prevSq), prevSq, -stat_bonus(depth + ONE_PLY));
 
         // Extra penalty for killer move in previous ply when it gets refuted
-        else if (  (ss-1)->killers[0]
-                && (ss-1)->currentMove == (ss-1)->killers[0]
+        else if (  (ss-1)->killers[0].move
+                && ((ss-1)->currentMove == (ss-1)->killers[0].move)
                 && !pos.captured_piece())
             update_continuation_histories(ss-1, pos.piece_on(prevSq), prevSq, -stat_bonus(depth));
     }
@@ -1502,10 +1502,10 @@ moves_loop: // When in check, search starts from here
   void update_quiet_stats(const Position& pos, Stack* ss, Move move,
                           Move* quiets, int quietsCnt, int bonus) {
 
-    if (ss->killers[0] != move)
+    if (ss->killers[0].move != move)
     {
-        ss->killers[1] = ss->killers[0];
-        ss->killers[0] = move;
+        ss->killers[1].move = ss->killers[0].move;
+        ss->killers[0].move = move;
     }
 
     Color us = pos.side_to_move();
