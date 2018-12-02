@@ -169,7 +169,7 @@ namespace {
   constexpr Score ThreatByRank       = S( 14,  3);
   constexpr Score ThreatBySafePawn   = S(169, 99);
   constexpr Score TrappedRook        = S( 98,  5);
-//  constexpr Score UselessPiece       = S( 20,  0);
+  constexpr Score UselessPiece       = S( 40,  0);
   constexpr Score WeakQueen          = S( 51, 10);
   constexpr Score WeakUnopposedPawn  = S( 14, 20);
 
@@ -292,6 +292,8 @@ namespace {
                                                    : Rank5BB | Rank4BB | Rank3BB);
     constexpr Bitboard OurCamp = (Us == WHITE ? AllSquares ^ Rank6BB ^ Rank7BB ^ Rank8BB
                                            : AllSquares ^ Rank1BB ^ Rank2BB ^ Rank3BB);
+    constexpr Bitboard TheirCamp = (Us == BLACK ? AllSquares ^ Rank6BB ^ Rank7BB ^ Rank8BB
+                                           : AllSquares ^ Rank1BB ^ Rank2BB ^ Rank3BB);
     const Square* pl = pos.squares<Pt>(Us);
 
     Bitboard b, bb;
@@ -301,6 +303,7 @@ namespace {
     attackedBy[Us][Pt] = 0;
 
     Bitboard kingFlankUs = KingFlank[file_of(pos.square<KING>(Us))];
+    Bitboard kingFlankThem = KingFlank[file_of(pos.square<KING>(Them))];
 
     while ((s = *pl++) != SQ_NONE)
     {
@@ -328,9 +331,12 @@ namespace {
         mobility[Us] += MobilityBonus[Pt - 2][mob];
 
         if (!(pos.attacks_from<Pt>(s)
-             & kingFlankUs & OurCamp)
-             )
-            nonDefender[Us]++;
+             & ~attackedBy[Them][PAWN]
+             & ~pos.pieces(Us)
+             & ((kingFlankUs & OurCamp)
+             | (kingFlankThem & TheirCamp)
+             | Center)))
+            score -= UselessPiece;
 
         if (Pt == BISHOP || Pt == KNIGHT)
         {
@@ -486,7 +492,7 @@ namespace {
                      +  69 * kingAttacksCount[Them]
                      + 185 * popcount(kingRing[Us] & weak)
                      + 150 * popcount(pos.blockers_for_king(Us) | unsafeChecks)
-                     +       (tropism + 4 * nonDefender[Us]) * (tropism + 4 * nonDefender[Us]) / 4
+                     +       tropism * tropism / 4
                      - 873 * !pos.count<QUEEN>(Them)
                      -   6 * mg_value(score) / 8
                      +       mg_value(mobility[Them] - mobility[Us])
