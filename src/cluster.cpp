@@ -127,7 +127,7 @@ bool getline(std::istream& input, std::string& str) {
 
   // Some MPI implementations use busy-wait pooling, while we need yielding
   static MPI_Request reqInput = MPI_REQUEST_NULL;
-  MPI_Ibcast(&size, 1, MPI_UNSIGNED_LONG, 0, InputComm, &reqInput);
+  MPI_Ibcast(&size, 1, MPI_INT, 0, InputComm, &reqInput);
   if (is_root())
       MPI_Wait(&reqInput, MPI_STATUS_IGNORE);
   else {
