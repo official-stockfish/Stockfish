@@ -335,7 +335,8 @@ namespace {
              & ~pos.pieces(Us)
              & ((kingFlankUs & OurCamp)
              | (kingFlankThem & TheirCamp)
-             | Center)))
+             | Center
+             | pos.pieces(Them))))
             score -= UselessPiece;
 
         if (Pt == BISHOP || Pt == KNIGHT)
