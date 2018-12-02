@@ -233,7 +233,6 @@ namespace {
     // a white knight on g5 and black's king is on g8, this white knight adds 2
     // to kingAttacksCount[WHITE].
     int kingAttacksCount[COLOR_NB];
-    int nonDefender[COLOR_NB];
   };
 
 
@@ -261,7 +260,6 @@ namespace {
     attackedBy2[Us]            = attackedBy[Us][KING] & attackedBy[Us][PAWN];
 
     kingRing[Us] = kingAttackersCount[Them] = 0;
-    nonDefender[Us] = 0;
 
     // Init our king safety tables only if we are going to use them
     if (pos.non_pawn_material(Them) >= RookValueMg + KnightValueMg)
@@ -290,10 +288,6 @@ namespace {
     constexpr Direction Down = (Us == WHITE ? SOUTH : NORTH);
     constexpr Bitboard OutpostRanks = (Us == WHITE ? Rank4BB | Rank5BB | Rank6BB
                                                    : Rank5BB | Rank4BB | Rank3BB);
-    constexpr Bitboard OurCamp = (Us == WHITE ? AllSquares ^ Rank6BB ^ Rank7BB ^ Rank8BB
-                                           : AllSquares ^ Rank1BB ^ Rank2BB ^ Rank3BB);
-    constexpr Bitboard TheirCamp = (Us == BLACK ? AllSquares ^ Rank6BB ^ Rank7BB ^ Rank8BB
-                                           : AllSquares ^ Rank1BB ^ Rank2BB ^ Rank3BB);
     const Square* pl = pos.squares<Pt>(Us);
 
     Bitboard b, bb;
@@ -330,13 +324,8 @@ namespace {
 
         mobility[Us] += MobilityBonus[Pt - 2][mob];
 
-        if (!(pos.attacks_from<Pt>(s)
-             & ~attackedBy[Them][PAWN]
-             & ~pos.pieces(Us)
-             & ((kingFlankUs & OurCamp)
-             | (kingFlankThem & TheirCamp)
-             | Center
-             | pos.pieces(Them))))
+        if (!(b & mobilityArea[Us]
+             & ~pos.pieces(Us) & (kingFlankUs | kingFlankThem)))
             score -= UselessPiece;
 
         if (Pt == BISHOP || Pt == KNIGHT)
