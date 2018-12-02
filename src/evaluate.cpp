@@ -169,7 +169,6 @@ namespace {
   constexpr Score ThreatByRank       = S( 14,  3);
   constexpr Score ThreatBySafePawn   = S(169, 99);
   constexpr Score TrappedRook        = S( 98,  5);
-  constexpr Score UselessPiece       = S( 40,  0);
   constexpr Score WeakQueen          = S( 51, 10);
   constexpr Score WeakUnopposedPawn  = S( 14, 20);
 
@@ -286,6 +285,8 @@ namespace {
 
     constexpr Color     Them = (Us == WHITE ? BLACK : WHITE);
     constexpr Direction Down = (Us == WHITE ? SOUTH : NORTH);
+    constexpr Direction DownRight = (Us == WHITE ? SOUTH_EAST : NORTH_WEST);
+    constexpr Direction DownLeft = (Us == WHITE ? SOUTH_WEST : NORTH_EAST);
     constexpr Bitboard OutpostRanks = (Us == WHITE ? Rank4BB | Rank5BB | Rank6BB
                                                    : Rank5BB | Rank4BB | Rank3BB);
     const Square* pl = pos.squares<Pt>(Us);
@@ -295,9 +296,6 @@ namespace {
     Score score = SCORE_ZERO;
 
     attackedBy[Us][Pt] = 0;
-
-    Bitboard kingFlankUs = KingFlank[file_of(pos.square<KING>(Us))];
-    Bitboard kingFlankThem = KingFlank[file_of(pos.square<KING>(Them))];
 
     while ((s = *pl++) != SQ_NONE)
     {
@@ -313,7 +311,7 @@ namespace {
         attackedBy[Us][Pt] |= b;
         attackedBy[Us][ALL_PIECES] |= b;
 
-        if (b & kingRing[Them])
+        if (b & kingRing[Them] & ~(shift<DownRight>(pos.pieces(Them,PAWN)) & shift<DownLeft>(pos.pieces(Them,PAWN))))
         {
             kingAttackersCount[Us]++;
             kingAttackersWeight[Us] += KingAttackWeights[Pt];
@@ -323,10 +321,6 @@ namespace {
         int mob = popcount(b & mobilityArea[Us]);
 
         mobility[Us] += MobilityBonus[Pt - 2][mob];
-
-        if (!(b & mobilityArea[Us]
-             & ~pos.pieces(Us) & (kingFlankUs | kingFlankThem)))
-            score -= UselessPiece;
 
         if (Pt == BISHOP || Pt == KNIGHT)
         {
