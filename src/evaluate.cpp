@@ -169,6 +169,7 @@ namespace {
   constexpr Score ThreatByRank       = S( 14,  3);
   constexpr Score ThreatBySafePawn   = S(169, 99);
   constexpr Score TrappedRook        = S( 98,  5);
+  constexpr Score UselessPiece       = S( 10,  0);
   constexpr Score WeakQueen          = S( 51, 10);
   constexpr Score WeakUnopposedPawn  = S( 14, 20);
 
@@ -287,6 +288,10 @@ namespace {
     constexpr Direction Down = (Us == WHITE ? SOUTH : NORTH);
     constexpr Bitboard OutpostRanks = (Us == WHITE ? Rank4BB | Rank5BB | Rank6BB
                                                    : Rank5BB | Rank4BB | Rank3BB);
+    constexpr Bitboard OurCamp = (Us == WHITE ? AllSquares ^ Rank6BB ^ Rank7BB ^ Rank8BB
+                                           : AllSquares ^ Rank1BB ^ Rank2BB ^ Rank3BB);
+    constexpr Bitboard TheirCamp = (Us == BLACK ? AllSquares ^ Rank6BB ^ Rank7BB ^ Rank8BB
+                                           : AllSquares ^ Rank1BB ^ Rank2BB ^ Rank3BB);
     const Square* pl = pos.squares<Pt>(Us);
 
     Bitboard b, bb;
@@ -294,6 +299,9 @@ namespace {
     Score score = SCORE_ZERO;
 
     attackedBy[Us][Pt] = 0;
+
+    Bitboard kingFlankUs = KingFlank[file_of(pos.square<KING>(Us))];
+    Bitboard kingFlankThem = KingFlank[file_of(pos.square<KING>(Them))];
 
     while ((s = *pl++) != SQ_NONE)
     {
@@ -319,6 +327,12 @@ namespace {
         int mob = popcount(b & mobilityArea[Us]);
 
         mobility[Us] += MobilityBonus[Pt - 2][mob];
+
+        if (!(pos.attacks_from<Pt>(s)
+             & ((kingFlankUs & OurCamp)
+             | (kingFlankThem & TheirCamp)
+             | Center)))
+            score -= UselessPiece;
 
         if (Pt == BISHOP || Pt == KNIGHT)
         {
