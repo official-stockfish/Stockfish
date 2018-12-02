@@ -169,7 +169,7 @@ namespace {
   constexpr Score ThreatByRank       = S( 14,  3);
   constexpr Score ThreatBySafePawn   = S(169, 99);
   constexpr Score TrappedRook        = S( 98,  5);
-  constexpr Score UselessPiece       = S( 20,  0);
+//  constexpr Score UselessPiece       = S( 20,  0);
   constexpr Score WeakQueen          = S( 51, 10);
   constexpr Score WeakUnopposedPawn  = S( 14, 20);
 
@@ -233,6 +233,7 @@ namespace {
     // a white knight on g5 and black's king is on g8, this white knight adds 2
     // to kingAttacksCount[WHITE].
     int kingAttacksCount[COLOR_NB];
+    int nonDefender[COLOR_NB];
   };
 
 
@@ -260,6 +261,7 @@ namespace {
     attackedBy2[Us]            = attackedBy[Us][KING] & attackedBy[Us][PAWN];
 
     kingRing[Us] = kingAttackersCount[Them] = 0;
+    nonDefender[Us] = 0;
 
     // Init our king safety tables only if we are going to use them
     if (pos.non_pawn_material(Them) >= RookValueMg + KnightValueMg)
@@ -290,8 +292,6 @@ namespace {
                                                    : Rank5BB | Rank4BB | Rank3BB);
     constexpr Bitboard OurCamp = (Us == WHITE ? AllSquares ^ Rank6BB ^ Rank7BB ^ Rank8BB
                                            : AllSquares ^ Rank1BB ^ Rank2BB ^ Rank3BB);
-    constexpr Bitboard TheirCamp = (Us == BLACK ? AllSquares ^ Rank6BB ^ Rank7BB ^ Rank8BB
-                                           : AllSquares ^ Rank1BB ^ Rank2BB ^ Rank3BB);
     const Square* pl = pos.squares<Pt>(Us);
 
     Bitboard b, bb;
@@ -301,7 +301,6 @@ namespace {
     attackedBy[Us][Pt] = 0;
 
     Bitboard kingFlankUs = KingFlank[file_of(pos.square<KING>(Us))];
-    Bitboard kingFlankThem = KingFlank[file_of(pos.square<KING>(Them))];
 
     while ((s = *pl++) != SQ_NONE)
     {
@@ -329,10 +328,9 @@ namespace {
         mobility[Us] += MobilityBonus[Pt - 2][mob];
 
         if (!(pos.attacks_from<Pt>(s)
-             & ((kingFlankUs & OurCamp)
-             | (kingFlankThem & TheirCamp)
-             | Center)))
-            score -= UselessPiece;
+             & kingFlankUs & OurCamp)
+             )
+            nonDefender[Us]++;
 
         if (Pt == BISHOP || Pt == KNIGHT)
         {
@@ -488,7 +486,7 @@ namespace {
                      +  69 * kingAttacksCount[Them]
                      + 185 * popcount(kingRing[Us] & weak)
                      + 150 * popcount(pos.blockers_for_king(Us) | unsafeChecks)
-                     +       tropism * tropism / 4
+                     +       (tropism + 2 * nonDefender[Us]) * (tropism + 2 * nonDefender[Us]) / 4
                      - 873 * !pos.count<QUEEN>(Them)
                      -   6 * mg_value(score) / 8
                      +       mg_value(mobility[Them] - mobility[Us])
