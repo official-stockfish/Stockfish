@@ -28,7 +28,7 @@
 using namespace std;
 
 TranspositionTable TT; // Our global transposition table
-TranspositionTable EXP; // Our global transposition table
+MCTSHashTable MCTS;
 
 
 /// TranspositionTable::resize() sets the size of the transposition table,
@@ -122,7 +122,6 @@ int TranspositionTable::hashfull() const {
 }
 void EXPresize(size_t mbSize) {
 
-	EXP.new_search();
 	ifstream myFile("experience.bin", ios::in | ios::binary);
 
 
@@ -139,12 +138,8 @@ void EXPresize(size_t mbSize) {
 
 		if (tempExpEntry.hashkey)
 		{
-			TTEntry* tte;
-			bool ttHit;
-			tte = EXP.probe(tempExpEntry.hashkey, ttHit);
-			tte->save(tempExpEntry.hashkey, tempExpEntry.score, BOUND_EXACT,
-				tempExpEntry.depth,
-				tempExpEntry.move, VALUE_NONE, EXP.generation());
+
+			mctsInsert(tempExpEntry);
 		}
 		else
 			load = 0;
@@ -175,12 +170,7 @@ void EXPawnresize() {
 
 		if (tempExpEntry.hashkey)
 		{
-			TTEntry* tte;
-			bool ttHit;
-			tte = EXP.probe(tempExpEntry.hashkey, ttHit);
-			tte->save(tempExpEntry.hashkey, tempExpEntry.score, BOUND_EXACT,
-				tempExpEntry.depth,
-				tempExpEntry.move, VALUE_NONE, EXP.generation());
+			mctsInsert(tempExpEntry);
 		}
 		else
 			load = 0;
@@ -213,12 +203,7 @@ void EXPload(char* fen)
 
 		if (tempExpEntry.hashkey)
 		{
-			TTEntry* tte;
-			bool ttHit;
-			tte = EXP.probe(tempExpEntry.hashkey, ttHit);
-			tte->save(tempExpEntry.hashkey, tempExpEntry.score, BOUND_EXACT,
-				tempExpEntry.depth,
-				tempExpEntry.move, VALUE_NONE, EXP.generation());
+			mctsInsert(tempExpEntry);
 		}
 		load = 0;
 
@@ -227,4 +212,110 @@ void EXPload(char* fen)
 			load = 0;
 	}
 	myFile.close();
+}
+
+void mctsInsert(ExpEntry tempExpEntry)
+{
+	// If the node already exists in the hash table, we want to return it.
+	// We search in the range of all the hash table entries with key "key1".
+	auto range = MCTS.equal_range(tempExpEntry.hashkey);
+	auto it1 = range.first;
+	auto it2 = range.second;
+
+	bool newNode = true;
+	while (it1 != it2)
+	{
+		Node node = &(it1->second);
+
+		if (node->hashkey == tempExpEntry.hashkey)
+		{
+			bool newChild = true;
+			newNode = false;
+			for (int x = 0; x < node->sons; x++)
+			{
+				if (node->child[x].move == tempExpEntry.move)
+				{
+					newChild = false;
+					node->child[x].move = tempExpEntry.move;
+					node->child[x].depth = tempExpEntry.depth;
+					node->child[x].score = tempExpEntry.score;
+					node->child[x].Visits++;
+					//	node->sons++;
+					node->totalVisits++;
+					break;
+				}
+			}
+			if(newChild && node->sons < MAX_CHILDREN)
+			{
+				node->child[node->sons].move = tempExpEntry.move;
+				node->child[node->sons].depth = tempExpEntry.depth;
+				node->child[node->sons].score = tempExpEntry.score;
+				node->child[node->sons].Visits++;
+				node->sons++;
+				node->totalVisits++;
+			}
+
+			
+
+		}
+
+		it1++;
+	}
+
+	if (newNode)
+	{
+		// Node was not found, so we have to create a new one
+		NodeInfo infos;
+
+		infos.hashkey = 0;        // Zobrist hash of pawns
+		infos.sons = 0;
+
+		infos.totalVisits=0;// number of visits by the Monte-Carlo algorithm
+		infos.child[0].move = MOVE_NONE;
+		infos.child[0].depth = DEPTH_NONE;
+		infos.child[0].score = VALUE_NONE;
+		infos.child[0].Visits = 0;
+		std::memset(infos.child, 0, sizeof(Child) *20);
+
+		infos.hashkey = tempExpEntry.hashkey;        // Zobrist hash of pawns
+		infos.sons = 1;       // number of visits by the Monte-Carlo algorithm
+		infos.totalVisits = 1;
+		infos.child[0].move = tempExpEntry.move;
+		infos.child[0].depth = tempExpEntry.depth;
+		infos.child[0].score = tempExpEntry.score;
+		infos.child[0].Visits = 1;       // number of sons expanded by the Monte-Carlo algorithm
+							 //infos.lastMove = MOVE_NONE; // the move between the parent and this node
+
+										 //debug << "inserting into the hash table: key = " << key1 << endl;
+
+		auto it = MCTS.insert(make_pair(tempExpEntry.hashkey, infos));
+	}
+}
+
+/// get_node() probes the Monte-Carlo hash table to find the node with the given
+/// position, creating a new entry if it doesn't exist yet in the table.
+/// The returned node is always valid.
+Node get_node(Key key) {
+
+
+	// If the node already exists in the hash table, we want to return it.
+	// We search in the range of all the hash table entries with key "key1".
+
+	Node mynode;
+	auto range = MCTS.equal_range(key);
+	auto it1 = range.first;
+	auto it2 = range.second;
+
+	mynode = &(it1->second);
+
+	while (it1 != it2)
+	{
+		Node node = &(it1->second);
+		if (node->hashkey == key)
+			return node;
+
+		it1++;
+	}
+
+	return mynode;
 }

@@ -584,6 +584,7 @@ namespace {
     Value bestValue, value, ttValue, expttValue, eval, maxValue;
     bool ttHit, expttHit, inCheck, givesCheck, singularExtensionNode, improving;
     bool captureOrPromotion, doFullDepthSearch, moveCountPruning, skipQuiets, ttCapture, pvExact;
+	bool solved = false;
     Piece movedPiece;
     int moveCount, captureCount, quietCount;
 
@@ -629,6 +630,7 @@ namespace {
     ss->currentMove = (ss+1)->excludedMove = bestMove = MOVE_NONE;
     ss->contHistory = thisThread->contHistory[NO_PIECE][0].get();
     (ss+2)->killers[0] = (ss+2)->killers[1] = MOVE_NONE;
+	(ss + 2)->killers[0] = (ss + 2)->killers[1] = MOVE_NONE;
     Square prevSq = to_sq((ss-1)->currentMove);
 
     // Initialize statScore to zero for the grandchildren of the current position.
@@ -678,37 +680,48 @@ namespace {
         }
         return ttValue;
     }
+
 	if (excludedMove || !UseExp)
 	{
 
 	}
 	else
 	{
-		exptte = EXP.probe(posKey, expttHit);
-		expttValue = expttHit ? value_from_tt(exptte->value(), ss->ply) : VALUE_NONE;
-		expttMove = rootNode ? thisThread->rootMoves[thisThread->PVIdx].pv[0]
-			: expttHit ? exptte->move() : MOVE_NONE;
-
-
-
-		if (expttHit)
+		Node node = get_node(posKey);
+		if (node->hashkey == posKey)
 		{
+			bool ttMovehave = false;
+			if (ttMove)
+				ttMovehave = true;
 			expHits = true;
-			if (!ttMove || !ttHit)
+			expttHit = true;
+			Value myValue = -VALUE_INFINITE;
+			//if (node->totalVisits > 10 &&)
+			//	thisThread->tbHits.fetch_add(1, std::memory_order_relaxed);
+			if (node->totalVisits >= 20 && node->sons <= 1 && !rootNode)
 			{
-				ttMove = expttMove;
-				thisThread->tbHits.fetch_add(1, std::memory_order_relaxed);
+				solved = true;
+				//thisThread->tbHits.fetch_add(1, std::memory_order_relaxed);
 			}
-		}
 
-		// At non-PV nodes we check for an early TT cutoff
-		if (!PvNode
-			&& expttHit
-			&& exptte->depth() >= depth
-			)
-		{
-			// If ttMove is quiet, update move sorting heuristics on TT hit
-			if (expttMove)
+			for (int x = 0; x < node->sons; x++)
+			{
+				if (node->child[x].depth >= depth && node->child[x].score > myValue)
+				{
+					myValue = node->child[x].score;
+					expttMove = node->child[x].move;
+					expttHit = true;
+					expttValue = node->child[x].score;
+
+					if (!ttMovehave)
+					{
+						ttMove = node->child[x].move;
+					}
+				}
+			}
+
+
+			if (!PvNode)
 			{
 				if (expttValue >= beta)
 				{
@@ -719,18 +732,77 @@ namespace {
 					if ((ss - 1)->moveCount == 1 && !pos.captured_piece())
 						update_continuation_histories(ss - 1, pos.piece_on(prevSq), prevSq, -stat_bonus(depth + ONE_PLY));
 				}
+				// Penalty for a quiet ttMove that fails low
+				else if (!pos.capture_or_promotion(expttMove))
+				{
+					int penalty = -stat_bonus(depth);
+					thisThread->mainHistory[pos.side_to_move()][from_to(expttMove)] << penalty;
+					update_continuation_histories(ss, pos.moved_piece(expttMove), to_sq(expttMove), penalty);
+				}
+
+				thisThread->tbHits.fetch_add(1, std::memory_order_relaxed);
+				return myValue;
 			}
-			// Penalty for a quiet ttMove that fails low
-			else if (!pos.capture_or_promotion(expttMove))
-			{
-				int penalty = -stat_bonus(depth);
-				thisThread->mainHistory[pos.side_to_move()][from_to(expttMove)] << penalty;
-				update_continuation_histories(ss, pos.moved_piece(expttMove), to_sq(expttMove), penalty);
-			}
-			thisThread->tbHits.fetch_add(1, std::memory_order_relaxed);
-			return expttValue;
+			
+
 		}
 	}
+
+//	if (excludedMove || !UseExp)
+//	{
+
+//	}
+//	else
+//	{
+//		exptte = EXP.probe(posKey, expttHit);
+//		expttValue = expttHit ? value_from_tt(exptte->value(), ss->ply) : VALUE_NONE;
+//		expttMove = rootNode ? thisThread->rootMoves[thisThread->PVIdx].pv[0]
+//			: expttHit ? exptte->move() : MOVE_NONE;
+
+
+
+//		if (expttHit)
+//		{
+//			expHits = true;
+//			if (!ttMove || !ttHit)
+//			{
+//				ttHit = true;
+//				ttValue = exptte->value();
+//				ttMove = rootNode ? thisThread->rootMoves[thisThread->PVIdx].pv[0]
+//					: exptte->move();
+//			}
+//		}
+
+		// At non-PV nodes we check for an early TT cutoff
+//		if (!PvNode
+//			&& expttHit
+//			&& exptte->depth() >= depth
+//			)
+//		{
+			// If ttMove is quiet, update move sorting heuristics on TT hit
+//			if (expttMove)
+//			{
+//				if (expttValue >= beta)
+//				{
+//					if (!pos.capture_or_promotion(expttMove))
+//						update_quiet_stats(pos, ss, expttMove, nullptr, 0, stat_bonus(depth));
+
+					// Extra penalty for a quiet TT move in previous ply when it gets refuted
+//					if ((ss - 1)->moveCount == 1 && !pos.captured_piece())
+//						update_continuation_histories(ss - 1, pos.piece_on(prevSq), prevSq, -stat_bonus(depth + ONE_PLY));
+//				}
+//			}
+			// Penalty for a quiet ttMove that fails low
+//			else if (!pos.capture_or_promotion(expttMove))
+//			{
+//				int penalty = -stat_bonus(depth);
+//				thisThread->mainHistory[pos.side_to_move()][from_to(expttMove)] << penalty;
+//				update_continuation_histories(ss, pos.moved_piece(expttMove), to_sq(expttMove), penalty);
+//			}
+			//thisThread->tbHits.fetch_add(1, std::memory_order_relaxed);
+			//return expttValue;
+//		}
+//	}
 
     // Step 5. Tablebases probe
     if (!rootNode && TB::Cardinality)
@@ -995,7 +1067,7 @@ moves_loop: // When in check, search starts from here
       // result is lower than ttValue minus a margin then we will extend the ttMove.
 	  if (expttHit
 		  &&  move == expttMove
-		  && PvNode
+		  && solved
 		  && !excludedMove
 		  )
 		  extension = ONE_PLY;
@@ -1035,6 +1107,11 @@ moves_loop: // When in check, search starts from here
                   skipQuiets = true;
                   continue;
               }
+			  if (solved && move != expttMove && moveCount > 2)
+			  {
+				 // thisThread->tbHits.fetch_add(1, std::memory_order_relaxed);
+				  continue;
+			  }
 
               // Reduced depth of the next LMR search
               int lmrDepth = std::max(newDepth - reduction<PvNode>(improving, depth, moveCount), DEPTH_ZERO) / ONE_PLY;
@@ -1800,7 +1877,6 @@ void kelly(bool start, Key FileKey)
 
 void files(int x, Key FileKey)
 {
-	EXP.new_search();
 	UseExp = true;
 	OpFileKey[x] = FileKey;
 	if (FileKey)
