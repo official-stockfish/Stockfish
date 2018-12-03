@@ -3,25 +3,25 @@
  Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
  Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad (Stockfish Authors)
  Copyright (C) 2015-2016 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad (Stockfish Authors)
- Copyright (C) 2017-2018 Michael Byrne, Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad (McCain Authors)
- 
+ Copyright (C) 2017-2019 Michael Byrne, Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad (McCain Authors)
+
  McCain is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
  the Free Software Foundation, either version 3 of the License, or
  (at your option) any later version.
- 
+
  McCain is distributed in the hope that it will be useful,
  but WITHOUT ANY WARRANTY; without even the implied warranty of
  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  GNU General Public License for more details.
- 
+
  You should have received a copy of the GNU General Public License
  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-// polybook.cpp was written by Thomas Ziproth
+// polybook.cpp was written by Thomas Ziproth, the author og Brainfish.
 /*
 BrainFish, a UCI chess playing engine derived from Stockfish
-Copyright (C) 2016-2017 Thomas Zipproth
+Copyright (C) 2016-2019 Thomas Zipproth
 
 BrainFish is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -320,7 +320,8 @@ const union {
         0x003A93D8B2806962ULL, 0x1C99DED33CB890A1ULL, 0xCF3145DE0ADD4289ULL,
         0xD0E4427A5514FB72ULL, 0x77C621CC9FB3A483ULL, 0x67A34DAC4356550BULL,
         0xF8D626AAAF278509ULL
-    } };
+    }
+};
 
 
 PolyBook::PolyBook()
@@ -337,7 +338,7 @@ PolyBook::PolyBook()
     last_anz_pieces = 0;
     akt_anz_pieces = 0;
     search_counter = 0;
-       
+
     do_search = true;
     enabled = false;
 }
@@ -415,7 +416,7 @@ Move PolyBook::probe(Position& pos)
     Move m1 = MOVE_NONE;
 
     if (!enabled) return m1;
-    if (!check_do_search(pos)) return m1;   
+    if (!check_do_search(pos)) return m1;
 
     if (book_depth_count >= max_book_depth)
         return m1;
@@ -446,12 +447,12 @@ Move PolyBook::probe(Position& pos)
         idx1 = index_best;
     else
         idx1 = index_rand;
-   
+
     m1 = pg_move_to_sf_move(pos, polyhash[idx1].move);
 
     if (!pos.is_draw(64)) return m1;
     if (n == 1) return m1;
-                
+
     // special case draw position and 2 moves available
 
     if (!check_draw(m1, pos))
@@ -459,12 +460,12 @@ Move PolyBook::probe(Position& pos)
 
     int idx2 = index_first;
     if (idx1 == idx2)
-        idx2 = index_first + 1;   
+        idx2 = index_first + 1;
     Move  m2 = pg_move_to_sf_move(pos, polyhash[idx2].move);
-    
+
     if (!check_draw(m2, pos))
         return m2;
-        
+
     return MOVE_NONE;
 }
 
@@ -507,7 +508,7 @@ Key PolyBook::polyglot_key(const Position & pos)
 // move is a promotion we have to convert to our representation, in all the
 // other cases we can directly compare with a Move after having masked out
 // the special Move's flags (bit 14-15) that are not supported by PolyGlot.
-// 
+//
 // SF:
 // bit  0- 5: destination square (from 0 to 63)
 // bit  6-11: origin square (from 0 to 63)
@@ -516,11 +517,11 @@ Key PolyBook::polyglot_key(const Position & pos)
 Move PolyBook::pg_move_to_sf_move(const Position & pos, unsigned short pg_move)
 {
     Move move = Move(pg_move);
-      
+
     int pt = (move >> 12) & 7;
     if (pt)
         return make<PROMOTION>(from_sq(move), to_sq(move), PieceType(pt + 1));
-  
+
     // Add 'special move' flags and verify it is legal
     for (const auto& m : MoveList<LEGAL>(pos))
     {
@@ -634,7 +635,7 @@ bool PolyBook::check_do_search(const Position & pos)
     if (akt_position == last_position) pos_changed = true;
     if (akt_anz_pieces > last_anz_pieces) pos_changed = true;
     if (akt_anz_pieces < last_anz_pieces - 2) pos_changed = true;
-    if (pos.key() == 0xB4D30CD15A43432D) pos_changed = true;    
+    if (pos.key() == 0xB4D30CD15A43432D) pos_changed = true;
 
     // reset do_search and book depth counter if
     // postion changed more than one move can do or in initial position

@@ -3,18 +3,18 @@
  Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
  Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad (Stockfish Authors)
  Copyright (C) 2015-2016 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad (Stockfish Authors)
- Copyright (C) 2017-2018 Michael Byrne, Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad (McCain Authors)
- 
+ Copyright (C) 2017-2019 Michael Byrne, Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad (McCain Authors)
+
  McCain is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
  the Free Software Foundation, either version 3 of the License, or
  (at your option) any later version.
- 
+
  McCain is distributed in the hope that it will be useful,
  but WITHOUT ANY WARRANTY; without even the implied warranty of
  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  GNU General Public License for more details.
- 
+
  You should have received a copy of the GNU General Public License
  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
@@ -37,22 +37,30 @@
 template<typename T, int D>
 class StatsEntry {
 
-  T entry;
+    T entry;
 
 public:
-  void operator=(const T& v) { entry = v; }
-  T* operator&() { return &entry; }
-  T* operator->() { return &entry; }
-  operator const T&() const { return entry; }
+    void operator=(const T& v) {
+        entry = v;
+    }
+    T* operator&() {
+        return &entry;
+    }
+    T* operator->() {
+        return &entry;
+    }
+    operator const T&() const {
+        return entry;
+    }
 
-  void operator<<(int bonus) {
-    assert(abs(bonus) <= D); // Ensure range is [-D, D]
-    static_assert(D <= std::numeric_limits<T>::max(), "D overflows T");
+    void operator<<(int bonus) {
+        assert(abs(bonus) <= D); // Ensure range is [-D, D]
+        static_assert(D <= std::numeric_limits<T>::max(), "D overflows T");
 
-    entry += bonus - entry * abs(bonus) / D;
+        entry += bonus - entry * abs(bonus) / D;
 
-    assert(abs(entry) <= D);
-  }
+        assert(abs(entry) <= D);
+    }
 };
 
 /// Stats is a generic N-dimensional array used to store various statistics.
@@ -63,17 +71,17 @@ public:
 template <typename T, int D, int Size, int... Sizes>
 struct Stats : public std::array<Stats<T, D, Sizes...>, Size>
 {
-  typedef Stats<T, D, Size, Sizes...> stats;
+    typedef Stats<T, D, Size, Sizes...> stats;
 
-  void fill(const T& v) {
+    void fill(const T& v) {
 
-    // For standard-layout 'this' points to first struct member
-    assert(std::is_standard_layout<stats>::value);
+        // For standard-layout 'this' points to first struct member
+        assert(std::is_standard_layout<stats>::value);
 
-    typedef StatsEntry<T, D> entry;
-    entry* p = reinterpret_cast<entry*>(this);
-    std::fill(p, p + sizeof(*this) / sizeof(entry), v);
-  }
+        typedef StatsEntry<T, D> entry;
+        entry* p = reinterpret_cast<entry*>(this);
+        std::fill(p, p + sizeof(*this) / sizeof(entry), v);
+    }
 };
 
 template <typename T, int D, int Size>
@@ -113,41 +121,45 @@ typedef Stats<PieceToHistory, NOT_USED, PIECE_NB, SQUARE_NB> ContinuationHistory
 /// to get a cut-off first.
 class MovePicker {
 
-  enum PickType { Next, Best };
+    enum PickType { Next, Best };
 
 public:
-  MovePicker(const MovePicker&) = delete;
-  MovePicker& operator=(const MovePicker&) = delete;
-  MovePicker(const Position&, Move, Value, const CapturePieceToHistory*);
-  MovePicker(const Position&, Move, Depth, const ButterflyHistory*,
-                                           const CapturePieceToHistory*,
-                                           const PieceToHistory**,
-                                           Square);
-  MovePicker(const Position&, Move, Depth, const ButterflyHistory*,
-                                           const CapturePieceToHistory*,
-                                           const PieceToHistory**,
-                                           Move,
-                                           Move*);
-  Move next_move(bool skipQuiets = false);
+    MovePicker(const MovePicker&) = delete;
+    MovePicker& operator=(const MovePicker&) = delete;
+    MovePicker(const Position&, Move, Value, const CapturePieceToHistory*);
+    MovePicker(const Position&, Move, Depth, const ButterflyHistory*,
+               const CapturePieceToHistory*,
+               const PieceToHistory**,
+               Square);
+    MovePicker(const Position&, Move, Depth, const ButterflyHistory*,
+               const CapturePieceToHistory*,
+               const PieceToHistory**,
+               Move,
+               Move*);
+    Move next_move(bool skipQuiets = false);
 
 private:
-  template<PickType T, typename Pred> Move select(Pred);
-  template<GenType> void score();
-  ExtMove* begin() { return cur; }
-  ExtMove* end() { return endMoves; }
+    template<PickType T, typename Pred> Move select(Pred);
+    template<GenType> void score();
+    ExtMove* begin() {
+        return cur;
+    }
+    ExtMove* end() {
+        return endMoves;
+    }
 
-  const Position& pos;
-  const ButterflyHistory* mainHistory;
-  const CapturePieceToHistory* captureHistory;
-  const PieceToHistory** continuationHistory;
-  Move ttMove;
-  ExtMove refutations[3], *cur, *endMoves, *endBadCaptures;
-  int stage;
-  Move move;
-  Square recaptureSquare;
-  Value threshold;
-  Depth depth;
-  ExtMove moves[MAX_MOVES];
+    const Position& pos;
+    const ButterflyHistory* mainHistory;
+    const CapturePieceToHistory* captureHistory;
+    const PieceToHistory** continuationHistory;
+    Move ttMove;
+    ExtMove refutations[3], *cur, *endMoves, *endBadCaptures;
+    int stage;
+    Move move;
+    Square recaptureSquare;
+    Value threshold;
+    Depth depth;
+    ExtMove moves[MAX_MOVES];
 };
 
 #endif // #ifndef MOVEPICK_H_INCLUDED

@@ -3,18 +3,18 @@
  Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
  Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad (Stockfish Authors)
  Copyright (C) 2015-2016 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad (Stockfish Authors)
- Copyright (C) 2017-2018 Michael Byrne, Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad (McCain Authors)
- 
+ Copyright (C) 2017-2019 Michael Byrne, Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad (McCain Authors)
+
  McCain is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
  the Free Software Foundation, either version 3 of the License, or
  (at your option) any later version.
- 
+
  McCain is distributed in the hope that it will be useful,
  but WITHOUT ANY WARRANTY; without even the implied warranty of
  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  GNU General Public License for more details.
- 
+
  You should have received a copy of the GNU General Public License
  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
@@ -45,16 +45,18 @@ typedef std::chrono::milliseconds::rep TimePoint; // A value in milliseconds
 static_assert(sizeof(TimePoint) == sizeof(int64_t), "TimePoint should be 64 bits");
 
 inline TimePoint now() {
-  return std::chrono::duration_cast<std::chrono::milliseconds>
-        (std::chrono::steady_clock::now().time_since_epoch()).count();
+    return std::chrono::duration_cast<std::chrono::milliseconds>
+           (std::chrono::steady_clock::now().time_since_epoch()).count();
 }
 
 template<class Entry, int Size>
 struct HashTable {
-  Entry* operator[](Key key) { return &table[(uint32_t)key & (Size - 1)]; }
+    Entry* operator[](Key key) {
+        return &table[(uint32_t)key & (Size - 1)];
+    }
 
 private:
-  std::vector<Entry> table = std::vector<Entry>(Size);
+    std::vector<Entry> table = std::vector<Entry>(Size);
 };
 
 
@@ -82,23 +84,29 @@ std::ostream& operator<<(std::ostream&, SyncCout);
 
 class PRNG {
 
-  uint64_t s;
+    uint64_t s;
 
-  uint64_t rand64() {
+    uint64_t rand64() {
 
-    s ^= s >> 12, s ^= s << 25, s ^= s >> 27;
-    return s * 2685821657736338717LL;
-  }
+        s ^= s >> 12, s ^= s << 25, s ^= s >> 27;
+        return s * 2685821657736338717LL;
+    }
 
 public:
-  PRNG(uint64_t seed) : s(seed) { assert(seed); }
+    PRNG(uint64_t seed) : s(seed) {
+        assert(seed);
+    }
 
-  template<typename T> T rand() { return T(rand64()); }
+    template<typename T> T rand() {
+        return T(rand64());
+    }
 
-  /// Special generator used to fast init magic numbers.
-  /// Output values only have 1/8th of their bits set on average.
-  template<typename T> T sparse_rand()
-  { return T(rand64() & rand64() & rand64()); }
+    /// Special generator used to fast init magic numbers.
+    /// Output values only have 1/8th of their bits set on average.
+    template<typename T> T sparse_rand()
+    {
+        return T(rand64() & rand64() & rand64());
+    }
 };
 
 
@@ -109,7 +117,7 @@ public:
 /// Peter Österlund.
 
 namespace WinProcGroup {
-  void bindThisThread(size_t idx);
+void bindThisThread(size_t idx);
 }
 
 #endif // #ifndef MISC_H_INCLUDED
