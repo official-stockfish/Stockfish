@@ -41,12 +41,13 @@ VERSION=maverick
 ### Only McCain and stockfish with feature 1 will be publicly distributed a this time, although feel free to play with privately
 ### features include : Cerebellum book functionality, play by Elo (UCI limit strength), keyboard shortcuts and a few other items
 FEATURE1=add_features
-###FEATURE2=matefinder
+### FEATURE2=matefinder
 ifeq ($(FEATURE1),add_features)
 CXXFLAGS += -DAdd_Features
 FILES = with_c_book
 SUFFIX1 = 
 endif
+
 ifeq ($(FEATURE2),matefinder)
 CXXFLAGS += -DMatefinder
 SUFFIX2 = -m
@@ -59,26 +60,21 @@ EXE = McCain-X$(SUFFIX1)$(SUFFIX2).exe
 else
 EXE = McCain-X$(SUFFIX1)$(SUFFIX2)
 endif
-else
+endif
+ifneq ($(VERSION),maverick)
+VERSION=Stockfish
 ### Note: Comment below is for for building cur-dev stockfish with the features noted.
 ### McCain always include those features
 ### Uncomment out the two lines below for additional features for stockfish, such as play by ELO ,
 ### cerebellum book, tactical mode, variety play and additional GUI options.
-ifeq ($(FEATURE1),add_features)
-CXXFLAGS += -DAdd_Features
-FILES = with_c_book
-SUFFIX1 = 
-endif
-ifeq ($(FEATURE2),matefinder)
-CXXFLAGS += -DMatefinder
-SUFFIX2 = -m
-endif
-ifeq ($(COMP),mingw)
+ifeq ($(VERSION),stockfish)
+if ($(COMP),mingw)
 EXE = stockfish-10$(SUFFIX1)$(SUFFIX2).exe
 else
 EXE = stockfish-10$(SUFFIX1)$(SUFFIX2)
 endif
 endif
+
 
 ### Installation dir definitions
 PREFIX = /usr/local
