@@ -36,10 +36,10 @@ DSUFFIX1=
 DSUFFIX2=
 ### Uncomment the line below for McCain, comment out for Stockfish
 VERSION=maverick
-####
+
 ### should be no reason to change anything below here!
-### Only McCain and stockfish with feature 1 will be publicly distributed a this time, although feel free to play with privately
-### features include : Cerebellum book functionality, play by Elo (UCI limit strength), keyboard shortcuts and a few other items
+### Only McCain and stockfish with feature 1 will be publicly distributed a this time,
+
 FEATURE1=add_features
 ### FEATURE2=matefinder
 ifeq ($(FEATURE1),add_features)
@@ -61,12 +61,13 @@ else
 EXE = McCain-X$(SUFFIX1)$(SUFFIX2)
 endif
 endif
-ifneq ($(VERSION),maverick)
+inf. ($(VERSION),maverick)
 VERSION=Stockfish
+
 ### Note: Comment below is for for building cur-dev stockfish with the features noted.
-### McCain always include those features
-### Uncomment out the two lines below for additional features for stockfish, such as play by ELO ,
-### cerebellum book, tactical mode, variety play and additional GUI options.
+### such as play by ELO , cerebellum book, tactical mode, variety play and additional 
+### GUI options.McCain always include those features
+
 ifeq ($(VERSION),stockfish)
 if ($(COMP),mingw)
 EXE = stockfish-10$(SUFFIX1)$(SUFFIX2).exe
@@ -74,7 +75,6 @@ else
 EXE = stockfish-10$(SUFFIX1)$(SUFFIX2)
 endif
 endif
-
 
 ### Installation dir definitions
 PREFIX = /usr/local
