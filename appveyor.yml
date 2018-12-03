@@ -34,16 +34,19 @@ before_build:
       $src = get-childitem -Path *.cpp -Recurse | select -ExpandProperty FullName
       $src = $src -join ' '
       $src = $src.Replace("\", "/")
+
       # Build CMakeLists.txt
       $t = 'cmake_minimum_required(VERSION 3.8)',
            'project(Stockfish)',
            'set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/src)',
            'set(source_files', $src, ')',
            'add_executable(stockfish ${source_files})'
+
       # Write CMakeLists.txt withouth BOM
       $MyPath = (Get-Item -Path "." -Verbose).FullName + '\CMakeLists.txt'
       $Utf8NoBomEncoding = New-Object System.Text.UTF8Encoding $False
       [System.IO.File]::WriteAllLines($MyPath, $t, $Utf8NoBomEncoding)
+
       # Obtain bench reference from git log
       $b = git log HEAD | sls "\b[Bb]ench[ :]+[0-9]{7}" | select -first 1
       $bench = $b -match '\D+(\d+)' | % { $matches[1] }
@@ -52,13 +55,15 @@ before_build:
       If (${env:PLATFORM} -eq 'x64') { $g = $g + ' Win64' }
       cmake -G "${g}" .
       Write-Host "Generated files for: " $g
+
 build_script:
   - cmake --build . --config %CONFIGURATION% -- /verbosity:minimal
+
 before_test:
   - cd src/%CONFIGURATION%
+  - stockfish bench 2> out.txt >NUL
   - ps: |
       # Verify bench number
-      ./stockfish bench 2> out.txt 1> null
       $s = (gc "./out.txt" | out-string)
       $r = ($s -match 'Nodes searched \D+(\d+)' | % { $matches[1] })
       Write-Host "Engine bench:" $r
