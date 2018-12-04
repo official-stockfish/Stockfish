@@ -39,17 +39,19 @@ struct MoveInfo {
 };
 
 #ifdef USE_MPI
+using KeyedTTEntry = std::pair<Key, TTEntry>;
+
 constexpr std::size_t TTSendBufferSize = 16;
-template <std::size_t N> class TTSendBuffer : public std::array<TTEntry, N> {
+template <std::size_t N> class TTSendBuffer : public std::array<KeyedTTEntry, N> {
   struct Compare {
-      inline bool operator()(const TTEntry& lhs, const TTEntry& rhs) {
-          return lhs.depth() > rhs.depth();
+      inline bool operator()(const KeyedTTEntry& lhs, const KeyedTTEntry& rhs) {
+          return lhs.second.depth() > rhs.second.depth();
       }
   };
   Compare compare;
 
 public:
-  bool replace(const TTEntry& value) {
+  bool replace(const KeyedTTEntry& value) {
       if (compare(value, this->front())) {
           std::pop_heap(this->begin(), this->end(), compare);
           this->back() = value;
