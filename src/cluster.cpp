@@ -46,7 +46,7 @@ static MPI_Comm MoveComm = MPI_COMM_NULL;
 static MPI_Comm StopComm = MPI_COMM_NULL;
 
 static MPI_Datatype TTEntryDatatype = MPI_DATATYPE_NULL;
-static std::vector<TTEntry> TTBuff;
+static std::vector<KeyedTTEntry> TTBuff;
 
 static MPI_Op BestMoveOp = MPI_OP_NULL;
 static MPI_Datatype MIDatatype = MPI_DATATYPE_NULL;
@@ -65,14 +65,16 @@ static void BestMove(void* in, void* inout, int* len, MPI_Datatype* datatype) {
 
 void init() {
   int thread_support;
-  constexpr std::array<int, 6> TTblocklens = {1, 1, 1, 1, 1, 1};
-  const std::array<MPI_Aint, 6> TTdisps = {offsetof(TTEntry, key16),
-                                           offsetof(TTEntry, move16),
-                                           offsetof(TTEntry, value16),
-                                           offsetof(TTEntry, eval16),
-                                           offsetof(TTEntry, genBound8),
-                                           offsetof(TTEntry, depth8)};
-  const std::array<MPI_Datatype, 6> TTtypes = {MPI_UINT16_T,
+  constexpr std::array<int, 7> TTblocklens = {1, 1, 1, 1, 1, 1, 1};
+  const std::array<MPI_Aint, 7> TTdisps = {offsetof(KeyedTTEntry, first),
+                                           offsetof(KeyedTTEntry, second) + offsetof(TTEntry, key16),
+                                           offsetof(KeyedTTEntry, second) + offsetof(TTEntry, move16),
+                                           offsetof(KeyedTTEntry, second) + offsetof(TTEntry, value16),
+                                           offsetof(KeyedTTEntry, second) + offsetof(TTEntry, eval16),
+                                           offsetof(KeyedTTEntry, second) + offsetof(TTEntry, genBound8),
+                                           offsetof(KeyedTTEntry, second) + offsetof(TTEntry, depth8)};
+  const std::array<MPI_Datatype, 7> TTtypes = {MPI_UINT64_T,
+                                               MPI_UINT16_T,
                                                MPI_UINT16_T,
                                                MPI_INT16_T,
                                                MPI_INT16_T,
@@ -95,7 +97,7 @@ void init() {
 
   TTBuff.resize(TTSendBufferSize * world_size);
 
-  MPI_Type_create_struct(6, TTblocklens.data(), TTdisps.data(), TTtypes.data(),
+  MPI_Type_create_struct(7, TTblocklens.data(), TTdisps.data(), TTtypes.data(),
                          &TTEntryDatatype);
   MPI_Type_commit(&TTEntryDatatype);
 
@@ -185,12 +187,13 @@ int rank() {
 }
 
 void save(Thread* thread, TTEntry* tte,
-          Key k, Value v, Bound b, Depth d, Move m, Value ev, uint8_t g) {
-  tte->save(k, v, b, d, m, ev, g);
+          Key k, Value v, Bound b, Depth d, Move m, Value ev) {
+  tte->save(k, v, b, d, m, ev);
+
   // Try to add to thread's send buffer
   {
       std::lock_guard<Mutex> lk(thread->ttBuffer.mutex);
-      thread->ttBuffer.buffer.replace(*tte);
+      thread->ttBuffer.buffer.replace(KeyedTTEntry(k,*tte));
   }
 
   // Communicate on main search thread
@@ -208,9 +211,9 @@ void save(Thread* thread, TTEntry* tte,
       if (flag) {
           // Save all recieved entries
           for (auto&& e : TTBuff) {
-              replace_tte = TT.probe(e.key(), found);
-              replace_tte->save(e.key(), e.value(), e.bound(), e.depth(),
-                                e.move(), e.eval(), e.gen());
+              replace_tte = TT.probe(e.first, found);
+              replace_tte->save(e.first, e.second.value(), e.second.bound(), e.second.depth(),
+                                e.second.move(), e.second.eval());
           }
 
           // Reset send buffer
