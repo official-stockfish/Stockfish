@@ -357,7 +357,7 @@ ifeq ($(OS), Android)
 endif
 
 ### 3.10 MPI
-ifeq ($(CXX),$(filter $(CXX),mpicxx mpic++ mpiCC))
+ifeq ($(CXX),$(filter $(CXX),mpicxx mpic++ mpiCC mpicxx.mpich))
 	mpi = yes
 endif
 
