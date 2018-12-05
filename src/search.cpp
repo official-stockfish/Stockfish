@@ -288,10 +288,11 @@ void MainThread::search() {
       }
   }
 
-  Cluster::MoveInfo mi{bestThread->completedDepth,
+  Cluster::MoveInfo mi{bestThread->rootMoves[0].pv[0],
+                       bestThread->completedDepth,
                        bestThread->rootMoves[0].score,
                        Cluster::rank()};
-  Cluster::reduce_moves(mi);
+  Cluster::pick_moves(mi);
 
   previousScore = static_cast<Value>(mi.score);
 

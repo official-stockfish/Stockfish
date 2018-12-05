@@ -33,6 +33,7 @@ class Thread;
 namespace Cluster {
 
 struct MoveInfo {
+  int move;
   int depth;
   int score;
   int rank;
@@ -70,7 +71,7 @@ int rank();
 inline bool is_root() { return rank() == 0; }
 void save(Thread* thread, TTEntry* tte,
           Key k, Value v, Bound b, Depth d, Move m, Value ev);
-void reduce_moves(MoveInfo& mi);
+void pick_moves(MoveInfo& mi);
 void sync_start();
 void sync_stop();
 
@@ -89,7 +90,7 @@ inline void save(Thread* thread, TTEntry* tte,
   (void)thread;
   tte->save(k, v, b, d, m, ev);
 }
-inline void reduce_moves(MoveInfo&) { }
+inline void pick_moves(MoveInfo&) { }
 inline void sync_start() { }
 inline void sync_stop() { }
 
