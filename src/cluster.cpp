@@ -48,20 +48,7 @@ static MPI_Comm StopComm = MPI_COMM_NULL;
 static MPI_Datatype TTEntryDatatype = MPI_DATATYPE_NULL;
 static std::vector<KeyedTTEntry> TTBuff;
 
-static MPI_Op BestMoveOp = MPI_OP_NULL;
 static MPI_Datatype MIDatatype = MPI_DATATYPE_NULL;
-
-static void BestMove(void* in, void* inout, int* len, MPI_Datatype* datatype) {
-  if (*datatype != MIDatatype)
-      MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
-  MoveInfo* l = static_cast<MoveInfo*>(in);
-  MoveInfo* r = static_cast<MoveInfo*>(inout);
-  for (int i=0; i < *len; ++i)
-  {
-      if (l[i].depth >= r[i].depth && l[i].score >= r[i].score)
-          r[i] = l[i];
-  }
-}
 
 void init() {
   int thread_support;
@@ -80,7 +67,8 @@ void init() {
                                                MPI_INT16_T,
                                                MPI_UINT8_T,
                                                MPI_INT8_T};
-  const std::array<MPI_Aint, 3> MIdisps = {offsetof(MoveInfo, depth),
+  const std::array<MPI_Aint, 4> MIdisps = {offsetof(MoveInfo, move),
+                                           offsetof(MoveInfo, depth),
                                            offsetof(MoveInfo, score),
                                            offsetof(MoveInfo, rank)};
 
@@ -101,9 +89,8 @@ void init() {
                          &TTEntryDatatype);
   MPI_Type_commit(&TTEntryDatatype);
 
-  MPI_Type_create_hindexed_block(3, 1, MIdisps.data(), MPI_INT, &MIDatatype);
+  MPI_Type_create_hindexed_block(4, 1, MIdisps.data(), MPI_INT, &MIDatatype);
   MPI_Type_commit(&MIDatatype);
-  MPI_Op_create(BestMove, false, &BestMoveOp);
 
   MPI_Comm_dup(MPI_COMM_WORLD, &InputComm);
   MPI_Comm_dup(MPI_COMM_WORLD, &TTComm);
@@ -236,8 +223,32 @@ void save(Thread* thread, TTEntry* tte,
   }
 }
 
-void reduce_moves(MoveInfo& mi) {
-  MPI_Allreduce(MPI_IN_PLACE, &mi, 1, MIDatatype, BestMoveOp, MoveComm);
+void pick_moves(MoveInfo& mi) {
+  MoveInfo* pMoveInfo = NULL;
+  if (is_root()) {
+      pMoveInfo = (MoveInfo*)malloc(sizeof(MoveInfo) * size());
+  }
+  MPI_Gather(&mi, 1, MIDatatype, pMoveInfo, 1, MIDatatype, 0, MoveComm);
+  if (is_root()) {
+      std::map<int, int> votes;
+      int minScore = pMoveInfo[0].score;
+      for (int i = 0; i < size(); i++) {
+          minScore = std::min(minScore, pMoveInfo[i].score);
+          votes[pMoveInfo[i].move] = 0;
+      }
+      for (int i = 0; i < size(); i++) {
+          votes[pMoveInfo[i].move] += pMoveInfo[i].score - minScore + pMoveInfo[i].depth;
+      }
+      int bestVote = votes[pMoveInfo[0].move];
+      for (int i = 0; i < size(); i++) {
+          if (votes[pMoveInfo[i].move] > bestVote) {
+              bestVote = votes[pMoveInfo[i].move];
+              mi = pMoveInfo[i];
+          }
+      }
+      free(pMoveInfo);
+  }
+  MPI_Bcast(&mi, 1, MIDatatype, 0, MoveComm);
 }
 
 }
