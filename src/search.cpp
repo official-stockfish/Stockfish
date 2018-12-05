@@ -688,6 +688,7 @@ namespace {
 	else
 	{
 		Node node = get_node(posKey);
+		Child child;
 		if (node->hashkey == posKey)
 		{
 			bool ttMovehave = false;
@@ -704,6 +705,8 @@ namespace {
 				//thisThread->tbHits.fetch_add(1, std::memory_order_relaxed);
 			}
 
+			bool Updated = false;
+
 			for (int x = 0; x < node->sons; x++)
 			{
 				if (node->child[x].depth >= depth && node->child[x].score > myValue)
@@ -712,6 +715,8 @@ namespace {
 					expttMove = node->child[x].move;
 					expttHit = true;
 					expttValue = node->child[x].score;
+					Updated = true;
+					child = node->child[x];
 
 					if (!ttMovehave)
 					{
@@ -721,25 +726,19 @@ namespace {
 			}
 
 
-			if (!PvNode)
+			if (!PvNode && Updated
+				&& child.depth >= depth
+				)
 			{
-				if (expttValue >= beta)
+				if (child.score >= beta)
 				{
-					if (!pos.capture_or_promotion(expttMove))
-						update_quiet_stats(pos, ss, expttMove, nullptr, 0, stat_bonus(depth));
+					if (!pos.capture_or_promotion(child.move))
+						update_quiet_stats(pos, ss, child.move, nullptr, 0, stat_bonus(depth));
 
 					// Extra penalty for a quiet TT move in previous ply when it gets refuted
 					if ((ss - 1)->moveCount == 1 && !pos.captured_piece())
 						update_continuation_histories(ss - 1, pos.piece_on(prevSq), prevSq, -stat_bonus(depth + ONE_PLY));
 				}
-				// Penalty for a quiet ttMove that fails low
-				else if (!pos.capture_or_promotion(expttMove))
-				{
-					int penalty = -stat_bonus(depth);
-					thisThread->mainHistory[pos.side_to_move()][from_to(expttMove)] << penalty;
-					update_continuation_histories(ss, pos.moved_piece(expttMove), to_sq(expttMove), penalty);
-				}
-
 				thisThread->tbHits.fetch_add(1, std::memory_order_relaxed);
 				return myValue;
 			}
@@ -1064,30 +1063,23 @@ moves_loop: // When in check, search starts from here
       // of (alpha-s, beta-s), and just one fails high on (alpha, beta), then
       // that move is singular and should be extended. To verify this we do a
       // reduced search on on all the other moves but the ttMove and if the
-      // result is lower than ttValue minus a margin then we will extend the ttMove.
-	  if (expttHit
-		  &&  move == expttMove
-		  && solved
-		  && !excludedMove
-		  )
-		  extension = ONE_PLY;
-	  else
-		  if (singularExtensionNode
-			  &&  move == ttMove
-			  &&  pos.legal(move))
-		  {
-			  Value rBeta = std::max(ttValue - 2 * depth / ONE_PLY, -VALUE_MATE);
-			  ss->excludedMove = move;
-			  value = search<NonPV>(pos, ss, rBeta - 1, rBeta, depth / 2, cutNode, true);
-			  ss->excludedMove = MOVE_NONE;
+      // result is lower than ttValue minus a margin then we will extend the ttMove.	  
+	  if (singularExtensionNode
+		  &&  move == ttMove
+		  &&  pos.legal(move))
+	  {
+		  Value rBeta = std::max(ttValue - 2 * depth / ONE_PLY, -VALUE_MATE);
+		  ss->excludedMove = move;
+		  value = search<NonPV>(pos, ss, rBeta - 1, rBeta, depth / 2, cutNode, true);
+		  ss->excludedMove = MOVE_NONE;
 
-			  if (value < rBeta)
-				  extension = ONE_PLY;
-		  }
-		  else if (givesCheck // Check extension
-			  && !moveCountPruning
-			  &&  pos.see_ge(move))
+		  if (value < rBeta)
 			  extension = ONE_PLY;
+	  }
+	  else if (givesCheck // Check extension
+		  && !moveCountPruning
+		  &&  pos.see_ge(move))
+		  extension = ONE_PLY;
 
       // Calculate new depth for this move
       newDepth = depth - ONE_PLY + extension;
@@ -1107,11 +1099,6 @@ moves_loop: // When in check, search starts from here
                   skipQuiets = true;
                   continue;
               }
-			  if (solved && move != expttMove && moveCount > 2)
-			  {
-				 // thisThread->tbHits.fetch_add(1, std::memory_order_relaxed);
-				  continue;
-			  }
 
               // Reduced depth of the next LMR search
               int lmrDepth = std::max(newDepth - reduction<PvNode>(improving, depth, moveCount), DEPTH_ZERO) / ONE_PLY;
