@@ -216,6 +216,7 @@ public:
         fstat(fd, &statbuf);
         *mapping = statbuf.st_size;
         *baseAddress = mmap(nullptr, statbuf.st_size, PROT_READ, MAP_SHARED, fd, 0);
+        madvise(*baseAddress, statbuf.st_size, MADV_RANDOM);
         ::close(fd);
 
         if (*baseAddress == MAP_FAILED) {
@@ -1276,7 +1277,7 @@ void Tablebases::init(const std::string& paths) {
                         continue; // First on diagonal, second above
 
                     else if (!off_A1H8(s1) && !off_A1H8(s2))
-                        bothOnDiagonal.push_back(std::make_pair(idx, s2));
+                        bothOnDiagonal.emplace_back(idx, s2);
 
                     else
                         MapKK[idx][s2] = code++;
