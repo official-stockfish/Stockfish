@@ -175,51 +175,55 @@ int rank() {
 
 void save(Thread* thread, TTEntry* tte,
           Key k, Value v, Bound b, Depth d, Move m, Value ev) {
+
   tte->save(k, v, b, d, m, ev);
 
-  // Try to add to thread's send buffer
+  if (d > 5 * ONE_PLY)
   {
-      std::lock_guard<Mutex> lk(thread->ttBuffer.mutex);
-      thread->ttBuffer.buffer.replace(KeyedTTEntry(k,*tte));
-  }
+     // Try to add to thread's send buffer
+     {
+         std::lock_guard<Mutex> lk(thread->ttBuffer.mutex);
+         thread->ttBuffer.buffer.replace(KeyedTTEntry(k,*tte));
+     }
 
-  // Communicate on main search thread
-  if (thread == Threads.main()) {
-      static MPI_Request req = MPI_REQUEST_NULL;
-      static TTSendBuffer<TTSendBufferSize> send_buff = {};
-      int flag;
-      bool found;
-      TTEntry* replace_tte;
+     // Communicate on main search thread
+     if (thread == Threads.main()) {
+         static MPI_Request req = MPI_REQUEST_NULL;
+         static TTSendBuffer<TTSendBufferSize> send_buff = {};
+         int flag;
+         bool found;
+         TTEntry* replace_tte;
 
-      // Test communication status
-      MPI_Test(&req, &flag, MPI_STATUS_IGNORE);
+         // Test communication status
+         MPI_Test(&req, &flag, MPI_STATUS_IGNORE);
 
-      // Current communication is complete
-      if (flag) {
-          // Save all recieved entries
-          for (auto&& e : TTBuff) {
-              replace_tte = TT.probe(e.first, found);
-              replace_tte->save(e.first, e.second.value(), e.second.bound(), e.second.depth(),
-                                e.second.move(), e.second.eval());
-          }
+         // Current communication is complete
+         if (flag) {
+             // Save all recieved entries
+             for (auto&& e : TTBuff) {
+                 replace_tte = TT.probe(e.first, found);
+                 replace_tte->save(e.first, e.second.value(), e.second.bound(), e.second.depth(),
+                                   e.second.move(), e.second.eval());
+             }
 
-          // Reset send buffer
-          send_buff = {};
+             // Reset send buffer
+             send_buff = {};
 
-          // Build up new send buffer: best 16 found across all threads
-          for (auto&& th : Threads) {
-              std::lock_guard<Mutex> lk(th->ttBuffer.mutex);
-              for (auto&& e : th->ttBuffer.buffer)
-                  send_buff.replace(e);
-              // Reset thread's send buffer
-              th->ttBuffer.buffer = {};
-          }
+             // Build up new send buffer: best 16 found across all threads
+             for (auto&& th : Threads) {
+                 std::lock_guard<Mutex> lk(th->ttBuffer.mutex);
+                 for (auto&& e : th->ttBuffer.buffer)
+                     send_buff.replace(e);
+                 // Reset thread's send buffer
+                 th->ttBuffer.buffer = {};
+             }
 
-          // Start next communication
-          MPI_Iallgather(send_buff.data(), send_buff.size(), TTEntryDatatype,
-                         TTBuff.data(), TTSendBufferSize, TTEntryDatatype,
-                         TTComm, &req);
-      }
+             // Start next communication
+             MPI_Iallgather(send_buff.data(), send_buff.size(), TTEntryDatatype,
+                            TTBuff.data(), TTSendBufferSize, TTEntryDatatype,
+                            TTComm, &req);
+         }
+     }
   }
 }
 
