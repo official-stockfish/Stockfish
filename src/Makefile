@@ -362,7 +362,7 @@ ifeq ($(CXX),$(filter $(CXX),mpicxx mpic++ mpiCC mpicxx.mpich))
 endif
 
 ifeq ($(mpi),yes)
-	CXXFLAGS += -DUSE_MPI
+	CXXFLAGS += -DUSE_MPI -Wno-cast-qual
 endif
 
 
