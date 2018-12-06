@@ -187,7 +187,8 @@ void save(Thread* thread, TTEntry* tte,
      }
 
      // Communicate on main search thread
-     if (thread == Threads.main()) {
+     if (thread == Threads.main())
+     {
          static MPI_Request req = MPI_REQUEST_NULL;
          static TTSendBuffer<TTSendBufferSize> send_buff = {};
          int flag;
@@ -198,12 +199,20 @@ void save(Thread* thread, TTEntry* tte,
          MPI_Test(&req, &flag, MPI_STATUS_IGNORE);
 
          // Current communication is complete
-         if (flag) {
-             // Save all recieved entries
-             for (auto&& e : TTBuff) {
-                 replace_tte = TT.probe(e.first, found);
-                 replace_tte->save(e.first, e.second.value(), e.second.bound(), e.second.depth(),
-                                   e.second.move(), e.second.eval());
+         if (flag)
+         {
+             // Save all received entries (except ours)
+             for (size_t irank = 0; irank < size_t(size()) ; ++irank)
+             {
+                 if (irank == size_t(rank()))
+                     continue;
+                 for (size_t i = irank * TTSendBufferSize ; i < (irank + 1) * TTSendBufferSize; ++i)
+                 {
+                     auto&& e = TTBuff[i];
+                     replace_tte = TT.probe(e.first, found);
+                     replace_tte->save(e.first, e.second.value(), e.second.bound(), e.second.depth(),
+                                       e.second.move(), e.second.eval());
+                 }
              }
 
              // Reset send buffer
