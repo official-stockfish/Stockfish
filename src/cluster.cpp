@@ -45,33 +45,12 @@ static MPI_Comm TTComm = MPI_COMM_NULL;
 static MPI_Comm MoveComm = MPI_COMM_NULL;
 static MPI_Comm StopComm = MPI_COMM_NULL;
 
-static MPI_Datatype TTEntryDatatype = MPI_DATATYPE_NULL;
 static std::vector<KeyedTTEntry> TTBuff;
 
 static MPI_Datatype MIDatatype = MPI_DATATYPE_NULL;
 
 void init() {
   int thread_support;
-  constexpr std::array<int, 7> TTblocklens = {1, 1, 1, 1, 1, 1, 1};
-  const std::array<MPI_Aint, 7> TTdisps = {offsetof(KeyedTTEntry, first),
-                                           offsetof(KeyedTTEntry, second) + offsetof(TTEntry, key16),
-                                           offsetof(KeyedTTEntry, second) + offsetof(TTEntry, move16),
-                                           offsetof(KeyedTTEntry, second) + offsetof(TTEntry, value16),
-                                           offsetof(KeyedTTEntry, second) + offsetof(TTEntry, eval16),
-                                           offsetof(KeyedTTEntry, second) + offsetof(TTEntry, genBound8),
-                                           offsetof(KeyedTTEntry, second) + offsetof(TTEntry, depth8)};
-  const std::array<MPI_Datatype, 7> TTtypes = {MPI_UINT64_T,
-                                               MPI_UINT16_T,
-                                               MPI_UINT16_T,
-                                               MPI_INT16_T,
-                                               MPI_INT16_T,
-                                               MPI_UINT8_T,
-                                               MPI_INT8_T};
-  const std::array<MPI_Aint, 4> MIdisps = {offsetof(MoveInfo, move),
-                                           offsetof(MoveInfo, depth),
-                                           offsetof(MoveInfo, score),
-                                           offsetof(MoveInfo, rank)};
-
   MPI_Init_thread(nullptr, nullptr, MPI_THREAD_MULTIPLE, &thread_support);
   if (thread_support < MPI_THREAD_MULTIPLE)
   {
@@ -85,10 +64,10 @@ void init() {
 
   TTBuff.resize(TTSendBufferSize * world_size);
 
-  MPI_Type_create_struct(7, TTblocklens.data(), TTdisps.data(), TTtypes.data(),
-                         &TTEntryDatatype);
-  MPI_Type_commit(&TTEntryDatatype);
-
+  const std::array<MPI_Aint, 4> MIdisps = {offsetof(MoveInfo, move),
+                                           offsetof(MoveInfo, depth),
+                                           offsetof(MoveInfo, score),
+                                           offsetof(MoveInfo, rank)};
   MPI_Type_create_hindexed_block(4, 1, MIdisps.data(), MPI_INT, &MIDatatype);
   MPI_Type_commit(&MIDatatype);
 
@@ -228,8 +207,8 @@ void save(Thread* thread, TTEntry* tte,
              }
 
              // Start next communication
-             MPI_Iallgather(send_buff.data(), send_buff.size(), TTEntryDatatype,
-                            TTBuff.data(), TTSendBufferSize, TTEntryDatatype,
+             MPI_Iallgather(send_buff.data(), send_buff.size() * sizeof(KeyedTTEntry), MPI_BYTE,
+                            TTBuff.data(), TTSendBufferSize * sizeof(KeyedTTEntry), MPI_BYTE,
                             TTComm, &req);
          }
      }
