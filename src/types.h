@@ -413,11 +413,6 @@ constexpr Rank relative_rank(Color c, Square s) {
   return relative_rank(c, rank_of(s));
 }
 
-inline bool opposite_colors(Square s1, Square s2) {
-  int s = int(s1) ^ int(s2);
-  return ((s >> 3) ^ s) & 1;
-}
-
 constexpr Direction pawn_push(Color c) {
   return c == WHITE ? NORTH : SOUTH;
 }

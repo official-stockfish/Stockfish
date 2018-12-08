@@ -135,6 +135,10 @@ constexpr bool more_than_one(Bitboard b) {
   return b & (b - 1);
 }
 
+inline bool opposite_colors(Square s1, Square s2) {
+  return bool(DarkSquares & s1) != bool(DarkSquares & s2);
+}
+
 /// rank_bb() and file_bb() return a bitboard representing all the squares on
 /// the given file or rank.
 
