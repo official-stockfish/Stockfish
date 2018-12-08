@@ -134,8 +134,8 @@ Value Endgame<KBNK>::operator()(const Position& pos) const {
 
   Value result =  VALUE_KNOWN_WIN
                 + PushClose[distance(winnerKSq, loserKSq)]
-                + Value(opposite_colors(bishopSq, SQ_A1) ?
-                        PushToCorners[~loserKSq] : PushToCorners[loserKSq]);
+                + (opposite_colors(bishopSq, SQ_A1) ?
+                   PushToCorners[~loserKSq] : PushToCorners[loserKSq]);
 
   return strongSide == pos.side_to_move() ? result : -result;
 }
