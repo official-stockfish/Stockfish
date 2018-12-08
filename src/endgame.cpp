@@ -119,8 +119,9 @@ Value Endgame<KXK>::operator()(const Position& pos) const {
 }
 
 
-/// Mate with KBN vs K. This is similar to KX vs K, but we have to drive the
-/// defending king towards a corner square of the right color.
+/// Mate with KBN vs K. Similar to KX vs K, but drive the enemy king to a
+/// corner that our bishop attacks. If our Bishop does not attack A1/H8,
+//  flip the enemy king square to drive to opposite corners (A8/H1).
 template<>
 Value Endgame<KBNK>::operator()(const Position& pos) const {
 
@@ -131,18 +132,10 @@ Value Endgame<KBNK>::operator()(const Position& pos) const {
   Square loserKSq = pos.square<KING>(weakSide);
   Square bishopSq = pos.square<BISHOP>(strongSide);
 
-  // kbnk_mate_table() tries to drive toward corners A1 or H8. If we have a
-  // bishop that cannot reach the above squares, we flip the kings in order
-  // to drive the enemy toward corners A8 or H1.
-  if (opposite_colors(bishopSq, SQ_A1))
-  {
-      winnerKSq = ~winnerKSq;
-      loserKSq  = ~loserKSq;
-  }
-
   Value result =  VALUE_KNOWN_WIN
                 + PushClose[distance(winnerKSq, loserKSq)]
-                + PushToCorners[loserKSq];
+                + Value(opposite_colors(bishopSq, SQ_A1) ?
+                        PushToCorners[~loserKSq] : PushToCorners[loserKSq]);
 
   return strongSide == pos.side_to_move() ? result : -result;
 }
