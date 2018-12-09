@@ -756,8 +756,9 @@ namespace {
     }
 
     // Step 7. Razoring (~2 Elo)
-    if (   depth < 2 * ONE_PLY
-        && eval <= alpha - RazorMargin)
+    if (   !rootNode
+        &&  depth < 2 * ONE_PLY
+        &&  eval <= alpha - RazorMargin)
         return qsearch<NT>(pos, ss, alpha, beta);
 
     improving =   ss->staticEval >= (ss-2)->staticEval
