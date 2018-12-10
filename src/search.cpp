@@ -928,7 +928,7 @@ moves_loop: // When in check, search starts from here
       if (    depth >= 8 * ONE_PLY
           &&  move == ttMove
           && !rootNode
-          && !excludedMove // needed to avoid recursive singular search
+          && !excludedMove // Avoid recursive singular search on the same node.
           &&  ttValue != VALUE_NONE
           && (tte->bound() & BOUND_LOWER)
           &&  tte->depth() >= depth - 3 * ONE_PLY
