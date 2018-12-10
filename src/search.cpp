@@ -750,7 +750,7 @@ namespace {
             ss->staticEval = eval = pureStaticEval + bonus;
         }
         else
-            ss->staticEval = eval = pureStaticEval = -(ss-1)->staticEval + 2 * Eval::Tempo;
+            ss->staticEval = eval = pureStaticEval = -(ss-1)->staticEval ;
 
         tte->save(posKey, VALUE_NONE, BOUND_NONE, DEPTH_NONE, MOVE_NONE, pureStaticEval);
     }
@@ -1297,7 +1297,7 @@ moves_loop: // When in check, search starts from here
         else
             ss->staticEval = bestValue =
             (ss-1)->currentMove != MOVE_NULL ? evaluate(pos)
-                                             : -(ss-1)->staticEval + 2 * Eval::Tempo;
+                                             : -(ss-1)->staticEval ;
 
         // Stand pat. Return immediately if static value is at least beta
         if (bestValue >= beta)
