@@ -495,7 +495,7 @@ void Thread::search() {
           && VALUE_MATE - bestValue <= 2 * Limits.mate)
           Threads.stop = true;
 
-      if (!mainThread)
+      if (!(Cluster::is_root() && mainThread))
           continue;
 
       // If skill level is enabled and time is up, pick a sub-optimal best move
