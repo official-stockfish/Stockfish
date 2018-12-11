@@ -476,7 +476,7 @@ const string Position::fen() const {
   if (can_castle(BLACK_OOO))
       ss << (chess960 ? char('a' + file_of(castling_rook_square(BLACK | QUEEN_SIDE))) : 'q');
 
-  if (!can_castle(WHITE) && !can_castle(BLACK))
+  if (!can_castle(ANY_CASTLING))
       ss << '-';
 
   ss << (ep_square() == SQ_NONE ? " - " : " " + UCI::square(ep_square()) + " ")
