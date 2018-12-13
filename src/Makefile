@@ -357,14 +357,10 @@ ifeq ($(OS), Android)
 endif
 
 ### 3.10 MPI
-ifeq ($(CXX),$(filter $(CXX),mpicxx mpic++ mpiCC mpicxx.mpich))
+ifneq (,$(findstring mpi, $(CXX)))
 	mpi = yes
-endif
-
-ifeq ($(mpi),yes)
 	CXXFLAGS += -DUSE_MPI -Wno-cast-qual
 endif
-
 
 ### ==========================================================================
 ### Section 4. Public targets
