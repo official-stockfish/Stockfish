@@ -44,6 +44,7 @@ using KeyedTTEntry = std::pair<Key, TTEntry>;
 
 constexpr std::size_t TTSendBufferSize = 16;
 template <std::size_t N> class TTSendBuffer : public std::array<KeyedTTEntry, N> {
+
   struct Compare {
       inline bool operator()(const KeyedTTEntry& lhs, const KeyedTTEntry& rhs) {
           return lhs.second.depth() > rhs.second.depth();
@@ -53,7 +54,9 @@ template <std::size_t N> class TTSendBuffer : public std::array<KeyedTTEntry, N>
 
 public:
   bool replace(const KeyedTTEntry& value) {
-      if (compare(value, this->front())) {
+
+      if (compare(value, this->front()))
+      {
           std::pop_heap(this->begin(), this->end(), compare);
           this->back() = value;
           std::push_heap(this->begin(), this->end(), compare);
@@ -69,8 +72,7 @@ bool getline(std::istream& input, std::string& str);
 int size();
 int rank();
 inline bool is_root() { return rank() == 0; }
-void save(Thread* thread, TTEntry* tte,
-          Key k, Value v, Bound b, Depth d, Move m, Value ev);
+void save(Thread* thread, TTEntry* tte, Key k, Value v, Bound b, Depth d, Move m, Value ev);
 void pick_moves(MoveInfo& mi);
 void sync_start();
 void sync_stop();
@@ -80,13 +82,14 @@ void sync_stop();
 inline void init() { }
 inline void finalize() { }
 inline bool getline(std::istream& input, std::string& str) {
+
   return static_cast<bool>(std::getline(input, str));
 }
 constexpr int size() { return 1; }
 constexpr int rank() { return 0; }
 constexpr bool is_root() { return true; }
-inline void save(Thread* thread, TTEntry* tte,
-          Key k, Value v, Bound b, Depth d, Move m, Value ev) {
+inline void save(Thread* thread, TTEntry* tte, Key k, Value v, Bound b, Depth d, Move m, Value ev) {
+
   (void)thread;
   tte->save(k, v, b, d, m, ev);
 }

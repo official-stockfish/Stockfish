@@ -296,6 +296,7 @@ void MainThread::search() {
 
   previousScore = static_cast<Value>(mi.score);
 
+  // TODO output should be done on the cluster_root
   if (mi.rank == Cluster::rank()) {
       // Send again PV info if we have a new best thread
       if (!Cluster::is_root() || bestThread != this)
