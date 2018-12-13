@@ -141,6 +141,8 @@ namespace {
   // a list of UCI commands is setup according to bench parameters, then
   // it is run one by one printing a summary at the end.
 
+  // TODO make (output?) cluster compatible
+
   void bench(Position& pos, istream& args, StateListPtr& states) {
 
     string token;
