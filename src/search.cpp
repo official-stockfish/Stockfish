@@ -1661,6 +1661,7 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
       if (!tb && i == pvIdx)
           ss << (v >= beta ? " lowerbound" : v <= alpha ? " upperbound" : "");
 
+      // TODO fix approximate node calculation.
       ss << " nodes "    << nodesSearched * Cluster::size()
          << " nps "      << nodesSearched * Cluster::size() * 1000 / elapsed;
 
