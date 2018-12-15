@@ -42,7 +42,7 @@ struct MoveInfo {
 #ifdef USE_MPI
 using KeyedTTEntry = std::pair<Key, TTEntry>;
 
-constexpr std::size_t TTSendBufferSize = 16;
+constexpr std::size_t TTSendBufferSize = 32;
 template <std::size_t N> class TTSendBuffer : public std::array<KeyedTTEntry, N> {
 
   struct Compare {

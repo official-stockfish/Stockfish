@@ -79,6 +79,7 @@ public:
   struct {
       Mutex mutex;
       Cluster::TTSendBuffer<Cluster::TTSendBufferSize> buffer = {};
+      size_t counter = 0;
   } ttBuffer;
 #endif
 };

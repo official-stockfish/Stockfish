@@ -176,16 +176,15 @@ void save(Thread* thread, TTEntry* tte,
      {
          std::lock_guard<Mutex> lk(thread->ttBuffer.mutex);
          thread->ttBuffer.buffer.replace(KeyedTTEntry(k,*tte));
+         ++thread->ttBuffer.counter;
      }
 
      // Communicate on main search thread
-     if (thread == Threads.main())
+     if (thread == Threads.main() && thread->ttBuffer.counter * Threads.size() > TTSendBufferSize)
      {
          static MPI_Request req = MPI_REQUEST_NULL;
          static TTSendBuffer<TTSendBufferSize> send_buff = {};
          int flag;
-         bool found;
-         TTEntry* replace_tte;
 
          // Test communication status
          MPI_Test(&req, &flag, MPI_STATUS_IGNORE);
@@ -202,6 +201,8 @@ void save(Thread* thread, TTEntry* tte,
                  for (size_t i = irank * TTSendBufferSize ; i < (irank + 1) * TTSendBufferSize; ++i)
                  {
                      auto&& e = TTBuff[i];
+                     bool found;
+                     TTEntry* replace_tte;
                      replace_tte = TT.probe(e.first, found);
                      replace_tte->save(e.first, e.second.value(), e.second.bound(), e.second.depth(),
                                        e.second.move(), e.second.eval());
@@ -219,6 +220,7 @@ void save(Thread* thread, TTEntry* tte,
                      send_buff.replace(e);
                  // Reset thread's send buffer
                  th->ttBuffer.buffer = {};
+                 th->ttBuffer.counter = 0;
              }
 
              // Start next communication
