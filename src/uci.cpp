@@ -141,8 +141,6 @@ namespace {
   // a list of UCI commands is setup according to bench parameters, then
   // it is run one by one printing a summary at the end.
 
-  // TODO make (output?) cluster compatible
-
   void bench(Position& pos, istream& args, StateListPtr& states) {
 
     string token;
@@ -160,7 +158,8 @@ namespace {
 
         if (token == "go")
         {
-            cerr << "\nPosition: " << cnt++ << '/' << num << endl;
+            if (Cluster::is_root())
+                cerr << "\nPosition: " << cnt++ << '/' << num << endl;
             go(pos, is, states);
             Threads.main()->wait_for_search_finished();
             nodes += Threads.nodes_searched();
@@ -174,10 +173,12 @@ namespace {
 
     dbg_print(); // Just before exiting
 
-    cerr << "\n==========================="
-         << "\nTotal time (ms) : " << elapsed
-         << "\nNodes searched  : " << nodes
-         << "\nNodes/second    : " << 1000 * nodes / elapsed << endl;
+    Cluster::sum(nodes);
+    if (Cluster::is_root())
+        cerr << "\n==========================="
+             << "\nTotal time (ms) : " << elapsed
+             << "\nNodes searched  : " << nodes
+             << "\nNodes/second    : " << 1000 * nodes / elapsed << endl;
   }
 
 } // namespace

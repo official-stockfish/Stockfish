@@ -266,6 +266,12 @@ void pick_moves(MoveInfo& mi) {
   MPI_Bcast(&mi, 1, MIDatatype, 0, MoveComm);
 }
 
+void sum(uint64_t& val) {
+
+  const uint64_t send = val;
+  MPI_Reduce(&send, &val, 1, MPI_UINT64_T, MPI_SUM, 0, MoveComm);
+}
+
 }
 
 #endif // USE_MPI
