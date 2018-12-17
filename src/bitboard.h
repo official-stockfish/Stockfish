@@ -2,7 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2018 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2015-2019 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -39,26 +39,26 @@ const std::string pretty(Bitboard b);
 
 }
 
-const Bitboard AllSquares = ~Bitboard(0);
-const Bitboard DarkSquares = 0xAA55AA55AA55AA55ULL;
+constexpr Bitboard AllSquares = ~Bitboard(0);
+constexpr Bitboard DarkSquares = 0xAA55AA55AA55AA55ULL;
 
-const Bitboard FileABB = 0x0101010101010101ULL;
-const Bitboard FileBBB = FileABB << 1;
-const Bitboard FileCBB = FileABB << 2;
-const Bitboard FileDBB = FileABB << 3;
-const Bitboard FileEBB = FileABB << 4;
-const Bitboard FileFBB = FileABB << 5;
-const Bitboard FileGBB = FileABB << 6;
-const Bitboard FileHBB = FileABB << 7;
+constexpr Bitboard FileABB = 0x0101010101010101ULL;
+constexpr Bitboard FileBBB = FileABB << 1;
+constexpr Bitboard FileCBB = FileABB << 2;
+constexpr Bitboard FileDBB = FileABB << 3;
+constexpr Bitboard FileEBB = FileABB << 4;
+constexpr Bitboard FileFBB = FileABB << 5;
+constexpr Bitboard FileGBB = FileABB << 6;
+constexpr Bitboard FileHBB = FileABB << 7;
 
-const Bitboard Rank1BB = 0xFF;
-const Bitboard Rank2BB = Rank1BB << (8 * 1);
-const Bitboard Rank3BB = Rank1BB << (8 * 2);
-const Bitboard Rank4BB = Rank1BB << (8 * 3);
-const Bitboard Rank5BB = Rank1BB << (8 * 4);
-const Bitboard Rank6BB = Rank1BB << (8 * 5);
-const Bitboard Rank7BB = Rank1BB << (8 * 6);
-const Bitboard Rank8BB = Rank1BB << (8 * 7);
+constexpr Bitboard Rank1BB = 0xFF;
+constexpr Bitboard Rank2BB = Rank1BB << (8 * 1);
+constexpr Bitboard Rank3BB = Rank1BB << (8 * 2);
+constexpr Bitboard Rank4BB = Rank1BB << (8 * 3);
+constexpr Bitboard Rank5BB = Rank1BB << (8 * 4);
+constexpr Bitboard Rank6BB = Rank1BB << (8 * 5);
+constexpr Bitboard Rank7BB = Rank1BB << (8 * 6);
+constexpr Bitboard Rank8BB = Rank1BB << (8 * 7);
 
 extern int SquareDistance[SQUARE_NB][SQUARE_NB];
 
@@ -107,27 +107,36 @@ extern Magic BishopMagics[SQUARE_NB];
 /// whether a given bit is set in a bitboard, and for setting and clearing bits.
 
 inline Bitboard operator&(Bitboard b, Square s) {
+  assert(s >= SQ_A1 && s <= SQ_H8);
   return b & SquareBB[s];
 }
 
 inline Bitboard operator|(Bitboard b, Square s) {
+  assert(s >= SQ_A1 && s <= SQ_H8);
   return b | SquareBB[s];
 }
 
 inline Bitboard operator^(Bitboard b, Square s) {
+  assert(s >= SQ_A1 && s <= SQ_H8);
   return b ^ SquareBB[s];
 }
 
 inline Bitboard& operator|=(Bitboard& b, Square s) {
+  assert(s >= SQ_A1 && s <= SQ_H8);
   return b |= SquareBB[s];
 }
 
 inline Bitboard& operator^=(Bitboard& b, Square s) {
+  assert(s >= SQ_A1 && s <= SQ_H8);
   return b ^= SquareBB[s];
 }
 
 constexpr bool more_than_one(Bitboard b) {
   return b & (b - 1);
+}
+
+inline bool opposite_colors(Square s1, Square s2) {
+  return bool(DarkSquares & s1) != bool(DarkSquares & s2);
 }
 
 /// rank_bb() and file_bb() return a bitboard representing all the squares on
@@ -150,23 +159,14 @@ inline Bitboard file_bb(Square s) {
 }
 
 
-/// make_bitboard() returns a bitboard from a list of squares
-
-constexpr Bitboard make_bitboard() { return 0; }
-
-template<typename ...Squares>
-constexpr Bitboard make_bitboard(Square s, Squares... squares) {
-  return (1ULL << s) | make_bitboard(squares...);
-}
-
-
 /// shift() moves a bitboard one step along direction D (mainly for pawns)
 
 template<Direction D>
 constexpr Bitboard shift(Bitboard b) {
   return  D == NORTH      ?  b             << 8 : D == SOUTH      ?  b             >> 8
-        : D == NORTH_EAST ? (b & ~FileHBB) << 9 : D == SOUTH_EAST ? (b & ~FileHBB) >> 7
-        : D == NORTH_WEST ? (b & ~FileABB) << 7 : D == SOUTH_WEST ? (b & ~FileABB) >> 9
+        : D == EAST       ? (b & ~FileHBB) << 1 : D == WEST       ? (b & ~FileABB) >> 1
+        : D == NORTH_EAST ? (b & ~FileHBB) << 9 : D == NORTH_WEST ? (b & ~FileABB) << 7
+        : D == SOUTH_EAST ? (b & ~FileHBB) >> 7 : D == SOUTH_WEST ? (b & ~FileABB) >> 9
         : 0;
 }
 
@@ -178,6 +178,16 @@ template<Color C>
 constexpr Bitboard pawn_attacks_bb(Bitboard b) {
   return C == WHITE ? shift<NORTH_WEST>(b) | shift<NORTH_EAST>(b)
                     : shift<SOUTH_WEST>(b) | shift<SOUTH_EAST>(b);
+}
+
+
+/// double_pawn_attacks_bb() returns the pawn attacks for the given color
+/// from the squares in the given bitboard.
+
+template<Color C>
+constexpr Bitboard double_pawn_attacks_bb(Bitboard b) {
+  return C == WHITE ? shift<NORTH_WEST>(b) & shift<NORTH_EAST>(b)
+                    : shift<SOUTH_WEST>(b) & shift<SOUTH_EAST>(b);
 }
 
 

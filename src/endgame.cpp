@@ -2,7 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2018 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2015-2019 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -31,7 +31,7 @@ namespace {
 
   // Table used to drive the king towards the edge of the board
   // in KX vs K and KQ vs KR endgames.
-  const int PushToEdges[SQUARE_NB] = {
+  constexpr int PushToEdges[SQUARE_NB] = {
     100, 90, 80, 70, 70, 80, 90, 100,
      90, 70, 60, 50, 50, 60, 70,  90,
      80, 60, 40, 30, 30, 40, 60,  80,
@@ -44,7 +44,7 @@ namespace {
 
   // Table used to drive the king towards a corner square of the
   // right color in KBN vs K endgames.
-  const int PushToCorners[SQUARE_NB] = {
+  constexpr int PushToCorners[SQUARE_NB] = {
     200, 190, 180, 170, 160, 150, 140, 130,
     190, 180, 170, 160, 150, 140, 130, 140,
     180, 170, 155, 140, 140, 125, 140, 150,
@@ -56,11 +56,11 @@ namespace {
   };
 
   // Tables used to drive a piece towards or away from another piece
-  const int PushClose[8] = { 0, 0, 100, 80, 60, 40, 20, 10 };
-  const int PushAway [8] = { 0, 5, 20, 40, 60, 80, 90, 100 };
+  constexpr int PushClose[8] = { 0, 0, 100, 80, 60, 40, 20, 10 };
+  constexpr int PushAway [8] = { 0, 5, 20, 40, 60, 80, 90, 100 };
 
   // Pawn Rank based scaling factors used in KRPPKRP endgame
-  const int KRPPKRPScaleFactors[RANK_NB] = { 0, 9, 10, 14, 21, 44, 0, 0 };
+  constexpr int KRPPKRPScaleFactors[RANK_NB] = { 0, 9, 10, 14, 21, 44, 0, 0 };
 
 #ifndef NDEBUG
   bool verify_material(const Position& pos, Color c, Value npm, int pawnsCnt) {
@@ -84,30 +84,6 @@ namespace {
   }
 
 } // namespace
-
-
-/// Endgames members definitions
-
-Endgames::Endgames() {
-
-  add<KPK>("KPK");
-  add<KNNK>("KNNK");
-  add<KBNK>("KBNK");
-  add<KRKP>("KRKP");
-  add<KRKB>("KRKB");
-  add<KRKN>("KRKN");
-  add<KQKP>("KQKP");
-  add<KQKR>("KQKR");
-
-  add<KNPK>("KNPK");
-  add<KNPKB>("KNPKB");
-  add<KRPKR>("KRPKR");
-  add<KRPKB>("KRPKB");
-  add<KBPKB>("KBPKB");
-  add<KBPKN>("KBPKN");
-  add<KBPPKB>("KBPPKB");
-  add<KRPPKRP>("KRPPKRP");
-}
 
 
 /// Mate with KX vs K. This function is used to evaluate positions with
@@ -214,7 +190,7 @@ Value Endgame<KRKP>::operator()(const Position& pos) const {
   Value result;
 
   // If the stronger side's king is in front of the pawn, it's a win
-  if (wksq < psq && file_of(wksq) == file_of(psq))
+  if (forward_file_bb(WHITE, wksq) & psq)
       result = RookValueEg - distance(wksq, psq);
 
   // If the weaker side's king is too far from the pawn and the rook,
@@ -240,7 +216,7 @@ Value Endgame<KRKP>::operator()(const Position& pos) const {
 }
 
 
-/// KR vs KB. This is very simple, and always returns drawish scores.  The
+/// KR vs KB. This is very simple, and always returns drawish scores. The
 /// score is slightly bigger when the defending king is close to the edge.
 template<>
 Value Endgame<KRKB>::operator()(const Position& pos) const {
@@ -631,29 +607,8 @@ ScaleFactor Endgame<KBPKB>::operator()(const Position& pos) const {
 
   // Case 2: Opposite colored bishops
   if (opposite_colors(strongBishopSq, weakBishopSq))
-  {
-      // We assume that the position is drawn in the following three situations:
-      //
-      //   a. The pawn is on rank 5 or further back.
-      //   b. The defending king is somewhere in the pawn's path.
-      //   c. The defending bishop attacks some square along the pawn's path,
-      //      and is at least three squares away from the pawn.
-      //
-      // These rules are probably not perfect, but in practice they work
-      // reasonably well.
+      return SCALE_FACTOR_DRAW;
 
-      if (relative_rank(strongSide, pawnSq) <= RANK_5)
-          return SCALE_FACTOR_DRAW;
-
-      Bitboard path = forward_file_bb(strongSide, pawnSq);
-
-      if (path & pos.pieces(weakSide, KING))
-          return SCALE_FACTOR_DRAW;
-
-      if (  (pos.attacks_from<BISHOP>(weakBishopSq) & path)
-          && distance(weakBishopSq, pawnSq) >= 3)
-          return SCALE_FACTOR_DRAW;
-  }
   return SCALE_FACTOR_NONE;
 }
 

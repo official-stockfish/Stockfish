@@ -2,7 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2018 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2015-2019 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -42,28 +42,7 @@ struct TTEntry {
   Value eval()  const { return (Value)eval16; }
   Depth depth() const { return (Depth)(depth8 * int(ONE_PLY)); }
   Bound bound() const { return (Bound)(genBound8 & 0x3); }
-
-  void save(Key k, Value v, Bound b, Depth d, Move m, Value ev, uint8_t g) {
-
-    assert(d / ONE_PLY * ONE_PLY == d);
-
-    // Preserve any existing move for the same position
-    if (m || (k >> 48) != key16)
-        move16 = (uint16_t)m;
-
-    // Don't overwrite more valuable entries
-    if (  (k >> 48) != key16
-        || d / ONE_PLY > depth8 - 4
-     /* || g != (genBound8 & 0xFC) // Matching non-zero keys are already refreshed by probe() */
-        || b == BOUND_EXACT)
-    {
-        key16     = (uint16_t)(k >> 48);
-        value16   = (int16_t)v;
-        eval16    = (int16_t)ev;
-        genBound8 = (uint8_t)(g | b);
-        depth8    = (int8_t)(d / ONE_PLY);
-    }
-  }
+  void save(Key k, Value v, Bound b, Depth d, Move m, Value ev);
 
 private:
   friend class TranspositionTable;
@@ -86,8 +65,8 @@ private:
 
 class TranspositionTable {
 
-  static const int CacheLineSize = 64;
-  static const int ClusterSize = 3;
+  static constexpr int CacheLineSize = 64;
+  static constexpr int ClusterSize = 3;
 
   struct Cluster {
     TTEntry entry[ClusterSize];
@@ -99,7 +78,6 @@ class TranspositionTable {
 public:
  ~TranspositionTable() { free(mem); }
   void new_search() { generation8 += 4; } // Lower 2 bits are used by Bound
-  uint8_t generation() const { return generation8; }
   TTEntry* probe(const Key key, bool& found) const;
   int hashfull() const;
   void resize(size_t mbSize);
@@ -111,6 +89,8 @@ public:
   }
 
 private:
+  friend struct TTEntry;
+
   size_t clusterCount;
   Cluster* table;
   void* mem;
@@ -125,6 +105,17 @@ struct ExpEntry
 	Value score;
 	Move move;
 };
+
+void EXPresize(size_t mbSize);
+void EXPawnresize();
+void startposition();
+void EXPload(char* fen);
+
+extern TranspositionTable EXP;
+
+
+extern TranspositionTable TT;
+
 
 void EXPresize(size_t mbSize);
 void EXPawnresize();

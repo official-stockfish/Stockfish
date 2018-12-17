@@ -2,7 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2018 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2015-2019 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -89,7 +89,7 @@ void Bitboards::init() {
       PopCnt16[i] = (uint8_t) popcount16(i);
 
   for (Square s = SQ_A1; s <= SQ_H8; ++s)
-      SquareBB[s] = 1ULL << s;
+      SquareBB[s] = (1ULL << s);
 
   for (File f = FILE_A; f <= FILE_H; ++f)
       FileBB[f] = f > FILE_A ? FileBB[f - 1] << 1 : FileABB;
@@ -116,7 +116,7 @@ void Bitboards::init() {
           if (s1 != s2)
           {
               SquareDistance[s1][s2] = std::max(distance<File>(s1, s2), distance<Rank>(s1, s2));
-              DistanceRingBB[s1][SquareDistance[s1][s2] - 1] |= s2;
+              DistanceRingBB[s1][SquareDistance[s1][s2]] |= s2;
           }
 
   int steps[][5] = { {}, { 7, 9 }, { 6, 10, 15, 17 }, {}, {}, {}, { 1, 7, 8, 9 } };
@@ -137,7 +137,7 @@ void Bitboards::init() {
                   }
               }
 
-  Direction RookDirections[] = { NORTH,  EAST,  SOUTH,  WEST };
+  Direction RookDirections[] = { NORTH, EAST, SOUTH, WEST };
   Direction BishopDirections[] = { NORTH_EAST, SOUTH_EAST, SOUTH_WEST, NORTH_WEST };
 
   init_magics(RookTable, RookMagics, RookDirections);

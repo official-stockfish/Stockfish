@@ -2,7 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2018 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2015-2019 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -23,6 +23,11 @@
 #undef  _WIN32_WINNT
 #define _WIN32_WINNT 0x0601 // Force to include needed API prototypes
 #endif
+
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+
 #include <windows.h>
 // The needed Windows API for processor groups could be missed from old Windows
 // versions, so instead of calling them directly (forcing the linker to resolve
@@ -219,11 +224,11 @@ void bindThisThread(size_t) {}
 
 #else
 
-/// get_group() retrieves logical processor information using Windows specific
+/// best_group() retrieves logical processor information using Windows specific
 /// API and returns the best group id for the thread with index idx. Original
 /// code from Texel by Peter Österlund.
 
-int get_group(size_t idx) {
+int best_group(size_t idx) {
 
   int threads = 0;
   int nodes = 0;
@@ -233,7 +238,7 @@ int get_group(size_t idx) {
 
   // Early exit if the needed API is not available at runtime
   HMODULE k32 = GetModuleHandle("Kernel32.dll");
-  auto fun1 = (fun1_t)GetProcAddress(k32, "GetLogicalProcessorInformationEx");
+  auto fun1 = (fun1_t)(void(*)())GetProcAddress(k32, "GetLogicalProcessorInformationEx");
   if (!fun1)
       return -1;
 
@@ -294,15 +299,15 @@ int get_group(size_t idx) {
 void bindThisThread(size_t idx) {
 
   // Use only local variables to be thread-safe
-  int group = get_group(idx);
+  int group = best_group(idx);
 
   if (group == -1)
       return;
 
   // Early exit if the needed API are not available at runtime
   HMODULE k32 = GetModuleHandle("Kernel32.dll");
-  auto fun2 = (fun2_t)GetProcAddress(k32, "GetNumaNodeProcessorMaskEx");
-  auto fun3 = (fun3_t)GetProcAddress(k32, "SetThreadGroupAffinity");
+  auto fun2 = (fun2_t)(void(*)())GetProcAddress(k32, "GetNumaNodeProcessorMaskEx");
+  auto fun3 = (fun3_t)(void(*)())GetProcAddress(k32, "SetThreadGroupAffinity");
 
   if (!fun2 || !fun3)
       return;

@@ -2,7 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2018 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2015-2019 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -29,12 +29,14 @@
 #include "bitboard.h"
 #include "types.h"
 
-extern void kelly(bool start, Key FileKey);
-extern void files(int x, Key FileKey);
 
 /// StateInfo struct stores information needed to restore a Position object to
 /// its previous state when we retract a move. Whenever a move is made on the
 /// board (by calling Position::do_move), a StateInfo object must be passed.
+
+extern void kelly(bool start, Key FileKey);
+extern void files(int x, Key FileKey);
+
 
 struct StateInfo {
 
@@ -45,7 +47,6 @@ struct StateInfo {
   int    castlingRights;
   int    rule50;
   int    pliesFromNull;
-  Score  psq;
   Square epSquare;
 
   // Not copied when making a move (will be recomputed anyhow)
@@ -54,7 +55,7 @@ struct StateInfo {
   Piece      capturedPiece;
   StateInfo* previous;
   Bitboard   blockersForKing[COLOR_NB];
-  Bitboard   pinnersForKing[COLOR_NB];
+  Bitboard   pinners[COLOR_NB];
   Bitboard   checkSquares[PIECE_TYPE_NB];
 };
 
@@ -100,8 +101,8 @@ public:
   template<PieceType Pt> Square square(Color c) const;
 
   // Castling
-  int can_castle(Color c) const;
-  int can_castle(CastlingRight cr) const;
+  int castling_rights(Color c) const;
+  bool can_castle(CastlingRight cr) const;
   bool castling_impeded(CastlingRight cr) const;
   Square castling_rook_square(CastlingRight cr) const;
 
@@ -154,6 +155,8 @@ public:
   bool is_chess960() const;
   Thread* this_thread() const;
   bool is_draw(int ply) const;
+  bool has_game_cycle(int ply) const;
+  bool has_repeated() const;
   int rule50_count() const;
   Score psq_score() const;
   Value non_pawn_material(Color c) const;
@@ -188,10 +191,15 @@ private:
   Bitboard castlingPath[CASTLING_RIGHT_NB];
   int gamePly;
   Color sideToMove;
+  Score psq;
   Thread* thisThread;
   StateInfo* st;
   bool chess960;
 };
+
+namespace PSQT {
+  extern Score psq[PIECE_NB][SQUARE_NB];
+}
 
 extern std::ostream& operator<<(std::ostream& os, const Position& pos);
 
@@ -256,11 +264,11 @@ inline Square Position::ep_square() const {
   return st->epSquare;
 }
 
-inline int Position::can_castle(CastlingRight cr) const {
+inline bool Position::can_castle(CastlingRight cr) const {
   return st->castlingRights & cr;
 }
 
-inline int Position::can_castle(Color c) const {
+inline int Position::castling_rights(Color c) const {
   return st->castlingRights & ((WHITE_OO | WHITE_OOO) << (2 * c));
 }
 
@@ -327,7 +335,7 @@ inline Key Position::material_key() const {
 }
 
 inline Score Position::psq_score() const {
-  return st->psq;
+  return psq;
 }
 
 inline Value Position::non_pawn_material(Color c) const {
@@ -384,6 +392,7 @@ inline void Position::put_piece(Piece pc, Square s) {
   index[s] = pieceCount[pc]++;
   pieceList[pc][index[s]] = s;
   pieceCount[make_piece(color_of(pc), ALL_PIECES)]++;
+  psq += PSQT::psq[pc][s];
 }
 
 inline void Position::remove_piece(Piece pc, Square s) {
@@ -401,20 +410,22 @@ inline void Position::remove_piece(Piece pc, Square s) {
   pieceList[pc][index[lastSquare]] = lastSquare;
   pieceList[pc][pieceCount[pc]] = SQ_NONE;
   pieceCount[make_piece(color_of(pc), ALL_PIECES)]--;
+  psq -= PSQT::psq[pc][s];
 }
 
 inline void Position::move_piece(Piece pc, Square from, Square to) {
 
   // index[from] is not updated and becomes stale. This works as long as index[]
   // is accessed just by known occupied squares.
-  Bitboard from_to_bb = SquareBB[from] ^ SquareBB[to];
-  byTypeBB[ALL_PIECES] ^= from_to_bb;
-  byTypeBB[type_of(pc)] ^= from_to_bb;
-  byColorBB[color_of(pc)] ^= from_to_bb;
+  Bitboard fromTo = SquareBB[from] ^ SquareBB[to];
+  byTypeBB[ALL_PIECES] ^= fromTo;
+  byTypeBB[type_of(pc)] ^= fromTo;
+  byColorBB[color_of(pc)] ^= fromTo;
   board[from] = NO_PIECE;
   board[to] = pc;
   index[to] = index[from];
   pieceList[pc][index[to]] = to;
+  psq += PSQT::psq[pc][to] - PSQT::psq[pc][from];
 }
 
 inline void Position::do_move(Move m, StateInfo& newSt) {

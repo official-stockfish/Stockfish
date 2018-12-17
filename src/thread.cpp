@@ -2,7 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2018 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2015-2019 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -26,6 +26,7 @@
 #include "thread.h"
 #include "uci.h"
 #include "syzygy/tbprobe.h"
+#include "tt.h"
 
 ThreadPool Threads; // Global object
 
@@ -60,11 +61,11 @@ void Thread::clear() {
   mainHistory.fill(0);
   captureHistory.fill(0);
 
-  for (auto& to : contHistory)
+  for (auto& to : continuationHistory)
       for (auto& h : to)
-          h.get()->fill(0);
+          h->fill(0);
 
-  contHistory[NO_PIECE][0].get()->fill(Search::CounterMovePruneThreshold - 1);
+  continuationHistory[NO_PIECE][0]->fill(Search::CounterMovePruneThreshold - 1);
 }
 
 /// Thread::start_searching() wakes up the thread that will start the search
@@ -97,7 +98,7 @@ void Thread::idle_loop() {
   // some Windows NUMA hardware, for instance in fishtest. To make it simple,
   // just check if running threads are below a threshold, in this case all this
   // NUMA machinery is not needed.
-  if (Options["Threads"] >= 8)
+  if (Options["Threads"] > 8)
       WinProcGroup::bindThisThread(idx);
 
   while (true)
@@ -117,7 +118,7 @@ void Thread::idle_loop() {
 }
 
 /// ThreadPool::set() creates/destroys threads to match the requested number.
-/// Created and launced threads wil go immediately to sleep in idle_loop.
+/// Created and launched threads will immediately go to sleep in idle_loop.
 /// Upon resizing, threads are recreated to allow for binding if necessary.
 
 void ThreadPool::set(size_t requested) {
@@ -136,6 +137,10 @@ void ThreadPool::set(size_t requested) {
           push_back(new Thread(size()));
       clear();
   }
+
+  // Reallocate the hash with the new threadpool size
+  TT.resize(Options["Hash"]);
+  EXP.resize(Options["Hash"]);
 }
 
 /// ThreadPool::clear() sets threadPool data to initial values.
@@ -169,7 +174,7 @@ void ThreadPool::start_thinking(Position& pos, StateListPtr& states,
           rootMoves.emplace_back(m);
 
   if (!rootMoves.empty())
-      Tablebases::filter_root_moves(pos, rootMoves);
+      Tablebases::rank_root_moves(pos, rootMoves);
 
   // After ownership transfer 'states' becomes empty, so if we stop the search
   // and call 'go' again without setting a new position states.get() == NULL.
@@ -187,7 +192,7 @@ void ThreadPool::start_thinking(Position& pos, StateListPtr& states,
 
   for (Thread* th : *this)
   {
-      th->nodes = th->tbHits = th->nmp_ply = th->nmp_odd = 0;
+      th->nodes = th->tbHits = th->nmpMinPly = 0;
       th->rootDepth = th->completedDepth = DEPTH_ZERO;
       th->rootMoves = rootMoves;
       th->rootPos.set(pos.fen(), pos.is_chess960(), &setupStates->back(), th);
