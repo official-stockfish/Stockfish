@@ -74,7 +74,7 @@ int rank();
 inline bool is_root() { return rank() == 0; }
 void save(Thread* thread, TTEntry* tte, Key k, Value v, Bound b, Depth d, Move m, Value ev);
 void pick_moves(MoveInfo& mi);
-void sum(uint64_t& val);
+uint64_t nodes_searched();
 void sync_start();
 void sync_stop();
 
@@ -88,7 +88,7 @@ constexpr int rank() { return 0; }
 constexpr bool is_root() { return true; }
 inline void save(Thread*, TTEntry* tte, Key k, Value v, Bound b, Depth d, Move m, Value ev) { tte->save(k, v, b, d, m, ev); }
 inline void pick_moves(MoveInfo&) { }
-inline void sum(uint64_t& ) { }
+uint64_t nodes_searched();
 inline void sync_start() { }
 inline void sync_stop() { }
 

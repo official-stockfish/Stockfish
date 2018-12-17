@@ -37,8 +37,14 @@ namespace Cluster {
 
 static int world_rank = MPI_PROC_NULL;
 static int world_size = 0;
+
 static bool stop_signal = false;
 static MPI_Request reqStop = MPI_REQUEST_NULL;
+
+static uint64_t nodesSearchedOthers = 0;
+static uint64_t nodesSearchedSend = 0;
+static uint64_t nodesSearchedRecv = 0;
+static MPI_Request reqNodesSearched = MPI_REQUEST_NULL;
 
 static MPI_Comm InputComm = MPI_COMM_NULL;
 static MPI_Comm TTComm = MPI_COMM_NULL;
@@ -128,6 +134,8 @@ void sync_start() {
 
   stop_signal = false;
 
+  nodesSearchedOthers = nodesSearchedSend = nodesSearchedRecv = 0;
+
   // Start listening to stop signal
   if (!is_root())
       MPI_Ibarrier(StopComm, &reqStop);
@@ -135,6 +143,19 @@ void sync_start() {
 
 void sync_stop() {
 
+  // update the nodeCount, non-blocking collective,
+  // we don't quite now how many of those we issue on each rank, there might be pending a pending one on some ranks
+  int flag;
+  MPI_Test(&reqNodesSearched, &flag, MPI_STATUS_IGNORE);
+  if (flag)
+  {
+     nodesSearchedOthers = nodesSearchedRecv - nodesSearchedSend;
+     nodesSearchedSend = Threads.nodes_searched();
+     MPI_Iallreduce(&nodesSearchedSend, &nodesSearchedRecv, 1, MPI_UINT64_T,
+                    MPI_SUM, MoveComm, &reqNodesSearched);
+  }
+
+  // Handle stop signal.
   if (is_root())
   {
       if (!stop_signal && Threads.stop)
@@ -270,10 +291,23 @@ void pick_moves(MoveInfo& mi) {
   MPI_Bcast(&mi, 1, MIDatatype, 0, MoveComm);
 }
 
-void sum(uint64_t& val) {
+uint64_t nodes_searched() {
 
-  const uint64_t send = val;
-  MPI_Reduce(&send, &val, 1, MPI_UINT64_T, MPI_SUM, 0, MoveComm);
+  return nodesSearchedOthers + Threads.nodes_searched();
+}
+
+}
+
+#else
+
+#include "cluster.h"
+#include "thread.h"
+
+namespace Cluster {
+
+uint64_t nodes_searched() {
+
+  return Threads.nodes_searched();
 }
 
 }

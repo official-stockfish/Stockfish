@@ -163,7 +163,6 @@ void ThreadPool::start_thinking(Position& pos, StateListPtr& states,
   main()->wait_for_search_finished();
 
   stopOnPonderhit = stop = false;
-  Cluster::sync_start();
 
   ponder = ponderMode;
   Search::Limits = limits;
@@ -200,6 +199,8 @@ void ThreadPool::start_thinking(Position& pos, StateListPtr& states,
   }
 
   setupStates->back() = tmp;
+
+  Cluster::sync_start();
 
   main()->start_searching();
 }
