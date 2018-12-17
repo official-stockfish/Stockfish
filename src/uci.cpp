@@ -162,7 +162,7 @@ namespace {
                 cerr << "\nPosition: " << cnt++ << '/' << num << endl;
             go(pos, is, states);
             Threads.main()->wait_for_search_finished();
-            nodes += Threads.nodes_searched();
+            nodes += Cluster::nodes_searched();
         }
         else if (token == "setoption")  setoption(is);
         else if (token == "position")   position(pos, is, states);
@@ -173,7 +173,6 @@ namespace {
 
     dbg_print(); // Just before exiting
 
-    Cluster::sum(nodes);
     if (Cluster::is_root())
         cerr << "\n==========================="
              << "\nTotal time (ms) : " << elapsed

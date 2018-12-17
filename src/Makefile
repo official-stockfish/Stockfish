@@ -359,7 +359,7 @@ endif
 ### 3.10 MPI
 ifneq (,$(findstring mpi, $(CXX)))
 	mpi = yes
-	CXXFLAGS += -DUSE_MPI -Wno-cast-qual
+	CXXFLAGS += -DUSE_MPI -Wno-cast-qual -fexceptions
         DEPENDFLAGS += -DUSE_MPI
 endif
 

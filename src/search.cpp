@@ -234,14 +234,14 @@ void MainThread::search() {
   Threads.stopOnPonderhit = true;
 
   while (!Threads.stop && (Threads.ponder || Limits.infinite))
-  { } // Busy wait for a stop or a ponder reset
+  { Cluster::signals_poll(); } // Busy wait for a stop or a ponder reset
 
   // Stop the threads if not already stopped (also raise the stop if
   // "ponderhit" just reset Threads.ponder).
   Threads.stop = true;
 
-  // Finish any outstanding barriers.
-  Cluster::sync_stop();
+  // Signal and synchronize all other ranks
+  Cluster::signals_sync();
 
   // Wait until all threads have finished
   for (Thread* th : Threads)
@@ -251,7 +251,7 @@ void MainThread::search() {
   // When playing in 'nodes as time' mode, subtract the searched nodes from
   // the available ones before exiting.
   if (Limits.npmsec)
-      Time.availableNodes += Limits.inc[us] - Threads.nodes_searched();
+      Time.availableNodes += Limits.inc[us] - Cluster::nodes_searched();
 
   // Check if there are threads with a better score than main thread
   Thread* bestThread = this;
@@ -370,7 +370,7 @@ void Thread::search() {
   // Iterative deepening loop until requested to stop or the target depth is reached
   while (   (rootDepth += ONE_PLY) < DEPTH_MAX
          && !Threads.stop
-         && !(Limits.depth && mainThread && rootDepth / ONE_PLY > Limits.depth))
+         && !(Limits.depth && mainThread && Cluster::is_root() && rootDepth / ONE_PLY > Limits.depth))
   {
       // Distribute search depths across the helper threads
       if (idx + Cluster::rank() > 0)
@@ -383,6 +383,7 @@ void Thread::search() {
       // Age out PV variability metric
       if (mainThread)
           mainThread->bestMoveChanges *= 0.517, failedLow = false;
+
 
       // Save the last iteration's scores before first PV line is searched and
       // all the move scores except the (new) PV are set to -VALUE_INFINITE.
@@ -1609,16 +1610,16 @@ void MainThread::check_time() {
       dbg_print();
   }
 
+  // poll on MPI signals
+  Cluster::signals_poll();
+
   // We should not stop pondering until told so by the GUI
   if (Threads.ponder)
       return;
 
-  // Check if root has reached a stop barrier
-  Cluster::sync_stop();
-
   if (   (Limits.use_time_management() && elapsed > Time.maximum() - 10)
       || (Limits.movetime && elapsed >= Limits.movetime)
-      || (Limits.nodes && Threads.nodes_searched() >= (uint64_t)Limits.nodes))
+      || (Limits.nodes && Cluster::nodes_searched() >= (uint64_t)Limits.nodes))
       Threads.stop = true;
 }
 
@@ -1633,7 +1634,7 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
   const RootMoves& rootMoves = pos.this_thread()->rootMoves;
   size_t pvIdx = pos.this_thread()->pvIdx;
   size_t multiPV = std::min((size_t)Options["MultiPV"], rootMoves.size());
-  uint64_t nodesSearched = Threads.nodes_searched();
+  uint64_t nodesSearched = Cluster::nodes_searched();
   uint64_t tbHits = Threads.tb_hits() + (TB::RootInTB ? rootMoves.size() : 0);
 
   for (size_t i = 0; i < multiPV; ++i)
@@ -1661,9 +1662,8 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
       if (!tb && i == pvIdx)
           ss << (v >= beta ? " lowerbound" : v <= alpha ? " upperbound" : "");
 
-      // TODO fix approximate node calculation.
-      ss << " nodes "    << nodesSearched * Cluster::size()
-         << " nps "      << nodesSearched * Cluster::size() * 1000 / elapsed;
+      ss << " nodes "    << nodesSearched
+         << " nps "      << nodesSearched * 1000 / elapsed;
 
       if (elapsed > 1000) // Earlier makes little sense
           ss << " hashfull " << TT.hashfull();
