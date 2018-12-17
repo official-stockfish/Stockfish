@@ -152,5 +152,5 @@ int TranspositionTable::hashfull() const {
       for (int j = 0; j < ClusterSize; ++j)
           cnt += (table[i].entry[j].genBound8 & 0xFC) == generation8;
 
-  return cnt * 1000 / 999;
+  return cnt * 1000 / (ClusterSize * (1000 / ClusterSize));
 }
