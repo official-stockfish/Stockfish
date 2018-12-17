@@ -264,12 +264,11 @@ void MainThread::search() {
           votes[th->rootMoves[0].pv[0]] = 0;
       }
 
-      auto sqaure = [](int x) { return x * x; };
-
       // Vote according to score and depth
+      auto square = [](int x) { return x * x; };
       for (Thread* th : Threads)
-          votes[th->rootMoves[0].pv[0]] +=  sqaure(th->rootMoves[0].score - minScore + 1)
-                                          * int(th->completedDepth) + 200;
+          votes[th->rootMoves[0].pv[0]] +=  square(th->rootMoves[0].score - minScore + 1)
+                                          * th->completedDepth + 200;
       // Select best thread
       int bestVote = votes[this->rootMoves[0].pv[0]];
       for (Thread* th : Threads)
