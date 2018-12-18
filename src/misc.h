@@ -26,6 +26,7 @@
 #include <ostream>
 #include <string>
 #include <vector>
+#include <cstring>   // For std::memset and std::memcpy
 
 #include "types.h"
 
@@ -109,6 +110,35 @@ public:
 
 namespace WinProcGroup {
   void bindThisThread(size_t idx);
+}
+
+enum { BigEndian, LittleEndian };
+template<typename T, int Half = sizeof(T) / 2, int End = sizeof(T) - 1>
+inline void swap_endian(T& x)
+{
+    static_assert(std::is_unsigned<T>::value, "Argument of swap_endian not unsigned");
+
+    uint8_t tmp, *c = (uint8_t*)&x;
+    for (int i = 0; i < Half; ++i)
+        tmp = c[i], c[i] = c[End - i], c[End - i] = tmp;
+}
+template<> inline void swap_endian<uint8_t>(uint8_t&) {}
+
+template<typename T, int LE> T number(void* addr)
+{
+    static const union { uint32_t i; char c[4]; } Le = { 0x01020304 };
+    static const bool IsLittleEndian = (Le.c[0] == 4);
+
+    T v;
+
+    if ((uintptr_t)addr & (alignof(T) - 1)) // Unaligned pointer (very rare)
+        std::memcpy(&v, addr, sizeof(T));
+    else
+        v = *((T*)addr);
+
+    if (LE != IsLittleEndian)
+        swap_endian(v);
+    return v;
 }
 
 #endif // #ifndef MISC_H_INCLUDED

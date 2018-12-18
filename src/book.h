@@ -18,38 +18,36 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <iostream>
+#ifndef BOOK_H_INCLUDED
+#define BOOK_H_INCLUDED
 
-#include "bitboard.h"
 #include "position.h"
-#include "search.h"
-#include "thread.h"
-#include "tt.h"
-#include "uci.h"
-#include "syzygy/tbprobe.h"
-#include "book.h"
+#include <vector>
 
-namespace PSQT {
-  void init();
-}
+class Book
+{
+    typedef struct {
+        uint64_t key;
+        uint16_t move;
+        uint16_t weight;
+        uint32_t score;
+    } BookEntry;
+public:
+    Book();
+    ~Book();
+    void init(const std::string& filename);
+    void set_max_ply(int new_max_ply);
+	Move probe_root(Position& pos);
+	void probe(Position& pos, std::vector<Move>& bookmoves);
+private:
+    size_t find_first_entry(uint64_t key, int& index_count);
+    Move reconstruct_move(uint16_t book_move);
+    size_t NumBookEntries;
+    BookEntry *BookEntries;
+    void byteswap_bookentry(BookEntry *be);
+    int max_book_ply;
+};
 
-int main(int argc, char* argv[]) {
+extern Book Books;
 
-  std::cout << engine_info() << std::endl;
-
-  UCI::init(Options);
-  PSQT::init();
-  Bitboards::init();
-  Position::init();
-  Bitbases::init();
-  Search::init();
-  Pawns::init();
-  Threads.set(Options["Threads"]);
-  Books.init(Options["BookFile"]);
-  Search::clear(); // After threads are up
-
-  UCI::loop(argc, argv);
-
-  Threads.set(0);
-  return 0;
-}
+#endif // #ifndef BOOK_H_INCLUDED

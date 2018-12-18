@@ -25,6 +25,7 @@
 #include <iostream>
 #include <sstream>
 
+#include "book.h"
 #include "evaluate.h"
 #include "misc.h"
 #include "movegen.h"
@@ -216,11 +217,24 @@ void MainThread::search() {
   }
   else
   {
-      for (Thread* th : Threads)
-          if (th != this)
-              th->start_searching();
+      Move bookMove = MOVE_NONE;
 
-      Thread::search(); // Let's start searching!
+      if (!Limits.infinite && !Limits.mate)
+          bookMove = Books.probe_root(rootPos);
+
+      if (bookMove && std::count(rootMoves.begin(), rootMoves.end(), bookMove))
+      {
+          for (Thread* th : Threads)
+              std::swap(th->rootMoves[0], *std::find(th->rootMoves.begin(), th->rootMoves.end(), bookMove));
+      }
+      else
+      {
+          for (Thread* th : Threads)
+              if (th != this)
+                  th->start_searching();
+
+          Thread::search(); // Let's start searching!
+      }
   }
 
   // When we reach the maximum depth, we can arrive here without a raise of
@@ -884,6 +898,10 @@ moves_loop: // When in check, search starts from here
                                       contHist,
                                       countermove,
                                       ss->killers);
+
+    std::vector<Move> bookMoves;
+    Books.probe(pos, bookMoves);
+
     value = bestValue; // Workaround a bogus 'uninitialized' warning under gcc
 
     skipQuiets = false;
@@ -905,6 +923,9 @@ moves_loop: // When in check, search starts from here
       // of lower "TB rank" if we are in a TB root position.
       if (rootNode && !std::count(thisThread->rootMoves.begin() + thisThread->pvIdx,
                                   thisThread->rootMoves.begin() + thisThread->pvLast, move))
+          continue;
+
+      if (bookMoves.size() && !std::count(bookMoves.begin(), bookMoves.end(), move & (~(3 << 14))))
           continue;
 
       ss->moveCount = ++moveCount;
