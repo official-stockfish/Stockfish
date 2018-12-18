@@ -43,7 +43,7 @@ enum EndgameCode {
   KRKP,  // KR vs KP
   KRKB,  // KR vs KB
   KRKN,  // KR vs KN
-  KQKP,  // KQ vs KP
+  //KQKP,  // KQ vs KP
   KQKR,  // KQ vs KR
 
   SCALING_FUNCTIONS,
@@ -123,7 +123,7 @@ public:
     add<KRKP>("KRKP");
     add<KRKB>("KRKB");
     add<KRKN>("KRKN");
-    add<KQKP>("KQKP");
+    //add<KQKP>("KQKP");
     add<KQKR>("KQKR");
 
     add<KNPK>("KNPK");

@@ -244,6 +244,7 @@ Value Endgame<KRKN>::operator()(const Position& pos) const {
 }
 
 
+/*
 /// KQ vs KP. In general, this is a win for the stronger side, but there are a
 /// few important exceptions. A pawn on 7th rank and on the A,C,F or H files
 /// with a king positioned next to it can be a draw, so in that case, we only
@@ -267,6 +268,7 @@ Value Endgame<KQKP>::operator()(const Position& pos) const {
 
   return strongSide == pos.side_to_move() ? result : -result;
 }
+*/
 
 
 /// KQ vs KR.  This is almost identical to KX vs K:  We give the attacking
