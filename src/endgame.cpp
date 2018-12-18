@@ -244,33 +244,6 @@ Value Endgame<KRKN>::operator()(const Position& pos) const {
 }
 
 
-/*
-/// KQ vs KP. In general, this is a win for the stronger side, but there are a
-/// few important exceptions. A pawn on 7th rank and on the A,C,F or H files
-/// with a king positioned next to it can be a draw, so in that case, we only
-/// use the distance between the kings.
-template<>
-Value Endgame<KQKP>::operator()(const Position& pos) const {
-
-  assert(verify_material(pos, strongSide, QueenValueMg, 0));
-  assert(verify_material(pos, weakSide, VALUE_ZERO, 1));
-
-  Square winnerKSq = pos.square<KING>(strongSide);
-  Square loserKSq = pos.square<KING>(weakSide);
-  Square pawnSq = pos.square<PAWN>(weakSide);
-
-  Value result = Value(PushClose[distance(winnerKSq, loserKSq)]);
-
-  if (   relative_rank(weakSide, pawnSq) != RANK_7
-      || distance(loserKSq, pawnSq) != 1
-      || !((FileABB | FileCBB | FileFBB | FileHBB) & pawnSq))
-      result += QueenValueEg - PawnValueEg;
-
-  return strongSide == pos.side_to_move() ? result : -result;
-}
-*/
-
-
 /// KQ vs KR.  This is almost identical to KX vs K:  We give the attacking
 /// king a bonus for having the kings close together, and for forcing the
 /// defending king towards the edge. If we also take care to avoid null move for
