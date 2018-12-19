@@ -82,20 +82,13 @@ void sync_stop();
 
 inline void init() { }
 inline void finalize() { }
-inline bool getline(std::istream& input, std::string& str) {
-
-  return static_cast<bool>(std::getline(input, str));
-}
+inline bool getline(std::istream& input, std::string& str) { return static_cast<bool>(std::getline(input, str)); }
 constexpr int size() { return 1; }
 constexpr int rank() { return 0; }
 constexpr bool is_root() { return true; }
-inline void save(Thread* thread, TTEntry* tte, Key k, Value v, Bound b, Depth d, Move m, Value ev) {
-
-  (void)thread;
-  tte->save(k, v, b, d, m, ev);
-}
+inline void save(Thread*, TTEntry* tte, Key k, Value v, Bound b, Depth d, Move m, Value ev) { tte->save(k, v, b, d, m, ev); }
 inline void pick_moves(MoveInfo&) { }
-inline void sum(uint64_t& val) { (void)val; }
+inline void sum(uint64_t& ) { }
 inline void sync_start() { }
 inline void sync_stop() { }
 
