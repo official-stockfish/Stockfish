@@ -30,15 +30,16 @@ class Book
         uint64_t key;
         uint16_t move;
         uint16_t weight;
-        uint32_t score;
+        uint16_t depth;
+        uint16_t score;
     } BookEntry;
 public:
     Book();
     ~Book();
     void init(const std::string& filename);
     void set_max_ply(int new_max_ply);
-	Move probe_root(Position& pos);
-	void probe(Position& pos, std::vector<Move>& bookmoves);
+    Move probe_root(Position& pos);
+    void probe(Position& pos, Depth depth, std::vector<Move>& bookmoves);
 private:
     size_t find_first_entry(uint64_t key, int& index_count);
     Move reconstruct_move(uint16_t book_move);

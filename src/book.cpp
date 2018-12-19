@@ -72,7 +72,7 @@ void Book::init(const std::string& filename)
     size_t nRead = fread(BookEntries, 1, filesize, fpt);
     fclose(fpt);
 
-    if (nRead != 1)
+    if (nRead != filesize)
     {
         free(BookEntries);
         BookEntries = nullptr;
@@ -112,7 +112,7 @@ Move Book::probe_root(Position& pos)
     return MOVE_NONE;
 }
 
-void Book::probe(Position& pos, std::vector<Move>& bookmoves)
+void Book::probe(Position& pos, Depth depth, std::vector<Move>& bookmoves)
 {
     if (BookEntries != nullptr && pos.game_ply() < max_book_ply)
     {
@@ -121,7 +121,10 @@ void Book::probe(Position& pos, std::vector<Move>& bookmoves)
         if (count > 0)
         {
             for (int i = 0; i < count; i++)
-                bookmoves.push_back(Move(BookEntries[index + i].move));
+            {
+                if(40 / BookEntries[index + i].weight * ONE_PLY <= depth)
+                    bookmoves.push_back(Move(BookEntries[index + i].move));
+            }
         }
     }
 }
@@ -184,5 +187,6 @@ void Book::byteswap_bookentry(BookEntry *be)
     be->key = number<uint64_t, BigEndian>(&be->key);
     be->move = number<uint16_t, BigEndian>(&be->move);
     be->weight = number<uint16_t, BigEndian>(&be->weight);
-    be->score = number<uint32_t, BigEndian>(&be->score);
+    be->depth = number<uint16_t, BigEndian>(&be->depth);
+    be->score = number<uint16_t, BigEndian>(&be->score);
 }

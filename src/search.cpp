@@ -900,7 +900,7 @@ moves_loop: // When in check, search starts from here
                                       ss->killers);
 
     std::vector<Move> bookMoves;
-    Books.probe(pos, bookMoves);
+    Books.probe(pos, depth, bookMoves);
 
     value = bestValue; // Workaround a bogus 'uninitialized' warning under gcc
 
