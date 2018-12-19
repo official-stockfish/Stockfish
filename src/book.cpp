@@ -63,7 +63,7 @@ void Book::init(const std::string& filename)
     }
 
     fseek(fpt, 0L, SEEK_END);
-    int filesize = ftell(fpt);
+    size_t filesize = ftell(fpt);
     fseek(fpt, 0L, SEEK_SET);
 
     NumBookEntries = filesize / sizeof(BookEntry);
