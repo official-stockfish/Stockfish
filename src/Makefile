@@ -360,6 +360,7 @@ endif
 ifneq (,$(findstring mpi, $(CXX)))
 	mpi = yes
 	CXXFLAGS += -DUSE_MPI -Wno-cast-qual
+        DEPENDFLAGS += -DUSE_MPI
 endif
 
 ### ==========================================================================
