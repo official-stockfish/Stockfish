@@ -232,6 +232,8 @@ void save(Thread* thread, TTEntry* tte,
   }
 }
 
+
+// TODO update to the scheme in master.. can this use aggregation of votes?
 void pick_moves(MoveInfo& mi) {
 
   MoveInfo* pMoveInfo = NULL;

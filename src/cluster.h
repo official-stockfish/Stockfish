@@ -95,7 +95,7 @@ inline void save(Thread* thread, TTEntry* tte, Key k, Value v, Bound b, Depth d,
   tte->save(k, v, b, d, m, ev);
 }
 inline void pick_moves(MoveInfo&) { }
-void sum(uint64_t& val) { }
+inline void sum(uint64_t& val) { (void)val; }
 inline void sync_start() { }
 inline void sync_stop() { }
 
