@@ -330,7 +330,7 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
 void Position::set_castling_right(Color c, Square rfrom) {
 
   Square kfrom = square<KING>(c);
-  CastlingSide cs = kfrom < rfrom ? KING_SIDE : QUEEN_SIDE;
+  CastlingSide cs = CastlingSide(kfrom > rfrom);
   CastlingRight cr = (c | cs);
 
   st->castlingRights |= cr;

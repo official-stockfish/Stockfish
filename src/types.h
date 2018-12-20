@@ -361,7 +361,7 @@ constexpr Piece operator~(Piece pc) {
 }
 
 constexpr CastlingRight operator|(Color c, CastlingSide s) {
-  return CastlingRight(WHITE_OO << ((s == QUEEN_SIDE) + 2 * c));
+  return CastlingRight(1 << (s + 2 * c));
 }
 
 constexpr Value mate_in(int ply) {
