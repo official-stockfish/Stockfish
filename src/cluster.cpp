@@ -144,7 +144,7 @@ void sync_start() {
 void sync_stop() {
 
   // update the nodeCount, non-blocking collective,
-  // we don't quite now how many of those we issue on each rank, there might be pending a pending one on some ranks
+  // we don't quite know how many of those we issue on each rank, there might be pending a pending one on some ranks
   int flag;
   MPI_Test(&reqNodesSearched, &flag, MPI_STATUS_IGNORE);
   if (flag)
