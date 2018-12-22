@@ -44,6 +44,7 @@ static MPI_Request reqStop = MPI_REQUEST_NULL;
 static uint64_t nodesSearchedOthers = 0;
 static uint64_t nodesSearchedSend = 0;
 static uint64_t nodesSearchedRecv = 0;
+static uint64_t nodesCallCounter = 0;
 static MPI_Request reqNodesSearched = MPI_REQUEST_NULL;
 
 static MPI_Comm InputComm = MPI_COMM_NULL;
@@ -85,6 +86,23 @@ void init() {
 }
 
 void finalize() {
+
+  // finalize outstanding messages of the nodes counter. We might have issued one call less than needed on some ranks.
+  uint64_t globalCounter;
+  MPI_Allreduce(&nodesCallCounter, &globalCounter, 1, MPI_UINT64_T, MPI_MAX, MoveComm);
+  if (nodesCallCounter < globalCounter)
+     MPI_Iallreduce(&nodesSearchedSend, &nodesSearchedRecv, 1, MPI_UINT64_T,
+                    MPI_SUM, MoveComm, &reqNodesSearched);
+  MPI_Wait(&reqNodesSearched, MPI_STATUS_IGNORE);
+  MPI_Barrier(MoveComm);
+
+  // free data tyes and communicators
+  MPI_Type_free(&MIDatatype);
+
+  MPI_Comm_free(&InputComm);
+  MPI_Comm_free(&TTComm);
+  MPI_Comm_free(&MoveComm);
+  MPI_Comm_free(&StopComm);
 
   MPI_Finalize();
 }
@@ -143,8 +161,7 @@ void sync_start() {
 
 void sync_stop() {
 
-  // update the nodeCount, non-blocking collective,
-  // we don't quite know how many of those we issue on each rank, there might be pending a pending one on some ranks
+  // update the nodeCount, using a non-blocking collective
   int flag;
   MPI_Test(&reqNodesSearched, &flag, MPI_STATUS_IGNORE);
   if (flag)
@@ -153,6 +170,7 @@ void sync_stop() {
      nodesSearchedSend = Threads.nodes_searched();
      MPI_Iallreduce(&nodesSearchedSend, &nodesSearchedRecv, 1, MPI_UINT64_T,
                     MPI_SUM, MoveComm, &reqNodesSearched);
+     ++nodesCallCounter;
   }
 
   // Handle stop signal.
