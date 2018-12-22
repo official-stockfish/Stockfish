@@ -303,7 +303,11 @@ void MainThread::search() {
 
 void Thread::search() {
 
-  Stack stack[MAX_PLY+8], *ss = stack+5; // To reference from (ss-5) to (ss+2)
+  // To allow access to (ss-5) up to (ss+2), the stack must be oversized.
+  // The former is needed to allow update_continuation_histories(ss-1, ...),
+  // which accesses its argument at ss-4, also near the root.
+  // The latter is needed for statScores and killer initialization.
+  Stack stack[MAX_PLY+8], *ss = stack+5;
   Move  pv[MAX_PLY+1];
   Value bestValue, alpha, beta, delta;
   Move  lastBestMove = MOVE_NONE;
