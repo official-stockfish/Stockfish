@@ -1,6 +1,6 @@
 language: cpp
 sudo: required
-dist: trusty
+dist: xenial
 
 matrix:
   include:
@@ -9,21 +9,21 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['g++-7', 'g++-7-multilib', 'g++-multilib', 'valgrind', 'expect', 'curl']
+          packages: ['g++-8', 'g++-8-multilib', 'g++-multilib', 'valgrind', 'expect', 'curl']
       env:
-        - COMPILER=g++-7
+        - COMPILER=g++-8
         - COMP=gcc
 
     - os: linux
       compiler: clang
       addons:
         apt:
-          sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-5.0']
-          packages: ['clang-5.0', 'llvm-5.0-dev', 'g++-multilib', 'valgrind', 'expect', 'curl']
+          sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-xenial-6.0']
+          packages: ['clang-6.0', 'llvm-6.0-dev', 'g++-multilib', 'valgrind', 'expect', 'curl']
       env:
-        - COMPILER=clang++-5.0
+        - COMPILER=clang++-6.0
         - COMP=clang
-        - LDFLAGS=-fuse-ld=gold
+        - LDFLAGS=-fuse-ld=lld
 
     - os: osx
       compiler: gcc
@@ -34,7 +34,7 @@ matrix:
     - os: osx
       compiler: clang
       env:
-        - COMPILER=clang++ V='Apple LLVM 6.0' # Apple LLVM version 6.0 (clang-600.0.54) (based on LLVM 3.5svn)
+        - COMPILER=clang++ V='Apple LLVM 9.4.1' # Apple LLVM version 9.1.0 (clang-902.0.39.2)
         - COMP=clang
 
 branches:
@@ -69,6 +69,6 @@ script:
   #
   # Sanitizer
   #
-  # Use g++-7 as a proxy for having sanitizers, might need revision as they become available for more recent versions of clang/gcc
-  - if [[ "$COMPILER" == "g++-7" ]]; then make clean && make -j2 ARCH=x86-64 sanitize=undefined optimize=no debug=yes build > /dev/null && ../tests/instrumented.sh --sanitizer-undefined; fi
-  - if [[ "$COMPILER" == "g++-7" ]]; then make clean && make -j2 ARCH=x86-64 sanitize=thread    optimize=no debug=yes build > /dev/null && ../tests/instrumented.sh --sanitizer-thread; fi
+  # Use g++-8 as a proxy for having sanitizers, might need revision as they become available for more recent versions of clang/gcc
+  - if [[ "$COMPILER" == "g++-8" ]]; then make clean && make -j2 ARCH=x86-64 sanitize=undefined optimize=no debug=yes build > /dev/null && ../tests/instrumented.sh --sanitizer-undefined; fi
+  - if [[ "$COMPILER" == "g++-8" ]]; then make clean && make -j2 ARCH=x86-64 sanitize=thread    optimize=no debug=yes build > /dev/null && ../tests/instrumented.sh --sanitizer-thread; fi
