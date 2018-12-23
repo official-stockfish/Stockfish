@@ -66,9 +66,9 @@ endif
 ### Uncomment out the two lines below for additional features for stockfish, such as play by ELO ,
 ### cerebellum book, tactical mode, variety play and additional GUI options.
 	ifeq ($(COMP),mingw)
-		EXE = stockfish-10$(SUFFIX1)$(SUFFIX2).exe
+		EXE = stockfish-20181218$(SUFFIX1)$(SUFFIX2).exe
 	else
-		EXE = stockfish-10$(SUFFIX1)$(SUFFIX2)
+		EXE = stockfish-20181218$(SUFFIX1)$(SUFFIX2)
 	endif
 endif
 
