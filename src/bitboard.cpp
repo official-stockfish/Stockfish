@@ -199,14 +199,14 @@ Bitboard BishopTable[0x1480]; // To store bishop attacks
 void init_magics(Bitboard table[], Magic magics[], Direction directions[]);
 #endif
 
-// popcount16() counts the non-zero bits using SWAR-Popcount algorithm
+  // popcount16() counts the non-zero bits using SWAR-Popcount algorithm
 
-unsigned popcount16(unsigned u) {
+  unsigned popcount16(unsigned u) {
     u -= (u >> 1) & 0x5555U;
     u = ((u >> 2) & 0x3333U) + (u & 0x3333U);
     u = ((u >> 4) + u) & 0x0F0FU;
     return (u * 0x0101U) >> 8;
-}
+  }
 }
 
 
@@ -215,17 +215,17 @@ unsigned popcount16(unsigned u) {
 
 const std::string Bitboards::pretty(Bitboard b) {
 
-    std::string s = "+---+---+---+---+---+---+---+---+\n";
+  std::string s = "+---+---+---+---+---+---+---+---+\n";
 
-    for (Rank r = RANK_8; r >= RANK_1; --r)
-    {
-        for (File f = FILE_A; f <= FILE_H; ++f)
-            s += b & make_square(f, r) ? "| X " : "|   ";
+  for (Rank r = RANK_8; r >= RANK_1; --r)
+  {
+      for (File f = FILE_A; f <= FILE_H; ++f)
+          s += b & make_square(f, r) ? "| X " : "|   ";
 
-        s += "|\n+---+---+---+---+---+---+---+---+\n";
-    }
+      s += "|\n+---+---+---+---+---+---+---+---+\n";
+  }
 
-    return s;
+  return s;
 }
 
 
@@ -234,62 +234,60 @@ const std::string Bitboards::pretty(Bitboard b) {
 
 void Bitboards::init() {
 
-    for (unsigned i = 0; i < (1 << 16); ++i)
-        PopCnt16[i] = (uint8_t) popcount16(i);
+  for (unsigned i = 0; i < (1 << 16); ++i)
+      PopCnt16[i] = (uint8_t) popcount16(i);
 
-    for (Square s = SQ_A1; s <= SQ_H8; ++s)
-        SquareBB[s] = (1ULL << s);
+  for (Square s = SQ_A1; s <= SQ_H8; ++s)
+      SquareBB[s] = (1ULL << s);
 
-    for (File f = FILE_A; f <= FILE_H; ++f)
-        FileBB[f] = f > FILE_A ? FileBB[f - 1] << 1 : FileABB;
+  for (File f = FILE_A; f <= FILE_H; ++f)
+      FileBB[f] = f > FILE_A ? FileBB[f - 1] << 1 : FileABB;
 
-    for (Rank r = RANK_1; r <= RANK_8; ++r)
-        RankBB[r] = r > RANK_1 ? RankBB[r - 1] << 8 : Rank1BB;
+  for (Rank r = RANK_1; r <= RANK_8; ++r)
+      RankBB[r] = r > RANK_1 ? RankBB[r - 1] << 8 : Rank1BB;
 
-    for (File f = FILE_A; f <= FILE_H; ++f)
-        AdjacentFilesBB[f] = (f > FILE_A ? FileBB[f - 1] : 0) | (f < FILE_H ? FileBB[f + 1] : 0);
+  for (File f = FILE_A; f <= FILE_H; ++f)
+      AdjacentFilesBB[f] = (f > FILE_A ? FileBB[f - 1] : 0) | (f < FILE_H ? FileBB[f + 1] : 0);
 
-    for (Rank r = RANK_1; r < RANK_8; ++r)
-        ForwardRanksBB[WHITE][r] = ~(ForwardRanksBB[BLACK][r + 1] = ForwardRanksBB[BLACK][r] | RankBB[r]);
+  for (Rank r = RANK_1; r < RANK_8; ++r)
+      ForwardRanksBB[WHITE][r] = ~(ForwardRanksBB[BLACK][r + 1] = ForwardRanksBB[BLACK][r] | RankBB[r]);
 
-    for (Color c = WHITE; c <= BLACK; ++c)
-        for (Square s = SQ_A1; s <= SQ_H8; ++s)
-        {
-            ForwardFileBB [c][s] = ForwardRanksBB[c][rank_of(s)] & FileBB[file_of(s)];
-            PawnAttackSpan[c][s] = ForwardRanksBB[c][rank_of(s)] & AdjacentFilesBB[file_of(s)];
-            PassedPawnMask[c][s] = ForwardFileBB [c][s] | PawnAttackSpan[c][s];
-        }
+  for (Color c = WHITE; c <= BLACK; ++c)
+      for (Square s = SQ_A1; s <= SQ_H8; ++s)
+      {
+          ForwardFileBB [c][s] = ForwardRanksBB[c][rank_of(s)] & FileBB[file_of(s)];
+          PawnAttackSpan[c][s] = ForwardRanksBB[c][rank_of(s)] & AdjacentFilesBB[file_of(s)];
+          PassedPawnMask[c][s] = ForwardFileBB [c][s] | PawnAttackSpan[c][s];
+      }
 
-    for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1)
-        for (Square s2 = SQ_A1; s2 <= SQ_H8; ++s2)
-            if (s1 != s2)
-            {
-                SquareDistance[s1][s2] = std::max(distance<File>(s1, s2), distance<Rank>(s1, s2));
-                DistanceRingBB[s1][SquareDistance[s1][s2]] |= s2;
-            }
+  for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1)
+      for (Square s2 = SQ_A1; s2 <= SQ_H8; ++s2)
+          if (s1 != s2)
+          {
+              SquareDistance[s1][s2] = std::max(distance<File>(s1, s2), distance<Rank>(s1, s2));
+              DistanceRingBB[s1][SquareDistance[s1][s2]] |= s2;
+          }
 
-    int steps[][5] = { {}, { 7, 9 }, { 6, 10, 15, 17 }, {}, {}, {}, { 1, 7, 8, 9 } };
+  int steps[][5] = { {}, { 7, 9 }, { 6, 10, 15, 17 }, {}, {}, {}, { 1, 7, 8, 9 } };
 
-    for (Color c = WHITE; c <= BLACK; ++c)
-        for (PieceType pt : {
-                    PAWN, KNIGHT, KING
-                })
-            for (Square s = SQ_A1; s <= SQ_H8; ++s)
-                for (int i = 0; steps[pt][i]; ++i)
-                {
-                    Square to = s + Direction(c == WHITE ? steps[pt][i] : -steps[pt][i]);
+  for (Color c = WHITE; c <= BLACK; ++c)
+      for (PieceType pt : { PAWN, KNIGHT, KING })
+          for (Square s = SQ_A1; s <= SQ_H8; ++s)
+              for (int i = 0; steps[pt][i]; ++i)
+              {
+                  Square to = s + Direction(c == WHITE ? steps[pt][i] : -steps[pt][i]);
 
-                    if (is_ok(to) && distance(s, to) < 3)
-                    {
-                        if (pt == PAWN)
-                            PawnAttacks[c][s] |= to;
-                        else
-                            PseudoAttacks[pt][s] |= to;
-                    }
-                }
+                  if (is_ok(to) && distance(s, to) < 3)
+                  {
+                      if (pt == PAWN)
+                          PawnAttacks[c][s] |= to;
+                      else
+                          PseudoAttacks[pt][s] |= to;
+                  }
+              }
 
-    Direction RookDirections[] = { NORTH, EAST, SOUTH, WEST };
-    Direction BishopDirections[] = { NORTH_EAST, SOUTH_EAST, SOUTH_WEST, NORTH_WEST };
+  Direction RookDirections[] = { NORTH, EAST, SOUTH, WEST };
+  Direction BishopDirections[] = { NORTH_EAST, SOUTH_EAST, SOUTH_WEST, NORTH_WEST };
 
 #ifdef Maverick ////Niklas Fiekas fast magics
     if (HasPext)
@@ -317,36 +315,34 @@ void Bitboards::init() {
     init_magics(BishopTable, BishopMagics, BishopDirections);
 #endif
 
-    for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1)
-    {
-        PseudoAttacks[QUEEN][s1]  = PseudoAttacks[BISHOP][s1] = attacks_bb<BISHOP>(s1, 0);
-        PseudoAttacks[QUEEN][s1] |= PseudoAttacks[  ROOK][s1] = attacks_bb<  ROOK>(s1, 0);
+  for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1)
+  {
+      PseudoAttacks[QUEEN][s1]  = PseudoAttacks[BISHOP][s1] = attacks_bb<BISHOP>(s1, 0);
+      PseudoAttacks[QUEEN][s1] |= PseudoAttacks[  ROOK][s1] = attacks_bb<  ROOK>(s1, 0);
 
-        for (PieceType pt : {
-                    BISHOP, ROOK
-                })
-            for (Square s2 = SQ_A1; s2 <= SQ_H8; ++s2)
-            {
-                if (!(PseudoAttacks[pt][s1] & s2))
-                    continue;
+      for (PieceType pt : { BISHOP, ROOK })
+          for (Square s2 = SQ_A1; s2 <= SQ_H8; ++s2)
+          {
+              if (!(PseudoAttacks[pt][s1] & s2))
+                  continue;
 
-                LineBB[s1][s2] = (attacks_bb(pt, s1, 0) & attacks_bb(pt, s2, 0)) | s1 | s2;
-                BetweenBB[s1][s2] = attacks_bb(pt, s1, SquareBB[s2]) & attacks_bb(pt, s2, SquareBB[s1]);
-            }
-    }
+              LineBB[s1][s2] = (attacks_bb(pt, s1, 0) & attacks_bb(pt, s2, 0)) | s1 | s2;
+              BetweenBB[s1][s2] = attacks_bb(pt, s1, SquareBB[s2]) & attacks_bb(pt, s2, SquareBB[s1]);
+          }
+  }
 }
 
 
 namespace {
 
-Bitboard sliding_attack(Direction directions[], Square sq, Bitboard occupied) {
+  Bitboard sliding_attack(Direction directions[], Square sq, Bitboard occupied) {
 
     Bitboard attack = 0;
 
     for (int i = 0; i < 4; ++i)
         for (Square s = sq + directions[i];
-                is_ok(s) && distance(s, s - directions[i]) == 1;
-                s += directions[i])
+             is_ok(s) && distance(s, s - directions[i]) == 1;
+             s += directions[i])
         {
             attack |= s;
 
@@ -399,8 +395,7 @@ void init_magics(Bitboard table[], Magic magics[], Direction directions[]) {
 
     // Optimal PRNG seeds to pick the correct magics in the shortest time
     int seeds[][RANK_NB] = { { 8977, 44560, 54343, 38998,  5731, 95205, 104912, 17020 },
-        {  728, 10316, 55013, 32803, 12281, 15100,  16645,   255 }
-    };
+                             {  728, 10316, 55013, 32803, 12281, 15100,  16645,   255 } };
 
     Bitboard occupancy[4096], reference[4096], edges, b;
     int epoch[4096] = {}, cnt = 0, size = 0;

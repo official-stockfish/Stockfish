@@ -24,8 +24,10 @@
 ### ==========================================================================
 
 ### Executable name
-### McCain bench nodes 4828166
-### stockfish bench nodes 3939338
+### McCain bench nodes 3983145
+### McCain Matefinder bench nodes 4466798
+### stockfish bench nodes 3393939 > based on this commit: Apply refuted main killer penalty also on early TT cut-offs. #1878 clsoed on 12/18/2018
+### stockfish matefinder bench nodes 5153467
 
 
 ####  Always leave the three lines below as is (any subsequent defines will override)
@@ -36,44 +38,38 @@ DSUFFIX1=
 DSUFFIX2=
 ### Uncomment the line below for McCain, comment out for Stockfish
 VERSION=maverick
-
+####
 ### should be no reason to change anything below here!
-### Only McCain and stockfish with feature 1 will be publicly distributed a this time,
-
+### Only McCain and stockfish with feature 1 will be publicly distributed a this time, although feel free to play with privately
+### features include : Cerebellum book functionality, play by Elo (UCI limit strength), keyboard shortcuts and a few other items
 FEATURE1=add_features
 ### FEATURE2=matefinder
 ifeq ($(FEATURE1),add_features)
-CXXFLAGS += -DAdd_Features
-FILES = with_c_book
-SUFFIX1 = 
+	CXXFLAGS += -DAdd_Features
+	FILES = with_c_book
+	SUFFIX1 =
 endif
-
 ifeq ($(FEATURE2),matefinder)
-CXXFLAGS += -DMatefinder
-SUFFIX2 = -m
+	CXXFLAGS += -DMatefinder
+	SUFFIX2 = -m
 endif
-
 ifeq ($(VERSION),maverick)
-CXXFLAGS += -DMaverick
-ifeq ($(COMP),mingw)
-EXE = McCain-X$(SUFFIX1)$(SUFFIX2).exe
-else
-EXE = McCain-X$(SUFFIX1)$(SUFFIX2)
+	CXXFLAGS += -DMaverick
+	ifeq ($(COMP),mingw)
+		EXE = McCain-X$(SUFFIX1)$(SUFFIX2).exe
+	else
+		EXE = McCain-X$(SUFFIX1)$(SUFFIX2)
 endif
-endif
-inf. ($(VERSION),maverick)
-VERSION=Stockfish
-
+	else
 ### Note: Comment below is for for building cur-dev stockfish with the features noted.
-### such as play by ELO , cerebellum book, tactical mode, variety play and additional 
-### GUI options.McCain always include those features
-
-ifeq ($(VERSION),stockfish)
-if ($(COMP),mingw)
-EXE = stockfish-10$(SUFFIX1)$(SUFFIX2).exe
-else
-EXE = stockfish-10$(SUFFIX1)$(SUFFIX2)
-endif
+### McCain always include those features
+### Uncomment out the two lines below for additional features for stockfish, such as play by ELO ,
+### cerebellum book, tactical mode, variety play and additional GUI options.
+	ifeq ($(COMP),mingw)
+		EXE = stockfish-10$(SUFFIX1)$(SUFFIX2).exe
+	else
+		EXE = stockfish-10$(SUFFIX1)$(SUFFIX2)
+	endif
 endif
 
 ### Installation dir definitions
@@ -86,13 +82,13 @@ PGOBENCH2 = ./$(EXE) bench 16 2 8
 
 ### Object files
 ifeq ($(FILES),with_c_book)
-OBJS = benchmark.o bitbase.o bitboard.o endgame.o evaluate.o main.o \
-material.o misc.o movegen.o movepick.o pawns.o position.o psqt.o \
-search.o thread.o timeman.o tt.o uci.o ucioption.o polybook.o syzygy/tbprobe.o
-else
-OBJS = benchmark.o bitbase.o bitboard.o endgame.o evaluate.o main.o \
+	OBJS = benchmark.o bitbase.o bitboard.o endgame.o evaluate.o main.o \
 	material.o misc.o movegen.o movepick.o pawns.o position.o psqt.o \
-	search.o thread.o timeman.o tt.o uci.o ucioption.o syzygy/tbprobe.o
+	search.o thread.o timeman.o tt.o uci.o ucioption.o polybook.o syzygy/tbprobe.o
+else
+	OBJS = benchmark.o bitbase.o bitboard.o endgame.o evaluate.o main.o \
+		material.o misc.o movegen.o movepick.o pawns.o position.o psqt.o \
+		search.o thread.o timeman.o tt.o uci.o ucioption.o syzygy/tbprobe.o
 endif
 ### Establish the operating system name
 KERNEL = $(shell uname -s)
@@ -440,7 +436,7 @@ help:
 	@echo ""
 	@echo "To compile stockfish, uncomment this line in the makefile: "
 	@echo "'### VERSION=maverick' by remvoing the 3 #(pound signs)"
-	@echo "then type: 'make <target> ARCH=arch [COMP=compiler] [COMPCXX=cxx]'"
+	@echo "then type: 'make <target> ARCH=<arch> [COMP=compiler] [COMPCXX=cxx]'"
 	@echo ""
 	@echo "Supported targets:"
 	@echo ""

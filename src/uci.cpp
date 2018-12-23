@@ -38,6 +38,17 @@ using namespace std;
 
 extern vector<string> setup_bench(const Position&, istream&);
 
+
+#ifdef Maverick
+namespace Modify {
+
+int ScoreMod = (Options["Score Modifier"]);
+	
+}
+
+namespace MOD = Modify;
+#endif
+
 namespace {
 
 // FEN string of the initial position, normal chess
@@ -186,9 +197,7 @@ void bench(Position& pos, istream& args, StateListPtr& states) {
     uint64_t num, nodes = 0, cnt = 1;
 
     vector<string> list = setup_bench(pos, args);
-    num = count_if(list.begin(), list.end(), [](string s) {
-        return s.find("go ") == 0;
-    });
+    num = count_if(list.begin(), list.end(), [](string s) { return s.find("go ") == 0; });
 
     TimePoint elapsed = now();
 
@@ -291,13 +300,13 @@ void UCI::loop(int argc, char* argv[]) {
         else if (token == "position")
         {
             position(pos, is, states);
-            if (Options["Clear Search"])
+            if (Options["Clear_Search"])
                 Search::clear();
         }
         else if (token == "p")
         {
             position(pos, is, states);
-            if (Options["Clear Search"])
+            if (Options["Clear_Search"])
                 Search::clear();
         }
 #else
@@ -336,7 +345,13 @@ string UCI::value(Value v) {
     stringstream ss;
 
     if (abs(v) < VALUE_MATE - MAX_PLY)
-        ss << "cp " << v * 100 / PawnValueEg;
+#ifdef Maverick
+		ss << "cp " << (v * 67 / PawnValueEg >  98 ? (v * 67 / PawnValueEg) + 115
+					  : v * 67 / PawnValueEg < -98 ? (v * 67 / PawnValueEg) - 115
+					  : v * 67 / PawnValueEg);
+#else
+        ss << "cp " << (v * 100 / PawnValueEg);
+#endif
     else
         ss << "mate " << (v > 0 ? VALUE_MATE - v + 1 : -VALUE_MATE - v) / 2;
 

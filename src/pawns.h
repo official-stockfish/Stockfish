@@ -34,61 +34,47 @@ namespace Pawns {
 
 struct Entry {
 
-    Score pawn_score(Color c) const {
-        return scores[c];
-    }
-    Bitboard pawn_attacks(Color c) const {
-        return pawnAttacks[c];
-    }
-    Bitboard passed_pawns(Color c) const {
-        return passedPawns[c];
-    }
-    Bitboard pawn_attacks_span(Color c) const {
-        return pawnAttacksSpan[c];
-    }
-    int weak_unopposed(Color c) const {
-        return weakUnopposed[c];
-    }
-    int pawn_asymmetry() const {
-        return asymmetry;
-    }
-    int open_files() const {
-        return openFiles;
-    }
+  Score pawn_score(Color c) const { return scores[c]; }
+  Bitboard pawn_attacks(Color c) const { return pawnAttacks[c]; }
+  Bitboard passed_pawns(Color c) const { return passedPawns[c]; }
+  Bitboard pawn_attacks_span(Color c) const { return pawnAttacksSpan[c]; }
+  int weak_unopposed(Color c) const { return weakUnopposed[c]; }
+  int pawn_asymmetry() const { return asymmetry; }
+  int open_files() const { return openFiles; }
 
-    int semiopen_file(Color c, File f) const {
-        return semiopenFiles[c] & (1 << f);
-    }
+  int semiopen_file(Color c, File f) const {
+    return semiopenFiles[c] & (1 << f);
+  }
 
-    int pawns_on_same_color_squares(Color c, Square s) const {
-        return pawnsOnSquares[c][bool(DarkSquares & s)];
-    }
+  int pawns_on_same_color_squares(Color c, Square s) const {
+    return pawnsOnSquares[c][bool(DarkSquares & s)];
+  }
 
-    template<Color Us>
-    Score king_safety(const Position& pos) {
-        return  kingSquares[Us] == pos.square<KING>(Us) && castlingRights[Us] == pos.can_castle(Us)
-                 ? kingSafety[Us] : (kingSafety[Us] = do_king_safety<Us>(pos));
-    }
+  template<Color Us>
+  Score king_safety(const Position& pos) {
+    return  kingSquares[Us] == pos.square<KING>(Us) && castlingRights[Us] == pos.castling_rights(Us)
+          ? kingSafety[Us] : (kingSafety[Us] = do_king_safety<Us>(pos));
+  }
 
-    template<Color Us>
-    Score do_king_safety(const Position& pos);
+  template<Color Us>
+  Score do_king_safety(const Position& pos);
 
-    template<Color Us>
-    Value evaluate_shelter(const Position& pos, Square ksq);
+  template<Color Us>
+  Value evaluate_shelter(const Position& pos, Square ksq);
 
-    Key key;
-    Score scores[COLOR_NB];
-    Bitboard passedPawns[COLOR_NB];
-    Bitboard pawnAttacks[COLOR_NB];
-    Bitboard pawnAttacksSpan[COLOR_NB];
-    Square kingSquares[COLOR_NB];
-    Score kingSafety[COLOR_NB];
-    int weakUnopposed[COLOR_NB];
-    int castlingRights[COLOR_NB];
-    int semiopenFiles[COLOR_NB];
-    int pawnsOnSquares[COLOR_NB][COLOR_NB]; // [color][light/dark squares]
-    int asymmetry;
-    int openFiles;
+  Key key;
+  Score scores[COLOR_NB];
+  Bitboard passedPawns[COLOR_NB];
+  Bitboard pawnAttacks[COLOR_NB];
+  Bitboard pawnAttacksSpan[COLOR_NB];
+  Square kingSquares[COLOR_NB];
+  Score kingSafety[COLOR_NB];
+  int weakUnopposed[COLOR_NB];
+  int castlingRights[COLOR_NB];
+  int semiopenFiles[COLOR_NB];
+  int pawnsOnSquares[COLOR_NB][COLOR_NB]; // [color][light/dark squares]
+  int asymmetry;
+  int openFiles;
 };
 
 typedef HashTable<Entry, 16384> Table;

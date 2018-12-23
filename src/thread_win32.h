@@ -50,21 +50,13 @@
 /// machinery and are modeled after the corresponding C++11 classes.
 
 struct Mutex {
-    Mutex() {
-        InitializeCriticalSection(&cs);
-    }
-    ~Mutex() {
-        DeleteCriticalSection(&cs);
-    }
-    void lock() {
-        EnterCriticalSection(&cs);
-    }
-    void unlock() {
-        LeaveCriticalSection(&cs);
-    }
+  Mutex() { InitializeCriticalSection(&cs); }
+ ~Mutex() { DeleteCriticalSection(&cs); }
+  void lock() { EnterCriticalSection(&cs); }
+  void unlock() { LeaveCriticalSection(&cs); }
 
 private:
-    CRITICAL_SECTION cs;
+  CRITICAL_SECTION cs;
 };
 
 typedef std::condition_variable_any ConditionVariable;

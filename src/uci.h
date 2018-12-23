@@ -80,4 +80,5 @@ Move to_move(const Position& pos, std::string& str);
 
 extern UCI::OptionsMap Options;
 
+
 #endif // #ifndef UCI_H_INCLUDED

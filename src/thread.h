@@ -43,45 +43,41 @@
 
 class Thread {
 
-    Mutex mutex;
-    ConditionVariable cv;
-    size_t idx;
-    bool exit = false, searching = true; // Set before starting std::thread
-    std::thread stdThread;
+  Mutex mutex;
+  ConditionVariable cv;
+  size_t idx;
+  bool exit = false, searching = true; // Set before starting std::thread
+  std::thread stdThread;
 
 public:
-    explicit Thread(size_t);
-    virtual ~Thread();
-    virtual void search();
-    void clear();
-    void idle_loop();
-    void start_searching();
-    void wait_for_search_finished();
+  explicit Thread(size_t);
+  virtual ~Thread();
+  virtual void search();
+  void clear();
+  void idle_loop();
+  void start_searching();
+  void wait_for_search_finished();
 
-    Pawns::Table pawnsTable;
-    Material::Table materialTable;
-    Endgames endgames;
-    size_t pvIdx, pvLast;
-#ifdef Maverick //  Gunther Demetz zugzwangSolver
-    int selDepth, nmpMinPly, zugzwangMates;
-#else
-#ifdef Matefinder //  Gunther Demetz zugzwangSolver
+  Pawns::Table pawnsTable;
+  Material::Table materialTable;
+  Endgames endgames;
+  size_t pvIdx, pvLast;
+#if defined (Matefinder) || (Maverick) //  Gunther Demetz zugzwangSolver
     int selDepth, nmpMinPly, zugzwangMates;
 #else
     int selDepth, nmpMinPly;
 #endif
-#endif
-    Color nmpColor;
-    std::atomic<uint64_t> nodes, tbHits;
+  Color nmpColor;
+  std::atomic<uint64_t> nodes, tbHits;
 
-    Position rootPos;
-    Search::RootMoves rootMoves;
-    Depth rootDepth, completedDepth;
-    CounterMoveHistory counterMoves;
-    ButterflyHistory mainHistory;
-    CapturePieceToHistory captureHistory;
-    ContinuationHistory continuationHistory;
-    Score contempt;
+  Position rootPos;
+  Search::RootMoves rootMoves;
+  Depth rootDepth, completedDepth;
+  CounterMoveHistory counterMoves;
+  ButterflyHistory mainHistory;
+  CapturePieceToHistory captureHistory;
+  ContinuationHistory continuationHistory;
+  Score contempt;
 };
 
 
@@ -89,14 +85,14 @@ public:
 
 struct MainThread : public Thread {
 
-    using Thread::Thread;
+  using Thread::Thread;
 
-    void search() override;
-    void check_time();
+  void search() override;
+  void check_time();
 
-    double bestMoveChanges, previousTimeReduction;
-    Value previousScore;
-    int callsCnt;
+  double bestMoveChanges, previousTimeReduction;
+  Value previousScore;
+  int callsCnt;
 };
 
 
@@ -106,32 +102,26 @@ struct MainThread : public Thread {
 
 struct ThreadPool : public std::vector<Thread*> {
 
-    void start_thinking(Position&, StateListPtr&, const Search::LimitsType&, bool = false);
-    void clear();
-    void set(size_t);
+  void start_thinking(Position&, StateListPtr&, const Search::LimitsType&, bool = false);
+  void clear();
+  void set(size_t);
 
-    MainThread* main()        const {
-        return static_cast<MainThread*>(front());
-    }
-    uint64_t nodes_searched() const {
-        return accumulate(&Thread::nodes);
-    }
-    uint64_t tb_hits()        const {
-        return accumulate(&Thread::tbHits);
-    }
+  MainThread* main()        const { return static_cast<MainThread*>(front()); }
+  uint64_t nodes_searched() const { return accumulate(&Thread::nodes); }
+  uint64_t tb_hits()        const { return accumulate(&Thread::tbHits); }
 
-    std::atomic_bool stop, ponder, stopOnPonderhit;
+  std::atomic_bool stop, ponder, stopOnPonderhit;
 
 private:
-    StateListPtr setupStates;
+  StateListPtr setupStates;
 
-    uint64_t accumulate(std::atomic<uint64_t> Thread::* member) const {
+  uint64_t accumulate(std::atomic<uint64_t> Thread::* member) const {
 
-        uint64_t sum = 0;
-        for (Thread* th : *this)
-            sum += (th->*member).load(std::memory_order_relaxed);
-        return sum;
-    }
+    uint64_t sum = 0;
+    for (Thread* th : *this)
+        sum += (th->*member).load(std::memory_order_relaxed);
+    return sum;
+  }
 };
 
 extern ThreadPool Threads;
