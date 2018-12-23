@@ -85,7 +85,7 @@ void TranspositionTable::clear() {
 
   std::vector<std::thread> threads;
 
-  for (size_t idx = 0; idx < Options["Threads"]; idx++)
+  for (size_t idx = 0; idx < Options["Threads"]; ++idx)
   {
       threads.emplace_back([this, idx]() {
 
@@ -148,12 +148,9 @@ TTEntry* TranspositionTable::probe(const Key key, bool& found) const {
 int TranspositionTable::hashfull() const {
 
   int cnt = 0;
-  for (int i = 0; i < 1000 / ClusterSize; i++)
-  {
-      const TTEntry* tte = &table[i].entry[0];
-      for (int j = 0; j < ClusterSize; j++)
-          if ((tte[j].genBound8 & 0xFC) == generation8)
-              cnt++;
-  }
-  return cnt;
+  for (int i = 0; i < 1000 / ClusterSize; ++i)
+      for (int j = 0; j < ClusterSize; ++j)
+          cnt += (table[i].entry[j].genBound8 & 0xFC) == generation8;
+
+  return cnt * 1000 / (ClusterSize * (1000 / ClusterSize));
 }
