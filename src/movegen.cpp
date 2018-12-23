@@ -28,6 +28,7 @@ namespace {
   template<Color Us, CastlingSide Cs, bool Checks, bool Chess960>
   ExtMove* generate_castling(const Position& pos, ExtMove* moveList) {
 
+    constexpr Color Them = (Us == WHITE ? BLACK : WHITE);
     constexpr CastlingRight Cr = Us | Cs;
     constexpr bool KingSide = (Cs == KING_SIDE);
 
@@ -39,7 +40,7 @@ namespace {
     Square kfrom = pos.square<KING>(Us);
     Square rfrom = pos.castling_rook_square(Cr);
     Square kto = relative_square(Us, KingSide ? SQ_G1 : SQ_C1);
-    Bitboard enemies = pos.pieces(~Us);
+    Bitboard enemies = pos.pieces(Them);
 
     assert(!pos.checkers());
 
@@ -53,7 +54,7 @@ namespace {
     // Because we generate only legal castling moves we need to verify that
     // when moving the castling rook we do not discover some hidden checker.
     // For instance an enemy queen in SQ_A1 when castling rook is in SQ_B1.
-    if (Chess960 && (attacks_bb<ROOK>(kto, pos.pieces() ^ rfrom) & pos.pieces(~Us, ROOK, QUEEN)))
+    if (Chess960 && (attacks_bb<ROOK>(kto, pos.pieces() ^ rfrom) & pos.pieces(Them, ROOK, QUEEN)))
         return moveList;
 
     Move m = make<CASTLING>(kfrom, rfrom);
@@ -93,8 +94,7 @@ namespace {
   template<Color Us, GenType Type>
   ExtMove* generate_pawn_moves(const Position& pos, ExtMove* moveList, Bitboard target) {
 
-    // Compute our parametrized parameters at compile time, named according to
-    // the point of view of white side.
+    // Compute some compile time parameters relative to the white side
     constexpr Color     Them     = (Us == WHITE ? BLACK      : WHITE);
     constexpr Bitboard  TRank7BB = (Us == WHITE ? Rank7BB    : Rank2BB);
     constexpr Bitboard  TRank3BB = (Us == WHITE ? Rank3BB    : Rank6BB);
