@@ -7,7 +7,7 @@ branches:
     - appveyor
 
 # Operating system (build VM template)
-os: Visual Studio 2015
+os: Visual Studio 2017
 
 # Build platform, i.e. x86, x64, AnyCPU. This setting is optional.
 platform:
@@ -51,7 +51,7 @@ before_build:
       $b = git log HEAD | sls "\b[Bb]ench[ :]+[0-9]{7}" | select -first 1
       $bench = $b -match '\D+(\d+)' | % { $matches[1] }
       Write-Host "Reference bench:" $bench
-      $g = "Visual Studio 14 2015"
+      $g = "Visual Studio 15 2017"
       If (${env:PLATFORM} -eq 'x64') { $g = $g + ' Win64' }
       cmake -G "${g}" .
       Write-Host "Generated files for: " $g
