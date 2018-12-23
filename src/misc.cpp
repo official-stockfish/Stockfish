@@ -76,16 +76,16 @@ const string Version = "X";
 #endif
 #endif
 #if(defined Stockfish && defined Add_Features && defined Matefinder)
-	const string Version = "10-m";
+	const string Version = "20181218-m";
 #else
 #if(defined Stockfish && defined Add_Features)
-	const string Version = "10";
+	const string Version = "20181218";
 #else
 #if(defined Stockfish && defined Matefinder)
-	const string Version = "10-m";
+	const string Version = "20181218-m";
 #else
 #ifdef Stockfish
-	const string Version = "10";
+	const string Version = "20181218";
 #endif
 #endif
 #endif
