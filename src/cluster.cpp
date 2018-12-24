@@ -124,7 +124,7 @@ bool getline(std::istream& input, std::string& str) {
       size = vec.size();
   }
 
-  // Some MPI implementations use busy-wait pooling, while we need yielding
+  // Some MPI implementations use busy-wait polling, while we need yielding
   static MPI_Request reqInput = MPI_REQUEST_NULL;
   MPI_Ibcast(&size, 1, MPI_INT, 0, InputComm, &reqInput);
   if (is_root())
