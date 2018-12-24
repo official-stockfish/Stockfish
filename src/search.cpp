@@ -303,7 +303,11 @@ void MainThread::search() {
 
 void Thread::search() {
 
-  Stack stack[MAX_PLY+7], *ss = stack+4; // To reference from (ss-4) to (ss+2)
+  // To allow access to (ss-5) up to (ss+2), the stack must be oversized.
+  // The former is needed to allow update_continuation_histories(ss-1, ...),
+  // which accesses its argument at ss-4, also near the root.
+  // The latter is needed for statScores and killer initialization.
+  Stack stack[MAX_PLY+8], *ss = stack+5;
   Move  pv[MAX_PLY+1];
   Value bestValue, alpha, beta, delta;
   Move  lastBestMove = MOVE_NONE;
@@ -313,8 +317,8 @@ void Thread::search() {
   Color us = rootPos.side_to_move();
   bool failedLow;
 
-  std::memset(ss-4, 0, 7 * sizeof(Stack));
-  for (int i = 4; i > 0; i--)
+  std::memset(ss-5, 0, 8 * sizeof(Stack));
+  for (int i = 5; i > 0; i--)
      (ss-i)->continuationHistory = &this->continuationHistory[NO_PIECE][0]; // Use as sentinel
   ss->pv = pv;
 
@@ -657,9 +661,8 @@ namespace {
                     update_quiet_stats(pos, ss, ttMove, nullptr, 0, stat_bonus(depth));
 
                 // Extra penalty for a quiet TT or main killer move in previous ply when it gets refuted
-                if (   (ss-1)->moveCount == 1
-                    || ((ss-1)->currentMove == (ss-1)->killers[0] && (ss-1)->killers[0]))
-                    if (!pos.captured_piece())
+                if (    ((ss-1)->moveCount == 1 || (ss-1)->currentMove == (ss-1)->killers[0])
+                     && !pos.captured_piece())
                         update_continuation_histories(ss-1, pos.piece_on(prevSq), prevSq, -stat_bonus(depth + ONE_PLY));
             }
             // Penalty for a quiet ttMove that fails low
@@ -1192,16 +1195,14 @@ moves_loop: // When in check, search starts from here
         update_capture_stats(pos, bestMove, capturesSearched, captureCount, stat_bonus(depth + ONE_PLY));
 
         // Extra penalty for a quiet TT or main killer move in previous ply when it gets refuted
-        if (   (ss-1)->moveCount == 1
-            || ((ss-1)->currentMove == (ss-1)->killers[0] && (ss-1)->killers[0]))
-            if (!pos.captured_piece())
+        if (   ((ss-1)->moveCount == 1 || ((ss-1)->currentMove == (ss-1)->killers[0]))
+            && !pos.captured_piece())
                 update_continuation_histories(ss-1, pos.piece_on(prevSq), prevSq, -stat_bonus(depth + ONE_PLY));
 
     }
     // Bonus for prior countermove that caused the fail low
     else if (   (depth >= 3 * ONE_PLY || PvNode)
-             && !pos.captured_piece()
-             && is_ok((ss-1)->currentMove))
+             && !pos.captured_piece())
         update_continuation_histories(ss-1, pos.piece_on(prevSq), prevSq, stat_bonus(depth));
 
     if (PvNode)
