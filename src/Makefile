@@ -24,8 +24,8 @@
 ### ==========================================================================
 
 ### Executable name
-### McCain bench nodes 3983145
-### McCain Matefinder bench nodes 4466798
+### McCain bench nodes 4459539
+### McCain Matefinder bench nodes 
 ### stockfish bench nodes 3393939 > based on this commit: Apply refuted main killer penalty also on early TT cut-offs. #1878 clsoed on 12/18/2018
 ### stockfish matefinder bench nodes 5153467
 
