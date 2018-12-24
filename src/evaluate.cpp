@@ -172,7 +172,6 @@ constexpr Score KnightManeuver     = S(  8,  4);// orignally by miguel-l
 constexpr Score KnightOnQueen      = S( 16, 12);
 constexpr Score LongDiagonalBishop = S( 45,  0);
 constexpr Score MinorBehindPawn    = S( 18,  3);
-constexpr Score Overload           = S( 12,  6);//Remove Overload bonus #1834
 constexpr Score PawnlessFlank      = S( 17, 95);
 	
 //QueenOverload3 Michael Chaly
@@ -400,7 +399,7 @@ constexpr Score WeakUnopposedPawn  = S( 12, 23);
                 if (more_than_one(attacks_bb<BISHOP>(s, pos.pieces(PAWN)) & Center))
                     score += LongDiagonalBishop;
             }
-#ifdef Mavdrick //  by miguel-l
+#ifdef Maverick //  by miguel-l
             else if (Pt == KNIGHT)
             {
                 Bitboard CenterSquares = CenterFiles & (Rank3BB | Rank4BB | Rank5BB | Rank6BB);

@@ -549,8 +549,8 @@ void Thread::search() {
                 // Adjust contempt based on root move's previousScore (dynamic contempt)
 				int dct;
 #ifdef Add_Features
-				
-				if (Options["Dynamic_Contempt"] == false)
+				bool dc = Options["Dynamic_Contempt"];
+				if (!dc)
 				{
 					dct = 0;
 					contempt = Score(0);
