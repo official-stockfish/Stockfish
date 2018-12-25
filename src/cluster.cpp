@@ -41,11 +41,12 @@ static int world_size = 0;
 static MPI_Request reqSignals = MPI_REQUEST_NULL;
 static uint64_t signalsCallCounter = 0;
 
-enum Signals : int { SIG_NODES = 0, SIG_STOP = 1, SIG_NB = 2};
+enum Signals : int { SIG_NODES = 0, SIG_STOP = 1, SIG_TB = 2, SIG_NB = 3};
 static uint64_t signalsSend[SIG_NB] = {};
 static uint64_t signalsRecv[SIG_NB] = {};
 
 static uint64_t nodesSearchedOthers = 0;
+static uint64_t tbHitsOthers = 0;
 static uint64_t stopSignalsPosted = 0;
 
 static MPI_Comm InputComm = MPI_COMM_NULL;
@@ -155,6 +156,7 @@ bool getline(std::istream& input, std::string& str) {
 void signals_send() {
 
   signalsSend[SIG_NODES] = Threads.nodes_searched();
+  signalsSend[SIG_TB] = Threads.tb_hits();
   signalsSend[SIG_STOP] = Threads.stop;
   MPI_Iallreduce(signalsSend, signalsRecv, SIG_NB, MPI_UINT64_T,
                  MPI_SUM, signalsComm, &reqSignals);
@@ -164,6 +166,7 @@ void signals_send() {
 void signals_process() {
 
   nodesSearchedOthers = signalsRecv[SIG_NODES] - signalsSend[SIG_NODES];
+  tbHitsOthers = signalsRecv[SIG_TB] - signalsSend[SIG_TB];
   stopSignalsPosted = signalsRecv[SIG_STOP];
   if (signalsRecv[SIG_STOP] > 0)
       Threads.stop = true;
@@ -190,9 +193,10 @@ void signals_sync() {
 
 void signals_init() {
 
-  stopSignalsPosted = nodesSearchedOthers = 0;
+  stopSignalsPosted = tbHitsOthers = nodesSearchedOthers = 0;
 
   signalsSend[SIG_NODES] = signalsRecv[SIG_NODES] = 0;
+  signalsSend[SIG_TB] = signalsRecv[SIG_TB] = 0;
   signalsSend[SIG_STOP] = signalsRecv[SIG_STOP] = 0;
 
 }
@@ -318,6 +322,11 @@ uint64_t nodes_searched() {
   return nodesSearchedOthers + Threads.nodes_searched();
 }
 
+uint64_t tb_hits() {
+
+  return tbHitsOthers + Threads.tb_hits();
+}
+
 }
 
 #else
@@ -330,6 +339,11 @@ namespace Cluster {
 uint64_t nodes_searched() {
 
   return Threads.nodes_searched();
+}
+
+uint64_t tb_hits() {
+
+  return Threads.tb_hits();
 }
 
 }

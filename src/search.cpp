@@ -1635,7 +1635,7 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
   size_t pvIdx = pos.this_thread()->pvIdx;
   size_t multiPV = std::min((size_t)Options["MultiPV"], rootMoves.size());
   uint64_t nodesSearched = Cluster::nodes_searched();
-  uint64_t tbHits = Threads.tb_hits() + (TB::RootInTB ? rootMoves.size() : 0);
+  uint64_t tbHits = Cluster::tb_hits() + (TB::RootInTB ? rootMoves.size() : 0);
 
   for (size_t i = 0; i < multiPV; ++i)
   {
