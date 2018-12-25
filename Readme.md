@@ -52,7 +52,7 @@ Currently Stockfish exposes the following UCI options:
     Output the N best lines (principle variantions, PVs) when searching. Leave at 1 for best performance.
 
   * #### Skill Level
-    Lower the Skill Level in order make Stockfish play weaker.
+    Lower the Skill Level in order to make Stockfish play weaker.
 
   * #### Move Overhead
     Assume a time delay of x ms due to network and GUI overheads. This is useful to avoid losses on time in those cases.
@@ -145,7 +145,7 @@ If you want to help to improve the code, there are several valuable ressources t
 
 * [In this wiki,](https://www.chessprogramming.org) many techniques used in Stockfish are explained with a lot of background information.
 
-* [The section on Stockfish](https://www.chessprogramming.org/Stockfish) describes many features and techniques used by Stockfish. However, it is generic rather than being focused on Stockfish's precise implementation. Nethertheless, a helpful resource.
+* [The section on Stockfish](https://www.chessprogramming.org/Stockfish) describes many features and techniques used by Stockfish. However, it is generic rather than being focused on Stockfish's precise implementation. Nevertheless, a helpful resource.
 
 * The latest source can always be found on  [GitHub](https://github.com/official-stockfish/Stockfish). Discussions about Stockfish take place in the [FishCooking](https://groups.google.com/forum/#!forum/fishcooking) group and engine testing is done on [Fishtest](http://tests.stockfishchess.org/tests). If you want to help improve Stockfish, please read this [guideline](https://github.com/glinscott/fishtest/wiki/Creating-my-first-test) first, where the fundamentals about Stockfish development are explained.
 
