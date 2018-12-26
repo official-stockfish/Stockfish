@@ -25,19 +25,19 @@ This distribution of Stockfish consists of the following files:
 
 ## UCI parameters
 
-Currently Stockfish exposes the following UCI options:
+Currently, Stockfish has the following UCI options:
 
   * #### Debug Log File
-    Write all communication from the engine and to the engine into a text file.
+    Write all communication to and from the engine into a text file.
 
   * #### Contempt
     A positive value for contempt favors middle game positions and avoids draws.
 
   * #### Analysis Contempt
-    By default, contempt is set to prefer the side to move. Set this option to White or Black to analyse with contempt for that side or set this option to Off to disable contempt.
+    By default, contempt is set to prefer the side to move. Set this option to "White" or "Black" to analyse with contempt for that side, or "Off" to disable contempt.
 
   * #### Threads
-    The number of CPU threads used for searching a position. Should equal the number of CPU cores for best performance.
+    The number of CPU threads used for searching a position. For best performance, set this equal to the number of CPU cores available.
 
   * #### Hash
     The size of the hash table in MB.
@@ -61,7 +61,7 @@ Currently Stockfish exposes the following UCI options:
     Search for at least x ms per move. 
 
   * #### Slow Mover
-    Lower value will make Stockfish take less times in games, higher values will make it think longer.
+    Lower values will make Stockfish take less time in games, higher values will make it think longer.
 
   * #### nodestime
     Tells the engine to use nodes searched instead of wall time to account for elapsed time. Useful for engine testing.
@@ -80,8 +80,7 @@ Currently Stockfish exposes the following UCI options:
     It is recommended to store .rtbw files on an SSD. There is no loss in storing the .rtbz files on a regular HD.
 
   * #### SyzygyProbeDepth
-    Minimum remaining search depth for which a position is probed. Set this option to a higher value to probe less agressively if you experience too much
-    slowdown (in terms of nps) due to TB probing.
+    Minimum remaining search depth for which a position is probed. Set this option to a higher value to probe less agressively if you experience too much slowdown (in terms of nps) due to TB probing.
 
   * #### Syzygy50MoveRule
     Disable to let fifty-move rule draws detected by Syzygy tablebase probes count as wins or losses. This is useful for ICCF correspondence games.
@@ -133,21 +132,21 @@ for a quick reference.
 
 ## Resource For Understanding the Code Base and participating in the project
 
-Stockfish's improvement of the last couple of years have been a great community effort. You can help getting stronger in different ways.
+Stockfish's improvement of the last couple of years has been a great community effort. There are a few ways to help contribute to its growth.
 
 ### Donating hardware
 
-Improving Stockfish requires a massive amount of testing. You can simply donate your hardware by installing the [Fishtest Worker](https://github.com/glinscott/fishtest/wiki/Running-the-worker) and view the current tests on [Fishtest](http://tests.stockfishchess.org/tests).
+Improving Stockfish requires a massive amount of testing. You can donate your hardware resources by installing the [Fishtest Worker](https://github.com/glinscott/fishtest/wiki/Running-the-worker) and view the current tests on [Fishtest](http://tests.stockfishchess.org/tests).
 
 ### Improving the code
 
-If you want to help to improve the code, there are several valuable ressources to read:
+If you want to help improve the code, there are several valuable ressources:
 
 * [In this wiki,](https://www.chessprogramming.org) many techniques used in Stockfish are explained with a lot of background information.
 
 * [The section on Stockfish](https://www.chessprogramming.org/Stockfish) describes many features and techniques used by Stockfish. However, it is generic rather than being focused on Stockfish's precise implementation. Nevertheless, a helpful resource.
 
-* The latest source can always be found on  [GitHub](https://github.com/official-stockfish/Stockfish). Discussions about Stockfish take place in the [FishCooking](https://groups.google.com/forum/#!forum/fishcooking) group and engine testing is done on [Fishtest](http://tests.stockfishchess.org/tests). If you want to help improve Stockfish, please read this [guideline](https://github.com/glinscott/fishtest/wiki/Creating-my-first-test) first, where the fundamentals about Stockfish development are explained.
+* The latest source can always be found on  [GitHub](https://github.com/official-stockfish/Stockfish). Discussions about Stockfish take place in the [FishCooking](https://groups.google.com/forum/#!forum/fishcooking) group and engine testing is done on [Fishtest](http://tests.stockfishchess.org/tests). If you want to help improve Stockfish, please read this [guideline](https://github.com/glinscott/fishtest/wiki/Creating-my-first-test) first, where the basics of Stockfish development are explained.
 
 
 ## Terms of use
