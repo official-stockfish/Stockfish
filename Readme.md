@@ -49,7 +49,7 @@ Currently, Stockfish has the following UCI options:
     Let Stockfish ponder its next move while the opponent is thinking.
 
   * #### MultiPV
-    Output the N best lines (principle variations, PVs) when searching. Leave at 1 for best performance.
+    Output the N best lines (principal variations, PVs) when searching. Leave at 1 for best performance.
 
   * #### Skill Level
     Lower the Skill Level in order to make Stockfish play weaker.
