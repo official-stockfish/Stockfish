@@ -49,7 +49,7 @@ Currently, Stockfish has the following UCI options:
     Let Stockfish ponder its next move while the opponent is thinking.
 
   * #### MultiPV
-    Output the N best lines (principle variantions, PVs) when searching. Leave at 1 for best performance.
+    Output the N best lines (principle variations, PVs) when searching. Leave at 1 for best performance.
 
   * #### Skill Level
     Lower the Skill Level in order to make Stockfish play weaker.
@@ -130,9 +130,9 @@ set/unset some switches in the compiler command line; see file *types.h*
 for a quick reference.
 
 
-## Resource For Understanding the Code Base and participating in the project
+## Understanding the Code Base and participating in the project
 
-Stockfish's improvement of the last couple of years has been a great community effort. There are a few ways to help contribute to its growth.
+Stockfish's improvement over the last couple of years has been a great community effort. There are a few ways to help contribute to its growth.
 
 ### Donating hardware
 
