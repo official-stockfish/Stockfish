@@ -752,6 +752,9 @@ namespace {
     }
 
 	expttHit = false;
+	int MinSons = 0;
+	Node node = NULL;
+	int visits = 0;
 
 	if (excludedMove || !UseExp)
 	{
@@ -771,13 +774,15 @@ namespace {
 			Value myValue = -VALUE_INFINITE;
 			//if (node->totalVisits > 10 &&)
 			//	thisThread->tbHits.fetch_add(1, std::memory_order_relaxed);
-			if (node->totalVisits >= 20 && node->sons <= 1 && !rootNode)
-			{
-				solved = true;
+		//	if (node->totalVisits >= 20 && node->sons <= 1 && !rootNode)
+		//	{
+		//		solved = true;
 				//thisThread->tbHits.fetch_add(1, std::memory_order_relaxed);
-			}
+		//	}
 
 			bool Updated = false;
+			MinSons = node->sons;
+			visits = node->totalVisits;
 
 			for (int x = 0; x < node->sons; x++)
 			{
@@ -798,6 +803,13 @@ namespace {
 			}
 
 
+			if (Updated
+				&& child.depth >= depth
+				)
+			{
+				solved = true;
+			}
+
 			if (!PvNode && Updated
 				&& child.depth >= depth
 				)
@@ -811,7 +823,7 @@ namespace {
 					if ((ss - 1)->moveCount == 1 && !pos.captured_piece())
 						update_continuation_histories(ss - 1, pos.piece_on(prevSq), prevSq, -stat_bonus(depth + ONE_PLY));
 				}
-				thisThread->tbHits.fetch_add(1, std::memory_order_relaxed);
+				//thisThread->tbHits.fetch_add(1, std::memory_order_relaxed);
 				return myValue;
 			}
 
@@ -1120,6 +1132,20 @@ moves_loop: // When in check, search starts from here
                   skipQuiets = true;
                   continue;
               }
+
+			  if (solved && !rootNode
+				  )
+			  {
+				  if (MinSons == 1
+					  && visits > 5
+					  && moveCount > 3
+					  )
+				  {
+
+					  thisThread->tbHits.fetch_add(1, std::memory_order_relaxed);
+					  continue;
+				  }
+			  }
 
               // Reduced depth of the next LMR search
               int lmrDepth = std::max(newDepth - reduction<PvNode>(improving, depth, moveCount), DEPTH_ZERO) / ONE_PLY;
