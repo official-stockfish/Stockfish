@@ -78,9 +78,8 @@ public:
 #ifdef USE_MPI
   struct {
       Mutex mutex;
-      Cluster::TTSendBuffer<Cluster::TTSendBufferSize> buffer = {};
-      size_t counter = 0;
-  } ttBuffer;
+      Cluster::TTCache<Cluster::TTCacheSize> buffer = {};
+  } ttCache;
 #endif
 };
 
