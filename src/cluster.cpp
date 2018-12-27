@@ -54,9 +54,14 @@ static MPI_Comm TTComm = MPI_COMM_NULL;
 static MPI_Comm MoveComm = MPI_COMM_NULL;
 static MPI_Comm signalsComm = MPI_COMM_NULL;
 
-static std::vector<KeyedTTEntry> TTBuff;
+static std::vector<KeyedTTEntry> TTRecvBuff;
+static MPI_Request reqGather = MPI_REQUEST_NULL;
+static uint64_t gathersPosted = 0;
+
+static std::atomic<uint64_t> TTCacheCounter = {};
 
 static MPI_Datatype MIDatatype = MPI_DATATYPE_NULL;
+
 
 void init() {
 
@@ -71,8 +76,6 @@ void init() {
 
   MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
   MPI_Comm_size(MPI_COMM_WORLD, &world_size);
-
-  TTBuff.resize(TTSendBufferSize * world_size);
 
   const std::array<MPI_Aint, 4> MIdisps = {offsetof(MoveInfo, move),
                                            offsetof(MoveInfo, depth),
@@ -109,6 +112,13 @@ int size() {
 int rank() {
 
   return world_rank;
+}
+
+void ttRecvBuff_resize(size_t nThreads) {
+
+  TTRecvBuff.resize(TTCacheSize * world_size * nThreads);
+  std::fill(TTRecvBuff.begin(), TTRecvBuff.end(), KeyedTTEntry());
+
 }
 
 
@@ -189,6 +199,18 @@ void signals_sync() {
 
   signals_process();
 
+  // finalize outstanding messages in the gather loop
+  MPI_Allreduce(&gathersPosted, &globalCounter, 1, MPI_UINT64_T, MPI_MAX, MoveComm);
+  if (gathersPosted < globalCounter)
+  {
+     size_t recvBuffPerRankSize = Threads.size() * TTCacheSize;
+     MPI_Iallgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL,
+                    TTRecvBuff.data(), recvBuffPerRankSize * sizeof(KeyedTTEntry), MPI_BYTE,
+                    TTComm, &reqGather);
+     ++gathersPosted;
+  }
+  assert(gathersPosted == globalCounter);
+
 }
 
 void signals_init() {
@@ -221,59 +243,64 @@ void save(Thread* thread, TTEntry* tte,
   {
      // Try to add to thread's send buffer
      {
-         std::lock_guard<Mutex> lk(thread->ttBuffer.mutex);
-         thread->ttBuffer.buffer.replace(KeyedTTEntry(k,*tte));
-         ++thread->ttBuffer.counter;
+         std::lock_guard<Mutex> lk(thread->ttCache.mutex);
+         thread->ttCache.buffer.replace(KeyedTTEntry(k,*tte));
+	 ++TTCacheCounter;
      }
 
-     // Communicate on main search thread
-     if (thread == Threads.main() && thread->ttBuffer.counter * Threads.size() > TTSendBufferSize)
-     {
-         static MPI_Request req = MPI_REQUEST_NULL;
-         static TTSendBuffer<TTSendBufferSize> send_buff = {};
-         int flag;
+     size_t recvBuffPerRankSize = Threads.size() * TTCacheSize;
 
+     // Communicate on main search thread
+     if (thread == Threads.main() && TTCacheCounter > size() * recvBuffPerRankSize)
+     {
          // Test communication status
-         MPI_Test(&req, &flag, MPI_STATUS_IGNORE);
+         int flag;
+         MPI_Test(&reqGather, &flag, MPI_STATUS_IGNORE);
 
          // Current communication is complete
          if (flag)
          {
-             // Save all received entries (except ours)
+             // Save all received entries to TT, and store our TTCaches, ready for the next round of communication
              for (size_t irank = 0; irank < size_t(size()) ; ++irank)
              {
                  if (irank == size_t(rank()))
-                     continue;
-
-                 for (size_t i = irank * TTSendBufferSize ; i < (irank + 1) * TTSendBufferSize; ++i)
                  {
-                     auto&& e = TTBuff[i];
-                     bool found;
-                     TTEntry* replace_tte;
-                     replace_tte = TT.probe(e.first, found);
-                     replace_tte->save(e.first, e.second.value(), e.second.bound(), e.second.depth(),
-                                       e.second.move(), e.second.eval());
+                    // Copy from the thread caches to the right spot in the buffer
+                    size_t i = irank * recvBuffPerRankSize;
+                    for (auto&& th : Threads)
+                    {
+                        std::lock_guard<Mutex> lk(th->ttCache.mutex);
+
+                        for (auto&& e : th->ttCache.buffer)
+                            TTRecvBuff[i++] = e;
+
+                        // Reset thread's send buffer
+                        th->ttCache.buffer = {};
+                    }
+
+	            TTCacheCounter = 0;
                  }
-             }
-
-             // Reset send buffer
-             send_buff = {};
-
-             // Build up new send buffer: best 16 found across all threads
-             for (auto&& th : Threads)
-             {
-                 std::lock_guard<Mutex> lk(th->ttBuffer.mutex);
-                 for (auto&& e : th->ttBuffer.buffer)
-                     send_buff.replace(e);
-                 // Reset thread's send buffer
-                 th->ttBuffer.buffer = {};
-                 th->ttBuffer.counter = 0;
+                 else
+                    for (size_t i = irank * recvBuffPerRankSize; i < (irank + 1) * recvBuffPerRankSize; ++i)
+                    {
+                        auto&& e = TTRecvBuff[i];
+                        bool found;
+                        TTEntry* replace_tte;
+                        replace_tte = TT.probe(e.first, found);
+                        replace_tte->save(e.first, e.second.value(), e.second.bound(), e.second.depth(),
+                                          e.second.move(), e.second.eval());
+                    }
              }
 
              // Start next communication
-             MPI_Iallgather(send_buff.data(), send_buff.size() * sizeof(KeyedTTEntry), MPI_BYTE,
-                            TTBuff.data(), TTSendBufferSize * sizeof(KeyedTTEntry), MPI_BYTE,
-                            TTComm, &req);
+             MPI_Iallgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL,
+                            TTRecvBuff.data(), recvBuffPerRankSize * sizeof(KeyedTTEntry), MPI_BYTE,
+                            TTComm, &reqGather);
+             ++gathersPosted;
+
+	     // Force check of time on the next occasion.
+             static_cast<MainThread*>(thread)->callsCnt = 0;
+
          }
      }
   }
