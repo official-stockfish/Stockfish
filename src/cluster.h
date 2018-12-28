@@ -91,7 +91,7 @@ constexpr int rank() { return 0; }
 constexpr bool is_root() { return true; }
 inline void save(Thread*, TTEntry* tte, Key k, Value v, Bound b, Depth d, Move m, Value ev) { tte->save(k, v, b, d, m, ev); }
 inline void pick_moves(MoveInfo&) { }
-void ttRecvBuff_resize(size_t) { }
+inline void ttRecvBuff_resize(size_t) { }
 uint64_t nodes_searched();
 uint64_t tb_hits();
 inline void signals_init() { }
