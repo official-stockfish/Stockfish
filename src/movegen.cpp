@@ -140,13 +140,18 @@ namespace {
             }
         }
 
-        while(b)
+        Bitboard singles = b & shift<Up>(pawnsNotOn7);
+        Bitboard doubles = b ^ singles;
+        while(singles)
         {
-            Square to = pop_lsb(&b);
-            if (shift<Up>(pawnsNotOn7) & to)
-               *moveList++ = make_move(to - Up, to); //single pawn push
-            else
-               *moveList++ = make_move(to - Up - Up, to); //double
+            Square to = pop_lsb(&singles);
+            *moveList++ = make_move(to - Up, to);
+        }
+
+        while(doubles)
+        {
+            Square to = pop_lsb(&doubles);
+            *moveList++ = make_move(to - Up - Up, to); //double
         }
     }
 
