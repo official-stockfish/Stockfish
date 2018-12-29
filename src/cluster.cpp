@@ -191,10 +191,11 @@ void signals_sync() {
   uint64_t globalCounter;
   MPI_Allreduce(&signalsCallCounter, &globalCounter, 1, MPI_UINT64_T, MPI_MAX, MoveComm); // MoveComm needed
   if (signalsCallCounter < globalCounter)
+  {
+      MPI_Wait(&reqSignals, MPI_STATUS_IGNORE);
       signals_send();
-
+  }
   assert(signalsCallCounter == globalCounter);
-
   MPI_Wait(&reqSignals, MPI_STATUS_IGNORE);
 
   signals_process();
@@ -204,12 +205,14 @@ void signals_sync() {
   if (gathersPosted < globalCounter)
   {
      size_t recvBuffPerRankSize = Threads.size() * TTCacheSize;
+     MPI_Wait(&reqGather, MPI_STATUS_IGNORE);
      MPI_Iallgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL,
                     TTRecvBuff.data(), recvBuffPerRankSize * sizeof(KeyedTTEntry), MPI_BYTE,
                     TTComm, &reqGather);
      ++gathersPosted;
   }
   assert(gathersPosted == globalCounter);
+  MPI_Wait(&reqGather, MPI_STATUS_IGNORE);
 
 }
 
