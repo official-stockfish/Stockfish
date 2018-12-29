@@ -161,7 +161,7 @@ namespace {
     }
 
     // Promotions and underpromotions
-    if (pawnsOn7 && (Type != EVASIONS || (target & TRank8BB)))
+    if (pawnsOn7)
     {
         if (Type == CAPTURES)
             emptySquares = ~pos.pieces();
