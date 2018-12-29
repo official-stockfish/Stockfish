@@ -116,8 +116,8 @@ namespace {
     {
         emptySquares = (Type == QUIETS || Type == QUIET_CHECKS ? target : ~pos.pieces());
 
-        Bitboard b = shift<Up>(pawnsNotOn7)   & emptySquares;
-        b |= shift<Up>(b & TRank3BB) & emptySquares;
+        Bitboard b = shift<Up>(pawnsNotOn7)  & emptySquares;
+        b         |= shift<Up>(b & TRank3BB) & emptySquares;
 
         if (Type == EVASIONS) // Consider only blocking squares
             b &= target;
@@ -141,17 +141,17 @@ namespace {
         }
 
         Bitboard singles = b & shift<Up>(pawnsNotOn7);
-        Bitboard doubles = b ^ singles;
+        b ^= singles;
         while(singles)
         {
             Square to = pop_lsb(&singles);
             *moveList++ = make_move(to - Up, to);
         }
 
-        while(doubles)
+        while(b) //doubles
         {
-            Square to = pop_lsb(&doubles);
-            *moveList++ = make_move(to - Up - Up, to); //double
+            Square to = pop_lsb(&b);
+            *moveList++ = make_move(to - Up - Up, to);
         }
     }
 
