@@ -116,21 +116,17 @@ namespace {
     {
         emptySquares = (Type == QUIETS || Type == QUIET_CHECKS ? target : ~pos.pieces());
 
-        Bitboard b1 = shift<Up>(pawnsNotOn7)   & emptySquares;
-        Bitboard b2 = shift<Up>(b1 & TRank3BB) & emptySquares;
+        Bitboard b = shift<Up>(pawnsNotOn7)   & emptySquares;
+        b |= shift<Up>(b & TRank3BB) & emptySquares;
 
         if (Type == EVASIONS) // Consider only blocking squares
-        {
-            b1 &= target;
-            b2 &= target;
-        }
+            b &= target;
 
         if (Type == QUIET_CHECKS)
         {
             Square ksq = pos.square<KING>(Them);
 
-            b1 &= pos.attacks_from<PAWN>(ksq, Them);
-            b2 &= pos.attacks_from<PAWN>(ksq, Them);
+            b &= pos.attacks_from<PAWN>(ksq, Them);
 
             // Add pawn pushes which give discovered check. This is possible only
             // if the pawn is not on the same file as the enemy king, because we
@@ -140,23 +136,17 @@ namespace {
             if (pawnsNotOn7 & dcCandidates)
             {
                 Bitboard dc1 = shift<Up>(pawnsNotOn7 & dcCandidates) & emptySquares & ~file_bb(ksq);
-                Bitboard dc2 = shift<Up>(dc1 & TRank3BB) & emptySquares;
-
-                b1 |= dc1;
-                b2 |= dc2;
+                b |= dc1 | (shift<Up>(dc1 & TRank3BB) & emptySquares);
             }
         }
 
-        while (b1)
+        while(b)
         {
-            Square to = pop_lsb(&b1);
-            *moveList++ = make_move(to - Up, to);
-        }
-
-        while (b2)
-        {
-            Square to = pop_lsb(&b2);
-            *moveList++ = make_move(to - Up - Up, to);
+            Square to = pop_lsb(&b);
+            if (shift<Up>(pawnsNotOn7) & to)
+               *moveList++ = make_move(to - Up, to); //single pawn push
+            else
+               *moveList++ = make_move(to - Up - Up, to); //double
         }
     }
 
