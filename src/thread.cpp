@@ -141,7 +141,7 @@ void ThreadPool::set(size_t requested) {
       TT.resize(Options["Hash"]);
 
       // Adjust cluster buffers
-      Cluster::ttRecvBuff_resize(requested);
+      Cluster::ttSendRecvBuff_resize(requested);
   }
 }
 
