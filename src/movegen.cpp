@@ -142,7 +142,7 @@ namespace {
         }
 
         b &= bb; //single pushes
-        bb ^= b; //souble pushes
+        bb ^= b; //double pushes
 
         while (b)
         {
