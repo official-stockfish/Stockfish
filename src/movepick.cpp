@@ -222,7 +222,7 @@ top:
       /* fallthrough */
 
   case BAD_CAPTURE:
-      return select<Next>([&](){ return true; });
+      return select<Next>([](){ return true; });
 
   case EVASION_INIT:
       cur = moves;
@@ -233,7 +233,7 @@ top:
       /* fallthrough */
 
   case EVASION:
-      return select<Best>([&](){ return true; });
+      return select<Best>([](){ return true; });
 
   case PROBCUT:
       return select<Best>([&](){ return pos.see_ge(move, threshold); });
@@ -258,7 +258,7 @@ top:
       /* fallthrough */
 
   case QCHECK:
-      return select<Next>([&](){ return true; });
+      return select<Next>([](){ return true; });
   }
 
   assert(false);
