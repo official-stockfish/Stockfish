@@ -97,7 +97,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, Value th, const CapturePiece
           && pos.capture(ttm)
           && pos.see_ge(ttm, threshold) ? ttm : MOVE_NONE;
 
-  stage += PROBCUT_TT + (ttMove == MOVE_NONE);
+  stage = PROBCUT_TT + (ttMove == MOVE_NONE);
 }
 
 /// MovePicker::score() assigns a numerical value to each move in a list, used
