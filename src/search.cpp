@@ -839,7 +839,7 @@ namespace {
         MovePicker mp(pos, ttMove, raisedBeta - ss->staticEval, &thisThread->captureHistory);
         int probCutCount = 0;
 
-        while (  (move = mp.next_move()) != MOVE_NONE
+        while (  (move = mp.next_move_pc()) != MOVE_NONE
                && probCutCount < 3)
             if (move != excludedMove && pos.legal(move))
             {

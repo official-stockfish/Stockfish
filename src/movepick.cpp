@@ -149,6 +149,27 @@ Move MovePicker::select(Pred filter) {
   return move = MOVE_NONE;
 }
 
+Move MovePicker::next_move_pc() {
+
+  if (stage == PROBCUT_TT) {
+      ++stage;
+      return ttMove;
+  }
+
+  if (stage == PROBCUT_INIT) {
+      cur = endBadCaptures = moves;
+      endMoves = generate<CAPTURES>(pos, cur);
+
+      score<CAPTURES>();
+      ++stage;
+  }
+
+  return select<Best>([&](){ return pos.see_ge(move, threshold); });
+
+  assert(false);
+  return MOVE_NONE; // Silence warning
+}
+
 /// MovePicker::next_move() is the most important method of the MovePicker class. It
 /// returns a new pseudo legal move every time it is called until there are no more
 /// moves left, picking the move with the highest score from a list of generated moves.
@@ -160,12 +181,10 @@ top:
   case MAIN_TT:
   case EVASION_TT:
   case QSEARCH_TT:
-  case PROBCUT_TT:
       ++stage;
       return ttMove;
 
   case CAPTURE_INIT:
-  case PROBCUT_INIT:
   case QCAPTURE_INIT:
       cur = endBadCaptures = moves;
       endMoves = generate<CAPTURES>(pos, cur);
@@ -237,9 +256,6 @@ top:
 
   case EVASION:
       return select<Best>(Any);
-
-  case PROBCUT:
-      return select<Best>([&](){ return pos.see_ge(move, threshold); });
 
   case QCAPTURE:
       if (select<Best>([&](){ return   depth > DEPTH_QS_RECAPTURES
