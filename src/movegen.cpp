@@ -141,8 +141,8 @@ namespace {
             }
         }
 
-        b &= bb; //single pushes
-        bb ^= b; //double pushes
+        b &= bb; // Single pushes
+        bb ^= b; // Double pushes
 
         while (b)
         {
