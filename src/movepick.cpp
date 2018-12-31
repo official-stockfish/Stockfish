@@ -92,12 +92,12 @@ MovePicker::MovePicker(const Position& p, Move ttm, Value th, const CapturePiece
 
   assert(!pos.checkers());
 
-  stage = PROBCUT_TT;
   ttMove =   ttm
           && pos.pseudo_legal(ttm)
           && pos.capture(ttm)
           && pos.see_ge(ttm, threshold) ? ttm : MOVE_NONE;
-  stage += (ttMove == MOVE_NONE);
+
+  stage += PROBCUT_TT + (ttMove == MOVE_NONE);
 }
 
 /// MovePicker::score() assigns a numerical value to each move in a list, used
@@ -149,6 +149,8 @@ Move MovePicker::select(Pred filter) {
   return move = MOVE_NONE;
 }
 
+/// MovePicker::next_move_pc() returns a highest scored pseudo legal moves every time it is
+/// called until there are no more moves (then returns MOVE_NONE).
 Move MovePicker::next_move_pc() {
 
   if (stage == PROBCUT_TT) {
@@ -157,7 +159,7 @@ Move MovePicker::next_move_pc() {
   }
 
   if (stage == PROBCUT_INIT) {
-      cur = endBadCaptures = moves;
+      cur = moves;
       endMoves = generate<CAPTURES>(pos, cur);
 
       score<CAPTURES>();
@@ -165,9 +167,6 @@ Move MovePicker::next_move_pc() {
   }
 
   return select<Best>([&](){ return pos.see_ge(move, threshold); });
-
-  assert(false);
-  return MOVE_NONE; // Silence warning
 }
 
 /// MovePicker::next_move() is the most important method of the MovePicker class. It
