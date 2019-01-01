@@ -31,9 +31,6 @@ namespace {
     QSEARCH_TT, QCAPTURE_INIT, QCAPTURE, QCHECK_INIT, QCHECK
   };
 
-  // Helper filter used with select()
-  const auto Any = [](){ return true; };
-
   // partial_insertion_sort() sorts moves in descending order up to and including
   // a given limit. The order of moves smaller than the limit is left unspecified.
   void partial_insertion_sort(ExtMove* begin, ExtMove* end, int limit) {
@@ -225,7 +222,7 @@ top:
       /* fallthrough */
 
   case BAD_CAPTURE:
-      return select<Next>(Any);
+      return select<Next>([](){ return true; });
 
   case EVASION_INIT:
       cur = moves;
@@ -236,7 +233,7 @@ top:
       /* fallthrough */
 
   case EVASION:
-      return select<Best>(Any);
+      return select<Best>([](){ return true; });
 
   case PROBCUT:
       return select<Best>([&](){ return pos.see_ge(move, threshold); });
@@ -261,7 +258,7 @@ top:
       /* fallthrough */
 
   case QCHECK:
-      return select<Next>(Any);
+      return select<Next>([](){ return true; });
   }
 
   assert(false);

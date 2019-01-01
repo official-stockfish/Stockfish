@@ -115,7 +115,7 @@ namespace {
         // not attacked more times than defended.
         if (   !(stoppers ^ lever ^ leverPush)
             && popcount(support) >= popcount(lever) - 1
-            && popcount(phalanx)   >= popcount(leverPush))
+            && popcount(phalanx) >= popcount(leverPush))
             e->passedPawns[Us] |= s;
 
         else if (   stoppers == SquareBB[s + Up]
@@ -185,7 +185,6 @@ Entry* probe(const Position& pos) {
   e->key = key;
   e->scores[WHITE] = evaluate<WHITE>(pos, e);
   e->scores[BLACK] = evaluate<BLACK>(pos, e);
-  e->openFiles = popcount(e->semiopenFiles[WHITE] & e->semiopenFiles[BLACK]);
   e->asymmetry = popcount(  (e->passedPawns[WHITE]   | e->passedPawns[BLACK])
                           | (e->semiopenFiles[WHITE] ^ e->semiopenFiles[BLACK]));
 

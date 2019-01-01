@@ -183,7 +183,7 @@ void Position::init() {
                   {
                       std::swap(cuckoo[i], key);
                       std::swap(cuckooMove[i], move);
-                      if (move == 0)   // Arrived at empty slot ?
+                      if (move == MOVE_NONE) // Arrived at empty slot?
                           break;
                       i = (i == H1(key)) ? H2(key) : H1(key); // Push victim to alternative slot
                   }
@@ -465,16 +465,16 @@ const string Position::fen() const {
   ss << (sideToMove == WHITE ? " w " : " b ");
 
   if (can_castle(WHITE_OO))
-      ss << (chess960 ? char('A' + file_of(castling_rook_square(WHITE |  KING_SIDE))) : 'K');
+      ss << (chess960 ? char('A' + file_of(castling_rook_square(WHITE_OO ))) : 'K');
 
   if (can_castle(WHITE_OOO))
-      ss << (chess960 ? char('A' + file_of(castling_rook_square(WHITE | QUEEN_SIDE))) : 'Q');
+      ss << (chess960 ? char('A' + file_of(castling_rook_square(WHITE_OOO))) : 'Q');
 
   if (can_castle(BLACK_OO))
-      ss << (chess960 ? char('a' + file_of(castling_rook_square(BLACK |  KING_SIDE))) : 'k');
+      ss << (chess960 ? char('a' + file_of(castling_rook_square(BLACK_OO ))) : 'k');
 
   if (can_castle(BLACK_OOO))
-      ss << (chess960 ? char('a' + file_of(castling_rook_square(BLACK | QUEEN_SIDE))) : 'q');
+      ss << (chess960 ? char('a' + file_of(castling_rook_square(BLACK_OOO))) : 'q');
 
   if (!can_castle(ANY_CASTLING))
       ss << '-';
