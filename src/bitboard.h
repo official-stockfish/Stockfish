@@ -153,7 +153,7 @@ inline Bitboard file_bb(Square s) {
 }
 
 
-/// shift() moves a bitboard one step along direction D (mainly for pawns)
+/// shift() moves a bitboard one step along direction D
 
 template<Direction D>
 constexpr Bitboard shift(Bitboard b) {
@@ -165,8 +165,8 @@ constexpr Bitboard shift(Bitboard b) {
 }
 
 
-/// pawn_attacks_bb() returns the pawn attacks for the given color from the
-/// squares in the given bitboard.
+/// pawn_attacks_bb() returns the squares attacked by pawns of the given color
+/// from the squares in the given bitboard.
 
 template<Color C>
 constexpr Bitboard pawn_attacks_bb(Bitboard b) {
@@ -175,11 +175,11 @@ constexpr Bitboard pawn_attacks_bb(Bitboard b) {
 }
 
 
-/// double_pawn_attacks_bb() returns the pawn attacks for the given color
-/// from the squares in the given bitboard.
+/// pawn_double_attacks_bb() returns the squares doubly attacked by pawns of the
+/// given color from the squares in the given bitboard.
 
 template<Color C>
-constexpr Bitboard double_pawn_attacks_bb(Bitboard b) {
+constexpr Bitboard pawn_double_attacks_bb(Bitboard b) {
   return C == WHITE ? shift<NORTH_WEST>(b) & shift<NORTH_EAST>(b)
                     : shift<SOUTH_WEST>(b) & shift<SOUTH_EAST>(b);
 }

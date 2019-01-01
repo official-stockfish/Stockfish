@@ -45,7 +45,7 @@ race:TTEntry::bound
 race:TTEntry::save
 race:TTEntry::value
 race:TTEntry::eval
-race:TTEntry::pv_hit
+race:TTEntry::is_pv
 
 race:TranspositionTable::probe
 race:TranspositionTable::hashfull
