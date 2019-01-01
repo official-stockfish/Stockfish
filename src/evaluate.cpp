@@ -259,15 +259,12 @@ namespace {
     attackedBy2[Us]            = attackedBy[Us][KING] & attackedBy[Us][PAWN];
 
     // Init our king safety tables
+    Square ksq = pos.square<KING>(Us);
     kingRing[Us] = attackedBy[Us][KING];
-    if (relative_rank(Us, pos.square<KING>(Us)) == RANK_1)
-        kingRing[Us] |= shift<Up>(kingRing[Us]);
-
-    if (file_of(pos.square<KING>(Us)) == FILE_H)
-        kingRing[Us] |= shift<WEST>(kingRing[Us]);
-
-    else if (file_of(pos.square<KING>(Us)) == FILE_A)
-        kingRing[Us] |= shift<EAST>(kingRing[Us]);
+    kingRing[Us] |= bool(Rank1BB & ksq) * shift<NORTH>(kingRing[Us])
+                 |  bool(Rank8BB & ksq) * shift<SOUTH>(kingRing[Us])
+                 |  bool(FileABB & ksq) * shift< EAST>(kingRing[Us])
+                 |  bool(FileHBB & ksq) * shift< WEST>(kingRing[Us]);
 
     kingAttackersCount[Them] = popcount(kingRing[Us] & pe->pawn_attacks(Them));
     kingRing[Us] &= ~double_pawn_attacks_bb<Us>(pos.pieces(Us, PAWN));
