@@ -240,9 +240,12 @@ namespace {
   template<Tracing T> template<Color Us>
   void Evaluation<T>::initialize() {
 
-    constexpr Color     Them = (Us == WHITE ? BLACK : WHITE);
-    constexpr Direction Down = (Us == WHITE ? SOUTH : NORTH);
+    constexpr Color        Them = (Us == WHITE ? BLACK : WHITE);
+    constexpr Direction    Down = (Us == WHITE ? SOUTH : NORTH);
+    constexpr Direction      Up = (Us == WHITE ? NORTH : SOUTH);
     constexpr Bitboard LowRanks = (Us == WHITE ? Rank2BB | Rank3BB: Rank7BB | Rank6BB);
+    constexpr Bitboard TRank1BB = (Us == WHITE ? Rank1BB : Rank8BB);
+    Square ksq = pos.square<KING>(Us);
 
     // Find our pawns that are blocked or on the first two ranks
     Bitboard b = pos.pieces(Us, PAWN) & (shift<Down>(pos.pieces()) | LowRanks);
@@ -252,18 +255,16 @@ namespace {
     mobilityArea[Us] = ~(b | pos.pieces(Us, KING, QUEEN) | pe->pawn_attacks(Them));
 
     // Initialise attackedBy bitboards for kings and pawns
-    attackedBy[Us][KING] = pos.attacks_from<KING>(pos.square<KING>(Us));
+    attackedBy[Us][KING] = pos.attacks_from<KING>(ksq);
     attackedBy[Us][PAWN] = pe->pawn_attacks(Us);
     attackedBy[Us][ALL_PIECES] = attackedBy[Us][KING] | attackedBy[Us][PAWN];
     attackedBy2[Us]            = attackedBy[Us][KING] & attackedBy[Us][PAWN];
 
     // Init our king safety tables
-    Square ksq = pos.square<KING>(Us);
-    kingRing[Us] = attackedBy[Us][KING];
-    kingRing[Us] |= bool(Rank1BB & ksq) * shift<NORTH>(kingRing[Us])
-                 |  bool(Rank8BB & ksq) * shift<SOUTH>(kingRing[Us]);
-    kingRing[Us] |= bool(FileABB & ksq) * shift< EAST>(kingRing[Us])
-                 |  bool(FileHBB & ksq) * shift< WEST>(kingRing[Us]);
+    kingRing[Us]  = attackedBy[Us][KING];
+    kingRing[Us] |= bool(TRank1BB & ksq) * shift<   Up>(kingRing[Us]);
+    kingRing[Us] |= bool( FileABB & ksq) * shift< EAST>(kingRing[Us])
+                 |  bool( FileHBB & ksq) * shift< WEST>(kingRing[Us]);
 
     kingAttackersCount[Them] = popcount(kingRing[Us] & pe->pawn_attacks(Them));
     kingRing[Us] &= ~double_pawn_attacks_bb<Us>(pos.pieces(Us, PAWN));
