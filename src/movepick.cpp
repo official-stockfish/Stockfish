@@ -51,6 +51,12 @@ namespace {
 
 } // namespace
 
+template<GenType Type>
+void MovePicker::generate_score() {
+      endMoves = generate<Type>(pos, cur);
+      score<Type>();
+      ++stage;
+}
 
 /// Constructors of the MovePicker class. As arguments we pass information
 /// to help it to return the (presumably) good moves first, to decide which
@@ -168,10 +174,7 @@ top:
   case PROBCUT_INIT:
   case QCAPTURE_INIT:
       cur = endBadCaptures = moves;
-      endMoves = generate<CAPTURES>(pos, cur);
-
-      score<CAPTURES>();
-      ++stage;
+      generate_score<CAPTURES>();
       goto top;
 
   case GOOD_CAPTURE:
@@ -203,11 +206,8 @@ top:
 
   case QUIET_INIT:
       cur = endBadCaptures;
-      endMoves = generate<QUIETS>(pos, cur);
-
-      score<QUIETS>();
+      generate_score<QUIETS>();
       partial_insertion_sort(cur, endMoves, -4000 * depth / ONE_PLY);
-      ++stage;
       /* fallthrough */
 
   case QUIET:
@@ -229,10 +229,7 @@ top:
 
   case EVASION_INIT:
       cur = moves;
-      endMoves = generate<EVASIONS>(pos, cur);
-
-      score<EVASIONS>();
-      ++stage;
+      generate_score<EVASIONS>();
       /* fallthrough */
 
   case EVASION:
