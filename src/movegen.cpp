@@ -25,27 +25,20 @@
 
 namespace {
 
-  template<Color Us, CastlingSide Cs, bool Checks, bool Chess960>
+  template<Color Us, CastlingSide Cs, bool Checks>
   ExtMove* generate_castling(const Position& pos, ExtMove* moveList) {
-
-    constexpr Color Them = (Us == WHITE ? BLACK : WHITE);
-    constexpr CastlingRight Cr = Us | Cs;
-    constexpr bool KingSide = (Cs == KING_SIDE);
-
-    if (pos.castling_impeded(Cr) || !pos.can_castle(Cr))
-        return moveList;
-
-    // After castling, the rook and king final positions are the same in Chess960
-    // as they would be in standard chess.
-    Square kfrom = pos.square<KING>(Us);
-    Square rfrom = pos.castling_rook_square(Cr);
-    Square kto = relative_square(Us, KingSide ? SQ_G1 : SQ_C1);
-    Bitboard enemies = pos.pieces(Them);
 
     assert(!pos.checkers());
 
-    const Direction step = Chess960 ? kto > kfrom ? WEST : EAST
-                                    : KingSide    ? WEST : EAST;
+    constexpr Color Them = (Us == WHITE ? BLACK : WHITE);
+
+    // After castling, the rook and king final positions are the same in
+    // Chess960 as they would be in standard chess.
+    Bitboard enemies = pos.pieces(Them);
+    Square kfrom = pos.square<KING>(Us);
+    Square rfrom = pos.castling_rook_square(Us | Cs);
+    Square kto = relative_square(Us, Cs == KING_SIDE ? SQ_G1 : SQ_C1);
+    Direction step = kto > kfrom ? WEST : EAST;
 
     for (Square s = kto; s != kfrom; s += step)
         if (pos.attackers_to(s) & enemies)
@@ -54,7 +47,8 @@ namespace {
     // Because we generate only legal castling moves we need to verify that
     // when moving the castling rook we do not discover some hidden checker.
     // For instance an enemy queen in SQ_A1 when castling rook is in SQ_B1.
-    if (Chess960 && (attacks_bb<ROOK>(kto, pos.pieces() ^ rfrom) & pos.pieces(Them, ROOK, QUEEN)))
+    if (   pos.is_chess960()
+        && (attacks_bb<ROOK>(kto, pos.pieces() ^ rfrom) & pos.pieces(Them, ROOK, QUEEN)))
         return moveList;
 
     Move m = make<CASTLING>(kfrom, rfrom);
@@ -279,16 +273,11 @@ namespace {
 
     if (Type != CAPTURES && Type != EVASIONS && pos.castling_rights(Us))
     {
-        if (pos.is_chess960())
-        {
-            moveList = generate_castling<Us, KING_SIDE, Checks, true>(pos, moveList);
-            moveList = generate_castling<Us, QUEEN_SIDE, Checks, true>(pos, moveList);
-        }
-        else
-        {
-            moveList = generate_castling<Us, KING_SIDE, Checks, false>(pos, moveList);
-            moveList = generate_castling<Us, QUEEN_SIDE, Checks, false>(pos, moveList);
-        }
+        if (!pos.castling_impeded(Us | KING_SIDE) && pos.can_castle(Us | KING_SIDE))
+            moveList = generate_castling<Us, KING_SIDE, Checks>(pos, moveList);
+
+        if (!pos.castling_impeded(Us | QUEEN_SIDE) && pos.can_castle(Us | QUEEN_SIDE))
+            moveList = generate_castling<Us, QUEEN_SIDE, Checks>(pos, moveList);
     }
 
     return moveList;
