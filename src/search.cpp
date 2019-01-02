@@ -1330,8 +1330,7 @@ moves_loop: // When in check, search starts from here
     // be generated.
     MovePicker mp(pos, ttMove, depth, &thisThread->mainHistory,
                                       &thisThread->captureHistory,
-                                      contHist,
-                                      to_sq((ss-1)->currentMove));
+                                      contHist);
 
     // Loop through the moves until no moves remain or a beta cutoff occurs
     while ((move = mp.next_move()) != MOVE_NONE)
