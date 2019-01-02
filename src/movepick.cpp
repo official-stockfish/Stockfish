@@ -52,7 +52,8 @@ namespace {
 } // namespace
 
 template<GenType Type>
-void MovePicker::generate_score() {
+void MovePicker::generate_score(ExtMove* m) {
+      cur = m;
       endMoves = generate<Type>(pos, cur);
       score<Type>();
       ++stage;
@@ -173,8 +174,8 @@ top:
   case CAPTURE_INIT:
   case PROBCUT_INIT:
   case QCAPTURE_INIT:
-      cur = endBadCaptures = moves;
-      generate_score<CAPTURES>();
+      endBadCaptures = moves;
+      generate_score<CAPTURES>(moves);
       goto top;
 
   case GOOD_CAPTURE:
@@ -205,8 +206,7 @@ top:
       /* fallthrough */
 
   case QUIET_INIT:
-      cur = endBadCaptures;
-      generate_score<QUIETS>();
+      generate_score<QUIETS>(endBadCaptures);
       partial_insertion_sort(cur, endMoves, -4000 * depth / ONE_PLY);
       /* fallthrough */
 
@@ -228,8 +228,7 @@ top:
       return select<Next>(Any);
 
   case EVASION_INIT:
-      cur = moves;
-      generate_score<EVASIONS>();
+      generate_score<EVASIONS>(moves);
       /* fallthrough */
 
   case EVASION:

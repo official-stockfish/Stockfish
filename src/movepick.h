@@ -128,14 +128,14 @@ public:
                                            Move,
                                            Move*);
   Move next_move(bool skipQuiets = false);
+template<GenType>
+  void inline generate_score(ExtMove* m);
 
 private:
   template<PickType T, typename Pred> Move select(Pred);
   template<GenType> void score();
   ExtMove* begin() { return cur; }
   ExtMove* end() { return endMoves; }
-template<GenType>
-  void inline generate_score();
 
   const Position& pos;
   const ButterflyHistory* mainHistory;
