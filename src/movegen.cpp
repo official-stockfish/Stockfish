@@ -44,13 +44,6 @@ namespace {
         if (pos.attackers_to(s) & enemies)
             return moveList;
 
-    // Because we generate only legal castling moves we need to verify that
-    // when moving the castling rook we do not discover some hidden checker.
-    // For instance an enemy queen in SQ_A1 when castling rook is in SQ_B1.
-    if (   pos.is_chess960()
-        && (attacks_bb<ROOK>(kto, pos.pieces() ^ rfrom) & pos.pieces(Them, ROOK, QUEEN)))
-        return moveList;
-
     Move m = make<CASTLING>(kfrom, rfrom);
 
     if (Checks && !pos.gives_check(m))
