@@ -540,6 +540,7 @@ bool Position::legal(Move m) const {
 
   Color us = sideToMove;
   Square from = from_sq(m);
+  Square to = to_sq(m);
 
   assert(color_of(moved_piece(m)) == us);
   assert(piece_on(square<KING>(us)) == make_piece(us, KING));
@@ -550,7 +551,6 @@ bool Position::legal(Move m) const {
   if (type_of(m) == ENPASSANT)
   {
       Square ksq = square<KING>(us);
-      Square to = to_sq(m);
       Square capsq = to - pawn_push(us);
       Bitboard occupied = (pieces() ^ from ^ capsq) | to;
 
@@ -568,17 +568,18 @@ bool Position::legal(Move m) const {
   // For instance an enemy queen in SQ_A1 when castling rook is in SQ_B1.
   if (type_of(m) == CASTLING)
       return   !chess960
-            || !(attacks_bb<ROOK>(to_sq(m), pieces() ^ from) & pieces(~us, ROOK, QUEEN));
+            || (  to = relative_square(us, to > from ? SQ_G1 : SQ_C1),
+                !(attacks_bb<ROOK>(to, pieces() ^ from) & pieces(~us, ROOK, QUEEN)));
 
   // If the moving piece is a king, check whether the destination square is
   // attacked by the opponent.
   if (type_of(piece_on(from)) == KING)
-      return !(attackers_to(to_sq(m)) & pieces(~us));
+      return !(attackers_to(to) & pieces(~us));
 
   // A non-king move is legal if and only if it is not pinned or it
   // is moving along the ray towards or away from the king.
   return   !(blockers_for_king(us) & from)
-        ||  aligned(from, to_sq(m), square<KING>(us));
+        ||  aligned(from, to, square<KING>(us));
 }
 
 
