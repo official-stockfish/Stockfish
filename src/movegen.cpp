@@ -30,26 +30,13 @@ namespace {
 
     assert(!pos.checkers());
 
-    constexpr Color Them = (Us == WHITE ? BLACK : WHITE);
+    constexpr CastlingRight Cr = Us | Cs;
 
-    // After castling, the rook and king final positions are the same in
-    // Chess960 as they would be in standard chess.
-    Bitboard enemies = pos.pieces(Them);
-    Square kfrom = pos.square<KING>(Us);
-    Square rfrom = pos.castling_rook_square(Us | Cs);
-    Square kto = relative_square(Us, Cs == KING_SIDE ? SQ_G1 : SQ_C1);
-    Direction step = kto > kfrom ? WEST : EAST;
+    Move m = make<CASTLING>(pos.square<KING>(Us), pos.castling_rook_square(Cr));
 
-    for (Square s = kto; s != kfrom; s += step)
-        if (pos.attackers_to(s) & enemies)
-            return moveList;
+    if (!Checks || pos.gives_check(m))
+        *moveList++ = m;
 
-    Move m = make<CASTLING>(kfrom, rfrom);
-
-    if (Checks && !pos.gives_check(m))
-        return moveList;
-
-    *moveList++ = m;
     return moveList;
   }
 

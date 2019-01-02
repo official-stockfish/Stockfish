@@ -563,13 +563,25 @@ bool Position::legal(Move m) const {
             && !(attacks_bb<BISHOP>(ksq, occupied) & pieces(~us, QUEEN, BISHOP));
   }
 
-  // In case of Chess960, verify that when moving the castling rook we do not
-  // discover some hidden checker.
-  // For instance an enemy queen in SQ_A1 when castling rook is in SQ_B1.
+  // Castling moves generation does not check if the castling path is clear of
+  // enemy attacks, it is delayed at a later time: now!
   if (type_of(m) == CASTLING)
+  {
+      // After castling, the rook and king final positions are the same in
+      // Chess960 as they would be in standard chess.
+      to = relative_square(us, to > from ? SQ_G1 : SQ_C1);
+      Direction step = to > from ? WEST : EAST;
+
+      for (Square s = to; s != from; s += step)
+          if (attackers_to(s) & pieces(~us))
+              return false;
+
+      // In case of Chess960, verify that when moving the castling rook we do
+      // not discover some hidden checker.
+      // For instance an enemy queen in SQ_A1 when castling rook is in SQ_B1.
       return   !chess960
-            || (  to = relative_square(us, to > from ? SQ_G1 : SQ_C1),
-                !(attacks_bb<ROOK>(to, pieces() ^ from) & pieces(~us, ROOK, QUEEN)));
+            || !(attacks_bb<ROOK>(to, pieces() ^ to_sq(m)) & pieces(~us, ROOK, QUEEN));
+  }
 
   // If the moving piece is a king, check whether the destination square is
   // attacked by the opponent.
