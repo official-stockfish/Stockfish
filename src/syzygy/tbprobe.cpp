@@ -215,6 +215,11 @@ public:
 
         fstat(fd, &statbuf);
         *mapping = statbuf.st_size;
+        if (statbuf.st_size % 64 != 16)
+        {
+            std::cerr << "Corrupt tablebase file " << fname << std::endl;
+            exit(1);
+        }
         *baseAddress = mmap(nullptr, statbuf.st_size, PROT_READ, MAP_SHARED, fd, 0);
         madvise(*baseAddress, statbuf.st_size, MADV_RANDOM);
         ::close(fd);
@@ -233,6 +238,11 @@ public:
 
         DWORD size_high;
         DWORD size_low = GetFileSize(fd, &size_high);
+        if (size_low % 64 != 16)
+        {
+            std::cerr << "Corrupt tablebase file " << fname << std::endl;
+            exit(1);
+        }
         HANDLE mmap = CreateFileMapping(fd, nullptr, PAGE_READONLY, size_high, size_low, nullptr);
         CloseHandle(fd);
 
