@@ -34,6 +34,7 @@ namespace Cluster {
 
 struct MoveInfo {
   int move;
+  int ponder;
   int depth;
   int score;
   int rank;
@@ -73,7 +74,7 @@ int size();
 int rank();
 inline bool is_root() { return rank() == 0; }
 void save(Thread* thread, TTEntry* tte, Key k, Value v, Bound b, Depth d, Move m, Value ev);
-void pick_moves(MoveInfo& mi);
+void pick_moves(MoveInfo& mi, std::string& PVLine);
 void ttRecvBuff_resize(size_t nThreads);
 uint64_t nodes_searched();
 uint64_t tb_hits();
@@ -90,7 +91,7 @@ constexpr int size() { return 1; }
 constexpr int rank() { return 0; }
 constexpr bool is_root() { return true; }
 inline void save(Thread*, TTEntry* tte, Key k, Value v, Bound b, Depth d, Move m, Value ev) { tte->save(k, v, b, d, m, ev); }
-inline void pick_moves(MoveInfo&) { }
+inline void pick_moves(MoveInfo&, std::string&) { }
 inline void ttRecvBuff_resize(size_t) { }
 uint64_t nodes_searched();
 uint64_t tb_hits();

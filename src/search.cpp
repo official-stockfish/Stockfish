@@ -288,27 +288,41 @@ void MainThread::search() {
       }
   }
 
-  Cluster::MoveInfo mi{bestThread->rootMoves[0].pv[0],
+
+  // Prepare PVLine and ponder move
+  std::string PVLine = UCI::pv(bestThread->rootPos, bestThread->completedDepth, -VALUE_INFINITE, VALUE_INFINITE);
+
+  Move bestMove   = bestThread->rootMoves[0].pv[0];
+  Move ponderMove = MOVE_NONE;
+  if (bestThread->rootMoves[0].pv.size() > 1 || bestThread->rootMoves[0].extract_ponder_from_tt(rootPos))
+      ponderMove = bestThread->rootMoves[0].pv[1];
+
+  // Exchange info as needed
+  Cluster::MoveInfo mi{bestMove,
+                       ponderMove,
                        bestThread->completedDepth,
                        bestThread->rootMoves[0].score,
                        Cluster::rank()};
-  Cluster::pick_moves(mi);
+  Cluster::pick_moves(mi, PVLine);
 
   previousScore = static_cast<Value>(mi.score);
 
-  // TODO output should be done on the cluster_root
-  if (mi.rank == Cluster::rank()) {
-      // Send again PV info if we have a new best thread
-      if (!Cluster::is_root() || bestThread != this)
-          sync_cout << UCI::pv(bestThread->rootPos, bestThread->completedDepth, -VALUE_INFINITE, VALUE_INFINITE) << sync_endl;
+  if (Cluster::is_root())
+  {
+      // Send again PV info if we have a new best thread/rank
+      if (bestThread != this || mi.rank != 0)
+          sync_cout << PVLine << sync_endl;
 
-      sync_cout << "bestmove " << UCI::move(bestThread->rootMoves[0].pv[0], rootPos.is_chess960());
+      bestMove = static_cast<Move>(mi.move);
+      ponderMove = static_cast<Move>(mi.ponder);
 
-      if (bestThread->rootMoves[0].pv.size() > 1 || bestThread->rootMoves[0].extract_ponder_from_tt(rootPos))
-          std::cout << " ponder " << UCI::move(bestThread->rootMoves[0].pv[1], rootPos.is_chess960());
-
-      std::cout << sync_endl;
+      if (ponderMove != MOVE_NONE)
+          sync_cout << "bestmove " << UCI::move(bestMove, rootPos.is_chess960())
+                    << " ponder "  << UCI::move(ponderMove, rootPos.is_chess960()) << sync_endl;
+      else
+          sync_cout << "bestmove " << UCI::move(bestMove, rootPos.is_chess960()) << sync_endl;
   }
+
 }
 
 
