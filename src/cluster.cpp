@@ -77,11 +77,12 @@ void init() {
   MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
   MPI_Comm_size(MPI_COMM_WORLD, &world_size);
 
-  const std::array<MPI_Aint, 4> MIdisps = {offsetof(MoveInfo, move),
+  const std::array<MPI_Aint, 5> MIdisps = {offsetof(MoveInfo, move),
+                                           offsetof(MoveInfo, ponder),
                                            offsetof(MoveInfo, depth),
                                            offsetof(MoveInfo, score),
                                            offsetof(MoveInfo, rank)};
-  MPI_Type_create_hindexed_block(4, 1, MIdisps.data(), MPI_INT, &MIDatatype);
+  MPI_Type_create_hindexed_block(5, 1, MIdisps.data(), MPI_INT, &MIDatatype);
   MPI_Type_commit(&MIDatatype);
 
   MPI_Comm_dup(MPI_COMM_WORLD, &InputComm);
@@ -311,7 +312,7 @@ void save(Thread* thread, TTEntry* tte,
 
 
 // TODO update to the scheme in master.. can this use aggregation of votes?
-void pick_moves(MoveInfo& mi) {
+void pick_moves(MoveInfo& mi, std::string& PVLine) {
 
   MoveInfo* pMoveInfo = NULL;
   if (is_root())
@@ -344,7 +345,28 @@ void pick_moves(MoveInfo& mi) {
       }
       free(pMoveInfo);
   }
+
+  // Send around the final result
   MPI_Bcast(&mi, 1, MIDatatype, 0, MoveComm);
+
+  // Send PV line to root as needed
+  if (mi.rank != 0 && mi.rank == rank()) {
+      int size;
+      std::vector<char> vec;
+      vec.assign(PVLine.begin(), PVLine.end());
+      size = vec.size();
+      MPI_Send(&size, 1, MPI_INT, 0, 42, MoveComm);
+      MPI_Send(vec.data(), size, MPI_CHAR, 0, 42, MoveComm);
+  }
+  if (mi.rank != 0 && is_root()) {
+      int size;
+      std::vector<char> vec;
+      MPI_Recv(&size, 1, MPI_INT, mi.rank, 42, MoveComm, MPI_STATUS_IGNORE);
+      vec.resize(size);
+      MPI_Recv(vec.data(), size, MPI_CHAR, mi.rank, 42, MoveComm, MPI_STATUS_IGNORE);
+      PVLine.assign(vec.begin(), vec.end());
+  }
+
 }
 
 uint64_t nodes_searched() {
