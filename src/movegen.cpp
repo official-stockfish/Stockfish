@@ -25,22 +25,6 @@
 
 namespace {
 
-  template<Color Us, CastlingSide Cs, bool Checks>
-  ExtMove* generate_castling(const Position& pos, ExtMove* moveList) {
-
-    assert(!pos.checkers());
-
-    constexpr CastlingRight Cr = Us | Cs;
-
-    Move m = make<CASTLING>(pos.square<KING>(Us), pos.castling_rook_square(Cr));
-
-    if (!Checks || pos.gives_check(m))
-        *moveList++ = m;
-
-    return moveList;
-  }
-
-
   template<GenType Type, Direction D>
   ExtMove* make_promotions(ExtMove* moveList, Square to, Square ksq) {
 
@@ -235,7 +219,7 @@ namespace {
   template<Color Us, GenType Type>
   ExtMove* generate_all(const Position& pos, ExtMove* moveList, Bitboard target) {
 
-    constexpr bool Checks = Type == QUIET_CHECKS;
+    constexpr bool Checks = Type == QUIET_CHECKS; // Reduce template instantations
 
     moveList = generate_pawn_moves<Us, Type>(pos, moveList, target);
     moveList = generate_moves<KNIGHT, Checks>(pos, moveList, Us, target);
@@ -249,15 +233,15 @@ namespace {
         Bitboard b = pos.attacks_from<KING>(ksq) & target;
         while (b)
             *moveList++ = make_move(ksq, pop_lsb(&b));
-    }
 
-    if (Type != CAPTURES && Type != EVASIONS && pos.castling_rights(Us))
-    {
-        if (!pos.castling_impeded(Us | KING_SIDE) && pos.can_castle(Us | KING_SIDE))
-            moveList = generate_castling<Us, KING_SIDE, Checks>(pos, moveList);
+        if (Type != CAPTURES && pos.castling_rights(Us))
+        {
+            if (!pos.castling_impeded(Us|KING_SIDE) && pos.can_castle(Us|KING_SIDE))
+                *moveList++ = make<CASTLING>(ksq, pos.castling_rook_square(Us|KING_SIDE));
 
-        if (!pos.castling_impeded(Us | QUEEN_SIDE) && pos.can_castle(Us | QUEEN_SIDE))
-            moveList = generate_castling<Us, QUEEN_SIDE, Checks>(pos, moveList);
+            if (!pos.castling_impeded(Us|QUEEN_SIDE) && pos.can_castle(Us|QUEEN_SIDE))
+                *moveList++ = make<CASTLING>(ksq, pos.castling_rook_square(Us|QUEEN_SIDE));
+        }
     }
 
     return moveList;
