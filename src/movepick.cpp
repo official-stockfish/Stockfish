@@ -59,11 +59,13 @@ namespace {
 MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const ButterflyHistory* mh,
                        const CapturePieceToHistory* cph, const PieceToHistory** ch, Move cm, Move* killers)
            : pos(p), mainHistory(mh), captureHistory(cph), continuationHistory(ch),
-             refutations{{killers[0], 0}, {killers[1], 0}, {cm, 0}}, depth(d) {
+             refutations{{killers[0], 0}, {killers[1], 0}, {cm, 0}}, stage(MAIN_TT), depth(d) {
 
   assert(d > DEPTH_ZERO);
 
-  stage = pos.checkers() ? EVASION_TT : MAIN_TT;
+  if (pos.checkers())
+     stage = EVASION_TT;
+
   ttMove = ttm && pos.pseudo_legal(ttm) ? ttm : MOVE_NONE;
   stage += (ttMove == MOVE_NONE);
 }
@@ -71,11 +73,14 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const ButterflyHist
 /// MovePicker constructor for quiescence search
 MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const ButterflyHistory* mh,
                        const CapturePieceToHistory* cph, const PieceToHistory** ch, Square rs)
-           : pos(p), mainHistory(mh), captureHistory(cph), continuationHistory(ch), recaptureSquare(rs), depth(d) {
+           : pos(p), mainHistory(mh), captureHistory(cph), continuationHistory(ch),
+             stage(QSEARCH_TT), recaptureSquare(rs), depth(d) {
 
   assert(d <= DEPTH_ZERO);
 
-  stage = pos.checkers() ? EVASION_TT : QSEARCH_TT;
+  if (pos.checkers())
+     stage = EVASION_TT;
+
   ttMove =    ttm
            && pos.pseudo_legal(ttm)
            && (depth > DEPTH_QS_RECAPTURES || to_sq(ttm) == recaptureSquare) ? ttm : MOVE_NONE;
@@ -85,15 +90,15 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const ButterflyHist
 /// MovePicker constructor for ProbCut: we generate captures with SEE greater
 /// than or equal to the given threshold.
 MovePicker::MovePicker(const Position& p, Move ttm, Value th, const CapturePieceToHistory* cph)
-           : pos(p), captureHistory(cph), threshold(th) {
+           : pos(p), captureHistory(cph), stage(PROBCUT_TT), threshold(th) {
 
   assert(!pos.checkers());
 
-  stage = PROBCUT_TT;
   ttMove =   ttm
           && pos.pseudo_legal(ttm)
           && pos.capture(ttm)
           && pos.see_ge(ttm, threshold) ? ttm : MOVE_NONE;
+
   stage += (ttMove == MOVE_NONE);
 }
 
