@@ -214,12 +214,12 @@ public:
             return *baseAddress = nullptr, nullptr;
 
         fstat(fd, &statbuf);
-        *mapping = statbuf.st_size;
         if (statbuf.st_size % 64 != 16)
         {
             std::cerr << "Corrupt tablebase file " << fname << std::endl;
             exit(1);
         }
+        *mapping = statbuf.st_size;
         *baseAddress = mmap(nullptr, statbuf.st_size, PROT_READ, MAP_SHARED, fd, 0);
         madvise(*baseAddress, statbuf.st_size, MADV_RANDOM);
         ::close(fd);
