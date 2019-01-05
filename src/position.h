@@ -265,7 +265,7 @@ inline bool Position::can_castle(CastlingRight cr) const {
 }
 
 inline int Position::castling_rights(Color c) const {
-  return st->castlingRights & ((WHITE_OO | WHITE_OOO) << (2 * c));
+  return st->castlingRights & (c == WHITE ? WHITE_CASTLING : BLACK_CASTLING);
 }
 
 inline bool Position::castling_impeded(CastlingRight cr) const {
