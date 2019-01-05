@@ -243,7 +243,7 @@ void save(Thread* thread, TTEntry* tte,
 
   tte->save(k, v, b, d, m, ev);
 
-  if (d > 5 * ONE_PLY)
+  if (d > 3 * ONE_PLY)
   {
      // Try to add to thread's send buffer
      {

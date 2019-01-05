@@ -43,7 +43,7 @@ struct MoveInfo {
 #ifdef USE_MPI
 using KeyedTTEntry = std::pair<Key, TTEntry>;
 
-constexpr std::size_t TTCacheSize = 32;
+constexpr std::size_t TTCacheSize = 16;
 template <std::size_t N> class TTCache : public std::array<KeyedTTEntry, N> {
 
   struct Compare {
