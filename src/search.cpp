@@ -951,11 +951,11 @@ moves_loop: // When in check, search starts from here
           if (value < singularBeta)
               extension = ONE_PLY;
 
-          // Non-singular cut node pruning
-          // If we can fail high on lower depth searches for more than one move,
-          // we can prune on a cut node. In this case, our ttMove fails high and
-          // even if we exclude it, we have proven that we can still fail high
-          // on another move based on our lower depth search.
+          // Multi-cut pruning
+          // Our ttMove is assumed to fail high, and now we failed high also on a reduced
+          // search without the ttMove. So we assume this expected Cut-node is not singular,
+          // that is multiple moves fail high, and we can prune the whole subtree by returning
+          // the hard beta bound.
           else if (cutNode && singularBeta > beta)
               return beta;
       }
