@@ -755,6 +755,7 @@ namespace {
 	int MinSons = 0;
 	Node node = NULL;
 	int visits = 0;
+	bool Updated = false;
 
 	if (excludedMove || !UseExp)
 	{
@@ -780,27 +781,25 @@ namespace {
 				//thisThread->tbHits.fetch_add(1, std::memory_order_relaxed);
 		//	}
 
-			bool Updated = false;
+			
 			MinSons = node->sons;
 			visits = node->totalVisits;
 
-			for (int x = 0; x < node->sons; x++)
+			if (node->child[node->sons - 1].depth >= depth)
 			{
-				if (node->child[x].depth >= depth)
-				{
-					myValue = node->child[x].score;
-					expttMove = node->child[x].move;
-					expttHit = true;
-					expttValue = node->child[x].score;
-					Updated = true;
-					child = node->child[x];
+				myValue = node->child[node->sons - 1].score;
+				expttMove = node->child[node->sons - 1].move;
+				expttHit = true;
+				expttValue = node->child[node->sons - 1].score;
+				Updated = true;
+				child = node->child[node->sons - 1];
 
-					if (!ttMovehave)
-					{
-						ttMove = node->child[x].move;
-					}
+				if (!ttMovehave)
+				{
+					ttMove = node->child[node->sons - 1].move;
 				}
 			}
+			
 
 
 			if (Updated
@@ -808,9 +807,10 @@ namespace {
 				)
 			{
 				solved = true;
+
 			}
 
-			if (!PvNode && Updated
+			if ((!PvNode || ((ss-1)->moveCount> 5 && !rootNode)) && Updated
 				&& child.depth >= depth
 				)
 			{
@@ -823,7 +823,7 @@ namespace {
 					if ((ss - 1)->moveCount == 1 && !pos.captured_piece())
 						update_continuation_histories(ss - 1, pos.piece_on(prevSq), prevSq, -stat_bonus(depth + ONE_PLY));
 				}
-				//thisThread->tbHits.fetch_add(1, std::memory_order_relaxed);
+				thisThread->tbHits.fetch_add(1, std::memory_order_relaxed);
 				return myValue;
 			}
 
@@ -890,34 +890,44 @@ namespace {
         improving = false;
         goto moves_loop;  // Skip early pruning when in check
     }
-    else if (ttHit)
-    {
-        // Never assume anything on values stored in TT
-        ss->staticEval = eval = pureStaticEval = tte->eval();
-        if (eval == VALUE_NONE)
-            ss->staticEval = eval = pureStaticEval = evaluate(pos);
+	else
+		if (!ttHit && expttHit && Updated)
+		{
+			// Never assume anything on values stored in TT
+			ss->staticEval = eval = pureStaticEval = expttValue;
+			if (eval == VALUE_NONE)
+				ss->staticEval = eval = pureStaticEval = evaluate(pos);
 
-        // Can ttValue be used as a better position evaluation?
-        if (    ttValue != VALUE_NONE
-            && (tte->bound() & (ttValue > eval ? BOUND_LOWER : BOUND_UPPER)))
-            eval = ttValue;
-    }
-    else
-    {
-        if ((ss-1)->currentMove != MOVE_NULL)
-        {
-            int p = (ss-1)->statScore;
-            int bonus = p > 0 ? (-p - 2500) / 512 :
-                        p < 0 ? (-p + 2500) / 512 : 0;
 
-            pureStaticEval = evaluate(pos);
-            ss->staticEval = eval = pureStaticEval + bonus;
-        }
-        else
-            ss->staticEval = eval = pureStaticEval = -(ss-1)->staticEval + 2 * Eval::Tempo;
+		}
+		else if (ttHit)
+		{
+			// Never assume anything on values stored in TT
+			ss->staticEval = eval = pureStaticEval = tte->eval();
+			if (eval == VALUE_NONE)
+				ss->staticEval = eval = pureStaticEval = evaluate(pos);
 
-        tte->save(posKey, VALUE_NONE, BOUND_NONE, DEPTH_NONE, MOVE_NONE, pureStaticEval);
-    }
+			// Can ttValue be used as a better position evaluation?
+			if (ttValue != VALUE_NONE
+				&& (tte->bound() & (ttValue > eval ? BOUND_LOWER : BOUND_UPPER)))
+				eval = ttValue;
+		}
+		else
+		{
+			if ((ss - 1)->currentMove != MOVE_NULL)
+			{
+				int p = (ss - 1)->statScore;
+				int bonus = p > 0 ? (-p - 2500) / 512 :
+					p < 0 ? (-p + 2500) / 512 : 0;
+
+				pureStaticEval = evaluate(pos);
+				ss->staticEval = eval = pureStaticEval + bonus;
+			}
+			else
+				ss->staticEval = eval = pureStaticEval = -(ss - 1)->staticEval + 2 * Eval::Tempo;
+
+				tte->save(posKey, VALUE_NONE, BOUND_NONE, DEPTH_NONE, MOVE_NONE, pureStaticEval);
+		}
 
     // Step 7. Razoring (~2 Elo)
     if (   depth < 2 * ONE_PLY
@@ -1133,19 +1143,6 @@ moves_loop: // When in check, search starts from here
                   continue;
               }
 
-			  if (solved && !rootNode
-				  )
-			  {
-				  if (MinSons == 1
-					  && visits > 5
-					  && moveCount > 3
-					  )
-				  {
-
-					  thisThread->tbHits.fetch_add(1, std::memory_order_relaxed);
-					  continue;
-				  }
-			  }
 
               // Reduced depth of the next LMR search
               int lmrDepth = std::max(newDepth - reduction<PvNode>(improving, depth, moveCount), DEPTH_ZERO) / ONE_PLY;
