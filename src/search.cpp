@@ -639,10 +639,11 @@ namespace {
     // position key in case of an excluded move.
     excludedMove = ss->excludedMove;
     posKey = pos.key() ^ Key(excludedMove << 16); // Isn't a very good hash
-    tte = TT.probe(posKey, ttHit, pvHit);
+    tte = TT.probe(posKey, ttHit);
     ttValue = ttHit ? value_from_tt(tte->value(), ss->ply) : VALUE_NONE;
     ttMove =  rootNode ? thisThread->rootMoves[thisThread->pvIdx].pv[0]
             : ttHit    ? tte->move() : MOVE_NONE;
+    pvHit = ttHit ? tte->is_pv() : false;
 
     // At non-PV nodes we check for an early TT cutoff
     if (  !PvNode
@@ -881,9 +882,10 @@ namespace {
     {
         search<NT>(pos, ss, alpha, beta, depth - 7 * ONE_PLY, cutNode);
 
-        tte = TT.probe(posKey, ttHit, pvHit);
+        tte = TT.probe(posKey, ttHit);
         ttValue = ttHit ? value_from_tt(tte->value(), ss->ply) : VALUE_NONE;
         ttMove = ttHit ? tte->move() : MOVE_NONE;
+        pvHit = ttHit ? tte->is_pv() : false;
     }
 
 moves_loop: // When in check, search starts from here
@@ -1291,9 +1293,10 @@ moves_loop: // When in check, search starts from here
                                                   : DEPTH_QS_NO_CHECKS;
     // Transposition table lookup
     posKey = pos.key();
-    tte = TT.probe(posKey, ttHit, pvHit);
+    tte = TT.probe(posKey, ttHit);
     ttValue = ttHit ? value_from_tt(tte->value(), ss->ply) : VALUE_NONE;
     ttMove = ttHit ? tte->move() : MOVE_NONE;
+    pvHit = ttHit ? tte->is_pv() : false;
 
     if (  !PvNode
         && ttHit
@@ -1683,7 +1686,7 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
 bool RootMove::extract_ponder_from_tt(Position& pos) {
 
     StateInfo st;
-    bool ttHit, pvHit;
+    bool ttHit;
 
     assert(pv.size() == 1);
 
@@ -1691,7 +1694,7 @@ bool RootMove::extract_ponder_from_tt(Position& pos) {
         return false;
 
     pos.do_move(pv[0], st);
-    TTEntry* tte = TT.probe(pos.key(), ttHit, pvHit);
+    TTEntry* tte = TT.probe(pos.key(), ttHit);
 
     if (ttHit)
     {
