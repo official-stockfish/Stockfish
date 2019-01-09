@@ -131,7 +131,7 @@ TTEntry* TranspositionTable::probe(const Key key, bool& found) const {
   TTEntry* replace = tte;
   for (int i = 1; i < ClusterSize; ++i)
       // Due to our packed storage format for generation and its cyclic
-      // nature we add 263 (263 is the modulus plus 7 to keep the unrelated
+      // nature we add 263 (256 is the modulus plus 7 to keep the unrelated
       // lowest three bits from affecting the result) to calculate the entry
       // age correctly even after generation8 overflows into the next cycle.
       if (  replace->depth8 - ((263 + generation8 - replace->genBound8) & 0xF8)
