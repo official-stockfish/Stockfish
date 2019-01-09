@@ -28,14 +28,14 @@ case $1 in
     echo "sanitizer-undefined testing started"
     prefix='!'
     exeprefix=''
-    postfix='2>&1 | grep "runtime error:"'
+    postfix='2>&1 | grep -A50 "runtime error:"'
     threads="1"
   ;;
   --sanitizer-thread)
     echo "sanitizer-thread testing started"
     prefix='!'
     exeprefix=''
-    postfix='2>&1 | grep "WARNING: ThreadSanitizer:"'
+    postfix='2>&1 | grep -A50 "WARNING: ThreadSanitizer:"'
     threads="2"
 
 cat << EOF > tsan.supp
