@@ -25,47 +25,6 @@
 
 namespace {
 
-  template<Color Us, CastlingSide Cs, bool Checks, bool Chess960>
-  ExtMove* generate_castling(const Position& pos, ExtMove* moveList) {
-
-    constexpr CastlingRight Cr = Us | Cs;
-    constexpr bool KingSide = (Cs == KING_SIDE);
-
-    if (pos.castling_impeded(Cr) || !pos.can_castle(Cr))
-        return moveList;
-
-    // After castling, the rook and king final positions are the same in Chess960
-    // as they would be in standard chess.
-    Square kfrom = pos.square<KING>(Us);
-    Square rfrom = pos.castling_rook_square(Cr);
-    Square kto = relative_square(Us, KingSide ? SQ_G1 : SQ_C1);
-    Bitboard enemies = pos.pieces(~Us);
-
-    assert(!pos.checkers());
-
-    const Direction step = Chess960 ? kto > kfrom ? WEST : EAST
-                                    : KingSide    ? WEST : EAST;
-
-    for (Square s = kto; s != kfrom; s += step)
-        if (pos.attackers_to(s) & enemies)
-            return moveList;
-
-    // Because we generate only legal castling moves we need to verify that
-    // when moving the castling rook we do not discover some hidden checker.
-    // For instance an enemy queen in SQ_A1 when castling rook is in SQ_B1.
-    if (Chess960 && (attacks_bb<ROOK>(kto, pos.pieces() ^ rfrom) & pos.pieces(~Us, ROOK, QUEEN)))
-        return moveList;
-
-    Move m = make<CASTLING>(kfrom, rfrom);
-
-    if (Checks && !pos.gives_check(m))
-        return moveList;
-
-    *moveList++ = m;
-    return moveList;
-  }
-
-
   template<GenType Type, Direction D>
   ExtMove* make_promotions(ExtMove* moveList, Square to, Square ksq) {
 
@@ -93,10 +52,8 @@ namespace {
   template<Color Us, GenType Type>
   ExtMove* generate_pawn_moves(const Position& pos, ExtMove* moveList, Bitboard target) {
 
-    // Compute our parametrized parameters at compile time, named according to
-    // the point of view of white side.
+    // Compute some compile time parameters relative to the white side
     constexpr Color     Them     = (Us == WHITE ? BLACK      : WHITE);
-    constexpr Bitboard  TRank8BB = (Us == WHITE ? Rank8BB    : Rank1BB);
     constexpr Bitboard  TRank7BB = (Us == WHITE ? Rank7BB    : Rank2BB);
     constexpr Bitboard  TRank3BB = (Us == WHITE ? Rank3BB    : Rank6BB);
     constexpr Direction Up       = (Us == WHITE ? NORTH      : SOUTH);
@@ -161,7 +118,7 @@ namespace {
     }
 
     // Promotions and underpromotions
-    if (pawnsOn7 && (Type != EVASIONS || (target & TRank8BB)))
+    if (pawnsOn7)
     {
         if (Type == CAPTURES)
             emptySquares = ~pos.pieces();
@@ -262,7 +219,9 @@ namespace {
   template<Color Us, GenType Type>
   ExtMove* generate_all(const Position& pos, ExtMove* moveList, Bitboard target) {
 
-    constexpr bool Checks = Type == QUIET_CHECKS;
+    constexpr CastlingRight OO  = Us | KING_SIDE;
+    constexpr CastlingRight OOO = Us | QUEEN_SIDE;
+    constexpr bool Checks = Type == QUIET_CHECKS; // Reduce template instantations
 
     moveList = generate_pawn_moves<Us, Type>(pos, moveList, target);
     moveList = generate_moves<KNIGHT, Checks>(pos, moveList, Us, target);
@@ -276,19 +235,14 @@ namespace {
         Bitboard b = pos.attacks_from<KING>(ksq) & target;
         while (b)
             *moveList++ = make_move(ksq, pop_lsb(&b));
-    }
 
-    if (Type != CAPTURES && Type != EVASIONS && pos.castling_rights(Us))
-    {
-        if (pos.is_chess960())
+        if (Type != CAPTURES && pos.can_castle(CastlingRight(OO | OOO)))
         {
-            moveList = generate_castling<Us, KING_SIDE, Checks, true>(pos, moveList);
-            moveList = generate_castling<Us, QUEEN_SIDE, Checks, true>(pos, moveList);
-        }
-        else
-        {
-            moveList = generate_castling<Us, KING_SIDE, Checks, false>(pos, moveList);
-            moveList = generate_castling<Us, QUEEN_SIDE, Checks, false>(pos, moveList);
+            if (!pos.castling_impeded(OO) && pos.can_castle(OO))
+                *moveList++ = make<CASTLING>(ksq, pos.castling_rook_square(OO));
+
+            if (!pos.castling_impeded(OOO) && pos.can_castle(OOO))
+                *moveList++ = make<CASTLING>(ksq, pos.castling_rook_square(OOO));
         }
     }
 

@@ -31,7 +31,7 @@
 TranspositionTable TT; // Our global transposition table
 
 /// TTEntry::save saves a TTEntry
-void TTEntry::save(Key k, Value v, Bound b, Depth d, Move m, Value ev) {
+void TTEntry::save(Key k, Value v, bool PvNode, Bound b, Depth d, Move m, Value ev) {
 
   assert(d / ONE_PLY * ONE_PLY == d);
 
@@ -47,7 +47,7 @@ void TTEntry::save(Key k, Value v, Bound b, Depth d, Move m, Value ev) {
       key16     = (uint16_t)(k >> 48);
       value16   = (int16_t)v;
       eval16    = (int16_t)ev;
-      genBound8 = (uint8_t)(TT.generation8 | b);
+      genBound8 = (uint8_t)(TT.generation8 | PvNode << 2 | b);
       depth8    = (int8_t)(d / ONE_PLY);
   }
 }
@@ -122,7 +122,7 @@ TTEntry* TranspositionTable::probe(const Key key, bool& found) const {
   for (int i = 0; i < ClusterSize; ++i)
       if (!tte[i].key16 || tte[i].key16 == key16)
       {
-          tte[i].genBound8 = uint8_t(generation8 | tte[i].bound()); // Refresh
+          tte[i].genBound8 = uint8_t(generation8 | tte[i].pv_hit() << 2 | tte[i].bound()); // Refresh
 
           return found = (bool)tte[i].key16, &tte[i];
       }
@@ -131,11 +131,11 @@ TTEntry* TranspositionTable::probe(const Key key, bool& found) const {
   TTEntry* replace = tte;
   for (int i = 1; i < ClusterSize; ++i)
       // Due to our packed storage format for generation and its cyclic
-      // nature we add 259 (256 is the modulus plus 3 to keep the lowest
+      // nature we add 263 (263 is the modulus plus 7 to keep the lowest
       // two bound bits from affecting the result) to calculate the entry
       // age correctly even after generation8 overflows into the next cycle.
-      if (  replace->depth8 - ((259 + generation8 - replace->genBound8) & 0xFC) * 2
-          >   tte[i].depth8 - ((259 + generation8 -   tte[i].genBound8) & 0xFC) * 2)
+      if (  replace->depth8 - ((263 + generation8 - replace->genBound8) & 0xF8)
+          >   tte[i].depth8 - ((263 + generation8 -   tte[i].genBound8) & 0xF8))
           replace = &tte[i];
 
   return found = false, replace;

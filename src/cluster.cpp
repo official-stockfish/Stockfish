@@ -239,9 +239,9 @@ void signals_poll() {
 }
 
 void save(Thread* thread, TTEntry* tte,
-          Key k, Value v, Bound b, Depth d, Move m, Value ev) {
+          Key k, Value v, bool PvHit, Bound b, Depth d, Move m, Value ev) {
 
-  tte->save(k, v, b, d, m, ev);
+  tte->save(k, v, PvHit, b, d, m, ev);
 
   if (d > 3 * ONE_PLY)
   {
@@ -291,7 +291,7 @@ void save(Thread* thread, TTEntry* tte,
                         bool found;
                         TTEntry* replace_tte;
                         replace_tte = TT.probe(e.first, found);
-                        replace_tte->save(e.first, e.second.value(), e.second.bound(), e.second.depth(),
+                        replace_tte->save(e.first, e.second.value(), e.second.pv_hit(), e.second.bound(), e.second.depth(),
                                           e.second.move(), e.second.eval());
                     }
              }
