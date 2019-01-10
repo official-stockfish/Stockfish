@@ -150,7 +150,7 @@ int TranspositionTable::hashfull() const {
   int cnt = 0;
   for (int i = 0; i < 1000 / ClusterSize; ++i)
       for (int j = 0; j < ClusterSize; ++j)
-          cnt += (table[i].entry[j].genBound8 & 0xFC) == generation8;
+          cnt += (table[i].entry[j].genBound8 & 0xF8) == generation8;
 
   return cnt * 1000 / (ClusterSize * (1000 / ClusterSize));
 }
