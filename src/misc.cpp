@@ -152,14 +152,14 @@ void dbg_hit_on(bool c, bool b) { if (c) dbg_hit_on(b); }
 void dbg_mean_of(int v) { ++means[0]; means[1] += v; }
 
 void dbg_print() {
-
   if (hits[0])
-      cerr << "Total " << hits[0] << " Hits " << hits[1]
-           << " hit rate (%) " << 100 * hits[1] / hits[0] << endl;
+      cerr << "Total:" << hits[0] << " Hits:" << hits[1]
+           << " Hit rate:" << 100 * double(hits[1]) / hits[0] <<"% " << endl;
 
   if (means[0])
-      cerr << "Total " << means[0] << " Mean "
+      cerr << "Total:" << means[0] << " Mean:"
            << (double)means[1] / means[0] << endl;
+
 }
 
 
