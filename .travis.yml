@@ -63,7 +63,7 @@ script:
   #
   # Valgrind
   #
-  - export CXXFLAGS=-O1
+  - export CXXFLAGS="-O1 -fno-inline"
   - if [ -x "$(command -v valgrind )" ]; then make clean && make -j2 ARCH=x86-64 debug=yes optimize=no build > /dev/null && ../tests/instrumented.sh --valgrind; fi
   - if [ -x "$(command -v valgrind )" ]; then ../tests/instrumented.sh --valgrind-thread; fi
   #
