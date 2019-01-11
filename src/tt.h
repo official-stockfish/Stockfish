@@ -30,7 +30,8 @@
 /// move       16 bit
 /// value      16 bit
 /// eval value 16 bit
-/// generation  6 bit
+/// generation  5 bit
+/// PvNode      1 bit
 /// bound type  2 bit
 /// depth       8 bit
 
@@ -40,8 +41,9 @@ struct TTEntry {
   Value value() const { return (Value)value16; }
   Value eval()  const { return (Value)eval16; }
   Depth depth() const { return (Depth)(depth8 * int(ONE_PLY)); }
+  bool pv_hit() const { return (bool)(genBound8 & 0x4); }
   Bound bound() const { return (Bound)(genBound8 & 0x3); }
-  void save(Key k, Value v, Bound b, Depth d, Move m, Value ev);
+  void save(Key k, Value v, bool PvNode, Bound b, Depth d, Move m, Value ev);
 
 private:
   friend class TranspositionTable;
@@ -76,7 +78,7 @@ class TranspositionTable {
 
 public:
  ~TranspositionTable() { free(mem); }
-  void new_search() { generation8 += 4; } // Lower 2 bits are used by Bound
+  void new_search() { generation8 += 8; } // Lower 3 bits are used by PV flag and Bound
   TTEntry* probe(const Key key, bool& found) const;
   int hashfull() const;
   void resize(size_t mbSize);
