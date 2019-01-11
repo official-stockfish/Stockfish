@@ -639,7 +639,7 @@ namespace {
     ttValue = ttHit ? value_from_tt(tte->value(), ss->ply) : VALUE_NONE;
     ttMove =  rootNode ? thisThread->rootMoves[thisThread->pvIdx].pv[0]
             : ttHit    ? tte->move() : MOVE_NONE;
-    pvHit = ttHit && tte->pv_hit();
+    pvHit = ttHit && tte->is_pv();
 
     // At non-PV nodes we check for an early TT cutoff
     if (  !PvNode
@@ -673,9 +673,10 @@ namespace {
         return ttValue;
     }
 
-    if (   depth > 4 * ONE_PLY
+    // We will save this node in TT with pv flag set
+    if (   PvNode
         && !excludedMove
-        && PvNode)
+        && depth > 4 * ONE_PLY)
         pvHit = true;
 
     // Step 5. Tablebases probe
@@ -877,7 +878,7 @@ namespace {
         tte = TT.probe(posKey, ttHit);
         ttValue = ttHit ? value_from_tt(tte->value(), ss->ply) : VALUE_NONE;
         ttMove = ttHit ? tte->move() : MOVE_NONE;
-        pvHit = ttHit && tte->pv_hit();
+        pvHit = ttHit && tte->is_pv();
     }
 
 moves_loop: // When in check, search starts from here
@@ -1282,7 +1283,7 @@ moves_loop: // When in check, search starts from here
     tte = TT.probe(posKey, ttHit);
     ttValue = ttHit ? value_from_tt(tte->value(), ss->ply) : VALUE_NONE;
     ttMove = ttHit ? tte->move() : MOVE_NONE;
-    pvHit = ttHit && tte->pv_hit();
+    pvHit = ttHit && tte->is_pv();
 
     if (  !PvNode
         && ttHit
