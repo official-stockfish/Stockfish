@@ -961,8 +961,7 @@ moves_loop: // When in check, search starts from here
           else if (cutNode && singularBeta > beta)
               return beta;
       }
-      else if (    givesCheck // Check extension (~2 Elo)
-               &&  pos.see_ge(move))
+      else if (givesCheck && pos.see_ge(move)) // Check extension (~2 Elo)
           extension = ONE_PLY;
 
       // Extension if castling
