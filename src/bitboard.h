@@ -395,4 +395,8 @@ inline Square pop_lsb(Bitboard* b) {
 inline Square frontmost_sq(Color c, Bitboard b) { return c == WHITE ? msb(b) : lsb(b); }
 inline Square  backmost_sq(Color c, Bitboard b) { return c == WHITE ? lsb(b) : msb(b); }
 
+inline int pieces_on_same_color(Bitboard pieces, Square s) {
+  return popcount(pieces & ((DarkSquares & s) ? DarkSquares : ~DarkSquares));
+}
+
 #endif // #ifndef BITBOARD_H_INCLUDED
