@@ -32,6 +32,7 @@
 #include "cluster.h"
 #include "thread.h"
 #include "tt.h"
+#include "timeman.h"
 
 namespace Cluster {
 
@@ -41,12 +42,13 @@ static int world_size = 0;
 static MPI_Request reqSignals = MPI_REQUEST_NULL;
 static uint64_t signalsCallCounter = 0;
 
-enum Signals : int { SIG_NODES = 0, SIG_STOP = 1, SIG_TB = 2, SIG_NB = 3};
+enum Signals : int { SIG_NODES = 0, SIG_STOP = 1, SIG_TB = 2, SIG_TTS = 3, SIG_NB = 4};
 static uint64_t signalsSend[SIG_NB] = {};
 static uint64_t signalsRecv[SIG_NB] = {};
 
 static uint64_t nodesSearchedOthers = 0;
 static uint64_t tbHitsOthers = 0;
+static uint64_t TTsavesOthers = 0;
 static uint64_t stopSignalsPosted = 0;
 
 static MPI_Comm InputComm = MPI_COMM_NULL;
@@ -178,6 +180,7 @@ void signals_process() {
 
   nodesSearchedOthers = signalsRecv[SIG_NODES] - signalsSend[SIG_NODES];
   tbHitsOthers = signalsRecv[SIG_TB] - signalsSend[SIG_TB];
+  TTsavesOthers = signalsRecv[SIG_TTS] - signalsSend[SIG_TTS];
   stopSignalsPosted = signalsRecv[SIG_STOP];
   if (signalsRecv[SIG_STOP] > 0)
       Threads.stop = true;
@@ -219,10 +222,11 @@ void signals_sync() {
 
 void signals_init() {
 
-  stopSignalsPosted = tbHitsOthers = nodesSearchedOthers = 0;
+  stopSignalsPosted = tbHitsOthers = TTsavesOthers = nodesSearchedOthers = 0;
 
   signalsSend[SIG_NODES] = signalsRecv[SIG_NODES] = 0;
   signalsSend[SIG_TB] = signalsRecv[SIG_TB] = 0;
+  signalsSend[SIG_TTS] = signalsRecv[SIG_TTS] = 0;
   signalsSend[SIG_STOP] = signalsRecv[SIG_STOP] = 0;
 
 }
@@ -238,6 +242,18 @@ void signals_poll() {
   }
 }
 
+void cluster_info(Depth depth) {
+
+  TimePoint elapsed = Time.elapsed() + 1;
+  uint64_t TTSaves = TT_saves();
+
+  sync_cout << "info depth " << depth / ONE_PLY << " cluster "
+            << " signals " << signalsCallCounter << " sps " << signalsCallCounter * 1000 / elapsed
+            << " gathers " << gathersPosted << " gpps " <<  TTRecvBuff.size() * gathersPosted * 1000 / elapsed
+            << " TTSaves " << TTSaves << " TTSavesps " << TTSaves * 1000 / elapsed
+            << sync_endl;
+}
+
 void save(Thread* thread, TTEntry* tte,
           Key k, Value v, bool PvHit, Bound b, Depth d, Move m, Value ev) {
 
@@ -245,6 +261,8 @@ void save(Thread* thread, TTEntry* tte,
 
   if (d > 3 * ONE_PLY)
   {
+     thread->TTsaves.fetch_add(1, std::memory_order_relaxed);
+
      // Try to add to thread's send buffer
      {
          std::lock_guard<Mutex> lk(thread->ttCache.mutex);
@@ -379,6 +397,12 @@ uint64_t tb_hits() {
   return tbHitsOthers + Threads.tb_hits();
 }
 
+uint64_t TT_saves() {
+
+  return TTsavesOthers + Threads.TT_saves();
+}
+
+
 }
 
 #else
@@ -396,6 +420,11 @@ uint64_t nodes_searched() {
 uint64_t tb_hits() {
 
   return Threads.tb_hits();
+}
+
+uint64_t TT_saves() {
+
+  return Threads.TT_saves();
 }
 
 }

@@ -78,6 +78,8 @@ void pick_moves(MoveInfo& mi, std::string& PVLine);
 void ttRecvBuff_resize(size_t nThreads);
 uint64_t nodes_searched();
 uint64_t tb_hits();
+uint64_t TT_saves();
+void cluster_info(Depth depth);
 void signals_init();
 void signals_poll();
 void signals_sync();
@@ -95,6 +97,8 @@ inline void pick_moves(MoveInfo&, std::string&) { }
 inline void ttRecvBuff_resize(size_t) { }
 uint64_t nodes_searched();
 uint64_t tb_hits();
+uint64_t TT_saves();
+inline void cluster_info(Depth) { }
 inline void signals_init() { }
 inline void signals_poll() { }
 inline void signals_sync() { }
