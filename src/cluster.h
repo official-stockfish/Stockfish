@@ -2,7 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2017 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2015-2019 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -30,8 +30,19 @@
 
 class Thread;
 
+/// The Cluster namespace contains functionality required to run on distributed
+/// memory architectures using MPI as the message passing interface. On a high level,
+/// a 'lazy SMP'-like scheme is implemented where TT saves of sufficient depth are
+/// collected on each rank and distributed to, and used by, all other ranks,
+/// which search essentially independently.  The root (MPI rank 0) of the cluster
+/// is responsible for all I/O and time management, communicating this info to
+/// the other ranks as needed. UCI options such as Threads and Hash specify these
+/// quantities per MPI rank.  It is recommended to have one rank (MPI process) per node.
+/// For the non-MPI case, wrappers that will be compiler-optimized away are provided.
+
 namespace Cluster {
 
+/// Basic info to find the cluster-wide bestMove
 struct MoveInfo {
   int move;
   int ponder;
@@ -41,9 +52,12 @@ struct MoveInfo {
 };
 
 #ifdef USE_MPI
-using KeyedTTEntry = std::pair<Key, TTEntry>;
 
+// store the TTEntry with its full key, so it can be saved on the receiver side
+using KeyedTTEntry = std::pair<Key, TTEntry>;
 constexpr std::size_t TTCacheSize = 16;
+
+// Threads locally cache their high-depth TT entries till a batch can be send by MPI
 template <std::size_t N> class TTCache : public std::array<KeyedTTEntry, N> {
 
   struct Compare {
@@ -54,6 +68,8 @@ template <std::size_t N> class TTCache : public std::array<KeyedTTEntry, N> {
   Compare compare;
 
 public:
+
+  // Keep a heap of entries replacing low depth with high depth entries
   bool replace(const KeyedTTEntry& value) {
 
       if (compare(value, this->front()))
@@ -78,6 +94,8 @@ void pick_moves(MoveInfo& mi, std::string& PVLine);
 void ttRecvBuff_resize(size_t nThreads);
 uint64_t nodes_searched();
 uint64_t tb_hits();
+uint64_t TT_saves();
+void cluster_info(Depth depth);
 void signals_init();
 void signals_poll();
 void signals_sync();
@@ -95,6 +113,8 @@ inline void pick_moves(MoveInfo&, std::string&) { }
 inline void ttRecvBuff_resize(size_t) { }
 uint64_t nodes_searched();
 uint64_t tb_hits();
+uint64_t TT_saves();
+inline void cluster_info(Depth) { }
 inline void signals_init() { }
 inline void signals_poll() { }
 inline void signals_sync() { }

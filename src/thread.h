@@ -64,7 +64,7 @@ public:
   size_t pvIdx, pvLast;
   int selDepth, nmpMinPly;
   Color nmpColor;
-  std::atomic<uint64_t> nodes, tbHits;
+  std::atomic<uint64_t> nodes, tbHits, TTsaves;
 
   Position rootPos;
   Search::RootMoves rootMoves;
@@ -112,6 +112,7 @@ struct ThreadPool : public std::vector<Thread*> {
   MainThread* main()        const { return static_cast<MainThread*>(front()); }
   uint64_t nodes_searched() const { return accumulate(&Thread::nodes); }
   uint64_t tb_hits()        const { return accumulate(&Thread::tbHits); }
+  uint64_t TT_saves()       const { return accumulate(&Thread::TTsaves); }
 
   std::atomic_bool stop, ponder, stopOnPonderhit;
 

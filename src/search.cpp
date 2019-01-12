@@ -466,7 +466,10 @@ void Thread::search() {
                   && multiPV == 1
                   && (bestValue <= alpha || bestValue >= beta)
                   && Time.elapsed() > 3000)
+              {
                   sync_cout << UCI::pv(rootPos, rootDepth, alpha, beta) << sync_endl;
+                  Cluster::cluster_info(rootDepth);
+              }
 
               // In case of failing low/high increase aspiration window and
               // re-search, otherwise exit the loop.
@@ -501,7 +504,10 @@ void Thread::search() {
 
           if (    Cluster::is_root() && mainThread
               && (Threads.stop || pvIdx + 1 == multiPV || Time.elapsed() > 3000))
+          {
               sync_cout << UCI::pv(rootPos, rootDepth, alpha, beta) << sync_endl;
+              Cluster::cluster_info(rootDepth);
+          }
       }
 
       if (!Threads.stop)
