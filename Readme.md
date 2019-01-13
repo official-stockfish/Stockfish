@@ -129,6 +129,30 @@ more compact than Nalimov tablebases, while still storing all information
 needed for optimal play and in addition being able to take into account
 the 50-move rule.
 
+## Stockfish on distributed memory systems
+
+The cluster branch allows for running Stockfish on a cluster of servers (nodes)
+that are connected with a high-speed and low-latency network, using the message
+passing interface (MPI). In this case, one MPI process should be run per node,
+and UCI options can be used to set the number of threads/hash per node as usual.
+Typically, the engine will be invoked as
+```
+mpirun -np N /path/to/stockfish
+```
+where ```N``` stands for the number of MPI processes used. To build the cluster
+branch, it is sufficient to specify ```COMPILER=mpicxx``` on the make command line,
+and do a clean build:
+```
+make -j ARCH=x86-64-modern clean build COMPILER=mpicxx
+```
+If the name of the compiler wrapper (typically mpicxx, but sometimes e.g. CC) does
+not match ```mpi``` an edit to the Makefile is required. Make sure that the MPI
+installation is configured to support ```MPI_THREAD_MULTIPLE```, this might require
+adding system specific compiler options to the Makefile. Stockfish employs
+non-blocking (asynchronous) communication, and benefits from an MPI
+implementation that efficiently supports this. Some MPI implentations might benefit
+from leaving 1 core/thread free for these asynchronous communications, and might require
+setting additional environment variables. Refer to your MPI documentation for more info.
 
 ## Compiling Stockfish yourself from the sources
 
