@@ -36,8 +36,9 @@ class Thread;
 /// collected on each rank and distributed to, and used by, all other ranks,
 /// which search essentially independently.  The root (MPI rank 0) of the cluster
 /// is responsible for all I/O and time management, communicating this info to
-/// the other ranks as needed. For the non-MPI case, wrappers that will be
-/// compiler-optimized away are provided.
+/// the other ranks as needed. UCI options such as Threads and Hash specify these
+/// quantities per MPI rank.  It is recommended to have one rank (MPI process) per node.
+/// For the non-MPI case, wrappers that will be compiler-optimized away are provided.
 
 namespace Cluster {
 
