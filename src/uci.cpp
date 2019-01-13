@@ -113,6 +113,7 @@ namespace {
     bool ponderMode = false;
 
     limits.startTime = now(); // As early as possible!
+    TT.markDirty(); // search makes the hash dirty
 
     while (is >> token)
         if (token == "searchmoves")
@@ -169,7 +170,12 @@ namespace {
         }
         else if (token == "setoption")  setoption(is);
         else if (token == "position")   position(pos, is, states);
-        else if (token == "ucinewgame") { Search::clear(); elapsed = now(); } // Search::clear() may take some while
+        else if (token == "ucinewgame")
+        {
+            TT.resizeIfChanged();
+            Search::clear();
+            elapsed = now();  // TT.resizeIfChanged() may take a while
+        }
     }
 
     elapsed = now() - elapsed + 1; // Ensure positivity to avoid a 'divide by zero'
@@ -228,10 +234,10 @@ void UCI::loop(int argc, char* argv[]) {
                     << "\nuciok"  << sync_endl;
 
       else if (token == "setoption")  setoption(is);
-      else if (token == "go")         go(pos, is, states);
+      else if (token == "go")         { TT.resizeIfChanged(); go(pos, is, states); }
       else if (token == "position")   position(pos, is, states);
       else if (token == "ucinewgame") Search::clear();
-      else if (token == "isready")    sync_cout << "readyok" << sync_endl;
+      else if (token == "isready")    { TT.resizeIfChanged(); sync_cout << "readyok" << sync_endl; }
 
       // Additional custom non-UCI commands, mainly for debugging.
       // Do not use these commands during a search!
