@@ -675,8 +675,8 @@ namespace {
 
     // We will save this node in TT with pv flag set
     if (   PvNode
-        && !excludedMove
-        && depth > 4 * ONE_PLY)
+        && depth > 4 * ONE_PLY
+        && !excludedMove)
         pvHit = true;
 
     // Step 5. Tablebases probe
