@@ -29,7 +29,6 @@ int SquareDistance[SQUARE_NB][SQUARE_NB];
 Bitboard SquareBB[SQUARE_NB];
 Bitboard FileBB[FILE_NB];
 Bitboard RankBB[RANK_NB];
-Bitboard AdjacentFilesBB[FILE_NB];
 Bitboard ForwardRanksBB[COLOR_NB][RANK_NB];
 Bitboard BetweenBB[SQUARE_NB][SQUARE_NB];
 Bitboard LineBB[SQUARE_NB][SQUARE_NB];
@@ -97,9 +96,6 @@ void Bitboards::init() {
   for (Rank r = RANK_1; r <= RANK_8; ++r)
       RankBB[r] = r > RANK_1 ? RankBB[r - 1] << 8 : Rank1BB;
 
-  for (File f = FILE_A; f <= FILE_H; ++f)
-      AdjacentFilesBB[f] = (f > FILE_A ? FileBB[f - 1] : 0) | (f < FILE_H ? FileBB[f + 1] : 0);
-
   for (Rank r = RANK_1; r < RANK_8; ++r)
       ForwardRanksBB[WHITE][r] = ~(ForwardRanksBB[BLACK][r + 1] = ForwardRanksBB[BLACK][r] | RankBB[r]);
 
@@ -107,7 +103,7 @@ void Bitboards::init() {
       for (Square s = SQ_A1; s <= SQ_H8; ++s)
       {
           ForwardFileBB [c][s] = ForwardRanksBB[c][rank_of(s)] & FileBB[file_of(s)];
-          PawnAttackSpan[c][s] = ForwardRanksBB[c][rank_of(s)] & AdjacentFilesBB[file_of(s)];
+          PawnAttackSpan[c][s] = ForwardRanksBB[c][rank_of(s)] & adjacent_files_bb(file_of(s));
           PassedPawnMask[c][s] = ForwardFileBB [c][s] | PawnAttackSpan[c][s];
       }
 
