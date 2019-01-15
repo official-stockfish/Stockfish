@@ -185,6 +185,7 @@ void signals_send() {
 
   signalsSend[SIG_NODES] = Threads.nodes_searched();
   signalsSend[SIG_TB] = Threads.tb_hits();
+  signalsSend[SIG_TTS] = Threads.TT_saves();
   signalsSend[SIG_STOP] = Threads.stop;
   MPI_Iallreduce(signalsSend, signalsRecv, SIG_NB, MPI_UINT64_T,
                  MPI_SUM, signalsComm, &reqSignals);
