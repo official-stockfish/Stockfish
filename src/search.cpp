@@ -640,7 +640,7 @@ namespace {
     ttValue = ttHit ? value_from_tt(tte->value(), ss->ply) : VALUE_NONE;
     ttMove =  rootNode ? thisThread->rootMoves[thisThread->pvIdx].pv[0]
             : ttHit    ? tte->move() : MOVE_NONE;
-    pvHit = ttHit && tte->pv_hit();
+    pvHit = (ttHit && tte->pv_hit()) || (PvNode && depth > 4 * ONE_PLY);
 
     // At non-PV nodes we check for an early TT cutoff
     if (  !PvNode
@@ -673,11 +673,6 @@ namespace {
         }
         return ttValue;
     }
-
-    if (   depth > 4 * ONE_PLY
-        && !excludedMove
-        && PvNode)
-        pvHit = true;
 
     // Step 5. Tablebases probe
     if (!rootNode && TB::Cardinality)
