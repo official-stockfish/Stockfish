@@ -154,13 +154,13 @@ namespace {
   // TrappedRook[mobility] contains a penalty when the rook is trapped by the
   // king. It is bigger if the mobility is smaller.
   constexpr Score TrappedRook[] = {
-    S(96,4), S(74,4), S(52,4), S(30,4)
+    S(96, 4), S(74, 4), S(52, 4), S(30, 4)
   };
 
   // Assorted bonuses and penalties
   constexpr Score BishopPawns        = S(  3,  7);
-  constexpr Score CloseEnemies       = S(  8,  0);
   constexpr Score CorneredBishop     = S( 50, 50);
+  constexpr Score FlankAttacks       = S(  8,  0);
   constexpr Score Hanging            = S( 69, 36);
   constexpr Score KingProtector      = S(  7,  8);
   constexpr Score KnightOnQueen      = S( 16, 12);
@@ -413,23 +413,12 @@ namespace {
     constexpr Bitboard Camp = (Us == WHITE ? AllSquares ^ Rank6BB ^ Rank7BB ^ Rank8BB
                                            : AllSquares ^ Rank1BB ^ Rank2BB ^ Rank3BB);
 
-    const Square ksq = pos.square<KING>(Us);
-    Bitboard kingFlank, weak, b, b1, b2, safe, unsafeChecks;
-
-    // King shelter and enemy pawns storm
-    Score score = pe->king_safety<Us>(pos);
-
-    // Find the squares that opponent attacks in our king flank, and the squares
-    // which are attacked twice in that flank.
-    kingFlank = KingFlank[file_of(ksq)];
-    b1 = attackedBy[Them][ALL_PIECES] & kingFlank & Camp;
-    b2 = b1 & attackedBy2[Them];
-
-    int tropism = popcount(b1) + popcount(b2);
-
-    // Main king safety evaluation
+    Bitboard weak, b, b1, b2, safe, unsafeChecks = 0;
     int kingDanger = 0;
-    unsafeChecks = 0;
+    const Square ksq = pos.square<KING>(Us);
+
+    // Init the score with king shelter and enemy pawns storm
+    Score score = pe->king_safety<Us>(pos);
 
     // Attacked squares defended at most once by our queen or king
     weak =  attackedBy[Them][ALL_PIECES]
@@ -473,14 +462,21 @@ namespace {
     // the square is in the attacker's mobility area.
     unsafeChecks &= mobilityArea[Them];
 
+    // Find the squares that opponent attacks in our king flank, and the squares
+    // which are attacked twice in that flank.
+    b1 = attackedBy[Them][ALL_PIECES] & KingFlank[file_of(ksq)] & Camp;
+    b2 = b1 & attackedBy2[Them];
+
+    int kingFlankAttacks = popcount(b1) + popcount(b2);
+
     kingDanger +=        kingAttackersCount[Them] * kingAttackersWeight[Them]
                  +  69 * kingAttacksCount[Them]
                  + 185 * popcount(kingRing[Us] & weak)
                  + 150 * popcount(pos.blockers_for_king(Us) | unsafeChecks)
-                 +       tropism * tropism / 4
                  - 873 * !pos.count<QUEEN>(Them)
                  -   6 * mg_value(score) / 8
                  +       mg_value(mobility[Them] - mobility[Us])
+                 +       kingFlankAttacks * kingFlankAttacks / 4
                  -   30;
 
     // Transform the kingDanger units into a Score, and subtract it from the evaluation
@@ -488,11 +484,11 @@ namespace {
         score -= make_score(kingDanger * kingDanger / 4096, kingDanger / 16);
 
     // Penalty when our king is on a pawnless flank
-    if (!(pos.pieces(PAWN) & kingFlank))
+    if (!(pos.pieces(PAWN) & KingFlank[file_of(ksq)]))
         score -= PawnlessFlank;
 
-    // King tropism bonus, to anticipate slow motion attacks on our king
-    score -= CloseEnemies * tropism;
+    // Penalty if king flank is under attack, potentially moving toward the king
+    score -= FlankAttacks * kingFlankAttacks;
 
     if (T)
         Trace::add(KING, Us, score);
