@@ -159,7 +159,7 @@ inline Bitboard file_bb(Square s) {
 }
 
 
-/// shift() moves a bitboard one step along direction D (mainly for pawns)
+/// shift() moves a bitboard one step along direction D
 
 template<Direction D>
 constexpr Bitboard shift(Bitboard b) {
