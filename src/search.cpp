@@ -227,10 +227,9 @@ void MainThread::search() {
   // Threads.stop. However, if we are pondering or in an infinite search,
   // the UCI protocol states that we shouldn't print the best move before the
   // GUI sends a "stop" or "ponderhit" command. We therefore simply wait here
-  // until the GUI sends one of those commands (which also raises Threads.stop).
-  Threads.stopOnPonderhit = true;
+  // until the GUI sends one of those commands.
 
-  while (!Threads.stop && (Threads.ponder || Limits.infinite))
+  while (!Threads.stop && (ponder || Limits.infinite))
   {} // Busy wait for a stop or a ponder reset
 
   // Stop the threads if not already stopped (also raise the stop if
@@ -448,7 +447,7 @@ void Thread::search() {
                   {
                       failedHighCnt = 0;
                       failedLow = true;
-                      Threads.stopOnPonderhit = false;
+                      mainThread->stopOnPonderhit = false;
                   }
               }
               else if (bestValue >= beta)
@@ -497,7 +496,7 @@ void Thread::search() {
       // Do we have time for the next iteration? Can we stop searching now?
       if (    Limits.use_time_management()
           && !Threads.stop
-          && !Threads.stopOnPonderhit)
+          && !mainThread->stopOnPonderhit)
       {
           double fallingEval = (306 + 119 * failedLow + 6 * (mainThread->previousScore - bestValue)) / 581.0;
           fallingEval        = std::max(0.5, std::min(1.5, fallingEval));
@@ -515,8 +514,8 @@ void Thread::search() {
           {
               // If we are allowed to ponder do not stop the search now but
               // keep pondering until the GUI sends "ponderhit" or "stop".
-              if (Threads.ponder)
-                  Threads.stopOnPonderhit = true;
+              if (mainThread->ponder)
+                  mainThread->stopOnPonderhit = true;
               else
                   Threads.stop = true;
           }
@@ -1595,10 +1594,10 @@ void MainThread::check_time() {
   }
 
   // We should not stop pondering until told so by the GUI
-  if (Threads.ponder)
+  if (ponder)
       return;
 
-  if (   (Limits.use_time_management() && elapsed > Time.maximum() - 10)
+  if (   (Limits.use_time_management() && (elapsed > Time.maximum() - 10 || stopOnPonderhit))
       || (Limits.movetime && elapsed >= Limits.movetime)
       || (Limits.nodes && Threads.nodes_searched() >= (uint64_t)Limits.nodes))
       Threads.stop = true;
