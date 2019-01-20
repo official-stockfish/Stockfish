@@ -207,18 +207,16 @@ void UCI::loop(int argc, char* argv[]) {
       token.clear(); // Avoid a stale if getline() returns empty or blank line
       is >> skipws >> token;
 
+      if (    token == "quit"
+          ||  token == "stop")
+          Threads.stop = true;
+
       // The GUI sends 'ponderhit' to tell us the user has played the expected move.
       // So 'ponderhit' will be sent if we were told to ponder on the same move the
       // user has played. We should continue searching but switch from pondering to
-      // normal search. In case Threads.stopOnPonderhit is set we are waiting for
-      // 'ponderhit' to stop the search, for instance if max search depth is reached.
-      if (    token == "quit"
-          ||  token == "stop"
-          || (token == "ponderhit" && Threads.stopOnPonderhit))
-          Threads.stop = true;
-
+      // normal search.
       else if (token == "ponderhit")
-          Threads.ponder = false; // Switch to normal search
+          Threads.main()->ponder = false; // Switch to normal search
 
       else if (token == "uci")
           sync_cout << "id name " << engine_info(true)

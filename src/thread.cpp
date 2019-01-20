@@ -162,8 +162,8 @@ void ThreadPool::start_thinking(Position& pos, StateListPtr& states,
 
   main()->wait_for_search_finished();
 
-  stopOnPonderhit = stop = false;
-  ponder = ponderMode;
+  main()->stopOnPonderhit = stop = false;
+  main()->ponder = ponderMode;
   Search::Limits = limits;
   Search::RootMoves rootMoves;
 
