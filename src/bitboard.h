@@ -63,8 +63,6 @@ constexpr Bitboard Rank8BB = Rank1BB << (8 * 7);
 extern int SquareDistance[SQUARE_NB][SQUARE_NB];
 
 extern Bitboard SquareBB[SQUARE_NB];
-extern Bitboard FileBB[FILE_NB];
-extern Bitboard RankBB[RANK_NB];
 extern Bitboard ForwardRanksBB[COLOR_NB][RANK_NB];
 extern Bitboard BetweenBB[SQUARE_NB][SQUARE_NB];
 extern Bitboard LineBB[SQUARE_NB][SQUARE_NB];
@@ -142,19 +140,19 @@ inline bool opposite_colors(Square s1, Square s2) {
 /// the given file or rank.
 
 inline Bitboard rank_bb(Rank r) {
-  return RankBB[r];
+  return Rank1BB << (8 * r);
 }
 
 inline Bitboard rank_bb(Square s) {
-  return RankBB[rank_of(s)];
+  return rank_bb(rank_of(s));
 }
 
 inline Bitboard file_bb(File f) {
-  return FileBB[f];
+  return FileABB << f;
 }
 
 inline Bitboard file_bb(Square s) {
-  return FileBB[file_of(s)];
+  return file_bb(file_of(s));
 }
 
 
@@ -194,9 +192,8 @@ constexpr Bitboard double_pawn_attacks_bb(Bitboard b) {
 /// adjacent files of the given one.
 
 inline Bitboard adjacent_files_bb(File f) {
-  return shift<EAST>(FileBB[f]) | shift<WEST>(FileBB[f]);
+  return shift<EAST>(file_bb(f)) | shift<WEST>(file_bb(f));
 }
-
 
 /// between_bb() returns a bitboard representing all the squares between the two
 /// given ones. For instance, between_bb(SQ_C4, SQ_F7) returns a bitboard with
