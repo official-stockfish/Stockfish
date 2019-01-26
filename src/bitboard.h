@@ -258,7 +258,7 @@ inline bool aligned(Square s1, Square s2, Square s3) {
 inline int distance(int x, int y) { return x < y ? y - x : x - y; }
 inline int file_distance(Square x, Square y) { return distance(file_of(x), file_of(y)); }
 inline int rank_distance(Square x, Square y) { return distance(rank_of(x), rank_of(y)); }
-inline int distance(Square x, Square y) { return std::max(file_distance(x,y), rank_distance(x,y)); }
+inline int distance(Square x, Square y) { return SquareDistance[x][y]; }
 
 
 /// attacks_bb() returns a bitboard representing all the squares attacked by a
