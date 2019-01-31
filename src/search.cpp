@@ -747,9 +747,7 @@ namespace {
     {
         if ((ss-1)->currentMove != MOVE_NULL)
         {
-            int p = (ss-1)->statScore;
-            int bonus = p > 0 ? (-p - 2500) / 512 :
-                        p < 0 ? (-p + 2500) / 512 : 0;
+            int bonus = -(ss-1)->statScore / 512;
 
             pureStaticEval = evaluate(pos);
             ss->staticEval = eval = pureStaticEval + bonus;
