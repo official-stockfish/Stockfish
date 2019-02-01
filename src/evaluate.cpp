@@ -453,6 +453,8 @@ namespace {
 
     // Enemy bishops checks
 
+    b2 &= attackedBy[Them][BISHOP];
+
     if (b2 & safe & ~QueenSafeCheckBB)
         kingDanger += BishopSafeCheck;
     else
