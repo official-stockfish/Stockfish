@@ -228,7 +228,7 @@ void bindThisThread(size_t) {}
 /// API and returns the best group id for the thread with index idx. Original
 /// code from Texel by Peter Österlund.
 
-int best_group(size_t idx) {
+USHORT best_group(size_t idx) {
 
   int threads = 0;
   int nodes = 0;
@@ -240,11 +240,11 @@ int best_group(size_t idx) {
   HMODULE k32 = GetModuleHandle("Kernel32.dll");
   auto fun1 = (fun1_t)(void(*)())GetProcAddress(k32, "GetLogicalProcessorInformationEx");
   if (!fun1)
-      return -1;
+      return std::numeric_limits<USHORT>::max();
 
   // First call to get returnLength. We expect it to fail due to null buffer
   if (fun1(RelationAll, nullptr, &returnLength))
-      return -1;
+      return std::numeric_limits<USHORT>::max();
 
   // Once we know returnLength, allocate the buffer
   SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX *buffer, *ptr;
@@ -254,7 +254,7 @@ int best_group(size_t idx) {
   if (!fun1(RelationAll, buffer, &returnLength))
   {
       free(buffer);
-      return -1;
+      return std::numeric_limits<USHORT>::max();
   }
 
   while (byteOffset < returnLength)
@@ -275,23 +275,23 @@ int best_group(size_t idx) {
 
   free(buffer);
 
-  std::vector<int> groups;
+  std::vector<USHORT> groups;
 
   // Run as many threads as possible on the same node until core limit is
   // reached, then move on filling the next node.
-  for (int n = 0; n < nodes; n++)
-      for (int i = 0; i < cores / nodes; i++)
+  for (USHORT n = 0; n < nodes; n++)
+      for (USHORT i = 0; i < cores / nodes; i++)
           groups.push_back(n);
 
   // In case a core has more than one logical processor (we assume 2) and we
   // have still threads to allocate, then spread them evenly across available
   // nodes.
-  for (int t = 0; t < threads - cores; t++)
+  for (USHORT t = 0; t < threads - cores; t++)
       groups.push_back(t % nodes);
 
   // If we still have more threads than the total number of logical processors
   // then return -1 and let the OS to decide what to do.
-  return idx < groups.size() ? groups[idx] : -1;
+  return idx < groups.size() ? groups[idx] : std::numeric_limits<USHORT>::max();
 }
 
 
@@ -300,9 +300,9 @@ int best_group(size_t idx) {
 void bindThisThread(size_t idx) {
 
   // Use only local variables to be thread-safe
-  int group = best_group(idx);
+  USHORT const group = best_group(idx);
 
-  if (group == -1)
+  if (group == std::numeric_limits<USHORT>::max())
       return;
 
   // Early exit if the needed API are not available at runtime

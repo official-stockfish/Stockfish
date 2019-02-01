@@ -43,7 +43,7 @@ int main(int argc, char* argv[]) {
   Bitbases::init();
   Search::init();
   Pawns::init();
-  Threads.set(Options["Threads"]);
+  Threads.set( (int)Options["Threads"]);
   Search::clear(); // After threads are up
 
   UCI::loop(argc, argv);

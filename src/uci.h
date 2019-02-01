@@ -46,17 +46,24 @@ class Option {
   typedef void (*OnChange)(const Option&);
 
 public:
+
   Option(OnChange = nullptr);
   Option(bool v, OnChange = nullptr);
   Option(const char* v, OnChange = nullptr);
-  Option(double v, int minv, int maxv, OnChange = nullptr);
+  Option(int v, int minv, int maxv, OnChange = nullptr);
   Option(const char* v, const char* cur, OnChange = nullptr);
 
   Option& operator=(const std::string&);
   void operator<<(const Option&);
-  operator double() const;
+  
+  operator bool() const;
+  operator int() const;
+  operator TimePoint() const;
   operator std::string() const;
+
   bool operator==(const char*) const;
+
+  void SetValue(std::string const &val);
 
 private:
   friend std::ostream& operator<<(std::ostream&, const OptionsMap&);

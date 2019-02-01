@@ -37,9 +37,9 @@ namespace UCI {
 
 /// 'On change' actions, triggered by an option's value change
 void on_clear_hash(const Option&) { Search::clear(); }
-void on_hash_size(const Option& o) { TT.resize(o); }
+void on_hash_size(const Option& o) { TT.resize( (int)o ); }
 void on_logger(const Option& o) { start_logger(o); }
-void on_threads(const Option& o) { Threads.set(o); }
+void on_threads(const Option& o) { Threads.set( (int)o ); }
 void on_tb_path(const Option& o) { Tablebases::init(o); }
 
 
@@ -118,15 +118,26 @@ Option::Option(bool v, OnChange f) : type("check"), min(0), max(0), on_change(f)
 Option::Option(OnChange f) : type("button"), min(0), max(0), on_change(f)
 {}
 
-Option::Option(double v, int minv, int maxv, OnChange f) : type("spin"), min(minv), max(maxv), on_change(f)
+Option::Option(int v, int minv, int maxv, OnChange f) : type("spin"), min(minv), max(maxv), on_change(f)
 { defaultValue = currentValue = std::to_string(v); }
 
 Option::Option(const char* v, const char* cur, OnChange f) : type("combo"), min(0), max(0), on_change(f)
 { defaultValue = v; currentValue = cur; }
 
-Option::operator double() const {
-  assert(type == "check" || type == "spin");
-  return (type == "spin" ? stof(currentValue) : currentValue == "true");
+
+Option::operator int() const {
+  assert(type == "spin");
+  return stoi(currentValue);
+}
+
+Option::operator TimePoint() const {
+  assert(type == "spin");
+  return stoll(currentValue);
+}
+
+Option::operator bool() const {
+  assert(type == "check");
+  return currentValue == "true";
 }
 
 Option::operator std::string() const {
@@ -140,6 +151,15 @@ bool Option::operator==(const char* s) const {
          && !CaseInsensitiveLess()(s, currentValue);
 }
 
+void Option::SetValue(std::string const &v)
+{
+  if (type == "check")
+  {
+    assert( v == "true" || v == "false" );
+  }
+
+  currentValue = v;
+}
 
 /// operator<<() inits options and assigns idx in the correct printing order
 

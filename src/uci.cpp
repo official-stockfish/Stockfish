@@ -96,7 +96,7 @@ namespace {
         value += (value.empty() ? "" : " ") + token;
 
     if (Options.count(name))
-        Options[name] = value;
+        Options[name].SetValue( value );
     else
         sync_cout << "No such option: " << name << sync_endl;
   }

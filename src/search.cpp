@@ -248,7 +248,7 @@ void MainThread::search() {
 
   // Check if there are threads with a better score than main thread
   Thread* bestThread = this;
-  if (    Options["MultiPV"] == 1
+  if (   (int)Options["MultiPV"] == 1
       && !Limits.depth
       && !Skill(Options["Skill Level"]).enabled()
       &&  rootMoves[0].pv[0] != MOVE_NONE)
@@ -327,15 +327,15 @@ void Thread::search() {
   if (mainThread)
       mainThread->bestMoveChanges = 0, failedLow = false;
 
-  size_t multiPV = Options["MultiPV"];
+  int multiPV = Options["MultiPV"];
   Skill skill(Options["Skill Level"]);
 
   // When playing with strength handicap enable MultiPV search that we will
   // use behind the scenes to retrieve a set of possible moves.
   if (skill.enabled())
-      multiPV = std::max(multiPV, (size_t)4);
+      multiPV = std::max(multiPV, 4);
 
-  multiPV = std::min(multiPV, rootMoves.size());
+  multiPV = std::min(multiPV, (int)rootMoves.size());
 
   int ct = int(Options["Contempt"]) * PawnValueEg / 100; // From centipawns
 
@@ -377,7 +377,7 @@ void Thread::search() {
       pvLast = 0;
 
       // MultiPV loop. We perform a full root search for each PV line
-      for (pvIdx = 0; pvIdx < multiPV && !Threads.stop; ++pvIdx)
+      for (pvIdx = 0; pvIdx < (size_t)multiPV && !Threads.stop; ++pvIdx)
       {
           if (pvIdx == pvLast)
           {
@@ -468,7 +468,7 @@ void Thread::search() {
           std::stable_sort(rootMoves.begin() + pvFirst, rootMoves.begin() + pvIdx + 1);
 
           if (    mainThread
-              && (Threads.stop || pvIdx + 1 == multiPV || Time.elapsed() > 3000))
+              && (Threads.stop || pvIdx + 1 == (size_t)multiPV || Time.elapsed() > 3000))
               sync_cout << UCI::pv(rootPos, rootDepth, alpha, beta) << sync_endl;
       }
 
@@ -1610,11 +1610,11 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
   TimePoint elapsed = Time.elapsed() + 1;
   const RootMoves& rootMoves = pos.this_thread()->rootMoves;
   size_t pvIdx = pos.this_thread()->pvIdx;
-  size_t multiPV = std::min((size_t)Options["MultiPV"], rootMoves.size());
+  int multiPV = std::min( (int)Options["MultiPV"], (int)rootMoves.size());
   uint64_t nodesSearched = Threads.nodes_searched();
   uint64_t tbHits = Threads.tb_hits() + (TB::RootInTB ? rootMoves.size() : 0);
 
-  for (size_t i = 0; i < multiPV; ++i)
+  for (size_t i = 0; i < (size_t)multiPV; ++i)
   {
       bool updated = (i <= pvIdx && rootMoves[i].score != -VALUE_INFINITE);
 
@@ -1690,7 +1690,7 @@ void Tablebases::rank_root_moves(Position& pos, Search::RootMoves& rootMoves) {
 
     RootInTB = false;
     UseRule50 = bool(Options["Syzygy50MoveRule"]);
-    ProbeDepth = int(Options["SyzygyProbeDepth"]) * ONE_PLY;
+    ProbeDepth = static_cast<Depth>( int(Options["SyzygyProbeDepth"]) * ONE_PLY );
     Cardinality = int(Options["SyzygyProbeLimit"]);
     bool dtz_available = true;
 

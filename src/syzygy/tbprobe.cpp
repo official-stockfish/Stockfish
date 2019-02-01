@@ -378,8 +378,8 @@ TBTable<WDL>::TBTable(const std::string& code) : TBTable() {
             || (   pos.count<PAWN>(WHITE)
                 && pos.count<PAWN>(BLACK) >= pos.count<PAWN>(WHITE));
 
-    pawnCount[0] = pos.count<PAWN>(c ? WHITE : BLACK);
-    pawnCount[1] = pos.count<PAWN>(c ? BLACK : WHITE);
+    pawnCount[0] = static_cast<uint8_t>( pos.count<PAWN>(c ? WHITE : BLACK) );
+    pawnCount[1] = static_cast<uint8_t>( pos.count<PAWN>(c ? BLACK : WHITE) );
 
     key2 = pos.set(code, BLACK, &st).material_key();
 }
@@ -519,7 +519,7 @@ int decompress_pairs(PairsData* d, uint64_t idx) {
     //       I(k) = k * d->span + d->span / 2      (1)
 
     // First step is to get the 'k' of the I(k) nearest to our idx, using definition (1)
-    uint32_t k = idx / d->span;
+    uint32_t k = static_cast<uint32_t>( idx / d->span );
 
     // Then we read the corresponding SparseIndex[] entry
     uint32_t block = number<uint32_t, LittleEndian>(&d->sparseIndex[k].block);
@@ -565,7 +565,7 @@ int decompress_pairs(PairsData* d, uint64_t idx) {
         // All the symbols of a given length are consecutive integers (numerical
         // sequence property), so we can compute the offset of our symbol of
         // length len, stored at the beginning of buf64.
-        sym = (buf64 - d->base64[len]) >> (64 - len - d->minSymLen);
+        sym = static_cast<uint16_t>( (buf64 - d->base64[len]) >> (64 - len - d->minSymLen) );
 
         // Now add the value of the lowest symbol of length len to get our symbol
         sym += number<Sym, LittleEndian>(&d->lowestSym[len]);
@@ -975,7 +975,7 @@ uint8_t* set_sizes(PairsData* d, uint8_t* data) {
 
     d->sizeofBlock = 1ULL << *data++;
     d->span = 1ULL << *data++;
-    d->sparseIndexSize = (tbSize + d->span - 1) / d->span; // Round up
+    d->sparseIndexSize = static_cast<uint32_t>( (tbSize + d->span - 1) / d->span ); // Round up
     auto padding = number<uint8_t, LittleEndian>(data++);
     d->blocksNum = number<uint32_t, LittleEndian>(data); data += sizeof(uint32_t);
     d->blockLengthSize = d->blocksNum + padding; // Padded to ensure SparseIndex[]
