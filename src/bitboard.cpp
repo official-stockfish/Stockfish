@@ -92,7 +92,10 @@ void Bitboards::init() {
       SquareBB[s] = (1ULL << s);
 
   for (Rank r = RANK_1; r < RANK_8; ++r)
-      ForwardRanksBB[WHITE][r] = ~(ForwardRanksBB[BLACK][r + 1] = ForwardRanksBB[BLACK][r] | rank_bb(r));
+  {
+      ForwardRanksBB[BLACK][r + 1] =  ForwardRanksBB[BLACK][r] | rank_bb(r);
+      ForwardRanksBB[WHITE][r]     = ~ForwardRanksBB[BLACK][r + 1];
+  }
 
   for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1)
       for (Square s2 = SQ_A1; s2 <= SQ_H8; ++s2)
