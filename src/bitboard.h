@@ -69,7 +69,6 @@ constexpr Bitboard Center      = (FileDBB | FileEBB) & (Rank4BB | Rank5BB);
 extern int8_t SquareDistance[SQUARE_NB][SQUARE_NB];
 
 extern Bitboard SquareBB[SQUARE_NB];
-extern Bitboard ForwardRanksBB[COLOR_NB][RANK_NB];
 extern Bitboard BetweenBB[SQUARE_NB][SQUARE_NB];
 extern Bitboard LineBB[SQUARE_NB][SQUARE_NB];
 extern Bitboard DistanceRingBB[SQUARE_NB][8];
@@ -216,7 +215,8 @@ inline Bitboard between_bb(Square s1, Square s2) {
 /// forward_ranks_bb(BLACK, SQ_D3) will return the 16 squares on ranks 1 and 2.
 
 inline Bitboard forward_ranks_bb(Color c, Square s) {
-  return ForwardRanksBB[c][rank_of(s)];
+  return c == WHITE ? ~((256ULL << (8 * rank_of(s))) - 1)
+                    :  ((  1ULL << (8 * rank_of(s))) - 1);
 }
 
 
