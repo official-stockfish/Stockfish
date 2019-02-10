@@ -237,11 +237,11 @@ inline Bitboard pawn_attack_span(Color c, Square s) {
 }
 
 
-/// passed_pawn_mask() returns a bitboard mask which can be used to test if a
-/// pawn of the given color and on the given square is a passed pawn.
+/// passed_pawn_span() returns a bitboard which can be used to test if a pawn of
+/// the given color and on the given square is a passed pawn.
 
-inline Bitboard passed_pawn_mask(Color c, Square s) {
-  return pawn_attack_span(c, s) | forward_file_bb(c, s);
+inline Bitboard passed_pawn_span(Color c, Square s) {
+  return forward_ranks_bb(c, s) & (adjacent_files_bb(file_of(s)) | file_bb(s));
 }
 
 
