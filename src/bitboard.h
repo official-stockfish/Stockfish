@@ -294,9 +294,11 @@ inline int popcount(Bitboard b) {
 
 #ifndef USE_POPCNT
 
-  extern uint8_t PopCnt16[1 << 16];
-  union { Bitboard bb; uint16_t u[4]; } v = { b };
-  return PopCnt16[v.u[0]] + PopCnt16[v.u[1]] + PopCnt16[v.u[2]] + PopCnt16[v.u[3]];
+  // Count the non-zero bits using SWAR-Popcount algorithm
+  b -=  (b >> 1) & 0x5555555555555555ULL;
+  b  = ((b >> 2) & 0x3333333333333333ULL) + (b & 0x3333333333333333ULL);
+  b  = ((b >> 4) + b) & 0x0F0F0F0F0F0F0F0FULL;
+  return (b * 0x0101010101010101ULL) >> 56;
 
 #elif defined(_MSC_VER) || defined(__INTEL_COMPILER)
 
