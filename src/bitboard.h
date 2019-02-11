@@ -60,10 +60,12 @@ constexpr Bitboard Rank6BB = Rank1BB << (8 * 5);
 constexpr Bitboard Rank7BB = Rank1BB << (8 * 6);
 constexpr Bitboard Rank8BB = Rank1BB << (8 * 7);
 
+constexpr Bitboard AllButRank1 = AllSquares ^ Rank1BB;
+constexpr Bitboard AllButRank8 = AllSquares ^ Rank8BB;
+
 extern int8_t SquareDistance[SQUARE_NB][SQUARE_NB];
 
 extern Bitboard SquareBB[SQUARE_NB];
-extern Bitboard ForwardRanksBB[COLOR_NB][RANK_NB];
 extern Bitboard BetweenBB[SQUARE_NB][SQUARE_NB];
 extern Bitboard LineBB[SQUARE_NB][SQUARE_NB];
 extern Bitboard DistanceRingBB[SQUARE_NB][8];
@@ -207,7 +209,8 @@ inline Bitboard between_bb(Square s1, Square s2) {
 /// forward_ranks_bb(BLACK, SQ_D3) will return the 16 squares on ranks 1 and 2.
 
 inline Bitboard forward_ranks_bb(Color c, Square s) {
-  return ForwardRanksBB[c][rank_of(s)];
+  return (c == WHITE) ? AllButRank1 << 8 * rank_of(s)
+                      : AllButRank8 >> 8 * (7 - rank_of(s));
 }
 
 
@@ -216,7 +219,7 @@ inline Bitboard forward_ranks_bb(Color c, Square s) {
 ///      ForwardFileBB[c][s] = forward_ranks_bb(c, s) & file_bb(s)
 
 inline Bitboard forward_file_bb(Color c, Square s) {
-  return ForwardRanksBB[c][rank_of(s)] & file_bb(s);
+  return forward_ranks_bb(c, s) & file_bb(s);
 }
 
 
