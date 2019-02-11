@@ -258,27 +258,23 @@ void MainThread::search() {
 
       // Find out minimum score and reset votes for moves which can be voted
       for (Thread* th: Threads)
-      {
           minScore = std::min(minScore, th->rootMoves[0].score);
-          votes[th->rootMoves[0].pv[0]] = 0;
-      }
 
       // Vote according to score and depth
-      auto square = [](int64_t x) { return x * x; };
-      for (Thread* th : Threads)
-          votes[th->rootMoves[0].pv[0]] += 200 + (square(th->rootMoves[0].score - minScore + 1)
-                                                  * int64_t(th->completedDepth));
-
-      // Select best thread
-      int64_t bestVote = votes[this->rootMoves[0].pv[0]];
       for (Thread* th : Threads)
       {
+          int64_t s = th->rootMoves[0].score - minScore + 1;
+          votes[th->rootMoves[0].pv[0]] += 200 + s * s * int(th->completedDepth);
+      }
+
+      // Select best thread
+      auto bestVote = votes[this->rootMoves[0].pv[0]];
+      for (Thread* th : Threads)
           if (votes[th->rootMoves[0].pv[0]] > bestVote)
           {
               bestVote = votes[th->rootMoves[0].pv[0]];
               bestThread = th;
           }
-      }
   }
 
   previousScore = bestThread->rootMoves[0].score;
@@ -573,7 +569,7 @@ namespace {
     Move ttMove, move, excludedMove, bestMove;
     Depth extension, newDepth;
     Value bestValue, value, ttValue, eval, maxValue, pureStaticEval;
-    bool ttHit, pvHit, inCheck, givesCheck, improving;
+    bool ttHit, ttPv, inCheck, givesCheck, improving;
     bool captureOrPromotion, doFullDepthSearch, moveCountPruning, skipQuiets, ttCapture;
     Piece movedPiece;
     int moveCount, captureCount, quietCount;
@@ -639,7 +635,7 @@ namespace {
     ttValue = ttHit ? value_from_tt(tte->value(), ss->ply) : VALUE_NONE;
     ttMove =  rootNode ? thisThread->rootMoves[thisThread->pvIdx].pv[0]
             : ttHit    ? tte->move() : MOVE_NONE;
-    pvHit = (ttHit && tte->pv_hit()) || (PvNode && depth > 4 * ONE_PLY);
+    ttPv = (ttHit && tte->is_pv()) || (PvNode && depth > 4 * ONE_PLY);
 
     // At non-PV nodes we check for an early TT cutoff
     if (  !PvNode
@@ -706,7 +702,7 @@ namespace {
                 if (    b == BOUND_EXACT
                     || (b == BOUND_LOWER ? value >= beta : value <= alpha))
                 {
-                    tte->save(posKey, value_to_tt(value, ss->ply), pvHit, b,
+                    tte->save(posKey, value_to_tt(value, ss->ply), ttPv, b,
                               std::min(DEPTH_MAX - ONE_PLY, depth + 6 * ONE_PLY),
                               MOVE_NONE, VALUE_NONE);
 
@@ -755,7 +751,7 @@ namespace {
         else
             ss->staticEval = eval = pureStaticEval = -(ss-1)->staticEval + 2 * Eval::Tempo;
 
-        tte->save(posKey, VALUE_NONE, pvHit, BOUND_NONE, DEPTH_NONE, MOVE_NONE, pureStaticEval);
+        tte->save(posKey, VALUE_NONE, ttPv, BOUND_NONE, DEPTH_NONE, MOVE_NONE, pureStaticEval);
     }
 
     // Step 7. Razoring (~2 Elo)
@@ -1032,7 +1028,7 @@ moves_loop: // When in check, search starts from here
           Depth r = reduction<PvNode>(improving, depth, moveCount);
 
           // Decrease reduction if position is or has been on the PV
-          if (pvHit)
+          if (ttPv)
               r -= ONE_PLY;
 
           // Decrease reduction if opponent's move count is high (~10 Elo)
@@ -1213,7 +1209,7 @@ moves_loop: // When in check, search starts from here
         bestValue = std::min(bestValue, maxValue);
 
     if (!excludedMove)
-        tte->save(posKey, value_to_tt(bestValue, ss->ply), pvHit,
+        tte->save(posKey, value_to_tt(bestValue, ss->ply), ttPv,
                   bestValue >= beta ? BOUND_LOWER :
                   PvNode && bestMove ? BOUND_EXACT : BOUND_UPPER,
                   depth, bestMove, pureStaticEval);
@@ -1277,7 +1273,7 @@ moves_loop: // When in check, search starts from here
     tte = TT.probe(posKey, ttHit);
     ttValue = ttHit ? value_from_tt(tte->value(), ss->ply) : VALUE_NONE;
     ttMove = ttHit ? tte->move() : MOVE_NONE;
-    pvHit = ttHit && tte->pv_hit();
+    pvHit = ttHit && tte->is_pv();
 
     if (  !PvNode
         && ttHit
