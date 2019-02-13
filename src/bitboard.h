@@ -65,7 +65,8 @@ constexpr Bitboard CenterFiles = FileCBB | FileDBB | FileEBB | FileFBB;
 constexpr Bitboard KingSide    = FileEBB | FileFBB | FileGBB | FileHBB;
 constexpr Bitboard Center      = (FileDBB | FileEBB) & (Rank4BB | Rank5BB);
 
-extern int8_t SquareDistance[SQUARE_NB][SQUARE_NB];
+extern uint8_t PopCnt16[1 << 16];
+extern uint8_t SquareDistance[SQUARE_NB][SQUARE_NB];
 
 extern Bitboard SquareBB[SQUARE_NB];
 extern Bitboard BetweenBB[SQUARE_NB][SQUARE_NB];
@@ -214,8 +215,8 @@ inline Bitboard between_bb(Square s1, Square s2) {
 /// forward_ranks_bb(BLACK, SQ_D3) will return the 16 squares on ranks 1 and 2.
 
 inline Bitboard forward_ranks_bb(Color c, Square s) {
-  return c == WHITE ? (AllSquares ^ Rank1BB) << 8 * rank_of(s)
-                    : (AllSquares ^ Rank8BB) >> 8 * (7 - rank_of(s));
+  return c == WHITE ? ~Rank1BB << 8 * rank_of(s)
+                    : ~Rank8BB >> 8 * (7 - rank_of(s));
 }
 
 
@@ -255,7 +256,7 @@ inline bool aligned(Square s1, Square s2, Square s3) {
 /// distance() functions return the distance between x and y, defined as the
 /// number of steps for a king in x to reach y. Works with squares, ranks, files.
 
-template<typename T> inline int distance(T x, T y) { return x < y ? y - x : x - y; }
+template<typename T> inline int distance(T x, T y) { return std::abs(x - y); }
 template<> inline int distance<Square>(Square x, Square y) { return SquareDistance[x][y]; }
 
 template<typename T1, typename T2> inline int distance(T2 x, T2 y);
@@ -293,14 +294,8 @@ inline int popcount(Bitboard b) {
 
 #ifndef USE_POPCNT
 
-  // Count the non-zero bits using a 32bit friendly SWAR-Popcount algorithm
-  unsigned w = unsigned(b >> 32), v = unsigned(b);
-  v -=  (v >> 1) & 0x55555555; // 0-2 in 2 bits
-  w -=  (w >> 1) & 0x55555555;
-  v  = ((v >> 2) & 0x33333333) + (v & 0x33333333); // 0-4 in 4 bits
-  w  = ((w >> 2) & 0x33333333) + (w & 0x33333333);
-  v  = ((v >> 4) + v + (w >> 4) + w) & 0x0F0F0F0F;
-  return (v * 0x01010101) >> 24;
+  union { Bitboard bb; uint16_t u[4]; } v = { b };
+  return PopCnt16[v.u[0]] + PopCnt16[v.u[1]] + PopCnt16[v.u[2]] + PopCnt16[v.u[3]];
 
 #elif defined(_MSC_VER) || defined(__INTEL_COMPILER)
 
