@@ -570,7 +570,7 @@ namespace {
     Depth extension, newDepth;
     Value bestValue, value, ttValue, eval, maxValue, pureStaticEval;
     bool ttHit, ttPv, inCheck, givesCheck, improving;
-    bool captureOrPromotion, doFullDepthSearch, moveCountPruning, skipQuiets, ttCapture;
+    bool captureOrPromotion, doFullDepthSearch, skipQuiets, ttCapture;
     Piece movedPiece;
     int moveCount, captureCount, quietCount;
 
@@ -914,8 +914,8 @@ moves_loop: // When in check, search starts from here
       movedPiece = pos.moved_piece(move);
       givesCheck = gives_check(pos, move);
 
-      moveCountPruning =   depth < 16 * ONE_PLY
-                        && moveCount >= FutilityMoveCounts[improving][depth / ONE_PLY];
+      skipQuiets = depth < 16 * ONE_PLY
+                      && moveCount >= FutilityMoveCounts[improving][depth / ONE_PLY];
 
       // Step 13. Extensions (~70 Elo)
 
@@ -972,11 +972,8 @@ moves_loop: // When in check, search starts from here
               && !pos.advanced_pawn_push(move))
           {
               // Move count based pruning (~30 Elo)
-              if (moveCountPruning)
-              {
-                  skipQuiets = true;
+              if (skipQuiets)
                   continue;
-              }
 
               // Reduced depth of the next LMR search
               int lmrDepth = std::max(newDepth - reduction<PvNode>(improving, depth, moveCount), DEPTH_ZERO) / ONE_PLY;
@@ -1023,7 +1020,7 @@ moves_loop: // When in check, search starts from here
       // re-searched at full depth.
       if (    depth >= 3 * ONE_PLY
           &&  moveCount > 1
-          && (!captureOrPromotion || moveCountPruning))
+          && (!captureOrPromotion || skipQuiets))
       {
           Depth r = reduction<PvNode>(improving, depth, moveCount);
 
