@@ -914,6 +914,7 @@ moves_loop: // When in check, search starts from here
       movedPiece = pos.moved_piece(move);
       givesCheck = gives_check(pos, move);
 
+      // Skip quiet moves if movecount exceeds our FutilityMoveCount threshold
       skipQuiets = depth < 16 * ONE_PLY
                       && moveCount >= FutilityMoveCounts[improving][depth / ONE_PLY];
 
