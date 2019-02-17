@@ -356,7 +356,7 @@ void save(Thread* thread, TTEntry* tte,
                         bool found;
                         TTEntry* replace_tte;
                         replace_tte = TT.probe(e.first, found);
-                        replace_tte->save(e.first, e.second.value(), e.second.pv_hit(), e.second.bound(), e.second.depth(),
+                        replace_tte->save(e.first, e.second.value(), e.second.is_pv(), e.second.bound(), e.second.depth(),
                                           e.second.move(), e.second.eval());
                     }
              }

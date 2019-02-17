@@ -60,19 +60,13 @@ constexpr Bitboard Rank6BB = Rank1BB << (8 * 5);
 constexpr Bitboard Rank7BB = Rank1BB << (8 * 6);
 constexpr Bitboard Rank8BB = Rank1BB << (8 * 7);
 
-extern int SquareDistance[SQUARE_NB][SQUARE_NB];
+extern int8_t SquareDistance[SQUARE_NB][SQUARE_NB];
 
 extern Bitboard SquareBB[SQUARE_NB];
-extern Bitboard FileBB[FILE_NB];
-extern Bitboard RankBB[RANK_NB];
-extern Bitboard AdjacentFilesBB[FILE_NB];
 extern Bitboard ForwardRanksBB[COLOR_NB][RANK_NB];
 extern Bitboard BetweenBB[SQUARE_NB][SQUARE_NB];
 extern Bitboard LineBB[SQUARE_NB][SQUARE_NB];
 extern Bitboard DistanceRingBB[SQUARE_NB][8];
-extern Bitboard ForwardFileBB[COLOR_NB][SQUARE_NB];
-extern Bitboard PassedPawnMask[COLOR_NB][SQUARE_NB];
-extern Bitboard PawnAttackSpan[COLOR_NB][SQUARE_NB];
 extern Bitboard PseudoAttacks[PIECE_TYPE_NB][SQUARE_NB];
 extern Bitboard PawnAttacks[COLOR_NB][SQUARE_NB];
 
@@ -143,23 +137,23 @@ inline bool opposite_colors(Square s1, Square s2) {
 /// the given file or rank.
 
 inline Bitboard rank_bb(Rank r) {
-  return RankBB[r];
+  return Rank1BB << (8 * r);
 }
 
 inline Bitboard rank_bb(Square s) {
-  return RankBB[rank_of(s)];
+  return rank_bb(rank_of(s));
 }
 
 inline Bitboard file_bb(File f) {
-  return FileBB[f];
+  return FileABB << f;
 }
 
 inline Bitboard file_bb(Square s) {
-  return FileBB[file_of(s)];
+  return file_bb(file_of(s));
 }
 
 
-/// shift() moves a bitboard one step along direction D (mainly for pawns)
+/// shift() moves a bitboard one step along direction D
 
 template<Direction D>
 constexpr Bitboard shift(Bitboard b) {
@@ -171,8 +165,8 @@ constexpr Bitboard shift(Bitboard b) {
 }
 
 
-/// pawn_attacks_bb() returns the pawn attacks for the given color from the
-/// squares in the given bitboard.
+/// pawn_attacks_bb() returns the squares attacked by pawns of the given color
+/// from the squares in the given bitboard.
 
 template<Color C>
 constexpr Bitboard pawn_attacks_bb(Bitboard b) {
@@ -181,11 +175,11 @@ constexpr Bitboard pawn_attacks_bb(Bitboard b) {
 }
 
 
-/// double_pawn_attacks_bb() returns the pawn attacks for the given color
-/// from the squares in the given bitboard.
+/// pawn_double_attacks_bb() returns the squares doubly attacked by pawns of the
+/// given color from the squares in the given bitboard.
 
 template<Color C>
-constexpr Bitboard double_pawn_attacks_bb(Bitboard b) {
+constexpr Bitboard pawn_double_attacks_bb(Bitboard b) {
   return C == WHITE ? shift<NORTH_WEST>(b) & shift<NORTH_EAST>(b)
                     : shift<SOUTH_WEST>(b) & shift<SOUTH_EAST>(b);
 }
@@ -195,9 +189,8 @@ constexpr Bitboard double_pawn_attacks_bb(Bitboard b) {
 /// adjacent files of the given one.
 
 inline Bitboard adjacent_files_bb(File f) {
-  return AdjacentFilesBB[f];
+  return shift<EAST>(file_bb(f)) | shift<WEST>(file_bb(f));
 }
-
 
 /// between_bb() returns a bitboard representing all the squares between the two
 /// given ones. For instance, between_bb(SQ_C4, SQ_F7) returns a bitboard with
@@ -223,26 +216,24 @@ inline Bitboard forward_ranks_bb(Color c, Square s) {
 ///      ForwardFileBB[c][s] = forward_ranks_bb(c, s) & file_bb(s)
 
 inline Bitboard forward_file_bb(Color c, Square s) {
-  return ForwardFileBB[c][s];
+  return ForwardRanksBB[c][rank_of(s)] & file_bb(s);
 }
 
 
 /// pawn_attack_span() returns a bitboard representing all the squares that can be
 /// attacked by a pawn of the given color when it moves along its file, starting
 /// from the given square:
-///      PawnAttackSpan[c][s] = forward_ranks_bb(c, s) & adjacent_files_bb(file_of(s));
 
 inline Bitboard pawn_attack_span(Color c, Square s) {
-  return PawnAttackSpan[c][s];
+  return forward_ranks_bb(c, s) & adjacent_files_bb(file_of(s));
 }
 
 
 /// passed_pawn_mask() returns a bitboard mask which can be used to test if a
 /// pawn of the given color and on the given square is a passed pawn:
-///      PassedPawnMask[c][s] = pawn_attack_span(c, s) | forward_file_bb(c, s)
 
 inline Bitboard passed_pawn_mask(Color c, Square s) {
-  return PassedPawnMask[c][s];
+  return pawn_attack_span(c, s) | forward_file_bb(c, s);
 }
 
 

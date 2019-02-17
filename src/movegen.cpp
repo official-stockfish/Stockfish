@@ -93,10 +93,10 @@ namespace {
             // if the pawn is not on the same file as the enemy king, because we
             // don't generate captures. Note that a possible discovery check
             // promotion has been already generated amongst the captures.
-            Bitboard dcCandidates = pos.blockers_for_king(Them);
-            if (pawnsNotOn7 & dcCandidates)
+            Bitboard dcCandidateQuiets = pos.blockers_for_king(Them) & pawnsNotOn7;
+            if (dcCandidateQuiets)
             {
-                Bitboard dc1 = shift<Up>(pawnsNotOn7 & dcCandidates) & emptySquares & ~file_bb(ksq);
+                Bitboard dc1 = shift<Up>(dcCandidateQuiets) & emptySquares & ~file_bb(ksq);
                 Bitboard dc2 = shift<Up>(dc1 & TRank3BB) & emptySquares;
 
                 b1 |= dc1;
