@@ -570,7 +570,7 @@ namespace {
     Depth extension, newDepth;
     Value bestValue, value, ttValue, eval, maxValue, pureStaticEval;
     bool ttHit, ttPv, inCheck, givesCheck, improving;
-    bool captureOrPromotion, doFullDepthSearch, skipQuiets, ttCapture;
+    bool captureOrPromotion, doFullDepthSearch, moveCountPruning, ttCapture;
     Piece movedPiece;
     int moveCount, captureCount, quietCount;
 
@@ -880,12 +880,12 @@ moves_loop: // When in check, search starts from here
                                       ss->killers);
     value = bestValue; // Workaround a bogus 'uninitialized' warning under gcc
 
-    skipQuiets = false;
+    moveCountPruning = false;
     ttCapture = ttMove && pos.capture_or_promotion(ttMove);
 
     // Step 12. Loop through all pseudo-legal moves until no moves remain
     // or a beta cutoff occurs.
-    while ((move = mp.next_move(skipQuiets)) != MOVE_NONE)
+    while ((move = mp.next_move(moveCountPruning)) != MOVE_NONE)
     {
       assert(is_ok(move));
 
@@ -915,7 +915,7 @@ moves_loop: // When in check, search starts from here
       givesCheck = gives_check(pos, move);
 
       // Skip quiet moves if movecount exceeds our FutilityMoveCount threshold
-      skipQuiets = depth < 16 * ONE_PLY
+      moveCountPruning = depth < 16 * ONE_PLY
                       && moveCount >= FutilityMoveCounts[improving][depth / ONE_PLY];
 
       // Step 13. Extensions (~70 Elo)
@@ -973,7 +973,7 @@ moves_loop: // When in check, search starts from here
               && !pos.advanced_pawn_push(move))
           {
               // Move count based pruning (~30 Elo)
-              if (skipQuiets)
+              if (moveCountPruning)
                   continue;
 
               // Reduced depth of the next LMR search
@@ -1021,7 +1021,7 @@ moves_loop: // When in check, search starts from here
       // re-searched at full depth.
       if (    depth >= 3 * ONE_PLY
           &&  moveCount > 1
-          && (!captureOrPromotion || skipQuiets))
+          && (!captureOrPromotion || moveCountPruning))
       {
           Depth r = reduction<PvNode>(improving, depth, moveCount);
 
