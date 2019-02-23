@@ -76,7 +76,7 @@ namespace {
   int Reductions[2][64][64];  // [improving][depth][moveNumber]
 
   template <bool PvNode> Depth reduction(bool i, Depth d, int mn) {
-    return (Reductions[i][std::min(d / ONE_PLY, 63)][std::min(mn, 63)] - PvNode) * ONE_PLY;
+    return std::max(Reductions[i][std::min(d / ONE_PLY, 63)][std::min(mn, 63)] - PvNode, 0) * ONE_PLY;
   }
 
   // History and stats update bonus, based on depth
