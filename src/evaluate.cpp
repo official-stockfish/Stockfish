@@ -391,7 +391,8 @@ namespace {
     constexpr Bitboard Camp = (Us == WHITE ? AllSquares ^ Rank6BB ^ Rank7BB ^ Rank8BB
                                            : AllSquares ^ Rank1BB ^ Rank2BB ^ Rank3BB);
 
-    Bitboard weak, b, b1, b2, safe, unsafeChecks = 0;
+    Bitboard weak, b1, b2, safe, unsafeChecks = 0;
+    Bitboard rookChecks, queenChecks, bishopChecks, knightChecks;
     int kingDanger = 0;
     const Square ksq = pos.square<KING>(Us);
 
@@ -411,45 +412,43 @@ namespace {
     b2 = attacks_bb<BISHOP>(ksq, pos.pieces() ^ pos.pieces(Us, QUEEN));
 
     // Enemy rooks checks
-    Bitboard RookCheck =  b1
-                        & safe
-                        & attackedBy[Them][ROOK];
+    rookChecks = b1 & safe & attackedBy[Them][ROOK];
 
-    if (RookCheck)
+    if (rookChecks)
         kingDanger += RookSafeCheck;
     else
         unsafeChecks |= b1 & attackedBy[Them][ROOK];
 
     // Enemy queen safe checks: we count them only if they are from squares from
     // which we can't give a rook check, because rook checks are more valuable.
-    Bitboard QueenCheck =  (b1 | b2)
-                         & attackedBy[Them][QUEEN]
-                         & safe
-                         & ~attackedBy[Us][QUEEN]
-                         & ~RookCheck;
+    queenChecks =  (b1 | b2)
+                 & attackedBy[Them][QUEEN]
+                 & safe
+                 & ~attackedBy[Us][QUEEN]
+                 & ~rookChecks;
 
-    if (QueenCheck)
+    if (queenChecks)
         kingDanger += QueenSafeCheck;
 
     // Enemy bishops checks: we count them only if they are from squares from
     // which we can't give a queen check, because queen checks are more valuable.
-    Bitboard BishopCheck =  b2
-                          & attackedBy[Them][BISHOP]
-                          & safe
-                          & ~QueenCheck;
+    bishopChecks =  b2
+                  & attackedBy[Them][BISHOP]
+                  & safe
+                  & ~queenChecks;
 
-    if (BishopCheck)
+    if (bishopChecks)
         kingDanger += BishopSafeCheck;
     else
         unsafeChecks |= b2 & attackedBy[Them][BISHOP];
 
     // Enemy knights checks
-    b = pos.attacks_from<KNIGHT>(ksq) & attackedBy[Them][KNIGHT];
+    knightChecks = pos.attacks_from<KNIGHT>(ksq) & attackedBy[Them][KNIGHT];
 
-    if (b & safe)
+    if (knightChecks & safe)
         kingDanger += KnightSafeCheck;
     else
-        unsafeChecks |= b;
+        unsafeChecks |= knightChecks;
 
     // Unsafe or occupied checking squares will also be considered, as long as
     // the square is in the attacker's mobility area.
@@ -500,7 +499,7 @@ namespace {
     constexpr Direction Up       = (Us == WHITE ? NORTH   : SOUTH);
     constexpr Bitboard  TRank3BB = (Us == WHITE ? Rank3BB : Rank6BB);
 
-    Bitboard b, weak, defended, nonPawnEnemies, stronglyProtected, safe, restricted;
+    Bitboard b, weak, defended, nonPawnEnemies, stronglyProtected, safe;
     Score score = SCORE_ZERO;
 
     // Non-pawn enemies
@@ -550,10 +549,11 @@ namespace {
     }
 
     // Bonus for restricting their piece moves
-    restricted =   attackedBy[Them][ALL_PIECES]
-                & ~stronglyProtected
-                &  attackedBy[Us][ALL_PIECES];
-    score += RestrictedPiece * popcount(restricted);
+    b =   attackedBy[Them][ALL_PIECES]
+       & ~stronglyProtected
+       &  attackedBy[Us][ALL_PIECES];
+
+    score += RestrictedPiece * popcount(b);
 
     // Bonus for enemy unopposed weak pawns
     if (pos.pieces(Us, ROOK, QUEEN))
