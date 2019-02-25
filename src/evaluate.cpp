@@ -353,9 +353,9 @@ namespace {
                 && (s == relative_square(Us, SQ_A1) || s == relative_square(Us, SQ_H1)))
             {
                 Direction d = pawn_push(Us) + (file_of(s) == FILE_A ? EAST : WEST);
-                if (pos.piece_on(s + d) == make_piece(Us, PAWN))
+                if (pos.piece_on(s + d) == (Us | PAWN))
                     score -= !pos.empty(s + d + pawn_push(Us))                ? CorneredBishop * 4
-                            : pos.piece_on(s + d + d) == make_piece(Us, PAWN) ? CorneredBishop * 2
+                            : pos.piece_on(s + d + d) == (Us | PAWN) ? CorneredBishop * 2
                                                                               : CorneredBishop;
             }
         }

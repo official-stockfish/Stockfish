@@ -275,7 +275,7 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
   {
       Square rsq;
       Color c = islower(token) ? BLACK : WHITE;
-      Piece rook = make_piece(c, ROOK);
+      Piece rook = (c | ROOK);
 
       token = char(toupper(token));
 
@@ -544,7 +544,7 @@ bool Position::legal(Move m) const {
   Square to = to_sq(m);
 
   assert(color_of(moved_piece(m)) == us);
-  assert(piece_on(square<KING>(us)) == make_piece(us, KING));
+  assert(piece_on(square<KING>(us)) == (us | KING));
 
   // En passant captures are a tricky special case. Because they are rather
   // uncommon, we do it simply by testing whether the king is attacked after
@@ -556,8 +556,8 @@ bool Position::legal(Move m) const {
       Bitboard occupied = (pieces() ^ from ^ capsq) | to;
 
       assert(to == ep_square());
-      assert(moved_piece(m) == make_piece(us, PAWN));
-      assert(piece_on(capsq) == make_piece(~us, PAWN));
+      assert(moved_piece(m) == (us | PAWN));
+      assert(piece_on(capsq) == (~us | PAWN));
       assert(piece_on(to) == NO_PIECE);
 
       return   !(attacks_bb<  ROOK>(ksq, occupied) & pieces(~us, QUEEN, ROOK))
@@ -754,7 +754,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   Square from = from_sq(m);
   Square to = to_sq(m);
   Piece pc = piece_on(from);
-  Piece captured = type_of(m) == ENPASSANT ? make_piece(them, PAWN) : piece_on(to);
+  Piece captured = type_of(m) == ENPASSANT ? (them | PAWN) : piece_on(to);
 
   assert(color_of(pc) == us);
   assert(captured == NO_PIECE || color_of(captured) == (type_of(m) != CASTLING ? them : us));
@@ -762,8 +762,8 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
 
   if (type_of(m) == CASTLING)
   {
-      assert(pc == make_piece(us, KING));
-      assert(captured == make_piece(us, ROOK));
+      assert(pc == (us | KING));
+      assert(captured == (us | ROOK));
 
       Square rfrom, rto;
       do_castling<true>(us, from, to, rfrom, rto);
@@ -784,11 +784,11 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
           {
               capsq -= pawn_push(us);
 
-              assert(pc == make_piece(us, PAWN));
+              assert(pc == (us | PAWN));
               assert(to == st->epSquare);
               assert(relative_rank(us, to) == RANK_6);
               assert(piece_on(to) == NO_PIECE);
-              assert(piece_on(capsq) == make_piece(them, PAWN));
+              assert(piece_on(capsq) == (them | PAWN));
 
               board[capsq] = NO_PIECE; // Not done by remove_piece()
           }
@@ -845,7 +845,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
 
       else if (type_of(m) == PROMOTION)
       {
-          Piece promotion = make_piece(us, promotion_type(m));
+          Piece promotion = (us | promotion_type(m));
 
           assert(relative_rank(us, to) == RANK_8);
           assert(type_of(promotion) >= KNIGHT && type_of(promotion) <= QUEEN);
@@ -913,7 +913,7 @@ void Position::undo_move(Move m) {
       assert(type_of(pc) >= KNIGHT && type_of(pc) <= QUEEN);
 
       remove_piece(pc, to);
-      pc = make_piece(us, PAWN);
+      pc = (us | PAWN);
       put_piece(pc, to);
   }
 
@@ -938,7 +938,7 @@ void Position::undo_move(Move m) {
               assert(to == st->previous->epSquare);
               assert(relative_rank(us, to) == RANK_6);
               assert(piece_on(capsq) == NO_PIECE);
-              assert(st->capturedPiece == make_piece(~us, PAWN));
+              assert(st->capturedPiece == (~us | PAWN));
           }
 
           put_piece(st->capturedPiece, capsq); // Restore the captured piece
@@ -964,11 +964,11 @@ void Position::do_castling(Color us, Square from, Square& to, Square& rfrom, Squ
   to = relative_square(us, kingSide ? SQ_G1 : SQ_C1);
 
   // Remove both pieces first since squares could overlap in Chess960
-  remove_piece(make_piece(us, KING), Do ? from : to);
-  remove_piece(make_piece(us, ROOK), Do ? rfrom : rto);
+  remove_piece((us | KING), Do ? from : to);
+  remove_piece((us | ROOK), Do ? rfrom : rto);
   board[Do ? from : to] = board[Do ? rfrom : rto] = NO_PIECE; // Since remove_piece doesn't do it for us
-  put_piece(make_piece(us, KING), Do ? to : from);
-  put_piece(make_piece(us, ROOK), Do ? rto : rfrom);
+  put_piece((us | KING), Do ? to : from);
+  put_piece((us | ROOK), Do ? rto : rfrom);
 }
 
 
@@ -1323,7 +1323,7 @@ bool Position::pos_is_ok() const {
           if (!can_castle(c | s))
               continue;
 
-          if (   piece_on(castlingRookSquare[c | s]) != make_piece(c, ROOK)
+          if (   piece_on(castlingRookSquare[c | s]) != (c | ROOK)
               || castlingRightsMask[castlingRookSquare[c | s]] != (c | s)
               || (castlingRightsMask[square<KING>(c)] & (c | s)) != (c | s))
               assert(0 && "pos_is_ok: Castling");

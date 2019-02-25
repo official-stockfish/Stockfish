@@ -364,6 +364,10 @@ constexpr Piece operator~(Piece pc) {
   return Piece(pc ^ 8); // Swap color of piece B_KNIGHT -> W_KNIGHT
 }
 
+constexpr Piece operator|(Color c, PieceType pt) {
+  return Piece((c << 3) + pt); // Make a Piece from a color and PieceType
+}
+
 constexpr CastlingRight operator|(Color c, CastlingSide s) {
   return CastlingRight(WHITE_OO << ((s == QUEEN_SIDE) + 2 * c));
 }
@@ -380,9 +384,6 @@ constexpr Square make_square(File f, Rank r) {
   return Square((r << 3) + f);
 }
 
-constexpr Piece make_piece(Color c, PieceType pt) {
-  return Piece((c << 3) + pt);
-}
 
 constexpr PieceType type_of(Piece pc) {
   return PieceType(pc & 7);

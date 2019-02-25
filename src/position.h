@@ -240,20 +240,20 @@ inline Bitboard Position::pieces(Color c, PieceType pt1, PieceType pt2) const {
 }
 
 template<PieceType Pt> inline int Position::count(Color c) const {
-  return pieceCount[make_piece(c, Pt)];
+  return pieceCount[(c | Pt)];
 }
 
 template<PieceType Pt> inline int Position::count() const {
-  return pieceCount[make_piece(WHITE, Pt)] + pieceCount[make_piece(BLACK, Pt)];
+  return pieceCount[(WHITE | Pt)] + pieceCount[(BLACK | Pt)];
 }
 
 template<PieceType Pt> inline const Square* Position::squares(Color c) const {
-  return pieceList[make_piece(c, Pt)];
+  return pieceList[(c | Pt)];
 }
 
 template<PieceType Pt> inline Square Position::square(Color c) const {
-  assert(pieceCount[make_piece(c, Pt)] == 1);
-  return pieceList[make_piece(c, Pt)][0];
+  assert(pieceCount[(c | Pt)] == 1);
+  return pieceList[(c | Pt)][0];
 }
 
 inline Square Position::ep_square() const {
@@ -387,7 +387,7 @@ inline void Position::put_piece(Piece pc, Square s) {
   byColorBB[color_of(pc)] |= s;
   index[s] = pieceCount[pc]++;
   pieceList[pc][index[s]] = s;
-  pieceCount[make_piece(color_of(pc), ALL_PIECES)]++;
+  pieceCount[(color_of(pc) | ALL_PIECES)]++;
   psq += PSQT::psq[pc][s];
 }
 
@@ -405,7 +405,7 @@ inline void Position::remove_piece(Piece pc, Square s) {
   index[lastSquare] = index[s];
   pieceList[pc][index[lastSquare]] = lastSquare;
   pieceList[pc][pieceCount[pc]] = SQ_NONE;
-  pieceCount[make_piece(color_of(pc), ALL_PIECES)]--;
+  pieceCount[(color_of(pc) | ALL_PIECES)]--;
   psq -= PSQT::psq[pc][s];
 }
 

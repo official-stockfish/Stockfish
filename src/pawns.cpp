@@ -87,7 +87,7 @@ namespace {
     // Loop through all pawns of the current color and score each pawn
     while ((s = *pl++) != SQ_NONE)
     {
-        assert(pos.piece_on(s) == make_piece(Us, PAWN));
+        assert(pos.piece_on(s) == (Us | PAWN));
 
         File f = file_of(s);
 
