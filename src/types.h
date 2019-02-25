@@ -384,7 +384,6 @@ constexpr Square make_square(File f, Rank r) {
   return Square((r << 3) + f);
 }
 
-
 constexpr PieceType type_of(Piece pc) {
   return PieceType(pc & 7);
 }
