@@ -73,10 +73,11 @@ namespace {
 
   // Futility and reductions lookup tables, initialized at startup
   int FutilityMoveCounts[2][16]; // [improving][depth]
-  int Reductions[2][64][64];  // [improving][depth][moveNumber]
+  double rFactor[MAX_MOVES];
 
   template <bool PvNode> Depth reduction(bool i, Depth d, int mn) {
-    return (Reductions[i][std::min(d / ONE_PLY, 63)][std::min(mn, 63)] - PvNode) * ONE_PLY;
+    double r = 0.5 + rFactor[d] * rFactor[mn];
+    return Depth(int(r) + (!i && r > 1.5) - PvNode);
   }
 
   // History and stats update bonus, based on depth
@@ -156,18 +157,8 @@ namespace {
 
 void Search::init() {
 
-  for (int imp = 0; imp <= 1; ++imp)
-      for (int d = 1; d < 64; ++d)
-          for (int mc = 1; mc < 64; ++mc)
-          {
-              double r = log(d) * log(mc) / 1.95;
-
-              Reductions[imp][d][mc] = std::round(r);
-
-              // Increase reduction for non-PV nodes when eval is not improving
-              if (!imp && r > 1.0)
-                Reductions[imp][d][mc]++;
-          }
+  for (int d = 1; d < MAX_MOVES ; d++)
+      rFactor[d] = std::log(d) / std::sqrt(1.95);
 
   for (int d = 0; d < 16; ++d)
   {
