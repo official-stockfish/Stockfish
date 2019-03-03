@@ -73,10 +73,10 @@ namespace {
 
   // Futility and reductions lookup tables, initialized at startup
   int FutilityMoveCounts[2][16]; // [improving][depth]
-  double rFactor[MAX_MOVES];
+  float rFactor[MAX_MOVES];
 
   template <bool PvNode> Depth reduction(bool i, Depth d, int mn) {
-    double r = 0.5 + rFactor[d] * rFactor[mn];
+    float r = 0.5 + rFactor[d] * rFactor[mn];
     return Depth(int(r) + (!i && r > 1.5) - PvNode);
   }
 
