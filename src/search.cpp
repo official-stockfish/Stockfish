@@ -71,13 +71,16 @@ namespace {
     return Value((175 - 50 * improving) * d / ONE_PLY);
   }
 
-  // Futility and reductions lookup tables, initialized at startup
-  int FutilityMoveCounts[2][16]; // [improving][depth]
+  // Reductions lookup table, initialized at startup
   int Reductions[64]; // [depth or moveNumber]
 
   template <bool PvNode> Depth reduction(bool i, Depth d, int mn) {
     int r = Reductions[std::min(d / ONE_PLY, 63)] * Reductions[std::min(mn, 63)] / 1024;
     return ((r + 512) / 1024 + (!i && r > 1024) - PvNode) * ONE_PLY;
+  }
+
+  constexpr int futility_move_count(bool improving, int depth) {
+    return (5 + depth * depth) * (1 + improving) / 2;
   }
 
   // History and stats update bonus, based on depth
@@ -159,12 +162,6 @@ void Search::init() {
 
   for (int i = 1; i < 64; ++i)
       Reductions[i] = int(1024 * std::log(i) / std::sqrt(1.95));
-
-  for (int d = 0; d < 16; ++d)
-  {
-      FutilityMoveCounts[0][d] = int(2.4 + 0.74 * pow(d, 1.78));
-      FutilityMoveCounts[1][d] = int(5.0 + 1.00 * pow(d, 2.00));
-  }
 }
 
 
@@ -957,8 +954,7 @@ moves_loop: // When in check, search starts from here
           && bestValue > VALUE_MATED_IN_MAX_PLY)
       {
           // Skip quiet moves if movecount exceeds our FutilityMoveCount threshold
-          moveCountPruning = depth < 16 * ONE_PLY
-                          && moveCount >= FutilityMoveCounts[improving][depth / ONE_PLY];
+          moveCountPruning = moveCount >= futility_move_count(improving,depth / ONE_PLY);
 
           if (   !captureOrPromotion
               && !givesCheck
