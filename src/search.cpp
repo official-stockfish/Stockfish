@@ -76,8 +76,8 @@ namespace {
   float Reductions[256]; // [depth or moveNumber]
 
   template <bool PvNode> Depth reduction(bool i, Depth d, int mn) {
-    float r = Reductions[d] * Reductions[mn] / 1024;
-    return Depth(int(r + 512)/1024 + (!i && r > 1024) - PvNode);
+    int r = Reductions[d] * Reductions[mn] / 1024;
+    return Depth((r + 512)/1024 + (!i && r > 1024) - PvNode);
   }
 
   // History and stats update bonus, based on depth
