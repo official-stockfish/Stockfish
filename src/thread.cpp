@@ -36,6 +36,10 @@ ThreadPool Threads; // Global object
 
 Thread::Thread(size_t n) : idx(n), stdThread(&Thread::idle_loop, this) {
 
+  // Allow for the creation of MAX_PLY MovePicker objects
+  size_t movesSpace = MAX_PLY * MAX_MOVES * sizeof(ExtMove);
+  movesStack = (ExtMove*) malloc(movesSpace);
+
   wait_for_search_finished();
 }
 
@@ -49,6 +53,7 @@ Thread::~Thread() {
 
   exit = true;
   start_searching();
+  free(movesStack);
   stdThread.join();
 }
 

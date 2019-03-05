@@ -73,6 +73,8 @@ public:
   CapturePieceToHistory captureHistory;
   ContinuationHistory continuationHistory;
   Score contempt;
+
+  ExtMove* movesStack; // a stack of moves needed for MovePicker objects.
 };
 
 
