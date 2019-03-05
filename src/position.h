@@ -310,7 +310,7 @@ inline Bitboard Position::check_squares(PieceType pt) const {
 }
 
 inline bool Position::pawn_passed(Color c, Square s) const {
-  return !(pieces(~c, PAWN) & passed_pawn_mask(c, s));
+  return !(pieces(~c, PAWN) & passed_pawn_span(c, s));
 }
 
 inline bool Position::advanced_pawn_push(Move m) const {
