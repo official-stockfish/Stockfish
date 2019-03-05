@@ -73,7 +73,7 @@ namespace {
 
   // Futility and reductions lookup tables, initialized at startup
   int FutilityMoveCounts[2][16]; // [improving][depth]
-  float Reductions[256]; // [depth or moveNumber]
+  int Reductions[256]; // [depth or moveNumber]
 
   template <bool PvNode> Depth reduction(bool i, Depth d, int mn) {
     int r = Reductions[d] * Reductions[mn] / 1024;
