@@ -247,6 +247,7 @@ Score Entry::do_king_safety(const Position& pos) {
 
   // If we can castle, use the shelter bonus for the best king location
   Value bonus = evaluate_shelter<Us>(pos, ksq);
+
   if (pos.can_castle(Us | KING_SIDE))
       bonus = std::max(bonus, evaluate_shelter<Us>(pos, relative_square(Us, SQ_G1)));
 
