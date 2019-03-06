@@ -238,21 +238,21 @@ Score Entry::do_king_safety(const Position& pos) {
   Bitboard pawns = pos.pieces(Us, PAWN);
   int d, minKingPawnDistance = pawns ? 8 : 0;
   const Square* pl = pos.squares<PAWN>(Us);
-  Value bonus = evaluate_shelter<Us>(pos, ksq);
-
-  while (((s = *pl++) != SQ_NONE) && (minKingPawnDistance > 1))
-      if ((d = distance(s, ksq)) < minKingPawnDistance)
-          minKingPawnDistance = d;
-
   kingSquares[Us] = ksq;
   castlingRights[Us] = pos.castling_rights(Us);
 
-  // If we can castle use the bonus after the castling if it is bigger
+  // If we can castle, use the shelter bonus for the best king location
+  Value bonus = evaluate_shelter<Us>(pos, ksq);
   if (pos.can_castle(Us | KING_SIDE))
       bonus = std::max(bonus, evaluate_shelter<Us>(pos, relative_square(Us, SQ_G1)));
 
   if (pos.can_castle(Us | QUEEN_SIDE))
       bonus = std::max(bonus, evaluate_shelter<Us>(pos, relative_square(Us, SQ_C1)));
+
+  // Minimum distance between the king and one of our pawns
+  while (((s = *pl++) != SQ_NONE) && (minKingPawnDistance > 1))
+      if ((d = distance(s, ksq)) < minKingPawnDistance)
+          minKingPawnDistance = d;
 
   return make_score(bonus, -16 * minKingPawnDistance);
 }
