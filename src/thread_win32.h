@@ -83,6 +83,7 @@ void* start_routine(void* ptr)
 {
    P* p = reinterpret_cast<P*>(ptr);
    (p->second->*(p->first))(); // Call member function pointer
+   delete p;
    return NULL;
 }
 
@@ -93,11 +94,11 @@ class NativeThread {
 public:
   template<class Fun, class This>
   explicit NativeThread(Fun fun, This obj) {
-    auto ptr = std::make_pair(fun, obj);
+    auto ptr = new std::pair<Fun, This>(fun, obj); // Should survive to us
     pthread_attr_t attr_storage, *attr = &attr_storage;
     pthread_attr_init(attr);
     pthread_attr_setstacksize(attr, TH_STACK_SIZE);
-    pthread_create(&thread, attr, start_routine<Fun, This>, (void*)&ptr);
+    pthread_create(&thread, attr, start_routine<Fun, This>, (void*)ptr);
   }
   void join() { pthread_join(thread, NULL); }
 };
