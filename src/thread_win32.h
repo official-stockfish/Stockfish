@@ -67,4 +67,38 @@ typedef std::condition_variable ConditionVariable;
 
 #endif
 
+#if !defined(_MSC_VER) // defined(__APPLE__) FIXME when done with testing
+
+#include <pthread.h>
+
+/// On OSX threads other than the main thread are created with a reduced stack
+/// size of 512KB by default, this is dangerously low for deep searches, so
+/// adjust it to TH_STACK_SIZE. The implementation calls pthread_create() with
+/// proper stack size parameter.
+
+static const size_t TH_STACK_SIZE = 2 * 1024 * 1024;
+
+class NativeThread {
+
+   typedef void*(*THREADFUNCPTR)(void *);
+   pthread_t thread;
+
+public:
+  template<class Member, class Obj >
+  explicit NativeThread(Member&& fun, Obj&& obj) {
+    pthread_attr_t attr_storage, *attr = &attr_storage;
+    pthread_attr_init(attr);
+    pthread_attr_setstacksize(attr, TH_STACK_SIZE);
+    pthread_create(&thread, attr, (THREADFUNCPTR)fun, obj);
+  }
+  void join() { pthread_join(thread, NULL); }
+};
+
+#else // Default case: use STL classes
+
+typedef std::thread NativeThread;
+
+#endif
+
+
 #endif // #ifndef THREAD_WIN32_H_INCLUDED
