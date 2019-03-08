@@ -78,7 +78,7 @@ typedef std::condition_variable ConditionVariable;
 
 static const size_t TH_STACK_SIZE = 2 * 1024 * 1024;
 
-template <class Fun, class This, class P = std::pair<Fun, This>>
+template <class Fun, class Obj, class P = std::pair<Fun, Obj*>>
 void* start_routine(void* ptr)
 {
    P* p = reinterpret_cast<P*>(ptr);
@@ -92,13 +92,13 @@ class NativeThread {
    pthread_t thread;
 
 public:
-  template<class Fun, class This>
-  explicit NativeThread(Fun fun, This obj) {
-    auto ptr = new std::pair<Fun, This>(fun, obj); // Should survive to us
+  template<class Fun, class Obj>
+  explicit NativeThread(Fun fun, Obj* obj) {
+    auto ptr = new std::pair<Fun, Obj*>(fun, obj); // Should survive to us
     pthread_attr_t attr_storage, *attr = &attr_storage;
     pthread_attr_init(attr);
     pthread_attr_setstacksize(attr, TH_STACK_SIZE);
-    pthread_create(&thread, attr, start_routine<Fun, This>, (void*)ptr);
+    pthread_create(&thread, attr, start_routine<Fun, Obj>, (void*)ptr);
   }
   void join() { pthread_join(thread, NULL); }
 };
