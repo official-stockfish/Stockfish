@@ -18,8 +18,8 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef THREAD_WIN32_H_INCLUDED
-#define THREAD_WIN32_H_INCLUDED
+#ifndef THREAD_WIN32_OSX_H_INCLUDED
+#define THREAD_WIN32_OSX_H_INCLUDED
 
 /// STL thread library used by mingw and gcc when cross compiling for Windows
 /// relies on libwinpthread. Currently libwinpthread implements mutexes directly
@@ -33,6 +33,7 @@
 
 #include <condition_variable>
 #include <mutex>
+#include <thread>
 
 #if defined(_WIN32) && !defined(_MSC_VER)
 
@@ -67,22 +68,22 @@ typedef std::condition_variable ConditionVariable;
 
 #endif
 
-#if !defined(_MSC_VER) // defined(__APPLE__) FIXME when done with testing
-
-#include <pthread.h>
-
 /// On OSX threads other than the main thread are created with a reduced stack
 /// size of 512KB by default, this is dangerously low for deep searches, so
 /// adjust it to TH_STACK_SIZE. The implementation calls pthread_create() with
 /// proper stack size parameter.
 
+#if defined(__APPLE__)
+
+#include <pthread.h>
+
 static const size_t TH_STACK_SIZE = 2 * 1024 * 1024;
 
-template <class Fun, class Obj, class P = std::pair<Fun, Obj*>>
+template <class T, class P = std::pair<T*, void(T::*)()>>
 void* start_routine(void* ptr)
 {
    P* p = reinterpret_cast<P*>(ptr);
-   (p->second->*(p->first))(); // Call member function pointer
+   (p->first->*(p->second))(); // Call member function pointer
    delete p;
    return NULL;
 }
@@ -92,13 +93,12 @@ class NativeThread {
    pthread_t thread;
 
 public:
-  template<class Fun, class Obj>
-  explicit NativeThread(Fun fun, Obj* obj) {
-    auto ptr = new std::pair<Fun, Obj*>(fun, obj); // Should survive to us
+  template<class T, class P = std::pair<T*, void(T::*)()>>
+  explicit NativeThread(void(T::*fun)(), T* obj) {
     pthread_attr_t attr_storage, *attr = &attr_storage;
     pthread_attr_init(attr);
     pthread_attr_setstacksize(attr, TH_STACK_SIZE);
-    pthread_create(&thread, attr, start_routine<Fun, Obj>, (void*)ptr);
+    pthread_create(&thread, attr, start_routine<T>, new P(obj, fun));
   }
   void join() { pthread_join(thread, NULL); }
 };
@@ -109,5 +109,4 @@ typedef std::thread NativeThread;
 
 #endif
 
-
-#endif // #ifndef THREAD_WIN32_H_INCLUDED
+#endif // #ifndef THREAD_WIN32_OSX_H_INCLUDED
