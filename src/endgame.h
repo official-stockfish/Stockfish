@@ -36,7 +36,7 @@
 enum EndgameCode {
 
   EVALUATION_FUNCTIONS,
-  KNNK,  // KNN vs K
+  DRAW,  // Any known draw
   KNNKP, // KNN vs KP
   KXK,   // Generic "mate lone king" eval
   KBNK,  // KBN vs K
@@ -119,7 +119,14 @@ public:
   Endgames() {
 
     add<KPK>("KPK");
-    add<KNNK>("KNNK");
+    add<DRAW>("KNNK");
+    add<DRAW>("KBKN");
+    add<DRAW>("KNNKB");
+    add<DRAW>("KNNKN");
+    add<DRAW>("KNNKNN");
+    add<DRAW>("KBBKBB");
+    add<DRAW>("KBNKBN");
+    add<DRAW>("KBNKNN");
     add<KBNK>("KBNK");
     add<KRKP>("KRKP");
     add<KRKB>("KRKB");
