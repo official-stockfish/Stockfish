@@ -115,7 +115,7 @@ constexpr int MAX_PLY   = 128;
 /// any normal move destination square is always different from origin square
 /// while MOVE_NONE and MOVE_NULL have the same origin and destination square.
 
-enum Move : uint16_t {
+enum Move : int {
   MOVE_NONE,
   MOVE_NULL = 65
 };
