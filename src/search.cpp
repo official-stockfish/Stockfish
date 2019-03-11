@@ -278,7 +278,6 @@ void Thread::search() {
   // which accesses its argument at ss-6, also near the root.
   // The latter is needed for statScores and killer initialization.
   Stack stack[MAX_PLY+10], *ss = stack+7;
-  Move  pv[MAX_PLY+1];
   Value bestValue, alpha, beta, delta;
   Move  lastBestMove = MOVE_NONE;
   Depth lastBestMoveDepth = DEPTH_ZERO;
@@ -289,7 +288,6 @@ void Thread::search() {
   std::memset(ss-7, 0, 10 * sizeof(Stack));
   for (int i = 7; i > 0; i--)
      (ss-i)->continuationHistory = &this->continuationHistory[NO_PIECE][0]; // Use as sentinel
-  ss->pv = pv;
 
   bestValue = delta = alpha = -VALUE_INFINITE;
   beta = VALUE_INFINITE;
@@ -1219,13 +1217,6 @@ moves_loop: // When in check, search starts from here
     bool ttHit, pvHit, inCheck, givesCheck, evasionPrunable;
     int moveCount;
 
-    if (PvNode)
-    {
-        oldAlpha = alpha; // To flag BOUND_EXACT when eval above alpha and no available moves
-        (ss+1)->pv = pv;
-        ss->pv[0] = MOVE_NONE;
-    }
-
     Thread* thisThread = pos.this_thread();
     (ss+1)->ply = ss->ply + 1;
     ss->currentMove = bestMove = MOVE_NONE;
@@ -1238,7 +1229,14 @@ moves_loop: // When in check, search starts from here
         || ss->ply >= MAX_PLY)
         return (ss->ply >= MAX_PLY && !inCheck) ? evaluate(pos) : VALUE_DRAW;
 
-    assert(0 <= ss->ply && ss->ply < MAX_PLY);
+    assert(1 <= ss->ply && ss->ply < MAX_PLY);
+
+    if (PvNode)
+    {
+        oldAlpha = alpha; // To flag BOUND_EXACT when eval above alpha and no available moves
+        (ss+1)->pv = pv;
+        (ss+1)->pv[0] = MOVE_NONE;
+    }
 
     // Decide whether or not to include checks: this fixes also the type of
     // TT entry depth that we are going to use. Note that in qsearch we use
