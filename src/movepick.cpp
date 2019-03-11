@@ -25,10 +25,9 @@
 namespace {
 
   enum Stages {
-    MAIN_TT, CAPTURE_INIT, GOOD_CAPTURE, REFUTATION, QUIET_INIT, QUIET, BAD_CAPTURE,
-    EVASION_TT, EVASION_INIT, EVASION,
-    PROBCUT_TT, PROBCUT_INIT, PROBCUT,
-    QSEARCH_TT, QCAPTURE_INIT, QCAPTURE, QCHECK_INIT, QCHECK
+    TT_STAGE, CAPTURE_INIT, GOOD_CAPTURE, REFUTATION, QUIET_INIT, QUIET, BAD_CAPTURE,
+    EVASION_INIT, EVASION, PROBCUT_INIT, PROBCUT,
+    QCAPTURE_INIT, QCAPTURE, QCHECK_INIT, QCHECK
   };
 
   // partial_insertion_sort() sorts moves in descending order up to and including
@@ -63,10 +62,9 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const ButterflyHist
 
   assert(d > DEPTH_ZERO);
 
-  stage = pos.checkers() ? EVASION_TT : MAIN_TT;
   ttMove = ttm && pos.pseudo_legal(ttm) ? ttm : MOVE_NONE;
   init_stage = pos.checkers() ? EVASION_INIT : CAPTURE_INIT;
-  stage += (ttMove == MOVE_NONE);
+  stage = (ttMove == MOVE_NONE) ? init_stage : TT_STAGE;
 }
 
 /// MovePicker constructor for quiescence search
@@ -76,12 +74,11 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const ButterflyHist
 
   assert(d <= DEPTH_ZERO);
 
-  stage = pos.checkers() ? EVASION_TT : QSEARCH_TT;
   ttMove =   ttm
           && (depth > DEPTH_QS_RECAPTURES || to_sq(ttm) == recaptureSquare)
           && pos.pseudo_legal(ttm) ? ttm : MOVE_NONE;
   init_stage = pos.checkers() ? EVASION_INIT : QCAPTURE_INIT;
-  stage += (ttMove == MOVE_NONE);
+  stage = (ttMove == MOVE_NONE) ? init_stage : TT_STAGE;
 }
 
 /// MovePicker constructor for ProbCut: we generate captures with SEE greater
@@ -91,13 +88,12 @@ MovePicker::MovePicker(const Position& p, Move ttm, Value th, const CapturePiece
 
   assert(!pos.checkers());
 
-  stage = PROBCUT_TT;
   ttMove =   ttm
           && pos.capture(ttm)
           && pos.pseudo_legal(ttm)
           && pos.see_ge(ttm, threshold) ? ttm : MOVE_NONE;
   init_stage = PROBCUT_INIT;
-  stage += (ttMove == MOVE_NONE);
+  stage = (ttMove == MOVE_NONE) ? init_stage : TT_STAGE;
 }
 
 /// MovePicker::score() assigns a numerical value to each move in a list, used
@@ -158,11 +154,7 @@ Move MovePicker::next_move(bool skipQuiets) {
 top:
   switch (stage) {
 
-  case MAIN_TT:
-  case EVASION_TT:
-  case QSEARCH_TT:
-  case PROBCUT_TT:
-      //++stage;
+  case TT_STAGE:
       stage = init_stage;
       return ttMove;
 
