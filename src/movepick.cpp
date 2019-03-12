@@ -58,19 +58,20 @@ namespace {
 MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const ButterflyHistory* mh,
                        const CapturePieceToHistory* cph, const PieceToHistory** ch, Move cm, Move* killers)
            : pos(p), mainHistory(mh), captureHistory(cph), continuationHistory(ch),
-             refutations{{killers[0], 0}, {killers[1], 0}, {cm, 0}}, depth(d) {
+             refutations{{killers[0], 0}, {killers[1], 0}, {cm, 0}}, stage(TT_STAGE), depth(d) {
 
   assert(d > DEPTH_ZERO);
 
   ttMove = ttm && pos.pseudo_legal(ttm) ? ttm : MOVE_NONE;
   init_stage = pos.checkers() ? EVASION_INIT : CAPTURE_INIT;
-  stage = (ttMove == MOVE_NONE) ? init_stage : TT_STAGE;
+  if (!ttMove)
+     stage = init_stage;
 }
 
 /// MovePicker constructor for quiescence search
 MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const ButterflyHistory* mh,
                        const CapturePieceToHistory* cph, const PieceToHistory** ch, Square rs)
-           : pos(p), mainHistory(mh), captureHistory(cph), continuationHistory(ch), recaptureSquare(rs), depth(d) {
+           : pos(p), mainHistory(mh), captureHistory(cph), continuationHistory(ch), recaptureSquare(rs), stage(TT_STAGE), depth(d) {
 
   assert(d <= DEPTH_ZERO);
 
@@ -78,13 +79,14 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const ButterflyHist
           && (depth > DEPTH_QS_RECAPTURES || to_sq(ttm) == recaptureSquare)
           && pos.pseudo_legal(ttm) ? ttm : MOVE_NONE;
   init_stage = pos.checkers() ? EVASION_INIT : QCAPTURE_INIT;
-  stage = (ttMove == MOVE_NONE) ? init_stage : TT_STAGE;
+  if (!ttMove)
+     stage = init_stage;
 }
 
 /// MovePicker constructor for ProbCut: we generate captures with SEE greater
 /// than or equal to the given threshold.
 MovePicker::MovePicker(const Position& p, Move ttm, Value th, const CapturePieceToHistory* cph)
-           : pos(p), captureHistory(cph), threshold(th) {
+           : pos(p), captureHistory(cph), threshold(th), stage(TT_STAGE), init_stage(PROBCUT_INIT) {
 
   assert(!pos.checkers());
 
@@ -92,8 +94,9 @@ MovePicker::MovePicker(const Position& p, Move ttm, Value th, const CapturePiece
           && pos.capture(ttm)
           && pos.pseudo_legal(ttm)
           && pos.see_ge(ttm, threshold) ? ttm : MOVE_NONE;
-  init_stage = PROBCUT_INIT;
-  stage = (ttMove == MOVE_NONE) ? init_stage : TT_STAGE;
+
+  if (!ttMove)
+     stage = init_stage;
 }
 
 /// MovePicker::score() assigns a numerical value to each move in a list, used
