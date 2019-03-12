@@ -76,10 +76,7 @@ namespace {
     if (file_of(pos.square<PAWN>(strongSide)) >= FILE_E)
         sq = Square(sq ^ 7); // Mirror SQ_H1 -> SQ_A1
 
-    if (strongSide == BLACK)
-        sq = ~sq;
-
-    return sq;
+    return strongSide == WHITE ? sq : ~sq;
   }
 
 } // namespace
