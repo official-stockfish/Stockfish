@@ -71,7 +71,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const ButterflyHist
 /// MovePicker constructor for quiescence search
 MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const ButterflyHistory* mh,
                        const CapturePieceToHistory* cph, const PieceToHistory** ch, Square rs)
-           : pos(p), mainHistory(mh), captureHistory(cph), continuationHistory(ch), recaptureSquare(rs), stage(TT_STAGE), depth(d) {
+           : pos(p), mainHistory(mh), captureHistory(cph), continuationHistory(ch), stage(TT_STAGE), recaptureSquare(rs), depth(d) {
 
   assert(d <= DEPTH_ZERO);
 
@@ -86,7 +86,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const ButterflyHist
 /// MovePicker constructor for ProbCut: we generate captures with SEE greater
 /// than or equal to the given threshold.
 MovePicker::MovePicker(const Position& p, Move ttm, Value th, const CapturePieceToHistory* cph)
-           : pos(p), captureHistory(cph), threshold(th), stage(TT_STAGE), init_stage(PROBCUT_INIT) {
+           : pos(p), captureHistory(cph), stage(TT_STAGE), init_stage(PROBCUT_INIT), threshold(th) {
 
   assert(!pos.checkers());
 
