@@ -32,7 +32,7 @@
 #include "../movegen.h"
 #include "../position.h"
 #include "../search.h"
-#include "../thread_win32.h"
+#include "../thread_win32_osx.h"
 #include "../types.h"
 #include "../uci.h"
 
