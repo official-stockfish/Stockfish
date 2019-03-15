@@ -75,7 +75,7 @@ typedef std::condition_variable ConditionVariable;
 
 #if defined(__APPLE__)
 
-include <pthread.h>
+#include <pthread.h>
 
 static const size_t TH_STACK_SIZE = 2 * 1024 * 1024;
 
