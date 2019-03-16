@@ -140,7 +140,8 @@ public:
 
   template<typename T>
   const EndgameBase<T>* probe(Key key) {
-    return map<T>().count(key) ? map<T>()[key].get() : nullptr;
+    auto eb = map<T>().find(key);
+    return eb != map<T>().end() ? eb->second.get() : nullptr;
   }
 };
 
