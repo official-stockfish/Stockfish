@@ -105,24 +105,17 @@ void MovePicker::score() {
 
   static_assert(Type == CAPTURES || Type == QUIETS || Type == EVASIONS, "Wrong type");
 
-  auto captScore = [&](ExtMove m){return PieceValue[MG][pos.piece_on(to_sq(m))]
-                       + (*captureHistory)[pos.moved_piece(m)][to_sq(m)][type_of(pos.piece_on(to_sq(m)))] / 8;};
-
-  auto quietScore = [&](ExtMove m){return (*mainHistory)[pos.side_to_move()][from_to(m)]
-                        + (*continuationHistory[0])[pos.moved_piece(m)][to_sq(m)]
-                        + (*continuationHistory[1])[pos.moved_piece(m)][to_sq(m)]
-                        + (*continuationHistory[3])[pos.moved_piece(m)][to_sq(m)]
-                        + (*continuationHistory[5])[pos.moved_piece(m)][to_sq(m)] / 2;};
-
   for (auto& m : *this)
-      if (Type == CAPTURES)
-          m.value = captScore(m);
-      else if (Type == QUIETS)
-          m.value = quietScore(m);
-      else if (pos.capture(m))   // Type == EVASIONS
-          m.value = captScore(m);
+      if (Type == CAPTURES || (Type == EVASIONS && pos.capture(m)))
+          m.value =  PieceValue[MG][pos.piece_on(to_sq(m))]
+                   + (*captureHistory)[pos.moved_piece(m)][to_sq(m)][type_of(pos.piece_on(to_sq(m)))] / 8;
       else
-          m.value = quietScore(m) - (1 << 28);
+          m.value =  (*mainHistory)[pos.side_to_move()][from_to(m)]
+                   + (*continuationHistory[0])[pos.moved_piece(m)][to_sq(m)]
+                   + (*continuationHistory[1])[pos.moved_piece(m)][to_sq(m)]
+                   + (*continuationHistory[3])[pos.moved_piece(m)][to_sq(m)]
+                   + (*continuationHistory[5])[pos.moved_piece(m)][to_sq(m)] / 2
+                   - (Type == EVASIONS ? 1 << 28 : 0);
 }
 
 /// MovePicker::select() returns the next move satisfying a predicate function.
