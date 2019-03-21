@@ -252,14 +252,11 @@ namespace {
 } // namespace
 
 
-/// generate<CAPTURES> generates all pseudo-legal captures and queen
-/// promotions. Returns a pointer to the end of the move list.
+/// <CAPTURES>     Generates all pseudo-legal captures and queen promotions
+/// <QUIETS>       Generates all pseudo-legal non-captures and underpromotions
+/// <NON_EVASIONS> Generates all pseudo-legal captures and non-captures
 ///
-/// generate<QUIETS> generates all pseudo-legal non-captures and
-/// underpromotions. Returns a pointer to the end of the move list.
-///
-/// generate<NON_EVASIONS> generates all pseudo-legal captures and
-/// non-captures. Returns a pointer to the end of the move list.
+/// Returns a pointer to the end of the move list.
 
 template<GenType Type>
 ExtMove* generate(const Position& pos, ExtMove* moveList) {
