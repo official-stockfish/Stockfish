@@ -1235,7 +1235,7 @@ moves_loop: // When in check, search starts from here
     {
         oldAlpha = alpha; // To flag BOUND_EXACT when eval above alpha and no available moves
         (ss+1)->pv = pv;
-        (ss+1)->pv[0] = MOVE_NONE;
+        ss->pv[0] = MOVE_NONE;
     }
 
     // Decide whether or not to include checks: this fixes also the type of
