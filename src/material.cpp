@@ -149,9 +149,9 @@ Entry* probe(const Position& pos) {
 
   // OK, we didn't find any special evaluation function for the current material
   // configuration. Is there a suitable specialized scaling function?
-  const EndgameBase<ScaleFactor>* sf;
+  const auto* sf = pos.this_thread()->endgames.probe<ScaleFactor>(key);
 
-  if ((sf = pos.this_thread()->endgames.probe<ScaleFactor>(key)) != nullptr)
+  if (sf)
   {
       e->scalingFunction[sf->strongSide] = sf; // Only strong color assigned
       return e;

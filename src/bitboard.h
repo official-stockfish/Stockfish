@@ -68,13 +68,13 @@ constexpr Bitboard Center      = (FileDBB | FileEBB) & (Rank4BB | Rank5BB);
 extern uint8_t PopCnt16[1 << 16];
 extern uint8_t SquareDistance[SQUARE_NB][SQUARE_NB];
 
-extern Bitboard SquareBB[SQUARE_NB];
 extern Bitboard BetweenBB[SQUARE_NB][SQUARE_NB];
 extern Bitboard LineBB[SQUARE_NB][SQUARE_NB];
 extern Bitboard DistanceRingBB[SQUARE_NB][8];
 extern Bitboard PseudoAttacks[PIECE_TYPE_NB][SQUARE_NB];
 extern Bitboard PawnAttacks[COLOR_NB][SQUARE_NB];
 extern Bitboard KingFlank[FILE_NB];
+extern Bitboard SquareBB[SQUARE_NB + 1]; // Include SQ_NONE
 
 
 /// Magic holds all magic bitboards relevant data for a single square
