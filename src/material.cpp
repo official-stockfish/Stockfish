@@ -70,14 +70,12 @@ namespace {
 
   bool is_KBPsK(const Position& pos, Color us) {
     return   pos.non_pawn_material(us) == BishopValueMg
-          && pos.count<BISHOP>(us) == 1
           && pos.count<PAWN  >(us) >= 1;
   }
 
   bool is_KQKRPs(const Position& pos, Color us) {
     return  !pos.count<PAWN>(us)
           && pos.non_pawn_material(us) == QueenValueMg
-          && pos.count<QUEEN>(us) == 1
           && pos.count<ROOK>(~us) == 1
           && pos.count<PAWN>(~us) >= 1;
   }
