@@ -74,7 +74,11 @@ extern Bitboard LineBB[SQUARE_NB][SQUARE_NB];
 extern Bitboard DistanceRingBB[SQUARE_NB][8];
 extern Bitboard PseudoAttacks[PIECE_TYPE_NB][SQUARE_NB];
 extern Bitboard PawnAttacks[COLOR_NB][SQUARE_NB];
-extern Bitboard KingFlank[FILE_NB];
+
+constexpr Bitboard KingFlank[FILE_NB] = {
+  QueenSide ^ FileDBB, QueenSide, QueenSide, CenterFiles,
+  CenterFiles, KingSide, KingSide, KingSide ^ FileEBB
+};
 
 
 /// Magic holds all magic bitboards relevant data for a single square
@@ -143,21 +147,10 @@ inline bool opposite_colors(Square s1, Square s2) {
 /// rank_bb() and file_bb() return a bitboard representing all the squares on
 /// the given file or rank.
 
-inline Bitboard rank_bb(Rank r) {
-  return Rank1BB << (8 * r);
-}
-
-inline Bitboard rank_bb(Square s) {
-  return rank_bb(rank_of(s));
-}
-
-inline Bitboard file_bb(File f) {
-  return FileABB << f;
-}
-
-inline Bitboard file_bb(Square s) {
-  return file_bb(file_of(s));
-}
+constexpr Bitboard rank_bb(  Rank r) { return Rank1BB << (8 * r);  }
+constexpr Bitboard rank_bb(Square s) { return rank_bb(rank_of(s)); }
+constexpr Bitboard file_bb(  File f) { return FileABB << f;        }
+constexpr Bitboard file_bb(Square s) { return file_bb(file_of(s)); }
 
 
 /// shift() moves a bitboard one step along direction D
@@ -195,7 +188,7 @@ constexpr Bitboard pawn_double_attacks_bb(Bitboard b) {
 /// adjacent_files_bb() returns a bitboard representing all the squares on the
 /// adjacent files of the given one.
 
-inline Bitboard adjacent_files_bb(File f) {
+constexpr Bitboard adjacent_files_bb(File f) {
   return shift<EAST>(file_bb(f)) | shift<WEST>(file_bb(f));
 }
 
@@ -214,7 +207,7 @@ inline Bitboard between_bb(Square s1, Square s2) {
 /// in front of the given one, from the point of view of the given color. For instance,
 /// forward_ranks_bb(BLACK, SQ_D3) will return the 16 squares on ranks 1 and 2.
 
-inline Bitboard forward_ranks_bb(Color c, Square s) {
+constexpr Bitboard forward_ranks_bb(Color c, Square s) {
   return c == WHITE ? ~Rank1BB << 8 * (rank_of(s) - RANK_1)
                     : ~Rank8BB >> 8 * (RANK_8 - rank_of(s));
 }
@@ -223,7 +216,7 @@ inline Bitboard forward_ranks_bb(Color c, Square s) {
 /// forward_file_bb() returns a bitboard representing all the squares along the
 /// line in front of the given one, from the point of view of the given color.
 
-inline Bitboard forward_file_bb(Color c, Square s) {
+constexpr Bitboard forward_file_bb(Color c, Square s) {
   return forward_ranks_bb(c, s) & file_bb(s);
 }
 
@@ -232,7 +225,7 @@ inline Bitboard forward_file_bb(Color c, Square s) {
 /// be attacked by a pawn of the given color when it moves along its file,
 /// starting from the given square.
 
-inline Bitboard pawn_attack_span(Color c, Square s) {
+constexpr Bitboard pawn_attack_span(Color c, Square s) {
   return forward_ranks_bb(c, s) & adjacent_files_bb(file_of(s));
 }
 
@@ -240,7 +233,7 @@ inline Bitboard pawn_attack_span(Color c, Square s) {
 /// passed_pawn_span() returns a bitboard which can be used to test if a pawn of
 /// the given color and on the given square is a passed pawn.
 
-inline Bitboard passed_pawn_span(Color c, Square s) {
+constexpr Bitboard passed_pawn_span(Color c, Square s) {
   return forward_ranks_bb(c, s) & (adjacent_files_bb(file_of(s)) | file_bb(s));
 }
 
@@ -256,12 +249,12 @@ inline bool aligned(Square s1, Square s2, Square s3) {
 /// distance() functions return the distance between x and y, defined as the
 /// number of steps for a king in x to reach y. Works with squares, ranks, files.
 
-template<typename T> inline int distance(T x, T y) { return std::abs(x - y); }
+template<typename T> constexpr int distance(T x, T y) { return std::abs(x - y); }
 template<> inline int distance<Square>(Square x, Square y) { return SquareDistance[x][y]; }
 
-template<typename T1, typename T2> inline int distance(T2 x, T2 y);
-template<> inline int distance<File>(Square x, Square y) { return distance(file_of(x), file_of(y)); }
-template<> inline int distance<Rank>(Square x, Square y) { return distance(rank_of(x), rank_of(y)); }
+template<typename T1, typename T2> constexpr int distance(T2 x, T2 y);
+template<> constexpr int distance<File>(Square x, Square y) { return distance(file_of(x), file_of(y)); }
+template<> constexpr int distance<Rank>(Square x, Square y) { return distance(rank_of(x), rank_of(y)); }
 
 
 /// attacks_bb() returns a bitboard representing all the squares attacked by a

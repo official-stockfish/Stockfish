@@ -39,9 +39,9 @@ namespace Material {
 
 struct Entry {
 
-  Score imbalance() const { return make_score(value, value); }
-  Phase game_phase() const { return gamePhase; }
-  bool specialized_eval_exists() const { return evaluationFunction != nullptr; }
+  constexpr Score imbalance() const { return make_score(value, value); }
+  constexpr Phase game_phase() const { return gamePhase; }
+  constexpr bool specialized_eval_exists() const { return evaluationFunction != nullptr; }
   Value evaluate(const Position& pos) const { return (*evaluationFunction)(pos); }
 
   // scale_factor takes a position and a color as input and returns a scale factor

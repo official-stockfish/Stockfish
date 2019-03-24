@@ -82,30 +82,30 @@ public:
   const std::string fen() const;
 
   // Position representation
-  Bitboard pieces() const;
-  Bitboard pieces(PieceType pt) const;
-  Bitboard pieces(PieceType pt1, PieceType pt2) const;
-  Bitboard pieces(Color c) const;
-  Bitboard pieces(Color c, PieceType pt) const;
-  Bitboard pieces(Color c, PieceType pt1, PieceType pt2) const;
-  Piece piece_on(Square s) const;
-  Square ep_square() const;
-  bool empty(Square s) const;
-  template<PieceType Pt> int count(Color c) const;
-  template<PieceType Pt> int count() const;
+  constexpr Bitboard pieces() const;
+  constexpr Bitboard pieces(PieceType pt) const;
+  constexpr Bitboard pieces(PieceType pt1, PieceType pt2) const;
+  constexpr Bitboard pieces(Color c) const;
+  constexpr Bitboard pieces(Color c, PieceType pt) const;
+  constexpr Bitboard pieces(Color c, PieceType pt1, PieceType pt2) const;
+  constexpr Piece piece_on(Square s) const;
+  constexpr Square ep_square() const;
+  constexpr bool empty(Square s) const;
+  template<PieceType Pt> constexpr int count(Color c) const;
+  template<PieceType Pt> constexpr int count() const;
   template<PieceType Pt> const Square* squares(Color c) const;
   template<PieceType Pt> Square square(Color c) const;
 
   // Castling
-  int castling_rights(Color c) const;
-  bool can_castle(CastlingRight cr) const;
-  bool castling_impeded(CastlingRight cr) const;
-  Square castling_rook_square(CastlingRight cr) const;
+  constexpr int castling_rights(Color c) const;
+  constexpr bool can_castle(CastlingRight cr) const;
+  constexpr bool castling_impeded(CastlingRight cr) const;
+  constexpr Square castling_rook_square(CastlingRight cr) const;
 
   // Checking
-  Bitboard checkers() const;
-  Bitboard blockers_for_king(Color c) const;
-  Bitboard check_squares(PieceType pt) const;
+  constexpr Bitboard checkers() const;
+  constexpr Bitboard blockers_for_king(Color c) const;
+  constexpr Bitboard check_squares(PieceType pt) const;
 
   // Attacks to/from a given square
   Bitboard attackers_to(Square s) const;
@@ -123,11 +123,11 @@ public:
   bool gives_check(Move m) const;
   bool advanced_pawn_push(Move m) const;
   Piece moved_piece(Move m) const;
-  Piece captured_piece() const;
+  constexpr Piece captured_piece() const;
 
   // Piece specific
-  bool pawn_passed(Color c, Square s) const;
-  bool opposite_bishops() const;
+  constexpr bool pawn_passed(Color c, Square s) const;
+  constexpr bool opposite_bishops() const;
 
   // Doing and undoing moves
   void do_move(Move m, StateInfo& newSt);
@@ -140,23 +140,23 @@ public:
   bool see_ge(Move m, Value threshold = VALUE_ZERO) const;
 
   // Accessing hash keys
-  Key key() const;
+  constexpr Key key() const;
   Key key_after(Move m) const;
-  Key material_key() const;
-  Key pawn_key() const;
+  constexpr Key material_key() const;
+  constexpr Key pawn_key() const;
 
   // Other properties of the position
-  Color side_to_move() const;
-  int game_ply() const;
-  bool is_chess960() const;
-  Thread* this_thread() const;
+  constexpr Color side_to_move() const;
+  constexpr int game_ply() const;
+  constexpr bool is_chess960() const;
+  constexpr Thread* this_thread() const;
   bool is_draw(int ply) const;
   bool has_game_cycle(int ply) const;
   bool has_repeated() const;
-  int rule50_count() const;
-  Score psq_score() const;
-  Value non_pawn_material(Color c) const;
-  Value non_pawn_material() const;
+  constexpr int rule50_count() const;
+  constexpr Score psq_score() const;
+  constexpr Value non_pawn_material(Color c) const;
+  constexpr Value non_pawn_material() const;
 
   // Position consistency check, for debugging
   bool pos_is_ok() const;
@@ -199,15 +199,15 @@ namespace PSQT {
 
 extern std::ostream& operator<<(std::ostream& os, const Position& pos);
 
-inline Color Position::side_to_move() const {
+constexpr Color Position::side_to_move() const {
   return sideToMove;
 }
 
-inline bool Position::empty(Square s) const {
+constexpr bool Position::empty(Square s) const {
   return board[s] == NO_PIECE;
 }
 
-inline Piece Position::piece_on(Square s) const {
+constexpr Piece Position::piece_on(Square s) const {
   return board[s];
 }
 
@@ -215,39 +215,39 @@ inline Piece Position::moved_piece(Move m) const {
   return board[from_sq(m)];
 }
 
-inline Bitboard Position::pieces() const {
+constexpr Bitboard Position::pieces() const {
   return byTypeBB[ALL_PIECES];
 }
 
-inline Bitboard Position::pieces(PieceType pt) const {
+constexpr Bitboard Position::pieces(PieceType pt) const {
   return byTypeBB[pt];
 }
 
-inline Bitboard Position::pieces(PieceType pt1, PieceType pt2) const {
+constexpr Bitboard Position::pieces(PieceType pt1, PieceType pt2) const {
   return byTypeBB[pt1] | byTypeBB[pt2];
 }
 
-inline Bitboard Position::pieces(Color c) const {
+constexpr Bitboard Position::pieces(Color c) const {
   return byColorBB[c];
 }
 
-inline Bitboard Position::pieces(Color c, PieceType pt) const {
+constexpr Bitboard Position::pieces(Color c, PieceType pt) const {
   return byColorBB[c] & byTypeBB[pt];
 }
 
-inline Bitboard Position::pieces(Color c, PieceType pt1, PieceType pt2) const {
+constexpr Bitboard Position::pieces(Color c, PieceType pt1, PieceType pt2) const {
   return byColorBB[c] & (byTypeBB[pt1] | byTypeBB[pt2]);
 }
 
-template<PieceType Pt> inline int Position::count(Color c) const {
+template<PieceType Pt> constexpr int Position::count(Color c) const {
   return pieceCount[make_piece(c, Pt)];
 }
 
-template<PieceType Pt> inline int Position::count() const {
+template<PieceType Pt> constexpr int Position::count() const {
   return pieceCount[make_piece(WHITE, Pt)] + pieceCount[make_piece(BLACK, Pt)];
 }
 
-template<PieceType Pt> inline const Square* Position::squares(Color c) const {
+template<PieceType Pt> const Square* Position::squares(Color c) const {
   return pieceList[make_piece(c, Pt)];
 }
 
@@ -256,27 +256,27 @@ template<PieceType Pt> inline Square Position::square(Color c) const {
   return pieceList[make_piece(c, Pt)][0];
 }
 
-inline Square Position::ep_square() const {
+constexpr Square Position::ep_square() const {
   return st->epSquare;
 }
 
-inline bool Position::can_castle(CastlingRight cr) const {
+constexpr bool Position::can_castle(CastlingRight cr) const {
   return st->castlingRights & cr;
 }
 
-inline int Position::castling_rights(Color c) const {
+constexpr int Position::castling_rights(Color c) const {
   return st->castlingRights & (c == WHITE ? WHITE_CASTLING : BLACK_CASTLING);
 }
 
-inline bool Position::castling_impeded(CastlingRight cr) const {
+constexpr bool Position::castling_impeded(CastlingRight cr) const {
   return byTypeBB[ALL_PIECES] & castlingPath[cr];
 }
 
-inline Square Position::castling_rook_square(CastlingRight cr) const {
+constexpr Square Position::castling_rook_square(CastlingRight cr) const {
   return castlingRookSquare[cr];
 }
 
-template<PieceType Pt>
+template <PieceType Pt>
 inline Bitboard Position::attacks_from(Square s) const {
   assert(Pt != PAWN);
   return  Pt == BISHOP || Pt == ROOK ? attacks_bb<Pt>(s, byTypeBB[ALL_PIECES])
@@ -297,19 +297,19 @@ inline Bitboard Position::attackers_to(Square s) const {
   return attackers_to(s, byTypeBB[ALL_PIECES]);
 }
 
-inline Bitboard Position::checkers() const {
+constexpr Bitboard Position::checkers() const {
   return st->checkersBB;
 }
 
-inline Bitboard Position::blockers_for_king(Color c) const {
+constexpr Bitboard Position::blockers_for_king(Color c) const {
   return st->blockersForKing[c];
 }
 
-inline Bitboard Position::check_squares(PieceType pt) const {
+constexpr Bitboard Position::check_squares(PieceType pt) const {
   return st->checkSquares[pt];
 }
 
-inline bool Position::pawn_passed(Color c, Square s) const {
+constexpr bool Position::pawn_passed(Color c, Square s) const {
   return !(pieces(~c, PAWN) & passed_pawn_span(c, s));
 }
 
@@ -318,45 +318,45 @@ inline bool Position::advanced_pawn_push(Move m) const {
         && relative_rank(sideToMove, from_sq(m)) > RANK_4;
 }
 
-inline Key Position::key() const {
+constexpr Key Position::key() const {
   return st->key;
 }
 
-inline Key Position::pawn_key() const {
+constexpr Key Position::pawn_key() const {
   return st->pawnKey;
 }
 
-inline Key Position::material_key() const {
+constexpr Key Position::material_key() const {
   return st->materialKey;
 }
 
-inline Score Position::psq_score() const {
+constexpr Score Position::psq_score() const {
   return psq;
 }
 
-inline Value Position::non_pawn_material(Color c) const {
+constexpr Value Position::non_pawn_material(Color c) const {
   return st->nonPawnMaterial[c];
 }
 
-inline Value Position::non_pawn_material() const {
+constexpr Value Position::non_pawn_material() const {
   return st->nonPawnMaterial[WHITE] + st->nonPawnMaterial[BLACK];
 }
 
-inline int Position::game_ply() const {
+constexpr int Position::game_ply() const {
   return gamePly;
 }
 
-inline int Position::rule50_count() const {
+constexpr int Position::rule50_count() const {
   return st->rule50;
 }
 
-inline bool Position::opposite_bishops() const {
+constexpr bool Position::opposite_bishops() const {
   return   pieceCount[W_BISHOP] == 1
         && pieceCount[B_BISHOP] == 1
         && opposite_colors(square<BISHOP>(WHITE), square<BISHOP>(BLACK));
 }
 
-inline bool Position::is_chess960() const {
+constexpr bool Position::is_chess960() const {
   return chess960;
 }
 
@@ -371,11 +371,11 @@ inline bool Position::capture(Move m) const {
   return (!empty(to_sq(m)) && type_of(m) != CASTLING) || type_of(m) == ENPASSANT;
 }
 
-inline Piece Position::captured_piece() const {
+constexpr Piece Position::captured_piece() const {
   return st->capturedPiece;
 }
 
-inline Thread* Position::this_thread() const {
+constexpr Thread* Position::this_thread() const {
   return thisThread;
 }
 
