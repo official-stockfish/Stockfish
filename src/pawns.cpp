@@ -114,7 +114,7 @@ namespace {
         // which could become passed after one or two pawn pushes when are
         // not attacked more times than defended.
         if (   !(stoppers ^ lever ^ leverPush)
-            && (!more_than_one(lever) || support)
+            && (support || !more_than_one(lever))
             && popcount(phalanx) >= popcount(leverPush))
             e->passedPawns[Us] |= s;
 
