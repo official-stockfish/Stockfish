@@ -231,7 +231,7 @@ void MainThread::search() {
       && !Skill(Options["Skill Level"]).enabled()
       &&  rootMoves[0].pv[0] != MOVE_NONE)
   {
-      std::map<Move, int64_t> votes;
+      std::map<Move, int> votes;
       Value minScore = this->rootMoves[0].score;
 
       // Find out minimum score and reset votes for moves which can be voted
@@ -240,13 +240,11 @@ void MainThread::search() {
 
       // Vote according to score and depth
       for (Thread* th : Threads)
-      {
-          int64_t s = th->rootMoves[0].score - minScore + 1;
-          votes[th->rootMoves[0].pv[0]] += 200 + s * s * int(th->completedDepth);
-      }
+          votes[th->rootMoves[0].pv[0]] +=  int(th->rootMoves[0].score - minScore)
+                                          + int(th->completedDepth);
 
       // Select best thread
-      auto bestVote = votes[this->rootMoves[0].pv[0]];
+      int bestVote = votes[this->rootMoves[0].pv[0]];
       for (Thread* th : Threads)
           if (votes[th->rootMoves[0].pv[0]] > bestVote)
           {
