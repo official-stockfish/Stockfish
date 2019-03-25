@@ -40,7 +40,7 @@ constexpr int CounterMovePruneThreshold = 0;
 /// its own array of Stack objects, indexed by the current ply.
 
 struct Stack {
-  Move* pv;
+  std::vector<Move> pv;
   PieceToHistory* continuationHistory;
   int ply;
   Move currentMove;
