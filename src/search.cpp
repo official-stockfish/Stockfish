@@ -293,7 +293,16 @@ void Thread::search() {
   double timeReduction = 1.0;
   Color us = rootPos.side_to_move();
 
-  std::memset(ss-7, 0, 10 * sizeof(Stack));
+  // Zero-initialize the first stack levels
+  for (int i = -7; i < 3; i++)
+  {
+      (ss+i)->ply = 0;
+      (ss+i)->currentMove = (ss+i)->excludedMove = MOVE_NONE;
+      (ss+i)->killers[0] = (ss+i)->killers[1] = MOVE_NONE;
+      (ss+i)->staticEval = VALUE_ZERO;
+      (ss+i)->statScore = (ss+i)->moveCount = 0;
+  }
+
   for (int i = 7; i > 0; i--)
      (ss-i)->continuationHistory = &this->continuationHistory[NO_PIECE][0]; // Use as sentinel
 
