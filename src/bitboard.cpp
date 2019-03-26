@@ -19,6 +19,7 @@
 */
 
 #include <bitset>
+#include <algorithm>
 
 #include "bitboard.h"
 #include "misc.h"
