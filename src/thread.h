@@ -56,6 +56,8 @@ public:
   void idle_loop();
   void start_searching();
   void wait_for_search_finished();
+  void inc_bestMoveChanges();
+  size_t get_idx() { return(idx); }
 
   Pawns::Table pawnsTable;
   Material::Table materialTable;
@@ -85,7 +87,7 @@ struct MainThread : public Thread {
   void search() override;
   void check_time();
 
-  double bestMoveChanges, previousTimeReduction;
+  double bestMoveChanges, changeInc, previousTimeReduction;
   Value previousScore;
   int callsCnt;
   bool stopOnPonderhit;

@@ -87,6 +87,14 @@ void Thread::wait_for_search_finished() {
   cv.wait(lk, [&]{ return !searching; });
 }
 
+/// Thread::inc_bestMoveChanges() adds changeInc to bestMoveChanges
+
+void Thread::inc_bestMoveChanges() {
+  MainThread* mt = Threads.main();
+
+  std::lock_guard<Mutex> lk(mutex);
+  mt->bestMoveChanges += mt->changeInc;
+}
 
 /// Thread::idle_loop() is where the thread is parked, blocked on the
 /// condition variable, when it has no work to do.
@@ -152,6 +160,7 @@ void ThreadPool::clear() {
   main()->callsCnt = 0;
   main()->previousScore = VALUE_INFINITE;
   main()->previousTimeReduction = 1.0;
+  main()->changeInc = 1.0 / std::min(4, int(Threads.size()));
 }
 
 /// ThreadPool::start_thinking() wakes up main thread waiting in idle_loop() and
