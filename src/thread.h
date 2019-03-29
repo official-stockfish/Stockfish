@@ -56,10 +56,6 @@ public:
   void idle_loop();
   void start_searching();
   void wait_for_search_finished();
-  void reset_bestMoveChanges();
-  void inc_bestMoveChanges();
-  void fade_bestMoveChanges();
-  double get_bestMoveChanges();
   size_t get_idx() { return(idx); }
 
   Pawns::Table pawnsTable;
@@ -90,8 +86,7 @@ struct MainThread : public Thread {
   void search() override;
   void check_time();
 
-  Mutex bmc_mutex;
-  double bestMoveChanges, changeInc, previousTimeReduction;
+  double previousTimeReduction;
   Value previousScore;
   int callsCnt;
   bool stopOnPonderhit;
@@ -114,7 +109,8 @@ struct ThreadPool : public std::vector<Thread*> {
   uint64_t tb_hits()        const { return accumulate(&Thread::tbHits); }
 
   std::atomic_bool stop;
-  const size_t bmcUpdateLimit = 8;
+  std::atomic<double> bestMoveChanges;
+  double changeInc;
 
 private:
   StateListPtr setupStates;
