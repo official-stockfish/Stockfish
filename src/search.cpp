@@ -533,7 +533,7 @@ namespace {
     Key posKey;
     Move ttMove, move, excludedMove, bestMove;
     Depth extension, newDepth;
-    Value bestValue, value, ttValue, eval, maxValue, pureStaticEval;
+    Value bestValue, value, ttValue, eval, maxValue;
     bool ttHit, ttPv, inCheck, givesCheck, improving;
     bool captureOrPromotion, doFullDepthSearch, moveCountPruning, ttCapture;
     Piece movedPiece;
@@ -697,16 +697,16 @@ namespace {
     // Step 6. Static evaluation of the position
     if (inCheck)
     {
-        ss->staticEval = eval = pureStaticEval = VALUE_NONE;
+        ss->staticEval = eval = VALUE_NONE;
         improving = false;
         goto moves_loop;  // Skip early pruning when in check
     }
     else if (ttHit)
     {
         // Never assume anything on values stored in TT
-        ss->staticEval = eval = pureStaticEval = tte->eval();
+        ss->staticEval = eval = tte->eval();
         if (eval == VALUE_NONE)
-            ss->staticEval = eval = pureStaticEval = evaluate(pos);
+            ss->staticEval = eval = evaluate(pos);
 
         // Can ttValue be used as a better position evaluation?
         if (    ttValue != VALUE_NONE
@@ -719,13 +719,12 @@ namespace {
         {
             int bonus = -(ss-1)->statScore / 512;
 
-            pureStaticEval = evaluate(pos);
-            ss->staticEval = eval = pureStaticEval + bonus;
+            ss->staticEval = eval = evaluate(pos) + bonus;
         }
         else
-            ss->staticEval = eval = pureStaticEval = -(ss-1)->staticEval + 2 * Eval::Tempo;
+            ss->staticEval = eval = -(ss-1)->staticEval + 2 * Eval::Tempo;
 
-        tte->save(posKey, VALUE_NONE, ttPv, BOUND_NONE, DEPTH_NONE, MOVE_NONE, pureStaticEval);
+        tte->save(posKey, VALUE_NONE, ttPv, BOUND_NONE, DEPTH_NONE, MOVE_NONE, eval);
     }
 
     // Step 7. Razoring (~2 Elo)
@@ -749,7 +748,7 @@ namespace {
         && (ss-1)->currentMove != MOVE_NULL
         && (ss-1)->statScore < 23200
         &&  eval >= beta
-        &&  pureStaticEval >= beta - 36 * depth / ONE_PLY + 225
+        &&  ss->staticEval >= beta - 36 * depth / ONE_PLY + 225
         && !excludedMove
         &&  pos.non_pawn_material(us)
         && (ss->ply >= thisThread->nmpMinPly || us != thisThread->nmpColor))
@@ -1189,7 +1188,7 @@ moves_loop: // When in check, search starts from here
         tte->save(posKey, value_to_tt(bestValue, ss->ply), ttPv,
                   bestValue >= beta ? BOUND_LOWER :
                   PvNode && bestMove ? BOUND_EXACT : BOUND_UPPER,
-                  depth, bestMove, pureStaticEval);
+                  depth, bestMove, ss->staticEval);
 
     assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
 
