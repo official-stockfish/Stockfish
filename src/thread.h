@@ -110,6 +110,7 @@ struct ThreadPool : public std::vector<Thread*> {
   uint64_t tb_hits()        const { return accumulate(&Thread::tbHits); }
 
   std::atomic_bool stop;
+  const size_t bmcUpdateLimit = 8;
 
 private:
   StateListPtr setupStates;

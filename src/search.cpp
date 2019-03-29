@@ -467,7 +467,7 @@ void Thread::search() {
           && !Threads.stop
           && !mainThread->stopOnPonderhit)
       {
-          double fallingEval = (298 + 9 * (mainThread->previousScore - bestValue)) / 581.0;
+          double fallingEval = (314 + 9 * (mainThread->previousScore - bestValue)) / 581.0;
           fallingEval        = std::max(0.5, std::min(1.5, fallingEval));
 
           // If the bestMove is stable over several iterations, reduce time accordingly
@@ -1097,7 +1097,7 @@ moves_loop: // When in check, search starts from here
               // We record how often the best move has been changed in each
               // iteration. This information is used for time management: When
               // the best move changes frequently, we allocate some more time.
-              if (moveCount > 1 && thisThread->get_idx() < 4)
+              if (moveCount > 1 && thisThread->get_idx() < Threads.bmcUpdateLimit)
                   thisThread->inc_bestMoveChanges();
           }
           else
