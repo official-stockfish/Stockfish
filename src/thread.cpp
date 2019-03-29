@@ -87,6 +87,35 @@ void Thread::wait_for_search_finished() {
   cv.wait(lk, [&]{ return !searching; });
 }
 
+/// Thread::reset_bestMoveChanges() scales down bestMoveChanges
+
+void Thread::reset_bestMoveChanges() {
+  std::unique_lock<Mutex> lk(static_cast<MainThread*>(this)->bmc_mutex);
+  static_cast<MainThread*>(this)->bestMoveChanges = 0.0;
+}
+
+/// Thread::inc_bestMoveChanges() adds changeInc to bestMoveChanges
+
+void Thread::inc_bestMoveChanges() {
+  MainThread* mt = Threads.main();
+
+  std::unique_lock<Mutex> lk(mt->bmc_mutex);
+  mt->bestMoveChanges += mt->changeInc;
+}
+
+/// Thread::fade_bestMoveChanges() scales down bestMoveChanges
+
+void Thread::fade_bestMoveChanges() {
+  std::unique_lock<Mutex> lk(static_cast<MainThread*>(this)->bmc_mutex);
+  static_cast<MainThread*>(this)->bestMoveChanges *= 0.517;
+}
+
+/// Thread::get_bestMoveChanges() scales down bestMoveChanges
+
+double Thread::get_bestMoveChanges() {
+  std::unique_lock<Mutex> lk(static_cast<MainThread*>(this)->bmc_mutex);
+  return( static_cast<MainThread*>(this)->bestMoveChanges );
+}
 
 /// Thread::idle_loop() is where the thread is parked, blocked on the
 /// condition variable, when it has no work to do.
@@ -152,6 +181,7 @@ void ThreadPool::clear() {
   main()->callsCnt = 0;
   main()->previousScore = VALUE_INFINITE;
   main()->previousTimeReduction = 1.0;
+  main()->changeInc = 1.0 / std::min(Threads.bmcUpdateLimit, Threads.size());
 }
 
 /// ThreadPool::start_thinking() wakes up main thread waiting in idle_loop() and
