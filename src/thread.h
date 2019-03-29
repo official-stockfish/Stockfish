@@ -56,7 +56,6 @@ public:
   void idle_loop();
   void start_searching();
   void wait_for_search_finished();
-  size_t get_idx() { return(idx); }
 
   Pawns::Table pawnsTable;
   Material::Table materialTable;
@@ -103,14 +102,19 @@ struct ThreadPool : public std::vector<Thread*> {
   void start_thinking(Position&, StateListPtr&, const Search::LimitsType&, bool = false);
   void clear();
   void set(size_t);
+  void set_bestMoveChanges();
+  void inc_bestMoveChanges();
+  void fade_bestMoveChanges();
+  double get_bestMoveChanges();
 
   MainThread* main()        const { return static_cast<MainThread*>(front()); }
   uint64_t nodes_searched() const { return accumulate(&Thread::nodes); }
   uint64_t tb_hits()        const { return accumulate(&Thread::tbHits); }
 
   std::atomic_bool stop;
-  std::atomic<double> bestMoveChanges;
-  double changeInc;
+
+  Mutex bmcMutex;
+  double bestMoveChanges, changeInc;
 
 private:
   StateListPtr setupStates;

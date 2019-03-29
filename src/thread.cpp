@@ -201,3 +201,31 @@ void ThreadPool::start_thinking(Position& pos, StateListPtr& states,
 
   main()->start_searching();
 }
+
+/// ThreadPool::set_bestMoveChanges(double) sets bestMoveChanges
+
+void ThreadPool::set_bestMoveChanges() {
+  std::lock_guard<Mutex> lk(bmcMutex);
+  bestMoveChanges = 0.0;
+}
+
+/// ThreadPool::inc_bestMoveChanges() adds changeInc to bestMoveChanges
+
+void ThreadPool::inc_bestMoveChanges() {
+  std::lock_guard<Mutex> lk(bmcMutex);
+  bestMoveChanges += changeInc;
+}
+
+/// ThreadPool::fade_bestMoveChanges() scales down bestMoveChanges
+
+void ThreadPool::fade_bestMoveChanges() {
+  std::lock_guard<Mutex> lk(bmcMutex);
+  bestMoveChanges *= 0.517;
+}
+
+/// ThreadPool::get_bestMoveChanges() gets bestMoveChanges
+
+double ThreadPool::get_bestMoveChanges() {
+  std::lock_guard<Mutex> lk(bmcMutex);
+  return bestMoveChanges;
+}

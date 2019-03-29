@@ -303,7 +303,7 @@ void Thread::search() {
   beta = VALUE_INFINITE;
 
   if (mainThread)
-      Threads.bestMoveChanges.store(0.0);
+      Threads.set_bestMoveChanges();
 
   size_t multiPV = Options["MultiPV"];
   Skill skill(Options["Skill Level"]);
@@ -336,7 +336,7 @@ void Thread::search() {
   {
       // Age out PV variability metric
       if (mainThread)
-          Threads.bestMoveChanges.fetch_mult(0.517, std::memory_order_relaxed);
+          Threads.fade_bestMoveChanges();
 
       // Save the last iteration's scores before first PV line is searched and
       // all the move scores except the (new) PV are set to -VALUE_INFINITE.
@@ -475,7 +475,7 @@ void Thread::search() {
           double reduction = std::pow(mainThread->previousTimeReduction, 0.528) / timeReduction;
 
           // Use part of the gained time from a previous stable move for the current move
-          double bestMoveInstability = 1.0 + Threads.bestMoveChanges.load(std::memory_order_relaxed);
+          double bestMoveInstability = 1.0 + Threads.get_bestMoveChanges();
 
           // Stop the search if we have only one legal move, or if available time elapsed
           if (   rootMoves.size() == 1
@@ -1098,7 +1098,7 @@ moves_loop: // When in check, search starts from here
               // iteration. This information is used for time management: When
               // the best move changes frequently, we allocate some more time.
               if (moveCount > 1)
-                  Threads.bestMoveChanges.fetch_add(Threads.changeInc, std::memory_order_relaxed);
+                  Threads.inc_bestMoveChanges();
           }
           else
               // All other moves but the PV are set to the lowest value: this
