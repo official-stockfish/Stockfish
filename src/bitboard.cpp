@@ -32,7 +32,7 @@ Bitboard LineBB[SQUARE_NB][SQUARE_NB];
 Bitboard DistanceRingBB[SQUARE_NB][8];
 Bitboard PseudoAttacks[PIECE_TYPE_NB][SQUARE_NB];
 Bitboard PawnAttacks[COLOR_NB][SQUARE_NB];
-Bitboard SquareBB[SQUARE_NB + 1]; // Include SQ_NONE to avoid warnings
+Bitboard SquareBB[SQUARE_NB];
 
 Bitboard KingFlank[FILE_NB] = {
   QueenSide ^ FileDBB, QueenSide, QueenSide,
