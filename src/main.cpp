@@ -42,7 +42,6 @@ int main(int argc, char* argv[]) {
   Position::init();
   Bitbases::init();
   Search::init();
-  Pawns::init();
   Threads.set(Options["Threads"]);
   Search::clear(); // After threads are up
 

@@ -18,7 +18,6 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <algorithm>
 #include <cassert>
 
 #include "bitboard.h"
@@ -77,10 +76,7 @@ namespace {
     if (file_of(pos.square<PAWN>(strongSide)) >= FILE_E)
         sq = Square(sq ^ 7); // Mirror SQ_H1 -> SQ_A1
 
-    if (strongSide == BLACK)
-        sq = ~sq;
-
-    return sq;
+    return strongSide == WHITE ? sq : ~sq;
   }
 
 } // namespace
@@ -286,18 +282,18 @@ Value Endgame<KQKR>::operator()(const Position& pos) const {
 }
 
 
-/// KNN vs KP. Simply push the opposing king to the corner.
+/// KNN vs KP. Simply push the opposing king to the corner
 template<>
 Value Endgame<KNNKP>::operator()(const Position& pos) const {
 
-    assert(verify_material(pos, strongSide, 2 * KnightValueMg, 0));
-    assert(verify_material(pos, weakSide, VALUE_ZERO, 1));
+  assert(verify_material(pos, strongSide, 2 * KnightValueMg, 0));
+  assert(verify_material(pos, weakSide, VALUE_ZERO, 1));
 
-    Value result =  2 * KnightValueEg
-                  - PawnValueEg
-                  + PushToEdges[pos.square<KING>(weakSide)];
+  Value result =  2 * KnightValueEg
+                - PawnValueEg
+                + PushToEdges[pos.square<KING>(weakSide)];
 
-    return strongSide == pos.side_to_move() ? result : -result;
+  return strongSide == pos.side_to_move() ? result : -result;
 }
 
 

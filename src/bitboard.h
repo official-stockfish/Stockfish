@@ -68,13 +68,13 @@ constexpr Bitboard Center      = (FileDBB | FileEBB) & (Rank4BB | Rank5BB);
 extern uint8_t PopCnt16[1 << 16];
 extern uint8_t SquareDistance[SQUARE_NB][SQUARE_NB];
 
-extern Bitboard SquareBB[SQUARE_NB];
 extern Bitboard BetweenBB[SQUARE_NB][SQUARE_NB];
 extern Bitboard LineBB[SQUARE_NB][SQUARE_NB];
 extern Bitboard DistanceRingBB[SQUARE_NB][8];
 extern Bitboard PseudoAttacks[PIECE_TYPE_NB][SQUARE_NB];
 extern Bitboard PawnAttacks[COLOR_NB][SQUARE_NB];
 extern Bitboard KingFlank[FILE_NB];
+extern Bitboard SquareBB[SQUARE_NB];
 
 
 /// Magic holds all magic bitboards relevant data for a single square
@@ -102,34 +102,19 @@ struct Magic {
 extern Magic RookMagics[SQUARE_NB];
 extern Magic BishopMagics[SQUARE_NB];
 
+inline Bitboard square_bb(Square s) {
+  assert(s >= SQ_A1 && s <= SQ_H8);
+  return SquareBB[s];
+}
 
 /// Overloads of bitwise operators between a Bitboard and a Square for testing
 /// whether a given bit is set in a bitboard, and for setting and clearing bits.
 
-inline Bitboard operator&(Bitboard b, Square s) {
-  assert(s >= SQ_A1 && s <= SQ_H8);
-  return b & SquareBB[s];
-}
-
-inline Bitboard operator|(Bitboard b, Square s) {
-  assert(s >= SQ_A1 && s <= SQ_H8);
-  return b | SquareBB[s];
-}
-
-inline Bitboard operator^(Bitboard b, Square s) {
-  assert(s >= SQ_A1 && s <= SQ_H8);
-  return b ^ SquareBB[s];
-}
-
-inline Bitboard& operator|=(Bitboard& b, Square s) {
-  assert(s >= SQ_A1 && s <= SQ_H8);
-  return b |= SquareBB[s];
-}
-
-inline Bitboard& operator^=(Bitboard& b, Square s) {
-  assert(s >= SQ_A1 && s <= SQ_H8);
-  return b ^= SquareBB[s];
-}
+inline Bitboard  operator&( Bitboard  b, Square s) { return b &  square_bb(s); }
+inline Bitboard  operator|( Bitboard  b, Square s) { return b |  square_bb(s); }
+inline Bitboard  operator^( Bitboard  b, Square s) { return b ^  square_bb(s); }
+inline Bitboard& operator|=(Bitboard& b, Square s) { return b |= square_bb(s); }
+inline Bitboard& operator^=(Bitboard& b, Square s) { return b ^= square_bb(s); }
 
 constexpr bool more_than_one(Bitboard b) {
   return b & (b - 1);
@@ -263,6 +248,9 @@ template<typename T1, typename T2> inline int distance(T2 x, T2 y);
 template<> inline int distance<File>(Square x, Square y) { return distance(file_of(x), file_of(y)); }
 template<> inline int distance<Rank>(Square x, Square y) { return distance(rank_of(x), rank_of(y)); }
 
+template<class T> constexpr const T& clamp(const T& v, const T& lo, const T&  hi) {
+  return v < lo ? lo : v > hi ? hi : v;
+}
 
 /// attacks_bb() returns a bitboard representing all the squares attacked by a
 /// piece of type Pt (bishop or rook) placed on 's'.
