@@ -27,7 +27,8 @@
 
 namespace {
 
-  // There are 24 possible pawn squares: the first 4 files and ranks from 2 to 7
+  // There are 24 possible pawn squares: files A to D and ranks from 2 to 7.
+  // Positions with the pawn on files E to H will be mirrored before probing.
   constexpr unsigned MAX_INDEX = 2*24*64*64; // stm * psq * wksq * bksq = 196608
 
   // Each uint32_t stores results of 32 positions, one per bit
