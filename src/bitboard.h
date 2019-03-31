@@ -249,6 +249,9 @@ template<typename T1, typename T2> inline int distance(T2 x, T2 y);
 template<> inline int distance<File>(Square x, Square y) { return distance(file_of(x), file_of(y)); }
 template<> inline int distance<Rank>(Square x, Square y) { return distance(rank_of(x), rank_of(y)); }
 
+template<class T> constexpr const T& clamp(const T& v, const T& lo, const T&  hi) {
+  return v < lo ? lo : v > hi ? hi : v;
+}
 
 /// attacks_bb() returns a bitboard representing all the squares attacked by a
 /// piece of type Pt (bishop or rook) placed on 's'.

@@ -18,8 +18,8 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <algorithm>
 #include <bitset>
+#include <algorithm>
 
 #include "bitboard.h"
 #include "misc.h"
