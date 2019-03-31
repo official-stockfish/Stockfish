@@ -68,13 +68,13 @@ constexpr Bitboard Center      = (FileDBB | FileEBB) & (Rank4BB | Rank5BB);
 extern uint8_t PopCnt16[1 << 16];
 extern uint8_t SquareDistance[SQUARE_NB][SQUARE_NB];
 
-extern Bitboard SquareBB[SQUARE_NB];
 extern Bitboard BetweenBB[SQUARE_NB][SQUARE_NB];
 extern Bitboard LineBB[SQUARE_NB][SQUARE_NB];
 extern Bitboard DistanceRingBB[SQUARE_NB][8];
 extern Bitboard PseudoAttacks[PIECE_TYPE_NB][SQUARE_NB];
 extern Bitboard PawnAttacks[COLOR_NB][SQUARE_NB];
 extern Bitboard KingFlank[FILE_NB];
+extern Bitboard SquareBB[SQUARE_NB];
 
 
 /// Magic holds all magic bitboards relevant data for a single square
@@ -102,15 +102,14 @@ struct Magic {
 extern Magic RookMagics[SQUARE_NB];
 extern Magic BishopMagics[SQUARE_NB];
 
-
-/// Overloads of bitwise operators between a Bitboard and a Square for testing
-/// whether a given bit is set in a bitboard, and for setting and clearing bits.
-
 inline Bitboard square_bb(Square s) {
   assert(s >= SQ_A1 && s <= SQ_H8);
   return SquareBB[s];
 }
-  
+
+/// Overloads of bitwise operators between a Bitboard and a Square for testing
+/// whether a given bit is set in a bitboard, and for setting and clearing bits.
+
 inline Bitboard  operator&( Bitboard  b, Square s) { return b &  square_bb(s); }
 inline Bitboard  operator|( Bitboard  b, Square s) { return b |  square_bb(s); }
 inline Bitboard  operator^( Bitboard  b, Square s) { return b ^  square_bb(s); }
