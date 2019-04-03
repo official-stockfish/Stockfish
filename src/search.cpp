@@ -295,6 +295,7 @@ void Thread::search() {
   beta = VALUE_INFINITE;
 
   if (mainThread)
+      mainThread->fadeBestMoveChanges = 0;
       for (Thread* th : Threads)
           th->bestMoveChanges.store(0, std::memory_order_release);
 
