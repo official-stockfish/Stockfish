@@ -354,8 +354,9 @@ void Position::set_castling_right(Color c, Square rfrom) {
 
 void Position::set_check_info(StateInfo* si) const {
 
-  si->blockersForKing[WHITE] = slider_blockers(pieces(BLACK), square<KING>(WHITE), si->pinners[BLACK]);
-  si->blockersForKing[BLACK] = slider_blockers(pieces(WHITE), square<KING>(BLACK), si->pinners[WHITE]);
+  si->pinners[BLACK] = si->pinners[WHITE] = 0;
+  si->blockersForKing[WHITE] = slider_blockers(pieces(BLACK), square<KING>(WHITE), &si->pinners[BLACK]);
+  si->blockersForKing[BLACK] = slider_blockers(pieces(WHITE), square<KING>(BLACK), &si->pinners[WHITE]);
 
   Square ksq = square<KING>(~sideToMove);
 
@@ -492,10 +493,9 @@ const string Position::fen() const {
 /// a pinned or a discovered check piece, according if its color is the opposite
 /// or the same of the color of the slider.
 
-Bitboard Position::slider_blockers(Bitboard sliders, Square s, Bitboard& pinners) const {
+Bitboard Position::slider_blockers(Bitboard sliders, Square s, Bitboard* pinners) const {
 
   Bitboard blockers = 0;
-  pinners = 0;
 
   // Snipers are sliders that attack 's' when a piece and other snipers are removed
   Bitboard snipers = (  (PseudoAttacks[  ROOK][s] & pieces(QUEEN, ROOK))
@@ -510,8 +510,10 @@ Bitboard Position::slider_blockers(Bitboard sliders, Square s, Bitboard& pinners
     if (b && !more_than_one(b))
     {
         blockers |= b;
+        if (!pinners)
+            break;
         if (b & pieces(color_of(piece_on(s))))
-            pinners |= sniperSq;
+            *pinners |= sniperSq;
     }
   }
   return blockers;
