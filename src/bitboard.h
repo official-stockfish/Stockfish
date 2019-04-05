@@ -68,7 +68,7 @@ constexpr Bitboard Center      = (FileDBB | FileEBB) & (Rank4BB | Rank5BB);
 extern uint8_t PopCnt16[1 << 16];
 extern uint8_t SquareDistance[SQUARE_NB][SQUARE_NB];
 
-extern Bitboard PseudoLineBB[SQUARE_NB][SQUARE_NB];
+extern Bitboard LineBB[SQUARE_NB][SQUARE_NB];
 extern Bitboard DistanceRingBB[SQUARE_NB][8];
 extern Bitboard PseudoAttacks[PIECE_TYPE_NB][SQUARE_NB];
 extern Bitboard PawnAttacks[COLOR_NB][SQUARE_NB];
@@ -218,31 +218,25 @@ inline Bitboard passed_pawn_span(Color c, Square s) {
   return forward_ranks_bb(c, s) & (adjacent_files_bb(file_of(s)) | file_bb(s));
 }
 
-/// pseudo_line_bb() returns a foundational pseudo line used by file_bb() and
-/// between_bb().  A PseudoLine is a line that intersects the given squares, but
-/// does not include the given squares.
-/// If the squares are not on the same rank/file/diagonal, returns 0.
+/// line_bb() returns a complete line that intersects the given squares including
+/// the given squares.  If the squares are not on a rank/file/diagonal, returns 0
 
-inline Bitboard pseudo_line_bb(Square s1, Square s2) {
-  return PseudoLineBB[s1][s2];
-}
-
-/// line_bb() returns a complete line that intersects the given squares.
-/// Includes the given squares.
 inline Bitboard line_bb(Square s1, Square s2) {
-    return pseudo_line_bb(s1, s2) | s1 | s2;
+    return LineBB[s1][s2] | s1 | s2;
 }
 
-/// between_bb() returns squares that are on a line and between the given squares
-/// Does NOT include the given squares.
+/// between_bb() returns squares that are linearly between the given squares
+/// Does NOT include the given squares and returns 0 if the given squares
+/// are not on a same file/rank/diagonal.
+
 inline Bitboard between_bb(Square s1, Square s2) {
-    return pseudo_line_bb(s1, s2) & ((AllSquares << s1) ^ (AllSquares << s2));
+    return LineBB[s1][s2] & ((AllSquares << s1) ^ (AllSquares << s2));
 }
 
 /// aligned() returns true if the squares s1, s2 and s3 are aligned either on a
 /// straight or on a diagonal line.
 inline bool aligned(Square s1, Square s2, Square s3) {
-  return pseudo_line_bb(s1, s2) & s3;
+  return LineBB[s1][s2] & s3;
 }
 
 
