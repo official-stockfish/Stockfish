@@ -330,7 +330,7 @@ ExtMove* generate<EVASIONS>(const Position& pos, ExtMove* moveList) {
   while (sliders)
   {
       Square checksq = pop_lsb(&sliders);
-      sliderAttacks |= LineBB[checksq][ksq] ^ checksq;
+      sliderAttacks |= line_bb(checksq, ksq) ^ checksq;
   }
 
   // Generate evasions for king, capture and non capture moves

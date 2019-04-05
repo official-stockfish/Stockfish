@@ -68,8 +68,7 @@ constexpr Bitboard Center      = (FileDBB | FileEBB) & (Rank4BB | Rank5BB);
 extern uint8_t PopCnt16[1 << 16];
 extern uint8_t SquareDistance[SQUARE_NB][SQUARE_NB];
 
-extern Bitboard BetweenBB[SQUARE_NB][SQUARE_NB];
-extern Bitboard LineBB[SQUARE_NB][SQUARE_NB];
+extern Bitboard PseudoLineBB[SQUARE_NB][SQUARE_NB];
 extern Bitboard DistanceRingBB[SQUARE_NB][8];
 extern Bitboard PseudoAttacks[PIECE_TYPE_NB][SQUARE_NB];
 extern Bitboard PawnAttacks[COLOR_NB][SQUARE_NB];
@@ -185,16 +184,6 @@ inline Bitboard adjacent_files_bb(File f) {
 }
 
 
-/// between_bb() returns a bitboard representing all the squares between the two
-/// given ones. For instance, between_bb(SQ_C4, SQ_F7) returns a bitboard with
-/// the bits for square d5 and e6 set. If s1 and s2 are not on the same rank,
-/// file or diagonal, 0 is returned.
-
-inline Bitboard between_bb(Square s1, Square s2) {
-  return BetweenBB[s1][s2];
-}
-
-
 /// forward_ranks_bb() returns a bitboard representing the squares on the ranks
 /// in front of the given one, from the point of view of the given color. For instance,
 /// forward_ranks_bb(BLACK, SQ_D3) will return the 16 squares on ranks 1 and 2.
@@ -229,12 +218,31 @@ inline Bitboard passed_pawn_span(Color c, Square s) {
   return forward_ranks_bb(c, s) & (adjacent_files_bb(file_of(s)) | file_bb(s));
 }
 
+/// pseudo_line_bb() returns a foundational pseudo line used by file_bb() and
+/// between_bb().  A PseudoLine is a line that intersects the given squares, but
+/// does not include the given squares.
+/// If the squares are not on the same rank/file/diagonal, returns 0.
+
+inline Bitboard pseudo_line_bb(Square s1, Square s2) {
+  return PseudoLineBB[s1][s2];
+}
+
+/// line_bb() returns a complete line that intersects the given squares.
+/// Includes the given squares.
+inline Bitboard line_bb(Square s1, Square s2) {
+    return pseudo_line_bb(s1, s2) | s1 | s2;
+}
+
+/// between_bb() returns squares that are on a line and between the given squares
+/// Does NOT include the given squares.
+inline Bitboard between_bb(Square s1, Square s2) {
+    return pseudo_line_bb(s1, s2) & ((AllSquares << s1) ^ (AllSquares << s2));
+}
 
 /// aligned() returns true if the squares s1, s2 and s3 are aligned either on a
 /// straight or on a diagonal line.
-
 inline bool aligned(Square s1, Square s2, Square s3) {
-  return LineBB[s1][s2] & s3;
+  return pseudo_line_bb(s1, s2) & s3;
 }
 
 
