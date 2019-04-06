@@ -328,10 +328,7 @@ ExtMove* generate<EVASIONS>(const Position& pos, ExtMove* moveList) {
   // the king evasions in order to skip known illegal moves, which avoids any
   // useless legality checks later on.
   while (sliders)
-  {
-      Square checksq = pop_lsb(&sliders);
-      sliderAttacks |= line_bb(checksq, ksq) ^ checksq;
-  }
+      sliderAttacks |= LineBB[pop_lsb(&sliders)][ksq];
 
   // Generate evasions for king, capture and non capture moves
   Bitboard b = pos.attacks_from<KING>(ksq) & ~pos.pieces(us) & ~sliderAttacks;
