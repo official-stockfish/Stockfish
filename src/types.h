@@ -277,26 +277,40 @@ inline Value mg_value(Score s) {
   return Value(mg.s);
 }
 
-#define ENABLE_BASE_OPERATORS_ON(T)                                \
-constexpr T operator+(T d1, T d2) { return T(int(d1) + int(d2)); } \
-constexpr T operator-(T d1, T d2) { return T(int(d1) - int(d2)); } \
-constexpr T operator-(T d) { return T(-int(d)); }                  \
-inline T& operator+=(T& d1, T d2) { return d1 = d1 + d2; }         \
-inline T& operator-=(T& d1, T d2) { return d1 = d1 - d2; }
+enum Oper { OP_BASE, OP_INCR, OP_FULL };
 
-#define ENABLE_INCR_OPERATORS_ON(T)                                \
-inline T& operator++(T& d) { return d = T(int(d) + 1); }           \
-inline T& operator--(T& d) { return d = T(int(d) - 1); }
+template<Oper N, typename T> struct op {};
 
-#define ENABLE_FULL_OPERATORS_ON(T)                                \
-ENABLE_BASE_OPERATORS_ON(T)                                        \
-ENABLE_INCR_OPERATORS_ON(T)                                        \
-constexpr T operator*(int i, T d) { return T(i * int(d)); }        \
-constexpr T operator*(T d, int i) { return T(int(d) * i); }        \
-constexpr T operator/(T d, int i) { return T(int(d) / i); }        \
-constexpr int operator/(T d1, T d2) { return int(d1) / int(d2); }  \
-inline T& operator*=(T& d, int i) { return d = T(int(d) * i); }    \
-inline T& operator/=(T& d, int i) { return d = T(int(d) / i); }
+#define ENABLE_BASE_OPERATORS_ON(T)              \
+template<> struct op<OP_BASE, T> { typedef T ret; };
+
+#define ENABLE_INCR_OPERATORS_ON(T)              \
+template<> struct op<OP_INCR, T> { typedef T ret; };
+
+#define ENABLE_FULL_OPERATORS_ON(T)                  \
+template<> struct op<OP_BASE, T> { typedef T ret; }; \
+template<> struct op<OP_INCR, T> { typedef T ret; }; \
+template<> struct op<OP_FULL, T> { typedef T ret; typedef int reti; };
+
+#define RET(o)  typename op<o, T>::ret
+#define RETI(o) typename op<o, T>::reti
+
+template<typename T> constexpr RET(OP_BASE) operator+(T d1, T d2) { return T(int(d1) + int(d2)); }
+template<typename T> constexpr RET(OP_BASE) operator-(T d1, T d2) { return T(int(d1) - int(d2)); }
+template<typename T> constexpr RET(OP_BASE) operator-(T d) { return T(-int(d)); }
+template<typename T> inline RET(OP_BASE)& operator+=(T& d1, T d2) { return d1 = d1 + d2; }
+template<typename T> inline RET(OP_BASE)& operator-=(T& d1, T d2) { return d1 = d1 - d2; }
+
+template<typename T> inline RET(OP_INCR)& operator++(T& d) { return d = T(int(d) + 1); }
+template<typename T> inline RET(OP_INCR)& operator--(T& d) { return d = T(int(d) - 1); }
+
+template<typename T> constexpr RET(OP_FULL) operator*(int i, T d) { return T(i * int(d)); }
+template<typename T> constexpr RET(OP_FULL) operator*(T d, int i) { return T(int(d) * i); }
+template<typename T> constexpr RET(OP_FULL) operator/(T d, int i) { return T(int(d) / i); }
+template<typename T> inline RET(OP_FULL)& operator*=(T& d, int i) { return d = T(int(d) * i); }
+template<typename T> inline RET(OP_FULL)& operator/=(T& d, int i) { return d = T(int(d) / i); }
+
+template<typename T> constexpr RETI(OP_FULL) operator/(T d1, T d2) { return int(d1) / int(d2); }
 
 ENABLE_FULL_OPERATORS_ON(Value)
 ENABLE_FULL_OPERATORS_ON(Depth)
@@ -311,9 +325,16 @@ ENABLE_INCR_OPERATORS_ON(Rank)
 
 ENABLE_BASE_OPERATORS_ON(Score)
 
+#undef RETI
+#undef RET
 #undef ENABLE_FULL_OPERATORS_ON
 #undef ENABLE_INCR_OPERATORS_ON
 #undef ENABLE_BASE_OPERATORS_ON
+
+/// Override operator/ for Depth to make it ONE_PLY invariant. It works because
+/// a function template can be overloaded with normal (non-template) functions.
+constexpr Depth operator/(Depth d, int i) { return (int(d) / (i * ONE_PLY)) * ONE_PLY; }
+inline Depth& operator/=(Depth& d, int i) { return d = d / i; }
 
 /// Additional operators to add integers to a Value
 constexpr Value operator+(Value v, int i) { return Value(int(v) + i); }
