@@ -468,8 +468,10 @@ void Thread::search() {
 
           // Use part of the gained time from a previous stable move for the current move
           for (Thread* th : Threads)
+          {
               totBestMoveChanges += th->bestMoveChanges;
-
+              th->bestMoveChanges = 0;
+          }
           double bestMoveInstability = 1 + totBestMoveChanges / Threads.size();
 
           // Stop the search if we have only one legal move, or if available time elapsed
