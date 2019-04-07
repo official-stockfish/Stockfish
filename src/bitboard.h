@@ -145,14 +145,16 @@ inline Bitboard file_bb(Square s) {
 }
 
 
-/// shift() moves a bitboard one step along direction D
+/// shift() shifts a bitboard according to Direction (and magnitude) D
 
 template<Direction D>
-inline Bitboard shift(Bitboard b) {
-  Bitboard b2 = ((D & 7) == 1) ? b & ~FileHBB :      //shifting EASTward
-                ((D & 7) == 7) ? b & ~FileABB : b;   //shifting WESTward
+constexpr Bitboard shift(Bitboard b) {
+  static_assert(((D & 7) == 7) || ((D & 7) == 1) || ((D & 7) == 0),
+                "Shifting more than one step horizontally is not supported.");
 
-  return D < 0 ? b2 >> -D : b2 << D;  //no negative shifting
+  // Ensure we always shift using a positive value, clearing sides as needed
+  return (D < 0 ? b >> -D : b << D)
+     & ~((D & 1) * ((D & 4) ? FileHBB : FileABB));
 }
 
 
