@@ -152,7 +152,7 @@ inline Bitboard shift(Bitboard b) {
   Bitboard b2 = ((D & 7) == 1) ? b & ~FileHBB :      //shifting EASTward
                 ((D & 7) == 7) ? b & ~FileABB : b;   //shifting WESTward
 
-  return D < 0 ? b2 >> -D : b2 << D;
+  return D < 0 ? b2 >> -D : b2 << D;  //no negative shifting
 }
 
 
