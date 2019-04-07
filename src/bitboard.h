@@ -148,12 +148,11 @@ inline Bitboard file_bb(Square s) {
 /// shift() moves a bitboard one step along direction D
 
 template<Direction D>
-constexpr Bitboard shift(Bitboard b) {
-  return  D == NORTH      ?  b             << 8 : D == SOUTH      ?  b             >> 8
-        : D == EAST       ? (b & ~FileHBB) << 1 : D == WEST       ? (b & ~FileABB) >> 1
-        : D == NORTH_EAST ? (b & ~FileHBB) << 9 : D == NORTH_WEST ? (b & ~FileABB) << 7
-        : D == SOUTH_EAST ? (b & ~FileHBB) >> 7 : D == SOUTH_WEST ? (b & ~FileABB) >> 9
-        : 0;
+inline Bitboard shift(Bitboard b) {
+  Bitboard b2 = ((D & 7) == 1) ? b & ~FileHBB :      //shifting EASTward
+                ((D & 7) == 7) ? b & ~FileABB : b;   //shifting WESTward
+
+  return D < 0 ? b2 >> -D : b2 << D;
 }
 
 
