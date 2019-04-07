@@ -55,6 +55,9 @@ script:
   - make clean && make -j2 ARCH=x86-64 optimize=no debug=yes build && ../tests/signature.sh $benchref
   - make clean && make -j2 ARCH=x86-32 optimize=no debug=yes build && ../tests/signature.sh $benchref
   - make clean && make -j2 ARCH=x86-32 build && ../tests/signature.sh $benchref
+
+  # Verify bench number is ONE_PLY independent by doubling its value
+  - sed -i'.bak' 's/.*\(ONE_PLY = [0-9]*\),.*/\1 * 2,/g' types.h
   - make clean && make -j2 ARCH=x86-64 build && ../tests/signature.sh $benchref
   #
   # Check perft and reproducible search
