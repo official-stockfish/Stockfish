@@ -218,19 +218,19 @@ inline Bitboard passed_pawn_span(Color c, Square s) {
   return forward_ranks_bb(c, s) & (adjacent_files_bb(file_of(s)) | file_bb(s));
 }
 
-/// line_bb() returns a complete line that intersects the given squares including
-/// the given squares.  If the squares are not on a rank/file/diagonal, returns 0
+/// line_bb() returns a complete line that intersects the given squares.
+/// If the squares are not on a same rank/file/diagonal, returns 0
 
 inline Bitboard line_bb(Square s1, Square s2) {
-    return LineBB[s1][s2] | s1 | s2;
+    return LineBB[s1][s2];
 }
 
 /// between_bb() returns squares that are linearly between the given squares
-/// Does NOT include the given squares and returns 0 if the given squares
-/// are not on a same file/rank/diagonal.
+/// If the given squares are not on a same file/rank/diagonal, return 0.
 
 inline Bitboard between_bb(Square s1, Square s2) {
-    return LineBB[s1][s2] & ((AllSquares << s1) ^ (AllSquares << s2));
+    return LineBB[s1][s2] & ( (AllSquares << (s1 +  (s1 < s2)))
+                             ^(AllSquares << (s2 + !(s1 < s2))));
 }
 
 /// aligned() returns true if the squares s1, s2 and s3 are aligned either on a
