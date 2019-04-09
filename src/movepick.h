@@ -132,7 +132,7 @@ public:
 private:
   template<PickType T, typename Pred> Move select(Pred);
   template<GenType> void score();
-  ExtMove* begin() { return cur; }
+  ExtMove* begin() { return movePtr; }
   ExtMove* end() { return endMoves; }
 
   const Position& pos;
@@ -140,9 +140,8 @@ private:
   const CapturePieceToHistory* captureHistory;
   const PieceToHistory** continuationHistory;
   Move ttMove;
-  ExtMove refutations[3], *cur, *endMoves, *endBadCaptures;
+  ExtMove refutations[3], *movePtr, *endMoves, *endBadCaptures;
   int stage;
-  Move move;
   Square recaptureSquare;
   Value threshold;
   Depth depth;

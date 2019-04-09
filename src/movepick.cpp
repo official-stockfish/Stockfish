@@ -134,17 +134,17 @@ void MovePicker::score() {
 template<MovePicker::PickType T, typename Pred>
 Move MovePicker::select(Pred filter) {
 
-  while (cur < endMoves)
+  while (movePtr < endMoves)
   {
       if (T == Best)
-          std::swap(*cur, *std::max_element(cur, endMoves));
+          std::swap(*movePtr, *std::max_element(movePtr, endMoves));
 
-      move = *cur++;
+      if (*movePtr != ttMove && filter())
+          return *movePtr++;
 
-      if (move != ttMove && filter())
-          return move;
+      movePtr++;
   }
-  return move = MOVE_NONE;
+  return MOVE_NONE;
 }
 
 /// MovePicker::next_move() is the most important method of the MovePicker class. It
@@ -165,8 +165,8 @@ top:
   case CAPTURE_INIT:
   case PROBCUT_INIT:
   case QCAPTURE_INIT:
-      cur = endBadCaptures = moves;
-      endMoves = generate<CAPTURES>(pos, cur);
+      movePtr = endBadCaptures = moves;
+      endMoves = generate<CAPTURES>(pos, movePtr);
 
       score<CAPTURES>();
       ++stage;
@@ -174,13 +174,13 @@ top:
 
   case GOOD_CAPTURE:
       if (select<Best>([&](){
-                       return pos.see_ge(move, Value(-55 * (cur-1)->value / 1024)) ?
+                       return pos.see_ge(*movePtr, Value(-55 * movePtr->value / 1024)) ?
                               // Move losing capture to endBadCaptures to be tried later
-                              true : (*endBadCaptures++ = move, false); }))
-          return move;
+                              true : (*endBadCaptures++ = *movePtr, false); }))
+          return *(movePtr - 1);
 
       // Prepare the pointers to loop over the refutations array
-      cur = std::begin(refutations);
+      movePtr = std::begin(refutations);
       endMoves = std::end(refutations);
 
       // If the countermove is the same as a killer, skip it
@@ -192,31 +192,31 @@ top:
       /* fallthrough */
 
   case REFUTATION:
-      if (select<Next>([&](){ return    move != MOVE_NONE
-                                    && !pos.capture(move)
-                                    &&  pos.pseudo_legal(move); }))
-          return move;
+      if (select<Next>([&](){ return    *movePtr != MOVE_NONE
+                                    && !pos.capture(*movePtr)
+                                    &&  pos.pseudo_legal(*movePtr); }))
+          return *(movePtr - 1);
       ++stage;
       /* fallthrough */
 
   case QUIET_INIT:
-      cur = endBadCaptures;
-      endMoves = generate<QUIETS>(pos, cur);
+      movePtr = endBadCaptures;
+      endMoves = generate<QUIETS>(pos, movePtr);
 
       score<QUIETS>();
-      partial_insertion_sort(cur, endMoves, -4000 * depth / ONE_PLY);
+      partial_insertion_sort(movePtr, endMoves, -4000 * depth / ONE_PLY);
       ++stage;
       /* fallthrough */
 
   case QUIET:
       if (   !skipQuiets
-          && select<Next>([&](){return   move != refutations[0]
-                                      && move != refutations[1]
-                                      && move != refutations[2];}))
-          return move;
+          && select<Next>([&](){return   *movePtr != refutations[0].move
+                                      && *movePtr != refutations[1].move
+                                      && *movePtr != refutations[2].move;}))
+          return *(movePtr - 1);
 
       // Prepare the pointers to loop over the bad captures
-      cur = moves;
+      movePtr = moves;
       endMoves = endBadCaptures;
 
       ++stage;
@@ -226,8 +226,8 @@ top:
       return select<Next>([](){ return true; });
 
   case EVASION_INIT:
-      cur = moves;
-      endMoves = generate<EVASIONS>(pos, cur);
+      movePtr = moves;
+      endMoves = generate<EVASIONS>(pos, movePtr);
 
       score<EVASIONS>();
       ++stage;
@@ -237,12 +237,12 @@ top:
       return select<Best>([](){ return true; });
 
   case PROBCUT:
-      return select<Best>([&](){ return pos.see_ge(move, threshold); });
+      return select<Best>([&](){ return pos.see_ge(*movePtr, threshold); });
 
   case QCAPTURE:
       if (select<Best>([&](){ return   depth > DEPTH_QS_RECAPTURES
-                                    || to_sq(move) == recaptureSquare; }))
-          return move;
+                                    || to_sq(*movePtr) == recaptureSquare; }))
+          return *(movePtr - 1);
 
       // If we did not find any move and we do not try checks, we have finished
       if (depth != DEPTH_QS_CHECKS)
@@ -252,8 +252,8 @@ top:
       /* fallthrough */
 
   case QCHECK_INIT:
-      cur = moves;
-      endMoves = generate<QUIET_CHECKS>(pos, cur);
+      movePtr = moves;
+      endMoves = generate<QUIET_CHECKS>(pos, movePtr);
 
       ++stage;
       /* fallthrough */
