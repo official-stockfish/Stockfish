@@ -935,7 +935,7 @@ moves_loop: // When in check, search starts from here
           extension = ONE_PLY;
 
       // Shuffle extension
-      else if(pos.rule50_count() > 14 && ss->ply > 14 && depth < 3 * ONE_PLY && PvNode)
+      else if(pos.rule50_count() > 16 && ss->ply > 16 && depth < 3 * ONE_PLY && PvNode)
           extension = ONE_PLY;
 
       // Castling extension
