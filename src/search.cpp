@@ -944,9 +944,9 @@ moves_loop: // When in check, search starts from here
 	  // Shuffle extension
       else if(pos.rule50_count() > 14 
 	          && ss->ply > 14 
-	          && depth < 3 * ONE_PLY 
+	          && depth < 2 * ONE_PLY 
 			  && PvNode 
-			  && ss->ply < MAX_PLY)
+			  && ss->ply % 2 == 0)	// To avoid infinite loops
           extension = ONE_PLY;
 
       // Passed pawn extension
