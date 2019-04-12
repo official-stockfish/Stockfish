@@ -612,7 +612,8 @@ namespace {
         && ss->ply > 36 - 12 * (pos.count<ALL_PIECES>() > 14)
         //&& depth < 3 * ONE_PLY
         && ttHit
-        && tte->depth() > depth
+        && tte->depth() > std::max(depth, 6 * ONE_PLY)
+		&& abs(ttValue) < Value(600)
         && pos.count<PAWN>() > 0)
         {
            //sync_cout << "Shuffling : " << pos.fen() << sync_endl;
