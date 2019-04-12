@@ -130,7 +130,7 @@ namespace {
         if (support | phalanx)
         {
             int r = relative_rank(Us, s);
-            int v = (2 + bool(phalanx)) * Connected[r];
+            int v = (phalanx ? 3 : 2) * Connected[r];
             v = 17 * popcount(support) + (v >> (opposed + 1));
             score += make_score(v, v * (r - 2) / 4);
         }
