@@ -1226,8 +1226,7 @@ moves_loop: // When in check, search starts from here
 
     Thread* thisThread = pos.this_thread();
     (ss+1)->ply = ss->ply + 1;
-    ss->currentMove = bestMove = MOVE_NONE;
-    ss->continuationHistory = &thisThread->continuationHistory[NO_PIECE][0];
+    bestMove = MOVE_NONE;
     inCheck = pos.checkers();
     moveCount = 0;
 
