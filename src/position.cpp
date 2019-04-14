@@ -1206,6 +1206,11 @@ bool Position::has_game_cycle(int ply) const {
               if (ply > i)
                   return true;
 
+              // For nodes before or at the root, check that the move is a repetition one
+              // rather than a move to the current position
+              if (color_of(piece_on(empty(s1) ? s2 : s1)) != side_to_move())
+                  continue;
+
               // For repetitions before or at the root, require one more
               StateInfo* next_stp = stp;
               for (int k = i + 2; k <= end; k += 2)
