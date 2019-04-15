@@ -44,10 +44,6 @@ struct Entry {
     return semiopenFiles[c] & (1 << f);
   }
 
-  int pawns_on_same_color_squares(Color c, Square s) const {
-    return pawnsOnSquares[c][bool(DarkSquares & s)];
-  }
-
   template<Color Us>
   Score king_safety(const Position& pos) {
     return  kingSquares[Us] == pos.square<KING>(Us) && castlingRights[Us] == pos.castling_rights(Us)
