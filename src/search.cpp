@@ -610,14 +610,12 @@ namespace {
     // If position has been searched at higher depths and we are shuffling, return value_draw
     if (pos.rule50_count() > 36 - 6 * (pos.count<ALL_PIECES>() > 14)
         && ss->ply > 36 - 6 * (pos.count<ALL_PIECES>() > 14)
-        //&& depth < 3 * ONE_PLY
         && ttHit
         && tte->depth() > depth
         && pos.count<PAWN>() > 0)
         {
-           //sync_cout << "Shuffling : " << pos.fen() << sync_endl;
            return VALUE_DRAW;
-	   }
+        }
 
     // At non-PV nodes we check for an early TT cutoff
     if (  !PvNode
@@ -939,13 +937,13 @@ moves_loop: // When in check, search starts from here
       // Castling extension
       else if (type_of(move) == CASTLING)
           extension = ONE_PLY;
-	  
-	  // Shuffle extension
-      else if(pos.rule50_count() > 14 
-	          && ss->ply > 14 
-	          && depth < 3 * ONE_PLY 
-			  && PvNode 
-			  && ss->ply < 3 * thisThread->rootDepth / ONE_PLY)	// To avoid infinite loops
+
+      // Shuffle extension
+      else if(pos.rule50_count() > 14
+              && ss->ply > 14
+              && depth < 3 * ONE_PLY
+              && PvNode
+              && ss->ply < 3 * thisThread->rootDepth / ONE_PLY)	// To avoid infinite loops
           extension = ONE_PLY;
 
       // Passed pawn extension
