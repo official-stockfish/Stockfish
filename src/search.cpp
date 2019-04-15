@@ -602,6 +602,11 @@ namespace {
     excludedMove = ss->excludedMove;
     posKey = pos.key() ^ Key(excludedMove << 16); // Isn't a very good hash
     tte = TT.probe(posKey, ttHit);
+    if (depth >= 8 * ONE_PLY && (!ttHit || (ttHit && !tte->move())))
+    {
+        search<NT>(pos, ss, alpha, beta, depth - 7 * ONE_PLY, cutNode);
+        tte = TT.probe(posKey, ttHit);
+    }
     ttValue = ttHit ? value_from_tt(tte->value(), ss->ply) : VALUE_NONE;
     ttMove =  rootNode ? thisThread->rootMoves[thisThread->pvIdx].pv[0]
             : ttHit    ? tte->move() : MOVE_NONE;
@@ -722,25 +727,26 @@ namespace {
         tte->save(posKey, VALUE_NONE, ttPv, BOUND_NONE, DEPTH_NONE, MOVE_NONE, eval);
     }
 
-    // Step 7. Razoring (~2 Elo)
-    if (   !rootNode // The required rootNode PV handling is not available in qsearch
-        &&  depth < 2 * ONE_PLY
-        &&  eval <= alpha - RazorMargin)
-        return qsearch<NT>(pos, ss, alpha, beta);
-
     improving =   ss->staticEval >= (ss-2)->staticEval
                || (ss-2)->staticEval == VALUE_NONE;
 
+    // no early pruning for PvNodes
+    if (PvNode)
+        goto moves_loop;
+
+    // Step 7. Razoring (~2 Elo)
+    if (    depth < 2 * ONE_PLY
+        &&  eval <= alpha - RazorMargin)
+        return qsearch<NonPV>(pos, ss, alpha, beta);
+
     // Step 8. Futility pruning: child node (~30 Elo)
-    if (   !PvNode
-        &&  depth < 7 * ONE_PLY
+    if (    depth < 7 * ONE_PLY
         &&  eval - futility_margin(depth, improving) >= beta
         &&  eval < VALUE_KNOWN_WIN) // Do not return unproven wins
         return eval;
 
     // Step 9. Null move search with verification search (~40 Elo)
-    if (   !PvNode
-        && (ss-1)->currentMove != MOVE_NULL
+    if (   (ss-1)->currentMove != MOVE_NULL
         && (ss-1)->statScore < 23200
         &&  eval >= beta
         &&  ss->staticEval >= beta - 36 * depth / ONE_PLY + 225
@@ -790,8 +796,7 @@ namespace {
     // Step 10. ProbCut (~10 Elo)
     // If we have a good enough capture and a reduced search returns a value
     // much above beta, we can (almost) safely prune the previous move.
-    if (   !PvNode
-        &&  depth >= 5 * ONE_PLY
+    if (    depth >= 5 * ONE_PLY
         &&  abs(beta) < VALUE_MATE_IN_MAX_PLY)
     {
         Value raisedBeta = std::min(beta + 216 - 48 * improving, VALUE_INFINITE);
@@ -825,17 +830,7 @@ namespace {
             }
     }
 
-    // Step 11. Internal iterative deepening (~2 Elo)
-    if (depth >= 8 * ONE_PLY && !ttMove)
-    {
-        search<NT>(pos, ss, alpha, beta, depth - 7 * ONE_PLY, cutNode);
-
-        tte = TT.probe(posKey, ttHit);
-        ttValue = ttHit ? value_from_tt(tte->value(), ss->ply) : VALUE_NONE;
-        ttMove = ttHit ? tte->move() : MOVE_NONE;
-    }
-
-moves_loop: // When in check, search starts from here
+moves_loop: // When in check or for PvNodes, search starts from here
 
     const PieceToHistory* contHist[] = { (ss-1)->continuationHistory, (ss-2)->continuationHistory,
                                           nullptr, (ss-4)->continuationHistory,
