@@ -602,7 +602,7 @@ namespace {
     excludedMove = ss->excludedMove;
     posKey = pos.key() ^ Key(excludedMove << 16); // Isn't a very good hash
     tte = TT.probe(posKey, ttHit);
-    if (depth >= 8 * ONE_PLY && (!ttHit || (ttHit && !tte->move())))
+    if (depth >= 8 * ONE_PLY && (!ttHit || !tte->move()))
     {
         search<NT>(pos, ss, alpha, beta, depth - 7 * ONE_PLY, cutNode);
         tte = TT.probe(posKey, ttHit);
