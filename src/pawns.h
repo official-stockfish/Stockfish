@@ -38,7 +38,7 @@ struct Entry {
   Bitboard passed_pawns(Color c) const { return passedPawns[c]; }
   Bitboard pawn_attacks_span(Color c) const { return pawnAttacksSpan[c]; }
   int weak_unopposed(Color c) const { return weakUnopposed[c]; }
-  int passed_count() const { return passedCount; }
+  int passed_count() const { return popcount(passedPawns[WHITE] | passedPawns[BLACK]); };
 
   int pawns_on_same_color_squares(Color c, Square s) const {
     return pawnsOnSquares[c][bool(DarkSquares & s)];
@@ -66,7 +66,6 @@ struct Entry {
   int weakUnopposed[COLOR_NB];
   int castlingRights[COLOR_NB];
   int pawnsOnSquares[COLOR_NB][COLOR_NB]; // [color][light/dark squares]
-  int passedCount;
 };
 
 typedef HashTable<Entry, 16384> Table;
