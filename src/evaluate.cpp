@@ -144,6 +144,7 @@ namespace {
   constexpr Score PawnlessFlank      = S( 17, 95);
   constexpr Score RestrictedPiece    = S(  7,  7);
   constexpr Score RookOnPawn         = S( 10, 32);
+  constexpr Score SideAttackBishop   = S( 20, 20);
   constexpr Score SliderOnQueen      = S( 59, 18);
   constexpr Score ThreatByKing       = S( 24, 89);
   constexpr Score ThreatByPawnPush   = S( 48, 39);
@@ -334,6 +335,15 @@ namespace {
                 // Bonus for bishop on a long diagonal which can "see" both center squares
                 if (more_than_one(attacks_bb<BISHOP>(s, pos.pieces(PAWN)) & Center))
                     score += LongDiagonalBishop;
+                else 
+                {
+                    constexpr Bitboard boardSide (Us == WHITE? Rank1BB | FileABB | FileHBB : 
+                                                           Rank8BB | FileABB | FileHBB);
+                    // Penalty for bishop that doesn't attack anyhing apart from the sides of the board
+                    // in our mobility area
+                    if (!(b & mobilityArea[Us] & ~boardSide))
+		    	score -= SideAttackBishop;
+                }
             }
 
             // An important Chess960 pattern: A cornered bishop blocked by a friendly
