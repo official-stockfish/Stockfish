@@ -943,7 +943,7 @@ moves_loop: // When in check, search starts from here
               && ss->ply > 18
               && depth < 3 * ONE_PLY
               && PvNode
-              && ss->ply < 3 * thisThread->rootDepth / ONE_PLY)	// To avoid infinite loops
+              && ss->ply < 3 * thisThread->rootDepth / ONE_PLY)	           // To avoid infinite loops
           extension = ONE_PLY;
 
       // Passed pawn extension
