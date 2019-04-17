@@ -224,6 +224,7 @@ void MainThread::search() {
       Time.availableNodes += Limits.inc[us] - Threads.nodes_searched();
 
   Thread* bestThread = this;
+  Value   oldScore = this->rootMoves[0].score;
 
   // Check if there are threads with a better score than main thread
   if (    Options["MultiPV"] == 1
@@ -247,18 +248,28 @@ void MainThread::search() {
 
       // Select best thread
       auto bestVote = votes[this->rootMoves[0].pv[0]];
+      int  totScore = 0, numScores = 0;
       for (Thread* th : Threads)
           if (votes[th->rootMoves[0].pv[0]] > bestVote)
           {
               bestVote = votes[th->rootMoves[0].pv[0]];
               bestThread = th;
+              totScore = th->rootMoves[0].score;
+              numScores = 1;
           }
+          else if (votes[th->rootMoves[0].pv[0]] == bestVote)
+          {
+              totScore += th->rootMoves[0].score;
+              numScores++;
+          }
+
+      bestThread->rootMoves[0].score = Value(totScore / numScores);
   }
 
   previousScore = bestThread->rootMoves[0].score;
 
   // Send again PV info if we have a new best thread
-  if (bestThread != this)
+  if (bestThread != this || this->rootMoves[0].score != oldScore)
       sync_cout << UCI::pv(bestThread->rootPos, bestThread->completedDepth, -VALUE_INFINITE, VALUE_INFINITE) << sync_endl;
 
   sync_cout << "bestmove " << UCI::move(bestThread->rootMoves[0].pv[0], rootPos.is_chess960());
