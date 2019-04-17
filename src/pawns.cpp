@@ -212,11 +212,12 @@ Score Entry::do_king_safety(const Position& pos) {
   Square ksq = pos.square<KING>(Us);
   kingSquares[Us] = ksq;
   castlingRights[Us] = pos.castling_rights(Us);
-  int minKingPawnDistance = 0;
 
   Bitboard pawns = pos.pieces(Us, PAWN);
-  if (pawns)
-      while (!(DistanceRingBB[ksq][++minKingPawnDistance] & pawns)) {}
+  int d, minKingPawnDistance = pawns ? 8 : 0;
+  while(pawns)
+      if ((d = distance(pop_lsb(&pawns), ksq)) < minKingPawnDistance)
+          minKingPawnDistance = d;
 
   Value bonus = evaluate_shelter<Us>(pos, ksq);
 
