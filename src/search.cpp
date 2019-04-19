@@ -67,10 +67,10 @@ namespace {
   }
 
   // Reductions lookup table, initialized at startup
-  int Reductions[64]; // [depth or moveNumber]
+  int Reductions[MAX_MOVES]; // [depth or moveNumber]
 
   template <bool PvNode> Depth reduction(bool i, Depth d, int mn) {
-    int r = Reductions[std::min(d / ONE_PLY, 63)] * Reductions[std::min(mn, 63)] / 1024;
+    int r = Reductions[d / ONE_PLY] * Reductions[mn] / 1024;
     return ((r + 512) / 1024 + (!i && r > 1024) - PvNode) * ONE_PLY;
   }
 
@@ -147,7 +147,7 @@ namespace {
 
 void Search::init() {
 
-  for (int i = 1; i < 64; ++i)
+  for (int i = 1; i < MAX_MOVES; ++i)
       Reductions[i] = int(1024 * std::log(i) / std::sqrt(1.95));
 }
 
