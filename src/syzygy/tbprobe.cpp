@@ -363,7 +363,7 @@ TBTable<WDL>::TBTable(const std::string& code) : TBTable() {
     Position pos;
 
     key = pos.set(code, WHITE, &st).material_key();
-    pieceCount = pos.count<ALL_PIECES>();
+    pieceCount = pos.count(ALL_PIECES);
     hasPawns = pos.pieces(PAWN);
 
     hasUniquePieces = false;
@@ -374,12 +374,12 @@ TBTable<WDL>::TBTable(const std::string& code) : TBTable() {
 
     // Set the leading color. In case both sides have pawns the leading color
     // is the side with less pawns because this leads to better compression.
-    bool c =   !pos.count<PAWN>(BLACK)
-            || (   pos.count<PAWN>(WHITE)
-                && pos.count<PAWN>(BLACK) >= pos.count<PAWN>(WHITE));
+    bool c =   !pos.count(BLACK, PAWN)
+            || (   pos.count(WHITE, PAWN)
+                && pos.count(BLACK, PAWN) >= pos.count(WHITE, PAWN));
 
-    pawnCount[0] = pos.count<PAWN>(c ? WHITE : BLACK);
-    pawnCount[1] = pos.count<PAWN>(c ? BLACK : WHITE);
+    pawnCount[0] = pos.count(c ? WHITE : BLACK, PAWN);
+    pawnCount[1] = pos.count(c ? BLACK : WHITE, PAWN);
 
     key2 = pos.set(code, BLACK, &st).material_key();
 }
@@ -1158,7 +1158,7 @@ void* mapped(TBTable<Type>& e, const Position& pos) {
 template<TBType Type, typename Ret = typename TBTable<Type>::Ret>
 Ret probe_table(const Position& pos, ProbeState* result, WDLScore wdl = WDLDraw) {
 
-    if (pos.count<ALL_PIECES>() == 2) // KvK
+    if (pos.count(ALL_PIECES) == 2) // KvK
         return Ret(WDLDraw);
 
     TBTable<Type>* entry = TBTables.get<Type>(pos.material_key());

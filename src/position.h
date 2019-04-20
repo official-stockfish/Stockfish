@@ -91,8 +91,8 @@ public:
   Piece piece_on(Square s) const;
   Square ep_square() const;
   bool empty(Square s) const;
-  template<PieceType Pt> int count(Color c) const;
-  template<PieceType Pt> int count() const;
+  int count(Color c, PieceType pt) const;
+  int count(PieceType pt) const;
   template<PieceType Pt> const Square* squares(Color c) const;
   template<PieceType Pt> Square square(Color c) const;
   int semiopen_file(Color c, File f) const;
@@ -241,12 +241,12 @@ inline Bitboard Position::pieces(Color c, PieceType pt1, PieceType pt2) const {
   return byColorBB[c] & (byTypeBB[pt1] | byTypeBB[pt2]);
 }
 
-template<PieceType Pt> inline int Position::count(Color c) const {
-  return pieceCount[make_piece(c, Pt)];
+inline int Position::count(Color c, PieceType pt) const {
+  return pieceCount[make_piece(c, pt)];
 }
 
-template<PieceType Pt> inline int Position::count() const {
-  return pieceCount[make_piece(WHITE, Pt)] + pieceCount[make_piece(BLACK, Pt)];
+inline int Position::count(PieceType pt) const {
+  return count(WHITE, pt) + count(BLACK, pt);
 }
 
 template<PieceType Pt> inline const Square* Position::squares(Color c) const {
