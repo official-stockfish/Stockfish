@@ -720,7 +720,7 @@ namespace {
 
     int bonus = popcount(safe) + popcount(behind & safe);
     int weight =  pos.count(Us, ALL_PIECES)
-               - (16 - pos.count(PAWN)) / 4;
+               - (16 - pos.count<PAWN>()) / 4;
 
     Score score = make_score(bonus * weight * weight / 16, 0);
 
@@ -746,7 +746,7 @@ namespace {
 
     // Compute the initiative bonus for the attacking side
     int complexity =   9 * pe->passed_count()
-                    + 11 * pos.count(PAWN)
+                    + 11 * pos.count<PAWN>()
                     +  9 * outflanking
                     + 18 * pawnsOnBothFlanks
                     + 49 * !pos.non_pawn_material()
