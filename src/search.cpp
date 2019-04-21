@@ -20,7 +20,6 @@
 
 #include <cassert>
 #include <cmath>
-#include <cstring>   // For std::memset
 #include <iostream>
 #include <sstream>
 
@@ -289,7 +288,6 @@ void Thread::search() {
   double timeReduction = 1, totBestMoveChanges = 0;
   Color us = rootPos.side_to_move();
 
-  std::memset(ss-7, 0, 10 * sizeof(Stack));
   for (int i = 7; i > 0; i--)
      (ss-i)->continuationHistory = &this->continuationHistory[NO_PIECE][0]; // Use as sentinel
   ss->pv = pv;
