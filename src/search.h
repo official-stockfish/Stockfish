@@ -53,7 +53,7 @@ struct Stack {
   Stack(): pv(NULL), continuationHistory(NULL), currentMove(MOVE_NONE),
                      excludedMove(MOVE_NONE),   killers{MOVE_NONE, MOVE_NONE}
   {
-      ply = statScore = moveCount = 0;
+      ply = statScore = moveCount = staticEval = Value(0);
   };
 };
 
