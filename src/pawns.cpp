@@ -71,7 +71,7 @@ namespace {
     Square s;
     bool opposed, backward;
     Score score = SCORE_ZERO;
-    const Square* pl = pos.squares<PAWN>(Us);
+    const Square* pl = pos.squares(Us, PAWN);
 
     Bitboard ourPawns   = pos.pieces(  Us, PAWN);
     Bitboard theirPawns = pos.pieces(Them, PAWN);
@@ -209,7 +209,7 @@ Value Entry::evaluate_shelter(const Position& pos, Square ksq) {
 template<Color Us>
 Score Entry::do_king_safety(const Position& pos) {
 
-  Square ksq = pos.square<KING>(Us);
+  Square ksq = pos.square(Us, KING);
   kingSquares[Us] = ksq;
   castlingRights[Us] = pos.castling_rights(Us);
 
