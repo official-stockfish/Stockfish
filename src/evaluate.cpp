@@ -357,8 +357,8 @@ namespace {
                 score += RookOnPawn * popcount(pos.pieces(Them, PAWN) & PseudoAttacks[ROOK][s]);
 
             // Bonus for rook on an open or semi-open file
-            if (pos.semiopen_file(Us, file_of(s)))
-                score += RookOnFile[bool(pos.semiopen_file(Them, file_of(s)))];
+            if (pos.is_semiopen_file(Us, file_of(s)))
+                score += RookOnFile[bool(pos.is_semiopen_file(Them, file_of(s)))];
 
             // Penalty when trapped by the king, even more if the king cannot castle
             else if (mob <= 3)
@@ -670,7 +670,7 @@ namespace {
 
                 bonus += make_score(k * w, k * w);
             }
-        } // rank > RANK_3
+        } // r > RANK_3
 
         // Scale down bonus for candidate passers which need more than one
         // pawn push to become passed, or have a pawn in front of them.
