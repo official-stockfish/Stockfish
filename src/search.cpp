@@ -606,15 +606,6 @@ namespace {
             : ttHit    ? tte->move() : MOVE_NONE;
     ttPv = (ttHit && tte->is_pv()) || (PvNode && depth > 4 * ONE_PLY);
 
-    // If position has been searched at higher depths and we are shuffling,
-    // return value_draw.
-    if (   pos.rule50_count() > 36 - 6 * (pos.count<ALL_PIECES>() > 14)
-        && ss->ply > 36 - 6 * (pos.count<ALL_PIECES>() > 14)
-        && ttHit
-        && tte->depth() > depth
-        && pos.count<PAWN>() > 0)
-           return VALUE_DRAW;
-
     // At non-PV nodes we check for an early TT cutoff
     if (  !PvNode
         && ttHit
@@ -939,9 +930,8 @@ moves_loop: // When in check, search starts from here
       // Shuffle extension
       else if (   PvNode
                && pos.rule50_count() > 18
-               && ss->ply > 18
                && depth < 3 * ONE_PLY
-               && ss->ply < 3 * thisThread->rootDepth / ONE_PLY) // To avoid infinite loops
+               && ss->ply < 3 * thisThread->rootDepth / ONE_PLY) // To avoid too deep searches
           extension = ONE_PLY;
 
       // Passed pawn extension
