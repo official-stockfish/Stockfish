@@ -68,13 +68,11 @@ constexpr Bitboard Center      = (FileDBB | FileEBB) & (Rank4BB | Rank5BB);
 extern uint8_t PopCnt16[1 << 16];
 extern uint8_t SquareDistance[SQUARE_NB][SQUARE_NB];
 
-extern Bitboard SquareBB[SQUARE_NB];
-extern Bitboard BetweenBB[SQUARE_NB][SQUARE_NB];
 extern Bitboard LineBB[SQUARE_NB][SQUARE_NB];
-extern Bitboard DistanceRingBB[SQUARE_NB][8];
 extern Bitboard PseudoAttacks[PIECE_TYPE_NB][SQUARE_NB];
 extern Bitboard PawnAttacks[COLOR_NB][SQUARE_NB];
 extern Bitboard KingFlank[FILE_NB];
+extern Bitboard SquareBB[SQUARE_NB];
 
 
 /// Magic holds all magic bitboards relevant data for a single square
@@ -102,34 +100,19 @@ struct Magic {
 extern Magic RookMagics[SQUARE_NB];
 extern Magic BishopMagics[SQUARE_NB];
 
+inline Bitboard square_bb(Square s) {
+  assert(s >= SQ_A1 && s <= SQ_H8);
+  return SquareBB[s];
+}
 
 /// Overloads of bitwise operators between a Bitboard and a Square for testing
 /// whether a given bit is set in a bitboard, and for setting and clearing bits.
 
-inline Bitboard operator&(Bitboard b, Square s) {
-  assert(s >= SQ_A1 && s <= SQ_H8);
-  return b & SquareBB[s];
-}
-
-inline Bitboard operator|(Bitboard b, Square s) {
-  assert(s >= SQ_A1 && s <= SQ_H8);
-  return b | SquareBB[s];
-}
-
-inline Bitboard operator^(Bitboard b, Square s) {
-  assert(s >= SQ_A1 && s <= SQ_H8);
-  return b ^ SquareBB[s];
-}
-
-inline Bitboard& operator|=(Bitboard& b, Square s) {
-  assert(s >= SQ_A1 && s <= SQ_H8);
-  return b |= SquareBB[s];
-}
-
-inline Bitboard& operator^=(Bitboard& b, Square s) {
-  assert(s >= SQ_A1 && s <= SQ_H8);
-  return b ^= SquareBB[s];
-}
+inline Bitboard  operator&( Bitboard  b, Square s) { return b &  square_bb(s); }
+inline Bitboard  operator|( Bitboard  b, Square s) { return b |  square_bb(s); }
+inline Bitboard  operator^( Bitboard  b, Square s) { return b ^  square_bb(s); }
+inline Bitboard& operator|=(Bitboard& b, Square s) { return b |= square_bb(s); }
+inline Bitboard& operator^=(Bitboard& b, Square s) { return b ^= square_bb(s); }
 
 constexpr bool more_than_one(Bitboard b) {
   return b & (b - 1);
@@ -200,13 +183,12 @@ inline Bitboard adjacent_files_bb(File f) {
 }
 
 
-/// between_bb() returns a bitboard representing all the squares between the two
-/// given ones. For instance, between_bb(SQ_C4, SQ_F7) returns a bitboard with
-/// the bits for square d5 and e6 set. If s1 and s2 are not on the same rank,
-/// file or diagonal, 0 is returned.
+/// between_bb() returns squares that are linearly between the given squares
+/// If the given squares are not on a same file/rank/diagonal, return 0.
 
 inline Bitboard between_bb(Square s1, Square s2) {
-  return BetweenBB[s1][s2];
+  return LineBB[s1][s2] & ( (AllSquares << (s1 +  (s1 < s2)))
+                           ^(AllSquares << (s2 + !(s1 < s2))));
 }
 
 
@@ -254,15 +236,16 @@ inline bool aligned(Square s1, Square s2, Square s3) {
 
 
 /// distance() functions return the distance between x and y, defined as the
-/// number of steps for a king in x to reach y. Works with squares, ranks, files.
+/// number of steps for a king in x to reach y.
 
-template<typename T> inline int distance(T x, T y) { return std::abs(x - y); }
+template<typename T1 = Square> inline int distance(Square x, Square y);
+template<> inline int distance<File>(Square x, Square y) { return std::abs(file_of(x) - file_of(y)); }
+template<> inline int distance<Rank>(Square x, Square y) { return std::abs(rank_of(x) - rank_of(y)); }
 template<> inline int distance<Square>(Square x, Square y) { return SquareDistance[x][y]; }
 
-template<typename T1, typename T2> inline int distance(T2 x, T2 y);
-template<> inline int distance<File>(Square x, Square y) { return distance(file_of(x), file_of(y)); }
-template<> inline int distance<Rank>(Square x, Square y) { return distance(rank_of(x), rank_of(y)); }
-
+template<class T> constexpr const T& clamp(const T& v, const T& lo, const T&  hi) {
+  return v < lo ? lo : v > hi ? hi : v;
+}
 
 /// attacks_bb() returns a bitboard representing all the squares attacked by a
 /// piece of type Pt (bishop or rook) placed on 's'.
