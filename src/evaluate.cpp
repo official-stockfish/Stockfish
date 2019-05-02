@@ -190,10 +190,8 @@ namespace {
     // color, including x-rays. But diagonal x-rays through pawns are not computed.
     Bitboard attackedBy2[COLOR_NB];
 
-    // kingRing[color] are the squares adjacent to the king, plus (only for a
-    // king on its first rank) the squares two ranks in front. For instance,
-    // if black's king is on g8, kingRing[BLACK] is f8, h8, f7, g7, h7, f6, g6
-    // and h6.
+    // kingRing[color] are the squares adjacent to the king plus some other
+    // very near squares, depending on king position.
     Bitboard kingRing[COLOR_NB];
 
     // kingAttackersCount[color] is the number of pieces of the given color
@@ -802,7 +800,7 @@ namespace {
 
     // Early exit if score is high
     Value v = (mg_value(score) + eg_value(score)) / 2;
-    if (abs(v) > (LazyThreshold + pos.non_pawn_material() / 64))
+    if (abs(v) > LazyThreshold + pos.non_pawn_material() / 64)
        return pos.side_to_move() == WHITE ? v : -v;
 
     // Main evaluation begins here

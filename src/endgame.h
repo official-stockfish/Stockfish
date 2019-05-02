@@ -91,7 +91,7 @@ struct Endgame : public EndgameBase<T> {
 };
 
 
-/// The Endgames class stores the pointers to endgame evaluation and scaling
+/// The Endgames namespace handles the pointers to endgame evaluation and scaling
 /// base objects in two std::map. We use polymorphism to invoke the actual
 /// endgame function by calling its virtual operator().
 
@@ -99,8 +99,10 @@ namespace Endgames {
 
   template<typename T> using Ptr = std::unique_ptr<EndgameBase<T>>;
   template<typename T> using Map = std::map<Key, Ptr<T>>;
-  
+
   extern std::pair<Map<Value>, Map<ScaleFactor>> maps;
+
+  void init();
 
   template<typename T>
   Map<T>& map() {
@@ -119,8 +121,6 @@ namespace Endgames {
   const EndgameBase<T>* probe(Key key) {
     return map<T>().count(key) ? map<T>()[key].get() : nullptr;
   }
-
-  void init();
 }
 
 #endif // #ifndef ENDGAME_H_INCLUDED
