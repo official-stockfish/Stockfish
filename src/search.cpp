@@ -1714,10 +1714,4 @@ void Tablebases::rank_root_moves(Position& pos, Search::RootMoves& rootMoves) {
         if (dtz_available || rootMoves[0].tbScore <= VALUE_DRAW)
             Cardinality = 0;
     }
-    else
-    {
-        // Assign the same rank to all moves
-        for (auto& m : rootMoves)
-            m.tbRank = 0;
-    }
 }
