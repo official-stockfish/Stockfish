@@ -239,7 +239,7 @@ void MainThread::search() {
           minScore = std::min(minScore, th->rootMoves[0].score);
 
       // Vote according to score and depth, and select the best thread
-      auto bestVote = 0;
+      int64_t bestVote = 0;
       for (Thread* th : Threads)
       {
           int64_t s = th->rootMoves[0].score - minScore + 1;
