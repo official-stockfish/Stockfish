@@ -408,7 +408,7 @@ void Thread::search() {
 
                   if (mainThread)
                   {
-                      failedHighCnt = std::max(0, failedHighCnt - 1);
+                      failedHighCnt /= 2;
                       mainThread->stopOnPonderhit = false;
                   }
               }
