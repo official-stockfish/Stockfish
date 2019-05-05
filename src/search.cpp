@@ -400,7 +400,7 @@ void Thread::search() {
                   sync_cout << UCI::pv(rootPos, rootDepth, alpha, beta) << sync_endl;
 
               // In case of failing low/high increase aspiration window and
-              // re-search, otherwise exit the loop.
+              // re-search, otherwise exit the loop. 
               if (bestValue <= alpha)
               {
                   beta = (alpha + beta) / 2;
