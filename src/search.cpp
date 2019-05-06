@@ -281,7 +281,7 @@ void Thread::search() {
   // The former is needed to allow update_continuation_histories(ss-1, ...),
   // which accesses its argument at ss-6, also near the root.
   // The latter is needed for statScores and killer initialization.
-  Stack stack[MAX_PLY+10], *ss = stack+7;
+  Stack stack[MAX_PLY+12], *ss = stack+7;
   Move  pv[MAX_PLY+1];
   Value bestValue, alpha, beta, delta;
   Move  lastBestMove = MOVE_NONE;
@@ -594,10 +594,7 @@ namespace {
     // starts with statScore = 0. Later grandchildren start with the last calculated
     // statScore of the previous grandchild. This influences the reduction rules in
     // LMR which are based on the statScore of parent position.
-	if (rootNode)
-		(ss + 4)->statScore = 0;
-	else
-		(ss + 2)->statScore = 0;
+	(ss + 4)->statScore = 0;
 
     // Step 4. Transposition table lookup. We don't want the score of a partial
     // search to overwrite a previous full search TT value, so we use a different
