@@ -137,6 +137,7 @@ struct NodeInfo
 {
 	Key hashkey;
 	Child child[20];
+	Child lateChild;
 	int sons;
 	int totalVisits;
 };

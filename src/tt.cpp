@@ -286,6 +286,9 @@ void mctsInsert(ExpEntry tempExpEntry)
 		{
 			bool newChild = true;
 			newNode = false;
+			node->lateChild.move = tempExpEntry.move;
+			node->lateChild.score = tempExpEntry.score;
+			node->lateChild.depth = tempExpEntry.depth;
 			for (int x = 0; x < node->sons; x++)
 			{
 				if (node->child[x].move == tempExpEntry.move)
@@ -331,7 +334,13 @@ void mctsInsert(ExpEntry tempExpEntry)
 		infos.child[0].score = VALUE_NONE;
 		infos.child[0].Visits = 0;
 		std::memset(infos.child, 0, sizeof(Child) * 20);
+		infos.lateChild.move = MOVE_NONE;;
+		infos.lateChild.score = VALUE_NONE;
+		infos.lateChild.depth = DEPTH_NONE;
 
+		infos.lateChild.move = tempExpEntry.move;;
+		infos.lateChild.score = tempExpEntry.score;
+		infos.lateChild.depth = tempExpEntry.depth;
 		infos.hashkey = tempExpEntry.hashkey;        // Zobrist hash of pawns
 		infos.sons = 1;       // number of visits by the Monte-Carlo algorithm
 		infos.totalVisits = 1;
