@@ -277,7 +277,7 @@ void MainThread::search() {
 
 void Thread::search() {
 
-  // To allow access to (ss-7) up to (ss+2), the stack must be oversized.
+  // To allow access to (ss-7) up to (ss+4), the stack must be oversized.
   // The former is needed to allow update_continuation_histories(ss-1, ...),
   // which accesses its argument at ss-6, also near the root.
   // The latter is needed for statScores and killer initialization.
@@ -290,7 +290,7 @@ void Thread::search() {
   double timeReduction = 1, totBestMoveChanges = 0;
   Color us = rootPos.side_to_move();
 
-  std::memset(ss-7, 0, 10 * sizeof(Stack));
+  std::memset(ss-7, 0, 12 * sizeof(Stack));
   for (int i = 7; i > 0; i--)
      (ss-i)->continuationHistory = &this->continuationHistory[NO_PIECE][0]; // Use as sentinel
   ss->pv = pv;
