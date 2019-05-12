@@ -2,7 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2018 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2015-2019 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -32,7 +32,7 @@ class Position;
 namespace Search {
 
 /// Threshold used for countermoves based pruning
-const int CounterMovePruneThreshold = 0;
+constexpr int CounterMovePruneThreshold = 0;
 
 
 /// Stack struct keeps track of the information we need to remember from nodes
@@ -41,7 +41,7 @@ const int CounterMovePruneThreshold = 0;
 
 struct Stack {
   Move* pv;
-  PieceToHistory* contHistory;
+  PieceToHistory* continuationHistory;
   int ply;
   Move currentMove;
   Move excludedMove;
@@ -69,6 +69,8 @@ struct RootMove {
   Value score = -VALUE_INFINITE;
   Value previousScore = -VALUE_INFINITE;
   int selDepth = 0;
+  int tbRank;
+  Value tbScore;
   std::vector<Move> pv;
 };
 
@@ -81,8 +83,9 @@ typedef std::vector<RootMove> RootMoves;
 struct LimitsType {
 
   LimitsType() { // Init explicitly due to broken value-initialization of non POD in MSVC
-    nodes = time[WHITE] = time[BLACK] = inc[WHITE] = inc[BLACK] =
-    npmsec = movestogo = depth = movetime = mate = perft = infinite = 0;
+    time[WHITE] = time[BLACK] = inc[WHITE] = inc[BLACK] = npmsec = movetime = TimePoint(0);
+    movestogo = depth = mate = perft = infinite = 0;
+    nodes = 0;
   }
 
   bool use_time_management() const {
@@ -90,10 +93,9 @@ struct LimitsType {
   }
 
   std::vector<Move> searchmoves;
-  int time[COLOR_NB], inc[COLOR_NB], npmsec, movestogo, depth,
-      movetime, mate, perft, infinite;
+  TimePoint time[COLOR_NB], inc[COLOR_NB], npmsec, movetime, startTime;
+  int movestogo, depth, mate, perft, infinite;
   int64_t nodes;
-  TimePoint startTime;
 };
 
 extern LimitsType Limits;

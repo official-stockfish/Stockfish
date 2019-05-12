@@ -2,7 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2018 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2015-2019 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -56,9 +56,9 @@ struct Entry {
   }
 
   Key key;
-  EndgameBase<Value>* evaluationFunction;
-  EndgameBase<ScaleFactor>* scalingFunction[COLOR_NB]; // Could be one for each
-                                                       // side (e.g. KPKP, KBPsKs)
+  const EndgameBase<Value>* evaluationFunction;
+  const EndgameBase<ScaleFactor>* scalingFunction[COLOR_NB]; // Could be one for each
+                                                             // side (e.g. KPKP, KBPsK)
   int16_t value;
   uint8_t factor[COLOR_NB];
   Phase gamePhase;

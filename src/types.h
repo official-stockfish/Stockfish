@@ -2,7 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2018 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2015-2019 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -80,28 +80,28 @@
 #endif
 
 #ifdef USE_POPCNT
-const bool HasPopCnt = true;
+constexpr bool HasPopCnt = true;
 #else
-const bool HasPopCnt = false;
+constexpr bool HasPopCnt = false;
 #endif
 
 #ifdef USE_PEXT
-const bool HasPext = true;
+constexpr bool HasPext = true;
 #else
-const bool HasPext = false;
+constexpr bool HasPext = false;
 #endif
 
 #ifdef IS_64BIT
-const bool Is64Bit = true;
+constexpr bool Is64Bit = true;
 #else
-const bool Is64Bit = false;
+constexpr bool Is64Bit = false;
 #endif
 
 typedef uint64_t Key;
 typedef uint64_t Bitboard;
 
-const int MAX_MOVES = 256;
-const int MAX_PLY   = 128;
+constexpr int MAX_MOVES = 256;
+constexpr int MAX_PLY   = 128;
 
 /// A move needs 16 bits to be stored
 ///
@@ -141,14 +141,12 @@ enum CastlingRight {
   WHITE_OOO = WHITE_OO << 1,
   BLACK_OO  = WHITE_OO << 2,
   BLACK_OOO = WHITE_OO << 3,
-  ANY_CASTLING = WHITE_OO | WHITE_OOO | BLACK_OO | BLACK_OOO,
-  CASTLING_RIGHT_NB = 16
-};
 
-template<Color C, CastlingSide S> struct MakeCastling {
-  static constexpr CastlingRight
-  right = C == WHITE ? S == QUEEN_SIDE ? WHITE_OOO : WHITE_OO
-                     : S == QUEEN_SIDE ? BLACK_OOO : BLACK_OO;
+  WHITE_CASTLING = WHITE_OO | WHITE_OOO,
+  BLACK_CASTLING = BLACK_OO | BLACK_OOO,
+  ANY_CASTLING   = WHITE_CASTLING | BLACK_CASTLING,
+
+  CASTLING_RIGHT_NB = 16
 };
 
 enum Phase {
@@ -159,7 +157,6 @@ enum Phase {
 
 enum ScaleFactor {
   SCALE_FACTOR_DRAW    = 0,
-  SCALE_FACTOR_ONEPAWN = 48,
   SCALE_FACTOR_NORMAL  = 64,
   SCALE_FACTOR_MAX     = 128,
   SCALE_FACTOR_NONE    = 255
@@ -183,11 +180,11 @@ enum Value : int {
   VALUE_MATE_IN_MAX_PLY  =  VALUE_MATE - 2 * MAX_PLY,
   VALUE_MATED_IN_MAX_PLY = -VALUE_MATE + 2 * MAX_PLY,
 
-  PawnValueMg   = 171,   PawnValueEg   = 240,
-  KnightValueMg = 764,   KnightValueEg = 848,
-  BishopValueMg = 826,   BishopValueEg = 891,
-  RookValueMg   = 1282,  RookValueEg   = 1373,
-  QueenValueMg  = 2526,  QueenValueEg  = 2646,
+  PawnValueMg   = 128,   PawnValueEg   = 213,
+  KnightValueMg = 782,   KnightValueEg = 865,
+  BishopValueMg = 830,   BishopValueEg = 918,
+  RookValueMg   = 1289,  RookValueEg   = 1378,
+  QueenValueMg  = 2529,  QueenValueEg  = 2687,
 
   MidgameLimit  = 15258, EndgameLimit  = 3915
 };
@@ -195,7 +192,6 @@ enum Value : int {
 enum PieceType {
   NO_PIECE_TYPE, PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING,
   ALL_PIECES = 0,
-  QUEEN_DIAGONAL = 7,
   PIECE_TYPE_NB = 8
 };
 
@@ -258,10 +254,10 @@ enum Rank : int {
 };
 
 
-/// Score enum stores a middlegame and an endgame value in a single integer
-/// (enum). The least significant 16 bits are used to store the endgame value
-/// and the upper 16 bits are used to store the middlegame value. Take some
-/// care to avoid left-shifting a signed int to avoid undefined behavior.
+/// Score enum stores a middlegame and an endgame value in a single integer (enum).
+/// The least significant 16 bits are used to store the middlegame value and the
+/// upper 16 bits are used to store the endgame value. We have to take care to
+/// avoid left-shifting a signed int to avoid undefined behavior.
 enum Score : int { SCORE_ZERO };
 
 constexpr Score make_score(int mg, int eg) {
@@ -326,10 +322,10 @@ inline Value& operator+=(Value& v, int i) { return v = v + i; }
 inline Value& operator-=(Value& v, int i) { return v = v - i; }
 
 /// Additional operators to add a Direction to a Square
-inline Square operator+(Square s, Direction d) { return Square(int(s) + int(d)); }
-inline Square operator-(Square s, Direction d) { return Square(int(s) - int(d)); }
-inline Square& operator+=(Square &s, Direction d) { return s = s + d; }
-inline Square& operator-=(Square &s, Direction d) { return s = s - d; }
+constexpr Square operator+(Square s, Direction d) { return Square(int(s) + int(d)); }
+constexpr Square operator-(Square s, Direction d) { return Square(int(s) - int(d)); }
+inline Square& operator+=(Square& s, Direction d) { return s = s + d; }
+inline Square& operator-=(Square& s, Direction d) { return s = s - d; }
 
 /// Only declared but not defined. We don't want to multiply two scores due to
 /// a very high risk of overflow. So user should explicitly convert to integer.
@@ -347,7 +343,7 @@ inline Score operator*(Score s, int i) {
 
   assert(eg_value(result) == (i * eg_value(s)));
   assert(mg_value(result) == (i * mg_value(s)));
-  assert((i == 0) || (result / i) == s );
+  assert((i == 0) || (result / i) == s);
 
   return result;
 }
@@ -421,11 +417,6 @@ constexpr Rank relative_rank(Color c, Square s) {
   return relative_rank(c, rank_of(s));
 }
 
-inline bool opposite_colors(Square s1, Square s2) {
-  int s = int(s1) ^ int(s2);
-  return ((s >> 3) ^ s) & 1;
-}
-
 constexpr Direction pawn_push(Color c) {
   return c == WHITE ? NORTH : SOUTH;
 }
@@ -450,7 +441,7 @@ constexpr PieceType promotion_type(Move m) {
   return PieceType(((m >> 12) & 3) + KNIGHT);
 }
 
-inline Move make_move(Square from, Square to) {
+constexpr Move make_move(Square from, Square to) {
   return Move((from << 6) + to);
 }
 

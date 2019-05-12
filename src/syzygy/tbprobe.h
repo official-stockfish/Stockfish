@@ -1,7 +1,7 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (c) 2013 Ronald de Man
-  Copyright (C) 2016-2018 Marco Costalba, Lucas Braesch
+  Copyright (C) 2016-2019 Marco Costalba, Lucas Braesch
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -49,9 +49,9 @@ extern int MaxCardinality;
 void init(const std::string& paths);
 WDLScore probe_wdl(Position& pos, ProbeState* result);
 int probe_dtz(Position& pos, ProbeState* result);
-bool root_probe(Position& pos, Search::RootMoves& rootMoves, Value& score);
-bool root_probe_wdl(Position& pos, Search::RootMoves& rootMoves, Value& score);
-void filter_root_moves(Position& pos, Search::RootMoves& rootMoves);
+bool root_probe(Position& pos, Search::RootMoves& rootMoves);
+bool root_probe_wdl(Position& pos, Search::RootMoves& rootMoves);
+void rank_root_moves(Position& pos, Search::RootMoves& rootMoves);
 
 inline std::ostream& operator<<(std::ostream& os, const WDLScore v) {
 

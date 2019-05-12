@@ -2,7 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2018 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2015-2019 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -43,7 +43,6 @@ struct StateInfo {
   int    castlingRights;
   int    rule50;
   int    pliesFromNull;
-  Score  psq;
   Square epSquare;
 
   // Not copied when making a move (will be recomputed anyhow)
@@ -52,7 +51,7 @@ struct StateInfo {
   Piece      capturedPiece;
   StateInfo* previous;
   Bitboard   blockersForKing[COLOR_NB];
-  Bitboard   pinnersForKing[COLOR_NB];
+  Bitboard   pinners[COLOR_NB];
   Bitboard   checkSquares[PIECE_TYPE_NB];
 };
 
@@ -96,17 +95,17 @@ public:
   template<PieceType Pt> int count() const;
   template<PieceType Pt> const Square* squares(Color c) const;
   template<PieceType Pt> Square square(Color c) const;
+  bool is_semiopen_file(Color c, File f) const;
 
   // Castling
-  int can_castle(Color c) const;
-  int can_castle(CastlingRight cr) const;
+  int castling_rights(Color c) const;
+  bool can_castle(CastlingRight cr) const;
   bool castling_impeded(CastlingRight cr) const;
   Square castling_rook_square(CastlingRight cr) const;
 
   // Checking
   Bitboard checkers() const;
-  Bitboard discovered_check_candidates() const;
-  Bitboard pinned_pieces(Color c) const;
+  Bitboard blockers_for_king(Color c) const;
   Bitboard check_squares(PieceType pt) const;
 
   // Attacks to/from a given square
@@ -130,6 +129,7 @@ public:
   // Piece specific
   bool pawn_passed(Color c, Square s) const;
   bool opposite_bishops() const;
+  int  pawns_on_same_color_squares(Color c, Square s) const;
 
   // Doing and undoing moves
   void do_move(Move m, StateInfo& newSt);
@@ -153,6 +153,8 @@ public:
   bool is_chess960() const;
   Thread* this_thread() const;
   bool is_draw(int ply) const;
+  bool has_game_cycle(int ply) const;
+  bool has_repeated() const;
   int rule50_count() const;
   Score psq_score() const;
   Value non_pawn_material(Color c) const;
@@ -187,10 +189,15 @@ private:
   Bitboard castlingPath[CASTLING_RIGHT_NB];
   int gamePly;
   Color sideToMove;
+  Score psq;
   Thread* thisThread;
   StateInfo* st;
   bool chess960;
 };
+
+namespace PSQT {
+  extern Score psq[PIECE_NB][SQUARE_NB];
+}
 
 extern std::ostream& operator<<(std::ostream& os, const Position& pos);
 
@@ -255,12 +262,16 @@ inline Square Position::ep_square() const {
   return st->epSquare;
 }
 
-inline int Position::can_castle(CastlingRight cr) const {
+inline bool Position::is_semiopen_file(Color c, File f) const {
+  return !(pieces(c, PAWN) & file_bb(f));
+}
+
+inline bool Position::can_castle(CastlingRight cr) const {
   return st->castlingRights & cr;
 }
 
-inline int Position::can_castle(Color c) const {
-  return st->castlingRights & ((WHITE_OO | WHITE_OOO) << (2 * c));
+inline int Position::castling_rights(Color c) const {
+  return st->castlingRights & (c == WHITE ? WHITE_CASTLING : BLACK_CASTLING);
 }
 
 inline bool Position::castling_impeded(CastlingRight cr) const {
@@ -296,12 +307,8 @@ inline Bitboard Position::checkers() const {
   return st->checkersBB;
 }
 
-inline Bitboard Position::discovered_check_candidates() const {
-  return st->blockersForKing[~sideToMove] & pieces(sideToMove);
-}
-
-inline Bitboard Position::pinned_pieces(Color c) const {
-  return st->blockersForKing[c] & pieces(c);
+inline Bitboard Position::blockers_for_king(Color c) const {
+  return st->blockersForKing[c];
 }
 
 inline Bitboard Position::check_squares(PieceType pt) const {
@@ -309,12 +316,16 @@ inline Bitboard Position::check_squares(PieceType pt) const {
 }
 
 inline bool Position::pawn_passed(Color c, Square s) const {
-  return !(pieces(~c, PAWN) & passed_pawn_mask(c, s));
+  return !(pieces(~c, PAWN) & passed_pawn_span(c, s));
 }
 
 inline bool Position::advanced_pawn_push(Move m) const {
   return   type_of(moved_piece(m)) == PAWN
-        && relative_rank(sideToMove, from_sq(m)) > RANK_4;
+        && relative_rank(sideToMove, to_sq(m)) > RANK_5;
+}
+
+inline int Position::pawns_on_same_color_squares(Color c, Square s) const {
+  return popcount(pieces(c, PAWN) & ((DarkSquares & s) ? DarkSquares : ~DarkSquares));
 }
 
 inline Key Position::key() const {
@@ -330,7 +341,7 @@ inline Key Position::material_key() const {
 }
 
 inline Score Position::psq_score() const {
-  return st->psq;
+  return psq;
 }
 
 inline Value Position::non_pawn_material(Color c) const {
@@ -387,6 +398,7 @@ inline void Position::put_piece(Piece pc, Square s) {
   index[s] = pieceCount[pc]++;
   pieceList[pc][index[s]] = s;
   pieceCount[make_piece(color_of(pc), ALL_PIECES)]++;
+  psq += PSQT::psq[pc][s];
 }
 
 inline void Position::remove_piece(Piece pc, Square s) {
@@ -404,20 +416,22 @@ inline void Position::remove_piece(Piece pc, Square s) {
   pieceList[pc][index[lastSquare]] = lastSquare;
   pieceList[pc][pieceCount[pc]] = SQ_NONE;
   pieceCount[make_piece(color_of(pc), ALL_PIECES)]--;
+  psq -= PSQT::psq[pc][s];
 }
 
 inline void Position::move_piece(Piece pc, Square from, Square to) {
 
   // index[from] is not updated and becomes stale. This works as long as index[]
   // is accessed just by known occupied squares.
-  Bitboard from_to_bb = SquareBB[from] ^ SquareBB[to];
-  byTypeBB[ALL_PIECES] ^= from_to_bb;
-  byTypeBB[type_of(pc)] ^= from_to_bb;
-  byColorBB[color_of(pc)] ^= from_to_bb;
+  Bitboard fromTo = square_bb(from) | square_bb(to);
+  byTypeBB[ALL_PIECES] ^= fromTo;
+  byTypeBB[type_of(pc)] ^= fromTo;
+  byColorBB[color_of(pc)] ^= fromTo;
   board[from] = NO_PIECE;
   board[to] = pc;
   index[to] = index[from];
   pieceList[pc][index[to]] = to;
+  psq += PSQT::psq[pc][to] - PSQT::psq[pc][from];
 }
 
 inline void Position::do_move(Move m, StateInfo& newSt) {

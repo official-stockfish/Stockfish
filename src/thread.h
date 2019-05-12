@@ -2,7 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2018 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2015-2019 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -32,7 +32,7 @@
 #include "pawns.h"
 #include "position.h"
 #include "search.h"
-#include "thread_win32.h"
+#include "thread_win32_osx.h"
 
 
 /// Thread class keeps together all the thread-related stuff. We use
@@ -46,7 +46,7 @@ class Thread {
   ConditionVariable cv;
   size_t idx;
   bool exit = false, searching = true; // Set before starting std::thread
-  std::thread stdThread;
+  NativeThread stdThread;
 
 public:
   explicit Thread(size_t);
@@ -60,9 +60,10 @@ public:
   Pawns::Table pawnsTable;
   Material::Table materialTable;
   Endgames endgames;
-  size_t PVIdx;
-  int selDepth, nmp_ply, nmp_odd;
-  std::atomic<uint64_t> nodes, tbHits;
+  size_t pvIdx, pvLast;
+  int selDepth, nmpMinPly;
+  Color nmpColor;
+  std::atomic<uint64_t> nodes, tbHits, bestMoveChanges;
 
   Position rootPos;
   Search::RootMoves rootMoves;
@@ -70,7 +71,8 @@ public:
   CounterMoveHistory counterMoves;
   ButterflyHistory mainHistory;
   CapturePieceToHistory captureHistory;
-  ContinuationHistory contHistory;
+  ContinuationHistory continuationHistory;
+  Score contempt;
 };
 
 
@@ -83,10 +85,11 @@ struct MainThread : public Thread {
   void search() override;
   void check_time();
 
-  bool failedLow;
-  double bestMoveChanges, previousTimeReduction;
+  double previousTimeReduction;
   Value previousScore;
   int callsCnt;
+  bool stopOnPonderhit;
+  std::atomic_bool ponder;
 };
 
 
@@ -104,7 +107,7 @@ struct ThreadPool : public std::vector<Thread*> {
   uint64_t nodes_searched() const { return accumulate(&Thread::nodes); }
   uint64_t tb_hits()        const { return accumulate(&Thread::tbHits); }
 
-  std::atomic_bool stop, ponder, stopOnPonderhit;
+  std::atomic_bool stop;
 
 private:
   StateListPtr setupStates;

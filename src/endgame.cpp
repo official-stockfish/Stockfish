@@ -2,7 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2018 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2015-2019 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -18,7 +18,6 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <algorithm>
 #include <cassert>
 
 #include "bitboard.h"
@@ -31,7 +30,7 @@ namespace {
 
   // Table used to drive the king towards the edge of the board
   // in KX vs K and KQ vs KR endgames.
-  const int PushToEdges[SQUARE_NB] = {
+  constexpr int PushToEdges[SQUARE_NB] = {
     100, 90, 80, 70, 70, 80, 90, 100,
      90, 70, 60, 50, 50, 60, 70,  90,
      80, 60, 40, 30, 30, 40, 60,  80,
@@ -44,23 +43,23 @@ namespace {
 
   // Table used to drive the king towards a corner square of the
   // right color in KBN vs K endgames.
-  const int PushToCorners[SQUARE_NB] = {
-    200, 190, 180, 170, 160, 150, 140, 130,
-    190, 180, 170, 160, 150, 140, 130, 140,
-    180, 170, 155, 140, 140, 125, 140, 150,
-    170, 160, 140, 120, 110, 140, 150, 160,
-    160, 150, 140, 110, 120, 140, 160, 170,
-    150, 140, 125, 140, 140, 155, 170, 180,
-    140, 130, 140, 150, 160, 170, 180, 190,
-    130, 140, 150, 160, 170, 180, 190, 200
+  constexpr int PushToCorners[SQUARE_NB] = {
+     6400, 6080, 5760, 5440, 5120, 4800, 4480, 4160,
+     6080, 5760, 5440, 5120, 4800, 4480, 4160, 4480,
+     5760, 5440, 4960, 4480, 4480, 4000, 4480, 4800,
+     5440, 5120, 4480, 3840, 3520, 4480, 4800, 5120,
+     5120, 4800, 4480, 3520, 3840, 4480, 5120, 5440,
+     4800, 4480, 4000, 4480, 4480, 4960, 5440, 5760,
+     4480, 4160, 4480, 4800, 5120, 5440, 5760, 6080,
+     4160, 4480, 4800, 5120, 5440, 5760, 6080, 6400
   };
 
   // Tables used to drive a piece towards or away from another piece
-  const int PushClose[8] = { 0, 0, 100, 80, 60, 40, 20, 10 };
-  const int PushAway [8] = { 0, 5, 20, 40, 60, 80, 90, 100 };
+  constexpr int PushClose[8] = { 0, 0, 100, 80, 60, 40, 20, 10 };
+  constexpr int PushAway [8] = { 0, 5, 20, 40, 60, 80, 90, 100 };
 
   // Pawn Rank based scaling factors used in KRPPKRP endgame
-  const int KRPPKRPScaleFactors[RANK_NB] = { 0, 9, 10, 14, 21, 44, 0, 0 };
+  constexpr int KRPPKRPScaleFactors[RANK_NB] = { 0, 9, 10, 14, 21, 44, 0, 0 };
 
 #ifndef NDEBUG
   bool verify_material(const Position& pos, Color c, Value npm, int pawnsCnt) {
@@ -77,37 +76,10 @@ namespace {
     if (file_of(pos.square<PAWN>(strongSide)) >= FILE_E)
         sq = Square(sq ^ 7); // Mirror SQ_H1 -> SQ_A1
 
-    if (strongSide == BLACK)
-        sq = ~sq;
-
-    return sq;
+    return strongSide == WHITE ? sq : ~sq;
   }
 
 } // namespace
-
-
-/// Endgames members definitions
-
-Endgames::Endgames() {
-
-  add<KPK>("KPK");
-  add<KNNK>("KNNK");
-  add<KBNK>("KBNK");
-  add<KRKP>("KRKP");
-  add<KRKB>("KRKB");
-  add<KRKN>("KRKN");
-  add<KQKP>("KQKP");
-  add<KQKR>("KQKR");
-
-  add<KNPK>("KNPK");
-  add<KNPKB>("KNPKB");
-  add<KRPKR>("KRPKR");
-  add<KRPKB>("KRPKB");
-  add<KBPKB>("KBPKB");
-  add<KBPKN>("KBPKN");
-  add<KBPPKB>("KBPPKB");
-  add<KRPPKRP>("KRPPKRP");
-}
 
 
 /// Mate with KX vs K. This function is used to evaluate positions with
@@ -144,7 +116,7 @@ Value Endgame<KXK>::operator()(const Position& pos) const {
 
 
 /// Mate with KBN vs K. This is similar to KX vs K, but we have to drive the
-/// defending king towards a corner square of the right color.
+/// defending king towards a corner square that our bishop attacks.
 template<>
 Value Endgame<KBNK>::operator()(const Position& pos) const {
 
@@ -155,19 +127,14 @@ Value Endgame<KBNK>::operator()(const Position& pos) const {
   Square loserKSq = pos.square<KING>(weakSide);
   Square bishopSq = pos.square<BISHOP>(strongSide);
 
-  // kbnk_mate_table() tries to drive toward corners A1 or H8. If we have a
-  // bishop that cannot reach the above squares, we flip the kings in order
-  // to drive the enemy toward corners A8 or H1.
-  if (opposite_colors(bishopSq, SQ_A1))
-  {
-      winnerKSq = ~winnerKSq;
-      loserKSq  = ~loserKSq;
-  }
+  // If our Bishop does not attack A1/H8, we flip the enemy king square
+  // to drive to opposite corners (A8/H1).
 
   Value result =  VALUE_KNOWN_WIN
                 + PushClose[distance(winnerKSq, loserKSq)]
-                + PushToCorners[loserKSq];
+                + PushToCorners[opposite_colors(bishopSq, SQ_A1) ? ~loserKSq : loserKSq];
 
+  assert(abs(result) < VALUE_MATE_IN_MAX_PLY);
   return strongSide == pos.side_to_move() ? result : -result;
 }
 
@@ -214,7 +181,7 @@ Value Endgame<KRKP>::operator()(const Position& pos) const {
   Value result;
 
   // If the stronger side's king is in front of the pawn, it's a win
-  if (wksq < psq && file_of(wksq) == file_of(psq))
+  if (forward_file_bb(WHITE, wksq) & psq)
       result = RookValueEg - distance(wksq, psq);
 
   // If the weaker side's king is too far from the pawn and the rook,
@@ -240,7 +207,7 @@ Value Endgame<KRKP>::operator()(const Position& pos) const {
 }
 
 
-/// KR vs KB. This is very simple, and always returns drawish scores.  The
+/// KR vs KB. This is very simple, and always returns drawish scores. The
 /// score is slightly bigger when the defending king is close to the edge.
 template<>
 Value Endgame<KRKB>::operator()(const Position& pos) const {
@@ -310,6 +277,21 @@ Value Endgame<KQKR>::operator()(const Position& pos) const {
                 - RookValueEg
                 + PushToEdges[loserKSq]
                 + PushClose[distance(winnerKSq, loserKSq)];
+
+  return strongSide == pos.side_to_move() ? result : -result;
+}
+
+
+/// KNN vs KP. Simply push the opposing king to the corner
+template<>
+Value Endgame<KNNKP>::operator()(const Position& pos) const {
+
+  assert(verify_material(pos, strongSide, 2 * KnightValueMg, 0));
+  assert(verify_material(pos, weakSide, VALUE_ZERO, 1));
+
+  Value result =  2 * KnightValueEg
+                - PawnValueEg
+                + PushToEdges[pos.square<KING>(weakSide)];
 
   return strongSide == pos.side_to_move() ? result : -result;
 }
@@ -631,29 +613,8 @@ ScaleFactor Endgame<KBPKB>::operator()(const Position& pos) const {
 
   // Case 2: Opposite colored bishops
   if (opposite_colors(strongBishopSq, weakBishopSq))
-  {
-      // We assume that the position is drawn in the following three situations:
-      //
-      //   a. The pawn is on rank 5 or further back.
-      //   b. The defending king is somewhere in the pawn's path.
-      //   c. The defending bishop attacks some square along the pawn's path,
-      //      and is at least three squares away from the pawn.
-      //
-      // These rules are probably not perfect, but in practice they work
-      // reasonably well.
+      return SCALE_FACTOR_DRAW;
 
-      if (relative_rank(strongSide, pawnSq) <= RANK_5)
-          return SCALE_FACTOR_DRAW;
-
-      Bitboard path = forward_file_bb(strongSide, pawnSq);
-
-      if (path & pos.pieces(weakSide, KING))
-          return SCALE_FACTOR_DRAW;
-
-      if (  (pos.attacks_from<BISHOP>(weakBishopSq) & path)
-          && distance(weakBishopSq, pawnSq) >= 3)
-          return SCALE_FACTOR_DRAW;
-  }
   return SCALE_FACTOR_NONE;
 }
 
@@ -674,8 +635,6 @@ ScaleFactor Endgame<KBPPKB>::operator()(const Position& pos) const {
   Square ksq = pos.square<KING>(weakSide);
   Square psq1 = pos.squares<PAWN>(strongSide)[0];
   Square psq2 = pos.squares<PAWN>(strongSide)[1];
-  Rank r1 = rank_of(psq1);
-  Rank r2 = rank_of(psq2);
   Square blockSq1, blockSq2;
 
   if (relative_rank(strongSide, psq1) > relative_rank(strongSide, psq2))
@@ -709,7 +668,7 @@ ScaleFactor Endgame<KBPPKB>::operator()(const Position& pos) const {
         && opposite_colors(ksq, wbsq)
         && (   bbsq == blockSq2
             || (pos.attacks_from<BISHOP>(blockSq2) & pos.pieces(weakSide, BISHOP))
-            || distance(r1, r2) >= 2))
+            || distance<Rank>(psq1, psq2) >= 2))
         return SCALE_FACTOR_DRAW;
 
     else if (   ksq == blockSq2
@@ -773,6 +732,9 @@ ScaleFactor Endgame<KNPK>::operator()(const Position& pos) const {
 /// Otherwise the position is drawn.
 template<>
 ScaleFactor Endgame<KNPKB>::operator()(const Position& pos) const {
+
+  assert(verify_material(pos, strongSide, KnightValueMg, 1));
+  assert(verify_material(pos, weakSide, BishopValueMg, 0));
 
   Square pawnSq = pos.square<PAWN>(strongSide);
   Square bishopSq = pos.square<BISHOP>(weakSide);
