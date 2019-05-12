@@ -323,8 +323,8 @@ void Thread::search() {
                           : -make_score(ct, ct / 2));
 
   // Iterative deepening loop until requested to stop or the target depth is reached
-  while (   (rootDepth += ONE_PLY) < DEPTH_MAX
-         && !Threads.stop
+  while (rootDepth = std::min(rootDepth + ONE_PLY, DEPTH_MAX - ONE_PLY),
+            !Threads.stop
          && !(Limits.depth && mainThread && rootDepth / ONE_PLY > Limits.depth))
   {
       // Age out PV variability metric
