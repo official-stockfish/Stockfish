@@ -214,7 +214,7 @@ enum Depth : int {
   DEPTH_QS_RECAPTURES = -5 * ONE_PLY,
 
   DEPTH_NONE = -6 * ONE_PLY,
-  DEPTH_MAX  = 15 * ONE_PLY
+  DEPTH_MAX  = MAX_PLY * ONE_PLY
 };
 
 static_assert(!(ONE_PLY & (ONE_PLY - 1)), "ONE_PLY is not a power of 2");
