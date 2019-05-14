@@ -38,7 +38,7 @@ namespace {
 
 
   // move_importance() is a sigmoid for scaling time usage according to ply.
-  constexpr double move_importance(int ply) {
+  double move_importance(int ply) {
     return 1 - (ply - 88) / std::hypot(44, ply - 88);
   }
 
