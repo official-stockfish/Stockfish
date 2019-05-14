@@ -37,12 +37,9 @@ namespace {
   constexpr double StealRatio = 0.34; // However we must not steal time from remaining moves over this ratio
 
 
-  // move_importance() is a ply-based skew-logistic function suggesting an
-  // amount of time to allocate to this particular move
-  double move_importance(int ply) {
-
-    int x = 88;
-    return 1 - (ply - x) / std::hypot(x / 2, ply - x);
+  // move_importance() is a sigmoid for scaling time usage according to ply.
+  constexpr double move_importance(int ply) {
+    return 1 - (ply - 88) / std::hypot(44, ply - 88);
   }
 
   template<TimeType T>
