@@ -46,6 +46,7 @@ struct StateInfo {
   Square epSquare;
 
   // Not copied when making a move (will be recomputed anyhow)
+  int repetition;
   Key        key;
   Bitboard   checkersBB;
   Piece      capturedPiece;
@@ -95,7 +96,7 @@ public:
   template<PieceType Pt> int count() const;
   template<PieceType Pt> const Square* squares(Color c) const;
   template<PieceType Pt> Square square(Color c) const;
-  int semiopen_file(Color c, File f) const;
+  bool is_semiopen_file(Color c, File f) const;
 
   // Castling
   int castling_rights(Color c) const;
@@ -262,7 +263,7 @@ inline Square Position::ep_square() const {
   return st->epSquare;
 }
 
-inline int Position::semiopen_file(Color c, File f) const {
+inline bool Position::is_semiopen_file(Color c, File f) const {
   return !(pieces(c, PAWN) & file_bb(f));
 }
 
@@ -321,7 +322,7 @@ inline bool Position::pawn_passed(Color c, Square s) const {
 
 inline bool Position::advanced_pawn_push(Move m) const {
   return   type_of(moved_piece(m)) == PAWN
-        && relative_rank(sideToMove, from_sq(m)) > RANK_4;
+        && relative_rank(sideToMove, to_sq(m)) > RANK_5;
 }
 
 inline int Position::pawns_on_same_color_squares(Color c, Square s) const {
