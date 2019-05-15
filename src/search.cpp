@@ -149,7 +149,7 @@ namespace {
 void Search::init() {
 
   for (int i = 1; i < MAX_MOVES; ++i)
-      Reductions[i] = int(1024 * std::log(i) / std::sqrt(1.95));
+     Reductions[i] = int(733.3 * std::log(i));
 }
 
 
