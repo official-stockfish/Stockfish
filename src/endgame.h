@@ -95,10 +95,12 @@ struct Endgame : public EndgameBase<T> {
 /// base objects in two std::map. We use polymorphism to invoke the actual
 /// endgame function by calling its virtual operator().
 
-class Endgames {
+namespace Endgames {
 
   template<typename T> using Ptr = std::unique_ptr<EndgameBase<T>>;
   template<typename T> using Map = std::map<Key, Ptr<T>>;
+  
+  extern std::pair<Map<Value>, Map<ScaleFactor>> maps;
 
   template<typename T>
   Map<T>& map() {
@@ -113,35 +115,12 @@ class Endgames {
     map<T>()[Position().set(code, BLACK, &st).material_key()] = Ptr<T>(new Endgame<E>(BLACK));
   }
 
-  std::pair<Map<Value>, Map<ScaleFactor>> maps;
-
-public:
-  Endgames() {
-
-    add<KPK>("KPK");
-    add<KNNK>("KNNK");
-    add<KBNK>("KBNK");
-    add<KRKP>("KRKP");
-    add<KRKB>("KRKB");
-    add<KRKN>("KRKN");
-    add<KQKP>("KQKP");
-    add<KQKR>("KQKR");
-    add<KNNKP>("KNNKP");
-
-    add<KNPK>("KNPK");
-    add<KNPKB>("KNPKB");
-    add<KRPKR>("KRPKR");
-    add<KRPKB>("KRPKB");
-    add<KBPKB>("KBPKB");
-    add<KBPKN>("KBPKN");
-    add<KBPPKB>("KBPPKB");
-    add<KRPPKRP>("KRPPKRP");
-  }
-
   template<typename T>
   const EndgameBase<T>* probe(Key key) {
     return map<T>().count(key) ? map<T>()[key].get() : nullptr;
   }
-};
+
+  void init();
+}
 
 #endif // #ifndef ENDGAME_H_INCLUDED
