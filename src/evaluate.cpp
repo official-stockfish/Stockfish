@@ -719,9 +719,7 @@ namespace {
     behind |= shift<Down+Down>(behind);
 
     int bonus = popcount(safe) + popcount(behind & safe);
-    int weight =  pos.count<ALL_PIECES>(Us)
-               - (16 - pos.count<PAWN>()) / 4;
-
+    int weight = pos.count<ALL_PIECES>(Us) - 1;
     Score score = make_score(bonus * weight * weight / 16, 0);
 
     if (T)
