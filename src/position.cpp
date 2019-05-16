@@ -383,6 +383,12 @@ void Position::set_state(StateInfo* si) const {
       Square s = pop_lsb(&b);
       Piece pc = piece_on(s);
       si->key ^= Zobrist::psq[pc][s];
+
+      if (type_of(pc) == PAWN)
+          si->pawnKey ^= Zobrist::psq[pc][s];
+
+      else if (type_of(pc) != PAWN && type_of(pc) != KING)
+          si->nonPawnMaterial[color_of(pc)] += PieceValue[MG][pc];
   }
 
   if (si->epSquare != SQ_NONE)
@@ -393,20 +399,9 @@ void Position::set_state(StateInfo* si) const {
 
   si->key ^= Zobrist::castling[si->castlingRights];
 
-  for (Bitboard b = pieces(PAWN); b; )
-  {
-      Square s = pop_lsb(&b);
-      si->pawnKey ^= Zobrist::psq[piece_on(s)][s];
-  }
-
   for (Piece pc : Pieces)
-  {
-      if (type_of(pc) != PAWN && type_of(pc) != KING)
-          si->nonPawnMaterial[color_of(pc)] += pieceCount[pc] * PieceValue[MG][pc];
-
       for (int cnt = 0; cnt < pieceCount[pc]; ++cnt)
           si->materialKey ^= Zobrist::psq[pc][cnt];
-  }
 }
 
 
@@ -1194,16 +1189,13 @@ bool Position::has_game_cycle(int ply) const {
 
           if (!(between_bb(s1, s2) & pieces()))
           {
-              // In the cuckoo table, both moves Rc1c5 and Rc5c1 are stored in the same
-              // location. We select the legal one by reversing the move variable if necessary.
-              if (empty(s1))
-                  move = make_move(s2, s1);
-
               if (ply > i)
                   return true;
 
               // For nodes before or at the root, check that the move is a repetition one
-              // rather than a move to the current position
+              // rather than a move to the current position.
+              // In the cuckoo table, both moves Rc1c5 and Rc5c1 are stored in the same
+              // location, so we have to select which square to check.
               if (color_of(piece_on(empty(s1) ? s2 : s1)) != side_to_move())
                   continue;
 
