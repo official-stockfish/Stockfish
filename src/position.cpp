@@ -1189,16 +1189,13 @@ bool Position::has_game_cycle(int ply) const {
 
           if (!(between_bb(s1, s2) & pieces()))
           {
-              // In the cuckoo table, both moves Rc1c5 and Rc5c1 are stored in the same
-              // location. We select the legal one by reversing the move variable if necessary.
-              if (empty(s1))
-                  move = make_move(s2, s1);
-
               if (ply > i)
                   return true;
 
               // For nodes before or at the root, check that the move is a repetition one
-              // rather than a move to the current position
+              // rather than a move to the current position.
+              // In the cuckoo table, both moves Rc1c5 and Rc5c1 are stored in the same
+              // location, so we have to select which square to check.
               if (color_of(piece_on(empty(s1) ? s2 : s1)) != side_to_move())
                   continue;
 
