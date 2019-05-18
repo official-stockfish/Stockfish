@@ -149,7 +149,7 @@ namespace {
 void Search::init() {
 
   for (int i = 1; i < MAX_MOVES; ++i)
-     Reductions[i] = int(733.3 * std::log(i));
+      Reductions[i] = int(733.3 * std::log(i));
 }
 
 
@@ -240,17 +240,13 @@ void MainThread::search() {
           minScore = std::min(minScore, th->rootMoves[0].score);
 
       // Vote according to score and depth, and select the best thread
-      int64_t bestVote = 0;
       for (Thread* th : Threads)
       {
           votes[th->rootMoves[0].pv[0]] +=
-               (th->rootMoves[0].score - minScore + 14) * int(th->completedDepth);
+              (th->rootMoves[0].score - minScore + 14) * int(th->completedDepth);
 
-          if (votes[th->rootMoves[0].pv[0]] > bestVote)
-          {
-              bestVote = votes[th->rootMoves[0].pv[0]];
+          if (votes[th->rootMoves[0].pv[0]] > votes[bestThread->rootMoves[0].pv[0]])
               bestThread = th;
-          }
       }
   }
 
@@ -589,10 +585,10 @@ namespace {
     // starts with statScore = 0. Later grandchildren start with the last calculated
     // statScore of the previous grandchild. This influences the reduction rules in
     // LMR which are based on the statScore of parent position.
-	if (rootNode)
-		(ss + 4)->statScore = 0;
-	else
-		(ss + 2)->statScore = 0;
+    if (rootNode)
+        (ss + 4)->statScore = 0;
+    else
+        (ss + 2)->statScore = 0;
 
     // Step 4. Transposition table lookup. We don't want the score of a partial
     // search to overwrite a previous full search TT value, so we use a different
@@ -911,7 +907,7 @@ moves_loop: // When in check, search starts from here
               extension = ONE_PLY;
               singularExtensionLMRmultiplier++;
               if (value < singularBeta - std::min(3 * depth / ONE_PLY, 39))
-              	  singularExtensionLMRmultiplier++;
+                  singularExtensionLMRmultiplier++;
               }
 
           // Multi-cut pruning
@@ -1059,7 +1055,7 @@ moves_loop: // When in check, search starts from here
               r -= ss->statScore / 20000 * ONE_PLY;
           }
 
-          Depth d = std::max(newDepth - std::max(r, DEPTH_ZERO), ONE_PLY);
+          Depth d = clamp(newDepth - r, ONE_PLY, newDepth);
 
           value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, d, true);
 

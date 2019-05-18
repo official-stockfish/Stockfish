@@ -214,6 +214,7 @@ enum Depth : int {
   DEPTH_QS_RECAPTURES = -5 * ONE_PLY,
 
   DEPTH_NONE = -6 * ONE_PLY,
+  DEPTH_OFS  = DEPTH_NONE,
   DEPTH_MAX  = MAX_PLY * ONE_PLY
 };
 
