@@ -528,7 +528,7 @@ namespace {
     assert(!(PvNode && cutNode));
     assert(depth / ONE_PLY * ONE_PLY == depth);
 
-    Move pv[MAX_PLY+1], capturesSearched[32], quietsSearched[64];
+    Move pv[MAX_PLY+1], capturesSearched[MAX_MOVES], quietsSearched[MAX_MOVES];
     StateInfo st;
     TTEntry* tte;
     Key posKey;
@@ -1149,10 +1149,9 @@ moves_loop: // When in check, search starts from here
 
       if (move != bestMove)
       {
-          if (captureOrPromotion && captureCount < 32)
+          if (captureOrPromotion)
               capturesSearched[captureCount++] = move;
-
-          else if (!captureOrPromotion && quietCount < 64)
+          else
               quietsSearched[quietCount++] = move;
       }
     }
