@@ -71,7 +71,7 @@ namespace {
   int Reductions[MAX_MOVES]; // [depth or moveNumber]
 
   Depth reduction(bool i, Depth d, int mn) {
-    int r = Reductions[d / ONE_PLY] * Reductions[mn] / 1024;
+    int r = Reductions[d / ONE_PLY] * Reductions[mn];
     return ((r + 512) / 1024 + (!i && r > 1024)) * ONE_PLY;
   }
 
@@ -149,7 +149,7 @@ namespace {
 void Search::init() {
 
   for (int i = 1; i < MAX_MOVES; ++i)
-     Reductions[i] = int(733.3 * std::log(i));
+     Reductions[i] = int(22.9 * std::log(i));
 }
 
 
