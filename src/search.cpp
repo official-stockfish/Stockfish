@@ -61,22 +61,12 @@ namespace {
   // Different node types, used as a template parameter
   enum NodeType { NonPV, PV };
 
-  // Razor and futility margins
-  constexpr int RazorMargin = 600;
-  Value futility_margin(Depth d, bool improving) {
-    return Value((175 - 50 * improving) * d / ONE_PLY);
-  }
-
   // Reductions lookup table, initialized at startup
   int Reductions[MAX_MOVES]; // [depth or moveNumber]
 
   Depth reduction(bool i, Depth d, int mn) {
     int r = Reductions[d / ONE_PLY] * Reductions[mn] / 1024;
     return ((r + 512) / 1024 + (!i && r > 1024)) * ONE_PLY;
-  }
-
-  constexpr int futility_move_count(bool improving, int depth) {
-    return (5 + depth * depth) * (1 + improving) / 2;
   }
 
   // History and stats update bonus, based on depth
@@ -723,7 +713,7 @@ namespace {
     // Step 7. Razoring (~2 Elo)
     if (   !rootNode // The required rootNode PV handling is not available in qsearch
         &&  depth < 2 * ONE_PLY
-        &&  eval <= alpha - RazorMargin)
+        &&  eval <= alpha - 600)
         return qsearch<NT>(pos, ss, alpha, beta);
 
     improving =   ss->staticEval >= (ss-2)->staticEval
@@ -732,7 +722,7 @@ namespace {
     // Step 8. Futility pruning: child node (~30 Elo)
     if (   !PvNode
         &&  depth < 7 * ONE_PLY
-        &&  eval - futility_margin(depth, improving) >= beta
+        &&  eval >= beta + (175 - 50 * improving) * depth / ONE_PLY
         &&  eval < VALUE_KNOWN_WIN) // Do not return unproven wins
         return eval;
 
@@ -954,7 +944,8 @@ moves_loop: // When in check, search starts from here
           && bestValue > VALUE_MATED_IN_MAX_PLY)
       {
           // Skip quiet moves if movecount exceeds our FutilityMoveCount threshold
-          moveCountPruning = moveCount >= futility_move_count(improving, depth / ONE_PLY);
+          moveCountPruning =
+              moveCount >= (5 + depth / ONE_PLY * depth / ONE_PLY) * (1 + improving) / 2;
 
           if (   !captureOrPromotion
               && !givesCheck
