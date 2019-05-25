@@ -387,7 +387,7 @@ void Position::set_state(StateInfo* si) const {
       if (type_of(pc) == PAWN)
           si->pawnKey ^= Zobrist::psq[pc][s];
 
-      else if (type_of(pc) != PAWN && type_of(pc) != KING)
+      else if (type_of(pc) != KING)
           si->nonPawnMaterial[color_of(pc)] += PieceValue[MG][pc];
   }
 
