@@ -96,7 +96,7 @@ public:
   template<PieceType Pt> int count() const;
   template<PieceType Pt> const Square* squares(Color c) const;
   template<PieceType Pt> Square square(Color c) const;
-  bool is_semiopen_file(Color c, File f) const;
+  bool is_on_semiopen_file(Color c, Square s) const;
 
   // Castling
   int castling_rights(Color c) const;
@@ -263,8 +263,8 @@ inline Square Position::ep_square() const {
   return st->epSquare;
 }
 
-inline bool Position::is_semiopen_file(Color c, File f) const {
-  return !(pieces(c, PAWN) & file_bb(f));
+inline bool Position::is_on_semiopen_file(Color c, Square s) const {
+  return !(pieces(c, PAWN) & file_bb(s));
 }
 
 inline bool Position::can_castle(CastlingRight cr) const {
