@@ -86,7 +86,6 @@ namespace {
     {
         assert(pos.piece_on(s) == make_piece(Us, PAWN));
 
-        File f = file_of(s);
         Rank r = relative_rank(Us, s);
 
         e->pawnAttacksSpan[Us] |= pawn_attack_span(Us, s);
