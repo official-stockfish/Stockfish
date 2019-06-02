@@ -437,14 +437,14 @@ void Thread::search() {
          lastBestMoveDepth = rootDepth;
       }
 
-      // Have we found a "mate in x"?
-      if (   Limits.mate
-          && bestValue >= VALUE_MATE_IN_MAX_PLY
-          && VALUE_MATE - bestValue <= 2 * Limits.mate)
-          Threads.stop = true;
-
       if (!mainThread)
           continue;
+
+      // Have we found a "mate in x"?
+      if (   Limits.mate
+          && rootMoves[0].score >= VALUE_MATE_IN_MAX_PLY
+          && VALUE_MATE - rootMoves[0].score <= 2 * Limits.mate)
+          Threads.stop = true;
 
       // If skill level is enabled and time is up, pick a sub-optimal best move
       if (skill.enabled() && skill.time_to_pick(rootDepth))
