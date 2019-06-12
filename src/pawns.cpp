@@ -67,6 +67,8 @@ namespace {
 
     constexpr Color     Them = (Us == WHITE ? BLACK : WHITE);
     constexpr Direction Up   = (Us == WHITE ? NORTH : SOUTH);
+    constexpr Bitboard OutpostRanksThem = (Us == WHITE ? Rank5BB | Rank4BB | Rank3BB
+                                                       : Rank4BB | Rank5BB | Rank6BB);
 
     Bitboard b, neighbours, stoppers, doubled, support, phalanx;
     Bitboard lever, leverPush;
@@ -77,10 +79,20 @@ namespace {
 
     Bitboard ourPawns   = pos.pieces(  Us, PAWN);
     Bitboard theirPawns = pos.pieces(Them, PAWN);
+    const Bitboard pa = pawn_attacks_bb<Us>(ourPawns);
+    const Bitboard noPawnAttacksSpan = ~(pa | shift<Up>(pa) | shift<Up+Up>(pa))
+                                     & OutpostRanksThem;
 
-    e->passedPawns[Us] = e->pawnAttacksSpan[Us] = 0;
+    e->passedPawns[Us]   = 0;
     e->kingSquares[Us]   = SQ_NONE;
-    e->pawnAttacks[Us]   = pawn_attacks_bb<Us>(ourPawns);
+
+    e->pawnAttacks[Us]   = pa;
+    Us == WHITE
+        ? e->outpostSquares[Us]  = pa
+        : e->outpostSquares[Us] &= pa;
+    Us == WHITE
+        ? e->outpostSquares[Them]  = noPawnAttacksSpan
+        : e->outpostSquares[Them] &= noPawnAttacksSpan;
 
     // Loop through all pawns of the current color and score each pawn
     while ((s = *pl++) != SQ_NONE)
@@ -88,8 +100,6 @@ namespace {
         assert(pos.piece_on(s) == make_piece(Us, PAWN));
 
         Rank r = relative_rank(Us, s);
-
-        e->pawnAttacksSpan[Us] |= pawn_attack_span(Us, s);
 
         // Flag the pawn
         opposed    = theirPawns & forward_file_bb(Us, s);
@@ -161,8 +171,8 @@ Entry* probe(const Position& pos) {
       return e;
 
   e->key = key;
-  e->scores[WHITE] = evaluate<WHITE>(pos, e);
-  e->scores[BLACK] = evaluate<BLACK>(pos, e);
+  e->scores[WHITE] = evaluate<WHITE>(pos, e); // sequenced before
+  e->scores[BLACK] = evaluate<BLACK>(pos, e); // sequenced after
 
   return e;
 }
