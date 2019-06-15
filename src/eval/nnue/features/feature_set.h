@@ -71,7 +71,7 @@ class FeatureSetBase {
   template <typename IndexListType>
   static void AppendActiveIndices(
       const Position& pos, TriggerEvent trigger, IndexListType active[2]) {
-    for (const auto perspective : COLOR) {
+    for (const auto perspective : Colors) {
       Derived::CollectActiveIndices(
           pos, trigger, perspective, &active[perspective]);
     }
@@ -85,7 +85,7 @@ class FeatureSetBase {
     const auto& dp = pos.state()->dirtyPiece;
     if (dp.dirty_num == 0) return;
 
-    for (const auto perspective : COLOR) {
+    for (const auto perspective : Colors) {
       reset[perspective] = false;
       switch (trigger) {
         case TriggerEvent::kNone:
@@ -105,7 +105,7 @@ class FeatureSetBase {
           reset[perspective] = true;
           break;
         default:
-          ASSERT_LV5(false);
+          assert(false);
           break;
       }
       if (reset[perspective]) {

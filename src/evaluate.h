@@ -34,6 +34,181 @@ constexpr Value Tempo = Value(28); // Must be visible to search
 std::string trace(const Position& pos);
 
 Value evaluate(const Position& pos);
+
+// --- 評価関数で使う定数 KPP(玉と任意2駒)のPに相当するenum
+
+// (評価関数の実験のときには、BonaPieceは自由に定義したいのでここでは定義しない。)
+
+
+// BonanzaでKKP/KPPと言うときのP(Piece)を表現する型。
+// Σ KPPを求めるときに、39の地点の歩のように、升×駒種に対して一意な番号が必要となる。
+enum BonaPiece : int32_t
+{
+	// f = friend(≒先手)の意味。e = enemy(≒後手)の意味
+
+	// 未初期化の時の値
+	BONA_PIECE_NOT_INIT = -1,
+
+	// 無効な駒。駒落ちのときなどは、不要な駒をここに移動させる。
+	BONA_PIECE_ZERO = 0,
+
+	fe_hand_end = BONA_PIECE_ZERO + 1,
+
+    // Bonanzaのように盤上のありえない升の歩や香の番号を詰めない。
+	// 理由1) 学習のときに相対PPで1段目に香がいるときがあって、それを逆変換において正しく表示するのが難しい。
+	// 理由2) 縦型BitboardだとSquareからの変換に困る。
+
+	// --- 盤上の駒
+	f_pawn = fe_hand_end,
+	e_pawn = f_pawn + SQUARE_NB,
+	f_knight = e_pawn + SQUARE_NB,
+	e_knight = f_knight + SQUARE_NB,
+	f_bishop = e_knight + SQUARE_NB,
+	e_bishop = f_bishop + SQUARE_NB,
+	f_rook = e_bishop + SQUARE_NB,
+	e_rook = f_rook + SQUARE_NB,
+	f_queen = e_rook + SQUARE_NB,
+	e_queen = f_queen + SQUARE_NB,
+	fe_end = e_queen + SQUARE_NB,
+	f_king = fe_end,
+	e_king = f_king + SQUARE_NB,
+	fe_end2 = e_king + SQUARE_NB, // 玉も含めた末尾の番号。
+};
+
+
+// BonaPieceを後手から見たとき(先手の39の歩を後手から見ると後手の71の歩)の番号とを
+// ペアにしたものをExtBonaPiece型と呼ぶことにする。
+union ExtBonaPiece
+{
+	struct {
+		BonaPiece fw; // from white
+		BonaPiece fb; // from black
+	};
+	BonaPiece from[2];
+
+	ExtBonaPiece() {}
+	ExtBonaPiece(BonaPiece fw_, BonaPiece fb_) : fw(fw_), fb(fb_) {}
+};
+
+// 駒が今回の指し手によってどこからどこに移動したのかの情報。
+// 駒はExtBonaPiece表現であるとする。
+struct ChangedBonaPiece
+{
+	ExtBonaPiece old_piece;
+	ExtBonaPiece new_piece;
+};
+
+// KPPテーブルの盤上の駒pcに対応するBonaPieceを求めるための配列。
+// 例)
+// BonaPiece fb = kpp_board_index[pc].fb + sq; // 先手から見たsqにあるpcに対応するBonaPiece
+// BonaPiece fw = kpp_board_index[pc].fw + sq; // 後手から見たsqにあるpcに対応するBonaPiece
+extern ExtBonaPiece kpp_board_index[PIECE_NB];
+
+// 評価関数で用いる駒リスト。どの駒(PieceNumber)がどこにあるのか(BonaPiece)を保持している構造体
+struct EvalList
+{
+	// 評価関数(FV38型)で用いる駒番号のリスト
+	BonaPiece* piece_list_fw() const { return const_cast<BonaPiece*>(pieceListFw); }
+	BonaPiece* piece_list_fb() const { return const_cast<BonaPiece*>(pieceListFb); }
+
+	// 指定されたpiece_noの駒をExtBonaPiece型に変換して返す。
+	ExtBonaPiece bona_piece(PieceNumber piece_no) const
+	{
+		ExtBonaPiece bp;
+		bp.fw = pieceListFw[piece_no];
+		bp.fb = pieceListFb[piece_no];
+		return bp;
+	}
+
+	// 盤上のsqの升にpiece_noのpcの駒を配置する
+	void put_piece(PieceNumber piece_no, Square sq, Piece pc) {
+		set_piece_on_board(piece_no, BonaPiece(kpp_board_index[pc].fw + sq), BonaPiece(kpp_board_index[pc].fb + inverse(sq)), sq);
+	}
+
+	// 盤上のある升sqに対応するPieceNumberを返す。
+	PieceNumber piece_no_of_board(Square sq) const { return piece_no_list_board[sq]; }
+
+	// pieceListを初期化する。
+	// 駒落ちに対応させる時のために、未使用の駒の値はBONA_PIECE_ZEROにしておく。
+	// 通常の評価関数を駒落ちの評価関数として流用できる。
+	// piece_no_listのほうはデバッグが捗るようにPIECE_NUMBER_NBで初期化。
+	void clear()
+	{
+
+		for (auto& p : pieceListFw)
+			p = BONA_PIECE_ZERO;
+
+		for (auto& p : pieceListFb)
+			p = BONA_PIECE_ZERO;
+
+		for (auto& v : piece_no_list_board)
+			v = PIECE_NUMBER_NB;
+	}
+
+	// list長が可変のときは、add()/remove()をサポートする。
+	// DirtyPieceのほうから呼び出される。
+
+	// listにadd()する。
+	void add(BonaPiece fb);
+
+	// listからremoveする。
+	void remove(BonaPiece fb);
+
+	// 内部で保持しているpieceListFb[]が正しいBonaPieceであるかを検査する。
+	// 注 : デバッグ用。遅い。
+	bool is_valid(const Position& pos);
+
+
+protected:
+
+	// 盤上sqにあるpiece_noの駒のBonaPieceがfb,fwであることを設定する。
+	inline void set_piece_on_board(PieceNumber piece_no, BonaPiece fw, BonaPiece fb, Square sq)
+	{
+		assert(is_ok(piece_no));
+		pieceListFw[piece_no] = fw;
+		pieceListFb[piece_no] = fb;
+		piece_no_list_board[sq] = piece_no;
+	}
+
+	// 駒リスト。駒番号(PieceNumber)いくつの駒がどこにあるのか(BonaPiece)を示す。FV38などで用いる。
+
+	// 駒リストの長さ
+		// 38固定
+public:
+	int length() const { return PIECE_NUMBER_KING; }
+
+	// VPGATHERDDを使う都合、4の倍数でなければならない。
+	// また、KPPT型評価関数などは、39,40番目の要素がゼロであることを前提とした
+	// アクセスをしている箇所があるので注意すること。
+	static const int MAX_LENGTH = 40;
+private:
+
+	BonaPiece pieceListFw[MAX_LENGTH];
+	BonaPiece pieceListFb[MAX_LENGTH];
+
+	// 盤上の駒に対して、その駒番号(PieceNumber)を保持している配列
+	// 玉がSQ_NBに移動しているとき用に+1まで保持しておくが、
+	// SQ_NBの玉を移動させないので、この値を使うことはないはず。
+	PieceNumber piece_no_list_board[SQUARE_NB_PLUS1];
+};
+
+// 評価値の差分計算の管理用
+// 前の局面から移動した駒番号を管理するための構造体
+// 動く駒は、最大で2個。
+struct DirtyPiece
+{
+	// その駒番号の駒が何から何に変わったのか
+	Eval::ChangedBonaPiece changed_piece[2];
+
+	// dirtyになった駒番号
+	PieceNumber pieceNo[2];
+
+	// dirtyになった個数。
+	// null moveだと0ということもありうる。
+	// 動く駒と取られる駒とで最大で2つ。
+	int dirty_num;
+
+};
 }
 
 #endif // #ifndef EVALUATE_H_INCLUDED

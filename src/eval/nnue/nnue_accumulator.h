@@ -3,8 +3,6 @@
 #ifndef _NNUE_ACCUMULATOR_H_
 #define _NNUE_ACCUMULATOR_H_
 
-#include "../../config.h"
-
 #if defined(EVAL_NNUE)
 
 #include "nnue_architecture.h"

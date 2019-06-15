@@ -142,9 +142,9 @@ class FeatureTransformer {
       }
 #else
       for (IndexType j = 0; j < kHalfDimensions; ++j) {
-        BiasType sum = accumulation[perspectives[p]][0][j];
+        BiasType sum = accumulation[static_cast<int>(perspectives[p])][0][j];
         for (IndexType i = 1; i < kRefreshTriggers.size(); ++i) {
-          sum += accumulation[perspectives[p]][i][j];
+          sum += accumulation[static_cast<int>(perspectives[p])][i][j];
         }
         output[offset + j] = static_cast<OutputType>(
             std::max<int>(0, std::min<int>(127, sum)));
@@ -161,7 +161,7 @@ class FeatureTransformer {
       Features::IndexList active_indices[2];
       RawFeatures::AppendActiveIndices(pos, kRefreshTriggers[i],
                                        active_indices);
-      for (const auto perspective : COLOR) {
+      for (const auto perspective : Colors) {
         if (i == 0) {
           std::memcpy(accumulator.accumulation[perspective][i], biases_,
                       kHalfDimensions * sizeof(BiasType));
@@ -217,7 +217,7 @@ class FeatureTransformer {
       bool reset[2];
       RawFeatures::AppendChangedIndices(pos, kRefreshTriggers[i],
                                         removed_indices, added_indices, reset);
-      for (const auto perspective : COLOR) {
+      for (const auto perspective : Colors) {
 #if defined(USE_AVX2)
         constexpr IndexType kNumChunks = kHalfDimensions / (kSimdWidth / 2);
         auto accumulation = reinterpret_cast<__m256i*>(

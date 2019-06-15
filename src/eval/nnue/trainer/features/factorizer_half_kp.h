@@ -43,7 +43,7 @@ class Factorizer<HalfKP<AssociatedKing>> {
     // kFeaturesHalfKP
     {true, FeatureType::kDimensions},
     // kFeaturesHalfK
-    {true, SQ_NB},
+    {true, SQUARE_NB},
     // kFeaturesP
     {true, Factorizer<P>::GetDimensions()},
     // kFeaturesHalfRelativeKP

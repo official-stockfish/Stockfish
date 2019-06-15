@@ -29,6 +29,8 @@
 #include "bitboard.h"
 #include "types.h"
 
+#include "eval/nnue/nnue_accumulator.h"
+
 
 /// StateInfo struct stores information needed to restore a Position object to
 /// its previous state when we retract a move. Whenever a move is made on the
@@ -54,6 +56,11 @@ struct StateInfo {
   Bitboard   blockersForKing[COLOR_NB];
   Bitboard   pinners[COLOR_NB];
   Bitboard   checkSquares[PIECE_TYPE_NB];
+
+  Eval::NNUE::Accumulator accumulator;
+
+  // 評価値の差分計算の管理用
+  Eval::DirtyPiece dirtyPiece;
 };
 
 /// A list to keep track of the position states along the setup moves (from the
@@ -165,6 +172,15 @@ public:
   bool pos_is_ok() const;
   void flip();
 
+  // --- StateInfo
+
+  // 現在の局面に対応するStateInfoを返す。
+  // たとえば、state()->capturedPieceであれば、前局面で捕獲された駒が格納されている。
+  StateInfo* state() const { return st; }
+
+  // 評価関数で使うための、どの駒番号の駒がどこにあるかなどの情報。
+  const Eval::EvalList* eval_list() const { return &evalList; }
+
 private:
   // Initialization helpers (used while setting up a position)
   void set_castling_right(Color c, Square rfrom);
@@ -194,6 +210,9 @@ private:
   Thread* thisThread;
   StateInfo* st;
   bool chess960;
+
+  // 評価関数で用いる駒のリスト
+  Eval::EvalList evalList;
 };
 
 namespace PSQT {

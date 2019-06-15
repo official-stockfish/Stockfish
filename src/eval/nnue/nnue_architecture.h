@@ -8,6 +8,7 @@
 // 入力特徴量とネットワーク構造が定義されたヘッダをincludeする
 
 // KP256型を使いたいときは、これを事前にdefineする。
+#define EVAL_NNUE_KP256
 #if defined(EVAL_NNUE_KP256)
 #include "architectures/k-p_256x2-32-32.h"
 #else // #if defined(EVAL_NNUE_HALFKP256)

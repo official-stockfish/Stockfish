@@ -26,7 +26,7 @@ class HalfKP {
       0x5D69D5B9u ^ (AssociatedKing == Side::kFriend);
   // 特徴量の次元数
   static constexpr IndexType kDimensions =
-      static_cast<IndexType>(SQ_NB) * static_cast<IndexType>(fe_end);
+      static_cast<IndexType>(SQUARE_NB) * static_cast<IndexType>(fe_end);
   // 特徴量のうち、同時に値が1となるインデックスの数の最大値
   static constexpr IndexType kMaxActiveDimensions = PIECE_NUMBER_KING;
   // 差分計算の代わりに全計算を行うタイミング

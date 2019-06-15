@@ -55,6 +55,8 @@ bool ReadParameters(std::istream& stream);
 // 評価関数パラメータを書き込む
 bool WriteParameters(std::ostream& stream);
 
+Value evaluate(const Position& pos);
+
 }  // namespace NNUE
 
 }  // namespace Eval

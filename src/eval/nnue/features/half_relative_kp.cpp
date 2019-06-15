@@ -17,8 +17,8 @@ inline IndexType HalfRelativeKP<AssociatedKing>::MakeIndex(
     Square sq_k, BonaPiece p) {
   constexpr IndexType W = kBoardWidth;
   constexpr IndexType H = kBoardHeight;
-  const IndexType piece_index = (p - fe_hand_end) / SQ_NB;
-  const Square sq_p = static_cast<Square>((p - fe_hand_end) % SQ_NB);
+  const IndexType piece_index = (p - fe_hand_end) / SQUARE_NB;
+  const Square sq_p = static_cast<Square>((p - fe_hand_end) % SQUARE_NB);
   const IndexType relative_file = file_of(sq_p) - file_of(sq_k) + (W / 2);
   const IndexType relative_rank = rank_of(sq_p) - rank_of(sq_k) + (H / 2);
   return H * W * piece_index + H * relative_file + relative_rank;
@@ -35,7 +35,7 @@ inline void HalfRelativeKP<AssociatedKing>::GetPieces(
   const PieceNumber target = (AssociatedKing == Side::kFriend) ?
       static_cast<PieceNumber>(PIECE_NUMBER_KING + perspective) :
       static_cast<PieceNumber>(PIECE_NUMBER_KING + ~perspective);
-  *sq_target_k = static_cast<Square>(((*pieces)[target] - f_king) % SQ_NB);
+  *sq_target_k = static_cast<Square>(((*pieces)[target] - f_king) % SQUARE_NB);
 }
 
 // 特徴量のうち、値が1であるインデックスのリストを取得する

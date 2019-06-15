@@ -20,8 +20,8 @@ void K::AppendActiveIndices(
   const BonaPiece* pieces = (perspective == BLACK) ?
       pos.eval_list()->piece_list_fb() :
       pos.eval_list()->piece_list_fw();
-  ASSERT_LV5(pieces[PIECE_NUMBER_BKING] != BONA_PIECE_ZERO);
-  ASSERT_LV5(pieces[PIECE_NUMBER_WKING] != BONA_PIECE_ZERO);
+  assert(pieces[PIECE_NUMBER_BKING] != BONA_PIECE_ZERO);
+  assert(pieces[PIECE_NUMBER_WKING] != BONA_PIECE_ZERO);
   for (PieceNumber i = PIECE_NUMBER_KING; i < PIECE_NUMBER_NB; ++i) {
     active->push_back(pieces[i] - fe_end);
   }

@@ -1,10 +1,12 @@
 ﻿// NNUE評価関数の計算に関するコード
 
 #include <fstream>
+#include <iostream>
 
 #include "../../evaluate.h"
 #include "../../position.h"
 #include "../../misc.h"
+#include "../../uci.h"
 
 #include "evaluate_nnue.h"
 
@@ -263,7 +265,7 @@ Value compute_eval(const Position& pos) {
 }
 
 // 評価関数
-Value evaluate(const Position& pos) {
+Value NNUE::evaluate(const Position& pos) {
   const auto& accumulator = pos.state()->accumulator;
   if (accumulator.computed_score) {
     return accumulator.score;

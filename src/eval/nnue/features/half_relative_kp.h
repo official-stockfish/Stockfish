@@ -25,7 +25,7 @@ class HalfRelativeKP {
   static constexpr std::uint32_t kHashValue =
       0xF9180919u ^ (AssociatedKing == Side::kFriend);
   // 玉を除いた駒種
-  static constexpr IndexType kNumPieceKinds = (fe_end - fe_hand_end) / SQ_NB;
+  static constexpr IndexType kNumPieceKinds = (fe_end - fe_hand_end) / SQUARE_NB;
   // 玉を中央に置いた仮想的な盤の幅
   static constexpr IndexType kBoardWidth = FILE_NB * 2 - 1;
   // 玉を中央に置いた仮想的な盤の高さ

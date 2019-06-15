@@ -131,6 +131,8 @@ enum Color {
   WHITE, BLACK, COLOR_NB = 2
 };
 
+constexpr Color Colors[2] = { WHITE, BLACK };
+
 enum CastlingSide {
   KING_SIDE, QUEEN_SIDE, CASTLING_SIDE_NB = 2
 };
@@ -186,7 +188,10 @@ enum Value : int {
   RookValueMg   = 1289,  RookValueEg   = 1378,
   QueenValueMg  = 2529,  QueenValueEg  = 2687,
 
-  MidgameLimit  = 15258, EndgameLimit  = 3915
+  MidgameLimit  = 15258, EndgameLimit  = 3915,
+
+  // 評価関数の返す値の最大値(2**14ぐらいに収まっていて欲しいところだが..)
+  VALUE_MAX_EVAL = 27000,
 };
 
 enum PieceType {
@@ -230,7 +235,8 @@ enum Square : int {
   SQ_A8, SQ_B8, SQ_C8, SQ_D8, SQ_E8, SQ_F8, SQ_G8, SQ_H8,
   SQ_NONE,
 
-  SQUARE_NB = 64
+  SQUARE_NB = 64,
+  SQUARE_NB_PLUS1 = SQUARE_NB + 1, // 玉がいない場合、SQ_NBに移動したものとして扱うため、配列をSQ_NB+1で確保しないといけないときがあるのでこの定数を用いる。
 };
 
 enum Direction : int {
@@ -356,6 +362,10 @@ constexpr Square operator~(Square s) {
   return Square(s ^ SQ_A8); // Vertical flip SQ_A1 -> SQ_A8
 }
 
+constexpr Square inverse(Square s) {
+	return static_cast<Square>(static_cast<int>(SQUARE_NB) - s - 1);
+}
+
 constexpr File operator~(File f) {
   return File(f ^ FILE_H); // Horizontal flip FILE_A -> FILE_H
 }
@@ -453,5 +463,30 @@ constexpr Move make(Square from, Square to, PieceType pt = KNIGHT) {
 constexpr bool is_ok(Move m) {
   return from_sq(m) != to_sq(m); // Catch MOVE_NULL and MOVE_NONE
 }
+
+// --------------------
+//        駒箱
+// --------------------
+
+// Positionクラスで用いる、駒リスト(どの駒がどこにあるのか)を管理するときの番号。
+enum PieceNumber : int8_t
+{
+	PIECE_NUMBER_PAWN = 0,
+	PIECE_NUMBER_KNIGHT = 16,
+	PIECE_NUMBER_BISHOP = 20,
+	PIECE_NUMBER_ROOK = 24,
+	PIECE_NUMBER_QUEEN = 28,
+	PIECE_NUMBER_KING = 30,
+	PIECE_NUMBER_WKING = 30,
+	PIECE_NUMBER_BKING = 31, // 先手、後手の玉の番号が必要な場合はこっちを用いる
+	PIECE_NUMBER_ZERO = 0,
+	PIECE_NUMBER_NB = 32,
+};
+
+inline PieceNumber& operator++(PieceNumber& d) { return d = PieceNumber(int(d) + 1); }           \
+inline PieceNumber& operator--(PieceNumber& d) { return d = PieceNumber(int(d) - 1); }
+
+// PieceNumberの整合性の検査。assert用。
+constexpr bool is_ok(PieceNumber pn) { return pn < PIECE_NUMBER_NB; }
 
 #endif // #ifndef TYPES_H_INCLUDED

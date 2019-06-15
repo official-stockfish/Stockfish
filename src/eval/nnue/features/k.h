@@ -22,7 +22,7 @@ class K {
   // 評価関数ファイルに埋め込むハッシュ値
   static constexpr std::uint32_t kHashValue = 0xD3CEE169u;
   // 特徴量の次元数
-  static constexpr IndexType kDimensions = SQ_NB * 2;
+  static constexpr IndexType kDimensions = SQUARE_NB * 2;
   // 特徴量のうち、同時に値が1となるインデックスの数の最大値
   static constexpr IndexType kMaxActiveDimensions = 2;
   // 差分計算の代わりに全計算を行うタイミング
