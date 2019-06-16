@@ -243,6 +243,7 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
   std::fill_n(&pieceList[0][0], sizeof(pieceList) / sizeof(Square), SQ_NONE);
   st = si;
 
+#if defined(EVAL_NNUE)
   // evalListのclear。上でmemsetでゼロクリアしたときにクリアされているが…。
   evalList.clear();
 
@@ -256,6 +257,7 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
     PIECE_NUMBER_ROOK,
     PIECE_NUMBER_QUEEN
   };
+#endif  // defined(EVAL_NNUE)
 
   ss >> std::noskipws;
 
@@ -273,11 +275,13 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
           auto pc = Piece(idx);
           put_piece(pc, sq);
 
+#if defined(EVAL_NNUE)
           PieceNumber piece_no =
             (idx == W_KING) ? PIECE_NUMBER_WKING : // 先手玉
             (idx == B_KING) ? PIECE_NUMBER_BKING : // 後手玉
             piece_no_count[type_of(Piece(idx))]++; // それ以外
           evalList.put_piece(piece_no, sq, pc); // sqの升にpcの駒を配置する
+#endif  // defined(EVAL_NNUE)
 
           ++sq;
       }
@@ -341,7 +345,9 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
   set_state(st);
 
   assert(pos_is_ok());
+#if defined(EVAL_NNUE)
   assert(evalList.is_valid(*this));
+#endif  // defined(EVAL_NNUE)
 
   return *this;
 }
@@ -762,8 +768,10 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   ++st->rule50;
   ++st->pliesFromNull;
 
+#if defined(EVAL_NNUE)
   st->accumulator.computed_accumulation = false;
   st->accumulator.computed_score = false;
+#endif  // defined(EVAL_NNUE)
 
   Color us = sideToMove;
   Color them = ~us;
@@ -776,8 +784,10 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   assert(captured == NO_PIECE || color_of(captured) == (type_of(m) != CASTLING ? them : us));
   assert(type_of(captured) != KING);
 
+#if defined(EVAL_NNUE)
   auto& dp = st->dirtyPiece;
   dp.dirty_num = 1;
+#endif  // defined(EVAL_NNUE)
 
   if (type_of(m) == CASTLING)
   {
@@ -795,7 +805,9 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   {
       Square capsq = to;
 
+#if defined(EVAL_NNUE)
       PieceNumber piece_no1;
+#endif  // defined(EVAL_NNUE)
 
       // If the captured piece is a pawn, update pawn hash key, otherwise
       // update non-pawn material.
@@ -811,12 +823,16 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
               assert(piece_on(to) == NO_PIECE);
               assert(piece_on(capsq) == make_piece(them, PAWN));
 
+#if defined(EVAL_NNUE)
               piece_no1 = piece_no_of(capsq);
+#endif  // defined(EVAL_NNUE)
 
               board[capsq] = NO_PIECE; // Not done by remove_piece()
           }
           else {
+#if defined(EVAL_NNUE)
             piece_no1 = piece_no_of(capsq);
+#endif  // defined(EVAL_NNUE)
           }
 
           st->pawnKey ^= Zobrist::psq[captured][capsq];
@@ -824,7 +840,9 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       else {
           st->nonPawnMaterial[them] -= PieceValue[MG][captured];
 
+#if defined(EVAL_NNUE)
           piece_no1 = piece_no_of(capsq);
+#endif  // defined(EVAL_NNUE)
       }
 
       // Update board and piece lists
@@ -838,6 +856,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       // Reset rule 50 counter
       st->rule50 = 0;
 
+#if defined(EVAL_NNUE)
       dp.dirty_num = 2; // 動いた駒は2個
 
       dp.pieceNo[1] = piece_no1;
@@ -850,6 +869,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       // will not be overritten to pc if the move type is enpassant.
       evalList.piece_no_list_board[capsq] = PIECE_NUMBER_NB;
       dp.changed_piece[1].new_piece = evalList.bona_piece(piece_no1);
+#endif  // defined(EVAL_NNUE)
   }
 
   // Update hash key
@@ -872,14 +892,18 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
 
   // Move the piece. The tricky Chess960 castling is handled earlier
   if (type_of(m) != CASTLING) {
+#if defined(EVAL_NNUE)
     PieceNumber piece_no0 = piece_no_of(from);
+#endif  // defined(EVAL_NNUE)
 
     move_piece(pc, from, to);
 
+#if defined(EVAL_NNUE)
     dp.pieceNo[0] = piece_no0;
     dp.changed_piece[0].old_piece = evalList.bona_piece(piece_no0);
     evalList.put_piece(piece_no0, to, pc);
     dp.changed_piece[0].new_piece = evalList.bona_piece(piece_no0);
+#endif  // defined(EVAL_NNUE)
   }
 
   // If the moving piece is a pawn do some special extra work
@@ -903,11 +927,13 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
           remove_piece(pc, to);
           put_piece(promotion, to);
 
+#if defined(EVAL_NNUE)
           PieceNumber piece_no0 = piece_no_of(to);
           dp.pieceNo[0] = piece_no0;
           dp.changed_piece[0].old_piece = evalList.bona_piece(piece_no0);
           evalList.put_piece(piece_no0, to, promotion);
           dp.changed_piece[0].new_piece = evalList.bona_piece(piece_no0);
+#endif  // defined(EVAL_NNUE)
 
           // Update hash keys
           k ^= Zobrist::psq[pc][to] ^ Zobrist::psq[promotion][to];
@@ -960,7 +986,9 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   }
 
   assert(pos_is_ok());
+#if defined(EVAL_NNUE)
   assert(evalList.is_valid(*this));
+#endif  // defined(EVAL_NNUE)
 }
 
 
@@ -991,8 +1019,10 @@ void Position::undo_move(Move m) {
       pc = make_piece(us, PAWN);
       put_piece(pc, to);
 
+#if defined(EVAL_NNUE)
       PieceNumber piece_no0 = st->dirtyPiece.pieceNo[0];
       evalList.put_piece(piece_no0, to, pc);
+#endif  // defined(EVAL_NNUE)
   }
 
   if (type_of(m) == CASTLING)
@@ -1005,8 +1035,10 @@ void Position::undo_move(Move m) {
       
       move_piece(pc, to, from); // Put the piece back at the source square
 
+#if defined(EVAL_NNUE)
       PieceNumber piece_no0 = st->dirtyPiece.pieceNo[0];
       evalList.put_piece(piece_no0, from, pc);
+#endif  // defined(EVAL_NNUE)
 
       if (st->capturedPiece)
       {
@@ -1025,10 +1057,12 @@ void Position::undo_move(Move m) {
 
           put_piece(st->capturedPiece, capsq); // Restore the captured piece
 
+#if defined(EVAL_NNUE)
           PieceNumber piece_no1 = st->dirtyPiece.pieceNo[1];
           assert(evalList.bona_piece(piece_no1).fw == Eval::BONA_PIECE_ZERO);
           assert(evalList.bona_piece(piece_no1).fb == Eval::BONA_PIECE_ZERO);
           evalList.put_piece(piece_no1, capsq, st->capturedPiece);
+#endif  // defined(EVAL_NNUE)
       }
   }
 
@@ -1037,7 +1071,9 @@ void Position::undo_move(Move m) {
   --gamePly;
 
   assert(pos_is_ok());
+#if defined(EVAL_NNUE)
   assert(evalList.is_valid(*this));
+#endif  // defined(EVAL_NNUE)
 }
 
 
@@ -1045,6 +1081,7 @@ void Position::undo_move(Move m) {
 /// is a bit tricky in Chess960 where from/to squares can overlap.
 template<bool Do>
 void Position::do_castling(Color us, Square from, Square& to, Square& rfrom, Square& rto) {
+#if defined(EVAL_NNUE)
   auto& dp = st->dirtyPiece;
   // 差分計算のために移動した駒をStateInfoに記録しておく。
   dp.dirty_num = 2; // 動いた駒は2個
@@ -1056,16 +1093,19 @@ void Position::do_castling(Color us, Square from, Square& to, Square& rfrom, Squ
     piece_no0 = piece_no_of(from);
     piece_no1 = piece_no_of(to);
   }
+#endif  // defined(EVAL_NNUE)
 
   bool kingSide = to > from;
   rfrom = to; // Castling is encoded as "king captures friendly rook"
   rto = relative_square(us, kingSide ? SQ_F1 : SQ_D1);
   to = relative_square(us, kingSide ? SQ_G1 : SQ_C1);
 
+#if defined(EVAL_NNUE)
   if (!Do) {
     piece_no0 = piece_no_of(to);
     piece_no1 = piece_no_of(rto);
   }
+#endif  // defined(EVAL_NNUE)
 
   // Remove both pieces first since squares could overlap in Chess960
   remove_piece(make_piece(us, KING), Do ? from : to);
@@ -1074,6 +1114,7 @@ void Position::do_castling(Color us, Square from, Square& to, Square& rfrom, Squ
   put_piece(make_piece(us, KING), Do ? to : from);
   put_piece(make_piece(us, ROOK), Do ? rto : rfrom);
 
+#if defined(EVAL_NNUE)
   if (Do) {
     dp.pieceNo[0] = piece_no0;
     dp.changed_piece[0].old_piece = evalList.bona_piece(piece_no0);
@@ -1089,6 +1130,7 @@ void Position::do_castling(Color us, Square from, Square& to, Square& rfrom, Squ
     evalList.put_piece(piece_no0, from, make_piece(us, KING));
     evalList.put_piece(piece_no1, rfrom, make_piece(us, ROOK));
   }
+#endif  // defined(EVAL_NNUE)
 }
 
 
@@ -1426,6 +1468,7 @@ bool Position::pos_is_ok() const {
   return true;
 }
 
+#if defined(EVAL_NNUE)
 PieceNumber Position::piece_no_of(Square sq) const
 {
   if (piece_on(sq) == NO_PIECE) {
@@ -1436,3 +1479,4 @@ PieceNumber Position::piece_no_of(Square sq) const
   assert(is_ok(n));
   return n;
 }
+#endif  // defined(EVAL_NNUE)

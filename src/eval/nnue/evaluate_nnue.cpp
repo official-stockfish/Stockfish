@@ -1,5 +1,7 @@
 ﻿// NNUE評価関数の計算に関するコード
 
+#if defined(EVAL_NNUE)
+
 #include <fstream>
 #include <iostream>
 
@@ -316,3 +318,5 @@ void print_eval_stat(Position& /*pos*/) {
 }
 
 }  // namespace Eval
+
+#endif  // defined(EVAL_NNUE)

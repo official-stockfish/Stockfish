@@ -865,8 +865,11 @@ namespace {
 /// evaluation of the position from the point of view of the side to move.
 
 Value Eval::evaluate(const Position& pos) {
-  //return Evaluation<NO_TRACE>(pos).value();
+#if defined(EVAL_NNUE)
   return Eval::NNUE::evaluate(pos);
+#else
+  return Evaluation<NO_TRACE>(pos).value();
+#endif  // defined(EVAL_NNUE)
 }
 
 
@@ -910,6 +913,7 @@ std::string Eval::trace(const Position& pos) {
   return ss.str();
 }
 
+#if defined(EVAL_NNUE)
 namespace Eval {
 ExtBonaPiece kpp_board_index[PIECE_NB] = {
     { BONA_PIECE_ZERO, BONA_PIECE_ZERO },
@@ -978,3 +982,4 @@ bool EvalList::is_valid(const Position& pos)
   return true;
 }
 }
+#endif  // defined(EVAL_NNUE)

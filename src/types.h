@@ -464,6 +464,7 @@ constexpr bool is_ok(Move m) {
   return from_sq(m) != to_sq(m); // Catch MOVE_NULL and MOVE_NONE
 }
 
+#if defined(EVAL_NNUE)
 // --------------------
 //        ‹î” 
 // --------------------
@@ -493,5 +494,6 @@ inline PieceNumber& operator--(PieceNumber& d) { return d = PieceNumber(int8_t(d
 
 // PieceNumber‚Ì®‡«‚ÌŒŸ¸Bassert—pB
 constexpr bool is_ok(PieceNumber pn) { return pn < PIECE_NUMBER_NB; }
+#endif  // defined(EVAL_NNUE)
 
 #endif // #ifndef TYPES_H_INCLUDED

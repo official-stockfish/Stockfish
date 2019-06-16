@@ -184,6 +184,7 @@ namespace {
   // 局面は初期化されないので注意。
   void is_ready(Position& pos, istringstream& is, StateListPtr& states)
   {
+#if defined(EVAL_NNUE)
     // "isready"を受け取ったあと、"readyok"を返すまで5秒ごとに改行を送るように修正する。(keep alive的な処理)
     //	USI2.0の仕様より。
     //  -"isready"のあとのtime out時間は、30秒程度とする。これを超えて、評価関数の初期化、hashテーブルの確保をしたい場合、
@@ -241,6 +242,7 @@ namespace {
     // keep aliveを送信するために生成したスレッドを終了させ、待機する。
     ended = true;
     th.join();
+#endif  // defined(EVAL_NNUE)
 
     sync_cout << "readyok" << sync_endl;
   }

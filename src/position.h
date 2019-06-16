@@ -59,10 +59,12 @@ struct StateInfo {
   Bitboard   pinners[COLOR_NB];
   Bitboard   checkSquares[PIECE_TYPE_NB];
 
+#if defined(EVAL_NNUE)
   Eval::NNUE::Accumulator accumulator;
 
   // 評価値の差分計算の管理用
   Eval::DirtyPiece dirtyPiece;
+#endif  // defined(EVAL_NNUE)
 };
 
 /// A list to keep track of the position states along the setup moves (from the
@@ -174,6 +176,7 @@ public:
   bool pos_is_ok() const;
   void flip();
 
+#if defined(EVAL_NNUE)
   // --- StateInfo
 
   // 現在の局面に対応するStateInfoを返す。
@@ -182,6 +185,7 @@ public:
 
   // 評価関数で使うための、どの駒番号の駒がどこにあるかなどの情報。
   const Eval::EvalList* eval_list() const { return &evalList; }
+#endif  // defined(EVAL_NNUE)
 
 private:
   // Initialization helpers (used while setting up a position)
@@ -196,8 +200,10 @@ private:
   template<bool Do>
   void do_castling(Color us, Square from, Square& to, Square& rfrom, Square& rto);
 
+#if defined(EVAL_NNUE)
   // 盤上のsqの升にある駒のPieceNumberを返す。
   PieceNumber piece_no_of(Square sq) const;
+#endif  // defined(EVAL_NNUE)
 
   // Data members
   Piece board[SQUARE_NB];
@@ -216,8 +222,10 @@ private:
   StateInfo* st;
   bool chess960;
 
+#if defined(EVAL_NNUE)
   // 評価関数で用いる駒のリスト
   Eval::EvalList evalList;
+#endif  // defined(EVAL_NNUE)
 };
 
 namespace PSQT {

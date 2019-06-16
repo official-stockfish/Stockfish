@@ -35,6 +35,7 @@ std::string trace(const Position& pos);
 
 Value evaluate(const Position& pos);
 
+#if defined(EVAL_NNUE)
 // 評価関数ファイルを読み込む。
 // これは、"is_ready"コマンドの応答時に1度だけ呼び出される。2度呼び出すことは想定していない。
 // (ただし、EvalDir(評価関数フォルダ)が変更になったあと、isreadyが再度送られてきたら読みなおす。)
@@ -206,6 +207,7 @@ struct DirtyPiece
 	int dirty_num;
 
 };
+#endif  // defined(EVAL_NNUE)
 }
 
 #endif // #ifndef EVALUATE_H_INCLUDED
