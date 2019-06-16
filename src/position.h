@@ -23,10 +23,12 @@
 
 #include <cassert>
 #include <deque>
+#include <iostream>
 #include <memory> // For std::unique_ptr
 #include <string>
 
 #include "bitboard.h"
+#include "misc.h"
 #include "types.h"
 
 #include "eval/nnue/nnue_accumulator.h"
@@ -193,6 +195,9 @@ private:
   void move_piece(Piece pc, Square from, Square to);
   template<bool Do>
   void do_castling(Color us, Square from, Square& to, Square& rfrom, Square& rto);
+
+  // î’è„ÇÃsqÇÃè°Ç…Ç†ÇÈãÓÇÃPieceNumberÇï‘Ç∑ÅB
+  PieceNumber piece_no_of(Square sq) const;
 
   // Data members
   Piece board[SQUARE_NB];

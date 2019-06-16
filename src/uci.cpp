@@ -177,6 +177,73 @@ namespace {
          << "\nNodes/second    : " << 1000 * nodes / elapsed << endl;
   }
 
+  // check sumを計算したとき、それを保存しておいてあとで次回以降、整合性のチェックを行なう。
+  uint64_t eval_sum;
+
+  // is_ready_cmd()を外部から呼び出せるようにしておく。(benchコマンドなどから呼び出したいため)
+  // 局面は初期化されないので注意。
+  void is_ready(Position& pos, istringstream& is, StateListPtr& states)
+  {
+    // "isready"を受け取ったあと、"readyok"を返すまで5秒ごとに改行を送るように修正する。(keep alive的な処理)
+    //	USI2.0の仕様より。
+    //  -"isready"のあとのtime out時間は、30秒程度とする。これを超えて、評価関数の初期化、hashテーブルの確保をしたい場合、
+    //  思考エンジン側から定期的に何らかのメッセージ(改行可)を送るべきである。
+    //  -ShogiGUIではすでにそうなっているので、MyShogiもそれに追随する。
+    //  -また、やねうら王のエンジン側は、"isready"を受け取ったあと、"readyok"を返すまで5秒ごとに改行を送るように修正する。
+
+    auto ended = false;
+    auto th = std::thread([&ended] {
+      int count = 0;
+      while (!ended)
+      {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        if (++count >= 50 /* 5秒 */)
+        {
+          count = 0;
+          sync_cout << sync_endl; // 改行を送信する。
+        }
+      }
+      });
+
+    // 評価関数の読み込みなど時間のかかるであろう処理はこのタイミングで行なう。
+    // 起動時に時間のかかる処理をしてしまうと将棋所がタイムアウト判定をして、思考エンジンとしての認識をリタイアしてしまう。
+    if (!UCI::load_eval_finished)
+    {
+      // 評価関数の読み込み
+      Eval::load_eval();
+
+      // チェックサムの計算と保存(その後のメモリ破損のチェックのため)
+      eval_sum = Eval::calc_check_sum();
+
+      // ソフト名の表示
+      Eval::print_softname(eval_sum);
+
+      UCI::load_eval_finished = true;
+
+    }
+    else
+    {
+      // メモリが破壊されていないかを調べるためにチェックサムを毎回調べる。
+      // 時間が少しもったいない気もするが.. 0.1秒ぐらいのことなので良しとする。
+      if (eval_sum != Eval::calc_check_sum())
+        sync_cout << "Error! : EVAL memory is corrupted" << sync_endl;
+    }
+
+    // isreadyに対してはreadyokを返すまで次のコマンドが来ないことは約束されているので
+    // このタイミングで各種変数の初期化もしておく。
+
+    TT.resize(Options["Hash"]);
+    Search::clear();
+    Time.availableNodes = 0;
+
+    Threads.stop = false;
+
+    // keep aliveを送信するために生成したスレッドを終了させ、待機する。
+    ended = true;
+    th.join();
+
+    sync_cout << "readyok" << sync_endl;
+  }
 } // namespace
 
 
@@ -227,7 +294,7 @@ void UCI::loop(int argc, char* argv[]) {
       else if (token == "go")         go(pos, is, states);
       else if (token == "position")   position(pos, is, states);
       else if (token == "ucinewgame") Search::clear();
-      else if (token == "isready")    sync_cout << "readyok" << sync_endl;
+      else if (token == "isready")    is_ready(pos, is, states);
 
       // Additional custom non-UCI commands, mainly for debugging
       else if (token == "flip")  pos.flip();

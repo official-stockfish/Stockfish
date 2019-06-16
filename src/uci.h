@@ -75,6 +75,8 @@ std::string move(Move m, bool chess960);
 std::string pv(const Position& pos, Depth depth, Value alpha, Value beta);
 Move to_move(const Position& pos, std::string& str);
 
+// 評価関数を読み込んだかのフラグ。これはevaldirの変更にともなってfalseにする。
+extern bool load_eval_finished; // = false;
 } // namespace UCI
 
 extern UCI::OptionsMap Options;

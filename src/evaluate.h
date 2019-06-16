@@ -35,6 +35,15 @@ std::string trace(const Position& pos);
 
 Value evaluate(const Position& pos);
 
+// 評価関数ファイルを読み込む。
+// これは、"is_ready"コマンドの応答時に1度だけ呼び出される。2度呼び出すことは想定していない。
+// (ただし、EvalDir(評価関数フォルダ)が変更になったあと、isreadyが再度送られてきたら読みなおす。)
+void load_eval();
+
+static uint64_t calc_check_sum() { return 0; }
+
+static void print_softname(uint64_t check_sum) {}
+
 // --- 評価関数で使う定数 KPP(玉と任意2駒)のPに相当するenum
 
 // (評価関数の実験のときには、BonaPieceは自由に定義したいのでここでは定義しない。)
@@ -145,21 +154,9 @@ struct EvalList
 			v = PIECE_NUMBER_NB;
 	}
 
-	// list長が可変のときは、add()/remove()をサポートする。
-	// DirtyPieceのほうから呼び出される。
-
-	// listにadd()する。
-	void add(BonaPiece fb);
-
-	// listからremoveする。
-	void remove(BonaPiece fb);
-
-	// 内部で保持しているpieceListFb[]が正しいBonaPieceであるかを検査する。
+	// 内部で保持しているpieceListFw[]が正しいBonaPieceであるかを検査する。
 	// 注 : デバッグ用。遅い。
 	bool is_valid(const Position& pos);
-
-
-protected:
 
 	// 盤上sqにあるpiece_noの駒のBonaPieceがfb,fwであることを設定する。
 	inline void set_piece_on_board(PieceNumber piece_no, BonaPiece fw, BonaPiece fb, Square sq)
@@ -173,7 +170,7 @@ protected:
 	// 駒リスト。駒番号(PieceNumber)いくつの駒がどこにあるのか(BonaPiece)を示す。FV38などで用いる。
 
 	// 駒リストの長さ
-		// 38固定
+  // 38固定
 public:
 	int length() const { return PIECE_NUMBER_KING; }
 
@@ -181,15 +178,15 @@ public:
 	// また、KPPT型評価関数などは、39,40番目の要素がゼロであることを前提とした
 	// アクセスをしている箇所があるので注意すること。
 	static const int MAX_LENGTH = 40;
+
+  // 盤上の駒に対して、その駒番号(PieceNumber)を保持している配列
+  // 玉がSQ_NBに移動しているとき用に+1まで保持しておくが、
+  // SQ_NBの玉を移動させないので、この値を使うことはないはず。
+  PieceNumber piece_no_list_board[SQUARE_NB_PLUS1];
 private:
 
 	BonaPiece pieceListFw[MAX_LENGTH];
 	BonaPiece pieceListFb[MAX_LENGTH];
-
-	// 盤上の駒に対して、その駒番号(PieceNumber)を保持している配列
-	// 玉がSQ_NBに移動しているとき用に+1まで保持しておくが、
-	// SQ_NBの玉を移動させないので、この値を使うことはないはず。
-	PieceNumber piece_no_list_board[SQUARE_NB_PLUS1];
 };
 
 // 評価値の差分計算の管理用

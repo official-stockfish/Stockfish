@@ -469,7 +469,7 @@ constexpr bool is_ok(Move m) {
 // --------------------
 
 // Positionクラスで用いる、駒リスト(どの駒がどこにあるのか)を管理するときの番号。
-enum PieceNumber : int8_t
+enum PieceNumber : uint8_t
 {
 	PIECE_NUMBER_PAWN = 0,
 	PIECE_NUMBER_KNIGHT = 16,
@@ -483,8 +483,13 @@ enum PieceNumber : int8_t
 	PIECE_NUMBER_NB = 32,
 };
 
-inline PieceNumber& operator++(PieceNumber& d) { return d = PieceNumber(int(d) + 1); }           \
-inline PieceNumber& operator--(PieceNumber& d) { return d = PieceNumber(int(d) - 1); }
+inline PieceNumber& operator++(PieceNumber& d) { return d = PieceNumber(int8_t(d) + 1); }
+inline PieceNumber operator++(PieceNumber& d, int) {
+  PieceNumber x = d;
+  d = PieceNumber(int8_t(d) + 1);
+  return x;
+}
+inline PieceNumber& operator--(PieceNumber& d) { return d = PieceNumber(int8_t(d) - 1); }
 
 // PieceNumberの整合性の検査。assert用。
 constexpr bool is_ok(PieceNumber pn) { return pn < PIECE_NUMBER_NB; }

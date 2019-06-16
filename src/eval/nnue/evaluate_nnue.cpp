@@ -233,12 +233,14 @@ void prefetch_evalhash(const Key key) {
 void load_eval() {
   NNUE::Initialize();
 
-#if defined(EVAL_LEARN)
   if (!Options["SkipLoadingEval"])
-#endif
   {
     const std::string dir_name = Options["EvalDir"];
     const std::string file_name = Path::Combine(dir_name, NNUE::kFileName);
+    //{
+    //  std::ofstream stream(file_name, std::ios::binary);
+    //  NNUE::WriteParameters(stream);
+    //}
     std::ifstream stream(file_name, std::ios::binary);
     const bool result = NNUE::ReadParameters(stream);
 

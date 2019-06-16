@@ -29,6 +29,7 @@
 #include "material.h"
 #include "pawns.h"
 #include "thread.h"
+#include "eval/nnue/evaluate_nnue.h"
 
 namespace Trace {
 
@@ -864,7 +865,8 @@ namespace {
 /// evaluation of the position from the point of view of the side to move.
 
 Value Eval::evaluate(const Position& pos) {
-  return Evaluation<NO_TRACE>(pos).value();
+  //return Evaluation<NO_TRACE>(pos).value();
+  return Eval::NNUE::evaluate(pos);
 }
 
 
@@ -906,4 +908,73 @@ std::string Eval::trace(const Position& pos) {
   ss << "\nTotal evaluation: " << to_cp(v) << " (white side)\n";
 
   return ss.str();
+}
+
+namespace Eval {
+ExtBonaPiece kpp_board_index[PIECE_NB] = {
+    { BONA_PIECE_ZERO, BONA_PIECE_ZERO },
+    { f_pawn, e_pawn },
+    { f_knight, e_knight },
+    { f_bishop, e_bishop },
+    { f_rook, e_rook },
+    { f_queen, e_queen },
+    { f_king, e_king },
+    { BONA_PIECE_ZERO, BONA_PIECE_ZERO },
+
+    // 後手から見た場合。fとeが入れ替わる。
+    { BONA_PIECE_ZERO, BONA_PIECE_ZERO },
+    { e_pawn, f_pawn },
+    { e_knight, f_knight },
+    { e_bishop, f_bishop },
+    { e_rook, f_rook },
+    { e_queen, f_queen },
+    { e_king, f_king },
+    { BONA_PIECE_ZERO, BONA_PIECE_ZERO }, // 金の成りはない
+};
+
+// 内部で保持しているpieceListFw[]が正しいBonaPieceであるかを検査する。
+// 注 : デバッグ用。遅い。
+bool EvalList::is_valid(const Position& pos)
+{
+  for (int i = 0; i < length(); ++i)
+  {
+    BonaPiece fw = pieceListFw[i];
+    // このfwが本当に存在するかをPositionクラスのほうに調べに行く。
+
+    if (fw == Eval::BONA_PIECE_ZERO) {
+      continue;
+    }
+
+    // 範囲外
+    if (!(0 <= fw && fw < fe_end))
+      return false;
+
+    // 盤上の駒なのでこの駒が本当に存在するか調べにいく。
+    for (Piece pc = NO_PIECE; pc < PIECE_NB; ++pc)
+    {
+      auto pt = type_of(pc);
+      if (pt == NO_PIECE || pt == 7) // 存在しない駒
+        continue;
+
+      // 駒pcのBonaPieceの開始番号
+      auto s = BonaPiece(kpp_board_index[pc].fw);
+      if (s <= fw && fw < s + SQUARE_NB)
+      {
+        // 見つかったのでこの駒がsqの地点にあるかを調べる。
+        Square sq = (Square)(fw - s);
+        Piece pc2 = pos.piece_on(sq);
+
+        if (pc2 != pc)
+          return false;
+
+        goto Found;
+      }
+    }
+    // 何故か存在しない駒であった..
+    return false;
+  Found:;
+  }
+
+  return true;
+}
 }

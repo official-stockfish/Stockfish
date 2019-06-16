@@ -42,6 +42,7 @@ void on_hash_size(const Option& o) { TT.resize(o); }
 void on_logger(const Option& o) { start_logger(o); }
 void on_threads(const Option& o) { Threads.set(o); }
 void on_tb_path(const Option& o) { Tablebases::init(o); }
+void on_eval_dir(const Option& o) { load_eval_finished = false; }
 
 
 /// Our case insensitive less() function as required by UCI protocol
@@ -78,6 +79,14 @@ void init(OptionsMap& o) {
   o["SyzygyProbeDepth"]      << Option(1, 1, 100);
   o["Syzygy50MoveRule"]      << Option(true);
   o["SyzygyProbeLimit"]      << Option(7, 0, 7);
+  // 評価関数フォルダ。これを変更したとき、評価関数を次のisreadyタイミングで読み直す必要がある。
+  o["EvalDir"]               << Option("eval", on_eval_dir);
+  // isreadyタイミングで評価関数を読み込まれると、新しい評価関数の変換のために
+  // test evalconvertコマンドを叩きたいのに、その新しい評価関数がないがために
+  // このコマンドの実行前に異常終了してしまう。
+  // そこでこの隠しオプションでisready時の評価関数の読み込みを抑制して、
+  // test evalconvertコマンドを叩く。
+  o["SkipLoadingEval"]       << Option(false);
 }
 
 
@@ -186,4 +195,6 @@ Option& Option::operator=(const string& v) {
   return *this;
 }
 
+// 評価関数を読み込んだかのフラグ。これはevaldirの変更にともなってfalseにする。
+bool load_eval_finished = false;
 } // namespace UCI
