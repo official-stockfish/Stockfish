@@ -864,13 +864,11 @@ namespace {
 /// evaluate() is the evaluator for the outer world. It returns a static
 /// evaluation of the position from the point of view of the side to move.
 
+#if !defined(EVAL_NNUE)
 Value Eval::evaluate(const Position& pos) {
-#if defined(EVAL_NNUE)
-  return Eval::NNUE::evaluate(pos);
-#else
   return Evaluation<NO_TRACE>(pos).value();
-#endif  // defined(EVAL_NNUE)
 }
+#endif  // defined(EVAL_NNUE)
 
 
 /// trace() is like evaluate(), but instead of returning a value, it returns

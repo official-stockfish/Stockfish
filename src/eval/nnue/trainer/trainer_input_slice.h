@@ -3,8 +3,6 @@
 #ifndef _NNUE_TRAINER_INPUT_SLICE_H_
 #define _NNUE_TRAINER_INPUT_SLICE_H_
 
-#include "../../../config.h"
-
 #if defined(EVAL_LEARN) && defined(EVAL_NNUE)
 
 #include "../../../learn/learn.h"
@@ -35,7 +33,7 @@ class SharedInputTrainer {
       current_operation_ = Operation::kSendMessage;
       feature_transformer_trainer_->SendMessage(message);
     }
-    ASSERT_LV3(current_operation_ == Operation::kSendMessage);
+    assert(current_operation_ == Operation::kSendMessage);
     if (++num_calls_ == num_referrers_) {
       num_calls_ = 0;
       current_operation_ = Operation::kNone;
@@ -49,7 +47,7 @@ class SharedInputTrainer {
       current_operation_ = Operation::kInitialize;
       feature_transformer_trainer_->Initialize(rng);
     }
-    ASSERT_LV3(current_operation_ == Operation::kInitialize);
+    assert(current_operation_ == Operation::kInitialize);
     if (++num_calls_ == num_referrers_) {
       num_calls_ = 0;
       current_operation_ = Operation::kNone;
@@ -66,7 +64,7 @@ class SharedInputTrainer {
       current_operation_ = Operation::kPropagate;
       output_ = feature_transformer_trainer_->Propagate(batch);
     }
-    ASSERT_LV3(current_operation_ == Operation::kPropagate);
+    assert(current_operation_ == Operation::kPropagate);
     if (++num_calls_ == num_referrers_) {
       num_calls_ = 0;
       current_operation_ = Operation::kNone;
@@ -90,7 +88,7 @@ class SharedInputTrainer {
         }
       }
     }
-    ASSERT_LV3(current_operation_ == Operation::kBackPropagate);
+    assert(current_operation_ == Operation::kBackPropagate);
     for (IndexType b = 0; b < batch_size_; ++b) {
       const IndexType batch_offset = kInputDimensions * b;
       for (IndexType i = 0; i < kInputDimensions; ++i) {

@@ -1721,3 +1721,283 @@ void Tablebases::rank_root_moves(Position& pos, Search::RootMoves& rootMoves) {
             m.tbRank = 0;
     }
 }
+
+// --- 学習時に用いる、depth固定探索などの関数を外部に対して公開
+
+#if defined (EVAL_LEARN)
+
+namespace Learner
+{
+  // 学習用に、1つのスレッドからsearch,qsearch()を呼び出せるようなスタブを用意する。
+  // いまにして思えば、AperyのようにSearcherを持ってスレッドごとに置換表などを用意するほうが
+  // 良かったかも知れない。
+
+  // 学習のための初期化。
+  // Learner::search(),Learner::qsearch()から呼び出される。
+  void init_for_search(Position& pos, Stack* ss)
+  {
+
+    // RootNodeはss->ply == 0がその条件。
+    // ゼロクリアするので、ss->ply == 0となるので大丈夫…。
+
+    memset(ss - 4, 0, 7 * sizeof(Stack));
+
+    // Search::Limitsに関して
+    // このメンバー変数はglobalなので他のスレッドに影響を及ぼすので気をつけること。
+    {
+      auto& limits = Search::Limits;
+
+      // 探索を"go infinite"コマンド相当にする。(time managementされると困るため)
+      limits.infinite = true;
+
+      // PVを表示されると邪魔なので消しておく。
+      //limits.silent = true;
+
+      // これを用いると各スレッドのnodesを積算したものと比較されてしまう。ゆえに使用しない。
+      limits.nodes = 0;
+
+      // depthも、Learner::search()の引数として渡されたもので処理する。
+      limits.depth = 0;
+
+      // 引き分け付近の手数で引き分けの値が返るのを防ぐために大きな値にしておく。
+      //limits.max_game_ply = 1 << 16;
+
+      // 入玉ルールも入れておかないと引き分けになって決着つきにくい。
+      //limits.enteringKingRule = EnteringKingRule::EKR_27_POINT;
+    }
+
+    // DrawValueの設定
+    {
+      // スレッドごとに用意してないので
+      // 他のスレッドで上書きされかねない。仕方がないが。
+      // どうせそうなるなら、0にすべきだと思う。
+      //drawValueTable[REPETITION_DRAW][BLACK] = VALUE_ZERO;
+      //drawValueTable[REPETITION_DRAW][WHITE] = VALUE_ZERO;
+    }
+
+    // this_threadに関して。
+    {
+      auto th = pos.this_thread();
+
+      th->completedDepth = DEPTH_ZERO;
+      th->selDepth = 0;
+      th->rootDepth = DEPTH_ZERO;
+
+      // 探索ノード数のゼロ初期化
+      th->nodes = 0;
+
+      // history類を全部クリアする。この初期化は少し時間がかかるし、探索の精度はむしろ下がるので善悪はよくわからない。
+      // th->clear();
+
+      for (int i = 4; i > 0; i--)
+        (ss - i)->continuationHistory = &th->continuationHistory[SQUARE_ZERO][NO_PIECE];
+
+      // rootMovesの設定
+      auto& rootMoves = th->rootMoves;
+
+      rootMoves.clear();
+      for (auto m : MoveList<LEGAL>(pos))
+        rootMoves.push_back(Search::RootMove(m));
+
+      assert(!rootMoves.empty());
+
+      //#if defined(USE_GLOBAL_OPTIONS)
+      // 探索スレッドごとの置換表の世代を管理しているはずなので、
+      // 新規の探索であるから、このスレッドに対する置換表の世代を増やす。
+            //TT.new_search(th->thread_id());
+
+            // ↑ここでnew_searchを呼び出すと1手前の探索結果が使えなくて損ということはあるのでは…。
+            // ここでこれはやらずに、呼び出し側で1局ごとにTT.new_search(th->thread_id())をやるべきでは…。
+
+            // →　同一の終局図に至るのを回避したいので、教師生成時には置換表は全スレ共通で使うようにする。
+      //#endif
+    }
+  }
+
+  // 読み筋と評価値のペア。Learner::search(),Learner::qsearch()が返す。
+  typedef std::pair<Value, std::vector<Move> > ValueAndPV;
+
+  // 静止探索。
+  //
+  // 前提条件) pos.set_this_thread(Threads[thread_id])で探索スレッドが設定されていること。
+  // 　また、Threads.stopが来ると探索を中断してしまうので、そのときのPVは正しくない。
+  // 　search()から戻ったあと、Threads.stop == trueなら、その探索結果を用いてはならない。
+  // 　あと、呼び出し前は、Threads.stop == falseの状態で呼び出さないと、探索を中断して返ってしまうので注意。
+  //
+  // 詰まされている場合は、PV配列にMOVE_RESIGNが返る。
+  //
+  // 引数でalpha,betaを指定できるようにしていたが、これがその窓で探索したときの結果を
+  // 置換表に書き込むので、その窓に対して枝刈りが出来るような値が書き込まれて学習のときに
+  // 悪い影響があるので、窓の範囲を指定できるようにするのをやめることにした。
+  ValueAndPV qsearch(Position& pos)
+  {
+    Stack stack[MAX_PLY + 7], * ss = stack + 4;
+    Move pv[MAX_PLY + 1];
+    std::vector<Move> pvs;
+
+    init_for_search(pos, ss);
+    ss->pv = pv; // とりあえずダミーでどこかバッファがないといけない。
+
+    // 詰まされているのか
+    if (pos.is_mated())
+    {
+      pvs.push_back(MOVE_NONE);
+      return ValueAndPV(mated_in(/*ss->ply*/ 0 + 1), pvs);
+    }
+
+    auto bestValue = ::qsearch<PV>(pos, ss, -VALUE_INFINITE, VALUE_INFINITE, DEPTH_ZERO);
+
+    // 得られたPVを返す。
+    for (Move* p = &ss->pv[0]; is_ok(*p); ++p)
+      pvs.push_back(*p);
+
+    return ValueAndPV(bestValue, pvs);
+  }
+
+  // 通常探索。深さdepth(整数で指定)。
+  // 3手読み時のスコアが欲しいなら、
+  //   auto v = search(pos,3);
+  // のようにすべし。
+  // v.firstに評価値、v.secondにPVが得られる。
+  // multi pvが有効のときは、pos.this_thread()->rootMoves[N].pvにそのPV(読み筋)の配列が得られる。
+  // multi pvの指定はこの関数の引数multiPVで行なう。(Options["MultiPV"]の値は無視される)
+  // 
+  // rootでの宣言勝ち判定はしないので(扱いが面倒なので)、ここでは行わない。
+  // 呼び出し側で処理すること。
+  //
+  // 前提条件) pos.set_this_thread(Threads[thread_id])で探索スレッドが設定されていること。
+  // 　また、Threads.stopが来ると探索を中断してしまうので、そのときのPVは正しくない。
+  // 　search()から戻ったあと、Threads.stop == trueなら、その探索結果を用いてはならない。
+  // 　あと、呼び出し前は、Threads.stop == falseの状態で呼び出さないと、探索を中断して返ってしまうので注意。
+
+  ValueAndPV search(Position& pos, int depth_, size_t multiPV /* = 1 */, uint64_t nodesLimit /* = 0 */)
+  {
+    std::vector<Move> pvs;
+
+    Depth depth = depth_ * ONE_PLY;
+    if (depth < DEPTH_ZERO)
+      return std::pair<Value, std::vector<Move>>(Eval::evaluate(pos), std::vector<Move>());
+
+    if (depth == DEPTH_ZERO)
+      return qsearch(pos);
+
+    Stack stack[MAX_PLY + 7], * ss = stack + 4;
+    Move pv[MAX_PLY + 1];
+
+    init_for_search(pos, ss);
+
+    ss->pv = pv; // とりあえずダミーでどこかバッファがないといけない。
+
+    // this_threadに関連する変数の初期化
+    auto th = pos.this_thread();
+    auto& rootDepth = th->rootDepth;
+    auto& pvIdx = th->pvIdx;
+    auto& rootMoves = th->rootMoves;
+    auto& completedDepth = th->completedDepth;
+    auto& selDepth = th->selDepth;
+
+    // bestmoveとしてしこの局面の上位N個を探索する機能
+    //size_t multiPV = Options["MultiPV"];
+
+    // この局面での指し手の数を上回ってはいけない
+    multiPV = std::min(multiPV, rootMoves.size());
+
+    // ノード制限にMultiPVの値を掛けておかないと、depth固定、MultiPVありにしたときに1つの候補手に同じnodeだけ思考したことにならない。
+    nodesLimit *= multiPV;
+
+    Value alpha = -VALUE_INFINITE;
+    Value beta = VALUE_INFINITE;
+    Value delta = -VALUE_INFINITE;
+    Value bestValue = -VALUE_INFINITE;
+
+    while ((rootDepth += ONE_PLY) <= depth
+      // node制限を超えた場合もこのループを抜ける
+      // 探索ノード数は、この関数の引数で渡されている。
+      && !(nodesLimit /*node制限あり*/ && th->nodes.load(std::memory_order_relaxed) >= nodesLimit)
+      )
+    {
+      for (RootMove& rm : rootMoves)
+        rm.previousScore = rm.score;
+
+      // MultiPV
+      for (pvIdx = 0; pvIdx < multiPV && !Threads.stop; ++pvIdx)
+      {
+        // それぞれのdepthとPV lineに対するUSI infoで出力するselDepth
+        selDepth = 0;
+
+        // depth 5以上においてはaspiration searchに切り替える。
+        if (rootDepth >= 5 * ONE_PLY)
+        {
+          delta = Value(20);
+
+          Value p = rootMoves[pvIdx].previousScore;
+
+          alpha = std::max(p - delta, -VALUE_INFINITE);
+          beta = std::min(p + delta, VALUE_INFINITE);
+        }
+
+        // aspiration search
+        int failedHighCnt = 0;
+        while (true)
+        {
+          Depth adjustedDepth = std::max(ONE_PLY, rootDepth - failedHighCnt * ONE_PLY);
+          bestValue = ::search<PV>(pos, ss, alpha, beta, adjustedDepth, false);
+
+          stable_sort(rootMoves.begin() + pvIdx, rootMoves.end());
+          //my_stable_sort(pos.this_thread()->thread_id(),&rootMoves[0] + pvIdx, rootMoves.size() - pvIdx);
+
+          // fail low/highに対してaspiration windowを広げる。
+          // ただし、引数で指定されていた値になっていたら、もうfail low/high扱いとしてbreakする。
+          if (bestValue <= alpha)
+          {
+            beta = (alpha + beta) / 2;
+            alpha = std::max(bestValue - delta, -VALUE_INFINITE);
+
+            failedHighCnt = 0;
+            //if (mainThread)
+            //    mainThread->stopOnPonderhit = false;
+
+          }
+          else if (bestValue >= beta)
+          {
+            beta = std::min(bestValue + delta, VALUE_INFINITE);
+            ++failedHighCnt;
+          }
+          else
+            break;
+
+          delta += delta / 4 + 5;
+          assert(-VALUE_INFINITE <= alpha && beta <= VALUE_INFINITE);
+
+          // 暴走チェック
+          //assert(th->nodes.load(std::memory_order_relaxed) <= 1000000 );
+        }
+
+        stable_sort(rootMoves.begin(), rootMoves.begin() + pvIdx + 1);
+        //my_stable_sort(pos.this_thread()->thread_id() , &rootMoves[0] , pvIdx + 1);
+
+      } // multi PV
+
+      completedDepth = rootDepth;
+    }
+
+    // このPV、途中でNULL_MOVEの可能性があるかも知れないので排除するためにis_ok()を通す。
+    // →　PVなのでNULL_MOVEはしないことになっているはずだし、
+    //     MOVE_WINも突っ込まれていることはない。(いまのところ)
+    for (Move move : rootMoves[0].pv)
+    {
+      if (!is_ok(move))
+        break;
+      pvs.push_back(move);
+    }
+
+    //sync_cout << rootDepth << sync_endl;
+
+    // multiPV時を考慮して、rootMoves[0]のscoreをbestValueとして返す。
+    bestValue = rootMoves[0].score;
+
+    return ValueAndPV(bestValue, pvs);
+  }
+
+}
+#endif

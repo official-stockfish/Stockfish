@@ -3,8 +3,6 @@
 #ifndef _NNUE_TRAINER_CLIPPED_RELU_H_
 #define _NNUE_TRAINER_CLIPPED_RELU_H_
 
-#include "../../../config.h"
-
 #if defined(EVAL_LEARN) && defined(EVAL_NNUE)
 
 #include "../../../learn/learn.h"

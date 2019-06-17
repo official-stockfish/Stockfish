@@ -3,8 +3,6 @@
 #ifndef _NNUE_TRAINER_FEATURES_FACTORIZER_H_
 #define _NNUE_TRAINER_FEATURES_FACTORIZER_H_
 
-#include "../../../../config.h"
-
 #if defined(EVAL_NNUE)
 
 #include "../../nnue_common.h"
@@ -29,7 +27,7 @@ class Factorizer {
   // 学習用特徴量のインデックスと学習率のスケールを取得する
   static void AppendTrainingFeatures(
       IndexType base_index, std::vector<TrainingFeature>* training_features) {
-    ASSERT_LV5(base_index < FeatureType::kDimensions);
+    assert(base_index < FeatureType::kDimensions);
     training_features->emplace_back(base_index);
   }
 };
@@ -45,8 +43,8 @@ template <typename FeatureType>
 IndexType AppendBaseFeature(
     FeatureProperties properties, IndexType base_index,
     std::vector<TrainingFeature>* training_features) {
-  ASSERT_LV5(properties.dimensions == FeatureType::kDimensions);
-  ASSERT_LV5(base_index < FeatureType::kDimensions);
+  assert(properties.dimensions == FeatureType::kDimensions);
+  assert(base_index < FeatureType::kDimensions);
   training_features->emplace_back(base_index);
   return properties.dimensions;
 }
@@ -59,14 +57,14 @@ IndexType InheritFeaturesIfRequired(
   if (!properties.active) {
     return 0;
   }
-  ASSERT_LV5(properties.dimensions == Factorizer<FeatureType>::GetDimensions());
-  ASSERT_LV5(base_index < FeatureType::kDimensions);
+  assert(properties.dimensions == Factorizer<FeatureType>::GetDimensions());
+  assert(base_index < FeatureType::kDimensions);
   const auto start = training_features->size();
   Factorizer<FeatureType>::AppendTrainingFeatures(
       base_index, training_features);
   for (auto i = start; i < training_features->size(); ++i) {
     auto& feature = (*training_features)[i];
-    ASSERT_LV5(feature.GetIndex() < Factorizer<FeatureType>::GetDimensions());
+    assert(feature.GetIndex() < Factorizer<FeatureType>::GetDimensions());
     feature.ShiftIndex(index_offset);
   }
   return properties.dimensions;

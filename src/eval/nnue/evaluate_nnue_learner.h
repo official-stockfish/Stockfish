@@ -3,8 +3,6 @@
 #ifndef _EVALUATE_NNUE_LEARNER_H_
 #define _EVALUATE_NNUE_LEARNER_H_
 
-#include "../../config.h"
-
 #if defined(EVAL_LEARN) && defined(EVAL_NNUE)
 
 #include "../../learn/learn.h"
@@ -14,11 +12,11 @@ namespace Eval {
 namespace NNUE {
 
 // 学習の初期化を行う
-void InitializeTraining(double eta1, u64 eta1_epoch,
-                        double eta2, u64 eta2_epoch, double eta3);
+void InitializeTraining(double eta1, uint64_t eta1_epoch,
+                        double eta2, uint64_t eta2_epoch, double eta3);
 
 // ミニバッチのサンプル数を設定する
-void SetBatchSize(u64 size);
+void SetBatchSize(uint64_t size);
 
 // 学習率のスケールを設定する
 void SetGlobalLearningRateScale(double scale);
@@ -34,7 +32,7 @@ void AddExample(Position& pos, Color rootColor,
                 const Learner::PackedSfenValue& psv, double weight);
 
 // 評価関数パラメータを更新する
-void UpdateParameters(u64 epoch);
+void UpdateParameters(uint64_t epoch);
 
 // 学習に問題が生じていないかチェックする
 void CheckHealth();

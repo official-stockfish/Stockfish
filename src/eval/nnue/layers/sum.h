@@ -3,8 +3,6 @@
 #ifndef _NNUE_LAYERS_SUM_H_
 #define _NNUE_LAYERS_SUM_H_
 
-#include "../../../config.h"
-
 #if defined(EVAL_NNUE)
 
 #include "../nnue_common.h"

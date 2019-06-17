@@ -3,8 +3,6 @@
 #ifndef _NNUE_TRAINER_FEATURES_FACTORIZER_HALF_KP_H_
 #define _NNUE_TRAINER_FEATURES_FACTORIZER_HALF_KP_H_
 
-#include "../../../../config.h"
-
 #if defined(EVAL_NNUE)
 
 #include "../../features/half_kp.h"

@@ -35,6 +35,8 @@ std::string trace(const Position& pos);
 
 Value evaluate(const Position& pos);
 
+void evaluate_with_no_return(const Position& pos);
+
 #if defined(EVAL_NNUE)
 // 評価関数ファイルを読み込む。
 // これは、"is_ready"コマンドの応答時に1度だけ呼び出される。2度呼び出すことは想定していない。
@@ -85,6 +87,13 @@ enum BonaPiece : int32_t
 	fe_end2 = e_king + SQUARE_NB, // 玉も含めた末尾の番号。
 };
 
+#define ENABLE_INCR_OPERATORS_ON(T)                                \
+inline T& operator++(T& d) { return d = T(int(d) + 1); }           \
+inline T& operator--(T& d) { return d = T(int(d) - 1); }
+
+ENABLE_INCR_OPERATORS_ON(BonaPiece)
+
+#undef ENABLE_INCR_OPERATORS_ON
 
 // BonaPieceを後手から見たとき(先手の39の歩を後手から見ると後手の71の歩)の番号とを
 // ペアにしたものをExtBonaPiece型と呼ぶことにする。
@@ -132,7 +141,7 @@ struct EvalList
 
 	// 盤上のsqの升にpiece_noのpcの駒を配置する
 	void put_piece(PieceNumber piece_no, Square sq, Piece pc) {
-		set_piece_on_board(piece_no, BonaPiece(kpp_board_index[pc].fw + sq), BonaPiece(kpp_board_index[pc].fb + inverse(sq)), sq);
+		set_piece_on_board(piece_no, BonaPiece(kpp_board_index[pc].fw + sq), BonaPiece(kpp_board_index[pc].fb + Inv(sq)), sq);
 	}
 
 	// 盤上のある升sqに対応するPieceNumberを返す。
@@ -181,8 +190,8 @@ public:
 	static const int MAX_LENGTH = 40;
 
   // 盤上の駒に対して、その駒番号(PieceNumber)を保持している配列
-  // 玉がSQ_NBに移動しているとき用に+1まで保持しておくが、
-  // SQ_NBの玉を移動させないので、この値を使うことはないはず。
+  // 玉がSQUARE_NBに移動しているとき用に+1まで保持しておくが、
+  // SQUARE_NBの玉を移動させないので、この値を使うことはないはず。
   PieceNumber piece_no_list_board[SQUARE_NB_PLUS1];
 private:
 

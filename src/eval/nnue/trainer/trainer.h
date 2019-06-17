@@ -3,8 +3,6 @@
 #ifndef _NNUE_TRAINER_H_
 #define _NNUE_TRAINER_H_
 
-#include "../../../config.h"
-
 #if defined(EVAL_LEARN) && defined(EVAL_NNUE)
 
 #include "../nnue_common.h"
@@ -36,11 +34,11 @@ class TrainingFeature {
 
   explicit TrainingFeature(IndexType index) :
       index_and_count_((index << kCountBits) | 1) {
-    ASSERT_LV3(index < (1 << kIndexBits));
+    assert(index < (1 << kIndexBits));
   }
   TrainingFeature& operator+=(const TrainingFeature& other) {
-    ASSERT_LV3(other.GetIndex() == GetIndex());
-    ASSERT_LV3(other.GetCount() + GetCount() < (1 << kCountBits));
+    assert(other.GetIndex() == GetIndex());
+    assert(other.GetCount() + GetCount() < (1 << kCountBits));
     index_and_count_ += other.GetCount();
     return *this;
   }
@@ -48,7 +46,7 @@ class TrainingFeature {
     return static_cast<IndexType>(index_and_count_ >> kCountBits);
   }
   void ShiftIndex(IndexType offset) {
-    ASSERT_LV3(GetIndex() + offset < (1 << kIndexBits));
+    assert(GetIndex() + offset < (1 << kIndexBits));
     index_and_count_ += offset << kCountBits;
   }
   IndexType GetCount() const {

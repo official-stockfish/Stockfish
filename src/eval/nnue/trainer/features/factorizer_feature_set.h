@@ -3,8 +3,6 @@
 #ifndef _NNUE_TRAINER_FEATURES_FACTORIZER_FEATURE_SET_H_
 #define _NNUE_TRAINER_FEATURES_FACTORIZER_FEATURE_SET_H_
 
-#include "../../../../config.h"
-
 #if defined(EVAL_NNUE)
 
 #include "../../features/feature_set.h"
@@ -38,7 +36,7 @@ class Factorizer<FeatureSet<FirstFeatureType, RemainingFeatureTypes...>> {
   static void AppendTrainingFeatures(
       IndexType base_index, std::vector<TrainingFeature>* training_features,
       IndexType base_dimensions = kBaseDimensions) {
-    ASSERT_LV5(base_index < kBaseDimensions);
+    assert(base_index < kBaseDimensions);
     constexpr auto boundary = FeatureSet<RemainingFeatureTypes...>::kDimensions;
     if (base_index < boundary) {
       Tail::AppendTrainingFeatures(
@@ -50,7 +48,7 @@ class Factorizer<FeatureSet<FirstFeatureType, RemainingFeatureTypes...>> {
       for (auto i = start; i < training_features->size(); ++i) {
         auto& feature = (*training_features)[i];
         const auto index = feature.GetIndex();
-        ASSERT_LV5(index < Head::GetDimensions() ||
+        assert(index < Head::GetDimensions() ||
                    (index >= base_dimensions &&
                     index < base_dimensions +
                             Head::GetDimensions() - Head::kBaseDimensions));
@@ -81,13 +79,13 @@ public:
   static void AppendTrainingFeatures(
       IndexType base_index, std::vector<TrainingFeature>* training_features,
       IndexType base_dimensions = kBaseDimensions) {
-    ASSERT_LV5(base_index < kBaseDimensions);
+    assert(base_index < kBaseDimensions);
     const auto start = training_features->size();
     Factorizer<FeatureType>::AppendTrainingFeatures(
         base_index, training_features);
     for (auto i = start; i < training_features->size(); ++i) {
       auto& feature = (*training_features)[i];
-      ASSERT_LV5(feature.GetIndex() < Factorizer<FeatureType>::GetDimensions());
+      assert(feature.GetIndex() < Factorizer<FeatureType>::GetDimensions());
       if (feature.GetIndex() >= kBaseDimensions) {
         feature.ShiftIndex(base_dimensions - kBaseDimensions);
       }

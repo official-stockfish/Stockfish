@@ -80,6 +80,9 @@ typedef std::unique_ptr<std::deque<StateInfo>> StateListPtr;
 /// traversing the search tree.
 class Thread;
 
+// packされたsfen
+struct PackedSfen { uint8_t data[32]; };
+
 class Position {
 public:
   static void init();
@@ -186,6 +189,29 @@ public:
   // 評価関数で使うための、どの駒番号の駒がどこにあるかなどの情報。
   const Eval::EvalList* eval_list() const { return &evalList; }
 #endif  // defined(EVAL_NNUE)
+
+#if defined(EVAL_LEARN)
+  // 現局面で指し手がないかをテストする。指し手生成ルーチンを用いるので速くない。探索中には使わないこと。
+  bool is_mated() const;
+
+  // -- sfen化ヘルパ
+
+  // packされたsfenを得る。引数に指定したバッファに返す。
+  // gamePlyはpackに含めない。
+  void sfen_pack(PackedSfen& sfen);
+
+  // ↑sfenを経由すると遅いので直接packされたsfenをセットする関数を作った。
+  // pos.set(sfen_unpack(data),si,th); と等価。
+  // 渡された局面に問題があって、エラーのときは非0を返す。
+  // PackedSfenにgamePlyは含まないので復元できない。そこを設定したいのであれば引数で指定すること。
+  int set_from_packed_sfen(const PackedSfen& sfen, StateInfo* si, Thread* th, bool mirror = false);
+
+  // 盤面と手駒、手番を与えて、そのsfenを返す。
+  //static std::string sfen_from_rawdata(Piece board[81], Hand hands[2], Color turn, int gamePly);
+
+  // c側の玉の位置を返す。
+  Square king_square(Color c) const { return pieceList[make_piece(c, KING)][0]; }
+#endif // EVAL_LEARN
 
 private:
   // Initialization helpers (used while setting up a position)

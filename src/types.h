@@ -235,8 +235,8 @@ enum Square : int {
   SQ_A8, SQ_B8, SQ_C8, SQ_D8, SQ_E8, SQ_F8, SQ_G8, SQ_H8,
   SQ_NONE,
 
-  SQUARE_NB = 64,
-  SQUARE_NB_PLUS1 = SQUARE_NB + 1, // 玉がいない場合、SQ_NBに移動したものとして扱うため、配列をSQ_NB+1で確保しないといけないときがあるのでこの定数を用いる。
+  SQUARE_ZERO = 0, SQUARE_NB = 64,
+  SQUARE_NB_PLUS1 = SQUARE_NB + 1, // 玉がいない場合、SQUARE_NBに移動したものとして扱うため、配列をSQUARE_NB+1で確保しないといけないときがあるのでこの定数を用いる。
 };
 
 enum Direction : int {
@@ -362,10 +362,6 @@ constexpr Square operator~(Square s) {
   return Square(s ^ SQ_A8); // Vertical flip SQ_A1 -> SQ_A8
 }
 
-constexpr Square inverse(Square s) {
-	return static_cast<Square>(static_cast<int>(SQUARE_NB) - s - 1);
-}
-
 constexpr File operator~(File f) {
   return File(f ^ FILE_H); // Horizontal flip FILE_A -> FILE_H
 }
@@ -463,6 +459,12 @@ constexpr Move make(Square from, Square to, PieceType pt = KNIGHT) {
 constexpr bool is_ok(Move m) {
   return from_sq(m) != to_sq(m); // Catch MOVE_NULL and MOVE_NONE
 }
+
+// 盤面を180°回したときの升目を返す
+constexpr Square Inv(Square sq) { return (Square)((SQUARE_NB - 1) - sq); }
+
+// 盤面をミラーしたときの升目を返す
+constexpr Square Mir(Square sq) { return make_square(File(7 - (int)file_of(sq)), rank_of(sq)); }
 
 #if defined(EVAL_NNUE)
 // --------------------

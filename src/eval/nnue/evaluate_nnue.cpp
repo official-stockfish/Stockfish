@@ -224,8 +224,8 @@ EvaluateHashTable g_evalTable;
 
 // prefetchする関数も用意しておく。
 void prefetch_evalhash(const Key key) {
-  constexpr auto mask = ~((u64)0x1f);
-  prefetch((void*)((u64)g_evalTable[key] & mask));
+  constexpr auto mask = ~((uint64_t)0x1f);
+  prefetch((void*)((uint64_t)g_evalTable[key] & mask));
 }
 #endif
 
@@ -269,7 +269,7 @@ Value compute_eval(const Position& pos) {
 }
 
 // 評価関数
-Value NNUE::evaluate(const Position& pos) {
+Value evaluate(const Position& pos) {
   const auto& accumulator = pos.state()->accumulator;
   if (accumulator.computed_score) {
     return accumulator.score;

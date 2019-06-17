@@ -3,8 +3,6 @@
 #ifndef _NNUE_TRAINER_FEATURE_TRANSFORMER_H_
 #define _NNUE_TRAINER_FEATURE_TRANSFORMER_H_
 
-#include "../../../config.h"
-
 #if defined(EVAL_LEARN) && defined(EVAL_NNUE)
 
 #include "../../../learn/learn.h"
