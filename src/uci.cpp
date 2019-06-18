@@ -40,6 +40,30 @@ extern vector<string> setup_bench(const Position&, istream&);
 // FEN string of the initial position, normal chess
 const char* StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
+// 棋譜を自動生成するコマンド
+#if defined (EVAL_LEARN)
+namespace Learner
+{
+  // 教師局面の自動生成
+  void gen_sfen(Position& pos, istringstream& is);
+
+  // 生成した棋譜からの学習
+  void learn(Position& pos, istringstream& is);
+
+#if defined(GENSFEN2019)
+  // 開発中の教師局面の自動生成コマンド
+  void gen_sfen2019(Position& pos, istringstream& is);
+#endif
+
+  // 読み筋と評価値のペア。Learner::search(),Learner::qsearch()が返す。
+  typedef std::pair<Value, std::vector<Move> > ValueAndPV;
+
+  ValueAndPV qsearch(Position& pos);
+  ValueAndPV search(Position& pos, int depth_, size_t multiPV = 1, uint64_t nodesLimit = 0);
+
+}
+#endif
+
 namespace {
   // position() is called when engine receives the "position" UCI command.
   // The function sets up the position described in the given FEN string ("fen")
@@ -301,6 +325,16 @@ void UCI::loop(int argc, char* argv[]) {
       else if (token == "bench") bench(pos, is, states);
       else if (token == "d")     sync_cout << pos << sync_endl;
       else if (token == "eval")  sync_cout << Eval::trace(pos) << sync_endl;
+#if defined (EVAL_LEARN)
+      else if (token == "gensfen") Learner::gen_sfen(pos, is);
+      else if (token == "learn") Learner::learn(pos, is);
+
+#if defined (GENSFEN2019)
+      // 開発中の教師局面生成コマンド
+      else if (token == "gensfen2019") Learner::gen_sfen2019(pos, is);
+#endif
+
+#endif
       else
           sync_cout << "Unknown command: " << cmd << sync_endl;
 
