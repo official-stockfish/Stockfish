@@ -3,7 +3,7 @@
 
 // いまどきの手番つき評価関数(EVAL_KPPTとEVAL_KPP_KKPT)の共用header的なもの。
 
-#if defined (EVAL_KPPT) || defined(EVAL_KPP_KKPT) || defined(EVAL_NNUE)
+#if defined(EVAL_NNUE) || defined(EVAL_LEARN)
 #include <functional>
 
 // KKファイル名
@@ -77,7 +77,6 @@ namespace Eval
 
 }
 
-
-#endif
+#endif  // defined(EVAL_NNUE) || defined(EVAL_LEARN)
 
 #endif // _EVALUATE_KPPT_COMMON_H_

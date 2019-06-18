@@ -466,7 +466,7 @@ constexpr Square Inv(Square sq) { return (Square)((SQUARE_NB - 1) - sq); }
 // 盤面をミラーしたときの升目を返す
 constexpr Square Mir(Square sq) { return make_square(File(7 - (int)file_of(sq)), rank_of(sq)); }
 
-#if defined(EVAL_NNUE)
+#if defined(EVAL_NNUE) || defined(EVAL_LEARN)
 // --------------------
 //        駒箱
 // --------------------
@@ -496,6 +496,6 @@ inline PieceNumber& operator--(PieceNumber& d) { return d = PieceNumber(int8_t(d
 
 // PieceNumberの整合性の検査。assert用。
 constexpr bool is_ok(PieceNumber pn) { return pn < PIECE_NUMBER_NB; }
-#endif  // defined(EVAL_NNUE)
+#endif  // defined(EVAL_NNUE) || defined(EVAL_LEARN)
 
 #endif // #ifndef TYPES_H_INCLUDED

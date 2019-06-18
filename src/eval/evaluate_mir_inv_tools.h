@@ -1,6 +1,8 @@
 ﻿#ifndef _EVALUATE_MIR_INV_TOOLS_
 #define _EVALUATE_MIR_INV_TOOLS_
 
+#if defined(EVAL_NNUE) || defined(EVAL_LEARN)
+
 // BonaPieceのmirror(左右反転)やinverse(盤上の180度回転)させた駒を得るためのツール類。
 
 #include "../types.h"
@@ -39,5 +41,7 @@ namespace Eval
 	// この関数を明示的に呼び出すか、init()を呼び出すかしたときに、上のテーブルが初期化される。
 	extern void init_mir_inv_tables();
 }
+
+#endif  // defined(EVAL_NNUE) || defined(EVAL_LEARN)
 
 #endif

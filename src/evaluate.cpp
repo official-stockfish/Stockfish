@@ -911,7 +911,7 @@ std::string Eval::trace(const Position& pos) {
   return ss.str();
 }
 
-#if defined(EVAL_NNUE)
+#if defined(EVAL_NNUE) || defined(EVAL_LEARN)
 namespace Eval {
 ExtBonaPiece kpp_board_index[PIECE_NB] = {
     { BONA_PIECE_ZERO, BONA_PIECE_ZERO },
@@ -979,5 +979,16 @@ bool EvalList::is_valid(const Position& pos)
 
   return true;
 }
+}
+#endif  // defined(EVAL_NNUE) || defined(EVAL_LEARN)
+
+#if !defined(EVAL_NNUE)
+namespace Eval {
+void evaluate_with_no_return(const Position& pos) {}
+void update_weights(uint64_t epoch, const std::array<bool, 4> & freeze) {}
+void init_grad(double eta1, uint64_t eta_epoch, double eta2, uint64_t eta2_epoch, double eta3) {}
+void add_grad(Position& pos, Color rootColor, double delt_grad, const std::array<bool, 4> & freeze) {}
+void save_eval(std::string suffix) {}
+double get_eta() {}
 }
 #endif  // defined(EVAL_NNUE)

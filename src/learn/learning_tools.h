@@ -5,6 +5,8 @@
 
 #include "learn.h"
 #if defined (EVAL_LEARN)
+#include <array>
+
 #include "../eval/evaluate_mir_inv_tools.h"
 
 #if defined(SGD_UPDATE) || defined(USE_KPPP_MIRROR_WRITE)

@@ -37,7 +37,7 @@ Value evaluate(const Position& pos);
 
 void evaluate_with_no_return(const Position& pos);
 
-#if defined(EVAL_NNUE)
+#if defined(EVAL_NNUE) || defined(EVAL_LEARN)
 // 評価関数ファイルを読み込む。
 // これは、"is_ready"コマンドの応答時に1度だけ呼び出される。2度呼び出すことは想定していない。
 // (ただし、EvalDir(評価関数フォルダ)が変更になったあと、isreadyが再度送られてきたら読みなおす。)
@@ -216,7 +216,7 @@ struct DirtyPiece
 	int dirty_num;
 
 };
-#endif  // defined(EVAL_NNUE)
+#endif  // defined(EVAL_NNUE) || defined(EVAL_LEARN)
 }
 
 #endif // #ifndef EVALUATE_H_INCLUDED

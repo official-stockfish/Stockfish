@@ -28,6 +28,7 @@
 #include <string>
 
 #include "bitboard.h"
+#include "evaluate.h"
 #include "misc.h"
 #include "types.h"
 
@@ -179,7 +180,7 @@ public:
   bool pos_is_ok() const;
   void flip();
 
-#if defined(EVAL_NNUE)
+#if defined(EVAL_NNUE) || defined(EVAL_LEARN)
   // --- StateInfo
 
   // 現在の局面に対応するStateInfoを返す。
@@ -188,7 +189,7 @@ public:
 
   // 評価関数で使うための、どの駒番号の駒がどこにあるかなどの情報。
   const Eval::EvalList* eval_list() const { return &evalList; }
-#endif  // defined(EVAL_NNUE)
+#endif  // defined(EVAL_NNUE) || defined(EVAL_LEARN)
 
 #if defined(EVAL_LEARN)
   // 現局面で指し手がないかをテストする。指し手生成ルーチンを用いるので速くない。探索中には使わないこと。
@@ -248,10 +249,10 @@ private:
   StateInfo* st;
   bool chess960;
 
-#if defined(EVAL_NNUE)
+#if defined(EVAL_NNUE) || defined(EVAL_LEARN)
   // 評価関数で用いる駒のリスト
   Eval::EvalList evalList;
-#endif  // defined(EVAL_NNUE)
+#endif  // defined(EVAL_NNUE) || defined(EVAL_LEARN)
 };
 
 namespace PSQT {
