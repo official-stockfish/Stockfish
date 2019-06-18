@@ -1717,6 +1717,6 @@ void Tablebases::rank_root_moves(Position& pos, Search::RootMoves& rootMoves) {
     {
         // Clean up if root_probe() and root_probe_wdl() have failed
         for (auto& m : rootMoves)
-          m.tbRank = 0;
+            m.tbRank = 0;
     }
 }
