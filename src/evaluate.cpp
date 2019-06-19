@@ -22,6 +22,7 @@
 #include <cassert>
 #include <cstring>   // For std::memset
 #include <iomanip>
+#include <set>
 #include <sstream>
 
 #include "bitboard.h"
@@ -938,6 +939,16 @@ ExtBonaPiece kpp_board_index[PIECE_NB] = {
 // 注 : デバッグ用。遅い。
 bool EvalList::is_valid(const Position& pos)
 {
+  std::set<PieceNumber> piece_numbers;
+  for (Square sq = SQ_A1; sq != SQUARE_NB; ++sq) {
+    auto piece_number = piece_no_of_board(sq);
+    if (piece_number == PIECE_NUMBER_NB) {
+      continue;
+    }
+    assert(!piece_numbers.count(piece_number));
+    piece_numbers.insert(piece_number);
+  }
+
   for (int i = 0; i < length(); ++i)
   {
     BonaPiece fw = pieceListFw[i];

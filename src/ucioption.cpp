@@ -87,6 +87,15 @@ void init(OptionsMap& o) {
   // そこでこの隠しオプションでisready時の評価関数の読み込みを抑制して、
   // test evalconvertコマンドを叩く。
   o["SkipLoadingEval"]       << Option(false);
+  // 定跡の指し手を何手目まで用いるか
+  o["BookMoves"] << Option(16, 0, 10000);
+
+#if defined(EVAL_LEARN)
+  // 評価関数の学習を行なうときは、評価関数の保存先のフォルダを変更できる。
+  // デフォルトではevalsave。このフォルダは事前に用意されているものとする。
+  // このフォルダ配下にフォルダを"0/","1/",…のように自動的に掘り、そこに評価関数ファイルを保存する。
+  o["EvalSaveDir"] << Option("evalsave");
+#endif
 }
 
 

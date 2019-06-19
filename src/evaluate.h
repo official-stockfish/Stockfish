@@ -187,7 +187,7 @@ public:
 	// VPGATHERDDを使う都合、4の倍数でなければならない。
 	// また、KPPT型評価関数などは、39,40番目の要素がゼロであることを前提とした
 	// アクセスをしている箇所があるので注意すること。
-	static const int MAX_LENGTH = 40;
+	static const int MAX_LENGTH = 32;
 
   // 盤上の駒に対して、その駒番号(PieceNumber)を保持している配列
   // 玉がSQUARE_NBに移動しているとき用に+1まで保持しておくが、

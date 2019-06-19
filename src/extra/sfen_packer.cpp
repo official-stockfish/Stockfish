@@ -126,11 +126,12 @@ struct HuffmanedPiece
 
 HuffmanedPiece huffman_table[] =
 {
-  {0b000,1}, // NO_PIECE
-  {0b001,3}, // PAWN
-  {0b011,3}, // KNIGHT
-  {0b101,3}, // BISHOP
-  {0b111,3}, // ROOK
+  {0b0000,1}, // NO_PIECE
+  {0b0001,4}, // PAWN
+  {0b0011,4}, // KNIGHT
+  {0b0101,4}, // BISHOP
+  {0b0111,4}, // ROOK
+  {0b1001,4}, // QUEEN
 };
 
 // sfenを圧縮/解凍するためのクラス
@@ -269,7 +270,8 @@ int Position::set_from_packed_sfen(const PackedSfen& sfen , StateInfo * si, Thre
 
 	std::memset(this, 0, sizeof(Position));
 	std::memset(si, 0, sizeof(StateInfo));
-	st = si;
+  std::fill_n(&pieceList[0][0], sizeof(pieceList) / sizeof(Square), SQ_NONE);
+  st = si;
 
 	// Active color
 	sideToMove = (Color)stream.read_one_bit();
@@ -279,13 +281,7 @@ int Position::set_from_packed_sfen(const PackedSfen& sfen , StateInfo * si, Thre
 
 	// PieceListを更新する上で、どの駒がどこにあるかを設定しなければならないが、
 	// それぞれの駒をどこまで使ったかのカウンター
-	PieceNumber piece_no_count[KING] = {
-    PIECE_NUMBER_ZERO,
-    PIECE_NUMBER_PAWN,
-    PIECE_NUMBER_KNIGHT,
-		PIECE_NUMBER_BISHOP,
-    PIECE_NUMBER_ROOK,
-  };
+  PieceNumber next_piece_number = PIECE_NUMBER_ZERO;
 
   pieceList[W_KING][0] = SQUARE_NB;
   pieceList[B_KING][0] = SQUARE_NB;
@@ -294,12 +290,12 @@ int Position::set_from_packed_sfen(const PackedSfen& sfen , StateInfo * si, Thre
 	if (mirror)
 	{
 		for (auto c : Colors)
-			board[Mir((Square)stream.read_n_bit(7))] = make_piece(c, KING);
+			board[Mir((Square)stream.read_n_bit(6))] = make_piece(c, KING);
 	}
 	else
 	{
 		for (auto c : Colors)
-			board[stream.read_n_bit(7)] = make_piece(c, KING);
+			board[stream.read_n_bit(6)] = make_piece(c, KING);
 	}
 
   // Piece placement
@@ -335,7 +331,7 @@ int Position::set_from_packed_sfen(const PackedSfen& sfen , StateInfo * si, Thre
       PieceNumber piece_no =
         (pc == B_KING) ? PIECE_NUMBER_BKING : // 先手玉
         (pc == W_KING) ? PIECE_NUMBER_WKING : // 後手玉
-        piece_no_count[type_of(pc)]++; // それ以外
+        next_piece_number++; // それ以外
 
       evalList.put_piece(piece_no, sq, pc); // sqの升にpcの駒を配置する
 
@@ -363,12 +359,12 @@ int Position::set_from_packed_sfen(const PackedSfen& sfen , StateInfo * si, Thre
   }
   if (stream.read_one_bit()) {
     Square rsq;
-    for (rsq = relative_square(BLACK, SQ_H1); piece_on(rsq) != W_ROOK; --rsq) {}
+    for (rsq = relative_square(BLACK, SQ_H1); piece_on(rsq) != B_ROOK; --rsq) {}
     set_castling_right(BLACK, rsq);
   }
   if (stream.read_one_bit()) {
     Square rsq;
-    for (rsq = relative_square(BLACK, SQ_A1); piece_on(rsq) != W_ROOK; ++rsq) {}
+    for (rsq = relative_square(BLACK, SQ_A1); piece_on(rsq) != B_ROOK; ++rsq) {}
     set_castling_right(BLACK, rsq);
   }
 
@@ -380,6 +376,9 @@ int Position::set_from_packed_sfen(const PackedSfen& sfen , StateInfo * si, Thre
     if (!(attackers_to(st->epSquare) & pieces(sideToMove, PAWN))
       || !(pieces(~sideToMove, PAWN) & (st->epSquare + pawn_push(~sideToMove))))
       st->epSquare = SQ_NONE;
+  }
+  else {
+    st->epSquare = SQ_NONE;
   }
 
   // Halfmove clock
@@ -396,6 +395,8 @@ int Position::set_from_packed_sfen(const PackedSfen& sfen , StateInfo * si, Thre
   chess960 = false;
   thisThread = th;
 	set_state(st);
+
+  //std::cout << *this << std::endl;
 
   assert(pos_is_ok());
 #if defined(EVAL_NNUE)

@@ -249,14 +249,7 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
 
   // PieceListを更新する上で、どの駒がどこにあるかを設定しなければならないが、
   // それぞれの駒をどこまで使ったかのカウンター
-  PieceNumber piece_no_count[KING] = {
-    PIECE_NUMBER_ZERO,
-    PIECE_NUMBER_PAWN,
-    PIECE_NUMBER_KNIGHT,
-    PIECE_NUMBER_BISHOP,
-    PIECE_NUMBER_ROOK,
-    PIECE_NUMBER_QUEEN
-  };
+  PieceNumber next_piece_number = PIECE_NUMBER_ZERO;
 #endif  // defined(EVAL_NNUE)
 
   ss >> std::noskipws;
@@ -279,7 +272,7 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
           PieceNumber piece_no =
             (idx == W_KING) ? PIECE_NUMBER_WKING : // 先手玉
             (idx == B_KING) ? PIECE_NUMBER_BKING : // 後手玉
-            piece_no_count[type_of(Piece(idx))]++; // それ以外
+            next_piece_number++; // それ以外
           evalList.put_piece(piece_no, sq, pc); // sqの升にpcの駒を配置する
 #endif  // defined(EVAL_NNUE)
 
@@ -780,6 +773,9 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   Piece pc = piece_on(from);
   Piece captured = type_of(m) == ENPASSANT ? make_piece(them, PAWN) : piece_on(to);
 
+  PieceNumber piece_no0 = PIECE_NUMBER_NB;
+  PieceNumber piece_no1 = PIECE_NUMBER_NB;
+
   assert(color_of(pc) == us);
   assert(captured == NO_PIECE || color_of(captured) == (type_of(m) != CASTLING ? them : us));
   assert(type_of(captured) != KING);
@@ -805,10 +801,6 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   {
       Square capsq = to;
 
-#if defined(EVAL_NNUE)
-      PieceNumber piece_no1;
-#endif  // defined(EVAL_NNUE)
-
       // If the captured piece is a pawn, update pawn hash key, otherwise
       // update non-pawn material.
       if (type_of(captured) == PAWN)
@@ -828,6 +820,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
 #endif  // defined(EVAL_NNUE)
 
               board[capsq] = NO_PIECE; // Not done by remove_piece()
+              evalList.piece_no_list_board[capsq] = PIECE_NUMBER_NB;
           }
           else {
 #if defined(EVAL_NNUE)
@@ -893,7 +886,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   // Move the piece. The tricky Chess960 castling is handled earlier
   if (type_of(m) != CASTLING) {
 #if defined(EVAL_NNUE)
-    PieceNumber piece_no0 = piece_no_of(from);
+    piece_no0 = piece_no_of(from);
 #endif  // defined(EVAL_NNUE)
 
     move_piece(pc, from, to);
@@ -901,6 +894,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
 #if defined(EVAL_NNUE)
     dp.pieceNo[0] = piece_no0;
     dp.changed_piece[0].old_piece = evalList.bona_piece(piece_no0);
+    evalList.piece_no_list_board[from] = PIECE_NUMBER_NB;
     evalList.put_piece(piece_no0, to, pc);
     dp.changed_piece[0].new_piece = evalList.bona_piece(piece_no0);
 #endif  // defined(EVAL_NNUE)
@@ -928,9 +922,10 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
           put_piece(promotion, to);
 
 #if defined(EVAL_NNUE)
-          PieceNumber piece_no0 = piece_no_of(to);
+          piece_no0 = piece_no_of(to);
           dp.pieceNo[0] = piece_no0;
           dp.changed_piece[0].old_piece = evalList.bona_piece(piece_no0);
+          assert(evalList.piece_no_list_board[from] == PIECE_NUMBER_NB);
           evalList.put_piece(piece_no0, to, promotion);
           dp.changed_piece[0].new_piece = evalList.bona_piece(piece_no0);
 #endif  // defined(EVAL_NNUE)
@@ -985,6 +980,8 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       }
   }
 
+  //std::cout << *this << std::endl;
+
   assert(pos_is_ok());
 #if defined(EVAL_NNUE)
   assert(evalList.is_valid(*this));
@@ -1038,6 +1035,7 @@ void Position::undo_move(Move m) {
 #if defined(EVAL_NNUE)
       PieceNumber piece_no0 = st->dirtyPiece.pieceNo[0];
       evalList.put_piece(piece_no0, from, pc);
+      evalList.piece_no_list_board[to] = PIECE_NUMBER_NB;
 #endif  // defined(EVAL_NNUE)
 
       if (st->capturedPiece)
@@ -1118,16 +1116,20 @@ void Position::do_castling(Color us, Square from, Square& to, Square& rfrom, Squ
   if (Do) {
     dp.pieceNo[0] = piece_no0;
     dp.changed_piece[0].old_piece = evalList.bona_piece(piece_no0);
+    evalList.piece_no_list_board[from] = PIECE_NUMBER_NB;
     evalList.put_piece(piece_no0, to, make_piece(us, KING));
     dp.changed_piece[0].new_piece = evalList.bona_piece(piece_no0);
 
     dp.pieceNo[1] = piece_no1;
     dp.changed_piece[1].old_piece = evalList.bona_piece(piece_no1);
+    evalList.piece_no_list_board[rfrom] = PIECE_NUMBER_NB;
     evalList.put_piece(piece_no1, rto, make_piece(us, ROOK));
     dp.changed_piece[1].new_piece = evalList.bona_piece(piece_no1);
   }
   else {
+    evalList.piece_no_list_board[to] = PIECE_NUMBER_NB;
     evalList.put_piece(piece_no0, from, make_piece(us, KING));
+    evalList.piece_no_list_board[rto] = PIECE_NUMBER_NB;
     evalList.put_piece(piece_no1, rfrom, make_piece(us, ROOK));
   }
 #endif  // defined(EVAL_NNUE)

@@ -871,7 +871,7 @@ moves_loop: // When in check, search starts from here
 
       ss->moveCount = ++moveCount;
 
-      if (rootNode && thisThread == Threads.main() && Time.elapsed() > 3000)
+      if (rootNode && thisThread == Threads.main() && Time.elapsed() > 3000 && !Limits.silent)
           sync_cout << "info depth " << depth / ONE_PLY
                     << " currmove " << UCI::move(move, pos.is_chess960())
                     << " currmovenumber " << moveCount + thisThread->pvIdx << sync_endl;
@@ -1382,7 +1382,9 @@ moves_loop: // When in check, search starts from here
       ss->continuationHistory = &thisThread->continuationHistory[pos.moved_piece(move)][to_sq(move)];
 
       // Make and search the move
+      //std::cout << pos << std::endl;
       pos.do_move(move, st, givesCheck);
+      //std::cout << pos << std::endl;
       value = -qsearch<NT>(pos, ss+1, -beta, -alpha, depth - ONE_PLY);
       pos.undo_move(move);
 
@@ -1740,7 +1742,7 @@ namespace Learner
     // RootNodeはss->ply == 0がその条件。
     // ゼロクリアするので、ss->ply == 0となるので大丈夫…。
 
-    memset(ss - 4, 0, 7 * sizeof(Stack));
+    std::memset(ss - 7, 0, 10 * sizeof(Stack));
 
     // Search::Limitsに関して
     // このメンバー変数はglobalなので他のスレッドに影響を及ぼすので気をつけること。
@@ -1751,7 +1753,7 @@ namespace Learner
       limits.infinite = true;
 
       // PVを表示されると邪魔なので消しておく。
-      //limits.silent = true;
+      limits.silent = true;
 
       // これを用いると各スレッドのnodesを積算したものと比較されてしまう。ゆえに使用しない。
       limits.nodes = 0;
@@ -1789,8 +1791,23 @@ namespace Learner
       // history類を全部クリアする。この初期化は少し時間がかかるし、探索の精度はむしろ下がるので善悪はよくわからない。
       // th->clear();
 
-      for (int i = 4; i > 0; i--)
-        (ss - i)->continuationHistory = &th->continuationHistory[SQUARE_ZERO][NO_PIECE];
+      int ct = int(Options["Contempt"]) * PawnValueEg / 100; // From centipawns
+      Color us = pos.side_to_move();
+
+      // In analysis mode, adjust contempt in accordance with user preference
+      if (Limits.infinite || Options["UCI_AnalyseMode"])
+        ct = Options["Analysis Contempt"] == "Off" ? 0
+        : Options["Analysis Contempt"] == "Both" ? ct
+        : Options["Analysis Contempt"] == "White" && us == BLACK ? -ct
+        : Options["Analysis Contempt"] == "Black" && us == WHITE ? -ct
+        : ct;
+
+      // Evaluation score is from the white point of view
+      th->contempt = (us == WHITE ? make_score(ct, ct / 2)
+        : -make_score(ct, ct / 2));
+
+      for (int i = 7; i > 0; i--)
+        (ss - i)->continuationHistory = &th->continuationHistory[NO_PIECE][0]; // Use as sentinel
 
       // rootMovesの設定
       auto& rootMoves = th->rootMoves;
@@ -1831,7 +1848,7 @@ namespace Learner
   // 悪い影響があるので、窓の範囲を指定できるようにするのをやめることにした。
   ValueAndPV qsearch(Position& pos)
   {
-    Stack stack[MAX_PLY + 7], * ss = stack + 4;
+    Stack stack[MAX_PLY + 10], * ss = stack + 7;
     Move pv[MAX_PLY + 1];
     std::vector<Move> pvs;
 
@@ -1881,7 +1898,7 @@ namespace Learner
     if (depth == DEPTH_ZERO)
       return qsearch(pos);
 
-    Stack stack[MAX_PLY + 7], * ss = stack + 4;
+    Stack stack[MAX_PLY + 10], * ss = stack + 7;
     Move pv[MAX_PLY + 1];
 
     init_for_search(pos, ss);
@@ -1892,6 +1909,7 @@ namespace Learner
     auto th = pos.this_thread();
     auto& rootDepth = th->rootDepth;
     auto& pvIdx = th->pvIdx;
+    auto& pvLast = th->pvLast;
     auto& rootMoves = th->rootMoves;
     auto& completedDepth = th->completedDepth;
     auto& selDepth = th->selDepth;
@@ -1919,9 +1937,20 @@ namespace Learner
       for (RootMove& rm : rootMoves)
         rm.previousScore = rm.score;
 
-      // MultiPV
+      size_t pvFirst = 0;
+      pvLast = 0;
+
+      // MultiPV loop. We perform a full root search for each PV line
       for (pvIdx = 0; pvIdx < multiPV && !Threads.stop; ++pvIdx)
       {
+        if (pvIdx == pvLast)
+        {
+          pvFirst = pvLast;
+          for (pvLast++; pvLast < rootMoves.size(); pvLast++)
+            if (rootMoves[pvLast].tbRank != rootMoves[pvFirst].tbRank)
+              break;
+        }
+
         // それぞれのdepthとPV lineに対するUSI infoで出力するselDepth
         selDepth = 0;
 

@@ -392,6 +392,16 @@ void MultiThinkGenSfen::thread_worker(size_t thread_id)
 		auto& pos = th->rootPos;
     pos.set(StartFEN, false, &si, th);
 
+    // Test cod for Packed SFEN.
+    //{
+    //  PackedSfen packed_sfen;
+    //  pos.sfen_pack(packed_sfen);
+    //  std::cout << pos << std::endl;
+    //  pos.set_from_packed_sfen(packed_sfen, &si, th);
+    //  std::string actual = pos.fen();
+    //  assert(actual == StartFEN);
+    //}
+
 		// 探索部で定義されているBookMoveSelectorのメンバを参照する。
 		//auto& book = ::book;
 
