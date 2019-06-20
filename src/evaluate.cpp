@@ -641,6 +641,7 @@ namespace {
                 // in the pawn's path attacked or occupied by the enemy.
                 defendedSquares = unsafeSquares = squaresToQueen = forward_file_bb(Us, s);
                 wideUnsafeSquares = AllSquares;
+                bool totallyFreePath = 0;
 
                 bb = forward_file_bb(Them, s) & pos.pieces(ROOK, QUEEN);
 
@@ -654,9 +655,14 @@ namespace {
                     wideUnsafeSquares = (attackedBy[Them][ALL_PIECES] | pos.pieces(Them)) 
                                        & (shift<WEST>(squaresToQueen) | shift<EAST>(squaresToQueen));
 
+                if (!wideUnsafeSquares)
+                    totallyFreePath = !((attackedBy[Them][ALL_PIECES] | pos.pieces(Them))
+                                       & (shift<WEST>(shift<WEST>(squaresToQueen)) 
+                                             | shift<EAST>(shift<EAST>(squaresToQueen))));
+
                 // If there aren't any enemy attacks, assign a big bonus. Otherwise
                 // assign a smaller bonus if the block square isn't attacked.
-                int k = !wideUnsafeSquares ? 35 : !unsafeSquares ? 20 : !(unsafeSquares & blockSq) ? 9 : 0;
+                int k = totallyFreePath ? 50 : !wideUnsafeSquares ? 35 : !unsafeSquares ? 20 : !(unsafeSquares & blockSq) ? 9 : 0;
 
                 // Assign a larger bonus if the block square is defended.
                 if (defendedSquares & blockSq)
@@ -735,14 +741,10 @@ namespace {
     bool pawnsOnBothFlanks =   (pos.pieces(PAWN) & QueenSide)
                             && (pos.pieces(PAWN) & KingSide);
 
-    Color weakSide = eg > VALUE_DRAW ? BLACK : WHITE;
-
-    bool noLongrangedPieces = (pos.count<ALL_PIECES>(weakSide) - pos.count<PAWN>(weakSide) - pos.count<KNIGHT>(weakSide) < 2);
-
     // Compute the initiative bonus for the attacking side
     int complexity =   9 * pe->passed_count()
                     + 11 * pos.count<PAWN>()
-                    +  9 * (1 + noLongrangedPieces) * outflanking
+                    +  9 * outflanking
                     + 18 * pawnsOnBothFlanks
                     + 49 * !pos.non_pawn_material()
                     -103 ;
