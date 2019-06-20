@@ -641,7 +641,6 @@ namespace {
                 // in the pawn's path attacked or occupied by the enemy.
                 defendedSquares = unsafeSquares = squaresToQueen = forward_file_bb(Us, s);
                 wideUnsafeSquares = AllSquares;
-                bool totallyFreePath = 0;
 
                 bb = forward_file_bb(Them, s) & pos.pieces(ROOK, QUEEN);
 
@@ -655,14 +654,9 @@ namespace {
                     wideUnsafeSquares = (attackedBy[Them][ALL_PIECES] | pos.pieces(Them)) 
                                        & (shift<WEST>(squaresToQueen) | shift<EAST>(squaresToQueen));
 
-                if (!wideUnsafeSquares)
-                    totallyFreePath = !((attackedBy[Them][ALL_PIECES] | pos.pieces(Them))
-                                       & (shift<WEST>(shift<WEST>(squaresToQueen)) 
-                                             | shift<EAST>(shift<EAST>(squaresToQueen))));
-
                 // If there aren't any enemy attacks, assign a big bonus. Otherwise
                 // assign a smaller bonus if the block square isn't attacked.
-                int k = totallyFreePath ? 50 : !wideUnsafeSquares ? 35 : !unsafeSquares ? 20 : !(unsafeSquares & blockSq) ? 9 : 0;
+                int k = !wideUnsafeSquares ? 35 : !unsafeSquares ? 20 : !(unsafeSquares & blockSq) ? 9 : 0;
 
                 // Assign a larger bonus if the block square is defended.
                 if (defendedSquares & blockSq)
