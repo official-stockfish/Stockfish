@@ -735,10 +735,14 @@ namespace {
     bool pawnsOnBothFlanks =   (pos.pieces(PAWN) & QueenSide)
                             && (pos.pieces(PAWN) & KingSide);
 
+    Color weakSide = eg > VALUE_DRAW ? BLACK : WHITE;
+
+    bool noLongrangedPieces = (pos.count<ALL_PIECES>(weakSide) - pos.count<PAWN>(weakSide) - pos.count<KNIGHT>(weakSide) < 2);
+
     // Compute the initiative bonus for the attacking side
     int complexity =   9 * pe->passed_count()
                     + 11 * pos.count<PAWN>()
-                    +  9 * outflanking
+                    +  (9 + 6 * noLongrangedPieces) * outflanking
                     + 18 * pawnsOnBothFlanks
                     + 49 * !pos.non_pawn_material()
                     -103 ;
