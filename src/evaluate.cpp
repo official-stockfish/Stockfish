@@ -988,6 +988,49 @@ bool EvalList::is_valid(const Position& pos)
   Found:;
   }
 
+  // Validate piece_no_list_board
+  for (auto sq = SQUARE_ZERO; sq < SQUARE_NB; ++sq) {
+    Piece expected_piece = pos.piece_on(sq);
+    PieceNumber piece_number = piece_no_list_board[sq];
+    if (piece_number == PIECE_NUMBER_NB) {
+      assert(expected_piece == NO_PIECE);
+      if (expected_piece != NO_PIECE) {
+        return false;
+      }
+      continue;
+    }
+
+    BonaPiece bona_piece_white = pieceListFw[piece_number];
+    Piece actual_piece;
+    for (actual_piece = NO_PIECE; actual_piece < PIECE_NB; ++actual_piece) {
+      if (kpp_board_index[actual_piece].fw == BONA_PIECE_ZERO) {
+        continue;
+      }
+
+      if (kpp_board_index[actual_piece].fw <= bona_piece_white
+        && bona_piece_white < kpp_board_index[actual_piece].fw + SQUARE_NB) {
+        break;
+      }
+    }
+
+    assert(actual_piece != PIECE_NB);
+    if (actual_piece == PIECE_NB) {
+      return false;
+    }
+
+    assert(actual_piece == expected_piece);
+    if (actual_piece != expected_piece) {
+      return false;
+    }
+
+    Square actual_square = static_cast<Square>(
+      bona_piece_white - kpp_board_index[actual_piece].fw);
+    assert(sq == actual_square);
+    if (sq != actual_square) {
+      return false;
+    }
+  }
+
   return true;
 }
 }
