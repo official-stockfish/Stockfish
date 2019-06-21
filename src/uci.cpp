@@ -271,6 +271,44 @@ void is_ready(bool skipCorruptCheck)
 }
 
 
+// --------------------
+// テスト用にqsearch(),search()を直接呼ぶ
+// --------------------
+
+#if defined(EVAL_LEARN)
+void qsearch_cmd(Position& pos)
+{
+  cout << "qsearch : ";
+  auto pv = Learner::qsearch(pos);
+  cout << "Value = " << pv.first << " , " << UCI::value(pv.first) << " , PV = ";
+  for (auto m : pv.second)
+    cout << UCI::move(m, false) << " ";
+  cout << endl;
+}
+
+void search_cmd(Position& pos, istringstream& is)
+{
+  string token;
+  int depth = 1;
+  int multi_pv = (int)Options["MultiPV"];
+  while (is >> token)
+  {
+    if (token == "depth")
+      is >> depth;
+    if (token == "multipv")
+      is >> multi_pv;
+  }
+
+  cout << "search depth = " << depth << " , multi_pv = " << multi_pv << " : ";
+  auto pv = Learner::search(pos, depth, multi_pv);
+  cout << "Value = " << pv.first << " , " << UCI::value(pv.first) << " , PV = ";
+  for (auto m : pv.second)
+    cout << UCI::move(m, false) << " ";
+  cout << endl;
+}
+
+#endif
+
 /// UCI::loop() waits for a command from stdin, parses it and calls the appropriate
 /// function. Also intercepts EOF from stdin to ensure gracefully exiting if the
 /// GUI dies unexpectedly. When called with some command line arguments, e.g. to
@@ -333,6 +371,9 @@ void UCI::loop(int argc, char* argv[]) {
       // 開発中の教師局面生成コマンド
       else if (token == "gensfen2019") Learner::gen_sfen2019(pos, is);
 #endif
+      // テスト用にqsearch(),search()を直接呼ぶコマンド
+      else if (token == "qsearch") qsearch_cmd(pos);
+      else if (token == "search") search_cmd(pos, is);
 
 #endif
       else
