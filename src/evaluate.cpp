@@ -605,7 +605,6 @@ namespace {
     };
 
     Bitboard b, bb, squaresToQueen, defendedSquares, unsafeSquares;
-    Bitboard wideUnsafeSquares;
     Score score = SCORE_ZERO;
 
     b = pe->passed_pawns(Us);
@@ -636,11 +635,14 @@ namespace {
             // If the pawn is free to advance, then increase the bonus
             if (pos.empty(blockSq))
             {
-                // If there is a rook or queen attacking/defending the pawn from behind,
-                // consider all the squaresToQueen. Otherwise consider only the squares
-                // in the pawn's path attacked or occupied by the enemy.
-                defendedSquares = unsafeSquares = squaresToQueen = forward_file_bb(Us, s);
-                wideUnsafeSquares = AllSquares;
+                // If there is a rook or queen attacking the pawn from behind,
+                // consider all passed pawn span. Otherwise consider only the squares
+                // in the passed pawn span attacked or occupied by the enemy.
+                // If there is a rook or queen defending the pawn from behind,
+                // consider all squaresToQueen.
+                defendedSquares = squaresToQueen = forward_file_bb(Us, s);
+
+                unsafeSquares = passed_pawn_span(Us, s);
 
                 bb = forward_file_bb(Them, s) & pos.pieces(ROOK, QUEEN);
 
@@ -649,14 +651,11 @@ namespace {
 
                 if (!(pos.pieces(Them) & bb))
                     unsafeSquares &= attackedBy[Them][ALL_PIECES] | pos.pieces(Them);
-                      
-                if (!unsafeSquares)
-                    wideUnsafeSquares = (attackedBy[Them][ALL_PIECES] | pos.pieces(Them)) 
-                                       & (shift<WEST>(squaresToQueen) | shift<EAST>(squaresToQueen));
 
-                // If there aren't any enemy attacks, assign a big bonus. Otherwise
-                // assign a smaller bonus if the block square isn't attacked.
-                int k = !wideUnsafeSquares ? 35 : !unsafeSquares ? 20 : !(unsafeSquares & blockSq) ? 9 : 0;
+                // If there aren't any enemy attacks on passed pawn span, assign a big bonus. Otherwise
+                // assign a smaller bonus if the path to queen is not attacked and even  
+                // smaller bonus if it's attacked but block square isn't.
+                int k = !unsafeSquares ? 35 : !(unsafeSquares & squaresToQueen) ? 20 : !(unsafeSquares & blockSq) ? 9 : 0;
 
                 // Assign a larger bonus if the block square is defended.
                 if (defendedSquares & blockSq)
