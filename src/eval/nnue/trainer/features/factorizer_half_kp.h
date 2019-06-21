@@ -85,7 +85,7 @@ class Factorizer<HalfKP<AssociatedKing>> {
       index_offset += SkipFeatures(kProperties[kFeaturesHalfRelativeKP]);
     }
 
-    ASSERT_LV5(index_offset == GetDimensions());
+    assert(index_offset == GetDimensions());
   }
 };
 
