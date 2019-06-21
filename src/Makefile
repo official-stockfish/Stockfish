@@ -38,7 +38,20 @@ PGOBENCH = ./$(EXE) bench
 ### Object files
 OBJS = benchmark.o bitbase.o bitboard.o endgame.o evaluate.o main.o \
 	material.o misc.o movegen.o movepick.o pawns.o position.o psqt.o \
-	search.o thread.o timeman.o tt.o uci.o ucioption.o syzygy/tbprobe.o
+	search.o thread.o timeman.o tt.o uci.o ucioption.o syzygy/tbprobe.o \
+	eval/evaluate_mir_inv_tools.o \
+	eval/nnue/evaluate_nnue.o \
+	eval/nnue/evaluate_nnue_learner.o \
+	eval/nnue/features/half_kp.o \
+	eval/nnue/features/half_relative_kp.o \
+	eval/nnue/features/k.o \
+	eval/nnue/features/p.o \
+	eval/nnue/nnue_test_command.o \
+	extra/sfen_packer.o \
+	learn/gensfen2019.o \
+	learn/learner.o \
+	learn/learning_tools.o \
+	learn/multi_think.o
 
 ### Establish the operating system name
 KERNEL = $(shell uname -s)
