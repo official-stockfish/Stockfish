@@ -687,6 +687,13 @@ void MultiThinkGenSfen::thread_worker(size_t thread_id)
 					// 最終的な書き出しは、勝敗がついてから。
 					pos.sfen_pack(psv.sfen);
 
+          //{
+          //  std::string before_fen = pos.fen();
+          //  pos.set_from_packed_sfen(psv.sfen, &si, th);
+          //  std::string after_fen = pos.fen();
+          //  assert(before_fen == after_fen);
+          //}
+
 					// PV lineのleaf nodeでのroot colorから見たevaluate()の値を取得。
 					// search()の返し値をそのまま使うのとこうするのとの善悪は良くわからない。
 					psv.score = evaluate_leaf(pos, pv1);
