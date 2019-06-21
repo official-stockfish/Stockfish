@@ -134,7 +134,7 @@ void AddExample(Position& pos, Color rootColor,
   for (const auto trigger : kRefreshTriggers) {
     RawFeatures::AppendActiveIndices(pos, trigger, active_indices);
   }
-  if (pos.side_to_move() != BLACK) {
+  if (pos.side_to_move() != WHITE) {
     active_indices[0].swap(active_indices[1]);
   }
   for (const auto color : Colors) {
