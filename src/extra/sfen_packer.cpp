@@ -197,7 +197,7 @@ struct SfenPacker
 
     stream.write_n_bit(pos.state()->rule50, 6);
 
-    stream.write_n_bit(pos.game_ply(), 8);
+    stream.write_n_bit(1 + (pos.game_ply() - (pos.side_to_move() == BLACK)) / 2, 8);
 
     assert(stream.get_cursor() <= 256);
   }
