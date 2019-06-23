@@ -456,7 +456,7 @@ clean: objclean profileclean
 
 # clean binaries and objects
 objclean:
-	@rm -f $(EXE) *.o ./syzygy/*.o
+	@rm -f $(EXE) *.o ./syzygy/*.o ./learn/*.o ./extra/*.o ./eval/*.o ./eval/nnue/*.o ./eval/nnue/features/*.o
 
 # clean auxiliary profiling files
 profileclean:
