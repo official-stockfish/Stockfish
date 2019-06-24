@@ -2056,13 +2056,17 @@ void LearnerThink::thread_worker(size_t thread_id)
 		};
 
 		StateInfo state[MAX_PLY]; // qsearchのPVがそんなに長くなることはありえない。
+		bool illegal_move = false;
 		for (auto m : pv)
 		{
 			// 非合法手はやってこないはずなのだが。
+			// An illegal move sometimes comes here...
 			if (!pos.pseudo_legal(m) || !pos.legal(m))
 			{
-				cout << pos << m << endl;
-				assert(false);
+				//cout << pos << m << endl;
+				//assert(false);
+				illegal_move = true;
+				break;
 			}
 
 			// 各PV上のnodeでも勾配を加算する場合の処理。
@@ -2074,6 +2078,11 @@ void LearnerThink::thread_worker(size_t thread_id)
 			
 			// leafでのevaluateの値を用いるので差分更新していく。
 			Eval::evaluate_with_no_return(pos);
+		}
+
+		if (illegal_move) {
+			sync_cout << "An illical move was detected... Excluded the position from the learning data..." << sync_endl;
+			continue;
 		}
 
 		// PVの終端局面に達したので、ここで勾配を加算する。
