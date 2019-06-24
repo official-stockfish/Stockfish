@@ -85,7 +85,7 @@ namespace {
     e->kingSquares[Us] = SQ_NONE;
     e->pawnAttacks[Us] = pawn_attacks_bb<Us>(ourPawns);
 
-    //Unsupported pawns attacked twice
+    //Unsupported enemy pawns attacked twice by us
     score += Attacked2Unsupported * popcount(ourDoubles & theirPawns & ~theirAttacks);
 
     // Loop through all pawns of the current color and score each pawn
