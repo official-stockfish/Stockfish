@@ -1372,7 +1372,13 @@ moves_loop: // When in check, search starts from here
       prefetch(TT.first_entry(pos.key_after(move)));
 
       // Check for legality just before making the move
-      if (!pos.legal(move))
+      if (
+#if defined(EVAL_LEARN)
+        // HACK: pos.piece_on(from_sq(m)) sometimes will be NO_PIECE during machine learning.
+        !pos.pseudo_legal(move) ||
+#endif // EVAL_LEARN
+        !pos.legal(move)
+        )
       {
           moveCount--;
           continue;
@@ -1382,9 +1388,7 @@ moves_loop: // When in check, search starts from here
       ss->continuationHistory = &thisThread->continuationHistory[pos.moved_piece(move)][to_sq(move)];
 
       // Make and search the move
-      //std::cout << pos << std::endl;
       pos.do_move(move, st, givesCheck);
-      //std::cout << pos << std::endl;
       value = -qsearch<NT>(pos, ss+1, -beta, -alpha, depth - ONE_PLY);
       pos.undo_move(move);
 

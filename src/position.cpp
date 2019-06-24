@@ -773,8 +773,10 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   Piece pc = piece_on(from);
   Piece captured = type_of(m) == ENPASSANT ? make_piece(them, PAWN) : piece_on(to);
 
+#if defined(EVAL_NNUE)
   PieceNumber piece_no0 = PIECE_NUMBER_NB;
   PieceNumber piece_no1 = PIECE_NUMBER_NB;
+#endif  // defined(EVAL_NNUE)
 
   assert(color_of(pc) == us);
   assert(captured == NO_PIECE || color_of(captured) == (type_of(m) != CASTLING ? them : us));
@@ -820,7 +822,9 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
 #endif  // defined(EVAL_NNUE)
 
               board[capsq] = NO_PIECE; // Not done by remove_piece()
+#if defined(EVAL_NNUE)
               evalList.piece_no_list_board[capsq] = PIECE_NUMBER_NB;
+#endif  // defined(EVAL_NNUE)
           }
           else {
 #if defined(EVAL_NNUE)
@@ -1473,9 +1477,6 @@ bool Position::pos_is_ok() const {
 #if defined(EVAL_NNUE)
 PieceNumber Position::piece_no_of(Square sq) const
 {
-  if (piece_on(sq) == NO_PIECE) {
-    sync_cout << *this << sync_endl;
-  }
   assert(piece_on(sq) != NO_PIECE);
   PieceNumber n = evalList.piece_no_of_board(sq);
   assert(is_ok(n));
