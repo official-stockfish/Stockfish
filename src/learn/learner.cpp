@@ -1014,7 +1014,8 @@ double winning_percentage(double value)
 {
 	// この600.0という定数は、ponanza定数。(ponanzaがそうしているらしいという意味で)
 	// ゲームの進行度に合わせたものにしたほうがいいかも知れないけども、その効果のほどは不明。
-	return sigmoid(value / 600.0);
+  // Pawn Advantage, Win Percentage, and Elo - Chessprogramming wiki https://www.chessprogramming.org/Pawn_Advantage,_Win_Percentage,_and_Elo
+	return sigmoid(value * log(10.0) / 4.0 / PawnValueEg);
 }
 
 // 普通のシグモイド関数の導関数。
