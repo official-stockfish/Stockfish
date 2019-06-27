@@ -53,6 +53,7 @@ namespace {
   // Danger of enemy pawns moving toward our king by [distance from edge][rank].
   // RANK_1 = 0 is used for files where the enemy has no pawn, or their pawn
   // is behind our king.
+  // [0][1-2] accommodate opponent pawn on edge (likely blocked by our king)
   constexpr Value UnblockedStorm[int(FILE_NB) / 2][RANK_NB] = {
     { V( 89), V(-285), V(-185), V(93), V(57), V( 45), V( 51) },
     { V( 44), V( -18), V( 123), V(46), V(39), V( -7), V( 23) },
