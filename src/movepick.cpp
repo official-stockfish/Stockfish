@@ -208,7 +208,7 @@ top:
           score<QUIETS>();
           partial_insertion_sort(cur, endMoves, -4000 * depth / ONE_PLY);
       }
-      
+
       ++stage;
       /* fallthrough */
 
