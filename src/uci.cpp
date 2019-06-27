@@ -164,7 +164,7 @@ namespace {
         }
         else if (token == "setoption")  setoption(is);
         else if (token == "position")   position(pos, is, states);
-        else if (token == "ucinewgame") Search::clear();
+        else if (token == "ucinewgame") { Search::clear(); elapsed = now(); } // Search::clear() may take some while
     }
 
     elapsed = now() - elapsed + 1; // Ensure positivity to avoid a 'divide by zero'
