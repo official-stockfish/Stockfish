@@ -200,11 +200,15 @@ top:
       /* fallthrough */
 
   case QUIET_INIT:
-      cur = endBadCaptures;
-      endMoves = generate<QUIETS>(pos, cur);
+      if (!skipQuiets)
+      {
+          cur = endBadCaptures;
+          endMoves = generate<QUIETS>(pos, cur);
 
-      score<QUIETS>();
-      partial_insertion_sort(cur, endMoves, -4000 * depth / ONE_PLY);
+          score<QUIETS>();
+          partial_insertion_sort(cur, endMoves, -4000 * depth / ONE_PLY);
+      }
+
       ++stage;
       /* fallthrough */
 

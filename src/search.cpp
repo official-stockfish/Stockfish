@@ -292,7 +292,7 @@ void Thread::search() {
   bestValue = delta = alpha = -VALUE_INFINITE;
   beta = VALUE_INFINITE;
 
-  size_t multiPV = Options["MultiPV"];
+  multiPV = Options["MultiPV"];
   Skill skill(Options["Skill Level"]);
 
   // When playing with strength handicap enable MultiPV search that we will
@@ -870,6 +870,12 @@ moves_loop: // When in check, search starts from here
           sync_cout << "info depth " << depth / ONE_PLY
                     << " currmove " << UCI::move(move, pos.is_chess960())
                     << " currmovenumber " << moveCount + thisThread->pvIdx << sync_endl;
+
+      // In MultiPV mode also skip moves which will be searched later as PV moves
+      if (rootNode && std::count(thisThread->rootMoves.begin() + thisThread->pvIdx + 1,
+                                 thisThread->rootMoves.begin() + thisThread->multiPV, move))
+          continue;
+
       if (PvNode)
           (ss+1)->pv = nullptr;
 
@@ -913,10 +919,11 @@ moves_loop: // When in check, search starts from here
           // Multi-cut pruning
           // Our ttMove is assumed to fail high, and now we failed high also on a reduced
           // search without the ttMove. So we assume this expected Cut-node is not singular,
-          // that is multiple moves fail high, and we can prune the whole subtree by returning
-          // the hard beta bound.
-          else if (cutNode && singularBeta > beta)
-              return beta;
+          // that multiple moves fail high, and we can prune the whole subtree by returning
+          // a soft bound.
+          else if (   eval >= beta
+                   && singularBeta >= beta)
+              return singularBeta;
       }
 
       // Check extension (~2 Elo)
@@ -932,7 +939,7 @@ moves_loop: // When in check, search starts from here
       else if (   PvNode
                && pos.rule50_count() > 18
                && depth < 3 * ONE_PLY
-               && ss->ply < 3 * thisThread->rootDepth / ONE_PLY) // To avoid too deep searches
+               && ++thisThread->shuffleExts < thisThread->nodes.load(std::memory_order_relaxed) / 4)  // To avoid too many extensions
           extension = ONE_PLY;
 
       // Passed pawn extension
@@ -980,7 +987,7 @@ moves_loop: // When in check, search starts from here
               if (!pos.see_ge(move, Value(-29 * lmrDepth * lmrDepth)))
                   continue;
           }
-          else if ((!givesCheck || !(pos.blockers_for_king(~us) & from_sq(move)))
+          else if ((!givesCheck || !extension)
                   && !pos.see_ge(move, -PawnValueEg * (depth / ONE_PLY))) // (~20 Elo)
                   continue;
       }
@@ -1712,5 +1719,11 @@ void Tablebases::rank_root_moves(Position& pos, Search::RootMoves& rootMoves) {
         // Probe during search only if DTZ is not available and we are winning
         if (dtz_available || rootMoves[0].tbScore <= VALUE_DRAW)
             Cardinality = 0;
+    }
+    else
+    {
+        // Clean up if root_probe() and root_probe_wdl() have failed
+        for (auto& m : rootMoves)
+            m.tbRank = 0;
     }
 }
