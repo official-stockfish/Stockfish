@@ -292,7 +292,7 @@ void Thread::search() {
   bestValue = delta = alpha = -VALUE_INFINITE;
   beta = VALUE_INFINITE;
 
-  size_t multiPV = Options["MultiPV"];
+  multiPV = Options["MultiPV"];
   Skill skill(Options["Skill Level"]);
 
   // When playing with strength handicap enable MultiPV search that we will
@@ -870,6 +870,12 @@ moves_loop: // When in check, search starts from here
           sync_cout << "info depth " << depth / ONE_PLY
                     << " currmove " << UCI::move(move, pos.is_chess960())
                     << " currmovenumber " << moveCount + thisThread->pvIdx << sync_endl;
+
+      // In MultiPV mode also skip moves which will be searched later as PV moves
+      if (rootNode && std::count(thisThread->rootMoves.begin() + thisThread->pvIdx + 1,
+                                 thisThread->rootMoves.begin() + thisThread->multiPV, move))
+          continue;
+
       if (PvNode)
           (ss+1)->pv = nullptr;
 
