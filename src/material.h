@@ -39,7 +39,7 @@ namespace Material {
 
 struct Entry {
 
-  Score imbalance() const { return SCORE_ONE * value; }
+  Score imbalance() const { return SCORE_ONE * (int)value; }
   Phase game_phase() const { return gamePhase; }
   bool specialized_eval_exists() const { return evaluationFunction != nullptr; }
   Value evaluate(const Position& pos) const { return (*evaluationFunction)(pos); }
