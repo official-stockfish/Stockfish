@@ -659,7 +659,7 @@ namespace {
                 if (defendedSquares & blockSq)
                     k += 5;
 
-                bonus += make_score(k * w, k * w);
+                bonus += SCORE_ONE * k * w;
             }
         } // r > RANK_3
 
