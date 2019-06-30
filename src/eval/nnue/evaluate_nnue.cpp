@@ -286,7 +286,7 @@ Value evaluate(const Position& pos) {
 
 #if defined(USE_EVAL_HASH)
   // evaluate hash tableにはあるかも。
-  const Key key = pos.state()->key();
+  const Key key = pos.key();
   ScoreKeyValue entry = *g_evalTable[key];
   entry.decode();
   if (entry.key == key) {
