@@ -160,8 +160,8 @@ endif
 
 ### 3.1 Selecting compiler (default = gcc)
 
-CXXFLAGS += -Wall -Wcast-qual -fno-exceptions -std=c++11 $(EXTRACXXFLAGS)
-DEPENDFLAGS += -std=c++11
+CXXFLAGS += -Wall -Wcast-qual -fno-exceptions -std=c++14 $(EXTRACXXFLAGS)
+DEPENDFLAGS += -std=c++14
 LDFLAGS += $(EXTRALDFLAGS)
 
 ifeq ($(COMP),)
