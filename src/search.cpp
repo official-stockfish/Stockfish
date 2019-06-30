@@ -692,7 +692,7 @@ namespace {
     }
     else if (ttHit)
     {
-        // Never assume anything on values stored in TT
+        // Never assume anything about values stored in TT
         ss->staticEval = eval = tte->eval();
         if (eval == VALUE_NONE)
             ss->staticEval = eval = evaluate(pos);
@@ -963,7 +963,7 @@ moves_loop: // When in check, search starts from here
               && !givesCheck
               && (!pos.advanced_pawn_push(move) || pos.non_pawn_material(~us) > BishopValueMg))
           {
-              // Move count based pruning (~30 Elo)
+              // Move count based pruning
               if (moveCountPruning)
                   continue;
 
@@ -1287,7 +1287,7 @@ moves_loop: // When in check, search starts from here
     {
         if (ttHit)
         {
-            // Never assume anything on values stored in TT
+            // Never assume anything about values stored in TT
             if ((ss->staticEval = bestValue = tte->eval()) == VALUE_NONE)
                 ss->staticEval = bestValue = evaluate(pos);
 
