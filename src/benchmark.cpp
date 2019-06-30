@@ -139,9 +139,9 @@ vector<string> setup_bench(const Position& current, istream& is) {
       file.close();
   }
 
-  list.emplace_back("ucinewgame");
   list.emplace_back("setoption name Threads value " + threads);
   list.emplace_back("setoption name Hash value " + ttSize);
+  list.emplace_back("ucinewgame");
 
   for (const string& fen : fens)
       if (fen.find("setoption") != string::npos)
