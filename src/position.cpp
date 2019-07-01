@@ -18,6 +18,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <algorithm>
 #include <cassert>
 #include <cstddef> // For offsetof()
 #include <cstring> // For std::memset, std::memcmp
@@ -340,8 +341,8 @@ void Position::set_castling_right(Color c, Square rfrom) {
   Square kto = relative_square(c, cs == KING_SIDE ? SQ_G1 : SQ_C1);
   Square rto = relative_square(c, cs == KING_SIDE ? SQ_F1 : SQ_D1);
 
-  castlingPath[cr] = (between_bb(rfrom, rto) | between_bb(kfrom, kto) | rto | kto)
-                   & ~(square_bb(kfrom) | rfrom);
+  castlingPath[cr] =   (between_bb(rfrom, rto) | between_bb(kfrom, kto) | rto | kto)
+                    & ~(square_bb(kfrom) | rfrom);
 }
 
 
@@ -382,6 +383,12 @@ void Position::set_state(StateInfo* si) const {
       Square s = pop_lsb(&b);
       Piece pc = piece_on(s);
       si->key ^= Zobrist::psq[pc][s];
+
+      if (type_of(pc) == PAWN)
+          si->pawnKey ^= Zobrist::psq[pc][s];
+
+      else if (type_of(pc) != KING)
+          si->nonPawnMaterial[color_of(pc)] += PieceValue[MG][pc];
   }
 
   if (si->epSquare != SQ_NONE)
@@ -392,20 +399,9 @@ void Position::set_state(StateInfo* si) const {
 
   si->key ^= Zobrist::castling[si->castlingRights];
 
-  for (Bitboard b = pieces(PAWN); b; )
-  {
-      Square s = pop_lsb(&b);
-      si->pawnKey ^= Zobrist::psq[piece_on(s)][s];
-  }
-
   for (Piece pc : Pieces)
-  {
-      if (type_of(pc) != PAWN && type_of(pc) != KING)
-          si->nonPawnMaterial[color_of(pc)] += pieceCount[pc] * PieceValue[MG][pc];
-
       for (int cnt = 0; cnt < pieceCount[pc]; ++cnt)
           si->materialKey ^= Zobrist::psq[pc][cnt];
-  }
 }
 
 
@@ -495,7 +491,7 @@ Bitboard Position::slider_blockers(Bitboard sliders, Square s, Bitboard& pinners
   // Snipers are sliders that attack 's' when a piece and other snipers are removed
   Bitboard snipers = (  (PseudoAttacks[  ROOK][s] & pieces(QUEEN, ROOK))
                       | (PseudoAttacks[BISHOP][s] & pieces(QUEEN, BISHOP))) & sliders;
-  Bitboard occupancy = pieces() & ~snipers;
+  Bitboard occupancy = pieces() ^ snipers;
 
   while (snipers)
   {
@@ -859,7 +855,6 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
 
       // Update pawn hash key and prefetch access to pawnsTable
       st->pawnKey ^= Zobrist::psq[pc][from] ^ Zobrist::psq[pc][to];
-      prefetch2(thisThread->pawnsTable[st->pawnKey]);
 
       // Reset rule 50 draw counter
       st->rule50 = 0;
@@ -878,6 +873,25 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
 
   // Update king attacks used for fast check detection
   set_check_info(st);
+
+  // Calculate the repetition info. It is the ply distance from the previous
+  // occurrence of the same position, negative in the 3-fold case, or zero
+  // if the position was not repeated.
+  st->repetition = 0;
+  int end = std::min(st->rule50, st->pliesFromNull);
+  if (end >= 4)
+  {
+      StateInfo* stp = st->previous->previous;
+      for (int i=4; i <= end; i += 2)
+      {
+          stp = stp->previous->previous;
+          if (stp->key == st->key)
+          {
+              st->repetition = stp->repetition ? -i : i;
+              break;
+          }
+      }
+  }
 
   assert(pos_is_ok());
 }
@@ -993,6 +1007,8 @@ void Position::do_null_move(StateInfo& newSt) {
   sideToMove = ~sideToMove;
 
   set_check_info(st);
+
+  st->repetition = 0;
 
   assert(pos_is_ok());
 }
@@ -1117,24 +1133,10 @@ bool Position::is_draw(int ply) const {
   if (st->rule50 > 99 && (!checkers() || MoveList<LEGAL>(*this).size()))
       return true;
 
-  int end = std::min(st->rule50, st->pliesFromNull);
-
-  if (end < 4)
-    return false;
-
-  StateInfo* stp = st->previous->previous;
-  int cnt = 0;
-
-  for (int i = 4; i <= end; i += 2)
-  {
-      stp = stp->previous->previous;
-
-      // Return a draw score if a position repeats once earlier but strictly
-      // after the root, or repeats twice before or at the root.
-      if (   stp->key == st->key
-          && ++cnt + (ply > i) == 2)
-          return true;
-  }
+  // Return a draw score if a position repeats once earlier but strictly
+  // after the root, or repeats twice before or at the root.
+  if (st->repetition && st->repetition < ply)
+      return true;
 
   return false;
 }
@@ -1146,26 +1148,15 @@ bool Position::is_draw(int ply) const {
 bool Position::has_repeated() const {
 
     StateInfo* stc = st;
-    while (true)
+    int end = std::min(st->rule50, st->pliesFromNull);
+    while (end-- >= 4)
     {
-        int i = 4, end = std::min(stc->rule50, stc->pliesFromNull);
-
-        if (end < i)
-            return false;
-
-        StateInfo* stp = stc->previous->previous;
-
-        do {
-            stp = stp->previous->previous;
-
-            if (stp->key == stc->key)
-                return true;
-
-            i += 2;
-        } while (i <= end);
+        if (stc->repetition)
+            return true;
 
         stc = stc->previous;
     }
+    return false;
 }
 
 
@@ -1198,22 +1189,19 @@ bool Position::has_game_cycle(int ply) const {
 
           if (!(between_bb(s1, s2) & pieces()))
           {
-              // In the cuckoo table, both moves Rc1c5 and Rc5c1 are stored in the same
-              // location. We select the legal one by reversing the move variable if necessary.
-              if (empty(s1))
-                  move = make_move(s2, s1);
-
               if (ply > i)
                   return true;
 
+              // For nodes before or at the root, check that the move is a
+              // repetition rather than a move to the current position.
+              // In the cuckoo table, both moves Rc1c5 and Rc5c1 are stored in
+              // the same location, so we have to select which square to check.
+              if (color_of(piece_on(empty(s1) ? s2 : s1)) != side_to_move())
+                  continue;
+
               // For repetitions before or at the root, require one more
-              StateInfo* next_stp = stp;
-              for (int k = i + 2; k <= end; k += 2)
-              {
-                  next_stp = next_stp->previous->previous;
-                  if (next_stp->key == stp->key)
-                     return true;
-              }
+              if (stp->repetition)
+                  return true;
           }
       }
   }

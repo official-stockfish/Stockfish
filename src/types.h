@@ -101,7 +101,7 @@ typedef uint64_t Key;
 typedef uint64_t Bitboard;
 
 constexpr int MAX_MOVES = 256;
-constexpr int MAX_PLY   = 128;
+constexpr int MAX_PLY   = 246;
 
 /// A move needs 16 bits to be stored
 ///
@@ -213,8 +213,9 @@ enum Depth : int {
   DEPTH_QS_NO_CHECKS  = -1 * ONE_PLY,
   DEPTH_QS_RECAPTURES = -5 * ONE_PLY,
 
-  DEPTH_NONE = -6 * ONE_PLY,
-  DEPTH_MAX  = MAX_PLY * ONE_PLY
+  DEPTH_NONE   = -6 * ONE_PLY,
+  DEPTH_OFFSET = DEPTH_NONE,
+  DEPTH_MAX    = MAX_PLY * ONE_PLY
 };
 
 static_assert(!(ONE_PLY & (ONE_PLY - 1)), "ONE_PLY is not a power of 2");
@@ -290,7 +291,6 @@ inline T& operator--(T& d) { return d = T(int(d) - 1); }
 
 #define ENABLE_FULL_OPERATORS_ON(T)                                \
 ENABLE_BASE_OPERATORS_ON(T)                                        \
-ENABLE_INCR_OPERATORS_ON(T)                                        \
 constexpr T operator*(int i, T d) { return T(i * int(d)); }        \
 constexpr T operator*(T d, int i) { return T(int(d) * i); }        \
 constexpr T operator/(T d, int i) { return T(int(d) / i); }        \

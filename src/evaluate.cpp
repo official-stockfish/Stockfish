@@ -18,6 +18,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <algorithm>
 #include <cassert>
 #include <cstring>   // For std::memset
 #include <iomanip>
@@ -73,7 +74,7 @@ using namespace Trace;
 namespace {
 
   // Threshold for lazy and space evaluation
-  constexpr Value LazyThreshold  = Value(1500);
+  constexpr Value LazyThreshold  = Value(1400);
   constexpr Value SpaceThreshold = Value(12222);
 
   // KingAttackWeights[PieceType] contains king attack weights by piece type
@@ -132,6 +133,7 @@ namespace {
   };
 
   // Assorted bonuses and penalties
+  constexpr Score AttacksOnSpaceArea = S(  4,  0);
   constexpr Score BishopPawns        = S(  3,  7);
   constexpr Score CorneredBishop     = S( 50, 50);
   constexpr Score FlankAttacks       = S(  8,  0);
@@ -140,7 +142,7 @@ namespace {
   constexpr Score KnightOnQueen      = S( 16, 12);
   constexpr Score LongDiagonalBishop = S( 45,  0);
   constexpr Score MinorBehindPawn    = S( 18,  3);
-  constexpr Score Outpost            = S(  9,  3);
+  constexpr Score Outpost            = S( 36, 12);
   constexpr Score PawnlessFlank      = S( 17, 95);
   constexpr Score RestrictedPiece    = S(  7,  7);
   constexpr Score RookOnPawn         = S( 10, 32);
@@ -151,7 +153,6 @@ namespace {
   constexpr Score ThreatBySafePawn   = S(173, 94);
   constexpr Score TrappedRook        = S( 47,  4);
   constexpr Score WeakQueen          = S( 49, 15);
-  constexpr Score WeakUnopposedPawn  = S( 12, 23);
 
 #undef S
 
@@ -186,15 +187,12 @@ namespace {
     // is also calculated is ALL_PIECES.
     Bitboard attackedBy[COLOR_NB][PIECE_TYPE_NB];
 
-    // attackedBy2[color] are the squares attacked by 2 pieces of a given color,
-    // possibly via x-ray or by one pawn and one piece. Diagonal x-ray through
-    // pawn or squares attacked by 2 pawns are not explicitly added.
+    // attackedBy2[color] are the squares attacked by at least 2 units of a given
+    // color, including x-rays. But diagonal x-rays through pawns are not computed.
     Bitboard attackedBy2[COLOR_NB];
 
-    // kingRing[color] are the squares adjacent to the king, plus (only for a
-    // king on its first rank) the squares two ranks in front. For instance,
-    // if black's king is on g8, kingRing[BLACK] is f8, h8, f7, g7, h7, f6, g6
-    // and h6.
+    // kingRing[color] are the squares adjacent to the king plus some other
+    // very near squares, depending on king position.
     Bitboard kingRing[COLOR_NB];
 
     // kingAttackersCount[color] is the number of pieces of the given color
@@ -241,8 +239,7 @@ namespace {
     attackedBy[Us][KING] = pos.attacks_from<KING>(ksq);
     attackedBy[Us][PAWN] = pe->pawn_attacks(Us);
     attackedBy[Us][ALL_PIECES] = attackedBy[Us][KING] | attackedBy[Us][PAWN];
-    attackedBy2[Us]            = (attackedBy[Us][KING] & attackedBy[Us][PAWN])
-                                 | dblAttackByPawn;
+    attackedBy2[Us] = dblAttackByPawn | (attackedBy[Us][KING] & attackedBy[Us][PAWN]);
 
     // Init our king safety tables
     kingRing[Us] = attackedBy[Us][KING];
@@ -306,14 +303,12 @@ namespace {
         if (Pt == BISHOP || Pt == KNIGHT)
         {
             // Bonus if piece is on an outpost square or can reach one
-            bb = OutpostRanks & ~pe->pawn_attacks_span(Them);
+            bb = OutpostRanks & attackedBy[Us][PAWN] & ~pe->pawn_attacks_span(Them);
             if (bb & s)
-                score += Outpost * (Pt == KNIGHT ? 4 : 2)
-                                 * (1 + bool(attackedBy[Us][PAWN] & s));
+                score += Outpost * (Pt == KNIGHT ? 2 : 1);
 
-            else if (bb &= b & ~pos.pieces(Us))
-                score += Outpost * (Pt == KNIGHT ? 2 : 1)
-                                 * (1 + bool(attackedBy[Us][PAWN] & bb));
+            else if (bb & b & ~pos.pieces(Us))
+                score += Outpost / (Pt == KNIGHT ? 1 : 2);
 
             // Knight and Bishop bonus for being right behind a pawn
             if (shift<Down>(pos.pieces(PAWN)) & s)
@@ -358,8 +353,8 @@ namespace {
                 score += RookOnPawn * popcount(pos.pieces(Them, PAWN) & PseudoAttacks[ROOK][s]);
 
             // Bonus for rook on an open or semi-open file
-            if (pos.semiopen_file(Us, file_of(s)))
-                score += RookOnFile[bool(pos.semiopen_file(Them, file_of(s)))];
+            if (pos.is_on_semiopen_file(Us, s))
+                score += RookOnFile[bool(pos.is_on_semiopen_file(Them, s))];
 
             // Penalty when trapped by the king, even more if the king cannot castle
             else if (mob <= 3)
@@ -558,10 +553,6 @@ namespace {
 
     score += RestrictedPiece * popcount(b);
 
-    // Bonus for enemy unopposed weak pawns
-    if (pos.pieces(Us, ROOK, QUEEN))
-        score += WeakUnopposedPawn * pe->weak_unopposed(Them);
-
     // Find squares where our pawns can push on the next move
     b  = shift<Up>(pos.pieces(Us, PAWN)) & ~pos.pieces();
     b |= shift<Up>(b & TRank3BB) & ~pos.pieces();
@@ -645,12 +636,10 @@ namespace {
             // If the pawn is free to advance, then increase the bonus
             if (pos.empty(blockSq))
             {
-                // If there is a rook or queen attacking/defending the pawn from behind,
-                // consider all the squaresToQueen. Otherwise consider only the squares
-                // in the pawn's path attacked or occupied by the enemy.
-                defendedSquares = unsafeSquares = squaresToQueen = forward_file_bb(Us, s);
+                defendedSquares = squaresToQueen = forward_file_bb(Us, s);
+                unsafeSquares = passed_pawn_span(Us, s);
 
-                bb = forward_file_bb(Them, s) & pos.pieces(ROOK, QUEEN) & pos.attacks_from<ROOK>(s);
+                bb = forward_file_bb(Them, s) & pos.pieces(ROOK, QUEEN);
 
                 if (!(pos.pieces(Us) & bb))
                     defendedSquares &= attackedBy[Us][ALL_PIECES];
@@ -658,21 +647,21 @@ namespace {
                 if (!(pos.pieces(Them) & bb))
                     unsafeSquares &= attackedBy[Them][ALL_PIECES] | pos.pieces(Them);
 
-                // If there aren't any enemy attacks, assign a big bonus. Otherwise
-                // assign a smaller bonus if the block square isn't attacked.
-                int k = !unsafeSquares ? 20 : !(unsafeSquares & blockSq) ? 9 : 0;
+                // If there are no enemy attacks on passed pawn span, assign a big bonus.
+                // Otherwise assign a smaller bonus if the path to queen is not attacked
+                // and even smaller bonus if it is attacked but block square is not.
+                int k = !unsafeSquares                    ? 35 :
+                        !(unsafeSquares & squaresToQueen) ? 20 :
+                        !(unsafeSquares & blockSq)        ?  9 :
+                                                             0 ;
 
-                // If the path to the queen is fully defended, assign a big bonus.
-                // Otherwise assign a smaller bonus if the block square is defended.
-                if (defendedSquares == squaresToQueen)
-                    k += 6;
-
-                else if (defendedSquares & blockSq)
-                    k += 4;
+                // Assign a larger bonus if the block square is defended.
+                if (defendedSquares & blockSq)
+                    k += 5;
 
                 bonus += make_score(k * w, k * w);
             }
-        } // rank > RANK_3
+        } // r > RANK_3
 
         // Scale down bonus for candidate passers which need more than one
         // pawn push to become passed, or have a pawn in front of them.
@@ -717,13 +706,13 @@ namespace {
     // Find all squares which are at most three squares behind some friendly pawn
     Bitboard behind = pos.pieces(Us, PAWN);
     behind |= shift<Down>(behind);
-    behind |= shift<Down>(shift<Down>(behind));
+    behind |= shift<Down+Down>(behind);
 
     int bonus = popcount(safe) + popcount(behind & safe);
-    int weight =  pos.count<ALL_PIECES>(Us)
-               - (16 - pos.count<PAWN>()) / 4;
-
+    int weight = pos.count<ALL_PIECES>(Us) - 1;
     Score score = make_score(bonus * weight * weight / 16, 0);
+
+    score -= AttacksOnSpaceArea * popcount(attackedBy[Them][ALL_PIECES] & behind & safe);
 
     if (T)
         Trace::add(SPACE, Us, score);
@@ -777,8 +766,7 @@ namespace {
     if (sf == SCALE_FACTOR_NORMAL)
     {
         if (   pos.opposite_bishops()
-            && pos.non_pawn_material(WHITE) == BishopValueMg
-            && pos.non_pawn_material(BLACK) == BishopValueMg)
+            && pos.non_pawn_material() == 2 * BishopValueMg)
             sf = 16 + 4 * pe->passed_count();
         else
             sf = std::min(40 + (pos.opposite_bishops() ? 2 : 7) * pos.count<PAWN>(strongSide), sf);
@@ -817,7 +805,7 @@ namespace {
 
     // Early exit if score is high
     Value v = (mg_value(score) + eg_value(score)) / 2;
-    if (abs(v) > LazyThreshold)
+    if (abs(v) > LazyThreshold + pos.non_pawn_material() / 64)
        return pos.side_to_move() == WHITE ? v : -v;
 
     // Main evaluation begins here

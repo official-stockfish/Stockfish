@@ -65,14 +65,19 @@ constexpr Bitboard CenterFiles = FileCBB | FileDBB | FileEBB | FileFBB;
 constexpr Bitboard KingSide    = FileEBB | FileFBB | FileGBB | FileHBB;
 constexpr Bitboard Center      = (FileDBB | FileEBB) & (Rank4BB | Rank5BB);
 
+constexpr Bitboard KingFlank[FILE_NB] = {
+  QueenSide ^ FileDBB, QueenSide, QueenSide,
+  CenterFiles, CenterFiles,
+  KingSide, KingSide, KingSide ^ FileEBB
+};
+
 extern uint8_t PopCnt16[1 << 16];
 extern uint8_t SquareDistance[SQUARE_NB][SQUARE_NB];
 
+extern Bitboard SquareBB[SQUARE_NB];
 extern Bitboard LineBB[SQUARE_NB][SQUARE_NB];
 extern Bitboard PseudoAttacks[PIECE_TYPE_NB][SQUARE_NB];
 extern Bitboard PawnAttacks[COLOR_NB][SQUARE_NB];
-extern Bitboard KingFlank[FILE_NB];
-extern Bitboard SquareBB[SQUARE_NB];
 
 
 /// Magic holds all magic bitboards relevant data for a single square
@@ -148,6 +153,7 @@ inline Bitboard file_bb(Square s) {
 template<Direction D>
 constexpr Bitboard shift(Bitboard b) {
   return  D == NORTH      ?  b             << 8 : D == SOUTH      ?  b             >> 8
+        : D == NORTH+NORTH?  b             <<16 : D == SOUTH+SOUTH?  b             >>16
         : D == EAST       ? (b & ~FileHBB) << 1 : D == WEST       ? (b & ~FileABB) >> 1
         : D == NORTH_EAST ? (b & ~FileHBB) << 9 : D == NORTH_WEST ? (b & ~FileABB) << 7
         : D == SOUTH_EAST ? (b & ~FileHBB) >> 7 : D == SOUTH_WEST ? (b & ~FileABB) >> 9
@@ -178,8 +184,8 @@ constexpr Bitboard pawn_double_attacks_bb(Bitboard b) {
 /// adjacent_files_bb() returns a bitboard representing all the squares on the
 /// adjacent files of the given one.
 
-inline Bitboard adjacent_files_bb(File f) {
-  return shift<EAST>(file_bb(f)) | shift<WEST>(file_bb(f));
+inline Bitboard adjacent_files_bb(Square s) {
+  return shift<EAST>(file_bb(s)) | shift<WEST>(file_bb(s));
 }
 
 
@@ -215,7 +221,7 @@ inline Bitboard forward_file_bb(Color c, Square s) {
 /// starting from the given square.
 
 inline Bitboard pawn_attack_span(Color c, Square s) {
-  return forward_ranks_bb(c, s) & adjacent_files_bb(file_of(s));
+  return forward_ranks_bb(c, s) & adjacent_files_bb(s);
 }
 
 
@@ -223,7 +229,7 @@ inline Bitboard pawn_attack_span(Color c, Square s) {
 /// the given color and on the given square is a passed pawn.
 
 inline Bitboard passed_pawn_span(Color c, Square s) {
-  return forward_ranks_bb(c, s) & (adjacent_files_bb(file_of(s)) | file_bb(s));
+  return forward_ranks_bb(c, s) & (adjacent_files_bb(s) | file_bb(s));
 }
 
 
@@ -370,10 +376,7 @@ inline Square pop_lsb(Bitboard* b) {
 }
 
 
-/// frontmost_sq() and backmost_sq() return the square corresponding to the
-/// most/least advanced bit relative to the given color.
-
+/// frontmost_sq() returns the most advanced square for the given color
 inline Square frontmost_sq(Color c, Bitboard b) { return c == WHITE ? msb(b) : lsb(b); }
-inline Square  backmost_sq(Color c, Bitboard b) { return c == WHITE ? lsb(b) : msb(b); }
 
 #endif // #ifndef BITBOARD_H_INCLUDED
