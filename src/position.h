@@ -192,9 +192,6 @@ public:
 #endif  // defined(EVAL_NNUE) || defined(EVAL_LEARN)
 
 #if defined(EVAL_LEARN)
-  // 現局面で指し手がないかをテストする。指し手生成ルーチンを用いるので速くない。探索中には使わないこと。
-  bool is_mated() const;
-
   // -- sfen化ヘルパ
 
   // packされたsfenを得る。引数に指定したバッファに返す。

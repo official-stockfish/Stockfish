@@ -1854,21 +1854,26 @@ namespace Learner
   {
     Stack stack[MAX_PLY + 10], * ss = stack + 7;
     Move pv[MAX_PLY + 1];
-    std::vector<Move> pvs;
 
     init_for_search(pos, ss);
     ss->pv = pv; // とりあえずダミーでどこかバッファがないといけない。
 
+    if (pos.is_draw(0)) {
+      // Return draw value if draw.
+      return { VALUE_DRAW, {} };
+    }
+
     // 詰まされているのか
-    if (pos.is_mated())
+    if (MoveList<LEGAL>(pos).size() == 0)
     {
-      pvs.push_back(MOVE_NONE);
-      return ValueAndPV(mated_in(/*ss->ply*/ 0 + 1), pvs);
+      // Return the mated value if checkmated.
+      return { mated_in(/*ss->ply*/ 0 + 1), {} };
     }
 
     auto bestValue = ::qsearch<PV>(pos, ss, -VALUE_INFINITE, VALUE_INFINITE, DEPTH_ZERO);
 
     // 得られたPVを返す。
+    std::vector<Move> pvs;
     for (Move* p = &ss->pv[0]; is_ok(*p); ++p)
       pvs.push_back(*p);
 

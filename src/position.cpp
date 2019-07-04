@@ -1483,12 +1483,3 @@ PieceNumber Position::piece_no_of(Square sq) const
   return n;
 }
 #endif  // defined(EVAL_NNUE)
-
-#if defined(EVAL_LEARN)
-// 現局面で指し手がないかをテストする。指し手生成ルーチンを用いるので速くない。探索中には使わないこと。
-bool Position::is_mated() const
-{
-  // 不成で詰めろを回避できるパターンはないのでLEGAL_ALLである必要はない。
-  return MoveList<LEGAL>(*this).size() == 0;
-}
-#endif // EVAL_LEARN

@@ -502,15 +502,17 @@ void MultiThinkGenSfen::thread_worker(size_t thread_id)
 				break;
 			}
 
+      if (pos.is_draw(ply)) {
+        // Do not write if draw.
+        break;
+      }
+
 			// 全駒されて詰んでいたりしないか？
-			if (pos.is_mated())
+			if (MoveList<LEGAL>(pos).size() == 0)
 			{
-        if (pos.checkers()) {
-          // (この局面の一つ前の局面までは書き出す)
-          // Write the packed fens if checkmate.
-          // Do not write if stalemate.
-          flush_psv(-1);
-        }
+        // (この局面の一つ前の局面までは書き出す)
+        // Write the positions other than this position if checkmated.
+        flush_psv(-1);
 				break;
 			}
 
@@ -1965,7 +1967,8 @@ void LearnerThink::thread_worker(size_t thread_id)
 		// 全駒されて詰んでいる可能性がある。
 		// また宣言勝ちの局面はPVの指し手でleafに行けないので学習から除外しておく。
 		// (そのような教師局面自体を書き出すべきではないのだが古い生成ルーチンで書き出しているかも知れないので)
-		if (pos.is_mated())
+    // Skip the position if there are no legal moves (=checkmated or stalemate).
+		if (MoveList<LEGAL>(pos).size() == 0)
 			goto RetryRead;
 
 		// 読み込めたので試しに表示してみる。
