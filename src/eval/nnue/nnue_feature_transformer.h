@@ -100,9 +100,24 @@ class FeatureTransformer {
 #if defined(USE_AVX2)
       auto out = reinterpret_cast<__m256i*>(&output[offset]);
       for (IndexType j = 0; j < kNumChunks; ++j) {
-        __m256i sum0 = _mm256_load_si256(&reinterpret_cast<const __m256i*>(
+        __m256i sum0 =
+#if defined(__MINGW32__) || defined(__MINGW64__)
+          // HACK: Use _mm256_loadu_si256() instead of _mm256_load_si256. Because the binary
+          //       compiled with g++ in MSYS2 crashes here because the output memory is not aligned
+          //       even though alignas is specified.
+          _mm256_loadu_si256
+#else
+          _mm256_load_si256
+#endif
+          (&reinterpret_cast<const __m256i*>(
             accumulation[perspectives[p]][0])[j * 2 + 0]);
-        __m256i sum1 = _mm256_load_si256(&reinterpret_cast<const __m256i*>(
+        __m256i sum1 =
+#if defined(__MINGW32__) || defined(__MINGW64__)
+          _mm256_loadu_si256
+#else
+          _mm256_load_si256
+#endif
+          (&reinterpret_cast<const __m256i*>(
             accumulation[perspectives[p]][0])[j * 2 + 1]);
         for (IndexType i = 1; i < kRefreshTriggers.size(); ++i) {
           sum0 = _mm256_add_epi16(sum0, reinterpret_cast<const __m256i*>(
@@ -110,7 +125,12 @@ class FeatureTransformer {
           sum1 = _mm256_add_epi16(sum1, reinterpret_cast<const __m256i*>(
               accumulation[perspectives[p]][i])[j * 2 + 1]);
         }
-        _mm256_store_si256(&out[j], _mm256_permute4x64_epi64(_mm256_max_epi8(
+#if defined(__MINGW32__) || defined(__MINGW64__)
+        _mm256_storeu_si256
+#else
+        _mm256_store_si256
+#endif
+        (&out[j], _mm256_permute4x64_epi64(_mm256_max_epi8(
             _mm256_packs_epi16(sum0, sum1), kZero), kControl));
       }
 #elif defined(USE_SSE41)
@@ -177,7 +197,11 @@ class FeatureTransformer {
           auto column = reinterpret_cast<const __m256i*>(&weights_[offset]);
           constexpr IndexType kNumChunks = kHalfDimensions / (kSimdWidth / 2);
           for (IndexType j = 0; j < kNumChunks; ++j) {
+#if defined(__MINGW32__) || defined(__MINGW64__)
+            _mm256_storeu_si256(&accumulation[j], _mm256_add_epi16(_mm256_loadu_si256(&accumulation[j]), column[j]));
+#else
             accumulation[j] = _mm256_add_epi16(accumulation[j], column[j]);
+#endif
           }
 #elif defined(USE_SSE2)
           auto accumulation = reinterpret_cast<__m128i*>(

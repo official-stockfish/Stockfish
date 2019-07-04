@@ -101,7 +101,15 @@ class AffineTransform {
       const auto row = reinterpret_cast<const __m256i*>(&weights_[offset]);
       for (IndexType j = 0; j < kNumChunks; ++j) {
         __m256i product = _mm256_maddubs_epi16(
-            _mm256_load_si256(&input_vector[j]), _mm256_load_si256(&row[j]));
+#if defined(__MINGW32__) || defined(__MINGW64__)
+          // HACK: Use _mm256_loadu_si256() instead of _mm256_load_si256. Because the binary
+          //       compiled with g++ in MSYS2 crashes here because the output memory is not aligned
+          //       even though alignas is specified.
+          _mm256_loadu_si256
+#else
+          _mm256_load_si256
+#endif
+          (&input_vector[j]), _mm256_load_si256(&row[j]));
         product = _mm256_madd_epi16(product, kOnes);
         sum = _mm256_add_epi32(sum, product);
       }
