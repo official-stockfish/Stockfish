@@ -139,7 +139,9 @@ Typically, the engine will be invoked as
 ```
 mpirun -np N /path/to/stockfish
 ```
-where ```N``` stands for the number of MPI processes used. To build the cluster
+where ```N``` stands for the number of MPI processes used (alternatives to ```mpirun```,
+include ```mpiexec```, ```srun```). Use 1 mpi rank per node, and employ threading
+according to the cores per node. To build the cluster
 branch, it is sufficient to specify ```COMPILER=mpicxx``` on the make command line,
 and do a clean build:
 ```
@@ -152,7 +154,9 @@ adding system specific compiler options to the Makefile. Stockfish employs
 non-blocking (asynchronous) communication, and benefits from an MPI
 implementation that efficiently supports this. Some MPI implentations might benefit
 from leaving 1 core/thread free for these asynchronous communications, and might require
-setting additional environment variables. Refer to your MPI documentation for more info.
+setting additional environment variables. ```mpirun``` should forward stdin/stdout
+to ```rank 0``` only (e.g. ```srun --input=0 --output=0```).
+ Refer to your MPI documentation for more info.
 
 ## Compiling Stockfish yourself from the sources
 
