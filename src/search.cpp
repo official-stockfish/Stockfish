@@ -94,7 +94,7 @@ namespace {
   // Skill structure is used to implement strength limit
   struct Skill {
     explicit Skill(int l) : level(l) {}
-    bool enabled() const { return level < 20; }
+    bool enabled() const { return level < 40; }
     bool time_to_pick(Depth depth) const { return depth / ONE_PLY == 1 + level; }
     Move pick_best(size_t multiPV);
 
@@ -335,12 +335,7 @@ void Thread::search() {
   beta = VALUE_INFINITE;
 
   multiPV = Options["MultiPV"];
-  // Pick integer skill levels, but non-deterministically round up or down
-  // such that the average integer skill corresponds to the input floating point one.
-  PRNG rng(now());
-  int intLevel = int(Options["Skill Level"]) +
-        ((Options["Skill Level"] - int(Options["Skill Level"])) * 1024 > rng.rand<unsigned>() % 1024  ? 1 : 0);
-  Skill skill(intLevel);
+  Skill skill(Options["Skill Level"]);
 
   // When playing with strength handicap enable MultiPV search that we will
   // use behind the scenes to retrieve a set of possible moves.
@@ -1593,7 +1588,7 @@ moves_loop: // When in check, search starts from here
     // RootMoves are already sorted by score in descending order
     Value topScore = rootMoves[0].score;
     int delta = std::min(topScore - rootMoves[multiPV - 1].score, PawnValueMg);
-    int weakness = 120 - 2 * level;
+    int weakness = 120 - level;
     int maxScore = -VALUE_INFINITE;
 
     // Choose best move. For each move score we add two terms, both dependent on
