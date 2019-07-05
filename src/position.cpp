@@ -927,8 +927,8 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
 
 #if defined(EVAL_NNUE)
           piece_no0 = piece_no_of(to);
-          dp.pieceNo[0] = piece_no0;
-          dp.changed_piece[0].old_piece = evalList.bona_piece(piece_no0);
+          //dp.pieceNo[0] = piece_no0;
+          //dp.changed_piece[0].old_piece = evalList.bona_piece(piece_no0);
           assert(evalList.piece_no_list_board[from] == PIECE_NUMBER_NB);
           evalList.put_piece(piece_no0, to, promotion);
           dp.changed_piece[0].new_piece = evalList.bona_piece(piece_no0);
@@ -1160,6 +1160,10 @@ void Position::do_null_move(StateInfo& newSt) {
 
   st->key ^= Zobrist::side;
   prefetch(TT.first_entry(st->key));
+
+#if defined(EVAL_NNUE)
+  st->accumulator.computed_score = false;
+#endif
 
   ++st->rule50;
   st->pliesFromNull = 0;
