@@ -294,8 +294,8 @@ void MainThread::search() {
 
   previousScore = bestThread->rootMoves[0].score;
 
-  // Send again PV info if we have a new best thread
-  if (bestThread != this)
+  // Send again PV info if we have a new best thread or playing in skill mode
+  if (bestThread != this || Skill(Options["Skill Level"]).enabled())
       sync_cout << UCI::pv(bestThread->rootPos, bestThread->completedDepth, -VALUE_INFINITE, VALUE_INFINITE) << sync_endl;
 
   sync_cout << "bestmove " << UCI::move(bestThread->rootMoves[0].pv[0], rootPos.is_chess960());
