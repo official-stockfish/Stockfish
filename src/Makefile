@@ -47,6 +47,7 @@ OBJS = benchmark.o bitbase.o bitboard.o endgame.o evaluate.o main.o \
 	eval/nnue/features/k.o \
 	eval/nnue/features/p.o \
 	eval/nnue/features/castling_right.o \
+	eval/nnue/features/enpassant.o \
 	eval/nnue/nnue_test_command.o \
 	extra/sfen_packer.o \
 	learn/gensfen2019.o \
