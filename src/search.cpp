@@ -287,7 +287,11 @@ void MainThread::search() {
           votes[th->rootMoves[0].pv[0]] +=
               (th->rootMoves[0].score - minScore + 14) * int(th->completedDepth);
 
-          if (votes[th->rootMoves[0].pv[0]] > votes[bestThread->rootMoves[0].pv[0]])
+          if (   (   votes[th->rootMoves[0].pv[0]] > votes[bestThread->rootMoves[0].pv[0]]
+                  && (   bestThread->rootMoves[0].score < VALUE_MATE_IN_MAX_PLY
+                      || th->rootMoves[0].score >= bestThread->rootMoves[0].score))
+              || (   th->rootMoves[0].score >= VALUE_MATE_IN_MAX_PLY
+                  && th->rootMoves[0].score > bestThread->rootMoves[0].score))
               bestThread = th;
       }
   }
