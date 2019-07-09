@@ -371,6 +371,9 @@ int Position::set_from_packed_sfen(const PackedSfen& sfen , StateInfo * si, Thre
   // En passant square. Ignore if no pawn capture is possible
   if (stream.read_one_bit()) {
     Square ep_square = static_cast<Square>(stream.read_n_bit(6));
+    if (mirror) {
+      ep_square = Mir(ep_square);
+    }
     st->epSquare = ep_square;
 
     if (!(attackers_to(st->epSquare) & pieces(sideToMove, PAWN))
