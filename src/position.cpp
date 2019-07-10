@@ -592,11 +592,6 @@ bool Position::legal(Move m) const {
 
 bool Position::pseudo_legal(const Move m) const {
 
-  Color us = sideToMove;
-  Square from = from_sq(m);
-  Square to = to_sq(m);
-  Piece pc = moved_piece(m);
-
   // Use a slower but simpler function for uncommon cases
   if (type_of(m) != NORMAL)
       return MoveList<LEGAL>(*this).contains(m);
@@ -605,14 +600,21 @@ bool Position::pseudo_legal(const Move m) const {
   if (promotion_type(m) - KNIGHT != NO_PIECE_TYPE)
       return false;
 
+  Color us = sideToMove;
+  Piece pc = moved_piece(m);
+
   // If the 'from' square is not occupied by a piece belonging to the side to
   // move, the move is obviously not legal.
   if (pc == NO_PIECE || color_of(pc) != us)
       return false;
 
+  Square to = to_sq(m);
+
   // The destination square cannot be occupied by a friendly piece
   if (pieces(us) & to)
       return false;
+
+  Square from = from_sq(m);
 
   // Handle the special case of a pawn move
   if (type_of(pc) == PAWN)
@@ -1053,19 +1055,18 @@ bool Position::see_ge(Move m, Value threshold) const {
   if (type_of(m) != NORMAL)
       return VALUE_ZERO >= threshold;
 
-  Bitboard stmAttackers;
-  Square from = from_sq(m), to = to_sq(m);
-  PieceType nextVictim = type_of(piece_on(from));
-  Color us = color_of(piece_on(from));
-  Color stm = ~us; // First consider opponent's move
-  Value balance;   // Values of the pieces taken by us minus opponent's ones
+  Square to = to_sq(m);
 
+  // Values of the pieces taken by us minus opponent's ones
   // The opponent may be able to recapture so this is the best result
   // we can hope for.
-  balance = PieceValue[MG][piece_on(to)] - threshold;
+  Value balance = PieceValue[MG][piece_on(to)] - threshold;
 
   if (balance < VALUE_ZERO)
       return false;
+
+  Square from = from_sq(m);
+  PieceType nextVictim = type_of(piece_on(from));
 
   // Now assume the worst possible result: that the opponent can
   // capture our piece for free.
@@ -1081,6 +1082,9 @@ bool Position::see_ge(Move m, Value threshold) const {
   // removed, but possibly an X-ray attacker added behind it.
   Bitboard occupied = pieces() ^ from ^ to;
   Bitboard attackers = attackers_to(to, occupied) & occupied;
+  Bitboard stmAttackers;
+  Color us = color_of(piece_on(from));
+  Color stm = ~us; // First consider opponent's move
 
   while (true)
   {
