@@ -137,6 +137,7 @@ ifeq ($(ARCH),ppc-64)
 	arch = ppc64
 	bits = 64
 	popcnt = yes
+	prefetch = yes
 endif
 
 
