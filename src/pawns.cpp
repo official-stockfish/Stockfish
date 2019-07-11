@@ -36,7 +36,7 @@ namespace {
   constexpr Score Doubled       = S(11, 56);
   constexpr Score Isolated      = S( 5, 15);
   constexpr Score WeakUnopposed = S( 13, 27);
-  constexpr Score Attacked2Unsupported = S( 0, 20);
+  constexpr Score Attacked2Unsupported = S( 0, 56);
 
   // Connected pawn bonus
   constexpr int Connected[RANK_NB] = { 0, 7, 8, 12, 29, 48, 86 };
@@ -83,11 +83,6 @@ namespace {
     e->passedPawns[Us] = e->pawnAttacksSpan[Us] = 0;
     e->kingSquares[Us] = SQ_NONE;
     e->pawnAttacks[Us] = pawn_attacks_bb<Us>(ourPawns);
-
-    // Unsupported enemy pawns attacked twice by us
-    score += Attacked2Unsupported * popcount(  theirPawns
-                                             & pawn_double_attacks_bb<Us>(ourPawns)
-                                             & ~pawn_attacks_bb<Them>(theirPawns));
 
     // Loop through all pawns of the current color and score each pawn
     while ((s = *pl++) != SQ_NONE)
@@ -148,6 +143,12 @@ namespace {
         if (doubled && !support)
             score -= Doubled;
     }
+
+    // Unsupported friendly pawns attacked twice by the enemy
+    score -= Attacked2Unsupported * popcount(  ourPawns
+                                             & pawn_double_attacks_bb<Them>(theirPawns)
+                                             & ~pawn_attacks_bb<Us>(ourPawns)
+                                             & ~e->passedPawns[Us]);
 
     return score;
   }
