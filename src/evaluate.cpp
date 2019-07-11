@@ -655,7 +655,7 @@ namespace {
                         !(unsafeSquares & blockSq)        ?  9 :
                                                              0 ;
 
-                // Assign a larger bonus if the block square is defended.
+                // Assign a larger bonus if the block square is defended
                 if (defendedSquares & blockSq)
                     k += 5;
 
