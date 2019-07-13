@@ -136,6 +136,8 @@ endif
 ifeq ($(ARCH),ppc-64)
 	arch = ppc64
 	bits = 64
+	popcnt = yes
+	prefetch = yes
 endif
 
 
@@ -313,7 +315,9 @@ endif
 
 ### 3.6 popcnt
 ifeq ($(popcnt),yes)
-	ifeq ($(comp),icc)
+	ifeq ($(arch),ppc64)
+		CXXFLAGS += -DUSE_POPCNT
+	else ifeq ($(comp),icc)
 		CXXFLAGS += -msse3 -DUSE_POPCNT
 	else
 		CXXFLAGS += -msse3 -mpopcnt -DUSE_POPCNT
