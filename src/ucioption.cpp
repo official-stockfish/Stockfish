@@ -121,15 +121,32 @@ Option::Option(bool v, OnChange f) : type("check"), min(0), max(0), on_change(f)
 Option::Option(OnChange f) : type("button"), min(0), max(0), on_change(f)
 {}
 
-Option::Option(double v, int minv, int maxv, OnChange f) : type("spin"), min(minv), max(maxv), on_change(f)
+Option::Option(int v, int minv, int maxv, OnChange f) : type("spin"), min(minv), max(maxv), on_change(f)
 { defaultValue = currentValue = std::to_string(v); }
 
 Option::Option(const char* v, const char* cur, OnChange f) : type("combo"), min(0), max(0), on_change(f)
 { defaultValue = v; currentValue = cur; }
 
-Option::operator double() const {
-  assert(type == "check" || type == "spin");
-  return (type == "spin" ? stof(currentValue) : currentValue == "true");
+
+Option::operator int() const {
+  assert(type == "spin");
+  return stoi(currentValue);
+}
+
+Option::operator size_t() const
+{
+  assert(type == "spin");
+  return stoull(currentValue);
+}
+
+Option::operator TimePoint() const {
+  assert(type == "spin");
+  return stoll(currentValue);
+}
+
+Option::operator bool() const {
+  assert(type == "check");
+  return currentValue == "true";
 }
 
 Option::operator std::string() const {
