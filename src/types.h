@@ -266,11 +266,11 @@ constexpr Score make_score(int mg, int eg) {
 }
 
 /// Extracting the signed lower and upper 16 bits is not so trivial.
-inline Value eg_value(Score s) {
+constexpr Value eg_value(Score s) {
   return Value(int16_t(unsigned(s + 0x8000) / 65536));
 }
 
-inline Value mg_value(Score s) {
+constexpr Value mg_value(Score s) {
   return Value(int16_t(s & 0xFFFF));
 }
 
