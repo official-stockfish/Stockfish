@@ -662,7 +662,7 @@ namespace {
             bonus = bonus / 2;
 
         int d = std::min(f, ~f);  //File based bonus/penalty
-        score += bonus + make_score(5 - 11 * d, 10 - 8 * d);
+        score += bonus + make_score(5, 10) - make_score(11,8) * d;
     }
 
     if (T)
