@@ -111,17 +111,17 @@ namespace {
         backward =  !(neighbours & forward_ranks_bb(Them, s))
                   && (stoppers & (leverPush | (s + Up)));
 
-        // Passed pawns will be properly scored in evaluation because we need
-        // full attack info to evaluate them.
-        // A pawn is passed if no stoppers apart some levers,
+        // A pawn is passed if there is no stoppers except some levers,
         // or the only stoppers are the leverPush, but we outnumber them,
-        // or there is only one front stopper which can be safely levered.
+        // or there is only one front stopper which can be levered.
         passed =   !(stoppers ^ lever)
                 || (   !(stoppers ^ leverPush)
                     && popcount(phalanx) >= popcount(leverPush))
                 || (   stoppers == square_bb(s + Up) && r >= RANK_5
                     && (shift<Up>(support) & ~(theirPawns | dblAttackThem)));
 
+        // Passed pawns will be properly scored later in evaluation when we have
+        // full attack info.
         if (passed)
             e->passedPawns[Us] |= s;
 
@@ -144,8 +144,8 @@ namespace {
             score -= Doubled;
     }
 
-    // Penalize unsupported and non passed pawns attacked twice by the enemy
-    b =  ourPawns & ~(e->pawnAttacks[Us] | e->passedPawns[Us]) & dblAttackThem;
+    // Penalize the unsupported and non passed pawns attacked twice by the enemy
+    b = ourPawns & ~(e->pawnAttacks[Us] | e->passedPawns[Us]) & dblAttackThem;
     score -= BadLever * popcount(b);
 
     return score;
