@@ -35,8 +35,8 @@ namespace {
   constexpr Score Backward      = S( 9, 24);
   constexpr Score Doubled       = S(11, 56);
   constexpr Score Isolated      = S( 5, 15);
+  constexpr Score WeakLever     = S( 0, 56);
   constexpr Score WeakUnopposed = S(13, 27);
-  constexpr Score Attacked2Unsupported = S(0, 56);
 
   // Connected pawn bonus
   constexpr int Connected[RANK_NB] = { 0, 7, 8, 12, 29, 48, 86 };
@@ -144,11 +144,10 @@ namespace {
             score -= Doubled;
     }
 
-    // Unsupported friendly pawns attacked twice by the enemy
-    score -= Attacked2Unsupported * popcount(  ourPawns
-                                             & pawn_double_attacks_bb<Them>(theirPawns)
-                                             & ~pawn_attacks_bb<Us>(ourPawns)
-                                             & ~e->passedPawns[Us]);
+    // Unsupported pawns attacked twice by the enemy
+    b =   ourPawns & pawn_double_attacks_bb<Them>(theirPawns)
+        & ~(e->pawnAttacks[Us] | e->passedPawns[Us]);
+    score -= WeakLever * popcount(b);
 
     return score;
   }
@@ -244,7 +243,7 @@ Score Entry::do_king_safety(const Position& pos) {
   if (pos.can_castle(Us | QUEEN_SIDE))
       evaluate_shelter<Us>(pos, relative_square(Us, SQ_C1), shelter);
 
-  return shelter - make_score(VALUE_ZERO, 16 * minPawnDist);
+  return shelter - make_score(0, 16 * minPawnDist);
 }
 
 // Explicit template instantiation

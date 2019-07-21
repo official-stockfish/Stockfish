@@ -882,7 +882,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   if (end >= 4)
   {
       StateInfo* stp = st->previous->previous;
-      for (int i=4; i <= end; i += 2)
+      for (int i = 4; i <= end; i += 2)
       {
           stp = stp->previous->previous;
           if (stp->key == st->key)
