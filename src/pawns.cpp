@@ -35,8 +35,8 @@ namespace {
   constexpr Score Backward      = S( 9, 24);
   constexpr Score Doubled       = S(11, 56);
   constexpr Score Isolated      = S( 5, 15);
+  constexpr Score WeakLever     = S( 0, 56);
   constexpr Score WeakUnopposed = S(13, 27);
-  constexpr Score Attacked2Unsupported = S(0, 56);
 
   // Connected pawn bonus
   constexpr int Connected[RANK_NB] = { 0, 7, 8, 12, 29, 48, 86 };
@@ -73,12 +73,14 @@ namespace {
     Bitboard b, neighbours, stoppers, doubled, support, phalanx;
     Bitboard lever, leverPush;
     Square s;
-    bool opposed, backward;
+    bool opposed, backward, passed;
     Score score = SCORE_ZERO;
     const Square* pl = pos.squares<PAWN>(Us);
 
     Bitboard ourPawns   = pos.pieces(  Us, PAWN);
     Bitboard theirPawns = pos.pieces(Them, PAWN);
+
+    Bitboard doubleAttackThem = pawn_double_attacks_bb<Them>(theirPawns);
 
     e->passedPawns[Us] = e->pawnAttacksSpan[Us] = 0;
     e->kingSquares[Us] = SQ_NONE;
@@ -109,21 +111,20 @@ namespace {
         backward =  !(neighbours & forward_ranks_bb(Them, s))
                   && (stoppers & (leverPush | (s + Up)));
 
-        // Passed pawns will be properly scored in evaluation because we need
-        // full attack info to evaluate them. Include also not passed pawns
-        // which could become passed after one or two pawn pushes when they
-        // are not attacked more times than defended.
-        if ( !(stoppers ^ lever) ||
-            (!(stoppers ^ leverPush) && popcount(phalanx) >= popcount(leverPush)))
-            e->passedPawns[Us] |= s;
+        // A pawn is passed if one of the three following conditions is true:
+        // (a) there is no stoppers except some levers
+        // (b) the only stoppers are the leverPush, but we outnumber them
+        // (c) there is only one front stopper which can be levered.
+        passed =   !(stoppers ^ lever)
+                || (   !(stoppers ^ leverPush)
+                    && popcount(phalanx) >= popcount(leverPush))
+                || (   stoppers == square_bb(s + Up) && r >= RANK_5
+                    && (shift<Up>(support) & ~(theirPawns | doubleAttackThem)));
 
-        else if (stoppers == square_bb(s + Up) && r >= RANK_5)
-        {
-            b = shift<Up>(support) & ~theirPawns;
-            while (b)
-                if (!more_than_one(theirPawns & PawnAttacks[Us][pop_lsb(&b)]))
-                    e->passedPawns[Us] |= s;
-        }
+        // Passed pawns will be properly scored later in evaluation when we have
+        // full attack info.
+        if (passed)
+            e->passedPawns[Us] |= s;
 
         // Score this pawn
         if (support | phalanx)
@@ -144,11 +145,11 @@ namespace {
             score -= Doubled;
     }
 
-    // Unsupported friendly pawns attacked twice by the enemy
-    score -= Attacked2Unsupported * popcount(  ourPawns
-                                             & pawn_double_attacks_bb<Them>(theirPawns)
-                                             & ~pawn_attacks_bb<Us>(ourPawns)
-                                             & ~e->passedPawns[Us]);
+    // Penalize the unsupported and non passed pawns attacked twice by the enemy
+    b =   ourPawns
+        & doubleAttackThem
+        & ~(e->pawnAttacks[Us] | e->passedPawns[Us]);
+    score -= WeakLever * popcount(b);
 
     return score;
   }
