@@ -144,8 +144,9 @@ namespace {
             score -= Doubled;
     }
 
-    // Unsupported pawns attacked twice by the enemy
-    b =   ourPawns & pawn_double_attacks_bb<Them>(theirPawns)
+    // Penalize the unsupported and non passed pawns attacked twice by the enemy
+    b =   ourPawns
+        & doubleAttackThem
         & ~(e->pawnAttacks[Us] | e->passedPawns[Us]);
     score -= WeakLever * popcount(b);
 
