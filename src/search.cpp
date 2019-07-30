@@ -62,9 +62,9 @@ namespace {
   enum NodeType { NonPV, PV };
 
   // Razor and futility margins
-  constexpr int RazorMargin = 600;
+  constexpr int RazorMargin = 661;
   Value futility_margin(Depth d, bool improving) {
-    return Value((175 - 50 * improving) * d / ONE_PLY);
+    return Value((168 - 51 * improving) * d / ONE_PLY);
   }
 
   // Reductions lookup table, initialized at startup
@@ -72,7 +72,7 @@ namespace {
 
   Depth reduction(bool i, Depth d, int mn) {
     int r = Reductions[d / ONE_PLY] * Reductions[mn];
-    return ((r + 512) / 1024 + (!i && r > 1024)) * ONE_PLY;
+    return ((r + 520) / 1024 + (!i && r > 999)) * ONE_PLY;
   }
 
   constexpr int futility_move_count(bool improving, int depth) {
@@ -82,7 +82,7 @@ namespace {
   // History and stats update bonus, based on depth
   int stat_bonus(Depth depth) {
     int d = depth / ONE_PLY;
-    return d > 17 ? 0 : 29 * d * d + 138 * d - 134;
+    return d > 17 ? -8 : 22 * d * d + 151 * d - 140;
   }
 
   // Add a small random component to draw evaluations to avoid 3fold-blindness
@@ -191,7 +191,7 @@ namespace {
 void Search::init() {
 
   for (int i = 1; i < MAX_MOVES; ++i)
-      Reductions[i] = int(22.9 * std::log(i));
+      Reductions[i] = int(23.4 * std::log(i));
 }
 
 
@@ -409,15 +409,15 @@ void Thread::search() {
           selDepth = 0;
 
           // Reset aspiration window starting size
-          if (rootDepth >= 5 * ONE_PLY)
+          if (rootDepth >= 4 * ONE_PLY)
           {
               Value previousScore = rootMoves[pvIdx].previousScore;
-              delta = Value(20);
+              delta = Value(23);
               alpha = std::max(previousScore - delta,-VALUE_INFINITE);
               beta  = std::min(previousScore + delta, VALUE_INFINITE);
 
               // Adjust contempt based on root move's previousScore (dynamic contempt)
-              int dct = ct + 88 * previousScore / (abs(previousScore) + 200);
+              int dct = ct + 86 * previousScore / (abs(previousScore) + 176);
 
               contempt = (us == WHITE ?  make_score(dct, dct / 2)
                                       : -make_score(dct, dct / 2));
@@ -512,12 +512,12 @@ void Thread::search() {
           && !Threads.stop
           && !mainThread->stopOnPonderhit)
       {
-          double fallingEval = (314 + 9 * (mainThread->previousScore - bestValue)) / 581.0;
+          double fallingEval = (354 + 10 * (mainThread->previousScore - bestValue)) / 692.0;
           fallingEval = clamp(fallingEval, 0.5, 1.5);
 
           // If the bestMove is stable over several iterations, reduce time accordingly
-          timeReduction = lastBestMoveDepth + 10 * ONE_PLY < completedDepth ? 1.95 : 1.0;
-          double reduction = (1.25 + mainThread->previousTimeReduction) / (2.25 * timeReduction);
+          timeReduction = lastBestMoveDepth + 9 * ONE_PLY < completedDepth ? 1.97 : 0.98;
+          double reduction = (1.36 + mainThread->previousTimeReduction) / (2.29 * timeReduction);
 
           // Use part of the gained time from a previous stable move for the current move
           for (Thread* th : Threads)
@@ -796,9 +796,9 @@ namespace {
     // Step 9. Null move search with verification search (~40 Elo)
     if (   !PvNode
         && (ss-1)->currentMove != MOVE_NULL
-        && (ss-1)->statScore < 23200
+        && (ss-1)->statScore < 22661
         &&  eval >= beta
-        &&  ss->staticEval >= beta - 36 * depth / ONE_PLY + 225
+        &&  ss->staticEval >= beta - 33 * depth / ONE_PLY + 299
         && !excludedMove
         &&  pos.non_pawn_material(us)
         && (ss->ply >= thisThread->nmpMinPly || us != thisThread->nmpColor))
@@ -806,7 +806,7 @@ namespace {
         assert(eval - beta >= 0);
 
         // Null move dynamic reduction based on depth and value
-        Depth R = ((823 + 67 * depth / ONE_PLY) / 256 + std::min(int(eval - beta) / 200, 3)) * ONE_PLY;
+        Depth R = ((835 + 70 * depth / ONE_PLY) / 256 + std::min(int(eval - beta) / 185, 3)) * ONE_PLY;
 
         ss->currentMove = MOVE_NULL;
         ss->continuationHistory = &thisThread->continuationHistory[NO_PIECE][0];
@@ -823,7 +823,7 @@ namespace {
             if (nullValue >= VALUE_MATE_IN_MAX_PLY)
                 nullValue = beta;
 
-            if (thisThread->nmpMinPly || (abs(beta) < VALUE_KNOWN_WIN && depth < 12 * ONE_PLY))
+            if (thisThread->nmpMinPly || (abs(beta) < VALUE_KNOWN_WIN && depth < 13 * ONE_PLY))
                 return nullValue;
 
             assert(!thisThread->nmpMinPly); // Recursive verification is not allowed
@@ -849,7 +849,7 @@ namespace {
         &&  depth >= 5 * ONE_PLY
         &&  abs(beta) < VALUE_MATE_IN_MAX_PLY)
     {
-        Value raisedBeta = std::min(beta + 216 - 48 * improving, VALUE_INFINITE);
+        Value raisedBeta = std::min(beta + 191 - 46 * improving, VALUE_INFINITE);
         MovePicker mp(pos, ttMove, raisedBeta - ss->staticEval, &thisThread->captureHistory);
         int probCutCount = 0;
 
@@ -881,7 +881,7 @@ namespace {
     }
 
     // Step 11. Internal iterative deepening (~2 Elo)
-    if (depth >= 8 * ONE_PLY && !ttMove)
+    if (depth >= 7 * ONE_PLY && !ttMove)
     {
         search<NT>(pos, ss, alpha, beta, depth - 7 * ONE_PLY, cutNode);
 
@@ -955,7 +955,7 @@ moves_loop: // When in check, search starts from here
       // then that move is singular and should be extended. To verify this we do
       // a reduced search on all the other moves but the ttMove and if the
       // result is lower than ttValue minus a margin then we will extend the ttMove.
-      if (    depth >= 8 * ONE_PLY
+      if (    depth >= 6 * ONE_PLY
           &&  move == ttMove
           && !rootNode
           && !excludedMove // Avoid recursive singular search
@@ -976,7 +976,7 @@ moves_loop: // When in check, search starts from here
               extension = ONE_PLY;
               singularLMR++;
 
-              if (value < singularBeta - std::min(3 * depth / ONE_PLY, 39))
+              if (value < singularBeta - std::min(4 * depth / ONE_PLY, 36))
                   singularLMR++;
           }
 
@@ -1036,15 +1036,15 @@ moves_loop: // When in check, search starts from here
               lmrDepth /= ONE_PLY;
 
               // Countermoves based pruning (~20 Elo)
-              if (   lmrDepth < 3 + ((ss-1)->statScore > 0 || (ss-1)->moveCount == 1)
+              if (   lmrDepth < 4 + ((ss-1)->statScore > 0 || (ss-1)->moveCount == 1)
                   && (*contHist[0])[movedPiece][to_sq(move)] < CounterMovePruneThreshold
                   && (*contHist[1])[movedPiece][to_sq(move)] < CounterMovePruneThreshold)
                   continue;
 
               // Futility pruning: parent node (~2 Elo)
-              if (   lmrDepth < 7
+              if (   lmrDepth < 6
                   && !inCheck
-                  && ss->staticEval + 256 + 200 * lmrDepth <= alpha)
+                  && ss->staticEval + 250 + 211 * lmrDepth <= alpha)
                   continue;
 
               // Prune moves with negative SEE (~10 Elo)
@@ -1052,7 +1052,7 @@ moves_loop: // When in check, search starts from here
                   continue;
           }
           else if (  (!givesCheck || !extension)
-                   && !pos.see_ge(move, -PawnValueEg * (depth / ONE_PLY))) // (~20 Elo)
+                   && !pos.see_ge(move, Value(-199) * (depth / ONE_PLY))) // (~20 Elo)
                   continue;
       }
 
@@ -1119,7 +1119,7 @@ moves_loop: // When in check, search starts from here
                              + (*contHist[0])[movedPiece][to_sq(move)]
                              + (*contHist[1])[movedPiece][to_sq(move)]
                              + (*contHist[3])[movedPiece][to_sq(move)]
-                             - 4000;
+                             - 4729;
 
               // Reset statScore to zero if negative and most stats shows >= 0
               if (    ss->statScore < 0
@@ -1129,10 +1129,10 @@ moves_loop: // When in check, search starts from here
                   ss->statScore = 0;
 
               // Decrease/increase reduction by comparing opponent's stat score (~10 Elo)
-              if (ss->statScore >= 0 && (ss-1)->statScore < 0)
+              if (ss->statScore >= -99 && (ss-1)->statScore < -116)
                   r -= ONE_PLY;
 
-              else if ((ss-1)->statScore >= 0 && ss->statScore < 0)
+              else if ((ss-1)->statScore >= -117 && ss->statScore < -144)
                   r += ONE_PLY;
 
               // Decrease/increase reduction for moves with a good/bad history (~30 Elo)
@@ -1402,7 +1402,7 @@ moves_loop: // When in check, search starts from here
         if (PvNode && bestValue > alpha)
             alpha = bestValue;
 
-        futilityBase = bestValue + 128;
+        futilityBase = bestValue + 153;
     }
 
     const PieceToHistory* contHist[] = { (ss-1)->continuationHistory, (ss-2)->continuationHistory,
