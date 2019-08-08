@@ -184,8 +184,8 @@ constexpr Bitboard pawn_double_attacks_bb(Bitboard b) {
 /// adjacent_files_bb() returns a bitboard representing all the squares on the
 /// adjacent files of the given one.
 
-inline Bitboard adjacent_files_bb(File f) {
-  return shift<EAST>(file_bb(f)) | shift<WEST>(file_bb(f));
+inline Bitboard adjacent_files_bb(Square s) {
+  return shift<EAST>(file_bb(s)) | shift<WEST>(file_bb(s));
 }
 
 
@@ -221,7 +221,7 @@ inline Bitboard forward_file_bb(Color c, Square s) {
 /// starting from the given square.
 
 inline Bitboard pawn_attack_span(Color c, Square s) {
-  return forward_ranks_bb(c, s) & adjacent_files_bb(file_of(s));
+  return forward_ranks_bb(c, s) & adjacent_files_bb(s);
 }
 
 
@@ -229,7 +229,7 @@ inline Bitboard pawn_attack_span(Color c, Square s) {
 /// the given color and on the given square is a passed pawn.
 
 inline Bitboard passed_pawn_span(Color c, Square s) {
-  return forward_ranks_bb(c, s) & (adjacent_files_bb(file_of(s)) | file_bb(s));
+  return forward_ranks_bb(c, s) & (adjacent_files_bb(s) | file_bb(s));
 }
 
 
@@ -376,10 +376,7 @@ inline Square pop_lsb(Bitboard* b) {
 }
 
 
-/// frontmost_sq() and backmost_sq() return the most/least advanced square in
-/// the given bitboard relative to the given color.
-
+/// frontmost_sq() returns the most advanced square for the given color
 inline Square frontmost_sq(Color c, Bitboard b) { return c == WHITE ? msb(b) : lsb(b); }
-inline Square  backmost_sq(Color c, Bitboard b) { return c == WHITE ? lsb(b) : msb(b); }
 
 #endif // #ifndef BITBOARD_H_INCLUDED

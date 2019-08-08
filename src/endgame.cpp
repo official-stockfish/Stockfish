@@ -88,26 +88,27 @@ namespace Endgames {
 
   void init() {
 
-      add<KPK>("KPK");
-      add<KNNK>("KNNK");
-      add<KBNK>("KBNK");
-      add<KRKP>("KRKP");
-      add<KRKB>("KRKB");
-      add<KRKN>("KRKN");
-      add<KQKP>("KQKP");
-      add<KQKR>("KQKR");
-      add<KNNKP>("KNNKP");
+    add<KPK>("KPK");
+    add<KNNK>("KNNK");
+    add<KBNK>("KBNK");
+    add<KRKP>("KRKP");
+    add<KRKB>("KRKB");
+    add<KRKN>("KRKN");
+    add<KQKP>("KQKP");
+    add<KQKR>("KQKR");
+    add<KNNKP>("KNNKP");
 
-      add<KNPK>("KNPK");
-      add<KNPKB>("KNPKB");
-      add<KRPKR>("KRPKR");
-      add<KRPKB>("KRPKB");
-      add<KBPKB>("KBPKB");
-      add<KBPKN>("KBPKN");
-      add<KBPPKB>("KBPPKB");
-      add<KRPPKRP>("KRPPKRP");
+    add<KNPK>("KNPK");
+    add<KNPKB>("KNPKB");
+    add<KRPKR>("KRPKR");
+    add<KRPKB>("KRPKB");
+    add<KBPKB>("KBPKB");
+    add<KBPKN>("KBPKN");
+    add<KBPPKB>("KBPPKB");
+    add<KRPPKRP>("KRPPKRP");
   }
 }
+
 
 /// Mate with KX vs K. This function is used to evaluate positions with
 /// king and plenty of material vs a lone king. It simply gives the
@@ -364,7 +365,7 @@ ScaleFactor Endgame<KBPsK>::operator()(const Position& pos) const {
       && pos.count<PAWN>(weakSide) >= 1)
   {
       // Get weakSide pawn that is closest to the home rank
-      Square weakPawnSq = backmost_sq(weakSide, pos.pieces(weakSide, PAWN));
+      Square weakPawnSq = frontmost_sq(strongSide, pos.pieces(weakSide, PAWN));
 
       Square strongKingSq = pos.square<KING>(strongSide);
       Square weakKingSq = pos.square<KING>(weakSide);
