@@ -269,7 +269,7 @@ void MainThread::search() {
   Thread* bestThread = this;
 
   // Check if there are threads with a better score than main thread
-  if (    Options["MultiPV"] == 1
+  if (   (Options["MultiPV"] == 1 || Limits.mate)
       && !Limits.depth
       && !(Skill(Options["Skill Level"]).enabled() || Options["UCI_LimitStrength"])
       &&  rootMoves[0].pv[0] != MOVE_NONE)
@@ -494,14 +494,14 @@ void Thread::search() {
          lastBestMoveDepth = rootDepth;
       }
 
-      if (!mainThread)
-          continue;
-
       // Have we found a "mate in x"?
       if (   Limits.mate
           && rootMoves[0].score >= VALUE_MATE_IN_MAX_PLY
           && VALUE_MATE - rootMoves[0].score <= 2 * Limits.mate)
           Threads.stop = true;
+
+      if (!mainThread)
+          continue;
 
       // If skill level is enabled and time is up, pick a sub-optimal best move
       if (skill.enabled() && skill.time_to_pick(rootDepth))
