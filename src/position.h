@@ -83,7 +83,7 @@ public:
   const std::string fen() const;
 
   // Position representation
-  Bitboard pieces(PieceType pt) const;
+  Bitboard pieces(PieceType pt = ALL_PIECES) const;
   Bitboard pieces(PieceType pt1, PieceType pt2) const;
   Bitboard pieces(Color c) const;
   Bitboard pieces(Color c, PieceType pt) const;
@@ -218,7 +218,7 @@ inline Piece Position::moved_piece(Move m) const {
   return board[from_sq(m)];
 }
 
-inline Bitboard Position::pieces(PieceType pt = ALL_PIECES) const {
+inline Bitboard Position::pieces(PieceType pt) const {
   return byTypeBB[pt];
 }
 
