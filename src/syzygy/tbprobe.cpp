@@ -666,7 +666,7 @@ Ret do_probe_table(const Position& pos, T* entry, WDLScore wdl, ProbeState* resu
     int next = 0, size = 0, leadPawnsCnt = 0;
     PairsData* d;
     Bitboard b, leadPawns = 0;
-    File tbFile = FILE_A;
+    File tbFile = File(A);
 
     // A given TB entry like KRK has associated two material keys: KRvk and Kvkr.
     // If both sides have the same pieces keys are equal. In this case TB tables
@@ -705,7 +705,7 @@ Ret do_probe_table(const Position& pos, T* entry, WDLScore wdl, ProbeState* resu
         std::swap(squares[0], *std::max_element(squares, squares + leadPawnsCnt, pawns_comp));
 
         tbFile = file_of(squares[0]);
-        if (tbFile > FILE_D)
+        if (tbFile > File(D))
             tbFile = file_of(squares[0] ^ 7); // Horizontal flip: SQ_H1 -> SQ_A1
     }
 
@@ -741,7 +741,7 @@ Ret do_probe_table(const Position& pos, T* entry, WDLScore wdl, ProbeState* resu
 
     // Now we map again the squares so that the square of the lead piece is in
     // the triangle A1-D1-D4.
-    if (file_of(squares[0]) > FILE_D)
+    if (file_of(squares[0]) > File(D))
         for (int i = 0; i < size; ++i)
             squares[i] ^= 7; // Horizontal flip: SQ_H1 -> SQ_A1
 
@@ -760,7 +760,7 @@ Ret do_probe_table(const Position& pos, T* entry, WDLScore wdl, ProbeState* resu
 
     // In positions withouth pawns, we further flip the squares to ensure leading
     // piece is below RANK_5.
-    if (rank_of(squares[0]) > RANK_4)
+    if (rank_of(squares[0]) > Rank(R4))
         for (int i = 0; i < size; ++i)
             squares[i] ^= 070; // Vertical flip: SQ_A8 -> SQ_A1
 
@@ -1029,7 +1029,7 @@ uint8_t* set_dtz_map(TBTable<DTZ>& e, uint8_t* data, File maxFile) {
 
     e.map = data;
 
-    for (File f = FILE_A; f <= maxFile; ++f) {
+    for (File f = File(A); f <= maxFile; ++f) {
         auto flags = e.get(0, f)->flags;
         if (flags & TBFlag::Mapped) {
             if (flags & TBFlag::Wide) {
@@ -1066,13 +1066,13 @@ void set(T& e, uint8_t* data) {
     data++; // First byte stores flags
 
     const int sides = T::Sides == 2 && (e.key != e.key2) ? 2 : 1;
-    const File maxFile = e.hasPawns ? FILE_D : FILE_A;
+    const File maxFile = e.hasPawns ? File(D): File(A);
 
     bool pp = e.hasPawns && e.pawnCount[1]; // Pawns on both sides
 
     assert(!pp || e.pawnCount[0]);
 
-    for (File f = FILE_A; f <= maxFile; ++f) {
+    for (File f = File(A); f <= maxFile; ++f) {
 
         for (int i = 0; i < sides; i++)
             *e.get(i, f) = PairsData();
@@ -1091,25 +1091,25 @@ void set(T& e, uint8_t* data) {
 
     data += (uintptr_t)data & 1; // Word alignment
 
-    for (File f = FILE_A; f <= maxFile; ++f)
+    for (File f = File(A); f <= maxFile; ++f)
         for (int i = 0; i < sides; i++)
             data = set_sizes(e.get(i, f), data);
 
     data = set_dtz_map(e, data, maxFile);
 
-    for (File f = FILE_A; f <= maxFile; ++f)
+    for (File f = File(A); f <= maxFile; ++f)
         for (int i = 0; i < sides; i++) {
             (d = e.get(i, f))->sparseIndex = (SparseEntry*)data;
             data += d->sparseIndexSize * sizeof(SparseEntry);
         }
 
-    for (File f = FILE_A; f <= maxFile; ++f)
+    for (File f = File(A); f <= maxFile; ++f)
         for (int i = 0; i < sides; i++) {
             (d = e.get(i, f))->blockLength = (uint16_t*)data;
             data += d->blockLengthSize * sizeof(uint16_t);
         }
 
-    for (File f = FILE_A; f <= maxFile; ++f)
+    for (File f = File(A); f <= maxFile; ++f)
         for (int i = 0; i < sides; i++) {
             data = (uint8_t*)(((uintptr_t)data + 0x3F) & ~0x3F); // 64 byte alignment
             (d = e.get(i, f))->data = data;
@@ -1269,10 +1269,10 @@ void Tablebases::init(const std::string& paths) {
     std::vector<Square> diagonal;
     code = 0;
     for (Square s = SQ_A1; s <= SQ_D4; ++s)
-        if (off_A1H8(s) < 0 && file_of(s) <= FILE_D)
+        if (off_A1H8(s) < 0 && file_of(s) <= File(D))
             MapA1D1D4[s] = code++;
 
-        else if (!off_A1H8(s) && file_of(s) <= FILE_D)
+        else if (!off_A1H8(s) && file_of(s) <= File(D))
             diagonal.push_back(s);
 
     // Diagonal squares are encoded as last ones
@@ -1324,7 +1324,7 @@ void Tablebases::init(const std::string& paths) {
     // Init the tables for the encoding of leading pawns group: with 7-men TB we
     // can have up to 5 leading pawns (KPPPPPK).
     for (int leadPawnsCnt = 1; leadPawnsCnt <= 5; ++leadPawnsCnt)
-        for (File f = FILE_A; f <= FILE_D; ++f)
+        for (File f = File(A); f <= File(D); ++f)
         {
             // Restart the index at every file because TB table is splitted
             // by file, so we can reuse the same index for different files.
@@ -1332,7 +1332,7 @@ void Tablebases::init(const std::string& paths) {
 
             // Sum all possible combinations for a given file, starting with
             // the leading pawn on rank 2 and increasing the rank.
-            for (Rank r = RANK_2; r <= RANK_7; ++r)
+            for (Rank r = Rank(R2); r <= Rank(R7); ++r)
             {
                 Square sq = make_square(f, r);
 
