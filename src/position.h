@@ -265,7 +265,7 @@ inline Square Position::ep_square() const {
 }
 
 inline bool Position::is_on_semiopen_file(Color c, Square s) const {
-  return !(pieces(c, PAWN) & file_bb(s));
+  return !(pieces(c, PAWN) & FileBB(s));
 }
 
 inline bool Position::can_castle(CastlingRight cr) const {
@@ -327,7 +327,7 @@ inline bool Position::pawn_passed(Color c, Square s) const {
 
 inline bool Position::advanced_pawn_push(Move m) const {
   return   type_of(moved_piece(m)) == PAWN
-        && relative_rank(sideToMove, to_sq(m)) > RANK_5;
+        && relative_rank(sideToMove, to_sq(m)) > Rank(R5);
 }
 
 inline int Position::pawns_on_same_color_squares(Color c, Square s) const {

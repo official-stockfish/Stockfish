@@ -216,7 +216,7 @@ namespace {
     constexpr Color     Them = (Us == WHITE ? BLACK : WHITE);
     constexpr Direction Up   = (Us == WHITE ? NORTH : SOUTH);
     constexpr Direction Down = (Us == WHITE ? SOUTH : NORTH);
-    constexpr Bitboard LowRanks = (Us == WHITE ? Rank2BB | Rank3BB : Rank7BB | Rank6BB);
+    constexpr Bitboard LowRanks = (Us == WHITE ? RankBB(R2) | RankBB(R3) : RankBB(R7) | RankBB(R6));
 
     const Square ksq = pos.square<KING>(Us);
 
@@ -237,13 +237,13 @@ namespace {
 
     // Init our king safety tables
     kingRing[Us] = attackedBy[Us][KING];
-    if (relative_rank(Us, ksq) == RANK_1)
+    if (relative_rank(Us, ksq) == Rank(R1))
         kingRing[Us] |= shift<Up>(kingRing[Us]);
 
-    if (file_of(ksq) == FILE_H)
+    if (file_of(ksq) == File(H))
         kingRing[Us] |= shift<WEST>(kingRing[Us]);
 
-    else if (file_of(ksq) == FILE_A)
+    else if (file_of(ksq) == File(A))
         kingRing[Us] |= shift<EAST>(kingRing[Us]);
 
     kingAttackersCount[Them] = popcount(kingRing[Us] & pe->pawn_attacks(Them));
@@ -260,8 +260,8 @@ namespace {
 
     constexpr Color     Them = (Us == WHITE ? BLACK : WHITE);
     constexpr Direction Down = (Us == WHITE ? SOUTH : NORTH);
-    constexpr Bitboard OutpostRanks = (Us == WHITE ? Rank4BB | Rank5BB | Rank6BB
-                                                   : Rank5BB | Rank4BB | Rank3BB);
+    constexpr Bitboard OutpostRanks = (Us == WHITE ? RankBB(R4) | RankBB(R5) | RankBB(R6)
+                                                   : RankBB(R5) | RankBB(R4) | RankBB(R3));
     const Square* pl = pos.squares<Pt>(Us);
 
     Bitboard b, bb;
@@ -332,7 +332,7 @@ namespace {
                 && pos.is_chess960()
                 && (s == relative_square(Us, SQ_A1) || s == relative_square(Us, SQ_H1)))
             {
-                Direction d = pawn_push(Us) + (file_of(s) == FILE_A ? EAST : WEST);
+                Direction d = pawn_push(Us) + (file_of(s) == File(A) ? EAST : WEST);
                 if (pos.piece_on(s + d) == make_piece(Us, PAWN))
                     score -= !pos.empty(s + d + pawn_push(Us))                ? CorneredBishop * 4
                             : pos.piece_on(s + d + d) == make_piece(Us, PAWN) ? CorneredBishop * 2
@@ -343,7 +343,7 @@ namespace {
         if (Pt == ROOK)
         {
             // Bonus for aligning rook with enemy pawns on the same rank/file
-            if (relative_rank(Us, s) >= RANK_5)
+            if (relative_rank(Us, s) >= Rank(R5))
                 score += RookOnPawn * popcount(pos.pieces(Them, PAWN) & PseudoAttacks[ROOK][s]);
 
             // Bonus for rook on an open or semi-open file
@@ -354,7 +354,7 @@ namespace {
             else if (mob <= 3)
             {
                 File kf = file_of(pos.square<KING>(Us));
-                if ((kf < FILE_E) == (file_of(s) < kf))
+                if ((kf < E) == (file_of(s) < kf))
                     score -= TrappedRook * (1 + !pos.castling_rights(Us));
             }
         }
@@ -379,8 +379,8 @@ namespace {
   Score Evaluation<T>::king() const {
 
     constexpr Color    Them = (Us == WHITE ? BLACK : WHITE);
-    constexpr Bitboard Camp = (Us == WHITE ? AllSquares ^ Rank6BB ^ Rank7BB ^ Rank8BB
-                                           : AllSquares ^ Rank1BB ^ Rank2BB ^ Rank3BB);
+    constexpr Bitboard Camp = (Us == WHITE ? AllSquares ^ RankBB(R6) ^ RankBB(R7) ^ RankBB(R8)
+                                           : AllSquares ^ RankBB(R1) ^ RankBB(R2) ^ RankBB(R3));
 
     Bitboard weak, b1, b2, safe, unsafeChecks = 0;
     Bitboard rookChecks, queenChecks, bishopChecks, knightChecks;
@@ -489,7 +489,7 @@ namespace {
 
     constexpr Color     Them     = (Us == WHITE ? BLACK   : WHITE);
     constexpr Direction Up       = (Us == WHITE ? NORTH   : SOUTH);
-    constexpr Bitboard  TRank3BB = (Us == WHITE ? Rank3BB : Rank6BB);
+    constexpr Bitboard  TRank3BB = (Us == WHITE ? RankBB(R3) : RankBB(R6));
 
     Bitboard b, weak, defended, nonPawnEnemies, stronglyProtected, safe;
     Score score = SCORE_ZERO;
@@ -615,7 +615,7 @@ namespace {
 
         Score bonus = PassedRank[r];
 
-        if (r > RANK_3)
+        if (r > Rank(R3))
         {
             int w = 5 * r - 13;
             Square blockSq = s + Up;
@@ -625,7 +625,7 @@ namespace {
                                     - king_proximity(Us,   blockSq) * 2) * w);
 
             // If blockSq is not the queening square then consider also a second push
-            if (r != RANK_7)
+            if (r != Rank(R7))
                 bonus -= make_score(0, king_proximity(Us, blockSq + Up) * w);
 
             // If the pawn is free to advance, then increase the bonus
@@ -653,7 +653,7 @@ namespace {
 
                 bonus += make_score(k * w, k * w);
             }
-        } // r > RANK_3
+        } // r > Rank(R3)
 
         // Scale down bonus for candidate passers which need more than one
         // pawn push to become passed, or have a pawn in front of them.
@@ -687,8 +687,8 @@ namespace {
     constexpr Color Them     = (Us == WHITE ? BLACK : WHITE);
     constexpr Direction Down = (Us == WHITE ? SOUTH : NORTH);
     constexpr Bitboard SpaceMask =
-      Us == WHITE ? CenterFiles & (Rank2BB | Rank3BB | Rank4BB)
-                  : CenterFiles & (Rank7BB | Rank6BB | Rank5BB);
+      Us == WHITE ? CenterFiles & (RankBB(R2) | RankBB(R3) | RankBB(R4))
+                  : CenterFiles & (RankBB(R7) | RankBB(R6) | RankBB(R5));
 
     // Find the available squares for our pieces inside the area defined by SpaceMask
     Bitboard safe =   SpaceMask

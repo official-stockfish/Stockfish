@@ -44,7 +44,7 @@ namespace {
   // bit 13-14: white pawn file (from FILE_A to FILE_D)
   // bit 15-17: white pawn RANK_7 - rank (from RANK_7 - RANK_7 to RANK_7 - RANK_2)
   unsigned index(Color us, Square bksq, Square wksq, Square psq) {
-    return wksq | (bksq << 6) | (us << 12) | (file_of(psq) << 13) | ((RANK_7 - rank_of(psq)) << 15);
+    return wksq | (bksq << 6) | (us << 12) | (file_of(psq) << 13) | ((Rank(R7) - rank_of(psq)) << 15);
   }
 
   enum Result {
@@ -111,7 +111,7 @@ namespace {
     ksq[WHITE] = Square((idx >>  0) & 0x3F);
     ksq[BLACK] = Square((idx >>  6) & 0x3F);
     us         = Color ((idx >> 12) & 0x01);
-    psq        = make_square(File((idx >> 13) & 0x3), Rank(RANK_7 - ((idx >> 15) & 0x7)));
+    psq        = make_square(File((idx >> 13) & 0x3), Rank(Rank(R7) - ((idx >> 15) & 0x7)));
 
     // Check if two pieces are on the same square or if a king can be captured
     if (   distance(ksq[WHITE], ksq[BLACK]) <= 1
@@ -122,7 +122,7 @@ namespace {
 
     // Immediate win if a pawn can be promoted without getting captured
     else if (   us == WHITE
-             && rank_of(psq) == RANK_7
+             && rank_of(psq) == Rank(R7)
              && ksq[us] != psq + NORTH
              && (    distance(ksq[~us], psq + NORTH) > 1
                  || (PseudoAttacks[KING][ksq[us]] & (psq + NORTH))))
@@ -165,10 +165,10 @@ namespace {
 
     if (Us == WHITE)
     {
-        if (rank_of(psq) < RANK_7)      // Single push
+        if (rank_of(psq) < Rank(R7))      // Single push
             r |= db[index(Them, ksq[Them], ksq[Us], psq + NORTH)];
 
-        if (   rank_of(psq) == RANK_2   // Double push
+        if (   rank_of(psq) == Rank(R2)   // Double push
             && psq + NORTH != ksq[Us]
             && psq + NORTH != ksq[Them])
             r |= db[index(Them, ksq[Them], ksq[Us], psq + NORTH + NORTH)];

@@ -94,9 +94,9 @@ std::ostream& operator<<(std::ostream& os, const Position& pos) {
 
   os << "\n +---+---+---+---+---+---+---+---+\n";
 
-  for (Rank r = RANK_8; r >= RANK_1; --r)
+  for (Rank r = Rank(R8); r >= Rank(R1); --r)
   {
-      for (File f = FILE_A; f <= FILE_H; ++f)
+      for (File f = File(A); f <= File(H); ++f)
           os << " | " << PieceToChar[pos.piece_on(make_square(f, r))];
 
       os << " |\n +---+---+---+---+---+---+---+---+\n";
@@ -150,7 +150,7 @@ void Position::init() {
       for (Square s = SQ_A1; s <= SQ_H8; ++s)
           Zobrist::psq[pc][s] = rng.rand<Key>();
 
-  for (File f = FILE_A; f <= FILE_H; ++f)
+  for (File f = File(A); f <= File(H); ++f)
       Zobrist::enpassant[f] = rng.rand<Key>();
 
   for (int cr = NO_CASTLING; cr <= ANY_CASTLING; ++cr)
@@ -286,7 +286,7 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
           for (rsq = relative_square(c, SQ_A1); piece_on(rsq) != rook; ++rsq) {}
 
       else if (token >= 'A' && token <= 'H')
-          rsq = make_square(File(token - 'A'), relative_rank(c, RANK_1));
+          rsq = make_square(File(token - 'A'), relative_rank(c, Rank(R1)));
 
       else
           continue;
@@ -434,21 +434,21 @@ const string Position::fen() const {
   int emptyCnt;
   std::ostringstream ss;
 
-  for (Rank r = RANK_8; r >= RANK_1; --r)
+  for (Rank r = Rank(R8); r >= Rank(R1); --r)
   {
-      for (File f = FILE_A; f <= FILE_H; ++f)
+      for (File f = File(A); f <= File(H); ++f)
       {
-          for (emptyCnt = 0; f <= FILE_H && empty(make_square(f, r)); ++f)
+          for (emptyCnt = 0; f <= File(H) && empty(make_square(f, r)); ++f)
               ++emptyCnt;
 
           if (emptyCnt)
               ss << emptyCnt;
 
-          if (f <= FILE_H)
+          if (f <= File(H))
               ss << PieceToChar[piece_on(make_square(f, r))];
       }
 
-      if (r > RANK_1)
+      if (r > Rank(R1))
           ss << '/';
   }
 
@@ -619,13 +619,13 @@ bool Position::pseudo_legal(const Move m) const {
   {
       // We have already handled promotion moves, so destination
       // cannot be on the 8th/1st rank.
-      if ((Rank8BB | Rank1BB) & to)
+      if ((RankBB(R8) | RankBB(R1)) & to)
           return false;
 
       if (   !(attacks_from<PAWN>(from, us) & pieces(~us) & to) // Not a capture
           && !((from + pawn_push(us) == to) && empty(to))       // Not a single push
           && !(   (from + 2 * pawn_push(us) == to)              // Not a double push
-               && (rank_of(from) == relative_rank(us, RANK_2))
+               && (rank_of(from) == relative_rank(us, Rank(R2)))
                && empty(to)
                && empty(to - pawn_push(us))))
           return false;
@@ -776,7 +776,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
 
               assert(pc == make_piece(us, PAWN));
               assert(to == st->epSquare);
-              assert(relative_rank(us, to) == RANK_6);
+              assert(relative_rank(us, to) == Rank(R6));
               assert(piece_on(to) == NO_PIECE);
               assert(piece_on(capsq) == make_piece(them, PAWN));
 
@@ -837,7 +837,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       {
           Piece promotion = make_piece(us, promotion_type(m));
 
-          assert(relative_rank(us, to) == RANK_8);
+          assert(relative_rank(us, to) == Rank(R8));
           assert(type_of(promotion) >= KNIGHT && type_of(promotion) <= QUEEN);
 
           remove_piece(pc, to);
@@ -916,7 +916,7 @@ void Position::undo_move(Move m) {
 
   if (type_of(m) == PROMOTION)
   {
-      assert(relative_rank(us, to) == RANK_8);
+      assert(relative_rank(us, to) == Rank(R8));
       assert(type_of(pc) == promotion_type(m));
       assert(type_of(pc) >= KNIGHT && type_of(pc) <= QUEEN);
 
@@ -944,7 +944,7 @@ void Position::undo_move(Move m) {
 
               assert(type_of(pc) == PAWN);
               assert(to == st->previous->epSquare);
-              assert(relative_rank(us, to) == RANK_6);
+              assert(relative_rank(us, to) == Rank(R6));
               assert(piece_on(capsq) == NO_PIECE);
               assert(st->capturedPiece == make_piece(~us, PAWN));
           }
@@ -1217,9 +1217,9 @@ void Position::flip() {
   string f, token;
   std::stringstream ss(fen());
 
-  for (Rank r = RANK_8; r >= RANK_1; --r) // Piece placement
+  for (Rank r = Rank(R8); r >= Rank(R1); --r) // Piece placement
   {
-      std::getline(ss, token, r > RANK_1 ? '/' : ' ');
+      std::getline(ss, token, r > Rank(R1) ? '/' : ' ');
       f.insert(0, token + (f.empty() ? " " : "/"));
   }
 
@@ -1256,7 +1256,7 @@ bool Position::pos_is_ok() const {
       || piece_on(square<KING>(WHITE)) != W_KING
       || piece_on(square<KING>(BLACK)) != B_KING
       || (   ep_square() != SQ_NONE
-          && relative_rank(sideToMove, ep_square()) != RANK_6))
+          && relative_rank(sideToMove, ep_square()) != Rank(R6)))
       assert(0 && "pos_is_ok: Default");
 
   if (Fast)
@@ -1267,7 +1267,7 @@ bool Position::pos_is_ok() const {
       || attackers_to(square<KING>(~sideToMove)) & pieces(sideToMove))
       assert(0 && "pos_is_ok: Kings");
 
-  if (   (pieces(PAWN) & (Rank1BB | Rank8BB))
+  if (   (pieces(PAWN) & (RankBB(R1) | RankBB(R1)))
       || pieceCount[W_PAWN] > 8
       || pieceCount[B_PAWN] > 8)
       assert(0 && "pos_is_ok: Pawns");

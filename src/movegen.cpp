@@ -54,8 +54,8 @@ namespace {
 
     // Compute some compile time parameters relative to the white side
     constexpr Color     Them     = (Us == WHITE ? BLACK      : WHITE);
-    constexpr Bitboard  TRank7BB = (Us == WHITE ? Rank7BB    : Rank2BB);
-    constexpr Bitboard  TRank3BB = (Us == WHITE ? Rank3BB    : Rank6BB);
+    constexpr Bitboard  TRank7BB = (Us == WHITE ? RankBB(R7): RankBB(R2));
+    constexpr Bitboard  TRank3BB = (Us == WHITE ? RankBB(R3): RankBB(R6));
     constexpr Direction Up       = (Us == WHITE ? NORTH      : SOUTH);
     constexpr Direction UpRight  = (Us == WHITE ? NORTH_EAST : SOUTH_WEST);
     constexpr Direction UpLeft   = (Us == WHITE ? NORTH_WEST : SOUTH_EAST);
@@ -96,7 +96,7 @@ namespace {
             Bitboard dcCandidateQuiets = pos.blockers_for_king(Them) & pawnsNotOn7;
             if (dcCandidateQuiets)
             {
-                Bitboard dc1 = shift<Up>(dcCandidateQuiets) & emptySquares & ~file_bb(ksq);
+                Bitboard dc1 = shift<Up>(dcCandidateQuiets) & emptySquares & ~FileBB(ksq);
                 Bitboard dc2 = shift<Up>(dc1 & TRank3BB) & emptySquares;
 
                 b1 |= dc1;
@@ -162,7 +162,7 @@ namespace {
 
         if (pos.ep_square() != SQ_NONE)
         {
-            assert(rank_of(pos.ep_square()) == relative_rank(Us, RANK_6));
+            assert(rank_of(pos.ep_square()) == relative_rank(Us, R6));
 
             // An en passant capture can be an evasion only if the checking piece
             // is the double pushed pawn and so is in the target. Otherwise this

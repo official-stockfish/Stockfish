@@ -102,8 +102,8 @@ namespace {
         leverPush  = theirPawns & PawnAttacks[Us][s + Up];
         doubled    = ourPawns   & (s - Up);
         neighbours = ourPawns   & adjacent_files_bb(s);
-        phalanx    = neighbours & rank_bb(s);
-        support    = neighbours & rank_bb(s - Up);
+        phalanx    = neighbours & RankBB(s);
+        support    = neighbours & RankBB(s - Up);
 
         // A pawn is backward when it is behind all pawns of the same color on
         // the adjacent files and cannot safely advance. Phalanx and isolated
@@ -118,7 +118,7 @@ namespace {
         passed =   !(stoppers ^ lever)
                 || (   !(stoppers ^ leverPush)
                     && popcount(phalanx) >= popcount(leverPush))
-                || (   stoppers == square_bb(s + Up) && r >= RANK_5
+                || (   stoppers == square_bb(s + Up) && r >= Rank(R5)
                     && (shift<Up>(support) & ~(theirPawns | doubleAttackThem)));
 
         // Passed pawns will be properly scored later in evaluation when we have
@@ -192,20 +192,20 @@ void Entry::evaluate_shelter(const Position& pos, Square ksq, Score& shelter) {
 
   Score bonus = make_score(5, 5);
 
-  File center = clamp(file_of(ksq), FILE_B, FILE_G);
+  File center = clamp(file_of(ksq), File(B), File(G));
   for (File f = File(center - 1); f <= File(center + 1); ++f)
   {
-      b = ourPawns & file_bb(f);
-      Rank ourRank = b ? relative_rank(Us, frontmost_sq(Them, b)) : RANK_1;
+      b = ourPawns & FileBB(f);
+      Rank ourRank = b ? relative_rank(Us, frontmost_sq(Them, b)) : Rank(R1);
 
-      b = theirPawns & file_bb(f);
-      Rank theirRank = b ? relative_rank(Us, frontmost_sq(Them, b)) : RANK_1;
+      b = theirPawns & FileBB(f);
+      Rank theirRank = b ? relative_rank(Us, frontmost_sq(Them, b)) : Rank(R1);
 
       int d = std::min(f, ~f);
       bonus += make_score(ShelterStrength[d][ourRank], 0);
 
       if (ourRank && (ourRank == theirRank - 1))
-          bonus -= make_score(82 * (theirRank == RANK_3), 82 * (theirRank == RANK_3));
+          bonus -= make_score(82 * (theirRank == Rank(R3)), 82 * (theirRank == Rank(R3)));
       else
           bonus -= make_score(UnblockedStorm[d][theirRank], 0);
   }

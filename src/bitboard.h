@@ -39,36 +39,25 @@ const std::string pretty(Bitboard b);
 
 }
 
-constexpr Bitboard AllSquares = ~Bitboard(0);
+constexpr Bitboard AllSquares  = ~Bitboard(0);
 constexpr Bitboard DarkSquares = 0xAA55AA55AA55AA55ULL;
+constexpr Bitboard FileABB     = 0x0101010101010101ULL;
+constexpr Bitboard Rank1BB     = 0xFF;
 
-constexpr Bitboard FileABB = 0x0101010101010101ULL;
-constexpr Bitboard FileBBB = FileABB << 1;
-constexpr Bitboard FileCBB = FileABB << 2;
-constexpr Bitboard FileDBB = FileABB << 3;
-constexpr Bitboard FileEBB = FileABB << 4;
-constexpr Bitboard FileFBB = FileABB << 5;
-constexpr Bitboard FileGBB = FileABB << 6;
-constexpr Bitboard FileHBB = FileABB << 7;
+constexpr Bitboard RankBB(Rank r)   { return Rank1BB << (r * 8); }
+constexpr Bitboard FileBB(File f)   { return FileABB << f; }
+constexpr Bitboard RankBB(Square s) { return RankBB(rank_of(s)); }
+constexpr Bitboard FileBB(Square s) { return FileBB(file_of(s)); }
 
-constexpr Bitboard Rank1BB = 0xFF;
-constexpr Bitboard Rank2BB = Rank1BB << (8 * 1);
-constexpr Bitboard Rank3BB = Rank1BB << (8 * 2);
-constexpr Bitboard Rank4BB = Rank1BB << (8 * 3);
-constexpr Bitboard Rank5BB = Rank1BB << (8 * 4);
-constexpr Bitboard Rank6BB = Rank1BB << (8 * 5);
-constexpr Bitboard Rank7BB = Rank1BB << (8 * 6);
-constexpr Bitboard Rank8BB = Rank1BB << (8 * 7);
-
-constexpr Bitboard QueenSide   = FileABB | FileBBB | FileCBB | FileDBB;
-constexpr Bitboard CenterFiles = FileCBB | FileDBB | FileEBB | FileFBB;
-constexpr Bitboard KingSide    = FileEBB | FileFBB | FileGBB | FileHBB;
-constexpr Bitboard Center      = (FileDBB | FileEBB) & (Rank4BB | Rank5BB);
+constexpr Bitboard QueenSide   =  FileBB(A) | FileBB(B)  |  FileBB(C) | FileBB(D);
+constexpr Bitboard CenterFiles =  FileBB(C) | FileBB(D)  |  FileBB(E) | FileBB(F);
+constexpr Bitboard KingSide    =  FileBB(E) | FileBB(F)  |  FileBB(G) | FileBB(H);
+constexpr Bitboard Center      = (FileBB(D) | FileBB(E)) & (RankBB(R4)| RankBB(R5));
 
 constexpr Bitboard KingFlank[FILE_NB] = {
-  QueenSide ^ FileDBB, QueenSide, QueenSide,
+  QueenSide ^ FileBB(D), QueenSide, QueenSide,
   CenterFiles, CenterFiles,
-  KingSide, KingSide, KingSide ^ FileEBB
+  KingSide, KingSide, KingSide ^ FileBB(E)
 };
 
 extern uint8_t PopCnt16[1 << 16];
@@ -128,35 +117,15 @@ inline bool opposite_colors(Square s1, Square s2) {
 }
 
 
-/// rank_bb() and file_bb() return a bitboard representing all the squares on
-/// the given file or rank.
-
-inline Bitboard rank_bb(Rank r) {
-  return Rank1BB << (8 * r);
-}
-
-inline Bitboard rank_bb(Square s) {
-  return rank_bb(rank_of(s));
-}
-
-inline Bitboard file_bb(File f) {
-  return FileABB << f;
-}
-
-inline Bitboard file_bb(Square s) {
-  return file_bb(file_of(s));
-}
-
-
 /// shift() moves a bitboard one step along direction D
 
 template<Direction D>
 constexpr Bitboard shift(Bitboard b) {
   return  D == NORTH      ?  b             << 8 : D == SOUTH      ?  b             >> 8
         : D == NORTH+NORTH?  b             <<16 : D == SOUTH+SOUTH?  b             >>16
-        : D == EAST       ? (b & ~FileHBB) << 1 : D == WEST       ? (b & ~FileABB) >> 1
-        : D == NORTH_EAST ? (b & ~FileHBB) << 9 : D == NORTH_WEST ? (b & ~FileABB) << 7
-        : D == SOUTH_EAST ? (b & ~FileHBB) >> 7 : D == SOUTH_WEST ? (b & ~FileABB) >> 9
+        : D == EAST       ? (b & ~FileBB(H)) << 1 : D == WEST       ? (b & ~FileBB(A)) >> 1
+        : D == NORTH_EAST ? (b & ~FileBB(H)) << 9 : D == NORTH_WEST ? (b & ~FileBB(A)) << 7
+        : D == SOUTH_EAST ? (b & ~FileBB(H)) >> 7 : D == SOUTH_WEST ? (b & ~FileBB(A)) >> 9
         : 0;
 }
 
@@ -185,7 +154,7 @@ constexpr Bitboard pawn_double_attacks_bb(Bitboard b) {
 /// adjacent files of the given one.
 
 inline Bitboard adjacent_files_bb(Square s) {
-  return shift<EAST>(file_bb(s)) | shift<WEST>(file_bb(s));
+  return shift<EAST>(FileBB(s)) | shift<WEST>(FileBB(s));
 }
 
 
@@ -203,8 +172,8 @@ inline Bitboard between_bb(Square s1, Square s2) {
 /// forward_ranks_bb(BLACK, SQ_D3) will return the 16 squares on ranks 1 and 2.
 
 inline Bitboard forward_ranks_bb(Color c, Square s) {
-  return c == WHITE ? ~Rank1BB << 8 * (rank_of(s) - RANK_1)
-                    : ~Rank8BB >> 8 * (RANK_8 - rank_of(s));
+  return c == WHITE ? ~RankBB(R1) << 8 * (rank_of(s) - Rank(R1))
+                    : ~RankBB(R8) >> 8 * (Rank(R8) - rank_of(s));
 }
 
 
@@ -212,7 +181,7 @@ inline Bitboard forward_ranks_bb(Color c, Square s) {
 /// line in front of the given one, from the point of view of the given color.
 
 inline Bitboard forward_file_bb(Color c, Square s) {
-  return forward_ranks_bb(c, s) & file_bb(s);
+  return forward_ranks_bb(c, s) & FileBB(s);
 }
 
 
@@ -229,7 +198,7 @@ inline Bitboard pawn_attack_span(Color c, Square s) {
 /// the given color and on the given square is a passed pawn.
 
 inline Bitboard passed_pawn_span(Color c, Square s) {
-  return forward_ranks_bb(c, s) & (adjacent_files_bb(s) | file_bb(s));
+  return forward_ranks_bb(c, s) & (adjacent_files_bb(s) | FileBB(s));
 }
 
 

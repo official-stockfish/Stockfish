@@ -287,7 +287,7 @@ string UCI::move(Move m, bool chess960) {
       return "0000";
 
   if (type_of(m) == CASTLING && !chess960)
-      to = make_square(to > from ? FILE_G : FILE_C, rank_of(from));
+      to = make_square(to > from ? File(G) : File(C), rank_of(from));
 
   string move = UCI::square(from) + UCI::square(to);
 
