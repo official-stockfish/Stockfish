@@ -351,7 +351,7 @@ constexpr Square operator~(Square s) {
 }
 
 constexpr File operator~(File f) {
-  return File(f ^ File(H)); // Horizontal flip FILE_A -> FILE_H
+  return File(f ^ File(H)); // Horizontal flip File(A) -> File(H)
 }
 
 constexpr Piece operator~(Piece pc) {

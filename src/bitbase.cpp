@@ -41,8 +41,8 @@ namespace {
   // bit  0- 5: white king square (from SQ_A1 to SQ_H8)
   // bit  6-11: black king square (from SQ_A1 to SQ_H8)
   // bit    12: side to move (WHITE or BLACK)
-  // bit 13-14: white pawn file (from FILE_A to FILE_D)
-  // bit 15-17: white pawn RANK_7 - rank (from RANK_7 - RANK_7 to RANK_7 - RANK_2)
+  // bit 13-14: white pawn file (from File(A) to File(D))
+  // bit 15-17: white pawn Rank(R7) - rank (from Rank(7) - Rank(R7) to Rank(R7) - Rank(R2))
   unsigned index(Color us, Square bksq, Square wksq, Square psq) {
     return wksq | (bksq << 6) | (us << 12) | (file_of(psq) << 13) | ((Rank(R7) - rank_of(psq)) << 15);
   }
@@ -75,7 +75,7 @@ namespace {
 
 bool Bitbases::probe(Square wksq, Square wpsq, Square bksq, Color us) {
 
-  assert(file_of(wpsq) <= FILE_D);
+  assert(file_of(wpsq) <= File(D));
 
   unsigned idx = index(us, bksq, wksq, wpsq);
   return KPKBitbase[idx / 32] & (1 << (idx & 0x1F));
