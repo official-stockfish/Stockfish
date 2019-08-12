@@ -238,10 +238,10 @@ Score Entry::do_king_safety(const Position& pos) {
   evaluate_shelter<Us>(pos, ksq, shelter);
 
   // If we can castle use the bonus after the castling if it is bigger
-  if (pos.can_castle(Us | KING_SIDE))
+  if (pos.can_castle(Us & KING_SIDE))
       evaluate_shelter<Us>(pos, relative_square(Us, SQ_G1), shelter);
 
-  if (pos.can_castle(Us | QUEEN_SIDE))
+  if (pos.can_castle(Us & QUEEN_SIDE))
       evaluate_shelter<Us>(pos, relative_square(Us, SQ_C1), shelter);
 
   return shelter - make_score(0, 16 * minPawnDist);
