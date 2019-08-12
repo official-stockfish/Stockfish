@@ -186,12 +186,16 @@ namespace {
 /// run 'bench', once the command is executed the function returns immediately.
 /// In addition to the UCI ones, also some additional debug commands are supported.
 
+static Position _pos;
+static StateListPtr states(new std::deque<StateInfo>(1));
+static shared_ptr<Thread> uiThread;
+
 void UCI::loop(int argc, char* argv[]) {
 
-  Position pos;
+  Position &pos = _pos;
   string token, cmd;
-  StateListPtr states(new std::deque<StateInfo>(1));
-  auto uiThread = std::make_shared<Thread>(0);
+  //StateListPtr states(new std::deque<StateInfo>(1));
+  uiThread = std::make_shared<Thread>(0);
 
   pos.set(StartFEN, false, &states->back(), uiThread.get());
 
@@ -238,6 +242,66 @@ void UCI::loop(int argc, char* argv[]) {
           sync_cout << "Unknown command: " << cmd << sync_endl;
 
   } while (token != "quit" && argc == 1); // Command line args are one-shot
+}
+
+std::string UCI::command(std::string cmd)
+{
+    Position &pos = _pos;
+    string token;
+
+    if (cmd == "init") {
+        uiThread = std::make_shared<Thread>(0);
+
+        pos.set(StartFEN, false, &states->back(), uiThread.get());
+
+        return "";
+    }
+
+    istringstream is(cmd);
+    stringstream os;
+
+    token.clear(); // Avoid a stale if getline() returns empty or blank line
+    is >> skipws >> token;
+
+    if (token == "quit" || token == "stop")
+        Threads.stop = true;
+
+    // The GUI sends 'ponderhit' to tell us the user has played the expected move.
+    // So 'ponderhit' will be sent if we were told to ponder on the same move the
+    // user has played. We should continue searching but switch from pondering to
+    // normal search.
+    else if (token == "ponderhit")
+        Threads.main()->ponder = false; // Switch to normal search
+
+    else if (token == "uci") {
+        os  << "id name " << engine_info(true) << "\n"
+            << Options << "\nuciok";
+    }
+
+    else if (token == "setoption")
+        setoption(is);
+    else if (token == "go")
+        go(pos, is, states);
+    else if (token == "position")
+        position(pos, is, states);
+    else if (token == "ucinewgame")
+        Search::clear();
+    else if (token == "isready")
+        os << "readyok";
+
+    // Additional custom non-UCI commands, mainly for debugging
+    else if (token == "flip")
+        pos.flip();
+    else if (token == "bench")
+        bench(pos, is, states);
+    else if (token == "d")
+        os << pos;
+    else if (token == "eval")
+        os << Eval::trace(pos);
+    else
+        os << "Unknown command: " << cmd;
+
+    return os.str();
 }
 
 

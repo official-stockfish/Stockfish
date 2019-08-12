@@ -58,6 +58,8 @@ public:
   operator std::string() const;
   bool operator==(const char*) const;
 
+  std::string Value() const;
+
 private:
   friend std::ostream& operator<<(std::ostream&, const OptionsMap&);
 
@@ -69,6 +71,7 @@ private:
 
 void init(OptionsMap&);
 void loop(int argc, char* argv[]);
+std::string command(std::string cmd);
 std::string value(Value v);
 std::string square(Square s);
 std::string move(Move m, bool chess960);

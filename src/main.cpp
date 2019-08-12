@@ -29,12 +29,17 @@
 #include "endgame.h"
 #include "syzygy/tbprobe.h"
 
+#ifdef WIN32
+#define EXPORT_API __declspec(dllexport)
+#else
+#define EXPORT_API
+#endif
+
 namespace PSQT {
   void init();
 }
 
 int main(int argc, char* argv[]) {
-
   std::cout << engine_info() << std::endl;
 
   UCI::init(Options);
@@ -51,4 +56,51 @@ int main(int argc, char* argv[]) {
 
   Threads.set(0);
   return 0;
+}
+/*
+#include <iostream>
+
+pthread_t thread = 0;
+
+static void* stockfish_loop(void *args)
+{
+    char argv[1][256];
+
+    strcpy(argv[0], "stockfish");
+
+    UCI::loop(1, (char**)argv);
+
+    return args;
+}
+*/
+int EXPORT_API stockfish_init()
+{
+    UCI::init(Options);
+    PSQT::init();
+    Bitboards::init();
+    Position::init();
+    Bitbases::init();
+    Endgames::init();
+    Search::init();
+    Threads.set(Options["Threads"]);
+    Search::clear(); // After threads are up
+
+    UCI::command("init");
+
+    return 0;
+}
+
+int EXPORT_API stockfish_command(const char *cmd, char *out)
+{
+    std::string os = UCI::command(cmd);
+    if (out)
+        strcpy(out, os.c_str());
+    return 0;
+}
+
+int EXPORT_API stockfish_exit()
+{
+    Threads.set(0);
+
+    return 0;
 }

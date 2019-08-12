@@ -23,7 +23,8 @@
 
 ### Executable name
 ifeq ($(COMP),mingw)
-EXE = stockfish.exe
+#EXE = stockfish.exe
+EXE = stockfish
 else
 EXE = stockfish
 endif
@@ -497,7 +498,15 @@ config-sanity:
 	@test "$(comp)" = "gcc" || test "$(comp)" = "icc" || test "$(comp)" = "mingw" || test "$(comp)" = "clang"
 
 $(EXE): $(OBJS)
+ifeq ($(OUT),dll)
+	$(CXX) -shared -o $@.dll $(OBJS) $(LDFLAGS)
+else ifeq ($(OUT),so)
+	$(CXX) -shared -o lib$@.so $(OBJS) $(LDFLAGS)
+else ifeq ($(COMP),mingw)
+	$(CXX) -o $@.exe $(OBJS) $(LDFLAGS)
+else
 	$(CXX) -o $@ $(OBJS) $(LDFLAGS)
+endif
 
 clang-profile-make:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
