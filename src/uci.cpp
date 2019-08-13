@@ -77,6 +77,16 @@ namespace {
     }
   }
 
+  void legal_moves(Position& pos, istringstream& is) {
+    string token, moves;
+
+    is >> token;
+
+    UCI::to_moves(pos, token, moves);
+    
+    sync_cout << "legalmoves: " << moves << sync_endl;
+  }
+
 
   // setoption() is called when engine receives the "setoption" UCI command. The
   // function updates the UCI option ("name") to the given value ("value").
@@ -225,6 +235,7 @@ void UCI::loop(int argc, char* argv[]) {
 
       else if (token == "setoption")  setoption(is);
       else if (token == "go")         go(pos, is, states);
+      else if (token == "legalmoves") legal_moves(pos, is);
       else if (token == "position")   position(pos, is, states);
       else if (token == "ucinewgame") Search::clear();
       else if (token == "isready")    sync_cout << "readyok" << sync_endl;
@@ -312,3 +323,19 @@ Move UCI::to_move(const Position& pos, string& str) {
 
   return MOVE_NONE;
 }
+
+int UCI::to_moves(const Position& pos, std::string& square, std::string& moves)
+{
+  int cnt = 0;
+  
+  for (const auto& m : MoveList<LEGAL>(pos))
+      if (square == UCI::square(from_sq(m))) {
+          if (cnt > 0)
+            moves += " ";
+          moves += UCI::move(m, pos.is_chess960());
+          cnt += 1;
+      }
+
+  return cnt;
+}
+
