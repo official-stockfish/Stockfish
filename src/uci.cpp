@@ -187,6 +187,7 @@ namespace {
 /// In addition to the UCI ones, also some additional debug commands are supported.
 
 static Position _pos;
+static stringstream os;
 static StateListPtr states(new std::deque<StateInfo>(1));
 static shared_ptr<Thread> uiThread;
 
@@ -247,7 +248,7 @@ void UCI::loop(int argc, char* argv[]) {
 std::string UCI::command(std::string cmd)
 {
     Position &pos = _pos;
-    string token;
+    string token, out;
 
     if (cmd == "init") {
         uiThread = std::make_shared<Thread>(0);
@@ -255,10 +256,14 @@ std::string UCI::command(std::string cmd)
         pos.set(StartFEN, false, &states->back(), uiThread.get());
 
         return "";
+    } else
+    if (!cmd.size()) {
+        if (os.gcount() > 0)
+            getline(os, out);
+        return out;
     }
 
     istringstream is(cmd);
-    stringstream os;
 
     token.clear(); // Avoid a stale if getline() returns empty or blank line
     is >> skipws >> token;
@@ -301,7 +306,17 @@ std::string UCI::command(std::string cmd)
     else
         os << "Unknown command: " << cmd;
 
-    return os.str();
+    os.seekp(0, ios::end);
+
+    if ((int)os.tellp() > 0) {
+        //os.seekp(0, ios::beg);
+        getline(os, out);
+        //out = "1: " + os.str();
+    } else {
+        out = "2: " + os.str();
+    }
+
+    return out;
 }
 
 

@@ -197,7 +197,7 @@ ifeq ($(COMP),mingw)
 		CXX=g++
 	endif
 
-	CXXFLAGS += -Wextra -Wshadow
+	CXXFLAGS += -Wextra -Wshadow -DWIN32
 	LDFLAGS += -static
 endif
 
