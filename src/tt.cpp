@@ -89,18 +89,20 @@ void TranspositionTable::clear() {
 
   std::vector<std::thread> threads;
 
-  for (size_t idx = 0; idx < Options["Threads"]; ++idx)
+  size_t const nbThreads = Options["Threads"];
+
+  for (size_t idx = 0; idx < nbThreads; ++idx)
   {
-      threads.emplace_back([this, idx]() {
+    threads.emplace_back([this, idx, nbThreads]() {
 
           // Thread binding gives faster search on systems with a first-touch policy
-          if (Options["Threads"] > 8)
+          if (nbThreads > 8)
               WinProcGroup::bindThisThread(idx);
 
           // Each thread will zero its part of the hash table
-          const size_t stride = clusterCount / Options["Threads"],
+          const size_t stride = clusterCount / nbThreads,
                        start  = stride * idx,
-                       len    = idx != Options["Threads"] - 1 ?
+                       len    = idx != nbThreads - 1 ?
                                 stride : clusterCount - start;
 
           std::memset(&table[start], 0, len * sizeof(Cluster));
