@@ -71,7 +71,7 @@ private:
 
 void init(OptionsMap&);
 void loop(int argc, char* argv[]);
-std::string command(std::string cmd);
+int command(std::string cmd);
 std::string value(Value v);
 std::string square(Square s);
 std::string move(Move m, bool chess960);

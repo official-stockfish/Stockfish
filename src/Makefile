@@ -194,11 +194,19 @@ ifeq ($(COMP),mingw)
 			endif
 		endif
 	else
-		CXX=g++
+#		CXX=g++
+		ifeq ($(bits),64)
+			CXX=x86_64-w64-mingw32-c++
+		else
+			CXX=i686-w64-mingw32-c++
+		endif
 	endif
 
-	CXXFLAGS += -Wextra -Wshadow -DWIN32
+	CXXFLAGS += -Wextra -Wshadow
 	LDFLAGS += -static
+ifneq ($(OUT),)
+	CXXFLAGS += -DUSE_DLL
+endif
 endif
 
 ifeq ($(COMP),icc)
@@ -433,7 +441,13 @@ profile-build: config-sanity objclean profileclean
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) profileclean
 
 strip:
+ifeq ($(OUT),dll)
+	strip $(EXE).dll
+else ifeq ($(OUT),so)
+	strip $(EXE).so
+else
 	strip $(EXE)
+endif
 
 install:
 	-mkdir -p -m 755 $(BINDIR)
