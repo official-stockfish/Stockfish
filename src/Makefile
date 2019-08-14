@@ -445,6 +445,8 @@ ifeq ($(OUT),dll)
 	strip $(EXE).dll
 else ifeq ($(OUT),so)
 	strip $(EXE).so
+else ifeq ($(COMP),mingw)
+	strip $(EXE).exe
 else
 	strip $(EXE)
 endif
