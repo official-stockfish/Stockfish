@@ -24,6 +24,7 @@
 #include <cassert>
 #include <chrono>
 #include <ostream>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -43,25 +44,29 @@ typedef std::chrono::milliseconds::rep TimePoint; // A value in milliseconds
 static_assert(sizeof(TimePoint) == sizeof(int64_t), "TimePoint should be 64 bits");
 
 inline TimePoint now() {
-  return std::chrono::duration_cast<std::chrono::milliseconds>
-        (std::chrono::steady_clock::now().time_since_epoch()).count();
+	return std::chrono::duration_cast<std::chrono::milliseconds>
+		(std::chrono::steady_clock::now().time_since_epoch()).count();
 }
 
 template<class Entry, int Size>
 struct HashTable {
-  Entry* operator[](Key key) { return &table[(uint32_t)key & (Size - 1)]; }
+	Entry* operator[](Key key) { return &table[(uint32_t)key & (Size - 1)]; }
 
 private:
-  std::vector<Entry> table = std::vector<Entry>(Size); // Allocate on the heap
+	std::vector<Entry> table = std::vector<Entry>(Size); // Allocate on the heap
 };
 
 
 enum SyncCout { IO_LOCK, IO_UNLOCK };
 std::ostream& operator<<(std::ostream&, SyncCout);
 
+#ifdef USE_DLL
+extern std::stringstream _os;
+#define sync_cout _os << IO_LOCK
+#else
 #define sync_cout std::cout << IO_LOCK
+#endif
 #define sync_endl std::endl << IO_UNLOCK
-
 
 /// xorshift64star Pseudo-Random Number Generator
 /// This class is based on original code written and dedicated
@@ -80,23 +85,24 @@ std::ostream& operator<<(std::ostream&, SyncCout);
 
 class PRNG {
 
-  uint64_t s;
+	uint64_t s;
 
-  uint64_t rand64() {
-
-    s ^= s >> 12, s ^= s << 25, s ^= s >> 27;
-    return s * 2685821657736338717LL;
-  }
+	uint64_t rand64() {
+		s ^= s >> 12, s ^= s << 25, s ^= s >> 27;
+		return s * 2685821657736338717LL;
+	}
 
 public:
-  PRNG(uint64_t seed) : s(seed) { assert(seed); }
+	PRNG(uint64_t seed) : s(seed) { assert(seed); }
 
-  template<typename T> T rand() { return T(rand64()); }
+	template<typename T> T rand() { return T(rand64()); }
 
-  /// Special generator used to fast init magic numbers.
-  /// Output values only have 1/8th of their bits set on average.
-  template<typename T> T sparse_rand()
-  { return T(rand64() & rand64() & rand64()); }
+	/// Special generator used to fast init magic numbers.
+	/// Output values only have 1/8th of their bits set on average.
+	template<typename T> T sparse_rand()
+	{
+		return T(rand64() & rand64() & rand64());
+	}
 };
 
 
@@ -107,7 +113,7 @@ public:
 /// Peter Österlund.
 
 namespace WinProcGroup {
-  void bindThisThread(size_t idx);
+	void bindThisThread(size_t idx);
 }
 
 #endif // #ifndef MISC_H_INCLUDED
