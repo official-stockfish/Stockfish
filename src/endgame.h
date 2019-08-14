@@ -21,7 +21,7 @@
 #ifndef ENDGAME_H_INCLUDED
 #define ENDGAME_H_INCLUDED
 
-#include <map>
+#include <unordered_map>
 #include <memory>
 #include <string>
 #include <type_traits>
@@ -98,14 +98,14 @@ struct Endgame : public EndgameBase<T> {
 namespace Endgames {
 
   template<typename T> using Ptr = std::unique_ptr<EndgameBase<T>>;
-  template<typename T> using Map = std::map<Key, Ptr<T>>;
+  template<typename T> using Map = std::unordered_map<Key, Ptr<T>>;
 
   extern std::pair<Map<Value>, Map<ScaleFactor>> maps;
 
   void init();
 
   template<typename T>
-  Map<T>& map() {
+  Map<T> & map() {
     return std::get<std::is_same<T, ScaleFactor>::value>(maps);
   }
 
@@ -119,7 +119,9 @@ namespace Endgames {
 
   template<typename T>
   const EndgameBase<T>* probe(Key key) {
-    return map<T>().count(key) ? map<T>()[key].get() : nullptr;
+    Map<T> const &m = map<T>();
+    typename Map<T>::const_iterator it = m.find(key);
+    return it != m.end() ? it->second.get() : nullptr;
   }
 }
 
