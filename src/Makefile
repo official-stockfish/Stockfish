@@ -32,15 +32,38 @@ endif
 ### Installation dir definitions
 PREFIX = /usr/local
 BINDIR = $(PREFIX)/bin
+OBJDIR = obj
 
 ### Built-in benchmark for pgo-builds
 PGOBENCH = ./$(EXE) bench
 
-### Object files
-OBJS = benchmark.o bitbase.o bitboard.o endgame.o evaluate.o main.o \
-	material.o misc.o movegen.o movepick.o pawns.o position.o psqt.o \
-	search.o thread.o timeman.o tt.o uci.o ucioption.o syzygy/tbprobe.o
+NAMES = \
+    benchmark \
+    bitbase \
+    bitboard \
+    endgame \
+    evaluate \
+    main \
+    material \
+    misc \
+    movegen \
+    movepick \
+    pawns \
+    position \
+    psqt \
+    search \
+    thread \
+    timeman \
+    tt \
+    uci \
+    ucioption \
+    syzygy/tbprobe
 
+SRCS = $(NAMES:%=%.cpp)
+
+OBJS = $(NAMES:%=$(OBJDIR)/%.o)
+
+#
 ### Establish the operating system name
 KERNEL = $(shell uname -s)
 ifeq ($(KERNEL),Linux)
@@ -206,6 +229,9 @@ ifeq ($(COMP),mingw)
 	LDFLAGS += -static
 ifneq ($(OUT),)
 	CXXFLAGS += -DUSE_DLL
+    ifeq ($(OUT),dll)
+    	CXXFLAGS += -DWIN32
+    endif
 endif
 endif
 
@@ -444,7 +470,7 @@ strip:
 ifeq ($(OUT),dll)
 	strip $(EXE).dll
 else ifeq ($(OUT),so)
-	strip $(EXE).so
+	strip lib$(EXE).so
 else ifeq ($(COMP),mingw)
 	strip $(EXE).exe
 else
@@ -462,7 +488,7 @@ clean: objclean profileclean
 
 # clean binaries and objects
 objclean:
-	@rm -f $(EXE) *.o ./syzygy/*.o
+	@rm -f -r $(EXE) $(OBJDIR)
 
 # clean auxiliary profiling files
 profileclean:
@@ -513,7 +539,13 @@ config-sanity:
 	@test "$(pext)" = "yes" || test "$(pext)" = "no"
 	@test "$(comp)" = "gcc" || test "$(comp)" = "icc" || test "$(comp)" = "mingw" || test "$(comp)" = "clang"
 
-$(EXE): $(OBJS)
+mkobj:
+	rm -f -r $(OBJDIR) && mkdir $(OBJDIR) && mkdir $(OBJDIR)/syzygy
+
+$(NAMES):
+	$(CXX) $(CXXFLAGS) -c $@.cpp -o $(OBJDIR)/$@.o
+
+$(EXE): mkobj $(NAMES)
 ifeq ($(OUT),dll)
 	$(CXX) -shared -o $@.dll $(OBJS) $(LDFLAGS)
 else ifeq ($(OUT),so)
@@ -560,8 +592,7 @@ icc-profile-use:
 	EXTRACXXFLAGS='-prof_use -prof_dir ./profdir' \
 	all
 
-.depend:
-	-@$(CXX) $(DEPENDFLAGS) -MM $(OBJS:.o=.cpp) > $@ 2> /dev/null
+#.depend:
+#	-@$(CXX) $(DEPENDFLAGS) -MM $(OBJS:.o=.cpp) > $@ 2> /dev/null
 
--include .depend
-
+#-include .depend

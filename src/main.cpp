@@ -29,7 +29,7 @@
 #include "endgame.h"
 #include "syzygy/tbprobe.h"
 
-#ifdef USE_DLL
+#if defined USE_DLL && defined WIN32
 #define EXPORT_API __declspec(dllexport)
 #else
 #define EXPORT_API
