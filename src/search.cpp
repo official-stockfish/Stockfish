@@ -102,15 +102,16 @@ namespace {
     Move best = MOVE_NONE;
   };
 
-  // Breadcrumbs are used to mark nodes as being searched by a given thread.
+  // Breadcrumbs are used to mark nodes as being searched by a given thread
   struct Breadcrumb {
     std::atomic<Thread*> thread;
     std::atomic<Key> key;
   };
   std::array<Breadcrumb, 1024> breadcrumbs;
 
-  // ThreadHolding keeps track of which thread left breadcrumbs at the given node for potential reductions.
-  // A free node will be marked upon entering the moves loop, and unmarked upon leaving that loop, by the ctor/dtor of this struct.
+  // ThreadHolding structure keeps track of which thread left breadcrumbs at the given
+  // node for potential reductions. A free node will be marked upon entering the moves
+  // loop by the constructor, and unmarked upon leaving that loop by the destructor.
   struct ThreadHolding {
     explicit ThreadHolding(Thread* thisThread, Key posKey, int ply) {
        location = ply < 8 ? &breadcrumbs[posKey & (breadcrumbs.size() - 1)] : nullptr;
@@ -118,7 +119,7 @@ namespace {
        owning = false;
        if (location)
        {
-          // see if another already marked this location, if not, mark it ourselves.
+          // See if another already marked this location, if not, mark it ourselves
           Thread* tmp = (*location).thread.load(std::memory_order_relaxed);
           if (tmp == nullptr)
           {
@@ -133,7 +134,7 @@ namespace {
     }
 
     ~ThreadHolding() {
-       if (owning) // free the marked location.
+       if (owning) // Free the marked location
            (*location).thread.store(nullptr, std::memory_order_relaxed);
     }
 
@@ -647,9 +648,9 @@ namespace {
     // statScore of the previous grandchild. This influences the reduction rules in
     // LMR which are based on the statScore of parent position.
     if (rootNode)
-        (ss + 4)->statScore = 0;
+        (ss+4)->statScore = 0;
     else
-        (ss + 2)->statScore = 0;
+        (ss+2)->statScore = 0;
 
     // Step 4. Transposition table lookup. We don't want the score of a partial
     // search to overwrite a previous full search TT value, so we use a different
@@ -680,7 +681,7 @@ namespace {
 
                 // Extra penalty for early quiet moves of the previous ply
                 if ((ss-1)->moveCount <= 2 && !pos.captured_piece())
-                        update_continuation_histories(ss-1, pos.piece_on(prevSq), prevSq, -stat_bonus(depth + ONE_PLY));
+                    update_continuation_histories(ss-1, pos.piece_on(prevSq), prevSq, -stat_bonus(depth + ONE_PLY));
             }
             // Penalty for a quiet ttMove that fails low
             else if (!pos.capture_or_promotion(ttMove))
@@ -908,7 +909,7 @@ moves_loop: // When in check, search starts from here
     moveCountPruning = false;
     ttCapture = ttMove && pos.capture_or_promotion(ttMove);
 
-    // Mark this node as being searched.
+    // Mark this node as being searched
     ThreadHolding th(thisThread, posKey, ss->ply);
 
     // Step 12. Loop through all pseudo-legal moves until no moves remain
