@@ -61,7 +61,7 @@ build_script:
 
 before_test:
   - cd src/%CONFIGURATION%
-  - stockfish bench 2> out.txt
+  - stockfish bench 2> out.txt >NUL
   - ps: |
       # Verify bench number
       $s = (gc "./out.txt" | out-string)
