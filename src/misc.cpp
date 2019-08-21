@@ -41,6 +41,7 @@ typedef bool(*fun3_t)(HANDLE, CONST GROUP_AFFINITY*, PGROUP_AFFINITY);
 }
 #endif
 
+#include <cmath>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -146,20 +147,27 @@ const string engine_info(bool to_uci) {
 
 /// Debug functions used mainly to collect run-time statistics
 static std::atomic<int64_t> hits[2], means[2];
+static std::atomic<double> dmeans;
 
-void dbg_hit_on(bool b) { ++hits[0]; if (b) ++hits[1]; }
-void dbg_hit_on(bool c, bool b) { if (c) dbg_hit_on(b); }
-void dbg_mean_of(int v) { ++means[0]; means[1] += v; }
+void dbg_hit_on(bool b, bool c) { hits[0] += c; hits[1] += b * c; }
+void dbg_mean_of(int v) {
+  double d;
+  if (means[0]) d = v - double(means[1])/means[0];
+  else          d = v;
+  ++means[0]; means[1] += v;
+  dmeans = dmeans + d * (v - double(means[1])/means[0]);
+}
 
 void dbg_print() {
 
   if (hits[0])
       cerr << "Total " << hits[0] << " Hits " << hits[1]
-           << " hit rate (%) " << 100 * hits[1] / hits[0] << endl;
+           << " hit rate (%) " << std::setprecision(2) << (double) 100 * hits[1] / hits[0] << endl;
 
   if (means[0])
-      cerr << "Total " << means[0] << " Mean "
-           << (double)means[1] / means[0] << endl;
+      cerr << "Samples " << means[0]
+           << " Mean " << (double)means[1] / means[0]
+           << " o " << sqrt(std::abs(dmeans/means[0])) << endl;
 }
 
 
