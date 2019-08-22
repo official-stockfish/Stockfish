@@ -416,8 +416,8 @@ constexpr Rank relative_rank(Color c, Square s) {
   return relative_rank(c, rank_of(s));
 }
 
-constexpr Direction pawn_push(Color c) {
-  return c == WHITE ? NORTH : SOUTH;
+constexpr Direction Up(Color c) {
+  return NORTH + (2 * SOUTH) * c;
 }
 
 constexpr Square from_sq(Move m) {

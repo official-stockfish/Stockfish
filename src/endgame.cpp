@@ -374,7 +374,7 @@ ScaleFactor Endgame<KBPsK>::operator()(const Position& pos) const {
       // There's potential for a draw if our pawn is blocked on the 7th rank,
       // the bishop cannot attack it or they only have one pawn left
       if (   relative_rank(strongSide, weakPawnSq) == RANK_7
-          && (pos.pieces(strongSide, PAWN) & (weakPawnSq + pawn_push(weakSide)))
+          && (pos.pieces(strongSide, PAWN) & (weakPawnSq + Up(weakSide)))
           && (opposite_colors(bishopSq, weakPawnSq) || pos.count<PAWN>(strongSide) == 1))
       {
           int strongKingDist = distance(weakPawnSq, strongKingSq);
@@ -534,7 +534,7 @@ ScaleFactor Endgame<KRPKB>::operator()(const Position& pos) const {
       Square bsq = pos.square<BISHOP>(weakSide);
       Square psq = pos.square<PAWN>(strongSide);
       Rank rk = relative_rank(strongSide, psq);
-      Direction push = pawn_push(strongSide);
+      Direction push = Up(strongSide);
 
       // If the pawn is on the 5th rank and the pawn (currently) is on
       // the same color square as the bishop then there is a chance of
@@ -667,12 +667,12 @@ ScaleFactor Endgame<KBPPKB>::operator()(const Position& pos) const {
 
   if (relative_rank(strongSide, psq1) > relative_rank(strongSide, psq2))
   {
-      blockSq1 = psq1 + pawn_push(strongSide);
+      blockSq1 = psq1 + Up(strongSide);
       blockSq2 = make_square(file_of(psq2), rank_of(psq1));
   }
   else
   {
-      blockSq1 = psq2 + pawn_push(strongSide);
+      blockSq1 = psq2 + Up(strongSide);
       blockSq2 = make_square(file_of(psq1), rank_of(psq2));
   }
 

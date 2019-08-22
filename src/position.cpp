@@ -301,7 +301,7 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
       st->epSquare = make_square(File(col - 'a'), Rank(row - '1'));
 
       if (   !(attackers_to(st->epSquare) & pieces(sideToMove, PAWN))
-          || !(pieces(~sideToMove, PAWN) & (st->epSquare + pawn_push(~sideToMove))))
+          || !(pieces(~sideToMove, PAWN) & (st->epSquare + Up(~sideToMove))))
           st->epSquare = SQ_NONE;
   }
   else
@@ -542,7 +542,7 @@ bool Position::legal(Move m) const {
   if (type_of(m) == ENPASSANT)
   {
       Square ksq = square<KING>(us);
-      Square capsq = to - pawn_push(us);
+      Square capsq = to - Up(us);
       Bitboard occupied = (pieces() ^ from ^ capsq) | to;
 
       assert(to == ep_square());
@@ -623,11 +623,11 @@ bool Position::pseudo_legal(const Move m) const {
           return false;
 
       if (   !(attacks_from<PAWN>(from, us) & pieces(~us) & to) // Not a capture
-          && !((from + pawn_push(us) == to) && empty(to))       // Not a single push
-          && !(   (from + 2 * pawn_push(us) == to)              // Not a double push
+          && !((from + Up(us) == to) && empty(to))       // Not a single push
+          && !(   (from + 2 * Up(us) == to)              // Not a double push
                && (rank_of(from) == relative_rank(us, RANK_2))
                && empty(to)
-               && empty(to - pawn_push(us))))
+               && empty(to - Up(us))))
           return false;
   }
   else if (!(attacks_from(type_of(pc), from) & to))
@@ -772,7 +772,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       {
           if (type_of(m) == ENPASSANT)
           {
-              capsq -= pawn_push(us);
+              capsq -= Up(us);
 
               assert(pc == make_piece(us, PAWN));
               assert(to == st->epSquare);
@@ -827,9 +827,9 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   {
       // Set en-passant square if the moved pawn can be captured
       if (   (int(to) ^ int(from)) == 16
-          && (attacks_from<PAWN>(to - pawn_push(us), us) & pieces(them, PAWN)))
+          && (attacks_from<PAWN>(to - Up(us), us) & pieces(them, PAWN)))
       {
-          st->epSquare = to - pawn_push(us);
+          st->epSquare = to - Up(us);
           k ^= Zobrist::enpassant[file_of(st->epSquare)];
       }
 
@@ -940,7 +940,7 @@ void Position::undo_move(Move m) {
 
           if (type_of(m) == ENPASSANT)
           {
-              capsq -= pawn_push(us);
+              capsq -= Up(us);
 
               assert(type_of(pc) == PAWN);
               assert(to == st->previous->epSquare);
