@@ -182,7 +182,7 @@ Entry* probe(const Position& pos) {
 /// penalty for a king, looking at the king file and the two closest files.
 
 template<Color Us>
-void Entry::evaluate_shelter(const Position& pos, Square ksq, Score& shelter) {
+Score Entry::evaluate_shelter(const Position& pos, Square ksq) {
 
   constexpr Color Them = (Us == WHITE ? BLACK : WHITE);
 
@@ -210,8 +210,7 @@ void Entry::evaluate_shelter(const Position& pos, Square ksq, Score& shelter) {
           bonus -= make_score(UnblockedStorm[d][theirRank], 0);
   }
 
-  if (mg_value(bonus) > mg_value(shelter))
-      shelter = bonus;
+  return bonus;
 }
 
 
@@ -234,17 +233,22 @@ Score Entry::do_king_safety(const Position& pos) {
   else while (pawns)
       minPawnDist = std::min(minPawnDist, distance(ksq, pop_lsb(&pawns)));
 
-  Score shelter = make_score(-VALUE_INFINITE, 0);
-  evaluate_shelter<Us>(pos, ksq, shelter);
+  Score shelters[3] = { evaluate_shelter<Us>(pos, ksq),
+                        make_score(-VALUE_INFINITE, 0),
+                        make_score(-VALUE_INFINITE, 0) };
 
   // If we can castle use the bonus after the castling if it is bigger
   if (pos.can_castle(Us | KING_SIDE))
-      evaluate_shelter<Us>(pos, relative_square(Us, SQ_G1), shelter);
+      shelters[1] = evaluate_shelter<Us>(pos, relative_square(Us, SQ_G1));
 
   if (pos.can_castle(Us | QUEEN_SIDE))
-      evaluate_shelter<Us>(pos, relative_square(Us, SQ_C1), shelter);
+      shelters[2] = evaluate_shelter<Us>(pos, relative_square(Us, SQ_C1));
 
-  return shelter - make_score(0, 16 * minPawnDist);
+  for (int i : {1, 2})
+     if (mg_value(shelters[i]) > mg_value(shelters[0]))
+         shelters[0] = shelters[i];
+
+  return shelters[0] - make_score(0, 16 * minPawnDist);
 }
 
 // Explicit template instantiation
