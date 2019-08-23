@@ -97,8 +97,9 @@ struct Endgame : public EndgameBase<T> {
 
 namespace Endgames {
 
+  typedef size_t(*HashFn)(const Key&);
   template<typename T> using Ptr = std::unique_ptr<EndgameBase<T>>;
-  template<typename T> using Map = std::unordered_map<Key, Ptr<T>>;
+  template<typename T> using Map = std::unordered_map<Key, Ptr<T>, HashFn>;
 
   extern std::pair<Map<Value>, Map<ScaleFactor>> maps;
 

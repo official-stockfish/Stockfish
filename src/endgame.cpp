@@ -84,7 +84,8 @@ namespace {
 
 namespace Endgames {
 
-  std::pair<Map<Value>, Map<ScaleFactor>> maps;
+  HashFn hf = [](const Key& k) { return size_t(k); };
+  std::pair<Map<Value>, Map<ScaleFactor>> maps(Map<Value>(0, hf), Map<ScaleFactor>(0, hf));
 
   void init() {
 
