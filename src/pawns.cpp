@@ -232,20 +232,20 @@ Score Entry::do_king_safety(const Position& pos) {
   kingSquares[Us] = ksq;
   castlingRights[Us] = pos.castling_rights(Us);
 
-  Score shelters[3] = { evaluate_shelter<Us>(pos, ksq),
-                        make_score(-VALUE_INFINITE, 0),
-                        make_score(-VALUE_INFINITE, 0) };
+  auto mg_compare = [](Score s1, Score s2) {
+      return mg_value(s1) <= mg_value(s2);
+  };
+
+  Score shelter = evaluate_shelter<Us>(pos, ksq);
 
   // If we can castle use the bonus after castling if it is bigger
   if (pos.can_castle(Us & KING_SIDE))
-      shelters[1] = evaluate_shelter<Us>(pos, relative_square(Us, SQ_G1));
+      shelter = std::max(evaluate_shelter<Us>(pos, relative_square(Us, SQ_G1)),
+                         shelter, mg_compare);
 
   if (pos.can_castle(Us & QUEEN_SIDE))
-      shelters[2] = evaluate_shelter<Us>(pos, relative_square(Us, SQ_C1));
-
-  for (int i : {1, 2})
-     if (mg_value(shelters[i]) > mg_value(shelters[0]))
-         shelters[0] = shelters[i];
+      shelter = std::max(evaluate_shelter<Us>(pos, relative_square(Us, SQ_C1)),
+                         shelter, mg_compare);
 
   // In endgame we like to bring our king near our closest pawn
   Bitboard pawns = pos.pieces(Us, PAWN);
@@ -256,7 +256,7 @@ Score Entry::do_king_safety(const Position& pos) {
   else while (pawns)
       minPawnDist = std::min(minPawnDist, distance(ksq, pop_lsb(&pawns)));
 
-  return shelters[0] - make_score(0, 16 * minPawnDist);
+  return shelter - make_score(0, 16 * minPawnDist);
 }
 
 // Explicit template instantiation
