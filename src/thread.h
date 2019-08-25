@@ -56,6 +56,7 @@ public:
   void idle_loop();
   void start_searching();
   void wait_for_search_finished();
+  int bestMoveCount(Move move);
 
   Pawns::Table pawnsTable;
   Material::Table materialTable;
