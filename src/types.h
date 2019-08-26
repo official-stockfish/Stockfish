@@ -178,12 +178,6 @@ enum Value : int {
   VALUE_MATE_IN_MAX_PLY  =  VALUE_MATE - 2 * MAX_PLY,
   VALUE_MATED_IN_MAX_PLY = -VALUE_MATE + 2 * MAX_PLY,
 
-  PawnValueMg   = 128,   PawnValueEg   = 213,
-  KnightValueMg = 782,   KnightValueEg = 865,
-  BishopValueMg = 830,   BishopValueEg = 918,
-  RookValueMg   = 1289,  RookValueEg   = 1378,
-  QueenValueMg  = 2529,  QueenValueEg  = 2687,
-
   MidgameLimit  = 15258, EndgameLimit  = 3915
 };
 
@@ -200,7 +194,10 @@ enum Piece {
   PIECE_NB = 16
 };
 
-extern Value PieceValue[PHASE_NB][PIECE_NB];
+constexpr Value PieceValue[PHASE_NB][PIECE_NB] = {
+  { VALUE_ZERO, Value(128), Value(782), Value(830), Value(1289), Value(2529)},
+  { VALUE_ZERO, Value(213), Value(865), Value(918), Value(1378), Value(2687)}
+};
 
 enum Depth : int {
 
@@ -383,6 +380,14 @@ constexpr Piece make_piece(Color c, PieceType pt) {
 
 constexpr PieceType type_of(Piece pc) {
   return PieceType(pc & 7);
+}
+
+constexpr Value piece_value(Phase ph, PieceType pt) {
+  return PieceValue[ph][pt];
+}
+
+constexpr Value piece_value(Phase ph, Piece pc) {
+  return PieceValue[ph][type_of(pc)];
 }
 
 inline Color color_of(Piece pc) {

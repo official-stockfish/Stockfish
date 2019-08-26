@@ -40,7 +40,7 @@ namespace Trace {
 
   Score scores[TERM_NB][COLOR_NB];
 
-  double to_cp(Value v) { return double(v) / PawnValueEg; }
+  double to_cp(Value v) { return double(v) / piece_value(EG, PAWN); }
 
   void add(int idx, Color c, Score s) {
     scores[idx][c] = s;
@@ -752,7 +752,7 @@ namespace {
     if (sf == SCALE_FACTOR_NORMAL)
     {
         if (   pos.opposite_bishops()
-            && pos.non_pawn_material() == 2 * BishopValueMg)
+            && pos.non_pawn_material() == 2 * piece_value(MG, BISHOP))
             sf = 16 + 4 * pe->passed_count();
         else
             sf = std::min(40 + (pos.opposite_bishops() ? 2 : 7) * pos.count<PAWN>(strongSide), sf);

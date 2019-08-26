@@ -64,17 +64,17 @@ namespace {
   // Helper used to detect a given material distribution
   bool is_KXK(const Position& pos, Color us) {
     return  !more_than_one(pos.pieces(~us))
-          && pos.non_pawn_material(us) >= RookValueMg;
+          && pos.non_pawn_material(us) >= piece_value(MG, ROOK);
   }
 
   bool is_KBPsK(const Position& pos, Color us) {
-    return   pos.non_pawn_material(us) == BishopValueMg
+    return   pos.non_pawn_material(us) == piece_value(MG, BISHOP)
           && pos.count<PAWN  >(us) >= 1;
   }
 
   bool is_KQKRPs(const Position& pos, Color us) {
     return  !pos.count<PAWN>(us)
-          && pos.non_pawn_material(us) == QueenValueMg
+          && pos.non_pawn_material(us) == piece_value(MG, QUEEN)
           && pos.count<ROOK>(~us) == 1
           && pos.count<PAWN>(~us) >= 1;
   }
@@ -195,13 +195,13 @@ Entry* probe(const Position& pos) {
   // Zero or just one pawn makes it difficult to win, even with a small material
   // advantage. This catches some trivial draws like KK, KBK and KNK and gives a
   // drawish scale factor for cases such as KRKBP and KmmKm (except for KBBKN).
-  if (!pos.count<PAWN>(WHITE) && npm_w - npm_b <= BishopValueMg)
-      e->factor[WHITE] = uint8_t(npm_w <  RookValueMg   ? SCALE_FACTOR_DRAW :
-                                 npm_b <= BishopValueMg ? 4 : 14);
+  if (!pos.count<PAWN>(WHITE) && npm_w - npm_b <= piece_value(MG, BISHOP))
+      e->factor[WHITE] = uint8_t(npm_w <  piece_value(MG, ROOK)   ? SCALE_FACTOR_DRAW :
+                                 npm_b <= piece_value(MG, BISHOP) ? 4 : 14);
 
-  if (!pos.count<PAWN>(BLACK) && npm_b - npm_w <= BishopValueMg)
-      e->factor[BLACK] = uint8_t(npm_b <  RookValueMg   ? SCALE_FACTOR_DRAW :
-                                 npm_w <= BishopValueMg ? 4 : 14);
+  if (!pos.count<PAWN>(BLACK) && npm_b - npm_w <= piece_value(MG, BISHOP))
+      e->factor[BLACK] = uint8_t(npm_b <  piece_value(MG, ROOK)   ? SCALE_FACTOR_DRAW :
+                                 npm_w <= piece_value(MG, BISHOP) ? 4 : 14);
 
   // Evaluate the material imbalance. We use PIECE_TYPE_NONE as a place holder
   // for the bishop pair "extended piece", which allows us to be more flexible

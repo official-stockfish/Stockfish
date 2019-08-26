@@ -22,11 +22,6 @@
 
 #include "types.h"
 
-Value PieceValue[PHASE_NB][PIECE_NB] = {
-  { VALUE_ZERO, PawnValueMg, KnightValueMg, BishopValueMg, RookValueMg, QueenValueMg },
-  { VALUE_ZERO, PawnValueEg, KnightValueEg, BishopValueEg, RookValueEg, QueenValueEg }
-};
-
 namespace PSQT {
 
 #define S(mg, eg) make_score(mg, eg)
@@ -112,16 +107,13 @@ void init() {
 
   for (Piece pc = W_PAWN; pc <= W_KING; ++pc)
   {
-      PieceValue[MG][~pc] = PieceValue[MG][pc];
-      PieceValue[EG][~pc] = PieceValue[EG][pc];
-
-      Score score = make_score(PieceValue[MG][pc], PieceValue[EG][pc]);
+      Score score = make_score(piece_value(MG, pc), piece_value(EG, pc));
 
       for (Square s = SQ_A1; s <= SQ_H8; ++s)
       {
           File f = std::min(file_of(s), ~file_of(s));
           psq[ pc][ s] = score + (type_of(pc) == PAWN ? PBonus[rank_of(s)][file_of(s)]
-                                                      : Bonus[pc][rank_of(s)][f]);
+                                                      : Bonus[type_of(pc)][rank_of(s)][f]);
           psq[~pc][~s] = -psq[pc][s];
       }
   }
