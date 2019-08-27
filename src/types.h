@@ -195,8 +195,8 @@ enum Piece {
 };
 
 constexpr Value PieceValue[PHASE_NB][PIECE_NB] = {
-  { VALUE_ZERO, Value(128), Value(782), Value(830), Value(1289), Value(2529)},
-  { VALUE_ZERO, Value(213), Value(865), Value(918), Value(1378), Value(2687)}
+  { VALUE_ZERO, Value(128), Value(782), Value(830), Value(1289), Value(2529) },
+  { VALUE_ZERO, Value(213), Value(865), Value(918), Value(1378), Value(2687) }
 };
 
 enum Depth : int {
