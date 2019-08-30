@@ -79,4 +79,26 @@ Move to_move(const Position& pos, std::string& str);
 
 extern UCI::OptionsMap Options;
 
+extern UCI::OptionsMap::iterator Debug_Log_File;
+extern UCI::OptionsMap::iterator Contempt;
+extern UCI::OptionsMap::iterator Analysis_Contempt;
+extern UCI::OptionsMap::iterator Option_Threads;
+extern UCI::OptionsMap::iterator Hash;
+extern UCI::OptionsMap::iterator Ponder;
+extern UCI::OptionsMap::iterator MultiPV;
+extern UCI::OptionsMap::iterator Skill_Level;
+extern UCI::OptionsMap::iterator Move_Overhead;
+extern UCI::OptionsMap::iterator Minimum_Thinking_Time;
+extern UCI::OptionsMap::iterator Slow_Mover;
+extern UCI::OptionsMap::iterator nodestime;
+extern UCI::OptionsMap::iterator UCI_Chess960;
+extern UCI::OptionsMap::iterator UCI_AnalyseMode;
+extern UCI::OptionsMap::iterator UCI_LimitStrength;
+extern UCI::OptionsMap::iterator UCI_Elo;
+extern UCI::OptionsMap::iterator SyzygyPath;
+extern UCI::OptionsMap::iterator SyzygyProbeDepth;
+extern UCI::OptionsMap::iterator Syzygy50MoveRule;
+extern UCI::OptionsMap::iterator SyzygyProbeLimit;
+
+
 #endif // #ifndef UCI_H_INCLUDED

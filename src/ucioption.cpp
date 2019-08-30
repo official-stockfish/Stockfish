@@ -34,6 +34,27 @@ using std::string;
 
 UCI::OptionsMap Options; // Global object
 
+UCI::OptionsMap::iterator Debug_Log_File;
+UCI::OptionsMap::iterator Contempt;
+UCI::OptionsMap::iterator Analysis_Contempt;
+UCI::OptionsMap::iterator Option_Threads;
+UCI::OptionsMap::iterator Hash;
+UCI::OptionsMap::iterator Ponder;
+UCI::OptionsMap::iterator MultiPV;
+UCI::OptionsMap::iterator Skill_Level;
+UCI::OptionsMap::iterator Move_Overhead;
+UCI::OptionsMap::iterator Minimum_Thinking_Time;
+UCI::OptionsMap::iterator Slow_Mover;
+UCI::OptionsMap::iterator nodestime;
+UCI::OptionsMap::iterator UCI_Chess960;
+UCI::OptionsMap::iterator UCI_AnalyseMode;
+UCI::OptionsMap::iterator UCI_LimitStrength;
+UCI::OptionsMap::iterator UCI_Elo;
+UCI::OptionsMap::iterator SyzygyPath;
+UCI::OptionsMap::iterator SyzygyProbeDepth;
+UCI::OptionsMap::iterator Syzygy50MoveRule;
+UCI::OptionsMap::iterator SyzygyProbeLimit;
+
 namespace UCI {
 
 /// 'On change' actions, triggered by an option's value change
@@ -50,7 +71,6 @@ bool CaseInsensitiveLess::operator() (const string& s1, const string& s2) const 
   return std::lexicographical_compare(s1.begin(), s1.end(), s2.begin(), s2.end(),
          [](char c1, char c2) { return tolower(c1) < tolower(c2); });
 }
-
 
 /// init() initializes the UCI options to their hard-coded default values
 
@@ -80,6 +100,28 @@ void init(OptionsMap& o) {
   o["SyzygyProbeDepth"]      << Option(1, 1, 100);
   o["Syzygy50MoveRule"]      << Option(true);
   o["SyzygyProbeLimit"]      << Option(7, 0, 7);
+
+  Debug_Log_File = o.find("Debug Log File");
+  Contempt = o.find("Contempt");
+  Analysis_Contempt = o.find("Analysis Contempt");
+  Option_Threads = o.find("Threads");
+  Hash = o.find("Hash");
+  Ponder = o.find("Ponder");
+  MultiPV = o.find("MultiPV");
+  Skill_Level = o.find("Skill Level");
+  Move_Overhead = o.find("Move Overhead");
+  Minimum_Thinking_Time = o.find("Minimum Thinking Time");
+  Slow_Mover = o.find("Slow Mover");
+  nodestime = o.find("nodestime");
+  UCI_Chess960 = o.find("UCI_Chess960");
+  UCI_AnalyseMode = o.find("UCI_AnalyseMode");
+  UCI_LimitStrength = o.find("UCI_LimitStrength");
+  UCI_Elo = o.find("UCI_Elo");
+  SyzygyPath = o.find("SyzygyPath");
+  SyzygyProbeDepth = o.find("SyzygyProbeDepth");
+  Syzygy50MoveRule = o.find("Syzygy50MoveRule");
+  SyzygyProbeLimit = o.find("SyzygyProbeLimit");
+
 }
 
 

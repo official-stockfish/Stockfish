@@ -205,7 +205,7 @@ void Search::clear() {
   Time.availableNodes = 0;
   TT.clear();
   Threads.clear();
-  Tablebases::init(Options["SyzygyPath"]); // Free mapped files
+  Tablebases::init(SyzygyPath->second); // Free mapped files
 }
 
 
@@ -270,9 +270,9 @@ void MainThread::search() {
   Thread* bestThread = this;
 
   // Check if there are threads with a better score than main thread
-  if (    Options["MultiPV"] == 1
+  if (    MultiPV->second == 1
       && !Limits.depth
-      && !(Skill(Options["Skill Level"]).enabled() || Options["UCI_LimitStrength"])
+      && !(Skill(Skill_Level->second).enabled() || UCI_LimitStrength->second)
       &&  rootMoves[0].pv[0] != MOVE_NONE)
   {
       std::map<Move, int64_t> votes;
@@ -342,7 +342,7 @@ void Thread::search() {
   bestValue = delta = alpha = -VALUE_INFINITE;
   beta = VALUE_INFINITE;
 
-  size_t multiPV = Options["MultiPV"];
+  size_t multiPV = MultiPV->second;
 
   // Pick integer skill levels, but non-deterministically round up or down
   // such that the average integer skill corresponds to the input floating point one.
@@ -350,9 +350,9 @@ void Thread::search() {
   // to CCRL Elo (goldfish 1.13 = 2000) and a fit through Ordo derived Elo
   // for match (TC 60+0.6) results spanning a wide range of k values.
   PRNG rng(now());
-  double floatLevel = Options["UCI_LimitStrength"] ?
-                        clamp(std::pow((Options["UCI_Elo"] - 1346.6) / 143.4, 1 / 0.806), 0.0, 20.0) :
-                        double(Options["Skill Level"]);
+  double floatLevel = UCI_LimitStrength->second ?
+                        clamp(std::pow((UCI_Elo->second - 1346.6) / 143.4, 1 / 0.806), 0.0, 20.0) :
+                        double(Skill_Level->second);
   int intLevel = int(floatLevel) +
                  ((floatLevel - int(floatLevel)) * 1024 > rng.rand<unsigned>() % 1024  ? 1 : 0);
   Skill skill(intLevel);
@@ -364,14 +364,14 @@ void Thread::search() {
 
   multiPV = std::min(multiPV, rootMoves.size());
 
-  int ct = int(Options["Contempt"]) * PawnValueEg / 100; // From centipawns
+  int ct = int(Contempt->second) * PawnValueEg / 100; // From centipawns
 
   // In analysis mode, adjust contempt in accordance with user preference
-  if (Limits.infinite || Options["UCI_AnalyseMode"])
-      ct =  Options["Analysis Contempt"] == "Off"  ? 0
-          : Options["Analysis Contempt"] == "Both" ? ct
-          : Options["Analysis Contempt"] == "White" && us == BLACK ? -ct
-          : Options["Analysis Contempt"] == "Black" && us == WHITE ? -ct
+  if (Limits.infinite || UCI_AnalyseMode->second)
+      ct =  Analysis_Contempt->second == "Off"  ? 0
+          : Analysis_Contempt->second == "Both" ? ct
+          : Analysis_Contempt->second == "White" && us == BLACK ? -ct
+          : Analysis_Contempt->second == "Black" && us == WHITE ? -ct
           : ct;
 
   // Evaluation score is from the white point of view
@@ -1694,7 +1694,7 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
   TimePoint elapsed = Time.elapsed() + 1;
   const RootMoves& rootMoves = pos.this_thread()->rootMoves;
   size_t pvIdx = pos.this_thread()->pvIdx;
-  size_t multiPV = std::min((size_t)Options["MultiPV"], rootMoves.size());
+  size_t multiPV = std::min( size_t(MultiPV->second), rootMoves.size());
   uint64_t nodesSearched = Threads.nodes_searched();
   uint64_t tbHits = Threads.tb_hits() + (TB::RootInTB ? rootMoves.size() : 0);
 
@@ -1773,9 +1773,9 @@ bool RootMove::extract_ponder_from_tt(Position& pos) {
 void Tablebases::rank_root_moves(Position& pos, Search::RootMoves& rootMoves) {
 
     RootInTB = false;
-    UseRule50 = bool(Options["Syzygy50MoveRule"]);
-    ProbeDepth = int(Options["SyzygyProbeDepth"]) * ONE_PLY;
-    Cardinality = int(Options["SyzygyProbeLimit"]);
+    UseRule50 = bool(Syzygy50MoveRule->second);
+    ProbeDepth = int(SyzygyProbeDepth->second) * ONE_PLY;
+    Cardinality = int(SyzygyProbeLimit->second);
     bool dtz_available = true;
 
     // Tables with fewer pieces than SyzygyProbeLimit are searched with
