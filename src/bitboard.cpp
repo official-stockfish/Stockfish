@@ -97,7 +97,7 @@ void Bitboards::init() {
               }
 
   Direction RookDirections[] = { NORTH, EAST, SOUTH, WEST };
-  Direction BishopDirections[] = { NORTH_EAST, SOUTH_EAST, SOUTH_WEST, NORTH_WEST };
+  Direction BishopDirections[] = { NORTH+EAST, SOUTH+EAST, SOUTH+WEST, NORTH+WEST };
 
   init_magics(RookTable, RookMagics, RookDirections);
   init_magics(BishopTable, BishopMagics, BishopDirections);

@@ -57,8 +57,8 @@ namespace {
     constexpr Bitboard  TRank7BB = (Us == WHITE ? Rank7BB    : Rank2BB);
     constexpr Bitboard  TRank3BB = (Us == WHITE ? Rank3BB    : Rank6BB);
     constexpr Direction Up       = (Us == WHITE ? NORTH      : SOUTH);
-    constexpr Direction UpRight  = (Us == WHITE ? NORTH_EAST : SOUTH_WEST);
-    constexpr Direction UpLeft   = (Us == WHITE ? NORTH_WEST : SOUTH_EAST);
+    constexpr Direction UpRight  = (Us == WHITE ? NORTH+EAST : SOUTH+WEST);
+    constexpr Direction UpLeft   = (Us == WHITE ? NORTH+WEST : SOUTH+EAST);
 
     Bitboard emptySquares;
 
