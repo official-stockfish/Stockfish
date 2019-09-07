@@ -154,14 +154,15 @@ constexpr bool eastward(Direction D) { return (D & 7) == 1; }
 constexpr bool vertical(Direction D) { return (D & 7) == 0; }
 
 template<Direction D>
-constexpr Bitboard shift(Bitboard b) {
+inline Bitboard shift(Bitboard b) {
 
     static_assert(westward(D) || eastward(D) || vertical(D),
                    "Horizontal shifting limited to 1 step.");
 
-    return (D > 0 ? b << D : b >> -D) & (eastward(D) ? ~FileABB :
-                                         westward(D) ? ~FileHBB :
-                                         AllSquares);
+    Bitboard bb = eastward(D) ? b & ~FileHBB :
+                  westward(D) ? b & ~FileABB : b;
+
+    return (D > 0 ? bb << D : bb >> -D);
 }
 
 
