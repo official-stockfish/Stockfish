@@ -345,6 +345,11 @@ inline Score operator*(Score s, int i) {
   return result;
 }
 
+/// Multiplication of a Score by an boolean
+inline Score operator*(Score s, bool b) {
+  return Score(int(s) * int(b));
+}
+
 constexpr Color operator~(Color c) {
   return Color(c ^ BLACK); // Toggle color
 }
