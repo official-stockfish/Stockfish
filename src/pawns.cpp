@@ -143,7 +143,7 @@ namespace {
             score -= Backward + WeakUnopposed * int(!opposed);
 
         if (!support)
-            score -= Doubled * doubled + WeakLever * int(more_than_one(lever));
+            score -= Doubled * int(doubled) + WeakLever * int(more_than_one(lever));
     }
 
     return score;
