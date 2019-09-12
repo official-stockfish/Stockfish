@@ -328,7 +328,7 @@ endif
 ifeq ($(pext),yes)
 	CXXFLAGS += -DUSE_PEXT
 	ifeq ($(comp),$(filter $(comp),gcc clang mingw))
-		CXXFLAGS += -mbmi2
+		CXXFLAGS += -msse4 -mbmi2
 	endif
 endif
 
@@ -379,9 +379,9 @@ help:
 	@echo ""
 	@echo "Supported archs:"
 	@echo ""
-	@echo "x86-64                  > x86 64-bit"
-	@echo "x86-64-modern           > x86 64-bit with popcnt support"
-	@echo "x86-64-bmi2             > x86 64-bit with pext support"
+	@echo "x86-64-bmi2             > x86 64-bit with pext support (also enables SSE4)"
+	@echo "x86-64-modern           > x86 64-bit with popcnt support (also enables SSE3)"
+	@echo "x86-64                  > x86 64-bit generic"
 	@echo "x86-32                  > x86 32-bit with SSE support"
 	@echo "x86-32-old              > x86 32-bit fall back for old hardware"
 	@echo "ppc-64                  > PPC 64-bit"
