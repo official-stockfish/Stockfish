@@ -73,11 +73,14 @@ typedef std::condition_variable ConditionVariable;
 /// adjust it to TH_STACK_SIZE. The implementation calls pthread_create() with
 /// proper stack size parameter.
 
-#if defined(__APPLE__)
+/// On toolchains where pthread is always available, ensure minimum stack size
+/// instead of relying on linker defaults which may be platform-specific.
+
+#if defined(__APPLE__) || defined(__MINGW32__) || defined(__MINGW64__)
 
 #include <pthread.h>
 
-static const size_t TH_STACK_SIZE = 2 * 1024 * 1024;
+static const size_t TH_STACK_SIZE = 8 * 1024 * 1024;
 
 template <class T, class P = std::pair<T*, void(T::*)()>>
 void* start_routine(void* ptr)
