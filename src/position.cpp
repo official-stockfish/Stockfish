@@ -1305,8 +1305,8 @@ bool Position::pos_is_ok() const {
               continue;
 
           if (   piece_on(castlingRookSquare[cr]) != make_piece(c, ROOK)
-              || castlingRightsMask[castlingRookSquare[cr]] != (cr)
-              || (castlingRightsMask[square<KING>(c)] & (cr)) != (cr))
+              || castlingRightsMask[castlingRookSquare[cr]] != cr
+              || (castlingRightsMask[square<KING>(c)] & cr) != cr)
               assert(0 && "pos_is_ok: Castling");
       }
 
