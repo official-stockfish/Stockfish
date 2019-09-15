@@ -54,6 +54,8 @@ struct Mutex {
  ~Mutex() { DeleteCriticalSection(&cs); }
   void lock() { EnterCriticalSection(&cs); }
   void unlock() { LeaveCriticalSection(&cs); }
+  Mutex(const Mutex&) = delete;
+  Mutex& operator=(const Mutex&) = delete;
 
 private:
   CRITICAL_SECTION cs;
