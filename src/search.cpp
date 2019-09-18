@@ -589,7 +589,7 @@ namespace {
     assert(!(PvNode && cutNode));
     assert(depth / ONE_PLY * ONE_PLY == depth);
 
-    Move pv[MAX_PLY+1], capturesSearched[32], quietsSearched[64];
+    Move pv[MAX_PLY+1], movesSearched[MAX_MOVES];
     StateInfo st;
     TTEntry* tte;
     Key posKey;
@@ -1243,11 +1243,11 @@ moves_loop: // When in check, search starts from here
 
       if (move != bestMove)
       {
-          if (captureOrPromotion && captureCount < 32)
-              capturesSearched[captureCount++] = move;
+          if (captureOrPromotion)
+              movesSearched[MAX_MOVES - ++captureCount] = move;
 
-          else if (!captureOrPromotion && quietCount < 64)
-              quietsSearched[quietCount++] = move;
+          else
+              movesSearched[quietCount++] = move;
       }
     }
 
@@ -1273,10 +1273,10 @@ moves_loop: // When in check, search starts from here
     {
         // Quiet best move: update move sorting heuristics
         if (!pos.capture_or_promotion(bestMove))
-            update_quiet_stats(pos, ss, bestMove, quietsSearched, quietCount,
+            update_quiet_stats(pos, ss, bestMove, movesSearched, quietCount,
                                stat_bonus(depth + (bestValue > beta + PawnValueMg ? ONE_PLY : DEPTH_ZERO)));
 
-        update_capture_stats(pos, bestMove, capturesSearched, captureCount, stat_bonus(depth + ONE_PLY));
+        update_capture_stats(pos, bestMove, movesSearched + MAX_MOVES - captureCount, captureCount, stat_bonus(depth + ONE_PLY));
 
         // Extra penalty for a quiet TT or main killer move in previous ply when it gets refuted
         if (   ((ss-1)->moveCount == 1 || ((ss-1)->currentMove == (ss-1)->killers[0]))
