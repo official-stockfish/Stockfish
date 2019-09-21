@@ -358,8 +358,10 @@ constexpr Square operator~(Square s) {
   return Square(s ^ SQ_A8); // Vertical flip SQ_A1 -> SQ_A8
 }
 
-constexpr File operator~(File f) {
-  return File(f ^ FILE_H); // Horizontal flip FILE_A -> FILE_H
+File operator~(File f) = delete;  // Deprecate this operator
+
+constexpr File file_to_halffile(File f) {
+    return File(f ^ ((f >> 2) * FILE_H));   // Maps File ABCDEFGH to File ABCDDCBA
 }
 
 constexpr Piece operator~(Piece pc) {

@@ -662,7 +662,7 @@ namespace {
             || (pos.pieces(PAWN) & (s + Up)))
             bonus = bonus / 2;
 
-        score += bonus - PassedFile * std::min(f, ~f);
+        score += bonus - PassedFile * file_to_halffile(f);
     }
 
     if (T)
