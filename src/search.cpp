@@ -238,7 +238,11 @@ void MainThread::search() {
       {
           th->bestMoveChanges = 0;
           if (th != this)
+          {
               th->start_searching();
+              if (!th->searching) // that's a race
+                   abort();
+          }
       }
 
       Thread::search(); // Let's start searching!
