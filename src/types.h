@@ -361,9 +361,7 @@ constexpr Square operator~(Square s) {
 File operator~(File f) = delete;  // Deprecate this operator
 
 inline File file_to_halffile(File f) {
-  int x = f >> 2;
-  x = (x << 3) - x;     // Multiply x by 7
-  return File(f ^ x);   // Maps File ABCDEFGH to File ABCDDCBA
+  return std::min(f, File(FILE_H - f));   // Maps File ABCDEFGH to File ABCDDCBA
 }
 
 constexpr Piece operator~(Piece pc) {
