@@ -238,7 +238,11 @@ void MainThread::search() {
       {
           th->bestMoveChanges = 0;
           if (th != this)
+          {
               th->start_searching();
+              if (!th->searching) // that's a race
+                  abort();
+          }
       }
 
       Thread::search(); // Let's start searching!
@@ -987,7 +991,7 @@ moves_loop: // When in check, search starts from here
           else if (   eval >= beta
                    && singularBeta >= beta)
               return singularBeta;
-      } 
+      }
 
       // Check extension (~2 Elo)
       else if (    givesCheck

@@ -42,13 +42,14 @@
 
 class Thread {
 
+public:
   Mutex mutex;
   ConditionVariable cv;
   size_t idx;
   bool exit = false, searching = true; // Set before starting std::thread
   NativeThread stdThread;
 
-public:
+
   explicit Thread(size_t);
   virtual ~Thread();
   virtual void search();
