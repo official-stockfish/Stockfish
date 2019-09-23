@@ -662,7 +662,7 @@ namespace {
             || (pos.pieces(PAWN) & (s + Up)))
             bonus = bonus / 2;
 
-        score += bonus - PassedFile * file_to_halffile(f);
+        score += bonus - PassedFile * map_to_queenside(f);
     }
 
     if (T)

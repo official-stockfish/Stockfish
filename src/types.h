@@ -358,9 +358,7 @@ constexpr Square operator~(Square s) {
   return Square(s ^ SQ_A8); // Vertical flip SQ_A1 -> SQ_A8
 }
 
-File operator~(File f) = delete;  // Deprecate this operator
-
-inline File file_to_halffile(File f) {
+inline File map_to_queenside(File f) {
   return std::min(f, File(FILE_H - f));   // Maps File ABCDEFGH to File ABCDDCBA
 }
 
