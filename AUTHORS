@@ -60,6 +60,7 @@ Jacques B. (Timshel)
 Jan Ondruš (hxim)
 Jared Kish (Kurtbusch)
 Jarrod Torriero (DU-jdto)
+Jean Gauthier (QuaisBla)
 Jean-Francois Romang (jromang)
 Jerry Donald Watson (jerrydonaldwatson)
 Jonathan Calovski (Mysseno)
@@ -132,3 +133,7 @@ Tom Vijlbrief (tomtor)
 Torsten Franz (torfranz)
 Uri Blass (uriblass)
 Vince Negri
+
+# Additionally, we acknowledge the authors of fishtest,
+# an essential framework for the development of Stockfish:
+# https://github.com/glinscott/fishtest/blob/master/AUTHORS

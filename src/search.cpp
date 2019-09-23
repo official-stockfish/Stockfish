@@ -64,7 +64,7 @@ namespace {
   // Razor and futility margins
   constexpr int RazorMargin = 661;
   Value futility_margin(Depth d, bool improving) {
-    return Value(198 * (d / ONE_PLY) - 178 * improving);
+    return Value(198 * (d / ONE_PLY - improving));
   }
 
   // Reductions lookup table, initialized at startup
@@ -472,7 +472,10 @@ void Thread::search() {
                   ++failedHighCnt;
               }
               else
+              {
+                  ++rootMoves[pvIdx].bestMoveCount;
                   break;
+              }
 
               delta += delta / 4 + 5;
 
@@ -759,6 +762,9 @@ namespace {
         if (eval == VALUE_NONE)
             ss->staticEval = eval = evaluate(pos);
 
+        if (eval == VALUE_DRAW)
+            eval = value_draw(depth, thisThread);
+
         // Can ttValue be used as a better position evaluation?
         if (    ttValue != VALUE_NONE
             && (tte->bound() & (ttValue > eval ? BOUND_LOWER : BOUND_UPPER)))
@@ -799,7 +805,8 @@ namespace {
         && (ss-1)->currentMove != MOVE_NULL
         && (ss-1)->statScore < 22661
         &&  eval >= beta
-        &&  ss->staticEval >= beta - 33 * depth / ONE_PLY + 299
+        &&  eval >= ss->staticEval
+        &&  ss->staticEval >= beta - 33 * depth / ONE_PLY + 299 - improving * 30
         && !excludedMove
         &&  pos.non_pawn_material(us)
         && (ss->ply >= thisThread->nmpMinPly || us != thisThread->nmpColor))
@@ -1046,7 +1053,7 @@ moves_loop: // When in check, search starts from here
               if (!pos.see_ge(move, Value(-(31 - std::min(lmrDepth, 18)) * lmrDepth * lmrDepth)))
                   continue;
           }
-          else if (  (!givesCheck || !extension)
+          else if (  !(givesCheck && extension)
                    && !pos.see_ge(move, Value(-199) * (depth / ONE_PLY))) // (~20 Elo)
                   continue;
       }
@@ -1071,7 +1078,8 @@ moves_loop: // When in check, search starts from here
       // Step 16. Reduced depth search (LMR). If the move fails high it will be
       // re-searched at full depth.
       if (    depth >= 3 * ONE_PLY
-          &&  moveCount > 1 + 3 * rootNode
+          &&  moveCount > 1 + 2 * rootNode
+          && (!rootNode || thisThread->best_move_count(move) == 0)
           && (  !captureOrPromotion
               || moveCountPruning
               || ss->staticEval + PieceValue[EG][pos.captured_piece()] <= alpha
@@ -1091,7 +1099,7 @@ moves_loop: // When in check, search starts from here
           if ((ss-1)->moveCount > 15)
               r -= ONE_PLY;
 
-          // Decrease reduction if move has been singularly extended
+          // Decrease reduction if ttMove has been singularly extended
           r -= singularLMR * ONE_PLY;
 
           if (!captureOrPromotion)
@@ -1108,7 +1116,7 @@ moves_loop: // When in check, search starts from here
               // castling moves, because they are coded as "king captures rook" and
               // hence break make_move(). (~5 Elo)
               else if (    type_of(move) == NORMAL
-                       && !pos.see_ge(make_move(to_sq(move), from_sq(move))))
+                       && !pos.see_ge(reverse_move(move)))
                   r -= 2 * ONE_PLY;
 
               ss->statScore =  thisThread->mainHistory[us][from_to(move)]
@@ -1597,6 +1605,9 @@ moves_loop: // When in check, search starts from here
     Thread* thisThread = pos.this_thread();
     thisThread->mainHistory[us][from_to(move)] << bonus;
     update_continuation_histories(ss, pos.moved_piece(move), to_sq(move), bonus);
+
+    if (type_of(pos.moved_piece(move)) != PAWN)
+        thisThread->mainHistory[us][from_to(reverse_move(move))] << -bonus;
 
     if (is_ok((ss-1)->currentMove))
     {
