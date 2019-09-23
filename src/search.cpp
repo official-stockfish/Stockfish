@@ -1276,7 +1276,7 @@ moves_loop: // When in check, search starts from here
             update_quiet_stats(pos, ss, bestMove, movesSearched, quietCount,
                                stat_bonus(depth + (bestValue > beta + PawnValueMg ? ONE_PLY : DEPTH_ZERO)));
 
-        update_capture_stats(pos, bestMove, movesSearched + MAX_MOVES - captureCount, captureCount, stat_bonus(depth + ONE_PLY));
+        update_capture_stats(pos, bestMove, movesSearched, captureCount, stat_bonus(depth + ONE_PLY));
 
         // Extra penalty for a quiet TT or main killer move in previous ply when it gets refuted
         if (   ((ss-1)->moveCount == 1 || ((ss-1)->currentMove == (ss-1)->killers[0]))
@@ -1578,7 +1578,7 @@ moves_loop: // When in check, search starts from here
           captureHistory[moved_piece][to_sq(move)][captured] << bonus;
 
       // Decrease all the other played capture moves
-      for (int i = 0; i < captureCount; ++i)
+      for (int i = MAX_MOVES - captureCount; i < MAX_MOVES; ++i)
       {
           moved_piece = pos.moved_piece(captures[i]);
           captured = type_of(pos.piece_on(to_sq(captures[i])));
