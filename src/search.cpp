@@ -619,7 +619,6 @@ namespace {
     moveCount = captureCount = quietCount = singularLMR = ss->moveCount = 0;
     bestValue = -VALUE_INFINITE;
     maxValue = VALUE_INFINITE;
-    ss->ksq = pos.square<KING>(us);
 
     // Check for the available remaining time
     if (thisThread == Threads.main())
