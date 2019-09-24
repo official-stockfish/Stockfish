@@ -43,6 +43,7 @@
 #include <climits>
 #include <cstdint>
 #include <cstdlib>
+#include <algorithm>
 
 #if defined(_MSC_VER)
 // Disable some silly and noisy warning from MSVC compiler
@@ -461,3 +462,4 @@ constexpr bool is_ok(Move m) {
 }
 
 #endif // #ifndef TYPES_H_INCLUDED
+
