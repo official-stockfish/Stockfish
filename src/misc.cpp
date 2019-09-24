@@ -166,10 +166,14 @@ const std::string compiler_info() {
      compiler += VER_STRING(__clang_major__, __clang_minor__, __clang_patchlevel__);
   #elif __INTEL_COMPILER
      compiler += "Intel compiler ";
-     compiler += "(unknown version)";
-  #elif _MSC_VER 
+     compiler += "(update ";
+     compiler += __INTEL_COMPILER_UPDATE;
+     compiler += ")";
+  #elif _MSC_VER
      compiler += "MSVC ";
-     compiler += "(unknown version)";
+     compiler += "(version ";
+     compiler += STRINGIFY(_MSC_FULL_VER) "." STRINGIFY(_MSC_BUILD);
+     compiler += ")";
   #elif __GNUC__
      compiler += "g++ (GNUC) ";
      compiler += VER_STRING(__GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
@@ -190,9 +194,9 @@ const std::string compiler_info() {
 
   compiler += "\n __VERSION__ macro expands to: ";
   #ifdef __VERSION__
-  compiler += __VERSION__;
+     compiler += __VERSION__;
   #else
-  compiler += "(undefined macro)";
+     compiler += "(undefined macro)";
   #endif
   compiler += "\n";
 
