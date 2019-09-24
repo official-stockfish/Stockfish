@@ -167,8 +167,8 @@ const std::string compiler_info() {
      compiler += VER_STRING(__clang_major__, __clang_minor__, __clang_patchlevel__);
   #elif __INTEL_COMPILER
      compiler += "Intel compiler ";
-     compiler += "(update ";
-     compiler += __INTEL_COMPILER_UPDATE;
+     compiler += "(version ";
+     compîler += STRINGIFY(__INTEL_COMPILER) " update " STRINGIFY(__INTEL_COMPILER_UPDATE);
      compiler += ")";
   #elif _MSC_VER
      compiler += "MSVC ";
@@ -185,10 +185,20 @@ const std::string compiler_info() {
 
   #if defined(__APPLE__) 
      compiler += " on Apple";
-  #elif defined(__MINGW32__)
-     compiler += " on MingGW32";
+  #elif defined(__CYGWIN__)
+     compiler += " on Cygwin";
   #elif defined(__MINGW64__)
      compiler += " on MingGW64";
+  #elif defined(__MINGW32__)
+     compiler += " on MingGW32";
+  #elif defined(__ANDROID__)
+     compiler += " on Android";
+  #elif defined(__linux__)
+     compiler += " on Linux";
+  #elif defined(_WIN64)
+     compiler += " on Microsoft Windows 64-bit";
+  #elif defined(_WIN32)
+     compiler += " on Microsoft Windows 32-bit";
   #else
      compiler += " on unknown system";
   #endif
