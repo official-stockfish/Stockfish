@@ -587,7 +587,7 @@ namespace {
         && (depth < 4 * ONE_PLY || std::min(ss->ply,pos.rule50_count()) > 38))
     {
         //sync_cout << "Shuffling = " << pos.fen() << sync_endl;
-        return VALUE_DRAW;
+        return value_draw(depth, pos.this_thread());
     }
 
     // Dive into quiescence search when the depth reaches zero
