@@ -188,9 +188,9 @@ const std::string compiler_info() {
   #elif defined(__CYGWIN__)
      compiler += " on Cygwin";
   #elif defined(__MINGW64__)
-     compiler += " on MingGW64";
+     compiler += " on MinGW64";
   #elif defined(__MINGW32__)
-     compiler += " on MingGW32";
+     compiler += " on MinGW32";
   #elif defined(__ANDROID__)
      compiler += " on Android";
   #elif defined(__linux__)
