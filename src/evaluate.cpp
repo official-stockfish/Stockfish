@@ -78,7 +78,7 @@ namespace {
   constexpr Value SpaceThreshold = Value(12222);
 
   // KingAttackWeights[PieceType] contains king attack weights by piece type
-  constexpr int KingAttackWeights[PIECE_TYPE_NB] = { 0, 0, 77, 55, 44, 10 };
+  constexpr int KingAttackWeights[PIECE_TYPE_NB] = { 0, 0, 81, 52, 44, 10 };
 
   // Penalties for enemy's safe checks
   constexpr int QueenSafeCheck  = 780;
@@ -108,17 +108,17 @@ namespace {
 
   // RookOnFile[semiopen/open] contains bonuses for each rook when there is
   // no (friendly) pawn on the rook file.
-  constexpr Score RookOnFile[] = { S(18, 7), S(44, 20) };
+  constexpr Score RookOnFile[] = { S(21, 4), S(47, 25) };
 
   // ThreatByMinor/ByRook[attacked PieceType] contains bonuses according to
   // which piece type attacks which one. Attacks on lesser pieces which are
   // pawn-defended are not considered.
   constexpr Score ThreatByMinor[PIECE_TYPE_NB] = {
-    S(0, 0), S(0, 31), S(39, 42), S(57, 44), S(68, 112), S(62, 120)
+    S(0, 0), S(6, 28), S(39, 42), S(57, 44), S(68, 112), S(62, 120)
   };
 
   constexpr Score ThreatByRook[PIECE_TYPE_NB] = {
-    S(0, 0), S(0, 24), S(38, 71), S(38, 61), S(0, 38), S(51, 38)
+    S(0, 0), S(3, 44), S(38, 71), S(38, 61), S(0, 38), S(51, 38)
   };
 
   // PassedRank[Rank] contains a bonus according to the rank of a passed pawn
@@ -139,8 +139,7 @@ namespace {
   constexpr Score PassedFile         = S( 11,  8);
   constexpr Score PawnlessFlank      = S( 17, 95);
   constexpr Score RestrictedPiece    = S(  7,  7);
-  constexpr Score RookOnPawn         = S( 10, 32);
-  constexpr Score RookOnQueenFile    = S( 11,  4);
+  constexpr Score RookOnQueenFile    = S(  7,  6);
   constexpr Score SliderOnQueen      = S( 59, 18);
   constexpr Score ThreatByKing       = S( 24, 89);
   constexpr Score ThreatByPawnPush   = S( 48, 39);
@@ -343,10 +342,6 @@ namespace {
 
         if (Pt == ROOK)
         {
-            // Bonus for aligning rook with enemy pawns on the same rank/file
-            if (relative_rank(Us, s) >= RANK_5)
-                score += RookOnPawn * popcount(pos.pieces(Them, PAWN) & PseudoAttacks[ROOK][s]);
-
             // Bonus for rook on the same file as a queen
             if (file_bb(s) & pos.pieces(QUEEN))
                 score += RookOnQueenFile;
