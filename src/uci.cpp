@@ -230,11 +230,10 @@ void UCI::loop(int argc, char* argv[]) {
       else if (token == "isready")    sync_cout << "readyok" << sync_endl;
 
       // Additional custom non-UCI commands, mainly for debugging
-      else if (token == "flip")     pos.flip();
-      else if (token == "bench")    bench(pos, is, states);
-      else if (token == "d")        sync_cout << pos << sync_endl;
-      else if (token == "eval")     sync_cout << Eval::trace(pos) << sync_endl;
-      else if (token == "compiler") sync_cout << compiler_info() << sync_endl;
+      else if (token == "flip")  pos.flip();
+      else if (token == "bench") bench(pos, is, states);
+      else if (token == "d")     sync_cout << pos << sync_endl;
+      else if (token == "eval")  sync_cout << Eval::trace(pos) << sync_endl;
       else
           sync_cout << "Unknown command: " << cmd << sync_endl;
 
