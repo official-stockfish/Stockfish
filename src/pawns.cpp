@@ -94,8 +94,6 @@ namespace {
 
         Rank r = relative_rank(Us, s);
 
-        e->pawnAttacksSpan[Us] |= pawn_attack_span(Us, s);
-
         // Flag the pawn
         opposed    = theirPawns & forward_file_bb(Us, s);
         stoppers   = theirPawns & passed_pawn_span(Us, s);
@@ -111,6 +109,15 @@ namespace {
         // pawns will be excluded when the pawn is scored.
         backward =  !(neighbours & forward_ranks_bb(Them, s))
                   && (stoppers & (leverPush | (s + Up)));
+
+        if (!backward || phalanx)
+        {
+            if(opposed)
+                e->pawnAttacksSpan[Us] |= (pawn_attack_span(Us, s) & 
+                    ~pawn_attack_span(Us, frontmost_sq(Them, theirPawns & forward_file_bb(Us, s))));
+            else
+                e->pawnAttacksSpan[Us] |= pawn_attack_span(Us, s);
+        }
 
         // A pawn is passed if one of the three following conditions is true:
         // (a) there is no stoppers except some levers
