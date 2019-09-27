@@ -110,6 +110,8 @@ namespace {
         backward =  !(neighbours & forward_ranks_bb(Them, s))
                   && (stoppers & (leverPush | (s + Up)));
 
+        // Span of backward pawns and span behind opposed pawns are not taken
+        // in pawn_attack_span BB.
         if (!backward || phalanx)
         {
             if(opposed)
