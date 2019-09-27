@@ -260,9 +260,18 @@ enum Rank : int {
 /// avoid left-shifting a signed int to avoid undefined behavior.
 enum Score : int { SCORE_ZERO };
 
+constexpr Score make_score_mg(int mg) {
+  return Score(mg);
+}
+
+constexpr Score make_score_eg(int eg) {
+  return Score((int)((unsigned int)eg << 16));
+}
+
 constexpr Score make_score(int mg, int eg) {
   return Score((int)((unsigned int)eg << 16) + mg);
 }
+
 
 /// Extracting the signed lower and upper 16 bits is not so trivial because
 /// according to the standard a simple cast to short is implementation defined

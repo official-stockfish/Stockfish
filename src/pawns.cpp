@@ -199,12 +199,12 @@ Score Entry::evaluate_shelter(const Position& pos, Square ksq) {
       int theirRank = b ? relative_rank(Us, frontmost_sq(Them, b)) : 0;
 
       File d = map_to_queenside(f);
-      bonus += make_score(ShelterStrength[d][ourRank], 0);
+      bonus += make_score_mg(ShelterStrength[d][ourRank]);
 
       if (ourRank && (ourRank == theirRank - 1))
           bonus -= BlockedStorm * int(theirRank == RANK_3);
       else
-          bonus -= make_score(UnblockedStorm[d][theirRank], 0);
+          bonus -= make_score_mg(UnblockedStorm[d][theirRank]);
   }
 
   return bonus;
@@ -222,8 +222,8 @@ Score Entry::do_king_safety(const Position& pos) {
   castlingRights[Us] = pos.castling_rights(Us);
 
   Score shelters[3] = { evaluate_shelter<Us>(pos, ksq),
-                        make_score(-VALUE_INFINITE, 0),
-                        make_score(-VALUE_INFINITE, 0) };
+                        make_score_mg(-VALUE_INFINITE),
+                        make_score_mg(-VALUE_INFINITE) };
 
   // If we can castle use the bonus after castling if it is bigger
   if (pos.can_castle(Us & KING_SIDE))
@@ -245,7 +245,7 @@ Score Entry::do_king_safety(const Position& pos) {
   else while (pawns)
       minPawnDist = std::min(minPawnDist, distance(ksq, pop_lsb(&pawns)));
 
-  return shelters[0] - make_score(0, 16 * minPawnDist);
+  return shelters[0] - make_score_eg(16 * minPawnDist);
 }
 
 // Explicit template instantiation

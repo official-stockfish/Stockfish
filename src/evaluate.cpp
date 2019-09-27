@@ -622,12 +622,12 @@ namespace {
             Square blockSq = s + Up;
 
             // Adjust bonus based on the king's proximity
-            bonus += make_score(0, (  king_proximity(Them, blockSq) * 5
+            bonus += make_score_eg((  king_proximity(Them, blockSq) * 5
                                     - king_proximity(Us,   blockSq) * 2) * w);
 
             // If blockSq is not the queening square then consider also a second push
             if (r != RANK_7)
-                bonus -= make_score(0, king_proximity(Us, blockSq + Up) * w);
+                bonus -= make_score_eg(king_proximity(Us, blockSq + Up) * w);
 
             // If the pawn is free to advance, then increase the bonus
             if (pos.empty(blockSq))
@@ -703,7 +703,7 @@ namespace {
 
     int bonus = popcount(safe) + popcount(behind & safe & ~attackedBy[Them][ALL_PIECES]);
     int weight = pos.count<ALL_PIECES>(Us) - 1;
-    Score score = make_score(bonus * weight * weight / 16, 0);
+    Score score = make_score_mg(bonus * weight * weight / 16);
 
     if (T)
         Trace::add(SPACE, Us, score);
