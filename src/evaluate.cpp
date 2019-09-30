@@ -114,7 +114,7 @@ namespace {
   // which piece type attacks which one. Attacks on lesser pieces which are
   // pawn-defended are not considered.
   constexpr Score ThreatByMinor[PIECE_TYPE_NB] = {
-    S(0, 0), S(6, 28), S(39, 42), S(57, 44), S(68, 112), S(62, 120)
+    S(0, 0), S(6, 32), S(59, 41), S(79, 56), S(90, 119), S(79, 161)
   };
 
   constexpr Score ThreatByRook[PIECE_TYPE_NB] = {
@@ -143,7 +143,6 @@ namespace {
   constexpr Score SliderOnQueen      = S( 59, 18);
   constexpr Score ThreatByKing       = S( 24, 89);
   constexpr Score ThreatByPawnPush   = S( 48, 39);
-  constexpr Score ThreatByRank       = S( 13,  0);
   constexpr Score ThreatBySafePawn   = S(173, 94);
   constexpr Score TrappedRook        = S( 47,  4);
   constexpr Score WeakQueen          = S( 49, 15);
@@ -510,21 +509,11 @@ namespace {
     {
         b = (defended | weak) & (attackedBy[Us][KNIGHT] | attackedBy[Us][BISHOP]);
         while (b)
-        {
-            Square s = pop_lsb(&b);
-            score += ThreatByMinor[type_of(pos.piece_on(s))];
-            if (type_of(pos.piece_on(s)) != PAWN)
-                score += ThreatByRank * (int)relative_rank(Them, s);
-        }
+            score += ThreatByMinor[type_of(pos.piece_on(pop_lsb(&b)))];
 
         b = weak & attackedBy[Us][ROOK];
         while (b)
-        {
-            Square s = pop_lsb(&b);
-            score += ThreatByRook[type_of(pos.piece_on(s))];
-            if (type_of(pos.piece_on(s)) != PAWN)
-                score += ThreatByRank * (int)relative_rank(Them, s);
-        }
+            score += ThreatByRook[type_of(pos.piece_on(pop_lsb(&b)))];
 
         if (weak & attackedBy[Us][KING])
             score += ThreatByKing;
