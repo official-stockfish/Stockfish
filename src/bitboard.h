@@ -194,7 +194,7 @@ inline Bitboard adjacent_files_bb(Square s) {
 
 inline Bitboard between_bb(Square s1, Square s2) {
   return LineBB[s1][s2] & ((AllSquares << s1) ^ (AllSquares << s2))
-                        &      ~square_bb(s1) &     ~square_bb(s2);
+                        & ~(square_bb(s1) | s2);
 }
 
 
