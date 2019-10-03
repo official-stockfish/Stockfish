@@ -862,7 +862,7 @@ encode_remaining:
         {
             auto f = [&](Square s) { return groupSq[i] > s; };
             auto adjust = std::count_if(squares, groupSq, f);
-            n += Binomial[i + 1][groupSq[i] - adjust - 8 * remainingPawns];
+            n += Binomial[i + 1][int(groupSq[i]) - adjust - 8 * remainingPawns];
         }
 
         remainingPawns = false;

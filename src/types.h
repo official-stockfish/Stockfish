@@ -168,7 +168,8 @@ enum Bound {
   BOUND_EXACT = BOUND_UPPER | BOUND_LOWER
 };
 
-enum Value : int {
+typedef int Value;
+constexpr Value
   VALUE_ZERO      = 0,
   VALUE_DRAW      = 0,
   VALUE_KNOWN_WIN = 10000,
@@ -185,8 +186,7 @@ enum Value : int {
   RookValueMg   = 1289,  RookValueEg   = 1378,
   QueenValueMg  = 2529,  QueenValueEg  = 2687,
 
-  MidgameLimit  = 15258, EndgameLimit  = 3915
-};
+  MidgameLimit  = 15258, EndgameLimit  = 3915;
 
 enum PieceType {
   NO_PIECE_TYPE, PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING,
@@ -203,9 +203,9 @@ enum Piece {
 
 extern Value PieceValue[PHASE_NB][PIECE_NB];
 
-enum Depth : int {
+typedef int Depth;
 
-  ONE_PLY = 1,
+constexpr Depth ONE_PLY = 1,
 
   DEPTH_ZERO          =  0 * ONE_PLY,
   DEPTH_QS_CHECKS     =  0 * ONE_PLY,
@@ -214,8 +214,7 @@ enum Depth : int {
 
   DEPTH_NONE   = -6 * ONE_PLY,
   DEPTH_OFFSET = DEPTH_NONE,
-  DEPTH_MAX    = MAX_PLY * ONE_PLY
-};
+  DEPTH_MAX    = MAX_PLY * ONE_PLY;
 
 static_assert(!(ONE_PLY & (ONE_PLY - 1)), "ONE_PLY is not a power of 2");
 
@@ -233,8 +232,9 @@ enum Square : int {
   SQUARE_NB = 64
 };
 
-enum Direction : int {
-  NORTH =  8,
+typedef int Direction;
+
+constexpr Direction  NORTH =  8,
   EAST  =  1,
   SOUTH = -NORTH,
   WEST  = -EAST,
@@ -242,8 +242,7 @@ enum Direction : int {
   NORTH_EAST = NORTH + EAST,
   SOUTH_EAST = SOUTH + EAST,
   SOUTH_WEST = SOUTH + WEST,
-  NORTH_WEST = NORTH + WEST
-};
+  NORTH_WEST = NORTH + WEST;
 
 enum File : int {
   FILE_A, FILE_B, FILE_C, FILE_D, FILE_E, FILE_F, FILE_G, FILE_H, FILE_NB
@@ -288,19 +287,6 @@ inline T& operator-=(T& d1, T d2) { return d1 = d1 - d2; }
 inline T& operator++(T& d) { return d = T(int(d) + 1); }           \
 inline T& operator--(T& d) { return d = T(int(d) - 1); }
 
-#define ENABLE_FULL_OPERATORS_ON(T)                                \
-ENABLE_BASE_OPERATORS_ON(T)                                        \
-constexpr T operator*(int i, T d) { return T(i * int(d)); }        \
-constexpr T operator*(T d, int i) { return T(int(d) * i); }        \
-constexpr T operator/(T d, int i) { return T(int(d) / i); }        \
-constexpr int operator/(T d1, T d2) { return int(d1) / int(d2); }  \
-inline T& operator*=(T& d, int i) { return d = T(int(d) * i); }    \
-inline T& operator/=(T& d, int i) { return d = T(int(d) / i); }
-
-ENABLE_FULL_OPERATORS_ON(Value)
-ENABLE_FULL_OPERATORS_ON(Depth)
-ENABLE_FULL_OPERATORS_ON(Direction)
-
 ENABLE_INCR_OPERATORS_ON(PieceType)
 ENABLE_INCR_OPERATORS_ON(Piece)
 ENABLE_INCR_OPERATORS_ON(Square)
@@ -309,15 +295,8 @@ ENABLE_INCR_OPERATORS_ON(Rank)
 
 ENABLE_BASE_OPERATORS_ON(Score)
 
-#undef ENABLE_FULL_OPERATORS_ON
 #undef ENABLE_INCR_OPERATORS_ON
 #undef ENABLE_BASE_OPERATORS_ON
-
-/// Additional operators to add integers to a Value
-constexpr Value operator+(Value v, int i) { return Value(int(v) + i); }
-constexpr Value operator-(Value v, int i) { return Value(int(v) - i); }
-inline Value& operator+=(Value& v, int i) { return v = v + i; }
-inline Value& operator-=(Value& v, int i) { return v = v - i; }
 
 /// Additional operators to add a Direction to a Square
 constexpr Square operator+(Square s, Direction d) { return Square(int(s) + int(d)); }
