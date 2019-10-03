@@ -169,8 +169,7 @@ enum Bound {
 };
 
 typedef int Value;
-constexpr Value
-  VALUE_ZERO      = 0,
+  constexpr Value VALUE_ZERO      = 0,
   VALUE_DRAW      = 0,
   VALUE_KNOWN_WIN = 10000,
   VALUE_MATE      = 32000,
@@ -204,9 +203,7 @@ enum Piece {
 extern Value PieceValue[PHASE_NB][PIECE_NB];
 
 typedef int Depth;
-
-constexpr Depth ONE_PLY = 1,
-
+  constexpr Depth ONE_PLY = 1,
   DEPTH_ZERO          =  0 * ONE_PLY,
   DEPTH_QS_CHECKS     =  0 * ONE_PLY,
   DEPTH_QS_NO_CHECKS  = -1 * ONE_PLY,
@@ -233,8 +230,7 @@ enum Square : int {
 };
 
 typedef int Direction;
-
-constexpr Direction  NORTH =  8,
+  constexpr Direction  NORTH =  8,
   EAST  =  1,
   SOUTH = -NORTH,
   WEST  = -EAST,
