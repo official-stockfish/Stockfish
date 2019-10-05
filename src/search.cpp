@@ -335,11 +335,8 @@ void Thread::search() {
 
   std::memset(ss-7, 0, 10 * sizeof(Stack));
   for (int i = 7; i > 0; i--)
-  {
       (ss-i)->continuationHistory = &this->continuationHistory[0][NO_PIECE][0]; // Use as sentinel
-      (ss-i)->continuationHistory = &this->continuationHistory[1][NO_PIECE][0]; // Use as sentinel
-  {
-     
+
   ss->pv = pv;
 
   bestValue = delta = alpha = -VALUE_INFINITE;
