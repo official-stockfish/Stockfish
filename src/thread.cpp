@@ -69,12 +69,15 @@ void Thread::clear() {
   counterMoves.fill(MOVE_NONE);
   mainHistory.fill(0);
   captureHistory.fill(0);
+ 
+  for (int i = 0; i < 2; i++)
+  {
+      for (auto& to : continuationHistory[i])
+          for (auto& h : to)
+              h->fill(0);
 
-  for (auto& to : continuationHistory)
-      for (auto& h : to)
-          h->fill(0);
-
-  continuationHistory[NO_PIECE][0]->fill(Search::CounterMovePruneThreshold - 1);
+      continuationHistory[i][NO_PIECE][0]->fill(Search::CounterMovePruneThreshold - 1);
+  }
 }
 
 /// Thread::start_searching() wakes up the thread that will start the search
