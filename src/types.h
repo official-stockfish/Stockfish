@@ -169,7 +169,9 @@ enum Bound {
 };
 
 typedef int Value;
-  constexpr Value VALUE_ZERO      = 0,
+
+constexpr Value
+  VALUE_ZERO      = 0,
   VALUE_DRAW      = 0,
   VALUE_KNOWN_WIN = 10000,
   VALUE_MATE      = 32000,
@@ -203,17 +205,14 @@ enum Piece {
 extern Value PieceValue[PHASE_NB][PIECE_NB];
 
 typedef int Depth;
-constexpr Depth ONE_PLY = 1,
-  DEPTH_ZERO          =  0 * ONE_PLY,
-  DEPTH_QS_CHECKS     =  0 * ONE_PLY,
-  DEPTH_QS_NO_CHECKS  = -1 * ONE_PLY,
-  DEPTH_QS_RECAPTURES = -5 * ONE_PLY,
 
-  DEPTH_NONE   = -6 * ONE_PLY,
-  DEPTH_OFFSET = DEPTH_NONE,
-  DEPTH_MAX    = MAX_PLY * ONE_PLY;
-
-static_assert(!(ONE_PLY & (ONE_PLY - 1)), "ONE_PLY is not a power of 2");
+constexpr Depth
+  DEPTH_QS_CHECKS     =  0,
+  DEPTH_QS_NO_CHECKS  = -1,
+  DEPTH_QS_RECAPTURES = -5,
+  DEPTH_NONE          = -6,
+  DEPTH_OFFSET        = DEPTH_NONE,
+  DEPTH_MAX           = MAX_PLY;
 
 enum Square : int {
   SQ_A1, SQ_B1, SQ_C1, SQ_D1, SQ_E1, SQ_F1, SQ_G1, SQ_H1,
@@ -230,7 +229,9 @@ enum Square : int {
 };
 
 typedef int Direction;
-constexpr Direction  NORTH =  8,
+
+constexpr Direction
+  NORTH =  8,
   EAST  =  1,
   SOUTH = -NORTH,
   WEST  = -EAST,
