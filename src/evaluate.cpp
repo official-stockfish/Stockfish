@@ -147,6 +147,15 @@ namespace {
   constexpr Score TrappedRook        = S( 47,  4);
   constexpr Score WeakQueen          = S( 49, 15);
 
+  // Complexity bonuses and penalties
+  constexpr Score ComplexityPasser            = S(9, 9);
+  constexpr Score ComplexityPawnCount         = S(11, 11);
+  constexpr Score ComplexityOutflanking       = S(9, 9);
+  constexpr Score ComplexityPawnsOnBothFlanks = S(18, 18);
+  constexpr Score ComplexityNoPieces          = S(49, 49);
+  constexpr Score ComplexityUnwinnable        = S(36, 36);
+  constexpr Score ComplexityConstant          = S(53, 103);
+
 #undef S
 
   // Evaluation class computes and stores attacks tables and other working data
@@ -717,19 +726,19 @@ namespace {
                            && !pawnsOnBothFlanks;
 
     // Compute the initiative bonus for the attacking side
-    int complexity =   9 * pe->passed_count()
-                    + 11 * pos.count<PAWN>()
-                    +  9 * outflanking
-                    + 18 * pawnsOnBothFlanks
-                    + 49 * !pos.non_pawn_material()
-                    - 36 * almostUnwinnable
-                    -103 ;
+    Score complexity =  ComplexityPasser * pe->passed_count()
+                      + ComplexityPawnCount * pos.count<PAWN>()
+                      + ComplexityOutflanking * outflanking
+                      + ComplexityPawnsOnBothFlanks * pawnsOnBothFlanks
+                      + ComplexityNoPieces * !pos.non_pawn_material()
+                      - ComplexityUnwinnable * almostUnwinnable
+                      - ComplexityConstant;
 
     // Now apply the bonus: note that we find the attacking side by extracting the
     // sign of the midgame or endgame values, and that we carefully cap the bonus
     // so that the midgame and endgame scores do not change sign after the bonus.
-    int u = ((mg > 0) - (mg < 0)) * std::max(std::min(complexity + 50, 0), -abs(mg));
-    int v = ((eg > 0) - (eg < 0)) * std::max(complexity, -abs(eg));
+    int u = ((mg > 0) - (mg < 0)) * std::max(std::min(int(mg_value(complexity)), 0), -abs(mg));
+    int v = ((eg > 0) - (eg < 0)) * std::max(int(eg_value(complexity)), -abs(eg));
 
     if (T)
         Trace::add(INITIATIVE, make_score(u, v));
