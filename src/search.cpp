@@ -364,14 +364,19 @@ void Thread::search() {
   multiPV = std::min(multiPV, rootMoves.size());
 
   int ct = int(Options["Contempt"]) * PawnValueEg / 100; // From centipawns
+  int dt = 1;
 
   // In analysis mode, adjust contempt in accordance with user preference
   if (Limits.infinite || Options["UCI_AnalyseMode"])
+  {
       ct =  Options["Analysis Contempt"] == "Off"  ? 0
           : Options["Analysis Contempt"] == "Both" ? ct
           : Options["Analysis Contempt"] == "White" && us == BLACK ? -ct
           : Options["Analysis Contempt"] == "Black" && us == WHITE ? -ct
           : ct;
+      dt =  Options["Analysis Contempt"] == "Off"  ? 0
+          : dt;
+  }
 
   // Evaluation score is from the white point of view
   contempt = (us == WHITE ?  make_score(ct, ct / 2)
@@ -417,7 +422,7 @@ void Thread::search() {
               beta  = std::min(previousScore + delta, VALUE_INFINITE);
 
               // Adjust contempt based on root move's previousScore (dynamic contempt)
-              int dct = ct + 86 * previousScore / (abs(previousScore) + 176);
+              int dct = ct + dt * (86 * previousScore / (abs(previousScore) + 176));
 
               contempt = (us == WHITE ?  make_score(dct, dct / 2)
                                       : -make_score(dct, dct / 2));
