@@ -114,8 +114,7 @@ public:
   Bitboard attackers_to(Square s) const;
   Bitboard attackers_to(Square s, Bitboard occupied) const;
   Bitboard attacks_from(PieceType pt, Square s) const;
-  template<PieceType> Bitboard attacks_from(Square s) const;
-  template<PieceType> Bitboard attacks_from(Square s, Color c) const;
+  template<PieceType> Bitboard attacks_from(Square s, Color c = WHITE) const;
   Bitboard slider_blockers(Bitboard sliders, Square s, Bitboard& pinners) const;
 
   // Properties of moves
@@ -285,16 +284,11 @@ inline Square Position::castling_rook_square(CastlingRights cr) const {
 }
 
 template<PieceType Pt>
-inline Bitboard Position::attacks_from(Square s) const {
-  assert(Pt != PAWN);
-  return  Pt == BISHOP || Pt == ROOK ? attacks_bb<Pt>(s, byTypeBB[ALL_PIECES])
+inline Bitboard Position::attacks_from(Square s, Color c) const {
+  return  Pt == PAWN ? PawnAttacks[c][s]
+        : Pt == BISHOP || Pt == ROOK ? attacks_bb<Pt>(s, byTypeBB[ALL_PIECES])
         : Pt == QUEEN  ? attacks_from<ROOK>(s) | attacks_from<BISHOP>(s)
         : PseudoAttacks[Pt][s];
-}
-
-template<>
-inline Bitboard Position::attacks_from<PAWN>(Square s, Color c) const {
-  return PawnAttacks[c][s];
 }
 
 inline Bitboard Position::attacks_from(PieceType pt, Square s) const {
