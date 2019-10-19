@@ -706,9 +706,7 @@ Ret do_probe_table(const Position& pos, T* entry, WDLScore wdl, ProbeState* resu
 
         std::swap(squares[0], *std::max_element(squares, squares + leadPawnsCnt, pawns_comp));
 
-        tbFile = file_of(squares[0]);
-        if (tbFile > FILE_D)
-            tbFile = file_of(squares[0] ^ 7); // Horizontal flip: SQ_H1 -> SQ_A1
+        tbFile = map_to_queenside(file_of(squares[0]));
     }
 
     // DTZ tables are one-sided, i.e. they store positions only for white to
@@ -1062,8 +1060,8 @@ void set(T& e, uint8_t* data) {
 
     enum { Split = 1, HasPawns = 2 };
 
-    assert(e.hasPawns        == !!(*data & HasPawns));
-    assert((e.key != e.key2) == !!(*data & Split));
+    assert(e.hasPawns        == bool(*data & HasPawns));
+    assert((e.key != e.key2) == bool(*data & Split));
 
     data++; // First byte stores flags
 

@@ -341,7 +341,7 @@ inline Score operator*(Score s, int i) {
   return result;
 }
 
-/// Multiplication of a Score by an boolean
+/// Multiplication of a Score by a boolean
 inline Score operator*(Score s, bool b) {
   return Score(int(s) * int(b));
 }

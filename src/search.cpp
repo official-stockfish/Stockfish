@@ -75,7 +75,7 @@ namespace {
     return (r + 520) / 1024 + (!i && r > 999);
   }
 
-  constexpr int futility_move_count(bool improving, int depth) {
+  constexpr int futility_move_count(bool improving, Depth depth) {
     return (5 + depth * depth) * (1 + improving) / 2;
   }
 
@@ -594,7 +594,7 @@ namespace {
     Move ttMove, move, excludedMove, bestMove;
     Depth extension, newDepth;
     Value bestValue, value, ttValue, eval, maxValue;
-    bool ttHit, ttPv, inCheck, givesCheck, improving, doLMR, priorCapture;
+    bool ttHit, ttPv, inCheck, givesCheck, improving, didLMR, priorCapture;
     bool captureOrPromotion, doFullDepthSearch, moveCountPruning, ttCapture, singularLMR;
     Piece movedPiece;
     int moveCount, captureCount, quietCount;
@@ -1151,17 +1151,17 @@ moves_loop: // When in check, search starts from here
 
           value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, d, true);
 
-          doFullDepthSearch = (value > alpha && d != newDepth), doLMR = true;
+          doFullDepthSearch = (value > alpha && d != newDepth), didLMR = true;
       }
       else
-          doFullDepthSearch = !PvNode || moveCount > 1, doLMR = false;
+          doFullDepthSearch = !PvNode || moveCount > 1, didLMR = false;
 
       // Step 17. Full depth search when LMR is skipped or fails high
       if (doFullDepthSearch)
       {
           value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth, !cutNode);
 
-          if (doLMR && !captureOrPromotion)
+          if (didLMR && !captureOrPromotion)
           {
               int bonus = value > alpha ?  stat_bonus(newDepth)
                                         : -stat_bonus(newDepth);
@@ -1466,7 +1466,7 @@ moves_loop: // When in check, search starts from here
 
       // Don't search moves with negative SEE values
       if (  (!inCheck || evasionPrunable)
-          && (!givesCheck || !(pos.blockers_for_king(~pos.side_to_move()) & from_sq(move)))
+          && !(givesCheck && pos.is_discovery_check_on_king(~pos.side_to_move(), move))
           && !pos.see_ge(move))
           continue;
 
