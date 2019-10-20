@@ -43,8 +43,8 @@
 
 class Thread {
 
-  Mutex mutex;
-  ConditionVariable cv;
+  std::mutex mutex;
+  std::condition_variable cv;
   size_t idx;
   bool exit = false, searching = true; // Set before starting std::thread
   NativeThread stdThread;
@@ -57,10 +57,11 @@ public:
   void idle_loop();
   void start_searching();
   void wait_for_search_finished();
+  int best_move_count(Move move);
 
   Pawns::Table pawnsTable;
   Material::Table materialTable;
-  size_t pvIdx, multiPV, pvLast, shuffleExts;
+  size_t pvIdx, pvLast, shuffleExts;
   int selDepth, nmpMinPly;
   Color nmpColor;
   std::atomic<uint64_t> nodes, tbHits, TTsaves, bestMoveChanges;
@@ -71,12 +72,12 @@ public:
   CounterMoveHistory counterMoves;
   ButterflyHistory mainHistory;
   CapturePieceToHistory captureHistory;
-  ContinuationHistory continuationHistory;
+  ContinuationHistory continuationHistory[2][2];
   Score contempt;
 
 #ifdef USE_MPI
   struct {
-      Mutex mutex;
+      std::mutex mutex;
       Cluster::TTCache<Cluster::TTCacheSize> buffer = {};
   } ttCache;
 #endif

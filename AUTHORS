@@ -9,8 +9,9 @@ Aditya (absimaldata)
 Adrian Petrescu (apetresc)
 Ajith Chandy Jose (ajithcj)
 Alain Savard (Rocky640)
-alayan-stk-2
+Alayan Feh (Alayan-stk-2)
 Alexander Kure
+Alexander Pagel (Lolligerhans)
 Ali AlZhrani (Cooffe)
 Andrew Grant (AndyGrant)
 Andrey Neporada (nepal)
@@ -59,6 +60,7 @@ Jacques B. (Timshel)
 Jan Ondruš (hxim)
 Jared Kish (Kurtbusch)
 Jarrod Torriero (DU-jdto)
+Jean Gauthier (QuaisBla)
 Jean-Francois Romang (jromang)
 Jerry Donald Watson (jerrydonaldwatson)
 Jonathan Calovski (Mysseno)
@@ -82,6 +84,7 @@ Lub van den Berg (ElbertoOne)
 Luca Brivio (lucabrivio)
 Lucas Braesch (lucasart)
 Lyudmil Antonov (lantonov)
+Maciej Żenczykowski (zenczykowski)
 Matthew Lai (matthewlai)
 Matthew Sullivan
 Mark Tenzer (31m059)
@@ -96,6 +99,7 @@ Miroslav Fontán (Hexik)
 Moez Jellouli (MJZ1977)
 Mohammed Li (tthsqe12)
 Nathan Rugg (nmrugg)
+Nick Pelling (nickpelling)
 Nicklas Persson (NicklasPersson)
 Niklas Fiekas (niklasf)
 Ondrej Mosnáček (WOnder93)
@@ -130,3 +134,7 @@ Tom Vijlbrief (tomtor)
 Torsten Franz (torfranz)
 Uri Blass (uriblass)
 Vince Negri
+
+# Additionally, we acknowledge the authors of fishtest,
+# an essential framework for the development of Stockfish:
+# https://github.com/glinscott/fishtest/blob/master/AUTHORS

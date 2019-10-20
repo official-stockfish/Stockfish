@@ -168,7 +168,7 @@ void dbg_print() {
 
 std::ostream& operator<<(std::ostream& os, SyncCout sc) {
 
-  static Mutex m;
+  static std::mutex m;
 
   if (sc == IO_LOCK)
       m.lock();

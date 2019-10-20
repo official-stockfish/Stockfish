@@ -21,6 +21,7 @@
 #ifdef USE_MPI
 
 #include <array>
+#include <map>
 #include <cstddef>
 #include <cstdlib>
 #include <iostream>
@@ -285,7 +286,7 @@ void cluster_info(Depth depth) {
   TimePoint elapsed = Time.elapsed() + 1;
   uint64_t TTSaves = TT_saves();
 
-  sync_cout << "info depth " << depth / ONE_PLY << " cluster "
+  sync_cout << "info depth " << depth << " cluster "
             << " signals " << signalsCallCounter << " sps " << signalsCallCounter * 1000 / elapsed
             << " sendRecvs " << sendRecvPosted << " srpps " <<  TTSendRecvBuffs[0].size() * sendRecvPosted * 1000 / elapsed
             << " TTSaves " << TTSaves << " TTSavesps " << TTSaves * 1000 / elapsed
@@ -302,7 +303,7 @@ void save(Thread* thread, TTEntry* tte,
   tte->save(k, v, PvHit, b, d, m, ev);
 
   // If the entry is of sufficient depth to be worth communicating, take action.
-  if (d > 3 * ONE_PLY)
+  if (d > 3)
   {
      // count the TTsaves to information: this should be relatively similar
      // to the number of entries we can send/recv.
@@ -311,7 +312,7 @@ void save(Thread* thread, TTEntry* tte,
      // Add to thread's send buffer, the locking here avoids races when the master thread
      // prepares the send buffer.
      {
-         std::lock_guard<Mutex> lk(thread->ttCache.mutex);
+         std::lock_guard<std::mutex> lk(thread->ttCache.mutex);
          thread->ttCache.buffer.replace(KeyedTTEntry(k,*tte));
 	 ++TTCacheCounter;
      }
@@ -338,7 +339,7 @@ void save(Thread* thread, TTEntry* tte,
                     size_t i = irank * recvBuffPerRankSize;
                     for (auto&& th : Threads)
                     {
-                        std::lock_guard<Mutex> lk(th->ttCache.mutex);
+                        std::lock_guard<std::mutex> lk(th->ttCache.mutex);
 
                         for (auto&& e : th->ttCache.buffer)
                             TTSendRecvBuffs[sendRecvPosted % 2][i++] = e;
