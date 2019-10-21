@@ -595,16 +595,16 @@ namespace {
     Depth extension, newDepth;
     Value bestValue, value, ttValue, eval, maxValue;
     bool ttHit, ttPv, inCheck, givesCheck, improving, doLMR, priorCapture;
-    bool captureOrPromotion, doFullDepthSearch, moveCountPruning, ttCapture;
+    bool captureOrPromotion, doFullDepthSearch, moveCountPruning, ttCapture, singularLMR;
     Piece movedPiece;
-    int moveCount, captureCount, quietCount, singularLMR;
+    int moveCount, captureCount, quietCount;
 
     // Step 1. Initialize node
     Thread* thisThread = pos.this_thread();
     inCheck = pos.checkers();
     priorCapture = pos.captured_piece();
     Color us = pos.side_to_move();
-    moveCount = captureCount = quietCount = singularLMR = ss->moveCount = 0;
+    moveCount = captureCount = quietCount = ss->moveCount = 0;
     bestValue = -VALUE_INFINITE;
     maxValue = VALUE_INFINITE;
 
@@ -917,7 +917,7 @@ moves_loop: // When in check, search starts from here
                                       ss->killers);
 
     value = bestValue;
-    moveCountPruning = false;
+    singularLMR = moveCountPruning = false;
     ttCapture = ttMove && pos.capture_or_promotion(ttMove);
 
     // Mark this node as being searched
@@ -980,10 +980,7 @@ moves_loop: // When in check, search starts from here
           if (value < singularBeta)
           {
               extension = 1;
-              singularLMR++;
-
-              if (value < singularBeta - std::min(4 * depth, 36))
-                  singularLMR++;
+              singularLMR = true;
           }
 
           // Multi-cut pruning
@@ -1106,7 +1103,8 @@ moves_loop: // When in check, search starts from here
               r--;
 
           // Decrease reduction if ttMove has been singularly extended
-          r -= singularLMR;
+          if (singularLMR)
+              r -= 2;
 
           if (!captureOrPromotion)
           {
