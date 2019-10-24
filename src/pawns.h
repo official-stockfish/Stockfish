@@ -40,13 +40,7 @@ struct Entry {
   int passed_count() const { return popcount(passedPawns[WHITE] | passedPawns[BLACK]); }
 
   template<Color Us>
-  Score king_safety(const Position& pos) {
-    return  kingSquares[Us] == pos.square<KING>(Us) && castlingRights[Us] == pos.castling_rights(Us)
-          ? kingSafety[Us] : (kingSafety[Us] = do_king_safety<Us>(pos));
-  }
-
-  template<Color Us>
-  Score do_king_safety(const Position& pos);
+  Score king_safety(const Position& pos);
 
   template<Color Us>
   Score evaluate_shelter(const Position& pos, Square ksq);

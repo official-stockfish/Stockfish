@@ -215,14 +215,16 @@ Score Entry::evaluate_shelter(const Position& pos, Square ksq) {
 }
 
 
-/// Entry::do_king_safety() calculates a bonus for king safety. It is called only
-/// when king square changes, which is about 20% of total king_safety() calls.
+/// Entry::king_safety() calculates a king safety bonus. If it was already
+/// calculated for this position (about 80% of the time), just return the bonus.
 
 template<Color Us>
-Score Entry::do_king_safety(const Position& pos) {
+Score Entry::king_safety(const Position& pos) {
 
-  Square ksq = pos.square<KING>(Us);
-  kingSquares[Us] = ksq;
+  if (kingSquares[Us] == pos.square<KING>(Us) && castlingRights[Us] == pos.castling_rights(Us))
+      return kingSafety[Us];
+
+  kingSquares[Us] = pos.square<KING>(Us);
   castlingRights[Us] = pos.castling_rights(Us);
   auto compare = [](Score a, Score b) { return mg_value(a) < mg_value(b); };
 
@@ -245,11 +247,11 @@ Score Entry::do_king_safety(const Position& pos) {
   else while (pawns)
       minPawnDist = std::min(minPawnDist, distance(ksq, pop_lsb(&pawns)));
 
-  return shelter - make_score(0, 16 * minPawnDist);
+  return (kingSafety[Us] = (shelter - make_score(0, 16 * minPawnDist)));
 }
 
 // Explicit template instantiation
-template Score Entry::do_king_safety<WHITE>(const Position& pos);
-template Score Entry::do_king_safety<BLACK>(const Position& pos);
+template Score Entry::king_safety<WHITE>(const Position& pos);
+template Score Entry::king_safety<BLACK>(const Position& pos);
 
 } // namespace Pawns
