@@ -224,7 +224,7 @@ Score Entry::king_safety(const Position& pos) {
   if (kingSquares[Us] == pos.square<KING>(Us) && castlingRights[Us] == pos.castling_rights(Us))
       return kingSafety[Us];
 
-  kingSquares[Us] = pos.square<KING>(Us);
+  Square ksq = kingSquares[Us] = pos.square<KING>(Us);
   castlingRights[Us] = pos.castling_rights(Us);
   auto compare = [](Score a, Score b) { return mg_value(a) < mg_value(b); };
 
