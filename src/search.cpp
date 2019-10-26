@@ -150,7 +150,7 @@ namespace {
   Value qsearch(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth = 0);
 
   Value value_to_tt(Value v, int ply);
-  Value value_from_tt(Value v, int ply);
+  Value value_from_tt(Value v, int ply, int r50c);
   void update_pv(Move* pv, Move move, Move* childPv);
   void update_continuation_histories(Stack* ss, Piece pc, Square to, int bonus);
   void update_quiet_stats(const Position& pos, Stack* ss, Move move, int bonus);
@@ -661,7 +661,7 @@ namespace {
     excludedMove = ss->excludedMove;
     posKey = pos.key() ^ Key(excludedMove << 16); // Isn't a very good hash
     tte = TT.probe(posKey, ttHit);
-    ttValue = ttHit ? value_from_tt(tte->value(), ss->ply) : VALUE_NONE;
+    ttValue = ttHit ? value_from_tt(tte->value(), ss->ply, pos.rule50_count()) : VALUE_NONE;
     ttMove =  rootNode ? thisThread->rootMoves[thisThread->pvIdx].pv[0]
             : ttHit    ? tte->move() : MOVE_NONE;
     ttPv = PvNode || (ttHit && tte->is_pv());
@@ -899,7 +899,7 @@ namespace {
         search<NT>(pos, ss, alpha, beta, depth - 7, cutNode);
 
         tte = TT.probe(posKey, ttHit);
-        ttValue = ttHit ? value_from_tt(tte->value(), ss->ply) : VALUE_NONE;
+        ttValue = ttHit ? value_from_tt(tte->value(), ss->ply, pos.rule50_count()) : VALUE_NONE;
         ttMove = ttHit ? tte->move() : MOVE_NONE;
     }
 
@@ -1344,7 +1344,7 @@ moves_loop: // When in check, search starts from here
     // Transposition table lookup
     posKey = pos.key();
     tte = TT.probe(posKey, ttHit);
-    ttValue = ttHit ? value_from_tt(tte->value(), ss->ply) : VALUE_NONE;
+    ttValue = ttHit ? value_from_tt(tte->value(), ss->ply, pos.rule50_count()) : VALUE_NONE;
     ttMove = ttHit ? tte->move() : MOVE_NONE;
     pvHit = ttHit && tte->is_pv();
 
@@ -1530,11 +1530,11 @@ moves_loop: // When in check, search starts from here
   // from the transposition table (which refers to the plies to mate/be mated
   // from current position) to "plies to mate/be mated from the root".
 
-  Value value_from_tt(Value v, int ply) {
+  Value value_from_tt(Value v, int ply, int r50c) {
 
     return  v == VALUE_NONE             ? VALUE_NONE
-          : v >= VALUE_MATE_IN_MAX_PLY  ? v - ply
-          : v <= VALUE_MATED_IN_MAX_PLY ? v + ply : v;
+          : v >= VALUE_MATE_IN_MAX_PLY  ? VALUE_MATE - v > 99 - r50c ? VALUE_MATE_IN_MAX_PLY  : v - ply
+          : v <= VALUE_MATED_IN_MAX_PLY ? VALUE_MATE + v > 99 - r50c ? VALUE_MATED_IN_MAX_PLY : v + ply : v;
   }
 
 
