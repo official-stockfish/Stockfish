@@ -317,9 +317,8 @@ Value Endgame<KNNKP>::operator()(const Position& pos) const {
   assert(verify_material(pos, strongSide, 2 * KnightValueMg, 0));
   assert(verify_material(pos, weakSide, VALUE_ZERO, 1));
 
-  Value result =  2 * KnightValueEg
-                - PawnValueEg
-                + PushToEdges[pos.square<KING>(weakSide)];
+  Value result =   2 * KnightValueEg
+               - 250 * relative_rank(weakSide,pos.square<PAWN>(weakSide));
 
   return strongSide == pos.side_to_move() ? result : -result;
 }
