@@ -310,7 +310,7 @@ Value Endgame<KQKR>::operator()(const Position& pos) const {
 }
 
 
-/// KNN vs KP. Simply push the opposing king to the corner
+/// KNN vs KP. Simply prevent weakside pawn from passing.
 template<>
 Value Endgame<KNNKP>::operator()(const Position& pos) const {
 
