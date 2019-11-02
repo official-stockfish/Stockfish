@@ -69,7 +69,7 @@ namespace {
   Score evaluate(const Position& pos, Pawns::Entry* e) {
 
     constexpr Color     Them = (Us == WHITE ? BLACK : WHITE);
-    constexpr Direction Up   = (Us == WHITE ? NORTH : SOUTH);
+    constexpr Direction Up   = pawn_push(Us);
 
     Bitboard neighbours, stoppers, support, phalanx, opposed;
     Bitboard lever, leverPush, blocked;
