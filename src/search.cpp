@@ -394,6 +394,7 @@ void Thread::search() {
 
       size_t pvFirst = 0;
       pvLast = 0;
+      previousNodes = nodes;
 
       // MultiPV loop. We perform a full root search for each PV line
       for (pvIdx = 0; pvIdx < multiPV && !Threads.stop; ++pvIdx)
@@ -1003,7 +1004,7 @@ moves_loop: // When in check, search starts from here
       else if (   PvNode
                && pos.rule50_count() > 18
                && depth < 3
-               && ++thisThread->shuffleExts < thisThread->nodes.load(std::memory_order_relaxed) / 4)  // To avoid too many extensions
+               && 4 * thisThread->previousNodes < thisThread->nodes.load(std::memory_order_relaxed))  // To avoid too many extensions
           extension = 1;
 
       // Passed pawn extension
