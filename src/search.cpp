@@ -1004,7 +1004,7 @@ moves_loop: // When in check, search starts from here
       else if (   PvNode
                && pos.rule50_count() > 18
                && depth < 3
-               && 4 * thisThread->previousNodes < thisThread->nodes.load(std::memory_order_relaxed))  // To avoid too many extensions
+               && 4 * thisThread->previousNodes > thisThread->nodes.load(std::memory_order_relaxed))  // To avoid too many extensions
           extension = 1;
 
       // Passed pawn extension
