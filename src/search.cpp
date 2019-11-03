@@ -999,13 +999,6 @@ moves_loop: // When in check, search starts from here
                && (pos.is_discovery_check_on_king(~us, move) || pos.see_ge(move)))
           extension = 1;
 
-      // Shuffle extension
-      else if (   PvNode
-               && pos.rule50_count() > 18
-               && depth < 3
-               && ++thisThread->shuffleExts < thisThread->nodes.load(std::memory_order_relaxed) / 4)  // To avoid too many extensions
-          extension = 1;
-
       // Passed pawn extension
       else if (   move == ss->killers[0]
                && pos.advanced_pawn_push(move)
