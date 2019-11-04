@@ -161,6 +161,7 @@ public:
   Score psq_score() const;
   Value non_pawn_material(Color c) const;
   Value non_pawn_material() const;
+  Value value_draw() const;
 
   // Position consistency check, for debugging
   bool pos_is_ok() const;

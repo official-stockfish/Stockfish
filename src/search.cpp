@@ -84,11 +84,6 @@ namespace {
     return d > 17 ? -8 : 22 * d * d + 151 * d - 140;
   }
 
-  // Add a small random component to draw evaluations to avoid 3fold-blindness
-  Value value_draw(Thread* thisThread) {
-    return VALUE_DRAW + Value(2 * (thisThread->nodes & 1) - 1);
-  }
-
   // Skill structure is used to implement strength limit
   struct Skill {
     explicit Skill(int l) : level(l) {}
@@ -574,7 +569,7 @@ namespace {
         && !rootNode
         && pos.has_game_cycle(ss->ply))
     {
-        alpha = value_draw(pos.this_thread());
+        alpha = pos.value_draw();
         if (alpha >= beta)
             return alpha;
     }
@@ -624,7 +619,7 @@ namespace {
             || pos.is_draw(ss->ply)
             || ss->ply >= MAX_PLY)
             return (ss->ply >= MAX_PLY && !inCheck) ? evaluate(pos)
-                                                    : value_draw(pos.this_thread());
+                                                    : pos.value_draw();
 
         // Step 3. Mate distance pruning. Even if we mate at the next move our score
         // would be at best mate_in(ss->ply+1), but if alpha is already bigger because
@@ -763,7 +758,7 @@ namespace {
             ss->staticEval = eval = evaluate(pos);
 
         if (eval == VALUE_DRAW)
-            eval = value_draw(thisThread);
+            eval = pos.value_draw();
 
         // Can ttValue be used as a better position evaluation?
         if (    ttValue != VALUE_NONE

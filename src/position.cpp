@@ -1141,6 +1141,12 @@ bool Position::is_draw(int ply) const {
 }
 
 
+/// Add a small random component (+-1) to VALUE_DRAW evaluations to avoid 3fold-blindness
+
+Value Position::value_draw() const {
+  return VALUE_DRAW + Value(2 * (thisThread->nodes.load(std::memory_order_relaxed) & 1) - 1);
+}
+
 // Position::has_repeated() tests whether there has been at least one repetition
 // of positions since the last capture or pawn move.
 
