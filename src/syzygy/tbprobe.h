@@ -26,6 +26,8 @@
 
 namespace Tablebases {
 
+constexpr int FLIP_VERT = 070;
+
 enum WDLScore {
     WDLLoss        = -2, // Loss
     WDLBlessedLoss = -1, // Loss, but draw under 50-move rule
