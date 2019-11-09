@@ -784,7 +784,7 @@ namespace {
         tte->save(posKey, VALUE_NONE, ttPv, BOUND_NONE, DEPTH_NONE, MOVE_NONE, eval);
     }
 
-    // Step 7. Razoring (~2 Elo)
+    // Step 7. Razoring (~0 Elo)
     if (   !rootNode // The required rootNode PV handling is not available in qsearch
         &&  depth < 2
         &&  eval <= alpha - RazorMargin)
@@ -793,14 +793,14 @@ namespace {
     improving =   ss->staticEval >= (ss-2)->staticEval
                || (ss-2)->staticEval == VALUE_NONE;
 
-    // Step 8. Futility pruning: child node (~30 Elo)
+    // Step 8. Futility pruning: child node (~49 Elo)
     if (   !PvNode
         &&  depth < 7
         &&  eval - futility_margin(depth, improving) >= beta
         &&  eval < VALUE_KNOWN_WIN) // Do not return unproven wins
         return eval;
 
-    // Step 9. Null move search with verification search (~40 Elo)
+    // Step 9. Null move search with verification search (~39 Elo)
     if (   !PvNode
         && (ss-1)->currentMove != MOVE_NULL
         && (ss-1)->statScore < 22661
@@ -893,7 +893,7 @@ namespace {
             }
     }
 
-    // Step 11. Internal iterative deepening (~2 Elo)
+    // Step 11. Internal iterative deepening (~0 Elo)
     if (depth >= 7 && !ttMove)
     {
         search<NT>(pos, ss, alpha, beta, depth - 7, cutNode);
@@ -955,9 +955,9 @@ moves_loop: // When in check, search starts from here
       movedPiece = pos.moved_piece(move);
       givesCheck = pos.gives_check(move);
 
-      // Step 13. Extensions (~70 Elo)
+      // Step 13. Extensions (~74 Elo)
 
-      // Singular extension search (~60 Elo). If all moves but one fail low on a
+      // Singular extension search (~67 Elo). If all moves but one fail low on a
       // search of (alpha-s, beta-s), and just one fails high on (alpha, beta),
       // then that move is singular and should be extended. To verify this we do
       // a reduced search on all the other moves but the ttMove and if the
@@ -1012,7 +1012,7 @@ moves_loop: // When in check, search starts from here
       // Calculate new depth for this move
       newDepth = depth - 1 + extension;
 
-      // Step 14. Pruning at shallow depth (~170 Elo)
+      // Step 14. Pruning at shallow depth (~204 Elo)
       if (  !rootNode
           && pos.non_pawn_material(us)
           && bestValue > VALUE_MATED_IN_MAX_PLY)
@@ -1024,31 +1024,31 @@ moves_loop: // When in check, search starts from here
               && !givesCheck
               && (!pos.advanced_pawn_push(move) || pos.non_pawn_material(~us) > BishopValueMg))
           {
-              // Move count based pruning
+              // Move count based pruning (~0 Elo)
               if (moveCountPruning)
                   continue;
 
               // Reduced depth of the next LMR search
               int lmrDepth = std::max(newDepth - reduction(improving, depth, moveCount), 0);
 
-              // Countermoves based pruning (~20 Elo)
+              // Countermoves based pruning (~22 Elo)
               if (   lmrDepth < 4 + ((ss-1)->statScore > 0 || (ss-1)->moveCount == 1)
                   && (*contHist[0])[movedPiece][to_sq(move)] < CounterMovePruneThreshold
                   && (*contHist[1])[movedPiece][to_sq(move)] < CounterMovePruneThreshold)
                   continue;
 
-              // Futility pruning: parent node (~2 Elo)
+              // Futility pruning: parent node (~7 Elo)
               if (   lmrDepth < 6
                   && !inCheck
                   && ss->staticEval + 250 + 211 * lmrDepth <= alpha)
                   continue;
 
-              // Prune moves with negative SEE (~10 Elo)
+              // Prune moves with negative SEE (~17 Elo)
               if (!pos.see_ge(move, Value(-(31 - std::min(lmrDepth, 18)) * lmrDepth * lmrDepth)))
                   continue;
           }
           else if (  !(givesCheck && extension)
-                   && !pos.see_ge(move, Value(-199) * depth)) // (~20 Elo)
+                   && !pos.see_ge(move, Value(-199) * depth)) // (~26 Elo)
                   continue;
       }
 
@@ -1072,7 +1072,7 @@ moves_loop: // When in check, search starts from here
       // Step 15. Make the move
       pos.do_move(move, st, givesCheck);
 
-      // Step 16. Reduced depth search (LMR). If the move fails high it will be
+      // Step 16. Reduced depth search (LMR, ~208 Elo). If the move fails high it will be
       // re-searched at full depth.
       if (    depth >= 3
           &&  moveCount > 1 + 2 * rootNode
@@ -1088,31 +1088,31 @@ moves_loop: // When in check, search starts from here
           if (th.marked())
               r++;
 
-          // Decrease reduction if position is or has been on the PV
+          // Decrease reduction if position is or has been on the PV (~8 Elo)
           if (ttPv)
               r -= 2;
 
-          // Decrease reduction if opponent's move count is high (~10 Elo)
+          // Decrease reduction if opponent's move count is high (~4 Elo)
           if ((ss-1)->moveCount > 15)
               r--;
 
-          // Decrease reduction if ttMove has been singularly extended
+          // Decrease reduction if ttMove has been singularly extended (~3 Elo)
           if (singularLMR)
               r -= 2;
 
           if (!captureOrPromotion)
           {
-              // Increase reduction if ttMove is a capture (~0 Elo)
+              // Increase reduction if ttMove is a capture (~4 Elo)
               if (ttCapture)
                   r++;
 
-              // Increase reduction for cut nodes (~5 Elo)
+              // Increase reduction for cut nodes (~10 Elo)
               if (cutNode)
                   r += 2;
 
               // Decrease reduction for moves that escape a capture. Filter out
               // castling moves, because they are coded as "king captures rook" and
-              // hence break make_move(). (~5 Elo)
+              // hence break make_move(). (~2 Elo)
               else if (    type_of(move) == NORMAL
                        && !pos.see_ge(reverse_move(move)))
                   r -= 2;
@@ -1130,14 +1130,14 @@ moves_loop: // When in check, search starts from here
                   && thisThread->mainHistory[us][from_to(move)] >= 0)
                   ss->statScore = 0;
 
-              // Decrease/increase reduction by comparing opponent's stat score (~10 Elo)
+              // Decrease/increase reduction by comparing opponent's stat score (~8 Elo)
               if (ss->statScore >= -99 && (ss-1)->statScore < -116)
                   r--;
 
               else if ((ss-1)->statScore >= -117 && ss->statScore < -144)
                   r++;
 
-              // Decrease/increase reduction for moves with a good/bad history (~30 Elo)
+              // Decrease/increase reduction for moves with a good/bad history (~26 Elo)
               r -= ss->statScore / 16384;
           }
 
