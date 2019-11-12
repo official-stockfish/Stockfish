@@ -125,6 +125,11 @@ namespace {
   constexpr Score PassedRank[RANK_NB] = {
     S(0, 0), S(10, 28), S(17, 33), S(15, 41), S(62, 72), S(168, 177), S(276, 260)
   };
+  
+  // OutpostRank[Rank] contains a bonus according to the rank of the outpost
+  constexpr Score OutpostRank[RANK_NB] = {
+    S(0, 0), S(0, 0), S(0, 0), S(28, 18), S(30, 24), S(32, 19)
+  };
 
   // Assorted bonuses and penalties
   constexpr Score BishopPawns        = S(  3,  7);
@@ -292,7 +297,7 @@ namespace {
             // Bonus if piece is on an outpost square or can reach one
             bb = OutpostRanks & attackedBy[Us][PAWN] & ~pe->pawn_attacks_span(Them);
             if (s & bb)
-                score += Outpost * (Pt == KNIGHT ? 2 : 1);
+                score += OutpostRank[relative_rank(Us, s)] * (Pt == KNIGHT ? 2 : 1);
 
             else if (Pt == KNIGHT && bb & b & ~pos.pieces(Us))
                 score += Outpost;
