@@ -1261,14 +1261,14 @@ void Tablebases::init(const std::string& paths) {
 
     // MapB1H1H7[] encodes a square below a1-h8 diagonal to 0..27
     int code = 0;
-    for (Square s = sq(A,1); s <= sq(H,8); ++s)
+    for (Square s = SQ(A,1); s <= SQ(H,8); ++s)
         if (off_A1H8(s) < 0)
             MapB1H1H7[s] = code++;
 
     // MapA1D1D4[] encodes a square in the a1-d1-d4 triangle to 0..9
     std::vector<Square> diagonal;
     code = 0;
-    for (Square s = sq(A,1); s <= sq(D,4); ++s)
+    for (Square s = SQ(A,1); s <= SQ(D,4); ++s)
         if (off_A1H8(s) < 0 && file_of(s) <= FILE_D)
             MapA1D1D4[s] = code++;
 
@@ -1285,10 +1285,10 @@ void Tablebases::init(const std::string& paths) {
     std::vector<std::pair<int, Square>> bothOnDiagonal;
     code = 0;
     for (int idx = 0; idx < 10; idx++)
-        for (Square s1 = sq(A,1); s1 <= sq(D,4); ++s1)
-            if (MapA1D1D4[s1] == idx && (idx || s1 == sq(B,1))) // SQ_B1 is mapped to 0
+        for (Square s1 = SQ(A,1); s1 <= SQ(D,4); ++s1)
+            if (MapA1D1D4[s1] == idx && (idx || s1 == SQ(B,1))) // SQ_B1 is mapped to 0
             {
-                for (Square s2 = sq(A,1); s2 <= sq(H,8); ++s2)
+                for (Square s2 = SQ(A,1); s2 <= SQ(H,8); ++s2)
                     if ((PseudoAttacks[KING][s1] | s1) & s2)
                         continue; // Illegal position
 
