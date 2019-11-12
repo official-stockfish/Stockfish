@@ -147,7 +147,7 @@ void Position::init() {
   PRNG rng(1070372);
 
   for (Piece pc : Pieces)
-      for (Square s = SQ_A1; s <= SQ_H8; ++s)
+      for (Square s = SQ(A,1); s <= SQ(H,8); ++s)
           Zobrist::psq[pc][s] = rng.rand<Key>();
 
   for (File f = FILE_A; f <= FILE_H; ++f)
@@ -172,8 +172,8 @@ void Position::init() {
   std::memset(cuckooMove, 0, sizeof(cuckooMove));
   int count = 0;
   for (Piece pc : Pieces)
-      for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1)
-          for (Square s2 = Square(s1 + 1); s2 <= SQ_H8; ++s2)
+      for (Square s1 = SQ(A,1); s1 <= SQ(H,8); ++s1)
+          for (Square s2 = Square(s1 + 1); s2 <= SQ(H,8); ++s2)
               if (PseudoAttacks[type_of(pc)][s1] & s2)
               {
                   Move move = make_move(s1, s2);
@@ -235,7 +235,7 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
 
   unsigned char col, row, token;
   size_t idx;
-  Square sq = SQ_A8;
+  Square s = SQ(A,8);
   std::istringstream ss(fenStr);
 
   std::memset(this, 0, sizeof(Position));
@@ -249,15 +249,15 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
   while ((ss >> token) && !isspace(token))
   {
       if (isdigit(token))
-          sq += (token - '0') * EAST; // Advance the given number of files
+          s += (token - '0') * EAST; // Advance the given number of files
 
       else if (token == '/')
-          sq += 2 * SOUTH;
+          s += 2 * SOUTH;
 
       else if ((idx = PieceToChar.find(token)) != string::npos)
       {
-          put_piece(Piece(idx), sq);
-          ++sq;
+          put_piece(Piece(idx), s);
+          ++s;
       }
   }
 
@@ -280,10 +280,10 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
       token = char(toupper(token));
 
       if (token == 'K')
-          for (rsq = relative_square(c, SQ_H1); piece_on(rsq) != rook; --rsq) {}
+          for (rsq = relative_square(c, SQ(H,1)); piece_on(rsq) != rook; --rsq) {}
 
       else if (token == 'Q')
-          for (rsq = relative_square(c, SQ_A1); piece_on(rsq) != rook; ++rsq) {}
+          for (rsq = relative_square(c, SQ(A,1)); piece_on(rsq) != rook; ++rsq) {}
 
       else if (token >= 'A' && token <= 'H')
           rsq = make_square(File(token - 'A'), relative_rank(c, RANK_1));
@@ -337,8 +337,8 @@ void Position::set_castling_right(Color c, Square rfrom) {
   castlingRightsMask[rfrom] |= cr;
   castlingRookSquare[cr] = rfrom;
 
-  Square kto = relative_square(c, cr & KING_SIDE ? SQ_G1 : SQ_C1);
-  Square rto = relative_square(c, cr & KING_SIDE ? SQ_F1 : SQ_D1);
+  Square kto = relative_square(c, cr & KING_SIDE ? SQ(G,1) : SQ(C,1));
+  Square rto = relative_square(c, cr & KING_SIDE ? SQ(F,1) : SQ(D,1));
 
   castlingPath[cr] =   (between_bb(rfrom, rto) | between_bb(kfrom, kto) | rto | kto)
                     & ~(square_bb(kfrom) | rfrom);
@@ -559,7 +559,7 @@ bool Position::legal(Move m) const {
   {
       // After castling, the rook and king final positions are the same in
       // Chess960 as they would be in standard chess.
-      to = relative_square(us, to > from ? SQ_G1 : SQ_C1);
+      to = relative_square(us, to > from ? SQ(G,1) : SQ(C,1));
       Direction step = to > from ? WEST : EAST;
 
       for (Square s = to; s != from; s += step)
@@ -700,8 +700,8 @@ bool Position::gives_check(Move m) const {
   {
       Square kfrom = from;
       Square rfrom = to; // Castling is encoded as 'King captures the rook'
-      Square kto = relative_square(sideToMove, rfrom > kfrom ? SQ_G1 : SQ_C1);
-      Square rto = relative_square(sideToMove, rfrom > kfrom ? SQ_F1 : SQ_D1);
+      Square kto = relative_square(sideToMove, rfrom > kfrom ? SQ(G,1) : SQ(C,1));
+      Square rto = relative_square(sideToMove, rfrom > kfrom ? SQ(F,1) : SQ(D,1));
 
       return   (PseudoAttacks[ROOK][rto] & square<KING>(~sideToMove))
             && (attacks_bb<ROOK>(rto, (pieces() ^ kfrom ^ rfrom) | rto | kto) & square<KING>(~sideToMove));
@@ -967,8 +967,8 @@ void Position::do_castling(Color us, Square from, Square& to, Square& rfrom, Squ
 
   bool kingSide = to > from;
   rfrom = to; // Castling is encoded as "king captures friendly rook"
-  rto = relative_square(us, kingSide ? SQ_F1 : SQ_D1);
-  to = relative_square(us, kingSide ? SQ_G1 : SQ_C1);
+  rto = relative_square(us, kingSide ? SQ(F,1) : SQ(D,1));
+  to  = relative_square(us, kingSide ? SQ(G,1) : SQ(C,1));
 
   // Remove both pieces first since squares could overlap in Chess960
   remove_piece(make_piece(us, KING), Do ? from : to);

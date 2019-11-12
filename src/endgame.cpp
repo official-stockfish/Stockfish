@@ -160,7 +160,7 @@ Value Endgame<KBNK>::operator()(const Position& pos) const {
 
   Value result =  VALUE_KNOWN_WIN
                 + PushClose[distance(winnerKSq, loserKSq)]
-                + PushToCorners[opposite_colors(bishopSq, SQ_A1) ? ~loserKSq : loserKSq];
+                + PushToCorners[opposite_colors(bishopSq, SQ(A,1)) ? ~loserKSq : loserKSq];
 
   assert(abs(result) < VALUE_MATE_IN_MAX_PLY);
   return strongSide == pos.side_to_move() ? result : -result;
@@ -449,7 +449,7 @@ ScaleFactor Endgame<KRPKR>::operator()(const Position& pos) const {
   // queening square, use the third-rank defence.
   if (   r <= RANK_5
       && distance(bksq, queeningSq) <= 1
-      && wksq <= SQ_H5
+      && wksq <= SQ(H,5)
       && (rank_of(brsq) == RANK_6 || (r <= RANK_3 && rank_of(wrsq) != RANK_6)))
       return SCALE_FACTOR_DRAW;
 
@@ -469,9 +469,9 @@ ScaleFactor Endgame<KRPKR>::operator()(const Position& pos) const {
 
   // White pawn on a7 and rook on a8 is a draw if black's king is on g7 or h7
   // and the black rook is behind the pawn.
-  if (   wpsq == SQ_A7
-      && wrsq == SQ_A8
-      && (bksq == SQ_H7 || bksq == SQ_G7)
+  if (   wpsq == SQ(A,7)
+      && wrsq == SQ(A,8)
+      && ((bksq == SQ(H,7)) || (bksq == SQ(G,7)))
       && file_of(brsq) == FILE_A
       && (rank_of(brsq) <= RANK_3 || file_of(wksq) >= FILE_D || rank_of(wksq) <= RANK_5))
       return SCALE_FACTOR_DRAW;
@@ -749,7 +749,7 @@ ScaleFactor Endgame<KNPK>::operator()(const Position& pos) const {
   Square pawnSq     = normalize(pos, strongSide, pos.square<PAWN>(strongSide));
   Square weakKingSq = normalize(pos, strongSide, pos.square<KING>(weakSide));
 
-  if (pawnSq == SQ_A7 && distance(SQ_A8, weakKingSq) <= 1)
+  if (pawnSq == SQ(A,7) && distance(SQ(A,8), weakKingSq) <= 1)
       return SCALE_FACTOR_DRAW;
 
   return SCALE_FACTOR_NONE;

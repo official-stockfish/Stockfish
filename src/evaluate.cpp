@@ -323,7 +323,7 @@ namespace {
             // when that pawn is also blocked.
             if (   Pt == BISHOP
                 && pos.is_chess960()
-                && (s == relative_square(Us, SQ_A1) || s == relative_square(Us, SQ_H1)))
+                && (s == relative_square(Us, SQ(A,1) ) || s == relative_square(Us, SQ(H,1))))
             {
                 Direction d = pawn_push(Us) + (file_of(s) == FILE_A ? EAST : WEST);
                 if (pos.piece_on(s + d) == make_piece(Us, PAWN))

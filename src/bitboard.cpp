@@ -71,18 +71,18 @@ void Bitboards::init() {
   for (unsigned i = 0; i < (1 << 16); ++i)
       PopCnt16[i] = std::bitset<16>(i).count();
 
-  for (Square s = SQ_A1; s <= SQ_H8; ++s)
+  for (Square s = SQ(A,1); s <= SQ(H,8); ++s)
       SquareBB[s] = (1ULL << s);
 
-  for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1)
-      for (Square s2 = SQ_A1; s2 <= SQ_H8; ++s2)
+  for (Square s1 = SQ(A,1); s1 <= SQ(H,8); ++s1)
+      for (Square s2 = SQ(A,1); s2 <= SQ(H,8); ++s2)
               SquareDistance[s1][s2] = std::max(distance<File>(s1, s2), distance<Rank>(s1, s2));
 
   int steps[][5] = { {}, { 7, 9 }, { 6, 10, 15, 17 }, {}, {}, {}, { 1, 7, 8, 9 } };
 
   for (Color c : { WHITE, BLACK })
       for (PieceType pt : { PAWN, KNIGHT, KING })
-          for (Square s = SQ_A1; s <= SQ_H8; ++s)
+          for (Square s = SQ(A,1); s <= SQ(H,8); ++s)
               for (int i = 0; steps[pt][i]; ++i)
               {
                   Square to = s + Direction(c == WHITE ? steps[pt][i] : -steps[pt][i]);
@@ -102,13 +102,13 @@ void Bitboards::init() {
   init_magics(RookTable, RookMagics, RookDirections);
   init_magics(BishopTable, BishopMagics, BishopDirections);
 
-  for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1)
+  for (Square s1 = SQ(A,1); s1 <= SQ(H,8); ++s1)
   {
       PseudoAttacks[QUEEN][s1]  = PseudoAttacks[BISHOP][s1] = attacks_bb<BISHOP>(s1, 0);
       PseudoAttacks[QUEEN][s1] |= PseudoAttacks[  ROOK][s1] = attacks_bb<  ROOK>(s1, 0);
 
       for (PieceType pt : { BISHOP, ROOK })
-          for (Square s2 = SQ_A1; s2 <= SQ_H8; ++s2)
+          for (Square s2 = SQ(A,1); s2 <= SQ(H,8); ++s2)
               if (PseudoAttacks[pt][s1] & s2)
                   LineBB[s1][s2] = (attacks_bb(pt, s1, 0) & attacks_bb(pt, s2, 0)) | s1 | s2;
   }
@@ -150,7 +150,7 @@ namespace {
     Bitboard occupancy[4096], reference[4096], edges, b;
     int epoch[4096] = {}, cnt = 0, size = 0;
 
-    for (Square s = SQ_A1; s <= SQ_H8; ++s)
+    for (Square s = SQ(A,1); s <= SQ(H,8); ++s)
     {
         // Board edges are not considered in the relevant occupancies
         edges = ((Rank1BB | Rank8BB) & ~rank_bb(s)) | ((FileABB | FileHBB) & ~file_bb(s));
@@ -166,7 +166,7 @@ namespace {
 
         // Set the offset for the attacks table of the square. We have individual
         // table sizes for each square with "Fancy Magic Bitboards".
-        m.attacks = s == SQ_A1 ? table : magics[s - 1].attacks + size;
+        m.attacks = s == SQ(A,1)? table : magics[s - 1].attacks + size;
 
         // Use Carry-Rippler trick to enumerate all subsets of masks[s] and
         // store the corresponding sliding attack bitboard in reference[].
