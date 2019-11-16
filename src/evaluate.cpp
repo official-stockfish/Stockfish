@@ -126,11 +126,6 @@ namespace {
     S(0, 0), S(10, 28), S(17, 33), S(15, 41), S(62, 72), S(168, 177), S(276, 260)
   };
 
-  // OutpostRank[Rank] contains a bonus according to the rank of the outpost
-  constexpr Score OutpostRank[RANK_NB] = {
-    S(0, 0), S(0, 0), S(0, 0), S(28, 18), S(30, 24), S(32, 19)
-  };
-
   // Assorted bonuses and penalties
   constexpr Score BishopPawns        = S(  3,  7);
   constexpr Score CorneredBishop     = S( 50, 50);
@@ -140,10 +135,11 @@ namespace {
   constexpr Score KnightOnQueen      = S( 16, 12);
   constexpr Score LongDiagonalBishop = S( 45,  0);
   constexpr Score MinorBehindPawn    = S( 18,  3);
-  constexpr Score Outpost            = S( 32, 10);
+  constexpr Score Outpost            = S( 30, 21);
   constexpr Score PassedFile         = S( 11,  8);
   constexpr Score PawnlessFlank      = S( 17, 95);
   constexpr Score RestrictedPiece    = S(  7,  7);
+  constexpr Score ReachableOutpost   = S( 32, 10);
   constexpr Score RookOnQueenFile    = S(  7,  6);
   constexpr Score SliderOnQueen      = S( 59, 18);
   constexpr Score ThreatByKing       = S( 24, 89);
@@ -242,7 +238,7 @@ namespace {
     // Init our king safety tables
     Square s = make_square(clamp(file_of(ksq), FILE_B, FILE_G),
                            clamp(rank_of(ksq), RANK_2, RANK_7));
-    kingRing[Us] = s | PseudoAttacks[KING][s];
+    kingRing[Us] = PseudoAttacks[KING][s] | s;
 
     kingAttackersCount[Them] = popcount(kingRing[Us] & pe->pawn_attacks(Them));
     kingAttacksCount[Them] = kingAttackersWeight[Them] = 0;
@@ -296,11 +292,11 @@ namespace {
         {
             // Bonus if piece is on an outpost square or can reach one
             bb = OutpostRanks & attackedBy[Us][PAWN] & ~pe->pawn_attacks_span(Them);
-            if (s & bb)
-                score += OutpostRank[relative_rank(Us, s)] * (Pt == KNIGHT ? 2 : 1);
+            if (bb & s)
+                score += Outpost * (Pt == KNIGHT ? 2 : 1);
 
             else if (Pt == KNIGHT && bb & b & ~pos.pieces(Us))
-                score += Outpost;
+                score += ReachableOutpost;
 
             // Knight and Bishop bonus for being right behind a pawn
             if (shift<Down>(pos.pieces(PAWN)) & s)
