@@ -1049,6 +1049,12 @@ moves_loop: // When in check, search starts from here
                && pos.pawn_passed(us, to_sq(move)))
           extension = 1;
 
+      // Last captures extension
+      else if (   PvNode
+               && PieceValue[EG][pos.captured_piece()] > PawnValueEg
+               && pos.non_pawn_material() <= 2 * RookValueMg)
+          extension = 1;
+
       // Castling extension
       if (type_of(move) == CASTLING)
           extension = 1;
