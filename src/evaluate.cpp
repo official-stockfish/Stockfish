@@ -847,6 +847,9 @@ Value Eval::evaluate(const Position& pos) {
 
 std::string Eval::trace(const Position& pos) {
 
+  if (pos.checkers())
+      return "Total evaluation: none (in check)";
+
   std::memset(scores, 0, sizeof(scores));
 
   pos.this_thread()->contempt = SCORE_ZERO; // Reset any dynamic contempt
