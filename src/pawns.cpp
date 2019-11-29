@@ -56,10 +56,10 @@ namespace {
   // is behind our king. Note that UnblockedStorm[0][1-2] accommodate opponent pawn
   // on edge, likely blocked by our king.
   constexpr Value UnblockedStorm[int(FILE_NB) / 2][RANK_NB] = {
-    { V( 89), V(-285), V(-185), V(93), V(57), V( 45), V( 51) },
-    { V( 44), V( -18), V( 123), V(46), V(39), V( -7), V( 23) },
-    { V(  4), V(  52), V( 162), V(37), V( 7), V(-14), V( -2) },
-    { V(-10), V( -14), V(  90), V(15), V( 2), V( -7), V(-16) }
+    { V( 85), V(-289), V(-166), V(97), V(50), V( 45), V( 50) },
+    { V( 46), V( -25), V( 122), V(45), V(37), V(-10), V( 20) },
+    { V( -6), V(  51), V( 168), V(34), V(-2), V(-22), V(-14) },
+    { V(-15), V( -11), V( 101), V( 4), V(11), V(-15), V(-29) }
   };
 
   #undef S
