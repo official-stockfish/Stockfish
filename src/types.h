@@ -362,8 +362,29 @@ inline File map_to_queenside(File f) {
   return std::min(f, File(FILE_H - f)); // Map files ABCDEFGH to files ABCDDCBA
 }
 
+/// Operators for CastlingRights
+constexpr CastlingRights operator&(CastlingRights cr1, CastlingRights cr2) {
+  return CastlingRights(int(cr1) & int(cr2));
+}
+
+inline CastlingRights operator&=(CastlingRights& cr1, CastlingRights cr2) {
+  return cr1 = cr1 & cr2;
+}
+
+constexpr CastlingRights operator|(CastlingRights cr1, CastlingRights cr2) {
+  return CastlingRights(int(cr1) | int(cr2));
+}
+
+inline CastlingRights operator|=(CastlingRights& cr1, CastlingRights cr2) {
+  return cr1 = cr1 | cr2;
+}
+
 constexpr CastlingRights operator&(Color c, CastlingRights cr) {
   return CastlingRights((c == WHITE ? WHITE_CASTLING : BLACK_CASTLING) & cr);
+}
+
+constexpr CastlingRights operator~(CastlingRights cr) {
+  return CastlingRights(~(int(cr)));
 }
 
 constexpr Value mate_in(int ply) {
