@@ -24,8 +24,6 @@
 
 namespace PSQT {
 
-#define S(mg, eg) make_score(mg, eg)
-
 // Bonus[PieceType][Square / 2] contains Piece-Square scores. For each piece
 // type on a given square a (middlegame, endgame) score pair is assigned. Table
 // is defined for files A..D and white side: it is symmetric for black side and
@@ -95,8 +93,6 @@ constexpr Score PBonus[RANK_NB][FILE_NB] =
    { S( -5, 28), S(-12, 20), S( -7, 21), S( 22, 28), S( -8, 30), S( -5,  7), S(-15,  6), S(-18, 13) },
    { S( -7,  0), S(  7,-11), S( -3, 12), S(-13, 21), S(  5, 25), S(-16, 19), S( 10,  4), S( -8,  7) }
   };
-
-#undef S
 
 Score psq[PIECE_NB][SQUARE_NB];
 

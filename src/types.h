@@ -104,6 +104,8 @@ typedef uint64_t Bitboard;
 constexpr int MAX_MOVES = 256;
 constexpr int MAX_PLY   = 246;
 
+constexpr int FLIP_VERTICAL = 56;  //SQ_A8 - for vertically flipping squares
+
 /// A move needs 16 bits to be stored
 ///
 /// bit  0- 5: destination square (from 0 to 63)
@@ -265,6 +267,8 @@ constexpr Score make_score(int mg, int eg) {
   return Score((int)((unsigned int)eg << 16) + mg);
 }
 
+constexpr auto S = make_score;
+
 /// Extracting the signed lower and upper 16 bits is not so trivial because
 /// according to the standard a simple cast to short is implementation defined
 /// and so is a right shift of a signed integer.
@@ -356,7 +360,7 @@ constexpr Color operator~(Color c) {
 }
 
 constexpr Square operator~(Square s) {
-  return Square(s ^ SQ_A8); // Vertical flip SQ_A1 -> SQ_A8
+  return Square(s ^ FLIP_VERTICAL); // Vertical flip SQ_A1 -> SQ_A8
 }
 
 constexpr Piece operator~(Piece pc) {
