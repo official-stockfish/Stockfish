@@ -272,14 +272,14 @@ constexpr auto S = make_score;
 /// Extracting the signed lower and upper 16 bits is not so trivial because
 /// according to the standard a simple cast to short is implementation defined
 /// and so is a right shift of a signed integer.
-inline Value eg_value(Score s) {
-  union { uint16_t u; int16_t s; } eg = { uint16_t(unsigned(s + 0x8000) >> 16) };
-  return Value(eg.s);
+union _get_value { uint16_t ui; int16_t i; };
+
+constexpr Value eg_value(Score s) {
+  return Value(_get_value{uint16_t(unsigned(s + 0x8000) >> 16) }.i);
 }
 
-inline Value mg_value(Score s) {
-  union { uint16_t u; int16_t s; } mg = { uint16_t(unsigned(s)) };
-  return Value(mg.s);
+constexpr Value mg_value(Score s) {
+  return Value(_get_value{uint16_t(unsigned(s)) }.i);
 }
 
 #define ENABLE_BASE_OPERATORS_ON(T)                                \
@@ -334,7 +334,7 @@ inline Square& operator-=(Square& s, Direction d) { return s = s - d; }
 Score operator*(Score, Score) = delete;
 
 /// Division of a Score must be handled separately for each term
-inline Score operator/(Score s, int i) {
+constexpr Score operator/(Score s, int i) {
   return make_score(mg_value(s) / i, eg_value(s) / i);
 }
 
