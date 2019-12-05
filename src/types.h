@@ -288,7 +288,7 @@ inline T& operator--(T& d) { return d = T(int(d) - 1); }
 constexpr T operator&(int d1, T d2) { return T(int(d1) & int(d2));} \
 inline T& operator&=(T& d1, T d2) { return d1 = d1 & d2; }          \
 constexpr T operator|(int d1, T d2) { return T(int(d1) | int(d2));} \
-inline T& operator|=(T& d1, T d2) { return d1 = d1 | d2; }          \
+inline T& operator|=(T& d1, T d2) { return d1 = d1 | d2; }
 
 #define ENABLE_FULL_OPERATORS_ON(T)                                \
 ENABLE_BASE_OPERATORS_ON(T)                                        \
