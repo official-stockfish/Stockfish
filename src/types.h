@@ -288,6 +288,10 @@ inline T& operator--(T& d) { return d = T(int(d) - 1); }
 ENABLE_BASE_OPERATORS_ON(T)                                        \
 constexpr T operator*(int i, T d) { return T(i * int(d)); }        \
 constexpr T operator*(T d, int i) { return T(int(d) * i); }        \
+constexpr T operator&(int d1, T d2) { return T(int(d1) & int(d2));} \
+inline T& operator&=(T& d1, T d2) { return d1 = d1 & d2; }          \
+constexpr T operator|(int d1, T d2) { return T(int(d1) | int(d2));} \
+inline T& operator|=(T& d1, T d2) { return d1 = d1 | d2; }          \
 constexpr T operator/(T d, int i) { return T(int(d) / i); }        \
 constexpr int operator/(T d1, T d2) { return int(d1) / int(d2); }  \
 inline T& operator*=(T& d, int i) { return d = T(int(d) * i); }    \
@@ -295,6 +299,7 @@ inline T& operator/=(T& d, int i) { return d = T(int(d) / i); }
 
 ENABLE_FULL_OPERATORS_ON(Value)
 ENABLE_FULL_OPERATORS_ON(Direction)
+ENABLE_FULL_OPERATORS_ON(CastlingRights)
 
 ENABLE_INCR_OPERATORS_ON(PieceType)
 ENABLE_INCR_OPERATORS_ON(Piece)
@@ -360,23 +365,6 @@ constexpr Piece operator~(Piece pc) {
 
 inline File map_to_queenside(File f) {
   return std::min(f, File(FILE_H - f)); // Map files ABCDEFGH to files ABCDDCBA
-}
-
-/// Operators for CastlingRights
-constexpr CastlingRights operator&(CastlingRights cr1, CastlingRights cr2) {
-  return CastlingRights(int(cr1) & int(cr2));
-}
-
-inline CastlingRights operator&=(CastlingRights& cr1, CastlingRights cr2) {
-  return cr1 = cr1 & cr2;
-}
-
-constexpr CastlingRights operator|(CastlingRights cr1, CastlingRights cr2) {
-  return CastlingRights(int(cr1) | int(cr2));
-}
-
-inline CastlingRights operator|=(CastlingRights& cr1, CastlingRights cr2) {
-  return cr1 = cr1 | cr2;
 }
 
 constexpr CastlingRights operator&(Color c, CastlingRights cr) {
