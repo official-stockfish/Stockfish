@@ -1741,7 +1741,7 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
 
   for (size_t i = 0; i < multiPV; ++i)
   {
-      bool updated = (i <= pvIdx && rootMoves[i].score != -VALUE_INFINITE);
+      bool updated = rootMoves[i].score != -VALUE_INFINITE;
 
       if (depth == 1 && !updated)
           continue;
