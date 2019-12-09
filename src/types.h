@@ -104,8 +104,6 @@ typedef uint64_t Bitboard;
 constexpr int MAX_MOVES = 256;
 constexpr int MAX_PLY   = 246;
 
-constexpr int FLIP_VERTICAL = 56;  //SQ_A8 - for vertically flipping squares
-
 /// A move needs 16 bits to be stored
 ///
 /// bit  0- 5: destination square (from 0 to 63)
@@ -360,7 +358,7 @@ constexpr Color operator~(Color c) {
 }
 
 constexpr Square operator~(Square s) {
-  return Square(s ^ FLIP_VERTICAL); // Vertical flip SQ_A1 -> SQ_A8
+  return Square(s ^ 56); // Vertical flip SQ_A1 -> SQ_A8
 }
 
 constexpr Piece operator~(Piece pc) {
