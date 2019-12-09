@@ -1247,6 +1247,7 @@ void Position::flip() {
 /// position object and raises an asserts if something wrong is detected.
 /// This is meant to be helpful when debugging.
 
+#ifndef NDEBUG
 bool Position::pos_is_ok() const {
 
   constexpr bool Fast = true; // Quick (default) or full check?
@@ -1312,3 +1313,4 @@ bool Position::pos_is_ok() const {
 
   return true;
 }
+#endif

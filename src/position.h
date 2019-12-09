@@ -163,7 +163,9 @@ public:
   Value non_pawn_material() const;
 
   // Position consistency check, for debugging
+#ifndef NDEBUG
   bool pos_is_ok() const;
+#endif
   void flip();
 
 private:
