@@ -335,6 +335,7 @@ void Thread::search() {
   MainThread* mainThread = (this == Threads.main() ? Threads.main() : nullptr);
   double timeReduction = 1, totBestMoveChanges = 0;
   Color us = rootPos.side_to_move();
+  int iterIdx = 0;
 
   std::memset(ss-7, 0, 10 * sizeof(Stack));
   for (int i = 7; i > 0; i--)
@@ -344,6 +345,16 @@ void Thread::search() {
 
   bestValue = delta = alpha = -VALUE_INFINITE;
   beta = VALUE_INFINITE;
+
+  if (mainThread)
+  {
+      if (mainThread->previousScore == VALUE_INFINITE)
+          for (int i=0; i<4; ++i)
+              mainThread->iterValue[i] = VALUE_ZERO;
+      else
+          for (int i=0; i<4; ++i)
+              mainThread->iterValue[i] = mainThread->previousScore;
+  }
 
   size_t multiPV = Options["MultiPV"];
 
@@ -520,7 +531,8 @@ void Thread::search() {
           && !Threads.stop
           && !mainThread->stopOnPonderhit)
       {
-          double fallingEval = (354 + 10 * (mainThread->previousScore - bestValue)) / 692.0;
+          double fallingEval = (354 +  6 * (mainThread->previousScore - bestValue)
+                                    +  6 * (mainThread->iterValue[iterIdx]  - bestValue)) / 692.0;
           fallingEval = clamp(fallingEval, 0.5, 1.5);
 
           // If the bestMove is stable over several iterations, reduce time accordingly
@@ -547,6 +559,9 @@ void Thread::search() {
                   Threads.stop = true;
           }
       }
+
+      mainThread->iterValue[iterIdx] = bestValue;
+      iterIdx = (iterIdx + 1) & 3;
   }
 
   if (!mainThread)
@@ -1033,8 +1048,7 @@ moves_loop: // When in check, search starts from here
           // search without the ttMove. So we assume this expected Cut-node is not singular,
           // that multiple moves fail high, and we can prune the whole subtree by returning
           // a soft bound.
-          else if (   eval >= beta
-                   && singularBeta >= beta)
+          else if (singularBeta >= beta)
               return singularBeta;
       }
 
@@ -1050,8 +1064,7 @@ moves_loop: // When in check, search starts from here
           extension = 1;
 
       // Last captures extension
-      else if (   PvNode
-               && PieceValue[EG][pos.captured_piece()] > PawnValueEg
+      else if (   PieceValue[EG][pos.captured_piece()] > PawnValueEg
                && pos.non_pawn_material() <= 2 * RookValueMg)
           extension = 1;
 
@@ -1464,9 +1477,7 @@ moves_loop: // When in check, search starts from here
                        && !pos.capture(move);
 
       // Don't search moves with negative SEE values
-      if (  (!inCheck || evasionPrunable)
-          && !(givesCheck && pos.is_discovery_check_on_king(~pos.side_to_move(), move))
-          && !pos.see_ge(move))
+      if (  (!inCheck || evasionPrunable) && !pos.see_ge(move))
           continue;
 
       // Speculative prefetch as early as possible
@@ -1727,7 +1738,7 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
 
   for (size_t i = 0; i < multiPV; ++i)
   {
-      bool updated = (i <= pvIdx && rootMoves[i].score != -VALUE_INFINITE);
+      bool updated = rootMoves[i].score != -VALUE_INFINITE;
 
       if (depth == 1 && !updated)
           continue;
