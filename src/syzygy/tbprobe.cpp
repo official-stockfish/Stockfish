@@ -801,7 +801,7 @@ Ret do_probe_table(const Position& pos, T* entry, WDLScore wdl, ProbeState* resu
     // Rs "together" in 62 * 61 / 2 ways (we divide by 2 because rooks can be
     // swapped and still get the same position.)
     //
-    // In case we have at least 3 unique pieces (inlcuded kings) we encode them
+    // In case we have at least 3 unique pieces (including kings) we encode them
     // together.
     if (entry->hasUniquePieces) {
 
