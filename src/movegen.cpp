@@ -233,7 +233,7 @@ namespace {
         while (b)
             *moveList++ = make_move(ksq, pop_lsb(&b));
 
-        if (Type != CAPTURES && pos.can_castle(CastlingRights(OO | OOO)))
+        if (Type != CAPTURES && pos.can_castle(CastlingRights(ANY_CASTLING)))
         {
             if (!pos.castling_impeded(OO) && pos.can_castle(OO))
                 *moveList++ = make<CASTLING>(ksq, pos.castling_rook_square(OO));
