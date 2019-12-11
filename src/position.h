@@ -283,6 +283,7 @@ inline bool Position::castling_impeded(CastlingRights cr) const {
 }
 
 inline Square Position::castling_rook_square(CastlingRights cr) const {
+  assert(cr == WHITE_OO || cr == WHITE_OOO || cr == BLACK_OO || cr == BLACK_OOO);
   return castlingRookSquare[cr];
 }
 
