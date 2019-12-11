@@ -279,6 +279,7 @@ inline int Position::castling_rights(Color c) const {
 }
 
 inline bool Position::castling_impeded(CastlingRights cr) const {
+  assert(cr == WHITE_OO || cr == WHITE_OOO || cr == BLACK_OO || cr == BLACK_OOO);
   return byTypeBB[ALL_PIECES] & castlingPath[cr];
 }
 
