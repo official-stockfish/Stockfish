@@ -716,7 +716,9 @@ namespace {
                 update_continuation_histories(ss, pos.moved_piece(ttMove), to_sq(ttMove), penalty);
             }
         }
-        return ttValue;
+
+        if (pos.rule50_count() < 90)
+            return ttValue;
     }
 
     // Step 5. Tablebases probe
