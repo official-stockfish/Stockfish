@@ -344,10 +344,8 @@ void Thread::search() {
   beta = VALUE_INFINITE;
 
   if (mainThread && mainThread->previousScore != VALUE_INFINITE)
-  {
       for (int i = 0; i < 4; ++i)
           mainThread->iterValue[i] = mainThread->previousScore;
-  }
 
   size_t multiPV = Options["MultiPV"];
 
