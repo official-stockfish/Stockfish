@@ -208,34 +208,41 @@ inline Bitboard between_bb(Square s1, Square s2) {
 /// in front of the given one, from the point of view of the given color. For instance,
 /// forward_ranks_bb(BLACK, SQ_D3) will return the 16 squares on ranks 1 and 2.
 
-inline Bitboard forward_ranks_bb(Color c, Square s) {
-  return c == WHITE ? ~Rank1BB << 8 * (rank_of(s) - RANK_1)
+template<Color C> inline Bitboard forward_ranks_bb(Square s) {
+  return C == WHITE ? ~Rank1BB << 8 * (rank_of(s) - RANK_1)
                     : ~Rank8BB >> 8 * (RANK_8 - rank_of(s));
+}
+
+inline Bitboard forward_ranks_bb(Color c, Square s) {
+  return c == WHITE ? forward_ranks_bb<WHITE>(s) : forward_ranks_bb<BLACK>(s);
 }
 
 
 /// forward_file_bb() returns a bitboard representing all the squares along the
 /// line in front of the given one, from the point of view of the given color.
 
-inline Bitboard forward_file_bb(Color c, Square s) {
-  return forward_ranks_bb(c, s) & file_bb(s);
+template<Color C> inline Bitboard forward_file_bb(Square s) {
+  return forward_ranks_bb<C>(s) & file_bb(s);
 }
 
+inline Bitboard forward_file_bb(Color c, Square s) {
+  return c == WHITE ? forward_file_bb<WHITE>(s) : forward_file_bb<BLACK>(s);
+}
 
 /// pawn_attack_span() returns a bitboard representing all the squares that can
 /// be attacked by a pawn of the given color when it moves along its file,
 /// starting from the given square.
 
-inline Bitboard pawn_attack_span(Color c, Square s) {
-  return forward_ranks_bb(c, s) & adjacent_files_bb(s);
+template<Color C> inline Bitboard pawn_attack_span(Square s) {
+  return forward_ranks_bb<C>(s) & adjacent_files_bb(s);
 }
 
 
 /// passed_pawn_span() returns a bitboard which can be used to test if a pawn of
 /// the given color and on the given square is a passed pawn.
 
-inline Bitboard passed_pawn_span(Color c, Square s) {
-  return forward_ranks_bb(c, s) & (adjacent_files_bb(s) | file_bb(s));
+template<Color C> inline Bitboard passed_pawn_span(Square s) {
+  return forward_ranks_bb<C>(s) & (adjacent_files_bb(s) | file_bb(s));
 }
 
 
