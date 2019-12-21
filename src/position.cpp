@@ -787,7 +787,9 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
 
       // Update board and piece lists
       remove_piece(capsq);
-      board[capsq] = NO_PIECE;
+
+      if (type_of(m) == ENPASSANT)
+          board[capsq] = NO_PIECE;
 
       // Update material hash key and prefetch access to materialTable
       k ^= Zobrist::psq[captured][capsq];
