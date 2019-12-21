@@ -174,8 +174,8 @@ private:
 
   // Other helpers
   void put_piece(Piece pc, Square s);
-  void remove_piece(Piece pc, Square s);
-  void move_piece(Piece pc, Square from, Square to);
+  void remove_piece(Square s);
+  void move_piece(Square from, Square to);
   template<bool Do>
   void do_castling(Color us, Square from, Square& to, Square& rfrom, Square& rto);
 
@@ -412,12 +412,13 @@ inline void Position::put_piece(Piece pc, Square s) {
   psq += PSQT::psq[pc][s];
 }
 
-inline void Position::remove_piece(Piece pc, Square s) {
+inline void Position::remove_piece(Square s) {
 
   // WARNING: This is not a reversible operation. If we remove a piece in
   // do_move() and then replace it in undo_move() we will put it at the end of
   // the list and not in its original place, it means index[] and pieceList[]
   // are not invariant to a do_move() + undo_move() sequence.
+  Piece pc = board[s];
   byTypeBB[ALL_PIECES] ^= s;
   byTypeBB[type_of(pc)] ^= s;
   byColorBB[color_of(pc)] ^= s;
@@ -430,10 +431,11 @@ inline void Position::remove_piece(Piece pc, Square s) {
   psq -= PSQT::psq[pc][s];
 }
 
-inline void Position::move_piece(Piece pc, Square from, Square to) {
+inline void Position::move_piece(Square from, Square to) {
 
   // index[from] is not updated and becomes stale. This works as long as index[]
   // is accessed just by known occupied squares.
+  Piece pc = board[from];
   Bitboard fromTo = from | to;
   byTypeBB[ALL_PIECES] ^= fromTo;
   byTypeBB[type_of(pc)] ^= fromTo;
