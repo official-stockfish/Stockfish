@@ -66,7 +66,8 @@ void TranspositionTable::resize(size_t mbSize) {
   clusterCount = mbSize * 1024 * 1024 / sizeof(Cluster);
 
   free(mem);
-  mem = malloc(clusterCount * sizeof(Cluster) + CacheLineSize - 1);
+
+  table = static_cast<Cluster*>(aligned_ttmem_alloc(clusterCount * sizeof(Cluster), &mem));
 
   if (!mem)
   {
@@ -75,7 +76,6 @@ void TranspositionTable::resize(size_t mbSize) {
       exit(EXIT_FAILURE);
   }
 
-  table = (Cluster*)((uintptr_t(mem) + CacheLineSize - 1) & ~(CacheLineSize - 1));
   clear();
 }
 

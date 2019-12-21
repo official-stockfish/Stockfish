@@ -33,6 +33,14 @@ const std::string engine_info(bool to_uci = false);
 void prefetch(void* addr);
 void start_logger(const std::string& fname);
 
+// The assumed cache line size. When C++17 is universally available, we should
+// use std::hardware_destructive_interference_size.
+constexpr size_t CacheLineSize = 64;
+
+// Returns aligned memory pointer for transposition table. To free, use
+// free(mem).
+void* aligned_ttmem_alloc(size_t size, void** mem);
+
 void dbg_hit_on(bool b);
 void dbg_hit_on(bool c, bool b);
 void dbg_mean_of(int v);

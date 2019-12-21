@@ -41,11 +41,16 @@ typedef bool(*fun3_t)(HANDLE, CONST GROUP_AFFINITY*, PGROUP_AFFINITY);
 }
 #endif
 
+#include <cstdlib>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <vector>
+
+#ifdef USE_MADVISE_HUGEPAGE
+#include <sys/mman.h>
+#endif
 
 #include "misc.h"
 #include "thread.h"
@@ -216,6 +221,55 @@ void prefetch(void* addr) {
 }
 
 #endif
+
+
+#ifdef USE_MADVISE_HUGEPAGE
+
+void* aligned_ttmem_alloc(size_t allocSize, void** mem) {
+
+  // We'll use 2-MB memory alignment, which is the typical large MMU page size
+  // on systems such as x86. It's not critical if we get the alignment here
+  // wrong. It just means that the very beginning/end may not be able to use
+  // large pages.
+  constexpr size_t alignment = 2 * 1024 * 1024;
+  void* ret;
+
+  // We have aligned_alloc, which makes allocating aligned memory easy
+  ret = aligned_alloc(alignment, allocSize);
+  if (ret)
+  {
+      // Request huge pages in case aligned_alloc() didn't already provide them. We
+      // don't care if this call fails, and the call may fail if transparent huge
+      // pages are not enabled at all. Note that MADV_HUGEPAGE may not be available
+      // on every platform that supports madvise().
+      madvise(ret, allocSize, MADV_HUGEPAGE);
+  }
+
+  *mem = ret; // free handle = returned memory
+  return ret;
+}
+
+#else
+
+void* aligned_ttmem_alloc(size_t allocSize, void** mem) {
+
+  // No large pages, so we'll align the transposition table by cache line for
+  // efficient access of TT clusters.
+  constexpr size_t alignment = CacheLineSize;
+  constexpr uintptr_t alignMask = ~uintptr_t(alignment - 1);
+  void* ret;
+
+  // aligned_alloc() is not available on all systems (e.g., Windows.) So,
+  // we'll align the memory the hard way.
+  ret = malloc(allocSize + alignment - 1); // allocate a bit extra
+  *mem = ret; // the free handle
+
+  // adjust the returned pointer to the next alignment
+  return reinterpret_cast<void*>((uintptr_t(ret) + alignment - 1) & alignMask);
+}
+
+#endif
+
 
 namespace WinProcGroup {
 
