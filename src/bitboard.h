@@ -200,8 +200,8 @@ inline Bitboard adjacent_files_bb(Square s) {
 
 inline Bitboard between_bb(Square s1, Square s2) {
 
-  return LineBB[s1][s2] & ( (AllSquares << (std::max(s1, s2)))
-                           ^(AllSquares << (std::min(s1, s2) + 1)));
+  return LineBB[s1][s2] & ( (AllSquares <<  (s1 < s2 ? s2 : s1))
+                           ^(AllSquares << ((s1 < s2 ? s1 : s2) + 1)));
 }
 
 
