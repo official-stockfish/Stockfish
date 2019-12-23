@@ -676,7 +676,7 @@ namespace {
 
     // Step 4. Transposition table lookup. We don't want the score of a partial
     // search to overwrite a previous full search TT value, so we use a different
-    // position key in case of an excluded move.
+    // and basically unused position key in case of an excluded move.
     excludedMove = ss->excludedMove;
     posKey = excludedMove ? 0 : pos.key();
     tte = TT.probe(posKey, ttHit);
@@ -916,7 +916,7 @@ namespace {
     }
 
     // Step 11. Internal iterative deepening (~2 Elo)
-    if (depth >= 7 && !ttMove)
+    if (depth >= 8 && !ttMove)
     {
         search<NT>(pos, ss, alpha, beta, depth - 7, cutNode);
 
@@ -1333,6 +1333,7 @@ moves_loop: // When in check, search starts from here
     assert(alpha >= -VALUE_INFINITE && alpha < beta && beta <= VALUE_INFINITE);
     assert(PvNode || (alpha == beta - 1));
     assert(depth <= 0);
+    assert(ss->excludedMove == MOVE_NONE);
 
     Move pv[MAX_PLY+1];
     StateInfo st;
