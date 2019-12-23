@@ -820,7 +820,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
 
   // Move the piece. The tricky Chess960 castling is handled earlier
   if (type_of(m) != CASTLING)
-      move_piece(pc, from, to);
+      move_piece(from, to);
 
   // If the moving piece is a pawn do some special extra work
   if (type_of(pc) == PAWN)
@@ -932,7 +932,7 @@ void Position::undo_move(Move m) {
   }
   else
   {
-      move_piece(pc, to, from); // Put the piece back at the source square
+      move_piece(to, from); // Put the piece back at the source square
 
       if (st->capturedPiece)
       {

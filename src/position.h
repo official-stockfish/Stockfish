@@ -175,7 +175,7 @@ private:
   // Other helpers
   void put_piece(Piece pc, Square s);
   void remove_piece(Square s);
-  void move_piece(Piece pc, Square from, Square to);
+  void move_piece(Square from, Square to);
   template<bool Do>
   void do_castling(Color us, Square from, Square& to, Square& rfrom, Square& rto);
 
@@ -427,10 +427,11 @@ inline void Position::remove_piece(Square s) {
   psq -= PSQT::psq[pc][s];
 }
 
-inline void Position::move_piece(Piece pc, Square from, Square to) {
+inline void Position::move_piece(Square from, Square to) {
 
   // index[from] is not updated and becomes stale. This works as long as index[]
   // is accessed just by known occupied squares.
+  Piece pc = board[from];
   Bitboard fromTo = from | to;
   byTypeBB[ALL_PIECES] ^= fromTo;
   byTypeBB[type_of(pc)] ^= fromTo;
