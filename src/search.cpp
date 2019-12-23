@@ -1333,7 +1333,6 @@ moves_loop: // When in check, search starts from here
     assert(alpha >= -VALUE_INFINITE && alpha < beta && beta <= VALUE_INFINITE);
     assert(PvNode || (alpha == beta - 1));
     assert(depth <= 0);
-    assert(ss->excludedMove == MOVE_NONE);
 
     Move pv[MAX_PLY+1];
     StateInfo st;
