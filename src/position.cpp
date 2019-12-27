@@ -852,7 +852,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
           st->nonPawnMaterial[us] += PieceValue[MG][promotion];
       }
 
-      // Update pawn hash key and prefetch access to pawnsTable
+      // Update pawn hash key
       st->pawnKey ^= Zobrist::psq[pc][from] ^ Zobrist::psq[pc][to];
 
       // Reset rule 50 draw counter
