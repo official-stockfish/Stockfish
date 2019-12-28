@@ -446,7 +446,7 @@ namespace {
 
     int openness = pos.is_on_semiopen_file(Us, ksq) + pos.is_on_semiopen_file(Them, ksq);
 
-    kingDanger += 4 * openness * openness * openness;
+    kingDanger += (1 + pos.count<ROOK>(Them) + pos.count<QUEEN>(Them)) * openness * openness * openness;
 
     kingDanger +=        kingAttackersCount[Them] * kingAttackersWeight[Them]
                  + 185 * popcount(kingRing[Us] & weak)
