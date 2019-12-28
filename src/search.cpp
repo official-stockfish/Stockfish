@@ -1010,7 +1010,7 @@ moves_loop: // When in check, search starts from here
               if (!pos.see_ge(move, Value(-(32 - std::min(lmrDepth, 18)) * lmrDepth * lmrDepth)))
                   continue;
           }
-          else if ((!rootNode || !givesCheck) && !pos.see_ge(move, Value(-194) * depth * (1 + 4 * rootNode))) // (~20 Elo)
+          else if (!(rootNode && (captureOrPromotion || givesCheck)) && !pos.see_ge(move, Value(-194) * depth * (1 + 4 * rootNode))) // (~20 Elo)
                   continue;
       }
 
