@@ -1188,13 +1188,6 @@ moves_loop: // When in check, search starts from here
               int bonus = value > alpha ?  stat_bonus(newDepth)
                                         : -stat_bonus(newDepth);
 
-              if (value == alpha 
-                  && (*contHist[0])[movedPiece][to_sq(move)] > 0
-                  && (*contHist[1])[movedPiece][to_sq(move)] > 0
-                  && (*contHist[3])[movedPiece][to_sq(move)] > 0
-                  && thisThread->mainHistory[us][from_to(move)] > 0)
-                  bonus = 0;
-
               if (move == ss->killers[0])
                   bonus += bonus / 4;
 
