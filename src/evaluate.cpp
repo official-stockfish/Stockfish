@@ -444,10 +444,6 @@ namespace {
     int kingFlankAttack = popcount(b1) + popcount(b2);
     int kingFlankDefense = popcount(b3);
 
-    int openness = pos.is_on_semiopen_file(Us, ksq) + pos.is_on_semiopen_file(Them, ksq);
-
-    kingDanger += (1 + pos.count<ROOK>(Them) + pos.count<QUEEN>(Them)) * openness * openness * openness;
-
     kingDanger +=        kingAttackersCount[Them] * kingAttackersWeight[Them]
                  + 185 * popcount(kingRing[Us] & weak)
                  + 148 * popcount(unsafeChecks)
@@ -459,7 +455,7 @@ namespace {
                  - 100 * bool(attackedBy[Us][KNIGHT] & attackedBy[Us][KING])
                  -   6 * mg_value(score) / 8
                  -   4 * kingFlankDefense
-                 +  36;
+                 +  37;
 
     // Transform the kingDanger units into a Score, and subtract it from the evaluation
     if (kingDanger > 100)
