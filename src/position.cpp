@@ -54,36 +54,30 @@ constexpr Piece Pieces[] = { W_PAWN, W_KNIGHT, W_BISHOP, W_ROOK, W_QUEEN, W_KING
 // min_attacker() is a helper function used by see_ge() to locate the least
 // valuable attacker for the side to move, remove the attacker we just found
 // from the bitboards and scan for new X-ray attacks behind it.
-
-template<PieceType Pt>
 PieceType min_attacker(const Bitboard* byTypeBB, Square to, Bitboard stmAttackers,
                        Bitboard& occupied, Bitboard& attackers) {
-
-  Bitboard b = stmAttackers & byTypeBB[Pt];
-  if (!b)
-      return min_attacker<PieceType(Pt + 1)>(byTypeBB, to, stmAttackers, occupied, attackers);
-
+PieceType CUR; Bitboard b;
+for(CUR = PAWN; CUR < KING ; CUR=PieceType(CUR+1)){
+  b = stmAttackers & byTypeBB[CUR];
+if(b)break;}
+if(CUR != KING){
   occupied ^= lsb(b); // Remove the attacker from occupied
-
   // Add any X-ray attack behind the just removed piece. For instance with
   // rooks in a8 and a7 attacking a1, after removing a7 we add rook in a8.
   // Note that new added attackers can be of any color.
-  if (Pt == PAWN || Pt == BISHOP || Pt == QUEEN)
+  if (CUR == PAWN || CUR == BISHOP || CUR == QUEEN)
       attackers |= attacks_bb<BISHOP>(to, occupied) & (byTypeBB[BISHOP] | byTypeBB[QUEEN]);
 
-  if (Pt == ROOK || Pt == QUEEN)
+  if (CUR == ROOK || CUR == QUEEN)
       attackers |= attacks_bb<ROOK>(to, occupied) & (byTypeBB[ROOK] | byTypeBB[QUEEN]);
-
   // X-ray may add already processed pieces because byTypeBB[] is constant: in
-  // the rook example, now attackers contains _again_ rook in a7, so remove it.
-  attackers &= occupied;
-  return Pt;
+   // the rook example, now attackers contains _again_ rook in a7, so remove it.
+ attackers &= occupied;
+ }
+
+return CUR;
 }
 
-template<>
-PieceType min_attacker<KING>(const Bitboard*, Square, Bitboard, Bitboard&, Bitboard&) {
-  return KING; // No need to update bitboards: it is the last cycle
-}
 
 } // namespace
 
@@ -1096,7 +1090,7 @@ bool Position::see_ge(Move m, Value threshold) const {
 
       // Locate and remove the next least valuable attacker, and add to
       // the bitboard 'attackers' the possibly X-ray attackers behind it.
-      nextVictim = min_attacker<PAWN>(byTypeBB, to, stmAttackers, occupied, attackers);
+      nextVictim = min_attacker(byTypeBB, to, stmAttackers, occupied, attackers);
 
       stm = ~stm; // Switch side to move
 
