@@ -54,30 +54,33 @@ constexpr Piece Pieces[] = { W_PAWN, W_KNIGHT, W_BISHOP, W_ROOK, W_QUEEN, W_KING
 // min_attacker() is a helper function used by see_ge() to locate the least
 // valuable attacker for the side to move, remove the attacker we just found
 // from the bitboards and scan for new X-ray attacks behind it.
-PieceType min_attacker(const Bitboard* byTypeBB, Square to, Bitboard stmAttackers,
+inline PieceType min_attacker(const Bitboard* byTypeBB, Square to, Bitboard stmAttackers,
                        Bitboard& occupied, Bitboard& attackers) {
 PieceType CUR; Bitboard b;
 for(CUR = PAWN; CUR < KING ; CUR=PieceType(CUR+1)){
   b = stmAttackers & byTypeBB[CUR];
-if(b)break;}
-if(CUR != KING){
+  if(b) break;
+  }
+if(CUR != KING){//PAWN,KNIGHT,BISHOP,ROOk,QUEEN
   occupied ^= lsb(b); // Remove the attacker from occupied
   // Add any X-ray attack behind the just removed piece. For instance with
   // rooks in a8 and a7 attacking a1, after removing a7 we add rook in a8.
   // Note that new added attackers can be of any color.
-  if (CUR == PAWN || CUR == BISHOP || CUR == QUEEN)
-      attackers |= attacks_bb<BISHOP>(to, occupied) & (byTypeBB[BISHOP] | byTypeBB[QUEEN]);
-
-  if (CUR == ROOK || CUR == QUEEN)
-      attackers |= attacks_bb<ROOK>(to, occupied) & (byTypeBB[ROOK] | byTypeBB[QUEEN]);
-  // X-ray may add already processed pieces because byTypeBB[] is constant: in
+  if(CUR!=KNIGHT){//PAWN,BISHOP,ROOK,QUEEN
+   if(CUR!=ROOK){//PAWN,BISHOP,QUEEN
+     attackers |= attacks_bb<BISHOP>(to, occupied) & (byTypeBB[BISHOP] | byTypeBB[QUEEN]);
+     }
+   if(CUR>=ROOK){//ROOK,QUEEN
+    attackers |= attacks_bb<ROOK>(to, occupied) & (byTypeBB[ROOK] | byTypeBB[QUEEN]);
+     }
+  } 
+   // X-ray may add already processed pieces because byTypeBB[] is constant: in
    // the rook example, now attackers contains _again_ rook in a7, so remove it.
- attackers &= occupied;
+   attackers &= occupied;
+  }
+
+  return CUR;
  }
-
-return CUR;
-}
-
 
 } // namespace
 
