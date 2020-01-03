@@ -712,14 +712,19 @@ namespace {
                            &&  outflanking < 0
                            && !pawnsOnBothFlanks;
 
+
+    bool kingInfiltration = !(rank_of(pos.square<KING>(WHITE)) < RANK_5 
+                           && rank_of(pos.square<KING>(BLACK)) > RANK_4); 
+
     // Compute the initiative bonus for the attacking side
     int complexity =   9 * pe->passed_count()
                     + 11 * pos.count<PAWN>()
                     +  9 * outflanking
                     + 21 * pawnsOnBothFlanks
                     + 51 * !pos.non_pawn_material()
+                    + 12 * kingInfiltration
                     - 43 * almostUnwinnable
-                    - 95 ;
+                    - 100 ;
 
     // Now apply the bonus: note that we find the attacking side by extracting the
     // sign of the midgame or endgame values, and that we carefully cap the bonus
