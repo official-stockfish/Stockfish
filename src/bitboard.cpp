@@ -84,19 +84,16 @@ void Bitboards::init() {
       PawnAttacks[WHITE][s1] = pawn_attacks_bb<WHITE>(square_bb(s1));
       PawnAttacks[BLACK][s1] = pawn_attacks_bb<BLACK>(square_bb(s1));
 
-      for(int step : {-9, -8, -7, -1, 1, 7, 8, 9}) //KING moves
-      {
-          Square to = Square(s1 + step);
-          if (is_ok(to) && distance(s1, to) < 3)
-              PseudoAttacks[KING][s1] |= to;
-      }
+      auto square_ok = [&](Square s, int step) {
+         const Square to = Square(s + step);
+         return Bitboard((is_ok(to) && (distance(s, to) < 3)) ? square_bb(to) : 0);
+      };
 
-      for(int step : {-17, -15, -10, -6, 6, 10, 15, 17})  //KNIGHT moves
-      {
-          Square to = Square(s1 + step);
-          if (is_ok(to) && distance(s1, to) < 3)
-              PseudoAttacks[KNIGHT][s1] |= to;
-      }
+      for(int step : {-9, -8, -7, -1, 1, 7, 8, 9})
+         PseudoAttacks[KING][s1] |= square_ok(s1, step);
+
+      for(int step : {-17, -15, -10, -6, 6, 10, 15, 17})
+         PseudoAttacks[KNIGHT][s1] |= square_ok(s1, step);
   }
 
   Direction RookDirections[] = { NORTH, EAST, SOUTH, WEST };
