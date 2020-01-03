@@ -77,15 +77,18 @@ void Bitboards::init() {
 
       for (Square s2 = SQ_A1; s2 <= SQ_H8; ++s2)
               SquareDistance[s1][s2] = std::max(distance<File>(s1, s2), distance<Rank>(s1, s2));
+  }
 
+  for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1)
+  {
       PawnAttacks[WHITE][s1] = pawn_attacks_bb<WHITE>(square_bb(s1));
       PawnAttacks[BLACK][s1] = pawn_attacks_bb<BLACK>(square_bb(s1));
 
-      for(int d : {-9, -8, -7, -1, 1, 7, 8, 9})
+      for(int d : {-9, -8, -7, -1, 1, 7, 8, 9}) //KING moves
           if (is_ok(Square(s1 + d)) && distance(s1, Square(s1 + d)) < 3)
-              PseudoAttacks[KING][s1] |= Square(s1 + d);
+              PseudoAttacks[KING][s1] |= (s1 + d);
 
-      for(int d : {-17, -15, -10, -6, 6, 10, 15, 17})
+      for(int d : {-17, -15, -10, -6, 6, 10, 15, 17})  //KNIGHT moves
           if (is_ok(Square(s1 + d)) && distance(s1, Square(s1 + d)) < 3)
               PseudoAttacks[KNIGHT][s1] |= Square(s1 + d);
   }
