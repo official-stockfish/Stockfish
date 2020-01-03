@@ -71,30 +71,24 @@ void Bitboards::init() {
   for (unsigned i = 0; i < (1 << 16); ++i)
       PopCnt16[i] = std::bitset<16>(i).count();
 
-  for (Square s = SQ_A1; s <= SQ_H8; ++s)
-      SquareBB[s] = (1ULL << s);
-
   for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1)
+  {
+      SquareBB[s1] = (1ULL << s1);
+
       for (Square s2 = SQ_A1; s2 <= SQ_H8; ++s2)
               SquareDistance[s1][s2] = std::max(distance<File>(s1, s2), distance<Rank>(s1, s2));
 
-  int steps[][5] = { {}, { 7, 9 }, { 6, 10, 15, 17 }, {}, {}, {}, { 1, 7, 8, 9 } };
+      PawnAttacks[WHITE][s1] = pawn_attacks_bb<WHITE>(square_bb(s1));
+      PawnAttacks[BLACK][s1] = pawn_attacks_bb<BLACK>(square_bb(s1));
 
-  for (Color c : { WHITE, BLACK })
-      for (PieceType pt : { PAWN, KNIGHT, KING })
-          for (Square s = SQ_A1; s <= SQ_H8; ++s)
-              for (int i = 0; steps[pt][i]; ++i)
-              {
-                  Square to = s + Direction(c == WHITE ? steps[pt][i] : -steps[pt][i]);
+      for(int d : {-9, -8, -7, -1, 1, 7, 8, 9})
+          if (is_ok(Square(s1 + d)) && distance(s1, Square(s1 + d)) < 3)
+              PseudoAttacks[KING][s1] |= Square(s1 + d);
 
-                  if (is_ok(to) && distance(s, to) < 3)
-                  {
-                      if (pt == PAWN)
-                          PawnAttacks[c][s] |= to;
-                      else
-                          PseudoAttacks[pt][s] |= to;
-                  }
-              }
+      for(int d : {-17, -15, -10, -6, 6, 10, 15, 17})
+          if (is_ok(Square(s1 + d)) && distance(s1, Square(s1 + d)) < 3)
+              PseudoAttacks[KNIGHT][s1] |= Square(s1 + d);
+  }
 
   Direction RookDirections[] = { NORTH, EAST, SOUTH, WEST };
   Direction BishopDirections[] = { NORTH_EAST, SOUTH_EAST, SOUTH_WEST, NORTH_WEST };
