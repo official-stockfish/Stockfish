@@ -1011,12 +1011,13 @@ Key Position::key_after(Move m) const {
 
 bool Position::see_ge(Move m, Value threshold) const {
 
+  assert(is_ok(m));
+
   // Only deal with normal moves, assume others pass a simple see
   if (type_of(m) != NORMAL)
       return VALUE_ZERO >= threshold;
 
   Square from = from_sq(m), to = to_sq(m);
-  Bitboard occ;
 
   int swap = PieceValue[MG][piece_on(to)] - threshold;
   if (swap < 0)
@@ -1026,54 +1027,66 @@ bool Position::see_ge(Move m, Value threshold) const {
   if (swap <= 0)
       return true;
 
-  occ = pieces() ^ from ^ to;
+  Bitboard occ = pieces() ^ from ^ to;
   Color stm = color_of(piece_on(from));
   Bitboard attackers = attackers_to(to, occ);
-  Bitboard stmAttackers;
+  Bitboard stmAttackers, bb;
   int res = 1;
 
   while (true)
   {
     stm = ~stm;
     attackers &= occ;
+
+    // If stm has no more attackers then give up: stm loses
     if (!(stmAttackers = attackers & pieces(stm))) break;
 
+    // Don't allow pinned pieces to attack (except the king) as long as
+    // there are pinners on their original square.
     if (st->pinners[~stm] & occ)
-          stmAttackers &= ~st->blockersForKing[stm];
+       stmAttackers &= ~st->blockersForKing[stm];
 
     if (!stmAttackers) break;
 
     res ^= 1;
-    Bitboard bb;
-
-    if ((bb = stmAttackers & byTypeBB[PAWN])) {
+    
+    // Locate and remove the next least valuable attacker, and add to
+    // the bitboard 'attackers' any X-ray attackers behind it.
+    if ((bb = stmAttackers & pieces(PAWN))) {
       if ((swap = PawnValueMg - swap) < res) break;
       occ ^= lsb(bb);
       attackers |= attacks_bb<BISHOP>(to, occ) & pieces(BISHOP, QUEEN);
     }
-    else if ((bb = stmAttackers & byTypeBB[KNIGHT])) {
+
+    else if ((bb = stmAttackers & pieces(KNIGHT))) {
       if ((swap = KnightValueMg - swap) < res) break;
       occ ^= lsb(bb);
     }
-    else if ((bb = stmAttackers & byTypeBB[BISHOP])) {
+
+    else if ((bb = stmAttackers & pieces(BISHOP))) {
       if ((swap = BishopValueMg - swap) < res) break;
       occ ^= lsb(bb);
       attackers |= attacks_bb<BISHOP>(to, occ) & pieces(BISHOP, QUEEN);
     }
-    else if ((bb = stmAttackers & byTypeBB[ROOK])) {
+
+    else if ((bb = stmAttackers & pieces(ROOK))) {
       if ((swap = RookValueMg - swap) < res) break;
       occ ^= lsb(bb);
       attackers |= attacks_bb<ROOK>(to, occ) & pieces(ROOK, QUEEN);
-      }
-    else if ((bb = stmAttackers & byTypeBB[QUEEN])) {
+    }
+
+    else if ((bb = stmAttackers & pieces(QUEEN))) {
       if ((swap = QueenValueMg - swap) < res) break;
       occ ^= lsb(bb);
       attackers |=  (attacks_bb<BISHOP>(to, occ) & pieces(BISHOP, QUEEN))
                   | (attacks_bb<ROOK  >(to, occ) & pieces(ROOK  , QUEEN));
-  }
+    }
+
     else // KING
+      // If we "capture" with the king but opponent still has attackers,
+      // reverse the result.
       return (attackers & ~pieces(stm)) ? res ^ 1 : res;
-}
+  }
 
   return res;
 }
