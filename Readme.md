@@ -162,12 +162,12 @@ community effort. There are a few ways to help contribute to its growth.
 ### Donating hardware
 
 Improving Stockfish requires a massive amount of testing. You can donate
-your hardware resources by installing the [Fishtest Worker](https://github.com/glinscott/fishtest/wiki/Running-the-worker)
-and view the current tests on [Fishtest](http://tests.stockfishchess.org/tests).
+your hardware resources by installing the [Fishtest Worker](https://github.com/glinscott/fishtest/wiki/Running-the-worker:-overview)
+and view the current tests on [Fishtest](https://tests.stockfishchess.org/tests).
 
 ### Improving the code
 
-If you want to help improve the code, there are several valuable ressources:
+If you want to help improve the code, there are several valuable resources:
 
 * [In this wiki,](https://www.chessprogramming.org) many techniques used in
 Stockfish are explained with a lot of background information.
@@ -179,7 +179,7 @@ Nevertheless, a helpful resource.
 
 * The latest source can always be found on [GitHub](https://github.com/official-stockfish/Stockfish).
 Discussions about Stockfish take place in the [FishCooking](https://groups.google.com/forum/#!forum/fishcooking)
-group and engine testing is done on [Fishtest](http://tests.stockfishchess.org/tests).
+group and engine testing is done on [Fishtest](https://tests.stockfishchess.org/tests).
 If you want to help improve Stockfish, please read this [guideline](https://github.com/glinscott/fishtest/wiki/Creating-my-first-test)
 first, where the basics of Stockfish development are explained.
 
