@@ -71,7 +71,7 @@ constexpr Bitboard KingFlank[FILE_NB] = {
   KingSide, KingSide, KingSide ^ FileEBB
 };
 
-extern uint8_t PopCnt16[1 << 16];
+ popcnt_table_extern ; 
 extern uint8_t SquareDistance[SQUARE_NB][SQUARE_NB];
 
 extern Bitboard SquareBB[SQUARE_NB];
