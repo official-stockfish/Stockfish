@@ -2,8 +2,8 @@ Contributors with >10,000 CPU hours as of January 7, 2020
 Thank you!
 
 Username                  CPU Hours   Games played
-ChessDBCN                   7316986      545968339
-ChessDB_CN_WorkerPoo        1988721      149579682
+--------------------------------------------------
+noobpwnftw                  9305707      695548021
 mlang                        780050       61648867
 dew                          621626       43921547
 mibere                       524702       42238645
