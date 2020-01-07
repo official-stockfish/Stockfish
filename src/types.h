@@ -82,8 +82,14 @@
 
 #ifdef USE_POPCNT
 constexpr bool HasPopCnt = true;
+#define popcnt_init() 
+#define popcnt_table_extern   
+#define popcnt_table   
 #else
 constexpr bool HasPopCnt = false;
+#define popcnt_init()   for (unsigned i = 0; i < (1 << 16); ++i) PopCnt16[i] = std::bitset<16>(i).count();
+#define popcnt_table_extern extern uint8_t PopCnt16[1 << 16];
+#define popcnt_table uint8_t PopCnt16[1 << 16];
 #endif
 
 #ifdef USE_PEXT
