@@ -22,7 +22,7 @@
 #define BITBOARD_H_INCLUDED
 
 #include <string>
-
+#include <bitset>
 #include "types.h"
 
 namespace Bitbases {
@@ -71,7 +71,6 @@ constexpr Bitboard KingFlank[FILE_NB] = {
   KingSide, KingSide, KingSide ^ FileEBB
 };
 
-extern uint8_t PopCnt16[1 << 16];
 extern uint8_t SquareDistance[SQUARE_NB][SQUARE_NB];
 
 extern Bitboard SquareBB[SQUARE_NB];
@@ -285,23 +284,33 @@ inline Bitboard attacks_bb(PieceType pt, Square s, Bitboard occupied) {
 
 /// popcount() counts the number of non-zero bits in a bitboard
 
-inline int popcount(Bitboard b) {
+template <bool> struct PopCnt {};
 
-#ifndef USE_POPCNT
-
-  union { Bitboard bb; uint16_t u[4]; } v = { b };
-  return PopCnt16[v.u[0]] + PopCnt16[v.u[1]] + PopCnt16[v.u[2]] + PopCnt16[v.u[3]];
-
-#elif defined(_MSC_VER) || defined(__INTEL_COMPILER)
-
+template <> struct PopCnt<true> {
+    int operator () (Bitboard b) const {
+#if defined(_MSC_VER) || defined(__INTEL_COMPILER)
   return (int)_mm_popcnt_u64(b);
-
-#else // Assumed gcc or compatible compiler
-
-  return __builtin_popcountll(b);
-
+#else
+ return __builtin_popcountll(b); 
 #endif
 }
+};
+
+template <> struct PopCnt<false> {
+    PopCnt() {
+        for (unsigned i = 0; i < (1 << 16); ++i)
+            PopCnt16[i] = std::bitset<16>(i).count();
+    }
+
+    int operator () (Bitboard b) const {
+        union { Bitboard bb; uint16_t u[4]; } v = { b };
+        return PopCnt16[v.u[0]] + PopCnt16[v.u[1]] + PopCnt16[v.u[2]] + PopCnt16[v.u[3]];
+    }
+
+    uint8_t PopCnt16[1 << 16];
+};
+
+extern PopCnt<HasPopCnt> popcount; 
 
 
 /// lsb() and msb() return the least/most significant bit in a non-zero bitboard
