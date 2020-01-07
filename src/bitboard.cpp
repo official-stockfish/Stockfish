@@ -24,7 +24,7 @@
 #include "bitboard.h"
 #include "misc.h"
 
- popcnt_table ;
+ popcnt_table
 uint8_t SquareDistance[SQUARE_NB][SQUARE_NB];
 
 Bitboard SquareBB[SQUARE_NB];
@@ -68,7 +68,7 @@ const std::string Bitboards::pretty(Bitboard b) {
 
 void Bitboards::init() {
 
-    popcnt_init() ;
+    popcnt_init()
 
   for (Square s = SQ_A1; s <= SQ_H8; ++s)
       SquareBB[s] = (1ULL << s);
