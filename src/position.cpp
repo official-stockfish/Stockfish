@@ -817,7 +817,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
           st->nonPawnMaterial[us] += PieceValue[MG][promotion];
       }
 
-      // Update pawn hash key and prefetch access to pawnsTable
+      // Update pawn hash key
       st->pawnKey ^= Zobrist::psq[pc][from] ^ Zobrist::psq[pc][to];
 
       // Reset rule 50 draw counter
@@ -944,7 +944,7 @@ void Position::do_castling(Color us, Square from, Square& to, Square& rfrom, Squ
 }
 
 
-/// Position::do(undo)_null_move() is used to do(undo) a "null move": It flips
+/// Position::do(undo)_null_move() is used to do(undo) a "null move": it flips
 /// the side to move without executing any move on the board.
 
 void Position::do_null_move(StateInfo& newSt) {
@@ -1027,16 +1027,16 @@ bool Position::see_ge(Move m, Value threshold) const {
   if (swap <= 0)
       return true;
 
-  Bitboard occ = pieces() ^ from ^ to;
+  Bitboard occupied = pieces() ^ from ^ to;
   Color stm = color_of(piece_on(from));
-  Bitboard attackers = attackers_to(to, occ);
+  Bitboard attackers = attackers_to(to, occupied);
   Bitboard stmAttackers, bb;
   int res = 1;
 
   while (true)
   {
       stm = ~stm;
-      attackers &= occ;
+      attackers &= occupied;
 
       // If stm has no more attackers then give up: stm loses
       if (!(stmAttackers = attackers & pieces(stm)))
@@ -1044,7 +1044,7 @@ bool Position::see_ge(Move m, Value threshold) const {
 
       // Don't allow pinned pieces to attack (except the king) as long as
       // there are pinners on their original square.
-      if (st->pinners[~stm] & occ)
+      if (st->pinners[~stm] & occupied)
           stmAttackers &= ~st->blockersForKing[stm];
 
       if (!stmAttackers)
@@ -1059,8 +1059,8 @@ bool Position::see_ge(Move m, Value threshold) const {
           if ((swap = PawnValueMg - swap) < res)
               break;
 
-          occ ^= lsb(bb);
-          attackers |= attacks_bb<BISHOP>(to, occ) & pieces(BISHOP, QUEEN);
+          occupied ^= lsb(bb);
+          attackers |= attacks_bb<BISHOP>(to, occupied) & pieces(BISHOP, QUEEN);
       }
 
       else if ((bb = stmAttackers & pieces(KNIGHT)))
@@ -1068,7 +1068,7 @@ bool Position::see_ge(Move m, Value threshold) const {
           if ((swap = KnightValueMg - swap) < res)
               break;
 
-          occ ^= lsb(bb);
+          occupied ^= lsb(bb);
       }
 
       else if ((bb = stmAttackers & pieces(BISHOP)))
@@ -1076,8 +1076,8 @@ bool Position::see_ge(Move m, Value threshold) const {
           if ((swap = BishopValueMg - swap) < res)
               break;
 
-          occ ^= lsb(bb);
-          attackers |= attacks_bb<BISHOP>(to, occ) & pieces(BISHOP, QUEEN);
+          occupied ^= lsb(bb);
+          attackers |= attacks_bb<BISHOP>(to, occupied) & pieces(BISHOP, QUEEN);
       }
 
       else if ((bb = stmAttackers & pieces(ROOK)))
@@ -1085,8 +1085,8 @@ bool Position::see_ge(Move m, Value threshold) const {
           if ((swap = RookValueMg - swap) < res)
               break;
 
-          occ ^= lsb(bb);
-          attackers |= attacks_bb<ROOK>(to, occ) & pieces(ROOK, QUEEN);
+          occupied ^= lsb(bb);
+          attackers |= attacks_bb<ROOK>(to, occupied) & pieces(ROOK, QUEEN);
       }
 
       else if ((bb = stmAttackers & pieces(QUEEN)))
@@ -1094,9 +1094,9 @@ bool Position::see_ge(Move m, Value threshold) const {
           if ((swap = QueenValueMg - swap) < res)
               break;
 
-          occ ^= lsb(bb);
-          attackers |=  (attacks_bb<BISHOP>(to, occ) & pieces(BISHOP, QUEEN))
-                      | (attacks_bb<ROOK  >(to, occ) & pieces(ROOK  , QUEEN));
+          occupied ^= lsb(bb);
+          attackers |=  (attacks_bb<BISHOP>(to, occupied) & pieces(BISHOP, QUEEN))
+                      | (attacks_bb<ROOK  >(to, occupied) & pieces(ROOK  , QUEEN));
       }
 
       else // KING
@@ -1105,7 +1105,7 @@ bool Position::see_ge(Move m, Value threshold) const {
           return (attackers & ~pieces(stm)) ? res ^ 1 : res;
   }
 
-  return res;
+  return bool(res);
 }
 
 /// Position::is_draw() tests whether the position is drawn by 50-move rule
