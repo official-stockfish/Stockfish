@@ -157,13 +157,12 @@ inline Bitboard file_bb(Square s) {
 /// shift() moves a bitboard one step along direction D
 
 template<Direction D>
-constexpr Bitboard shift(Bitboard b) {
-  return  D == NORTH      ?  b             << 8 : D == SOUTH      ?  b             >> 8
-        : D == NORTH+NORTH?  b             <<16 : D == SOUTH+SOUTH?  b             >>16
-        : D == EAST       ? (b & ~FileHBB) << 1 : D == WEST       ? (b & ~FileABB) >> 1
-        : D == NORTH_EAST ? (b & ~FileHBB) << 9 : D == NORTH_WEST ? (b & ~FileABB) << 7
-        : D == SOUTH_EAST ? (b & ~FileHBB) >> 7 : D == SOUTH_WEST ? (b & ~FileABB) >> 9
-        : 0;
+inline Bitboard shift(Bitboard b) {
+
+  static_assert((D & 7) == 7 || (D & 7) < 2, "Only single horizontal steps allowed.");
+
+  Bitboard bb = (D & 7) == 1 ? b & ~FileHBB : (D & 7) == 7 ? b & ~FileABB : b;
+  return (D > 0 ? bb << D : bb >> -D);
 }
 
 
@@ -172,8 +171,7 @@ constexpr Bitboard shift(Bitboard b) {
 
 template<Color C>
 constexpr Bitboard pawn_attacks_bb(Bitboard b) {
-  return C == WHITE ? shift<NORTH_WEST>(b) | shift<NORTH_EAST>(b)
-                    : shift<SOUTH_WEST>(b) | shift<SOUTH_EAST>(b);
+  return shift<pawn_push(C) + WEST>(b) | shift<pawn_push(C) + EAST>(b);
 }
 
 
@@ -182,8 +180,7 @@ constexpr Bitboard pawn_attacks_bb(Bitboard b) {
 
 template<Color C>
 constexpr Bitboard pawn_double_attacks_bb(Bitboard b) {
-  return C == WHITE ? shift<NORTH_WEST>(b) & shift<NORTH_EAST>(b)
-                    : shift<SOUTH_WEST>(b) & shift<SOUTH_EAST>(b);
+  return shift<pawn_push(C) + WEST>(b) & shift<pawn_push(C) + EAST>(b);
 }
 
 
