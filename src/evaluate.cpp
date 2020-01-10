@@ -2,7 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2019 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2015-2020 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -705,6 +705,9 @@ namespace {
     int outflanking =  distance<File>(pos.square<KING>(WHITE), pos.square<KING>(BLACK))
                      - distance<Rank>(pos.square<KING>(WHITE), pos.square<KING>(BLACK));
 
+    bool infiltration =   rank_of(pos.square<KING>(WHITE)) > RANK_4
+                       || rank_of(pos.square<KING>(BLACK)) < RANK_5;
+
     bool pawnsOnBothFlanks =   (pos.pieces(PAWN) & QueenSide)
                             && (pos.pieces(PAWN) & KingSide);
 
@@ -716,10 +719,11 @@ namespace {
     int complexity =   9 * pe->passed_count()
                     + 11 * pos.count<PAWN>()
                     +  9 * outflanking
+                    + 12 * infiltration
                     + 21 * pawnsOnBothFlanks
                     + 51 * !pos.non_pawn_material()
                     - 43 * almostUnwinnable
-                    - 95 ;
+                    - 100 ;
 
     // Now apply the bonus: note that we find the attacking side by extracting the
     // sign of the midgame or endgame values, and that we carefully cap the bonus
