@@ -60,10 +60,7 @@ namespace {
     KPKPosition() = default;
     explicit KPKPosition(unsigned idx);
     operator Result() const { return result; }
-    Result classify(const std::vector<KPKPosition>& db)
-    { return us == WHITE ? classify<WHITE>(db) : classify<BLACK>(db); }
-
-    template<Color Us> Result classify(const std::vector<KPKPosition>& db);
+    Result classify(Color sideToMove, const std::vector<KPKPosition>& db);
 
     Color us;
     Square ksq[COLOR_NB], psq;
@@ -95,7 +92,7 @@ void Bitbases::init() {
   // changed to either wins or draws (15 cycles needed).
   while (repeat)
       for (repeat = idx = 0; idx < MAX_INDEX; ++idx)
-          repeat |= (db[idx] == UNKNOWN && db[idx].classify(db) != UNKNOWN);
+          repeat |= (db[idx] == UNKNOWN && db[idx].classify(db[idx].us, db) != UNKNOWN);
 
   // Map 32 results into one KPKBitbase[] entry
   for (idx = 0; idx < MAX_INDEX; ++idx)
@@ -139,8 +136,7 @@ namespace {
         result = UNKNOWN;
   }
 
-  template<Color Us>
-  Result KPKPosition::classify(const std::vector<KPKPosition>& db) {
+  Result KPKPosition::classify(Color stm, const std::vector<KPKPosition>& db) {
 
     // White to move: If one move leads to a position classified as WIN, the result
     // of the current position is WIN. If all moves lead to positions classified
@@ -151,27 +147,25 @@ namespace {
     // of the current position is DRAW. If all moves lead to positions classified
     // as WIN, the position is classified as WIN, otherwise the current position is
     // classified as UNKNOWN.
-
-    constexpr Color  Them = (Us == WHITE ? BLACK : WHITE);
-    constexpr Result Good = (Us == WHITE ? WIN   : DRAW);
-    constexpr Result Bad  = (Us == WHITE ? DRAW  : WIN);
+    const Result Good = (stm == WHITE ? WIN   : DRAW);
+    const Result Bad  = (stm == WHITE ? DRAW  : WIN);
 
     Result r = INVALID;
-    Bitboard b = PseudoAttacks[KING][ksq[Us]];
+    Bitboard b = PseudoAttacks[KING][ksq[stm]];
 
     while (b)
-        r |= Us == WHITE ? db[index(Them, ksq[Them]  , pop_lsb(&b), psq)]
-                         : db[index(Them, pop_lsb(&b), ksq[Them]  , psq)];
+        r |= stm == WHITE ? db[index(BLACK, ksq[BLACK] , pop_lsb(&b), psq)]
+                          : db[index(WHITE, pop_lsb(&b),  ksq[WHITE], psq)];
 
-    if (Us == WHITE)
+    if (stm == WHITE)
     {
         if (rank_of(psq) < RANK_7)      // Single push
-            r |= db[index(Them, ksq[Them], ksq[Us], psq + NORTH)];
+            r |= db[index(BLACK, ksq[BLACK], ksq[WHITE], psq + NORTH)];
 
         if (   rank_of(psq) == RANK_2   // Double push
-            && psq + NORTH != ksq[Us]
-            && psq + NORTH != ksq[Them])
-            r |= db[index(Them, ksq[Them], ksq[Us], psq + NORTH + NORTH)];
+            && psq + NORTH != ksq[WHITE]
+            && psq + NORTH != ksq[BLACK])
+            r |= db[index(BLACK, ksq[BLACK], ksq[WHITE], psq + NORTH + NORTH)];
     }
 
     return result = r & Good  ? Good  : r & UNKNOWN ? UNKNOWN : Bad;
