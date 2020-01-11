@@ -162,7 +162,7 @@ inline Bitboard shift(Bitboard b) {
   static_assert((D & 7) == 7 || (D & 7) < 2, "Only single horizontal steps allowed.");
 
   Bitboard bb = (D & 7) == 1 ? b & ~FileHBB : (D & 7) == 7 ? b & ~FileABB : b;
-  return (D > 0 ? bb << D : bb >> -D);
+  return D > 0 ? bb << D : bb >> -D;
 }
 
 
