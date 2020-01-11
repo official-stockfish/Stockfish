@@ -91,6 +91,7 @@ Luca Brivio (lucabrivio)
 Lucas Braesch (lucasart)
 Lyudmil Antonov (lantonov)
 Maciej Żenczykowski (zenczykowski)
+Malcolm Campbell (xoto10)
 Mark Tenzer (31m059)
 marotear
 Matthew Lai (matthewlai)
@@ -151,6 +152,12 @@ Tracey Emery (basepr1me)
 Uri Blass (uriblass)
 Vince Negri (cuddlestmonkey)
 
-# Additionally, we acknowledge the authors of fishtest,
-# an essential framework for the development of Stockfish:
+
+# Additionally, we acknowledge the authors and maintainer of fishtest,
+# an amazing and essential framework for the development of Stockfish!
+#
 # https://github.com/glinscott/fishtest/blob/master/AUTHORS
+
+
+
+
