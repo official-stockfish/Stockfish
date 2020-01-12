@@ -155,7 +155,7 @@ Value Endgame<KBNK>::operator()(const Position& pos) const {
   Square loserKSq = pos.square<KING>(weakSide);
   Square bishopSq = pos.square<BISHOP>(strongSide);
 
-  // If our Bishop does not attack A1/H8, we flip the enemy king square
+  // If our bishop does not attack A1/H8, we flip the enemy king square
   // to drive to opposite corners (A8/H1).
 
   Value result =  VALUE_KNOWN_WIN
@@ -167,7 +167,7 @@ Value Endgame<KBNK>::operator()(const Position& pos) const {
 }
 
 
-/// KP vs K. This endgame is evaluated with the help of a bitbase.
+/// KP vs K. This endgame is evaluated with the help of a bitbase
 template<>
 Value Endgame<KPK>::operator()(const Position& pos) const {
 
