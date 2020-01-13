@@ -708,8 +708,7 @@ namespace {
                        || rank_of(pos.square<KING>(BLACK)) < RANK_5;
 
     bool pawnsOnBothFlanks =   (pos.pieces(PAWN) & QueenSide)
-                            && (pos.pieces(PAWN) & KingSide)
-                            && (pos.pieces(PAWN) & ~CenterFiles);
+                            && (pos.pieces(PAWN) & KingSide);
 
     bool almostUnwinnable =   !pe->passed_count()
                            &&  outflanking < 0
@@ -720,10 +719,10 @@ namespace {
                     + 11 * pos.count<PAWN>()
                     +  9 * outflanking
                     + 12 * infiltration
-                    + 30 * pawnsOnBothFlanks
+                    + 21 * pawnsOnBothFlanks
                     + 51 * !pos.non_pawn_material()
                     - 43 * almostUnwinnable
-                    - 104 ;
+                    - 100 ;
 
     // Now apply the bonus: note that we find the attacking side by extracting the
     // sign of the midgame or endgame values, and that we carefully cap the bonus
