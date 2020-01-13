@@ -564,6 +564,7 @@ void Thread::search() {
                   Threads.stop = true;
           }
           else if (   Threads.increaseDepth
+                   && !mainThread->ponder
                    && Time.elapsed() > Time.optimum() * fallingEval * reduction * bestMoveInstability * 0.6)
                    Threads.increaseDepth = false;
           else
