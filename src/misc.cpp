@@ -41,6 +41,10 @@ typedef bool(*fun3_t)(HANDLE, CONST GROUP_AFFINITY*, PGROUP_AFFINITY);
 }
 #endif
 
+#ifdef __linux__
+#include <sys/mman.h>
+#endif
+
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -221,6 +225,19 @@ const std::string compiler_info() {
   return compiler;
 }
 
+/// large_page_alloc() tries to allocate aligned large page memory on systems
+/// where available, if no large page memory is available, small page memory
+/// is allocated instead.
+void* large_page_alloc(size_t alignment, size_t size) {
+  auto addr = aligned_alloc(alignment, size);
+
+#ifdef __linux__
+  if (addr)
+      madvise(addr, size, MADV_HUGEPAGE);
+#endif
+
+  return addr;
+}
 
 /// Debug functions used mainly to collect run-time statistics
 static std::atomic<int64_t> hits[2], means[2];

@@ -65,17 +65,16 @@ void TranspositionTable::resize(size_t mbSize) {
 
   clusterCount = mbSize * 1024 * 1024 / sizeof(Cluster);
 
-  free(mem);
-  mem = malloc(clusterCount * sizeof(Cluster) + CacheLineSize - 1);
+  free(table);
+  table = (Cluster*)large_page_alloc(CacheLineSize, clusterCount * sizeof(Cluster));
 
-  if (!mem)
+  if (!table)
   {
       std::cerr << "Failed to allocate " << mbSize
                 << "MB for transposition table." << std::endl;
       exit(EXIT_FAILURE);
   }
 
-  table = (Cluster*)((uintptr_t(mem) + CacheLineSize - 1) & ~(CacheLineSize - 1));
   clear();
 }
 
