@@ -153,6 +153,14 @@ compile (for instance with Microsoft MSVC) you need to manually
 set/unset some switches in the compiler command line; see file *types.h*
 for a quick reference.
 
+When reporting an issue or a bug, please tell us which version and
+compiler you used to create your executable. These informations can
+be found by typing the following commands in a console:
+
+```
+    ./stockfish
+    compiler
+```
 
 ## Understanding the code base and participating in the project
 
