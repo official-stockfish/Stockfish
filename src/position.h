@@ -2,7 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2019 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2015-2020 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -46,7 +46,6 @@ struct StateInfo {
   Square epSquare;
 
   // Not copied when making a move (will be recomputed anyhow)
-  int repetition;
   Key        key;
   Bitboard   checkersBB;
   Piece      capturedPiece;
@@ -54,6 +53,7 @@ struct StateInfo {
   Bitboard   blockersForKing[COLOR_NB];
   Bitboard   pinners[COLOR_NB];
   Bitboard   checkSquares[PIECE_TYPE_NB];
+  int        repetition;
 };
 
 /// A list to keep track of the position states along the setup moves (from the
@@ -277,10 +277,14 @@ inline int Position::castling_rights(Color c) const {
 }
 
 inline bool Position::castling_impeded(CastlingRights cr) const {
+  assert(cr == WHITE_OO || cr == WHITE_OOO || cr == BLACK_OO || cr == BLACK_OOO);
+
   return byTypeBB[ALL_PIECES] & castlingPath[cr];
 }
 
 inline Square Position::castling_rook_square(CastlingRights cr) const {
+  assert(cr == WHITE_OO || cr == WHITE_OOO || cr == BLACK_OO || cr == BLACK_OOO);
+
   return castlingRookSquare[cr];
 }
 

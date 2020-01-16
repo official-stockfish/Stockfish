@@ -2,7 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2019 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2015-2020 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -155,7 +155,7 @@ Value Endgame<KBNK>::operator()(const Position& pos) const {
   Square loserKSq = pos.square<KING>(weakSide);
   Square bishopSq = pos.square<BISHOP>(strongSide);
 
-  // If our Bishop does not attack A1/H8, we flip the enemy king square
+  // If our bishop does not attack A1/H8, we flip the enemy king square
   // to drive to opposite corners (A8/H1).
 
   Value result =  VALUE_KNOWN_WIN
@@ -167,7 +167,7 @@ Value Endgame<KBNK>::operator()(const Position& pos) const {
 }
 
 
-/// KP vs K. This endgame is evaluated with the help of a bitbase.
+/// KP vs K. This endgame is evaluated with the help of a bitbase
 template<>
 Value Endgame<KPK>::operator()(const Position& pos) const {
 

@@ -2,7 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2019 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2015-2020 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -148,6 +148,77 @@ const string engine_info(bool to_uci) {
      << "T. Romstad, M. Costalba, J. Kiiski, G. Linscott";
 
   return ss.str();
+}
+
+
+/// compiler_info() returns a string trying to describe the compiler we use
+
+const std::string compiler_info() {
+
+  #define STRINGIFY2(x) #x
+  #define STRINGIFY(x) STRINGIFY2(x)
+  #define VER_STRING(major, minor, patch) STRINGIFY(major) "." STRINGIFY(minor) "." STRINGIFY(patch)
+
+/// Predefined macros hell:
+///
+/// __GNUC__           Compiler is gcc, Clang or Intel on Linux
+/// __INTEL_COMPILER   Compiler is Intel
+/// _MSC_VER           Compiler is MSVC or Intel on Windows
+/// _WIN32             Building on Windows (any)
+/// _WIN64             Building on Windows 64 bit
+
+  std::string compiler = "\nCompiled by ";
+
+  #ifdef __clang__
+     compiler += "clang++ ";
+     compiler += VER_STRING(__clang_major__, __clang_minor__, __clang_patchlevel__);
+  #elif __INTEL_COMPILER
+     compiler += "Intel compiler ";
+     compiler += "(version ";
+     compiler += STRINGIFY(__INTEL_COMPILER) " update " STRINGIFY(__INTEL_COMPILER_UPDATE);
+     compiler += ")";
+  #elif _MSC_VER
+     compiler += "MSVC ";
+     compiler += "(version ";
+     compiler += STRINGIFY(_MSC_FULL_VER) "." STRINGIFY(_MSC_BUILD);
+     compiler += ")";
+  #elif __GNUC__
+     compiler += "g++ (GNUC) ";
+     compiler += VER_STRING(__GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
+  #else
+     compiler += "Unknown compiler ";
+     compiler += "(unknown version)";
+  #endif
+
+  #if defined(__APPLE__) 
+     compiler += " on Apple";
+  #elif defined(__CYGWIN__)
+     compiler += " on Cygwin";
+  #elif defined(__MINGW64__)
+     compiler += " on MinGW64";
+  #elif defined(__MINGW32__)
+     compiler += " on MinGW32";
+  #elif defined(__ANDROID__)
+     compiler += " on Android";
+  #elif defined(__linux__)
+     compiler += " on Linux";
+  #elif defined(_WIN64)
+     compiler += " on Microsoft Windows 64-bit";
+  #elif defined(_WIN32)
+     compiler += " on Microsoft Windows 32-bit";
+  #else
+     compiler += " on unknown system";
+  #endif
+
+  compiler += "\n __VERSION__ macro expands to: ";
+  #ifdef __VERSION__
+     compiler += __VERSION__;
+  #else
+     compiler += "(undefined macro)";
+  #endif
+  compiler += "\n";
+
+  return compiler;
 }
 
 
