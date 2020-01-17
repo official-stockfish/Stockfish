@@ -21,6 +21,7 @@
 #include <cassert>
 #include <numeric>
 #include <vector>
+#include <bitset>
 
 #include "bitboard.h"
 #include "types.h"
@@ -32,7 +33,7 @@ namespace {
   constexpr unsigned MAX_INDEX = 2*24*64*64; // stm * psq * wksq * bksq = 196608
 
   // Each uint32_t stores results of 32 positions, one per bit
-  uint32_t KPKBitbase[MAX_INDEX / 32];
+  std::bitset<MAX_INDEX> KPKBitbase;
 
   // A KPK bitbase index is an integer in [0, IndexMax] range
   //
@@ -77,8 +78,7 @@ bool Bitbases::probe(Square wksq, Square wpsq, Square bksq, Color us) {
 
   assert(file_of(wpsq) <= FILE_D);
 
-  unsigned idx = index(us, bksq, wksq, wpsq);
-  return KPKBitbase[idx / 32] & (1 << (idx & 0x1F));
+  return KPKBitbase[index(us, bksq, wksq, wpsq)];
 }
 
 
@@ -100,7 +100,7 @@ void Bitbases::init() {
   // Map 32 results into one KPKBitbase[] entry
   for (idx = 0; idx < MAX_INDEX; ++idx)
       if (db[idx] == WIN)
-          KPKBitbase[idx / 32] |= 1 << (idx & 0x1F);
+          KPKBitbase.set(idx);
 }
 
 
