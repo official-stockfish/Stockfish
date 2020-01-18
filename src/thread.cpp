@@ -2,7 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2019 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2015-2020 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -71,13 +71,13 @@ void Thread::clear() {
   captureHistory.fill(0);
 
   for (bool inCheck : { false, true })
-	  for (StatsType c : { NoCaptures, Captures })
-		  for (auto& to : continuationHistory[inCheck][c])
-			  for (auto& h : to)
-				  h->fill(0);
+    for (StatsType c : { NoCaptures, Captures })
+      for (auto& to : continuationHistory[inCheck][c])
+        for (auto& h : to)
+          h->fill(0);
 
   for (bool inCheck : { false, true })
-	  for (StatsType c : { NoCaptures, Captures })
+    for (StatsType c : { NoCaptures, Captures })
       continuationHistory[inCheck][c][NO_PIECE][0]->fill(Search::CounterMovePruneThreshold - 1);
 }
 
@@ -182,6 +182,7 @@ void ThreadPool::start_thinking(Position& pos, StateListPtr& states,
   main()->wait_for_search_finished();
 
   main()->stopOnPonderhit = stop = false;
+  increaseDepth = true;
   main()->ponder = ponderMode;
   Search::Limits = limits;
   Search::RootMoves rootMoves;
@@ -210,7 +211,7 @@ void ThreadPool::start_thinking(Position& pos, StateListPtr& states,
 
   for (Thread* th : *this)
   {
-      th->shuffleExts = th->nodes = th->tbHits = th->TTsaves = th->nmpMinPly = 0;
+      th->nodes = th->tbHits = th->TTsaves = th->nmpMinPly = 0;
       th->rootDepth = th->completedDepth = 0;
       th->rootMoves = rootMoves;
       th->rootPos.set(pos.fen(), pos.is_chess960(), &setupStates->back(), th);
