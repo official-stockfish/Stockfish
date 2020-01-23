@@ -54,7 +54,7 @@ Thread::~Thread() {
 
 /// Thread::bestMoveCount(Move move) return best move counter for the given root move
 
-int Thread::best_move_count(Move move) {
+int Thread::best_move_count(Move move) const {
 
   auto rm = std::find(rootMoves.begin() + pvIdx,
                       rootMoves.begin() + pvLast, move);
@@ -71,14 +71,13 @@ void Thread::clear() {
   captureHistory.fill(0);
 
   for (bool inCheck : { false, true })
-    for (StatsType c : { NoCaptures, Captures })
-      for (auto& to : continuationHistory[inCheck][c])
-        for (auto& h : to)
-          h->fill(0);
-
-  for (bool inCheck : { false, true })
-    for (StatsType c : { NoCaptures, Captures })
-      continuationHistory[inCheck][c][NO_PIECE][0]->fill(Search::CounterMovePruneThreshold - 1);
+      for (StatsType c : { NoCaptures, Captures })
+      {
+          for (auto& to : continuationHistory[inCheck][c])
+                for (auto& h : to)
+                      h->fill(0);
+          continuationHistory[inCheck][c][NO_PIECE][0]->fill(Search::CounterMovePruneThreshold - 1);
+      }
 }
 
 /// Thread::start_searching() wakes up the thread that will start the search
