@@ -1028,7 +1028,11 @@ moves_loop: // When in check, search starts from here
                   continue;
           }
           else if (!pos.see_ge(move, Value(-194) * depth)) // (~25 Elo)
-                  continue;
+          {
+              if (captureOrPromotion && captureCount < 32)
+                  capturesSearched[captureCount++] = move;
+              continue;
+          }
       }
 
       // Step 14. Extensions (~75 Elo)
