@@ -698,8 +698,8 @@ namespace {
   template<Tracing T>
   Score Evaluation<T>::initiative(Score score) const {
 
-    Value mg = mg_value(score);
-    Value eg = eg_value(score);
+    Value mg = mg_value(score) / 2;
+    Value eg = eg_value(score) / 2;
 
     int outflanking =  distance<File>(pos.square<KING>(WHITE), pos.square<KING>(BLACK))
                      - distance<Rank>(pos.square<KING>(WHITE), pos.square<KING>(BLACK));
@@ -811,7 +811,7 @@ namespace {
                + passed< WHITE>() - passed< BLACK>()
                + space<  WHITE>() - space<  BLACK>();
 
-    score += dynScore + initiative(dynScore);
+    score += dynScore + initiative(dynScore * 2 + score);
 
     // Interpolate between a middlegame and a (scaled by 'sf') endgame score
     ScaleFactor sf = scale_factor(eg_value(score));
