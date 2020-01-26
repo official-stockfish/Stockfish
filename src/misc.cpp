@@ -46,6 +46,9 @@ typedef bool(*fun3_t)(HANDLE, CONST GROUP_AFFINITY*, PGROUP_AFFINITY);
 #include <iostream>
 #include <sstream>
 #include <vector>
+#include <map>
+#include <string>
+
 
 #include "misc.h"
 #include "thread.h"
@@ -154,9 +157,7 @@ const string engine_info(bool to_uci) {
 /// compiler_info() returns a string trying to describe the compiler we use
 
 const std::string compiler_info() {
-
-  #define stringify2(x) #x
-  #define stringify(x) stringify2(x)
+  
   #define make_version_string(major, minor, patch) stringify(major) "." stringify(minor) "." stringify(patch)
 
 /// Predefined macros hell:
@@ -223,23 +224,41 @@ const std::string compiler_info() {
 
 
 /// Debug functions used mainly to collect run-time statistics
-static std::atomic<int64_t> hits[2], means[2];
+ Atomic64Map dbg_print_hits;
+ Atomic64Map dbg_print_means;
 
-void dbg_hit_on(bool b) { ++hits[0]; if (b) ++hits[1]; }
-void dbg_hit_on(bool c, bool b) { if (c) dbg_hit_on(b); }
-void dbg_mean_of(int v) { ++means[0]; means[1] += v; }
+void dbg_hit_on_impl(loc_file_line info_str,bool b){
+  if(!dbg_print_hits[info_str])
+    dbg_print_hits[info_str][0]=0,dbg_print_hits[info_str][1]=0;
 
-void dbg_print() {
-
-  if (hits[0])
-      cerr << "Total " << hits[0] << " Hits " << hits[1]
-           << " hit rate (%) " << 100 * hits[1] / hits[0] << endl;
-
-  if (means[0])
-      cerr << "Total " << means[0] << " Mean "
-           << (double)means[1] / means[0] << endl;
+   ++dbg_print_hits[info_str][0];
+   if(b)++dbg_print_hits[info_str][1];
 }
 
+void dbg_hit_on_impl(loc_file_line info_str,bool c, bool b){
+ if(c)dbg_hit_on_impl(info_str,b);
+}
+
+void dbg_mean_of_impl(loc_file_line info_str,int v){
+ if(!dbg_print_means[info_str])
+  dbg_print_means[info_str][0]=0,dbg_print_means[info_str][1]=0;
+
+++dbg_print_means[info_str][0];
+dbg_print_means[info_str][1] += v;
+}
+
+
+void dbg_print() {
+  for (auto& it:dbg_print_hits){
+  if(it.second[0])  cerr<< endl <<it.first <<"\nTotal:   " << it.second[0] << "\nHits:    " << it.second[1]
+           << "\nHitrate: " << (100.0 * it.second[1]) / it.second[0] << "%" << endl;
+     }
+  for (auto& it: dbg_print_means){
+     if(it.second[0])  cerr<< endl << it.first << "\nTotal: " << it.second[0] << "\nMean:  "
+           << (double)it.second[1] / it.second[0] << endl;
+
+     }
+}
 
 /// Used to serialize access to std::cout to avoid multiple threads writing at
 /// the same time.
