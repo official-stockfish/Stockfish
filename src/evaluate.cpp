@@ -168,7 +168,7 @@ namespace {
     template<Color Us> Score passed() const;
     template<Color Us> Score space() const;
     ScaleFactor scale_factor(Value eg) const;
-    Score initiative(Score score) const;
+    Score initiative(Score score, Score materialScore) const;
 
     const Position& pos;
     Material::Entry* me;
@@ -696,10 +696,11 @@ namespace {
   // known attacking/defending status of the players.
 
   template<Tracing T>
-  Score Evaluation<T>::initiative(Score score) const {
+  Score Evaluation<T>::initiative(Score score, Score materialScore) const {
 
-    Value mg = mg_value(score) / 2;
-    Value eg = eg_value(score) / 2;
+    score = (score * 2 - materialScore) / 2;
+    Value mg = mg_value(score);
+    Value eg = eg_value(score);
 
     int outflanking =  distance<File>(pos.square<KING>(WHITE), pos.square<KING>(BLACK))
                      - distance<Rank>(pos.square<KING>(WHITE), pos.square<KING>(BLACK));
@@ -792,26 +793,28 @@ namespace {
     if (abs(v) > LazyThreshold + pos.non_pawn_material() / 64)
        return pos.side_to_move() == WHITE ? v : -v;
 
+    // Remember this score
+    Score materialScore = score;
+
     // Main evaluation begins here
 
     initialize<WHITE>();
     initialize<BLACK>();
 
     // Pieces should be evaluated first (populate attack tables)
-    Score dynScore;
-    dynScore =  pieces<WHITE, KNIGHT>() - pieces<BLACK, KNIGHT>()
-              + pieces<WHITE, BISHOP>() - pieces<BLACK, BISHOP>()
-              + pieces<WHITE, ROOK  >() - pieces<BLACK, ROOK  >()
-              + pieces<WHITE, QUEEN >() - pieces<BLACK, QUEEN >();
+    score +=  pieces<WHITE, KNIGHT>() - pieces<BLACK, KNIGHT>()
+            + pieces<WHITE, BISHOP>() - pieces<BLACK, BISHOP>()
+            + pieces<WHITE, ROOK  >() - pieces<BLACK, ROOK  >()
+            + pieces<WHITE, QUEEN >() - pieces<BLACK, QUEEN >();
 
-    dynScore += mobility[WHITE] - mobility[BLACK];
+    score += mobility[WHITE] - mobility[BLACK];
 
-    dynScore +=  king<   WHITE>() - king<   BLACK>()
-               + threats<WHITE>() - threats<BLACK>()
-               + passed< WHITE>() - passed< BLACK>()
-               + space<  WHITE>() - space<  BLACK>();
+    score +=  king<   WHITE>() - king<   BLACK>()
+            + threats<WHITE>() - threats<BLACK>()
+            + passed< WHITE>() - passed< BLACK>()
+            + space<  WHITE>() - space<  BLACK>();
 
-    score += dynScore + initiative(dynScore * 2 + score);
+    score += initiative(score, materialScore);
 
     // Interpolate between a middlegame and a (scaled by 'sf') endgame score
     ScaleFactor sf = scale_factor(eg_value(score));
