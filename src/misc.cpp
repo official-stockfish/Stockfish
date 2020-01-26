@@ -46,6 +46,9 @@ typedef bool(*fun3_t)(HANDLE, CONST GROUP_AFFINITY*, PGROUP_AFFINITY);
 #include <iostream>
 #include <sstream>
 #include <vector>
+#include <map>
+#include <string>
+
 
 #include "misc.h"
 #include "thread.h"
@@ -155,8 +158,8 @@ const string engine_info(bool to_uci) {
 
 const std::string compiler_info() {
 
-  #define stringify2(x) #x
-  #define stringify(x) stringify2(x)
+  
+  
   #define make_version_string(major, minor, patch) stringify(major) "." stringify(minor) "." stringify(patch)
 
 /// Predefined macros hell:
@@ -221,7 +224,6 @@ const std::string compiler_info() {
   return compiler;
 }
 
-
 /// Debug functions used mainly to collect run-time statistics
 static std::atomic<int64_t> hits[2], means[2];
 
@@ -240,6 +242,43 @@ void dbg_print() {
            << (double)means[1] / means[0] << endl;
 }
 
+
+
+Atomic64Map print_hits;
+Atomic64Map print_means;
+
+void hit_on_impl(loc_file_line info_str,bool b){
+  if(!print_hits[info_str])
+    print_hits[info_str][0]=0,print_hits[info_str][1]=0;
+
+   ++print_hits[info_str][0];
+   if(b)++print_hits[info_str][1];
+}
+
+void hit_on_impl(loc_file_line info_str,bool c, bool b){
+ if(c)hit_on_impl(info_str,b);
+}
+
+void mean_of_impl(loc_file_line info_str,int v){
+ if(!print_means[info_str])
+  print_means[info_str][0]=0,print_means[info_str][1]=0;
+
+ ++print_means[info_str][0];
+ print_means[info_str][1] += v;
+}
+
+
+void dbg_print2() {
+  for (auto& it: print_hits){
+  if(it.second[0])  cerr<< endl <<it.first <<"\nTotal:   " << it.second[0] << "\nHits:    " << it.second[1]
+           << "\nHitrate: " << (100.0 * it.second[1]) / it.second[0] << "%" << endl;
+     }
+  for (auto& it: print_means){
+     if(it.second[0])  cerr<< endl << it.first << "\nTotal: " << it.second[0] << "\nMean:  "
+           << (double)it.second[1] / it.second[0] << endl;
+
+     }
+}
 
 /// Used to serialize access to std::cout to avoid multiple threads writing at
 /// the same time.
