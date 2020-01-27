@@ -8,7 +8,7 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['g++-8', 'g++-8-multilib', 'g++-multilib', 'valgrind', 'expect', 'curl', 'mingw-w64', 'wine64']
+          packages: ['g++-8', 'g++-8-multilib', 'g++-multilib', 'valgrind', 'expect', 'curl', 'mingw-w64', 'wine64', 'g++-mingw-w64-x86-64']
       env:
         - COMPILER=g++-8
         - TESTWINE=1
