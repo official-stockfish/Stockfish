@@ -434,8 +434,8 @@ void Thread::search() {
           {
               Value previousScore = rootMoves[pvIdx].previousScore;
               delta = Value(21 + abs(previousScore) / 256);
-              alpha = std::max(previousScore - delta,-VALUE_INFINITE);
-              beta  = std::min(previousScore + delta, VALUE_INFINITE);
+              alpha = std::max<Value>(previousScore - delta,-VALUE_INFINITE);
+              beta  = std::min<Value>(previousScore + delta, VALUE_INFINITE);
 
               // Adjust contempt based on root move's previousScore (dynamic contempt)
               int dct = ct + (102 - ct / 2) * previousScore / (abs(previousScore) + 157);
@@ -488,7 +488,7 @@ void Thread::search() {
               }
               else if (bestValue >= beta)
               {
-                  beta = std::min(bestValue + delta, VALUE_INFINITE);
+                  beta = std::min<Value>(bestValue + delta, VALUE_INFINITE);
                   ++failedHighCnt;
               }
               else
@@ -892,7 +892,7 @@ namespace {
         &&  depth >= 5
         &&  abs(beta) < VALUE_MATE_IN_MAX_PLY)
     {
-        Value raisedBeta = std::min(beta + 189 - 45 * improving, VALUE_INFINITE);
+        Value raisedBeta = std::min<Value>(beta + 189 - 45 * improving, VALUE_INFINITE);
         MovePicker mp(pos, ttMove, raisedBeta - ss->staticEval, &thisThread->captureHistory);
         int probCutCount = 0;
 
@@ -1690,7 +1690,7 @@ moves_loop: // When in check, search starts from here
 
     // RootMoves are already sorted by score in descending order
     Value topScore = rootMoves[0].score;
-    int delta = std::min(topScore - rootMoves[multiPV - 1].score, PawnValueMg);
+    int delta = std::min<int>(topScore - rootMoves[multiPV - 1].score, PawnValueMg);
     int weakness = 120 - 2 * level;
     int maxScore = -VALUE_INFINITE;
 
