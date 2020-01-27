@@ -8,7 +8,7 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['g++-8', 'g++-8-multilib', 'g++-multilib', 'valgrind', 'expect', 'curl', 'mingw-w64', 'wine64', 'g++-mingw-w64-x86-64']
+          packages: ['g++-8', 'g++-8-multilib', 'g++-multilib', 'valgrind', 'expect', 'curl', 'mingw-w64', 'wine64']
       env:
         - COMPILER=g++-8
         - TESTWINE=1
@@ -63,7 +63,7 @@ script:
   #
   # Verify one can perform a cross build from linux to windows via mingw
   #
-  - if [[ "$TESTWINE" == "1" ]]; then make clean && make -j2 ARCH=x86-64 COMP=mingw PGOBENCH="wine ./stockfish.exe bench" profile-build > /dev/null; fi
+  - if [[ "$TESTWINE" == "1" ]]; then make clean && make -j2 ARCH=x86-64 COMP=mingw COMPILER=x86_64-w64-mingw32-c++-posix PGOBENCH="wine ./stockfish.exe bench" profile-build > /dev/null; fi
   #
   # Valgrind
   #
