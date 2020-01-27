@@ -794,9 +794,6 @@ namespace {
     if (abs(v) > LazyThreshold + pos.non_pawn_material() / 64)
        return pos.side_to_move() == WHITE ? v : -v;
 
-    // Remember this score
-    Score materialScore = score;
-
     // Main evaluation begins here
 
     initialize<WHITE>();
