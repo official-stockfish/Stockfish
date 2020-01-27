@@ -63,7 +63,7 @@ script:
   #
   # Verify one can perform a cross build from linux to windows via mingw
   #
-  - if [[ "$TESTWINE" == "1" ]]; then make clean && make -j2 ARCH=x86-64 COMP=mingw COMPILER=x86_64-w64-mingw32-c++-posix CXXFLAGS=-Wno-error PGOBENCH="wine ./stockfish.exe bench" profile-build > /dev/null; fi
+  - if [[ "$TESTWINE" == "1" ]]; then ls -ltr /usr/bin/wine* && make clean && make -j2 ARCH=x86-64 COMP=mingw COMPILER=x86_64-w64-mingw32-c++-posix CXXFLAGS=-Wno-error PGOBENCH="wine64-stable ./stockfish.exe bench" profile-build > /dev/null; fi
   #
   # Valgrind
   #
