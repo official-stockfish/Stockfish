@@ -519,8 +519,7 @@ namespace {
         score += Hanging * popcount(weak & b);
     }
 
-    // Bonus for restricting their piece moves
-    // Greater bonus when landing square is occupied
+    // Bonus for restricting their piece moves, greater when square is occupied
     b =   attackedBy[Them][ALL_PIECES]
        & ~stronglyProtected
        &  attackedBy[Us][ALL_PIECES];
