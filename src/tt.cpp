@@ -148,7 +148,7 @@ TTEntry* TranspositionTable::probe(const Key key, bool& found) const {
 int TranspositionTable::hashfull() const {
 
   int cnt = 0;
-  for (int i = 1; i <= 1000; ++i)
+  for (int i = 0; i < 1000; ++i)
       for (int j = 0; j < ClusterSize; ++j)
           cnt += (table[i].entry[j].genBound8 & 0xF8) == generation8;
 
