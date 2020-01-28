@@ -248,9 +248,6 @@ Atomic64Map print_hits;
 Atomic64Map print_means;
 
 void hit_on_impl(loc_file_line info_str,bool b){
-  if(!print_hits[info_str])
-    print_hits[info_str][0]=0,print_hits[info_str][1]=0;
-
    ++print_hits[info_str][0];
    if(b)++print_hits[info_str][1];
 }
@@ -260,9 +257,6 @@ void hit_on_impl(loc_file_line info_str,bool c, bool b){
 }
 
 void mean_of_impl(loc_file_line info_str,int v){
- if(!print_means[info_str])
-  print_means[info_str][0]=0,print_means[info_str][1]=0;
-
  ++print_means[info_str][0];
  print_means[info_str][1] += v;
 }
