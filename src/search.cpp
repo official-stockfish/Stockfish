@@ -1730,11 +1730,16 @@ void MainThread::check_time() {
 
   TimePoint elapsed = Time.elapsed();
   TimePoint tick = Limits.startTime + elapsed;
-
-  if (tick - lastInfoTime >= 1000)
+  TimePoint updatediff =  Limits.use_time_management()?TimePoint(3000)
+        : std::min(elapsed/16,TimePoint(3000));
+  if (tick - lastInfoTime >= updatediff)
   {
       lastInfoTime = tick;
       dbg_print();
+    for (Thread* th : Threads)
+    {
+      th->dbg_print2();
+    }
   }
 
   // We should not stop pondering until told so by the GUI

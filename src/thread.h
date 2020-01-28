@@ -26,6 +26,8 @@
 #include <mutex>
 #include <thread>
 #include <vector>
+#include <map>
+#include <string>
 
 #include "material.h"
 #include "movepick.h"
@@ -34,6 +36,9 @@
 #include "search.h"
 #include "thread_win32_osx.h"
 
+typedef const char*    loc_file_line; 
+typedef std::atomic<int64_t> int64StoreAtomic[2]; 
+typedef std::map < loc_file_line , int64StoreAtomic   > Atomic64Map;
 
 /// Thread class keeps together all the thread-related stuff. We use
 /// per-thread pawn and material hash tables so that once we get a
@@ -74,6 +79,12 @@ public:
   CapturePieceToHistory captureHistory;
   ContinuationHistory continuationHistory[2][2];
   Score contempt;
+  Atomic64Map print_hits;
+  Atomic64Map print_means;
+  void hit_on_impl(loc_file_line info_str,bool b);
+  void hit_on_impl(loc_file_line info_str,bool c, bool b);
+  void mean_of_impl(loc_file_line info_str,int v);
+  void dbg_print2();
 };
 
 

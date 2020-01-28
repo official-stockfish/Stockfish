@@ -160,8 +160,6 @@ const string engine_info(bool to_uci) {
 
 const std::string compiler_info() {
 
-  #define stringify2(x) #x
-  #define stringify(x) stringify2(x)
   #define make_version_string(major, minor, patch) stringify(major) "." stringify(minor) "." stringify(patch)
 
 /// Predefined macros hell:

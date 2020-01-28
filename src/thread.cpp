@@ -21,6 +21,10 @@
 #include <cassert>
 
 #include <algorithm> // For std::count
+#include <fstream>
+#include <iomanip>
+#include <iostream>
+#include <sstream>
 #include "movegen.h"
 #include "search.h"
 #include "thread.h"
@@ -217,4 +221,48 @@ void ThreadPool::start_thinking(Position& pos, StateListPtr& states,
   setupStates->back() = tmp;
 
   main()->start_searching();
+}
+
+
+void Thread::hit_on_impl(loc_file_line info_str, bool b)
+{
+
+    ++print_hits[info_str][0];
+    if (b)
+        ++print_hits[info_str][1];
+}
+
+void Thread::hit_on_impl(loc_file_line info_str, bool c, bool b)
+{
+    if (c)
+        Thread::hit_on_impl(info_str, b);
+}
+
+void Thread::mean_of_impl(loc_file_line info_str, int v)
+{
+
+    ++print_means[info_str][0];
+    print_means[info_str][1] += v;
+}
+
+
+void Thread::dbg_print2()
+{
+
+    for (auto& it : this->print_hits)
+    {
+
+        if (it.second[0])
+            std::cerr << std::endl
+                      << it.first << "\nThread:" << Thread::idx << "\n Total:   " << it.second[0]
+                      << "\nHits:    " << it.second[1]
+                      << "\nHitrate: " << (100.0 * it.second[1]) / it.second[0] << "%" << std::endl;
+    }
+    for (auto& it : this->print_means)
+    {
+        if (it.second[0])
+            std::cerr << std::endl
+                      << it.first << "\nThread:" << Thread::idx << "\nTotal: " << it.second[0]
+                      << "\nMean:  " << (double)it.second[1] / it.second[0] << std::endl;
+    }
 }
