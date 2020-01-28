@@ -47,7 +47,7 @@ typedef bool(*fun3_t)(HANDLE, CONST GROUP_AFFINITY*, PGROUP_AFFINITY);
 #include <sstream>
 #include <vector>
 
-#ifdef __linux__
+#if defined(__linux__) && !defined(__ANDROID__)
 #include <stdlib.h>
 #include <sys/mman.h>
 #endif
@@ -297,7 +297,7 @@ void prefetch(void* addr) {
 /// aligned_ttmem_alloc will return suitably aligned memory, and if possible use large pages.
 /// The returned pointer is the aligned one, while the mem argument is the one that needs to be passed to free.
 /// With c++17 some of this functionality can be simplified.
-#ifdef __linux__
+#if defined(__linux__) && !defined(__ANDROID__)
 
 void* aligned_ttmem_alloc(size_t allocSize, void** mem) {
 
