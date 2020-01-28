@@ -168,7 +168,9 @@ enum Bound {
   BOUND_EXACT = BOUND_UPPER | BOUND_LOWER
 };
 
-enum Value : int {
+typedef int Value;
+
+constexpr Value
   VALUE_ZERO      = 0,
   VALUE_DRAW      = 0,
   VALUE_KNOWN_WIN = 10000,
@@ -184,9 +186,7 @@ enum Value : int {
   BishopValueMg = 825,   BishopValueEg = 915,
   RookValueMg   = 1276,  RookValueEg   = 1380,
   QueenValueMg  = 2538,  QueenValueEg  = 2682,
-
-  MidgameLimit  = 15258, EndgameLimit  = 3915
-};
+  MidgameLimit  = 15258, EndgameLimit  = 3915;
 
 enum PieceType {
   NO_PIECE_TYPE, PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING,
@@ -205,15 +205,13 @@ extern Value PieceValue[PHASE_NB][PIECE_NB];
 
 typedef int Depth;
 
-enum : int {
-
+constexpr Depth
   DEPTH_QS_CHECKS     =  0,
   DEPTH_QS_NO_CHECKS  = -1,
   DEPTH_QS_RECAPTURES = -5,
 
   DEPTH_NONE   = -6,
-  DEPTH_OFFSET = DEPTH_NONE,
-};
+  DEPTH_OFFSET = DEPTH_NONE;
 
 enum Square : int {
   SQ_A1, SQ_B1, SQ_C1, SQ_D1, SQ_E1, SQ_F1, SQ_G1, SQ_H1,
@@ -265,12 +263,12 @@ constexpr Score make_score(int mg, int eg) {
 /// and so is a right shift of a signed integer.
 inline Value eg_value(Score s) {
   union { uint16_t u; int16_t s; } eg = { uint16_t(unsigned(s + 0x8000) >> 16) };
-  return Value(eg.s);
+  return eg.s;
 }
 
 inline Value mg_value(Score s) {
   union { uint16_t u; int16_t s; } mg = { uint16_t(unsigned(s)) };
-  return Value(mg.s);
+  return mg.s;
 }
 
 #define ENABLE_BASE_OPERATORS_ON(T)                                \
@@ -293,7 +291,6 @@ constexpr int operator/(T d1, T d2) { return int(d1) / int(d2); }  \
 inline T& operator*=(T& d, int i) { return d = T(int(d) * i); }    \
 inline T& operator/=(T& d, int i) { return d = T(int(d) / i); }
 
-ENABLE_FULL_OPERATORS_ON(Value)
 ENABLE_FULL_OPERATORS_ON(Direction)
 
 ENABLE_INCR_OPERATORS_ON(PieceType)
@@ -307,12 +304,6 @@ ENABLE_BASE_OPERATORS_ON(Score)
 #undef ENABLE_FULL_OPERATORS_ON
 #undef ENABLE_INCR_OPERATORS_ON
 #undef ENABLE_BASE_OPERATORS_ON
-
-/// Additional operators to add integers to a Value
-constexpr Value operator+(Value v, int i) { return Value(int(v) + i); }
-constexpr Value operator-(Value v, int i) { return Value(int(v) - i); }
-inline Value& operator+=(Value& v, int i) { return v = v + i; }
-inline Value& operator-=(Value& v, int i) { return v = v - i; }
 
 /// Additional operators to add a Direction to a Square
 constexpr Square operator+(Square s, Direction d) { return Square(int(s) + int(d)); }

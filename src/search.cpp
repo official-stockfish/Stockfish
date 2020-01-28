@@ -67,7 +67,7 @@ namespace {
   // Razor and futility margins
   constexpr int RazorMargin = 531;
   Value futility_margin(Depth d, bool improving) {
-    return Value(217 * (d - improving));
+    return 217 * (d - improving);
   }
 
   // Reductions lookup table, initialized at startup
@@ -89,7 +89,7 @@ namespace {
 
   // Add a small random component to draw evaluations to avoid 3fold-blindness
   Value value_draw(Thread* thisThread) {
-    return VALUE_DRAW + Value(2 * (thisThread->nodes & 1) - 1);
+    return VALUE_DRAW + 2 * (thisThread->nodes & 1) - 1;
   }
 
   // Skill structure is used to implement strength limit
@@ -114,7 +114,7 @@ namespace {
   // node for potential reductions. A free node will be marked upon entering the moves
   // loop by the constructor, and unmarked upon leaving that loop by the destructor.
   struct ThreadHolding {
-    explicit ThreadHolding(Thread* thisThread, Key posKey, int ply) {
+    explicit ThreadHolding(Thread* thisThread, Key posKey, Depth ply) {
        location = ply < 8 ? &breadcrumbs[posKey & (breadcrumbs.size() - 1)] : nullptr;
        otherThread = false;
        owning = false;
@@ -152,8 +152,8 @@ namespace {
   template <NodeType NT>
   Value qsearch(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth = 0);
 
-  Value value_to_tt(Value v, int ply);
-  Value value_from_tt(Value v, int ply, int r50c);
+  Value value_to_tt(Value v, Depth ply);
+  Value value_from_tt(Value v, Depth ply, int r50c);
   void update_pv(Move* pv, Move move, Move* childPv);
   void update_continuation_histories(Stack* ss, Piece pc, Square to, int bonus);
   void update_quiet_stats(const Position& pos, Stack* ss, Move move, int bonus);
@@ -288,7 +288,7 @@ void MainThread::search() {
       for (Thread* th : Threads)
       {
           votes[th->rootMoves[0].pv[0]] +=
-              (th->rootMoves[0].score - minScore + 14) * int(th->completedDepth);
+              (th->rootMoves[0].score - minScore + 14) * th->completedDepth;
 
           if (bestThread->rootMoves[0].score >= VALUE_MATE_IN_MAX_PLY)
           {
@@ -433,9 +433,9 @@ void Thread::search() {
           if (rootDepth >= 4)
           {
               Value previousScore = rootMoves[pvIdx].previousScore;
-              delta = Value(21 + abs(previousScore) / 256);
+              delta = 21 + abs(previousScore) / 256;
               alpha = std::max(previousScore - delta,-VALUE_INFINITE);
-              beta  = std::min(previousScore + delta, VALUE_INFINITE);
+              beta  = std::min(previousScore + delta, Value(VALUE_INFINITE));
 
               // Adjust contempt based on root move's previousScore (dynamic contempt)
               int dct = ct + (102 - ct / 2) * previousScore / (abs(previousScore) + 157);
@@ -488,7 +488,7 @@ void Thread::search() {
               }
               else if (bestValue >= beta)
               {
-                  beta = std::min(bestValue + delta, VALUE_INFINITE);
+                  beta = std::min(bestValue + delta, Value(VALUE_INFINITE));
                   ++failedHighCnt;
               }
               else
@@ -1005,7 +1005,7 @@ moves_loop: // When in check, search starts from here
               && !givesCheck)
           {
               // Reduced depth of the next LMR search
-              int lmrDepth = std::max(newDepth - reduction(improving, depth, moveCount), 0);
+              Depth lmrDepth = std::max(newDepth - reduction(improving, depth, moveCount), 0);
 
               // Countermoves based pruning (~20 Elo)
               if (   lmrDepth < 4 + ((ss-1)->statScore > 0 || (ss-1)->moveCount == 1)
@@ -1024,10 +1024,10 @@ moves_loop: // When in check, search starts from here
                   continue;
 
               // Prune moves with negative SEE (~20 Elo)
-              if (!pos.see_ge(move, Value(-(32 - std::min(lmrDepth, 18)) * lmrDepth * lmrDepth)))
+              if (!pos.see_ge(move, -(32 - std::min(lmrDepth, 18)) * lmrDepth * lmrDepth))
                   continue;
           }
-          else if (!pos.see_ge(move, Value(-194) * depth)) // (~25 Elo)
+          else if (!pos.see_ge(move, -194 * depth)) // (~25 Elo)
           {
               if (captureOrPromotion && captureCount < 32)
                   capturesSearched[captureCount++] = move;
@@ -1568,7 +1568,7 @@ moves_loop: // When in check, search starts from here
   // "plies to mate from the current position". Non-mate scores are unchanged.
   // The function is called before storing a value in the transposition table.
 
-  Value value_to_tt(Value v, int ply) {
+  Value value_to_tt(Value v, Depth ply) {
 
     assert(v != VALUE_NONE);
 
@@ -1581,7 +1581,7 @@ moves_loop: // When in check, search starts from here
   // from the transposition table (which refers to the plies to mate/be mated
   // from current position) to "plies to mate/be mated from the root".
 
-  Value value_from_tt(Value v, int ply, int r50c) {
+  Value value_from_tt(Value v, Depth ply, int r50c) {
 
     return  v == VALUE_NONE             ? VALUE_NONE
           : v >= VALUE_MATE_IN_MAX_PLY  ? VALUE_MATE - v > 99 - r50c ? VALUE_MATE_IN_MAX_PLY  : v - ply
@@ -1690,9 +1690,9 @@ moves_loop: // When in check, search starts from here
 
     // RootMoves are already sorted by score in descending order
     Value topScore = rootMoves[0].score;
-    int delta = std::min(topScore - rootMoves[multiPV - 1].score, PawnValueMg);
+    Value delta = std::min(topScore - rootMoves[multiPV - 1].score, PawnValueMg);
     int weakness = 120 - 2 * level;
-    int maxScore = -VALUE_INFINITE;
+    Value maxScore = -VALUE_INFINITE;
 
     // Choose best move. For each move score we add two terms, both dependent on
     // weakness. One is deterministic and bigger for weaker levels, and one is
@@ -1701,7 +1701,7 @@ moves_loop: // When in check, search starts from here
     {
         // This is our magic formula
         int push = (  weakness * int(topScore - rootMoves[i].score)
-                    + delta * (rng.rand<unsigned>() % weakness)) / 128;
+                    + delta * int(rng.rand<unsigned>() % weakness)) / 128;
 
         if (rootMoves[i].score + push >= maxScore)
         {
@@ -1837,7 +1837,7 @@ void Tablebases::rank_root_moves(Position& pos, Search::RootMoves& rootMoves) {
 
     RootInTB = false;
     UseRule50 = bool(Options["Syzygy50MoveRule"]);
-    ProbeDepth = int(Options["SyzygyProbeDepth"]);
+    ProbeDepth = Depth(Options["SyzygyProbeDepth"]);
     Cardinality = int(Options["SyzygyProbeLimit"]);
     bool dtz_available = true;
 

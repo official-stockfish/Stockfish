@@ -30,7 +30,7 @@ namespace {
 
   // Table used to drive the king towards the edge of the board
   // in KX vs K and KQ vs KR endgames.
-  constexpr int PushToEdges[SQUARE_NB] = {
+  constexpr Value PushToEdges[SQUARE_NB] = {
     100, 90, 80, 70, 70, 80, 90, 100,
      90, 70, 60, 50, 50, 60, 70,  90,
      80, 60, 40, 30, 30, 40, 60,  80,
@@ -43,7 +43,7 @@ namespace {
 
   // Table used to drive the king towards a corner square of the
   // right color in KBN vs K endgames.
-  constexpr int PushToCorners[SQUARE_NB] = {
+  constexpr Value PushToCorners[SQUARE_NB] = {
      6400, 6080, 5760, 5440, 5120, 4800, 4480, 4160,
      6080, 5760, 5440, 5120, 4800, 4480, 4160, 4480,
      5760, 5440, 4960, 4480, 4480, 4000, 4480, 4800,
@@ -55,8 +55,8 @@ namespace {
   };
 
   // Tables used to drive a piece towards or away from another piece
-  constexpr int PushClose[8] = { 0, 0, 100, 80, 60, 40, 20, 10 };
-  constexpr int PushAway [8] = { 0, 5, 20, 40, 60, 80, 90, 100 };
+  constexpr Value PushClose[8] = { 0, 0, 100, 80, 60, 40, 20, 10 };
+  constexpr Value PushAway [8] = { 0, 5, 20, 40, 60, 80, 90, 100 };
 
   // Pawn Rank based scaling factors used in KRPPKRP endgame
   constexpr int KRPPKRPScaleFactors[RANK_NB] = { 0, 9, 10, 14, 21, 44, 0, 0 };
@@ -184,7 +184,7 @@ Value Endgame<KPK>::operator()(const Position& pos) const {
   if (!Bitbases::probe(wksq, psq, bksq, us))
       return VALUE_DRAW;
 
-  Value result = VALUE_KNOWN_WIN + PawnValueEg + Value(rank_of(psq));
+  Value result = VALUE_KNOWN_WIN + PawnValueEg + rank_of(psq);
 
   return strongSide == pos.side_to_move() ? result : -result;
 }
@@ -224,10 +224,10 @@ Value Endgame<KRKP>::operator()(const Position& pos) const {
            && distance(bksq, psq) == 1
            && rank_of(wksq) >= RANK_4
            && distance(wksq, psq) > 2 + (pos.side_to_move() == strongSide))
-      result = Value(80) - 8 * distance(wksq, psq);
+      result = 80 - 8 * distance(wksq, psq);
 
   else
-      result =  Value(200) - 8 * (  distance(wksq, psq + SOUTH)
+      result =  200 - 8 * (  distance(wksq, psq + SOUTH)
                                   - distance(bksq, psq + SOUTH)
                                   - distance(psq, queeningSq));
 
@@ -243,7 +243,7 @@ Value Endgame<KRKB>::operator()(const Position& pos) const {
   assert(verify_material(pos, strongSide, RookValueMg, 0));
   assert(verify_material(pos, weakSide, BishopValueMg, 0));
 
-  Value result = Value(PushToEdges[pos.square<KING>(weakSide)]);
+  Value result = PushToEdges[pos.square<KING>(weakSide)];
   return strongSide == pos.side_to_move() ? result : -result;
 }
 
@@ -258,7 +258,7 @@ Value Endgame<KRKN>::operator()(const Position& pos) const {
 
   Square bksq = pos.square<KING>(weakSide);
   Square bnsq = pos.square<KNIGHT>(weakSide);
-  Value result = Value(PushToEdges[bksq] + PushAway[distance(bksq, bnsq)]);
+  Value result = PushToEdges[bksq] + PushAway[distance(bksq, bnsq)];
   return strongSide == pos.side_to_move() ? result : -result;
 }
 
@@ -277,7 +277,7 @@ Value Endgame<KQKP>::operator()(const Position& pos) const {
   Square loserKSq = pos.square<KING>(weakSide);
   Square pawnSq = pos.square<PAWN>(weakSide);
 
-  Value result = Value(PushClose[distance(winnerKSq, loserKSq)]);
+  Value result = PushClose[distance(winnerKSq, loserKSq)];
 
   if (   relative_rank(weakSide, pawnSq) != RANK_7
       || distance(loserKSq, pawnSq) != 1
