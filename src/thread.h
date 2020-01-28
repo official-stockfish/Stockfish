@@ -74,6 +74,7 @@ public:
   CapturePieceToHistory captureHistory;
   ContinuationHistory continuationHistory[2][2];
   Score contempt;
+  friend void dbg_print2();
 };
 
 
