@@ -66,7 +66,7 @@ void TranspositionTable::resize(size_t mbSize) {
   free(mem);
 
   clusterCount = mbSize * 1024 * 1024 / sizeof(Cluster);
-  table = static_cast<Cluster*>(aligned_ttmem_alloc(clusterCount * sizeof(Cluster), &mem));
+  table = static_cast<Cluster*>(aligned_ttmem_alloc(clusterCount * sizeof(Cluster), mem));
   if (!mem)
   {
       std::cerr << "Failed to allocate " << mbSize
