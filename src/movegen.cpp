@@ -52,7 +52,6 @@ namespace {
   template<Color Us, GenType Type>
   ExtMove* generate_pawn_moves(const Position& pos, ExtMove* moveList, Bitboard target) {
 
-    // Compute some compile time parameters relative to the white side
     constexpr Color     Them     = (Us == WHITE ? BLACK      : WHITE);
     constexpr Bitboard  TRank7BB = (Us == WHITE ? Rank7BB    : Rank2BB);
     constexpr Bitboard  TRank3BB = (Us == WHITE ? Rank3BB    : Rank6BB);

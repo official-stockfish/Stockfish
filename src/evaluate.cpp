@@ -520,7 +520,6 @@ namespace {
     }
 
     // Bonus for restricting their piece moves
-    // Greater bonus when landing square is occupied
     b =   attackedBy[Them][ALL_PIECES]
        & ~stronglyProtected
        &  attackedBy[Us][ALL_PIECES];
@@ -721,7 +720,6 @@ namespace {
                     - 43 * almostUnwinnable
                     -110 ;
 
-    // Give more importance to non-material score
     Value mg = mg_value(score);
     Value eg = eg_value(score);
 

@@ -19,7 +19,6 @@
 */
 
 #include <cassert>
-#include <numeric>
 #include <vector>
 #include <bitset>
 
