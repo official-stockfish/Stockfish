@@ -443,7 +443,7 @@ namespace {
     int kingFlankAttack = popcount(b1) + popcount(b2);
     int kingFlankDefense = popcount(b3);
 
-    kingDanger += 50 * bool(attackedBy[Them][ALL_PIECES] & forward_ranks_bb(Them, ksq) & kingRing[Us]);
+    kingDanger += 50 * bool(weak & forward_ranks_bb(Them, ksq) & kingRing[Us]);
 
     kingDanger +=        kingAttackersCount[Them] * kingAttackersWeight[Them]
                  + 185 * popcount(kingRing[Us] & weak)
