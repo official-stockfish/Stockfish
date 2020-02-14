@@ -70,7 +70,7 @@ namespace {
     return Value(217 * (d - improving));
   }
 
-  // Reductions lookup table, initialized at startup.
+  // Reductions lookup table, initialized at startup
   int Reductions[MAX_MOVES]; // [depth or moveNumber]
 
   Depth reduction(bool i, Depth d, int mn) {
