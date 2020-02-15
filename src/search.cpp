@@ -755,7 +755,7 @@ namespace {
 
                 int drawScore = TB::UseRule50 ? 1 : 0;
 
-		// use the range VALUE_MATE_IN_MAX_PLY to VALUE_TB_WIN_IN_MAX_PLY to score
+                // use the range VALUE_MATE_IN_MAX_PLY to VALUE_TB_WIN_IN_MAX_PLY to score
                 value =  wdl < -drawScore ? VALUE_MATED_IN_MAX_PLY + ss->ply + 1
                        : wdl >  drawScore ? VALUE_MATE_IN_MAX_PLY - ss->ply - 1
                                           : VALUE_DRAW + 2 * wdl * drawScore;
@@ -1582,23 +1582,23 @@ moves_loop: // When in check, search starts from here
 
   Value value_from_tt(Value v, int ply, int r50c) {
 
+    if (v == VALUE_NONE)
+        return VALUE_NONE;
+
     if (v >= VALUE_TB_WIN_IN_MAX_PLY)  // TB win or better
     {
-	if (v == VALUE_NONE) // assumes VALUE_NONE > 0
-	    return VALUE_NONE;
+        if (v >= VALUE_MATE_IN_MAX_PLY && VALUE_MATE - v > 99 - r50c)
+            return VALUE_MATE_IN_MAX_PLY - 1; // do not return a potentially false mate score
 
-	if (v >= VALUE_MATE_IN_MAX_PLY && VALUE_MATE - v > 99 - r50c)
-	    return VALUE_MATE_IN_MAX_PLY - 1; // do not return a potentially false mate score
-
-	return v - ply;
+        return v - ply;
     }
 
     if (v <= VALUE_TB_LOSS_IN_MAX_PLY) // TB loss or worse
     {
-	if (v <= VALUE_MATED_IN_MAX_PLY && VALUE_MATE + v > 99 - r50c)
-	    return VALUE_MATED_IN_MAX_PLY + 1; // do not return a potentially false mate score
+        if (v <= VALUE_MATED_IN_MAX_PLY && VALUE_MATE + v > 99 - r50c)
+            return VALUE_MATED_IN_MAX_PLY + 1; // do not return a potentially false mate score
 
-	return v + ply;
+        return v + ply;
     }
 
     return v;
