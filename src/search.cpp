@@ -697,7 +697,7 @@ namespace {
     ttPv = PvNode || (ttHit && tte->is_pv());
 
     if (ttPv && depth > 12 && ss->ply < 5 && !pos.captured_piece() && is_ok((ss-1)->currentMove))
-        thisThread->lowPlyHistory[~us][from_to((ss-1)->currentMove)][(ss->ply -1)/2] << stat_bonus(depth - 5);
+        thisThread->lowPlyHistory[ss->ply - 1][from_to((ss-1)->currentMove)] << stat_bonus(depth - 5);
 
     // thisThread->ttHitAverage can be used to approximate the running average of ttHit
     thisThread->ttHitAverage =   (ttHitAverageWindow - 1) * thisThread->ttHitAverage / ttHitAverageWindow
@@ -1702,7 +1702,7 @@ moves_loop: // When in check, search starts from here
     }
 
     if (depth > 12 && ss->ply < 4)
-    	thisThread->lowPlyHistory[us][from_to(move)][ss->ply/2] << stat_bonus(depth - 7);
+    	thisThread->lowPlyHistory[ss->ply][from_to(move)] << stat_bonus(depth - 7);
   }
 
   // When playing with strength handicap, choose best move among a set of RootMoves
