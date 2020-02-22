@@ -518,7 +518,7 @@ namespace {
            | (nonPawnEnemies & attackedBy2[Us]);
         score += Hanging * popcount(weak & b);
 
-        score += make_score(4, 4) * popcount(weak & attackedBy[Them][QUEEN]);
+        score += make_score(6, 0) * popcount(weak & attackedBy[Them][QUEEN]);
     }
 
     // Bonus for restricting their piece moves
