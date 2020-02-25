@@ -137,7 +137,7 @@ Value Endgame<KXK>::operator()(const Position& pos) const {
       ||(pos.count<BISHOP>(strongSide) && pos.count<KNIGHT>(strongSide))
       || (   (pos.pieces(strongSide, BISHOP) & ~DarkSquares)
           && (pos.pieces(strongSide, BISHOP) &  DarkSquares)))
-      result = std::min(result + VALUE_KNOWN_WIN, VALUE_MATE_IN_MAX_PLY - 1);
+      result = std::min(result + VALUE_KNOWN_WIN, VALUE_TB_WIN_IN_MAX_PLY - 1);
 
   return strongSide == pos.side_to_move() ? result : -result;
 }
@@ -162,7 +162,7 @@ Value Endgame<KBNK>::operator()(const Position& pos) const {
                 + PushClose[distance(winnerKSq, loserKSq)]
                 + PushToCorners[opposite_colors(bishopSq, SQ_A1) ? ~loserKSq : loserKSq];
 
-  assert(abs(result) < VALUE_MATE_IN_MAX_PLY);
+  assert(abs(result) < VALUE_TB_WIN_IN_MAX_PLY);
   return strongSide == pos.side_to_move() ? result : -result;
 }
 
@@ -310,16 +310,17 @@ Value Endgame<KQKR>::operator()(const Position& pos) const {
 }
 
 
-/// KNN vs KP. Simply push the opposing king to the corner
+/// KNN vs KP. Very drawish, but there are some mate opportunities if we can
+//  press the weakSide King to a corner before the pawn advances too much.
 template<>
 Value Endgame<KNNKP>::operator()(const Position& pos) const {
 
   assert(verify_material(pos, strongSide, 2 * KnightValueMg, 0));
   assert(verify_material(pos, weakSide, VALUE_ZERO, 1));
 
-  Value result =  2 * KnightValueEg
-                - PawnValueEg
-                + PushToEdges[pos.square<KING>(weakSide)];
+  Value result =      PawnValueEg
+               +  2 * PushToEdges[pos.square<KING>(weakSide)]
+               - 10 * relative_rank(weakSide, pos.square<PAWN>(weakSide));
 
   return strongSide == pos.side_to_move() ? result : -result;
 }
