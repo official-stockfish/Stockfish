@@ -517,6 +517,7 @@ namespace {
            | (nonPawnEnemies & attackedBy2[Us]);
         score += Hanging * popcount(weak & b);
 
+        // Additional bonus if weak piece is only protected by a queen
         score += make_score(14, 0) * popcount(weak & attackedBy[Them][QUEEN]);
     }
 
