@@ -409,7 +409,7 @@ help:
 	@echo ""
 
 
-.PHONY: help build profile-build strip install clean objclean profileclean help \
+.PHONY: help build profile-build strip install clean objclean profileclean \
         config-sanity icc-profile-use icc-profile-make gcc-profile-use gcc-profile-make \
         clang-profile-use clang-profile-make
 
