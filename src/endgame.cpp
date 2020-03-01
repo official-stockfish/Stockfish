@@ -74,9 +74,9 @@ namespace {
     assert(pos.count<PAWN>(strongSide) == 1);
 
     if (file_of(pos.square<PAWN>(strongSide)) >= FILE_E)
-        sq = Square(int(sq) ^ 7); // Mirror SQ_H1 -> SQ_A1
+        sq = flip_file(sq);
 
-    return strongSide == WHITE ? sq : ~sq;
+    return strongSide == WHITE ? sq : flip_rank(sq);
   }
 
 } // namespace
