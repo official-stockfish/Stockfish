@@ -352,8 +352,12 @@ constexpr Color operator~(Color c) {
   return Color(c ^ BLACK); // Toggle color
 }
 
-constexpr Square operator~(Square s) {
-  return Square(s ^ SQ_A8); // Vertical flip SQ_A1 -> SQ_A8
+constexpr Square flip_vert(Square s) {
+  return Square(s ^ SQ_A8);
+}
+
+constexpr Square flip_hori(Square s) {
+  return Square(s ^ SQ_H1);
 }
 
 constexpr Piece operator~(Piece pc) {

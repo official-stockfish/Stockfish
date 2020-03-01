@@ -683,7 +683,7 @@ Ret do_probe_table(const Position& pos, T* entry, WDLScore wdl, ProbeState* resu
     bool blackStronger = (pos.material_key() != entry->key);
 
     int flipColor   = (symmetricBlackToMove || blackStronger) * 8;
-    int flipSquares = (symmetricBlackToMove || blackStronger) * 56;
+    int flipSquares = (symmetricBlackToMove || blackStronger) * SQ_A8;
     int stm         = (symmetricBlackToMove || blackStronger) ^ pos.side_to_move();
 
     // For pawns, TB files store 4 separate tables according if leading pawn is on
@@ -743,7 +743,7 @@ Ret do_probe_table(const Position& pos, T* entry, WDLScore wdl, ProbeState* resu
     // the triangle A1-D1-D4.
     if (file_of(squares[0]) > FILE_D)
         for (int i = 0; i < size; ++i)
-            squares[i] ^= 7; // Horizontal flip: SQ_H1 -> SQ_A1
+            squares[i] = flip_hori(squares[i]);
 
     // Encode leading pawns starting with the one with minimum MapPawns[] and
     // proceeding in ascending order.
@@ -762,7 +762,7 @@ Ret do_probe_table(const Position& pos, T* entry, WDLScore wdl, ProbeState* resu
     // piece is below RANK_5.
     if (rank_of(squares[0]) > RANK_4)
         for (int i = 0; i < size; ++i)
-            squares[i] ^= SQ_A8; // Vertical flip: SQ_A8 -> SQ_A1
+            squares[i] = flip_vert(squares[i]);
 
     // Look for the first piece of the leading group not on the A1-D4 diagonal
     // and ensure it is mapped below the diagonal.
@@ -1344,7 +1344,7 @@ void Tablebases::init(const std::string& paths) {
                 if (leadPawnsCnt == 1)
                 {
                     MapPawns[sq] = availableSquares--;
-                    MapPawns[sq ^ 7] = availableSquares--; // Horizontal flip
+                    MapPawns[flip_hori(sq)] = availableSquares--;
                 }
                 LeadPawnIdx[leadPawnsCnt][sq] = idx;
                 idx += Binomial[leadPawnsCnt - 1][MapPawns[sq]];
