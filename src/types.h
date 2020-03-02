@@ -352,11 +352,11 @@ constexpr Color operator~(Color c) {
   return Color(c ^ BLACK); // Toggle color
 }
 
-constexpr Square flip_vert(Square s) {
+constexpr Square flip_rank(Square s) {
   return Square(s ^ SQ_A8);
 }
 
-constexpr Square flip_hori(Square s) {
+constexpr Square flip_file(Square s) {
   return Square(s ^ SQ_H1);
 }
 
