@@ -288,13 +288,29 @@ inline Square Position::castling_rook_square(CastlingRights cr) const {
   return castlingRookSquare[cr];
 }
 
-template<PieceType Pt>
-inline Bitboard Position::attacks_from(Square s) const {
-  static_assert(Pt != PAWN, "Pawn attacks need color");
+template<>
+inline Bitboard Position::attacks_from<KNIGHT>(Square s) const {
+    return PseudoAttacks[KNIGHT][s];
+}
 
-  return  Pt == BISHOP || Pt == ROOK ? attacks_bb<Pt>(s, byTypeBB[ALL_PIECES])
-        : Pt == QUEEN  ? attacks_from<ROOK>(s) | attacks_from<BISHOP>(s)
-        : PseudoAttacks[Pt][s];
+template<>
+inline Bitboard Position::attacks_from<BISHOP>(Square s) const {
+    return attacks_bb<BISHOP>(s, byTypeBB[ALL_PIECES]);
+}
+
+template<>
+inline Bitboard Position::attacks_from<ROOK>(Square s) const {
+    return attacks_bb<ROOK>(s, byTypeBB[ALL_PIECES]);
+}
+
+template<>
+inline Bitboard Position::attacks_from<QUEEN>(Square s) const {
+    return attacks_from<BISHOP>( s ) | attacks_from<ROOK>(s);
+}
+
+template<>
+inline Bitboard Position::attacks_from<KING>(Square s) const {
+    return PseudoAttacks[KING][s];
 }
 
 template<>

@@ -171,9 +171,16 @@ constexpr Bitboard shift(Bitboard b) {
 /// from the squares in the given bitboard.
 
 template<Color C>
-constexpr Bitboard pawn_attacks_bb(Bitboard b) {
-  return C == WHITE ? shift<NORTH_WEST>(b) | shift<NORTH_EAST>(b)
-                    : shift<SOUTH_WEST>(b) | shift<SOUTH_EAST>(b);
+constexpr Bitboard pawn_attacks_bb(Bitboard b); //unused
+
+template<>
+constexpr Bitboard pawn_attacks_bb<WHITE>(Bitboard b) {
+    return shift<NORTH_WEST>(b) | shift<NORTH_EAST>(b);
+}
+
+template<>
+constexpr Bitboard pawn_attacks_bb<BLACK>(Bitboard b) {
+    return shift<SOUTH_WEST>(b) | shift<SOUTH_EAST>(b);
 }
 
 
@@ -263,11 +270,22 @@ template<class T> constexpr const T& clamp(const T& v, const T& lo, const T&  hi
 /// piece of type Pt (bishop or rook) placed on 's'.
 
 template<PieceType Pt>
-inline Bitboard attacks_bb(Square s, Bitboard occupied) {
+inline Bitboard attacks_bb(Square s, Bitboard occupied); //unused
 
-  const Magic& m = Pt == ROOK ? RookMagics[s] : BishopMagics[s];
-  return m.attacks[m.index(occupied)];
+template <>
+inline Bitboard attacks_bb<BISHOP>(Square s, Bitboard occupied) {
+
+    const Magic& m = BishopMagics[s];
+    return m.attacks[m.index(occupied)];
 }
+
+template <>
+inline Bitboard attacks_bb<ROOK>(Square s, Bitboard occupied) {
+
+    const Magic& m = RookMagics[s];
+    return m.attacks[m.index(occupied)];
+}
+
 
 inline Bitboard attacks_bb(PieceType pt, Square s, Bitboard occupied) {
 
