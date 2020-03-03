@@ -24,8 +24,6 @@
 #include "endgame.h"
 #include "movegen.h"
 
-using std::string;
-
 namespace {
 
   // Table used to drive the king towards the edge of the board
