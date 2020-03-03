@@ -56,7 +56,7 @@ namespace {
 
   // Tables used to drive a piece towards or away from another piece
   inline int push_close(Square s1, Square s2) { return 140 - 20 * distance(s1, s2); }
-  inline int push_away(Square s1, Square s2) { return 20 * distance(s1, s2) - 20; }
+  inline int push_away(Square s1, Square s2) { return 120 - push_close(s1, s2); }
 
   // Pawn Rank based scaling factors used in KRPPKRP endgame
   constexpr int KRPPKRPScaleFactors[RANK_NB] = { 0, 9, 10, 14, 21, 44, 0, 0 };
