@@ -66,7 +66,6 @@ enum TBType { KEY, WDL, DTZ }; // Used as template parameter
 enum TBFlag { STM = 1, Mapped = 2, WinPlies = 4, LossPlies = 8, Wide = 16, SingleValue = 128 };
 
 inline WDLScore operator-(WDLScore d) { return WDLScore(-int(d)); }
-inline Square operator^=(Square& s, int i) { return s = Square(int(s) ^ i); }
 inline Square operator^(Square s, int i) { return Square(int(s) ^ i); }
 
 const std::string PieceToChar = " PNBRQK  pnbrqk";
