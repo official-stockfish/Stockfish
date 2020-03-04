@@ -59,7 +59,7 @@ namespace {
   inline int push_away(Square s1, Square s2) { return 120 - push_close(s1, s2); }
 
   // Pawn Rank based scaling factors used in KRPPKRP endgame
-  constexpr int KRPPKRPScaleFactors(int r) { return 7 * r; }
+  constexpr int KRPPKRPScaleFactors(int r) { return 9 + r * r; }
 
 #ifndef NDEBUG
   bool verify_material(const Position& pos, Color c, Value npm, int pawnsCnt) {
