@@ -199,8 +199,8 @@ inline Bitboard adjacent_files_bb(Square s) {
 /// If the given squares are not on a same file/rank/diagonal, return 0.
 
 inline Bitboard between_bb(Square s1, Square s2) {
-  Bitboard b2 = LineBB[s1][s2] & ((square_bb(s1) - 1) ^ (square_bb(s2) - 1));
-  return b2 & (b2 - 1);
+  Bitboard b = LineBB[s1][s2] & ((AllSquares << s1) ^ (AllSquares << s2));
+  return b & (b - 1); //exclude lsb
 }
 
 
