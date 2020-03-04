@@ -54,7 +54,7 @@ namespace {
      4160, 4480, 4800, 5120, 5440, 5760, 6080, 6400
   };
 
-  // Tables used to drive a piece towards or away from another piece
+  // Drive a piece close to or away from another piece
   inline int push_close(Square s1, Square s2) { return 140 - 20 * distance(s1, s2); }
   inline int push_away(Square s1, Square s2) { return 120 - push_close(s1, s2); }
 
