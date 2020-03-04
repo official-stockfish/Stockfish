@@ -255,6 +255,11 @@ template<> inline int distance<File>(Square x, Square y) { return std::abs(file_
 template<> inline int distance<Rank>(Square x, Square y) { return std::abs(rank_of(x) - rank_of(y)); }
 template<> inline int distance<Square>(Square x, Square y) { return SquareDistance[x][y]; }
 
+inline int edge_distance(File f) { return std::min(f, File(FILE_H - f)); }
+inline int edge_distance(Rank r) { return std::min(r, Rank(RANK_8 - r)); }
+inline int edge_distance(Square s) { return std::min(edge_distance(file_of(s)), edge_distance(rank_of(s))); }
+inline int corner_distance(Square s) { return edge_distance(file_of(s)) + edge_distance(rank_of(s)); }
+
 template<class T> constexpr const T& clamp(const T& v, const T& lo, const T&  hi) {
   return v < lo ? lo : v > hi ? hi : v;
 }
