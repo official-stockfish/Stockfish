@@ -158,7 +158,7 @@ Value Endgame<KBNK>::operator()(const Position& pos) const {
 
   Value result =  VALUE_KNOWN_WIN
                 + push_close(winnerKSq, loserKSq)
-                + PushToCorners[opposite_colors(bishopSq, SQ_A1) ? ~loserKSq : loserKSq];
+                + PushToCorners[opposite_colors(bishopSq, SQ_A1) ? flip_rank(loserKSq) : loserKSq];
 
   assert(abs(result) < VALUE_TB_WIN_IN_MAX_PLY);
   return strongSide == pos.side_to_move() ? result : -result;
