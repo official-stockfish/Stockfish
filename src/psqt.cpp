@@ -114,7 +114,7 @@ void init() {
           File f = map_to_queenside(file_of(s));
           psq[ pc][ s] = score + (type_of(pc) == PAWN ? PBonus[rank_of(s)][file_of(s)]
                                                       : Bonus[pc][rank_of(s)][f]);
-          psq[~pc][~s] = -psq[pc][s];
+          psq[~pc][flip_rank(s)] = -psq[pc][s];
       }
   }
 }
