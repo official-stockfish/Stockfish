@@ -344,13 +344,14 @@ ScaleFactor Endgame<KBPsK>::operator()(const Position& pos) const {
   // be detected even when the weaker side has some pawns.
   assert(pos.non_pawn_material(weakSide) == 0);
 
-  Bitboard pawns = pos.pieces(strongSide, PAWN);
+  Bitboard strongpawns = pos.pieces(strongSide, PAWN);
+  Bitboard allpawns = pos.pieces(PAWN);
 
-  // All pawns are on a single rook file?
-  if (!(pawns & ~FileABB) || !(pawns & ~FileHBB))
+  // All our pawns are on a single rook file?
+  if (!(strongpawns & ~FileABB) || !(strongpawns & ~FileHBB))
   {
       Square bishopSq = pos.square<BISHOP>(strongSide);
-      Square queeningSq = make_square(file_of(lsb(pawns)), relative_rank(strongSide, RANK_8));
+      Square queeningSq = make_square(file_of(lsb(strongpawns)), relative_rank(strongSide, RANK_8));
       Square weakkingSq = pos.square<KING>(weakSide);
 
       if (   opposite_colors(queeningSq, bishopSq)
@@ -359,7 +360,7 @@ ScaleFactor Endgame<KBPsK>::operator()(const Position& pos) const {
   }
 
   // If all the pawns are on the same B or G file, then it's potentially a draw
-  if ((!(pawns & ~FileBBB) || !(pawns & ~FileGBB))
+  if ((!(allpawns & ~FileBBB) || !(allpawns & ~FileGBB))
       && pos.non_pawn_material(weakSide) == 0
       && pos.count<PAWN>(weakSide) >= 1)
   {
@@ -373,8 +374,8 @@ ScaleFactor Endgame<KBPsK>::operator()(const Position& pos) const {
       // There's potential for a draw if our pawn is blocked on the 7th rank,
       // the bishop cannot attack it or they only have one pawn left
       if (   relative_rank(strongSide, weakPawnSq) == RANK_7
-          && (pos.pieces(strongSide, PAWN) & (weakPawnSq + pawn_push(weakSide)))
-          && (opposite_colors(bishopSq, weakPawnSq) || pos.count<PAWN>(strongSide) == 1))
+          && (strongpawns & (weakPawnSq + pawn_push(weakSide)))
+          && (opposite_colors(bishopSq, weakPawnSq) || !more_than_one(strongpawns)))
       {
           int strongKingDist = distance(weakPawnSq, strongKingSq);
           int weakKingDist = distance(weakPawnSq, weakKingSq);
