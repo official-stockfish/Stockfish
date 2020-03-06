@@ -350,7 +350,7 @@ ScaleFactor Endgame<KBPsK>::operator()(const Position& pos) const {
   if (!(strongpawns & ~FileABB) || !(strongpawns & ~FileHBB))
   {
       Square bishopSq = pos.square<BISHOP>(strongSide);
-      Square queeningSq = relative_square(strongSide, make_square(file_of(lsb(strongPawns)), RANK_8));
+      Square queeningSq = relative_square(strongSide, make_square(file_of(lsb(strongpawns)), RANK_8));
       Square weakkingSq = pos.square<KING>(weakSide);
 
       if (   opposite_colors(queeningSq, bishopSq)
