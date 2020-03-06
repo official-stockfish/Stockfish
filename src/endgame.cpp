@@ -342,7 +342,6 @@ ScaleFactor Endgame<KBPsK>::operator()(const Position& pos) const {
 
   // No assertions about the pawn count of weakSide, because we want draws to
   // be detected even when the weaker side has some pawns.
-  assert(pos.non_pawn_material(weakSide) == 0);
 
   Bitboard strongpawns = pos.pieces(strongSide, PAWN);
   Bitboard allpawns = pos.pieces(PAWN);
