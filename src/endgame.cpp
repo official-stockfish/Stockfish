@@ -340,18 +340,17 @@ ScaleFactor Endgame<KBPsK>::operator()(const Position& pos) const {
   assert(pos.non_pawn_material(strongSide) == BishopValueMg);
   assert(pos.count<PAWN>(strongSide) >= 1);
 
-  // No assertions about the pawn count of weakSide, because we want draws to
+  // No assertions about the material of weakSide, because we want draws to
   // be detected even when the weaker side has some pawns.
-  assert(pos.non_pawn_material(weakSide) == 0);
 
   Bitboard strongpawns = pos.pieces(strongSide, PAWN);
   Bitboard allpawns = pos.pieces(PAWN);
 
-  // All our pawns are on a single rook file?
+  // All strongSide pawns are on a single rook file?
   if (!(strongpawns & ~FileABB) || !(strongpawns & ~FileHBB))
   {
       Square bishopSq = pos.square<BISHOP>(strongSide);
-      Square queeningSq = make_square(file_of(lsb(strongpawns)), relative_rank(strongSide, RANK_8));
+      Square queeningSq = relative_square(strongSide, make_square(file_of(lsb(strongPawns)), RANK_8));
       Square weakkingSq = pos.square<KING>(weakSide);
 
       if (   opposite_colors(queeningSq, bishopSq)
