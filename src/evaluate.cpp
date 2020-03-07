@@ -236,8 +236,8 @@ namespace {
     attackedBy2[Us] = dblAttackByPawn | (attackedBy[Us][KING] & attackedBy[Us][PAWN]);
 
     // Init our king safety tables
-    Square s = make_square(clamp(file_of(ksq), FILE_B, FILE_G),
-                           clamp(rank_of(ksq), RANK_2, RANK_7));
+    Square s = make_square(Utility::clamp(file_of(ksq), FILE_B, FILE_G),
+                           Utility::clamp(rank_of(ksq), RANK_2, RANK_7));
     kingRing[Us] = PseudoAttacks[KING][s] | s;
 
     kingAttackersCount[Them] = popcount(kingRing[Us] & pe->pawn_attacks(Them));
