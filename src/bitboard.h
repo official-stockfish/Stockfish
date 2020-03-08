@@ -257,8 +257,6 @@ template<> inline int distance<Square>(Square x, Square y) { return SquareDistan
 
 inline File edge_distance(File f) { return std::min(f, File(FILE_H - f)); }
 inline Rank edge_distance(Rank r) { return std::min(r, Rank(RANK_8 - r)); }
-inline int edge_distance(Square s) { return std::min<int>(edge_distance(file_of(s)), edge_distance(rank_of(s))); }
-inline int corner_distance(Square s) { return edge_distance(file_of(s)) + edge_distance(rank_of(s)); }
 
 /// attacks_bb() returns a bitboard representing all the squares attacked by a
 /// piece of type Pt (bishop or rook) placed on 's'.

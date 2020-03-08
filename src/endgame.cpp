@@ -31,7 +31,9 @@ namespace {
   // Used to drive the king towards the edge of the board
   // in KX vs K and KQ vs KR endgames.
   inline int push_to_edge(Square s) {
-      return 100 - 13 * corner_distance(s);}
+      int rd = edge_distance(rank_of(s)), fd = edge_distance(file_of(s));
+      return 90 - (7 * fd * fd / 2 + 7 * rd * rd / 2);
+  }
 
   // Used to drive the king towards a A1, H8 corner in KBN vs K endgames.
   inline int push_to_corner(Square s) {
@@ -139,9 +141,9 @@ Value Endgame<KBNK>::operator()(const Position& pos) const {
   // If our bishop does not attack A1/H8, we flip the enemy king square
   // to drive to opposite corners (A8/H1).
 
-  Value result =  (VALUE_KNOWN_WIN + 4160)
+  Value result =  (VALUE_KNOWN_WIN + 3520)
                 + push_close(winnerKSq, loserKSq)
-                + 320 * push_to_corner(opposite_colors(bishopSq, SQ_A1) ? flip_file(loserKSq) : loserKSq);
+                + 420 * push_to_corner(opposite_colors(bishopSq, SQ_A1) ? flip_file(loserKSq) : loserKSq);
 
   assert(abs(result) < VALUE_TB_WIN_IN_MAX_PLY);
   return strongSide == pos.side_to_move() ? result : -result;
