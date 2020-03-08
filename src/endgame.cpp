@@ -338,23 +338,23 @@ ScaleFactor Endgame<KBPsK>::operator()(const Position& pos) const {
   // No assertions about the material of weakSide, because we want draws to
   // be detected even when the weaker side has some pawns.
 
-  Bitboard strongpawns = pos.pieces(strongSide, PAWN);
-  Bitboard allpawns = pos.pieces(PAWN);
+  Bitboard strongPawns = pos.pieces(strongSide, PAWN);
+  Bitboard allPawns = pos.pieces(PAWN);
 
   // All strongSide pawns are on a single rook file?
-  if (!(strongpawns & ~FileABB) || !(strongpawns & ~FileHBB))
+  if (!(strongPawns & ~FileABB) || !(strongPawns & ~FileHBB))
   {
       Square bishopSq = pos.square<BISHOP>(strongSide);
-      Square queeningSq = relative_square(strongSide, make_square(file_of(lsb(strongpawns)), RANK_8));
-      Square weakkingSq = pos.square<KING>(weakSide);
+      Square queeningSq = relative_square(strongSide, make_square(file_of(lsb(strongPawns)), RANK_8));
+      Square weakKingSq = pos.square<KING>(weakSide);
 
       if (   opposite_colors(queeningSq, bishopSq)
-          && distance(queeningSq, weakkingSq) <= 1)
+          && distance(queeningSq, weakKingSq) <= 1)
           return SCALE_FACTOR_DRAW;
   }
 
   // If all the pawns are on the same B or G file, then it's potentially a draw
-  if ((!(allpawns & ~FileBBB) || !(allpawns & ~FileGBB))
+  if ((!(allPawns & ~FileBBB) || !(allPawns & ~FileGBB))
       && pos.non_pawn_material(weakSide) == 0
       && pos.count<PAWN>(weakSide) >= 1)
   {
@@ -368,8 +368,8 @@ ScaleFactor Endgame<KBPsK>::operator()(const Position& pos) const {
       // There's potential for a draw if our pawn is blocked on the 7th rank,
       // the bishop cannot attack it or they only have one pawn left
       if (   relative_rank(strongSide, weakPawnSq) == RANK_7
-          && (strongpawns & (weakPawnSq + pawn_push(weakSide)))
-          && (opposite_colors(bishopSq, weakPawnSq) || !more_than_one(strongpawns)))
+          && (strongPawns & (weakPawnSq + pawn_push(weakSide)))
+          && (opposite_colors(bishopSq, weakPawnSq) || !more_than_one(strongPawns)))
       {
           int strongKingDist = distance(weakPawnSq, strongKingSq);
           int weakKingDist = distance(weakPawnSq, weakKingSq);
