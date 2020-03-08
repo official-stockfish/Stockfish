@@ -220,7 +220,7 @@ enum : int {
   DEPTH_QS_RECAPTURES = -5,
 
   DEPTH_NONE   = -6,
-  DEPTH_OFFSET = DEPTH_NONE,
+  DEPTH_OFFSET = DEPTH_NONE
 };
 
 enum Square : int {
