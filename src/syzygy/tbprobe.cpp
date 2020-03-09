@@ -705,7 +705,7 @@ Ret do_probe_table(const Position& pos, T* entry, WDLScore wdl, ProbeState* resu
 
         std::swap(squares[0], *std::max_element(squares, squares + leadPawnsCnt, pawns_comp));
 
-        tbFile = map_to_queenside(file_of(squares[0]));
+        tbFile = edge_distance(file_of(squares[0]));
     }
 
     // DTZ tables are one-sided, i.e. they store positions only for white to
