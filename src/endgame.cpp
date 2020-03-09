@@ -35,7 +35,7 @@ namespace {
       return 90 - (7 * fd * fd / 2 + 7 * rd * rd / 2);
   }
 
-  // Used to drive the king towards a A1, H8 corner in KBN vs K endgames.
+  // Used to drive the king towards A1H8 corners in KBN vs K endgames.
   inline int push_to_corner(Square s) {
       return abs(7 - rank_of(s) - file_of(s));
   }
