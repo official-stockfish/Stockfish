@@ -1024,10 +1024,9 @@ moves_loop: // When in check, search starts from here
               if (   lmrDepth < 6
                   && !inCheck
                   && ss->staticEval + 235 + 172 * lmrDepth <= alpha
-                  &&  thisThread->mainHistory[us][from_to(move)]
-                    + (*contHist[0])[movedPiece][to_sq(move)]
+                  &&  (*contHist[0])[movedPiece][to_sq(move)]
                     + (*contHist[1])[movedPiece][to_sq(move)]
-                    + (*contHist[3])[movedPiece][to_sq(move)] < 25000)
+                    + (*contHist[3])[movedPiece][to_sq(move)] < 27400)
                   continue;
 
               // Prune moves with negative SEE (~20 Elo)
