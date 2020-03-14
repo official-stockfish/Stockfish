@@ -613,8 +613,7 @@ ScaleFactor Endgame<KBPKB>::operator()(const Position& pos) const {
   Square weakKingSq = pos.square<KING>(weakSide);
 
   // Case 1: Defending king blocks the pawn, and cannot be driven away
-  if (   file_of(weakKingSq) == file_of(pawnSq)
-      && relative_rank(strongSide, pawnSq) < relative_rank(strongSide, weakKingSq)
+  if (   (forward_file_bb(strongSide, pawnSq) & weakKingSq)
       && (   opposite_colors(weakKingSq, strongBishopSq)
           || relative_rank(strongSide, weakKingSq) <= RANK_6))
       return SCALE_FACTOR_DRAW;
