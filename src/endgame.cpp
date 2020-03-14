@@ -586,11 +586,9 @@ ScaleFactor Endgame<KPsK>::operator()(const Position& pos) const {
   Square ksq = pos.square<KING>(weakSide);
   Bitboard pawns = pos.pieces(strongSide, PAWN);
 
-  // If all pawns are ahead of the king, on a single rook file and
-  // the king is within one file of the pawns, it's a draw.
-  if (   !(pawns & ~forward_ranks_bb(weakSide, ksq))
-      && !((pawns & ~FileABB) && (pawns & ~FileHBB))
-      &&  distance<File>(ksq, lsb(pawns)) <= 1)
+  // If all pawns are ahead of the king on a single rook file, it's a draw.
+  if (!((pawns & ~FileABB) || (pawns & ~FileHBB)) &&
+      !(pawns & ~passed_pawn_span(weakSide, ksq)))
       return SCALE_FACTOR_DRAW;
 
   return SCALE_FACTOR_NONE;
