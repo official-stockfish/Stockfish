@@ -95,9 +95,9 @@ namespace {
         Rank r = relative_rank(Us, s);
 
         // Flag the pawn
-        opposed    = theirPawns & forward_file_bb(Us, s);
-        blocked    = theirPawns & (s + Up);
         stoppers   = theirPawns & passed_pawn_span(Us, s);
+        opposed    = stoppers   & file_bb(s);
+        blocked    = theirPawns & (s + Up);
         lever      = theirPawns & PawnAttacks[Us][s];
         leverPush  = theirPawns & PawnAttacks[Us][s + Up];
         doubled    = ourPawns   & (s - Up);
