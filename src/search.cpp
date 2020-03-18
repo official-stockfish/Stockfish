@@ -1024,10 +1024,9 @@ moves_loop: // When in check, search starts from here
               if (   lmrDepth < 6
                   && !inCheck
                   && ss->staticEval + 235 + 172 * lmrDepth <= alpha
-                  &&  thisThread->mainHistory[us][from_to(move)]
-                    + (*contHist[0])[movedPiece][to_sq(move)]
+                  &&  (*contHist[0])[movedPiece][to_sq(move)]
                     + (*contHist[1])[movedPiece][to_sq(move)]
-                    + (*contHist[3])[movedPiece][to_sq(move)] < 25000)
+                    + (*contHist[3])[movedPiece][to_sq(move)] < 27400)
                   continue;
 
               // Prune moves with negative SEE (~20 Elo)
@@ -1150,7 +1149,7 @@ moves_loop: // When in check, search starts from here
 
           // Decrease reduction if ttMove has been singularly extended (~3 Elo)
           if (singularLMR)
-              r -= 2;
+              r -= 1 + (ttPv && !PvNode);
 
           if (!captureOrPromotion)
           {
@@ -1194,10 +1193,16 @@ moves_loop: // When in check, search starts from here
 
           value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, d, true);
 
-          doFullDepthSearch = (value > alpha && d != newDepth), didLMR = true;
+          doFullDepthSearch = value > alpha && d != newDepth;
+
+          didLMR = true;
       }
       else
-          doFullDepthSearch = !PvNode || moveCount > 1, didLMR = false;
+      {
+          doFullDepthSearch = !PvNode || moveCount > 1;
+
+          didLMR = false;
+      }
 
       // Step 17. Full depth search when LMR is skipped or fails high
       if (doFullDepthSearch)
