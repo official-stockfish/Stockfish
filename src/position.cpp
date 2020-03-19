@@ -327,6 +327,11 @@ void Position::set_check_info(StateInfo* si) const {
   si->checkSquares[KING]   = 0;
 }
 
+void Position::set_OppositeBishops(StateInfo* si) const {
+  si->opposite_bishops = pieceCount[W_BISHOP] == 1
+                      && pieceCount[B_BISHOP] == 1
+                      && opposite_colors(square<BISHOP>(WHITE), square<BISHOP>(BLACK));
+}
 
 /// Position::set_state() computes the hash keys of the position, and other
 /// data that once computed is updated incrementally as moves are made.
@@ -339,6 +344,8 @@ void Position::set_state(StateInfo* si) const {
   si->pawnKey = Zobrist::noPawns;
   si->nonPawnMaterial[WHITE] = si->nonPawnMaterial[BLACK] = VALUE_ZERO;
   si->checkersBB = attackers_to(square<KING>(sideToMove)) & pieces(~sideToMove);
+  
+  set_OppositeBishops(si);
 
   set_check_info(si);
 
@@ -859,6 +866,10 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
           }
       }
   }
+
+  // Update Opposite_Bishops
+  if ((type_of(captured) == BISHOP) || (type_of(m) == PROMOTION))
+    set_OppositeBishops(st);
 
   assert(pos_is_ok());
 }
