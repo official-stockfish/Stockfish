@@ -268,7 +268,7 @@ inline Bitboard attacks_bb(Square s, Bitboard occupied) {
   return m.attacks[m.index(occupied)];
 }
 
-inline Bitboard attacks_bb(PieceType pt, Square s, Bitboard occupied) {
+inline Bitboard attacks_bb(PieceType pt, Square s, Bitboard occupied = 0) {
 
   assert(pt != PAWN);
 
