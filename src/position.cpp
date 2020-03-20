@@ -868,7 +868,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   }
 
   // Update Opposite_Bishops
-  if ((type_of(captured) == BISHOP) || (type_of(m) == PROMOTION))
+  if (type_of(captured) == BISHOP || promotion_type(m) == BISHOP)
     set_OppositeBishops(st);
 
   assert(pos_is_ok());
