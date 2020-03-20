@@ -51,6 +51,14 @@ struct Entry {
   template<Color Us>
   Score evaluate_shelter(const Position& pos, Square ksq);
 
+  int get_complexity(const Position& pos) {
+    return  kingSquares[WHITE] == pos.square<KING>(WHITE) 
+         && kingSquares[BLACK] == pos.square<KING>(BLACK)
+          ? complexity : (complexity = do_complexity(pos));
+  }
+  
+  int do_complexity(const Position& pos);
+
   Key key;
   Score scores[COLOR_NB];
   Bitboard passedPawns[COLOR_NB];
@@ -59,6 +67,7 @@ struct Entry {
   Square kingSquares[COLOR_NB];
   Score kingSafety[COLOR_NB];
   int castlingRights[COLOR_NB];
+  int complexity;
 };
 
 typedef HashTable<Entry, 131072> Table;

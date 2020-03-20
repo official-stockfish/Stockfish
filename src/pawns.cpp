@@ -214,6 +214,38 @@ Score Entry::evaluate_shelter(const Position& pos, Square ksq) {
   return bonus;
 }
 
+/// Entry::get_complexity() calculates position complexity. It is called only
+/// when king square changes, which is about 20% of total king_safety() calls.
+
+int Entry::do_complexity(const Position& pos) {
+
+  kingSquares[WHITE] = pos.square<KING>(WHITE);
+  kingSquares[BLACK] = pos.square<KING>(BLACK);
+
+  int outflanking =  distance<File>(pos.square<KING>(WHITE), pos.square<KING>(BLACK))
+                   - distance<Rank>(pos.square<KING>(WHITE), pos.square<KING>(BLACK));
+
+  bool pawnsOnBothFlanks =   (pos.pieces(PAWN) & QueenSide)
+                          && (pos.pieces(PAWN) & KingSide);
+
+  bool almostUnwinnable =   !passed_count()
+                         &&  outflanking < 0
+                         && !pawnsOnBothFlanks;
+
+  bool infiltration = rank_of(pos.square<KING>(WHITE)) > RANK_4
+                   || rank_of(pos.square<KING>(BLACK)) < RANK_5;
+
+  // Compute the initiative bonus for the attacking side
+  int complex =   9 * passed_count()
+                  + 11 * pos.count<PAWN>()
+                  +  9 * outflanking
+                  + 21 * pawnsOnBothFlanks
+                  + 24 * infiltration
+                  - 43 * almostUnwinnable
+                  -110 ;
+
+   return complex;
+}
 
 /// Entry::do_king_safety() calculates a bonus for king safety. It is called only
 /// when king square changes, which is about 20% of total king_safety() calls.
@@ -222,7 +254,7 @@ template<Color Us>
 Score Entry::do_king_safety(const Position& pos) {
 
   Square ksq = pos.square<KING>(Us);
-  kingSquares[Us] = ksq;
+  //kingSquares[Us] = ksq;
   castlingRights[Us] = pos.castling_rights(Us);
   auto compare = [](Score a, Score b) { return mg_value(a) < mg_value(b); };
 
