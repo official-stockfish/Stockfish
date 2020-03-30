@@ -26,8 +26,7 @@ namespace {
 
   enum Stages {
     CAPTURE_INIT, GOOD_CAPTURE, REFUTATION, QUIET_INIT, QUIET, BAD_CAPTURE,
-    EVASION_INIT, EVASION,
-    PROBCUT_INIT, PROBCUT,
+    EVASION_INIT, EVASION, PROBCUT_INIT, PROBCUT,
     QCAPTURE_INIT, QCAPTURE, QCHECK_INIT, QCHECK
   };
 
@@ -64,7 +63,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const ButterflyHist
   assert(d > 0);
 
   stage = pos.checkers() ? EVASION_INIT : CAPTURE_INIT;
-  useTTM = ((ttMove = ttm && pos.pseudo_legal(ttm) ? ttm : MOVE_NONE));
+  useTTM = (ttMove = ttm && pos.pseudo_legal(ttm) ? ttm : MOVE_NONE);
 }
 
 /// MovePicker constructor for quiescence search
@@ -75,9 +74,9 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const ButterflyHist
   assert(d <= 0);
 
   stage = pos.checkers() ? EVASION_INIT : QCAPTURE_INIT;
-  useTTM = ((ttMove =   (ttm
+  useTTM = (ttMove =   (ttm
           && (depth > DEPTH_QS_RECAPTURES || to_sq(ttm) == recaptureSquare)
-          && pos.pseudo_legal(ttm) ? ttm : MOVE_NONE)));
+          && pos.pseudo_legal(ttm) ? ttm : MOVE_NONE));
 }
 
 /// MovePicker constructor for ProbCut: we generate captures with SEE greater
@@ -88,10 +87,9 @@ MovePicker::MovePicker(const Position& p, Move ttm, Value th, const CapturePiece
   assert(!pos.checkers());
 
   stage = PROBCUT_INIT;
-  useTTM = ((ttMove =   ttm
-                      && pos.capture(ttm)
-                      && pos.pseudo_legal(ttm)
-                      && pos.see_ge(ttm, threshold) ? ttm : MOVE_NONE));
+  useTTM = (ttMove = ttm && pos.capture(ttm)
+                         && pos.pseudo_legal(ttm)
+                         && pos.see_ge(ttm, threshold) ? ttm : MOVE_NONE);
 }
 
 /// MovePicker::score() assigns a numerical value to each move in a list, used
@@ -156,7 +154,8 @@ top:
   case CAPTURE_INIT:
   case PROBCUT_INIT:
   case QCAPTURE_INIT:
-      if (!(useTTM = !useTTM)) return ttMove; //if set, unset and return ttm
+      if (!(useTTM = !useTTM))  //Swap the flag.  If then false, return ttMove
+          return ttMove;
 
       cur = endBadCaptures = moves;
       endMoves = generate<CAPTURES>(pos, cur);
@@ -223,7 +222,8 @@ top:
       return select<Next>([](){ return true; });
 
   case EVASION_INIT:
-      if (!(useTTM = !useTTM)) return ttMove; //if set, unset and return ttm
+      if (!(useTTM = !useTTM))  //Swap the flag.  If then false, return ttMove
+          return ttMove;
 
       cur = moves;
       endMoves = generate<EVASIONS>(pos, cur);
