@@ -207,6 +207,7 @@ inline Color Position::side_to_move() const {
 }
 
 inline Piece Position::piece_on(Square s) const {
+  assert(is_ok(s));
   return board[s];
 }
 
