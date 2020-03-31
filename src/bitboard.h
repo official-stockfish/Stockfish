@@ -286,7 +286,7 @@ inline Bitboard attacks_bb(PieceType pt, Square s, Bitboard occupied) {
 
 template<PieceType Pt>
 inline Bitboard pseudo_attacks_bb(Square s) {
-  assert(pt != PAWN);
+  assert(Pt != PAWN);
 
   switch (Pt)
   {
