@@ -139,21 +139,22 @@ void Position::init() {
   for (Piece pc : Pieces)
       for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1)
           for (Square s2 = Square(s1 + 1); s2 <= SQ_H8; ++s2)
-              if (attacks_bb(type_of(pc), s1, 0) & s2)
-              {
-                  Move move = make_move(s1, s2);
-                  Key key = Zobrist::psq[pc][s1] ^ Zobrist::psq[pc][s2] ^ Zobrist::side;
-                  int i = H1(key);
-                  while (true)
+              if (type_of(pc) != PAWN)
+                  if (attacks_bb(type_of(pc), s1, 0) & s2)
                   {
-                      std::swap(cuckoo[i], key);
-                      std::swap(cuckooMove[i], move);
-                      if (move == MOVE_NONE) // Arrived at empty slot?
-                          break;
-                      i = (i == H1(key)) ? H2(key) : H1(key); // Push victim to alternative slot
+                      Move move = make_move(s1, s2);
+                      Key key = Zobrist::psq[pc][s1] ^ Zobrist::psq[pc][s2] ^ Zobrist::side;
+                      int i = H1(key);
+                      while (true)
+                      {
+                          std::swap(cuckoo[i], key);
+                          std::swap(cuckooMove[i], move);
+                          if (move == MOVE_NONE) // Arrived at empty slot?
+                              break;
+                          i = (i == H1(key)) ? H2(key) : H1(key); // Push victim to alternative slot
+                      }
+                      count++;
                   }
-                  count++;
-             }
   assert(count == 3668);
 }
 
