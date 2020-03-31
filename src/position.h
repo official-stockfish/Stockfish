@@ -294,7 +294,7 @@ inline Bitboard Position::attacks_from(Square s) const {
 
   return  Pt == BISHOP || Pt == ROOK ? attacks_bb<Pt>(s, byTypeBB[ALL_PIECES])
         : Pt == QUEEN  ? attacks_from<ROOK>(s) | attacks_from<BISHOP>(s)
-        : PseudoAttacks[Pt][s];
+        : pseudo_attacks_bb<Pt>(s);
 }
 
 template<>

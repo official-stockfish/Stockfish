@@ -242,7 +242,7 @@ Score Entry::do_king_safety(const Position& pos) {
   Bitboard pawns = pos.pieces(Us, PAWN);
   int minPawnDist = pawns ? 8 : 0;
 
-  if (pawns & PseudoAttacks[KING][ksq])
+  if (pawns & pseudo_attacks_bb<KING>(ksq))
       minPawnDist = 1;
   else while (pawns)
       minPawnDist = std::min(minPawnDist, distance(ksq, pop_lsb(&pawns)));

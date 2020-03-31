@@ -238,7 +238,7 @@ namespace {
     // Init our king safety tables
     Square s = make_square(Utility::clamp(file_of(ksq), FILE_B, FILE_G),
                            Utility::clamp(rank_of(ksq), RANK_2, RANK_7));
-    kingRing[Us] = PseudoAttacks[KING][s] | s;
+    kingRing[Us] = pseudo_attacks_bb<KING>(s) | s;
 
     kingAttackersCount[Them] = popcount(kingRing[Us] & pe->pawn_attacks(Them));
     kingAttacksCount[Them] = kingAttackersWeight[Them] = 0;
