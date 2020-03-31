@@ -79,11 +79,11 @@ void Bitboards::init() {
       for (Square s2 = SQ_A1; s2 <= SQ_H8; ++s2)
           SquareDistance[s1][s2] = std::max(distance<File>(s1, s2), distance<Rank>(s1, s2));
 
-  for (Square s = SQ_A1; s <= SQ_H8; ++s)
-  {
-      PawnAttacks[WHITE][s] = pawn_attacks_bb<WHITE>(square_bb(s));
-      PawnAttacks[BLACK][s] = pawn_attacks_bb<BLACK>(square_bb(s));
-  }
+  Direction RookDirections[] = { NORTH, EAST, SOUTH, WEST };
+  Direction BishopDirections[] = { NORTH_EAST, SOUTH_EAST, SOUTH_WEST, NORTH_WEST };
+
+  init_magics(RookTable, RookMagics, RookDirections);
+  init_magics(BishopTable, BishopMagics, BishopDirections);
 
   // Helper returning the target bitboard of a step from a square
   auto landing_square_bb = [&](Square s, int step)
@@ -92,23 +92,17 @@ void Bitboards::init() {
       return is_ok(to) && distance(s, to) <= 2 ? square_bb(to) : Bitboard(0);
   };
 
-  for (Square s = SQ_A1; s <= SQ_H8; ++s)
-  {
-      for (int step : {-9, -8, -7, -1, 1, 7, 8, 9} )
-         KingAttacks[s] |= landing_square_bb(s, step);
-
-      for (int step : {-17, -15, -10, -6, 6, 10, 15, 17} )
-         KnightAttacks[s] |= landing_square_bb(s, step);
-  }
-
-  Direction RookDirections[] = { NORTH, EAST, SOUTH, WEST };
-  Direction BishopDirections[] = { NORTH_EAST, SOUTH_EAST, SOUTH_WEST, NORTH_WEST };
-
-  init_magics(RookTable, RookMagics, RookDirections);
-  init_magics(BishopTable, BishopMagics, BishopDirections);
-
   for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1)
   {
+      PawnAttacks[WHITE][s1] = pawn_attacks_bb<WHITE>(square_bb(s1));
+      PawnAttacks[BLACK][s1] = pawn_attacks_bb<BLACK>(square_bb(s1));
+
+      for (int step : {-9, -8, -7, -1, 1, 7, 8, 9} )
+         KingAttacks[s1] |= landing_square_bb(s1, step);
+
+      for (int step : {-17, -15, -10, -6, 6, 10, 15, 17} )
+         KnightAttacks[s1] |= landing_square_bb(s1, step);
+
       for (PieceType pt : { BISHOP, ROOK })
           for (Square s2 = SQ_A1; s2 <= SQ_H8; ++s2)
               if (attacks_bb(pt, s1, 0) & s2)
