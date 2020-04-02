@@ -1190,8 +1190,14 @@ moves_loop: // When in check, search starts from here
           }
 
           // Increase reduction for captures/promotions if late move and at low depth
-          else if (depth < 8 && moveCount > 2)
+          else 
+          {
+          if (depth < 8 && moveCount > 2)
               r++;
+
+          if (!givesCheck && ss->staticEval + PieceValue[EG][pos.captured_piece()] + 200 * depth <= alpha)
+              r++;
+          }
 
           Depth d = Utility::clamp(newDepth - r, 1, newDepth);
 
