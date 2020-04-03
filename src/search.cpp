@@ -280,7 +280,7 @@ void MainThread::search() {
       std::map<Move, int64_t> votes;
       Value minScore = this->rootMoves[0].score;
 
-      // Find out minimum score
+      // Find minimum score
       for (Thread* th: Threads)
           minScore = std::min(minScore, th->rootMoves[0].score);
 
@@ -290,14 +290,15 @@ void MainThread::search() {
           votes[th->rootMoves[0].pv[0]] +=
               (th->rootMoves[0].score - minScore + 14) * int(th->completedDepth);
 
-          if (bestThread->rootMoves[0].score >= VALUE_TB_WIN_IN_MAX_PLY)
+          if (abs(bestThread->rootMoves[0].score) >= VALUE_TB_WIN_IN_MAX_PLY)
           {
-              // Make sure we pick the shortest mate / TB conversion
+              // Make sure we pick the shortest mate / TB conversion or stave off mate the longest
               if (th->rootMoves[0].score > bestThread->rootMoves[0].score)
                   bestThread = th;
           }
           else if (   th->rootMoves[0].score >= VALUE_TB_WIN_IN_MAX_PLY
-                   || votes[th->rootMoves[0].pv[0]] > votes[bestThread->rootMoves[0].pv[0]])
+                   || (   th->rootMoves[0].score > VALUE_TB_LOSS_IN_MAX_PLY
+                       && votes[th->rootMoves[0].pv[0]] > votes[bestThread->rootMoves[0].pv[0]]))
               bestThread = th;
       }
   }
@@ -1188,10 +1189,17 @@ moves_loop: // When in check, search starts from here
               // Decrease/increase reduction for moves with a good/bad history (~30 Elo)
               r -= ss->statScore / 16434;
           }
+          else
+          {
+            // Increase reduction for captures/promotions if late move and at low depth
+            if (depth < 8 && moveCount > 2)
+                r++;
 
-          // Increase reduction for captures/promotions if late move and at low depth
-          else if (depth < 8 && moveCount > 2)
-              r++;
+            // Unless giving check, this capture is likely bad
+            if (   !givesCheck
+                && ss->staticEval + PieceValue[EG][pos.captured_piece()] + 200 * depth <= alpha)
+                r++;
+          }
 
           Depth d = Utility::clamp(newDepth - r, 1, newDepth);
 
