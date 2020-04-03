@@ -598,8 +598,7 @@ namespace {
 
         Score bonus = PassedRank[r];
 
-        if (   r > RANK_3
-            && pos.pawn_passed(Us, s + Up))
+        if (r > RANK_3)
         {
             int w = 5 * r - 13;
             Square blockSq = s + Up;
