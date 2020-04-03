@@ -303,7 +303,7 @@ void MainThread::search() {
       }
   }
 
-  previousScore = bestThread->rootMoves[0].score;
+  bestPreviousScore = bestThread->rootMoves[0].score;
 
   // Send again PV info if we have a new best thread
   if (bestThread != this)
@@ -349,12 +349,12 @@ void Thread::search() {
 
   if (mainThread)
   {
-      if (mainThread->previousScore == VALUE_INFINITE)
+      if (mainThread->bestPreviousScore == VALUE_INFINITE)
           for (int i=0; i<4; ++i)
               mainThread->iterValue[i] = VALUE_ZERO;
       else
           for (int i=0; i<4; ++i)
-              mainThread->iterValue[i] = mainThread->previousScore;
+              mainThread->iterValue[i] = mainThread->bestPreviousScore;
   }
 
   size_t multiPV = Options["MultiPV"];
@@ -433,13 +433,13 @@ void Thread::search() {
           // Reset aspiration window starting size
           if (rootDepth >= 4)
           {
-              Value previousScore = rootMoves[pvIdx].previousScore;
+              Value prev = rootMoves[pvIdx].previousScore;
               delta = Value(21);
-              alpha = std::max(previousScore - delta,-VALUE_INFINITE);
-              beta  = std::min(previousScore + delta, VALUE_INFINITE);
+              alpha = std::max(prev - delta,-VALUE_INFINITE);
+              beta  = std::min(prev + delta, VALUE_INFINITE);
 
               // Adjust contempt based on root move's previousScore (dynamic contempt)
-              int dct = ct + (102 - ct / 2) * previousScore / (abs(previousScore) + 157);
+              int dct = ct + (102 - ct / 2) * prev / (abs(prev) + 157);
 
               contempt = (us == WHITE ?  make_score(dct, dct / 2)
                                       : -make_score(dct, dct / 2));
@@ -537,7 +537,7 @@ void Thread::search() {
           && !Threads.stop
           && !mainThread->stopOnPonderhit)
       {
-          double fallingEval = (332 +  6 * (mainThread->previousScore - bestValue)
+          double fallingEval = (332 +  6 * (mainThread->bestPreviousScore - bestValue)
                                     +  6 * (mainThread->iterValue[iterIdx]  - bestValue)) / 704.0;
           fallingEval = Utility::clamp(fallingEval, 0.5, 1.5);
 
