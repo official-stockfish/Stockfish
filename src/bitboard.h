@@ -106,7 +106,7 @@ extern Magic RookMagics[SQUARE_NB];
 extern Magic BishopMagics[SQUARE_NB];
 
 inline Bitboard square_bb(Square s) {
-  assert(s >= SQ_A1 && s <= SQ_H8);
+  assert(is_ok(s));
   return SquareBB[s];
 }
 
@@ -257,6 +257,14 @@ template<> inline int distance<Square>(Square x, Square y) { return SquareDistan
 
 inline int edge_distance(File f) { return std::min(f, File(FILE_H - f)); }
 inline int edge_distance(Rank r) { return std::min(r, Rank(RANK_8 - r)); }
+
+/// Return the target square bitboard if we do not step off the board, empty otherwise
+
+inline Bitboard safe_destination(Square s, int step)
+{
+    Square to = Square(s + step);
+    return is_ok(to) && distance(s, to) <= 2 ? square_bb(to) : Bitboard(0);
+}
 
 /// attacks_bb() returns a bitboard representing all the squares attacked by a
 /// piece of type Pt (bishop or rook) placed on 's'.

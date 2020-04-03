@@ -84,23 +84,16 @@ void Bitboards::init() {
   init_magics(RookTable, RookMagics, RookDirections);
   init_magics(BishopTable, BishopMagics, BishopDirections);
 
-  // Helper returning the target bitboard of a step from a square
-  auto landing_square_bb = [&](Square s, int step)
-  {
-      Square to = Square(s + step);
-      return is_ok(to) && distance(s, to) <= 2 ? square_bb(to) : Bitboard(0);
-  };
-
   for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1)
   {
       PawnAttacks[WHITE][s1] = pawn_attacks_bb<WHITE>(square_bb(s1));
       PawnAttacks[BLACK][s1] = pawn_attacks_bb<BLACK>(square_bb(s1));
 
       for (int step : {-9, -8, -7, -1, 1, 7, 8, 9} )
-         PseudoAttacks[KING][s1] |= landing_square_bb(s1, step);
+         PseudoAttacks[KING][s1] |= safe_destination(s1, step);
 
       for (int step : {-17, -15, -10, -6, 6, 10, 15, 17} )
-         PseudoAttacks[KNIGHT][s1] |= landing_square_bb(s1, step);
+         PseudoAttacks[KNIGHT][s1] |= safe_destination(s1, step);
 
       PseudoAttacks[QUEEN][s1]  = PseudoAttacks[BISHOP][s1] = attacks_bb<BISHOP>(s1, 0);
       PseudoAttacks[QUEEN][s1] |= PseudoAttacks[  ROOK][s1] = attacks_bb<  ROOK>(s1, 0);
@@ -117,20 +110,16 @@ namespace {
 
   Bitboard sliding_attack(Direction directions[], Square sq, Bitboard occupied) {
 
-    Bitboard attack = 0;
+    Bitboard attacks = 0;
 
     for (int i = 0; i < 4; ++i)
-        for (Square s = sq + directions[i];
-             is_ok(s) && distance(s, s - directions[i]) == 1;
-             s += directions[i])
-        {
-            attack |= s;
+    {
+        Square s = sq;
+        while(safe_destination(s, directions[i]) && !(occupied & s))
+            attacks |= (s += directions[i]);
+    }
 
-            if (occupied & s)
-                break;
-        }
-
-    return attack;
+    return attacks;
   }
 
 
