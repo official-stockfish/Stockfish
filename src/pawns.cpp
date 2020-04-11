@@ -118,6 +118,7 @@ namespace {
         // (a) there is no stoppers except some levers
         // (b) the only stoppers are the leverPush, but we outnumber them
         // (c) there is only one front stopper which can be levered.
+        //     (Refined in Evaluation::passed)
         passed =   !(stoppers ^ lever)
                 || (   !(stoppers ^ leverPush)
                     && popcount(phalanx) >= popcount(leverPush))
