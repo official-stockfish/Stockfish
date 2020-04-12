@@ -277,15 +277,12 @@ ExtMove* generate<QUIET_CHECKS>(const Position& pos, ExtMove* moveList) {
   assert(!pos.checkers());
 
   Color us = pos.side_to_move();
-  Bitboard dc = pos.blockers_for_king(~us) & pos.pieces(us);
+  Bitboard dc = pos.blockers_for_king(~us) & pos.pieces(us) & ~pos.pieces(PAWN);
 
   while (dc)
   {
      Square from = pop_lsb(&dc);
      PieceType pt = type_of(pos.piece_on(from));
-
-     if (pt == PAWN)
-         continue; // Will be generated together with direct checks
 
      Bitboard b = pos.attacks_from(pt, from) & ~pos.pieces();
 
@@ -317,10 +314,7 @@ ExtMove* generate<EVASIONS>(const Position& pos, ExtMove* moveList) {
   // the king evasions in order to skip known illegal moves, which avoids any
   // useless legality checks later on.
   while (sliders)
-  {
-      Square checksq = pop_lsb(&sliders);
-      sliderAttacks |= LineBB[ksq][checksq] ^ checksq;
-  }
+      sliderAttacks |= LineBB[ksq][pop_lsb(&sliders)] & ~pos.checkers();
 
   // Generate evasions for king, capture and non capture moves
   Bitboard b = pos.attacks_from<KING>(ksq) & ~pos.pieces(us) & ~sliderAttacks;

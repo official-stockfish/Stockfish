@@ -106,7 +106,7 @@ extern Magic RookMagics[SQUARE_NB];
 extern Magic BishopMagics[SQUARE_NB];
 
 inline Bitboard square_bb(Square s) {
-  assert(s >= SQ_A1 && s <= SQ_H8);
+  assert(is_ok(s));
   return SquareBB[s];
 }
 
@@ -123,7 +123,7 @@ inline Bitboard  operator&(Square s, Bitboard b) { return b & s; }
 inline Bitboard  operator|(Square s, Bitboard b) { return b | s; }
 inline Bitboard  operator^(Square s, Bitboard b) { return b ^ s; }
 
-inline Bitboard  operator|(Square s, Square s2) { return square_bb(s) | square_bb(s2); }
+inline Bitboard  operator|(Square s, Square s2) { return square_bb(s) | s2; }
 
 constexpr bool more_than_one(Bitboard b) {
   return b & (b - 1);
@@ -209,8 +209,8 @@ inline Bitboard between_bb(Square s1, Square s2) {
 /// forward_ranks_bb(BLACK, SQ_D3) will return the 16 squares on ranks 1 and 2.
 
 inline Bitboard forward_ranks_bb(Color c, Square s) {
-  return c == WHITE ? ~Rank1BB << 8 * (rank_of(s) - RANK_1)
-                    : ~Rank8BB >> 8 * (RANK_8 - rank_of(s));
+  return c == WHITE ? ~Rank1BB << 8 * relative_rank(WHITE, s)
+                    : ~Rank8BB >> 8 * relative_rank(BLACK, s);
 }
 
 
@@ -255,8 +255,16 @@ template<> inline int distance<File>(Square x, Square y) { return std::abs(file_
 template<> inline int distance<Rank>(Square x, Square y) { return std::abs(rank_of(x) - rank_of(y)); }
 template<> inline int distance<Square>(Square x, Square y) { return SquareDistance[x][y]; }
 
-inline File edge_distance(File f) { return std::min(f, File(FILE_H - f)); }
-inline Rank edge_distance(Rank r) { return std::min(r, Rank(RANK_8 - r)); }
+inline int edge_distance(File f) { return std::min(f, File(FILE_H - f)); }
+inline int edge_distance(Rank r) { return std::min(r, Rank(RANK_8 - r)); }
+
+/// Return the target square bitboard if we do not step off the board, empty otherwise
+
+inline Bitboard safe_destination(Square s, int step)
+{
+    Square to = Square(s + step);
+    return is_ok(to) && distance(s, to) <= 2 ? square_bb(to) : Bitboard(0);
+}
 
 /// attacks_bb() returns a bitboard representing all the squares attacked by a
 /// piece of type Pt (bishop or rook) placed on 's'.
