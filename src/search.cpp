@@ -1398,7 +1398,7 @@ moves_loop: // When in check, search starts from here
     Move ttMove, move, bestMove;
     Depth ttDepth;
     Value bestValue, value, ttValue, futilityValue, futilityBase, oldAlpha;
-    bool ttHit, pvHit, inCheck, givesCheck, captureOrPromotion, evasionPrunable;
+    bool ttHit, pvHit, inCheck, givesCheck, captureOrPromotion;
     int moveCount;
 
     if (PvNode)
@@ -1527,14 +1527,8 @@ moves_loop: // When in check, search starts from here
           }
       }
 
-      // Detect non-capture evasions that are candidates to be pruned
-      evasionPrunable =    inCheck
-                       &&  (depth != 0 || moveCount > 2)
-                       &&  bestValue > VALUE_TB_LOSS_IN_MAX_PLY
-                       && !pos.capture(move);
-
       // Don't search moves with negative SEE values
-      if (  (!inCheck || evasionPrunable) && !pos.see_ge(move))
+      if (  !inCheck && !pos.see_ge(move))
           continue;
 
       // Speculative prefetch as early as possible
