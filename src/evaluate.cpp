@@ -695,7 +695,7 @@ namespace {
     behind |= shift<Down+Down>(behind);
 
     int bonus = popcount(safe) + popcount(behind & safe & ~attackedBy[Them][ALL_PIECES]);
-    int weight = pos.count<ALL_PIECES>(Us) - 1;
+    int weight = pos.count<ALL_PIECES>(Us) - 2 + pe->blocked_count() / 2;
     Score score = make_score(bonus * weight * weight / 16, 0);
 
     if (T)
