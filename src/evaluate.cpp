@@ -810,7 +810,8 @@ namespace {
     initialize<WHITE>();
     initialize<BLACK>();
 
-    // Pieces should be evaluated first (populate attack tables)
+    // Pieces evaluated first (also populates attackedBy, attackedBy2).
+    // Note that the order of evaluation of the terms is left unspecified
     score +=  pieces<WHITE, KNIGHT>() - pieces<BLACK, KNIGHT>()
             + pieces<WHITE, BISHOP>() - pieces<BLACK, BISHOP>()
             + pieces<WHITE, ROOK  >() - pieces<BLACK, ROOK  >()
@@ -818,6 +819,7 @@ namespace {
 
     score += mobility[WHITE] - mobility[BLACK];
 
+    // More complex interactions that require fully populated attack bitboards
     score +=  king<   WHITE>() - king<   BLACK>()
             + threats<WHITE>() - threats<BLACK>()
             + passed< WHITE>() - passed< BLACK>()
