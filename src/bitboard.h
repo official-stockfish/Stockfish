@@ -385,42 +385,31 @@ inline Square msb(Bitboard b) {
 inline Square lsb(Bitboard b) {
     assert(b);
     int s = 0;
-    //std::cout << "doing Bitboard: " << Bitboards::pretty(b);
     for(int i=0; i < 4; ++i)
     {
-        //std::cout << "<NEXT>" << (b & 0xFFFF) << Bitboards::pretty(Bitboard(b & 0xFFFF));
-        if ((b & 0xFFFF) == 0)
-        {
-            //std::cout << "(+16)";
-            s += 16;
-            b >>= 16;
-        }
-        else break; //return Square(s + lsb16[b & 0xFFFF]);
+        if ((b & 0xFFFF) == 0) { s += 16; b >>= 16; }
+        else break;
     }
 
-    Square sq = Square(s + lsb16[b & 0xFFFF]);
+    //Square sq = Square(s + lsb16[b & 0xFFFF]);
+    return Square(s + lsb16[b & 0xFFFF]);
     //std::cout << Bitboards::pretty(b)
     //std::cout << "<" << s << "," << int(lsb16[b & 0xFFFF]) << ">" << std::endl;
     //return Square(s + lsb[b & 0xFFFF]);
     //
-    return sq;
+    //return sq;
+    //
 }
 
 inline Square msb(Bitboard b) {
     assert(b);
     int s = 47;
-    //std::cout << "doing msb Bitboard: " << Bitboards::pretty(b);
     for(int i=0; i < 4; ++i)
-        if (!(b & 0xFFFF000000000000))
-        {
-            s -= 16;
-            b <<= 16;
-        }
+        if (!(b & 0xFFFF000000000000)) { s -= 16; b <<= 16; }
         else break;
 
-    Square sq = Square(s + msb16[b >> 48]);
-    //std::cout << "<" << s << "," << int(msb16[b >> 48]) << ">" << std::endl;
-    return sq;
+    //Square sq = Square(s + msb16[b >> 48]);
+    return Square(s + msb16[b >> 48]);
 }
 
 //#endif

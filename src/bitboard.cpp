@@ -84,12 +84,6 @@ void Bitboards::init() {
           i2 = i; c = 16;
           while(!(i2 & 0x8000)) { i2 <<= 1; c--; };
           msb16[i] = c;
-
-          //std::cout << i << "," << int(msb16[i]) << ">"
-                    ////<< Bitboards::pretty(int(i)) << std::endl
-                    //<< std::endl
-                    //<< std::endl
-                    //<< std::endl;
       }
   }
 
