@@ -22,6 +22,7 @@
 #define BITBOARD_H_INCLUDED
 
 #include <string>
+#include <iostream>
 
 #include "types.h"
 
@@ -72,6 +73,8 @@ constexpr Bitboard KingFlank[FILE_NB] = {
 };
 
 extern uint8_t PopCnt16[1 << 16];
+extern uint8_t lsb16[1 << 16];
+extern uint8_t msb16[1 << 16];
 extern uint8_t SquareDistance[SQUARE_NB][SQUARE_NB];
 
 extern Bitboard SquareBB[SQUARE_NB];
@@ -311,6 +314,7 @@ inline int popcount(Bitboard b) {
 }
 
 
+/*
 /// lsb() and msb() return the least/most significant bit in a non-zero bitboard
 
 #if defined(__GNUC__)  // GCC, Clang, ICC
@@ -374,10 +378,52 @@ inline Square msb(Bitboard b) {
 #endif
 
 #else  // Compiler is neither GCC nor MSVC compatible
+*/
 
-#error "Compiler not supported."
+//Unsupported compiler, resort to software implementation
 
-#endif
+inline Square lsb(Bitboard b) {
+    assert(b);
+    int s = 0;
+    //std::cout << "doing Bitboard: " << Bitboards::pretty(b);
+    for(int i=0; i < 4; ++i)
+    {
+        //std::cout << "<NEXT>" << (b & 0xFFFF) << Bitboards::pretty(Bitboard(b & 0xFFFF));
+        if ((b & 0xFFFF) == 0)
+        {
+            //std::cout << "(+16)";
+            s += 16;
+            b >>= 16;
+        }
+        else break; //return Square(s + lsb16[b & 0xFFFF]);
+    }
+
+    Square sq = Square(s + lsb16[b & 0xFFFF]);
+    //std::cout << Bitboards::pretty(b)
+    //std::cout << "<" << s << "," << int(lsb16[b & 0xFFFF]) << ">" << std::endl;
+    //return Square(s + lsb[b & 0xFFFF]);
+    //
+    return sq;
+}
+
+inline Square msb(Bitboard b) {
+    assert(b);
+    int s = 47;
+    //std::cout << "doing msb Bitboard: " << Bitboards::pretty(b);
+    for(int i=0; i < 4; ++i)
+        if (!(b & 0xFFFF000000000000))
+        {
+            s -= 16;
+            b <<= 16;
+        }
+        else break;
+
+    Square sq = Square(s + msb16[b >> 48]);
+    //std::cout << "<" << s << "," << int(msb16[b >> 48]) << ">" << std::endl;
+    return sq;
+}
+
+//#endif
 
 
 /// pop_lsb() finds and clears the least significant bit in a non-zero bitboard

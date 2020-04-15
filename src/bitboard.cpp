@@ -20,11 +20,14 @@
 
 #include <algorithm>
 #include <bitset>
+#include <iostream>
 
 #include "bitboard.h"
 #include "misc.h"
 
 uint8_t PopCnt16[1 << 16];
+uint8_t lsb16[1 << 16];
+uint8_t msb16[1 << 16];
 uint8_t SquareDistance[SQUARE_NB][SQUARE_NB];
 
 Bitboard SquareBB[SQUARE_NB];
@@ -69,7 +72,26 @@ const std::string Bitboards::pretty(Bitboard b) {
 void Bitboards::init() {
 
   for (unsigned i = 0; i < (1 << 16); ++i)
+  {
       PopCnt16[i] = std::bitset<16>(i).count();
+
+      if (i)
+      {
+          int i2 = i, c = 0;
+          while(!(i2 & 1)) { i2 >>= 1; c++; };
+          lsb16[i] = c;
+
+          i2 = i; c = 16;
+          while(!(i2 & 0x8000)) { i2 <<= 1; c--; };
+          msb16[i] = c;
+
+          //std::cout << i << "," << int(msb16[i]) << ">"
+                    ////<< Bitboards::pretty(int(i)) << std::endl
+                    //<< std::endl
+                    //<< std::endl
+                    //<< std::endl;
+      }
+  }
 
   for (Square s = SQ_A1; s <= SQ_H8; ++s)
       SquareBB[s] = (1ULL << s);
