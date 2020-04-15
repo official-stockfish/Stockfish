@@ -22,7 +22,6 @@
 #define BITBOARD_H_INCLUDED
 
 #include <string>
-#include <iostream>
 
 #include "types.h"
 
@@ -386,19 +385,10 @@ inline Square lsb(Bitboard b) {
     assert(b);
     int s = 0;
     for(int i=0; i < 4; ++i)
-    {
         if ((b & 0xFFFF) == 0) { s += 16; b >>= 16; }
         else break;
-    }
 
-    //Square sq = Square(s + lsb16[b & 0xFFFF]);
     return Square(s + lsb16[b & 0xFFFF]);
-    //std::cout << Bitboards::pretty(b)
-    //std::cout << "<" << s << "," << int(lsb16[b & 0xFFFF]) << ">" << std::endl;
-    //return Square(s + lsb[b & 0xFFFF]);
-    //
-    //return sq;
-    //
 }
 
 inline Square msb(Bitboard b) {
@@ -408,7 +398,6 @@ inline Square msb(Bitboard b) {
         if (!(b & 0xFFFF000000000000)) { s -= 16; b <<= 16; }
         else break;
 
-    //Square sq = Square(s + msb16[b >> 48]);
     return Square(s + msb16[b >> 48]);
 }
 

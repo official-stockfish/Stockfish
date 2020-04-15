@@ -20,7 +20,6 @@
 
 #include <algorithm>
 #include <bitset>
-#include <iostream>
 
 #include "bitboard.h"
 #include "misc.h"
@@ -77,13 +76,13 @@ void Bitboards::init() {
 
       if (i)
       {
-          int i2 = i, c = 0;
-          while(!(i2 & 1)) { i2 >>= 1; c++; };
-          lsb16[i] = c;
+          int value = i, index = 0;
+          while(!(value & 1)) { value >>= 1; index++; };
+          lsb16[i] = index;
 
-          i2 = i; c = 16;
-          while(!(i2 & 0x8000)) { i2 <<= 1; c--; };
-          msb16[i] = c;
+          value = i; index = 16;
+          while(!(value & 0x8000)) { value <<= 1; index--; };
+          msb16[i] = index;
       }
   }
 
