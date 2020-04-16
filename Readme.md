@@ -208,4 +208,3 @@ source code, these changes must also be made available under the GPL.
 
 For full details, read the copy of the GPL v3 found in the file named
 *Copying.txt*.
-x
