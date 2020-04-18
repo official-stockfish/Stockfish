@@ -82,7 +82,7 @@ namespace {
 
   // Penalties for enemy's safe checks
   constexpr int QueenSafeCheck  = 780;
-  constexpr int RookSafeCheck   = 1080;
+  constexpr int RookSafeCheck   = 1078;
   constexpr int BishopSafeCheck = 635;
   constexpr int KnightSafeCheck = 790;
 
@@ -96,19 +96,19 @@ namespace {
     { S(-48,-59), S(-20,-23), S( 16, -3), S( 26, 13), S( 38, 24), S( 51, 42), // Bishop
       S( 55, 54), S( 63, 57), S( 63, 65), S( 68, 73), S( 81, 78), S( 81, 86),
       S( 91, 88), S( 98, 97) },
-    { S(-58,-76), S(-27,-18), S(-15, 28), S(-10, 55), S( -5, 69), S( -2, 82), // Rook
-      S(  9,112), S( 16,118), S( 30,132), S( 29,142), S( 32,155), S( 38,165),
-      S( 46,166), S( 48,169), S( 58,171) },
-    { S(-39,-36), S(-21,-15), S(  3,  8), S(  3, 18), S( 14, 34), S( 22, 54), // Queen
-      S( 28, 61), S( 41, 73), S( 43, 79), S( 48, 92), S( 56, 94), S( 60,104),
-      S( 60,113), S( 66,120), S( 67,123), S( 70,126), S( 71,133), S( 73,136),
-      S( 79,140), S( 88,143), S( 88,148), S( 99,166), S(102,170), S(102,175),
-      S(106,184), S(109,191), S(113,206), S(116,212) }
+    { S(-60,-78), S(-20,-17), S(  2, 23), S(  3, 39), S(  3, 70), S( 11, 99), // Rook
+      S( 22,103), S( 31,121), S( 40,134), S( 40,139), S( 41,158), S( 48,164),
+      S( 57,168), S( 57,169), S( 62,172) },
+    { S(-34,-36), S(-15,-21), S(-10, -1), S(-10, 22), S( 20, 41), S( 23, 56), // Queen
+      S( 23, 59), S( 35, 75), S( 38, 78), S( 53, 96), S( 64, 96), S( 65,100),
+      S( 65,121), S( 66,127), S( 67,131), S( 67,133), S( 72,136), S( 72,141),
+      S( 77,147), S( 79,150), S( 93,151), S(108,168), S(108,168), S(108,171),
+      S(110,182), S(114,182), S(114,192), S(116,219) }
   };
 
   // RookOnFile[semiopen/open] contains bonuses for each rook when there is
   // no (friendly) pawn on the rook file.
-  constexpr Score RookOnFile[] = { S(21, 4), S(47, 25) };
+  constexpr Score RookOnFile[] = { S(19, 7), S(48, 29) };
 
   // ThreatByMinor/ByRook[attacked PieceType] contains bonuses according to
   // which piece type attacks which one. Attacks on lesser pieces which are
@@ -118,7 +118,7 @@ namespace {
   };
 
   constexpr Score ThreatByRook[PIECE_TYPE_NB] = {
-    S(0, 0), S(2, 44), S(36, 71), S(36, 61), S(0, 38), S(51, 38)
+    S(0, 0), S(3, 46), S(37, 68), S(42, 60), S(0, 38), S(58, 41)
   };
 
   // PassedRank[Rank] contains a bonus according to the rank of a passed pawn
@@ -132,21 +132,21 @@ namespace {
   constexpr Score FlankAttacks        = S(  8,  0);
   constexpr Score Hanging             = S( 69, 36);
   constexpr Score KingProtector       = S(  7,  8);
-  constexpr Score KnightOnQueen       = S( 16, 12);
+  constexpr Score KnightOnQueen       = S( 16, 11);
   constexpr Score LongDiagonalBishop  = S( 45,  0);
   constexpr Score MinorBehindPawn     = S( 18,  3);
   constexpr Score Outpost             = S( 30, 21);
   constexpr Score PassedFile          = S( 11,  8);
   constexpr Score PawnlessFlank       = S( 17, 95);
   constexpr Score RestrictedPiece     = S(  7,  7);
-  constexpr Score RookOnQueenFile     = S(  7,  6);
+  constexpr Score RookOnQueenFile     = S(  5,  9);
   constexpr Score SliderOnQueen       = S( 59, 18);
   constexpr Score ThreatByKing        = S( 24, 89);
   constexpr Score ThreatByPawnPush    = S( 48, 39);
   constexpr Score ThreatBySafePawn    = S(173, 94);
-  constexpr Score TrappedRook         = S( 52, 10);
-  constexpr Score WeakQueen           = S( 49, 15);
-  constexpr Score WeakQueenProtection = S( 14,  0);
+  constexpr Score TrappedRook         = S( 55, 13);
+  constexpr Score WeakQueen           = S( 51, 14);
+  constexpr Score WeakQueenProtection = S( 15,  0);
 
 #undef S
 
@@ -398,9 +398,9 @@ namespace {
 
     // Enemy rooks checks
     rookChecks = b1 & safe & attackedBy[Them][ROOK];
-
     if (rookChecks)
-        kingDanger += RookSafeCheck;
+        kingDanger += more_than_one(rookChecks) ? RookSafeCheck * 3/2
+                                                : RookSafeCheck;
     else
         unsafeChecks |= b1 & attackedBy[Them][ROOK];
 
@@ -411,9 +411,9 @@ namespace {
                  & safe
                  & ~attackedBy[Us][QUEEN]
                  & ~rookChecks;
-
     if (queenChecks)
-        kingDanger += QueenSafeCheck;
+        kingDanger += more_than_one(queenChecks) ? QueenSafeCheck * 3/2
+                                                 : QueenSafeCheck;
 
     // Enemy bishops checks: we count them only if they are from squares from
     // which we can't give a queen check, because queen checks are more valuable.
@@ -421,17 +421,17 @@ namespace {
                   & attackedBy[Them][BISHOP]
                   & safe
                   & ~queenChecks;
-
     if (bishopChecks)
-        kingDanger += BishopSafeCheck;
+        kingDanger += more_than_one(bishopChecks) ? BishopSafeCheck * 3/2
+                                                  : BishopSafeCheck;
     else
         unsafeChecks |= b2 & attackedBy[Them][BISHOP];
 
     // Enemy knights checks
     knightChecks = pos.attacks_from<KNIGHT>(ksq) & attackedBy[Them][KNIGHT];
-
     if (knightChecks & safe)
-        kingDanger += KnightSafeCheck;
+        kingDanger += more_than_one(knightChecks & safe) ? KnightSafeCheck * 3/2
+                                                         : KnightSafeCheck;
     else
         unsafeChecks |= knightChecks;
 
@@ -695,7 +695,7 @@ namespace {
     behind |= shift<Down+Down>(behind);
 
     int bonus = popcount(safe) + popcount(behind & safe & ~attackedBy[Them][ALL_PIECES]);
-    int weight = pos.count<ALL_PIECES>(Us) - 2 + pe->blocked_count() / 2;
+    int weight = pos.count<ALL_PIECES>(Us) - 3 + std::min(pe->blocked_count(), 9);
     Score score = make_score(bonus * weight * weight / 16, 0);
 
     if (T)
@@ -761,11 +761,16 @@ namespace {
     // If scale is not already specific, scale down the endgame via general heuristics
     if (sf == SCALE_FACTOR_NORMAL)
     {
-        if (   pos.opposite_bishops()
-            && pos.non_pawn_material() == 2 * BishopValueMg)
-            sf = 22;
+        if (pos.opposite_bishops())
+        {
+            if (   pos.non_pawn_material(WHITE) == BishopValueMg
+                && pos.non_pawn_material(BLACK) == BishopValueMg)
+                sf = 22;
+            else
+                sf = 22 + 3 * pos.count<ALL_PIECES>(strongSide);
+        }
         else
-            sf = std::min(sf, 36 + (pos.opposite_bishops() ? 2 : 7) * pos.count<PAWN>(strongSide));
+            sf = std::min(sf, 36 + 7 * pos.count<PAWN>(strongSide));
 
         sf = std::max(0, sf - (pos.rule50_count() - 12) / 4);
     }
