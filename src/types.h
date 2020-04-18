@@ -412,11 +412,11 @@ constexpr Rank rank_of(Square s) {
 }
 
 constexpr Square relative_square(Color c, Square s) {
-  return Square(s ^ (c * 56));
+  return c == WHITE ? s : flip_rank(s);
 }
 
 constexpr Rank relative_rank(Color c, Rank r) {
-  return Rank(r ^ (c * 7));
+  return c == WHITE ? r : Rank(RANK_8 - r);
 }
 
 constexpr Rank relative_rank(Color c, Square s) {
