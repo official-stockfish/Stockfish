@@ -924,6 +924,7 @@ namespace {
                                                                           [captureOrPromotion]
                                                                           [pos.moved_piece(move)]
                                                                           [to_sq(move)];
+                ss->inCheck = inCheck;
 
                 pos.do_move(move, st);
 
@@ -965,7 +966,8 @@ moves_loop: // When in check, search starts from here
                                       contHist,
                                       countermove,
                                       ss->killers,
-                                      depth > 12 ? ss->ply : MAX_PLY);
+                                      depth > 12 ? ss->ply : MAX_PLY,
+                                      !ss->inCheck);
 
     value = bestValue;
     singularLMR = moveCountPruning = false;
@@ -1150,6 +1152,7 @@ moves_loop: // When in check, search starts from here
                                                                 [captureOrPromotion]
                                                                 [movedPiece]
                                                                 [to_sq(move)];
+      ss->inCheck = inCheck;
 
       // Step 15. Make the move
       pos.do_move(move, st, givesCheck);
@@ -1710,8 +1713,12 @@ moves_loop: // When in check, search starts from here
   void update_continuation_histories(Stack* ss, Piece pc, Square to, int bonus) {
 
     for (int i : {1, 2, 4, 6})
-        if (is_ok((ss-i)->currentMove))
+    {
+    	if (ss->inCheck && i > 2)
+    		break;
+      if (is_ok((ss-i)->currentMove))
             (*(ss-i)->continuationHistory)[pc][to] << bonus;
+    }
   }
 
 
