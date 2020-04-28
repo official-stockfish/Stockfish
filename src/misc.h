@@ -66,9 +66,9 @@ std::ostream& operator<<(std::ostream&, SyncCout);
 
 namespace Utility {
 
-/// Clamp a value between lo and hi. Available in c++17.
-template<class T> constexpr const T& clamp(const T& v, const T& lo, const T& hi) {
-  return v < lo ? lo : v > hi ? hi : v;
+/// Given any three values, return the one in the middle.
+template<class T> constexpr const T& median(const T& v1, const T& v2, const T& v3) {
+  return std::max(std::min(v1,v2), std::min(std::max(v1,v2), v3));
 }
 
 }
