@@ -67,7 +67,8 @@ std::ostream& operator<<(std::ostream&, SyncCout);
 namespace Utility {
 
 /// Clamp a value between lo and hi. Available in c++17.
-template<class T> constexpr const T& clamp(const T& v, const T& lo, const T& hi) {
+template<class T> const T& clamp(const T& v, const T& lo, const T& hi) {
+  assert(!(hi < lo));
   return v < lo ? lo : v > hi ? hi : v;
 }
 
