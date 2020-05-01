@@ -69,28 +69,35 @@ void TimeManagement::init(Search::LimitsType& limits, Color us, int ply) {
 
   timeLeft = slowMover * timeLeft / 100;
 
-  // For crazy fast games with little-to-no increment
-  if (limits.time[us] < 11000 && limits.inc[us] < moveOverhead)
+  // For fast games with little-to-no increment
+  if (limits.time[us] < 11000 && limits.inc[us] < 100)
   {
       scale = std::max(6.0 * (9.0 - std::log2(ply + 1)), 2.0);
-      optimumTime = std::max<int>(2 * minThinkingTime, timeLeft / scale);
+      optimumTime = std::max<int>(40, timeLeft / scale);
+      optimumTime = std::max<int>(minThinkingTime, timeLeft / scale);
 
       scale = std::max(1.7 * (8.0 - std::log2(ply + 1)), 0.5);
-      if (3*minThinkingTime < timeLeft / scale)
+      if (60 < timeLeft / scale)
           maximumTime = timeLeft / scale;
-      else if (3 * minThinkingTime > 0.8 * limits.time[us] - moveOverhead)
+      else if (60 > 0.8 * limits.time[us] - moveOverhead)
           maximumTime = 0.8 * limits.time[us] - moveOverhead;
       else
           maximumTime = 3 * optimumTime / 2;
+
+      maximumTime = std::max<int>(minThinkingTime, maximumTime);
   }
   else  //all other games
   {
-      double scale1 = std::max(2.0, 8.2 * (9.0 - std::log2(ply + 1)));
-      optimumTime = std::min<int>(0.2 * limits.time[us], timeLeft / scale1);
+      // The game is slow enough that we can safety steal from real game time
+      if (timeLeft == 0)
+          minThinkingTime = std::max<int>(minThinkingTime, limits.time[us] / 24);
+
+      scale = std::max(2.0, 8.2 * (9.0 - std::log2(ply + 1)));
+      optimumTime = std::min<int>(0.2 * limits.time[us], timeLeft / scale);
       optimumTime = std::max<int>(minThinkingTime, optimumTime);
 
-      double scale2 = std::max(0.5, 1.7 * (8.0 - std::log2(ply + 1)));
-      maximumTime = std::min<int>(0.8 * limits.time[us] - moveOverhead, timeLeft / scale2);
+      scale = std::max(0.5, 1.7 * (8.0 - std::log2(ply + 1)));
+      maximumTime = std::min<int>(0.8 * limits.time[us] - moveOverhead, timeLeft / scale);
       maximumTime = std::max<int>(minThinkingTime, maximumTime);
   }
 
