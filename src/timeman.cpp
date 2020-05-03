@@ -82,15 +82,9 @@ void TimeManagement::init(Search::LimitsType& limits, Color us, int ply) {
           maximumTime = 0.8 * limits.time[us] - moveOverhead;
       else
           maximumTime = 3 * optimumTime / 2;
-
-      maximumTime = std::max<int>(minThinkingTime, maximumTime);
   }
   else  //all other games
   {
-      // The game is slow enough that we can safety steal from real game time
-      if (timeLeft == 0)
-          minThinkingTime = std::max<int>(minThinkingTime, limits.time[us] / 24);
-
       scale = std::max(2.0, 8.2 * (9.2 - std::log2(ply + 1)));
       optimumTime = std::min<int>(0.2 * limits.time[us], timeLeft / scale);
       optimumTime = std::max<int>(minThinkingTime, optimumTime);
