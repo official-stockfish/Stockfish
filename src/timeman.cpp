@@ -70,16 +70,15 @@ void TimeManagement::init(Search::LimitsType& limits, Color us, int ply) {
   timeLeft = slowMover * timeLeft / 100;
 
   // For fast games with little-to-no increment
-  if (limits.time[us] < 11000 && limits.inc[us] < 100)
+  if (limits.time[us] < 11000 && limits.inc[us] < moveOverhead)
   {
       scale = std::max(6.0 * (9.0 - std::log2(ply + 1)), 2.0);
-      optimumTime = std::max<int>(40, timeLeft / scale);
-      optimumTime = std::max<int>(minThinkingTime, timeLeft / scale);
+      optimumTime = std::max<int>(2 * minThinkingTime, timeLeft / scale);
 
       scale = std::max(1.7 * (8.0 - std::log2(ply + 1)), 0.5);
-      if (60 < timeLeft / scale)
+      if (3 * minThinkingTime < timeLeft / scale)
           maximumTime = timeLeft / scale;
-      else if (60 > 0.8 * limits.time[us] - moveOverhead)
+      else if (3 * minThinkingTime > 0.8 * limits.time[us] - moveOverhead)
           maximumTime = 0.8 * limits.time[us] - moveOverhead;
       else
           maximumTime = 3 * optimumTime / 2;
@@ -92,7 +91,7 @@ void TimeManagement::init(Search::LimitsType& limits, Color us, int ply) {
       if (timeLeft == 0)
           minThinkingTime = std::max<int>(minThinkingTime, limits.time[us] / 24);
 
-      scale = std::max(2.0, 8.2 * (9.0 - std::log2(ply + 1)));
+      scale = std::max(2.0, 8.2 * (9.2 - std::log2(ply + 1)));
       optimumTime = std::min<int>(0.2 * limits.time[us], timeLeft / scale);
       optimumTime = std::max<int>(minThinkingTime, optimumTime);
 
