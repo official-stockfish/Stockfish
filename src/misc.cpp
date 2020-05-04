@@ -309,6 +309,69 @@ void* aligned_ttmem_alloc(size_t allocSize, void*& mem) {
   return mem;
 }
 
+#elif defined(_WIN64)
+
+static void* aligned_ttmem_alloc_large_pages(size_t allocSize) {
+
+  HANDLE hProcessToken { };
+  LUID luid { };
+  void* mem = nullptr;
+
+  const size_t largePageSize = GetLargePageMinimum();
+  if (!largePageSize)
+      return nullptr;
+
+  // We need SeLockMemoryPrivilege, so try to enable it for the process
+  if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hProcessToken))
+      return nullptr;
+
+  if (LookupPrivilegeValue(NULL, SE_LOCK_MEMORY_NAME, &luid))
+  {
+      TOKEN_PRIVILEGES tp { };
+      TOKEN_PRIVILEGES prevTp { };
+      DWORD prevTpLen = 0;
+
+      tp.PrivilegeCount = 1;
+      tp.Privileges[0].Luid = luid;
+      tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+
+      // Try to enable SeLockMemoryPrivilege. Note that even if AdjustTokenPrivileges() succeeds,
+      // we still need to query GetLastError() to ensure that the privileges were actually obtained...
+      if (AdjustTokenPrivileges(
+              hProcessToken, FALSE, &tp, sizeof(TOKEN_PRIVILEGES), &prevTp, &prevTpLen) &&
+          GetLastError() == ERROR_SUCCESS)
+      {
+          // round up size to full pages and allocate
+          allocSize = (allocSize + largePageSize - 1) & ~size_t(largePageSize - 1);
+          mem = VirtualAlloc(
+              NULL, allocSize, MEM_RESERVE | MEM_COMMIT | MEM_LARGE_PAGES, PAGE_READWRITE);
+
+          // privilege no longer needed, restore previous state
+          AdjustTokenPrivileges(hProcessToken, FALSE, &prevTp, 0, NULL, NULL);
+      }
+  }
+
+  CloseHandle(hProcessToken);
+
+  return mem;
+}
+
+void* aligned_ttmem_alloc(size_t allocSize, void*& mem) {
+
+  // try to allocate large pages
+  mem = aligned_ttmem_alloc_large_pages(allocSize);
+  if (mem)
+      sync_cout << "info string Hash table allocation: Windows large pages used." << sync_endl;
+  else
+      sync_cout << "info string Hash table allocation: Windows large pages not used." << sync_endl;
+
+  // fall back to regular, page aligned, allocation if necessary
+  if (!mem)
+      mem = VirtualAlloc(NULL, allocSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+
+  return mem;
+}
+
 #else
 
 void* aligned_ttmem_alloc(size_t allocSize, void*& mem) {
@@ -318,6 +381,28 @@ void* aligned_ttmem_alloc(size_t allocSize, void*& mem) {
   mem = malloc(size);
   void* ret = reinterpret_cast<void*>((uintptr_t(mem) + alignment - 1) & ~uintptr_t(alignment - 1));
   return ret;
+}
+
+#endif
+
+/// aligned_ttmem_free will free the previously allocated ttmem
+#if defined(_WIN64)
+
+void aligned_ttmem_free(void* mem) {
+
+  if (!VirtualFree(mem, 0, MEM_RELEASE))
+  {
+      DWORD err = GetLastError();
+      std::cerr << "Failed to free transposition table. Error code: 0x" <<
+          std::hex << err << std::dec << std::endl;
+      exit(EXIT_FAILURE);
+  }
+}
+
+#else
+
+void aligned_ttmem_free(void *mem) {
+  free(mem);
 }
 
 #endif

@@ -42,7 +42,7 @@ Currently, Stockfish has the following UCI options:
     this equal to the number of CPU cores available.
 
   * #### Hash
-    The size of the hash table in MB.
+    The size of the hash table in MB. It is recommended to set Hash after setting Threads.
 
   * #### Clear Hash
     Clear the hash table.
@@ -138,6 +138,30 @@ more compact than Nalimov tablebases, while still storing all information
 needed for optimal play and in addition being able to take into account
 the 50-move rule.
 
+## Large Pages
+
+Stockfish supports large pages on Linux and Windows. Large pages make
+the hash access more efficient, improving the engine speed, especially
+on large hash sizes. Typical increases are 5..10% in terms of nps, but
+speed increases up to 30% have been measured. The support is
+automatic. Stockfish attempts to use large pages when available and
+will fall back to regular memory allocation when this is not the case.
+
+### Support on Linux
+
+Large page support on Linux is obtained by the Linux kernel
+transparent huge pages functionality. Typically, transparent huge pages
+are already enabled and no configuration is needed.
+
+### Support on Windows
+
+The use of large pages requires "Lock Pages in Memory" privilege. See
+[Enable the Lock Pages in Memory Option (Windows)](https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/enable-the-lock-pages-in-memory-option-windows)
+on how to enable this privilege. Logout/login may be needed
+afterwards. Due to memory fragmentation, it may not always be
+possible to allocate large pages even when enabled. A reboot
+might alleviate this problem. To determine whether large pages
+are in use, see the engine log.
 
 ## Compiling Stockfish yourself from the sources
 
