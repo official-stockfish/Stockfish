@@ -138,6 +138,51 @@ more compact than Nalimov tablebases, while still storing all information
 needed for optimal play and in addition being able to take into account
 the 50-move rule.
 
+## Large Pages
+
+Stockfish supports large pages on Linux and Windows. Large pages make
+the hash access more efficient improving the engine speed, especially
+on large hash sizes. Typical increases are 5..10% in terms of nps, but
+speed increases up to 30% have been measured. The support is
+automatic. Stockfish attempts to use large pages when available and
+will fall back to regular memory allocation when this is not the case.
+
+### Support on Linux
+
+Large page support on Linux is obtained by the Linux kernel
+transparent huge pages functionality. Often, transparent huge pages
+are already enabled and no configuration is needed.
+
+To verify the use of transparent huge pages, the following command may
+be used:
+
+```
+  grep AnonHugePages /proc/meminfo
+```
+
+After launching the engine, this number should increase roughly by the
+configured size of the hash.
+
+For troubleshooting, file `/sys/kernel/mm/transparent_hugepage/enabled`
+controls whether transparent huge pages are enabled. Setting
+`always` or `madvise` should suffice for Stockfish.
+
+File `/sys/kernel/mm/transparent_hugepage/defrag` controls whether
+memory is attempted to be defragmented to make room for large pages
+when necessary. Setting `always`, `defer+madvise`, or `madvise` is
+recommended.
+
+### Support on Windows
+
+The use of large pages requires "Lock Pages in Memory" privilege. See
+[Enable the Lock Pages in Memory Option (Windows)](https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/enable-the-lock-pages-in-memory-option-windows)
+on how to enable this privilege. Logout/login may be needed
+afterwards. To determine whether large pages are in use, see the
+engine log.
+
+Due to memory fragmentation, memory with large pages may not be always
+possible to allocate even when enabled. When this is the case, reboot
+may be needed.
 
 ## Compiling Stockfish yourself from the sources
 
