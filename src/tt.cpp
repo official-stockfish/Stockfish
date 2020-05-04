@@ -63,7 +63,14 @@ void TranspositionTable::resize(size_t mbSize) {
 
   Threads.main()->wait_for_search_finished();
 
-  free(mem);
+  if (mem)
+      aligned_ttmem_free(mem);
+
+  if (!mbSize)
+  {
+      mem = nullptr;
+      return;
+  }
 
   clusterCount = mbSize * 1024 * 1024 / sizeof(Cluster);
   table = static_cast<Cluster*>(aligned_ttmem_alloc(clusterCount * sizeof(Cluster), mem));
