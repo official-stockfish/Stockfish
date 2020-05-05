@@ -31,11 +31,6 @@ TimeManagement Time; // Our global time management object
 /// init() is called at the beginning of the search and calculates the allowed
 /// thinking time out of the time control and current game ply. We support four
 /// different kinds of time controls, passed in 'limits':
-///
-///  inc == 0 && movestogo == 0 means: x basetime  [sudden death!]
-///  inc == 0 && movestogo != 0 means: x moves in y minutes
-///  inc >  0 && movestogo == 0 means: x basetime + z increment
-///  inc >  0 && movestogo != 0 means: x moves in y minutes + z increment
 
 void TimeManagement::init(Search::LimitsType& limits, Color us, int ply) {
 
@@ -69,31 +64,50 @@ void TimeManagement::init(Search::LimitsType& limits, Color us, int ply) {
 
   timeLeft = slowMover * timeLeft / 100;
 
-  // For fast games with little-to-no increment
-  if (limits.time[us] < 11000 && limits.inc[us] < moveOverhead)
+///
+///  inc == 0 && movestogo == 0 means: x basetime  [sudden death!]
+///  inc == 0 && movestogo != 0 means: x moves in y minutes
+///  inc >  0 && movestogo == 0 means: x basetime + z increment
+///  inc >  0 && movestogo != 0 means: x moves in y minutes + z increment
+
+  if (limits.movestogo == 0)
   {
-      scale = std::max(6.0 * (9.0 - std::log2(ply + 1)), 2.0);
-      optimumTime = std::max<int>(2 * minThinkingTime, timeLeft / scale);
-
-      scale = std::max(1.7 * (8.0 - std::log2(ply + 1)), 0.5);
-      if (3 * minThinkingTime < timeLeft / scale)
-          maximumTime = timeLeft / scale;
-      else if (3 * minThinkingTime > 0.8 * limits.time[us] - moveOverhead)
-          maximumTime = 0.8 * limits.time[us] - moveOverhead;
-      else
-          maximumTime = 3 * optimumTime / 2;
+      // For fast games with little-to-no increment
+      if (limits.time[us] < 11000 && limits.inc[us] < moveOverhead)
+      {
+          scale = std::max(6.0 * (9.0 - std::log2(ply + 1)), 2.0);
+          optimumTime = std::max<int>(2 * minThinkingTime, timeLeft / scale);
+    
+          scale = std::max(1.7 * (8.0 - std::log2(ply + 1)), 0.5);
+          if (3 * minThinkingTime < timeLeft / scale)
+              maximumTime = timeLeft / scale;
+          else if (3 * minThinkingTime > 0.8 * limits.time[us] - moveOverhead)
+              maximumTime = 0.8 * limits.time[us] - moveOverhead;
+          else
+              maximumTime = 3 * optimumTime / 2;
+      }
+      else //we have time to maturely process moves
+      {
+          scale = std::max(2.0, 8.2 * (9.2 - std::log2(ply + 1)));
+          optimumTime = std::min<int>(0.2 * limits.time[us], timeLeft / scale);
+          optimumTime = std::max<int>(minThinkingTime, optimumTime);
+    
+          scale = std::max(0.5, 1.7 * (8.0 - std::log2(ply + 1)));
+          maximumTime = std::min<int>(0.8 * limits.time[us] - moveOverhead, timeLeft / scale);
+          maximumTime = std::max<int>(minThinkingTime, maximumTime);
+      }
   }
-  else  //all other games
+  else //x moves in y minutes (+ z increment)
   {
-      scale = std::max(2.0, 8.2 * (9.2 - std::log2(ply + 1)));
-      optimumTime = std::min<int>(0.2 * limits.time[us], timeLeft / scale);
-      optimumTime = std::max<int>(minThinkingTime, optimumTime);
+      double mid = (ply - 30.0) / 32.0;
+      scale = std::max(1.0, 1.6 - mid / (1 + std::abs(mid)));
+      optimumTime = timeLeft / (limits.movestogo / 1.6) / scale;
+      optimumTime = std::min<int>(limits.time[us] - 2 * limits.movestogo * moveOverhead, optimumTime);
 
-      scale = std::max(0.5, 1.7 * (8.0 - std::log2(ply + 1)));
-      maximumTime = std::min<int>(0.8 * limits.time[us] - moveOverhead, timeLeft / scale);
-      maximumTime = std::max<int>(minThinkingTime, maximumTime);
+      scale = std::min<double>(5.5, 1.5 + 0.1 * limits.movestogo);
+      maximumTime = std::min<int>(limits.time[us] - 2 * limits.movestogo * moveOverhead, scale * optimumTime);
   }
-
+    
   if (Options["Ponder"])
       optimumTime += optimumTime / 4;
 }
