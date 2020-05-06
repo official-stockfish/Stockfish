@@ -22,7 +22,7 @@
 
 #include <ostream>
 
-#include "../search.h"
+#include "search.h"
 
 namespace Tablebases {
 

@@ -38,7 +38,14 @@ PGOBENCH = ./$(EXE) bench
 ### Object files
 OBJS = benchmark.o bitbase.o bitboard.o endgame.o evaluate.o main.o \
 	material.o misc.o movegen.o movepick.o pawns.o position.o psqt.o \
-	search.o thread.o timeman.o tt.o uci.o ucioption.o tune.o syzygy/tbprobe.o
+	search.o thread.o timeman.o tt.o uci.o ucioption.o tune.o tbprobe.o
+
+### Dependency directory and files
+DEPDIR = .dep
+DEPS = $(addprefix $(DEPDIR)/,$(OBJS:.o=.d))
+
+### Virtual path
+VPATH = syzygy
 
 ### Establish the operating system name
 KERNEL = $(shell uname -s)
@@ -147,8 +154,7 @@ endif
 
 ### 3.1 Selecting compiler (default = gcc)
 
-CXXFLAGS += -Wall -Wcast-qual -fno-exceptions -std=c++11 $(EXTRACXXFLAGS)
-DEPENDFLAGS += -std=c++11
+CXXFLAGS += -Wall -Wcast-qual -fno-exceptions -std=c++11 -I. $(EXTRACXXFLAGS)
 LDFLAGS += $(EXTRALDFLAGS)
 
 ifeq ($(COMP),)
@@ -307,7 +313,6 @@ endif
 ifeq ($(prefetch),yes)
 	ifeq ($(sse),yes)
 		CXXFLAGS += -msse
-		DEPENDFLAGS += -msse
 	endif
 else
 	CXXFLAGS += -DNO_PREFETCH
@@ -441,16 +446,16 @@ install:
 
 #clean all
 clean: objclean profileclean
-	@rm -f .depend *~ core
+	@rm -rf $(DEPDIR) *~ core
 
 # clean binaries and objects
 objclean:
-	@rm -f $(EXE) *.o ./syzygy/*.o
+	@rm -f $(EXE) *.o
 
 # clean auxiliary profiling files
 profileclean:
 	@rm -rf profdir
-	@rm -f bench.txt *.gcda ./syzygy/*.gcda *.gcno ./syzygy/*.gcno
+	@rm -f bench.txt *.gcda *.gcno
 	@rm -f stockfish.profdata *.profraw
 
 default:
@@ -460,7 +465,7 @@ default:
 ### Section 5. Private targets
 ### ==========================================================================
 
-all: $(EXE) .depend
+all: $(EXE)
 
 config-sanity:
 	@echo ""
@@ -535,8 +540,11 @@ icc-profile-use:
 	EXTRACXXFLAGS='-prof_use -prof_dir ./profdir' \
 	all
 
-.depend:
-	-@$(CXX) $(DEPENDFLAGS) -MM $(OBJS:.o=.cpp) > $@ 2> /dev/null
+%.o: %.cpp | $(DEPDIR)
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -MMD -MF $(DEPDIR)/$(@:.o=.d) -c -o $@ $<
 
--include .depend
+$(DEPDIR):
+	@mkdir -p $@
+
+-include $(DEPS)
 
