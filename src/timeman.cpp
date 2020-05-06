@@ -59,16 +59,16 @@ void TimeManagement::init(Search::LimitsType& limits, Color us, int ply) {
 
   int mtg = limits.movestogo ? std::min(limits.movestogo, 50) : 50;
 
+  // Adjust moveOverhead to support tiny increments (if needed)
+  moveOverhead = std::max(10, std::min<int>(limits.inc[us] / 2, moveOverhead));
+
   TimePoint timeLeft =  std::max(TimePoint(0),
       limits.time[us] + limits.inc[us] * (mtg - 1) - moveOverhead * (2 + mtg));
 
   timeLeft = slowMover * timeLeft / 100;
 
-///
 ///  inc == 0 && movestogo == 0 means: x basetime  [sudden death!]
-///  inc == 0 && movestogo != 0 means: x moves in y minutes
 ///  inc >  0 && movestogo == 0 means: x basetime + z increment
-///  inc >  0 && movestogo != 0 means: x moves in y minutes + z increment
 
   if (limits.movestogo == 0)
   {
@@ -80,7 +80,11 @@ void TimeManagement::init(Search::LimitsType& limits, Color us, int ply) {
       maximumTime = std::min<int>(0.8 * limits.time[us] - moveOverhead, timeLeft / scale);
       maximumTime = std::max<int>(minThinkingTime, maximumTime);
   }
-  else //x moves in y minutes (+ z increment)
+
+///  inc == 0 && movestogo != 0 means: x moves in y minutes
+///  inc >  0 && movestogo != 0 means: x moves in y minutes + z increment
+
+  else
   {
       double mid = (ply - 30.0) / 32.0;
       scale = std::max(1.0, 1.6 - mid / (1 + std::abs(mid)));
