@@ -40,6 +40,7 @@ before_build:
            'project(Stockfish)',
            'set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/src)',
            'set(source_files', $src, ')',
+           'add_compile_options(/I ${CMAKE_SOURCE_DIR}/src)',
            'add_executable(stockfish ${source_files})'
 
       # Write CMakeLists.txt withouth BOM
