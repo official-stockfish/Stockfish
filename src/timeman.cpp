@@ -67,9 +67,7 @@ void TimeManagement::init(Search::LimitsType& limits, Color us, int ply) {
 
   timeLeft = slowMover * timeLeft / 100;
 
-///  inc == 0 && movestogo == 0 means: x basetime  [sudden death!]
-///  inc >  0 && movestogo == 0 means: x basetime + z increment
-
+  /// movestogo == 0 means: x basetime (+ z increment)
   if (limits.movestogo == 0)
   {
       scale = std::max(2.0, 8.2 * (9.2 - std::log2(ply + 1)));
@@ -81,20 +79,18 @@ void TimeManagement::init(Search::LimitsType& limits, Color us, int ply) {
       maximumTime = std::max<int>(minThinkingTime, maximumTime);
   }
 
-///  inc == 0 && movestogo != 0 means: x moves in y minutes
-///  inc >  0 && movestogo != 0 means: x moves in y minutes + z increment
-
+  /// movestogo != 0 means: x moves in y minutes (+ z increment)
   else
   {
-      double mid = (ply - 30.0) / 32.0;
-      scale = std::max(1.0, 1.6 - mid / (1 + std::abs(mid)));
-      optimumTime = timeLeft / (limits.movestogo / 1.6) / scale;
-      optimumTime = std::min<int>(limits.time[us] - 2 * limits.movestogo * moveOverhead, optimumTime);
+      double mid = (ply - 34.0) / 32.0;
+      scale = 1.7 / std::max(1.0, 1.7 - mid / (1 + std::abs(mid)));
+      optimumTime = scale * timeLeft / mtg;
+      optimumTime = std::max(minThinkingTime, optimumTime);
 
-      scale = std::min<double>(5.5, 1.5 + 0.1 * limits.movestogo);
-      maximumTime = std::min<int>(limits.time[us] - 2 * limits.movestogo * moveOverhead, scale * optimumTime);
+      scale = std::min(6.3, 1.5 + 0.11 * mtg);
+      maximumTime = std::min<int>(limits.time[us] - mtg * moveOverhead, scale * optimumTime);
   }
-    
+
   if (Options["Ponder"])
       optimumTime += optimumTime / 4;
 }
