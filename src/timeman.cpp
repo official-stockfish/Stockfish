@@ -80,24 +80,21 @@ void TimeManagement::init(Search::LimitsType& limits, Color us, int ply) {
   // game time for the current move, so also cap to 20% of available game time.
   if (limits.movestogo == 0)
   {
-      opt_scale = std::min(0.007 + std::pow(ply + 3, 0.5) / 250.0,
-                           0.2 * limits.time[us] / timeLeft);
-
+      opt_scale = std::min(0.007 + std::pow(ply + 3.0, 0.5) / 250.0,
+                           0.2 * limits.time[us] / double(timeLeft));
       max_scale = 4 + std::pow(ply + 3, 0.3);
   }
 
   // x moves in y seconds (+ z increment)
   else
   {
-      opt_scale = (0.8 + ply / 128.0) / mtg;
+      opt_scale = std::min((0.8 + ply / 128.0) / mtg,
+                            0.8 * limits.time[us] / double(timeLeft));
       max_scale = std::min(6.3, 1.5 + 0.11 * mtg);
   }
 
-  optimumTime = opt_scale * timeLeft;
-  optimumTime = std::max(minThinkingTime, optimumTime);
-
-  // Always make sure maximumTime is less than 80% of available time
-  maximumTime = std::min(0.8 * limits.time[us] - moveOverhead, max_scale * optimumTime);
+  optimumTime = std::max(minThinkingTime, opt_scale * timeLeft);
+  maximumTime = std::min(0.9 * limits.time[us] - moveOverhead, max_scale * optimumTime);
 
   if (Options["Ponder"])
       optimumTime += optimumTime / 4;
