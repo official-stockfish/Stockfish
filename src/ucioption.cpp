@@ -69,8 +69,8 @@ void init(OptionsMap& o) {
   o["MultiPV"]               << Option(1, 1, 500);
   o["Skill Level"]           << Option(20, 0, 20);
   o["Move Overhead"]         << Option(30, 0, 5000);
-  o["Minimum Thinking Time"] << Option(20, 0, 5000);
-  o["Slow Mover"]            << Option(84, 10, 1000);
+  o["Minimum Thinking Time"] << Option( 0, 0, 5000);
+  o["Slow Mover"]            << Option(100, 10, 1000);
   o["nodestime"]             << Option(0, 0, 10000);
   o["UCI_Chess960"]          << Option(false);
   o["UCI_AnalyseMode"]       << Option(false);
