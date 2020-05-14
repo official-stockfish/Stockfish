@@ -390,7 +390,7 @@ void* aligned_ttmem_alloc(size_t allocSize, void*& mem) {
 
 void aligned_ttmem_free(void* mem) {
 
-  if (!VirtualFree(mem, 0, MEM_RELEASE))
+  if (mem && !VirtualFree(mem, 0, MEM_RELEASE))
   {
       DWORD err = GetLastError();
       std::cerr << "Failed to free transposition table. Error code: 0x" <<
