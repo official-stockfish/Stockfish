@@ -49,7 +49,6 @@ int main(int argc, char* argv[]) {
 
   UCI::loop(argc, argv);
 
-  TT.resize(0);
   Threads.set(0);
   return 0;
 }
