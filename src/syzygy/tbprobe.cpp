@@ -414,7 +414,6 @@ class TBTables {
             return (TBTable<Type>*)(Type == WDL ? (void*)wdl : (void*)dtz);
         }
     };
-    static_assert(std::is_trivially_copyable<Entry>::value, "");
 
     static constexpr int Size = 1 << 12; // 4K table, indexed by key's 12 lsb
     static constexpr int Overflow = 1;  // Number of elements allowed to map to the last bucket
