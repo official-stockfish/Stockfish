@@ -358,12 +358,21 @@ static void* aligned_ttmem_alloc_large_pages(size_t allocSize) {
 
 void* aligned_ttmem_alloc(size_t allocSize, void*& mem) {
 
+  static bool firstCall = true;
+
   // try to allocate large pages
   mem = aligned_ttmem_alloc_large_pages(allocSize);
-  if (mem)
-      sync_cout << "info string Hash table allocation: Windows large pages used." << sync_endl;
-  else
-      sync_cout << "info string Hash table allocation: Windows large pages not used." << sync_endl;
+
+  // Suppress info strings on the first call. The first call occurs before 'uci'
+  // is received and in that case this output confuses some GUIs.
+  if (!firstCall)
+  {
+      if (mem)
+          sync_cout << "info string Hash table allocation: Windows large pages used." << sync_endl;
+      else
+          sync_cout << "info string Hash table allocation: Windows large pages not used." << sync_endl;
+  }
+  firstCall = false;
 
   // fall back to regular, page aligned, allocation if necessary
   if (!mem)
