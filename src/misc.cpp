@@ -311,7 +311,7 @@ void* aligned_ttmem_alloc(size_t allocSize, void*& mem) {
 
 #elif defined(_WIN64)
 
-static void* aligned_ttmem_alloc_large_pages(size_t allocSize) {
+static void* aligned_ttmem_alloc_large_pages(size_t allocSize, DWORD &winErr) {
 
   HANDLE hProcessToken { };
   LUID luid { };
@@ -343,8 +343,27 @@ static void* aligned_ttmem_alloc_large_pages(size_t allocSize) {
       {
           // round up size to full pages and allocate
           allocSize = (allocSize + largePageSize - 1) & ~size_t(largePageSize - 1);
-          mem = VirtualAlloc(
-              NULL, allocSize, MEM_RESERVE | MEM_COMMIT | MEM_LARGE_PAGES, PAGE_READWRITE);
+
+          for (unsigned int i = 0; i <= 10; ++i)
+          {
+              // on first retry, we'll give the message
+              if (i == 1)
+                  sync_cout << "info string Hash table allocation failed: Not enough resources for "
+                               "large pages. Will keep trying for 10 seconds..." << sync_endl;
+
+              // we'll sleep for 1 sec before retrying
+              if (i > 0)
+                  Sleep(1000);
+
+              mem = VirtualAlloc(
+                  NULL, allocSize, MEM_RESERVE | MEM_COMMIT | MEM_LARGE_PAGES, PAGE_READWRITE);
+              winErr = GetLastError();
+
+              // we'll exit immediately if we got the memory or the error was
+              // something other than ERROR_NO_SYSTEM_RESOURCES
+              if (mem || winErr != ERROR_NO_SYSTEM_RESOURCES)
+                  break;
+          }
 
           // privilege no longer needed, restore previous state
           AdjustTokenPrivileges(hProcessToken, FALSE, &prevTp, 0, NULL, NULL);
@@ -359,9 +378,10 @@ static void* aligned_ttmem_alloc_large_pages(size_t allocSize) {
 void* aligned_ttmem_alloc(size_t allocSize, void*& mem) {
 
   static bool firstCall = true;
+  DWORD winErr = ERROR_NOT_SUPPORTED;
 
   // try to allocate large pages
-  mem = aligned_ttmem_alloc_large_pages(allocSize);
+  mem = aligned_ttmem_alloc_large_pages(allocSize, winErr);
 
   // Suppress info strings on the first call. The first call occurs before 'uci'
   // is received and in that case this output confuses some GUIs.
@@ -370,7 +390,14 @@ void* aligned_ttmem_alloc(size_t allocSize, void*& mem) {
       if (mem)
           sync_cout << "info string Hash table allocation: Windows large pages used." << sync_endl;
       else
-          sync_cout << "info string Hash table allocation: Windows large pages not used." << sync_endl;
+      {
+          if (winErr != ERROR_NOT_SUPPORTED)
+              sync_cout << "info string Hash table allocation: Windows large pages not used. (error "
+                        << winErr << ")" << sync_endl;
+          else
+              sync_cout << "info string Hash table allocation: Windows large pages not used. (unsupported)"
+                        << sync_endl;
+      }
   }
   firstCall = false;
 
@@ -402,8 +429,7 @@ void aligned_ttmem_free(void* mem) {
   if (mem && !VirtualFree(mem, 0, MEM_RELEASE))
   {
       DWORD err = GetLastError();
-      std::cerr << "Failed to free transposition table. Error code: 0x" <<
-          std::hex << err << std::dec << std::endl;
+      std::cerr << "Failed to free the transposition table, error: " << err << std::endl;
       exit(EXIT_FAILURE);
   }
 }

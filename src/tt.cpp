@@ -64,6 +64,7 @@ void TranspositionTable::resize(size_t mbSize) {
   Threads.main()->wait_for_search_finished();
 
   aligned_ttmem_free(mem);
+  mem = nullptr; // needed to prevent double-free on Windows in case of CTRL+C during aligned_ttmem_alloc()
 
   clusterCount = mbSize * 1024 * 1024 / sizeof(Cluster);
   table = static_cast<Cluster*>(aligned_ttmem_alloc(clusterCount * sizeof(Cluster), mem));
