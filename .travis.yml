@@ -50,7 +50,7 @@ script:
   - echo "Reference bench:" $benchref
   #
   # Verify bench number against various builds
-  - export CXXFLAGS=-Werror
+  - export CXXFLAGS="-Werror -D_GLIBCXX_DEBUG"
   - make clean && make -j2 ARCH=x86-64 optimize=no debug=yes build && ../tests/signature.sh $benchref
   - make clean && make -j2 ARCH=x86-32 optimize=no debug=yes build && ../tests/signature.sh $benchref
   - make clean && make -j2 ARCH=x86-32 build && ../tests/signature.sh $benchref
