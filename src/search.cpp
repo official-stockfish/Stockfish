@@ -357,6 +357,9 @@ void Thread::search() {
               mainThread->iterValue[i] = mainThread->bestPreviousScore;
   }
 
+  std::copy(&lowPlyHistory[2][0], &lowPlyHistory.back().back() + 1, &lowPlyHistory[0][0]);
+  std::fill(&lowPlyHistory[MAX_LPH - 2][0], &lowPlyHistory.back().back() + 1, 0);
+
   size_t multiPV = Options["MultiPV"];
 
   // Pick integer skill levels, but non-deterministically round up or down
