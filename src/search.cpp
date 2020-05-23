@@ -272,9 +272,9 @@ void MainThread::search() {
   Thread* bestThread = this;
 
   // Check if there are threads with a better score than main thread
-  if (    Options["MultiPV"] == 1
+  if (    int(Options["MultiPV"]) == 1
       && !Limits.depth
-      && !(Skill(Options["Skill Level"]).enabled() || Options["UCI_LimitStrength"])
+      && !(Skill(Options["Skill Level"]).enabled() || int(Options["UCI_LimitStrength"]))
       &&  rootMoves[0].pv[0] != MOVE_NONE)
   {
       std::map<Move, int64_t> votes;
@@ -350,14 +350,17 @@ void Thread::search() {
   if (mainThread)
   {
       if (mainThread->bestPreviousScore == VALUE_INFINITE)
-          for (int i=0; i<4; ++i)
+          for (int i = 0; i < 4; ++i)
               mainThread->iterValue[i] = VALUE_ZERO;
       else
-          for (int i=0; i<4; ++i)
+          for (int i = 0; i < 4; ++i)
               mainThread->iterValue[i] = mainThread->bestPreviousScore;
   }
 
-  size_t multiPV = Options["MultiPV"];
+  std::copy(&lowPlyHistory[2][0], &lowPlyHistory.back().back() + 1, &lowPlyHistory[0][0]);
+  std::fill(&lowPlyHistory[MAX_LPH - 2][0], &lowPlyHistory.back().back() + 1, 0);
+
+  size_t multiPV = size_t(Options["MultiPV"]);
 
   // Pick integer skill levels, but non-deterministically round up or down
   // such that the average integer skill corresponds to the input floating point one.
@@ -537,8 +540,8 @@ void Thread::search() {
           && !Threads.stop
           && !mainThread->stopOnPonderhit)
       {
-          double fallingEval = (332 +  6 * (mainThread->bestPreviousScore - bestValue)
-                                    +  6 * (mainThread->iterValue[iterIdx]  - bestValue)) / 704.0;
+          double fallingEval = (332 + 6 * (mainThread->bestPreviousScore - bestValue)
+                                    + 6 * (mainThread->iterValue[iterIdx] - bestValue)) / 704.0;
           fallingEval = Utility::clamp(fallingEval, 0.5, 1.5);
 
           // If the bestMove is stable over several iterations, reduce time accordingly

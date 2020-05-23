@@ -311,7 +311,7 @@ namespace {
 
             if (Pt == BISHOP)
             {
-                // Penalty according to number of pawns on the same color square as the
+                // Penalty according to the number of our pawns on the same color square as the
                 // bishop, bigger when the center files are blocked with pawns and smaller
                 // when the bishop is outside the pawn chain.
                 Bitboard blocked = pos.pieces(Us, PAWN) & shift<Down>(pos.pieces());
