@@ -274,7 +274,7 @@ void MainThread::search() {
   // Check if there are threads with a better score than main thread
   if (    Options["MultiPV"] == 1
       && !Limits.depth
-      && !(Skill(Options["Skill Level"]).enabled() || Options["UCI_LimitStrength"])
+      && !(Skill(Options["Skill Level"]).enabled() || int(Options["UCI_LimitStrength"]))
       &&  rootMoves[0].pv[0] != MOVE_NONE)
   {
       std::map<Move, int64_t> votes;
