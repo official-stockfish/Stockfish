@@ -177,6 +177,8 @@ constexpr Bitboard pawn_attacks_bb(Bitboard b) {
 }
 
 inline Bitboard pawn_attacks_bb(Color c, Square s) {
+
+  assert(is_ok(s));
   return PawnAttacks[c][s];
 }
 
@@ -274,7 +276,8 @@ inline Bitboard safe_destination(Square s, int step)
 template<PieceType Pt>
 inline Bitboard attacks_bb(Square s) {
 
-  assert(pt != PAWN);
+  assert((Pt != PAWN) && (is_ok(s)));
+
   return PseudoAttacks[Pt][s];
 }
 
@@ -282,7 +285,7 @@ inline Bitboard attacks_bb(Square s) {
 template<PieceType Pt>
 inline Bitboard attacks_bb(Square s, Bitboard occupied) {
 
-  assert(Pt != PAWN);
+  assert((Pt != PAWN) && (is_ok(s)));
 
   switch (Pt)
   {
@@ -294,6 +297,8 @@ inline Bitboard attacks_bb(Square s, Bitboard occupied) {
 }
 
 inline Bitboard attacks_bb(PieceType pt, Square s, Bitboard occupied) {
+
+  assert((pt != PAWN) && (is_ok(s)));
 
   switch (pt)
   {
