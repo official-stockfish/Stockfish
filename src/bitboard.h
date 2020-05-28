@@ -272,7 +272,9 @@ inline Bitboard safe_destination(Square s, int step)
     return is_ok(to) && distance(s, to) <= 2 ? square_bb(to) : Bitboard(0);
 }
 
-/// Pseudo attacks not considering occupied squares
+/// attacks_bb(Square) returns the pseudo attacks of the give piece type
+/// assuming an empty board.
+
 template<PieceType Pt>
 inline Bitboard attacks_bb(Square s) {
 
@@ -281,6 +283,9 @@ inline Bitboard attacks_bb(Square s) {
   return PseudoAttacks[Pt][s];
 }
 
+/// attacks_bb(Square, Bitboard) returns the attacks by the given piece
+/// assuming the board is occupied according to the passed Bitboard.
+/// Sliding piece attacks do not continue passed an occupied square.
 
 template<PieceType Pt>
 inline Bitboard attacks_bb(Square s, Bitboard occupied) {
