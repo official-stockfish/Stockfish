@@ -112,7 +112,7 @@ namespace {
     if (   distance(ksq[WHITE], ksq[BLACK]) <= 1
         || ksq[WHITE] == psq
         || ksq[BLACK] == psq
-        || (stm == WHITE && (PawnAttacks[WHITE][psq] & ksq[BLACK])))
+        || (stm == WHITE && (pawn_attacks_bb(WHITE, psq) & ksq[BLACK])))
         result = INVALID;
 
     // Immediate win if a pawn can be promoted without getting captured
@@ -120,13 +120,13 @@ namespace {
              && rank_of(psq) == RANK_7
              && ksq[stm] != psq + NORTH
              && (    distance(ksq[~stm], psq + NORTH) > 1
-                 || (PseudoAttacks[KING][ksq[stm]] & (psq + NORTH))))
+                 || (attacks_bb<KING>(ksq[stm]) & (psq + NORTH))))
         result = WIN;
 
     // Immediate draw if it is a stalemate or a king captures undefended pawn
     else if (   stm == BLACK
-             && (  !(PseudoAttacks[KING][ksq[stm]] & ~(PseudoAttacks[KING][ksq[~stm]] | PawnAttacks[~stm][psq]))
-                 || (PseudoAttacks[KING][ksq[stm]] & psq & ~PseudoAttacks[KING][ksq[~stm]])))
+             && (  !(attacks_bb<KING>(ksq[stm]) & ~(attacks_bb<KING>(ksq[~stm]) | pawn_attacks_bb(~stm, psq)))
+                 || (attacks_bb<KING>(ksq[stm]) & psq & ~attacks_bb<KING>(ksq[~stm]))))
         result = DRAW;
 
     // Position will be classified later
@@ -149,7 +149,7 @@ namespace {
     const Result Bad  = (stm == WHITE ? DRAW  : WIN);
 
     Result r = INVALID;
-    Bitboard b = PseudoAttacks[KING][ksq[stm]];
+    Bitboard b = attacks_bb<KING>(ksq[stm]);
 
     while (b)
         r |= stm == WHITE ? db[index(BLACK, ksq[BLACK] , pop_lsb(&b), psq)]
