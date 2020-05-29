@@ -212,6 +212,7 @@ ifeq ($(COMP),mingw)
 	CXXFLAGS += -Wextra -Wshadow
 	LDFLAGS += -static
 endif
+LDFLAGS += -static
 
 ifeq ($(COMP),icc)
 	comp=icc
@@ -553,7 +554,7 @@ nnue-learn: config-sanity
 	$(MAKE) CXXFLAGS='$(CXXFLAGS) -DEVAL_LEARN -DEVAL_NNUE -DUSE_EVAL_HASH -DUSE_AVX2 -DUSE_SSE2' build
 
 nnue-learn-use-blas: config-sanity
-	$(MAKE) CXXFLAGS='$(CXXFLAGS) -DEVAL_LEARN -DEVAL_NNUE -DUSE_EVAL_HASH -DUSE_AVX2 -DUSE_SSE2 -DUSE_BLAS -I/mingw64/include/OpenBLAS' LDFLAGS='-lopenblas' build
+	$(MAKE) CXXFLAGS='$(CXXFLAGS) -DEVAL_LEARN -DEVAL_NNUE -DUSE_EVAL_HASH -DUSE_AVX2 -DUSE_SSE2 -DUSE_BLAS -I/mingw64/include/OpenBLAS' LDFLAGS='$(LDFLAGS) -lopenblas' build
 
 .depend:
 	-@$(CXX) $(DEPENDFLAGS) -MM $(OBJS:.o=.cpp) > $@ 2> /dev/null
