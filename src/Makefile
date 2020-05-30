@@ -550,6 +550,9 @@ icc-profile-use:
 nnue: config-sanity
 	$(MAKE) CXXFLAGS='$(CXXFLAGS) -DEVAL_NNUE -DUSE_EVAL_HASH -DUSE_AVX2 -DUSE_SSE2' build
 
+nnue-gen-sfen-from-original-eval: config-sanity
+	$(MAKE) CXXFLAGS='$(CXXFLAGS) -DEVAL_LEARN -DUSE_EVAL_HASH -DUSE_AVX2 -DUSE_SSE2' build
+
 nnue-learn: config-sanity
 	$(MAKE) CXXFLAGS='$(CXXFLAGS) -DEVAL_LEARN -DEVAL_NNUE -DUSE_EVAL_HASH -DUSE_AVX2 -DUSE_SSE2' build
 
