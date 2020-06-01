@@ -255,7 +255,7 @@ void ThreadPool::start_searching() {
     for(Thread* th : *this)
     {
         th->bestMoveChanges = 0;
-        if (th != main())
+        if (th != front())
             th->start_searching();
     }
 }
@@ -263,7 +263,7 @@ void ThreadPool::start_searching() {
 void ThreadPool::wait_for_search_finished() const {
 
     for(Thread* th : *this)
-        if (th != main())
+        if (th != front())
             th->wait_for_search_finished();
 }
 
