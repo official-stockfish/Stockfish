@@ -50,7 +50,9 @@ void HalfRelativeKP<AssociatedKing>::AppendActiveIndices(
   GetPieces(pos, perspective, &pieces, &sq_target_k);
   for (PieceNumber i = PIECE_NUMBER_ZERO; i < PIECE_NUMBER_KING; ++i) {
     if (pieces[i] >= fe_hand_end) {
-      active->push_back(MakeIndex(sq_target_k, pieces[i]));
+      if (pieces[i] != Eval::BONA_PIECE_ZERO) {
+        active->push_back(MakeIndex(sq_target_k, pieces[i]));
+      }
     }
   }
 }
@@ -69,12 +71,16 @@ void HalfRelativeKP<AssociatedKing>::AppendChangedIndices(
     const auto old_p = static_cast<BonaPiece>(
         dp.changed_piece[i].old_piece.from[perspective]);
     if (old_p >= fe_hand_end) {
-      removed->push_back(MakeIndex(sq_target_k, old_p));
+      if (old_p != Eval::BONA_PIECE_ZERO) {
+        removed->push_back(MakeIndex(sq_target_k, old_p));
+      }
     }
     const auto new_p = static_cast<BonaPiece>(
         dp.changed_piece[i].new_piece.from[perspective]);
     if (new_p >= fe_hand_end) {
-      added->push_back(MakeIndex(sq_target_k, new_p));
+      if (new_p != Eval::BONA_PIECE_ZERO) {
+        added->push_back(MakeIndex(sq_target_k, new_p));
+      }
     }
   }
 }

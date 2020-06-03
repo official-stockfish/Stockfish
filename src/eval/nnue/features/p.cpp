@@ -21,7 +21,9 @@ void P::AppendActiveIndices(
       pos.eval_list()->piece_list_fb() :
       pos.eval_list()->piece_list_fw();
   for (PieceNumber i = PIECE_NUMBER_ZERO; i < PIECE_NUMBER_KING; ++i) {
-    active->push_back(pieces[i]);
+    if (pieces[i] != Eval::BONA_PIECE_ZERO) {
+      active->push_back(pieces[i]);
+    }
   }
 }
 
@@ -32,8 +34,12 @@ void P::AppendChangedIndices(
   const auto& dp = pos.state()->dirtyPiece;
   for (int i = 0; i < dp.dirty_num; ++i) {
     if (dp.pieceNo[i] >= PIECE_NUMBER_KING) continue;
-    removed->push_back(dp.changed_piece[i].old_piece.from[perspective]);
-    added->push_back(dp.changed_piece[i].new_piece.from[perspective]);
+    if (dp.changed_piece[i].old_piece.from[perspective] != Eval::BONA_PIECE_ZERO) {
+      removed->push_back(dp.changed_piece[i].old_piece.from[perspective]);
+    }
+    if (dp.changed_piece[i].new_piece.from[perspective] != Eval::BONA_PIECE_ZERO) {
+      added->push_back(dp.changed_piece[i].new_piece.from[perspective]);
+    }
   }
 }
 
