@@ -759,12 +759,6 @@ namespace {
     mg += u;
     eg += v;
 
-    if (T)
-    {
-        Trace::add(INITIATIVE, make_score(u, v));
-        Trace::add(TOTAL, make_score(mg, eg));
-    }
-
     // Compute the scale factor for the winning side
 
     Color strongSide = eg > VALUE_DRAW ? WHITE : BLACK;
@@ -789,6 +783,12 @@ namespace {
     v =  mg * int(me->game_phase())
        + eg * int(PHASE_MIDGAME - me->game_phase()) * ScaleFactor(sf) / SCALE_FACTOR_NORMAL;
     v /= PHASE_MIDGAME;
+
+    if (T)
+    {
+        Trace::add(INITIATIVE, make_score(u, eg * ScaleFactor(sf) / SCALE_FACTOR_NORMAL - eg_value(score)));
+        Trace::add(TOTAL, make_score(mg, eg * ScaleFactor(sf) / SCALE_FACTOR_NORMAL));
+    }
 
     return Value(v);
   }
