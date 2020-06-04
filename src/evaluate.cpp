@@ -756,12 +756,21 @@ namespace {
     int u = ((mg > 0) - (mg < 0)) * Utility::clamp(complexity + 50, -abs(mg), 0);
     int v = ((eg > 0) - (eg < 0)) * std::max(complexity, -abs(eg));
 
+    mg += u;
+    eg += v;
 
-    // Fetch eg scale factor, if not already specific, scale the endgame via general heuristics
+    if (T)
+    {
+        Trace::add(INITIATIVE, make_score(u, v));
+        Trace::add(TOTAL, make_score(mg, eg));
+    }
+
+    // Compute the scale factor for the winning side
 
     Color strongSide = eg > VALUE_DRAW ? WHITE : BLACK;
     int sf = me->scale_factor(pos, strongSide);
 
+    // If scale is not already specific, scale down the endgame via general heuristics
     if (sf == SCALE_FACTOR_NORMAL)
     {
         if (pos.opposite_bishops())
@@ -777,12 +786,10 @@ namespace {
     }
 
     // Interpolate between the middlegame and (scaled by 'sf') endgame score
-    v =  (mg + u) * int(me->game_phase())
-       + (eg + v) * int(PHASE_MIDGAME - me->game_phase()) * ScaleFactor(sf) / SCALE_FACTOR_NORMAL;
+    v =  mg * int(me->game_phase())
+       + eg * int(PHASE_MIDGAME - me->game_phase()) * ScaleFactor(sf) / SCALE_FACTOR_NORMAL;
     v /= PHASE_MIDGAME;
 
-    if (T)
-        Trace::add(INITIATIVE, make_score(0, v));
     return Value(v);
   }
 
@@ -848,7 +855,6 @@ namespace {
         Trace::add(IMBALANCE, me->imbalance());
         Trace::add(PAWN, pe->pawn_score(WHITE), pe->pawn_score(BLACK));
         Trace::add(MOBILITY, mobility[WHITE], mobility[BLACK]);
-        Trace::add(TOTAL, score);
     }
 
     // Side to move point of view
