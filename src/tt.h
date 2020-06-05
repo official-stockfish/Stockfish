@@ -66,6 +66,7 @@ private:
 class TranspositionTable {
 
   static constexpr int ClusterSize = 3;
+  static constexpr int ClustersPerSuperCluster = 256;
 
   struct Cluster {
     TTEntry entry[ClusterSize];
@@ -82,15 +83,41 @@ public:
   void resize(size_t mbSize);
   void clear();
 
-  // The 32 lowest order bits of the key are used to get the index of the cluster
+  // Lowest 48 bits of hash key are used for cluster selection
   TTEntry* first_entry(const Key key) const {
-    return &table[(uint32_t(key) * uint64_t(clusterCount)) >> 32].entry[0];
+
+    // We're scaling the 48 lowest bits of hash key to range
+    // [0, superClusterCount * 256). superClusterCount * 256 is at most 2^40
+    //
+    // We use 48 bits so that we get about even distribution for hash to cluster
+    // index for non-power-of-2 hash sizes close to the max size. We would get
+    // considerably uneven distribution due to quantization error without the
+    // extra 8 bits.
+    //
+    // The math is:
+    //
+    // IX = (K48 * SCC) / 2^40        ; K48 is the 48 lowest bits
+    //                                  of the hash key swizzled as:
+    //                                  K48 = ((key >> 32) & 0xFFFF) + ((key & 0xFFFFFFFF) << 16)
+    //
+    //    = (KH32 * 2^16 + KL16) * SCC / 2^40       ; KH32 is the high 32 bits of K48 and
+    //    =  KH32 * SCC / 2^24 + KL16 * SCC  / 2^40 ; KL16 is the low 16 bits of K48
+    //    = (KH32 * SCC + KL16 * SCC / 2^16) / 2^24 ; Final step to avoid intermediate precision loss
+
+    const uint64_t firstTerm =  uint32_t(key) * uint64_t(superClusterCount);
+    const uint64_t secondTerm = (uint16_t(key >> 32) * uint64_t(superClusterCount)) >> 16;
+
+    // Upper bound analysis:
+    // - firstTerm max  is (2^32 - 1) * 2^32 = 2^64 - 2^32
+    // - secondTerm max is (2^16 - 1) * 2^32 / 2^16 = 2^32 - 2^16
+    // - firstTerm + secondTerm = 2^64 - 2^16, which still fits in uint64_t
+    return &table[(firstTerm + secondTerm) >> 24].entry[0];
   }
 
 private:
   friend struct TTEntry;
 
-  size_t clusterCount;
+  size_t superClusterCount;
   Cluster* table;
   void* mem;
   uint8_t generation8; // Size must be not bigger than TTEntry::genBound8
