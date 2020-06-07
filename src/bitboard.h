@@ -200,12 +200,19 @@ inline Bitboard adjacent_files_bb(Square s) {
   return shift<EAST>(file_bb(s)) | shift<WEST>(file_bb(s));
 }
 
+/// line_bb(Square, Square) returns a line through the given squares.
+/// If the given squares are not on a same file/rank/diagonal, return 0.
+inline Bitboard line_bb(Square s1, Square s2) {
+
+  assert(is_ok(s1) && is_ok(s2));
+  return LineBB[s1][s2];
+}
 
 /// between_bb() returns squares that are linearly between the given squares
 /// If the given squares are not on a same file/rank/diagonal, return 0.
 
 inline Bitboard between_bb(Square s1, Square s2) {
-  Bitboard b = LineBB[s1][s2] & ((AllSquares << s1) ^ (AllSquares << s2));
+  Bitboard b = line_bb(s1, s2) & ((AllSquares << s1) ^ (AllSquares << s2));
   return b & (b - 1); //exclude lsb
 }
 
@@ -249,7 +256,7 @@ inline Bitboard passed_pawn_span(Color c, Square s) {
 /// straight or on a diagonal line.
 
 inline bool aligned(Square s1, Square s2, Square s3) {
-  return LineBB[s1][s2] & s3;
+  return line_bb(s1, s2) & s3;
 }
 
 
