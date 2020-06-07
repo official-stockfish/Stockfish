@@ -276,7 +276,7 @@ namespace {
                          : attacks_bb<Pt>(s, pos.pieces());
 
         if (pos.blockers_for_king(Us) & s)
-            b &= LineBB[pos.square<KING>(Us)][s];
+            b &= line_bb(pos.square<KING>(Us), s);
 
         attackedBy2[Us] |= attackedBy[Us][ALL_PIECES] & b;
         attackedBy[Us][Pt] |= b;
