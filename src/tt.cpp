@@ -28,25 +28,32 @@
 #include "tt.h"
 #include "uci.h"
 
+/* because in many platforms, operating with 32 bits is more efficient than
+ * doing so with 16 bits, yet compilers may choose to deploy 16 bit arithmetic
+ * taking the code literally.
+ */
+typedef uint_fast16_t fastuint16;
+
 TranspositionTable TT; // Our global transposition table
 
 /// TTEntry::save populates the TTEntry with a new node's data, possibly
 /// overwriting an old position. Update is not atomic and can be racy.
 
 void TTEntry::save(Key k, Value v, bool pv, Bound b, Depth d, Move m, Value ev) {
+  const fastuint16 hashKey16 = (fastuint16)(k >> 48);
 
   // Preserve any existing move for the same position
-  if (m || (k >> 48) != key16)
+  if (m || hashKey16 != (fastuint16)key16)
       move16 = (uint16_t)m;
 
   // Overwrite less valuable entries
-  if (  (k >> 48) != key16
+  if (  hashKey16 != (fastuint16)key16
       || d - DEPTH_OFFSET > depth8 - 4
       || b == BOUND_EXACT)
   {
       assert(d >= DEPTH_OFFSET);
 
-      key16     = (uint16_t)(k >> 48);
+      key16     = (uint16_t)hashKey16;
       value16   = (int16_t)v;
       eval16    = (int16_t)ev;
       genBound8 = (uint8_t)(TT.generation8 | uint8_t(pv) << 2 | b);
@@ -117,15 +124,18 @@ void TranspositionTable::clear() {
 TTEntry* TranspositionTable::probe(const Key key, bool& found) const {
 
   TTEntry* const tte = first_entry(key);
-  const uint16_t key16 = key >> 48;  // Use the high 16 bits as key inside the cluster
+  const fastuint16 key16 = key >> 48;  // Use the high 16 bits as key inside the cluster
 
-  for (int i = 0; i < ClusterSize; ++i)
-      if (!tte[i].key16 || tte[i].key16 == key16)
+  for (int i = 0; i < ClusterSize; ++i) {
+      const fastuint16 probeKey = tte[i].key16;
+
+      if (!probeKey || probeKey == key16)
       {
           tte[i].genBound8 = uint8_t(generation8 | (tte[i].genBound8 & 0x7)); // Refresh
 
-          return found = (bool)tte[i].key16, &tte[i];
+          return found = (bool)probeKey, &tte[i];
       }
+  }
 
   // Find an entry to be replaced according to the replacement strategy
   TTEntry* replace = tte;
