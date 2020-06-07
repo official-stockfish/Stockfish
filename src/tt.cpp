@@ -28,10 +28,9 @@
 #include "tt.h"
 #include "uci.h"
 
-/* because in many platforms, operating with 32 bits is more efficient than
- * doing so with 16 bits, yet compilers may choose to deploy 16 bit arithmetic
- * taking the code literally.
- */
+// because in many platforms, operating with 32 bits is more efficient than
+// doing so with 16 bits, yet compilers may choose to deploy 16 bit arithmetic
+// taking the code literally.
 typedef uint_fast16_t fastuint16;
 
 TranspositionTable TT; // Our global transposition table
@@ -41,13 +40,14 @@ TranspositionTable TT; // Our global transposition table
 
 void TTEntry::save(Key k, Value v, bool pv, Bound b, Depth d, Move m, Value ev) {
   const fastuint16 hashKey16 = (fastuint16)(k >> 48);
+  const fastuint16 probeKey = (fastuint16)key16;
 
   // Preserve any existing move for the same position
-  if (m || hashKey16 != (fastuint16)key16)
+  if (m || hashKey16 != probeKey)
       move16 = (uint16_t)m;
 
   // Overwrite less valuable entries
-  if (  hashKey16 != (fastuint16)key16
+  if (  hashKey16 != probeKey
       || d - DEPTH_OFFSET > depth8 - 4
       || b == BOUND_EXACT)
   {
@@ -124,10 +124,10 @@ void TranspositionTable::clear() {
 TTEntry* TranspositionTable::probe(const Key key, bool& found) const {
 
   TTEntry* const tte = first_entry(key);
-  const fastuint16 key16 = key >> 48;  // Use the high 16 bits as key inside the cluster
+  const fastuint16 key16 = (fastuint16)(key >> 48);  // Use the high 16 bits as key inside the cluster
 
   for (int i = 0; i < ClusterSize; ++i) {
-      const fastuint16 probeKey = tte[i].key16;
+      const fastuint16 probeKey = (fastuint16)tte[i].key16;
 
       if (!probeKey || probeKey == key16)
       {
