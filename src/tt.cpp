@@ -31,7 +31,7 @@
 // because in many platforms, operating with 32 bits is more efficient than
 // doing so with 16 bits, yet compilers may choose to deploy 16 bit arithmetic
 // taking the code literally.
-typedef uint_fast16_t fastuint16;
+typedef uint32_t fastuint16;
 
 TranspositionTable TT; // Our global transposition table
 
