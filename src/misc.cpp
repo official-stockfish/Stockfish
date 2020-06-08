@@ -2,7 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2019 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2015-2020 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -47,6 +47,11 @@ typedef bool(*fun3_t)(HANDLE, CONST GROUP_AFFINITY*, PGROUP_AFFINITY);
 #include <iostream>
 #include <sstream>
 #include <vector>
+
+#if defined(__linux__) && !defined(__ANDROID__)
+#include <stdlib.h>
+#include <sys/mman.h>
+#endif
 
 #include "misc.h"
 #include "thread.h"
@@ -103,6 +108,13 @@ public:
     if (!fname.empty() && !l.file.is_open())
     {
         l.file.open(fname, ifstream::out);
+
+        if (!l.file.is_open())
+        {
+            cerr << "Unable to open debug log file " << fname << endl;
+            exit(EXIT_FAILURE);
+        }
+
         cin.rdbuf(&l.in);
         cout.rdbuf(&l.out);
     }
@@ -145,8 +157,79 @@ const string engine_info(bool to_uci) {
 }
 
 
+/// compiler_info() returns a string trying to describe the compiler we use
+
+const std::string compiler_info() {
+
+  #define stringify2(x) #x
+  #define stringify(x) stringify2(x)
+  #define make_version_string(major, minor, patch) stringify(major) "." stringify(minor) "." stringify(patch)
+
+/// Predefined macros hell:
+///
+/// __GNUC__           Compiler is gcc, Clang or Intel on Linux
+/// __INTEL_COMPILER   Compiler is Intel
+/// _MSC_VER           Compiler is MSVC or Intel on Windows
+/// _WIN32             Building on Windows (any)
+/// _WIN64             Building on Windows 64 bit
+
+  std::string compiler = "\nCompiled by ";
+
+  #ifdef __clang__
+     compiler += "clang++ ";
+     compiler += make_version_string(__clang_major__, __clang_minor__, __clang_patchlevel__);
+  #elif __INTEL_COMPILER
+     compiler += "Intel compiler ";
+     compiler += "(version ";
+     compiler += stringify(__INTEL_COMPILER) " update " stringify(__INTEL_COMPILER_UPDATE);
+     compiler += ")";
+  #elif _MSC_VER
+     compiler += "MSVC ";
+     compiler += "(version ";
+     compiler += stringify(_MSC_FULL_VER) "." stringify(_MSC_BUILD);
+     compiler += ")";
+  #elif __GNUC__
+     compiler += "g++ (GNUC) ";
+     compiler += make_version_string(__GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
+  #else
+     compiler += "Unknown compiler ";
+     compiler += "(unknown version)";
+  #endif
+
+  #if defined(__APPLE__)
+     compiler += " on Apple";
+  #elif defined(__CYGWIN__)
+     compiler += " on Cygwin";
+  #elif defined(__MINGW64__)
+     compiler += " on MinGW64";
+  #elif defined(__MINGW32__)
+     compiler += " on MinGW32";
+  #elif defined(__ANDROID__)
+     compiler += " on Android";
+  #elif defined(__linux__)
+     compiler += " on Linux";
+  #elif defined(_WIN64)
+     compiler += " on Microsoft Windows 64-bit";
+  #elif defined(_WIN32)
+     compiler += " on Microsoft Windows 32-bit";
+  #else
+     compiler += " on unknown system";
+  #endif
+
+  compiler += "\n __VERSION__ macro expands to: ";
+  #ifdef __VERSION__
+     compiler += __VERSION__;
+  #else
+     compiler += "(undefined macro)";
+  #endif
+  compiler += "\n";
+
+  return compiler;
+}
+
+
 /// Debug functions used mainly to collect run-time statistics
-static int64_t hits[2], means[2];
+static std::atomic<int64_t> hits[2], means[2];
 
 void dbg_hit_on(bool b) { ++hits[0]; if (b) ++hits[1]; }
 void dbg_hit_on(bool c, bool b) { if (c) dbg_hit_on(b); }
@@ -169,7 +252,7 @@ void dbg_print() {
 
 std::ostream& operator<<(std::ostream& os, SyncCout sc) {
 
-  static Mutex m;
+  static std::mutex m;
 
   if (sc == IO_LOCK)
       m.lock();
@@ -210,6 +293,130 @@ void prefetch(void* addr) {
 }
 
 #endif
+
+
+/// aligned_ttmem_alloc will return suitably aligned memory, and if possible use large pages.
+/// The returned pointer is the aligned one, while the mem argument is the one that needs to be passed to free.
+/// With c++17 some of this functionality can be simplified.
+#if defined(__linux__) && !defined(__ANDROID__)
+
+void* aligned_ttmem_alloc(size_t allocSize, void*& mem) {
+
+  constexpr size_t alignment = 2 * 1024 * 1024; // assumed 2MB page sizes
+  size_t size = ((allocSize + alignment - 1) / alignment) * alignment; // multiple of alignment
+  if (posix_memalign(&mem, alignment, size))
+     mem = nullptr;
+  madvise(mem, allocSize, MADV_HUGEPAGE);
+  return mem;
+}
+
+#elif defined(_WIN64)
+
+static void* aligned_ttmem_alloc_large_pages(size_t allocSize) {
+
+  HANDLE hProcessToken { };
+  LUID luid { };
+  void* mem = nullptr;
+
+  const size_t largePageSize = GetLargePageMinimum();
+  if (!largePageSize)
+      return nullptr;
+
+  // We need SeLockMemoryPrivilege, so try to enable it for the process
+  if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hProcessToken))
+      return nullptr;
+
+  if (LookupPrivilegeValue(NULL, SE_LOCK_MEMORY_NAME, &luid))
+  {
+      TOKEN_PRIVILEGES tp { };
+      TOKEN_PRIVILEGES prevTp { };
+      DWORD prevTpLen = 0;
+
+      tp.PrivilegeCount = 1;
+      tp.Privileges[0].Luid = luid;
+      tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+
+      // Try to enable SeLockMemoryPrivilege. Note that even if AdjustTokenPrivileges() succeeds,
+      // we still need to query GetLastError() to ensure that the privileges were actually obtained...
+      if (AdjustTokenPrivileges(
+              hProcessToken, FALSE, &tp, sizeof(TOKEN_PRIVILEGES), &prevTp, &prevTpLen) &&
+          GetLastError() == ERROR_SUCCESS)
+      {
+          // round up size to full pages and allocate
+          allocSize = (allocSize + largePageSize - 1) & ~size_t(largePageSize - 1);
+          mem = VirtualAlloc(
+              NULL, allocSize, MEM_RESERVE | MEM_COMMIT | MEM_LARGE_PAGES, PAGE_READWRITE);
+
+          // privilege no longer needed, restore previous state
+          AdjustTokenPrivileges(hProcessToken, FALSE, &prevTp, 0, NULL, NULL);
+      }
+  }
+
+  CloseHandle(hProcessToken);
+
+  return mem;
+}
+
+void* aligned_ttmem_alloc(size_t allocSize, void*& mem) {
+
+  static bool firstCall = true;
+
+  // try to allocate large pages
+  mem = aligned_ttmem_alloc_large_pages(allocSize);
+
+  // Suppress info strings on the first call. The first call occurs before 'uci'
+  // is received and in that case this output confuses some GUIs.
+  if (!firstCall)
+  {
+      if (mem)
+          sync_cout << "info string Hash table allocation: Windows large pages used." << sync_endl;
+      else
+          sync_cout << "info string Hash table allocation: Windows large pages not used." << sync_endl;
+  }
+  firstCall = false;
+
+  // fall back to regular, page aligned, allocation if necessary
+  if (!mem)
+      mem = VirtualAlloc(NULL, allocSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+
+  return mem;
+}
+
+#else
+
+void* aligned_ttmem_alloc(size_t allocSize, void*& mem) {
+
+  constexpr size_t alignment = 64; // assumed cache line size
+  size_t size = allocSize + alignment - 1; // allocate some extra space
+  mem = malloc(size);
+  void* ret = reinterpret_cast<void*>((uintptr_t(mem) + alignment - 1) & ~uintptr_t(alignment - 1));
+  return ret;
+}
+
+#endif
+
+/// aligned_ttmem_free will free the previously allocated ttmem
+#if defined(_WIN64)
+
+void aligned_ttmem_free(void* mem) {
+
+  if (mem && !VirtualFree(mem, 0, MEM_RELEASE))
+  {
+      DWORD err = GetLastError();
+      std::cerr << "Failed to free transposition table. Error code: 0x" <<
+          std::hex << err << std::dec << std::endl;
+      exit(EXIT_FAILURE);
+  }
+}
+
+#else
+
+void aligned_ttmem_free(void *mem) {
+  free(mem);
+}
+
+#endif
+
 
 namespace WinProcGroup {
 

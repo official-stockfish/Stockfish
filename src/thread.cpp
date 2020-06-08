@@ -2,7 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2019 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2015-2020 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -52,6 +52,15 @@ Thread::~Thread() {
   stdThread.join();
 }
 
+/// Thread::bestMoveCount(Move move) return best move counter for the given root move
+
+int Thread::best_move_count(Move move) const {
+
+  auto rm = std::find(rootMoves.begin() + pvIdx,
+                      rootMoves.begin() + pvLast, move);
+
+  return rm != rootMoves.begin() + pvLast ? rm->bestMoveCount : 0;
+}
 
 /// Thread::clear() reset histories, usually before a new game
 
@@ -59,20 +68,24 @@ void Thread::clear() {
 
   counterMoves.fill(MOVE_NONE);
   mainHistory.fill(0);
+  lowPlyHistory.fill(0);
   captureHistory.fill(0);
 
-  for (auto& to : continuationHistory)
-      for (auto& h : to)
-          h->fill(0);
-
-  continuationHistory[NO_PIECE][0]->fill(Search::CounterMovePruneThreshold - 1);
+  for (bool inCheck : { false, true })
+      for (StatsType c : { NoCaptures, Captures })
+      {
+          for (auto& to : continuationHistory[inCheck][c])
+                for (auto& h : to)
+                      h->fill(0);
+          continuationHistory[inCheck][c][NO_PIECE][0]->fill(Search::CounterMovePruneThreshold - 1);
+      }
 }
 
 /// Thread::start_searching() wakes up the thread that will start the search
 
 void Thread::start_searching() {
 
-  std::lock_guard<Mutex> lk(mutex);
+  std::lock_guard<std::mutex> lk(mutex);
   searching = true;
   cv.notify_one(); // Wake up the thread in idle_loop()
 }
@@ -83,7 +96,7 @@ void Thread::start_searching() {
 
 void Thread::wait_for_search_finished() {
 
-  std::unique_lock<Mutex> lk(mutex);
+  std::unique_lock<std::mutex> lk(mutex);
   cv.wait(lk, [&]{ return !searching; });
 }
 
@@ -103,7 +116,7 @@ void Thread::idle_loop() {
 
   while (true)
   {
-      std::unique_lock<Mutex> lk(mutex);
+      std::unique_lock<std::mutex> lk(mutex);
       searching = false;
       cv.notify_one(); // Wake up anyone waiting for search finished
       cv.wait(lk, [&]{ return searching; });
@@ -138,7 +151,10 @@ void ThreadPool::set(size_t requested) {
       clear();
 
       // Reallocate the hash with the new threadpool size
-      TT.resize(Options["Hash"]);
+      TT.resize(size_t(Options["Hash"]));
+
+      // Init thread number dependent search params.
+      Search::init();
   }
 }
 
@@ -150,7 +166,7 @@ void ThreadPool::clear() {
       th->clear();
 
   main()->callsCnt = 0;
-  main()->previousScore = VALUE_INFINITE;
+  main()->bestPreviousScore = VALUE_INFINITE;
   main()->previousTimeReduction = 1.0;
 }
 
@@ -163,6 +179,7 @@ void ThreadPool::start_thinking(Position& pos, StateListPtr& states,
   main()->wait_for_search_finished();
 
   main()->stopOnPonderhit = stop = false;
+  increaseDepth = true;
   main()->ponder = ponderMode;
   Search::Limits = limits;
   Search::RootMoves rootMoves;
@@ -192,7 +209,7 @@ void ThreadPool::start_thinking(Position& pos, StateListPtr& states,
   for (Thread* th : *this)
   {
       th->nodes = th->tbHits = th->nmpMinPly = 0;
-      th->rootDepth = th->completedDepth = DEPTH_ZERO;
+      th->rootDepth = th->completedDepth = 0;
       th->rootMoves = rootMoves;
       th->rootPos.set(pos.fen(), pos.is_chess960(), &setupStates->back(), th);
   }

@@ -2,7 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2019 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2015-2020 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -154,7 +154,7 @@ namespace {
     limits.startTime = now(); // As early as possible!
 
     while (is >> token)
-        if (token == "searchmoves")
+        if (token == "searchmoves") // Needs to be the last command on the line
             while (is >> token)
                 limits.searchmoves.push_back(UCI::to_move(pos, token));
 
@@ -185,7 +185,7 @@ namespace {
     uint64_t num, nodes = 0, cnt = 1;
 
     vector<string> list = setup_bench(pos, args);
-    num = count_if(list.begin(), list.end(), [](string s) { return s.find("go ") == 0; });
+    num = count_if(list.begin(), list.end(), [](string s) { return s.find("go ") == 0 || s.find("eval") == 0; });
 
     TimePoint elapsed = now();
 
@@ -194,16 +194,21 @@ namespace {
         istringstream is(cmd);
         is >> skipws >> token;
 
-        if (token == "go")
+        if (token == "go" || token == "eval")
         {
             cerr << "\nPosition: " << cnt++ << '/' << num << endl;
-            go(pos, is, states);
-            Threads.main()->wait_for_search_finished();
-            nodes += Threads.nodes_searched();
+            if (token == "go")
+            {
+               go(pos, is, states);
+               Threads.main()->wait_for_search_finished();
+               nodes += Threads.nodes_searched();
+            }
+            else
+               sync_cout << "\n" << Eval::trace(pos) << sync_endl;
         }
         else if (token == "setoption")  setoption(is);
         else if (token == "position")   position(pos, is, states);
-        else if (token == "ucinewgame") Search::clear();
+        else if (token == "ucinewgame") { Search::clear(); elapsed = now(); } // Search::clear() may take some while
     }
 
     elapsed = now() - elapsed + 1; // Ensure positivity to avoid a 'divide by zero'
@@ -337,9 +342,8 @@ void UCI::loop(int argc, char* argv[]) {
   Position pos;
   string token, cmd;
   StateListPtr states(new std::deque<StateInfo>(1));
-  auto uiThread = std::make_shared<Thread>(0);
 
-  pos.set(StartFEN, false, &states->back(), uiThread.get());
+  pos.set(StartFEN, false, &states->back(), Threads.main());
 
   for (int i = 1; i < argc; ++i)
       cmd += std::string(argv[i]) + " ";
@@ -375,11 +379,13 @@ void UCI::loop(int argc, char* argv[]) {
       else if (token == "ucinewgame") Search::clear();
       else if (token == "isready")    is_ready();
 
-      // Additional custom non-UCI commands, mainly for debugging
-      else if (token == "flip")  pos.flip();
-      else if (token == "bench") bench(pos, is, states);
-      else if (token == "d")     sync_cout << pos << sync_endl;
-      else if (token == "eval")  sync_cout << Eval::trace(pos) << sync_endl;
+      // Additional custom non-UCI commands, mainly for debugging.
+      // Do not use these commands during a search!
+      else if (token == "flip")     pos.flip();
+      else if (token == "bench")    bench(pos, is, states);
+      else if (token == "d")        sync_cout << pos << sync_endl;
+      else if (token == "eval")     sync_cout << Eval::trace(pos) << sync_endl;
+      else if (token == "compiler") sync_cout << compiler_info() << sync_endl;
 #if defined (EVAL_LEARN)
       else if (token == "gensfen") Learner::gen_sfen(pos, is);
       else if (token == "learn") Learner::learn(pos, is);
@@ -398,7 +404,6 @@ void UCI::loop(int argc, char* argv[]) {
       // テストコマンド
       else if (token == "test") test_cmd(pos, is);
 #endif
-
       else
           sync_cout << "Unknown command: " << cmd << sync_endl;
 
@@ -419,7 +424,7 @@ string UCI::value(Value v) {
 
   stringstream ss;
 
-  if (abs(v) < VALUE_MATE - MAX_PLY)
+  if (abs(v) < VALUE_MATE_IN_MAX_PLY)
       ss << "cp " << v * 100 / PawnValueEg;
   else
       ss << "mate " << (v > 0 ? VALUE_MATE - v + 1 : -VALUE_MATE - v) / 2;

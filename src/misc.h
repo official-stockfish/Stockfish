@@ -2,7 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2019 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2015-2020 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -25,6 +25,7 @@
 #include <cassert>
 #include <chrono>
 #include <functional>
+#include <mutex>
 #include <ostream>
 #include <string>
 #include <vector>
@@ -33,8 +34,11 @@
 #include "thread_win32_osx.h"
 
 const std::string engine_info(bool to_uci = false);
+const std::string compiler_info();
 void prefetch(void* addr);
 void start_logger(const std::string& fname);
+void* aligned_ttmem_alloc(size_t size, void*& mem);
+void aligned_ttmem_free(void* mem); // nop if mem == nullptr
 
 void dbg_hit_on(bool b);
 void dbg_hit_on(bool c, bool b);
@@ -65,6 +69,14 @@ std::ostream& operator<<(std::ostream&, SyncCout);
 #define sync_cout std::cout << IO_LOCK
 #define sync_endl std::endl << IO_UNLOCK
 
+namespace Utility {
+
+/// Clamp a value between lo and hi. Available in c++17.
+template<class T> constexpr const T& clamp(const T& v, const T& lo, const T& hi) {
+  return v < lo ? lo : v > hi ? hi : v;
+}
+
+}
 
 /// xorshift64star Pseudo-Random Number Generator
 /// This class is based on original code written and dedicated
@@ -161,13 +173,13 @@ struct AsyncPRNG
   AsyncPRNG(uint64_t seed) : prng(seed) { assert(seed); }
   // [ASYNC] 乱数を一つ取り出す。
   template<typename T> T rand() {
-    std::unique_lock<Mutex> lk(mutex);
+    std::unique_lock<std::mutex> lk(mutex);
     return prng.rand<T>();
   }
 
   // [ASYNC] 0からn-1までの乱数を返す。(一様分布ではないが現実的にはこれで十分)
   uint64_t rand(uint64_t n) {
-    std::unique_lock<Mutex> lk(mutex);
+    std::unique_lock<std::mutex> lk(mutex);
     return prng.rand(n);
   }
 
@@ -175,7 +187,7 @@ struct AsyncPRNG
   uint64_t get_seed() const { return prng.get_seed(); }
 
 protected:
-  Mutex mutex;
+  std::mutex mutex;
   PRNG prng;
 };
 

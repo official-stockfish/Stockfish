@@ -35,25 +35,29 @@ BINDIR = $(PREFIX)/bin
 ### Built-in benchmark for pgo-builds
 PGOBENCH = ./$(EXE) bench
 
-### Object files
-OBJS = benchmark.o bitbase.o bitboard.o endgame.o evaluate.o main.o \
-	material.o misc.o movegen.o movepick.o pawns.o position.o psqt.o \
-	search.o thread.o timeman.o tt.o uci.o ucioption.o syzygy/tbprobe.o \
-	eval/evaluate_mir_inv_tools.o \
-	eval/nnue/evaluate_nnue.o \
-	eval/nnue/evaluate_nnue_learner.o \
-	eval/nnue/features/half_kp.o \
-	eval/nnue/features/half_relative_kp.o \
-	eval/nnue/features/k.o \
-	eval/nnue/features/p.o \
-	eval/nnue/features/castling_right.o \
-	eval/nnue/features/enpassant.o \
-	eval/nnue/nnue_test_command.o \
-	extra/sfen_packer.o \
-	learn/gensfen2019.o \
-	learn/learner.o \
-	learn/learning_tools.o \
-	learn/multi_think.o
+### Source and object files
+SRCS = benchmark.cpp bitbase.cpp bitboard.cpp endgame.cpp evaluate.cpp main.cpp \
+	material.cpp misc.cpp movegen.cpp movepick.cpp pawns.cpp position.cpp psqt.cpp \
+	search.cpp thread.cpp timeman.cpp tt.cpp uci.cpp ucioption.cpp tune.cpp syzygy/tbprobe.cpp \
+	eval/evaluate_mir_inv_tools.cpp \
+	eval/nnue/evaluate_nnue.cpp \
+	eval/nnue/evaluate_nnue_learner.cpp \
+	eval/nnue/features/half_kp.cpp \
+	eval/nnue/features/half_relative_kp.cpp \
+	eval/nnue/features/k.cpp \
+	eval/nnue/features/p.cpp \
+	eval/nnue/features/castling_right.cpp \
+	eval/nnue/features/enpassant.cpp \
+	eval/nnue/nnue_test_command.cpp \
+	extra/sfen_packer.cpp \
+	learn/gensfen2019.cpp \
+	learn/learner.cpp \
+	learn/learning_tools.cpp \
+	learn/multi_think.cpp
+
+OBJS = $(SRCS:.cpp=.o)
+
+VPATH = syzygy
 
 ### Establish the operating system name
 KERNEL = $(shell uname -s)
@@ -151,6 +155,8 @@ endif
 ifeq ($(ARCH),ppc-64)
 	arch = ppc64
 	bits = 64
+	popcnt = yes
+	prefetch = yes
 endif
 
 
@@ -304,7 +310,7 @@ ifeq ($(optimize),yes)
 			CXXFLAGS += -fno-gcse -mthumb -march=armv7-a -mfloat-abi=softfp
 		endif
 	endif
-	
+
 	ifeq ($(comp),$(filter $(comp),gcc clang icc))
 		ifeq ($(KERNEL),Darwin)
 			CXXFLAGS += -mdynamic-no-pic
@@ -329,7 +335,9 @@ endif
 
 ### 3.6 popcnt
 ifeq ($(popcnt),yes)
-	ifeq ($(comp),icc)
+	ifeq ($(arch),ppc64)
+		CXXFLAGS += -DUSE_POPCNT
+	else ifeq ($(comp),icc)
 		CXXFLAGS += -msse3 -DUSE_POPCNT
 	else
 		CXXFLAGS += -msse3 -mpopcnt -DUSE_POPCNT
@@ -391,10 +399,10 @@ help:
 	@echo ""
 	@echo "Supported archs:"
 	@echo ""
-	@echo "x86-64                  > x86 64-bit"
-	@echo "x86-64-modern           > x86 64-bit with popcnt support"
-	@echo "x86-64-bmi2             > x86 64-bit with pext support"
-	@echo "x86-32                  > x86 32-bit with SSE support"
+	@echo "x86-64-bmi2             > x86 64-bit with pext support (also enables SSE4)"
+	@echo "x86-64-modern           > x86 64-bit with popcnt support (also enables SSE3)"
+	@echo "x86-64                  > x86 64-bit generic"
+	@echo "x86-32                  > x86 32-bit (also enables SSE)"
 	@echo "x86-32-old              > x86 32-bit fall back for old hardware"
 	@echo "ppc-64                  > PPC 64-bit"
 	@echo "ppc-32                  > PPC 32-bit"
@@ -417,11 +425,11 @@ help:
 	@echo "Advanced examples, for experienced users: "
 	@echo ""
 	@echo "make build ARCH=x86-64 COMP=clang"
-	@echo "make profile-build ARCH=x86-64-modern COMP=gcc COMPCXX=g++-4.8"
+	@echo "make profile-build ARCH=x86-64-bmi2 COMP=gcc COMPCXX=g++-4.8"
 	@echo ""
 
 
-.PHONY: help build profile-build strip install clean objclean profileclean help \
+.PHONY: help build profile-build strip install clean objclean profileclean \
         config-sanity icc-profile-use icc-profile-make gcc-profile-use gcc-profile-make \
         clang-profile-use clang-profile-make
 
@@ -462,7 +470,7 @@ objclean:
 # clean auxiliary profiling files
 profileclean:
 	@rm -rf profdir
-	@rm -f bench.txt *.gcda ./syzygy/*.gcda *.gcno ./syzygy/*.gcno
+	@rm -f bench.txt *.gcda *.gcno
 	@rm -f stockfish.profdata *.profraw
 
 default:

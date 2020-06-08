@@ -2,7 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2019 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2015-2020 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -37,8 +37,8 @@ struct Entry {
   Bitboard pawn_attacks(Color c) const { return pawnAttacks[c]; }
   Bitboard passed_pawns(Color c) const { return passedPawns[c]; }
   Bitboard pawn_attacks_span(Color c) const { return pawnAttacksSpan[c]; }
-  int weak_unopposed(Color c) const { return weakUnopposed[c]; }
   int passed_count() const { return popcount(passedPawns[WHITE] | passedPawns[BLACK]); }
+  int blocked_count() const { return blockedCount; }
 
   template<Color Us>
   Score king_safety(const Position& pos) {
@@ -50,7 +50,7 @@ struct Entry {
   Score do_king_safety(const Position& pos);
 
   template<Color Us>
-  void evaluate_shelter(const Position& pos, Square ksq, Score& shelter);
+  Score evaluate_shelter(const Position& pos, Square ksq);
 
   Key key;
   Score scores[COLOR_NB];
@@ -59,12 +59,11 @@ struct Entry {
   Bitboard pawnAttacksSpan[COLOR_NB];
   Square kingSquares[COLOR_NB];
   Score kingSafety[COLOR_NB];
-  int weakUnopposed[COLOR_NB];
   int castlingRights[COLOR_NB];
-  int pawnsOnSquares[COLOR_NB][COLOR_NB]; // [color][light/dark squares]
+  int blockedCount;
 };
 
-typedef HashTable<Entry, 16384> Table;
+typedef HashTable<Entry, 131072> Table;
 
 Entry* probe(const Position& pos);
 

@@ -1,7 +1,7 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (c) 2013 Ronald de Man
-  Copyright (C) 2016-2019 Marco Costalba, Lucas Braesch
+  Copyright (C) 2016-2020 Marco Costalba, Lucas Braesch
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -27,12 +27,12 @@
 #include <list>
 #include <sstream>
 #include <type_traits>
+#include <mutex>
 
 #include "../bitboard.h"
 #include "../movegen.h"
 #include "../position.h"
 #include "../search.h"
-#include "../thread_win32_osx.h"
 #include "../types.h"
 #include "../uci.h"
 
@@ -45,7 +45,9 @@
 #include <sys/stat.h>
 #else
 #define WIN32_LEAN_AND_MEAN
-#define NOMINMAX
+#ifndef NOMINMAX
+#  define NOMINMAX // Disable macros min() and max()
+#endif
 #include <windows.h>
 #endif
 
@@ -58,13 +60,12 @@ namespace {
 constexpr int TBPIECES = 7; // Max number of supported pieces
 
 enum { BigEndian, LittleEndian };
-enum TBType { KEY, WDL, DTZ }; // Used as template parameter
+enum TBType { WDL, DTZ }; // Used as template parameter
 
 // Each table has a set of flags: all of them refer to DTZ tables, the last one to WDL tables
 enum TBFlag { STM = 1, Mapped = 2, WinPlies = 4, LossPlies = 8, Wide = 16, SingleValue = 128 };
 
 inline WDLScore operator-(WDLScore d) { return WDLScore(-int(d)); }
-inline Square operator^=(Square& s, int i) { return s = Square(int(s) ^ i); }
 inline Square operator^(Square s, int i) { return Square(int(s) ^ i); }
 
 const std::string PieceToChar = " PNBRQK  pnbrqk";
@@ -367,7 +368,7 @@ TBTable<WDL>::TBTable(const std::string& code) : TBTable() {
     hasPawns = pos.pieces(PAWN);
 
     hasUniquePieces = false;
-    for (Color c = WHITE; c <= BLACK; ++c)
+    for (Color c : { WHITE, BLACK })
         for (PieceType pt = PAWN; pt < KING; ++pt)
             if (popcount(pos.pieces(c, pt)) == 1)
                 hasUniquePieces = true;
@@ -402,7 +403,17 @@ TBTable<DTZ>::TBTable(const TBTable<WDL>& wdl) : TBTable() {
 // at init time, accessed at probe time.
 class TBTables {
 
-    typedef std::tuple<Key, TBTable<WDL>*, TBTable<DTZ>*> Entry;
+    struct Entry
+    {
+        Key key;
+        TBTable<WDL>* wdl;
+        TBTable<DTZ>* dtz;
+
+        template <TBType Type>
+        TBTable<Type>* get() const {
+            return (TBTable<Type>*)(Type == WDL ? (void*)wdl : (void*)dtz);
+        }
+    };
 
     static constexpr int Size = 1 << 12; // 4K table, indexed by key's 12 lsb
     static constexpr int Overflow = 1;  // Number of elements allowed to map to the last bucket
@@ -414,12 +425,12 @@ class TBTables {
 
     void insert(Key key, TBTable<WDL>* wdl, TBTable<DTZ>* dtz) {
         uint32_t homeBucket = (uint32_t)key & (Size - 1);
-        Entry entry = std::make_tuple(key, wdl, dtz);
+        Entry entry{ key, wdl, dtz };
 
         // Ensure last element is empty to avoid overflow when looking up
         for (uint32_t bucket = homeBucket; bucket < Size + Overflow - 1; ++bucket) {
-            Key otherKey = std::get<KEY>(hashTable[bucket]);
-            if (otherKey == key || !std::get<WDL>(hashTable[bucket])) {
+            Key otherKey = hashTable[bucket].key;
+            if (otherKey == key || !hashTable[bucket].get<WDL>()) {
                 hashTable[bucket] = entry;
                 return;
             }
@@ -428,7 +439,7 @@ class TBTables {
             // insert here and search for a new spot for the other element instead.
             uint32_t otherHomeBucket = (uint32_t)otherKey & (Size - 1);
             if (otherHomeBucket > homeBucket) {
-                swap(entry, hashTable[bucket]);
+                std::swap(entry, hashTable[bucket]);
                 key = otherKey;
                 homeBucket = otherHomeBucket;
             }
@@ -441,8 +452,8 @@ public:
     template<TBType Type>
     TBTable<Type>* get(Key key) {
         for (const Entry* entry = &hashTable[(uint32_t)key & (Size - 1)]; ; ++entry) {
-            if (std::get<KEY>(*entry) == key || !std::get<Type>(*entry))
-                return std::get<Type>(*entry);
+            if (entry->key == key || !entry->get<Type>())
+                return entry->get<Type>();
         }
     }
 
@@ -519,7 +530,7 @@ int decompress_pairs(PairsData* d, uint64_t idx) {
     //       I(k) = k * d->span + d->span / 2      (1)
 
     // First step is to get the 'k' of the I(k) nearest to our idx, using definition (1)
-    uint32_t k = idx / d->span;
+    uint32_t k = uint32_t(idx / d->span);
 
     // Then we read the corresponding SparseIndex[] entry
     uint32_t block = number<uint32_t, LittleEndian>(&d->sparseIndex[k].block);
@@ -565,7 +576,7 @@ int decompress_pairs(PairsData* d, uint64_t idx) {
         // All the symbols of a given length are consecutive integers (numerical
         // sequence property), so we can compute the offset of our symbol of
         // length len, stored at the beginning of buf64.
-        sym = (buf64 - d->base64[len]) >> (64 - len - d->minSymLen);
+        sym = Sym((buf64 - d->base64[len]) >> (64 - len - d->minSymLen));
 
         // Now add the value of the lowest symbol of length len to get our symbol
         sym += number<Sym, LittleEndian>(&d->lowestSym[len]);
@@ -681,7 +692,7 @@ Ret do_probe_table(const Position& pos, T* entry, WDLScore wdl, ProbeState* resu
     bool blackStronger = (pos.material_key() != entry->key);
 
     int flipColor   = (symmetricBlackToMove || blackStronger) * 8;
-    int flipSquares = (symmetricBlackToMove || blackStronger) * 070;
+    int flipSquares = (symmetricBlackToMove || blackStronger) * 56;
     int stm         = (symmetricBlackToMove || blackStronger) ^ pos.side_to_move();
 
     // For pawns, TB files store 4 separate tables according if leading pawn is on
@@ -704,9 +715,7 @@ Ret do_probe_table(const Position& pos, T* entry, WDLScore wdl, ProbeState* resu
 
         std::swap(squares[0], *std::max_element(squares, squares + leadPawnsCnt, pawns_comp));
 
-        tbFile = file_of(squares[0]);
-        if (tbFile > FILE_D)
-            tbFile = file_of(squares[0] ^ 7); // Horizontal flip: SQ_H1 -> SQ_A1
+        tbFile = File(edge_distance(file_of(squares[0])));
     }
 
     // DTZ tables are one-sided, i.e. they store positions only for white to
@@ -730,8 +739,8 @@ Ret do_probe_table(const Position& pos, T* entry, WDLScore wdl, ProbeState* resu
 
     // Then we reorder the pieces to have the same sequence as the one stored
     // in pieces[i]: the sequence that ensures the best compression.
-    for (int i = leadPawnsCnt; i < size; ++i)
-        for (int j = i; j < size; ++j)
+    for (int i = leadPawnsCnt; i < size - 1; ++i)
+        for (int j = i + 1; j < size; ++j)
             if (d->pieces[i] == pieces[j])
             {
                 std::swap(pieces[i], pieces[j]);
@@ -743,7 +752,7 @@ Ret do_probe_table(const Position& pos, T* entry, WDLScore wdl, ProbeState* resu
     // the triangle A1-D1-D4.
     if (file_of(squares[0]) > FILE_D)
         for (int i = 0; i < size; ++i)
-            squares[i] ^= 7; // Horizontal flip: SQ_H1 -> SQ_A1
+            squares[i] = flip_file(squares[i]);
 
     // Encode leading pawns starting with the one with minimum MapPawns[] and
     // proceeding in ascending order.
@@ -762,7 +771,7 @@ Ret do_probe_table(const Position& pos, T* entry, WDLScore wdl, ProbeState* resu
     // piece is below RANK_5.
     if (rank_of(squares[0]) > RANK_4)
         for (int i = 0; i < size; ++i)
-            squares[i] ^= 070; // Vertical flip: SQ_A8 -> SQ_A1
+            squares[i] = flip_rank(squares[i]);
 
     // Look for the first piece of the leading group not on the A1-D4 diagonal
     // and ensure it is mapped below the diagonal.
@@ -770,7 +779,7 @@ Ret do_probe_table(const Position& pos, T* entry, WDLScore wdl, ProbeState* resu
         if (!off_A1H8(squares[i]))
             continue;
 
-        if (off_A1H8(squares[i]) > 0) // A1-H8 diagonal flip: SQ_A3 -> SQ_C3
+        if (off_A1H8(squares[i]) > 0) // A1-H8 diagonal flip: SQ_A3 -> SQ_C1
             for (int j = i; j < size; ++j)
                 squares[j] = Square(((squares[j] >> 3) | (squares[j] << 3)) & 63);
         break;
@@ -975,7 +984,7 @@ uint8_t* set_sizes(PairsData* d, uint8_t* data) {
 
     d->sizeofBlock = 1ULL << *data++;
     d->span = 1ULL << *data++;
-    d->sparseIndexSize = (tbSize + d->span - 1) / d->span; // Round up
+    d->sparseIndexSize = size_t((tbSize + d->span - 1) / d->span); // Round up
     auto padding = number<uint8_t, LittleEndian>(data++);
     d->blocksNum = number<uint32_t, LittleEndian>(data); data += sizeof(uint32_t);
     d->blockLengthSize = d->blocksNum + padding; // Padded to ensure SparseIndex[]
@@ -1060,8 +1069,8 @@ void set(T& e, uint8_t* data) {
 
     enum { Split = 1, HasPawns = 2 };
 
-    assert(e.hasPawns        == !!(*data & HasPawns));
-    assert((e.key != e.key2) == !!(*data & Split));
+    assert(e.hasPawns        == bool(*data & HasPawns));
+    assert((e.key != e.key2) == bool(*data & Split));
 
     data++; // First byte stores flags
 
@@ -1124,14 +1133,14 @@ void set(T& e, uint8_t* data) {
 template<TBType Type>
 void* mapped(TBTable<Type>& e, const Position& pos) {
 
-    static Mutex mutex;
+    static std::mutex mutex;
 
     // Use 'acquire' to avoid a thread reading 'ready' == true while
     // another is still working. (compiler reordering may cause this).
     if (e.ready.load(std::memory_order_acquire))
         return e.baseAddress; // Could be nullptr if file does not exist
 
-    std::unique_lock<Mutex> lk(mutex);
+    std::unique_lock<std::mutex> lk(mutex);
 
     if (e.ready.load(std::memory_order_relaxed)) // Recheck under lock
         return e.baseAddress;
@@ -1344,7 +1353,7 @@ void Tablebases::init(const std::string& paths) {
                 if (leadPawnsCnt == 1)
                 {
                     MapPawns[sq] = availableSquares--;
-                    MapPawns[sq ^ 7] = availableSquares--; // Horizontal flip
+                    MapPawns[flip_file(sq)] = availableSquares--;
                 }
                 LeadPawnIdx[leadPawnsCnt][sq] = idx;
                 idx += Binomial[leadPawnsCnt - 1][MapPawns[sq]];
