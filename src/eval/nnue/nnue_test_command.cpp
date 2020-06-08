@@ -2,11 +2,16 @@
 
 #if defined(ENABLE_TEST_CMD) && defined(EVAL_NNUE)
 
-#include "../../extra/all.h"
+#include "../../thread.h"
+#include "../../uci.h"
 #include "evaluate_nnue.h"
 #include "nnue_test_command.h"
 
 #include <set>
+#include <fstream>
+
+#define ASSERT(X) { if (!(X)) { std::cout << "\nError : ASSERT(" << #X << "), " << __FILE__ << "(" << __LINE__ << "): " << __func__ << std::endl; \
+ std::this_thread::sleep_for(std::chrono::microseconds(3000)); *(int*)1 =0;} }
 
 namespace Eval {
 
@@ -18,7 +23,7 @@ namespace {
 void TestFeatures(Position& pos) {
   const std::uint64_t num_games = 1000;
   StateInfo si;
-  pos.set_hirate(&si,Threads.main());
+  pos.set(StartFEN, false, &si, Threads.main());
   const int MAX_PLY = 256; // 256手までテスト
 
   StateInfo state[MAX_PLY]; // StateInfoを最大手数分だけ
@@ -38,7 +43,7 @@ void TestFeatures(Position& pos) {
       Features::IndexList active_indices[2];
       RawFeatures::AppendActiveIndices(pos, kRefreshTriggers[i],
                                        active_indices);
-      for (const auto perspective : COLOR) {
+      for (const auto perspective : Colors) {
         for (const auto index : active_indices[perspective]) {
           ASSERT(index < RawFeatures::kDimensions);
           ASSERT(index_sets[i][perspective].count(index) == 0);
@@ -56,7 +61,7 @@ void TestFeatures(Position& pos) {
       bool reset[2];
       RawFeatures::AppendChangedIndices(pos, kRefreshTriggers[i],
                                         removed_indices, added_indices, reset);
-      for (const auto perspective : COLOR) {
+      for (const auto perspective : Colors) {
         if (reset[perspective]) {
           (*index_sets)[i][perspective].clear();
           ++num_resets[i];
@@ -91,7 +96,7 @@ void TestFeatures(Position& pos) {
   for (std::uint64_t i = 0; i < num_games; ++i) {
     auto index_sets = make_index_sets(pos);
     for (ply = 0; ply < MAX_PLY; ++ply) {
-      MoveList<LEGAL_ALL> mg(pos); // 全合法手の生成
+      MoveList<LEGAL> mg(pos); // 全合法手の生成
 
       // 合法な指し手がなかった == 詰み
       if (mg.size() == 0)
@@ -106,7 +111,7 @@ void TestFeatures(Position& pos) {
       ASSERT(index_sets == make_index_sets(pos));
     }
 
-    pos.set_hirate(&si,Threads.main());
+    pos.set(StartFEN, false, &si, Threads.main());
 
     // 100回に1回ごとに'.'を出力(進んでいることがわかるように)
     if ((i % 100) == 0)
@@ -184,8 +189,8 @@ void TestCommand(Position& pos, std::istream& stream) {
     PrintInfo(stream);
   } else {
     std::cout << "usage:" << std::endl;
-    std::cout << " test nn test_features" << std::endl;
-    std::cout << " test nn info [path/to/" << kFileName << "...]" << std::endl;
+    std::cout << " test nnue test_features" << std::endl;
+    std::cout << " test nnue info [path/to/" << kFileName << "...]" << std::endl;
   }
 }
 
