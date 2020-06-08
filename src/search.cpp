@@ -2024,9 +2024,9 @@ namespace Learner
     {
       auto th = pos.this_thread();
 
-      th->completedDepth = DEPTH_ZERO;
+      th->completedDepth = 0;
       th->selDepth = 0;
-      th->rootDepth = DEPTH_ZERO;
+      th->rootDepth = 0;
 
       // íTçıÉmÅ[ÉhêîÇÃÉ[Éçèâä˙âª
       th->nodes = 0;
@@ -2050,7 +2050,7 @@ namespace Learner
         : -make_score(ct, ct / 2));
 
       for (int i = 7; i > 0; i--)
-        (ss - i)->continuationHistory = &th->continuationHistory[NO_PIECE][0]; // Use as sentinel
+          (ss - i)->continuationHistory = &th->continuationHistory[0][0][NO_PIECE][0]; // Use as a sentinel
 
       // rootMovesÇÃê›íË
       auto& rootMoves = th->rootMoves;
@@ -2109,7 +2109,7 @@ namespace Learner
       return { mated_in(/*ss->ply*/ 0 + 1), {} };
     }
 
-    auto bestValue = ::qsearch<PV>(pos, ss, -VALUE_INFINITE, VALUE_INFINITE, DEPTH_ZERO);
+    auto bestValue = ::qsearch<PV>(pos, ss, -VALUE_INFINITE, VALUE_INFINITE, 0);
 
     // ìæÇÁÇÍÇΩPVÇï‘Ç∑ÅB
     std::vector<Move> pvs;
@@ -2139,11 +2139,11 @@ namespace Learner
   {
     std::vector<Move> pvs;
 
-    Depth depth = depth_ * ONE_PLY;
-    if (depth < DEPTH_ZERO)
+    Depth depth = depth_;
+    if (depth < 0)
       return std::pair<Value, std::vector<Move>>(Eval::evaluate(pos), std::vector<Move>());
 
-    if (depth == DEPTH_ZERO)
+    if (depth == 0)
       return qsearch(pos);
 
     Stack stack[MAX_PLY + 10], * ss = stack + 7;
@@ -2176,7 +2176,7 @@ namespace Learner
     Value delta = -VALUE_INFINITE;
     Value bestValue = -VALUE_INFINITE;
 
-    while ((rootDepth += ONE_PLY) <= depth
+    while ((rootDepth += 1) <= depth
       // nodeêßå¿Çí¥Ç¶ÇΩèÍçáÇ‡Ç±ÇÃÉãÅ[ÉvÇî≤ÇØÇÈ
       // íTçıÉmÅ[ÉhêîÇÕÅAÇ±ÇÃä÷êîÇÃà¯êîÇ≈ìnÇ≥ÇÍÇƒÇ¢ÇÈÅB
       && !(nodesLimit /*nodeêßå¿Ç†ÇË*/ && th->nodes.load(std::memory_order_relaxed) >= nodesLimit)
@@ -2203,7 +2203,7 @@ namespace Learner
         selDepth = 0;
 
         // depth 5à»è„Ç…Ç®Ç¢ÇƒÇÕaspiration searchÇ…êÿÇËë÷Ç¶ÇÈÅB
-        if (rootDepth >= 5 * ONE_PLY)
+        if (rootDepth >= 5 * 1)
         {
           delta = Value(20);
 
@@ -2217,7 +2217,7 @@ namespace Learner
         int failedHighCnt = 0;
         while (true)
         {
-          Depth adjustedDepth = std::max(ONE_PLY, rootDepth - failedHighCnt * ONE_PLY);
+          Depth adjustedDepth = std::max(1, rootDepth - failedHighCnt * 1);
           bestValue = ::search<PV>(pos, ss, alpha, beta, adjustedDepth, false);
 
           stable_sort(rootMoves.begin() + pvIdx, rootMoves.end());

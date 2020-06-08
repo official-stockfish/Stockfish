@@ -15,6 +15,7 @@
 
 #if defined(EVAL_LEARN)
 
+#include <filesystem>
 #include <random>
 
 #include "learn.h"
@@ -170,7 +171,7 @@ struct SfenWriter
 			// sfen_buffers_poolに積んでおけばあとはworkerがよきに計らってくれる。
 
 			// sfen_buffers_poolの内容を変更するときはmutexのlockが必要。
-			std::unique_lock<Mutex> lk(mutex);
+			std::unique_lock<std::mutex> lk(mutex);
 			sfen_buffers_pool.push_back(buf);
 
 			buf = nullptr;
@@ -181,7 +182,7 @@ struct SfenWriter
 	// 自分のスレッド用のバッファに残っている分をファイルに書き出すためのバッファに移動させる。
 	void finalize(size_t thread_id)
 	{
-		std::unique_lock<Mutex> lk(mutex);
+		std::unique_lock<std::mutex> lk(mutex);
 
 		auto& buf = sfen_buffers[thread_id];
 
@@ -214,7 +215,7 @@ struct SfenWriter
 		{
 			vector<PSVector*> buffers;
 			{
-				std::unique_lock<Mutex> lk(mutex);
+				std::unique_lock<std::mutex> lk(mutex);
 
 				// まるごとコピー
 				buffers = sfen_buffers_pool;
@@ -299,7 +300,7 @@ private:
 	std::vector<PSVector*> sfen_buffers_pool;
 
 	// sfen_buffers_poolにアクセスするときに必要なmutex
-	Mutex mutex;
+	std::mutex mutex;
 
 	// 書きだした局面の数
 	uint64_t sfen_write_count = 0;
@@ -1293,7 +1294,7 @@ struct SfenReader
 		while (true)
 		{
 			{
-				std::unique_lock<Mutex> lk(mutex);
+				std::unique_lock<std::mutex> lk(mutex);
 				// ファイルバッファから充填できたなら、それで良し。
 				if (packed_sfens_pool.size() != 0)
 				{
@@ -1410,7 +1411,7 @@ struct SfenReader
 
 			// sfensの用意が出来たので、折を見てコピー
 			{
-				std::unique_lock<Mutex> lk(mutex);
+				std::unique_lock<std::mutex> lk(mutex);
 
 				// ポインタをコピーするだけなのでこの時間は無視できるはず…。
 				// packed_sfens_poolの内容を変更するのでmutexのlockが必要。
@@ -1479,7 +1480,7 @@ protected:
 	std::vector<PSVector*> packed_sfens;
 
 	// packed_sfens_poolにアクセスするときのmutex
-	Mutex mutex;
+	std::mutex mutex;
 
 	// sfenのpool。fileから読み込むworker threadはここに補充する。
 	// 各worker threadはここから自分のpacked_sfens[thread_id]に充填する。
@@ -2704,7 +2705,7 @@ void learn(Position&, istringstream& is)
 		#pragma warning(push)
 		#pragma warning(disable:4996)
 
-		namespace sys = std::tr2::sys;
+		namespace sys = std::filesystem;
 		sys::path p(kif_base_dir); // 列挙の起点
 		std::for_each(sys::directory_iterator(p), sys::directory_iterator(),
 			[&](const sys::path& p) {
