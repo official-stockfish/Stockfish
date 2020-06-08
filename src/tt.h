@@ -21,6 +21,7 @@
 #ifndef TT_H_INCLUDED
 #define TT_H_INCLUDED
 
+#include <intrin.h>
 #include "misc.h"
 #include "types.h"
 
@@ -84,6 +85,13 @@ public:
 
   // The 32 lowest order bits of the key are used to get the index of the cluster
   TTEntry* first_entry(const Key key) const {
+#if defined(_WIN64)
+    uint64_t highProduct;
+    _umul128(key, clusterCount, &highProduct);
+    return &table[highProduct].entry[0];
+#elif defined(__GNUC__) && defined(IS_64BIT)
+    return &table[((unsigned __int128)key * (unsigned __int128)clusterCount) >> 64].entry[0];
+#else
     uint64_t kL = (uint32_t)key, kH = key >> 32;
     uint64_t m00 = kL * ccLow;
     uint64_t m01 = kH * ccLow;
@@ -91,6 +99,7 @@ public:
     uint64_t m11 = (m00 >> 32) + (uint32_t)m01 + (uint32_t)m10;
     uint64_t idx = kH * ccHigh + (m01 >> 32) + (m10 >> 32) + (m11 >> 32);
     return &table[idx].entry[0];
+#endif
   }
 
 private:
