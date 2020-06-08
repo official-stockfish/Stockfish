@@ -84,13 +84,19 @@ public:
 
   // The 32 lowest order bits of the key are used to get the index of the cluster
   TTEntry* first_entry(const Key key) const {
-    return &table[key % clusterCount].entry[0];
+    uint64_t kL = (uint32_t)key, kH = key >> 32;
+    uint64_t m00 = kL * ccLow;
+    uint64_t m01 = kH * ccLow;
+    uint64_t m10 = kL * ccHigh;
+    uint64_t m11 = (m00 >> 32) + (uint32_t)m01 + (uint32_t)m10;
+    uint64_t idx = kH * ccHigh + (m01 >> 32) + (m10 >> 32) + (m11 >> 32);
+    return &table[idx].entry[0];
   }
 
 private:
   friend struct TTEntry;
 
-  size_t clusterCount;
+  size_t clusterCount, ccLow, ccHigh;
   Cluster* table;
   void* mem;
   uint8_t generation8; // Size must be not bigger than TTEntry::genBound8
