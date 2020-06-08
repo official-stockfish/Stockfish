@@ -200,16 +200,21 @@ inline Bitboard adjacent_files_bb(Square s) {
   return shift<EAST>(file_bb(s)) | shift<WEST>(file_bb(s));
 }
 
-/// line_bb(Square, Square) returns a line through the given squares.
+/// line_bb(Square, Square) returns a Bitboard representing an entire line
+/// (from board edge to board edge) that intersects the given squares.
 /// If the given squares are not on a same file/rank/diagonal, return 0.
+/// Ex. line_bb(SQ_C4, SQ_F7) returns a bitboard with the A2-G8 diagonal.
+
 inline Bitboard line_bb(Square s1, Square s2) {
 
   assert(is_ok(s1) && is_ok(s2));
   return LineBB[s1][s2];
 }
 
-/// between_bb() returns squares that are linearly between the given squares
+/// between_bb() returns a Bitboard representing squares that are linearly
+/// between the given squares (excluding the given squares).
 /// If the given squares are not on a same file/rank/diagonal, return 0.
+/// Ex. between_bb(SQ_C4, SQ_F7) returns a bitboard with squares D5 and E6.
 
 inline Bitboard between_bb(Square s1, Square s2) {
   Bitboard b = line_bb(s1, s2) & ((AllSquares << s1) ^ (AllSquares << s2));
