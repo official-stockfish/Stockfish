@@ -743,7 +743,6 @@ namespace {
                     + 24 * infiltration
                     + 51 * !pos.non_pawn_material()
                     - 43 * almostUnwinnable
-                    -  2 * pos.rule50_count()
                     -110 ;
 
     Value mg = mg_value(score);
@@ -857,7 +856,12 @@ namespace {
     }
 
     // Side to move point of view
-    return (pos.side_to_move() == WHITE ? v : -v) + Tempo;
+    v = (pos.side_to_move() == WHITE ? v : -v) + Tempo;
+
+    // Damp down the evaluation linearly when shuffling
+    v = v * (100 - pos.rule50_count()) / 100;
+
+    return v;
   }
 
 } // namespace
