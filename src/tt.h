@@ -21,7 +21,9 @@
 #ifndef TT_H_INCLUDED
 #define TT_H_INCLUDED
 
+#if defined(_WIN64)
 #include <intrin.h>
+#endif
 #include "misc.h"
 #include "types.h"
 
@@ -90,7 +92,8 @@ public:
     _umul128(key, clusterCount, &highProduct);
     return &table[highProduct].entry[0];
 #elif defined(__GNUC__) && defined(IS_64BIT)
-    return &table[((unsigned __int128)key * (unsigned __int128)clusterCount) >> 64].entry[0];
+    __extension__ typedef unsigned __int128 uint128;
+    return &table[((uint128)key * (uint128)clusterCount) >> 64].entry[0];
 #else
     uint64_t kL = (uint32_t)key, kH = key >> 32;
     uint64_t m00 = kL * ccLow;
