@@ -176,6 +176,12 @@ constexpr Bitboard pawn_attacks_bb(Bitboard b) {
                     : shift<SOUTH_WEST>(b) | shift<SOUTH_EAST>(b);
 }
 
+inline Bitboard pawn_attacks_bb(Color c, Square s) {
+
+  assert(is_ok(s));
+  return PawnAttacks[c][s];
+}
+
 
 /// pawn_double_attacks_bb() returns the squares doubly attacked by pawns of the
 /// given color from the squares in the given bitboard.
@@ -194,12 +200,24 @@ inline Bitboard adjacent_files_bb(Square s) {
   return shift<EAST>(file_bb(s)) | shift<WEST>(file_bb(s));
 }
 
-
-/// between_bb() returns squares that are linearly between the given squares
+/// line_bb(Square, Square) returns a Bitboard representing an entire line
+/// (from board edge to board edge) that intersects the given squares.
 /// If the given squares are not on a same file/rank/diagonal, return 0.
+/// Ex. line_bb(SQ_C4, SQ_F7) returns a bitboard with the A2-G8 diagonal.
+
+inline Bitboard line_bb(Square s1, Square s2) {
+
+  assert(is_ok(s1) && is_ok(s2));
+  return LineBB[s1][s2];
+}
+
+/// between_bb() returns a Bitboard representing squares that are linearly
+/// between the given squares (excluding the given squares).
+/// If the given squares are not on a same file/rank/diagonal, return 0.
+/// Ex. between_bb(SQ_C4, SQ_F7) returns a bitboard with squares D5 and E6.
 
 inline Bitboard between_bb(Square s1, Square s2) {
-  Bitboard b = LineBB[s1][s2] & ((AllSquares << s1) ^ (AllSquares << s2));
+  Bitboard b = line_bb(s1, s2) & ((AllSquares << s1) ^ (AllSquares << s2));
   return b & (b - 1); //exclude lsb
 }
 
@@ -243,7 +261,7 @@ inline Bitboard passed_pawn_span(Color c, Square s) {
 /// straight or on a diagonal line.
 
 inline bool aligned(Square s1, Square s2, Square s3) {
-  return LineBB[s1][s2] & s3;
+  return line_bb(s1, s2) & s3;
 }
 
 
@@ -266,19 +284,38 @@ inline Bitboard safe_destination(Square s, int step)
     return is_ok(to) && distance(s, to) <= 2 ? square_bb(to) : Bitboard(0);
 }
 
-/// attacks_bb() returns a bitboard representing all the squares attacked by a
-/// piece of type Pt (bishop or rook) placed on 's'.
+/// attacks_bb(Square) returns the pseudo attacks of the give piece type
+/// assuming an empty board.
+
+template<PieceType Pt>
+inline Bitboard attacks_bb(Square s) {
+
+  assert((Pt != PAWN) && (is_ok(s)));
+
+  return PseudoAttacks[Pt][s];
+}
+
+/// attacks_bb(Square, Bitboard) returns the attacks by the given piece
+/// assuming the board is occupied according to the passed Bitboard.
+/// Sliding piece attacks do not continue passed an occupied square.
 
 template<PieceType Pt>
 inline Bitboard attacks_bb(Square s, Bitboard occupied) {
 
-  const Magic& m = Pt == ROOK ? RookMagics[s] : BishopMagics[s];
-  return m.attacks[m.index(occupied)];
+  assert((Pt != PAWN) && (is_ok(s)));
+
+  switch (Pt)
+  {
+  case BISHOP: return BishopMagics[s].attacks[BishopMagics[s].index(occupied)];
+  case ROOK  : return   RookMagics[s].attacks[  RookMagics[s].index(occupied)];
+  case QUEEN : return attacks_bb<BISHOP>(s, occupied) | attacks_bb<ROOK>(s, occupied);
+  default    : return PseudoAttacks[Pt][s];
+  }
 }
 
 inline Bitboard attacks_bb(PieceType pt, Square s, Bitboard occupied) {
 
-  assert(pt != PAWN);
+  assert((pt != PAWN) && (is_ok(s)));
 
   switch (pt)
   {

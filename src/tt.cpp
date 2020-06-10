@@ -65,8 +65,10 @@ void TranspositionTable::resize(size_t mbSize) {
 
   aligned_ttmem_free(mem);
 
-  clusterCount = mbSize * 1024 * 1024 / sizeof(Cluster);
-  table = static_cast<Cluster*>(aligned_ttmem_alloc(clusterCount * sizeof(Cluster), mem));
+  superClusterCount = mbSize * 1024 * 1024 / (sizeof(Cluster) * ClustersPerSuperCluster);
+
+  table = static_cast<Cluster*>(
+      aligned_ttmem_alloc(superClusterCount * ClustersPerSuperCluster * sizeof(Cluster), mem));
   if (!mem)
   {
       std::cerr << "Failed to allocate " << mbSize
@@ -88,6 +90,8 @@ void TranspositionTable::clear() {
   for (size_t idx = 0; idx < Options["Threads"]; ++idx)
   {
       threads.emplace_back([this, idx]() {
+
+          const size_t clusterCount = superClusterCount * ClustersPerSuperCluster;
 
           // Thread binding gives faster search on systems with a first-touch policy
           if (Options["Threads"] > 8)

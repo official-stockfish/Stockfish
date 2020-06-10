@@ -32,13 +32,13 @@ namespace {
   #define S(mg, eg) make_score(mg, eg)
 
   // Pawn penalties
-  constexpr Score Backward        = S( 9, 24);
-  constexpr Score BlockedStorm    = S(82, 82);
-  constexpr Score Doubled         = S(11, 56);
-  constexpr Score DoubledIsolated = S(15, 57);
-  constexpr Score Isolated        = S( 5, 15);
-  constexpr Score WeakLever       = S( 0, 56);
-  constexpr Score WeakUnopposed   = S(13, 27);
+  constexpr Score Backward      = S( 9, 24);
+  constexpr Score Doubled       = S(11, 56);
+  constexpr Score Isolated      = S( 5, 15);
+  constexpr Score WeakLever     = S( 0, 56);
+  constexpr Score WeakUnopposed = S(13, 27);
+
+  constexpr Score BlockedStorm[RANK_NB]  = {S( 0, 0), S( 0, 0), S( 76, 78), S(-10, 15), S(-7, 10), S(-4, 6), S(-1, 2)};
 
   // Connected pawn bonus
   constexpr int Connected[RANK_NB] = { 0, 7, 8, 12, 29, 48, 86 };
@@ -100,8 +100,8 @@ namespace {
         opposed    = theirPawns & forward_file_bb(Us, s);
         blocked    = theirPawns & (s + Up);
         stoppers   = theirPawns & passed_pawn_span(Us, s);
-        lever      = theirPawns & PawnAttacks[Us][s];
-        leverPush  = theirPawns & PawnAttacks[Us][s + Up];
+        lever      = theirPawns & pawn_attacks_bb(Us, s);
+        leverPush  = theirPawns & pawn_attacks_bb(Us, s + Up);
         doubled    = ourPawns   & (s - Up);
         neighbours = ourPawns   & adjacent_files_bb(s);
         phalanx    = neighbours & rank_bb(s);
@@ -145,13 +145,13 @@ namespace {
 
         else if (!neighbours)
         {
-            score -=   Isolated
-                     + WeakUnopposed * !opposed;
-
-            if (   (ourPawns & forward_file_bb(Them, s))
-                && popcount(opposed) == 1
+            if (     opposed
+                &&  (ourPawns & forward_file_bb(Them, s))
                 && !(theirPawns & adjacent_files_bb(s)))
-                score -= DoubledIsolated;
+                score -= Doubled;
+            else
+                score -=   Isolated
+                         + WeakUnopposed * !opposed;
         }
 
         else if (backward)
@@ -201,7 +201,7 @@ Score Entry::evaluate_shelter(const Position& pos, Square ksq) {
   constexpr Color Them = ~Us;
 
   Bitboard b = pos.pieces(PAWN) & ~forward_ranks_bb(Them, ksq);
-  Bitboard ourPawns = b & pos.pieces(Us);
+  Bitboard ourPawns = b & pos.pieces(Us) & ~pawnAttacks[Them];
   Bitboard theirPawns = b & pos.pieces(Them);
 
   Score bonus = make_score(5, 5);
@@ -219,7 +219,7 @@ Score Entry::evaluate_shelter(const Position& pos, Square ksq) {
       bonus += make_score(ShelterStrength[d][ourRank], 0);
 
       if (ourRank && (ourRank == theirRank - 1))
-          bonus -= BlockedStorm * int(theirRank == RANK_3);
+          bonus -= BlockedStorm[theirRank];
       else
           bonus -= make_score(UnblockedStorm[d][theirRank], 0);
   }
@@ -253,7 +253,7 @@ Score Entry::do_king_safety(const Position& pos) {
   Bitboard pawns = pos.pieces(Us, PAWN);
   int minPawnDist = 6;
 
-  if (pawns & PseudoAttacks[KING][ksq])
+  if (pawns & attacks_bb<KING>(ksq))
       minPawnDist = 1;
   else while (pawns)
       minPawnDist = std::min(minPawnDist, distance(ksq, pop_lsb(&pawns)));
