@@ -106,7 +106,7 @@ Score psq[PIECE_NB][SQUARE_NB];
 // tables are initialized by flipping and changing the sign of the white scores.
 void init() {
 
-  for (Piece pc = W_PAWN; pc <= W_KING; ++pc)
+  for (Piece pc : {W_PAWN, W_KNIGHT, W_BISHOP, W_ROOK, W_QUEEN, W_KING})
   {
       Score score = make_score(PieceValue[MG][pc], PieceValue[EG][pc]);
 
