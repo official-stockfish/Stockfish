@@ -214,7 +214,6 @@ constexpr Value PieceValue[PHASE_NB][PIECE_NB] = {
 typedef int Depth;
 
 enum : int {
-
   DEPTH_QS_CHECKS     =  0,
   DEPTH_QS_NO_CHECKS  = -1,
   DEPTH_QS_RECAPTURES = -5,
