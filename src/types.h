@@ -281,11 +281,11 @@ inline Value mg_value(Score s) {
 }
 
 #define ENABLE_BASE_OPERATORS_ON(T)                                \
-constexpr T operator+(T d1, T d2) { return T(int(d1) + int(d2)); } \
-constexpr T operator-(T d1, T d2) { return T(int(d1) - int(d2)); } \
+constexpr T operator+(T d1, int d2) { return T(int(d1) + d2); } \
+constexpr T operator-(T d1, int d2) { return T(int(d1) - d2); } \
 constexpr T operator-(T d) { return T(-int(d)); }                  \
-inline T& operator+=(T& d1, T d2) { return d1 = d1 + d2; }         \
-inline T& operator-=(T& d1, T d2) { return d1 = d1 - d2; }
+inline T& operator+=(T& d1, int d2) { return d1 = d1 + d2; }         \
+inline T& operator-=(T& d1, int d2) { return d1 = d1 - d2; }
 
 #define ENABLE_INCR_OPERATORS_ON(T)                                \
 inline T& operator++(T& d) { return d = T(int(d) + 1); }           \
@@ -314,12 +314,6 @@ ENABLE_BASE_OPERATORS_ON(Score)
 #undef ENABLE_FULL_OPERATORS_ON
 #undef ENABLE_INCR_OPERATORS_ON
 #undef ENABLE_BASE_OPERATORS_ON
-
-/// Additional operators to add integers to a Value
-constexpr Value operator+(Value v, int i) { return Value(int(v) + i); }
-constexpr Value operator-(Value v, int i) { return Value(int(v) - i); }
-inline Value& operator+=(Value& v, int i) { return v = v + i; }
-inline Value& operator-=(Value& v, int i) { return v = v - i; }
 
 /// Additional operators to add a Direction to a Square
 constexpr Square operator+(Square s, Direction d) { return Square(int(s) + int(d)); }
