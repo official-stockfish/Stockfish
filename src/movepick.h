@@ -133,7 +133,7 @@ public:
                                            const CapturePieceToHistory*,
                                            const PieceToHistory**,
                                            Move,
-                                           Move*,
+                                           const Move*,
                                            int);
   Move next_move(bool skipQuiets = false);
 
