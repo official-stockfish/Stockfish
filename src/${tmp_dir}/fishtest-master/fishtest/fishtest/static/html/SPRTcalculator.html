@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Chess SPRT Calculator</title>
+        <link href="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-HSMxcRTRxnN+Bdg0JdbxYKrThecOKuH5zCYotlSAcp1+c8xmyTe9GYg1l9a69psu" crossorigin="anonymous">
+        <style>
+            .form-control.number {
+              width: 4em;
+              text-align: right;
+              margin-right: 0.5em;
+            }
+            .chart-div {
+	      display:inline-block;
+              width:560px;
+              height:500px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class=container>
+            <h1 class=page-header>Chess SPRT Calculator</h1>
+            <form id=parameters class=form-inline>
+                <div class=form-group>
+                    <label for=elo-0>Elo0</label>
+                    <input id=elo-0 class='form-control number'>
+                </div>
+                <div class=form-group>
+                    <label for=elo-1>Elo1</label>
+                    <input id=elo-1 class='form-control number'>
+                </div>
+                <div class=form-group>
+                    <label for=draw-ratio>Draw ratio</label>
+                    <input id=draw-ratio class='form-control number'>
+                </div>
+                <div class=form-group>
+                    <label for=rms-bias>RMS bias</label>
+                    <input id=rms-bias class='form-control number'>
+                </div>
+                <div class=form-group style="width:3em;"></div>
+                <input class='btn btn-success' type=button value=Calculate onclick="draw_charts();">
+            </form>
+            <hr>
+	    <div id="mouse_screen">
+              <div id="pass_prob_chart_div" class="chart-div"></div>
+              <div id="expected_chart_div" class="chart-div"></div>
+	    </div>
+            <ul>
+              <li> The fields <b>Elo0</b> and <b>Elo1</b> represent the bounds
+                for an
+                <a href=https://en.wikipedia.org/wiki/Sequential_probability_ratio_test>SPRT test</a>
+                with &alpha;=&beta;=0.05. In other words, if the true
+                Elo is less than Elo0 then the probability of the
+                test passing is less than&nbsp;5%. On the other hand if the
+                true Elo is more than Elo1 then the pass probablility
+                is more than&nbsp;95%.
+              </li>
+              <li> The <b>Draw ratio</b> influences the expected
+                length of the test but not the pass probability. Assuming
+                small Elo differences, the draw ratio is mainly a
+                function of the opening book and the time control. The
+                draw ratio can be found on the <em>live_elo page</em>
+                of a test with typical URL
+                <a href=http://tests.stockfishchess.org/html/live_elo.html?5e15b3e061fe5f83a67dd926>http://tests.stockfishchess.org/html/live_elo.html?5e15b3e061fe5f83a67dd926</a>
+                or the <em>raw statistics page</em> with typical URL
+                <a href=http://tests.stockfishchess.org/tests/stats/5e15b3e061fe5f83a67dd926>http://tests.stockfishchess.org/tests/stats/5e15b3e061fe5f83a67dd926</a>.
+              </li>
+              <li> The <b>RMS bias</b> influences the expected length
+                of a test but not the pass probability. The RMS bias
+                is the Root Mean Square of the biases of the openings in the
+                book where the <em>bias of an opening</em> is defined
+                as the conversion to Elo (using the standard logistic
+                formula) of the expected score for white between
+                engines of "equal strength". Explicitly the RMS bias is the
+                square root of the average of the squares of the
+                biases expressed in Elo.  The RMS bias appears to be
+                relatively independent of time control and Elo
+                differences. It can be found at the bottom of the raw
+                statistics page, but it should be noted that the value
+                reported there is only reliable for tests that have at
+                least a few tens of thousands of games.  Also note
+                that for non-functional simplifications or small
+                speed-ups, correlations between games in a game pair
+                cause the (virtual) RMS bias to be much higher than
+                normal.
+              </li>
+              <li> More information on the mathematics behind this
+                web page can be found on the
+                <a href=https://github.com/glinscott/fishtest/wiki/Fishtest-mathematics>Fishtest
+                  wiki</a>.
+              </li>
+              <li> The original version of this web page was written by
+                <a href=https://github.com/hwiechers>Henri Wiechers</a>.
+              </li>
+            </ul>
+        </div>
+        <script src=https://cdnjs.cloudflare.com/ajax/libs/js-url/1.8.4/url.min.js></script>
+        <script src=https://www.gstatic.com/charts/loader.js></script>
+        <script src=/js/sprt.js></script>
+        <script src=/js/calc.js></script>
+    </body>
+</html>

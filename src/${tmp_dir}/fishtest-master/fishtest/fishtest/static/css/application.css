@@ -1,0 +1,37 @@
+
+/* Bootstrap responsive override */
+@media (max-width: 767px) {
+  body {
+    padding: 0;
+  }
+}
+
+.flash-message {
+  margin-top: 20px;
+}
+
+.elo-results {
+  font-size: 12px;
+  margin: 2px;
+  padding: 1px;
+  line-height: 13px;
+}
+
+.checkbox.inline {
+  margin-left: 20px;
+  margin-right: 0;
+}
+
+th {
+  cursor: pointer;
+}
+
+/* tests_view page */
+.spsa-param-row td {
+  text-align: right;
+  padding-right: 10px;
+}
+
+.spsa-param-row td:first-child {
+  text-align: left;
+}
