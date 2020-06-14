@@ -124,6 +124,90 @@ inline uint64_t mul_hi64(uint64_t a, uint64_t b) {
 #endif
 }
 
+#ifdef USE_PEXT
+inline uint64_t zeroHighBits(uint64_t value, unsigned startShift)
+{
+  return _bzhi_u64(value, startShift);
+}
+
+inline uint64_t bitExtract(uint64_t value, unsigned start, unsigned len)
+{
+  return _bextr_u64(value, start, len);
+}
+
+#else
+
+inline uint64_t zeroHighBits(uint64_t value, unsigned startShift)
+{
+  return (value << (64 - startShift)) >> (64 - startShift);
+}
+
+inline uint64_t bitExtract(uint64_t value, unsigned start, unsigned len)
+{
+  return (value << (64 - start - len)) >> (64 - len);
+}
+#endif
+
+
+inline uint64_t bitFieldSet(uint64_t field, unsigned start, unsigned len, uint64_t value)
+{
+  // first we need to generate a mask
+  const uint64_t mask = ((uint64_t(1) << len) - 1U) << start;
+
+  return
+      (field & ~mask)              // reset the bit field
+    | ((value << start) & mask);   // insert the new field
+}
+
+template <unsigned _shift, unsigned _numBits, typename _Type, bool _signExtend = false>
+struct BitFieldDesc
+{
+  static constexpr unsigned shift = _shift;
+  static constexpr unsigned numBits = _numBits;
+  static constexpr unsigned signExtend = _signExtend;
+  using Type = _Type;
+};
+
+template <typename SourceType, typename DestType, unsigned shift, unsigned numBits, bool signExtend>
+struct ExtractBitFieldImpl;
+
+template <typename SourceType, typename DestType, unsigned shift, unsigned numBits>
+struct ExtractBitFieldImpl<SourceType, DestType, shift, numBits, false>
+{
+  static constexpr unsigned sourceBits = std::numeric_limits<SourceType>::digits;
+  static constexpr unsigned leadingBits = sourceBits - shift - numBits;
+
+  static constexpr inline DestType extract(SourceType value)
+  {
+      return static_cast<DestType>((value << leadingBits) >> (leadingBits + shift));
+  }
+};
+
+template <typename SourceType, typename DestType, unsigned shift, unsigned numBits>
+struct ExtractBitFieldImpl<SourceType, DestType, shift, numBits, true>
+{
+  static constexpr unsigned sourceBits = std::numeric_limits<SourceType>::digits;
+  using SignedSourceType = typename std::make_signed<SourceType>::type;
+  static constexpr unsigned leadingBits = sourceBits - shift - numBits;
+
+  static constexpr inline DestType extract(SourceType value)
+  {
+      return static_cast<DestType>(SignedSourceType((value) << leadingBits) >> (leadingBits + shift));
+  }
+};
+
+template <typename BitFieldDesc>
+constexpr inline typename BitFieldDesc::Type extractBitField(uint64_t value)
+{
+    return ExtractBitFieldImpl<uint64_t, typename BitFieldDesc::Type, BitFieldDesc::shift, BitFieldDesc::numBits, BitFieldDesc::signExtend>::extract(value);
+}
+
+template <typename BitFieldDesc>
+inline void setBitField(uint64_t &field, typename BitFieldDesc::Type value)
+{
+  field = bitFieldSet(field, BitFieldDesc::shift, BitFieldDesc::numBits, value);
+}
+
 /// Under Windows it is not possible for a process to run on more than one
 /// logical processor group. This usually means to be limited to use max 64
 /// cores. To overcome this, some special platform specific API should be
