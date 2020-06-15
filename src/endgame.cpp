@@ -611,7 +611,7 @@ ScaleFactor Endgame<KBPKB>::operator()(const Position& pos) const {
   // Case 1: Defending king blocks the pawn, and cannot be driven away
   if (   (forward_file_bb(strongSide, pawnSq) & weakKingSq)
       && (   opposite_colors(weakKingSq, strongBishopSq)
-          || relative_rank(strongSide, weakKingSq) <= RANK_6))
+          || relative_rank(strongSide, weakKingSq) <= RANK_5))
       return SCALE_FACTOR_DRAW;
 
   // Case 2: Opposite colored bishops
