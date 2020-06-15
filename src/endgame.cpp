@@ -179,36 +179,36 @@ Value Endgame<KRKP>::operator()(const Position& pos) const {
   assert(verify_material(pos, strongSide, RookValueMg, 0));
   assert(verify_material(pos, weakSide, VALUE_ZERO, 1));
 
-  Square wksq = relative_square(strongSide, pos.square<KING>(strongSide));
-  Square bksq = relative_square(strongSide, pos.square<KING>(weakSide));
-  Square rsq  = relative_square(strongSide, pos.square<ROOK>(strongSide));
-  Square psq  = relative_square(strongSide, pos.square<PAWN>(weakSide));
+  Square strongKing = relative_square(strongSide, pos.square<KING>(strongSide));
+  Square weakKing = relative_square(strongSide, pos.square<KING>(weakSide));
+  Square rookSq = relative_square(strongSide, pos.square<ROOK>(strongSide));
+  Square pawnSq = relative_square(strongSide, pos.square<PAWN>(weakSide));
 
-  Square queeningSq = make_square(file_of(psq), RANK_1);
+  Square queeningSq = make_square(file_of(pawnSq), RANK_1);
   Value result;
 
   // If the stronger side's king is in front of the pawn, it's a win
-  if (forward_file_bb(WHITE, wksq) & psq)
-      result = RookValueEg - distance(wksq, psq);
+  if (forward_file_bb(WHITE, strongKing) & pawnSq)
+      result = RookValueEg - distance(strongKing, pawnSq);
 
   // If the weaker side's king is too far from the pawn and the rook,
   // it's a win.
-  else if (   distance(bksq, psq) >= 3 + (pos.side_to_move() == weakSide)
-           && distance(bksq, rsq) >= 3)
-      result = RookValueEg - distance(wksq, psq);
+  else if (   distance(weakKing, pawnSq) >= 3 + (pos.side_to_move() == weakSide)
+           && distance(weakKing, rookSq) >= 3)
+      result = RookValueEg - distance(strongKing, pawnSq);
 
   // If the pawn is far advanced and supported by the defending king,
   // the position is drawish
-  else if (   rank_of(bksq) <= RANK_3
-           && distance(bksq, psq) == 1
-           && rank_of(wksq) >= RANK_4
-           && distance(wksq, psq) > 2 + (pos.side_to_move() == strongSide))
-      result = Value(80) - 8 * distance(wksq, psq);
+  else if (   rank_of(weakKing) <= RANK_3
+           && distance(weakKing, pawnSq) == 1
+           && rank_of(strongKing) >= RANK_4
+           && distance(strongKing, pawnSq) > 2 + (pos.side_to_move() == strongSide))
+      result = Value(80) - 8 * distance(strongKing, pawnSq);
 
   else
-      result =  Value(200) - 8 * (  distance(wksq, psq + SOUTH)
-                                  - distance(bksq, psq + SOUTH)
-                                  - distance(psq, queeningSq));
+      result =  Value(200) - 8 * (  distance(strongKing, pawnSq + SOUTH)
+                                  - distance(weakKing, pawnSq + SOUTH)
+                                  - distance(pawnSq, queeningSq));
 
   return strongSide == pos.side_to_move() ? result : -result;
 }
