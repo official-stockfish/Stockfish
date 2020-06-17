@@ -23,31 +23,31 @@
 
 ### Executable name
 ifeq ($(COMP),mingw)
-EXE = stockfish.exe
+EXE := stockfish.exe
 else
-EXE = stockfish
+EXE := stockfish
 endif
 
 ### Installation dir definitions
-PREFIX = /usr/local
-BINDIR = $(PREFIX)/bin
+PREFIX := /usr/local
+BINDIR := $(PREFIX)/bin
 
 ### Built-in benchmark for pgo-builds
-PGOBENCH = ./$(EXE) bench
+PGOBENCH := ./$(EXE) bench
 
 ### Source and object files
-SRCS = benchmark.cpp bitbase.cpp bitboard.cpp endgame.cpp evaluate.cpp main.cpp \
+SRCS := benchmark.cpp bitbase.cpp bitboard.cpp endgame.cpp evaluate.cpp main.cpp \
 	material.cpp misc.cpp movegen.cpp movepick.cpp pawns.cpp position.cpp psqt.cpp \
 	search.cpp thread.cpp timeman.cpp tt.cpp uci.cpp ucioption.cpp tune.cpp syzygy/tbprobe.cpp
 
-OBJS = $(notdir $(SRCS:.cpp=.o))
+OBJS := $(notdir $(SRCS:.cpp=.o))
 
-VPATH = syzygy
+VPATH := syzygy
 
 ### Establish the operating system name
-KERNEL = $(shell uname -s)
+KERNEL := $(shell uname -s)
 ifeq ($(KERNEL),Linux)
-	OS = $(shell uname -o)
+	OS := $(shell uname -o)
 endif
 
 ### ==========================================================================
@@ -74,74 +74,74 @@ endif
 # at the end of the line for flag values.
 
 ### 2.1. General and architecture defaults
-optimize = yes
-debug = no
-sanitize = no
-bits = 32
-prefetch = no
-popcnt = no
-sse = no
-pext = no
+optimize := yes
+debug := no
+sanitize := no
+bits := 32
+prefetch := no
+popcnt := no
+sse := no
+pext := no
 
 ### 2.2 Architecture specific
 
 ifeq ($(ARCH),general-32)
-	arch = any
+	arch := any
 endif
 
 ifeq ($(ARCH),x86-32-old)
-	arch = i386
+	arch := i386
 endif
 
 ifeq ($(ARCH),x86-32)
-	arch = i386
-	prefetch = yes
-	sse = yes
+	arch := i386
+	prefetch := yes
+	sse := yes
 endif
 
 ifeq ($(ARCH),general-64)
-	arch = any
-	bits = 64
+	arch := any
+	bits := 64
 endif
 
 ifeq ($(ARCH),x86-64)
-	arch = x86_64
-	bits = 64
-	prefetch = yes
-	sse = yes
+	arch := x86_64
+	bits := 64
+	prefetch := yes
+	sse := yes
 endif
 
 ifeq ($(ARCH),x86-64-modern)
-	arch = x86_64
-	bits = 64
-	prefetch = yes
-	popcnt = yes
-	sse = yes
+	arch := x86_64
+	bits := 64
+	prefetch := yes
+	popcnt := yes
+	sse := yes
 endif
 
 ifeq ($(ARCH),x86-64-bmi2)
-	arch = x86_64
-	bits = 64
-	prefetch = yes
-	popcnt = yes
-	sse = yes
-	pext = yes
+	arch := x86_64
+	bits := 64
+	prefetch := yes
+	popcnt := yes
+	sse := yes
+	pext := yes
 endif
 
 ifeq ($(ARCH),armv7)
-	arch = armv7
-	prefetch = yes
+	arch := armv7
+	prefetch := yes
 endif
 
 ifeq ($(ARCH),ppc-32)
-	arch = ppc
+	arch := ppc
 endif
 
 ifeq ($(ARCH),ppc-64)
-	arch = ppc64
-	bits = 64
-	popcnt = yes
-	prefetch = yes
+	arch := ppc64
+	bits := 64
+	popcnt := yes
+	prefetch := yes
 endif
 
 
@@ -156,12 +156,12 @@ DEPENDFLAGS += -std=c++11
 LDFLAGS += $(EXTRALDFLAGS)
 
 ifeq ($(COMP),)
-	COMP=gcc
+	COMP:=gcc
 endif
 
 ifeq ($(COMP),gcc)
-	comp=gcc
-	CXX=g++
+	comp:=gcc
+	CXX:=g++
 	CXXFLAGS += -pedantic -Wextra -Wshadow
 
 	ifeq ($(ARCH),armv7)
@@ -180,24 +180,24 @@ ifeq ($(COMP),gcc)
 endif
 
 ifeq ($(COMP),mingw)
-	comp=mingw
+	comp:=mingw
 
 	ifeq ($(KERNEL),Linux)
 		ifeq ($(bits),64)
 			ifeq ($(shell which x86_64-w64-mingw32-c++-posix),)
-				CXX=x86_64-w64-mingw32-c++
+				CXX:=x86_64-w64-mingw32-c++
 			else
-				CXX=x86_64-w64-mingw32-c++-posix
+				CXX:=x86_64-w64-mingw32-c++-posix
 			endif
 		else
 			ifeq ($(shell which i686-w64-mingw32-c++-posix),)
-				CXX=i686-w64-mingw32-c++
+				CXX:=i686-w64-mingw32-c++
 			else
-				CXX=i686-w64-mingw32-c++-posix
+				CXX:=i686-w64-mingw32-c++-posix
 			endif
 		endif
 	else
-		CXX=g++
+		CXX:=g++
 	endif
 
 	CXXFLAGS += -Wextra -Wshadow
@@ -205,14 +205,14 @@ ifeq ($(COMP),mingw)
 endif
 
 ifeq ($(COMP),icc)
-	comp=icc
-	CXX=icpc
+	comp:=icc
+	CXX:=icpc
 	CXXFLAGS += -diag-disable 1476,10120 -Wcheck -Wabi -Wdeprecated -strict-ansi
 endif
 
 ifeq ($(COMP),clang)
-	comp=clang
-	CXX=clang++
+	comp:=clang
+	CXX:=clang++
 	CXXFLAGS += -pedantic -Wextra -Wshadow
 
 	ifneq ($(KERNEL),Darwin)
@@ -252,12 +252,12 @@ endif
 
 ### Travis CI script uses COMPILER to overwrite CXX
 ifdef COMPILER
-	COMPCXX=$(COMPILER)
+	COMPCXX:=$(COMPILER)
 endif
 
 ### Allow overwriting CXX from command line
 ifdef COMPCXX
-	CXX=$(COMPCXX)
+	CXX:=$(COMPCXX)
 endif
 
 ### On mingw use Windows threads, otherwise POSIX
@@ -362,6 +362,7 @@ ifeq ($(OS), Android)
 	LDFLAGS += -fPIE -pie
 endif
 
+DEP := .depend
 
 ### ==========================================================================
 ### Section 4. Public targets
@@ -411,7 +412,6 @@ help:
 	@echo "make build ARCH=x86-64 COMP=clang"
 	@echo "make profile-build ARCH=x86-64-bmi2 COMP=gcc COMPCXX=g++-4.8"
 	@echo ""
-
 
 .PHONY: help build profile-build strip install clean objclean profileclean \
         config-sanity icc-profile-use icc-profile-make gcc-profile-use gcc-profile-make \
@@ -505,42 +505,42 @@ $(EXE): $(OBJS)
 
 clang-profile-make:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS='-fprofile-instr-generate ' \
-	EXTRALDFLAGS=' -fprofile-instr-generate' \
+	EXTRACXXFLAGS:='-fprofile-instr-generate ' \
+	EXTRALDFLAGS:=' -fprofile-instr-generate' \
 	all
 
 clang-profile-use:
 	llvm-profdata merge -output=stockfish.profdata *.profraw
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS='-fprofile-instr-use=stockfish.profdata' \
-	EXTRALDFLAGS='-fprofile-use ' \
+	EXTRACXXFLAGS:='-fprofile-instr-use=stockfish.profdata' \
+	EXTRALDFLAGS:='-fprofile-use ' \
 	all
 
 gcc-profile-make:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS='-fprofile-generate' \
-	EXTRALDFLAGS='-lgcov' \
+	EXTRACXXFLAGS:='-fprofile-generate' \
+	EXTRALDFLAGS:='-lgcov' \
 	all
 
 gcc-profile-use:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS='-fprofile-use -fno-peel-loops -fno-tracer' \
-	EXTRALDFLAGS='-lgcov' \
+	EXTRACXXFLAGS:='-fprofile-use -fno-peel-loops -fno-tracer' \
+	EXTRALDFLAGS:='-lgcov' \
 	all
 
 icc-profile-make:
 	@mkdir -p profdir
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS='-prof-gen=srcpos -prof_dir ./profdir' \
+	EXTRACXXFLAGS:='-prof-gen=srcpos -prof_dir ./profdir' \
 	all
 
 icc-profile-use:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS='-prof_use -prof_dir ./profdir' \
+	EXTRACXXFLAGS:='-prof_use -prof_dir ./profdir' \
 	all
 
-.depend:
-	-@$(CXX) $(DEPENDFLAGS) -MM $(SRCS) > $@ 2> /dev/null
+$(DEP):; -@$(CXX) $(DEPENDFLAGS) $(SRCS) -MM -MF $@ 2> /dev/null
 
--include .depend
-
+ifneq ($(MAKECMDGOALS),)
+include $(DEP)
+endif
