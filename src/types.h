@@ -121,6 +121,8 @@ enum Move : int {
   MOVE_NULL = 65
 };
 
+Move& operator<(Move& m1, Move& m2) = delete;
+
 enum MoveType {
   NORMAL,
   PROMOTION = 1 << 14,
