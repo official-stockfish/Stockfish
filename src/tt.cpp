@@ -57,28 +57,57 @@ inline int32_t ageDepthByGen(uint8_t depth8, uint8_t curGen5, uint8_t prevGen5)
 
 TranspositionTable TT; // Our global transposition table
 
+
+void TTEntry::load(TTEntryPacked *e, size_t clusterIndex, uint8_t slotIndex)
+{
+  TTEntryPacked packedData = *e;
+
+  m_move = (Move )packedData.move16;
+  m_value = (Value)packedData.value16;
+  m_eval = (Value)packedData.eval16;
+  m_depth = (Depth)packedData.depth8 + DEPTH_OFFSET;
+  m_pv = (bool)(packedData.genBound8 & 0x4);
+  m_bound = (Bound)(packedData.genBound8 & 0x3);
+
+  m_clusterIndex = clusterIndex;
+  m_slotIndex = slotIndex;
+}
+
 /// TTEntry::save populates the TTEntry with a new node's data, possibly
 /// overwriting an old position. Update is not atomic and can be racy.
-
 void TTEntry::save(Key k, Value v, bool pv, Bound b, Depth d, Move m, Value ev) {
 
+  bool doStore = false;
+
+  // reload the TT entry, it may have been changed by recursive search since
+  // we loaded it
+  TTEntryPacked packedData = TT.table[m_clusterIndex].entry[m_slotIndex];
+
   // Preserve any existing move for the same position
-  if (m || (uint16_t)k != key16)
-      move16 = (uint16_t)m;
+  if (m || (uint16_t)k != packedData.key16)
+  {
+      packedData.move16 = (uint16_t)m;
+      doStore = true;
+  }
 
   // Overwrite less valuable entries
-  if ((uint16_t)k != key16
-      || d - DEPTH_OFFSET > depth8 - 4
-      || b == BOUND_EXACT)
+  if (((uint16_t)k != packedData.key16
+       || d - DEPTH_OFFSET > packedData.depth8 - 4
+       || b == BOUND_EXACT))
   {
       assert(d >= DEPTH_OFFSET);
 
-      key16     = (uint16_t)k;
-      value16   = (int16_t)v;
-      eval16    = (int16_t)ev;
-      genBound8 = makeGenBound8(TT.generation5, pv, b);
-      depth8    = (uint8_t)(d - DEPTH_OFFSET);
+      packedData.key16     = (uint16_t)k;
+      packedData.value16   = (int16_t)v;
+      packedData.eval16    = (int16_t)ev;
+      packedData.genBound8 = makeGenBound8(TT.generation5, pv, b);
+      packedData.depth8    = (uint8_t)(d - DEPTH_OFFSET);
+      doStore = true;
   }
+
+  // store only if we changed something to save memory BW
+  if (doStore)
+      TT.table[m_clusterIndex].entry[m_slotIndex] = packedData;
 }
 
 
@@ -140,9 +169,10 @@ void TranspositionTable::clear() {
 /// to be replaced later. The replace value of an entry is calculated as its depth
 /// minus 8 times its relative age. TTEntry t1 is considered more valuable than
 /// TTEntry t2 if its replace value is greater than that of t2.
-TTEntry* TranspositionTable::probe(const Key key, bool& found) const {
+bool TranspositionTable::probe(const Key key, TTEntry &entry) const {
 
-  TTEntry* const tte = first_entry(key);
+  const size_t clusterIndex = mul_hi64(key, clusterCount);
+  TTEntryPacked* const tte = &TT.table[clusterIndex].entry[0];
   const uint16_t key16 = (uint16_t)key;  // Use the low 16 bits as key inside the cluster
 
   for (int i = 0; i < ClusterSize; ++i)
@@ -150,17 +180,24 @@ TTEntry* TranspositionTable::probe(const Key key, bool& found) const {
       {
           refreshGen5(tte[i].genBound8, generation5); // Refresh gen
 
-          return found = (bool)tte[i].key16, &tte[i];
+          entry.load(&tte[i], clusterIndex, i);
+          return (bool)tte[i].key16;
       }
 
   // Find an entry to be replaced according to the replacement strategy
-  TTEntry* replace = tte;
+  TTEntryPacked* replace = tte;
+  uint8_t slotIndex = 0;
+
   for (int i = 1; i < ClusterSize; ++i)
       if (ageDepthByGen(replace->depth8, generation5, genFromGenBound8(replace->genBound8)) >
           ageDepthByGen(tte[i].depth8, generation5, genFromGenBound8(tte[i].genBound8)))
+      {
           replace = &tte[i];
+          slotIndex = i;
+      }
 
-  return found = false, replace;
+  entry.load(replace, clusterIndex, slotIndex);
+  return false;
 }
 
 
