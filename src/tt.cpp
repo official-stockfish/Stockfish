@@ -28,6 +28,33 @@
 #include "tt.h"
 #include "uci.h"
 
+namespace {
+
+constexpr inline uint8_t genFromGenBound8(uint8_t tteGenBound8)
+{
+  return tteGenBound8 >> 3;
+}
+
+constexpr inline uint8_t makeGenBound8(uint8_t gen5, bool pv, Bound bound)
+{
+  return (gen5 << 3) | uint8_t(pv) << 2 | uint8_t(bound);
+}
+
+inline void refreshGen5(uint8_t &tteGenBound8, uint8_t newGen5)
+{
+  tteGenBound8 = (newGen5 << 3) | (tteGenBound8 & 7U);
+}
+
+inline int32_t ageDepthByGen(uint8_t depth8, uint8_t curGen5, uint8_t prevGen5)
+{
+  constexpr uint8_t genDepthPenalty = 8; // every gen means depth reduction by 8
+  const uint8_t aging = ((curGen5 - prevGen5) & 0x1FU) * genDepthPenalty;
+
+  return int32_t(depth8) - int32_t(aging);
+}
+
+}
+
 TranspositionTable TT; // Our global transposition table
 
 /// TTEntry::save populates the TTEntry with a new node's data, possibly
@@ -49,7 +76,7 @@ void TTEntry::save(Key k, Value v, bool pv, Bound b, Depth d, Move m, Value ev) 
       key16     = (uint16_t)k;
       value16   = (int16_t)v;
       eval16    = (int16_t)ev;
-      genBound8 = (uint8_t)(TT.generation8 | uint8_t(pv) << 2 | b);
+      genBound8 = makeGenBound8(TT.generation5, pv, b);
       depth8    = (uint8_t)(d - DEPTH_OFFSET);
   }
 }
@@ -113,7 +140,6 @@ void TranspositionTable::clear() {
 /// to be replaced later. The replace value of an entry is calculated as its depth
 /// minus 8 times its relative age. TTEntry t1 is considered more valuable than
 /// TTEntry t2 if its replace value is greater than that of t2.
-
 TTEntry* TranspositionTable::probe(const Key key, bool& found) const {
 
   TTEntry* const tte = first_entry(key);
@@ -122,7 +148,7 @@ TTEntry* TranspositionTable::probe(const Key key, bool& found) const {
   for (int i = 0; i < ClusterSize; ++i)
       if (!tte[i].key16 || tte[i].key16 == key16)
       {
-          tte[i].genBound8 = uint8_t(generation8 | (tte[i].genBound8 & 0x7)); // Refresh
+          refreshGen5(tte[i].genBound8, generation5); // Refresh gen
 
           return found = (bool)tte[i].key16, &tte[i];
       }
@@ -130,12 +156,8 @@ TTEntry* TranspositionTable::probe(const Key key, bool& found) const {
   // Find an entry to be replaced according to the replacement strategy
   TTEntry* replace = tte;
   for (int i = 1; i < ClusterSize; ++i)
-      // Due to our packed storage format for generation and its cyclic
-      // nature we add 263 (256 is the modulus plus 7 to keep the unrelated
-      // lowest three bits from affecting the result) to calculate the entry
-      // age correctly even after generation8 overflows into the next cycle.
-      if (  replace->depth8 - ((263 + generation8 - replace->genBound8) & 0xF8)
-          >   tte[i].depth8 - ((263 + generation8 -   tte[i].genBound8) & 0xF8))
+      if (ageDepthByGen(replace->depth8, generation5, genFromGenBound8(replace->genBound8)) >
+          ageDepthByGen(tte[i].depth8, generation5, genFromGenBound8(tte[i].genBound8)))
           replace = &tte[i];
 
   return found = false, replace;
@@ -150,7 +172,7 @@ int TranspositionTable::hashfull() const {
   int cnt = 0;
   for (int i = 0; i < 1000; ++i)
       for (int j = 0; j < ClusterSize; ++j)
-          cnt += (table[i].entry[j].genBound8 & 0xF8) == generation8;
+          cnt += genFromGenBound8(table[i].entry[j].genBound8) == generation5;
 
   return cnt / ClusterSize;
 }
