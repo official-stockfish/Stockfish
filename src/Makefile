@@ -22,7 +22,9 @@
 ### ==========================================================================
 
 ### Executable name
-ifeq ($(COMP),mingw)
+MSYS := $(shell echo $$MSYSTEM)
+ifneq (,$(filter $(MSYS),MINGW64 MINGW32))
+COMP := mingw
 EXE := stockfish.exe
 else
 EXE := stockfish
@@ -233,15 +235,15 @@ ifeq ($(COMP),clang)
 endif
 
 ifeq ($(comp),icc)
-	profile_make = icc-profile-make
-	profile_use = icc-profile-use
+	profile_make := icc-profile-make
+	profile_use := icc-profile-use
 else
 ifeq ($(comp),clang)
-	profile_make = clang-profile-make
-	profile_use = clang-profile-use
+	profile_make := clang-profile-make
+	profile_use := clang-profile-use
 else
-	profile_make = gcc-profile-make
-	profile_use = gcc-profile-use
+	profile_make := gcc-profile-make
+	profile_use := gcc-profile-use
 endif
 endif
 
@@ -413,6 +415,7 @@ help:
 	@echo "make profile-build ARCH=x86-64-bmi2 COMP=gcc COMPCXX=g++-4.8"
 	@echo ""
 
+
 .PHONY: help build profile-build strip install clean objclean profileclean \
         config-sanity icc-profile-use icc-profile-make gcc-profile-use gcc-profile-make \
         clang-profile-use clang-profile-make
@@ -445,7 +448,7 @@ install:
 
 #clean all
 clean: objclean profileclean
-	@rm -f .depend *~ core
+	@rm -f $(DEP) *~ core
 
 # clean binaries and objects
 objclean:
@@ -457,14 +460,11 @@ profileclean:
 	@rm -f bench.txt *.gcda *.gcno
 	@rm -f stockfish.profdata *.profraw
 
-default:
-	help
-
 ### ==========================================================================
 ### Section 5. Private targets
 ### ==========================================================================
 
-all: $(EXE) .depend
+all: $(EXE)
 
 config-sanity:
 	@echo ""
@@ -480,6 +480,7 @@ config-sanity:
 	@echo "popcnt: '$(popcnt)'"
 	@echo "sse: '$(sse)'"
 	@echo "pext: '$(pext)'"
+	@echo "will-be binary name: '$(EXE)'"
 	@echo ""
 	@echo "Flags:"
 	@echo "CXX: $(CXX)"
@@ -505,42 +506,43 @@ $(EXE): $(OBJS)
 
 clang-profile-make:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS:='-fprofile-instr-generate ' \
-	EXTRALDFLAGS:=' -fprofile-instr-generate' \
+	EXTRACXXFLAGS='-fprofile-instr-generate ' \
+	EXTRALDFLAGS=' -fprofile-instr-generate' \
 	all
 
 clang-profile-use:
 	llvm-profdata merge -output=stockfish.profdata *.profraw
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS:='-fprofile-instr-use=stockfish.profdata' \
-	EXTRALDFLAGS:='-fprofile-use ' \
+	EXTRACXXFLAGS='-fprofile-instr-use=stockfish.profdata' \
+	EXTRALDFLAGS='-fprofile-use ' \
 	all
 
 gcc-profile-make:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS:='-fprofile-generate' \
-	EXTRALDFLAGS:='-lgcov' \
+	EXTRACXXFLAGS='-fprofile-generate' \
+	EXTRALDFLAGS='-lgcov' \
 	all
 
 gcc-profile-use:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS:='-fprofile-use -fno-peel-loops -fno-tracer' \
-	EXTRALDFLAGS:='-lgcov' \
+	EXTRACXXFLAGS='-fprofile-use -fno-peel-loops -fno-tracer' \
+	EXTRALDFLAGS='-lgcov' \
 	all
 
 icc-profile-make:
 	@mkdir -p profdir
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS:='-prof-gen=srcpos -prof_dir ./profdir' \
+	EXTRACXXFLAGS='-prof-gen=srcpos -prof_dir ./profdir' \
 	all
 
 icc-profile-use:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS:='-prof_use -prof_dir ./profdir' \
+	EXTRACXXFLAGS='-prof_use -prof_dir ./profdir' \
 	all
 
-$(DEP):; -@$(CXX) $(DEPENDFLAGS) $(SRCS) -MM -MF $@ 2> /dev/null
+$(DEP):
+	-@$(CXX) $(DEPENDFLAGS) $(SRCS) -MM > $@ 2> /dev/null
 
-ifneq ($(MAKECMDGOALS),)
+ifneq (,$(filter $(MAKECMDGOALS),build profile-build))
 include $(DEP)
 endif
