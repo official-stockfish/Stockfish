@@ -26,7 +26,8 @@
 
 /// TTEntry struct is the 8 bytes transposition table entry, defined as below:
 ///
-/// move    13/16 bit
+/// move       13 bit
+/// reserved    3 bit
 /// value      16 bit
 /// eval value 16 bit
 /// generation  5 bit
@@ -36,11 +37,15 @@
 
 struct TTEntryPacked {
 
-  uint16_t move16;
-  int16_t  value16;
-  int16_t  eval16;
-  uint8_t  genBound8;
-  uint8_t  depth8;
+  using Move13     = BitFieldDesc< 0U, 13U, uint16_t>;
+  using Value16    = BitFieldDesc<16U, 16U, Value, true>; // sign-extend
+  using Eval16     = BitFieldDesc<32U, 16U, Value, true>; // sign-extend
+  using Gen5       = BitFieldDesc<48U,  5U, uint8_t>;
+  using Pv         = BitFieldDesc<53U,  1U, bool>;
+  using Bound2     = BitFieldDesc<54U,  2U, Bound>;
+  using Depth8     = BitFieldDesc<56U,  8U, uint8_t>;
+
+  uint64_t bits;
 };
 
 struct TTEntry {
@@ -57,7 +62,8 @@ struct TTEntry {
 private:
   friend class TranspositionTable;
 
-  void load(TTEntryPacked *e, size_t clusterIndex, uint8_t slotIndex);
+  void load(uint64_t bits, size_t clusterIndex, uint8_t slotIndex);
+  void reset(size_t clusterIndex, uint8_t slotIndex);
 
   Move m_move;
   Value m_value;

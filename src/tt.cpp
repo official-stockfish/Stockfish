@@ -30,19 +30,9 @@
 
 namespace {
 
-constexpr inline uint8_t genFromGenBound8(uint8_t tteGenBound8)
+inline void refreshGen5(TTEntryPacked &tte, uint8_t newGen5)
 {
-  return tteGenBound8 >> 3;
-}
-
-constexpr inline uint8_t makeGenBound8(uint8_t gen5, bool pv, Bound bound)
-{
-  return (gen5 << 3) | uint8_t(pv) << 2 | uint8_t(bound);
-}
-
-inline void refreshGen5(uint8_t &tteGenBound8, uint8_t newGen5)
-{
-  tteGenBound8 = (newGen5 << 3) | (tteGenBound8 & 7U);
+  setBitField<TTEntryPacked::Gen5>(tte.bits, newGen5);
 }
 
 inline int32_t ageDepthByGen(uint8_t depth8, uint8_t curGen5, uint8_t prevGen5)
@@ -162,16 +152,27 @@ uint32_t encodeTTMove(Move m)
 TranspositionTable TT; // Our global transposition table
 
 
-void TTEntry::load(TTEntryPacked *e, size_t clusterIndex, uint8_t slotIndex)
+void TTEntry::load(uint64_t bits, size_t clusterIndex, uint8_t slotIndex)
 {
-  TTEntryPacked packedData = *e;
+  m_move = decodeTTMove(extractBitField<TTEntryPacked::Move13>(bits));
+  m_value = extractBitField<TTEntryPacked::Value16>(bits); // stored as int16_t for sign extension
+  m_eval = extractBitField<TTEntryPacked::Eval16>(bits);   // stored as int16_t for sign extension
+  m_depth = (Depth)(extractBitField<TTEntryPacked::Depth8>(bits) + DEPTH_OFFSET);
+  m_pv = extractBitField<TTEntryPacked::Pv>(bits);
+  m_bound = extractBitField<TTEntryPacked::Bound2>(bits);
 
-  m_move = decodeTTMove(packedData.move16);
-  m_value = (Value)packedData.value16;
-  m_eval = (Value)packedData.eval16;
-  m_depth = (Depth)packedData.depth8 + DEPTH_OFFSET;
-  m_pv = (bool)(packedData.genBound8 & 0x4);
-  m_bound = (Bound)(packedData.genBound8 & 0x3);
+  m_clusterIndex = clusterIndex;
+  m_slotIndex = slotIndex;
+}
+
+void TTEntry::reset(size_t clusterIndex, uint8_t slotIndex)
+{
+  m_move = MOVE_NONE;
+  m_value = Value(0);
+  m_eval = Value(0);
+  m_depth = Depth(0);
+  m_pv = false;
+  m_bound = BOUND_NONE;
 
   m_clusterIndex = clusterIndex;
   m_slotIndex = slotIndex;
@@ -192,22 +193,24 @@ void TTEntry::save(Key k, Value v, bool pv, Bound b, Depth d, Move m, Value ev) 
   // Preserve any existing move for the same position
   if (m || entryKeyFromZobrist(k) != entryKey)
   {
-      packedData.move16 = encodeTTMove(m);
+      setBitField<TTEntryPacked::Move13>(packedData.bits, encodeTTMove(m));
       doStore = true;
   }
 
   // Overwrite less valuable entries
   if (entryKeyFromZobrist(k) != entryKey
-       || d - DEPTH_OFFSET > packedData.depth8 - 4
+       || d - DEPTH_OFFSET > extractBitField<TTEntryPacked::Depth8>(packedData.bits) - 4
        || b == BOUND_EXACT)
   {
       assert(d >= DEPTH_OFFSET);
 
       setClusterEntryKey(cluster.keys, m_slotIndex, k);
-      packedData.value16   = (int16_t)v;
-      packedData.eval16    = (int16_t)ev;
-      packedData.genBound8 = makeGenBound8(TT.generation5, pv, b);
-      packedData.depth8    = (uint8_t)(d - DEPTH_OFFSET);
+      setBitField<TTEntryPacked::Value16>(packedData.bits, v);
+      setBitField<TTEntryPacked::Eval16>(packedData.bits, ev);
+      setBitField<TTEntryPacked::Gen5>(packedData.bits, TT.generation5);
+      setBitField<TTEntryPacked::Pv>(packedData.bits, pv);
+      setBitField<TTEntryPacked::Bound2>(packedData.bits, b);
+      setBitField<TTEntryPacked::Depth8>(packedData.bits, d - DEPTH_OFFSET);
       doStore = true;
   }
 
@@ -287,26 +290,31 @@ bool TranspositionTable::probe(const Key fullKey, TTEntry &entry) const {
       const uint32_t tteKey = getClusterEntryKey(cluster.keys, i);
       if (!tteKey || tteKey == key)
       {
-          refreshGen5(tte[i].genBound8, generation5); // Refresh gen
+          refreshGen5(tte[i], generation5); // Refresh gen
 
-          entry.load(&tte[i], clusterIndex, i);
+          entry.load(tte[i].bits, clusterIndex, i);
           return (bool)tteKey;
       }
   }
 
   // Find an entry to be replaced according to the replacement strategy
-  TTEntryPacked* replace = tte;
   uint8_t slotIndex = 0;
+  int32_t replaceAgedDepth =
+          ageDepthByGen(extractBitField<TTEntryPacked::Depth8>(tte[0].bits), generation5, extractBitField<TTEntryPacked::Gen5>(tte[0].bits));
 
   for (int i = 1; i < ClusterSize; ++i)
-      if (ageDepthByGen(replace->depth8, generation5, genFromGenBound8(replace->genBound8)) >
-          ageDepthByGen(tte[i].depth8, generation5, genFromGenBound8(tte[i].genBound8)))
+  {
+      const int32_t tteAgedDepth = ageDepthByGen(extractBitField<TTEntryPacked::Depth8>(tte[i].bits),
+                                                 generation5, extractBitField<TTEntryPacked::Gen5>(tte[i].bits));
+
+      if (replaceAgedDepth > tteAgedDepth)
       {
-          replace = &tte[i];
+          replaceAgedDepth = tteAgedDepth;
           slotIndex = i;
       }
+  }
 
-  entry.load(replace, clusterIndex, slotIndex);
+  entry.reset(clusterIndex, slotIndex);
   return false;
 }
 
@@ -319,7 +327,7 @@ int TranspositionTable::hashfull() const {
   int cnt = 0;
   for (int i = 0; i < 1000; ++i)
       for (int j = 0; j < ClusterSize; ++j)
-          cnt += genFromGenBound8(table[i].entry[j].genBound8) == generation5;
+          cnt += extractBitField<TTEntryPacked::Gen5>(table[i].entry[j].bits) == generation5;
 
   return cnt / ClusterSize;
 }
