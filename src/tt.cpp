@@ -70,6 +70,93 @@ inline uint32_t entryKeyFromZobrist(Key k)
   return extractBitField<TranspositionTable::HashEntryKeyField>(k);
 }
 
+Move decodeTTMove(uint32_t encodedMove)
+{
+  encodedMove -= static_cast<bool>(encodedMove);
+
+  if (encodedMove & 0x1000U)
+  {
+      // special move type, need to figure out which one by from source rank
+
+      uint32_t ret;
+      uint32_t promotionBits;
+
+      encodedMove &= 0xFFFU;
+
+      switch ((encodedMove & 07000U) >> 9)
+      {
+          case RANK_1: // 0, 7
+          case RANK_8:
+              ret = encodedMove | CASTLING;
+              break;
+
+          case RANK_2: // black promotion
+              promotionBits = PROMOTION | 00000U | (encodedMove & 00070) << 9;
+              ret = (encodedMove & 07707U) | promotionBits;
+              break;
+
+          case RANK_7: // write promotion
+              promotionBits = PROMOTION | 00070U | (encodedMove & 00070) << 9;
+              ret = (encodedMove & 07707U) | promotionBits;
+              break;
+
+              // rank 4/5
+          default:
+              ret = ENPASSANT | encodedMove;
+              break;
+      }
+
+      return Move(ret);
+  }
+  else
+      return Move(encodedMove);
+}
+
+uint32_t encodeTTMove(Move m)
+{
+  // ensure that no one uses move H8->H8 for any special purpose
+#if !defined(NDEBUG)
+  if ((m & 0xFFFU) == 0xFFFU)
+      fprintf(stderr, "Move: 0x%04x From=%c%u To=%c%u\n",
+              m,  file_of(from_sq(m))+'A', 1 + rank_of(from_sq(m)), 'A'+file_of(to_sq(m)), 1+rank_of(to_sq(m)));
+  assert((m & 0xFFFU) != 0xFFFU);
+#endif
+
+  uint32_t encodedMove;
+
+  if (type_of(m) == PROMOTION)
+  {
+      uint32_t promotionBits = (m >> 12) & 3;
+      encodedMove = m & 07707U; // remove destination rank and move type bits
+      encodedMove |= promotionBits << 3; // add promotion piece to destination rank
+      encodedMove |= 0x1000U; // set the special bit
+  }
+  else
+  {
+      bool special = (m >> 12); // we want also the promotion bits
+      encodedMove = m & 07777U;
+      encodedMove |= uint32_t(special) << 12;
+  }
+
+  // ensure that MOVE_NONE does not get encoded as 0. This is for slot occupancy
+  // test.
+  encodedMove++;
+
+#if !defined(NDEBUG)
+  if (decodeTTMove(encodedMove) != m)
+  {
+      fprintf(stderr, "Move: 0x%04x  Encoded: 0x%04x  Decoded: 0x%04x From=%c%u To=%c%u\n",
+              m, encodedMove, decodeTTMove(encodedMove), file_of(from_sq(m))+'A', 1 + rank_of(from_sq(m)), 'A'+file_of(to_sq(m)), 1+rank_of(to_sq(m)));
+      assert(decodeTTMove(encodedMove) == m);
+  }
+  // range check
+  assert(encodedMove > 0U);
+  assert(encodedMove < (1U << 13));
+#endif
+
+  return encodedMove;
+}
+
 }
 
 TranspositionTable TT; // Our global transposition table
@@ -79,7 +166,7 @@ void TTEntry::load(TTEntryPacked *e, size_t clusterIndex, uint8_t slotIndex)
 {
   TTEntryPacked packedData = *e;
 
-  m_move = (Move )packedData.move16;
+  m_move = decodeTTMove(packedData.move16);
   m_value = (Value)packedData.value16;
   m_eval = (Value)packedData.eval16;
   m_depth = (Depth)packedData.depth8 + DEPTH_OFFSET;
@@ -105,7 +192,7 @@ void TTEntry::save(Key k, Value v, bool pv, Bound b, Depth d, Move m, Value ev) 
   // Preserve any existing move for the same position
   if (m || entryKeyFromZobrist(k) != entryKey)
   {
-      packedData.move16 = (uint16_t)m;
+      packedData.move16 = encodeTTMove(m);
       doStore = true;
   }
 

@@ -26,7 +26,7 @@
 
 /// TTEntry struct is the 8 bytes transposition table entry, defined as below:
 ///
-/// move       16 bit
+/// move    13/16 bit
 /// value      16 bit
 /// eval value 16 bit
 /// generation  5 bit
