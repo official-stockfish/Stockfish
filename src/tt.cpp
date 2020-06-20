@@ -53,6 +53,23 @@ inline int32_t ageDepthByGen(uint8_t depth8, uint8_t curGen5, uint8_t prevGen5)
   return int32_t(depth8) - int32_t(aging);
 }
 
+inline uint32_t getClusterEntryKey(uint64_t clusterKeys, uint8_t slotIndex)
+{
+  constexpr unsigned fieldBits = TranspositionTable::HashEntryKeyField::numBits;;
+  return bitExtract(clusterKeys, slotIndex * fieldBits, fieldBits);
+}
+
+inline void setClusterEntryKey(uint64_t &clusterKeys, uint8_t slotIndex, uint32_t newKey)
+{
+  constexpr unsigned fieldBits = TranspositionTable::HashEntryKeyField::numBits;;
+  clusterKeys = bitFieldSet(clusterKeys, slotIndex * fieldBits, fieldBits, newKey);
+}
+
+inline uint32_t entryKeyFromZobrist(Key k)
+{
+  return extractBitField<TranspositionTable::HashEntryKeyField>(k);
+}
+
 }
 
 TranspositionTable TT; // Our global transposition table
@@ -78,26 +95,28 @@ void TTEntry::load(TTEntryPacked *e, size_t clusterIndex, uint8_t slotIndex)
 void TTEntry::save(Key k, Value v, bool pv, Bound b, Depth d, Move m, Value ev) {
 
   bool doStore = false;
+  TranspositionTable::Cluster &cluster = TT.table[m_clusterIndex];
 
   // reload the TT entry, it may have been changed by recursive search since
   // we loaded it
-  TTEntryPacked packedData = TT.table[m_clusterIndex].entry[m_slotIndex];
+  TTEntryPacked packedData = cluster.entry[m_slotIndex];
+  const uint32_t entryKey = getClusterEntryKey(cluster.keys, m_slotIndex);
 
   // Preserve any existing move for the same position
-  if (m || (uint16_t)k != packedData.key16)
+  if (m || entryKeyFromZobrist(k) != entryKey)
   {
       packedData.move16 = (uint16_t)m;
       doStore = true;
   }
 
   // Overwrite less valuable entries
-  if (((uint16_t)k != packedData.key16
+  if (entryKeyFromZobrist(k) != entryKey
        || d - DEPTH_OFFSET > packedData.depth8 - 4
-       || b == BOUND_EXACT))
+       || b == BOUND_EXACT)
   {
       assert(d >= DEPTH_OFFSET);
 
-      packedData.key16     = (uint16_t)k;
+      setClusterEntryKey(cluster.keys, m_slotIndex, k);
       packedData.value16   = (int16_t)v;
       packedData.eval16    = (int16_t)ev;
       packedData.genBound8 = makeGenBound8(TT.generation5, pv, b);
@@ -169,20 +188,24 @@ void TranspositionTable::clear() {
 /// to be replaced later. The replace value of an entry is calculated as its depth
 /// minus 8 times its relative age. TTEntry t1 is considered more valuable than
 /// TTEntry t2 if its replace value is greater than that of t2.
-bool TranspositionTable::probe(const Key key, TTEntry &entry) const {
+bool TranspositionTable::probe(const Key fullKey, TTEntry &entry) const {
 
-  const size_t clusterIndex = mul_hi64(key, clusterCount);
-  TTEntryPacked* const tte = &TT.table[clusterIndex].entry[0];
-  const uint16_t key16 = (uint16_t)key;  // Use the low 16 bits as key inside the cluster
+  const size_t clusterIndex = mul_hi64(fullKey, clusterCount);
+  Cluster& cluster = TT.table[clusterIndex];
+  TTEntryPacked* const tte = &cluster.entry[0];
+  const uint32_t key = entryKeyFromZobrist(fullKey);  // Use the low N bits as key inside the cluster
 
   for (int i = 0; i < ClusterSize; ++i)
-      if (!tte[i].key16 || tte[i].key16 == key16)
+  {
+      const uint32_t tteKey = getClusterEntryKey(cluster.keys, i);
+      if (!tteKey || tteKey == key)
       {
           refreshGen5(tte[i].genBound8, generation5); // Refresh gen
 
           entry.load(&tte[i], clusterIndex, i);
-          return (bool)tte[i].key16;
+          return (bool)tteKey;
       }
+  }
 
   // Find an entry to be replaced according to the replacement strategy
   TTEntryPacked* replace = tte;

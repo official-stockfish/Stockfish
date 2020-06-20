@@ -24,9 +24,8 @@
 #include "misc.h"
 #include "types.h"
 
-/// TTEntry struct is the 10 bytes transposition table entry, defined as below:
+/// TTEntry struct is the 8 bytes transposition table entry, defined as below:
 ///
-/// key        16 bit
 /// move       16 bit
 /// value      16 bit
 /// eval value 16 bit
@@ -37,7 +36,6 @@
 
 struct TTEntryPacked {
 
-  uint16_t key16;
   uint16_t move16;
   int16_t  value16;
   int16_t  eval16;
@@ -84,13 +82,16 @@ class TranspositionTable {
   static constexpr int ClusterSize = 3;
 
   struct Cluster {
+    uint64_t keys;
     TTEntryPacked entry[ClusterSize];
-    char padding[2]; // Pad to 32 bytes
   };
 
   static_assert(sizeof(Cluster) == 32, "Unexpected Cluster size");
 
 public:
+  using HashEntryKeyField = BitFieldDesc<0, 16, uint32_t>; // TODO: bump to 21 bits
+  static_assert(ClusterSize * HashEntryKeyField::numBits < 64, "entry key bits overflow check");
+
  ~TranspositionTable() { aligned_ttmem_free(mem); }
   void new_search() { generation5 = (generation5 + 1) & 0x1FU; } // 5 bits, encoded with bound (2 bits) and pv (1 bit)
   bool probe(const Key key, TTEntry &entry) const;
