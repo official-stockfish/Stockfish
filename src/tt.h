@@ -38,6 +38,7 @@
 struct TTEntryPacked {
 
   using Move13     = BitFieldDesc< 0U, 13U, uint16_t>;
+  using ExtraHash3 = BitFieldDesc<13U,  3U, uint8_t>;
   using Value16    = BitFieldDesc<16U, 16U, Value, true>; // sign-extend
   using Eval16     = BitFieldDesc<32U, 16U, Value, true>; // sign-extend
   using Gen5       = BitFieldDesc<48U,  5U, uint8_t>;
@@ -95,8 +96,10 @@ class TranspositionTable {
   static_assert(sizeof(Cluster) == 32, "Unexpected Cluster size");
 
 public:
-  using HashEntryKeyField = BitFieldDesc<0, 16, uint32_t>; // TODO: bump to 21 bits
+  using HashEntryKeyField = BitFieldDesc<0, 21, uint32_t>;
   static_assert(ClusterSize * HashEntryKeyField::numBits < 64, "entry key bits overflow check");
+
+  using HashExtraKeyField = BitFieldDesc<21, 3, uint8_t>;
 
  ~TranspositionTable() { aligned_ttmem_free(mem); }
   void new_search() { generation5 = (generation5 + 1) & 0x1FU; } // 5 bits, encoded with bound (2 bits) and pv (1 bit)

@@ -60,6 +60,11 @@ inline uint32_t entryKeyFromZobrist(Key k)
   return extractBitField<TranspositionTable::HashEntryKeyField>(k);
 }
 
+inline uint32_t extraKeyFromZobrist(Key k)
+{
+  return extractBitField<TranspositionTable::HashExtraKeyField>(k);
+}
+
 Move decodeTTMove(uint32_t encodedMove)
 {
   encodedMove -= static_cast<bool>(encodedMove);
@@ -189,22 +194,24 @@ void TTEntry::save(Key k, Value v, bool pv, Bound b, Depth d, Move m, Value ev) 
   // we loaded it
   TTEntryPacked packedData = cluster.entry[m_slotIndex];
   const uint32_t entryKey = getClusterEntryKey(cluster.keys, m_slotIndex);
+  const uint8_t extraKey = extractBitField<TTEntryPacked::ExtraHash3>(packedData.bits);
 
   // Preserve any existing move for the same position
-  if (m || entryKeyFromZobrist(k) != entryKey)
+  if (m || entryKeyFromZobrist(k) != entryKey || extraKeyFromZobrist(k) != extraKey)
   {
       setBitField<TTEntryPacked::Move13>(packedData.bits, encodeTTMove(m));
       doStore = true;
   }
 
   // Overwrite less valuable entries
-  if (entryKeyFromZobrist(k) != entryKey
+  if (entryKeyFromZobrist(k) != entryKey || extraKeyFromZobrist(k) != extraKey
        || d - DEPTH_OFFSET > extractBitField<TTEntryPacked::Depth8>(packedData.bits) - 4
        || b == BOUND_EXACT)
   {
       assert(d >= DEPTH_OFFSET);
 
       setClusterEntryKey(cluster.keys, m_slotIndex, k);
+      setBitField<TTEntryPacked::ExtraHash3>(packedData.bits, extraKeyFromZobrist(k));
       setBitField<TTEntryPacked::Value16>(packedData.bits, v);
       setBitField<TTEntryPacked::Eval16>(packedData.bits, ev);
       setBitField<TTEntryPacked::Gen5>(packedData.bits, TT.generation5);
@@ -283,17 +290,21 @@ bool TranspositionTable::probe(const Key fullKey, TTEntry &entry) const {
   const size_t clusterIndex = mul_hi64(fullKey, clusterCount);
   Cluster& cluster = TT.table[clusterIndex];
   TTEntryPacked* const tte = &cluster.entry[0];
-  const uint32_t key = entryKeyFromZobrist(fullKey);  // Use the low N bits as key inside the cluster
+  const uint32_t key = entryKeyFromZobrist(fullKey);
+  const uint8_t extraKey = extraKeyFromZobrist(fullKey);
 
   for (int i = 0; i < ClusterSize; ++i)
   {
       const uint32_t tteKey = getClusterEntryKey(cluster.keys, i);
-      if (!tteKey || tteKey == key)
+      const uint32_t tteExtraKey = extractBitField<TTEntryPacked::ExtraHash3>(tte[i].bits);
+      const bool occupied = (extractBitField<TTEntryPacked::Move13>(tte[i].bits) != 0);
+
+      if (!occupied || (tteKey == key && tteExtraKey == extraKey))
       {
           refreshGen5(tte[i], generation5); // Refresh gen
 
           entry.load(tte[i].bits, clusterIndex, i);
-          return (bool)tteKey;
+          return occupied;
       }
   }
 
