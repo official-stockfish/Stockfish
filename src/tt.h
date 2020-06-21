@@ -66,7 +66,6 @@ private:
 class TranspositionTable {
 
   static constexpr int ClusterSize = 3;
-  static constexpr int ClustersPerSuperCluster = 256;
 
   struct Cluster {
     TTEntry entry[ClusterSize];
@@ -84,20 +83,13 @@ public:
   void clear();
 
   TTEntry* first_entry(const Key key) const {
-
-    // The index is computed from
-    // Idx = (K48 * SCC) / 2^40, with K48 the 48 lowest bits swizzled.
-
-    const uint64_t firstTerm =  uint32_t(key) * uint64_t(superClusterCount);
-    const uint64_t secondTerm = (uint16_t(key >> 32) * uint64_t(superClusterCount)) >> 16;
-
-    return &table[(firstTerm + secondTerm) >> 24].entry[0];
+    return &table[mul_hi64(key, clusterCount)].entry[0];
   }
 
 private:
   friend struct TTEntry;
 
-  size_t superClusterCount;
+  size_t clusterCount;
   Cluster* table;
   void* mem;
   uint8_t generation8; // Size must be not bigger than TTEntry::genBound8
