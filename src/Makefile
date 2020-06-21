@@ -416,27 +416,25 @@ help:
 	@echo ""
 
 
-.PHONY: help build profile-build strip install clean objclean profileclean \
-        config-sanity icc-profile-use icc-profile-make gcc-profile-use gcc-profile-make \
-        clang-profile-use clang-profile-make
+.PHONY: help build profile-build strip install clean objprofileclean \
+			config-sanity icc-profile-make icc-profile-use gcc-profile-make gcc-profile-use \
+			clang-profile-make clang-profile-use profile-make-hd clang-profile-d icc-profile-mkdir
 
-build: config-sanity
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) all
+build: config-sanity all
 
-profile-build: config-sanity objclean profileclean
-	@echo ""
-	@echo "Step 1/4. Building instrumented executable ..."
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_make)
-	@echo ""
-	@echo "Step 2/4. Running benchmark for pgo-build ..."
+profile-build: config-sanity objprofileclean \
+							profile-make-hd $(profile_make)
+	@echo ; echo "Step 2/4. Running benchmark for pgo-build ..."
 	$(PGOBENCH) > /dev/null
-	@echo ""
-	@echo "Step 3/4. Building optimized executable ..."
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) objclean
+	@echo ; echo "Step 3/4. Building optimized executable ..."
+# inline objclean
+	@rm -f $(EXE) *.o ./syzygy/*.o
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_use)
-	@echo ""
-	@echo "Step 4/4. Deleting profile data ..."
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) profileclean
+	@echo ; echo "Step 4/4. Deleting profile data ..."
+# inline profileclean
+	@rm -rf profdir
+	@rm -f bench.txt *.gcda *.gcno
+	@rm -f stockfish.profdata *.profraw
 
 strip:
 	strip $(EXE)
@@ -447,15 +445,13 @@ install:
 	-strip $(BINDIR)/$(EXE)
 
 #clean all
-clean: objclean profileclean
+clean: objprofileclean
 	@rm -f $(DEP) *~ core
 
 # clean binaries and objects
-objclean:
-	@rm -f $(EXE) *.o ./syzygy/*.o
-
 # clean auxiliary profiling files
-profileclean:
+objprofileclean:
+	@rm -f $(EXE) *.o ./syzygy/*.o
 	@rm -rf profdir
 	@rm -f bench.txt *.gcda *.gcno
 	@rm -f stockfish.profdata *.profraw
@@ -480,7 +476,7 @@ config-sanity:
 	@echo "popcnt: '$(popcnt)'"
 	@echo "sse: '$(sse)'"
 	@echo "pext: '$(pext)'"
-	@echo "will-be binary name: '$(EXE)'"
+	@echo "will generate binary: '$(EXE)'"
 	@echo ""
 	@echo "Flags:"
 	@echo "CXX: $(CXX)"
@@ -504,44 +500,36 @@ config-sanity:
 $(EXE): $(OBJS)
 	$(CXX) -o $@ $(OBJS) $(LDFLAGS)
 
-clang-profile-make:
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS='-fprofile-instr-generate ' \
-	EXTRALDFLAGS=' -fprofile-instr-generate' \
-	all
+profile-make-hd:
+	@echo ; echo "Step 1/4. Building instrumented executable ..."
 
-clang-profile-use:
+clang-profile-make: EXTRALDFLAGS := -fprofile-instr-generate
+clang-profile-make: EXTRACXXFLAGS := -fprofile-instr-generate
+clang-profile-make: all
+
+clang-profile-use: EXTRALDFLAGS := -fprofile-use
+clang-profile-use: EXTRACXXFLAGS := -fprofile-instr-use=stockfish.profdata
+clang-profile-use: clang-profile-d all
+clang-profile-d:
 	llvm-profdata merge -output=stockfish.profdata *.profraw
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS='-fprofile-instr-use=stockfish.profdata' \
-	EXTRALDFLAGS='-fprofile-use ' \
-	all
 
-gcc-profile-make:
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS='-fprofile-generate' \
-	EXTRALDFLAGS='-lgcov' \
-	all
+gcc-profile-make: EXTRALDFLAGS := -lgcov
+gcc-profile-make: EXTRACXXFLAGS := -fprofile-generate
+gcc-profile-make: all
 
-gcc-profile-use:
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS='-fprofile-use -fno-peel-loops -fno-tracer' \
-	EXTRALDFLAGS='-lgcov' \
-	all
+gcc-profile-use: EXTRALDFLAGS := -lgcov
+gcc-profile-use: EXTRACXXFLAGS := -fprofile-use -fno-peel-loops -fno-tracer
+gcc-profile-use: all
 
-icc-profile-make:
-	@mkdir -p profdir
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS='-prof-gen=srcpos -prof_dir ./profdir' \
-	all
+icc-profile-make: EXTRACXXFLAGS := -prof-gen=srcpos -prof_dir ./profdir
+icc-profile-make: icc-profile-mkdir all
+icc-profile-mkdir: ; @mkdir -p profdir
 
-icc-profile-use:
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS='-prof_use -prof_dir ./profdir' \
-	all
+icc-profile-use: EXTRACXXFLAGS := -prof_use -prof_dir ./profdir
+icc-profile-use: all
 
 $(DEP):
-	-@$(CXX) $(DEPENDFLAGS) $(SRCS) -MM > $@ 2> /dev/null
+	@$(CXX) $(DEPENDFLAGS) $(SRCS) -MM -MF $@
 
 ifneq (,$(filter $(MAKECMDGOALS),build profile-build))
 include $(DEP)
