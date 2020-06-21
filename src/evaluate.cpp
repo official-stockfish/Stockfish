@@ -676,16 +676,15 @@ namespace {
   }
 
 
-  // Evaluation::space() computes the space evaluation for a given side. The
-  // space evaluation is a simple bonus based on the number of safe squares
-  // available for minor pieces on the central four files on ranks 2--4. Safe
-  // squares one, two or three squares behind a friendly pawn are counted
-  // twice. Finally, the space bonus is multiplied by a weight. The aim is to
-  // improve play on game opening.
+  // Evaluation::space() computes a space evaluation for a given side, aiming to improve game
+  // play in the opening. It is based on the number of safe squares on the 4 central files
+  // on ranks 2 to 4. Completely safe squares behind a friendly pawn are counted twice.
+  // Finally, the space bonus is multiplied by a weight which decreases according to occupancy.
 
   template<Tracing T> template<Color Us>
   Score Evaluation<T>::space() const {
 
+    // Early exit if, for example, both queens or 6 minor pieces have been exchanged
     if (pos.non_pawn_material() < SpaceThreshold)
         return SCORE_ZERO;
 
