@@ -150,17 +150,17 @@ namespace {
                 && !(theirPawns & adjacent_files_bb(s)))
                 score -= Doubled;
             else
-                score -=   Isolated
-                         + WeakUnopposed * !opposed;
+                score -=  Isolated
+                        + WeakUnopposed * !opposed;
         }
 
         else if (backward)
-            score -=   Backward
-                     + WeakUnopposed * !opposed;
+            score -=  Backward
+                    + WeakUnopposed * !opposed;
 
         if (!support)
-            score -=   Doubled * doubled
-                     + WeakLever * more_than_one(lever);
+            score -=  Doubled * doubled
+                    + WeakLever * more_than_one(lever);
     }
 
     return score;
