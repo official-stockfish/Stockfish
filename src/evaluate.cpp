@@ -143,16 +143,17 @@ namespace {
   constexpr Score ReachableOutpost    = S( 31, 22);
   constexpr Score PassedFile          = S( 11,  8);
   constexpr Score PawnlessFlank       = S( 17, 95);
+  constexpr Score QueenInfiltration   = S( -2, 14);
   constexpr Score RestrictedPiece     = S(  7,  7);
   constexpr Score RookOnKingRing      = S( 16,  0);
-  constexpr Score RookOnQueenFile     = S(  5,  9);
-  constexpr Score SliderOnQueen       = S( 59, 18);
+  constexpr Score RookOnQueenFile     = S(  6, 11);
+  constexpr Score SliderOnQueen       = S( 60, 18);
   constexpr Score ThreatByKing        = S( 24, 89);
   constexpr Score ThreatByPawnPush    = S( 48, 39);
   constexpr Score ThreatBySafePawn    = S(173, 94);
   constexpr Score TrappedRook         = S( 55, 13);
-  constexpr Score WeakQueen           = S( 51, 14);
-  constexpr Score WeakQueenProtection = S( 15,  0);
+  constexpr Score WeakQueen           = S( 56, 15);
+  constexpr Score WeakQueenProtection = S( 14,  0);
 
 #undef S
 
@@ -373,6 +374,10 @@ namespace {
             Bitboard queenPinners;
             if (pos.slider_blockers(pos.pieces(Them, ROOK, BISHOP), s, queenPinners))
                 score -= WeakQueen;
+
+            // Bonus for queen on weak square in enemy camp
+            if (relative_rank(Us, s) > RANK_4 && (~pe->pawn_attacks_span(Them) & s))
+                score += QueenInfiltration;    
         }
     }
     if (T)
@@ -676,16 +681,15 @@ namespace {
   }
 
 
-  // Evaluation::space() computes the space evaluation for a given side. The
-  // space evaluation is a simple bonus based on the number of safe squares
-  // available for minor pieces on the central four files on ranks 2--4. Safe
-  // squares one, two or three squares behind a friendly pawn are counted
-  // twice. Finally, the space bonus is multiplied by a weight. The aim is to
-  // improve play on game opening.
+  // Evaluation::space() computes a space evaluation for a given side, aiming to improve game
+  // play in the opening. It is based on the number of safe squares on the 4 central files
+  // on ranks 2 to 4. Completely safe squares behind a friendly pawn are counted twice.
+  // Finally, the space bonus is multiplied by a weight which decreases according to occupancy.
 
   template<Tracing T> template<Color Us>
   Score Evaluation<T>::space() const {
 
+    // Early exit if, for example, both queens or 6 minor pieces have been exchanged
     if (pos.non_pawn_material() < SpaceThreshold)
         return SCORE_ZERO;
 
