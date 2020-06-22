@@ -56,6 +56,7 @@ struct StateInfo {
   int        repetition;
 };
 
+
 /// A list to keep track of the position states along the setup moves (from the
 /// start position to the position just before the search starts). Needed by
 /// 'draw by repetition' detection. Use a std::deque because pointers to
