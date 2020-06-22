@@ -143,16 +143,17 @@ namespace {
   constexpr Score ReachableOutpost    = S( 31, 22);
   constexpr Score PassedFile          = S( 11,  8);
   constexpr Score PawnlessFlank       = S( 17, 95);
+  constexpr Score QueenInfiltration   = S( -2, 14);
   constexpr Score RestrictedPiece     = S(  7,  7);
   constexpr Score RookOnKingRing      = S( 16,  0);
-  constexpr Score RookOnQueenFile     = S(  5,  9);
-  constexpr Score SliderOnQueen       = S( 59, 18);
+  constexpr Score RookOnQueenFile     = S(  6, 11);
+  constexpr Score SliderOnQueen       = S( 60, 18);
   constexpr Score ThreatByKing        = S( 24, 89);
   constexpr Score ThreatByPawnPush    = S( 48, 39);
   constexpr Score ThreatBySafePawn    = S(173, 94);
   constexpr Score TrappedRook         = S( 55, 13);
-  constexpr Score WeakQueen           = S( 51, 14);
-  constexpr Score WeakQueenProtection = S( 15,  0);
+  constexpr Score WeakQueen           = S( 56, 15);
+  constexpr Score WeakQueenProtection = S( 14,  0);
 
 #undef S
 
@@ -373,6 +374,10 @@ namespace {
             Bitboard queenPinners;
             if (pos.slider_blockers(pos.pieces(Them, ROOK, BISHOP), s, queenPinners))
                 score -= WeakQueen;
+
+            // Bonus for queen on weak square in enemy camp
+            if (relative_rank(Us, s) > RANK_4 && (~pe->pawn_attacks_span(Them) & s))
+                score += QueenInfiltration;    
         }
     }
     if (T)
