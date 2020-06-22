@@ -186,16 +186,14 @@ ifeq ($(COMP),mingw)
 
 	ifeq ($(KERNEL),Linux)
 		ifeq ($(bits),64)
-			ifeq ($(shell which x86_64-w64-mingw32-c++-posix),)
-				CXX:=x86_64-w64-mingw32-c++
-			else
-				CXX:=x86_64-w64-mingw32-c++-posix
+			CXX:=x86_64-w64-mingw32-c++
+			ifneq ($(shell which x86_64-w64-mingw32-c++-posix),)
+				CXX +=-posix
 			endif
 		else
-			ifeq ($(shell which i686-w64-mingw32-c++-posix),)
-				CXX:=i686-w64-mingw32-c++
-			else
-				CXX:=i686-w64-mingw32-c++-posix
+			CXX:=i686-w64-mingw32-c++
+			ifneq ($(shell which i686-w64-mingw32-c++-posix),)
+				CXX +=-posix
 			endif
 		endif
 	else
@@ -297,7 +295,7 @@ ifeq ($(optimize),yes)
 		endif
 	endif
 
-	ifeq ($(comp),$(filter $(comp),gcc clang icc))
+	ifneq (,$(filter $(comp),gcc clang icc))
 		ifeq ($(KERNEL),Darwin)
 			CXXFLAGS += -mdynamic-no-pic
 		endif
@@ -333,26 +331,25 @@ endif
 ### 3.7 pext
 ifeq ($(pext),yes)
 	CXXFLAGS += -DUSE_PEXT
-	ifeq ($(comp),$(filter $(comp),gcc clang mingw))
+	ifneq (,$(filter $(comp),gcc clang mingw))
 		CXXFLAGS += -msse4 -mbmi2
 	endif
 endif
 
-### 3.8 Link Time Optimization
+### 3.8 Link Time Optimization, it works since gcc 4.5 but not on mingw under Windows.
 ### This is a mix of compile and link time options because the lto link phase
 ### needs access to the optimization flags.
 ifeq ($(optimize),yes)
 ifeq ($(debug), no)
-	ifeq ($(comp),$(filter $(comp),gcc clang))
+	ifneq (,$(filter $(comp),gcc clang))
 		CXXFLAGS += -flto
 		LDFLAGS += $(CXXFLAGS)
-	endif
 
-	ifeq ($(comp),mingw)
-	ifeq ($(KERNEL),Linux)
-		CXXFLAGS += -flto
-		LDFLAGS += $(CXXFLAGS)
-	endif
+	else ifeq ($(comp),mingw)
+		ifeq ($(KERNEL),Linux)
+			CXXFLAGS += -flto
+			LDFLAGS += $(CXXFLAGS)
+		endif
 	endif
 endif
 endif
@@ -448,8 +445,7 @@ install:
 clean: objprofileclean
 	@rm -f $(DEP) *~ core
 
-# clean binaries and objects
-# clean auxiliary profiling files
+# clean binaries and objects + clean auxiliary profiling files
 objprofileclean:
 	@rm -f $(EXE) *.o ./syzygy/*.o
 	@rm -rf profdir
@@ -500,8 +496,7 @@ config-sanity:
 $(EXE): $(OBJS)
 	$(CXX) -o $@ $(OBJS) $(LDFLAGS)
 
-profile-make-hd:
-	@echo ; echo "Step 1/4. Building instrumented executable ..."
+profile-make-hd: ;@echo; echo "Step 1/4. Building instrumented executable ..."
 
 clang-profile-make: EXTRALDFLAGS := -fprofile-instr-generate
 clang-profile-make: EXTRACXXFLAGS := -fprofile-instr-generate
@@ -528,6 +523,7 @@ icc-profile-mkdir: ; @mkdir -p profdir
 icc-profile-use: EXTRACXXFLAGS := -prof_use -prof_dir ./profdir
 icc-profile-use: all
 
+# If fails, > instead of -MF
 $(DEP):
 	@$(CXX) $(DEPENDFLAGS) $(SRCS) -MM -MF $@
 
