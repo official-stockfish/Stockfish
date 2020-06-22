@@ -35,6 +35,8 @@ Value evaluate(const Position& pos);
 
 void evaluate_with_no_return(const Position& pos);
 
+Value compute_eval(const Position& pos);
+
 #if defined(EVAL_NNUE) || defined(EVAL_LEARN)
 // 評価関数ファイルを読み込む。
 // これは、"is_ready"コマンドの応答時に1度だけ呼び出される。2度呼び出すことは想定していない。

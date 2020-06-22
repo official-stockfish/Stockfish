@@ -400,6 +400,10 @@ void UCI::loop(int argc, char* argv[]) {
 
 #endif
 
+#if defined(EVAL_NNUE)
+      else if (token == "eval_nnue") sync_cout << "eval_nnue = " << Eval::compute_eval(pos) << sync_endl;
+#endif
+
 #if defined(EVAL_NNUE) && defined(ENABLE_TEST_CMD)
       // テストコマンド
       else if (token == "test") test_cmd(pos, is);
