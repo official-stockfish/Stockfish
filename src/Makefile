@@ -22,12 +22,12 @@
 ### ==========================================================================
 
 ### Executable name
+EXE := stockfish
+
 MSYS := $(shell echo $$MSYSTEM)
 ifneq (,$(filter $(MSYS),MINGW64 MINGW32))
+EXE +=.exe
 COMP := mingw
-EXE := stockfish.exe
-else
-EXE := stockfish
 endif
 
 ### Installation dir definitions
@@ -153,7 +153,9 @@ endif
 
 ### 3.1 Selecting compiler (default = gcc)
 
-CXXFLAGS += -Wall -Wcast-qual -fno-exceptions -std=c++11 $(EXTRACXXFLAGS)
+# ifneq (,$(CXXFLAGS))
+	
+override CXXFLAGS := -Wall -Wcast-qual -fno-exceptions -std=c++11 $(CXXFLAGS) $(EXTRACXXFLAGS)
 DEPENDFLAGS += -std=c++11
 LDFLAGS += $(EXTRALDFLAGS)
 
