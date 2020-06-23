@@ -415,7 +415,7 @@ help:
 
 .PHONY: help build profile-build strip install clean objprofileclean \
 			config-sanity icc-profile-make icc-profile-use gcc-profile-make gcc-profile-use \
-			clang-profile-make clang-profile-use profile-make-hd clang-profile-d icc-profile-mkdir
+			clang-profile-make clang-profile-use profile-make-hd clang-profile-d icc-profile-mkdir $(DEP)
 
 build: config-sanity all
 
