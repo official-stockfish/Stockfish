@@ -229,7 +229,6 @@ ifeq ($(COMP),mingw)
 	CXXFLAGS += -Wextra -Wshadow
 	LDFLAGS += -static
 endif
-LDFLAGS += -static -Wl,-s
 
 ifeq ($(COMP),icc)
 	comp=icc
@@ -257,6 +256,28 @@ ifeq ($(COMP),clang)
 		CXXFLAGS += -m$(bits)
 		LDFLAGS += -m$(bits)
 	endif
+endif
+
+ifeq ($(COMP),msys2)
+	comp=gcc
+	CXX=g++
+	CXXFLAGS += -pedantic -Wextra -Wshadow
+
+	ifeq ($(ARCH),armv7)
+		ifeq ($(OS),Android)
+			CXXFLAGS += -m$(bits)
+			LDFLAGS += -m$(bits)
+		endif
+	else
+		CXXFLAGS += -m$(bits)
+		LDFLAGS += -m$(bits)
+	endif
+
+	ifneq ($(KERNEL),Darwin)
+	   LDFLAGS += -Wl,--no-as-needed
+	endif
+
+	LDFLAGS += -static -Wl,-s
 endif
 
 ifeq ($(comp),icc)
@@ -357,7 +378,7 @@ endif
 
 ifeq ($(avx2),yes)
 	CXXFLAGS += -DUSE_AVX2
-	ifeq ($(comp),$(filter $(comp),gcc clang mingw))
+	ifeq ($(comp),$(filter $(comp),gcc clang mingw msys2))
 		CXXFLAGS += -mavx2
 	endif
 endif
@@ -365,7 +386,7 @@ endif
 ### 3.7 pext
 ifeq ($(pext),yes)
 	CXXFLAGS += -DUSE_PEXT
-	ifeq ($(comp),$(filter $(comp),gcc clang mingw))
+	ifeq ($(comp),$(filter $(comp),gcc clang mingw msys2))
 		CXXFLAGS += -mbmi2
 	endif
 endif
@@ -375,7 +396,7 @@ endif
 ### needs access to the optimization flags.
 ifeq ($(optimize),yes)
 ifeq ($(debug), no)
-	ifeq ($(comp),$(filter $(comp),gcc clang))
+	ifeq ($(comp),$(filter $(comp),gcc clang msys2))
 		CXXFLAGS += -flto
 		LDFLAGS += $(CXXFLAGS)
 	endif
@@ -435,6 +456,7 @@ help:
 	@echo "mingw                   > Gnu compiler with MinGW under Windows"
 	@echo "clang                   > LLVM Clang compiler"
 	@echo "icc                     > Intel compiler"
+	@echo "msys2                   > MSYS2"
 	@echo ""
 	@echo "Simple examples. If you don't know what to do, you likely want to run: "
 	@echo ""
