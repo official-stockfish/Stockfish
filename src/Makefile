@@ -54,7 +54,7 @@ endif
 ### Section 2. High-level Configuration
 ### ==========================================================================
 #
-# flag                --- Comp switch --- Description
+# flag                --- Comp switch      --- Description
 # ----------------------------------------------------------------------------
 #
 # debug = yes/no      --- -DNDEBUG         --- Enable/Disable debug mode
@@ -77,43 +77,42 @@ endif
 optimize = yes
 debug = no
 sanitize = no
-bits = 32
+bits = 64
 prefetch = no
 popcnt = no
 sse = no
 pext = no
 
 ### 2.2 Architecture specific
-
 ifeq ($(ARCH),general-32)
 	arch = any
+	bits = 32
 endif
 
 ifeq ($(ARCH),x86-32-old)
 	arch = i386
+	bits = 32
 endif
 
 ifeq ($(ARCH),x86-32)
 	arch = i386
+	bits = 32
 	prefetch = yes
 	sse = yes
 endif
 
 ifeq ($(ARCH),general-64)
 	arch = any
-	bits = 64
 endif
 
 ifeq ($(ARCH),x86-64)
 	arch = x86_64
-	bits = 64
 	prefetch = yes
 	sse = yes
 endif
 
 ifeq ($(ARCH),x86-64-modern)
 	arch = x86_64
-	bits = 64
 	prefetch = yes
 	popcnt = yes
 	sse = yes
@@ -121,7 +120,6 @@ endif
 
 ifeq ($(ARCH),x86-64-bmi2)
 	arch = x86_64
-	bits = 64
 	prefetch = yes
 	popcnt = yes
 	sse = yes
@@ -131,6 +129,7 @@ endif
 ifeq ($(ARCH),armv7)
 	arch = armv7
 	prefetch = yes
+	bits = 32
 endif
 
 ifeq ($(ARCH),armv8)
@@ -141,22 +140,20 @@ endif
 
 ifeq ($(ARCH),ppc-32)
 	arch = ppc
+	bits = 32
 endif
 
 ifeq ($(ARCH),ppc-64)
 	arch = ppc64
-	bits = 64
 	popcnt = yes
 	prefetch = yes
 endif
 
-
 ### ==========================================================================
-### Section 3. Low-level configuration
+### Section 3. Low-level Configuration
 ### ==========================================================================
 
 ### 3.1 Selecting compiler (default = gcc)
-
 CXXFLAGS += -Wall -Wcast-qual -fno-exceptions -std=c++11 $(EXTRACXXFLAGS)
 DEPENDFLAGS += -std=c++11
 LDFLAGS += $(EXTRALDFLAGS)
@@ -347,16 +344,9 @@ endif
 ### needs access to the optimization flags.
 ifeq ($(optimize),yes)
 ifeq ($(debug), no)
-	ifeq ($(comp),$(filter $(comp),gcc clang))
+	ifeq ($(comp),$(filter $(comp),gcc clang mingw))
 		CXXFLAGS += -flto
 		LDFLAGS += $(CXXFLAGS)
-	endif
-
-	ifeq ($(comp),mingw)
-	ifeq ($(KERNEL),Linux)
-		CXXFLAGS += -flto
-		LDFLAGS += $(CXXFLAGS)
-	endif
 	endif
 endif
 endif
@@ -368,9 +358,8 @@ ifeq ($(OS), Android)
 	LDFLAGS += -fPIE -pie
 endif
 
-
 ### ==========================================================================
-### Section 4. Public targets
+### Section 4. Public Targets
 ### ==========================================================================
 
 help:
@@ -468,7 +457,7 @@ default:
 	help
 
 ### ==========================================================================
-### Section 5. Private targets
+### Section 5. Private Targets
 ### ==========================================================================
 
 all: $(EXE) .depend
@@ -551,4 +540,3 @@ icc-profile-use:
 	-@$(CXX) $(DEPENDFLAGS) -MM $(SRCS) > $@ 2> /dev/null
 
 -include .depend
-
