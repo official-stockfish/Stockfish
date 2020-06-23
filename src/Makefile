@@ -188,12 +188,12 @@ ifeq ($(COMP),mingw)
 		ifeq ($(bits),64)
 			CXX:=x86_64-w64-mingw32-c++
 			ifneq ($(shell which x86_64-w64-mingw32-c++-posix),)
-				CXX +=-posix
+				CXX := $(CXX)-posix
 			endif
 		else
 			CXX:=i686-w64-mingw32-c++
 			ifneq ($(shell which i686-w64-mingw32-c++-posix),)
-				CXX +=-posix
+				CXX := $(CXX)-posix
 			endif
 		endif
 	else
