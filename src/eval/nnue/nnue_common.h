@@ -5,6 +5,12 @@
 
 #if defined(EVAL_NNUE)
 
+#if defined(USE_AVX2)
+#include <immintrin.h>
+#elif defined(USE_SSE2)
+#include <emmintrin.h>
+#endif
+
 namespace Eval {
 
 namespace NNUE {
