@@ -983,7 +983,7 @@ bool EvalList::is_valid(const Position& pos)
     for (Piece pc = NO_PIECE; pc < PIECE_NB; ++pc)
     {
       auto pt = type_of(pc);
-      if (pt == NO_PIECE || pt == 7) // ‘¶Ý‚µ‚È‚¢‹î
+      if (pt == NO_PIECE_TYPE || pt == 7) // ‘¶Ý‚µ‚È‚¢‹î
         continue;
 
       // ‹îpc‚ÌBonaPiece‚ÌŠJŽn”Ô†
