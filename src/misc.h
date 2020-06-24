@@ -142,6 +142,7 @@ inline uint64_t mul_hi64(uint64_t a, uint64_t b) {
     uint64_t c3 = aL * bH + (uint32_t)c2;
     return aH * bH + (c2 >> 32) + (c3 >> 32);
 #endif
+}
 
 /// Under Windows it is not possible for a process to run on more than one
 /// logical processor group. This usually means to be limited to use max 64
