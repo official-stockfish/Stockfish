@@ -42,6 +42,7 @@ void on_hash_size(const Option& o) { TT.resize(size_t(o)); }
 void on_logger(const Option& o) { start_logger(o); }
 void on_threads(const Option& o) { Threads.set(size_t(o)); }
 void on_tb_path(const Option& o) { Tablebases::init(o); }
+void on_eval_dir(const Option& o) { load_eval_finished = false; }
 
 
 /// Our case insensitive less() function as required by UCI protocol
@@ -79,6 +80,23 @@ void init(OptionsMap& o) {
   o["SyzygyProbeDepth"]      << Option(1, 1, 100);
   o["Syzygy50MoveRule"]      << Option(true);
   o["SyzygyProbeLimit"]      << Option(7, 0, 7);
+  // 評価関数フォルダ。これを変更したとき、評価関数を次のisreadyタイミングで読み直す必要がある。
+  o["EvalDir"]               << Option("eval", on_eval_dir);
+  // isreadyタイミングで評価関数を読み込まれると、新しい評価関数の変換のために
+  // test evalconvertコマンドを叩きたいのに、その新しい評価関数がないがために
+  // このコマンドの実行前に異常終了してしまう。
+  // そこでこの隠しオプションでisready時の評価関数の読み込みを抑制して、
+  // test evalconvertコマンドを叩く。
+  o["SkipLoadingEval"]       << Option(false);
+  // 定跡の指し手を何手目まで用いるか
+  o["BookMoves"] << Option(16, 0, 10000);
+
+#if defined(EVAL_LEARN)
+  // 評価関数の学習を行なうときは、評価関数の保存先のフォルダを変更できる。
+  // デフォルトではevalsave。このフォルダは事前に用意されているものとする。
+  // このフォルダ配下にフォルダを"0/","1/",…のように自動的に掘り、そこに評価関数ファイルを保存する。
+  o["EvalSaveDir"] << Option("evalsave");
+#endif
 }
 
 
@@ -187,4 +205,6 @@ Option& Option::operator=(const string& v) {
   return *this;
 }
 
+// 評価関数を読み込んだかのフラグ。これはevaldirの変更にともなってfalseにする。
+bool load_eval_finished = false;
 } // namespace UCI

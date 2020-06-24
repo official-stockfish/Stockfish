@@ -33,16 +33,55 @@
 #include "uci.h"
 #include "syzygy/tbprobe.h"
 
+#if defined(EVAL_NNUE) && defined(ENABLE_TEST_CMD)
+#include "eval/nnue/nnue_test_command.h"
+#endif
+
 using namespace std;
 
 extern vector<string> setup_bench(const Position&, istream&);
 
+// FEN string of the initial position, normal chess
+const char* StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
+// 棋譜を自動生成するコマンド
+#if defined (EVAL_LEARN)
+namespace Learner
+{
+  // 教師局面の自動生成
+  void gen_sfen(Position& pos, istringstream& is);
+
+  // 生成した棋譜からの学習
+  void learn(Position& pos, istringstream& is);
+
+#if defined(GENSFEN2019)
+  // 開発中の教師局面の自動生成コマンド
+  void gen_sfen2019(Position& pos, istringstream& is);
+#endif
+
+  // 読み筋と評価値のペア。Learner::search(),Learner::qsearch()が返す。
+  typedef std::pair<Value, std::vector<Move> > ValueAndPV;
+
+  ValueAndPV qsearch(Position& pos);
+  ValueAndPV search(Position& pos, int depth_, size_t multiPV = 1, uint64_t nodesLimit = 0);
+
+}
+#endif
+
+#if defined(EVAL_NNUE) && defined(ENABLE_TEST_CMD)
+void test_cmd(Position& pos, istringstream& is)
+{
+    // 探索をするかも知れないので初期化しておく。
+    is_ready();
+
+    std::string param;
+    is >> param;
+
+    if (param == "nnue") Eval::NNUE::TestCommand(pos, is);
+}
+#endif
+
 namespace {
-
-  // FEN string of the initial position, normal chess
-  const char* StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-
-
   // position() is called when engine receives the "position" UCI command.
   // The function sets up the position described in the given FEN string ("fen")
   // or the starting position ("startpos") and then makes the moves given in the
@@ -182,8 +221,115 @@ namespace {
          << "\nNodes/second    : " << 1000 * nodes / elapsed << endl;
   }
 
+  // check sumを計算したとき、それを保存しておいてあとで次回以降、整合性のチェックを行なう。
+  uint64_t eval_sum;
 } // namespace
 
+// is_ready_cmd()を外部から呼び出せるようにしておく。(benchコマンドなどから呼び出したいため)
+// 局面は初期化されないので注意。
+void is_ready(bool skipCorruptCheck)
+{
+#if defined(EVAL_NNUE)
+  // "isready"を受け取ったあと、"readyok"を返すまで5秒ごとに改行を送るように修正する。(keep alive的な処理)
+  //	USI2.0の仕様より。
+  //  -"isready"のあとのtime out時間は、30秒程度とする。これを超えて、評価関数の初期化、hashテーブルの確保をしたい場合、
+  //  思考エンジン側から定期的に何らかのメッセージ(改行可)を送るべきである。
+  //  -ShogiGUIではすでにそうなっているので、MyShogiもそれに追随する。
+  //  -また、やねうら王のエンジン側は、"isready"を受け取ったあと、"readyok"を返すまで5秒ごとに改行を送るように修正する。
+
+  auto ended = false;
+  auto th = std::thread([&ended] {
+    int count = 0;
+    while (!ended)
+    {
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      if (++count >= 50 /* 5秒 */)
+      {
+        count = 0;
+        sync_cout << sync_endl; // 改行を送信する。
+      }
+    }
+    });
+
+  // 評価関数の読み込みなど時間のかかるであろう処理はこのタイミングで行なう。
+  // 起動時に時間のかかる処理をしてしまうと将棋所がタイムアウト判定をして、思考エンジンとしての認識をリタイアしてしまう。
+  if (!UCI::load_eval_finished)
+  {
+    // 評価関数の読み込み
+    Eval::load_eval();
+
+    // チェックサムの計算と保存(その後のメモリ破損のチェックのため)
+    eval_sum = Eval::calc_check_sum();
+
+    // ソフト名の表示
+    Eval::print_softname(eval_sum);
+
+    UCI::load_eval_finished = true;
+
+  }
+  else
+  {
+    // メモリが破壊されていないかを調べるためにチェックサムを毎回調べる。
+    // 時間が少しもったいない気もするが.. 0.1秒ぐらいのことなので良しとする。
+    if (!skipCorruptCheck && eval_sum != Eval::calc_check_sum())
+      sync_cout << "Error! : EVAL memory is corrupted" << sync_endl;
+  }
+
+  // isreadyに対してはreadyokを返すまで次のコマンドが来ないことは約束されているので
+  // このタイミングで各種変数の初期化もしておく。
+
+  TT.resize(Options["Hash"]);
+  Search::clear();
+  Time.availableNodes = 0;
+
+  Threads.stop = false;
+
+  // keep aliveを送信するために生成したスレッドを終了させ、待機する。
+  ended = true;
+  th.join();
+#endif  // defined(EVAL_NNUE)
+
+  sync_cout << "readyok" << sync_endl;
+}
+
+
+// --------------------
+// テスト用にqsearch(),search()を直接呼ぶ
+// --------------------
+
+#if defined(EVAL_LEARN)
+void qsearch_cmd(Position& pos)
+{
+  cout << "qsearch : ";
+  auto pv = Learner::qsearch(pos);
+  cout << "Value = " << pv.first << " , " << UCI::value(pv.first) << " , PV = ";
+  for (auto m : pv.second)
+    cout << UCI::move(m, false) << " ";
+  cout << endl;
+}
+
+void search_cmd(Position& pos, istringstream& is)
+{
+  string token;
+  int depth = 1;
+  int multi_pv = (int)Options["MultiPV"];
+  while (is >> token)
+  {
+    if (token == "depth")
+      is >> depth;
+    if (token == "multipv")
+      is >> multi_pv;
+  }
+
+  cout << "search depth = " << depth << " , multi_pv = " << multi_pv << " : ";
+  auto pv = Learner::search(pos, depth, multi_pv);
+  cout << "Value = " << pv.first << " , " << UCI::value(pv.first) << " , PV = ";
+  for (auto m : pv.second)
+    cout << UCI::move(m, false) << " ";
+  cout << endl;
+}
+
+#endif
 
 /// UCI::loop() waits for a command from stdin, parses it and calls the appropriate
 /// function. Also intercepts EOF from stdin to ensure gracefully exiting if the
@@ -231,7 +377,7 @@ void UCI::loop(int argc, char* argv[]) {
       else if (token == "go")         go(pos, is, states);
       else if (token == "position")   position(pos, is, states);
       else if (token == "ucinewgame") Search::clear();
-      else if (token == "isready")    sync_cout << "readyok" << sync_endl;
+      else if (token == "isready")    is_ready();
 
       // Additional custom non-UCI commands, mainly for debugging.
       // Do not use these commands during a search!
@@ -240,6 +386,28 @@ void UCI::loop(int argc, char* argv[]) {
       else if (token == "d")        sync_cout << pos << sync_endl;
       else if (token == "eval")     sync_cout << Eval::trace(pos) << sync_endl;
       else if (token == "compiler") sync_cout << compiler_info() << sync_endl;
+#if defined (EVAL_LEARN)
+      else if (token == "gensfen") Learner::gen_sfen(pos, is);
+      else if (token == "learn") Learner::learn(pos, is);
+
+#if defined (GENSFEN2019)
+      // 開発中の教師局面生成コマンド
+      else if (token == "gensfen2019") Learner::gen_sfen2019(pos, is);
+#endif
+      // テスト用にqsearch(),search()を直接呼ぶコマンド
+      else if (token == "qsearch") qsearch_cmd(pos);
+      else if (token == "search") search_cmd(pos, is);
+
+#endif
+
+#if defined(EVAL_NNUE)
+      else if (token == "eval_nnue") sync_cout << "eval_nnue = " << Eval::compute_eval(pos) << sync_endl;
+#endif
+
+#if defined(EVAL_NNUE) && defined(ENABLE_TEST_CMD)
+      // テストコマンド
+      else if (token == "test") test_cmd(pos, is);
+#endif
       else
           sync_cout << "Unknown command: " << cmd << sync_endl;
 

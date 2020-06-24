@@ -38,9 +38,24 @@ PGOBENCH = ./$(EXE) bench
 ### Source and object files
 SRCS = benchmark.cpp bitbase.cpp bitboard.cpp endgame.cpp evaluate.cpp main.cpp \
 	material.cpp misc.cpp movegen.cpp movepick.cpp pawns.cpp position.cpp psqt.cpp \
-	search.cpp thread.cpp timeman.cpp tt.cpp uci.cpp ucioption.cpp tune.cpp syzygy/tbprobe.cpp
+	search.cpp thread.cpp timeman.cpp tt.cpp uci.cpp ucioption.cpp tune.cpp syzygy/tbprobe.cpp \
+	eval/evaluate_mir_inv_tools.cpp \
+	eval/nnue/evaluate_nnue.cpp \
+	eval/nnue/evaluate_nnue_learner.cpp \
+	eval/nnue/features/half_kp.cpp \
+	eval/nnue/features/half_relative_kp.cpp \
+	eval/nnue/features/k.cpp \
+	eval/nnue/features/p.cpp \
+	eval/nnue/features/castling_right.cpp \
+	eval/nnue/features/enpassant.cpp \
+	eval/nnue/nnue_test_command.cpp \
+	extra/sfen_packer.cpp \
+	learn/gensfen2019.cpp \
+	learn/learner.cpp \
+	learn/learning_tools.cpp \
+	learn/multi_think.cpp
 
-OBJS = $(notdir $(SRCS:.cpp=.o))
+OBJS = $(SRCS:.cpp=.o)
 
 VPATH = syzygy
 
@@ -81,6 +96,7 @@ bits = 32
 prefetch = no
 popcnt = no
 sse = no
+avx2 = no
 pext = no
 
 ### 2.2 Architecture specific
@@ -119,12 +135,22 @@ ifeq ($(ARCH),x86-64-modern)
 	sse = yes
 endif
 
+ifeq ($(ARCH),x86-64-avx2)
+	arch = x86_64
+	bits = 64
+	prefetch = yes
+	popcnt = yes
+	sse = yes
+	avx2 = yes
+endif
+
 ifeq ($(ARCH),x86-64-bmi2)
 	arch = x86_64
 	bits = 64
 	prefetch = yes
 	popcnt = yes
 	sse = yes
+	avx2 = yes
 	pext = yes
 endif
 
@@ -151,8 +177,8 @@ endif
 
 ### 3.1 Selecting compiler (default = gcc)
 
-CXXFLAGS += -Wall -Wcast-qual -fno-exceptions -std=c++11 $(EXTRACXXFLAGS)
-DEPENDFLAGS += -std=c++11
+CXXFLAGS += -Wall -Wcast-qual -fno-exceptions -std=c++17 $(EXTRACXXFLAGS)
+DEPENDFLAGS += -std=c++17
 LDFLAGS += $(EXTRALDFLAGS)
 
 ifeq ($(COMP),)
@@ -230,6 +256,28 @@ ifeq ($(COMP),clang)
 		CXXFLAGS += -m$(bits)
 		LDFLAGS += -m$(bits)
 	endif
+endif
+
+ifeq ($(COMP),msys2)
+	comp=gcc
+	CXX=g++
+	CXXFLAGS += -pedantic -Wextra -Wshadow
+
+	ifeq ($(ARCH),armv7)
+		ifeq ($(OS),Android)
+			CXXFLAGS += -m$(bits)
+			LDFLAGS += -m$(bits)
+		endif
+	else
+		CXXFLAGS += -m$(bits)
+		LDFLAGS += -m$(bits)
+	endif
+
+	ifneq ($(KERNEL),Darwin)
+	   LDFLAGS += -Wl,--no-as-needed
+	endif
+
+	LDFLAGS += -static -Wl,-s
 endif
 
 ifeq ($(comp),icc)
@@ -320,19 +368,26 @@ endif
 ### 3.6 popcnt
 ifeq ($(popcnt),yes)
 	ifeq ($(arch),ppc64)
-		CXXFLAGS += -DUSE_POPCNT
+		CXXFLAGS += -DUSE_POPCNT -DUSE_SSE2
 	else ifeq ($(comp),icc)
-		CXXFLAGS += -msse3 -DUSE_POPCNT
+		CXXFLAGS += -msse3 -DUSE_POPCNT -DUSE_SSE2
 	else
-		CXXFLAGS += -msse3 -mpopcnt -DUSE_POPCNT
+		CXXFLAGS += -msse3 -mpopcnt -DUSE_POPCNT -DUSE_SSE2
+	endif
+endif
+
+ifeq ($(avx2),yes)
+	CXXFLAGS += -DUSE_AVX2
+	ifeq ($(comp),$(filter $(comp),gcc clang mingw msys2))
+		CXXFLAGS += -mavx2
 	endif
 endif
 
 ### 3.7 pext
 ifeq ($(pext),yes)
 	CXXFLAGS += -DUSE_PEXT
-	ifeq ($(comp),$(filter $(comp),gcc clang mingw))
-		CXXFLAGS += -msse4 -mbmi2
+	ifeq ($(comp),$(filter $(comp),gcc clang mingw msys2))
+		CXXFLAGS += -mbmi2
 	endif
 endif
 
@@ -341,7 +396,7 @@ endif
 ### needs access to the optimization flags.
 ifeq ($(optimize),yes)
 ifeq ($(debug), no)
-	ifeq ($(comp),$(filter $(comp),gcc clang))
+	ifeq ($(comp),$(filter $(comp),gcc clang msys2))
 		CXXFLAGS += -flto
 		LDFLAGS += $(CXXFLAGS)
 	endif
@@ -384,6 +439,7 @@ help:
 	@echo "Supported archs:"
 	@echo ""
 	@echo "x86-64-bmi2             > x86 64-bit with pext support (also enables SSE4)"
+	@echo "x86-64-avx2             > x86 64-bit with avx2 support (also enables SSE4)"
 	@echo "x86-64-modern           > x86 64-bit with popcnt support (also enables SSE3)"
 	@echo "x86-64                  > x86 64-bit generic"
 	@echo "x86-32                  > x86 32-bit (also enables SSE)"
@@ -400,6 +456,7 @@ help:
 	@echo "mingw                   > Gnu compiler with MinGW under Windows"
 	@echo "clang                   > LLVM Clang compiler"
 	@echo "icc                     > Intel compiler"
+	@echo "msys2                   > MSYS2"
 	@echo ""
 	@echo "Simple examples. If you don't know what to do, you likely want to run: "
 	@echo ""
@@ -449,7 +506,7 @@ clean: objclean profileclean
 
 # clean binaries and objects
 objclean:
-	@rm -f $(EXE) *.o ./syzygy/*.o
+	@rm -f $(EXE) *.o ./syzygy/*.o ./learn/*.o ./extra/*.o ./eval/*.o ./eval/nnue/*.o ./eval/nnue/features/*.o
 
 # clean auxiliary profiling files
 profileclean:
@@ -479,6 +536,7 @@ config-sanity:
 	@echo "prefetch: '$(prefetch)'"
 	@echo "popcnt: '$(popcnt)'"
 	@echo "sse: '$(sse)'"
+	@echo "avx2: '$(avx2)'"
 	@echo "pext: '$(pext)'"
 	@echo ""
 	@echo "Flags:"
@@ -539,8 +597,20 @@ icc-profile-use:
 	EXTRACXXFLAGS='-prof_use -prof_dir ./profdir' \
 	all
 
+nnue: config-sanity
+	$(MAKE) CXXFLAGS='$(CXXFLAGS) -DEVAL_NNUE -DUSE_EVAL_HASH -DENABLE_TEST_CMD -fopenmp' LDFLAGS='$(LDFLAGS) -fopenmp' build
+
+nnue-gen-sfen-from-original-eval: config-sanity
+	$(MAKE) CXXFLAGS='$(CXXFLAGS) -DEVAL_LEARN -DUSE_EVAL_HASH -DENABLE_TEST_CMD -fopenmp' LDFLAGS='$(LDFLAGS) -fopenmp' build
+
+nnue-learn: config-sanity
+	$(MAKE) CXXFLAGS='$(CXXFLAGS) -DEVAL_LEARN -DEVAL_NNUE -DUSE_EVAL_HASH -DENABLE_TEST_CMD -fopenmp' LDFLAGS='$(LDFLAGS) -fopenmp' build
+
+nnue-learn-use-blas: config-sanity
+	$(MAKE) CXXFLAGS='$(CXXFLAGS) -DEVAL_LEARN -DEVAL_NNUE -DUSE_EVAL_HASH -DENABLE_TEST_CMD -DUSE_BLAS -I/mingw64/include/OpenBLAS -fopenmp' LDFLAGS='$(LDFLAGS) -lopenblas -fopenmp' build
+
 .depend:
-	-@$(CXX) $(DEPENDFLAGS) -MM $(SRCS) > $@ 2> /dev/null
+	-@$(CXX) $(DEPENDFLAGS) -MM $(OBJS:.o=.cpp) > $@ 2> /dev/null
 
 -include .depend
 
