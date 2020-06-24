@@ -28,10 +28,11 @@
 
 TimeManagement Time; // Our global time management object
 
-/// init() is called at the beginning of the search and calculates the bounds
-/// of time allowed for the current game ply.  We currently support:
-//      1) x basetime (+z increment)
-//      2) x moves in y seconds (+z increment)
+
+/// TimeManagement::init() is called at the beginning of the search and calculates
+/// the bounds of time allowed for the current game ply. We currently support:
+//      1) x basetime (+ z increment)
+//      2) x moves in y seconds (+ z increment)
 
 void TimeManagement::init(Search::LimitsType& limits, Color us, int ply) {
 
@@ -60,7 +61,7 @@ void TimeManagement::init(Search::LimitsType& limits, Color us, int ply) {
 
   startTime = limits.startTime;
 
-  //Maximum move horizon of 50 moves
+  // Maximum move horizon of 50 moves
   int mtg = limits.movestogo ? std::min(limits.movestogo, 50) : 50;
 
   // Make sure timeLeft is > 0 since we may use it as a divisor

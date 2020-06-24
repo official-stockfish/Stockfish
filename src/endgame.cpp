@@ -268,7 +268,7 @@ Value Endgame<KQKP>::operator()(const Position& pos) const {
 }
 
 
-/// KQ vs KR.  This is almost identical to KX vs K:  We give the attacking
+/// KQ vs KR. This is almost identical to KX vs K: we give the attacking
 /// king a bonus for having the kings close together, and for forcing the
 /// defending king towards the edge. If we also take care to avoid null move for
 /// the defending side in the search, this is usually sufficient to win KQ vs KR.
@@ -291,7 +291,7 @@ Value Endgame<KQKR>::operator()(const Position& pos) const {
 
 
 /// KNN vs KP. Very drawish, but there are some mate opportunities if we can
-//  press the weakSide King to a corner before the pawn advances too much.
+/// press the weakSide King to a corner before the pawn advances too much.
 template<>
 Value Endgame<KNNKP>::operator()(const Position& pos) const {
 
@@ -352,7 +352,7 @@ ScaleFactor Endgame<KBPsK>::operator()(const Position& pos) const {
       Square weakPawn = frontmost_sq(strongSide, pos.pieces(weakSide, PAWN));
 
       // There's potential for a draw if our pawn is blocked on the 7th rank,
-      // the bishop cannot attack it or they only have one pawn left
+      // the bishop cannot attack it or they only have one pawn left.
       if (   relative_rank(strongSide, weakPawn) == RANK_7
           && (strongPawns & (weakPawn + pawn_push(weakSide)))
           && (opposite_colors(strongBishop, weakPawn) || !more_than_one(strongPawns)))
@@ -365,7 +365,7 @@ ScaleFactor Endgame<KBPsK>::operator()(const Position& pos) const {
           // closer. (I think this rule only fails in practically
           // unreachable positions such as 5k1K/6p1/6P1/8/8/3B4/8/8 w
           // and positions where qsearch will immediately correct the
-          // problem such as 8/4k1p1/6P1/1K6/3B4/8/8/8 w)
+          // problem such as 8/4k1p1/6P1/1K6/3B4/8/8/8 w).
           if (   relative_rank(strongSide, weakKing) >= RANK_7
               && weakKingDist <= 2
               && weakKingDist <= strongKingDist)
@@ -576,7 +576,7 @@ ScaleFactor Endgame<KRPPKRP>::operator()(const Position& pos) const {
 }
 
 
-/// K and two or more pawns vs K. There is just a single rule here: If all pawns
+/// K and two or more pawns vs K. There is just a single rule here: if all pawns
 /// are on the same rook file and are blocked by the defending king, it's a draw.
 template<>
 ScaleFactor Endgame<KPsK>::operator()(const Position& pos) const {
@@ -693,7 +693,7 @@ ScaleFactor Endgame<KBPPKB>::operator()(const Position& pos) const {
 }
 
 
-/// KBP vs KN. There is a single rule: If the defending king is somewhere along
+/// KBP vs KN. There is a single rule: if the defending king is somewhere along
 /// the path of the pawn, and the square of the king is not of the same color as
 /// the stronger side's bishop, it's a draw.
 template<>
@@ -717,7 +717,7 @@ ScaleFactor Endgame<KBPKN>::operator()(const Position& pos) const {
 
 
 /// KP vs KP. This is done by removing the weakest side's pawn and probing the
-/// KP vs K bitbase: If the weakest side has a draw without the pawn, it probably
+/// KP vs K bitbase: if the weakest side has a draw without the pawn, it probably
 /// has at least a draw with the pawn as well. The exception is when the stronger
 /// side's pawn is far advanced and not on a rook file; in this case it is often
 /// possible to win (e.g. 8/4k3/3p4/3P4/6K1/8/8/8 w - - 0 1).

@@ -110,6 +110,7 @@ inline Bitboard square_bb(Square s) {
   return SquareBB[s];
 }
 
+
 /// Overloads of bitwise operators between a Bitboard and a Square for testing
 /// whether a given bit is set in a bitboard, and for setting and clearing bits.
 
@@ -200,10 +201,11 @@ inline Bitboard adjacent_files_bb(Square s) {
   return shift<EAST>(file_bb(s)) | shift<WEST>(file_bb(s));
 }
 
-/// line_bb(Square, Square) returns a Bitboard representing an entire line
-/// (from board edge to board edge) that intersects the given squares.
-/// If the given squares are not on a same file/rank/diagonal, return 0.
-/// Ex. line_bb(SQ_C4, SQ_F7) returns a bitboard with the A2-G8 diagonal.
+
+/// line_bb(Square, Square) returns a bitboard representing an entire line,
+/// from board edge to board edge, that intersects the given squares. If the
+/// given squares are not on a same file/rank/diagonal, returns 0. For instance,
+/// line_bb(SQ_C4, SQ_F7) will return a bitboard with the A2-G8 diagonal.
 
 inline Bitboard line_bb(Square s1, Square s2) {
 
@@ -211,10 +213,11 @@ inline Bitboard line_bb(Square s1, Square s2) {
   return LineBB[s1][s2];
 }
 
-/// between_bb() returns a Bitboard representing squares that are linearly
-/// between the given squares (excluding the given squares).
-/// If the given squares are not on a same file/rank/diagonal, return 0.
-/// Ex. between_bb(SQ_C4, SQ_F7) returns a bitboard with squares D5 and E6.
+
+/// between_bb() returns a bitboard representing squares that are linearly
+/// between the given squares (excluding the given squares). If the given
+/// squares are not on a same file/rank/diagonal, return 0. For instance,
+/// between_bb(SQ_C4, SQ_F7) will return a bitboard with squares D5 and E6.
 
 inline Bitboard between_bb(Square s1, Square s2) {
   Bitboard b = line_bb(s1, s2) & ((AllSquares << s1) ^ (AllSquares << s2));
@@ -241,8 +244,8 @@ inline Bitboard forward_file_bb(Color c, Square s) {
 
 
 /// pawn_attack_span() returns a bitboard representing all the squares that can
-/// be attacked by a pawn of the given color when it moves along its file,
-/// starting from the given square.
+/// be attacked by a pawn of the given color when it moves along its file, starting
+/// from the given square.
 
 inline Bitboard pawn_attack_span(Color c, Square s) {
   return forward_ranks_bb(c, s) & adjacent_files_bb(s);
@@ -276,13 +279,16 @@ template<> inline int distance<Square>(Square x, Square y) { return SquareDistan
 inline int edge_distance(File f) { return std::min(f, File(FILE_H - f)); }
 inline int edge_distance(Rank r) { return std::min(r, Rank(RANK_8 - r)); }
 
-/// Return the target square bitboard if we do not step off the board, empty otherwise
+
+/// safe_destination() returns the bitboard of target square for the given step
+/// from the given square. If the step is off the board, returns empty bitboard.
 
 inline Bitboard safe_destination(Square s, int step)
 {
     Square to = Square(s + step);
     return is_ok(to) && distance(s, to) <= 2 ? square_bb(to) : Bitboard(0);
 }
+
 
 /// attacks_bb(Square) returns the pseudo attacks of the give piece type
 /// assuming an empty board.
@@ -294,6 +300,7 @@ inline Bitboard attacks_bb(Square s) {
 
   return PseudoAttacks[Pt][s];
 }
+
 
 /// attacks_bb(Square, Bitboard) returns the attacks by the given piece
 /// assuming the board is occupied according to the passed Bitboard.
