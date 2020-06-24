@@ -29,7 +29,9 @@
 #include <ostream>
 #include <string>
 #include <vector>
+#ifndef _MSC_VER
 #include <mm_malloc.h>
+#endif
 
 #include "types.h"
 #include "thread_win32_osx.h"
