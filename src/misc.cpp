@@ -658,7 +658,7 @@ namespace Dependency {
 }
 
 #endif
-#elif defined(_LINUX)
+#elif defined(__linux__)
 
 // linux環境において、この_LINUXというシンボルはmakefileにて定義されるものとする。
 
