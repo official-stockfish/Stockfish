@@ -338,16 +338,9 @@ endif
 ### needs access to the optimization flags.
 ifeq ($(optimize),yes)
 ifeq ($(debug), no)
-	ifeq ($(comp),$(filter $(comp),gcc clang))
+	ifeq ($(comp),$(filter $(comp),gcc clang mingw))
 		CXXFLAGS += -flto
 		LDFLAGS += $(CXXFLAGS)
-	endif
-
-	ifeq ($(comp),mingw)
-	ifeq ($(KERNEL),Linux)
-		CXXFLAGS += -flto
-		LDFLAGS += $(CXXFLAGS)
-	endif
 	endif
 endif
 endif
@@ -539,4 +532,3 @@ icc-profile-use:
 	-@$(CXX) $(DEPENDFLAGS) -MM $(SRCS) > $@ 2> /dev/null
 
 -include .depend
-
