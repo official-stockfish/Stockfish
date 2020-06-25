@@ -133,6 +133,12 @@ ifeq ($(ARCH),armv7)
 	prefetch := yes
 endif
 
+ifeq ($(ARCH),armv8)
+	arch := armv8-a
+	bits := 64
+	prefetch := yes
+endif
+
 ifeq ($(ARCH),ppc-32)
 	arch := ppc
 endif
@@ -150,7 +156,6 @@ endif
 ### 3.1 Selecting compiler (default = gcc)
 F :=
 CXXFLAGS += -Wall -Wcast-qual -fno-exceptions -std=c++11 $(EXTRACXXFLAGS) $(F)
-CXXFLAGS += -Wall -Wcast-qual -fno-exceptions -std=c++11 $(EXTRACXXFLAGS)
 DEPENDFLAGS += -std=c++11
 LDFLAGS += $(EXTRALDFLAGS)
 
@@ -163,7 +168,7 @@ ifeq ($(COMP),gcc)
 	CXX:=g++
 	CXXFLAGS += -pedantic -Wextra -Wshadow
 
-	ifeq ($(ARCH),$(filter $(ARCH),armv7 armv8))
+	ifneq (,$(filter $(ARCH),armv7 armv8))
 		ifeq ($(OS),Android)
 			CXXFLAGS += -m$(bits)
 			LDFLAGS += -m$(bits)
