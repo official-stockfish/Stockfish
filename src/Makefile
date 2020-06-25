@@ -134,8 +134,8 @@ endif
 
 ifeq ($(ARCH),armv8)
 	arch = armv8-a
-	bits = 64
 	prefetch = yes
+	popcnt = yes
 endif
 
 ifeq ($(ARCH),ppc-32)
@@ -322,7 +322,7 @@ endif
 
 ### 3.6 popcnt
 ifeq ($(popcnt),yes)
-	ifeq ($(arch),ppc64)
+	ifeq ($(arch),$(filter $(arch),ppc64 armv8-a))
 		CXXFLAGS += -DUSE_POPCNT
 	else ifeq ($(comp),icc)
 		CXXFLAGS += -msse3 -DUSE_POPCNT
