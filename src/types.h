@@ -40,6 +40,7 @@
 
 #include <cassert>
 #include <cctype>
+#include <climits>
 #include <cstdint>
 #include <cstdlib>
 #include <algorithm>
