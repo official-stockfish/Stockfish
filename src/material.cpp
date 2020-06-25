@@ -44,12 +44,12 @@ namespace {
   constexpr int QuadraticTheirs[][PIECE_TYPE_NB] = {
     //           THEIR PIECES
     // pair pawn knight bishop rook queen
-    {   0                               }, // Bishop pair
-    {  36,    0                         }, // Pawn
-    {   9,   63,   0                    }, // Knight      OUR PIECES
-    {  59,   65,  42,     0             }, // Bishop
-    {  46,   39,  24,   -24,    0       }, // Rook
-    {  97,  100, -42,   137,  268,    0 }  // Queen
+    {                                   }, // Bishop pair
+    {  36,                              }, // Pawn
+    {   9,   63,                        }, // Knight      OUR PIECES
+    {  59,   65,  42,                   }, // Bishop
+    {  46,   39,  24,   -24,            }, // Rook
+    {  97,  100, -42,   137,  268,      }  // Queen
   };
 
   // Endgame evaluation and scaling functions are accessed directly and not through
@@ -79,8 +79,10 @@ namespace {
           && pos.count<PAWN>(~us) >= 1;
   }
 
+
   /// imbalance() calculates the imbalance by comparing the piece count of each
   /// piece type for both colors.
+
   template<Color Us>
   int imbalance(const int pieceCount[][PIECE_TYPE_NB]) {
 
@@ -94,9 +96,9 @@ namespace {
         if (!pieceCount[Us][pt1])
             continue;
 
-        int v = 0;
+        int v = QuadraticOurs[pt1][pt1] * pieceCount[Us][pt1];
 
-        for (int pt2 = NO_PIECE_TYPE; pt2 <= pt1; ++pt2)
+        for (int pt2 = NO_PIECE_TYPE; pt2 < pt1; ++pt2)
             v +=  QuadraticOurs[pt1][pt2] * pieceCount[Us][pt2]
                 + QuadraticTheirs[pt1][pt2] * pieceCount[Them][pt2];
 
@@ -109,6 +111,7 @@ namespace {
 } // namespace
 
 namespace Material {
+
 
 /// Material::probe() looks up the current position's material configuration in
 /// the material hash table. It returns a pointer to the Entry if the position

@@ -52,6 +52,7 @@ Thread::~Thread() {
   stdThread.join();
 }
 
+
 /// Thread::bestMoveCount(Move move) return best move counter for the given root move
 
 int Thread::best_move_count(Move move) const {
@@ -61,6 +62,7 @@ int Thread::best_move_count(Move move) const {
 
   return rm != rootMoves.begin() + pvLast ? rm->bestMoveCount : 0;
 }
+
 
 /// Thread::clear() reset histories, usually before a new game
 
@@ -80,6 +82,7 @@ void Thread::clear() {
           continuationHistory[inCheck][c][NO_PIECE][0]->fill(Search::CounterMovePruneThreshold - 1);
       }
 }
+
 
 /// Thread::start_searching() wakes up the thread that will start the search
 
@@ -158,7 +161,8 @@ void ThreadPool::set(size_t requested) {
   }
 }
 
-/// ThreadPool::clear() sets threadPool data to initial values.
+
+/// ThreadPool::clear() sets threadPool data to initial values
 
 void ThreadPool::clear() {
 
@@ -169,6 +173,7 @@ void ThreadPool::clear() {
   main()->bestPreviousScore = VALUE_INFINITE;
   main()->previousTimeReduction = 1.0;
 }
+
 
 /// ThreadPool::start_thinking() wakes up main thread waiting in idle_loop() and
 /// returns immediately. Main thread will wake up other threads and start the search.
@@ -250,7 +255,8 @@ Thread* ThreadPool::get_best_thread() const {
     return bestThread;
 }
 
-/// Start non-main threads.
+
+/// Start non-main threads
 
 void ThreadPool::start_searching() {
 
@@ -259,7 +265,8 @@ void ThreadPool::start_searching() {
             th->start_searching();
 }
 
-/// Wait for non-main threads.
+
+/// Wait for non-main threads
 
 void ThreadPool::wait_for_search_finished() const {
 
