@@ -504,16 +504,24 @@ void MultiThinkGenSfen::thread_worker(size_t thread_id)
 			}
 
       if (pos.is_draw(ply)) {
-        // Do not write if draw.
-        break;
+#if defined (LEARN_GENSFEN_USE_DRAW_RESULT)
+          flush_psv(0);
+#endif
+          // Do not write if draw.
+          break;
       }
 
 			// 全駒されて詰んでいたりしないか？
-			if (MoveList<LEGAL>(pos).size() == 0)
+			if (MoveList<LEGAL>(pos).size() == 0) // Can be mate or stalemate
 			{
         // (この局面の一つ前の局面までは書き出す)
         // Write the positions other than this position if checkmated.
-        flush_psv(-1);
+                if (pos.checkers()) // Mate
+                    flush_psv(-1);
+#if defined (LEARN_GENSFEN_USE_DRAW_RESULT)
+                else                // Stalemate
+                    flush_psv(0);
+#endif
 				break;
 			}
 
@@ -578,7 +586,7 @@ void MultiThinkGenSfen::thread_worker(size_t thread_id)
         if (pos.is_draw(0)) {
 #if defined	(LEARN_GENSFEN_USE_DRAW_RESULT)
           // 引き分けを書き出すとき
-          flush_psv(is_win);
+          flush_psv(0);
 #endif
           break;
         }
