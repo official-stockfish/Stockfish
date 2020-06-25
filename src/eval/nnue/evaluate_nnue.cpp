@@ -250,10 +250,14 @@ void load_eval() {
 	if (!result)
 	{
 		// 読み込みエラーのとき終了してくれないと困る。
-		std::cout << "Error! : failed to read " << NNUE::kFileName << std::endl;
-		my_exit();
+		std::cout << "Error! " << NNUE::kFileName << " not found or wrong format" << std::endl;
+		//my_exit();
 	}
+	else
+	  std::cout << "info string NNUE " << NNUE::kFileName << " found & loaded" << std::endl;
   }
+  else
+    std::cout << "info string NNUE " << NNUE::kFileName << " not loaded" << std::endl;
 }
 
 // 初期化
