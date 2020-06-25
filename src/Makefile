@@ -79,7 +79,7 @@ endif
 optimize := yes
 debug := no
 sanitize := no
-bits := 32
+bits := 64
 prefetch := no
 popcnt := no
 sse := no
@@ -89,33 +89,33 @@ pext := no
 
 ifeq ($(ARCH),general-32)
 	arch := any
+	bits := 32
 endif
 
 ifeq ($(ARCH),x86-32-old)
 	arch := i386
+	bits := 32
 endif
 
 ifeq ($(ARCH),x86-32)
 	arch := i386
+	bits := 32
 	prefetch := yes
 	sse := yes
 endif
 
 ifeq ($(ARCH),general-64)
 	arch := any
-	bits := 64
 endif
 
 ifeq ($(ARCH),x86-64)
 	arch := x86_64
-	bits := 64
 	prefetch := yes
 	sse := yes
 endif
 
 ifeq ($(ARCH),x86-64-modern)
 	arch := x86_64
-	bits := 64
 	prefetch := yes
 	popcnt := yes
 	sse := yes
@@ -123,7 +123,6 @@ endif
 
 ifeq ($(ARCH),x86-64-bmi2)
 	arch := x86_64
-	bits := 64
 	prefetch := yes
 	popcnt := yes
 	sse := yes
@@ -141,7 +140,6 @@ endif
 
 ifeq ($(ARCH),ppc-64)
 	arch := ppc64
-	bits := 64
 	popcnt := yes
 	prefetch := yes
 endif
@@ -193,7 +191,7 @@ ifeq ($(COMP),mingw)
 		else
 			CXX:=i686-w64-mingw32-c++
 			ifneq ($(shell which i686-w64-mingw32-c++-posix),)
-				CXX := $(CXX)-posix
+				CXX:=$(CXX)-posix
 			endif
 		endif
 	else
@@ -420,7 +418,7 @@ help:
 build: config-sanity all
 
 profile-build: config-sanity objprofileclean \
-							profile-make-hd $(profile_make)
+				profile-make-hd $(profile_make)
 	@echo ; echo "Step 2/4. Running benchmark for pgo-build ..."
 	$(PGOBENCH) > /dev/null
 	@echo ; echo "Step 3/4. Building optimized executable ..."
