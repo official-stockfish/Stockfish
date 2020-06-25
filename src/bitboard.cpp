@@ -40,7 +40,7 @@ namespace {
   Bitboard RookTable[0x19000];  // To store rook attacks
   Bitboard BishopTable[0x1480]; // To store bishop attacks
 
-  void init_magics(Bitboard table[], Magic magics[], Direction directions[]);
+  void init_magics(PieceType pt, Bitboard table[], Magic magics[]);
 }
 
 
@@ -56,8 +56,9 @@ const std::string Bitboards::pretty(Bitboard b) {
       for (File f = FILE_A; f <= FILE_H; ++f)
           s += b & make_square(f, r) ? "| X " : "|   ";
 
-      s += "|\n+---+---+---+---+---+---+---+---+\n";
+      s += "| " + std::to_string(1 + r) + "\n+---+---+---+---+---+---+---+---+\n";
   }
+  s += "  a   b   c   d   e   f   g   h\n";
 
   return s;
 }
@@ -78,11 +79,8 @@ void Bitboards::init() {
       for (Square s2 = SQ_A1; s2 <= SQ_H8; ++s2)
           SquareDistance[s1][s2] = std::max(distance<File>(s1, s2), distance<Rank>(s1, s2));
 
-  Direction RookDirections[] = { NORTH, EAST, SOUTH, WEST };
-  Direction BishopDirections[] = { NORTH_EAST, SOUTH_EAST, SOUTH_WEST, NORTH_WEST };
-
-  init_magics(RookTable, RookMagics, RookDirections);
-  init_magics(BishopTable, BishopMagics, BishopDirections);
+  init_magics(ROOK, RookTable, RookMagics);
+  init_magics(BISHOP, BishopTable, BishopMagics);
 
   for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1)
   {
@@ -108,15 +106,17 @@ void Bitboards::init() {
 
 namespace {
 
-  Bitboard sliding_attack(Direction directions[], Square sq, Bitboard occupied) {
+  Bitboard sliding_attack(PieceType pt, Square sq, Bitboard occupied) {
 
     Bitboard attacks = 0;
+    Direction   RookDirections[4] = {NORTH, SOUTH, EAST, WEST};
+    Direction BishopDirections[4] = {NORTH_EAST, SOUTH_EAST, SOUTH_WEST, NORTH_WEST};
 
-    for (int i = 0; i < 4; ++i)
+    for(Direction d : (pt == ROOK ? RookDirections : BishopDirections))
     {
         Square s = sq;
-        while(safe_destination(s, directions[i]) && !(occupied & s))
-            attacks |= (s += directions[i]);
+        while(safe_destination(s, d) && !(occupied & s))
+            attacks |= (s += d);
     }
 
     return attacks;
@@ -128,7 +128,7 @@ namespace {
   // www.chessprogramming.org/Magic_Bitboards. In particular, here we use the so
   // called "fancy" approach.
 
-  void init_magics(Bitboard table[], Magic magics[], Direction directions[]) {
+  void init_magics(PieceType pt, Bitboard table[], Magic magics[]) {
 
     // Optimal PRNG seeds to pick the correct magics in the shortest time
     int seeds[][RANK_NB] = { { 8977, 44560, 54343, 38998,  5731, 95205, 104912, 17020 },
@@ -148,7 +148,7 @@ namespace {
         // the number of 1s of the mask. Hence we deduce the size of the shift to
         // apply to the 64 or 32 bits word to get the index.
         Magic& m = magics[s];
-        m.mask  = sliding_attack(directions, s, 0) & ~edges;
+        m.mask  = sliding_attack(pt, s, 0) & ~edges;
         m.shift = (Is64Bit ? 64 : 32) - popcount(m.mask);
 
         // Set the offset for the attacks table of the square. We have individual
@@ -160,7 +160,7 @@ namespace {
         b = size = 0;
         do {
             occupancy[size] = b;
-            reference[size] = sliding_attack(directions, s, b);
+            reference[size] = sliding_attack(pt, s, b);
 
             if (HasPext)
                 m.attacks[pext(b, m.mask)] = reference[size];

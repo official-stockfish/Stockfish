@@ -82,9 +82,8 @@ public:
   void resize(size_t mbSize);
   void clear();
 
-  // The 32 lowest order bits of the key are used to get the index of the cluster
   TTEntry* first_entry(const Key key) const {
-    return &table[(uint32_t(key) * uint64_t(clusterCount)) >> 32].entry[0];
+    return &table[mul_hi64(key, clusterCount)].entry[0];
   }
 
 private:

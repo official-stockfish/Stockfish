@@ -37,7 +37,7 @@ namespace Trace {
   enum Tracing { NO_TRACE, TRACE };
 
   enum Term { // The first 8 entries are reserved for PieceType
-    MATERIAL = 8, IMBALANCE, MOBILITY, THREAT, PASSED, SPACE, INITIATIVE, TOTAL, TERM_NB
+    MATERIAL = 8, IMBALANCE, MOBILITY, THREAT, PASSED, SPACE, WINNABLE, TOTAL, TERM_NB
   };
 
   Score scores[TERM_NB][COLOR_NB];
@@ -61,7 +61,7 @@ namespace Trace {
 
   std::ostream& operator<<(std::ostream& os, Term t) {
 
-    if (t == MATERIAL || t == IMBALANCE || t == INITIATIVE || t == TOTAL)
+    if (t == MATERIAL || t == IMBALANCE || t == WINNABLE || t == TOTAL)
         os << " ----  ----"    << " | " << " ----  ----";
     else
         os << scores[t][WHITE] << " | " << scores[t][BLACK];
@@ -145,16 +145,17 @@ namespace {
   constexpr Score ReachableOutpost    = S( 31, 22);
   constexpr Score PassedFile          = S( 11,  8);
   constexpr Score PawnlessFlank       = S( 17, 95);
+  constexpr Score QueenInfiltration   = S( -2, 14);
   constexpr Score RestrictedPiece     = S(  7,  7);
   constexpr Score RookOnKingRing      = S( 16,  0);
-  constexpr Score RookOnQueenFile     = S(  5,  9);
-  constexpr Score SliderOnQueen       = S( 59, 18);
+  constexpr Score RookOnQueenFile     = S(  6, 11);
+  constexpr Score SliderOnQueen       = S( 60, 18);
   constexpr Score ThreatByKing        = S( 24, 89);
   constexpr Score ThreatByPawnPush    = S( 48, 39);
   constexpr Score ThreatBySafePawn    = S(173, 94);
   constexpr Score TrappedRook         = S( 55, 13);
-  constexpr Score WeakQueen           = S( 51, 14);
-  constexpr Score WeakQueenProtection = S( 15,  0);
+  constexpr Score WeakQueen           = S( 56, 15);
+  constexpr Score WeakQueenProtection = S( 14,  0);
 
 #undef S
 
@@ -175,8 +176,7 @@ namespace {
     template<Color Us> Score threats() const;
     template<Color Us> Score passed() const;
     template<Color Us> Score space() const;
-    ScaleFactor scale_factor(Value eg) const;
-    Score initiative(Score score) const;
+    Value winnable(Score score) const;
 
     const Position& pos;
     Material::Entry* me;
@@ -279,7 +279,7 @@ namespace {
                          : attacks_bb<Pt>(s, pos.pieces());
 
         if (pos.blockers_for_king(Us) & s)
-            b &= LineBB[pos.square<KING>(Us)][s];
+            b &= line_bb(pos.square<KING>(Us), s);
 
         attackedBy2[Us] |= attackedBy[Us][ALL_PIECES] & b;
         attackedBy[Us][Pt] |= b;
@@ -376,6 +376,10 @@ namespace {
             Bitboard queenPinners;
             if (pos.slider_blockers(pos.pieces(Them, ROOK, BISHOP), s, queenPinners))
                 score -= WeakQueen;
+
+            // Bonus for queen on weak square in enemy camp
+            if (relative_rank(Us, s) > RANK_4 && (~pe->pawn_attacks_span(Them) & s))
+                score += QueenInfiltration;    
         }
     }
     if (T)
@@ -679,16 +683,15 @@ namespace {
   }
 
 
-  // Evaluation::space() computes the space evaluation for a given side. The
-  // space evaluation is a simple bonus based on the number of safe squares
-  // available for minor pieces on the central four files on ranks 2--4. Safe
-  // squares one, two or three squares behind a friendly pawn are counted
-  // twice. Finally, the space bonus is multiplied by a weight. The aim is to
-  // improve play on game opening.
+  // Evaluation::space() computes a space evaluation for a given side, aiming to improve game
+  // play in the opening. It is based on the number of safe squares on the 4 central files
+  // on ranks 2 to 4. Completely safe squares behind a friendly pawn are counted twice.
+  // Finally, the space bonus is multiplied by a weight which decreases according to occupancy.
 
   template<Tracing T> template<Color Us>
   Score Evaluation<T>::space() const {
 
+    // Early exit if, for example, both queens or 6 minor pieces have been exchanged
     if (pos.non_pawn_material() < SpaceThreshold)
         return SCORE_ZERO;
 
@@ -719,12 +722,12 @@ namespace {
   }
 
 
-  // Evaluation::initiative() computes the initiative correction value
-  // for the position. It is a second order bonus/malus based on the
+  // Evaluation::winnable() adjusts the mg and eg score components based on the
   // known attacking/defending status of the players.
+  // A single value is derived from the mg and eg values and returned.
 
   template<Tracing T>
-  Score Evaluation<T>::initiative(Score score) const {
+  Value Evaluation<T>::winnable(Score score) const {
 
     int outflanking =  distance<File>(pos.square<KING>(WHITE), pos.square<KING>(BLACK))
                      - distance<Rank>(pos.square<KING>(WHITE), pos.square<KING>(BLACK));
@@ -746,7 +749,6 @@ namespace {
                     + 24 * infiltration
                     + 51 * !pos.non_pawn_material()
                     - 43 * almostUnwinnable
-                    -  2 * pos.rule50_count()
                     -110 ;
 
     Value mg = mg_value(score);
@@ -758,17 +760,10 @@ namespace {
     int u = ((mg > 0) - (mg < 0)) * Utility::clamp(complexity + 50, -abs(mg), 0);
     int v = ((eg > 0) - (eg < 0)) * std::max(complexity, -abs(eg));
 
-    if (T)
-        Trace::add(INITIATIVE, make_score(u, v));
+    mg += u;
+    eg += v;
 
-    return make_score(u, v);
-  }
-
-
-  // Evaluation::scale_factor() computes the scale factor for the winning side
-
-  template<Tracing T>
-  ScaleFactor Evaluation<T>::scale_factor(Value eg) const {
+    // Compute the scale factor for the winning side
 
     Color strongSide = eg > VALUE_DRAW ? WHITE : BLACK;
     int sf = me->scale_factor(pos, strongSide);
@@ -788,7 +783,18 @@ namespace {
             sf = std::min(sf, 36 + 7 * pos.count<PAWN>(strongSide));
     }
 
-    return ScaleFactor(sf);
+    // Interpolate between the middlegame and (scaled by 'sf') endgame score
+    v =  mg * int(me->game_phase())
+       + eg * int(PHASE_MIDGAME - me->game_phase()) * ScaleFactor(sf) / SCALE_FACTOR_NORMAL;
+    v /= PHASE_MIDGAME;
+
+    if (T)
+    {
+        Trace::add(WINNABLE, make_score(u, eg * ScaleFactor(sf) / SCALE_FACTOR_NORMAL - eg_value(score)));
+        Trace::add(TOTAL, make_score(mg, eg * ScaleFactor(sf) / SCALE_FACTOR_NORMAL));
+    }
+
+    return Value(v);
   }
 
 
@@ -843,14 +849,8 @@ namespace {
             + passed< WHITE>() - passed< BLACK>()
             + space<  WHITE>() - space<  BLACK>();
 
-    score += initiative(score);
-
-    // Interpolate between a middlegame and a (scaled by 'sf') endgame score
-    ScaleFactor sf = scale_factor(eg_value(score));
-    v =  mg_value(score) * int(me->game_phase())
-       + eg_value(score) * int(PHASE_MIDGAME - me->game_phase()) * sf / SCALE_FACTOR_NORMAL;
-
-    v /= PHASE_MIDGAME;
+    // Derive single value from mg and eg parts of score
+    v = winnable(score);
 
     // In case of tracing add all remaining individual evaluation terms
     if (T)
@@ -859,11 +859,18 @@ namespace {
         Trace::add(IMBALANCE, me->imbalance());
         Trace::add(PAWN, pe->pawn_score(WHITE), pe->pawn_score(BLACK));
         Trace::add(MOBILITY, mobility[WHITE], mobility[BLACK]);
-        Trace::add(TOTAL, score);
     }
 
+    // Evaluation grain
+    v = (v / 16) * 16;
+
     // Side to move point of view
-    return (pos.side_to_move() == WHITE ? v : -v) + Tempo;
+    v = (pos.side_to_move() == WHITE ? v : -v) + Tempo;
+
+    // Damp down the evaluation linearly when shuffling
+    v = v * (100 - pos.rule50_count()) / 100;
+
+    return v;
   }
 
 } // namespace
@@ -913,11 +920,11 @@ std::string Eval::trace(const Position& pos) {
      << "     Threats | " << Term(THREAT)
      << "      Passed | " << Term(PASSED)
      << "       Space | " << Term(SPACE)
-     << "  Initiative | " << Term(INITIATIVE)
+     << "    Winnable | " << Term(WINNABLE)
      << " ------------+-------------+-------------+------------\n"
      << "       Total | " << Term(TOTAL);
 
-  ss << "\nTotal evaluation: " << to_cp(v) << " (white side)\n";
+  ss << "\nFinal evaluation: " << to_cp(v) << " (white side)\n";
 
   return ss.str();
 }
@@ -976,7 +983,7 @@ bool EvalList::is_valid(const Position& pos)
     for (Piece pc = NO_PIECE; pc < PIECE_NB; ++pc)
     {
       auto pt = type_of(pc);
-      if (pt == NO_PIECE || pt == 7) // ‘¶Ý‚µ‚È‚¢‹î
+      if (pt == NO_PIECE_TYPE || pt == 7) // ‘¶Ý‚µ‚È‚¢‹î
         continue;
 
       // ‹îpc‚ÌBonaPiece‚ÌŠJŽn”Ô†

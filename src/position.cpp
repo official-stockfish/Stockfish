@@ -64,10 +64,11 @@ std::ostream& operator<<(std::ostream& os, const Position& pos) {
       for (File f = FILE_A; f <= FILE_H; ++f)
           os << " | " << PieceToChar[pos.piece_on(make_square(f, r))];
 
-      os << " |\n +---+---+---+---+---+---+---+---+\n";
+      os << " | " << (1 + r) << "\n +---+---+---+---+---+---+---+---+\n";
   }
 
-  os << "\nFen: " << pos.fen() << "\nKey: " << std::hex << std::uppercase
+  os << "   a   b   c   d   e   f   g   h\n"
+     << "\nFen: " << pos.fen() << "\nKey: " << std::hex << std::uppercase
      << std::setfill('0') << std::setw(16) << pos.key()
      << std::setfill(' ') << std::dec << "\nCheckers: ";
 
