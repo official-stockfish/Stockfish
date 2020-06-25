@@ -60,8 +60,8 @@ private:
 /// A TranspositionTable is an array of Cluster, of size clusterCount. Each
 /// cluster consists of ClusterSize number of TTEntry. Each non-empty TTEntry
 /// contains information on exactly one position. The size of a Cluster should
-/// divide the size of a cache line for best performance,
-/// as the cacheline is prefetched when possible.
+/// divide the size of a cache line for best performance, as the cacheline is
+/// prefetched when possible.
 
 class TranspositionTable {
 
