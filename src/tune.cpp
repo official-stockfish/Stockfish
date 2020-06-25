@@ -70,7 +70,7 @@ static void make_option(const string& n, int v, const SetRange& r) {
   Options[n] << UCI::Option(v, r(v).first, r(v).second, on_tune);
   LastOption = &Options[n];
 
-  // Print formatted parameters, ready to be copy-pasted in fishtest
+  // Print formatted parameters, ready to be copy-pasted in Fishtest
   std::cout << n << ","
             << v << ","
             << r(v).first << "," << r(v).second << ","

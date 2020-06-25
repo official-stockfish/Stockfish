@@ -56,7 +56,7 @@ endif
 ### Section 2. High-level Configuration
 ### ==========================================================================
 #
-# flag                --- Comp switch --- Description
+# flag                --- Comp switch      --- Description
 # ----------------------------------------------------------------------------
 #
 # debug = yes/no      --- -DNDEBUG         --- Enable/Disable debug mode
@@ -76,6 +76,7 @@ endif
 # at the end of the line for flag values.
 
 ### 2.1. General and architecture defaults
+<<<<<<< HEAD
 optimize := yes
 debug := no
 sanitize := no
@@ -84,10 +85,20 @@ prefetch := no
 popcnt := no
 sse := no
 pext := no
+=======
+optimize = yes
+debug = no
+sanitize = no
+bits = 64
+prefetch = no
+popcnt = no
+sse = no
+pext = no
+>>>>>>> upstream/master
 
 ### 2.2 Architecture specific
-
 ifeq ($(ARCH),general-32)
+<<<<<<< HEAD
 	arch := any
 	bits := 32
 endif
@@ -142,16 +153,83 @@ ifeq ($(ARCH),ppc-64)
 	arch := ppc64
 	popcnt := yes
 	prefetch := yes
+=======
+	arch = any
+	bits = 32
 endif
 
+ifeq ($(ARCH),x86-32-old)
+	arch = i386
+	bits = 32
+endif
+
+ifeq ($(ARCH),x86-32)
+	arch = i386
+	bits = 32
+	prefetch = yes
+	sse = yes
+endif
+
+ifeq ($(ARCH),general-64)
+	arch = any
+endif
+
+ifeq ($(ARCH),x86-64)
+	arch = x86_64
+	prefetch = yes
+	sse = yes
+endif
+
+ifeq ($(ARCH),x86-64-modern)
+	arch = x86_64
+	prefetch = yes
+	popcnt = yes
+	sse = yes
+endif
+
+ifeq ($(ARCH),x86-64-bmi2)
+	arch = x86_64
+	prefetch = yes
+	popcnt = yes
+	sse = yes
+	pext = yes
+endif
+
+ifeq ($(ARCH),armv7)
+	arch = armv7
+	prefetch = yes
+	bits = 32
+endif
+
+ifeq ($(ARCH),armv8)
+	arch = armv8-a
+	bits = 64
+	prefetch = yes
+endif
+
+ifeq ($(ARCH),ppc-32)
+	arch = ppc
+	bits = 32
+endif
+
+ifeq ($(ARCH),ppc-64)
+	arch = ppc64
+	popcnt = yes
+	prefetch = yes
+>>>>>>> upstream/master
+endif
 
 ### ==========================================================================
-### Section 3. Low-level configuration
+### Section 3. Low-level Configuration
 ### ==========================================================================
 
 ### 3.1 Selecting compiler (default = gcc)
+<<<<<<< HEAD
 F :=
 CXXFLAGS += -Wall -Wcast-qual -fno-exceptions -std=c++11 $(EXTRACXXFLAGS) $(F)
+=======
+CXXFLAGS += -Wall -Wcast-qual -fno-exceptions -std=c++11 $(EXTRACXXFLAGS)
+>>>>>>> upstream/master
 DEPENDFLAGS += -std=c++11
 LDFLAGS += $(EXTRALDFLAGS)
 
@@ -164,7 +242,7 @@ ifeq ($(COMP),gcc)
 	CXX:=g++
 	CXXFLAGS += -pedantic -Wextra -Wshadow
 
-	ifeq ($(ARCH),armv7)
+	ifeq ($(ARCH),$(filter $(ARCH),armv7 armv8))
 		ifeq ($(OS),Android)
 			CXXFLAGS += -m$(bits)
 			LDFLAGS += -m$(bits)
@@ -219,7 +297,7 @@ ifeq ($(COMP),clang)
 	endif
 	endif
 
-	ifeq ($(ARCH),armv7)
+	ifeq ($(ARCH),$(filter $(ARCH),armv7 armv8))
 		ifeq ($(OS),Android)
 			CXXFLAGS += -m$(bits)
 			LDFLAGS += -m$(bits)
@@ -339,6 +417,7 @@ endif
 ### needs access to the optimization flags.
 ifeq ($(optimize),yes)
 ifeq ($(debug), no)
+<<<<<<< HEAD
 	ifneq (,$(filter $(comp),gcc clang))
 		CXXFLAGS += -flto
 		LDFLAGS += $(CXXFLAGS)
@@ -348,6 +427,11 @@ ifeq ($(debug), no)
 			CXXFLAGS += -flto
 			LDFLAGS += $(CXXFLAGS)
 		endif
+=======
+	ifeq ($(comp),$(filter $(comp),gcc clang mingw))
+		CXXFLAGS += -flto
+		LDFLAGS += $(CXXFLAGS)
+>>>>>>> upstream/master
 	endif
 endif
 endif
@@ -359,10 +443,13 @@ ifeq ($(OS), Android)
 	LDFLAGS += -fPIE -pie
 endif
 
+<<<<<<< HEAD
 DEP := .depend
 
+=======
+>>>>>>> upstream/master
 ### ==========================================================================
-### Section 4. Public targets
+### Section 4. Public Targets
 ### ==========================================================================
 
 help:
@@ -389,6 +476,7 @@ help:
 	@echo "ppc-64                  > PPC 64-bit"
 	@echo "ppc-32                  > PPC 32-bit"
 	@echo "armv7                   > ARMv7 32-bit"
+	@echo "armv8                   > ARMv8 64-bit"
 	@echo "general-64              > unspecified 64-bit"
 	@echo "general-32              > unspecified 32-bit"
 	@echo ""
@@ -451,7 +539,7 @@ objprofileclean:
 	@rm -f stockfish.profdata *.profraw
 
 ### ==========================================================================
-### Section 5. Private targets
+### Section 5. Private Targets
 ### ==========================================================================
 
 all: $(EXE)
@@ -483,7 +571,8 @@ config-sanity:
 	@test "$(sanitize)" = "undefined" || test "$(sanitize)" = "thread" || test "$(sanitize)" = "address" || test "$(sanitize)" = "no"
 	@test "$(optimize)" = "yes" || test "$(optimize)" = "no"
 	@test "$(arch)" = "any" || test "$(arch)" = "x86_64" || test "$(arch)" = "i386" || \
-	 test "$(arch)" = "ppc64" || test "$(arch)" = "ppc" || test "$(arch)" = "armv7"
+	 test "$(arch)" = "ppc64" || test "$(arch)" = "ppc" || \
+	 test "$(arch)" = "armv7" || test "$(arch)" = "armv8-a"
 	@test "$(bits)" = "32" || test "$(bits)" = "64"
 	@test "$(prefetch)" = "yes" || test "$(prefetch)" = "no"
 	@test "$(popcnt)" = "yes" || test "$(popcnt)" = "no"
@@ -505,6 +594,7 @@ clang-profile-use: EXTRACXXFLAGS := -fprofile-instr-use=stockfish.profdata
 clang-profile-use: clang-profile-d all
 clang-profile-d:
 	llvm-profdata merge -output=stockfish.profdata *.profraw
+<<<<<<< HEAD
 
 gcc-profile-make: EXTRALDFLAGS := -lgcov
 gcc-profile-make: EXTRACXXFLAGS := -fprofile-generate
@@ -528,3 +618,37 @@ $(DEP):
 ifneq (,$(filter $(MAKECMDGOALS),build profile-build))
 include $(DEP)
 endif
+=======
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
+	EXTRACXXFLAGS='-fprofile-instr-use=stockfish.profdata' \
+	EXTRALDFLAGS='-fprofile-use ' \
+	all
+
+gcc-profile-make:
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
+	EXTRACXXFLAGS='-fprofile-generate' \
+	EXTRALDFLAGS='-lgcov' \
+	all
+
+gcc-profile-use:
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
+	EXTRACXXFLAGS='-fprofile-use -fno-peel-loops -fno-tracer' \
+	EXTRALDFLAGS='-lgcov' \
+	all
+
+icc-profile-make:
+	@mkdir -p profdir
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
+	EXTRACXXFLAGS='-prof-gen=srcpos -prof_dir ./profdir' \
+	all
+
+icc-profile-use:
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
+	EXTRACXXFLAGS='-prof_use -prof_dir ./profdir' \
+	all
+
+.depend:
+	-@$(CXX) $(DEPENDFLAGS) -MM $(SRCS) > $@ 2> /dev/null
+
+-include .depend
+>>>>>>> upstream/master
