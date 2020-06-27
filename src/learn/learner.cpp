@@ -1027,9 +1027,24 @@ double sigmoid(double x)
 // 評価値を勝率[0,1]に変換する関数
 double winning_percentage(double value)
 {
-	// この600.0という定数は、ponanza定数。(ponanzaがそうしているらしいという意味で)
-	// ゲームの進行度に合わせたものにしたほうがいいかも知れないけども、その効果のほどは不明。
-	return sigmoid(value / 600.0);
+	// In Maxima,
+	// load("C:/maxima-5.44.0/cform.lisp");
+	// PawnValueEg = 206;
+	// cform(1.0 / (1.0 + 10.0 ^ (-value / PawnValueEg / 4.0)));
+	constexpr double PawnValue = PawnValueEg;
+	return 1.0 * pow(pow(10.0, -0.25 * pow(PawnValue, -1) * value) + 1.0, -1);
+}
+
+double delta_winning_percentage(double value)
+{
+	// In Maxima,
+	// load("C:/maxima-5.44.0/cform.lisp");
+	// PawnValueEg = 206;
+	// cform(diff(1.0/(1.0+10.0^(-value/PawnValue/4.0)),value));
+	constexpr double PawnValue = PawnValueEg;
+	return
+		0.5756462732485115 * pow(PawnValue, -1) * pow(10.0, -0.25 * pow(PawnValue, -1) * value) *
+		pow(pow(10.0, -0.25 * pow(PawnValue, -1) * value) + 1.0, -2);
 }
 
 // 普通のシグモイド関数の導関数。
@@ -1127,8 +1142,9 @@ double calc_grad(Value deep, Value shallow , const PackedSfenValue& psv)
 	// elmo(WCSC27)方式
 	// 実際のゲームの勝敗で補正する。
 
-	const double eval_winrate = winning_percentage(shallow);
-	const double teacher_winrate = winning_percentage(deep);
+	const double q = winning_percentage(shallow);
+	const double p = winning_percentage(deep);
+	const double dq = delta_winning_percentage(shallow);
 
 	// 期待勝率を勝っていれば1、負けていれば 0、引き分けなら0.5として補正項として用いる。
 	// game_result = 1,0,-1なので1足して2で割る。
@@ -1139,7 +1155,9 @@ double calc_grad(Value deep, Value shallow , const PackedSfenValue& psv)
 
 	// 実際の勝率を補正項として使っている。
 	// これがelmo(WCSC27)のアイデアで、現代のオーパーツ。
-	const double grad = (1 - lambda) * (eval_winrate - t) + lambda * (eval_winrate - teacher_winrate);
+	const double pp = (q - p) * dq / q / (1.0 - q);
+	const double tt = (q - t) * dq / q / (1.0 - q);
+	const double grad = lambda * pp + (1.0 - lambda) * tt;
 
 	return grad;
 }
