@@ -455,6 +455,10 @@ constexpr bool is_ok(Move m) {
   return from_sq(m) != to_sq(m); // Catch MOVE_NULL and MOVE_NONE
 }
 
+constexpr Key make_key(uint64_t seed) {
+  return seed * 6364136223846793005ULL + 1442695040888963407ULL;
+}
+
 #endif // #ifndef TYPES_H_INCLUDED
 
 #include "tune.h" // Global visibility to tuning setup
