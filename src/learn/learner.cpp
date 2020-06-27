@@ -17,6 +17,7 @@
 
 #include <filesystem>
 #include <random>
+#include <regex>
 
 #include "learn.h"
 #include "multi_think.h"
@@ -110,6 +111,11 @@ namespace Learner
 
 // 局面の配列 : PSVector は packed sfen vector の略。
 typedef std::vector<PackedSfenValue> PSVector;
+
+bool use_draw_in_training_data_generation = false;
+bool use_draw_in_training = false;
+bool use_draw_in_validation = false;
+bool use_hash_in_training = true;
 
 // -----------------------------------
 //    局面のファイルへの書き出し
@@ -495,25 +501,32 @@ void MultiThinkGenSfen::thread_worker(size_t thread_id)
 			// 長手数に達したのか
 			if (ply >= MAX_PLY2)
 			{
-#if defined (LEARN_GENSFEN_USE_DRAW_RESULT)
-				// 勝敗 = 引き分けとして書き出す。
-				// こうしたほうが自分が入玉したときに、相手の入玉を許しにくい(かも)
-				flush_psv(0);
-#endif
+				if (use_draw_in_training_data_generation) {
+					// 勝敗 = 引き分けとして書き出す。
+					// こうしたほうが自分が入玉したときに、相手の入玉を許しにくい(かも)
+					flush_psv(0);
+				}
 				break;
 			}
 
       if (pos.is_draw(ply)) {
-        // Do not write if draw.
-        break;
+		  if (use_draw_in_training_data_generation) {
+			  // Write if draw.
+			  flush_psv(0);
+		  }
+          break;
       }
 
 			// 全駒されて詰んでいたりしないか？
-			if (MoveList<LEGAL>(pos).size() == 0)
+			if (MoveList<LEGAL>(pos).size() == 0) // Can be mate or stalemate
 			{
         // (この局面の一つ前の局面までは書き出す)
         // Write the positions other than this position if checkmated.
-        flush_psv(-1);
+                if (pos.checkers()) // Mate
+                    flush_psv(-1);
+				else if (use_draw_in_training_data_generation) {
+					flush_psv(0); // Stalemate
+				}
 				break;
 			}
 
@@ -576,10 +589,10 @@ void MultiThinkGenSfen::thread_worker(size_t thread_id)
 				// 各千日手に応じた処理。
 
         if (pos.is_draw(0)) {
-#if defined	(LEARN_GENSFEN_USE_DRAW_RESULT)
-          // 引き分けを書き出すとき
-          flush_psv(is_win);
-#endif
+			if (use_draw_in_training_data_generation) {
+				// Write if draw.
+				flush_psv(0);
+			}
           break;
         }
 
@@ -1015,9 +1028,24 @@ double sigmoid(double x)
 // 評価値を勝率[0,1]に変換する関数
 double winning_percentage(double value)
 {
-	// この600.0という定数は、ponanza定数。(ponanzaがそうしているらしいという意味で)
-	// ゲームの進行度に合わせたものにしたほうがいいかも知れないけども、その効果のほどは不明。
-	return sigmoid(value / 600.0);
+	// In Maxima,
+	// load("C:/maxima-5.44.0/cform.lisp");
+	// PawnValueEg = 206;
+	// cform(1.0 / (1.0 + 10.0 ^ (-value / PawnValueEg / 4.0)));
+	constexpr double PawnValue = PawnValueEg;
+	return 1.0 * pow(pow(10.0, -0.25 * pow(PawnValue, -1) * value) + 1.0, -1);
+}
+
+double delta_winning_percentage(double value)
+{
+	// In Maxima,
+	// load("C:/maxima-5.44.0/cform.lisp");
+	// PawnValueEg = 206;
+	// cform(diff(1.0/(1.0+10.0^(-value/PawnValue/4.0)),value));
+	constexpr double PawnValue = PawnValueEg;
+	return
+		0.5756462732485115 * pow(PawnValue, -1) * pow(10.0, -0.25 * pow(PawnValue, -1) * value) *
+		pow(pow(10.0, -0.25 * pow(PawnValue, -1) * value) + 1.0, -2);
 }
 
 // 普通のシグモイド関数の導関数。
@@ -1115,8 +1143,9 @@ double calc_grad(Value deep, Value shallow , const PackedSfenValue& psv)
 	// elmo(WCSC27)方式
 	// 実際のゲームの勝敗で補正する。
 
-	const double eval_winrate = winning_percentage(shallow);
-	const double teacher_winrate = winning_percentage(deep);
+	const double q = winning_percentage(shallow);
+	const double p = winning_percentage(deep);
+	const double dq = delta_winning_percentage(shallow);
 
 	// 期待勝率を勝っていれば1、負けていれば 0、引き分けなら0.5として補正項として用いる。
 	// game_result = 1,0,-1なので1足して2で割る。
@@ -1127,7 +1156,9 @@ double calc_grad(Value deep, Value shallow , const PackedSfenValue& psv)
 
 	// 実際の勝率を補正項として使っている。
 	// これがelmo(WCSC27)のアイデアで、現代のオーパーツ。
-	const double grad = (1 - lambda) * (eval_winrate - t) + lambda * (eval_winrate - teacher_winrate);
+	const double pp = (q - p) * dq / q / (1.0 - q);
+	const double tt = (q - t) * dq / q / (1.0 - q);
+	const double grad = lambda * pp + (1.0 - lambda) * tt;
 
 	return grad;
 }
@@ -1240,11 +1271,8 @@ struct SfenReader
 			{
 				if (eval_limit < abs(p.score))
 					continue;
-#if !defined (LEARN_GENSFEN_USE_DRAW_RESULT)
-				if (p.game_result == 0)
+				if (!use_draw_in_validation && p.game_result == 0)
 					continue;
-#endif
-
 				sfen_for_mse.push_back(p);
 			} else {
 				break;
@@ -1926,10 +1954,10 @@ void LearnerThink::thread_worker(size_t thread_id)
 		if (eval_limit < abs(ps.score))
 			goto RetryRead;
 
-#if !defined (LEARN_GENSFEN_USE_DRAW_RESULT)
-		if (ps.game_result == 0)
+
+		if (!use_draw_in_training && ps.game_result == 0)
 			goto RetryRead;
-#endif
+
 
 		// 序盤局面に関する読み飛ばし
 		if (ps.gamePly < prng.rand(reduction_gameply))
@@ -1953,13 +1981,13 @@ void LearnerThink::thread_worker(size_t thread_id)
 		{
 			auto key = pos.key();
 			// rmseの計算用に使っている局面なら除外する。
-			if (sr.is_for_rmse(key))
+			if (sr.is_for_rmse(key) && use_hash_in_training)
 				goto RetryRead;
 
 			// 直近で用いた局面も除外する。
 			auto hash_index = size_t(key & (sr.READ_SFEN_HASH_SIZE - 1));
 			auto key2 = sr.hash[hash_index];
-			if (key == key2)
+			if (key == key2 && use_hash_in_training)
 				goto RetryRead;
 			sr.hash[hash_index] = key; // 今回のkeyに入れ替えておく。
 		}
@@ -2408,30 +2436,36 @@ void shuffle_files_on_memory(const vector<string>& filenames,const string output
 	std::cout << "..shuffle_on_memory done." << std::endl;
 }
 
-void convert_bin(const vector<string>& filenames , const string& output_file_name)
+void convert_bin(const vector<string>& filenames, const string& output_file_name, const int ply_minimum, const int ply_maximum, const int interpolate_eval)
 {
 	std::fstream fs;
+	uint64_t data_size=0;
+	uint64_t filtered_size = 0;
 	auto th = Threads.main();
 	auto &tpos = th->rootPos;
 	// plain形式の雑巾をやねうら王用のpackedsfenvalueに変換する
 	fs.open(output_file_name, ios::app | ios::binary);
-
+	StateListPtr states;
 	for (auto filename : filenames) {
 		std::cout << "convert " << filename << " ... ";
 		std::string line;
 		ifstream ifs;
 		ifs.open(filename);
 		PackedSfenValue p;
+		data_size = 0;
+		filtered_size = 0;
 		p.gamePly = 1; // apery形式では含まれない。一応初期化するべし
+		bool ignore_flag = false;
+
 		while (std::getline(ifs, line)) {
 			std::stringstream ss(line);
 			std::string token;
 			std::string value;
 			ss >> token;
-			if (token == "sfen") {
-				StateInfo si;
-				tpos.set(line.substr(5), false, &si, Threads.main());
-				tpos.sfen_pack(p.sfen);
+			if (token == "fen") {
+			  states = StateListPtr(new std::deque<StateInfo>(1)); // Drop old and create a new one
+			  tpos.set(line.substr(4), false, &states->back(), Threads.main());
+			  tpos.sfen_pack(p.sfen);
 			}
 			else if (token == "move") {
 				ss >> value;
@@ -2443,29 +2477,232 @@ void convert_bin(const vector<string>& filenames , const string& output_file_nam
 			else if (token == "ply") {
 				int temp;
 				ss >> temp;
+				if(temp < ply_minimum || temp > ply_maximum){
+				  ignore_flag = true;
+				}
 				p.gamePly = uint16_t(temp); // 此処のキャストいらない？
+				if (interpolate_eval != 0){
+				  p.score = min(3000, interpolate_eval * temp);
+				}
 			}
 			else if (token == "result") {
 				int temp;
 				ss >> temp;
 				p.game_result = int8_t(temp); // 此処のキャストいらない？
+				if (interpolate_eval){
+				  p.score = p.score * p.game_result;
+				}
 			}
 			else if (token == "e") {
+			  if(!ignore_flag){
 				fs.write((char*)&p, sizeof(PackedSfenValue));
+				data_size+=1;
 				// debug
-				/*
-				std::cout<<tpos<<std::endl;
-				std::cout<<to_usi_string(Move(p.move))<<","<<p.score<<","<<int(p.gamePly)<<","<<int(p.game_result)<<std::endl;
-				*/
+				// std::cout<<tpos<<std::endl;
+				// std::cout<<p.score<<","<<int(p.gamePly)<<","<<int(p.game_result)<<std::endl;
+			  }else{
+			    ignore_flag = false;
+			    filtered_size += 1;
+			  }
+				
 			}
 		}
-		std::cout << "done" << std::endl;
+		std::cout << "done" << data_size <<" parsed " << filtered_size<<" is filtered"<< std::endl;
 		ifs.close();
 	}
 	std::cout << "all done" << std::endl;
 	fs.close();
 }
-  
+
+static inline void ltrim(std::string &s) {
+	s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](int ch) {
+		return !std::isspace(ch);
+	}));
+}
+
+static inline void rtrim(std::string &s) {
+	s.erase(std::find_if(s.rbegin(), s.rend(), [](int ch) {
+		return !std::isspace(ch);
+	}).base(), s.end());
+}
+
+static inline void trim(std::string &s) {
+	ltrim(s);
+	rtrim(s);
+}
+
+int parse_game_result_from_pgn_extract(std::string result) {
+	// White Win
+	if (result == "\"1-0\"") {
+		return 1;
+	}
+	// Black Win
+	else if (result == "\"0-1\"") {
+		return -1;
+	}
+	// Draw
+	else {
+		return 0;
+	}
+}
+
+// 0.25 -->  25
+// #-4  --> -mate_in(4)
+// #3   -->  mate_in(3)
+Value parse_score_from_pgn_extract(std::string eval) {
+	if (eval.substr(0, 1) == "#") {
+		if (eval.substr(1, 1) == "-") {
+			return -mate_in(stoi(eval.substr(2, eval.length() - 2)));
+		}
+		else {
+			return mate_in(stoi(eval.substr(1, eval.length() - 1)));
+		}
+	}
+	else {
+		return Value(stod(eval) * 100.0f);
+	}
+}
+
+// pgn-extract形式の教師をやねうら王用のPackedSfenValueに変換する
+void convert_bin_from_pgn_extract(const vector<string>& filenames, const string& output_file_name)
+{
+	auto th = Threads.main();
+	auto &pos = th->rootPos;
+
+	std::fstream ofs;
+	ofs.open(output_file_name, ios::out | ios::binary);
+
+	int game_count = 0;
+	int fen_count = 0;
+
+	for (auto filename : filenames) {
+		std::cout << now_string() << " convert " << filename << std::endl;
+		ifstream ifs;
+		ifs.open(filename);
+
+		int game_result = 0;
+
+		std::string line;
+		while (std::getline(ifs, line)) {
+
+			if (line.empty()) {
+				continue;
+			}
+
+			else if (line.substr(0, 1) == "[") {
+				std::regex pattern_result(R"(\[Result (.+?)\])");
+				std::smatch match;
+
+				// example: [Result "1-0"]
+				if (std::regex_search(line, match, pattern_result)) {
+					game_result = parse_game_result_from_pgn_extract(match.str(1));
+					//std::cout << "game_result=" << game_result << std::endl;
+
+					game_count++;
+					if (game_count % 10000 == 0) {
+						std::cout << now_string() << " game_count=" << game_count << ", fen_count=" << fen_count << std::endl;
+					}
+				}
+
+				continue;
+			}
+
+			else {
+				int gamePly = 0;
+
+				PackedSfenValue psv;
+				memset((char*)&psv, 0, sizeof(PackedSfenValue));
+
+				auto itr = line.cbegin();
+
+				while (true) {
+					gamePly++;
+
+					std::regex pattern_bracket(R"(\{(.+?)\})");
+					std::regex pattern_eval(R"(\[\%eval (.+?)\])");
+					std::regex pattern_move(R"((.+?)\{)");
+					std::smatch match;
+
+					// example: { [%eval 0.25] [%clk 0:10:00] }
+					if (!std::regex_search(itr, line.cend(), match, pattern_bracket)) {
+						break;
+					}
+
+					itr += match.position(0) + match.length(0);
+					std::string str_eval_clk = match.str(1);
+					trim(str_eval_clk);
+					//std::cout << "str_eval_clk="<< str_eval_clk << std::endl;
+
+					// example: [%eval 0.25]
+					// example: [%eval #-4]
+					// example: [%eval #3]
+					if (!std::regex_search(str_eval_clk, match, pattern_eval)) {
+						continue;
+					}
+					else {
+						std::string str_eval = match.str(1);
+						trim(str_eval);
+						psv.score = parse_score_from_pgn_extract(str_eval);
+						//std::cout << "psv.score=" << psv.score << std::endl;
+					}
+
+					// example: { rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq d3 0 1 }
+					if (!std::regex_search(itr, line.cend(), match, pattern_bracket)) {
+						break;
+					}
+
+					itr += match.position(0) + match.length(0);
+					std::string str_fen = match.str(1);
+					trim(str_fen);
+					//std::cout << "str_fen=" << str_fen << std::endl;
+
+					StateInfo si;
+					pos.set(str_fen, false, &si, th);
+					pos.sfen_pack(psv.sfen);
+
+					// example: d7d5 {
+					if (!std::regex_search(itr, line.cend(), match, pattern_move)) {
+						break;
+					}
+
+					itr += match.position(0) + match.length(0) - 1;
+					std::string str_move = match.str(1);
+					trim(str_move);
+					//std::cout << "str_move=" << str_move << std::endl;
+					psv.move = UCI::to_move(pos, str_move);
+
+					//
+					psv.gamePly = gamePly;
+					psv.game_result = game_result;
+
+					if (pos.side_to_move() == BLACK) {
+						psv.score *= -1;
+						psv.game_result *= -1;
+					}
+
+					//std::cout << "write: "
+					//		  << "score=" << psv.score
+					//		  << ", move=" << psv.move
+					//		  << ", gamePly=" << psv.gamePly
+					//		  << ", game_result=" << (int)psv.game_result
+					//		  << std::endl;
+
+					ofs.write((char*)&psv, sizeof(PackedSfenValue));
+					memset((char*)&psv, 0, sizeof(PackedSfenValue));
+
+					fen_count++;
+				}
+
+				game_result = 0;
+			}
+		}
+	}
+
+	std::cout << now_string() << " game_count=" << game_count << ", fen_count=" << fen_count << std::endl;
+	std::cout << now_string() << " all done" << std::endl;
+	ofs.close();
+}
+
 //void convert_plain(const vector<string>& filenames , const string& output_file_name)
 //{
 //	Position tpos;
@@ -2549,6 +2786,11 @@ void learn(Position&, istringstream& is)
 	bool use_convert_plain = false;
 	// plain形式の教師をやねうら王のbinに変換する
 	bool use_convert_bin = false;
+	int ply_minimum = 0;
+	int ply_maximum = 114514;
+	bool interpolate_eval = 0;
+	// pgn-extract形式の教師をやねうら王のbinに変換する
+	bool use_convert_bin_from_pgn_extract = false;
 	// それらのときに書き出すファイル名(デフォルトでは"shuffled_sfen.bin")
 	string output_file_name = "shuffled_sfen.bin";
 
@@ -2628,7 +2870,10 @@ void learn(Position&, istringstream& is)
 		else if (option == "eta3")       is >> eta3;
 		else if (option == "eta1_epoch") is >> eta1_epoch;
 		else if (option == "eta2_epoch") is >> eta2_epoch;
-
+		else if (option == "use_draw_in_training_data_generation") is >> use_draw_in_training_data_generation;
+		else if (option == "use_draw_in_training") is >> use_draw_in_training;
+		else if (option == "use_draw_in_validation") is >> use_draw_in_validation;
+		else if (option == "use_hash_in_training") is >> use_hash_in_training;
 		// 割引率
 		else if (option == "discount_rate") is >> discount_rate;
 
@@ -2664,7 +2909,7 @@ void learn(Position&, istringstream& is)
 		else if (option == "eval_limit") is >> eval_limit;
 		else if (option == "save_only_once") save_only_once = true;
 		else if (option == "no_shuffle") no_shuffle = true;
-
+		
 #if defined(EVAL_NNUE)
 		else if (option == "nn_batch_size") is >> nn_batch_size;
 		else if (option == "newbob_decay") is >> newbob_decay;
@@ -2679,6 +2924,8 @@ void learn(Position&, istringstream& is)
 		// 雑巾のconvert関連
 		else if (option == "convert_plain") use_convert_plain = true;
 		else if (option == "convert_bin") use_convert_bin = true;
+		else if (option == "interpolate_eval") is >> interpolate_eval;
+		else if (option == "convert_bin_from_pgn-extract") use_convert_bin_from_pgn_extract = true;
 		// さもなくば、それはファイル名である。
 		else
 			filenames.push_back(option);
@@ -2788,9 +3035,16 @@ void learn(Position&, istringstream& is)
 	{
 	  	is_ready(true);
 		cout << "convert_bin.." << endl;
-		convert_bin(filenames,output_file_name);
+		convert_bin(filenames,output_file_name, ply_minimum, ply_maximum, interpolate_eval);
 		return;
 		
+	}
+	if (use_convert_bin_from_pgn_extract)
+	{
+		is_ready(true);
+		cout << "convert_bin_from_pgn-extract.." << endl;
+		convert_bin_from_pgn_extract(filenames, output_file_name);
+		return;
 	}
 
 	cout << "loop              : " << loop << endl;

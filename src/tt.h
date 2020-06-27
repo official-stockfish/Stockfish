@@ -60,8 +60,8 @@ private:
 /// A TranspositionTable is an array of Cluster, of size clusterCount. Each
 /// cluster consists of ClusterSize number of TTEntry. Each non-empty TTEntry
 /// contains information on exactly one position. The size of a Cluster should
-/// divide the size of a cache line for best performance,
-/// as the cacheline is prefetched when possible.
+/// divide the size of a cache line for best performance, as the cacheline is
+/// prefetched when possible.
 
 class TranspositionTable {
 
@@ -82,9 +82,8 @@ public:
   void resize(size_t mbSize);
   void clear();
 
-  // The 32 lowest order bits of the key are used to get the index of the cluster
   TTEntry* first_entry(const Key key) const {
-    return &table[(uint32_t(key) * uint64_t(clusterCount)) >> 32].entry[0];
+    return &table[mul_hi64(key, clusterCount)].entry[0];
   }
 
 private:
