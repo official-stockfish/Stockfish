@@ -84,10 +84,6 @@
 #include <shared_mutex>
 #endif
 
-bool use_draw_in_training=false;
-bool use_draw_in_validation=false;
-bool use_hash_in_training=true;
-
 using namespace std;
 
 //// これは探索部で定義されているものとする。
@@ -114,6 +110,11 @@ namespace Learner
 
 // 局面の配列 : PSVector は packed sfen vector の略。
 typedef std::vector<PackedSfenValue> PSVector;
+
+bool use_draw_in_training_data_generation = false;
+bool use_draw_in_training = false;
+bool use_draw_in_validation = false;
+bool use_hash_in_training = true;
 
 // -----------------------------------
 //    局面のファイルへの書き出し
@@ -499,19 +500,19 @@ void MultiThinkGenSfen::thread_worker(size_t thread_id)
 			// 長手数に達したのか
 			if (ply >= MAX_PLY2)
 			{
-#if defined (LEARN_GENSFEN_USE_DRAW_RESULT)
-				// 勝敗 = 引き分けとして書き出す。
-				// こうしたほうが自分が入玉したときに、相手の入玉を許しにくい(かも)
-				flush_psv(0);
-#endif
+				if (use_draw_in_training_data_generation) {
+					// 勝敗 = 引き分けとして書き出す。
+					// こうしたほうが自分が入玉したときに、相手の入玉を許しにくい(かも)
+					flush_psv(0);
+				}
 				break;
 			}
 
       if (pos.is_draw(ply)) {
-#if defined (LEARN_GENSFEN_USE_DRAW_RESULT)
-          flush_psv(0);
-#endif
-          // Do not write if draw.
+		  if (use_draw_in_training_data_generation) {
+			  // Write if draw.
+			  flush_psv(0);
+		  }
           break;
       }
 
@@ -522,10 +523,9 @@ void MultiThinkGenSfen::thread_worker(size_t thread_id)
         // Write the positions other than this position if checkmated.
                 if (pos.checkers()) // Mate
                     flush_psv(-1);
-#if defined (LEARN_GENSFEN_USE_DRAW_RESULT)
-                else                // Stalemate
-                    flush_psv(0);
-#endif
+				else if (use_draw_in_training_data_generation) {
+					flush_psv(0); // Stalemate
+				}
 				break;
 			}
 
@@ -588,10 +588,10 @@ void MultiThinkGenSfen::thread_worker(size_t thread_id)
 				// 各千日手に応じた処理。
 
         if (pos.is_draw(0)) {
-#if defined	(LEARN_GENSFEN_USE_DRAW_RESULT)
-          // 引き分けを書き出すとき
-          flush_psv(0);
-#endif
+			if (use_draw_in_training_data_generation) {
+				// Write if draw.
+				flush_psv(0);
+			}
           break;
         }
 
@@ -2660,6 +2660,7 @@ void learn(Position&, istringstream& is)
 		else if (option == "eta3")       is >> eta3;
 		else if (option == "eta1_epoch") is >> eta1_epoch;
 		else if (option == "eta2_epoch") is >> eta2_epoch;
+		else if (option == "use_draw_in_training_data_generation") is >> use_draw_in_training_data_generation;
 		else if (option == "use_draw_in_training") is >> use_draw_in_training;
 		else if (option == "use_draw_in_validation") is >> use_draw_in_validation;
 		else if (option == "use_hash_in_training") is >> use_hash_in_training;
