@@ -92,6 +92,28 @@ namespace {
     return VALUE_DRAW + Value(2 * (thisThread->nodes & 1) - 1);
   }
 
+  // The win rate model return the probability (per mille) of winning given
+  //  a game-ply and eval. The model fits rather accurately the LTC fishtest statistics.
+  int win_rate_model(int ply, Value v) {
+
+     // The model captures only up to 240 plies, so limit input (and rescale).
+     float m = std::min(240, ply) / 64.0;
+
+     // Coefficients of a 3rd order polynomial fit based on fishtest data
+     // for two parameters needed to transform eval to the argument of a
+     // logistic function.
+     float as[] = {-8.24404295, 64.23892342, -95.73056462, 153.86478679};
+     float bs[] = {-3.37154371, 28.44489198, -56.67657741,  72.05858751};
+     float a = (((as[0] * m + as[1]) * m + as[2]) * m) + as[3];
+     float b = (((bs[0] * m + bs[1]) * m + bs[2]) * m) + bs[3];
+
+     // transform eval to cp with limited range
+     float x = Utility::clamp(float(100 * v) / PawnValueEg, -1000.0f, 1000.0f);
+
+     // return win rate in per mille (rounded to nearest)
+     return int(0.5 + 1000 / (1 + std::exp((a - x) / b)));
+  }
+
   // Skill structure is used to implement strength limit
   struct Skill {
     explicit Skill(int l) : level(l) {}
@@ -1834,6 +1856,14 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
          << " seldepth " << rootMoves[i].selDepth
          << " multipv "  << i + 1
          << " score "    << UCI::value(v);
+
+      if (Options["UCI_ShowWDL"])
+      {
+          int wdl_w = win_rate_model(pos.game_ply(), v);
+          int wdl_l = win_rate_model(pos.game_ply(), -v);
+          int wdl_d = 1000 - wdl_w - wdl_l;
+          ss << " wdl " << wdl_w << " " << wdl_d << " " << wdl_l;
+      }
 
       if (!tb && i == pvIdx)
           ss << (v >= beta ? " lowerbound" : v <= alpha ? " upperbound" : "");
