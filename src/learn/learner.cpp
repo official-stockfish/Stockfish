@@ -17,6 +17,7 @@
 
 #include <filesystem>
 #include <random>
+#include <regex>
 
 #include "learn.h"
 #include "multi_think.h"
@@ -2512,7 +2513,196 @@ void convert_bin(const vector<string>& filenames, const string& output_file_name
 	std::cout << "all done" << std::endl;
 	fs.close();
 }
-  
+
+static inline void ltrim(std::string &s) {
+	s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](int ch) {
+		return !std::isspace(ch);
+	}));
+}
+
+static inline void rtrim(std::string &s) {
+	s.erase(std::find_if(s.rbegin(), s.rend(), [](int ch) {
+		return !std::isspace(ch);
+	}).base(), s.end());
+}
+
+static inline void trim(std::string &s) {
+	ltrim(s);
+	rtrim(s);
+}
+
+int parse_game_result_from_pgn_extract(std::string result) {
+	// White Win
+	if (result == "\"1-0\"") {
+		return 1;
+	}
+	// Black Win
+	else if (result == "\"0-1\"") {
+		return -1;
+	}
+	// Draw
+	else {
+		return 0;
+	}
+}
+
+// 0.25 -->  25
+// #-4  --> -mate_in(4)
+// #3   -->  mate_in(3)
+Value parse_score_from_pgn_extract(std::string eval) {
+	if (eval.substr(0, 1) == "#") {
+		if (eval.substr(1, 1) == "-") {
+			return -mate_in(stoi(eval.substr(2, eval.length() - 2)));
+		}
+		else {
+			return mate_in(stoi(eval.substr(1, eval.length() - 1)));
+		}
+	}
+	else {
+		return Value(stod(eval) * 100.0f);
+	}
+}
+
+// pgn-extract形式の教師をやねうら王用のPackedSfenValueに変換する
+void convert_bin_from_pgn_extract(const vector<string>& filenames, const string& output_file_name)
+{
+	auto th = Threads.main();
+	auto &pos = th->rootPos;
+
+	std::fstream ofs;
+	ofs.open(output_file_name, ios::out | ios::binary);
+
+	int game_count = 0;
+	int fen_count = 0;
+
+	for (auto filename : filenames) {
+		std::cout << now_string() << " convert " << filename << std::endl;
+		ifstream ifs;
+		ifs.open(filename);
+
+		int game_result = 0;
+
+		std::string line;
+		while (std::getline(ifs, line)) {
+
+			if (line.empty()) {
+				continue;
+			}
+
+			else if (line.substr(0, 1) == "[") {
+				std::regex pattern_result(R"(\[Result (.+?)\])");
+				std::smatch match;
+
+				// example: [Result "1-0"]
+				if (std::regex_search(line, match, pattern_result)) {
+					game_result = parse_game_result_from_pgn_extract(match.str(1));
+					//std::cout << "game_result=" << game_result << std::endl;
+
+					game_count++;
+					if (game_count % 10000 == 0) {
+						std::cout << now_string() << " game_count=" << game_count << ", fen_count=" << fen_count << std::endl;
+					}
+				}
+
+				continue;
+			}
+
+			else {
+				int gamePly = 0;
+
+				PackedSfenValue psv;
+				memset((char*)&psv, 0, sizeof(PackedSfenValue));
+
+				auto itr = line.cbegin();
+
+				while (true) {
+					gamePly++;
+
+					std::regex pattern_bracket(R"(\{(.+?)\})");
+					std::regex pattern_eval(R"(\[\%eval (.+?)\])");
+					std::regex pattern_move(R"((.+?)\{)");
+					std::smatch match;
+
+					// example: { [%eval 0.25] [%clk 0:10:00] }
+					if (!std::regex_search(itr, line.cend(), match, pattern_bracket)) {
+						break;
+					}
+
+					itr += match.position(0) + match.length(0);
+					std::string str_eval_clk = match.str(1);
+					trim(str_eval_clk);
+					//std::cout << "str_eval_clk="<< str_eval_clk << std::endl;
+
+					// example: [%eval 0.25]
+					// example: [%eval #-4]
+					// example: [%eval #3]
+					if (!std::regex_search(str_eval_clk, match, pattern_eval)) {
+						continue;
+					}
+					else {
+						std::string str_eval = match.str(1);
+						trim(str_eval);
+						psv.score = parse_score_from_pgn_extract(str_eval);
+						//std::cout << "psv.score=" << psv.score << std::endl;
+					}
+
+					// example: { rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq d3 0 1 }
+					if (!std::regex_search(itr, line.cend(), match, pattern_bracket)) {
+						break;
+					}
+
+					itr += match.position(0) + match.length(0);
+					std::string str_fen = match.str(1);
+					trim(str_fen);
+					//std::cout << "str_fen=" << str_fen << std::endl;
+
+					StateInfo si;
+					pos.set(str_fen, false, &si, th);
+					pos.sfen_pack(psv.sfen);
+
+					// example: d7d5 {
+					if (!std::regex_search(itr, line.cend(), match, pattern_move)) {
+						break;
+					}
+
+					itr += match.position(0) + match.length(0) - 1;
+					std::string str_move = match.str(1);
+					trim(str_move);
+					//std::cout << "str_move=" << str_move << std::endl;
+					psv.move = UCI::to_move(pos, str_move);
+
+					//
+					psv.gamePly = gamePly;
+					psv.game_result = game_result;
+
+					if (pos.side_to_move() == BLACK) {
+						psv.score *= -1;
+						psv.game_result *= -1;
+					}
+
+					//std::cout << "write: "
+					//		  << "score=" << psv.score
+					//		  << ", move=" << psv.move
+					//		  << ", gamePly=" << psv.gamePly
+					//		  << ", game_result=" << (int)psv.game_result
+					//		  << std::endl;
+
+					ofs.write((char*)&psv, sizeof(PackedSfenValue));
+					memset((char*)&psv, 0, sizeof(PackedSfenValue));
+
+					fen_count++;
+				}
+
+				game_result = 0;
+			}
+		}
+	}
+
+	std::cout << now_string() << " game_count=" << game_count << ", fen_count=" << fen_count << std::endl;
+	std::cout << now_string() << " all done" << std::endl;
+	ofs.close();
+}
+
 //void convert_plain(const vector<string>& filenames , const string& output_file_name)
 //{
 //	Position tpos;
@@ -2599,6 +2789,8 @@ void learn(Position&, istringstream& is)
 	int ply_minimum = 0;
 	int ply_maximum = 114514;
 	bool interpolate_eval = 0;
+	// pgn-extract形式の教師をやねうら王のbinに変換する
+	bool use_convert_bin_from_pgn_extract = false;
 	// それらのときに書き出すファイル名(デフォルトでは"shuffled_sfen.bin")
 	string output_file_name = "shuffled_sfen.bin";
 
@@ -2733,6 +2925,7 @@ void learn(Position&, istringstream& is)
 		else if (option == "convert_plain") use_convert_plain = true;
 		else if (option == "convert_bin") use_convert_bin = true;
 		else if (option == "interpolate_eval") is >> interpolate_eval;
+		else if (option == "convert_bin_from_pgn-extract") use_convert_bin_from_pgn_extract = true;
 		// さもなくば、それはファイル名である。
 		else
 			filenames.push_back(option);
@@ -2845,6 +3038,13 @@ void learn(Position&, istringstream& is)
 		convert_bin(filenames,output_file_name, ply_minimum, ply_maximum, interpolate_eval);
 		return;
 		
+	}
+	if (use_convert_bin_from_pgn_extract)
+	{
+		is_ready(true);
+		cout << "convert_bin_from_pgn-extract.." << endl;
+		convert_bin_from_pgn_extract(filenames, output_file_name);
+		return;
 	}
 
 	cout << "loop              : " << loop << endl;
