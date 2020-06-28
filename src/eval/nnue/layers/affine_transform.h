@@ -1,4 +1,4 @@
-﻿// NNUE評価関数の層AffineTransformの定義
+﻿// Definition of layer AffineTransform of NNUE evaluation function
 
 #ifndef _NNUE_LAYERS_AFFINE_TRANSFORM_H_
 #define _NNUE_LAYERS_AFFINE_TRANSFORM_H_
@@ -13,31 +13,31 @@ namespace NNUE {
 
 namespace Layers {
 
-// アフィン変換層
+// affine transformation layer
 template <typename PreviousLayer, IndexType OutputDimensions>
 class AffineTransform {
  public:
-  // 入出力の型
+  // Input/output type
   using InputType = typename PreviousLayer::OutputType;
   using OutputType = std::int32_t;
   static_assert(std::is_same<InputType, std::uint8_t>::value, "");
 
-  // 入出力の次元数
+  // number of input/output dimensions
   static constexpr IndexType kInputDimensions =
       PreviousLayer::kOutputDimensions;
   static constexpr IndexType kOutputDimensions = OutputDimensions;
   static constexpr IndexType kPaddedInputDimensions =
       CeilToMultiple<IndexType>(kInputDimensions, kMaxSimdWidth);
 
-  // この層で使用する順伝播用バッファのサイズ
+  // Size of forward propagation buffer used in this layer
   static constexpr std::size_t kSelfBufferSize =
       CeilToMultiple(kOutputDimensions * sizeof(OutputType), kCacheLineSize);
 
-  // 入力層からこの層までで使用する順伝播用バッファのサイズ
+  // Size of the forward propagation buffer used from the input layer to this layer
   static constexpr std::size_t kBufferSize =
       PreviousLayer::kBufferSize + kSelfBufferSize;
 
-  // 評価関数ファイルに埋め込むハッシュ値
+  // Hash value embedded in the evaluation function file
   static constexpr std::uint32_t GetHashValue() {
     std::uint32_t hash_value = 0xCC03DAE4u;
     hash_value += kOutputDimensions;
@@ -46,7 +46,7 @@ class AffineTransform {
     return hash_value;
   }
 
-  // 入力層からこの層までの構造を表す文字列
+  // A string that represents the structure from the input layer to this layer
   static std::string GetStructureString() {
     return "AffineTransform[" +
         std::to_string(kOutputDimensions) + "<-" +
@@ -54,7 +54,7 @@ class AffineTransform {
         PreviousLayer::GetStructureString() + ")";
   }
 
-  // パラメータを読み込む
+  // read parameters
   bool ReadParameters(std::istream& stream) {
     if (!previous_layer_.ReadParameters(stream)) return false;
     stream.read(reinterpret_cast<char*>(biases_),
@@ -65,7 +65,7 @@ class AffineTransform {
     return !stream.fail();
   }
 
-  // パラメータを書き込む
+  // write parameters
   bool WriteParameters(std::ostream& stream) const {
     if (!previous_layer_.WriteParameters(stream)) return false;
     stream.write(reinterpret_cast<const char*>(biases_),
@@ -76,7 +76,7 @@ class AffineTransform {
     return !stream.fail();
   }
 
-  // 順伝播
+  // forward propagation
   const OutputType* Propagate(
       const TransformedFeatureType* transformed_features, char* buffer) const {
     const auto input = previous_layer_.Propagate(
@@ -151,17 +151,17 @@ class AffineTransform {
   }
 
  private:
-  // パラメータの型
+  // parameter type
   using BiasType = OutputType;
   using WeightType = std::int8_t;
 
-  // 学習用クラスをfriendにする
+  // Make the learning class a friend
   friend class Trainer<AffineTransform>;
 
-  // この層の直前の層
+  // the layer immediately before this layer
   PreviousLayer previous_layer_;
 
-  // パラメータ
+  // parameter
   alignas(kCacheLineSize) BiasType biases_[kOutputDimensions];
   alignas(kCacheLineSize)
       WeightType weights_[kOutputDimensions * kPaddedInputDimensions];

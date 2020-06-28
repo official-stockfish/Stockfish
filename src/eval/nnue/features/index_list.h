@@ -1,4 +1,4 @@
-﻿// 入力特徴量のインデックスリストの定義
+﻿// Definition of index list of input features
 
 #ifndef _NNUE_FEATURES_INDEX_LIST_H_
 #define _NNUE_FEATURES_INDEX_LIST_H_
@@ -14,7 +14,7 @@ namespace NNUE {
 
 namespace Features {
 
-// 特徴量のインデックスリストに使うクラステンプレート
+// Class template used for feature index list
 template <typename T, std::size_t MaxSize>
 class ValueList {
  public:
@@ -39,7 +39,7 @@ class ValueList {
   std::size_t size_ = 0;
 };
 
-// 特徴量のインデックスリストの型
+//Type of feature index list
 class IndexList
     : public ValueList<IndexType, RawFeatures::kMaxActiveDimensions> {
 };

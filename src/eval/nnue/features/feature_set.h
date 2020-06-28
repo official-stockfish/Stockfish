@@ -1,4 +1,4 @@
-﻿// NNUE評価関数の入力特徴量セットを表すクラステンプレート
+﻿// A class template that represents the input feature set of the NNUE evaluation function
 
 #ifndef _NNUE_FEATURE_SET_H_
 #define _NNUE_FEATURE_SET_H_
@@ -14,7 +14,7 @@ namespace NNUE {
 
 namespace Features {
 
-// 値のリストを表すクラステンプレート
+// A class template that represents a list of values
 template <typename T, T... Values>
 struct CompileTimeList;
 template <typename T, T First, T... Remaining>
@@ -36,7 +36,7 @@ struct CompileTimeList<T> {
   static constexpr std::array<T, 0> kValues = {{}};
 };
 
-// リストの先頭への追加を行うクラステンプレート
+// Class template that adds to the beginning of the list
 template <typename T, typename ListType, T Value>
 struct AppendToList;
 template <typename T, T... Values, T AnotherValue>
@@ -44,7 +44,7 @@ struct AppendToList<T, CompileTimeList<T, Values...>, AnotherValue> {
   using Result = CompileTimeList<T, AnotherValue, Values...>;
 };
 
-// ソートされた重複のないリストへの追加を行うクラステンプレート
+// Class template for adding to a sorted, unique list
 template <typename T, typename ListType, T Value>
 struct InsertToSet;
 template <typename T, T First, T... Remaining, T AnotherValue>
@@ -52,7 +52,7 @@ struct InsertToSet<T, CompileTimeList<T, First, Remaining...>, AnotherValue> {
   using Result = std::conditional_t<
       CompileTimeList<T, First, Remaining...>::Contains(AnotherValue),
       CompileTimeList<T, First, Remaining...>,
-      std::conditional_t<(AnotherValue < First),
+      std::conditional_t<(AnotherValue <First),
           CompileTimeList<T, AnotherValue, First, Remaining...>,
           typename AppendToList<T, typename InsertToSet<
               T, CompileTimeList<T, Remaining...>, AnotherValue>::Result,
@@ -63,21 +63,21 @@ struct InsertToSet<T, CompileTimeList<T>, Value> {
   using Result = CompileTimeList<T, Value>;
 };
 
-// 特徴量セットの基底クラス
+// Base class of feature set
 template <typename Derived>
 class FeatureSetBase {
  public:
-  // 特徴量のうち、値が1であるインデックスのリストを取得する
+  // Get a list of indices with a value of 1 among the features
   template <typename IndexListType>
   static void AppendActiveIndices(
       const Position& pos, TriggerEvent trigger, IndexListType active[2]) {
-    for (const auto perspective : Colors) {
+    for (const auto perspective :Colors) {
       Derived::CollectActiveIndices(
           pos, trigger, perspective, &active[perspective]);
     }
   }
 
-  // 特徴量のうち、一手前から値が変化したインデックスのリストを取得する
+  // Get a list of indices whose values ​​have changed from the previous one in the feature quantity
   template <typename PositionType, typename IndexListType>
   static void AppendChangedIndices(
       const PositionType& pos, TriggerEvent trigger,
@@ -85,7 +85,7 @@ class FeatureSetBase {
     const auto& dp = pos.state()->dirtyPiece;
     if (dp.dirty_num == 0) return;
 
-    for (const auto perspective : Colors) {
+    for (const auto perspective :Colors) {
       reset[perspective] = false;
       switch (trigger) {
         case TriggerEvent::kNone:
@@ -120,8 +120,8 @@ class FeatureSetBase {
   }
 };
 
-// 特徴量セットを表すクラステンプレート
-// 実行時の計算量を線形にするために、内部の処理はテンプレート引数の逆順に行う
+// Class template that represents the feature set
+// do internal processing in reverse order of template arguments in order to linearize the amount of calculation at runtime
 template <typename FirstFeatureType, typename... RemainingFeatureTypes>
 class FeatureSet<FirstFeatureType, RemainingFeatureTypes...> :
     public FeatureSetBase<
@@ -131,27 +131,27 @@ class FeatureSet<FirstFeatureType, RemainingFeatureTypes...> :
   using Tail = FeatureSet<RemainingFeatureTypes...>;
 
  public:
-  // 評価関数ファイルに埋め込むハッシュ値
+  // Hash value embedded in the evaluation function file
   static constexpr std::uint32_t kHashValue =
       Head::kHashValue ^ (Tail::kHashValue << 1) ^ (Tail::kHashValue >> 31);
-  // 特徴量の次元数
+  // number of feature dimensions
   static constexpr IndexType kDimensions =
       Head::kDimensions + Tail::kDimensions;
-  // 特徴量のうち、同時に値が1となるインデックスの数の最大値
+  // The maximum value of the number of indexes whose value is 1 at the same time among the feature values
   static constexpr IndexType kMaxActiveDimensions =
       Head::kMaxActiveDimensions + Tail::kMaxActiveDimensions;
-  // 差分計算の代わりに全計算を行うタイミングのリスト
+  // List of timings to perform all calculations instead of difference calculation
   using SortedTriggerSet = typename InsertToSet<TriggerEvent,
       typename Tail::SortedTriggerSet, Head::kRefreshTrigger>::Result;
   static constexpr auto kRefreshTriggers = SortedTriggerSet::kValues;
 
-  // 特徴量名を取得する
+  // Get the feature quantity name
   static std::string GetName() {
     return std::string(Head::kName) + "+" + Tail::GetName();
   }
 
  private:
-  // 特徴量のうち、値が1であるインデックスのリストを取得する
+  // Get a list of indices with a value of 1 among the features
   template <typename IndexListType>
   static void CollectActiveIndices(
       const Position& pos, const TriggerEvent trigger, const Color perspective,
@@ -166,7 +166,7 @@ class FeatureSet<FirstFeatureType, RemainingFeatureTypes...> :
     }
   }
 
-  // 特徴量のうち、一手前から値が変化したインデックスのリストを取得する
+  // Get a list of indices whose values ​​have changed from the previous one in the feature quantity
   template <typename IndexListType>
   static void CollectChangedIndices(
       const Position& pos, const TriggerEvent trigger, const Color perspective,
@@ -185,36 +185,36 @@ class FeatureSet<FirstFeatureType, RemainingFeatureTypes...> :
     }
   }
 
-  // 基底クラスと、自身を再帰的に利用するクラステンプレートをfriendにする
+  // Make the base class and the class template that recursively uses itself a friend
   friend class FeatureSetBase<FeatureSet>;
   template <typename... FeatureTypes>
   friend class FeatureSet;
 };
 
-// 特徴量セットを表すクラステンプレート
-// テンプレート引数が1つの場合の特殊化
+// Class template that represents the feature set
+// Specialization with one template argument
 template <typename FeatureType>
 class FeatureSet<FeatureType> : public FeatureSetBase<FeatureSet<FeatureType>> {
  public:
-  // 評価関数ファイルに埋め込むハッシュ値
+  // Hash value embedded in the evaluation function file
   static constexpr std::uint32_t kHashValue = FeatureType::kHashValue;
-  // 特徴量の次元数
+  // number of feature dimensions
   static constexpr IndexType kDimensions = FeatureType::kDimensions;
-  // 特徴量のうち、同時に値が1となるインデックスの数の最大値
+  // The maximum value of the number of indexes whose value is 1 at the same time among the feature values
   static constexpr IndexType kMaxActiveDimensions =
       FeatureType::kMaxActiveDimensions;
-  // 差分計算の代わりに全計算を行うタイミングのリスト
+  // List of timings to perform all calculations instead of difference calculation
   using SortedTriggerSet =
       CompileTimeList<TriggerEvent, FeatureType::kRefreshTrigger>;
   static constexpr auto kRefreshTriggers = SortedTriggerSet::kValues;
 
-  // 特徴量名を取得する
+  // Get the feature quantity name
   static std::string GetName() {
     return FeatureType::kName;
   }
 
  private:
-  // 特徴量のうち、値が1であるインデックスのリストを取得する
+  // Get a list of indices with a value of 1 among the features
   static void CollectActiveIndices(
       const Position& pos, const TriggerEvent trigger, const Color perspective,
       IndexList* const active) {
@@ -223,7 +223,7 @@ class FeatureSet<FeatureType> : public FeatureSetBase<FeatureSet<FeatureType>> {
     }
   }
 
-  // 特徴量のうち、一手前から値が変化したインデックスのリストを取得する
+  // Get a list of indices whose values ​​have changed from the previous one in the feature quantity
   static void CollectChangedIndices(
       const Position& pos, const TriggerEvent trigger, const Color perspective,
       IndexList* const removed, IndexList* const added) {
@@ -232,7 +232,7 @@ class FeatureSet<FeatureType> : public FeatureSetBase<FeatureSet<FeatureType>> {
     }
   }
 
-  // 基底クラスと、自身を再帰的に利用するクラステンプレートをfriendにする
+  // Make the base class and the class template that recursively uses itself a friend
   friend class FeatureSetBase<FeatureSet>;
   template <typename... FeatureTypes>
   friend class FeatureSet;

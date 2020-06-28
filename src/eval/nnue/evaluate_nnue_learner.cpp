@@ -1,4 +1,4 @@
-﻿// NNUE評価関数の学習時用のコード
+﻿// Code for learning NNUE evaluation function
 
 #if defined(EVAL_LEARN) && defined(EVAL_NNUE)
 
@@ -31,30 +31,30 @@ namespace NNUE {
 
 namespace {
 
-// 学習データ
+// learning data
 std::vector<Example> examples;
 
-// examplesの排他制御をするMutex
+// Mutex for exclusive control of examples
 std::mutex examples_mutex;
 
-// ミニバッチのサンプル数
+// number of samples in mini-batch
 uint64_t batch_size;
 
-// 乱数生成器
+// random number generator
 std::mt19937 rng;
 
-// 学習器
+// learner
 std::shared_ptr<Trainer<Network>> trainer;
 
-// 学習率のスケール
+// Learning rate scale
 double global_learning_rate_scale;
 
-// 学習率のスケールを取得する
+// Get the learning rate scale
 double GetGlobalLearningRateScale() {
   return global_learning_rate_scale;
 }
 
-// ハイパーパラメータなどのオプションを学習器に伝える
+// Tell the learner options such as hyperparameters
 void SendMessages(std::vector<Message> messages) {
   for (auto& message : messages) {
     trainer->SendMessage(&message);
@@ -64,7 +64,7 @@ void SendMessages(std::vector<Message> messages) {
 
 }  // namespace
 
-// 学習の初期化を行う
+// Initialize learning
 void InitializeTraining(double eta1, uint64_t eta1_epoch,
                         double eta2, uint64_t eta2_epoch, double eta3) {
   std::cout << "Initializing NN training for "
@@ -82,18 +82,18 @@ void InitializeTraining(double eta1, uint64_t eta1_epoch,
   EvalLearningTools::Weight::init_eta(eta1, eta2, eta3, eta1_epoch, eta2_epoch);
 }
 
-// ミニバッチのサンプル数を設定する
+// set the number of samples in the mini-batch
 void SetBatchSize(uint64_t size) {
   assert(size > 0);
   batch_size = size;
 }
 
-// 学習率のスケールを設定する
+// set the learning rate scale
 void SetGlobalLearningRateScale(double scale) {
   global_learning_rate_scale = scale;
 }
 
-// ハイパーパラメータなどのオプションを設定する
+// Set options such as hyperparameters
 void SetOptions(const std::string& options) {
   std::vector<Message> messages;
   for (const auto& option : Split(options, ',')) {
@@ -108,7 +108,7 @@ void SetOptions(const std::string& options) {
   SendMessages(std::move(messages));
 }
 
-// 学習用評価関数パラメータをファイルから読み直す
+// Reread the evaluation function parameters for learning from the file
 void RestoreParameters(const std::string& dir_name) {
   const std::string file_name = Path::Combine(dir_name, NNUE::kFileName);
   std::ifstream stream(file_name, std::ios::binary);
@@ -118,7 +118,7 @@ void RestoreParameters(const std::string& dir_name) {
   SendMessages({{"reset"}});
 }
 
-// 学習データを1サンプル追加する
+// Add 1 sample of learning data
 void AddExample(Position& pos, Color rootColor,
                 const Learner::PackedSfenValue& psv, double weight) {
   Example example;
@@ -162,7 +162,7 @@ void AddExample(Position& pos, Color rootColor,
   examples.push_back(std::move(example));
 }
 
-// 評価関数パラメーターを更新する
+// update the evaluation function parameters
 void UpdateParameters(uint64_t epoch) {
   assert(batch_size > 0);
 
@@ -192,21 +192,21 @@ void UpdateParameters(uint64_t epoch) {
   SendMessages({{"quantize_parameters"}});
 }
 
-// 学習に問題が生じていないかチェックする
+// Check if there are any problems with learning
 void CheckHealth() {
   SendMessages({{"check_health"}});
 }
 
 }  // namespace NNUE
 
-// 評価関数パラメーターをファイルに保存する
+// save merit function parameters to a file
 void save_eval(std::string dir_name) {
   auto eval_dir = Path::Combine(Options["EvalSaveDir"], dir_name);
   std::cout << "save_eval() start. folder = " << eval_dir << std::endl;
 
-  // すでにこのフォルダがあるならmkdir()に失敗するが、
-  // 別にそれは構わない。なければ作って欲しいだけ。
-  // また、EvalSaveDirまでのフォルダは掘ってあるものとする。
+  // mkdir() will fail if this folder already exists, but
+  // Apart from that. If not, I just want you to make it.
+  // Also, assume that the folders up to EvalSaveDir have been dug.
   Dependency::mkdir(eval_dir);
 
   if (Options["SkipLoadingEval"] && NNUE::trainer) {
@@ -221,7 +221,7 @@ void save_eval(std::string dir_name) {
   std::cout << "save_eval() finished. folder = " << eval_dir << std::endl;
 }
 
-// 現在のetaを取得する
+// get the current eta
 double get_eta() {
   return NNUE::GetGlobalLearningRateScale() * EvalLearningTools::Weight::eta;
 }

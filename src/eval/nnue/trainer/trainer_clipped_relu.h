@@ -1,4 +1,4 @@
-﻿// NNUE評価関数の学習クラステンプレートのClippedReLU用特殊化
+﻿// Specialization of NNUE evaluation function learning class template for ClippedReLU
 
 #ifndef _NNUE_TRAINER_CLIPPED_RELU_H_
 #define _NNUE_TRAINER_CLIPPED_RELU_H_
@@ -13,22 +13,22 @@ namespace Eval {
 
 namespace NNUE {
 
-// 学習：アフィン変換層
+// Learning: Affine transformation layer
 template <typename PreviousLayer>
 class Trainer<Layers::ClippedReLU<PreviousLayer>> {
  private:
-  // 学習対象の層の型
+  // Type of layer to learn
   using LayerType = Layers::ClippedReLU<PreviousLayer>;
 
  public:
-  // ファクトリ関数
+  // factory function
   static std::shared_ptr<Trainer> Create(
       LayerType* target_layer, FeatureTransformer* feature_transformer) {
     return std::shared_ptr<Trainer>(
         new Trainer(target_layer, feature_transformer));
   }
 
-  // ハイパーパラメータなどのオプションを設定する
+  // Set options such as hyperparameters
   void SendMessage(Message* message) {
     previous_layer_trainer_->SendMessage(message);
     if (ReceiveMessage("check_health", message)) {
@@ -36,13 +36,13 @@ class Trainer<Layers::ClippedReLU<PreviousLayer>> {
     }
   }
 
-  // パラメータを乱数で初期化する
+  // Initialize the parameters with random numbers
   template <typename RNG>
   void Initialize(RNG& rng) {
     previous_layer_trainer_->Initialize(rng);
   }
 
-  // 順伝播
+  // forward propagation
   const LearnFloatType* Propagate(const std::vector<Example>& batch) {
     if (output_.size() < kOutputDimensions * batch.size()) {
       output_.resize(kOutputDimensions * batch.size());
@@ -62,7 +62,7 @@ class Trainer<Layers::ClippedReLU<PreviousLayer>> {
     return output_.data();
   }
 
-  // 逆伝播
+  // backpropagation
   void Backpropagate(const LearnFloatType* gradients,
                      LearnFloatType learning_rate) {
     for (IndexType b = 0; b < batch_size_; ++b) {
@@ -77,7 +77,7 @@ class Trainer<Layers::ClippedReLU<PreviousLayer>> {
   }
 
  private:
-  // コンストラクタ
+  // constructor
   Trainer(LayerType* target_layer, FeatureTransformer* feature_transformer) :
       batch_size_(0),
       previous_layer_trainer_(Trainer<PreviousLayer>::Create(
@@ -89,7 +89,7 @@ class Trainer<Layers::ClippedReLU<PreviousLayer>> {
               std::numeric_limits<LearnFloatType>::lowest());
   }
 
-  // 学習に問題が生じていないかチェックする
+  // Check if there are any problems with learning
   void CheckHealth() {
     const auto largest_min_activation = *std::max_element(
         std::begin(min_activations_), std::end(min_activations_));
@@ -105,30 +105,30 @@ class Trainer<Layers::ClippedReLU<PreviousLayer>> {
               std::numeric_limits<LearnFloatType>::lowest());
   }
 
-  // 入出力の次元数
+  // number of input/output dimensions
   static constexpr IndexType kInputDimensions = LayerType::kOutputDimensions;
   static constexpr IndexType kOutputDimensions = LayerType::kOutputDimensions;
 
-  // LearnFloatTypeの定数
+  // LearnFloatType constant
   static constexpr LearnFloatType kZero = static_cast<LearnFloatType>(0.0);
   static constexpr LearnFloatType kOne = static_cast<LearnFloatType>(1.0);
 
-  // ミニバッチのサンプル数
+  // number of samples in mini-batch
   IndexType batch_size_;
 
-  // 直前の層のTrainer
+  // Trainer of the previous layer
   const std::shared_ptr<Trainer<PreviousLayer>> previous_layer_trainer_;
 
-  // 学習対象の層
+  // layer to learn
   LayerType* const target_layer_;
 
-  // 順伝播用バッファ
+  // Forward propagation buffer
   std::vector<LearnFloatType> output_;
 
-  // 逆伝播用バッファ
+  // buffer for back propagation
   std::vector<LearnFloatType> gradients_;
 
-  // ヘルスチェック用統計値
+  // Health check statistics
   LearnFloatType min_activations_[kOutputDimensions];
   LearnFloatType max_activations_[kOutputDimensions];
 };

@@ -1,4 +1,4 @@
-﻿// NNUE評価関数の層InputSliceの定義
+﻿// NNUE evaluation function layer InputSlice definition
 
 #ifndef _NNUE_LAYERS_INPUT_SLICE_H_
 #define _NNUE_LAYERS_INPUT_SLICE_H_
@@ -13,47 +13,47 @@ namespace NNUE {
 
 namespace Layers {
 
-// 入力層
+// input layer
 template <IndexType OutputDimensions, IndexType Offset = 0>
 class InputSlice {
  public:
-  // アライメントを維持する必要がある
+  // need to maintain alignment
   static_assert(Offset % kMaxSimdWidth == 0, "");
 
-  // 出力の型
+  // output type
   using OutputType = TransformedFeatureType;
 
-  // 出力の次元数
+  // output dimensionality
   static constexpr IndexType kOutputDimensions = OutputDimensions;
 
-  // 入力層からこの層までで使用する順伝播用バッファのサイズ
+  // Size of the forward propagation buffer used from the input layer to this layer
   static constexpr std::size_t kBufferSize = 0;
 
-  // 評価関数ファイルに埋め込むハッシュ値
+  // Hash value embedded in the evaluation function file
   static constexpr std::uint32_t GetHashValue() {
     std::uint32_t hash_value = 0xEC42E90Du;
     hash_value ^= kOutputDimensions ^ (Offset << 10);
     return hash_value;
   }
 
-  // 入力層からこの層までの構造を表す文字列
+  // A string that represents the structure from the input layer to this layer
   static std::string GetStructureString() {
     return "InputSlice[" + std::to_string(kOutputDimensions) + "(" +
         std::to_string(Offset) + ":" +
         std::to_string(Offset + kOutputDimensions) + ")]";
   }
 
-  // パラメータを読み込む
+  // read parameters
   bool ReadParameters(std::istream& /*stream*/) {
     return true;
   }
 
-  // パラメータを書き込む
+  // write parameters
   bool WriteParameters(std::ostream& /*stream*/) const {
     return true;
   }
 
-  // 順伝播
+  // forward propagation
   const OutputType* Propagate(
       const TransformedFeatureType* transformed_features,
       char* /*buffer*/) const {

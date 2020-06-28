@@ -1,4 +1,4 @@
-﻿// NNUE評価関数で用いるheader
+﻿// header used in NNUE evaluation function
 
 #ifndef _EVALUATE_NNUE_H_
 #define _EVALUATE_NNUE_H_
@@ -14,11 +14,11 @@ namespace Eval {
 
 namespace NNUE {
 
-// 評価関数の構造のハッシュ値
+// hash value of evaluation function structure
 constexpr std::uint32_t kHashValue =
     FeatureTransformer::GetHashValue() ^ Network::GetHashValue();
 
-// メモリ領域の解放を自動化するためのデリータ
+// Deleter for automating release of memory area
 template <typename T>
 struct AlignedDeleter {
   void operator()(T* ptr) const {
@@ -29,30 +29,30 @@ struct AlignedDeleter {
 template <typename T>
 using AlignedPtr = std::unique_ptr<T, AlignedDeleter<T>>;
 
-// 入力特徴量変換器
+// Input feature converter
 extern AlignedPtr<FeatureTransformer> feature_transformer;
 
-// 評価関数
+// Evaluation function
 extern AlignedPtr<Network> network;
 
-// 評価関数ファイル名
+// Evaluation function file name
 extern const char* const kFileName;
 
-// 評価関数の構造を表す文字列を取得する
+// Get a string that represents the structure of the evaluation function
 std::string GetArchitectureString();
 
-// ヘッダを読み込む
+// read the header
 bool ReadHeader(std::istream& stream,
     std::uint32_t* hash_value, std::string* architecture);
 
-// ヘッダを書き込む
+// write the header
 bool WriteHeader(std::ostream& stream,
     std::uint32_t hash_value, const std::string& architecture);
 
-// 評価関数パラメータを読み込む
+// read evaluation function parameters
 bool ReadParameters(std::istream& stream);
 
-// 評価関数パラメータを書き込む
+// write evaluation function parameters
 bool WriteParameters(std::ostream& stream);
 
 }  // namespace NNUE

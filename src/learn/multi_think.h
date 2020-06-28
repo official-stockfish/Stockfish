@@ -11,9 +11,9 @@
 
 #include <atomic>
 
-// 棋譜からの学習や、自ら思考させて定跡を生成するときなど、
-// 複数スレッドが個別にSearch::think()を呼び出したいときに用いるヘルパクラス。
-// このクラスを派生させて用いる。
+// Learning from a game record, when making yourself think and generating a fixed track, etc.
+// Helper class used when multiple threads want to call Search::think() individually.
+// Derive and use this class.
 struct MultiThink
 {
 	MultiThink() : prng(21120903)
@@ -21,43 +21,43 @@ struct MultiThink
 		loop_count = 0;
 	}
 
-	// マスタースレッドからこの関数を呼び出すと、スレッドがそれぞれ思考して、
-	// 思考終了条件を満たしたところで制御を返す。
-	// 他にやってくれること。
-	// ・各スレッドがLearner::search(),qsearch()を呼び出しても安全なように
-	// 　置換表をスレッドごとに分離してくれる。(終了後、元に戻してくれる。)
-	// ・bookはon the flyモードだとthread safeではないので、このモードを一時的に
-	// 　オフにしてくれる。
-	// [要件]
-	// 1) thread_worker()のオーバーライド
-	// 2) set_loop_max()でループ回数の設定
-	// 3) 定期的にcallbackされる関数を設定する(必要なら)
-	//   callback_funcとcallback_interval
+	// Call this function from the master thread, each thread will think,
+	// Return control when the thought ending condition is satisfied.
+	// Do something else.
+	// ・It is safe for each thread to call Learner::search(),qsearch()
+	// Separates the substitution table for each thread. (It will be restored after the end.)
+	// ・Book is not thread safe when in on the fly mode, so temporarily change this mode.
+	// Turn it off.
+	// [Requirements]
+	// 1) Override thread_worker()
+	// 2) Set the loop count with set_loop_max()
+	// 3) set a function to be called back periodically (if necessary)
+	// callback_func and callback_interval
 	void go_think();
 
-	// 派生クラス側で初期化したいものがあればこれをoverrideしておけば、
-	// go_think()で初期化が終わったタイミングで呼び出される。
-	// 定跡の読み込みなどはそのタイミングで行うと良い。
+	// If there is something you want to initialize on the derived class side, override this,
+	// Called when initialization is completed with go_think().
+	// It is better to read the fixed trace at that timing.
 	virtual void init() {}
 
-	// go_think()したときにスレッドを生成して呼び出されるthread worker
-	// これをoverrideして用いる。
+	// A thread worker that is called by creating a thread when you go_think()
+	// Override and use this.
 	virtual void thread_worker(size_t thread_id) = 0;
 
-	// go_think()したときにcallback_seconds[秒]ごとにcallbackされる。
+	// Called back every callback_seconds [seconds] when go_think().
 	std::function<void()> callback_func;
 	uint64_t callback_seconds = 600;
 
-	// workerが処理する(Search::think()を呼び出す)回数を設定する。
+	// Set the number of times worker processes (calls Search::think()).
 	void set_loop_max(uint64_t loop_max_) { loop_max = loop_max_; }
-	
-	// set_loop_max()で設定した値を取得する。
+
+	// Get the value set by set_loop_max().
 	uint64_t get_loop_max() const { return loop_max; }
 
-	// [ASYNC] ループカウンターの値を取り出して、取り出し後にループカウンターを加算する。
-	// もしループカウンターがloop_maxに達していたらUINT64_MAXを返す。
-	// 局面を生成する場合などは、局面を生成するタイミングでこの関数を呼び出すようにしないと、
-	// 生成した局面数と、カウンターの値が一致しなくなってしまうので注意すること。
+	// [ASYNC] Take the value of the loop counter and add the loop counter after taking it out.
+	// If the loop counter has reached loop_max, return UINT64_MAX.
+	// If you want to generate a phase, you must call this function at the time of generating the phase,
+	// Please note that the number of generated phases and the value of the counter will not match.
 	uint64_t get_next_loop_count() {
 		std::unique_lock<std::mutex> lk(loop_mutex);
 		if (loop_count >= loop_max)
@@ -65,46 +65,46 @@ struct MultiThink
 		return loop_count++;
 	}
 
-	// [ASYNC] 処理した個数を返す用。呼び出されるごとにインクリメントされたカウンターが返る。
+	// [ASYNC] For returning the processed number. Each time it is called, it returns a counter that is incremented.
 	uint64_t get_done_count() {
 		std::unique_lock<std::mutex> lk(loop_mutex);
 		return ++done_count;
 	}
 
-	// worker threadがI/Oにアクセスするときのmutex
+	// Mutex when worker thread accesses I/O
 	std::mutex io_mutex;
 
 protected:
-	// 乱数発生器本体
+	// Random number generator body
 	AsyncPRNG prng;
 
 private:
-	// workerが処理する(Search::think()を呼び出す)回数
+	// number of times worker processes (calls Search::think())
 	std::atomic<uint64_t> loop_max;
-	// workerが処理した(Search::think()を呼び出した)回数
+	// number of times the worker has processed (calls Search::think())
 	std::atomic<uint64_t> loop_count;
-	// 処理した回数を返す用。
+	// To return the number of times it has been processed.
 	std::atomic<uint64_t> done_count;
 
-	// ↑の変数を変更するときのmutex
+	// Mutex when changing the variables in ↑
 	std::mutex loop_mutex;
 
-	// スレッドの終了フラグ。
-	// vector<bool>にすると複数スレッドから書き換えようとしたときに正しく反映されないことがある…はず。
+	// Thread end flag.
+	// vector<bool> may not be reflected properly when trying to rewrite from multiple threads...
 	typedef uint8_t Flag;
 	std::vector<Flag> thread_finished;
 
 };
 
-// idle時間にtaskを処理する仕組み。
-// masterは好きなときにpush_task_async()でtaskを渡す。
-// slaveは暇なときにon_idle()を実行すると、taskを一つ取り出してqueueがなくなるまで実行を続ける。
-// MultiThinkのthread workerをmaster-slave方式で書きたいときに用いると便利。
+// Mechanism to process task during idle time.
+// master passes the task with push_task_async() whenever you like.
+// When slave executes on_idle() in its spare time, it retrieves one task and continues execution until there is no queue.
+// Convenient to use when you want to write MultiThink thread worker in master-slave method.
 struct TaskDispatcher
 {
 	typedef std::function<void(size_t /* thread_id */)> Task;
 
-	// slaveはidle中にこの関数を呼び出す。
+	// slave calls this function during idle.
 	void on_idle(size_t thread_id)
 	{
 		Task task;
@@ -114,24 +114,24 @@ struct TaskDispatcher
 		sleep(1);
 	}
 
-	// [ASYNC] taskを一つ積む。
+	// Stack [ASYNC] task.
 	void push_task_async(Task task)
 	{
 		std::unique_lock<std::mutex> lk(task_mutex);
 		tasks.push_back(task);
 	}
 
-	// task用の配列の要素をsize分だけ事前に確保する。
+	// Allocate size array elements for task in advance.
 	void task_reserve(size_t size)
 	{
 		tasks.reserve(size);
 	}
 
 protected:
-	// taskの集合
+	// set of tasks
 	std::vector<Task> tasks;
 
-	// [ASYNC] taskを一つ取り出す。on_idle()から呼び出される。
+	// Take out one [ASYNC] task. Called from on_idle().
 	Task get_task_async()
 	{
 		std::unique_lock<std::mutex> lk(task_mutex);
@@ -142,7 +142,7 @@ protected:
 		return task;
 	}
 
-	// tasksにアクセスするとき用のmutex
+	// a mutex for accessing tasks
 	std::mutex task_mutex;
 };
 

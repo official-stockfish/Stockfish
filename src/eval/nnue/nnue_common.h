@@ -1,4 +1,4 @@
-﻿// NNUE評価関数で用いる定数など
+﻿// Constants used in NNUE evaluation function
 
 #ifndef _NNUE_COMMON_H_
 #define _NNUE_COMMON_H_
@@ -15,17 +15,17 @@ namespace Eval {
 
 namespace NNUE {
 
-// 評価関数ファイルのバージョンを表す定数
+// A constant that represents the version of the evaluation function file
 constexpr std::uint32_t kVersion = 0x7AF32F16u;
 
-// 評価値の計算で利用する定数
+// Constant used in evaluation value calculation
 constexpr int FV_SCALE = 16;
 constexpr int kWeightScaleBits = 6;
 
-// キャッシュラインのサイズ（バイト単位）
+// Size of cache line (in bytes)
 constexpr std::size_t kCacheLineSize = 64;
 
-// SIMD幅（バイト単位）
+// SIMD width (in bytes)
 #if defined(USE_AVX2)
 constexpr std::size_t kSimdWidth = 32;
 #elif defined(USE_SSE2)
@@ -35,17 +35,17 @@ constexpr std::size_t kSimdWidth = 16;
 #endif
 constexpr std::size_t kMaxSimdWidth = 32;
 
-// 変換後の入力特徴量の型
+// Type of input feature after conversion
 using TransformedFeatureType = std::uint8_t;
 
-// インデックスの型
+// index type
 using IndexType = std::uint32_t;
 
-// 学習用クラステンプレートの前方宣言
+// Forward declaration of learning class template
 template <typename Layer>
 class Trainer;
 
-// n以上で最小のbaseの倍数を求める
+// find the smallest multiple of n and above
 template <typename IntType>
 constexpr IntType CeilToMultiple(IntType n, IntType base) {
   return (n + base - 1) / base * base;

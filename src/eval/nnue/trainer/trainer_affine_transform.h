@@ -1,4 +1,4 @@
-﻿// NNUE評価関数の学習クラステンプレートのAffineTransform用特殊化
+﻿// Specialization of NNUE evaluation function learning class template for AffineTransform
 
 #ifndef _NNUE_TRAINER_AFFINE_TRANSFORM_H_
 #define _NNUE_TRAINER_AFFINE_TRANSFORM_H_
@@ -15,22 +15,22 @@ namespace Eval {
 
 namespace NNUE {
 
-// 学習：アフィン変換層
+// Learning: Affine transformation layer
 template <typename PreviousLayer, IndexType OutputDimensions>
 class Trainer<Layers::AffineTransform<PreviousLayer, OutputDimensions>> {
  private:
-  // 学習対象の層の型
+  // Type of layer to learn
   using LayerType = Layers::AffineTransform<PreviousLayer, OutputDimensions>;
 
  public:
-  // ファクトリ関数
+  // factory function
   static std::shared_ptr<Trainer> Create(
       LayerType* target_layer, FeatureTransformer* feature_transformer) {
     return std::shared_ptr<Trainer>(
         new Trainer(target_layer, feature_transformer));
   }
 
-  // ハイパーパラメータなどのオプションを設定する
+  // Set options such as hyperparameters
   void SendMessage(Message* message) {
     previous_layer_trainer_->SendMessage(message);
     if (ReceiveMessage("momentum", message)) {
@@ -48,19 +48,19 @@ class Trainer<Layers::AffineTransform<PreviousLayer, OutputDimensions>> {
     }
   }
 
-  // パラメータを乱数で初期化する
+  // Initialize the parameters with random numbers
   template <typename RNG>
   void Initialize(RNG& rng) {
     previous_layer_trainer_->Initialize(rng);
     if (kIsOutputLayer) {
-      // 出力層は0で初期化する
+      // Initialize output layer with 0
       std::fill(std::begin(biases_), std::end(biases_),
                 static_cast<LearnFloatType>(0.0));
       std::fill(std::begin(weights_), std::end(weights_),
                 static_cast<LearnFloatType>(0.0));
     } else {
-      // 入力の分布が各ユニット平均0.5、等分散であることを仮定し、
-      // 出力の分布が各ユニット平均0.5、入力と同じ等分散になるように初期化する
+      // Assuming that the input distribution is unit-mean 0.5, equal variance,
+      // Initialize the output distribution so that each unit has a mean of 0.5 and the same variance as the input
       const double kSigma = 1.0 / std::sqrt(kInputDimensions);
       auto distribution = std::normal_distribution<double>(0.0, kSigma);
       for (IndexType i = 0; i < kOutputDimensions; ++i) {
@@ -76,7 +76,7 @@ class Trainer<Layers::AffineTransform<PreviousLayer, OutputDimensions>> {
     QuantizeParameters();
   }
 
-  // 順伝播
+  // forward propagation
   const LearnFloatType* Propagate(const std::vector<Example>& batch) {
     if (output_.size() < kOutputDimensions * batch.size()) {
       output_.resize(kOutputDimensions * batch.size());
@@ -111,7 +111,7 @@ class Trainer<Layers::AffineTransform<PreviousLayer, OutputDimensions>> {
     return output_.data();
   }
 
-  // 逆伝播
+  // backpropagation
   void Backpropagate(const LearnFloatType* gradients,
                      LearnFloatType learning_rate) {
     const LearnFloatType local_learning_rate =
@@ -185,7 +185,7 @@ class Trainer<Layers::AffineTransform<PreviousLayer, OutputDimensions>> {
   }
 
  private:
-  // コンストラクタ
+  // constructor
   Trainer(LayerType* target_layer, FeatureTransformer* feature_transformer) :
       batch_size_(0),
       batch_input_(nullptr),
@@ -201,7 +201,7 @@ class Trainer<Layers::AffineTransform<PreviousLayer, OutputDimensions>> {
     DequantizeParameters();
   }
 
-  // 重みの飽和とパラメータの整数化
+  // Weight saturation and parameterization
   void QuantizeParameters() {
     for (IndexType i = 0; i < kOutputDimensions * kInputDimensions; ++i) {
       weights_[i] = std::max(-kMaxWeightMagnitude,
@@ -222,7 +222,7 @@ class Trainer<Layers::AffineTransform<PreviousLayer, OutputDimensions>> {
     }
   }
 
-  // 整数化されたパラメータの読み込み
+  // read parameterized integer
   void DequantizeParameters() {
     for (IndexType i = 0; i < kOutputDimensions; ++i) {
       biases_[i] = static_cast<LearnFloatType>(
@@ -242,14 +242,14 @@ class Trainer<Layers::AffineTransform<PreviousLayer, OutputDimensions>> {
               static_cast<LearnFloatType>(0.0));
   }
 
-  // 入出力の次元数
+  // number of input/output dimensions
   static constexpr IndexType kInputDimensions = LayerType::kInputDimensions;
   static constexpr IndexType kOutputDimensions = LayerType::kOutputDimensions;
 
-  // 出力の次元数が1なら出力層
+  // If the output dimensionality is 1, the output layer
   static constexpr bool kIsOutputLayer = kOutputDimensions == 1;
 
-  // パラメータの整数化で用いる係数
+  // Coefficient used for parameterization
   static constexpr LearnFloatType kActivationScale =
       std::numeric_limits<std::int8_t>::max();
   static constexpr LearnFloatType kBiasScale = kIsOutputLayer ?
@@ -257,37 +257,37 @@ class Trainer<Layers::AffineTransform<PreviousLayer, OutputDimensions>> {
       ((1 << kWeightScaleBits) * kActivationScale);
   static constexpr LearnFloatType kWeightScale = kBiasScale / kActivationScale;
 
-  // パラメータの整数化でオーバーフローさせないために用いる重みの絶対値の上限
+  // Upper limit of absolute value of weight used to prevent overflow when parameterizing integers
   static constexpr LearnFloatType kMaxWeightMagnitude =
       std::numeric_limits<typename LayerType::WeightType>::max() / kWeightScale;
 
-  // ミニバッチのサンプル数
+  // number of samples in mini-batch
   IndexType batch_size_;
 
-  // ミニバッチの入力
+  // Input mini batch
   const LearnFloatType* batch_input_;
 
-  // 直前の層のTrainer
+  // Trainer of the previous layer
   const std::shared_ptr<Trainer<PreviousLayer>> previous_layer_trainer_;
 
-  // 学習対象の層
+  // layer to learn
   LayerType* const target_layer_;
 
-  // パラメータ
+  // parameter
   LearnFloatType biases_[kOutputDimensions];
   LearnFloatType weights_[kOutputDimensions * kInputDimensions];
 
-  // パラメータの更新で用いるバッファ
+  // Buffer used for updating parameters
   LearnFloatType biases_diff_[kOutputDimensions];
   LearnFloatType weights_diff_[kOutputDimensions * kInputDimensions];
 
-  // 順伝播用バッファ
+  // Forward propagation buffer
   std::vector<LearnFloatType> output_;
 
-  // 逆伝播用バッファ
+  // buffer for back propagation
   std::vector<LearnFloatType> gradients_;
 
-  // ハイパーパラメータ
+  // hyper parameter
   LearnFloatType momentum_;
   LearnFloatType learning_rate_scale_;
 };

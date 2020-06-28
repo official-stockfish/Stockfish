@@ -1,4 +1,4 @@
-﻿// NNUE評価関数の学習用クラステンプレートの共通ヘッダ
+﻿// Common header of class template for learning NNUE evaluation function
 
 #ifndef _NNUE_TRAINER_H_
 #define _NNUE_TRAINER_H_
@@ -18,10 +18,10 @@ namespace Eval {
 
 namespace NNUE {
 
-// 評価値と勝率の関係式で用いるPonanza定数
+// Ponanza constant used in the relation between evaluation value and winning percentage
 constexpr double kPonanzaConstant = 600.0;
 
-// 学習用特徴量のインデックス1つを表すクラス
+// Class that represents one index of learning feature
 class TrainingFeature {
   using StorageType = std::uint32_t;
   static_assert(std::is_unsigned<StorageType>::value, "");
@@ -60,7 +60,7 @@ class TrainingFeature {
   StorageType index_and_count_;
 };
 
-// 学習データ1サンプルを表す構造体
+// Structure that represents one sample of training data
 struct Example {
   std::vector<TrainingFeature> training_features[2];
   Learner::PackedSfenValue psv;
@@ -68,9 +68,9 @@ struct Example {
   double weight;
 };
 
-// ハイパーパラメータの設定などに使用するメッセージ
+// Message used for setting hyperparameters
 struct Message {
-  Message(const std::string& name, const std::string& value = "") :
+  Message(const std::string& name, const std::string& value = ""):
       name(name), value(value), num_peekers(0), num_receivers(0) {}
   const std::string name;
   const std::string value;
@@ -78,7 +78,7 @@ struct Message {
   std::uint32_t num_receivers;
 };
 
-// メッセージを受理するかどうかを判定する
+// determine whether to accept the message
 bool ReceiveMessage(const std::string& name, Message* message) {
   const auto subscript = "[" + std::to_string(message->num_peekers) + "]";
   if (message->name.substr(0, name.size() + 1) == name + "[") {
@@ -91,7 +91,7 @@ bool ReceiveMessage(const std::string& name, Message* message) {
   return false;
 }
 
-// 文字列を分割する
+// split the string
 std::vector<std::string> Split(const std::string& input, char delimiter) {
   std::istringstream stream(input);
   std::string field;
@@ -102,13 +102,13 @@ std::vector<std::string> Split(const std::string& input, char delimiter) {
   return fields;
 }
 
-// 浮動小数点数を整数に丸める
+// round a floating point number to an integer
 template <typename IntType>
 IntType Round(double value) {
   return static_cast<IntType>(std::floor(value + 0.5));
 }
 
-// アライメント付きmake_shared
+// make_shared with alignment
 template <typename T, typename... ArgumentTypes>
 std::shared_ptr<T> MakeAlignedSharedPtr(ArgumentTypes&&... arguments) {
   const auto ptr = new(aligned_malloc(sizeof(T), alignof(T)))
