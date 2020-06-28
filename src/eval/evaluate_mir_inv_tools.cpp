@@ -7,35 +7,35 @@ namespace Eval
 
 	// --- tables
 
-	// あるBonaPieceを相手側から見たときの値
-	// BONA_PIECE_INITが-1なので符号型で持つ必要がある。
-	// KPPTを拡張しても当面、BonaPieceが2^15を超えることはないのでint16_tで良しとする。
+	// Value when a certain BonaPiece is seen from the other side
+	// BONA_PIECE_INIT is -1, so it must be a signed type.
+	// Even if KPPT is expanded, BonaPiece will not exceed 2^15 for the time being, so int16_t is good.
 	int16_t inv_piece_[Eval::fe_end];
 
-	// 盤面上のあるBonaPieceをミラーした位置にあるものを返す。
+	// Returns the one at the position where a BonaPiece on the board is mirrored.
 	int16_t mir_piece_[Eval::fe_end];
 
 
 	// --- methods
 
-	// あるBonaPieceを相手側から見たときの値を返す
+// Returns the value when a certain BonaPiece is seen from the other side
 	Eval::BonaPiece inv_piece(Eval::BonaPiece p) { return (Eval::BonaPiece)inv_piece_[p]; }
 
-	// 盤面上のあるBonaPieceをミラーした位置にあるものを返す。
+	// Returns the one at the position where a BonaPiece on the board is mirrored.
 	Eval::BonaPiece mir_piece(Eval::BonaPiece p) { return (Eval::BonaPiece)mir_piece_[p]; }
 
 	std::function<void()> mir_piece_init_function;
 
 	void init_mir_inv_tables()
 	{
-		// mirrorとinverseのテーブルの初期化。
+		// Initialize the mirror and inverse tables.
 
-		// 初期化は1回に限る。
+		// Initialization is limited to once.
 		static bool first = true;
 		if (!first) return;
 		first = false;
 
-		// fとeとの交換
+		// exchange f and e
 		int t[] = {
 			f_pawn             , e_pawn            ,
 			f_knight           , e_knight          ,
@@ -44,12 +44,12 @@ namespace Eval
 			f_queen            , e_queen           ,
 		};
 
-		// 未初期化の値を突っ込んでおく。
+		// Insert uninitialized value.
 		for (BonaPiece p = BONA_PIECE_ZERO; p < fe_end; ++p)
 		{
 			inv_piece_[p] = BONA_PIECE_NOT_INIT;
 
-			// mirrorは手駒に対しては機能しない。元の値を返すだけ。
+			// mirror does not work for hand pieces. Just return the original value.
 			mir_piece_[p] = (p < f_pawn) ? p : BONA_PIECE_NOT_INIT;
 		}
 
@@ -61,26 +61,26 @@ namespace Eval
 				{
 					Square sq = (Square)(p - t[i]);
 
-					// 見つかった!!
+					// found!!
 					BonaPiece q = (p < fe_hand_end) ? BonaPiece(sq + t[i + 1]) : (BonaPiece)(Inv(sq) + t[i + 1]);
 					inv_piece_[p] = q;
 					inv_piece_[q] = p;
 
 					/*
-					ちょっとトリッキーだが、pに関して盤上の駒は
-					p >= fe_hand_end
-					のとき。
+					It's a bit tricky, but regarding p
+										p >= fe_hand_end
+										When.
 
-					このpに対して、nを整数として(上のコードのiは偶数しかとらない)、
-					a)  t[2n + 0] <= p < t[2n + 1] のときは先手の駒
-					b)  t[2n + 1] <= p < t[2n + 2] のときは後手の駒
-					　である。
+					For this p, let n be an integer (i in the above code can only be an even number),
+					a) When t[2n + 0] <= p <t[2n + 1], the first piece
+					b) When t[2n + 1] <= p <t[2n + 2], the back piece
+					Is.
 
-					 ゆえに、a)の範囲にあるpをq = Inv(p-t[2n+0]) + t[2n+1] とすると180度回転させた升にある後手の駒となる。
-					 そこでpとqをswapさせてinv_piece[ ]を初期化してある。
-					 */
+					Therefore, if p in the range of a) is set to q = Inv(p-t[2n+0]) + t[2n+1], it becomes the back piece in the box rotated 180 degrees.
+					So inv_piece[] is initialized by swapping p and q.
+					*/
 
-					 // 手駒に関してはmirrorなど存在しない。
+					// There is no mirror for hand pieces.
 					if (p < fe_hand_end)
 						continue;
 
@@ -103,28 +103,28 @@ namespace Eval
 
 		for (BonaPiece p = BONA_PIECE_ZERO; p < fe_end; ++p)
 		{
-			// 未初期化のままになっている。上のテーブルの初期化コードがおかしい。
+			// It remains uninitialized. The initialization code in the table above is incorrect.
 			assert(mir_piece_[p] != BONA_PIECE_NOT_INIT && mir_piece_[p] < fe_end);
 			assert(inv_piece_[p] != BONA_PIECE_NOT_INIT && inv_piece_[p] < fe_end);
 
-			// mirとinvは、2回適用したら元の座標に戻る。
+			// mir and inv return to their original coordinates after being applied twice.
 			assert(mir_piece_[mir_piece_[p]] == p);
 			assert(inv_piece_[inv_piece_[p]] == p);
 
-			// mir->inv->mir->invは元の場所でなければならない。
+			// mir->inv->mir->inv must be the original location.
 			assert(p == inv_piece(mir_piece(inv_piece(mir_piece(p)))));
 
-			// inv->mir->inv->mirは元の場所でなければならない。
+			// inv->mir->inv->mir must be the original location.
 			assert(p == mir_piece(inv_piece(mir_piece(inv_piece(p)))));
 		}
 
 #if 0
-		// 評価関数のミラーをしても大丈夫であるかの事前検証
-		// 値を書き込んだときにassertionがあるので、ミラーしてダメである場合、
-		// そのassertに引っかかるはず。
+		// Pre-verification that it is okay to mirror the evaluation function
+		// When writing a value, there is an assertion, so if you can't mirror it,
+		// Should get caught in the assert.
 
-		// AperyのWCSC26の評価関数、kppのp1==0とかp1==20(後手の0枚目の歩)とかの
-		// ところにゴミが入っていて、これを回避しないとassertに引っかかる。
+		// Apery's WCSC26 evaluation function, kpp p1==0 or p1==20 (0th step on the back)
+		// There is dust in it, and if you don't avoid it, it will get caught in the assert.
 
 		std::unordered_set<BonaPiece> s;
 		vector<int> a = {
@@ -139,24 +139,24 @@ namespace Eval
 		for (auto b : a)
 			s.insert((BonaPiece)b);
 
-		// さらに出現しない升の盤上の歩、香、桂も除外(Aperyはここにもゴミが入っている)
+		// Excludes walks, incense, and katsura on the board that do not appear further (Apery also contains garbage here)
 		for (Rank r = RANK_1; r <= RANK_2; ++r)
 			for (File f = FILE_1; f <= FILE_9; ++f)
 			{
 				if (r == RANK_1)
 				{
-					// 1段目の歩
+					// first step
 					BonaPiece b1 = BonaPiece(f_pawn + (f | r));
 					s.insert(b1);
 					s.insert(inv_piece[b1]);
 
-					// 1段目の香
+					// 1st stage incense
 					BonaPiece b2 = BonaPiece(f_lance + (f | r));
 					s.insert(b2);
 					s.insert(inv_piece[b2]);
 				}
 
-				// 1,2段目の桂
+				// Katsura on the 1st and 2nd steps
 				BonaPiece b = BonaPiece(f_knight + (f | r));
 				s.insert(b);
 				s.insert(inv_piece[b]);

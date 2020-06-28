@@ -1,4 +1,4 @@
-﻿// NNUE評価関数の特徴量変換クラステンプレート
+﻿// NNUE evaluation function feature conversion class template
 
 #ifndef _NNUE_TRAINER_FEATURES_FACTORIZER_H_
 #define _NNUE_TRAINER_FEATURES_FACTORIZER_H_
@@ -14,31 +14,31 @@ namespace NNUE {
 
 namespace Features {
 
-// 入力特徴量を学習用特徴量に変換するクラステンプレート
-// デフォルトでは学習用特徴量は元の入力特徴量と同じとし、必要に応じて特殊化する
+// Class template that converts input features into learning features
+// By default, the learning feature is the same as the original input feature, and specialized as necessary
 template <typename FeatureType>
 class Factorizer {
  public:
-  // 学習用特徴量の次元数を取得する
+  // Get the dimensionality of the learning feature
   static constexpr IndexType GetDimensions() {
     return FeatureType::kDimensions;
   }
 
-  // 学習用特徴量のインデックスと学習率のスケールを取得する
+  // Get index of learning feature and scale of learning rate
   static void AppendTrainingFeatures(
       IndexType base_index, std::vector<TrainingFeature>* training_features) {
-    assert(base_index < FeatureType::kDimensions);
+    assert(base_index <FeatureType::kDimensions);
     training_features->emplace_back(base_index);
   }
 };
 
-// 学習用特徴量の情報
+// Learning feature information
 struct FeatureProperties {
   bool active;
   IndexType dimensions;
 };
 
-// 元の入力特徴量を学習用特徴量に追加する
+// Add the original input features to the learning features
 template <typename FeatureType>
 IndexType AppendBaseFeature(
     FeatureProperties properties, IndexType base_index,
@@ -49,7 +49,7 @@ IndexType AppendBaseFeature(
   return properties.dimensions;
 }
 
-// 学習率のスケールが0でなければ他の種類の学習用特徴量を引き継ぐ
+// If the learning rate scale is not 0, inherit other types of learning features
 template <typename FeatureType>
 IndexType InheritFeaturesIfRequired(
     IndexType index_offset, FeatureProperties properties, IndexType base_index,
@@ -70,8 +70,8 @@ IndexType InheritFeaturesIfRequired(
   return properties.dimensions;
 }
 
-// 学習用特徴量を追加せず、必要に応じてインデックスの差分を返す
-// 対応する特徴量がない場合にInheritFeaturesIfRequired()の代わりに呼ぶ
+// Return the index difference as needed, without adding learning features
+// Call instead of InheritFeaturesIfRequired() if there are no corresponding features
 IndexType SkipFeatures(FeatureProperties properties) {
   if (!properties.active) {
     return 0;
@@ -79,7 +79,7 @@ IndexType SkipFeatures(FeatureProperties properties) {
   return properties.dimensions;
 }
 
-// 学習用特徴量の次元数を取得する
+// Get the dimensionality of the learning feature
 template <std::size_t N>
 constexpr IndexType GetActiveDimensions(
     const FeatureProperties (&properties)[N]) {
@@ -93,7 +93,7 @@ constexpr IndexType GetActiveDimensions(
   return dimensions;
 }
 
-// 配列の要素数を取得する
+// get the number of elements in the array
 template <typename T, std::size_t N>
 constexpr std::size_t GetArrayLength(const T (&/*array*/)[N]) {
   return N;

@@ -6,173 +6,173 @@
 #include <vector>
 
 // =====================
-//  学習時の設定
+// Settings for learning
 // =====================
 
-// 以下のいずれかを選択すれば、そのあとの細々したものは自動的に選択される。
-// いずれも選択しない場合は、そのあとの細々したものをひとつひとつ設定する必要がある。
+// If you select one of the following, the details after that will be automatically selected.
+// If you don't select any of them, you need to set the subsequent details one by one.
 
-// elmo方式での学習設定。これをデフォルト設定とする。
-// 標準の雑巾絞りにするためにはlearnコマンドで "lambda 1"を指定してやれば良い。
+// Learning setting by elmo method. This is the default setting.
+// To make a standard squeeze diaphragm, specify "lambda 1" with the learn command.
 #define LEARN_ELMO_METHOD
 
 
 // ----------------------
-//        更新式
+// update formula
 // ----------------------
 
-// AdaGrad。これが安定しているのでお勧め。
+// Ada Grad. Recommended because it is stable.
 // #define ADA_GRAD_UPDATE
 
-// 勾配の符号だけ見るSGD。省メモリで済むが精度は…。
+// SGD looking only at the sign of the gradient. It requires less memory, but the accuracy is...
 // #define SGD_UPDATE
 
 // ----------------------
-//    学習時の設定
+// Settings for learning
 // ----------------------
 
-// mini-batchサイズ。
-// この数だけの局面をまとめて勾配を計算する。
-// 小さくするとupdate_weights()の回数が増えるので収束が速くなる。勾配が不正確になる。
-// 大きくするとupdate_weights()の回数が減るので収束が遅くなる。勾配は正確に出るようになる。
-// 多くの場合において、この値を変更する必要はないと思う。
+// mini-batch size.
+// Calculate the gradient by combining this number of phases.
+// If you make it smaller, the number of update_weights() will increase and the convergence will be faster. The gradient is incorrect.
+// If you increase it, the number of update_weights() decreases, so the convergence will be slow. The slope will come out accurately.
+// I don't think you need to change this value in most cases.
 
 #define LEARN_MINI_BATCH_SIZE (1000 * 1000 * 1)
 
-// ファイルから1回に読み込む局面数。これだけ読み込んだあとshuffleする。
-// ある程度大きいほうが良いが、この数×40byte×3倍ぐらいのメモリを消費する。10M局面なら400MB*3程度消費する。
-// THREAD_BUFFER_SIZE(=10000)の倍数にすること。
+// The number of phases to read from the file at one time. After reading this much, shuffle.
+// It is better to have a certain size, but this number x 40 bytes x 3 times as much memory is consumed. 400MB*3 is consumed in the 10M phase.
+// Must be a multiple of THREAD_BUFFER_SIZE(=10000).
 
 #define LEARN_SFEN_READ_SIZE (1000 * 1000 * 10)
 
-// 学習時の評価関数の保存間隔。この局面数だけ学習させるごとに保存。
-// 当然ながら、保存間隔を長くしたほうが学習時間は短くなる。
-// フォルダ名は 0/ , 1/ , 2/ ...のように保存ごとにインクリメントされていく。
-// デフォルトでは10億局面に1回。
+// Saving interval of evaluation function at learning. Save each time you learn this number of phases.
+// Needless to say, the longer the saving interval, the shorter the learning time.
+// Folder name is incremented for each save like 0/, 1/, 2/...
+// By default, once every 1 billion phases.
 #define LEARN_EVAL_SAVE_INTERVAL (1000000000ULL)
 
 
 // ----------------------
-//    目的関数の選択
+// Select the objective function
 // ----------------------
 
-// 目的関数が勝率の差の二乗和
-// 詳しい説明は、learner.cppを見ること。
+// The objective function is the sum of squares of the difference in winning percentage
+// See learner.cpp for more information.
 
 //#define LOSS_FUNCTION_IS_WINNING_PERCENTAGE
 
-// 目的関数が交差エントロピー
-// 詳しい説明は、learner.cppを見ること。
-// いわゆる、普通の「雑巾絞り」
+// Objective function is cross entropy
+// See learner.cpp for more information.
+// So-called ordinary "rag cloth squeezer"
 //#define LOSS_FUNCTION_IS_CROSS_ENTOROPY
 
-// 目的関数が交差エントロピーだが、勝率の関数を通さない版
+// A version in which the objective function is cross entropy, but the win rate function is not passed
 // #define LOSS_FUNCTION_IS_CROSS_ENTOROPY_FOR_VALUE
 
-// elmo(WCSC27)の方式
+// elmo (WCSC27) method
 // #define LOSS_FUNCTION_IS_ELMO_METHOD
 
-// ※　他、色々追加するかも。
+// ※ Other things may be added.
 
 
 // ----------------------
-// 学習に関するデバッグ設定
+// debug settings for learning
 // ----------------------
 
-// 学習時のrmseの出力をこの回数に1回に減らす。
-// rmseの計算は1スレッドで行なうためそこそこ時間をとられるので出力を減らすと効果がある。
+// Reduce the output of rmse during learning to 1 for this number of times.
+// rmse calculation is done in one thread, so it takes some time, so reducing the output is effective.
 #define LEARN_RMSE_OUTPUT_INTERVAL 1
 
 
 // ----------------------
-// ゼロベクトルからの学習
+// learning from zero vector
 // ----------------------
 
-// 評価関数パラメーターをゼロベクトルから学習を開始する。
-// ゼロ初期化して棋譜生成してゼロベクトルから学習させて、
-// 棋譜生成→学習を繰り返すとプロの棋譜に依らないパラメーターが得られる。(かも)
-// (すごく時間かかる)
+// Start learning the evaluation function parameters from the zero vector.
+// Initialize to zero, generate a game, learn from zero vector,
+// Game generation → If you repeat learning, you will get parameters that do not depend on the professional game. (maybe)
+// (very time consuming)
 
 //#define RESET_TO_ZERO_VECTOR
 
 
 // ----------------------
-//  学習のときの浮動小数
+// Floating point for learning
 // ----------------------
 
-// これをdoubleにしたほうが計算精度は上がるが、重み配列絡みのメモリが倍必要になる。
-// 現状、ここをfloatにした場合、評価関数ファイルに対して、重み配列はその4.5倍のサイズ。(KPPTで4.5GB程度)
-// double型にしても収束の仕方にほとんど差異がなかったのでfloatに固定する。
+// If this is set to double, the calculation accuracy will be higher, but the weight array entangled memory will be doubled.
+// Currently, if this is float, the weight array is 4.5 times the size of the evaluation function file. (About 4.5GB with KPPT)
+// Even if it is a double type, there is almost no difference in the way of convergence, so fix it to float.
 
-// floatを使う場合
+// when using float
 typedef float LearnFloatType;
 
-// doubleを使う場合
+// when using double
 //typedef double LearnFloatType;
 
-// float16を使う場合
+// when using float16
 //#include "half_float.h"
 //typedef HalfFloat::float16 LearnFloatType;
 
 // ----------------------
-//  省メモリ化
+// save memory
 // ----------------------
 
-// Weight配列(のうちのKPP)に三角配列を用いて省メモリ化する。
-// これを用いると、学習用の重み配列は評価関数ファイルの3倍程度で済むようになる。
+// Use a triangular array for the Weight array (of which is KPP) to save memory.
+// If this is used, the weight array for learning will be about 3 times as large as the evaluation function file.
 
 #define USE_TRIANGLE_WEIGHT_ARRAY
 
 // ----------------------
-//  次元下げ
+// dimension down
 // ----------------------
 
-// ミラー(左右対称性)、インバース(先後対称性)に関して次元下げを行なう。
-// デフォルトではすべてオン。
+// Dimension reduction for mirrors (left/right symmetry) and inverse (forward/backward symmetry).
+// All on by default.
 
-// KKに対してミラー、インバースを利用した次元下げを行なう。(効果のほどは不明)
-// USE_KK_INVERSE_WRITEをオンにするときはUSE_KK_MIRROR_WRITEもオンでなければならない。
+// Dimension reduction using mirror and inverse for KK. (Unclear effect)
+// USE_KK_MIRROR_WRITE must be on when USE_KK_INVERSE_WRITE is on.
 #define USE_KK_MIRROR_WRITE
 #define USE_KK_INVERSE_WRITE
 
-// KKPに対してミラー、インバースを利用した次元下げを行なう。(インバースのほうは効果のほどは不明)
-// USE_KKP_INVERSE_WRITEをオンにするときは、USE_KKP_MIRROR_WRITEもオンになっていなければならない。
+// Dimension reduction using Mirror and Inverse for KKP. (Inverse is not so effective)
+// When USE_KKP_INVERSE_WRITE is turned on, USE_KKP_MIRROR_WRITE must also be turned on.
 #define USE_KKP_MIRROR_WRITE
 #define USE_KKP_INVERSE_WRITE
 
-// KPPに対してミラーを利用した次元下げを行なう。(これをオフにすると教師局面が倍ぐらい必要になる)
-// KPPにはインバースはない。(先手側のKしかないので)
+// Perform dimension reduction using a mirror for KPP. (Turning this off requires double the teacher position)
+// KPP has no inverse. (Because there is only K on the front side)
 #define USE_KPP_MIRROR_WRITE
 
-// KPPPに対してミラーを利用した次元下げを行なう。(これをオフにすると教師局面が倍ぐらい必要になる)
-// KPPPにもインバースはない。(先手側のKしかないので)
+// Perform a dimension reduction using a mirror for KPPP. (Turning this off requires double the teacher position)
+// KPPP has no inverse. (Because there is only K on the front side)
 #define USE_KPPP_MIRROR_WRITE
 
-// KKPP成分に対して学習時にKPPによる次元下げを行なう。
-// 学習、めっちゃ遅くなる。
-// 未デバッグなので使わないこと。
+// Reduce the dimension by KPP for learning the KKPP component.
+// Learning is very slow.
+// Do not use as it is not debugged.
 //#define USE_KKPP_LOWER_DIM
 
 
 // ======================
-//  教師局面生成時の設定
+// Settings for creating teacher phases
 // ======================
 
 // ----------------------
-//  引き分けを書き出す
+// write out the draw
 // ----------------------
 
-// 引き分けに至ったとき、それを教師局面として書き出す
-// これをするほうが良いかどうかは微妙。
+// When you reach a draw, write it out as a teacher position
+// It's subtle whether it's better to do this.
 // #define LEARN_GENSFEN_USE_DRAW_RESULT
 
 
 // ======================
-//       configure
+// configure
 // ======================
 
 // ----------------------
-//  elmo(WCSC27)の方法での学習
+// Learning with the method of elmo (WCSC27)
 // ----------------------
 
 #if defined( LEARN_ELMO_METHOD )
@@ -182,49 +182,49 @@ typedef float LearnFloatType;
 
 
 // ----------------------
-// Learnerで用いるstructの定義
+// Definition of struct used in Learner
 // ----------------------
 #include "../position.h"
 
 namespace Learner
 {
-	// PackedSfenと評価値が一体化した構造体
-	// オプションごとに書き出す内容が異なると教師棋譜を再利用するときに困るので
-	// とりあえず、以下のメンバーはオプションによらずすべて書き出しておく。
+	//Structure in which PackedSfen and evaluation value are integrated
+	// If you write different contents for each option, it will be a problem when reusing the teacher game
+	// For the time being, write all the following members regardless of the options.
 	struct PackedSfenValue
 	{
-		// 局面
+		// phase
 		PackedSfen sfen;
 
-		// Learner::search()から返ってきた評価値
+		// Evaluation value returned from Learner::search()
 		int16_t score;
 
-		// PVの初手
-		// 教師との指し手一致率を求めるときなどに用いる
+		// PV first move
+		// Used when finding the match rate with the teacher
 		uint16_t move;
 
-		// 初期局面からの局面の手数。
+		// Trouble of the phase from the initial phase.
 		uint16_t gamePly;
 
-		// この局面の手番側が、ゲームを最終的に勝っているなら1。負けているなら-1。
-		// 引き分けに至った場合は、0。
-		// 引き分けは、教師局面生成コマンドgensfenにおいて、
-		// LEARN_GENSFEN_DRAW_RESULTが有効なときにだけ書き出す。
+		// 1 if the player on this side ultimately wins the game. -1 if you are losing.
+		// 0 if a draw is reached.
+		// The draw is in the teacher position generation command gensfen,
+		// Only write if LEARN_GENSFEN_DRAW_RESULT is enabled.
 		int8_t game_result;
 
-		// 教師局面を書き出したファイルを他の人とやりとりするときに
-		// この構造体サイズが不定だと困るため、paddingしてどの環境でも必ず40bytesになるようにしておく。
+		// When exchanging the file that wrote the teacher aspect with other people
+		//Because this structure size is not fixed, pad it so that it is 40 bytes in any environment.
 		uint8_t padding;
 
 		// 32 + 2 + 2 + 2 + 1 + 1 = 40bytes
 	};
 
-	// 読み筋とそのときの評価値を返す型
-	// Learner::search() , Learner::qsearch()で用いる。
+	// Type that returns the reading line and the evaluation value at that time
+	// Used in Learner::search(), Learner::qsearch().
 	typedef std::pair<Value, std::vector<Move> > ValueAndPV;
 
-	// いまのところ、やねうら王2018 Otafukuしか、このスタブを持っていないが
-	// EVAL_LEARNをdefineするなら、このスタブが必須。
+	// So far, only Yaneura King 2018 Otafuku has this stub
+	// This stub is required if EVAL_LEARN is defined.
 	extern Learner::ValueAndPV  search(Position& pos, int depth , size_t multiPV = 1 , uint64_t NodesLimit = 0);
 	extern Learner::ValueAndPV qsearch(Position& pos);
 

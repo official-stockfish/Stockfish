@@ -1,4 +1,4 @@
-﻿// NNUE評価関数の入力特徴量HalfRelativeKPの定義
+﻿//Definition of input features HalfRelativeKP of NNUE evaluation function
 
 #if defined(EVAL_NNUE)
 
@@ -11,7 +11,7 @@ namespace NNUE {
 
 namespace Features {
 
-// 玉の位置とBonaPieceから特徴量のインデックスを求める
+// Find the index of the feature quantity from the ball position and BonaPiece
 template <Side AssociatedKing>
 inline IndexType HalfRelativeKP<AssociatedKing>::MakeIndex(
     Square sq_k, BonaPiece p) {
@@ -24,7 +24,7 @@ inline IndexType HalfRelativeKP<AssociatedKing>::MakeIndex(
   return H * W * piece_index + H * relative_file + relative_rank;
 }
 
-// 駒の情報を取得する
+// Get the piece information
 template <Side AssociatedKing>
 inline void HalfRelativeKP<AssociatedKing>::GetPieces(
     const Position& pos, Color perspective,
@@ -38,11 +38,11 @@ inline void HalfRelativeKP<AssociatedKing>::GetPieces(
   *sq_target_k = static_cast<Square>(((*pieces)[target] - f_king) % SQUARE_NB);
 }
 
-// 特徴量のうち、値が1であるインデックスのリストを取得する
+// Get a list of indices with a value of 1 among the features
 template <Side AssociatedKing>
 void HalfRelativeKP<AssociatedKing>::AppendActiveIndices(
     const Position& pos, Color perspective, IndexList* active) {
-  // コンパイラの警告を回避するため、配列サイズが小さい場合は何もしない
+  // do nothing if array size is small to avoid compiler warning
   if (RawFeatures::kMaxActiveDimensions < kMaxActiveDimensions) return;
 
   BonaPiece* pieces;
@@ -57,7 +57,7 @@ void HalfRelativeKP<AssociatedKing>::AppendActiveIndices(
   }
 }
 
-// 特徴量のうち、一手前から値が変化したインデックスのリストを取得する
+// Get a list of indices whose values ​​have changed from the previous one in the feature quantity
 template <Side AssociatedKing>
 void HalfRelativeKP<AssociatedKing>::AppendChangedIndices(
     const Position& pos, Color perspective,

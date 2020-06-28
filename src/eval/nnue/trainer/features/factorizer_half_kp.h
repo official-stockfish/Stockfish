@@ -1,4 +1,4 @@
-﻿// NNUE評価関数の特徴量変換クラステンプレートのHalfKP用特殊化
+﻿// Specialization of NNUE evaluation function feature conversion class template for HalfKP
 
 #ifndef _NNUE_TRAINER_FEATURES_FACTORIZER_HALF_KP_H_
 #define _NNUE_TRAINER_FEATURES_FACTORIZER_HALF_KP_H_
@@ -16,18 +16,18 @@ namespace NNUE {
 
 namespace Features {
 
-// 入力特徴量を学習用特徴量に変換するクラステンプレート
-// HalfKP用特殊化
+// Class template that converts input features into learning features
+// Specialization for HalfKP
 template <Side AssociatedKing>
 class Factorizer<HalfKP<AssociatedKing>> {
  private:
   using FeatureType = HalfKP<AssociatedKing>;
 
-  // 特徴量のうち、同時に値が1となるインデックスの数の最大値
+  // The maximum value of the number of indexes whose value is 1 at the same time among the feature values
   static constexpr IndexType kMaxActiveDimensions =
       FeatureType::kMaxActiveDimensions;
 
-  // 学習用特徴量の種類
+  // Type of learning feature
   enum TrainingFeatureType {
     kFeaturesHalfKP,
     kFeaturesHalfK,
@@ -36,7 +36,7 @@ class Factorizer<HalfKP<AssociatedKing>> {
     kNumTrainingFeatureTypes,
   };
 
-  // 学習用特徴量の情報
+  // Learning feature information
   static constexpr FeatureProperties kProperties[] = {
     // kFeaturesHalfKP
     {true, FeatureType::kDimensions},
@@ -50,12 +50,12 @@ class Factorizer<HalfKP<AssociatedKing>> {
   static_assert(GetArrayLength(kProperties) == kNumTrainingFeatureTypes, "");
 
  public:
-  // 学習用特徴量の次元数を取得する
+  // Get the dimensionality of the learning feature
   static constexpr IndexType GetDimensions() {
     return GetActiveDimensions(kProperties);
   }
 
-  // 学習用特徴量のインデックスと学習率のスケールを取得する
+  // Get index of learning feature and scale of learning rate
   static void AppendTrainingFeatures(
       IndexType base_index, std::vector<TrainingFeature>* training_features) {
     // kFeaturesHalfKP

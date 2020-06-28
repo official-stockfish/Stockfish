@@ -1,4 +1,4 @@
-﻿// NNUE評価関数の学習で用いるインターフェイス
+﻿// Interface used for learning NNUE evaluation function
 
 #ifndef _EVALUATE_NNUE_LEARNER_H_
 #define _EVALUATE_NNUE_LEARNER_H_
@@ -11,30 +11,30 @@ namespace Eval {
 
 namespace NNUE {
 
-// 学習の初期化を行う
+// Initialize learning
 void InitializeTraining(double eta1, uint64_t eta1_epoch,
                         double eta2, uint64_t eta2_epoch, double eta3);
 
-// ミニバッチのサンプル数を設定する
+// set the number of samples in the mini-batch
 void SetBatchSize(uint64_t size);
 
-// 学習率のスケールを設定する
+// set the learning rate scale
 void SetGlobalLearningRateScale(double scale);
 
-// ハイパーパラメータなどのオプションを設定する
+// Set options such as hyperparameters
 void SetOptions(const std::string& options);
 
-// 学習用評価関数パラメータをファイルから読み直す
+// Reread the evaluation function parameters for learning from the file
 void RestoreParameters(const std::string& dir_name);
 
-// 学習データを1サンプル追加する
+// Add 1 sample of learning data
 void AddExample(Position& pos, Color rootColor,
                 const Learner::PackedSfenValue& psv, double weight);
 
-// 評価関数パラメータを更新する
+// update the evaluation function parameters
 void UpdateParameters(uint64_t epoch);
 
-// 学習に問題が生じていないかチェックする
+// Check if there are any problems with learning
 void CheckHealth();
 
 }  // namespace NNUE

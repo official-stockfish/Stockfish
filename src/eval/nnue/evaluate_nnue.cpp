@@ -1,4 +1,4 @@
-﻿// NNUE評価関数の計算に関するコード
+﻿// Code for calculating NNUE evaluation function
 
 #if defined(EVAL_NNUE)
 
@@ -16,16 +16,16 @@ namespace Eval {
 
 namespace NNUE {
 
-// 入力特徴量変換器
+// Input feature converter
 AlignedPtr<FeatureTransformer> feature_transformer;
 
-// 評価関数
+// Evaluation function
 AlignedPtr<Network> network;
 
-// 評価関数ファイル名
+// Evaluation function file name
 const char* const kFileName = "nn.bin";
 
-// 評価関数の構造を表す文字列を取得する
+// Get a string that represents the structure of the evaluation function
 std::string GetArchitectureString() {
   return "Features=" + FeatureTransformer::GetStructureString() +
       ",Network=" + Network::GetStructureString();
@@ -35,14 +35,14 @@ namespace {
 
 namespace Detail {
 
-// 評価関数パラメータを初期化する
+// Initialize the evaluation function parameters
 template <typename T>
 void Initialize(AlignedPtr<T>& pointer) {
   pointer.reset(reinterpret_cast<T*>(aligned_malloc(sizeof(T), alignof(T))));
   std::memset(pointer.get(), 0, sizeof(T));
 }
 
-// 評価関数パラメータを読み込む
+// read evaluation function parameters
 template <typename T>
 bool ReadParameters(std::istream& stream, const AlignedPtr<T>& pointer) {
   std::uint32_t header;
@@ -51,7 +51,7 @@ bool ReadParameters(std::istream& stream, const AlignedPtr<T>& pointer) {
   return pointer->ReadParameters(stream);
 }
 
-// 評価関数パラメータを書き込む
+// write evaluation function parameters
 template <typename T>
 bool WriteParameters(std::ostream& stream, const AlignedPtr<T>& pointer) {
   constexpr std::uint32_t header = T::GetHashValue();
@@ -61,7 +61,7 @@ bool WriteParameters(std::ostream& stream, const AlignedPtr<T>& pointer) {
 
 }  // namespace Detail
 
-// 評価関数パラメータを初期化する
+// Initialize the evaluation function parameters
 void Initialize() {
   Detail::Initialize(feature_transformer);
   Detail::Initialize(network);
@@ -69,7 +69,7 @@ void Initialize() {
 
 }  // namespace
 
-// ヘッダを読み込む
+// read the header
 bool ReadHeader(std::istream& stream,
   std::uint32_t* hash_value, std::string* architecture) {
   std::uint32_t version, size;
@@ -82,7 +82,7 @@ bool ReadHeader(std::istream& stream,
   return !stream.fail();
 }
 
-// ヘッダを書き込む
+// write the header
 bool WriteHeader(std::ostream& stream,
   std::uint32_t hash_value, const std::string& architecture) {
   stream.write(reinterpret_cast<const char*>(&kVersion), sizeof(kVersion));
@@ -93,7 +93,7 @@ bool WriteHeader(std::ostream& stream,
   return !stream.fail();
 }
 
-// 評価関数パラメータを読み込む
+// read evaluation function parameters
 bool ReadParameters(std::istream& stream) {
   std::uint32_t hash_value;
   std::string architecture;
@@ -104,7 +104,7 @@ bool ReadParameters(std::istream& stream) {
   return stream && stream.peek() == std::ios::traits_type::eof();
 }
 
-// 評価関数パラメータを書き込む
+// write evaluation function parameters
 bool WriteParameters(std::ostream& stream) {
   if (!WriteHeader(stream, kHashValue, GetArchitectureString())) return false;
   if (!Detail::WriteParameters(stream, feature_transformer)) return false;
@@ -112,12 +112,12 @@ bool WriteParameters(std::ostream& stream) {
   return !stream.fail();
 }
 
-// 差分計算ができるなら進める
+// proceed if you can calculate the difference
 static void UpdateAccumulatorIfPossible(const Position& pos) {
   feature_transformer->UpdateAccumulatorIfPossible(pos);
 }
 
-// 評価値を計算する
+// Calculate the evaluation value
 static Value ComputeScore(const Position& pos, bool refresh = false) {
   auto& accumulator = pos.state()->accumulator;
   if (!refresh && accumulator.computed_score) {
@@ -130,22 +130,22 @@ static Value ComputeScore(const Position& pos, bool refresh = false) {
   alignas(kCacheLineSize) char buffer[Network::kBufferSize];
   const auto output = network->Propagate(transformed_features, buffer);
 
-  // VALUE_MAX_EVALより大きな値が返ってくるとaspiration searchがfail highして
-  // 探索が終わらなくなるのでVALUE_MAX_EVAL以下であることを保証すべき。
+  // When a value larger than VALUE_MAX_EVAL is returned, aspiration search fails high
+  // It should be guaranteed that it is less than VALUE_MAX_EVAL because the search will not end.
 
-  // この現象が起きても、対局時に秒固定などだとそこで探索が打ち切られるので、
-  // 1つ前のiterationのときの最善手がbestmoveとして指されるので見かけ上、
-  // 問題ない。このVALUE_MAX_EVALが返ってくるような状況は、ほぼ詰みの局面であり、
-  // そのような詰みの局面が出現するのは終盤で形勢に大差がついていることが多いので
-  // 勝敗にはあまり影響しない。
+  // Even if this phenomenon occurs, if the seconds are fixed when playing, the search will be aborted there, so
+  // The best move in the previous iteration is pointed to as bestmove, so apparently
+  // no problem. The situation in which this VALUE_MAX_EVAL is returned is almost at a dead end,
+  // Since such a jamming phase often appears at the end, there is a big difference in the situation
+  // Doesn't really affect the outcome.
 
-  // しかし、教師生成時などdepth固定で探索するときに探索から戻ってこなくなるので
-  // そのスレッドの計算時間を無駄にする。またdepth固定対局でtime-outするようになる。
+  // However, when searching with a fixed depth such as when creating a teacher, it will not return from the search
+  // Waste the computation time for that thread. Also, it will be timed out with fixed depth game.
 
   auto score = static_cast<Value>(output[0] / FV_SCALE);
 
-  // 1) ここ、下手にclipすると学習時には影響があるような気もするが…。
-  // 2) accumulator.scoreは、差分計算の時に用いないので書き換えて問題ない。
+  // 1) I feel that if I clip too poorly, it will have an effect on my learning...
+  // 2) Since accumulator.score is not used at the time of difference calculation, it can be rewritten without any problem.
   score = Math::clamp(score , -VALUE_MAX_EVAL , VALUE_MAX_EVAL);
 
   accumulator.score = score;
@@ -153,10 +153,10 @@ static Value ComputeScore(const Position& pos, bool refresh = false) {
   return accumulator.score;
 }
 
-}  // namespace NNUE
+} // namespace NNUE
 
 #if defined(USE_EVAL_HASH)
-// HashTableに評価値を保存するために利用するクラス
+// Class used to store evaluation values ​​in HashTable
 struct alignas(16) ScoreKeyValue {
 #if defined(USE_SSE2)
   ScoreKeyValue() = default;
@@ -171,15 +171,15 @@ struct alignas(16) ScoreKeyValue {
   }
 #endif
 
-  // evaluate hashでatomicに操作できる必要があるのでそのための操作子
+  // It is necessary to be able to operate atomically with evaluate hash, so the manipulator for that
   void encode() {
 #if defined(USE_SSE2)
-    // ScoreKeyValue は atomic にコピーされるので key が合っていればデータも合っている。
+    // ScoreKeyValue is copied to atomic, so if the key matches, the data matches.
 #else
     key ^= score;
 #endif
   }
-  // decode()はencode()の逆変換だが、xorなので逆変換も同じ変換。
+  // decode() is the reverse conversion of encode(), but since it is xor, the reverse conversion is the same.
   void decode() { encode(); }
 
   union {
@@ -193,45 +193,45 @@ struct alignas(16) ScoreKeyValue {
   };
 };
 
-// シンプルなHashTableの実装。
-// Sizeは2のべき乗。
+// Simple HashTable implementation.
+// Size is a power of 2.
 template <typename T, size_t Size>
 struct HashTable {
   HashTable() { clear(); }
   T* operator [] (const Key k) { return entries_ + (static_cast<size_t>(k) & (Size - 1)); }
   void clear() { memset(entries_, 0, sizeof(T)*Size); }
 
-  // Size が 2のべき乗であることのチェック
+  // Check that Size is a power of 2
   static_assert((Size & (Size - 1)) == 0, "");
 
  private:
   T entries_[Size];
 };
 
-// evaluateしたものを保存しておくHashTable(俗にいうehash)
+//HashTable to save the evaluated ones (following ehash)
 
 #if !defined(USE_LARGE_EVAL_HASH)
-// 134MB(魔女のAVX2以外の時の設定)
+// 134MB (setting other than witch's AVX2)
 struct EvaluateHashTable : HashTable<ScoreKeyValue, 0x800000> {};
 #else
-// prefetch有りなら大きいほうが良いのでは…。
-// →　あまり変わらないし、メモリもったいないのでデフォルトでは↑の設定で良いか…。
-// 1GB(魔女のAVX2の時の設定)
+// If you have prefetch, it's better to have a big one...
+// → It doesn't change much and the memory is wasteful, so is it okay to set ↑ by default?
+// 1GB (setting for witch's AVX2)
 struct EvaluateHashTable : HashTable<ScoreKeyValue, 0x4000000> {};
 #endif
 
 EvaluateHashTable g_evalTable;
 
-// prefetchする関数も用意しておく。
+// Prepare a function to prefetch.
 void prefetch_evalhash(const Key key) {
   constexpr auto mask = ~((uint64_t)0x1f);
   prefetch((void*)((uint64_t)g_evalTable[key] & mask));
 }
 #endif
 
-// 評価関数ファイルを読み込む
-// benchコマンドなどでOptionsを保存して復元するのでこのときEvalDirが変更されたことになって、
-// 評価関数の再読込の必要があるというフラグを立てるため、この関数は2度呼び出されることがある。
+// read the evaluation function file
+// Save and restore Options with bench command etc., so EvalDir is changed at this time,
+// This function may be called twice to flag that the evaluation function needs to be reloaded.
 void load_eval() {
   NNUE::Initialize();
 
@@ -249,7 +249,7 @@ void load_eval() {
 //    ASSERT(result);
 	if (!result)
 	{
-		// 読み込みエラーのとき終了してくれないと困る。
+		// It's a problem if it doesn't finish when there is a read error.
 		std::cout << "Error! " << NNUE::kFileName << " not found or wrong format" << std::endl;
 		//my_exit();
 	}
@@ -260,19 +260,19 @@ void load_eval() {
     std::cout << "info string NNUE " << NNUE::kFileName << " not loaded" << std::endl;
 }
 
-// 初期化
+// Initialization
 void init() {
 }
 
-// 評価関数。差分計算ではなく全計算する。
-// Position::set()で一度だけ呼び出される。(以降は差分計算)
-// 手番側から見た評価値を返すので注意。(他の評価関数とは設計がこの点において異なる)
-// なので、この関数の最適化は頑張らない。
+// Evaluation function. Perform full calculation instead of difference calculation.
+// Called only once with Position::set(). (The difference calculation after that)
+// Note that the evaluation value seen from the turn side is returned. (Design differs from other evaluation functions in this respect)
+// Since, we will not try to optimize this function.
 Value compute_eval(const Position& pos) {
   return NNUE::ComputeScore(pos, true);
 }
 
-// 評価関数
+// Evaluation function
 Value evaluate(const Position& pos) {
   const auto& accumulator = pos.state()->accumulator;
   if (accumulator.computed_score) {
@@ -280,8 +280,8 @@ Value evaluate(const Position& pos) {
   }
 
 #if defined(USE_GLOBAL_OPTIONS)
-  // GlobalOptionsでeval hashを用いない設定になっているなら
-  // eval hashへの照会をskipする。
+  // If Global Options is set not to use eval hash
+  // Skip the query to the eval hash.
   if (!GlobalOptions.use_eval_hash) {
     ASSERT_LV5(pos.state()->materialValue == Eval::material(pos));
     return NNUE::ComputeScore(pos);
@@ -289,19 +289,19 @@ Value evaluate(const Position& pos) {
 #endif
 
 #if defined(USE_EVAL_HASH)
-  // evaluate hash tableにはあるかも。
+  // May be in the evaluate hash table.
   const Key key = pos.key();
   ScoreKeyValue entry = *g_evalTable[key];
   entry.decode();
   if (entry.key == key) {
-    // あった！
+    // there were!
     return Value(entry.score);
   }
 #endif
 
   Value score = NNUE::ComputeScore(pos);
 #if defined(USE_EVAL_HASH)
-  // せっかく計算したのでevaluate hash tableに保存しておく。
+  // Since it was calculated carefully, save it in the evaluate hash table.
   entry.key = key;
   entry.score = score;
   entry.encode();
@@ -311,12 +311,12 @@ Value evaluate(const Position& pos) {
   return score;
 }
 
-// 差分計算ができるなら進める
+// proceed if you can calculate the difference
 void evaluate_with_no_return(const Position& pos) {
   NNUE::UpdateAccumulatorIfPossible(pos);
 }
 
-// 現在の局面の評価値の内訳を表示する
+// display the breakdown of the evaluation value of the current phase
 void print_eval_stat(Position& /*pos*/) {
   std::cout << "--- EVAL STAT: not implemented" << std::endl;
 }

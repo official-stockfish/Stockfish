@@ -1,4 +1,4 @@
-﻿// NNUE評価関数の入力特徴量HalfKPの定義
+﻿//Definition of input features HalfKP of NNUE evaluation function
 
 #if defined(EVAL_NNUE)
 
@@ -11,13 +11,13 @@ namespace NNUE {
 
 namespace Features {
 
-// 玉の位置とBonaPieceから特徴量のインデックスを求める
+// Find the index of the feature quantity from the ball position and BonaPiece
 template <Side AssociatedKing>
 inline IndexType HalfKP<AssociatedKing>::MakeIndex(Square sq_k, BonaPiece p) {
   return static_cast<IndexType>(fe_end) * static_cast<IndexType>(sq_k) + p;
 }
 
-// 駒の情報を取得する
+// Get the piece information
 template <Side AssociatedKing>
 inline void HalfKP<AssociatedKing>::GetPieces(
     const Position& pos, Color perspective,
@@ -31,7 +31,7 @@ inline void HalfKP<AssociatedKing>::GetPieces(
   *sq_target_k = static_cast<Square>(((*pieces)[target] - f_king) % SQUARE_NB);
 }
 
-// 特徴量のうち、値が1であるインデックスのリストを取得する
+// Get a list of indices with a value of 1 among the features
 template <Side AssociatedKing>
 void HalfKP<AssociatedKing>::AppendActiveIndices(
     const Position& pos, Color perspective, IndexList* active) {
@@ -48,7 +48,7 @@ void HalfKP<AssociatedKing>::AppendActiveIndices(
   }
 }
 
-// 特徴量のうち、一手前から値が変化したインデックスのリストを取得する
+// Get a list of indices whose values ​​have changed from the previous one in the feature quantity
 template <Side AssociatedKing>
 void HalfKP<AssociatedKing>::AppendChangedIndices(
     const Position& pos, Color perspective,

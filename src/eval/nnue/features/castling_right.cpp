@@ -1,4 +1,4 @@
-// NNUE評価関数の入力特徴量Kの定義
+//Definition of input feature quantity K of NNUE evaluation function
 
 #if defined(EVAL_NNUE)
 
@@ -11,10 +11,10 @@ namespace Eval {
 
     namespace Features {
 
-      // 特徴量のうち、値が1であるインデックスのリストを取得する
+      // Get a list of indices with a value of 1 among the features
       void CastlingRight::AppendActiveIndices(
         const Position& pos, Color perspective, IndexList* active) {
-        // コンパイラの警告を回避するため、配列サイズが小さい場合は何もしない
+        // do nothing if array size is small to avoid compiler warning
         if (RawFeatures::kMaxActiveDimensions < kMaxActiveDimensions) return;
 
         int castling_rights = pos.state()->castlingRights;
@@ -28,14 +28,14 @@ namespace Eval {
             & ((castling_rights >> 2) & 3);
         }
 
-        for (int i = 0; i < kDimensions; ++i) {
+        for (int i = 0; i <kDimensions; ++i) {
           if (relative_castling_rights & (i << 1)) {
             active->push_back(i);
           }
         }
       }
 
-      // 特徴量のうち、一手前から値が変化したインデックスのリストを取得する
+      // Get a list of indices whose values ​​have changed from the previous one in the feature quantity
       void CastlingRight::AppendChangedIndices(
         const Position& pos, Color perspective,
         IndexList* removed, IndexList* added) {

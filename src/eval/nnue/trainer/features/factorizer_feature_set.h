@@ -1,4 +1,4 @@
-﻿// NNUE評価関数の特徴量変換クラステンプレートのFeatureSet用特殊化
+﻿// Specialization for feature set of feature conversion class template of NNUE evaluation function
 
 #ifndef _NNUE_TRAINER_FEATURES_FACTORIZER_FEATURE_SET_H_
 #define _NNUE_TRAINER_FEATURES_FACTORIZER_FEATURE_SET_H_
@@ -14,8 +14,8 @@ namespace NNUE {
 
 namespace Features {
 
-// 入力特徴量を学習用特徴量に変換するクラステンプレート
-// FeatureSet用特殊化
+// Class template that converts input features into learning features
+// Specialization for FeatureSet
 template <typename FirstFeatureType, typename... RemainingFeatureTypes>
 class Factorizer<FeatureSet<FirstFeatureType, RemainingFeatureTypes...>> {
  private:
@@ -23,16 +23,16 @@ class Factorizer<FeatureSet<FirstFeatureType, RemainingFeatureTypes...>> {
   using Tail = Factorizer<FeatureSet<RemainingFeatureTypes...>>;
 
  public:
-  // 元の入力特徴量の次元数
+  // number of dimensions of original input features
   static constexpr IndexType kBaseDimensions =
       FeatureSet<FirstFeatureType, RemainingFeatureTypes...>::kDimensions;
 
-  // 学習用特徴量の次元数を取得する
+  // Get the dimensionality of the learning feature
   static constexpr IndexType GetDimensions() {
     return Head::GetDimensions() + Tail::GetDimensions();
   }
 
-  // 学習用特徴量のインデックスと学習率のスケールを取得する
+  // Get index of learning feature and scale of learning rate
   static void AppendTrainingFeatures(
       IndexType base_index, std::vector<TrainingFeature>* training_features,
       IndexType base_dimensions = kBaseDimensions) {
@@ -62,20 +62,20 @@ class Factorizer<FeatureSet<FirstFeatureType, RemainingFeatureTypes...>> {
   }
 };
 
-// 入力特徴量を学習用特徴量に変換するクラステンプレート
-// FeatureSetのテンプレート引数が1つの場合の特殊化
+// Class template that converts input features into learning features
+// Specialization when FeatureSet has one template argument
 template <typename FeatureType>
 class Factorizer<FeatureSet<FeatureType>> {
 public:
-  // 元の入力特徴量の次元数
+  // number of dimensions of original input features
   static constexpr IndexType kBaseDimensions = FeatureType::kDimensions;
 
-  // 学習用特徴量の次元数を取得する
+  // Get the dimensionality of the learning feature
   static constexpr IndexType GetDimensions() {
     return Factorizer<FeatureType>::GetDimensions();
   }
 
-  // 学習用特徴量のインデックスと学習率のスケールを取得する
+  // Get index of learning feature and scale of learning rate
   static void AppendTrainingFeatures(
       IndexType base_index, std::vector<TrainingFeature>* training_features,
       IndexType base_dimensions = kBaseDimensions) {

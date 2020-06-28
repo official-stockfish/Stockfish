@@ -1,75 +1,75 @@
 ﻿#ifndef _EVALUATE_COMMON_H_
 #define _EVALUATE_COMMON_H_
 
-// いまどきの手番つき評価関数(EVAL_KPPTとEVAL_KPP_KKPT)の共用header的なもの。
+// A common header-like function for modern evaluation functions (EVAL_KPPT and EVAL_KPP_KKPT).
 
 #if defined(EVAL_NNUE) || defined(EVAL_LEARN)
 #include <functional>
 
-// KKファイル名
+// KK file name
 #define KK_BIN "KK_synthesized.bin"
 
-// KKPファイル名
+// KKP file name
 #define KKP_BIN "KKP_synthesized.bin"
 
-// KPPファイル名
+// KPP file name
 #define KPP_BIN "KPP_synthesized.bin"
 
 namespace Eval
 {
 
 #if defined(USE_EVAL_HASH)
-	// prefetchする関数
+	// prefetch function
 	void prefetch_evalhash(const Key key);
 #endif
 
-	// 評価関数のそれぞれのパラメーターに対して関数fを適用してくれるoperator。
-	// パラメーターの分析などに用いる。
-	// typeは調査対象を表す。
-	//   type = -1 : KK,KKP,KPPすべて
-	//   type = 0  : KK のみ 
-	//   type = 1  : KKPのみ 
-	//   type = 2  : KPPのみ 
+	// An operator that applies the function f to each parameter of the evaluation function.
+	// Used for parameter analysis etc.
+	// type indicates the survey target.
+	// type = -1 :KK,KKP,KPP all
+	// type = 0: KK only
+	// type = 1: KKP only
+	// type = 2: KPP only
 	void foreach_eval_param(std::function<void(int32_t, int32_t)>f, int type = -1);
 
 	// --------------------------
-	//        学習用
+	// for learning
 	// --------------------------
 
 #if defined(EVAL_LEARN)
-	// 学習のときの勾配配列の初期化
-	// 学習率を引数に渡しておく。0.0なら、defaultの値を採用する。
-	// update_weights()のepochが、eta_epochまでetaから徐々にeta2に変化する。
-	// eta2_epoch以降は、eta2から徐々にeta3に変化する。
+	// Initialize the gradient array during learning
+	// Pass the learning rate as an argument. If 0.0, the default value is used.
+	// The epoch of update_weights() gradually changes from eta to eta2 until eta_epoch.
+	// After eta2_epoch, gradually change from eta2 to eta3.
 	void init_grad(double eta1, uint64_t eta_epoch, double eta2, uint64_t eta2_epoch, double eta3);
 
-	// 現在の局面で出現している特徴すべてに対して、勾配の差分値を勾配配列に加算する。
-	// freeze[0]  : kkは学習させないフラグ
-	// freeze[1]  : kkpは学習させないフラグ
-	// freeze[2]  : kppは学習させないフラグ
-	// freeze[3]  : kpppは学習させないフラグ
+	// Add the gradient difference value to the gradient array for all features that appear in the current phase.
+	// freeze[0]: Flag that kk does not learn
+	// freeze[1]: Flag that kkp does not learn
+	// freeze[2]: Flag that kpp does not learn
+	// freeze[3]: Flag that kppp does not learn
 	void add_grad(Position& pos, Color rootColor, double delt_grad, const std::array<bool, 4>& freeze);
 
-	// 現在の勾配をもとにSGDかAdaGradか何かする。
-	// epoch      : 世代カウンター(0から始まる)
-	// freeze[0]  : kkは学習させないフラグ
-	// freeze[1]  : kkpは学習させないフラグ
-	// freeze[2]  : kppは学習させないフラグ
-	// freeze[3]  : kpppは学習させないフラグ
-	void update_weights(uint64_t epoch, const std::array<bool,4>& freeze);
+	// Do SGD or AdaGrad or something based on the current gradient.
+	// epoch: Generation counter (starting from 0)
+	// freeze[0]: Flag that kk does not learn
+	// freeze[1]: Flag that kkp does not learn
+	// freeze[2]: Flag that kpp does not learn
+	// freeze[3]: Flag that kppp does not learn
+	void update_weights(uint64_t epoch, const std::array<bool, 4>& freeze);
 
-	// 評価関数パラメーターをファイルに保存する。
-	// ファイルの末尾につける拡張子を指定できる。
+	// Save the evaluation function parameters to a file.
+	// You can specify the extension added to the end of the file.
 	void save_eval(std::string suffix);
 
-	// 現在のetaを取得する。
+	// Get the current eta.
 	double get_eta();
 
-	// -- 学習に関連したコマンド
+	// --learning related commands
 
-	// KKを正規化する関数。元の評価関数と完全に等価にはならないので注意。
-	// kkp,kppの値をなるべくゼロに近づけることで、学習中に出現しなかった特徴因子の値(ゼロになっている)が
-	// 妥当であることを保証しようという考え。
+	// A function that normalizes KK. Note that it is not completely equivalent to the original evaluation function.
+	// By making the values ​​of kkp and kpp as close to zero as possible, the value of the feature factor (which is zero) that did not appear during learning
+	// The idea of ​​ensuring it is valid.
 	void regularize_kk();
 
 #endif

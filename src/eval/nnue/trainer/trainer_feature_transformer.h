@@ -1,4 +1,4 @@
-﻿// NNUE評価関数の学習クラステンプレートのFeatureTransformer用特殊化
+﻿// Specialization for feature transformer of learning class template of NNUE evaluation function
 
 #ifndef _NNUE_TRAINER_FEATURE_TRANSFORMER_H_
 #define _NNUE_TRAINER_FEATURE_TRANSFORMER_H_
@@ -24,11 +24,11 @@ namespace Eval {
 
 namespace NNUE {
 
-// 学習：入力特徴量変換器
+// Learning: Input feature converter
 template <>
 class Trainer<FeatureTransformer> {
  private:
-  // 学習対象の層の型
+  // Type of layer to learn
   using LayerType = FeatureTransformer;
 
  public:
@@ -37,12 +37,12 @@ class Trainer<FeatureTransformer> {
   template <typename T, typename... ArgumentTypes>
   friend std::shared_ptr<T> MakeAlignedSharedPtr(ArgumentTypes&&... arguments);
 
-  // ファクトリ関数
+  // factory function
   static std::shared_ptr<Trainer> Create(LayerType* target_layer) {
     return MakeAlignedSharedPtr<Trainer>(target_layer);
   }
 
-  // ハイパーパラメータなどのオプションを設定する
+  // Set options such as hyperparameters
   void SendMessage(Message* message) {
     if (ReceiveMessage("momentum", message)) {
       momentum_ = static_cast<LearnFloatType>(std::stod(message->value));
@@ -65,7 +65,7 @@ class Trainer<FeatureTransformer> {
     }
   }
 
-  // パラメータを乱数で初期化する
+  // Initialize the parameters with random numbers
   template <typename RNG>
   void Initialize(RNG& rng) {
     std::fill(std::begin(weights_), std::end(weights_), +kZero);
@@ -81,7 +81,7 @@ class Trainer<FeatureTransformer> {
     QuantizeParameters();
   }
 
-  // 順伝播
+  // forward propagation
   const LearnFloatType* Propagate(const std::vector<Example>& batch) {
     if (output_.size() < kOutputDimensions * batch.size()) {
       output_.resize(kOutputDimensions * batch.size());
@@ -131,7 +131,7 @@ class Trainer<FeatureTransformer> {
     return output_.data();
   }
 
-  // 逆伝播
+  // backpropagation
   void Backpropagate(const LearnFloatType* gradients,
                      LearnFloatType learning_rate) {
     const LearnFloatType local_learning_rate =
@@ -144,8 +144,8 @@ class Trainer<FeatureTransformer> {
             ((output_[index] > kZero) * (output_[index] < kOne));
       }
     }
-    // 重み行列は入力に出現した特徴量に対応する列のみを更新するため、
-    // momentumを使用せず、学習率を補正してスケールを合わせる
+    // Since the weight matrix updates only the columns corresponding to the features that appeared in the input,
+    // Correct the learning rate and adjust the scale without using momentum
     const LearnFloatType effective_learning_rate =
         static_cast<LearnFloatType>(local_learning_rate / (1.0 - momentum_));
 #if defined(USE_BLAS)
@@ -227,7 +227,7 @@ class Trainer<FeatureTransformer> {
   }
 
  private:
-  // コンストラクタ
+  // constructor
   Trainer(LayerType* target_layer) :
       batch_(nullptr),
       target_layer_(target_layer),
@@ -245,7 +245,7 @@ class Trainer<FeatureTransformer> {
     DequantizeParameters();
   }
 
-  // 重みの飽和とパラメータの整数化
+  // Weight saturation and parameterization
   void QuantizeParameters() {
     for (IndexType i = 0; i < kHalfDimensions; ++i) {
       target_layer_->biases_[i] =
@@ -268,7 +268,7 @@ class Trainer<FeatureTransformer> {
     }
   }
 
-  // 整数化されたパラメータの読み込み
+  // read parameterized integer
   void DequantizeParameters() {
     for (IndexType i = 0; i < kHalfDimensions; ++i) {
       biases_[i] = static_cast<LearnFloatType>(
@@ -282,7 +282,7 @@ class Trainer<FeatureTransformer> {
     std::fill(std::begin(biases_diff_), std::end(biases_diff_), +kZero);
   }
 
-  // 学習データに出現していない特徴量に対応する重みを0にする
+  // Set the weight corresponding to the feature that does not appear in the learning data to 0
   void ClearUnobservedFeatureWeights() {
     for (IndexType i = 0; i < kInputDimensions; ++i) {
       if (!observed_features.test(i)) {
@@ -293,7 +293,7 @@ class Trainer<FeatureTransformer> {
     QuantizeParameters();
   }
 
-  // 学習に問題が生じていないかチェックする
+  // Check if there are any problems with learning
   void CheckHealth() {
     std::cout << "INFO: observed " << observed_features.count()
               << " (out of " << kInputDimensions << ") features" << std::endl;
@@ -320,48 +320,48 @@ class Trainer<FeatureTransformer> {
               std::numeric_limits<LearnFloatType>::lowest());
   }
 
-  // 入出力の次元数
+  // number of input/output dimensions
   static constexpr IndexType kInputDimensions =
       Features::Factorizer<RawFeatures>::GetDimensions();
   static constexpr IndexType kOutputDimensions = LayerType::kOutputDimensions;
   static constexpr IndexType kHalfDimensions = LayerType::kHalfDimensions;
 
-  // パラメータの整数化で用いる係数
+  // Coefficient used for parameterization
   static constexpr LearnFloatType kActivationScale =
       std::numeric_limits<std::int8_t>::max();
   static constexpr LearnFloatType kBiasScale = kActivationScale;
   static constexpr LearnFloatType kWeightScale = kActivationScale;
 
-  // LearnFloatTypeの定数
+  // LearnFloatType constant
   static constexpr LearnFloatType kZero = static_cast<LearnFloatType>(0.0);
   static constexpr LearnFloatType kOne = static_cast<LearnFloatType>(1.0);
 
-  // ミニバッチ
+  // mini batch
   const std::vector<Example>* batch_;
 
-  // 学習対象の層
+  // layer to learn
   LayerType* const target_layer_;
 
-  // パラメータ
+  // parameter
   alignas(kCacheLineSize) LearnFloatType biases_[kHalfDimensions];
   alignas(kCacheLineSize)
       LearnFloatType weights_[kHalfDimensions * kInputDimensions];
 
-  // パラメータの更新で用いるバッファ
+  // Buffer used for updating parameters
   LearnFloatType biases_diff_[kHalfDimensions];
   std::vector<LearnFloatType> gradients_;
 
-  // 順伝播用バッファ
+  // Forward propagation buffer
   std::vector<LearnFloatType> output_;
 
-  // 学習データに出現した特徴量
+  // Features that appeared in the training data
   std::bitset<kInputDimensions> observed_features;
 
-  // ハイパーパラメータ
+  // hyper parameter
   LearnFloatType momentum_;
   LearnFloatType learning_rate_scale_;
 
-  // ヘルスチェック用統計値
+  // Health check statistics
   LearnFloatType min_pre_activation_;
   LearnFloatType max_pre_activation_;
   LearnFloatType min_activations_[kHalfDimensions];
