@@ -28,30 +28,6 @@ using namespace std;
 
 namespace {
 
-  // Polynomial material imbalance parameters
-
-  constexpr int QuadraticOurs[][PIECE_TYPE_NB] = {
-    //            OUR PIECES
-    // pair pawn knight bishop rook queen
-    {1438                               }, // Bishop pair
-    {  40,   38                         }, // Pawn
-    {  32,  255, -62                    }, // Knight      OUR PIECES
-    {   0,  104,   4,    0              }, // Bishop
-    { -26,   -2,  47,   105,  -208      }, // Rook
-    {-189,   24, 117,   133,  -134, -6  }  // Queen
-  };
-
-  constexpr int QuadraticTheirs[][PIECE_TYPE_NB] = {
-    //           THEIR PIECES
-    // pair pawn knight bishop rook queen
-    {                                   }, // Bishop pair
-    {  36,                              }, // Pawn
-    {   9,   63,                        }, // Knight      OUR PIECES
-    {  59,   65,  42,                   }, // Bishop
-    {  46,   39,  24,   -24,            }, // Rook
-    {  97,  100, -42,   137,  268,      }  // Queen
-  };
-
   // Endgame evaluation and scaling functions are accessed directly and not through
   // the function maps because they correspond to more than one material hash key.
   Endgame<KXK>    EvaluateKXK[] = { Endgame<KXK>(WHITE),    Endgame<KXK>(BLACK) };
@@ -77,35 +53,6 @@ namespace {
           && pos.non_pawn_material(us) == QueenValueMg
           && pos.count<ROOK>(~us) == 1
           && pos.count<PAWN>(~us) >= 1;
-  }
-
-
-  /// imbalance() calculates the imbalance by comparing the piece count of each
-  /// piece type for both colors.
-
-  template<Color Us>
-  int imbalance(const int pieceCount[][PIECE_TYPE_NB]) {
-
-    constexpr Color Them = ~Us;
-
-    int bonus = 0;
-
-    // Second-degree polynomial material imbalance, by Tord Romstad
-    for (int pt1 = NO_PIECE_TYPE; pt1 <= QUEEN; ++pt1)
-    {
-        if (!pieceCount[Us][pt1])
-            continue;
-
-        int v = QuadraticOurs[pt1][pt1] * pieceCount[Us][pt1];
-
-        for (int pt2 = NO_PIECE_TYPE; pt2 < pt1; ++pt2)
-            v +=  QuadraticOurs[pt1][pt2] * pieceCount[Us][pt2]
-                + QuadraticTheirs[pt1][pt2] * pieceCount[Them][pt2];
-
-        bonus += pieceCount[Us][pt1] * v;
-    }
-
-    return bonus;
   }
 
 } // namespace
@@ -206,16 +153,50 @@ Entry* probe(const Position& pos) {
       e->factor[BLACK] = uint8_t(npm_b <  RookValueMg   ? SCALE_FACTOR_DRAW :
                                  npm_w <= BishopValueMg ? 4 : 14);
 
-  // Evaluate the material imbalance. We use PIECE_TYPE_NONE as a place holder
-  // for the bishop pair "extended piece", which allows us to be more flexible
-  // in defining bishop pair bonuses.
-  const int pieceCount[COLOR_NB][PIECE_TYPE_NB] = {
-  { pos.count<BISHOP>(WHITE) > 1, pos.count<PAWN>(WHITE), pos.count<KNIGHT>(WHITE),
-    pos.count<BISHOP>(WHITE)    , pos.count<ROOK>(WHITE), pos.count<QUEEN >(WHITE) },
-  { pos.count<BISHOP>(BLACK) > 1, pos.count<PAWN>(BLACK), pos.count<KNIGHT>(BLACK),
-    pos.count<BISHOP>(BLACK)    , pos.count<ROOK>(BLACK), pos.count<QUEEN >(BLACK) } };
+  // Some imbalance equations for evaluating piece imbalances.
+  // Example: Queen vs rook and bishop.
+  int whiteBP = (pos.count<BISHOP>(WHITE) > 1), blackBP = (pos.count<BISHOP>(BLACK) > 1),
+      whitePawns = pos.count<PAWN>(WHITE), blackPawns = pos.count<PAWN>(BLACK),
+      whiteKnights = pos.count<KNIGHT>(WHITE), blackKnights = pos.count<KNIGHT>(BLACK),
+      whiteBishops = pos.count<BISHOP>(WHITE), blackBishops = pos.count<BISHOP>(BLACK),
+      whiteRooks   = pos.count<ROOK>(WHITE), blackRooks = pos.count<ROOK>(BLACK),
+      whiteQueens = pos.count<QUEEN>(WHITE), blackQueens = pos.count<QUEEN>(BLACK);
 
-  e->value = int16_t((imbalance<WHITE>(pieceCount) - imbalance<BLACK>(pieceCount)) / 16);
+  //Bishop pairs
+  int imb = 1438 * (whiteBP - blackBP);
+
+  //Pawns
+  imb += 38 * (whitePawns * whitePawns - blackPawns * blackPawns);
+
+  //Knights
+  imb += whiteKnights * (-62 * whiteKnights + 255 * whitePawns + 63 * blackPawns)
+       - blackKnights * (-62 * blackKnights + 255 * blackPawns + 63 * whitePawns);
+
+  //Bishops
+  imb += whiteBishops * (        4 * whiteKnights + 42 * blackKnights
+           + 104 * whitePawns + 65 * blackPawns   + 59 * blackBP)
+       - blackBishops * (        4 * blackKnights + 42 * whiteKnights
+           + 104 * blackPawns + 65 * whitePawns   + 59 * whiteBP);
+
+  //Rooks
+  imb += whiteRooks * (-208 * whiteRooks  + 105 * whiteBishops - 24 * blackBishops
+                      +  47 * whiteKnights + 24 * blackKnights -  2 * whitePawns
+                      +  39 * blackPawns  -  26 * whiteBP      + 46 * blackBP)
+       - blackRooks * (-208 * blackRooks  + 105 * blackBishops - 24 * whiteBishops
+                       + 47 * blackKnights + 24 * whiteKnights -  2 * blackPawns
+                       + 39 * whitePawns  -  26 * blackBP      + 46 * whiteBP);
+
+  //Queens
+  imb += whiteQueens * (-6 * whiteQueens  - 134 * whiteRooks   + 268 * blackRooks
+                     + 133 * whiteBishops + 137 * blackBishops + 117 * whiteKnights
+                      - 42 * blackKnights +  24 * whitePawns   + 100 * blackPawns
+                     - 189 * whiteBP      +  97 * blackBP)
+       - blackQueens * (-6 * blackQueens  - 134 * blackRooks   + 268 * whiteRooks
+                     + 133 * blackBishops + 137 * whiteBishops + 117 * blackKnights
+                     -  42 * whiteKnights +  24 * blackPawns   + 100 * whitePawns
+                     - 189 * blackBP      +  97 * whiteBP);
+
+  e->value = int16_t(imb / 16);
   return e;
 }
 
