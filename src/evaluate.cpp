@@ -767,7 +767,6 @@ namespace {
     eg += v;
 
     // Compute the scale factor for the winning side
-
     Color strongSide = eg > VALUE_DRAW ? WHITE : BLACK;
     int sf = me->scale_factor(pos, strongSide);
 
@@ -782,13 +781,15 @@ namespace {
             else
                 sf = 22 + 3 * pos.count<ALL_PIECES>(strongSide);
         }
-        else if(   pos.non_pawn_material(WHITE) == RookValueMg
+        else if (  pos.non_pawn_material(WHITE) == RookValueMg
                 && pos.non_pawn_material(BLACK) == RookValueMg
                 && !pe->passed_pawns(strongSide)
                 && pos.count<PAWN>(strongSide) - pos.count<PAWN>(~strongSide) <= 1
                 && bool(KingSide & pos.pieces(strongSide, PAWN)) != bool(QueenSide & pos.pieces(strongSide, PAWN))
                 && (attacks_bb<KING>(pos.square<KING>(~strongSide)) & pos.pieces(~strongSide, PAWN)))
             sf = 36;
+        else if (pos.count<QUEEN>() == 1)
+            sf = 37;
         else
             sf = std::min(sf, 36 + 7 * pos.count<PAWN>(strongSide));
     }
