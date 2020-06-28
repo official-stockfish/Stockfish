@@ -160,8 +160,8 @@ endif
 
 ifeq ($(ARCH),armv8)
 	arch = armv8-a
-	bits = 64
 	prefetch = yes
+	popcnt = yes
 endif
 
 ifeq ($(ARCH),ppc-32)
@@ -370,8 +370,8 @@ endif
 
 ### 3.6 popcnt
 ifeq ($(popcnt),yes)
-	ifeq ($(arch),ppc64)
-		CXXFLAGS += -DUSE_POPCNT -DUSE_SSE2
+	ifeq ($(arch),$(filter $(arch),ppc64 armv8-a))
+		CXXFLAGS += -DUSE_POPCNT
 	else ifeq ($(comp),icc)
 		CXXFLAGS += -msse3 -DUSE_POPCNT -DUSE_SSE2
 	else
@@ -399,9 +399,19 @@ endif
 ### needs access to the optimization flags.
 ifeq ($(optimize),yes)
 ifeq ($(debug), no)
-	ifeq ($(comp),$(filter $(comp),gcc clang mingw))
+	ifeq ($(comp),$(filter $(comp),gcc clang))
 		CXXFLAGS += -flto
 		LDFLAGS += $(CXXFLAGS)
+	endif
+
+# To use LTO and static linking on windows, the tool chain requires a recent gcc:
+# gcc version 10.1 in msys2 or TDM-GCC version 9.2 are know to work, older might not.
+# So, only enable it for a cross from Linux by default.
+	ifeq ($(comp),mingw)
+	ifeq ($(KERNEL),Linux)
+		CXXFLAGS += -flto
+		LDFLAGS += $(CXXFLAGS)
+	endif
 	endif
 endif
 endif
