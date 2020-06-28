@@ -1,4 +1,4 @@
-# List of authors for Stockfish, as of January 7, 2020
+# List of authors for Stockfish, as of March 30, 2020
 
 Tord Romstad (romstad)
 Marco Costalba (mcostalba)
@@ -42,12 +42,14 @@ Eelco de Groot (KingDefender)
 Elvin Liu (solarlight2)
 erbsenzaehler
 Ernesto Gatti
+Linmiao Xu (linrock)
 Fabian Beuke (madnight)
 Fabian Fichter (ianfab)
 fanon
 Fauzi Akram Dabat (FauziAkram)
 Felix Wittmann
 gamander
+Gary Heckman (gheckman)
 gguliash
 Gian-Carlo Pascutto (gcp)
 Gontran Lemaire (gonlem)
@@ -113,6 +115,7 @@ Nick Pelling (nickpelling)
 Nicklas Persson (NicklasPersson)
 Niklas Fiekas (niklasf)
 Nikolay Kostov (NikolayIT)
+Nguyen Pham
 Ondrej Mosnáček (WOnder93)
 Oskar Werkelin Ahlin
 Pablo Vazquez
@@ -122,6 +125,8 @@ Pasquale Pigazzini (ppigazzini)
 Patrick Jansen (mibere)
 pellanda
 Peter Zsifkovits (CoffeeOne)
+Praveen Kumar Tummala (praveentml)
+Rahul Dsilva (silversolver1)
 Ralph Stößer (Ralph Stoesser)
 Raminder Singh
 renouve
@@ -147,8 +152,10 @@ thaspel
 theo77186
 Tom Truscott
 Tom Vijlbrief (tomtor)
+Tomasz Sobczyk (Sopel97)
 Torsten Franz (torfranz, tfranzer)
 Tracey Emery (basepr1me)
+Unai Corzo (unaiic)
 Uri Blass (uriblass)
 Vince Negri (cuddlestmonkey)
 
@@ -157,7 +164,3 @@ Vince Negri (cuddlestmonkey)
 # an amazing and essential framework for the development of Stockfish!
 #
 # https://github.com/glinscott/fishtest/blob/master/AUTHORS
-
-
-
-

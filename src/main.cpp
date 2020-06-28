@@ -21,12 +21,12 @@
 #include <iostream>
 
 #include "bitboard.h"
+#include "endgame.h"
 #include "position.h"
 #include "search.h"
 #include "thread.h"
 #include "tt.h"
 #include "uci.h"
-#include "endgame.h"
 #include "syzygy/tbprobe.h"
 
 namespace PSQT {
@@ -40,12 +40,13 @@ int main(int argc, char* argv[]) {
       std::cout << engine_info() << std::endl;
 
   UCI::init(Options);
+  Tune::init();
   PSQT::init();
   Bitboards::init();
   Position::init();
   Bitbases::init();
   Endgames::init();
-  Threads.set(Options["Threads"]);
+  Threads.set(size_t(Options["Threads"]));
   Search::clear(); // After threads are up
 
   UCI::loop(argc, argv);

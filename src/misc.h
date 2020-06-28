@@ -33,6 +33,8 @@ const std::string engine_info(bool to_uci = false);
 const std::string compiler_info();
 void prefetch(void* addr);
 void start_logger(const std::string& fname);
+void* aligned_ttmem_alloc(size_t size, void*& mem);
+void aligned_ttmem_free(void* mem); // nop if mem == nullptr
 
 void dbg_hit_on(bool b);
 void dbg_hit_on(bool c, bool b);
@@ -63,6 +65,14 @@ std::ostream& operator<<(std::ostream&, SyncCout);
 #define sync_cout std::cout << IO_LOCK
 #define sync_endl std::endl << IO_UNLOCK
 
+namespace Utility {
+
+/// Clamp a value between lo and hi. Available in c++17.
+template<class T> constexpr const T& clamp(const T& v, const T& lo, const T& hi) {
+  return v < lo ? lo : v > hi ? hi : v;
+}
+
+}
 
 /// xorshift64star Pseudo-Random Number Generator
 /// This class is based on original code written and dedicated
@@ -100,6 +110,19 @@ public:
   { return T(rand64() & rand64() & rand64()); }
 };
 
+inline uint64_t mul_hi64(uint64_t a, uint64_t b) {
+#if defined(__GNUC__) && defined(IS_64BIT)
+    __extension__ typedef unsigned __int128 uint128;
+    return ((uint128)a * (uint128)b) >> 64;
+#else
+    uint64_t aL = (uint32_t)a, aH = a >> 32;
+    uint64_t bL = (uint32_t)b, bH = b >> 32;
+    uint64_t c1 = (aL * bL) >> 32;
+    uint64_t c2 = aH * bL + c1;
+    uint64_t c3 = aL * bH + (uint32_t)c2;
+    return aH * bH + (c2 >> 32) + (c3 >> 32);
+#endif
+}
 
 /// Under Windows it is not possible for a process to run on more than one
 /// logical processor group. This usually means to be limited to use max 64

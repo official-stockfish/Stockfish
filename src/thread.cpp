@@ -52,9 +52,10 @@ Thread::~Thread() {
   stdThread.join();
 }
 
+
 /// Thread::bestMoveCount(Move move) return best move counter for the given root move
 
-int Thread::best_move_count(Move move) {
+int Thread::best_move_count(Move move) const {
 
   auto rm = std::find(rootMoves.begin() + pvIdx,
                       rootMoves.begin() + pvLast, move);
@@ -62,24 +63,26 @@ int Thread::best_move_count(Move move) {
   return rm != rootMoves.begin() + pvLast ? rm->bestMoveCount : 0;
 }
 
+
 /// Thread::clear() reset histories, usually before a new game
 
 void Thread::clear() {
 
   counterMoves.fill(MOVE_NONE);
   mainHistory.fill(0);
+  lowPlyHistory.fill(0);
   captureHistory.fill(0);
 
   for (bool inCheck : { false, true })
-    for (StatsType c : { NoCaptures, Captures })
-      for (auto& to : continuationHistory[inCheck][c])
-        for (auto& h : to)
-          h->fill(0);
-
-  for (bool inCheck : { false, true })
-    for (StatsType c : { NoCaptures, Captures })
-      continuationHistory[inCheck][c][NO_PIECE][0]->fill(Search::CounterMovePruneThreshold - 1);
+      for (StatsType c : { NoCaptures, Captures })
+      {
+          for (auto& to : continuationHistory[inCheck][c])
+                for (auto& h : to)
+                      h->fill(0);
+          continuationHistory[inCheck][c][NO_PIECE][0]->fill(Search::CounterMovePruneThreshold - 1);
+      }
 }
+
 
 /// Thread::start_searching() wakes up the thread that will start the search
 
@@ -151,7 +154,7 @@ void ThreadPool::set(size_t requested) {
       clear();
 
       // Reallocate the hash with the new threadpool size
-      TT.resize(Options["Hash"]);
+      TT.resize(size_t(Options["Hash"]));
 
       // Adjust cluster buffers
       Cluster::ttSendRecvBuff_resize(requested);
@@ -161,7 +164,8 @@ void ThreadPool::set(size_t requested) {
   }
 }
 
-/// ThreadPool::clear() sets threadPool data to initial values.
+
+/// ThreadPool::clear() sets threadPool data to initial values
 
 void ThreadPool::clear() {
 
@@ -169,9 +173,10 @@ void ThreadPool::clear() {
       th->clear();
 
   main()->callsCnt = 0;
-  main()->previousScore = VALUE_INFINITE;
+  main()->bestPreviousScore = VALUE_INFINITE;
   main()->previousTimeReduction = 1.0;
 }
+
 
 /// ThreadPool::start_thinking() wakes up main thread waiting in idle_loop() and
 /// returns immediately. Main thread will wake up other threads and start the search.
@@ -211,7 +216,7 @@ void ThreadPool::start_thinking(Position& pos, StateListPtr& states,
 
   for (Thread* th : *this)
   {
-      th->nodes = th->tbHits = th->TTsaves = th->nmpMinPly = 0;
+      th->nodes = th->tbHits = th->TTsaves = th->nmpMinPly = th->bestMoveChanges = 0;
       th->rootDepth = th->completedDepth = 0;
       th->rootMoves = rootMoves;
       th->rootPos.set(pos.fen(), pos.is_chess960(), &setupStates->back(), th);
@@ -222,4 +227,55 @@ void ThreadPool::start_thinking(Position& pos, StateListPtr& states,
   Cluster::signals_init();
 
   main()->start_searching();
+}
+
+Thread* ThreadPool::get_best_thread() const {
+
+    Thread* bestThread = front();
+    std::map<Move, int64_t> votes;
+    Value minScore = VALUE_NONE;
+
+    // Find minimum score of all threads
+    for (Thread* th: *this)
+        minScore = std::min(minScore, th->rootMoves[0].score);
+
+    // Vote according to score and depth, and select the best thread
+    for (Thread* th : *this)
+    {
+        votes[th->rootMoves[0].pv[0]] +=
+            (th->rootMoves[0].score - minScore + 14) * int(th->completedDepth);
+
+          if (abs(bestThread->rootMoves[0].score) >= VALUE_TB_WIN_IN_MAX_PLY)
+          {
+              // Make sure we pick the shortest mate / TB conversion or stave off mate the longest
+              if (th->rootMoves[0].score > bestThread->rootMoves[0].score)
+                  bestThread = th;
+          }
+          else if (   th->rootMoves[0].score >= VALUE_TB_WIN_IN_MAX_PLY
+                   || (   th->rootMoves[0].score > VALUE_TB_LOSS_IN_MAX_PLY
+                       && votes[th->rootMoves[0].pv[0]] > votes[bestThread->rootMoves[0].pv[0]]))
+              bestThread = th;
+    }
+
+    return bestThread;
+}
+
+
+/// Start non-main threads
+
+void ThreadPool::start_searching() {
+
+    for (Thread* th : *this)
+        if (th != front())
+            th->start_searching();
+}
+
+
+/// Wait for non-main threads
+
+void ThreadPool::wait_for_search_finished() const {
+
+    for (Thread* th : *this)
+        if (th != front())
+            th->wait_for_search_finished();
 }
