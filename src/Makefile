@@ -46,7 +46,7 @@ OBJS := $(notdir $(SRCS:.cpp=.o))
 
 VPATH := syzygy
 
-### Establish the operating system name
+### Establish the operating system name
 KERNEL := $(shell uname -s)
 ifeq ($(KERNEL),Linux)
 	OS := $(shell uname -o)
@@ -343,15 +343,15 @@ endif
 ### needs access to the optimization flags.
 ifeq ($(optimize),yes)
 ifeq ($(debug), no)
-	ifneq (,$(filter $(comp),gcc clang))
+	ifneq (,$(filter $(comp),gcc clang mingw))
 		CXXFLAGS += -flto
 		LDFLAGS += $(CXXFLAGS)
 
-	else ifeq ($(comp),mingw)
-		ifeq ($(KERNEL),Linux)
-			CXXFLAGS += -flto
-			LDFLAGS += $(CXXFLAGS)
-		endif
+	# else ifeq ($(comp),mingw)
+		# ifeq ($(KERNEL),Linux)
+			# CXXFLAGS += -flto
+			# LDFLAGS += $(CXXFLAGS)
+		# endif
 	endif
 endif
 endif
@@ -421,6 +421,7 @@ help:
 			clang-profile-make clang-profile-use profile-make-hd clang-profile-d icc-profile-mkdir $(DEP)
 
 build: config-sanity all
+#	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) all
 
 profile-build: config-sanity objprofileclean \
 				profile-make-hd $(profile_make)
