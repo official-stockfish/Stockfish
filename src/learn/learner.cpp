@@ -2529,10 +2529,14 @@ int parse_game_result_from_pgn_extract(std::string result) {
 	}
 }
 
-// 0.25 -->  25
+// 0.25 -->  0.25 * PawnValueEg
 // #-4  --> -mate_in(4)
 // #3   -->  mate_in(3)
-Value parse_score_from_pgn_extract(std::string eval) {
+// -M4  --> -mate_in(4)
+// +M3  -->  mate_in(3)
+Value parse_score_from_pgn_extract(std::string eval, bool& success) {
+	success = true;
+
 	if (eval.substr(0, 1) == "#") {
 		if (eval.substr(1, 1) == "-") {
 			return -mate_in(stoi(eval.substr(2, eval.length() - 2)));
@@ -2541,14 +2545,32 @@ Value parse_score_from_pgn_extract(std::string eval) {
 			return mate_in(stoi(eval.substr(1, eval.length() - 1)));
 		}
 	}
+	else if (eval.substr(0, 2) == "-M") {
+		//std::cout << "eval=" << eval << std::endl;
+		return -mate_in(stoi(eval.substr(2, eval.length() - 2)));
+	}
+	else if (eval.substr(0, 2) == "+M") {
+		//std::cout << "eval=" << eval << std::endl;
+		return mate_in(stoi(eval.substr(2, eval.length() - 2)));
+	}
 	else {
-		return Value(stod(eval) * 100.0f);
+		char *endptr;
+		double value = strtod(eval.c_str(), &endptr);
+
+		if (*endptr != '\0') {
+			success = false;
+			return VALUE_ZERO;
+		}
+		else {
+			return Value(value * PawnValueEg);
+		}
 	}
 }
 
-// pgn-extract形式の教師をやねうら王用のPackedSfenValueに変換する
-void convert_bin_from_pgn_extract(const vector<string>& filenames, const string& output_file_name)
+void convert_bin_from_pgn_extract(const vector<string>& filenames, const string& output_file_name, const bool pgn_eval_side_to_move)
 {
+	std::cout << "pgn_eval_side_to_move=" << pgn_eval_side_to_move << std::endl;
+
 	auto th = Threads.main();
 	auto &pos = th->rootPos;
 
@@ -2602,11 +2624,20 @@ void convert_bin_from_pgn_extract(const vector<string>& filenames, const string&
 					gamePly++;
 
 					std::regex pattern_bracket(R"(\{(.+?)\})");
-					std::regex pattern_eval(R"(\[\%eval (.+?)\])");
+
+					std::regex pattern_eval1(R"(\[\%eval (.+?)\])");
+					std::regex pattern_eval2(R"((.+?)\/)");
+
+					// very slow
+					//std::regex pattern_eval1(R"(\[\%eval (#?[+-]?(?:\d+\.?\d*|\.\d+))\])");
+					//std::regex pattern_eval2(R"((#?[+-]?(?:\d+\.?\d*|\.\d+)\/))");
+
 					std::regex pattern_move(R"((.+?)\{)");
 					std::smatch match;
 
 					// example: { [%eval 0.25] [%clk 0:10:00] }
+					// example: { +0.71/22 1.2s }
+					// example: { book }
 					if (!std::regex_search(itr, line.cend(), match, pattern_bracket)) {
 						break;
 					}
@@ -2616,17 +2647,39 @@ void convert_bin_from_pgn_extract(const vector<string>& filenames, const string&
 					trim(str_eval_clk);
 					//std::cout << "str_eval_clk="<< str_eval_clk << std::endl;
 
+					if (str_eval_clk == "book") {
+						//std::cout << "book" << std::endl;
+
+						// example: { rnbqkbnr/pppppppp/8/8/8/4P3/PPPP1PPP/RNBQKBNR b KQkq - 0 1 }
+						if (!std::regex_search(itr, line.cend(), match, pattern_bracket)) {
+							break;
+						}
+						itr += match.position(0) + match.length(0);
+						continue;
+					}
+
 					// example: [%eval 0.25]
 					// example: [%eval #-4]
 					// example: [%eval #3]
-					if (!std::regex_search(str_eval_clk, match, pattern_eval)) {
-						continue;
-					}
-					else {
+					// example: +0.71/
+					if (std::regex_search(str_eval_clk, match, pattern_eval1) ||
+						std::regex_search(str_eval_clk, match, pattern_eval2)) {
 						std::string str_eval = match.str(1);
 						trim(str_eval);
-						psv.score = parse_score_from_pgn_extract(str_eval);
-						//std::cout << "psv.score=" << psv.score << std::endl;
+						//std::cout << "str_eval=" << str_eval << std::endl;
+
+						bool success = false;
+						psv.score = Math::clamp(parse_score_from_pgn_extract(str_eval, success), -VALUE_MATE , VALUE_MATE);
+						//std::cout << "success=" << success << ", psv.score=" << psv.score << std::endl;
+
+						if (!success) {
+							//std::cout << "str_eval=" << str_eval << std::endl;
+							//std::cout << "success=" << success << ", psv.score=" << psv.score << std::endl;
+							break;
+						}
+					}
+					else {
+						break;
 					}
 
 					// example: { rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq d3 0 1 }
@@ -2659,16 +2712,20 @@ void convert_bin_from_pgn_extract(const vector<string>& filenames, const string&
 					psv.game_result = game_result;
 
 					if (pos.side_to_move() == BLACK) {
-						psv.score *= -1;
+						if (!pgn_eval_side_to_move) {
+							psv.score *= -1;
+						}
 						psv.game_result *= -1;
 					}
 
-					//std::cout << "write: "
-					//		  << "score=" << psv.score
-					//		  << ", move=" << psv.move
-					//		  << ", gamePly=" << psv.gamePly
-					//		  << ", game_result=" << (int)psv.game_result
-					//		  << std::endl;
+#if 0
+					std::cout << "write: "
+							  << "score=" << psv.score
+							  << ", move=" << psv.move
+							  << ", gamePly=" << psv.gamePly
+							  << ", game_result=" << (int)psv.game_result
+							  << std::endl;
+#endif
 
 					ofs.write((char*)&psv, sizeof(PackedSfenValue));
 					memset((char*)&psv, 0, sizeof(PackedSfenValue));
@@ -2685,6 +2742,7 @@ void convert_bin_from_pgn_extract(const vector<string>& filenames, const string&
 	std::cout << now_string() << " all done" << std::endl;
 	ofs.close();
 }
+
 //void convert_plain(const vector<string>& filenames , const string& output_file_name)
 //{
 //	Position tpos;
@@ -2773,6 +2831,7 @@ void learn(Position&, istringstream& is)
 	bool interpolate_eval = 0;
 	// convert teacher in pgn-extract format to Yaneura King's bin
 	bool use_convert_bin_from_pgn_extract = false;
+	bool pgn_eval_side_to_move = false;
 	// File name to write in those cases (default is "shuffled_sfen.bin")
 	string output_file_name = "shuffled_sfen.bin";
 
@@ -2907,7 +2966,9 @@ void learn(Position&, istringstream& is)
 		else if (option == "convert_plain") use_convert_plain = true;
 		else if (option == "convert_bin") use_convert_bin = true;
 		else if (option == "interpolate_eval") is >> interpolate_eval;
-		else if (option == "convert_bin_from_pgn-extract") use_convert_bin_from_pgn_extract = true;		
+		else if (option == "convert_bin_from_pgn-extract") use_convert_bin_from_pgn_extract = true;
+		else if (option == "pgn_eval_side_to_move") is >> pgn_eval_side_to_move;
+
 		// Otherwise, it's a filename.
 		else
 			filenames.push_back(option);
@@ -3025,7 +3086,7 @@ void learn(Position&, istringstream& is)
 	{
 		is_ready(true);
 		cout << "convert_bin_from_pgn-extract.." << endl;
-		convert_bin_from_pgn_extract(filenames, output_file_name);
+		convert_bin_from_pgn_extract(filenames, output_file_name, pgn_eval_side_to_move);
 		return;
 	}
 
