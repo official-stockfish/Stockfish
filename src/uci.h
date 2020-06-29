@@ -75,16 +75,17 @@ std::string move(Move m, bool chess960);
 std::string pv(const Position& pos, Depth depth, Value alpha, Value beta);
 Move to_move(const Position& pos, std::string& str);
 
-// 評価関数を読み込んだかのフラグ。これはevaldirの変更にともなってfalseにする。
+// Flag that read the evaluation function. This is set to false when evaldir is changed.
 extern bool load_eval_finished; // = false;
 } // namespace UCI
 
 extern UCI::OptionsMap Options;
 
-// USIの"isready"コマンドが呼び出されたときの処理。このときに評価関数の読み込みなどを行なう。
-// benchmarkコマンドのハンドラなどで"isready"が来ていないときに評価関数を読み込ませたいときに用いる。
-// skipCorruptCheck == trueのときは評価関数の2度目の読み込みのときのcheck sumによるメモリ破損チェックを省略する。
-// ※　この関数は、Stockfishにはないがないと不便なので追加しておく。
+// Processing when USI "isready" command is called. At this time, the evaluation function is read.
+// Used when you want to load the evaluation function when "isready" does not come in handler of benchmark command etc.
+// If skipCorruptCheck == true, skip memory corruption check by check sum when reading the evaluation function a second time.
+// * This function is inconvenient if it is not available in Stockfish, so add it.
+
 void is_ready(bool skipCorruptCheck = false);
 
 extern const char* StartFEN;

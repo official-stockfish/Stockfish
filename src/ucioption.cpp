@@ -79,21 +79,21 @@ void init(OptionsMap& o) {
   o["SyzygyProbeDepth"]      << Option(1, 1, 100);
   o["Syzygy50MoveRule"]      << Option(true);
   o["SyzygyProbeLimit"]      << Option(7, 0, 7);
-  // 評価関数フォルダ。これを変更したとき、評価関数を次のisreadyタイミングで読み直す必要がある。
+  // Evaluation function folder. When this is changed, it is necessary to reread the evaluation function at the next isready timing.
   o["EvalDir"]               << Option("eval", on_eval_dir);
-  // isreadyタイミングで評価関数を読み込まれると、新しい評価関数の変換のために
-  // test evalconvertコマンドを叩きたいのに、その新しい評価関数がないがために
-  // このコマンドの実行前に異常終了してしまう。
-  // そこでこの隠しオプションでisready時の評価関数の読み込みを抑制して、
-  // test evalconvertコマンドを叩く。
+  // When the evaluation function is loaded at the isready timing, it is necessary to convert the new evaluation function.
+  // I want to hit the test eval convert command, but there is no new evaluation function
+  // It ends abnormally before executing this command.
+  // Therefore, with this hidden option, you can suppress the loading of the evaluation function when isready,
+  // Hit the test eval convert command.
   o["SkipLoadingEval"]       << Option(false);
-  // 定跡の指し手を何手目まで用いるか
+  // how many moves to use a fixed move
   o["BookMoves"] << Option(16, 0, 10000);
 
 #if defined(EVAL_LEARN)
-  // 評価関数の学習を行なうときは、評価関数の保存先のフォルダを変更できる。
-  // デフォルトではevalsave。このフォルダは事前に用意されているものとする。
-  // このフォルダ配下にフォルダを"0/","1/",…のように自動的に掘り、そこに評価関数ファイルを保存する。
+  // When learning the evaluation function, you can change the folder to save the evaluation function.
+  // Evalsave by default. This folder shall be prepared in advance.
+  // Automatically dig a folder under this folder like "0/", "1/", ... and save the evaluation function file there.
   o["EvalSaveDir"] << Option("evalsave");
 #endif
 }
@@ -204,6 +204,6 @@ Option& Option::operator=(const string& v) {
   return *this;
 }
 
-// 評価関数を読み込んだかのフラグ。これはevaldirの変更にともなってfalseにする。
+// Flag that read the evaluation function. This is set to false when evaldir is changed.
 bool load_eval_finished = false;
 } // namespace UCI

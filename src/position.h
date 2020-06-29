@@ -63,7 +63,7 @@ struct StateInfo {
 #if defined(EVAL_NNUE)
   Eval::NNUE::Accumulator accumulator;
 
-  // 評価値の差分計算の管理用
+   // For management of evaluation value difference calculation
   Eval::DirtyPiece dirtyPiece;
 #endif  // defined(EVAL_NNUE)
 };
@@ -82,7 +82,7 @@ typedef std::unique_ptr<std::deque<StateInfo>> StateListPtr;
 /// traversing the search tree.
 class Thread;
 
-// packされたsfen
+// packed sfen
 struct PackedSfen { uint8_t data[32]; };
 
 class Position {
@@ -181,31 +181,31 @@ public:
 #if defined(EVAL_NNUE) || defined(EVAL_LEARN)
   // --- StateInfo
 
-  // 現在の局面に対応するStateInfoを返す。
-  // たとえば、state()->capturedPieceであれば、前局面で捕獲された駒が格納されている。
+  // Returns the StateInfo corresponding to the current situation.
+  // For example, if state()->capturedPiece, the pieces captured in the previous phase are stored.
   StateInfo* state() const { return st; }
 
-  // 評価関数で使うための、どの駒番号の駒がどこにあるかなどの情報。
+  // Information such as where and which piece number is used for the evaluation function.
   const Eval::EvalList* eval_list() const { return &evalList; }
 #endif  // defined(EVAL_NNUE) || defined(EVAL_LEARN)
 
 #if defined(EVAL_LEARN)
-  // -- sfen化ヘルパ
+  // --sfenization helper
 
-  // packされたsfenを得る。引数に指定したバッファに返す。
-  // gamePlyはpackに含めない。
+  // Get the packed sfen. Returns to the buffer specified in the argument.
+  // Do not include gamePly in pack.
   void sfen_pack(PackedSfen& sfen);
 
-  // ↑sfenを経由すると遅いので直接packされたsfenをセットする関数を作った。
-  // pos.set(sfen_unpack(data),si,th); と等価。
-  // 渡された局面に問題があって、エラーのときは非0を返す。
-  // PackedSfenにgamePlyは含まないので復元できない。そこを設定したいのであれば引数で指定すること。
+  // ↑ It is slow to go through sfen, so I made a function to set packed sfen directly.
+  // Equivalent to pos.set(sfen_unpack(data),si,th);.
+  // If there is a problem with the passed phase and there is an error, non-zero is returned.
+  // PackedSfen does not include gamePly so it cannot be restored. If you want to set it, specify it with an argument.
   int set_from_packed_sfen(const PackedSfen& sfen, StateInfo* si, Thread* th, bool mirror = false);
 
-  // 盤面と手駒、手番を与えて、そのsfenを返す。
+  // Give the board, hand piece, and turn, and return the sfen.
   //static std::string sfen_from_rawdata(Piece board[81], Hand hands[2], Color turn, int gamePly);
 
-  // c側の玉の位置を返す。
+  // Returns the position of the ball on the c side.
   Square king_square(Color c) const { return pieceList[make_piece(c, KING)][0]; }
 #endif // EVAL_LEARN
 
@@ -223,7 +223,7 @@ private:
   void do_castling(Color us, Square from, Square& to, Square& rfrom, Square& rto);
 
 #if defined(EVAL_NNUE)
-  // 盤上のsqの升にある駒のPieceNumberを返す。
+  // Returns the PieceNumber of the piece in the sq box on the board.
   PieceNumber piece_no_of(Square sq) const;
 #endif  // defined(EVAL_NNUE)
 
@@ -245,7 +245,7 @@ private:
   bool chess960;
 
 #if defined(EVAL_NNUE) || defined(EVAL_LEARN)
-  // 評価関数で用いる駒のリスト
+  // List of pieces used in the evaluation function
   Eval::EvalList evalList;
 #endif  // defined(EVAL_NNUE) || defined(EVAL_LEARN)
 };

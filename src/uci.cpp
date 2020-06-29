@@ -44,22 +44,22 @@ extern vector<string> setup_bench(const Position&, istream&);
 // FEN string of the initial position, normal chess
 const char* StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
-// 棋譜を自動生成するコマンド
+// Command to automatically generate a game record
 #if defined (EVAL_LEARN)
 namespace Learner
 {
-  // 教師局面の自動生成
+  // Automatic generation of teacher position
   void gen_sfen(Position& pos, istringstream& is);
 
-  // 生成した棋譜からの学習
+  // Learning from the generated game record
   void learn(Position& pos, istringstream& is);
 
 #if defined(GENSFEN2019)
-  // 開発中の教師局面の自動生成コマンド
+  // Automatic generation command of teacher phase under development
   void gen_sfen2019(Position& pos, istringstream& is);
 #endif
 
-  // 読み筋と評価値のペア。Learner::search(),Learner::qsearch()が返す。
+  // A pair of reader and evaluation value. Returned by Learner::search(),Learner::qsearch().
   typedef std::pair<Value, std::vector<Move> > ValueAndPV;
 
   ValueAndPV qsearch(Position& pos);
@@ -71,7 +71,7 @@ namespace Learner
 #if defined(EVAL_NNUE) && defined(ENABLE_TEST_CMD)
 void test_cmd(Position& pos, istringstream& is)
 {
-    // 探索をするかも知れないので初期化しておく。
+    // Initialize as it may be searched.
     is_ready();
 
     std::string param;
@@ -221,21 +221,21 @@ namespace {
          << "\nNodes/second    : " << 1000 * nodes / elapsed << endl;
   }
 
-  // check sumを計算したとき、それを保存しておいてあとで次回以降、整合性のチェックを行なう。
+// When you calculate check sum, save it and check the consistency later.
   uint64_t eval_sum;
 } // namespace
 
-// is_ready_cmd()を外部から呼び出せるようにしておく。(benchコマンドなどから呼び出したいため)
-// 局面は初期化されないので注意。
+// Make is_ready_cmd() callable from outside. (Because I want to call it from the bench command etc.)
+// Note that the phase is not initialized.
 void is_ready(bool skipCorruptCheck)
 {
 #if defined(EVAL_NNUE)
-  // "isready"を受け取ったあと、"readyok"を返すまで5秒ごとに改行を送るように修正する。(keep alive的な処理)
-  //	USI2.0の仕様より。
-  //  -"isready"のあとのtime out時間は、30秒程度とする。これを超えて、評価関数の初期化、hashテーブルの確保をしたい場合、
-  //  思考エンジン側から定期的に何らかのメッセージ(改行可)を送るべきである。
-  //  -ShogiGUIではすでにそうなっているので、MyShogiもそれに追随する。
-  //  -また、やねうら王のエンジン側は、"isready"を受け取ったあと、"readyok"を返すまで5秒ごとに改行を送るように修正する。
+  // After receiving "isready", modify so that a line feed is sent every 5 seconds until "readyok" is returned. (keep alive processing)
+  // From USI 2.0 specifications.
+  // -The time out time after "is ready" is about 30 seconds. Beyond this, if you want to initialize the evaluation function and secure the hash table,
+  // You should send some kind of message (breakable) from the thinking engine side.
+  // -Shogi GUI already does so, so MyShogi will follow along.
+  //-Also, the engine side of Yaneura King modifies it so that after "isready" is received, a line feed is sent every 5 seconds until "readyok" is returned.
 
   auto ended = false;
   auto th = std::thread([&ended] {
@@ -243,25 +243,25 @@ void is_ready(bool skipCorruptCheck)
     while (!ended)
     {
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
-      if (++count >= 50 /* 5秒 */)
+      if (++count >= 50 /* 5 seconds */)
       {
         count = 0;
-        sync_cout << sync_endl; // 改行を送信する。
+        sync_cout << sync_endl; // Send a line break.
       }
     }
     });
 
-  // 評価関数の読み込みなど時間のかかるであろう処理はこのタイミングで行なう。
-  // 起動時に時間のかかる処理をしてしまうと将棋所がタイムアウト判定をして、思考エンジンとしての認識をリタイアしてしまう。
+  // Perform processing that may take time, such as reading the evaluation function, at this timing.
+  // If you do a time-consuming process at startup, Shogi place will make a timeout judgment and retire the recognition as a thinking engine.
   if (!UCI::load_eval_finished)
   {
-    // 評価関数の読み込み
+    // Read evaluation function
     Eval::load_eval();
 
-    // チェックサムの計算と保存(その後のメモリ破損のチェックのため)
+    // Calculate and save checksum (to check for subsequent memory corruption)
     eval_sum = Eval::calc_check_sum();
 
-    // ソフト名の表示
+    // display soft name
     Eval::print_softname(eval_sum);
 
     UCI::load_eval_finished = true;
@@ -269,14 +269,14 @@ void is_ready(bool skipCorruptCheck)
   }
   else
   {
-    // メモリが破壊されていないかを調べるためにチェックサムを毎回調べる。
-    // 時間が少しもったいない気もするが.. 0.1秒ぐらいのことなので良しとする。
+    // Check the checksum every time to see if the memory has been corrupted.
+    // It seems that the time is a little wasteful, but it is good because it is about 0.1 seconds.
     if (!skipCorruptCheck && eval_sum != Eval::calc_check_sum())
       sync_cout << "Error! : EVAL memory is corrupted" << sync_endl;
   }
 
-  // isreadyに対してはreadyokを返すまで次のコマンドが来ないことは約束されているので
-  // このタイミングで各種変数の初期化もしておく。
+  // For isready, it is promised that the next command will not come until it returns readyok.
+  // Initialize various variables at this timing.
 
   TT.resize(Options["Hash"]);
   Search::clear();
@@ -284,7 +284,7 @@ void is_ready(bool skipCorruptCheck)
 
   Threads.stop = false;
 
-  // keep aliveを送信するために生成したスレッドを終了させ、待機する。
+  // Terminate the thread created to send keep alive and wait.
   ended = true;
   th.join();
 #endif  // defined(EVAL_NNUE)
@@ -294,7 +294,7 @@ void is_ready(bool skipCorruptCheck)
 
 
 // --------------------
-// テスト用にqsearch(),search()を直接呼ぶ
+// Call qsearch(),search() directly for testing
 // --------------------
 
 #if defined(EVAL_LEARN)
@@ -391,10 +391,10 @@ void UCI::loop(int argc, char* argv[]) {
       else if (token == "learn") Learner::learn(pos, is);
 
 #if defined (GENSFEN2019)
-      // 開発中の教師局面生成コマンド
+	  // Command to generate teacher phase under development
       else if (token == "gensfen2019") Learner::gen_sfen2019(pos, is);
 #endif
-      // テスト用にqsearch(),search()を直接呼ぶコマンド
+      // Command to call qsearch(),search() directly for testing
       else if (token == "qsearch") qsearch_cmd(pos);
       else if (token == "search") search_cmd(pos, is);
 
@@ -405,7 +405,7 @@ void UCI::loop(int argc, char* argv[]) {
 #endif
 
 #if defined(EVAL_NNUE) && defined(ENABLE_TEST_CMD)
-      // テストコマンド
+      // test command
       else if (token == "test") test_cmd(pos, is);
 #endif
       else

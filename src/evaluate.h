@@ -38,39 +38,39 @@ void evaluate_with_no_return(const Position& pos);
 Value compute_eval(const Position& pos);
 
 #if defined(EVAL_NNUE) || defined(EVAL_LEARN)
-// 評価関数ファイルを読み込む。
-// これは、"is_ready"コマンドの応答時に1度だけ呼び出される。2度呼び出すことは想定していない。
-// (ただし、EvalDir(評価関数フォルダ)が変更になったあと、isreadyが再度送られてきたら読みなおす。)
+// Read the evaluation function file.
+// This is only called once in response to the "is_ready" command. It is not supposed to be called twice.
+// (However, if isready is sent again after EvalDir (evaluation function folder) has been changed, read it again.)
 void load_eval();
 
-static uint64_t calc_check_sum() { return 0; }
+static uint64_t calc_check_sum() {return 0;}
 
 static void print_softname(uint64_t check_sum) {}
 
-// --- 評価関数で使う定数 KPP(玉と任意2駒)のPに相当するenum
+// --- enum corresponding to P of constant KPP (ball and arbitrary 2 pieces) used in evaluation function
 
-// (評価関数の実験のときには、BonaPieceは自由に定義したいのでここでは定義しない。)
+// (BonaPiece wants to define freely in experiment of evaluation function, so I don't define it here.)
 
 
-// BonanzaでKKP/KPPと言うときのP(Piece)を表現する型。
-// Σ KPPを求めるときに、39の地点の歩のように、升×駒種に対して一意な番号が必要となる。
+// A type that represents P(Piece) when calling KKP/KPP in Bonanza.
+// When you ask for Σ KPP, you need a unique number for each box × piece type, like the step at 39 points.
 enum BonaPiece : int32_t
 {
-	// f = friend(≒先手)の意味。e = enemy(≒後手)の意味
+	// Meaning of f = friend (≒first move). Meaning of e = enemy (≒rear)
 
-	// 未初期化の時の値
+	// Value when uninitialized
 	BONA_PIECE_NOT_INIT = -1,
 
-	// 無効な駒。駒落ちのときなどは、不要な駒をここに移動させる。
+	// Invalid piece. When you drop a piece, move unnecessary pieces here.
 	BONA_PIECE_ZERO = 0,
 
 	fe_hand_end = BONA_PIECE_ZERO + 1,
 
-    // Bonanzaのように盤上のありえない升の歩や香の番号を詰めない。
-	// 理由1) 学習のときに相対PPで1段目に香がいるときがあって、それを逆変換において正しく表示するのが難しい。
-	// 理由2) 縦型BitboardだとSquareからの変換に困る。
+	// Don't pack the numbers of unrealistic walks and incense on the board like Bonanza.
+	// Reason 1) When learning, there are times when the incense is on the first stage in relative PP, and it is difficult to display it correctly in the inverse transformation.
+	// Reason 2) It is difficult to convert from Square with vertical Bitboard.
 
-	// --- 盤上の駒
+	// --- Pieces on the board
 	f_pawn = fe_hand_end,
 	e_pawn = f_pawn + SQUARE_NB,
 	f_knight = e_pawn + SQUARE_NB,
@@ -84,7 +84,7 @@ enum BonaPiece : int32_t
 	fe_end = e_queen + SQUARE_NB,
 	f_king = fe_end,
 	e_king = f_king + SQUARE_NB,
-	fe_end2 = e_king + SQUARE_NB, // 玉も含めた末尾の番号。
+	fe_end2 = e_king + SQUARE_NB, // Last number including balls.
 };
 
 #define ENABLE_INCR_OPERATORS_ON(T)                                \
@@ -95,8 +95,8 @@ ENABLE_INCR_OPERATORS_ON(BonaPiece)
 
 #undef ENABLE_INCR_OPERATORS_ON
 
-// BonaPieceを後手から見たとき(先手の39の歩を後手から見ると後手の71の歩)の番号とを
-// ペアにしたものをExtBonaPiece型と呼ぶことにする。
+// The number when you look at BonaPiece from the back (the number of steps from the previous 39 to the number 71 from the back)
+// Let's call the paired one the ExtBonaPiece type.
 union ExtBonaPiece
 {
 	struct {
@@ -109,28 +109,28 @@ union ExtBonaPiece
 	ExtBonaPiece(BonaPiece fw_, BonaPiece fb_) : fw(fw_), fb(fb_) {}
 };
 
-// 駒が今回の指し手によってどこからどこに移動したのかの情報。
-// 駒はExtBonaPiece表現であるとする。
+// Information about where the piece has moved from where to by this move.
+// Assume the piece is an ExtBonaPiece expression.
 struct ChangedBonaPiece
 {
 	ExtBonaPiece old_piece;
 	ExtBonaPiece new_piece;
 };
 
-// KPPテーブルの盤上の駒pcに対応するBonaPieceを求めるための配列。
-// 例)
-// BonaPiece fb = kpp_board_index[pc].fb + sq; // 先手から見たsqにあるpcに対応するBonaPiece
-// BonaPiece fw = kpp_board_index[pc].fw + sq; // 後手から見たsqにあるpcに対応するBonaPiece
+// An array for finding the BonaPiece corresponding to the piece pc on the board of the KPP table.
+// example)
+// BonaPiece fb = kpp_board_index[pc].fb + sq; // BonaPiece corresponding to pc in sq seen from the front
+// BonaPiece fw = kpp_board_index[pc].fw + sq; // BonaPiece corresponding to pc in sq seen from behind
 extern ExtBonaPiece kpp_board_index[PIECE_NB];
 
-// 評価関数で用いる駒リスト。どの駒(PieceNumber)がどこにあるのか(BonaPiece)を保持している構造体
+// List of pieces used in the evaluation function. A structure holding which piece (PieceNumber) is where (BonaPiece)
 struct EvalList
 {
-	// 評価関数(FV38型)で用いる駒番号のリスト
+	// List of frame numbers used in evaluation function (FV38 type)
 	BonaPiece* piece_list_fw() const { return const_cast<BonaPiece*>(pieceListFw); }
 	BonaPiece* piece_list_fb() const { return const_cast<BonaPiece*>(pieceListFb); }
 
-	// 指定されたpiece_noの駒をExtBonaPiece型に変換して返す。
+	// Convert the specified piece_no piece to ExtBonaPiece type and return it.
 	ExtBonaPiece bona_piece(PieceNumber piece_no) const
 	{
 		ExtBonaPiece bp;
@@ -139,36 +139,36 @@ struct EvalList
 		return bp;
 	}
 
-	// 盤上のsqの升にpiece_noのpcの駒を配置する
+	// Place the piece_no pc piece in the sq box on the board
 	void put_piece(PieceNumber piece_no, Square sq, Piece pc) {
 		set_piece_on_board(piece_no, BonaPiece(kpp_board_index[pc].fw + sq), BonaPiece(kpp_board_index[pc].fb + Inv(sq)), sq);
 	}
 
-	// 盤上のある升sqに対応するPieceNumberを返す。
+	// Returns the PieceNumber corresponding to a box on the board.
 	PieceNumber piece_no_of_board(Square sq) const { return piece_no_list_board[sq]; }
 
-	// pieceListを初期化する。
-	// 駒落ちに対応させる時のために、未使用の駒の値はBONA_PIECE_ZEROにしておく。
-	// 通常の評価関数を駒落ちの評価関数として流用できる。
-	// piece_no_listのほうはデバッグが捗るようにPIECE_NUMBER_NBで初期化。
+	// Initialize the pieceList.
+	// Set the value of unused pieces to BONA_PIECE_ZERO in case you want to deal with dropped pieces.
+	// A normal evaluation function can be used as an evaluation function for missing frames.
+	// piece_no_list is initialized with PIECE_NUMBER_NB to facilitate debugging.
 	void clear()
 	{
 
-		for (auto& p : pieceListFw)
+		for (auto& p: pieceListFw)
 			p = BONA_PIECE_ZERO;
 
-		for (auto& p : pieceListFb)
+		for (auto& p: pieceListFb)
 			p = BONA_PIECE_ZERO;
 
-		for (auto& v : piece_no_list_board)
+		for (auto& v :piece_no_list_board)
 			v = PIECE_NUMBER_NB;
 	}
 
-	// 内部で保持しているpieceListFw[]が正しいBonaPieceであるかを検査する。
-	// 注 : デバッグ用。遅い。
+	// Check whether the pieceListFw[] held internally is a correct BonaPiece.
+	// Note: For debugging. slow.
 	bool is_valid(const Position& pos);
 
-	// 盤上sqにあるpiece_noの駒のBonaPieceがfb,fwであることを設定する。
+	// Set that the BonaPiece of the piece_no piece on the board sq is fb,fw.
 	inline void set_piece_on_board(PieceNumber piece_no, BonaPiece fw, BonaPiece fb, Square sq)
 	{
 		assert(is_ok(piece_no));
@@ -177,21 +177,21 @@ struct EvalList
 		piece_no_list_board[sq] = piece_no;
 	}
 
-	// 駒リスト。駒番号(PieceNumber)いくつの駒がどこにあるのか(BonaPiece)を示す。FV38などで用いる。
+	// Piece list. Piece Number Shows how many pieces are in place (Bona Piece). Used in FV38 etc.
 
-	// 駒リストの長さ
-  // 38固定
+	// Length of piece list
+  // 38 fixed
 public:
 	int length() const { return PIECE_NUMBER_KING; }
 
-	// VPGATHERDDを使う都合、4の倍数でなければならない。
-	// また、KPPT型評価関数などは、39,40番目の要素がゼロであることを前提とした
-	// アクセスをしている箇所があるので注意すること。
+	// Must be a multiple of 4 to use VPGATHERDD.
+	// In addition, the KPPT type evaluation function, etc. is based on the assumption that the 39th and 40th elements are zero.
+	// Please note that there is a part that is accessed.
 	static const int MAX_LENGTH = 32;
 
-  // 盤上の駒に対して、その駒番号(PieceNumber)を保持している配列
-  // 玉がSQUARE_NBに移動しているとき用に+1まで保持しておくが、
-  // SQUARE_NBの玉を移動させないので、この値を使うことはないはず。
+  // An array that holds the piece number (PieceNumber) for the pieces on the board
+  // Hold up to +1 for when the ball is moving to SQUARE_NB,
+  // SQUARE_NB balls are not moved, so this value should never be used.
   PieceNumber piece_no_list_board[SQUARE_NB_PLUS1];
 private:
 
@@ -199,20 +199,20 @@ private:
 	BonaPiece pieceListFb[MAX_LENGTH];
 };
 
-// 評価値の差分計算の管理用
-// 前の局面から移動した駒番号を管理するための構造体
-// 動く駒は、最大で2個。
+// For management of evaluation value difference calculation
+// A structure for managing the number of pieces that have moved from the previous stage
+// Up to 2 moving pieces.
 struct DirtyPiece
 {
-	// その駒番号の駒が何から何に変わったのか
+	// What changed from the piece with that piece number
 	Eval::ChangedBonaPiece changed_piece[2];
 
-	// dirtyになった駒番号
+	// The number of dirty pieces
 	PieceNumber pieceNo[2];
 
-	// dirtyになった個数。
-	// null moveだと0ということもありうる。
-	// 動く駒と取られる駒とで最大で2つ。
+	// The number of dirty files.
+	// It can be 0 for null move.
+	// Up to 2 moving pieces and taken pieces.
 	int dirty_num;
 
 };

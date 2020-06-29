@@ -945,7 +945,7 @@ ExtBonaPiece kpp_board_index[PIECE_NB] = {
     { f_king, e_king },
     { BONA_PIECE_ZERO, BONA_PIECE_ZERO },
 
-    // 後手から見た場合。fとeが入れ替わる。
+    // When viewed from behind. f and e are exchanged.
     { BONA_PIECE_ZERO, BONA_PIECE_ZERO },
     { e_pawn, f_pawn },
     { e_knight, f_knight },
@@ -953,11 +953,11 @@ ExtBonaPiece kpp_board_index[PIECE_NB] = {
     { e_rook, f_rook },
     { e_queen, f_queen },
     { e_king, f_king },
-    { BONA_PIECE_ZERO, BONA_PIECE_ZERO }, // 金の成りはない
+    { BONA_PIECE_ZERO, BONA_PIECE_ZERO }, // no money
 };
 
-// 内部で保持しているpieceListFw[]が正しいBonaPieceであるかを検査する。
-// 注 : デバッグ用。遅い。
+// Check whether the pieceListFw[] held internally is a correct BonaPiece.
+// Note: For debugging. slow.
 bool EvalList::is_valid(const Position& pos)
 {
   std::set<PieceNumber> piece_numbers;
@@ -973,28 +973,28 @@ bool EvalList::is_valid(const Position& pos)
   for (int i = 0; i < length(); ++i)
   {
     BonaPiece fw = pieceListFw[i];
-    // このfwが本当に存在するかをPositionクラスのほうに調べに行く。
+    // Go to the Position class to see if this fw really exists.
 
     if (fw == Eval::BONA_PIECE_ZERO) {
       continue;
     }
 
-    // 範囲外
+    // Out of range
     if (!(0 <= fw && fw < fe_end))
       return false;
 
-    // 盤上の駒なのでこの駒が本当に存在するか調べにいく。
+    // Since it is a piece on the board, I will check if this piece really exists.
     for (Piece pc = NO_PIECE; pc < PIECE_NB; ++pc)
     {
       auto pt = type_of(pc);
-      if (pt == NO_PIECE_TYPE || pt == 7) // 存在しない駒
+      if (pt == NO_PIECE_TYPE || pt == 7) // non-existing piece
         continue;
 
-      // 駒pcのBonaPieceの開始番号
+      // BonaPiece start number of piece pc
       auto s = BonaPiece(kpp_board_index[pc].fw);
       if (s <= fw && fw < s + SQUARE_NB)
       {
-        // 見つかったのでこの駒がsqの地点にあるかを調べる。
+        // Since it was found, check if this piece is at sq.
         Square sq = (Square)(fw - s);
         Piece pc2 = pos.piece_on(sq);
 
@@ -1004,7 +1004,7 @@ bool EvalList::is_valid(const Position& pos)
         goto Found;
       }
     }
-    // 何故か存在しない駒であった..
+    // It was a piece that did not exist for some reason..
     return false;
   Found:;
   }

@@ -527,11 +527,11 @@ void bindThisThread(size_t idx) {
 
 } // namespace WinProcGroup
 
-// 現在時刻を文字列化したもを返す。(評価関数の学習時などに用いる)
+// Returns a string that represents the current time. (Used when learning evaluation functions)
 std::string now_string()
 {
-  // std::ctime(), localtime()を使うと、MSVCでセキュアでないという警告が出る。
-  // C++標準的にはそんなことないはずなのだが…。
+  // Using std::ctime(), localtime() gives a warning that MSVC is not secure.
+  // This shouldn't happen in the C++ standard, but...
 
 #if defined(_MSC_VER)
   // C4996 : 'ctime' : This function or variable may be unsafe.Consider using ctime_s instead.
@@ -542,7 +542,7 @@ std::string now_string()
   auto tp = std::chrono::system_clock::to_time_t(now);
   auto result = string(std::ctime(&tp));
 
-  // 末尾に改行コードが含まれているならこれを除去する
+  // remove line endings if they are included at the end
   while (*result.rbegin() == '\n' || (*result.rbegin() == '\r'))
     result.pop_back();
   return result;
@@ -572,31 +572,31 @@ int read_file_to_memory(std::string filename, std::function<void* (uint64_t)> ca
 
   fs.seekg(0, fstream::end);
   uint64_t eofPos = (uint64_t)fs.tellg();
-  fs.clear(); // これをしないと次のseekに失敗することがある。
+  fs.clear(); // Otherwise the next seek may fail.
   fs.seekg(0, fstream::beg);
   uint64_t begPos = (uint64_t)fs.tellg();
   uint64_t file_size = eofPos - begPos;
   //std::cout << "filename = " << filename << " , file_size = " << file_size << endl;
 
-  // ファイルサイズがわかったのでcallback_funcを呼び出してこの分のバッファを確保してもらい、
-  // そのポインターをもらう。
+  // I know the file size, so call callback_func to get a buffer for this,
+  // Get the pointer.
   void* ptr = callback_func(file_size);
 
-  // バッファが確保できなかった場合や、想定していたファイルサイズと異なった場合は、
-  // nullptrを返すことになっている。このとき、読み込みを中断し、エラーリターンする。
+  // If the buffer could not be secured, or if the file size is different from the expected file size,
+  // It is supposed to return nullptr. At this time, reading is interrupted and an error is returned.
   if (ptr == nullptr)
     return 2;
 
-  // 細切れに読み込む
+  // read in pieces
 
-  const uint64_t block_size = 1024 * 1024 * 1024; // 1回のreadで読み込む要素の数(1GB)
+  const uint64_t block_size = 1024 * 1024 * 1024; // number of elements to read in one read (1GB)
   for (uint64_t pos = 0; pos < file_size; pos += block_size)
   {
-    // 今回読み込むサイズ
+    // size to read this time
     uint64_t read_size = (pos + block_size < file_size) ? block_size : (file_size - pos);
     fs.read((char*)ptr + pos, read_size);
 
-    // ファイルの途中で読み込みエラーに至った。
+    // Read error occurred in the middle of the file.
     if (fs.fail())
       return 2;
 
@@ -613,10 +613,10 @@ int write_memory_to_file(std::string filename, void* ptr, uint64_t size)
   if (fs.fail())
     return 1;
 
-  const uint64_t block_size = 1024 * 1024 * 1024; // 1回のwriteで書き出す要素の数(1GB)
+  const uint64_t block_size = 1024 * 1024 * 1024; // number of elements to write in one write (1GB)
   for (uint64_t pos = 0; pos < size; pos += block_size)
   {
-    // 今回書き出すメモリサイズ
+    // Memory size to write this time
     uint64_t write_size = (pos + block_size < size) ? block_size : (size - pos);
     fs.write((char*)ptr + pos, write_size);
     //cout << ".";
@@ -629,17 +629,17 @@ int write_memory_to_file(std::string filename, void* ptr, uint64_t size)
 //     mkdir wrapper
 // ----------------------------
 
-// カレントフォルダ相対で指定する。成功すれば0、失敗すれば非0が返る。
-// フォルダを作成する。日本語は使っていないものとする。
-// どうもmsys2環境下のgccだと_wmkdir()だとフォルダの作成に失敗する。原因不明。
-// 仕方ないので_mkdir()を用いる。
+// Specify relative to the current folder. Returns 0 on success, non-zero on failure.
+// Create a folder. Japanese is not used.
+// In case of gcc under msys2 environment, folder creation fails with _wmkdir(). Cause unknown.
+// Use _mkdir() because there is no help for it.
 
 #if defined(_WIN32)
-// Windows用
+// for Windows
 
 #if defined(_MSC_VER)
-#include <codecvt>	// mkdirするのにwstringが欲しいのでこれが必要
-#include <locale>   // wstring_convertにこれが必要。
+#include <codecvt> // I need this because I want wstring to mkdir
+#include <locale> // This is required for wstring_convert.
 
 namespace Dependency {
   int mkdir(std::string dir_name)
@@ -663,9 +663,9 @@ namespace Dependency {
 #endif
 #elif defined(__linux__)
 
-// linux環境において、この_LINUXというシンボルはmakefileにて定義されるものとする。
+// In the linux environment, this symbol _LINUX is defined in the makefile.
 
-// Linux用のmkdir実装。
+// mkdir implementation for Linux.
 #include "sys/stat.h"
 
 namespace Dependency {
@@ -676,8 +676,8 @@ namespace Dependency {
 }
 #else
 
-// Linux環境かどうかを判定するためにはmakefileを分けないといけなくなってくるな..
-// linuxでフォルダ掘る機能は、とりあえずナシでいいや..。評価関数ファイルの保存にしか使ってないし…。
+// In order to judge whether it is a Linux environment, we have to divide the makefile..
+// The function to dig a folder on linux is good for the time being... Only used to save the evaluation function file...
 
 namespace Dependency {
   int mkdir(std::string dir_name)

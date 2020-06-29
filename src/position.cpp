@@ -209,11 +209,11 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
   st = si;
 
 #if defined(EVAL_NNUE)
-  // evalListのclear。上でmemsetでゼロクリアしたときにクリアされているが…。
+  // clear evalList. It is cleared when memset is cleared to zero above...
   evalList.clear();
 
-  // PieceListを更新する上で、どの駒がどこにあるかを設定しなければならないが、
-  // それぞれの駒をどこまで使ったかのカウンター
+  // In updating the PieceList, we have to set which piece is where,
+  // A counter of how much each piece has been used
   PieceNumber next_piece_number = PIECE_NUMBER_ZERO;
 #endif  // defined(EVAL_NNUE)
 
@@ -235,10 +235,10 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
 
 #if defined(EVAL_NNUE)
           PieceNumber piece_no =
-            (idx == W_KING) ? PIECE_NUMBER_WKING : // 先手玉
-            (idx == B_KING) ? PIECE_NUMBER_BKING : // 後手玉
-            next_piece_number++; // それ以外
-          evalList.put_piece(piece_no, sq, pc); // sqの升にpcの駒を配置する
+            (idx == W_KING) ?PIECE_NUMBER_WKING : //
+            (idx == B_KING) ?PIECE_NUMBER_BKING : // back ball
+            next_piece_number++; // otherwise
+          evalList.put_piece(piece_no, sq, pc); // Place the pc piece in the sq box
 #endif  // defined(EVAL_NNUE)
 
           ++sq;
@@ -823,7 +823,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       st->rule50 = 0;
 
 #if defined(EVAL_NNUE)
-      dp.dirty_num = 2; // 動いた駒は2個
+      dp.dirty_num = 2; // 2 pieces moved
 
       dp.pieceNo[1] = piece_no1;
       dp.changed_piece[1].old_piece = evalList.bona_piece(piece_no1);
@@ -1054,8 +1054,8 @@ template<bool Do>
 void Position::do_castling(Color us, Square from, Square& to, Square& rfrom, Square& rto) {
 #if defined(EVAL_NNUE)
   auto& dp = st->dirtyPiece;
-  // 差分計算のために移動した駒をStateInfoに記録しておく。
-  dp.dirty_num = 2; // 動いた駒は2個
+   // Record the moved pieces in StateInfo for difference calculation.
+   dp.dirty_num = 2; // 2 pieces moved
 
   PieceNumber piece_no0;
   PieceNumber piece_no1;
