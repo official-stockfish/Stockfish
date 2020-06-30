@@ -19,6 +19,7 @@
 */
 
 #include <cassert>
+#include <cmath>
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -182,6 +183,28 @@ namespace {
          << "\nNodes/second    : " << 1000 * nodes / elapsed << endl;
   }
 
+  // The win rate model return the probability (per mille) of winning given
+  //  a game-ply and eval. The model fits rather accurately the LTC fishtest statistics.
+  int win_rate_model(Value v, int ply) {
+
+     // The model captures only up to 240 plies, so limit input (and rescale).
+     float m = std::min(240, ply) / 64.0;
+
+     // Coefficients of a 3rd order polynomial fit based on fishtest data
+     // for two parameters needed to transform eval to the argument of a
+     // logistic function.
+     float as[] = {-8.24404295, 64.23892342, -95.73056462, 153.86478679};
+     float bs[] = {-3.37154371, 28.44489198, -56.67657741,  72.05858751};
+     float a = (((as[0] * m + as[1]) * m + as[2]) * m) + as[3];
+     float b = (((bs[0] * m + bs[1]) * m + bs[2]) * m) + bs[3];
+
+     // transform eval to cp with limited range
+     float x = Utility::clamp(float(100 * v) / PawnValueEg, -1000.0f, 1000.0f);
+
+     // return win rate in per mille (rounded to nearest)
+     return int(0.5 + 1000 / (1 + std::exp((a - x) / b)));
+  }
+
 } // namespace
 
 
@@ -264,6 +287,22 @@ string UCI::value(Value v) {
       ss << "cp " << v * 100 / PawnValueEg;
   else
       ss << "mate " << (v > 0 ? VALUE_MATE - v + 1 : -VALUE_MATE - v) / 2;
+
+  return ss.str();
+}
+
+
+/// UCI::wdl() report WDL statistics given an evaluation and a game ply, based on
+/// data gathered for fishtest LTC games.
+
+string UCI::wdl(Value v, int ply) {
+
+  stringstream ss;
+
+  int wdl_w = win_rate_model( v, ply);
+  int wdl_l = win_rate_model(-v, ply);
+  int wdl_d = 1000 - wdl_w - wdl_l;
+  ss << " wdl " << wdl_w << " " << wdl_d << " " << wdl_l;
 
   return ss.str();
 }
