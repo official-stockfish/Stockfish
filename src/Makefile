@@ -22,8 +22,8 @@
 ### ==========================================================================
 
 ### Executable name
-MSYS := $(shell echo $$MSYSTEM)
-ifneq (,$(filter $(MSYS),MINGW64 MINGW32))
+MSY := $(shell echo $$MSYSTEM)
+ifneq (,$(filter $(MSY),MINGW64 MINGW32))
 	EXE := stockfish.exe
 	COMP := mingw
 else
@@ -88,6 +88,7 @@ pext := no
 ### 2.2 Architecture specific
 ifeq ($(ARCH),general-32)
 	arch := any
+  bits := 32
 endif
 
 ifeq ($(ARCH),x86-32-old)
@@ -102,19 +103,16 @@ endif
 
 ifeq ($(ARCH),general-64)
 	arch := any
-	bits := 64
 endif
 
 ifeq ($(ARCH),x86-64)
 	arch := x86_64
-	bits := 64
 	prefetch := yes
 	sse := yes
 endif
 
 ifeq ($(ARCH),x86-64-modern)
 	arch := x86_64
-	bits := 64
 	prefetch := yes
 	popcnt := yes
 	sse := yes
@@ -122,7 +120,6 @@ endif
 
 ifeq ($(ARCH),x86-64-bmi2)
 	arch := x86_64
-	bits := 64
 	prefetch := yes
 	popcnt := yes
 	sse := yes
@@ -132,15 +129,22 @@ endif
 ifeq ($(ARCH),armv7)
 	arch := armv7
 	prefetch := yes
+	bits := 32
+endif
+
+ifeq ($(ARCH),armv8)
+	arch := armv8-a
+	prefetch := yes
+	popcnt := yes
 endif
 
 ifeq ($(ARCH),ppc-32)
 	arch := ppc
+	bits := 32
 endif
 
 ifeq ($(ARCH),ppc-64)
 	arch := ppc64
-	bits := 64
 	popcnt := yes
 	prefetch := yes
 endif
@@ -154,6 +158,9 @@ F :=
 CXXFLAGS += -Wall -Wcast-qual -fno-exceptions -std=c++11 $(EXTRACXXFLAGS) $(F)
 DEPENDFLAGS += -std=c++11
 LDFLAGS += $(EXTRALDFLAGS)
+ifeq ($(F),-flto)
+  LDFLAGS += $(F)
+endif
 
 ifeq ($(COMP),)
 	COMP:=gcc
@@ -164,7 +171,7 @@ ifeq ($(COMP),gcc)
 	CXX:=g++
 	CXXFLAGS += -pedantic -Wextra -Wshadow
 
-	ifeq ($(ARCH),$(filter $(ARCH),armv7 armv8))
+	ifneq (,$(filter $(ARCH),armv7 armv8))
 		ifeq ($(OS),Android)
 			CXXFLAGS += -m$(bits)
 			LDFLAGS += -m$(bits)
@@ -317,7 +324,7 @@ endif
 
 ### 3.6 popcnt
 ifeq ($(popcnt),yes)
-	ifeq ($(arch),ppc64)
+	ifeq ($(arch),$(filter $(arch),ppc64 armv8-a))
 		CXXFLAGS += -DUSE_POPCNT
 	else ifeq ($(comp),icc)
 		CXXFLAGS += -msse3 -DUSE_POPCNT
@@ -343,6 +350,9 @@ ifeq ($(debug), no)
 		CXXFLAGS += -flto
 		LDFLAGS += $(CXXFLAGS)
 
+# To use LTO and static linking on windows, the tool chain requires a recent gcc:
+# gcc version 10.1 in msys2 or TDM-GCC version 9.2 are know to work, older might not.
+# So, only enable it for a cross from Linux by default.
 	else ifeq ($(comp),mingw)
 		ifeq ($(KERNEL),Linux)
 			CXXFLAGS += -flto
@@ -444,7 +454,7 @@ install:
 clean: objprofileclean
 	@rm -f $(DEP) *~ core
 
-# clean binaries and objects + clean auxiliary profiling files
+# clean binaries and objects, clean auxiliary profiling files
 objprofileclean:
 	@rm -f $(EXE) *.o ./syzygy/*.o
 	@rm -rf profdir
@@ -523,11 +533,10 @@ icc-profile-mkdir: ; @mkdir -p profdir
 icc-profile-use: EXTRACXXFLAGS := -prof_use -prof_dir ./profdir
 icc-profile-use: all
 
-# If fails put > instead of -MF
+# > identical to -MF
 $(DEP):
 	@$(CXX) $(DEPENDFLAGS) $(SRCS) -MM -MF $@
 
 ifneq (,$(filter $(MAKECMDGOALS),build profile-build))
-include $(DEP)
+  include $(DEP)
 endif
-
