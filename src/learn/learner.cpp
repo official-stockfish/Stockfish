@@ -2614,6 +2614,7 @@ void convert_bin_from_pgn_extract(const vector<string>& filenames, const string&
 
 			else {
 				int gamePly = 0;
+				bool first = true;
 
 				PackedSfenValue psv;
 				memset((char*)&psv, 0, sizeof(PackedSfenValue));
@@ -2682,6 +2683,35 @@ void convert_bin_from_pgn_extract(const vector<string>& filenames, const string&
 						break;
 					}
 
+					if (first) {
+						first = false;
+					}
+					else {
+						psv.gamePly = gamePly;
+						psv.game_result = game_result;
+
+						if (pos.side_to_move() == BLACK) {
+							if (!pgn_eval_side_to_move) {
+								psv.score *= -1;
+							}
+							psv.game_result *= -1;
+						}
+
+#if 0
+						std::cout << "write: "
+								  << "score=" << psv.score
+								  << ", move=" << psv.move
+								  << ", gamePly=" << psv.gamePly
+								  << ", game_result=" << (int)psv.game_result
+								  << std::endl;
+#endif
+
+						ofs.write((char*)&psv, sizeof(PackedSfenValue));
+						memset((char*)&psv, 0, sizeof(PackedSfenValue));
+
+						fen_count++;
+					}
+
 					// example: { rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq d3 0 1 }
 					if (!std::regex_search(itr, line.cend(), match, pattern_bracket)) {
 						break;
@@ -2706,31 +2736,6 @@ void convert_bin_from_pgn_extract(const vector<string>& filenames, const string&
 					trim(str_move);
 					//std::cout << "str_move=" << str_move << std::endl;
 					psv.move = UCI::to_move(pos, str_move);
-
-					//
-					psv.gamePly = gamePly;
-					psv.game_result = game_result;
-
-					if (pos.side_to_move() == BLACK) {
-						if (!pgn_eval_side_to_move) {
-							psv.score *= -1;
-						}
-						psv.game_result *= -1;
-					}
-
-#if 0
-					std::cout << "write: "
-							  << "score=" << psv.score
-							  << ", move=" << psv.move
-							  << ", gamePly=" << psv.gamePly
-							  << ", game_result=" << (int)psv.game_result
-							  << std::endl;
-#endif
-
-					ofs.write((char*)&psv, sizeof(PackedSfenValue));
-					memset((char*)&psv, 0, sizeof(PackedSfenValue));
-
-					fen_count++;
 				}
 
 				game_result = 0;
