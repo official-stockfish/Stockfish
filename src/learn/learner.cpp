@@ -2562,7 +2562,7 @@ Value parse_score_from_pgn_extract(std::string eval, bool& success) {
 			return VALUE_ZERO;
 		}
 		else {
-			return Value(value * PawnValueEg);
+			return Value(value * static_cast<double>(PawnValueEg));
 		}
 	}
 }
