@@ -99,8 +99,8 @@ struct LimitsType {
   TimePoint time[COLOR_NB], inc[COLOR_NB], npmsec, movetime, startTime;
   int movestogo, depth, mate, perft, infinite;
   int64_t nodes;
-  // 画面に出力しないサイレントモード(プロセス内での連続自己対戦のとき用)
-  // このときPVを出力しない。
+  // Silent mode that does not output to the screen (for continuous self-play in process)
+  // Do not output PV at this time.
   bool silent;
 };
 
