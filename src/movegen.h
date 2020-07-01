@@ -68,7 +68,7 @@ struct MoveList {
     return std::find(begin(), end(), move) != end();
   }
 
-  // i”Ô–Ú‚Ì—v‘f‚ð•Ô‚·
+  // returns the i th element
   const ExtMove at(size_t i) const { assert(0 <= i && i < size()); return begin()[i]; }
 
 private:

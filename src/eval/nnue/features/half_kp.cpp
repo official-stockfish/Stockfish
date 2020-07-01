@@ -35,7 +35,7 @@ inline void HalfKP<AssociatedKing>::GetPieces(
 template <Side AssociatedKing>
 void HalfKP<AssociatedKing>::AppendActiveIndices(
     const Position& pos, Color perspective, IndexList* active) {
-  // コンパイラの警告を回避するため、配列サイズが小さい場合は何もしない
+  // do nothing if array size is small to avoid compiler warning
   if (RawFeatures::kMaxActiveDimensions < kMaxActiveDimensions) return;
 
   BonaPiece* pieces;
