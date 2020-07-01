@@ -22,8 +22,8 @@
 ### ==========================================================================
 
 ### Executable name
-MSYS := $(shell echo $$MSYSTEM)
-ifneq (,$(filter $(MSYS),MINGW64 MINGW32))
+MSY := $(shell echo $$MSYSTEM)
+ifneq (,$(filter $(MSY),MINGW64 MINGW32))
 	EXE := stockfish.exe
 	COMP := mingw
 else
@@ -46,7 +46,7 @@ OBJS := $(notdir $(SRCS:.cpp=.o))
 
 VPATH := syzygy
 
-### Establish the operating system name
+### Establish the operating system name
 KERNEL := $(shell uname -s)
 ifeq ($(KERNEL),Linux)
 	OS := $(shell uname -o)
@@ -93,12 +93,10 @@ endif
 
 ifeq ($(ARCH),x86-32-old)
 	arch := i386
-	bits := 32
 endif
 
 ifeq ($(ARCH),x86-32)
 	arch := i386
-	bits := 32
 	prefetch := yes
 	sse := yes
 endif
@@ -131,16 +129,18 @@ endif
 ifeq ($(ARCH),armv7)
 	arch := armv7
 	prefetch := yes
+	bits := 32
 endif
 
 ifeq ($(ARCH),armv8)
 	arch := armv8-a
-	bits := 64
 	prefetch := yes
+	popcnt := yes
 endif
 
 ifeq ($(ARCH),ppc-32)
 	arch := ppc
+	bits := 32
 endif
 
 ifeq ($(ARCH),ppc-64)
@@ -155,9 +155,12 @@ endif
 
 ### 3.1 Selecting compiler (default = gcc)
 F :=
-CXXFLAGS += -Wall -Wcast-qual -fno-exceptions -std=c++11 $(EXTRACXXFLAGS) $(F)
+CXXFLAGS += -Wall -Wcast-qual -fno-exceptions -std=c++11 $(EXTRACXXFLAGS)$(F)
 DEPENDFLAGS += -std=c++11
 LDFLAGS += $(EXTRALDFLAGS)
+ifeq ($(F),-flto)
+  LDFLAGS += $(F)
+endif
 
 ifeq ($(COMP),)
 	COMP:=gcc
@@ -190,12 +193,12 @@ ifeq ($(COMP),mingw)
 		ifeq ($(bits),64)
 			CXX:=x86_64-w64-mingw32-c++
 			ifneq ($(shell which x86_64-w64-mingw32-c++-posix),)
-				CXX:=$(CXX)-posix
+				CXX := $(CXX)-posix
 			endif
 		else
 			CXX:=i686-w64-mingw32-c++
 			ifneq ($(shell which i686-w64-mingw32-c++-posix),)
-				CXX:=$(CXX)-posix
+				CXX := $(CXX)-posix
 			endif
 		endif
 	else
@@ -321,7 +324,7 @@ endif
 
 ### 3.6 popcnt
 ifeq ($(popcnt),yes)
-	ifeq ($(arch),ppc64)
+	ifeq ($(arch),$(filter $(arch),ppc64 armv8-a))
 		CXXFLAGS += -DUSE_POPCNT
 	else ifeq ($(comp),icc)
 		CXXFLAGS += -msse3 -DUSE_POPCNT
@@ -343,15 +346,18 @@ endif
 ### needs access to the optimization flags.
 ifeq ($(optimize),yes)
 ifeq ($(debug), no)
-	ifneq (,$(filter $(comp),gcc clang mingw))
+	ifneq (,$(filter $(comp),gcc clang))
 		CXXFLAGS += -flto
 		LDFLAGS += $(CXXFLAGS)
 
-	# else ifeq ($(comp),mingw)
-		# ifeq ($(KERNEL),Linux)
-			# CXXFLAGS += -flto
-			# LDFLAGS += $(CXXFLAGS)
-		# endif
+# To use LTO and static linking on windows, the tool chain requires a recent gcc:
+# gcc version 10.1 in msys2 or TDM-GCC version 9.2 are know to work, older might not.
+# So, only enable it for a cross from Linux by default.
+	else ifeq ($(comp),mingw)
+		ifeq ($(KERNEL),Linux)
+			CXXFLAGS += -flto
+			LDFLAGS += $(CXXFLAGS)
+		endif
 	endif
 endif
 endif
@@ -421,10 +427,9 @@ help:
 			clang-profile-make clang-profile-use profile-make-hd clang-profile-d icc-profile-mkdir $(DEP)
 
 build: config-sanity all
-#	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) all
 
 profile-build: config-sanity objprofileclean \
-				profile-make-hd $(profile_make)
+							profile-make-hd $(profile_make)
 	@echo ; echo "Step 2/4. Running benchmark for pgo-build ..."
 	$(PGOBENCH) > /dev/null
 	@echo ; echo "Step 3/4. Building optimized executable ..."
@@ -449,7 +454,7 @@ install:
 clean: objprofileclean
 	@rm -f $(DEP) *~ core
 
-# clean binaries and objects + clean auxiliary profiling files
+# clean binaries and objects, clean auxiliary profiling files
 objprofileclean:
 	@rm -f $(EXE) *.o ./syzygy/*.o
 	@rm -rf profdir
@@ -528,10 +533,10 @@ icc-profile-mkdir: ; @mkdir -p profdir
 icc-profile-use: EXTRACXXFLAGS := -prof_use -prof_dir ./profdir
 icc-profile-use: all
 
-# If fails put > instead of -MF
+# > identical to -MF
 $(DEP):
 	@$(CXX) $(DEPENDFLAGS) $(SRCS) -MM -MF $@
 
 ifneq (,$(filter $(MAKECMDGOALS),build profile-build))
-include $(DEP)
+  include $(DEP)
 endif
