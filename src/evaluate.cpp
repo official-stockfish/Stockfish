@@ -83,7 +83,7 @@ namespace {
   // SafeCheck[PieceType][single/multiple] contains safe check bonus by piece type,
   // higher if multiple safe checks are possible for that piece type.
   constexpr int SafeCheck[][2] = {
-      {0, 0}, {0, 0}, {792, 1283}, {645, 967}, {1084, 1897}, {772, 1119}
+      {}, {}, {792, 1283}, {645, 967}, {1084, 1897}, {772, 1119}
   };
 
 #define S(mg, eg) make_score(mg, eg)
