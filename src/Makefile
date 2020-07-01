@@ -93,10 +93,12 @@ endif
 
 ifeq ($(ARCH),x86-32-old)
 	arch := i386
+	bits := 32
 endif
 
 ifeq ($(ARCH),x86-32)
 	arch := i386
+	bits := 32
 	prefetch := yes
 	sse := yes
 endif
