@@ -155,7 +155,7 @@ endif
 
 ### 3.1 Selecting compiler (default = gcc)
 F :=
-CXXFLAGS += -Wall -Wcast-qual -fno-exceptions -std=c++11 $(EXTRACXXFLAGS) $(F)
+CXXFLAGS += -Wall -Wcast-qual -fno-exceptions -std=c++11 $(EXTRACXXFLAGS)$(F)
 DEPENDFLAGS += -std=c++11
 LDFLAGS += $(EXTRALDFLAGS)
 ifeq ($(F),-flto)
