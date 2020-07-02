@@ -239,7 +239,19 @@ inline Bitboard forward_ranks_bb(Color c, Square s) {
 /// line in front of the given one, from the point of view of the given color.
 
 inline Bitboard forward_file_bb(Color c, Square s) {
-  return forward_ranks_bb(c, s) & file_bb(s);
+
+  if (c == WHITE)
+  {
+      Bitboard b = shift<NORTH>(square_bb(s));
+      b |= b << 8; b |= b << 16; b |= b << 32;
+      return b;
+  }
+  else
+  {
+      Bitboard b = shift<SOUTH>(square_bb(s));
+      b |= b >> 8; b |= b >> 16; b |= b >> 32;
+      return b;
+  }
 }
 
 
