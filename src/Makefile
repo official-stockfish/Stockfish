@@ -389,7 +389,7 @@ endif
 ifeq ($(sse41),yes)
 	CXXFLAGS += -DUSE_SSE41
 	ifeq ($(comp),$(filter $(comp),gcc clang mingw msys2))
-		CXXFLAGS += -msse4
+		CXXFLAGS += -msse4.1
 	endif
 endif
 
