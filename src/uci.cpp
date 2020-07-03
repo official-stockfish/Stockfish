@@ -222,6 +222,12 @@ namespace {
          << "\nNodes/second    : " << 1000 * nodes / elapsed << endl;
   }
 
+// When you calculate check sum, save it and check the consistency later.
+  uint64_t eval_sum;
+} // namespace
+
+
+namespace UCI{
   // The win rate model returns the probability (per mille) of winning given an eval
   // and a game-ply. The model fits rather accurately the LTC fishtest statistics.
   int win_rate_model(Value v, int ply) {
@@ -243,10 +249,8 @@ namespace {
      // Return win rate in per mille (rounded to nearest)
      return int(0.5 + 1000 / (1 + std::exp((a - x) / b)));
   }
+} // namespace UCI
 
-// When you calculate check sum, save it and check the consistency later.
-  uint64_t eval_sum;
-} // namespace
 
 // Make is_ready_cmd() callable from outside. (Because I want to call it from the bench command etc.)
 // Note that the phase is not initialized.
