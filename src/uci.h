@@ -74,6 +74,7 @@ std::string square(Square s);
 std::string move(Move m, bool chess960);
 std::string pv(const Position& pos, Depth depth, Value alpha, Value beta);
 std::string wdl(Value v, int ply);
+int win_rate_model(Value v, int ply);
 Move to_move(const Position& pos, std::string& str);
 
 // Flag that read the evaluation function. This is set to false when evaldir is changed.
