@@ -17,23 +17,14 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <algorithm>
 #include <atomic>
-#include <cstdint>
 #include <cstring>   // For std::memset and std::memcpy
-#include <deque>
 #include <fstream>
 #include <iostream>
-#include <list>
 #include <sstream>
-#include <type_traits>
 #include <mutex>
 
-#include "../bitboard.h"
-#include "../movegen.h"
-#include "../position.h"
 #include "../search.h"
-#include "../types.h"
 #include "../uci.h"
 
 #include "tbprobe.h"
