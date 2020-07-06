@@ -21,14 +21,9 @@
 #ifndef ENDGAME_H_INCLUDED
 #define ENDGAME_H_INCLUDED
 
-#include <memory>
-#include <string>
-#include <type_traits>
 #include <unordered_map>
-#include <utility>
 
 #include "position.h"
-#include "types.h"
 
 
 /// EndgameCode lists all supported endgame functions by corresponding codes
