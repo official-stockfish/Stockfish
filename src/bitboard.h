@@ -195,16 +195,16 @@ constexpr Bitboard pawn_double_attacks_bb(Bitboard b) {
 
 
 /// adjacent_files_bb() returns a bitboard representing all the squares on the
-/// adjacent files of the given one.
+/// adjacent files of a given square.
 
 inline Bitboard adjacent_files_bb(Square s) {
   return shift<EAST>(file_bb(s)) | shift<WEST>(file_bb(s));
 }
 
 
-/// line_bb(Square, Square) returns a bitboard representing an entire line,
-/// from board edge to board edge, that intersects the given squares. If the
-/// given squares are not on a same file/rank/diagonal, returns 0. For instance,
+/// line_bb() returns a bitboard representing an entire line (from board edge
+/// to board edge) that intersects the two given squares. If the given squares
+/// are not on a same file/rank/diagonal, the function returns 0. For instance,
 /// line_bb(SQ_C4, SQ_F7) will return a bitboard with the A2-G8 diagonal.
 
 inline Bitboard line_bb(Square s1, Square s2) {
@@ -215,8 +215,8 @@ inline Bitboard line_bb(Square s1, Square s2) {
 
 
 /// between_bb() returns a bitboard representing squares that are linearly
-/// between the given squares (excluding the given squares). If the given
-/// squares are not on a same file/rank/diagonal, return 0. For instance,
+/// between the two given squares (excluding the given squares). If the given
+/// squares are not on a same file/rank/diagonal, we return 0. For instance,
 /// between_bb(SQ_C4, SQ_F7) will return a bitboard with squares D5 and E6.
 
 inline Bitboard between_bb(Square s1, Square s2) {
