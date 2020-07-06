@@ -19,15 +19,11 @@
 */
 
 #include <algorithm>
-#include <cassert>
 #include <cstring>   // For std::memset
 #include <iomanip>
 #include <sstream>
 
-#include "bitboard.h"
 #include "evaluate.h"
-#include "material.h"
-#include "pawns.h"
 #include "thread.h"
 
 namespace Trace {
