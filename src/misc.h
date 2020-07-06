@@ -23,7 +23,6 @@
 
 #include <cassert>
 #include <chrono>
-#include <ostream>
 #include <string>
 #include <vector>
 
