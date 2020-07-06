@@ -21,8 +21,6 @@
 #ifndef SEARCH_H_INCLUDED
 #define SEARCH_H_INCLUDED
 
-#include <vector>
-
 #include "misc.h"
 #include "movepick.h"
 #include "types.h"
