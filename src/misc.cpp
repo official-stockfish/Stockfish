@@ -45,14 +45,12 @@ typedef bool(*fun3_t)(HANDLE, CONST GROUP_AFFINITY*, PGROUP_AFFINITY);
 #include <iomanip>
 #include <iostream>
 #include <sstream>
-#include <vector>
 
 #if defined(__linux__) && !defined(__ANDROID__)
 #include <stdlib.h>
 #include <sys/mman.h>
 #endif
 
-#include "misc.h"
 #include "thread.h"
 
 using namespace std;
