@@ -18,21 +18,13 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <cassert>
 #include <cmath>
 #include <iostream>
 #include <sstream>
-#include <string>
 
 #include "evaluate.h"
-#include "movegen.h"
-#include "position.h"
-#include "search.h"
-#include "thread.h"
 #include "timeman.h"
-#include "tt.h"
 #include "uci.h"
-#include "syzygy/tbprobe.h"
 
 using namespace std;
 
