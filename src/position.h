@@ -21,10 +21,7 @@
 #ifndef POSITION_H_INCLUDED
 #define POSITION_H_INCLUDED
 
-#include <cassert>
 #include <deque>
-#include <memory> // For std::unique_ptr
-#include <string>
 
 #include "bitboard.h"
 #include "types.h"
