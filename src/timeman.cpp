@@ -18,11 +18,8 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <algorithm>
-#include <cfloat>
 #include <cmath>
 
-#include "search.h"
 #include "timeman.h"
 #include "uci.h"
 
