@@ -18,16 +18,10 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <algorithm>
-#include <cassert>
-#include <cstddef> // For offsetof()
 #include <cstring> // For std::memset, std::memcmp
 #include <iomanip>
 #include <sstream>
 
-#include "bitboard.h"
-#include "misc.h"
-#include "movegen.h"
 #include "position.h"
 #include "thread.h"
 #include "tt.h"
