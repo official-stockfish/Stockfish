@@ -21,13 +21,8 @@
 #ifndef MOVEPICK_H_INCLUDED
 #define MOVEPICK_H_INCLUDED
 
-#include <array>
-#include <limits>
-#include <type_traits>
-
 #include "movegen.h"
 #include "position.h"
-#include "types.h"
 
 /// StatsEntry stores the stat table value. It is usually a number but could
 /// be a move or even a nested history. We use a class instead of naked value
