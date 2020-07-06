@@ -22,8 +22,6 @@
 #define TUNE_H_INCLUDED
 
 #include <memory>
-#include <string>
-#include <type_traits>
 #include <vector>
 
 typedef std::pair<int, int> Range; // Option's min-max values
