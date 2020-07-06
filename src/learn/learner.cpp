@@ -335,6 +335,10 @@ struct MultiThinkGenSfen : public MultiThink
 	int search_depth;
 	int search_depth2;
 
+	// Number of the nodes to be searched.
+	// 0 represents no limits.
+	uint64_t nodes;
+
 	// Upper limit of evaluation value of generated situation
 	int eval_limit;
 
@@ -553,7 +557,7 @@ void MultiThinkGenSfen::thread_worker(size_t thread_id)
 				// search_depth～search_depth2 Evaluation value of hand reading and PV (best responder row)
 				// There should be no problem if you narrow the search window.
 
-				auto pv_value1 = search(pos, depth);
+				auto pv_value1 = search(pos, depth, 1, nodes);
 
 				auto value1 = pv_value1.first;
 				auto& pv1 = pv_value1.second;
@@ -850,6 +854,9 @@ void gen_sfen(Position&, istringstream& is)
 	int search_depth = 3;
 	int search_depth2 = INT_MIN;
 
+	// Number of nodes to be searched.
+	uint64_t nodes = 0;
+
 	// minimum ply, maximum ply and number of random moves
 	int random_move_minply = 1;
 	int random_move_maxply = 24;
@@ -895,6 +902,8 @@ void gen_sfen(Position&, istringstream& is)
 			is >> search_depth;
 		else if (token == "depth2")
 			is >> search_depth2;
+		else if (token == "nodes")
+			is >> nodes;
 		else if (token == "loop")
 			is >> loop_max;
 		else if (token == "output_file_name")
@@ -964,6 +973,7 @@ void gen_sfen(Position&, istringstream& is)
 
 	std::cout << "gensfen : " << endl
 		<< "  search_depth = " << search_depth << " to " << search_depth2 << endl
+		<< "  nodes = " << nodes << endl
 		<< "  loop_max = " << loop_max << endl
 		<< "  eval_limit = " << eval_limit << endl
 		<< "  thread_num (set by USI setoption) = " << thread_num << endl
@@ -988,6 +998,7 @@ void gen_sfen(Position&, istringstream& is)
 		sw.save_every = save_every;
 
 		MultiThinkGenSfen multi_think(search_depth, search_depth2, sw);
+		multi_think.nodes = nodes;
 		multi_think.set_loop_max(loop_max);
 		multi_think.eval_limit = eval_limit;
 		multi_think.random_move_minply = random_move_minply;
