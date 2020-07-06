@@ -21,10 +21,6 @@
 #ifndef PAWNS_H_INCLUDED
 #define PAWNS_H_INCLUDED
 
-#include "misc.h"
-#include "position.h"
-#include "types.h"
-
 namespace Pawns {
 
 /// Pawns::Entry contains various information about a pawn structure. A lookup
