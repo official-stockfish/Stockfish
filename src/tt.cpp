@@ -20,10 +20,7 @@
 
 #include <cstring>   // For std::memset
 #include <iostream>
-#include <thread>
 
-#include "bitboard.h"
-#include "misc.h"
 #include "thread.h"
 #include "tt.h"
 #include "uci.h"
