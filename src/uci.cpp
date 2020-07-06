@@ -73,7 +73,7 @@ namespace Learner
 void test_cmd(Position& pos, istringstream& is)
 {
     // Initialize as it may be searched.
-    is_ready();
+    init_nnue();
 
     std::string param;
     is >> param;
@@ -209,7 +209,14 @@ namespace {
         }
         else if (token == "setoption")  setoption(is);
         else if (token == "position")   position(pos, is, states);
-        else if (token == "ucinewgame") { Search::clear(); elapsed = now(); } // Search::clear() may take some while
+        else if (token == "ucinewgame")
+        {
+#if defined(EVAL_NNUE)
+            init_nnue();
+#endif
+            Search::clear();
+            elapsed = now(); // Search::clear() may take some while
+        }
     }
 
     elapsed = now() - elapsed + 1; // Ensure positivity to avoid a 'divide by zero'
@@ -250,7 +257,7 @@ namespace {
 
 // Make is_ready_cmd() callable from outside. (Because I want to call it from the bench command etc.)
 // Note that the phase is not initialized.
-void is_ready(bool skipCorruptCheck)
+void init_nnue(bool skipCorruptCheck)
 {
 #if defined(EVAL_NNUE)
   // After receiving "isready", modify so that a line feed is sent every 5 seconds until "readyok" is returned. (keep alive processing)
@@ -260,59 +267,29 @@ void is_ready(bool skipCorruptCheck)
   // -Shogi GUI already does so, so MyShogi will follow along.
   //-Also, the engine side of Yaneura King modifies it so that after "isready" is received, a line feed is sent every 5 seconds until "readyok" is returned.
 
-  auto ended = false;
-  auto th = std::thread([&ended] {
-    int count = 0;
-    while (!ended)
-    {
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
-      if (++count >= 50 /* 5 seconds */)
-      {
-        count = 0;
-        sync_cout << sync_endl; // Send a line break.
-      }
-    }
-    });
-
   // Perform processing that may take time, such as reading the evaluation function, at this timing.
   // If you do a time-consuming process at startup, Shogi place will make a timeout judgment and retire the recognition as a thinking engine.
   if (!UCI::load_eval_finished)
   {
-    // Read evaluation function
-    Eval::load_eval();
+      // Read evaluation function
+      Eval::load_eval();
 
-    // Calculate and save checksum (to check for subsequent memory corruption)
-    eval_sum = Eval::calc_check_sum();
+      // Calculate and save checksum (to check for subsequent memory corruption)
+      eval_sum = Eval::calc_check_sum();
 
-    // display soft name
-    Eval::print_softname(eval_sum);
+      // display soft name
+      Eval::print_softname(eval_sum);
 
-    UCI::load_eval_finished = true;
-
+      UCI::load_eval_finished = true;
   }
   else
   {
-    // Check the checksum every time to see if the memory has been corrupted.
-    // It seems that the time is a little wasteful, but it is good because it is about 0.1 seconds.
-    if (!skipCorruptCheck && eval_sum != Eval::calc_check_sum())
-      sync_cout << "Error! : EVAL memory is corrupted" << sync_endl;
+      // Check the checksum every time to see if the memory has been corrupted.
+      // It seems that the time is a little wasteful, but it is good because it is about 0.1 seconds.
+      if (!skipCorruptCheck && eval_sum != Eval::calc_check_sum())
+          sync_cout << "Error! : EVAL memory is corrupted" << sync_endl;
   }
-
-  // For isready, it is promised that the next command will not come until it returns readyok.
-  // Initialize various variables at this timing.
-
-  TT.resize(Options["Hash"]);
-  Search::clear();
-  Time.availableNodes = 0;
-
-  Threads.stop = false;
-
-  // Terminate the thread created to send keep alive and wait.
-  ended = true;
-  th.join();
 #endif  // defined(EVAL_NNUE)
-
-  sync_cout << "readyok" << sync_endl;
 }
 
 
@@ -399,8 +376,14 @@ void UCI::loop(int argc, char* argv[]) {
       else if (token == "setoption")  setoption(is);
       else if (token == "go")         go(pos, is, states);
       else if (token == "position")   position(pos, is, states);
-      else if (token == "ucinewgame") Search::clear();
-      else if (token == "isready")    is_ready();
+      else if (token == "ucinewgame")
+      {
+#if defined(EVAL_NNUE)
+          init_nnue();
+#endif
+          Search::clear();
+      }
+      else if (token == "isready")    sync_cout << "readyok" << sync_endl;
 
       // Additional custom non-UCI commands, mainly for debugging.
       // Do not use these commands during a search!

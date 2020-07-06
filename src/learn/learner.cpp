@@ -3092,7 +3092,7 @@ void learn(Position&, istringstream& is)
 	//}
 	if (use_convert_bin)
 	{
-	  	is_ready(true);
+	  	init_nnue(true);
 		cout << "convert_bin.." << endl;
 		convert_bin(filenames,output_file_name, ply_minimum, ply_maximum, interpolate_eval);
 		return;
@@ -3100,7 +3100,7 @@ void learn(Position&, istringstream& is)
 	}
 	if (use_convert_bin_from_pgn_extract)
 	{
-		is_ready(true);
+		init_nnue(true);
 		cout << "convert_bin_from_pgn-extract.." << endl;
 		convert_bin_from_pgn_extract(filenames, output_file_name, pgn_eval_side_to_move);
 		return;
@@ -3166,7 +3166,7 @@ void learn(Position&, istringstream& is)
 	cout << "init.." << endl;
 
 	// Read evaluation function parameters
-	is_ready(true);
+	init_nnue(true);
 
 #if !defined(EVAL_NNUE)
 	cout << "init_grad.." << endl;

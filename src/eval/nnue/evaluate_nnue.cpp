@@ -233,31 +233,27 @@ void prefetch_evalhash(const Key key) {
 // Save and restore Options with bench command etc., so EvalDir is changed at this time,
 // This function may be called twice to flag that the evaluation function needs to be reloaded.
 void load_eval() {
+
+  if (Options["SkipLoadingEval"])
+  {
+      std::cout << "info string SkipLoadingEval set to true, Net not loaded!" << std::endl;
+      return;
+  }
+
   NNUE::Initialize();
 
-  if (!Options["SkipLoadingEval"])
-  {
-    const std::string dir_name = Options["EvalDir"];
-    const std::string file_name = Path::Combine(dir_name, NNUE::kFileName);
-    //{
-    //  std::ofstream stream(file_name, std::ios::binary);
-    //  NNUE::WriteParameters(stream);
-    //}
-    std::ifstream stream(file_name, std::ios::binary);
-    const bool result = NNUE::ReadParameters(stream);
+  const std::string dir_name = Options["EvalDir"];
+  const std::string file_name = Path::Combine(dir_name, NNUE::kFileName);
 
-//    ASSERT(result);
-	if (!result)
-	{
-		// It's a problem if it doesn't finish when there is a read error.
-		std::cout << "Error! " << NNUE::kFileName << " not found or wrong format" << std::endl;
-		//my_exit();
-	}
-	else
-	  std::cout << "info string NNUE " << NNUE::kFileName << " found & loaded" << std::endl;
-  }
+  std::ifstream stream(file_name, std::ios::binary);
+  const bool result = NNUE::ReadParameters(stream);
+
+  if (!result)
+      // It's a problem if it doesn't finish when there is a read error.
+      std::cout << "Error! " << NNUE::kFileName << " not found or wrong format" << std::endl;
+
   else
-    std::cout << "info string NNUE " << NNUE::kFileName << " not loaded" << std::endl;
+      std::cout << "info string NNUE " << NNUE::kFileName << " found & loaded" << std::endl;
 }
 
 // Initialization
