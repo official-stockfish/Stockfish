@@ -38,6 +38,9 @@ namespace {
   constexpr Score WeakLever     = S( 0, 56);
   constexpr Score WeakUnopposed = S(13, 27);
 
+  // Bonus for blocked pawns at 5th or 6th rank
+  constexpr Score BlockedPawn[2] = { S(-10, -3), S(-3, 3) };
+
   constexpr Score BlockedStorm[RANK_NB] = {
     S(0, 0), S(0, 0), S(76, 78), S(-10, 15), S(-7, 10), S(-4, 6), S(-1, 2)
   };
@@ -169,6 +172,9 @@ namespace {
         if (!support)
             score -=  Doubled * doubled
                     + WeakLever * more_than_one(lever);
+
+        if (blocked && r > RANK_4)
+            score += BlockedPawn[r-4];
     }
 
     return score;
