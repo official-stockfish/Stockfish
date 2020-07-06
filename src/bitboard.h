@@ -124,7 +124,7 @@ inline Bitboard  operator&(Square s, Bitboard b) { return b & s; }
 inline Bitboard  operator|(Square s, Bitboard b) { return b | s; }
 inline Bitboard  operator^(Square s, Bitboard b) { return b ^ s; }
 
-inline Bitboard  operator|(Square s, Square s2) { return square_bb(s) | s2; }
+inline Bitboard  operator|(Square s1, Square s2) { return square_bb(s1) | s2; }
 
 constexpr bool more_than_one(Bitboard b) {
   return b & (b - 1);
