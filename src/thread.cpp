@@ -18,11 +18,6 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <cassert>
-
-#include <algorithm> // For std::count
-#include "movegen.h"
-#include "search.h"
 #include "thread.h"
 #include "uci.h"
 #include "syzygy/tbprobe.h"
