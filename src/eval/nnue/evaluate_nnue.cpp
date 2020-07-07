@@ -234,13 +234,14 @@ void prefetch_evalhash(const Key key) {
 // This function may be called twice to flag that the evaluation function needs to be reloaded.
 void load_eval() {
 
+  // Must be done!
+  NNUE::Initialize();
+
   if (Options["SkipLoadingEval"])
   {
       std::cout << "info string SkipLoadingEval set to true, Net not loaded!" << std::endl;
       return;
   }
-
-  NNUE::Initialize();
 
   const std::string dir_name = Options["EvalDir"];
   const std::string file_name = Path::Combine(dir_name, NNUE::kFileName);
