@@ -87,7 +87,7 @@ extern UCI::OptionsMap Options;
 // If skipCorruptCheck == true, skip memory corruption check by check sum when reading the evaluation function a second time.
 // * This function is inconvenient if it is not available in Stockfish, so add it.
 
-void is_ready(bool skipCorruptCheck = false);
+void init_nnue(bool skipCorruptCheck = false);
 
 extern const char* StartFEN;
 
