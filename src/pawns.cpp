@@ -39,7 +39,7 @@ namespace {
   constexpr Score WeakUnopposed = S(13, 27);
 
   // Bonus for blocked pawns at 5th or 6th rank
-  constexpr Score BlockedPawn[2] = { S(-10, -3), S(-3, 3) };
+  constexpr Score BlockedPawn[2] = { S(-11, -4), S(-3, 4) };
 
   constexpr Score BlockedStorm[RANK_NB] = {
     S(0, 0), S(0, 0), S(76, 78), S(-10, 15), S(-7, 10), S(-4, 6), S(-1, 2)
@@ -148,7 +148,7 @@ namespace {
         // Score this pawn
         if (support | phalanx)
         {
-            int v =  Connected[r] * (4 + 2 * bool(phalanx) - 2 * bool(opposed) - bool(blocked)) / 2
+            int v =  Connected[r] * (2 + bool(phalanx) - bool(opposed))
                    + 21 * popcount(support);
 
             score += make_score(v, v * (r - 2) / 4);
