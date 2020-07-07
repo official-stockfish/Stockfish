@@ -23,7 +23,7 @@ AlignedPtr<FeatureTransformer> feature_transformer;
 AlignedPtr<Network> network;
 
 // Evaluation function file name
-const char* const kFileName = "nn.bin";
+const char* kFileName = "eval\\nn.bin";
 
 // Get a string that represents the structure of the evaluation function
 std::string GetArchitectureString() {
@@ -243,8 +243,8 @@ void load_eval() {
       return;
   }
 
-  const std::string dir_name = Options["EvalDir"];
-  const std::string file_name = Path::Combine(dir_name, NNUE::kFileName);
+  const std::string file_name = Options["EvalFile"];
+  NNUE::kFileName = file_name.c_str();
 
   std::ifstream stream(file_name, std::ios::binary);
   const bool result = NNUE::ReadParameters(stream);

@@ -36,7 +36,7 @@ extern AlignedPtr<FeatureTransformer> feature_transformer;
 extern AlignedPtr<Network> network;
 
 // Evaluation function file name
-extern const char* const kFileName;
+extern const char* kFileName;
 
 // Get a string that represents the structure of the evaluation function
 std::string GetArchitectureString();
