@@ -190,7 +190,7 @@ void TestCommand(Position& pos, std::istream& stream) {
   } else {
     std::cout << "usage:" << std::endl;
     std::cout << " test nnue test_features" << std::endl;
-    std::cout << " test nnue info [path/to/" << kFileName << "...]" << std::endl;
+    std::cout << " test nnue info [path/to/" << fileName << "...]" << std::endl;
   }
 }
 
