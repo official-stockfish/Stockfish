@@ -23,7 +23,7 @@ AlignedPtr<FeatureTransformer> feature_transformer;
 AlignedPtr<Network> network;
 
 // Evaluation function file name
-const char* kFileName = "eval\\nn.bin";
+std::string fileName = "eval\\nn.bin";
 
 // Get a string that represents the structure of the evaluation function
 std::string GetArchitectureString() {
@@ -244,17 +244,17 @@ void load_eval() {
   }
 
   const std::string file_name = Options["EvalFile"];
-  NNUE::kFileName = file_name.c_str();
+  NNUE::fileName = file_name;
 
   std::ifstream stream(file_name, std::ios::binary);
   const bool result = NNUE::ReadParameters(stream);
 
   if (!result)
       // It's a problem if it doesn't finish when there is a read error.
-      std::cout << "Error! " << NNUE::kFileName << " not found or wrong format" << std::endl;
+      std::cout << "Error! " << NNUE::fileName << " not found or wrong format" << std::endl;
 
   else
-      std::cout << "info string NNUE " << NNUE::kFileName << " found & loaded" << std::endl;
+      std::cout << "info string NNUE " << NNUE::fileName << " found & loaded" << std::endl;
 }
 
 // Initialization
