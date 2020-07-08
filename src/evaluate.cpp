@@ -134,6 +134,7 @@ namespace {
   };
 
   // Assorted bonuses and penalties
+  constexpr Score BadOutpost          = S(  5,  5);
   constexpr Score BishopOnKingRing    = S( 24,  0);
   constexpr Score BishopPawns         = S(  3,  7);
   constexpr Score BishopXRayPawns     = S(  4,  5);
@@ -308,9 +309,15 @@ namespace {
 
         if (Pt == BISHOP || Pt == KNIGHT)
         {
-            // Bonus if piece is on an outpost square or can reach one
             bb = OutpostRanks & attackedBy[Us][PAWN] & ~pe->pawn_attacks_span(Them);
-            if (bb & s)
+            // Penalty if knight is on a bad outpost square
+            if (   Pt == KNIGHT 
+                && bb & s & ~CenterFiles & (Us == WHITE ? Rank6BB : Rank3BB)
+                && !(b & pos.pieces(Them) & ~pos.pieces(PAWN))
+                && b & pos.pieces(Them, PAWN) & attackedBy[Them][PAWN] & ~attackedBy[Us][PAWN])
+                score -= BadOutpost;
+            // Bonus if piece is on an outpost square or can reach one
+            else if (bb & s)
                 score += Outpost[Pt == BISHOP];
             else if (Pt == KNIGHT && bb & b & ~pos.pieces(Us))
                 score += ReachableOutpost;
