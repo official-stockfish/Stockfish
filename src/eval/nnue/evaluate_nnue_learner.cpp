@@ -110,7 +110,7 @@ void SetOptions(const std::string& options) {
 
 // Reread the evaluation function parameters for learning from the file
 void RestoreParameters(const std::string& dir_name) {
-  const std::string file_name = Path::Combine(dir_name, NNUE::kFileName);
+  const std::string file_name = NNUE::fileName;
   std::ifstream stream(file_name, std::ios::binary);
   bool result = ReadParameters(stream);
   assert(result);
@@ -213,7 +213,7 @@ void save_eval(std::string dir_name) {
     NNUE::SendMessages({{"clear_unobserved_feature_weights"}});
   }
 
-  const std::string file_name = Path::Combine(eval_dir, NNUE::kFileName);
+  const std::string file_name = NNUE::fileName;
   std::ofstream stream(file_name, std::ios::binary);
   const bool result = NNUE::WriteParameters(stream);
   assert(result);
