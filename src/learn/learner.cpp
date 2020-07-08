@@ -2759,39 +2759,43 @@ void convert_bin_from_pgn_extract(const vector<string>& filenames, const string&
 	ofs.close();
 }
 
-//void convert_plain(const vector<string>& filenames , const string& output_file_name)
-//{
-//	Position tpos;
-//	std::ofstream ofs;
-//	ofs.open(output_file_name, ios::app);
-//	for (auto filename : filenames) {
-//		std::cout << "convert " << filename << " ... ";
-//
-// 		// Just convert packedsfenvalue to text
-//		std::fstream fs;
-//		fs.open(filename, ios::in | ios::binary);
-//		PackedSfenValue p;
-//		while (true)
-//		{
-//			if (fs.read((char*)&p, sizeof(PackedSfenValue))) {
-// 				// write as plain text
-//				ofs << "sfen " << tpos.sfen_unpack(p.sfen) << std::endl;
-//				ofs << "move " << to_usi_string(Move(p.move)) << std::endl;
-//				ofs << "score " << p.score << std::endl;
-//				ofs << "ply " << int(p.gamePly) << std::endl;
-//				ofs << "result " << int(p.game_result) << std::endl;
-//				ofs << "e" << std::endl;
-//			}
-//			else {
-//				break;
-//			}
-//		}
-//		fs.close();
-//		std::cout << "done" << std::endl;
-//	}
-//	ofs.close();
-//	std::cout << "all done" << std::endl;
-//}
+void convert_plain(const vector<string>& filenames, const string& output_file_name)
+{
+	Position tpos;
+	std::ofstream ofs;
+	ofs.open(output_file_name, ios::app);
+	auto th = Threads.main();
+	for (auto filename : filenames) {
+		std::cout << "convert " << filename << " ... ";
+
+		// Just convert packedsfenvalue to text
+		std::fstream fs;
+		fs.open(filename, ios::in | ios::binary);
+		PackedSfenValue p;
+		while (true)
+		{
+			if (fs.read((char*)&p, sizeof(PackedSfenValue))) {
+				StateInfo si;
+				tpos.set_from_packed_sfen(p.sfen, &si, th, false);
+
+				// write as plain text
+				ofs << "fen " << tpos.fen() << std::endl;
+				ofs << "move " << UCI::move(Move(p.move), false) << std::endl;
+				ofs << "score " << p.score << std::endl;
+				ofs << "ply " << int(p.gamePly) << std::endl;
+				ofs << "result " << int(p.game_result) << std::endl;
+				ofs << "e" << std::endl;
+			}
+			else {
+				break;
+			}
+		}
+		fs.close();
+		std::cout << "done" << std::endl;
+	}
+	ofs.close();
+	std::cout << "all done" << std::endl;
+}
 
 // Learning from the generated game record
 void learn(Position&, istringstream& is)
@@ -3082,14 +3086,13 @@ void learn(Position&, istringstream& is)
 		shuffle_files_on_memory(filenames,output_file_name);
 		return;
 	}
-	//if (use_convert_plain)
-	//{
-	// 		is_ready(true);
-	//  cout << "convert_plain.." << endl;
-	//  convert_plain(filenames,output_file_name);
-	//  return;
-	//
-	//}
+	if (use_convert_plain)
+	{
+		init_nnue(true);
+		cout << "convert_plain.." << endl;
+		convert_plain(filenames, output_file_name);
+		return;
+	}
 	if (use_convert_bin)
 	{
 	  	init_nnue(true);
