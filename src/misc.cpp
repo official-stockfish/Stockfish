@@ -371,8 +371,8 @@ void* aligned_ttmem_alloc(size_t allocSize, void*& mem) {
   {
       if (mem)
           sync_cout << "info string Hash table allocation: Windows large pages used." << sync_endl;
-      else
-          sync_cout << "info string Hash table allocation: Windows large pages not used." << sync_endl;
+      //else
+          //sync_cout << "info string Hash table allocation: Windows large pages not used." << sync_endl;
   }
   firstCall = false;
 
