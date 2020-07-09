@@ -387,9 +387,17 @@ ifeq ($(avx2),yes)
 endif
 
 ifeq ($(sse41),yes)
+	ssse3 = yes
 	CXXFLAGS += -DUSE_SSE41
 	ifeq ($(comp),$(filter $(comp),gcc clang mingw msys2))
 		CXXFLAGS += -msse4.1
+	endif
+endif
+
+ifeq ($(ssse3),yes)
+	CXXFLAGS += -DUSE_SSSE3
+	ifeq ($(comp),$(filter $(comp),gcc clang mingw msys2))
+		CXXFLAGS += -mssse3
 	endif
 endif
 

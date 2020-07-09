@@ -87,9 +87,12 @@ class FeatureTransformer {
     constexpr IndexType kNumChunks = kHalfDimensions / kSimdWidth;
     constexpr int kControl = 0b11011000;
     const __m256i kZero = _mm256_setzero_si256();
-#elif defined(USE_SSE41)
+#elif defined(USE_SSSE3)
     constexpr IndexType kNumChunks = kHalfDimensions / kSimdWidth;
     const __m128i kZero = _mm_setzero_si128();
+#ifndef USE_SSE41
+    const __m128i k0x80s = _mm_set1_epi8(-128);
+#endif
 #elif defined(IS_ARM)
     constexpr IndexType kNumChunks = kHalfDimensions / (kSimdWidth / 2);
     const int8x8_t kZero = {0};
@@ -133,7 +136,7 @@ class FeatureTransformer {
         (&out[j], _mm256_permute4x64_epi64(_mm256_max_epi8(
             _mm256_packs_epi16(sum0, sum1), kZero), kControl));
       }
-#elif defined(USE_SSE41)
+#elif defined(USE_SSSE3)
       auto out = reinterpret_cast<__m128i*>(&output[offset]);
       for (IndexType j = 0; j < kNumChunks; ++j) {
         __m128i sum0 = _mm_load_si128(&reinterpret_cast<const __m128i*>(
@@ -146,8 +149,15 @@ class FeatureTransformer {
           sum1 = _mm_add_epi16(sum1, reinterpret_cast<const __m128i*>(
               accumulation[perspectives[p]][i])[j * 2 + 1]);
         }
-        _mm_store_si128(&out[j], _mm_max_epi8(
-            _mm_packs_epi16(sum0, sum1), kZero));
+  	const __m128i packedbytes = _mm_packs_epi16(sum0, sum1);
+ 
+        _mm_store_si128(&out[j],
+#ifdef USE_SSE41
+          _mm_max_epi8(packedbytes, kZero)
+#else
+          _mm_subs_epi8(_mm_adds_epi8(packedbytes, k0x80s), k0x80s)
+#endif
+        );
       }
 #elif defined(IS_ARM)
       const auto out = reinterpret_cast<int8x8_t*>(&output[offset]);

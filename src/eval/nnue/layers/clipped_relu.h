@@ -110,9 +110,12 @@ class ClippedReLU {
           _mm256_packs_epi16(words0, words1), kZero), kOffsets));
     }
     constexpr IndexType kStart = kNumChunks * kSimdWidth;
-#elif defined(USE_SSE41)
+#elif defined(USE_SSSE3)
     constexpr IndexType kNumChunks = kInputDimensions / kSimdWidth;
     const __m128i kZero = _mm_setzero_si128();
+#ifndef USE_SSE41
+    const __m128i k0x80s = _mm_set1_epi8(-128);
+#endif
     const auto in = reinterpret_cast<const __m128i*>(input);
     const auto out = reinterpret_cast<__m128i*>(output);
     for (IndexType i = 0; i < kNumChunks; ++i) {
@@ -122,8 +125,14 @@ class ClippedReLU {
       const __m128i words1 = _mm_srai_epi16(_mm_packs_epi32(
           _mm_load_si128(&in[i * 4 + 2]),
           _mm_load_si128(&in[i * 4 + 3])), kWeightScaleBits);
-      _mm_store_si128(&out[i], _mm_max_epi8(
-          _mm_packs_epi16(words0, words1), kZero));
+      const __m128i packedbytes = _mm_packs_epi16(words0, words1);
+      _mm_store_si128(&out[i], 
+#ifdef USE_SSE41
+        _mm_max_epi8(packedbytes, kZero)
+#else
+        _mm_subs_epi8(_mm_adds_epi8(packedbytes, k0x80s), k0x80s)
+#endif
+      );
     }
     constexpr IndexType kStart = kNumChunks * kSimdWidth;
 #elif defined(IS_ARM)
