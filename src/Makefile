@@ -373,9 +373,9 @@ ifeq ($(popcnt),yes)
 	ifeq ($(arch),$(filter $(arch),ppc64 armv8-a))
 		CXXFLAGS += -DUSE_POPCNT
 	else ifeq ($(comp),icc)
-		CXXFLAGS += -msse3 -DUSE_POPCNT -DUSE_SSE2
+		CXXFLAGS += -msse3 -DUSE_POPCNT
 	else
-		CXXFLAGS += -msse3 -mpopcnt -DUSE_POPCNT -DUSE_SSE2
+		CXXFLAGS += -msse3 -mpopcnt -DUSE_POPCNT
 	endif
 endif
 
@@ -391,6 +391,10 @@ ifeq ($(sse41),yes)
 	ifeq ($(comp),$(filter $(comp),gcc clang mingw msys2))
 		CXXFLAGS += -msse4.1
 	endif
+endif
+
+ifeq ($(arch),x86_64)
+	CXXFLAGS += -DUSE_SSE2
 endif
 
 ### 3.7 pext
