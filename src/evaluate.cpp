@@ -312,8 +312,9 @@ namespace {
             // Bonus if piece is on an outpost square or can reach one
             bb = OutpostRanks & attackedBy[Us][PAWN] & ~pe->pawn_attacks_span(Them);
             if (   Pt == KNIGHT 
-                && bb & s & ~CenterFiles & (Us == WHITE ? Rank6BB | Rank5BB : Rank3BB | Rank4BB)
+                && bb & s & ~CenterFiles
                 && !(b & pos.pieces(Them) & ~pos.pieces(PAWN))
+                && !more_than_one((pos.pieces(Them) & ~pos.pieces(PAWN)) & ((s & QueenSide) ? QueenSide : KingSide))
                 && b & pos.pieces(Them, PAWN) & attackedBy[Them][PAWN] & ~attackedBy[Us][PAWN])
                 score += BadOutpost;
             else if (bb & s)
