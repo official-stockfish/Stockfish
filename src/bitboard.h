@@ -130,6 +130,10 @@ constexpr bool more_than_one(Bitboard b) {
   return b & (b - 1);
 }
 
+constexpr bool more_than_two(Bitboard b) {
+  return b & (b - 1) & (b - 2);
+}
+
 constexpr bool opposite_colors(Square s1, Square s2) {
   return (s1 + rank_of(s1) + s2 + rank_of(s2)) & 1;
 }
