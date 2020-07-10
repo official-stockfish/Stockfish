@@ -82,6 +82,10 @@ endif
 # prefetch = yes/no   --- -DUSE_PREFETCH   --- Use prefetch asm-instruction
 # popcnt = yes/no     --- -DUSE_POPCNT     --- Use popcnt asm-instruction
 # sse = yes/no        --- -msse            --- Use Intel Streaming SIMD Extensions
+# ssse3 = yes/no      --- -mssse3          --- Use Intel Supplemental Streaming SIMD Extensions 3
+# sse41 = yes/no      --- -msse4.1         --- Use Intel Streaming SIMD Extensions 4.1
+# sse42 = yes/no      --- -msse4.2         --- Use Intel Streaming SIMD Extensions 4.2
+# avx2 = yes/no       --- -mavx2           --- Use Intel Advanced Vector Extensions 2
 # pext = yes/no       --- -DUSE_PEXT       --- Use pext x86_64 asm-instruction
 #
 # Note that Makefile is space sensitive, so when adding new architectures
@@ -96,6 +100,9 @@ bits = 64
 prefetch = no
 popcnt = no
 sse = no
+ssse3 = no
+sse41 = no
+sse42 = no
 avx2 = no
 pext = no
 
@@ -127,11 +134,29 @@ ifeq ($(ARCH),x86-64)
 	sse = yes
 endif
 
-ifeq ($(ARCH),x86-64-modern)
+ifeq ($(ARCH),x86-64-ssse3)
+	arch = x86_64
+	prefetch = yes
+	sse = yes
+	ssse3 = yes
+endif
+
+ifeq ($(ARCH),x86-64-sse41)
+	arch = x86_64
+	prefetch = yes
+	sse = yes
+	ssse3 = yes
+	sse41 = yes
+endif
+
+ifeq ($(ARCH),x86-64-sse42)
 	arch = x86_64
 	prefetch = yes
 	popcnt = yes
 	sse = yes
+	ssse3 = yes
+	sse41 = yes
+	sse42 = yes
 endif
 
 ifeq ($(ARCH),x86-64-avx2)
@@ -140,6 +165,9 @@ ifeq ($(ARCH),x86-64-avx2)
 	prefetch = yes
 	popcnt = yes
 	sse = yes
+	ssse3 = yes
+	sse41 = yes
+	sse42 = yes
 	avx2 = yes
 endif
 
@@ -148,6 +176,9 @@ ifeq ($(ARCH),x86-64-bmi2)
 	prefetch = yes
 	popcnt = yes
 	sse = yes
+	ssse3 = yes
+	sse41 = yes
+	sse42 = yes
 	avx2 = yes
 	pext = yes
 endif
@@ -370,13 +401,7 @@ endif
 
 ### 3.6 popcnt
 ifeq ($(popcnt),yes)
-	ifeq ($(arch),$(filter $(arch),ppc64 armv8-a))
-		CXXFLAGS += -DUSE_POPCNT
-	else ifeq ($(comp),icc)
-		CXXFLAGS += -msse3 -DUSE_POPCNT
-	else
-		CXXFLAGS += -msse3 -mpopcnt -DUSE_POPCNT
-	endif
+	CXXFLAGS += -DUSE_POPCNT
 endif
 
 ifeq ($(avx2),yes)
@@ -386,8 +411,14 @@ ifeq ($(avx2),yes)
 	endif
 endif
 
+ifeq ($(sse42),yes)
+	CXXFLAGS += -DUSE_SSE42
+	ifeq ($(comp),$(filter $(comp),gcc clang mingw msys2))
+		CXXFLAGS += -msse4.2
+	endif
+endif
+
 ifeq ($(sse41),yes)
-	ssse3 = yes
 	CXXFLAGS += -DUSE_SSE41
 	ifeq ($(comp),$(filter $(comp),gcc clang mingw msys2))
 		CXXFLAGS += -msse4.1
