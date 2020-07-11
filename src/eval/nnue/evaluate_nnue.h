@@ -38,6 +38,9 @@ extern AlignedPtr<Network> network;
 // Evaluation function file name
 extern std::string fileName;
 
+// Saved evaluation function file name
+extern std::string savedfileName;
+
 // Get a string that represents the structure of the evaluation function
 std::string GetArchitectureString();
 

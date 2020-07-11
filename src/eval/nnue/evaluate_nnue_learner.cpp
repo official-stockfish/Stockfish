@@ -213,7 +213,7 @@ void save_eval(std::string dir_name) {
     NNUE::SendMessages({{"clear_unobserved_feature_weights"}});
   }
 
-  const std::string file_name = NNUE::fileName;
+  const std::string file_name = Path::Combine(eval_dir, NNUE::savedfileName);
   std::ofstream stream(file_name, std::ios::binary);
   const bool result = NNUE::WriteParameters(stream);
   assert(result);
