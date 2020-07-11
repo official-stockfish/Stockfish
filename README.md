@@ -4,17 +4,17 @@
 [![Build Status](https://ci.appveyor.com/api/projects/status/github/official-stockfish/Stockfish?branch=master&svg=true)](https://ci.appveyor.com/project/mcostalba/stockfish/branch/master)
 
 [Stockfish](https://stockfishchess.org) is a free, powerful UCI chess engine
-derived from Glaurung 2.1. It features two evaluation functions, the classical
-evaluation based on handcrafted terms, and the NNUE evaluation based on
-efficiently updateable neural networks. The classical evaluation runs efficiently
-on most 64bit CPU architectures, while the NNUE evaluation benefits strongly from the
-vector intrinsics available on modern CPUs (avx2 or similar).
+derived from Glaurung 2.1. Stockfish is not a complete chess program and requires a
+UCI-compatible graphical user interface (GUI) (e.g. XBoard with PolyGlot, Scid,
+Cute Chess, eboard, Arena, Sigma Chess, Shredder, Chess Partner or Fritz) in order
+to be used comfortably. Read the documentation for your GUI of choice for information
+about how to use Stockfish with it.
 
-Stockfish is not a complete chess program and requires a
-UCI-compatible GUI (e.g. XBoard with PolyGlot, Scid, Cute Chess, eboard, Arena,
-Sigma Chess, Shredder, Chess Partner or Fritz) in order to be used comfortably.
-Read the documentation for your GUI of choice for information about how to use
-Stockfish with it.
+The Stockfish engine features two evaluation functions for chess, the classical
+evaluation based on handcrafted terms, and the NNUE evaluation based on efficiently
+updateable neural networks. The classical evaluation runs efficiently on most 64bit
+CPU architectures, while the NNUE evaluation benefits strongly from the vector
+intrinsics available on modern CPUs (avx2 or similar).
 
 
 ## Files
@@ -28,10 +28,13 @@ This distribution of Stockfish consists of the following files:
   * src, a subdirectory containing the full source code, including a Makefile
     that can be used to compile Stockfish on Unix-like systems.
 
-To use the NNUE evaluation an additional data file with neural network parameters
-needs to be downloaded. The filename for the default set can be found as the default
-value of the `EvalFile` UCI option, with the format
-`nn-[SHA256 first 12 digits].nnue` (e.g. nn-c157e0a5755b.nnue). This file can be downloaded from
+  * a file with the .nnue extension, storing the neural network for the NNUE 
+    evaluation.
+
+Note: to use the NNUE evaluation, the additional data file with neural network parameters
+needs to be downloaded. The filename for the default net can be found as the default
+value of the `EvalFile` UCI option, with the format `nn-[SHA256 first 12 digits].nnue`
+(for instance, `nn-c157e0a5755b.nnue`). This file can be downloaded from
 ```
 https://tests.stockfishchess.org/api/nn/[filename]
 ```
@@ -63,14 +66,6 @@ Currently, Stockfish has the following UCI options:
   * #### EvalFile
     The name of the file of the NNUE evaluation parameters. Depending on the GUI the
     filename should include the full path to the folder/directory that contains the file.
-
-  * #### Contempt
-    A positive value for contempt favors middle game positions and avoids draws,
-    effective for the classical evaluation only.
-
-  * #### Analysis Contempt
-    By default, contempt is set to prefer the side to move. Set this option to "White"
-    or "Black" to analyse with contempt for that side, or "Off" to disable contempt.
 
   * #### UCI_AnalyseMode
     An option handled by your GUI.
@@ -120,6 +115,14 @@ Currently, Stockfish has the following UCI options:
     Limit Syzygy tablebase probing to positions with at most this many pieces left
     (including kings and pawns).
 
+  * #### Contempt
+    A positive value for contempt favors middle game positions and avoids draws,
+    effective for the classical evaluation only.
+
+  * #### Analysis Contempt
+    By default, contempt is set to prefer the side to move. Set this option to "White"
+    or "Black" to analyse with contempt for that side, or "Off" to disable contempt.
+
   * #### Move Overhead
     Assume a time delay of x ms due to network and GUI overheads. This is useful to
     avoid losses on time in those cases.
@@ -138,7 +141,7 @@ Currently, Stockfish has the following UCI options:
   * #### Debug Log File
     Write all communication to and from the engine into a text file.
 
-## Classical and NNUE evaluation
+## A note on classical and NNUE evaluation
 
 Both approaches assign a value to a position that is used in alpha-beta (PVS) search
 to find the best move. The classical evaluation computes this value as a function
@@ -226,6 +229,7 @@ targets with corresponding descriptions.
     cd src
     make help
     make build ARCH=x86-64-modern
+    make net
 ```
 
 When not using the Makefile to compile (for instance with Microsoft MSVC) you
@@ -237,8 +241,7 @@ compiler you used to create your executable. These informations can
 be found by typing the following commands in a console:
 
 ```
-    ./stockfish
-    compiler
+    ./stockfish compiler
 ```
 
 ## Understanding the code base and participating in the project
