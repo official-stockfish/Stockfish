@@ -130,13 +130,6 @@ constexpr bool more_than_one(Bitboard b) {
   return b & (b - 1);
 }
 
-/// Counts the occupation of the bitboard depending on the occupation of SQ_A1
-/// as in `b & (1ULL << SQ_A1) ? more_than_two(b) : more_than_one(b)`
-
-constexpr bool conditional_more_than_two(Bitboard b) {
-  return b & (b - 1) & (b - 2);
-}
-
 constexpr bool opposite_colors(Square s1, Square s2) {
   return (s1 + rank_of(s1) + s2 + rank_of(s2)) & 1;
 }
