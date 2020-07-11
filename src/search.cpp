@@ -263,10 +263,10 @@ void MainThread::search() {
 
   Thread* bestThread = this;
 
-  if (int(Options["MultiPV"]) == 1 &&
-      !Limits.depth &&
-      !(Skill(Options["Skill Level"]).enabled() || int(Options["UCI_LimitStrength"])) &&
-      rootMoves[0].pv[0] != MOVE_NONE)
+  if (   int(Options["MultiPV"]) == 1
+      && !Limits.depth
+      && !(Skill(Options["Skill Level"]).enabled() || int(Options["UCI_LimitStrength"]))
+      && rootMoves[0].pv[0] != MOVE_NONE)
       bestThread = Threads.get_best_thread();
 
   bestPreviousScore = bestThread->rootMoves[0].score;
@@ -596,7 +596,7 @@ namespace {
     Key posKey;
     Move ttMove, move, excludedMove, bestMove;
     Depth extension, newDepth;
-    Value bestValue, value, ttValue, eval, maxValue;
+    Value bestValue, value, ttValue, eval, maxValue, probcutBeta;
     bool ttHit, ttPv, formerPv, givesCheck, improving, didLMR, priorCapture;
     bool captureOrPromotion, doFullDepthSearch, moveCountPruning,
          ttCapture, singularQuietLMR;
@@ -662,7 +662,7 @@ namespace {
     // search to overwrite a previous full search TT value, so we use a different
     // position key in case of an excluded move.
     excludedMove = ss->excludedMove;
-    posKey = pos.key() ^ (Key(excludedMove) << 48); // Isn't a very good hash
+    posKey = excludedMove == MOVE_NONE ? pos.key() : pos.key() ^ make_key(excludedMove);
     tte = TT.probe(posKey, ttHit);
     ttValue = ttHit ? value_from_tt(tte->value(), ss->ply, pos.rule50_count()) : VALUE_NONE;
     ttMove =  rootNode ? thisThread->rootMoves[thisThread->pvIdx].pv[0]
@@ -670,7 +670,11 @@ namespace {
     ttPv = PvNode || (ttHit && tte->is_pv());
     formerPv = ttPv && !PvNode;
 
-    if (ttPv && depth > 12 && ss->ply - 1 < MAX_LPH && !priorCapture && is_ok((ss-1)->currentMove))
+    if (   ttPv
+        && depth > 12
+        && ss->ply - 1 < MAX_LPH
+        && !priorCapture
+        && is_ok((ss-1)->currentMove))
         thisThread->lowPlyHistory[ss->ply - 1][from_to((ss-1)->currentMove)] << stat_bonus(depth - 5);
 
     // thisThread->ttHitAverage can be used to approximate the running average of ttHit
@@ -867,23 +871,33 @@ namespace {
         }
     }
 
+    probcutBeta = beta + 176 - 49 * improving;
+
     // Step 10. ProbCut (~10 Elo)
     // If we have a good enough capture and a reduced search returns a value
     // much above beta, we can (almost) safely prune the previous move.
     if (   !PvNode
         &&  depth > 4
-        &&  abs(beta) < VALUE_TB_WIN_IN_MAX_PLY)
+        &&  abs(beta) < VALUE_TB_WIN_IN_MAX_PLY
+        && !(   ttHit
+             && tte->depth() >= depth - 3
+             && ttValue != VALUE_NONE
+             && ttValue < probcutBeta))
     {
-        Value raisedBeta = beta + 176 - 49 * improving;
-        assert(raisedBeta < VALUE_INFINITE);
-        MovePicker mp(pos, ttMove, raisedBeta - ss->staticEval, &captureHistory);
+        if (   ttHit
+            && tte->depth() >= depth - 3
+            && ttValue != VALUE_NONE
+            && ttValue >= probcutBeta
+            && ttMove
+            && pos.capture_or_promotion(ttMove))
+            return probcutBeta;
+
+        assert(probcutBeta < VALUE_INFINITE);
+        MovePicker mp(pos, ttMove, probcutBeta - ss->staticEval, &captureHistory);
         int probCutCount = 0;
 
         while (   (move = mp.next_move()) != MOVE_NONE
-               && probCutCount < 2 + 2 * cutNode
-               && !(   move == ttMove
-                    && tte->depth() >= depth - 4
-                    && ttValue < raisedBeta))
+               && probCutCount < 2 + 2 * cutNode)
             if (move != excludedMove && pos.legal(move))
             {
                 assert(pos.capture_or_promotion(move));
@@ -901,16 +915,21 @@ namespace {
                 pos.do_move(move, st);
 
                 // Perform a preliminary qsearch to verify that the move holds
-                value = -qsearch<NonPV>(pos, ss+1, -raisedBeta, -raisedBeta+1);
+                value = -qsearch<NonPV>(pos, ss+1, -probcutBeta, -probcutBeta+1);
 
                 // If the qsearch held, perform the regular search
-                if (value >= raisedBeta)
-                    value = -search<NonPV>(pos, ss+1, -raisedBeta, -raisedBeta+1, depth - 4, !cutNode);
+                if (value >= probcutBeta)
+                    value = -search<NonPV>(pos, ss+1, -probcutBeta, -probcutBeta+1, depth - 4, !cutNode);
 
                 pos.undo_move(move);
 
-                if (value >= raisedBeta)
+                if (value >= probcutBeta)
+                {
+                    tte->save(posKey, value_to_tt(value, ss->ply), ttPv,
+                        BOUND_LOWER,
+                        depth - 3, move, ss->staticEval);
                     return value;
+                }
             }
     }
 
@@ -1486,8 +1505,8 @@ moves_loop: // When in check, search starts from here
 
     // Initialize a MovePicker object for the current position, and prepare
     // to search the moves. Because the depth is <= 0 here, only captures,
-    // queen promotions and checks (only if depth >= DEPTH_QS_CHECKS) will
-    // be generated.
+    // queen and checking knight promotions, and other checks(only if depth >= DEPTH_QS_CHECKS)
+    // will be generated.
     MovePicker mp(pos, ttMove, depth, &thisThread->mainHistory,
                                       &thisThread->captureHistory,
                                       contHist,
