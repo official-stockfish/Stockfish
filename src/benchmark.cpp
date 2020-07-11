@@ -88,7 +88,7 @@ const vector<string> Defaults = {
 
   // Chess 960
   "setoption name UCI_Chess960 value true",
-  "bbqnnrkr/pppppppp/8/8/8/8/PPPPPPPP/BBQNNRKR w KQkq - 0 1 moves g2g3 d7d5 d2d4 c8h3 c1g5 e8d6 g5e7 f7f6",
+  "bbqnnrkr/pppppppp/8/8/8/8/PPPPPPPP/BBQNNRKR w HFhf - 0 1 moves g2g3 d7d5 d2d4 c8h3 c1g5 e8d6 g5e7 f7f6",
   "setoption name UCI_Chess960 value false"
 };
 
