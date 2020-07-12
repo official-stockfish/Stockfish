@@ -74,7 +74,8 @@ using namespace Trace;
 namespace {
 
   // Threshold for lazy and space evaluation
-  constexpr Value LazyThreshold  = Value(1400);
+  constexpr Value LazyThreshold1  = Value(1400);
+  constexpr Value LazyThreshold2  = Value(1300);
   constexpr Value SpaceThreshold = Value(12222);
 
   // KingAttackWeights[PieceType] contains king attack weights by piece type
@@ -786,7 +787,7 @@ namespace {
                 && pos.non_pawn_material(BLACK) == RookValueMg
                 && pos.count<PAWN>(strongSide) - pos.count<PAWN>(~strongSide) <= 1
                 && bool(KingSide & pos.pieces(strongSide, PAWN)) != bool(QueenSide & pos.pieces(strongSide, PAWN))
-                && (attackedBy[~strongSide][KING] & pos.pieces(~strongSide, PAWN)))
+                && (attacks_bb<KING>(pos.square<KING>(~strongSide)) & pos.pieces(~strongSide, PAWN)))
             sf = 36;
         else if (pos.count<QUEEN>() == 1)
             sf = 37 + 3 * (pos.count<QUEEN>(WHITE) == 1 ? pos.count<BISHOP>(BLACK) + pos.count<KNIGHT>(BLACK)
@@ -837,9 +838,12 @@ namespace {
     score += pe->pawn_score(WHITE) - pe->pawn_score(BLACK);
 
     // Early exit if score is high
-    Value v = (mg_value(score) + eg_value(score)) / 2;
-    if (abs(v) > LazyThreshold + pos.non_pawn_material() / 64)
-       return pos.side_to_move() == WHITE ? v : -v;
+    auto lazy_skip = [&](Value lazyThreshold) {
+        return abs(mg_value(score) + eg_value(score)) / 2 > lazyThreshold + pos.non_pawn_material() / 64;
+    };
+
+    if (lazy_skip(LazyThreshold1))
+        goto make_v;
 
     // Main evaluation begins here
     initialize<WHITE>();
@@ -856,12 +860,17 @@ namespace {
 
     // More complex interactions that require fully populated attack bitboards
     score +=  king<   WHITE>() - king<   BLACK>()
-            + threats<WHITE>() - threats<BLACK>()
-            + passed< WHITE>() - passed< BLACK>()
+            + passed< WHITE>() - passed< BLACK>();
+
+    if (lazy_skip(LazyThreshold2))
+        goto make_v;
+
+    score +=  threats<WHITE>() - threats<BLACK>()
             + space<  WHITE>() - space<  BLACK>();
 
+make_v:
     // Derive single value from mg and eg parts of score
-    v = winnable(score);
+    Value v = winnable(score);
 
     // In case of tracing add all remaining individual evaluation terms
     if (T)
