@@ -1263,6 +1263,9 @@ void Tablebases::init(const std::string& paths) {
 
     TBTables.clear();
     MaxCardinality = 0;
+    if (TBFile::Paths == paths)
+        return;
+  
     TBFile::Paths = paths;
 
     if (paths.empty() || paths == "<empty>")
