@@ -1261,11 +1261,12 @@ WDLScore search(Position& pos, ProbeState* result) {
 /// safe, nor it needs to be.
 void Tablebases::init(const std::string& paths) {
 
-    TBTables.clear();
-    MaxCardinality = 0;
     if (TBFile::Paths == paths)
         return;
-  
+    
+    TBTables.clear();
+    MaxCardinality = 0;
+
     TBFile::Paths = paths;
 
     if (paths.empty() || paths == "<empty>")
