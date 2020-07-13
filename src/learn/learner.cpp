@@ -938,6 +938,8 @@ void gen_sfen(Position&, istringstream& is)
 			is >> save_every;
 		else if (token == "random_file_name")
 			is >> random_file_name;
+		else if (token == "use_draw_in_training_data_generation")
+			is >> use_draw_in_training_data_generation;
 		else
 			cout << "Error! : Illegal token " << token << endl;
 	}
@@ -2931,7 +2933,6 @@ void learn(Position&, istringstream& is)
 		else if (option == "eta3")       is >> eta3;
 		else if (option == "eta1_epoch") is >> eta1_epoch;
 		else if (option == "eta2_epoch") is >> eta2_epoch;
-		else if (option == "use_draw_in_training_data_generation") is >> use_draw_in_training_data_generation;
 		else if (option == "use_draw_in_training") is >> use_draw_in_training;
 		else if (option == "use_draw_in_validation") is >> use_draw_in_validation;
 		else if (option == "use_hash_in_training") is >> use_hash_in_training;
