@@ -18,7 +18,7 @@ def parse_result(result_str:str, board:chess.Board) -> int:
         if board.turn == chess.WHITE:
             return 1
         else:
-            return 0
+            return -1
     else:
         print("illeagal result", result_str)
         raise ValueError
