@@ -157,7 +157,7 @@ endif
 
 ### 3.1 Selecting compiler (default = gcc)
 F :=
-CXXFLAGS += -Wall -Wcast-qual -fno-exceptions -std=c++11 $(EXTRACXXFLAGS)$(F)
+CXXFLAGS += -Wall -Wcast-qual -fno-exceptions -std=c++11 $(F) $(EXTRACXXFLAGS)
 DEPENDFLAGS += -std=c++11
 LDFLAGS += $(EXTRALDFLAGS)
 ifeq ($(F),-flto)
@@ -350,7 +350,7 @@ ifeq ($(optimize),yes)
 ifeq ($(debug), no)
 	ifneq (,$(filter $(comp),gcc clang))
 		CXXFLAGS += -flto
-		LDFLAGS += $(CXXFLAGS)
+		LDFLAGS += -flto
 
 # To use LTO and static linking on windows, the tool chain requires a recent gcc:
 # gcc version 10.1 in msys2 or TDM-GCC version 9.2 are know to work, older might not.
@@ -358,7 +358,7 @@ ifeq ($(debug), no)
 	else ifeq ($(comp),mingw)
 		ifeq ($(KERNEL),Linux)
 			CXXFLAGS += -flto
-			LDFLAGS += $(CXXFLAGS)
+			LDFLAGS += -flto
 		endif
 	endif
 endif
