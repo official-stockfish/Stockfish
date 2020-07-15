@@ -211,7 +211,7 @@ endif
 ### ==========================================================================
 
 ### 3.1 Selecting compiler (default = gcc)
-CXXFLAGS += -Wall -Wcast-qual -fno-exceptions -std=c++17 $(EXTRACXXFLAGS)
+CXXFLAGS += -Wall -Wcast-qual -fno-exceptions -std=c++17 $(EXTRACXXFLAGS) $(NNUECXXFLAGS)
 DEPENDFLAGS += -std=c++17
 LDFLAGS += $(EXTRALDFLAGS)
 
@@ -569,7 +569,7 @@ objclean:
 # clean auxiliary profiling files
 profileclean:
 	@rm -rf profdir
-	@rm -f bench.txt *.gcda *.gcno
+	@rm -f bench.txt *.gcda *.gcno ./syzygy/*.gcda ./learn/*.gcda ./extra/*.gcda ./eval/*.gcda ./eval/nnue/*.gcda ./eval/nnue/features/*.gcda
 	@rm -f stockfish.profdata *.profraw
 
 default:
@@ -665,6 +665,10 @@ icc-profile-use:
 
 nnue: config-sanity
 	$(MAKE) CXXFLAGS='$(CXXFLAGS) -DEVAL_NNUE -DENABLE_TEST_CMD -fopenmp' LDFLAGS='$(LDFLAGS) -fopenmp' build
+
+profile-nnue: export NNUECXXFLAGS = -DEVAL_NNUE -DENABLE_TEST_CMD
+profile-nnue: config-sanity
+	$(MAKE) profile-build
 
 nnue-gen-sfen-from-original-eval: config-sanity
 	$(MAKE) CXXFLAGS='$(CXXFLAGS) -DEVAL_LEARN -DUSE_EVAL_HASH -DENABLE_TEST_CMD -fopenmp' LDFLAGS='$(LDFLAGS) -fopenmp' build
