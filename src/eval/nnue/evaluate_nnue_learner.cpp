@@ -110,7 +110,7 @@ void SetOptions(const std::string& options) {
 
 // Reread the evaluation function parameters for learning from the file
 void RestoreParameters(const std::string& dir_name) {
-  const std::string file_name = NNUE::fileName;
+  const std::string file_name = Path::Combine(dir_name, NNUE::savedfileName);
   std::ifstream stream(file_name, std::ios::binary);
   bool result = ReadParameters(stream);
   assert(result);
