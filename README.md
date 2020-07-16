@@ -1,7 +1,7 @@
 # Stockfish NNUE
 
 ## Overview
-Stockfish NNUE is a port of a shogi NN called NNUE (efficiently updateable neural network backwards) to Stockfish 11.
+Stockfish NNUE is a port of a shogi neural network named NNUE (efficiently updateable neural network backwards) to Stockfish 11.
 
 ## Training Guide
 ### Generating Training Data
