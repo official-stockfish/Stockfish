@@ -1,7 +1,7 @@
 # Stockfish NNUE
 
 ## Overview
-Stockfish NNUE is a port of a shogi neural network named NNUE (efficiently updateable neural network backwards) to Stockfish 11.
+Stockfish NNUE is a port of a shogi neural network named NNUE (efficiently updateable neural network backwards) to Stockfish 11. To learn more about the Stockfish chess engine, look [here](stockfish.md) for an overview and [here](https://github.com/official-stockfish/Stockfish) for the official repository.
 
 ## Training Guide
 ### Generating Training Data
@@ -20,9 +20,9 @@ This will save a file named "generated_kifu.bin" in the same folder as the binar
 #### Generation Parameters
 - Depth is the searched depth per move, or how far the engine looks forward. This value is an integer.
 - Loop is the amount of positions generated. This value is also an integer
-### Generating validation data
-The process is the same as the generation of training data, except for the fact that you need to set loop to 1 million, because you don't need a lot of validation data. The depth should be the same as before or a little higher than the depth of the training data. After generation rename the validation data file to val.bin and drop it in a folder named "validationdata" in the same directory to make it easier. 
-### Training a completely new network
+### Generating Validation Data
+The process is the same as the generation of training data, except for the fact that you need to set loop to 1 million, because you don't need a lot of validation data. The depth should be the same as before or slightly higher than the depth of the training data. After generation rename the validation data file to val.bin and drop it in a folder named "validationdata" in the same directory to make it easier. 
+### Training a Completely New Network
 Use the "avx2.halfkp_256x2-32-32.nnue-learn.2020-07-11" binary. Create an empty folder named "evalsave" in the same directory as the binaries.
 ```
 uci
@@ -38,4 +38,4 @@ Nets get saved in the "evalsave" folder.
 - lambda is the amount of weight it puts to eval of learning data vs win/draw/loss results. 1 puts all weight on eval, lambda 0 puts all weight on WDL results.
 
 ### Using the Trained Net
-If you want to use your generated net, copy the net located in the "final" folder under the "evalsave" directory and move it into the "eval" folder. You can then use the halfkp_256x2 binaries with a standard chess GUI, such as Cutechess.
+If you want to use your generated net, copy the net located in the "final" folder under the "evalsave" directory and move it into a new folder named "eval" under the directory with the binaries. You can then use the halfkp_256x2 binaries pertaining to your CPU with a standard chess GUI, such as Cutechess. Refer to the [releases page](https://github.com/nodchip/Stockfish/releases) to find out which binary is best for your CPU.
