@@ -12,7 +12,7 @@ setoption name Threads value x
 setoption name Hash value y
 setoption name SyzygyPath value path
 isready
-gensfen depth a loop b  use_draw_in_training_data_generation 1 eval_limit 32000
+gensfen depth a loop b use_draw_in_training_data_generation 1 eval_limit 32000
 ```
 Specify how many threads and how much memory you would like to use with the x and y values. The option SyzygyPath is not necessary, but if you would like to use it, you must first have Syzygy endgame tablebases on your computer, which you can find [here](http://oics.olympuschess.com/tracker/index.php). You will need to have a torrent client to download these tablebases, as that is probably the fastest way to obtain them. The path is the path to the folder containing those tablebases. It does not have to be surrounded in quotes.
 
