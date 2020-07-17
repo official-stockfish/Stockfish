@@ -81,11 +81,8 @@ void init(OptionsMap& o) {
   o["Syzygy50MoveRule"]      << Option(true);
   o["SyzygyProbeLimit"]      << Option(7, 0, 7);
   // Evaluation function file name. When this is changed, it is necessary to reread the evaluation function at the next ucinewgame timing.
-#if defined(__linux__)
-  o["EvalFile"]              << Option("eval/nn.bin", on_eval_file);
-#else
-  o["EvalFile"]              << Option("eval\\nn.bin", on_eval_file);
-#endif
+  // Without the preceding "./", some GUIs can not load he net file.
+  o["EvalFile"]              << Option("./eval/nn.bin", on_eval_file);
   // When the evaluation function is loaded at the ucinewgame timing, it is necessary to convert the new evaluation function.
   // I want to hit the test eval convert command, but there is no new evaluation function
   // It ends abnormally before executing this command.
