@@ -39,3 +39,5 @@ Nets get saved in the "evalsave" folder.
 
 ### Using the Trained Net
 If you want to use your generated net, copy the net located in the "final" folder under the "evalsave" directory and move it into a new folder named "eval" under the directory with the binaries. You can then use the halfkp_256x2 binaries pertaining to your CPU with a standard chess GUI, such as Cutechess. Refer to the [releases page](https://github.com/nodchip/Stockfish/releases) to find out which binary is best for your CPU.
+
+If the engine does not load any net file, or shows "Error! *** not found or wrong format", please try to sepcify the net with the full file path by the "EvalFile" option.
