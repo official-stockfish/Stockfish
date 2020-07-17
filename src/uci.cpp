@@ -383,8 +383,12 @@ void UCI::loop(int argc, char* argv[]) {
 #endif
           Search::clear();
       }
-      else if (token == "isready")    sync_cout << "readyok" << sync_endl;
-
+      else if (token == "isready") {
+#if defined(EVAL_NNUE)
+          init_nnue(true);
+#endif
+          sync_cout << "readyok" << sync_endl;
+      }
       // Additional custom non-UCI commands, mainly for debugging.
       // Do not use these commands during a search!
       else if (token == "flip")     pos.flip();
