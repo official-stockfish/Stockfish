@@ -596,7 +596,7 @@ namespace {
     Key posKey;
     Move ttMove, move, excludedMove, bestMove;
     Depth extension, newDepth;
-    Value bestValue, value, ttValue, eval, maxValue, probcutBeta;
+    Value bestValue, value, ttValue, eval, maxValue, probCutBeta;
     bool ttHit, ttPv, formerPv, givesCheck, improving, didLMR, priorCapture;
     bool captureOrPromotion, doFullDepthSearch, moveCountPruning,
          ttCapture, singularQuietLMR;
@@ -871,7 +871,7 @@ namespace {
         }
     }
 
-    probcutBeta = beta + 176 - 49 * improving;
+    probCutBeta = beta + 176 - 49 * improving;
 
     // Step 10. ProbCut (~10 Elo)
     // If we have a good enough capture and a reduced search returns a value
@@ -879,21 +879,27 @@ namespace {
     if (   !PvNode
         &&  depth > 4
         &&  abs(beta) < VALUE_TB_WIN_IN_MAX_PLY
-        && !(   ttHit
-             && tte->depth() >= depth - 3
+        // if value from transposition table is lower than probCutBeta, don't attempt probCut
+        // there and in further interactions with transposition table cutoff depth is set to depth - 3
+        // because probCut search has depth set to depth - 4 but we also do a move before it
+        // so effective depth is equal to depth - 3
+        && !(   ttHit 
+             && tte->depth() >= depth - 3 
              && ttValue != VALUE_NONE
-             && ttValue < probcutBeta))
+             && ttValue < probCutBeta))
     {
+        // if ttMove is a capture and value from transposition table is good enough produce probCut
+        // cutoff without digging into actual probCut search
         if (   ttHit
             && tte->depth() >= depth - 3
             && ttValue != VALUE_NONE
-            && ttValue >= probcutBeta
+            && ttValue >= probCutBeta
             && ttMove
             && pos.capture_or_promotion(ttMove))
-            return probcutBeta;
+            return probCutBeta;
 
-        assert(probcutBeta < VALUE_INFINITE);
-        MovePicker mp(pos, ttMove, probcutBeta - ss->staticEval, &captureHistory);
+        assert(probCutBeta < VALUE_INFINITE);
+        MovePicker mp(pos, ttMove, probCutBeta - ss->staticEval, &captureHistory);
         int probCutCount = 0;
 
         while (   (move = mp.next_move()) != MOVE_NONE
@@ -915,16 +921,17 @@ namespace {
                 pos.do_move(move, st);
 
                 // Perform a preliminary qsearch to verify that the move holds
-                value = -qsearch<NonPV>(pos, ss+1, -probcutBeta, -probcutBeta+1);
+                value = -qsearch<NonPV>(pos, ss+1, -probCutBeta, -probCutBeta+1);
 
                 // If the qsearch held, perform the regular search
-                if (value >= probcutBeta)
-                    value = -search<NonPV>(pos, ss+1, -probcutBeta, -probcutBeta+1, depth - 4, !cutNode);
+                if (value >= probCutBeta)
+                    value = -search<NonPV>(pos, ss+1, -probCutBeta, -probCutBeta+1, depth - 4, !cutNode);
 
                 pos.undo_move(move);
 
-                if (value >= probcutBeta)
+                if (value >= probCutBeta)
                 {
+                    // if transposition table doesn't have equal or more deep info write probCut data into it
                     if ( !(ttHit
                        && tte->depth() >= depth - 3
                        && ttValue != VALUE_NONE))
