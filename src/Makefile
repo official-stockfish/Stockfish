@@ -162,15 +162,6 @@ ifeq ($(ARCH),x86-64-ssse3)
 	ssse3 = yes
 endif
 
-ifeq ($(ARCH),x86-64-ssse3-popcnt)
-	arch = x86_64
-	prefetch = yes
-	popcnt = yes
-	sse = yes
-	sse3 = yes
-	ssse3 = yes
-endif
-
 ifeq ($(ARCH),x86-64-sse41)
 	arch = x86_64
 	prefetch = yes
