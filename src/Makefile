@@ -87,6 +87,7 @@ endif
 # sse42 = yes/no      --- -msse4.2         --- Use Intel Streaming SIMD Extensions 4.2
 # avx2 = yes/no       --- -mavx2           --- Use Intel Advanced Vector Extensions 2
 # pext = yes/no       --- -DUSE_PEXT       --- Use pext x86_64 asm-instruction
+# avx512 = yes/no     --- -mavx512vbmi     --- Use Intel Advanced Vector Extensions 512
 #
 # Note that Makefile is space sensitive, so when adding new architectures
 # or modifying existing flags, you have to make sure there are no extra spaces
@@ -105,6 +106,7 @@ sse41 = no
 sse42 = no
 avx2 = no
 pext = no
+avx512 = no
 
 ### 2.2 Architecture specific
 ifeq ($(ARCH),general-32)
@@ -181,6 +183,20 @@ ifeq ($(ARCH),x86-64-bmi2)
 	sse42 = yes
 	avx2 = yes
 	pext = yes
+endif
+
+ifeq ($(ARCH),x86-64-avx512)
+	arch = x86_64
+	bits = 64
+	prefetch = yes
+	popcnt = yes
+	sse = yes
+	ssse3 = yes
+	sse41 = yes
+	sse42 = yes
+	avx2 = yes
+	pext = yes
+	avx512 = yes
 endif
 
 ifeq ($(ARCH),armv7)
@@ -407,7 +423,14 @@ endif
 ifeq ($(avx2),yes)
 	CXXFLAGS += -DUSE_AVX2
 	ifeq ($(comp),$(filter $(comp),gcc clang mingw msys2))
-		CXXFLAGS += -mavx2
+	CXXFLAGS += -mavx2
+	endif
+endif
+
+ifeq ($(avx512),yes)
+	CXXFLAGS += -DUSE_AVX512
+	ifeq ($(comp),$(filter $(comp),gcc clang mingw msys2))
+	CXXFLAGS += -mavx512vbmi
 	endif
 endif
 
@@ -493,6 +516,7 @@ help:
 	@echo ""
 	@echo "Supported archs:"
 	@echo ""
+	@echo "x86-64-avx512           > x86 64-bit with avx512 support"
 	@echo "x86-64-bmi2             > x86 64-bit with bmi2 support"
 	@echo "x86-64-avx2             > x86 64-bit with avx2 support"
 	@echo "x86-64-sse42            > x86 64-bit with sse42 support"
@@ -599,6 +623,7 @@ config-sanity:
 	@echo "sse42: '$(sse42)'"
 	@echo "avx2: '$(avx2)'"
 	@echo "pext: '$(pext)'"
+	@echo "avx512: '$(avx512)'"
 	@echo ""
 	@echo "Flags:"
 	@echo "CXX: $(CXX)"
@@ -622,6 +647,7 @@ config-sanity:
 	@test "$(sse42)" = "yes" || test "$(sse42)" = "no"
 	@test "$(avx2)" = "yes" || test "$(avx2)" = "no"
 	@test "$(pext)" = "yes" || test "$(pext)" = "no"
+	@test "$(avx512)" = "yes" || test "$(avx512)" = "no"
 	@test "$(comp)" = "gcc" || test "$(comp)" = "icc" || test "$(comp)" = "mingw" || test "$(comp)" = "clang"
 
 $(EXE): $(OBJS)
