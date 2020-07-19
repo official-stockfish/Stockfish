@@ -888,7 +888,7 @@ namespace {
         // Return immediately if the TT move is a capture and its value is good enough
         if (   ttHit
             && tte->depth() >= depth - 3
-         /* && ttValue != VALUE_NONE Already implicit in the next condition */
+            && ttValue != VALUE_NONE
             && ttValue >= probcutBeta
             && ttMove
             && pos.capture_or_promotion(ttMove))
