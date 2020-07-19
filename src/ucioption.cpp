@@ -80,6 +80,7 @@ void init(OptionsMap& o) {
   o["SyzygyProbeDepth"]      << Option(1, 1, 100);
   o["Syzygy50MoveRule"]      << Option(true);
   o["SyzygyProbeLimit"]      << Option(7, 0, 7);
+#ifdef EVAL_NNUE
   // Evaluation function file name. When this is changed, it is necessary to reread the evaluation function at the next ucinewgame timing.
   // Without the preceding "./", some GUIs can not load he net file.
   o["EvalFile"]              << Option("./eval/nn.bin", on_eval_file);
@@ -90,8 +91,8 @@ void init(OptionsMap& o) {
   // Hit the test eval convert command.
   o["SkipLoadingEval"]       << Option(false);
   // how many moves to use a fixed move
-  o["BookMoves"] << Option(16, 0, 10000);
-
+  // o["BookMoves"] << Option(16, 0, 10000);
+#endif
 #if defined(EVAL_LEARN)
   // When learning the evaluation function, you can change the folder to save the evaluation function.
   // Evalsave by default. This folder shall be prepared in advance.
