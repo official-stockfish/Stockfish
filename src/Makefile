@@ -145,6 +145,15 @@ ifeq ($(ARCH),x86-64-sse3)
 	ssse3 = yes
 endif
 
+ifeq ($(ARCH),x86-64-sse3-popcnt)
+	arch = x86_64
+	prefetch = yes
+	popcnt = yes
+	sse = yes
+	sse3 = yes
+	ssse3 = yes
+endif
+
 ifeq ($(ARCH),x86-64-ssse3)
 	arch = x86_64
 	prefetch = yes
@@ -153,9 +162,28 @@ ifeq ($(ARCH),x86-64-ssse3)
 	ssse3 = yes
 endif
 
+ifeq ($(ARCH),x86-64-ssse3-popcnt)
+	arch = x86_64
+	prefetch = yes
+	popcnt = yes
+	sse = yes
+	sse3 = yes
+	ssse3 = yes
+endif
+
 ifeq ($(ARCH),x86-64-sse41)
 	arch = x86_64
 	prefetch = yes
+	sse = yes
+	sse3 = yes
+	ssse3 = yes
+	sse41 = yes
+endif
+
+ifeq ($(ARCH),x86-64-sse41-popcnt)
+	arch = x86_64
+	prefetch = yes
+	popcnt = yes
 	sse = yes
 	sse3 = yes
 	ssse3 = yes
@@ -433,19 +461,22 @@ endif
 ### 3.6 popcnt
 ifeq ($(popcnt),yes)
 	CXXFLAGS += -DUSE_POPCNT
+	ifeq ($(comp),$(filter $(comp),gcc clang mingw msys2))
+		CXXFLAGS += -mpopcnt
+	endif
 endif
 
 ifeq ($(avx2),yes)
 	CXXFLAGS += -DUSE_AVX2
 	ifeq ($(comp),$(filter $(comp),gcc clang mingw msys2))
-	CXXFLAGS += -mavx2
+		CXXFLAGS += -mavx2
 	endif
 endif
 
 ifeq ($(avx512),yes)
 	CXXFLAGS += -DUSE_AVX512
 	ifeq ($(comp),$(filter $(comp),gcc clang mingw msys2))
-	CXXFLAGS += -mavx512vbmi
+		CXXFLAGS += -mavx512vbmi
 	endif
 endif
 
