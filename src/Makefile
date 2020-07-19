@@ -101,6 +101,7 @@ bits = 64
 prefetch = no
 popcnt = no
 sse = no
+sse3 = no
 ssse3 = no
 sse41 = no
 sse42 = no
@@ -136,10 +137,19 @@ ifeq ($(ARCH),x86-64)
 	sse = yes
 endif
 
+ifeq ($(ARCH),x86-64-sse3)
+	arch = x86_64
+	prefetch = yes
+	sse = yes
+	sse3 = yes
+	ssse3 = yes
+endif
+
 ifeq ($(ARCH),x86-64-ssse3)
 	arch = x86_64
 	prefetch = yes
 	sse = yes
+	sse3 = yes
 	ssse3 = yes
 endif
 
@@ -147,6 +157,7 @@ ifeq ($(ARCH),x86-64-sse41)
 	arch = x86_64
 	prefetch = yes
 	sse = yes
+	sse3 = yes
 	ssse3 = yes
 	sse41 = yes
 endif
@@ -156,6 +167,7 @@ ifeq ($(ARCH),x86-64-sse42)
 	prefetch = yes
 	popcnt = yes
 	sse = yes
+	sse3 = yes
 	ssse3 = yes
 	sse41 = yes
 	sse42 = yes
@@ -167,6 +179,7 @@ ifeq ($(ARCH),x86-64-avx2)
 	prefetch = yes
 	popcnt = yes
 	sse = yes
+	sse3 = yes
 	ssse3 = yes
 	sse41 = yes
 	sse42 = yes
@@ -178,6 +191,7 @@ ifeq ($(ARCH),x86-64-bmi2)
 	prefetch = yes
 	popcnt = yes
 	sse = yes
+	sse3 = yes
 	ssse3 = yes
 	sse41 = yes
 	sse42 = yes
@@ -191,6 +205,7 @@ ifeq ($(ARCH),x86-64-avx512)
 	prefetch = yes
 	popcnt = yes
 	sse = yes
+	sse3 = yes
 	ssse3 = yes
 	sse41 = yes
 	sse42 = yes
@@ -455,6 +470,13 @@ ifeq ($(ssse3),yes)
 	endif
 endif
 
+ifeq ($(sse3),yes)
+	CXXFLAGS += -DUSE_SSE3
+	ifeq ($(comp),$(filter $(comp),gcc clang mingw msys2))
+		CXXFLAGS += -msse3
+	endif
+endif
+
 ifeq ($(arch),x86_64)
 	CXXFLAGS += -DUSE_SSE2
 endif
@@ -522,6 +544,7 @@ help:
 	@echo "x86-64-sse42            > x86 64-bit with sse42 support"
 	@echo "x86-64-sse41            > x86 64-bit with sse41 support"
 	@echo "x86-64-ssse3            > x86 64-bit with ssse3 support"
+	@echo "x86-64-sse3             > x86 64-bit with ssse3 support"
 	@echo "x86-64                  > x86 64-bit generic"
 	@echo "x86-32                  > x86 32-bit (also enables SSE)"
 	@echo "x86-32-old              > x86 32-bit fall back for old hardware"
@@ -618,6 +641,7 @@ config-sanity:
 	@echo "prefetch: '$(prefetch)'"
 	@echo "popcnt: '$(popcnt)'"
 	@echo "sse: '$(sse)'"
+	@echo "sse3: '$(sse3)'"
 	@echo "ssse3: '$(ssse3)'"
 	@echo "sse41: '$(sse41)'"
 	@echo "sse42: '$(sse42)'"
@@ -642,6 +666,7 @@ config-sanity:
 	@test "$(prefetch)" = "yes" || test "$(prefetch)" = "no"
 	@test "$(popcnt)" = "yes" || test "$(popcnt)" = "no"
 	@test "$(sse)" = "yes" || test "$(sse)" = "no"
+	@test "$(sse3)" = "yes" || test "$(sse3)" = "no"
 	@test "$(ssse3)" = "yes" || test "$(ssse3)" = "no"
 	@test "$(sse41)" = "yes" || test "$(sse41)" = "no"
 	@test "$(sse42)" = "yes" || test "$(sse42)" = "no"
