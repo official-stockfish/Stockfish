@@ -871,28 +871,29 @@ namespace {
         }
     }
 
-    probcutBeta = beta + 176 - 49 * improving;
-
     // Step 10. ProbCut (~10 Elo)
     // If we have a good enough capture and a reduced search returns a value
     // much above beta, we can (almost) safely prune the previous move.
+    // Note: we only enter ProbCut with no TT hit, a too low TT depth, or
+    // a good enough TT value.
     if (   !PvNode
         &&  depth > 4
         &&  abs(beta) < VALUE_TB_WIN_IN_MAX_PLY
-        && !(   ttHit
-             && tte->depth() >= depth - 3
-             && ttValue != VALUE_NONE
-             && ttValue < probcutBeta))
+        && (!ttHit || tte->depth() < depth - 3 || ttValue >= beta + 176 - 49 * improving))
     {
+        probcutBeta = beta + 176 - 49 * improving;
+
+        assert(probcutBeta < VALUE_INFINITE);
+
+        // Return immediately if the TT move is a capture and its value is good enough
         if (   ttHit
             && tte->depth() >= depth - 3
-            && ttValue != VALUE_NONE
+         /* && ttValue != VALUE_NONE Already implicit in the next condition */
             && ttValue >= probcutBeta
             && ttMove
             && pos.capture_or_promotion(ttMove))
             return probcutBeta;
 
-        assert(probcutBeta < VALUE_INFINITE);
         MovePicker mp(pos, ttMove, probcutBeta - ss->staticEval, &captureHistory);
         int probCutCount = 0;
 
