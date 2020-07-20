@@ -20,6 +20,15 @@
 
 #include <iostream>
 
+#ifdef _WIN32
+#include <filesystem>
+
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <Windows.h>
+#endif
+
 #include "bitboard.h"
 #include "endgame.h"
 #include "position.h"
@@ -34,6 +43,17 @@ namespace PSQT {
 }
 
 int main(int argc, char* argv[]) {
+  // Change the current working directory to the binary directory.  So that a
+  // net file path can be specified with a relative path from the binary
+  // directory.
+  // TODO(someone): Implement the logic for other OS.
+#ifdef _WIN32
+  TCHAR filename[_MAX_PATH];
+  ::GetModuleFileName(NULL, filename, sizeof(filename) / sizeof(filename[0]));
+  std::filesystem::path current_path = filename;
+  current_path.remove_filename();
+  std::filesystem::current_path(current_path);
+#endif
 
   std::cout << engine_info() << std::endl;
 
