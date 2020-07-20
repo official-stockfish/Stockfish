@@ -94,7 +94,7 @@ void init(OptionsMap& o) {
   o["SyzygyProbeDepth"]      << Option(1, 1, 100);
   o["Syzygy50MoveRule"]      << Option(true);
   o["SyzygyProbeLimit"]      << Option(7, 0, 7);
-  o["Use NNUE"]              << Option(true, on_use_nnue);
+  o["Use NNUE"]              << Option(false, on_use_nnue);
   o["EvalFile"]              << Option("nn.bin", on_eval_file);
 }
 
@@ -204,6 +204,6 @@ Option& Option::operator=(const string& v) {
   return *this;
 }
 
-bool use_nnue = true;
+bool use_nnue = false;
 bool load_eval_finished = false;
 } // namespace UCI
