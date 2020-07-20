@@ -434,11 +434,12 @@ endif
 
 ### 3.6 popcnt
 ifeq ($(popcnt),yes)
-	CXXFLAGS += -DUSE_POPCNT
-	ifneq ($(arch),$(filter $(arch),ppc64 armv8-a))
-		ifeq ($(comp),$(filter $(comp),gcc clang mingw msys2))
-			CXXFLAGS += -mpopcnt
-		endif
+	ifeq ($(arch),$(filter $(arch),ppc64 armv8-a))
+		CXXFLAGS += -DUSE_POPCNT
+	else ifeq ($(comp),icc)
+		CXXFLAGS += -msse3 -DUSE_POPCNT
+	else
+		CXXFLAGS += -msse3 -mpopcnt -DUSE_POPCNT
 	endif
 endif
 
@@ -553,7 +554,7 @@ help:
 	@echo "x86-64-ssse3            > x86 64-bit with ssse3 support"
 	@echo "x86-64-sse3-popcnt      > x86 64-bit with sse3 and popcnt support"
 	@echo "x86-64-sse3             > x86 64-bit with sse3 support"
-	@echo "x86-64-modern           > x86 64-bit with popcnt support"
+	@echo "x86-64-modern           > x86 64-bit with popcnt support (also enables SSE3)"
 	@echo "x86-64                  > x86 64-bit generic"
 	@echo "x86-32                  > x86 32-bit (also enables SSE)"
 	@echo "x86-32-old              > x86 32-bit fall back for old hardware"
