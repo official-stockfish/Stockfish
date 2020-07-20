@@ -567,6 +567,7 @@ help:
 	@echo "x86-64-sse42            > x86 64-bit with sse42 support"
 	@echo "x86-64-sse41            > x86 64-bit with sse41 support"
 	@echo "x86-64-ssse3            > x86 64-bit with ssse3 support"
+	@echo "x86-64-sse3-popcnt      > x86 64-bit with ssse3 and popcnt support"
 	@echo "x86-64-sse3             > x86 64-bit with ssse3 support"
 	@echo "x86-64                  > x86 64-bit generic"
 	@echo "x86-32                  > x86 32-bit (also enables SSE)"
