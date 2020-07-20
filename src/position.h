@@ -23,16 +23,14 @@
 
 #include <cassert>
 #include <deque>
-#include <iostream>
 #include <memory> // For std::unique_ptr
 #include <string>
 
 #include "bitboard.h"
 #include "evaluate.h"
-#include "misc.h"
 #include "types.h"
 
-#include "eval/nnue/nnue_accumulator.h"
+#include "nnue/nnue_accumulator.h"
 
 
 /// StateInfo struct stores information needed to restore a Position object to
@@ -60,12 +58,9 @@ struct StateInfo {
   Bitboard   checkSquares[PIECE_TYPE_NB];
   int        repetition;
 
-#if defined(EVAL_NNUE)
+  // Used by NNUE
   Eval::NNUE::Accumulator accumulator;
-
-   // For management of evaluation value difference calculation
-  Eval::DirtyPiece dirtyPiece;
-#endif  // defined(EVAL_NNUE)
+  DirtyPiece dirtyPiece;
 };
 
 
@@ -82,9 +77,6 @@ typedef std::unique_ptr<std::deque<StateInfo>> StateListPtr;
 /// traversing the search tree.
 class Thread;
 
-// packed sfen
-struct PackedSfen { uint8_t data[32]; };
-
 class Position {
 public:
   static void init();
@@ -94,7 +86,7 @@ public:
   Position& operator=(const Position&) = delete;
 
   // FEN string input/output
-  Position& set(const std::string& fenStr, bool isChess960, StateInfo* si, Thread* th);
+  Position& set(const std::string& fenStr, bool isChess960,  bool useNnue, StateInfo* si, Thread* th);
   Position& set(const std::string& code, Color c, StateInfo* si);
   const std::string fen() const;
 
@@ -165,6 +157,7 @@ public:
   Color side_to_move() const;
   int game_ply() const;
   bool is_chess960() const;
+  bool use_nnue() const;
   Thread* this_thread() const;
   bool is_draw(int ply) const;
   bool has_game_cycle(int ply) const;
@@ -178,36 +171,9 @@ public:
   bool pos_is_ok() const;
   void flip();
 
-#if defined(EVAL_NNUE) || defined(EVAL_LEARN)
-  // --- StateInfo
-
-  // Returns the StateInfo corresponding to the current situation.
-  // For example, if state()->capturedPiece, the pieces captured in the previous phase are stored.
-  StateInfo* state() const { return st; }
-
-  // Information such as where and which piece number is used for the evaluation function.
-  const Eval::EvalList* eval_list() const { return &evalList; }
-#endif  // defined(EVAL_NNUE) || defined(EVAL_LEARN)
-
-#if defined(EVAL_LEARN)
-  // --sfenization helper
-
-  // Get the packed sfen. Returns to the buffer specified in the argument.
-  // Do not include gamePly in pack.
-  void sfen_pack(PackedSfen& sfen);
-
-  // Å™ It is slow to go through sfen, so I made a function to set packed sfen directly.
-  // Equivalent to pos.set(sfen_unpack(data),si,th);.
-  // If there is a problem with the passed phase and there is an error, non-zero is returned.
-  // PackedSfen does not include gamePly so it cannot be restored. If you want to set it, specify it with an argument.
-  int set_from_packed_sfen(const PackedSfen& sfen, StateInfo* si, Thread* th, bool mirror = false);
-
-  // Give the board, hand piece, and turn, and return the sfen.
-  //static std::string sfen_from_rawdata(Piece board[81], Hand hands[2], Color turn, int gamePly);
-
-  // Returns the position of the ball on the c side.
-  Square king_square(Color c) const { return pieceList[make_piece(c, KING)][0]; }
-#endif // EVAL_LEARN
+  // Used by NNUE
+  StateInfo* state() const;
+  const EvalList* eval_list() const;
 
 private:
   // Initialization helpers (used while setting up a position)
@@ -222,10 +188,8 @@ private:
   template<bool Do>
   void do_castling(Color us, Square from, Square& to, Square& rfrom, Square& rto);
 
-#if defined(EVAL_NNUE)
-  // Returns the PieceNumber of the piece in the sq box on the board.
-  PieceNumber piece_no_of(Square sq) const;
-#endif  // defined(EVAL_NNUE)
+  // ID of a piece on a given square
+  PieceId piece_id_on(Square sq) const;
 
   // Data members
   Piece board[SQUARE_NB];
@@ -243,11 +207,10 @@ private:
   Thread* thisThread;
   StateInfo* st;
   bool chess960;
+  bool nnue;
 
-#if defined(EVAL_NNUE) || defined(EVAL_LEARN)
-  // List of pieces used in the evaluation function
-  Eval::EvalList evalList;
-#endif  // defined(EVAL_NNUE) || defined(EVAL_LEARN)
+  // List of pieces used in NNUE evaluation function
+  EvalList evalList;
 };
 
 namespace PSQT {
@@ -411,6 +374,10 @@ inline bool Position::opposite_bishops() const {
 
 inline bool Position::is_chess960() const {
   return chess960;
+}
+
+inline bool Position::use_nnue() const {
+  return nnue;
 }
 
 inline bool Position::capture_or_promotion(Move m) const {

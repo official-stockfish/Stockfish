@@ -40,7 +40,6 @@
 
 #include <cassert>
 #include <cctype>
-#include <climits>
 #include <cstdint>
 #include <cstdlib>
 #include <algorithm>
@@ -132,8 +131,6 @@ enum Color {
   WHITE, BLACK, COLOR_NB = 2
 };
 
-constexpr Color Colors[2] = { WHITE, BLACK };
-
 enum CastlingRights {
   NO_CASTLING,
   WHITE_OO,
@@ -190,10 +187,7 @@ enum Value : int {
   QueenValueMg  = 2538,  QueenValueEg  = 2682,
   Tempo = 28,
 
-  MidgameLimit  = 15258, EndgameLimit  = 3915,
-
-// Maximum value returned by the evaluation function (I want it to be around 2**14..)
-  VALUE_MAX_EVAL = 27000,
+  MidgameLimit  = 15258, EndgameLimit  = 3915
 };
 
 enum PieceType {
@@ -208,6 +202,21 @@ enum Piece {
   B_PAWN = 9, B_KNIGHT, B_BISHOP, B_ROOK, B_QUEEN, B_KING,
   PIECE_NB = 16
 };
+
+// An ID used to track the pieces. Max. 32 pieces on board.
+enum PieceId {
+  PIECE_ID_ZERO   = 0,
+  PIECE_ID_KING   = 30,
+  PIECE_ID_WKING  = 30,
+  PIECE_ID_BKING  = 31,
+  PIECE_ID_NONE   = 32
+};
+
+inline PieceId operator++(PieceId& d, int) {
+  PieceId x = d;
+  d = PieceId(int(d) + 1);
+  return x;
+}
 
 constexpr Value PieceValue[PHASE_NB][PIECE_NB] = {
   { VALUE_ZERO, PawnValueMg, KnightValueMg, BishopValueMg, RookValueMg, QueenValueMg, VALUE_ZERO, VALUE_ZERO,
@@ -238,8 +247,8 @@ enum Square : int {
   SQ_A8, SQ_B8, SQ_C8, SQ_D8, SQ_E8, SQ_F8, SQ_G8, SQ_H8,
   SQ_NONE,
 
-  SQUARE_ZERO = 0, SQUARE_NB = 64,
-  SQUARE_NB_PLUS1 = SQUARE_NB + 1, // If there are no balls, it is treated as having moved to SQUARE_NB, so it may be necessary to secure the array with SQUARE_NB+1, so this constant is used.
+  SQUARE_ZERO = 0,
+  SQUARE_NB   = 64
 };
 
 enum Direction : int {
@@ -262,6 +271,101 @@ enum Rank : int {
   RANK_1, RANK_2, RANK_3, RANK_4, RANK_5, RANK_6, RANK_7, RANK_8, RANK_NB
 };
 
+// unique number for each piece type on each square
+enum PieceSquare : uint32_t
+{
+    PS_NONE     =  0,
+    PS_W_PAWN   =  1,
+    PS_B_PAWN   =  1 * SQUARE_NB + 1,
+    PS_W_KNIGHT =  2 * SQUARE_NB + 1,
+    PS_B_KNIGHT =  3 * SQUARE_NB + 1,
+    PS_W_BISHOP =  4 * SQUARE_NB + 1,
+    PS_B_BISHOP =  5 * SQUARE_NB + 1,
+    PS_W_ROOK   =  6 * SQUARE_NB + 1,
+    PS_B_ROOK   =  7 * SQUARE_NB + 1,
+    PS_W_QUEEN  =  8 * SQUARE_NB + 1,
+    PS_B_QUEEN  =  9 * SQUARE_NB + 1,
+    PS_W_KING   = 10 * SQUARE_NB + 1,
+    PS_END      = PS_W_KING, // pieces without kings (pawns included)
+    PS_B_KING   = 11 * SQUARE_NB + 1,
+    PS_END2     = 12 * SQUARE_NB + 1
+};
+
+struct ExtPieceSquare
+{
+    PieceSquare from[COLOR_NB];
+
+    ExtPieceSquare() {}
+    ExtPieceSquare(PieceSquare fw, PieceSquare fb) : from{fw, fb} {}
+};
+
+// Array for finding the PieceSquare corresponding to the piece on the board
+extern ExtPieceSquare kpp_board_index[PIECE_NB];
+
+// Structure holding which tracked piece (PieceId) is where (PieceSquare)
+class EvalList
+{
+    // Return relative square when turning the board 180 degrees
+    constexpr Square rotate180(Square sq) {
+      return (Square)(sq ^ 63);
+    }
+
+public:
+    // Max. number of pieces without kings is 30 but must be a multiple of 4 in AVX2
+    static const int MAX_LENGTH = 32;
+
+    // Array that holds the piece id for the pieces on the board
+    PieceId piece_id_list[SQUARE_NB];
+
+    // List of pieces, separate from White and Black POV
+    PieceSquare* piece_list_fw() const { return const_cast<PieceSquare*>(pieceListFw); }
+    PieceSquare* piece_list_fb() const { return const_cast<PieceSquare*>(pieceListFb); }
+
+    // Place the piece pc with piece_id on the square sq on the board
+    void put_piece(PieceId piece_id, Square sq, Piece pc)
+    {
+        assert(is_ok(piece_id));
+        if (pc != NO_PIECE)
+        {
+          pieceListFw[piece_id] = PieceSquare(kpp_board_index[pc].from[WHITE] + sq);
+          pieceListFb[piece_id] = PieceSquare(kpp_board_index[pc].from[BLACK] + rotate180(sq));
+          piece_id_list[sq] = piece_id;
+        }
+        else
+        {
+          pieceListFw[piece_id] = PS_NONE;
+          pieceListFb[piece_id] = PS_NONE;
+          piece_id_list[sq] = piece_id;
+        }
+    }
+
+    // Convert the specified piece_id piece to ExtPieceSquare type and return it
+    ExtPieceSquare piece_with_id(PieceId piece_id) const
+    {
+        ExtPieceSquare eps;
+        eps.from[WHITE] = pieceListFw[piece_id];
+        eps.from[BLACK] = pieceListFb[piece_id];
+        return eps;
+    }
+
+private:
+    PieceSquare pieceListFw[MAX_LENGTH];
+    PieceSquare pieceListFb[MAX_LENGTH];
+};
+
+// For differential evaluation of pieces that changed since last turn
+struct DirtyPiece
+{
+    // Number of changed pieces
+    int dirty_num;
+
+    // The ids of changed pieces, max. 2 pieces can change in one move
+    PieceId pieceId[2];
+
+    // What changed from the piece with that piece number
+    ExtPieceSquare old_piece[2];
+    ExtPieceSquare new_piece[2];
+};
 
 /// Score enum stores a middlegame and an endgame value in a single integer (enum).
 /// The least significant 16 bits are used to store the middlegame value and the
@@ -287,10 +391,10 @@ inline Value mg_value(Score s) {
 }
 
 #define ENABLE_BASE_OPERATORS_ON(T)                                \
-constexpr T operator+(T d1, int d2) { return T(int(d1) + d2); } \
-constexpr T operator-(T d1, int d2) { return T(int(d1) - d2); } \
+constexpr T operator+(T d1, int d2) { return T(int(d1) + d2); }    \
+constexpr T operator-(T d1, int d2) { return T(int(d1) - d2); }    \
 constexpr T operator-(T d) { return T(-int(d)); }                  \
-inline T& operator+=(T& d1, int d2) { return d1 = d1 + d2; }         \
+inline T& operator+=(T& d1, int d2) { return d1 = d1 + d2; }       \
 inline T& operator-=(T& d1, int d2) { return d1 = d1 - d2; }
 
 #define ENABLE_INCR_OPERATORS_ON(T)                                \
@@ -309,8 +413,10 @@ inline T& operator/=(T& d, int i) { return d = T(int(d) / i); }
 ENABLE_FULL_OPERATORS_ON(Value)
 ENABLE_FULL_OPERATORS_ON(Direction)
 
-ENABLE_INCR_OPERATORS_ON(PieceType)
 ENABLE_INCR_OPERATORS_ON(Piece)
+ENABLE_INCR_OPERATORS_ON(PieceSquare)
+ENABLE_INCR_OPERATORS_ON(PieceId)
+ENABLE_INCR_OPERATORS_ON(PieceType)
 ENABLE_INCR_OPERATORS_ON(Square)
 ENABLE_INCR_OPERATORS_ON(File)
 ENABLE_INCR_OPERATORS_ON(Rank)
@@ -398,6 +504,10 @@ inline Color color_of(Piece pc) {
   return Color(pc >> 3);
 }
 
+constexpr bool is_ok(PieceId pid) { 
+  return pid < PIECE_ID_NONE;
+}
+
 constexpr bool is_ok(Square s) {
   return s >= SQ_A1 && s <= SQ_H8;
 }
@@ -462,44 +572,6 @@ constexpr Move make(Square from, Square to, PieceType pt = KNIGHT) {
 constexpr bool is_ok(Move m) {
   return from_sq(m) != to_sq(m); // Catch MOVE_NULL and MOVE_NONE
 }
-
-// Return squares when turning the board 180‹
-constexpr Square Inv(Square sq) { return (Square)((SQUARE_NB - 1) - sq); }
-
-// Return squares when mirroring the board
-constexpr Square Mir(Square sq) { return make_square(File(7 - (int)file_of(sq)), rank_of(sq)); }
-
-#if defined(EVAL_NNUE) || defined(EVAL_LEARN)
-// --------------------
-// 		piece box
-// --------------------
-
-// A number used to manage the piece list (which piece is where) used in the Position class.
-enum PieceNumber : uint8_t
-{
-	PIECE_NUMBER_PAWN = 0,
-	PIECE_NUMBER_KNIGHT = 16,
-	PIECE_NUMBER_BISHOP = 20,
-	PIECE_NUMBER_ROOK = 24,
-	PIECE_NUMBER_QUEEN = 28,
-	PIECE_NUMBER_KING = 30,
-	PIECE_NUMBER_WKING = 30,
-	PIECE_NUMBER_BKING = 31, // Use this if you need the numbers of the first and second balls
-	PIECE_NUMBER_ZERO = 0,
-	PIECE_NUMBER_NB = 32,
-};
-
-inline PieceNumber& operator++(PieceNumber& d) { return d = PieceNumber(int8_t(d) + 1); }
-inline PieceNumber operator++(PieceNumber& d, int) {
-  PieceNumber x = d;
-  d = PieceNumber(int8_t(d) + 1);
-  return x;
-}
-inline PieceNumber& operator--(PieceNumber& d) { return d = PieceNumber(int8_t(d) - 1); }
-
-// Piece Number integrity check. for assert.
-constexpr bool is_ok(PieceNumber pn) { return pn < PIECE_NUMBER_NB; }
-#endif  // defined(EVAL_NNUE) || defined(EVAL_LEARN)
 
 /// Based on a congruential pseudo random number generator
 constexpr Key make_key(uint64_t seed) {

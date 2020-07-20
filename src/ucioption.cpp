@@ -42,8 +42,22 @@ void on_hash_size(const Option& o) { TT.resize(size_t(o)); }
 void on_logger(const Option& o) { start_logger(o); }
 void on_threads(const Option& o) { Threads.set(size_t(o)); }
 void on_tb_path(const Option& o) { Tablebases::init(o); }
-void on_eval_file(const Option& o) { load_eval_finished = false; init_nnue(); }
 
+void on_use_nnue(const Option& o) {
+  use_nnue = o;
+
+  if (use_nnue)
+    std::cout << "info string NNUE eval used" << std::endl;
+  else
+    std::cout << "info string Standard eval used" << std::endl;
+
+  init_nnue(Options["EvalFile"]);
+}
+
+void on_eval_file(const Option& o) {
+  load_eval_finished = false;
+  init_nnue(o);
+}
 
 /// Our case insensitive less() function as required by UCI protocol
 bool CaseInsensitiveLess::operator() (const string& s1, const string& s2) const {
@@ -80,27 +94,8 @@ void init(OptionsMap& o) {
   o["SyzygyProbeDepth"]      << Option(1, 1, 100);
   o["Syzygy50MoveRule"]      << Option(true);
   o["SyzygyProbeLimit"]      << Option(7, 0, 7);
-  // Evaluation function file name. When this is changed, it is necessary to reread the evaluation function at the next ucinewgame timing.
-#if defined(__linux__)
-  o["EvalFile"]              << Option("eval/nn.bin", on_eval_file);
-#else
-  o["EvalFile"]              << Option("eval\\nn.bin", on_eval_file);
-#endif
-  // When the evaluation function is loaded at the ucinewgame timing, it is necessary to convert the new evaluation function.
-  // I want to hit the test eval convert command, but there is no new evaluation function
-  // It ends abnormally before executing this command.
-  // Therefore, with this hidden option, you can suppress the loading of the evaluation function when ucinewgame,
-  // Hit the test eval convert command.
-  o["SkipLoadingEval"]       << Option(false);
-  // how many moves to use a fixed move
-  o["BookMoves"] << Option(16, 0, 10000);
-
-#if defined(EVAL_LEARN)
-  // When learning the evaluation function, you can change the folder to save the evaluation function.
-  // Evalsave by default. This folder shall be prepared in advance.
-  // Automatically dig a folder under this folder like "0/", "1/", ... and save the evaluation function file there.
-  o["EvalSaveDir"] << Option("evalsave");
-#endif
+  o["Use NNUE"]              << Option(true, on_use_nnue);
+  o["EvalFile"]              << Option("nn.bin", on_eval_file);
 }
 
 
@@ -209,6 +204,6 @@ Option& Option::operator=(const string& v) {
   return *this;
 }
 
-// Flag that read the evaluation function. This is set to false when evaldir is changed.
+bool use_nnue = true;
 bool load_eval_finished = false;
 } // namespace UCI

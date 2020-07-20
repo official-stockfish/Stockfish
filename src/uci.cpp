@@ -34,55 +34,16 @@
 #include "uci.h"
 #include "syzygy/tbprobe.h"
 
-#if defined(EVAL_NNUE) && defined(ENABLE_TEST_CMD)
-#include "eval/nnue/nnue_test_command.h"
-#endif
-
 using namespace std;
 
 extern vector<string> setup_bench(const Position&, istream&);
 
-// FEN string of the initial position, normal chess
-const char* StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-
-// Command to automatically generate a game record
-#if defined (EVAL_LEARN)
-namespace Learner
-{
-  // Automatic generation of teacher position
-  void gen_sfen(Position& pos, istringstream& is);
-
-  // Learning from the generated game record
-  void learn(Position& pos, istringstream& is);
-
-#if defined(GENSFEN2019)
-  // Automatic generation command of teacher phase under development
-  void gen_sfen2019(Position& pos, istringstream& is);
-#endif
-
-  // A pair of reader and evaluation value. Returned by Learner::search(),Learner::qsearch().
-  typedef std::pair<Value, std::vector<Move> > ValueAndPV;
-
-  ValueAndPV qsearch(Position& pos);
-  ValueAndPV search(Position& pos, int depth_, size_t multiPV = 1, uint64_t nodesLimit = 0);
-
-}
-#endif
-
-#if defined(EVAL_NNUE) && defined(ENABLE_TEST_CMD)
-void test_cmd(Position& pos, istringstream& is)
-{
-    // Initialize as it may be searched.
-    init_nnue();
-
-    std::string param;
-    is >> param;
-
-    if (param == "nnue") Eval::NNUE::TestCommand(pos, is);
-}
-#endif
-
 namespace {
+
+  // FEN string of the initial position, normal chess
+  const char* StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
+
   // position() is called when engine receives the "position" UCI command.
   // The function sets up the position described in the given FEN string ("fen")
   // or the starting position ("startpos") and then makes the moves given in the
@@ -107,7 +68,7 @@ namespace {
         return;
 
     states = StateListPtr(new std::deque<StateInfo>(1)); // Drop old and create a new one
-    pos.set(fen, Options["UCI_Chess960"], &states->back(), Threads.main());
+    pos.set(fen, Options["UCI_Chess960"], Options["Use NNUE"], &states->back(), Threads.main());
 
     // Parse move list (if any)
     while (is >> token && (m = UCI::to_move(pos, token)) != MOVE_NONE)
@@ -211,11 +172,9 @@ namespace {
         else if (token == "position")   position(pos, is, states);
         else if (token == "ucinewgame")
         {
-#if defined(EVAL_NNUE)
-            init_nnue();
-#endif
+            init_nnue(Options["EvalFile"]);
             Search::clear();
-            elapsed = now(); // Search::clear() may take some while
+            elapsed = now(); // initialization may take some time
         }
     }
 
@@ -251,85 +210,19 @@ namespace {
      return int(0.5 + 1000 / (1 + std::exp((a - x) / b)));
   }
 
-// When you calculate check sum, save it and check the consistency later.
-  uint64_t eval_sum;
 } // namespace
 
-// Make is_ready_cmd() callable from outside. (Because I want to call it from the bench command etc.)
-// Note that the phase is not initialized.
-void init_nnue(bool skipCorruptCheck)
+
+void UCI::init_nnue(const std::string& evalFile)
 {
-#if defined(EVAL_NNUE)
-  // After receiving "isready", modify so that a line feed is sent every 5 seconds until "readyok" is returned. (keep alive processing)
-  // From USI 2.0 specifications.
-  // -The time out time after "is ready" is about 30 seconds. Beyond this, if you want to initialize the evaluation function and secure the hash table,
-  // You should send some kind of message (breakable) from the thinking engine side.
-  // -Shogi GUI already does so, so MyShogi will follow along.
-  //-Also, the engine side of Yaneura King modifies it so that after "isready" is received, a line feed is sent every 5 seconds until "readyok" is returned.
-
-  // Perform processing that may take time, such as reading the evaluation function, at this timing.
-  // If you do a time-consuming process at startup, Shogi place will make a timeout judgment and retire the recognition as a thinking engine.
-  if (!UCI::load_eval_finished)
+  if (UCI::use_nnue && !UCI::load_eval_finished)
   {
-      // Read evaluation function
-      Eval::load_eval();
-
-      // Calculate and save checksum (to check for subsequent memory corruption)
-      eval_sum = Eval::calc_check_sum();
-
-      // display soft name
-      Eval::print_softname(eval_sum);
-
+      // Load evaluation function from a file
+      Eval::NNUE::load_eval(evalFile);
       UCI::load_eval_finished = true;
   }
-  else
-  {
-      // Check the checksum every time to see if the memory has been corrupted.
-      // It seems that the time is a little wasteful, but it is good because it is about 0.1 seconds.
-      if (!skipCorruptCheck && eval_sum != Eval::calc_check_sum())
-          sync_cout << "Error! : EVAL memory is corrupted" << sync_endl;
-  }
-#endif  // defined(EVAL_NNUE)
 }
 
-
-// --------------------
-// Call qsearch(),search() directly for testing
-// --------------------
-
-#if defined(EVAL_LEARN)
-void qsearch_cmd(Position& pos)
-{
-  cout << "qsearch : ";
-  auto pv = Learner::qsearch(pos);
-  cout << "Value = " << pv.first << " , " << UCI::value(pv.first) << " , PV = ";
-  for (auto m : pv.second)
-    cout << UCI::move(m, false) << " ";
-  cout << endl;
-}
-
-void search_cmd(Position& pos, istringstream& is)
-{
-  string token;
-  int depth = 1;
-  int multi_pv = (int)Options["MultiPV"];
-  while (is >> token)
-  {
-    if (token == "depth")
-      is >> depth;
-    if (token == "multipv")
-      is >> multi_pv;
-  }
-
-  cout << "search depth = " << depth << " , multi_pv = " << multi_pv << " : ";
-  auto pv = Learner::search(pos, depth, multi_pv);
-  cout << "Value = " << pv.first << " , " << UCI::value(pv.first) << " , PV = ";
-  for (auto m : pv.second)
-    cout << UCI::move(m, false) << " ";
-  cout << endl;
-}
-
-#endif
 
 /// UCI::loop() waits for a command from stdin, parses it and calls the appropriate
 /// function. Also intercepts EOF from stdin to ensure gracefully exiting if the
@@ -343,7 +236,7 @@ void UCI::loop(int argc, char* argv[]) {
   string token, cmd;
   StateListPtr states(new std::deque<StateInfo>(1));
 
-  pos.set(StartFEN, false, &states->back(), Threads.main());
+  pos.set(StartFEN, false, pos.use_nnue(), &states->back(), Threads.main());
 
   for (int i = 1; i < argc; ++i)
       cmd += std::string(argv[i]) + " ";
@@ -378,12 +271,14 @@ void UCI::loop(int argc, char* argv[]) {
       else if (token == "position")   position(pos, is, states);
       else if (token == "ucinewgame")
       {
-#if defined(EVAL_NNUE)
-          init_nnue();
-#endif
+          init_nnue(Options["EvalFile"]);
           Search::clear();
       }
-      else if (token == "isready")    sync_cout << "readyok" << sync_endl;
+      else if (token == "isready")
+      {
+          init_nnue(Options["EvalFile"]);
+          sync_cout << "readyok" << sync_endl;
+      }
 
       // Additional custom non-UCI commands, mainly for debugging.
       // Do not use these commands during a search!
@@ -392,28 +287,8 @@ void UCI::loop(int argc, char* argv[]) {
       else if (token == "d")        sync_cout << pos << sync_endl;
       else if (token == "eval")     sync_cout << Eval::trace(pos) << sync_endl;
       else if (token == "compiler") sync_cout << compiler_info() << sync_endl;
-#if defined (EVAL_LEARN)
-      else if (token == "gensfen") Learner::gen_sfen(pos, is);
-      else if (token == "learn") Learner::learn(pos, is);
-
-#if defined (GENSFEN2019)
-	  // Command to generate teacher phase under development
-      else if (token == "gensfen2019") Learner::gen_sfen2019(pos, is);
-#endif
-      // Command to call qsearch(),search() directly for testing
-      else if (token == "qsearch") qsearch_cmd(pos);
-      else if (token == "search") search_cmd(pos, is);
-
-#endif
-
-#if defined(EVAL_NNUE)
-      else if (token == "eval_nnue") sync_cout << "eval_nnue = " << Eval::compute_eval(pos) << sync_endl;
-#endif
-
-#if defined(EVAL_NNUE) && defined(ENABLE_TEST_CMD)
-      // test command
-      else if (token == "test") test_cmd(pos, is);
-#endif
+      else if (token == "evalnn")   sync_cout << "NNUE evaluation: "
+                                    << Eval::NNUE::compute_eval(pos) << sync_endl;
       else
           sync_cout << "Unknown command: " << cmd << sync_endl;
 

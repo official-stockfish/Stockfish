@@ -68,9 +68,6 @@ struct MoveList {
     return std::find(begin(), end(), move) != end();
   }
 
-  // returns the i th element
-  const ExtMove at(size_t i) const { assert(0 <= i && i < size()); return begin()[i]; }
-
 private:
   ExtMove moveList[MAX_MOVES], *last;
 };

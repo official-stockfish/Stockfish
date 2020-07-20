@@ -39,21 +39,7 @@ PGOBENCH = ./$(EXE) bench
 SRCS = benchmark.cpp bitbase.cpp bitboard.cpp endgame.cpp evaluate.cpp main.cpp \
 	material.cpp misc.cpp movegen.cpp movepick.cpp pawns.cpp position.cpp psqt.cpp \
 	search.cpp thread.cpp timeman.cpp tt.cpp uci.cpp ucioption.cpp tune.cpp syzygy/tbprobe.cpp \
-	eval/evaluate_mir_inv_tools.cpp \
-	eval/nnue/evaluate_nnue.cpp \
-	eval/nnue/evaluate_nnue_learner.cpp \
-	eval/nnue/features/half_kp.cpp \
-	eval/nnue/features/half_relative_kp.cpp \
-	eval/nnue/features/k.cpp \
-	eval/nnue/features/p.cpp \
-	eval/nnue/features/castling_right.cpp \
-	eval/nnue/features/enpassant.cpp \
-	eval/nnue/nnue_test_command.cpp \
-	extra/sfen_packer.cpp \
-	learn/gensfen2019.cpp \
-	learn/learner.cpp \
-	learn/learning_tools.cpp \
-	learn/multi_think.cpp
+	nnue/evaluate_nnue.cpp nnue/features/half_kp.cpp
 
 OBJS = $(SRCS:.cpp=.o)
 
@@ -211,7 +197,7 @@ endif
 ### ==========================================================================
 
 ### 3.1 Selecting compiler (default = gcc)
-CXXFLAGS += -Wall -Wcast-qual -fno-exceptions -std=c++17 $(EXTRACXXFLAGS) $(NNUECXXFLAGS)
+CXXFLAGS += -Wall -Wcast-qual -fno-exceptions -std=c++17 $(EXTRACXXFLAGS)
 DEPENDFLAGS += -std=c++17
 LDFLAGS += $(EXTRALDFLAGS)
 
@@ -564,12 +550,12 @@ clean: objclean profileclean
 
 # clean binaries and objects
 objclean:
-	@rm -f $(EXE) *.o ./syzygy/*.o ./learn/*.o ./extra/*.o ./eval/*.o ./eval/nnue/*.o ./eval/nnue/features/*.o
+	@rm -f $(EXE) *.o ./syzygy/*.o ./nnue/*.o ./nnue/features/*.o
 
 # clean auxiliary profiling files
 profileclean:
 	@rm -rf profdir
-	@rm -f bench.txt *.gcda *.gcno ./syzygy/*.gcda ./learn/*.gcda ./extra/*.gcda ./eval/*.gcda ./eval/nnue/*.gcda ./eval/nnue/features/*.gcda
+	@rm -f bench.txt *.gcda *.gcno ./syzygy/*.gcda ./nnue/*.gcda ./nnue/features/*.gcda
 	@rm -f stockfish.profdata *.profraw
 
 default:
@@ -662,19 +648,6 @@ icc-profile-use:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
 	EXTRACXXFLAGS='-prof_use -prof_dir ./profdir' \
 	all
-
-nnue: config-sanity
-	$(MAKE) CXXFLAGS='$(CXXFLAGS) -DEVAL_NNUE -DENABLE_TEST_CMD -fopenmp' LDFLAGS='$(LDFLAGS) -fopenmp' build
-
-profile-nnue: export NNUECXXFLAGS = -DEVAL_NNUE -DENABLE_TEST_CMD
-profile-nnue: config-sanity
-	$(MAKE) profile-build
-
-nnue-gen-sfen-from-original-eval: config-sanity
-	$(MAKE) CXXFLAGS='$(CXXFLAGS) -DEVAL_LEARN -DUSE_EVAL_HASH -DENABLE_TEST_CMD -fopenmp' LDFLAGS='$(LDFLAGS) -fopenmp' build
-
-nnue-learn: config-sanity
-	$(MAKE) CXXFLAGS='$(CXXFLAGS) -DEVAL_LEARN -DEVAL_NNUE -DUSE_EVAL_HASH -DENABLE_TEST_CMD -DUSE_BLAS -I/mingw64/include/OpenBLAS -fopenmp' LDFLAGS='$(LDFLAGS) -lopenblas -fopenmp' build
 
 .depend:
 	-@$(CXX) $(DEPENDFLAGS) -MM $(OBJS:.o=.cpp) > $@ 2> /dev/null

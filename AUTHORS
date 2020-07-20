@@ -5,6 +5,10 @@ Marco Costalba (mcostalba)
 Joona Kiiski (zamar)
 Gary Linscott (glinscott)
 
+Yu Nasu (ynasu87)              # The original inventor of NNUE
+Motohiro Isozaki (yaneurao)    # The author of the training data generator and the trainer
+Hisayori Noda (nodchip)        # Ported NNUE to Stockfish.
+
 Aditya (absimaldata)
 Adrian Petrescu (apetresc)
 Ajith Chandy Jose (ajithcj)
