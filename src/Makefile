@@ -394,7 +394,13 @@ endif
 
 ### 3.6 popcnt
 ifeq ($(popcnt),yes)
-	CXXFLAGS += -DUSE_POPCNT
+	ifeq ($(arch),$(filter $(arch),ppc64 armv8-a))
+		CXXFLAGS += -DUSE_POPCNT
+	else ifeq ($(comp),icc)
+		CXXFLAGS += -msse3 -DUSE_POPCNT
+	else
+		CXXFLAGS += -msse3 -mpopcnt -DUSE_POPCNT
+	endif
 endif
 
 ifeq ($(avx2),yes)
