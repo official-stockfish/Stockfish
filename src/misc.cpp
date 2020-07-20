@@ -525,19 +525,3 @@ void bindThisThread(size_t idx) {
 #endif
 
 } // namespace WinProcGroup
-
-void* aligned_malloc(size_t size, size_t align)
-{
- void* p = _mm_malloc(size, align);
- if (p == nullptr)
- {
-   std::cout << "info string can't allocate memory. sise = " << size << std::endl;
-   exit(1);
- }
- return p;
-}
-
-void aligned_free(void* ptr)
-{
-  _mm_free(ptr);
-}

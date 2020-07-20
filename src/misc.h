@@ -134,7 +134,4 @@ namespace WinProcGroup {
   void bindThisThread(size_t idx);
 }
 
-extern void* aligned_malloc(size_t size, size_t align);
-extern void aligned_free(void* ptr);
-
 #endif // #ifndef MISC_H_INCLUDED
