@@ -828,8 +828,6 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
 
   // Move the piece. The tricky Chess960 castling is handled earlier
   if (type_of(m) != CASTLING) {
-    move_piece(from, to);
-
     if (use_nnue())
     {
         dp0 = piece_id_on(from);
@@ -838,6 +836,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
         evalList.put_piece(dp0, to, pc);
         dp.new_piece[0] = evalList.piece_with_id(dp0);
     }
+    move_piece(from, to);
   }
 
   // If the moving piece is a pawn do some special extra work
@@ -986,8 +985,8 @@ void Position::undo_move(Move m) {
           if (use_nnue())
           {
               PieceId dp1 = st->dirtyPiece.pieceId[1];
-              assert(evalList.piece_with_id(dp1).fw == PS_NONE);
-              assert(evalList.piece_with_id(dp1).fb == PS_NONE);
+              assert(evalList.piece_with_id(dp1).from[WHITE] == PS_NONE);
+              assert(evalList.piece_with_id(dp1).from[BLACK] == PS_NONE);
               evalList.put_piece(dp1, capsq, st->capturedPiece);
           }
       }
@@ -1010,13 +1009,6 @@ void Position::do_castling(Color us, Square from, Square& to, Square& rfrom, Squ
   rfrom = to; // Castling is encoded as "king captures friendly rook"
   rto = relative_square(us, kingSide ? SQ_F1 : SQ_D1);
   to = relative_square(us, kingSide ? SQ_G1 : SQ_C1);
-
-  // Remove both pieces first since squares could overlap in Chess960
-  remove_piece(Do ? from : to);
-  remove_piece(Do ? rfrom : rto);
-  board[Do ? from : to] = board[Do ? rfrom : rto] = NO_PIECE; // Since remove_piece doesn't do this for us
-  put_piece(make_piece(us, KING), Do ? to : from);
-  put_piece(make_piece(us, ROOK), Do ? rto : rfrom);
 
   if (use_nnue())
   {
@@ -1043,6 +1035,13 @@ void Position::do_castling(Color us, Square from, Square& to, Square& rfrom, Squ
       evalList.put_piece(dp1, rfrom, make_piece(us, ROOK));
     }
   }
+
+  // Remove both pieces first since squares could overlap in Chess960
+  remove_piece(Do ? from : to);
+  remove_piece(Do ? rfrom : rto);
+  board[Do ? from : to] = board[Do ? rfrom : rto] = NO_PIECE; // Since remove_piece doesn't do this for us
+  put_piece(make_piece(us, KING), Do ? to : from);
+  put_piece(make_piece(us, ROOK), Do ? rto : rfrom);
 }
 
 
