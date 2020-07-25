@@ -17,10 +17,10 @@ matrix:
       compiler: clang
       addons:
         apt:
-          sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-xenial-7.0']
-          packages: ['clang-7.0', 'llvm-7.0-dev', 'g++-multilib', 'valgrind', 'expect', 'curl']
+          sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-xenial-6.0']
+          packages: ['clang-6.0', 'llvm-6.0-dev', 'g++-multilib', 'valgrind', 'expect', 'curl']
       env:
-        - COMPILER=clang++-7.0
+        - COMPILER=clang++-6.0
         - COMP=clang
         - LDFLAGS=-fuse-ld=lld
 
