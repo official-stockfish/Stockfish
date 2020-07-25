@@ -294,9 +294,6 @@ enum PieceSquare : uint32_t
 struct ExtPieceSquare
 {
     PieceSquare from[COLOR_NB];
-
-    ExtPieceSquare() {}
-    ExtPieceSquare(PieceSquare fw, PieceSquare fb) : from{fw, fb} {}
 };
 
 // Array for finding the PieceSquare corresponding to the piece on the board

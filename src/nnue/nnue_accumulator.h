@@ -12,9 +12,9 @@ namespace Eval::NNUE {
   struct alignas(32) Accumulator {
     std::int16_t
         accumulation[2][kRefreshTriggers.size()][kTransformedFeatureDimensions];
-    Value score = VALUE_ZERO;
-    bool computed_accumulation = false;
-    bool computed_score = false;
+    Value score;
+    bool computed_accumulation;
+    bool computed_score;
   };
 
 }  // namespace Eval::NNUE
