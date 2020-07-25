@@ -302,14 +302,12 @@ struct ExtPieceSquare
 // Array for finding the PieceSquare corresponding to the piece on the board
 extern ExtPieceSquare kpp_board_index[PIECE_NB];
 
+constexpr bool is_ok(PieceId pid);
+constexpr Square rotate180(Square sq);
+
 // Structure holding which tracked piece (PieceId) is where (PieceSquare)
 class EvalList
 {
-    // Return relative square when turning the board 180 degrees
-    constexpr Square rotate180(Square sq) {
-      return (Square)(sq ^ 63);
-    }
-
 public:
     // Max. number of pieces without kings is 30 but must be a multiple of 4 in AVX2
     static const int MAX_LENGTH = 32;
@@ -542,6 +540,11 @@ constexpr Square from_sq(Move m) {
 
 constexpr Square to_sq(Move m) {
   return Square(m & 0x3F);
+}
+
+// Return relative square when turning the board 180 degrees
+constexpr Square rotate180(Square sq) {
+  return (Square)(sq ^ 0x3F);
 }
 
 constexpr int from_to(Move m) {
