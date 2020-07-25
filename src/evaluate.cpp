@@ -310,13 +310,15 @@ namespace {
 
         if (Pt == BISHOP || Pt == KNIGHT)
         {
-            // Bonus if piece is on an outpost square or can reach one
+            // Bonus if the piece is on an outpost square or can reach one
+            // Reduced bonus for knights (BadOutpost) if few relevant targets
             bb = OutpostRanks & attackedBy[Us][PAWN] & ~pe->pawn_attacks_span(Them);
+            Bitboard targets = pos.pieces(Them) & ~pos.pieces(PAWN);
+
             if (   Pt == KNIGHT
-                && bb & s & ~CenterFiles
-                && !(b & pos.pieces(Them) & ~pos.pieces(PAWN))
-                && !conditional_more_than_two(
-                      pos.pieces(Them) & ~pos.pieces(PAWN) & (s & QueenSide ? QueenSide : KingSide)))
+                && bb & s & ~CenterFiles // on a side outpost
+                && !(b & targets)        // no relevant attacks
+                && (!more_than_one(targets & (s & QueenSide ? QueenSide : KingSide))))
                 score += BadOutpost;
             else if (bb & s)
                 score += Outpost[Pt == BISHOP];
