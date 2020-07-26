@@ -41,10 +41,6 @@ typedef bool(*fun3_t)(HANDLE, CONST GROUP_AFFINITY*, PGROUP_AFFINITY);
 }
 #endif
 
-#if defined(_MSC_VER)
-#include <malloc.h>
-#endif
-
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -305,8 +301,8 @@ void prefetch(void* addr) {
 void* std_aligned_alloc(size_t alignment, size_t size) {
 #if defined(__APPLE__)
   return aligned_alloc(alignment, size);
-#elif defined(_MSC_VER)
-  return _aligned_alloc(size, alignment);
+#elif defined(_WIN32)
+  return _mm_malloc(size, alignment);
 #else
   return std::aligned_alloc(alignment, size);
 #endif
@@ -315,8 +311,8 @@ void* std_aligned_alloc(size_t alignment, size_t size) {
 void std_aligned_free(void* ptr) {
 #if defined(__APPLE__)
   free(ptr);
-#elif defined(_MSC_VER)
-  _aligned_free(ptr);
+#elif defined(_WIN32)
+  _mm_free(ptr);
 #else
   free(ptr);
 #endif
