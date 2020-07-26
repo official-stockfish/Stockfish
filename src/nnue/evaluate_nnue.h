@@ -5,6 +5,7 @@
 
 #include "nnue_feature_transformer.h"
 #include "nnue_architecture.h"
+#include "../misc.h"
 
 #include <memory>
 
@@ -19,7 +20,7 @@ namespace Eval::NNUE {
   struct AlignedDeleter {
     void operator()(T* ptr) const {
       ptr->~T();
-      _mm_free(ptr);
+      std::free(ptr);
     }
   };
 

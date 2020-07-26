@@ -41,11 +41,16 @@ typedef bool(*fun3_t)(HANDLE, CONST GROUP_AFFINITY*, PGROUP_AFFINITY);
 }
 #endif
 
+#if defined(_MSC_VER)
+#include <malloc.h>
+#endif
+
 #include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <vector>
+#include <cstdlib>
 
 #if defined(__linux__) && !defined(__ANDROID__)
 #include <stdlib.h>
@@ -293,6 +298,29 @@ void prefetch(void* addr) {
 
 #endif
 
+/// Wrappers for systems where the c++17 implementation doesn't guarantee the availability of aligned_alloc.
+/// Memory allocated with std_aligned_alloc must be freed with std_aligned_free.
+///
+
+void* std_aligned_alloc(size_t alignment, size_t size) {
+#if defined(__APPLE__)
+  return aligned_alloc(alignment, size);
+#elif defined(_MSC_VER)
+  return _aligned_alloc(size, alignment);
+#else
+  return std::aligned_alloc(alignment, size);
+#endif
+}
+
+void std_aligned_free(void* ptr) {
+#if defined(__APPLE__)
+  free(ptr);
+#elif defined(_MSC_VER)
+  _aligned_free(ptr);
+#else
+  free(ptr);
+#endif
+}
 
 /// aligned_ttmem_alloc() will return suitably aligned memory, and if possible use large pages.
 /// The returned pointer is the aligned one, while the mem argument is the one that needs

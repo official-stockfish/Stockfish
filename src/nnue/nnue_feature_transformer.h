@@ -79,9 +79,10 @@ namespace Eval::NNUE {
 
   #elif defined(USE_SSSE3)
       constexpr IndexType kNumChunks = kHalfDimensions / kSimdWidth;
-      const __m128i kZero = _mm_setzero_si128();
 
-  #ifndef USE_SSE41
+  #ifdef USE_SSE41
+      const __m128i kZero = _mm_setzero_si128();
+  #else
       const __m128i k0x80s = _mm_set1_epi8(-128);
   #endif
 

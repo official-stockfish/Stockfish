@@ -57,7 +57,7 @@ namespace Eval::NNUE {
   template <typename T>
   void Initialize(AlignedPtr<T>& pointer) {
 
-    pointer.reset(reinterpret_cast<T*>(_mm_malloc(sizeof(T), alignof(T))));
+    pointer.reset(reinterpret_cast<T*>(std_aligned_alloc(alignof(T), sizeof(T))));
     std::memset(pointer.get(), 0, sizeof(T));
   }
 
