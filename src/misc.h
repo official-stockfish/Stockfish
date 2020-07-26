@@ -33,6 +33,8 @@ const std::string engine_info(bool to_uci = false);
 const std::string compiler_info();
 void prefetch(void* addr);
 void start_logger(const std::string& fname);
+void* std_aligned_alloc(size_t alignment, size_t size);
+void std_aligned_free(void* ptr);
 void* aligned_ttmem_alloc(size_t size, void*& mem);
 void aligned_ttmem_free(void* mem); // nop if mem == nullptr
 
