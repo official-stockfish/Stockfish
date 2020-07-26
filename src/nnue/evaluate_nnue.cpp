@@ -32,7 +32,6 @@ ExtPieceSquare kpp_board_index[PIECE_NB] = {
     { PS_NONE,     PS_NONE     }
 };
 
-
 namespace Eval::NNUE {
 
   // Input feature converter
@@ -57,7 +56,7 @@ namespace Eval::NNUE {
   template <typename T>
   void Initialize(AlignedPtr<T>& pointer) {
 
-    pointer.reset(reinterpret_cast<T*>(std::aligned_alloc(alignof(T), sizeof(T))));
+    pointer.reset(reinterpret_cast<T*>(aligned_alloc(alignof(T), sizeof(T))));
     std::memset(pointer.get(), 0, sizeof(T));
   }
 
