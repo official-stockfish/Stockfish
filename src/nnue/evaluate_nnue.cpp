@@ -32,6 +32,7 @@ ExtPieceSquare kpp_board_index[PIECE_NB] = {
     { PS_NONE,     PS_NONE     }
 };
 
+
 namespace Eval::NNUE {
 
   // Input feature converter
