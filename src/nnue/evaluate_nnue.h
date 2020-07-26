@@ -19,7 +19,7 @@ namespace Eval::NNUE {
   struct AlignedDeleter {
     void operator()(T* ptr) const {
       ptr->~T();
-      std::free(ptr);
+      _mm_free(ptr);
     }
   };
 
