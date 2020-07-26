@@ -41,6 +41,10 @@ typedef bool(*fun3_t)(HANDLE, CONST GROUP_AFFINITY*, PGROUP_AFFINITY);
 }
 #endif
 
+#if defined(_MSC_VER)
+#include <malloc.h>
+#endif
+
 #include <fstream>
 #include <iomanip>
 #include <iostream>
