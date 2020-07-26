@@ -38,6 +38,8 @@ before_build:
       # Build CMakeLists.txt
       $t = 'cmake_minimum_required(VERSION 3.8)',
            'project(Stockfish)',
+           'set(CMAKE_CXX_STANDARD 17)',
+           'set(CMAKE_CXX_STANDARD_REQUIRED True)',
            'set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/src)',
            'set(source_files', $src, ')',
            'add_executable(stockfish ${source_files})'
