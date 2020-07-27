@@ -54,7 +54,7 @@ void on_use_nnue(const Option& o) {
 }
 
 void on_eval_file(const Option& o) {
-  load_eval_finished = false;
+  nnue_eval_loaded = false;
   init_nnue(o);
 }
 
@@ -203,5 +203,5 @@ Option& Option::operator=(const string& v) {
   return *this;
 }
 
-bool load_eval_finished = false;
+bool nnue_eval_loaded = false;
 } // namespace UCI

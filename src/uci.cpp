@@ -21,6 +21,7 @@
 #include <cassert>
 #include <cmath>
 #include <iostream>
+#include <iomanip>
 #include <sstream>
 #include <string>
 
@@ -215,11 +216,11 @@ namespace {
 
 void UCI::init_nnue(const std::string& evalFile)
 {
-  if (Options["Use NNUE"] && !UCI::load_eval_finished)
+  if (Options["Use NNUE"] && !UCI::nnue_eval_loaded)
   {
       // Load evaluation function from a file
       Eval::NNUE::load_eval(evalFile);
-      UCI::load_eval_finished = true;
+      UCI::nnue_eval_loaded = true;
   }
 }
 
@@ -290,8 +291,15 @@ void UCI::loop(int argc, char* argv[]) {
       else if (token == "d")        sync_cout << pos << sync_endl;
       else if (token == "eval")     sync_cout << Eval::trace(pos) << sync_endl;
       else if (token == "compiler") sync_cout << compiler_info() << sync_endl;
-      else if (token == "evalnn")   sync_cout << "NNUE evaluation: "
-                                    << Eval::NNUE::compute_eval(pos) << sync_endl;
+      else if (token == "evalnn") {
+        sync_cout << "NNUE evaluation: " << IO_UNLOCK;
+        if (!nnue_eval_loaded)
+          sync_cout << "N/A" << sync_endl;
+        else
+          sync_cout << std::fixed << std::setprecision(2)
+                    << Eval::to_cp(Eval::NNUE::compute_eval(pos))
+                    << sync_endl;
+      }
       else
           sync_cout << "Unknown command: " << cmd << sync_endl;
 

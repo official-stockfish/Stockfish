@@ -40,8 +40,6 @@ namespace Trace {
 
   Score scores[TERM_NB][COLOR_NB];
 
-  double to_cp(Value v) { return double(v) / PawnValueEg; }
-
   void add(int idx, Color c, Score s) {
     scores[idx][c] = s;
   }
@@ -52,8 +50,8 @@ namespace Trace {
   }
 
   std::ostream& operator<<(std::ostream& os, Score s) {
-    os << std::setw(5) << to_cp(mg_value(s)) << " "
-       << std::setw(5) << to_cp(eg_value(s));
+    os << std::setw(5) << Eval::to_cp(mg_value(s)) << " "
+       << std::setw(5) << Eval::to_cp(eg_value(s));
     return os;
   }
 
@@ -895,6 +893,9 @@ make_v:
 
 } // namespace
 
+double Eval::to_cp(Value v) {
+  return double(v) / PawnValueEg;
+}
 
 /// evaluate() is the evaluator for the outer world. It returns a static
 /// evaluation of the position from the point of view of the side to move.

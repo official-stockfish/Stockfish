@@ -78,7 +78,7 @@ Move to_move(const Position& pos, std::string& str);
 
 void init_nnue(const std::string& evalFile);
 
-extern bool load_eval_finished;
+extern bool nnue_eval_loaded;
 
 } // namespace UCI
 

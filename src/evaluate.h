@@ -32,6 +32,8 @@ namespace Eval {
 std::string trace(const Position& pos);
 Value evaluate(const Position& pos);
 
+double to_cp(Value v);
+
 namespace NNUE {
 
 Value evaluate(const Position& pos);
