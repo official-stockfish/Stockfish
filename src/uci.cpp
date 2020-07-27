@@ -215,7 +215,7 @@ namespace {
 
 void UCI::init_nnue(const std::string& evalFile)
 {
-  if (UCI::use_nnue && !UCI::load_eval_finished)
+  if (Options["Use NNUE"] && !UCI::load_eval_finished)
   {
       // Load evaluation function from a file
       Eval::NNUE::load_eval(evalFile);

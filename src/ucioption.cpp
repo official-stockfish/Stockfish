@@ -44,9 +44,8 @@ void on_threads(const Option& o) { Threads.set(size_t(o)); }
 void on_tb_path(const Option& o) { Tablebases::init(o); }
 
 void on_use_nnue(const Option& o) {
-  use_nnue = o;
 
-  if (use_nnue)
+  if (o)
     std::cout << "info string NNUE eval used" << std::endl;
   else
     std::cout << "info string Standard eval used" << std::endl;
@@ -204,6 +203,5 @@ Option& Option::operator=(const string& v) {
   return *this;
 }
 
-bool use_nnue = false;
 bool load_eval_finished = false;
 } // namespace UCI
