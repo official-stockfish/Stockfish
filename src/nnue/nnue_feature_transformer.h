@@ -208,8 +208,19 @@ namespace Eval::NNUE {
           }
           for (const auto index : active_indices[perspective]) {
             const IndexType offset = kHalfDimensions * index;
-
-  #if defined(USE_AVX2)
+  #if defined(USE_AVX512)
+            auto accumulation = reinterpret_cast<__m512i*>(
+                &accumulator.accumulation[perspective][i][0]);
+            auto column = reinterpret_cast<const __m512i*>(&weights_[offset]);
+            constexpr IndexType kNumChunks = kHalfDimensions / kSimdWidth;
+            for (IndexType j = 0; j < kNumChunks; ++j) {
+  #if defined(__MINGW32__) || defined(__MINGW64__)
+              _mm512_storeu_si512(&accumulation[j], _mm512_add_epi16(_mm512_loadu_si512(&accumulation[j]), column[j]));
+  #else
+              accumulation[j] = _mm512_add_epi16(accumulation[j], column[j]);
+  #endif
+            }
+  #elif defined(USE_AVX2)
             auto accumulation = reinterpret_cast<__m256i*>(
                 &accumulator.accumulation[perspective][i][0]);
             auto column = reinterpret_cast<const __m256i*>(&weights_[offset]);

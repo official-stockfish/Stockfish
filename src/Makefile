@@ -455,7 +455,7 @@ endif
 ifeq ($(avx512),yes)
 	CXXFLAGS += -DUSE_AVX512
 	ifeq ($(comp),$(filter $(comp),gcc clang mingw msys2))
-		CXXFLAGS += -mavx512bw
+		CXXFLAGS += -mavx512f -mavx512bw -mavx512cd -mavx512dq -mavx512vl
 	endif
 endif
 
