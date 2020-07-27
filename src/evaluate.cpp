@@ -909,40 +909,53 @@ Value Eval::evaluate(const Position& pos) {
 /// trace() is like evaluate(), but instead of returning a value, it returns
 /// a string (suitable for outputting to stdout) that contains the detailed
 /// descriptions and values of each evaluation term. Useful for debugging.
+/// Trace scores are from white's point of view
 
 std::string Eval::trace(const Position& pos) {
 
   if (pos.checkers())
-      return "Total evaluation: none (in check)";
-
-  std::memset(scores, 0, sizeof(scores));
-
-  pos.this_thread()->contempt = SCORE_ZERO; // Reset any dynamic contempt
-
-  Value v = Evaluation<TRACE>(pos).value();
-
-  v = pos.side_to_move() == WHITE ? v : -v; // Trace scores are from white's point of view
+      return "Final evaluation: none (in check)";
 
   std::stringstream ss;
-  ss << std::showpoint << std::noshowpos << std::fixed << std::setprecision(2)
-     << "     Term    |    White    |    Black    |    Total   \n"
-     << "             |   MG    EG  |   MG    EG  |   MG    EG \n"
-     << " ------------+-------------+-------------+------------\n"
-     << "    Material | " << Term(MATERIAL)
-     << "   Imbalance | " << Term(IMBALANCE)
-     << "       Pawns | " << Term(PAWN)
-     << "     Knights | " << Term(KNIGHT)
-     << "     Bishops | " << Term(BISHOP)
-     << "       Rooks | " << Term(ROOK)
-     << "      Queens | " << Term(QUEEN)
-     << "    Mobility | " << Term(MOBILITY)
-     << " King safety | " << Term(KING)
-     << "     Threats | " << Term(THREAT)
-     << "      Passed | " << Term(PASSED)
-     << "       Space | " << Term(SPACE)
-     << "    Winnable | " << Term(WINNABLE)
-     << " ------------+-------------+-------------+------------\n"
-     << "       Total | " << Term(TOTAL);
+  ss << std::showpoint << std::noshowpos << std::fixed << std::setprecision(2);
+
+  Value v;
+
+  if (pos.use_nnue())
+  {
+    v = NNUE::evaluate(pos);
+  }
+  else
+  {
+    std::memset(scores, 0, sizeof(scores));
+
+    pos.this_thread()->contempt = SCORE_ZERO; // Reset any dynamic contempt
+
+    v = Evaluation<TRACE>(pos).value();
+
+    ss << std::showpoint << std::noshowpos << std::fixed << std::setprecision(2)
+       << "     Term    |    White    |    Black    |    Total   \n"
+       << "             |   MG    EG  |   MG    EG  |   MG    EG \n"
+       << " ------------+-------------+-------------+------------\n"
+       << "    Material | " << Term(MATERIAL)
+       << "   Imbalance | " << Term(IMBALANCE)
+       << "       Pawns | " << Term(PAWN)
+       << "     Knights | " << Term(KNIGHT)
+       << "     Bishops | " << Term(BISHOP)
+       << "       Rooks | " << Term(ROOK)
+       << "      Queens | " << Term(QUEEN)
+       << "    Mobility | " << Term(MOBILITY)
+       << " King safety | " << Term(KING)
+       << "     Threats | " << Term(THREAT)
+       << "      Passed | " << Term(PASSED)
+       << "       Space | " << Term(SPACE)
+       << "    Winnable | " << Term(WINNABLE)
+       << " ------------+-------------+-------------+------------\n"
+       << "       Total | " << Term(TOTAL);
+
+  }
+
+  v = pos.side_to_move() == WHITE ? v : -v;
 
   ss << "\nFinal evaluation: " << to_cp(v) << " (white side)\n";
 
