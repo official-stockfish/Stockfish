@@ -238,6 +238,9 @@ void UCI::loop(int argc, char* argv[]) {
 
   pos.set(StartFEN, false, Options["Use NNUE"], &states->back(), Threads.main());
 
+  if (argc > 1)
+     init_nnue(Options["EvalFile"]);
+
   for (int i = 1; i < argc; ++i)
       cmd += std::string(argv[i]) + " ";
 
