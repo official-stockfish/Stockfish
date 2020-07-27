@@ -149,7 +149,21 @@ const string engine_info(bool to_uci) {
   }
 
   ss << (Is64Bit ? " 64" : "")
-     << (HasPext ? " BMI2" : (HasPopCnt ? " POPCNT" : ""))
+#if defined(USE_AVX512)
+     << (" AVX512")
+#elif defined(USE_AVX2)
+     << (" AVX2")
+#elif defined(USE_SSE42)
+      << (" SSE42")
+#elif defined(USE_SSE41)
+      << (" SSE41")
+#elif defined(USE_SSSE3)
+     << (" SSSE3")
+#elif defined(USE_SSE3)
+      << (" SSE3")
+#endif
+     << (HasPext ? " BMI2" : "")
+     << (HasPopCnt ? " POPCNT" : "")
      << (to_uci  ? "\nid author ": " by ")
      << "T. Romstad, M. Costalba, J. Kiiski, G. Linscott";
 
