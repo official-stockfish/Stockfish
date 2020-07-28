@@ -49,8 +49,6 @@ void on_use_nnue(const Option& o) {
     std::cout << "info string NNUE eval used" << std::endl;
   else
     std::cout << "info string Standard eval used" << std::endl;
-
-  init_nnue(Options["EvalFile"]);
 }
 
 void on_eval_file(const Option& o) {

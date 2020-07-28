@@ -133,6 +133,9 @@ namespace {
         else if (token == "infinite")  limits.infinite = 1;
         else if (token == "ponder")    ponderMode = true;
 
+    if (!limits.infinite) {
+      init_nnue(Options["EvalFile"]);
+    }    
     Threads.start_thinking(pos, states, limits, ponderMode);
   }
 
