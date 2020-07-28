@@ -30,6 +30,10 @@
 #include "pawns.h"
 #include "thread.h"
 
+namespace Eval {
+   bool useNNUE;
+}
+
 namespace Trace {
 
   enum Tracing { NO_TRACE, TRACE };
@@ -900,7 +904,7 @@ make_v:
 /// evaluation of the position from the point of view of the side to move.
 
 Value Eval::evaluate(const Position& pos) {
-  if (pos.use_nnue())
+  if (Eval::useNNUE)
     return NNUE::evaluate(pos);
   else
     return Evaluation<NO_TRACE>(pos).value();
@@ -921,7 +925,7 @@ std::string Eval::trace(const Position& pos) {
 
   Value v;
 
-  if (pos.use_nnue())
+  if (Eval::useNNUE)
   {
     v = NNUE::evaluate(pos);
   }

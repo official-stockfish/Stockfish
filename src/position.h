@@ -86,7 +86,7 @@ public:
   Position& operator=(const Position&) = delete;
 
   // FEN string input/output
-  Position& set(const std::string& fenStr, bool isChess960,  bool useNnue, StateInfo* si, Thread* th);
+  Position& set(const std::string& fenStr, bool isChess960, StateInfo* si, Thread* th);
   Position& set(const std::string& code, Color c, StateInfo* si);
   const std::string fen() const;
 
@@ -157,7 +157,6 @@ public:
   Color side_to_move() const;
   int game_ply() const;
   bool is_chess960() const;
-  bool use_nnue() const;
   Thread* this_thread() const;
   bool is_draw(int ply) const;
   bool has_game_cycle(int ply) const;
@@ -374,10 +373,6 @@ inline bool Position::opposite_bishops() const {
 
 inline bool Position::is_chess960() const {
   return chess960;
-}
-
-inline bool Position::use_nnue() const {
-  return nnue;
 }
 
 inline bool Position::capture_or_promotion(Move m) const {

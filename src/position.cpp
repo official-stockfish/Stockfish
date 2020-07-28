@@ -80,7 +80,7 @@ std::ostream& operator<<(std::ostream& os, const Position& pos) {
   {
       StateInfo st;
       Position p;
-      p.set(pos.fen(), pos.is_chess960(), pos.use_nnue(), &st, pos.this_thread());
+      p.set(pos.fen(), pos.is_chess960(), &st, pos.this_thread());
       Tablebases::ProbeState s1, s2;
       Tablebases::WDLScore wdl = Tablebases::probe_wdl(p, &s1);
       int dtz = Tablebases::probe_dtz(p, &s2);
@@ -154,7 +154,7 @@ void Position::init() {
 /// This function is not very robust - make sure that input FENs are correct,
 /// this is assumed to be the responsibility of the GUI.
 
-Position& Position::set(const string& fenStr, bool isChess960, bool useNnue, StateInfo* si, Thread* th) {
+Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Thread* th) {
 /*
    A FEN string defines a particular position using only the ASCII character set.
 
@@ -219,7 +219,7 @@ Position& Position::set(const string& fenStr, bool isChess960, bool useNnue, Sta
           auto pc = Piece(idx);
           put_piece(pc, sq);
 
-          if (useNnue)
+          if (Eval::useNNUE)
           {
             // Kings get a fixed ID, other pieces get ID in order of placement
             piece_id =
@@ -295,7 +295,6 @@ Position& Position::set(const string& fenStr, bool isChess960, bool useNnue, Sta
   gamePly = std::max(2 * (gamePly - 1), 0) + (sideToMove == BLACK);
 
   chess960 = isChess960;
-  nnue = useNnue;
   thisThread = th;
   set_state(st);
 
@@ -404,7 +403,7 @@ Position& Position::set(const string& code, Color c, StateInfo* si) {
   string fenStr = "8/" + sides[0] + char(8 - sides[0].length() + '0') + "/8/8/8/8/"
                        + sides[1] + char(8 - sides[1].length() + '0') + "/8 w - - 0 10";
 
-  return set(fenStr, false, false, si, nullptr);
+  return set(fenStr, false, si, nullptr);
 }
 
 
@@ -776,7 +775,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       else
           st->nonPawnMaterial[them] -= PieceValue[MG][captured];
 
-      if (use_nnue())
+      if (Eval::useNNUE)
       {
           dp.dirty_num = 2; // 2 pieces moved
           dp1 = piece_id_on(capsq);
@@ -823,7 +822,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
 
   // Move the piece. The tricky Chess960 castling is handled earlier
   if (type_of(m) != CASTLING) {
-    if (use_nnue())
+    if (Eval::useNNUE)
     {
         dp0 = piece_id_on(from);
         dp.pieceId[0] = dp0;
@@ -855,7 +854,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
           remove_piece(to);
           put_piece(promotion, to);
 
-          if (use_nnue())
+          if (Eval::useNNUE)
           {
               dp0 = piece_id_on(to);
               evalList.put_piece(dp0, to, promotion);
@@ -951,10 +950,9 @@ void Position::undo_move(Move m) {
   }
   else
   {
-      
       move_piece(to, from); // Put the piece back at the source square
 
-      if (use_nnue())
+      if (Eval::useNNUE)
       {
           PieceId dp0 = st->dirtyPiece.pieceId[0];
           evalList.put_piece(dp0, from, pc);
@@ -977,7 +975,7 @@ void Position::undo_move(Move m) {
 
           put_piece(st->capturedPiece, capsq); // Restore the captured piece
 
-          if (use_nnue())
+          if (Eval::useNNUE)
           {
               PieceId dp1 = st->dirtyPiece.pieceId[1];
               assert(evalList.piece_with_id(dp1).from[WHITE] == PS_NONE);
@@ -1005,7 +1003,7 @@ void Position::do_castling(Color us, Square from, Square& to, Square& rfrom, Squ
   rto = relative_square(us, kingSide ? SQ_F1 : SQ_D1);
   to = relative_square(us, kingSide ? SQ_G1 : SQ_C1);
 
-  if (use_nnue())
+  if (Eval::useNNUE)
   {
     PieceId dp0, dp1;
     auto& dp = st->dirtyPiece;
@@ -1048,7 +1046,8 @@ void Position::do_null_move(StateInfo& newSt) {
   assert(!checkers());
   assert(&newSt != st);
 
-  if (use_nnue()) {
+  if (Eval::useNNUE)
+  {
     std::memcpy(&newSt, st, sizeof(StateInfo));
     st->accumulator.computed_score = false;
   }
@@ -1321,7 +1320,7 @@ void Position::flip() {
   std::getline(ss, token); // Half and full moves
   f += token;
 
-  set(f, is_chess960(), use_nnue(), st, this_thread());
+  set(f, is_chess960(), st, this_thread());
 
   assert(pos_is_ok());
 }
