@@ -1,4 +1,4 @@
-﻿// Code for calculating NNUE evaluation function
+// Code for calculating NNUE evaluation function
 
 #include <fstream>
 #include <iostream>
@@ -42,7 +42,7 @@ namespace Eval::NNUE {
   AlignedPtr<Network> network;
 
   // Evaluation function file name
-  std::string fileName = "nn.bin";
+  std::string fileName = "nn.nnue";
 
   // Get a string that represents the structure of the evaluation function
   std::string GetArchitectureString() {
