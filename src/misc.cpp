@@ -140,7 +140,7 @@ const string engine_info(bool to_uci) {
   string month, day, year;
   stringstream ss, date(__DATE__); // From compiler, format is "Sep 21 2008"
 
-  ss << "Stockfish NNUE " << Version << setfill('0');
+  ss << "Stockfish " << Version << setfill('0');
 
   if (Version.empty())
   {
@@ -148,9 +148,7 @@ const string engine_info(bool to_uci) {
       ss << setw(2) << day << setw(2) << (1 + months.find(month) / 4) << year.substr(2);
   }
 
-  ss << (Is64Bit ? " 64" : "")
-     << (HasPext ? " BMI2" : (HasPopCnt ? " POPCNT" : ""))
-     << (to_uci  ? "\nid author ": " by ")
+  ss << (to_uci  ? "\nid author ": " by ")
      << "T. Romstad, M. Costalba, J. Kiiski, G. Linscott";
 
   return ss.str();
@@ -216,7 +214,33 @@ const std::string compiler_info() {
      compiler += " on unknown system";
   #endif
 
-  compiler += "\n __VERSION__ macro expands to: ";
+  compiler += "\nCompilation settings include: ";
+  compiler += (Is64Bit ? " 64bit" : " 32bit");
+  #if defined(USE_AVX512)
+    compiler += " AVX512";
+  #endif
+  #if defined(USE_AVX2)
+    compiler += " AVX2";
+  #endif
+  #if defined(USE_SSE42)
+    compiler += " SSE42";
+  #endif
+  #if defined(USE_SSE41)
+    compiler += " SSE41";
+  #endif
+  #if defined(USE_SSSE3)
+    compiler += " SSSE3";
+  #endif
+  #if defined(USE_SSE3)
+    compiler += " SSE3";
+  #endif
+    compiler += (HasPext ? " BMI2" : "");
+    compiler += (HasPopCnt ? " POPCNT" : "");
+  #if !defined(NDEBUG)
+    compiler += " DEBUG";
+  #endif
+
+  compiler += "\n__VERSION__ macro expands to: ";
   #ifdef __VERSION__
      compiler += __VERSION__;
   #else
