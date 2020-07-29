@@ -28,8 +28,6 @@
 #include <utility>
 
 #include "position.h"
-#include "types.h"
-
 
 /// EndgameCode lists all supported endgame functions by corresponding codes
 

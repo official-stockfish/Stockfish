@@ -19,7 +19,6 @@
 */
 
 #include <algorithm>
-#include <cfloat>
 #include <cmath>
 
 #include "search.h"

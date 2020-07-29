@@ -24,7 +24,6 @@
 #include "endgame.h"
 #include "misc.h"
 #include "position.h"
-#include "types.h"
 
 namespace Material {
 

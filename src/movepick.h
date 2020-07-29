@@ -27,7 +27,6 @@
 
 #include "movegen.h"
 #include "position.h"
-#include "types.h"
 
 /// StatsEntry stores the stat table value. It is usually a number but could
 /// be a move or even a nested history. We use a class instead of naked value

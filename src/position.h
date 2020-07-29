@@ -28,7 +28,6 @@
 
 #include "bitboard.h"
 #include "evaluate.h"
-#include "types.h"
 
 #include "nnue/nnue_accumulator.h"
 

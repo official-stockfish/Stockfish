@@ -3,7 +3,6 @@
 #ifndef NNUE_FEATURES_COMMON_H_INCLUDED
 #define NNUE_FEATURES_COMMON_H_INCLUDED
 
-#include "../../evaluate.h"
 #include "../nnue_common.h"
 
 namespace Eval::NNUE::Features {

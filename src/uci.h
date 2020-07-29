@@ -24,8 +24,6 @@
 #include <map>
 #include <string>
 
-#include "types.h"
-
 class Position;
 
 namespace UCI {
