@@ -4,8 +4,6 @@
 #define NNUE_EVALUATE_NNUE_H_INCLUDED
 
 #include "nnue_feature_transformer.h"
-#include "nnue_architecture.h"
-#include "../misc.h"
 
 #include <memory>
 
@@ -26,25 +24,6 @@ namespace Eval::NNUE {
 
   template <typename T>
   using AlignedPtr = std::unique_ptr<T, AlignedDeleter<T>>;
-
-  // Input feature converter
-  extern AlignedPtr<FeatureTransformer> feature_transformer;
-
-  // Evaluation function
-  extern AlignedPtr<Network> network;
-
-  // Evaluation function file name
-  extern std::string fileName;
-
-  // Get a string that represents the structure of the evaluation function
-  std::string GetArchitectureString();
-
-  // read the header
-  bool ReadHeader(std::istream& stream,
-      std::uint32_t* hash_value, std::string* architecture);
-
-  // read evaluation function parameters
-  bool ReadParameters(std::istream& stream);
 
 }  // namespace Eval::NNUE
 
