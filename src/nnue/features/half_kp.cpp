@@ -70,6 +70,5 @@ namespace Eval::NNUE::Features {
   }
 
   template class HalfKP<Side::kFriend>;
-  template class HalfKP<Side::kEnemy>;
 
 }  // namespace Eval::NNUE::Features

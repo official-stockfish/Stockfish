@@ -17,19 +17,12 @@ namespace Eval::NNUE::Features {
 
   // Type of timing to perform all calculations instead of difference calculation
   enum class TriggerEvent {
-
-    kNone, // Calculate the difference whenever possible
-    kFriendKingMoved, // calculate all when own king moves
-    kEnemyKingMoved, // do all calculations when enemy king moves
-    kAnyKingMoved, // do all calculations if either king moves
-    kAnyPieceMoved, // always do all calculations
+    kFriendKingMoved // calculate all when own king moves
   };
 
   // turn side or other side
   enum class Side {
-
-    kFriend, // turn side
-    kEnemy, // opponent
+    kFriend // turn side
   };
 
 }  // namespace Eval::NNUE::Features

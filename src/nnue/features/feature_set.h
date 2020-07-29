@@ -21,48 +21,6 @@ namespace Eval::NNUE::Features {
         kValues = {{First, Remaining...}};
   };
 
-  template <typename T, T First, T... Remaining>
-  constexpr std::array<T, sizeof...(Remaining) + 1>
-      CompileTimeList<T, First, Remaining...>::kValues;
-
-  template <typename T>
-  struct CompileTimeList<T> {
-    static constexpr bool Contains(T /*value*/) {
-      return false;
-    }
-    static constexpr std::array<T, 0> kValues = {{}};
-  };
-
-  // Class template that adds to the beginning of the list
-  template <typename T, typename ListType, T Value>
-  struct AppendToList;
-
-  template <typename T, T... Values, T AnotherValue>
-  struct AppendToList<T, CompileTimeList<T, Values...>, AnotherValue> {
-    using Result = CompileTimeList<T, AnotherValue, Values...>;
-  };
-
-  // Class template for adding to a sorted, unique list
-  template <typename T, typename ListType, T Value>
-  struct InsertToSet;
-
-  template <typename T, T First, T... Remaining, T AnotherValue>
-  struct InsertToSet<T, CompileTimeList<T, First, Remaining...>, AnotherValue> {
-    using Result = std::conditional_t<
-        CompileTimeList<T, First, Remaining...>::Contains(AnotherValue),
-        CompileTimeList<T, First, Remaining...>,
-        std::conditional_t<(AnotherValue <First),
-            CompileTimeList<T, AnotherValue, First, Remaining...>,
-            typename AppendToList<T, typename InsertToSet<
-                T, CompileTimeList<T, Remaining...>, AnotherValue>::Result,
-                First>::Result>>;
-  };
-
-  template <typename T, T Value>
-  struct InsertToSet<T, CompileTimeList<T>, Value> {
-    using Result = CompileTimeList<T, Value>;
-  };
-
   // Base class of feature set
   template <typename Derived>
   class FeatureSetBase {
@@ -91,21 +49,9 @@ namespace Eval::NNUE::Features {
       for (Color perspective : { WHITE, BLACK }) {
         reset[perspective] = false;
         switch (trigger) {
-          case TriggerEvent::kNone:
-            break;
           case TriggerEvent::kFriendKingMoved:
             reset[perspective] =
                 dp.pieceId[0] == PIECE_ID_KING + perspective;
-            break;
-          case TriggerEvent::kEnemyKingMoved:
-            reset[perspective] =
-                dp.pieceId[0] == PIECE_ID_KING + ~perspective;
-            break;
-          case TriggerEvent::kAnyKingMoved:
-            reset[perspective] = dp.pieceId[0] >= PIECE_ID_KING;
-            break;
-          case TriggerEvent::kAnyPieceMoved:
-            reset[perspective] = true;
             break;
           default:
             assert(false);
@@ -121,80 +67,6 @@ namespace Eval::NNUE::Features {
         }
       }
     }
-  };
-
-  // Class template that represents the feature set
-  // do internal processing in reverse order of template arguments in order to linearize the amount of calculation at runtime
-  template <typename FirstFeatureType, typename... RemainingFeatureTypes>
-  class FeatureSet<FirstFeatureType, RemainingFeatureTypes...> :
-      public FeatureSetBase<
-          FeatureSet<FirstFeatureType, RemainingFeatureTypes...>> {
-
-   private:
-    using Head = FirstFeatureType;
-    using Tail = FeatureSet<RemainingFeatureTypes...>;
-
-   public:
-    // Hash value embedded in the evaluation function file
-    static constexpr std::uint32_t kHashValue =
-        Head::kHashValue ^ (Tail::kHashValue << 1) ^ (Tail::kHashValue >> 31);
-    // number of feature dimensions
-    static constexpr IndexType kDimensions =
-        Head::kDimensions + Tail::kDimensions;
-    // The maximum value of the number of indexes whose value is 1 at the same time among the feature values
-    static constexpr IndexType kMaxActiveDimensions =
-        Head::kMaxActiveDimensions + Tail::kMaxActiveDimensions;
-    // List of timings to perform all calculations instead of difference calculation
-    using SortedTriggerSet = typename InsertToSet<TriggerEvent,
-        typename Tail::SortedTriggerSet, Head::kRefreshTrigger>::Result;
-    static constexpr auto kRefreshTriggers = SortedTriggerSet::kValues;
-
-    // Get the feature quantity name
-    static std::string GetName() {
-      return std::string(Head::kName) + "+" + Tail::GetName();
-    }
-
-   private:
-    // Get a list of indices with a value of 1 among the features
-    template <typename IndexListType>
-    static void CollectActiveIndices(
-        const Position& pos, const TriggerEvent trigger, const Color perspective,
-        IndexListType* const active) {
-
-      Tail::CollectActiveIndices(pos, trigger, perspective, active);
-      if (Head::kRefreshTrigger == trigger) {
-        const auto start = active->size();
-        Head::AppendActiveIndices(pos, perspective, active);
-        for (auto i = start; i < active->size(); ++i) {
-          (*active)[i] += Tail::kDimensions;
-        }
-      }
-    }
-
-    // Get a list of indices whose values ​​have changed from the previous one in the feature quantity
-    template <typename IndexListType>
-    static void CollectChangedIndices(
-        const Position& pos, const TriggerEvent trigger, const Color perspective,
-        IndexListType* const removed, IndexListType* const added) {
-
-      Tail::CollectChangedIndices(pos, trigger, perspective, removed, added);
-      if (Head::kRefreshTrigger == trigger) {
-        const auto start_removed = removed->size();
-        const auto start_added = added->size();
-        Head::AppendChangedIndices(pos, perspective, removed, added);
-        for (auto i = start_removed; i < removed->size(); ++i) {
-          (*removed)[i] += Tail::kDimensions;
-        }
-        for (auto i = start_added; i < added->size(); ++i) {
-          (*added)[i] += Tail::kDimensions;
-        }
-      }
-    }
-
-    // Make the base class and the class template that recursively uses itself a friend
-    friend class FeatureSetBase<FeatureSet>;
-    template <typename... FeatureTypes>
-    friend class FeatureSet;
   };
 
   // Class template that represents the feature set
