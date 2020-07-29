@@ -76,6 +76,10 @@ std::string pv(const Position& pos, Depth depth, Value alpha, Value beta);
 std::string wdl(Value v, int ply);
 Move to_move(const Position& pos, std::string& str);
 
+void init_nnue(const std::string& evalFile);
+
+extern bool load_eval_finished;
+
 } // namespace UCI
 
 extern UCI::OptionsMap Options;

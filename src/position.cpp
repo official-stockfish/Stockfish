@@ -80,7 +80,7 @@ std::ostream& operator<<(std::ostream& os, const Position& pos) {
   {
       StateInfo st;
       Position p;
-      p.set(pos.fen(), pos.is_chess960(), &st, pos.this_thread());
+      p.set(pos.fen(), pos.is_chess960(), pos.use_nnue(), &st, pos.this_thread());
       Tablebases::ProbeState s1, s2;
       Tablebases::WDLScore wdl = Tablebases::probe_wdl(p, &s1);
       int dtz = Tablebases::probe_dtz(p, &s2);
@@ -154,7 +154,7 @@ void Position::init() {
 /// This function is not very robust - make sure that input FENs are correct,
 /// this is assumed to be the responsibility of the GUI.
 
-Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Thread* th) {
+Position& Position::set(const string& fenStr, bool isChess960, bool useNnue, StateInfo* si, Thread* th) {
 /*
    A FEN string defines a particular position using only the ASCII character set.
 
@@ -200,6 +200,9 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
   std::fill_n(&pieceList[0][0], sizeof(pieceList) / sizeof(Square), SQ_NONE);
   st = si;
 
+  // Each piece on board gets a unique ID used to track the piece later
+  PieceId piece_id, next_piece_id = PIECE_ID_ZERO;
+
   ss >> std::noskipws;
 
   // 1. Piece placement
@@ -213,7 +216,19 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
 
       else if ((idx = PieceToChar.find(token)) != string::npos)
       {
-          put_piece(Piece(idx), sq);
+          auto pc = Piece(idx);
+          put_piece(pc, sq);
+
+          if (useNnue)
+          {
+            // Kings get a fixed ID, other pieces get ID in order of placement
+            piece_id =
+              (idx == W_KING) ? PIECE_ID_WKING :
+              (idx == B_KING) ? PIECE_ID_BKING :
+              next_piece_id++;
+            evalList.put_piece(piece_id, sq, pc);
+          }
+
           ++sq;
       }
   }
@@ -280,6 +295,7 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
   gamePly = std::max(2 * (gamePly - 1), 0) + (sideToMove == BLACK);
 
   chess960 = isChess960;
+  nnue = useNnue;
   thisThread = th;
   set_state(st);
 
@@ -388,7 +404,7 @@ Position& Position::set(const string& code, Color c, StateInfo* si) {
   string fenStr = "8/" + sides[0] + char(8 - sides[0].length() + '0') + "/8/8/8/8/"
                        + sides[1] + char(8 - sides[1].length() + '0') + "/8 w - - 0 10";
 
-  return set(fenStr, false, si, nullptr);
+  return set(fenStr, false, false, si, nullptr);
 }
 
 
@@ -705,6 +721,14 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   ++st->rule50;
   ++st->pliesFromNull;
 
+  // Used by NNUE
+  st->accumulator.computed_accumulation = false;
+  st->accumulator.computed_score = false;
+  PieceId dp0 = PIECE_ID_NONE;
+  PieceId dp1 = PIECE_ID_NONE;
+  auto& dp = st->dirtyPiece;
+  dp.dirty_num = 1;
+
   Color us = sideToMove;
   Color them = ~us;
   Square from = from_sq(m);
@@ -752,11 +776,16 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       else
           st->nonPawnMaterial[them] -= PieceValue[MG][captured];
 
+      if (use_nnue())
+          dp1 = piece_id_on(capsq);
+
       // Update board and piece lists
       remove_piece(capsq);
 
       if (type_of(m) == ENPASSANT)
+      {
           board[capsq] = NO_PIECE;
+      }
 
       // Update material hash key and prefetch access to materialTable
       k ^= Zobrist::psq[captured][capsq];
@@ -765,6 +794,18 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
 
       // Reset rule 50 counter
       st->rule50 = 0;
+
+      if (use_nnue())
+      {
+          dp.dirty_num = 2; // 2 pieces moved
+          dp.pieceId[1] = dp1;
+          dp.old_piece[1] = evalList.piece_with_id(dp1);
+          // Do not use EvalList::put_piece() because the piece is removed
+          // from the game, and the corresponding elements of the piece lists
+          // needs to be PS_NONE.
+          evalList.put_piece(dp1, capsq, NO_PIECE);
+          dp.new_piece[1] = evalList.piece_with_id(dp1);
+      }
   }
 
   // Update hash key
@@ -786,8 +827,17 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   }
 
   // Move the piece. The tricky Chess960 castling is handled earlier
-  if (type_of(m) != CASTLING)
-      move_piece(from, to);
+  if (type_of(m) != CASTLING) {
+    if (use_nnue())
+    {
+        dp0 = piece_id_on(from);
+        dp.pieceId[0] = dp0;
+        dp.old_piece[0] = evalList.piece_with_id(dp0);
+        evalList.put_piece(dp0, to, pc);
+        dp.new_piece[0] = evalList.piece_with_id(dp0);
+    }
+    move_piece(from, to);
+  }
 
   // If the moving piece is a pawn do some special extra work
   if (type_of(pc) == PAWN)
@@ -809,6 +859,13 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
 
           remove_piece(to);
           put_piece(promotion, to);
+
+          if (use_nnue())
+          {
+              dp0 = piece_id_on(to);
+              evalList.put_piece(dp0, to, promotion);
+              dp.new_piece[0] = evalList.piece_with_id(dp0);
+          }
 
           // Update hash keys
           k ^= Zobrist::psq[pc][to] ^ Zobrist::psq[promotion][to];
@@ -899,7 +956,14 @@ void Position::undo_move(Move m) {
   }
   else
   {
+      
       move_piece(to, from); // Put the piece back at the source square
+
+      if (use_nnue())
+      {
+          PieceId dp0 = st->dirtyPiece.pieceId[0];
+          evalList.put_piece(dp0, from, pc);
+      }
 
       if (st->capturedPiece)
       {
@@ -917,6 +981,14 @@ void Position::undo_move(Move m) {
           }
 
           put_piece(st->capturedPiece, capsq); // Restore the captured piece
+
+          if (use_nnue())
+          {
+              PieceId dp1 = st->dirtyPiece.pieceId[1];
+              assert(evalList.piece_with_id(dp1).from[WHITE] == PS_NONE);
+              assert(evalList.piece_with_id(dp1).from[BLACK] == PS_NONE);
+              evalList.put_piece(dp1, capsq, st->capturedPiece);
+          }
       }
   }
 
@@ -937,6 +1009,32 @@ void Position::do_castling(Color us, Square from, Square& to, Square& rfrom, Squ
   rfrom = to; // Castling is encoded as "king captures friendly rook"
   rto = relative_square(us, kingSide ? SQ_F1 : SQ_D1);
   to = relative_square(us, kingSide ? SQ_G1 : SQ_C1);
+
+  if (use_nnue())
+  {
+    PieceId dp0, dp1;
+    auto& dp = st->dirtyPiece;
+    dp.dirty_num = 2; // 2 pieces moved
+
+    if (Do) {
+      dp0 = piece_id_on(from);
+      dp1 = piece_id_on(rfrom);
+      dp.pieceId[0] = dp0;
+      dp.old_piece[0] = evalList.piece_with_id(dp0);
+      evalList.put_piece(dp0, to, make_piece(us, KING));
+      dp.new_piece[0] = evalList.piece_with_id(dp0);
+      dp.pieceId[1] = dp1;
+      dp.old_piece[1] = evalList.piece_with_id(dp1);
+      evalList.put_piece(dp1, rto, make_piece(us, ROOK));
+      dp.new_piece[1] = evalList.piece_with_id(dp1);
+    }
+    else {
+      dp0 = piece_id_on(to);
+      dp1 = piece_id_on(rto);
+      evalList.put_piece(dp0, from, make_piece(us, KING));
+      evalList.put_piece(dp1, rfrom, make_piece(us, ROOK));
+    }
+  }
 
   // Remove both pieces first since squares could overlap in Chess960
   remove_piece(Do ? from : to);
@@ -967,6 +1065,9 @@ void Position::do_null_move(StateInfo& newSt) {
 
   st->key ^= Zobrist::side;
   prefetch(TT.first_entry(st->key));
+
+  if (use_nnue())
+      st->accumulator.computed_score = false;
 
   ++st->rule50;
   st->pliesFromNull = 0;
@@ -1222,7 +1323,7 @@ void Position::flip() {
   std::getline(ss, token); // Half and full moves
   f += token;
 
-  set(f, is_chess960(), st, this_thread());
+  set(f, is_chess960(), use_nnue(), st, this_thread());
 
   assert(pos_is_ok());
 }
@@ -1296,4 +1397,20 @@ bool Position::pos_is_ok() const {
       }
 
   return true;
+}
+
+StateInfo* Position::state() const {
+  return st;
+}
+
+const EvalList* Position::eval_list() const {
+  return &evalList;
+}
+
+PieceId Position::piece_id_on(Square sq) const
+{
+  assert(piece_on(sq) != NO_PIECE);
+  PieceId pid = evalList.piece_id_list[sq];
+  assert(is_ok(pid));
+  return pid;
 }

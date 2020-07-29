@@ -27,7 +27,10 @@
 #include <string>
 
 #include "bitboard.h"
+#include "evaluate.h"
 #include "types.h"
+
+#include "nnue/nnue_accumulator.h"
 
 
 /// StateInfo struct stores information needed to restore a Position object to
@@ -54,6 +57,10 @@ struct StateInfo {
   Bitboard   pinners[COLOR_NB];
   Bitboard   checkSquares[PIECE_TYPE_NB];
   int        repetition;
+
+  // Used by NNUE
+  Eval::NNUE::Accumulator accumulator;
+  DirtyPiece dirtyPiece;
 };
 
 
@@ -79,7 +86,7 @@ public:
   Position& operator=(const Position&) = delete;
 
   // FEN string input/output
-  Position& set(const std::string& fenStr, bool isChess960, StateInfo* si, Thread* th);
+  Position& set(const std::string& fenStr, bool isChess960,  bool useNnue, StateInfo* si, Thread* th);
   Position& set(const std::string& code, Color c, StateInfo* si);
   const std::string fen() const;
 
@@ -150,6 +157,7 @@ public:
   Color side_to_move() const;
   int game_ply() const;
   bool is_chess960() const;
+  bool use_nnue() const;
   Thread* this_thread() const;
   bool is_draw(int ply) const;
   bool has_game_cycle(int ply) const;
@@ -163,6 +171,10 @@ public:
   bool pos_is_ok() const;
   void flip();
 
+  // Used by NNUE
+  StateInfo* state() const;
+  const EvalList* eval_list() const;
+
 private:
   // Initialization helpers (used while setting up a position)
   void set_castling_right(Color c, Square rfrom);
@@ -175,6 +187,9 @@ private:
   void move_piece(Square from, Square to);
   template<bool Do>
   void do_castling(Color us, Square from, Square& to, Square& rfrom, Square& rto);
+
+  // ID of a piece on a given square
+  PieceId piece_id_on(Square sq) const;
 
   // Data members
   Piece board[SQUARE_NB];
@@ -192,6 +207,10 @@ private:
   Thread* thisThread;
   StateInfo* st;
   bool chess960;
+  bool nnue;
+
+  // List of pieces used in NNUE evaluation function
+  EvalList evalList;
 };
 
 namespace PSQT {
@@ -355,6 +374,10 @@ inline bool Position::opposite_bishops() const {
 
 inline bool Position::is_chess960() const {
   return chess960;
+}
+
+inline bool Position::use_nnue() const {
+  return nnue;
 }
 
 inline bool Position::capture_or_promotion(Move m) const {
