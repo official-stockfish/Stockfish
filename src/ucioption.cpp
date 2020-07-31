@@ -43,17 +43,22 @@ void on_logger(const Option& o) { start_logger(o); }
 void on_threads(const Option& o) { Threads.set(size_t(o)); }
 void on_tb_path(const Option& o) { Tablebases::init(o); }
 
-void on_use_nnue(const Option& o) {
+void on_eval_type(const Option& o) {
 
-  if (o)
-    std::cout << "info string NNUE eval used" << std::endl;
+  if (o == "Standard")
+      std::cout << "info string Standard eval used" << std::endl;
   else
-    std::cout << "info string Standard eval used" << std::endl;
+  {
+      if (o == "NNUE")
+          std::cout << "info string NNUE eval used" << std::endl;
+      else // "Blend"
+          std::cout << "info string Blended eval used" << std::endl;
 
-  init_nnue(Options["EvalFile"]);
+      init_nnue(Options["NNUE Net"]);
+  }
 }
 
-void on_eval_file(const Option& o) {
+void on_nnue_net(const Option& o) {
   load_eval_finished = false;
   init_nnue(o);
 }
@@ -93,8 +98,8 @@ void init(OptionsMap& o) {
   o["SyzygyProbeDepth"]      << Option(1, 1, 100);
   o["Syzygy50MoveRule"]      << Option(true);
   o["SyzygyProbeLimit"]      << Option(7, 0, 7);
-  o["Use NNUE"]              << Option(false, on_use_nnue);
-  o["EvalFile"]              << Option("nn-c157e0a5755b.nnue", on_eval_file);
+  o["Eval Type"]             << Option("Standard var Standard var NNUE var Blend", "Standard", on_eval_type);
+  o["NNUE Net"]              << Option("nn-c157e0a5755b.nnue", on_nnue_net);
 }
 
 

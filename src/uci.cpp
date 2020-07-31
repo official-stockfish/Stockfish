@@ -68,7 +68,8 @@ namespace {
         return;
 
     states = StateListPtr(new std::deque<StateInfo>(1)); // Drop old and create a new one
-    pos.set(fen, Options["UCI_Chess960"], Options["Use NNUE"], &states->back(), Threads.main());
+    EvalType evalType = Options["Eval Type"] == "NNUE" ? ET_NNUE : Options["Eval Type"] == "Blend" ? ET_BLEND : ET_STANDARD;
+    pos.set(fen, Options["UCI_Chess960"], evalType, &states->back(), Threads.main());
 
     // Parse move list (if any)
     while (is >> token && (m = UCI::to_move(pos, token)) != MOVE_NONE)
@@ -172,7 +173,7 @@ namespace {
         else if (token == "position")   position(pos, is, states);
         else if (token == "ucinewgame")
         {
-            init_nnue(Options["EvalFile"]);
+            init_nnue(Options["NNUE Net"]);
             Search::clear();
             elapsed = now(); // initialization may take some time
         }
@@ -215,7 +216,8 @@ namespace {
 
 void UCI::init_nnue(const std::string& evalFile)
 {
-  if (Options["Use NNUE"] && !UCI::load_eval_finished)
+  if (   !(Options["Eval Type"] == "Standard")
+      && !UCI::load_eval_finished)
   {
       // Load evaluation function from a file
       Eval::NNUE::load_eval(evalFile);
@@ -236,10 +238,11 @@ void UCI::loop(int argc, char* argv[]) {
   string token, cmd;
   StateListPtr states(new std::deque<StateInfo>(1));
 
-  pos.set(StartFEN, false, Options["Use NNUE"], &states->back(), Threads.main());
+  EvalType evalType = Options["Eval Type"] == "NNUE" ? ET_NNUE : Options["Eval Type"] == "Blend" ? ET_BLEND : ET_STANDARD;
+  pos.set(StartFEN, false, evalType, &states->back(), Threads.main());
 
   if (argc > 1)
-     init_nnue(Options["EvalFile"]);
+     init_nnue(Options["NNUE Net"]);
 
   for (int i = 1; i < argc; ++i)
       cmd += std::string(argv[i]) + " ";
@@ -274,12 +277,12 @@ void UCI::loop(int argc, char* argv[]) {
       else if (token == "position")   position(pos, is, states);
       else if (token == "ucinewgame")
       {
-          init_nnue(Options["EvalFile"]);
+          init_nnue(Options["NNUE Net"]);
           Search::clear();
       }
       else if (token == "isready")
       {
-          init_nnue(Options["EvalFile"]);
+          init_nnue(Options["NNUE Net"]);
           sync_cout << "readyok" << sync_endl;
       }
 

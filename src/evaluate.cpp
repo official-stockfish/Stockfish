@@ -900,10 +900,13 @@ make_v:
 /// evaluation of the position from the point of view of the side to move.
 
 Value Eval::evaluate(const Position& pos) {
-  if (pos.use_nnue())
+  
+  if (pos.eval_type() == ET_NNUE)
     return NNUE::evaluate(pos);
-  else
+  else if(pos.eval_type() == ET_STANDARD)
     return Evaluation<NO_TRACE>(pos).value();
+  else
+    return (NNUE::evaluate(pos) + Evaluation<NO_TRACE>(pos).value()) / 2;
 }
 
 /// trace() is like evaluate(), but instead of returning a value, it returns
@@ -921,7 +924,7 @@ std::string Eval::trace(const Position& pos) {
 
   Value v;
 
-  if (pos.use_nnue())
+  if (pos.eval_type() == ET_NNUE)
   {
     v = NNUE::evaluate(pos);
   }

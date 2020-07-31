@@ -302,6 +302,12 @@ extern ExtPieceSquare kpp_board_index[PIECE_NB];
 constexpr bool is_ok(PieceId pid);
 constexpr Square rotate180(Square sq);
 
+enum EvalType {
+  ET_STANDARD,
+  ET_NNUE,
+  ET_BLEND
+};
+
 // Structure holding which tracked piece (PieceId) is where (PieceSquare)
 class EvalList
 {
