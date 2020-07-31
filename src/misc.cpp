@@ -327,6 +327,8 @@ void* std_aligned_alloc(size_t alignment, size_t size) {
   return aligned_alloc(alignment, size);
 #elif defined(_WIN32)
   return _mm_malloc(size, alignment);
+#elif defined(__ANDROID__)
+  return std_aligned_alloc(alignment, size);
 #else
   return std::aligned_alloc(alignment, size);
 #endif
@@ -337,6 +339,8 @@ void std_aligned_free(void* ptr) {
   free(ptr);
 #elif defined(_WIN32)
   _mm_free(ptr);
+#elif defined(__ANDROID__)
+  free(ptr);
 #else
   free(ptr);
 #endif
