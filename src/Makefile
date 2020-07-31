@@ -172,9 +172,11 @@ ifeq ($(COMP),gcc)
 			CXXFLAGS += -m$(bits)
 			LDFLAGS += -m$(bits)
 		endif
-	else
 		CXXFLAGS += -m$(bits)
 		LDFLAGS += -m$(bits)
+		ifeq ($(OS),GNU/Linux)
+			LDFLAGS += -latomic
+		endif
 	endif
 
 	ifneq ($(KERNEL),Darwin)
