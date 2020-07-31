@@ -172,8 +172,10 @@ ifeq ($(COMP),gcc)
 			CXXFLAGS += -m$(bits)
 			LDFLAGS += -m$(bits)
 		endif
-		CXXFLAGS += -m$(bits)
-		LDFLAGS += -m$(bits)
+		ifeq ($(findstring '--enable-multilib',$(shell gcc -v 2>&1)),'--enable-multilib')
+			CXXFLAGS += -m$(bits)
+			LDFLAGS += -m$(bits)
+		endif
 		ifeq ($(OS),GNU/Linux)
 			LDFLAGS += -latomic
 		endif
