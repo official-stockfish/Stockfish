@@ -777,7 +777,14 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
           st->nonPawnMaterial[them] -= PieceValue[MG][captured];
 
       if (use_nnue())
+      {
+          dp.dirty_num = 2; // 2 pieces moved
           dp1 = piece_id_on(capsq);
+          dp.pieceId[1] = dp1;
+          dp.old_piece[1] = evalList.piece_with_id(dp1);
+          evalList.put_piece(dp1, capsq, NO_PIECE);
+          dp.new_piece[1] = evalList.piece_with_id(dp1);
+      }
 
       // Update board and piece lists
       remove_piece(capsq);
@@ -794,18 +801,6 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
 
       // Reset rule 50 counter
       st->rule50 = 0;
-
-      if (use_nnue())
-      {
-          dp.dirty_num = 2; // 2 pieces moved
-          dp.pieceId[1] = dp1;
-          dp.old_piece[1] = evalList.piece_with_id(dp1);
-          // Do not use EvalList::put_piece() because the piece is removed
-          // from the game, and the corresponding elements of the piece lists
-          // needs to be PS_NONE.
-          evalList.put_piece(dp1, capsq, NO_PIECE);
-          dp.new_piece[1] = evalList.piece_with_id(dp1);
-      }
   }
 
   // Update hash key
@@ -1053,7 +1048,13 @@ void Position::do_null_move(StateInfo& newSt) {
   assert(!checkers());
   assert(&newSt != st);
 
-  std::memcpy(&newSt, st, sizeof(StateInfo));
+  if (use_nnue()) {
+    std::memcpy(&newSt, st, sizeof(StateInfo));
+    st->accumulator.computed_score = false;
+  }
+  else
+    std::memcpy(&newSt, st, offsetof(StateInfo, accumulator));
+
   newSt.previous = st;
   st = &newSt;
 
@@ -1065,9 +1066,6 @@ void Position::do_null_move(StateInfo& newSt) {
 
   st->key ^= Zobrist::side;
   prefetch(TT.first_entry(st->key));
-
-  if (use_nnue())
-      st->accumulator.computed_score = false;
 
   ++st->rule50;
   st->pliesFromNull = 0;
