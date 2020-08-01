@@ -206,7 +206,6 @@ private:
   Thread* thisThread;
   StateInfo* st;
   bool chess960;
-  bool nnue;
 
   // List of pieces used in NNUE evaluation function
   EvalList evalList;
