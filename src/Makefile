@@ -123,30 +123,11 @@ ifeq ($(ARCH),x86-64)
 	sse = yes
 endif
 
-ifeq ($(ARCH),x86-64-modern)
-	arch = x86_64
-	prefetch = yes
-	popcnt = yes
-	sse = yes
-	sse3 = yes
-	ssse3 = yes
-endif
-
 ifeq ($(ARCH),x86-64-sse3)
 	arch = x86_64
 	prefetch = yes
 	sse = yes
 	sse3 = yes
-	ssse3 = yes
-endif
-
-ifeq ($(ARCH),x86-64-sse3-popcnt)
-	arch = x86_64
-	prefetch = yes
-	popcnt = yes
-	sse = yes
-	sse3 = yes
-	ssse3 = yes
 endif
 
 ifeq ($(ARCH),x86-64-ssse3)
@@ -157,9 +138,28 @@ ifeq ($(ARCH),x86-64-ssse3)
 	ssse3 = yes
 endif
 
+ifeq ($(ARCH),x86-64-ssse3-popcnt)
+	arch = x86_64
+	prefetch = yes
+	popcnt = yes
+	sse = yes
+	sse3 = yes
+	ssse3 = yes
+endif
+
+ifeq ($(ARCH),x86-64-modern)
+	arch = x86_64
+	prefetch = yes
+	popcnt = yes
+	sse = yes
+	sse3 = yes
+	ssse3 = yes
+endif
+
 ifeq ($(ARCH),x86-64-sse41)
 	arch = x86_64
 	prefetch = yes
+	popcnt = yes
 	sse = yes
 	sse3 = yes
 	ssse3 = yes
@@ -179,7 +179,6 @@ endif
 
 ifeq ($(ARCH),x86-64-avx2)
 	arch = x86_64
-	bits = 64
 	prefetch = yes
 	popcnt = yes
 	sse = yes
@@ -205,7 +204,6 @@ endif
 
 ifeq ($(ARCH),x86-64-avx512)
 	arch = x86_64
-	bits = 64
 	prefetch = yes
 	popcnt = yes
 	sse = yes
