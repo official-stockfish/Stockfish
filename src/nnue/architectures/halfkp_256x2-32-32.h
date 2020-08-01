@@ -21,7 +21,7 @@ constexpr IndexType kTransformedFeatureDimensions = 256;
 
 namespace Layers {
 
-// define network structure
+// Define network structure
 using InputLayer = InputSlice<kTransformedFeatureDimensions * 2>;
 using HiddenLayer1 = ClippedReLU<AffineTransform<InputLayer, 32>>;
 using HiddenLayer2 = ClippedReLU<AffineTransform<HiddenLayer1, 32>>;

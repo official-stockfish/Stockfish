@@ -7,42 +7,35 @@
 
 namespace Eval::NNUE::Layers {
 
-// input layer
+// Input layer
 template <IndexType OutputDimensions, IndexType Offset = 0>
 class InputSlice {
  public:
-  // need to maintain alignment
+  // Need to maintain alignment
   static_assert(Offset % kMaxSimdWidth == 0, "");
 
-  // output type
+  // Output type
   using OutputType = TransformedFeatureType;
 
-  // output dimensionality
+  // Output dimensionality
   static constexpr IndexType kOutputDimensions = OutputDimensions;
 
-  // Size of the forward propagation buffer used from the input layer to this layer
+  // Size of forward propagation buffer used from the input layer to this layer
   static constexpr std::size_t kBufferSize = 0;
 
-  // Hash value embedded in the evaluation function file
+  // Hash value embedded in the evaluation file
   static constexpr std::uint32_t GetHashValue() {
     std::uint32_t hash_value = 0xEC42E90Du;
     hash_value ^= kOutputDimensions ^ (Offset << 10);
     return hash_value;
   }
 
-  // A string that represents the structure from the input layer to this layer
-  static std::string GetStructureString() {
-    return "InputSlice[" + std::to_string(kOutputDimensions) + "(" +
-        std::to_string(Offset) + ":" +
-        std::to_string(Offset + kOutputDimensions) + ")]";
-  }
-
-  // read parameters
+  // Read network parameters
   bool ReadParameters(std::istream& /*stream*/) {
     return true;
   }
 
-  // forward propagation
+  // Forward propagation
   const OutputType* Propagate(
       const TransformedFeatureType* transformed_features,
       char* /*buffer*/) const {

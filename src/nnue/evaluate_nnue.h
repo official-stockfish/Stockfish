@@ -9,7 +9,7 @@
 
 namespace Eval::NNUE {
 
-  // hash value of evaluation function structure
+  // Hash value of evaluation function structure
   constexpr std::uint32_t kHashValue =
       FeatureTransformer::GetHashValue() ^ Network::GetHashValue();
 

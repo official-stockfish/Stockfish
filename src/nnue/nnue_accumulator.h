@@ -8,7 +8,6 @@
 namespace Eval::NNUE {
 
   // Class that holds the result of affine transformation of input features
-  // Keep the evaluation value that is the final output together
   struct alignas(32) Accumulator {
     std::int16_t
         accumulation[2][kRefreshTriggers.size()][kTransformedFeatureDimensions];

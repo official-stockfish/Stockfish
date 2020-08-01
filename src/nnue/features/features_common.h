@@ -8,21 +8,18 @@
 
 namespace Eval::NNUE::Features {
 
-  // Index list type
   class IndexList;
 
-  // Class template that represents the feature set
   template <typename... FeatureTypes>
   class FeatureSet;
 
-  // Type of timing to perform all calculations instead of difference calculation
+  // Trigger to perform full calculations instead of difference only
   enum class TriggerEvent {
-    kFriendKingMoved // calculate all when own king moves
+    kFriendKingMoved // calculate full evaluation when own king moves
   };
 
-  // turn side or other side
   enum class Side {
-    kFriend // turn side
+    kFriend // side to move
   };
 
 }  // namespace Eval::NNUE::Features

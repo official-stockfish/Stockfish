@@ -18,7 +18,7 @@
 
 namespace Eval::NNUE {
 
-  // A constant that represents the version of the evaluation function file
+  // Version of the evaluation file
   constexpr std::uint32_t kVersion = 0x7AF32F16u;
 
   // Constant used in evaluation value calculation
@@ -43,15 +43,9 @@ namespace Eval::NNUE {
 
   // Type of input feature after conversion
   using TransformedFeatureType = std::uint8_t;
-
-  // index type
   using IndexType = std::uint32_t;
 
-  // Forward declaration of learning class template
-  template <typename Layer>
-  class Trainer;
-
-  // find the smallest multiple of n and above
+  // Round n up to be a multiple of base
   template <typename IntType>
   constexpr IntType CeilToMultiple(IntType n, IntType base) {
     return (n + base - 1) / base * base;

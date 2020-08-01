@@ -16,7 +16,7 @@ namespace Eval::NNUE::Layers {
     using OutputType = std::uint8_t;
     static_assert(std::is_same<InputType, std::int32_t>::value, "");
 
-    // number of input/output dimensions
+    // Number of input/output dimensions
     static constexpr IndexType kInputDimensions =
         PreviousLayer::kOutputDimensions;
     static constexpr IndexType kOutputDimensions = kInputDimensions;
@@ -29,26 +29,19 @@ namespace Eval::NNUE::Layers {
     static constexpr std::size_t kBufferSize =
         PreviousLayer::kBufferSize + kSelfBufferSize;
 
-    // Hash value embedded in the evaluation function file
+    // Hash value embedded in the evaluation file
     static constexpr std::uint32_t GetHashValue() {
       std::uint32_t hash_value = 0x538D24C7u;
       hash_value += PreviousLayer::GetHashValue();
       return hash_value;
     }
 
-    // A string that represents the structure from the input layer to this layer
-    static std::string GetStructureString() {
-      return "ClippedReLU[" +
-          std::to_string(kOutputDimensions) + "](" +
-          PreviousLayer::GetStructureString() + ")";
-    }
-
-    // read parameters
+    // Read network parameters
     bool ReadParameters(std::istream& stream) {
       return previous_layer_.ReadParameters(stream);
     }
 
-    // forward propagation
+    // Forward propagation
     const OutputType* Propagate(
         const TransformedFeatureType* transformed_features, char* buffer) const {
       const auto input = previous_layer_.Propagate(
@@ -167,10 +160,6 @@ namespace Eval::NNUE::Layers {
     }
 
    private:
-    // Make the learning class a friend
-    friend class Trainer<ClippedReLU>;
-
-    // the layer immediately before this layer
     PreviousLayer previous_layer_;
   };
 
