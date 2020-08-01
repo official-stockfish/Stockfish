@@ -97,6 +97,8 @@ void init(OptionsMap& o) {
   o["SyzygyProbeLimit"]      << Option(7, 0, 7);
   o["Use NNUE"]              << Option(false, on_use_nnue);
   o["EvalFile"]              << Option("nn-c157e0a5755b.nnue", on_eval_file);
+
+  Eval::useNNUE = Options["Use NNUE"];
 }
 
 
