@@ -11,7 +11,7 @@ namespace Eval::NNUE::Features {
     return static_cast<IndexType>(PS_END) * static_cast<IndexType>(sq_k) + p;
   }
 
-  // Get the piece information
+  // Get pieces information
   template <Side AssociatedKing>
   inline void HalfKP<AssociatedKing>::GetPieces(
       const Position& pos, Color perspective,
@@ -26,12 +26,12 @@ namespace Eval::NNUE::Features {
     *sq_target_k = static_cast<Square>(((*pieces)[target] - PS_W_KING) % SQUARE_NB);
   }
 
-  // Get a list of indices with a value of 1 among the features
+  // Get a list of indices for active features
   template <Side AssociatedKing>
   void HalfKP<AssociatedKing>::AppendActiveIndices(
       const Position& pos, Color perspective, IndexList* active) {
 
-    // do nothing if array size is small to avoid compiler warning
+    // Do nothing if array size is small to avoid compiler warning
     if (RawFeatures::kMaxActiveDimensions < kMaxActiveDimensions) return;
 
     PieceSquare* pieces;
@@ -44,7 +44,7 @@ namespace Eval::NNUE::Features {
     }
   }
 
-  // Get a list of indices whose values ​​have changed from the previous one in the feature quantity
+  // Get a list of indices for recently changed features
   template <Side AssociatedKing>
   void HalfKP<AssociatedKing>::AppendChangedIndices(
       const Position& pos, Color perspective,

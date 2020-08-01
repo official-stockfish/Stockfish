@@ -8,7 +8,7 @@
 
 namespace Eval::NNUE::Features {
 
-  // A class template that represents a list of values
+  // Class template that represents a list of values
   template <typename T, T... Values>
   struct CompileTimeList;
 
@@ -26,7 +26,7 @@ namespace Eval::NNUE::Features {
   class FeatureSetBase {
 
    public:
-    // Get a list of indices with a value of 1 among the features
+    // Get a list of indices for active features
     template <typename IndexListType>
     static void AppendActiveIndices(
         const Position& pos, TriggerEvent trigger, IndexListType active[2]) {
@@ -37,7 +37,7 @@ namespace Eval::NNUE::Features {
       }
     }
 
-    // Get a list of indices whose values ​​have changed from the previous one in the feature quantity
+    // Get a list of indices for recently changed features
     template <typename PositionType, typename IndexListType>
     static void AppendChangedIndices(
         const PositionType& pos, TriggerEvent trigger,
@@ -70,30 +70,24 @@ namespace Eval::NNUE::Features {
   };
 
   // Class template that represents the feature set
-  // Specialization with one template argument
   template <typename FeatureType>
   class FeatureSet<FeatureType> : public FeatureSetBase<FeatureSet<FeatureType>> {
 
    public:
-    // Hash value embedded in the evaluation function file
+    // Hash value embedded in the evaluation file
     static constexpr std::uint32_t kHashValue = FeatureType::kHashValue;
-    // number of feature dimensions
+    // Number of feature dimensions
     static constexpr IndexType kDimensions = FeatureType::kDimensions;
-    // The maximum value of the number of indexes whose value is 1 at the same time among the feature values
+    // Maximum number of simultaneously active features
     static constexpr IndexType kMaxActiveDimensions =
         FeatureType::kMaxActiveDimensions;
-    // List of timings to perform all calculations instead of difference calculation
+    // Trigger for full calculation instead of difference calculation
     using SortedTriggerSet =
         CompileTimeList<TriggerEvent, FeatureType::kRefreshTrigger>;
     static constexpr auto kRefreshTriggers = SortedTriggerSet::kValues;
 
-    // Get the feature quantity name
-    static std::string GetName() {
-      return FeatureType::kName;
-    }
-
    private:
-    // Get a list of indices with a value of 1 among the features
+    // Get a list of indices for active features
     static void CollectActiveIndices(
         const Position& pos, const TriggerEvent trigger, const Color perspective,
         IndexList* const active) {
@@ -102,7 +96,7 @@ namespace Eval::NNUE::Features {
       }
     }
 
-    // Get a list of indices whose values ​​have changed from the previous one in the feature quantity
+    // Get a list of indices for recently changed features
     static void CollectChangedIndices(
         const Position& pos, const TriggerEvent trigger, const Color perspective,
         IndexList* const removed, IndexList* const added) {

@@ -15,34 +15,27 @@ namespace Eval::NNUE {
   class FeatureTransformer {
 
    private:
-    // number of output dimensions for one side
+    // Number of output dimensions for one side
     static constexpr IndexType kHalfDimensions = kTransformedFeatureDimensions;
 
    public:
-    // output type
+    // Output type
     using OutputType = TransformedFeatureType;
 
-    // number of input/output dimensions
+    // Number of input/output dimensions
     static constexpr IndexType kInputDimensions = RawFeatures::kDimensions;
     static constexpr IndexType kOutputDimensions = kHalfDimensions * 2;
 
-    // size of forward propagation buffer
+    // Size of forward propagation buffer
     static constexpr std::size_t kBufferSize =
         kOutputDimensions * sizeof(OutputType);
 
-    // Hash value embedded in the evaluation function file
+    // Hash value embedded in the evaluation file
     static constexpr std::uint32_t GetHashValue() {
       return RawFeatures::kHashValue ^ kOutputDimensions;
     }
 
-    // a string representing the structure
-    static std::string GetStructureString() {
-      return RawFeatures::GetName() + "[" +
-          std::to_string(kInputDimensions) + "->" +
-          std::to_string(kHalfDimensions) + "x2]";
-    }
-
-    // read parameters
+    // Read network parameters
     bool ReadParameters(std::istream& stream) {
       stream.read(reinterpret_cast<char*>(biases_),
                   kHalfDimensions * sizeof(BiasType));
@@ -51,7 +44,7 @@ namespace Eval::NNUE {
       return !stream.fail();
     }
 
-    // proceed with the difference calculation if possible
+    // Proceed with the difference calculation if possible
     bool UpdateAccumulatorIfPossible(const Position& pos) const {
       const auto now = pos.state();
       if (now->accumulator.computed_accumulation) {
@@ -65,7 +58,7 @@ namespace Eval::NNUE {
       return false;
     }
 
-    // convert input features
+    // Convert input features
     void Transform(const Position& pos, OutputType* output, bool refresh) const {
       if (refresh || !UpdateAccumulatorIfPossible(pos)) {
         RefreshAccumulator(pos);
@@ -259,10 +252,11 @@ namespace Eval::NNUE {
         if (reset[perspective]) {
           std::memcpy(accumulator.accumulation[perspective][i], biases_,
                       kHalfDimensions * sizeof(BiasType));
-        } else {// Difference calculation for the feature amount changed from 1 to 0
+        } else {
           std::memcpy(accumulator.accumulation[perspective][i],
                       prev_accumulator.accumulation[perspective][i],
                       kHalfDimensions * sizeof(BiasType));
+          // Difference calculation for the deactivated features
           for (const auto index : removed_indices[perspective]) {
             const IndexType offset = kHalfDimensions * index;
 
@@ -293,7 +287,7 @@ namespace Eval::NNUE {
 
           }
         }
-        {// Difference calculation for features that changed from 0 to 1
+        { // Difference calculation for the activated features
           for (const auto index : added_indices[perspective]) {
             const IndexType offset = kHalfDimensions * index;
 
@@ -330,14 +324,9 @@ namespace Eval::NNUE {
       accumulator.computed_score = false;
     }
 
-    // parameter type
     using BiasType = std::int16_t;
     using WeightType = std::int16_t;
 
-    // Make the learning class a friend
-    friend class Trainer<FeatureTransformer>;
-
-    // parameter
     alignas(kCacheLineSize) BiasType biases_[kHalfDimensions];
     alignas(kCacheLineSize)
         WeightType weights_[kHalfDimensions * kInputDimensions];

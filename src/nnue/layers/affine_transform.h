@@ -8,7 +8,7 @@
 
 namespace Eval::NNUE::Layers {
 
-  // affine transformation layer
+  // Affine transformation layer
   template <typename PreviousLayer, IndexType OutputDimensions>
   class AffineTransform {
    public:
@@ -17,7 +17,7 @@ namespace Eval::NNUE::Layers {
     using OutputType = std::int32_t;
     static_assert(std::is_same<InputType, std::uint8_t>::value, "");
 
-    // number of input/output dimensions
+    // Number of input/output dimensions
     static constexpr IndexType kInputDimensions =
         PreviousLayer::kOutputDimensions;
     static constexpr IndexType kOutputDimensions = OutputDimensions;
@@ -32,7 +32,7 @@ namespace Eval::NNUE::Layers {
     static constexpr std::size_t kBufferSize =
         PreviousLayer::kBufferSize + kSelfBufferSize;
 
-    // Hash value embedded in the evaluation function file
+    // Hash value embedded in the evaluation file
     static constexpr std::uint32_t GetHashValue() {
       std::uint32_t hash_value = 0xCC03DAE4u;
       hash_value += kOutputDimensions;
@@ -41,15 +41,7 @@ namespace Eval::NNUE::Layers {
       return hash_value;
     }
 
-    // A string that represents the structure from the input layer to this layer
-    static std::string GetStructureString() {
-      return "AffineTransform[" +
-          std::to_string(kOutputDimensions) + "<-" +
-          std::to_string(kInputDimensions) + "](" +
-          PreviousLayer::GetStructureString() + ")";
-    }
-
-    // read parameters
+   // Read network parameters
     bool ReadParameters(std::istream& stream) {
       if (!previous_layer_.ReadParameters(stream)) return false;
       stream.read(reinterpret_cast<char*>(biases_),
@@ -60,7 +52,7 @@ namespace Eval::NNUE::Layers {
       return !stream.fail();
     }
 
-    // forward propagation
+    // Forward propagation
     const OutputType* Propagate(
         const TransformedFeatureType* transformed_features, char* buffer) const {
       const auto input = previous_layer_.Propagate(
@@ -190,17 +182,11 @@ namespace Eval::NNUE::Layers {
     }
 
    private:
-    // parameter type
     using BiasType = OutputType;
     using WeightType = std::int8_t;
 
-    // Make the learning class a friend
-    friend class Trainer<AffineTransform>;
-
-    // the layer immediately before this layer
     PreviousLayer previous_layer_;
 
-    // parameter
     alignas(kCacheLineSize) BiasType biases_[kOutputDimensions];
     alignas(kCacheLineSize)
         WeightType weights_[kOutputDimensions * kPaddedInputDimensions];

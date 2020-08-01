@@ -44,13 +44,6 @@ namespace Eval::NNUE {
   // Evaluation function file name
   std::string fileName;
 
-  // Get a string that represents the structure of the evaluation function
-  std::string GetArchitectureString() {
-
-    return "Features=" + FeatureTransformer::GetStructureString() +
-        ",Network=" + Network::GetStructureString();
-  }
-
   namespace Detail {
 
   // Initialize the evaluation function parameters
@@ -61,7 +54,7 @@ namespace Eval::NNUE {
     std::memset(pointer.get(), 0, sizeof(T));
   }
 
-  // read evaluation function parameters
+  // Read evaluation function parameters
   template <typename T>
   bool ReadParameters(std::istream& stream, const AlignedPtr<T>& pointer) {
 
@@ -80,7 +73,7 @@ namespace Eval::NNUE {
     Detail::Initialize(network);
   }
 
-  // read the header
+  // Read network header
   bool ReadHeader(std::istream& stream,
     std::uint32_t* hash_value, std::string* architecture) {
 
@@ -94,7 +87,7 @@ namespace Eval::NNUE {
     return !stream.fail();
   }
 
-  // read evaluation function parameters
+  // Read network parameters
   bool ReadParameters(std::istream& stream) {
 
     std::uint32_t hash_value;
@@ -106,7 +99,7 @@ namespace Eval::NNUE {
     return stream && stream.peek() == std::ios::traits_type::eof();
   }
 
-  // proceed if you can calculate the difference
+  // Proceed with the difference calculation if possible
   static void UpdateAccumulatorIfPossible(const Position& pos) {
 
     feature_transformer->UpdateAccumulatorIfPossible(pos);
@@ -133,9 +126,7 @@ namespace Eval::NNUE {
     return accumulator.score;
   }
 
-  // read the evaluation function file
-  // Save and restore Options with bench command etc., so EvalFile is changed at this time,
-  // This function may be called twice to flag that the evaluation function needs to be reloaded.
+  // Load the evaluation function file
   void load_eval(const std::string& evalFile) {
 
     Initialize();
@@ -163,7 +154,7 @@ namespace Eval::NNUE {
     return ComputeScore(pos, true);
   }
 
-  // proceed if you can calculate the difference
+  // Proceed with the difference calculation if possible
   void update_eval(const Position& pos) {
     UpdateAccumulatorIfPossible(pos);
   }
