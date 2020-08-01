@@ -68,6 +68,7 @@ endif
 # prefetch = yes/no   --- -DUSE_PREFETCH   --- Use prefetch asm-instruction
 # popcnt = yes/no     --- -DUSE_POPCNT     --- Use popcnt asm-instruction
 # sse = yes/no        --- -msse            --- Use Intel Streaming SIMD Extensions
+# sse3 = yes/no       --- -msse3           --- Use Intel Streaming SIMD Extensions 3
 # ssse3 = yes/no      --- -mssse3          --- Use Intel Supplemental Streaming SIMD Extensions 3
 # sse41 = yes/no      --- -msse4.1         --- Use Intel Streaming SIMD Extensions 4.1
 # sse42 = yes/no      --- -msse4.2         --- Use Intel Streaming SIMD Extensions 4.2
@@ -123,30 +124,11 @@ ifeq ($(ARCH),x86-64)
 	sse = yes
 endif
 
-ifeq ($(ARCH),x86-64-modern)
-	arch = x86_64
-	prefetch = yes
-	popcnt = yes
-	sse = yes
-	sse3 = yes
-	ssse3 = yes
-endif
-
 ifeq ($(ARCH),x86-64-sse3)
 	arch = x86_64
 	prefetch = yes
 	sse = yes
 	sse3 = yes
-	ssse3 = yes
-endif
-
-ifeq ($(ARCH),x86-64-sse3-popcnt)
-	arch = x86_64
-	prefetch = yes
-	popcnt = yes
-	sse = yes
-	sse3 = yes
-	ssse3 = yes
 endif
 
 ifeq ($(ARCH),x86-64-ssse3)
@@ -157,9 +139,28 @@ ifeq ($(ARCH),x86-64-ssse3)
 	ssse3 = yes
 endif
 
+ifeq ($(ARCH),x86-64-ssse3-popcnt)
+	arch = x86_64
+	prefetch = yes
+	popcnt = yes
+	sse = yes
+	sse3 = yes
+	ssse3 = yes
+endif
+
+ifeq ($(ARCH),x86-64-modern)
+	arch = x86_64
+	prefetch = yes
+	popcnt = yes
+	sse = yes
+	sse3 = yes
+	ssse3 = yes
+endif
+
 ifeq ($(ARCH),x86-64-sse41)
 	arch = x86_64
 	prefetch = yes
+	popcnt = yes
 	sse = yes
 	sse3 = yes
 	ssse3 = yes
@@ -179,7 +180,6 @@ endif
 
 ifeq ($(ARCH),x86-64-avx2)
 	arch = x86_64
-	bits = 64
 	prefetch = yes
 	popcnt = yes
 	sse = yes
@@ -205,7 +205,6 @@ endif
 
 ifeq ($(ARCH),x86-64-avx512)
 	arch = x86_64
-	bits = 64
 	prefetch = yes
 	popcnt = yes
 	sse = yes
@@ -553,10 +552,10 @@ help:
 	@echo "x86-64-avx2             > x86 64-bit with avx2 support"
 	@echo "x86-64-sse42            > x86 64-bit with sse42 support"
 	@echo "x86-64-sse41            > x86 64-bit with sse41 support"
+	@echo "x86-64-modern           > x86 64-bit with ssse3 and popcnt support (x86-64-ssse3-popcnt)"
+	@echo "x86-64-ssse3-popcnt     > x86 64-bit with ssse3 and popcnt support"
 	@echo "x86-64-ssse3            > x86 64-bit with ssse3 support"
-	@echo "x86-64-sse3-popcnt      > x86 64-bit with sse3 and popcnt support"
 	@echo "x86-64-sse3             > x86 64-bit with sse3 support"
-	@echo "x86-64-modern           > x86 64-bit with popcnt support (also enables SSSE3)"
 	@echo "x86-64                  > x86 64-bit generic"
 	@echo "x86-32                  > x86 32-bit (also enables SSE)"
 	@echo "x86-32-old              > x86 32-bit fall back for old hardware"
