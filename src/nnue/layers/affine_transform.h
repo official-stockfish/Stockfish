@@ -97,7 +97,7 @@ namespace Eval::NNUE::Layers {
             sum = _mm512_add_epi32(sum, product);
         }
         output[i] = _mm512_reduce_add_epi32(sum) + biases_[i];
-        
+
         // Note: Changing kMaxSimdWidth from 32 to 64 breaks loading existing networks.
         // As a result kPaddedInputDimensions may not be an even multiple of 64(512bit)
         // and we have to do one more 256bit chunk.
