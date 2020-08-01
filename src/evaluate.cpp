@@ -904,10 +904,11 @@ make_v:
 /// evaluation of the position from the point of view of the side to move.
 
 Value Eval::evaluate(const Position& pos) {
+
   if (Eval::useNNUE)
-    return NNUE::evaluate(pos);
+      return NNUE::evaluate(pos);
   else
-    return Evaluation<NO_TRACE>(pos).value();
+      return Evaluation<NO_TRACE>(pos).value();
 }
 
 /// trace() is like evaluate(), but instead of returning a value, it returns
@@ -927,36 +928,35 @@ std::string Eval::trace(const Position& pos) {
 
   if (Eval::useNNUE)
   {
-    v = NNUE::evaluate(pos);
+      v = NNUE::evaluate(pos);
   }
   else
   {
-    std::memset(scores, 0, sizeof(scores));
+      std::memset(scores, 0, sizeof(scores));
 
-    pos.this_thread()->contempt = SCORE_ZERO; // Reset any dynamic contempt
+      pos.this_thread()->contempt = SCORE_ZERO; // Reset any dynamic contempt
 
-    v = Evaluation<TRACE>(pos).value();
+      v = Evaluation<TRACE>(pos).value();
 
-    ss << std::showpoint << std::noshowpos << std::fixed << std::setprecision(2)
-       << "     Term    |    White    |    Black    |    Total   \n"
-       << "             |   MG    EG  |   MG    EG  |   MG    EG \n"
-       << " ------------+-------------+-------------+------------\n"
-       << "    Material | " << Term(MATERIAL)
-       << "   Imbalance | " << Term(IMBALANCE)
-       << "       Pawns | " << Term(PAWN)
-       << "     Knights | " << Term(KNIGHT)
-       << "     Bishops | " << Term(BISHOP)
-       << "       Rooks | " << Term(ROOK)
-       << "      Queens | " << Term(QUEEN)
-       << "    Mobility | " << Term(MOBILITY)
-       << " King safety | " << Term(KING)
-       << "     Threats | " << Term(THREAT)
-       << "      Passed | " << Term(PASSED)
-       << "       Space | " << Term(SPACE)
-       << "    Winnable | " << Term(WINNABLE)
-       << " ------------+-------------+-------------+------------\n"
-       << "       Total | " << Term(TOTAL);
-
+      ss << std::showpoint << std::noshowpos << std::fixed << std::setprecision(2)
+         << "     Term    |    White    |    Black    |    Total   \n"
+         << "             |   MG    EG  |   MG    EG  |   MG    EG \n"
+         << " ------------+-------------+-------------+------------\n"
+         << "    Material | " << Term(MATERIAL)
+         << "   Imbalance | " << Term(IMBALANCE)
+         << "       Pawns | " << Term(PAWN)
+         << "     Knights | " << Term(KNIGHT)
+         << "     Bishops | " << Term(BISHOP)
+         << "       Rooks | " << Term(ROOK)
+         << "      Queens | " << Term(QUEEN)
+         << "    Mobility | " << Term(MOBILITY)
+         << " King safety | " << Term(KING)
+         << "     Threats | " << Term(THREAT)
+         << "      Passed | " << Term(PASSED)
+         << "       Space | " << Term(SPACE)
+         << "    Winnable | " << Term(WINNABLE)
+         << " ------------+-------------+-------------+------------\n"
+         << "       Total | " << Term(TOTAL);
   }
 
   v = pos.side_to_move() == WHITE ? v : -v;

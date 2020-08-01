@@ -46,15 +46,16 @@ void on_tb_path(const Option& o) { Tablebases::init(o); }
 void on_use_nnue(const Option& o) {
 
   if (o)
-    std::cout << "info string NNUE eval used" << std::endl;
+      std::cout << "info string NNUE eval used" << std::endl;
   else
-    std::cout << "info string classic eval used" << std::endl;
+      std::cout << "info string classic eval used" << std::endl;
 
   Eval::useNNUE = o;
   init_nnue(Options["EvalFile"]);
 }
 
 void on_eval_file(const Option& o) {
+
   load_eval_finished = false;
   init_nnue(o);
 }

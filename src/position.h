@@ -443,4 +443,25 @@ inline void Position::do_move(Move m, StateInfo& newSt) {
   do_move(m, newSt, gives_check(m));
 }
 
+inline StateInfo* Position::state() const {
+
+  return st;
+}
+
+inline const EvalList* Position::eval_list() const {
+
+  return &evalList;
+}
+
+inline PieceId Position::piece_id_on(Square sq) const
+{
+
+  assert(piece_on(sq) != NO_PIECE);
+
+  PieceId pid = evalList.piece_id_list[sq];
+  assert(is_ok(pid));
+
+  return pid;
+}
+
 #endif // #ifndef POSITION_H_INCLUDED

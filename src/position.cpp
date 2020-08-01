@@ -221,12 +221,12 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
 
           if (Eval::useNNUE)
           {
-            // Kings get a fixed ID, other pieces get ID in order of placement
-            piece_id =
-              (idx == W_KING) ? PIECE_ID_WKING :
-              (idx == B_KING) ? PIECE_ID_BKING :
-              next_piece_id++;
-            evalList.put_piece(piece_id, sq, pc);
+              // Kings get a fixed ID, other pieces get ID in order of placement
+              piece_id =
+                (idx == W_KING) ? PIECE_ID_WKING :
+                (idx == B_KING) ? PIECE_ID_BKING :
+                next_piece_id++;
+              evalList.put_piece(piece_id, sq, pc);
           }
 
           ++sq;
@@ -789,9 +789,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       remove_piece(capsq);
 
       if (type_of(m) == ENPASSANT)
-      {
           board[capsq] = NO_PIECE;
-      }
 
       // Update material hash key and prefetch access to materialTable
       k ^= Zobrist::psq[captured][capsq];
@@ -1005,28 +1003,30 @@ void Position::do_castling(Color us, Square from, Square& to, Square& rfrom, Squ
 
   if (Eval::useNNUE)
   {
-    PieceId dp0, dp1;
-    auto& dp = st->dirtyPiece;
-    dp.dirty_num = 2; // 2 pieces moved
+      PieceId dp0, dp1;
+      auto& dp = st->dirtyPiece;
+      dp.dirty_num = 2; // 2 pieces moved
 
-    if (Do) {
-      dp0 = piece_id_on(from);
-      dp1 = piece_id_on(rfrom);
-      dp.pieceId[0] = dp0;
-      dp.old_piece[0] = evalList.piece_with_id(dp0);
-      evalList.put_piece(dp0, to, make_piece(us, KING));
-      dp.new_piece[0] = evalList.piece_with_id(dp0);
-      dp.pieceId[1] = dp1;
-      dp.old_piece[1] = evalList.piece_with_id(dp1);
-      evalList.put_piece(dp1, rto, make_piece(us, ROOK));
-      dp.new_piece[1] = evalList.piece_with_id(dp1);
-    }
-    else {
-      dp0 = piece_id_on(to);
-      dp1 = piece_id_on(rto);
-      evalList.put_piece(dp0, from, make_piece(us, KING));
-      evalList.put_piece(dp1, rfrom, make_piece(us, ROOK));
-    }
+      if (Do)
+      {
+          dp0 = piece_id_on(from);
+          dp1 = piece_id_on(rfrom);
+          dp.pieceId[0] = dp0;
+          dp.old_piece[0] = evalList.piece_with_id(dp0);
+          evalList.put_piece(dp0, to, make_piece(us, KING));
+          dp.new_piece[0] = evalList.piece_with_id(dp0);
+          dp.pieceId[1] = dp1;
+          dp.old_piece[1] = evalList.piece_with_id(dp1);
+          evalList.put_piece(dp1, rto, make_piece(us, ROOK));
+          dp.new_piece[1] = evalList.piece_with_id(dp1);
+      }
+      else
+      {
+          dp0 = piece_id_on(to);
+          dp1 = piece_id_on(rto);
+          evalList.put_piece(dp0, from, make_piece(us, KING));
+          evalList.put_piece(dp1, rfrom, make_piece(us, ROOK));
+      }
   }
 
   // Remove both pieces first since squares could overlap in Chess960
@@ -1048,11 +1048,11 @@ void Position::do_null_move(StateInfo& newSt) {
 
   if (Eval::useNNUE)
   {
-    std::memcpy(&newSt, st, sizeof(StateInfo));
-    st->accumulator.computed_score = false;
+      std::memcpy(&newSt, st, sizeof(StateInfo));
+      st->accumulator.computed_score = false;
   }
   else
-    std::memcpy(&newSt, st, offsetof(StateInfo, accumulator));
+      std::memcpy(&newSt, st, offsetof(StateInfo, accumulator));
 
   newSt.previous = st;
   st = &newSt;
@@ -1394,20 +1394,4 @@ bool Position::pos_is_ok() const {
       }
 
   return true;
-}
-
-StateInfo* Position::state() const {
-  return st;
-}
-
-const EvalList* Position::eval_list() const {
-  return &evalList;
-}
-
-PieceId Position::piece_id_on(Square sq) const
-{
-  assert(piece_on(sq) != NO_PIECE);
-  PieceId pid = evalList.piece_id_list[sq];
-  assert(is_ok(pid));
-  return pid;
 }

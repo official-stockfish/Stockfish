@@ -250,7 +250,7 @@ void UCI::loop(int argc, char* argv[]) {
   pos.set(StartFEN, false, &states->back(), Threads.main());
 
   if (argc > 1)
-     init_nnue(Options["EvalFile"]);
+      init_nnue(Options["EvalFile"]);
 
   for (int i = 1; i < argc; ++i)
       cmd += std::string(argv[i]) + " ";

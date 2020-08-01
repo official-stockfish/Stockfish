@@ -213,6 +213,7 @@ enum PieceId {
 };
 
 inline PieceId operator++(PieceId& d, int) {
+
   PieceId x = d;
   d = PieceId(int(d) + 1);
   return x;
@@ -272,8 +273,7 @@ enum Rank : int {
 };
 
 // unique number for each piece type on each square
-enum PieceSquare : uint32_t
-{
+enum PieceSquare : uint32_t {
     PS_NONE     =  0,
     PS_W_PAWN   =  1,
     PS_B_PAWN   =  1 * SQUARE_NB + 1,
@@ -291,8 +291,7 @@ enum PieceSquare : uint32_t
     PS_END2     = 12 * SQUARE_NB + 1
 };
 
-struct ExtPieceSquare
-{
+struct ExtPieceSquare {
     PieceSquare from[COLOR_NB];
 };
 
@@ -303,63 +302,63 @@ constexpr bool is_ok(PieceId pid);
 constexpr Square rotate180(Square sq);
 
 // Structure holding which tracked piece (PieceId) is where (PieceSquare)
-class EvalList
-{
+class EvalList {
+
 public:
-    // Max. number of pieces without kings is 30 but must be a multiple of 4 in AVX2
-    static const int MAX_LENGTH = 32;
+  // Max. number of pieces without kings is 30 but must be a multiple of 4 in AVX2
+  static const int MAX_LENGTH = 32;
 
-    // Array that holds the piece id for the pieces on the board
-    PieceId piece_id_list[SQUARE_NB];
+  // Array that holds the piece id for the pieces on the board
+  PieceId piece_id_list[SQUARE_NB];
 
-    // List of pieces, separate from White and Black POV
-    PieceSquare* piece_list_fw() const { return const_cast<PieceSquare*>(pieceListFw); }
-    PieceSquare* piece_list_fb() const { return const_cast<PieceSquare*>(pieceListFb); }
+  // List of pieces, separate from White and Black POV
+  PieceSquare* piece_list_fw() const { return const_cast<PieceSquare*>(pieceListFw); }
+  PieceSquare* piece_list_fb() const { return const_cast<PieceSquare*>(pieceListFb); }
 
-    // Place the piece pc with piece_id on the square sq on the board
-    void put_piece(PieceId piece_id, Square sq, Piece pc)
-    {
-        assert(is_ok(piece_id));
-        if (pc != NO_PIECE)
-        {
+  // Place the piece pc with piece_id on the square sq on the board
+  void put_piece(PieceId piece_id, Square sq, Piece pc)
+  {
+      assert(is_ok(piece_id));
+      if (pc != NO_PIECE)
+      {
           pieceListFw[piece_id] = PieceSquare(kpp_board_index[pc].from[WHITE] + sq);
           pieceListFb[piece_id] = PieceSquare(kpp_board_index[pc].from[BLACK] + rotate180(sq));
           piece_id_list[sq] = piece_id;
-        }
-        else
-        {
+      }
+      else
+      {
           pieceListFw[piece_id] = PS_NONE;
           pieceListFb[piece_id] = PS_NONE;
           piece_id_list[sq] = piece_id;
-        }
-    }
+      }
+  }
 
-    // Convert the specified piece_id piece to ExtPieceSquare type and return it
-    ExtPieceSquare piece_with_id(PieceId piece_id) const
-    {
-        ExtPieceSquare eps;
-        eps.from[WHITE] = pieceListFw[piece_id];
-        eps.from[BLACK] = pieceListFb[piece_id];
-        return eps;
-    }
+  // Convert the specified piece_id piece to ExtPieceSquare type and return it
+  ExtPieceSquare piece_with_id(PieceId piece_id) const
+  {
+      ExtPieceSquare eps;
+      eps.from[WHITE] = pieceListFw[piece_id];
+      eps.from[BLACK] = pieceListFb[piece_id];
+      return eps;
+  }
 
 private:
-    PieceSquare pieceListFw[MAX_LENGTH];
-    PieceSquare pieceListFb[MAX_LENGTH];
+  PieceSquare pieceListFw[MAX_LENGTH];
+  PieceSquare pieceListFb[MAX_LENGTH];
 };
 
 // For differential evaluation of pieces that changed since last turn
-struct DirtyPiece
-{
-    // Number of changed pieces
-    int dirty_num;
+struct DirtyPiece {
 
-    // The ids of changed pieces, max. 2 pieces can change in one move
-    PieceId pieceId[2];
+  // Number of changed pieces
+  int dirty_num;
 
-    // What changed from the piece with that piece number
-    ExtPieceSquare old_piece[2];
-    ExtPieceSquare new_piece[2];
+  // The ids of changed pieces, max. 2 pieces can change in one move
+  PieceId pieceId[2];
+
+  // What changed from the piece with that piece number
+  ExtPieceSquare old_piece[2];
+  ExtPieceSquare new_piece[2];
 };
 
 /// Score enum stores a middlegame and an endgame value in a single integer (enum).
@@ -499,7 +498,7 @@ inline Color color_of(Piece pc) {
   return Color(pc >> 3);
 }
 
-constexpr bool is_ok(PieceId pid) { 
+constexpr bool is_ok(PieceId pid) {
   return pid < PIECE_ID_NONE;
 }
 
