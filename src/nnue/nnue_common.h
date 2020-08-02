@@ -45,10 +45,12 @@ namespace Eval::NNUE {
   using TransformedFeatureType = std::uint8_t;
   using IndexType = std::uint32_t;
 
-  // Round n up to be a multiple of base
+  // Round n up to be a multiple of a base
+  // Base should be a power of 2
   template <typename IntType>
   constexpr IntType CeilToMultiple(IntType n, IntType base) {
-    return (n + base - 1) / base * base;
+    assert(base && ((base & (base - 1)) == 0));
+    return (n + base - 1) & -base;
   }
 
 }  // namespace Eval::NNUE
