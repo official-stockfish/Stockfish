@@ -819,16 +819,18 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   }
 
   // Move the piece. The tricky Chess960 castling is handled earlier
-  if (type_of(m) != CASTLING) {
-    if (Eval::useNNUE)
-    {
-        dp0 = piece_id_on(from);
-        dp.pieceId[0] = dp0;
-        dp.old_piece[0] = evalList.piece_with_id(dp0);
-        evalList.put_piece(dp0, to, pc);
-        dp.new_piece[0] = evalList.piece_with_id(dp0);
-    }
-    move_piece(from, to);
+  if (type_of(m) != CASTLING)
+  {
+      if (Eval::useNNUE)
+      {
+          dp0 = piece_id_on(from);
+          dp.pieceId[0] = dp0;
+          dp.old_piece[0] = evalList.piece_with_id(dp0);
+          evalList.put_piece(dp0, to, pc);
+          dp.new_piece[0] = evalList.piece_with_id(dp0);
+      }
+
+      move_piece(from, to);
   }
 
   // If the moving piece is a pawn do some special extra work
