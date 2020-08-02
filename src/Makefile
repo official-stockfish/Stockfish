@@ -138,6 +138,11 @@ ifeq ($(ARCH),armv8)
 	popcnt = yes
 endif
 
+ifeq ($(ARCH),apple-silicon)
+	arch = arm64
+	prefetch = yes
+endif
+
 ifeq ($(ARCH),ppc-32)
 	arch = ppc
 	bits = 32
@@ -397,6 +402,7 @@ help:
 	@echo "ppc-32                  > PPC 32-bit"
 	@echo "armv7                   > ARMv7 32-bit"
 	@echo "armv8                   > ARMv8 64-bit"
+	@echo "apple-silicon           > Apple silicon ARM64"
 	@echo "general-64              > unspecified 64-bit"
 	@echo "general-32              > unspecified 32-bit"
 	@echo ""
@@ -499,7 +505,7 @@ config-sanity:
 	@test "$(optimize)" = "yes" || test "$(optimize)" = "no"
 	@test "$(arch)" = "any" || test "$(arch)" = "x86_64" || test "$(arch)" = "i386" || \
 	 test "$(arch)" = "ppc64" || test "$(arch)" = "ppc" || \
-	 test "$(arch)" = "armv7" || test "$(arch)" = "armv8-a"
+	 test "$(arch)" = "armv7" || test "$(arch)" = "armv8-a" || test "$(arch)" = "arm64"
 	@test "$(bits)" = "32" || test "$(bits)" = "64"
 	@test "$(prefetch)" = "yes" || test "$(prefetch)" = "no"
 	@test "$(popcnt)" = "yes" || test "$(popcnt)" = "no"
