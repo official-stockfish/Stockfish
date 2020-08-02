@@ -42,23 +42,8 @@ void on_hash_size(const Option& o) { TT.resize(size_t(o)); }
 void on_logger(const Option& o) { start_logger(o); }
 void on_threads(const Option& o) { Threads.set(size_t(o)); }
 void on_tb_path(const Option& o) { Tablebases::init(o); }
-
-void on_use_nnue(const Option& o) {
-
-  if (o)
-      std::cout << "info string NNUE eval used" << std::endl;
-  else
-      std::cout << "info string classic eval used" << std::endl;
-
-  Eval::useNNUE = o;
-  init_nnue(Options["EvalFile"]);
-}
-
-void on_eval_file(const Option& o) {
-
-  load_eval_finished = false;
-  init_nnue(o);
-}
+void on_use_NNUE(const Option& ) { Eval::init_NNUE(); }
+void on_eval_file(const Option& ) { Eval::init_NNUE(); }
 
 /// Our case insensitive less() function as required by UCI protocol
 bool CaseInsensitiveLess::operator() (const string& s1, const string& s2) const {
@@ -95,7 +80,7 @@ void init(OptionsMap& o) {
   o["SyzygyProbeDepth"]      << Option(1, 1, 100);
   o["Syzygy50MoveRule"]      << Option(true);
   o["SyzygyProbeLimit"]      << Option(7, 0, 7);
-  o["Use NNUE"]              << Option(false, on_use_nnue);
+  o["Use NNUE"]              << Option(false, on_use_NNUE);
   o["EvalFile"]              << Option("nn-c157e0a5755b.nnue", on_eval_file);
 }
 
@@ -205,5 +190,4 @@ Option& Option::operator=(const string& v) {
   return *this;
 }
 
-bool load_eval_finished = false;
 } // namespace UCI

@@ -127,18 +127,16 @@ namespace Eval::NNUE {
   }
 
   // Load the evaluation function file
-  void load_eval(const std::string& evalFile) {
+  bool load_eval_file(const std::string& evalFile) {
 
     Initialize();
     fileName = evalFile;
 
     std::ifstream stream(evalFile, std::ios::binary);
+
     const bool result = ReadParameters(stream);
 
-    if (!result)
-        std::cout << "Error! " << fileName << " not found or wrong format" << std::endl;
-    else
-        std::cout << "info string NNUE " << fileName << " found & loaded" << std::endl;
+    return result;
   }
 
   // Evaluation function. Perform differential calculation.

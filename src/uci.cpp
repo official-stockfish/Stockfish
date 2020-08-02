@@ -86,6 +86,9 @@ namespace {
     StateListPtr states(new std::deque<StateInfo>(1));
     Position p;
     p.set(pos.fen(), Options["UCI_Chess960"], &states->back(), Threads.main());
+
+    Eval::verify_NNUE();
+
     sync_cout << "\n" << Eval::trace(p) << sync_endl;
   }
 
@@ -181,12 +184,7 @@ namespace {
         }
         else if (token == "setoption")  setoption(is);
         else if (token == "position")   position(pos, is, states);
-        else if (token == "ucinewgame")
-        {
-            init_nnue(Options["EvalFile"]);
-            Search::clear();
-            elapsed = now(); // initialization may take some time
-        }
+        else if (token == "ucinewgame") { Search::clear(); elapsed = now(); } // Search::clear() may take some while
     }
 
     elapsed = now() - elapsed + 1; // Ensure positivity to avoid a 'divide by zero'
@@ -224,17 +222,6 @@ namespace {
 } // namespace
 
 
-void UCI::init_nnue(const std::string& evalFile)
-{
-  if (Options["Use NNUE"] && !UCI::load_eval_finished)
-  {
-      // Load evaluation function from a file
-      Eval::NNUE::load_eval(evalFile);
-      UCI::load_eval_finished = true;
-  }
-}
-
-
 /// UCI::loop() waits for a command from stdin, parses it and calls the appropriate
 /// function. Also intercepts EOF from stdin to ensure gracefully exiting if the
 /// GUI dies unexpectedly. When called with some command line arguments, e.g. to
@@ -248,9 +235,6 @@ void UCI::loop(int argc, char* argv[]) {
   StateListPtr states(new std::deque<StateInfo>(1));
 
   pos.set(StartFEN, false, &states->back(), Threads.main());
-
-  if (argc > 1)
-      init_nnue(Options["EvalFile"]);
 
   for (int i = 1; i < argc; ++i)
       cmd += std::string(argv[i]) + " ";
@@ -283,16 +267,8 @@ void UCI::loop(int argc, char* argv[]) {
       else if (token == "setoption")  setoption(is);
       else if (token == "go")         go(pos, is, states);
       else if (token == "position")   position(pos, is, states);
-      else if (token == "ucinewgame")
-      {
-          init_nnue(Options["EvalFile"]);
-          Search::clear();
-      }
-      else if (token == "isready")
-      {
-          init_nnue(Options["EvalFile"]);
-          sync_cout << "readyok" << sync_endl;
-      }
+      else if (token == "ucinewgame") Search::clear();
+      else if (token == "isready")    sync_cout << "readyok" << sync_endl;
 
       // Additional custom non-UCI commands, mainly for debugging.
       // Do not use these commands during a search!

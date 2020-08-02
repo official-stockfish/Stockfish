@@ -20,18 +20,44 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cstdlib>
 #include <cstring>   // For std::memset
 #include <iomanip>
 #include <sstream>
+#include <iostream>
 
 #include "bitboard.h"
 #include "evaluate.h"
 #include "material.h"
 #include "pawns.h"
 #include "thread.h"
+#include "uci.h"
 
 namespace Eval {
-   bool useNNUE;
+
+  bool useNNUE;
+  std::string eval_file_loaded="None";
+
+  void init_NNUE() {
+
+    useNNUE = Options["Use NNUE"];
+    std::string eval_file = std::string(Options["EvalFile"]);
+    if (useNNUE && eval_file_loaded != eval_file)
+        if (Eval::NNUE::load_eval_file(eval_file))
+            eval_file_loaded = eval_file;
+  }
+
+  void verify_NNUE() {
+
+    std::string eval_file = std::string(Options["EvalFile"]);
+    if (useNNUE && eval_file_loaded != eval_file)
+    {
+        std::cerr << "Use of NNUE evaluation, but the file " << eval_file << " was not loaded successfully. "
+                  << "These network evaluation parameters must be available, compatible with this version of the code. "
+                  << "The UCI option EvalFile might need to specify the full path, including the directory/folder name, to the file." << std::endl;
+        std::exit(EXIT_FAILURE);
+    }
+  }
 }
 
 namespace Trace {
