@@ -74,7 +74,7 @@ endif
 # sse42 = yes/no      --- -msse4.2         --- Use Intel Streaming SIMD Extensions 4.2
 # avx2 = yes/no       --- -mavx2           --- Use Intel Advanced Vector Extensions 2
 # pext = yes/no       --- -DUSE_PEXT       --- Use pext x86_64 asm-instruction
-# avx512 = yes/no     --- -mavx512vbmi     --- Use Intel Advanced Vector Extensions 512
+# avx512 = yes/no     --- -mavx512bw       --- Use Intel Advanced Vector Extensions 512
 #
 # Note that Makefile is space sensitive, so when adding new architectures
 # or modifying existing flags, you have to make sure there are no extra spaces
