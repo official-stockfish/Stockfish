@@ -544,6 +544,7 @@ help:
 	@echo "strip                   > Strip executable"
 	@echo "install                 > Install executable"
 	@echo "clean                   > Clean up"
+	@echo "net                     > Download the default nnue net"
 	@echo ""
 	@echo "Supported archs:"
 	@echo ""
@@ -586,7 +587,7 @@ help:
 	@echo ""
 
 
-.PHONY: help build profile-build strip install clean objclean profileclean \
+.PHONY: help build profile-build strip install clean net objclean profileclean \
         config-sanity icc-profile-use icc-profile-make gcc-profile-use gcc-profile-make \
         clang-profile-use clang-profile-make
 
@@ -619,6 +620,13 @@ install:
 #clean all
 clean: objclean profileclean
 	@rm -f .depend *~ core
+
+net:
+	$(eval nnuenet := $(shell grep EvalFile ucioption.cpp | grep Option | sed 's/.*\(nn-[a-z0-9]\{12\}.nnue\).*/\1/'))
+	@echo "Default net: $(nnuenet)"
+	$(eval nnuedownloadurl := https://tests.stockfishchess.org/api/nn/$(nnuenet))
+	$(eval curl_or_wget := $(shell if hash curl 2>/dev/null; then echo "curl -sL"; elif hash wget 2>/dev/null; then echo "wget -qO-"; fi))
+	@if test -f "$(nnuenet)"; then echo "Already available."; else echo "Downloading $(nnuedownloadurl)"; $(curl_or_wget) $(nnuedownloadurl) > $(nnuenet); fi
 
 # clean binaries and objects
 objclean:
