@@ -27,12 +27,18 @@
 
 class Position;
 
+enum EvalType {
+  ET_CLASSIC,
+  ET_NNUE,
+  ET_BLEND
+};
+
 namespace Eval {
 
   std::string trace(const Position& pos);
   Value evaluate(const Position& pos);
 
-  extern bool useNNUE;
+  extern EvalType evalType;
   extern std::string eval_file_loaded;
   void init_NNUE();
   void verify_NNUE();

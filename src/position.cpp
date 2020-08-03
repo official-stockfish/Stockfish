@@ -219,7 +219,7 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
           auto pc = Piece(idx);
           put_piece(pc, sq);
 
-          if (Eval::useNNUE)
+          if (Eval::evalType != ET_CLASSIC)
           {
               // Kings get a fixed ID, other pieces get ID in order of placement
               piece_id =
@@ -775,7 +775,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       else
           st->nonPawnMaterial[them] -= PieceValue[MG][captured];
 
-      if (Eval::useNNUE)
+      if (Eval::evalType != ET_CLASSIC)
       {
           dp.dirty_num = 2; // 2 pieces moved
           dp1 = piece_id_on(capsq);
@@ -821,7 +821,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   // Move the piece. The tricky Chess960 castling is handled earlier
   if (type_of(m) != CASTLING)
   {
-      if (Eval::useNNUE)
+      if (Eval::evalType != ET_CLASSIC)
       {
           dp0 = piece_id_on(from);
           dp.pieceId[0] = dp0;
@@ -854,7 +854,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
           remove_piece(to);
           put_piece(promotion, to);
 
-          if (Eval::useNNUE)
+          if (Eval::evalType != ET_CLASSIC)
           {
               dp0 = piece_id_on(to);
               evalList.put_piece(dp0, to, promotion);
@@ -952,7 +952,7 @@ void Position::undo_move(Move m) {
   {
       move_piece(to, from); // Put the piece back at the source square
 
-      if (Eval::useNNUE)
+      if (Eval::evalType != ET_CLASSIC)
       {
           PieceId dp0 = st->dirtyPiece.pieceId[0];
           evalList.put_piece(dp0, from, pc);
@@ -975,7 +975,7 @@ void Position::undo_move(Move m) {
 
           put_piece(st->capturedPiece, capsq); // Restore the captured piece
 
-          if (Eval::useNNUE)
+          if (Eval::evalType != ET_CLASSIC)
           {
               PieceId dp1 = st->dirtyPiece.pieceId[1];
               assert(evalList.piece_with_id(dp1).from[WHITE] == PS_NONE);
@@ -1003,7 +1003,7 @@ void Position::do_castling(Color us, Square from, Square& to, Square& rfrom, Squ
   rto = relative_square(us, kingSide ? SQ_F1 : SQ_D1);
   to = relative_square(us, kingSide ? SQ_G1 : SQ_C1);
 
-  if (Eval::useNNUE)
+  if (Eval::evalType != ET_CLASSIC)
   {
       PieceId dp0, dp1;
       auto& dp = st->dirtyPiece;
@@ -1048,7 +1048,7 @@ void Position::do_null_move(StateInfo& newSt) {
   assert(!checkers());
   assert(&newSt != st);
 
-  if (Eval::useNNUE)
+  if (Eval::evalType != ET_CLASSIC)
   {
       std::memcpy(&newSt, st, sizeof(StateInfo));
       st->accumulator.computed_score = false;

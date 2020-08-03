@@ -35,14 +35,14 @@
 
 namespace Eval {
 
-  bool useNNUE;
+  EvalType evalType = ET_CLASSIC;
   std::string eval_file_loaded="None";
 
   void init_NNUE() {
 
-    useNNUE = Options["Use NNUE"];
+    evalType = Options["Eval Type"] == "NNUE"  ? ET_NNUE  : Options["Eval Type"] == "Blend" ? ET_BLEND : ET_CLASSIC;
     std::string eval_file = std::string(Options["EvalFile"]);
-    if (useNNUE && eval_file_loaded != eval_file)
+    if (evalType != ET_CLASSIC && eval_file_loaded != eval_file)
         if (Eval::NNUE::load_eval_file(eval_file))
             eval_file_loaded = eval_file;
   }
@@ -50,7 +50,7 @@ namespace Eval {
   void verify_NNUE() {
 
     std::string eval_file = std::string(Options["EvalFile"]);
-    if (useNNUE && eval_file_loaded != eval_file)
+    if (evalType != ET_CLASSIC && eval_file_loaded != eval_file)
     {
         std::cerr << "Use of NNUE evaluation, but the file " << eval_file << " was not loaded successfully. "
                   << "These network evaluation parameters must be available, compatible with this version of the code. "
@@ -58,8 +58,10 @@ namespace Eval {
         std::exit(EXIT_FAILURE);
     }
 
-    if (useNNUE)
+    if (evalType == ET_NNUE)
         sync_cout << "info string NNUE evaluation using " << eval_file << " enabled." << sync_endl;
+    else if (evalType == ET_BLEND)
+        sync_cout << "info string blended evaluation using " << eval_file << " enabled." << sync_endl;
     else
         sync_cout << "info string classical evaluation enabled." << sync_endl;
   }
@@ -936,10 +938,12 @@ make_v:
 
 Value Eval::evaluate(const Position& pos) {
 
-  if (Eval::useNNUE)
+  if (Eval::evalType == ET_NNUE)
       return NNUE::evaluate(pos);
-  else
+  else if(Eval::evalType == ET_CLASSIC)
       return Evaluation<NO_TRACE>(pos).value();
+  else // ET_BLEND
+      return (NNUE::evaluate(pos) + Evaluation<NO_TRACE>(pos).value()) / 2;
 }
 
 /// trace() is like evaluate(), but instead of returning a value, it returns
@@ -957,7 +961,7 @@ std::string Eval::trace(const Position& pos) {
 
   Value v;
 
-  if (Eval::useNNUE)
+  if (Eval::evalType == ET_NNUE)
   {
       v = NNUE::evaluate(pos);
   }

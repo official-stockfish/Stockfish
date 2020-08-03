@@ -117,6 +117,7 @@ vector<string> setup_bench(const Position& current, istream& is) {
   string limit     = (is >> token) ? token : "13";
   string fenFile   = (is >> token) ? token : "default";
   string limitType = (is >> token) ? token : "depth";
+  string evType    = (is >> token) ? token : "Blend";
 
   go = limitType == "eval" ? "eval" : "go " + limitType + " " + limit;
 
@@ -146,6 +147,7 @@ vector<string> setup_bench(const Position& current, istream& is) {
 
   list.emplace_back("setoption name Threads value " + threads);
   list.emplace_back("setoption name Hash value " + ttSize);
+  list.emplace_back("setoption name Eval Type value " + evType);
   list.emplace_back("ucinewgame");
 
   for (const string& fen : fens)
