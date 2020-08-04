@@ -29,7 +29,7 @@ using namespace std;
 
 namespace {
 
-const vector<string> Defaults = {
+vector<string> Defaults = {
   "setoption name UCI_Chess960 value false",
   "setoption name Use NNUE value true",
   "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
@@ -119,6 +119,18 @@ vector<string> setup_bench(const Position& current, istream& is) {
   string limit     = (is >> token) ? token : "13";
   string fenFile   = (is >> token) ? token : "default";
   string limitType = (is >> token) ? token : "depth";
+  string evalType  = (is >> token) ? token : "mixed";
+
+  if (evalType == "classical")
+  {
+      Defaults[1] = "setoption name Use NNUE value false";
+      Defaults[4] = "setoption name Use NNUE value false";
+  }
+  else if (evalType == "NNUE")
+  {
+      Defaults[1] = "setoption name Use NNUE value true";
+      Defaults[4] = "setoption name Use NNUE value true";
+  }
 
   go = limitType == "eval" ? "eval" : "go " + limitType + " " + limit;
 
