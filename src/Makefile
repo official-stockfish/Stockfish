@@ -41,9 +41,9 @@ SRCS = benchmark.cpp bitbase.cpp bitboard.cpp endgame.cpp evaluate.cpp main.cpp 
 	search.cpp thread.cpp timeman.cpp tt.cpp uci.cpp ucioption.cpp tune.cpp syzygy/tbprobe.cpp \
 	nnue/evaluate_nnue.cpp nnue/features/half_kp.cpp
 
-OBJS = $(SRCS:.cpp=.o)
+OBJS = $(notdir $(SRCS:.cpp=.o))
 
-VPATH = syzygy
+VPATH = syzygy:nnue:nnue/features
 
 ### Establish the operating system name
 KERNEL = $(shell uname -s)
@@ -324,28 +324,6 @@ ifeq ($(COMP),clang)
 		CXXFLAGS += -m$(bits)
 		LDFLAGS += -m$(bits)
 	endif
-endif
-
-ifeq ($(COMP),msys2)
-	comp=gcc
-	CXX=g++
-	CXXFLAGS += -pedantic -Wextra -Wshadow
-
-	ifeq ($(ARCH),armv7)
-		ifeq ($(OS),Android)
-			CXXFLAGS += -m$(bits)
-			LDFLAGS += -m$(bits)
-		endif
-	else
-		CXXFLAGS += -m$(bits)
-		LDFLAGS += -m$(bits)
-	endif
-
-	ifneq ($(KERNEL),Darwin)
-	   LDFLAGS += -Wl,--no-as-needed
-	endif
-
-	LDFLAGS += -static -Wl,-s
 endif
 
 ifeq ($(comp),icc)
@@ -734,6 +712,6 @@ icc-profile-use:
 	all
 
 .depend:
-	-@$(CXX) $(DEPENDFLAGS) -MM $(OBJS:.o=.cpp) > $@ 2> /dev/null
+	-@$(CXX) $(DEPENDFLAGS) -MM $(SRCS) > $@ 2> /dev/null
 
 -include .depend
