@@ -229,6 +229,7 @@ ifeq ($(ARCH),armv8)
 	arch = armv8-a
 	prefetch = yes
 	popcnt = yes
+	neon = yes
 endif
 
 ifeq ($(ARCH),apple-silicon)
