@@ -153,7 +153,7 @@ namespace Eval::NNUE::Layers {
       }
       constexpr IndexType kStart = kNumChunks * kSimdWidth;
 
-  #elif defined(IS_ARM)
+  #elif defined(USE_NEON)
       constexpr IndexType kNumChunks = kInputDimensions / (kSimdWidth / 2);
       const int8x8_t kZero = {0};
       const auto in = reinterpret_cast<const int32x4_t*>(input);

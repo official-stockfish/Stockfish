@@ -97,7 +97,7 @@ namespace Eval::NNUE {
       const __m128i k0x80s = _mm_set1_epi8(-128);
   #endif
 
-  #elif defined(IS_ARM)
+  #elif defined(USE_NEON)
       constexpr IndexType kNumChunks = kHalfDimensions / (kSimdWidth / 2);
       const int8x8_t kZero = {0};
   #endif
@@ -163,7 +163,7 @@ namespace Eval::NNUE {
           );
         }
 
-  #elif defined(IS_ARM)
+  #elif defined(USE_NEON)
         const auto out = reinterpret_cast<int8x8_t*>(&output[offset]);
         for (IndexType j = 0; j < kNumChunks; ++j) {
           int16x8_t sum = reinterpret_cast<const int16x8_t*>(
@@ -218,7 +218,7 @@ namespace Eval::NNUE {
             accumulation[j] = _mm_add_epi16(accumulation[j], column[j]);
           }
 
-  #elif defined(IS_ARM)
+  #elif defined(USE_NEON)
           auto accumulation = reinterpret_cast<int16x8_t*>(
               &accumulator.accumulation[perspective][i][0]);
           auto column = reinterpret_cast<const int16x8_t*>(&weights_[offset]);
@@ -261,7 +261,7 @@ namespace Eval::NNUE {
         auto accumulation = reinterpret_cast<__m128i*>(
             &accumulator.accumulation[perspective][i][0]);
 
-  #elif defined(IS_ARM)
+  #elif defined(USE_NEON)
         constexpr IndexType kNumChunks = kHalfDimensions / (kSimdWidth / 2);
         auto accumulation = reinterpret_cast<int16x8_t*>(
             &accumulator.accumulation[perspective][i][0]);
@@ -290,7 +290,7 @@ namespace Eval::NNUE {
               accumulation[j] = _mm_sub_epi16(accumulation[j], column[j]);
             }
 
-  #elif defined(IS_ARM)
+  #elif defined(USE_NEON)
             auto column = reinterpret_cast<const int16x8_t*>(&weights_[offset]);
             for (IndexType j = 0; j < kNumChunks; ++j) {
               accumulation[j] = vsubq_s16(accumulation[j], column[j]);
@@ -321,7 +321,7 @@ namespace Eval::NNUE {
               accumulation[j] = _mm_add_epi16(accumulation[j], column[j]);
             }
 
-  #elif defined(IS_ARM)
+  #elif defined(USE_NEON)
             auto column = reinterpret_cast<const int16x8_t*>(&weights_[offset]);
             for (IndexType j = 0; j < kNumChunks; ++j) {
               accumulation[j] = vaddq_s16(accumulation[j], column[j]);

@@ -32,6 +32,9 @@
 
 #elif defined(USE_SSE2)
 #include <emmintrin.h>
+
+#elif defined(USE_NEON)
+#include <arm_neon.h>
 #endif
 
 namespace Eval::NNUE {
@@ -53,7 +56,7 @@ namespace Eval::NNUE {
   #elif defined(USE_SSE2)
   constexpr std::size_t kSimdWidth = 16;
 
-  #elif defined(IS_ARM)
+  #elif defined(USE_NEON)
   constexpr std::size_t kSimdWidth = 16;
   #endif
 

@@ -75,6 +75,7 @@ endif
 # avx2 = yes/no       --- -mavx2           --- Use Intel Advanced Vector Extensions 2
 # pext = yes/no       --- -DUSE_PEXT       --- Use pext x86_64 asm-instruction
 # avx512 = yes/no     --- -mavx512bw       --- Use Intel Advanced Vector Extensions 512
+# neon = yes/no       --- -DUSE_NEON       --- Use ARM SIMD architecture
 #
 # Note that Makefile is space sensitive, so when adding new architectures
 # or modifying existing flags, you have to make sure there are no extra spaces
@@ -95,6 +96,7 @@ sse42 = no
 avx2 = no
 pext = no
 avx512 = no
+neon = no
 
 ### 2.2 Architecture specific
 ifeq ($(ARCH),general-32)
@@ -227,6 +229,13 @@ ifeq ($(ARCH),armv8)
 	arch = armv8-a
 	prefetch = yes
 	popcnt = yes
+endif
+
+ifeq ($(ARCH),apple-silicon)
+	arch = arm64
+	prefetch = yes
+	popcnt = yes
+	neon = yes
 endif
 
 ifeq ($(ARCH),ppc-32)
@@ -413,7 +422,7 @@ endif
 
 ### 3.6 popcnt
 ifeq ($(popcnt),yes)
-	ifeq ($(arch),$(filter $(arch),ppc64 armv8-a))
+	ifeq ($(arch),$(filter $(arch),ppc64 armv8-a arm64))
 		CXXFLAGS += -DUSE_POPCNT
 	else ifeq ($(comp),icc)
 		CXXFLAGS += -msse3 -DUSE_POPCNT
@@ -462,6 +471,10 @@ ifeq ($(sse3),yes)
 	ifeq ($(comp),$(filter $(comp),gcc clang mingw))
 		CXXFLAGS += -msse3
 	endif
+endif
+
+ifeq ($(neon),yes)
+	CXXFLAGS += -DUSE_NEON
 endif
 
 ifeq ($(arch),x86_64)
@@ -542,6 +555,7 @@ help:
 	@echo "ppc-32                  > PPC 32-bit"
 	@echo "armv7                   > ARMv7 32-bit"
 	@echo "armv8                   > ARMv8 64-bit"
+	@echo "apple-silicon           > Apple silicon ARM64"
 	@echo "general-64              > unspecified 64-bit"
 	@echo "general-32              > unspecified 32-bit"
 	@echo ""
@@ -644,6 +658,7 @@ config-sanity:
 	@echo "avx2: '$(avx2)'"
 	@echo "pext: '$(pext)'"
 	@echo "avx512: '$(avx512)'"
+	@echo "neon: '$(neon)'"
 	@echo ""
 	@echo "Flags:"
 	@echo "CXX: $(CXX)"
@@ -657,7 +672,7 @@ config-sanity:
 	@test "$(optimize)" = "yes" || test "$(optimize)" = "no"
 	@test "$(arch)" = "any" || test "$(arch)" = "x86_64" || test "$(arch)" = "i386" || \
 	 test "$(arch)" = "ppc64" || test "$(arch)" = "ppc" || \
-	 test "$(arch)" = "armv7" || test "$(arch)" = "armv8-a"
+	 test "$(arch)" = "armv7" || test "$(arch)" = "armv8-a" || test "$(arch)" = "arm64"
 	@test "$(bits)" = "32" || test "$(bits)" = "64"
 	@test "$(prefetch)" = "yes" || test "$(prefetch)" = "no"
 	@test "$(popcnt)" = "yes" || test "$(popcnt)" = "no"
@@ -669,6 +684,7 @@ config-sanity:
 	@test "$(avx2)" = "yes" || test "$(avx2)" = "no"
 	@test "$(pext)" = "yes" || test "$(pext)" = "no"
 	@test "$(avx512)" = "yes" || test "$(avx512)" = "no"
+	@test "$(neon)" = "yes" || test "$(neon)" = "no"
 	@test "$(comp)" = "gcc" || test "$(comp)" = "icc" || test "$(comp)" = "mingw" || test "$(comp)" = "clang"
 
 $(EXE): $(OBJS)
