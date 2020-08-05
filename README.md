@@ -4,7 +4,13 @@
 [![Build Status](https://ci.appveyor.com/api/projects/status/github/official-stockfish/Stockfish?branch=master&svg=true)](https://ci.appveyor.com/project/mcostalba/stockfish/branch/master)
 
 [Stockfish](https://stockfishchess.org) is a free, powerful UCI chess engine
-derived from Glaurung 2.1. It is not a complete chess program and requires a
+derived from Glaurung 2.1. It features two evaluation functions, the classical
+evaluation based on handcrafted terms, and the NNUE evaluation based on
+efficiently updateable neural networks. The classical evaluation runs efficiently
+on most 64bit CPU architectures, while the NNUE evaluation benefits strongly from the
+vector intrinsics available on modern CPUs (avx2 or similar).
+
+Stockfish is not a complete chess program and requires a
 UCI-compatible GUI (e.g. XBoard with PolyGlot, Scid, Cute Chess, eboard, Arena,
 Sigma Chess, Shredder, Chess Partner or Fritz) in order to be used comfortably.
 Read the documentation for your GUI of choice for information about how to use
@@ -22,20 +28,19 @@ This distribution of Stockfish consists of the following files:
   * src, a subdirectory containing the full source code, including a Makefile
     that can be used to compile Stockfish on Unix-like systems.
 
+To use the NNUE evaluation an additional data file with neural network parameters
+needs to be downloaded. The filename for the default set can be found as the default
+value of the `EvalFile` UCI option, with the format
+`nn-[SHA256 first 12 digits].nnue` (e.g. nn-c157e0a5755b.nnue). This file can be downloaded from
+```
+https://tests.stockfishchess.org/api/nn/[filename]
+```
+replacing `[filename]` as needed.
 
-## UCI parameters
+
+## UCI options
 
 Currently, Stockfish has the following UCI options:
-
-  * #### Debug Log File
-    Write all communication to and from the engine into a text file.
-
-  * #### Contempt
-    A positive value for contempt favors middle game positions and avoids draws.
-
-  * #### Analysis Contempt
-    By default, contempt is set to prefer the side to move. Set this option to "White"
-    or "Black" to analyse with contempt for that side, or "Off" to disable contempt.
 
   * #### Threads
     The number of CPU threads used for searching a position. For best performance, set
@@ -44,9 +49,6 @@ Currently, Stockfish has the following UCI options:
   * #### Hash
     The size of the hash table in MB. It is recommended to set Hash after setting Threads.
 
-  * #### Clear Hash
-    Clear the hash table.
-
   * #### Ponder
     Let Stockfish ponder its next move while the opponent is thinking.
 
@@ -54,10 +56,32 @@ Currently, Stockfish has the following UCI options:
     Output the N best lines (principal variations, PVs) when searching.
     Leave at 1 for best performance.
 
-  * #### Skill Level
-    Lower the Skill Level in order to make Stockfish play weaker (see also UCI_LimitStrength).
-    Internally, MultiPV is enabled, and with a certain probability depending on the Skill Level a
-    weaker move will be played.
+  * #### Use NNUE
+    Toggle between the NNUE and classical evaluation functions. If set to "true",
+    the network parameters must be availabe to load from file (see also EvalFile).
+
+  * #### EvalFile
+    The name of the file of the NNUE evaluation parameters. Depending on the GUI the
+    filename should include the full path to the folder/directory that contains the file.
+
+  * #### Contempt
+    A positive value for contempt favors middle game positions and avoids draws,
+    effective for the classical evaluation only.
+
+  * #### Analysis Contempt
+    By default, contempt is set to prefer the side to move. Set this option to "White"
+    or "Black" to analyse with contempt for that side, or "Off" to disable contempt.
+
+  * #### UCI_AnalyseMode
+    An option handled by your GUI.
+
+  * #### UCI_Chess960
+    An option handled by your GUI. If true, Stockfish will play Chess960.
+
+  * #### UCI_ShowWDL
+    If enabled, show approximate WDL statistics as part of the engine output.
+    These WDL numbers model expected game outcomes for a given evaluation and
+    game ply for engine self-play at fishtest LTC conditions (60+0.6s per game).
 
   * #### UCI_LimitStrength
     Enable weaker play aiming for an Elo rating as set by UCI_Elo. This option overrides Skill Level.
@@ -66,28 +90,10 @@ Currently, Stockfish has the following UCI options:
     If enabled by UCI_LimitStrength, aim for an engine strength of the given Elo.
     This Elo rating has been calibrated at a time control of 60s+0.6s and anchored to CCRL 40/4.
 
-  * #### UCI_ShowWDL
-    If enabled, show approximate WDL statistics as part of the engine output.
-    These WDL numbers model expected game outcomes for a given evaluation and
-    game ply for engine self-play at fishtest LTC conditions (60+0.6s per game).
-
-  * #### Move Overhead
-    Assume a time delay of x ms due to network and GUI overheads. This is useful to
-    avoid losses on time in those cases.
-
-  * #### Slow Mover
-    Lower values will make Stockfish take less time in games, higher values will
-    make it think longer.
-
-  * #### nodestime
-    Tells the engine to use nodes searched instead of wall time to account for
-    elapsed time. Useful for engine testing.
-
-  * #### UCI_Chess960
-    An option handled by your GUI. If true, Stockfish will play Chess960.
-
-  * #### UCI_AnalyseMode
-    An option handled by your GUI.
+  * #### Skill Level
+    Lower the Skill Level in order to make Stockfish play weaker (see also UCI_LimitStrength).
+    Internally, MultiPV is enabled, and with a certain probability depending on the Skill Level a
+    weaker move will be played.
 
   * #### SyzygyPath
     Path to the folders/directories storing the Syzygy tablebase files. Multiple
@@ -114,6 +120,47 @@ Currently, Stockfish has the following UCI options:
     Limit Syzygy tablebase probing to positions with at most this many pieces left
     (including kings and pawns).
 
+  * #### Move Overhead
+    Assume a time delay of x ms due to network and GUI overheads. This is useful to
+    avoid losses on time in those cases.
+
+  * #### Slow Mover
+    Lower values will make Stockfish take less time in games, higher values will
+    make it think longer.
+
+  * #### nodestime
+    Tells the engine to use nodes searched instead of wall time to account for
+    elapsed time. Useful for engine testing.
+
+  * #### Clear Hash
+    Clear the hash table.
+
+  * #### Debug Log File
+    Write all communication to and from the engine into a text file.
+
+## classical and NNUE evaluation
+
+Both approaches assign a value to a position that is used in alpha-beta (PVS) search
+to find the best move. The classical evaluation computes this value as a function
+of various chess concepts, handcrafted by experts, tested and tuned using fishtest.
+The NNUE evaluation computes this value with a neural network based on basic
+inputs (e.g. piece positions only). The network is optimized and trained
+on the evalutions of millions of positions at moderate search depth.
+
+The NNUE evaluation was first introduced in shogi, and ported to Stockfish afterward.
+It can be evaluated efficiently on CPUs, and exploits the fact that only parts
+of the neural network need to be updated after a typical chess move.
+[The nodchip repository](https://github.com/nodchip/Stockfish) provides additional
+tools to train and develop the NNUE networks.
+
+On CPUs supporting modern vector instructions (avx2 and similar), the NNUE evaluation
+results in stronger playing strength, even if the nodes per second computed by the engine
+is somewhat lower (roughly 60% of nps is typical).
+
+Note that the NNUE evaluation depends on the Stockfish binary and the network parameter
+file (see EvalFile). Not every parameter file is compatible with a given Stockfish binary.
+The default value of the EvalFile UCI option is the name of a network that is guaranteed
+to be compatible with that binary.
 
 ## What to expect from Syzygybases?
 

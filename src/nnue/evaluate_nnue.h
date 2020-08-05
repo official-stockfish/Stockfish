@@ -16,34 +16,33 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef EVALUATE_H_INCLUDED
-#define EVALUATE_H_INCLUDED
+// header used in NNUE evaluation function
 
-#include <string>
+#ifndef NNUE_EVALUATE_NNUE_H_INCLUDED
+#define NNUE_EVALUATE_NNUE_H_INCLUDED
 
-#include "types.h"
+#include "nnue_feature_transformer.h"
 
-class Position;
+#include <memory>
 
-namespace Eval {
+namespace Eval::NNUE {
 
-  std::string trace(const Position& pos);
-  Value evaluate(const Position& pos);
+  // Hash value of evaluation function structure
+  constexpr std::uint32_t kHashValue =
+      FeatureTransformer::GetHashValue() ^ Network::GetHashValue();
 
-  extern bool useNNUE;
-  extern std::string eval_file_loaded;
-  void init_NNUE();
-  void verify_NNUE();
+  // Deleter for automating release of memory area
+  template <typename T>
+  struct AlignedDeleter {
+    void operator()(T* ptr) const {
+      ptr->~T();
+      std_aligned_free(ptr);
+    }
+  };
 
-  namespace NNUE {
+  template <typename T>
+  using AlignedPtr = std::unique_ptr<T, AlignedDeleter<T>>;
 
-    Value evaluate(const Position& pos);
-    Value compute_eval(const Position& pos);
-    void  update_eval(const Position& pos);
-    bool  load_eval_file(const std::string& evalFile);
+}  // namespace Eval::NNUE
 
-  } // namespace NNUE
-
-} // namespace Eval
-
-#endif // #ifndef EVALUATE_H_INCLUDED
+#endif // #ifndef NNUE_EVALUATE_NNUE_H_INCLUDED
