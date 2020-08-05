@@ -32,6 +32,9 @@
 
 #elif defined(USE_SSE2)
 #include <emmintrin.h>
+
+#elif defined(IS_ARM)
+#include <arm_neon.h>
 #endif
 
 namespace Eval::NNUE {
