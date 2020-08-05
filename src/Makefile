@@ -75,7 +75,7 @@ endif
 # avx2 = yes/no       --- -mavx2           --- Use Intel Advanced Vector Extensions 2
 # pext = yes/no       --- -DUSE_PEXT       --- Use pext x86_64 asm-instruction
 # avx512 = yes/no     --- -mavx512bw       --- Use Intel Advanced Vector Extensions 512
-# neon = yes/no       --- -DIS_ARM         --- Use ARM SIMD architecture 
+# neon = yes/no       --- -DUSE_NEON       --- Use ARM SIMD architecture 
 #
 # Note that Makefile is space sensitive, so when adding new architectures
 # or modifying existing flags, you have to make sure there are no extra spaces
@@ -474,7 +474,7 @@ ifeq ($(sse3),yes)
 endif
 
 ifeq ($(neon),yes)
-	CXXFLAGS += -DIS_ARM
+	CXXFLAGS += -DUSE_NEON
 endif
 
 ifeq ($(arch),x86_64)

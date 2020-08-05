@@ -92,7 +92,7 @@ namespace Eval::NNUE::Layers {
       const __m128i kOnes = _mm_set1_epi16(1);
       const auto input_vector = reinterpret_cast<const __m128i*>(input);
 
-  #elif defined(IS_ARM)
+  #elif defined(USE_NEON)
       constexpr IndexType kNumChunks = kPaddedInputDimensions / kSimdWidth;
       const auto input_vector = reinterpret_cast<const int8x8_t*>(input);
   #endif
@@ -177,7 +177,7 @@ namespace Eval::NNUE::Layers {
         sum = _mm_hadd_epi32(sum, sum);
         output[i] = _mm_cvtsi128_si32(sum);
 
-  #elif defined(IS_ARM)
+  #elif defined(USE_NEON)
         int32x4_t sum = {biases_[i]};
         const auto row = reinterpret_cast<const int8x8_t*>(&weights_[offset]);
         for (IndexType j = 0; j < kNumChunks; ++j) {
