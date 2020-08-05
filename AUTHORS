@@ -1,10 +1,17 @@
-# List of authors for Stockfish, as of March 30, 2020
+# List of authors for Stockfish, as of August 4, 2020
 
+# Founders of the Stockfish project and fishtest infrastructure
 Tord Romstad (romstad)
 Marco Costalba (mcostalba)
 Joona Kiiski (zamar)
 Gary Linscott (glinscott)
 
+# Authors and inventors of NNUE, training, NNUE port
+Yu Nasu (ynasu87)
+Motohiro Isozaki (yaneurao)
+Hisayori Noda (nodchip)
+
+# all other authors of the code in alphabetical order
 Aditya (absimaldata)
 Adrian Petrescu (apetresc)
 Ajith Chandy Jose (ajithcj)
@@ -36,6 +43,7 @@ Dariusz Orzechowski
 David Zar
 Daylen Yang (daylen)
 DiscanX
+Dominik Schlösser (domschl)
 double-beep
 Eduardo Cáceres (eduherminio)
 Eelco de Groot (KingDefender)
@@ -115,7 +123,8 @@ Nick Pelling (nickpelling)
 Nicklas Persson (NicklasPersson)
 Niklas Fiekas (niklasf)
 Nikolay Kostov (NikolayIT)
-Nguyen Pham
+Nguyen Pham (nguyenpham)
+Norman Schmidt (FireFather)
 Ondrej Mosnáček (WOnder93)
 Oskar Werkelin Ahlin
 Pablo Vazquez
@@ -135,6 +144,7 @@ Richard Lloyd
 Rodrigo Exterckötter Tjäder
 Ron Britvich (Britvich)
 Ronald de Man (syzygy1, syzygy)
+rqs
 Ryan Schmitt
 Ryan Takker
 Sami Kiminki (skiminki)
@@ -143,6 +153,7 @@ Sergei Antonov (saproj)
 Sergei Ivanov (svivanov72)
 sf-x
 Shane Booth (shane31)
+Shawn Varghese (xXH4CKST3RXx)
 Stefan Geschwentner (locutus2)
 Stefano Cardanobile (Stefano80)
 Steinar Gunderson (sesse)
@@ -155,9 +166,11 @@ Tom Vijlbrief (tomtor)
 Tomasz Sobczyk (Sopel97)
 Torsten Franz (torfranz, tfranzer)
 Tracey Emery (basepr1me)
+tttak
 Unai Corzo (unaiic)
 Uri Blass (uriblass)
 Vince Negri (cuddlestmonkey)
+zz4032
 
 
 # Additionally, we acknowledge the authors and maintainers of fishtest,

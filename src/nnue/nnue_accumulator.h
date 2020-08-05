@@ -16,34 +16,24 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef EVALUATE_H_INCLUDED
-#define EVALUATE_H_INCLUDED
+// Class for difference calculation of NNUE evaluation function
 
-#include <string>
+#ifndef NNUE_ACCUMULATOR_H_INCLUDED
+#define NNUE_ACCUMULATOR_H_INCLUDED
 
-#include "types.h"
+#include "nnue_architecture.h"
 
-class Position;
+namespace Eval::NNUE {
 
-namespace Eval {
+  // Class that holds the result of affine transformation of input features
+  struct alignas(32) Accumulator {
+    std::int16_t
+        accumulation[2][kRefreshTriggers.size()][kTransformedFeatureDimensions];
+    Value score;
+    bool computed_accumulation;
+    bool computed_score;
+  };
 
-  std::string trace(const Position& pos);
-  Value evaluate(const Position& pos);
+}  // namespace Eval::NNUE
 
-  extern bool useNNUE;
-  extern std::string eval_file_loaded;
-  void init_NNUE();
-  void verify_NNUE();
-
-  namespace NNUE {
-
-    Value evaluate(const Position& pos);
-    Value compute_eval(const Position& pos);
-    void  update_eval(const Position& pos);
-    bool  load_eval_file(const std::string& evalFile);
-
-  } // namespace NNUE
-
-} // namespace Eval
-
-#endif // #ifndef EVALUATE_H_INCLUDED
+#endif // NNUE_ACCUMULATOR_H_INCLUDED

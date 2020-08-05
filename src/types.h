@@ -1,8 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
-  Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2020 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -203,6 +201,22 @@ enum Piece {
   PIECE_NB = 16
 };
 
+// An ID used to track the pieces. Max. 32 pieces on board.
+enum PieceId {
+  PIECE_ID_ZERO   = 0,
+  PIECE_ID_KING   = 30,
+  PIECE_ID_WKING  = 30,
+  PIECE_ID_BKING  = 31,
+  PIECE_ID_NONE   = 32
+};
+
+inline PieceId operator++(PieceId& d, int) {
+
+  PieceId x = d;
+  d = PieceId(int(d) + 1);
+  return x;
+}
+
 constexpr Value PieceValue[PHASE_NB][PIECE_NB] = {
   { VALUE_ZERO, PawnValueMg, KnightValueMg, BishopValueMg, RookValueMg, QueenValueMg, VALUE_ZERO, VALUE_ZERO,
     VALUE_ZERO, PawnValueMg, KnightValueMg, BishopValueMg, RookValueMg, QueenValueMg, VALUE_ZERO, VALUE_ZERO },
@@ -232,7 +246,8 @@ enum Square : int {
   SQ_A8, SQ_B8, SQ_C8, SQ_D8, SQ_E8, SQ_F8, SQ_G8, SQ_H8,
   SQ_NONE,
 
-  SQUARE_NB = 64
+  SQUARE_ZERO = 0,
+  SQUARE_NB   = 64
 };
 
 enum Direction : int {
@@ -255,6 +270,94 @@ enum Rank : int {
   RANK_1, RANK_2, RANK_3, RANK_4, RANK_5, RANK_6, RANK_7, RANK_8, RANK_NB
 };
 
+// unique number for each piece type on each square
+enum PieceSquare : uint32_t {
+  PS_NONE     =  0,
+  PS_W_PAWN   =  1,
+  PS_B_PAWN   =  1 * SQUARE_NB + 1,
+  PS_W_KNIGHT =  2 * SQUARE_NB + 1,
+  PS_B_KNIGHT =  3 * SQUARE_NB + 1,
+  PS_W_BISHOP =  4 * SQUARE_NB + 1,
+  PS_B_BISHOP =  5 * SQUARE_NB + 1,
+  PS_W_ROOK   =  6 * SQUARE_NB + 1,
+  PS_B_ROOK   =  7 * SQUARE_NB + 1,
+  PS_W_QUEEN  =  8 * SQUARE_NB + 1,
+  PS_B_QUEEN  =  9 * SQUARE_NB + 1,
+  PS_W_KING   = 10 * SQUARE_NB + 1,
+  PS_END      = PS_W_KING, // pieces without kings (pawns included)
+  PS_B_KING   = 11 * SQUARE_NB + 1,
+  PS_END2     = 12 * SQUARE_NB + 1
+};
+
+struct ExtPieceSquare {
+  PieceSquare from[COLOR_NB];
+};
+
+// Array for finding the PieceSquare corresponding to the piece on the board
+extern ExtPieceSquare kpp_board_index[PIECE_NB];
+
+constexpr bool is_ok(PieceId pid);
+constexpr Square rotate180(Square sq);
+
+// Structure holding which tracked piece (PieceId) is where (PieceSquare)
+class EvalList {
+
+public:
+  // Max. number of pieces without kings is 30 but must be a multiple of 4 in AVX2
+  static const int MAX_LENGTH = 32;
+
+  // Array that holds the piece id for the pieces on the board
+  PieceId piece_id_list[SQUARE_NB];
+
+  // List of pieces, separate from White and Black POV
+  PieceSquare* piece_list_fw() const { return const_cast<PieceSquare*>(pieceListFw); }
+  PieceSquare* piece_list_fb() const { return const_cast<PieceSquare*>(pieceListFb); }
+
+  // Place the piece pc with piece_id on the square sq on the board
+  void put_piece(PieceId piece_id, Square sq, Piece pc)
+  {
+      assert(is_ok(piece_id));
+      if (pc != NO_PIECE)
+      {
+          pieceListFw[piece_id] = PieceSquare(kpp_board_index[pc].from[WHITE] + sq);
+          pieceListFb[piece_id] = PieceSquare(kpp_board_index[pc].from[BLACK] + rotate180(sq));
+          piece_id_list[sq] = piece_id;
+      }
+      else
+      {
+          pieceListFw[piece_id] = PS_NONE;
+          pieceListFb[piece_id] = PS_NONE;
+          piece_id_list[sq] = piece_id;
+      }
+  }
+
+  // Convert the specified piece_id piece to ExtPieceSquare type and return it
+  ExtPieceSquare piece_with_id(PieceId piece_id) const
+  {
+      ExtPieceSquare eps;
+      eps.from[WHITE] = pieceListFw[piece_id];
+      eps.from[BLACK] = pieceListFb[piece_id];
+      return eps;
+  }
+
+private:
+  PieceSquare pieceListFw[MAX_LENGTH];
+  PieceSquare pieceListFb[MAX_LENGTH];
+};
+
+// For differential evaluation of pieces that changed since last turn
+struct DirtyPiece {
+
+  // Number of changed pieces
+  int dirty_num;
+
+  // The ids of changed pieces, max. 2 pieces can change in one move
+  PieceId pieceId[2];
+
+  // What changed from the piece with that piece number
+  ExtPieceSquare old_piece[2];
+  ExtPieceSquare new_piece[2];
+};
 
 /// Score enum stores a middlegame and an endgame value in a single integer (enum).
 /// The least significant 16 bits are used to store the middlegame value and the
@@ -280,10 +383,10 @@ inline Value mg_value(Score s) {
 }
 
 #define ENABLE_BASE_OPERATORS_ON(T)                                \
-constexpr T operator+(T d1, int d2) { return T(int(d1) + d2); } \
-constexpr T operator-(T d1, int d2) { return T(int(d1) - d2); } \
+constexpr T operator+(T d1, int d2) { return T(int(d1) + d2); }    \
+constexpr T operator-(T d1, int d2) { return T(int(d1) - d2); }    \
 constexpr T operator-(T d) { return T(-int(d)); }                  \
-inline T& operator+=(T& d1, int d2) { return d1 = d1 + d2; }         \
+inline T& operator+=(T& d1, int d2) { return d1 = d1 + d2; }       \
 inline T& operator-=(T& d1, int d2) { return d1 = d1 - d2; }
 
 #define ENABLE_INCR_OPERATORS_ON(T)                                \
@@ -302,6 +405,9 @@ inline T& operator/=(T& d, int i) { return d = T(int(d) / i); }
 ENABLE_FULL_OPERATORS_ON(Value)
 ENABLE_FULL_OPERATORS_ON(Direction)
 
+ENABLE_INCR_OPERATORS_ON(Piece)
+ENABLE_INCR_OPERATORS_ON(PieceSquare)
+ENABLE_INCR_OPERATORS_ON(PieceId)
 ENABLE_INCR_OPERATORS_ON(PieceType)
 ENABLE_INCR_OPERATORS_ON(Square)
 ENABLE_INCR_OPERATORS_ON(File)
@@ -390,6 +496,10 @@ inline Color color_of(Piece pc) {
   return Color(pc >> 3);
 }
 
+constexpr bool is_ok(PieceId pid) {
+  return pid < PIECE_ID_NONE;
+}
+
 constexpr bool is_ok(Square s) {
   return s >= SQ_A1 && s <= SQ_H8;
 }
@@ -424,6 +534,11 @@ constexpr Square from_sq(Move m) {
 
 constexpr Square to_sq(Move m) {
   return Square(m & 0x3F);
+}
+
+// Return relative square when turning the board 180 degrees
+constexpr Square rotate180(Square sq) {
+  return (Square)(sq ^ 0x3F);
 }
 
 constexpr int from_to(Move m) {

@@ -16,34 +16,30 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef EVALUATE_H_INCLUDED
-#define EVALUATE_H_INCLUDED
+//Common header of input features of NNUE evaluation function
 
-#include <string>
+#ifndef NNUE_FEATURES_COMMON_H_INCLUDED
+#define NNUE_FEATURES_COMMON_H_INCLUDED
 
-#include "types.h"
+#include "../../evaluate.h"
+#include "../nnue_common.h"
 
-class Position;
+namespace Eval::NNUE::Features {
 
-namespace Eval {
+  class IndexList;
 
-  std::string trace(const Position& pos);
-  Value evaluate(const Position& pos);
+  template <typename... FeatureTypes>
+  class FeatureSet;
 
-  extern bool useNNUE;
-  extern std::string eval_file_loaded;
-  void init_NNUE();
-  void verify_NNUE();
+  // Trigger to perform full calculations instead of difference only
+  enum class TriggerEvent {
+    kFriendKingMoved // calculate full evaluation when own king moves
+  };
 
-  namespace NNUE {
+  enum class Side {
+    kFriend // side to move
+  };
 
-    Value evaluate(const Position& pos);
-    Value compute_eval(const Position& pos);
-    void  update_eval(const Position& pos);
-    bool  load_eval_file(const std::string& evalFile);
+}  // namespace Eval::NNUE::Features
 
-  } // namespace NNUE
-
-} // namespace Eval
-
-#endif // #ifndef EVALUATE_H_INCLUDED
+#endif // #ifndef NNUE_FEATURES_COMMON_H_INCLUDED
