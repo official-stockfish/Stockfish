@@ -424,42 +424,42 @@ endif
 
 ifeq ($(avx2),yes)
 	CXXFLAGS += -DUSE_AVX2
-	ifeq ($(comp),$(filter $(comp),gcc clang mingw msys2))
+	ifeq ($(comp),$(filter $(comp),gcc clang mingw))
 		CXXFLAGS += -mavx2
 	endif
 endif
 
 ifeq ($(avx512),yes)
 	CXXFLAGS += -DUSE_AVX512
-	ifeq ($(comp),$(filter $(comp),gcc clang mingw msys2))
+	ifeq ($(comp),$(filter $(comp),gcc clang mingw))
 		CXXFLAGS += -mavx512bw
 	endif
 endif
 
 ifeq ($(sse42),yes)
 	CXXFLAGS += -DUSE_SSE42
-	ifeq ($(comp),$(filter $(comp),gcc clang mingw msys2))
+	ifeq ($(comp),$(filter $(comp),gcc clang mingw))
 		CXXFLAGS += -msse4.2
 	endif
 endif
 
 ifeq ($(sse41),yes)
 	CXXFLAGS += -DUSE_SSE41
-	ifeq ($(comp),$(filter $(comp),gcc clang mingw msys2))
+	ifeq ($(comp),$(filter $(comp),gcc clang mingw))
 		CXXFLAGS += -msse4.1
 	endif
 endif
 
 ifeq ($(ssse3),yes)
 	CXXFLAGS += -DUSE_SSSE3
-	ifeq ($(comp),$(filter $(comp),gcc clang mingw msys2))
+	ifeq ($(comp),$(filter $(comp),gcc clang mingw))
 		CXXFLAGS += -mssse3
 	endif
 endif
 
 ifeq ($(sse3),yes)
 	CXXFLAGS += -DUSE_SSE3
-	ifeq ($(comp),$(filter $(comp),gcc clang mingw msys2))
+	ifeq ($(comp),$(filter $(comp),gcc clang mingw))
 		CXXFLAGS += -msse3
 	endif
 endif
@@ -471,7 +471,7 @@ endif
 ### 3.7 pext
 ifeq ($(pext),yes)
 	CXXFLAGS += -DUSE_PEXT
-	ifeq ($(comp),$(filter $(comp),gcc clang mingw msys2))
+	ifeq ($(comp),$(filter $(comp),gcc clang mingw))
 		CXXFLAGS += -mbmi2
 	endif
 endif
@@ -551,7 +551,6 @@ help:
 	@echo "mingw                   > Gnu compiler with MinGW under Windows"
 	@echo "clang                   > LLVM Clang compiler"
 	@echo "icc                     > Intel compiler"
-	@echo "msys2                   > MSYS2"
 	@echo ""
 	@echo "Simple examples. If you don't know what to do, you likely want to run: "
 	@echo ""
