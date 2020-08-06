@@ -4,7 +4,6 @@ clone_depth: 50
 branches:
   only:
     - master
-    - nnue-player-wip
 
 # Operating system (build VM template)
 os: Visual Studio 2019
