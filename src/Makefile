@@ -97,6 +97,7 @@ avx2 = no
 pext = no
 avx512 = no
 neon = no
+ARCH = x86-64-modern
 
 ### 2.2 Architecture specific
 ifeq ($(ARCH),general-32)
@@ -569,14 +570,17 @@ help:
 	@echo ""
 	@echo "Simple examples. If you don't know what to do, you likely want to run: "
 	@echo ""
-	@echo "make build ARCH=x86-64    (This is for 64-bit systems)"
-	@echo "make build ARCH=x86-32    (This is for 32-bit systems)"
+	@echo "make -j build ARCH=x86-64    (This is for 64-bit systems)"
+	@echo "make -j build ARCH=x86-32    (This is for 32-bit systems)"
 	@echo ""
 	@echo "Advanced examples, for experienced users: "
 	@echo ""
-	@echo "make build ARCH=x86-64 COMP=clang"
-	@echo "make profile-build ARCH=x86-64-bmi2 COMP=gcc COMPCXX=g++-4.8"
+	@echo "make -j build ARCH=x86-64-modern COMP=clang"
+	@echo "make -j profile-build ARCH=x86-64-bmi2 COMP=gcc COMPCXX=g++-4.8"
 	@echo ""
+	@echo "The selected architecture $(ARCH) enables the following configuration: "
+	@echo ""
+	@$(MAKE) ARCH=$(ARCH) COMP=$(COMP) config-sanity
 
 
 .PHONY: help build profile-build strip install clean net objclean profileclean \
