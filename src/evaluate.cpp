@@ -945,6 +945,7 @@ Value Eval::evaluate(const Position& pos) {
   {
       Value balance = pos.non_pawn_material(WHITE) - pos.non_pawn_material(BLACK);
       balance += 200 * (pos.count<PAWN>(WHITE) - pos.count<PAWN>(BLACK));
+      // Take NNUE eval only on balanced positions
       if (abs(balance) < NNUEThreshold)
          return NNUE::evaluate(pos);
   }
