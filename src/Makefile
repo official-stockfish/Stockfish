@@ -33,7 +33,7 @@ PREFIX = /usr/local
 BINDIR = $(PREFIX)/bin
 
 ### Built-in benchmark for pgo-builds
-PGOBENCH = ./$(EXE) bench
+PGOBENCH = ./$(EXE) bench 16 1 13 default depth
 
 ### Source and object files
 SRCS = benchmark.cpp bitbase.cpp bitboard.cpp endgame.cpp evaluate.cpp main.cpp \
@@ -592,17 +592,21 @@ build: config-sanity
 
 profile-build: config-sanity objclean profileclean
 	@echo ""
-	@echo "Step 1/4. Building instrumented executable ..."
+	@echo "Step 1/5. Downloading NNUE net ..."
+	$(MAKE) net
+	@echo ""
+	@echo "Step 2/5. Building instrumented executable ..."
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_make)
 	@echo ""
-	@echo "Step 2/4. Running benchmark for pgo-build ..."
-	$(PGOBENCH) > /dev/null
+	@echo "Step 3/5. Running benchmarks for pgo-build ..."
+	$(PGOBENCH) false > /dev/null
+	$(PGOBENCH) true > /dev/null
 	@echo ""
-	@echo "Step 3/4. Building optimized executable ..."
+	@echo "Step 4/5. Building optimized executable ..."
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) objclean
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_use)
 	@echo ""
-	@echo "Step 4/4. Deleting profile data ..."
+	@echo "Step 5/5. Deleting profile data ..."
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) profileclean
 
 strip:

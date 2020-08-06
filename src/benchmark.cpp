@@ -93,16 +93,17 @@ const vector<string> Defaults = {
 } // namespace
 
 /// setup_bench() builds a list of UCI commands to be run by bench. There
-/// are five parameters: TT size in MB, number of search threads that
+/// are six parameters: TT size in MB, number of search threads that
 /// should be used, the limit value spent for each position, a file name
-/// where to look for positions in FEN format and the type of the limit:
-/// depth, perft, nodes and movetime (in millisecs).
+/// where to look for positions in FEN format, the type of the limit:
+/// depth, perft, nodes and movetime (in millisecs) and if NNUE evaluation
+/// should be used.
 ///
-/// bench -> search default positions up to depth 13
-/// bench 64 1 15 -> search default positions up to depth 15 (TT = 64MB)
-/// bench 64 4 5000 current movetime -> search current position with 4 threads for 5 sec
-/// bench 64 1 100000 default nodes -> search default positions for 100K nodes each
-/// bench 16 1 5 default perft -> run a perft 5 on default positions
+/// bench -> search default positions up to depth 13 with classical evaluation
+/// bench 64 1 15 -> search default positions up to depth 15 (TT = 64MB) with classical evaluation
+/// bench 64 4 5000 current movetime -> search current position with 4 threads for 5 sec with classical evaluation
+/// bench 64 1 100000 default nodes true -> search default positions for 100K nodes each with NNUE evaluation
+/// bench 16 1 5 default perft false -> run a perft 5 on default positions with classical evaluation
 
 vector<string> setup_bench(const Position& current, istream& is) {
 
@@ -115,6 +116,7 @@ vector<string> setup_bench(const Position& current, istream& is) {
   string limit     = (is >> token) ? token : "13";
   string fenFile   = (is >> token) ? token : "default";
   string limitType = (is >> token) ? token : "depth";
+  string evalType  = (is >> token) ? token : "false";
 
   go = limitType == "eval" ? "eval" : "go " + limitType + " " + limit;
 
@@ -144,6 +146,7 @@ vector<string> setup_bench(const Position& current, istream& is) {
 
   list.emplace_back("setoption name Threads value " + threads);
   list.emplace_back("setoption name Hash value " + ttSize);
+  list.emplace_back("setoption name Use NNUE value " + evalType);
   list.emplace_back("ucinewgame");
 
   for (const string& fen : fens)
