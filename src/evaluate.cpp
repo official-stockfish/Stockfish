@@ -110,7 +110,7 @@ namespace {
   constexpr Value LazyThreshold1 =  Value(1400);
   constexpr Value LazyThreshold2 =  Value(1300);
   constexpr Value SpaceThreshold = Value(12222);
-  constexpr Value NNUEThreshold  =   Value(500);
+  constexpr Value NNUEThreshold  =   Value(520);
 
   // KingAttackWeights[PieceType] contains king attack weights by piece type
   constexpr int KingAttackWeights[PIECE_TYPE_NB] = { 0, 0, 81, 52, 44, 10 };
@@ -939,10 +939,9 @@ Value Eval::evaluate(const Position& pos) {
 
   if (Eval::useNNUE)
   {
-      Value balance = pos.non_pawn_material(WHITE) - pos.non_pawn_material(BLACK);
-      balance += 200 * (pos.count<PAWN>(WHITE) - pos.count<PAWN>(BLACK));
+      Value v = eg_value(pos.psq_score());
       // Take NNUE eval only on balanced positions
-      if (abs(balance) < NNUEThreshold)
+      if (abs(v) < NNUEThreshold)
          return NNUE::evaluate(pos) + Tempo;
   }
   return Evaluation<NO_TRACE>(pos).value();

@@ -1134,7 +1134,7 @@ moves_loop: // When in check, search starts from here
       // Castling extension
       if (type_of(move) == CASTLING)
           extension = 1;
-	  
+
       // Late irreversible move extension
       if (   move == ttMove
           && pos.rule50_count() > 80
