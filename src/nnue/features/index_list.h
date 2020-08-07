@@ -5,7 +5,7 @@
 
 #if defined(EVAL_NNUE)
 
-#include "../../../position.h"
+#include "../../position.h"
 #include "../nnue_architecture.h"
 
 namespace Eval {

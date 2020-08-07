@@ -5,15 +5,15 @@
 #include <random>
 #include <fstream>
 
-#include "../../learn/learn.h"
-#include "../../learn/learning_tools.h"
+#include "../learn/learn.h"
+#include "../learn/learning_tools.h"
 
-#include "../../position.h"
-#include "../../uci.h"
-#include "../../misc.h"
-#include "../../thread_win32_osx.h"
+#include "../position.h"
+#include "../uci.h"
+#include "../misc.h"
+#include "../thread_win32_osx.h"
 
-#include "../evaluate_common.h"
+#include "../eval/evaluate_common.h"
 
 #include "evaluate_nnue.h"
 #include "evaluate_nnue_learner.h"

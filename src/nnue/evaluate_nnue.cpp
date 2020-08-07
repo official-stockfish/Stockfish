@@ -5,10 +5,10 @@
 #include <fstream>
 #include <iostream>
 
-#include "../../evaluate.h"
-#include "../../position.h"
-#include "../../misc.h"
-#include "../../uci.h"
+#include "../evaluate.h"
+#include "../position.h"
+#include "../misc.h"
+#include "../uci.h"
 
 #include "evaluate_nnue.h"
 

@@ -30,7 +30,7 @@
 #include "material.h"
 #include "pawns.h"
 #include "thread.h"
-#include "eval/nnue/evaluate_nnue.h"
+#include "nnue/evaluate_nnue.h"
 
 namespace Trace {
 

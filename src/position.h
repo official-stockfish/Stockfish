@@ -32,7 +32,7 @@
 #include "misc.h"
 #include "types.h"
 
-#include "eval/nnue/nnue_accumulator.h"
+#include "nnue/nnue_accumulator.h"
 
 
 /// StateInfo struct stores information needed to restore a Position object to

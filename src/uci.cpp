@@ -35,7 +35,7 @@
 #include "syzygy/tbprobe.h"
 
 #if defined(EVAL_NNUE) && defined(ENABLE_TEST_CMD)
-#include "eval/nnue/nnue_test_command.h"
+#include "nnue/nnue_test_command.h"
 #endif
 
 using namespace std;

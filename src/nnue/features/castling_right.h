@@ -5,7 +5,7 @@
 
 #if defined(EVAL_NNUE)
 
-#include "../../../evaluate.h"
+#include "../../evaluate.h"
 #include "features_common.h"
 
 namespace Eval {

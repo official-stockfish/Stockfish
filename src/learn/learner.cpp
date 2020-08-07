@@ -81,7 +81,7 @@
 #include "multi_think.h"
 
 #if defined(EVAL_NNUE)
-#include "../eval/nnue/evaluate_nnue_learner.h"
+#include "../nnue/evaluate_nnue_learner.h"
 #include <shared_mutex>
 #endif
 

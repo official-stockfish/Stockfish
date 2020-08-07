@@ -5,7 +5,7 @@
 
 #if defined(EVAL_LEARN) && defined(EVAL_NNUE)
 
-#include "../../../learn/learn.h"
+#include "../../learn/learn.h"
 #include "../nnue_feature_transformer.h"
 #include "trainer.h"
 #include "features/factorizer_feature_set.h"

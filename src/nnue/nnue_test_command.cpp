@@ -2,8 +2,8 @@
 
 #if defined(ENABLE_TEST_CMD) && defined(EVAL_NNUE)
 
-#include "../../thread.h"
-#include "../../uci.h"
+#include "../thread.h"
+#include "../uci.h"
 #include "evaluate_nnue.h"
 #include "nnue_test_command.h"
 

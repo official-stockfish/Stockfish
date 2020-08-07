@@ -5,7 +5,7 @@
 
 #if defined(EVAL_LEARN) && defined(EVAL_NNUE)
 
-#include "../../../learn/learn.h"
+#include "../../learn/learn.h"
 #include "../layers/clipped_relu.h"
 #include "trainer.h"
 
