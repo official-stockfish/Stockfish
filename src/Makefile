@@ -40,15 +40,15 @@ SRCS = benchmark.cpp bitbase.cpp bitboard.cpp endgame.cpp evaluate.cpp main.cpp 
 	material.cpp misc.cpp movegen.cpp movepick.cpp pawns.cpp position.cpp psqt.cpp \
 	search.cpp thread.cpp timeman.cpp tt.cpp uci.cpp ucioption.cpp tune.cpp syzygy/tbprobe.cpp \
 	eval/evaluate_mir_inv_tools.cpp \
-	eval/nnue/evaluate_nnue.cpp \
-	eval/nnue/evaluate_nnue_learner.cpp \
-	eval/nnue/features/half_kp.cpp \
-	eval/nnue/features/half_relative_kp.cpp \
-	eval/nnue/features/k.cpp \
-	eval/nnue/features/p.cpp \
-	eval/nnue/features/castling_right.cpp \
-	eval/nnue/features/enpassant.cpp \
-	eval/nnue/nnue_test_command.cpp \
+	nnue/evaluate_nnue.cpp \
+	nnue/evaluate_nnue_learner.cpp \
+	nnue/features/half_kp.cpp \
+	nnue/features/half_relative_kp.cpp \
+	nnue/features/k.cpp \
+	nnue/features/p.cpp \
+	nnue/features/castling_right.cpp \
+	nnue/features/enpassant.cpp \
+	nnue/nnue_test_command.cpp \
 	extra/sfen_packer.cpp \
 	learn/gensfen2019.cpp \
 	learn/learner.cpp \
@@ -635,12 +635,12 @@ clean: objclean profileclean
 
 # clean binaries and objects
 objclean:
-	@rm -f $(EXE) *.o ./syzygy/*.o ./learn/*.o ./extra/*.o ./eval/*.o ./eval/nnue/*.o ./eval/nnue/features/*.o
+	@rm -f $(EXE) *.o ./syzygy/*.o ./learn/*.o ./extra/*.o ./eval/*.o ./nnue/*.o ./nnue/features/*.o
 
 # clean auxiliary profiling files
 profileclean:
 	@rm -rf profdir
-	@rm -f bench.txt *.gcda *.gcno ./syzygy/*.gcda ./learn/*.gcda ./extra/*.gcda ./eval/*.gcda ./eval/nnue/*.gcda ./eval/nnue/features/*.gcda
+	@rm -f bench.txt *.gcda *.gcno ./syzygy/*.gcda ./learn/*.gcda ./extra/*.gcda ./eval/*.gcda ./nnue/*.gcda ./nnue/features/*.gcda
 	@rm -f stockfish.profdata *.profraw
 
 default:
