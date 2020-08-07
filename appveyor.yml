@@ -65,11 +65,12 @@ before_build:
       $nnuenet = $Matches.nnuenet
       Write-Host "Default net: " $nnuenet
       $nnuedownloadurl = "https://tests.stockfishchess.org/api/nn/$nnuenet"
-      if (Test-Path -Path $nnuenet) {
+      $nnuefilepath = "src\$nnuenet"
+      if (Test-Path -Path $nnuefilepath) {
             Write-Host "Already available."
       } else {
             Write-Host "Downloading " $nnuedownloadurl
-            Invoke-WebRequest -Uri $nnuedownloadurl -OutFile $nnuenet
+            Invoke-WebRequest -Uri $nnuedownloadurl -OutFile $nnuefilepath
       }
 
 build_script:
