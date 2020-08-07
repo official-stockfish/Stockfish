@@ -43,6 +43,9 @@ before_script:
   - cd src
 
 script:
+  # Download net
+  - make net
+
   # Obtain bench reference from git log
   - git log HEAD | grep "\b[Bb]ench[ :]\+[0-9]\{7\}" | head -n 1 | sed "s/[^0-9]*\([0-9]*\).*/\1/g" > git_sig
   - export benchref=$(cat git_sig)
