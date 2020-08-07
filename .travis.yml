@@ -43,6 +43,9 @@ before_script:
   - cd src
 
 script:
+  # Download net
+  - make net
+
   # Obtain bench reference from git log
   - git log HEAD | grep "\b[Bb]ench[ :]\+[0-9]\{7\}" | head -n 1 | sed "s/[^0-9]*\([0-9]*\).*/\1/g" > git_sig
   - export benchref=$(cat git_sig)
@@ -55,14 +58,26 @@ script:
   #
   # Verify bench number against various builds
   - export CXXFLAGS="-Werror -D_GLIBCXX_DEBUG"
-  - make clean && make -j2 ARCH=x86-64 optimize=no debug=yes build && ../tests/signature.sh $benchref
+  - make clean && make -j2 ARCH=x86-64-modern optimize=no debug=yes build && ../tests/signature.sh $benchref
+  - export CXXFLAGS="-Werror"
+  - make clean && make -j2 ARCH=x86-64-modern build && ../tests/signature.sh $benchref
+  - make clean && make -j2 ARCH=x86-64-ssse3 build && ../tests/signature.sh $benchref
+  - make clean && make -j2 ARCH=x86-64-sse3-popcnt build && ../tests/signature.sh $benchref
+  - make clean && make -j2 ARCH=x86-64 build && ../tests/signature.sh $benchref
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make clean && make -j2 ARCH=x86-32 optimize=no debug=yes build && ../tests/signature.sh $benchref; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make clean && make -j2 ARCH=x86-32 build && ../tests/signature.sh $benchref; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make clean && make -j2 ARCH=x86-32-old build && ../tests/signature.sh $benchref; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" && "$COMP" == "gcc" ]]; then make clean && make -j2 ARCH=x86-64-modern profile-build && ../tests/signature.sh $benchref; fi
+
+  # compile only for some more advanced architectures (might not run in travis)
+  - make clean && make -j2 ARCH=x86-64-avx2 build
+  - make clean && make -j2 ARCH=x86-64-bmi2 build
+  # needs gcc 10 to compile
+  - if [[ "$COMPILER" != "g++-8" ]]; then make clean && make -j2 ARCH=x86-64-avx512 build; fi
 
   #
   # Check perft and reproducible search
-  - export CXXFLAGS="-Werror"
-  - make clean && make -j2 ARCH=x86-64 build
+  - make clean && make -j2 ARCH=x86-64-modern build
   - ../tests/perft.sh
   - ../tests/reprosearch.sh
 
@@ -70,11 +85,11 @@ script:
   # Valgrind
   #
   - export CXXFLAGS="-O1 -fno-inline"
-  - if [ -x "$(command -v valgrind )" ]; then make clean && make -j2 ARCH=x86-64 debug=yes optimize=no build > /dev/null && ../tests/instrumented.sh --valgrind; fi
+  - if [ -x "$(command -v valgrind )" ]; then make clean && make -j2 ARCH=x86-64-modern debug=yes optimize=no build > /dev/null && ../tests/instrumented.sh --valgrind; fi
   - if [ -x "$(command -v valgrind )" ]; then ../tests/instrumented.sh --valgrind-thread; fi
 
   #
   # Sanitizer
   #
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make clean && make -j2 ARCH=x86-64 sanitize=undefined optimize=no debug=yes build > /dev/null && ../tests/instrumented.sh --sanitizer-undefined; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make clean && make -j2 ARCH=x86-64 sanitize=thread    optimize=no debug=yes build > /dev/null && ../tests/instrumented.sh --sanitizer-thread; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make clean && make -j2 ARCH=x86-64-modern sanitize=undefined optimize=no debug=yes build > /dev/null && ../tests/instrumented.sh --sanitizer-undefined; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make clean && make -j2 ARCH=x86-64-modern sanitize=thread    optimize=no debug=yes build > /dev/null && ../tests/instrumented.sh --sanitizer-thread; fi
