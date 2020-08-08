@@ -1,8 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
-  Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2020 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -226,6 +224,8 @@ void MainThread::search() {
   Color us = rootPos.side_to_move();
   Time.init(Limits, us, rootPos.game_ply());
   TT.new_search();
+
+  Eval::verify_NNUE();
 
   if (rootMoves.empty())
   {
@@ -925,9 +925,12 @@ namespace {
 
                 if (value >= probcutBeta)
                 {
-                    tte->save(posKey, value_to_tt(value, ss->ply), ttPv,
-                        BOUND_LOWER,
-                        depth - 3, move, ss->staticEval);
+                    if ( !(ttHit
+                       && tte->depth() >= depth - 3
+                       && ttValue != VALUE_NONE))
+                        tte->save(posKey, value_to_tt(value, ss->ply), ttPv,
+                            BOUND_LOWER,
+                            depth - 3, move, ss->staticEval);
                     return value;
                 }
             }
@@ -981,6 +984,10 @@ moves_loop: // When in check, search starts from here
       // of lower "TB rank" if we are in a TB root position.
       if (rootNode && !std::count(thisThread->rootMoves.begin() + thisThread->pvIdx,
                                   thisThread->rootMoves.begin() + thisThread->pvLast, move))
+          continue;
+
+      // Check for legality
+      if (!rootNode && !pos.legal(move))
           continue;
 
       ss->moveCount = ++moveCount;
@@ -1064,7 +1071,7 @@ moves_loop: // When in check, search starts from here
       // search of (alpha-s, beta-s), and just one fails high on (alpha, beta),
       // then that move is singular and should be extended. To verify this we do
       // a reduced search on all the other moves but the ttMove and if the
-      // result is lower than ttValue minus a margin then we will extend the ttMove.
+      // result is lower than ttValue minus a margin, then we will extend the ttMove.
       if (    depth >= 6
           &&  move == ttMove
           && !rootNode
@@ -1128,24 +1135,11 @@ moves_loop: // When in check, search starts from here
       if (type_of(move) == CASTLING)
           extension = 1;
 
-      // Late irreversible move extension
-      if (   move == ttMove
-          && pos.rule50_count() > 80
-          && (captureOrPromotion || type_of(movedPiece) == PAWN))
-          extension = 2;
-
       // Add extension to new depth
       newDepth += extension;
 
       // Speculative prefetch as early as possible
       prefetch(TT.first_entry(pos.key_after(move)));
-
-      // Check for legality just before making the move
-      if (!rootNode && !pos.legal(move))
-      {
-          ss->moveCount = --moveCount;
-          continue;
-      }
 
       // Update the current move (this must be done after singular extension search)
       ss->currentMove = move;
@@ -1169,6 +1163,13 @@ moves_loop: // When in check, search starts from here
               || thisThread->ttHitAverage < 415 * TtHitAverageResolution * TtHitAverageWindow / 1024))
       {
           Depth r = reduction(improving, depth, moveCount);
+
+          // Decrease reduction at non-check cut nodes for second move at low depths
+          if (   cutNode
+              && depth <= 10
+              && moveCount <= 2
+              && !ss->inCheck)
+              r--;
 
           // Decrease reduction if the ttHit running average is large
           if (thisThread->ttHitAverage > 473 * TtHitAverageResolution * TtHitAverageWindow / 1024)

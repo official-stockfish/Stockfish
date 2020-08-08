@@ -1,47 +1,50 @@
-﻿//Common header of input features of NNUE evaluation function
+/*
+  Stockfish, a UCI chess playing engine derived from Glaurung 2.1
+  Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
 
-#ifndef _NNUE_FEATURES_COMMON_H_
-#define _NNUE_FEATURES_COMMON_H_
+  Stockfish is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
 
-#if defined(EVAL_NNUE)
+  Stockfish is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+//Common header of input features of NNUE evaluation function
+
+#ifndef NNUE_FEATURES_COMMON_H_INCLUDED
+#define NNUE_FEATURES_COMMON_H_INCLUDED
 
 #include "../../evaluate.h"
 #include "../nnue_common.h"
 
-namespace Eval {
+namespace Eval::NNUE::Features {
 
-namespace NNUE {
+  class IndexList;
 
-namespace Features {
+  template <typename... FeatureTypes>
+  class FeatureSet;
 
-// Index list type
-class IndexList;
+  // Trigger to perform full calculations instead of difference only
+  enum class TriggerEvent {
+    kNone, // Calculate the difference whenever possible
+    kFriendKingMoved, // calculate all when own ball moves
+    kEnemyKingMoved, // do all calculations when enemy balls move
+    kAnyKingMoved, // do all calculations if either ball moves
+    kAnyPieceMoved, // always do all calculations
+  };
 
-// Class template that represents the feature set
-template <typename... FeatureTypes>
-class FeatureSet;
+  enum class Side {
+    kFriend, // side to move
+    kEnemy, // opponent
+  };
 
-// Type of timing to perform all calculations instead of difference calculation
-enum class TriggerEvent {
-  kNone, // Calculate the difference whenever possible
-  kFriendKingMoved, // calculate all when own ball moves
-  kEnemyKingMoved, // do all calculations when enemy balls move
-  kAnyKingMoved, // do all calculations if either ball moves
-  kAnyPieceMoved, // always do all calculations
-};
+}  // namespace Eval::NNUE::Features
 
-// turn side or other side
-enum class Side {
-  kFriend, // turn side
-  kEnemy, // opponent
-};
-
-}  // namespace Features
-
-}  // namespace NNUE
-
-}  // namespace Eval
-
-#endif  // defined(EVAL_NNUE)
-
-#endif
+#endif // #ifndef NNUE_FEATURES_COMMON_H_INCLUDED

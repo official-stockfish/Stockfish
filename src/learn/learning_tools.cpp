@@ -28,17 +28,17 @@ namespace EvalLearningTools
 	void init_min_index_flag()
 	{
 		// Initialization of mir_piece and inv_piece must be completed.
-		assert(mir_piece(Eval::f_pawn) == Eval::e_pawn);
+		assert(Eval::mir_piece(PieceSquare::PS_W_PAWN) == PieceSquare::PS_B_PAWN);
 
 		// Initialize the flag array for dimension reduction
 		// Not involved in KPPP.
 
 		KK g_kk;
-		g_kk.set(SQUARE_NB, Eval::fe_end, 0);
+		g_kk.set(SQUARE_NB, PieceSquare::PS_END, 0);
 		KKP g_kkp;
-		g_kkp.set(SQUARE_NB, Eval::fe_end, g_kk.max_index());
+		g_kkp.set(SQUARE_NB, PieceSquare::PS_END, g_kk.max_index());
 		KPP g_kpp;
-		g_kpp.set(SQUARE_NB, Eval::fe_end, g_kkp.max_index());
+		g_kpp.set(SQUARE_NB, PieceSquare::PS_END, g_kkp.max_index());
 
 		uint64_t size = g_kpp.max_index();
 		min_index_flag.resize(size);
@@ -123,22 +123,22 @@ namespace EvalLearningTools
 		// Determine if it is correct.
 
 		KK g_kk;
-		g_kk.set(SQUARE_NB, Eval::fe_end, 0);
+		g_kk.set(SQUARE_NB, PieceSquare::PS_END, 0);
 		KKP g_kkp;
-		g_kkp.set(SQUARE_NB, Eval::fe_end, g_kk.max_index());
+		g_kkp.set(SQUARE_NB, PieceSquare::PS_END, g_kk.max_index());
 		KPP g_kpp;
-		g_kpp.set(SQUARE_NB, Eval::fe_end, g_kkp.max_index());
+		g_kpp.set(SQUARE_NB, PieceSquare::PS_END, g_kkp.max_index());
 
 		std::vector<bool> f;
 		f.resize(g_kpp.max_index() - g_kpp.min_index());
 
 		for(auto k = SQUARE_ZERO ; k < SQUARE_NB ; ++k)
-			for(auto p0 = BonaPiece::BONA_PIECE_ZERO; p0 < fe_end ; ++p0)
-				for (auto p1 = BonaPiece::BONA_PIECE_ZERO; p1 < fe_end; ++p1)
+			for(auto p0 = PieceSquare::PS_NONE; p0 < PieceSquare::PS_END ; ++p0)
+				for (auto p1 = PieceSquare::PS_NONE; p1 < PieceSquare::PS_END; ++p1)
 				{
 					KPP kpp_org = g_kpp.fromKPP(k,p0,p1);
 					KPP kpp0;
-					KPP kpp1 = g_kpp.fromKPP(Mir(k), mir_piece(p0), mir_piece(p1));
+					KPP kpp1 = g_kpp.fromKPP(flip_file(k), mir_piece(p0), mir_piece(p1));
 					KPP kpp_array[2];
 
 					auto index = kpp_org.toIndex();
@@ -172,7 +172,7 @@ namespace EvalLearningTools
 		// Test for missing KPPP calculations
 
 		KPPP g_kppp;
-		g_kppp.set(15, Eval::fe_end,0);
+		g_kppp.set(15, PieceSquare::PS_END,0);
 		uint64_t min_index = g_kppp.min_index();
 		uint64_t max_index = g_kppp.max_index();
 
@@ -214,7 +214,7 @@ namespace EvalLearningTools
 			for (int i = 0; i<10000; ++i) // As a test, assuming a large fe_end, try turning at 10000.
 				for (int j = 0; j < i; ++j)
 				{
-					auto kkpp = g_kkpp.fromKKPP(k, (BonaPiece)i, (BonaPiece)j);
+					auto kkpp = g_kkpp.fromKKPP(k, (PieceSquare)i, (PieceSquare)j);
 					auto r = kkpp.toRawIndex();
 					assert(n++ == r);
 					auto kkpp2 = g_kkpp.fromIndex(r + g_kkpp.min_index());

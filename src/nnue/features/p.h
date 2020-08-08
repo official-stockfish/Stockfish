@@ -14,7 +14,7 @@ namespace NNUE {
 
 namespace Features {
 
-// Feature P: BonaPiece of pieces other than balls
+// Feature P: PieceSquare of pieces other than balls
 class P {
  public:
   // feature quantity name
@@ -22,9 +22,9 @@ class P {
   // Hash value embedded in the evaluation function file
   static constexpr std::uint32_t kHashValue = 0x764CFB4Bu;
   // number of feature dimensions
-  static constexpr IndexType kDimensions = fe_end;
+  static constexpr IndexType kDimensions = PieceSquare::PS_END;
   // The maximum value of the number of indexes whose value is 1 at the same time among the feature values
-  static constexpr IndexType kMaxActiveDimensions = PIECE_NUMBER_KING;
+  static constexpr IndexType kMaxActiveDimensions = PieceId::PIECE_ID_KING;
   // Timing of full calculation instead of difference calculation
   static constexpr TriggerEvent kRefreshTrigger = TriggerEvent::kNone;
 

@@ -1,5 +1,5 @@
 language: cpp
-dist: xenial
+dist: bionic
 
 matrix:
   include:
@@ -7,7 +7,6 @@ matrix:
       compiler: gcc
       addons:
         apt:
-          sources: ['ubuntu-toolchain-r-test']
           packages: ['g++-8', 'g++-8-multilib', 'g++-multilib', 'valgrind', 'expect', 'curl']
       env:
         - COMPILER=g++-8
@@ -17,23 +16,23 @@ matrix:
       compiler: clang
       addons:
         apt:
-          sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-xenial-6.0']
-          packages: ['clang-6.0', 'llvm-6.0-dev', 'g++-multilib', 'valgrind', 'expect', 'curl']
+          packages: ['clang-10', 'llvm-10-dev', 'g++-multilib', 'valgrind', 'expect', 'curl']
       env:
-        - COMPILER=clang++-6.0
+        - COMPILER=clang++-10
         - COMP=clang
-        - LDFLAGS=-fuse-ld=lld
 
     - os: osx
+      osx_image: xcode12
       compiler: gcc
       env:
         - COMPILER=g++
         - COMP=gcc
 
     - os: osx
+      osx_image: xcode12
       compiler: clang
       env:
-        - COMPILER=clang++ V='Apple LLVM 9.4.1' # Apple LLVM version 9.1.0 (clang-902.0.39.2)
+        - COMPILER=clang++
         - COMP=clang
 
 branches:
@@ -48,26 +47,34 @@ script:
   - git log HEAD | grep "\b[Bb]ench[ :]\+[0-9]\{7\}" | head -n 1 | sed "s/[^0-9]*\([0-9]*\).*/\1/g" > git_sig
   - export benchref=$(cat git_sig)
   - echo "Reference bench:" $benchref
+
+  #
+  # Compiler version string
+  - $COMPILER -v
+
   #
   # Verify bench number against various builds
   - export CXXFLAGS="-Werror -D_GLIBCXX_DEBUG"
   - make clean && make -j2 ARCH=x86-64 optimize=no debug=yes build && ../tests/signature.sh $benchref
-  - make clean && make -j2 ARCH=x86-32 optimize=no debug=yes build && ../tests/signature.sh $benchref
-  - make clean && make -j2 ARCH=x86-32 build && ../tests/signature.sh $benchref
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make clean && make -j2 ARCH=x86-32 optimize=no debug=yes build && ../tests/signature.sh $benchref; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make clean && make -j2 ARCH=x86-32 build && ../tests/signature.sh $benchref; fi
 
   #
   # Check perft and reproducible search
+  - export CXXFLAGS="-Werror"
+  - make clean && make -j2 ARCH=x86-64 build
   - ../tests/perft.sh
   - ../tests/reprosearch.sh
+
   #
   # Valgrind
   #
   - export CXXFLAGS="-O1 -fno-inline"
   - if [ -x "$(command -v valgrind )" ]; then make clean && make -j2 ARCH=x86-64 debug=yes optimize=no build > /dev/null && ../tests/instrumented.sh --valgrind; fi
   - if [ -x "$(command -v valgrind )" ]; then ../tests/instrumented.sh --valgrind-thread; fi
+
   #
   # Sanitizer
   #
-  # Use g++-8 as a proxy for having sanitizers, might need revision as they become available for more recent versions of clang/gcc
-  - if [[ "$COMPILER" == "g++-8" ]]; then make clean && make -j2 ARCH=x86-64 sanitize=undefined optimize=no debug=yes build > /dev/null && ../tests/instrumented.sh --sanitizer-undefined; fi
-  - if [[ "$COMPILER" == "g++-8" ]]; then make clean && make -j2 ARCH=x86-64 sanitize=thread    optimize=no debug=yes build > /dev/null && ../tests/instrumented.sh --sanitizer-thread; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make clean && make -j2 ARCH=x86-64 sanitize=undefined optimize=no debug=yes build > /dev/null && ../tests/instrumented.sh --sanitizer-undefined; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make clean && make -j2 ARCH=x86-64 sanitize=thread    optimize=no debug=yes build > /dev/null && ../tests/instrumented.sh --sanitizer-thread; fi

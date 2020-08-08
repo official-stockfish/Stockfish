@@ -17,13 +17,13 @@ void K::AppendActiveIndices(
   // do nothing if array size is small to avoid compiler warning
   if (RawFeatures::kMaxActiveDimensions < kMaxActiveDimensions) return;
 
-  const BonaPiece* pieces = (perspective == BLACK) ?
+  const PieceSquare* pieces = (perspective == BLACK) ?
       pos.eval_list()->piece_list_fb() :
       pos.eval_list()->piece_list_fw();
-  assert(pieces[PIECE_NUMBER_BKING] != BONA_PIECE_ZERO);
-  assert(pieces[PIECE_NUMBER_WKING] != BONA_PIECE_ZERO);
-  for (PieceNumber i = PIECE_NUMBER_KING; i < PIECE_NUMBER_NB; ++i) {
-    active->push_back(pieces[i] - fe_end);
+  assert(pieces[PieceId::PIECE_ID_BKING] != PieceSquare::PS_NONE);
+  assert(pieces[PieceId::PIECE_ID_WKING] != PieceSquare::PS_NONE);
+  for (PieceId i = PieceId::PIECE_ID_KING; i < PieceId::PIECE_ID_NONE; ++i) {
+    active->push_back(pieces[i] - PieceSquare::PS_END);
   }
 }
 
@@ -32,11 +32,11 @@ void K::AppendChangedIndices(
     const Position& pos, Color perspective,
     IndexList* removed, IndexList* added) {
   const auto& dp = pos.state()->dirtyPiece;
-  if (dp.pieceNo[0] >= PIECE_NUMBER_KING) {
+  if (dp.pieceId[0] >= PieceId::PIECE_ID_KING) {
     removed->push_back(
-        dp.changed_piece[0].old_piece.from[perspective] - fe_end);
+        dp.old_piece[0].from[perspective] - PieceSquare::PS_END);
     added->push_back(
-        dp.changed_piece[0].new_piece.from[perspective] - fe_end);
+        dp.new_piece[0].from[perspective] - PieceSquare::PS_END);
   }
 }
 

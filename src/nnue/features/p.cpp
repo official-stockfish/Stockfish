@@ -17,11 +17,11 @@ void P::AppendActiveIndices(
   // do nothing if array size is small to avoid compiler warning
   if (RawFeatures::kMaxActiveDimensions < kMaxActiveDimensions) return;
 
-  const BonaPiece* pieces = (perspective == BLACK) ?
+  const PieceSquare* pieces = (perspective == BLACK) ?
       pos.eval_list()->piece_list_fb() :
       pos.eval_list()->piece_list_fw();
-  for (PieceNumber i = PIECE_NUMBER_ZERO; i < PIECE_NUMBER_KING; ++i) {
-    if (pieces[i] != Eval::BONA_PIECE_ZERO) {
+  for (PieceId i = PieceId::PIECE_ID_ZERO; i < PieceId::PIECE_ID_KING; ++i) {
+    if (pieces[i] != PieceSquare::PS_NONE) {
       active->push_back(pieces[i]);
     }
   }
@@ -33,12 +33,12 @@ void P::AppendChangedIndices(
     IndexList* removed, IndexList* added) {
   const auto& dp = pos.state()->dirtyPiece;
   for (int i = 0; i < dp.dirty_num; ++i) {
-    if (dp.pieceNo[i] >= PIECE_NUMBER_KING) continue;
-    if (dp.changed_piece[i].old_piece.from[perspective] != Eval::BONA_PIECE_ZERO) {
-      removed->push_back(dp.changed_piece[i].old_piece.from[perspective]);
+    if (dp.pieceId[i] >= PieceId::PIECE_ID_KING) continue;
+    if (dp.old_piece[i].from[perspective] != PieceSquare::PS_NONE) {
+      removed->push_back(dp.old_piece[i].from[perspective]);
     }
-    if (dp.changed_piece[i].new_piece.from[perspective] != Eval::BONA_PIECE_ZERO) {
-      added->push_back(dp.changed_piece[i].new_piece.from[perspective]);
+    if (dp.new_piece[i].from[perspective] != PieceSquare::PS_NONE) {
+      added->push_back(dp.new_piece[i].from[perspective]);
     }
   }
 }

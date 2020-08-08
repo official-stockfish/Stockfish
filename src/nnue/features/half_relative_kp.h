@@ -25,7 +25,7 @@ class HalfRelativeKP {
   static constexpr std::uint32_t kHashValue =
       0xF9180919u ^ (AssociatedKing == Side::kFriend);
   // Piece type excluding balls
-  static constexpr IndexType kNumPieceKinds = (fe_end - fe_hand_end) / SQUARE_NB;
+  static constexpr IndexType kNumPieceKinds = (PieceSquare::PS_END - PieceSquare::PS_W_PAWN) / SQUARE_NB;
   // width of the virtual board with the ball in the center
   static constexpr IndexType kBoardWidth = FILE_NB * 2 - 1;
   // height of a virtual board with balls in the center
@@ -34,7 +34,7 @@ class HalfRelativeKP {
   static constexpr IndexType kDimensions =
       kNumPieceKinds * kBoardHeight * kBoardWidth;
   // The maximum value of the number of indexes whose value is 1 at the same time among the feature values
-  static constexpr IndexType kMaxActiveDimensions = PIECE_NUMBER_KING;
+  static constexpr IndexType kMaxActiveDimensions = PieceId::PIECE_ID_KING;
   // Timing of full calculation instead of difference calculation
   static constexpr TriggerEvent kRefreshTrigger =
       (AssociatedKing == Side::kFriend) ?
@@ -48,13 +48,13 @@ class HalfRelativeKP {
   static void AppendChangedIndices(const Position& pos, Color perspective,
                                    IndexList* removed, IndexList* added);
 
-  // Find the index of the feature quantity from the ball position and BonaPiece
-  static IndexType MakeIndex(Square sq_k, BonaPiece p);
+  // Find the index of the feature quantity from the ball position and PieceSquare
+  static IndexType MakeIndex(Square sq_k, PieceSquare p);
 
  private:
   // Get the piece information
   static void GetPieces(const Position& pos, Color perspective,
-                        BonaPiece** pieces, Square* sq_target_k);
+                        PieceSquare** pieces, Square* sq_target_k);
 };
 
 }  // namespace Features

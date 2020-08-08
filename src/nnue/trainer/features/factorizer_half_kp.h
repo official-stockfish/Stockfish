@@ -62,8 +62,8 @@ class Factorizer<HalfKP<AssociatedKing>> {
     IndexType index_offset = AppendBaseFeature<FeatureType>(
         kProperties[kFeaturesHalfKP], base_index, training_features);
 
-    const auto sq_k = static_cast<Square>(base_index / fe_end);
-    const auto p = static_cast<BonaPiece>(base_index % fe_end);
+    const auto sq_k = static_cast<Square>(base_index / PieceSquare::PS_END);
+    const auto p = static_cast<PieceSquare>(base_index % PieceSquare::PS_END);
     // kFeaturesHalfK
     {
       const auto& properties = kProperties[kFeaturesHalfK];
@@ -76,7 +76,7 @@ class Factorizer<HalfKP<AssociatedKing>> {
     index_offset += InheritFeaturesIfRequired<P>(
         index_offset, kProperties[kFeaturesP], p, training_features);
     // kFeaturesHalfRelativeKP
-    if (p >= fe_hand_end) {
+    if (p >= PieceSquare::PS_W_PAWN) {
       index_offset += InheritFeaturesIfRequired<HalfRelativeKP<AssociatedKing>>(
           index_offset, kProperties[kFeaturesHalfRelativeKP],
           HalfRelativeKP<AssociatedKing>::MakeIndex(sq_k, p),

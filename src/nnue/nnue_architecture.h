@@ -1,33 +1,38 @@
-﻿// Input features and network structure used in NNUE evaluation function
+/*
+  Stockfish, a UCI chess playing engine derived from Glaurung 2.1
+  Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
 
-#ifndef _NNUE_ARCHITECTURE_H_
-#define _NNUE_ARCHITECTURE_H_
+  Stockfish is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
 
-#if defined(EVAL_NNUE)
+  Stockfish is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
 
-// include a header that defines the input features and network structure
-//#include "architectures/k-p_256x2-32-32.h"
-//#include "architectures/k-p-cr_256x2-32-32.h"
-//#include "architectures/k-p-cr-ep_256x2-32-32.h"
+  You should have received a copy of the GNU General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+// Input features and network structure used in NNUE evaluation function
+
+#ifndef NNUE_ARCHITECTURE_H_INCLUDED
+#define NNUE_ARCHITECTURE_H_INCLUDED
+
+// Defines the network structure
 #include "architectures/halfkp_256x2-32-32.h"
-//#include "architectures/halfkp-cr-ep_256x2-32-32.h"
-//#include "architectures/halfkp_384x2-32-32.h"
 
-namespace Eval {
+namespace Eval::NNUE {
 
-namespace NNUE {
+  static_assert(kTransformedFeatureDimensions % kMaxSimdWidth == 0, "");
+  static_assert(Network::kOutputDimensions == 1, "");
+  static_assert(std::is_same<Network::OutputType, std::int32_t>::value, "");
 
-static_assert(kTransformedFeatureDimensions % kMaxSimdWidth == 0, "");
-static_assert(Network::kOutputDimensions == 1, "");
-static_assert(std::is_same<Network::OutputType, std::int32_t>::value, "");
+  // Trigger for full calculation instead of difference calculation
+  constexpr auto kRefreshTriggers = RawFeatures::kRefreshTriggers;
 
-// List of timings to perform all calculations instead of difference calculation
-constexpr auto kRefreshTriggers = RawFeatures::kRefreshTriggers;
+}  // namespace Eval::NNUE
 
-}  // namespace NNUE
-
-}  // namespace Eval
-
-#endif  // defined(EVAL_NNUE)
-
-#endif
+#endif // #ifndef NNUE_ARCHITECTURE_H_INCLUDED

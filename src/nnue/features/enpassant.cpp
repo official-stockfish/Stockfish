@@ -23,7 +23,7 @@ namespace Eval {
         }
 
         if (perspective == BLACK) {
-          epSquare = Inv(epSquare);
+          epSquare = rotate180(epSquare);
         }
 
         auto file = file_of(epSquare);

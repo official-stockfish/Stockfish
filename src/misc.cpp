@@ -1,8 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
-  Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2020 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -42,11 +40,11 @@ typedef bool(*fun3_t)(HANDLE, CONST GROUP_AFFINITY*, PGROUP_AFFINITY);
 #endif
 
 #include <fstream>
-#include <functional>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <vector>
+#include <cstdlib>
 
 #if defined(__linux__) && !defined(__ANDROID__)
 #include <stdlib.h>
@@ -140,7 +138,7 @@ const string engine_info(bool to_uci) {
   string month, day, year;
   stringstream ss, date(__DATE__); // From compiler, format is "Sep 21 2008"
 
-  ss << "Stockfish+NNUE " << Version << setfill('0');
+  ss << "Stockfish " << Version << setfill('0');
 
   if (Version.empty())
   {
@@ -148,10 +146,8 @@ const string engine_info(bool to_uci) {
       ss << setw(2) << day << setw(2) << (1 + months.find(month) / 4) << year.substr(2);
   }
 
-  ss << (Is64Bit ? " 64" : "")
-     << (HasPext ? " BMI2" : (HasPopCnt ? " POPCNT" : ""))
-     << (to_uci  ? "\nid author ": " by ")
-     << "T. Romstad, M. Costalba, J. Kiiski, G. Linscott, H. Noda, Y. Nasu, M. Isozaki";
+  ss << (to_uci  ? "\nid author ": " by ")
+     << "the Stockfish developers (see AUTHORS file)";
 
   return ss.str();
 }
@@ -216,7 +212,33 @@ const std::string compiler_info() {
      compiler += " on unknown system";
   #endif
 
-  compiler += "\n __VERSION__ macro expands to: ";
+  compiler += "\nCompilation settings include: ";
+  compiler += (Is64Bit ? " 64bit" : " 32bit");
+  #if defined(USE_AVX512)
+    compiler += " AVX512";
+  #endif
+  #if defined(USE_AVX2)
+    compiler += " AVX2";
+  #endif
+  #if defined(USE_SSE42)
+    compiler += " SSE42";
+  #endif
+  #if defined(USE_SSE41)
+    compiler += " SSE41";
+  #endif
+  #if defined(USE_SSSE3)
+    compiler += " SSSE3";
+  #endif
+  #if defined(USE_SSE3)
+    compiler += " SSE3";
+  #endif
+    compiler += (HasPext ? " BMI2" : "");
+    compiler += (HasPopCnt ? " POPCNT" : "");
+  #if !defined(NDEBUG)
+    compiler += " DEBUG";
+  #endif
+
+  compiler += "\n__VERSION__ macro expands to: ";
   #ifdef __VERSION__
      compiler += __VERSION__;
   #else
@@ -294,6 +316,29 @@ void prefetch(void* addr) {
 
 #endif
 
+/// Wrappers for systems where the c++17 implementation doesn't guarantee the availability of aligned_alloc.
+/// Memory allocated with std_aligned_alloc must be freed with std_aligned_free.
+///
+
+void* std_aligned_alloc(size_t alignment, size_t size) {
+#if defined(__APPLE__)
+  return aligned_alloc(alignment, size);
+#elif defined(_WIN32)
+  return _mm_malloc(size, alignment);
+#else
+  return std::aligned_alloc(alignment, size);
+#endif
+}
+
+void std_aligned_free(void* ptr) {
+#if defined(__APPLE__)
+  free(ptr);
+#elif defined(_WIN32)
+  _mm_free(ptr);
+#else
+  free(ptr);
+#endif
+}
 
 /// aligned_ttmem_alloc() will return suitably aligned memory, and if possible use large pages.
 /// The returned pointer is the aligned one, while the mem argument is the one that needs
@@ -371,8 +416,8 @@ void* aligned_ttmem_alloc(size_t allocSize, void*& mem) {
   {
       if (mem)
           sync_cout << "info string Hash table allocation: Windows large pages used." << sync_endl;
-      //else
-          //sync_cout << "info string Hash table allocation: Windows large pages not used." << sync_endl;
+      else
+          sync_cout << "info string Hash table allocation: Windows large pages not used." << sync_endl;
   }
   firstCall = false;
 
@@ -530,99 +575,99 @@ void bindThisThread(size_t idx) {
 // Returns a string that represents the current time. (Used when learning evaluation functions)
 std::string now_string()
 {
-  // Using std::ctime(), localtime() gives a warning that MSVC is not secure.
-  // This shouldn't happen in the C++ standard, but...
+    // Using std::ctime(), localtime() gives a warning that MSVC is not secure.
+    // This shouldn't happen in the C++ standard, but...
 
 #if defined(_MSC_VER)
   // C4996 : 'ctime' : This function or variable may be unsafe.Consider using ctime_s instead.
 #pragma warning(disable : 4996)
 #endif
 
-  auto now = std::chrono::system_clock::now();
-  auto tp = std::chrono::system_clock::to_time_t(now);
-  auto result = string(std::ctime(&tp));
+    auto now = std::chrono::system_clock::now();
+    auto tp = std::chrono::system_clock::to_time_t(now);
+    auto result = string(std::ctime(&tp));
 
-  // remove line endings if they are included at the end
-  while (*result.rbegin() == '\n' || (*result.rbegin() == '\r'))
-    result.pop_back();
-  return result;
+    // remove line endings if they are included at the end
+    while (*result.rbegin() == '\n' || (*result.rbegin() == '\r'))
+        result.pop_back();
+    return result;
 }
 
 void sleep(int ms)
 {
-	std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+    std::this_thread::sleep_for(std::chrono::milliseconds(ms));
 }
 
 void* aligned_malloc(size_t size, size_t align)
 {
-	void* p = _mm_malloc(size, align);
-	if (p == nullptr)
-	{
-		std::cout << "info string can't allocate memory. sise = " << size << std::endl;
-		exit(1);
-	}
-	return p;
+    void* p = _mm_malloc(size, align);
+    if (p == nullptr)
+    {
+        std::cout << "info string can't allocate memory. sise = " << size << std::endl;
+        exit(1);
+    }
+    return p;
 }
 
 int read_file_to_memory(std::string filename, std::function<void* (uint64_t)> callback_func)
 {
-  fstream fs(filename, ios::in | ios::binary);
-  if (fs.fail())
-    return 1;
-
-  fs.seekg(0, fstream::end);
-  uint64_t eofPos = (uint64_t)fs.tellg();
-  fs.clear(); // Otherwise the next seek may fail.
-  fs.seekg(0, fstream::beg);
-  uint64_t begPos = (uint64_t)fs.tellg();
-  uint64_t file_size = eofPos - begPos;
-  //std::cout << "filename = " << filename << " , file_size = " << file_size << endl;
-
-  // I know the file size, so call callback_func to get a buffer for this,
-  // Get the pointer.
-  void* ptr = callback_func(file_size);
-
-  // If the buffer could not be secured, or if the file size is different from the expected file size,
-  // It is supposed to return nullptr. At this time, reading is interrupted and an error is returned.
-  if (ptr == nullptr)
-    return 2;
-
-  // read in pieces
-
-  const uint64_t block_size = 1024 * 1024 * 1024; // number of elements to read in one read (1GB)
-  for (uint64_t pos = 0; pos < file_size; pos += block_size)
-  {
-    // size to read this time
-    uint64_t read_size = (pos + block_size < file_size) ? block_size : (file_size - pos);
-    fs.read((char*)ptr + pos, read_size);
-
-    // Read error occurred in the middle of the file.
+    fstream fs(filename, ios::in | ios::binary);
     if (fs.fail())
-      return 2;
+        return 1;
 
-    //cout << ".";
-  }
-  fs.close();
+    fs.seekg(0, fstream::end);
+    uint64_t eofPos = (uint64_t)fs.tellg();
+    fs.clear(); // Otherwise the next seek may fail.
+    fs.seekg(0, fstream::beg);
+    uint64_t begPos = (uint64_t)fs.tellg();
+    uint64_t file_size = eofPos - begPos;
+    //std::cout << "filename = " << filename << " , file_size = " << file_size << endl;
 
-  return 0;
+    // I know the file size, so call callback_func to get a buffer for this,
+    // Get the pointer.
+    void* ptr = callback_func(file_size);
+
+    // If the buffer could not be secured, or if the file size is different from the expected file size,
+    // It is supposed to return nullptr. At this time, reading is interrupted and an error is returned.
+    if (ptr == nullptr)
+        return 2;
+
+    // read in pieces
+
+    const uint64_t block_size = 1024 * 1024 * 1024; // number of elements to read in one read (1GB)
+    for (uint64_t pos = 0; pos < file_size; pos += block_size)
+    {
+        // size to read this time
+        uint64_t read_size = (pos + block_size < file_size) ? block_size : (file_size - pos);
+        fs.read((char*)ptr + pos, read_size);
+
+        // Read error occurred in the middle of the file.
+        if (fs.fail())
+            return 2;
+
+        //cout << ".";
+    }
+    fs.close();
+
+    return 0;
 }
 
 int write_memory_to_file(std::string filename, void* ptr, uint64_t size)
 {
-  fstream fs(filename, ios::out | ios::binary);
-  if (fs.fail())
-    return 1;
+    fstream fs(filename, ios::out | ios::binary);
+    if (fs.fail())
+        return 1;
 
-  const uint64_t block_size = 1024 * 1024 * 1024; // number of elements to write in one write (1GB)
-  for (uint64_t pos = 0; pos < size; pos += block_size)
-  {
-    // Memory size to write this time
-    uint64_t write_size = (pos + block_size < size) ? block_size : (size - pos);
-    fs.write((char*)ptr + pos, write_size);
-    //cout << ".";
-  }
-  fs.close();
-  return 0;
+    const uint64_t block_size = 1024 * 1024 * 1024; // number of elements to write in one write (1GB)
+    for (uint64_t pos = 0; pos < size; pos += block_size)
+    {
+        // Memory size to write this time
+        uint64_t write_size = (pos + block_size < size) ? block_size : (size - pos);
+        fs.write((char*)ptr + pos, write_size);
+        //cout << ".";
+    }
+    fs.close();
+    return 0;
 }
 
 // ----------------------------
@@ -642,22 +687,22 @@ int write_memory_to_file(std::string filename, void* ptr, uint64_t size)
 #include <locale> // This is required for wstring_convert.
 
 namespace Dependency {
-  int mkdir(std::string dir_name)
-  {
-    std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> cv;
-    return _wmkdir(cv.from_bytes(dir_name).c_str());
-    //	::CreateDirectory(cv.from_bytes(dir_name).c_str(),NULL);
-  }
+    int mkdir(std::string dir_name)
+    {
+        std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> cv;
+        return _wmkdir(cv.from_bytes(dir_name).c_str());
+        //	::CreateDirectory(cv.from_bytes(dir_name).c_str(),NULL);
+    }
 }
 
 #elif defined(__GNUC__) 
 
 #include <direct.h>
 namespace Dependency {
-  int mkdir(std::string dir_name)
-  {
-    return _mkdir(dir_name.c_str());
-  }
+    int mkdir(std::string dir_name)
+    {
+        return _mkdir(dir_name.c_str());
+    }
 }
 
 #endif
@@ -669,10 +714,10 @@ namespace Dependency {
 #include "sys/stat.h"
 
 namespace Dependency {
-  int mkdir(std::string dir_name)
-  {
-    return ::mkdir(dir_name.c_str(), 0777);
-  }
+    int mkdir(std::string dir_name)
+    {
+        return ::mkdir(dir_name.c_str(), 0777);
+    }
 }
 #else
 
@@ -680,10 +725,10 @@ namespace Dependency {
 // The function to dig a folder on linux is good for the time being... Only used to save the evaluation function file...
 
 namespace Dependency {
-  int mkdir(std::string dir_name)
-  {
-    return 0;
-  }
+    int mkdir(std::string dir_name)
+    {
+        return 0;
+    }
 }
 
 #endif

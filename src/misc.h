@@ -1,8 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
-  Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2020 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -40,6 +38,8 @@ const std::string engine_info(bool to_uci = false);
 const std::string compiler_info();
 void prefetch(void* addr);
 void start_logger(const std::string& fname);
+void* std_aligned_alloc(size_t alignment, size_t size);
+void std_aligned_free(void* ptr);
 void* aligned_ttmem_alloc(size_t size, void*& mem);
 void aligned_ttmem_free(void* mem); // nop if mem == nullptr
 
@@ -265,9 +265,6 @@ struct Path
 	}
 };
 
-extern void* aligned_malloc(size_t size, size_t align);
-static void aligned_free(void* ptr) { _mm_free(ptr); }
-
 // It is ignored when new even though alignas is specified & because it is ignored when the STL container allocates memory,
 // A custom allocator used for that.
 template <typename T>
@@ -281,8 +278,8 @@ public:
 
   template <typename U> AlignedAllocator(const AlignedAllocator<U>&) {}
 
-  T* allocate(std::size_t n) { return (T*)aligned_malloc(n * sizeof(T), alignof(T)); }
-  void deallocate(T* p, std::size_t n) { aligned_free(p); }
+  T* allocate(std::size_t n) { return (T*)std_aligned_alloc(n * sizeof(T), alignof(T)); }
+  void deallocate(T* p, std::size_t n) { std_aligned_free(p); }
 };
 
 // --------------------

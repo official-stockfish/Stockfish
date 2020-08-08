@@ -1,35 +1,47 @@
-﻿// NNUE evaluation function layer InputSlice definition
+/*
+  Stockfish, a UCI chess playing engine derived from Glaurung 2.1
+  Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
 
-#ifndef _NNUE_LAYERS_INPUT_SLICE_H_
-#define _NNUE_LAYERS_INPUT_SLICE_H_
+  Stockfish is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
 
-#if defined(EVAL_NNUE)
+  Stockfish is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+// NNUE evaluation function layer InputSlice definition
+
+#ifndef NNUE_LAYERS_INPUT_SLICE_H_INCLUDED
+#define NNUE_LAYERS_INPUT_SLICE_H_INCLUDED
 
 #include "../nnue_common.h"
 
-namespace Eval {
+namespace Eval::NNUE::Layers {
 
-namespace NNUE {
-
-namespace Layers {
-
-// input layer
+// Input layer
 template <IndexType OutputDimensions, IndexType Offset = 0>
 class InputSlice {
  public:
-  // need to maintain alignment
+  // Need to maintain alignment
   static_assert(Offset % kMaxSimdWidth == 0, "");
 
-  // output type
+  // Output type
   using OutputType = TransformedFeatureType;
 
-  // output dimensionality
+  // Output dimensionality
   static constexpr IndexType kOutputDimensions = OutputDimensions;
 
-  // Size of the forward propagation buffer used from the input layer to this layer
+  // Size of forward propagation buffer used from the input layer to this layer
   static constexpr std::size_t kBufferSize = 0;
 
-  // Hash value embedded in the evaluation function file
+  // Hash value embedded in the evaluation file
   static constexpr std::uint32_t GetHashValue() {
     std::uint32_t hash_value = 0xEC42E90Du;
     hash_value ^= kOutputDimensions ^ (Offset << 10);
@@ -39,11 +51,11 @@ class InputSlice {
   // A string that represents the structure from the input layer to this layer
   static std::string GetStructureString() {
     return "InputSlice[" + std::to_string(kOutputDimensions) + "(" +
-        std::to_string(Offset) + ":" +
-        std::to_string(Offset + kOutputDimensions) + ")]";
+      std::to_string(Offset) + ":" +
+      std::to_string(Offset + kOutputDimensions) + ")]";
   }
 
-  // read parameters
+  // Read network parameters
   bool ReadParameters(std::istream& /*stream*/) {
     return true;
   }
@@ -53,7 +65,7 @@ class InputSlice {
     return true;
   }
 
-  // forward propagation
+  // Forward propagation
   const OutputType* Propagate(
       const TransformedFeatureType* transformed_features,
       char* /*buffer*/) const {
@@ -65,10 +77,4 @@ class InputSlice {
 
 }  // namespace Layers
 
-}  // namespace NNUE
-
-}  // namespace Eval
-
-#endif  // defined(EVAL_NNUE)
-
-#endif
+#endif // #ifndef NNUE_LAYERS_INPUT_SLICE_H_INCLUDED
