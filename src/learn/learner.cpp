@@ -1002,6 +1002,9 @@ void gen_sfen(Position&, istringstream& is)
 		<< "  save_every             = " << save_every << endl
 		<< "  random_file_name       = " << random_file_name << endl;
 
+	// Show if the training data generator uses NNUE.
+	Eval::verify_NNUE();
+
 	// Create and execute threads as many as Options["Threads"].
 	{
 		SfenWriter sw(output_file_name, thread_num);
