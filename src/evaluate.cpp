@@ -37,7 +37,7 @@ namespace Eval {
   std::string eval_file_loaded="None";
 
   void init_NNUE() {
-
+    Search::clear();
     useNNUE = Options["Use NNUE"];
     std::string eval_file = std::string(Options["EvalFile"]);
     if (useNNUE && eval_file_loaded != eval_file)
