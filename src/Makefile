@@ -507,12 +507,12 @@ ifeq ($(debug), no)
 # GCC on some systems.
 	else ifeq ($(comp),gcc)
     ifeq ($(gccisclang),)
-    	CXXFLAGS += -flto
-    	LDFLAGS += $(CXXFLAGS) -flto=jobserver
-    else
+		CXXFLAGS += -flto
+		LDFLAGS += $(CXXFLAGS) -flto=jobserver
+	else
 		CXXFLAGS += -flto=thin
 		LDFLAGS += $(CXXFLAGS)
-    endif
+	endif
 
 # To use LTO and static linking on windows, the tool chain requires a recent gcc:
 # gcc version 10.1 in msys2 or TDM-GCC version 9.2 are know to work, older might not.
