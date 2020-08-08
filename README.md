@@ -58,7 +58,7 @@ Currently, Stockfish has the following UCI options:
 
   * #### Use NNUE
     Toggle between the NNUE and classical evaluation functions. If set to "true",
-    the network parameters must be availabe to load from file (see also EvalFile).
+    the network parameters must be available to load from file (see also EvalFile).
 
   * #### EvalFile
     The name of the file of the NNUE evaluation parameters. Depending on the GUI the
@@ -138,7 +138,7 @@ Currently, Stockfish has the following UCI options:
   * #### Debug Log File
     Write all communication to and from the engine into a text file.
 
-## classical and NNUE evaluation
+## Classical and NNUE evaluation
 
 Both approaches assign a value to a position that is used in alpha-beta (PVS) search
 to find the best move. The classical evaluation computes this value as a function
