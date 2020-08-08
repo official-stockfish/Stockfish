@@ -506,7 +506,7 @@ ifeq ($(debug), no)
 # GCC and CLANG use different methods for parallelizing LTO and CLANG pretends to be
 # GCC on some systems.
 	else ifeq ($(comp),gcc)
-    ifeq ($(gccisclang),)
+	ifeq ($(gccisclang),)
 		CXXFLAGS += -flto
 		LDFLAGS += $(CXXFLAGS) -flto=jobserver
 	else
