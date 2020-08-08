@@ -138,7 +138,7 @@ Currently, Stockfish has the following UCI options:
   * #### Debug Log File
     Write all communication to and from the engine into a text file.
 
-## classical and NNUE evaluation
+## Classical and NNUE evaluation
 
 Both approaches assign a value to a position that is used in alpha-beta (PVS) search
 to find the best move. The classical evaluation computes this value as a function
