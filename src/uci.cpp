@@ -32,6 +32,10 @@
 #include "uci.h"
 #include "syzygy/tbprobe.h"
 
+#if defined(EVAL_NNUE) && defined(ENABLE_TEST_CMD)
+#include "nnue/nnue_test_command.h"
+#endif
+
 using namespace std;
 
 extern vector<string> setup_bench(const Position&, istream&);
@@ -39,8 +43,44 @@ extern vector<string> setup_bench(const Position&, istream&);
 // FEN string of the initial position, normal chess
 const char* StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
-namespace {
+// Command to automatically generate a game record
+#if defined (EVAL_LEARN)
+namespace Learner
+{
+  // Automatic generation of teacher position
+  void gen_sfen(Position& pos, istringstream& is);
 
+  // Learning from the generated game record
+  void learn(Position& pos, istringstream& is);
+
+#if defined(GENSFEN2019)
+  // Automatic generation command of teacher phase under development
+  void gen_sfen2019(Position& pos, istringstream& is);
+#endif
+
+  // A pair of reader and evaluation value. Returned by Learner::search(),Learner::qsearch().
+  typedef std::pair<Value, std::vector<Move> > ValueAndPV;
+
+  ValueAndPV qsearch(Position& pos);
+  ValueAndPV search(Position& pos, int depth_, size_t multiPV = 1, uint64_t nodesLimit = 0);
+
+}
+#endif
+
+#if defined(EVAL_NNUE) && defined(ENABLE_TEST_CMD)
+void test_cmd(Position& pos, istringstream& is)
+{
+    // Initialize as it may be searched.
+    Eval::init_NNUE();
+
+    std::string param;
+    is >> param;
+
+    if (param == "nnue") Eval::NNUE::TestCommand(pos, is);
+}
+#endif
+
+namespace {
   // position() is called when engine receives the "position" UCI command.
   // The function sets up the position described in the given FEN string ("fen")
   // or the starting position ("startpos") and then makes the moves given in the
@@ -218,6 +258,43 @@ namespace {
 
 } // namespace
 
+// --------------------
+// Call qsearch(),search() directly for testing
+// --------------------
+
+#if defined(EVAL_LEARN)
+void qsearch_cmd(Position& pos)
+{
+  cout << "qsearch : ";
+  auto pv = Learner::qsearch(pos);
+  cout << "Value = " << pv.first << " , " << UCI::value(pv.first) << " , PV = ";
+  for (auto m : pv.second)
+    cout << UCI::move(m, false) << " ";
+  cout << endl;
+}
+
+void search_cmd(Position& pos, istringstream& is)
+{
+  string token;
+  int depth = 1;
+  int multi_pv = (int)Options["MultiPV"];
+  while (is >> token)
+  {
+    if (token == "depth")
+      is >> depth;
+    if (token == "multipv")
+      is >> multi_pv;
+  }
+
+  cout << "search depth = " << depth << " , multi_pv = " << multi_pv << " : ";
+  auto pv = Learner::search(pos, depth, multi_pv);
+  cout << "Value = " << pv.first << " , " << UCI::value(pv.first) << " , PV = ";
+  for (auto m : pv.second)
+    cout << UCI::move(m, false) << " ";
+  cout << endl;
+}
+
+#endif
 
 /// UCI::loop() waits for a command from stdin, parses it and calls the appropriate
 /// function. Also intercepts EOF from stdin to ensure gracefully exiting if the
@@ -274,6 +351,24 @@ void UCI::loop(int argc, char* argv[]) {
       else if (token == "d")        sync_cout << pos << sync_endl;
       else if (token == "eval")     trace_eval(pos);
       else if (token == "compiler") sync_cout << compiler_info() << sync_endl;
+#if defined (EVAL_LEARN)
+      else if (token == "gensfen") Learner::gen_sfen(pos, is);
+      else if (token == "learn") Learner::learn(pos, is);
+
+#if defined (GENSFEN2019)
+	  // Command to generate teacher phase under development
+      else if (token == "gensfen2019") Learner::gen_sfen2019(pos, is);
+#endif
+      // Command to call qsearch(),search() directly for testing
+      else if (token == "qsearch") qsearch_cmd(pos);
+      else if (token == "search") search_cmd(pos, is);
+
+#endif
+
+#if defined(EVAL_NNUE) && defined(ENABLE_TEST_CMD)
+      // test command
+      else if (token == "test") test_cmd(pos, is);
+#endif
       else
           sync_cout << "Unknown command: " << cmd << sync_endl;
 

@@ -80,6 +80,22 @@ void init(OptionsMap& o) {
   o["SyzygyProbeLimit"]      << Option(7, 0, 7);
   o["Use NNUE"]              << Option(false, on_use_NNUE);
   o["EvalFile"]              << Option("nn-9931db908a9b.nnue", on_eval_file);
+#ifdef EVAL_NNUE
+  // When the evaluation function is loaded at the ucinewgame timing, it is necessary to convert the new evaluation function.
+  // I want to hit the test eval convert command, but there is no new evaluation function
+  // It ends abnormally before executing this command.
+  // Therefore, with this hidden option, you can suppress the loading of the evaluation function when ucinewgame,
+  // Hit the test eval convert command.
+  o["SkipLoadingEval"]       << Option(false);
+  // how many moves to use a fixed move
+  // o["BookMoves"] << Option(16, 0, 10000);
+#endif
+#if defined(EVAL_LEARN)
+  // When learning the evaluation function, you can change the folder to save the evaluation function.
+  // Evalsave by default. This folder shall be prepared in advance.
+  // Automatically dig a folder under this folder like "0/", "1/", ... and save the evaluation function file there.
+  o["EvalSaveDir"] << Option("evalsave");
+#endif
 }
 
 
