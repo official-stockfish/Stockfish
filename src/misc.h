@@ -158,13 +158,6 @@ extern void sleep(int ms);
 // Returns a string that represents the current time. (Used for log output when learning evaluation function)
 std::string now_string();
 
-// wrapper for end processing on the way
-static void my_exit()
-{
-	sleep(3000); // It is bad to finish before the error message is output, so put wait.
-	exit(EXIT_FAILURE);
-}
-
 // When compiled with gcc/clang such as msys2, Windows Subsystem for Linux,
 // In C++ std::ifstream, ::read() is a wrapper for that because it is not possible to read and write files larger than 2GB in one shot.
 //
