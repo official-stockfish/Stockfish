@@ -184,6 +184,13 @@ namespace Eval::NNUE {
   bool load_eval_file(const std::string& evalFile) {
 
     Initialize();
+
+    if (Options["SkipLoadingEval"])
+    {
+      std::cout << "info string SkipLoadingEval set to true, Net not loaded!" << std::endl;
+      return true;
+    }
+
     fileName = evalFile;
 
     std::ifstream stream(evalFile, std::ios::binary);
