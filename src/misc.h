@@ -271,7 +271,7 @@ public:
 
   template <typename U> AlignedAllocator(const AlignedAllocator<U>&) {}
 
-  T* allocate(std::size_t n) { return (T*)std_aligned_alloc(n * sizeof(T), alignof(T)); }
+  T* allocate(std::size_t n) { return (T*)std_aligned_alloc(alignof(T), n * sizeof(T)); }
   void deallocate(T* p, std::size_t n) { std_aligned_free(p); }
 };
 

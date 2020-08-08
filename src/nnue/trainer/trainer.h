@@ -111,7 +111,7 @@ IntType Round(double value) {
 // make_shared with alignment
 template <typename T, typename... ArgumentTypes>
 std::shared_ptr<T> MakeAlignedSharedPtr(ArgumentTypes&&... arguments) {
-  const auto ptr = new(std_aligned_alloc(sizeof(T), alignof(T)))
+  const auto ptr = new(std_aligned_alloc(alignof(T), sizeof(T)))
       T(std::forward<ArgumentTypes>(arguments)...);
   return std::shared_ptr<T>(ptr, AlignedDeleter<T>());
 }
