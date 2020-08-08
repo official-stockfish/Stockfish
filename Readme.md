@@ -9,9 +9,10 @@ Stockfish NNUE is a port of a shogi neural network named NNUE (efficiently updat
 
 ## Training Guide
 ### Generating Training Data
-Use the "no-nnue.nnue-gen-sfen-from-original-eval" binary. The given example is generation in its simplest form. There are more commands. 
+To generate training data from the classic eval, use gensfen command with setting "Use NNUE" to "false". The given example is generation in its simplest form. There are more commands. 
 ```
 uci
+setoption name Use NNUE value false
 setoption name Threads value x
 setoption name Hash value y
 setoption name SyzygyPath value path
@@ -27,10 +28,11 @@ This will save a file named "generated_kifu.bin" in the same folder as the binar
 ### Generating Validation Data
 The process is the same as the generation of training data, except for the fact that you need to set loop to 1 million, because you don't need a lot of validation data. The depth should be the same as before or slightly higher than the depth of the training data. After generation rename the validation data file to val.bin and drop it in a folder named "validationdata" in the same directory to make it easier. 
 ### Training a Completely New Network
-Use the "avx2.halfkp_256x2-32-32.nnue-learn.2020-07-11" binary. Create an empty folder named "evalsave" in the same directory as the binaries.
+Use the "learn" binary. Create an empty folder named "evalsave" in the same directory as the binaries.
 ```
 uci
 setoption name SkipLoadingEval value true
+setoption name Use NNUE value true
 setoption name Threads value x
 isready
 learn targetdir trainingdata loop 100 batchsize 1000000 use_draw_in_training 1 use_draw_in_validation 1 eta 1 lambda 1 eval_limit 32000 nn_batch_size 1000 newbob_decay 0.5 eval_save_interval 250000000 loss_output_interval 1000000 mirror_percentage 50 validation_set_file_name validationdata\val.bin
@@ -42,7 +44,7 @@ Nets get saved in the "evalsave" folder.
 - lambda is the amount of weight it puts to eval of learning data vs win/draw/loss results. 1 puts all weight on eval, lambda 0 puts all weight on WDL results.
 
 ### Reinforcement Learning
-If you would like to do some reinforcement learning on your original network, you must first generate training data using the learn binaries. Make sure that your previously trained network is in the eval folder. Use the commands specified above. Make sure `SkipLoadingEval` is set to false so that the data generated is using the neural net's eval by typing the command `uci setoption name SkipLoadingEval value false` before typing the `isready` command. You should aim to generate less positions than the first run, around 1/10 of the number of positions generated in the first run. The depth should be higher as well. You should also do the same for validation data, with the depth being higher than the last run.
+If you would like to do some reinforcement learning on your original network, you must first generate training data using the learn binaries with setting `Use NNUE` to true. Make sure that your previously trained network is in the eval folder. Use the commands specified above. Make sure `SkipLoadingEval` is set to false so that the data generated is using the neural net's eval by typing the command `uci setoption name SkipLoadingEval value false` before typing the `isready` command. You should aim to generate less positions than the first run, around 1/10 of the number of positions generated in the first run. The depth should be higher as well. You should also do the same for validation data, with the depth being higher than the last run.
 
 After you have generated the training data, you must move it into your training data folder and delete the older data so that the binary does not accidentally train on the same data again. Do the same for the validation data and name it to val-1.bin to make it less confusing. Make sure the evalsave folder is empty. Then, using the same binary, type in the training commands shown above. Do __NOT__ set `SkipLoadingEval` to true, it must be false or you will get a completely new network, instead of a network trained with reinforcement learning. You should also set eval_save_interval to a number that is lower than the amount of positions in your training data, perhaps also 1/10 of the original value. The validation file should be set to the new validation data, not the old data.
 
