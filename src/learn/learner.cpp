@@ -634,19 +634,11 @@ void MultiThinkGenSfen::thread_worker(size_t thread_id)
 					// reach leaf
 					// cout << pos;
 
-					Value v;
-					if (pos.checkers()) {
-						// HACK: If a king is checkmated, Eval::evalute(pos) crashes with an
-						// assertion.  To avoid crashes, return value1 instead.
-						v = value1;
-					}
-					else {
-						v = Eval::evaluate(pos);
+					auto v = Eval::evaluate(pos);
 						// evaluate() returns the evaluation value on the turn side, so
 						// If it's a turn different from root_color, you must invert v and return it.
 						if (rootColor != pos.side_to_move())
 							v = -v;
-					}
 
 					// Rewind.
 					// Is it C++x14, and isn't there even foreach to turn in reverse?
