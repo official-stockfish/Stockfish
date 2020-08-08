@@ -635,10 +635,10 @@ void MultiThinkGenSfen::thread_worker(size_t thread_id)
 					// cout << pos;
 
 					auto v = Eval::evaluate(pos);
-					// evaluate() returns the evaluation value on the turn side, so
-					// If it's a turn different from root_color, you must invert v and return it.
-					if (rootColor != pos.side_to_move())
-						v = -v;
+						// evaluate() returns the evaluation value on the turn side, so
+						// If it's a turn different from root_color, you must invert v and return it.
+						if (rootColor != pos.side_to_move())
+							v = -v;
 
 					// Rewind.
 					// Is it C++x14, and isn't there even foreach to turn in reverse?
@@ -979,7 +979,7 @@ void gen_sfen(Position&, istringstream& is)
 		<< "  loop_max = " << loop_max << endl
 		<< "  eval_limit = " << eval_limit << endl
 		<< "  thread_num (set by USI setoption) = " << thread_num << endl
-		<< "  book_moves (set by USI setoption) = " << Options["BookMoves"] << endl
+		//<< "  book_moves (set by USI setoption) = " << Options["BookMoves"] << endl
 		<< "  random_move_minply     = " << random_move_minply << endl
 		<< "  random_move_maxply     = " << random_move_maxply << endl
 		<< "  random_move_count      = " << random_move_count << endl
