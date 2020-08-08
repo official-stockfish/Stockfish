@@ -283,8 +283,8 @@ ifeq ($(COMP),gcc)
 	   LDFLAGS += -Wl,--no-as-needed
 	endif
 	
-	$gccversion=$(shell $(CXX) --version)
-	$gccisclang=$(findstring clang,$(gccversion))
+	gccversion = $(shell $(CXX) --version)
+	gccisclang = $(findstring clang,$(gccversion))
 endif
 
 ifeq ($(COMP),mingw)
