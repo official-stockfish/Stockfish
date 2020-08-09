@@ -86,6 +86,7 @@ sanitize = no
 bits = 64
 prefetch = no
 popcnt = no
+mmx = no
 sse = no
 ssse3 = no
 sse41 = no
@@ -110,6 +111,7 @@ ifeq ($(ARCH),x86-32)
 	arch = i386
 	bits = 32
 	prefetch = yes
+	mmx = yes
 	sse = yes
 endif
 
@@ -250,7 +252,7 @@ ifeq ($(COMP),gcc)
 	ifneq ($(KERNEL),Darwin)
 	   LDFLAGS += -Wl,--no-as-needed
 	endif
-	
+
 	gccversion = $(shell $(CXX) --version)
 	gccisclang = $(findstring clang,$(gccversion))
 endif
@@ -432,6 +434,13 @@ ifeq ($(ssse3),yes)
 	endif
 endif
 
+ifeq ($(mmx),yes)
+	CXXFLAGS += -DUSE_MMX
+	ifeq ($(comp),$(filter $(comp),gcc clang mingw))
+		CXXFLAGS += -mmmx
+	endif
+endif
+
 ifeq ($(neon),yes)
 	CXXFLAGS += -DUSE_NEON
 endif
@@ -516,7 +525,7 @@ help:
 	@echo "x86-64-ssse3            > x86 64-bit with ssse3 support"
 	@echo "x86-64-sse3-popcnt      > x86 64-bit with sse3 and popcnt support"
 	@echo "x86-64                  > x86 64-bit generic"
-	@echo "x86-32                  > x86 32-bit (also enables SSE)"
+	@echo "x86-32                  > x86 32-bit (also enables MMX and SSE)"
 	@echo "x86-32-old              > x86 32-bit fall back for old hardware"
 	@echo "ppc-64                  > PPC 64-bit"
 	@echo "ppc-32                  > PPC 32-bit"
