@@ -228,6 +228,9 @@ const std::string compiler_info() {
   #endif
     compiler += (HasPext ? " BMI2" : "");
     compiler += (HasPopCnt ? " POPCNT" : "");
+  #if defined(USE_MMX)
+    compiler += " MMX";
+  #endif
   #if !defined(NDEBUG)
     compiler += " DEBUG";
   #endif

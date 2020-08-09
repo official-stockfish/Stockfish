@@ -87,10 +87,19 @@ namespace Eval::NNUE::Layers {
       const __m256i kOnes = _mm256_set1_epi16(1);
       const auto input_vector = reinterpret_cast<const __m256i*>(input);
 
-  #elif defined(USE_SSSE3)
+  #elif defined(USE_SSE2)
       constexpr IndexType kNumChunks = kPaddedInputDimensions / kSimdWidth;
+  #ifndef USE_SSSE3
+      const __m128i kZeros = _mm_setzero_si128();
+  #else
       const __m128i kOnes = _mm_set1_epi16(1);
+  #endif
       const auto input_vector = reinterpret_cast<const __m128i*>(input);
+
+  #elif defined(USE_MMX)
+      constexpr IndexType kNumChunks = kPaddedInputDimensions / kSimdWidth;
+      const __m64 kZeros = _mm_setzero_si64();
+      const auto input_vector = reinterpret_cast<const __m64*>(input);
 
   #elif defined(USE_NEON)
       constexpr IndexType kNumChunks = kPaddedInputDimensions / kSimdWidth;
@@ -155,6 +164,51 @@ namespace Eval::NNUE::Layers {
         sum = _mm_add_epi32(sum, _mm_shuffle_epi32(sum, 0xB1)); //_MM_PERM_CDAB
         output[i] = _mm_cvtsi128_si32(sum) + biases_[i];
 
+  #elif defined(USE_SSE2)
+        __m128i sum_lo = _mm_cvtsi32_si128(biases_[i]);
+        __m128i sum_hi = kZeros;
+        const auto row = reinterpret_cast<const __m128i*>(&weights_[offset]);
+        for (IndexType j = 0; j < kNumChunks; ++j) {
+          __m128i row_j = _mm_load_si128(&row[j]);
+          __m128i input_j = _mm_load_si128(&input_vector[j]);
+          __m128i row_signs = _mm_cmpgt_epi8(kZeros, row_j);
+          __m128i extended_row_lo = _mm_unpacklo_epi8(row_j, row_signs);
+          __m128i extended_row_hi = _mm_unpackhi_epi8(row_j, row_signs);
+          __m128i extended_input_lo = _mm_unpacklo_epi8(input_j, kZeros);
+          __m128i extended_input_hi = _mm_unpackhi_epi8(input_j, kZeros);
+          __m128i product_lo = _mm_madd_epi16(extended_row_lo, extended_input_lo);
+          __m128i product_hi = _mm_madd_epi16(extended_row_hi, extended_input_hi);
+          sum_lo = _mm_add_epi32(sum_lo, product_lo);
+          sum_hi = _mm_add_epi32(sum_hi, product_hi);
+        }
+        __m128i sum = _mm_add_epi32(sum_lo, sum_hi);
+        __m128i sum_high_64 = _mm_shuffle_epi32(sum, _MM_SHUFFLE(1, 0, 3, 2));
+        sum = _mm_add_epi32(sum, sum_high_64);
+        __m128i sum_second_32 = _mm_shufflelo_epi16(sum, _MM_SHUFFLE(1, 0, 3, 2));
+        sum = _mm_add_epi32(sum, sum_second_32);
+        output[i] = _mm_cvtsi128_si32(sum);
+
+  #elif defined(USE_MMX)
+        __m64 sum_lo = _mm_cvtsi32_si64(biases_[i]);
+        __m64 sum_hi = kZeros;
+        const auto row = reinterpret_cast<const __m64*>(&weights_[offset]);
+        for (IndexType j = 0; j < kNumChunks; ++j) {
+          __m64 row_j = row[j];
+          __m64 input_j = input_vector[j];
+          __m64 row_signs = _mm_cmpgt_pi8(kZeros, row_j);
+          __m64 extended_row_lo = _mm_unpacklo_pi8(row_j, row_signs);
+          __m64 extended_row_hi = _mm_unpackhi_pi8(row_j, row_signs);
+          __m64 extended_input_lo = _mm_unpacklo_pi8(input_j, kZeros);
+          __m64 extended_input_hi = _mm_unpackhi_pi8(input_j, kZeros);
+          __m64 product_lo = _mm_madd_pi16(extended_row_lo, extended_input_lo);
+          __m64 product_hi = _mm_madd_pi16(extended_row_hi, extended_input_hi);
+          sum_lo = _mm_add_pi32(sum_lo, product_lo);
+          sum_hi = _mm_add_pi32(sum_hi, product_hi);
+        }
+        __m64 sum = _mm_add_pi32(sum_lo, sum_hi);
+        sum = _mm_add_pi32(sum, _mm_unpackhi_pi32(sum, sum));
+        output[i] = _mm_cvtsi64_si32(sum);
+
   #elif defined(USE_NEON)
         int32x4_t sum = {biases_[i]};
         const auto row = reinterpret_cast<const int8x8_t*>(&weights_[offset]);
@@ -174,6 +228,9 @@ namespace Eval::NNUE::Layers {
   #endif
 
       }
+  #if defined(USE_MMX)
+      _mm_empty();
+  #endif
       return output;
     }
 
