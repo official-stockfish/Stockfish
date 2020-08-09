@@ -2433,11 +2433,14 @@ void shuffle_files_on_memory(const vector<string>& filenames,const string output
 	std::cout << "..shuffle_on_memory done." << std::endl;
 }
 
-void convert_bin(const vector<string>& filenames, const string& output_file_name, const int ply_minimum, const int ply_maximum, const int interpolate_eval)
+void convert_bin(const vector<string>& filenames, const string& output_file_name, const int ply_minimum, const int ply_maximum, const int interpolate_eval, const bool check_illegal_move)
 {
 	std::fstream fs;
 	uint64_t data_size=0;
 	uint64_t filtered_size = 0;
+	uint64_t filtered_size_fen = 0;
+	uint64_t filtered_size_move = 0;
+	uint64_t filtered_size_ply = 0;
 	auto th = Threads.main();
 	auto &tpos = th->rootPos;
 	// convert plain rag to packed sfenvalue for Yaneura king
@@ -2451,34 +2454,56 @@ void convert_bin(const vector<string>& filenames, const string& output_file_name
 		PackedSfenValue p;
 		data_size = 0;
 		filtered_size = 0;
+		filtered_size_fen = 0;
+		filtered_size_move = 0;
+		filtered_size_ply = 0;
 		p.gamePly = 1; // Not included in apery format. Should be initialized
-		bool ignore_flag = false;
+		bool ignore_flag_fen = false;
+		bool ignore_flag_move = false;
+		bool ignore_flag_ply = false;
 		while (std::getline(ifs, line)) {
 			std::stringstream ss(line);
 			std::string token;
 			std::string value;
 			ss >> token;
 			if (token == "fen") {
-			  states = StateListPtr(new std::deque<StateInfo>(1)); // Drop old and create a new one
-			  tpos.set(line.substr(4), false, &states->back(), Threads.main());
-			  tpos.sfen_pack(p.sfen);
+				states = StateListPtr(new std::deque<StateInfo>(1)); // Drop old and create a new one
+				std::string input_fen = line.substr(4);
+				tpos.set(input_fen, false, &states->back(), Threads.main());
+				if (!tpos.pos_is_ok() || tpos.fen() != input_fen) {
+					ignore_flag_fen = true;
+					filtered_size_fen++;
+				}
+				else {
+					tpos.sfen_pack(p.sfen);
+				}
 			}
 			else if (token == "move") {
 				ss >> value;
-				p.move = UCI::to_move(tpos, value);
+				Move move = UCI::to_move(tpos, value);
+				if (check_illegal_move && move == MOVE_NONE) {
+					ignore_flag_move = true;
+					filtered_size_move++;
+				}
+				else {
+					p.move = move;
+				}
 			}
 			else if (token == "score") {
-				ss >> p.score;
+				int32_t score;
+				ss >> score;
+				p.score = Math::clamp(score , -(int32_t)VALUE_MATE , (int32_t)VALUE_MATE);
 			}
 			else if (token == "ply") {
 				int temp;
 				ss >> temp;
 				if(temp < ply_minimum || temp > ply_maximum){
-				  ignore_flag = true;
+					ignore_flag_ply = true;
+					filtered_size_ply++;
 				}
 				p.gamePly = uint16_t(temp); // No cast here?
 				if (interpolate_eval != 0){
-				  p.score = min(3000, interpolate_eval * temp);
+					p.score = min(3000, interpolate_eval * temp);
 				}
 			}
 			else if (token == "result") {
@@ -2486,24 +2511,27 @@ void convert_bin(const vector<string>& filenames, const string& output_file_name
 				ss >> temp;
 				p.game_result = int8_t(temp); // Do you need a cast here?
 				if (interpolate_eval){
-				  p.score = p.score * p.game_result;
+					p.score = p.score * p.game_result;
 				}
 			}
 			else if (token == "e") {
-			  if(!ignore_flag){
-				fs.write((char*)&p, sizeof(PackedSfenValue));
-				data_size+=1;
-				// debug
-				// std::cout<<tpos<<std::endl;
-				// std::cout<<p.score<<","<<int(p.gamePly)<<","<<int(p.game_result)<<std::endl;
-			  }else{
-			    ignore_flag = false;
-			    filtered_size += 1;
-			  }
-				
+				if(!(ignore_flag_fen || ignore_flag_move || ignore_flag_ply)){
+					fs.write((char*)&p, sizeof(PackedSfenValue));
+					data_size+=1;
+					// debug
+					// std::cout<<tpos<<std::endl;
+					// std::cout<<p.score<<","<<int(p.gamePly)<<","<<int(p.game_result)<<std::endl;
+				}
+				else {
+					filtered_size++;
+				}
+				ignore_flag_fen = false;
+				ignore_flag_move = false;
+				ignore_flag_ply = false;
 			}
 		}
-		std::cout << "done" << data_size <<" parsed " << filtered_size<<" is filtered"<< std::endl;
+		std::cout << "done " << data_size << " parsed " << filtered_size << " is filtered"
+				  << " (illegal fen:" << filtered_size_fen << ", illegal move:" << filtered_size_move << ", illegal ply:" << filtered_size_ply << ")" << std::endl;
 		ifs.close();
 	}
 	std::cout << "all done" << std::endl;
@@ -2851,6 +2879,7 @@ void learn(Position&, istringstream& is)
 	int ply_minimum = 0;
 	int ply_maximum = 114514;
 	bool interpolate_eval = 0;
+	bool check_illegal_move = false;
 	// convert teacher in pgn-extract format to Yaneura King's bin
 	bool use_convert_bin_from_pgn_extract = false;
 	bool pgn_eval_side_to_move = false;
@@ -2987,6 +3016,7 @@ void learn(Position&, istringstream& is)
 		else if (option == "convert_plain") use_convert_plain = true;
 		else if (option == "convert_bin") use_convert_bin = true;
 		else if (option == "interpolate_eval") is >> interpolate_eval;
+		else if (option == "check_illegal_move") is >> check_illegal_move;
 		else if (option == "convert_bin_from_pgn-extract") use_convert_bin_from_pgn_extract = true;
 		else if (option == "pgn_eval_side_to_move") is >> pgn_eval_side_to_move;
 
@@ -3098,7 +3128,7 @@ void learn(Position&, istringstream& is)
 	{
 		Eval::init_NNUE();
 		cout << "convert_bin.." << endl;
-		convert_bin(filenames,output_file_name, ply_minimum, ply_maximum, interpolate_eval);
+		convert_bin(filenames,output_file_name, ply_minimum, ply_maximum, interpolate_eval, check_illegal_move);
 		return;
 		
 	}
