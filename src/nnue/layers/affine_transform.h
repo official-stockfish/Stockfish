@@ -108,24 +108,19 @@ namespace Eval::NNUE::Layers {
             product = _mm512_madd_epi16(product, kOnes);
             sum = _mm512_add_epi32(sum, product);
         }
-        output[i] = _mm512_reduce_add_epi32(sum) + biases_[i];
 
         // Note: Changing kMaxSimdWidth from 32 to 64 breaks loading existing networks.
         // As a result kPaddedInputDimensions may not be an even multiple of 64(512bit)
         // and we have to do one more 256bit chunk.
         if (kPaddedInputDimensions != kNumChunks * kSimdWidth * 2)
         {
-            const auto iv_256  = reinterpret_cast<const __m256i*>(input);
-            const auto row_256 = reinterpret_cast<const __m256i*>(&weights_[offset]);
-            int j = kNumChunks * 2;
-            __m256i sum256 = _mm256_maddubs_epi16(_mm256_loadA_si256(&iv_256[j]), _mm256_load_si256(&row_256[j]));
-            sum256 = _mm256_madd_epi16(sum256, _mm256_set1_epi16(1));
-            sum256 = _mm256_hadd_epi32(sum256, sum256);
-            sum256 = _mm256_hadd_epi32(sum256, sum256);
-            const __m128i lo = _mm256_extracti128_si256(sum256, 0);
-            const __m128i hi = _mm256_extracti128_si256(sum256, 1);
-            output[i] += _mm_cvtsi128_si32(lo) + _mm_cvtsi128_si32(hi);
+            const auto iv256  = reinterpret_cast<const __m256i*>(&input_vector[kNumChunks]);
+            const auto row256 = reinterpret_cast<const __m256i*>(&row[kNumChunks]);
+            __m256i product256 = _mm256_maddubs_epi16(_mm256_loadA_si256(&iv256[0]), _mm256_load_si256(&row256[0]));
+            product256 = _mm256_madd_epi16(product256, _mm256_set1_epi16(1));
+            sum = _mm512_add_epi32(sum, _mm512_zextsi256_si512(product256));
         }
+        output[i] = _mm512_reduce_add_epi32(sum) + biases_[i];
 
   #elif defined(USE_AVX2)
         __m256i sum = _mm256_setzero_si256();
@@ -135,23 +130,30 @@ namespace Eval::NNUE::Layers {
           product = _mm256_madd_epi16(product, kOnes);
           sum = _mm256_add_epi32(sum, product);
         }
-        sum = _mm256_hadd_epi32(sum, sum);
-        sum = _mm256_hadd_epi32(sum, sum);
-        const __m128i lo = _mm256_extracti128_si256(sum, 0);
-        const __m128i hi = _mm256_extracti128_si256(sum, 1);
-        output[i] = _mm_cvtsi128_si32(lo) + _mm_cvtsi128_si32(hi) + biases_[i];
+        __m128i sum128 = _mm_add_epi32(_mm256_castsi256_si128(sum), _mm256_extracti128_si256(sum, 1));
+        sum128 = _mm_add_epi32(sum128, _mm_shuffle_epi32(sum128, _MM_PERM_BADC));
+        sum128 = _mm_add_epi32(sum128, _mm_shuffle_epi32(sum128, _MM_PERM_CDAB));
+        output[i] = _mm_cvtsi128_si32(sum128) + biases_[i];
 
   #elif defined(USE_SSSE3)
-        __m128i sum = _mm_cvtsi32_si128(biases_[i]);
+        __m128i sum = _mm_setzero_si128();
         const auto row = reinterpret_cast<const __m128i*>(&weights_[offset]);
-        for (IndexType j = 0; j < kNumChunks; ++j) {
-          __m128i product = _mm_maddubs_epi16(_mm_load_si128(&input_vector[j]), _mm_load_si128(&row[j]));
+        for (int j = 0; j < (int)kNumChunks - 1; j += 2) {
+          __m128i product0 = _mm_maddubs_epi16(_mm_load_si128(&input_vector[j]), _mm_load_si128(&row[j]));
+          product0 = _mm_madd_epi16(product0, kOnes);
+          sum = _mm_add_epi32(sum, product0);
+          __m128i product1 = _mm_maddubs_epi16(_mm_load_si128(&input_vector[j+1]), _mm_load_si128(&row[j+1]));
+          product1 = _mm_madd_epi16(product1, kOnes);
+          sum = _mm_add_epi32(sum, product1);
+        }
+        if (kNumChunks & 0x1) {
+          __m128i product = _mm_maddubs_epi16(_mm_load_si128(&input_vector[kNumChunks-1]), _mm_load_si128(&row[kNumChunks-1]));
           product = _mm_madd_epi16(product, kOnes);
           sum = _mm_add_epi32(sum, product);
         }
-        sum = _mm_hadd_epi32(sum, sum);
-        sum = _mm_hadd_epi32(sum, sum);
-        output[i] = _mm_cvtsi128_si32(sum);
+        sum = _mm_add_epi32(sum, _mm_shuffle_epi32(sum, 0x4E)); //_MM_PERM_BADC
+        sum = _mm_add_epi32(sum, _mm_shuffle_epi32(sum, 0xB1)); //_MM_PERM_CDAB
+        output[i] = _mm_cvtsi128_si32(sum) + biases_[i];
 
   #elif defined(USE_NEON)
         int32x4_t sum = {biases_[i]};

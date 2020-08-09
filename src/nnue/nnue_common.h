@@ -52,9 +52,11 @@
 
 #if defined(USE_AVX512)
 #if defined(__GNUC__ ) && (__GNUC__ < 9)
-#define _mm512_loadA_si512  _mm512_loadu_si512
+#define _mm512_loadA_si512   _mm512_loadu_si512
+#define _mm512_storeA_si512  _mm512_storeu_si512
 #else
-#define _mm512_loadA_si512  _mm512_load_si512
+#define _mm512_loadA_si512   _mm512_load_si512
+#define _mm512_storeA_si512  _mm512_store_si512
 #endif
 #endif
 
