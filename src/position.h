@@ -1,4 +1,4 @@
-﻿/*
+/*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
 
@@ -182,7 +182,7 @@ public:
   // Do not include gamePly in pack.
   void sfen_pack(PackedSfen& sfen);
 
-  // ª It is slow to go through sfen, so I made a function to set packed sfen directly.
+  // It is slow to go through sfen, so I made a function to set packed sfen directly.
   // Equivalent to pos.set(sfen_unpack(data),si,th);.
   // If there is a problem with the passed phase and there is an error, non-zero is returned.
   // PackedSfen does not include gamePly so it cannot be restored. If you want to set it, specify it with an argument.

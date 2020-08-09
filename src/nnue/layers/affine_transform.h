@@ -67,7 +67,7 @@ namespace Eval::NNUE::Layers {
         PreviousLayer::GetStructureString() + ")";
     }
     
-    // Read network parameters
+   // Read network parameters
     bool ReadParameters(std::istream& stream) {
       if (!previous_layer_.ReadParameters(stream)) return false;
       stream.read(reinterpret_cast<char*>(biases_),

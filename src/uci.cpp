@@ -81,6 +81,7 @@ void test_cmd(Position& pos, istringstream& is)
 #endif
 
 namespace {
+
   // position() is called when engine receives the "position" UCI command.
   // The function sets up the position described in the given FEN string ("fen")
   // or the starting position ("startpos") and then makes the moves given in the

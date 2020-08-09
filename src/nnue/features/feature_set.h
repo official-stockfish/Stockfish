@@ -1,4 +1,4 @@
-﻿/*
+/*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
 
@@ -171,7 +171,7 @@ namespace Eval::NNUE::Features {
       }
     }
 
-    // Get a list of indices whose values ​​have changed from the previous one in the feature quantity
+    // Get a list of indices whose values have changed from the previous one in the feature quantity
     template <typename IndexListType>
     static void CollectChangedIndices(
       const Position& pos, const TriggerEvent trigger, const Color perspective,

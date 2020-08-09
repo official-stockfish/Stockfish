@@ -86,7 +86,9 @@ struct LimitsType {
     time[WHITE] = time[BLACK] = inc[WHITE] = inc[BLACK] = npmsec = movetime = TimePoint(0);
     movestogo = depth = mate = perft = infinite = 0;
     nodes = 0;
+#if defined (EVAL_LEARN)
     silent = false;
+#endif
   }
 
   bool use_time_management() const {
@@ -97,9 +99,11 @@ struct LimitsType {
   TimePoint time[COLOR_NB], inc[COLOR_NB], npmsec, movetime, startTime;
   int movestogo, depth, mate, perft, infinite;
   int64_t nodes;
+#if defined (EVAL_LEARN)
   // Silent mode that does not output to the screen (for continuous self-play in process)
   // Do not output PV at this time.
   bool silent;
+#endif
 };
 
 extern LimitsType Limits;

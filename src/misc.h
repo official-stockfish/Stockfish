@@ -19,7 +19,6 @@
 #ifndef MISC_H_INCLUDED
 #define MISC_H_INCLUDED
 
-#include <algorithm>
 #include <cassert>
 #include <chrono>
 #include <functional>
@@ -27,12 +26,8 @@
 #include <ostream>
 #include <string>
 #include <vector>
-#ifndef _MSC_VER
-#include <mm_malloc.h>
-#endif
 
 #include "types.h"
-#include "thread_win32_osx.h"
 
 const std::string engine_info(bool to_uci = false);
 const std::string compiler_info();

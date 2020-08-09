@@ -193,7 +193,7 @@ namespace Eval::NNUE::Layers {
      // Make the learning class a friend
      friend class Trainer<ClippedReLU>;
      
-     PreviousLayer previous_layer_;
+    PreviousLayer previous_layer_;
   };
 
 }  // namespace Eval::NNUE::Layers
