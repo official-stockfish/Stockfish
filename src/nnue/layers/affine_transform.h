@@ -104,13 +104,7 @@ namespace Eval::NNUE::Layers {
         __m512i sum = _mm512_setzero_si512();
         const auto row = reinterpret_cast<const __m512i*>(&weights_[offset]);
         for (IndexType j = 0; j < kNumChunks; ++j) {
-
-  #if defined(__MINGW32__) || defined(__MINGW64__)
-            __m512i product = _mm512_maddubs_epi16(_mm512_loadu_si512(&input_vector[j]), _mm512_load_si512(&row[j]));
-  #else
-            __m512i product = _mm512_maddubs_epi16(_mm512_load_si512(&input_vector[j]), _mm512_load_si512(&row[j]));
-  #endif
-
+            __m512i product = _mm512_maddubs_epi16(_mm512_loadA_si512(&input_vector[j]), _mm512_load_si512(&row[j]));
             product = _mm512_madd_epi16(product, kOnes);
             sum = _mm512_add_epi32(sum, product);
         }
@@ -124,13 +118,7 @@ namespace Eval::NNUE::Layers {
             const auto iv_256  = reinterpret_cast<const __m256i*>(input);
             const auto row_256 = reinterpret_cast<const __m256i*>(&weights_[offset]);
             int j = kNumChunks * 2;
-
-  #if defined(__MINGW32__) || defined(__MINGW64__)  // See HACK comment below in AVX2.
-            __m256i sum256 = _mm256_maddubs_epi16(_mm256_loadu_si256(&iv_256[j]), _mm256_load_si256(&row_256[j]));
-  #else
-            __m256i sum256 = _mm256_maddubs_epi16(_mm256_load_si256(&iv_256[j]), _mm256_load_si256(&row_256[j]));
-  #endif
-
+            __m256i sum256 = _mm256_maddubs_epi16(_mm256_loadA_si256(&iv_256[j]), _mm256_load_si256(&row_256[j]));
             sum256 = _mm256_madd_epi16(sum256, _mm256_set1_epi16(1));
             sum256 = _mm256_hadd_epi32(sum256, sum256);
             sum256 = _mm256_hadd_epi32(sum256, sum256);
@@ -143,18 +131,7 @@ namespace Eval::NNUE::Layers {
         __m256i sum = _mm256_setzero_si256();
         const auto row = reinterpret_cast<const __m256i*>(&weights_[offset]);
         for (IndexType j = 0; j < kNumChunks; ++j) {
-          __m256i product = _mm256_maddubs_epi16(
-
-  #if defined(__MINGW32__) || defined(__MINGW64__)
-            // HACK: Use _mm256_loadu_si256() instead of _mm256_load_si256. Because the binary
-            //       compiled with g++ in MSYS2 crashes here because the output memory is not aligned
-            //       even though alignas is specified.
-            _mm256_loadu_si256
-  #else
-            _mm256_load_si256
-  #endif
-
-            (&input_vector[j]), _mm256_load_si256(&row[j]));
+          __m256i product = _mm256_maddubs_epi16(_mm256_loadA_si256(&input_vector[j]), _mm256_load_si256(&row[j]));
           product = _mm256_madd_epi16(product, kOnes);
           sum = _mm256_add_epi32(sum, product);
         }
@@ -168,8 +145,7 @@ namespace Eval::NNUE::Layers {
         __m128i sum = _mm_cvtsi32_si128(biases_[i]);
         const auto row = reinterpret_cast<const __m128i*>(&weights_[offset]);
         for (IndexType j = 0; j < kNumChunks; ++j) {
-          __m128i product = _mm_maddubs_epi16(
-              _mm_load_si128(&input_vector[j]), _mm_load_si128(&row[j]));
+          __m128i product = _mm_maddubs_epi16(_mm_load_si128(&input_vector[j]), _mm_load_si128(&row[j]));
           product = _mm_madd_epi16(product, kOnes);
           sum = _mm_add_epi32(sum, product);
         }
