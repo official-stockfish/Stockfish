@@ -927,9 +927,6 @@ make_v:
     // Side to move point of view
     v = (pos.side_to_move() == WHITE ? v : -v) + Tempo;
 
-    // Damp down the evaluation linearly when shuffling
-    v = v * (100 - pos.rule50_count()) / 100;
-
     return v;
   }
 
@@ -941,14 +938,15 @@ make_v:
 
 Value Eval::evaluate(const Position& pos) {
 
-  if (Eval::useNNUE)
-  {
-      Value v = eg_value(pos.psq_score());
-      // Take NNUE eval only on balanced positions
-      if (abs(v) < NNUEThreshold)
-         return NNUE::evaluate(pos) + Tempo;
-  }
-  return Evaluation<NO_TRACE>(pos).value();
+  bool classical = !Eval::useNNUE
+                ||  abs(eg_value(pos.psq_score())) >= NNUEThreshold;
+  Value v = classical ? Evaluation<NO_TRACE>(pos).value()
+                      : NNUE::evaluate(pos) + Tempo;
+
+  // Damp down the evaluation linearly when shuffling
+  v = v * (100 - pos.rule50_count()) / 100;
+
+  return v;
 }
 
 /// trace() is like evaluate(), but instead of returning a value, it returns
