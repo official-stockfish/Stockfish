@@ -1099,7 +1099,10 @@ void gen_sfen(Position&, istringstream& is)
 		<< "  output_file_name       = " << output_file_name << endl
 		<< "  use_eval_hash          = " << use_eval_hash << endl
 		<< "  save_every             = " << save_every << endl
-		<< "  random_file_name       = " << random_file_name << endl;
+		<< "  random_file_name       = " << random_file_name << endl
+		<< "  write_out_draw_game_in_training_data_generation = " << write_out_draw_game_in_training_data_generation << endl
+		<< "  detect_draw_by_consecutive_low_score = " << detect_draw_by_consecutive_low_score << endl
+		<< "  detect_draw_by_insufficient_mating_material = " << detect_draw_by_insufficient_mating_material << endl;
 
 	// Show if the training data generator uses NNUE.
 	Eval::verify_NNUE();
@@ -3276,6 +3279,9 @@ void learn(Position&, istringstream& is)
 #endif
 	cout << "learning rate     : " << eta1 << " , " << eta2 << " , " << eta3 << endl;
 	cout << "eta_epoch         : " << eta1_epoch << " , " << eta2_epoch << endl;
+	cout << "use_draw_games_in_training : " << use_draw_games_in_training << endl;
+	cout << "use_draw_games_in_validation : " << use_draw_games_in_validation << endl;
+	cout << "skip_duplicated_positions_in_training : " << skip_duplicated_positions_in_training << endl;
 #if defined(EVAL_NNUE)
 	if (newbob_decay != 1.0) {
 		cout << "scheduling        : newbob with decay = " << newbob_decay
