@@ -683,16 +683,6 @@ void MultiThinkGenSfen::thread_worker(size_t thread_id)
 				// Save the move score for adjudication.
 				move_hist_scores.push_back(value1);
 
-				// Processing according to each thousand-day hand.
-
-        if (pos.is_draw(0)) {
-			if (write_out_draw_game_in_training_data_generation) {
-				// Write if draw.
-				flush_psv(0);
-			}
-          break;
-        }
-
 				// Use PV's move to the leaf node and use the value that evaluated() is called on that leaf node.
 				auto evaluate_leaf = [&](Position& pos , vector<Move>& pv)
 				{
