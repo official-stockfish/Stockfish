@@ -21,7 +21,10 @@
 #ifndef NNUE_COMMON_H_INCLUDED
 #define NNUE_COMMON_H_INCLUDED
 
-#if defined(USE_AVX2)
+#if defined(USE_AVX512)
+#include <avx512fintrin.h>
+
+#elif defined(USE_AVX2)
 #include <immintrin.h>
 
 #elif defined(USE_SSE41)
