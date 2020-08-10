@@ -51,6 +51,11 @@ typedef bool(*fun3_t)(HANDLE, CONST GROUP_AFFINITY*, PGROUP_AFFINITY);
 #include <sys/mman.h>
 #endif
 
+#if (defined(__APPLE__) && defined(_LIBCPP_HAS_C11_FEATURES)) || defined(__ANDROID__) || defined(__OpenBSD__) || (defined(__GLIBCXX__) && !defined(_GLIBCXX_HAVE_ALIGNED_ALLOC) && !defined(_WIN32))
+#define POSIXALIGNEDALLOC
+#include <stdlib.h>
+#endif
+
 #include "misc.h"
 #include "thread.h"
 
@@ -318,8 +323,11 @@ void prefetch(void* addr) {
 ///
 
 void* std_aligned_alloc(size_t alignment, size_t size) {
-#if (defined(__APPLE__) && defined(_LIBCPP_HAS_C11_FEATURES)) || defined(__ANDROID__) || defined(__OpenBSD__) || (defined(__GLIBCXX__) && !defined(_GLIBCXX_HAVE_ALIGNED_ALLOC) && !defined(_WIN32))
-  return aligned_alloc(alignment, size);
+#if defined(POSIXALIGNEDALLOC)
+  void *pointer;
+  if(posix_memalign(&pointer, alignment, size) == 0)
+      return pointer;
+  return nullptr;
 #elif (defined(_WIN32) || (defined(__APPLE__) && !defined(_LIBCPP_HAS_C11_FEATURES)))
   return _mm_malloc(size, alignment);
 #else
@@ -328,7 +336,7 @@ void* std_aligned_alloc(size_t alignment, size_t size) {
 }
 
 void std_aligned_free(void* ptr) {
-#if (defined(__APPLE__) && defined(_LIBCPP_HAS_C11_FEATURES)) || defined(__ANDROID__) || defined(__OpenBSD__) || (defined(__GLIBCXX__) && !defined(_GLIBCXX_HAVE_ALIGNED_ALLOC) && !defined(_WIN32))
+#if defined(POSIXALIGNEDALLOC)
   free(ptr);
 #elif (defined(_WIN32) || (defined(__APPLE__) && !defined(_LIBCPP_HAS_C11_FEATURES)))
   _mm_free(ptr);
