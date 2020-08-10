@@ -15,6 +15,7 @@
 
 #if defined(EVAL_LEARN)
 
+#include <chrono>
 #include <filesystem>
 #include <random>
 #include <regex>
@@ -959,8 +960,8 @@ void gen_sfen(Position&, istringstream& is)
 	if (random_file_name)
 	{
 		// Give a random number to output_file_name at this point.
-    std::random_device seed_gen;
-    PRNG r(seed_gen());
+		// Do not use std::random_device().  Because it always the same integers on MinGW.
+		PRNG r(std::chrono::system_clock::now().time_since_epoch().count());
 		// Just in case, reassign the random numbers.
 		for(int i=0;i<10;++i)
 			r.rand(1);
@@ -1205,7 +1206,8 @@ double calc_grad(Value shallow, const PackedSfenValue& psv) {
 // Sfen reader
 struct SfenReader
 {
-	SfenReader(int thread_num) : prng((std::random_device())())
+	// Do not use std::random_device().  Because it always the same integers on MinGW.
+	SfenReader(int thread_num) : prng(std::chrono::system_clock::now().time_since_epoch().count())
 	{
 		packed_sfens.resize(thread_num);
 		total_read = 0;
@@ -2283,7 +2285,8 @@ void shuffle_files(const vector<string>& filenames , const string& output_file_n
 	uint64_t write_file_count = 0;
 
 	// random number to shuffle
-	PRNG prng((std::random_device())());
+	// Do not use std::random_device().  Because it always the same integers on MinGW.
+	PRNG prng(std::chrono::system_clock::now().time_since_epoch().count());
 
 	// generate the name of the temporary file
 	auto make_filename = [](uint64_t i)
@@ -2361,7 +2364,8 @@ void shuffle_files_quick(const vector<string>& filenames, const string& output_f
 	uint64_t read_sfen_count = 0;
 
 	// random number to shuffle
-	PRNG prng((std::random_device())());
+	// Do not use std::random_device().  Because it always the same integers on MinGW.
+	PRNG prng(std::chrono::system_clock::now().time_since_epoch().count());
 
 	// number of files
 	size_t file_count = filenames.size();
@@ -2419,7 +2423,8 @@ void shuffle_files_on_memory(const vector<string>& filenames,const string output
 	}
 
 	// shuffle from buf[0] to buf[size-1]
-	PRNG prng((std::random_device())());
+	// Do not use std::random_device().  Because it always the same integers on MinGW.
+	PRNG prng(std::chrono::system_clock::now().time_since_epoch().count());
 	uint64_t size = (uint64_t)buf.size();
 	std::cout << "shuffle buf.size() = " << size << std::endl;
 	for (uint64_t i = 0; i < size; ++i)
