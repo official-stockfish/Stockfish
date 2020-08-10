@@ -115,7 +115,7 @@ namespace Learner
 typedef std::vector<PackedSfenValue> PSVector;
 
 bool write_out_draw_game_in_training_data_generation = false;
-bool use_draw_in_training = false;
+bool use_draw_games_in_training = false;
 bool use_draw_in_validation = false;
 bool use_hash_in_training = true;
 bool use_game_draw_adjudication = false;
@@ -2056,7 +2056,7 @@ void LearnerThink::thread_worker(size_t thread_id)
 			goto RetryRead;
 
 
-		if (!use_draw_in_training && ps.game_result == 0)
+		if (!use_draw_games_in_training && ps.game_result == 0)
 			goto RetryRead;
 
 
@@ -3066,7 +3066,7 @@ void learn(Position&, istringstream& is)
 		else if (option == "eta3")       is >> eta3;
 		else if (option == "eta1_epoch") is >> eta1_epoch;
 		else if (option == "eta2_epoch") is >> eta2_epoch;
-		else if (option == "use_draw_in_training") is >> use_draw_in_training;
+		else if (option == "use_draw_in_training" || option == "use_draw_games_in_training") is >> use_draw_games_in_training;
 		else if (option == "use_draw_in_validation") is >> use_draw_in_validation;
 		else if (option == "use_hash_in_training") is >> use_hash_in_training;
 		// Discount rate
