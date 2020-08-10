@@ -118,6 +118,7 @@ bool use_draw_in_training_data_generation = false;
 bool use_draw_in_training = false;
 bool use_draw_in_validation = false;
 bool use_hash_in_training = true;
+bool use_game_draw_adjudication = false;
 
 // -----------------------------------
 // write phase file
@@ -394,6 +395,12 @@ void MultiThinkGenSfen::thread_worker(size_t thread_id)
 	// end flag
 	bool quit = false;
 
+	// Variables for draw adjudication.
+	// Todo: Make this as an option.
+	int adj_draw_ply = 80; // start the adjudication when ply reaches this value
+	int adj_draw_cnt = 8;  // 4 move scores for each side have to be checked
+	int adj_draw_score = 0;  // move score in CP
+
 	// repeat until the specified number of times
 	while (!quit)
 	{
@@ -495,6 +502,9 @@ void MultiThinkGenSfen::thread_worker(size_t thread_id)
 		// When random_move_minply == -1, random moves are performed continuously, so use it at this time.
 		int random_move_c = 0;
 
+		// Save history of move scores for adjudication
+		vector<int> move_hist_scores;
+
 		// ply: steps from the initial stage
 		for (int ply = 0; ; ++ply)
 		{
@@ -539,6 +549,34 @@ void MultiThinkGenSfen::thread_worker(size_t thread_id)
 					flush_psv(0); // Stalemate
 				}
 				break;
+			}
+
+			// Adjudicate game to a draw if the last 4 scores of each engine is 0.
+			if (use_game_draw_adjudication) {
+				if (ply >= adj_draw_ply) {
+					int draw_cnt = 0;
+					bool is_adj_draw = false;
+
+					for (vector<int>::reverse_iterator it = move_hist_scores.rbegin();
+						it != move_hist_scores.rend(); ++it) 
+					{
+						if (abs(*it) <= adj_draw_score)
+							draw_cnt++;
+						else
+							break;  // score should be successive
+
+						if (draw_cnt >= adj_draw_cnt) {
+							is_adj_draw = true;
+							break;
+						}
+					}
+
+					if (is_adj_draw) {
+						if (use_draw_in_training_data_generation)
+							flush_psv(0);
+						break;
+					}
+				}
 			}
 
 			//// constant track
@@ -597,6 +635,9 @@ void MultiThinkGenSfen::thread_worker(size_t thread_id)
 					break;
 				}
 
+				// Save the move score for adjudication.
+				move_hist_scores.push_back(value1);
+
 				// Processing according to each thousand-day hand.
 
         if (pos.is_draw(0)) {
@@ -649,10 +690,10 @@ void MultiThinkGenSfen::thread_worker(size_t thread_id)
 					}
 					else {
 						v = Eval::evaluate(pos);
-						// evaluate() returns the evaluation value on the turn side, so
-						// If it's a turn different from root_color, you must invert v and return it.
-						if (rootColor != pos.side_to_move())
-							v = -v;
+					// evaluate() returns the evaluation value on the turn side, so
+					// If it's a turn different from root_color, you must invert v and return it.
+					if (rootColor != pos.side_to_move())
+						v = -v;
 					}
 
 					// Rewind.
@@ -955,6 +996,8 @@ void gen_sfen(Position&, istringstream& is)
 			is >> random_file_name;
 		else if (token == "use_draw_in_training_data_generation")
 			is >> use_draw_in_training_data_generation;
+		else if (token == "use_game_draw_adjudication")
+			is >> use_game_draw_adjudication;
 		else
 			cout << "Error! : Illegal token " << token << endl;
 	}
