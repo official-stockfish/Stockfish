@@ -119,6 +119,7 @@ bool use_draw_games_in_training = false;
 bool use_draw_games_in_validation = false;
 bool skip_duplicated_positions_in_training = true;
 bool detect_draw_by_consecutive_low_score = false;
+bool detect_draw_by_insufficient_mating_material = false;
 
 // -----------------------------------
 // write phase file
@@ -580,42 +581,44 @@ void MultiThinkGenSfen::thread_worker(size_t thread_id)
 			}
 
 			// Draw by insufficient mating material
-			if (pos.count<ALL_PIECES>() <= 4) {
-				int pcnt = pos.count<ALL_PIECES>();
-				// (1) KvK
-				if (pcnt == 2) {
-					if (write_out_draw_game_in_training_data_generation)
-						flush_psv(0);
-					break;
-				}
-				// (2) KvK + 1 minor piece
-				if (pcnt == 3) {
-					int minor_pc = pos.count<BISHOP>(WHITE) + pos.count<KNIGHT>(WHITE) +
-						pos.count<BISHOP>(BLACK) + pos.count<KNIGHT>(BLACK);
-					if (minor_pc == 1) {
+			if (detect_draw_by_insufficient_mating_material) {
+				if (pos.count<ALL_PIECES>() <= 4) {
+					int pcnt = pos.count<ALL_PIECES>();
+					// (1) KvK
+					if (pcnt == 2) {
 						if (write_out_draw_game_in_training_data_generation)
 							flush_psv(0);
 						break;
 					}
-				}
-				// (3) KBvKB, bishops of the same color
-				else if (pcnt == 4) {
-					if (pos.count<BISHOP>(WHITE) == 1 && pos.count<BISHOP>(BLACK) == 1) {
-						// Color of bishops is black.
-						if ((pos.pieces(WHITE, BISHOP) & DarkSquares)
-							&& (pos.pieces(BLACK, BISHOP) & DarkSquares))
-						{
+					// (2) KvK + 1 minor piece
+					if (pcnt == 3) {
+						int minor_pc = pos.count<BISHOP>(WHITE) + pos.count<KNIGHT>(WHITE) +
+							pos.count<BISHOP>(BLACK) + pos.count<KNIGHT>(BLACK);
+						if (minor_pc == 1) {
 							if (write_out_draw_game_in_training_data_generation)
 								flush_psv(0);
 							break;
 						}
-						// Color of bishops is white.
-						if ((pos.pieces(WHITE, BISHOP) & ~DarkSquares)
-							&& (pos.pieces(BLACK, BISHOP) & ~DarkSquares))
-						{
-							if (write_out_draw_game_in_training_data_generation)
-								flush_psv(0);
-							break;
+					}
+					// (3) KBvKB, bishops of the same color
+					else if (pcnt == 4) {
+						if (pos.count<BISHOP>(WHITE) == 1 && pos.count<BISHOP>(BLACK) == 1) {
+							// Color of bishops is black.
+							if ((pos.pieces(WHITE, BISHOP) & DarkSquares)
+								&& (pos.pieces(BLACK, BISHOP) & DarkSquares))
+							{
+								if (write_out_draw_game_in_training_data_generation)
+									flush_psv(0);
+								break;
+							}
+							// Color of bishops is white.
+							if ((pos.pieces(WHITE, BISHOP) & ~DarkSquares)
+								&& (pos.pieces(BLACK, BISHOP) & ~DarkSquares))
+							{
+								if (write_out_draw_game_in_training_data_generation)
+									flush_psv(0);
+								break;
+							}
 						}
 					}
 				}
@@ -1042,6 +1045,8 @@ void gen_sfen(Position&, istringstream& is)
 		// Accept also the old option name.
 		else if (token == "use_game_draw_adjudication" || token == "detect_draw_by_consecutive_low_score")
 			is >> detect_draw_by_consecutive_low_score;
+		else if (token == "detect_draw_by_insufficient_mating_material")
+			is >> detect_draw_by_insufficient_mating_material;
 		else
 			cout << "Error! : Illegal token " << token << endl;
 	}
