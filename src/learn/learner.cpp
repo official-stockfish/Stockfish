@@ -116,7 +116,7 @@ typedef std::vector<PackedSfenValue> PSVector;
 
 bool write_out_draw_game_in_training_data_generation = false;
 bool use_draw_games_in_training = false;
-bool use_draw_in_validation = false;
+bool use_draw_games_in_validation = false;
 bool use_hash_in_training = true;
 bool use_game_draw_adjudication = false;
 
@@ -1036,6 +1036,7 @@ void gen_sfen(Position&, istringstream& is)
 			is >> save_every;
 		else if (token == "random_file_name")
 			is >> random_file_name;
+		// Accept also the old option name.
 		else if (token == "use_draw_in_training_data_generation" || token == "write_out_draw_game_in_training_data_generation")
 			is >> write_out_draw_game_in_training_data_generation;
 		else if (token == "use_game_draw_adjudication")
@@ -1370,7 +1371,7 @@ struct SfenReader
 			{
 				if (eval_limit < abs(p.score))
 					continue;
-				if (!use_draw_in_validation && p.game_result == 0)
+				if (!use_draw_games_in_validation && p.game_result == 0)
 					continue;
 				sfen_for_mse.push_back(p);
 			} else {
@@ -3066,8 +3067,10 @@ void learn(Position&, istringstream& is)
 		else if (option == "eta3")       is >> eta3;
 		else if (option == "eta1_epoch") is >> eta1_epoch;
 		else if (option == "eta2_epoch") is >> eta2_epoch;
+		// Accept also the old option name.
 		else if (option == "use_draw_in_training" || option == "use_draw_games_in_training") is >> use_draw_games_in_training;
-		else if (option == "use_draw_in_validation") is >> use_draw_in_validation;
+		// Accept also the old option name.
+		else if (option == "use_draw_in_validation" || option == "use_draw_games_in_validation") is >> use_draw_games_in_validation;
 		else if (option == "use_hash_in_training") is >> use_hash_in_training;
 		// Discount rate
 		else if (option == "discount_rate") is >> discount_rate;
