@@ -114,7 +114,7 @@ namespace Learner
 // Phase array: PSVector stands for packed sfen vector.
 typedef std::vector<PackedSfenValue> PSVector;
 
-bool use_draw_in_training_data_generation = false;
+bool write_out_draw_game_in_training_data_generation = false;
 bool use_draw_in_training = false;
 bool use_draw_in_validation = false;
 bool use_hash_in_training = true;
@@ -517,7 +517,7 @@ void MultiThinkGenSfen::thread_worker(size_t thread_id)
 			// has it reached the length
 			if (ply >= MAX_PLY2)
 			{
-				if (use_draw_in_training_data_generation) {
+				if (write_out_draw_game_in_training_data_generation) {
 				// Write out as win/loss = draw.
 				// This way it is harder to allow the opponent to enter the ball when I enter (may)
 				flush_psv(0);
@@ -526,7 +526,7 @@ void MultiThinkGenSfen::thread_worker(size_t thread_id)
 			}
 
       if (pos.is_draw(ply)) {
-		  if (use_draw_in_training_data_generation) {
+		  if (write_out_draw_game_in_training_data_generation) {
 			  // Write if draw.
 			  flush_psv(0);
 		  }
@@ -545,7 +545,7 @@ void MultiThinkGenSfen::thread_worker(size_t thread_id)
 			else {
 				if (pos.checkers()) // Mate
 					flush_psv(-1);
-				else if (use_draw_in_training_data_generation) {
+				else if (write_out_draw_game_in_training_data_generation) {
 					flush_psv(0); // Stalemate
 				}
 				break;
@@ -572,7 +572,7 @@ void MultiThinkGenSfen::thread_worker(size_t thread_id)
 					}
 
 					if (is_adj_draw) {
-						if (use_draw_in_training_data_generation)
+						if (write_out_draw_game_in_training_data_generation)
 							flush_psv(0);
 						break;
 					}
@@ -584,7 +584,7 @@ void MultiThinkGenSfen::thread_worker(size_t thread_id)
 				int pcnt = pos.count<ALL_PIECES>();
 				// (1) KvK
 				if (pcnt == 2) {
-					if (use_draw_in_training_data_generation)
+					if (write_out_draw_game_in_training_data_generation)
 						flush_psv(0);
 					break;
 				}
@@ -593,7 +593,7 @@ void MultiThinkGenSfen::thread_worker(size_t thread_id)
 					int minor_pc = pos.count<BISHOP>(WHITE) + pos.count<KNIGHT>(WHITE) +
 						pos.count<BISHOP>(BLACK) + pos.count<KNIGHT>(BLACK);
 					if (minor_pc == 1) {
-						if (use_draw_in_training_data_generation)
+						if (write_out_draw_game_in_training_data_generation)
 							flush_psv(0);
 						break;
 					}
@@ -605,7 +605,7 @@ void MultiThinkGenSfen::thread_worker(size_t thread_id)
 						if ((pos.pieces(WHITE, BISHOP) & DarkSquares)
 							&& (pos.pieces(BLACK, BISHOP) & DarkSquares))
 						{
-							if (use_draw_in_training_data_generation)
+							if (write_out_draw_game_in_training_data_generation)
 								flush_psv(0);
 							break;
 						}
@@ -613,7 +613,7 @@ void MultiThinkGenSfen::thread_worker(size_t thread_id)
 						if ((pos.pieces(WHITE, BISHOP) & ~DarkSquares)
 							&& (pos.pieces(BLACK, BISHOP) & ~DarkSquares))
 						{
-							if (use_draw_in_training_data_generation)
+							if (write_out_draw_game_in_training_data_generation)
 								flush_psv(0);
 							break;
 						}
@@ -683,7 +683,7 @@ void MultiThinkGenSfen::thread_worker(size_t thread_id)
 				// Processing according to each thousand-day hand.
 
         if (pos.is_draw(0)) {
-			if (use_draw_in_training_data_generation) {
+			if (write_out_draw_game_in_training_data_generation) {
 				// Write if draw.
 				flush_psv(0);
 			}
@@ -1036,8 +1036,8 @@ void gen_sfen(Position&, istringstream& is)
 			is >> save_every;
 		else if (token == "random_file_name")
 			is >> random_file_name;
-		else if (token == "use_draw_in_training_data_generation")
-			is >> use_draw_in_training_data_generation;
+		else if (token == "use_draw_in_training_data_generation" || token == "write_out_draw_game_in_training_data_generation")
+			is >> write_out_draw_game_in_training_data_generation;
 		else if (token == "use_game_draw_adjudication")
 			is >> use_game_draw_adjudication;
 		else
