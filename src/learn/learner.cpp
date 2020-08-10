@@ -118,7 +118,7 @@ bool write_out_draw_game_in_training_data_generation = false;
 bool use_draw_games_in_training = false;
 bool use_draw_games_in_validation = false;
 bool skip_duplicated_positions_in_training = true;
-bool use_game_draw_adjudication = false;
+bool detect_draw_by_consecutive_low_score = false;
 
 // -----------------------------------
 // write phase file
@@ -552,7 +552,7 @@ void MultiThinkGenSfen::thread_worker(size_t thread_id)
 			}
 
 			// Adjudicate game to a draw if the last 4 scores of each engine is 0.
-			if (use_game_draw_adjudication) {
+			if (detect_draw_by_consecutive_low_score) {
 				if (ply >= adj_draw_ply) {
 					int draw_cnt = 0;
 					bool is_adj_draw = false;
@@ -1039,8 +1039,9 @@ void gen_sfen(Position&, istringstream& is)
 		// Accept also the old option name.
 		else if (token == "use_draw_in_training_data_generation" || token == "write_out_draw_game_in_training_data_generation")
 			is >> write_out_draw_game_in_training_data_generation;
-		else if (token == "use_game_draw_adjudication")
-			is >> use_game_draw_adjudication;
+		// Accept also the old option name.
+		else if (token == "use_game_draw_adjudication" || token == "detect_draw_by_consecutive_low_score")
+			is >> detect_draw_by_consecutive_low_score;
 		else
 			cout << "Error! : Illegal token " << token << endl;
 	}
