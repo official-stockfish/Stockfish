@@ -117,7 +117,7 @@ typedef std::vector<PackedSfenValue> PSVector;
 bool write_out_draw_game_in_training_data_generation = false;
 bool use_draw_games_in_training = false;
 bool use_draw_games_in_validation = false;
-bool use_hash_in_training = true;
+bool skip_duplicated_positions_in_training = true;
 bool use_game_draw_adjudication = false;
 
 // -----------------------------------
@@ -2083,13 +2083,13 @@ void LearnerThink::thread_worker(size_t thread_id)
 		{
 			auto key = pos.key();
 			// Exclude the phase used for rmse calculation.
-			if (sr.is_for_rmse(key) && use_hash_in_training)
+			if (sr.is_for_rmse(key) && skip_duplicated_positions_in_training)
 				goto RetryRead;
 
 			// Exclude the most recently used aspect.
 			auto hash_index = size_t(key & (sr.READ_SFEN_HASH_SIZE - 1));
 			auto key2 = sr.hash[hash_index];
-			if (key == key2 && use_hash_in_training)
+			if (key == key2 && skip_duplicated_positions_in_training)
 				goto RetryRead;
 			sr.hash[hash_index] = key; // Replace with the current key.
 		}
@@ -3071,7 +3071,8 @@ void learn(Position&, istringstream& is)
 		else if (option == "use_draw_in_training" || option == "use_draw_games_in_training") is >> use_draw_games_in_training;
 		// Accept also the old option name.
 		else if (option == "use_draw_in_validation" || option == "use_draw_games_in_validation") is >> use_draw_games_in_validation;
-		else if (option == "use_hash_in_training") is >> use_hash_in_training;
+		// Accept also the old option name.
+		else if (option == "use_hash_in_training" || option == "skip_duplicated_positions_in_training") is >> skip_duplicated_positions_in_training;
 		// Discount rate
 		else if (option == "discount_rate") is >> discount_rate;
 
