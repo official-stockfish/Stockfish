@@ -1,8 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
-  Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2020 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -20,15 +18,6 @@
 
 #include <iostream>
 
-#ifdef _WIN32
-#include <filesystem>
-
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
-#include <Windows.h>
-#endif
-
 #include "bitboard.h"
 #include "endgame.h"
 #include "position.h"
@@ -43,17 +32,6 @@ namespace PSQT {
 }
 
 int main(int argc, char* argv[]) {
-  // Change the current working directory to the binary directory.  So that a
-  // net file path can be specified with a relative path from the binary
-  // directory.
-  // TODO(someone): Implement the logic for other OS.
-#ifdef _WIN32
-  TCHAR filename[_MAX_PATH];
-  ::GetModuleFileName(NULL, filename, sizeof(filename) / sizeof(filename[0]));
-  std::filesystem::path current_path = filename;
-  current_path.remove_filename();
-  std::filesystem::current_path(current_path);
-#endif
 
   std::cout << engine_info() << std::endl;
 
@@ -66,6 +44,7 @@ int main(int argc, char* argv[]) {
   Endgames::init();
   Threads.set(size_t(Options["Threads"]));
   Search::clear(); // After threads are up
+  Eval::init_NNUE();
 
   UCI::loop(argc, argv);
 

@@ -4,6 +4,7 @@
 #if defined(EVAL_LEARN)
 
 #include <functional>
+#include <mutex>
 
 #include "../misc.h"
 #include "../learn/learn.h"

@@ -1,8 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
-  Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2020 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -226,6 +224,8 @@ void MainThread::search() {
   Color us = rootPos.side_to_move();
   Time.init(Limits, us, rootPos.game_ply());
   TT.new_search();
+
+  Eval::verify_NNUE();
 
   if (rootMoves.empty())
   {
@@ -816,7 +816,7 @@ namespace {
 
     // Step 8. Futility pruning: child node (~50 Elo)
     if (   !PvNode
-        &&  depth < 6
+        &&  depth < 8
         &&  eval - futility_margin(depth, improving) >= beta
         &&  eval < VALUE_KNOWN_WIN) // Do not return unproven wins
         return eval;
@@ -827,7 +827,7 @@ namespace {
         && (ss-1)->statScore < 23824
         &&  eval >= beta
         &&  eval >= ss->staticEval
-        &&  ss->staticEval >= beta - 33 * depth - 33 * improving + 112 * ttPv + 311
+        &&  ss->staticEval >= beta - 28 * depth - 28 * improving + 94 * ttPv + 200
         && !excludedMove
         &&  pos.non_pawn_material(us)
         && (ss->ply >= thisThread->nmpMinPly || us != thisThread->nmpColor))
@@ -925,9 +925,12 @@ namespace {
 
                 if (value >= probcutBeta)
                 {
-                    tte->save(posKey, value_to_tt(value, ss->ply), ttPv,
-                        BOUND_LOWER,
-                        depth - 3, move, ss->staticEval);
+                    if ( !(ttHit
+                       && tte->depth() >= depth - 3
+                       && ttValue != VALUE_NONE))
+                        tte->save(posKey, value_to_tt(value, ss->ply), ttPv,
+                            BOUND_LOWER,
+                            depth - 3, move, ss->staticEval);
                     return value;
                 }
             }
@@ -983,9 +986,17 @@ moves_loop: // When in check, search starts from here
                                   thisThread->rootMoves.begin() + thisThread->pvLast, move))
           continue;
 
+      // Check for legality
+      if (!rootNode && !pos.legal(move))
+          continue;
+
       ss->moveCount = ++moveCount;
 
-      if (rootNode && thisThread == Threads.main() && Time.elapsed() > 3000 && !Limits.silent)
+      if (rootNode && thisThread == Threads.main() && Time.elapsed() > 3000
+#if defined(EVAL_LEARN)
+          && !Limits.silent
+#endif
+          )
           sync_cout << "info depth " << depth
                     << " currmove " << UCI::move(move, pos.is_chess960())
                     << " currmovenumber " << moveCount + thisThread->pvIdx << sync_endl;
@@ -1021,7 +1032,7 @@ moves_loop: // When in check, search starts from here
                   continue;
 
               // Futility pruning: parent node (~5 Elo)
-              if (   lmrDepth < 6
+              if (   lmrDepth < 8
                   && !ss->inCheck
                   && ss->staticEval + 284 + 188 * lmrDepth <= alpha
                   &&  (*contHist[0])[movedPiece][to_sq(move)]
@@ -1048,7 +1059,7 @@ moves_loop: // When in check, search starts from here
                   && !(PvNode && abs(bestValue) < 2)
                   && PieceValue[MG][type_of(movedPiece)] >= PieceValue[MG][type_of(pos.piece_on(to_sq(move)))]
                   && !ss->inCheck
-                  && ss->staticEval + 267 + 391 * lmrDepth
+                  && ss->staticEval + 178 + 261 * lmrDepth
                      + PieceValue[MG][type_of(pos.piece_on(to_sq(move)))] <= alpha)
                   continue;
 
@@ -1064,16 +1075,15 @@ moves_loop: // When in check, search starts from here
       // search of (alpha-s, beta-s), and just one fails high on (alpha, beta),
       // then that move is singular and should be extended. To verify this we do
       // a reduced search on all the other moves but the ttMove and if the
-      // result is lower than ttValue minus a margin then we will extend the ttMove.
-      if (    depth >= 6
+      // result is lower than ttValue minus a margin, then we will extend the ttMove.
+      if (    depth >= 7
           &&  move == ttMove
           && !rootNode
           && !excludedMove // Avoid recursive singular search
        /* &&  ttValue != VALUE_NONE Already implicit in the next condition */
           &&  abs(ttValue) < VALUE_KNOWN_WIN
           && (tte->bound() & BOUND_LOWER)
-          &&  tte->depth() >= depth - 3
-          &&  pos.legal(move))
+          &&  tte->depth() >= depth - 3)
       {
           Value singularBeta = ttValue - ((formerPv + 4) * depth) / 2;
           Depth singularDepth = (depth - 1 + 3 * formerPv) / 2;
@@ -1140,13 +1150,6 @@ moves_loop: // When in check, search starts from here
       // Speculative prefetch as early as possible
       prefetch(TT.first_entry(pos.key_after(move)));
 
-      // Check for legality just before making the move
-      if (!rootNode && !pos.legal(move))
-      {
-          ss->moveCount = --moveCount;
-          continue;
-      }
-
       // Update the current move (this must be done after singular extension search)
       ss->currentMove = move;
       ss->continuationHistory = &thisThread->continuationHistory[ss->inCheck]
@@ -1160,7 +1163,7 @@ moves_loop: // When in check, search starts from here
       // Step 16. Reduced depth search (LMR, ~200 Elo). If the move fails high it will be
       // re-searched at full depth.
       if (    depth >= 3
-          &&  moveCount > 1 + 2 * rootNode
+          &&  moveCount > 1 + 2 * rootNode + 2 * (PvNode && abs(bestValue) < 2)
           && (!rootNode || thisThread->best_move_count(move) == 0)
           && (  !captureOrPromotion
               || moveCountPruning
@@ -1169,6 +1172,13 @@ moves_loop: // When in check, search starts from here
               || thisThread->ttHitAverage < 415 * TtHitAverageResolution * TtHitAverageWindow / 1024))
       {
           Depth r = reduction(improving, depth, moveCount);
+
+          // Decrease reduction at non-check cut nodes for second move at low depths
+          if (   cutNode
+              && depth <= 10
+              && moveCount <= 2
+              && !ss->inCheck)
+              r--;
 
           // Decrease reduction if the ttHit running average is large
           if (thisThread->ttHitAverage > 473 * TtHitAverageResolution * TtHitAverageWindow / 1024)
@@ -2060,10 +2070,10 @@ namespace Learner
       // Increase the generation of the substitution table for this thread because it is a new search.
             //TT.new_search(th->thread_id());
 
-            // ‚Üë If you call new_search here, it may be a loss because you can't use the previous search result.
+            // Å™ If you call new_search here, it may be a loss because you can't use the previous search result.
             // Do not do this here, but caller should do TT.new_search(th->thread_id()) for each station ...
 
-            // ‚ÜíBecause we want to avoid reaching the same final diagram, use the substitution table commonly for all threads when generating teachers.
+            // Å®Because we want to avoid reaching the same final diagram, use the substitution table commonly for all threads when generating teachers.
       //#endif
     }
   }
@@ -2253,7 +2263,7 @@ namespace Learner
     }
 
     // Pass PV_is(ok) to eliminate this PV, there may be NULL_MOVE in the middle.
-    // ‚Üí PV should not be NULL_MOVE because it is PV
+    // Å® PV should not be NULL_MOVE because it is PV
     // MOVE_WIN has never been thrust. (For now)
     for (Move move : rootMoves[0].pv)
     {

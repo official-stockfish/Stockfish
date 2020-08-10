@@ -81,7 +81,7 @@
 #include "multi_think.h"
 
 #if defined(EVAL_NNUE)
-#include "../eval/nnue/evaluate_nnue_learner.h"
+#include "../nnue/evaluate_nnue_learner.h"
 #include <shared_mutex>
 #endif
 
@@ -627,7 +627,7 @@ void MultiThinkGenSfen::thread_worker(size_t thread_id)
 						// If the depth is 8 or more, it seems faster not to calculate this difference.
 #if defined(EVAL_NNUE)
             if (depth < 8)
-              Eval::evaluate_with_no_return(pos);
+              Eval::NNUE::update_eval(pos);
 #endif  // defined(EVAL_NNUE)
 					}
 
@@ -635,10 +635,10 @@ void MultiThinkGenSfen::thread_worker(size_t thread_id)
 					// cout << pos;
 
 					auto v = Eval::evaluate(pos);
-					// evaluate() returns the evaluation value on the turn side, so
-					// If it's a turn different from root_color, you must invert v and return it.
-					if (rootColor != pos.side_to_move())
-						v = -v;
+						// evaluate() returns the evaluation value on the turn side, so
+						// If it's a turn different from root_color, you must invert v and return it.
+						if (rootColor != pos.side_to_move())
+							v = -v;
 
 					// Rewind.
 					// Is it C++x14, and isn't there even foreach to turn in reverse?
@@ -825,7 +825,7 @@ void MultiThinkGenSfen::thread_worker(size_t thread_id)
 			pos.do_move(m, states[ply]);
 
 			// Call node evaluate() for each difference calculation.
-			Eval::evaluate_with_no_return(pos);
+			Eval::NNUE::update_eval(pos);
 
 		} // for (int ply = 0; ; ++ply)
 
@@ -979,7 +979,7 @@ void gen_sfen(Position&, istringstream& is)
 		<< "  loop_max = " << loop_max << endl
 		<< "  eval_limit = " << eval_limit << endl
 		<< "  thread_num (set by USI setoption) = " << thread_num << endl
-		<< "  book_moves (set by USI setoption) = " << Options["BookMoves"] << endl
+		//<< "  book_moves (set by USI setoption) = " << Options["BookMoves"] << endl
 		<< "  random_move_minply     = " << random_move_minply << endl
 		<< "  random_move_maxply     = " << random_move_maxply << endl
 		<< "  random_move_count      = " << random_move_count << endl
@@ -993,6 +993,9 @@ void gen_sfen(Position&, istringstream& is)
 		<< "  use_eval_hash          = " << use_eval_hash << endl
 		<< "  save_every             = " << save_every << endl
 		<< "  random_file_name       = " << random_file_name << endl;
+
+	// Show if the training data generator uses NNUE.
+	Eval::verify_NNUE();
 
 	// Create and execute threads as many as Options["Threads"].
 	{
@@ -1697,7 +1700,7 @@ void LearnerThink::calc_loss(size_t thread_id, uint64_t done)
 				for (size_t i = 0; i < pv.size(); ++i)
 				{
 					pos.do_move(pv[i], states[i]);
-					Eval::evaluate_with_no_return(pos);
+					Eval::NNUE::update_eval(pos);
 				}
 				shallow_value = (rootColor == pos.side_to_move()) ? Eval::evaluate(pos) : -Eval::evaluate(pos);
 				for (auto it = pv.rbegin(); it != pv.rend(); ++it)
@@ -2106,7 +2109,7 @@ void LearnerThink::thread_worker(size_t thread_id)
 			pos.do_move(m, state[ply++]);
 
 			// Since the value of evaluate in leaf is used, the difference is updated.
-			Eval::evaluate_with_no_return(pos);
+			Eval::NNUE::update_eval(pos);
 		}
 
 		if (illegal_move) {
@@ -2135,9 +2138,6 @@ void LearnerThink::thread_worker(size_t thread_id)
 // Write evaluation function file.
 bool LearnerThink::save(bool is_final)
 {
-	// Calculate and output check sum before saving. (To check if it matches the next time)
-	std::cout << "Check Sum = "<< std::hex << Eval::calc_check_sum() << std::dec << std::endl;
-
 	// Each time you save, change the extension part of the file name like "0","1","2",..
 	// (Because I want to compare the winning rate for each evaluation function parameter later)
 
@@ -3089,14 +3089,14 @@ void learn(Position&, istringstream& is)
 	}
 	if (use_convert_plain)
 	{
-		init_nnue(true);
+		Eval::init_NNUE();
 		cout << "convert_plain.." << endl;
 		convert_plain(filenames, output_file_name);
 		return;
 	}
 	if (use_convert_bin)
 	{
-	  	init_nnue(true);
+		Eval::init_NNUE();
 		cout << "convert_bin.." << endl;
 		convert_bin(filenames,output_file_name, ply_minimum, ply_maximum, interpolate_eval);
 		return;
@@ -3104,7 +3104,7 @@ void learn(Position&, istringstream& is)
 	}
 	if (use_convert_bin_from_pgn_extract)
 	{
-		init_nnue(true);
+		Eval::init_NNUE();
 		cout << "convert_bin_from_pgn-extract.." << endl;
 		convert_bin_from_pgn_extract(filenames, output_file_name, pgn_eval_side_to_move);
 		return;
@@ -3170,7 +3170,7 @@ void learn(Position&, istringstream& is)
 	cout << "init.." << endl;
 
 	// Read evaluation function parameters
-	init_nnue(true);
+	Eval::init_NNUE();
 
 #if !defined(EVAL_NNUE)
 	cout << "init_grad.." << endl;

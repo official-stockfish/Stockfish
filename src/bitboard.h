@@ -1,8 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
-  Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2020 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -130,12 +128,6 @@ constexpr bool more_than_one(Bitboard b) {
   return b & (b - 1);
 }
 
-/// Counts the occupation of the bitboard depending on the occupation of SQ_A1
-/// as in `b & (1ULL << SQ_A1) ? more_than_two(b) : more_than_one(b)`
-
-constexpr bool conditional_more_than_two(Bitboard b) {
-  return b & (b - 1) & (b - 2);
-}
 
 constexpr bool opposite_colors(Square s1, Square s2) {
   return (s1 + rank_of(s1) + s2 + rank_of(s2)) & 1;

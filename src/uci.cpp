@@ -1,8 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
-  Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2020 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -35,7 +33,7 @@
 #include "syzygy/tbprobe.h"
 
 #if defined(EVAL_NNUE) && defined(ENABLE_TEST_CMD)
-#include "eval/nnue/nnue_test_command.h"
+#include "nnue/nnue_test_command.h"
 #endif
 
 using namespace std;
@@ -73,7 +71,7 @@ namespace Learner
 void test_cmd(Position& pos, istringstream& is)
 {
     // Initialize as it may be searched.
-    init_nnue();
+    Eval::init_NNUE();
 
     std::string param;
     is >> param;
@@ -83,6 +81,7 @@ void test_cmd(Position& pos, istringstream& is)
 #endif
 
 namespace {
+
   // position() is called when engine receives the "position" UCI command.
   // The function sets up the position described in the given FEN string ("fen")
   // or the starting position ("startpos") and then makes the moves given in the
@@ -115,6 +114,20 @@ namespace {
         states->emplace_back();
         pos.do_move(m, states->back());
     }
+  }
+
+  // trace_eval() prints the evaluation for the current position, consistent with the UCI
+  // options set so far.
+
+  void trace_eval(Position& pos) {
+
+    StateListPtr states(new std::deque<StateInfo>(1));
+    Position p;
+    p.set(pos.fen(), Options["UCI_Chess960"], &states->back(), Threads.main());
+
+    Eval::verify_NNUE();
+
+    sync_cout << "\n" << Eval::trace(p) << sync_endl;
   }
 
 
@@ -205,18 +218,11 @@ namespace {
                nodes += Threads.nodes_searched();
             }
             else
-               sync_cout << "\n" << Eval::trace(pos) << sync_endl;
+               trace_eval(pos);
         }
         else if (token == "setoption")  setoption(is);
         else if (token == "position")   position(pos, is, states);
-        else if (token == "ucinewgame")
-        {
-#if defined(EVAL_NNUE)
-            init_nnue();
-#endif
-            Search::clear();
-            elapsed = now(); // Search::clear() may take some while
-        }
+        else if (token == "ucinewgame") { Search::clear(); elapsed = now(); } // Search::clear() may take some while
     }
 
     elapsed = now() - elapsed + 1; // Ensure positivity to avoid a 'divide by zero'
@@ -251,47 +257,7 @@ namespace {
      return int(0.5 + 1000 / (1 + std::exp((a - x) / b)));
   }
 
-// When you calculate check sum, save it and check the consistency later.
-  uint64_t eval_sum;
 } // namespace
-
-// Make is_ready_cmd() callable from outside. (Because I want to call it from the bench command etc.)
-// Note that the phase is not initialized.
-void init_nnue(bool skipCorruptCheck)
-{
-#if defined(EVAL_NNUE)
-  // After receiving "isready", modify so that a line feed is sent every 5 seconds until "readyok" is returned. (keep alive processing)
-  // From USI 2.0 specifications.
-  // -The time out time after "is ready" is about 30 seconds. Beyond this, if you want to initialize the evaluation function and secure the hash table,
-  // You should send some kind of message (breakable) from the thinking engine side.
-  // -Shogi GUI already does so, so MyShogi will follow along.
-  //-Also, the engine side of Yaneura King modifies it so that after "isready" is received, a line feed is sent every 5 seconds until "readyok" is returned.
-
-  // Perform processing that may take time, such as reading the evaluation function, at this timing.
-  // If you do a time-consuming process at startup, Shogi place will make a timeout judgment and retire the recognition as a thinking engine.
-  if (!UCI::load_eval_finished)
-  {
-      // Read evaluation function
-      Eval::load_eval();
-
-      // Calculate and save checksum (to check for subsequent memory corruption)
-      eval_sum = Eval::calc_check_sum();
-
-      // display soft name
-      Eval::print_softname(eval_sum);
-
-      UCI::load_eval_finished = true;
-  }
-  else
-  {
-      // Check the checksum every time to see if the memory has been corrupted.
-      // It seems that the time is a little wasteful, but it is good because it is about 0.1 seconds.
-      if (!skipCorruptCheck && eval_sum != Eval::calc_check_sum())
-          sync_cout << "Error! : EVAL memory is corrupted" << sync_endl;
-  }
-#endif  // defined(EVAL_NNUE)
-}
-
 
 // --------------------
 // Call qsearch(),search() directly for testing
@@ -376,25 +342,15 @@ void UCI::loop(int argc, char* argv[]) {
       else if (token == "setoption")  setoption(is);
       else if (token == "go")         go(pos, is, states);
       else if (token == "position")   position(pos, is, states);
-      else if (token == "ucinewgame")
-      {
-#if defined(EVAL_NNUE)
-          init_nnue();
-#endif
-          Search::clear();
-      }
-      else if (token == "isready") {
-#if defined(EVAL_NNUE)
-          init_nnue(true);
-#endif
-          sync_cout << "readyok" << sync_endl;
-      }
+      else if (token == "ucinewgame") Search::clear();
+      else if (token == "isready")    sync_cout << "readyok" << sync_endl;
+
       // Additional custom non-UCI commands, mainly for debugging.
       // Do not use these commands during a search!
       else if (token == "flip")     pos.flip();
       else if (token == "bench")    bench(pos, is, states);
       else if (token == "d")        sync_cout << pos << sync_endl;
-      else if (token == "eval")     sync_cout << Eval::trace(pos) << sync_endl;
+      else if (token == "eval")     trace_eval(pos);
       else if (token == "compiler") sync_cout << compiler_info() << sync_endl;
 #if defined (EVAL_LEARN)
       else if (token == "gensfen") Learner::gen_sfen(pos, is);
@@ -408,10 +364,6 @@ void UCI::loop(int argc, char* argv[]) {
       else if (token == "qsearch") qsearch_cmd(pos);
       else if (token == "search") search_cmd(pos, is);
 
-#endif
-
-#if defined(EVAL_NNUE)
-      else if (token == "eval_nnue") sync_cout << "eval_nnue = " << Eval::compute_eval(pos) << sync_endl;
 #endif
 
 #if defined(EVAL_NNUE) && defined(ENABLE_TEST_CMD)

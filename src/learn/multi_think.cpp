@@ -20,7 +20,7 @@ void MultiThink::go_think()
 	// Read evaluation function, etc.
 	// In the case of the learn command, the value of the evaluation function may be corrected after reading the evaluation function, so
 	// Skip memory corruption check.
-	init_nnue(true);
+	Eval::init_NNUE();
 
 	// Call the derived class's init().
 	init();

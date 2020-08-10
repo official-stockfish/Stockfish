@@ -281,7 +281,7 @@ namespace EvalLearningTools
 		// The number of balls to support (normally SQUARE_NB)
 		int max_king_sq_;
 
-		// Maximum BonaPiece value supported
+		// Maximum PieceSquare value supported
 		uint64_t fe_end_;
 
 	};
@@ -341,10 +341,10 @@ namespace EvalLearningTools
 		void toLowerDimensions(/*out*/KK kk_[KK_LOWER_COUNT]) const {
 			kk_[0] = fromKK(king0_, king1_,false);
 #if defined(USE_KK_MIRROR_WRITE)
-			kk_[1] = fromKK(Mir(king0_),Mir(king1_),false);
+			kk_[1] = fromKK(flip_file(king0_),flip_file(king1_),false);
 #if defined(USE_KK_INVERSE_WRITE)
-			kk_[2] = fromKK(Inv(king1_), Inv(king0_),true);
-			kk_[3] = fromKK(Inv(Mir(king1_)) , Inv(Mir(king0_)),true);
+			kk_[2] = fromKK(rotate180(king1_), rotate180(king0_),true);
+			kk_[3] = fromKK(rotate180(flip_file(king1_)) , rotate180(flip_file(king0_)),true);
 #endif
 #endif
 		}
@@ -386,8 +386,8 @@ namespace EvalLearningTools
 	struct KKP : public SerializerBase
 	{
 	protected:
-		KKP(Square king0, Square king1, Eval::BonaPiece p) : king0_(king0), king1_(king1), piece_(p), inverse_sign(false) {}
-		KKP(Square king0, Square king1, Eval::BonaPiece p, bool inverse) : king0_(king0), king1_(king1), piece_(p),inverse_sign(inverse) {}
+		KKP(Square king0, Square king1, PieceSquare p) : king0_(king0), king1_(king1), piece_(p), inverse_sign(false) {}
+		KKP(Square king0, Square king1, PieceSquare p, bool inverse) : king0_(king0), king1_(king1), piece_(p),inverse_sign(inverse) {}
 	public:
 		KKP() {}
 
@@ -399,27 +399,27 @@ namespace EvalLearningTools
 		// A builder that creates a KKP object from raw_index (a number that starts from 0, not a serial number)
 		KKP fromRawIndex(uint64_t raw_index) const
 		{
-			int piece = (int)(raw_index % Eval::fe_end);
-			raw_index /= Eval::fe_end;
+			int piece = (int)(raw_index % PieceSquare::PS_END);
+			raw_index /= PieceSquare::PS_END;
 			int king1 = (int)(raw_index % SQUARE_NB);
 			raw_index /= SQUARE_NB;
 			int king0 = (int)(raw_index  /* % SQUARE_NB */);
 			assert(king0 < SQUARE_NB);
-			return fromKKP((Square)king0, (Square)king1, (Eval::BonaPiece)piece,false);
+			return fromKKP((Square)king0, (Square)king1, (PieceSquare)piece,false);
 		}
 
-		KKP fromKKP(Square king0, Square king1, Eval::BonaPiece p, bool inverse) const
+		KKP fromKKP(Square king0, Square king1, PieceSquare p, bool inverse) const
 		{
 			KKP my_kkp(king0, king1, p, inverse);
 			my_kkp.set(max_king_sq_,fe_end_,min_index());
 			return my_kkp;
 		}
-		KKP fromKKP(Square king0, Square king1, Eval::BonaPiece p) const { return fromKKP(king0, king1, p, false); }
+		KKP fromKKP(Square king0, Square king1, PieceSquare p) const { return fromKKP(king0, king1, p, false); }
 
 		// When you construct this object using fromIndex(), you can get information with the following accessors.
 		Square king0() const { return king0_; }
 		Square king1() const { return king1_; }
-		Eval::BonaPiece piece() const { return piece_; }
+		PieceSquare piece() const { return piece_; }
 
 		// Number of KKP dimension reductions
 #if defined(USE_KKP_INVERSE_WRITE)
@@ -442,10 +442,10 @@ namespace EvalLearningTools
 		void toLowerDimensions(/*out*/ KKP kkp_[KKP_LOWER_COUNT]) const {
 			kkp_[0] = fromKKP(king0_, king1_, piece_,false);
 #if defined(USE_KKP_MIRROR_WRITE)
-			kkp_[1] = fromKKP(Mir(king0_), Mir(king1_), mir_piece(piece_),false);
+			kkp_[1] = fromKKP(flip_file(king0_), flip_file(king1_), Eval::mir_piece(piece_),false);
 #if defined(USE_KKP_INVERSE_WRITE)
-			kkp_[2] = fromKKP( Inv(king1_), Inv(king0_), inv_piece(piece_),true);
-			kkp_[3] = fromKKP( Inv(Mir(king1_)), Inv(Mir(king0_)) , inv_piece(mir_piece(piece_)),true);
+			kkp_[2] = fromKKP( rotate180(king1_), rotate180(king0_), Eval::inv_piece(piece_),true);
+			kkp_[3] = fromKKP( rotate180(flip_file(king1_)), rotate180(flip_file(king0_)) , Eval::inv_piece(Eval::mir_piece(piece_)),true);
 #endif
 #endif
 		}
@@ -473,7 +473,7 @@ namespace EvalLearningTools
 
 	private:
 		Square king0_, king1_;
-		Eval::BonaPiece piece_;
+		PieceSquare piece_;
 		bool inverse_sign;
 	};
 
@@ -489,7 +489,7 @@ namespace EvalLearningTools
 	struct KPP : public SerializerBase
 	{
 	protected:
-		KPP(Square king, Eval::BonaPiece p0, Eval::BonaPiece p1) : king_(king), piece0_(p0), piece1_(p1) {}
+		KPP(Square king, PieceSquare p0, PieceSquare p1) : king_(king), piece0_(p0), piece1_(p1) {}
 
 	public:
 		KPP() {}
@@ -534,7 +534,7 @@ namespace EvalLearningTools
 			// From the solution formula of the quadratic equation i = (sqrt(8*index2+1)-1) / 2.
 			// After i is converted into an integer, j can be calculated as j = index2-i * (i + 1) / 2.
 
-			// BonaPiece assumes 32bit (may not fit in 16bit), so this multiplication must be 64bit.
+			// PieceSquare assumes 32bit (may not fit in 16bit), so this multiplication must be 64bit.
 			int piece1 = int(sqrt(8 * index2 + 1) - 1) / 2;
 			int piece0 = int(index2 - (uint64_t)piece1*((uint64_t)piece1 + 1) / 2);
 
@@ -546,10 +546,10 @@ namespace EvalLearningTools
 #endif
 			int king = (int)(raw_index  /* % SQUARE_NB */);
 			assert(king < max_king_sq_);
-			return fromKPP((Square)king, (Eval::BonaPiece)piece0, (Eval::BonaPiece)piece1);
+			return fromKPP((Square)king, (PieceSquare)piece0, (PieceSquare)piece1);
 		}
 
-		KPP fromKPP(Square king, Eval::BonaPiece p0, Eval::BonaPiece p1) const
+		KPP fromKPP(Square king, PieceSquare p0, PieceSquare p1) const
 		{
 			KPP my_kpp(king, p0, p1);
 			my_kpp.set(max_king_sq_,fe_end_,min_index());
@@ -558,8 +558,8 @@ namespace EvalLearningTools
 
 		// When you construct this object using fromIndex(), you can get information with the following accessors.
 		Square king() const { return king_; }
-		Eval::BonaPiece piece0() const { return piece0_; }
-		Eval::BonaPiece piece1() const { return piece1_; }
+		PieceSquare piece0() const { return piece0_; }
+		PieceSquare piece1() const { return piece1_; }
 
 
 // number of dimension reductions
@@ -584,7 +584,7 @@ namespace EvalLearningTools
 			// Note that if you use a triangular array, the swapped piece0 and piece1 will not be returned.
 			kpp_[0] = fromKPP(king_, piece0_, piece1_);
 #if defined(USE_KPP_MIRROR_WRITE)
-			kpp_[1] = fromKPP(Mir(king_), mir_piece(piece0_), mir_piece(piece1_));
+			kpp_[1] = fromKPP(flip_file(king_), Eval::mir_piece(piece0_), Eval::mir_piece(piece1_));
 #endif
 
 #else
@@ -592,8 +592,8 @@ namespace EvalLearningTools
 			kpp_[0] = fromKPP(king_, piece0_, piece1_);
 			kpp_[1] = fromKPP(king_, piece1_, piece0_);
 #if defined(USE_KPP_MIRROR_WRITE)
-			kpp_[2] = fromKPP(Mir(king_), mir_piece(piece0_), mir_piece(piece1_));
-			kpp_[3] = fromKPP(Mir(king_), mir_piece(piece1_), mir_piece(piece0_));
+			kpp_[2] = fromKPP(flip_file(king_), mir_piece(piece0_), mir_piece(piece1_));
+			kpp_[3] = fromKPP(flip_file(king_), mir_piece(piece1_), mir_piece(piece0_));
 #endif
 #endif
 		}
@@ -607,14 +607,14 @@ namespace EvalLearningTools
 
 #else
 			// Macro similar to that used in Bonanza 6.0
-			auto PcPcOnSq = [&](Square k, Eval::BonaPiece i, Eval::BonaPiece j)
+			auto PcPcOnSq = [&](Square k, PieceSquare i, PieceSquare j)
 			{
 
 				// (i,j) in this triangular array is the element in the i-th row and the j-th column.
 				// 1st row + 2 + ... + i = i * (i+1) / 2 because the i-th row and 0th column is the total of the elements up to that point
 				// The i-th row and the j-th column is j plus this. i*(i+1)/2+j
 
-				// BonaPiece type is assumed to be 32 bits, so if you do not pay attention to multiplication, it will overflow.
+				// PieceSquare type is assumed to be 32 bits, so if you do not pay attention to multiplication, it will overflow.
 				return (uint64_t)k * triangle_fe_end + (uint64_t)(uint64_t(i)*(uint64_t(i)+1) / 2 + uint64_t(j));
 			};
 
@@ -646,7 +646,7 @@ namespace EvalLearningTools
 
 	private:
 		Square king_;
-		Eval::BonaPiece piece0_, piece1_;
+		PieceSquare piece0_, piece1_;
 
 		uint64_t triangle_fe_end; // = (uint64_t)fe_end_*((uint64_t)fe_end_ + 1) / 2;
 	};
@@ -672,7 +672,7 @@ namespace EvalLearningTools
 	struct KPPP : public SerializerBase
 	{
 	protected:
-		KPPP(int king, Eval::BonaPiece p0, Eval::BonaPiece p1, Eval::BonaPiece p2) :
+		KPPP(int king, PieceSquare p0, PieceSquare p1, PieceSquare p2) :
 			king_(king), piece0_(p0), piece1_(p1), piece2_(p2)
 		{
 			assert(piece0_ > piece1_ && piece1_ > piece2_);
@@ -716,9 +716,9 @@ namespace EvalLearningTools
 			kppp_[0] = fromKPPP(king_, piece0_, piece1_,piece2_);
 #if KPPP_LOWER_COUNT > 1
 			// If mir_piece is done, it will be in a state not sorted. Need code to sort.
-			Eval::BonaPiece p_list[3] = { mir_piece(piece2_), mir_piece(piece1_), mir_piece(piece0_) };
+			PieceSquare p_list[3] = { mir_piece(piece2_), mir_piece(piece1_), mir_piece(piece0_) };
 			my_insertion_sort(p_list, 0, 3);
-			kppp_[1] = fromKPPP((int)Mir((Square)king_), p_list[2] , p_list[1], p_list[0]);
+			kppp_[1] = fromKPPP((int)flip_file((Square)king_), p_list[2] , p_list[1], p_list[0]);
 #endif
 		}
 
@@ -797,12 +797,12 @@ namespace EvalLearningTools
 			assert(king < max_king_sq_);
 
 			// Propagate king_sq and fe_end.
-			return fromKPPP((Square)king, (Eval::BonaPiece)piece0, (Eval::BonaPiece)piece1 , (Eval::BonaPiece)piece2);
+			return fromKPPP((Square)king, (PieceSquare)piece0, (PieceSquare)piece1 , (PieceSquare)piece2);
 		}
 
 		// Specify k,p0,p1,p2 to build KPPP instance.
 		// The king_sq and fe_end passed by set() which is internally retained are inherited.
-		KPPP fromKPPP(int king, Eval::BonaPiece p0, Eval::BonaPiece p1, Eval::BonaPiece p2) const
+		KPPP fromKPPP(int king, PieceSquare p0, PieceSquare p1, PieceSquare p2) const
 		{
 			KPPP kppp(king, p0, p1, p2);
 			kppp.set(max_king_sq_, fe_end_,min_index());
@@ -815,7 +815,7 @@ namespace EvalLearningTools
 			// Macro similar to the one used in Bonanza 6.0
 			// Precondition) i> j> k.
 			// NG in case of i==j,j==k.
-			auto PcPcPcOnSq = [this](int king, Eval::BonaPiece i, Eval::BonaPiece j , Eval::BonaPiece k)
+			auto PcPcPcOnSq = [this](int king, PieceSquare i, PieceSquare j , PieceSquare k)
 			{
 				// (i,j,k) in this triangular array is the element in the i-th row and the j-th column.
 				// 0th row 0th column 0th is the sum of the elements up to that point, so 0 + 0 + 1 + 3 + 6 + ... + (i)*(i-1)/2 = i*( i-1)*(i-2)/6
@@ -823,7 +823,7 @@ namespace EvalLearningTools
 				// i-th row, j-th column and k-th row is k plus it. + k
 				assert(i > j && j > k);
 
-				// BonaPiece type is assumed to be 32 bits, so if you do not pay attention to multiplication, it will overflow.
+				// PieceSquare type is assumed to be 32 bits, so if you do not pay attention to multiplication, it will overflow.
 				return (uint64_t)king * triangle_fe_end + (uint64_t)(
 						  uint64_t(i)*(uint64_t(i) - 1) * (uint64_t(i) - 2) / 6
 						+ uint64_t(j)*(uint64_t(j) - 1) / 2
@@ -836,9 +836,9 @@ namespace EvalLearningTools
 
 		// When you construct this object using fromIndex(), you can get information with the following accessors.
 		int king() const { return king_; }
-		Eval::BonaPiece piece0() const { return piece0_; }
-		Eval::BonaPiece piece1() const { return piece1_; }
-		Eval::BonaPiece piece2() const { return piece2_; }
+		PieceSquare piece0() const { return piece0_; }
+		PieceSquare piece1() const { return piece1_; }
+		PieceSquare piece2() const { return piece2_; }
 		// Returns whether or not the dimension lowered with toLowerDimensions is inverse.
 		// Prepared to match KK, KKP and interface. This method always returns false for this KPPP class.
 		bool is_inverse() const {
@@ -859,14 +859,14 @@ namespace EvalLearningTools
 	private:
 
 		int king_;
-		Eval::BonaPiece piece0_, piece1_,piece2_;
+		PieceSquare piece0_, piece1_,piece2_;
 
 		// The part of the square array of [fe_end][fe_end][fe_end] of kppp[king_sq][fe_end][fe_end][fe_end] is made into a triangular array.
 		// If kppp[king_sq][triangle_fe_end], the number of elements from the 0th row of this triangular array is 0,0,1,3,..., The nth row is n(n-1)/2.
 		// therefore,
 		// triangle_fe_end = Σn(n-1)/2 , n=0..fe_end-1
 		//                 =  fe_end * (fe_end - 1) * (fe_end - 2) / 6
-		uint64_t triangle_fe_end; // ((uint64_t)Eval::fe_end)*((uint64_t)Eval::fe_end - 1)*((uint64_t)Eval::fe_end - 2) / 6;
+		uint64_t triangle_fe_end; // ((uint64_t)PieceSquare::PS_END)*((uint64_t)PieceSquare::PS_END - 1)*((uint64_t)PieceSquare::PS_END - 2) / 6;
 	};
 
 	// Output for debugging.
@@ -885,12 +885,12 @@ namespace EvalLearningTools
 	// piece0() >piece1()
 	// It is, and it is necessary to keep this constraint even when passing piece0,1 in the constructor.
 	//
-	// Due to this constraint, BonaPieceZero cannot be assigned to piece0 and piece1 at the same time and passed.
+	// Due to this constraint, PieceSquareZero cannot be assigned to piece0 and piece1 at the same time and passed.
 	// If you want to support learning of dropped frames, you need to devise with evaluate().
 	struct KKPP: SerializerBase
 	{
 	protected:
-		KKPP(int king, Eval::BonaPiece p0, Eval::BonaPiece p1) :
+		KKPP(int king, PieceSquare p0, PieceSquare p1) :
 			king_(king), piece0_(p0), piece1_(p1)
 		{
 			assert(piece0_ > piece1_);
@@ -956,12 +956,12 @@ namespace EvalLearningTools
 			assert(king < max_king_sq_);
 
 			// Propagate king_sq and fe_end.
-			return fromKKPP(king, (Eval::BonaPiece)piece0, (Eval::BonaPiece)piece1);
+			return fromKKPP(king, (PieceSquare)piece0, (PieceSquare)piece1);
 		}
 
 		// Specify k,p0,p1 to build KKPP instance.
 		// The king_sq and fe_end passed by set() which is internally retained are inherited.
-		KKPP fromKKPP(int king, Eval::BonaPiece p0, Eval::BonaPiece p1) const
+		KKPP fromKKPP(int king, PieceSquare p0, PieceSquare p1) const
 		{
 			KKPP kkpp(king, p0, p1);
 			kkpp.set(max_king_sq_, fe_end_,min_index());
@@ -974,11 +974,11 @@ namespace EvalLearningTools
 			// Macro similar to the one used in Bonanza 6.0
 			// Precondition) i> j.
 			// NG in case of i==j,j==k.
-			auto PcPcOnSq = [this](int king, Eval::BonaPiece i, Eval::BonaPiece j)
+			auto PcPcOnSq = [this](int king, PieceSquare i, PieceSquare j)
 			{
 				assert(i > j);
 
-				// BonaPiece type is assumed to be 32 bits, so if you do not pay attention to multiplication, it will overflow.
+				// PieceSquare type is assumed to be 32 bits, so if you do not pay attention to multiplication, it will overflow.
 				return (uint64_t)king * triangle_fe_end + (uint64_t)(
 					+ uint64_t(i)*(uint64_t(i) - 1) / 2
 					+ uint64_t(j)
@@ -990,8 +990,8 @@ namespace EvalLearningTools
 
 		// When you construct this object using fromIndex(), fromKKPP(), you can get information with the following accessors.
 		int king() const { return king_; }
-		Eval::BonaPiece piece0() const { return piece0_; }
-		Eval::BonaPiece piece1() const { return piece1_; }
+		PieceSquare piece0() const { return piece0_; }
+		PieceSquare piece1() const { return piece1_; }
 
 		// Returns whether or not the dimension lowered with toLowerDimensions is inverse.
 		// Prepared to match KK, KKP and interface. In this KKPP class, this method always returns false.
@@ -1013,7 +1013,7 @@ namespace EvalLearningTools
 	private:
 
 		int king_;
-		Eval::BonaPiece piece0_, piece1_;
+		PieceSquare piece0_, piece1_;
 
 		// Triangularize the square array part of [fe_end][fe_end] of kppp[king_sq][fe_end][fe_end].
 		uint64_t triangle_fe_end = 0;
