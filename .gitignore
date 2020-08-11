@@ -1,0 +1,9 @@
+/build*/
+
+# Profiling data
+profdir/
+bench.txt
+*.gcda
+*.gcno
+stockfish.profdata
+*.profraw
