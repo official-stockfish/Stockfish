@@ -219,6 +219,9 @@ const std::string compiler_info() {
 
   compiler += "\nCompilation settings include: ";
   compiler += (Is64Bit ? " 64bit" : " 32bit");
+  #if defined(USE_VNNI)
+    compiler += " VNNI";
+  #endif
   #if defined(USE_AVX512)
     compiler += " AVX512";
   #endif
