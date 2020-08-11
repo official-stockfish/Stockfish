@@ -472,6 +472,11 @@ ifeq ($(debug), no)
 	ifeq ($(gccisclang),)
 		CXXFLAGS += -flto
 		LDFLAGS += $(CXXFLAGS) -flto=jobserver
+		ifneq ($(findstring MINGW,$(KERNEL)),)
+			LDFLAGS += -save-temps
+		else ifneq ($(findstring MSYS,$(KERNEL)),)
+			LDFLAGS += -save-temps
+		endif
 	else
 		CXXFLAGS += -flto=thin
 		LDFLAGS += $(CXXFLAGS)
