@@ -472,6 +472,11 @@ ifeq ($(debug), no)
 	ifeq ($(gccisclang),)
 		CXXFLAGS += -flto
 		LDFLAGS += $(CXXFLAGS) -flto=jobserver
+		ifneq ($(findstring MINGW,$(KERNEL)),)
+			LDFLAGS += -save-temps
+		else ifneq ($(findstring MSYS,$(KERNEL)),)
+			LDFLAGS += -save-temps
+		endif
 	else
 		CXXFLAGS += -flto=thin
 		LDFLAGS += $(CXXFLAGS)
@@ -605,7 +610,7 @@ objclean:
 # clean auxiliary profiling files
 profileclean:
 	@rm -rf profdir
-	@rm -f bench.txt *.gcda *.gcno ./syzygy/*.gcda ./nnue/*.gcda ./nnue/features/*.gcda
+	@rm -f bench.txt *.gcda *.gcno ./syzygy/*.gcda ./nnue/*.gcda ./nnue/features/*.gcda *.s
 	@rm -f stockfish.profdata *.profraw
 
 default:
