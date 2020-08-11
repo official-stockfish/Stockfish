@@ -569,7 +569,7 @@ help:
 build: config-sanity
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) all
 
-profile-build: config-sanity objclean profileclean net
+profile-build: net config-sanity objclean profileclean
 	@echo ""
 	@echo "Step 1/4. Building instrumented executable ..."
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_make)
