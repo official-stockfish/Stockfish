@@ -68,6 +68,8 @@ namespace {
     return Value(227 * (d - improving));
   }
 
+  bool training;
+
   // Reductions lookup table, initialized at startup
   int Reductions[MAX_MOVES]; // [depth or moveNumber]
 
@@ -193,6 +195,8 @@ void Search::init() {
 
   for (int i = 1; i < MAX_MOVES; ++i)
       Reductions[i] = int((24.8 + std::log(Threads.size())) * std::log(i));
+
+  training = Options["Training"];
 }
 
 
@@ -1012,7 +1016,8 @@ moves_loop: // When in check, search starts from here
       newDepth = depth - 1;
 
       // Step 13. Pruning at shallow depth (~200 Elo)
-      if (  !PvNode
+      if (  !rootNode
+          && !(training && PvNode)
           && pos.non_pawn_material(us)
           && bestValue > VALUE_TB_LOSS_IN_MAX_PLY)
       {
