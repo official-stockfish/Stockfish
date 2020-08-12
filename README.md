@@ -53,7 +53,7 @@ After training is finished, your new net should be located in the "final" folder
 ## Using Your Trained Net
 If you want to use your generated net, copy the net located in the "final" folder under the "evalsave" directory and move it into a new folder named "eval" under the directory with the binaries. You can then use the halfkp_256x2 binaries pertaining to your CPU with a standard chess GUI, such as Cutechess. Refer to the [releases page](https://abrok.eu/stockfish) to find out which binary is best for your CPU.
 
-If the engine does not load any net file, or shows "Error! *** not found or wrong format", please try to sepcify the net with the full file path with the "EvalFile" option by typing the command `setoption name EvalFile value path` where path is the full file path.
+If the engine does not load any net file, or shows "Error! *** not found or wrong format", please try to specify the net with the full file path with the "EvalFile" option by typing the command `setoption name EvalFile value path` where path is the full file path.
 
 ## Resources
 - [Stockfish NNUE Wiki](https://www.qhapaq.org/shogi/shogiwiki/stockfish-nnue/)
