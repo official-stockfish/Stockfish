@@ -468,7 +468,7 @@ ifeq ($(neon),yes)
 endif
 
 ifeq ($(arch),x86_64)
-	CXXFLAGS += -DUSE_SSE2
+	CXXFLAGS += -msse2 -DUSE_SSE2
 endif
 
 ### 3.7 pext
