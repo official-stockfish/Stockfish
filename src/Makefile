@@ -81,6 +81,11 @@ endif
 # at the end of the line for flag values.
 
 ### 2.1. General and architecture defaults
+
+ifeq ($(ARCH),)
+    empty_arch = yes
+endif
+
 optimize = yes
 debug = no
 sanitize = no
@@ -99,6 +104,7 @@ neon = no
 ARCH = x86-64-modern
 
 ### 2.2 Architecture specific
+
 ifeq ($(ARCH),general-32)
 	arch = any
 	bits = 32
@@ -535,8 +541,9 @@ help:
 	@echo ""
 	@echo "Supported targets:"
 	@echo ""
+	@echo "help                    > Display architecture details"
 	@echo "build                   > Standard build"
-	@echo "profile-build           > Standard build with PGO"
+	@echo "profile-build           > Standard build (with profile-guided optimization)"
 	@echo "strip                   > Strip executable"
 	@echo "install                 > Install executable"
 	@echo "clean                   > Clean up"
@@ -549,7 +556,7 @@ help:
 	@echo "x86-64-bmi2             > x86 64-bit with bmi2 support"
 	@echo "x86-64-avx2             > x86 64-bit with avx2 support"
 	@echo "x86-64-sse41-popcnt     > x86 64-bit with sse41 and popcnt support"
-	@echo "x86-64-modern           > the same as previous (x86-64-sse41-popcnt)"
+	@echo "x86-64-modern           > default, same as x86-64-sse41-popcnt"
 	@echo "x86-64-ssse3            > x86 64-bit with ssse3 support"
 	@echo "x86-64-sse3-popcnt      > x86 64-bit with sse3 and popcnt support"
 	@echo "x86-64                  > x86 64-bit generic"
@@ -572,17 +579,20 @@ help:
 	@echo ""
 	@echo "Simple examples. If you don't know what to do, you likely want to run: "
 	@echo ""
-	@echo "make -j build ARCH=x86-64    (This is for 64-bit systems)"
-	@echo "make -j build ARCH=x86-32    (This is for 32-bit systems)"
+	@echo "make build ARCH=x86-64  -j     (This is for 64-bit systems)"
+	@echo "make build ARCH=x86-32  -j     (This is for 32-bit systems)"
 	@echo ""
 	@echo "Advanced examples, for experienced users: "
 	@echo ""
-	@echo "make -j build ARCH=x86-64-modern COMP=clang"
-	@echo "make -j profile-build ARCH=x86-64-bmi2 COMP=gcc COMPCXX=g++-4.8"
+	@echo "make help  ARCH=x86-64-modern"
+	@echo "make build ARCH=x86-64-ssse3 COMP=clang  -j"
+	@echo "make profile-build ARCH=x86-64-bmi2 COMP=gcc COMPCXX=g++-9.0  -j"
 	@echo ""
-	@echo "The selected architecture $(ARCH) enables the following configuration: "
-	@echo ""
+ifneq ($(empty_arch), yes)
+	@echo "-------------------------------\n"
+	@echo "The selected architecture $(ARCH) will enable the following configuration: "
 	@$(MAKE) ARCH=$(ARCH) COMP=$(COMP) config-sanity
+endif
 
 
 .PHONY: help build profile-build strip install clean net objclean profileclean \
