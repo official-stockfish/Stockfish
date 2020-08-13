@@ -100,9 +100,9 @@ namespace {
 
     is >> token; // Consume "name" token
 
-    // Read option name (can contain spaces)
+    // Read option name (ignore spaces)
     while (is >> token && token != "value")
-        name += (name.empty() ? "" : " ") + token;
+        name += token;
 
     // Read option value (can contain spaces)
     while (is >> token)
