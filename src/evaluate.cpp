@@ -34,6 +34,9 @@
 namespace Eval {
 
   bool useNNUE;
+  uint64_t hitsNNUE;
+  uint64_t evalCountNNUE;
+
   std::string eval_file_loaded="None";
 
   void init_NNUE() {
@@ -46,7 +49,8 @@ namespace Eval {
   }
 
   void verify_NNUE() {
-
+    hitsNNUE = evalCountNNUE = 0ULL;
+    
     std::string eval_file = std::string(Options["EvalFile"]);
     if (useNNUE && eval_file_loaded != eval_file)
     {
@@ -943,10 +947,14 @@ Value Eval::evaluate(const Position& pos) {
 
   if (Eval::useNNUE)
   {
+      evalCountNNUE++;
+
       Value v = eg_value(pos.psq_score());
       // Take NNUE eval only on balanced positions
-      if (abs(v) < NNUEThreshold)
-         return NNUE::evaluate(pos) + Tempo;
+    if (abs(v) < NNUEThreshold) {
+      hitsNNUE++;
+      return NNUE::evaluate(pos) + Tempo;
+    }
   }
   return Evaluation<NO_TRACE>(pos).value();
 }

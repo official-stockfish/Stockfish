@@ -1880,6 +1880,9 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
       if (elapsed > 1000) // Earlier makes little sense
           ss << " hashfull " << TT.hashfull();
 
+    if (Eval::useNNUE && Eval::evalCountNNUE)
+      ss << " nnuehits " << Eval::hitsNNUE * 1000 / Eval::evalCountNNUE;
+
       ss << " tbhits "   << tbHits
          << " time "     << elapsed
          << " pv";

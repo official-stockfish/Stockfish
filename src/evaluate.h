@@ -31,6 +31,8 @@ namespace Eval {
   Value evaluate(const Position& pos);
 
   extern bool useNNUE;
+  extern uint64_t hitsNNUE;
+  extern uint64_t evalCountNNUE;
   extern std::string eval_file_loaded;
   void init_NNUE();
   void verify_NNUE();
