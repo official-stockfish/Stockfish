@@ -17,6 +17,7 @@
 */
 
 #include <iostream>
+#include <filesystem>
 
 #include "bitboard.h"
 #include "endgame.h"
@@ -34,6 +35,8 @@ namespace PSQT {
 int main(int argc, char* argv[]) {
 
   std::cout << engine_info() << std::endl;
+
+  ProgramPath = std::filesystem::path(argv[0]).remove_filename().string();
 
   UCI::init(Options);
   Tune::init();

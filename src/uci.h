@@ -77,5 +77,6 @@ Move to_move(const Position& pos, std::string& str);
 } // namespace UCI
 
 extern UCI::OptionsMap Options;
+extern std::string     ProgramPath;
 
 #endif // #ifndef UCI_H_INCLUDED

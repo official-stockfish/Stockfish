@@ -23,6 +23,7 @@
 #include <iomanip>
 #include <sstream>
 #include <iostream>
+#include <filesystem>
 
 #include "bitboard.h"
 #include "evaluate.h"
@@ -33,6 +34,21 @@
 
 namespace Eval {
 
+namespace {
+
+  void substitute_program_path(std::string& file_path) {
+
+      const auto index = file_path.find("~");
+      if (index != std::string::npos)
+      {
+          file_path.replace(index, 1, ProgramPath);
+          file_path = std::filesystem::canonical(std::filesystem::path(file_path)).string();
+      }
+  }
+
+}
+
+
   bool useNNUE;
   std::string eval_file_loaded="None";
 
@@ -40,6 +56,7 @@ namespace Eval {
 
     useNNUE = Options["Use NNUE"];
     std::string eval_file = std::string(Options["EvalFile"]);
+    substitute_program_path(eval_file);
     if (useNNUE && eval_file_loaded != eval_file)
         if (Eval::NNUE::load_eval_file(eval_file))
             eval_file_loaded = eval_file;
@@ -48,6 +65,7 @@ namespace Eval {
   void verify_NNUE() {
 
     std::string eval_file = std::string(Options["EvalFile"]);
+    substitute_program_path(eval_file);
     if (useNNUE && eval_file_loaded != eval_file)
     {
         UCI::OptionsMap defaults;

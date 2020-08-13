@@ -31,6 +31,7 @@
 using std::string;
 
 UCI::OptionsMap Options; // Global object
+std::string     ProgramPath;
 
 namespace UCI {
 
@@ -79,7 +80,7 @@ void init(OptionsMap& o) {
   o["Syzygy50MoveRule"]      << Option(true);
   o["SyzygyProbeLimit"]      << Option(7, 0, 7);
   o["Use NNUE"]              << Option(false, on_use_NNUE);
-  o["EvalFile"]              << Option("nn-82215d0fd0df.nnue", on_eval_file);
+  o["EvalFile"]              << Option("~/nn-82215d0fd0df.nnue", on_eval_file);
 }
 
 
