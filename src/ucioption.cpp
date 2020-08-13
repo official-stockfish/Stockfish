@@ -79,6 +79,8 @@ void init(OptionsMap& o) {
   o["Syzygy50MoveRule"]      << Option(true);
   o["SyzygyProbeLimit"]      << Option(7, 0, 7);
   o["Use NNUE"]              << Option(false, on_use_NNUE);
+  // The default must follow the format nn-[SHA256 first 12 digits].nnue
+  // for the build process (profile-build and fishtest) to work.
   o["EvalFile"]              << Option("nn-82215d0fd0df.nnue", on_eval_file);
 }
 
