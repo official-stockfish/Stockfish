@@ -57,18 +57,18 @@ void init(OptionsMap& o) {
 
   constexpr int MaxHashMB = Is64Bit ? 33554432 : 2048;
 
-  o["Debug Log File"]        << Option("", on_logger);
+  o["DebugLogFile"]          << Option("", on_logger);
   o["Contempt"]              << Option(24, -100, 100);
-  o["Analysis Contempt"]     << Option("Both var Off var White var Black var Both", "Both");
+  o["AnalysisContempt"]      << Option("Both var Off var White var Black var Both", "Both");
   o["Threads"]               << Option(1, 1, 512, on_threads);
   o["Hash"]                  << Option(16, 1, MaxHashMB, on_hash_size);
-  o["Clear Hash"]            << Option(on_clear_hash);
+  o["ClearHash"]             << Option(on_clear_hash);
   o["Ponder"]                << Option(false);
   o["MultiPV"]               << Option(1, 1, 500);
-  o["Skill Level"]           << Option(20, 0, 20);
-  o["Move Overhead"]         << Option(10, 0, 5000);
-  o["Slow Mover"]            << Option(100, 10, 1000);
-  o["nodestime"]             << Option(0, 0, 10000);
+  o["SkillLevel"]            << Option(20, 0, 20);
+  o["MoveOverhead"]          << Option(10, 0, 5000);
+  o["SlowMover"]             << Option(100, 10, 1000);
+  o["Nodestime"]             << Option(0, 0, 10000);
   o["UCI_Chess960"]          << Option(false);
   o["UCI_AnalyseMode"]       << Option(false);
   o["UCI_LimitStrength"]     << Option(false);
@@ -78,7 +78,7 @@ void init(OptionsMap& o) {
   o["SyzygyProbeDepth"]      << Option(1, 1, 100);
   o["Syzygy50MoveRule"]      << Option(true);
   o["SyzygyProbeLimit"]      << Option(7, 0, 7);
-  o["Use NNUE"]              << Option(false, on_use_NNUE);
+  o["UseNNUE"]               << Option(false, on_use_NNUE);
   o["EvalFile"]              << Option("nn-82215d0fd0df.nnue", on_eval_file);
 }
 

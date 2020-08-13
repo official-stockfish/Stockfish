@@ -34,9 +34,9 @@ TimeManagement Time; // Our global time management object
 
 void TimeManagement::init(Search::LimitsType& limits, Color us, int ply) {
 
-  TimePoint moveOverhead    = TimePoint(Options["Move Overhead"]);
-  TimePoint slowMover       = TimePoint(Options["Slow Mover"]);
-  TimePoint npmsec          = TimePoint(Options["nodestime"]);
+  TimePoint moveOverhead    = TimePoint(Options["MoveOverhead"]);
+  TimePoint slowMover       = TimePoint(Options["SlowMover"]);
+  TimePoint npmsec          = TimePoint(Options["Nodestime"]);
 
   // opt_scale is a percentage of available time to use for the current move.
   // max_scale is a multiplier applied to optimumTime.

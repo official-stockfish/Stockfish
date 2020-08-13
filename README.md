@@ -56,7 +56,7 @@ Currently, Stockfish has the following UCI options:
     Output the N best lines (principal variations, PVs) when searching.
     Leave at 1 for best performance.
 
-  * #### Use NNUE
+  * #### UseNNUE
     Toggle between the NNUE and classical evaluation functions. If set to "true",
     the network parameters must be available to load from file (see also EvalFile).
 
@@ -68,7 +68,7 @@ Currently, Stockfish has the following UCI options:
     A positive value for contempt favors middle game positions and avoids draws,
     effective for the classical evaluation only.
 
-  * #### Analysis Contempt
+  * #### AnalysisContempt
     By default, contempt is set to prefer the side to move. Set this option to "White"
     or "Black" to analyse with contempt for that side, or "Off" to disable contempt.
 
@@ -90,10 +90,10 @@ Currently, Stockfish has the following UCI options:
     If enabled by UCI_LimitStrength, aim for an engine strength of the given Elo.
     This Elo rating has been calibrated at a time control of 60s+0.6s and anchored to CCRL 40/4.
 
-  * #### Skill Level
-    Lower the Skill Level in order to make Stockfish play weaker (see also UCI_LimitStrength).
-    Internally, MultiPV is enabled, and with a certain probability depending on the Skill Level a
-    weaker move will be played.
+  * #### SkillLevel
+    Lower the SkillLevel in order to make Stockfish play weaker (see also UCI_LimitStrength).
+    Internally, MultiPV is enabled, and with a certain probability depending on the skill
+    level a weaker move will be played.
 
   * #### SyzygyPath
     Path to the folders/directories storing the Syzygy tablebase files. Multiple
@@ -120,22 +120,22 @@ Currently, Stockfish has the following UCI options:
     Limit Syzygy tablebase probing to positions with at most this many pieces left
     (including kings and pawns).
 
-  * #### Move Overhead
+  * #### MoveOverhead
     Assume a time delay of x ms due to network and GUI overheads. This is useful to
     avoid losses on time in those cases.
 
-  * #### Slow Mover
+  * #### SlowMover
     Lower values will make Stockfish take less time in games, higher values will
     make it think longer.
 
-  * #### nodestime
+  * #### Nodestime
     Tells the engine to use nodes searched instead of wall time to account for
     elapsed time. Useful for engine testing.
 
-  * #### Clear Hash
+  * #### ClearHash
     Clear the hash table.
 
-  * #### Debug Log File
+  * #### DebugLogFile
     Write all communication to and from the engine into a text file.
 
 ## Classical and NNUE evaluation

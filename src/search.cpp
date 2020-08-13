@@ -265,7 +265,7 @@ void MainThread::search() {
 
   if (   int(Options["MultiPV"]) == 1
       && !Limits.depth
-      && !(Skill(Options["Skill Level"]).enabled() || int(Options["UCI_LimitStrength"]))
+      && !(Skill(Options["SkillLevel"]).enabled() || int(Options["UCI_LimitStrength"]))
       && rootMoves[0].pv[0] != MOVE_NONE)
       bestThread = Threads.get_best_thread();
 
@@ -336,7 +336,7 @@ void Thread::search() {
   PRNG rng(now());
   double floatLevel = Options["UCI_LimitStrength"] ?
                       Utility::clamp(std::pow((Options["UCI_Elo"] - 1346.6) / 143.4, 1 / 0.806), 0.0, 20.0) :
-                        double(Options["Skill Level"]);
+                        double(Options["SkillLevel"]);
   int intLevel = int(floatLevel) +
                  ((floatLevel - int(floatLevel)) * 1024 > rng.rand<unsigned>() % 1024  ? 1 : 0);
   Skill skill(intLevel);
@@ -353,10 +353,10 @@ void Thread::search() {
 
   // In analysis mode, adjust contempt in accordance with user preference
   if (Limits.infinite || Options["UCI_AnalyseMode"])
-      ct =  Options["Analysis Contempt"] == "Off"  ? 0
-          : Options["Analysis Contempt"] == "Both" ? ct
-          : Options["Analysis Contempt"] == "White" && us == BLACK ? -ct
-          : Options["Analysis Contempt"] == "Black" && us == WHITE ? -ct
+      ct =  Options["AnalysisContempt"] == "Off"  ? 0
+          : Options["AnalysisContempt"] == "Both" ? ct
+          : Options["AnalysisContempt"] == "White" && us == BLACK ? -ct
+          : Options["AnalysisContempt"] == "Black" && us == WHITE ? -ct
           : ct;
 
   // Evaluation score is from the white point of view
@@ -883,8 +883,8 @@ namespace {
         // there and in further interactions with transposition table cutoff depth is set to depth - 3
         // because probCut search has depth set to depth - 4 but we also do a move before it
         // so effective depth is equal to depth - 3
-        && !(   ttHit 
-             && tte->depth() >= depth - 3 
+        && !(   ttHit
+             && tte->depth() >= depth - 3
              && ttValue != VALUE_NONE
              && ttValue < probCutBeta))
     {
