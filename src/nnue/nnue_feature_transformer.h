@@ -55,10 +55,10 @@ namespace Eval::NNUE {
 
     // Read network parameters
     bool ReadParameters(std::istream& stream) {
-      stream.read(reinterpret_cast<char*>(biases_),
-                  kHalfDimensions * sizeof(BiasType));
-      stream.read(reinterpret_cast<char*>(weights_),
-                  kHalfDimensions * kInputDimensions * sizeof(WeightType));
+      for (std::size_t i = 0; i < kHalfDimensions; ++i)
+        biases_[i] = read_le<BiasType>(stream);
+      for (std::size_t i = 0; i < kHalfDimensions * kInputDimensions; ++i)
+        weights_[i] = read_le<WeightType>(stream);
       return !stream.fail();
     }
 
