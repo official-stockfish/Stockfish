@@ -120,6 +120,8 @@ bool use_draw_games_in_validation = false;
 bool skip_duplicated_positions_in_training = true;
 bool detect_draw_by_consecutive_low_score = false;
 bool detect_draw_by_insufficient_mating_material = false;
+// 1.0 / PawnValueEg / 4.0 * log(10.0)
+double winning_probability_coefficient = 0.00276753015984861260098316280611;
 
 // -----------------------------------
 // write phase file
@@ -1147,7 +1149,7 @@ double winning_percentage(double value)
 	// 1/(1+10^(-Eval/4))
 	// = 1/(1+e^(-Eval/4*ln(10))
 	// = sigmoid(Eval/4*ln(10))
-	return sigmoid(value / PawnValueEg / 4.0 * log(10.0));
+	return sigmoid(value * winning_probability_coefficient);
 }
 double dsigmoid(double x)
 {
@@ -3072,6 +3074,7 @@ void learn(Position&, istringstream& is)
 		else if (option == "use_draw_in_validation" || option == "use_draw_games_in_validation") is >> use_draw_games_in_validation;
 		// Accept also the old option name.
 		else if (option == "use_hash_in_training" || option == "skip_duplicated_positions_in_training") is >> skip_duplicated_positions_in_training;
+		else if (option == "winning_probability_coefficient") is >> winning_probability_coefficient;
 		// Discount rate
 		else if (option == "discount_rate") is >> discount_rate;
 
