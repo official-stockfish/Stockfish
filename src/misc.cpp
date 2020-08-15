@@ -242,6 +242,9 @@ const std::string compiler_info() {
   #if defined(USE_MMX)
     compiler += " MMX";
   #endif
+  #if defined(USE_NEON)
+    compiler += " NEON";
+  #endif
 
   #if !defined(NDEBUG)
     compiler += " DEBUG";
