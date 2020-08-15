@@ -9,7 +9,7 @@ Stockfish NNUE is a port of a shogi neural network named NNUE (efficiently updat
 
 ## Training Guide
 ### Generating Training Data
-To generate training data from the classic eval, use gensfen command with setting "Use NNUE" to "false". The given example is generation in its simplest form. There are more commands. 
+To generate training data from the classic eval, use the gensfen command with the setting "Use NNUE" set to "false". The given example is generation in its simplest form. There are more commands. 
 ```
 uci
 setoption name Use NNUE value false
@@ -44,16 +44,16 @@ Nets get saved in the "evalsave" folder.
 - lambda is the amount of weight it puts to eval of learning data vs win/draw/loss results. 1 puts all weight on eval, lambda 0 puts all weight on WDL results.
 
 ### Reinforcement Learning
-If you would like to do some reinforcement learning on your original network, you must first generate training data using the learn binaries with setting `Use NNUE` to true. Make sure that your previously trained network is in the eval folder. Use the commands specified above. Make sure `SkipLoadingEval` is set to false so that the data generated is using the neural net's eval by typing the command `uci setoption name SkipLoadingEval value false` before typing the `isready` command. You should aim to generate less positions than the first run, around 1/10 of the number of positions generated in the first run. The depth should be higher as well. You should also do the same for validation data, with the depth being higher than the last run.
+If you would like to do some reinforcement learning on your original network, you must first generate training data using the learn binaries with the setting `Use NNUE` set to true. Make sure that your previously trained network is in the eval folder. Use the commands specified above. Make sure `SkipLoadingEval` is set to false so that the data generated is using the neural net's eval by typing the command `setoption name SkipLoadingEval value false` before typing the `isready` command. You should aim to generate less positions than the first run, around 1/10 of the number of positions generated in the first run. The depth should be higher as well. You should also do the same for validation data, with the depth being higher than the last run.
 
 After you have generated the training data, you must move it into your training data folder and delete the older data so that the binary does not accidentally train on the same data again. Do the same for the validation data and name it to val-1.bin to make it less confusing. Make sure the evalsave folder is empty. Then, using the same binary, type in the training commands shown above. Do __NOT__ set `SkipLoadingEval` to true, it must be false or you will get a completely new network, instead of a network trained with reinforcement learning. You should also set eval_save_interval to a number that is lower than the amount of positions in your training data, perhaps also 1/10 of the original value. The validation file should be set to the new validation data, not the old data.
 
 After training is finished, your new net should be located in the "final" folder under the "evalsave" directory. You should test this new network against the older network to see if there are any improvements.
 
 ## Using Your Trained Net
-If you want to use your generated net, copy the net located in the "final" folder under the "evalsave" directory and move it into a new folder named "eval" under the directory with the binaries. You can then use the halfkp_256x2 binaries pertaining to your CPU with a standard chess GUI, such as Cutechess. Refer to the [releases page](https://github.com/nodchip/Stockfish/releases) to find out which binary is best for your CPU.
+If you want to use your generated net, copy the net located in the "final" folder under the "evalsave" directory and move it into a new folder named "eval" under the directory with the binaries. You can then use the halfkp_256x2 binaries pertaining to your CPU with a standard chess GUI, such as Cutechess. Refer to the [releases page](https://abrok.eu/stockfish) to find out which binary is best for your CPU.
 
-If the engine does not load any net file, or shows "Error! *** not found or wrong format", please try to sepcify the net with the full file path with the "EvalFile" option by typing the command `setoption name EvalFile value path` where path is the full file path.
+If the engine does not load any net file, or shows "Error! *** not found or wrong format", please try to specify the net with the full file path with the "EvalFile" option by typing the command `setoption name EvalFile value path` where path is the full file path. The "Use NNUE" option must be set to true with the command `setoption name Use NNUE value true`.
 
 ## Resources
 - [Stockfish NNUE Wiki](https://www.qhapaq.org/shogi/shogiwiki/stockfish-nnue/)
