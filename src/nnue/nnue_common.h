@@ -21,6 +21,9 @@
 #ifndef NNUE_COMMON_H_INCLUDED
 #define NNUE_COMMON_H_INCLUDED
 
+#include <cstring>
+#include <iostream>
+
 #if defined(USE_AVX2)
 #include <immintrin.h>
 
@@ -99,6 +102,22 @@ namespace Eval::NNUE {
   template <typename IntType>
   constexpr IntType CeilToMultiple(IntType n, IntType base) {
     return (n + base - 1) / base * base;
+  }
+
+  // Read a signed or unsigned integer from  a stream in little-endian order
+  template <typename IntType>
+  inline IntType read_le(std::istream& stream) {
+    // Read the relevant bytes from the stream in little-endian order
+    std::uint8_t u[sizeof(IntType)];
+    stream.read(reinterpret_cast<char*>(u), sizeof(IntType));
+    // Use unsigned arithmetic to convert to machine order
+    typename std::make_unsigned<IntType>::type v = 0;
+    for (std::size_t i = 0; i < sizeof(IntType); ++i)
+      v = (v << 8) | u[sizeof(IntType) - i - 1];
+    // Copy the machine-ordered bytes into a potentially signed value
+    IntType w;
+    std::memcpy(&w, &v, sizeof(IntType));
+    return w;
   }
 
 }  // namespace Eval::NNUE

@@ -62,11 +62,10 @@ namespace Eval::NNUE::Layers {
    // Read network parameters
     bool ReadParameters(std::istream& stream) {
       if (!previous_layer_.ReadParameters(stream)) return false;
-      stream.read(reinterpret_cast<char*>(biases_),
-                  kOutputDimensions * sizeof(BiasType));
-      stream.read(reinterpret_cast<char*>(weights_),
-                  kOutputDimensions * kPaddedInputDimensions *
-                  sizeof(WeightType));
+      for (std::size_t i = 0; i < kOutputDimensions; ++i)
+        biases_[i] = read_le<BiasType>(stream);
+      for (std::size_t i = 0; i < kOutputDimensions * kPaddedInputDimensions; ++i)
+        weights_[i] = read_le<WeightType>(stream);
       return !stream.fail();
     }
 
