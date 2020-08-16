@@ -261,6 +261,10 @@ ifeq ($(COMP),gcc)
 		LDFLAGS += -m$(bits)
 	endif
 
+	ifeq ($(ARCH),armv7)
+		LDFLAGS += -latomic
+	endif
+
 	ifneq ($(KERNEL),Darwin)
 	   LDFLAGS += -Wl,--no-as-needed
 	endif
@@ -340,6 +344,24 @@ ifeq ($(KERNEL),Darwin)
 	LDFLAGS += -arch $(arch) -mmacosx-version-min=10.14
 endif
 
+# To cross-compile for Android, NDK version r21 or later is recommended. 
+# In earlier NDK versions, you'll need to pass -fno-addrsig if using GNU binutils.
+# Currently we don't know how to make PGO builds with the NDK yet.
+ifeq ($(COMP),ndk)
+	CXXFLAGS += -stdlib=libc++ -fPIE -DUSE_POPCNT -DUSE_NEON
+	LDFLAGS += -static-libstdc++ -fPIE -pie -lm -latomic -DUSE_POPCNT -DUSE_NEON -DNDEBUG -O3 -flto
+	LDFLAGS := $(filter-out -lpthread,$(LDFLAGS))
+	ifeq ($(ARCH),armv7)
+	comp=armv7a-linux-androideabi16-clang
+	CXX=armv7a-linux-androideabi16-clang++
+	CXXFLAGS += -mthumb -march=armv7-a -mfloat-abi=softfp 
+	endif
+	ifeq ($(ARCH),armv8)
+	comp=aarch64-linux-android21-clang
+	CXX=aarch64-linux-android21-clang++
+	endif
+endif
+
 ### Travis CI script uses COMPILER to overwrite CXX
 ifdef COMPILER
 	COMPCXX=$(COMPILER)
@@ -360,6 +382,10 @@ ifneq ($(comp),mingw)
 		endif
 	endif
 endif
+
+ifeq ($(COMP),ndk) 
+	LDFLAGS := $(filter-out -lpthread,$(LDFLAGS))
+endif	
 
 ### 3.2.1 Debugging
 ifeq ($(debug),no)
@@ -401,7 +427,6 @@ endif
 ifeq ($(prefetch),yes)
 	ifeq ($(sse),yes)
 		CXXFLAGS += -msse
-		DEPENDFLAGS += -msse
 	endif
 else
 	CXXFLAGS += -DNO_PREFETCH
@@ -416,7 +441,11 @@ ifeq ($(popcnt),yes)
 	else
 		CXXFLAGS += -msse3 -mpopcnt -DUSE_POPCNT
 	endif
+	ifeq ($(comp),ndk)
+		CXXFLAGS := $(filter-out -msse3 -mpopcnt,$(CXXFLAGS))
+	endif	
 endif
+
 
 ifeq ($(avx2),yes)
 	CXXFLAGS += -DUSE_AVX2
@@ -502,7 +531,7 @@ ifeq ($(debug), no)
 	endif
 
 # To use LTO and static linking on windows, the tool chain requires a recent gcc:
-# gcc version 10.1 in msys2 or TDM-GCC version 9.2 are know to work, older might not.
+# gcc version 10.1 in msys2 or TDM-GCC version 9.2 are known to work, older might not.
 # So, only enable it for a cross from Linux by default.
 	else ifeq ($(comp),mingw)
 	ifeq ($(KERNEL),Linux)
@@ -567,6 +596,7 @@ help:
 	@echo "mingw                   > Gnu compiler with MinGW under Windows"
 	@echo "clang                   > LLVM Clang compiler"
 	@echo "icc                     > Intel compiler"
+	@echo "ndk                     > Google NDK to cross-compile for Android"
 	@echo ""
 	@echo "Simple examples. If you don't know what to do, you likely want to run: "
 	@echo ""
@@ -693,7 +723,8 @@ config-sanity:
 	@test "$(avx512)" = "yes" || test "$(avx512)" = "no"
 	@test "$(vnni)" = "yes" || test "$(vnni)" = "no"
 	@test "$(neon)" = "yes" || test "$(neon)" = "no"
-	@test "$(comp)" = "gcc" || test "$(comp)" = "icc" || test "$(comp)" = "mingw" || test "$(comp)" = "clang"
+	@test "$(comp)" = "gcc" || test "$(comp)" = "icc" || test "$(comp)" = "mingw" || test "$(comp)" = "clang" \
+	|| test "$(comp)" = "armv7a-linux-androideabi16-clang"  || test "$(comp)" = "aarch64-linux-android21-clang"
 
 $(EXE): $(OBJS)
 	+$(CXX) -o $@ $(OBJS) $(LDFLAGS)
