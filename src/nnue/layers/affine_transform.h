@@ -63,9 +63,9 @@ namespace Eval::NNUE::Layers {
     bool ReadParameters(std::istream& stream) {
       if (!previous_layer_.ReadParameters(stream)) return false;
       for (std::size_t i = 0; i < kOutputDimensions; ++i)
-        biases_[i] = read_le<BiasType>(stream);
+        biases_[i] = read_little_endian<BiasType>(stream);
       for (std::size_t i = 0; i < kOutputDimensions * kPaddedInputDimensions; ++i)
-        weights_[i] = read_le<WeightType>(stream);
+        weights_[i] = read_little_endian<WeightType>(stream);
       return !stream.fail();
     }
 

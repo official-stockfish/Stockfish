@@ -101,23 +101,25 @@ namespace Eval::NNUE {
   // Round n up to be a multiple of base
   template <typename IntType>
   constexpr IntType CeilToMultiple(IntType n, IntType base) {
-    return (n + base - 1) / base * base;
+      return (n + base - 1) / base * base;
   }
 
-  // Read a signed or unsigned integer from  a stream in little-endian order
+  // read_little_endian() is our utility to read an integer (signed or unsigned, any size)
+  // from a stream in little-endian order. We swap the byte order after the read if
+  // necessary to return a result with the byte ordering of the compiling machine.
   template <typename IntType>
-  inline IntType read_le(std::istream& stream) {
-    // Read the relevant bytes from the stream in little-endian order
-    std::uint8_t u[sizeof(IntType)];
-    stream.read(reinterpret_cast<char*>(u), sizeof(IntType));
-    // Use unsigned arithmetic to convert to machine order
-    typename std::make_unsigned<IntType>::type v = 0;
-    for (std::size_t i = 0; i < sizeof(IntType); ++i)
-      v = (v << 8) | u[sizeof(IntType) - i - 1];
-    // Copy the machine-ordered bytes into a potentially signed value
-    IntType w;
-    std::memcpy(&w, &v, sizeof(IntType));
-    return w;
+  inline IntType read_little_endian(std::istream& stream) {
+
+      IntType result;
+      std::uint8_t u[sizeof(IntType)];
+      typename std::make_unsigned<IntType>::type v = 0;
+
+      stream.read(reinterpret_cast<char*>(u), sizeof(IntType));
+      for (std::size_t i = 0; i < sizeof(IntType); ++i)
+          v = (v << 8) | u[sizeof(IntType) - i - 1];
+
+      std::memcpy(&result, &v, sizeof(IntType));
+      return result;
   }
 
 }  // namespace Eval::NNUE

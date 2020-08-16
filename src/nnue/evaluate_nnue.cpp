@@ -77,7 +77,7 @@ namespace Eval::NNUE {
   bool ReadParameters(std::istream& stream, const AlignedPtr<T>& pointer) {
 
     std::uint32_t header;
-    header = read_le<std::uint32_t>(stream);
+    header = read_little_endian<std::uint32_t>(stream);
     if (!stream || header != T::GetHashValue()) return false;
     return pointer->ReadParameters(stream);
   }
@@ -92,13 +92,13 @@ namespace Eval::NNUE {
   }
 
   // Read network header
-  bool ReadHeader(std::istream& stream,
-    std::uint32_t* hash_value, std::string* architecture) {
-
+  bool ReadHeader(std::istream& stream, std::uint32_t* hash_value, std::string* architecture)
+  {
     std::uint32_t version, size;
-    version = read_le<std::uint32_t>(stream);
-    *hash_value = read_le<std::uint32_t>(stream);
-    size = read_le<std::uint32_t>(stream);
+
+    version     = read_little_endian<std::uint32_t>(stream);
+    *hash_value = read_little_endian<std::uint32_t>(stream);
+    size        = read_little_endian<std::uint32_t>(stream);
     if (!stream || version != kVersion) return false;
     architecture->resize(size);
     stream.read(&(*architecture)[0], size);
