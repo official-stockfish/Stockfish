@@ -8,6 +8,8 @@ error()
 }
 trap 'error ${LINENO}' ERR
 
+STOCKFISH_BIN="$(dirname "$0")/../build/stockfish"
+
 echo "reprosearch testing started"
 
 # repeat two short games, separated by ucinewgame. 
@@ -15,7 +17,7 @@ echo "reprosearch testing started"
 # the same node count for each iteration.
 cat << EOF > repeat.exp
  set timeout 10
- spawn ./stockfish
+ spawn $STOCKFISH_BIN
  lassign \$argv nodes
 
  send "uci\n"

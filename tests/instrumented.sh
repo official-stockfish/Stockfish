@@ -8,6 +8,8 @@ error()
 }
 trap 'error ${LINENO}' ERR
 
+STOCKFISH_BIN="$(dirname "$0")/../build/stockfish"
+
 # define suitable post and prefixes for testing options
 case $1 in
   --valgrind)
@@ -73,15 +75,15 @@ for args in "eval" \
             "bench 128 $threads 10 default depth"
 do
 
-   echo "$prefix $exeprefix ./stockfish $args $postfix"
-   eval "$prefix $exeprefix ./stockfish $args $postfix"
+   echo "$prefix $exeprefix $STOCKFISH_BIN $args $postfix"
+   eval "$prefix $exeprefix $STOCKFISH_BIN $args $postfix"
 
 done
 
 # more general testing, following an uci protocol exchange
 cat << EOF > game.exp
  set timeout 10
- spawn $exeprefix ./stockfish
+ spawn $exeprefix $STOCKFISH_BIN
 
  send "uci\n"
  expect "uciok"
@@ -117,7 +119,7 @@ fi
 
 cat << EOF > syzygy.exp
  set timeout 240
- spawn $exeprefix ./stockfish
+ spawn $exeprefix $STOCKFISH_BIN
  send "uci\n"
  send "setoption name SyzygyPath value ../tests/syzygy/\n"
  expect "info string Found 35 tablebases" {} timeout {exit 1}

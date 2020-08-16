@@ -8,12 +8,14 @@ error()
 }
 trap 'error ${LINENO}' ERR
 
+STOCKFISH_BIN="$(dirname "$0")/../build/stockfish"
+
 echo "perft testing started"
 
 cat << EOF > perft.exp
    set timeout 10
    lassign \$argv pos depth result
-   spawn ./stockfish
+   spawn $STOCKFISH_BIN
    send "position \$pos\\ngo perft \$depth\\n"
    expect "Nodes searched? \$result" {} timeout {exit 1}
    send "quit\\n"

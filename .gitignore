@@ -7,3 +7,4 @@ bench.txt
 *.gcno
 stockfish.profdata
 *.profraw
+/pgo_data/

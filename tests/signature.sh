@@ -9,9 +9,11 @@ error()
 }
 trap 'error ${LINENO}' ERR
 
+STOCKFISH_BIN="$(dirname "$0")/../build/stockfish"
+
 # obtain
 
-signature=`./stockfish bench 2>&1 | grep "Nodes searched  : " | awk '{print $4}'`
+signature=`$STOCKFISH_BIN bench 2>&1 | grep "Nodes searched  : " | awk '{print $4}'`
 
 if [ $# -gt 0 ]; then
    # compare to given reference

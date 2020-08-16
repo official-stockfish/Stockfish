@@ -25,8 +25,7 @@ This distribution of Stockfish consists of the following files:
 
   * Copying.txt, a text file containing the GNU General Public License version 3.
 
-  * src, a subdirectory containing the full source code, including a Makefile
-    that can be used to compile Stockfish on Unix-like systems.
+  * src, a subdirectory containing the full source code.
 
 To use the NNUE evaluation an additional data file with neural network parameters
 needs to be downloaded. The filename for the default set can be found as the default
@@ -215,36 +214,74 @@ are in use, see the engine log.
 ## Compiling Stockfish yourself from the sources
 
 Stockfish has support for 32 or 64-bit CPUs, certain hardware
-instructions, big-endian machines such as Power PC, and other platforms.
+instructions, big-endian machines such as PowerPC, and other platforms.
 
-On Unix-like systems, it should be easy to compile Stockfish
-directly from the source code with the included Makefile in the folder
-`src`. In general it is recommended to run `make help` to see a list of make
-targets with corresponding descriptions.
+On most platforms, compiling Stockfish is as easy as:
 
-```
-    cd src
-    make help
-    make build ARCH=x86-64-modern
-```
+    mkdir build
+    cd build
+    cmake ..
+    make
 
-When not using the Makefile to compile (for instance with Microsoft MSVC) you
-need to manually set/unset some switches in the compiler command line; see
-file *types.h* for a quick reference.
+For something a little more cross-platform, use:
 
-When reporting an issue or a bug, please tell us which version and
-compiler you used to create your executable. These informations can
-be found by typing the following commands in a console:
+    cmake --config Debug -S . -B build -DCMAKE_BUILD_TYPE=Debug
+    cmake --build build --config Debug
 
-```
-    ./stockfish
-    compiler
-```
+### Compiling release builds
+
+By default, CMake compiles debug builds. To compile release builds, run CMake
+with `-DCMAKE_BUILD_TYPE=Release -DENABLE_OPTIMIZE=ON`.
+
+### Architecture-specific flags
+
+CMake tests the compiler to determine which architecture-specific flags can
+be enabled. To disable a specific flag (such as `-mneon`), pass `-DUSE_NEON=OFF`
+to CMake.
+
+All supported options: `USE_POPCNT`, `USE_NEON`, `USE_SSE42`, `USE_SSE41`,
+`USE_SSSE3`, `USE_SSE3`, `USE_SSE2`, `USE_PEXT`, `USE_VNNI`, `USE_AVX512`,
+`USE_AVX2`.
+
+`USE_VNNI`, `USE_AVX512`, `USE_AVX2`, and `USE_PEXT` are disabled by default.
+
+### Profiling
+
+To use profile-guided optimization, several steps are necessary.
+
+First, run CMake with `-DENABLE_PROFILE=generate`. When the build is finished,
+Stockfish will automatically run the benchmark to collect profiling data.
+Once that is finished, rerun CMake again, this time using
+`-DENABLE_PROFILE=use`.
+
+### Link-time optimization
+
+To enable link-time optimization, pass `-DENABLE_LTO=ON` to CMake.
+LTO is not enabled by default.
+
+### Sanitizers
+
+The three standard sanitizers (Address, Thread, and Undefined) can be enabled
+for Clang and GCC. Just pass `-DENABLE_SANITIZER=address` to enable
+AddressSanitizer, and `-DENABLE_SANITIZER=thread` and
+`-DENABLE_SANITIZER=undefined` for ThreadSanitizer and UndefinedSantizer
+respectively.
+
+No sanitizers are enabled by default. Only one sanitizer can be enabled at once.
 
 ## Understanding the code base and participating in the project
 
 Stockfish's improvement over the last couple of years has been a great
 community effort. There are a few ways to help contribute to its growth.
+
+## Reporting bugs
+
+When reporting an issue or a bug, please tell us which version and
+compiler you used to create your executable. These informations can
+be found by typing the following commands in a console:
+
+    ./stockfish
+    compiler
 
 ### Donating hardware
 
@@ -256,7 +293,7 @@ and view the current tests on [Fishtest](https://tests.stockfishchess.org/tests)
 
 If you want to help improve the code, there are several valuable resources:
 
-* [In this wiki,](https://www.chessprogramming.org) many techniques used in
+* [In this wiki](https://www.chessprogramming.org), many techniques used in
 Stockfish are explained with a lot of background information.
 
 * [The section on Stockfish](https://www.chessprogramming.org/Stockfish)
@@ -269,7 +306,6 @@ Discussions about Stockfish take place in the [FishCooking](https://groups.googl
 group and engine testing is done on [Fishtest](https://tests.stockfishchess.org/tests).
 If you want to help improve Stockfish, please read this [guideline](https://github.com/glinscott/fishtest/wiki/Creating-my-first-test)
 first, where the basics of Stockfish development are explained.
-
 
 ## Terms of use
 
