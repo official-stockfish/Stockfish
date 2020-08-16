@@ -64,6 +64,9 @@ Currently, Stockfish has the following UCI options:
     The name of the file of the NNUE evaluation parameters. Depending on the GUI the
     filename should include the full path to the folder/directory that contains the file.
 
+    If the value ends in a directory separator (/ or \), then the value is the directory
+    where the default file is found.
+
   * #### Contempt
     A positive value for contempt favors middle game positions and avoids draws,
     effective for the classical evaluation only.

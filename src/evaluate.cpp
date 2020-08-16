@@ -36,10 +36,31 @@ namespace Eval {
   bool useNNUE;
   std::string eval_file_loaded="None";
 
+  namespace {
+
+    std::string getEvalFile() {
+
+        std::string eval_file = std::string(Options["EvalFile"]);
+
+        // is the eval_file actually a directory prefix? if so, append the default file
+        if (!eval_file.empty() &&
+            (eval_file.back() ==  '/' || eval_file.back() == '\\'))
+        {
+            UCI::OptionsMap defaults;
+            UCI::init(defaults);
+
+            eval_file += std::string(defaults["EvalFile"]);
+        }
+
+        return eval_file;
+    }
+
+  } // namespace
+
   void init_NNUE() {
 
     useNNUE = Options["Use NNUE"];
-    std::string eval_file = std::string(Options["EvalFile"]);
+    std::string eval_file = getEvalFile();
     if (useNNUE && eval_file_loaded != eval_file)
         if (Eval::NNUE::load_eval_file(eval_file))
             eval_file_loaded = eval_file;
@@ -47,7 +68,7 @@ namespace Eval {
 
   void verify_NNUE() {
 
-    std::string eval_file = std::string(Options["EvalFile"]);
+    std::string eval_file = getEvalFile();
     if (useNNUE && eval_file_loaded != eval_file)
     {
         UCI::OptionsMap defaults;
