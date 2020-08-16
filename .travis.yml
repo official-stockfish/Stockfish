@@ -51,11 +51,12 @@ script:
   - export benchref=$(cat git_sig)
   - echo "Reference bench:" $benchref
 
-  #
   # Compiler version string
   - $COMPILER -v
 
-  #
+  # test help target
+  - make help
+
   # Verify bench number against various builds
   - export CXXFLAGS="-Werror -D_GLIBCXX_DEBUG"
   - make clean && make -j2 ARCH=x86-64-modern optimize=no debug=yes build && ../tests/signature.sh $benchref
@@ -64,8 +65,10 @@ script:
   - make clean && make -j2 ARCH=x86-64-ssse3 build && ../tests/signature.sh $benchref
   - make clean && make -j2 ARCH=x86-64-sse3-popcnt build && ../tests/signature.sh $benchref
   - make clean && make -j2 ARCH=x86-64 build && ../tests/signature.sh $benchref
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make clean && make -j2 ARCH=general-64 build && ../tests/signature.sh $benchref; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make clean && make -j2 ARCH=x86-32 optimize=no debug=yes build && ../tests/signature.sh $benchref; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make clean && make -j2 ARCH=x86-32 build && ../tests/signature.sh $benchref; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make clean && make -j2 ARCH=general-32 build && ../tests/signature.sh $benchref; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make clean && make -j2 ARCH=x86-32-old build && ../tests/signature.sh $benchref; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" && "$COMP" == "gcc" ]]; then make clean && make -j2 ARCH=x86-64-modern profile-build && ../tests/signature.sh $benchref; fi
 
