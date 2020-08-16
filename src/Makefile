@@ -102,6 +102,7 @@ avx512 = no
 vnni = no
 neon = no
 ARCH = x86-64-modern
+STRIP = strip
 
 ### 2.2 Architecture specific
 
@@ -208,6 +209,14 @@ ifeq ($(ARCH),armv7)
 	bits = 32
 endif
 
+ifeq ($(ARCH),armv7-neon)
+	arch = armv7
+	prefetch = yes
+	popcnt = yes
+	neon = yes
+	bits = 32
+endif
+
 ifeq ($(ARCH),armv8)
 	arch = armv8-a
 	prefetch = yes
@@ -251,7 +260,7 @@ ifeq ($(COMP),gcc)
 	CXX=g++
 	CXXFLAGS += -pedantic -Wextra -Wshadow
 
-	ifeq ($(ARCH),$(filter $(ARCH),armv7 armv8))
+	ifeq ($(arch),$(filter $(arch),armv7 armv8-a))
 		ifeq ($(OS),Android)
 			CXXFLAGS += -m$(bits)
 			LDFLAGS += -m$(bits)
@@ -259,6 +268,10 @@ ifeq ($(COMP),gcc)
 	else
 		CXXFLAGS += -m$(bits)
 		LDFLAGS += -m$(bits)
+	endif
+
+	ifeq ($(arch),$(filter $(arch),armv7))
+		LDFLAGS += -latomic
 	endif
 
 	ifneq ($(KERNEL),Darwin)
@@ -311,7 +324,7 @@ ifeq ($(COMP),clang)
 	endif
 	endif
 
-	ifeq ($(ARCH),$(filter $(ARCH),armv7 armv8))
+	ifeq ($(arch),$(filter $(arch),armv7 armv8))
 		ifeq ($(OS),Android)
 			CXXFLAGS += -m$(bits)
 			LDFLAGS += -m$(bits)
@@ -340,6 +353,25 @@ ifeq ($(KERNEL),Darwin)
 	LDFLAGS += -arch $(arch) -mmacosx-version-min=10.14
 endif
 
+# To cross-compile for Android, NDK version r21 or later is recommended.
+# In earlier NDK versions, you'll need to pass -fno-addrsig if using GNU binutils.
+# Currently we don't know how to make PGO builds with the NDK yet.
+ifeq ($(COMP),ndk)
+	CXXFLAGS += -stdlib=libc++ -fPIE
+	ifeq ($(arch),armv7)
+		comp=armv7a-linux-androideabi16-clang
+		CXX=armv7a-linux-androideabi16-clang++
+		CXXFLAGS += -mthumb -march=armv7-a -mfloat-abi=softfp -mfpu=neon
+		STRIP=arm-linux-androideabi-strip
+	endif
+	ifeq ($(arch),armv8-a)
+		comp=aarch64-linux-android21-clang
+		CXX=aarch64-linux-android21-clang++
+		STRIP=aarch64-linux-android-strip
+	endif
+	LDFLAGS += -static-libstdc++ -pie -lm -latomic
+endif
+
 ### Travis CI script uses COMPILER to overwrite CXX
 ifdef COMPILER
 	COMPCXX=$(COMPILER)
@@ -356,7 +388,9 @@ ifneq ($(comp),mingw)
 	ifneq ($(OS),Android)
 		# Haiku has pthreads in its libroot, so only link it in on other platforms
 		ifneq ($(KERNEL),Haiku)
-			LDFLAGS += -lpthread
+			ifneq ($(COMP),ndk)
+				LDFLAGS += -lpthread
+			endif
 		endif
 	endif
 endif
@@ -401,7 +435,6 @@ endif
 ifeq ($(prefetch),yes)
 	ifeq ($(sse),yes)
 		CXXFLAGS += -msse
-		DEPENDFLAGS += -msse
 	endif
 else
 	CXXFLAGS += -DNO_PREFETCH
@@ -409,7 +442,7 @@ endif
 
 ### 3.6 popcnt
 ifeq ($(popcnt),yes)
-	ifeq ($(arch),$(filter $(arch),ppc64 armv8-a arm64))
+	ifeq ($(arch),$(filter $(arch),ppc64 armv7 armv8-a arm64))
 		CXXFLAGS += -DUSE_POPCNT
 	else ifeq ($(comp),icc)
 		CXXFLAGS += -msse3 -DUSE_POPCNT
@@ -417,6 +450,7 @@ ifeq ($(popcnt),yes)
 		CXXFLAGS += -msse3 -mpopcnt -DUSE_POPCNT
 	endif
 endif
+
 
 ifeq ($(avx2),yes)
 	CXXFLAGS += -DUSE_AVX2
@@ -462,6 +496,11 @@ endif
 
 ifeq ($(neon),yes)
 	CXXFLAGS += -DUSE_NEON
+	ifeq ($(KERNEL),Linux)
+	ifneq ($(COMP),ndk)
+		CXXFLAGS += -mfpu=neon
+	endif
+	endif
 endif
 
 ifeq ($(arch),x86_64)
@@ -481,7 +520,10 @@ endif
 ### needs access to the optimization flags.
 ifeq ($(optimize),yes)
 ifeq ($(debug), no)
-	ifeq ($(comp),clang)
+	ifeq ($(COMP),ndk)
+		CXXFLAGS += -flto=thin
+		LDFLAGS += $(CXXFLAGS)
+	else ifeq ($(comp),clang)
 		CXXFLAGS += -flto=thin
 		LDFLAGS += $(CXXFLAGS)
 
@@ -502,7 +544,7 @@ ifeq ($(debug), no)
 	endif
 
 # To use LTO and static linking on windows, the tool chain requires a recent gcc:
-# gcc version 10.1 in msys2 or TDM-GCC version 9.2 are know to work, older might not.
+# gcc version 10.1 in msys2 or TDM-GCC version 9.2 are known to work, older might not.
 # So, only enable it for a cross from Linux by default.
 	else ifeq ($(comp),mingw)
 	ifeq ($(KERNEL),Linux)
@@ -556,7 +598,8 @@ help:
 	@echo "ppc-64                  > PPC 64-bit"
 	@echo "ppc-32                  > PPC 32-bit"
 	@echo "armv7                   > ARMv7 32-bit"
-	@echo "armv8                   > ARMv8 64-bit"
+	@echo "armv7-neon"             > ARMv7 32-bit with popcnt and neon"
+	@echo "armv8                   > ARMv8 64-bit with popcnt and neon"
 	@echo "apple-silicon           > Apple silicon ARM64"
 	@echo "general-64              > unspecified 64-bit"
 	@echo "general-32              > unspecified 32-bit"
@@ -567,6 +610,7 @@ help:
 	@echo "mingw                   > Gnu compiler with MinGW under Windows"
 	@echo "clang                   > LLVM Clang compiler"
 	@echo "icc                     > Intel compiler"
+	@echo "ndk                     > Google NDK to cross-compile for Android"
 	@echo ""
 	@echo "Simple examples. If you don't know what to do, you likely want to run: "
 	@echo ""
@@ -609,7 +653,7 @@ profile-build: net config-sanity objclean profileclean
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) profileclean
 
 strip:
-	strip $(EXE)
+	$(STRIP) $(EXE)
 
 install:
 	-mkdir -p -m 755 $(BINDIR)
@@ -693,7 +737,8 @@ config-sanity:
 	@test "$(avx512)" = "yes" || test "$(avx512)" = "no"
 	@test "$(vnni)" = "yes" || test "$(vnni)" = "no"
 	@test "$(neon)" = "yes" || test "$(neon)" = "no"
-	@test "$(comp)" = "gcc" || test "$(comp)" = "icc" || test "$(comp)" = "mingw" || test "$(comp)" = "clang"
+	@test "$(comp)" = "gcc" || test "$(comp)" = "icc" || test "$(comp)" = "mingw" || test "$(comp)" = "clang" \
+	|| test "$(comp)" = "armv7a-linux-androideabi16-clang"  || test "$(comp)" = "aarch64-linux-android21-clang"
 
 $(EXE): $(OBJS)
 	+$(CXX) -o $@ $(OBJS) $(LDFLAGS)
