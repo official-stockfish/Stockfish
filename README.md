@@ -241,9 +241,10 @@ to CMake.
 
 All supported options: `USE_POPCNT`, `USE_NEON`, `USE_SSE42`, `USE_SSE41`,
 `USE_SSSE3`, `USE_SSE3`, `USE_SSE2`, `USE_PEXT`, `USE_VNNI`, `USE_AVX512`,
-`USE_AVX2`.
+`USE_AVX2`, `USE_PREFETCH`.
 
-`USE_VNNI`, `USE_AVX512`, `USE_AVX2`, and `USE_PEXT` are disabled by default.
+By default, only `USE_POPCNT`, `USE_PREFETCH`, `USE_SSE41`, and `USE_SSSE3`
+are enabled for x86_64, and only `USE_NEON` and `USE_POPCNT` are enabled for ARM.
 
 ### Profiling
 

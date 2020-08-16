@@ -29,26 +29,6 @@ init:
 
 before_build:
   - ps: |
-      # Get sources
-      $src = get-childitem -Path *.cpp -Recurse | select -ExpandProperty FullName
-      $src = $src -join ' '
-      $src = $src.Replace("\", "/")
-
-      # Build CMakeLists.txt
-      $t = 'cmake_minimum_required(VERSION 3.17)',
-           'project(Stockfish)',
-           'set(CMAKE_CXX_STANDARD 17)',
-           'set(CMAKE_CXX_STANDARD_REQUIRED ON)',
-           'set (CMAKE_CXX_EXTENSIONS OFF)',
-           'set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/src)',
-           'set(source_files', $src, ')',
-           'add_executable(stockfish ${source_files})'
-
-      # Write CMakeLists.txt withouth BOM
-      $MyPath = (Get-Item -Path "." -Verbose).FullName + '\CMakeLists.txt'
-      $Utf8NoBomEncoding = New-Object System.Text.UTF8Encoding $False
-      [System.IO.File]::WriteAllLines($MyPath, $t, $Utf8NoBomEncoding)
-
       # Obtain bench reference from git log
       $b = git log HEAD | sls "\b[Bb]ench[ :]+[0-9]{7}" | select -first 1
       $bench = $b -match '\D+(\d+)' | % { $matches[1] }
@@ -56,14 +36,14 @@ before_build:
       $g = "Visual Studio 16 2019"
       If (${env:PLATFORM} -eq 'x64') { $a = "x64" }
       If (${env:PLATFORM} -eq 'x86') { $a = "Win32" }
-      cmake -G "${g}" -A ${a} .
+      cmake -G "${g}" -A ${a} -B build .
       Write-Host "Generated files for: " $g $a
 
 build_script:
-  - cmake --build . --config %CONFIGURATION% -- /verbosity:minimal
+  - cmake --build build --config %CONFIGURATION% -- /verbosity:minimal
 
 before_test:
-  - cd src/%CONFIGURATION%
+  - cd build
   - stockfish bench 2> out.txt >NUL
   - ps: |
       # Verify bench number

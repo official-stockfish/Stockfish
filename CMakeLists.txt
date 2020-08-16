@@ -38,11 +38,13 @@ option(ENABLE_LTO "Enable link-time optimization" OFF)
 option(ENABLE_PROFILE "Enable profiling (generate|use)" OFF)
 option(ENABLE_SANITIZE "Enable sanitizer (address|thread|undefined)" OFF)
 
-# Optional flags
-option(USE_PEXT "Enable bmi2 support" OFF)
-option(USE_AVX2 "Enable avx2 support" OFF)
-option(USE_AVX512 "Enable avx512 support" OFF)
-option(USE_VNNI "Enable vnni support" OFF)
+# Optional processor flags
+option(USE_AVX2 "Enable avx2 instructions" OFF)
+option(USE_AVX512 "Enable avx512 instructions" OFF)
+option(USE_PEXT "Enable bmi2 instructions" OFF)
+option(USE_POPCNT "Enable popcnt instructions" ON)
+option(USE_SSE42 "Enable sse4.2 instructions" OFF)
+option(USE_VNNI "Enable vnni instructions" OFF)
 
 ##### Create stockfish library #####
 
