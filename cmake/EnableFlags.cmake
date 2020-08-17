@@ -216,13 +216,7 @@ function(ENABLE_PROFILING target type)
         get_target_property(target_type ${target} TYPE)
 
         if(target_type STREQUAL "EXECUTABLE")
-            if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-                add_custom_command(TARGET ${target} POST_BUILD
-                    COMMAND $<TARGET_FILE:${target}> bench
-                    COMMENT "Running profiling test..."
-                    VERBATIM
-                )
-            elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+            if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
                 add_custom_command(TARGET ${target} POST_BUILD
                     COMMAND LLVM_PROFILE_FILE=${CLANG_GET} $<TARGET_FILE:${target}> bench
                     COMMENT "Running profiling test..."
@@ -234,7 +228,23 @@ function(ENABLE_PROFILING target type)
                     COMMENT "Creating profile data..."
                     VERBATIM
                 )
+            else()
+                add_custom_command(TARGET ${target} POST_BUILD
+                    COMMAND $<TARGET_FILE:${target}> bench
+                    COMMENT "Running profiling test..."
+                    VERBATIM
+                )
             endif()
+
+            add_custom_target(profile ALL
+                COMMAND ${CMAKE_COMMAND} ${CMAKE_CURRENT_SOURCE_DIR} -DENABLE_PROFILE=use
+                COMMAND make VERBOSE=1
+                COMMAND ${CMAKE_COMMAND} --build ${CMAKE_CURRENT_BINARY_DIR} --config ${CMAKE_BUILD_TYPE}
+                WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+                COMMENT "Profiling..."
+                VERBATIM
+            )
+            add_dependencies(profile ${target} net)
         endif()
     endif()
 
@@ -252,6 +262,7 @@ function(ENABLE_PROFILING target type)
         )
         target_link_options(${target} PRIVATE
             $<$<CXX_COMPILER_ID:AppleClang,Clang>:-fprofile-instr-use=${CLANG_USE}>
+            $<$<CXX_COMPILER_ID:GNU>:-fprofile-dir=${GCC_USE} -fprofile-use -fno-peel-loops -fno-tracer>
         )
         target_link_libraries(${target} PRIVATE
             $<$<CXX_COMPILER_ID:GNU>:${GCOV_LIBRARY}>

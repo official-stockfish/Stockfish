@@ -109,6 +109,20 @@ add_library(Stockfish::Stockfish ALIAS stockfish)
 
 add_executable(stockfishbin src/main.cpp)
 
+##### Download the neural network #####
+
+add_custom_target(net
+    COMMAND ${CMAKE_COMMAND}
+        -D SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
+        -D BUILD_DIR=${CMAKE_CURRENT_BINARY_DIR}
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/DownloadNet.cmake
+    DEPENDS src/ucioption.cpp
+    BYPRODUCTS "nn-*.nnue"
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    VERBATIM
+    COMMENT "Downloading network"
+)
+
 ##### Populate flags #####
 
 enable_flags(stockfish)

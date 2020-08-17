@@ -248,12 +248,12 @@ are enabled for x86_64, and only `USE_NEON` and `USE_POPCNT` are enabled for ARM
 
 ### Profiling
 
-To use profile-guided optimization, several steps are necessary.
+To use profile-guided optimization, just run CMake with
+`-DENABLE_PROFILE=generate`.
 
-First, run CMake with `-DENABLE_PROFILE=generate`. When the build is finished,
-Stockfish will automatically run the benchmark to collect profiling data.
-Once that is finished, rerun CMake again, this time using
-`-DENABLE_PROFILE=use`.
+Once the build is finished, it will automatically run the Stockfish benchmark
+to collect profiling data. After that, it will automatically rerun CMake to 
+create a new executable that uses this profiling data.
 
 ### Link-time optimization
 
