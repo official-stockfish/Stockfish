@@ -238,7 +238,6 @@ function(ENABLE_PROFILING target type)
 
             add_custom_target(profile ALL
                 COMMAND ${CMAKE_COMMAND} ${CMAKE_CURRENT_SOURCE_DIR} -DENABLE_PROFILE=use
-                COMMAND make VERBOSE=1
                 COMMAND ${CMAKE_COMMAND} --build ${CMAKE_CURRENT_BINARY_DIR} --config ${CMAKE_BUILD_TYPE}
                 WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
                 COMMENT "Profiling..."
