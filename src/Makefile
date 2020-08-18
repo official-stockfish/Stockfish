@@ -69,6 +69,7 @@ endif
 # popcnt = yes/no     --- -DUSE_POPCNT     --- Use popcnt asm-instruction
 # pext = yes/no       --- -DUSE_PEXT       --- Use pext x86_64 asm-instruction
 # sse = yes/no        --- -msse            --- Use Intel Streaming SIMD Extensions
+# mmx = yes/no        --- -mmmx            --- Use Intel MMX instructions
 # sse2 = yes/no       --- -msse2           --- Use Intel Streaming SIMD Extensions 2
 # ssse3 = yes/no      --- -mssse3          --- Use Intel Supplemental Streaming SIMD Extensions 3
 # sse41 = yes/no      --- -msse4.1         --- Use Intel Streaming SIMD Extensions 4.1
@@ -93,9 +94,9 @@ sanitize = no
 bits = 64
 prefetch = no
 popcnt = no
-mmx = no
-sse = no
 pext = no
+sse = no
+mmx = no
 sse2 = no
 ssse3 = no
 sse41 = no
@@ -114,6 +115,7 @@ ifeq ($(findstring x86,$(ARCH)),x86)
 ifeq ($(findstring x86-32,$(ARCH)),x86-32)
 	arch = i386
 	bits = 32
+	mmx = yes
 else
 	arch = x86_64
 	sse = yes
@@ -574,14 +576,10 @@ help:
 	@echo "x86-64-modern           > common modern CPU, currently x86-64-sse41-popcnt"
 	@echo "x86-64-ssse3            > x86 64-bit with ssse3 support"
 	@echo "x86-64-sse3-popcnt      > x86 64-bit with sse3 and popcnt support"
-	@echo "x86-64                  > x86 64-bit generic (includes sse2 support)"
-	@echo "x86-32-vnni             |"
-	@echo "x86-32-...              | same as for x86-64"
-	@echo "x86-32-sse3-popcnt      |"
+	@echo "x86-64                  > x86 64-bit generic (with sse2 support)"
+	@echo "x86-32-sse41-popcnt     > x86 32-bit with sse41 and popcnt support"
 	@echo "x86-32-sse2             > x86 32-bit with sse2 support"
-	@echo "x86-32-mmx-sse          > x86 32-bit with mmx and sse support"
-	@echo "x86-32-mmx              > x86 32-bit with mmx support"
-	@echo "x86-32                  > x86 32-bit generic"
+	@echo "x86-32                  > x86 32-bit generic (with mmx support)"
 	@echo "ppc-64                  > PPC 64-bit"
 	@echo "ppc-32                  > PPC 32-bit"
 	@echo "armv7                   > ARMv7 32-bit"
