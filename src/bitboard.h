@@ -279,16 +279,6 @@ inline int edge_distance(File f) { return std::min(f, File(FILE_H - f)); }
 inline int edge_distance(Rank r) { return std::min(r, Rank(RANK_8 - r)); }
 
 
-/// safe_destination() returns the bitboard of target square for the given step
-/// from the given square. If the step is off the board, returns empty bitboard.
-
-inline Bitboard safe_destination(Square s, int step)
-{
-    Square to = Square(s + step);
-    return is_ok(to) && distance(s, to) <= 2 ? square_bb(to) : Bitboard(0);
-}
-
-
 /// attacks_bb(Square) returns the pseudo attacks of the give piece type
 /// assuming an empty board.
 
