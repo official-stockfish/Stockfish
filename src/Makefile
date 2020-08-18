@@ -598,7 +598,7 @@ help:
 	@echo "ppc-64                  > PPC 64-bit"
 	@echo "ppc-32                  > PPC 32-bit"
 	@echo "armv7                   > ARMv7 32-bit"
-	@echo "armv7-neon"             > ARMv7 32-bit with popcnt and neon"
+	@echo "armv7-neon              > ARMv7 32-bit with popcnt and neon"
 	@echo "armv8                   > ARMv8 64-bit with popcnt and neon"
 	@echo "apple-silicon           > Apple silicon ARM64"
 	@echo "general-64              > unspecified 64-bit"
