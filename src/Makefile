@@ -142,6 +142,7 @@ endif
 
 ifeq ($(findstring -ssse3,$(ARCH)),-ssse3)
 	sse = yes
+	sse2 = yes
 	ssse3 = yes
 endif
 
