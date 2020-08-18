@@ -115,6 +115,7 @@ ifeq ($(findstring x86,$(ARCH)),x86)
 ifeq ($(findstring x86-32,$(ARCH)),x86-32)
 	arch = i386
 	bits = 32
+	sse = yes
 	mmx = yes
 else
 	arch = x86_64
@@ -579,7 +580,7 @@ help:
 	@echo "x86-64                  > x86 64-bit generic (with sse2 support)"
 	@echo "x86-32-sse41-popcnt     > x86 32-bit with sse41 and popcnt support"
 	@echo "x86-32-sse2             > x86 32-bit with sse2 support"
-	@echo "x86-32                  > x86 32-bit generic (with mmx support)"
+	@echo "x86-32                  > x86 32-bit generic (with mmx and sse support)"
 	@echo "ppc-64                  > PPC 64-bit"
 	@echo "ppc-32                  > PPC 32-bit"
 	@echo "armv7                   > ARMv7 32-bit"
