@@ -16,34 +16,23 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef EVALUATE_H_INCLUDED
-#define EVALUATE_H_INCLUDED
+// Input features and network structure used in NNUE evaluation function
 
-#include <string>
+#ifndef NNUE_ARCHITECTURE_H_INCLUDED
+#define NNUE_ARCHITECTURE_H_INCLUDED
 
-#include "types.h"
+// Defines the network structure
+#include "architectures/halfkp_256x2-32-32.h"
 
-class Position;
+namespace Eval::NNUE {
 
-namespace Eval {
+  static_assert(kTransformedFeatureDimensions % kMaxSimdWidth == 0, "");
+  static_assert(Network::kOutputDimensions == 1, "");
+  static_assert(std::is_same<Network::OutputType, std::int32_t>::value, "");
 
-  std::string trace(const Position& pos);
-  Value evaluate(const Position& pos);
+  // Trigger for full calculation instead of difference calculation
+  constexpr auto kRefreshTriggers = RawFeatures::kRefreshTriggers;
 
-  extern bool useNNUE;
-  extern std::string eval_file_loaded;
-  void init_NNUE();
-  void verify_NNUE();
+}  // namespace Eval::NNUE
 
-  namespace NNUE {
-
-    Value evaluate(const Position& pos);
-    Value compute_eval(const Position& pos);
-    void  update_eval(const Position& pos);
-    bool  load_eval_file(const std::string& evalFile);
-
-  } // namespace NNUE
-
-} // namespace Eval
-
-#endif // #ifndef EVALUATE_H_INCLUDED
+#endif // #ifndef NNUE_ARCHITECTURE_H_INCLUDED
