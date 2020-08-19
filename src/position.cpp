@@ -1,8 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
-  Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2020 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -119,15 +117,7 @@ void Position::init() {
       Zobrist::enpassant[f] = rng.rand<Key>();
 
   for (int cr = NO_CASTLING; cr <= ANY_CASTLING; ++cr)
-  {
-      Zobrist::castling[cr] = 0;
-      Bitboard b = cr;
-      while (b)
-      {
-          Key k = Zobrist::castling[1ULL << pop_lsb(&b)];
-          Zobrist::castling[cr] ^= k ? k : rng.rand<Key>();
-      }
-  }
+      Zobrist::castling[cr] = rng.rand<Key>();
 
   Zobrist::side = rng.rand<Key>();
   Zobrist::noPawns = rng.rand<Key>();
@@ -186,9 +176,9 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
 
    4) En passant target square (in algebraic notation). If there's no en passant
       target square, this is "-". If a pawn has just made a 2-square move, this
-      is the position "behind" the pawn. This is recorded only if there is a pawn
-      in position to make an en passant capture, and if there really is a pawn
-      that might have advanced two squares.
+      is the position "behind" the pawn. Following X-FEN standard, this is recorded only
+      if there is a pawn in position to make an en passant capture, and if there really
+      is a pawn that might have advanced two squares.
 
    5) Halfmove clock. This is the number of halfmoves since the last pawn advance
       or capture. This is used to determine if a draw can be claimed under the
@@ -208,6 +198,9 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
   std::fill_n(&pieceList[0][0], sizeof(pieceList) / sizeof(Square), SQ_NONE);
   st = si;
 
+  // Each piece on board gets a unique ID used to track the piece later
+  PieceId piece_id, next_piece_id = PIECE_ID_ZERO;
+
   ss >> std::noskipws;
 
   // 1. Piece placement
@@ -221,7 +214,19 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
 
       else if ((idx = PieceToChar.find(token)) != string::npos)
       {
-          put_piece(Piece(idx), sq);
+          auto pc = Piece(idx);
+          put_piece(pc, sq);
+
+          if (Eval::useNNUE)
+          {
+              // Kings get a fixed ID, other pieces get ID in order of placement
+              piece_id =
+                (idx == W_KING) ? PIECE_ID_WKING :
+                (idx == B_KING) ? PIECE_ID_BKING :
+                next_piece_id++;
+              evalList.put_piece(piece_id, sq, pc);
+          }
+
           ++sq;
       }
   }
@@ -259,17 +264,25 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
       set_castling_right(c, rsq);
   }
 
-  // 4. En passant square. Ignore if no pawn capture is possible
+  // 4. En passant square.
+  // Ignore if square is invalid or not on side to move relative rank 6.
+  bool enpassant = false;
+
   if (   ((ss >> col) && (col >= 'a' && col <= 'h'))
-      && ((ss >> row) && (row == '3' || row == '6')))
+      && ((ss >> row) && (row == (sideToMove == WHITE ? '6' : '3'))))
   {
       st->epSquare = make_square(File(col - 'a'), Rank(row - '1'));
 
-      if (   !(attackers_to(st->epSquare) & pieces(sideToMove, PAWN))
-          || !(pieces(~sideToMove, PAWN) & (st->epSquare + pawn_push(~sideToMove))))
-          st->epSquare = SQ_NONE;
+      // En passant square will be considered only if
+      // a) side to move have a pawn threatening epSquare
+      // b) there is an enemy pawn in front of epSquare
+      // c) there is no piece on epSquare or behind epSquare
+      enpassant = pawn_attacks_bb(~sideToMove, st->epSquare) & pieces(sideToMove, PAWN)
+               && (pieces(~sideToMove, PAWN) & (st->epSquare + pawn_push(~sideToMove)))
+               && !(pieces() & (st->epSquare | (st->epSquare + pawn_push(sideToMove))));
   }
-  else
+
+  if (!enpassant)
       st->epSquare = SQ_NONE;
 
   // 5-6. Halfmove clock and fullmove number
@@ -705,6 +718,14 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   ++st->rule50;
   ++st->pliesFromNull;
 
+  // Used by NNUE
+  st->accumulator.computed_accumulation = false;
+  st->accumulator.computed_score = false;
+  PieceId dp0 = PIECE_ID_NONE;
+  PieceId dp1 = PIECE_ID_NONE;
+  auto& dp = st->dirtyPiece;
+  dp.dirty_num = 1;
+
   Color us = sideToMove;
   Color them = ~us;
   Square from = from_sq(m);
@@ -752,6 +773,16 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       else
           st->nonPawnMaterial[them] -= PieceValue[MG][captured];
 
+      if (Eval::useNNUE)
+      {
+          dp.dirty_num = 2; // 2 pieces moved
+          dp1 = piece_id_on(capsq);
+          dp.pieceId[1] = dp1;
+          dp.old_piece[1] = evalList.piece_with_id(dp1);
+          evalList.put_piece(dp1, capsq, NO_PIECE);
+          dp.new_piece[1] = evalList.piece_with_id(dp1);
+      }
+
       // Update board and piece lists
       remove_piece(capsq);
 
@@ -780,14 +811,25 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   // Update castling rights if needed
   if (st->castlingRights && (castlingRightsMask[from] | castlingRightsMask[to]))
   {
-      int cr = castlingRightsMask[from] | castlingRightsMask[to];
-      k ^= Zobrist::castling[st->castlingRights & cr];
-      st->castlingRights &= ~cr;
+      k ^= Zobrist::castling[st->castlingRights];
+      st->castlingRights &= ~(castlingRightsMask[from] | castlingRightsMask[to]);
+      k ^= Zobrist::castling[st->castlingRights];
   }
 
   // Move the piece. The tricky Chess960 castling is handled earlier
   if (type_of(m) != CASTLING)
+  {
+      if (Eval::useNNUE)
+      {
+          dp0 = piece_id_on(from);
+          dp.pieceId[0] = dp0;
+          dp.old_piece[0] = evalList.piece_with_id(dp0);
+          evalList.put_piece(dp0, to, pc);
+          dp.new_piece[0] = evalList.piece_with_id(dp0);
+      }
+
       move_piece(from, to);
+  }
 
   // If the moving piece is a pawn do some special extra work
   if (type_of(pc) == PAWN)
@@ -809,6 +851,13 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
 
           remove_piece(to);
           put_piece(promotion, to);
+
+          if (Eval::useNNUE)
+          {
+              dp0 = piece_id_on(to);
+              evalList.put_piece(dp0, to, promotion);
+              dp.new_piece[0] = evalList.piece_with_id(dp0);
+          }
 
           // Update hash keys
           k ^= Zobrist::psq[pc][to] ^ Zobrist::psq[promotion][to];
@@ -901,6 +950,12 @@ void Position::undo_move(Move m) {
   {
       move_piece(to, from); // Put the piece back at the source square
 
+      if (Eval::useNNUE)
+      {
+          PieceId dp0 = st->dirtyPiece.pieceId[0];
+          evalList.put_piece(dp0, from, pc);
+      }
+
       if (st->capturedPiece)
       {
           Square capsq = to;
@@ -917,6 +972,14 @@ void Position::undo_move(Move m) {
           }
 
           put_piece(st->capturedPiece, capsq); // Restore the captured piece
+
+          if (Eval::useNNUE)
+          {
+              PieceId dp1 = st->dirtyPiece.pieceId[1];
+              assert(evalList.piece_with_id(dp1).from[WHITE] == PS_NONE);
+              assert(evalList.piece_with_id(dp1).from[BLACK] == PS_NONE);
+              evalList.put_piece(dp1, capsq, st->capturedPiece);
+          }
       }
   }
 
@@ -938,6 +1001,34 @@ void Position::do_castling(Color us, Square from, Square& to, Square& rfrom, Squ
   rto = relative_square(us, kingSide ? SQ_F1 : SQ_D1);
   to = relative_square(us, kingSide ? SQ_G1 : SQ_C1);
 
+  if (Eval::useNNUE)
+  {
+      PieceId dp0, dp1;
+      auto& dp = st->dirtyPiece;
+      dp.dirty_num = 2; // 2 pieces moved
+
+      if (Do)
+      {
+          dp0 = piece_id_on(from);
+          dp1 = piece_id_on(rfrom);
+          dp.pieceId[0] = dp0;
+          dp.old_piece[0] = evalList.piece_with_id(dp0);
+          evalList.put_piece(dp0, to, make_piece(us, KING));
+          dp.new_piece[0] = evalList.piece_with_id(dp0);
+          dp.pieceId[1] = dp1;
+          dp.old_piece[1] = evalList.piece_with_id(dp1);
+          evalList.put_piece(dp1, rto, make_piece(us, ROOK));
+          dp.new_piece[1] = evalList.piece_with_id(dp1);
+      }
+      else
+      {
+          dp0 = piece_id_on(to);
+          dp1 = piece_id_on(rto);
+          evalList.put_piece(dp0, from, make_piece(us, KING));
+          evalList.put_piece(dp1, rfrom, make_piece(us, ROOK));
+      }
+  }
+
   // Remove both pieces first since squares could overlap in Chess960
   remove_piece(Do ? from : to);
   remove_piece(Do ? rfrom : rto);
@@ -955,7 +1046,14 @@ void Position::do_null_move(StateInfo& newSt) {
   assert(!checkers());
   assert(&newSt != st);
 
-  std::memcpy(&newSt, st, sizeof(StateInfo));
+  if (Eval::useNNUE)
+  {
+      std::memcpy(&newSt, st, sizeof(StateInfo));
+      st->accumulator.computed_score = false;
+  }
+  else
+      std::memcpy(&newSt, st, offsetof(StateInfo, accumulator));
+
   newSt.previous = st;
   st = &newSt;
 

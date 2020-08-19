@@ -1,8 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
-  Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2020 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -29,21 +27,19 @@ namespace {
   ExtMove* make_promotions(ExtMove* moveList, Square to, Square ksq) {
 
     if (Type == CAPTURES || Type == EVASIONS || Type == NON_EVASIONS)
+    {
         *moveList++ = make<PROMOTION>(to - D, to, QUEEN);
+        if (attacks_bb<KNIGHT>(to) & ksq)
+            *moveList++ = make<PROMOTION>(to - D, to, KNIGHT);
+    }
 
     if (Type == QUIETS || Type == EVASIONS || Type == NON_EVASIONS)
     {
         *moveList++ = make<PROMOTION>(to - D, to, ROOK);
         *moveList++ = make<PROMOTION>(to - D, to, BISHOP);
-        *moveList++ = make<PROMOTION>(to - D, to, KNIGHT);
+        if (!(attacks_bb<KNIGHT>(to) & ksq))
+            *moveList++ = make<PROMOTION>(to - D, to, KNIGHT);
     }
-
-    // Knight promotion is the only promotion that can give a direct check
-    // that's not already included in the queen promotion.
-    if (Type == QUIET_CHECKS && (attacks_bb<KNIGHT>(to) & ksq))
-        *moveList++ = make<PROMOTION>(to - D, to, KNIGHT);
-    else
-        (void)ksq; // Silence a warning under MSVC
 
     return moveList;
   }
@@ -263,8 +259,8 @@ namespace {
 } // namespace
 
 
-/// <CAPTURES>     Generates all pseudo-legal captures and queen promotions
-/// <QUIETS>       Generates all pseudo-legal non-captures and underpromotions
+/// <CAPTURES>     Generates all pseudo-legal captures plus queen and checking knight promotions
+/// <QUIETS>       Generates all pseudo-legal non-captures and underpromotions(except checking knight)
 /// <NON_EVASIONS> Generates all pseudo-legal captures and non-captures
 ///
 /// Returns a pointer to the end of the move list.
@@ -287,8 +283,8 @@ template ExtMove* generate<QUIETS>(const Position&, ExtMove*);
 template ExtMove* generate<NON_EVASIONS>(const Position&, ExtMove*);
 
 
-/// generate<QUIET_CHECKS> generates all pseudo-legal non-captures and knight
-/// underpromotions that give check. Returns a pointer to the end of the move list.
+/// generate<QUIET_CHECKS> generates all pseudo-legal non-captures.
+/// Returns a pointer to the end of the move list.
 template<>
 ExtMove* generate<QUIET_CHECKS>(const Position& pos, ExtMove* moveList) {
 

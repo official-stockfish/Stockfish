@@ -1,8 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
-  Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2020 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -88,7 +86,7 @@ const vector<string> Defaults = {
 
   // Chess 960
   "setoption name UCI_Chess960 value true",
-  "bbqnnrkr/pppppppp/8/8/8/8/PPPPPPPP/BBQNNRKR w KQkq - 0 1 moves g2g3 d7d5 d2d4 c8h3 c1g5 e8d6 g5e7 f7f6",
+  "bbqnnrkr/pppppppp/8/8/8/8/PPPPPPPP/BBQNNRKR w HFhf - 0 1 moves g2g3 d7d5 d2d4 c8h3 c1g5 e8d6 g5e7 f7f6",
   "setoption name UCI_Chess960 value false"
 };
 
@@ -97,8 +95,9 @@ const vector<string> Defaults = {
 /// setup_bench() builds a list of UCI commands to be run by bench. There
 /// are five parameters: TT size in MB, number of search threads that
 /// should be used, the limit value spent for each position, a file name
-/// where to look for positions in FEN format and the type of the limit:
-/// depth, perft, nodes and movetime (in millisecs).
+/// where to look for positions in FEN format, the type of the limit:
+/// depth, perft, nodes and movetime (in millisecs), and evaluation type
+/// mixed (default), classical, NNUE.
 ///
 /// bench -> search default positions up to depth 13
 /// bench 64 1 15 -> search default positions up to depth 15 (TT = 64MB)
@@ -117,6 +116,7 @@ vector<string> setup_bench(const Position& current, istream& is) {
   string limit     = (is >> token) ? token : "13";
   string fenFile   = (is >> token) ? token : "default";
   string limitType = (is >> token) ? token : "depth";
+  string evalType  = (is >> token) ? token : "mixed";
 
   go = limitType == "eval" ? "eval" : "go " + limitType + " " + limit;
 
@@ -148,13 +148,20 @@ vector<string> setup_bench(const Position& current, istream& is) {
   list.emplace_back("setoption name Hash value " + ttSize);
   list.emplace_back("ucinewgame");
 
+  size_t posCounter = 0;
+
   for (const string& fen : fens)
       if (fen.find("setoption") != string::npos)
           list.emplace_back(fen);
       else
       {
+          if (evalType == "classical" || (evalType == "mixed" && posCounter % 2 == 0))
+              list.emplace_back("setoption name Use NNUE value false");
+          else if (evalType == "NNUE" || (evalType == "mixed" && posCounter % 2 != 0))
+              list.emplace_back("setoption name Use NNUE value true");
           list.emplace_back("position fen " + fen);
           list.emplace_back(go);
+          ++posCounter;
       }
 
   return list;

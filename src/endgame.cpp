@@ -1,8 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
-  Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2020 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -181,15 +179,15 @@ Value Endgame<KRKP>::operator()(const Position& pos) const {
   assert(verify_material(pos, strongSide, RookValueMg, 0));
   assert(verify_material(pos, weakSide, VALUE_ZERO, 1));
 
-  Square strongKing = relative_square(strongSide, pos.square<KING>(strongSide));
-  Square weakKing   = relative_square(strongSide, pos.square<KING>(weakSide));
-  Square strongRook = relative_square(strongSide, pos.square<ROOK>(strongSide));
-  Square weakPawn   = relative_square(strongSide, pos.square<PAWN>(weakSide));
-  Square queeningSquare = make_square(file_of(weakPawn), RANK_1);
+  Square strongKing = pos.square<KING>(strongSide);
+  Square weakKing   = pos.square<KING>(weakSide);
+  Square strongRook = pos.square<ROOK>(strongSide);
+  Square weakPawn   = pos.square<PAWN>(weakSide);
+  Square queeningSquare = make_square(file_of(weakPawn), relative_rank(weakSide, RANK_8));
   Value result;
 
   // If the stronger side's king is in front of the pawn, it's a win
-  if (forward_file_bb(WHITE, strongKing) & weakPawn)
+  if (forward_file_bb(strongSide, strongKing) & weakPawn)
       result = RookValueEg - distance(strongKing, weakPawn);
 
   // If the weaker side's king is too far from the pawn and the rook,
@@ -200,15 +198,15 @@ Value Endgame<KRKP>::operator()(const Position& pos) const {
 
   // If the pawn is far advanced and supported by the defending king,
   // the position is drawish
-  else if (   rank_of(weakKing) <= RANK_3
+  else if (   relative_rank(strongSide, weakKing) <= RANK_3
            && distance(weakKing, weakPawn) == 1
-           && rank_of(strongKing) >= RANK_4
+           && relative_rank(strongSide, strongKing) >= RANK_4
            && distance(strongKing, weakPawn) > 2 + (pos.side_to_move() == strongSide))
       result = Value(80) - 8 * distance(strongKing, weakPawn);
 
   else
-      result =  Value(200) - 8 * (  distance(strongKing, weakPawn + SOUTH)
-                                  - distance(weakKing, weakPawn + SOUTH)
+      result =  Value(200) - 8 * (  distance(strongKing, weakPawn + pawn_push(weakSide))
+                                  - distance(weakKing, weakPawn + pawn_push(weakSide))
                                   - distance(weakPawn, queeningSquare));
 
   return strongSide == pos.side_to_move() ? result : -result;
@@ -589,8 +587,8 @@ ScaleFactor Endgame<KPsK>::operator()(const Position& pos) const {
   Bitboard strongPawns = pos.pieces(strongSide, PAWN);
 
   // If all pawns are ahead of the king on a single rook file, it's a draw.
-  if (!((strongPawns & ~FileABB) || (strongPawns & ~FileHBB)) &&
-      !(strongPawns & ~passed_pawn_span(weakSide, weakKing)))
+  if (   !(strongPawns & ~(FileABB | FileHBB))
+      && !(strongPawns & ~passed_pawn_span(weakSide, weakKing)))
       return SCALE_FACTOR_DRAW;
 
   return SCALE_FACTOR_NONE;
