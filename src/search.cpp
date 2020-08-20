@@ -1471,6 +1471,7 @@ moves_loop: // When in check, search starts from here
     if (ss->inCheck)
     {
         ss->staticEval = VALUE_NONE;
+        (ss+1)->previousEval = ss->previousEval;
         bestValue = futilityBase = -VALUE_INFINITE;
     }
     else
@@ -1490,6 +1491,8 @@ moves_loop: // When in check, search starts from here
             ss->staticEval = bestValue =
             (ss-1)->currentMove != MOVE_NULL ? evaluate(pos, ss->previousEval)
                                              : -(ss-1)->staticEval + 2 * Tempo;
+
+        (ss+1)->previousEval = ss->previousEval;
 
         // Stand pat. Return immediately if static value is at least beta
         if (bestValue >= beta)
