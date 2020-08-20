@@ -626,7 +626,7 @@ namespace {
         if (   Threads.stop.load(std::memory_order_relaxed)
             || pos.is_draw(ss->ply)
             || ss->ply >= MAX_PLY)
-            return (ss->ply >= MAX_PLY && !ss->inCheck) ? evaluate(pos)
+            return (ss->ply >= MAX_PLY && !ss->inCheck) ? evaluate(pos, ss->previousEval)
                                                         : value_draw(pos.this_thread());
 
         // Step 3. Mate distance pruning. Even if we mate at the next move our score
@@ -647,6 +647,7 @@ namespace {
     (ss+1)->excludedMove = bestMove = MOVE_NONE;
     (ss+2)->killers[0] = (ss+2)->killers[1] = MOVE_NONE;
     Square prevSq = to_sq((ss-1)->currentMove);
+    (ss+1)->previousEval = Value(0);
 
     // Initialize statScore to zero for the grandchildren of the current position.
     // So statScore is shared between all grandchildren and only the first grandchild
@@ -773,6 +774,7 @@ namespace {
     {
         // Skip early pruning when in check
         ss->staticEval = eval = VALUE_NONE;
+        (ss+1)->previousEval = ss->previousEval;
         improving = false;
         goto moves_loop;
     }
@@ -781,7 +783,7 @@ namespace {
         // Never assume anything about values stored in TT
         ss->staticEval = eval = tte->eval();
         if (eval == VALUE_NONE)
-            ss->staticEval = eval = evaluate(pos);
+            ss->staticEval = eval = evaluate(pos, ss->previousEval);
 
         if (eval == VALUE_DRAW)
             eval = value_draw(thisThread);
@@ -794,12 +796,14 @@ namespace {
     else
     {
         if ((ss-1)->currentMove != MOVE_NULL)
-            ss->staticEval = eval = evaluate(pos);
+            ss->staticEval = eval = evaluate(pos, ss->previousEval);
         else
             ss->staticEval = eval = -(ss-1)->staticEval + 2 * Tempo;
 
         tte->save(posKey, VALUE_NONE, ttPv, BOUND_NONE, DEPTH_NONE, MOVE_NONE, eval);
     }
+
+    (ss+1)->previousEval = ss->staticEval;
 
     // Step 7. Razoring (~1 Elo)
     if (   !rootNode // The required rootNode PV handling is not available in qsearch
@@ -1439,7 +1443,7 @@ moves_loop: // When in check, search starts from here
     // Check for an immediate draw or maximum ply reached
     if (   pos.is_draw(ss->ply)
         || ss->ply >= MAX_PLY)
-        return (ss->ply >= MAX_PLY && !ss->inCheck) ? evaluate(pos) : VALUE_DRAW;
+        return (ss->ply >= MAX_PLY && !ss->inCheck) ? evaluate(pos, ss->previousEval) : VALUE_DRAW;
 
     assert(0 <= ss->ply && ss->ply < MAX_PLY);
 
@@ -1475,7 +1479,7 @@ moves_loop: // When in check, search starts from here
         {
             // Never assume anything about values stored in TT
             if ((ss->staticEval = bestValue = tte->eval()) == VALUE_NONE)
-                ss->staticEval = bestValue = evaluate(pos);
+                ss->staticEval = bestValue = evaluate(pos, ss->previousEval);
 
             // Can ttValue be used as a better position evaluation?
             if (    ttValue != VALUE_NONE
@@ -1484,7 +1488,7 @@ moves_loop: // When in check, search starts from here
         }
         else
             ss->staticEval = bestValue =
-            (ss-1)->currentMove != MOVE_NULL ? evaluate(pos)
+            (ss-1)->currentMove != MOVE_NULL ? evaluate(pos, ss->previousEval)
                                              : -(ss-1)->staticEval + 2 * Tempo;
 
         // Stand pat. Return immediately if static value is at least beta
