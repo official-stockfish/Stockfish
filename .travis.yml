@@ -77,8 +77,10 @@ script:
   # compile only for some more advanced architectures (might not run in travis)
   - make clean && make -j2 ARCH=x86-64-avx2 build
   - make clean && make -j2 ARCH=x86-64-bmi2 build
-  # needs gcc 10 to compile
-  - if [[ "$COMPILER" != "g++-8" ]]; then make clean && make -j2 ARCH=x86-64-avx512 build; fi
+  - make clean && make -j2 ARCH=x86-64-avx512 build
+  - make clean && make -j2 ARCH=x86-64-vnni512 build
+  # requires gcc 9 or higher
+  - if [[ "$COMPILER" != "g++-8" ]]; make clean && make -j2 ARCH=x86-64-vnni256 build; fi
 
   #
   # Check perft and reproducible search

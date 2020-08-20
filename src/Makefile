@@ -75,7 +75,8 @@ endif
 # sse41 = yes/no      --- -msse4.1         --- Use Intel Streaming SIMD Extensions 4.1
 # avx2 = yes/no       --- -mavx2           --- Use Intel Advanced Vector Extensions 2
 # avx512 = yes/no     --- -mavx512bw       --- Use Intel Advanced Vector Extensions 512
-# vnni = yes/no       --- -mavx512vnni     --- Use Intel Vector Neural Network Instructions 512
+# vnni256 = yes/no    --- -mavx512vnni     --- Use Intel Vector Neural Network Instructions 256
+# vnni512 = yes/no    --- -mavx512vnni     --- Use Intel Vector Neural Network Instructions 512
 # neon = yes/no       --- -DUSE_NEON       --- Use ARM SIMD architecture
 #
 # Note that Makefile is space sensitive, so when adding new architectures
@@ -102,7 +103,8 @@ ssse3 = no
 sse41 = no
 avx2 = no
 avx512 = no
-vnni = no
+vnni256 = no
+vnni512 = no
 neon = no
 ARCH = x86-64-modern
 STRIP = strip
@@ -192,7 +194,18 @@ ifeq ($(findstring -avx512,$(ARCH)),-avx512)
 	avx512 = yes
 endif
 
-ifeq ($(findstring -vnni,$(ARCH)),-vnni)
+ifeq ($(findstring -vnni256,$(ARCH)),-vnni256)
+	popcnt = yes
+	sse = yes
+	sse2 = yes
+	ssse3 = yes
+	sse41 = yes
+	avx2 = yes
+	pext = yes
+	vnni256 = yes
+endif
+
+ifeq ($(findstring -vnni512,$(ARCH)),-vnni512)
 	popcnt = yes
 	sse = yes
 	sse2 = yes
@@ -201,7 +214,7 @@ ifeq ($(findstring -vnni,$(ARCH)),-vnni)
 	avx2 = yes
 	pext = yes
 	avx512 = yes
-	vnni = yes
+	vnni512 = yes
 endif
 
 ifeq ($(sse),yes)
@@ -500,7 +513,14 @@ ifeq ($(avx512),yes)
 	endif
 endif
 
-ifeq ($(vnni),yes)
+ifeq ($(vnni256),yes)
+	CXXFLAGS += -DUSE_VNNI
+	ifeq ($(comp),$(filter $(comp),gcc clang mingw))
+		CXXFLAGS += -mavx512vnni -mavx512dq -mavx512vl -mprefer-vector-width=256
+	endif
+endif
+
+ifeq ($(vnni512),yes)
 	CXXFLAGS += -DUSE_VNNI
 	ifeq ($(comp),$(filter $(comp),gcc clang mingw))
 		CXXFLAGS += -mavx512vnni -mavx512dq -mavx512vl
@@ -623,7 +643,8 @@ help:
 	@echo ""
 	@echo "Supported archs:"
 	@echo ""
-	@echo "x86-64-vnni             > x86 64-bit with vnni support"
+	@echo "x86-64-vnni512          > x86 64-bit with vnni support 512bit wide"
+	@echo "x86-64-vnni256          > x86 64-bit with vnni support 256bit wide"
 	@echo "x86-64-avx512           > x86 64-bit with avx512 support"
 	@echo "x86-64-bmi2             > x86 64-bit with bmi2 support"
 	@echo "x86-64-avx2             > x86 64-bit with avx2 support"
@@ -767,7 +788,8 @@ config-sanity:
 	@echo "sse41: '$(sse41)'"
 	@echo "avx2: '$(avx2)'"
 	@echo "avx512: '$(avx512)'"
-	@echo "vnni: '$(vnni)'"
+	@echo "vnni256: '$(vnni256)'"
+	@echo "vnni512: '$(vnni512)'"
 	@echo "neon: '$(neon)'"
 	@echo ""
 	@echo "Flags:"
@@ -794,7 +816,8 @@ config-sanity:
 	@test "$(sse41)" = "yes" || test "$(sse41)" = "no"
 	@test "$(avx2)" = "yes" || test "$(avx2)" = "no"
 	@test "$(avx512)" = "yes" || test "$(avx512)" = "no"
-	@test "$(vnni)" = "yes" || test "$(vnni)" = "no"
+	@test "$(vnni256)" = "yes" || test "$(vnni256)" = "no"
+	@test "$(vnni512)" = "yes" || test "$(vnni512)" = "no"
 	@test "$(neon)" = "yes" || test "$(neon)" = "no"
 	@test "$(comp)" = "gcc" || test "$(comp)" = "icc" || test "$(comp)" = "mingw" || test "$(comp)" = "clang" \
 	|| test "$(comp)" = "armv7a-linux-androideabi16-clang"  || test "$(comp)" = "aarch64-linux-android21-clang"
