@@ -122,6 +122,13 @@ bool detect_draw_by_consecutive_low_score = false;
 bool detect_draw_by_insufficient_mating_material = false;
 // 1.0 / PawnValueEg / 4.0 * log(10.0)
 double winning_probability_coefficient = 0.00276753015984861260098316280611;
+// Score scale factors.  ex) If we set src_score_min_value = 0.0,
+// src_score_max_value = 1.0, dest_score_min_value = 0.0,
+// dest_score_max_value = 10000.0, [0.0, 1.0] will be scaled to [0, 10000].
+double src_score_min_value = 0.0;
+double src_score_max_value = 1.0;
+double dest_score_min_value = 0.0;
+double dest_score_max_value = 1.0;
 
 // -----------------------------------
 // write phase file
@@ -1245,8 +1252,15 @@ double calc_grad(Value deep, Value shallow , const PackedSfenValue& psv)
 	// elmo (WCSC27) method
 	// Correct with the actual game wins and losses.
 
+	// Training Formula · Issue #71 · nodchip/Stockfish https://github.com/nodchip/Stockfish/issues/71
+	double scaled_deep = deep;
+	// Normalize to [0.0, 1.0].
+	scaled_deep = (scaled_deep - src_score_min_value) / (src_score_max_value - src_score_min_value);
+	// Scale to [dest_score_min_value, dest_score_max_value].
+	scaled_deep = scaled_deep * (dest_score_max_value - dest_score_min_value) + dest_score_min_value;
+
 	const double q = winning_percentage(shallow);
-	const double p = winning_percentage(deep);
+	const double p = winning_percentage(scaled_deep);
 
 	// Use 1 as the correction term if the expected win rate is 1, 0 if you lose, and 0.5 if you draw.
 	// game_result = 1,0,-1 so add 1 and divide by 2.
@@ -1268,7 +1282,14 @@ void calc_cross_entropy(Value deep, Value shallow, const PackedSfenValue& psv,
 	double& cross_entropy_eval, double& cross_entropy_win, double& cross_entropy,
 	double& entropy_eval, double& entropy_win, double& entropy)
 {
-	const double p /* teacher_winrate */ = winning_percentage(deep);
+	// Training Formula · Issue #71 · nodchip/Stockfish https://github.com/nodchip/Stockfish/issues/71
+	double scaled_deep = deep;
+	// Normalize to [0.0, 1.0].
+	scaled_deep = (scaled_deep - src_score_min_value) / (src_score_max_value - src_score_min_value);
+	// Scale to [dest_score_min_value, dest_score_max_value].
+	scaled_deep = scaled_deep * (dest_score_max_value - dest_score_min_value) + dest_score_min_value;
+
+	const double p /* teacher_winrate */ = winning_percentage(scaled_deep);
 	const double q /* eval_winrate    */ = winning_percentage(shallow);
 	const double t = double(psv.game_result + 1) / 2;
 
@@ -2614,9 +2635,14 @@ void convert_bin(const vector<string>& filenames, const string& output_file_name
 				}
 			}
 			else if (token == "score") {
-				int32_t score;
+				double score;
 				ss >> score;
-				p.score = Math::clamp(score , -(int32_t)VALUE_MATE , (int32_t)VALUE_MATE);
+				// Training Formula · Issue #71 · nodchip/Stockfish https://github.com/nodchip/Stockfish/issues/71
+				// Normalize to [0.0, 1.0].
+				score = (score - src_score_min_value) / (src_score_max_value - src_score_min_value);
+				// Scale to [dest_score_min_value, dest_score_max_value].
+				score = score * (dest_score_max_value - dest_score_min_value) + dest_score_min_value;
+				p.score = Math::clamp((int32_t)std::round(score) , -(int32_t)VALUE_MATE , (int32_t)VALUE_MATE);
 			}
 			else if (token == "ply") {
 				int temp;
@@ -3184,6 +3210,10 @@ void learn(Position&, istringstream& is)
 		else if (option == "convert_bin_from_pgn-extract") use_convert_bin_from_pgn_extract = true;
 		else if (option == "pgn_eval_side_to_move") is >> pgn_eval_side_to_move;
 		else if (option == "convert_no_eval_fens_as_score_zero") is >> convert_no_eval_fens_as_score_zero;
+		else if (option == "src_score_min_value") is >> src_score_min_value;
+		else if (option == "src_score_max_value") is >> src_score_max_value;
+		else if (option == "dest_score_min_value") is >> dest_score_min_value;
+		else if (option == "dest_score_max_value") is >> dest_score_max_value;
 
 		// Otherwise, it's a filename.
 		else
@@ -3295,7 +3325,7 @@ void learn(Position&, istringstream& is)
 		cout << "convert_bin.." << endl;
 		convert_bin(filenames,output_file_name, ply_minimum, ply_maximum, interpolate_eval, check_invalid_fen, check_illegal_move);
 		return;
-		
+
 	}
 	if (use_convert_bin_from_pgn_extract)
 	{
