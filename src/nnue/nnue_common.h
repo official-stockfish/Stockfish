@@ -66,6 +66,11 @@
 #endif
 #endif
 
+// Prevent _mm_empty() if SSE2 is used.
+#if defined(USE_SSE2)
+#undef USE_MMAX
+#endif
+
 namespace Eval::NNUE {
 
   // Version of the evaluation file
