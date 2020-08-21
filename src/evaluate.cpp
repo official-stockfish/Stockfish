@@ -38,7 +38,7 @@ namespace Eval {
 
   void init_NNUE() {
 
-    useNNUE = Options["Use NNUE"];
+    useNNUE = Options["UseNN"];
     std::string eval_file = std::string(Options["EvalFile"]);
     if (useNNUE && eval_file_loaded != eval_file)
         if (Eval::NNUE::load_eval_file(eval_file))
@@ -48,7 +48,7 @@ namespace Eval {
   void verify_NNUE() {
 
     std::string eval_file = std::string(Options["EvalFile"]);
-    if (useNNUE && eval_file_loaded != eval_file)
+    /*if (useNNUE && eval_file_loaded != eval_file)
     {
         UCI::OptionsMap defaults;
         UCI::init(defaults);
@@ -59,7 +59,7 @@ namespace Eval {
         sync_cout << "info string ERROR: If the UCI option Use NNUE is set to true, network evaluation parameters compatible with the program must be available." << sync_endl;
         sync_cout << "info string ERROR: The engine will be terminated now." << sync_endl;
         std::exit(EXIT_FAILURE);
-    }
+    }*/
 
     if (useNNUE)
         sync_cout << "info string NNUE evaluation using " << eval_file << " enabled." << sync_endl;
