@@ -68,7 +68,7 @@
 
 // Prevent _mm_empty() if SSE2 is used.
 #if defined(USE_SSE2)
-#undef USE_MMAX
+#undef USE_MMX
 #endif
 
 namespace Eval::NNUE {
