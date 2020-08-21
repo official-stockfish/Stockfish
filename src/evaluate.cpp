@@ -1013,5 +1013,6 @@ std::string Eval::trace(const Position& pos) {
   v = pos.side_to_move() == WHITE ? v : -v;
   ss << "\nFinal evaluation:     " << to_cp(v) << " (white side)\n";
 
+
   return ss.str();
 }
