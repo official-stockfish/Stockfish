@@ -367,7 +367,9 @@ void* aligned_ttmem_alloc(size_t allocSize, void*& mem) {
   size_t size = ((allocSize + alignment - 1) / alignment) * alignment; // multiple of alignment
   if (posix_memalign(&mem, alignment, size))
      mem = nullptr;
+#if defined(MADV_HUGEPAGE)
   madvise(mem, allocSize, MADV_HUGEPAGE);
+#endif
   return mem;
 }
 
