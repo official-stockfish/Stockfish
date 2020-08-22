@@ -370,7 +370,7 @@ else
 endif
 endif
 
-ifeq ($(KERNEL),Darwin)
+ifeq ($(KERNEL),Darwin) 
 	CXXFLAGS += -arch $(arch) -mmacosx-version-min=10.14
 	LDFLAGS += -arch $(arch) -mmacosx-version-min=10.14
 	XCRUN = xcrun
