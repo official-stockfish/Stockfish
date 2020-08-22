@@ -129,6 +129,10 @@ double src_score_min_value = 0.0;
 double src_score_max_value = 1.0;
 double dest_score_min_value = 0.0;
 double dest_score_max_value = 1.0;
+// Assume teacher signals are the scores of deep searches, and convert them into winning
+// probabilities in the trainer. Sometimes we want to use the winning probabilities in the training
+// data directly. In those cases, we set false to this variable.
+bool convert_teacher_signal_to_winning_probability = true;
 
 // -----------------------------------
 // write phase file
@@ -1247,27 +1251,31 @@ double ELMO_LAMBDA = 0.33;
 double ELMO_LAMBDA2 = 0.33;
 double ELMO_LAMBDA_LIMIT = 32000;
 
-double calc_grad(Value deep, Value shallow , const PackedSfenValue& psv)
+double calc_grad(Value teacher_signal, Value shallow , const PackedSfenValue& psv)
 {
 	// elmo (WCSC27) method
 	// Correct with the actual game wins and losses.
 
 	// Training Formula · Issue #71 · nodchip/Stockfish https://github.com/nodchip/Stockfish/issues/71
-	double scaled_deep = deep;
+	double scaled_teacher_signal = teacher_signal;
 	// Normalize to [0.0, 1.0].
-	scaled_deep = (scaled_deep - src_score_min_value) / (src_score_max_value - src_score_min_value);
+	scaled_teacher_signal = (scaled_teacher_signal - src_score_min_value) / (src_score_max_value - src_score_min_value);
 	// Scale to [dest_score_min_value, dest_score_max_value].
-	scaled_deep = scaled_deep * (dest_score_max_value - dest_score_min_value) + dest_score_min_value;
+	scaled_teacher_signal = scaled_teacher_signal * (dest_score_max_value - dest_score_min_value) + dest_score_min_value;
 
 	const double q = winning_percentage(shallow);
-	const double p = winning_percentage(scaled_deep);
+	// Teacher winning probability.
+	double p = scaled_teacher_signal;
+	if (convert_teacher_signal_to_winning_probability) {
+		p = winning_percentage(scaled_teacher_signal);
+	}
 
 	// Use 1 as the correction term if the expected win rate is 1, 0 if you lose, and 0.5 if you draw.
 	// game_result = 1,0,-1 so add 1 and divide by 2.
 	const double t = double(psv.game_result + 1) / 2;
 
 	// If the evaluation value in deep search exceeds ELMO_LAMBDA_LIMIT, apply ELMO_LAMBDA2 instead of ELMO_LAMBDA.
-	const double lambda = (abs(deep) >= ELMO_LAMBDA_LIMIT) ? ELMO_LAMBDA2 : ELMO_LAMBDA;
+	const double lambda = (abs(teacher_signal) >= ELMO_LAMBDA_LIMIT) ? ELMO_LAMBDA2 : ELMO_LAMBDA;
 
 	// Use the actual win rate as a correction term.
 	// This is the idea of ​​elmo (WCSC27), modern O-parts.
@@ -1278,25 +1286,29 @@ double calc_grad(Value deep, Value shallow , const PackedSfenValue& psv)
 
 // Calculate cross entropy during learning
 // The individual cross entropy of the win/loss term and win rate term of the elmo expression is returned to the arguments cross_entropy_eval and cross_entropy_win.
-void calc_cross_entropy(Value deep, Value shallow, const PackedSfenValue& psv,
+void calc_cross_entropy(Value teacher_signal, Value shallow, const PackedSfenValue& psv,
 	double& cross_entropy_eval, double& cross_entropy_win, double& cross_entropy,
 	double& entropy_eval, double& entropy_win, double& entropy)
 {
 	// Training Formula · Issue #71 · nodchip/Stockfish https://github.com/nodchip/Stockfish/issues/71
-	double scaled_deep = deep;
+	double scaled_teacher_signal = teacher_signal;
 	// Normalize to [0.0, 1.0].
-	scaled_deep = (scaled_deep - src_score_min_value) / (src_score_max_value - src_score_min_value);
+	scaled_teacher_signal = (scaled_teacher_signal - src_score_min_value) / (src_score_max_value - src_score_min_value);
 	// Scale to [dest_score_min_value, dest_score_max_value].
-	scaled_deep = scaled_deep * (dest_score_max_value - dest_score_min_value) + dest_score_min_value;
+	scaled_teacher_signal = scaled_teacher_signal * (dest_score_max_value - dest_score_min_value) + dest_score_min_value;
 
-	const double p /* teacher_winrate */ = winning_percentage(scaled_deep);
+	// Teacher winning probability.
+	double p = scaled_teacher_signal;
+	if (convert_teacher_signal_to_winning_probability) {
+		p = winning_percentage(scaled_teacher_signal);
+	}
 	const double q /* eval_winrate    */ = winning_percentage(shallow);
 	const double t = double(psv.game_result + 1) / 2;
 
 	constexpr double epsilon = 0.000001;
 
 	// If the evaluation value in deep search exceeds ELMO_LAMBDA_LIMIT, apply ELMO_LAMBDA2 instead of ELMO_LAMBDA.
-	const double lambda = (abs(deep) >= ELMO_LAMBDA_LIMIT) ? ELMO_LAMBDA2 : ELMO_LAMBDA;
+	const double lambda = (abs(teacher_signal) >= ELMO_LAMBDA_LIMIT) ? ELMO_LAMBDA2 : ELMO_LAMBDA;
 
 	const double m = (1.0 - lambda) * t + lambda * p;
 
@@ -3179,6 +3191,7 @@ void learn(Position&, istringstream& is)
 		else if (option == "src_score_max_value") is >> src_score_max_value;
 		else if (option == "dest_score_min_value") is >> dest_score_min_value;
 		else if (option == "dest_score_max_value") is >> dest_score_max_value;
+		else if (option == "convert_teacher_signal_to_winning_probability") is >> convert_teacher_signal_to_winning_probability;
 
 		// Otherwise, it's a filename.
 		else
