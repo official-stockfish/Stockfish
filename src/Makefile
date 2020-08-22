@@ -417,6 +417,7 @@ endif
 
 ### On mingw use Windows threads, otherwise POSIX
 ifneq ($(comp),mingw)
+	CXXFLAGS += -DUSE_PTHREADS
 	# On Android Bionic's C library comes with its own pthread implementation bundled in
 	ifneq ($(OS),Android)
 		# Haiku has pthreads in its libroot, so only link it in on other platforms
