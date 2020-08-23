@@ -617,6 +617,7 @@ help:
 	@echo "profile-build           > Faster build (with profile-guided optimization)"
 	@echo "strip                   > Strip executable"
 	@echo "install                 > Install executable"
+	@echo "distrib                 > Create an archive with engine and default nnue net"
 	@echo "clean                   > Clean up"
 	@echo ""
 	@echo "Supported archs:"
@@ -668,7 +669,7 @@ ifneq ($(empty_arch), yes)
 endif
 
 
-.PHONY: help build profile-build strip install clean net objclean profileclean \
+.PHONY: help build profile-build strip install distrib clean net objclean profileclean \
         config-sanity icc-profile-use icc-profile-make gcc-profile-use gcc-profile-make \
         clang-profile-use clang-profile-make
 
@@ -698,10 +699,21 @@ install:
 	-cp $(EXE) $(BINDIR)
 	-strip $(BINDIR)/$(EXE)
 
-#clean all
+# clean all
 clean: objclean profileclean
-	@rm -f .depend *~ core
+	@rm -f .depend *~ core stockfish.tar.gz
 
+# clean binaries and objects
+objclean:
+	@rm -f $(EXE) *.o ./syzygy/*.o ./nnue/*.o ./nnue/features/*.o
+
+# clean auxiliary profiling files
+profileclean:
+	@rm -rf profdir
+	@rm -f bench.txt *.gcda *.gcno ./syzygy/*.gcda ./nnue/*.gcda ./nnue/features/*.gcda *.s
+	@rm -f stockfish.profdata *.profraw
+
+# net
 net:
 	$(eval nnuenet := $(shell grep EvalFile ucioption.cpp | grep Option | sed 's/.*\(nn-[a-z0-9]\{12\}.nnue\).*/\1/'))
 	@echo "Default net: $(nnuenet)"
@@ -725,16 +737,10 @@ net:
             echo "shasum / sha256sum not found, skipping net validation"; \
         fi
 
-
-# clean binaries and objects
-objclean:
-	@rm -f $(EXE) *.o ./syzygy/*.o ./nnue/*.o ./nnue/features/*.o
-
-# clean auxiliary profiling files
-profileclean:
-	@rm -rf profdir
-	@rm -f bench.txt *.gcda *.gcno ./syzygy/*.gcda ./nnue/*.gcda ./nnue/features/*.gcda *.s
-	@rm -f stockfish.profdata *.profraw
+# distrib
+distrib: net
+	@rm -f stockfish.tar.gz
+	tar -czf stockfish.tar.gz $(EXE) $(nnuenet)
 
 default:
 	help
