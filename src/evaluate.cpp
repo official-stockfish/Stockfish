@@ -23,10 +23,12 @@
 #include <iomanip>
 #include <sstream>
 #include <iostream>
+#include <vector>
 
 #include "bitboard.h"
 #include "evaluate.h"
 #include "material.h"
+#include "misc.h"
 #include "pawns.h"
 #include "thread.h"
 #include "uci.h"
@@ -34,15 +36,20 @@
 namespace Eval {
 
   bool useNNUE;
-  std::string eval_file_loaded="None";
+  std::string eval_file_loaded = "None";
 
   void init_NNUE() {
 
+    std::vector<std::string> dirs = { "" , CommandLine::binaryDirectory };
+
     useNNUE = Options["Use NNUE"];
     std::string eval_file = std::string(Options["EvalFile"]);
-    if (useNNUE && eval_file_loaded != eval_file)
-        if (Eval::NNUE::load_eval_file(eval_file))
-            eval_file_loaded = eval_file;
+
+    if (useNNUE)
+        for (std::string directory : dirs)
+            if (   eval_file_loaded != eval_file
+                && Eval::NNUE::load_eval_file(directory + eval_file))
+                eval_file_loaded = eval_file;
   }
 
   void verify_NNUE() {
