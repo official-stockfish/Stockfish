@@ -216,7 +216,8 @@ enum : int {
   DEPTH_QS_RECAPTURES = -5,
 
   DEPTH_NONE   = -6,
-  DEPTH_OFFSET = DEPTH_NONE
+
+  DEPTH_OFFSET = -7 // value used only for TT entry occupancy check
 };
 
 enum Square : int {
