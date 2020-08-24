@@ -94,6 +94,27 @@ namespace Eval::NNUE {
 
   constexpr std::size_t kMaxSimdWidth = 32;
 
+  // unique number for each piece type on each square
+  enum {
+    PS_NONE     =  0,
+    PS_W_PAWN   =  1,
+    PS_B_PAWN   =  1 * SQUARE_NB + 1,
+    PS_W_KNIGHT =  2 * SQUARE_NB + 1,
+    PS_B_KNIGHT =  3 * SQUARE_NB + 1,
+    PS_W_BISHOP =  4 * SQUARE_NB + 1,
+    PS_B_BISHOP =  5 * SQUARE_NB + 1,
+    PS_W_ROOK   =  6 * SQUARE_NB + 1,
+    PS_B_ROOK   =  7 * SQUARE_NB + 1,
+    PS_W_QUEEN  =  8 * SQUARE_NB + 1,
+    PS_B_QUEEN  =  9 * SQUARE_NB + 1,
+    PS_W_KING   = 10 * SQUARE_NB + 1,
+    PS_END      = PS_W_KING, // pieces without kings (pawns included)
+    PS_B_KING   = 11 * SQUARE_NB + 1,
+    PS_END2     = 12 * SQUARE_NB + 1
+  };
+
+  extern uint32_t kpp_board_index[PIECE_NB][COLOR_NB];
+
   // Type of input feature after conversion
   using TransformedFeatureType = std::uint8_t;
   using IndexType = std::uint32_t;
