@@ -72,6 +72,7 @@ std::string square(Square s);
 std::string move(Move m, bool chess960);
 std::string pv(const Position& pos, Depth depth, Value alpha, Value beta);
 std::string wdl(Value v, int ply);
+double win_rate_model_double(double v, int ply);
 Move to_move(const Position& pos, std::string& str);
 
 } // namespace UCI
