@@ -47,7 +47,7 @@
 //       compiled with older g++ crashes because the output memory is not aligned
 //       even though alignas is specified.
 #if defined(USE_AVX2)
-#if defined(__GNUC__ ) && (__GNUC__ < 9) && defined(_WIN32)
+#if defined(__GNUC__ ) && (__GNUC__ < 9) && defined(_WIN32) && !defined(__clang__)
 #define _mm256_loadA_si256  _mm256_loadu_si256
 #define _mm256_storeA_si256 _mm256_storeu_si256
 #else
@@ -57,7 +57,7 @@
 #endif
 
 #if defined(USE_AVX512)
-#if defined(__GNUC__ ) && (__GNUC__ < 9) && defined(_WIN32)
+#if defined(__GNUC__ ) && (__GNUC__ < 9) && defined(_WIN32) && !defined(__clang__)
 #define _mm512_loadA_si512   _mm512_loadu_si512
 #define _mm512_storeA_si512  _mm512_storeu_si512
 #else
