@@ -516,7 +516,7 @@ endif
 ifeq ($(vnni256),yes)
 	CXXFLAGS += -DUSE_VNNI
 	ifeq ($(comp),$(filter $(comp),gcc clang mingw))
-		CXXFLAGS += -mavx512vnni -mavx512dq -mavx512vl -mprefer-vector-width=256
+		CXXFLAGS += -mavx512f -mavx512bw -mavx512vnni -mavx512dq -mavx512vl -mprefer-vector-width=256
 	endif
 endif
 

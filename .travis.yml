@@ -79,8 +79,7 @@ script:
   - make clean && make -j2 ARCH=x86-64-bmi2 build
   - make clean && make -j2 ARCH=x86-64-avx512 build
   - make clean && make -j2 ARCH=x86-64-vnni512 build
-  # requires gcc 9 or higher
-  - if [[ "$COMPILER" != "g++-8" ]]; make clean && make -j2 ARCH=x86-64-vnni256 build; fi
+  - make clean && make -j2 ARCH=x86-64-vnni256 build
 
   #
   # Check perft and reproducible search
