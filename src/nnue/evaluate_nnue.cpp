@@ -29,29 +29,28 @@
 
 #include "evaluate_nnue.h"
 
-ExtPieceSquare kpp_board_index[PIECE_NB] = {
- // convention: W - us, B - them
- // viewed from other side, W and B are reversed
-    { PS_NONE,     PS_NONE     },
-    { PS_W_PAWN,   PS_B_PAWN   },
-    { PS_W_KNIGHT, PS_B_KNIGHT },
-    { PS_W_BISHOP, PS_B_BISHOP },
-    { PS_W_ROOK,   PS_B_ROOK   },
-    { PS_W_QUEEN,  PS_B_QUEEN  },
-    { PS_W_KING,   PS_B_KING   },
-    { PS_NONE,     PS_NONE     },
-    { PS_NONE,     PS_NONE     },
-    { PS_B_PAWN,   PS_W_PAWN   },
-    { PS_B_KNIGHT, PS_W_KNIGHT },
-    { PS_B_BISHOP, PS_W_BISHOP },
-    { PS_B_ROOK,   PS_W_ROOK   },
-    { PS_B_QUEEN,  PS_W_QUEEN  },
-    { PS_B_KING,   PS_W_KING   },
-    { PS_NONE,     PS_NONE     }
-};
-
-
 namespace Eval::NNUE {
+
+  uint32_t kpp_board_index[PIECE_NB][COLOR_NB] = {
+   // convention: W - us, B - them
+   // viewed from other side, W and B are reversed
+      { PS_NONE,     PS_NONE     },
+      { PS_W_PAWN,   PS_B_PAWN   },
+      { PS_W_KNIGHT, PS_B_KNIGHT },
+      { PS_W_BISHOP, PS_B_BISHOP },
+      { PS_W_ROOK,   PS_B_ROOK   },
+      { PS_W_QUEEN,  PS_B_QUEEN  },
+      { PS_W_KING,   PS_B_KING   },
+      { PS_NONE,     PS_NONE     },
+      { PS_NONE,     PS_NONE     },
+      { PS_B_PAWN,   PS_W_PAWN   },
+      { PS_B_KNIGHT, PS_W_KNIGHT },
+      { PS_B_BISHOP, PS_W_BISHOP },
+      { PS_B_ROOK,   PS_W_ROOK   },
+      { PS_B_QUEEN,  PS_W_QUEEN  },
+      { PS_B_KING,   PS_W_KING   },
+      { PS_NONE,     PS_NONE     }
+  };
 
   // Input feature converter
   AlignedPtr<FeatureTransformer> feature_transformer;

@@ -23,25 +23,14 @@
 
 namespace Eval::NNUE::Features {
 
+  inline Square operator^(Square s, int i) { return Square(int(s) ^ i); }
+
   // Find the index of the feature quantity from the king position and PieceSquare
   template <Side AssociatedKing>
-  inline IndexType HalfKP<AssociatedKing>::MakeIndex(Square sq_k, PieceSquare p) {
-    return static_cast<IndexType>(PS_END) * static_cast<IndexType>(sq_k) + p;
-  }
+  inline IndexType HalfKP<AssociatedKing>::MakeIndex(
+      Color perspective, Square s, Piece pc, Square ksq) {
 
-  // Get pieces information
-  template <Side AssociatedKing>
-  inline void HalfKP<AssociatedKing>::GetPieces(
-      const Position& pos, Color perspective,
-      PieceSquare** pieces, Square* sq_target_k) {
-
-    *pieces = (perspective == BLACK) ?
-        pos.eval_list()->piece_list_fb() :
-        pos.eval_list()->piece_list_fw();
-    const PieceId target = (AssociatedKing == Side::kFriend) ?
-        static_cast<PieceId>(PIECE_ID_KING + perspective) :
-        static_cast<PieceId>(PIECE_ID_KING + ~perspective);
-    *sq_target_k = static_cast<Square>(((*pieces)[target] - PS_W_KING) % SQUARE_NB);
+    return IndexType(s + kpp_board_index[pc][perspective] + PS_END * ksq);
   }
 
   // Get a list of indices for active features
@@ -49,16 +38,12 @@ namespace Eval::NNUE::Features {
   void HalfKP<AssociatedKing>::AppendActiveIndices(
       const Position& pos, Color perspective, IndexList* active) {
 
-    // Do nothing if array size is small to avoid compiler warning
-    if (RawFeatures::kMaxActiveDimensions < kMaxActiveDimensions) return;
-
-    PieceSquare* pieces;
-    Square sq_target_k;
-    GetPieces(pos, perspective, &pieces, &sq_target_k);
-    for (PieceId i = PIECE_ID_ZERO; i < PIECE_ID_KING; ++i) {
-      if (pieces[i] != PS_NONE) {
-        active->push_back(MakeIndex(sq_target_k, pieces[i]));
-      }
+    int flip = 63 * perspective;
+    Square ksq = pos.squares<KING>(perspective)[0] ^ flip;
+    Bitboard bb = pos.pieces() & ~pos.pieces(KING);
+    while (bb) {
+      Square s = pop_lsb(&bb);
+      active->push_back(MakeIndex(perspective, s ^ flip, pos.piece_on(s), ksq));
     }
   }
 
@@ -68,22 +53,16 @@ namespace Eval::NNUE::Features {
       const Position& pos, Color perspective,
       IndexList* removed, IndexList* added) {
 
-    PieceSquare* pieces;
-    Square sq_target_k;
-    GetPieces(pos, perspective, &pieces, &sq_target_k);
+    int flip = 63 * perspective;
+    Square ksq = pos.squares<KING>(perspective)[0] ^ flip;
     const auto& dp = pos.state()->dirtyPiece;
     for (int i = 0; i < dp.dirty_num; ++i) {
-      if (dp.pieceId[i] >= PIECE_ID_KING) continue;
-      const auto old_p = static_cast<PieceSquare>(
-          dp.old_piece[i].from[perspective]);
-      if (old_p != PS_NONE) {
-        removed->push_back(MakeIndex(sq_target_k, old_p));
-      }
-      const auto new_p = static_cast<PieceSquare>(
-          dp.new_piece[i].from[perspective]);
-      if (new_p != PS_NONE) {
-        added->push_back(MakeIndex(sq_target_k, new_p));
-      }
+      Piece pc = dp.piece[i];
+      if (type_of(pc) == KING) continue;
+      if (dp.from[i] != SQ_NONE)
+        removed->push_back(MakeIndex(perspective, dp.from[i] ^ flip, pc, ksq));
+      if (dp.to[i] != SQ_NONE)
+        added->push_back(MakeIndex(perspective, dp.to[i] ^ flip, pc, ksq));
     }
   }
 

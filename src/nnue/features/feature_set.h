@@ -68,8 +68,7 @@ namespace Eval::NNUE::Features {
         reset[perspective] = false;
         switch (trigger) {
           case TriggerEvent::kFriendKingMoved:
-            reset[perspective] =
-                dp.pieceId[0] == PIECE_ID_KING + perspective;
+            reset[perspective] = type_of(dp.piece[0]) == KING;
             break;
           default:
             assert(false);
