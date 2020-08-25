@@ -25,7 +25,7 @@ namespace Eval::NNUE::Features {
 
   // Orient a square according to perspective (rotates by 180 for black)
   inline Square orient(Color perspective, Square s) {
-    return Square(int(s) ^ ((bool)perspective * 63));
+    return Square(int(s) ^ (bool(perspective) * 63));
   }
 
   // Find the index of the feature quantity from the king position and PieceSquare
@@ -41,7 +41,7 @@ namespace Eval::NNUE::Features {
   void HalfKP<AssociatedKing>::AppendActiveIndices(
       const Position& pos, Color perspective, IndexList* active) {
 
-    Square ksq = orient(perspective, pos.squares<KING>(perspective)[0]);
+    Square ksq = orient(perspective, pos.square<KING>(perspective));
     Bitboard bb = pos.pieces() & ~pos.pieces(KING);
     while (bb) {
       Square s = pop_lsb(&bb);
@@ -55,7 +55,7 @@ namespace Eval::NNUE::Features {
       const Position& pos, Color perspective,
       IndexList* removed, IndexList* added) {
 
-    Square ksq = orient(perspective, pos.squares<KING>(perspective)[0]);
+    Square ksq = orient(perspective, pos.square<KING>(perspective));
     const auto& dp = pos.state()->dirtyPiece;
     for (int i = 0; i < dp.dirty_num; ++i) {
       Piece pc = dp.piece[i];
