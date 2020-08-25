@@ -255,27 +255,6 @@ enum Rank : int {
   RANK_1, RANK_2, RANK_3, RANK_4, RANK_5, RANK_6, RANK_7, RANK_8, RANK_NB
 };
 
-#if 0
-// unique number for each piece type on each square
-enum PieceSquare : uint32_t {
-  PS_NONE     =  0,
-  PS_W_PAWN   =  1,
-  PS_B_PAWN   =  1 * SQUARE_NB + 1,
-  PS_W_KNIGHT =  2 * SQUARE_NB + 1,
-  PS_B_KNIGHT =  3 * SQUARE_NB + 1,
-  PS_W_BISHOP =  4 * SQUARE_NB + 1,
-  PS_B_BISHOP =  5 * SQUARE_NB + 1,
-  PS_W_ROOK   =  6 * SQUARE_NB + 1,
-  PS_B_ROOK   =  7 * SQUARE_NB + 1,
-  PS_W_QUEEN  =  8 * SQUARE_NB + 1,
-  PS_B_QUEEN  =  9 * SQUARE_NB + 1,
-  PS_W_KING   = 10 * SQUARE_NB + 1,
-  PS_END      = PS_W_KING, // pieces without kings (pawns included)
-  PS_B_KING   = 11 * SQUARE_NB + 1,
-  PS_END2     = 12 * SQUARE_NB + 1
-};
-#endif
-
 // Keep track of changesevaluation of pieces that were changed by the last move
 struct DirtyPiece {
 
@@ -460,11 +439,6 @@ constexpr Square from_sq(Move m) {
 
 constexpr Square to_sq(Move m) {
   return Square(m & 0x3F);
-}
-
-// Return relative square when turning the board 180 degrees
-constexpr Square rotate180(Square sq) {
-  return (Square)(sq ^ 0x3F);
 }
 
 constexpr int from_to(Move m) {
