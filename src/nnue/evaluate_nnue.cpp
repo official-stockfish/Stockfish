@@ -21,6 +21,7 @@
 #include <fstream>
 #include <iostream>
 #include <set>
+#include <streambuf>
 
 #include "../evaluate.h"
 #include "../position.h"
@@ -148,12 +149,25 @@ namespace Eval::NNUE {
 
     Initialize();
     fileName = evalFile;
-
     std::ifstream stream(evalFile, std::ios::binary);
 
-    const bool result = ReadParameters(stream);
+    return ReadParameters(stream);
+  }
 
-    return result;
+  // Load the evaluation function from memory
+  bool load_eval_from_memory(std::string evalName, char* buffer, size_t length) {
+
+    // C++ way to prepare a buffer for a memory stream
+    class MemoryBuffer : public std::basic_streambuf<char> {
+      public: MemoryBuffer(char* p, size_t n) { setg(p, p, p + n); setp(p, p + n); }
+    };
+
+    Initialize();
+    fileName = evalName;
+    MemoryBuffer data(buffer, length);
+    std::istream stream(&data);
+
+    return ReadParameters(stream);
   }
 
   // Evaluation function. Perform differential calculation.

@@ -644,9 +644,9 @@ void init(int argc, char* argv[]) {
     if (binaryDirectory.find("." + pathSeparator) == 0)
         binaryDirectory.replace(0, 1, workingDirectory);
 
-    std::cerr << "workingDirectory =  " << workingDirectory << std::endl;
-    std::cerr << "argv0            =  " << argv0            << std::endl;
-    std::cerr << "binaryDirectory  =  " << binaryDirectory  << std::endl;
+    // std::cerr << "workingDirectory =  " << workingDirectory << std::endl;
+    // std::cerr << "argv0            =  " << argv0            << std::endl;
+    // std::cerr << "binaryDirectory  =  " << binaryDirectory  << std::endl;
 }
 
 
