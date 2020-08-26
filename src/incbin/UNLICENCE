@@ -1,5 +1,5 @@
-The files "incbinc.h" and "incbin.c" are free and unencumbered software
-released into the public domain by Dale Weiler, see:
+The file "incbin.h" is free and unencumbered software released into 
+the public domain by Dale Weiler, see:
    <https://github.com/graphitemaster/incbin>
 
 Anyone is free to copy, modify, publish, use, compile, sell, or

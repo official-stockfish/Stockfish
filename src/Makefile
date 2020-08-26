@@ -735,16 +735,6 @@ install:
 clean: objclean profileclean
 	@rm -f .depend *~ core
 
-# clean binaries and objects
-objclean:
-	@rm -f $(EXE) *.o ./syzygy/*.o ./nnue/*.o ./nnue/features/*.o
-
-# clean auxiliary profiling files
-profileclean:
-	@rm -rf profdir
-	@rm -f bench.txt *.gcda *.gcno ./syzygy/*.gcda ./nnue/*.gcda ./nnue/features/*.gcda *.s
-	@rm -f stockfish.profdata *.profraw
-
 # evaluation network (nnue)
 net:
 	$(eval nnuenet := $(shell grep EvalFileDefaultName evaluate.h | grep define | sed 's/.*\(nn-[a-z0-9]\{12\}.nnue\).*/\1/'))
@@ -768,6 +758,16 @@ net:
          else \
             echo "shasum / sha256sum not found, skipping net validation"; \
         fi
+
+# clean binaries and objects
+objclean:
+	@rm -f $(EXE) *.o ./syzygy/*.o ./nnue/*.o ./nnue/features/*.o
+
+# clean auxiliary profiling files
+profileclean:
+	@rm -rf profdir
+	@rm -f bench.txt *.gcda *.gcno ./syzygy/*.gcda ./nnue/*.gcda ./nnue/features/*.gcda *.s
+	@rm -f stockfish.profdata *.profraw
 
 default:
 	help
