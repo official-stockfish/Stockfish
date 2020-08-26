@@ -80,7 +80,7 @@ void init(OptionsMap& o) {
   o["Syzygy50MoveRule"]      << Option(true);
   o["SyzygyProbeLimit"]      << Option(7, 0, 7);
   o["Use NNUE"]              << Option(true, on_use_NNUE);
-  o["EvalFile"]              << Option(EvalFileDefaultName, on_eval_file);
+  o["EvalFile"]              << Option("nn-82215d0fd0df.nnue", on_eval_file);  // TODO : change to EvalFileDefaultName
 }
 
 

@@ -42,7 +42,7 @@
 //     const unsigned char *const gEmbededNNUEEnd;     // a marker to the end
 //     const unsigned int         gEmbededNNUESize;    // the size of the embeded file
 INCBIN(EmbededNNUE, EvalFileDefaultName);
-// [TODO] Build will fail if default net is not available in the sources.
+// [TODO] Build will fail in Microsoft Visual Studio.
 
 
 
@@ -95,8 +95,6 @@ namespace Eval {
   /// verify_NNUE() verifies that the last net used was loaded successfully
   void verify_NNUE() {
 
-    assert( ("Verifying size of embeded NNUE file" , gEmbededNNUESize == 21022697) );
-
     string eval_file = string(Options["EvalFile"]);
 
     if (useNNUE && eval_file_loaded != eval_file)
@@ -104,18 +102,25 @@ namespace Eval {
         UCI::OptionsMap defaults;
         UCI::init(defaults);
 
-        sync_cout << "info string ERROR: NNUE evaluation used, but the network file " << eval_file << " was not loaded successfully." << sync_endl;
-        sync_cout << "info string ERROR: The UCI option EvalFile might need to specify the full path, including the directory/folder name, to the file." << sync_endl;
-        sync_cout << "info string ERROR: The default net can be downloaded from: https://tests.stockfishchess.org/api/nn/"+string(defaults["EvalFile"]) << sync_endl;
-        sync_cout << "info string ERROR: If the UCI option Use NNUE is set to true, network evaluation parameters compatible with the program must be available." << sync_endl;
-        sync_cout << "info string ERROR: The engine will be terminated now." << sync_endl;
+        string msg1 = "If the UCI option Use NNUE is set to true, network evaluation parameters compatible with the engine must be available.";
+        string msg2 = "You asked for NNUE evaluation, but the network file " + eval_file + " was not loaded successfully.";
+        string msg3 = "The UCI option EvalFile might need to specify the full path, including the directory name, to the network file.";
+        string msg4 = "The default net can be downloaded from: https://tests.stockfishchess.org/api/nn/" + string(defaults["EvalFile"]);
+        string msg5 = "The engine will be terminated now.";
+
+        sync_cout << "info string ERROR: " << msg1 << sync_endl;
+        sync_cout << "info string ERROR: " << msg2 << sync_endl;
+        sync_cout << "info string ERROR: " << msg3 << sync_endl;
+        sync_cout << "info string ERROR: " << msg4 << sync_endl;
+        sync_cout << "info string ERROR: " << msg5 << sync_endl;
+
         exit(EXIT_FAILURE);
     }
 
     if (useNNUE)
-        sync_cout << "info string NNUE evaluation using " << eval_file << " enabled." << sync_endl;
+        sync_cout << "info string NNUE evaluation using " << eval_file << " enabled" << sync_endl;
     else
-        sync_cout << "info string classical evaluation enabled." << sync_endl;
+        sync_cout << "info string classical evaluation enabled" << sync_endl;
   }
 }
 
