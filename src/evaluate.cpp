@@ -36,13 +36,19 @@
 
 
 
-// Macro to embed the default NNUE file data in the engine binary (using incbin.h, by Dale Weiler)
+// Macro to embed the default NNUE file data in the engine binary (using incbin.h, by Dale Weiler).
 // This macro invocation will declare the following three variables
 //     const unsigned char        gEmbededNNUEData[];  // a pointer to the embeded data
 //     const unsigned char *const gEmbededNNUEEnd;     // a marker to the end
 //     const unsigned int         gEmbededNNUESize;    // the size of the embeded file
-INCBIN(EmbededNNUE, EvalFileDefaultName);
-// [TODO] Build will fail in Microsoft Visual Studio.
+// Note that this does not work in Microsof Visual Studio.
+#ifndef _MSC_VER
+  INCBIN(EmbededNNUE, EvalFileDefaultName);
+#else
+  const unsigned char        gEmbededNNUEData[1] = {0x0};
+  const unsigned char *const gEmbededNNUEEnd = &gEmbededNNUEData[0];
+  const unsigned int         gEmbededNNUESize = 0;
+#endif
 
 
 
@@ -71,10 +77,11 @@ namespace Eval {
         for (string directory : dirs)
             if (eval_file_loaded != eval_file)
             {
-                if (directory == "<internal>" && eval_file == EvalFileDefaultName)
+                if (directory == "<internal>")
                 {
                     cerr << "Trying to load eval from memory... " << eval_file << endl;
-                    if (load_eval_from_memory(eval_file, (char*)gEmbededNNUEData, size_t(gEmbededNNUESize )))
+                    if (   eval_file == EvalFileDefaultName
+                        && load_eval_from_memory(eval_file, (char*)gEmbededNNUEData, size_t(gEmbededNNUESize )))
                     {
                         eval_file_loaded = eval_file;
                         cerr << "Eval loaded from memory: OK" << endl;
