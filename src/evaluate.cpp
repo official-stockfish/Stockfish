@@ -79,9 +79,20 @@ namespace Eval {
             {
                 if (directory == "<internal>")
                 {
+                    // cerr << "&data = " << &data << endl;
+                    // cerr << "&gEmbededNNUEData = " << &gEmbededNNUEData << endl;
+                    // cerr << "&(gEmbededNNUEData[0]) = " << &(gEmbededNNUEData[0]) << endl;
+                    // cerr << "sizeof(data) = " << sizeof(data) << endl;
+                    // data = &(gEmbededNNUEData[0]);
+                    // std::memcpy(&data, &(gEmbededNNUEData[0]), sizeof(data));
+                    // std::memcpy(data, &gEmbededNNUEData, sizeof(data));
+                    
+                    char*  data   = const_cast<char*>(reinterpret_cast<const char*>(gEmbededNNUEData));
+                    size_t length = size_t(gEmbededNNUESize );
+                    
                     cerr << "Trying to load eval from memory... " << eval_file << endl;
                     if (   eval_file == EvalFileDefaultName
-                        && load_eval_from_memory(eval_file, (char*)gEmbededNNUEData, size_t(gEmbededNNUESize )))
+                        && load_eval_from_memory(eval_file, data, length))
                     {
                         eval_file_loaded = eval_file;
                         cerr << "Eval loaded from memory: OK" << endl;
