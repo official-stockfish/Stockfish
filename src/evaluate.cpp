@@ -88,7 +88,7 @@ namespace Eval {
                     // std::memcpy(data, &gEmbededNNUEData, sizeof(data));
                     
                     char*  data   = const_cast<char*>(reinterpret_cast<const char*>(gEmbededNNUEData));
-                    size_t length = size_t(gEmbededNNUESize );
+                    size_t length = size_t(gEmbededNNUESize);
                     
                     cerr << "Trying to load eval from memory... " << eval_file << endl;
                     if (   eval_file == EvalFileDefaultName
