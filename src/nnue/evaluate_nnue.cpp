@@ -18,10 +18,8 @@
 
 // Code for calculating NNUE evaluation function
 
-#include <fstream>
 #include <iostream>
 #include <set>
-#include <streambuf>
 
 #include "../evaluate.h"
 #include "../position.h"
