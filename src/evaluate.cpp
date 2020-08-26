@@ -71,47 +71,42 @@ namespace Eval {
   /// variable to search for special directories in their distro.
 
   void init_NNUE() {
+
     useNNUE = Options["Use NNUE"];
+    if (!useNNUE)
+        return;
+
     string eval_file = string(Options["EvalFile"]);
     string DISTRO_NNUE_DIRECTORY = "";
 
     vector<string> dirs = { "<internal>", "" , CommandLine::binaryDirectory , DISTRO_NNUE_DIRECTORY };
 
-    if (useNNUE)
-        for (string directory : dirs)
-            if (eval_file_loaded != eval_file)
+    for (string directory : dirs)
+        if (eval_file_loaded != eval_file)
+        {
+            if (directory == "<internal>")
             {
-                if (directory == "<internal>")
-                {
-                    // C++ way to prepare a buffer for a memory stream
-                    class MemoryBuffer : public basic_streambuf<char> {
-                        public: MemoryBuffer(char* p, size_t n) { setg(p, p, p + n); setp(p, p + n); }
-                    };
+                // C++ way to prepare a buffer for a memory stream
+                class MemoryBuffer : public basic_streambuf<char> {
+                    public: MemoryBuffer(char* p, size_t n) { setg(p, p, p + n); setp(p, p + n); }
+                };
                     
-                    MemoryBuffer buffer= MemoryBuffer(const_cast<char*>(reinterpret_cast<const char*>(gEmbededNNUEData)), 
-                                        size_t(gEmbededNNUESize));
-                    istream stream(&buffer);
+                MemoryBuffer buffer= MemoryBuffer(const_cast<char*>(reinterpret_cast<const char*>(gEmbededNNUEData)), 
+                                    size_t(gEmbededNNUESize));
+                istream stream(&buffer);
 
-                    if (   eval_file == EvalFileDefaultName
-                        && (cerr << "Trying to load eval from memory... " << eval_file << endl, true)
-                        && load_eval(eval_file, stream))
-                    {
-                        eval_file_loaded = eval_file;
-                        cerr << "Eval loaded from memory: OK" << endl;
-                    }
-                }
-                else
-                {
-                    ifstream stream(directory + eval_file, ios::binary);
-                    
-                    cerr << "Trying to find eval file on disc... " << directory + eval_file << endl;
-                    if (load_eval(eval_file, stream))
-                    {
-                        eval_file_loaded = eval_file;
-                        cerr << "Eval loaded from disc: OK" << endl;
-                    }
-                }
+                if (   eval_file == EvalFileDefaultName
+                    && load_eval(eval_file, stream))
+                    eval_file_loaded = eval_file;
             }
+            else
+            {
+                ifstream stream(directory + eval_file, ios::binary);
+                    
+                if (load_eval(eval_file, stream))
+                    eval_file_loaded = eval_file;
+            }
+        }
   }
 
   /// verify_NNUE() verifies that the last net used was loaded successfully
