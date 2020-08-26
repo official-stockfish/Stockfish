@@ -45,8 +45,7 @@ namespace Eval {
     Value evaluate(const Position& pos);
     Value compute_eval(const Position& pos);
     void  update_eval(const Position& pos);
-    bool  load_eval_file(const std::string& evalFile);
-    bool  load_eval_from_memory(std::string evalName, char* buffer, size_t length);
+    bool  load_eval(std::string streamName, std::istream& stream);
 
   } // namespace NNUE
 

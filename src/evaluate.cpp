@@ -20,9 +20,11 @@
 #include <cassert>
 #include <cstdlib>
 #include <cstring>   // For std::memset
+#include <fstream>
 #include <iomanip>
 #include <sstream>
 #include <iostream>
+#include <streambuf>
 #include <vector>
 
 #include "bitboard.h"
@@ -81,12 +83,18 @@ namespace Eval {
             {
                 if (directory == "<internal>")
                 {
-                    char*  data   = const_cast<char*>(reinterpret_cast<const char*>(gEmbededNNUEData));
-                    size_t length = size_t(gEmbededNNUESize);
+                    // C++ way to prepare a buffer for a memory stream
+                    class MemoryBuffer : public basic_streambuf<char> {
+                        public: MemoryBuffer(char* p, size_t n) { setg(p, p, p + n); setp(p, p + n); }
+                    };
+                    
+                    MemoryBuffer buffer= MemoryBuffer(const_cast<char*>(reinterpret_cast<const char*>(gEmbededNNUEData)), 
+                                        size_t(gEmbededNNUESize));
+                    istream stream(&buffer);
 
-                    cerr << "Trying to load eval from memory... " << eval_file << endl;
                     if (   eval_file == EvalFileDefaultName
-                        && load_eval_from_memory(eval_file, data, length))
+                        && (cerr << "Trying to load eval from memory... " << eval_file << endl, true)
+                        && load_eval(eval_file, stream))
                     {
                         eval_file_loaded = eval_file;
                         cerr << "Eval loaded from memory: OK" << endl;
@@ -94,8 +102,10 @@ namespace Eval {
                 }
                 else
                 {
+                    ifstream stream(directory + eval_file, ios::binary);
+                    
                     cerr << "Trying to find eval file on disc... " << directory + eval_file << endl;
-                    if (load_eval_file(directory + eval_file))
+                    if (load_eval(eval_file, stream))
                     {
                         eval_file_loaded = eval_file;
                         cerr << "Eval loaded from disc: OK" << endl;

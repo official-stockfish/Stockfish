@@ -144,29 +144,11 @@ namespace Eval::NNUE {
     return accumulator.score;
   }
 
-  // Load the evaluation function file
-  bool load_eval_file(const std::string& evalFile) {
-
+  // Load eval, from a file stream or a memory stream
+  bool load_eval(std::string streamName, std::istream& stream) {
+  
     Initialize();
-    fileName = evalFile;
-    std::ifstream stream(evalFile, std::ios::binary);
-
-    return ReadParameters(stream);
-  }
-
-  // Load the evaluation function from memory
-  bool load_eval_from_memory(std::string evalName, char* buffer, size_t length) {
-
-    // C++ way to prepare a buffer for a memory stream
-    class MemoryBuffer : public std::basic_streambuf<char> {
-      public: MemoryBuffer(char* p, size_t n) { setg(p, p, p + n); setp(p, p + n); }
-    };
-
-    Initialize();
-    fileName = evalName;
-    MemoryBuffer data(buffer, length);
-    std::istream stream(&data);
-
+    fileName = streamName;
     return ReadParameters(stream);
   }
 
