@@ -84,7 +84,14 @@ namespace Eval {
     for (string directory : dirs)
         if (eval_file_loaded != eval_file)
         {
-            if (directory == "<internal>")
+            if (directory != "<internal>")
+            {
+                ifstream stream(directory + eval_file, ios::binary);
+                if (load_eval(eval_file, stream))
+                    eval_file_loaded = eval_file;
+            }
+
+            if (directory == "<internal>" && eval_file == EvalFileDefaultName)
             {
                 // C++ way to prepare a buffer for a memory stream
                 class MemoryBuffer : public basic_streambuf<char> {
@@ -95,13 +102,6 @@ namespace Eval {
                                                   size_t(gEmbededNNUESize));
 
                 istream stream(&buffer);
-                if (   eval_file == EvalFileDefaultName
-                    && load_eval(eval_file, stream))
-                    eval_file_loaded = eval_file;
-            }
-            else
-            {
-                ifstream stream(directory + eval_file, ios::binary);
                 if (load_eval(eval_file, stream))
                     eval_file_loaded = eval_file;
             }
