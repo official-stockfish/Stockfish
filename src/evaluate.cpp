@@ -65,13 +65,15 @@ namespace Eval {
   /// The name of the nnue network is always retrieved from the EvalFile option.
   /// We search the given network in three locations: internally (the default
   /// network may be embeded in the binary), in the active working directory and
-  /// in the engine directory.
+  /// in the engine directory. Distros packagers may patch the DISTRO_NNUE_DIRECTORY
+  /// variable to search for special directories in their distro.
 
   void init_NNUE() {
     useNNUE = Options["Use NNUE"];
     string eval_file = string(Options["EvalFile"]);
+    string DISTRO_NNUE_DIRECTORY = "";
 
-    vector<string> dirs = { "<internal>", "" , CommandLine::binaryDirectory };
+    vector<string> dirs = { "<internal>", "" , CommandLine::binaryDirectory , DISTRO_NNUE_DIRECTORY };
 
     if (useNNUE)
         for (string directory : dirs)
