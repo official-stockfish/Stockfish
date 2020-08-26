@@ -90,11 +90,11 @@ namespace Eval {
                 class MemoryBuffer : public basic_streambuf<char> {
                     public: MemoryBuffer(char* p, size_t n) { setg(p, p, p + n); setp(p, p + n); }
                 };
-                    
-                MemoryBuffer buffer= MemoryBuffer(const_cast<char*>(reinterpret_cast<const char*>(gEmbededNNUEData)), 
-                                    size_t(gEmbededNNUESize));
-                istream stream(&buffer);
 
+                MemoryBuffer buffer= MemoryBuffer(const_cast<char*>(reinterpret_cast<const char*>(gEmbededNNUEData)),
+                                                  size_t(gEmbededNNUESize));
+
+                istream stream(&buffer);
                 if (   eval_file == EvalFileDefaultName
                     && load_eval(eval_file, stream))
                     eval_file_loaded = eval_file;
@@ -102,7 +102,6 @@ namespace Eval {
             else
             {
                 ifstream stream(directory + eval_file, ios::binary);
-                    
                 if (load_eval(eval_file, stream))
                     eval_file_loaded = eval_file;
             }
