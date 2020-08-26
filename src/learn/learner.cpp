@@ -84,6 +84,7 @@
 
 #if defined(EVAL_NNUE)
 #include "../nnue/evaluate_nnue_learner.h"
+#include <climits>
 #include <shared_mutex>
 #endif
 
