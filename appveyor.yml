@@ -63,7 +63,7 @@ build_script:
   - cmake --build . --config %CONFIGURATION% -- /verbosity:minimal
   - ps: |
       # Download default NNUE net from fishtest
-      $nnuenet = Get-Content -Path src\ucioption.cpp | Select-String -CaseSensitive -Pattern "Option" | Select-String -CaseSensitive -Pattern "nn-[a-z0-9]{12}.nnue"
+      $nnuenet = Get-Content -Path src\evaluate.h | Select-String -CaseSensitive -Pattern "EvalFileDefaultName" | Select-String -CaseSensitive -Pattern "nn-[a-z0-9]{12}.nnue"
       $dummy = $nnuenet -match "(?<nnuenet>nn-[a-z0-9]{12}.nnue)"
       $nnuenet = $Matches.nnuenet
       Write-Host "Default net:" $nnuenet
