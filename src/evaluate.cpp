@@ -37,21 +37,19 @@
 #include "incbin/incbin.h"
 
 
-
 // Macro to embed the default NNUE file data in the engine binary (using incbin.h, by Dale Weiler).
 // This macro invocation will declare the following three variables
-//     const unsigned char        gEmbededNNUEData[];  // a pointer to the embeded data
-//     const unsigned char *const gEmbededNNUEEnd;     // a marker to the end
-//     const unsigned int         gEmbededNNUESize;    // the size of the embeded file
+//     const unsigned char        gEmbeddedNNUEData[];  // a pointer to the embedded data
+//     const unsigned char *const gEmbeddedNNUEEnd;     // a marker to the end
+//     const unsigned int         gEmbeddedNNUESize;    // the size of the embedded file
 // Note that this does not work in Microsof Visual Studio.
 #ifndef _MSC_VER
-  INCBIN(EmbededNNUE, EvalFileDefaultName);
+  INCBIN(EmbeddedNNUE, EvalFileDefaultName);
 #else
-  const unsigned char        gEmbededNNUEData[1] = {0x0};
-  const unsigned char *const gEmbededNNUEEnd = &gEmbededNNUEData[0];
-  const unsigned int         gEmbededNNUESize = 0;
+  const unsigned char        gEmbeddedNNUEData[1] = {0x0};
+  const unsigned char *const gEmbeddedNNUEEnd = &gEmbeddedNNUEData[0];
+  const unsigned int         gEmbeddedNNUESize = 0;
 #endif
-
 
 
 using namespace std;
@@ -66,9 +64,9 @@ namespace Eval {
   /// receives a UCI command "setoption name EvalFile value blahblah.nnue"
   /// The name of the nnue network is always retrieved from the EvalFile option.
   /// We search the given network in three locations: internally (the default
-  /// network may be embeded in the binary), in the active working directory and
+  /// network may be embedded in the binary), in the active working directory and
   /// in the engine directory. Distros packagers may patch the DISTRO_NNUE_DIRECTORY
-  /// variable to have the engine search in special directories in their distro.
+  /// variable to have the engine search in a special directory in their distro.
 
   void init_NNUE() {
 
@@ -98,8 +96,8 @@ namespace Eval {
                     public: MemoryBuffer(char* p, size_t n) { setg(p, p, p + n); setp(p, p + n); }
                 };
 
-                MemoryBuffer buffer= MemoryBuffer(const_cast<char*>(reinterpret_cast<const char*>(gEmbededNNUEData)),
-                                                  size_t(gEmbededNNUESize));
+                MemoryBuffer buffer(const_cast<char*>(reinterpret_cast<const char*>(gEmbeddedNNUEData)),
+                                    size_t(gEmbeddedNNUESize));
 
                 istream stream(&buffer);
                 if (load_eval(eval_file, stream))
