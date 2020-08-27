@@ -86,3 +86,5 @@ before_test:
       Write-Host "Engine bench:" $r
       Write-Host "Reference bench:" $bench
       If ($r -ne $bench) { exit 1 }
+  - ./stockfish bench > /dev/null
+  - stockfish bench > /dev/null
