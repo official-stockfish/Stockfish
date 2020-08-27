@@ -47,8 +47,8 @@
   INCBIN(EmbeddedNNUE, EvalFileDefaultName);
 #else
   const unsigned char        gEmbeddedNNUEData[1] = {0x0};
-  const unsigned char *const gEmbeddedNNUEEnd = &gEmbeddedNNUEData[0];
-  const unsigned int         gEmbeddedNNUESize = 0;
+  const unsigned char *const gEmbeddedNNUEEnd = &gEmbeddedNNUEData[1];
+  const unsigned int         gEmbeddedNNUESize = 1;
 #endif
 
 
