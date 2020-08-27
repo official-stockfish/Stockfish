@@ -611,22 +611,19 @@ void init(int argc, char* argv[]) {
     string separator;
 
     // extract the path+name of the executable binary
+    argv0 = argv[0];
+
 #ifdef _WIN32
     pathSeparator = "\\";
-#ifdef _MSC_VER
+  #ifdef _MSC_VER
     // Under windows argv[0] may not have the extension. Also _get_pgmptr() had
     // issues in some windows 10 versions, so check returned values carefully.
     char* pgmptr = nullptr;
     if (!_get_pgmptr(&pgmptr) && pgmptr != nullptr && *pgmptr)
         argv0 = pgmptr;
-    else
-        argv0 = argv[0];
-#else
-    argv0 = argv[0];
-#endif
+  #endif
 #else
     pathSeparator = "/";
-    argv0 = argv[0];
 #endif
 
     // extract the working directory
