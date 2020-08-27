@@ -133,10 +133,10 @@ double dest_score_max_value = 1.0;
 // probabilities in the trainer. Sometimes we want to use the winning probabilities in the training
 // data directly. In those cases, we set false to this variable.
 bool convert_teacher_signal_to_winning_probability = true;
-// Enable hybrid eval. If hybrid eval is enabled, training data generation and
-// training don't work well.
+// Use raw NNUE eval value in the Eval::evaluate(). If hybrid eval is enabled, training data
+// generation and training don't work well.
 // https://discordapp.com/channels/435943710472011776/733545871911813221/748524079761326192
-bool use_raw_nnue_eval = false;
+bool use_raw_nnue_eval = true;
 
 // -----------------------------------
 // write phase file
