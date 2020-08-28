@@ -900,6 +900,8 @@ namespace {
         assert(probCutBeta < VALUE_INFINITE);
         MovePicker mp(pos, ttMove, probCutBeta - ss->staticEval, &captureHistory);
         int probCutCount = 0;
+        bool ttPv = ss->ttPv;
+        ss->ttPv = false;
 
         while (   (move = mp.next_move()) != MOVE_NONE
                && probCutCount < 2 + 2 * cutNode)
@@ -934,12 +936,13 @@ namespace {
                     if ( !(ttHit
                        && tte->depth() >= depth - 3
                        && ttValue != VALUE_NONE))
-                        tte->save(posKey, value_to_tt(value, ss->ply), ss->ttPv,
+                        tte->save(posKey, value_to_tt(value, ss->ply), ttPv,
                             BOUND_LOWER,
                             depth - 3, move, ss->staticEval);
                     return value;
                 }
             }
+         ss->ttPv = ttPv;
     }
 
 moves_loop: // When in check, search starts from here
@@ -1178,8 +1181,6 @@ moves_loop: // When in check, search starts from here
           // Decrease reduction if position is or has been on the PV (~10 Elo)
           if (ss->ttPv)
               r -= 2;
-          else if (tte->depth() > 8)
-              r++;
 
           if (moveCountPruning && !formerPv)
               r++;
