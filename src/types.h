@@ -444,6 +444,11 @@ constexpr Square to_sq(Move m) {
   return Square(m & 0x3F);
 }
 
+// Return relative square when turning the board 180 degrees
+constexpr Square rotate180(Square sq) {
+    return (Square)(sq ^ 0x3F);
+}
+
 constexpr int from_to(Move m) {
  return m & 0xFFF;
 }

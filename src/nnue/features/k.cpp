@@ -11,19 +11,21 @@ namespace NNUE {
 
 namespace Features {
 
+// Orient a square according to perspective (rotates by 180 for black)
+inline Square orient(Color perspective, Square s) {
+  return Square(int(s) ^ (bool(perspective) * 63));
+}
+
+// Index of a feature for a given king position.
+IndexType K::MakeIndex(Color perspective, Square s, Color king_color) {
+  return IndexType(orient(perspective, s) + bool(perspective ^ king_color) * 64);
+}
+
 // Get a list of indices with a value of 1 among the features
 void K::AppendActiveIndices(
     const Position& pos, Color perspective, IndexList* active) {
-  // do nothing if array size is small to avoid compiler warning
-  if (RawFeatures::kMaxActiveDimensions < kMaxActiveDimensions) return;
-
-  const PieceSquare* pieces = (perspective == BLACK) ?
-      pos.eval_list()->piece_list_fb() :
-      pos.eval_list()->piece_list_fw();
-  assert(pieces[PieceId::PIECE_ID_BKING] != PieceSquare::PS_NONE);
-  assert(pieces[PieceId::PIECE_ID_WKING] != PieceSquare::PS_NONE);
-  for (PieceId i = PieceId::PIECE_ID_KING; i < PieceId::PIECE_ID_NONE; ++i) {
-    active->push_back(pieces[i] - PieceSquare::PS_END);
+  for (auto color : Colors) {
+    active->push_back(MakeIndex(perspective, pos.square<KING>(color), color));
   }
 }
 
@@ -32,12 +34,19 @@ void K::AppendChangedIndices(
     const Position& pos, Color perspective,
     IndexList* removed, IndexList* added) {
   const auto& dp = pos.state()->dirtyPiece;
-  if (dp.pieceId[0] >= PieceId::PIECE_ID_KING) {
-    removed->push_back(
-        dp.old_piece[0].from[perspective] - PieceSquare::PS_END);
-    added->push_back(
-        dp.new_piece[0].from[perspective] - PieceSquare::PS_END);
+  Color king_color;
+  if (dp.piece[0] == Piece::W_KING) {
+    king_color = WHITE;
   }
+  else if (dp.piece[0] == Piece::B_KING) {
+    king_color = BLACK;
+  }
+  else {
+    return;
+  }
+
+  removed->push_back(MakeIndex(perspective, dp.from[0], king_color));
+  added->push_back(MakeIndex(perspective, dp.to[0], king_color));
 }
 
 }  // namespace Features

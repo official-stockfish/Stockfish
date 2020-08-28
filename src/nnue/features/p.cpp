@@ -11,19 +11,24 @@ namespace NNUE {
 
 namespace Features {
 
+// Orient a square according to perspective (rotates by 180 for black)
+inline Square orient(Color perspective, Square s) {
+  return Square(int(s) ^ (bool(perspective) * 63));
+}
+
+// Find the index of the feature quantity from the king position and PieceSquare
+inline IndexType P::MakeIndex(
+  Color perspective, Square s, Piece pc) {
+  return IndexType(orient(perspective, s) + kpp_board_index[pc][perspective]);
+}
+
 // Get a list of indices with a value of 1 among the features
 void P::AppendActiveIndices(
     const Position& pos, Color perspective, IndexList* active) {
-  // do nothing if array size is small to avoid compiler warning
-  if (RawFeatures::kMaxActiveDimensions < kMaxActiveDimensions) return;
-
-  const PieceSquare* pieces = (perspective == BLACK) ?
-      pos.eval_list()->piece_list_fb() :
-      pos.eval_list()->piece_list_fw();
-  for (PieceId i = PieceId::PIECE_ID_ZERO; i < PieceId::PIECE_ID_KING; ++i) {
-    if (pieces[i] != PieceSquare::PS_NONE) {
-      active->push_back(pieces[i]);
-    }
+  Bitboard bb = pos.pieces() & ~pos.pieces(KING);
+  while (bb) {
+    Square s = pop_lsb(&bb);
+    active->push_back(MakeIndex(perspective, s, pos.piece_on(s)));
   }
 }
 
@@ -33,13 +38,12 @@ void P::AppendChangedIndices(
     IndexList* removed, IndexList* added) {
   const auto& dp = pos.state()->dirtyPiece;
   for (int i = 0; i < dp.dirty_num; ++i) {
-    if (dp.pieceId[i] >= PieceId::PIECE_ID_KING) continue;
-    if (dp.old_piece[i].from[perspective] != PieceSquare::PS_NONE) {
-      removed->push_back(dp.old_piece[i].from[perspective]);
-    }
-    if (dp.new_piece[i].from[perspective] != PieceSquare::PS_NONE) {
-      added->push_back(dp.new_piece[i].from[perspective]);
-    }
+    Piece pc = dp.piece[i];
+    if (type_of(pc) == KING) continue;
+    if (dp.from[i] != SQ_NONE)
+      removed->push_back(MakeIndex(perspective, dp.from[i], pc));
+    if (dp.to[i] != SQ_NONE)
+      added->push_back(MakeIndex(perspective, dp.to[i], pc));
   }
 }
 
