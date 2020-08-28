@@ -133,6 +133,10 @@ double dest_score_max_value = 1.0;
 // probabilities in the trainer. Sometimes we want to use the winning probabilities in the training
 // data directly. In those cases, we set false to this variable.
 bool convert_teacher_signal_to_winning_probability = true;
+// Use raw NNUE eval value in the Eval::evaluate(). If hybrid eval is enabled, training data
+// generation and training don't work well.
+// https://discordapp.com/channels/435943710472011776/733545871911813221/748524079761326192
+bool use_raw_nnue_eval = true;
 // Using WDL with win rate model instead of sigmoid
 bool use_wdl = false;
 
@@ -1052,6 +1056,8 @@ void gen_sfen(Position&, istringstream& is)
 			is >> detect_draw_by_consecutive_low_score;
 		else if (token == "detect_draw_by_insufficient_mating_material")
 			is >> detect_draw_by_insufficient_mating_material;
+		else if (token == "use_raw_nnue_eval")
+			is >> use_raw_nnue_eval;
 		else
 			cout << "Error! : Illegal token " << token << endl;
 	}
@@ -3278,6 +3284,7 @@ void learn(Position&, istringstream& is)
 		else if (option == "dest_score_min_value") is >> dest_score_min_value;
 		else if (option == "dest_score_max_value") is >> dest_score_max_value;
 		else if (option == "convert_teacher_signal_to_winning_probability") is >> convert_teacher_signal_to_winning_probability;
+		else if (option == "use_raw_nnue_eval") is >> use_raw_nnue_eval;
 
 		// Otherwise, it's a filename.
 		else

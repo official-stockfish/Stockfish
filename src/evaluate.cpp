@@ -32,6 +32,13 @@
 #include "thread.h"
 #include "uci.h"
 
+#ifdef EVAL_LEARN
+namespace Learner
+{
+    extern bool use_raw_nnue_eval;
+}
+#endif
+
 namespace Eval {
 
   bool useNNUE;
@@ -941,6 +948,11 @@ make_v:
 /// evaluation of the position from the point of view of the side to move.
 
 Value Eval::evaluate(const Position& pos) {
+#ifdef EVAL_LEARN
+  if (Learner::use_raw_nnue_eval) {
+      return NNUE::evaluate(pos);
+  }
+#endif
 
   if (Eval::useNNUE)
   {
