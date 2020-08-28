@@ -79,8 +79,10 @@ void init(OptionsMap& o) {
   o["SyzygyProbeDepth"]      << Option(1, 1, 100);
   o["Syzygy50MoveRule"]      << Option(true);
   o["SyzygyProbeLimit"]      << Option(7, 0, 7);
-  o["Use NNUE"]              << Option(false, on_use_NNUE);
-  o["EvalFile"]              << Option("nn-9931db908a9b.nnue", on_eval_file);
+  o["Use NNUE"]              << Option(true, on_use_NNUE);
+  // The default must follow the format nn-[SHA256 first 12 digits].nnue
+  // for the build process (profile-build and fishtest) to work.
+  o["EvalFile"]              << Option("nn-82215d0fd0df.nnue", on_eval_file);
 #ifdef EVAL_NNUE
   // When the evaluation function is loaded at the ucinewgame timing, it is necessary to convert the new evaluation function.
   // I want to hit the test eval convert command, but there is no new evaluation function

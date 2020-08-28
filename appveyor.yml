@@ -61,6 +61,20 @@ before_build:
 
 build_script:
   - cmake --build . --config %CONFIGURATION% -- /verbosity:minimal
+  - ps: |
+      # Download default NNUE net from fishtest
+      $nnuenet = Get-Content -Path src\ucioption.cpp | Select-String -CaseSensitive -Pattern "Option" | Select-String -CaseSensitive -Pattern "nn-[a-z0-9]{12}.nnue"
+      $dummy = $nnuenet -match "(?<nnuenet>nn-[a-z0-9]{12}.nnue)"
+      $nnuenet = $Matches.nnuenet
+      Write-Host "Default net:" $nnuenet
+      $nnuedownloadurl = "https://tests.stockfishchess.org/api/nn/$nnuenet"
+      $nnuefilepath = "src\${env:CONFIGURATION}\$nnuenet"
+      if (Test-Path -Path $nnuefilepath) {
+            Write-Host "Already available."
+      } else {
+            Write-Host "Downloading $nnuedownloadurl to $nnuefilepath"
+            Invoke-WebRequest -Uri $nnuedownloadurl -OutFile $nnuefilepath
+      }
 
 before_test:
   - cd src/%CONFIGURATION%
