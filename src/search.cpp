@@ -1386,10 +1386,12 @@ moves_loop: // When in check, search starts from here
     if (PvNode)
         bestValue = std::min(bestValue, maxValue);
 
-    /*if (bestValue <= alpha && (ss-1)->ttPv && !ss->ttPv)
-        sync_cout << pos.fen() << " - move = " << UCI::move((ss-1)->currentMove, pos.is_chess960()) << sync_endl;*/
+    // If no good move and previous position was ttPv, then previous opponent move is 
+    // probably good and add new position to search tree
     if (bestValue <= alpha)
         ss->ttPv = ss->ttPv || ((ss-1)->ttPv && depth > 3);
+    // Else we found a counter move and if position is the last leaf in search tree, 
+    // remove position from search tree
     else if (depth > 3)
         ss->ttPv = ss->ttPv && (ss+1)->ttPv;
 
