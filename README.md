@@ -17,9 +17,11 @@ setoption name Threads value x
 setoption name Hash value y
 setoption name SyzygyPath value path
 isready
-gensfen depth a loop b use_draw_in_training_data_generation 1 eval_limit 32000
+gensfen depth a loop b use_draw_in_training_data_generation 1 eval_limit 32000 use_raw_nnue_eval 0
 ```
 Specify how many threads and how much memory you would like to use with the x and y values. The option SyzygyPath is not necessary, but if you would like to use it, you must first have Syzygy endgame tablebases on your computer, which you can find [here](http://oics.olympuschess.com/tracker/index.php). You will need to have a torrent client to download these tablebases, as that is probably the fastest way to obtain them. The path is the path to the folder containing those tablebases. It does not have to be surrounded in quotes.
+
+use_raw_nnue_eval controls if the training data generator or trainer uses raw NNUE eval values.  Don't forget to set use_raw_nnue_eval 0 when initial training data are generated.  Otherwise, the gensfen command will crash.
 
 This will save a file named "generated_kifu.bin" in the same folder as the binary. Once generation is done, rename the file to something like "1billiondepth12.bin" to remember the depth and quantity of the positions and move it to a folder named "trainingdata" in the same directory as the binaries.
 #### Generation Parameters
