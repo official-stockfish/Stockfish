@@ -11,49 +11,41 @@ namespace NNUE {
 
 namespace Features {
 
+// Orient a square according to perspective (rotates by 180 for black)
+inline Square orient(Color perspective, Square s) {
+  return Square(int(s) ^ (bool(perspective) * 63));
+}
+
 // Find the index of the feature quantity from the ball position and PieceSquare
 template <Side AssociatedKing>
 inline IndexType HalfRelativeKP<AssociatedKing>::MakeIndex(
-    Square sq_k, PieceSquare p) {
+  Color perspective, Square s, Piece pc, Square sq_k) {
+  const IndexType p = IndexType(orient(perspective, s) + kpp_board_index[pc][perspective]);
+  return MakeIndex(sq_k, p);
+}
+
+// Find the index of the feature quantity from the ball position and PieceSquare
+template <Side AssociatedKing>
+inline IndexType HalfRelativeKP<AssociatedKing>::MakeIndex(
+    Square sq_k, IndexType p) {
   constexpr IndexType W = kBoardWidth;
   constexpr IndexType H = kBoardHeight;
-  const IndexType piece_index = (p - PieceSquare::PS_W_PAWN) / SQUARE_NB;
-  const Square sq_p = static_cast<Square>((p - PieceSquare::PS_W_PAWN) % SQUARE_NB);
+  const IndexType piece_index = (p - PS_W_PAWN) / SQUARE_NB;
+  const Square sq_p = static_cast<Square>((p - PS_W_PAWN) % SQUARE_NB);
   const IndexType relative_file = file_of(sq_p) - file_of(sq_k) + (W / 2);
   const IndexType relative_rank = rank_of(sq_p) - rank_of(sq_k) + (H / 2);
   return H * W * piece_index + H * relative_file + relative_rank;
-}
-
-// Get the piece information
-template <Side AssociatedKing>
-inline void HalfRelativeKP<AssociatedKing>::GetPieces(
-    const Position& pos, Color perspective,
-    PieceSquare** pieces, Square* sq_target_k) {
-  *pieces = (perspective == BLACK) ?
-      pos.eval_list()->piece_list_fb() :
-      pos.eval_list()->piece_list_fw();
-  const PieceId target = (AssociatedKing == Side::kFriend) ?
-      static_cast<PieceId>(PieceId::PIECE_ID_KING + perspective) :
-      static_cast<PieceId>(PieceId::PIECE_ID_KING + ~perspective);
-  *sq_target_k = static_cast<Square>(((*pieces)[target] - PieceSquare::PS_W_KING) % SQUARE_NB);
 }
 
 // Get a list of indices with a value of 1 among the features
 template <Side AssociatedKing>
 void HalfRelativeKP<AssociatedKing>::AppendActiveIndices(
     const Position& pos, Color perspective, IndexList* active) {
-  // do nothing if array size is small to avoid compiler warning
-  if (RawFeatures::kMaxActiveDimensions < kMaxActiveDimensions) return;
-
-  PieceSquare* pieces;
-  Square sq_target_k;
-  GetPieces(pos, perspective, &pieces, &sq_target_k);
-  for (PieceId i = PieceId::PIECE_ID_ZERO; i < PieceId::PIECE_ID_KING; ++i) {
-    if (pieces[i] >= PieceSquare::PS_W_PAWN) {
-      if (pieces[i] != PieceSquare::PS_NONE) {
-        active->push_back(MakeIndex(sq_target_k, pieces[i]));
-      }
-    }
+  Square ksq = orient(perspective, pos.square<KING>(perspective));
+  Bitboard bb = pos.pieces() & ~pos.pieces(KING);
+  while (bb) {
+    Square s = pop_lsb(&bb);
+    active->push_back(MakeIndex(perspective, s, pos.piece_on(s), ksq));
   }
 }
 
@@ -62,26 +54,15 @@ template <Side AssociatedKing>
 void HalfRelativeKP<AssociatedKing>::AppendChangedIndices(
     const Position& pos, Color perspective,
     IndexList* removed, IndexList* added) {
-  PieceSquare* pieces;
-  Square sq_target_k;
-  GetPieces(pos, perspective, &pieces, &sq_target_k);
+  Square ksq = orient(perspective, pos.square<KING>(perspective));
   const auto& dp = pos.state()->dirtyPiece;
   for (int i = 0; i < dp.dirty_num; ++i) {
-    if (dp.pieceId[i] >= PieceId::PIECE_ID_KING) continue;
-    const auto old_p = static_cast<PieceSquare>(
-        dp.old_piece[i].from[perspective]);
-    if (old_p >= PieceSquare::PS_W_PAWN) {
-      if (old_p != PieceSquare::PS_NONE) {
-        removed->push_back(MakeIndex(sq_target_k, old_p));
-      }
-    }
-    const auto new_p = static_cast<PieceSquare>(
-        dp.new_piece[i].from[perspective]);
-    if (new_p >= PieceSquare::PS_W_PAWN) {
-      if (new_p != PieceSquare::PS_NONE) {
-        added->push_back(MakeIndex(sq_target_k, new_p));
-      }
-    }
+    Piece pc = dp.piece[i];
+    if (type_of(pc) == KING) continue;
+    if (dp.from[i] != SQ_NONE)
+      removed->push_back(MakeIndex(perspective, dp.from[i], pc, ksq));
+    if (dp.to[i] != SQ_NONE)
+      added->push_back(MakeIndex(perspective, dp.to[i], pc, ksq));
   }
 }
 

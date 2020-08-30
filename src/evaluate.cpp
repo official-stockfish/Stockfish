@@ -61,10 +61,11 @@ namespace Eval {
         UCI::OptionsMap defaults;
         UCI::init(defaults);
 
-        std::cerr << "NNUE evaluation used, but the network file " << eval_file << " was not loaded successfully. "
-                  << "These network evaluation parameters must be available, and compatible with this version of the code. "
-                  << "The UCI option EvalFile might need to specify the full path, including the directory/folder name, to the file. "
-                  << "The default net can be downloaded from: https://tests.stockfishchess.org/api/nn/"+std::string(defaults["EvalFile"]) << std::endl;
+        sync_cout << "info string ERROR: NNUE evaluation used, but the network file " << eval_file << " was not loaded successfully." << sync_endl;
+        sync_cout << "info string ERROR: The UCI option EvalFile might need to specify the full path, including the directory/folder name, to the file." << sync_endl;
+        sync_cout << "info string ERROR: The default net can be downloaded from: https://tests.stockfishchess.org/api/nn/"+std::string(defaults["EvalFile"]) << sync_endl;
+        sync_cout << "info string ERROR: If the UCI option Use NNUE is set to true, network evaluation parameters compatible with the program must be available." << sync_endl;
+        sync_cout << "info string ERROR: The engine will be terminated now." << sync_endl;
         std::exit(EXIT_FAILURE);
     }
 
@@ -122,7 +123,8 @@ namespace {
   constexpr Value LazyThreshold1 =  Value(1400);
   constexpr Value LazyThreshold2 =  Value(1300);
   constexpr Value SpaceThreshold = Value(12222);
-  constexpr Value NNUEThreshold  =   Value(460);
+  constexpr Value NNUEThreshold1 =   Value(550);
+  constexpr Value NNUEThreshold2 =   Value(150);
 
   // KingAttackWeights[PieceType] contains king attack weights by piece type
   constexpr int KingAttackWeights[PIECE_TYPE_NB] = { 0, 0, 81, 52, 44, 10 };
@@ -294,8 +296,8 @@ namespace {
     attackedBy2[Us] = dblAttackByPawn | (attackedBy[Us][KING] & attackedBy[Us][PAWN]);
 
     // Init our king safety tables
-    Square s = make_square(Utility::clamp(file_of(ksq), FILE_B, FILE_G),
-                           Utility::clamp(rank_of(ksq), RANK_2, RANK_7));
+    Square s = make_square(std::clamp(file_of(ksq), FILE_B, FILE_G),
+                           std::clamp(rank_of(ksq), RANK_2, RANK_7));
     kingRing[Us] = attacks_bb<KING>(s) | s;
 
     kingAttackersCount[Them] = popcount(kingRing[Us] & pe->pawn_attacks(Them));
@@ -692,8 +694,8 @@ namespace {
             Square blockSq = s + Up;
 
             // Adjust bonus based on the king's proximity
-            bonus += make_score(0, (  (king_proximity(Them, blockSq) * 19) / 4
-                                     - king_proximity(Us,   blockSq) *  2) * w);
+            bonus += make_score(0, (  king_proximity(Them, blockSq) * 19 / 4
+                                    - king_proximity(Us,   blockSq) *  2) * w);
 
             // If blockSq is not the queening square then consider also a second push
             if (r != RANK_7)
@@ -737,7 +739,7 @@ namespace {
 
 
   // Evaluation::space() computes a space evaluation for a given side, aiming to improve game
-  // play in the opening. It is based on the number of safe squares on the 4 central files
+  // play in the opening. It is based on the number of safe squares on the four central files
   // on ranks 2 to 4. Completely safe squares behind a friendly pawn are counted twice.
   // Finally, the space bonus is multiplied by a weight which decreases according to occupancy.
 
@@ -810,7 +812,7 @@ namespace {
     // Now apply the bonus: note that we find the attacking side by extracting the
     // sign of the midgame or endgame values, and that we carefully cap the bonus
     // so that the midgame and endgame scores do not change sign after the bonus.
-    int u = ((mg > 0) - (mg < 0)) * Utility::clamp(complexity + 50, -abs(mg), 0);
+    int u = ((mg > 0) - (mg < 0)) * std::clamp(complexity + 50, -abs(mg), 0);
     int v = ((eg > 0) - (eg < 0)) * std::max(complexity, -abs(eg));
 
     mg += u;
@@ -935,9 +937,6 @@ make_v:
     // Side to move point of view
     v = (pos.side_to_move() == WHITE ? v : -v) + Tempo;
 
-    // Damp down the evaluation linearly when shuffling
-    v = v * (100 - pos.rule50_count()) / 100;
-
     return v;
   }
 
@@ -954,14 +953,21 @@ Value Eval::evaluate(const Position& pos) {
   }
 #endif
 
-  if (Eval::useNNUE)
-  {
-      Value v = eg_value(pos.psq_score());
-      // Take NNUE eval only on balanced positions
-      if (abs(v) < NNUEThreshold + 20 * pos.count<PAWN>())
-         return NNUE::evaluate(pos) + Tempo;
-  }
-  return Evaluation<NO_TRACE>(pos).value();
+  bool classical = !Eval::useNNUE
+                ||  abs(eg_value(pos.psq_score())) * 16 > NNUEThreshold1 * (16 + pos.rule50_count());
+  Value v = classical ? Evaluation<NO_TRACE>(pos).value()
+                      : NNUE::evaluate(pos) * 5 / 4 + Tempo;
+
+  if (classical && Eval::useNNUE && abs(v) * 16 < NNUEThreshold2 * (16 + pos.rule50_count()))
+      v = NNUE::evaluate(pos) * 5 / 4 + Tempo;
+
+  // Damp down the evaluation linearly when shuffling
+  v = v * (100 - pos.rule50_count()) / 100;
+
+  // Guarantee evaluation does not hit the tablebase range
+  v = std::clamp(v, VALUE_TB_LOSS_IN_MAX_PLY + 1, VALUE_TB_WIN_IN_MAX_PLY - 1);
+
+  return v;
 }
 
 /// trace() is like evaluate(), but instead of returning a value, it returns
@@ -979,141 +985,46 @@ std::string Eval::trace(const Position& pos) {
 
   Value v;
 
-  if (Eval::useNNUE)
-  {
-      v = NNUE::evaluate(pos);
-  }
-  else
-  {
-      std::memset(scores, 0, sizeof(scores));
+  std::memset(scores, 0, sizeof(scores));
 
-      pos.this_thread()->contempt = SCORE_ZERO; // Reset any dynamic contempt
+  pos.this_thread()->contempt = SCORE_ZERO; // Reset any dynamic contempt
 
-      v = Evaluation<TRACE>(pos).value();
+  v = Evaluation<TRACE>(pos).value();
 
-      ss << std::showpoint << std::noshowpos << std::fixed << std::setprecision(2)
-         << "     Term    |    White    |    Black    |    Total   \n"
-         << "             |   MG    EG  |   MG    EG  |   MG    EG \n"
-         << " ------------+-------------+-------------+------------\n"
-         << "    Material | " << Term(MATERIAL)
-         << "   Imbalance | " << Term(IMBALANCE)
-         << "       Pawns | " << Term(PAWN)
-         << "     Knights | " << Term(KNIGHT)
-         << "     Bishops | " << Term(BISHOP)
-         << "       Rooks | " << Term(ROOK)
-         << "      Queens | " << Term(QUEEN)
-         << "    Mobility | " << Term(MOBILITY)
-         << " King safety | " << Term(KING)
-         << "     Threats | " << Term(THREAT)
-         << "      Passed | " << Term(PASSED)
-         << "       Space | " << Term(SPACE)
-         << "    Winnable | " << Term(WINNABLE)
-         << " ------------+-------------+-------------+------------\n"
-         << "       Total | " << Term(TOTAL);
-  }
+  ss << std::showpoint << std::noshowpos << std::fixed << std::setprecision(2)
+     << "     Term    |    White    |    Black    |    Total   \n"
+     << "             |   MG    EG  |   MG    EG  |   MG    EG \n"
+     << " ------------+-------------+-------------+------------\n"
+     << "    Material | " << Term(MATERIAL)
+     << "   Imbalance | " << Term(IMBALANCE)
+     << "       Pawns | " << Term(PAWN)
+     << "     Knights | " << Term(KNIGHT)
+     << "     Bishops | " << Term(BISHOP)
+     << "       Rooks | " << Term(ROOK)
+     << "      Queens | " << Term(QUEEN)
+     << "    Mobility | " << Term(MOBILITY)
+     << " King safety | " << Term(KING)
+     << "     Threats | " << Term(THREAT)
+     << "      Passed | " << Term(PASSED)
+     << "       Space | " << Term(SPACE)
+     << "    Winnable | " << Term(WINNABLE)
+     << " ------------+-------------+-------------+------------\n"
+     << "       Total | " << Term(TOTAL);
 
   v = pos.side_to_move() == WHITE ? v : -v;
 
-  ss << "\nFinal evaluation: " << to_cp(v) << " (white side)\n";
+  ss << "\nClassical evaluation: " << to_cp(v) << " (white side)\n";
+
+  if (Eval::useNNUE)
+  {
+      v = NNUE::evaluate(pos);
+      v = pos.side_to_move() == WHITE ? v : -v;
+      ss << "\nNNUE evaluation:      " << to_cp(v) << " (white side)\n";
+  }
+
+  v = evaluate(pos);
+  v = pos.side_to_move() == WHITE ? v : -v;
+  ss << "\nFinal evaluation:     " << to_cp(v) << " (white side)\n";
 
   return ss.str();
-}
-
-// Check whether the pieceListFw[] held internally is a correct PieceSquare.
-// Note: For debugging. slow.
-bool EvalList::is_valid(const Position& pos)
-{
-    std::set<PieceId> piece_numbers;
-    for (Square sq = SQ_A1; sq != SQUARE_NB; ++sq) {
-        auto piece_number = piece_id_list[sq];
-        if (piece_number == PieceId::PIECE_ID_NONE) {
-            continue;
-        }
-        assert(!piece_numbers.count(piece_number));
-        piece_numbers.insert(piece_number);
-    }
-
-    for (int i = 0; i < PieceId::PIECE_ID_KING; ++i)
-    {
-        PieceSquare fw = pieceListFw[i];
-        // Go to the Position class to see if this fw really exists.
-
-        if (fw == PieceSquare::PS_NONE) {
-            continue;
-        }
-
-        // Out of range
-        if (!(0 <= fw && fw < PieceSquare::PS_END))
-            return false;
-
-        // Since it is a piece on the board, I will check if this piece really exists.
-        for (Piece pc = NO_PIECE; pc < PIECE_NB; ++pc)
-        {
-            auto pt = type_of(pc);
-            if (pt == NO_PIECE_TYPE || pt == 7) // non-existing piece
-                continue;
-
-            // PieceSquare start number of piece pc
-            auto s = PieceSquare(kpp_board_index[pc].from[Color::WHITE]);
-            if (s <= fw && fw < s + SQUARE_NB)
-            {
-                // Since it was found, check if this piece is at sq.
-                Square sq = (Square)(fw - s);
-                Piece pc2 = pos.piece_on(sq);
-
-                if (pc2 != pc)
-                    return false;
-
-                goto Found;
-            }
-        }
-        // It was a piece that did not exist for some reason..
-        return false;
-    Found:;
-    }
-
-    // Validate piece_id_list
-    for (auto sq = SQUARE_ZERO; sq < SQUARE_NB; ++sq) {
-        Piece expected_piece = pos.piece_on(sq);
-        PieceId piece_number = piece_id_list[sq];
-        if (piece_number == PieceId::PIECE_ID_NONE) {
-            assert(expected_piece == NO_PIECE);
-            if (expected_piece != NO_PIECE) {
-                return false;
-            }
-            continue;
-        }
-
-        PieceSquare bona_piece_white = pieceListFw[piece_number];
-        Piece actual_piece;
-        for (actual_piece = NO_PIECE; actual_piece < PIECE_NB; ++actual_piece) {
-            if (kpp_board_index[actual_piece].from[Color::WHITE] == PieceSquare::PS_NONE) {
-                continue;
-            }
-
-            if (kpp_board_index[actual_piece].from[Color::WHITE] <= bona_piece_white
-                && bona_piece_white < kpp_board_index[actual_piece].from[Color::WHITE] + SQUARE_NB) {
-                break;
-            }
-        }
-
-        assert(actual_piece != PIECE_NB);
-        if (actual_piece == PIECE_NB) {
-            return false;
-        }
-
-        assert(actual_piece == expected_piece);
-        if (actual_piece != expected_piece) {
-            return false;
-        }
-
-        Square actual_square = static_cast<Square>(
-            bona_piece_white - kpp_board_index[actual_piece].from[Color::WHITE]);
-        assert(sq == actual_square);
-        if (sq != actual_square) {
-            return false;
-        }
-    }
-
-    return true;
 }

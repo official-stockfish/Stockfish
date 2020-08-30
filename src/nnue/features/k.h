@@ -35,6 +35,10 @@ class K {
   // Get a list of indices whose values ​​have changed from the previous one in the feature quantity
   static void AppendChangedIndices(const Position& pos, Color perspective,
                                    IndexList* removed, IndexList* added);
+
+private:
+  // Index of a feature for a given king position.
+  static IndexType MakeIndex(Color perspective, Square s, Color king_color);
 };
 
 }  // namespace Features

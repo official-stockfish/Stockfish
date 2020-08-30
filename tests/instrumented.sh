@@ -70,7 +70,7 @@ for args in "eval" \
             "go depth 10" \
             "go movetime 1000" \
             "go wtime 8000 btime 8000 winc 500 binc 500" \
-            "bench 128 $threads 10 default depth"
+            "bench 128 $threads 8 default depth"
 do
 
    echo "$prefix $exeprefix ./stockfish $args $postfix"
@@ -80,7 +80,7 @@ done
 
 # more general testing, following an uci protocol exchange
 cat << EOF > game.exp
- set timeout 10
+ set timeout 240
  spawn $exeprefix ./stockfish
 
  send "uci\n"
@@ -98,7 +98,7 @@ cat << EOF > game.exp
  expect "bestmove"
 
  send "position fen 5rk1/1K4p1/8/8/3B4/8/8/8 b - - 0 1\n"
- send "go depth 30\n"
+ send "go depth 20\n"
  expect "bestmove"
 
  send "quit\n"
@@ -121,7 +121,7 @@ cat << EOF > syzygy.exp
  send "uci\n"
  send "setoption name SyzygyPath value ../tests/syzygy/\n"
  expect "info string Found 35 tablebases" {} timeout {exit 1}
- send "bench 128 1 10 default depth\n"
+ send "bench 128 1 8 default depth\n"
  send "quit\n"
  expect eof
 

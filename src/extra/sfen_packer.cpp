@@ -276,13 +276,6 @@ int Position::set_from_packed_sfen(const PackedSfen& sfen , StateInfo * si, Thre
 	// Active color
 	sideToMove = (Color)stream.read_one_bit();
 
-	// clear evalList. It is cleared when memset is cleared to zero above...
-	evalList.clear();
-
-	// In updating the PieceList, we have to set which piece is where,
-	// A counter of how much each piece has been used
-  PieceId next_piece_number = PieceId::PIECE_ID_ZERO;
-
   pieceList[W_KING][0] = SQUARE_NB;
   pieceList[B_KING][0] = SQUARE_NB;
 
@@ -326,14 +319,6 @@ int Position::set_from_packed_sfen(const PackedSfen& sfen , StateInfo * si, Thre
         continue;
 
       put_piece(Piece(pc), sq);
-
-      // update evalList
-      PieceId piece_no =
-        (pc == B_KING) ?PieceId::PIECE_ID_BKING :// Move ball
-        (pc == W_KING) ?PieceId::PIECE_ID_WKING :// Backing ball
-        next_piece_number++; // otherwise
-
-      evalList.put_piece(piece_no, sq, pc); // Place the pc piece in the sq box
 
       //cout << sq << ' ' << board[sq] << ' ' << stream.get_cursor() << endl;
 
@@ -402,9 +387,6 @@ set_state(st);
   //std::cout << *this << std::endl;
 
   assert(pos_is_ok());
-#if defined(EVAL_NNUE)
-  assert(evalList.is_valid(*this));
-#endif  // defined(EVAL_NNUE)
 
 	return 0;
 }
