@@ -889,7 +889,7 @@ icc-profile-use:
 learn: config-sanity
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
 	EXTRACXXFLAGS=' -DEVAL_LEARN -DEVAL_NNUE -DENABLE_TEST_CMD -DUSE_BLAS -I/mingw64/include/OpenBLAS -fopenmp ' \
-	EXTRALDFLAGS=' -lopenblas -fopenmp -Wl,-s ' \
+	EXTRALDFLAGS=' -lopenblas -fopenmp -Wl,-s -static ' \
 	all
 	
 profile-learn: config-sanity objclean profileclean
@@ -897,7 +897,7 @@ profile-learn: config-sanity objclean profileclean
 	@echo "Step 1/4. Building instrumented executable ..."
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_make) \
 	LEARNCXXFLAGS=' -DEVAL_LEARN -DEVAL_NNUE -DENABLE_TEST_CMD -DUSE_BLAS -I/mingw64/include/OpenBLAS -fopenmp ' \
-	LEARNLDFLAGS=' -lopenblas -fopenmp -Wl,-s '
+	LEARNLDFLAGS=' -lopenblas -fopenmp -Wl,-s -static '
 	@echo ""
 	@echo "Step 2/4. Running benchmark for pgo-build ..."
 	$(PGOGENSFEN) 
@@ -906,7 +906,7 @@ profile-learn: config-sanity objclean profileclean
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) objclean
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_use) \
 	LEARNCXXFLAGS=' -DEVAL_LEARN -DEVAL_NNUE -DENABLE_TEST_CMD -DUSE_BLAS -I/mingw64/include/OpenBLAS -fopenmp ' \
-	LEARNLDFLAGS=' -lopenblas -fopenmp -Wl,-s '
+	LEARNLDFLAGS=' -lopenblas -fopenmp -Wl,-s -static '
 	@echo ""
 	@echo "Step 4/4. Deleting profile data ..."
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) profileclean
