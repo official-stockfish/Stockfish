@@ -21,6 +21,7 @@
 #include <ostream>
 #include <sstream>
 
+#include "evaluate.h"
 #include "misc.h"
 #include "search.h"
 #include "thread.h"
@@ -81,7 +82,7 @@ void init(OptionsMap& o) {
   o["UseNN"]                 << Option(true, on_use_NNUE);
   // The default must follow the format nn-[SHA256 first 12 digits].nnue
   // for the build process (profile-build and fishtest) to work.
-  o["EvalFile"]              << Option("eval.bin", on_eval_file);
+  o["EvalFile"]              << Option(EvalFileDefaultName, on_eval_file);
 }
 
 

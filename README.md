@@ -12,9 +12,9 @@ about how to use Stockfish with it.
 
 The Stockfish engine features two evaluation functions for chess, the classical
 evaluation based on handcrafted terms, and the NNUE evaluation based on efficiently
-updateable neural networks. The classical evaluation runs efficiently on most 64bit
-CPU architectures, while the NNUE evaluation benefits strongly from the vector
-intrinsics available on modern CPUs (avx2 or similar).
+updateable neural networks. The classical evaluation runs efficiently on almost all
+CPU architectures, while the NNUE evaluation benefits from the vector
+intrinsics available on most CPUs (sse2, avx2, neon, or similar).
 
 
 ## Files
@@ -29,10 +29,11 @@ This distribution of Stockfish consists of the following files:
     that can be used to compile Stockfish on Unix-like systems.
 
   * a file with the .nnue extension, storing the neural network for the NNUE 
-    evaluation.
+    evaluation. Binary distributions will have this file embedded.
 
 Note: to use the NNUE evaluation, the additional data file with neural network parameters
-needs to be downloaded. The filename for the default net can be found as the default
+needs to be available. Normally, this file is already embedded in the binary or it can be downloaded.
+The filename for the default (recommended) net can be found as the default
 value of the `EvalFile` UCI option, with the format `nn-[SHA256 first 12 digits].nnue`
 (for instance, `nn-c157e0a5755b.nnue`). This file can be downloaded from
 ```
@@ -61,11 +62,14 @@ Currently, Stockfish has the following UCI options:
 
   * #### Use NNUE
     Toggle between the NNUE and classical evaluation functions. If set to "true",
-    the network parameters must be available to load from file (see also EvalFile).
+    the network parameters must be available to load from file (see also EvalFile),
+    if they are not embedded in the binary.
 
   * #### EvalFile
     The name of the file of the NNUE evaluation parameters. Depending on the GUI the
-    filename should include the full path to the folder/directory that contains the file.
+    filename might have to include the full path to the folder/directory that contains the file.
+    Other locations, such as the directory that contains the binary and the working directory,
+    are also searched.
 
   * #### UCI_AnalyseMode
     An option handled by your GUI.
