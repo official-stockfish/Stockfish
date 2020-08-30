@@ -52,7 +52,7 @@ namespace Eval::NNUE {
   };
 
   // Input feature converter
-  AlignedPtr<FeatureTransformer> feature_transformer;
+  LargePagePtr<FeatureTransformer> feature_transformer;
 
   // Evaluation function
   AlignedPtr<Network> network;
@@ -70,14 +70,22 @@ namespace Eval::NNUE {
     std::memset(pointer.get(), 0, sizeof(T));
   }
 
+  template <typename T>
+  void Initialize(LargePagePtr<T>& pointer) {
+
+    static_assert(alignof(T) <= 4096, "aligned_large_pages_alloc() may fail for such a big alignment requirement of T");
+    pointer.reset(reinterpret_cast<T*>(aligned_large_pages_alloc(sizeof(T))));
+    std::memset(pointer.get(), 0, sizeof(T));
+  }
+
   // Read evaluation function parameters
   template <typename T>
-  bool ReadParameters(std::istream& stream, const AlignedPtr<T>& pointer) {
+  bool ReadParameters(std::istream& stream, T& reference) {
 
     std::uint32_t header;
     header = read_little_endian<std::uint32_t>(stream);
     if (!stream || header != T::GetHashValue()) return false;
-    return pointer->ReadParameters(stream);
+    return reference.ReadParameters(stream);
   }
 
   }  // namespace Detail
@@ -110,8 +118,8 @@ namespace Eval::NNUE {
     std::string architecture;
     if (!ReadHeader(stream, &hash_value, &architecture)) return false;
     if (hash_value != kHashValue) return false;
-    if (!Detail::ReadParameters(stream, feature_transformer)) return false;
-    if (!Detail::ReadParameters(stream, network)) return false;
+    if (!Detail::ReadParameters(stream, *feature_transformer)) return false;
+    if (!Detail::ReadParameters(stream, *network)) return false;
     return stream && stream.peek() == std::ios::traits_type::eof();
   }
 
