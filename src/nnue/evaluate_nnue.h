@@ -41,7 +41,18 @@ namespace Eval::NNUE {
   };
 
   template <typename T>
+  struct TtmemDeleter {
+    void operator()(T* ptr) const {
+      ptr->~T();
+      aligned_ttmem_free(ptr);
+    }
+  };
+
+  template <typename T>
   using AlignedPtr = std::unique_ptr<T, AlignedDeleter<T>>;
+
+  template <typename T>
+  using TtmemPtr = std::unique_ptr<T, TtmemDeleter<T>>;
 
 }  // namespace Eval::NNUE
 
