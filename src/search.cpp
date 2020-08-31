@@ -1964,7 +1964,7 @@ void Tablebases::rank_root_moves(Position& pos, Search::RootMoves& rootMoves) {
     if (RootInTB)
     {
         // Sort moves according to TB rank
-        std::sort(rootMoves.begin(), rootMoves.end(),
+        std::stable_sort(rootMoves.begin(), rootMoves.end(),
                   [](const RootMove &a, const RootMove &b) { return a.tbRank > b.tbRank; } );
 
         // Probe during search only if DTZ is not available and we are winning
