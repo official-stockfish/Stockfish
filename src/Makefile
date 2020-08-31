@@ -85,12 +85,17 @@ endif
 
 ### 2.1. General and architecture defaults
 
+ifeq ($(ARCH),)
+   ARCH = x86-64-modern
+   help_skip_sanity = yes
+endif
 # explicitly check for the list of supported architectures (as listed with make help),
 # the user can override with `make ARCH=x86-32-vnni256 SUPPORTED_ARCH=true`
-ifeq ($(ARCH),$(filter $(ARCH),x86-64-vnni512 x86-64-vnni256 x86-64-avx512 x86-64-bmi2 x86-64-avx2 \
-                               x86-64-sse41-popcnt x86-64-modern x86-64-ssse3 x86-64-sse3-popcnt \
-                               x86-64 x86-32-sse41-popcnt x86-32-sse2 x86-32 ppc-64 ppc-32 \
-                               armv7 armv7-neon armv8 apple-silicon general-64 general-32))
+ifeq ($(ARCH), $(filter $(ARCH), \
+                 x86-64-vnni512 x86-64-vnni256 x86-64-avx512 x86-64-bmi2 x86-64-avx2 \
+                 x86-64-sse41-popcnt x86-64-modern x86-64-ssse3 x86-64-sse3-popcnt \
+                 x86-64 x86-32-sse41-popcnt x86-32-sse2 x86-32 ppc-64 ppc-32 \
+                 armv7 armv7-neon armv8 apple-silicon general-64 general-32))
    SUPPORTED_ARCH=true
 else
    SUPPORTED_ARCH=false
@@ -113,7 +118,6 @@ avx512 = no
 vnni256 = no
 vnni512 = no
 neon = no
-ARCH = x86-64-modern
 STRIP = strip
 
 ### 2.2 Architecture specific
@@ -695,11 +699,12 @@ help:
 	@echo "make -j build ARCH=x86-64-ssse3 COMP=clang"
 	@echo ""
 	@echo "-------------------------------"
-ifeq ($(SUPPORTED_ARCH), true)
+ifeq ($(SUPPORTED_ARCH)$(help_skip_sanity), true)
 	@echo "The selected architecture $(ARCH) will enable the following configuration: "
 	@$(MAKE) ARCH=$(ARCH) COMP=$(COMP) config-sanity
 else
 	@echo "Specify a supported architecture with the ARCH option for more details"
+	@echo ""
 endif
 
 
