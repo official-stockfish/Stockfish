@@ -43,7 +43,7 @@
 //     const unsigned char *const gEmbeddedNNUEEnd;     // a marker to the end
 //     const unsigned int         gEmbeddedNNUESize;    // the size of the embedded file
 // Note that this does not work in Microsof Visual Studio.
-#if !defined(_MSC_VER) && !defined(NNUE_EMBEDDING_OFF)
+#if !defined(_MSC_VER) && !defined(EMBEDDING_OFF)
   INCBIN(EmbeddedNNUE, EvalFileDefaultName);
 #else
   const unsigned char        gEmbeddedNNUEData[1] = {0x0};
