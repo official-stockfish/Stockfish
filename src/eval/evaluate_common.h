@@ -15,6 +15,8 @@
 // KPP file name
 #define KPP_BIN "KPP_synthesized.bin"
 
+#include "../position.h"
+
 namespace Eval
 {
 

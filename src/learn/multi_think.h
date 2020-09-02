@@ -11,12 +11,15 @@
 #include "../thread_win32_osx.h"
 
 #include <atomic>
+#include <limits>
 
 // Learning from a game record, when making yourself think and generating a fixed track, etc.
 // Helper class used when multiple threads want to call Search::think() individually.
 // Derive and use this class.
 struct MultiThink
 {
+	static constexpr std::uint64_t LOOP_COUNT_FINISHED = std::numeric_limits<std::uint64_t>::max();
+
 	MultiThink() : prng(std::chrono::system_clock::now().time_since_epoch().count())
 	{
 		loop_count = 0;
@@ -62,7 +65,7 @@ struct MultiThink
 	uint64_t get_next_loop_count() {
 		std::unique_lock<std::mutex> lk(loop_mutex);
 		if (loop_count >= loop_max)
-			return UINT64_MAX;
+			return LOOP_COUNT_FINISHED;
 		return loop_count++;
 	}
 

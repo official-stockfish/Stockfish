@@ -180,6 +180,23 @@ typedef float LearnFloatType;
 #define ADA_GRAD_UPDATE
 #endif
 
+// Character string according to update formula. (Output for debugging.)
+// Implemented various update expressions, but concluded that AdaGrad is the best in terms of speed and memory.
+#if defined(ADA_GRAD_UPDATE)
+#define LEARN_UPDATE "AdaGrad"
+#elif defined(SGD_UPDATE)
+#define LEARN_UPDATE "SGD"
+#endif
+
+#if defined(LOSS_FUNCTION_IS_WINNING_PERCENTAGE)
+#define LOSS_FUNCTION "WINNING_PERCENTAGE"
+#elif defined(LOSS_FUNCTION_IS_CROSS_ENTOROPY)
+#define LOSS_FUNCTION "CROSS_ENTOROPY"
+#elif defined(LOSS_FUNCTION_IS_CROSS_ENTOROPY_FOR_VALUE)
+#define LOSS_FUNCTION "CROSS_ENTOROPY_FOR_VALUE"
+#elif defined(LOSS_FUNCTION_IS_ELMO_METHOD)
+#define LOSS_FUNCTION "ELMO_METHOD(WCSC27)"
+#endif
 
 // ----------------------
 // Definition of struct used in Learner
@@ -223,13 +240,38 @@ namespace Learner
 	// Used in Learner::search(), Learner::qsearch().
 	typedef std::pair<Value, std::vector<Move> > ValueAndPV;
 
+	// Phase array: PSVector stands for packed sfen vector.
+	typedef std::vector<PackedSfenValue> PSVector;
+
 	// So far, only Yaneura King 2018 Otafuku has this stub
 	// This stub is required if EVAL_LEARN is defined.
 	extern Learner::ValueAndPV  search(Position& pos, int depth , size_t multiPV = 1 , uint64_t NodesLimit = 0);
 	extern Learner::ValueAndPV qsearch(Position& pos);
 
 	double calc_grad(Value shallow, const PackedSfenValue& psv);
+	
+	void convert_bin_from_pgn_extract(
+		const std::vector<std::string>& filenames,
+		const std::string& output_file_name,
+		const bool pgn_eval_side_to_move,
+		const bool convert_no_eval_fens_as_score_zero);
+	
+	void convert_bin(
+		const std::vector<std::string>& filenames,
+		const std::string& output_file_name,
+		const int ply_minimum,
+		const int ply_maximum,
+		const int interpolate_eval,
+		const int src_score_min_value,
+		const int src_score_max_value,
+		const int dest_score_min_value,
+		const int dest_score_max_value,
+		const bool check_invalid_fen,
+		const bool check_illegal_move);
 
+	void convert_plain(
+		const std::vector<std::string>& filenames,
+		const std::string& output_file_name);
 }
 
 #endif

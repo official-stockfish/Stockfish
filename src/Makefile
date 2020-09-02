@@ -52,6 +52,8 @@ SRCS = benchmark.cpp bitbase.cpp bitboard.cpp endgame.cpp evaluate.cpp main.cpp 
 	extra/sfen_packer.cpp \
 	learn/gensfen2019.cpp \
 	learn/learner.cpp \
+	learn/gensfen.cpp \
+	learn/convert.cpp \
 	learn/learning_tools.cpp \
 	learn/multi_think.cpp
 
@@ -891,7 +893,7 @@ learn: config-sanity
 	EXTRACXXFLAGS=' -DEVAL_LEARN -DEVAL_NNUE -DENABLE_TEST_CMD -DUSE_BLAS -I/mingw64/include/OpenBLAS -fopenmp ' \
 	EXTRALDFLAGS=' -lopenblas -fopenmp -Wl,-s -static ' \
 	all
-	
+
 profile-learn: config-sanity objclean profileclean
 	@echo ""
 	@echo "Step 1/4. Building instrumented executable ..."
@@ -900,7 +902,7 @@ profile-learn: config-sanity objclean profileclean
 	LEARNLDFLAGS=' -lopenblas -fopenmp -Wl,-s -static '
 	@echo ""
 	@echo "Step 2/4. Running benchmark for pgo-build ..."
-	$(PGOGENSFEN) 
+	$(PGOGENSFEN)
 	@echo ""
 	@echo "Step 3/4. Building optimized executable ..."
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) objclean
