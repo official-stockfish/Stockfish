@@ -595,6 +595,11 @@ ifeq ($(debug), no)
 		LDFLAGS += $(CXXFLAGS)
 	else ifeq ($(comp),clang)
 		CXXFLAGS += -flto=thin
+		ifneq ($(findstring MINGW,$(KERNEL)),)
+			CXXFLAGS += -fuse-ld=lld
+		else ifneq ($(findstring MSYS,$(KERNEL)),)
+			CXXFLAGS += -fuse-ld=lld
+		endif
 		LDFLAGS += $(CXXFLAGS)
 
 # GCC and CLANG use different methods for parallelizing LTO and CLANG pretends to be
