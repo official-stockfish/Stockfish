@@ -506,6 +506,8 @@ namespace Learner
 
         // From the final stage (one step before) to the first stage, give information on the outcome of the game for each stage.
         // The phases stored in sfens are assumed to be continuous (in order).
+        bool quit = false;
+        int num_sfens_to_commit = 0;
         for (auto it = sfens.rbegin(); it != sfens.rend(); ++it)
         {
             // If is_win == 0 (draw), multiply by -1 and it will remain 0 (draw)
@@ -517,19 +519,25 @@ namespace Learner
             auto now_loop_count = get_next_loop_count();
             if (now_loop_count == LOOP_COUNT_FINISHED)
             {
-                return true;
+                quit = true;
+                break;
             }
 
+            ++num_sfens_to_commit;
+        }
+
+        // Write sfens in move order to make potential compression easier
+        for (auto it = sfens.end() - num_sfens_to_commit; it != sfens.end(); ++it)
+        {
             // Write out one sfen.
             sfen_writer.write(thread_id, *it);
-
 #if 0
             pos.set_from_packed_sfen(it->sfen);
             cout << pos << "Win : " << it->is_win << " , " << it->score << endl;
 #endif
         }
 
-        return false;
+        return quit;
     }
 
     optional<Move> MultiThinkGenSfen::choose_random_move(
