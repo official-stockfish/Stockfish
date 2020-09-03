@@ -1,6 +1,4 @@
-﻿#define EVAL_LEARN
-
-#if defined(EVAL_LEARN)
+﻿#if defined(EVAL_LEARN)
 
 #include "../eval/evaluate_common.h"
 
@@ -319,6 +317,7 @@ namespace Learner
             Position& pos,
             std::vector<StateInfo, AlignedAllocator<StateInfo>>& states,
             int ply,
+            int depth,
             vector<Move>& pv);
 
         // Min and max depths for search during gensfen
@@ -662,9 +661,10 @@ namespace Learner
     }
 
     Value MultiThinkGenSfen::evaluate_leaf(
-        Position& pos, 
+        Position& pos,
         std::vector<StateInfo, AlignedAllocator<StateInfo>>& states,
         int ply,
+        int depth,
         vector<Move>& pv)
     {
         auto rootColor = pos.side_to_move();
@@ -899,16 +899,16 @@ namespace Learner
                         // Result is added after the whole game is done.
                         pos.sfen_pack(psv.sfen);
 
-                        // Get the value of evaluate() as seen from the 
+                        // Get the value of evaluate() as seen from the
                         // root color on the leaf node of the PV line.
-                        // I don't know the goodness and badness of using the 
+                        // I don't know the goodness and badness of using the
                         // return value of search() as it is.
                         // TODO: Consider using search value instead of evaluate_leaf.
                         //       Maybe give it as an option.
-                        
-                        // Use PV moves to reach the leaf node and use the value 
+
+                        // Use PV moves to reach the leaf node and use the value
                         // that evaluated() is called on that leaf node.
-                        const auto leaf_value = evaluate_leaf(pos, states, ply, search_pv);
+                        const auto leaf_value = evaluate_leaf(pos, states, ply, depth, search_pv);
 
                         // If for some reason the leaf node couldn't yield an eval
                         // we fallback to search value.

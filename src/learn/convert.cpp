@@ -1,5 +1,3 @@
-#define EVAL_LEARN
-
 #if defined(EVAL_LEARN)
 
 // evaluate header for learning

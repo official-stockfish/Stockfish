@@ -13,8 +13,6 @@
 // → I will not be involved in the engine because it is a problem that the GUI should assist.
 // etc..
 
-#define EVAL_LEARN
-
 #if defined(EVAL_LEARN)
 
 #include "../eval/evaluate_common.h"
@@ -98,10 +96,13 @@ namespace Learner
     // probabilities in the trainer. Sometimes we want to use the winning probabilities in the training
     // data directly. In those cases, we set false to this variable.
     static bool convert_teacher_signal_to_winning_probability = true;
+
     // Use raw NNUE eval value in the Eval::evaluate(). If hybrid eval is enabled, training data
     // generation and training don't work well.
     // https://discordapp.com/channels/435943710472011776/733545871911813221/748524079761326192
-    static bool use_raw_nnue_eval = true;
+    // This CANNOT be static since it's used elsewhere.
+    bool use_raw_nnue_eval = true;
+
     // Using WDL with win rate model instead of sigmoid
     static bool use_wdl = false;
 
