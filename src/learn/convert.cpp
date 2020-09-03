@@ -59,16 +59,16 @@ namespace Learner
     }
 
     void convert_bin(
-        const vector<string>& filenames, 
-        const string& output_file_name, 
-        const int ply_minimum, 
-        const int ply_maximum, 
-        const int interpolate_eval, 
+        const vector<string>& filenames,
+        const string& output_file_name,
+        const int ply_minimum,
+        const int ply_maximum,
+        const int interpolate_eval,
         const int src_score_min_value,
         const int src_score_max_value,
         const int dest_score_min_value,
         const int dest_score_max_value,
-        const bool check_invalid_fen, 
+        const bool check_invalid_fen,
         const bool check_illegal_move)
     {
         std::cout << "check_invalid_fen=" << check_invalid_fen << std::endl;
@@ -268,9 +268,9 @@ namespace Learner
     }
 
     void convert_bin_from_pgn_extract(
-        const vector<string>& filenames, 
-        const string& output_file_name, 
-        const bool pgn_eval_side_to_move, 
+        const vector<string>& filenames,
+        const string& output_file_name,
+        const bool pgn_eval_side_to_move,
         const bool convert_no_eval_fens_as_score_zero)
     {
         std::cout << "pgn_eval_side_to_move=" << pgn_eval_side_to_move << std::endl;
@@ -471,7 +471,7 @@ namespace Learner
     }
 
     void convert_plain(
-        const vector<string>& filenames, 
+        const vector<string>& filenames,
         const string& output_file_name)
     {
         Position tpos;

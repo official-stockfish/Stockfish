@@ -421,7 +421,7 @@ namespace Learner
                         continue;
                     sfen_for_mse.push_back(p);
                 }
-                else 
+                else
                 {
                     break;
                 }
@@ -815,17 +815,17 @@ namespace Learner
             // Assign work to each thread using TaskDispatcher.
             // A task definition for that.
             // It is not possible to capture pos used in ↑, so specify the variables you want to capture one by one.
-            auto task = 
+            auto task =
                 [
-                    &ps, 
-                    &test_sum_cross_entropy_eval, 
-                    &test_sum_cross_entropy_win, 
-                    &test_sum_cross_entropy, 
-                    &test_sum_entropy_eval, 
-                    &test_sum_entropy_win, 
-                    &test_sum_entropy, 
-                    &sum_norm, 
-                    &task_count, 
+                    &ps,
+                    &test_sum_cross_entropy_eval,
+                    &test_sum_cross_entropy_win,
+                    &test_sum_cross_entropy,
+                    &test_sum_entropy_eval,
+                    &test_sum_entropy_win,
+                    &test_sum_entropy,
+                    &sum_norm,
+                    &task_count,
                     &move_accord_count
                 ](size_t task_thread_id)
             {
@@ -1906,16 +1906,16 @@ namespace Learner
             Eval::init_NNUE();
             cout << "convert_bin.." << endl;
             convert_bin(
-                filenames, 
-                output_file_name, 
-                ply_minimum, 
-                ply_maximum, 
-                interpolate_eval, 
+                filenames,
+                output_file_name,
+                ply_minimum,
+                ply_maximum,
+                interpolate_eval,
                 src_score_min_value,
                 src_score_max_value,
                 dest_score_min_value,
                 dest_score_max_value,
-                check_invalid_fen, 
+                check_invalid_fen,
                 check_illegal_move);
             return;
 
