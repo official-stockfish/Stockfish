@@ -702,12 +702,13 @@ namespace Learner
 
         // Reach leaf
         Value v;
-        if (pos.checkers()) {
+        if (pos.checkers())
+        {
             // Sometime a king is checked.  An example is a case that a checkmate is
             // found in the search.  If Eval::evaluate() is called whne a king is
             // checked, classic eval crashes by an assertion. To avoid crashes, return
             // VALUE_NONE and let the caller assign a value to the position.
-            return VALUE_NONE;
+            v = VALUE_NONE;
         }
         else
         {
