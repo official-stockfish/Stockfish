@@ -28,6 +28,21 @@ else
 EXE = stockfish
 endif
 
+### Establish the operating system name
+KERNEL = $(shell uname -s)
+ifeq ($(KERNEL),Linux)
+	OS = $(shell uname -o)
+endif
+
+### BLAS libraries
+ifeq ($(KERNEL),Linux)
+	BLASCXXFLAGS =
+	BLASLDFLAGS = -lopenblas
+else
+	BLASCXXFLAGS = -I/mingw64/include/OpenBLAS
+	BLASLDFLAGS = -lopenblas -Wl,-s -static
+endif
+
 ### Installation dir definitions
 PREFIX = /usr/local
 BINDIR = $(PREFIX)/bin
@@ -60,12 +75,6 @@ SRCS = benchmark.cpp bitbase.cpp bitboard.cpp endgame.cpp evaluate.cpp main.cpp 
 OBJS = $(notdir $(SRCS:.cpp=.o))
 
 VPATH = syzygy:nnue:nnue/features:eval:extra:learn
-
-### Establish the operating system name
-KERNEL = $(shell uname -s)
-ifeq ($(KERNEL),Linux)
-	OS = $(shell uname -o)
-endif
 
 ### ==========================================================================
 ### Section 2. High-level Configuration
@@ -308,7 +317,7 @@ endif
 ### ==========================================================================
 
 ### 3.1 Selecting compiler (default = gcc)
-CXXFLAGS += -Wall -Wcast-qual -fno-exceptions -std=c++17 $(EXTRACXXFLAGS) $(LEARNCXXFLAGS)
+CXXFLAGS += -g -Wall -Wcast-qual -fno-exceptions -std=c++17 $(EXTRACXXFLAGS) $(LEARNCXXFLAGS)
 DEPENDFLAGS += -std=c++17
 LDFLAGS += $(EXTRALDFLAGS) $(LEARNLDFLAGS)
 
@@ -890,16 +899,16 @@ icc-profile-use:
 
 learn: config-sanity
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS=' -DEVAL_LEARN -DEVAL_NNUE -DENABLE_TEST_CMD -DUSE_BLAS -I/mingw64/include/OpenBLAS -fopenmp ' \
-	EXTRALDFLAGS=' -lopenblas -fopenmp -Wl,-s -static ' \
+	EXTRACXXFLAGS=' -DEVAL_LEARN -DEVAL_NNUE -DENABLE_TEST_CMD -DUSE_BLAS $(BLASCXXFLAGS) -fopenmp ' \
+	EXTRALDFLAGS=' $(BLASLDFLAGS) -fopenmp  ' \
 	all
 
 profile-learn: config-sanity objclean profileclean
 	@echo ""
 	@echo "Step 1/4. Building instrumented executable ..."
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_make) \
-	LEARNCXXFLAGS=' -DEVAL_LEARN -DEVAL_NNUE -DENABLE_TEST_CMD -DUSE_BLAS -I/mingw64/include/OpenBLAS -fopenmp ' \
-	LEARNLDFLAGS=' -lopenblas -fopenmp -Wl,-s -static '
+	LEARNCXXFLAGS=' -DEVAL_LEARN -DEVAL_NNUE -DENABLE_TEST_CMD -DUSE_BLAS $(BLASCXXFLAGS) -fopenmp ' \
+	LEARNLDFLAGS='  $(BLASLDLAGS) -fopenmp '
 	@echo ""
 	@echo "Step 2/4. Running benchmark for pgo-build ..."
 	$(PGOGENSFEN)
@@ -907,8 +916,8 @@ profile-learn: config-sanity objclean profileclean
 	@echo "Step 3/4. Building optimized executable ..."
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) objclean
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_use) \
-	LEARNCXXFLAGS=' -DEVAL_LEARN -DEVAL_NNUE -DENABLE_TEST_CMD -DUSE_BLAS -I/mingw64/include/OpenBLAS -fopenmp ' \
-	LEARNLDFLAGS=' -lopenblas -fopenmp -Wl,-s -static '
+	LEARNCXXFLAGS=' -DEVAL_LEARN -DEVAL_NNUE -DENABLE_TEST_CMD -DUSE_BLAS $(BLASCXXFLAGS) -fopenmp ' \
+	LEARNLDFLAGS=' $(BLASLDFLAGS) -fopenmp '
 	@echo ""
 	@echo "Step 4/4. Deleting profile data ..."
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) profileclean
