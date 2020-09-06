@@ -23,9 +23,9 @@ class Trainer<Layers::ClippedReLU<PreviousLayer>> {
  public:
   // factory function
   static std::shared_ptr<Trainer> Create(
-      LayerType* target_layer, FeatureTransformer* feature_transformer) {
+      LayerType* target_layer, FeatureTransformer* ft) {
     return std::shared_ptr<Trainer>(
-        new Trainer(target_layer, feature_transformer));
+        new Trainer(target_layer, ft));
   }
 
   // Set options such as hyperparameters
@@ -78,10 +78,10 @@ class Trainer<Layers::ClippedReLU<PreviousLayer>> {
 
  private:
   // constructor
-  Trainer(LayerType* target_layer, FeatureTransformer* feature_transformer) :
+  Trainer(LayerType* target_layer, FeatureTransformer* ft) :
       batch_size_(0),
       previous_layer_trainer_(Trainer<PreviousLayer>::Create(
-          &target_layer->previous_layer_, feature_transformer)),
+          &target_layer->previous_layer_, ft)),
       target_layer_(target_layer) {
     std::fill(std::begin(min_activations_), std::end(min_activations_),
               std::numeric_limits<LearnFloatType>::max());

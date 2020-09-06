@@ -92,7 +92,7 @@ namespace Learner
             {
                 // All buffers should be empty since file_worker_thread
                 // should have written everything before exiting.
-                for (const auto& p : sfen_buffers) { assert(p == nullptr); }
+                for (const auto& p : sfen_buffers) { assert(p == nullptr); (void)p ; }
                 assert(sfen_buffers_pool.empty());
             }
 #endif
