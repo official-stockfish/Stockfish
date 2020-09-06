@@ -29,9 +29,7 @@ namespace Eval::NNUE {
   struct alignas(kCacheLineSize) Accumulator {
     std::int16_t
         accumulation[2][kRefreshTriggers.size()][kTransformedFeatureDimensions];
-    Value score;
     bool computed_accumulation;
-    bool computed_score;
   };
 
 }  // namespace Eval::NNUE
