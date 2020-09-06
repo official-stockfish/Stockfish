@@ -502,6 +502,12 @@ namespace Learner
     // sfens has already been reached and the process ends.
     bool MultiThinkGenSfen::commit_psv(PSVector& sfens, size_t thread_id, int8_t lastTurnIsWin)
     {
+        if (!write_out_draw_game_in_training_data_generation && lastTurnIsWin == 0)
+        {
+            // We didn't write anything so why quit.
+            return false;
+        }
+
         int8_t is_win = lastTurnIsWin;
 
         // From the final stage (one step before) to the first stage, give information on the outcome of the game for each stage.
