@@ -1159,6 +1159,8 @@ namespace Learner
         // Show if the training data generator uses NNUE.
         Eval::verify_NNUE();
 
+        Threads.main()->ponder = false;
+
         // Create and execute threads as many as Options["Threads"].
         {
             SfenWriter sfen_writer(output_file_name, thread_num);

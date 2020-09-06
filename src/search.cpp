@@ -2035,6 +2035,8 @@ namespace Learner
       th->completedDepth = 0;
       th->selDepth = 0;
       th->rootDepth = 0;
+      th->nmpMinPly = th->bestMoveChanges = 0;
+      th->ttHitAverage = TtHitAverageWindow * TtHitAverageResolution / 2;
 
 	  // Zero initialization of the number of search nodes
       th->nodes = 0;
