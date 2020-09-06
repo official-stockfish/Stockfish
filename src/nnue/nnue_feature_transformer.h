@@ -82,6 +82,7 @@ namespace Eval::NNUE {
 
     // Convert input features
     void Transform(const Position& pos, OutputType* output) const {
+
       if (!UpdateAccumulatorIfPossible(pos))
         RefreshAccumulator(pos);
 
