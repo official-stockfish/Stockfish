@@ -96,7 +96,7 @@ void init(OptionsMap& o) {
 #if defined(EVAL_LEARN)
   // When learning the evaluation function, you can change the folder to save the evaluation function.
   // Evalsave by default. This folder shall be prepared in advance.
-  // Automatically dig a folder under this folder like "0/", "1/", ... and save the evaluation function file there.
+  // Automatically create a folder under this folder like "0/", "1/", ... and save the evaluation function file there.
   o["EvalSaveDir"] << Option("evalsave");
 #endif
 }

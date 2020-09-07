@@ -40,7 +40,7 @@ BINDIR = $(PREFIX)/bin
 
 ### Built-in benchmark for pgo-builds
 PGOBENCH = ./$(EXE) bench
-PGOGENSFEN = ./$(EXE) gensfen depth 3 loop 100000
+PGOGENSFEN = ./$(EXE) gensfen depth 3 loop 1000
 
 ### Source and object files
 SRCS = benchmark.cpp bitbase.cpp bitboard.cpp endgame.cpp evaluate.cpp main.cpp \
@@ -908,7 +908,7 @@ learn: config-sanity
 	EXTRALDFLAGS=' $(BLASLDFLAGS) -fopenmp  ' \
 	all
 
-profile-learn: config-sanity objclean profileclean
+profile-learn: net config-sanity objclean profileclean
 	@echo ""
 	@echo "Step 1/4. Building instrumented executable ..."
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_make) \

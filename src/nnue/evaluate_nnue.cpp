@@ -184,11 +184,13 @@ namespace Eval::NNUE {
 
     Initialize();
 
+#if defined(EVAL_NNUE)
     if (Options["SkipLoadingEval"])
     {
       std::cout << "info string SkipLoadingEval set to true, Net not loaded!" << std::endl;
       return true;
     }
+#endif
 
     fileName = evalFile;
 
