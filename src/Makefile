@@ -34,15 +34,6 @@ ifeq ($(KERNEL),Linux)
 	OS = $(shell uname -o)
 endif
 
-### BLAS libraries
-ifeq ($(KERNEL),Linux)
-	BLASCXXFLAGS =
-	BLASLDFLAGS = -lopenblas
-else
-	BLASCXXFLAGS = -I/mingw64/include/OpenBLAS
-	BLASLDFLAGS = -lopenblas -Wl,-s -static
-endif
-
 ### Installation dir definitions
 PREFIX = /usr/local
 BINDIR = $(PREFIX)/bin
@@ -140,6 +131,20 @@ vnni512 = no
 neon = no
 ARCH = x86-64-modern
 STRIP = strip
+
+### BLAS libraries
+ifeq ($(KERNEL),Linux)
+	BLASCXXFLAGS =
+	BLASLDFLAGS = -lopenblas
+else
+	BLASCXXFLAGS = -I/mingw64/include/OpenBLAS
+
+	ifeq ($(debug),yes)
+		BLASLDFLAGS = -lopenblas -Wl,-static
+	else
+		BLASLDFLAGS = -lopenblas -Wl,-s -static
+	endif
+endif
 
 ### 2.2 Architecture specific
 
