@@ -39,6 +39,7 @@
 #include <memory>
 #include <limits>
 #include <optional>
+#include <filesystem>
 
 #if defined (_OPENMP)
 #include <omp.h>
@@ -1467,7 +1468,7 @@ namespace Learner
             cout << ".";
         };
 
-        Dependency::mkdir("tmp");
+        std::filesystem::create_directory("tmp");
 
         // Shuffle and export as a 10M phase shredded file.
         for (auto filename : filenames)

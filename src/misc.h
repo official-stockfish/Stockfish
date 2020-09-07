@@ -273,11 +273,6 @@ namespace Dependency
   // So when calling getline() on fstream,
   // just write getline() instead of std::getline() and use this function.
   extern bool getline(std::ifstream& fs, std::string& s);
-
-  // Create a folder.
-  // Specify relative to the current folder. Japanese is not used for dir_name.
-  // Returns 0 on success, non-zero on failure.
-  extern int mkdir(std::string dir_name);
 }
 
 #endif // #ifndef MISC_H_INCLUDED

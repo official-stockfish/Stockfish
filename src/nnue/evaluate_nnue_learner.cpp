@@ -4,6 +4,7 @@
 
 #include <random>
 #include <fstream>
+#include <filesystem>
 
 #include "../learn/learn.h"
 #include "../learn/learning_tools.h"
@@ -207,7 +208,7 @@ void save_eval(std::string dir_name) {
   // mkdir() will fail if this folder already exists, but
   // Apart from that. If not, I just want you to make it.
   // Also, assume that the folders up to EvalSaveDir have been dug.
-  Dependency::mkdir(eval_dir);
+  std::filesystem::create_directories(eval_dir);
 
   if (Options["SkipLoadingEval"] && NNUE::trainer) {
     NNUE::SendMessages({{"clear_unobserved_feature_weights"}});
