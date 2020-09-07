@@ -7,7 +7,7 @@ matrix:
       compiler: gcc
       addons:
         apt:
-          packages: ['g++-8', 'g++-8-multilib', 'g++-multilib', 'valgrind', 'expect', 'curl']
+          packages: ['g++-8', 'g++-8-multilib', 'g++-multilib', 'valgrind', 'expect', 'curl', 'openblas']
       env:
         - COMPILER=g++-8
         - COMP=gcc
@@ -16,7 +16,7 @@ matrix:
       compiler: clang
       addons:
         apt:
-          packages: ['clang-10', 'llvm-10-dev', 'g++-multilib', 'valgrind', 'expect', 'curl']
+          packages: ['clang-10', 'llvm-10-dev', 'g++-multilib', 'valgrind', 'expect', 'curl', 'openblas']
       env:
         - COMPILER=clang++-10
         - COMP=clang
@@ -73,6 +73,9 @@ script:
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make clean && make -j2 ARCH=general-32 build && ../tests/signature.sh $benchref; fi
   # workaround: exclude a custom version of llvm+clang, which doesn't find llvm-profdata on ubuntu
   - if [[ "$TRAVIS_OS_NAME" != "linux" || "$COMP" == "gcc" ]]; then make clean && make -j2 ARCH=x86-64-modern profile-build && ../tests/signature.sh $benchref; fi
+
+  # start some basic learner CI
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make clean && make -j2 ARCH=x86-64-modern learn; fi
 
   # compile only for some more advanced architectures (might not run in travis)
   - make clean && make -j2 ARCH=x86-64-avx2 build
