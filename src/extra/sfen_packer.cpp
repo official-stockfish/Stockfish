@@ -269,7 +269,7 @@ int Position::set_from_packed_sfen(const PackedSfen& sfen , StateInfo * si, Thre
 
   // TODO: separate streams for writing and reading. Here we actually have to
   // const_cast which is not safe in the long run.
-	stream.set_data(const_cast<uint8_t*>(&sfen));
+	stream.set_data(const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(&sfen)));
 
 	std::memset(this, 0, sizeof(Position));
 	std::memset(si, 0, sizeof(StateInfo));
