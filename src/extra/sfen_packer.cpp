@@ -218,7 +218,7 @@ struct SfenPacker
     PieceType pr = type_of(pc);
     auto c = huffman_table[pr];
     stream.write_n_bit(c.code, c.bits);
- 
+
     if (pc == NO_PIECE)
       return;
 
@@ -249,7 +249,7 @@ struct SfenPacker
 
     // first and second flag
     Color c = (Color)stream.read_one_bit();
-    
+
     return make_piece(c, pr);
   }
 };
@@ -266,7 +266,10 @@ int Position::set_from_packed_sfen(const PackedSfen& sfen , StateInfo * si, Thre
 {
 	SfenPacker packer;
 	auto& stream = packer.stream;
-	stream.set_data((uint8_t*)&sfen);
+
+  // TODO: separate streams for writing and reading. Here we actually have to
+  // const_cast which is not safe in the long run.
+	stream.set_data(const_cast<uint8_t*>(&sfen));
 
 	std::memset(this, 0, sizeof(Position));
 	std::memset(si, 0, sizeof(StateInfo));
