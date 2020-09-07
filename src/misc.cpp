@@ -627,18 +627,27 @@ void* aligned_malloc(size_t size, size_t align)
     return p;
 }
 
+std::uint64_t get_file_size(std::fstream& fs)
+{
+    auto pos = fs.tellg();
+
+    fs.seekg(0, fstream::end);
+    const uint64_t eofPos = (uint64_t)fs.tellg();
+    fs.clear(); // Otherwise, the next seek may fail.
+    fs.seekg(0, fstream::beg);
+    const uint64_t begPos = (uint64_t)fs.tellg();
+    fs.seekg(pos);
+
+    return eofPos - begPos;
+}
+
 int read_file_to_memory(std::string filename, std::function<void* (uint64_t)> callback_func)
 {
     fstream fs(filename, ios::in | ios::binary);
     if (fs.fail())
         return 1;
 
-    fs.seekg(0, fstream::end);
-    uint64_t eofPos = (uint64_t)fs.tellg();
-    fs.clear(); // Otherwise the next seek may fail.
-    fs.seekg(0, fstream::beg);
-    uint64_t begPos = (uint64_t)fs.tellg();
-    uint64_t file_size = eofPos - begPos;
+    const uint64_t file_size = get_file_size(fs);
     //std::cout << "filename = " << filename << " , file_size = " << file_size << endl;
 
     // I know the file size, so call callback_func to get a buffer for this,
