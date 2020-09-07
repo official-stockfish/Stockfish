@@ -226,6 +226,7 @@ namespace Math {
 }
 
 namespace Algo {
+    // Fisher-Yates
     template <typename Rng, typename T>
     void shuffle(std::vector<T>& buf, Rng&& prng)
     {

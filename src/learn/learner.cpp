@@ -1,17 +1,23 @@
-﻿// learning routines
+﻿// Learning routines:
 //
-// 1) Automatic generation of game records
+// 1) Automatic generation of game records in .bin format
 // → "gensfen" command
-// 2) Learning evaluation function parameters from the generated game record
+//
+// 2) Learning evaluation function parameters from the generated .bin files
 // → "learn" command
+//
 // → Shuffle in the teacher phase is also an extension of this command.
 // Example) "learn shuffle"
+//
 // 3) Automatic generation of fixed traces
 // → "makebook think" command
 // → implemented in extra/book/book.cpp
+//
 // 4) Post-station automatic review mode
 // → I will not be involved in the engine because it is a problem that the GUI should assist.
 // etc..
+
+#define EVAL_LEARN
 
 #if defined(EVAL_LEARN)
 
@@ -53,7 +59,6 @@
 
 using namespace std;
 
-
 #if defined(USE_BOOK)
 // This is defined in the search section.
 extern Book::BookMoveSelector book;
@@ -63,6 +68,7 @@ template <typename T>
 T operator +=(std::atomic<T>& x, const T rhs)
 {
     T old = x.load(std::memory_order_consume);
+
     // It is allowed that the value is rewritten from other thread at this timing.
     // The idea that the value is not destroyed is good.
     T desired = old + rhs;
@@ -81,7 +87,7 @@ namespace Learner
 
     static double winning_probability_coefficient = 1.0 / PawnValueEg / 4.0 * std::log(10.0);
 
-    // Score scale factors.  ex) If we set src_score_min_value = 0.0,
+    // Score scale factors. ex) If we set src_score_min_value = 0.0,
     // src_score_max_value = 1.0, dest_score_min_value = 0.0,
     // dest_score_max_value = 10000.0, [0.0, 1.0] will be scaled to [0, 10000].
     static double src_score_min_value = 0.0;
@@ -89,8 +95,9 @@ namespace Learner
     static double dest_score_min_value = 0.0;
     static double dest_score_max_value = 1.0;
 
-    // Assume teacher signals are the scores of deep searches, and convert them into winning
-    // probabilities in the trainer. Sometimes we want to use the winning probabilities in the training
+    // Assume teacher signals are the scores of deep searches, 
+    // and convert them into winning probabilities in the trainer. 
+    // Sometimes we want to use the winning probabilities in the training
     // data directly. In those cases, we set false to this variable.
     static bool convert_teacher_signal_to_winning_probability = true;
 
@@ -100,12 +107,8 @@ namespace Learner
     // This CANNOT be static since it's used elsewhere.
     bool use_raw_nnue_eval = false;
 
-    // Using WDL with win rate model instead of sigmoid
+    // Using stockfish's WDL with win rate model instead of sigmoid
     static bool use_wdl = false;
-
-    // -----------------------------------
-    // command to learn from the generated game (learn)
-    // -----------------------------------
 
     // A function that converts the evaluation value to the winning rate [0,1]
     double winning_percentage(double value)
@@ -142,21 +145,31 @@ namespace Learner
         }
     }
 
-    double calc_cross_entropy_of_winning_percentage(double deep_win_rate, double shallow_eval, int ply)
+    double calc_cross_entropy_of_winning_percentage(
+        double deep_win_rate, 
+        double shallow_eval, 
+        int ply)
     {
         const double p = deep_win_rate;
         const double q = winning_percentage(shallow_eval, ply);
         return -p * std::log(q) - (1.0 - p) * std::log(1.0 - q);
     }
 
-    double calc_d_cross_entropy_of_winning_percentage(double deep_win_rate, double shallow_eval, int ply)
+    double calc_d_cross_entropy_of_winning_percentage(
+        double deep_win_rate, 
+        double shallow_eval, 
+        int ply)
     {
         constexpr double epsilon = 0.000001;
 
-        const double y1 = calc_cross_entropy_of_winning_percentage(deep_win_rate, shallow_eval, ply);
-        const double y2 = calc_cross_entropy_of_winning_percentage(deep_win_rate, shallow_eval + epsilon, ply);
+        const double y1 = calc_cross_entropy_of_winning_percentage(
+            deep_win_rate, shallow_eval, ply);
 
-        // Divide by the winning_probability_coefficient to match scale with the sigmoidal win rate
+        const double y2 = calc_cross_entropy_of_winning_percentage(
+            deep_win_rate, shallow_eval + epsilon, ply);
+
+        // Divide by the winning_probability_coefficient to 
+        // match scale with the sigmoidal win rate
         return ((y2 - y1) / epsilon) / winning_probability_coefficient;
     }
 
@@ -167,9 +180,12 @@ namespace Learner
     {
         // The square of the win rate difference minimizes it in the objective function.
         // Objective function J = 1/2m Σ (win_rate(shallow)-win_rate(deep) )^2
-        // However, σ is a sigmoid function that converts the evaluation value into the difference in the winning percentage.
-        // m is the number of samples. shallow is the evaluation value for a shallow search (qsearch()). deep is the evaluation value for deep search.
-        // If W is the feature vector (parameter of the evaluation function) and Xi and Yi are teachers
+        // However, σ is a sigmoid function that converts the 
+        // evaluation value into the difference in the winning percentage.
+        // m is the number of samples. shallow is the evaluation value 
+        // for a shallow search (qsearch()). deep is the evaluation value for deep search.
+        // If W is the feature vector (parameter of the evaluation function) 
+        // and Xi and Yi are teachers
         // shallow = W*Xi // * is the Hadamard product, transposing W and meaning X
         // f(Xi) = win_rate(W*Xi)
         // If σ(i th deep) = Yi,
@@ -179,10 +195,12 @@ namespace Learner
         // ∂J/∂Wj = ∂J/∂f ・∂f/∂W ・∂W/∂Wj
         // = 1/m Σ (f(Xi)-y) ・f'(Xi) ・ 1
 
-        // 1/m will be multiplied later, but the contents of Σ can be retained in the array as the value of the gradient.
+        // 1/m will be multiplied later, but the contents of Σ can 
+        // be retained in the array as the value of the gradient.
         // f'(Xi) = win_rate'(shallow) = sigmoid'(shallow/600) = dsigmoid(shallow / 600) / 600
         // This /600 at the end is adjusted by the learning rate, so do not write it..
-        // Also, the coefficient of 1/m is unnecessary if you use the update formula that has the automatic gradient adjustment function like Adam and AdaGrad.
+        // Also, the coefficient of 1/m is unnecessary if you use the update 
+        // formula that has the automatic gradient adjustment function like Adam and AdaGrad.
         // Therefore, it is not necessary to save it in memory.
 
         const double p = winning_percentage(deep, psv.gamePly);
@@ -202,7 +220,9 @@ namespace Learner
         // Refer to etc.
 
         // Objective function design)
-        // We want to make the distribution of p closer to the distribution of q → Think of it as the problem of minimizing the cross entropy between the probability distributions of p and q.
+        // We want to make the distribution of p closer to the distribution of q 
+        // → Think of it as the problem of minimizing the cross entropy 
+        // between the probability distributions of p and q.
         // J = H(p,q) =-Σ p(x) log(q(x)) = -p log q-(1-p) log(1-q)
         // x
 
@@ -222,7 +242,8 @@ namespace Learner
     double calc_grad(Value deep, Value shallow, const PackedSfenValue& psv)
     {
         // Version that does not pass the winning percentage function
-        // This, unless EVAL_LIMIT is set low, trying to match the evaluation value with the shape of the end stage
+        // This, unless EVAL_LIMIT is set low, trying to 
+        // match the evaluation value with the shape of the end stage
         // eval may exceed the range of eval.
         return shallow - deep;
     }
@@ -261,7 +282,6 @@ namespace Learner
     {
         const double scaled_teacher_signal = get_scaled_signal(teacher_signal);
 
-        // Teacher winning probability.
         double p = scaled_teacher_signal;
         if (convert_teacher_signal_to_winning_probability) 
         {
@@ -273,7 +293,8 @@ namespace Learner
 
     double calculate_lambda(double teacher_signal)
     {
-        // If the evaluation value in deep search exceeds ELMO_LAMBDA_LIMIT, apply ELMO_LAMBDA2 instead of ELMO_LAMBDA.
+        // If the evaluation value in deep search exceeds ELMO_LAMBDA_LIMIT
+        // then apply ELMO_LAMBDA2 instead of ELMO_LAMBDA.
         const double lambda =
             (std::abs(teacher_signal) >= ELMO_LAMBDA_LIMIT)
             ? ELMO_LAMBDA2
@@ -284,7 +305,8 @@ namespace Learner
 
     double calculate_t(int game_result)
     {
-        // Use 1 as the correction term if the expected win rate is 1, 0 if you lose, and 0.5 if you draw.
+        // Use 1 as the correction term if the expected win rate is 1, 
+        // 0 if you lose, and 0.5 if you draw.
         // game_result = 1,0,-1 so add 1 and divide by 2.
         const double t = double(game_result + 1) * 0.5;
 
@@ -318,7 +340,9 @@ namespace Learner
     }
 
     // Calculate cross entropy during learning
-    // The individual cross entropy of the win/loss term and win rate term of the elmo expression is returned to the arguments cross_entropy_eval and cross_entropy_win.
+    // The individual cross entropy of the win/loss term and win 
+    // rate term of the elmo expression is returned 
+    // to the arguments cross_entropy_eval and cross_entropy_win.
     void calc_cross_entropy(
         Value teacher_signal, 
         Value shallow, 
@@ -356,11 +380,7 @@ namespace Learner
     }
 
 #endif
-
-
-    // Other variations may be prepared as the objective function..
-
-
+    // Other objective functions may be considered in the future...
     double calc_grad(Value shallow, const PackedSfenValue& psv) 
     {
         return calc_grad((Value)psv.score, shallow, psv);
@@ -369,15 +389,17 @@ namespace Learner
     // Sfen reader
     struct SfenReader
     {
-        // number of phases used for calculation such as mse
+        // Number of phases used for calculation such as mse
         // mini-batch size = 1M is standard, so 0.2% of that should be negligible in terms of time.
-        //Since search() is performed with depth = 1 in calculation of move match rate, simple comparison is not possible...
+        // Since search() is performed with depth = 1 in calculation of 
+        // move match rate, simple comparison is not possible...
         static constexpr uint64_t sfen_for_mse_size = 2000;
 
         // Number of phases buffered by each thread 0.1M phases. 4M phase at 40HT
         static constexpr size_t THREAD_BUFFER_SIZE = 10 * 1000;
 
-        // Buffer for reading files (If this is made larger, the shuffle becomes larger and the phases may vary.
+        // Buffer for reading files (If this is made larger, 
+        // the shuffle becomes larger and the phases may vary.
         // If it is too large, the memory consumption will increase.
         // SFEN_READ_SIZE is a multiple of THREAD_BUFFER_SIZE.
         static constexpr const size_t SFEN_READ_SIZE = LEARN_SFEN_READ_SIZE;
@@ -387,7 +409,8 @@ namespace Learner
         // It must be 2**N because it will be used as the mask to calculate hash_index.
         static constexpr uint64_t READ_SFEN_HASH_SIZE = 64 * 1024 * 1024;
 
-        // Do not use std::random_device().  Because it always the same integers on MinGW.
+        // Do not use std::random_device().
+        // Because it always the same integers on MinGW.
         SfenReader(int thread_num) : 
             prng(std::chrono::system_clock::now().time_since_epoch().count())
         {
@@ -460,16 +483,20 @@ namespace Learner
         // [ASYNC] Thread returns one aspect. Otherwise returns false.
         bool read_to_thread_buffer(size_t thread_id, PackedSfenValue& ps)
         {
-            // If there are any positions left in the thread buffer, retrieve one and return it.
+            // If there are any positions left in the thread buffer
+            // then retrieve one and return it.
             auto& thread_ps = packed_sfens[thread_id];
 
-            // Fill the read buffer if there is no remaining buffer, but if it doesn't even exist, finish.
-            if ((thread_ps == nullptr || thread_ps->empty()) // If the buffer is empty, fill it.
+            // Fill the read buffer if there is no remaining buffer, 
+            // but if it doesn't even exist, finish.
+            // If the buffer is empty, fill it.
+            if ((thread_ps == nullptr || thread_ps->empty())
                 && !read_to_thread_buffer_impl(thread_id))
                 return false;
 
             // read_to_thread_buffer_impl() returned true,
-            // Since the filling of the thread buffer with the phase has been completed successfully
+            // Since the filling of the thread buffer with the 
+            // phase has been completed successfully
             // thread_ps->rbegin() is alive.
 
             ps = thread_ps->back();
@@ -511,6 +538,7 @@ namespace Learner
 
                 // Waiting for file worker to fill packed_sfens_pool.
                 // The mutex isn't locked, so it should fill up soon.
+                // Poor man's condition variable.
                 sleep(1);
             }
 
@@ -519,14 +547,14 @@ namespace Learner
         // Start a thread that loads the phase file in the background.
         void start_file_read_worker()
         {
-            file_worker_thread = std::thread([&] { this->file_read_worker(); });
+            file_worker_thread = std::thread([&] { 
+                this->file_read_worker(); 
+                });
         }
 
-        // for file read-only threads
         void file_read_worker()
         {
-            auto open_next_file = [&]()
-            {
+            auto open_next_file = [&]() {
                 if (fs.is_open())
                     fs.close();
 
@@ -569,7 +597,7 @@ namespace Learner
                     }
                     else if(!open_next_file())
                     {
-                        // There was no next file. Abon.
+                        // There was no next file. Abort.
                         cout << "..end of files." << endl;
                         end_of_files = true;
                         return;
@@ -577,8 +605,6 @@ namespace Learner
                 }
 
                 // Shuffle the read phase data.
-                // random shuffle by Fisher-Yates algorithm
-
                 if (!no_shuffle)
                 {
                     Algo::shuffle(sfens, prng);
@@ -597,17 +623,19 @@ namespace Learner
                     // Delete this pointer on the receiving side.
                     auto buf = std::make_unique<PSVector>();
                     buf->resize(THREAD_BUFFER_SIZE);
-                    memcpy(buf->data(), &sfens[i * THREAD_BUFFER_SIZE], sizeof(PackedSfenValue) * THREAD_BUFFER_SIZE);
+                    memcpy(
+                        buf->data(), 
+                        &sfens[i * THREAD_BUFFER_SIZE], 
+                        sizeof(PackedSfenValue) * THREAD_BUFFER_SIZE);
 
                     buffers.emplace_back(std::move(buf));
                 }
 
-                // Since sfens is ready, look at the occasion and copy
                 {
                     std::unique_lock<std::mutex> lk(mutex);
 
-                    // You can ignore this time because you just copy the pointer...
-                    // The mutex lock is required because the contents of packed_sfens_pool are changed.
+                    // The mutex lock is required because the 
+                    // contents of packed_sfens_pool are changed.
 
                     for (auto& buf : buffers)
                         packed_sfens_pool.emplace_back(std::move(buf));
@@ -644,7 +672,7 @@ namespace Learner
 
         bool stop_flag;
 
-        vector<Key> hash; // 64MB*8 = 512MB
+        vector<Key> hash;
 
         // test phase for mse calculation
         PSVector sfen_for_mse;
@@ -659,7 +687,6 @@ namespace Learner
 
         // Did you read the files and reached the end?
         atomic<bool> end_of_files;
-
 
         // handle of sfen file
         std::fstream fs;
@@ -727,7 +754,7 @@ namespace Learner
         uint64_t epoch = 0;
 
         // Mini batch size size. Be sure to set it on the side that uses this class.
-        uint64_t mini_batch_size = 1000 * 1000;
+        uint64_t mini_batch_size = LEARN_MINI_BATCH_SIZE;
 
         bool stop_flag;
 
@@ -740,7 +767,8 @@ namespace Learner
         // Option not to learn kk/kkp/kpp/kppp
         std::array<bool, 4> freeze;
 
-        // If the absolute value of the evaluation value of the deep search of the teacher phase exceeds this value, discard the teacher phase.
+        // If the absolute value of the evaluation value of the deep search 
+        // of the teacher phase exceeds this value, discard the teacher phase.
         int eval_limit;
 
         // Flag whether to dig a folder each time the evaluation function is saved.
@@ -811,7 +839,8 @@ namespace Learner
 
     void LearnerThink::calc_loss(size_t thread_id, uint64_t done)
     {
-        // There is no point in hitting the replacement table, so at this timing the generation of the replacement table is updated.
+        // There is no point in hitting the replacement table, 
+        // so at this timing the generation of the replacement table is updated.
         // It doesn't matter if you have disabled the substitution table.
         TT.new_search();
 
@@ -845,7 +874,8 @@ namespace Learner
         sum_norm = 0;
 #endif
 
-        // The number of times the pv first move of deep search matches the pv first move of search(1).
+        // The number of times the pv first move of deep 
+        // search matches the pv first move of search(1).
         atomic<int> move_accord_count;
         move_accord_count = 0;
 
@@ -856,7 +886,8 @@ namespace Learner
         pos.set(StartFEN, false, &si, th);
         std::cout << "hirate eval = " << Eval::evaluate(pos);
 
-        // It's better to parallelize here, but it's a bit troublesome because the search before slave has not finished.
+        // It's better to parallelize here, but it's a bit 
+        // troublesome because the search before slave has not finished.
         // I created a mechanism to call task, so I will use it.
 
         // The number of tasks to do.
@@ -869,7 +900,8 @@ namespace Learner
         {
             // Assign work to each thread using TaskDispatcher.
             // A task definition for that.
-            // It is not possible to capture pos used in ↑, so specify the variables you want to capture one by one.
+            // It is not possible to capture pos used in ↑, 
+            // so specify the variables you want to capture one by one.
             auto task =
                 [
                     this,
@@ -899,7 +931,8 @@ namespace Learner
                 // Evaluation value of deep search
                 auto deep_value = (Value)ps.score;
 
-                // Note) This code does not consider when eval_limit is specified in the learn command.
+                // Note) This code does not consider when 
+                //       eval_limit is specified in the learn command.
 
                 // --- error calculation
 
@@ -975,14 +1008,16 @@ namespace Learner
             << " , eval mae = " << eval_mae;
 #endif
 
-#if defined ( LOSS_FUNCTION_IS_ELMO_METHOD )
+#if defined(LOSS_FUNCTION_IS_ELMO_METHOD)
 #if defined(EVAL_NNUE)
         latest_loss_sum += test_sum_cross_entropy - test_sum_entropy;
         latest_loss_count += sr.sfen_for_mse.size();
 #endif
 
-        // learn_cross_entropy may be called train cross entropy in the world of machine learning,
-        // When omitting the acronym, it is nice to be able to distinguish it from test cross entropy(tce) by writing it as lce.
+        // learn_cross_entropy may be called train cross 
+        // entropy in the world of machine learning,
+        // When omitting the acronym, it is nice to be able to 
+        // distinguish it from test cross entropy(tce) by writing it as lce.
 
         if (sr.sfen_for_mse.size() && done)
         {
@@ -1074,7 +1109,9 @@ namespace Learner
                     // Output the current time. Output every time.
                     std::cout << sr.total_done << " sfens , at " << now_string() << std::endl;
 
-                    // Reflect the gradient in the weight array at this timing. The calculation of the gradient is just right for each 1M phase in terms of mini-batch.
+                    // Reflect the gradient in the weight array at this timing. 
+                    // The calculation of the gradient is just right for 
+                    // each 1M phase in terms of mini-batch.
                     Eval::update_weights(epoch, freeze);
 
                     // Display epoch and current eta for debugging.
@@ -1090,14 +1127,13 @@ namespace Learner
 #endif
                     ++epoch;
 
-                    // Save once every 1 billion phases.
-
                     // However, the elapsed time during update_weights() and calc_rmse() is ignored.
                     if (++sr.save_count * mini_batch_size >= eval_save_interval)
                     {
                         sr.save_count = 0;
 
-                        // During this time, as the gradient calculation proceeds, the value becomes too large and I feel annoyed, so stop other threads.
+                        // During this time, as the gradient calculation proceeds, 
+                        // the value becomes too large and I feel annoyed, so stop other threads.
                         const bool converged = save();
                         if (converged)
                         {
@@ -1109,7 +1145,6 @@ namespace Learner
 
                     // Calculate rmse. This is done for samples of 10,000 phases.
                     // If you do with 40 cores, update_weights every 1 million phases
-                    // I don't think it's so good to be tiring.
                     static uint64_t loss_output_count = 0;
                     if (++loss_output_count * mini_batch_size >= loss_output_interval)
                     {
@@ -1129,10 +1164,12 @@ namespace Learner
                         sr.last_done = sr.total_done;
                     }
 
-                    // Next time, I want you to do this series of processing again when you process only mini_batch_size.
+                    // Next time, I want you to do this series of 
+                    // processing again when you process only mini_batch_size.
                     sr.next_update_weights += mini_batch_size;
 
-                    // Since I was waiting for the update of this sr.next_update_weights except the main thread,
+                    // Since I was waiting for the update of this 
+                    // sr.next_update_weights except the main thread,
                     // Once this value is updated, it will start moving again.
                 }
             }
@@ -1173,7 +1210,8 @@ namespace Learner
             if (pos.set_from_packed_sfen(ps.sfen, &si, th, mirror) != 0)
             {
                 // I got a strange sfen. Should be debugged!
-                // Since it is an illegal sfen, it may not be displayed with pos.sfen(), but it is better than not.
+                // Since it is an illegal sfen, it may not be 
+                // displayed with pos.sfen(), but it is better than not.
                 cout << "Error! : illigal packed sfen = " << pos.fen() << endl;
                 goto RETRY_READ;
             }
@@ -1198,9 +1236,11 @@ namespace Learner
 #endif
 
             // There is a possibility that all the pieces are blocked and stuck.
-            // Also, the declaration win phase is excluded from learning because you cannot go to leaf with PV moves.
-            // (shouldn't write out such teacher aspect itself, but may have written it out with an old generation routine)
-        // Skip the position if there are no legal moves (=checkmated or stalemate).
+            // Also, the declaration win phase is excluded from 
+            // learning because you cannot go to leaf with PV moves.
+            // (shouldn't write out such teacher aspect itself, 
+            // but may have written it out with an old generation routine)
+            // Skip the position if there are no legal moves (=checkmated or stalemate).
             if (MoveList<LEGAL>(pos).size() == 0)
                 goto RETRY_READ;
 
@@ -1214,7 +1254,8 @@ namespace Learner
             const auto deep_value = (Value)ps.score;
 
             // I feel that the mini batch has a better gradient.
-            // Go to the leaf node as it is, add only to the gradient array, and later try AdaGrad at the time of rmse aggregation.
+            // Go to the leaf node as it is, add only to the gradient array, 
+            // and later try AdaGrad at the time of rmse aggregation.
 
             const auto rootColor = pos.side_to_move();
 
@@ -1223,23 +1264,25 @@ namespace Learner
             // It may be better not to study where the difference in evaluation values ​​is too large.
 
 #if 0
-        // If you do this, about 13% of the phases will be excluded from the learning target. Good and bad are subtle.
+            // If you do this, about 13% of the phases will be excluded 
+            // from the learning target. Good and bad are subtle.
             if (pv.size() >= 1 && (uint16_t)pv[0] != ps.move)
             {
-                // dbg_hit_on(false);
+                //dbg_hit_on(false);
                 continue;
             }
 #endif
 
 #if 0
             // It may be better not to study where the difference in evaluation values ​​is too large.
-            // → It's okay because it passes the win rate function... About 30% of the phases are out of the scope of learning...
+            // → It's okay because it passes the win rate function... 
+            // About 30% of the phases are out of the scope of learning...
             if (abs((int16_t)r.first - ps.score) >= Eval::PawnValue * 4)
             {
-                //          dbg_hit_on(false);
+                //dbg_hit_on(false);
                 continue;
             }
-            //      dbg_hit_on(true);
+            //dbg_hit_on(true);
 #endif
 
             int ply = 0;
@@ -1248,9 +1291,12 @@ namespace Learner
             auto pos_add_grad = [&]() {
                 // Use the value of evaluate in leaf as shallow_value.
                 // Using the return value of qsearch() as shallow_value,
-                // If PV is interrupted in the middle, the phase where evaluate() is called to calculate the gradient, and
-                // I don't think this is a very desirable property, as the aspect that gives that gradient will be different.
-                // I have turned off the substitution table, but since the pv array has not been updated due to one stumbling block etc...
+                // If PV is interrupted in the middle, the phase where 
+                // evaluate() is called to calculate the gradient, 
+                // and I don't think this is a very desirable property, 
+                // as the aspect that gives that gradient will be different.
+                // I have turned off the substitution table, but since 
+                // the pv array has not been updated due to one stumbling block etc...
 
                 const Value shallow_value = 
                     (rootColor == pos.side_to_move()) 
@@ -1284,7 +1330,8 @@ namespace Learner
                 // Slope
                 double dj_dw = calc_grad(deep_value, shallow_value, ps);
 
-                // Add jd_dw as the gradient (∂J/∂Wj) for the feature vector currently appearing in the leaf node.
+                // Add jd_dw as the gradient (∂J/∂Wj) for the 
+                // feature vector currently appearing in the leaf node.
 
                 // If it is not PV termination, apply a discount rate.
                 if (discount_rate != 0 && ply != (int)pv.size())
@@ -1330,7 +1377,7 @@ namespace Learner
 
             if (illegal_move) 
             {
-                sync_cout << "An illical move was detected... Excluded the position from the learning data..." << sync_endl;
+                sync_cout << "An illegal move was detected... Excluded the position from the learning data..." << sync_endl;
                 continue;
             }
 
@@ -1343,7 +1390,11 @@ namespace Learner
 
 #if 0
             // When adding the gradient to the root phase
-            shallow_value = (rootColor == pos.side_to_move()) ? Eval::evaluate(pos) : -Eval::evaluate(pos);
+            shallow_value = 
+                (rootColor == pos.side_to_move()) 
+                ? Eval::evaluate(pos) 
+                : -Eval::evaluate(pos);
+
             dj_dw = calc_grad(deep_value, shallow_value, ps);
             Eval::add_grad(pos, rootColor, dj_dw, without_kpp);
 #endif
@@ -1426,10 +1477,14 @@ namespace Learner
 
     // Shuffle_files(), shuffle_files_quick() subcontracting, writing part.
     // output_file_name: Name of the file to write
-    // prng: random number
-    // afs: fstream of each teacher phase file
-    // a_count: The number of teacher positions inherent in each file.
-    void shuffle_write(const string& output_file_name, PRNG& prng, vector<fstream>& sfen_file_streams, vector<uint64_t>& sfen_count_in_file)
+    // prng: random number generator
+    // sfen_file_streams: fstream of each teacher phase file
+    // sfen_count_in_file: The number of teacher positions present in each file.
+    void shuffle_write(
+        const string& output_file_name, 
+        PRNG& prng, 
+        vector<fstream>& sfen_file_streams, 
+        vector<uint64_t>& sfen_count_in_file)
     {
         uint64_t total_sfen_count = 0;
         for (auto c : sfen_count_in_file)
@@ -1502,7 +1557,8 @@ namespace Learner
         // Temporary file is written to tmp/ folder for each buffer_size phase.
         // For example, if buffer_size = 20M, you need a buffer of 20M*40bytes = 800MB.
         // In a PC with a small memory, it would be better to reduce this.
-        // However, if the number of files increases too much, it will not be possible to open at the same time due to OS restrictions.
+        // However, if the number of files increases too much, 
+        // it will not be possible to open at the same time due to OS restrictions.
         // There should have been a limit of 512 per process on Windows, so you can open here as 500,
         // The current setting is 500 files x 20M = 10G = 10 billion phases.
 
@@ -1555,19 +1611,23 @@ namespace Learner
 
             // Read in units of sizeof(PackedSfenValue),
             // Ignore the last remaining fraction. (Fails in fs.read, so exit while)
-            // (The remaining fraction seems to be half-finished data that was created because it was stopped halfway during teacher generation.)
+            // (The remaining fraction seems to be half-finished data 
+            // that was created because it was stopped halfway during teacher generation.)
         }
 
         if (buf_write_marker != 0)
             write_buffer(buf_write_marker);
 
         // Only shuffled files have been written write_file_count.
-        // As a second pass, if you open all of them at the same time, select one at random and load one phase at a time
+        // As a second pass, if you open all of them at the same time, 
+        // select one at random and load one phase at a time
         // Now you have shuffled.
 
-        // Original file for shirt full + tmp file + file to write requires 3 times the storage capacity of the original file.
+        // Original file for shirt full + tmp file + file to write 
+        // requires 3 times the storage capacity of the original file.
         // 1 billion SSD is not enough for shuffling because it is 400GB for 10 billion phases.
-        // If you want to delete (or delete by hand) the original file at this point after writing to tmp,
+        // If you want to delete (or delete by hand) the 
+        // original file at this point after writing to tmp,
         // The storage capacity is about twice that of the original file.
         // So, maybe we should have an option to delete the original file.
 
@@ -1592,7 +1652,7 @@ namespace Learner
         PRNG prng(std::chrono::system_clock::now().time_since_epoch().count());
 
         // number of files
-        size_t file_count = filenames.size();
+        const size_t file_count = filenames.size();
 
         // Number of teacher positions stored in each file in filenames
         vector<uint64_t> sfen_count_in_file(file_count);
@@ -1651,7 +1711,8 @@ namespace Learner
 
         std::cout << "write : " << output_file_name << endl;
 
-        // If the file to be written exceeds 2GB, it cannot be written in one shot with fstream::write, so use wrapper.
+        // If the file to be written exceeds 2GB, it cannot be 
+        // written in one shot with fstream::write, so use wrapper.
         write_memory_to_file(
             output_file_name, 
             (void*)&buf[0], 
@@ -1703,9 +1764,11 @@ namespace Learner
         uint64_t buffer_size = 20000000;
         // fast shuffling assuming each file is shuffled
         bool shuffle_quick = false;
-        // A function to read the entire file in memory and shuffle it. (Requires file size memory)
+        // A function to read the entire file in memory and shuffle it. 
+        // (Requires file size memory)
         bool shuffle_on_memory = false;
-        // Conversion of packed sfen. In plain, it consists of sfen(string), evaluation value (integer), move (eg 7g7f, string), result (loss-1, win 1, draw 0)
+        // Conversion of packed sfen. In plain, it consists of sfen(string), 
+        // evaluation value (integer), move (eg 7g7f, string), result (loss-1, win 1, draw 0)
         bool use_convert_plain = false;
         // convert plain format teacher to Yaneura King's bin
         bool use_convert_bin = false;
@@ -1721,13 +1784,16 @@ namespace Learner
         // File name to write in those cases (default is "shuffled_sfen.bin")
         string output_file_name = "shuffled_sfen.bin";
 
-        // If the absolute value of the evaluation value in the deep search of the teacher phase exceeds this value, that phase is discarded.
+        // If the absolute value of the evaluation value 
+        // in the deep search of the teacher phase exceeds this value, 
+        // that phase is discarded.
         int eval_limit = 32000;
 
         // Flag to save the evaluation function file only once near the end.
         bool save_only_once = false;
 
-        // Shuffle about what you are pre-reading on the teacher aspect. (Shuffle of about 10 million phases)
+        // Shuffle about what you are pre-reading on the teacher aspect. 
+        // (Shuffle of about 10 million phases)
         // Turn on if you want to pass a pre-shuffled file.
         bool no_shuffle = false;
 
@@ -1738,7 +1804,9 @@ namespace Learner
         ELMO_LAMBDA_LIMIT = 32000;
 #endif
 
-        // Discount rate. If this is set to a value other than 0, the slope will be added even at other than the PV termination. (At that time, apply this discount rate)
+        // Discount rate. If this is set to a value other than 0, 
+        // the slope will be added even at other than the PV termination. 
+        // (At that time, apply this discount rate)
         double discount_rate = 0;
 
         // if (gamePly <rand(reduction_gameply)) continue;
@@ -1797,15 +1865,27 @@ namespace Learner
             else if (option == "eta3")       is >> eta3;
             else if (option == "eta1_epoch") is >> eta1_epoch;
             else if (option == "eta2_epoch") is >> eta2_epoch;
+
             // Accept also the old option name.
-            else if (option == "use_draw_in_training" || option == "use_draw_games_in_training") is >> use_draw_games_in_training;
+            else if (option == "use_draw_in_training" 
+                  || option == "use_draw_games_in_training") 
+                is >> use_draw_games_in_training;
+
             // Accept also the old option name.
-            else if (option == "use_draw_in_validation" || option == "use_draw_games_in_validation") is >> use_draw_games_in_validation;
+            else if (option == "use_draw_in_validation" 
+                  || option == "use_draw_games_in_validation") 
+                is >> use_draw_games_in_validation;
+
             // Accept also the old option name.
-            else if (option == "use_hash_in_training" || option == "skip_duplicated_positions_in_training") is >> skip_duplicated_positions_in_training;
+            else if (option == "use_hash_in_training" 
+                  || option == "skip_duplicated_positions_in_training") 
+                is >> skip_duplicated_positions_in_training;
+
             else if (option == "winning_probability_coefficient") is >> winning_probability_coefficient;
+
             // Discount rate
             else if (option == "discount_rate") is >> discount_rate;
+
             // Using WDL with win rate model instead of sigmoid
             else if (option == "use_wdl") is >> use_wdl;
 
@@ -1873,8 +1953,11 @@ namespace Learner
             else
                 filenames.push_back(option);
         }
+
         if (loss_output_interval == 0)
+        {
             loss_output_interval = LEARN_RMSE_OUTPUT_INTERVAL * mini_batch_size;
+        }
 
         cout << "learn command , ";
 
@@ -1900,6 +1983,7 @@ namespace Learner
         cout << "learn from ";
         for (auto s : filenames)
             cout << s << " , ";
+
         cout << endl;
         if (!validation_set_file_name.empty())
         {
@@ -1917,18 +2001,21 @@ namespace Learner
             shuffle_files(filenames, output_file_name, buffer_size);
             return;
         }
+
         if (shuffle_quick)
         {
             cout << "quick shuffle mode.." << endl;
             shuffle_files_quick(filenames, output_file_name);
             return;
         }
+
         if (shuffle_on_memory)
         {
             cout << "shuffle on memory.." << endl;
             shuffle_files_on_memory(filenames, output_file_name);
             return;
         }
+
         if (use_convert_plain)
         {
             Eval::init_NNUE();
@@ -1936,6 +2023,7 @@ namespace Learner
             convert_plain(filenames, output_file_name);
             return;
         }
+
         if (use_convert_bin)
         {
             Eval::init_NNUE();
@@ -1956,6 +2044,7 @@ namespace Learner
             return;
 
         }
+
         if (use_convert_bin_from_pgn_extract)
         {
             Eval::init_NNUE();
@@ -1976,15 +2065,21 @@ namespace Learner
 
         // Insert the file name for the number of loops.
         for (int i = 0; i < loop; ++i)
-            // sfen reader, I'll read it in reverse order so I'll reverse it here. I'm sorry.
+        {
+            // sfen reader, I'll read it in reverse 
+            // order so I'll reverse it here. I'm sorry.
             for (auto it = filenames.rbegin(); it != filenames.rend(); ++it)
+            {
                 sr.filenames.push_back(Path::Combine(base_dir, *it));
+            }
+        }
 
 #if !defined(EVAL_NNUE)
         cout << "Gradient Method   : " << LEARN_UPDATE << endl;
 #endif
         cout << "Loss Function     : " << LOSS_FUNCTION << endl;
         cout << "mini-batch size   : " << mini_batch_size << endl;
+
 #if defined(EVAL_NNUE)
         cout << "nn_batch_size     : " << nn_batch_size << endl;
         cout << "nn_options        : " << nn_options << endl;
@@ -1994,6 +2089,7 @@ namespace Learner
         cout << "use_draw_games_in_training : " << use_draw_games_in_training << endl;
         cout << "use_draw_games_in_validation : " << use_draw_games_in_validation << endl;
         cout << "skip_duplicated_positions_in_training : " << skip_duplicated_positions_in_training << endl;
+
 #if defined(EVAL_NNUE)
         if (newbob_decay != 1.0) {
             cout << "scheduling        : newbob with decay = " << newbob_decay
@@ -2003,6 +2099,7 @@ namespace Learner
             cout << "scheduling        : default" << endl;
         }
 #endif
+
         cout << "discount rate     : " << discount_rate << endl;
 
         // If reduction_gameply is set to 0, rand(0) will be divided by 0, so correct it to 1.
@@ -2014,6 +2111,7 @@ namespace Learner
         cout << "LAMBDA2           : " << ELMO_LAMBDA2 << endl;
         cout << "LAMBDA_LIMIT      : " << ELMO_LAMBDA_LIMIT << endl;
 #endif
+
         cout << "mirror_percentage : " << mirror_percentage << endl;
         cout << "eval_save_interval  : " << eval_save_interval << " sfens" << endl;
         cout << "loss_output_interval: " << loss_output_interval << " sfens" << endl;
@@ -2071,11 +2169,13 @@ namespace Learner
         learn_think.sr.no_shuffle = no_shuffle;
         learn_think.freeze = freeze;
         learn_think.reduction_gameply = reduction_gameply;
+
 #if defined(EVAL_NNUE)
         learn_think.newbob_scale = 1.0;
         learn_think.newbob_decay = newbob_decay;
         learn_think.newbob_num_trials = newbob_num_trials;
 #endif
+
         learn_think.eval_save_interval = eval_save_interval;
         learn_think.loss_output_interval = loss_output_interval;
         learn_think.mirror_percentage = mirror_percentage;
@@ -2086,16 +2186,19 @@ namespace Learner
 
         learn_think.mini_batch_size = mini_batch_size;
 
-        if (validation_set_file_name.empty()) {
+        if (validation_set_file_name.empty()) 
+        {
             // Get about 10,000 data for mse calculation.
             sr.read_for_mse();
         }
-        else {
+        else 
+        {
             sr.read_validation_set(validation_set_file_name, eval_limit);
         }
 
         // Calculate rmse once at this point (timing of 0 sfen)
         // sr.calc_rmse();
+
 #if defined(EVAL_NNUE)
         if (newbob_decay != 1.0) {
             learn_think.calc_loss(0, -1);
