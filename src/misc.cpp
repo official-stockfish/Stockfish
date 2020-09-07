@@ -743,7 +743,7 @@ namespace Dependency {
 // The function to dig a folder on linux is good for the time being... Only used to save the evaluation function file...
 
 namespace Dependency {
-    int mkdir(std::string dir_name)
+    int mkdir(std::string /* dir_name */)
     {
         return 0;
     }
