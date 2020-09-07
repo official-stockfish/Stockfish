@@ -7,7 +7,7 @@ matrix:
       compiler: gcc
       addons:
         apt:
-          packages: ['g++-8', 'g++-8-multilib', 'g++-multilib', 'valgrind', 'expect', 'curl', 'openblas']
+          packages: ['g++-8', 'g++-8-multilib', 'g++-multilib', 'valgrind', 'expect', 'curl', 'libopenblas-dev']
       env:
         - COMPILER=g++-8
         - COMP=gcc
@@ -16,7 +16,7 @@ matrix:
       compiler: clang
       addons:
         apt:
-          packages: ['clang-10', 'llvm-10-dev', 'g++-multilib', 'valgrind', 'expect', 'curl', 'openblas']
+          packages: ['clang-10', 'llvm-10-dev', 'g++-multilib', 'valgrind', 'expect', 'curl', 'libopenblas-dev']
       env:
         - COMPILER=clang++-10
         - COMP=clang
