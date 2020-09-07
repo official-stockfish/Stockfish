@@ -28,16 +28,10 @@
 #include <memory>
 #include <limits>
 #include <optional>
+#include <filesystem>
 
 #if defined (_OPENMP)
 #include <omp.h>
-#endif
-
-#if defined(_MSC_VER)
-// std::filesystem doesn't work on GCC even though it claims to support C++17.
-#include <filesystem>
-#elif defined(__GNUC__)
-#include <dirent.h>
 #endif
 
 #if defined(EVAL_NNUE)

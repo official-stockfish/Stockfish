@@ -45,15 +45,6 @@
 #include <omp.h>
 #endif
 
-#if defined(_MSC_VER)
-// The C++ filesystem cannot be used unless it is C++17 or later or MSVC.
-// I tried to use windows.h, but with g++ of msys2 I can not get the files in the folder well.
-// Use dirent.h because there is no help for it.
-#include <filesystem>
-#elif defined(__GNUC__)
-#include <dirent.h>
-#endif
-
 #if defined(EVAL_NNUE)
 #include "../nnue/evaluate_nnue_learner.h"
 #include <climits>
@@ -62,8 +53,11 @@
 
 using namespace std;
 
-//// This is defined in the search section.
-//extern Book::BookMoveSelector book;
+
+#if defined(USE_BOOK)
+// This is defined in the search section.
+extern Book::BookMoveSelector book;
+#endif
 
 template <typename T>
 T operator +=(std::atomic<T>& x, const T rhs)
@@ -128,9 +122,9 @@ namespace Learner
         constexpr double wdl_total = 1000.0;
         constexpr double draw_score = 0.5;
 
-        double wdl_w = UCI::win_rate_model_double(value, ply);
-        double wdl_l = UCI::win_rate_model_double(-value, ply);
-        double wdl_d = wdl_total - wdl_w - wdl_l;
+        const double wdl_w = UCI::win_rate_model_double(value, ply);
+        const double wdl_l = UCI::win_rate_model_double(-value, ply);
+        const double wdl_d = wdl_total - wdl_w - wdl_l;
 
         return (wdl_w + wdl_d * draw_score) / wdl_total;
     }
@@ -150,16 +144,17 @@ namespace Learner
 
     double calc_cross_entropy_of_winning_percentage(double deep_win_rate, double shallow_eval, int ply)
     {
-        double p = deep_win_rate;
-        double q = winning_percentage(shallow_eval, ply);
+        const double p = deep_win_rate;
+        const double q = winning_percentage(shallow_eval, ply);
         return -p * std::log(q) - (1.0 - p) * std::log(1.0 - q);
     }
 
     double calc_d_cross_entropy_of_winning_percentage(double deep_win_rate, double shallow_eval, int ply)
     {
         constexpr double epsilon = 0.000001;
-        double y1 = calc_cross_entropy_of_winning_percentage(deep_win_rate, shallow_eval, ply);
-        double y2 = calc_cross_entropy_of_winning_percentage(deep_win_rate, shallow_eval + epsilon, ply);
+
+        const double y1 = calc_cross_entropy_of_winning_percentage(deep_win_rate, shallow_eval, ply);
+        const double y2 = calc_cross_entropy_of_winning_percentage(deep_win_rate, shallow_eval + epsilon, ply);
 
         // Divide by the winning_probability_coefficient to match scale with the sigmoidal win rate
         return ((y2 - y1) / epsilon) / winning_probability_coefficient;
@@ -190,8 +185,8 @@ namespace Learner
         // Also, the coefficient of 1/m is unnecessary if you use the update formula that has the automatic gradient adjustment function like Adam and AdaGrad.
         // Therefore, it is not necessary to save it in memory.
 
-        double p = winning_percentage(deep);
-        double q = winning_percentage(shallow);
+        const double p = winning_percentage(deep, psv.gamePly);
+        const double q = winning_percentage(shallow, psv.gamePly);
         return (q - p) * Math::dsigmoid(double(shallow) / 600.0);
     }
 #endif
@@ -216,8 +211,8 @@ namespace Learner
         // = ...
         // = q-p.
 
-        double p = winning_percentage(deep);
-        double q = winning_percentage(shallow);
+        const double p = winning_percentage(deep, psv.gamePly);
+        const double q = winning_percentage(shallow, psv.gamePly);
 
         return q - p;
     }
@@ -270,8 +265,10 @@ namespace Learner
         double p = scaled_teacher_signal;
         if (convert_teacher_signal_to_winning_probability) 
         {
-            p = winning_percentage(scaled_teacher_signal);
+            p = winning_percentage(scaled_teacher_signal, ply);
         }
+
+        return p;
     }
 
     double calculate_lambda(double teacher_signal)
@@ -534,7 +531,7 @@ namespace Learner
                     fs.close();
 
                 // no more
-                if (filenames.size() == 0)
+                if (filenames.empty())
                     return false;
 
                 // Get the next file name.
@@ -543,6 +540,7 @@ namespace Learner
 
                 fs.open(filename, ios::in | ios::binary);
                 cout << "open filename = " << filename << endl;
+
                 assert(fs);
 
                 return true;
@@ -569,16 +567,12 @@ namespace Learner
                     {
                         sfens.push_back(p);
                     }
-                    else
+                    else if(!open_next_file())
                     {
-                        // read failure
-                        if (!open_next_file())
-                        {
-                            // There was no next file. Abon.
-                            cout << "..end of files." << endl;
-                            end_of_files = true;
-                            return;
-                        }
+                        // There was no next file. Abon.
+                        cout << "..end of files." << endl;
+                        end_of_files = true;
+                        return;
                     }
                 }
 
@@ -702,6 +696,7 @@ namespace Learner
             learn_sum_entropy_win = 0.0;
             learn_sum_entropy = 0.0;
 #endif
+
 #if defined(EVAL_NNUE)
             newbob_scale = 1.0;
             newbob_decay = 1.0;
@@ -1213,7 +1208,7 @@ namespace Learner
             //      cout << pos << value << endl;
 
             // Evaluation value of shallow search (qsearch)
-            const auto [shallow_value, pv] = qsearch(pos);
+            const auto [_, pv] = qsearch(pos);
 
             // Evaluation value of deep search
             const auto deep_value = (Value)ps.score;
@@ -1408,9 +1403,11 @@ namespace Learner
 
                     if (--trials > 0 && !is_final) 
                     {
-                        cout << "reducing learning rate scale from " << newbob_scale
+                        cout
+                            << "reducing learning rate scale from " << newbob_scale
                             << " to " << (newbob_scale * newbob_decay)
                             << " (" << trials << " more trials)" << endl;
+
                         newbob_scale *= newbob_decay;
                         Eval::NNUE::SetGlobalLearningRateScale(newbob_scale);
                     }
@@ -1432,10 +1429,10 @@ namespace Learner
     // prng: random number
     // afs: fstream of each teacher phase file
     // a_count: The number of teacher positions inherent in each file.
-    void shuffle_write(const string& output_file_name, PRNG& prng, vector<fstream>& afs, vector<uint64_t>& a_count)
+    void shuffle_write(const string& output_file_name, PRNG& prng, vector<fstream>& sfen_file_streams, vector<uint64_t>& sfen_count_in_file)
     {
         uint64_t total_sfen_count = 0;
-        for (auto c : a_count)
+        for (auto c : sfen_count_in_file)
             total_sfen_count += c;
 
         // number of exported phases
@@ -1459,39 +1456,39 @@ namespace Learner
         fstream fs(output_file_name, ios::out | ios::binary);
 
         // total teacher positions
-        uint64_t sum = 0;
-        for (auto c : a_count)
-            sum += c;
+        uint64_t sfen_count_left = total_sfen_count;
 
-        while (sum != 0)
+        while (sfen_count_left != 0)
         {
-            auto r = prng.rand(sum);
+            auto r = prng.rand(sfen_count_left);
 
             // Aspects stored in fs[0] file ... Aspects stored in fs[1] file ...
             //Think of it as a series like, and determine in which file r is pointing.
             // The contents of the file are shuffled, so you can take the next element from that file.
             // Each file has a_count[x] phases, so this process can be written as follows.
 
-            uint64_t n = 0;
-            while (a_count[n] <= r)
-                r -= a_count[n++];
+            uint64_t i = 0;
+            while (sfen_count_in_file[i] <= r)
+                r -= sfen_count_in_file[i++];
 
             // This confirms n. Before you forget it, reduce the remaining number.
 
-            --a_count[n];
-            --sum;
+            --sfen_count_in_file[i];
+            --sfen_count_left;
 
             PackedSfenValue psv;
             // It's better to read and write all at once until the performance is not so good...
-            if (afs[n].read((char*)&psv, sizeof(PackedSfenValue)))
+            if (sfen_file_streams[i].read((char*)&psv, sizeof(PackedSfenValue)))
             {
                 fs.write((char*)&psv, sizeof(PackedSfenValue));
                 ++write_sfen_count;
                 print_status();
             }
         }
+
         print_status();
         fs.close();
+
         cout << "done!" << endl;
     }
 
@@ -1509,8 +1506,8 @@ namespace Learner
         // There should have been a limit of 512 per process on Windows, so you can open here as 500,
         // The current setting is 500 files x 20M = 10G = 10 billion phases.
 
-        PSVector buf;
-        buf.resize(buffer_size);
+        PSVector buf(buffer_size);
+
         // ↑ buffer, a marker that indicates how much you have used
         uint64_t buf_write_marker = 0;
 
@@ -1537,7 +1534,7 @@ namespace Learner
             // write to a file
             fstream fs;
             fs.open(make_filename(write_file_count++), ios::out | ios::binary);
-            fs.write((char*)&buf[0], size * sizeof(PackedSfenValue));
+            fs.write(reinterpret_cast<char*>(buf.data()), size * sizeof(PackedSfenValue));
             fs.close();
             a_count.push_back(size);
 
@@ -1552,14 +1549,13 @@ namespace Learner
         {
             fstream fs(filename, ios::in | ios::binary);
             cout << endl << "open file = " << filename;
-            while (fs.read((char*)&buf[buf_write_marker], sizeof(PackedSfenValue)))
+            while (fs.read(reinterpret_cast<char*>(&buf[buf_write_marker]), sizeof(PackedSfenValue)))
                 if (++buf_write_marker == buffer_size)
                     write_buffer(buffer_size);
 
             // Read in units of sizeof(PackedSfenValue),
             // Ignore the last remaining fraction. (Fails in fs.read, so exit while)
             // (The remaining fraction seems to be half-finished data that was created because it was stopped halfway during teacher generation.)
-
         }
 
         if (buf_write_marker != 0)
@@ -1599,20 +1595,20 @@ namespace Learner
         size_t file_count = filenames.size();
 
         // Number of teacher positions stored in each file in filenames
-        vector<uint64_t> a_count(file_count);
+        vector<uint64_t> sfen_count_in_file(file_count);
 
         // Count the number of teacher aspects in each file.
-        vector<fstream> afs(file_count);
+        vector<fstream> sfen_file_streams(file_count);
 
         for (size_t i = 0; i < file_count; ++i)
         {
             auto filename = filenames[i];
-            auto& fs = afs[i];
+            auto& fs = sfen_file_streams[i];
 
             fs.open(filename, ios::in | ios::binary);
             const uint64_t file_size = get_file_size(fs);
             const uint64_t sfen_count = file_size / sizeof(PackedSfenValue);
-            a_count[i] = sfen_count;
+            sfen_count_in_file[i] = sfen_count;
 
             // Output the number of sfen stored in each file.
             cout << filename << " = " << sfen_count << " sfens." << endl;
@@ -1624,7 +1620,7 @@ namespace Learner
         // Now you have shuffled.
 
         // Throw to the subcontract function and end.
-        shuffle_write(output_file_name, prng, afs, a_count);
+        shuffle_write(output_file_name, prng, sfen_file_streams, sfen_count_in_file);
     }
 
     // Subcontracting the teacher shuffle "learn shufflem" command.
@@ -1656,7 +1652,10 @@ namespace Learner
         std::cout << "write : " << output_file_name << endl;
 
         // If the file to be written exceeds 2GB, it cannot be written in one shot with fstream::write, so use wrapper.
-        write_memory_to_file(output_file_name, (void*)&buf[0], (uint64_t)sizeof(PackedSfenValue) * (uint64_t)buf.size());
+        write_memory_to_file(
+            output_file_name, 
+            (void*)&buf[0], 
+            sizeof(PackedSfenValue) * buf.size());
 
         std::cout << "..shuffle_on_memory done." << std::endl;
     }
@@ -1664,7 +1663,7 @@ namespace Learner
     // Learning from the generated game record
     void learn(Position&, istringstream& is)
     {
-        auto thread_num = (int)Options["Threads"];
+        const auto thread_num = (int)Options["Threads"];
         SfenReader sr(thread_num);
 
         LearnerThink learn_think(sr);
@@ -1889,13 +1888,6 @@ namespace Learner
         {
             string kif_base_dir = Path::Combine(base_dir, target_dir);
 
-            // Remove this folder. Keep it relative to base_dir.
-#if defined(_MSC_VER)
-        // If you use std::tr2, warning C4996 will appear, so suppress it.
-        // * std::tr2 issued a deprecation warning by default under std:c++14, and was deleted by default in /std:c++17.
-#pragma warning(push)
-#pragma warning(disable:4996)
-
             namespace sys = std::filesystem;
             sys::path p(kif_base_dir); // Origin of enumeration
             std::for_each(sys::directory_iterator(p), sys::directory_iterator(),
@@ -1903,36 +1895,6 @@ namespace Learner
                     if (sys::is_regular_file(p))
                         filenames.push_back(Path::Combine(target_dir, p.filename().generic_string()));
                 });
-#pragma warning(pop)
-
-#elif defined(__GNUC__)
-
-            auto ends_with = [](std::string const& value, std::string const& ending)
-            {
-                if (ending.size() > value.size()) return false;
-                return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
-            };
-
-            // It can't be helped, so read it using dirent.h.
-            DIR* dp; // pointer to directory
-            dirent* entry; // entry point returned by readdir()
-
-            dp = opendir(kif_base_dir.c_str());
-            if (dp != NULL)
-            {
-                do {
-                    entry = readdir(dp);
-                    // Only list files ending with ".bin"
-                    // →I hate this restriction when generating files with serial numbers...
-                    if (entry != NULL && ends_with(entry->d_name, ".bin"))
-                    {
-                        //cout << entry->d_name << endl;
-                        filenames.push_back(Path::Combine(target_dir, entry->d_name));
-                    }
-                } while (entry != NULL);
-                closedir(dp);
-            }
-#endif
         }
 
         cout << "learn from ";
@@ -1990,6 +1952,7 @@ namespace Learner
                 dest_score_max_value,
                 check_invalid_fen,
                 check_illegal_move);
+
             return;
 
         }
@@ -1997,7 +1960,12 @@ namespace Learner
         {
             Eval::init_NNUE();
             cout << "convert_bin_from_pgn-extract.." << endl;
-            convert_bin_from_pgn_extract(filenames, output_file_name, pgn_eval_side_to_move, convert_no_eval_fens_as_score_zero);
+            convert_bin_from_pgn_extract(
+                filenames, 
+                output_file_name, 
+                pgn_eval_side_to_move, 
+                convert_no_eval_fens_as_score_zero);
+
             return;
         }
 
@@ -2154,12 +2122,6 @@ namespace Learner
 #endif
     }
 
-
 } // namespace Learner
-
-#if defined(GENSFEN2019)
-#include "gensfen2019.cpp"
-#endif
-
 
 #endif // EVAL_LEARN

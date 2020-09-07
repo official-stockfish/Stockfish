@@ -25,18 +25,10 @@
 #include <chrono>
 #include <random>
 #include <regex>
+#include <filesystem>
 
 #if defined (_OPENMP)
 #include <omp.h>
-#endif
-
-#if defined(_MSC_VER)
-// The C++ filesystem cannot be used unless it is C++17 or later or MSVC.
-// I tried to use windows.h, but with g++ of msys2 I can not get the files in the folder well.
-// Use dirent.h because there is no help for it.
-#include <filesystem>
-#elif defined(__GNUC__)
-#include <dirent.h>
 #endif
 
 using namespace std;
