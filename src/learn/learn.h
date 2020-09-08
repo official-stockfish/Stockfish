@@ -24,19 +24,6 @@ typedef float LearnFloatType;
 //typedef HalfFloat::float16 LearnFloatType;
 
 // ======================
-// Settings for creating teacher phases
-// ======================
-
-// ----------------------
-// write out the draw
-// ----------------------
-
-// When you reach a draw, write it out as a teacher position
-// It's subtle whether it's better to do this.
-// #define LEARN_GENSFEN_USE_DRAW_RESULT
-
-
-// ======================
 // configure
 // ======================
 
