@@ -23,37 +23,6 @@ typedef float LearnFloatType;
 //#include "half_float.h"
 //typedef HalfFloat::float16 LearnFloatType;
 
-// ----------------------
-// dimension down
-// ----------------------
-
-// Dimension reduction for mirrors (left/right symmetry) and inverse (forward/backward symmetry).
-// All on by default.
-
-// Dimension reduction using mirror and inverse for KK. (Unclear effect)
-// USE_KK_MIRROR_WRITE must be on when USE_KK_INVERSE_WRITE is on.
-#define USE_KK_MIRROR_WRITE
-#define USE_KK_INVERSE_WRITE
-
-// Dimension reduction using Mirror and Inverse for KKP. (Inverse is not so effective)
-// When USE_KKP_INVERSE_WRITE is turned on, USE_KKP_MIRROR_WRITE must also be turned on.
-#define USE_KKP_MIRROR_WRITE
-#define USE_KKP_INVERSE_WRITE
-
-// Perform dimension reduction using a mirror for KPP. (Turning this off requires double the teacher position)
-// KPP has no inverse. (Because there is only K on the front side)
-#define USE_KPP_MIRROR_WRITE
-
-// Perform a dimension reduction using a mirror for KPPP. (Turning this off requires double the teacher position)
-// KPPP has no inverse. (Because there is only K on the front side)
-#define USE_KPPP_MIRROR_WRITE
-
-// Reduce the dimension by KPP for learning the KKPP component.
-// Learning is very slow.
-// Do not use as it is not debugged.
-//#define USE_KKPP_LOWER_DIM
-
-
 // ======================
 // Settings for creating teacher phases
 // ======================
