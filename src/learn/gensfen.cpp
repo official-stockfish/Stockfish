@@ -11,10 +11,6 @@
 #include "learn.h"
 #include "multi_think.h"
 
-#if defined(USE_BOOK)
-#include "../extra/book/book.h"
-#endif
-
 #include <chrono>
 #include <climits>
 #include <cmath>
@@ -750,11 +746,6 @@ namespace Learner
             auto& pos = th->rootPos;
             pos.set(StartFEN, false, &si, th);
 
-#if defined(USE_BOOK)
-            // Refer to the members of BookMoveSelector defined in the search section.
-            auto& book = ::book;
-#endif
-
             // Vector for holding the sfens in the current simulated game.
             PSVector a_psv;
             a_psv.reserve(write_maxply + MAX_PLY);
@@ -788,35 +779,7 @@ namespace Learner
                     flush_psv(result.value());
                     break;
                 }
-#if defined(USE_BOOK)
-                if ((next_move = book.probe(pos)) != MOVE_NONE)
-                {
-                    // Hit the constant track.
-                    // The move was stored in next_move.
 
-                    // Do not use the fixed phase for learning.
-                    sfens.clear();
-
-                    if (random_move_minply != -1)
-                    {
-                        // Random move is performed with a certain
-                        // probability even in the constant phase.
-                        goto RANDOM_MOVE;
-                    }
-                    else
-                    {
-                        // When -1 is specified as random_move_minply,
-                        // it points according to the standard until
-                        // it goes out of the standard.
-                        // Prepare an innumerable number of situations
-                        // that have left the constant as
-                        // ConsiderationBookMoveCount true using a huge constant
-                        // Used for purposes such as performing
-                        // a random move 5 times from there.
-                        goto DO_MOVE;
-                    }
-                }
-#endif
                 {
                     auto [search_value, search_pv] = search(pos, depth, 1, nodes);
 
@@ -1124,9 +1087,6 @@ namespace Learner
             << "  loop_max = " << loop_max << endl
             << "  eval_limit = " << eval_limit << endl
             << "  thread_num (set by USI setoption) = " << thread_num << endl
-#if defined(USE_BOOK)
-            << "  book_moves (set by USI setoption) = " << Options["BookMoves"] << endl
-#endif
             << "  random_move_minply     = " << random_move_minply << endl
             << "  random_move_maxply     = " << random_move_maxply << endl
             << "  random_move_count      = " << random_move_count << endl

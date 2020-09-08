@@ -54,11 +54,6 @@
 
 using namespace std;
 
-#if defined(USE_BOOK)
-// This is defined in the search section.
-extern Book::BookMoveSelector book;
-#endif
-
 template <typename T>
 T operator +=(std::atomic<T>& x, const T rhs)
 {
