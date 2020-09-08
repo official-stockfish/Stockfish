@@ -3,7 +3,7 @@
 
 #if defined(EVAL_LEARN)
 
-// A common header-like function for modern evaluation functions (EVAL_KPPT and EVAL_KPP_KKPT).
+// A common header-like function for modern evaluation functions.
 
 #include <string>
 

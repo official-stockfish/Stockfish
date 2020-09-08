@@ -1647,14 +1647,6 @@ namespace Learner
             else if (option == "freeze_kkp")   is >> freeze[1];
             else if (option == "freeze_kpp")   is >> freeze[2];
 
-#if defined(EVAL_KPPT) || defined(EVAL_KPP_KKPT) || defined(EVAL_KPP_KKPT_FV_VAR) || defined(EVAL_NABLA)
-
-#elif defined(EVAL_KPPPT) || defined(EVAL_KPPP_KKPT) || defined(EVAL_HELICES)
-            else if (option == "freeze_kppp")  is >> freeze[3];
-#elif defined(EVAL_KKPP_KKPT) || defined(EVAL_KKPPT)
-            else if (option == "freeze_kkpp")  is >> freeze[3];
-#endif
-
             // LAMBDA
             else if (option == "lambda")       is >> ELMO_LAMBDA;
             else if (option == "lambda2")      is >> ELMO_LAMBDA2;
@@ -1857,14 +1849,6 @@ namespace Learner
         cout << "mirror_percentage : " << mirror_percentage << endl;
         cout << "eval_save_interval  : " << eval_save_interval << " sfens" << endl;
         cout << "loss_output_interval: " << loss_output_interval << " sfens" << endl;
-
-#if defined(EVAL_KPPT) || defined(EVAL_KPP_KKPT) || defined(EVAL_KPP_KKPT_FV_VAR) || defined(EVAL_NABLA)
-        cout << "freeze_kk/kkp/kpp      : " << freeze[0] << " , " << freeze[1] << " , " << freeze[2] << endl;
-#elif defined(EVAL_KPPPT) || defined(EVAL_KPPP_KKPT) || defined(EVAL_HELICES)
-        cout << "freeze_kk/kkp/kpp/kppp : " << freeze[0] << " , " << freeze[1] << " , " << freeze[2] << " , " << freeze[3] << endl;
-#elif defined(EVAL_KKPP_KKPT) || defined(EVAL_KKPPT)
-        cout << "freeze_kk/kkp/kpp/kkpp : " << freeze[0] << " , " << freeze[1] << " , " << freeze[2] << " , " << freeze[3] << endl;
-#endif
 
         // -----------------------------------
         // various initialization
