@@ -6,21 +6,6 @@
 #include <vector>
 
 // ----------------------
-// Select the objective function
-// ----------------------
-
-// elmo (WCSC27) method
-// #define LOSS_FUNCTION_IS_ELMO_METHOD
-
-// ※ Other things may be added.
-
-
-// ----------------------
-// debug settings for learning
-// ----------------------
-
-
-// ----------------------
 // learning from zero vector
 // ----------------------
 
@@ -111,11 +96,7 @@ typedef float LearnFloatType;
 // Learning with the method of elmo (WCSC27)
 // ----------------------
 
-#define LOSS_FUNCTION_IS_ELMO_METHOD
-
-#if defined(LOSS_FUNCTION_IS_ELMO_METHOD)
 #define LOSS_FUNCTION "ELMO_METHOD(WCSC27)"
-#endif
 
 // ----------------------
 // Definition of struct used in Learner

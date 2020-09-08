@@ -163,8 +163,6 @@ namespace Learner
         return ((y2 - y1) / epsilon) / winning_probability_coefficient;
     }
 
-#if defined ( LOSS_FUNCTION_IS_ELMO_METHOD )
-
     // A constant used in elmo (WCSC27). Adjustment required.
     // Since elmo does not internally divide the expression, the value is different.
     // You can set this value with the learn command.
@@ -293,7 +291,6 @@ namespace Learner
             (-m * std::log(m + epsilon) - (1.0 - m) * std::log(1.0 - m + epsilon));
     }
 
-#endif
     // Other objective functions may be considered in the future...
     double calc_grad(Value shallow, const PackedSfenValue& psv) 
     {
@@ -629,14 +626,12 @@ namespace Learner
             stop_flag(false), 
             save_only_once(false)
         {
-#if defined ( LOSS_FUNCTION_IS_ELMO_METHOD )
             learn_sum_cross_entropy_eval = 0.0;
             learn_sum_cross_entropy_win = 0.0;
             learn_sum_cross_entropy = 0.0;
             learn_sum_entropy_eval = 0.0;
             learn_sum_entropy_win = 0.0;
             learn_sum_entropy = 0.0;
-#endif
 
             newbob_scale = 1.0;
             newbob_decay = 1.0;
@@ -689,15 +684,13 @@ namespace Learner
 
         // --- loss calculation
 
-#if defined (LOSS_FUNCTION_IS_ELMO_METHOD)
-    // For calculation of learning data loss
+        // For calculation of learning data loss
         atomic<double> learn_sum_cross_entropy_eval;
         atomic<double> learn_sum_cross_entropy_win;
         atomic<double> learn_sum_cross_entropy;
         atomic<double> learn_sum_entropy_eval;
         atomic<double> learn_sum_entropy_win;
         atomic<double> learn_sum_entropy;
-#endif
 
         shared_timed_mutex nn_mutex;
         double newbob_scale;
@@ -759,13 +752,6 @@ namespace Learner
         std::cout << ", iteration " << epoch;
         std::cout << ", eta = " << Eval::get_eta() << ", ";
 
-#if !defined(LOSS_FUNCTION_IS_ELMO_METHOD)
-        double sum_error = 0;
-        double sum_error2 = 0;
-        double sum_error3 = 0;
-#endif
-
-#if defined (LOSS_FUNCTION_IS_ELMO_METHOD)
         // For calculation of verification data loss
         atomic<double> test_sum_cross_entropy_eval, test_sum_cross_entropy_win, test_sum_cross_entropy;
         atomic<double> test_sum_entropy_eval, test_sum_entropy_win, test_sum_entropy;
@@ -779,7 +765,6 @@ namespace Learner
         // norm for learning
         atomic<double> sum_norm;
         sum_norm = 0;
-#endif
 
         // The number of times the pv first move of deep 
         // search matches the pv first move of search(1).
@@ -841,25 +826,11 @@ namespace Learner
                 // Note) This code does not consider when 
                 //       eval_limit is specified in the learn command.
 
-                // --- error calculation
-
-#if !defined(LOSS_FUNCTION_IS_ELMO_METHOD)
-                auto grad = calc_grad(deep_value, shallow_value, ps);
-
-                // something like rmse
-                sum_error += grad * grad;
-                // Add the absolute value of the gradient
-                sum_error2 += abs(grad);
-                // Add the absolute value of the difference between the evaluation values
-                sum_error3 += abs(shallow_value - deep_value);
-#endif
-
                 // --- calculation of cross entropy
 
                 // For the time being, regarding the win rate and loss terms only in the elmo method
                 // Calculate and display the cross entropy.
 
-#if defined (LOSS_FUNCTION_IS_ELMO_METHOD)
                 double test_cross_entropy_eval, test_cross_entropy_win, test_cross_entropy;
                 double test_entropy_eval, test_entropy_win, test_entropy;
                 calc_cross_entropy(
@@ -881,7 +852,6 @@ namespace Learner
                 test_sum_entropy_win += test_entropy_win;
                 test_sum_entropy += test_entropy;
                 sum_norm += (double)abs(shallow_value);
-#endif
 
                 // Determine if the teacher's move and the score of the shallow search match
                 {
@@ -905,17 +875,6 @@ namespace Learner
         while (task_count)
             sleep(1);
 
-#if !defined(LOSS_FUNCTION_IS_ELMO_METHOD)
-        // rmse = root mean square error: mean square error
-        // mae = mean absolute error: mean absolute error
-        auto dsig_rmse = std::sqrt(sum_error / (sfen_for_mse.size() + epsilon));
-        auto dsig_mae = sum_error2 / (sfen_for_mse.size() + epsilon);
-        auto eval_mae = sum_error3 / (sfen_for_mse.size() + epsilon);
-        cout << " , dsig rmse = " << dsig_rmse << " , dsig mae = " << dsig_mae
-            << " , eval mae = " << eval_mae;
-#endif
-
-#if defined(LOSS_FUNCTION_IS_ELMO_METHOD)
         latest_loss_sum += test_sum_cross_entropy - test_sum_entropy;
         latest_loss_count += sr.sfen_for_mse.size();
 
@@ -960,9 +919,6 @@ namespace Learner
         learn_sum_entropy_eval = 0.0;
         learn_sum_entropy_win = 0.0;
         learn_sum_entropy = 0.0;
-#else
-        << endl;
-#endif
     }
 
     void LearnerThink::thread_worker(size_t thread_id)
@@ -1144,7 +1100,6 @@ namespace Learner
                     ? Eval::evaluate(pos) 
                     : -Eval::evaluate(pos);
 
-#if defined (LOSS_FUNCTION_IS_ELMO_METHOD)
                 // Calculate loss for training data
                 double learn_cross_entropy_eval, learn_cross_entropy_win, learn_cross_entropy;
                 double learn_entropy_eval, learn_entropy_win, learn_entropy;
@@ -1165,7 +1120,6 @@ namespace Learner
                 learn_sum_entropy_eval += learn_entropy_eval;
                 learn_sum_entropy_win += learn_entropy_win;
                 learn_sum_entropy += learn_entropy;
-#endif
 
                 const double example_weight =
                     (discount_rate != 0 && ply != (int)pv.size()) ? discount_rate : 1.0;
@@ -1600,12 +1554,10 @@ namespace Learner
         // Turn on if you want to pass a pre-shuffled file.
         bool no_shuffle = false;
 
-#if defined (LOSS_FUNCTION_IS_ELMO_METHOD)
         // elmo lambda
         ELMO_LAMBDA = 0.33;
         ELMO_LAMBDA2 = 0.33;
         ELMO_LAMBDA_LIMIT = 32000;
-#endif
 
         // Discount rate. If this is set to a value other than 0, 
         // the slope will be added even at other than the PV termination. 
@@ -1703,13 +1655,11 @@ namespace Learner
             else if (option == "freeze_kkpp")  is >> freeze[3];
 #endif
 
-#if defined (LOSS_FUNCTION_IS_ELMO_METHOD)
             // LAMBDA
             else if (option == "lambda")       is >> ELMO_LAMBDA;
             else if (option == "lambda2")      is >> ELMO_LAMBDA2;
             else if (option == "lambda_limit") is >> ELMO_LAMBDA_LIMIT;
 
-#endif
             else if (option == "reduction_gameply") is >> reduction_gameply;
 
             // shuffle related
@@ -1900,11 +1850,9 @@ namespace Learner
         reduction_gameply = max(reduction_gameply, 1);
         cout << "reduction_gameply : " << reduction_gameply << endl;
 
-#if defined (LOSS_FUNCTION_IS_ELMO_METHOD)
         cout << "LAMBDA            : " << ELMO_LAMBDA << endl;
         cout << "LAMBDA2           : " << ELMO_LAMBDA2 << endl;
         cout << "LAMBDA_LIMIT      : " << ELMO_LAMBDA_LIMIT << endl;
-#endif
 
         cout << "mirror_percentage : " << mirror_percentage << endl;
         cout << "eval_save_interval  : " << eval_save_interval << " sfens" << endl;
