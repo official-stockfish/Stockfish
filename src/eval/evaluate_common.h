@@ -3,7 +3,6 @@
 
 // A common header-like function for modern evaluation functions (EVAL_KPPT and EVAL_KPP_KKPT).
 
-#if defined(EVAL_NNUE) || defined(EVAL_LEARN)
 #include <functional>
 
 // KK file name
@@ -78,7 +77,5 @@ namespace Eval
 
 
 }
-
-#endif  // defined(EVAL_NNUE) || defined(EVAL_LEARN)
 
 #endif // _EVALUATE_KPPT_COMMON_H_

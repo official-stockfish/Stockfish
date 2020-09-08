@@ -3,8 +3,6 @@
 #ifndef _NNUE_LAYERS_SUM_H_
 #define _NNUE_LAYERS_SUM_H_
 
-#if defined(EVAL_NNUE)
-
 #include "../nnue_common.h"
 
 namespace Eval {
@@ -157,7 +155,5 @@ class Sum<PreviousLayer> {
 }  // namespace NNUE
 
 }  // namespace Eval
-
-#endif  // defined(EVAL_NNUE)
 
 #endif

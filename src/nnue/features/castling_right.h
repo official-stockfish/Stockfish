@@ -3,8 +3,6 @@
 #ifndef _NNUE_FEATURES_CASTLING_RIGHT_H_
 #define _NNUE_FEATURES_CASTLING_RIGHT_H_
 
-#if defined(EVAL_NNUE)
-
 #include "../../evaluate.h"
 #include "features_common.h"
 
@@ -42,7 +40,5 @@ namespace Eval {
   }  // namespace NNUE
 
 }  // namespace Eval
-
-#endif  // defined(EVAL_NNUE)
 
 #endif

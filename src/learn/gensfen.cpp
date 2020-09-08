@@ -1,43 +1,39 @@
 ﻿#if defined(EVAL_LEARN)
 
 #include "../eval/evaluate_common.h"
-
-#include "learn.h"
-#include "multi_think.h"
 #include "../misc.h"
-#include "../thread.h"
+#include "../nnue/evaluate_nnue_learner.h"
 #include "../position.h"
+#include "../syzygy/tbprobe.h"
+#include "../thread.h"
 #include "../tt.h"
 #include "../uci.h"
-#include "../syzygy/tbprobe.h"
+#include "learn.h"
+#include "multi_think.h"
 
 #if defined(USE_BOOK)
 #include "../extra/book/book.h"
 #endif
 
 #include <chrono>
-#include <random>
-#include <regex>
-#include <sstream>
-#include <fstream>
-#include <unordered_set>
-#include <iomanip>
-#include <list>
+#include <climits>
 #include <cmath>
 #include <cstring>
-#include <memory>
-#include <limits>
-#include <optional>
 #include <filesystem>
+#include <fstream>
+#include <iomanip>
+#include <limits>
+#include <list>
+#include <memory>
+#include <optional>
+#include <random>
+#include <regex>
+#include <shared_mutex>
+#include <sstream>
+#include <unordered_set>
 
 #if defined (_OPENMP)
 #include <omp.h>
-#endif
-
-#if defined(EVAL_NNUE)
-#include "../nnue/evaluate_nnue_learner.h"
-#include <climits>
-#include <shared_mutex>
 #endif
 
 using namespace std;
@@ -692,12 +688,10 @@ namespace Learner
             // performed unless each node evaluate() is called!
             // If the depth is 8 or more, it seems
             // faster not to calculate this difference.
-#if defined(EVAL_NNUE)
             if (depth < 8)
             {
                 Eval::NNUE::update_eval(pos);
             }
-#endif  // defined(EVAL_NNUE)
         }
 
         // Reach leaf

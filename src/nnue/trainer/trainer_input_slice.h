@@ -3,7 +3,7 @@
 #ifndef _NNUE_TRAINER_INPUT_SLICE_H_
 #define _NNUE_TRAINER_INPUT_SLICE_H_
 
-#if defined(EVAL_LEARN) && defined(EVAL_NNUE)
+#if defined(EVAL_LEARN)
 
 #include "../../learn/learn.h"
 #include "../layers/input_slice.h"
@@ -246,6 +246,6 @@ class Trainer<Layers::InputSlice<OutputDimensions, Offset>> {
 
 }  // namespace Eval
 
-#endif  // defined(EVAL_LEARN) && defined(EVAL_NNUE)
+#endif  // defined(EVAL_LEARN)
 
 #endif

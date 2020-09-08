@@ -1,6 +1,6 @@
 ﻿// Code for learning NNUE evaluation function
 
-#if defined(EVAL_LEARN) && defined(EVAL_NNUE)
+#if defined(EVAL_LEARN)
 
 #include <random>
 #include <fstream>
@@ -229,4 +229,4 @@ double get_eta() {
 
 }  // namespace Eval
 
-#endif  // defined(EVAL_LEARN) && defined(EVAL_NNUE)
+#endif  // defined(EVAL_LEARN)

@@ -17,45 +17,40 @@
 // → I will not be involved in the engine because it is a problem that the GUI should assist.
 // etc..
 
-#define EVAL_LEARN
-
 #if defined(EVAL_LEARN)
 
 #include "../eval/evaluate_common.h"
-
+#include "../misc.h"
+#include "../nnue/evaluate_nnue_learner.h"
+#include "../position.h"
+#include "../syzygy/tbprobe.h"
+#include "../thread.h"
+#include "../tt.h"
+#include "../uci.h"
 #include "learn.h"
 #include "multi_think.h"
-#include "../uci.h"
-#include "../syzygy/tbprobe.h"
-#include "../misc.h"
-#include "../thread.h"
-#include "../position.h"
-#include "../tt.h"
 
 #include <chrono>
-#include <random>
-#include <regex>
-#include <sstream>
-#include <fstream>
-#include <unordered_set>
-#include <iomanip>
-#include <list>
+#include <climits>
 #include <cmath>    // std::exp(),std::pow(),std::log()
 #include <cstring>  // memcpy()
-#include <memory>
-#include <limits>
-#include <optional>
 #include <filesystem>
+#include <fstream>
+#include <iomanip>
+#include <limits>
+#include <list>
+#include <memory>
+#include <optional>
+#include <random>
+#include <regex>
+#include <shared_mutex>
+#include <sstream>
+#include <unordered_set>
 
 #if defined (_OPENMP)
 #include <omp.h>
 #endif
 
-#if defined(EVAL_NNUE)
-#include "../nnue/evaluate_nnue_learner.h"
-#include <climits>
-#include <shared_mutex>
-#endif
 
 using namespace std;
 
@@ -724,14 +719,12 @@ namespace Learner
             learn_sum_entropy = 0.0;
 #endif
 
-#if defined(EVAL_NNUE)
             newbob_scale = 1.0;
             newbob_decay = 1.0;
             newbob_num_trials = 2;
             best_loss = std::numeric_limits<double>::infinity();
             latest_loss_sum = 0.0;
             latest_loss_count = 0;
-#endif
         }
 
         virtual void thread_worker(size_t thread_id);
@@ -787,7 +780,6 @@ namespace Learner
         atomic<double> learn_sum_entropy;
 #endif
 
-#if defined(EVAL_NNUE)
         shared_timed_mutex nn_mutex;
         double newbob_scale;
         double newbob_decay;
@@ -796,7 +788,6 @@ namespace Learner
         double latest_loss_sum;
         uint64_t latest_loss_count;
         std::string best_nn_directory;
-#endif
 
         uint64_t eval_save_interval;
         uint64_t loss_output_interval;
@@ -844,13 +835,10 @@ namespace Learner
         // It doesn't matter if you have disabled the substitution table.
         TT.new_search();
 
-
-#if defined(EVAL_NNUE)
         std::cout << "PROGRESS: " << now_string() << ", ";
         std::cout << sr.total_done << " sfens";
         std::cout << ", iteration " << epoch;
         std::cout << ", eta = " << Eval::get_eta() << ", ";
-#endif
 
 #if !defined(LOSS_FUNCTION_IS_ELMO_METHOD)
         double sum_error = 0;
@@ -1009,10 +997,8 @@ namespace Learner
 #endif
 
 #if defined(LOSS_FUNCTION_IS_ELMO_METHOD)
-#if defined(EVAL_NNUE)
         latest_loss_sum += test_sum_cross_entropy - test_sum_entropy;
         latest_loss_count += sr.sfen_for_mse.size();
-#endif
 
         // learn_cross_entropy may be called train cross 
         // entropy in the world of machine learning,
@@ -1074,14 +1060,10 @@ namespace Learner
             // display mse (this is sometimes done only for thread 0)
             // Immediately after being read from the file...
 
-#if defined(EVAL_NNUE)
         // Lock the evaluation function so that it is not used during updating.
             shared_lock<shared_timed_mutex> read_lock(nn_mutex, defer_lock);
             if (sr.next_update_weights <= sr.total_done ||
                 (thread_id != 0 && !read_lock.try_lock()))
-#else
-            if (sr.next_update_weights <= sr.total_done)
-#endif
             {
                 if (thread_id != 0)
                 {
@@ -1105,18 +1087,6 @@ namespace Learner
                         continue;
                     }
 
-#if !defined(EVAL_NNUE)
-                    // Output the current time. Output every time.
-                    std::cout << sr.total_done << " sfens , at " << now_string() << std::endl;
-
-                    // Reflect the gradient in the weight array at this timing. 
-                    // The calculation of the gradient is just right for 
-                    // each 1M phase in terms of mini-batch.
-                    Eval::update_weights(epoch, freeze);
-
-                    // Display epoch and current eta for debugging.
-                    std::cout << "epoch = " << epoch << " , eta = " << Eval::get_eta() << std::endl;
-#else
                     {
                         // update parameters
 
@@ -1124,7 +1094,7 @@ namespace Learner
                         lock_guard<shared_timed_mutex> write_lock(nn_mutex);
                         Eval::NNUE::UpdateParameters(epoch);
                     }
-#endif
+
                     ++epoch;
 
                     // However, the elapsed time during update_weights() and calc_rmse() is ignored.
@@ -1156,9 +1126,7 @@ namespace Learner
                         // loss calculation
                         calc_loss(thread_id, done);
 
-#if defined(EVAL_NNUE)
                         Eval::NNUE::CheckHealth();
-#endif
 
                         // Make a note of how far you have totaled.
                         sr.last_done = sr.total_done;
@@ -1215,25 +1183,6 @@ namespace Learner
                 cout << "Error! : illigal packed sfen = " << pos.fen() << endl;
                 goto RETRY_READ;
             }
-
-#if !defined(EVAL_NNUE)
-            if (skip_duplicated_positions_in_training)
-            {
-                const auto key = pos.key();
-
-                // Exclude the phase used for rmse calculation.
-                if (sr.is_for_rmse(key))
-                    goto RETRY_READ;
-
-                // Exclude the most recently used aspect.
-                const auto hash_index = size_t(key & (sr.READ_SFEN_HASH_SIZE - 1));
-                const auto key2 = sr.hash[hash_index];
-                if (key == key2)
-                    goto RETRY_READ;
-
-                sr.hash[hash_index] = key; // Replace with the current key.
-            }
-#endif
 
             // There is a possibility that all the pieces are blocked and stuck.
             // Also, the declaration win phase is excluded from 
@@ -1326,25 +1275,9 @@ namespace Learner
                 learn_sum_entropy += learn_entropy;
 #endif
 
-#if !defined(EVAL_NNUE)
-                // Slope
-                double dj_dw = calc_grad(deep_value, shallow_value, ps);
-
-                // Add jd_dw as the gradient (∂J/∂Wj) for the 
-                // feature vector currently appearing in the leaf node.
-
-                // If it is not PV termination, apply a discount rate.
-                if (discount_rate != 0 && ply != (int)pv.size())
-                    dj_dw *= discount_rate;
-
-                // Since we have reached leaf, add the gradient to the features that appear in this phase.
-                // Update based on gradient later.
-                Eval::add_grad(pos, rootColor, dj_dw, freeze);
-#else
                 const double example_weight =
                     (discount_rate != 0 && ply != (int)pv.size()) ? discount_rate : 1.0;
                 Eval::NNUE::AddExample(pos, rootColor, ps, example_weight);
-#endif
 
                 // Since the processing is completed, the counter of the processed number is incremented
                 sr.total_done++;
@@ -1425,7 +1358,6 @@ namespace Learner
             const std::string dir_name = std::to_string(dir_number++);
             Eval::save_eval(dir_name);
 
-#if defined(EVAL_NNUE)
             if (newbob_decay != 1.0 && latest_loss_count > 0) {
                 static int trials = newbob_num_trials;
                 const double latest_loss = latest_loss_sum / latest_loss_count;
@@ -1470,7 +1402,6 @@ namespace Learner
                     return true;
                 }
             }
-#endif
         }
         return false;
     }
@@ -1817,12 +1748,10 @@ namespace Learner
         // Optional item that does not let you learn KK/KKP/KPP/KPPP
         array<bool, 4> freeze = {};
 
-#if defined(EVAL_NNUE)
         uint64_t nn_batch_size = 1000;
         double newbob_decay = 1.0;
         int newbob_num_trials = 2;
         string nn_options;
-#endif
 
         uint64_t eval_save_interval = LEARN_EVAL_SAVE_INTERVAL;
         uint64_t loss_output_interval = 0;
@@ -1922,12 +1851,11 @@ namespace Learner
             else if (option == "save_only_once") save_only_once = true;
             else if (option == "no_shuffle") no_shuffle = true;
 
-#if defined(EVAL_NNUE)
             else if (option == "nn_batch_size") is >> nn_batch_size;
             else if (option == "newbob_decay") is >> newbob_decay;
             else if (option == "newbob_num_trials") is >> newbob_num_trials;
             else if (option == "nn_options") is >> nn_options;
-#endif
+
             else if (option == "eval_save_interval") is >> eval_save_interval;
             else if (option == "loss_output_interval") is >> loss_output_interval;
             else if (option == "mirror_percentage") is >> mirror_percentage;
@@ -2074,23 +2002,18 @@ namespace Learner
             }
         }
 
-#if !defined(EVAL_NNUE)
-        cout << "Gradient Method   : " << LEARN_UPDATE << endl;
-#endif
         cout << "Loss Function     : " << LOSS_FUNCTION << endl;
         cout << "mini-batch size   : " << mini_batch_size << endl;
 
-#if defined(EVAL_NNUE)
         cout << "nn_batch_size     : " << nn_batch_size << endl;
         cout << "nn_options        : " << nn_options << endl;
-#endif
+
         cout << "learning rate     : " << eta1 << " , " << eta2 << " , " << eta3 << endl;
         cout << "eta_epoch         : " << eta1_epoch << " , " << eta2_epoch << endl;
         cout << "use_draw_games_in_training : " << use_draw_games_in_training << endl;
         cout << "use_draw_games_in_validation : " << use_draw_games_in_validation << endl;
         cout << "skip_duplicated_positions_in_training : " << skip_duplicated_positions_in_training << endl;
 
-#if defined(EVAL_NNUE)
         if (newbob_decay != 1.0) {
             cout << "scheduling        : newbob with decay = " << newbob_decay
                 << ", " << newbob_num_trials << " trials" << endl;
@@ -2098,7 +2021,6 @@ namespace Learner
         else {
             cout << "scheduling        : default" << endl;
         }
-#endif
 
         cout << "discount rate     : " << discount_rate << endl;
 
@@ -2133,12 +2055,6 @@ namespace Learner
         // Read evaluation function parameters
         Eval::init_NNUE();
 
-#if !defined(EVAL_NNUE)
-        cout << "init_grad.." << endl;
-
-        // Initialize gradient array of merit function parameters
-        Eval::init_grad(eta1, eta1_epoch, eta2, eta2_epoch, eta3);
-#else
         cout << "init_training.." << endl;
         Eval::NNUE::InitializeTraining(eta1, eta1_epoch, eta2, eta2_epoch, eta3);
         Eval::NNUE::SetBatchSize(nn_batch_size);
@@ -2146,7 +2062,6 @@ namespace Learner
         if (newbob_decay != 1.0 && !Options["SkipLoadingEval"]) {
             learn_think.best_nn_directory = std::string(Options["EvalDir"]);
         }
-#endif
 
 #if 0
         // A test to give a gradient of 1.0 to the initial stage of Hirate.
@@ -2170,11 +2085,9 @@ namespace Learner
         learn_think.freeze = freeze;
         learn_think.reduction_gameply = reduction_gameply;
 
-#if defined(EVAL_NNUE)
         learn_think.newbob_scale = 1.0;
         learn_think.newbob_decay = newbob_decay;
         learn_think.newbob_num_trials = newbob_num_trials;
-#endif
 
         learn_think.eval_save_interval = eval_save_interval;
         learn_think.loss_output_interval = loss_output_interval;
@@ -2199,7 +2112,6 @@ namespace Learner
         // Calculate rmse once at this point (timing of 0 sfen)
         // sr.calc_rmse();
 
-#if defined(EVAL_NNUE)
         if (newbob_decay != 1.0) {
             learn_think.calc_loss(0, -1);
             learn_think.best_loss = learn_think.latest_loss_sum / learn_think.latest_loss_count;
@@ -2207,7 +2119,6 @@ namespace Learner
             learn_think.latest_loss_count = 0;
             cout << "initial loss: " << learn_think.best_loss << endl;
         }
-#endif
 
         // -----------------------------------
         // start learning evaluation function parameters

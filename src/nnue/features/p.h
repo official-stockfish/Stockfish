@@ -3,8 +3,6 @@
 #ifndef _NNUE_FEATURES_P_H_
 #define _NNUE_FEATURES_P_H_
 
-#if defined(EVAL_NNUE)
-
 #include "../../evaluate.h"
 #include "features_common.h"
 
@@ -46,7 +44,5 @@ class P {
 }  // namespace NNUE
 
 }  // namespace Eval
-
-#endif  // defined(EVAL_NNUE)
 
 #endif

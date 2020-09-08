@@ -32,7 +32,7 @@
 #include "uci.h"
 #include "syzygy/tbprobe.h"
 
-#if defined(EVAL_NNUE) && defined(ENABLE_TEST_CMD)
+#if defined(ENABLE_TEST_CMD)
 #include "nnue/nnue_test_command.h"
 #endif
 
@@ -67,7 +67,7 @@ namespace Learner
 }
 #endif
 
-#if defined(EVAL_NNUE) && defined(ENABLE_TEST_CMD)
+#if defined(ENABLE_TEST_CMD)
 void test_cmd(Position& pos, istringstream& is)
 {
     // Initialize as it may be searched.
@@ -373,7 +373,7 @@ void UCI::loop(int argc, char* argv[]) {
 
 #endif
 
-#if defined(EVAL_NNUE) && defined(ENABLE_TEST_CMD)
+#if defined(ENABLE_TEST_CMD)
       // test command
       else if (token == "test") test_cmd(pos, is);
 #endif

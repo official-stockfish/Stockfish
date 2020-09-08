@@ -3,7 +3,7 @@
 #ifndef _NNUE_TRAINER_H_
 #define _NNUE_TRAINER_H_
 
-#if defined(EVAL_LEARN) && defined(EVAL_NNUE)
+#if defined(EVAL_LEARN)
 
 #include "../nnue_common.h"
 #include "../features/index_list.h"
@@ -120,6 +120,6 @@ std::shared_ptr<T> MakeAlignedSharedPtr(ArgumentTypes&&... arguments) {
 
 }  // namespace Eval
 
-#endif  // defined(EVAL_LEARN) && defined(EVAL_NNUE)
+#endif  // defined(EVAL_LEARN)
 
 #endif
