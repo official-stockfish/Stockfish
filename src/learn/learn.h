@@ -24,15 +24,6 @@ typedef float LearnFloatType;
 //typedef HalfFloat::float16 LearnFloatType;
 
 // ----------------------
-// save memory
-// ----------------------
-
-// Use a triangular array for the Weight array (of which is KPP) to save memory.
-// If this is used, the weight array for learning will be about 3 times as large as the evaluation function file.
-
-#define USE_TRIANGLE_WEIGHT_ARRAY
-
-// ----------------------
 // dimension down
 // ----------------------
 
