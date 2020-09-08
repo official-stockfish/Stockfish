@@ -9,11 +9,6 @@
 // Select the objective function
 // ----------------------
 
-// Objective function is cross entropy
-// See learner.cpp for more information.
-// So-called ordinary "rag cloth squeezer"
-//#define LOSS_FUNCTION_IS_CROSS_ENTOROPY
-
 // A version in which the objective function is cross entropy, but the win rate function is not passed
 // #define LOSS_FUNCTION_IS_CROSS_ENTOROPY_FOR_VALUE
 
@@ -121,9 +116,7 @@ typedef float LearnFloatType;
 
 #define LOSS_FUNCTION_IS_ELMO_METHOD
 
-#if defined(LOSS_FUNCTION_IS_CROSS_ENTOROPY)
-#define LOSS_FUNCTION "CROSS_ENTOROPY"
-#elif defined(LOSS_FUNCTION_IS_CROSS_ENTOROPY_FOR_VALUE)
+#if defined(LOSS_FUNCTION_IS_CROSS_ENTOROPY_FOR_VALUE)
 #define LOSS_FUNCTION "CROSS_ENTOROPY_FOR_VALUE"
 #elif defined(LOSS_FUNCTION_IS_ELMO_METHOD)
 #define LOSS_FUNCTION "ELMO_METHOD(WCSC27)"

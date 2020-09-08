@@ -163,35 +163,6 @@ namespace Learner
         return ((y2 - y1) / epsilon) / winning_probability_coefficient;
     }
 
-#if defined (LOSS_FUNCTION_IS_CROSS_ENTOROPY)
-    double calc_grad(Value deep, Value shallow, const PackedSfenValue& psv)
-    {
-        // Objective function with cross entropy
-
-        // For the concept and nature of cross entropy,
-        // http://nnadl-ja.github.io/nnadl_site_ja/chap3.html#the_cross-entropy_cost_function
-        // http://postd.cc/visual-information-theory-3/
-        // Refer to etc.
-
-        // Objective function design)
-        // We want to make the distribution of p closer to the distribution of q 
-        // → Think of it as the problem of minimizing the cross entropy 
-        // between the probability distributions of p and q.
-        // J = H(p,q) =-Σ p(x) log(q(x)) = -p log q-(1-p) log(1-q)
-        // x
-
-        // p is a constant and q is a Wi function (q = σ(W・Xi) ).
-        // ∂J/∂Wi = -p・q'/q-(1-p)(1-q)'/(1-q)
-        // = ...
-        // = q-p.
-
-        const double p = winning_percentage(deep, psv.gamePly);
-        const double q = winning_percentage(shallow, psv.gamePly);
-
-        return q - p;
-    }
-#endif
-
 #if defined ( LOSS_FUNCTION_IS_CROSS_ENTOROPY_FOR_VALUE )
     double calc_grad(Value deep, Value shallow, const PackedSfenValue& psv)
     {
