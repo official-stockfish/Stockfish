@@ -27,10 +27,6 @@
 #include <regex>
 #include <filesystem>
 
-#if defined (_OPENMP)
-#include <omp.h>
-#endif
-
 using namespace std;
 
 namespace Learner

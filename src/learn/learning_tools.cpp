@@ -2,9 +2,6 @@
 
 #if defined (EVAL_LEARN)
 
-#if defined(_OPENMP)
-#include <omp.h>
-#endif
 #include "../misc.h"
 
 using namespace Eval;

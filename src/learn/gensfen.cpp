@@ -28,10 +28,6 @@
 #include <sstream>
 #include <unordered_set>
 
-#if defined (_OPENMP)
-#include <omp.h>
-#endif
-
 using namespace std;
 
 namespace Learner
