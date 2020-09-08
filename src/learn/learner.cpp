@@ -1636,13 +1636,6 @@ namespace Learner
         uint64_t eta1_epoch = 0; // eta2 is not applied by default
         uint64_t eta2_epoch = 0; // eta3 is not applied by default
 
-#if defined(USE_GLOBAL_OPTIONS)
-    // Save it for later restore.
-        auto oldGlobalOptions = GlobalOptions;
-        // If you hit the replacement table, pruning may occur at the previous evaluation value, so turn it off.
-        GlobalOptions.use_hash_probe = false;
-#endif
-
         // --- Function that only shuffles the teacher aspect
 
         // normal shuffle
@@ -2072,11 +2065,6 @@ namespace Learner
 
         // Save once at the end.
         learn_think.save(true);
-
-#if defined(USE_GLOBAL_OPTIONS)
-        // Restore Global Options.
-        GlobalOptions = oldGlobalOptions;
-#endif
     }
 
 } // namespace Learner

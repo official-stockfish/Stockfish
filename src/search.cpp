@@ -2070,17 +2070,6 @@ namespace Learner
         rootMoves.push_back(Search::RootMove(m));
 
       assert(!rootMoves.empty());
-
-      //#if defined(USE_GLOBAL_OPTIONS)
-      // Since the generation of the substitution table for each search thread should be managed,
-      // Increase the generation of the substitution table for this thread because it is a new search.
-            //TT.new_search(th->thread_id());
-
-            // ª If you call new_search here, it may be a loss because you can't use the previous search result.
-            // Do not do this here, but caller should do TT.new_search(th->thread_id()) for each station ...
-
-            // ¨Because we want to avoid reaching the same final diagram, use the substitution table commonly for all threads when generating teachers.
-      //#endif
     }
   }
 

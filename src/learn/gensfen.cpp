@@ -1022,11 +1022,6 @@ namespace Learner
                 cout << "Error! : Illegal token " << token << endl;
         }
 
-#if defined(USE_GLOBAL_OPTIONS)
-        // Save it for later restore.
-        auto oldGlobalOptions = GlobalOptions;
-#endif
-
         // If search depth2 is not set, leave it the same as search depth.
         if (search_depth_max == INT_MIN)
             search_depth_max = search_depth_min;
@@ -1103,12 +1098,6 @@ namespace Learner
         }
 
         std::cout << "gensfen finished." << endl;
-
-#if defined(USE_GLOBAL_OPTIONS)
-        // Restore Global Options.
-        GlobalOptions = oldGlobalOptions;
-#endif
-
     }
 }
 #endif
