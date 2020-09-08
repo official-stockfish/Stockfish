@@ -1639,8 +1639,6 @@ namespace Learner
 #if defined(USE_GLOBAL_OPTIONS)
     // Save it for later restore.
         auto oldGlobalOptions = GlobalOptions;
-        // If you hit the eval hash, you can not calculate rmse etc. so turn it off.
-        GlobalOptions.use_eval_hash = false;
         // If you hit the replacement table, pruning may occur at the previous evaluation value, so turn it off.
         GlobalOptions.use_hash_probe = false;
 #endif

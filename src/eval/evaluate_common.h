@@ -18,12 +18,6 @@
 
 namespace Eval
 {
-
-#if defined(USE_EVAL_HASH)
-	// prefetch function
-	void prefetch_evalhash(const Key key);
-#endif
-
 	// An operator that applies the function f to each parameter of the evaluation function.
 	// Used for parameter analysis etc.
 	// type indicates the survey target.

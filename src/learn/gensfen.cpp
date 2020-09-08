@@ -956,12 +956,6 @@ namespace Learner
 
         string token;
 
-        // When hit to eval hash, as a evaluation value near the initial stage, if a hash collision occurs and a large value is written
-        // When eval_limit is set small, eval_limit will be exceeded every time in the initial phase, and phase generation will not proceed.
-        // Therefore, eval hash needs to be disabled.
-        // After that, when the hash of the eval hash collides, the evaluation value of a strange value is used, and it may be unpleasant to use it for the teacher.
-        bool use_eval_hash = false;
-
         // Save to file in this unit.
         // File names are serialized like file_1.bin, file_2.bin.
         uint64_t save_every = UINT64_MAX;
@@ -1010,8 +1004,6 @@ namespace Learner
                 is >> write_minply;
             else if (token == "write_maxply")
                 is >> write_maxply;
-            else if (token == "use_eval_hash")
-                is >> use_eval_hash;
             else if (token == "save_every")
                 is >> save_every;
             else if (token == "random_file_name")
@@ -1033,7 +1025,6 @@ namespace Learner
 #if defined(USE_GLOBAL_OPTIONS)
         // Save it for later restore.
         auto oldGlobalOptions = GlobalOptions;
-        GlobalOptions.use_eval_hash = use_eval_hash;
 #endif
 
         // If search depth2 is not set, leave it the same as search depth.
@@ -1075,7 +1066,6 @@ namespace Learner
             << "  write_minply           = " << write_minply << endl
             << "  write_maxply           = " << write_maxply << endl
             << "  output_file_name       = " << output_file_name << endl
-            << "  use_eval_hash          = " << use_eval_hash << endl
             << "  save_every             = " << save_every << endl
             << "  random_file_name       = " << random_file_name << endl
             << "  write_out_draw_game_in_training_data_generation = " << write_out_draw_game_in_training_data_generation << endl
