@@ -1,8 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
-  Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2016 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -23,23 +21,20 @@
 #include <istream>
 #include <vector>
 
-#include "misc.h"
 #include "position.h"
-#include "search.h"
-#include "thread.h"
-#include "uci.h"
 
 using namespace std;
 
 namespace {
 
 const vector<string> Defaults = {
+  "setoption name UCI_Chess960 value false",
   "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
   "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 10",
   "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 11",
   "4rrk1/pp1n3p/3q2pQ/2p1pb2/2PP4/2P3N1/P2B2PP/4RRK1 b - - 7 19",
-  "rq3rk1/ppp2ppp/1bnpb3/3N2B1/3NP3/7P/PPPQ1PP1/2KR3R w - - 7 14",
-  "r1bq1r1k/1pp1n1pp/1p1p4/4p2Q/4Pp2/1BNP4/PPP2PPP/3R1RK1 w - - 2 14",
+  "rq3rk1/ppp2ppp/1bnpb3/3N2B1/3NP3/7P/PPPQ1PP1/2KR3R w - - 7 14 moves d4e6",
+  "r1bq1r1k/1pp1n1pp/1p1p4/4p2Q/4Pp2/1BNP4/PPP2PPP/3R1RK1 w - - 2 14 moves g2g4",
   "r3r1k1/2p2ppp/p1p1bn2/8/1q2P3/2NPQN2/PPP3PP/R4RK1 b - - 2 15",
   "r1bbk1nr/pp3p1p/2n5/1N4p1/2Np1B2/8/PPP2PPP/2KR1B1R w kq - 0 13",
   "r1bq1rk1/ppp1nppp/4n3/3p3Q/3P4/1BP1B3/PP1N2PP/R4RK1 w - - 1 16",
@@ -52,7 +47,7 @@ const vector<string> Defaults = {
   "3q2k1/pb3p1p/4pbp1/2r5/PpN2N2/1P2P2P/5PP1/Q2R2K1 b - - 4 26",
   "6k1/6p1/6Pp/ppp5/3pn2P/1P3K2/1PP2P2/3N4 b - - 0 1",
   "3b4/5kp1/1p1p1p1p/pP1PpP1P/P1P1P3/3KN3/8/8 w - - 0 1",
-  "2K5/p7/7P/5pR1/8/5k2/r7/8 w - - 0 1",
+  "2K5/p7/7P/5pR1/8/5k2/r7/8 w - - 0 1 moves g5g6 f3e3 g6g5 e3f3",
   "8/6pk/1p6/8/PP3p1p/5P2/4KP1q/3Q4 w - - 0 1",
   "7k/3p2pp/4q3/8/4Q3/5Kp1/P6b/8 w - - 0 1",
   "8/2p5/8/2kPKp1p/2p4P/2P5/3P4/8 w - - 0 1",
@@ -64,6 +59,11 @@ const vector<string> Defaults = {
   "1r3k2/4q3/2Pp3b/3Bp3/2Q2p2/1p1P2P1/1P2KP2/3N4 w - - 0 1",
   "6k1/4pp1p/3p2p1/P1pPb3/R7/1r2P1PP/3B1P2/6K1 w - - 0 1",
   "8/3p3B/5p2/5P2/p7/PP5b/k7/6K1 w - - 0 1",
+  "5rk1/q6p/2p3bR/1pPp1rP1/1P1Pp3/P3B1Q1/1K3P2/R7 w - - 93 90",
+  "4rrk1/1p1nq3/p7/2p1P1pp/3P2bp/3Q1Bn1/PPPB4/1K2R1NR w - - 40 21",
+  "r3k2r/3nnpbp/q2pp1p1/p7/Pp1PPPP1/4BNN1/1P5P/R2Q1RK1 w kq - 0 16",
+  "3Qb1k1/1r2ppb1/pN1n2q1/Pp1Pp1Pr/4P2p/4BP2/4B1R1/1R5K b - - 11 40",
+  "4k3/3q1r2/1N2r1b1/3ppN2/2nPP3/1B1R2n1/2R1Q3/3K4 w - - 5 1",
 
   // 5-man positions
   "8/8/8/8/5kp1/P7/8/1K1N4 w - - 0 1",     // Kc2 - mate
@@ -76,24 +76,39 @@ const vector<string> Defaults = {
   "8/8/3P3k/8/1p6/8/1P6/1K3n2 b - - 0 1",  // Nd2 - draw
 
   // 7-man positions
-  "8/R7/2q5/8/6k1/8/1P5p/K6R w - - 0 124"  // Draw
+  "8/R7/2q5/8/6k1/8/1P5p/K6R w - - 0 124", // Draw
+
+  // Mate and stalemate positions
+  "6k1/3b3r/1p1p4/p1n2p2/1PPNpP1q/P3Q1p1/1R1RB1P1/5K2 b - - 0 1",
+  "r2r1n2/pp2bk2/2p1p2p/3q4/3PN1QP/2P3R1/P4PP1/5RK1 w - - 0 1",
+  "8/8/8/8/8/6k1/6p1/6K1 w - -",
+  "7k/7P/6K1/8/3B4/8/8/8 b - -",
+
+  // Chess 960
+  "setoption name UCI_Chess960 value true",
+  "bbqnnrkr/pppppppp/8/8/8/8/PPPPPPPP/BBQNNRKR w HFhf - 0 1 moves g2g3 d7d5 d2d4 c8h3 c1g5 e8d6 g5e7 f7f6",
+  "setoption name UCI_Chess960 value false"
 };
 
 } // namespace
 
-/// benchmark() runs a simple benchmark by letting Stockfish analyze a set
-/// of positions for a given limit each. There are five parameters: the
-/// transposition table size, the number of search threads that should
-/// be used, the limit value spent for each position (optional, default is
-/// depth 13), an optional file name where to look for positions in FEN
-/// format (defaults are the positions defined above) and the type of the
-/// limit value: depth (default), time in millisecs or number of nodes.
+/// setup_bench() builds a list of UCI commands to be run by bench. There
+/// are five parameters: TT size in MB, number of search threads that
+/// should be used, the limit value spent for each position, a file name
+/// where to look for positions in FEN format, the type of the limit:
+/// depth, perft, nodes and movetime (in millisecs), and evaluation type
+/// mixed (default), classical, NNUE.
+///
+/// bench -> search default positions up to depth 13
+/// bench 64 1 15 -> search default positions up to depth 15 (TT = 64MB)
+/// bench 64 4 5000 current movetime -> search current position with 4 threads for 5 sec
+/// bench 64 1 100000 default nodes -> search default positions for 100K nodes each
+/// bench 16 1 5 default perft -> run a perft 5 on default positions
 
-void benchmark(const Position& current, istream& is) {
+vector<string> setup_bench(const Position& current, istream& is) {
 
-  string token;
-  vector<string> fens;
-  Search::LimitsType limits;
+  vector<string> fens, list;
+  string go, token;
 
   // Assign default values to missing arguments
   string ttSize    = (is >> token) ? token : "16";
@@ -101,22 +116,9 @@ void benchmark(const Position& current, istream& is) {
   string limit     = (is >> token) ? token : "13";
   string fenFile   = (is >> token) ? token : "default";
   string limitType = (is >> token) ? token : "depth";
+  string evalType  = (is >> token) ? token : "mixed";
 
-  Options["Hash"]    = ttSize;
-  Options["Threads"] = threads;
-  Search::clear();
-
-  if (limitType == "time")
-      limits.movetime = stoi(limit); // movetime is in millisecs
-
-  else if (limitType == "nodes")
-      limits.nodes = stoi(limit);
-
-  else if (limitType == "mate")
-      limits.mate = stoi(limit);
-
-  else
-      limits.depth = stoi(limit);
+  go = limitType == "eval" ? "eval" : "go " + limitType + " " + limit;
 
   if (fenFile == "default")
       fens = Defaults;
@@ -132,7 +134,7 @@ void benchmark(const Position& current, istream& is) {
       if (!file.is_open())
       {
           cerr << "Unable to open file " << fenFile << endl;
-          return;
+          exit(EXIT_FAILURE);
       }
 
       while (getline(file, fen))
@@ -142,34 +144,25 @@ void benchmark(const Position& current, istream& is) {
       file.close();
   }
 
-  uint64_t nodes = 0;
-  TimePoint elapsed = now();
+  list.emplace_back("setoption name Threads value " + threads);
+  list.emplace_back("setoption name Hash value " + ttSize);
+  list.emplace_back("ucinewgame");
 
-  for (size_t i = 0; i < fens.size(); ++i)
-  {
-      Position pos(fens[i], Options["UCI_Chess960"], Threads.main());
+  size_t posCounter = 0;
 
-      cerr << "\nPosition: " << i + 1 << '/' << fens.size() << endl;
-
-      if (limitType == "perft")
-          nodes += Search::perft(pos, limits.depth * ONE_PLY);
-
+  for (const string& fen : fens)
+      if (fen.find("setoption") != string::npos)
+          list.emplace_back(fen);
       else
       {
-          Search::StateStackPtr st;
-          limits.startTime = now();
-          Threads.start_thinking(pos, limits, st);
-          Threads.main()->wait_for_search_finished();
-          nodes += Threads.nodes_searched();
+          if (evalType == "classical" || (evalType == "mixed" && posCounter % 2 == 0))
+              list.emplace_back("setoption name Use NNUE value false");
+          else if (evalType == "NNUE" || (evalType == "mixed" && posCounter % 2 != 0))
+              list.emplace_back("setoption name Use NNUE value true");
+          list.emplace_back("position fen " + fen);
+          list.emplace_back(go);
+          ++posCounter;
       }
-  }
 
-  elapsed = now() - elapsed + 1; // Ensure positivity to avoid a 'divide by zero'
-
-  dbg_print(); // Just before to exit
-
-  cerr << "\n==========================="
-       << "\nTotal time (ms) : " << elapsed
-       << "\nNodes searched  : " << nodes
-       << "\nNodes/second    : " << 1000 * nodes / elapsed << endl;
+  return list;
 }

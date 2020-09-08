@@ -1,8 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
-  Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2016 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -28,105 +26,71 @@
 
 TimeManagement Time; // Our global time management object
 
-namespace {
 
-  enum TimeType { OptimumTime, MaxTime };
+/// TimeManagement::init() is called at the beginning of the search and calculates
+/// the bounds of time allowed for the current game ply. We currently support:
+//      1) x basetime (+ z increment)
+//      2) x moves in y seconds (+ z increment)
 
-  const int MoveHorizon   = 50;   // Plan time management at most this many moves ahead
-  const double MaxRatio   = 7.09;  // When in trouble, we can step over reserved time with this ratio
-  const double StealRatio = 0.35; // However we must not steal time from remaining moves over this ratio
+void TimeManagement::init(Search::LimitsType& limits, Color us, int ply) {
 
+  TimePoint moveOverhead    = TimePoint(Options["Move Overhead"]);
+  TimePoint slowMover       = TimePoint(Options["Slow Mover"]);
+  TimePoint npmsec          = TimePoint(Options["nodestime"]);
 
-  // move_importance() is a skew-logistic function based on naive statistical
-  // analysis of "how many games are still undecided after n half-moves". Game
-  // is considered "undecided" as long as neither side has >275cp advantage.
-  // Data was extracted from CCRL game database with some simple filtering criteria.
-
-  double move_importance(int ply) {
-
-    const double XScale = 7.64;
-    const double XShift = 58.4;
-    const double Skew   = 0.183;
-
-    return pow((1 + exp((ply - XShift) / XScale)), -Skew) + DBL_MIN; // Ensure non-zero
-  }
-
-  template<TimeType T>
-  int remaining(int myTime, int movesToGo, int ply, int slowMover)
-  {
-    const double TMaxRatio   = (T == OptimumTime ? 1 : MaxRatio);
-    const double TStealRatio = (T == OptimumTime ? 0 : StealRatio);
-
-    double moveImportance = (move_importance(ply) * slowMover) / 100;
-    double otherMovesImportance = 0;
-
-    for (int i = 1; i < movesToGo; ++i)
-        otherMovesImportance += move_importance(ply + 2 * i);
-
-    double ratio1 = (TMaxRatio * moveImportance) / (TMaxRatio * moveImportance + otherMovesImportance);
-    double ratio2 = (moveImportance + TStealRatio * otherMovesImportance) / (moveImportance + otherMovesImportance);
-
-    return int(myTime * std::min(ratio1, ratio2)); // Intel C++ asks an explicit cast
-  }
-
-} // namespace
-
-
-/// init() is called at the beginning of the search and calculates the allowed
-/// thinking time out of the time control and current game ply. We support four
-/// different kinds of time controls, passed in 'limits':
-///
-///  inc == 0 && movestogo == 0 means: x basetime  [sudden death!]
-///  inc == 0 && movestogo != 0 means: x moves in y minutes
-///  inc >  0 && movestogo == 0 means: x basetime + z increment
-///  inc >  0 && movestogo != 0 means: x moves in y minutes + z increment
-
-void TimeManagement::init(Search::LimitsType& limits, Color us, int ply)
-{
-  int minThinkingTime = Options["Minimum Thinking Time"];
-  int moveOverhead    = Options["Move Overhead"];
-  int slowMover       = Options["Slow Mover"];
-  int npmsec          = Options["nodestime"];
+  // optScale is a percentage of available time to use for the current move.
+  // maxScale is a multiplier applied to optimumTime.
+  double optScale, maxScale;
 
   // If we have to play in 'nodes as time' mode, then convert from time
   // to nodes, and use resulting values in time management formulas.
-  // WARNING: Given npms (nodes per millisecond) must be much lower then
-  // real engine speed to avoid time losses.
+  // WARNING: to avoid time losses, the given npmsec (nodes per millisecond)
+  // must be much lower than the real engine speed.
   if (npmsec)
   {
       if (!availableNodes) // Only once at game start
           availableNodes = npmsec * limits.time[us]; // Time is in msec
 
-      // Convert from millisecs to nodes
-      limits.time[us] = (int)availableNodes;
+      // Convert from milliseconds to nodes
+      limits.time[us] = TimePoint(availableNodes);
       limits.inc[us] *= npmsec;
       limits.npmsec = npmsec;
   }
 
   startTime = limits.startTime;
-  unstablePvFactor = 1;
-  optimumTime = maximumTime = std::max(limits.time[us], minThinkingTime);
 
-  const int MaxMTG = limits.movestogo ? std::min(limits.movestogo, MoveHorizon) : MoveHorizon;
+  // Maximum move horizon of 50 moves
+  int mtg = limits.movestogo ? std::min(limits.movestogo, 50) : 50;
 
-  // We calculate optimum time usage for different hypothetical "moves to go"-values
-  // and choose the minimum of calculated search time values. Usually the greatest
-  // hypMTG gives the minimum values.
-  for (int hypMTG = 1; hypMTG <= MaxMTG; ++hypMTG)
+  // Make sure timeLeft is > 0 since we may use it as a divisor
+  TimePoint timeLeft =  std::max(TimePoint(1),
+      limits.time[us] + limits.inc[us] * (mtg - 1) - moveOverhead * (2 + mtg));
+
+  // A user may scale time usage by setting UCI option "Slow Mover"
+  // Default is 100 and changing this value will probably lose elo.
+  timeLeft = slowMover * timeLeft / 100;
+
+  // x basetime (+ z increment)
+  // If there is a healthy increment, timeLeft can exceed actual available
+  // game time for the current move, so also cap to 20% of available game time.
+  if (limits.movestogo == 0)
   {
-      // Calculate thinking time for hypothetical "moves to go"-value
-      int hypMyTime =  limits.time[us]
-                     + limits.inc[us] * (hypMTG - 1)
-                     - moveOverhead * (2 + std::min(hypMTG, 40));
-
-      hypMyTime = std::max(hypMyTime, 0);
-
-      int t1 = minThinkingTime + remaining<OptimumTime>(hypMyTime, hypMTG, ply, slowMover);
-      int t2 = minThinkingTime + remaining<MaxTime    >(hypMyTime, hypMTG, ply, slowMover);
-
-      optimumTime = std::min(t1, optimumTime);
-      maximumTime = std::min(t2, maximumTime);
+      optScale = std::min(0.008 + std::pow(ply + 3.0, 0.5) / 250.0,
+                           0.2 * limits.time[us] / double(timeLeft));
+      maxScale = std::min(7.0, 4.0 + ply / 12.0);
   }
+
+  // x moves in y seconds (+ z increment)
+  else
+  {
+      optScale = std::min((0.8 + ply / 128.0) / mtg,
+                            0.8 * limits.time[us] / double(timeLeft));
+      maxScale = std::min(6.3, 1.5 + 0.11 * mtg);
+  }
+
+  // Never use more than 80% of the available time for this move
+  optimumTime = TimePoint(optScale * timeLeft);
+  maximumTime = TimePoint(std::min(0.8 * limits.time[us] - moveOverhead, maxScale * optimumTime));
 
   if (Options["Ponder"])
       optimumTime += optimumTime / 4;

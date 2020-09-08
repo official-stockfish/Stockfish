@@ -1,8 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
-  Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2016 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -18,7 +16,10 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <algorithm>
+
 #include "types.h"
+#include "bitboard.h"
 
 namespace PSQT {
 
@@ -28,90 +29,92 @@ namespace PSQT {
 // type on a given square a (middlegame, endgame) score pair is assigned. Table
 // is defined for files A..D and white side: it is symmetric for black side and
 // second half of the files.
-const Score Bonus[][RANK_NB][int(FILE_NB) / 2] = {
+constexpr Score Bonus[][RANK_NB][int(FILE_NB) / 2] = {
   { },
-  { // Pawn
-   { S(  0, 0), S(  0, 0), S(  0, 0), S( 0, 0) },
-   { S(-19, 5), S(  1,-4), S(  7, 8), S( 3,-2) },
-   { S(-26,-6), S( -7,-5), S( 19, 5), S(24, 4) },
-   { S(-25, 1), S(-14, 3), S( 20,-8), S(35,-3) },
-   { S(-14, 6), S(  0, 9), S(  3, 7), S(21,-6) },
-   { S(-14, 6), S(-13,-5), S( -6, 2), S(-2, 4) },
-   { S(-12, 1), S( 15,-9), S( -8, 1), S(-4,18) },
-   { S(  0, 0), S(  0, 0), S(  0, 0), S( 0, 0) }
-  },
+  { },
   { // Knight
-   { S(-143, -97), S(-96,-82), S(-80,-46), S(-73,-14) },
-   { S( -83, -69), S(-43,-55), S(-21,-17), S(-10,  9) },
-   { S( -71, -50), S(-22,-39), S(  0, -8), S(  9, 28) },
-   { S( -25, -41), S( 18,-25), S( 43,  7), S( 47, 38) },
-   { S( -26, -46), S( 16,-25), S( 38,  2), S( 50, 41) },
-   { S( -11, -55), S( 37,-38), S( 56, -8), S( 71, 27) },
-   { S( -62, -64), S(-17,-50), S(  5,-24), S( 14, 13) },
-   { S(-195,-110), S(-66,-90), S(-42,-50), S(-29,-13) }
+   { S(-175, -96), S(-92,-65), S(-74,-49), S(-73,-21) },
+   { S( -77, -67), S(-41,-54), S(-27,-18), S(-15,  8) },
+   { S( -61, -40), S(-17,-27), S(  6, -8), S( 12, 29) },
+   { S( -35, -35), S(  8, -2), S( 40, 13), S( 49, 28) },
+   { S( -34, -45), S( 13,-16), S( 44,  9), S( 51, 39) },
+   { S(  -9, -51), S( 22,-44), S( 58,-16), S( 53, 17) },
+   { S( -67, -69), S(-27,-50), S(  4,-51), S( 37, 12) },
+   { S(-201,-100), S(-83,-88), S(-56,-56), S(-26,-17) }
   },
   { // Bishop
-   { S(-54,-68), S(-23,-40), S(-35,-46), S(-44,-28) },
-   { S(-30,-43), S( 10,-17), S(  2,-23), S( -9, -5) },
-   { S(-19,-32), S( 17, -9), S( 11,-13), S(  1,  8) },
-   { S(-21,-36), S( 18,-13), S( 11,-15), S(  0,  7) },
-   { S(-21,-36), S( 14,-14), S(  6,-17), S( -1,  3) },
-   { S(-27,-35), S(  6,-13), S(  2,-10), S( -8,  1) },
-   { S(-33,-44), S(  7,-21), S( -4,-22), S(-12, -4) },
-   { S(-45,-65), S(-21,-42), S(-29,-46), S(-39,-27) }
+   { S(-53,-57), S( -5,-30), S( -8,-37), S(-23,-12) },
+   { S(-15,-37), S(  8,-13), S( 19,-17), S(  4,  1) },
+   { S( -7,-16), S( 21, -1), S( -5, -2), S( 17, 10) },
+   { S( -5,-20), S( 11, -6), S( 25,  0), S( 39, 17) },
+   { S(-12,-17), S( 29, -1), S( 22,-14), S( 31, 15) },
+   { S(-16,-30), S(  6,  6), S(  1,  4), S( 11,  6) },
+   { S(-17,-31), S(-14,-20), S(  5, -1), S(  0,  1) },
+   { S(-48,-46), S(  1,-42), S(-14,-37), S(-23,-24) }
   },
   { // Rook
-   { S(-25, 0), S(-16, 0), S(-16, 0), S(-9, 0) },
-   { S(-21, 0), S( -8, 0), S( -3, 0), S( 0, 0) },
-   { S(-21, 0), S( -9, 0), S( -4, 0), S( 2, 0) },
-   { S(-22, 0), S( -6, 0), S( -1, 0), S( 2, 0) },
-   { S(-22, 0), S( -7, 0), S(  0, 0), S( 1, 0) },
-   { S(-21, 0), S( -7, 0), S(  0, 0), S( 2, 0) },
-   { S(-12, 0), S(  4, 0), S(  8, 0), S(12, 0) },
-   { S(-23, 0), S(-15, 0), S(-11, 0), S(-5, 0) }
+   { S(-31, -9), S(-20,-13), S(-14,-10), S(-5, -9) },
+   { S(-21,-12), S(-13, -9), S( -8, -1), S( 6, -2) },
+   { S(-25,  6), S(-11, -8), S( -1, -2), S( 3, -6) },
+   { S(-13, -6), S( -5,  1), S( -4, -9), S(-6,  7) },
+   { S(-27, -5), S(-15,  8), S( -4,  7), S( 3, -6) },
+   { S(-22,  6), S( -2,  1), S(  6, -7), S(12, 10) },
+   { S( -2,  4), S( 12,  5), S( 16, 20), S(18, -5) },
+   { S(-17, 18), S(-19,  0), S( -1, 19), S( 9, 13) }
   },
   { // Queen
-   { S( 0,-70), S(-3,-57), S(-4,-41), S(-1,-29) },
-   { S(-4,-58), S( 6,-30), S( 9,-21), S( 8, -4) },
-   { S(-2,-39), S( 6,-17), S( 9, -7), S( 9,  5) },
-   { S(-1,-29), S( 8, -5), S(10,  9), S( 7, 17) },
-   { S(-3,-27), S( 9, -5), S( 8, 10), S( 7, 23) },
-   { S(-2,-40), S( 6,-16), S( 8,-11), S(10,  3) },
-   { S(-2,-54), S( 7,-30), S( 7,-21), S( 6, -7) },
-   { S(-1,-75), S(-4,-54), S(-1,-44), S( 0,-30) }
+   { S( 3,-69), S(-5,-57), S(-5,-47), S( 4,-26) },
+   { S(-3,-55), S( 5,-31), S( 8,-22), S(12, -4) },
+   { S(-3,-39), S( 6,-18), S(13, -9), S( 7,  3) },
+   { S( 4,-23), S( 5, -3), S( 9, 13), S( 8, 24) },
+   { S( 0,-29), S(14, -6), S(12,  9), S( 5, 21) },
+   { S(-4,-38), S(10,-18), S( 6,-12), S( 8,  1) },
+   { S(-5,-50), S( 6,-27), S(10,-24), S( 8, -8) },
+   { S(-2,-75), S(-2,-52), S( 1,-43), S(-2,-36) }
   },
   { // King
-   { S(291, 28), S(344, 76), S(294,103), S(219,112) },
-   { S(289, 70), S(329,119), S(263,170), S(205,159) },
-   { S(226,109), S(271,164), S(202,195), S(136,191) },
-   { S(204,131), S(212,194), S(175,194), S(137,204) },
-   { S(177,132), S(205,187), S(143,224), S( 94,227) },
-   { S(147,118), S(188,178), S(113,199), S( 70,197) },
-   { S(116, 72), S(158,121), S( 93,142), S( 48,161) },
-   { S( 94, 30), S(120, 76), S( 78,101), S( 31,111) }
+   { S(271,  1), S(327, 45), S(271, 85), S(198, 76) },
+   { S(278, 53), S(303,100), S(234,133), S(179,135) },
+   { S(195, 88), S(258,130), S(169,169), S(120,175) },
+   { S(164,103), S(190,156), S(138,172), S( 98,172) },
+   { S(154, 96), S(179,166), S(105,199), S( 70,199) },
+   { S(123, 92), S(145,172), S( 81,184), S( 31,191) },
+   { S( 88, 47), S(120,121), S( 65,116), S( 33,131) },
+   { S( 59, 11), S( 89, 59), S( 45, 73), S( -1, 78) }
   }
 };
 
+constexpr Score PBonus[RANK_NB][FILE_NB] =
+  { // Pawn (asymmetric distribution)
+   { },
+   { S(  3,-10), S(  3, -6), S( 10, 10), S( 19,  0), S( 16, 14), S( 19,  7), S(  7, -5), S( -5,-19) },
+   { S( -9,-10), S(-15,-10), S( 11,-10), S( 15,  4), S( 32,  4), S( 22,  3), S(  5, -6), S(-22, -4) },
+   { S( -4,  6), S(-23, -2), S(  6, -8), S( 20, -4), S( 40,-13), S( 17,-12), S(  4,-10), S( -8, -9) },
+   { S( 13, 10), S(  0,  5), S(-13,  4), S(  1, -5), S( 11, -5), S( -2, -5), S(-13, 14), S(  5,  9) },
+   { S(  5, 28), S(-12, 20), S( -7, 21), S( 22, 28), S( -8, 30), S( -5,  7), S(-15,  6), S( -8, 13) },
+   { S( -7,  0), S(  7,-11), S( -3, 12), S(-13, 21), S(  5, 25), S(-16, 19), S( 10,  4), S( -8,  7) }
+  };
+
 #undef S
 
-Score psq[COLOR_NB][PIECE_TYPE_NB][SQUARE_NB];
+Score psq[PIECE_NB][SQUARE_NB];
 
-// init() initializes piece square tables: the white halves of the tables are
-// copied from Bonus[] adding the piece value, then the black halves of the
-// tables are initialized by flipping and changing the sign of the white scores.
+
+// PSQT::init() initializes piece-square tables: the white halves of the tables are
+// copied from Bonus[] and PBonus[], adding the piece value, then the black halves of
+// the tables are initialized by flipping and changing the sign of the white scores.
 void init() {
 
-  for (PieceType pt = PAWN; pt <= KING; ++pt)
+  for (Piece pc : {W_PAWN, W_KNIGHT, W_BISHOP, W_ROOK, W_QUEEN, W_KING})
   {
-      PieceValue[MG][make_piece(BLACK, pt)] = PieceValue[MG][pt];
-      PieceValue[EG][make_piece(BLACK, pt)] = PieceValue[EG][pt];
-
-      Score v = make_score(PieceValue[MG][pt], PieceValue[EG][pt]);
+      Score score = make_score(PieceValue[MG][pc], PieceValue[EG][pc]);
 
       for (Square s = SQ_A1; s <= SQ_H8; ++s)
       {
-          int edgeDistance = file_of(s) < FILE_E ? file_of(s) : FILE_H - file_of(s);
-          psq[BLACK][pt][~s] = -(psq[WHITE][pt][s] = v + Bonus[pt][rank_of(s)][edgeDistance]);
+          File f = File(edge_distance(file_of(s)));
+          psq[ pc][s] = score + (type_of(pc) == PAWN ? PBonus[rank_of(s)][file_of(s)]
+                                                     : Bonus[pc][rank_of(s)][f]);
+          psq[~pc][flip_rank(s)] = -psq[pc][s];
       }
   }
 }

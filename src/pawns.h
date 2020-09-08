@@ -1,8 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
-  Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2016 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -33,54 +31,38 @@ namespace Pawns {
 
 struct Entry {
 
-  Score pawns_score() const { return score; }
+  Score pawn_score(Color c) const { return scores[c]; }
   Bitboard pawn_attacks(Color c) const { return pawnAttacks[c]; }
   Bitboard passed_pawns(Color c) const { return passedPawns[c]; }
   Bitboard pawn_attacks_span(Color c) const { return pawnAttacksSpan[c]; }
-  int pawn_span(Color c) const { return pawnSpan[c]; }
-  int pawn_asymmetry() const { return asymmetry; }
+  int passed_count() const { return popcount(passedPawns[WHITE] | passedPawns[BLACK]); }
+  int blocked_count() const { return blockedCount; }
 
-  int semiopen_file(Color c, File f) const {
-    return semiopenFiles[c] & (1 << f);
-  }
-
-  int semiopen_side(Color c, File f, bool leftSide) const {
-    return semiopenFiles[c] & (leftSide ? (1 << f) - 1 : ~((1 << (f + 1)) - 1));
-  }
-
-  int pawns_on_same_color_squares(Color c, Square s) const {
-    return pawnsOnSquares[c][!!(DarkSquares & s)];
+  template<Color Us>
+  Score king_safety(const Position& pos) {
+    return  kingSquares[Us] == pos.square<KING>(Us) && castlingRights[Us] == pos.castling_rights(Us)
+          ? kingSafety[Us] : (kingSafety[Us] = do_king_safety<Us>(pos));
   }
 
   template<Color Us>
-  Score king_safety(const Position& pos, Square ksq)  {
-    return  kingSquares[Us] == ksq && castlingRights[Us] == pos.can_castle(Us)
-          ? kingSafety[Us] : (kingSafety[Us] = do_king_safety<Us>(pos, ksq));
-  }
+  Score do_king_safety(const Position& pos);
 
   template<Color Us>
-  Score do_king_safety(const Position& pos, Square ksq);
-
-  template<Color Us>
-  Value shelter_storm(const Position& pos, Square ksq);
+  Score evaluate_shelter(const Position& pos, Square ksq) const;
 
   Key key;
-  Score score;
+  Score scores[COLOR_NB];
   Bitboard passedPawns[COLOR_NB];
   Bitboard pawnAttacks[COLOR_NB];
   Bitboard pawnAttacksSpan[COLOR_NB];
   Square kingSquares[COLOR_NB];
   Score kingSafety[COLOR_NB];
   int castlingRights[COLOR_NB];
-  int semiopenFiles[COLOR_NB];
-  int pawnSpan[COLOR_NB];
-  int pawnsOnSquares[COLOR_NB][COLOR_NB]; // [color][light/dark squares]
-  int asymmetry;
+  int blockedCount;
 };
 
-typedef HashTable<Entry, 16384> Table;
+typedef HashTable<Entry, 131072> Table;
 
-void init();
 Entry* probe(const Position& pos);
 
 } // namespace Pawns

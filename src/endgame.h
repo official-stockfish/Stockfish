@@ -1,8 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
-  Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2016 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -21,23 +19,23 @@
 #ifndef ENDGAME_H_INCLUDED
 #define ENDGAME_H_INCLUDED
 
-#include <map>
 #include <memory>
 #include <string>
 #include <type_traits>
+#include <unordered_map>
 #include <utility>
 
 #include "position.h"
 #include "types.h"
 
 
-/// EndgameType lists all supported endgames
+/// EndgameCode lists all supported endgame functions by corresponding codes
 
-enum EndgameType {
+enum EndgameCode {
 
-  // Evaluation functions
-
+  EVALUATION_FUNCTIONS,
   KNNK,  // KNN vs K
+  KNNKP, // KNN vs KP
   KXK,   // Generic "mate lone king" eval
   KBNK,  // KBN vs K
   KPK,   // KP vs K
@@ -47,10 +45,7 @@ enum EndgameType {
   KQKP,  // KQ vs KP
   KQKR,  // KQ vs KR
 
-
-  // Scaling functions
   SCALING_FUNCTIONS,
-
   KBPsK,   // KB and pawns vs K
   KQKRPs,  // KQ vs KR and pawns
   KRPKR,   // KRP vs KR
@@ -60,66 +55,69 @@ enum EndgameType {
   KBPKB,   // KBP vs KB
   KBPPKB,  // KBPP vs KB
   KBPKN,   // KBP vs KN
-  KNPK,    // KNP vs K
-  KNPKB,   // KNP vs KB
   KPKP     // KP vs KP
 };
 
 
 /// Endgame functions can be of two types depending on whether they return a
 /// Value or a ScaleFactor.
-template<EndgameType E> using
+
+template<EndgameCode E> using
 eg_type = typename std::conditional<(E < SCALING_FUNCTIONS), Value, ScaleFactor>::type;
 
 
-/// Base and derived templates for endgame evaluation and scaling functions
+/// Base and derived functors for endgame evaluation and scaling functions
 
 template<typename T>
 struct EndgameBase {
 
+  explicit EndgameBase(Color c) : strongSide(c), weakSide(~c) {}
   virtual ~EndgameBase() = default;
-  virtual Color strong_side() const = 0;
   virtual T operator()(const Position&) const = 0;
+
+  const Color strongSide, weakSide;
 };
 
 
-template<EndgameType E, typename T = eg_type<E>>
+template<EndgameCode E, typename T = eg_type<E>>
 struct Endgame : public EndgameBase<T> {
 
-  explicit Endgame(Color c) : strongSide(c), weakSide(~c) {}
-  Color strong_side() const { return strongSide; }
-  T operator()(const Position&) const;
-
-private:
-  Color strongSide, weakSide;
+  explicit Endgame(Color c) : EndgameBase<T>(c) {}
+  T operator()(const Position&) const override;
 };
 
 
-/// The Endgames class stores the pointers to endgame evaluation and scaling
+/// The Endgames namespace handles the pointers to endgame evaluation and scaling
 /// base objects in two std::map. We use polymorphism to invoke the actual
 /// endgame function by calling its virtual operator().
 
-class Endgames {
+namespace Endgames {
 
-  template<typename T> using Map = std::map<Key, std::unique_ptr<EndgameBase<T>>>;
+  template<typename T> using Ptr = std::unique_ptr<EndgameBase<T>>;
+  template<typename T> using Map = std::unordered_map<Key, Ptr<T>>;
 
-  template<EndgameType E, typename T = eg_type<E>>
-  void add(const std::string& code);
+  extern std::pair<Map<Value>, Map<ScaleFactor>> maps;
+
+  void init();
 
   template<typename T>
   Map<T>& map() {
     return std::get<std::is_same<T, ScaleFactor>::value>(maps);
   }
 
-  std::pair<Map<Value>, Map<ScaleFactor>> maps;
+  template<EndgameCode E, typename T = eg_type<E>>
+  void add(const std::string& code) {
 
-public:
-  Endgames();
+    StateInfo st;
+    map<T>()[Position().set(code, WHITE, &st).material_key()] = Ptr<T>(new Endgame<E>(WHITE));
+    map<T>()[Position().set(code, BLACK, &st).material_key()] = Ptr<T>(new Endgame<E>(BLACK));
+  }
 
   template<typename T>
-  EndgameBase<T>* probe(Key key) {
-    return map<T>().count(key) ? map<T>()[key].get() : nullptr;
+  const EndgameBase<T>* probe(Key key) {
+    auto it = map<T>().find(key);
+    return it != map<T>().end() ? it->second.get() : nullptr;
   }
-};
+}
 
 #endif // #ifndef ENDGAME_H_INCLUDED
