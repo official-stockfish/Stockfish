@@ -70,7 +70,7 @@ namespace Learner
             file_worker_thread.join();
             output_file_stream.close();
 
-#if !defined(DNDEBUG)
+#if defined(_DEBUG)
             {
                 // All buffers should be empty since file_worker_thread
                 // should have written everything before exiting.
