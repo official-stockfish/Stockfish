@@ -1163,11 +1163,6 @@ namespace Learner
             if (ps.gamePly < prng.rand(reduction_gameply))
                 goto RETRY_READ;
 
-#if 0
-            auto sfen = pos.sfen_unpack(ps.data);
-            pos.set(sfen);
-#endif
-            // ↑ Since it is slow when passing through sfen, I made a dedicated function.
             StateInfo si;
             const bool mirror = prng.rand(100) < mirror_percentage;
             if (pos.set_from_packed_sfen(ps.sfen, &si, th, mirror) != 0)
@@ -1206,28 +1201,6 @@ namespace Learner
             // If the initial PV is different, it is better not to use it for learning.
             // If it is the result of searching a completely different place, it may become noise.
             // It may be better not to study where the difference in evaluation values ​​is too large.
-
-#if 0
-            // If you do this, about 13% of the phases will be excluded 
-            // from the learning target. Good and bad are subtle.
-            if (pv.size() >= 1 && (uint16_t)pv[0] != ps.move)
-            {
-                //dbg_hit_on(false);
-                continue;
-            }
-#endif
-
-#if 0
-            // It may be better not to study where the difference in evaluation values ​​is too large.
-            // → It's okay because it passes the win rate function... 
-            // About 30% of the phases are out of the scope of learning...
-            if (abs((int16_t)r.first - ps.score) >= Eval::PawnValue * 4)
-            {
-                //dbg_hit_on(false);
-                continue;
-            }
-            //dbg_hit_on(true);
-#endif
 
             int ply = 0;
 
@@ -1315,17 +1288,6 @@ namespace Learner
             // rewind the phase
             for (auto it = pv.rbegin(); it != pv.rend(); ++it)
                 pos.undo_move(*it);
-
-#if 0
-            // When adding the gradient to the root phase
-            shallow_value = 
-                (rootColor == pos.side_to_move()) 
-                ? Eval::evaluate(pos) 
-                : -Eval::evaluate(pos);
-
-            dj_dw = calc_grad(deep_value, shallow_value, ps);
-            Eval::add_grad(pos, rootColor, dj_dw, without_kpp);
-#endif
         }
 
     }
@@ -2057,18 +2019,6 @@ namespace Learner
         if (newbob_decay != 1.0 && !Options["SkipLoadingEval"]) {
             learn_think.best_nn_directory = std::string(Options["EvalDir"]);
         }
-
-#if 0
-        // A test to give a gradient of 1.0 to the initial stage of Hirate.
-        pos.set_hirate();
-        cout << Eval::evaluate(pos) << endl;
-        //Eval::print_eval_stat(pos);
-        Eval::add_grad(pos, BLACK, 32.0, false);
-        Eval::update_weights(1);
-        pos.state()->sum.p[2][0] = VALUE_NOT_EVALUATED;
-        cout << Eval::evaluate(pos) << endl;
-        //Eval::print_eval_stat(pos);
-#endif
 
         cout << "init done." << endl;
 

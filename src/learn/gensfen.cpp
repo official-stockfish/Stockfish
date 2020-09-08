@@ -166,7 +166,7 @@ namespace Learner
                         output_file_stream.write(reinterpret_cast<const char*>(buf->data()), sizeof(PackedSfenValue) * buf->size());
 
                         sfen_write_count += buf->size();
-#if 1
+
                         // Add the processed number here, and if it exceeds save_every,
                         // change the file name and reset this counter.
                         sfen_write_count_current_file += buf->size();
@@ -186,7 +186,7 @@ namespace Learner
                             output_file_stream.open(new_filename, ios::out | ios::binary | ios::app);
                             cout << endl << "output sfen file = " << new_filename << endl;
                         }
-#endif
+
                         // Output '.' every time when writing a game record.
                         std::cout << ".";
 
@@ -519,10 +519,6 @@ namespace Learner
         {
             // Write out one sfen.
             sfen_writer.write(thread_id, *it);
-#if 0
-            pos.set_from_packed_sfen(it->sfen);
-            cout << pos << "Win : " << it->is_win << " , " << it->score << endl;
-#endif
         }
 
         return quit;
@@ -667,13 +663,12 @@ namespace Learner
 
         for (auto m : pv)
         {
-#if 1
             // There should be no illegal move. This is as a debugging precaution.
             if (!pos.pseudo_legal(m) || !pos.legal(m))
             {
                 cout << "Error! : " << pos.fen() << m << endl;
             }
-#endif
+
             pos.do_move(m, states[ply++]);
 
             // Because the difference calculation of evaluate() cannot be
@@ -802,19 +797,6 @@ namespace Learner
 
                     // Save the move score for adjudication.
                     move_hist_scores.push_back(search_value);
-
-#if 0
-                    dbg_hit_on(search_value == leaf_value);
-                    // gensfen depth 3 eval_limit 32000
-                    // Total 217749 Hits 203579 hit rate (%) 93.490
-                    // gensfen depth 6 eval_limit 32000
-                    // Total 78407 Hits 69190 hit rate (%) 88.245
-                    // gensfen depth 6 eval_limit 3000
-                    // Total 53879 Hits 43713 hit rate (%) 81.132
-
-                    // Problems such as pruning with moves in the substitution table.
-                    // This is a little uncomfortable as a teacher...
-#endif
 
                     // If depth 0, pv is not obtained, so search again at depth 2.
                     if (search_depth_min <= 0)
