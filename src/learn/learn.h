@@ -6,18 +6,6 @@
 #include <vector>
 
 // ----------------------
-// learning from zero vector
-// ----------------------
-
-// Start learning the evaluation function parameters from the zero vector.
-// Initialize to zero, generate a game, learn from zero vector,
-// Game generation → If you repeat learning, you will get parameters that do not depend on the professional game. (maybe)
-// (very time consuming)
-
-//#define RESET_TO_ZERO_VECTOR
-
-
-// ----------------------
 // Floating point for learning
 // ----------------------
 
