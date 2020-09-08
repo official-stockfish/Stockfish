@@ -9,9 +9,6 @@
 // Select the objective function
 // ----------------------
 
-// A version in which the objective function is cross entropy, but the win rate function is not passed
-// #define LOSS_FUNCTION_IS_CROSS_ENTOROPY_FOR_VALUE
-
 // elmo (WCSC27) method
 // #define LOSS_FUNCTION_IS_ELMO_METHOD
 
@@ -116,9 +113,7 @@ typedef float LearnFloatType;
 
 #define LOSS_FUNCTION_IS_ELMO_METHOD
 
-#if defined(LOSS_FUNCTION_IS_CROSS_ENTOROPY_FOR_VALUE)
-#define LOSS_FUNCTION "CROSS_ENTOROPY_FOR_VALUE"
-#elif defined(LOSS_FUNCTION_IS_ELMO_METHOD)
+#if defined(LOSS_FUNCTION_IS_ELMO_METHOD)
 #define LOSS_FUNCTION "ELMO_METHOD(WCSC27)"
 #endif
 

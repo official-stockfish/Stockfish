@@ -163,17 +163,6 @@ namespace Learner
         return ((y2 - y1) / epsilon) / winning_probability_coefficient;
     }
 
-#if defined ( LOSS_FUNCTION_IS_CROSS_ENTOROPY_FOR_VALUE )
-    double calc_grad(Value deep, Value shallow, const PackedSfenValue& psv)
-    {
-        // Version that does not pass the winning percentage function
-        // This, unless EVAL_LIMIT is set low, trying to 
-        // match the evaluation value with the shape of the end stage
-        // eval may exceed the range of eval.
-        return shallow - deep;
-    }
-#endif
-
 #if defined ( LOSS_FUNCTION_IS_ELMO_METHOD )
 
     // A constant used in elmo (WCSC27). Adjustment required.
