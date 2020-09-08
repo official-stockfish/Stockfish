@@ -6,14 +6,6 @@
 #include <vector>
 
 // ----------------------
-// update formula
-// ----------------------
-
-// SGD looking only at the sign of the gradient. It requires less memory, but the accuracy is...
-// #define SGD_UPDATE
-
-
-// ----------------------
 // Select the objective function
 // ----------------------
 
@@ -133,10 +125,6 @@ typedef float LearnFloatType;
 // ----------------------
 
 #define LOSS_FUNCTION_IS_ELMO_METHOD
-
-#if defined(SGD_UPDATE)
-#define LEARN_UPDATE "SGD"
-#endif
 
 #if defined(LOSS_FUNCTION_IS_WINNING_PERCENTAGE)
 #define LOSS_FUNCTION "WINNING_PERCENTAGE"

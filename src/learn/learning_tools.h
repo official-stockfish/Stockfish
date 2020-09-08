@@ -4,13 +4,12 @@
 // A set of machine learning tools related to the weight array used for machine learning of evaluation functions
 
 #include "learn.h"
+
 #if defined (EVAL_LEARN)
-#include <array>
 
-#if defined(SGD_UPDATE) || defined(USE_KPPP_MIRROR_WRITE)
 #include "../misc.h"  // PRNG , my_insertion_sort
-#endif
 
+#include <array>
 #include <cmath>	// std::sqrt()
 
 namespace EvalLearningTools
@@ -28,14 +27,6 @@ namespace EvalLearningTools
 	{
 		// cumulative value of one mini-batch gradient
 		LearnFloatType g = LearnFloatType(0);
-
-		// When ADA_GRAD_UPDATE. LearnFloatType == float,
-		// total 4*2 + 4*2 + 1*2 = 18 bytes
-		// It suffices to secure a Weight array that is 4.5 times the size of the evaluation function parameter of 1GB.
-		// However, sizeof(Weight)==20 code is generated if the structure alignment is in 4-byte units, so
-		// Specify pragma pack(2).
-
-		// For SGD_UPDATE, this structure is reduced by 10 bytes to 8 bytes.
 
 		// Learning rate η(eta) such as AdaGrad.
 		// It is assumed that eta1,2,3,eta1_epoch,eta2_epoch have been set by the time updateFV() is called.
@@ -75,44 +66,6 @@ namespace EvalLearningTools
 		}
 
 		template <typename T> void updateFV(T& v) { updateFV(v, 1.0); }
-
-#if defined(SGD_UPDATE)
-
-		// See only the sign of the gradient Update with SGD
-		// When executing this function, the value of g and the member do not change
-		// Guaranteed by the caller. It does not have to be an atomic operation.
-		template <typename T>
-		void updateFV(T & v , double k)
-		{
-			if (g == 0)
-				return;
-
-			// See only the sign of g and update.
-			// If g <0, add v a little.
-			// If g> 0, subtract v slightly.
-
-			// Since we only add integers, no decimal part is required.
-
-			// It's a good idea to move around 0-5.
-			// It is better to have a Gaussian distribution, so generate a 5-bit random number (each bit has a 1/2 probability of 1),
-			// Pop_count() it. At this time, it has a binomial distribution.
-			//int16_t diff = (int16_t)POPCNT32((u32)prng.rand(31));
-			// → If I do this with 80 threads, this AsyncPRNG::rand() locks, so I slowed down. This implementation is not good.
-			int16_t diff = 1;
-
-			double V = v;
-			if (g > 0.0)
-				V-= diff;
-			else
-				V+= diff;
-
-			V = (std::min)((double)(std::numeric_limits<T>::max)(), V);
-			V = (std::max)((double)(std::numeric_limits<T>::min)(), V);
-
-			v = (T)V;
-		}
-
-#endif
 
 		// grad setting
 		template <typename T> void set_grad(const T& g_) { g = g_; }
