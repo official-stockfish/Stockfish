@@ -9,9 +9,6 @@
 // update formula
 // ----------------------
 
-// Ada Grad. Recommended because it is stable.
-// #define ADA_GRAD_UPDATE
-
 // SGD looking only at the sign of the gradient. It requires less memory, but the accuracy is...
 // #define SGD_UPDATE
 
@@ -136,13 +133,8 @@ typedef float LearnFloatType;
 // ----------------------
 
 #define LOSS_FUNCTION_IS_ELMO_METHOD
-#define ADA_GRAD_UPDATE
 
-// Character string according to update formula. (Output for debugging.)
-// Implemented various update expressions, but concluded that AdaGrad is the best in terms of speed and memory.
-#if defined(ADA_GRAD_UPDATE)
-#define LEARN_UPDATE "AdaGrad"
-#elif defined(SGD_UPDATE)
+#if defined(SGD_UPDATE)
 #define LEARN_UPDATE "SGD"
 #endif
 

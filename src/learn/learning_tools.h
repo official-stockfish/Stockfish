@@ -76,59 +76,7 @@ namespace EvalLearningTools
 
 		template <typename T> void updateFV(T& v) { updateFV(v, 1.0); }
 
-#if defined (ADA_GRAD_UPDATE)
-
-		// Since the maximum value that can be accurately calculated with float is INT16_MAX*256-1
-		// Keep the small value as a marker.
-		const LearnFloatType V0_NOT_INIT = (INT16_MAX * 128);
-
-		// What holds v internally. The previous implementation kept a fixed decimal with only a fractional part to save memory,
-		// Since it is doubtful in accuracy and the visibility is bad, it was abolished.
-		LearnFloatType v0 = LearnFloatType(V0_NOT_INIT);
-
-		// AdaGrad g2
-		LearnFloatType g2 = LearnFloatType(0);
-
-		// update with AdaGrad
-		// When executing this function, the value of g and the member do not change
-		// Guaranteed by the caller. It does not have to be an atomic operation.
-		// k is a coefficient for eta. 1.0 is usually sufficient. If you want to lower eta for your turn item, set this to 1/8.0 etc.
-		template <typename T>
-		void updateFV(T& v,double k)
-		{
-			// AdaGrad update formula
-			// Gradient vector is g, vector to be updated is v, η(eta) is a constant,
-			//     g2 = g2 + g^2
-			//     v = v - ηg/sqrt(g2)
-
-			constexpr double epsilon = 0.000001;
-
-			if (g == LearnFloatType(0))
-				return;
-
-			g2 += g * g;
-
-			// If v0 is V0_NOT_INIT, it means that the value is not initialized with the value of KK/KKP/KPP array,
-			// In this case, read the value of v from the one passed in the argument.
-			double V = (v0 == V0_NOT_INIT) ? v : v0;
-
-			V -= k * eta * (double)g / sqrt((double)g2 + epsilon);
-
-			// Limit the value of V to be within the range of types.
-			// By the way, windows.h defines the min and max macros, so to avoid it,
-			// Here, it is enclosed in parentheses so that it is not treated as a function-like macro.
-			V = (std::min)((double)(std::numeric_limits<T>::max)() , V);
-			V = (std::max)((double)(std::numeric_limits<T>::min)() , V);
-
-			v0 = (LearnFloatType)V;
-			v = (T)round(V);
-
-			// Clear g because one update of mini-batch for this element is over
-			// g[i] = 0;
-			// → There is a problem of dimension reduction, so this will be done by the caller.
-		}
-
-#elif defined(SGD_UPDATE)
+#if defined(SGD_UPDATE)
 
 		// See only the sign of the gradient Update with SGD
 		// When executing this function, the value of g and the member do not change
