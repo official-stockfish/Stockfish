@@ -115,7 +115,9 @@ void TranspositionTable::clear() {
 /// TTEntry t2 if its replace value is greater than that of t2.
 
 TTEntry* TranspositionTable::probe(const Key key, bool& found) const {
-
+  if (Options["Training"]) {
+    return found = false, first_entry(0);
+  }
   TTEntry* const tte = first_entry(key);
   const uint16_t key16 = (uint16_t)key;  // Use the low 16 bits as key inside the cluster
 

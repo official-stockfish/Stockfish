@@ -11,10 +11,6 @@
 #include "../uci.h"
 #include "../syzygy/tbprobe.h"
 
-#if defined(USE_BOOK)
-#include "../extra/book/book.h"
-#endif
-
 #include <chrono>
 #include <random>
 #include <regex>
@@ -54,11 +50,7 @@ namespace Learner
     static bool detect_draw_by_consecutive_low_score = false;
     static bool detect_draw_by_insufficient_mating_material = false;
 
-    // Use raw NNUE eval value in the Eval::evaluate().
-    // If hybrid eval is enabled, training data
-    // generation and training don't work well.
-    // https://discordapp.com/channels/435943710472011776/733545871911813221/748524079761326192
-    static bool use_raw_nnue_eval = true;
+    static std::vector<std::string> bookStart;
 
     // Helper class for exporting Sfen
     struct SfenWriter
@@ -312,13 +304,6 @@ namespace Learner
             std::vector<uint8_t>& random_move_flag,
             int ply,
             int& random_move_c);
-
-        Value evaluate_leaf(
-            Position& pos,
-            std::vector<StateInfo, AlignedAllocator<StateInfo>>& states,
-            int ply,
-            int depth,
-            vector<Move>& pv);
 
         // Min and max depths for search during gensfen
         int search_depth_min;
@@ -674,69 +659,6 @@ namespace Learner
         return random_move_flag;
     }
 
-    Value MultiThinkGenSfen::evaluate_leaf(
-        Position& pos,
-        std::vector<StateInfo, AlignedAllocator<StateInfo>>& states,
-        int ply,
-        int depth,
-        vector<Move>& pv)
-    {
-        auto rootColor = pos.side_to_move();
-
-        for (auto m : pv)
-        {
-#if 1
-            // There should be no illegal move. This is as a debugging precaution.
-            if (!pos.pseudo_legal(m) || !pos.legal(m))
-            {
-                cout << "Error! : " << pos.fen() << m << endl;
-            }
-#endif
-            pos.do_move(m, states[ply++]);
-
-            // Because the difference calculation of evaluate() cannot be
-            // performed unless each node evaluate() is called!
-            // If the depth is 8 or more, it seems
-            // faster not to calculate this difference.
-#if defined(EVAL_NNUE)
-            if (depth < 8)
-            {
-                Eval::NNUE::update_eval(pos);
-            }
-#endif  // defined(EVAL_NNUE)
-        }
-
-        // Reach leaf
-        Value v;
-        if (pos.checkers())
-        {
-            // Sometime a king is checked.  An example is a case that a checkmate is
-            // found in the search.  If Eval::evaluate() is called whne a king is
-            // checked, classic eval crashes by an assertion. To avoid crashes, return
-            // VALUE_NONE and let the caller assign a value to the position.
-            v = VALUE_NONE;
-        }
-        else
-        {
-            v = Eval::evaluate(pos);
-
-            // evaluate() returns the evaluation value on the turn side, so
-            // If it's a turn different from root_color, you must invert v and return it.
-            if (rootColor != pos.side_to_move())
-            {
-                v = -v;
-            }
-        }
-
-        // Rewind the pv moves.
-        for (auto it = pv.rbegin(); it != pv.rend(); ++it)
-        {
-            pos.undo_move(*it);
-        }
-
-        return v;
-    }
-
     // thread_id = 0..Threads.size()-1
     void MultiThinkGenSfen::thread_worker(size_t thread_id)
     {
@@ -760,12 +682,7 @@ namespace Learner
             auto th = Threads[thread_id];
 
             auto& pos = th->rootPos;
-            pos.set(StartFEN, false, &si, th);
-
-#if defined(USE_BOOK)
-            // Refer to the members of BookMoveSelector defined in the search section.
-            auto& book = ::book;
-#endif
+            pos.set(bookStart[prng.rand(bookStart.size())], false, &si, th);
 
             // Vector for holding the sfens in the current simulated game.
             PSVector a_psv;
@@ -800,35 +717,6 @@ namespace Learner
                     flush_psv(result.value());
                     break;
                 }
-#if defined(USE_BOOK)
-                if ((next_move = book.probe(pos)) != MOVE_NONE)
-                {
-                    // Hit the constant track.
-                    // The move was stored in next_move.
-
-                    // Do not use the fixed phase for learning.
-                    sfens.clear();
-
-                    if (random_move_minply != -1)
-                    {
-                        // Random move is performed with a certain
-                        // probability even in the constant phase.
-                        goto RANDOM_MOVE;
-                    }
-                    else
-                    {
-                        // When -1 is specified as random_move_minply,
-                        // it points according to the standard until
-                        // it goes out of the standard.
-                        // Prepare an innumerable number of situations
-                        // that have left the constant as
-                        // ConsiderationBookMoveCount true using a huge constant
-                        // Used for purposes such as performing
-                        // a random move 5 times from there.
-                        goto DO_MOVE;
-                    }
-                }
-#endif
                 {
                     auto [search_value, search_pv] = search(pos, depth, 1, nodes);
 
@@ -916,18 +804,7 @@ namespace Learner
 
                         // Get the value of evaluate() as seen from the
                         // root color on the leaf node of the PV line.
-                        // I don't know the goodness and badness of using the
-                        // return value of search() as it is.
-                        // TODO: Consider using search value instead of evaluate_leaf.
-                        //       Maybe give it as an option.
-
-                        // Use PV moves to reach the leaf node and use the value
-                        // that evaluated() is called on that leaf node.
-                        const auto leaf_value = evaluate_leaf(pos, states, ply, depth, search_pv);
-
-                        // If for some reason the leaf node couldn't yield an eval
-                        // we fallback to search value.
-                        psv.score = leaf_value == VALUE_NONE ? search_value : leaf_value;
+                        psv.score = search_value;
 
                         psv.gamePly = ply;
 
@@ -948,9 +825,6 @@ namespace Learner
                     // Update the next move according to best search result.
                     next_move = search_pv[0];
                 }
-
-            RANDOM_MOVE:;
-
                 auto random_move = choose_random_move(pos, random_move_flag, ply, actual_random_move_count);
                 if (random_move.has_value())
                 {
@@ -962,13 +836,7 @@ namespace Learner
                     {
                         break;
                     }
-
-                    // Clear the sfens that were written before the random move.
-                    // (???) why?
-                    a_psv.clear();
                 }
-
-            DO_MOVE:;
                 pos.do_move(next_move, states[ply]);
 
                 // Call node evaluate() for each difference calculation.
@@ -1095,17 +963,9 @@ namespace Learner
                 is >> detect_draw_by_consecutive_low_score;
             else if (token == "detect_draw_by_insufficient_mating_material")
                 is >> detect_draw_by_insufficient_mating_material;
-            else if (token == "use_raw_nnue_eval")
-                is >> use_raw_nnue_eval;
             else
                 cout << "Error! : Illegal token " << token << endl;
         }
-
-#if defined(USE_GLOBAL_OPTIONS)
-        // Save it for later restore.
-        auto oldGlobalOptions = GlobalOptions;
-        GlobalOptions.use_eval_hash = use_eval_hash;
-#endif
 
         // If search depth2 is not set, leave it the same as search depth.
         if (search_depth_max == INT_MIN)
@@ -1130,15 +990,26 @@ namespace Learner
             output_file_name = output_file_name + "_" + to_hex(r.rand<uint64_t>()) + to_hex(r.rand<uint64_t>());
         }
 
+        bookStart.clear();
+        {
+          std::string line;
+          std::ifstream myfile ("3moves_v2.epd");
+          if (myfile.is_open())
+          {
+            while (getline(myfile,line))
+            {
+                bookStart.push_back(line);
+            }
+            myfile.close();
+          }
+        }
         std::cout << "gensfen : " << endl
             << "  search_depth_min = " << search_depth_min << " to " << search_depth_max << endl
             << "  nodes = " << nodes << endl
             << "  loop_max = " << loop_max << endl
             << "  eval_limit = " << eval_limit << endl
-            << "  thread_num (set by USI setoption) = " << thread_num << endl
-#if defined(USE_BOOK)
-            << "  book_moves (set by USI setoption) = " << Options["BookMoves"] << endl
-#endif
+            << "  thread_num             = " << thread_num << endl
+            << "  bookStart              = " << bookStart.size() << endl
             << "  random_move_minply     = " << random_move_minply << endl
             << "  random_move_maxply     = " << random_move_maxply << endl
             << "  random_move_count      = " << random_move_count << endl
@@ -1187,11 +1058,6 @@ namespace Learner
         }
 
         std::cout << "gensfen finished." << endl;
-
-#if defined(USE_GLOBAL_OPTIONS)
-        // Restore Global Options.
-        GlobalOptions = oldGlobalOptions;
-#endif
 
     }
 }

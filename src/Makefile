@@ -56,7 +56,6 @@ SRCS = benchmark.cpp bitbase.cpp bitboard.cpp endgame.cpp evaluate.cpp main.cpp 
 	nnue/features/enpassant.cpp \
 	nnue/nnue_test_command.cpp \
 	extra/sfen_packer.cpp \
-	learn/gensfen2019.cpp \
 	learn/learner.cpp \
 	learn/gensfen.cpp \
 	learn/convert.cpp \
@@ -908,7 +907,7 @@ learn: config-sanity
 	EXTRALDFLAGS=' $(BLASLDFLAGS) -fopenmp  ' \
 	all
 
-profile-learn: net config-sanity objclean profileclean
+profile-learn: config-sanity objclean profileclean
 	@echo ""
 	@echo "Step 1/4. Building instrumented executable ..."
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_make) \

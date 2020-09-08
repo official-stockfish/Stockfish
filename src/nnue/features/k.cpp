@@ -11,9 +11,9 @@ namespace NNUE {
 
 namespace Features {
 
-// Orient a square according to perspective (rotates by 180 for black)
+// Orient a square according to perspective (flip rank for black)
 inline Square orient(Color perspective, Square s) {
-  return Square(int(s) ^ (bool(perspective) * 63));
+  return Square(int(s) ^ (bool(perspective) * SQ_A8));
 }
 
 // Index of a feature for a given king position.

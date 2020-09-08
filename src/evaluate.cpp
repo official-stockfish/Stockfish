@@ -32,13 +32,6 @@
 #include "thread.h"
 #include "uci.h"
 
-#ifdef EVAL_LEARN
-namespace Learner
-{
-    extern bool use_raw_nnue_eval;
-}
-#endif
-
 namespace Eval {
 
   bool useNNUE;
@@ -947,27 +940,32 @@ make_v:
 /// evaluation of the position from the point of view of the side to move.
 
 Value Eval::evaluate(const Position& pos) {
-#ifdef EVAL_LEARN
-  if (Learner::use_raw_nnue_eval) {
-      return NNUE::evaluate(pos);
+  if (Options["Training"]) {
+    Value v = NNUE::evaluate(pos);
+    // Damp down the evaluation linearly when shuffling
+    v = v * (100 - pos.rule50_count()) / 100;
+
+    // Guarantee evaluation does not hit the tablebase range
+    v = std::clamp(v, VALUE_TB_LOSS_IN_MAX_PLY + 1, VALUE_TB_WIN_IN_MAX_PLY - 1);
+
+    return v;
+  } else {
+    bool classical = !Eval::useNNUE
+                  ||  abs(eg_value(pos.psq_score())) * 16 > NNUEThreshold1 * (16 + pos.rule50_count());
+    Value v = classical ? Evaluation<NO_TRACE>(pos).value()
+                        : NNUE::evaluate(pos) * 5 / 4 + Tempo;
+
+    if (classical && Eval::useNNUE && abs(v) * 16 < NNUEThreshold2 * (16 + pos.rule50_count()))
+        v = NNUE::evaluate(pos) * 5 / 4 + Tempo;
+
+    // Damp down the evaluation linearly when shuffling
+    v = v * (100 - pos.rule50_count()) / 100;
+
+    // Guarantee evaluation does not hit the tablebase range
+    v = std::clamp(v, VALUE_TB_LOSS_IN_MAX_PLY + 1, VALUE_TB_WIN_IN_MAX_PLY - 1);
+
+    return v;
   }
-#endif
-
-  bool classical = !Eval::useNNUE
-                ||  abs(eg_value(pos.psq_score())) * 16 > NNUEThreshold1 * (16 + pos.rule50_count());
-  Value v = classical ? Evaluation<NO_TRACE>(pos).value()
-                      : NNUE::evaluate(pos) * 5 / 4 + Tempo;
-
-  if (classical && Eval::useNNUE && abs(v) * 16 < NNUEThreshold2 * (16 + pos.rule50_count()))
-      v = NNUE::evaluate(pos) * 5 / 4 + Tempo;
-
-  // Damp down the evaluation linearly when shuffling
-  v = v * (100 - pos.rule50_count()) / 100;
-
-  // Guarantee evaluation does not hit the tablebase range
-  v = std::clamp(v, VALUE_TB_LOSS_IN_MAX_PLY + 1, VALUE_TB_WIN_IN_MAX_PLY - 1);
-
-  return v;
 }
 
 /// trace() is like evaluate(), but instead of returning a value, it returns

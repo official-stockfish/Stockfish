@@ -98,12 +98,6 @@ namespace Learner
     // data directly. In those cases, we set false to this variable.
     static bool convert_teacher_signal_to_winning_probability = true;
 
-    // Use raw NNUE eval value in the Eval::evaluate(). If hybrid eval is enabled, training data
-    // generation and training don't work well.
-    // https://discordapp.com/channels/435943710472011776/733545871911813221/748524079761326192
-    // This CANNOT be static since it's used elsewhere.
-    bool use_raw_nnue_eval = true;
-
     // Using WDL with win rate model instead of sigmoid
     static bool use_wdl = false;
 
@@ -1616,15 +1610,6 @@ namespace Learner
         uint64_t eta1_epoch = 0; // eta2 is not applied by default
         uint64_t eta2_epoch = 0; // eta3 is not applied by default
 
-#if defined(USE_GLOBAL_OPTIONS)
-    // Save it for later restore.
-        auto oldGlobalOptions = GlobalOptions;
-        // If you hit the eval hash, you can not calculate rmse etc. so turn it off.
-        GlobalOptions.use_eval_hash = false;
-        // If you hit the replacement table, pruning may occur at the previous evaluation value, so turn it off.
-        GlobalOptions.use_hash_probe = false;
-#endif
-
         // --- Function that only shuffles the teacher aspect
 
         // normal shuffle
@@ -1796,7 +1781,6 @@ namespace Learner
             else if (option == "dest_score_min_value") is >> dest_score_min_value;
             else if (option == "dest_score_max_value") is >> dest_score_max_value;
             else if (option == "convert_teacher_signal_to_winning_probability") is >> convert_teacher_signal_to_winning_probability;
-            else if (option == "use_raw_nnue_eval") is >> use_raw_nnue_eval;
 
             // Otherwise, it's a filename.
             else
@@ -2076,18 +2060,9 @@ namespace Learner
         // Save once at the end.
         learn_think.save(true);
 
-#if defined(USE_GLOBAL_OPTIONS)
-        // Restore Global Options.
-        GlobalOptions = oldGlobalOptions;
-#endif
     }
 
 
 } // namespace Learner
-
-#if defined(GENSFEN2019)
-#include "gensfen2019.cpp"
-#endif
-
 
 #endif // EVAL_LEARN

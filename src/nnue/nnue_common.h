@@ -69,7 +69,7 @@
 namespace Eval::NNUE {
 
   // Version of the evaluation file
-  constexpr std::uint32_t kVersion = 0x7AF32F16u;
+  constexpr std::uint32_t kVersion = 0x7AF32F17u;
 
   // Constant used in evaluation value calculation
   constexpr int FV_SCALE = 16;

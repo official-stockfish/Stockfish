@@ -68,8 +68,6 @@ namespace {
     return Value(223 * (d - improving));
   }
 
-  bool training;
-
   // Reductions lookup table, initialized at startup
   int Reductions[MAX_MOVES]; // [depth or moveNumber]
 
@@ -195,8 +193,6 @@ void Search::init() {
 
   for (int i = 1; i < MAX_MOVES; ++i)
       Reductions[i] = int((22.0 + std::log(Threads.size())) * std::log(i));
-
-  training = Options["Training"];
 }
 
 
@@ -1011,7 +1007,7 @@ moves_loop: // When in check, search starts from here
 
       // Step 12. Pruning at shallow depth (~200 Elo)
       if (  !rootNode
-          && !(training && PvNode)
+          && !(Options["Training"] && PvNode)
           && pos.non_pawn_material(us)
           && bestValue > VALUE_TB_LOSS_IN_MAX_PLY)
       {
@@ -2070,17 +2066,6 @@ namespace Learner
         rootMoves.push_back(Search::RootMove(m));
 
       assert(!rootMoves.empty());
-
-      //#if defined(USE_GLOBAL_OPTIONS)
-      // Since the generation of the substitution table for each search thread should be managed,
-      // Increase the generation of the substitution table for this thread because it is a new search.
-            //TT.new_search(th->thread_id());
-
-            // ª If you call new_search here, it may be a loss because you can't use the previous search result.
-            // Do not do this here, but caller should do TT.new_search(th->thread_id()) for each station ...
-
-            // ¨Because we want to avoid reaching the same final diagram, use the substitution table commonly for all threads when generating teachers.
-      //#endif
     }
   }
 
