@@ -58,7 +58,7 @@ namespace Learner
     // If hybrid eval is enabled, training data
     // generation and training don't work well.
     // https://discordapp.com/channels/435943710472011776/733545871911813221/748524079761326192
-    static bool use_raw_nnue_eval = true;
+    extern bool use_raw_nnue_eval;
 
     // Helper class for exporting Sfen
     struct SfenWriter
