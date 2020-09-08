@@ -9,11 +9,6 @@
 // Select the objective function
 // ----------------------
 
-// The objective function is the sum of squares of the difference in winning percentage
-// See learner.cpp for more information.
-
-//#define LOSS_FUNCTION_IS_WINNING_PERCENTAGE
-
 // Objective function is cross entropy
 // See learner.cpp for more information.
 // So-called ordinary "rag cloth squeezer"
@@ -126,9 +121,7 @@ typedef float LearnFloatType;
 
 #define LOSS_FUNCTION_IS_ELMO_METHOD
 
-#if defined(LOSS_FUNCTION_IS_WINNING_PERCENTAGE)
-#define LOSS_FUNCTION "WINNING_PERCENTAGE"
-#elif defined(LOSS_FUNCTION_IS_CROSS_ENTOROPY)
+#if defined(LOSS_FUNCTION_IS_CROSS_ENTOROPY)
 #define LOSS_FUNCTION "CROSS_ENTOROPY"
 #elif defined(LOSS_FUNCTION_IS_CROSS_ENTOROPY_FOR_VALUE)
 #define LOSS_FUNCTION "CROSS_ENTOROPY_FOR_VALUE"

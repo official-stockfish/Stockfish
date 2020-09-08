@@ -163,42 +163,6 @@ namespace Learner
         return ((y2 - y1) / epsilon) / winning_probability_coefficient;
     }
 
-    // When the objective function is the sum of squares of the difference in winning percentage
-#if defined (LOSS_FUNCTION_IS_WINNING_PERCENTAGE)
-// function to calculate the gradient
-    double calc_grad(Value deep, Value shallow, PackedSfenValue& psv)
-    {
-        // The square of the win rate difference minimizes it in the objective function.
-        // Objective function J = 1/2m Σ (win_rate(shallow)-win_rate(deep) )^2
-        // However, σ is a sigmoid function that converts the 
-        // evaluation value into the difference in the winning percentage.
-        // m is the number of samples. shallow is the evaluation value 
-        // for a shallow search (qsearch()). deep is the evaluation value for deep search.
-        // If W is the feature vector (parameter of the evaluation function) 
-        // and Xi and Yi are teachers
-        // shallow = W*Xi // * is the Hadamard product, transposing W and meaning X
-        // f(Xi) = win_rate(W*Xi)
-        // If σ(i th deep) = Yi,
-        // J = m/2 Σ (f(Xi)-Yi )^2
-        // becomes a common expression.
-        // W is a vector, and if we write the jth element as Wj, from the chain rule
-        // ∂J/∂Wj = ∂J/∂f ・∂f/∂W ・∂W/∂Wj
-        // = 1/m Σ (f(Xi)-y) ・f'(Xi) ・ 1
-
-        // 1/m will be multiplied later, but the contents of Σ can 
-        // be retained in the array as the value of the gradient.
-        // f'(Xi) = win_rate'(shallow) = sigmoid'(shallow/600) = dsigmoid(shallow / 600) / 600
-        // This /600 at the end is adjusted by the learning rate, so do not write it..
-        // Also, the coefficient of 1/m is unnecessary if you use the update 
-        // formula that has the automatic gradient adjustment function like Adam and AdaGrad.
-        // Therefore, it is not necessary to save it in memory.
-
-        const double p = winning_percentage(deep, psv.gamePly);
-        const double q = winning_percentage(shallow, psv.gamePly);
-        return (q - p) * Math::dsigmoid(double(shallow) / 600.0);
-    }
-#endif
-
 #if defined (LOSS_FUNCTION_IS_CROSS_ENTOROPY)
     double calc_grad(Value deep, Value shallow, const PackedSfenValue& psv)
     {
