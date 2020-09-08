@@ -5,18 +5,6 @@
 
 #include <vector>
 
-// =====================
-// Settings for learning
-// =====================
-
-// If you select one of the following, the details after that will be automatically selected.
-// If you don't select any of them, you need to set the subsequent details one by one.
-
-// Learning setting by elmo method. This is the default setting.
-// To make a standard squeeze diaphragm, specify "lambda 1" with the learn command.
-#define LEARN_ELMO_METHOD
-
-
 // ----------------------
 // update formula
 // ----------------------
@@ -147,10 +135,8 @@ typedef float LearnFloatType;
 // Learning with the method of elmo (WCSC27)
 // ----------------------
 
-#if defined( LEARN_ELMO_METHOD )
 #define LOSS_FUNCTION_IS_ELMO_METHOD
 #define ADA_GRAD_UPDATE
-#endif
 
 // Character string according to update formula. (Output for debugging.)
 // Implemented various update expressions, but concluded that AdaGrad is the best in terms of speed and memory.
