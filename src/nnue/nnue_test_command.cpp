@@ -1,7 +1,5 @@
 ﻿// USI extended command for NNUE evaluation function
 
-#if defined(ENABLE_TEST_CMD)
-
 #include "../thread.h"
 #include "../uci.h"
 #include "evaluate_nnue.h"
@@ -197,5 +195,3 @@ void TestCommand(Position& pos, std::istream& stream) {
 }  // namespace NNUE
 
 }  // namespace Eval
-
-#endif  // defined(ENABLE_TEST_CMD)
