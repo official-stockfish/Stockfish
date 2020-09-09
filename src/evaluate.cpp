@@ -60,7 +60,7 @@ namespace Eval {
   bool useNNUE;
   string eval_file_loaded = "None";
 
-  /// init_NNUE() tries to load a nnue network at startup time, or when the engine
+  /// NNUE::init() tries to load a nnue network at startup time, or when the engine
   /// receives a UCI command "setoption name EvalFile value nn-[a-z0-9]{12}.nnue"
   /// The name of the nnue network is always retrieved from the EvalFile option.
   /// We search the given network in three locations: internally (the default
@@ -68,7 +68,7 @@ namespace Eval {
   /// in the engine directory. Distro packagers may define the DEFAULT_NNUE_DIRECTORY
   /// variable to have the engine search in a special directory in their distro.
 
-  void init_NNUE() {
+  void NNUE::init() {
 
     useNNUE = Options["Use NNUE"];
     if (!useNNUE)
@@ -111,8 +111,8 @@ namespace Eval {
         }
   }
 
-  /// verify_NNUE() verifies that the last net used was loaded successfully
-  void verify_NNUE() {
+  /// NNUE::verify() verifies that the last net used was loaded successfully
+  void NNUE::verify() {
 
     string eval_file = string(Options["EvalFile"]);
 

@@ -136,10 +136,10 @@ namespace Eval::NNUE {
   }
 
   // Load eval, from a file stream or a memory stream
-  bool load_eval(std::string streamName, std::istream& stream) {
+  bool load_eval(std::string name, std::istream& stream) {
 
     Initialize();
-    fileName = streamName;
+    fileName = name;
     return ReadParameters(stream);
   }
 

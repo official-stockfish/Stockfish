@@ -32,8 +32,6 @@ namespace Eval {
 
   extern bool useNNUE;
   extern std::string eval_file_loaded;
-  void init_NNUE();
-  void verify_NNUE();
 
   // The default net name MUST follow the format nn-[SHA256 first 12 digits].nnue
   // for the build process (profile-build and fishtest) to work. Do not change the
@@ -43,9 +41,9 @@ namespace Eval {
   namespace NNUE {
 
     Value evaluate(const Position& pos);
-    Value compute_eval(const Position& pos);
-    void  update_eval(const Position& pos);
-    bool  load_eval(std::string streamName, std::istream& stream);
+    bool load_eval(std::string name, std::istream& stream);
+    void init();
+    void verify();
 
   } // namespace NNUE
 
