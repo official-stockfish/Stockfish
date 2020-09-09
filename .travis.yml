@@ -107,3 +107,10 @@ script:
   #
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make clean && make -j2 ARCH=x86-64-modern sanitize=undefined optimize=no debug=yes build > /dev/null && ../tests/instrumented.sh --sanitizer-undefined; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make clean && make -j2 ARCH=x86-64-modern sanitize=thread    optimize=no debug=yes build > /dev/null && ../tests/instrumented.sh --sanitizer-thread; fi
+
+  #
+  # NNUE testing / TODO should work with debug=yes as well
+  #
+  - export CXXFLAGS="-O1 -fno-inline"
+  - if [ -x "$(command -v valgrind )" ]; then make clean && LDFLAGS="-lstdc++fs"  make -j2 ARCH=x86-64-modern debug=no optimize=no learn > /dev/null && ../tests/instrumented_learn.sh --valgrind; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make clean && LDFLAGS="-lstdc++fs"  make -j2 ARCH=x86-64-modern sanitize=undefined optimize=no debug=no learn > /dev/null && ../tests/instrumented_learn.sh --sanitizer-undefined; fi

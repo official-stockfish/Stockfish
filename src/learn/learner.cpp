@@ -1606,9 +1606,9 @@ namespace Learner
             namespace sys = std::filesystem;
             sys::path kif_base_dir(Path::Combine(base_dir, target_dir)); // Origin of enumeration
             std::for_each(sys::directory_iterator(kif_base_dir), sys::directory_iterator(),
-                [&](const sys::path& p) {
-                    if (sys::is_regular_file(p))
-                        filenames.push_back(Path::Combine(target_dir, p.filename().generic_string()));
+                [&](const sys::path& path) {
+                    if (sys::is_regular_file(path))
+                        filenames.push_back(Path::Combine(target_dir, path.filename().generic_string()));
                 });
         }
 
