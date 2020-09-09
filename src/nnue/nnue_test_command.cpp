@@ -34,12 +34,12 @@ void TestFeatures(Position& pos) {
   std::vector<std::uint64_t> num_resets(kRefreshTriggers.size());
   constexpr IndexType kUnknown = -1;
   std::vector<IndexType> trigger_map(RawFeatures::kDimensions, kUnknown);
-  auto make_index_sets = [&](const Position& pos) {
+  auto make_index_sets = [&](const Position& position) {
     std::vector<std::vector<std::set<IndexType>>> index_sets(
         kRefreshTriggers.size(), std::vector<std::set<IndexType>>(2));
     for (IndexType i = 0; i < kRefreshTriggers.size(); ++i) {
       Features::IndexList active_indices[2];
-      RawFeatures::AppendActiveIndices(pos, kRefreshTriggers[i],
+      RawFeatures::AppendActiveIndices(position, kRefreshTriggers[i],
                                        active_indices);
       for (const auto perspective : Colors) {
         for (const auto index : active_indices[perspective]) {
@@ -53,11 +53,11 @@ void TestFeatures(Position& pos) {
     }
     return index_sets;
   };
-  auto update_index_sets = [&](const Position& pos, auto* index_sets) {
+  auto update_index_sets = [&](const Position& position, auto* index_sets) {
     for (IndexType i = 0; i < kRefreshTriggers.size(); ++i) {
       Features::IndexList removed_indices[2], added_indices[2];
       bool reset[2];
-      RawFeatures::AppendChangedIndices(pos, kRefreshTriggers[i],
+      RawFeatures::AppendChangedIndices(position, kRefreshTriggers[i],
                                         removed_indices, added_indices, reset);
       for (const auto perspective : Colors) {
         if (reset[perspective]) {
