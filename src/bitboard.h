@@ -229,8 +229,8 @@ inline Bitboard between_bb(Square s1, Square s2) {
 /// forward_ranks_bb(BLACK, SQ_D3) will return the 16 squares on ranks 1 and 2.
 
 constexpr Bitboard forward_ranks_bb(Color c, Square s) {
-  return c == WHITE ? ~Rank1BB << 8 * relative_rank(WHITE, s)
-                    : ~Rank8BB >> 8 * relative_rank(BLACK, s);
+  return c == WHITE ? AllSquares << 8 * (rank_of(s) + 1)
+                    : AllSquares >> 8 * (8 - rank_of(s));
 }
 
 
