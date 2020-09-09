@@ -40,7 +40,13 @@ THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <cassert>
 #include <array>
 #include <immintrin.h>
+
+#ifdef linux
+#include <x86intrin.h>
+#else
 #include <intrin.h>
+#endif
+
 #include <nmmintrin.h>
 #include <limits>
 
