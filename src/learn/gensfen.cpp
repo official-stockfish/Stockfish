@@ -133,9 +133,12 @@ namespace Learner
         {
             case SfenOutputType::Bin:
                 return std::make_unique<BinSfenOutputStream>(filename);
-            default:
+            case SfenOutputType::Binpack:
                 return std::make_unique<BinpackSfenOutputStream>(filename);
         }
+
+        assert(false);
+        return nullptr;
     }
 
     // Helper class for exporting Sfen
