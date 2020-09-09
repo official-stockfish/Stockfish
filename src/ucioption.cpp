@@ -42,6 +42,11 @@ void on_threads(const Option& o) { Threads.set(size_t(o)); }
 void on_tb_path(const Option& o) { Tablebases::init(o); }
 void on_use_NNUE(const Option& ) { Eval::init_NNUE(); }
 void on_eval_file(const Option& ) { Eval::init_NNUE(); }
+#ifdef EVAL_LEARN
+void on_prune_at_shallow_depth_on_pv_node(const Option& o) {
+  Search::prune_at_shallow_depth_on_pv_node = o;
+}
+#endif
 
 /// Our case insensitive less() function as required by UCI protocol
 bool CaseInsensitiveLess::operator() (const string& s1, const string& s2) const {
@@ -69,7 +74,6 @@ void init(OptionsMap& o) {
   o["Move Overhead"]         << Option(10, 0, 5000);
   o["Slow Mover"]            << Option(100, 10, 1000);
   o["nodestime"]             << Option(0, 0, 10000);
-  o["Training"]              << Option(false);
   o["UCI_Chess960"]          << Option(false);
   o["UCI_AnalyseMode"]       << Option(false);
   o["UCI_LimitStrength"]     << Option(false);
@@ -96,6 +100,8 @@ void init(OptionsMap& o) {
   // Evalsave by default. This folder shall be prepared in advance.
   // Automatically create a folder under this folder like "0/", "1/", ... and save the evaluation function file there.
   o["EvalSaveDir"] << Option("evalsave");
+  // Prune at shallow depth on PV nodes. Setting this value to true gains elo in shallow search.
+  o["PruneAtShallowDepthOnPvNode"] << Option(false, on_prune_at_shallow_depth_on_pv_node);
 #endif
 }
 
