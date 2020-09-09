@@ -30,7 +30,7 @@
 
 namespace Eval::NNUE {
 
-  uint32_t kpp_board_index[PIECE_NB][COLOR_NB] = {
+  const uint32_t kpp_board_index[PIECE_NB][COLOR_NB] = {
    // convention: W - us, B - them
    // viewed from other side, W and B are reversed
       { PS_NONE,     PS_NONE     },
@@ -136,10 +136,10 @@ namespace Eval::NNUE {
   }
 
   // Load eval, from a file stream or a memory stream
-  bool load_eval(std::string streamName, std::istream& stream) {
+  bool load_eval(std::string name, std::istream& stream) {
 
     Initialize();
-    fileName = streamName;
+    fileName = name;
     return ReadParameters(stream);
   }
 
