@@ -501,14 +501,14 @@ namespace chess
 
         [[nodiscard]] constexpr ValueType& operator[](const KeyType& dir)
         {
-            assert(ordinal(dir) < SizeV);
+            assert(static_cast<int>(ordinal(dir)) < static_cast<int>(SizeV));
 
             return elements[ordinal(dir)];
         }
 
         [[nodiscard]] constexpr const ValueType& operator[](const KeyType& dir) const
         {
-            assert(ordinal(dir) < SizeV);
+            assert(static_cast<int>(ordinal(dir)) < static_cast<int>(SizeV));
 
             return elements[ordinal(dir)];
         }
@@ -1141,9 +1141,9 @@ namespace chess
         {
         }
 
-        constexpr Offset(int files, int ranks) :
-            files(files),
-            ranks(ranks)
+        constexpr Offset(int files_, int ranks_) :
+            files(files_),
+            ranks(ranks_)
         {
         }
 
@@ -1328,7 +1328,7 @@ namespace chess
         [[nodiscard]] constexpr Color color() const
         {
             assert(isOk());
-            return !fromOrdinal<Color>(ordinal(rank()) + ordinal(file()) & 1);
+            return !fromOrdinal<Color>((ordinal(rank()) + ordinal(file())) & 1);
         }
 
         constexpr void flipVertically()
@@ -1887,11 +1887,11 @@ namespace chess
         {
         }
 
-        constexpr ReverseMove(const Move& move, Piece capturedPiece, Square oldEpSquare, CastlingRights oldCastlingRights) :
-            move(move),
-            capturedPiece(capturedPiece),
-            oldEpSquare(oldEpSquare),
-            oldCastlingRights(oldCastlingRights)
+        constexpr ReverseMove(const Move& move_, Piece capturedPiece_, Square oldEpSquare_, CastlingRights oldCastlingRights_) :
+            move(move_),
+            capturedPiece(capturedPiece_),
+            oldEpSquare(oldEpSquare_),
+            oldCastlingRights(oldCastlingRights_)
         {
         }
 
@@ -3100,13 +3100,13 @@ namespace chess
                 return bbs;
             }
 
-            [[nodiscard]] static Bitboard generateSliderPseudoAttacks(const std::array<Offset, 4> & offsets, Square fromSq)
+            [[nodiscard]] static Bitboard generateSliderPseudoAttacks(const std::array<Offset, 4> & offsets_, Square fromSq)
             {
                 assert(fromSq.isOk());
 
                 Bitboard bb{};
 
-                for (auto&& offset : offsets)
+                for (auto&& offset : offsets_)
                 {
                     SquareCoords fromSqC = fromSq.coords();
 
@@ -3370,32 +3370,32 @@ namespace chess
 
             static const EnumArray2<Square, Square, Bitboard> between = []()
             {
-                EnumArray2<Square, Square, Bitboard> between;
+                EnumArray2<Square, Square, Bitboard> between_;
 
                 for (Square s1 : values<Square>())
                 {
                     for (Square s2 : values<Square>())
                     {
-                        between[s1][s2] = generateBetween(s1, s2);
+                        between_[s1][s2] = generateBetween(s1, s2);
                     }
                 }
 
-                return between;
+                return between_;
             }();
 
             static const EnumArray2<Square, Square, Bitboard> line = []()
             {
-                EnumArray2<Square, Square, Bitboard> line;
+                EnumArray2<Square, Square, Bitboard> line_;
 
                 for (Square s1 : values<Square>())
                 {
                     for (Square s2 : values<Square>())
                     {
-                        line[s1][s2] = generateLine(s1, s2);
+                        line_[s1][s2] = generateLine(s1, s2);
                     }
                 }
 
-                return line;
+                return line_;
             }();
         }
 
@@ -4262,12 +4262,12 @@ namespace chess
             else if (move.type == MoveType::EnPassant)
             {
                 const Piece movedPiece = m_pieces[move.to];
-                const Piece capturedPiece(PieceType::Pawn, !movedPiece.color());
+                const Piece capturedPiece_(PieceType::Pawn, !movedPiece.color());
                 const Square capturedPieceSq(move.to.file(), move.from.rank());
 
                 m_pieces[move.to] = Piece::none();
                 m_pieces[move.from] = movedPiece;
-                m_pieces[capturedPieceSq] = capturedPiece;
+                m_pieces[capturedPieceSq] = capturedPiece_;
 
                 m_pieceBB[movedPiece] ^= move.from;
                 m_pieceBB[movedPiece] ^= move.to;
@@ -4276,14 +4276,14 @@ namespace chess
                 m_pieceBB[Piece::none()] ^= move.to;
 
                 // on ep move there are 3 squares involved
-                m_pieceBB[capturedPiece] ^= capturedPieceSq;
+                m_pieceBB[capturedPiece_] ^= capturedPieceSq;
                 m_pieceBB[Piece::none()] ^= capturedPieceSq;
 
                 m_piecesByColorBB[movedPiece.color()] ^= move.to;
                 m_piecesByColorBB[movedPiece.color()] ^= move.from;
-                m_piecesByColorBB[capturedPiece.color()] ^= capturedPieceSq;
+                m_piecesByColorBB[capturedPiece_.color()] ^= capturedPieceSq;
 
-                ++m_pieceCount[capturedPiece];
+                ++m_pieceCount[capturedPiece_];
                 --m_pieceCount[Piece::none()];
             }
             else // if (move.type == MoveType::Castle)
@@ -4565,9 +4565,6 @@ namespace chess
 
         [[nodiscard]] inline bool isCheckAfterMove(Move move) const;
 
-        // Checks whether ANY `move` is legal.
-        [[nodiscard]] inline bool isMoveLegal(Move move) const;
-
         [[nodiscard]] inline bool isPseudoLegalMoveLegal(Move move) const;
 
         [[nodiscard]] inline bool isMovePseudoLegal(Move move) const;
@@ -4806,7 +4803,7 @@ namespace chess
             }
         }
 
-        [[nodiscard]] FORCEINLINE constexpr std::uint8_t compressKing(const Position& position, Square sq, Piece piece)
+        [[nodiscard]] FORCEINLINE constexpr std::uint8_t compressKing(const Position& position, Square /* sq */, Piece piece)
         {
             const Color color = piece.color();
             const Color sideToMove = position.sideToMove();
@@ -4829,19 +4826,19 @@ namespace chess
     namespace detail::lookup
     {
         static constexpr EnumArray<PieceType, std::uint8_t(*)(const Position&, Square, Piece)> pieceCompressorFunc = []() {
-            EnumArray<PieceType, std::uint8_t(*)(const Position&, Square, Piece)> pieceCompressorFunc{};
+            EnumArray<PieceType, std::uint8_t(*)(const Position&, Square, Piece)> pieceCompressorFunc_{};
 
-            pieceCompressorFunc[PieceType::Knight] = detail::compressOrdinaryPiece;
-            pieceCompressorFunc[PieceType::Bishop] = detail::compressOrdinaryPiece;
-            pieceCompressorFunc[PieceType::Queen] = detail::compressOrdinaryPiece;
+            pieceCompressorFunc_[PieceType::Knight] = detail::compressOrdinaryPiece;
+            pieceCompressorFunc_[PieceType::Bishop] = detail::compressOrdinaryPiece;
+            pieceCompressorFunc_[PieceType::Queen] = detail::compressOrdinaryPiece;
 
-            pieceCompressorFunc[PieceType::Pawn] = detail::compressPawn;
-            pieceCompressorFunc[PieceType::Rook] = detail::compressRook;
-            pieceCompressorFunc[PieceType::King] = detail::compressKing;
+            pieceCompressorFunc_[PieceType::Pawn] = detail::compressPawn;
+            pieceCompressorFunc_[PieceType::Rook] = detail::compressRook;
+            pieceCompressorFunc_[PieceType::King] = detail::compressKing;
 
-            pieceCompressorFunc[PieceType::None] = [](const Position&, Square, Piece) -> std::uint8_t { /* should never happen */ return 0; };
+            pieceCompressorFunc_[PieceType::None] = [](const Position&, Square, Piece) -> std::uint8_t { /* should never happen */ return 0; };
 
-            return pieceCompressorFunc;
+            return pieceCompressorFunc_;
         }();
     }
 
@@ -5089,6 +5086,8 @@ namespace chess
                     king ^= occupiedChange;
                 }
             }
+            case PieceType::None:
+                assert(false);
             }
         }
 
@@ -5285,23 +5284,23 @@ namespace chess
     namespace detail::lookup
     {
         static constexpr EnumArray<Piece, char> fenPiece = []() {
-            EnumArray<Piece, char> fenPiece{};
+            EnumArray<Piece, char> fenPiece_{};
 
-            fenPiece[whitePawn] = 'P';
-            fenPiece[blackPawn] = 'p';
-            fenPiece[whiteKnight] = 'N';
-            fenPiece[blackKnight] = 'n';
-            fenPiece[whiteBishop] = 'B';
-            fenPiece[blackBishop] = 'b';
-            fenPiece[whiteRook] = 'R';
-            fenPiece[blackRook] = 'r';
-            fenPiece[whiteQueen] = 'Q';
-            fenPiece[blackQueen] = 'q';
-            fenPiece[whiteKing] = 'K';
-            fenPiece[blackKing] = 'k';
-            fenPiece[Piece::none()] = 'X';
+            fenPiece_[whitePawn] = 'P';
+            fenPiece_[blackPawn] = 'p';
+            fenPiece_[whiteKnight] = 'N';
+            fenPiece_[blackKnight] = 'n';
+            fenPiece_[whiteBishop] = 'B';
+            fenPiece_[blackBishop] = 'b';
+            fenPiece_[whiteRook] = 'R';
+            fenPiece_[blackRook] = 'r';
+            fenPiece_[whiteQueen] = 'Q';
+            fenPiece_[blackQueen] = 'q';
+            fenPiece_[whiteKing] = 'K';
+            fenPiece_[blackKing] = 'k';
+            fenPiece_[Piece::none()] = 'X';
 
-            return fenPiece;
+            return fenPiece_;
         }();
     }
 
@@ -5495,21 +5494,21 @@ namespace chess
     namespace detail::lookup
     {
         static constexpr EnumArray<Square, CastlingRights> preservedCastlingRights = []() {
-            EnumArray<Square, CastlingRights> preservedCastlingRights{};
-            for (CastlingRights& rights : preservedCastlingRights)
+            EnumArray<Square, CastlingRights> preservedCastlingRights_{};
+            for (CastlingRights& rights : preservedCastlingRights_)
             {
                 rights = ~CastlingRights::None;
             }
 
-            preservedCastlingRights[e1] = ~CastlingRights::White;
-            preservedCastlingRights[e8] = ~CastlingRights::Black;
+            preservedCastlingRights_[e1] = ~CastlingRights::White;
+            preservedCastlingRights_[e8] = ~CastlingRights::Black;
 
-            preservedCastlingRights[h1] = ~CastlingRights::WhiteKingSide;
-            preservedCastlingRights[a1] = ~CastlingRights::WhiteQueenSide;
-            preservedCastlingRights[h8] = ~CastlingRights::BlackKingSide;
-            preservedCastlingRights[a8] = ~CastlingRights::BlackQueenSide;
+            preservedCastlingRights_[h1] = ~CastlingRights::WhiteKingSide;
+            preservedCastlingRights_[a1] = ~CastlingRights::WhiteQueenSide;
+            preservedCastlingRights_[h8] = ~CastlingRights::BlackKingSide;
+            preservedCastlingRights_[a8] = ~CastlingRights::BlackQueenSide;
 
-            return preservedCastlingRights;
+            return preservedCastlingRights_;
         }();
     }
 
@@ -5687,8 +5686,6 @@ namespace chess
         [[nodiscard]] inline std::string moveToUci(const Position& pos, const Move& move);
         [[nodiscard]] inline Move uciToMove(const Position& pos, std::string_view sv);
 
-        [[nodiscard]] inline std::optional<Move> tryUciToMove(const Position& pos, std::string_view sv);
-
         [[nodiscard]] inline std::string moveToUci(const Position& pos, const Move& move)
         {
             std::string s;
@@ -5750,103 +5747,6 @@ namespace chess
                     return Move::normal(from, to);
                 }
             }
-        }
-
-        [[nodiscard]] inline std::optional<Move> tryUciToMove(const Position& pos, std::string_view sv)
-        {
-            if (sv.size() < 4 || sv.size() > 5)
-            {
-                return std::nullopt;
-            }
-
-            const auto from = parser_bits::tryParseSquare(sv.substr(0, 2));
-            const auto to = parser_bits::tryParseSquare(sv.substr(2, 2));
-
-            Move move{};
-
-            if (!from.has_value() || !to.has_value())
-            {
-                return std::nullopt;
-            }
-
-            if (sv.size() == 5)
-            {
-                const auto promotedPieceType = fromChar<PieceType>(sv[4]);
-                if (!promotedPieceType.has_value())
-                {
-                    return std::nullopt;
-                }
-
-                if (
-                    *promotedPieceType != PieceType::Knight
-                    && *promotedPieceType != PieceType::Bishop
-                    && *promotedPieceType != PieceType::Rook
-                    && *promotedPieceType != PieceType::Queen
-                    )
-                {
-                    return std::nullopt;
-                }
-
-                move = Move::promotion(*from, *to, Piece(*promotedPieceType, pos.sideToMove()));
-            }
-            else // sv.size() == 4
-            {
-
-                if (
-                    pos.pieceAt(*from).type() == PieceType::King
-                    && std::abs(from->file() - to->file()) > 1
-                    )
-                {
-                    // uci king destinations are on files C or G.
-
-                    if (pos.sideToMove() == Color::White)
-                    {
-                        if (*from != e1)
-                        {
-                            return std::nullopt;
-                        }
-
-                        if (*to != c1 && *to != g1)
-                        {
-                            return std::nullopt;
-                        }
-                    }
-                    else
-                    {
-                        if (*from != e8)
-                        {
-                            return std::nullopt;
-                        }
-
-                        if (*to != c8 && *to != g8)
-                        {
-                            return std::nullopt;
-                        }
-                    }
-
-                    const CastleType castleType =
-                        (to->file() == fileG)
-                        ? CastleType::Short
-                        : CastleType::Long;
-
-                    move = Move::castle(castleType, pos.sideToMove());
-                }
-                else if (to == pos.epSquare())
-                {
-                    move = Move::enPassant(*from, *to);
-                }
-                else
-                {
-                    move = Move::normal(*from, *to);
-                }
-            }
-
-            if (!pos.isMoveLegal(move))
-            {
-                return std::nullopt;
-            }
-
-            return move;
         }
     }
 }
@@ -6206,7 +6106,7 @@ namespace binpack
         {
             SfenPacker packer;
             auto& stream = packer.stream;
-            stream.set_data((uint8_t*)&sfen);
+            stream.set_data(const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(&sfen)));
 
             chess::Position pos{};
 
@@ -6450,11 +6350,11 @@ namespace binpack
         std::uint16_t numPlies;
         unsigned char* movetext;
 
-        PackedMoveScoreListReader(const TrainingDataEntry& entry, unsigned char* movetext, std::uint16_t numPlies) :
-            entry(entry),
-            movetext(movetext),
-            numPlies(numPlies),
-            m_lastScore(-entry.score)
+        PackedMoveScoreListReader(const TrainingDataEntry& entry_, unsigned char* movetext_, std::uint16_t numPlies_) :
+            entry(entry_),
+            numPlies(numPlies_),
+            movetext(movetext_),
+            m_lastScore(-entry_.score)
         {
 
         }
@@ -7247,7 +7147,6 @@ namespace binpack
 
     inline void convertBinToPlain(std::string inputPath, std::string outputPath, std::ios_base::openmode om)
     {
-        constexpr std::size_t reportEveryNPositions = 100'000;
         constexpr std::size_t bufferSize = MiB;
 
         std::cout << "Converting " << inputPath << " to " << outputPath << '\n';
@@ -7300,7 +7199,6 @@ namespace binpack
 
     inline void convertPlainToBin(std::string inputPath, std::string outputPath, std::ios_base::openmode om)
     {
-        constexpr std::size_t reportEveryNPositions = 100'000;
         constexpr std::size_t bufferSize = MiB;
 
         std::cout << "Compressing " << inputPath << " to " << outputPath << '\n';
