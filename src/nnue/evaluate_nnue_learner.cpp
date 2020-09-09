@@ -113,8 +113,13 @@ void SetOptions(const std::string& options) {
 void RestoreParameters(const std::string& dir_name) {
   const std::string file_name = Path::Combine(dir_name, NNUE::savedfileName);
   std::ifstream stream(file_name, std::ios::binary);
-  bool result = ReadParameters(stream);
+#ifndef NDEBUG
+  bool result =
+#endif
+  ReadParameters(stream);
+#ifndef NDEBUG
   assert(result);
+#endif
 
   SendMessages({{"reset"}});
 }
@@ -216,8 +221,13 @@ void save_eval(std::string dir_name) {
 
   const std::string file_name = Path::Combine(eval_dir, NNUE::savedfileName);
   std::ofstream stream(file_name, std::ios::binary);
-  const bool result = NNUE::WriteParameters(stream);
+#ifndef NDEBUG
+  const bool result =
+#endif
+  NNUE::WriteParameters(stream);
+#ifndef NDEBUG
   assert(result);
+#endif
 
   std::cout << "save_eval() finished. folder = " << eval_dir << std::endl;
 }
