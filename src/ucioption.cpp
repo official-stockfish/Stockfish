@@ -21,6 +21,7 @@
 #include <ostream>
 #include <sstream>
 
+#include "evaluate.h"
 #include "misc.h"
 #include "search.h"
 #include "thread.h"
@@ -80,19 +81,13 @@ void init(OptionsMap& o) {
   o["Syzygy50MoveRule"]      << Option(true);
   o["SyzygyProbeLimit"]      << Option(7, 0, 7);
   o["Use NNUE"]              << Option(true, on_use_NNUE);
-  // The default must follow the format nn-[SHA256 first 12 digits].nnue
-  // for the build process (profile-build and fishtest) to work.
-  o["EvalFile"]              << Option("nn.bin", on_eval_file);
-#ifdef EVAL_NNUE
+  o["EvalFile"]              << Option(EvalFileDefaultName, on_eval_file);
   // When the evaluation function is loaded at the ucinewgame timing, it is necessary to convert the new evaluation function.
   // I want to hit the test eval convert command, but there is no new evaluation function
   // It ends abnormally before executing this command.
   // Therefore, with this hidden option, you can suppress the loading of the evaluation function when ucinewgame,
   // Hit the test eval convert command.
   o["SkipLoadingEval"]       << Option(false);
-  // how many moves to use a fixed move
-  // o["BookMoves"] << Option(16, 0, 10000);
-#endif
 #if defined(EVAL_LEARN)
   // When learning the evaluation function, you can change the folder to save the evaluation function.
   // Evalsave by default. This folder shall be prepared in advance.

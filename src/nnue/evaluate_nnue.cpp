@@ -18,7 +18,6 @@
 
 // Code for calculating NNUE evaluation function
 
-#include <fstream>
 #include <iostream>
 #include <set>
 
@@ -179,26 +178,17 @@ namespace Eval::NNUE {
     return accumulator.score;
   }
 
-  // Load the evaluation function file
-  bool load_eval_file(const std::string& evalFile) {
+  // Load eval, from a file stream or a memory stream
+  bool load_eval(std::string streamName, std::istream& stream) {
 
     Initialize();
-
-#if defined(EVAL_NNUE)
     if (Options["SkipLoadingEval"])
     {
       std::cout << "info string SkipLoadingEval set to true, Net not loaded!" << std::endl;
       return true;
     }
-#endif
-
-    fileName = evalFile;
-
-    std::ifstream stream(evalFile, std::ios::binary);
-
-    const bool result = ReadParameters(stream);
-
-    return result;
+    fileName = streamName;
+    return ReadParameters(stream);
   }
 
   // Evaluation function. Perform differential calculation.

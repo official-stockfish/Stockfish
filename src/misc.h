@@ -44,9 +44,7 @@ void dbg_mean_of(int v);
 void dbg_print();
 
 typedef std::chrono::milliseconds::rep TimePoint; // A value in milliseconds
-
 static_assert(sizeof(TimePoint) == sizeof(int64_t), "TimePoint should be 64 bits");
-
 inline TimePoint now() {
   return std::chrono::duration_cast<std::chrono::milliseconds>
         (std::chrono::steady_clock::now().time_since_epoch()).count();
@@ -273,6 +271,13 @@ namespace Dependency
   // So when calling getline() on fstream,
   // just write getline() instead of std::getline() and use this function.
   extern bool getline(std::ifstream& fs, std::string& s);
+}
+
+namespace CommandLine {
+  void init(int argc, char* argv[]);
+
+  extern std::string binaryDirectory;  // path of the executable directory
+  extern std::string workingDirectory; // path of the working directory
 }
 
 #endif // #ifndef MISC_H_INCLUDED
