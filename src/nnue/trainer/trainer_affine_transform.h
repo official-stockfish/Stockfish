@@ -196,7 +196,7 @@ class Trainer<Layers::AffineTransform<PreviousLayer, OutputDimensions>> {
       weights_(),
       biases_diff_(),
       weights_diff_(),
-      momentum_(0.0),
+      momentum_(0.1),
       learning_rate_scale_(1.0) {
     DequantizeParameters();
   }

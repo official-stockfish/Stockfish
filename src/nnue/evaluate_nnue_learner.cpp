@@ -113,9 +113,19 @@ void SetOptions(const std::string& options) {
 void RestoreParameters(const std::string& dir_name) {
   const std::string file_name = Path::Combine(dir_name, NNUE::savedfileName);
   std::ifstream stream(file_name, std::ios::binary);
-  bool result = ReadParameters(stream);
+#ifndef NDEBUG
+  bool result =
+#endif
+  ReadParameters(stream);
+#ifndef NDEBUG
   assert(result);
+#endif
+
   SendMessages({{"reset"}});
+}
+
+void FinalizeNet() {
+  SendMessages({{"clear_unobserved_feature_weights"}});
 }
 
 // Add 1 sample of learning data
@@ -209,14 +219,16 @@ void save_eval(std::string dir_name) {
   // Also, assume that the folders up to EvalSaveDir have been dug.
   std::filesystem::create_directories(eval_dir);
 
-  if (Options["SkipLoadingEval"] && NNUE::trainer) {
-    NNUE::SendMessages({{"clear_unobserved_feature_weights"}});
-  }
-
   const std::string file_name = Path::Combine(eval_dir, NNUE::savedfileName);
   std::ofstream stream(file_name, std::ios::binary);
-  bool result = NNUE::WriteParameters(stream);
+#ifndef NDEBUG
+  bool result =
+#endif
+  NNUE::WriteParameters(stream);
+#ifndef NDEBUG
   assert(result);
+#endif
+
   std::cout << "save_eval() finished. folder = " << eval_dir << std::endl;
 }
 

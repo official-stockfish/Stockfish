@@ -10,6 +10,7 @@
 #include "../uci.h"
 #include "learn.h"
 #include "multi_think.h"
+#include "../syzygy/tbprobe.h"
 
 #include <chrono>
 #include <climits>
@@ -290,6 +291,12 @@ namespace Learner
             std::vector<uint8_t>& random_move_flag,
             int ply,
             int& random_move_c);
+
+        Value evaluate_leaf(
+            Position& pos,
+            std::vector<StateInfo, AlignedAllocator<StateInfo>>& states,
+            int ply,
+            vector<Move>& pv);
 
         // Min and max depths for search during gensfen
         int search_depth_min;
@@ -641,6 +648,56 @@ namespace Learner
         return random_move_flag;
     }
 
+    Value MultiThinkGenSfen::evaluate_leaf(
+        Position& pos,
+        std::vector<StateInfo, AlignedAllocator<StateInfo>>& states,
+        int ply,
+        vector<Move>& pv)
+    {
+        auto rootColor = pos.side_to_move();
+
+        for (auto m : pv)
+        {
+            // There should be no illegal move. This is as a debugging precaution.
+            if (!pos.pseudo_legal(m) || !pos.legal(m))
+            {
+                cout << "Error! : " << pos.fen() << m << endl;
+            }
+
+            pos.do_move(m, states[ply++]);
+        }
+
+        // Reach leaf
+        Value v;
+        if (pos.checkers())
+        {
+            // Sometime a king is checked.  An example is a case that a checkmate is
+            // found in the search.  If Eval::evaluate() is called whne a king is
+            // checked, classic eval crashes by an assertion. To avoid crashes, return
+            // VALUE_NONE and let the caller assign a value to the position.
+            v = VALUE_NONE;
+        }
+        else
+        {
+            v = Eval::evaluate(pos);
+
+            // evaluate() returns the evaluation value on the turn side, so
+            // If it's a turn different from root_color, you must invert v and return it.
+            if (rootColor != pos.side_to_move())
+            {
+                v = -v;
+            }
+        }
+
+        // Rewind the pv moves.
+        for (auto it = pv.rbegin(); it != pv.rend(); ++it)
+        {
+            pos.undo_move(*it);
+        }
+
+        return v;
+    }
+
     // thread_id = 0..Threads.size()-1
     void MultiThinkGenSfen::thread_worker(size_t thread_id)
     {
@@ -666,6 +723,8 @@ namespace Learner
             auto& pos = th->rootPos;
             pos.set(bookStart[prng.rand(bookStart.size())], false, &si, th);
 
+            int resign_counter = 0;
+            bool should_resign = prng.rand(10) > 1;
             // Vector for holding the sfens in the current simulated game.
             PSVector a_psv;
             a_psv.reserve(write_maxply + MAX_PLY);
@@ -700,6 +759,20 @@ namespace Learner
                     break;
                 }
 
+                if (pos.count<ALL_PIECES>() <= 6) {
+                    Tablebases::ProbeState probe_state;
+                    Tablebases::WDLScore wdl = Tablebases::probe_wdl(pos, &probe_state);
+                    assert(wdl != Tablebases::WDLScore::WDLScoreNone);
+                    if (wdl == Tablebases::WDLScore::WDLWin) {
+                        flush_psv(1);
+                    } else if (wdl == Tablebases::WDLScore::WDLLoss) {
+                        flush_psv(-1);
+                    } else {
+                        flush_psv(0);
+                    }
+                    break;
+                }
+
                 {
                     auto [search_value, search_pv] = search(pos, depth, 1, nodes);
 
@@ -707,11 +780,14 @@ namespace Learner
                     // Also because of this we don't have to check for TB/MATE scores
                     if (abs(search_value) >= eval_limit)
                     {
-                        const auto wdl = (search_value >= eval_limit) ? 1 : -1;
-                        flush_psv(wdl);
-                        break;
+                        resign_counter++;
+                        if ((should_resign && resign_counter >= 4) || abs(search_value) >= 10000) {
+                            flush_psv((search_value >= eval_limit) ? 1 : -1);
+                            break;
+                        }
+                    } else {
+                        resign_counter = 0;
                     }
-
                     // Verification of a strange move
                     if (search_pv.size() > 0
                         && (search_pv[0] == MOVE_NONE || search_pv[0] == MOVE_NULL))
@@ -743,26 +819,6 @@ namespace Learner
                         goto SKIP_SAVE;
                     }
 
-                    // Look into the position hashtable to see if the same
-                    // position was seen before.
-                    // This is a good heuristic to exlude already seen
-                    // positions without many false positives.
-                    {
-                        auto key = pos.key();
-                        auto hash_index = (size_t)(key & (GENSFEN_HASH_SIZE - 1));
-                        auto old_key = hash[hash_index];
-                        if (key == old_key)
-                        {
-                            a_psv.clear();
-                            goto SKIP_SAVE;
-                        }
-                        else
-                        {
-                            // Replace with the current key.
-                            hash[hash_index] = key;
-                        }
-                    }
-
                     // Pack the current position into a packed sfen and save it into the buffer.
                     {
                         a_psv.emplace_back(PackedSfenValue());
@@ -772,8 +828,6 @@ namespace Learner
                         // Result is added after the whole game is done.
                         pos.sfen_pack(psv.sfen);
 
-                        // Get the value of evaluate() as seen from the
-                        // root color on the leaf node of the PV line.
                         psv.score = search_value;
 
                         psv.gamePly = ply;
@@ -795,6 +849,8 @@ namespace Learner
                     // Update the next move according to best search result.
                     next_move = search_pv[0];
                 }
+
+                // Random move.
                 auto random_move = choose_random_move(pos, random_move_flag, ply, actual_random_move_count);
                 if (random_move.has_value())
                 {
@@ -807,6 +863,8 @@ namespace Learner
                         break;
                     }
                 }
+
+                // Do move.
                 pos.do_move(next_move, states[ply]);
 
             } // for (int ply = 0; ; ++ply)

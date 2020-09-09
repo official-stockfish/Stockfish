@@ -2076,6 +2076,7 @@ namespace Learner
         rootMoves.push_back(Search::RootMove(m));
 
       assert(!rootMoves.empty());
+      TB::rank_root_moves(pos, rootMoves);
     }
   }
 

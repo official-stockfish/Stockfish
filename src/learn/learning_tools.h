@@ -40,13 +40,14 @@ namespace EvalLearningTools
 		static uint64_t eta2_epoch;
 
 		// Batch initialization of eta. If 0 is passed, the default value will be set.
-		static void init_eta(double eta1, double eta2, double eta3, uint64_t eta1_epoch, uint64_t eta2_epoch)
+		static void init_eta(double new_eta1, double new_eta2, double new_eta3,
+			uint64_t new_eta1_epoch, uint64_t new_eta2_epoch)
 		{
-			Weight::eta1 = (eta1 != 0) ? eta1 : 30.0;
-			Weight::eta2 = (eta2 != 0) ? eta2 : 30.0;
-			Weight::eta3 = (eta3 != 0) ? eta3 : 30.0;
-			Weight::eta1_epoch = (eta1_epoch != 0) ? eta1_epoch : 0;
-			Weight::eta2_epoch = (eta2_epoch != 0) ? eta2_epoch : 0;
+			Weight::eta1 = (new_eta1 != 0) ? new_eta1 : 30.0;
+			Weight::eta2 = (new_eta2 != 0) ? new_eta2 : 30.0;
+			Weight::eta3 = (new_eta3 != 0) ? new_eta3 : 30.0;
+			Weight::eta1_epoch = (new_eta1_epoch != 0) ? new_eta1_epoch : 0;
+			Weight::eta2_epoch = (new_eta2_epoch != 0) ? new_eta2_epoch : 0;
 		}
 
 		// Set eta according to epoch.

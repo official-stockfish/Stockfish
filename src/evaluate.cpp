@@ -1016,15 +1016,7 @@ make_v:
 Value Eval::evaluate(const Position& pos) {
 
   if (Options["Training"]) {
-    Value v = NNUE::evaluate(pos);
-
-    // Damp down the evaluation linearly when shuffling
-    v = v * (100 - pos.rule50_count()) / 100;
-
-    // Guarantee evaluation does not hit the tablebase range
-    v = std::clamp(v, VALUE_TB_LOSS_IN_MAX_PLY + 1, VALUE_TB_WIN_IN_MAX_PLY - 1);
-
-    return v;
+    return NNUE::evaluate(pos);
   } else {
     // Use classical eval if there is a large imbalance
     // If there is a moderate imbalance, use classical eval with probability (1/8),
@@ -1033,13 +1025,12 @@ Value Eval::evaluate(const Position& pos) {
     bool classical = !Eval::useNNUE
                   ||  useClassical
                   || (abs(eg_value(pos.psq_score())) > PawnValueMg / 4 && !(pos.this_thread()->nodes & 0xB));
-    Value v = classical ? Evaluation<NO_TRACE>(pos).value()
-                        : NNUE::evaluate(pos) * 5 / 4 + Tempo;
+    Value v = classical ? Evaluation<NO_TRACE>(pos).value() : NNUE::evaluate(pos);
 
     if (   useClassical 
         && Eval::useNNUE 
         && abs(v) * 16 < NNUEThreshold2 * (16 + pos.rule50_count()))
-        v = NNUE::evaluate(pos) * 5 / 4 + Tempo;
+        v = NNUE::evaluate(pos);
 
     // Damp down the evaluation linearly when shuffling
     v = v * (100 - pos.rule50_count()) / 100;

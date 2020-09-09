@@ -221,28 +221,7 @@ namespace Learner
 
     double calc_grad(Value teacher_signal, Value shallow, const PackedSfenValue& psv)
     {
-        // elmo (WCSC27) method
-        // Correct with the actual game wins and losses.
-        const double q = winning_percentage(shallow, psv.gamePly);
-        const double p = calculate_p(teacher_signal, psv.gamePly);
-        const double t = calculate_t(psv.game_result);
-        const double lambda = calculate_lambda(teacher_signal);
-
-        double grad;
-        if (use_wdl) 
-        {
-            const double dce_p = calc_d_cross_entropy_of_winning_percentage(p, shallow, psv.gamePly);
-            const double dce_t = calc_d_cross_entropy_of_winning_percentage(t, shallow, psv.gamePly);
-            grad = lambda * dce_p + (1.0 - lambda) * dce_t;
-        }
-        else 
-        {
-            // Use the actual win rate as a correction term.
-            // This is the idea of ​​elmo (WCSC27), modern O-parts.
-            grad = lambda * (q - p) + (1.0 - lambda) * (q - t);
-        }
-
-        return grad;
+        return (double)(shallow - teacher_signal) / 2400.0;
     }
 
     // Calculate cross entropy during learning
@@ -659,6 +638,9 @@ namespace Learner
 
         bool stop_flag;
 
+        // Discount rate
+        double discount_rate;
+
         // Option to exclude early stage from learning
         int reduction_gameply;
 
@@ -700,6 +682,32 @@ namespace Learner
         // Define the loss calculation in ↑ as a task and execute it
         TaskDispatcher task_dispatcher;
     };
+
+    Value LearnerThink::get_shallow_value(Position& task_pos)
+    {
+        // Evaluation value for shallow search
+        // The value of evaluate() may be used, but when calculating loss, learn_cross_entropy and
+        // Use qsearch() because it is difficult to compare the values.
+        // EvalHash has been disabled in advance. (If not, the same value will be returned every time)
+        const auto [_, pv] = qsearch(task_pos);
+        const auto rootColor = task_pos.side_to_move();
+
+        std::vector<StateInfo, AlignedAllocator<StateInfo>> states(pv.size());
+        for (size_t i = 0; i < pv.size(); ++i)
+        {
+            task_pos.do_move(pv[i], states[i]);
+        }
+
+        const Value shallow_value =
+            (rootColor == task_pos.side_to_move())
+            ? Eval::evaluate(task_pos)
+            : -Eval::evaluate(task_pos);
+
+        for (auto it = pv.rbegin(); it != pv.rend(); ++it)
+            task_pos.undo_move(*it);
+
+        return shallow_value;
+    }
 
     void LearnerThink::calc_loss(size_t thread_id, uint64_t done)
     {
@@ -779,10 +787,7 @@ namespace Learner
                     cout << "Error! : illegal packed sfen " << task_pos.fen() << endl;
                 }
 
-                // Determine if the teacher's move and the score of the shallow search match
-                const auto [shallow_value, pv] = qsearch(task_pos);
-                if ((uint16_t)pv[0] == ps.move)
-                    move_accord_count.fetch_add(1, std::memory_order_relaxed);
+                const Value shallow_value = get_shallow_value(task_pos);
 
                 // Evaluation value of deep search
                 auto deep_value = (Value)ps.score;
@@ -816,6 +821,13 @@ namespace Learner
                 test_sum_entropy_win += test_entropy_win;
                 test_sum_entropy += test_entropy;
                 sum_norm += (double)abs(shallow_value);
+
+                // Determine if the teacher's move and the score of the shallow search match
+                {
+                    const auto [value, pv] = search(task_pos, 1);
+                    if ((uint16_t)pv[0] == ps.move)
+                        move_accord_count.fetch_add(1, std::memory_order_relaxed);
+                }
 
                 // Reduced one task because I did it
                 --task_count;
@@ -1023,8 +1035,21 @@ namespace Learner
             // I can read it, so try displaying it.
             //      cout << pos << value << endl;
 
+            const auto rootColor = pos.side_to_move();
+
+            int ply = 0;
+            StateInfo state[MAX_PLY]; // PV of qsearch cannot be so long.
+
+            if (!pos.pseudo_legal((Move)ps.move) || !pos.legal((Move)ps.move))
+            {
+                sync_cout << "An illegal move was detected... Excluded the position from the learning data..." << sync_endl;
+                continue;
+            }
+
+            pos.do_move((Move)ps.move, state[ply++]);
+
             // Evaluation value of shallow search (qsearch)
-            const auto [shallow_value, _] = qsearch(pos);
+            const auto [_, pv] = qsearch(pos);
 
             // Evaluation value of deep search
             const auto deep_value = (Value)ps.score;
@@ -1033,7 +1058,11 @@ namespace Learner
             // Go to the leaf node as it is, add only to the gradient array, 
             // and later try AdaGrad at the time of rmse aggregation.
 
-            const auto rootColor = pos.side_to_move();
+
+            // If the initial PV is different, it is better not to use it for learning.
+            // If it is the result of searching a completely different place, it may become noise.
+            // It may be better not to study where the difference in evaluation values ​​is too large.
+
 
             // A helper function that adds the gradient to the current phase.
             auto pos_add_grad = [&]() {
@@ -1045,6 +1074,11 @@ namespace Learner
                 // as the aspect that gives that gradient will be different.
                 // I have turned off the substitution table, but since 
                 // the pv array has not been updated due to one stumbling block etc...
+
+                const Value shallow_value = 
+                    (rootColor == pos.side_to_move()) 
+                    ? Eval::evaluate(pos) 
+                    : -Eval::evaluate(pos);
 
                 // Calculate loss for training data
                 double learn_cross_entropy_eval, learn_cross_entropy_win, learn_cross_entropy;
@@ -1067,14 +1101,43 @@ namespace Learner
                 learn_sum_entropy_win += learn_entropy_win;
                 learn_sum_entropy += learn_entropy;
 
-                Eval::NNUE::AddExample(pos, rootColor, ps, 1.0);
+                const double example_weight =
+                    (discount_rate != 0 && ply != (int)pv.size()) ? discount_rate : 1.0;
+                Eval::NNUE::AddExample(pos, rootColor, ps, example_weight);
 
                 // Since the processing is completed, the counter of the processed number is incremented
                 sr.total_done++;
             };
 
-            pos_add_grad();
+            bool illegal_move = false;
+            for (auto m : pv)
+            {
+                // I shouldn't be an illegal player.
+                // An illegal move sometimes comes here...
+                if (!pos.pseudo_legal(m) || !pos.legal(m))
+                {
+                    //cout << pos << m << endl;
+                    //assert(false);
+                    illegal_move = true;
+                    break;
+                }
 
+                // Processing when adding the gradient to the node on each PV.
+                //If discount_rate is 0, this process is not performed.
+                if (discount_rate != 0)
+                    pos_add_grad();
+
+                pos.do_move(m, state[ply++]);
+            }
+
+            if (illegal_move) 
+            {
+                sync_cout << "An illegal move was detected... Excluded the position from the learning data..." << sync_endl;
+                continue;
+            }
+
+            // Since we have reached the end phase of PV, add the slope here.
+            pos_add_grad();
         }
 
     }
@@ -1118,15 +1181,7 @@ namespace Learner
                 else 
                 {
                     cout << " >= best (" << best_loss << "), rejected" << endl;
-                    if (best_nn_directory.empty()) 
-                    {
-                        cout << "WARNING: no improvement from initial model" << endl;
-                    }
-                    else 
-                    {
-                        cout << "restoring parameters from " << best_nn_directory << endl;
-                        Eval::NNUE::RestoreParameters(best_nn_directory);
-                    }
+                    best_nn_directory = Path::Combine((std::string)Options["EvalSaveDir"], dir_name);
 
                     if (--trials > 0 && !is_final) 
                     {
@@ -1468,6 +1523,11 @@ namespace Learner
         ELMO_LAMBDA2 = 0.33;
         ELMO_LAMBDA_LIMIT = 32000;
 
+        // Discount rate. If this is set to a value other than 0, 
+        // the slope will be added even at other than the PV termination. 
+        // (At that time, apply this discount rate)
+        double discount_rate = 0;
+
         // if (gamePly <rand(reduction_gameply)) continue;
         // An option to exclude the early stage from the learning target moderately like
         // If set to 1, rand(1)==0, so nothing is excluded.
@@ -1537,6 +1597,9 @@ namespace Learner
 
             else if (option == "winning_probability_coefficient") is >> winning_probability_coefficient;
 
+            // Discount rate
+            else if (option == "discount_rate") is >> discount_rate;
+
             // Using WDL with win rate model instead of sigmoid
             else if (option == "use_wdl") is >> use_wdl;
 
@@ -1603,9 +1666,11 @@ namespace Learner
         // Display learning game file
         if (target_dir != "")
         {
+            string kif_base_dir = Path::Combine(base_dir, target_dir);
+
             namespace sys = std::filesystem;
-            sys::path kif_base_dir(Path::Combine(base_dir, target_dir)); // Origin of enumeration
-            std::for_each(sys::directory_iterator(kif_base_dir), sys::directory_iterator(),
+            sys::path p(kif_base_dir); // Origin of enumeration
+            std::for_each(sys::directory_iterator(p), sys::directory_iterator(),
                 [&](const sys::path& path) {
                     if (sys::is_regular_file(path))
                         filenames.push_back(Path::Combine(target_dir, path.filename().generic_string()));
@@ -1726,6 +1791,8 @@ namespace Learner
             cout << "scheduling        : default" << endl;
         }
 
+        cout << "discount rate     : " << discount_rate << endl;
+
         // If reduction_gameply is set to 0, rand(0) will be divided by 0, so correct it to 1.
         reduction_gameply = max(reduction_gameply, 1);
         cout << "reduction_gameply : " << reduction_gameply << endl;
@@ -1758,6 +1825,7 @@ namespace Learner
         cout << "init done." << endl;
 
         // Reflect other option settings.
+        learn_think.discount_rate = discount_rate;
         learn_think.eval_limit = eval_limit;
         learn_think.save_only_once = save_only_once;
         learn_think.sr.no_shuffle = no_shuffle;
@@ -1804,6 +1872,8 @@ namespace Learner
 
         // Start learning.
         learn_think.go_think();
+
+        Eval::NNUE::FinalizeNet();
 
         // Save once at the end.
         learn_think.save(true);

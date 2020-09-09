@@ -70,7 +70,7 @@ void test_cmd(Position& pos, istringstream& is)
     if (param == "nnue") Eval::NNUE::TestCommand(pos, is);
 }
 
-namespace {
+namespace UCI {
 
   // position() is called when engine receives the "position" UCI command.
   // The function sets up the position described in the given FEN string ("fen")
@@ -229,32 +229,32 @@ namespace {
   // and a game-ply. The model fits rather accurately the LTC fishtest statistics.
   int win_rate_model(Value v, int ply) {
      // Return win rate in per mille (rounded to nearest)
-     return int(0.5 + UCI::win_rate_model_double(v, ply));
+     return int(0.5 + win_rate_model_double(v, ply));
+  }
+
+  // The win rate model returns the probability (per mille) of winning given an eval
+  // and a game-ply. The model fits rather accurately the LTC fishtest statistics.
+  double win_rate_model_double(double v, int ply) {
+
+     // The model captures only up to 240 plies, so limit input (and rescale)
+     double m = std::min(240, ply) / 64.0;
+
+     // Coefficients of a 3rd order polynomial fit based on fishtest data
+     // for two parameters needed to transform eval to the argument of a
+     // logistic function.
+     double as[] = {-8.24404295, 64.23892342, -95.73056462, 153.86478679};
+     double bs[] = {-3.37154371, 28.44489198, -56.67657741,  72.05858751};
+     double a = (((as[0] * m + as[1]) * m + as[2]) * m) + as[3];
+     double b = (((bs[0] * m + bs[1]) * m + bs[2]) * m) + bs[3];
+
+     // Transform eval to centipawns with limited range
+       double x = std::clamp(double(100 * v) / PawnValueEg, -1000.0, 1000.0);
+
+     // Return win rate in per mille
+     return 1000.0 / (1 + std::exp((a - x) / b));
   }
 
 } // namespace
-
-// The win rate model returns the probability (per mille) of winning given an eval
-// and a game-ply. The model fits rather accurately the LTC fishtest statistics.
-double UCI::win_rate_model_double(double v, int ply) {
-
-   // The model captures only up to 240 plies, so limit input (and rescale)
-   double m = std::min(240, ply) / 64.0;
-
-   // Coefficients of a 3rd order polynomial fit based on fishtest data
-   // for two parameters needed to transform eval to the argument of a
-   // logistic function.
-   double as[] = {-8.24404295, 64.23892342, -95.73056462, 153.86478679};
-   double bs[] = {-3.37154371, 28.44489198, -56.67657741,  72.05858751};
-   double a = (((as[0] * m + as[1]) * m + as[2]) * m) + as[3];
-   double b = (((bs[0] * m + bs[1]) * m + bs[2]) * m) + bs[3];
-
-   // Transform eval to centipawns with limited range
-     double x = std::clamp(double(100 * v) / PawnValueEg, -1000.0, 1000.0);
-
-   // Return win rate in per mille
-   return 1000.0 / (1 + std::exp((a - x) / b));
-}
 
 // --------------------
 // Call qsearch(),search() directly for testing

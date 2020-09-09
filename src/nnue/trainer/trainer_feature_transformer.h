@@ -234,7 +234,7 @@ class Trainer<FeatureTransformer> {
       biases_(),
       weights_(),
       biases_diff_(),
-      momentum_(0.0),
+      momentum_(0.1),
       learning_rate_scale_(1.0) {
     min_pre_activation_ = std::numeric_limits<LearnFloatType>::max();
     max_pre_activation_ = std::numeric_limits<LearnFloatType>::lowest();

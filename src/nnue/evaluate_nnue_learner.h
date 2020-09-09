@@ -37,6 +37,8 @@ void UpdateParameters(uint64_t epoch);
 // Check if there are any problems with learning
 void CheckHealth();
 
+void FinalizeNet();
+
 }  // namespace NNUE
 
 }  // namespace Eval

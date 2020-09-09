@@ -10,13 +10,6 @@
 
 void MultiThink::go_think()
 {
-	// Keep a copy to restore the Options settings later.
-	auto oldOptions = Options;
-
-	// When using the constant track, it takes a lot of time to perform on the fly & the part to access the file is
-	// Since it is not thread safe, it is guaranteed here that it is being completely read in memory.
-	Options["BookOnTheFly"] = std::string("false");
-
 	// Read evaluation function, etc.
 	// In the case of the learn command, the value of the evaluation function may be corrected after reading the evaluation function, so
 	// Skip memory corruption check.
@@ -111,12 +104,6 @@ void MultiThink::go_think()
 	// The file writing thread etc. are still running only when all threads are finished
 	// Since the work itself may not have completed, output only that all threads have finished.
 	std::cout << "all threads are joined." << std::endl;
-
-	// Restored because Options were rewritten.
-	// Restore the handler because the handler will not start unless you assign a value.
-	for (auto& s : oldOptions)
-		Options[s.first] = std::string(s.second);
-
 }
 
 
