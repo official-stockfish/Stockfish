@@ -24,17 +24,14 @@
 
 #include "evaluate.h"
 #include "movegen.h"
+#include "nnue/nnue_test_command.h"
 #include "position.h"
 #include "search.h"
+#include "syzygy/tbprobe.h"
 #include "thread.h"
 #include "timeman.h"
 #include "tt.h"
 #include "uci.h"
-#include "syzygy/tbprobe.h"
-
-#if defined(ENABLE_TEST_CMD)
-#include "nnue/nnue_test_command.h"
-#endif
 
 using namespace std;
 
@@ -53,7 +50,6 @@ namespace Learner
   // Learning from the generated game record
   void learn(Position& pos, istringstream& is);
 
-
   // A pair of reader and evaluation value. Returned by Learner::search(),Learner::qsearch().
   typedef std::pair<Value, std::vector<Move> > ValueAndPV;
 
@@ -63,7 +59,6 @@ namespace Learner
 }
 #endif
 
-#if defined(ENABLE_TEST_CMD)
 void test_cmd(Position& pos, istringstream& is)
 {
     // Initialize as it may be searched.
@@ -74,7 +69,6 @@ void test_cmd(Position& pos, istringstream& is)
 
     if (param == "nnue") Eval::NNUE::TestCommand(pos, is);
 }
-#endif
 
 namespace {
 
@@ -365,10 +359,8 @@ void UCI::loop(int argc, char* argv[]) {
 
 #endif
 
-#if defined(ENABLE_TEST_CMD)
       // test command
       else if (token == "test") test_cmd(pos, is);
-#endif
       else
           sync_cout << "Unknown command: " << cmd << sync_endl;
 

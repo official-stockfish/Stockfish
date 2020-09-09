@@ -165,6 +165,7 @@ namespace Eval::NNUE {
   bool load_eval(std::string streamName, std::istream& stream) {
 
     Initialize();
+
     if (Options["SkipLoadingEval"])
     {
       std::cout << "info string SkipLoadingEval set to true, Net not loaded!" << std::endl;

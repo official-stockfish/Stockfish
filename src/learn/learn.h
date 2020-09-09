@@ -5,84 +5,6 @@
 
 #include <vector>
 
-// =====================
-// Settings for learning
-// =====================
-
-// If you select one of the following, the details after that will be automatically selected.
-// If you don't select any of them, you need to set the subsequent details one by one.
-
-// Learning setting by elmo method. This is the default setting.
-// To make a standard squeeze diaphragm, specify "lambda 1" with the learn command.
-#define LEARN_ELMO_METHOD
-
-
-// ----------------------
-// update formula
-// ----------------------
-
-// Ada Grad. Recommended because it is stable.
-// #define ADA_GRAD_UPDATE
-
-// SGD looking only at the sign of the gradient. It requires less memory, but the accuracy is...
-// #define SGD_UPDATE
-
-// ----------------------
-// Settings for learning
-// ----------------------
-
-// mini-batch size.
-// Calculate the gradient by combining this number of phases.
-// If you make it smaller, the number of update_weights() will increase and the convergence will be faster. The gradient is incorrect.
-// If you increase it, the number of update_weights() decreases, so the convergence will be slow. The slope will come out accurately.
-// I don't think you need to change this value in most cases.
-
-#define LEARN_MINI_BATCH_SIZE (1000 * 1000 * 1)
-
-// The number of phases to read from the file at one time. After reading this much, shuffle.
-// It is better to have a certain size, but this number x 40 bytes x 3 times as much memory is consumed. 400MB*3 is consumed in the 10M phase.
-// Must be a multiple of THREAD_BUFFER_SIZE(=10000).
-
-#define LEARN_SFEN_READ_SIZE (1000 * 1000 * 10)
-
-// Saving interval of evaluation function at learning. Save each time you learn this number of phases.
-// Needless to say, the longer the saving interval, the shorter the learning time.
-// Folder name is incremented for each save like 0/, 1/, 2/...
-// By default, once every 1 billion phases.
-#define LEARN_EVAL_SAVE_INTERVAL (1000000000ULL)
-
-
-// ----------------------
-// Select the objective function
-// ----------------------
-
-// The objective function is the sum of squares of the difference in winning percentage
-// See learner.cpp for more information.
-
-// #define LOSS_FUNCTION_IS_WINNING_PERCENTAGE
-
-// Objective function is cross entropy
-// See learner.cpp for more information.
-// So-called ordinary "rag cloth squeezer"
-// #define LOSS_FUNCTION_IS_CROSS_ENTOROPY
-
-// A version in which the objective function is cross entropy, but the win rate function is not passed
-// #define LOSS_FUNCTION_IS_CROSS_ENTOROPY_FOR_VALUE
-
-// elmo (WCSC27) method
-// #define LOSS_FUNCTION_IS_ELMO_METHOD
-
-// ※ Other things may be added.
-
-
-// ----------------------
-// debug settings for learning
-// ----------------------
-
-// Reduce the output of rmse during learning to 1 for this number of times.
-// rmse calculation is done in one thread, so it takes some time, so reducing the output is effective.
-#define LEARN_RMSE_OUTPUT_INTERVAL 1
-
 // ----------------------
 // Floating point for learning
 // ----------------------
@@ -109,28 +31,7 @@ typedef float LearnFloatType;
 // Learning with the method of elmo (WCSC27)
 // ----------------------
 
-#if defined( LEARN_ELMO_METHOD )
-#define LOSS_FUNCTION_IS_ELMO_METHOD
-#define ADA_GRAD_UPDATE
-#endif
-
-// Character string according to update formula. (Output for debugging.)
-// Implemented various update expressions, but concluded that AdaGrad is the best in terms of speed and memory.
-#if defined(ADA_GRAD_UPDATE)
-#define LEARN_UPDATE "AdaGrad"
-#elif defined(SGD_UPDATE)
-#define LEARN_UPDATE "SGD"
-#endif
-
-#if defined(LOSS_FUNCTION_IS_WINNING_PERCENTAGE)
-#define LOSS_FUNCTION "WINNING_PERCENTAGE"
-#elif defined(LOSS_FUNCTION_IS_CROSS_ENTOROPY)
-#define LOSS_FUNCTION "CROSS_ENTOROPY"
-#elif defined(LOSS_FUNCTION_IS_CROSS_ENTOROPY_FOR_VALUE)
-#define LOSS_FUNCTION "CROSS_ENTOROPY_FOR_VALUE"
-#elif defined(LOSS_FUNCTION_IS_ELMO_METHOD)
 #define LOSS_FUNCTION "ELMO_METHOD(WCSC27)"
-#endif
 
 // ----------------------
 // Definition of struct used in Learner
@@ -139,6 +40,34 @@ typedef float LearnFloatType;
 
 namespace Learner
 {
+	// ----------------------
+	// Settings for learning
+	// ----------------------
+
+	// mini-batch size.
+	// Calculate the gradient by combining this number of phases.
+	// If you make it smaller, the number of update_weights() will increase and the convergence will be faster. The gradient is incorrect.
+	// If you increase it, the number of update_weights() decreases, so the convergence will be slow. The slope will come out accurately.
+	// I don't think you need to change this value in most cases.
+
+	constexpr std::size_t LEARN_MINI_BATCH_SIZE = 1000 * 1000 * 1;
+
+	// The number of phases to read from the file at one time. After reading this much, shuffle.
+	// It is better to have a certain size, but this number x 40 bytes x 3 times as much memory is consumed. 400MB*3 is consumed in the 10M phase.
+	// Must be a multiple of THREAD_BUFFER_SIZE(=10000).
+
+	constexpr std::size_t LEARN_SFEN_READ_SIZE = 1000 * 1000 * 10;
+
+	// Saving interval of evaluation function at learning. Save each time you learn this number of phases.
+	// Needless to say, the longer the saving interval, the shorter the learning time.
+	// Folder name is incremented for each save like 0/, 1/, 2/...
+	// By default, once every 1 billion phases.
+	constexpr std::size_t LEARN_EVAL_SAVE_INTERVAL = 1000000000ULL;
+
+	// Reduce the output of rmse during learning to 1 for this number of times.
+	// rmse calculation is done in one thread, so it takes some time, so reducing the output is effective.
+	constexpr std::size_t LEARN_RMSE_OUTPUT_INTERVAL = 1;
+
 	//Structure in which PackedSfen and evaluation value are integrated
 	// If you write different contents for each option, it will be a problem when reusing the teacher game
 	// For the time being, write all the following members regardless of the options.

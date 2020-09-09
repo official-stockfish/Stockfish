@@ -1,46 +1,32 @@
 ﻿#if defined(EVAL_LEARN)
 
 #include "../eval/evaluate_common.h"
-
-#include "learn.h"
-#include "multi_think.h"
 #include "../misc.h"
-#include "../thread.h"
+#include "../nnue/evaluate_nnue_learner.h"
 #include "../position.h"
+#include "../syzygy/tbprobe.h"
+#include "../thread.h"
 #include "../tt.h"
 #include "../uci.h"
-#include "../syzygy/tbprobe.h"
+#include "learn.h"
+#include "multi_think.h"
 
 #include <chrono>
-#include <random>
-#include <regex>
-#include <sstream>
-#include <fstream>
-#include <unordered_set>
-#include <iomanip>
-#include <list>
+#include <climits>
 #include <cmath>
 #include <cstring>
-#include <memory>
-#include <limits>
-#include <optional>
-
-#if defined (_OPENMP)
-#include <omp.h>
-#endif
-
-#if defined(_MSC_VER)
-// std::filesystem doesn't work on GCC even though it claims to support C++17.
 #include <filesystem>
-#elif defined(__GNUC__)
-#include <dirent.h>
-#endif
-
-#if defined(EVAL_LEARN)
-#include "../nnue/evaluate_nnue_learner.h"
-#include <climits>
+#include <fstream>
+#include <iomanip>
+#include <limits>
+#include <list>
+#include <memory>
+#include <optional>
+#include <random>
+#include <regex>
 #include <shared_mutex>
-#endif
+#include <sstream>
+#include <unordered_set>
 
 using namespace std;
 
@@ -80,7 +66,7 @@ namespace Learner
             file_worker_thread.join();
             output_file_stream.close();
 
-#if !defined(DNDEBUG)
+#if defined(_DEBUG)
             {
                 // All buffers should be empty since file_worker_thread
                 // should have written everything before exiting.
@@ -176,7 +162,7 @@ namespace Learner
                         output_file_stream.write(reinterpret_cast<const char*>(buf->data()), sizeof(PackedSfenValue) * buf->size());
 
                         sfen_write_count += buf->size();
-#if 1
+
                         // Add the processed number here, and if it exceeds save_every,
                         // change the file name and reset this counter.
                         sfen_write_count_current_file += buf->size();
@@ -196,7 +182,7 @@ namespace Learner
                             output_file_stream.open(new_filename, ios::out | ios::binary | ios::app);
                             cout << endl << "output sfen file = " << new_filename << endl;
                         }
-#endif
+
                         // Output '.' every time when writing a game record.
                         std::cout << ".";
 
@@ -522,10 +508,6 @@ namespace Learner
         {
             // Write out one sfen.
             sfen_writer.write(thread_id, *it);
-#if 0
-            pos.set_from_packed_sfen(it->sfen);
-            cout << pos << "Win : " << it->is_win << " , " << it->score << endl;
-#endif
         }
 
         return quit;
@@ -717,6 +699,7 @@ namespace Learner
                     flush_psv(result.value());
                     break;
                 }
+
                 {
                     auto [search_value, search_pv] = search(pos, depth, 1, nodes);
 
@@ -743,19 +726,6 @@ namespace Learner
 
                     // Save the move score for adjudication.
                     move_hist_scores.push_back(search_value);
-
-#if 0
-                    dbg_hit_on(search_value == leaf_value);
-                    // gensfen depth 3 eval_limit 32000
-                    // Total 217749 Hits 203579 hit rate (%) 93.490
-                    // gensfen depth 6 eval_limit 32000
-                    // Total 78407 Hits 69190 hit rate (%) 88.245
-                    // gensfen depth 6 eval_limit 3000
-                    // Total 53879 Hits 43713 hit rate (%) 81.132
-
-                    // Problems such as pruning with moves in the substitution table.
-                    // This is a little uncomfortable as a teacher...
-#endif
 
                     // If depth 0, pv is not obtained, so search again at depth 2.
                     if (search_depth_min <= 0)
@@ -892,12 +862,6 @@ namespace Learner
 
         string token;
 
-        // When hit to eval hash, as a evaluation value near the initial stage, if a hash collision occurs and a large value is written
-        // When eval_limit is set small, eval_limit will be exceeded every time in the initial phase, and phase generation will not proceed.
-        // Therefore, eval hash needs to be disabled.
-        // After that, when the hash of the eval hash collides, the evaluation value of a strange value is used, and it may be unpleasant to use it for the teacher.
-        bool use_eval_hash = false;
-
         // Save to file in this unit.
         // File names are serialized like file_1.bin, file_2.bin.
         uint64_t save_every = UINT64_MAX;
@@ -946,8 +910,6 @@ namespace Learner
                 is >> write_minply;
             else if (token == "write_maxply")
                 is >> write_maxply;
-            else if (token == "use_eval_hash")
-                is >> use_eval_hash;
             else if (token == "save_every")
                 is >> save_every;
             else if (token == "random_file_name")
@@ -1017,7 +979,6 @@ namespace Learner
             << "  write_minply           = " << write_minply << endl
             << "  write_maxply           = " << write_maxply << endl
             << "  output_file_name       = " << output_file_name << endl
-            << "  use_eval_hash          = " << use_eval_hash << endl
             << "  save_every             = " << save_every << endl
             << "  random_file_name       = " << random_file_name << endl
             << "  write_out_draw_game_in_training_data_generation = " << write_out_draw_game_in_training_data_generation << endl

@@ -26,6 +26,8 @@
 #include <ostream>
 #include <string>
 #include <vector>
+#include <utility>
+#include <cmath>
 
 #include "types.h"
 
@@ -153,6 +155,7 @@ std::string now_string();
 // Also, if the buffer cannot be allocated in the callback function or if the file size is different from the expected file size,
 // Return nullptr. At this time, read_file_to_memory() interrupts reading and returns with an error.
 
+std::uint64_t get_file_size(std::fstream& fs);
 int read_file_to_memory(std::string filename, std::function<void* (uint64_t)> callback_func);
 int write_memory_to_file(std::string filename, void* ptr, uint64_t size);
 
@@ -197,20 +200,38 @@ inline std::ostream& operator<<(std::ostream& os, AsyncPRNG& prng)
 
 // Mathematical function used for progress calculation and learning
 namespace Math {
-	// Sigmoid function
-	// = 1.0 / (1.0 + std::exp(-x))
-	double sigmoid(double x);
+    inline double sigmoid(double x)
+    {
+        return 1.0 / (1.0 + std::exp(-x));
+    }
 
-	// Differentiation of sigmoid function
-	// = sigmoid(x) * (1.0-sigmoid(x))
-	double dsigmoid(double x);
+    inline double dsigmoid(double x)
+    {
+        // Sigmoid function
+        // f(x) = 1/(1+exp(-x))
+        // the first derivative is
+        // f'(x) = df/dx = f(x)・{ 1-f(x)}
+        // becomes
+
+        return sigmoid(x) * (1.0 - sigmoid(x));
+    }
 
 	// Clip v so that it fits between [lo,hi].
 	// * In Stockfish, this function is written in bitboard.h.
 	template<class T> constexpr const T& clamp(const T& v, const T& lo, const T& hi) {
 		return v < lo ? lo : v > hi ? hi : v;
 	}
+}
 
+namespace Algo {
+    // Fisher-Yates
+    template <typename Rng, typename T>
+    void shuffle(std::vector<T>& buf, Rng&& prng)
+    {
+        const auto size = buf.size();
+        for (uint64_t i = 0; i < size; ++i)
+            std::swap(buf[i], buf[prng.rand(size - i) + i]);
+    }
 }
 
 // --------------------
