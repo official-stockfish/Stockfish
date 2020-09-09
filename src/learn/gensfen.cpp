@@ -36,7 +36,7 @@
 #include <dirent.h>
 #endif
 
-#if defined(EVAL_NNUE)
+#if defined(EVAL_LEARN)
 #include "../nnue/evaluate_nnue_learner.h"
 #include <climits>
 #include <shared_mutex>
@@ -838,9 +838,6 @@ namespace Learner
                     }
                 }
                 pos.do_move(next_move, states[ply]);
-
-                // Call node evaluate() for each difference calculation.
-                Eval::NNUE::update_eval(pos);
 
             } // for (int ply = 0; ; ++ply)
 

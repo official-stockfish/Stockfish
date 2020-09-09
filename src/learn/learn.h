@@ -59,12 +59,12 @@
 // The objective function is the sum of squares of the difference in winning percentage
 // See learner.cpp for more information.
 
-//#define LOSS_FUNCTION_IS_WINNING_PERCENTAGE
+// #define LOSS_FUNCTION_IS_WINNING_PERCENTAGE
 
 // Objective function is cross entropy
 // See learner.cpp for more information.
 // So-called ordinary "rag cloth squeezer"
-//#define LOSS_FUNCTION_IS_CROSS_ENTOROPY
+// #define LOSS_FUNCTION_IS_CROSS_ENTOROPY
 
 // A version in which the objective function is cross entropy, but the win rate function is not passed
 // #define LOSS_FUNCTION_IS_CROSS_ENTOROPY_FOR_VALUE
@@ -83,19 +83,6 @@
 // rmse calculation is done in one thread, so it takes some time, so reducing the output is effective.
 #define LEARN_RMSE_OUTPUT_INTERVAL 1
 
-
-// ----------------------
-// learning from zero vector
-// ----------------------
-
-// Start learning the evaluation function parameters from the zero vector.
-// Initialize to zero, generate a game, learn from zero vector,
-// Game generation → If you repeat learning, you will get parameters that do not depend on the professional game. (maybe)
-// (very time consuming)
-
-//#define RESET_TO_ZERO_VECTOR
-
-
 // ----------------------
 // Floating point for learning
 // ----------------------
@@ -113,59 +100,6 @@ typedef float LearnFloatType;
 // when using float16
 //#include "half_float.h"
 //typedef HalfFloat::float16 LearnFloatType;
-
-// ----------------------
-// save memory
-// ----------------------
-
-// Use a triangular array for the Weight array (of which is KPP) to save memory.
-// If this is used, the weight array for learning will be about 3 times as large as the evaluation function file.
-
-#define USE_TRIANGLE_WEIGHT_ARRAY
-
-// ----------------------
-// dimension down
-// ----------------------
-
-// Dimension reduction for mirrors (left/right symmetry) and inverse (forward/backward symmetry).
-// All on by default.
-
-// Dimension reduction using mirror and inverse for KK. (Unclear effect)
-// USE_KK_MIRROR_WRITE must be on when USE_KK_INVERSE_WRITE is on.
-#define USE_KK_MIRROR_WRITE
-#define USE_KK_INVERSE_WRITE
-
-// Dimension reduction using Mirror and Inverse for KKP. (Inverse is not so effective)
-// When USE_KKP_INVERSE_WRITE is turned on, USE_KKP_MIRROR_WRITE must also be turned on.
-#define USE_KKP_MIRROR_WRITE
-#define USE_KKP_INVERSE_WRITE
-
-// Perform dimension reduction using a mirror for KPP. (Turning this off requires double the teacher position)
-// KPP has no inverse. (Because there is only K on the front side)
-#define USE_KPP_MIRROR_WRITE
-
-// Perform a dimension reduction using a mirror for KPPP. (Turning this off requires double the teacher position)
-// KPPP has no inverse. (Because there is only K on the front side)
-#define USE_KPPP_MIRROR_WRITE
-
-// Reduce the dimension by KPP for learning the KKPP component.
-// Learning is very slow.
-// Do not use as it is not debugged.
-//#define USE_KKPP_LOWER_DIM
-
-
-// ======================
-// Settings for creating teacher phases
-// ======================
-
-// ----------------------
-// write out the draw
-// ----------------------
-
-// When you reach a draw, write it out as a teacher position
-// It's subtle whether it's better to do this.
-// #define LEARN_GENSFEN_USE_DRAW_RESULT
-
 
 // ======================
 // configure

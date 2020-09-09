@@ -704,7 +704,6 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
 
   // Used by NNUE
   st->accumulator.computed_accumulation = false;
-  st->accumulator.computed_score = false;
   auto& dp = st->dirtyPiece;
   dp.dirty_num = 1;
 
@@ -1000,7 +999,6 @@ void Position::do_null_move(StateInfo& newSt) {
   if (Eval::useNNUE)
   {
       std::memcpy(&newSt, st, sizeof(StateInfo));
-      st->accumulator.computed_score = false;
   }
   else
       std::memcpy(&newSt, st, offsetof(StateInfo, accumulator));

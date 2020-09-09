@@ -1014,8 +1014,10 @@ make_v:
 /// evaluation of the position from the point of view of the side to move.
 
 Value Eval::evaluate(const Position& pos) {
+
   if (Options["Training"]) {
     Value v = NNUE::evaluate(pos);
+
     // Damp down the evaluation linearly when shuffling
     v = v * (100 - pos.rule50_count()) / 100;
 
@@ -1024,12 +1026,19 @@ Value Eval::evaluate(const Position& pos) {
 
     return v;
   } else {
+    // Use classical eval if there is a large imbalance
+    // If there is a moderate imbalance, use classical eval with probability (1/8),
+    // as derived from the node counter.
+    bool useClassical = abs(eg_value(pos.psq_score())) * 16 > NNUEThreshold1 * (16 + pos.rule50_count());
     bool classical = !Eval::useNNUE
-                  ||  abs(eg_value(pos.psq_score())) * 16 > NNUEThreshold1 * (16 + pos.rule50_count());
+                  ||  useClassical
+                  || (abs(eg_value(pos.psq_score())) > PawnValueMg / 4 && !(pos.this_thread()->nodes & 0xB));
     Value v = classical ? Evaluation<NO_TRACE>(pos).value()
                         : NNUE::evaluate(pos) * 5 / 4 + Tempo;
 
-    if (classical && Eval::useNNUE && abs(v) * 16 < NNUEThreshold2 * (16 + pos.rule50_count()))
+    if (   useClassical 
+        && Eval::useNNUE 
+        && abs(v) * 16 < NNUEThreshold2 * (16 + pos.rule50_count()))
         v = NNUE::evaluate(pos) * 5 / 4 + Tempo;
 
     // Damp down the evaluation linearly when shuffling

@@ -3,7 +3,7 @@
 #ifndef _EVALUATE_NNUE_LEARNER_H_
 #define _EVALUATE_NNUE_LEARNER_H_
 
-#if defined(EVAL_LEARN) && defined(EVAL_NNUE)
+#if defined(EVAL_LEARN)
 
 #include "../learn/learn.h"
 
@@ -41,6 +41,6 @@ void CheckHealth();
 
 }  // namespace Eval
 
-#endif  // defined(EVAL_LEARN) && defined(EVAL_NNUE)
+#endif  // defined(EVAL_LEARN)
 
 #endif

@@ -3,8 +3,6 @@
 #ifndef _NNUE_TRAINER_FEATURES_FACTORIZER_HALF_KP_H_
 #define _NNUE_TRAINER_FEATURES_FACTORIZER_HALF_KP_H_
 
-#if defined(EVAL_NNUE)
-
 #include "../../features/half_kp.h"
 #include "../../features/p.h"
 #include "../../features/half_relative_kp.h"
@@ -97,7 +95,5 @@ constexpr FeatureProperties Factorizer<HalfKP<AssociatedKing>>::kProperties[];
 }  // namespace NNUE
 
 }  // namespace Eval
-
-#endif  // defined(EVAL_NNUE)
 
 #endif

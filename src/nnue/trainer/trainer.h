@@ -3,7 +3,7 @@
 #ifndef _NNUE_TRAINER_H_
 #define _NNUE_TRAINER_H_
 
-#if defined(EVAL_LEARN) && defined(EVAL_NNUE)
+#if defined(EVAL_LEARN)
 
 #include "../nnue_common.h"
 #include "../features/index_list.h"
@@ -70,8 +70,8 @@ struct Example {
 
 // Message used for setting hyperparameters
 struct Message {
-  Message(const std::string& name, const std::string& value = ""):
-      name(name), value(value), num_peekers(0), num_receivers(0) {}
+  Message(const std::string& in_name, const std::string& in_value = ""):
+      name(in_name), value(in_value), num_peekers(0), num_receivers(0) {}
   const std::string name;
   const std::string value;
   std::uint32_t num_peekers;
@@ -120,6 +120,6 @@ std::shared_ptr<T> MakeAlignedSharedPtr(ArgumentTypes&&... arguments) {
 
 }  // namespace Eval
 
-#endif  // defined(EVAL_LEARN) && defined(EVAL_NNUE)
+#endif  // defined(EVAL_LEARN)
 
 #endif

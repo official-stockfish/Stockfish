@@ -3,7 +3,7 @@
 #ifndef _NNUE_TEST_COMMAND_H_
 #define _NNUE_TEST_COMMAND_H_
 
-#if defined(ENABLE_TEST_CMD) && defined(EVAL_NNUE)
+#if defined(ENABLE_TEST_CMD)
 
 namespace Eval {
 
@@ -16,6 +16,6 @@ void TestCommand(Position& pos, std::istream& stream);
 
 }  // namespace Eval
 
-#endif  // defined(ENABLE_TEST_CMD) && defined(EVAL_NNUE)
+#endif  // defined(ENABLE_TEST_CMD)
 
 #endif

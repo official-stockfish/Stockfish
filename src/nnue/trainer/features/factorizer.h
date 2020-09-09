@@ -3,8 +3,6 @@
 #ifndef _NNUE_TRAINER_FEATURES_FACTORIZER_H_
 #define _NNUE_TRAINER_FEATURES_FACTORIZER_H_
 
-#if defined(EVAL_NNUE)
-
 #include "../../nnue_common.h"
 #include "../trainer.h"
 
@@ -104,7 +102,5 @@ constexpr std::size_t GetArrayLength(const T (&/*array*/)[N]) {
 }  // namespace NNUE
 
 }  // namespace Eval
-
-#endif  // defined(EVAL_NNUE)
 
 #endif

@@ -1,7 +1,5 @@
 ﻿//Definition of input feature P of NNUE evaluation function
 
-#if defined(EVAL_NNUE)
-
 #include "p.h"
 #include "index_list.h"
 
@@ -52,5 +50,3 @@ void P::AppendChangedIndices(
 }  // namespace NNUE
 
 }  // namespace Eval
-
-#endif  // defined(EVAL_NNUE)

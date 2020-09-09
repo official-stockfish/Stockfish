@@ -3,8 +3,6 @@
 #ifndef _NNUE_FEATURES_HALF_RELATIVE_KP_H_
 #define _NNUE_FEATURES_HALF_RELATIVE_KP_H_
 
-#if defined(EVAL_NNUE)
-
 #include "../../evaluate.h"
 #include "features_common.h"
 
@@ -59,7 +57,5 @@ class HalfRelativeKP {
 }  // namespace NNUE
 
 }  // namespace Eval
-
-#endif  // defined(EVAL_NNUE)
 
 #endif

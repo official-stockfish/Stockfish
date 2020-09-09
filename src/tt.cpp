@@ -115,6 +115,7 @@ void TranspositionTable::clear() {
 /// TTEntry t2 if its replace value is greater than that of t2.
 
 TTEntry* TranspositionTable::probe(const Key key, bool& found) const {
+
   if (Options["Training"]) {
     return found = false, first_entry(0);
   }

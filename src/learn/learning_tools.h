@@ -6,11 +6,6 @@
 #include "learn.h"
 #if defined (EVAL_LEARN)
 #include <array>
-
-#if defined(SGD_UPDATE) || defined(USE_KPPP_MIRROR_WRITE)
-#include "../misc.h"  // PRNG , my_insertion_sort
-#endif
-
 #include <cmath>	// std::sqrt()
 
 namespace EvalLearningTools

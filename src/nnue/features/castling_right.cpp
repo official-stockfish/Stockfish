@@ -1,7 +1,5 @@
 //Definition of input feature quantity K of NNUE evaluation function
 
-#if defined(EVAL_NNUE)
-
 #include "castling_right.h"
 #include "index_list.h"
 
@@ -28,7 +26,7 @@ namespace Eval {
             & ((castling_rights >> 2) & 3);
         }
 
-        for (int i = 0; i <kDimensions; ++i) {
+        for (unsigned int i = 0; i <kDimensions; ++i) {
           if (relative_castling_rights & (i << 1)) {
             active->push_back(i);
           }
@@ -56,7 +54,7 @@ namespace Eval {
             & ((current_castling_rights >> 2) & 3);
         }
 
-        for (int i = 0; i < kDimensions; ++i) {
+        for (unsigned int i = 0; i < kDimensions; ++i) {
           if ((relative_previous_castling_rights & (i << 1)) &&
             (relative_current_castling_rights & (i << 1)) == 0) {
             removed->push_back(i);
@@ -69,5 +67,3 @@ namespace Eval {
   }  // namespace NNUE
 
 }  // namespace Eval
-
-#endif  // defined(EVAL_NNUE)

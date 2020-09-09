@@ -1,6 +1,6 @@
 ﻿// Code for learning NNUE evaluation function
 
-#if defined(EVAL_LEARN) && defined(EVAL_NNUE)
+#if defined(EVAL_LEARN)
 
 #include <random>
 #include <fstream>
@@ -115,7 +115,6 @@ void RestoreParameters(const std::string& dir_name) {
   std::ifstream stream(file_name, std::ios::binary);
   bool result = ReadParameters(stream);
   assert(result);
-
   SendMessages({{"reset"}});
 }
 
@@ -216,9 +215,8 @@ void save_eval(std::string dir_name) {
 
   const std::string file_name = Path::Combine(eval_dir, NNUE::savedfileName);
   std::ofstream stream(file_name, std::ios::binary);
-  const bool result = NNUE::WriteParameters(stream);
+  bool result = NNUE::WriteParameters(stream);
   assert(result);
-
   std::cout << "save_eval() finished. folder = " << eval_dir << std::endl;
 }
 
@@ -229,4 +227,4 @@ double get_eta() {
 
 }  // namespace Eval
 
-#endif  // defined(EVAL_LEARN) && defined(EVAL_NNUE)
+#endif  // defined(EVAL_LEARN)

@@ -1,19 +1,7 @@
 ﻿#ifndef _EVALUATE_COMMON_H_
 #define _EVALUATE_COMMON_H_
 
-// A common header-like function for modern evaluation functions (EVAL_KPPT and EVAL_KPP_KKPT).
-
-#if defined(EVAL_NNUE) || defined(EVAL_LEARN)
 #include <functional>
-
-// KK file name
-#define KK_BIN "KK_synthesized.bin"
-
-// KKP file name
-#define KKP_BIN "KKP_synthesized.bin"
-
-// KPP file name
-#define KPP_BIN "KPP_synthesized.bin"
 
 #include "../position.h"
 
@@ -46,19 +34,11 @@ namespace Eval
 	void init_grad(double eta1, uint64_t eta_epoch, double eta2, uint64_t eta2_epoch, double eta3);
 
 	// Add the gradient difference value to the gradient array for all features that appear in the current phase.
-	// freeze[0]: Flag that kk does not learn
-	// freeze[1]: Flag that kkp does not learn
-	// freeze[2]: Flag that kpp does not learn
-	// freeze[3]: Flag that kppp does not learn
-	void add_grad(Position& pos, Color rootColor, double delt_grad, const std::array<bool, 4>& freeze);
+	void add_grad(Position& pos, Color rootColor, double delt_grad);
 
 	// Do SGD or AdaGrad or something based on the current gradient.
 	// epoch: Generation counter (starting from 0)
-	// freeze[0]: Flag that kk does not learn
-	// freeze[1]: Flag that kkp does not learn
-	// freeze[2]: Flag that kpp does not learn
-	// freeze[3]: Flag that kppp does not learn
-	void update_weights(uint64_t epoch, const std::array<bool, 4>& freeze);
+	void update_weights(uint64_t epoch);
 
 	// Save the evaluation function parameters to a file.
 	// You can specify the extension added to the end of the file.
@@ -78,7 +58,5 @@ namespace Eval
 
 
 }
-
-#endif  // defined(EVAL_NNUE) || defined(EVAL_LEARN)
 
 #endif // _EVALUATE_KPPT_COMMON_H_
