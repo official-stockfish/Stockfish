@@ -33,6 +33,10 @@ namespace Search {
 constexpr int CounterMovePruneThreshold = 0;
 
 
+#if defined(EVAL_LEARN)
+extern bool prune_at_shallow_depth_on_pv_node;
+#endif
+
 /// Stack struct keeps track of the information we need to remember from nodes
 /// shallower and deeper in the tree during the search. Each search thread has
 /// its own array of Stack objects, indexed by the current ply.
