@@ -70,8 +70,8 @@ struct Example {
 
 // Message used for setting hyperparameters
 struct Message {
-  Message(const std::string& name, const std::string& value = ""):
-      name(name), value(value), num_peekers(0), num_receivers(0) {}
+  Message(const std::string& message_name, const std::string& message_value = ""):
+      name(message_name), value(message_value), num_peekers(0), num_receivers(0) {}
   const std::string name;
   const std::string value;
   std::uint32_t num_peekers;

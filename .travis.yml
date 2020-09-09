@@ -77,8 +77,7 @@ script:
   - if [[ "$TRAVIS_OS_NAME" != "linux" || "$COMP" == "gcc" ]]; then make clean && make -j2 ARCH=x86-64-modern profile-build && ../tests/signature.sh $benchref; fi
 
   # start some basic learner CI
-  #TODO enable -Werror
-  - export CXXFLAGS=""
+  - export CXXFLAGS="-Werror"
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make clean && LDFLAGS="-lstdc++fs" make -j2 ARCH=x86-64-modern learn; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make clean && LDFLAGS="-lstdc++fs" make -j2 ARCH=x86-64-modern profile-learn; fi
 

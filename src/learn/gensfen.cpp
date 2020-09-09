@@ -878,8 +878,7 @@ namespace Learner
                     next_move = search_pv[0];
                 }
 
-            RANDOM_MOVE:;
-
+                // Random move.
                 auto random_move = choose_random_move(pos, random_move_flag, ply, actual_random_move_count);
                 if (random_move.has_value())
                 {
@@ -897,7 +896,7 @@ namespace Learner
                     a_psv.clear();
                 }
 
-            DO_MOVE:;
+                // Do move.
                 pos.do_move(next_move, states[ply]);
 
                 // Call node evaluate() for each difference calculation.
