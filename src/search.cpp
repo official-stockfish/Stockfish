@@ -1012,7 +1012,7 @@ moves_loop: // When in check, search starts from here
       // Step 12. Pruning at shallow depth (~200 Elo)
       if (  !rootNode
 #ifdef EVAL_LEARN
-          && !(!prune_at_shallow_depth_on_pv_node && PvNode)
+          && (PvNode ? prune_at_shallow_depth_on_pv_node : true)
 #endif
           && pos.non_pawn_material(us)
           && bestValue > VALUE_TB_LOSS_IN_MAX_PLY)
