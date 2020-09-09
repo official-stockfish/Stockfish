@@ -26,7 +26,7 @@ namespace Eval {
             & ((castling_rights >> 2) & 3);
         }
 
-        for (int i = 0; i <kDimensions; ++i) {
+        for (Eval::NNUE::IndexType i = 0; i < kDimensions; ++i) {
           if (relative_castling_rights & (i << 1)) {
             active->push_back(i);
           }
@@ -36,7 +36,7 @@ namespace Eval {
       // Get a list of indices whose values ​​have changed from the previous one in the feature quantity
       void CastlingRight::AppendChangedIndices(
         const Position& pos, Color perspective,
-        IndexList* removed, IndexList* added) {
+        IndexList* removed, IndexList* /* added */) {
 
         int previous_castling_rights = pos.state()->previous->castlingRights;
         int current_castling_rights = pos.state()->castlingRights;
@@ -54,7 +54,7 @@ namespace Eval {
             & ((current_castling_rights >> 2) & 3);
         }
 
-        for (int i = 0; i < kDimensions; ++i) {
+        for (Eval::NNUE::IndexType i = 0; i < kDimensions; ++i) {
           if ((relative_previous_castling_rights & (i << 1)) &&
             (relative_current_castling_rights & (i << 1)) == 0) {
             removed->push_back(i);
