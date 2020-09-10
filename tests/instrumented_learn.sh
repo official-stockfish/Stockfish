@@ -78,7 +78,9 @@ cat << EOF > gensfen01.exp
  send "setoption name Threads value $threads\n"
  send "setoption name Use NNUE value false\n"
  send "isready\n"
- send "gensfen depth 3 loop 100 use_draw_in_training_data_generation 1 eval_limit 32000 output_file_name training_data_01/training_data.bin use_raw_nnue_eval 0\n"
+ send "gensfen depth 3 loop 100 use_draw_in_training_data_generation 1 eval_limit 32000 output_file_name training_data_01/training_data.bin use_raw_nnue_eval 0 sfen_format bin\n"
+ expect "gensfen finished."
+ send "gensfen depth 3 loop 100 use_draw_in_training_data_generation 1 eval_limit 32000 output_file_name training_data_01/training_data.binpack use_raw_nnue_eval 0 sfen_format binpack\n"
  expect "gensfen finished."
 
  send "quit\n"
@@ -100,7 +102,9 @@ cat << EOF > gensfen02.exp
  send "setoption name Threads value $threads\n"
  send "setoption name Use NNUE value true\n"
  send "isready\n"
- send "gensfen depth 3 loop 100 use_draw_in_training_data_generation 1 eval_limit 32000 output_file_name training_data_02/training_data.bin use_raw_nnue_eval 0\n"
+ send "gensfen depth 3 loop 100 use_draw_in_training_data_generation 1 eval_limit 32000 output_file_name training_data_01/training_data.bin use_raw_nnue_eval 0 sfen_format bin\n"
+ expect "gensfen finished."
+ send "gensfen depth 3 loop 100 use_draw_in_training_data_generation 1 eval_limit 32000 output_file_name training_data_01/training_data.binpack use_raw_nnue_eval 0 sfen_format binpack\n"
  expect "gensfen finished."
 
  send "quit\n"
