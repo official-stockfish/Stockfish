@@ -44,7 +44,10 @@ void on_use_NNUE(const Option& ) { Eval::init_NNUE(); }
 void on_eval_file(const Option& ) { Eval::init_NNUE(); }
 #ifdef EVAL_LEARN
 void on_prune_at_shallow_depth_on_pv_node(const Option& o) {
-  Search::prune_at_shallow_depth_on_pv_node = o;
+    Search::prune_at_shallow_depth_on_pv_node = o;
+}
+void on_enable_transposition_table(const Option& o) {
+    TranspositionTable::enable_transposition_table = o;
 }
 #endif
 
@@ -102,6 +105,8 @@ void init(OptionsMap& o) {
   o["EvalSaveDir"] << Option("evalsave");
   // Prune at shallow depth on PV nodes. Setting this value to true gains elo in shallow search.
   o["PruneAtShallowDepthOnPvNode"] << Option(false, on_prune_at_shallow_depth_on_pv_node);
+  // Enable transposition table.
+  o["EnableTranspositionTable"] << Option(true, on_enable_transposition_table);
 #endif
 }
 
