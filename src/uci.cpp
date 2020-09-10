@@ -50,6 +50,8 @@ namespace Learner
   // Learning from the generated game record
   void learn(Position& pos, istringstream& is);
 
+  void convert(istringstream& is);
+
   // A pair of reader and evaluation value. Returned by Learner::search(),Learner::qsearch().
   typedef std::pair<Value, std::vector<Move> > ValueAndPV;
 
@@ -352,6 +354,7 @@ void UCI::loop(int argc, char* argv[]) {
 #if defined (EVAL_LEARN)
       else if (token == "gensfen") Learner::gen_sfen(pos, is);
       else if (token == "learn") Learner::learn(pos, is);
+      else if (token == "convert") Learner::convert(is);
 
       // Command to call qsearch(),search() directly for testing
       else if (token == "qsearch") qsearch_cmd(pos);

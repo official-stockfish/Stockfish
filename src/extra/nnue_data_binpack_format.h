@@ -6915,7 +6915,7 @@ namespace binpack
     {
         constexpr std::size_t reportEveryNPositions = 100'000;
 
-        std::cout << "Compressing " << inputPath << " to " << outputPath << '\n';
+        std::cout << "Converting " << inputPath << " to " << outputPath << '\n';
 
         CompressedTrainingDataEntryWriter writer(outputPath, om);
         TrainingDataEntry e;
@@ -6961,13 +6961,15 @@ namespace binpack
             if (key == "ply"sv) e.ply = std::stoi(value);
             if (key == "result"sv) e.result = std::stoi(value);
         }
+
+        std::cout << "Finished. Converted " << numProcessedPositions << " positions.\n";
     }
 
     inline void convertBinpackToPlain(std::string inputPath, std::string outputPath, std::ios_base::openmode om)
     {
         constexpr std::size_t bufferSize = MiB;
 
-        std::cout << "Decompressing " << inputPath << " to " << outputPath << '\n';
+        std::cout << "Converting " << inputPath << " to " << outputPath << '\n';
 
         CompressedTrainingDataEntryReader reader(inputPath);
         std::ofstream outputFile(outputPath, om);
@@ -6999,6 +7001,8 @@ namespace binpack
             const auto cur = outputFile.tellp();
             std::cout << "Processed " << (cur - base) << " bytes and " << numProcessedPositions << " positions.\n";
         }
+
+        std::cout << "Finished. Converted " << numProcessedPositions << " positions.\n";
     }
 
 
@@ -7006,14 +7010,9 @@ namespace binpack
     {
         constexpr std::size_t reportEveryNPositions = 100'000;
 
-        std::cout << "Compressing " << inputPath << " to " << outputPath << '\n';
+        std::cout << "Converting " << inputPath << " to " << outputPath << '\n';
 
         CompressedTrainingDataEntryWriter writer(outputPath, om);
-        TrainingDataEntry e;
-
-        std::string key;
-        std::string value;
-        std::string move;
 
         std::ifstream inputFile(inputPath, std::ios_base::binary);
         const auto base = inputFile.tellg();
@@ -7037,13 +7036,15 @@ namespace binpack
                 std::cout << "Processed " << (cur - base) << " bytes and " << numProcessedPositions << " positions.\n";
             }
         }
+
+        std::cout << "Finished. Converted " << numProcessedPositions << " positions.\n";
     }
 
     inline void convertBinpackToBin(std::string inputPath, std::string outputPath, std::ios_base::openmode om)
     {
         constexpr std::size_t bufferSize = MiB;
 
-        std::cout << "Decompressing " << inputPath << " to " << outputPath << '\n';
+        std::cout << "Converting " << inputPath << " to " << outputPath << '\n';
 
         CompressedTrainingDataEntryReader reader(inputPath);
         std::ofstream outputFile(outputPath, std::ios_base::binary | om);
@@ -7075,6 +7076,8 @@ namespace binpack
             const auto cur = outputFile.tellp();
             std::cout << "Processed " << (cur - base) << " bytes and " << numProcessedPositions << " positions.\n";
         }
+
+        std::cout << "Finished. Converted " << numProcessedPositions << " positions.\n";
     }
 
     inline void convertBinToPlain(std::string inputPath, std::string outputPath, std::ios_base::openmode om)
@@ -7082,12 +7085,6 @@ namespace binpack
         constexpr std::size_t bufferSize = MiB;
 
         std::cout << "Converting " << inputPath << " to " << outputPath << '\n';
-
-        TrainingDataEntry e;
-
-        std::string key;
-        std::string value;
-        std::string move;
 
         std::ifstream inputFile(inputPath, std::ios_base::binary);
         const auto base = inputFile.tellg();
@@ -7127,13 +7124,15 @@ namespace binpack
             const auto cur = outputFile.tellp();
             std::cout << "Processed " << (cur - base) << " bytes and " << numProcessedPositions << " positions.\n";
         }
+
+        std::cout << "Finished. Converted " << numProcessedPositions << " positions.\n";
     }
 
     inline void convertPlainToBin(std::string inputPath, std::string outputPath, std::ios_base::openmode om)
     {
         constexpr std::size_t bufferSize = MiB;
 
-        std::cout << "Compressing " << inputPath << " to " << outputPath << '\n';
+        std::cout << "Converting " << inputPath << " to " << outputPath << '\n';
 
         std::ofstream outputFile(outputPath, std::ios_base::binary | om);
         std::vector<char> buffer;
@@ -7194,5 +7193,7 @@ namespace binpack
             const auto cur = outputFile.tellp();
             std::cout << "Processed " << (cur - base) << " bytes and " << numProcessedPositions << " positions.\n";
         }
+
+        std::cout << "Finished. Converted " << numProcessedPositions << " positions.\n";
     }
 }
