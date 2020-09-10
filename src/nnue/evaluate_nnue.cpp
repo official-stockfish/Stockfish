@@ -115,31 +115,16 @@ namespace Eval::NNUE {
     return stream && stream.peek() == std::ios::traits_type::eof();
   }
 
-  // Proceed with the difference calculation if possible
-  static void UpdateAccumulatorIfPossible(const Position& pos) {
-
-    feature_transformer->UpdateAccumulatorIfPossible(pos);
-  }
-
-  // Calculate the evaluation value
-  static Value ComputeScore(const Position& pos, bool refresh) {
-
-    auto& accumulator = pos.state()->accumulator;
-    if (!refresh && accumulator.computed_score) {
-      return accumulator.score;
-    }
+  // Evaluation function. Perform differential calculation.
+  Value evaluate(const Position& pos) {
 
     alignas(kCacheLineSize) TransformedFeatureType
         transformed_features[FeatureTransformer::kBufferSize];
-    feature_transformer->Transform(pos, transformed_features, refresh);
+    feature_transformer->Transform(pos, transformed_features);
     alignas(kCacheLineSize) char buffer[Network::kBufferSize];
     const auto output = network->Propagate(transformed_features, buffer);
 
-    auto score = static_cast<Value>(output[0] / FV_SCALE);
-
-    accumulator.score = score;
-    accumulator.computed_score = true;
-    return accumulator.score;
+    return static_cast<Value>(output[0] / FV_SCALE);
   }
 
   // Load eval, from a file stream or a memory stream
@@ -148,21 +133,6 @@ namespace Eval::NNUE {
     Initialize();
     fileName = streamName;
     return ReadParameters(stream);
-  }
-
-  // Evaluation function. Perform differential calculation.
-  Value evaluate(const Position& pos) {
-    return ComputeScore(pos, false);
-  }
-
-  // Evaluation function. Perform full calculation.
-  Value compute_eval(const Position& pos) {
-    return ComputeScore(pos, true);
-  }
-
-  // Proceed with the difference calculation if possible
-  void update_eval(const Position& pos) {
-    UpdateAccumulatorIfPossible(pos);
   }
 
 } // namespace Eval::NNUE
