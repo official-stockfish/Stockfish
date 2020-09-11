@@ -86,7 +86,7 @@ void init(OptionsMap& o) {
   o["SyzygyProbeDepth"]      << Option(1, 1, 100);
   o["Syzygy50MoveRule"]      << Option(true);
   o["SyzygyProbeLimit"]      << Option(7, 0, 7);
-#ifdef EVAL_LEARN
+#if defined(EVAL_LEARN)
   o["Use NNUE"]              << Option("true var true var false var pure", "true", on_use_NNUE);
 #else
   o["Use NNUE"]              << Option("true var true var false", "true", on_use_NNUE);

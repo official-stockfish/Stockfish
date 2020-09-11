@@ -37,7 +37,7 @@ namespace Eval {
   UseNNUEMode useNNUE;
   std::string eval_file_loaded="None";
 
-  static UseNNUEMode nnue_mode_from_option(const std::string& mode)
+  static UseNNUEMode nnue_mode_from_option(const UCI::Option& mode)
   {
     if (mode == "false")
       return UseNNUEMode::False;
