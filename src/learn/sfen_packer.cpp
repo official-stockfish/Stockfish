@@ -386,7 +386,7 @@ namespace Learner {
     pos.thisThread = th;
     pos.set_state(pos.st);
 
-    assert(pos_is_ok());
+    assert(pos.pos_is_ok());
 
     return 0;
   }
