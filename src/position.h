@@ -192,6 +192,8 @@ public:
   // PackedSfen does not include gamePly so it cannot be restored. If you want to set it, specify it with an argument.
   int set_from_packed_sfen(const Learner::PackedSfen& sfen, StateInfo* si, Thread* th, bool mirror = false);
 
+  void clear() { std::memset(this, 0, sizeof(Position)); }
+
   // Give the board, hand piece, and turn, and return the sfen.
   //static std::string sfen_from_rawdata(Piece board[81], Hand hands[2], Color turn, int gamePly);
 
