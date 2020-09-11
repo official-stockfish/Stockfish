@@ -44,12 +44,6 @@ namespace Learner
     static bool detect_draw_by_consecutive_low_score = false;
     static bool detect_draw_by_insufficient_mating_material = false;
 
-    // Use raw NNUE eval value in the Eval::evaluate().
-    // If hybrid eval is enabled, training data
-    // generation and training don't work well.
-    // https://discordapp.com/channels/435943710472011776/733545871911813221/748524079761326192
-    extern bool use_raw_nnue_eval;
-
     static SfenOutputType sfen_output_type = SfenOutputType::Bin;
 
     static bool ends_with(const std::string& lhs, const std::string& end)
@@ -1111,8 +1105,6 @@ namespace Learner
                 is >> detect_draw_by_consecutive_low_score;
             else if (token == "detect_draw_by_insufficient_mating_material")
                 is >> detect_draw_by_insufficient_mating_material;
-            else if (token == "use_raw_nnue_eval")
-                is >> use_raw_nnue_eval;
             else if (token == "sfen_format")
                 is >> sfen_format;
             else

@@ -93,12 +93,6 @@ namespace Learner
     // data directly. In those cases, we set false to this variable.
     static bool convert_teacher_signal_to_winning_probability = true;
 
-    // Use raw NNUE eval value in the Eval::evaluate(). If hybrid eval is enabled, training data
-    // generation and training don't work well.
-    // https://discordapp.com/channels/435943710472011776/733545871911813221/748524079761326192
-    // This CANNOT be static since it's used elsewhere.
-    bool use_raw_nnue_eval = false;
-
     // Using stockfish's WDL with win rate model instead of sigmoid
     static bool use_wdl = false;
 
@@ -1811,7 +1805,6 @@ namespace Learner
             else if (option == "dest_score_min_value") is >> dest_score_min_value;
             else if (option == "dest_score_max_value") is >> dest_score_max_value;
             else if (option == "convert_teacher_signal_to_winning_probability") is >> convert_teacher_signal_to_winning_probability;
-            else if (option == "use_raw_nnue_eval") is >> use_raw_nnue_eval;
 
             // Otherwise, it's a filename.
             else

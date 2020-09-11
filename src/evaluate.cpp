@@ -32,23 +32,32 @@
 #include "thread.h"
 #include "uci.h"
 
-#ifdef EVAL_LEARN
-namespace Learner
-{
-    extern bool use_raw_nnue_eval;
-}
-#endif
-
 namespace Eval {
 
-  bool useNNUE;
+  UseNNUEMode useNNUE;
   std::string eval_file_loaded="None";
+
+  static UseNNUEMode nnue_mode_from_option(const std::string& mode)
+  {
+    if (mode == "false")
+      return UseNNUEMode::False;
+    else if (mode == "true")
+      return UseNNUEMode::True;
+
+#ifdef EVAL_LEARN
+    else if (mode == "pure")
+      return UseNNUEMode::Pure;
+#endif
+
+    return UseNNUEMode::False;
+  }
 
   void init_NNUE() {
 
-    useNNUE = Options["Use NNUE"];
+    useNNUE = nnue_mode_from_option(Options["Use NNUE"]);
+
     std::string eval_file = std::string(Options["EvalFile"]);
-    if (useNNUE && eval_file_loaded != eval_file)
+    if (useNNUE != UseNNUEMode::False && eval_file_loaded != eval_file)
         if (Eval::NNUE::load_eval_file(eval_file))
             eval_file_loaded = eval_file;
   }
@@ -56,8 +65,7 @@ namespace Eval {
   void verify_NNUE() {
 
     std::string eval_file = std::string(Options["EvalFile"]);
-    if (useNNUE && eval_file_loaded != eval_file)
-    {
+    if (useNNUE != UseNNUEMode::False && eval_file_loaded != eval_file)    {
         UCI::OptionsMap defaults;
         UCI::init(defaults);
 
@@ -69,7 +77,7 @@ namespace Eval {
         std::exit(EXIT_FAILURE);
     }
 
-    if (useNNUE)
+    if (useNNUE != UseNNUEMode::False)
         sync_cout << "info string NNUE evaluation using " << eval_file << " enabled." << sync_endl;
     else
         sync_cout << "info string classical evaluation enabled." << sync_endl;
@@ -948,17 +956,17 @@ make_v:
 
 Value Eval::evaluate(const Position& pos) {
 #ifdef EVAL_LEARN
-  if (Learner::use_raw_nnue_eval) {
+  if (useNNUE == UseNNUEMode::Pure) {
       return NNUE::evaluate(pos);
   }
 #endif
 
-  bool classical = !Eval::useNNUE
-                ||  abs(eg_value(pos.psq_score())) * 16 > NNUEThreshold1 * (16 + pos.rule50_count());
+  bool classical = useNNUE == UseNNUEMode::False
+                || abs(eg_value(pos.psq_score())) * 16 > NNUEThreshold1 * (16 + pos.rule50_count());
   Value v = classical ? Evaluation<NO_TRACE>(pos).value()
                       : NNUE::evaluate(pos) * 5 / 4 + Tempo;
 
-  if (classical && Eval::useNNUE && abs(v) * 16 < NNUEThreshold2 * (16 + pos.rule50_count()))
+  if (classical && useNNUE != UseNNUEMode::False && abs(v) * 16 < NNUEThreshold2 * (16 + pos.rule50_count()))
       v = NNUE::evaluate(pos) * 5 / 4 + Tempo;
 
   // Damp down the evaluation linearly when shuffling
@@ -1015,7 +1023,7 @@ std::string Eval::trace(const Position& pos) {
 
   ss << "\nClassical evaluation: " << to_cp(v) << " (white side)\n";
 
-  if (Eval::useNNUE)
+  if (useNNUE != UseNNUEMode::False)
   {
       v = NNUE::evaluate(pos);
       v = pos.side_to_move() == WHITE ? v : -v;
