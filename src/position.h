@@ -32,7 +32,7 @@
 
 #if defined(EVAL_LEARN)
 #include "learn/packed_sfen.h"
-#include "extra/sfen_packer.h"
+#include "learn/sfen_packer.h"
 #endif
 
 
