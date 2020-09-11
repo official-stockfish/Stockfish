@@ -1,9 +1,10 @@
 #if defined(EVAL_LEARN)
 
+#include "convert.h"
+
 // evaluate header for learning
 #include "../eval/evaluate_common.h"
 
-#include "learn.h"
 #include "multi_think.h"
 #include "../uci.h"
 #include "../syzygy/tbprobe.h"

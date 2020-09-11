@@ -32,6 +32,11 @@
 #include "uci.h"
 #include "syzygy/tbprobe.h"
 
+#if defined(EVAL_LEARN)
+#include "learn/packed_sfen.h"
+#include "extra/sfen_packer.h"
+#endif
+
 using std::string;
 
 namespace Zobrist {
@@ -1346,3 +1351,39 @@ bool Position::pos_is_ok() const {
 
   return true;
 }
+
+#if defined(EVAL_LEARN)
+
+// Add a function that directly unpacks for speed. It's pretty tough.
+// Write it by combining packer::unpack() and Position::set().
+// If there is a problem with the passed phase and there is an error, non-zero is returned.
+int Position::set_from_packed_sfen(const Learner::PackedSfen& sfen , StateInfo* si, Thread* th, bool mirror)
+{
+  return Learner::set_from_packed_sfen(*this, sfen, si, th, mirror);
+}
+
+// Give the board, hand piece, and turn, and return the sfen.
+//std::string Position::sfen_from_rawdata(Piece board[81], Hand hands[2], Color turn, int gamePly_)
+//{
+// // Copy it to an internal structure and call sfen() if the conversion process depends only on it
+// // Maybe it will be converted normally...
+//  Position pos;
+//
+//  memcpy(pos.board, board, sizeof(Piece) * 81);
+//  memcpy(pos.hand, hands, sizeof(Hand) * 2);
+//  pos.sideToMove = turn;
+//  pos.gamePly = gamePly_;
+//
+//  return pos.sfen();
+//
+// // Implementation of ↑ is beautiful, but slow.
+// // This is a bottleneck when learning a large amount of game records, so write a function to unpack directly.
+//}
+
+// Get the packed sfen. Returns to the buffer specified in the argument.
+void Position::sfen_pack(Learner::PackedSfen& sfen)
+{
+  sfen = Learner::sfen_pack(*this);
+}
+
+#endif

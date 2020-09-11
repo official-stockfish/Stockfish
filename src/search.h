@@ -117,4 +117,15 @@ void clear();
 
 } // namespace Search
 
+#if defined(EVAL_LEARN)
+namespace Learner {
+
+  // A pair of reader and evaluation value. Returned by Learner::search(),Learner::qsearch().
+  using ValueAndPV = std::pair<Value, std::vector<Move>>;
+
+  ValueAndPV qsearch(Position& pos);
+  ValueAndPV search(Position& pos, int depth_, size_t multiPV = 1, uint64_t nodesLimit = 0);
+}
+#endif
+
 #endif // #ifndef SEARCH_H_INCLUDED

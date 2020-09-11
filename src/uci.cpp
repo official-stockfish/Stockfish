@@ -33,33 +33,16 @@
 #include "tt.h"
 #include "uci.h"
 
+#include "learn/gensfen.h"
+#include "learn/learn.h"
+#include "learn/convert.h"
+
 using namespace std;
 
 extern vector<string> setup_bench(const Position&, istream&);
 
 // FEN string of the initial position, normal chess
 const char* StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-
-// Command to automatically generate a game record
-#if defined (EVAL_LEARN)
-namespace Learner
-{
-  // Automatic generation of teacher position
-  void gen_sfen(Position& pos, istringstream& is);
-
-  // Learning from the generated game record
-  void learn(Position& pos, istringstream& is);
-
-  void convert(istringstream& is);
-
-  // A pair of reader and evaluation value. Returned by Learner::search(),Learner::qsearch().
-  typedef std::pair<Value, std::vector<Move> > ValueAndPV;
-
-  ValueAndPV qsearch(Position& pos);
-  ValueAndPV search(Position& pos, int depth_, size_t multiPV = 1, uint64_t nodesLimit = 0);
-
-}
-#endif
 
 void test_cmd(Position& pos, istringstream& is)
 {
