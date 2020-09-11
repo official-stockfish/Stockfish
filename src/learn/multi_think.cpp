@@ -1,10 +1,10 @@
-﻿#include "../types.h"
-
-#if defined(EVAL_LEARN)
+﻿#if defined(EVAL_LEARN)
 
 #include "multi_think.h"
-#include "../tt.h"
-#include "../uci.h"
+
+#include "tt.h"
+#include "uci.h"
+#include "types.h"
 
 #include <thread>
 
@@ -35,13 +35,13 @@ void MultiThink::go_think()
 
 	// Secure end flag of worker thread
 	thread_finished.resize(thread_num);
-	
+
 	// start worker thread
 	for (size_t i = 0; i < thread_num; ++i)
 	{
 		thread_finished[i] = 0;
 		threads.push_back(std::thread([i, this]
-		{ 
+		{
 			// exhaust all processor threads.
 			WinProcGroup::bindThisThread(i);
 

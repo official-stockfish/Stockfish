@@ -2,7 +2,7 @@
 
 #if defined (EVAL_LEARN)
 
-#include "../misc.h"
+#include "misc.h"
 
 using namespace Eval;
 

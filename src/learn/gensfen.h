@@ -1,9 +1,9 @@
 #ifndef _GENSFEN_H_
 #define _GENSFEN_H_
 
-#include <sstream>
+#include "position.h"
 
-#include "../position.h"
+#include <sstream>
 
 #if defined(EVAL_LEARN)
 namespace Learner {

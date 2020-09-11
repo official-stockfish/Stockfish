@@ -321,7 +321,7 @@ endif
 ### ==========================================================================
 
 ### 3.1 Selecting compiler (default = gcc)
-CXXFLAGS += -g -Wall -Wcast-qual -fno-exceptions -std=c++17 $(EXTRACXXFLAGS) $(LEARNCXXFLAGS)
+CXXFLAGS += -g -Wall -Wcast-qual -fno-exceptions -std=c++17 -I. $(EXTRACXXFLAGS) $(LEARNCXXFLAGS)
 DEPENDFLAGS += -std=c++17
 LDFLAGS += $(EXTRALDFLAGS) $(LEARNLDFLAGS)
 

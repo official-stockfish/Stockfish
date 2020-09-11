@@ -3,15 +3,16 @@
 
 #if defined(EVAL_LEARN)
 
-#include <functional>
-#include <mutex>
+#include "learn.h"
 
-#include "../misc.h"
-#include "../learn/learn.h"
-#include "../thread_win32_osx.h"
+#include "misc.h"
+#include "thread_win32_osx.h"
 
 #include <atomic>
 #include <limits>
+#include <functional>
+#include <mutex>
+
 
 // Learning from a game record, when making yourself think and generating a fixed track, etc.
 // Helper class used when multiple threads want to call Search::think() individually.

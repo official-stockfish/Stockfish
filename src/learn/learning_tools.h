@@ -3,11 +3,11 @@
 
 // A set of machine learning tools related to the weight array used for machine learning of evaluation functions
 
-#include "learn.h"
-
 #if defined (EVAL_LEARN)
 
-#include "../misc.h"  // PRNG , my_insertion_sort
+#include "learn.h"
+
+#include "misc.h"  // PRNG , my_insertion_sort
 
 #include <array>
 #include <cmath>	// std::sqrt()

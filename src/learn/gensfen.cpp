@@ -1,19 +1,23 @@
 ﻿#if defined(EVAL_LEARN)
 
 #include "gensfen.h"
-#include "packed_sfen.h"
 
-#include "../eval/evaluate_common.h"
-#include "../misc.h"
-#include "../nnue/evaluate_nnue_learner.h"
-#include "../position.h"
-#include "../syzygy/tbprobe.h"
-#include "../thread.h"
-#include "../tt.h"
-#include "../uci.h"
+#include "packed_sfen.h"
 #include "multi_think.h"
 
-#include "../extra/nnue_data_binpack_format.h"
+#include "misc.h"
+#include "position.h"
+#include "thread.h"
+#include "tt.h"
+#include "uci.h"
+
+#include "eval/evaluate_common.h"
+
+#include "extra/nnue_data_binpack_format.h"
+
+#include "nnue/evaluate_nnue_learner.h"
+
+#include "syzygy/tbprobe.h"
 
 #include <chrono>
 #include <climits>

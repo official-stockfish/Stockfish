@@ -2,18 +2,20 @@
 
 #include "convert.h"
 
-// evaluate header for learning
-#include "../eval/evaluate_common.h"
-
 #include "multi_think.h"
-#include "../uci.h"
-#include "../syzygy/tbprobe.h"
-#include "../misc.h"
-#include "../thread.h"
-#include "../position.h"
-#include "../tt.h"
 
-#include "../extra/nnue_data_binpack_format.h"
+#include "uci.h"
+#include "misc.h"
+#include "thread.h"
+#include "position.h"
+#include "tt.h"
+
+// evaluate header for learning
+#include "eval/evaluate_common.h"
+
+#include "extra/nnue_data_binpack_format.h"
+
+#include "syzygy/tbprobe.h"
 
 #include <sstream>
 #include <fstream>

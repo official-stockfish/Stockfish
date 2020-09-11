@@ -3,8 +3,6 @@
 
 #if defined(EVAL_LEARN)
 
-#include <vector>
-
 // ----------------------
 // Floating point for learning
 // ----------------------
@@ -39,9 +37,10 @@ using LearnFloatType = float;
 
 #include "packed_sfen.h"
 
-#include "../position.h"
+#include "position.h"
 
 #include <sstream>
+#include <vector>
 
 namespace Learner
 {
