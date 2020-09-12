@@ -67,12 +67,6 @@ script:
   - make clean && make -j2 ARCH=x86-64 build && ../tests/signature.sh $benchref
   # TODO avoid _mm_malloc
   # - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make clean && make -j2 ARCH=general-64 build && ../tests/signature.sh $benchref; fi
-  # - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make clean && make -j2 ARCH=x86-32 optimize=no debug=yes build && ../tests/signature.sh $benchref; fi
-  - make clean && make -j2 ARCH=x86-32-sse41-popcnt build && ../tests/signature.sh $benchref
-  - make clean && make -j2 ARCH=x86-32-sse2 build && ../tests/signature.sh $benchref
-  # TODO avoid _mm_malloc
-  # - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make clean && make -j2 ARCH=x86-32 build && ../tests/signature.sh $benchref; fi
-  # - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make clean && make -j2 ARCH=general-32 build && ../tests/signature.sh $benchref; fi
   - make clean && make -j2 ARCH=x86-64-modern profile-build && ../tests/signature.sh $benchref
 
   # compile only for some more advanced architectures (might not run in travis)
