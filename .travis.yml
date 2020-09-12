@@ -70,6 +70,8 @@ script:
   - make clean && make -j2 ARCH=x86-64-modern profile-build && ../tests/signature.sh $benchref
 
   # compile only for some more advanced architectures (might not run in travis)
+  - make clean && make -j2 ARCH=x86-64-avx2 blas=yes build
+
   - make clean && make -j2 ARCH=x86-64-avx2 build
   - make clean && make -j2 ARCH=x86-64-bmi2 build
   - make clean && make -j2 ARCH=x86-64-avx512 build
