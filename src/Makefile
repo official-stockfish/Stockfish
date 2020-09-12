@@ -322,7 +322,7 @@ endif
 
 ### 3.1 Selecting compiler (default = gcc)
 CXXFLAGS += -g -Wall -Wcast-qual -fno-exceptions -std=c++17 -I. $(EXTRACXXFLAGS) $(LEARNCXXFLAGS)
-DEPENDFLAGS += -std=c++17
+DEPENDFLAGS += -std=c++17 -I.
 LDFLAGS += $(EXTRALDFLAGS) $(LEARNLDFLAGS)
 
 ifeq ($(COMP),)
@@ -928,6 +928,6 @@ profile-learn: net config-sanity objclean profileclean
 	rm generated_kifu.bin
 
 .depend:
-	-@$(CXX) $(DEPENDFLAGS) -MM $(SRCS) > $@ 2> /dev/null
+	-@$(CXX) $(DEPENDFLAGS) -MM $(SRCS) > $@
 
 -include .depend
