@@ -111,6 +111,7 @@ else
    SUPPORTED_ARCH=false
 endif
 
+blas = no
 optimize = yes
 debug = no
 sanitize = no
@@ -132,17 +133,25 @@ ARCH = x86-64-modern
 STRIP = strip
 
 ### BLAS libraries
-ifeq ($(KERNEL),Linux)
-	BLASCXXFLAGS =
-	BLASLDFLAGS = -lopenblas
-else
-	BLASCXXFLAGS = -I/mingw64/include/OpenBLAS
-
-	ifeq ($(debug),yes)
-		BLASLDFLAGS = -lopenblas -Wl,-static
+ifeq ($(blas), yes)
+	ifeq ($(KERNEL),Linux)
+		BLASCXXFLAGS =
+		BLASLDFLAGS = -lopenblas
 	else
-		BLASLDFLAGS = -lopenblas -Wl,-s -static
+		BLASCXXFLAGS = -I/mingw64/include/OpenBLAS
+
+		ifeq ($(debug),yes)
+			BLASLDFLAGS = -lopenblas -Wl,-static
+		else
+			BLASLDFLAGS = -lopenblas -Wl,-s -static
+		endif
 	endif
+
+	BLASDEFINE = -DUSE_BLAS
+else
+	BLASCXXFLAGS =
+	BLASLDFLAGS =
+	BLASDEFINE =
 endif
 
 ### 2.2 Architecture specific
@@ -736,7 +745,7 @@ endif
 
 build: config-sanity
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS=' -DUSE_BLAS $(BLASCXXFLAGS) -fopenmp ' \
+	EXTRACXXFLAGS=' $(BLASDEFINE) $(BLASCXXFLAGS) -fopenmp ' \
 	EXTRALDFLAGS=' $(BLASLDFLAGS) -fopenmp  ' \
 	all
 
@@ -744,7 +753,7 @@ profile-build: net config-sanity objclean profileclean
 	@echo ""
 	@echo "Step 1/4. Building instrumented executable ..."
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_make) \
-	LEARNCXXFLAGS=' -DUSE_BLAS $(BLASCXXFLAGS) -fopenmp ' \
+	LEARNCXXFLAGS=' $(BLASDEFINE) $(BLASCXXFLAGS) -fopenmp ' \
 	LEARNLDFLAGS='  $(BLASLDFLAGS) -fopenmp '
 	@echo ""
 	@echo "Step 2/4. Running benchmark for pgo-build ..."
@@ -754,7 +763,7 @@ profile-build: net config-sanity objclean profileclean
 	@echo "Step 3/4. Building optimized executable ..."
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) objclean
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_use) \
-	LEARNCXXFLAGS=' -DUSE_BLAS $(BLASCXXFLAGS) -fopenmp ' \
+	LEARNCXXFLAGS=' $(BLASDEFINE) $(BLASCXXFLAGS) -fopenmp ' \
 	LEARNLDFLAGS=' $(BLASLDFLAGS) -fopenmp '
 	@echo ""
 	@echo "Step 4/4. Deleting profile data ..."
