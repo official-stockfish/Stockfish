@@ -132,28 +132,6 @@ neon = no
 ARCH = x86-64-modern
 STRIP = strip
 
-### BLAS libraries
-ifeq ($(blas), yes)
-	ifeq ($(KERNEL),Linux)
-		BLASCXXFLAGS =
-		BLASLDFLAGS = -lopenblas
-	else
-		BLASCXXFLAGS = -I/mingw64/include/OpenBLAS
-
-		ifeq ($(debug),yes)
-			BLASLDFLAGS = -lopenblas -Wl,-static
-		else
-			BLASLDFLAGS = -lopenblas -Wl,-s -static
-		endif
-	endif
-
-	BLASDEFINE = -DUSE_BLAS
-else
-	BLASCXXFLAGS =
-	BLASLDFLAGS =
-	BLASDEFINE =
-endif
-
 ### 2.2 Architecture specific
 
 ifeq ($(findstring x86,$(ARCH)),x86)
@@ -330,9 +308,8 @@ endif
 ### ==========================================================================
 
 ### 3.1 Selecting compiler (default = gcc)
-CXXFLAGS += -g -Wall -Wcast-qual -fno-exceptions -std=c++17 -I. $(EXTRACXXFLAGS) $(LEARNCXXFLAGS)
-DEPENDFLAGS += -std=c++17 -I.
-LDFLAGS += $(EXTRALDFLAGS) $(LEARNLDFLAGS)
+CXXFLAGS += -g -Wall -Wcast-qual -fno-exceptions -std=c++17 -fopenmp -I. $(EXTRACXXFLAGS)
+DEPENDFLAGS += -std=c++17 -I. $(EXTRALDFLAGS)
 
 ifeq ($(COMP),)
 	COMP=gcc
@@ -487,14 +464,33 @@ ifneq ($(comp),mingw)
 endif
 endif
 
-### 3.2.1 Debugging
+### 3.2.1. BLAS libraries
+ifeq ($(blas), yes)
+	LDFLAGS += -lopenblas
+
+	ifeq ($(KERNEL),Linux)
+		LDFLAGS +=
+	else
+		CXXFLAGS += -I/mingw64/include/OpenBLAS
+
+		ifeq ($(debug),yes)
+			LDFLAGS += -Wl,-static
+		else
+			LDFLAGS += -Wl,-s -static
+		endif
+	endif
+
+	CXXFLAGS += -DUSE_BLAS
+endif
+
+### 3.2.2 Debugging
 ifeq ($(debug),no)
 	CXXFLAGS += -DNDEBUG
 else
 	CXXFLAGS += -g
 endif
 
-### 3.2.2 Debugging with undefined behavior sanitizers
+### 3.2.3 Debugging with undefined behavior sanitizers
 ifneq ($(sanitize),no)
         CXXFLAGS += -g3 -fsanitize=$(sanitize)
         LDFLAGS += -fsanitize=$(sanitize)
@@ -744,17 +740,12 @@ endif
         clang-profile-use clang-profile-make
 
 build: config-sanity
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS=' $(BLASDEFINE) $(BLASCXXFLAGS) -fopenmp ' \
-	EXTRALDFLAGS=' $(BLASLDFLAGS) -fopenmp  ' \
-	all
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) all
 
 profile-build: net config-sanity objclean profileclean
 	@echo ""
 	@echo "Step 1/4. Building instrumented executable ..."
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_make) \
-	LEARNCXXFLAGS=' $(BLASDEFINE) $(BLASCXXFLAGS) -fopenmp ' \
-	LEARNLDFLAGS='  $(BLASLDFLAGS) -fopenmp '
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_make)
 	@echo ""
 	@echo "Step 2/4. Running benchmark for pgo-build ..."
 	$(PGOBENCH) > /dev/null
@@ -762,9 +753,7 @@ profile-build: net config-sanity objclean profileclean
 	@echo ""
 	@echo "Step 3/4. Building optimized executable ..."
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) objclean
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_use) \
-	LEARNCXXFLAGS=' $(BLASDEFINE) $(BLASCXXFLAGS) -fopenmp ' \
-	LEARNLDFLAGS=' $(BLASLDFLAGS) -fopenmp '
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_use)
 	@echo ""
 	@echo "Step 4/4. Deleting profile data ..."
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) profileclean
