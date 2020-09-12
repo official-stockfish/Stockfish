@@ -1,6 +1,4 @@
-﻿#if defined (EVAL_LEARN)
-
-#include "sfen_packer.h"
+﻿#include "sfen_packer.h"
 
 #include "packed_sfen.h"
 
@@ -402,6 +400,3 @@ namespace Learner {
     return sfen;
   }
 }
-
-
-#endif // USE_SFEN_PACKER

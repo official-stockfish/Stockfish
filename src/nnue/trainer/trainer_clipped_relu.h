@@ -3,8 +3,6 @@
 #ifndef _NNUE_TRAINER_CLIPPED_RELU_H_
 #define _NNUE_TRAINER_CLIPPED_RELU_H_
 
-#if defined(EVAL_LEARN)
-
 #include "../../learn/learn.h"
 #include "../layers/clipped_relu.h"
 #include "trainer.h"
@@ -136,7 +134,5 @@ class Trainer<Layers::ClippedReLU<PreviousLayer>> {
 }  // namespace NNUE
 
 }  // namespace Eval
-
-#endif  // defined(EVAL_LEARN)
 
 #endif

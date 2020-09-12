@@ -1,7 +1,5 @@
 ﻿// Code for learning NNUE evaluation function
 
-#if defined(EVAL_LEARN)
-
 #include <random>
 #include <fstream>
 #include <filesystem>
@@ -238,5 +236,3 @@ double get_eta() {
 }
 
 }  // namespace Eval
-
-#endif  // defined(EVAL_LEARN)

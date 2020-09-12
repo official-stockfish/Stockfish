@@ -43,11 +43,8 @@ namespace Eval {
       return UseNNUEMode::False;
     else if (mode == "true")
       return UseNNUEMode::True;
-
-#ifdef EVAL_LEARN
     else if (mode == "pure")
       return UseNNUEMode::Pure;
-#endif
 
     return UseNNUEMode::False;
   }
@@ -955,11 +952,9 @@ make_v:
 /// evaluation of the position from the point of view of the side to move.
 
 Value Eval::evaluate(const Position& pos) {
-#ifdef EVAL_LEARN
   if (useNNUE == UseNNUEMode::Pure) {
       return NNUE::evaluate(pos);
   }
-#endif
 
   bool classical = useNNUE == UseNNUEMode::False
                 || abs(eg_value(pos.psq_score())) * 16 > NNUEThreshold1 * (16 + pos.rule50_count());

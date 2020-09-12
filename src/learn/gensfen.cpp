@@ -1,6 +1,4 @@
-﻿#if defined(EVAL_LEARN)
-
-#include "gensfen.h"
+﻿#include "gensfen.h"
 
 #include "packed_sfen.h"
 #include "multi_think.h"
@@ -1207,4 +1205,3 @@ namespace Learner
         std::cout << "gensfen finished." << endl;
     }
 }
-#endif

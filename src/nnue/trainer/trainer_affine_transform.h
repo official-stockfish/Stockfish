@@ -3,8 +3,6 @@
 #ifndef _NNUE_TRAINER_AFFINE_TRANSFORM_H_
 #define _NNUE_TRAINER_AFFINE_TRANSFORM_H_
 
-#if defined(EVAL_LEARN)
-
 #include "../../learn/learn.h"
 #include "../layers/affine_transform.h"
 #include "trainer.h"
@@ -295,7 +293,5 @@ class Trainer<Layers::AffineTransform<PreviousLayer, OutputDimensions>> {
 }  // namespace NNUE
 
 }  // namespace Eval
-
-#endif  // defined(EVAL_LEARN)
 
 #endif

@@ -1,8 +1,6 @@
 ﻿#ifndef _LEARN_H_
 #define _LEARN_H_
 
-#if defined(EVAL_LEARN)
-
 // ----------------------
 // Floating point for learning
 // ----------------------
@@ -77,7 +75,5 @@ namespace Learner
     // Learning from the generated game record
     void learn(Position& pos, std::istringstream& is);
 }
-
-#endif
 
 #endif // ifndef _LEARN_H_

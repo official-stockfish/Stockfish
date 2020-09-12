@@ -54,9 +54,7 @@ using std::string;
 using Eval::evaluate;
 using namespace Search;
 
-#if defined(EVAL_LEARN)
 bool Search::prune_at_shallow_depth_on_pv_node = false;
-#endif
 
 namespace {
 
@@ -991,9 +989,7 @@ moves_loop: // When in check, search starts from here
       ss->moveCount = ++moveCount;
 
       if (rootNode && thisThread == Threads.main() && Time.elapsed() > 3000
-#if defined(EVAL_LEARN)
           && !Limits.silent
-#endif
           )
           sync_cout << "info depth " << depth
                     << " currmove " << UCI::move(move, pos.is_chess960())
@@ -1011,9 +1007,7 @@ moves_loop: // When in check, search starts from here
 
       // Step 12. Pruning at shallow depth (~200 Elo)
       if (  !rootNode
-#ifdef EVAL_LEARN
           && (PvNode ? prune_at_shallow_depth_on_pv_node : true)
-#endif
           && pos.non_pawn_material(us)
           && bestValue > VALUE_TB_LOSS_IN_MAX_PLY)
       {
@@ -1564,10 +1558,8 @@ moves_loop: // When in check, search starts from here
 
       // Check for legality just before making the move
       if (
-#if defined(EVAL_LEARN)
         // HACK: pos.piece_on(from_sq(m)) sometimes will be NO_PIECE during machine learning.
         !pos.pseudo_legal(move) ||
-#endif // EVAL_LEARN
         !pos.legal(move)
         )
       {
@@ -1978,7 +1970,6 @@ void Tablebases::rank_root_moves(Position& pos, Search::RootMoves& rootMoves) {
 
 // --- expose the functions such as fixed depth search used for learning to the outside
 
-#if defined (EVAL_LEARN)
 
 namespace Learner
 {
@@ -2278,4 +2269,3 @@ namespace Learner
   }
 
 }
-#endif

@@ -1,6 +1,4 @@
-﻿#if defined(EVAL_LEARN)
-
-#include "multi_think.h"
+﻿#include "multi_think.h"
 
 #include "tt.h"
 #include "uci.h"
@@ -118,6 +116,3 @@ void MultiThink::go_think()
 		Options[s.first] = std::string(s.second);
 
 }
-
-
-#endif // defined(EVAL_LEARN)

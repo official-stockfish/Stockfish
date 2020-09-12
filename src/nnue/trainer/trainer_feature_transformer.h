@@ -3,8 +3,6 @@
 #ifndef _NNUE_TRAINER_FEATURE_TRANSFORMER_H_
 #define _NNUE_TRAINER_FEATURE_TRANSFORMER_H_
 
-#if defined(EVAL_LEARN)
-
 #include "../../learn/learn.h"
 #include "../nnue_feature_transformer.h"
 #include "trainer.h"
@@ -371,7 +369,5 @@ class Trainer<FeatureTransformer> {
 }  // namespace NNUE
 
 }  // namespace Eval
-
-#endif  // defined(EVAL_LEARN)
 
 #endif
