@@ -108,5 +108,5 @@ script:
 
   # NNUE testing
   - export CXXFLAGS="-O1 -fno-inline"
-  - make clean && make -j2 ARCH=x86-64-modern debug=no optimize=no learn > /dev/null && ../tests/instrumented_learn.sh --valgrind
-  - make clean && make -j2 ARCH=x86-64-modern sanitize=undefined optimize=no debug=no learn > /dev/null && ../tests/instrumented_learn.sh --sanitizer-undefined
+  - make clean && make -j2 ARCH=x86-64-modern debug=no optimize=no build > /dev/null && ../tests/instrumented_learn.sh --valgrind
+  - make clean && make -j2 ARCH=x86-64-modern sanitize=undefined optimize=no debug=no build > /dev/null && ../tests/instrumented_learn.sh --sanitizer-undefined
