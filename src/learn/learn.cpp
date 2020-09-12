@@ -1981,6 +1981,8 @@ namespace Learner
         // Read evaluation function parameters
         Eval::init_NNUE();
 
+        Threads.main()->ponder = false;
+
         cout << "init_training.." << endl;
         Eval::NNUE::InitializeTraining(eta1, eta1_epoch, eta2, eta2_epoch, eta3);
         Eval::NNUE::SetBatchSize(nn_batch_size);
