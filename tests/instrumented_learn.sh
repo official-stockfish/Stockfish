@@ -80,6 +80,8 @@ cat << EOF > gensfen01.exp
  send "isready\n"
  send "gensfen depth 3 loop 100 use_draw_in_training_data_generation 1 eval_limit 32000 output_file_name training_data/training_data.bin use_raw_nnue_eval 0 sfen_format bin\n"
  expect "gensfen finished."
+ send "learn training_data/training_data.bin convert_plain output_file_name training_data.txt\n"
+ expect "all done"
  send "gensfen depth 3 loop 100 use_draw_in_training_data_generation 1 eval_limit 32000 output_file_name training_data/training_data.binpack use_raw_nnue_eval 0 sfen_format binpack\n"
  expect "gensfen finished."
 
