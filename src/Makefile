@@ -39,8 +39,9 @@ PREFIX = /usr/local
 BINDIR = $(PREFIX)/bin
 
 ### Built-in benchmark for pgo-builds
+PGO_TRAINING_DATA_FILE = pgo_training_data
 PGOBENCH = ./$(EXE) bench
-PGOGENSFEN = ./$(EXE) gensfen depth 3 loop 1000
+PGOGENSFEN = ./$(EXE) gensfen depth 3 loop 1000 output_file_name $(PGO_TRAINING_DATA_FILE)
 
 ### Source and object files
 SRCS = benchmark.cpp bitbase.cpp bitboard.cpp endgame.cpp evaluate.cpp main.cpp \
@@ -804,7 +805,7 @@ profileclean:
 	@rm -rf profdir
 	@rm -f bench.txt *.gcda *.gcno ./syzygy/*.gcda ./nnue/*.gcda ./nnue/features/*.gcda *.s ./learn/*.gcda ./extra/*.gcda ./eval/*.gcda
 	@rm -f stockfish.profdata *.profraw
-	@rm generated_kifu.bin
+	@rm $(PGO_TRAINING_DATA_FILE)
 
 default:
 	help
