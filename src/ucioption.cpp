@@ -101,7 +101,7 @@ void init(OptionsMap& o) {
   // Automatically create a folder under this folder like "0/", "1/", ... and save the evaluation function file there.
   o["EvalSaveDir"] << Option("evalsave");
   // Prune at shallow depth on PV nodes. Setting this value to true gains elo in shallow search.
-  o["PruneAtShallowDepthOnPvNode"] << Option(false, on_prune_at_shallow_depth_on_pv_node);
+  o["PruneAtShallowDepthOnPvNode"] << Option(true, on_prune_at_shallow_depth_on_pv_node);
   // Enable transposition table.
   o["EnableTranspositionTable"] << Option(true, on_enable_transposition_table);
 }

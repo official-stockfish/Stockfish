@@ -54,7 +54,7 @@ using std::string;
 using Eval::evaluate;
 using namespace Search;
 
-bool Search::prune_at_shallow_depth_on_pv_node = false;
+bool Search::prune_at_shallow_depth_on_pv_node = true;
 
 namespace {
 
