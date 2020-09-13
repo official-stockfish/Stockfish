@@ -1987,9 +1987,6 @@ namespace Learner
         Eval::NNUE::InitializeTraining(eta1, eta1_epoch, eta2, eta2_epoch, eta3);
         Eval::NNUE::SetBatchSize(nn_batch_size);
         Eval::NNUE::SetOptions(nn_options);
-        if (newbob_decay != 1.0 && !Options["SkipLoadingEval"]) {
-            learn_think.best_nn_directory = std::string(Options["EvalDir"]);
-        }
 
         cout << "init done." << endl;
 

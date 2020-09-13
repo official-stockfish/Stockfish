@@ -165,7 +165,7 @@ Option::operator double() const {
 }
 
 Option::operator std::string() const {
-  assert(type == "string");
+  assert(type == "check" || type == "spin" || type == "combo" || type == "button" || type == "string");
   return currentValue;
 }
 
