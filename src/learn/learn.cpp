@@ -1988,7 +1988,7 @@ namespace Learner
         Eval::NNUE::SetBatchSize(nn_batch_size);
         Eval::NNUE::SetOptions(nn_options);
         if (newbob_decay != 1.0 && !Options["SkipLoadingEval"]) {
-            // Save the current net to [EvalDir]\original.
+            // Save the current net to [EvalSaveDir]\original.
             Eval::save_eval("original");
 
             // Set the folder above to best_nn_directory so that the trainer can
