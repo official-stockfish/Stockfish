@@ -805,7 +805,7 @@ profileclean:
 	@rm -rf profdir
 	@rm -f bench.txt *.gcda *.gcno ./syzygy/*.gcda ./nnue/*.gcda ./nnue/features/*.gcda *.s ./learn/*.gcda ./extra/*.gcda ./eval/*.gcda
 	@rm -f stockfish.profdata *.profraw
-	@rm $(PGO_TRAINING_DATA_FILE)
+	@rm -f $(PGO_TRAINING_DATA_FILE)
 
 default:
 	help
