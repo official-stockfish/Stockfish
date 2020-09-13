@@ -1988,7 +1988,13 @@ namespace Learner
         Eval::NNUE::SetBatchSize(nn_batch_size);
         Eval::NNUE::SetOptions(nn_options);
         if (newbob_decay != 1.0 && !Options["SkipLoadingEval"]) {
-            learn_think.best_nn_directory = std::string(Options["EvalDir"]);
+            // Save the current net to [EvalDir]\original.
+            Eval::save_eval("original");
+
+            // Set the folder above to best_nn_directory so that the trainer can
+            // resotre the network parameters from the original net file.
+            learn_think.best_nn_directory =
+                Path::Combine(Options["EvalSaveDir"], "original");
         }
 
         cout << "init done." << endl;
