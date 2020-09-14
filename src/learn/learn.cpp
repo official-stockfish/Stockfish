@@ -842,6 +842,8 @@ namespace Learner
         // EvalHash has been disabled in advance. (If not, the same value will be returned every time)
         const auto [_, pv] = qsearch(task_pos);
 
+        const auto rootColor = task_pos.side_to_move();
+
         std::vector<StateInfo, AlignedAllocator<StateInfo>> states(pv.size());
         for (size_t i = 0; i < pv.size(); ++i)
         {
@@ -849,7 +851,6 @@ namespace Learner
             Eval::NNUE::update_eval(task_pos);
         }
 
-        const auto rootColor = task_pos.side_to_move();
         const Value shallow_value =
             (rootColor == task_pos.side_to_move())
             ? Eval::evaluate(task_pos)
