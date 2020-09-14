@@ -3,8 +3,6 @@
 
 // A set of machine learning tools related to the weight array used for machine learning of evaluation functions
 
-#if defined (EVAL_LEARN)
-
 #include "learn.h"
 
 #include "misc.h"  // PRNG , my_insertion_sort
@@ -98,5 +96,4 @@ namespace EvalLearningTools
 	};
 }
 
-#endif // defined (EVAL_LEARN)
 #endif

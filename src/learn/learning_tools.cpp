@@ -1,7 +1,5 @@
 ﻿#include "learning_tools.h"
 
-#if defined (EVAL_LEARN)
-
 #include "misc.h"
 
 using namespace Eval;
@@ -18,5 +16,3 @@ namespace EvalLearningTools
 	uint64_t Weight::eta1_epoch;
 	uint64_t Weight::eta2_epoch;
 }
-
-#endif

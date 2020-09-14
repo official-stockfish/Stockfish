@@ -245,7 +245,6 @@ double UCI::win_rate_model_double(double v, int ply) {
 // Call qsearch(),search() directly for testing
 // --------------------
 
-#if defined(EVAL_LEARN)
 void qsearch_cmd(Position& pos)
 {
   cout << "qsearch : ";
@@ -276,8 +275,6 @@ void search_cmd(Position& pos, istringstream& is)
     cout << UCI::move(m, false) << " ";
   cout << endl;
 }
-
-#endif
 
 /// UCI::loop() waits for a command from stdin, parses it and calls the appropriate
 /// function. Also intercepts EOF from stdin to ensure gracefully exiting if the
@@ -334,7 +331,7 @@ void UCI::loop(int argc, char* argv[]) {
       else if (token == "d")        sync_cout << pos << sync_endl;
       else if (token == "eval")     trace_eval(pos);
       else if (token == "compiler") sync_cout << compiler_info() << sync_endl;
-#if defined (EVAL_LEARN)
+
       else if (token == "gensfen") Learner::gen_sfen(pos, is);
       else if (token == "learn") Learner::learn(pos, is);
       else if (token == "convert") Learner::convert(is);
@@ -342,8 +339,6 @@ void UCI::loop(int argc, char* argv[]) {
       // Command to call qsearch(),search() directly for testing
       else if (token == "qsearch") qsearch_cmd(pos);
       else if (token == "search") search_cmd(pos, is);
-
-#endif
 
       // test command
       else if (token == "test") test_cmd(pos, is);

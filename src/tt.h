@@ -84,9 +84,7 @@ public:
     return &table[mul_hi64(key, clusterCount)].entry[0];
   }
 
-#ifdef EVAL_LEARN
   static bool enable_transposition_table;
-#endif
 
 private:
   friend struct TTEntry;

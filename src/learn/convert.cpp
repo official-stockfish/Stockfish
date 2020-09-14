@@ -1,5 +1,3 @@
-#if defined(EVAL_LEARN)
-
 #include "convert.h"
 
 #include "multi_think.h"
@@ -606,4 +604,3 @@ namespace Learner
         convert(args);
     }
 }
-#endif

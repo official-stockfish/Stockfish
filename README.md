@@ -7,6 +7,31 @@
 ## Overview
 Stockfish NNUE is a port of a shogi neural network named NNUE (efficiently updateable neural network backwards) to Stockfish 11. To learn more about the Stockfish chess engine, look [here](stockfish.md) for an overview and [here](https://github.com/official-stockfish/Stockfish) for the official repository.
 
+## Building
+To compile:
+```
+make -jN ARCH=... build
+```
+
+To compile with Profile Guided Optimizations. Requires that the computer that is used for compilation supports the selected `ARCH`.
+```
+make -jN ARCH=... profile-build
+```
+
+`N` is the number of threads to use for compilation.
+
+`ARCH` is one of:
+`x86-64-vnni512`, `x86-64-vnni256`, `x86-64-avx512`, `x86-64-bmi2`, `x86-64-avx2`,
+`x86-64-sse41-popcnt`, `x86-64-modern`, `x86-64-ssse3`, `x86-64-sse3-popcnt`,
+`x86-64`, `x86-32-sse41-popcnt`, `x86-32-sse2`, `x86-32`, `ppc-64`, `ppc-32,
+armv7`, `armv7-neon`, `armv8`, `apple-silicon`, `general-64`, `general-32`.
+
+`ARCH` needs to be chosen based based on the instruction set of the CPU that will run stockfish. `x86-64-modern` will produce a binary that works on most common processors, but other options may increase performance for specific hardware.
+
+Additional options:
+
+- `blas=[yes/no]` - whether to use an external BLAS library. Default is `no`. Using an external BLAS library may have a significantly improve learning performance and by default expects openBLAS to be installed.
+
 ## Training Guide
 ### Generating Training Data
 To generate training data from the classic eval, use the gensfen command with the setting "Use NNUE" set to "false". The given example is generation in its simplest form. There are more commands. 

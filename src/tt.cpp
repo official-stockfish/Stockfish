@@ -28,9 +28,7 @@
 
 TranspositionTable TT; // Our global transposition table
 
-#ifdef EVAL_LEARN
 bool TranspositionTable::enable_transposition_table = true;
-#endif
 
 /// TTEntry::save() populates the TTEntry with a new node's data, possibly
 /// overwriting an old position. Update is not atomic and can be racy.
@@ -120,12 +118,10 @@ void TranspositionTable::clear() {
 
 TTEntry* TranspositionTable::probe(const Key key, bool& found) const {
 
-#ifdef EVAL_LEARN
   if (!enable_transposition_table) {
       found = false;
       return first_entry(0);
   }
-#endif
 
   TTEntry* const tte = first_entry(key);
   const uint16_t key16 = (uint16_t)key;  // Use the low 16 bits as key inside the cluster

@@ -5,7 +5,6 @@
 #include <string>
 #include <sstream>
 
-#if defined(EVAL_LEARN)
 namespace Learner {
     void convert_bin_from_pgn_extract(
         const std::vector<std::string>& filenames,
@@ -32,6 +31,5 @@ namespace Learner {
 
     void convert(std::istringstream& is);
 }
-#endif
 
 #endif

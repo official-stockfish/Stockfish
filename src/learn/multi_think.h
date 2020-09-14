@@ -1,8 +1,6 @@
 ﻿#ifndef _MULTI_THINK_
 #define _MULTI_THINK_
 
-#if defined(EVAL_LEARN)
-
 #include "learn.h"
 
 #include "misc.h"
@@ -150,7 +148,5 @@ protected:
 	// a mutex for accessing tasks
 	std::mutex task_mutex;
 };
-
-#endif // defined(EVAL_LEARN) && defined(YANEURAOU_2018_OTAFUKU_ENGINE)
 
 #endif

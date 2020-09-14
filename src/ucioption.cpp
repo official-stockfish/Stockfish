@@ -42,14 +42,12 @@ void on_threads(const Option& o) { Threads.set(size_t(o)); }
 void on_tb_path(const Option& o) { Tablebases::init(o); }
 void on_use_NNUE(const Option& ) { Eval::init_NNUE(); }
 void on_eval_file(const Option& ) { Eval::init_NNUE(); }
-#ifdef EVAL_LEARN
 void on_prune_at_shallow_depth_on_pv_node(const Option& o) {
     Search::prune_at_shallow_depth_on_pv_node = o;
 }
 void on_enable_transposition_table(const Option& o) {
     TranspositionTable::enable_transposition_table = o;
 }
-#endif
 
 /// Our case insensitive less() function as required by UCI protocol
 bool CaseInsensitiveLess::operator() (const string& s1, const string& s2) const {
@@ -86,11 +84,7 @@ void init(OptionsMap& o) {
   o["SyzygyProbeDepth"]      << Option(1, 1, 100);
   o["Syzygy50MoveRule"]      << Option(true);
   o["SyzygyProbeLimit"]      << Option(7, 0, 7);
-#if defined(EVAL_LEARN)
   o["Use NNUE"]              << Option("true var true var false var pure", "true", on_use_NNUE);
-#else
-  o["Use NNUE"]              << Option("true var true var false", "true", on_use_NNUE);
-#endif
   // The default must follow the format nn-[SHA256 first 12 digits].nnue
   // for the build process (profile-build and fishtest) to work.
   o["EvalFile"]              << Option("nn-82215d0fd0df.nnue", on_eval_file);
@@ -102,16 +96,14 @@ void init(OptionsMap& o) {
   o["SkipLoadingEval"]       << Option(false);
   // how many moves to use a fixed move
   // o["BookMoves"] << Option(16, 0, 10000);
-#if defined(EVAL_LEARN)
   // When learning the evaluation function, you can change the folder to save the evaluation function.
   // Evalsave by default. This folder shall be prepared in advance.
   // Automatically create a folder under this folder like "0/", "1/", ... and save the evaluation function file there.
   o["EvalSaveDir"] << Option("evalsave");
   // Prune at shallow depth on PV nodes. Setting this value to true gains elo in shallow search.
-  o["PruneAtShallowDepthOnPvNode"] << Option(false, on_prune_at_shallow_depth_on_pv_node);
+  o["PruneAtShallowDepthOnPvNode"] << Option(true, on_prune_at_shallow_depth_on_pv_node);
   // Enable transposition table.
   o["EnableTranspositionTable"] << Option(true, on_enable_transposition_table);
-#endif
 }
 
 

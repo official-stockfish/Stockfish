@@ -32,10 +32,7 @@ namespace Search {
 /// Threshold used for countermoves based pruning
 constexpr int CounterMovePruneThreshold = 0;
 
-
-#if defined(EVAL_LEARN)
 extern bool prune_at_shallow_depth_on_pv_node;
-#endif
 
 /// Stack struct keeps track of the information we need to remember from nodes
 /// shallower and deeper in the tree during the search. Each search thread has
@@ -90,9 +87,7 @@ struct LimitsType {
     time[WHITE] = time[BLACK] = inc[WHITE] = inc[BLACK] = npmsec = movetime = TimePoint(0);
     movestogo = depth = mate = perft = infinite = 0;
     nodes = 0;
-#if defined (EVAL_LEARN)
     silent = false;
-#endif
   }
 
   bool use_time_management() const {
@@ -103,11 +98,9 @@ struct LimitsType {
   TimePoint time[COLOR_NB], inc[COLOR_NB], npmsec, movetime, startTime;
   int movestogo, depth, mate, perft, infinite;
   int64_t nodes;
-#if defined (EVAL_LEARN)
   // Silent mode that does not output to the screen (for continuous self-play in process)
   // Do not output PV at this time.
   bool silent;
-#endif
 };
 
 extern LimitsType Limits;
@@ -117,7 +110,6 @@ void clear();
 
 } // namespace Search
 
-#if defined(EVAL_LEARN)
 namespace Learner {
 
   // A pair of reader and evaluation value. Returned by Learner::search(),Learner::qsearch().
@@ -126,6 +118,5 @@ namespace Learner {
   ValueAndPV qsearch(Position& pos);
   ValueAndPV search(Position& pos, int depth_, size_t multiPV = 1, uint64_t nodesLimit = 0);
 }
-#endif
 
 #endif // #ifndef SEARCH_H_INCLUDED

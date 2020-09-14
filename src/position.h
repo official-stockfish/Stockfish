@@ -30,10 +30,8 @@
 
 #include "nnue/nnue_accumulator.h"
 
-#if defined(EVAL_LEARN)
 #include "learn/packed_sfen.h"
 #include "learn/sfen_packer.h"
-#endif
 
 
 /// StateInfo struct stores information needed to restore a Position object to
@@ -177,7 +175,6 @@ public:
   // Used by NNUE
   StateInfo* state() const;
 
-#if defined(EVAL_LEARN)
   // --sfenization helper
 
   friend int Learner::set_from_packed_sfen(Position& pos, const Learner::PackedSfen& sfen, StateInfo* si, Thread* th, bool mirror);
@@ -199,7 +196,6 @@ public:
 
   // Returns the position of the ball on the c side.
   Square king_square(Color c) const { return pieceList[make_piece(c, KING)][0]; }
-#endif // EVAL_LEARN
 
 private:
   // Initialization helpers (used while setting up a position)

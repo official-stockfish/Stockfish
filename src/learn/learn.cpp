@@ -17,8 +17,6 @@
 // → I will not be involved in the engine because it is a problem that the GUI should assist.
 // etc..
 
-#if defined(EVAL_LEARN)
-
 #include "learn.h"
 
 #include "convert.h"
@@ -2054,5 +2052,3 @@ namespace Learner
     }
 
 } // namespace Learner
-
-#endif // EVAL_LEARN

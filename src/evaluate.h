@@ -29,11 +29,8 @@ namespace Eval {
   enum struct UseNNUEMode
   {
     False,
-    True
-
-#ifdef EVAL_LEARN
-    ,Pure
-#endif
+    True,
+    Pure
   };
 
   std::string trace(const Position& pos);

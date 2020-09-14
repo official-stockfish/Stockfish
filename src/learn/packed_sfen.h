@@ -4,7 +4,6 @@
 #include <vector>
 #include <cstdint>
 
-#if defined(EVAL_LEARN)
 namespace Learner {
 
     // packed sfen
@@ -44,6 +43,4 @@ namespace Learner {
     // Phase array: PSVector stands for packed sfen vector.
     using PSVector = std::vector<PackedSfenValue>;
 }
-#endif
-
 #endif
