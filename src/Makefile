@@ -402,7 +402,7 @@ ifeq ($(COMP),ndk)
 		CXX=aarch64-linux-android21-clang++
 		STRIP=aarch64-linux-android-strip
 	endif
-	LDFLAGS += -static -lm -latomic
+	LDFLAGS += -static-libstdc++ -pie -lm -latomic
 endif
 
 ifeq ($(comp),icc)
