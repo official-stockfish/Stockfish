@@ -19,6 +19,7 @@
 #ifndef MISC_H_INCLUDED
 #define MISC_H_INCLUDED
 
+#include <algorithm>
 #include <cassert>
 #include <chrono>
 #include <functional>
@@ -28,6 +29,7 @@
 #include <vector>
 #include <utility>
 #include <cmath>
+#include <cctype>
 
 #include "types.h"
 
@@ -85,6 +87,19 @@ std::ostream& operator<<(std::ostream&, SyncCout);
 /// For further analysis see
 ///   <http://vigna.di.unimi.it/ftp/papers/xorshift.pdf>
 
+static uint64_t string_hash(const std::string& str)
+{
+  uint64_t h = 525201411107845655ull;
+
+  for (auto c : str) {
+    h ^= static_cast<uint64_t>(c);
+    h *= 0x5bd1e9955bd1e995ull;
+    h ^= h >> 47;
+  }
+
+  return h;
+}
+
 class PRNG {
 
   uint64_t s;
@@ -109,6 +124,19 @@ public:
 
   // Return the random seed used internally.
   uint64_t get_seed() const { return s; }
+
+  void set_seed(uint64_t seed) { s = seed; }
+
+  void set_seed(const std::string& str)
+  {
+    if (std::all_of(str.begin(), str.end(), std::isdigit)) {
+      set_seed(std::stoull(str));
+    }
+    else
+    {
+      set_seed(string_hash(str));
+    }
+  }
 };
 
 // Display a random seed. (For debugging)
