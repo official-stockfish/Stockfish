@@ -10,6 +10,8 @@
 #include <limits>
 #include <functional>
 #include <mutex>
+#include <string>
+#include <cstdint>
 
 
 // Learning from a game record, when making yourself think and generating a fixed track, etc.
@@ -19,10 +21,11 @@ struct MultiThink
 {
 	static constexpr std::uint64_t LOOP_COUNT_FINISHED = std::numeric_limits<std::uint64_t>::max();
 
-	MultiThink() : prng(std::chrono::system_clock::now().time_since_epoch().count())
-	{
-		loop_count = 0;
-	}
+	MultiThink() : prng{}, loop_count(0) { }
+
+	MultiThink(std::uint64_t seed) : prng(seed), loop_count(0) { }
+
+	MultiThink(const std::string& seed) : prng(seed), loop_count(0) { }
 
 	// Call this function from the master thread, each thread will think,
 	// Return control when the thought ending condition is satisfied.

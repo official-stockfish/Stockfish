@@ -355,7 +355,8 @@ namespace Learner
         // It must be 2**N because it will be used as the mask to calculate hash_index.
         static_assert((GENSFEN_HASH_SIZE& (GENSFEN_HASH_SIZE - 1)) == 0);
 
-        MultiThinkGenSfen(int search_depth_min_, int search_depth_max_, SfenWriter& sw_) :
+        MultiThinkGenSfen(int search_depth_min_, int search_depth_max_, SfenWriter& sw_, const std::string& seed) :
+            MultiThink(seed),
             search_depth_min(search_depth_min_),
             search_depth_max(search_depth_max_),
             sfen_writer(sw_)
@@ -1055,6 +1056,7 @@ namespace Learner
         bool random_file_name = false;
 
         std::string sfen_format;
+        std::string seed;
 
         while (true)
         {
@@ -1111,6 +1113,8 @@ namespace Learner
                 is >> detect_draw_by_insufficient_mating_material;
             else if (token == "sfen_format")
                 is >> sfen_format;
+            else if (token == "seed")
+                is >> seed;
             else
                 cout << "Error! : Illegal token " << token << endl;
         }
@@ -1137,7 +1141,7 @@ namespace Learner
         {
             // Give a random number to output_file_name at this point.
             // Do not use std::random_device().  Because it always the same integers on MinGW.
-            PRNG r(std::chrono::system_clock::now().time_since_epoch().count());
+            PRNG r(seed);
             // Just in case, reassign the random numbers.
             for (int i = 0; i < 10; ++i)
                 r.rand(1);
@@ -1182,7 +1186,7 @@ namespace Learner
             SfenWriter sfen_writer(output_file_name, thread_num);
             sfen_writer.set_save_interval(save_every);
 
-            MultiThinkGenSfen multi_think(search_depth_min, search_depth_max, sfen_writer);
+            MultiThinkGenSfen multi_think(search_depth_min, search_depth_max, sfen_writer, seed);
             multi_think.nodes = nodes;
             multi_think.set_loop_max(loop_max);
             multi_think.eval_limit = eval_limit;

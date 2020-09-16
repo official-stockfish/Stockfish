@@ -432,8 +432,8 @@ namespace Learner
 
         // Do not use std::random_device().
         // Because it always the same integers on MinGW.
-        SfenReader(int thread_num) :
-            prng(std::chrono::system_clock::now().time_since_epoch().count())
+        SfenReader(int thread_num, const std::string& seed) :
+            prng(seed)
         {
             packed_sfens.resize(thread_num);
             total_read = 0;
@@ -742,7 +742,8 @@ namespace Learner
     // Class to generate sfen with multiple threads
     struct LearnerThink : public MultiThink
     {
-        LearnerThink(SfenReader& sr_) :
+        LearnerThink(SfenReader& sr_, const std::string& seed) :
+            MultiThink(seed),
             sr(sr_),
             stop_flag(false),
             save_only_once(false)
@@ -1437,7 +1438,7 @@ namespace Learner
 
     // Subcontracting the teacher shuffle "learn shuffle" command.
     // output_file_name: name of the output file where the shuffled teacher positions will be written
-    void shuffle_files(const vector<string>& filenames, const string& output_file_name, uint64_t buffer_size)
+    void shuffle_files(const vector<string>& filenames, const string& output_file_name, uint64_t buffer_size, const std::string& seed)
     {
         // The destination folder is
         // tmp/ for temporary writing
@@ -1460,7 +1461,7 @@ namespace Learner
 
         // random number to shuffle
         // Do not use std::random_device().  Because it always the same integers on MinGW.
-        PRNG prng(std::chrono::system_clock::now().time_since_epoch().count());
+        PRNG prng(seed);
 
         // generate the name of the temporary file
         auto make_filename = [](uint64_t i)
@@ -1533,11 +1534,11 @@ namespace Learner
     // Subcontracting the teacher shuffle "learn shuffleq" command.
     // This is written in 1 pass.
     // output_file_name: name of the output file where the shuffled teacher positions will be written
-    void shuffle_files_quick(const vector<string>& filenames, const string& output_file_name)
+    void shuffle_files_quick(const vector<string>& filenames, const string& output_file_name, const std::string& seed)
     {
         // random number to shuffle
         // Do not use std::random_device().  Because it always the same integers on MinGW.
-        PRNG prng(std::chrono::system_clock::now().time_since_epoch().count());
+        PRNG prng(seed);
 
         // number of files
         const size_t file_count = filenames.size();
@@ -1573,7 +1574,7 @@ namespace Learner
 
     // Subcontracting the teacher shuffle "learn shufflem" command.
     // Read the whole memory and write it out with the specified file name.
-    void shuffle_files_on_memory(const vector<string>& filenames, const string output_file_name)
+    void shuffle_files_on_memory(const vector<string>& filenames, const string output_file_name, const std::string& seed)
     {
         PSVector buf;
 
@@ -1591,7 +1592,7 @@ namespace Learner
 
         // shuffle from buf[0] to buf[size-1]
         // Do not use std::random_device().  Because it always the same integers on MinGW.
-        PRNG prng(std::chrono::system_clock::now().time_since_epoch().count());
+        PRNG prng(seed);
         uint64_t size = (uint64_t)buf.size();
         std::cout << "shuffle buf.size() = " << size << std::endl;
 
@@ -1613,9 +1614,7 @@ namespace Learner
     void learn(Position&, istringstream& is)
     {
         const auto thread_num = (int)Options["Threads"];
-        SfenReader sr(thread_num);
 
-        LearnerThink learn_think(sr);
         vector<string> filenames;
 
         // mini_batch_size 1M aspect by default. This can be increased.
@@ -1704,6 +1703,7 @@ namespace Learner
         uint64_t mirror_percentage = 0;
 
         string validation_set_file_name;
+        string seed;
 
         // Assume the filenames are staggered.
         while (true)
@@ -1811,7 +1811,7 @@ namespace Learner
             else if (option == "dest_score_min_value") is >> dest_score_min_value;
             else if (option == "dest_score_max_value") is >> dest_score_max_value;
             else if (option == "convert_teacher_signal_to_winning_probability") is >> convert_teacher_signal_to_winning_probability;
-
+            else if (option == "seed") is >> seed;
             // Otherwise, it's a filename.
             else
                 filenames.push_back(option);
@@ -1828,6 +1828,9 @@ namespace Learner
 #if !defined(_OPENMP)
         cout << "Warning! OpenMP disabled." << endl;
 #endif
+
+        SfenReader sr(thread_num, seed);
+        LearnerThink learn_think(sr, seed);
 
         // Display learning game file
         if (target_dir != "")
@@ -1861,21 +1864,21 @@ namespace Learner
         {
             cout << "buffer_size     : " << buffer_size << endl;
             cout << "shuffle mode.." << endl;
-            shuffle_files(filenames, output_file_name, buffer_size);
+            shuffle_files(filenames, output_file_name, buffer_size, seed);
             return;
         }
 
         if (shuffle_quick)
         {
             cout << "quick shuffle mode.." << endl;
-            shuffle_files_quick(filenames, output_file_name);
+            shuffle_files_quick(filenames, output_file_name, seed);
             return;
         }
 
         if (shuffle_on_memory)
         {
             cout << "shuffle on memory.." << endl;
-            shuffle_files_on_memory(filenames, output_file_name);
+            shuffle_files_on_memory(filenames, output_file_name, seed);
             return;
         }
 
