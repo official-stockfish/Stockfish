@@ -111,7 +111,9 @@ class PRNG {
   }
 
 public:
+  PRNG() { set_seed_from_time(); }
   PRNG(uint64_t seed) : s(seed) { assert(seed); }
+  PRNG(const std::string& seed) { set_seed(seed); }
 
   template<typename T> T rand() { return T(rand64()); }
 
@@ -127,9 +129,18 @@ public:
 
   void set_seed(uint64_t seed) { s = seed; }
 
+  void set_seed_from_time()
+  {
+      set_seed(std::chrono::system_clock::now().time_since_epoch().count());
+  }
+
   void set_seed(const std::string& str)
   {
-    if (std::all_of(str.begin(), str.end(), std::isdigit)) {
+    if (str.empty())
+    {
+      set_seed_from_time();
+    }
+    else if (std::all_of(str.begin(), str.end(), [](char c) { return std::isdigit(c);} )) {
       set_seed(std::stoull(str));
     }
     else
@@ -196,7 +207,9 @@ int write_memory_to_file(std::string filename, void* ptr, uint64_t size);
 // async version of PRNG
 struct AsyncPRNG
 {
+  AsyncPRNG() : prng() { }
   AsyncPRNG(uint64_t seed) : prng(seed) { assert(seed); }
+  AsyncPRNG(const std::string& seed) : prng(seed) { }
   // [ASYNC] Extract one random number.
   template<typename T> T rand() {
     std::unique_lock<std::mutex> lk(mutex);
