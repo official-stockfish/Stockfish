@@ -29,12 +29,67 @@
 
 namespace Eval::NNUE {
 
+  // If vector instructions are enabled, we update and refresh the
+  // accumulator tile by tile such that each tile fits in the CPU's
+  // vector registers.
+  #define TILING
+
+  #ifdef USE_AVX512
+  typedef __m512i vec_t;
+  #define vec_load(a) _mm512_loadA_si512(a)
+  #define vec_store(a,b) _mm512_storeA_si512(a,b)
+  #define vec_add_16(a,b) _mm512_add_epi16(a,b)
+  #define vec_sub_16(a,b) _mm512_sub_epi16(a,b)
+  static constexpr IndexType kNumRegs = 8; // only 8 are needed
+
+  #elif USE_AVX2
+  typedef __m256i vec_t;
+  #define vec_load(a) _mm256_loadA_si256(a)
+  #define vec_store(a,b) _mm256_storeA_si256(a,b)
+  #define vec_add_16(a,b) _mm256_add_epi16(a,b)
+  #define vec_sub_16(a,b) _mm256_sub_epi16(a,b)
+  static constexpr IndexType kNumRegs = 16;
+
+  #elif USE_SSE2
+  typedef __m128i vec_t;
+  #define vec_load(a) (*(a))
+  #define vec_store(a,b) *(a)=(b)
+  #define vec_add_16(a,b) _mm_add_epi16(a,b)
+  #define vec_sub_16(a,b) _mm_sub_epi16(a,b)
+  static constexpr IndexType kNumRegs = Is64Bit ? 16 : 8;
+
+  #elif USE_MMX
+  typedef __m64 vec_t;
+  #define vec_load(a) (*(a))
+  #define vec_store(a,b) *(a)=(b)
+  #define vec_add_16(a,b) _mm_add_pi16(a,b)
+  #define vec_sub_16(a,b) _mm_sub_pi16(a,b)
+  static constexpr IndexType kNumRegs = 8;
+
+  #elif USE_NEON
+  typedef int16x8_t vec_t;
+  #define vec_load(a) (*(a))
+  #define vec_store(a,b) *(a)=(b)
+  #define vec_add_16(a,b) vaddq_s16(a,b)
+  #define vec_sub_16(a,b) vsubq_s16(a,b)
+  static constexpr IndexType kNumRegs = 16;
+
+  #else
+  #undef TILING
+
+  #endif
+
   // Input feature converter
   class FeatureTransformer {
 
    private:
     // Number of output dimensions for one side
     static constexpr IndexType kHalfDimensions = kTransformedFeatureDimensions;
+
+    #ifdef TILING
+    static constexpr IndexType kTileHeight = kNumRegs * sizeof(vec_t) / 2;
+    static_assert(kHalfDimensions % kTileHeight == 0, "kTileHeight must divide kHalfDimensions");
+    #endif
 
    public:
     // Output type
@@ -50,11 +105,13 @@ namespace Eval::NNUE {
 
     // Hash value embedded in the evaluation file
     static constexpr std::uint32_t GetHashValue() {
+
       return RawFeatures::kHashValue ^ kOutputDimensions;
     }
 
     // Read network parameters
     bool ReadParameters(std::istream& stream) {
+
       for (std::size_t i = 0; i < kHalfDimensions; ++i)
         biases_[i] = read_little_endian<BiasType>(stream);
       for (std::size_t i = 0; i < kHalfDimensions * kInputDimensions; ++i)
@@ -64,23 +121,26 @@ namespace Eval::NNUE {
 
     // Proceed with the difference calculation if possible
     bool UpdateAccumulatorIfPossible(const Position& pos) const {
+
       const auto now = pos.state();
-      if (now->accumulator.computed_accumulation) {
+      if (now->accumulator.computed_accumulation)
         return true;
-      }
+
       const auto prev = now->previous;
       if (prev && prev->accumulator.computed_accumulation) {
         UpdateAccumulator(pos);
         return true;
       }
+
       return false;
     }
 
     // Convert input features
-    void Transform(const Position& pos, OutputType* output, bool refresh) const {
-      if (refresh || !UpdateAccumulatorIfPossible(pos)) {
+    void Transform(const Position& pos, OutputType* output) const {
+
+      if (!UpdateAccumulatorIfPossible(pos))
         RefreshAccumulator(pos);
-      }
+
       const auto& accumulation = pos.state()->accumulator.accumulation;
 
   #if defined(USE_AVX2)
@@ -177,74 +237,58 @@ namespace Eval::NNUE {
    private:
     // Calculate cumulative value without using difference calculation
     void RefreshAccumulator(const Position& pos) const {
+
       auto& accumulator = pos.state()->accumulator;
       IndexType i = 0;
       Features::IndexList active_indices[2];
       RawFeatures::AppendActiveIndices(pos, kRefreshTriggers[i],
                                        active_indices);
       for (Color perspective : { WHITE, BLACK }) {
-        std::memcpy(accumulator.accumulation[perspective][i], biases_,
-                   kHalfDimensions * sizeof(BiasType));
-        for (const auto index : active_indices[perspective]) {
-          const IndexType offset = kHalfDimensions * index;
-  #if defined(USE_AVX512)
-          auto accumulation = reinterpret_cast<__m512i*>(
-              &accumulator.accumulation[perspective][i][0]);
-          auto column = reinterpret_cast<const __m512i*>(&weights_[offset]);
-          constexpr IndexType kNumChunks = kHalfDimensions / kSimdWidth;
-          for (IndexType j = 0; j < kNumChunks; ++j)
-            _mm512_storeA_si512(&accumulation[j], _mm512_add_epi16(_mm512_loadA_si512(&accumulation[j]), column[j]));
+  #ifdef TILING
+        for (unsigned j = 0; j < kHalfDimensions / kTileHeight; ++j) {
+          auto biasesTile = reinterpret_cast<const vec_t*>(
+              &biases_[j * kTileHeight]);
+          auto accTile = reinterpret_cast<vec_t*>(
+              &accumulator.accumulation[perspective][i][j * kTileHeight]);
+          vec_t acc[kNumRegs];
 
-  #elif defined(USE_AVX2)
-          auto accumulation = reinterpret_cast<__m256i*>(
-              &accumulator.accumulation[perspective][i][0]);
-          auto column = reinterpret_cast<const __m256i*>(&weights_[offset]);
-          constexpr IndexType kNumChunks = kHalfDimensions / (kSimdWidth / 2);
-          for (IndexType j = 0; j < kNumChunks; ++j)
-            _mm256_storeA_si256(&accumulation[j], _mm256_add_epi16(_mm256_loadA_si256(&accumulation[j]), column[j]));
+          for (unsigned k = 0; k < kNumRegs; ++k)
+            acc[k] = biasesTile[k];
 
-  #elif defined(USE_SSE2)
-          auto accumulation = reinterpret_cast<__m128i*>(
-              &accumulator.accumulation[perspective][i][0]);
-          auto column = reinterpret_cast<const __m128i*>(&weights_[offset]);
-          constexpr IndexType kNumChunks = kHalfDimensions / (kSimdWidth / 2);
-          for (IndexType j = 0; j < kNumChunks; ++j)
-            accumulation[j] = _mm_add_epi16(accumulation[j], column[j]);
+          for (const auto index : active_indices[perspective]) {
+            const IndexType offset = kHalfDimensions * index + j * kTileHeight;
+            auto column = reinterpret_cast<const vec_t*>(&weights_[offset]);
 
-  #elif defined(USE_MMX)
-          auto accumulation = reinterpret_cast<__m64*>(
-              &accumulator.accumulation[perspective][i][0]);
-          auto column = reinterpret_cast<const __m64*>(&weights_[offset]);
-          constexpr IndexType kNumChunks = kHalfDimensions / (kSimdWidth / 2);
-          for (IndexType j = 0; j < kNumChunks; ++j) {
-            accumulation[j] = _mm_add_pi16(accumulation[j], column[j]);
+            for (unsigned k = 0; k < kNumRegs; ++k)
+              acc[k] = vec_add_16(acc[k], column[k]);
           }
 
-  #elif defined(USE_NEON)
-          auto accumulation = reinterpret_cast<int16x8_t*>(
-              &accumulator.accumulation[perspective][i][0]);
-          auto column = reinterpret_cast<const int16x8_t*>(&weights_[offset]);
-          constexpr IndexType kNumChunks = kHalfDimensions / (kSimdWidth / 2);
-          for (IndexType j = 0; j < kNumChunks; ++j)
-            accumulation[j] = vaddq_s16(accumulation[j], column[j]);
-
+          for (unsigned k = 0; k < kNumRegs; k++)
+            vec_store(&accTile[k], acc[k]);
+        }
   #else
+        std::memcpy(accumulator.accumulation[perspective][i], biases_,
+            kHalfDimensions * sizeof(BiasType));
+
+        for (const auto index : active_indices[perspective]) {
+          const IndexType offset = kHalfDimensions * index;
+
           for (IndexType j = 0; j < kHalfDimensions; ++j)
             accumulator.accumulation[perspective][i][j] += weights_[offset + j];
-  #endif
-
         }
+  #endif
       }
+
   #if defined(USE_MMX)
       _mm_empty();
   #endif
 
       accumulator.computed_accumulation = true;
-      accumulator.computed_score = false;
     }
 
     // Calculate cumulative value using difference calculation
     void UpdateAccumulator(const Position& pos) const {
+
       const auto prev_accumulator = pos.state()->previous->accumulator;
       auto& accumulator = pos.state()->accumulator;
       IndexType i = 0;
@@ -252,28 +296,54 @@ namespace Eval::NNUE {
       bool reset[2];
       RawFeatures::AppendChangedIndices(pos, kRefreshTriggers[i],
                                         removed_indices, added_indices, reset);
-      for (Color perspective : { WHITE, BLACK }) {
 
-  #if defined(USE_AVX2)
-        constexpr IndexType kNumChunks = kHalfDimensions / (kSimdWidth / 2);
-        auto accumulation = reinterpret_cast<__m256i*>(
-            &accumulator.accumulation[perspective][i][0]);
+  #ifdef TILING
+      for (IndexType j = 0; j < kHalfDimensions / kTileHeight; ++j) {
+        for (Color perspective : { WHITE, BLACK }) {
+          auto accTile = reinterpret_cast<vec_t*>(
+              &accumulator.accumulation[perspective][i][j * kTileHeight]);
+          vec_t acc[kNumRegs];
 
-  #elif defined(USE_SSE2)
-        constexpr IndexType kNumChunks = kHalfDimensions / (kSimdWidth / 2);
-        auto accumulation = reinterpret_cast<__m128i*>(
-            &accumulator.accumulation[perspective][i][0]);
+          if (reset[perspective]) {
+            auto biasesTile = reinterpret_cast<const vec_t*>(
+                &biases_[j * kTileHeight]);
+            for (unsigned k = 0; k < kNumRegs; ++k)
+              acc[k] = biasesTile[k];
+          } else {
+            auto prevAccTile = reinterpret_cast<const vec_t*>(
+                &prev_accumulator.accumulation[perspective][i][j * kTileHeight]);
+            for (IndexType k = 0; k < kNumRegs; ++k)
+              acc[k] = vec_load(&prevAccTile[k]);
 
-  #elif defined(USE_MMX)
-        constexpr IndexType kNumChunks = kHalfDimensions / (kSimdWidth / 2);
-        auto accumulation = reinterpret_cast<__m64*>(
-            &accumulator.accumulation[perspective][i][0]);
+            // Difference calculation for the deactivated features
+            for (const auto index : removed_indices[perspective]) {
+              const IndexType offset = kHalfDimensions * index + j * kTileHeight;
+              auto column = reinterpret_cast<const vec_t*>(&weights_[offset]);
 
-  #elif defined(USE_NEON)
-        constexpr IndexType kNumChunks = kHalfDimensions / (kSimdWidth / 2);
-        auto accumulation = reinterpret_cast<int16x8_t*>(
-            &accumulator.accumulation[perspective][i][0]);
+              for (IndexType k = 0; k < kNumRegs; ++k)
+                acc[k] = vec_sub_16(acc[k], column[k]);
+            }
+          }
+          { // Difference calculation for the activated features
+            for (const auto index : added_indices[perspective]) {
+              const IndexType offset = kHalfDimensions * index + j * kTileHeight;
+              auto column = reinterpret_cast<const vec_t*>(&weights_[offset]);
+
+              for (IndexType k = 0; k < kNumRegs; ++k)
+                acc[k] = vec_add_16(acc[k], column[k]);
+            }
+          }
+
+          for (IndexType k = 0; k < kNumRegs; ++k)
+            vec_store(&accTile[k], acc[k]);
+        }
+      }
+  #if defined(USE_MMX)
+      _mm_empty();
   #endif
+
+  #else
+      for (Color perspective : { WHITE, BLACK }) {
 
         if (reset[perspective]) {
           std::memcpy(accumulator.accumulation[perspective][i], biases_,
@@ -286,83 +356,22 @@ namespace Eval::NNUE {
           for (const auto index : removed_indices[perspective]) {
             const IndexType offset = kHalfDimensions * index;
 
-  #if defined(USE_AVX2)
-            auto column = reinterpret_cast<const __m256i*>(&weights_[offset]);
-            for (IndexType j = 0; j < kNumChunks; ++j) {
-              accumulation[j] = _mm256_sub_epi16(accumulation[j], column[j]);
-            }
-
-  #elif defined(USE_SSE2)
-            auto column = reinterpret_cast<const __m128i*>(&weights_[offset]);
-            for (IndexType j = 0; j < kNumChunks; ++j) {
-              accumulation[j] = _mm_sub_epi16(accumulation[j], column[j]);
-            }
-
-  #elif defined(USE_MMX)
-            auto column = reinterpret_cast<const __m64*>(&weights_[offset]);
-            for (IndexType j = 0; j < kNumChunks; ++j) {
-              accumulation[j] = _mm_sub_pi16(accumulation[j], column[j]);
-            }
-
-  #elif defined(USE_NEON)
-            auto column = reinterpret_cast<const int16x8_t*>(&weights_[offset]);
-            for (IndexType j = 0; j < kNumChunks; ++j) {
-              accumulation[j] = vsubq_s16(accumulation[j], column[j]);
-            }
-
-  #else
-            for (IndexType j = 0; j < kHalfDimensions; ++j) {
-              accumulator.accumulation[perspective][i][j] -=
-                  weights_[offset + j];
-            }
-  #endif
-
+            for (IndexType j = 0; j < kHalfDimensions; ++j)
+              accumulator.accumulation[perspective][i][j] -= weights_[offset + j];
           }
         }
         { // Difference calculation for the activated features
           for (const auto index : added_indices[perspective]) {
             const IndexType offset = kHalfDimensions * index;
 
-  #if defined(USE_AVX2)
-            auto column = reinterpret_cast<const __m256i*>(&weights_[offset]);
-            for (IndexType j = 0; j < kNumChunks; ++j) {
-              accumulation[j] = _mm256_add_epi16(accumulation[j], column[j]);
-            }
-
-  #elif defined(USE_SSE2)
-            auto column = reinterpret_cast<const __m128i*>(&weights_[offset]);
-            for (IndexType j = 0; j < kNumChunks; ++j) {
-              accumulation[j] = _mm_add_epi16(accumulation[j], column[j]);
-            }
-
-  #elif defined(USE_MMX)
-            auto column = reinterpret_cast<const __m64*>(&weights_[offset]);
-            for (IndexType j = 0; j < kNumChunks; ++j) {
-              accumulation[j] = _mm_add_pi16(accumulation[j], column[j]);
-            }
-
-  #elif defined(USE_NEON)
-            auto column = reinterpret_cast<const int16x8_t*>(&weights_[offset]);
-            for (IndexType j = 0; j < kNumChunks; ++j) {
-              accumulation[j] = vaddq_s16(accumulation[j], column[j]);
-            }
-
-  #else
-            for (IndexType j = 0; j < kHalfDimensions; ++j) {
-              accumulator.accumulation[perspective][i][j] +=
-                  weights_[offset + j];
-            }
-  #endif
-
+            for (IndexType j = 0; j < kHalfDimensions; ++j)
+              accumulator.accumulation[perspective][i][j] += weights_[offset + j];
           }
         }
       }
-  #if defined(USE_MMX)
-      _mm_empty();
   #endif
 
       accumulator.computed_accumulation = true;
-      accumulator.computed_score = false;
     }
 
     using BiasType = std::int16_t;

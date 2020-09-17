@@ -30,13 +30,13 @@ namespace Cluster {
 /// TTEntry struct is the 10 bytes transposition table entry, defined as below:
 ///
 /// key        16 bit
-/// move       16 bit
-/// value      16 bit
-/// eval value 16 bit
+/// depth       8 bit
 /// generation  5 bit
 /// pv node     1 bit
 /// bound type  2 bit
-/// depth       8 bit
+/// move       16 bit
+/// value      16 bit
+/// eval value 16 bit
 
 struct TTEntry {
 
@@ -53,11 +53,11 @@ private:
   friend void Cluster::init();
 
   uint16_t key16;
+  uint8_t  depth8;
+  uint8_t  genBound8;
   uint16_t move16;
   int16_t  value16;
   int16_t  eval16;
-  uint8_t  genBound8;
-  uint8_t  depth8;
 };
 
 

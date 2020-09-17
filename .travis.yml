@@ -71,13 +71,15 @@ script:
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make clean && make -j2 ARCH=x86-32-sse2 build && ../tests/signature.sh $benchref; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make clean && make -j2 ARCH=x86-32 build && ../tests/signature.sh $benchref; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make clean && make -j2 ARCH=general-32 build && ../tests/signature.sh $benchref; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" && "$COMP" == "gcc" ]]; then make clean && make -j2 ARCH=x86-64-modern profile-build && ../tests/signature.sh $benchref; fi
+  # workaround: exclude a custom version of llvm+clang, which doesn't find llvm-profdata on ubuntu
+  - if [[ "$TRAVIS_OS_NAME" != "linux" || "$COMP" == "gcc" ]]; then make clean && make -j2 ARCH=x86-64-modern profile-build && ../tests/signature.sh $benchref; fi
 
   # compile only for some more advanced architectures (might not run in travis)
   - make clean && make -j2 ARCH=x86-64-avx2 build
   - make clean && make -j2 ARCH=x86-64-bmi2 build
-  # needs gcc 10 to compile
-  - if [[ "$COMPILER" != "g++-8" ]]; then make clean && make -j2 ARCH=x86-64-avx512 build; fi
+  - make clean && make -j2 ARCH=x86-64-avx512 build
+  - make clean && make -j2 ARCH=x86-64-vnni512 build
+  - make clean && make -j2 ARCH=x86-64-vnni256 build
 
   #
   # Check perft and reproducible search

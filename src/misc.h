@@ -42,9 +42,7 @@ void dbg_mean_of(int v);
 void dbg_print();
 
 typedef std::chrono::milliseconds::rep TimePoint; // A value in milliseconds
-
 static_assert(sizeof(TimePoint) == sizeof(int64_t), "TimePoint should be 64 bits");
-
 inline TimePoint now() {
   return std::chrono::duration_cast<std::chrono::milliseconds>
         (std::chrono::steady_clock::now().time_since_epoch()).count();
@@ -65,14 +63,6 @@ std::ostream& operator<<(std::ostream&, SyncCout);
 #define sync_cout std::cout << IO_LOCK
 #define sync_endl std::endl << IO_UNLOCK
 
-namespace Utility {
-
-/// Clamp a value between lo and hi. Available in c++17.
-template<class T> constexpr const T& clamp(const T& v, const T& lo, const T& hi) {
-  return v < lo ? lo : v > hi ? hi : v;
-}
-
-}
 
 /// xorshift64star Pseudo-Random Number Generator
 /// This class is based on original code written and dedicated
@@ -132,6 +122,13 @@ inline uint64_t mul_hi64(uint64_t a, uint64_t b) {
 
 namespace WinProcGroup {
   void bindThisThread(size_t idx);
+}
+
+namespace CommandLine {
+  void init(int argc, char* argv[]);
+
+  extern std::string binaryDirectory;  // path of the executable directory
+  extern std::string workingDirectory; // path of the working directory
 }
 
 #endif // #ifndef MISC_H_INCLUDED

@@ -224,7 +224,9 @@ public:
 
         *mapping = statbuf.st_size;
         *baseAddress = mmap(nullptr, statbuf.st_size, PROT_READ, MAP_SHARED, fd, 0);
+#if defined(MADV_RANDOM)
         madvise(*baseAddress, statbuf.st_size, MADV_RANDOM);
+#endif
         ::close(fd);
 
         if (*baseAddress == MAP_FAILED)
@@ -759,7 +761,7 @@ Ret do_probe_table(const Position& pos, T* entry, WDLScore wdl, ProbeState* resu
     if (entry->hasPawns) {
         idx = LeadPawnIdx[leadPawnsCnt][squares[0]];
 
-        std::sort(squares + 1, squares + leadPawnsCnt, pawns_comp);
+        std::stable_sort(squares + 1, squares + leadPawnsCnt, pawns_comp);
 
         for (int i = 1; i < leadPawnsCnt; ++i)
             idx += Binomial[i][MapPawns[squares[i]]];
@@ -860,7 +862,7 @@ encode_remaining:
 
     while (d->groupLen[++next])
     {
-        std::sort(groupSq, groupSq + d->groupLen[next]);
+        std::stable_sort(groupSq, groupSq + d->groupLen[next]);
         uint64_t n = 0;
 
         // Map down a square if "comes later" than a square in the previous

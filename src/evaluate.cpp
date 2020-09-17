@@ -20,53 +20,129 @@
 #include <cassert>
 #include <cstdlib>
 #include <cstring>   // For std::memset
+#include <fstream>
 #include <iomanip>
 #include <sstream>
 #include <iostream>
+#include <streambuf>
+#include <vector>
 
 #include "bitboard.h"
 #include "cluster.h"
 #include "evaluate.h"
 #include "material.h"
+#include "misc.h"
 #include "pawns.h"
 #include "thread.h"
 #include "uci.h"
+#include "incbin/incbin.h"
+
+
+// Macro to embed the default NNUE file data in the engine binary (using incbin.h, by Dale Weiler).
+// This macro invocation will declare the following three variables
+//     const unsigned char        gEmbeddedNNUEData[];  // a pointer to the embedded data
+//     const unsigned char *const gEmbeddedNNUEEnd;     // a marker to the end
+//     const unsigned int         gEmbeddedNNUESize;    // the size of the embedded file
+// Note that this does not work in Microsof Visual Studio.
+#if !defined(_MSC_VER) && !defined(NNUE_EMBEDDING_OFF)
+  INCBIN(EmbeddedNNUE, EvalFileDefaultName);
+#else
+  const unsigned char        gEmbeddedNNUEData[1] = {0x0};
+  const unsigned char *const gEmbeddedNNUEEnd = &gEmbeddedNNUEData[1];
+  const unsigned int         gEmbeddedNNUESize = 1;
+#endif
+
+
+using namespace std;
+using namespace Eval::NNUE;
 
 namespace Eval {
 
   bool useNNUE;
-  std::string eval_file_loaded="None";
+  string eval_file_loaded = "None";
+
+  /// init_NNUE() tries to load a nnue network at startup time, or when the engine
+  /// receives a UCI command "setoption name EvalFile value nn-[a-z0-9]{12}.nnue"
+  /// The name of the nnue network is always retrieved from the EvalFile option.
+  /// We search the given network in three locations: internally (the default
+  /// network may be embedded in the binary), in the active working directory and
+  /// in the engine directory. Distro packagers may define the DEFAULT_NNUE_DIRECTORY
+  /// variable to have the engine search in a special directory in their distro.
 
   void init_NNUE() {
 
     useNNUE = Options["Use NNUE"];
-    std::string eval_file = std::string(Options["EvalFile"]);
-    if (useNNUE && eval_file_loaded != eval_file)
-        if (Eval::NNUE::load_eval_file(eval_file))
-            eval_file_loaded = eval_file;
+    if (!useNNUE)
+        return;
+
+    string eval_file = string(Options["EvalFile"]);
+
+    #if defined(DEFAULT_NNUE_DIRECTORY)
+    #define stringify2(x) #x
+    #define stringify(x) stringify2(x)
+    vector<string> dirs = { "<internal>" , "" , CommandLine::binaryDirectory , stringify(DEFAULT_NNUE_DIRECTORY) };
+    #else
+    vector<string> dirs = { "<internal>" , "" , CommandLine::binaryDirectory };
+    #endif
+
+    for (string directory : dirs)
+        if (eval_file_loaded != eval_file)
+        {
+            if (directory != "<internal>")
+            {
+                ifstream stream(directory + eval_file, ios::binary);
+                if (load_eval(eval_file, stream))
+                    eval_file_loaded = eval_file;
+            }
+
+            if (directory == "<internal>" && eval_file == EvalFileDefaultName)
+            {
+                // C++ way to prepare a buffer for a memory stream
+                class MemoryBuffer : public basic_streambuf<char> {
+                    public: MemoryBuffer(char* p, size_t n) { setg(p, p, p + n); setp(p, p + n); }
+                };
+
+                MemoryBuffer buffer(const_cast<char*>(reinterpret_cast<const char*>(gEmbeddedNNUEData)),
+                                    size_t(gEmbeddedNNUESize));
+
+                istream stream(&buffer);
+                if (load_eval(eval_file, stream))
+                    eval_file_loaded = eval_file;
+            }
+        }
   }
 
+  /// verify_NNUE() verifies that the last net used was loaded successfully
   void verify_NNUE() {
 
-    std::string eval_file = std::string(Options["EvalFile"]);
+    string eval_file = string(Options["EvalFile"]);
+
     if (useNNUE && eval_file_loaded != eval_file)
     {
         UCI::OptionsMap defaults;
         UCI::init(defaults);
 
-        std::cerr << "NNUE evaluation used, but the network file " << eval_file << " was not loaded successfully. "
-                  << "These network evaluation parameters must be available, and compatible with this version of the code. "
-                  << "The UCI option EvalFile might need to specify the full path, including the directory/folder name, to the file. "
-                  << "The default net can be downloaded from: https://tests.stockfishchess.org/api/nn/"+std::string(defaults["EvalFile"]) << std::endl;
-        std::exit(EXIT_FAILURE);
+        string msg1 = "If the UCI option \"Use NNUE\" is set to true, network evaluation parameters compatible with the engine must be available.";
+        string msg2 = "The option is set to true, but the network file " + eval_file + " was not loaded successfully.";
+        string msg3 = "The UCI option EvalFile might need to specify the full path, including the directory name, to the network file.";
+        string msg4 = "The default net can be downloaded from: https://tests.stockfishchess.org/api/nn/" + string(defaults["EvalFile"]);
+        string msg5 = "The engine will be terminated now.";
+
+        sync_cout << "info string ERROR: " << msg1 << sync_endl;
+        sync_cout << "info string ERROR: " << msg2 << sync_endl;
+        sync_cout << "info string ERROR: " << msg3 << sync_endl;
+        sync_cout << "info string ERROR: " << msg4 << sync_endl;
+        sync_cout << "info string ERROR: " << msg5 << sync_endl;
+
+        exit(EXIT_FAILURE);
     }
 
     if (Cluster::is_root())
     {
         if (useNNUE)
-            sync_cout << "info string NNUE evaluation using " << eval_file << " enabled." << sync_endl;
+            sync_cout << "info string NNUE evaluation using " << eval_file << " enabled" << sync_endl;
         else
-            sync_cout << "info string classical evaluation enabled." << sync_endl;
+            sync_cout << "info string classical evaluation enabled" << sync_endl;
     }
   }
 }
@@ -155,26 +231,26 @@ namespace {
 
   // Outpost[knight/bishop] contains bonuses for each knight or bishop occupying a
   // pawn protected square on rank 4 to 6 which is also safe from a pawn attack.
-  constexpr Score Outpost[] = { S(56, 36), S(30, 23) };
+  constexpr Score Outpost[] = { S(56, 34), S(31, 23) };
 
   // PassedRank[Rank] contains a bonus according to the rank of a passed pawn
   constexpr Score PassedRank[RANK_NB] = {
-    S(0, 0), S(10, 28), S(17, 33), S(15, 41), S(62, 72), S(168, 177), S(276, 260)
+    S(0, 0), S(9, 28), S(15, 31), S(17, 39), S(64, 70), S(171, 177), S(277, 260)
   };
 
   // RookOnFile[semiopen/open] contains bonuses for each rook when there is
   // no (friendly) pawn on the rook file.
-  constexpr Score RookOnFile[] = { S(19, 7), S(48, 29) };
+  constexpr Score RookOnFile[] = { S(19, 7), S(48, 27) };
 
   // ThreatByMinor/ByRook[attacked PieceType] contains bonuses according to
   // which piece type attacks which one. Attacks on lesser pieces which are
   // pawn-defended are not considered.
   constexpr Score ThreatByMinor[PIECE_TYPE_NB] = {
-    S(0, 0), S(5, 32), S(57, 41), S(77, 56), S(88, 119), S(79, 161)
+    S(0, 0), S(5, 32), S(55, 41), S(77, 56), S(89, 119), S(79, 162)
   };
 
   constexpr Score ThreatByRook[PIECE_TYPE_NB] = {
-    S(0, 0), S(3, 46), S(37, 68), S(42, 60), S(0, 38), S(58, 41)
+    S(0, 0), S(3, 44), S(37, 68), S(42, 60), S(0, 39), S(58, 43)
   };
 
   // Assorted bonuses and penalties
@@ -291,8 +367,8 @@ namespace {
     attackedBy2[Us] = dblAttackByPawn | (attackedBy[Us][KING] & attackedBy[Us][PAWN]);
 
     // Init our king safety tables
-    Square s = make_square(Utility::clamp(file_of(ksq), FILE_B, FILE_G),
-                           Utility::clamp(rank_of(ksq), RANK_2, RANK_7));
+    Square s = make_square(std::clamp(file_of(ksq), FILE_B, FILE_G),
+                           std::clamp(rank_of(ksq), RANK_2, RANK_7));
     kingRing[Us] = attacks_bb<KING>(s) | s;
 
     kingAttackersCount[Them] = popcount(kingRing[Us] & pe->pawn_attacks(Them));
@@ -689,8 +765,8 @@ namespace {
             Square blockSq = s + Up;
 
             // Adjust bonus based on the king's proximity
-            bonus += make_score(0, (  (king_proximity(Them, blockSq) * 19) / 4
-                                     - king_proximity(Us,   blockSq) *  2) * w);
+            bonus += make_score(0, (  king_proximity(Them, blockSq) * 19 / 4
+                                    - king_proximity(Us,   blockSq) *  2) * w);
 
             // If blockSq is not the queening square then consider also a second push
             if (r != RANK_7)
@@ -734,7 +810,7 @@ namespace {
 
 
   // Evaluation::space() computes a space evaluation for a given side, aiming to improve game
-  // play in the opening. It is based on the number of safe squares on the 4 central files
+  // play in the opening. It is based on the number of safe squares on the four central files
   // on ranks 2 to 4. Completely safe squares behind a friendly pawn are counted twice.
   // Finally, the space bonus is multiplied by a weight which decreases according to occupancy.
 
@@ -807,7 +883,7 @@ namespace {
     // Now apply the bonus: note that we find the attacking side by extracting the
     // sign of the midgame or endgame values, and that we carefully cap the bonus
     // so that the midgame and endgame scores do not change sign after the bonus.
-    int u = ((mg > 0) - (mg < 0)) * Utility::clamp(complexity + 50, -abs(mg), 0);
+    int u = ((mg > 0) - (mg < 0)) * std::clamp(complexity + 50, -abs(mg), 0);
     int v = ((eg > 0) - (eg < 0)) * std::max(complexity, -abs(eg));
 
     mg += u;
@@ -943,19 +1019,26 @@ make_v:
 
 Value Eval::evaluate(const Position& pos) {
 
+  // Use classical eval if there is a large imbalance
+  // If there is a moderate imbalance, use classical eval with probability (1/8),
+  // as derived from the node counter.
+  bool useClassical = abs(eg_value(pos.psq_score())) * 16 > NNUEThreshold1 * (16 + pos.rule50_count());
   bool classical = !Eval::useNNUE
-                ||  abs(eg_value(pos.psq_score())) * 16 > NNUEThreshold1 * (16 + pos.rule50_count());
+                ||  useClassical
+                || (abs(eg_value(pos.psq_score())) > PawnValueMg / 4 && !(pos.this_thread()->nodes & 0xB));
   Value v = classical ? Evaluation<NO_TRACE>(pos).value()
                       : NNUE::evaluate(pos) * 5 / 4 + Tempo;
 
-  if (classical && Eval::useNNUE && abs(v) * 16 < NNUEThreshold2 * (16 + pos.rule50_count()))
+  if (   useClassical 
+      && Eval::useNNUE 
+      && abs(v) * 16 < NNUEThreshold2 * (16 + pos.rule50_count()))
       v = NNUE::evaluate(pos) * 5 / 4 + Tempo;
 
   // Damp down the evaluation linearly when shuffling
   v = v * (100 - pos.rule50_count()) / 100;
 
-  // Guarantee evalution outside of TB range
-  v = Utility::clamp(v, VALUE_TB_LOSS_IN_MAX_PLY + 1, VALUE_TB_WIN_IN_MAX_PLY - 1);
+  // Guarantee evaluation does not hit the tablebase range
+  v = std::clamp(v, VALUE_TB_LOSS_IN_MAX_PLY + 1, VALUE_TB_WIN_IN_MAX_PLY - 1);
 
   return v;
 }
@@ -975,42 +1058,46 @@ std::string Eval::trace(const Position& pos) {
 
   Value v;
 
-  if (Eval::useNNUE)
-  {
-      v = NNUE::evaluate(pos);
-  }
-  else
-  {
-      std::memset(scores, 0, sizeof(scores));
+  std::memset(scores, 0, sizeof(scores));
 
-      pos.this_thread()->contempt = SCORE_ZERO; // Reset any dynamic contempt
+  pos.this_thread()->contempt = SCORE_ZERO; // Reset any dynamic contempt
 
-      v = Evaluation<TRACE>(pos).value();
+  v = Evaluation<TRACE>(pos).value();
 
-      ss << std::showpoint << std::noshowpos << std::fixed << std::setprecision(2)
-         << "     Term    |    White    |    Black    |    Total   \n"
-         << "             |   MG    EG  |   MG    EG  |   MG    EG \n"
-         << " ------------+-------------+-------------+------------\n"
-         << "    Material | " << Term(MATERIAL)
-         << "   Imbalance | " << Term(IMBALANCE)
-         << "       Pawns | " << Term(PAWN)
-         << "     Knights | " << Term(KNIGHT)
-         << "     Bishops | " << Term(BISHOP)
-         << "       Rooks | " << Term(ROOK)
-         << "      Queens | " << Term(QUEEN)
-         << "    Mobility | " << Term(MOBILITY)
-         << " King safety | " << Term(KING)
-         << "     Threats | " << Term(THREAT)
-         << "      Passed | " << Term(PASSED)
-         << "       Space | " << Term(SPACE)
-         << "    Winnable | " << Term(WINNABLE)
-         << " ------------+-------------+-------------+------------\n"
-         << "       Total | " << Term(TOTAL);
-  }
+  ss << std::showpoint << std::noshowpos << std::fixed << std::setprecision(2)
+     << "     Term    |    White    |    Black    |    Total   \n"
+     << "             |   MG    EG  |   MG    EG  |   MG    EG \n"
+     << " ------------+-------------+-------------+------------\n"
+     << "    Material | " << Term(MATERIAL)
+     << "   Imbalance | " << Term(IMBALANCE)
+     << "       Pawns | " << Term(PAWN)
+     << "     Knights | " << Term(KNIGHT)
+     << "     Bishops | " << Term(BISHOP)
+     << "       Rooks | " << Term(ROOK)
+     << "      Queens | " << Term(QUEEN)
+     << "    Mobility | " << Term(MOBILITY)
+     << " King safety | " << Term(KING)
+     << "     Threats | " << Term(THREAT)
+     << "      Passed | " << Term(PASSED)
+     << "       Space | " << Term(SPACE)
+     << "    Winnable | " << Term(WINNABLE)
+     << " ------------+-------------+-------------+------------\n"
+     << "       Total | " << Term(TOTAL);
 
   v = pos.side_to_move() == WHITE ? v : -v;
 
-  ss << "\nFinal evaluation: " << to_cp(v) << " (white side)\n";
+  ss << "\nClassical evaluation: " << to_cp(v) << " (white side)\n";
+
+  if (Eval::useNNUE)
+  {
+      v = NNUE::evaluate(pos);
+      v = pos.side_to_move() == WHITE ? v : -v;
+      ss << "\nNNUE evaluation:      " << to_cp(v) << " (white side)\n";
+  }
+
+  v = evaluate(pos);
+  v = pos.side_to_move() == WHITE ? v : -v;
+  ss << "\nFinal evaluation:     " << to_cp(v) << " (white side)\n";
 
   return ss.str();
 }
