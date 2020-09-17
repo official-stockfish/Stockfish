@@ -72,7 +72,7 @@ namespace Eval::NNUE {
   #define vec_store(a,b) *(a)=(b)
   #define vec_add_16(a,b) vaddq_s16(a,b)
   #define vec_sub_16(a,b) vsubq_s16(a,b)
-  static constexpr IndexType kNumRegs = 8;
+  static constexpr IndexType kNumRegs = 16;
 
   #else
   #undef TILING
