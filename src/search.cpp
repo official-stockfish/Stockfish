@@ -520,7 +520,7 @@ void Thread::search() {
               totBestMoveChanges += th->bestMoveChanges;
               th->bestMoveChanges = 0;
           }
-          double bestMoveInstability = 1 + totBestMoveChanges / Threads.size();
+          double bestMoveInstability = 1 + 2 * totBestMoveChanges / Threads.size();
 
           double totalTime = rootMoves.size() == 1 ? 0 :
                              Time.optimum() * fallingEval * reduction * bestMoveInstability;
@@ -1056,7 +1056,6 @@ moves_loop: // When in check, search starts from here
               if (   !givesCheck
                   && lmrDepth < 6
                   && !(PvNode && abs(bestValue) < 2)
-                  && PieceValue[MG][type_of(movedPiece)] >= PieceValue[MG][type_of(pos.piece_on(to_sq(move)))]
                   && !ss->inCheck
                   && ss->staticEval + 169 + 244 * lmrDepth
                      + PieceValue[MG][type_of(pos.piece_on(to_sq(move)))] <= alpha)
@@ -1125,11 +1124,6 @@ moves_loop: // When in check, search starts from here
       // Last captures extension
       else if (   PieceValue[EG][pos.captured_piece()] > PawnValueEg
                && pos.non_pawn_material() <= 2 * RookValueMg)
-          extension = 1;
-
-      // Castling extension
-      if (   type_of(move) == CASTLING
-          && popcount(pos.pieces(us) & ~pos.pieces(PAWN) & (to_sq(move) & KingSide ? KingSide : QueenSide)) <= 2)
           extension = 1;
 
       // Late irreversible move extension
