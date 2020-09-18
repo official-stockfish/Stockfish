@@ -194,6 +194,7 @@ public:
   // Returns the position of the ball on the c side.
   Square king_square(Color c) const { return pieceList[make_piece(c, KING)][0]; }
 #endif // EVAL_LEARN
+  bool RootInTB;
 
 private:
   // Initialization helpers (used while setting up a position)
