@@ -96,10 +96,7 @@ private:
 	std::mutex loop_mutex;
 
 	// Thread end flag.
-	// vector<bool> may not be reflected properly when trying to rewrite from multiple threads...
-	typedef uint8_t Flag;
-	std::vector<Flag> thread_finished;
-
+        std::atomic<uint64_t> threads_finished;
 };
 
 // Mechanism to process task during idle time.

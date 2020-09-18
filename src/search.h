@@ -24,6 +24,7 @@
 #include "misc.h"
 #include "movepick.h"
 #include "types.h"
+#include "uci.h"
 
 class Position;
 
@@ -109,6 +110,17 @@ void init();
 void clear();
 
 } // namespace Search
+
+namespace Tablebases {
+
+extern int MaxCardinality;
+extern int Cardinality;
+extern bool UseRule50;
+extern Depth ProbeDepth;
+
+void init();
+
+}
 
 namespace Learner {
 

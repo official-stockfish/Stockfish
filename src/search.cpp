@@ -43,9 +43,24 @@ namespace Search {
 namespace Tablebases {
 
   int Cardinality;
-  bool RootInTB;
   bool UseRule50;
   Depth ProbeDepth;
+
+  void init() {
+
+      UseRule50 = bool(Options["Syzygy50MoveRule"]);
+      ProbeDepth = int(Options["SyzygyProbeDepth"]);
+      Cardinality = int(Options["SyzygyProbeLimit"]);
+
+      // Tables with fewer pieces than SyzygyProbeLimit are searched with
+      // ProbeDepth == DEPTH_ZERO
+      if (Cardinality > MaxCardinality)
+      {
+          Cardinality = MaxCardinality;
+          ProbeDepth = 0;
+      }
+  }
+
 }
 
 namespace TB = Tablebases;
@@ -1844,7 +1859,7 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
   size_t pvIdx = pos.this_thread()->pvIdx;
   size_t multiPV = std::min((size_t)Options["MultiPV"], rootMoves.size());
   uint64_t nodesSearched = Threads.nodes_searched();
-  uint64_t tbHits = Threads.tb_hits() + (TB::RootInTB ? rootMoves.size() : 0);
+  uint64_t tbHits = Threads.tb_hits() + (pos.this_thread()->rootInTB ? rootMoves.size() : 0);
 
   for (size_t i = 0; i < multiPV; ++i)
   {
@@ -1856,7 +1871,7 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
       Depth d = updated ? depth : depth - 1;
       Value v = updated ? rootMoves[i].score : rootMoves[i].previousScore;
 
-      bool tb = TB::RootInTB && abs(v) < VALUE_MATE_IN_MAX_PLY;
+      bool tb = pos.this_thread()->rootInTB && abs(v) < VALUE_MATE_IN_MAX_PLY;
       v = tb ? rootMoves[i].tbScore : v;
 
       if (ss.rdbuf()->in_avail()) // Not at first line
@@ -1923,10 +1938,8 @@ bool RootMove::extract_ponder_from_tt(Position& pos) {
 
 void Tablebases::rank_root_moves(Position& pos, Search::RootMoves& rootMoves) {
 
-    RootInTB = false;
-    UseRule50 = bool(Options["Syzygy50MoveRule"]);
-    ProbeDepth = int(Options["SyzygyProbeDepth"]);
-    Cardinality = int(Options["SyzygyProbeLimit"]);
+    auto& rootInTB = pos.this_thread()->rootInTB;
+    rootInTB = false;
     bool dtz_available = true;
 
     // Tables with fewer pieces than SyzygyProbeLimit are searched with
@@ -1940,17 +1953,17 @@ void Tablebases::rank_root_moves(Position& pos, Search::RootMoves& rootMoves) {
     if (Cardinality >= popcount(pos.pieces()) && !pos.can_castle(ANY_CASTLING))
     {
         // Rank moves using DTZ tables
-        RootInTB = root_probe(pos, rootMoves);
+        rootInTB = root_probe(pos, rootMoves);
 
-        if (!RootInTB)
+        if (!rootInTB)
         {
             // DTZ tables are missing; try to rank moves using WDL tables
             dtz_available = false;
-            RootInTB = root_probe_wdl(pos, rootMoves);
+            rootInTB = root_probe_wdl(pos, rootMoves);
         }
     }
 
-    if (RootInTB)
+    if (rootInTB)
     {
         // Sort moves according to TB rank
         std::sort(rootMoves.begin(), rootMoves.end(),
@@ -1966,6 +1979,7 @@ void Tablebases::rank_root_moves(Position& pos, Search::RootMoves& rootMoves) {
         for (auto& m : rootMoves)
             m.tbRank = 0;
     }
+
 }
 
 // --- expose the functions such as fixed depth search used for learning to the outside
@@ -1986,39 +2000,6 @@ namespace Learner
     // Because it clears to zero, ss->ply == 0, so it's okay...
 
     std::memset(ss - 7, 0, 10 * sizeof(Stack));
-
-    // About Search::Limits
-    // Be careful because this member variable is global and affects other threads.
-    {
-      auto& limits = Search::Limits;
-
-      // Make the search equivalent to the "go infinite" command. (Because it is troublesome if time management is done)
-      limits.infinite = true;
-
-      // Since PV is an obstacle when displayed, erase it.
-      limits.silent = true;
-
-      // If you use this, it will be compared with the accumulated nodes of each thread. Therefore, do not use it.
-      limits.nodes = 0;
-
-      // depth is also processed by the one passed as an argument of Learner::search().
-      limits.depth = 0;
-
-      // Set a large value to prevent the draw value from being returned due to the number of moves near the draw.
-      //limits.max_game_ply = 1 << 16;
-
-      // If you do not include the ball entry rule, it will be a draw and it will be difficult to settle.
-      //limits.enteringKingRule = EnteringKingRule::EKR_27_POINT;
-    }
-
-    // Set DrawValue
-    {
-      // Because it is not prepared for each thread
-      // May be overwritten by another thread. There is no help for it.
-      // If that happens, I think it should be 0.
-      //drawValueTable[REPETITION_DRAW][BLACK] = VALUE_ZERO;
-      //drawValueTable[REPETITION_DRAW][WHITE] = VALUE_ZERO;
-    }
 
     // Regarding this_thread.
 
