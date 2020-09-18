@@ -695,14 +695,14 @@ namespace Learner
         uint64_t last_done;
 
         // If total_read exceeds this value, update_weights() and calculate mse.
-        uint64_t next_update_weights;
+        std::atomic<uint64_t> next_update_weights;
 
         uint64_t save_count;
 
         // Do not shuffle when reading the phase.
         bool no_shuffle;
 
-        bool stop_flag;
+        std::atomic<bool> stop_flag;
 
         vector<Key> hash;
 
@@ -785,7 +785,7 @@ namespace Learner
         // Mini batch size size. Be sure to set it on the side that uses this class.
         uint64_t mini_batch_size = LEARN_MINI_BATCH_SIZE;
 
-        bool stop_flag;
+        std::atomic<bool> stop_flag;
 
         // Discount rate
         double discount_rate;
