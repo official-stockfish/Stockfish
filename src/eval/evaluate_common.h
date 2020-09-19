@@ -1,8 +1,6 @@
 ﻿#ifndef _EVALUATE_COMMON_H_
 #define _EVALUATE_COMMON_H_
 
-#if defined(EVAL_LEARN)
-
 // A common header-like function for modern evaluation functions.
 #include <string>
 
@@ -19,7 +17,5 @@ namespace Eval
 	// Get the current eta.
 	double get_eta();
 }
-
-#endif // defined(EVAL_LEARN)
 
 #endif // _EVALUATE_COMMON_H_

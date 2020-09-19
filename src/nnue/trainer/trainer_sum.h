@@ -3,8 +3,6 @@
 #ifndef _NNUE_TRAINER_SUM_H_
 #define _NNUE_TRAINER_SUM_H_
 
-#if defined(EVAL_LEARN)
-
 #include "../../learn/learn.h"
 #include "../layers/sum.h"
 #include "trainer.h"
@@ -184,7 +182,5 @@ class Trainer<Layers::Sum<PreviousLayer>> {
 }  // namespace NNUE
 
 }  // namespace Eval
-
-#endif  // defined(EVAL_LEARN)
 
 #endif

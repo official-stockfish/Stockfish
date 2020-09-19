@@ -32,19 +32,11 @@ void K::AppendChangedIndices(
     const Position& pos, Color perspective,
     IndexList* removed, IndexList* added) {
   const auto& dp = pos.state()->dirtyPiece;
-  Color king_color;
-  if (dp.piece[0] == Piece::W_KING) {
-    king_color = WHITE;
+  if (type_of(dp.piece[0]) == KING)
+  {
+    removed->push_back(MakeIndex(perspective, dp.from[0], color_of(dp.piece[0])));
+    added->push_back(MakeIndex(perspective, dp.to[0], color_of(dp.piece[0])));
   }
-  else if (dp.piece[0] == Piece::B_KING) {
-    king_color = BLACK;
-  }
-  else {
-    return;
-  }
-
-  removed->push_back(MakeIndex(perspective, dp.from[0], king_color));
-  added->push_back(MakeIndex(perspective, dp.to[0], king_color));
 }
 
 }  // namespace Features

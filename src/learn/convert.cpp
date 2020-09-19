@@ -1,16 +1,19 @@
-#if defined(EVAL_LEARN)
+#include "convert.h"
+
+#include "multi_think.h"
+
+#include "uci.h"
+#include "misc.h"
+#include "thread.h"
+#include "position.h"
+#include "tt.h"
 
 // evaluate header for learning
-#include "../eval/evaluate_common.h"
+#include "eval/evaluate_common.h"
 
-#include "learn.h"
-#include "multi_think.h"
-#include "../uci.h"
-#include "../syzygy/tbprobe.h"
-#include "../misc.h"
-#include "../thread.h"
-#include "../position.h"
-#include "../tt.h"
+#include "extra/nnue_data_binpack_format.h"
+
+#include "syzygy/tbprobe.h"
 
 #include <sstream>
 #include <fstream>
@@ -119,7 +122,7 @@ namespace Learner
                 else if (token == "score") {
                     double score;
                     ss >> score;
-                    // Training Formula · Issue #71 · nodchip/Stockfish https://github.com/nodchip/Stockfish/issues/71
+                    // Training Formula ?Issue #71 ?nodchip/Stockfish https://github.com/nodchip/Stockfish/issues/71
                     // Normalize to [0.0, 1.0].
                     score = (score - src_score_min_value) / (src_score_max_value - src_score_min_value);
                     // Scale to [dest_score_min_value, dest_score_max_value].
@@ -497,5 +500,107 @@ namespace Learner
         ofs.close();
         std::cout << "all done" << std::endl;
     }
+
+    static inline const std::string plain_extension = ".plain";
+    static inline const std::string bin_extension = ".bin";
+    static inline const std::string binpack_extension = ".binpack";
+
+    static bool file_exists(const std::string& name)
+    {
+        std::ifstream f(name);
+        return f.good();
+    }
+
+    static bool ends_with(const std::string& lhs, const std::string& end)
+    {
+        if (end.size() > lhs.size()) return false;
+
+        return std::equal(end.rbegin(), end.rend(), lhs.rbegin());
+    }
+
+    static bool is_convert_of_type(
+        const std::string& input_path,
+        const std::string& output_path,
+        const std::string& expected_input_extension,
+        const std::string& expected_output_extension)
+    {
+        return ends_with(input_path, expected_input_extension)
+            && ends_with(output_path, expected_output_extension);
+    }
+
+    using ConvertFunctionType = void(std::string inputPath, std::string outputPath, std::ios_base::openmode om);
+
+    static ConvertFunctionType* get_convert_function(const std::string& input_path, const std::string& output_path)
+    {
+        if (is_convert_of_type(input_path, output_path, plain_extension, bin_extension))
+            return binpack::convertPlainToBin;
+        if (is_convert_of_type(input_path, output_path, plain_extension, binpack_extension))
+            return binpack::convertPlainToBinpack;
+
+        if (is_convert_of_type(input_path, output_path, bin_extension, plain_extension))
+            return binpack::convertBinToPlain;
+        if (is_convert_of_type(input_path, output_path, bin_extension, binpack_extension))
+            return binpack::convertBinToBinpack;
+
+        if (is_convert_of_type(input_path, output_path, binpack_extension, plain_extension))
+            return binpack::convertBinpackToPlain;
+        if (is_convert_of_type(input_path, output_path, binpack_extension, bin_extension))
+            return binpack::convertBinpackToBin;
+
+        return nullptr;
+    }
+
+    static void convert(const std::string& input_path, const std::string& output_path, std::ios_base::openmode om)
+    {
+        if(!file_exists(input_path))
+        {
+            std::cerr << "Input file does not exist.\n";
+            return;
+        }
+
+        auto func = get_convert_function(input_path, output_path);
+        if (func != nullptr)
+        {
+            func(input_path, output_path, om);
+        }
+        else
+        {
+            std::cerr << "Conversion between files of these types is not supported.\n";
+        }
+    }
+
+    static void convert(const std::vector<std::string>& args)
+    {
+        if (args.size() < 2 || args.size() > 3)
+        {
+            std::cerr << "Invalid arguments.\n";
+            std::cerr << "Usage: convert from_path to_path [append]\n";
+            return;
+        }
+
+        const bool append = (args.size() == 3) && (args[2] == "append");
+        const std::ios_base::openmode openmode =
+            append
+            ? std::ios_base::app
+            : std::ios_base::trunc;
+
+        convert(args[0], args[1], openmode);
+    }
+
+    void convert(istringstream& is)
+    {
+        std::vector<std::string> args;
+
+        while (true)
+        {
+            std::string token = "";
+            is >> token;
+            if (token == "")
+                break;
+
+            args.push_back(token);
+        }
+
+        convert(args);
+    }
 }
-#endif

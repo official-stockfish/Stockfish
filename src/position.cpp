@@ -32,6 +32,9 @@
 #include "uci.h"
 #include "syzygy/tbprobe.h"
 
+#include "learn/packed_sfen.h"
+#include "learn/sfen_packer.h"
+
 using std::string;
 
 namespace Zobrist {
@@ -754,7 +757,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       else
           st->nonPawnMaterial[them] -= PieceValue[MG][captured];
 
-      if (Eval::useNNUE)
+      if (Eval::useNNUE != Eval::UseNNUEMode::False)
       {
           dp.dirty_num = 2;  // 1 piece moved, 1 piece captured
           dp.piece[1] = captured;
@@ -798,7 +801,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   // Move the piece. The tricky Chess960 castling is handled earlier
   if (type_of(m) != CASTLING)
   {
-      if (Eval::useNNUE)
+      if (Eval::useNNUE != Eval::UseNNUEMode::False)
       {
           dp.piece[0] = pc;
           dp.from[0] = from;
@@ -829,7 +832,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
           remove_piece(to);
           put_piece(promotion, to);
 
-          if (Eval::useNNUE)
+          if (Eval::useNNUE != Eval::UseNNUEMode::False)
           {
               // Promoting pawn to SQ_NONE, promoted piece from SQ_NONE
               dp.to[0] = SQ_NONE;
@@ -967,7 +970,7 @@ void Position::do_castling(Color us, Square from, Square& to, Square& rfrom, Squ
   rto = relative_square(us, kingSide ? SQ_F1 : SQ_D1);
   to = relative_square(us, kingSide ? SQ_G1 : SQ_C1);
 
-  if (Do && Eval::useNNUE)
+  if (Do && Eval::useNNUE != Eval::UseNNUEMode::False)
   {
       auto& dp = st->dirtyPiece;
       dp.piece[0] = make_piece(us, KING);
@@ -996,7 +999,7 @@ void Position::do_null_move(StateInfo& newSt) {
   assert(!checkers());
   assert(&newSt != st);
 
-  if (Eval::useNNUE)
+  if (Eval::useNNUE != Eval::UseNNUEMode::False)
   {
       std::memcpy(&newSt, st, sizeof(StateInfo));
   }
@@ -1343,4 +1346,36 @@ bool Position::pos_is_ok() const {
       }
 
   return true;
+}
+
+// Add a function that directly unpacks for speed. It's pretty tough.
+// Write it by combining packer::unpack() and Position::set().
+// If there is a problem with the passed phase and there is an error, non-zero is returned.
+int Position::set_from_packed_sfen(const Learner::PackedSfen& sfen , StateInfo* si, Thread* th, bool mirror)
+{
+  return Learner::set_from_packed_sfen(*this, sfen, si, th, mirror);
+}
+
+// Give the board, hand piece, and turn, and return the sfen.
+//std::string Position::sfen_from_rawdata(Piece board[81], Hand hands[2], Color turn, int gamePly_)
+//{
+// // Copy it to an internal structure and call sfen() if the conversion process depends only on it
+// // Maybe it will be converted normally...
+//  Position pos;
+//
+//  memcpy(pos.board, board, sizeof(Piece) * 81);
+//  memcpy(pos.hand, hands, sizeof(Hand) * 2);
+//  pos.sideToMove = turn;
+//  pos.gamePly = gamePly_;
+//
+//  return pos.sfen();
+//
+// // Implementation of ↑ is beautiful, but slow.
+// // This is a bottleneck when learning a large amount of game records, so write a function to unpack directly.
+//}
+
+// Get the packed sfen. Returns to the buffer specified in the argument.
+void Position::sfen_pack(Learner::PackedSfen& sfen)
+{
+  sfen = Learner::sfen_pack(*this);
 }

@@ -43,6 +43,12 @@ void on_threads(const Option& o) { Threads.set(size_t(o)); }
 void on_tb_path(const Option& o) { Tablebases::init(o); }
 void on_use_NNUE(const Option& ) { Eval::init_NNUE(); }
 void on_eval_file(const Option& ) { Eval::init_NNUE(); }
+void on_prune_at_shallow_depth(const Option& o) {
+    Search::prune_at_shallow_depth = o;
+}
+void on_enable_transposition_table(const Option& o) {
+    TranspositionTable::enable_transposition_table = o;
+}
 
 /// Our case insensitive less() function as required by UCI protocol
 bool CaseInsensitiveLess::operator() (const string& s1, const string& s2) const {
@@ -70,7 +76,6 @@ void init(OptionsMap& o) {
   o["Move Overhead"]         << Option(10, 0, 5000);
   o["Slow Mover"]            << Option(100, 10, 1000);
   o["nodestime"]             << Option(0, 0, 10000);
-  o["Training"]              << Option(false);
   o["UCI_Chess960"]          << Option(false);
   o["UCI_AnalyseMode"]       << Option(false);
   o["UCI_LimitStrength"]     << Option(false);
@@ -80,7 +85,7 @@ void init(OptionsMap& o) {
   o["SyzygyProbeDepth"]      << Option(1, 1, 100);
   o["Syzygy50MoveRule"]      << Option(true);
   o["SyzygyProbeLimit"]      << Option(7, 0, 7);
-  o["Use NNUE"]              << Option(true, on_use_NNUE);
+  o["Use NNUE"]              << Option("true var true var false var pure", "true", on_use_NNUE);
   o["EvalFile"]              << Option(EvalFileDefaultName, on_eval_file);
   // When the evaluation function is loaded at the ucinewgame timing, it is necessary to convert the new evaluation function.
   // I want to hit the test eval convert command, but there is no new evaluation function
@@ -88,12 +93,14 @@ void init(OptionsMap& o) {
   // Therefore, with this hidden option, you can suppress the loading of the evaluation function when ucinewgame,
   // Hit the test eval convert command.
   o["SkipLoadingEval"]       << Option(false);
-#if defined(EVAL_LEARN)
   // When learning the evaluation function, you can change the folder to save the evaluation function.
   // Evalsave by default. This folder shall be prepared in advance.
   // Automatically create a folder under this folder like "0/", "1/", ... and save the evaluation function file there.
   o["EvalSaveDir"] << Option("evalsave");
-#endif
+  // Prune at shallow depth on PV nodes. False is recommended when using fixed depth search.
+  o["PruneAtShallowDepth"] << Option(true, on_prune_at_shallow_depth);
+  // Enable transposition table.
+  o["EnableTranspositionTable"] << Option(true, on_enable_transposition_table);
 }
 
 
@@ -147,7 +154,7 @@ Option::operator double() const {
 }
 
 Option::operator std::string() const {
-  assert(type == "string");
+  assert(type == "check" || type == "spin" || type == "combo" || type == "button" || type == "string");
   return currentValue;
 }
 

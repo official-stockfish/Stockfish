@@ -1,10 +1,9 @@
-﻿#include "../types.h"
+﻿#include "multi_think.h"
 
-#if defined(EVAL_LEARN)
-
-#include "multi_think.h"
-#include "../tt.h"
-#include "../uci.h"
+#include "tt.h"
+#include "uci.h"
+#include "types.h"
+#include "search.h"
 
 #include <thread>
 
@@ -27,14 +26,13 @@ void MultiThink::go_think()
 	auto thread_num = (size_t)Options["Threads"];
 
 	// Secure end flag of worker thread
-	thread_finished.resize(thread_num);
-	
+        threads_finished=0;
+
 	// start worker thread
 	for (size_t i = 0; i < thread_num; ++i)
 	{
-		thread_finished[i] = 0;
 		threads.push_back(std::thread([i, this]
-		{ 
+		{
 			// exhaust all processor threads.
 			WinProcGroup::bindThisThread(i);
 
@@ -42,7 +40,7 @@ void MultiThink::go_think()
 			this->thread_worker(i);
 
 			// Set the end flag because the thread has ended
-			this->thread_finished[i] = 1;
+			this->threads_finished++;
 		}));
 	}
 
@@ -56,11 +54,7 @@ void MultiThink::go_think()
 	// function to determine if all threads have finished
 	auto threads_done = [&]()
 	{
-		// returns false if no one is finished
-		for (auto& f : thread_finished)
-			if (!f)
-				return false;
-		return true;
+		return threads_finished == thread_num;
 	};
 
 	// Call back if the callback function is set.
@@ -105,6 +99,3 @@ void MultiThink::go_think()
 	// Since the work itself may not have completed, output only that all threads have finished.
 	std::cout << "all threads are joined." << std::endl;
 }
-
-
-#endif // defined(EVAL_LEARN)

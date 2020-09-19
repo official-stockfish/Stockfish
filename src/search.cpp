@@ -40,18 +40,11 @@ namespace Search {
   LimitsType Limits;
 }
 
-namespace Tablebases {
-
-  int Cardinality;
-  bool UseRule50;
-  Depth ProbeDepth;
-}
-
-namespace TB = Tablebases;
-
 using std::string;
 using Eval::evaluate;
 using namespace Search;
+
+bool Search::prune_at_shallow_depth = true;
 
 namespace {
 
@@ -714,27 +707,27 @@ namespace {
     }
 
     // Step 5. Tablebases probe
-    if (!rootNode && TB::Cardinality)
+    if (!rootNode && thisThread->Cardinality)
     {
         int piecesCount = pos.count<ALL_PIECES>();
 
-        if (    piecesCount <= TB::Cardinality
-            && (piecesCount <  TB::Cardinality || depth >= TB::ProbeDepth)
+        if (    piecesCount <= thisThread->Cardinality
+            && (piecesCount <  thisThread->Cardinality || depth >= thisThread->ProbeDepth)
             &&  pos.rule50_count() == 0
             && !pos.can_castle(ANY_CASTLING))
         {
-            TB::ProbeState err;
-            TB::WDLScore wdl = Tablebases::probe_wdl(pos, &err);
+            Tablebases::ProbeState err;
+            Tablebases::WDLScore wdl = Tablebases::probe_wdl(pos, &err);
 
             // Force check of time on the next occasion
             if (thisThread == Threads.main())
                 static_cast<MainThread*>(thisThread)->callsCnt = 0;
 
-            if (err != TB::ProbeState::FAIL)
+            if (err != Tablebases::ProbeState::FAIL)
             {
                 thisThread->tbHits.fetch_add(1, std::memory_order_relaxed);
 
-                int drawScore = TB::UseRule50 ? 1 : 0;
+                int drawScore = thisThread->UseRule50 ? 1 : 0;
 
                 // use the range VALUE_MATE_IN_MAX_PLY to VALUE_TB_WIN_IN_MAX_PLY to score
                 value =  wdl < -drawScore ? VALUE_MATED_IN_MAX_PLY + ss->ply + 1
@@ -995,9 +988,7 @@ moves_loop: // When in check, search starts from here
       ss->moveCount = ++moveCount;
 
       if (rootNode && thisThread == Threads.main() && Time.elapsed() > 3000
-#if defined(EVAL_LEARN)
           && !Limits.silent
-#endif
           )
           sync_cout << "info depth " << depth
                     << " currmove " << UCI::move(move, pos.is_chess960())
@@ -1015,6 +1006,7 @@ moves_loop: // When in check, search starts from here
 
       // Step 13. Pruning at shallow depth (~200 Elo)
       if (  !rootNode
+          && (PvNode ? prune_at_shallow_depth : true)
           && pos.non_pawn_material(us)
           && bestValue > VALUE_TB_LOSS_IN_MAX_PLY)
       {
@@ -1526,6 +1518,7 @@ moves_loop: // When in check, search starts from here
 
       // Futility pruning
       if (   !ss->inCheck
+          && Search::prune_at_shallow_depth
           && !givesCheck
           &&  futilityBase > -VALUE_KNOWN_WIN
           && !pos.advanced_pawn_push(move))
@@ -1553,6 +1546,7 @@ moves_loop: // When in check, search starts from here
 
       // Do not search moves with negative SEE values
       if (   !ss->inCheck
+          && Search::prune_at_shallow_depth
           && !(givesCheck && pos.is_discovery_check_on_king(~pos.side_to_move(), move))
           && !pos.see_ge(move))
           continue;
@@ -1574,6 +1568,7 @@ moves_loop: // When in check, search starts from here
                                                                 [to_sq(move)];
 
       if (  !captureOrPromotion
+          && Search::prune_at_shallow_depth
           && moveCount
           && (*contHist[0])[pos.moved_piece(move)][to_sq(move)] < CounterMovePruneThreshold
           && (*contHist[1])[pos.moved_piece(move)][to_sq(move)] < CounterMovePruneThreshold)
@@ -1844,7 +1839,7 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
   size_t pvIdx = pos.this_thread()->pvIdx;
   size_t multiPV = std::min((size_t)Options["MultiPV"], rootMoves.size());
   uint64_t nodesSearched = Threads.nodes_searched();
-  uint64_t tbHits = Threads.tb_hits() + (pos.RootInTB ? rootMoves.size() : 0);
+  uint64_t tbHits = Threads.tb_hits() + (pos.this_thread()->rootInTB ? rootMoves.size() : 0);
 
   for (size_t i = 0; i < multiPV; ++i)
   {
@@ -1859,7 +1854,7 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
       if (v == -VALUE_INFINITE)
           v = VALUE_ZERO;
 
-      bool tb = pos.RootInTB && abs(v) < VALUE_MATE_IN_MAX_PLY;
+      bool tb = pos.this_thread()->rootInTB && abs(v) < VALUE_MATE_IN_MAX_PLY;
       v = tb ? rootMoves[i].tbScore : v;
 
       if (ss.rdbuf()->in_avail()) // Not at first line
@@ -1926,34 +1921,34 @@ bool RootMove::extract_ponder_from_tt(Position& pos) {
 
 void Tablebases::rank_root_moves(Position& pos, Search::RootMoves& rootMoves) {
 
-    pos.RootInTB = false;
-    UseRule50 = bool(Options["Syzygy50MoveRule"]);
-    ProbeDepth = int(Options["SyzygyProbeDepth"]);
-    Cardinality = int(Options["SyzygyProbeLimit"]);
+    auto& rootInTB = pos.this_thread()->rootInTB;
+    auto& cardinality = pos.this_thread()->Cardinality;
+    auto& probeDepth = pos.this_thread()->ProbeDepth;
+    rootInTB = false;
     bool dtz_available = true;
 
     // Tables with fewer pieces than SyzygyProbeLimit are searched with
     // ProbeDepth == DEPTH_ZERO
-    if (Cardinality > MaxCardinality)
+    if (cardinality > Tablebases::MaxCardinality)
     {
-        Cardinality = MaxCardinality;
-        ProbeDepth = 0;
+        cardinality = Tablebases::MaxCardinality;
+        probeDepth = 0;
     }
 
-    if (Cardinality >= popcount(pos.pieces()) && !pos.can_castle(ANY_CASTLING))
+    if (cardinality >= popcount(pos.pieces()) && !pos.can_castle(ANY_CASTLING))
     {
         // Rank moves using DTZ tables
-        pos.RootInTB = root_probe(pos, rootMoves);
+        rootInTB = root_probe(pos, rootMoves);
 
-        if (!pos.RootInTB)
+        if (!rootInTB)
         {
             // DTZ tables are missing; try to rank moves using WDL tables
             dtz_available = false;
-            pos.RootInTB = root_probe_wdl(pos, rootMoves);
+            rootInTB = root_probe_wdl(pos, rootMoves);
         }
     }
 
-    if (pos.RootInTB)
+    if (rootInTB)
     {
         // Sort moves according to TB rank
         std::stable_sort(rootMoves.begin(), rootMoves.end(),
@@ -1961,7 +1956,7 @@ void Tablebases::rank_root_moves(Position& pos, Search::RootMoves& rootMoves) {
 
         // Probe during search only if DTZ is not available and we are winning
         if (dtz_available || rootMoves[0].tbScore <= VALUE_DRAW)
-            Cardinality = 0;
+            cardinality = 0;
     }
     else
     {
@@ -1969,11 +1964,11 @@ void Tablebases::rank_root_moves(Position& pos, Search::RootMoves& rootMoves) {
         for (auto& m : rootMoves)
             m.tbRank = 0;
     }
+
 }
 
 // --- expose the functions such as fixed depth search used for learning to the outside
 
-#if defined (EVAL_LEARN)
 
 namespace Learner
 {
@@ -1991,39 +1986,6 @@ namespace Learner
 
     std::memset(ss - 7, 0, 10 * sizeof(Stack));
 
-    // About Search::Limits
-    // Be careful because this member variable is global and affects other threads.
-    {
-      auto& limits = Search::Limits;
-
-      // Make the search equivalent to the "go infinite" command. (Because it is troublesome if time management is done)
-      limits.infinite = true;
-
-      // Since PV is an obstacle when displayed, erase it.
-      limits.silent = true;
-
-      // If you use this, it will be compared with the accumulated nodes of each thread. Therefore, do not use it.
-      limits.nodes = 0;
-
-      // depth is also processed by the one passed as an argument of Learner::search().
-      limits.depth = 0;
-
-      // Set a large value to prevent the draw value from being returned due to the number of moves near the draw.
-      //limits.max_game_ply = 1 << 16;
-
-      // If you do not include the ball entry rule, it will be a draw and it will be difficult to settle.
-      //limits.enteringKingRule = EnteringKingRule::EKR_27_POINT;
-    }
-
-    // Set DrawValue
-    {
-      // Because it is not prepared for each thread
-      // May be overwritten by another thread. There is no help for it.
-      // If that happens, I think it should be 0.
-      //drawValueTable[REPETITION_DRAW][BLACK] = VALUE_ZERO;
-      //drawValueTable[REPETITION_DRAW][WHITE] = VALUE_ZERO;
-    }
-
     // Regarding this_thread.
 
     {
@@ -2035,7 +1997,7 @@ namespace Learner
       th->nmpMinPly = th->bestMoveChanges = 0;
       th->ttHitAverage = TtHitAverageWindow * TtHitAverageResolution / 2;
 
-	  // Zero initialization of the number of search nodes
+      // Zero initialization of the number of search nodes
       th->nodes = 0;
 
       // Clear all history types. This initialization takes a little time, and the accuracy of the search is rather low, so the good and bad are not well understood.
@@ -2059,7 +2021,7 @@ namespace Learner
       for (int i = 7; i > 0; i--)
           (ss - i)->continuationHistory = &th->continuationHistory[0][0][NO_PIECE][0]; // Use as a sentinel
 
- // set rootMoves
+      // set rootMoves
       auto& rootMoves = th->rootMoves;
 
       rootMoves.clear();
@@ -2067,7 +2029,20 @@ namespace Learner
         rootMoves.push_back(Search::RootMove(m));
 
       assert(!rootMoves.empty());
-      TB::rank_root_moves(pos, rootMoves);
+
+      th->UseRule50 = bool(Options["Syzygy50MoveRule"]);
+      th->ProbeDepth = int(Options["SyzygyProbeDepth"]);
+      th->Cardinality = int(Options["SyzygyProbeLimit"]);
+
+      // Tables with fewer pieces than SyzygyProbeLimit are searched with
+      // ProbeDepth == DEPTH_ZERO
+      if (th->Cardinality > Tablebases::MaxCardinality)
+      {
+          th->Cardinality = Tablebases::MaxCardinality;
+          th->ProbeDepth = 0;
+      }
+
+      Tablebases::rank_root_moves(pos, rootMoves);
     }
   }
 
@@ -2088,8 +2063,8 @@ namespace Learner
   // As it has a bad effect, I decided to stop allowing the window range to be specified.
   ValueAndPV qsearch(Position& pos)
   {
-    Stack stack[MAX_PLY + 10], * ss = stack + 7;
-    Move pv[MAX_PLY + 1];
+    Stack stack[MAX_PLY+10], *ss = stack+7;
+    Move  pv[MAX_PLY+1];
 
     init_for_search(pos, ss);
     ss->pv = pv; // For the time being, it must be a dummy and somewhere with a buffer.
@@ -2108,7 +2083,7 @@ namespace Learner
 
     auto bestValue = ::qsearch<PV>(pos, ss, -VALUE_INFINITE, VALUE_INFINITE, 0);
 
-  // Returns the PV obtained.
+    // Returns the PV obtained.
     std::vector<Move> pvs;
     for (Move* p = &ss->pv[0]; is_ok(*p); ++p)
       pvs.push_back(*p);
@@ -2174,7 +2149,7 @@ namespace Learner
     Value bestValue = -VALUE_INFINITE;
 
     while ((rootDepth += 1) <= depth
-	  // exit this loop even if the node limit is exceeded
+      // exit this loop even if the node limit is exceeded
       // The number of search nodes is passed in the argument of this function.
       && !(nodesLimit /* limited nodes */ && th->nodes.load(std::memory_order_relaxed) >= nodesLimit)
       )
@@ -2196,46 +2171,36 @@ namespace Learner
               break;
         }
 
-	    // selDepth output with USI info for each depth and PV line
+        // selDepth output with USI info for each depth and PV line
         selDepth = 0;
 
         // Switch to aspiration search for depth 5 and above.
-        if (rootDepth >= 5 * 1)
+        if (rootDepth >= 4)
         {
-          delta = Value(20);
-
-          Value p = rootMoves[pvIdx].previousScore;
-
-          alpha = std::max(p - delta, -VALUE_INFINITE);
-          beta = std::min(p + delta, VALUE_INFINITE);
+            Value prev = rootMoves[pvIdx].previousScore;
+            delta = Value(17);
+            alpha = std::max(prev - delta,-VALUE_INFINITE);
+            beta  = std::min(prev + delta, VALUE_INFINITE);
         }
 
-        // aspiration search
-        int failedHighCnt = 0;
         while (true)
         {
-          Depth adjustedDepth = std::max(1, rootDepth - failedHighCnt * 1);
+          Depth adjustedDepth = std::max(1, rootDepth);
           bestValue = ::search<PV>(pos, ss, alpha, beta, adjustedDepth, false);
 
           stable_sort(rootMoves.begin() + pvIdx, rootMoves.end());
           //my_stable_sort(pos.this_thread()->thread_id(),&rootMoves[0] + pvIdx, rootMoves.size() - pvIdx);
 
-		  // Expand aspiration window for fail low/high.
+          // Expand aspiration window for fail low/high.
           // However, if it is the value specified by the argument, it will be treated as fail low/high and break.
           if (bestValue <= alpha)
           {
             beta = (alpha + beta) / 2;
             alpha = std::max(bestValue - delta, -VALUE_INFINITE);
-
-            failedHighCnt = 0;
-            //if (mainThread)
-            //    mainThread->stopOnPonderhit = false;
-
           }
           else if (bestValue >= beta)
           {
             beta = std::min(bestValue + delta, VALUE_INFINITE);
-            ++failedHighCnt;
           }
           else
             break;
@@ -2256,7 +2221,6 @@ namespace Learner
     }
 
     // Pass PV_is(ok) to eliminate this PV, there may be NULL_MOVE in the middle.
-    // ?¡L PV should not be NULL_MOVE because it is PV
     // MOVE_WIN has never been thrust. (For now)
     for (Move move : rootMoves[0].pv)
     {
@@ -2274,4 +2238,3 @@ namespace Learner
   }
 
 }
-#endif

@@ -39,8 +39,9 @@ PREFIX = /usr/local
 BINDIR = $(PREFIX)/bin
 
 ### Built-in benchmark for pgo-builds
+PGO_TRAINING_DATA_FILE = pgo_training_data.bin
 PGOBENCH = ./$(EXE) bench
-PGOGENSFEN = ./$(EXE) gensfen depth 3 loop 1000
+PGOGENSFEN = ./$(EXE) gensfen depth 6 loop 10000 output_file_name $(PGO_TRAINING_DATA_FILE)
 
 ### Source and object files
 SRCS = benchmark.cpp bitbase.cpp bitboard.cpp endgame.cpp evaluate.cpp main.cpp \
@@ -55,8 +56,8 @@ SRCS = benchmark.cpp bitbase.cpp bitboard.cpp endgame.cpp evaluate.cpp main.cpp 
 	nnue/features/castling_right.cpp \
 	nnue/features/enpassant.cpp \
 	nnue/nnue_test_command.cpp \
-	extra/sfen_packer.cpp \
-	learn/learner.cpp \
+	learn/sfen_packer.cpp \
+	learn/learn.cpp \
 	learn/gensfen.cpp \
 	learn/convert.cpp \
 	learn/learning_tools.cpp \
@@ -116,6 +117,7 @@ else
    SUPPORTED_ARCH=false
 endif
 
+blas = no
 optimize = yes
 debug = no
 sanitize = no
@@ -134,20 +136,6 @@ vnni256 = no
 vnni512 = no
 neon = no
 STRIP = strip
-
-### BLAS libraries
-ifeq ($(KERNEL),Linux)
-	BLASCXXFLAGS =
-	BLASLDFLAGS = -lopenblas
-else
-	BLASCXXFLAGS = -I/mingw64/include/OpenBLAS
-
-	ifeq ($(debug),yes)
-		BLASLDFLAGS = -lopenblas -Wl,-static
-	else
-		BLASLDFLAGS = -lopenblas -Wl,-s -static
-	endif
-endif
 
 ### 2.2 Architecture specific
 
@@ -325,9 +313,9 @@ endif
 ### ==========================================================================
 
 ### 3.1 Selecting compiler (default = gcc)
-CXXFLAGS += -g -Wall -Wcast-qual -fno-exceptions -std=c++17 $(EXTRACXXFLAGS) $(LEARNCXXFLAGS)
-DEPENDFLAGS += -std=c++17
-LDFLAGS += $(EXTRALDFLAGS) $(LEARNLDFLAGS)
+CXXFLAGS += -g -Wall -Wcast-qual -fno-exceptions -std=c++17 -fopenmp -I. $(EXTRACXXFLAGS)
+LDFLAGS += -fopenmp $(EXTRALDFLAGS)
+DEPENDFLAGS += -std=c++17 -I.
 
 ifeq ($(COMP),)
 	COMP=gcc
@@ -479,14 +467,33 @@ ifneq ($(comp),mingw)
 endif
 endif
 
-### 3.2.1 Debugging
+### 3.2.1. BLAS libraries
+ifeq ($(blas), yes)
+	LDFLAGS += -lopenblas
+
+	ifeq ($(KERNEL),Linux)
+		LDFLAGS +=
+	else
+		CXXFLAGS += -I/mingw64/include/OpenBLAS
+
+		ifeq ($(debug),yes)
+			LDFLAGS += -Wl,-static
+		else
+			LDFLAGS += -Wl,-s -static
+		endif
+	endif
+
+	CXXFLAGS += -DUSE_BLAS
+endif
+
+### 3.2.2 Debugging
 ifeq ($(debug),no)
 	CXXFLAGS += -DNDEBUG
 else
 	CXXFLAGS += -g
 endif
 
-### 3.2.2 Debugging with undefined behavior sanitizers
+### 3.2.3 Debugging with undefined behavior sanitizers
 ifneq ($(sanitize),no)
         CXXFLAGS += -g3 -fsanitize=$(sanitize)
         LDFLAGS += -fsanitize=$(sanitize)
@@ -740,16 +747,17 @@ endif
         config-sanity icc-profile-use icc-profile-make gcc-profile-use gcc-profile-make \
         clang-profile-use clang-profile-make
 
-build: config-sanity net
+build: config-sanity
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) all
 
-profile-build: net config-sanity objclean profileclean
+profile-build: config-sanity objclean profileclean
 	@echo ""
 	@echo "Step 1/4. Building instrumented executable ..."
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_make)
 	@echo ""
 	@echo "Step 2/4. Running benchmark for pgo-build ..."
 	$(PGOBENCH) > /dev/null
+	$(PGOGENSFEN) > /dev/null
 	@echo ""
 	@echo "Step 3/4. Building optimized executable ..."
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) objclean
@@ -803,6 +811,7 @@ profileclean:
 	@rm -rf profdir
 	@rm -f bench.txt *.gcda *.gcno ./syzygy/*.gcda ./nnue/*.gcda ./nnue/features/*.gcda *.s ./learn/*.gcda ./extra/*.gcda ./eval/*.gcda
 	@rm -f stockfish.profdata *.profraw
+	@rm -f $(PGO_TRAINING_DATA_FILE)
 
 default:
 	help
@@ -907,33 +916,7 @@ icc-profile-use:
 	EXTRACXXFLAGS='-prof_use -prof_dir ./profdir' \
 	all
 
-learn: config-sanity
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS=' -DEVAL_LEARN -DNNUE_EMBEDDING_OFF -DUSE_BLAS $(BLASCXXFLAGS) -fopenmp ' \
-	EXTRALDFLAGS=' $(BLASLDFLAGS) -fopenmp  ' \
-	all
-
-profile-learn: config-sanity objclean profileclean
-	@echo ""
-	@echo "Step 1/4. Building instrumented executable ..."
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_make) \
-	LEARNCXXFLAGS=' -DEVAL_LEARN -DNNUE_EMBEDDING_OFF -DUSE_BLAS $(BLASCXXFLAGS) -fopenmp ' \
-	LEARNLDFLAGS='  $(BLASLDFLAGS) -fopenmp '
-	@echo ""
-	@echo "Step 2/4. Running benchmark for pgo-build ..."
-	$(PGOGENSFEN)
-	@echo ""
-	@echo "Step 3/4. Building optimized executable ..."
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) objclean
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_use) \
-	LEARNCXXFLAGS=' -DEVAL_LEARN -DNNUE_EMBEDDING_OFF -DUSE_BLAS $(BLASCXXFLAGS) -fopenmp ' \
-	LEARNLDFLAGS=' $(BLASLDFLAGS) -fopenmp '
-	@echo ""
-	@echo "Step 4/4. Deleting profile data ..."
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) profileclean
-	rm generated_kifu.bin
-
 .depend:
-	-@$(CXX) $(DEPENDFLAGS) -MM $(SRCS) > $@ 2> /dev/null
+	-@$(CXX) $(DEPENDFLAGS) -MM $(SRCS) > $@
 
 -include .depend

@@ -36,42 +36,30 @@
 #include "uci.h"
 #include "incbin/incbin.h"
 
-
-// Macro to embed the default NNUE file data in the engine binary (using incbin.h, by Dale Weiler).
-// This macro invocation will declare the following three variables
-//     const unsigned char        gEmbeddedNNUEData[];  // a pointer to the embedded data
-//     const unsigned char *const gEmbeddedNNUEEnd;     // a marker to the end
-//     const unsigned int         gEmbeddedNNUESize;    // the size of the embedded file
-// Note that this does not work in Microsof Visual Studio.
-#if !defined(_MSC_VER) && !defined(NNUE_EMBEDDING_OFF)
-  INCBIN(EmbeddedNNUE, EvalFileDefaultName);
-#else
-  const unsigned char        gEmbeddedNNUEData[1] = {0x0};
-  const unsigned char *const gEmbeddedNNUEEnd = &gEmbeddedNNUEData[1];
-  const unsigned int         gEmbeddedNNUESize = 1;
-#endif
-
-
 using namespace std;
 using namespace Eval::NNUE;
 
 namespace Eval {
 
-  bool useNNUE;
+  UseNNUEMode useNNUE;
   string eval_file_loaded = "None";
 
-  /// init_NNUE() tries to load a nnue network at startup time, or when the engine
-  /// receives a UCI command "setoption name EvalFile value nn-[a-z0-9]{12}.nnue"
-  /// The name of the nnue network is always retrieved from the EvalFile option.
-  /// We search the given network in three locations: internally (the default
-  /// network may be embedded in the binary), in the active working directory and
-  /// in the engine directory. Distro packagers may define the DEFAULT_NNUE_DIRECTORY
-  /// variable to have the engine search in a special directory in their distro.
+  static UseNNUEMode nnue_mode_from_option(const UCI::Option& mode)
+  {
+    if (mode == "false")
+      return UseNNUEMode::False;
+    else if (mode == "true")
+      return UseNNUEMode::True;
+    else if (mode == "pure")
+      return UseNNUEMode::Pure;
+
+    return UseNNUEMode::False;
+  }
 
   void init_NNUE() {
 
-    useNNUE = Options["Use NNUE"];
-    if (!useNNUE)
+    useNNUE = nnue_mode_from_option(Options["Use NNUE"]);
+    if (useNNUE == UseNNUEMode::False)
         return;
 
     string eval_file = string(Options["EvalFile"]);
@@ -79,35 +67,17 @@ namespace Eval {
     #if defined(DEFAULT_NNUE_DIRECTORY)
     #define stringify2(x) #x
     #define stringify(x) stringify2(x)
-    vector<string> dirs = { "<internal>" , "" , CommandLine::binaryDirectory , stringify(DEFAULT_NNUE_DIRECTORY) };
+    vector<string> dirs = { "" , CommandLine::binaryDirectory , stringify(DEFAULT_NNUE_DIRECTORY) };
     #else
-    vector<string> dirs = { "<internal>" , "" , CommandLine::binaryDirectory };
+    vector<string> dirs = { "" , CommandLine::binaryDirectory };
     #endif
 
     for (string directory : dirs)
         if (eval_file_loaded != eval_file)
         {
-            if (directory != "<internal>")
-            {
-                ifstream stream(directory + eval_file, ios::binary);
-                if (load_eval(eval_file, stream))
-                    eval_file_loaded = eval_file;
-            }
-
-            if (directory == "<internal>" && eval_file == EvalFileDefaultName)
-            {
-                // C++ way to prepare a buffer for a memory stream
-                class MemoryBuffer : public basic_streambuf<char> {
-                    public: MemoryBuffer(char* p, size_t n) { setg(p, p, p + n); setp(p, p + n); }
-                };
-
-                MemoryBuffer buffer(const_cast<char*>(reinterpret_cast<const char*>(gEmbeddedNNUEData)),
-                                    size_t(gEmbeddedNNUESize));
-
-                istream stream(&buffer);
-                if (load_eval(eval_file, stream))
-                    eval_file_loaded = eval_file;
-            }
+            ifstream stream(directory + eval_file, ios::binary);
+            if (load_eval(eval_file, stream))
+                eval_file_loaded = eval_file;
         }
   }
 
@@ -116,7 +86,7 @@ namespace Eval {
 
     string eval_file = string(Options["EvalFile"]);
 
-    if (useNNUE && eval_file_loaded != eval_file)
+    if (useNNUE != UseNNUEMode::False && eval_file_loaded != eval_file)
     {
         UCI::OptionsMap defaults;
         UCI::init(defaults);
@@ -136,7 +106,7 @@ namespace Eval {
         exit(EXIT_FAILURE);
     }
 
-    if (useNNUE)
+    if (useNNUE != UseNNUEMode::False)
         sync_cout << "info string NNUE evaluation using " << eval_file << " enabled" << sync_endl;
     else
         sync_cout << "info string classical evaluation enabled" << sync_endl;
@@ -1014,32 +984,32 @@ make_v:
 /// evaluation of the position from the point of view of the side to move.
 
 Value Eval::evaluate(const Position& pos) {
-
-  if (Options["Training"]) {
-    return NNUE::evaluate(pos);
-  } else {
-    // Use classical eval if there is a large imbalance
-    // If there is a moderate imbalance, use classical eval with probability (1/8),
-    // as derived from the node counter.
-    bool useClassical = abs(eg_value(pos.psq_score())) * 16 > NNUEThreshold1 * (16 + pos.rule50_count());
-    bool classical = !Eval::useNNUE
-                  ||  useClassical
-                  || (abs(eg_value(pos.psq_score())) > PawnValueMg / 4 && !(pos.this_thread()->nodes & 0xB));
-    Value v = classical ? Evaluation<NO_TRACE>(pos).value() : NNUE::evaluate(pos);
-
-    if (   useClassical 
-        && Eval::useNNUE 
-        && abs(v) * 16 < NNUEThreshold2 * (16 + pos.rule50_count()))
-        v = NNUE::evaluate(pos);
-
-    // Damp down the evaluation linearly when shuffling
-    v = v * (100 - pos.rule50_count()) / 100;
-
-    // Guarantee evaluation does not hit the tablebase range
-    v = std::clamp(v, VALUE_TB_LOSS_IN_MAX_PLY + 1, VALUE_TB_WIN_IN_MAX_PLY - 1);
-
-    return v;
+  if (useNNUE == UseNNUEMode::Pure) {
+      return NNUE::evaluate(pos);
   }
+
+  // Use classical eval if there is a large imbalance
+  // If there is a moderate imbalance, use classical eval with probability (1/8),
+  // as derived from the node counter.
+  bool useClassical = abs(eg_value(pos.psq_score())) * 16 > NNUEThreshold1 * (16 + pos.rule50_count());
+  bool classical = (useNNUE == UseNNUEMode::False)
+                ||  useClassical
+                || (abs(eg_value(pos.psq_score())) > PawnValueMg / 4 && !(pos.this_thread()->nodes & 0xB));
+  Value v = classical ? Evaluation<NO_TRACE>(pos).value()
+                      : NNUE::evaluate(pos);
+
+  if (   useClassical
+      && useNNUE != UseNNUEMode::False
+      && abs(v) * 16 < NNUEThreshold2 * (16 + pos.rule50_count()))
+      v = NNUE::evaluate(pos);
+
+  // Damp down the evaluation linearly when shuffling
+  v = v * (100 - pos.rule50_count()) / 100;
+
+  // Guarantee evaluation does not hit the tablebase range
+  v = std::clamp(v, VALUE_TB_LOSS_IN_MAX_PLY + 1, VALUE_TB_WIN_IN_MAX_PLY - 1);
+
+  return v;
 }
 
 /// trace() is like evaluate(), but instead of returning a value, it returns
@@ -1087,7 +1057,7 @@ std::string Eval::trace(const Position& pos) {
 
   ss << "\nClassical evaluation: " << to_cp(v) << " (white side)\n";
 
-  if (Eval::useNNUE)
+  if (useNNUE != UseNNUEMode::False)
   {
       v = NNUE::evaluate(pos);
       v = pos.side_to_move() == WHITE ? v : -v;

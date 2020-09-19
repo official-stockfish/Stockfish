@@ -181,9 +181,6 @@ void ThreadPool::start_thinking(Position& pos, StateListPtr& states,
           || std::count(limits.searchmoves.begin(), limits.searchmoves.end(), m))
           rootMoves.emplace_back(m);
 
-  if (!rootMoves.empty())
-      Tablebases::rank_root_moves(pos, rootMoves);
-
   // After ownership transfer 'states' becomes empty, so if we stop the search
   // and call 'go' again without setting a new position states.get() == NULL.
   assert(states.get() || setupStates.get());
@@ -203,6 +200,21 @@ void ThreadPool::start_thinking(Position& pos, StateListPtr& states,
       th->rootMoves = rootMoves;
       th->rootPos.set(pos.fen(), pos.is_chess960(), &th->rootState, th);
       th->rootState = setupStates->back();
+      th->UseRule50 = bool(Options["Syzygy50MoveRule"]);
+      th->ProbeDepth = int(Options["SyzygyProbeDepth"]);
+      th->Cardinality = int(Options["SyzygyProbeLimit"]);
+
+      // Tables with fewer pieces than SyzygyProbeLimit are searched with
+      // ProbeDepth == DEPTH_ZERO
+      if (th->Cardinality > Tablebases::MaxCardinality)
+      {
+          th->Cardinality = Tablebases::MaxCardinality;
+          th->ProbeDepth = 0;
+      }
+
+      if (!rootMoves.empty())
+          Tablebases::rank_root_moves(pos, rootMoves);
+
   }
 
   main()->start_searching();

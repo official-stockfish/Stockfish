@@ -5,9 +5,7 @@
 
 #include "learn.h"
 
-#if defined (EVAL_LEARN)
-
-#include "../misc.h"  // PRNG , my_insertion_sort
+#include "misc.h"  // PRNG , my_insertion_sort
 
 #include <array>
 #include <cmath>	// std::sqrt()
@@ -98,5 +96,4 @@ namespace EvalLearningTools
 	};
 }
 
-#endif // defined (EVAL_LEARN)
 #endif

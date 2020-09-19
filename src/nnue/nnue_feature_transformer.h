@@ -1,4 +1,4 @@
-/*
+﻿/*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
 
@@ -193,6 +193,12 @@ namespace Eval::NNUE {
               &reinterpret_cast<const __m256i*>(accumulation[perspectives[p]][0])[j * 2 + 0]);
           __m256i sum1 = _mm256_loadA_si256(
             &reinterpret_cast<const __m256i*>(accumulation[perspectives[p]][0])[j * 2 + 1]);
+          for (IndexType i = 1; i < kRefreshTriggers.size(); ++i) {
+            sum0 = _mm256_add_epi16(sum0, reinterpret_cast<const __m256i*>(
+                accumulation[perspectives[p]][i])[j * 2 + 0]);
+            sum1 = _mm256_add_epi16(sum1, reinterpret_cast<const __m256i*>(
+                accumulation[perspectives[p]][i])[j * 2 + 1]);
+          }
           _mm256_storeA_si256(&out[j], _mm256_permute4x64_epi64(_mm256_max_epi8(
               _mm256_packs_epi16(sum0, sum1), kZero), kControl));
         }
@@ -204,6 +210,12 @@ namespace Eval::NNUE {
               accumulation[perspectives[p]][0])[j * 2 + 0]);
           __m128i sum1 = _mm_load_si128(&reinterpret_cast<const __m128i*>(
               accumulation[perspectives[p]][0])[j * 2 + 1]);
+          for (IndexType i = 1; i < kRefreshTriggers.size(); ++i) {
+            sum0 = _mm_add_epi16(sum0, reinterpret_cast<const __m128i*>(
+                accumulation[perspectives[p]][i])[j * 2 + 0]);
+            sum1 = _mm_add_epi16(sum1, reinterpret_cast<const __m128i*>(
+                accumulation[perspectives[p]][i])[j * 2 + 1]);
+          }
       const __m128i packedbytes = _mm_packs_epi16(sum0, sum1);
 
           _mm_store_si128(&out[j],
@@ -224,6 +236,12 @@ namespace Eval::NNUE {
               accumulation[perspectives[p]][0])[j * 2 + 0]);
           __m64 sum1 = *(&reinterpret_cast<const __m64*>(
               accumulation[perspectives[p]][0])[j * 2 + 1]);
+          for (IndexType i = 1; i < kRefreshTriggers.size(); ++i) {
+            sum0 = _mm_add_pi16(sum0, reinterpret_cast<const __m64*>(
+                accumulation[perspectives[p]][i])[j * 2 + 0]);
+            sum1 = _mm_add_pi16(sum1, reinterpret_cast<const __m64*>(
+                accumulation[perspectives[p]][i])[j * 2 + 1]);
+          }
           const __m64 packedbytes = _mm_packs_pi16(sum0, sum1);
           out[j] = _mm_subs_pi8(_mm_adds_pi8(packedbytes, k0x80s), k0x80s);
         }
@@ -233,12 +251,19 @@ namespace Eval::NNUE {
         for (IndexType j = 0; j < kNumChunks; ++j) {
           int16x8_t sum = reinterpret_cast<const int16x8_t*>(
               accumulation[perspectives[p]][0])[j];
+          for (IndexType i = 1; i < kRefreshTriggers.size(); ++i) {
+            sum = vaddq_s16(sum, reinterpret_cast<const int16x8_t*>(
+                accumulation[perspectives[p]][i])[j]);
+          }
           out[j] = vmax_s8(vqmovn_s16(sum), kZero);
         }
 
   #else
         for (IndexType j = 0; j < kHalfDimensions; ++j) {
           BiasType sum = accumulation[static_cast<int>(perspectives[p])][0][j];
+          for (IndexType i = 1; i < kRefreshTriggers.size(); ++i) {
+            sum += accumulation[static_cast<int>(perspectives[p])][i][j];
+          }
           output[offset + j] = static_cast<OutputType>(
               std::max<int>(0, std::min<int>(127, sum)));
         }
@@ -255,44 +280,54 @@ namespace Eval::NNUE {
     void RefreshAccumulator(const Position& pos) const {
 
       auto& accumulator = pos.state()->accumulator;
-      IndexType i = 0;
-      Features::IndexList active_indices[2];
-      RawFeatures::AppendActiveIndices(pos, kRefreshTriggers[i],
-                                       active_indices);
-      for (Color perspective : { WHITE, BLACK }) {
-  #ifdef TILING
-        for (unsigned j = 0; j < kHalfDimensions / kTileHeight; ++j) {
-          auto biasesTile = reinterpret_cast<const vec_t*>(
-              &biases_[j * kTileHeight]);
-          auto accTile = reinterpret_cast<vec_t*>(
-              &accumulator.accumulation[perspective][i][j * kTileHeight]);
-          vec_t acc[kNumRegs];
+      for (IndexType i = 0; i < kRefreshTriggers.size(); ++i) {
+        Features::IndexList active_indices[2];
+        RawFeatures::AppendActiveIndices(pos, kRefreshTriggers[i],
+                                         active_indices);
+        for (Color perspective : { WHITE, BLACK }) {
+    #ifdef TILING
+          for (unsigned j = 0; j < kHalfDimensions / kTileHeight; ++j) {
+            auto accTile = reinterpret_cast<vec_t*>(
+                &accumulator.accumulation[perspective][i][j * kTileHeight]);
+            vec_t acc[kNumRegs];
 
-          for (unsigned k = 0; k < kNumRegs; ++k)
-            acc[k] = biasesTile[k];
+            if (i == 0) {
+              auto biasesTile = reinterpret_cast<const vec_t*>(
+                  &biases_[j * kTileHeight]);
+              for (unsigned k = 0; k < kNumRegs; ++k)
+                acc[k] = biasesTile[k];
+            } else {
+              std::memset(acc, 0, kNumRegs * sizeof(vec_t));
+            }
+            for (const auto index : active_indices[perspective]) {
+              const IndexType offset = kHalfDimensions * index + j * kTileHeight;
+              auto column = reinterpret_cast<const vec_t*>(&weights_[offset]);
 
-          for (const auto index : active_indices[perspective]) {
-            const IndexType offset = kHalfDimensions * index + j * kTileHeight;
-            auto column = reinterpret_cast<const vec_t*>(&weights_[offset]);
+              for (unsigned k = 0; k < kNumRegs; ++k)
+                acc[k] = vec_add_16(acc[k], column[k]);
+            }
 
-            for (unsigned k = 0; k < kNumRegs; ++k)
-              acc[k] = vec_add_16(acc[k], column[k]);
+            for (unsigned k = 0; k < kNumRegs; k++)
+              vec_store(&accTile[k], acc[k]);
+          }
+    #else
+          if (i == 0) {
+            std::memcpy(accumulator.accumulation[perspective][i], biases_,
+                        kHalfDimensions * sizeof(BiasType));
+          } else {
+            std::memset(accumulator.accumulation[perspective][i], 0,
+                        kHalfDimensions * sizeof(BiasType));
           }
 
-          for (unsigned k = 0; k < kNumRegs; k++)
-            vec_store(&accTile[k], acc[k]);
-        }
-  #else
-        std::memcpy(accumulator.accumulation[perspective][i], biases_,
-            kHalfDimensions * sizeof(BiasType));
+          for (const auto index : active_indices[perspective]) {
+            const IndexType offset = kHalfDimensions * index;
 
-        for (const auto index : active_indices[perspective]) {
-          const IndexType offset = kHalfDimensions * index;
-
-          for (IndexType j = 0; j < kHalfDimensions; ++j)
-            accumulator.accumulation[perspective][i][j] += weights_[offset + j];
+            for (IndexType j = 0; j < kHalfDimensions; ++j)
+              accumulator.accumulation[perspective][i][j] += weights_[offset + j];
+          }
+    #endif
         }
-  #endif
+
       }
 
   #if defined(USE_MMX)
@@ -307,86 +342,95 @@ namespace Eval::NNUE {
 
       const auto prev_accumulator = pos.state()->previous->accumulator;
       auto& accumulator = pos.state()->accumulator;
-      IndexType i = 0;
-      Features::IndexList removed_indices[2], added_indices[2];
-      bool reset[2];
-      RawFeatures::AppendChangedIndices(pos, kRefreshTriggers[i],
-                                        removed_indices, added_indices, reset);
+      for (IndexType i = 0; i < kRefreshTriggers.size(); ++i) {
+        Features::IndexList removed_indices[2], added_indices[2];
+        bool reset[2];
+        RawFeatures::AppendChangedIndices(pos, kRefreshTriggers[i],
+                                          removed_indices, added_indices, reset);
 
-  #ifdef TILING
-      for (IndexType j = 0; j < kHalfDimensions / kTileHeight; ++j) {
+    #ifdef TILING
+        for (IndexType j = 0; j < kHalfDimensions / kTileHeight; ++j) {
+          for (Color perspective : { WHITE, BLACK }) {
+            auto accTile = reinterpret_cast<vec_t*>(
+                &accumulator.accumulation[perspective][i][j * kTileHeight]);
+            vec_t acc[kNumRegs];
+
+            if (reset[perspective]) {
+              if (i == 0) {
+                auto biasesTile = reinterpret_cast<const vec_t*>(
+                    &biases_[j * kTileHeight]);
+                for (unsigned k = 0; k < kNumRegs; ++k)
+                  acc[k] = biasesTile[k];
+              } else {
+                std::memset(acc, 0, kNumRegs * sizeof(vec_t));
+              }
+            } else {
+              auto prevAccTile = reinterpret_cast<const vec_t*>(
+                  &prev_accumulator.accumulation[perspective][i][j * kTileHeight]);
+              for (IndexType k = 0; k < kNumRegs; ++k)
+                acc[k] = vec_load(&prevAccTile[k]);
+
+              // Difference calculation for the deactivated features
+              for (const auto index : removed_indices[perspective]) {
+                const IndexType offset = kHalfDimensions * index + j * kTileHeight;
+                auto column = reinterpret_cast<const vec_t*>(&weights_[offset]);
+
+                for (IndexType k = 0; k < kNumRegs; ++k)
+                  acc[k] = vec_sub_16(acc[k], column[k]);
+              }
+            }
+            { // Difference calculation for the activated features
+              for (const auto index : added_indices[perspective]) {
+                const IndexType offset = kHalfDimensions * index + j * kTileHeight;
+                auto column = reinterpret_cast<const vec_t*>(&weights_[offset]);
+
+                for (IndexType k = 0; k < kNumRegs; ++k)
+                  acc[k] = vec_add_16(acc[k], column[k]);
+              }
+            }
+
+            for (IndexType k = 0; k < kNumRegs; ++k)
+              vec_store(&accTile[k], acc[k]);
+          }
+        }
+    #if defined(USE_MMX)
+        _mm_empty();
+    #endif
+
+    #else
         for (Color perspective : { WHITE, BLACK }) {
-          auto accTile = reinterpret_cast<vec_t*>(
-              &accumulator.accumulation[perspective][i][j * kTileHeight]);
-          vec_t acc[kNumRegs];
 
           if (reset[perspective]) {
-            auto biasesTile = reinterpret_cast<const vec_t*>(
-                &biases_[j * kTileHeight]);
-            for (unsigned k = 0; k < kNumRegs; ++k)
-              acc[k] = biasesTile[k];
+            if (i == 0) {
+              std::memcpy(accumulator.accumulation[perspective][i], biases_,
+                          kHalfDimensions * sizeof(BiasType));
+            } else {
+              std::memset(accumulator.accumulation[perspective][i], 0,
+                          kHalfDimensions * sizeof(BiasType));
+            }
           } else {
-            auto prevAccTile = reinterpret_cast<const vec_t*>(
-                &prev_accumulator.accumulation[perspective][i][j * kTileHeight]);
-            for (IndexType k = 0; k < kNumRegs; ++k)
-              acc[k] = vec_load(&prevAccTile[k]);
-
+            std::memcpy(accumulator.accumulation[perspective][i],
+                        prev_accumulator.accumulation[perspective][i],
+                        kHalfDimensions * sizeof(BiasType));
             // Difference calculation for the deactivated features
             for (const auto index : removed_indices[perspective]) {
-              const IndexType offset = kHalfDimensions * index + j * kTileHeight;
-              auto column = reinterpret_cast<const vec_t*>(&weights_[offset]);
+              const IndexType offset = kHalfDimensions * index;
 
-              for (IndexType k = 0; k < kNumRegs; ++k)
-                acc[k] = vec_sub_16(acc[k], column[k]);
+              for (IndexType j = 0; j < kHalfDimensions; ++j)
+                accumulator.accumulation[perspective][i][j] -= weights_[offset + j];
             }
           }
           { // Difference calculation for the activated features
             for (const auto index : added_indices[perspective]) {
-              const IndexType offset = kHalfDimensions * index + j * kTileHeight;
-              auto column = reinterpret_cast<const vec_t*>(&weights_[offset]);
+              const IndexType offset = kHalfDimensions * index;
 
-              for (IndexType k = 0; k < kNumRegs; ++k)
-                acc[k] = vec_add_16(acc[k], column[k]);
+              for (IndexType j = 0; j < kHalfDimensions; ++j)
+                accumulator.accumulation[perspective][i][j] += weights_[offset + j];
             }
           }
-
-          for (IndexType k = 0; k < kNumRegs; ++k)
-            vec_store(&accTile[k], acc[k]);
         }
+    #endif
       }
-  #if defined(USE_MMX)
-      _mm_empty();
-  #endif
-
-  #else
-      for (Color perspective : { WHITE, BLACK }) {
-
-        if (reset[perspective]) {
-          std::memcpy(accumulator.accumulation[perspective][i], biases_,
-                      kHalfDimensions * sizeof(BiasType));
-        } else {
-          std::memcpy(accumulator.accumulation[perspective][i],
-                      prev_accumulator.accumulation[perspective][i],
-                      kHalfDimensions * sizeof(BiasType));
-          // Difference calculation for the deactivated features
-          for (const auto index : removed_indices[perspective]) {
-            const IndexType offset = kHalfDimensions * index;
-
-            for (IndexType j = 0; j < kHalfDimensions; ++j)
-              accumulator.accumulation[perspective][i][j] -= weights_[offset + j];
-          }
-        }
-        { // Difference calculation for the activated features
-          for (const auto index : added_indices[perspective]) {
-            const IndexType offset = kHalfDimensions * index;
-
-            for (IndexType j = 0; j < kHalfDimensions; ++j)
-              accumulator.accumulation[perspective][i][j] += weights_[offset + j];
-          }
-        }
-      }
-  #endif
-
       accumulator.computed_accumulation = true;
     }
 

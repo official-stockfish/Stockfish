@@ -105,8 +105,19 @@ namespace Eval::NNUE::Features {
       for (Color perspective : { WHITE, BLACK }) {
         reset[perspective] = false;
         switch (trigger) {
+          case TriggerEvent::kNone:
+            break;
           case TriggerEvent::kFriendKingMoved:
             reset[perspective] = dp.piece[0] == make_piece(perspective, KING);
+            break;
+          case TriggerEvent::kEnemyKingMoved:
+              reset[perspective] = dp.piece[0] == make_piece(~perspective, KING);
+            break;
+          case TriggerEvent::kAnyKingMoved:
+            reset[perspective] = type_of(dp.piece[0]) == KING;
+            break;
+          case TriggerEvent::kAnyPieceMoved:
+            reset[perspective] = true;
             break;
           default:
             assert(false);

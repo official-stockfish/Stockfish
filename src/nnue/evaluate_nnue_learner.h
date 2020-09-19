@@ -3,8 +3,6 @@
 #ifndef _EVALUATE_NNUE_LEARNER_H_
 #define _EVALUATE_NNUE_LEARNER_H_
 
-#if defined(EVAL_LEARN)
-
 #include "../learn/learn.h"
 
 namespace Eval {
@@ -42,7 +40,5 @@ void FinalizeNet();
 }  // namespace NNUE
 
 }  // namespace Eval
-
-#endif  // defined(EVAL_LEARN)
 
 #endif

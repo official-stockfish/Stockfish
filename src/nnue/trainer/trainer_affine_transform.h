@@ -3,8 +3,6 @@
 #ifndef _NNUE_TRAINER_AFFINE_TRANSFORM_H_
 #define _NNUE_TRAINER_AFFINE_TRANSFORM_H_
 
-#if defined(EVAL_LEARN)
-
 #include "../../learn/learn.h"
 #include "../layers/affine_transform.h"
 #include "trainer.h"
@@ -196,7 +194,7 @@ class Trainer<Layers::AffineTransform<PreviousLayer, OutputDimensions>> {
       weights_(),
       biases_diff_(),
       weights_diff_(),
-      momentum_(0.1),
+      momentum_(0.0),
       learning_rate_scale_(1.0) {
     DequantizeParameters();
   }
@@ -295,7 +293,5 @@ class Trainer<Layers::AffineTransform<PreviousLayer, OutputDimensions>> {
 }  // namespace NNUE
 
 }  // namespace Eval
-
-#endif  // defined(EVAL_LEARN)
 
 #endif

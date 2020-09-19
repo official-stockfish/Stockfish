@@ -19,6 +19,7 @@
 #ifndef MISC_H_INCLUDED
 #define MISC_H_INCLUDED
 
+#include <algorithm>
 #include <cassert>
 #include <chrono>
 #include <functional>
@@ -28,6 +29,7 @@
 #include <vector>
 #include <utility>
 #include <cmath>
+#include <cctype>
 
 #include "types.h"
 
@@ -83,6 +85,19 @@ std::ostream& operator<<(std::ostream&, SyncCout);
 /// For further analysis see
 ///   <http://vigna.di.unimi.it/ftp/papers/xorshift.pdf>
 
+static uint64_t string_hash(const std::string& str)
+{
+  uint64_t h = 525201411107845655ull;
+
+  for (auto c : str) {
+    h ^= static_cast<uint64_t>(c);
+    h *= 0x5bd1e9955bd1e995ull;
+    h ^= h >> 47;
+  }
+
+  return h;
+}
+
 class PRNG {
 
   uint64_t s;
@@ -94,7 +109,9 @@ class PRNG {
   }
 
 public:
+  PRNG() { set_seed_from_time(); }
   PRNG(uint64_t seed) : s(seed) { assert(seed); }
+  PRNG(const std::string& seed) { set_seed(seed); }
 
   template<typename T> T rand() { return T(rand64()); }
 
@@ -107,6 +124,28 @@ public:
 
   // Return the random seed used internally.
   uint64_t get_seed() const { return s; }
+
+  void set_seed(uint64_t seed) { s = seed; }
+
+  void set_seed_from_time()
+  {
+      set_seed(std::chrono::system_clock::now().time_since_epoch().count());
+  }
+
+  void set_seed(const std::string& str)
+  {
+    if (str.empty())
+    {
+      set_seed_from_time();
+    }
+    else if (std::all_of(str.begin(), str.end(), [](char c) { return std::isdigit(c);} )) {
+      set_seed(std::stoull(str));
+    }
+    else
+    {
+      set_seed(string_hash(str));
+    }
+  }
 };
 
 // Display a random seed. (For debugging)
@@ -166,7 +205,9 @@ int write_memory_to_file(std::string filename, void* ptr, uint64_t size);
 // async version of PRNG
 struct AsyncPRNG
 {
+  AsyncPRNG() : prng() { }
   AsyncPRNG(uint64_t seed) : prng(seed) { assert(seed); }
+  AsyncPRNG(const std::string& seed) : prng(seed) { }
   // [ASYNC] Extract one random number.
   template<typename T> T rand() {
     std::unique_lock<std::mutex> lk(mutex);

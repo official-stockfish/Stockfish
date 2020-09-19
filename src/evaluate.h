@@ -26,11 +26,17 @@
 class Position;
 
 namespace Eval {
+  enum struct UseNNUEMode
+  {
+    False,
+    True,
+    Pure
+  };
 
   std::string trace(const Position& pos);
   Value evaluate(const Position& pos);
 
-  extern bool useNNUE;
+  extern UseNNUEMode useNNUE;
   extern std::string eval_file_loaded;
   void init_NNUE();
   void verify_NNUE();

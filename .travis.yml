@@ -1,5 +1,5 @@
 language: cpp
-dist: bionic
+dist: focal
 
 matrix:
   include:
@@ -7,9 +7,9 @@ matrix:
       compiler: gcc
       addons:
         apt:
-          packages: ['g++-8', 'g++-8-multilib', 'g++-multilib', 'valgrind', 'expect', 'curl', 'libopenblas-dev']
+          packages: ['g++-multilib', 'valgrind', 'expect', 'curl', 'libopenblas-dev']
       env:
-        - COMPILER=g++-8
+        - COMPILER=g++
         - COMP=gcc
 
 #    - os: linux
@@ -67,21 +67,11 @@ script:
   - make clean && make -j2 ARCH=x86-64 build && ../tests/signature.sh $benchref
   # TODO avoid _mm_malloc
   # - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make clean && make -j2 ARCH=general-64 build && ../tests/signature.sh $benchref; fi
-  # - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make clean && make -j2 ARCH=x86-32 optimize=no debug=yes build && ../tests/signature.sh $benchref; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make clean && make -j2 ARCH=x86-32-sse41-popcnt build && ../tests/signature.sh $benchref; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make clean && make -j2 ARCH=x86-32-sse2 build && ../tests/signature.sh $benchref; fi
-  # TODO avoid _mm_malloc
-  # - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make clean && make -j2 ARCH=x86-32 build && ../tests/signature.sh $benchref; fi
-  # - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make clean && make -j2 ARCH=general-32 build && ../tests/signature.sh $benchref; fi
-  # workaround: exclude a custom version of llvm+clang, which doesn't find llvm-profdata on ubuntu
-  - if [[ "$TRAVIS_OS_NAME" != "linux" || "$COMP" == "gcc" ]]; then make clean && make -j2 ARCH=x86-64-modern profile-build && ../tests/signature.sh $benchref; fi
-
-  # start some basic learner CI
-  - export CXXFLAGS="-Werror"
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make clean && LDFLAGS="-lstdc++fs" make -j2 ARCH=x86-64-modern learn; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make clean && LDFLAGS="-lstdc++fs" make -j2 ARCH=x86-64-modern profile-learn; fi
+  - make clean && make -j2 ARCH=x86-64-modern profile-build && ../tests/signature.sh $benchref
 
   # compile only for some more advanced architectures (might not run in travis)
+  - make clean && make -j2 ARCH=x86-64-avx2 blas=yes build
+
   - make clean && make -j2 ARCH=x86-64-avx2 build
   - make clean && make -j2 ARCH=x86-64-bmi2 build
   - make clean && make -j2 ARCH=x86-64-avx512 build
@@ -98,18 +88,16 @@ script:
   # Valgrind
   #
   - export CXXFLAGS="-O1 -fno-inline"
-  - if [ -x "$(command -v valgrind )" ]; then make clean && make -j2 ARCH=x86-64-modern debug=yes optimize=no build > /dev/null && ../tests/instrumented.sh --valgrind; fi
-  - if [ -x "$(command -v valgrind )" ]; then ../tests/instrumented.sh --valgrind-thread; fi
+  - make clean && make -j2 ARCH=x86-64-modern debug=yes optimize=no build > /dev/null && ../tests/instrumented.sh --valgrind
+  - ../tests/instrumented.sh --valgrind-thread
 
   #
   # Sanitizer
   #
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make clean && make -j2 ARCH=x86-64-modern sanitize=undefined optimize=no debug=yes build > /dev/null && ../tests/instrumented.sh --sanitizer-undefined; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make clean && make -j2 ARCH=x86-64-modern sanitize=thread    optimize=no debug=yes build > /dev/null && ../tests/instrumented.sh --sanitizer-thread; fi
+  - make clean && make -j2 ARCH=x86-64-modern sanitize=undefined optimize=no debug=yes build > /dev/null && ../tests/instrumented.sh --sanitizer-undefined
+  - make clean && make -j2 ARCH=x86-64-modern sanitize=thread    optimize=no debug=yes build > /dev/null && ../tests/instrumented.sh --sanitizer-thread
 
-  #
-  # NNUE testing / TODO should work with debug=yes as well
-  #
+  # NNUE testing
   - export CXXFLAGS="-O1 -fno-inline"
-  - if [ -x "$(command -v valgrind )" ]; then make clean && LDFLAGS="-lstdc++fs"  make -j2 ARCH=x86-64-modern debug=no optimize=no learn > /dev/null && ../tests/instrumented_learn.sh --valgrind; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make clean && LDFLAGS="-lstdc++fs"  make -j2 ARCH=x86-64-modern sanitize=undefined optimize=no debug=no learn > /dev/null && ../tests/instrumented_learn.sh --sanitizer-undefined; fi
+  - make clean && make -j2 ARCH=x86-64-modern debug=no optimize=no build > /dev/null && ../tests/instrumented_learn.sh --valgrind
+  - make clean && make -j2 ARCH=x86-64-modern sanitize=undefined optimize=no debug=yes build > /dev/null && ../tests/instrumented_learn.sh --sanitizer-undefined

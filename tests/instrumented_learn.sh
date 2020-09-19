@@ -64,8 +64,8 @@ EOF
   ;;
 esac
 
-mkdir -p training_data_01
-mkdir -p training_data_02
+mkdir -p training_data
+mkdir -p validation_data
 
 # gensfen testing 01
 cat << EOF > gensfen01.exp
@@ -78,7 +78,11 @@ cat << EOF > gensfen01.exp
  send "setoption name Threads value $threads\n"
  send "setoption name Use NNUE value false\n"
  send "isready\n"
- send "gensfen depth 3 loop 100 use_draw_in_training_data_generation 1 eval_limit 32000 output_file_name training_data_01/training_data.bin use_raw_nnue_eval 0\n"
+ send "gensfen depth 3 loop 100 use_draw_in_training_data_generation 1 eval_limit 32000 output_file_name training_data/training_data.bin use_raw_nnue_eval 0 sfen_format bin\n"
+ expect "gensfen finished."
+ send "learn training_data/training_data.bin convert_plain output_file_name training_data.txt\n"
+ expect "all done"
+ send "gensfen depth 3 loop 100 use_draw_in_training_data_generation 1 eval_limit 32000 output_file_name training_data/training_data.binpack use_raw_nnue_eval 0 sfen_format binpack\n"
  expect "gensfen finished."
 
  send "quit\n"
@@ -100,7 +104,9 @@ cat << EOF > gensfen02.exp
  send "setoption name Threads value $threads\n"
  send "setoption name Use NNUE value true\n"
  send "isready\n"
- send "gensfen depth 3 loop 100 use_draw_in_training_data_generation 1 eval_limit 32000 output_file_name training_data_02/training_data.bin use_raw_nnue_eval 0\n"
+ send "gensfen depth 4 loop 50 use_draw_in_training_data_generation 1 eval_limit 32000 output_file_name validation_data/valdidation_data.bin use_raw_nnue_eval 0 sfen_format bin\n"
+ expect "gensfen finished."
+ send "gensfen depth 4 loop 50 use_draw_in_training_data_generation 1 eval_limit 32000 output_file_name validation_data/validation_data.binpack use_raw_nnue_eval 0 sfen_format binpack\n"
  expect "gensfen finished."
 
  send "quit\n"
@@ -111,7 +117,30 @@ cat << EOF > gensfen02.exp
  exit \$value
 EOF
 
-for exp in gensfen01.exp gensfen02.exp
+# simple learning
+cat << EOF > learn01.exp
+ set timeout 240
+ spawn $exeprefix ./stockfish
+
+ send "uci\n"
+ send "setoption name SkipLoadingEval value true\n"
+ send "setoption name Use NNUE value true\n"
+ send "setoption name Threads value $threads\n"
+ send "isready\n"
+ send "learn targetdir training_data loop 2 batchsize 100 use_draw_in_training 1 use_draw_in_validation 1 eta 1 lambda 1 eval_limit 32000 nn_batch_size 30 newbob_decay 0.5 eval_save_interval 30 loss_output_interval 10 mirror_percentage 50 validation_set_file_name validation_data/validation_data.bin\n"
+
+ expect "save_eval() finished."
+
+ send "quit\n"
+ expect eof
+
+ # return error code of the spawned program, useful for valgrind
+ lassign [wait] pid spawnid os_error_flag value
+ exit \$value
+
+EOF
+
+for exp in gensfen01.exp gensfen02.exp learn01.exp
 do
 
   echo "$prefix expect $exp $postfix"

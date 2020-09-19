@@ -1,17 +1,18 @@
 ﻿#ifndef _MULTI_THINK_
 #define _MULTI_THINK_
 
-#if defined(EVAL_LEARN)
+#include "learn.h"
 
-#include <functional>
-#include <mutex>
-
-#include "../misc.h"
-#include "../learn/learn.h"
-#include "../thread_win32_osx.h"
+#include "misc.h"
+#include "thread_win32_osx.h"
 
 #include <atomic>
 #include <limits>
+#include <functional>
+#include <mutex>
+#include <string>
+#include <cstdint>
+
 
 // Learning from a game record, when making yourself think and generating a fixed track, etc.
 // Helper class used when multiple threads want to call Search::think() individually.
@@ -20,10 +21,11 @@ struct MultiThink
 {
 	static constexpr std::uint64_t LOOP_COUNT_FINISHED = std::numeric_limits<std::uint64_t>::max();
 
-	MultiThink() : prng(std::chrono::system_clock::now().time_since_epoch().count())
-	{
-		loop_count = 0;
-	}
+	MultiThink() : prng{}, loop_count(0) { }
+
+	MultiThink(std::uint64_t seed) : prng(seed), loop_count(0) { }
+
+	MultiThink(const std::string& seed) : prng(seed), loop_count(0) { }
 
 	// Call this function from the master thread, each thread will think,
 	// Return control when the thought ending condition is satisfied.
@@ -94,10 +96,7 @@ private:
 	std::mutex loop_mutex;
 
 	// Thread end flag.
-	// vector<bool> may not be reflected properly when trying to rewrite from multiple threads...
-	typedef uint8_t Flag;
-	std::vector<Flag> thread_finished;
-
+        std::atomic<uint64_t> threads_finished;
 };
 
 // Mechanism to process task during idle time.
@@ -149,7 +148,5 @@ protected:
 	// a mutex for accessing tasks
 	std::mutex task_mutex;
 };
-
-#endif // defined(EVAL_LEARN) && defined(YANEURAOU_2018_OTAFUKU_ENGINE)
 
 #endif
