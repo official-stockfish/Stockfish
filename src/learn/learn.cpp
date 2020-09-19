@@ -1985,6 +1985,27 @@ namespace Learner
 
         Threads.main()->ponder = false;
 
+        // init global vars
+        Tablebases::init();
+
+        // About Search::Limits
+        // Be careful because this member variable is global and affects other threads.
+        {
+          auto& limits = Search::Limits;
+
+          // Make the search equivalent to the "go infinite" command. (Because it is troublesome if time management is done)
+          limits.infinite = true;
+
+          // Since PV is an obstacle when displayed, erase it.
+          limits.silent = true;
+
+          // If you use this, it will be compared with the accumulated nodes of each thread. Therefore, do not use it.
+          limits.nodes = 0;
+
+          // depth is also processed by the one passed as an argument of Learner::search().
+          limits.depth = 0;
+        }
+
         cout << "init_training.." << endl;
         Eval::NNUE::InitializeTraining(eta1, eta1_epoch, eta2, eta2_epoch, eta3);
         Eval::NNUE::SetBatchSize(nn_batch_size);
