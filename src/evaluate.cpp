@@ -310,6 +310,7 @@ namespace {
     // attackedBy2[color] are the squares attacked by at least 2 units of a given
     // color, including x-rays. But diagonal x-rays through pawns are not computed.
     Bitboard attackedBy2[COLOR_NB];
+    Bitboard attackedBy3[COLOR_NB];
 
     // kingRing[color] are the squares adjacent to the king plus some other
     // very near squares, depending on king position.
@@ -361,6 +362,7 @@ namespace {
     attackedBy[Us][PAWN] = pe->pawn_attacks(Us);
     attackedBy[Us][ALL_PIECES] = attackedBy[Us][KING] | attackedBy[Us][PAWN];
     attackedBy2[Us] = dblAttackByPawn | (attackedBy[Us][KING] & attackedBy[Us][PAWN]);
+    attackedBy3[Us] = dblAttackByPawn & attackedBy[Us][KING];
 
     // Init our king safety tables
     Square s = make_square(std::clamp(file_of(ksq), FILE_B, FILE_G),
@@ -401,6 +403,7 @@ namespace {
         if (pos.blockers_for_king(Us) & s)
             b &= line_bb(pos.square<KING>(Us), s);
 
+        attackedBy3[Us] |= attackedBy2[Us] & b;
         attackedBy2[Us] |= attackedBy[Us][ALL_PIECES] & b;
         attackedBy[Us][Pt] |= b;
         attackedBy[Us][ALL_PIECES] |= b;
@@ -576,7 +579,7 @@ namespace {
     // Find the squares that opponent attacks in our king flank, the squares
     // which they attack twice in that flank, and the squares that we defend.
     b1 = attackedBy[Them][ALL_PIECES] & KingFlank[file_of(ksq)] & Camp;
-    b2 = b1 & attackedBy2[Them];
+    b2 = b1 & (attackedBy2[Them] & ~attackedBy3[Us]);
     b3 = attackedBy[Us][ALL_PIECES] & KingFlank[file_of(ksq)] & Camp;
 
     int kingFlankAttack  = popcount(b1) + popcount(b2);
@@ -632,7 +635,8 @@ namespace {
     // Squares strongly protected by the enemy, either because they defend the
     // square with a pawn, or because they defend the square twice and we don't.
     stronglyProtected =  attackedBy[Them][PAWN]
-                       | (attackedBy2[Them] & ~attackedBy2[Us]);
+                       | (attackedBy2[Them] & ~attackedBy2[Us])
+                       | (attackedBy3[Them] & ~attackedBy3[Us]);
 
     // Non-pawn enemies, strongly protected
     defended = nonPawnEnemies & stronglyProtected;
@@ -655,7 +659,8 @@ namespace {
             score += ThreatByKing;
 
         b =  ~attackedBy[Them][ALL_PIECES]
-           | (nonPawnEnemies & attackedBy2[Us]);
+           | (nonPawnEnemies & 
+                ((attackedBy2[Us] & ~attackedBy2[Them]) | (attackedBy3[Us] & ~attackedBy3[Them])));
         score += Hanging * popcount(weak & b);
 
         // Additional bonus if weak piece is only protected by a queen
