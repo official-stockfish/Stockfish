@@ -27,7 +27,7 @@ namespace Eval {
         }
 
         for (Eval::NNUE::IndexType i = 0; i < kDimensions; ++i) {
-          if (relative_castling_rights & (i << 1)) {
+          if (relative_castling_rights & (1 << i)) {
             active->push_back(i);
           }
         }
@@ -55,8 +55,8 @@ namespace Eval {
         }
 
         for (Eval::NNUE::IndexType i = 0; i < kDimensions; ++i) {
-          if ((relative_previous_castling_rights & (i << 1)) &&
-            (relative_current_castling_rights & (i << 1)) == 0) {
+          if ((relative_previous_castling_rights & (1 << i)) &&
+            (relative_current_castling_rights & (1 << i)) == 0) {
             removed->push_back(i);
           }
         }
