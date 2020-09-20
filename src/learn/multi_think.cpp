@@ -24,9 +24,6 @@ void MultiThink::go_think()
 	// Call the derived class's init().
 	init();
 
-        // init global vars
-        Tablebases::init();
-
         // About Search::Limits
         // Be careful because this member variable is global and affects other threads.
         {

@@ -1985,9 +1985,6 @@ namespace Learner
 
         Threads.main()->ponder = false;
 
-        // init global vars
-        Tablebases::init();
-
         // About Search::Limits
         // Be careful because this member variable is global and affects other threads.
         {

@@ -43,24 +43,9 @@ namespace Search {
 namespace Tablebases {
 
   int Cardinality;
+  bool RootInTB;
   bool UseRule50;
   Depth ProbeDepth;
-
-  void init() {
-
-      UseRule50 = bool(Options["Syzygy50MoveRule"]);
-      ProbeDepth = int(Options["SyzygyProbeDepth"]);
-      Cardinality = int(Options["SyzygyProbeLimit"]);
-
-      // Tables with fewer pieces than SyzygyProbeLimit are searched with
-      // ProbeDepth == DEPTH_ZERO
-      if (Cardinality > MaxCardinality)
-      {
-          Cardinality = MaxCardinality;
-          ProbeDepth = 0;
-      }
-  }
-
 }
 
 namespace TB = Tablebases;
@@ -1859,7 +1844,7 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
   size_t pvIdx = pos.this_thread()->pvIdx;
   size_t multiPV = std::min((size_t)Options["MultiPV"], rootMoves.size());
   uint64_t nodesSearched = Threads.nodes_searched();
-  uint64_t tbHits = Threads.tb_hits() + (pos.this_thread()->rootInTB ? rootMoves.size() : 0);
+  uint64_t tbHits = Threads.tb_hits() + (TB::RootInTB ? rootMoves.size() : 0);
 
   for (size_t i = 0; i < multiPV; ++i)
   {
@@ -1871,7 +1856,7 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
       Depth d = updated ? depth : depth - 1;
       Value v = updated ? rootMoves[i].score : rootMoves[i].previousScore;
 
-      bool tb = pos.this_thread()->rootInTB && abs(v) < VALUE_MATE_IN_MAX_PLY;
+      bool tb = TB::RootInTB && abs(v) < VALUE_MATE_IN_MAX_PLY;
       v = tb ? rootMoves[i].tbScore : v;
 
       if (ss.rdbuf()->in_avail()) // Not at first line
@@ -1938,8 +1923,10 @@ bool RootMove::extract_ponder_from_tt(Position& pos) {
 
 void Tablebases::rank_root_moves(Position& pos, Search::RootMoves& rootMoves) {
 
-    auto& rootInTB = pos.this_thread()->rootInTB;
-    rootInTB = false;
+    RootInTB = false;
+    UseRule50 = bool(Options["Syzygy50MoveRule"]);
+    ProbeDepth = int(Options["SyzygyProbeDepth"]);
+    Cardinality = int(Options["SyzygyProbeLimit"]);
     bool dtz_available = true;
 
     // Tables with fewer pieces than SyzygyProbeLimit are searched with
@@ -1953,17 +1940,17 @@ void Tablebases::rank_root_moves(Position& pos, Search::RootMoves& rootMoves) {
     if (Cardinality >= popcount(pos.pieces()) && !pos.can_castle(ANY_CASTLING))
     {
         // Rank moves using DTZ tables
-        rootInTB = root_probe(pos, rootMoves);
+        RootInTB = root_probe(pos, rootMoves);
 
-        if (!rootInTB)
+        if (!RootInTB)
         {
             // DTZ tables are missing; try to rank moves using WDL tables
             dtz_available = false;
-            rootInTB = root_probe_wdl(pos, rootMoves);
+            RootInTB = root_probe_wdl(pos, rootMoves);
         }
     }
 
-    if (rootInTB)
+    if (RootInTB)
     {
         // Sort moves according to TB rank
         std::sort(rootMoves.begin(), rootMoves.end(),
@@ -1979,7 +1966,6 @@ void Tablebases::rank_root_moves(Position& pos, Search::RootMoves& rootMoves) {
         for (auto& m : rootMoves)
             m.tbRank = 0;
     }
-
 }
 
 // --- expose the functions such as fixed depth search used for learning to the outside
