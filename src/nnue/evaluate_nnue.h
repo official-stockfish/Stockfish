@@ -41,7 +41,7 @@ namespace Eval::NNUE {
   };
 
   template <typename T>
-  struct TtmemDeleter {
+  struct LargePageDeleter {
     void operator()(T* ptr) const {
       ptr->~T();
       aligned_large_pages_free(ptr);
@@ -52,7 +52,7 @@ namespace Eval::NNUE {
   using AlignedPtr = std::unique_ptr<T, AlignedDeleter<T>>;
 
   template <typename T>
-  using LargePagePtr = std::unique_ptr<T, TtmemDeleter<T>>;
+  using LargePagePtr = std::unique_ptr<T, LargePageDeleter<T>>;
 
 }  // namespace Eval::NNUE
 
