@@ -152,7 +152,7 @@ to find the best move. The classical evaluation computes this value as a functio
 of various chess concepts, handcrafted by experts, tested and tuned using fishtest.
 The NNUE evaluation computes this value with a neural network based on basic
 inputs (e.g. piece positions only). The network is optimized and trained
-on the evalutions of millions of positions at moderate search depth.
+on the evaluations of millions of positions at moderate search depth.
 
 The NNUE evaluation was first introduced in shogi, and ported to Stockfish afterward.
 It can be evaluated efficiently on CPUs, and exploits the fact that only parts
