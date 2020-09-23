@@ -408,22 +408,23 @@ static void* aligned_large_pages_alloc_win(size_t allocSize) {
 
 void* aligned_large_pages_alloc(size_t allocSize) {
 
-  static bool firstCall = true;
+  static unsigned int callCount = 0;
   void* mem;
 
   // Try to allocate large pages
   mem = aligned_large_pages_alloc_win(allocSize);
 
-  // Suppress info strings on the first call. The first call occurs before 'uci'
-  // is received and in that case this output confuses some GUIs.
-  if (!firstCall)
+  // Suppress info strings on the first two calls. These calls occurs before
+  // 'uci' is received and in that case this output confuses some GUIs.
+  if (callCount < 2)
+      ++callCount;
+  else
   {
       if (mem)
           sync_cout << "info string Hash table allocation: Windows large pages used." << sync_endl;
       else
           sync_cout << "info string Hash table allocation: Windows large pages not used." << sync_endl;
   }
-  firstCall = false;
 
   // Fall back to regular, page aligned, allocation if necessary
   if (!mem)
