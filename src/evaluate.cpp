@@ -1035,7 +1035,9 @@ Value Eval::evaluate(const Position& pos) {
       // if the classical eval is small and imbalance large, use NNUE nevertheless.
       if (   largePsq
           && (abs(v) * 16 < NNUEThreshold2 * r50
-          || (pos.opposite_bishops() && abs(v) * 16 < 2 * PawnValueEg * r50)))
+          || (   pos.opposite_bishops() 
+              && abs(v) * 16 < NNUEThreshold1 * r50
+              && !(pos.this_thread()->nodes & 0x3))))
           v = adjusted_NNUE();
   }
 
