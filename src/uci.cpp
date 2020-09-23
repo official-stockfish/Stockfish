@@ -47,7 +47,7 @@ const char* StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
 void test_cmd(Position& pos, istringstream& is)
 {
     // Initialize as it may be searched.
-    Eval::init_NNUE();
+    Eval::NNUE::init();
 
     std::string param;
     is >> param;
@@ -100,7 +100,7 @@ namespace {
     Position p;
     p.set(pos.fen(), Options["UCI_Chess960"], &states->back(), Threads.main());
 
-    Eval::verify_NNUE();
+    Eval::NNUE::verify();
 
     sync_cout << "\n" << Eval::trace(p) << sync_endl;
   }

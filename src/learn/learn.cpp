@@ -1841,7 +1841,7 @@ namespace Learner
 
         if (use_convert_plain)
         {
-            Eval::init_NNUE();
+            Eval::NNUE::init();
             cout << "convert_plain.." << endl;
             convert_plain(filenames, output_file_name);
             return;
@@ -1849,7 +1849,7 @@ namespace Learner
 
         if (use_convert_bin)
         {
-            Eval::init_NNUE();
+            Eval::NNUE::init();
             cout << "convert_bin.." << endl;
             convert_bin(
                 filenames,
@@ -1870,7 +1870,7 @@ namespace Learner
 
         if (use_convert_bin_from_pgn_extract)
         {
-            Eval::init_NNUE();
+            Eval::NNUE::init();
             cout << "convert_bin_from_pgn-extract.." << endl;
             convert_bin_from_pgn_extract(
                 filenames,
@@ -1938,7 +1938,7 @@ namespace Learner
         cout << "init.." << endl;
 
         // Read evaluation function parameters
-        Eval::init_NNUE();
+        Eval::NNUE::init();
 
         Threads.main()->ponder = false;
 

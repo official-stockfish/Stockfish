@@ -113,7 +113,7 @@ namespace Eval::NNUE {
     PS_END2     = 12 * SQUARE_NB + 1
   };
 
-  extern uint32_t kpp_board_index[PIECE_NB][COLOR_NB];
+  extern const uint32_t kpp_board_index[PIECE_NB][COLOR_NB];
 
   // Type of input feature after conversion
   using TransformedFeatureType = std::uint8_t;

@@ -1168,7 +1168,7 @@ namespace Learner
             << "  detect_draw_by_insufficient_mating_material = " << detect_draw_by_insufficient_mating_material << endl;
 
         // Show if the training data generator uses NNUE.
-        Eval::verify_NNUE();
+        Eval::NNUE::verify();
 
         Threads.main()->ponder = false;
 

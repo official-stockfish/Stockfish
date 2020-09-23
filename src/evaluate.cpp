@@ -56,7 +56,7 @@ namespace Eval {
     return UseNNUEMode::False;
   }
 
-  void init_NNUE() {
+  void NNUE::init() {
 
     useNNUE = nnue_mode_from_option(Options["Use NNUE"]);
     if (useNNUE == UseNNUEMode::False)
@@ -81,8 +81,8 @@ namespace Eval {
         }
   }
 
-  /// verify_NNUE() verifies that the last net used was loaded successfully
-  void verify_NNUE() {
+  /// NNUE::verify() verifies that the last net used was loaded successfully
+  void NNUE::verify() {
 
     string eval_file = string(Options["EvalFile"]);
 
@@ -984,24 +984,32 @@ make_v:
 /// evaluation of the position from the point of view of the side to move.
 
 Value Eval::evaluate(const Position& pos) {
-  if (useNNUE == UseNNUEMode::Pure) {
-      return NNUE::evaluate(pos);
-  }
 
-  // Use classical eval if there is a large imbalance
-  // If there is a moderate imbalance, use classical eval with probability (1/8),
-  // as derived from the node counter.
-  bool useClassical = abs(eg_value(pos.psq_score())) * 16 > NNUEThreshold1 * (16 + pos.rule50_count());
-  bool classical = (useNNUE == UseNNUEMode::False)
-                ||  useClassical
-                || (abs(eg_value(pos.psq_score())) > PawnValueMg / 4 && !(pos.this_thread()->nodes & 0xB));
-  Value v = classical ? Evaluation<NO_TRACE>(pos).value()
-                      : NNUE::evaluate(pos);
+  Value v;
 
-  if (   useClassical
-      && useNNUE != UseNNUEMode::False
-      && abs(v) * 16 < NNUEThreshold2 * (16 + pos.rule50_count()))
+  if (Eval::useNNUE == UseNNUEMode::Pure) {
       v = NNUE::evaluate(pos);
+  }
+  else if (Eval::useNNUE == UseNNUEMode::False)
+      v = Evaluation<NO_TRACE>(pos).value();
+  else
+  {
+      // scale and shift NNUE for compatibility with search and classical evaluation
+      auto  adjusted_NNUE = [&](){ return NNUE::evaluate(pos) * 5 / 4 + Tempo; };
+
+      // if there is PSQ imbalance use classical eval, with small probability if it is small
+      Value psq = Value(abs(eg_value(pos.psq_score())));
+      int   r50 = 16 + pos.rule50_count();
+      bool  largePsq = psq * 16 > (NNUEThreshold1 + pos.non_pawn_material() / 64) * r50;
+      bool  classical = largePsq || (psq > PawnValueMg / 4 && !(pos.this_thread()->nodes & 0xB));
+
+      v = classical ? Evaluation<NO_TRACE>(pos).value() : adjusted_NNUE();
+
+      // if the classical eval is small and imbalance large, use NNUE nevertheless.
+      if (   largePsq
+          && abs(v) * 16 < NNUEThreshold2 * r50)
+          v = adjusted_NNUE();
+  }
 
   // Damp down the evaluation linearly when shuffling
   v = v * (100 - pos.rule50_count()) / 100;
