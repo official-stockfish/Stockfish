@@ -10,8 +10,6 @@
 #include "tt.h"
 #include "uci.h"
 
-#include "eval/evaluate_common.h"
-
 #include "extra/nnue_data_binpack_format.h"
 
 #include "nnue/evaluate_nnue_learner.h"

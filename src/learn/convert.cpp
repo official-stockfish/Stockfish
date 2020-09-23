@@ -8,9 +8,6 @@
 #include "position.h"
 #include "tt.h"
 
-// evaluate header for learning
-#include "eval/evaluate_common.h"
-
 #include "extra/nnue_data_binpack_format.h"
 
 #include "syzygy/tbprobe.h"
@@ -480,7 +477,7 @@ namespace Learner
             {
                 if (fs.read((char*)&p, sizeof(PackedSfenValue))) {
                     StateInfo si;
-                    tpos.set_from_packed_sfen(p.sfen, &si, th, false);
+                    tpos.set_from_packed_sfen(p.sfen, &si, th);
 
                     // write as plain text
                     ofs << "fen " << tpos.fen() << std::endl;

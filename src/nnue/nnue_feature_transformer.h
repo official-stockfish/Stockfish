@@ -40,6 +40,7 @@ namespace Eval::NNUE {
   #define vec_store(a,b) _mm512_storeA_si512(a,b)
   #define vec_add_16(a,b) _mm512_add_epi16(a,b)
   #define vec_sub_16(a,b) _mm512_sub_epi16(a,b)
+  #define vec_zero _mm512_setzero_si512()
   static constexpr IndexType kNumRegs = 8; // only 8 are needed
 
   #elif USE_AVX2
@@ -48,6 +49,7 @@ namespace Eval::NNUE {
   #define vec_store(a,b) _mm256_storeA_si256(a,b)
   #define vec_add_16(a,b) _mm256_add_epi16(a,b)
   #define vec_sub_16(a,b) _mm256_sub_epi16(a,b)
+  #define vec_zero _mm256_setzero_si256()
   static constexpr IndexType kNumRegs = 16;
 
   #elif USE_SSE2
@@ -56,6 +58,7 @@ namespace Eval::NNUE {
   #define vec_store(a,b) *(a)=(b)
   #define vec_add_16(a,b) _mm_add_epi16(a,b)
   #define vec_sub_16(a,b) _mm_sub_epi16(a,b)
+  #define vec_zero _mm_setzero_si128()
   static constexpr IndexType kNumRegs = Is64Bit ? 16 : 8;
 
   #elif USE_MMX
@@ -64,6 +67,7 @@ namespace Eval::NNUE {
   #define vec_store(a,b) *(a)=(b)
   #define vec_add_16(a,b) _mm_add_pi16(a,b)
   #define vec_sub_16(a,b) _mm_sub_pi16(a,b)
+  #define vec_zero _mm_setzero_si64()
   static constexpr IndexType kNumRegs = 8;
 
   #elif USE_NEON
@@ -72,6 +76,7 @@ namespace Eval::NNUE {
   #define vec_store(a,b) *(a)=(b)
   #define vec_add_16(a,b) vaddq_s16(a,b)
   #define vec_sub_16(a,b) vsubq_s16(a,b)
+  #define vec_zero {0}
   static constexpr IndexType kNumRegs = 16;
 
   #else
@@ -297,7 +302,8 @@ namespace Eval::NNUE {
               for (unsigned k = 0; k < kNumRegs; ++k)
                 acc[k] = biasesTile[k];
             } else {
-              std::memset(acc, 0, kNumRegs * sizeof(vec_t));
+              for (unsigned k = 0; k < kNumRegs; ++k)
+                acc[k] = vec_zero;
             }
             for (const auto index : active_indices[perspective]) {
               const IndexType offset = kHalfDimensions * index + j * kTileHeight;
@@ -362,7 +368,8 @@ namespace Eval::NNUE {
                 for (unsigned k = 0; k < kNumRegs; ++k)
                   acc[k] = biasesTile[k];
               } else {
-                std::memset(acc, 0, kNumRegs * sizeof(vec_t));
+                for (unsigned k = 0; k < kNumRegs; ++k)
+                  acc[k] = vec_zero;
               }
             } else {
               auto prevAccTile = reinterpret_cast<const vec_t*>(

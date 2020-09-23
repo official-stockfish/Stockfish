@@ -5,40 +5,33 @@
 
 #include "../learn/learn.h"
 
-namespace Eval {
+namespace Eval::NNUE {
 
-namespace NNUE {
+  // Initialize learning
+  void InitializeTraining(const std::string& seed);
 
-// Initialize learning
-void InitializeTraining(double eta1, uint64_t eta1_epoch,
-                        double eta2, uint64_t eta2_epoch, double eta3);
+  // set the number of samples in the mini-batch
+  void SetBatchSize(uint64_t size);
 
-// set the number of samples in the mini-batch
-void SetBatchSize(uint64_t size);
+  // Set options such as hyperparameters
+  void SetOptions(const std::string& options);
 
-// set the learning rate scale
-void SetGlobalLearningRateScale(double scale);
-
-// Set options such as hyperparameters
-void SetOptions(const std::string& options);
-
-// Reread the evaluation function parameters for learning from the file
-void RestoreParameters(const std::string& dir_name);
+  // Reread the evaluation function parameters for learning from the file
+  void RestoreParameters(const std::string& dir_name);
 
 // Add 1 sample of learning data
-void AddExample(Position& pos, Color rootColor,
-                const Learner::PackedSfenValue& psv, double weight);
+  void AddExample(Position& pos, Color rootColor,
+  	const Learner::PackedSfenValue& psv, double weight);
 
-// update the evaluation function parameters
-void UpdateParameters(uint64_t epoch);
+  // update the evaluation function parameters
+  void UpdateParameters();
 
-// Check if there are any problems with learning
-void CheckHealth();
+  // Check if there are any problems with learning
+  void CheckHealth();
 
-void FinalizeNet();
+  void FinalizeNet();
 
-}  // namespace NNUE
-
-}  // namespace Eval
+  void save_eval(std::string suffix);
+}  // namespace Eval::NNUE
 
 #endif
