@@ -49,6 +49,8 @@ struct Stack {
   int statScore;
   int moveCount;
   bool inCheck;
+  bool ttPv;
+  bool ttHit;
 };
 
 
@@ -70,7 +72,6 @@ struct RootMove {
   Value previousScore = -VALUE_INFINITE;
   int selDepth = 0;
   int tbRank = 0;
-  int bestMoveCount = 0;
   Value tbScore;
   std::vector<Move> pv;
 };

@@ -41,36 +41,18 @@ namespace Eval::NNUE {
   };
 
   template <typename T>
+  struct LargePageDeleter {
+    void operator()(T* ptr) const {
+      ptr->~T();
+      aligned_large_pages_free(ptr);
+    }
+  };
+
+  template <typename T>
   using AlignedPtr = std::unique_ptr<T, AlignedDeleter<T>>;
 
-  // Input feature converter
-  extern AlignedPtr<FeatureTransformer> feature_transformer;
-
-  // Evaluation function
-  extern AlignedPtr<Network> network;
-
-  // Evaluation function file name
-  extern std::string fileName;
-
-  // Saved evaluation function file name
-  extern std::string savedfileName;
-
-  // Get a string that represents the structure of the evaluation function
-  std::string GetArchitectureString();
-
-  // read the header
-  bool ReadHeader(std::istream& stream,
-    std::uint32_t* hash_value, std::string* architecture);
-
-  // write the header
-  bool WriteHeader(std::ostream& stream,
-    std::uint32_t hash_value, const std::string& architecture);
-
-  // read evaluation function parameters
-  bool ReadParameters(std::istream& stream);
-
-  // write evaluation function parameters
-  bool WriteParameters(std::ostream& stream);
+  template <typename T>
+  using LargePagePtr = std::unique_ptr<T, LargePageDeleter<T>>;
 
 }  // namespace Eval::NNUE
 

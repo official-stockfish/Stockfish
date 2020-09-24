@@ -21,6 +21,7 @@
 #include <ostream>
 #include <sstream>
 
+#include "evaluate.h"
 #include "misc.h"
 #include "search.h"
 #include "thread.h"
@@ -48,6 +49,7 @@ void on_prune_at_shallow_depth_on_pv_node(const Option& o) {
 void on_enable_transposition_table(const Option& o) {
     TranspositionTable::enable_transposition_table = o;
 }
+void on_eval_file(const Option& ) { Eval::NNUE::init(); }
 
 /// Our case insensitive less() function as required by UCI protocol
 bool CaseInsensitiveLess::operator() (const string& s1, const string& s2) const {
@@ -104,6 +106,7 @@ void init(OptionsMap& o) {
   o["PruneAtShallowDepthOnPvNode"] << Option(true, on_prune_at_shallow_depth_on_pv_node);
   // Enable transposition table.
   o["EnableTranspositionTable"] << Option(true, on_enable_transposition_table);
+  o["EvalFile"]              << Option(EvalFileDefaultName, on_eval_file);
 }
 
 

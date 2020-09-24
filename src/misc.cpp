@@ -132,6 +132,7 @@ public:
 
 } // namespace
 
+
 /// engine_info() returns the full name of the current Stockfish version. This
 /// will be either "Stockfish <Tag> DD-MM-YY" (where DD-MM-YY is the date when
 /// the program was compiled) or "Stockfish <Version>", depending on whether
@@ -356,27 +357,11 @@ void std_aligned_free(void* ptr) {
 #endif
 }
 
-/// aligned_ttmem_alloc() will return suitably aligned memory, if possible using large pages.
-/// The returned pointer is the aligned one, while the mem argument is the one that needs
-/// to be passed to free. With c++17 some of this functionality could be simplified.
+/// aligned_large_pages_alloc() will return suitably aligned memory, if possible using large pages.
 
-#if defined(__linux__) && !defined(__ANDROID__)
+#if defined(_WIN32)
 
-void* aligned_ttmem_alloc(size_t allocSize, void*& mem) {
-
-  constexpr size_t alignment = 2 * 1024 * 1024; // assumed 2MB page sizes
-  size_t size = ((allocSize + alignment - 1) / alignment) * alignment; // multiple of alignment
-  if (posix_memalign(&mem, alignment, size))
-     mem = nullptr;
-#if defined(MADV_HUGEPAGE)
-  madvise(mem, allocSize, MADV_HUGEPAGE);
-#endif
-  return mem;
-}
-
-#elif defined(_WIN64)
-
-static void* aligned_ttmem_alloc_large_pages(size_t allocSize) {
+static void* aligned_large_pages_alloc_win(size_t allocSize) {
 
   HANDLE hProcessToken { };
   LUID luid { };
@@ -421,12 +406,13 @@ static void* aligned_ttmem_alloc_large_pages(size_t allocSize) {
   return mem;
 }
 
-void* aligned_ttmem_alloc(size_t allocSize, void*& mem) {
+void* aligned_large_pages_alloc(size_t allocSize) {
 
   static bool firstCall = true;
+  void* mem;
 
   // Try to allocate large pages
-  mem = aligned_ttmem_alloc_large_pages(allocSize);
+  mem = aligned_large_pages_alloc_win(allocSize);
 
   // Suppress info strings on the first call. The first call occurs before 'uci'
   // is received and in that case this output confuses some GUIs.
@@ -448,23 +434,31 @@ void* aligned_ttmem_alloc(size_t allocSize, void*& mem) {
 
 #else
 
-void* aligned_ttmem_alloc(size_t allocSize, void*& mem) {
+void* aligned_large_pages_alloc(size_t allocSize) {
 
-  constexpr size_t alignment = 64; // assumed cache line size
-  size_t size = allocSize + alignment - 1; // allocate some extra space
-  mem = malloc(size);
-  void* ret = reinterpret_cast<void*>((uintptr_t(mem) + alignment - 1) & ~uintptr_t(alignment - 1));
-  return ret;
+#if defined(__linux__)
+  constexpr size_t alignment = 2 * 1024 * 1024; // assumed 2MB page size
+#else
+  constexpr size_t alignment = 4096; // assumed small page size
+#endif
+
+  // round up to multiples of alignment
+  size_t size = ((allocSize + alignment - 1) / alignment) * alignment;
+  void *mem = std_aligned_alloc(alignment, size);
+#if defined(MADV_HUGEPAGE)
+  madvise(mem, size, MADV_HUGEPAGE);
+#endif
+  return mem;
 }
 
 #endif
 
 
-/// aligned_ttmem_free() will free the previously allocated ttmem
+/// aligned_large_pages_free() will free the previously allocated ttmem
 
-#if defined(_WIN64)
+#if defined(_WIN32)
 
-void aligned_ttmem_free(void* mem) {
+void aligned_large_pages_free(void* mem) {
 
   if (mem && !VirtualFree(mem, 0, MEM_RELEASE))
   {
@@ -477,8 +471,8 @@ void aligned_ttmem_free(void* mem) {
 
 #else
 
-void aligned_ttmem_free(void *mem) {
-  free(mem);
+void aligned_large_pages_free(void *mem) {
+  std_aligned_free(mem);
 }
 
 #endif
@@ -590,109 +584,60 @@ void bindThisThread(size_t idx) {
 
 } // namespace WinProcGroup
 
-// Returns a string that represents the current time. (Used when learning evaluation functions)
-std::string now_string()
-{
-    // Using std::ctime(), localtime() gives a warning that MSVC is not secure.
-    // This shouldn't happen in the C++ standard, but...
-
-#if defined(_MSC_VER)
-  // C4996 : 'ctime' : This function or variable may be unsafe.Consider using ctime_s instead.
-#pragma warning(disable : 4996)
+#ifdef _WIN32
+#include <direct.h>
+#define GETCWD _getcwd
+#else
+#include <unistd.h>
+#define GETCWD getcwd
 #endif
 
-    auto now = std::chrono::system_clock::now();
-    auto tp = std::chrono::system_clock::to_time_t(now);
-    auto result = string(std::ctime(&tp));
+namespace CommandLine {
 
-    // remove line endings if they are included at the end
-    while (*result.rbegin() == '\n' || (*result.rbegin() == '\r'))
-        result.pop_back();
-    return result;
+string argv0;            // path+name of the executable binary, as given by argv[0]
+string binaryDirectory;  // path of the executable directory
+string workingDirectory; // path of the working directory
+string pathSeparator;    // Separator for our current OS
+
+void init(int argc, char* argv[]) {
+    (void)argc;
+    string separator;
+
+    // extract the path+name of the executable binary
+    argv0 = argv[0];
+
+#ifdef _WIN32
+    pathSeparator = "\\";
+  #ifdef _MSC_VER
+    // Under windows argv[0] may not have the extension. Also _get_pgmptr() had
+    // issues in some windows 10 versions, so check returned values carefully.
+    char* pgmptr = nullptr;
+    if (!_get_pgmptr(&pgmptr) && pgmptr != nullptr && *pgmptr)
+        argv0 = pgmptr;
+  #endif
+#else
+    pathSeparator = "/";
+#endif
+
+    // extract the working directory
+    workingDirectory = "";
+    char buff[40000];
+    char* cwd = GETCWD(buff, 40000);
+    if (cwd)
+        workingDirectory = cwd;
+
+    // extract the binary directory path from argv0
+    binaryDirectory = argv0;
+    size_t pos = binaryDirectory.find_last_of("\\/");
+    if (pos == std::string::npos)
+        binaryDirectory = "." + pathSeparator;
+    else
+        binaryDirectory.resize(pos + 1);
+
+    // pattern replacement: "./" at the start of path is replaced by the working directory
+    if (binaryDirectory.find("." + pathSeparator) == 0)
+        binaryDirectory.replace(0, 1, workingDirectory);
 }
 
-void sleep(int ms)
-{
-    std::this_thread::sleep_for(std::chrono::milliseconds(ms));
-}
 
-void* aligned_malloc(size_t size, size_t align)
-{
-    void* p = _mm_malloc(size, align);
-    if (p == nullptr)
-    {
-        std::cout << "info string can't allocate memory. sise = " << size << std::endl;
-        exit(1);
-    }
-    return p;
-}
-
-std::uint64_t get_file_size(std::fstream& fs)
-{
-    auto pos = fs.tellg();
-
-    fs.seekg(0, fstream::end);
-    const uint64_t eofPos = (uint64_t)fs.tellg();
-    fs.clear(); // Otherwise, the next seek may fail.
-    fs.seekg(0, fstream::beg);
-    const uint64_t begPos = (uint64_t)fs.tellg();
-    fs.seekg(pos);
-
-    return eofPos - begPos;
-}
-
-int read_file_to_memory(std::string filename, std::function<void* (uint64_t)> callback_func)
-{
-    fstream fs(filename, ios::in | ios::binary);
-    if (fs.fail())
-        return 1;
-
-    const uint64_t file_size = get_file_size(fs);
-    //std::cout << "filename = " << filename << " , file_size = " << file_size << endl;
-
-    // I know the file size, so call callback_func to get a buffer for this,
-    // Get the pointer.
-    void* ptr = callback_func(file_size);
-
-    // If the buffer could not be secured, or if the file size is different from the expected file size,
-    // It is supposed to return nullptr. At this time, reading is interrupted and an error is returned.
-    if (ptr == nullptr)
-        return 2;
-
-    // read in pieces
-
-    const uint64_t block_size = 1024 * 1024 * 1024; // number of elements to read in one read (1GB)
-    for (uint64_t pos = 0; pos < file_size; pos += block_size)
-    {
-        // size to read this time
-        uint64_t read_size = (pos + block_size < file_size) ? block_size : (file_size - pos);
-        fs.read((char*)ptr + pos, read_size);
-
-        // Read error occurred in the middle of the file.
-        if (fs.fail())
-            return 2;
-
-        //cout << ".";
-    }
-    fs.close();
-
-    return 0;
-}
-
-int write_memory_to_file(std::string filename, void* ptr, uint64_t size)
-{
-    fstream fs(filename, ios::out | ios::binary);
-    if (fs.fail())
-        return 1;
-
-    const uint64_t block_size = 1024 * 1024 * 1024; // number of elements to write in one write (1GB)
-    for (uint64_t pos = 0; pos < size; pos += block_size)
-    {
-        // Memory size to write this time
-        uint64_t write_size = (pos + block_size < size) ? block_size : (size - pos);
-        fs.write((char*)ptr + pos, write_size);
-        //cout << ".";
-    }
-    fs.close();
-    return 0;
-}
+} // namespace CommandLine
