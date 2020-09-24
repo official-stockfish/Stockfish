@@ -41,7 +41,7 @@ BINDIR = $(PREFIX)/bin
 ### Built-in benchmark for pgo-builds
 PGO_TRAINING_DATA_FILE = pgo_training_data.bin
 PGOBENCH = ./$(EXE) bench
-PGOGENSFEN = ./$(EXE) gensfen depth 6 loop 10000 output_file_name $(PGO_TRAINING_DATA_FILE)
+PGOGENSFEN = ./$(EXE) gensfen depth 3 loop 1000 output_file_name $(PGO_TRAINING_DATA_FILE)
 
 ### Source and object files
 SRCS = benchmark.cpp bitbase.cpp bitboard.cpp endgame.cpp evaluate.cpp main.cpp \
@@ -746,10 +746,10 @@ endif
         config-sanity icc-profile-use icc-profile-make gcc-profile-use gcc-profile-make \
         clang-profile-use clang-profile-make
 
-build: config-sanity
+build: config-sanity net
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) all
 
-profile-build: config-sanity objclean profileclean
+profile-build: net config-sanity objclean profileclean
 	@echo ""
 	@echo "Step 1/4. Building instrumented executable ..."
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_make)
