@@ -77,7 +77,14 @@ namespace Eval {
         {
             ifstream stream(directory + eval_file, ios::binary);
             if (load_eval(eval_file, stream))
+            {
+                sync_cout << "info string Loaded eval file " << directory + eval_file << sync_endl;
                 eval_file_loaded = eval_file;
+            }
+            else
+            {
+                sync_cout << "info string ERROR: failed to load eval file " << directory + eval_file << sync_endl;
+            }
         }
   }
 
