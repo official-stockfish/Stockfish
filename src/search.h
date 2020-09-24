@@ -24,6 +24,7 @@
 #include "misc.h"
 #include "movepick.h"
 #include "types.h"
+#include "uci.h"
 
 class Position;
 
@@ -32,7 +33,7 @@ namespace Search {
 /// Threshold used for countermoves based pruning
 constexpr int CounterMovePruneThreshold = 0;
 
-extern bool prune_at_shallow_depth_on_pv_node;
+extern bool prune_at_shallow_depth;
 
 /// Stack struct keeps track of the information we need to remember from nodes
 /// shallower and deeper in the tree during the search. Each search thread has
@@ -111,6 +112,11 @@ void clear();
 
 } // namespace Search
 
+namespace Tablebases {
+
+extern int MaxCardinality;
+
+}
 namespace Learner {
 
   // A pair of reader and evaluation value. Returned by Learner::search(),Learner::qsearch().

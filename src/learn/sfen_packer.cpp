@@ -259,7 +259,7 @@ namespace Learner {
     return make_piece(c, pr);
   }
 
-  int set_from_packed_sfen(Position& pos, const PackedSfen& sfen, StateInfo* si, Thread* th, bool mirror)
+  int set_from_packed_sfen(Position& pos, const PackedSfen& sfen, StateInfo* si, Thread* th)
   {
     SfenPacker packer;
     auto& stream = packer.stream;
@@ -280,16 +280,8 @@ namespace Learner {
     pos.pieceList[B_KING][0] = SQUARE_NB;
 
     // First the position of the ball
-    if (mirror)
-    {
-      for (auto c : Colors)
-        pos.board[flip_file((Square)stream.read_n_bit(6))] = make_piece(c, KING);
-    }
-    else
-    {
-      for (auto c : Colors)
-        pos.board[stream.read_n_bit(6)] = make_piece(c, KING);
-    }
+    for (auto c : Colors)
+      pos.board[stream.read_n_bit(6)] = make_piece(c, KING);
 
     // Piece placement
     for (Rank r = RANK_8; r >= RANK_1; --r)
@@ -297,9 +289,6 @@ namespace Learner {
       for (File f = FILE_A; f <= FILE_H; ++f)
       {
         auto sq = make_square(f, r);
-        if (mirror) {
-          sq = flip_file(sq);
-        }
 
         // it seems there are already balls
         Piece pc;
@@ -355,9 +344,6 @@ namespace Learner {
     // En passant square. Ignore if no pawn capture is possible
     if (stream.read_one_bit()) {
       Square ep_square = static_cast<Square>(stream.read_n_bit(6));
-      if (mirror) {
-        ep_square = flip_file(ep_square);
-      }
       pos.st->epSquare = ep_square;
 
       if (!(pos.attackers_to(pos.st->epSquare) & pos.pieces(pos.sideToMove, PAWN))

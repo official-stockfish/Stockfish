@@ -2,14 +2,13 @@
 
 #include "packed_sfen.h"
 #include "multi_think.h"
+#include "../syzygy/tbprobe.h"
 
 #include "misc.h"
 #include "position.h"
 #include "thread.h"
 #include "tt.h"
 #include "uci.h"
-
-#include "eval/evaluate_common.h"
 
 #include "extra/nnue_data_binpack_format.h"
 
@@ -48,6 +47,7 @@ namespace Learner
     static bool detect_draw_by_consecutive_low_score = false;
     static bool detect_draw_by_insufficient_mating_material = false;
 
+    static std::vector<std::string> bookStart;
     static SfenOutputType sfen_output_type = SfenOutputType::Bin;
 
     static bool ends_with(const std::string& lhs, const std::string& end)
@@ -392,7 +392,6 @@ namespace Learner
             Position& pos,
             std::vector<StateInfo, AlignedAllocator<StateInfo>>& states,
             int ply,
-            int depth,
             vector<Move>& pv);
 
         // Min and max depths for search during gensfen
@@ -749,7 +748,6 @@ namespace Learner
         Position& pos,
         std::vector<StateInfo, AlignedAllocator<StateInfo>>& states,
         int ply,
-        int depth,
         vector<Move>& pv)
     {
         auto rootColor = pos.side_to_move();
@@ -763,15 +761,6 @@ namespace Learner
             }
 
             pos.do_move(m, states[ply++]);
-
-            // Because the difference calculation of evaluate() cannot be
-            // performed unless each node evaluate() is called!
-            // If the depth is 8 or more, it seems
-            // faster not to calculate this difference.
-            if (depth < 8)
-            {
-                Eval::NNUE::update_eval(pos);
-            }
         }
 
         // Reach leaf
@@ -828,8 +817,10 @@ namespace Learner
             auto th = Threads[thread_id];
 
             auto& pos = th->rootPos;
-            pos.set(StartFEN, false, &si, th);
+            pos.set(bookStart[prng.rand(bookStart.size())], false, &si, th);
 
+            int resign_counter = 0;
+            bool should_resign = prng.rand(10) > 1;
             // Vector for holding the sfens in the current simulated game.
             PSVector a_psv;
             a_psv.reserve(write_maxply + MAX_PLY);
@@ -871,11 +862,14 @@ namespace Learner
                     // Also because of this we don't have to check for TB/MATE scores
                     if (abs(search_value) >= eval_limit)
                     {
-                        const auto wdl = (search_value >= eval_limit) ? 1 : -1;
-                        flush_psv(wdl);
-                        break;
+                        resign_counter++;
+                        if ((should_resign && resign_counter >= 4) || abs(search_value) >= 10000) {
+                            flush_psv((search_value >= eval_limit) ? 1 : -1);
+                            break;
+                        }
+                    } else {
+                        resign_counter = 0;
                     }
-
                     // Verification of a strange move
                     if (search_pv.size() > 0
                         && (search_pv[0] == MOVE_NONE || search_pv[0] == MOVE_NULL))
@@ -917,7 +911,6 @@ namespace Learner
                         auto old_key = hash[hash_index];
                         if (key == old_key)
                         {
-                            a_psv.clear();
                             goto SKIP_SAVE;
                         }
                         else
@@ -936,20 +929,7 @@ namespace Learner
                         // Result is added after the whole game is done.
                         pos.sfen_pack(psv.sfen);
 
-                        // Get the value of evaluate() as seen from the
-                        // root color on the leaf node of the PV line.
-                        // I don't know the goodness and badness of using the
-                        // return value of search() as it is.
-                        // TODO: Consider using search value instead of evaluate_leaf.
-                        //       Maybe give it as an option.
-
-                        // Use PV moves to reach the leaf node and use the value
-                        // that evaluated() is called on that leaf node.
-                        const auto leaf_value = evaluate_leaf(pos, states, ply, depth, search_pv);
-
-                        // If for some reason the leaf node couldn't yield an eval
-                        // we fallback to search value.
-                        psv.score = leaf_value == VALUE_NONE ? search_value : leaf_value;
+                        psv.score = search_value;
 
                         psv.gamePly = ply;
 
@@ -983,17 +963,10 @@ namespace Learner
                     {
                         break;
                     }
-
-                    // Clear the sfens that were written before the random move.
-                    // (???) why?
-                    a_psv.clear();
                 }
 
                 // Do move.
                 pos.do_move(next_move, states[ply]);
-
-                // Call node evaluate() for each difference calculation.
-                Eval::NNUE::update_eval(pos);
 
             } // for (int ply = 0; ; ++ply)
 
@@ -1154,12 +1127,28 @@ namespace Learner
             output_file_name = output_file_name + "_" + to_hex(r.rand<uint64_t>()) + to_hex(r.rand<uint64_t>());
         }
 
+        bookStart.clear();
+        {
+          std::string line;
+          std::ifstream myfile ("3moves_v2.epd");
+          if (myfile.is_open())
+          {
+            while (getline(myfile,line))
+            {
+                bookStart.push_back(line);
+            }
+            myfile.close();
+          } else {
+            bookStart.push_back(StartFEN);
+          }
+        }
         std::cout << "gensfen : " << endl
             << "  search_depth_min = " << search_depth_min << " to " << search_depth_max << endl
             << "  nodes = " << nodes << endl
             << "  loop_max = " << loop_max << endl
             << "  eval_limit = " << eval_limit << endl
-            << "  thread_num (set by USI setoption) = " << thread_num << endl
+            << "  thread_num             = " << thread_num << endl
+            << "  bookStart              = " << bookStart.size() << endl
             << "  random_move_minply     = " << random_move_minply << endl
             << "  random_move_maxply     = " << random_move_maxply << endl
             << "  random_move_count      = " << random_move_count << endl
@@ -1177,9 +1166,27 @@ namespace Learner
             << "  detect_draw_by_insufficient_mating_material = " << detect_draw_by_insufficient_mating_material << endl;
 
         // Show if the training data generator uses NNUE.
-        Eval::verify_NNUE();
+        Eval::NNUE::verify();
 
         Threads.main()->ponder = false;
+
+        // About Search::Limits
+        // Be careful because this member variable is global and affects other threads.
+        {
+          auto& limits = Search::Limits;
+
+          // Make the search equivalent to the "go infinite" command. (Because it is troublesome if time management is done)
+          limits.infinite = true;
+
+          // Since PV is an obstacle when displayed, erase it.
+          limits.silent = true;
+
+          // If you use this, it will be compared with the accumulated nodes of each thread. Therefore, do not use it.
+          limits.nodes = 0;
+
+          // depth is also processed by the one passed as an argument of Learner::search().
+          limits.depth = 0;
+        }
 
         // Create and execute threads as many as Options["Threads"].
         {

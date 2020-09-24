@@ -8,9 +8,6 @@
 #include "position.h"
 #include "tt.h"
 
-// evaluate header for learning
-#include "eval/evaluate_common.h"
-
 #include "extra/nnue_data_binpack_format.h"
 
 #include "syzygy/tbprobe.h"
@@ -122,7 +119,7 @@ namespace Learner
                 else if (token == "score") {
                     double score;
                     ss >> score;
-                    // Training Formula · Issue #71 · nodchip/Stockfish https://github.com/nodchip/Stockfish/issues/71
+                    // Training Formula ?Issue #71 ?nodchip/Stockfish https://github.com/nodchip/Stockfish/issues/71
                     // Normalize to [0.0, 1.0].
                     score = (score - src_score_min_value) / (src_score_max_value - src_score_min_value);
                     // Scale to [dest_score_min_value, dest_score_max_value].
@@ -480,7 +477,7 @@ namespace Learner
             {
                 if (fs.read((char*)&p, sizeof(PackedSfenValue))) {
                     StateInfo si;
-                    tpos.set_from_packed_sfen(p.sfen, &si, th, false);
+                    tpos.set_from_packed_sfen(p.sfen, &si, th);
 
                     // write as plain text
                     ofs << "fen " << tpos.fen() << std::endl;

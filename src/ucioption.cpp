@@ -41,15 +41,14 @@ void on_hash_size(const Option& o) { TT.resize(size_t(o)); }
 void on_logger(const Option& o) { start_logger(o); }
 void on_threads(const Option& o) { Threads.set(size_t(o)); }
 void on_tb_path(const Option& o) { Tablebases::init(o); }
-void on_use_NNUE(const Option& ) { Eval::init_NNUE(); }
-void on_eval_file(const Option& ) { Eval::init_NNUE(); }
-void on_prune_at_shallow_depth_on_pv_node(const Option& o) {
-    Search::prune_at_shallow_depth_on_pv_node = o;
+void on_use_NNUE(const Option& ) { Eval::NNUE::init(); }
+void on_eval_file(const Option& ) { Eval::NNUE::init(); }
+void on_prune_at_shallow_depth(const Option& o) {
+    Search::prune_at_shallow_depth = o;
 }
 void on_enable_transposition_table(const Option& o) {
     TranspositionTable::enable_transposition_table = o;
 }
-void on_eval_file(const Option& ) { Eval::NNUE::init(); }
 
 /// Our case insensitive less() function as required by UCI protocol
 bool CaseInsensitiveLess::operator() (const string& s1, const string& s2) const {
@@ -87,26 +86,21 @@ void init(OptionsMap& o) {
   o["Syzygy50MoveRule"]      << Option(true);
   o["SyzygyProbeLimit"]      << Option(7, 0, 7);
   o["Use NNUE"]              << Option("true var true var false var pure", "true", on_use_NNUE);
-  // The default must follow the format nn-[SHA256 first 12 digits].nnue
-  // for the build process (profile-build and fishtest) to work.
-  o["EvalFile"]              << Option("nn-82215d0fd0df.nnue", on_eval_file);
+  o["EvalFile"]              << Option(EvalFileDefaultName, on_eval_file);
   // When the evaluation function is loaded at the ucinewgame timing, it is necessary to convert the new evaluation function.
   // I want to hit the test eval convert command, but there is no new evaluation function
   // It ends abnormally before executing this command.
   // Therefore, with this hidden option, you can suppress the loading of the evaluation function when ucinewgame,
   // Hit the test eval convert command.
   o["SkipLoadingEval"]       << Option(false);
-  // how many moves to use a fixed move
-  // o["BookMoves"] << Option(16, 0, 10000);
   // When learning the evaluation function, you can change the folder to save the evaluation function.
   // Evalsave by default. This folder shall be prepared in advance.
   // Automatically create a folder under this folder like "0/", "1/", ... and save the evaluation function file there.
   o["EvalSaveDir"] << Option("evalsave");
   // Prune at shallow depth on PV nodes. False is recommended when using fixed depth search.
-  o["PruneAtShallowDepthOnPvNode"] << Option(true, on_prune_at_shallow_depth_on_pv_node);
+  o["PruneAtShallowDepth"] << Option(true, on_prune_at_shallow_depth);
   // Enable transposition table.
   o["EnableTranspositionTable"] << Option(true, on_enable_transposition_table);
-  o["EvalFile"]              << Option(EvalFileDefaultName, on_eval_file);
 }
 
 

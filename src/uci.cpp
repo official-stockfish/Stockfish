@@ -47,7 +47,7 @@ const char* StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
 void test_cmd(Position& pos, istringstream& is)
 {
     // Initialize as it may be searched.
-    Eval::init_NNUE();
+    Eval::NNUE::init();
 
     std::string param;
     is >> param;
@@ -210,14 +210,14 @@ namespace {
          << "\nNodes/second    : " << 1000 * nodes / elapsed << endl;
   }
 
-  // The win rate model returns the probability (per mille) of winning given an eval
-  // and a game-ply. The model fits rather accurately the LTC fishtest statistics.
-  int win_rate_model(Value v, int ply) {
-     // Return win rate in per mille (rounded to nearest)
-     return int(0.5 + UCI::win_rate_model_double(v, ply));
-  }
-
 } // namespace
+
+// The win rate model returns the probability (per mille) of winning given an eval
+// and a game-ply. The model fits rather accurately the LTC fishtest statistics.
+int UCI::win_rate_model(Value v, int ply) {
+   // Return win rate in per mille (rounded to nearest)
+   return int(0.5 + win_rate_model_double(v, ply));
+}
 
 // The win rate model returns the probability (per mille) of winning given an eval
 // and a game-ply. The model fits rather accurately the LTC fishtest statistics.

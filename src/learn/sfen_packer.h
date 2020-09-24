@@ -13,7 +13,7 @@ class Thread;
 
 namespace Learner {
 
-    int set_from_packed_sfen(Position& pos, const PackedSfen& sfen, StateInfo* si, Thread* th, bool mirror);
+    int set_from_packed_sfen(Position& pos, const PackedSfen& sfen, StateInfo* si, Thread* th);
     PackedSfen sfen_pack(Position& pos);
 }
 

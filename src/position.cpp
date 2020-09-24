@@ -1351,9 +1351,9 @@ bool Position::pos_is_ok() const {
 // Add a function that directly unpacks for speed. It's pretty tough.
 // Write it by combining packer::unpack() and Position::set().
 // If there is a problem with the passed phase and there is an error, non-zero is returned.
-int Position::set_from_packed_sfen(const Learner::PackedSfen& sfen , StateInfo* si, Thread* th, bool mirror)
+int Position::set_from_packed_sfen(const Learner::PackedSfen& sfen , StateInfo* si, Thread* th)
 {
-  return Learner::set_from_packed_sfen(*this, sfen, si, th, mirror);
+  return Learner::set_from_packed_sfen(*this, sfen, si, th);
 }
 
 // Give the board, hand piece, and turn, and return the sfen.
