@@ -47,7 +47,6 @@ namespace Learner
     static bool detect_draw_by_consecutive_low_score = false;
     static bool detect_draw_by_insufficient_mating_material = false;
 
-    static std::vector<std::string> bookStart;
     static SfenOutputType sfen_output_type = SfenOutputType::Bin;
 
     static bool ends_with(const std::string& lhs, const std::string& end)
@@ -817,7 +816,7 @@ namespace Learner
             auto th = Threads[thread_id];
 
             auto& pos = th->rootPos;
-            pos.set(bookStart[prng.rand(bookStart.size())], false, &si, th);
+            pos.set(StartFEN, false, &si, th);
 
             int resign_counter = 0;
             bool should_resign = prng.rand(10) > 1;
@@ -1127,28 +1126,12 @@ namespace Learner
             output_file_name = output_file_name + "_" + to_hex(r.rand<uint64_t>()) + to_hex(r.rand<uint64_t>());
         }
 
-        bookStart.clear();
-        {
-          std::string line;
-          std::ifstream myfile ("3moves_v2.epd");
-          if (myfile.is_open())
-          {
-            while (getline(myfile,line))
-            {
-                bookStart.push_back(line);
-            }
-            myfile.close();
-          } else {
-            bookStart.push_back(StartFEN);
-          }
-        }
         std::cout << "gensfen : " << endl
             << "  search_depth_min = " << search_depth_min << " to " << search_depth_max << endl
             << "  nodes = " << nodes << endl
             << "  loop_max = " << loop_max << endl
             << "  eval_limit = " << eval_limit << endl
-            << "  thread_num             = " << thread_num << endl
-            << "  bookStart              = " << bookStart.size() << endl
+            << "  thread_num (set by USI setoption) = " << thread_num << endl
             << "  random_move_minply     = " << random_move_minply << endl
             << "  random_move_maxply     = " << random_move_maxply << endl
             << "  random_move_count      = " << random_move_count << endl
