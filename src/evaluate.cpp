@@ -1033,8 +1033,8 @@ Value Eval::evaluate(const Position& pos) {
       v = classical ? Evaluation<NO_TRACE>(pos).value() : adjusted_NNUE();
 
       // If the classical eval is small and imbalance large, use NNUE nevertheless.
-      // For opposite colored bishops and the classical eval is struggling to win,
-      // switch to NNUE with small probability.
+      // For the case of opposite colored bishops, switch to NNUE eval with
+      // small probability if the classical eval is less than the threshold.
       if (   largePsq
           && (abs(v) * 16 < NNUEThreshold2 * r50
           || (   pos.opposite_bishops() 
