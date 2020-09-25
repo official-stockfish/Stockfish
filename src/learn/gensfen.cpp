@@ -875,13 +875,6 @@ namespace Learner
                 // Save the move score for adjudication.
                 move_hist_scores.push_back(search_value);
 
-                // If depth 0, pv is not obtained, so search again at depth 2.
-                if (search_depth_min <= 0)
-                {
-                    auto [research_value, research_pv] = search(pos, 2);
-                    search_pv = research_pv;
-                }
-
                 // Discard stuff before write_minply is reached
                 // because it can harm training due to overfitting.
                 // Initial positions would be too common.
