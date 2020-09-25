@@ -465,18 +465,7 @@ namespace Learner
             return 0;
         }
 
-        // Initialize the Syzygy Ending Tablebase and sort the moves.
-        Search::RootMoves rootMoves;
-        for (const auto& m : MoveList<LEGAL>(pos))
-        {
-            rootMoves.emplace_back(m);
-        }
-
-        if (!rootMoves.empty())
-        {
-            Tablebases::rank_root_moves(pos, rootMoves);
-        }
-        else
+        if(pos.this_thread()->rootMoves.empty())
         {
             // If there is no legal move
             return pos.checkers()
@@ -847,6 +836,11 @@ namespace Learner
                 // Current search depth
                 const int depth = search_depth_min + (int)prng.rand(search_depth_max - search_depth_min + 1);
 
+                // Starting search calls init_for_search
+                auto [search_value, search_pv] = search(pos, depth, 1, nodes);
+
+                // This has to be performed after search because it needs to know
+                // rootMoves which are filled in init_for_search.
                 const auto result = get_current_game_result(pos, move_hist_scores);
                 if (result.has_value())
                 {
@@ -854,101 +848,97 @@ namespace Learner
                     break;
                 }
 
+                // Always adjudivate by eval limit.
+                // Also because of this we don't have to check for TB/MATE scores
+                if (abs(search_value) >= eval_limit)
                 {
-                    auto [search_value, search_pv] = search(pos, depth, 1, nodes);
-
-                    // Always adjudivate by eval limit.
-                    // Also because of this we don't have to check for TB/MATE scores
-                    if (abs(search_value) >= eval_limit)
-                    {
-                        resign_counter++;
-                        if ((should_resign && resign_counter >= 4) || abs(search_value) >= 10000) {
-                            flush_psv((search_value >= eval_limit) ? 1 : -1);
-                            break;
-                        }
-                    } else {
-                        resign_counter = 0;
-                    }
-                    // Verification of a strange move
-                    if (search_pv.size() > 0
-                        && (search_pv[0] == MOVE_NONE || search_pv[0] == MOVE_NULL))
-                    {
-                        // (???)
-                        // MOVE_WIN is checking if it is the declaration victory stage before this
-                        // The declarative winning move should never come back here.
-                        // Also, when MOVE_RESIGN, search_value is a one-stop score, which should be the minimum value of eval_limit (-31998)...
-                        cout << "Error! : " << pos.fen() << next_move << search_value << endl;
+                    resign_counter++;
+                    if ((should_resign && resign_counter >= 4) || abs(search_value) >= 10000) {
+                        flush_psv((search_value >= eval_limit) ? 1 : -1);
                         break;
                     }
+                } else {
+                    resign_counter = 0;
+                }
+                // Verification of a strange move
+                if (search_pv.size() > 0
+                    && (search_pv[0] == MOVE_NONE || search_pv[0] == MOVE_NULL))
+                {
+                    // (???)
+                    // MOVE_WIN is checking if it is the declaration victory stage before this
+                    // The declarative winning move should never come back here.
+                    // Also, when MOVE_RESIGN, search_value is a one-stop score, which should be the minimum value of eval_limit (-31998)...
+                    cout << "Error! : " << pos.fen() << next_move << search_value << endl;
+                    break;
+                }
 
-                    // Save the move score for adjudication.
-                    move_hist_scores.push_back(search_value);
+                // Save the move score for adjudication.
+                move_hist_scores.push_back(search_value);
 
-                    // If depth 0, pv is not obtained, so search again at depth 2.
-                    if (search_depth_min <= 0)
+                // If depth 0, pv is not obtained, so search again at depth 2.
+                if (search_depth_min <= 0)
+                {
+                    auto [research_value, research_pv] = search(pos, 2);
+                    search_pv = research_pv;
+                }
+
+                // Discard stuff before write_minply is reached
+                // because it can harm training due to overfitting.
+                // Initial positions would be too common.
+                if (ply < write_minply - 1)
+                {
+                    a_psv.clear();
+                    goto SKIP_SAVE;
+                }
+
+                // Look into the position hashtable to see if the same
+                // position was seen before.
+                // This is a good heuristic to exlude already seen
+                // positions without many false positives.
+                {
+                    auto key = pos.key();
+                    auto hash_index = (size_t)(key & (GENSFEN_HASH_SIZE - 1));
+                    auto old_key = hash[hash_index];
+                    if (key == old_key)
                     {
-                        auto [research_value, research_pv] = search(pos, 2);
-                        search_pv = research_pv;
-                    }
-
-                    // Discard stuff before write_minply is reached
-                    // because it can harm training due to overfitting.
-                    // Initial positions would be too common.
-                    if (ply < write_minply - 1)
-                    {
-                        a_psv.clear();
                         goto SKIP_SAVE;
                     }
-
-                    // Look into the position hashtable to see if the same
-                    // position was seen before.
-                    // This is a good heuristic to exlude already seen
-                    // positions without many false positives.
+                    else
                     {
-                        auto key = pos.key();
-                        auto hash_index = (size_t)(key & (GENSFEN_HASH_SIZE - 1));
-                        auto old_key = hash[hash_index];
-                        if (key == old_key)
-                        {
-                            goto SKIP_SAVE;
-                        }
-                        else
-                        {
-                            // Replace with the current key.
-                            hash[hash_index] = key;
-                        }
+                        // Replace with the current key.
+                        hash[hash_index] = key;
                     }
-
-                    // Pack the current position into a packed sfen and save it into the buffer.
-                    {
-                        a_psv.emplace_back(PackedSfenValue());
-                        auto& psv = a_psv.back();
-
-                        // Here we only write the position data.
-                        // Result is added after the whole game is done.
-                        pos.sfen_pack(psv.sfen);
-
-                        psv.score = search_value;
-
-                        psv.gamePly = ply;
-
-                        // Take out the first PV move. This should be present unless depth 0.
-                        assert(search_pv.size() >= 1);
-                        psv.move = search_pv[0];
-                    }
-
-                SKIP_SAVE:;
-
-                    // For some reason, We could not get PV (hit the substitution table etc. and got stuck?)
-                    // so go to the next game. It's a rare case, so you can ignore it.
-                    if (search_pv.size() == 0)
-                    {
-                        break;
-                    }
-
-                    // Update the next move according to best search result.
-                    next_move = search_pv[0];
                 }
+
+                // Pack the current position into a packed sfen and save it into the buffer.
+                {
+                    a_psv.emplace_back(PackedSfenValue());
+                    auto& psv = a_psv.back();
+
+                    // Here we only write the position data.
+                    // Result is added after the whole game is done.
+                    pos.sfen_pack(psv.sfen);
+
+                    psv.score = search_value;
+
+                    psv.gamePly = ply;
+
+                    // Take out the first PV move. This should be present unless depth 0.
+                    assert(search_pv.size() >= 1);
+                    psv.move = search_pv[0];
+                }
+
+            SKIP_SAVE:;
+
+                // For some reason, We could not get PV (hit the substitution table etc. and got stuck?)
+                // so go to the next game. It's a rare case, so you can ignore it.
+                if (search_pv.size() == 0)
+                {
+                    break;
+                }
+
+                // Update the next move according to best search result.
+                next_move = search_pv[0];
 
                 // Random move.
                 auto random_move = choose_random_move(pos, random_move_flag, ply, actual_random_move_count);
