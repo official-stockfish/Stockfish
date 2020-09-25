@@ -198,8 +198,8 @@ the 50-move rule.
 
 Stockfish supports large pages on Linux and Windows. Large pages make
 the hash access more efficient, improving the engine speed, especially
-on large hash sizes. Typical increases are 5..10% in terms of nps, but
-speed increases up to 30% have been measured. The support is
+on large hash sizes. Typical increases are 5..10% in terms of nodes per
+second, but speed increases up to 30% have been measured. The support is
 automatic. Stockfish attempts to use large pages when available and
 will fall back to regular memory allocation when this is not the case.
 
@@ -213,11 +213,11 @@ are already enabled and no configuration is needed.
 
 The use of large pages requires "Lock Pages in Memory" privilege. See
 [Enable the Lock Pages in Memory Option (Windows)](https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/enable-the-lock-pages-in-memory-option-windows)
-on how to enable this privilege. Logout/login may be needed
-afterwards. Due to memory fragmentation, it may not always be
-possible to allocate large pages even when enabled. A reboot
-might alleviate this problem. To determine whether large pages
-are in use, see the engine log.
+on how to enable this privilege, then run [RAMMap](https://docs.microsoft.com/en-us/sysinternals/downloads/rammap)
+to double-check that large pages are used. We suggest that you reboot
+your computer after you have enabled large pages, because long Windows
+sessions suffer from memory fragmentation which may prevent Stockfish
+from getting large pages: a fresh session is better in this regard.
 
 ## Compiling Stockfish yourself from the sources
 
@@ -232,8 +232,8 @@ targets with corresponding descriptions.
 ```
     cd src
     make help
-    make build ARCH=x86-64-modern
     make net
+    make build ARCH=x86-64-modern
 ```
 
 When not using the Makefile to compile (for instance with Microsoft MSVC) you
