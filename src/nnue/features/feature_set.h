@@ -62,12 +62,12 @@ namespace Eval::NNUE::Features {
         IndexListType removed[2], IndexListType added[2], bool reset[2]) {
 
       const auto& dp = pos.state()->dirtyPiece;
-      if (dp.dirty_num == 0) return;
 
       for (Color perspective : { WHITE, BLACK }) {
         reset[perspective] = false;
         switch (trigger) {
           case TriggerEvent::kFriendKingMoved:
+            if (dp.dirty_num == 0) continue;
             reset[perspective] = dp.piece[0] == make_piece(perspective, KING);
             break;
           default:
