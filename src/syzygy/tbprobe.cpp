@@ -52,7 +52,7 @@
 
 using namespace Tablebases;
 
-int Tablebases::MaxCardinality;
+int Tablebases::MaxCardinality = 0;
 
 namespace {
 

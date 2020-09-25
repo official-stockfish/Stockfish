@@ -112,11 +112,6 @@ void clear();
 
 } // namespace Search
 
-namespace Tablebases {
-
-extern int MaxCardinality;
-
-}
 namespace Learner {
 
   // A pair of reader and evaluation value. Returned by Learner::search(),Learner::qsearch().
