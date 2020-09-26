@@ -31,10 +31,30 @@ namespace Eval::NNUE::Features {
 
   // Get a list of indices whose values ​​have changed from the previous one in the feature quantity
   void CastlingRight::AppendChangedIndices(
-    const Position& /* pos */, Color /* perspective */,
-    IndexList* /* removed */, IndexList* /* added */) {
-    // Not implemented.
-    assert(false);
+      const Position& pos, Color perspective,
+      IndexList* removed, IndexList* /* added */) {
+    int previous_castling_rights = pos.state()->previous->castlingRights;
+    int current_castling_rights = pos.state()->castlingRights;
+    int relative_previous_castling_rights;
+    int relative_current_castling_rights;
+    if (perspective == WHITE) {
+      relative_previous_castling_rights = previous_castling_rights;
+      relative_current_castling_rights = current_castling_rights;
+    }
+    else {
+      // Invert the perspective.
+      relative_previous_castling_rights = ((previous_castling_rights & 3) << 2)
+        & ((previous_castling_rights >> 2) & 3);
+      relative_current_castling_rights = ((current_castling_rights & 3) << 2)
+        & ((current_castling_rights >> 2) & 3);
+    }
+
+    for (Eval::NNUE::IndexType i = 0; i < kDimensions; ++i) {
+      if ((relative_previous_castling_rights & (1 << i)) &&
+        (relative_current_castling_rights & (1 << i)) == 0) {
+        removed->push_back(i);
+      }
+    }
   }
 
 }  // namespace Eval::NNUE::Features

@@ -33,7 +33,8 @@ namespace Eval::NNUE::Features {
 
    public:
     // Feature name
-    static constexpr const char* kName = "HalfKP(Friend)";
+    static constexpr const char* kName = (AssociatedKing == Side::kFriend) ?
+        "HalfKP(Friend)" : "HalfKP(Enemy)";
     // Hash value embedded in the evaluation file
     static constexpr std::uint32_t kHashValue =
         0x5D69D5B9u ^ (AssociatedKing == Side::kFriend);
@@ -43,7 +44,9 @@ namespace Eval::NNUE::Features {
     // Maximum number of simultaneously active features
     static constexpr IndexType kMaxActiveDimensions = 30; // Kings don't count
     // Trigger for full calculation instead of difference calculation
-    static constexpr TriggerEvent kRefreshTrigger = TriggerEvent::kFriendKingMoved;
+    static constexpr TriggerEvent kRefreshTrigger =
+        (AssociatedKing == Side::kFriend) ?
+        TriggerEvent::kFriendKingMoved : TriggerEvent::kEnemyKingMoved;
 
     // Get a list of indices for active features
     static void AppendActiveIndices(const Position& pos, Color perspective,

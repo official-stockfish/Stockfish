@@ -21,10 +21,22 @@ namespace Eval::NNUE::Features {
 
   // Get a list of indices whose values ​​have changed from the previous one in the feature quantity
   void EnPassant::AppendChangedIndices(
-    const Position& /* pos */, Color /* perspective */,
-    IndexList* /* removed */, IndexList* /* added */) {
-    // Not implemented.
-    assert(false);
+      const Position& pos, Color /* perspective */,
+      IndexList* removed, IndexList* added) {
+
+    auto previous_epSquare = pos.state()->previous->epSquare;
+    auto epSquare = pos.state()->epSquare;
+
+    if (previous_epSquare != SQ_NONE) {
+      if (epSquare != SQ_NONE && file_of(epSquare) == file_of(previous_epSquare))
+        return;
+      auto file = file_of(previous_epSquare);
+      removed->push_back(file);
+    }
+    if (epSquare != SQ_NONE) {
+      auto file = file_of(epSquare);
+      added->push_back(file);
+    }
   }
 
 }  // namespace Eval::NNUE::Features

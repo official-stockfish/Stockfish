@@ -39,7 +39,7 @@ inline IndexType HalfRelativeKP<AssociatedKing>::MakeIndex(
 template <Side AssociatedKing>
 void HalfRelativeKP<AssociatedKing>::AppendActiveIndices(
     const Position& pos, Color perspective, IndexList* active) {
-  Square ksq = orient(perspective, pos.square<KING>(perspective));
+  Square ksq = orient(perspective, pos.square<KING>(AssociatedKing == Side::kFriend ? perspective : ~perspective));
   Bitboard bb = pos.pieces() & ~pos.pieces(KING);
   while (bb) {
     Square s = pop_lsb(&bb);
@@ -52,7 +52,7 @@ template <Side AssociatedKing>
 void HalfRelativeKP<AssociatedKing>::AppendChangedIndices(
     const Position& pos, Color perspective,
     IndexList* removed, IndexList* added) {
-  Square ksq = orient(perspective, pos.square<KING>(perspective));
+  Square ksq = orient(perspective, pos.square<KING>(AssociatedKing == Side::kFriend ? perspective : ~perspective));
   const auto& dp = pos.state()->dirtyPiece;
   for (int i = 0; i < dp.dirty_num; ++i) {
     Piece pc = dp.piece[i];

@@ -157,6 +157,14 @@ namespace Learner
         return ((y2 - y1) / epsilon) / winning_probability_coefficient;
     }
 
+    // A constant used in elmo (WCSC27). Adjustment required.
+    // Since elmo does not internally divide the expression, the value is different.
+    // You can set this value with the learn command.
+    // 0.33 is equivalent to the constant (0.5) used in elmo (WCSC27)
+    double ELMO_LAMBDA = 0.33;
+    double ELMO_LAMBDA2 = 0.33;
+    double ELMO_LAMBDA_LIMIT = 32000;
+
     // Training Formula · Issue #71 · nodchip/Stockfish https://github.com/nodchip/Stockfish/issues/71
     double get_scaled_signal(double signal)
     {
@@ -182,6 +190,18 @@ namespace Learner
         return winning_percentage(scaled_teacher_signal, ply);
     }
 
+    double calculate_lambda(double teacher_signal)
+    {
+        // If the evaluation value in deep search exceeds ELMO_LAMBDA_LIMIT
+        // then apply ELMO_LAMBDA2 instead of ELMO_LAMBDA.
+        const double lambda =
+            (std::abs(teacher_signal) >= ELMO_LAMBDA_LIMIT)
+            ? ELMO_LAMBDA2
+            : ELMO_LAMBDA;
+
+        return lambda;
+    }
+
     double calculate_t(int game_result)
     {
         // Use 1 as the correction term if the expected win rate is 1,
@@ -190,6 +210,32 @@ namespace Learner
         const double t = double(game_result + 1) * 0.5;
 
         return t;
+    }
+
+    double calc_grad(Value teacher_signal, Value shallow, const PackedSfenValue& psv)
+    {
+        // elmo (WCSC27) method
+        // Correct with the actual game wins and losses.
+        const double q = winning_percentage(shallow, psv.gamePly);
+        const double p = calculate_p(teacher_signal, psv.gamePly);
+        const double t = calculate_t(psv.game_result);
+        const double lambda = calculate_lambda(teacher_signal);
+
+        double grad;
+        if (use_wdl)
+        {
+            const double dce_p = calc_d_cross_entropy_of_winning_percentage(p, shallow, psv.gamePly);
+            const double dce_t = calc_d_cross_entropy_of_winning_percentage(t, shallow, psv.gamePly);
+            grad = lambda * dce_p + (1.0 - lambda) * dce_t;
+        }
+        else
+        {
+            // Use the actual win rate as a correction term.
+            // This is the idea of ​​elmo (WCSC27), modern O-parts.
+            grad = lambda * (q - p) + (1.0 - lambda) * (q - t);
+        }
+
+        return grad;
     }
 
     // Calculate cross entropy during learning
@@ -202,15 +248,20 @@ namespace Learner
         const PackedSfenValue& psv,
         double& cross_entropy_eval,
         double& cross_entropy_win,
+        double& cross_entropy,
         double& entropy_eval,
-        double& entropy_win)
+        double& entropy_win,
+        double& entropy)
     {
         // Teacher winning probability.
         const double q = winning_percentage(shallow, psv.gamePly);
         const double p = calculate_p(teacher_signal, psv.gamePly);
         const double t = calculate_t(psv.game_result);
+        const double lambda = calculate_lambda(teacher_signal);
 
         constexpr double epsilon = 0.000001;
+
+        const double m = (1.0 - lambda) * t + lambda * p;
 
         cross_entropy_eval =
             (-p * std::log(q + epsilon) - (1.0 - p) * std::log(1.0 - q + epsilon));
@@ -220,12 +271,17 @@ namespace Learner
             (-p * std::log(p + epsilon) - (1.0 - p) * std::log(1.0 - p + epsilon));
         entropy_win =
             (-t * std::log(t + epsilon) - (1.0 - t) * std::log(1.0 - t + epsilon));
+
+        cross_entropy =
+            (-m * std::log(q + epsilon) - (1.0 - m) * std::log(1.0 - q + epsilon));
+        entropy =
+            (-m * std::log(m + epsilon) - (1.0 - m) * std::log(1.0 - m + epsilon));
     }
 
     // Other objective functions may be considered in the future...
     double calc_grad(Value shallow, const PackedSfenValue& psv)
     {
-        return (double)(shallow - (Value)psv.score) / 2400.0;
+        return calc_grad((Value)psv.score, shallow, psv);
     }
 
     struct BasicSfenInputStream
@@ -798,12 +854,14 @@ namespace Learner
         cout << ", learning rate = " << global_learning_rate << ", ";
 
         // For calculation of verification data loss
-        atomic<double> test_sum_cross_entropy_eval, test_sum_cross_entropy_win;
-        atomic<double> test_sum_entropy_eval, test_sum_entropy_win;
+        atomic<double> test_sum_cross_entropy_eval, test_sum_cross_entropy_win, test_sum_cross_entropy;
+        atomic<double> test_sum_entropy_eval, test_sum_entropy_win, test_sum_entropy;
         test_sum_cross_entropy_eval = 0;
         test_sum_cross_entropy_win = 0;
+        test_sum_cross_entropy = 0;
         test_sum_entropy_eval = 0;
         test_sum_entropy_win = 0;
+        test_sum_entropy = 0;
 
         // norm for learning
         atomic<double> sum_norm;
@@ -843,8 +901,10 @@ namespace Learner
                     &ps,
                     &test_sum_cross_entropy_eval,
                     &test_sum_cross_entropy_win,
+                    &test_sum_cross_entropy,
                     &test_sum_entropy_eval,
                     &test_sum_entropy_win,
+                    &test_sum_entropy,
                     &sum_norm,
                     &task_count,
                     &move_accord_count
@@ -872,22 +932,26 @@ namespace Learner
                 // For the time being, regarding the win rate and loss terms only in the elmo method
                 // Calculate and display the cross entropy.
 
-                double test_cross_entropy_eval, test_cross_entropy_win;
-                double test_entropy_eval, test_entropy_win;
+                double test_cross_entropy_eval, test_cross_entropy_win, test_cross_entropy;
+                double test_entropy_eval, test_entropy_win, test_entropy;
                 calc_cross_entropy(
                     deep_value,
                     shallow_value,
                     ps,
                     test_cross_entropy_eval,
                     test_cross_entropy_win,
+                    test_cross_entropy,
                     test_entropy_eval,
-                    test_entropy_win);
+                    test_entropy_win,
+                    test_entropy);
 
                 // The total cross entropy need not be abs() by definition.
                 test_sum_cross_entropy_eval += test_cross_entropy_eval;
                 test_sum_cross_entropy_win += test_cross_entropy_win;
+                test_sum_cross_entropy += test_cross_entropy;
                 test_sum_entropy_eval += test_entropy_eval;
                 test_sum_entropy_win += test_entropy_win;
+                test_sum_entropy += test_entropy;
                 sum_norm += (double)abs(shallow_value);
 
                 // Determine if the teacher's move and the score of the shallow search match
@@ -912,7 +976,7 @@ namespace Learner
         while (task_count)
             sleep(1);
 
-        latest_loss_sum += test_sum_cross_entropy_eval - test_sum_entropy_eval;
+        latest_loss_sum += test_sum_cross_entropy - test_sum_entropy;
         latest_loss_count += sr.sfen_for_mse.size();
 
         // learn_cross_entropy may be called train cross
@@ -927,6 +991,8 @@ namespace Learner
                 << " , test_cross_entropy_win = " << test_sum_cross_entropy_win / sr.sfen_for_mse.size()
                 << " , test_entropy_eval = " << test_sum_entropy_eval / sr.sfen_for_mse.size()
                 << " , test_entropy_win = " << test_sum_entropy_win / sr.sfen_for_mse.size()
+                << " , test_cross_entropy = " << test_sum_cross_entropy / sr.sfen_for_mse.size()
+                << " , test_entropy = " << test_sum_entropy / sr.sfen_for_mse.size()
                 << " , norm = " << sum_norm
                 << " , move accuracy = " << (move_accord_count * 100.0 / sr.sfen_for_mse.size()) << "%"
                 << endl;
@@ -938,6 +1004,8 @@ namespace Learner
                     << " , learn_cross_entropy_win = " << learn_sum_cross_entropy_win / done
                     << " , learn_entropy_eval = " << learn_sum_entropy_eval / done
                     << " , learn_entropy_win = " << learn_sum_entropy_win / done
+                    << " , learn_cross_entropy = " << learn_sum_cross_entropy / done
+                    << " , learn_entropy = " << learn_sum_entropy / done
                     << endl;
             }
         }
@@ -949,8 +1017,10 @@ namespace Learner
         // Clear 0 for next time.
         learn_sum_cross_entropy_eval = 0.0;
         learn_sum_cross_entropy_win = 0.0;
+        learn_sum_cross_entropy = 0.0;
         learn_sum_entropy_eval = 0.0;
         learn_sum_entropy_win = 0.0;
+        learn_sum_entropy = 0.0;
     }
 
     void LearnerThink::thread_worker(size_t thread_id)
@@ -1142,21 +1212,25 @@ namespace Learner
                     : -Eval::evaluate(pos);
 
                 // Calculate loss for training data
-                double learn_cross_entropy_eval, learn_cross_entropy_win;
-                double learn_entropy_eval, learn_entropy_win;
+                double learn_cross_entropy_eval, learn_cross_entropy_win, learn_cross_entropy;
+                double learn_entropy_eval, learn_entropy_win, learn_entropy;
                 calc_cross_entropy(
                     deep_value,
                     shallow_value,
                     ps,
                     learn_cross_entropy_eval,
                     learn_cross_entropy_win,
+                    learn_cross_entropy,
                     learn_entropy_eval,
-                    learn_entropy_win);
+                    learn_entropy_win,
+                    learn_entropy);
 
                 learn_sum_cross_entropy_eval += learn_cross_entropy_eval;
                 learn_sum_cross_entropy_win += learn_cross_entropy_win;
+                learn_sum_cross_entropy += learn_cross_entropy;
                 learn_sum_entropy_eval += learn_entropy_eval;
                 learn_sum_entropy_win += learn_entropy_win;
+                learn_sum_entropy += learn_entropy;
 
                 Eval::NNUE::AddExample(pos, rootColor, ps, 1.0);
 
@@ -1560,6 +1634,11 @@ namespace Learner
 
         global_learning_rate = 1.0;
 
+        // elmo lambda
+        ELMO_LAMBDA = 0.33;
+        ELMO_LAMBDA2 = 0.33;
+        ELMO_LAMBDA_LIMIT = 32000;
+
         // if (gamePly <rand(reduction_gameply)) continue;
         // An option to exclude the early stage from the learning target moderately like
         // If set to 1, rand(1)==0, so nothing is excluded.
@@ -1626,6 +1705,12 @@ namespace Learner
 
             // Using WDL with win rate model instead of sigmoid
             else if (option == "use_wdl") is >> use_wdl;
+
+
+            // LAMBDA
+            else if (option == "lambda")       is >> ELMO_LAMBDA;
+            else if (option == "lambda2")      is >> ELMO_LAMBDA2;
+            else if (option == "lambda_limit") is >> ELMO_LAMBDA_LIMIT;
 
             else if (option == "reduction_gameply") is >> reduction_gameply;
 
@@ -1814,6 +1899,9 @@ namespace Learner
         reduction_gameply = max(reduction_gameply, 1);
         cout << "reduction_gameply : " << reduction_gameply << endl;
 
+        cout << "LAMBDA            : " << ELMO_LAMBDA << endl;
+        cout << "LAMBDA2           : " << ELMO_LAMBDA2 << endl;
+        cout << "LAMBDA_LIMIT      : " << ELMO_LAMBDA_LIMIT << endl;
         cout << "eval_save_interval  : " << eval_save_interval << " sfens" << endl;
         cout << "loss_output_interval: " << loss_output_interval << " sfens" << endl;
 

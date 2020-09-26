@@ -19,13 +19,13 @@ namespace Eval::NNUE::Features {
     // The maximum value of the number of indexes whose value is 1 at the same time among the feature values
     static constexpr IndexType kMaxActiveDimensions = 1;
     // Timing of full calculation instead of difference calculation
-    static constexpr TriggerEvent kRefreshTrigger = TriggerEvent::kAnyPieceMoved;
+    static constexpr TriggerEvent kRefreshTrigger = TriggerEvent::kNone;
 
     // Get a list of indices with a value of 1 among the features
     static void AppendActiveIndices(const Position& pos, Color perspective,
       IndexList* active);
 
-    // Get a list of indices whose values ??have changed from the previous one in the feature quantity
+    // Get a list of indices whose values have changed from the previous one in the feature quantity
     static void AppendChangedIndices(const Position& pos, Color perspective,
       IndexList* removed, IndexList* added);
   };

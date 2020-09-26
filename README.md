@@ -37,6 +37,7 @@ Additional options:
 To generate training data from the classic eval, use the gensfen command with the setting "Use NNUE" set to "false". The given example is generation in its simplest form. There are more commands. 
 ```
 uci
+setoption name PruneAtShallowDepth value false
 setoption name Use NNUE value false
 setoption name Threads value x
 setoption name Hash value y
@@ -56,11 +57,13 @@ The process is the same as the generation of training data, except for the fact 
 Use the "learn" binary. Create an empty folder named "evalsave" in the same directory as the binaries.
 ```
 uci
+setoption name EnableTranspositionTable value false
+setoption name PruneAtShallowDepth value false
 setoption name SkipLoadingEval value true
 setoption name Use NNUE value pure
 setoption name Threads value x
 isready
-learn targetdir trainingdata loop 100 batchsize 1000000 use_draw_in_training 1 use_draw_in_validation 1 eta 1 lambda 1 eval_limit 32000 nn_batch_size 1000 newbob_decay 0.5 eval_save_interval 250000000 loss_output_interval 1000000 mirror_percentage 50 validation_set_file_name validationdata\val.bin
+learn targetdir trainingdata loop 100 batchsize 1000000 use_draw_in_training 1 use_draw_in_validation 1 lr 1 lambda 1 eval_limit 32000 nn_batch_size 1000 newbob_decay 0.5 eval_save_interval 250000000 loss_output_interval 1000000 validation_set_file_name validationdata\val.bin
 ```
 Nets get saved in the "evalsave" folder. 
 

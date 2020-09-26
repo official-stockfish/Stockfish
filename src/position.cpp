@@ -1013,6 +1013,7 @@ void Position::do_null_move(StateInfo& newSt) {
   {
       st->key ^= Zobrist::enpassant[file_of(st->epSquare)];
       st->epSquare = SQ_NONE;
+      st->accumulator.computed_accumulation = false;
   }
 
   st->key ^= Zobrist::side;

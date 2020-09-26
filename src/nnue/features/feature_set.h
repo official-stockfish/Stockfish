@@ -100,7 +100,6 @@ namespace Eval::NNUE::Features {
         IndexListType removed[2], IndexListType added[2], bool reset[2]) {
 
       const auto& dp = pos.state()->dirtyPiece;
-      if (dp.dirty_num == 0) return;
 
       for (Color perspective : { WHITE, BLACK }) {
         reset[perspective] = false;
@@ -108,12 +107,15 @@ namespace Eval::NNUE::Features {
           case TriggerEvent::kNone:
             break;
           case TriggerEvent::kFriendKingMoved:
+            if (dp.dirty_num == 0) continue;
             reset[perspective] = dp.piece[0] == make_piece(perspective, KING);
             break;
           case TriggerEvent::kEnemyKingMoved:
-              reset[perspective] = dp.piece[0] == make_piece(~perspective, KING);
+            if (dp.dirty_num == 0) continue;
+            reset[perspective] = dp.piece[0] == make_piece(~perspective, KING);
             break;
           case TriggerEvent::kAnyKingMoved:
+            if (dp.dirty_num == 0) continue;
             reset[perspective] = type_of(dp.piece[0]) == KING;
             break;
           case TriggerEvent::kAnyPieceMoved:
