@@ -1022,7 +1022,10 @@ Value Eval::evaluate(const Position& pos) {
   else
   {
       // Scale and shift NNUE for compatibility with search and classical evaluation
-      auto  adjusted_NNUE = [&](){ return NNUE::evaluate(pos) * 5 / 4 + Tempo; };
+      auto  adjusted_NNUE = [&](){
+         int mat = pos.non_pawn_material();
+         return NNUE::evaluate(pos) * (1024 + mat / 32) / 1024 + Tempo;
+      };
 
       // If there is PSQ imbalance use classical eval, with small probability if it is small
       Value psq = Value(abs(eg_value(pos.psq_score())));
@@ -1037,7 +1040,7 @@ Value Eval::evaluate(const Position& pos) {
       // small probability if the classical eval is less than the threshold.
       if (   largePsq
           && (abs(v) * 16 < NNUEThreshold2 * r50
-          || (   pos.opposite_bishops() 
+          || (   pos.opposite_bishops()
               && abs(v) * 16 < (NNUEThreshold1 + pos.non_pawn_material() / 64) * r50
               && !(pos.this_thread()->nodes & 0xB))))
           v = adjusted_NNUE();
