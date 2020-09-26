@@ -27,6 +27,8 @@
 #include "uci.h"
 #include "syzygy/tbprobe.h"
 
+#include <time.h>
+
 namespace PSQT {
   void init();
 }
@@ -35,6 +37,16 @@ int main(int argc, char* argv[]) {
 
   std::cout << engine_info() << std::endl;
 
+  {
+#ifdef CLOCK_REALTIME
+      timespec tp { };
+      clock_gettime(CLOCK_REALTIME, &tp);
+      srand(tp.tv_sec + tp.tv_nsec); // note: intentionally not giving real time here, in case nsec has big granularity
+#else
+      srand(time(NULL)); // this is too coarse for fishtest
+#endif
+
+  }
   CommandLine::init(argc, argv);
   UCI::init(Options);
   Tune::init();

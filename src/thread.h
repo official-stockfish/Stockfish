@@ -44,7 +44,6 @@ class Thread {
   std::condition_variable cv;
   size_t idx;
   bool exit = false, searching = true; // Set before starting std::thread
-  NativeThread stdThread;
 
 public:
   explicit Thread(size_t);
@@ -73,6 +72,14 @@ public:
   CapturePieceToHistory captureHistory;
   ContinuationHistory continuationHistory[2][2];
   Score contempt;
+
+
+  void *threadMemAlloc;
+
+  // Note: When using pthreads, this field gets overwritten first on stack
+  // overflow. This should either result in a hang or a crash on pthread_join,
+  // acting as a canary.
+  NativeThread stdThread;
 };
 
 

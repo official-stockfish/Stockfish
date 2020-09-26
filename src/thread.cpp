@@ -32,9 +32,8 @@ ThreadPool Threads; // Global object
 /// Thread constructor launches the thread and waits until it goes to sleep
 /// in idle_loop(). Note that 'searching' and 'exit' should be already set.
 
-Thread::Thread(size_t n) : idx(n), stdThread(&Thread::idle_loop, this) {
+Thread::Thread(size_t n) : idx(n) {
 
-  wait_for_search_finished();
 }
 
 
@@ -50,6 +49,94 @@ Thread::~Thread() {
   stdThread.join();
 }
 
+// initialize the thread object, notify when done, and enter idle loop
+template <class ThreadType>
+struct ThreadArgs
+{
+  void* threadMem;
+  size_t threadObjectOffset;
+  size_t n;
+  std::mutex launchMutex;
+  std::condition_variable launchCv;
+  ThreadType* threadObject;
+};
+
+template <class ThreadType>
+static void threadMain(ThreadArgs<ThreadType>* threadArgs, size_t)
+{
+  // First before anything else, and especially before touching any memory, we
+  // bind the thread if needed.
+  //
+  // If OS already scheduled us on a different group than 0 then don't overwrite
+  // the choice, eventually we are one of many one-threaded processes running on
+  // some Windows NUMA hardware, for instance in fishtest. To make it simple,
+  // just check if running threads are below a threshold, in this case all this
+  // NUMA machinery is not needed.
+  if (Options["Threads"] > 8)
+      WinProcGroup::bindThisThread(threadArgs->n);
+
+  ThreadType* tmp =
+      new((void *)((char *)threadArgs->threadMem + threadArgs->threadObjectOffset))
+      ThreadType(threadArgs->n);
+
+  // construction done, notify the UCI thread
+  {
+      std::lock_guard<std::mutex> lk(threadArgs->launchMutex);
+      threadArgs->threadObject = tmp;
+      threadArgs->launchCv.notify_one();
+  }
+
+  // chain to idle loop
+  tmp->idle_loop();
+}
+
+template <class ThreadType>
+static ThreadType* createThread(size_t n)
+{
+  size_t threadMemSize = sizeof(ThreadType);
+  size_t stackBaseOffset = 0;
+  size_t stackOffset = 0;
+
+  ThreadArgs<ThreadType> threadArgs { };
+
+  // We'll allocate space for the thread stack right after the thread
+  // object. For portability, stack needs to start at page boundary.
+  stackBaseOffset = ((threadMemSize + 4095) / 4096) * 4096 + TH_RANDOM_OFFSET_WINDOW;
+  threadMemSize = stackBaseOffset + TH_STACK_SIZE + TH_RANDOM_OFFSET_WINDOW;
+
+  threadArgs.threadMem = aligned_large_pages_alloc(threadMemSize);
+  threadArgs.n = n;
+
+  // add randomization to offsets to prevent cache aliasing between threads
+  threadArgs.threadObjectOffset = (rand() % TH_RANDOM_OFFSET_WINDOW) & ~size_t(63);
+  stackOffset = stackBaseOffset + ((rand() % TH_RANDOM_OFFSET_WINDOW) & ~size_t(63));
+
+//  printf("Thread offsets: %zu %zu\n", threadArgs.threadObjectOffset, stackOffset);
+
+  NativeThread th(threadMain<ThreadType>, &threadArgs, stackOffset);
+
+  // wait until thread object has been created
+  std::unique_lock<std::mutex> lk(threadArgs.launchMutex);
+  threadArgs.launchCv.wait(lk, [&]{ return threadArgs.threadObject != nullptr; });
+
+  // store the mem alloc + native thread object
+  threadArgs.threadObject->threadMemAlloc = threadArgs.threadMem;
+  threadArgs.threadObject->stdThread = std::move(th);
+
+  // wait until the thread is in the idle loop
+  threadArgs.threadObject->wait_for_search_finished();
+
+//  printf("Thread object: %p\n", threadArgs.threadObject);
+
+  return threadArgs.threadObject;
+}
+
+void deleteThread(Thread* threadObject)
+{
+  void *threadMemAlloc = threadObject->threadMemAlloc;
+  threadObject->~Thread();
+  aligned_large_pages_free(threadMemAlloc);
+}
 
 /// Thread::clear() reset histories, usually before a new game
 
@@ -96,14 +183,6 @@ void Thread::wait_for_search_finished() {
 
 void Thread::idle_loop() {
 
-  // If OS already scheduled us on a different group than 0 then don't overwrite
-  // the choice, eventually we are one of many one-threaded processes running on
-  // some Windows NUMA hardware, for instance in fishtest. To make it simple,
-  // just check if running threads are below a threshold, in this case all this
-  // NUMA machinery is not needed.
-  if (Options["Threads"] > 8)
-      WinProcGroup::bindThisThread(idx);
-
   while (true)
   {
       std::unique_lock<std::mutex> lk(mutex);
@@ -130,14 +209,14 @@ void ThreadPool::set(size_t requested) {
       main()->wait_for_search_finished();
 
       while (size() > 0)
-          delete back(), pop_back();
+          deleteThread(back()), pop_back();
   }
 
   if (requested > 0) { // create new thread(s)
-      push_back(new MainThread(0));
+      push_back(createThread<MainThread>(0));
 
       while (size() < requested)
-          push_back(new Thread(size()));
+          push_back(createThread<Thread>(size()));
       clear();
 
       // Reallocate the hash with the new threadpool size
