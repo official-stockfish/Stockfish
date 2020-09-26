@@ -999,21 +999,20 @@ void Position::do_null_move(StateInfo& newSt) {
   assert(!checkers());
   assert(&newSt != st);
 
-  if (Eval::useNNUE != Eval::UseNNUEMode::False)
-  {
-      std::memcpy(&newSt, st, sizeof(StateInfo));
-  }
-  else
-      std::memcpy(&newSt, st, offsetof(StateInfo, accumulator));
+  std::memcpy(&newSt, st, offsetof(StateInfo, accumulator));
 
   newSt.previous = st;
   st = &newSt;
+
+  // Used by NNUE
+  st->accumulator.computed_accumulation = false;
+  auto& dp = st->dirtyPiece;
+  dp.dirty_num = 0;
 
   if (st->epSquare != SQ_NONE)
   {
       st->key ^= Zobrist::enpassant[file_of(st->epSquare)];
       st->epSquare = SQ_NONE;
-      st->accumulator.computed_accumulation = false;
   }
 
   st->key ^= Zobrist::side;
