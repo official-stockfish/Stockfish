@@ -1,0 +1,70 @@
+Introduction to Stockfish
+
+This document aims to provide a basic overview of Stockfish's architecture to Developers and Non-Developers so that you may be directly(with basic understanding of chess and programming) read and understand Stockfish's literature and how it works and start working in the direction of improving it, without having to read rather longer version of the same literature at wikipedia or any other guide.
+
+Before we get into Stockfish NNUE, one needs to understand how Classical Stockfish works and what were the limitations, and why finally a switch to Stockfish NNUE is being made.
+
+
+How does Classical Stockfish work?
+
+Stockfish can be classified into 3 main parts:
+
+1.Evaluation Function: This is designed for resolved positions(no captures or checks), if the position is not resolved we basically go down in the move tree and reach a resolved position which can be evaluated using the evaluation function. This is the part on which more or less determines the strength of the engine.
+
+Stockfish has different Opening/Midgame and Endgame evaluation function which smoothly transition as the game progresses. 
+
+What Evaluation function basically does is, it looks at a position and just like human(but more critically) evaluates different strategic advantages like:
+
+      1.King Safety
+      2.Pawn Structure
+      3.Material Imbalance 
+      4.Space advantage/Piece mobility etc.
+
+and assigns a value to the position, which is used to determine if a position is favourable or not and also to compare outcomes from different possible     moves.
+
+
+2. Minimax algorithm: It is a search tree algorithm which basically pushes for win from either side, i.e. for example, if moves are being searched from white's perspective upto 5 half  moves, what minimax algorithm is do is from the given position, it will make a move tree with all the possible outcomes after 5 legal moves and pick the move giving position with greatest positive evaluation(+ve because it is evaluating for white, in case it was evaluating for black it would have picked the move leading to the greatest -ve evaluation).
+     
+     If it was not for the limited computational power, we would have been done by this step and solved chess till now by finding best possible move in any given situation. To counter the limitations caused by limited computing power stockfish uses a 3rd algorithm called Alpha-Beta pruning.
+
+
+3. Alpha-Beta pruning:Baically optimizes Minimax algorithm to increase depth of search.
+
+If you have used a chess engine to analyze your games you would know that the engine asks for how many lines to look for, this is where this algorithm comes in, lets say you chose 3 lines, what Alpha-Beta pruning does is, it choses and limits the search to only favourable lines.(Ex: You have 3 lines leading to a significant advantage, then there is no point of searching further in the losing lines, you can simply reject the losing lines and focus on winning ones, that is what Alpha-Beta pruning does.)
+
+
+
+We can form a roadmap to selecting the best move:
+
+Move tree     >    Evaluation function evaluates different positions                                  >   Minimax choses the best possible moves.
+                   Simulatneously Alpha-Beta pruning limits the branches to be further evaluated.
+
+
+
+
+
+
+Improving Stockfish and Stockfish NNUE.
+
+When Stockfish was written, its evaluation function was written according to strategies humans use to analyze a position all it did was just do it more critically and accurately. But as one would guess, there can be some flaws with human methods of evaluating a position and some unturned stones in this process. With advancement in AI and Neural Networks, it became clear from DeepMind's research that Stockfish does not have the best evaluation function and there are some flaws to it, which in my opinion is not a surprise, after all we are humans.
+
+So, how can we improve the evaluation function?
+The answer to the question is by not making a evaluation function and letting a Neural Network do it for us by telling it the basic rules of chess. This is the method Alpha Zero and Lc0 use and learning from it, we introduce Stockfish's own Neural Evaluation function NNUE. NNUE not only improved Stockfish's chess strength but also marks a new Stockfish era making it stronger than it ever was.
+
+
+Stockfish    - Classical Evaluation Function        =    Stockfish NNUE(Much stronger than Classical Stockfish)
+             + NNUE Evaluation Function
+
+
+
+
+
+
+
+
+
+
+
+
+Written for Stockfish, with love.
+Nanik Chaturvedi              
