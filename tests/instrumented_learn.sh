@@ -104,7 +104,7 @@ cat << EOF > gensfen02.exp
  send "setoption name Threads value $threads\n"
  send "setoption name Use NNUE value true\n"
  send "isready\n"
- send "gensfen depth 4 loop 50 use_draw_in_training_data_generation 1 eval_limit 32000 output_file_name validation_data/valdidation_data.bin sfen_format bin\n"
+ send "gensfen depth 4 loop 50 use_draw_in_training_data_generation 1 eval_limit 32000 output_file_name validation_data/validation_data.bin sfen_format bin\n"
  expect "gensfen finished."
  send "gensfen depth 4 loop 50 use_draw_in_training_data_generation 1 eval_limit 32000 output_file_name validation_data/validation_data.binpack sfen_format binpack\n"
  expect "gensfen finished."
