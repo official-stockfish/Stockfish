@@ -34,10 +34,10 @@ namespace Eval::NNUE::Features {
   // Trigger to perform full calculations instead of difference only
   enum class TriggerEvent {
     kNone, // Calculate the difference whenever possible
-    kFriendKingMoved, // calculate all when own ball moves
-    kEnemyKingMoved, // do all calculations when enemy balls move
-    kAnyKingMoved, // do all calculations if either ball moves
-    kAnyPieceMoved, // always do all calculations
+    kFriendKingMoved, // calculate full evaluation when own king moves
+    kEnemyKingMoved, // calculate full evaluation when opponent king moves
+    kAnyKingMoved, // calculate full evaluation when any king moves
+    kAnyPieceMoved, // always calculate full evaluation
   };
 
   enum class Side {

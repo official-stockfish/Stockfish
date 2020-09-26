@@ -2,14 +2,13 @@
 
 #include "packed_sfen.h"
 #include "multi_think.h"
+#include "../syzygy/tbprobe.h"
 
 #include "misc.h"
 #include "position.h"
 #include "thread.h"
 #include "tt.h"
 #include "uci.h"
-
-#include "eval/evaluate_common.h"
 
 #include "extra/nnue_data_binpack_format.h"
 
@@ -392,7 +391,6 @@ namespace Learner
             Position& pos,
             std::vector<StateInfo, AlignedAllocator<StateInfo>>& states,
             int ply,
-            int depth,
             vector<Move>& pv);
 
         // Min and max depths for search during gensfen
@@ -467,18 +465,7 @@ namespace Learner
             return 0;
         }
 
-        // Initialize the Syzygy Ending Tablebase and sort the moves.
-        Search::RootMoves rootMoves;
-        for (const auto& m : MoveList<LEGAL>(pos))
-        {
-            rootMoves.emplace_back(m);
-        }
-
-        if (!rootMoves.empty())
-        {
-            Tablebases::rank_root_moves(pos, rootMoves);
-        }
-        else
+        if(pos.this_thread()->rootMoves.empty())
         {
             // If there is no legal move
             return pos.checkers()
@@ -749,7 +736,6 @@ namespace Learner
         Position& pos,
         std::vector<StateInfo, AlignedAllocator<StateInfo>>& states,
         int ply,
-        int depth,
         vector<Move>& pv)
     {
         auto rootColor = pos.side_to_move();
@@ -763,15 +749,6 @@ namespace Learner
             }
 
             pos.do_move(m, states[ply++]);
-
-            // Because the difference calculation of evaluate() cannot be
-            // performed unless each node evaluate() is called!
-            // If the depth is 8 or more, it seems
-            // faster not to calculate this difference.
-            if (depth < 8)
-            {
-                Eval::NNUE::update_eval(pos);
-            }
         }
 
         // Reach leaf
@@ -830,6 +807,8 @@ namespace Learner
             auto& pos = th->rootPos;
             pos.set(StartFEN, false, &si, th);
 
+            int resign_counter = 0;
+            bool should_resign = prng.rand(10) > 1;
             // Vector for holding the sfens in the current simulated game.
             PSVector a_psv;
             a_psv.reserve(write_maxply + MAX_PLY);
@@ -857,6 +836,11 @@ namespace Learner
                 // Current search depth
                 const int depth = search_depth_min + (int)prng.rand(search_depth_max - search_depth_min + 1);
 
+                // Starting search calls init_for_search
+                auto [search_value, search_pv] = search(pos, depth, 1, nodes);
+
+                // This has to be performed after search because it needs to know
+                // rootMoves which are filled in init_for_search.
                 const auto result = get_current_game_result(pos, move_hist_scores);
                 if (result.has_value())
                 {
@@ -864,112 +848,90 @@ namespace Learner
                     break;
                 }
 
+                // Always adjudivate by eval limit.
+                // Also because of this we don't have to check for TB/MATE scores
+                if (abs(search_value) >= eval_limit)
                 {
-                    auto [search_value, search_pv] = search(pos, depth, 1, nodes);
-
-                    // Always adjudivate by eval limit.
-                    // Also because of this we don't have to check for TB/MATE scores
-                    if (abs(search_value) >= eval_limit)
-                    {
-                        const auto wdl = (search_value >= eval_limit) ? 1 : -1;
-                        flush_psv(wdl);
+                    resign_counter++;
+                    if ((should_resign && resign_counter >= 4) || abs(search_value) >= 10000) {
+                        flush_psv((search_value >= eval_limit) ? 1 : -1);
                         break;
                     }
+                } else {
+                    resign_counter = 0;
+                }
+                // Verification of a strange move
+                if (search_pv.size() > 0
+                    && (search_pv[0] == MOVE_NONE || search_pv[0] == MOVE_NULL))
+                {
+                    // (???)
+                    // MOVE_WIN is checking if it is the declaration victory stage before this
+                    // The declarative winning move should never come back here.
+                    // Also, when MOVE_RESIGN, search_value is a one-stop score, which should be the minimum value of eval_limit (-31998)...
+                    cout << "Error! : " << pos.fen() << next_move << search_value << endl;
+                    break;
+                }
 
-                    // Verification of a strange move
-                    if (search_pv.size() > 0
-                        && (search_pv[0] == MOVE_NONE || search_pv[0] == MOVE_NULL))
+                // Save the move score for adjudication.
+                move_hist_scores.push_back(search_value);
+
+                // Discard stuff before write_minply is reached
+                // because it can harm training due to overfitting.
+                // Initial positions would be too common.
+                if (ply < write_minply - 1)
+                {
+                    a_psv.clear();
+                    goto SKIP_SAVE;
+                }
+
+                // Look into the position hashtable to see if the same
+                // position was seen before.
+                // This is a good heuristic to exlude already seen
+                // positions without many false positives.
+                {
+                    auto key = pos.key();
+                    auto hash_index = (size_t)(key & (GENSFEN_HASH_SIZE - 1));
+                    auto old_key = hash[hash_index];
+                    if (key == old_key)
                     {
-                        // (???)
-                        // MOVE_WIN is checking if it is the declaration victory stage before this
-                        // The declarative winning move should never come back here.
-                        // Also, when MOVE_RESIGN, search_value is a one-stop score, which should be the minimum value of eval_limit (-31998)...
-                        cout << "Error! : " << pos.fen() << next_move << search_value << endl;
-                        break;
-                    }
-
-                    // Save the move score for adjudication.
-                    move_hist_scores.push_back(search_value);
-
-                    // If depth 0, pv is not obtained, so search again at depth 2.
-                    if (search_depth_min <= 0)
-                    {
-                        auto [research_value, research_pv] = search(pos, 2);
-                        search_pv = research_pv;
-                    }
-
-                    // Discard stuff before write_minply is reached
-                    // because it can harm training due to overfitting.
-                    // Initial positions would be too common.
-                    if (ply < write_minply - 1)
-                    {
-                        a_psv.clear();
                         goto SKIP_SAVE;
                     }
-
-                    // Look into the position hashtable to see if the same
-                    // position was seen before.
-                    // This is a good heuristic to exlude already seen
-                    // positions without many false positives.
+                    else
                     {
-                        auto key = pos.key();
-                        auto hash_index = (size_t)(key & (GENSFEN_HASH_SIZE - 1));
-                        auto old_key = hash[hash_index];
-                        if (key == old_key)
-                        {
-                            a_psv.clear();
-                            goto SKIP_SAVE;
-                        }
-                        else
-                        {
-                            // Replace with the current key.
-                            hash[hash_index] = key;
-                        }
+                        // Replace with the current key.
+                        hash[hash_index] = key;
                     }
-
-                    // Pack the current position into a packed sfen and save it into the buffer.
-                    {
-                        a_psv.emplace_back(PackedSfenValue());
-                        auto& psv = a_psv.back();
-
-                        // Here we only write the position data.
-                        // Result is added after the whole game is done.
-                        pos.sfen_pack(psv.sfen);
-
-                        // Get the value of evaluate() as seen from the
-                        // root color on the leaf node of the PV line.
-                        // I don't know the goodness and badness of using the
-                        // return value of search() as it is.
-                        // TODO: Consider using search value instead of evaluate_leaf.
-                        //       Maybe give it as an option.
-
-                        // Use PV moves to reach the leaf node and use the value
-                        // that evaluated() is called on that leaf node.
-                        const auto leaf_value = evaluate_leaf(pos, states, ply, depth, search_pv);
-
-                        // If for some reason the leaf node couldn't yield an eval
-                        // we fallback to search value.
-                        psv.score = leaf_value == VALUE_NONE ? search_value : leaf_value;
-
-                        psv.gamePly = ply;
-
-                        // Take out the first PV move. This should be present unless depth 0.
-                        assert(search_pv.size() >= 1);
-                        psv.move = search_pv[0];
-                    }
-
-                SKIP_SAVE:;
-
-                    // For some reason, We could not get PV (hit the substitution table etc. and got stuck?)
-                    // so go to the next game. It's a rare case, so you can ignore it.
-                    if (search_pv.size() == 0)
-                    {
-                        break;
-                    }
-
-                    // Update the next move according to best search result.
-                    next_move = search_pv[0];
                 }
+
+                // Pack the current position into a packed sfen and save it into the buffer.
+                {
+                    a_psv.emplace_back(PackedSfenValue());
+                    auto& psv = a_psv.back();
+
+                    // Here we only write the position data.
+                    // Result is added after the whole game is done.
+                    pos.sfen_pack(psv.sfen);
+
+                    psv.score = search_value;
+
+                    psv.gamePly = ply;
+
+                    // Take out the first PV move. This should be present unless depth 0.
+                    assert(search_pv.size() >= 1);
+                    psv.move = search_pv[0];
+                }
+
+            SKIP_SAVE:;
+
+                // For some reason, We could not get PV (hit the substitution table etc. and got stuck?)
+                // so go to the next game. It's a rare case, so you can ignore it.
+                if (search_pv.size() == 0)
+                {
+                    break;
+                }
+
+                // Update the next move according to best search result.
+                next_move = search_pv[0];
 
                 // Random move.
                 auto random_move = choose_random_move(pos, random_move_flag, ply, actual_random_move_count);
@@ -983,17 +945,10 @@ namespace Learner
                     {
                         break;
                     }
-
-                    // Clear the sfens that were written before the random move.
-                    // (???) why?
-                    a_psv.clear();
                 }
 
                 // Do move.
                 pos.do_move(next_move, states[ply]);
-
-                // Call node evaluate() for each difference calculation.
-                Eval::NNUE::update_eval(pos);
 
             } // for (int ply = 0; ; ++ply)
 
@@ -1177,9 +1132,27 @@ namespace Learner
             << "  detect_draw_by_insufficient_mating_material = " << detect_draw_by_insufficient_mating_material << endl;
 
         // Show if the training data generator uses NNUE.
-        Eval::verify_NNUE();
+        Eval::NNUE::verify();
 
         Threads.main()->ponder = false;
+
+        // About Search::Limits
+        // Be careful because this member variable is global and affects other threads.
+        {
+          auto& limits = Search::Limits;
+
+          // Make the search equivalent to the "go infinite" command. (Because it is troublesome if time management is done)
+          limits.infinite = true;
+
+          // Since PV is an obstacle when displayed, erase it.
+          limits.silent = true;
+
+          // If you use this, it will be compared with the accumulated nodes of each thread. Therefore, do not use it.
+          limits.nodes = 0;
+
+          // depth is also processed by the one passed as an argument of Learner::search().
+          limits.depth = 0;
+        }
 
         // Create and execute threads as many as Options["Threads"].
         {

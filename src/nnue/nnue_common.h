@@ -69,7 +69,7 @@
 namespace Eval::NNUE {
 
   // Version of the evaluation file
-  constexpr std::uint32_t kVersion = 0x7AF32F16u;
+  constexpr std::uint32_t kVersion = 0x7AF32F17u;
 
   // Constant used in evaluation value calculation
   constexpr int FV_SCALE = 16;
@@ -113,7 +113,7 @@ namespace Eval::NNUE {
     PS_END2     = 12 * SQUARE_NB + 1
   };
 
-  extern uint32_t kpp_board_index[PIECE_NB][COLOR_NB];
+  extern const uint32_t kpp_board_index[PIECE_NB][COLOR_NB];
 
   // Type of input feature after conversion
   using TransformedFeatureType = std::uint8_t;

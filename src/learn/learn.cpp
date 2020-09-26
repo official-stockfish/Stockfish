@@ -29,8 +29,6 @@
 #include "uci.h"
 #include "search.h"
 
-#include "eval/evaluate_common.h"
-
 #include "extra/nnue_data_binpack_format.h"
 
 #include "nnue/evaluate_nnue_learner.h"
@@ -58,6 +56,7 @@
 #include <omp.h>
 #endif
 
+extern double global_learning_rate;
 
 using namespace std;
 
@@ -91,12 +90,6 @@ namespace Learner
     static double src_score_max_value = 1.0;
     static double dest_score_min_value = 0.0;
     static double dest_score_max_value = 1.0;
-
-    // Assume teacher signals are the scores of deep searches,
-    // and convert them into winning probabilities in the trainer.
-    // Sometimes we want to use the winning probabilities in the training
-    // data directly. In those cases, we set false to this variable.
-    static bool convert_teacher_signal_to_winning_probability = true;
 
     // Using stockfish's WDL with win rate model instead of sigmoid
     static bool use_wdl = false;
@@ -164,14 +157,6 @@ namespace Learner
         return ((y2 - y1) / epsilon) / winning_probability_coefficient;
     }
 
-    // A constant used in elmo (WCSC27). Adjustment required.
-    // Since elmo does not internally divide the expression, the value is different.
-    // You can set this value with the learn command.
-    // 0.33 is equivalent to the constant (0.5) used in elmo (WCSC27)
-    double ELMO_LAMBDA = 0.33;
-    double ELMO_LAMBDA2 = 0.33;
-    double ELMO_LAMBDA_LIMIT = 32000;
-
     // Training Formula · Issue #71 · nodchip/Stockfish https://github.com/nodchip/Stockfish/issues/71
     double get_scaled_signal(double signal)
     {
@@ -194,26 +179,7 @@ namespace Learner
     double calculate_p(double teacher_signal, int ply)
     {
         const double scaled_teacher_signal = get_scaled_signal(teacher_signal);
-
-        double p = scaled_teacher_signal;
-        if (convert_teacher_signal_to_winning_probability)
-        {
-            p = winning_percentage(scaled_teacher_signal, ply);
-        }
-
-        return p;
-    }
-
-    double calculate_lambda(double teacher_signal)
-    {
-        // If the evaluation value in deep search exceeds ELMO_LAMBDA_LIMIT
-        // then apply ELMO_LAMBDA2 instead of ELMO_LAMBDA.
-        const double lambda =
-            (std::abs(teacher_signal) >= ELMO_LAMBDA_LIMIT)
-            ? ELMO_LAMBDA2
-            : ELMO_LAMBDA;
-
-        return lambda;
+        return winning_percentage(scaled_teacher_signal, ply);
     }
 
     double calculate_t(int game_result)
@@ -226,32 +192,6 @@ namespace Learner
         return t;
     }
 
-    double calc_grad(Value teacher_signal, Value shallow, const PackedSfenValue& psv)
-    {
-        // elmo (WCSC27) method
-        // Correct with the actual game wins and losses.
-        const double q = winning_percentage(shallow, psv.gamePly);
-        const double p = calculate_p(teacher_signal, psv.gamePly);
-        const double t = calculate_t(psv.game_result);
-        const double lambda = calculate_lambda(teacher_signal);
-
-        double grad;
-        if (use_wdl)
-        {
-            const double dce_p = calc_d_cross_entropy_of_winning_percentage(p, shallow, psv.gamePly);
-            const double dce_t = calc_d_cross_entropy_of_winning_percentage(t, shallow, psv.gamePly);
-            grad = lambda * dce_p + (1.0 - lambda) * dce_t;
-        }
-        else
-        {
-            // Use the actual win rate as a correction term.
-            // This is the idea of ​​elmo (WCSC27), modern O-parts.
-            grad = lambda * (q - p) + (1.0 - lambda) * (q - t);
-        }
-
-        return grad;
-    }
-
     // Calculate cross entropy during learning
     // The individual cross entropy of the win/loss term and win
     // rate term of the elmo expression is returned
@@ -262,20 +202,15 @@ namespace Learner
         const PackedSfenValue& psv,
         double& cross_entropy_eval,
         double& cross_entropy_win,
-        double& cross_entropy,
         double& entropy_eval,
-        double& entropy_win,
-        double& entropy)
+        double& entropy_win)
     {
         // Teacher winning probability.
         const double q = winning_percentage(shallow, psv.gamePly);
         const double p = calculate_p(teacher_signal, psv.gamePly);
         const double t = calculate_t(psv.game_result);
-        const double lambda = calculate_lambda(teacher_signal);
 
         constexpr double epsilon = 0.000001;
-
-        const double m = (1.0 - lambda) * t + lambda * p;
 
         cross_entropy_eval =
             (-p * std::log(q + epsilon) - (1.0 - p) * std::log(1.0 - q + epsilon));
@@ -285,17 +220,12 @@ namespace Learner
             (-p * std::log(p + epsilon) - (1.0 - p) * std::log(1.0 - p + epsilon));
         entropy_win =
             (-t * std::log(t + epsilon) - (1.0 - t) * std::log(1.0 - t + epsilon));
-
-        cross_entropy =
-            (-m * std::log(q + epsilon) - (1.0 - m) * std::log(1.0 - q + epsilon));
-        entropy =
-            (-m * std::log(m + epsilon) - (1.0 - m) * std::log(1.0 - m + epsilon));
     }
 
     // Other objective functions may be considered in the future...
     double calc_grad(Value shallow, const PackedSfenValue& psv)
     {
-        return calc_grad((Value)psv.score, shallow, psv);
+        return (double)(shallow - (Value)psv.score) / 2400.0;
     }
 
     struct BasicSfenInputStream
@@ -787,14 +717,8 @@ namespace Learner
 
         std::atomic<bool> stop_flag;
 
-        // Discount rate
-        double discount_rate;
-
         // Option to exclude early stage from learning
         int reduction_gameply;
-
-        // Option not to learn kk/kkp/kpp/kppp
-        std::array<bool, 4> freeze;
 
         // If the absolute value of the evaluation value of the deep search
         // of the teacher phase exceeds this value, discard the teacher phase.
@@ -825,7 +749,6 @@ namespace Learner
 
         uint64_t eval_save_interval;
         uint64_t loss_output_interval;
-        uint64_t mirror_percentage;
 
         // Loss calculation.
         // done: Number of phases targeted this time
@@ -849,7 +772,6 @@ namespace Learner
         for (size_t i = 0; i < pv.size(); ++i)
         {
             task_pos.do_move(pv[i], states[i]);
-            Eval::NNUE::update_eval(task_pos);
         }
 
         const Value shallow_value =
@@ -870,20 +792,18 @@ namespace Learner
         // It doesn't matter if you have disabled the substitution table.
         TT.new_search();
 
-        std::cout << "PROGRESS: " << now_string() << ", ";
-        std::cout << sr.total_done << " sfens";
-        std::cout << ", iteration " << epoch;
-        std::cout << ", eta = " << Eval::get_eta() << ", ";
+        cout << "PROGRESS: " << now_string() << ", ";
+        cout << sr.total_done << " sfens";
+        cout << ", iteration " << epoch;
+        cout << ", learning rate = " << global_learning_rate << ", ";
 
         // For calculation of verification data loss
-        atomic<double> test_sum_cross_entropy_eval, test_sum_cross_entropy_win, test_sum_cross_entropy;
-        atomic<double> test_sum_entropy_eval, test_sum_entropy_win, test_sum_entropy;
+        atomic<double> test_sum_cross_entropy_eval, test_sum_cross_entropy_win;
+        atomic<double> test_sum_entropy_eval, test_sum_entropy_win;
         test_sum_cross_entropy_eval = 0;
         test_sum_cross_entropy_win = 0;
-        test_sum_cross_entropy = 0;
         test_sum_entropy_eval = 0;
         test_sum_entropy_win = 0;
-        test_sum_entropy = 0;
 
         // norm for learning
         atomic<double> sum_norm;
@@ -899,7 +819,7 @@ namespace Learner
         auto& pos = th->rootPos;
         StateInfo si;
         pos.set(StartFEN, false, &si, th);
-        std::cout << "hirate eval = " << Eval::evaluate(pos);
+        cout << "hirate eval = " << Eval::evaluate(pos) << endl;
 
         // It's better to parallelize here, but it's a bit
         // troublesome because the search before slave has not finished.
@@ -923,10 +843,8 @@ namespace Learner
                     &ps,
                     &test_sum_cross_entropy_eval,
                     &test_sum_cross_entropy_win,
-                    &test_sum_cross_entropy,
                     &test_sum_entropy_eval,
                     &test_sum_entropy_win,
-                    &test_sum_entropy,
                     &sum_norm,
                     &task_count,
                     &move_accord_count
@@ -954,26 +872,22 @@ namespace Learner
                 // For the time being, regarding the win rate and loss terms only in the elmo method
                 // Calculate and display the cross entropy.
 
-                double test_cross_entropy_eval, test_cross_entropy_win, test_cross_entropy;
-                double test_entropy_eval, test_entropy_win, test_entropy;
+                double test_cross_entropy_eval, test_cross_entropy_win;
+                double test_entropy_eval, test_entropy_win;
                 calc_cross_entropy(
                     deep_value,
                     shallow_value,
                     ps,
                     test_cross_entropy_eval,
                     test_cross_entropy_win,
-                    test_cross_entropy,
                     test_entropy_eval,
-                    test_entropy_win,
-                    test_entropy);
+                    test_entropy_win);
 
                 // The total cross entropy need not be abs() by definition.
                 test_sum_cross_entropy_eval += test_cross_entropy_eval;
                 test_sum_cross_entropy_win += test_cross_entropy_win;
-                test_sum_cross_entropy += test_cross_entropy;
                 test_sum_entropy_eval += test_entropy_eval;
                 test_sum_entropy_win += test_entropy_win;
-                test_sum_entropy += test_entropy;
                 sum_norm += (double)abs(shallow_value);
 
                 // Determine if the teacher's move and the score of the shallow search match
@@ -998,7 +912,7 @@ namespace Learner
         while (task_count)
             sleep(1);
 
-        latest_loss_sum += test_sum_cross_entropy - test_sum_entropy;
+        latest_loss_sum += test_sum_cross_entropy_eval - test_sum_entropy_eval;
         latest_loss_count += sr.sfen_for_mse.size();
 
         // learn_cross_entropy may be called train cross
@@ -1008,27 +922,24 @@ namespace Learner
 
         if (sr.sfen_for_mse.size() && done)
         {
-            cout
-                << " , test_cross_entropy_eval = " << test_sum_cross_entropy_eval / sr.sfen_for_mse.size()
+            cout << "INFO: "
+                << "test_cross_entropy_eval = " << test_sum_cross_entropy_eval / sr.sfen_for_mse.size()
                 << " , test_cross_entropy_win = " << test_sum_cross_entropy_win / sr.sfen_for_mse.size()
                 << " , test_entropy_eval = " << test_sum_entropy_eval / sr.sfen_for_mse.size()
                 << " , test_entropy_win = " << test_sum_entropy_win / sr.sfen_for_mse.size()
-                << " , test_cross_entropy = " << test_sum_cross_entropy / sr.sfen_for_mse.size()
-                << " , test_entropy = " << test_sum_entropy / sr.sfen_for_mse.size()
                 << " , norm = " << sum_norm
-                << " , move accuracy = " << (move_accord_count * 100.0 / sr.sfen_for_mse.size()) << "%";
+                << " , move accuracy = " << (move_accord_count * 100.0 / sr.sfen_for_mse.size()) << "%"
+                << endl;
 
             if (done != static_cast<uint64_t>(-1))
             {
-                cout
-                    << " , learn_cross_entropy_eval = " << learn_sum_cross_entropy_eval / done
+                cout << "INFO: "
+                    << "learn_cross_entropy_eval = " << learn_sum_cross_entropy_eval / done
                     << " , learn_cross_entropy_win = " << learn_sum_cross_entropy_win / done
                     << " , learn_entropy_eval = " << learn_sum_entropy_eval / done
                     << " , learn_entropy_win = " << learn_sum_entropy_win / done
-                    << " , learn_cross_entropy = " << learn_sum_cross_entropy / done
-                    << " , learn_entropy = " << learn_sum_entropy / done;
+                    << endl;
             }
-            cout << endl;
         }
         else
         {
@@ -1038,10 +949,8 @@ namespace Learner
         // Clear 0 for next time.
         learn_sum_cross_entropy_eval = 0.0;
         learn_sum_cross_entropy_win = 0.0;
-        learn_sum_cross_entropy = 0.0;
         learn_sum_entropy_eval = 0.0;
         learn_sum_entropy_win = 0.0;
-        learn_sum_entropy = 0.0;
     }
 
     void LearnerThink::thread_worker(size_t thread_id)
@@ -1058,7 +967,7 @@ namespace Learner
             // display mse (this is sometimes done only for thread 0)
             // Immediately after being read from the file...
 
-        // Lock the evaluation function so that it is not used during updating.
+            // Lock the evaluation function so that it is not used during updating.
             shared_lock<shared_timed_mutex> read_lock(nn_mutex, defer_lock);
             if (sr.next_update_weights <= sr.total_done ||
                 (thread_id != 0 && !read_lock.try_lock()))
@@ -1090,7 +999,7 @@ namespace Learner
 
                         // Lock the evaluation function so that it is not used during updating.
                         lock_guard<shared_timed_mutex> write_lock(nn_mutex);
-                        Eval::NNUE::UpdateParameters(epoch);
+                        Eval::NNUE::UpdateParameters();
                     }
 
                     ++epoch;
@@ -1167,8 +1076,7 @@ namespace Learner
                 goto RETRY_READ;
 
             StateInfo si;
-            const bool mirror = prng.rand(100) < mirror_percentage;
-            if (pos.set_from_packed_sfen(ps.sfen, &si, th, mirror) != 0)
+            if (pos.set_from_packed_sfen(ps.sfen, &si, th) != 0)
             {
                 // I got a strange sfen. Should be debugged!
                 // Since it is an illegal sfen, it may not be
@@ -1177,17 +1085,29 @@ namespace Learner
                 goto RETRY_READ;
             }
 
-            // There is a possibility that all the pieces are blocked and stuck.
-            // Also, the declaration win phase is excluded from
-            // learning because you cannot go to leaf with PV moves.
-            // (shouldn't write out such teacher aspect itself,
-            // but may have written it out with an old generation routine)
-            // Skip the position if there are no legal moves (=checkmated or stalemate).
-            if (MoveList<LEGAL>(pos).size() == 0)
-                goto RETRY_READ;
-
             // I can read it, so try displaying it.
             //      cout << pos << value << endl;
+
+            const auto rootColor = pos.side_to_move();
+
+            int ply = 0;
+            StateInfo state[MAX_PLY]; // PV of qsearch cannot be so long.
+
+            if (!pos.pseudo_legal((Move)ps.move) || !pos.legal((Move)ps.move))
+            {
+                goto RETRY_READ;
+            }
+
+            pos.do_move((Move)ps.move, state[ply++]);
+
+			// There is a possibility that all the pieces are blocked and stuck.
+			// Also, the declaration win phase is excluded from
+			// learning because you cannot go to leaf with PV moves.
+			// (shouldn't write out such teacher aspect itself,
+			// but may have written it out with an old generation routine)
+			// Skip the position if there are no legal moves (=checkmated or stalemate).
+			if (MoveList<LEGAL>(pos).size() == 0)
+				goto RETRY_READ;
 
             // Evaluation value of shallow search (qsearch)
             const auto [_, pv] = qsearch(pos);
@@ -1199,13 +1119,11 @@ namespace Learner
             // Go to the leaf node as it is, add only to the gradient array,
             // and later try AdaGrad at the time of rmse aggregation.
 
-            const auto rootColor = pos.side_to_move();
 
             // If the initial PV is different, it is better not to use it for learning.
             // If it is the result of searching a completely different place, it may become noise.
             // It may be better not to study where the difference in evaluation values ​​is too large.
 
-            int ply = 0;
 
             // A helper function that adds the gradient to the current phase.
             auto pos_add_grad = [&]() {
@@ -1224,35 +1142,28 @@ namespace Learner
                     : -Eval::evaluate(pos);
 
                 // Calculate loss for training data
-                double learn_cross_entropy_eval, learn_cross_entropy_win, learn_cross_entropy;
-                double learn_entropy_eval, learn_entropy_win, learn_entropy;
+                double learn_cross_entropy_eval, learn_cross_entropy_win;
+                double learn_entropy_eval, learn_entropy_win;
                 calc_cross_entropy(
                     deep_value,
                     shallow_value,
                     ps,
                     learn_cross_entropy_eval,
                     learn_cross_entropy_win,
-                    learn_cross_entropy,
                     learn_entropy_eval,
-                    learn_entropy_win,
-                    learn_entropy);
+                    learn_entropy_win);
 
                 learn_sum_cross_entropy_eval += learn_cross_entropy_eval;
                 learn_sum_cross_entropy_win += learn_cross_entropy_win;
-                learn_sum_cross_entropy += learn_cross_entropy;
                 learn_sum_entropy_eval += learn_entropy_eval;
                 learn_sum_entropy_win += learn_entropy_win;
-                learn_sum_entropy += learn_entropy;
 
-                const double example_weight =
-                    (discount_rate != 0 && ply != (int)pv.size()) ? discount_rate : 1.0;
-                Eval::NNUE::AddExample(pos, rootColor, ps, example_weight);
+                Eval::NNUE::AddExample(pos, rootColor, ps, 1.0);
 
                 // Since the processing is completed, the counter of the processed number is incremented
                 sr.total_done++;
             };
 
-            StateInfo state[MAX_PLY]; // PV of qsearch cannot be so long.
             bool illegal_move = false;
             for (auto m : pv)
             {
@@ -1266,29 +1177,16 @@ namespace Learner
                     break;
                 }
 
-                // Processing when adding the gradient to the node on each PV.
-                //If discount_rate is 0, this process is not performed.
-                if (discount_rate != 0)
-                    pos_add_grad();
-
                 pos.do_move(m, state[ply++]);
-
-                // Since the value of evaluate in leaf is used, the difference is updated.
-                Eval::NNUE::update_eval(pos);
             }
 
             if (illegal_move)
             {
-                sync_cout << "An illegal move was detected... Excluded the position from the learning data..." << sync_endl;
-                continue;
+                goto RETRY_READ;
             }
 
             // Since we have reached the end phase of PV, add the slope here.
             pos_add_grad();
-
-            // rewind the phase
-            for (auto it = pv.rbegin(); it != pv.rend(); ++it)
-                pos.undo_move(*it);
         }
 
     }
@@ -1303,18 +1201,18 @@ namespace Learner
         {
             // When EVAL_SAVE_ONLY_ONCE is defined,
             // Do not dig a subfolder because I want to save it only once.
-            Eval::save_eval("");
+            Eval::NNUE::save_eval("");
         }
         else if (is_final)
         {
-            Eval::save_eval("final");
+            Eval::NNUE::save_eval("final");
             return true;
         }
         else
         {
             static int dir_number = 0;
             const std::string dir_name = std::to_string(dir_number++);
-            Eval::save_eval(dir_name);
+            Eval::NNUE::save_eval(dir_name);
 
             if (newbob_decay != 1.0 && latest_loss_count > 0) {
                 static int trials = newbob_num_trials;
@@ -1332,25 +1230,17 @@ namespace Learner
                 else
                 {
                     cout << " >= best (" << best_loss << "), rejected" << endl;
-                    if (best_nn_directory.empty())
-                    {
-                        cout << "WARNING: no improvement from initial model" << endl;
-                    }
-                    else
-                    {
-                        cout << "restoring parameters from " << best_nn_directory << endl;
-                        Eval::NNUE::RestoreParameters(best_nn_directory);
-                    }
+                    best_nn_directory = Path::Combine((std::string)Options["EvalSaveDir"], dir_name);
 
                     if (--trials > 0 && !is_final)
                     {
                         cout
-                            << "reducing learning rate scale from " << newbob_scale
+                            << "reducing learning rate from " << newbob_scale
                             << " to " << (newbob_scale * newbob_decay)
                             << " (" << trials << " more trials)" << endl;
 
                         newbob_scale *= newbob_decay;
-                        Eval::NNUE::SetGlobalLearningRateScale(newbob_scale);
+                        global_learning_rate = newbob_scale;
                     }
                 }
 
@@ -1628,13 +1518,6 @@ namespace Learner
 
         string target_dir;
 
-        // If 0, it will be the default value.
-        double eta1 = 0.0;
-        double eta2 = 0.0;
-        double eta3 = 0.0;
-        uint64_t eta1_epoch = 0; // eta2 is not applied by default
-        uint64_t eta2_epoch = 0; // eta3 is not applied by default
-
         // --- Function that only shuffles the teacher aspect
 
         // normal shuffle
@@ -1675,23 +1558,12 @@ namespace Learner
         // Turn on if you want to pass a pre-shuffled file.
         bool no_shuffle = false;
 
-        // elmo lambda
-        ELMO_LAMBDA = 0.33;
-        ELMO_LAMBDA2 = 0.33;
-        ELMO_LAMBDA_LIMIT = 32000;
-
-        // Discount rate. If this is set to a value other than 0,
-        // the slope will be added even at other than the PV termination.
-        // (At that time, apply this discount rate)
-        double discount_rate = 0;
+        global_learning_rate = 1.0;
 
         // if (gamePly <rand(reduction_gameply)) continue;
         // An option to exclude the early stage from the learning target moderately like
         // If set to 1, rand(1)==0, so nothing is excluded.
         int reduction_gameply = 1;
-
-        // Optional item that does not let you learn KK/KKP/KPP/KPPP
-        array<bool, 4> freeze = {};
 
         uint64_t nn_batch_size = 1000;
         double newbob_decay = 1.0;
@@ -1700,7 +1572,6 @@ namespace Learner
 
         uint64_t eval_save_interval = LEARN_EVAL_SAVE_INTERVAL;
         uint64_t loss_output_interval = 0;
-        uint64_t mirror_percentage = 0;
 
         string validation_set_file_name;
         string seed;
@@ -1734,12 +1605,7 @@ namespace Learner
             else if (option == "batchsize") is >> mini_batch_size;
 
             // learning rate
-            else if (option == "eta")        is >> eta1;
-            else if (option == "eta1")       is >> eta1; // alias
-            else if (option == "eta2")       is >> eta2;
-            else if (option == "eta3")       is >> eta3;
-            else if (option == "eta1_epoch") is >> eta1_epoch;
-            else if (option == "eta2_epoch") is >> eta2_epoch;
+            else if (option == "lr")        is >> global_learning_rate;
 
             // Accept also the old option name.
             else if (option == "use_draw_in_training"
@@ -1758,21 +1624,8 @@ namespace Learner
 
             else if (option == "winning_probability_coefficient") is >> winning_probability_coefficient;
 
-            // Discount rate
-            else if (option == "discount_rate") is >> discount_rate;
-
             // Using WDL with win rate model instead of sigmoid
             else if (option == "use_wdl") is >> use_wdl;
-
-            // No learning of KK/KKP/KPP/KPPP.
-            else if (option == "freeze_kk")    is >> freeze[0];
-            else if (option == "freeze_kkp")   is >> freeze[1];
-            else if (option == "freeze_kpp")   is >> freeze[2];
-
-            // LAMBDA
-            else if (option == "lambda")       is >> ELMO_LAMBDA;
-            else if (option == "lambda2")      is >> ELMO_LAMBDA2;
-            else if (option == "lambda_limit") is >> ELMO_LAMBDA_LIMIT;
 
             else if (option == "reduction_gameply") is >> reduction_gameply;
 
@@ -1794,7 +1647,6 @@ namespace Learner
 
             else if (option == "eval_save_interval") is >> eval_save_interval;
             else if (option == "loss_output_interval") is >> loss_output_interval;
-            else if (option == "mirror_percentage") is >> mirror_percentage;
             else if (option == "validation_set_file_name") is >> validation_set_file_name;
 
             // Rabbit convert related
@@ -1810,7 +1662,6 @@ namespace Learner
             else if (option == "src_score_max_value") is >> src_score_max_value;
             else if (option == "dest_score_min_value") is >> dest_score_min_value;
             else if (option == "dest_score_max_value") is >> dest_score_max_value;
-            else if (option == "convert_teacher_signal_to_winning_probability") is >> convert_teacher_signal_to_winning_probability;
             else if (option == "seed") is >> seed;
             // Otherwise, it's a filename.
             else
@@ -1884,7 +1735,7 @@ namespace Learner
 
         if (use_convert_plain)
         {
-            Eval::init_NNUE();
+            Eval::NNUE::init();
             cout << "convert_plain.." << endl;
             convert_plain(filenames, output_file_name);
             return;
@@ -1892,7 +1743,7 @@ namespace Learner
 
         if (use_convert_bin)
         {
-            Eval::init_NNUE();
+            Eval::NNUE::init();
             cout << "convert_bin.." << endl;
             convert_bin(
                 filenames,
@@ -1913,7 +1764,7 @@ namespace Learner
 
         if (use_convert_bin_from_pgn_extract)
         {
-            Eval::init_NNUE();
+            Eval::NNUE::init();
             cout << "convert_bin_from_pgn-extract.." << endl;
             convert_bin_from_pgn_extract(
                 filenames,
@@ -1946,8 +1797,7 @@ namespace Learner
         cout << "nn_batch_size     : " << nn_batch_size << endl;
         cout << "nn_options        : " << nn_options << endl;
 
-        cout << "learning rate     : " << eta1 << " , " << eta2 << " , " << eta3 << endl;
-        cout << "eta_epoch         : " << eta1_epoch << " , " << eta2_epoch << endl;
+        cout << "learning rate     : " << global_learning_rate << endl;
         cout << "use_draw_games_in_training : " << use_draw_games_in_training << endl;
         cout << "use_draw_games_in_validation : " << use_draw_games_in_validation << endl;
         cout << "skip_duplicated_positions_in_training : " << skip_duplicated_positions_in_training << endl;
@@ -1960,17 +1810,10 @@ namespace Learner
             cout << "scheduling        : default" << endl;
         }
 
-        cout << "discount rate     : " << discount_rate << endl;
-
         // If reduction_gameply is set to 0, rand(0) will be divided by 0, so correct it to 1.
         reduction_gameply = max(reduction_gameply, 1);
         cout << "reduction_gameply : " << reduction_gameply << endl;
 
-        cout << "LAMBDA            : " << ELMO_LAMBDA << endl;
-        cout << "LAMBDA2           : " << ELMO_LAMBDA2 << endl;
-        cout << "LAMBDA_LIMIT      : " << ELMO_LAMBDA_LIMIT << endl;
-
-        cout << "mirror_percentage : " << mirror_percentage << endl;
         cout << "eval_save_interval  : " << eval_save_interval << " sfens" << endl;
         cout << "loss_output_interval: " << loss_output_interval << " sfens" << endl;
 
@@ -1981,7 +1824,7 @@ namespace Learner
         cout << "init.." << endl;
 
         // Read evaluation function parameters
-        Eval::init_NNUE();
+        Eval::NNUE::init();
 
         Threads.main()->ponder = false;
 
@@ -2004,12 +1847,12 @@ namespace Learner
         }
 
         cout << "init_training.." << endl;
-        Eval::NNUE::InitializeTraining(eta1, eta1_epoch, eta2, eta2_epoch, eta3);
+        Eval::NNUE::InitializeTraining(seed);
         Eval::NNUE::SetBatchSize(nn_batch_size);
         Eval::NNUE::SetOptions(nn_options);
         if (newbob_decay != 1.0 && !Options["SkipLoadingEval"]) {
             // Save the current net to [EvalSaveDir]\original.
-            Eval::save_eval("original");
+            Eval::NNUE::save_eval("original");
 
             // Set the folder above to best_nn_directory so that the trainer can
             // resotre the network parameters from the original net file.
@@ -2020,11 +1863,9 @@ namespace Learner
         cout << "init done." << endl;
 
         // Reflect other option settings.
-        learn_think.discount_rate = discount_rate;
         learn_think.eval_limit = eval_limit;
         learn_think.save_only_once = save_only_once;
         learn_think.sr.no_shuffle = no_shuffle;
-        learn_think.freeze = freeze;
         learn_think.reduction_gameply = reduction_gameply;
 
         learn_think.newbob_scale = 1.0;
@@ -2033,7 +1874,6 @@ namespace Learner
 
         learn_think.eval_save_interval = eval_save_interval;
         learn_think.loss_output_interval = loss_output_interval;
-        learn_think.mirror_percentage = mirror_percentage;
 
         // Start a thread that loads the phase file in the background
         // (If this is not started, mse cannot be calculated.)
@@ -2068,6 +1908,8 @@ namespace Learner
 
         // Start learning.
         learn_think.go_think();
+
+        Eval::NNUE::FinalizeNet();
 
         // Save once at the end.
         learn_think.save(true);

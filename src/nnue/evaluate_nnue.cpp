@@ -18,7 +18,6 @@
 
 // Code for calculating NNUE evaluation function
 
-#include <fstream>
 #include <iostream>
 #include <set>
 
@@ -31,7 +30,7 @@
 
 namespace Eval::NNUE {
 
-  uint32_t kpp_board_index[PIECE_NB][COLOR_NB] = {
+  const uint32_t kpp_board_index[PIECE_NB][COLOR_NB] = {
    // convention: W - us, B - them
    // viewed from other side, W and B are reversed
       { PS_NONE,     PS_NONE     },
@@ -53,7 +52,7 @@ namespace Eval::NNUE {
   };
 
   // Input feature converter
-  AlignedPtr<FeatureTransformer> feature_transformer;
+  LargePagePtr<FeatureTransformer> feature_transformer;
 
   // Evaluation function
   AlignedPtr<Network> network;
@@ -80,19 +79,34 @@ namespace Eval::NNUE {
     std::memset(pointer.get(), 0, sizeof(T));
   }
 
+  template <typename T>
+  void Initialize(LargePagePtr<T>& pointer) {
+
+    static_assert(alignof(T) <= 4096, "aligned_large_pages_alloc() may fail for such a big alignment requirement of T");
+    pointer.reset(reinterpret_cast<T*>(aligned_large_pages_alloc(sizeof(T))));
+    std::memset(pointer.get(), 0, sizeof(T));
+  }
+
   // Read evaluation function parameters
   template <typename T>
-  bool ReadParameters(std::istream& stream, const AlignedPtr<T>& pointer) {
+  bool ReadParameters(std::istream& stream, T& reference) {
 
     std::uint32_t header;
     header = read_little_endian<std::uint32_t>(stream);
     if (!stream || header != T::GetHashValue()) return false;
-    return pointer->ReadParameters(stream);
+    return reference.ReadParameters(stream);
   }
 
   // write evaluation function parameters
   template <typename T>
   bool WriteParameters(std::ostream& stream, const AlignedPtr<T>& pointer) {
+    constexpr std::uint32_t header = T::GetHashValue();
+    stream.write(reinterpret_cast<const char*>(&header), sizeof(header));
+    return pointer->WriteParameters(stream);
+  }
+
+  template <typename T>
+  bool WriteParameters(std::ostream& stream, const LargePagePtr<T>& pointer) {
     constexpr std::uint32_t header = T::GetHashValue();
     stream.write(reinterpret_cast<const char*>(&header), sizeof(header));
     return pointer->WriteParameters(stream);
@@ -139,11 +153,10 @@ namespace Eval::NNUE {
     std::string architecture;
     if (!ReadHeader(stream, &hash_value, &architecture)) return false;
     if (hash_value != kHashValue) return false;
-    if (!Detail::ReadParameters(stream, feature_transformer)) return false;
-    if (!Detail::ReadParameters(stream, network)) return false;
+    if (!Detail::ReadParameters(stream, *feature_transformer)) return false;
+    if (!Detail::ReadParameters(stream, *network)) return false;
     return stream && stream.peek() == std::ios::traits_type::eof();
   }
-
   // write evaluation function parameters
   bool WriteParameters(std::ostream& stream) {
     if (!WriteHeader(stream, kHashValue, GetArchitectureString())) return false;
@@ -151,36 +164,20 @@ namespace Eval::NNUE {
     if (!Detail::WriteParameters(stream, network)) return false;
     return !stream.fail();
   }
-
-  // Proceed with the difference calculation if possible
-  static void UpdateAccumulatorIfPossible(const Position& pos) {
-
-    feature_transformer->UpdateAccumulatorIfPossible(pos);
-  }
-
-  // Calculate the evaluation value
-  static Value ComputeScore(const Position& pos, bool refresh) {
-
-    auto& accumulator = pos.state()->accumulator;
-    if (!refresh && accumulator.computed_score) {
-      return accumulator.score;
-    }
+  // Evaluation function. Perform differential calculation.
+  Value evaluate(const Position& pos) {
 
     alignas(kCacheLineSize) TransformedFeatureType
         transformed_features[FeatureTransformer::kBufferSize];
-    feature_transformer->Transform(pos, transformed_features, refresh);
+    feature_transformer->Transform(pos, transformed_features);
     alignas(kCacheLineSize) char buffer[Network::kBufferSize];
     const auto output = network->Propagate(transformed_features, buffer);
 
-    auto score = static_cast<Value>(output[0] / FV_SCALE);
-
-    accumulator.score = score;
-    accumulator.computed_score = true;
-    return accumulator.score;
+    return static_cast<Value>(output[0] / FV_SCALE);
   }
 
-  // Load the evaluation function file
-  bool load_eval_file(const std::string& evalFile) {
+  // Load eval, from a file stream or a memory stream
+  bool load_eval(std::string name, std::istream& stream) {
 
     Initialize();
 
@@ -189,29 +186,8 @@ namespace Eval::NNUE {
       std::cout << "info string SkipLoadingEval set to true, Net not loaded!" << std::endl;
       return true;
     }
-
-    fileName = evalFile;
-
-    std::ifstream stream(evalFile, std::ios::binary);
-
-    const bool result = ReadParameters(stream);
-
-    return result;
-  }
-
-  // Evaluation function. Perform differential calculation.
-  Value evaluate(const Position& pos) {
-    return ComputeScore(pos, false);
-  }
-
-  // Evaluation function. Perform full calculation.
-  Value compute_eval(const Position& pos) {
-    return ComputeScore(pos, true);
-  }
-
-  // Proceed with the difference calculation if possible
-  void update_eval(const Position& pos) {
-    UpdateAccumulatorIfPossible(pos);
+    fileName = name;
+    return ReadParameters(stream);
   }
 
 } // namespace Eval::NNUE

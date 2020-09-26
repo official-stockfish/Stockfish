@@ -132,6 +132,7 @@ public:
 
 } // namespace
 
+
 /// engine_info() returns the full name of the current Stockfish version. This
 /// will be either "Stockfish <Tag> DD-MM-YY" (where DD-MM-YY is the date when
 /// the program was compiled) or "Stockfish <Version>", depending on whether
@@ -356,27 +357,11 @@ void std_aligned_free(void* ptr) {
 #endif
 }
 
-/// aligned_ttmem_alloc() will return suitably aligned memory, if possible using large pages.
-/// The returned pointer is the aligned one, while the mem argument is the one that needs
-/// to be passed to free. With c++17 some of this functionality could be simplified.
+/// aligned_large_pages_alloc() will return suitably aligned memory, if possible using large pages.
 
-#if defined(__linux__) && !defined(__ANDROID__)
+#if defined(_WIN32)
 
-void* aligned_ttmem_alloc(size_t allocSize, void*& mem) {
-
-  constexpr size_t alignment = 2 * 1024 * 1024; // assumed 2MB page sizes
-  size_t size = ((allocSize + alignment - 1) / alignment) * alignment; // multiple of alignment
-  if (posix_memalign(&mem, alignment, size))
-     mem = nullptr;
-#if defined(MADV_HUGEPAGE)
-  madvise(mem, allocSize, MADV_HUGEPAGE);
-#endif
-  return mem;
-}
-
-#elif defined(_WIN64)
-
-static void* aligned_ttmem_alloc_large_pages(size_t allocSize) {
+static void* aligned_large_pages_alloc_win(size_t allocSize) {
 
   HANDLE hProcessToken { };
   LUID luid { };
@@ -421,12 +406,13 @@ static void* aligned_ttmem_alloc_large_pages(size_t allocSize) {
   return mem;
 }
 
-void* aligned_ttmem_alloc(size_t allocSize, void*& mem) {
+void* aligned_large_pages_alloc(size_t allocSize) {
 
   static bool firstCall = true;
+  void* mem;
 
   // Try to allocate large pages
-  mem = aligned_ttmem_alloc_large_pages(allocSize);
+  mem = aligned_large_pages_alloc_win(allocSize);
 
   // Suppress info strings on the first call. The first call occurs before 'uci'
   // is received and in that case this output confuses some GUIs.
@@ -448,23 +434,31 @@ void* aligned_ttmem_alloc(size_t allocSize, void*& mem) {
 
 #else
 
-void* aligned_ttmem_alloc(size_t allocSize, void*& mem) {
+void* aligned_large_pages_alloc(size_t allocSize) {
 
-  constexpr size_t alignment = 64; // assumed cache line size
-  size_t size = allocSize + alignment - 1; // allocate some extra space
-  mem = malloc(size);
-  void* ret = reinterpret_cast<void*>((uintptr_t(mem) + alignment - 1) & ~uintptr_t(alignment - 1));
-  return ret;
+#if defined(__linux__)
+  constexpr size_t alignment = 2 * 1024 * 1024; // assumed 2MB page size
+#else
+  constexpr size_t alignment = 4096; // assumed small page size
+#endif
+
+  // round up to multiples of alignment
+  size_t size = ((allocSize + alignment - 1) / alignment) * alignment;
+  void *mem = std_aligned_alloc(alignment, size);
+#if defined(MADV_HUGEPAGE)
+  madvise(mem, size, MADV_HUGEPAGE);
+#endif
+  return mem;
 }
 
 #endif
 
 
-/// aligned_ttmem_free() will free the previously allocated ttmem
+/// aligned_large_pages_free() will free the previously allocated ttmem
 
-#if defined(_WIN64)
+#if defined(_WIN32)
 
-void aligned_ttmem_free(void* mem) {
+void aligned_large_pages_free(void* mem) {
 
   if (mem && !VirtualFree(mem, 0, MEM_RELEASE))
   {
@@ -477,8 +471,8 @@ void aligned_ttmem_free(void* mem) {
 
 #else
 
-void aligned_ttmem_free(void *mem) {
-  free(mem);
+void aligned_large_pages_free(void *mem) {
+  std_aligned_free(mem);
 }
 
 #endif
@@ -590,6 +584,63 @@ void bindThisThread(size_t idx) {
 
 } // namespace WinProcGroup
 
+#ifdef _WIN32
+#include <direct.h>
+#define GETCWD _getcwd
+#else
+#include <unistd.h>
+#define GETCWD getcwd
+#endif
+
+namespace CommandLine {
+
+string argv0;            // path+name of the executable binary, as given by argv[0]
+string binaryDirectory;  // path of the executable directory
+string workingDirectory; // path of the working directory
+string pathSeparator;    // Separator for our current OS
+
+void init(int argc, char* argv[]) {
+    (void)argc;
+    string separator;
+
+    // extract the path+name of the executable binary
+    argv0 = argv[0];
+
+#ifdef _WIN32
+    pathSeparator = "\\";
+  #ifdef _MSC_VER
+    // Under windows argv[0] may not have the extension. Also _get_pgmptr() had
+    // issues in some windows 10 versions, so check returned values carefully.
+    char* pgmptr = nullptr;
+    if (!_get_pgmptr(&pgmptr) && pgmptr != nullptr && *pgmptr)
+        argv0 = pgmptr;
+  #endif
+#else
+    pathSeparator = "/";
+#endif
+
+    // extract the working directory
+    workingDirectory = "";
+    char buff[40000];
+    char* cwd = GETCWD(buff, 40000);
+    if (cwd)
+        workingDirectory = cwd;
+
+    // extract the binary directory path from argv0
+    binaryDirectory = argv0;
+    size_t pos = binaryDirectory.find_last_of("\\/");
+    if (pos == std::string::npos)
+        binaryDirectory = "." + pathSeparator;
+    else
+        binaryDirectory.resize(pos + 1);
+
+    // pattern replacement: "./" at the start of path is replaced by the working directory
+    if (binaryDirectory.find("." + pathSeparator) == 0)
+        binaryDirectory.replace(0, 1, workingDirectory);
+}
+
+
+} // namespace CommandLine
 // Returns a string that represents the current time. (Used when learning evaluation functions)
 std::string now_string()
 {

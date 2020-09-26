@@ -1,43 +1,30 @@
-//Definition of input feature quantity K of NNUE evaluation function
+//Definition of input feature quantity EnPassant of NNUE evaluation function
 
 #include "enpassant.h"
 #include "index_list.h"
 
-namespace Eval {
+namespace Eval::NNUE::Features {
 
-  namespace NNUE {
+  // Get a list of indices with a value of 1 among the features
+  void EnPassant::AppendActiveIndices(
+    const Position& pos, Color /* perspective */, IndexList* active) {
+    // do nothing if array size is small to avoid compiler warning
+    if (RawFeatures::kMaxActiveDimensions < kMaxActiveDimensions) return;
 
-    namespace Features {
+    auto epSquare = pos.state()->epSquare;
+    if (epSquare == SQ_NONE) {
+      return;
+    }
+    auto file = file_of(epSquare);
+    active->push_back(file);
+  }
 
-      // Get a list of indices with a value of 1 among the features
-      void EnPassant::AppendActiveIndices(
-        const Position& pos, Color perspective, IndexList* active) {
-        // do nothing if array size is small to avoid compiler warning
-        if (RawFeatures::kMaxActiveDimensions < kMaxActiveDimensions) return;
+  // Get a list of indices whose values ​​have changed from the previous one in the feature quantity
+  void EnPassant::AppendChangedIndices(
+    const Position& /* pos */, Color /* perspective */,
+    IndexList* /* removed */, IndexList* /* added */) {
+    // Not implemented.
+    assert(false);
+  }
 
-        auto epSquare = pos.state()->epSquare;
-        if (epSquare == SQ_NONE) {
-          return;
-        }
-
-        if (perspective == BLACK) {
-          epSquare = rotate180(epSquare);
-        }
-
-        auto file = file_of(epSquare);
-        active->push_back(file);
-      }
-
-      // Get a list of indices whose values ??have changed from the previous one in the feature quantity
-      void EnPassant::AppendChangedIndices(
-        const Position& /* pos */, Color /* perspective */,
-        IndexList* /* removed */, IndexList* /* added */) {
-        // Not implemented.
-        assert(false);
-      }
-
-    }  // namespace Features
-
-  }  // namespace NNUE
-
-}  // namespace Eval
+}  // namespace Eval::NNUE::Features

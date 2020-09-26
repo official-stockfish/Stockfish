@@ -23,11 +23,7 @@ using LearnFloatType = float;
 // configure
 // ======================
 
-// ----------------------
-// Learning with the method of elmo (WCSC27)
-// ----------------------
-
-#define LOSS_FUNCTION "ELMO_METHOD(WCSC27)"
+#define LOSS_FUNCTION "cross_entropy_eval"
 
 // ----------------------
 // Definition of struct used in Learner

@@ -707,7 +707,6 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
 
   // Used by NNUE
   st->accumulator.computed_accumulation = false;
-  st->accumulator.computed_score = false;
   auto& dp = st->dirtyPiece;
   dp.dirty_num = 1;
 
@@ -1003,7 +1002,6 @@ void Position::do_null_move(StateInfo& newSt) {
   if (Eval::useNNUE != Eval::UseNNUEMode::False)
   {
       std::memcpy(&newSt, st, sizeof(StateInfo));
-      st->accumulator.computed_score = false;
   }
   else
       std::memcpy(&newSt, st, offsetof(StateInfo, accumulator));
@@ -1353,9 +1351,9 @@ bool Position::pos_is_ok() const {
 // Add a function that directly unpacks for speed. It's pretty tough.
 // Write it by combining packer::unpack() and Position::set().
 // If there is a problem with the passed phase and there is an error, non-zero is returned.
-int Position::set_from_packed_sfen(const Learner::PackedSfen& sfen , StateInfo* si, Thread* th, bool mirror)
+int Position::set_from_packed_sfen(const Learner::PackedSfen& sfen , StateInfo* si, Thread* th)
 {
-  return Learner::set_from_packed_sfen(*this, sfen, si, th, mirror);
+  return Learner::set_from_packed_sfen(*this, sfen, si, th);
 }
 
 // Give the board, hand piece, and turn, and return the sfen.

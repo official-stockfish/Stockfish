@@ -20,22 +20,29 @@
 #include <cassert>
 #include <cstdlib>
 #include <cstring>   // For std::memset
+#include <fstream>
 #include <iomanip>
 #include <sstream>
 #include <iostream>
-#include <set>
+#include <streambuf>
+#include <vector>
 
 #include "bitboard.h"
 #include "evaluate.h"
 #include "material.h"
+#include "misc.h"
 #include "pawns.h"
 #include "thread.h"
 #include "uci.h"
+#include "incbin/incbin.h"
+
+using namespace std;
+using namespace Eval::NNUE;
 
 namespace Eval {
 
   UseNNUEMode useNNUE;
-  std::string eval_file_loaded="None";
+  string eval_file_loaded = "None";
 
   static UseNNUEMode nnue_mode_from_option(const UCI::Option& mode)
   {
@@ -49,35 +56,67 @@ namespace Eval {
     return UseNNUEMode::False;
   }
 
-  void init_NNUE() {
+  void NNUE::init() {
 
     useNNUE = nnue_mode_from_option(Options["Use NNUE"]);
+    if (useNNUE == UseNNUEMode::False)
+        return;
 
-    std::string eval_file = std::string(Options["EvalFile"]);
-    if (useNNUE != UseNNUEMode::False && eval_file_loaded != eval_file)
-        if (Eval::NNUE::load_eval_file(eval_file))
-            eval_file_loaded = eval_file;
+    string eval_file = string(Options["EvalFile"]);
+
+    #if defined(DEFAULT_NNUE_DIRECTORY)
+    #define stringify2(x) #x
+    #define stringify(x) stringify2(x)
+    vector<string> dirs = { "" , CommandLine::binaryDirectory , stringify(DEFAULT_NNUE_DIRECTORY) };
+    #else
+    vector<string> dirs = { "" , CommandLine::binaryDirectory };
+    #endif
+
+    for (string directory : dirs)
+        if (eval_file_loaded != eval_file)
+        {
+            ifstream stream(directory + eval_file, ios::binary);
+            if (load_eval(eval_file, stream))
+            {
+                sync_cout << "info string Loaded eval file " << directory + eval_file << sync_endl;
+                eval_file_loaded = eval_file;
+            }
+            else
+            {
+                sync_cout << "info string ERROR: failed to load eval file " << directory + eval_file << sync_endl;
+            }
+        }
   }
 
-  void verify_NNUE() {
+  /// NNUE::verify() verifies that the last net used was loaded successfully
+  void NNUE::verify() {
 
-    std::string eval_file = std::string(Options["EvalFile"]);
-    if (useNNUE != UseNNUEMode::False && eval_file_loaded != eval_file)    {
+    string eval_file = string(Options["EvalFile"]);
+
+    if (useNNUE != UseNNUEMode::False && eval_file_loaded != eval_file)
+    {
         UCI::OptionsMap defaults;
         UCI::init(defaults);
 
-        sync_cout << "info string ERROR: NNUE evaluation used, but the network file " << eval_file << " was not loaded successfully." << sync_endl;
-        sync_cout << "info string ERROR: The UCI option EvalFile might need to specify the full path, including the directory/folder name, to the file." << sync_endl;
-        sync_cout << "info string ERROR: The default net can be downloaded from: https://tests.stockfishchess.org/api/nn/"+std::string(defaults["EvalFile"]) << sync_endl;
-        sync_cout << "info string ERROR: If the UCI option Use NNUE is set to true, network evaluation parameters compatible with the program must be available." << sync_endl;
-        sync_cout << "info string ERROR: The engine will be terminated now." << sync_endl;
-        std::exit(EXIT_FAILURE);
+        string msg1 = "If the UCI option \"Use NNUE\" is set to true, network evaluation parameters compatible with the engine must be available.";
+        string msg2 = "The option is set to true, but the network file " + eval_file + " was not loaded successfully.";
+        string msg3 = "The UCI option EvalFile might need to specify the full path, including the directory name, to the network file.";
+        string msg4 = "The default net can be downloaded from: https://tests.stockfishchess.org/api/nn/" + string(defaults["EvalFile"]);
+        string msg5 = "The engine will be terminated now.";
+
+        sync_cout << "info string ERROR: " << msg1 << sync_endl;
+        sync_cout << "info string ERROR: " << msg2 << sync_endl;
+        sync_cout << "info string ERROR: " << msg3 << sync_endl;
+        sync_cout << "info string ERROR: " << msg4 << sync_endl;
+        sync_cout << "info string ERROR: " << msg5 << sync_endl;
+
+        exit(EXIT_FAILURE);
     }
 
     if (useNNUE != UseNNUEMode::False)
-        sync_cout << "info string NNUE evaluation using " << eval_file << " enabled." << sync_endl;
+        sync_cout << "info string NNUE evaluation using " << eval_file << " enabled" << sync_endl;
     else
-        sync_cout << "info string classical evaluation enabled." << sync_endl;
+        sync_cout << "info string classical evaluation enabled" << sync_endl;
   }
 }
 
@@ -165,26 +204,26 @@ namespace {
 
   // Outpost[knight/bishop] contains bonuses for each knight or bishop occupying a
   // pawn protected square on rank 4 to 6 which is also safe from a pawn attack.
-  constexpr Score Outpost[] = { S(56, 36), S(30, 23) };
+  constexpr Score Outpost[] = { S(56, 34), S(31, 23) };
 
   // PassedRank[Rank] contains a bonus according to the rank of a passed pawn
   constexpr Score PassedRank[RANK_NB] = {
-    S(0, 0), S(10, 28), S(17, 33), S(15, 41), S(62, 72), S(168, 177), S(276, 260)
+    S(0, 0), S(9, 28), S(15, 31), S(17, 39), S(64, 70), S(171, 177), S(277, 260)
   };
 
   // RookOnFile[semiopen/open] contains bonuses for each rook when there is
   // no (friendly) pawn on the rook file.
-  constexpr Score RookOnFile[] = { S(19, 7), S(48, 29) };
+  constexpr Score RookOnFile[] = { S(19, 7), S(48, 27) };
 
   // ThreatByMinor/ByRook[attacked PieceType] contains bonuses according to
   // which piece type attacks which one. Attacks on lesser pieces which are
   // pawn-defended are not considered.
   constexpr Score ThreatByMinor[PIECE_TYPE_NB] = {
-    S(0, 0), S(5, 32), S(57, 41), S(77, 56), S(88, 119), S(79, 161)
+    S(0, 0), S(5, 32), S(55, 41), S(77, 56), S(89, 119), S(79, 162)
   };
 
   constexpr Score ThreatByRook[PIECE_TYPE_NB] = {
-    S(0, 0), S(3, 46), S(37, 68), S(42, 60), S(0, 38), S(58, 41)
+    S(0, 0), S(3, 44), S(37, 68), S(42, 60), S(0, 39), S(58, 43)
   };
 
   // Assorted bonuses and penalties
@@ -952,17 +991,32 @@ make_v:
 /// evaluation of the position from the point of view of the side to move.
 
 Value Eval::evaluate(const Position& pos) {
-  if (useNNUE == UseNNUEMode::Pure) {
-      return NNUE::evaluate(pos);
+
+  Value v;
+
+  if (Eval::useNNUE == UseNNUEMode::Pure) {
+      v = NNUE::evaluate(pos);
   }
+  else if (Eval::useNNUE == UseNNUEMode::False)
+      v = Evaluation<NO_TRACE>(pos).value();
+  else
+  {
+      // scale and shift NNUE for compatibility with search and classical evaluation
+      auto  adjusted_NNUE = [&](){ return NNUE::evaluate(pos) * 5 / 4 + Tempo; };
 
-  bool classical = useNNUE == UseNNUEMode::False
-                || abs(eg_value(pos.psq_score())) * 16 > NNUEThreshold1 * (16 + pos.rule50_count());
-  Value v = classical ? Evaluation<NO_TRACE>(pos).value()
-                      : NNUE::evaluate(pos) * 5 / 4 + Tempo;
+      // if there is PSQ imbalance use classical eval, with small probability if it is small
+      Value psq = Value(abs(eg_value(pos.psq_score())));
+      int   r50 = 16 + pos.rule50_count();
+      bool  largePsq = psq * 16 > (NNUEThreshold1 + pos.non_pawn_material() / 64) * r50;
+      bool  classical = largePsq || (psq > PawnValueMg / 4 && !(pos.this_thread()->nodes & 0xB));
 
-  if (classical && useNNUE != UseNNUEMode::False && abs(v) * 16 < NNUEThreshold2 * (16 + pos.rule50_count()))
-      v = NNUE::evaluate(pos) * 5 / 4 + Tempo;
+      v = classical ? Evaluation<NO_TRACE>(pos).value() : adjusted_NNUE();
+
+      // if the classical eval is small and imbalance large, use NNUE nevertheless.
+      if (   largePsq
+          && abs(v) * 16 < NNUEThreshold2 * r50)
+          v = adjusted_NNUE();
+  }
 
   // Damp down the evaluation linearly when shuffling
   v = v * (100 - pos.rule50_count()) / 100;
