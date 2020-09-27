@@ -52,11 +52,10 @@ namespace Eval::NNUE::Features {
   // Get a list of indices for recently changed features
   template <Side AssociatedKing>
   void HalfKP<AssociatedKing>::AppendChangedIndices(
-      const Position& pos, Color perspective,
+      const Position& pos, const DirtyPiece& dp, Color perspective,
       IndexList* removed, IndexList* added) {
 
     Square ksq = orient(perspective, pos.square<KING>(perspective));
-    const auto& dp = pos.state()->dirtyPiece;
     for (int i = 0; i < dp.dirty_num; ++i) {
       Piece pc = dp.piece[i];
       if (type_of(pc) == KING) continue;
