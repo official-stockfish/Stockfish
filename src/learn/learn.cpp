@@ -741,7 +741,6 @@ namespace Learner
             learn_sum_entropy_win = 0.0;
             learn_sum_entropy = 0.0;
 
-            newbob_scale = 1.0;
             newbob_decay = 1.0;
             newbob_num_trials = 2;
             best_loss = std::numeric_limits<double>::infinity();
@@ -795,7 +794,6 @@ namespace Learner
         atomic<double> learn_sum_entropy;
 
         shared_timed_mutex nn_mutex;
-        double newbob_scale;
         double newbob_decay;
         int newbob_num_trials;
         double best_loss;
@@ -1309,12 +1307,11 @@ namespace Learner
                     if (--trials > 0 && !is_final)
                     {
                         cout
-                            << "reducing learning rate from " << newbob_scale
-                            << " to " << (newbob_scale * newbob_decay)
+                            << "reducing learning rate from " << global_learning_rate
+                            << " to " << (global_learning_rate * newbob_decay)
                             << " (" << trials << " more trials)" << endl;
 
-                        newbob_scale *= newbob_decay;
-                        global_learning_rate = newbob_scale;
+                        global_learning_rate *= newbob_decay;
                     }
                 }
 
@@ -1956,7 +1953,6 @@ namespace Learner
         learn_think.sr.no_shuffle = no_shuffle;
         learn_think.reduction_gameply = reduction_gameply;
 
-        learn_think.newbob_scale = 1.0;
         learn_think.newbob_decay = newbob_decay;
         learn_think.newbob_num_trials = newbob_num_trials;
 
