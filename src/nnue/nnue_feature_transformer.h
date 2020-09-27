@@ -127,9 +127,14 @@ namespace Eval::NNUE {
         return true;
 
       const auto prev = now->previous;
-      if (prev && prev->accumulator.computed_accumulation) {
-        UpdateAccumulator(pos);
-        return true;
+      if (prev) {
+        if (prev->accumulator.computed_accumulation) {
+          UpdateAccumulator(pos);
+          return true;
+        } else if (prev->previous && prev->previous->accumulator.computed_accumulation) {
+          UpdateAccumulator(pos);
+          return true;
+        }
       }
 
       return false;
@@ -289,11 +294,21 @@ namespace Eval::NNUE {
     // Calculate cumulative value using difference calculation
     void UpdateAccumulator(const Position& pos) const {
 
-      const auto prev_accumulator = pos.state()->previous->accumulator;
+      Accumulator* prev_accumulator;
+      assert(pos.state()->previous);
+      if (pos.state()->previous->accumulator.computed_accumulation) {
+        prev_accumulator = &pos.state()->previous->accumulator;
+      }
+      else {
+        assert(pos.state()->previous->previous);
+        assert(pos.state()->previous->previous->accumulator.computed_accumulation);
+        prev_accumulator = &pos.state()->previous->previous->accumulator;
+      }
+
       auto& accumulator = pos.state()->accumulator;
       IndexType i = 0;
       Features::IndexList removed_indices[2], added_indices[2];
-      bool reset[2];
+      bool reset[2] = { false, false };
       RawFeatures::AppendChangedIndices(pos, kRefreshTriggers[i],
                                         removed_indices, added_indices, reset);
 
@@ -311,7 +326,7 @@ namespace Eval::NNUE {
               acc[k] = biasesTile[k];
           } else {
             auto prevAccTile = reinterpret_cast<const vec_t*>(
-                &prev_accumulator.accumulation[perspective][i][j * kTileHeight]);
+                &prev_accumulator->accumulation[perspective][i][j * kTileHeight]);
             for (IndexType k = 0; k < kNumRegs; ++k)
               acc[k] = vec_load(&prevAccTile[k]);
 
@@ -350,7 +365,7 @@ namespace Eval::NNUE {
                       kHalfDimensions * sizeof(BiasType));
         } else {
           std::memcpy(accumulator.accumulation[perspective][i],
-                      prev_accumulator.accumulation[perspective][i],
+                      prev_accumulator->accumulation[perspective][i],
                       kHalfDimensions * sizeof(BiasType));
           // Difference calculation for the deactivated features
           for (const auto index : removed_indices[perspective]) {
