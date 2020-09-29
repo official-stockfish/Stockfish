@@ -102,7 +102,6 @@ namespace Eval::NNUE::Features {
       const auto& dp = pos.state()->dirtyPiece;
 
       for (Color perspective : { WHITE, BLACK }) {
-        reset[perspective] = false;
         switch (trigger) {
           case TriggerEvent::kNone:
             break;
