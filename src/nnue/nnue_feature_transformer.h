@@ -1,4 +1,4 @@
-﻿/*
+/*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
 
@@ -346,11 +346,11 @@ namespace Eval::NNUE {
     // Calculate cumulative value using difference calculation
     void UpdateAccumulator(const Position& pos) const {
 
-      const auto prev_accumulator = pos.state()->previous->accumulator;
+      const auto& prev_accumulator = pos.state()->previous->accumulator;
       auto& accumulator = pos.state()->accumulator;
       for (IndexType i = 0; i < kRefreshTriggers.size(); ++i) {
         Features::IndexList removed_indices[2], added_indices[2];
-        bool reset[2];
+        bool reset[2] = { false, false };
         RawFeatures::AppendChangedIndices(pos, kRefreshTriggers[i],
                                           removed_indices, added_indices, reset);
 

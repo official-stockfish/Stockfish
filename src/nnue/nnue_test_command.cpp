@@ -56,7 +56,7 @@ void TestFeatures(Position& pos) {
   auto update_index_sets = [&](const Position& position, auto* index_sets) {
     for (IndexType i = 0; i < kRefreshTriggers.size(); ++i) {
       Features::IndexList removed_indices[2], added_indices[2];
-      bool reset[2];
+      bool reset[2] = { false, false };
       RawFeatures::AppendChangedIndices(position, kRefreshTriggers[i],
                                         removed_indices, added_indices, reset);
       for (const auto perspective : Colors) {
