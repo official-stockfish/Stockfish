@@ -387,12 +387,6 @@ namespace Learner
             int ply,
             int& random_move_c);
 
-        Value evaluate_leaf(
-            Position& pos,
-            std::vector<StateInfo, AlignedAllocator<StateInfo>>& states,
-            int ply,
-            vector<Move>& pv);
-
         // Min and max depths for search during gensfen
         int search_depth_min;
         int search_depth_max;
@@ -732,56 +726,6 @@ namespace Learner
         return random_move_flag;
     }
 
-    Value MultiThinkGenSfen::evaluate_leaf(
-        Position& pos,
-        std::vector<StateInfo, AlignedAllocator<StateInfo>>& states,
-        int ply,
-        vector<Move>& pv)
-    {
-        auto rootColor = pos.side_to_move();
-
-        for (auto m : pv)
-        {
-            // There should be no illegal move. This is as a debugging precaution.
-            if (!pos.pseudo_legal(m) || !pos.legal(m))
-            {
-                cout << "Error! : " << pos.fen() << m << endl;
-            }
-
-            pos.do_move(m, states[ply++]);
-        }
-
-        // Reach leaf
-        Value v;
-        if (pos.checkers())
-        {
-            // Sometime a king is checked.  An example is a case that a checkmate is
-            // found in the search.  If Eval::evaluate() is called whne a king is
-            // checked, classic eval crashes by an assertion. To avoid crashes, return
-            // VALUE_NONE and let the caller assign a value to the position.
-            v = VALUE_NONE;
-        }
-        else
-        {
-            v = Eval::evaluate(pos);
-
-            // evaluate() returns the evaluation value on the turn side, so
-            // If it's a turn different from root_color, you must invert v and return it.
-            if (rootColor != pos.side_to_move())
-            {
-                v = -v;
-            }
-        }
-
-        // Rewind the pv moves.
-        for (auto it = pv.rbegin(); it != pv.rend(); ++it)
-        {
-            pos.undo_move(*it);
-        }
-
-        return v;
-    }
-
     // thread_id = 0..Threads.size()-1
     void MultiThinkGenSfen::thread_worker(size_t thread_id)
     {
@@ -853,7 +797,7 @@ namespace Learner
                 if (abs(search_value) >= eval_limit)
                 {
                     resign_counter++;
-                    if ((should_resign && resign_counter >= 4) || abs(search_value) >= 10000) {
+                    if ((should_resign && resign_counter >= 4) || abs(search_value) >= VALUE_KNOWN_WIN) {
                         flush_psv((search_value >= eval_limit) ? 1 : -1);
                         break;
                     }
