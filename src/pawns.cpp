@@ -30,21 +30,21 @@ namespace {
   #define S(mg, eg) make_score(mg, eg)
 
   // Pawn penalties
-  constexpr Score Backward      = S( 8, 27);
-  constexpr Score Doubled       = S(11, 55);
-  constexpr Score Isolated      = S( 5, 17);
-  constexpr Score WeakLever     = S( 2, 54);
-  constexpr Score WeakUnopposed = S(15, 25);
+  constexpr Score Backward      = S( 8, 25);
+  constexpr Score Doubled       = S(10, 55);
+  constexpr Score Isolated      = S( 3, 15);
+  constexpr Score WeakLever     = S( 3, 55);
+  constexpr Score WeakUnopposed = S(13, 25);
 
   // Bonus for blocked pawns at 5th or 6th rank
-  constexpr Score BlockedPawn[2] = { S(-13, -4), S(-4, 3) };
+  constexpr Score BlockedPawn[2] = { S(-13, -4), S(-5, 2) };
 
   constexpr Score BlockedStorm[RANK_NB] = {
     S(0, 0), S(0, 0), S(76, 78), S(-10, 15), S(-7, 10), S(-4, 6), S(-1, 2)
   };
 
   // Connected pawn bonus
-  constexpr int Connected[RANK_NB] = { 0, 7, 8, 11, 24, 45, 85 };
+  constexpr int Connected[RANK_NB] = { 0, 5, 7, 11, 24, 48, 86 };
 
   // Strength of pawn shelter for our king by [distance from edge][rank].
   // RANK_1 = 0 is used for files where we have no pawn, or pawn is behind our king.
@@ -147,7 +147,7 @@ namespace {
         if (support | phalanx)
         {
             int v =  Connected[r] * (2 + bool(phalanx) - bool(opposed))
-                   + 21 * popcount(support);
+                   + 22 * popcount(support);
 
             score += make_score(v, v * (r - 2) / 4);
         }
