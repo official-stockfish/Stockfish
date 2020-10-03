@@ -996,6 +996,11 @@ Value Eval::evaluate(const Position& pos) {
 
   if (Eval::useNNUE == UseNNUEMode::Pure) {
       v = NNUE::evaluate(pos);
+
+      // Guarantee evaluation does not hit the tablebase range
+      v = std::clamp(v, VALUE_TB_LOSS_IN_MAX_PLY + 1, VALUE_TB_WIN_IN_MAX_PLY - 1);
+
+      return v;
   }
   else if (Eval::useNNUE == UseNNUEMode::False)
       v = Evaluation<NO_TRACE>(pos).value();
