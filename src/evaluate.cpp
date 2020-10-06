@@ -310,6 +310,9 @@ namespace {
     // attackedBy2[color] are the squares attacked by at least 2 units of a given
     // color, including x-rays. But diagonal x-rays through pawns are not computed.
     Bitboard attackedBy2[COLOR_NB];
+
+    // attackedBy3[color] are the squares attacked by at least 3 units of a given
+    // color, including x-rays. But diagonal x-rays through pawns are not computed.
     Bitboard attackedBy3[COLOR_NB];
 
     // kingRing[color] are the squares adjacent to the king plus some other
