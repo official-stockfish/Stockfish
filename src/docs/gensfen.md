@@ -1,10 +1,14 @@
 # Gensfen
 
-`gensfen` command allows generation of training data from self-play in a manner that suits training better than traditional games. It introduces random moves to diversify openings, allows reduced pruning, disabling of TT for less interference between searches, and fixed depth evaluation.
+`gensfen` command allows generation of training data from self-play in a manner that suits training better than traditional games. It introduces random moves to diversify openings, and fixed depth evaluation.
 
 As all commands in stockfish `gensfen` can be invoked either from command line (as `stockfish.exe gensfen ...`, but this is not recommended because it's not possible to specify UCI options before `gensfen` executes) or in the interactive prompt.
 
-`gensfen` takes named parameters in form `gensfen param_1_name param_1_value param_2_name param_2_value ...`.
+It is recommended to set the `PruneAtShallowDepth` UCI option to `false` as it will increase the quality of fixed depth searches.
+
+It is recommended to keep the `EnableTranspositionTable` UCI option at the default `true` value as it will make the generation process faster without noticably harming the uniformity of the data.
+
+`gensfen` takes named parameters in the form of `gensfen param_1_name param_1_value param_2_name param_2_value ...`.
 
 Currently the following options are available:
 
@@ -18,7 +22,7 @@ Currently the following options are available:
 
 `output_file_name` - the name of the file to output to. If the extension is not present or doesn't match the selected training data format the right extension will be appened.
 
-`eval_limit` - evaluations with higher absolute value than this will not be written and will terminate a self-play game. Should not exceed 10000 which VALUE_KNOWN_WIN, but is only hardcapped at mate in 2 (\~30000).
+`eval_limit` - evaluations with higher absolute value than this will not be written and will terminate a self-play game. Should not exceed 10000 which is VALUE_KNOWN_WIN, but is only hardcapped at mate in 2 (\~30000).
 
 `random_move_minply` - the minimal ply at which a random move may be executed instead of a move chosen by search
 
@@ -42,9 +46,9 @@ Currently the following options are available:
 
 `random_file_name` - if specified then the output filename will be chosen randomly. Overrides `output_file_name`.
 
-`use_draw_in_training_data_generation` - either 0 or 1. If 1 then training data from drawn games will be emitted too. Default: 0.
+`write_out_draw_game_in_training_data_generation` - either 0 or 1. If 1 then training data from drawn games will be emitted too. Default: 0.
 
-`write_out_draw_game_in_training_data_generation` - deprecated, alias for `use_draw_in_training_data_generation`
+`use_draw_in_training_data_generation` - deprecated, alias for `write_out_draw_game_in_training_data_generation`
 
 `detect_draw_by_consecutive_low_score` - either 0 or 1. If 1 then drawn games will be adjudicated when the score remains 0 for at least 8 plies after ply 80. Default: 0.
 

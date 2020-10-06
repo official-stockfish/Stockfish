@@ -1,14 +1,20 @@
 # Learn
 
-`learn` command allows allows training a network from training data.
+`learn` command allows training a network from training data.
 
 As all commands in stockfish `learn` can be invoked either from command line (as `stockfish.exe learn ...`, but this is not recommended because it's not possible to specify UCI options before `learn` executes) or in the interactive prompt.
 
-`learn` takes named parameters in form `learn param_1_name param_1_value param_2_name param_2_value ...`. Unrecognized parameters form a list of paths to training data files.
+`learn` takes named parameters in the form of `learn param_1_name param_1_value param_2_name param_2_value ...`. Unrecognized parameters form a list of paths to training data files.
+
+It is recommended to set the `EnableTranspositionTable` UCI option to `false` to reduce the interference between qsearches which are used to provide shallow evaluation. Using TT may cause the shallow evaluation to diverge from the real evaluation of the net, hiding imperfections.
+
+It is recommended to set the `PruneAtShallowDepth` UCI option to `false` as it will provide more accurate shallow evaluation.
+
+It is **required** to set the `Use NNUE` UCI option to `pure` as otherwise the function being optimized will not always match the function being probed, in which case not much can be learned.
 
 Currently the following options are available:
 
-`bat` - the size of a minibatch in multiples of 10000. The number of positions inbetween weights updates. Default: 1000 (meaning mini batch size of 1000000).
+`bat` - the size of a batch in multiples of 10000. This determines how many entries are read and shuffled at once during training. Default: 1000 (meaning batch size of 1000000).
 
 `targetdir` - path to the direction from which training data will be read. All files in this directory are read sequentially. If not specified then only the list of files from positional arguments will be used. If specified then files from the given directory will be used after the explicitly specified files.
 
@@ -50,7 +56,7 @@ Currently the following options are available:
 
 `no_shuffle` - this is a modifier not a parameter, no value follows it. If specified then data within a batch won't be shuffled.
 
-`nn_batch_size` - batch size used for learning. Default: 1000.
+`nn_batch_size` - minibatch size used for learning. Should be smaller than batch size. Default: 1000.
 
 `newbob_decay` - learning rate will be multiplied by this factor every time a net is rejected (so in other words it controls LR drops). Default: 1.0 (no LR drops)
 
@@ -60,7 +66,7 @@ Currently the following options are available:
 
 `eval_save_interval` - every `eval_save_interval` positions the network will be saved and either accepted or rejected (in which case an LR drop follows). Default: 1000000000 (1B). (generally people use values in 10M-100M range)
 
-`loss_output_interval` - every `loss_output_interval` fittness statistics are displayed. Default: `batchsize`
+`loss_output_interval` - every `loss_output_interval` fitness statistics are displayed. Default: `batchsize`
 
 `validation_set_file_name` - path to the file with training data to be used for validation (loss computation and move accuracy)
 
