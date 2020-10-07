@@ -64,7 +64,7 @@ namespace Learner
     // Needless to say, the longer the saving interval, the shorter the learning time.
     // Folder name is incremented for each save like 0/, 1/, 2/...
     // By default, once every 1 billion phases.
-    constexpr std::size_t LEARN_EVAL_SAVE_INTERVAL = 1000000000ULL;
+    constexpr std::size_t LEARN_EVAL_SAVE_INTERVAL = 100'000'000ULL;
 
     // Reduce the output of rmse during learning to 1 for this number of times.
     // rmse calculation is done in one thread, so it takes some time, so reducing the output is effective.

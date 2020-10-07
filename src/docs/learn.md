@@ -28,11 +28,11 @@ Currently the following options are available:
 
 `lr` - initial learning rate. Default: 1.
 
-`use_draw_games_in_training` - either 0 or 1. If 1 then draws will be used in training too. Default: 0.
+`use_draw_games_in_training` - either 0 or 1. If 1 then draws will be used in training too. Default: 1.
 
 `use_draw_in_training` - deprecated, alias for `use_draw_games_in_training`
 
-`use_draw_games_in_validation` - either 0 or 1. If 1 then draws will be used in validation too. Default: 0.
+`use_draw_games_in_validation` - either 0 or 1. If 1 then draws will be used in validation too. Default: 1.
 
 `use_draw_in_validation` - deprecated, alias for `use_draw_games_in_validation`
 
@@ -44,9 +44,9 @@ Currently the following options are available:
 
 `use_wdl` - either 0 or 1. If 1 then the evaluations will be converted to win/draw/loss percentages prior to learning on them. (Slightly changes the gradient because eval has a different derivative than wdl). Default: 0.
 
-`lambda` - value in range [0..1]. 1 means that only evaluation is used for learning, 0 means that only game result is used. Values inbetween result in interpolation between the two contributions. See `lambda_limit` for when this is applied. Default: 0.33.
+`lambda` - value in range [0..1]. 1 means that only evaluation is used for learning, 0 means that only game result is used. Values inbetween result in interpolation between the two contributions. See `lambda_limit` for when this is applied. Default: 1.0.
 
-`lambda2` - value in range [0..1]. 1 means that only evaluation is used for learning, 0 means that only game result is used. Values inbetween result in interpolation between the two contributions. See `lambda_limit` for when this is applied. Default: 0.33.
+`lambda2` - value in range [0..1]. 1 means that only evaluation is used for learning, 0 means that only game result is used. Values inbetween result in interpolation between the two contributions. See `lambda_limit` for when this is applied. Default: 1.0.
 
 `lambda_limit` - the maximum absolute score value for which `lambda` is used as opposed to `lambda2`. For positions with absolute evaluation higher than `lambda_limit` `lambda2` will be used. Default: 32000 (so always `lambda`).
 
@@ -60,15 +60,15 @@ Currently the following options are available:
 
 `nn_batch_size` - minibatch size used for learning. Should be smaller than batch size. Default: 1000.
 
-`newbob_decay` - learning rate will be multiplied by this factor every time a net is rejected (so in other words it controls LR drops). Default: 1.0 (no LR drops)
+`newbob_decay` - learning rate will be multiplied by this factor every time a net is rejected (so in other words it controls LR drops). Default: 0.5 (no LR drops)
 
-`newbob_num_trials` - determines after how many subsequent rejected nets the training process will be terminated. Default: 2.
+`newbob_num_trials` - determines after how many subsequent rejected nets the training process will be terminated. Default: 4.
 
 `nn_options` - if you're reading this you don't use it. It passes messages directly to the network evaluation. I don't know what it can do either.
 
-`eval_save_interval` - every `eval_save_interval` positions the network will be saved and either accepted or rejected (in which case an LR drop follows). Default: 1000000000 (1B). (generally people use values in 10M-100M range)
+`eval_save_interval` - every `eval_save_interval` positions the network will be saved and either accepted or rejected (in which case an LR drop follows). Default: 100000000 (100M). (generally people use values in 10M-100M range)
 
-`loss_output_interval` - every `loss_output_interval` fitness statistics are displayed. Default: `batchsize`
+`loss_output_interval` - every `loss_output_interval` fitness statistics are displayed. Default: 1000000 (1M)
 
 `validation_set_file_name` - path to the file with training data to be used for validation (loss computation and move accuracy)
 

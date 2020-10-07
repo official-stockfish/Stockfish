@@ -77,8 +77,8 @@ T operator -= (std::atomic<T>& x, const T rhs) { return x += -rhs; }
 
 namespace Learner
 {
-    static bool use_draw_games_in_training = false;
-    static bool use_draw_games_in_validation = false;
+    static bool use_draw_games_in_training = true;
+    static bool use_draw_games_in_validation = true;
     static bool skip_duplicated_positions_in_training = true;
 
     static double winning_probability_coefficient = 1.0 / PawnValueEg / 4.0 * std::log(10.0);
@@ -1632,8 +1632,8 @@ namespace Learner
         global_learning_rate = 1.0;
 
         // elmo lambda
-        ELMO_LAMBDA = 0.33;
-        ELMO_LAMBDA2 = 0.33;
+        ELMO_LAMBDA = 1.0;
+        ELMO_LAMBDA2 = 1.0;
         ELMO_LAMBDA_LIMIT = 32000;
 
         // if (gamePly <rand(reduction_gameply)) continue;
@@ -1642,12 +1642,12 @@ namespace Learner
         int reduction_gameply = 1;
 
         uint64_t nn_batch_size = 1000;
-        double newbob_decay = 1.0;
-        int newbob_num_trials = 2;
+        double newbob_decay = 0.5;
+        int newbob_num_trials = 4;
         string nn_options;
 
         uint64_t eval_save_interval = LEARN_EVAL_SAVE_INTERVAL;
-        uint64_t loss_output_interval = 0;
+        uint64_t loss_output_interval = 1'000'000;
 
         string validation_set_file_name;
         string seed;
