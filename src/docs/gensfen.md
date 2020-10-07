@@ -12,6 +12,8 @@ It is recommended to keep the `EnableTranspositionTable` UCI option at the defau
 
 Currently the following options are available:
 
+`set_recommended_uci_options` - this is a modifier not a parameter, no value follows it. If specified then some UCI options are set to recommended values.
+
 `depth` - minimum depth of evaluation of each position. Default: 3.
 
 `depth2` - maximum depth of evaluation of each position. If not specified then the same as `depth`.
