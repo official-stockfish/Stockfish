@@ -109,7 +109,7 @@ namespace {
   // setoption() is called when engine receives the "setoption" UCI command. The
   // function updates the UCI option ("name") to the given value ("value").
 
-  void setoption(istringstream& is) {
+  void setoption_from_stream(istringstream& is) {
 
     string token, name, value;
 
@@ -123,10 +123,7 @@ namespace {
     while (is >> token)
         value += (value.empty() ? "" : " ") + token;
 
-    if (Options.count(name))
-        Options[name] = value;
-    else
-        sync_cout << "No such option: " << name << sync_endl;
+    UCI::setoption(name, value);
   }
 
 
@@ -195,7 +192,7 @@ namespace {
             else
                trace_eval(pos);
         }
-        else if (token == "setoption")  setoption(is);
+        else if (token == "setoption")  setoption_from_stream(is);
         else if (token == "position")   position(pos, is, states);
         else if (token == "ucinewgame") { Search::clear(); elapsed = now(); } // Search::clear() may take some while
     }
@@ -211,6 +208,14 @@ namespace {
   }
 
 } // namespace
+
+void UCI::setoption(const std::string& name, const std::string& value)
+{
+    if (Options.count(name))
+        Options[name] = value;
+    else
+        sync_cout << "No such option: " << name << sync_endl;
+}
 
 // The win rate model returns the probability (per mille) of winning given an eval
 // and a game-ply. The model fits rather accurately the LTC fishtest statistics.
@@ -318,7 +323,7 @@ void UCI::loop(int argc, char* argv[]) {
                     << "\n"       << Options
                     << "\nuciok"  << sync_endl;
 
-      else if (token == "setoption")  setoption(is);
+      else if (token == "setoption")  setoption_from_stream(is);
       else if (token == "go")         go(pos, is, states);
       else if (token == "position")   position(pos, is, states);
       else if (token == "ucinewgame") Search::clear();
