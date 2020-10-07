@@ -28,6 +28,7 @@
 #include "tt.h"
 #include "uci.h"
 #include "search.h"
+#include "timeman.h"
 
 #include "extra/nnue_data_binpack_format.h"
 
@@ -845,9 +846,11 @@ namespace Learner
         // so at this timing the generation of the replacement table is updated.
         // It doesn't matter if you have disabled the substitution table.
         TT.new_search();
+        TimePoint elapsed = now() - Search::Limits.startTime + 1;
 
         cout << "PROGRESS: " << now_string() << ", ";
-        cout << sr.total_done << " sfens";
+        cout << sr.total_done << " sfens, ";
+        cout << sr.total_done * 1000 / elapsed  << " sfens/second";
         cout << ", iteration " << epoch;
         cout << ", learning rate = " << global_learning_rate << ", ";
 
@@ -1929,6 +1932,8 @@ namespace Learner
         // Be careful because this member variable is global and affects other threads.
         {
           auto& limits = Search::Limits;
+
+          limits.startTime = now();
 
           // Make the search equivalent to the "go infinite" command. (Because it is troublesome if time management is done)
           limits.infinite = true;
