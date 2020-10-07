@@ -43,9 +43,9 @@ namespace Learner
         Binpack
     };
 
-    static bool write_out_draw_game_in_training_data_generation = false;
-    static bool detect_draw_by_consecutive_low_score = false;
-    static bool detect_draw_by_insufficient_mating_material = false;
+    static bool write_out_draw_game_in_training_data_generation = true;
+    static bool detect_draw_by_consecutive_low_score = true;
+    static bool detect_draw_by_insufficient_mating_material = true;
 
     static SfenOutputType sfen_output_type = SfenOutputType::Bin;
 
@@ -954,7 +954,7 @@ namespace Learner
         // Add a random number to the end of the file name.
         bool random_file_name = false;
 
-        std::string sfen_format;
+        std::string sfen_format = "binpack";
         std::string seed;
 
         while (true)
