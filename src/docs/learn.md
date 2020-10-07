@@ -14,6 +14,8 @@ It is **required** to set the `Use NNUE` UCI option to `pure` as otherwise the f
 
 Currently the following options are available:
 
+`set_recommended_uci_options` - this is a modifier not a parameter, no value follows it. If specified then some UCI options are set to recommended values.
+
 `bat` - the size of a batch in multiples of 10000. This determines how many entries are read and shuffled at once during training. Default: 1000 (meaning batch size of 1000000).
 
 `targetdir` - path to the direction from which training data will be read. All files in this directory are read sequentially. If not specified then only the list of files from positional arguments will be used. If specified then files from the given directory will be used after the explicitly specified files.

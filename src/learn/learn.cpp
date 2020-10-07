@@ -1745,6 +1745,18 @@ namespace Learner
             else if (option == "dest_score_min_value") is >> dest_score_min_value;
             else if (option == "dest_score_max_value") is >> dest_score_max_value;
             else if (option == "seed") is >> seed;
+            else if (option == "set_recommended_uci_options")
+            {
+                UCI::setoption("Use NNUE", "pure");
+                UCI::setoption("MultiPV", "1");
+                UCI::setoption("Contempt", "0");
+                UCI::setoption("Skill Level", "20");
+                UCI::setoption("UCI_Chess960", "false");
+                UCI::setoption("UCI_AnalyseMode", "false");
+                UCI::setoption("UCI_LimitStrength", "false");
+                UCI::setoption("PruneAtShallowDepth", "false");
+                UCI::setoption("EnableTranspositionTable", "false");
+            }
             // Otherwise, it's a filename.
             else
                 filenames.push_back(option);
