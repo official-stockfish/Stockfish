@@ -229,10 +229,18 @@ namespace Learner
         // Dedicated thread to write to file
         void file_write_worker()
         {
+            auto startTime = now();
+
             auto output_status = [&]()
             {
                 // Also output the current time to console.
-                sync_cout << endl << sfen_write_count << " sfens , at " << now_string() << sync_endl;
+                const auto nowTime = now();
+                const TimePoint elapsed = nowTime - startTime + 1;
+
+                sync_cout << endl
+                    << sfen_write_count << " sfens, "
+                    << sfen_write_count * 1000 / elapsed << " sfens/second, "
+                    << "at " << now_string() << sync_endl;
             };
 
             while (!finished || sfen_buffers_pool.size())
