@@ -4482,12 +4482,12 @@ namespace chess
             return m_ply;
         }
 
-        [[nodiscard]] inline std::uint16_t halfMove() const
+        [[nodiscard]] inline std::uint16_t fullMove() const
         {
             return (m_ply + 1) / 2;
         }
 
-        inline void setHalfMove(std::uint16_t hm)
+        inline void setFullMove(std::uint16_t hm)
         {
             m_ply = 2 * hm - 1 + (m_sideToMove == Color::Black);
         }
@@ -5366,10 +5366,10 @@ namespace chess
         }
 
         {
-            const auto halfMove = nextPart();
-            if (!halfMove.empty())
+            const auto fullMove = nextPart();
+            if (!fullMove.empty())
             {
-                m_ply = std::stoi(halfMove.data()) * 2 - (m_sideToMove == Color::White);
+                m_ply = std::stoi(fullMove.data()) * 2 - (m_sideToMove == Color::White);
             }
             else
             {
@@ -5419,7 +5419,7 @@ namespace chess
         fen += std::to_string(m_rule50Counter);
 
         fen += ' ';
-        fen += std::to_string(halfMove());
+        fen += std::to_string(fullMove());
 
         return fen;
     }
@@ -5862,43 +5862,24 @@ namespace binpack
         // Huffman coding
         // * is simplified from mini encoding to make conversion easier.
         //
-        // 1 box on the board (other than NO_PIECE) = 2 to 6 bits (+ 1-bit flag + 1-bit forward and backward)
-        // 1 piece of hand piece = 1-5bit (+ 1-bit flag + 1bit ahead and behind)
-        //
-        // empty xxxxx0 + 0 (none)
-        // step xxxx01 + 2 xxxx0 + 2
-        // incense xx0011 + 2 xx001 + 2
-        // Katsura xx1011 + 2 xx101 + 2
-        // silver xx0111 + 2 xx011 + 2
-        // Gold x01111 + 1 x0111 + 1 // Gold is valid and has no flags.
-        // corner 011111 + 2 01111 + 2
-        // Fly 111111 + 2 11111 + 2
-        //
-        // Assuming all pieces are on the board,
-        // Sky 81-40 pieces = 41 boxes = 41bit
-        // Walk 4bit*18 pieces = 72bit
-        // Incense 6bit*4 pieces = 24bit
-        // Katsura 6bit*4 pieces = 24bit
-        // Silver 6bit*4 pieces = 24bit
-        // Gold 6bit* 4 pieces = 24bit
-        // corner 8bit* 2 pieces = 16bit
-        // Fly 8bit* 2 pieces = 16bit
-        // -------
-        // 241bit + 1bit (turn) + 7bit × 2 (King's position after) = 256bit
-        //
-        // When the piece on the board moves to the hand piece, the piece on the board becomes empty, so the box on the board can be expressed with 1 bit,
-        // Since the hand piece can be expressed by 1 bit less than the piece on the board, the total number of bits does not change in the end.
-        // Therefore, in this expression, any aspect can be expressed by this bit number.
-        // It is a hand piece and no flag is required, but if you include this, the bit number of the piece on the board will be -1
-        // Since the total number of bits can be fixed, we will include this as well.
-
         // Huffman Encoding
         //
         // Empty  xxxxxxx0
-        // Pawn   xxxxx001 + 1 bit (Side to move)
-        // Knight xxxxx011 + 1 bit (Side to move)
-        // Bishop xxxxx101 + 1 bit (Side to move)
-        // Rook   xxxxx111 + 1 bit (Side to move)
+        // Pawn   xxxxx001 + 1 bit (Color)
+        // Knight xxxxx011 + 1 bit (Color)
+        // Bishop xxxxx101 + 1 bit (Color)
+        // Rook   xxxxx111 + 1 bit (Color)
+        // Queen   xxxx1001 + 1 bit (Color)
+        //
+        // Worst case:
+        // - 32 empty squares    32 bits
+        // - 30 pieces           150 bits
+        // - 2 kings             12 bits
+        // - castling rights     4 bits
+        // - ep square           7 bits
+        // - rule50              7 bits
+        // - game ply            16 bits
+        // - TOTAL               228 bits < 256 bits
 
         struct HuffmanedPiece
         {
@@ -5980,7 +5961,17 @@ namespace binpack
 
                 stream.write_n_bit(pos.rule50Counter(), 6);
 
-                stream.write_n_bit(pos.halfMove(), 8);
+                stream.write_n_bit(pos.fullMove(), 8);
+
+                // Write high bits of half move. This is a fix for the
+                // limited range of half move counter.
+                // This is backwards compatibile.
+                stream.write_n_bit(pos.fullMove() >> 8, 8);
+
+                // Write the highest bit of rule50 at the end. This is a backwards
+                // compatibile fix for rule50 having only 6 bits stored.
+                // This bit is just ignored by the old parsers.
+                stream.write_n_bit(pos.rule50Counter() >> 6, 1);
 
                 assert(stream.get_cursor() <= 256);
             }
@@ -6105,10 +6096,23 @@ namespace binpack
             }
 
             // Halfmove clock
-            pos.setRule50Counter(stream.read_n_bit(6));
+            std::uint8_t rule50 = stream.read_n_bit(6);
 
             // Fullmove number
-            pos.setHalfMove(stream.read_n_bit(8));
+            std::uint16_t fullmove = stream.read_n_bit(8);
+
+            // Fullmove number, high bits
+            // This was added as a fix for fullmove clock
+            // overflowing at 256. This change is backwards compatibile.
+            fullmove |= stream.read_n_bit(8) << 8;
+
+            // Read the highest bit of rule50. This was added as a fix for rule50
+            // counter having only 6 bits stored.
+            // In older entries this will just be a zero bit.
+            rule50 |= stream.read_n_bit(1) << 6;
+
+            pos.setFullMove(fullmove);
+            pos.setRule50Counter(rule50);
 
             assert(stream.get_cursor() <= 256);
 
