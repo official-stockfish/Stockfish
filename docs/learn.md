@@ -64,6 +64,8 @@ Currently the following options are available:
 
 `newbob_num_trials` - determines after how many subsequent rejected nets the training process will be terminated. Default: 4.
 
+`auto_lr_drop` - every time this many positions are processed the learning rate is multiplied by `newbob_decay`. In other words this value specifies for how many positions a single learning rate stage lasts. If 0 then doesn't have any effect. Default: 0.
+
 `nn_options` - if you're reading this you don't use it. It passes messages directly to the network evaluation. I don't know what it can do either.
 
 `eval_save_interval` - every `eval_save_interval` positions the network will be saved and either accepted or rejected (in which case an LR drop follows). Default: 100000000 (100M). (generally people use values in 10M-100M range)
