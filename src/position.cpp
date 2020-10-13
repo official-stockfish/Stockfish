@@ -394,15 +394,15 @@ Position& Position::set(const string& code, Color c, StateInfo* si) {
 
 const string Position::fen() const {
 
-  int emptyCnt;
   std::ostringstream ss;
 
   for (Rank r = RANK_8; r >= RANK_1; --r)
   {
       for (File f = FILE_A; f <= FILE_H; ++f)
       {
-          for (emptyCnt = 0; f <= FILE_H && empty(make_square(f, r)); ++f)
-              ++emptyCnt;
+          int emptyCnt = 0;
+          while (f <= FILE_H && empty(make_square(f, r)))
+              ++f, ++emptyCnt;
 
           if (emptyCnt)
               ss << emptyCnt;
