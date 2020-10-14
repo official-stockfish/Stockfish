@@ -30,6 +30,7 @@
 #include <utility>
 #include <cmath>
 #include <cctype>
+#include <sstream>
 
 #include "types.h"
 
@@ -272,6 +273,19 @@ namespace Algo {
         const auto size = buf.size();
         for (uint64_t i = 0; i < size; ++i)
             std::swap(buf[i], buf[prng.rand(size - i) + i]);
+    }
+
+    // split the string
+    inline std::vector<std::string> split(const std::string& input, char delimiter) {
+        std::istringstream stream(input);
+        std::string field;
+        std::vector<std::string> fields;
+
+        while (std::getline(stream, field, delimiter)) {
+            fields.push_back(field);
+        }
+
+        return fields;
     }
 }
 
