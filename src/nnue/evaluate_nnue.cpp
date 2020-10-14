@@ -235,6 +235,7 @@ namespace Eval::NNUE {
             else
             {
                 sync_cout << "info string ERROR: failed to load eval file " << directory + eval_file << sync_endl;
+                eval_file_loaded.clear();
             }
         }
 
@@ -243,7 +244,7 @@ namespace Eval::NNUE {
   }
 
   /// NNUE::verify() verifies that the last net used was loaded successfully
-  void verify() {
+  void verify_eval_file_loaded() {
 
     std::string eval_file = std::string(Options["EvalFile"]);
 
@@ -269,6 +270,33 @@ namespace Eval::NNUE {
 
     if (useNNUE != UseNNUEMode::False)
         sync_cout << "info string NNUE evaluation using " << eval_file << " enabled" << sync_endl;
+    else
+        sync_cout << "info string classical evaluation enabled" << sync_endl;
+  }
+
+  /// In training we override eval file so this is useful.
+  void verify_any_net_loaded() {
+
+    if (useNNUE != UseNNUEMode::False && eval_file_loaded.empty())
+    {
+        UCI::OptionsMap defaults;
+        UCI::init(defaults);
+
+        std::string msg1 = "If the UCI option \"Use NNUE\" is set to true, network evaluation parameters compatible with the engine must be available.";
+        std::string msg2 = "The option is set to true, but the network file was not loaded successfully.";
+        std::string msg3 = "The UCI option EvalFile might need to specify the full path, including the directory name, to the network file.";
+        std::string msg5 = "The engine will be terminated now.";
+
+        sync_cout << "info string ERROR: " << msg1 << sync_endl;
+        sync_cout << "info string ERROR: " << msg2 << sync_endl;
+        sync_cout << "info string ERROR: " << msg3 << sync_endl;
+        sync_cout << "info string ERROR: " << msg5 << sync_endl;
+
+        std::exit(EXIT_FAILURE);
+    }
+
+    if (useNNUE != UseNNUEMode::False)
+        sync_cout << "info string NNUE evaluation using " << eval_file_loaded << " enabled" << sync_endl;
     else
         sync_cout << "info string classical evaluation enabled" << sync_endl;
   }

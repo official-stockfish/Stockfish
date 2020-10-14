@@ -219,7 +219,7 @@ void MainThread::search() {
   Time.init(Limits, us, rootPos.game_ply());
   TT.new_search();
 
-  Eval::NNUE::verify();
+  Eval::NNUE::verify_eval_file_loaded();
 
   if (rootMoves.empty())
   {

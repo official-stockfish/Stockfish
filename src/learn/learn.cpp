@@ -1486,6 +1486,27 @@ namespace Learner
         std::cout << "..shuffle_on_memory done." << std::endl;
     }
 
+    static void set_learning_search_limits()
+    {
+        // About Search::Limits
+        // Be careful because this member variable is global and affects other threads.
+        auto& limits = Search::Limits;
+
+        limits.startTime = now();
+
+        // Make the search equivalent to the "go infinite" command. (Because it is troublesome if time management is done)
+        limits.infinite = true;
+
+        // Since PV is an obstacle when displayed, erase it.
+        limits.silent = true;
+
+        // If you use this, it will be compared with the accumulated nodes of each thread. Therefore, do not use it.
+        limits.nodes = 0;
+
+        // depth is also processed by the one passed as an argument of Learner::search().
+        limits.depth = 0;
+    }
+
     // Learning from the generated game record
     void learn(Position&, istringstream& is)
     {
@@ -1837,30 +1858,9 @@ namespace Learner
 
         cout << "init.." << endl;
 
-        // Read evaluation function parameters
-        Eval::NNUE::init();
-
         Threads.main()->ponder = false;
 
-        // About Search::Limits
-        // Be careful because this member variable is global and affects other threads.
-        {
-          auto& limits = Search::Limits;
-
-          limits.startTime = now();
-
-          // Make the search equivalent to the "go infinite" command. (Because it is troublesome if time management is done)
-          limits.infinite = true;
-
-          // Since PV is an obstacle when displayed, erase it.
-          limits.silent = true;
-
-          // If you use this, it will be compared with the accumulated nodes of each thread. Therefore, do not use it.
-          limits.nodes = 0;
-
-          // depth is also processed by the one passed as an argument of Learner::search().
-          limits.depth = 0;
-        }
+        set_learning_search_limits();
 
         cout << "init_training.." << endl;
         Eval::NNUE::InitializeTraining(seed);
@@ -1906,6 +1906,8 @@ namespace Learner
         {
             sr.read_validation_set(validation_set_file_name, eval_limit);
         }
+
+        Eval::NNUE::verify_any_net_loaded();
 
         // Calculate rmse once at this point (timing of 0 sfen)
         // sr.calc_rmse();

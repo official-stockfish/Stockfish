@@ -96,7 +96,8 @@ namespace Eval::NNUE {
   Value evaluate(const Position& pos);
   bool load_eval(std::string name, std::istream& stream);
   void init();
-  void verify();
+  void verify_eval_file_loaded();
+  void verify_any_net_loaded();
 
 }  // namespace Eval::NNUE
 

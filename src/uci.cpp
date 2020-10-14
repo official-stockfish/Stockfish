@@ -101,7 +101,7 @@ namespace {
     Position p;
     p.set(pos.fen(), Options["UCI_Chess960"], &states->back(), Threads.main());
 
-    Eval::NNUE::verify();
+    Eval::NNUE::verify_eval_file_loaded();
 
     sync_cout << "\n" << Eval::trace(p) << sync_endl;
   }
