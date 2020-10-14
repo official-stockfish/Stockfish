@@ -23,6 +23,8 @@
 #include <iomanip>
 #include <sstream>
 
+#include "nnue/evaluate_nnue.h"
+
 #include "bitboard.h"
 #include "misc.h"
 #include "movegen.h"
@@ -757,7 +759,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       else
           st->nonPawnMaterial[them] -= PieceValue[MG][captured];
 
-      if (Eval::useNNUE != Eval::UseNNUEMode::False)
+      if (Eval::NNUE::useNNUE != Eval::NNUE::UseNNUEMode::False)
       {
           dp.dirty_num = 2;  // 1 piece moved, 1 piece captured
           dp.piece[1] = captured;
@@ -801,7 +803,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   // Move the piece. The tricky Chess960 castling is handled earlier
   if (type_of(m) != CASTLING)
   {
-      if (Eval::useNNUE != Eval::UseNNUEMode::False)
+      if (Eval::NNUE::useNNUE != Eval::NNUE::UseNNUEMode::False)
       {
           dp.piece[0] = pc;
           dp.from[0] = from;
@@ -832,7 +834,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
           remove_piece(to);
           put_piece(promotion, to);
 
-          if (Eval::useNNUE != Eval::UseNNUEMode::False)
+          if (Eval::NNUE::useNNUE != Eval::NNUE::UseNNUEMode::False)
           {
               // Promoting pawn to SQ_NONE, promoted piece from SQ_NONE
               dp.to[0] = SQ_NONE;
@@ -970,7 +972,7 @@ void Position::do_castling(Color us, Square from, Square& to, Square& rfrom, Squ
   rto = relative_square(us, kingSide ? SQ_F1 : SQ_D1);
   to = relative_square(us, kingSide ? SQ_G1 : SQ_C1);
 
-  if (Do && Eval::useNNUE != Eval::UseNNUEMode::False)
+  if (Do && Eval::NNUE::useNNUE != Eval::NNUE::UseNNUEMode::False)
   {
       auto& dp = st->dirtyPiece;
       dp.piece[0] = make_piece(us, KING);

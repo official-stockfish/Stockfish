@@ -27,6 +27,13 @@
 
 namespace Eval::NNUE {
 
+  enum struct UseNNUEMode
+  {
+    False,
+    True,
+    Pure
+  };
+
   // Hash value of evaluation function structure
   constexpr std::uint32_t kHashValue =
       FeatureTransformer::GetHashValue() ^ Network::GetHashValue();
@@ -66,6 +73,9 @@ namespace Eval::NNUE {
   // Saved evaluation function file name
   extern std::string savedfileName;
 
+  extern UseNNUEMode useNNUE;
+  extern std::string eval_file_loaded;
+
   // Get a string that represents the structure of the evaluation function
   std::string GetArchitectureString();
 
@@ -82,6 +92,11 @@ namespace Eval::NNUE {
 
   // write evaluation function parameters
   bool WriteParameters(std::ostream& stream);
+
+  Value evaluate(const Position& pos);
+  bool load_eval(std::string name, std::istream& stream);
+  void init();
+  void verify();
 
 }  // namespace Eval::NNUE
 

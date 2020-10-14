@@ -19,12 +19,14 @@
 // Code for calculating NNUE evaluation function
 
 #include <iostream>
+#include <string>
+#include <fstream>
 #include <set>
 
-#include "../evaluate.h"
 #include "../position.h"
 #include "../misc.h"
 #include "../uci.h"
+#include "../types.h"
 
 #include "evaluate_nnue.h"
 
@@ -68,6 +70,9 @@ namespace Eval::NNUE {
     return "Features=" + FeatureTransformer::GetStructureString() +
       ",Network=" + Network::GetStructureString();
   }
+
+  UseNNUEMode useNNUE;
+  std::string eval_file_loaded = "None";
 
   namespace Detail {
 
@@ -188,6 +193,84 @@ namespace Eval::NNUE {
     }
     fileName = name;
     return ReadParameters(stream);
+  }
+
+  static UseNNUEMode nnue_mode_from_option(const UCI::Option& mode)
+  {
+    if (mode == "false")
+      return UseNNUEMode::False;
+    else if (mode == "true")
+      return UseNNUEMode::True;
+    else if (mode == "pure")
+      return UseNNUEMode::Pure;
+
+    return UseNNUEMode::False;
+  }
+
+  void init() {
+
+    useNNUE = nnue_mode_from_option(Options["Use NNUE"]);
+    if (useNNUE == UseNNUEMode::False)
+        return;
+
+    std::string eval_file = std::string(Options["EvalFile"]);
+
+    #if defined(DEFAULT_NNUE_DIRECTORY)
+    #define stringify2(x) #x
+    #define stringify(x) stringify2(x)
+    std::vector<std::string> dirs = { "" , CommandLine::binaryDirectory , stringify(DEFAULT_NNUE_DIRECTORY) };
+    #else
+    std::vector<std::string> dirs = { "" , CommandLine::binaryDirectory };
+    #endif
+
+    for (std::string directory : dirs)
+        if (eval_file_loaded != eval_file)
+        {
+            std::ifstream stream(directory + eval_file, std::ios::binary);
+            if (load_eval(eval_file, stream))
+            {
+                sync_cout << "info string Loaded eval file " << directory + eval_file << sync_endl;
+                eval_file_loaded = eval_file;
+            }
+            else
+            {
+                sync_cout << "info string ERROR: failed to load eval file " << directory + eval_file << sync_endl;
+            }
+        }
+
+    #undef stringify2
+    #undef stringify
+  }
+
+  /// NNUE::verify() verifies that the last net used was loaded successfully
+  void verify() {
+
+    std::string eval_file = std::string(Options["EvalFile"]);
+
+    if (useNNUE != UseNNUEMode::False && eval_file_loaded != eval_file)
+    {
+        UCI::OptionsMap defaults;
+        UCI::init(defaults);
+
+        std::string msg1 = "If the UCI option \"Use NNUE\" is set to true, network evaluation parameters compatible with the engine must be available.";
+        std::string msg2 = "The option is set to true, but the network file " + eval_file + " was not loaded successfully.";
+        std::string msg3 = "The UCI option EvalFile might need to specify the full path, including the directory name, to the network file.";
+        std::string msg4 = "The default net can be downloaded from: https://tests.stockfishchess.org/api/nn/" + std::string(defaults["EvalFile"]);
+        std::string msg5 = "The engine will be terminated now.";
+
+        sync_cout << "info string ERROR: " << msg1 << sync_endl;
+        sync_cout << "info string ERROR: " << msg2 << sync_endl;
+        sync_cout << "info string ERROR: " << msg3 << sync_endl;
+        sync_cout << "info string ERROR: " << msg4 << sync_endl;
+        sync_cout << "info string ERROR: " << msg5 << sync_endl;
+
+        std::exit(EXIT_FAILURE);
+    }
+
+    if (useNNUE != UseNNUEMode::False)
+        sync_cout << "info string NNUE evaluation using " << eval_file << " enabled" << sync_endl;
+    else
+        sync_cout << "info string classical evaluation enabled" << sync_endl;
   }
 
 } // namespace Eval::NNUE

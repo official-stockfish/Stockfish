@@ -22,6 +22,7 @@
 #include <sstream>
 #include <string>
 
+#include "nnue/evaluate_nnue.h"
 #include "evaluate.h"
 #include "movegen.h"
 #include "nnue/nnue_test_command.h"

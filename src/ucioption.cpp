@@ -21,6 +21,7 @@
 #include <ostream>
 #include <sstream>
 
+#include "nnue/evaluate_nnue.h"
 #include "evaluate.h"
 #include "misc.h"
 #include "search.h"

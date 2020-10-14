@@ -23,6 +23,8 @@
 #include <iostream>
 #include <sstream>
 
+#include "nnue/evaluate_nnue.h"
+
 #include "evaluate.h"
 #include "misc.h"
 #include "movegen.h"

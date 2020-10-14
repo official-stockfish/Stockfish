@@ -18,6 +18,8 @@
 
 #include <iostream>
 
+#include "nnue/evaluate_nnue.h"
+
 #include "bitboard.h"
 #include "endgame.h"
 #include "position.h"

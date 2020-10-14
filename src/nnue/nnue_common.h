@@ -24,6 +24,8 @@
 #include <cstring>
 #include <iostream>
 
+#include "../types.h"
+
 #if defined(USE_AVX2)
 #include <immintrin.h>
 

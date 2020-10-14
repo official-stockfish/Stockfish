@@ -1,5 +1,7 @@
 ﻿#include "multi_think.h"
 
+#include "nnue/evaluate_nnue.h"
+
 #include "tt.h"
 #include "uci.h"
 #include "types.h"
