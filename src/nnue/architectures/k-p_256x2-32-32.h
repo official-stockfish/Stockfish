@@ -3,37 +3,33 @@
 #ifndef K_P_256X2_32_32_H
 #define K_P_256X2_32_32_H
 
-#include "../features/feature_set.h"
-#include "../features/k.h"
-#include "../features/p.h"
+#include "nnue/features/feature_set.h"
+#include "nnue/features/k.h"
+#include "nnue/features/p.h"
 
-#include "../layers/input_slice.h"
-#include "../layers/affine_transform.h"
-#include "../layers/clipped_relu.h"
+#include "nnue/layers/input_slice.h"
+#include "nnue/layers/affine_transform.h"
+#include "nnue/layers/clipped_relu.h"
 
-namespace Eval {
+namespace Eval::NNUE {
 
-namespace NNUE {
+    // Input features used in evaluation function
+    using RawFeatures = Features::FeatureSet<Features::K, Features::P>;
 
-// Input features used in evaluation function
-using RawFeatures = Features::FeatureSet<Features::K, Features::P>;
+    // Number of input feature dimensions after conversion
+    constexpr IndexType kTransformedFeatureDimensions = 256;
 
-// Number of input feature dimensions after conversion
-constexpr IndexType kTransformedFeatureDimensions = 256;
+    namespace Layers {
 
-namespace Layers {
+        // define network structure
+        using InputLayer = InputSlice<kTransformedFeatureDimensions * 2>;
+        using HiddenLayer1 = ClippedReLU<AffineTransform<InputLayer, 32>>;
+        using HiddenLayer2 = ClippedReLU<AffineTransform<HiddenLayer1, 32>>;
+        using OutputLayer = AffineTransform<HiddenLayer2, 1>;
 
-// define network structure
-using InputLayer = InputSlice<kTransformedFeatureDimensions * 2>;
-using HiddenLayer1 = ClippedReLU<AffineTransform<InputLayer, 32>>;
-using HiddenLayer2 = ClippedReLU<AffineTransform<HiddenLayer1, 32>>;
-using OutputLayer = AffineTransform<HiddenLayer2, 1>;
+    }  // namespace Layers
 
-}  // namespace Layers
+    using Network = Layers::OutputLayer;
 
-using Network = Layers::OutputLayer;
-
-}  // namespace NNUE
-
-}  // namespace Eval
+}  // namespace Eval::NNUE
 #endif // K_P_256X2_32_32_H
