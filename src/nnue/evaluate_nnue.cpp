@@ -214,13 +214,13 @@ namespace Eval::NNUE {
 
     std::string eval_file = std::string(Options["EvalFile"]);
 
-    #if defined(DEFAULT_NNUE_DIRECTORY)
-    #define stringify2(x) #x
-    #define stringify(x) stringify2(x)
+#if defined(DEFAULT_NNUE_DIRECTORY)
+#define stringify2(x) #x
+#define stringify(x) stringify2(x)
     std::vector<std::string> dirs = { "" , CommandLine::binaryDirectory , stringify(DEFAULT_NNUE_DIRECTORY) };
-    #else
+#else
     std::vector<std::string> dirs = { "" , CommandLine::binaryDirectory };
-    #endif
+#endif
 
     for (std::string directory : dirs)
         if (eval_file_loaded != eval_file)
@@ -238,8 +238,8 @@ namespace Eval::NNUE {
             }
         }
 
-    #undef stringify2
-    #undef stringify
+#undef stringify2
+#undef stringify
   }
 
   /// NNUE::verify() verifies that the last net used was loaded successfully
