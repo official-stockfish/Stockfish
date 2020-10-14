@@ -1,9 +1,11 @@
 ﻿#ifndef _NNUE_TRAINER_SUM_H_
 #define _NNUE_TRAINER_SUM_H_
 
-#include "../../learn/learn.h"
-#include "../layers/sum.h"
 #include "trainer.h"
+
+#include "learn/learn.h"
+
+#include "nnue/layers/sum.h"
 
 // Specialization of NNUE evaluation function learning class template for Sum
 namespace Eval::NNUE {
