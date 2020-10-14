@@ -1968,9 +1968,7 @@ void Tablebases::rank_root_moves(Position& pos, Search::RootMoves& rootMoves) {
 }
 
 // --- expose the functions such as fixed depth search used for learning to the outside
-
-
-namespace Learner
+namespace Search
 {
   // For learning, prepare a stub that can call search,qsearch() from one thread.
   // From now on, it is better to have a Searcher and prepare a substitution table for each thread like Apery.
@@ -1978,7 +1976,7 @@ namespace Learner
 
   // Initialization for learning.
   // Called from Learner::search(),Learner::qsearch().
-  void init_for_search(Position& pos, Stack* ss)
+  static void init_for_search(Position& pos, Stack* ss)
   {
 
     // RootNode requires ss->ply == 0.
@@ -2045,9 +2043,6 @@ namespace Learner
       Tablebases::rank_root_moves(pos, rootMoves);
     }
   }
-
-  // A pair of reader and evaluation value. Returned by Learner::search(),Learner::qsearch().
-  typedef std::pair<Value, std::vector<Move> > ValueAndPV;
 
   // Stationary search.
   //

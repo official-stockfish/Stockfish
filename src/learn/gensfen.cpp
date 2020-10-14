@@ -673,7 +673,7 @@ namespace Learner
             }
             else
             {
-                Learner::search(pos, random_multi_pv_depth, random_multi_pv);
+                Search::search(pos, random_multi_pv_depth, random_multi_pv);
 
                 // Select one from the top N hands of root Moves
                 auto& rm = pos.this_thread()->rootMoves;
@@ -790,7 +790,7 @@ namespace Learner
                 const int depth = search_depth_min + (int)prng.rand(search_depth_max - search_depth_min + 1);
 
                 // Starting search calls init_for_search
-                auto [search_value, search_pv] = search(pos, depth, 1, nodes);
+                auto [search_value, search_pv] = Search::search(pos, depth, 1, nodes);
 
                 // This has to be performed after search because it needs to know
                 // rootMoves which are filled in init_for_search.

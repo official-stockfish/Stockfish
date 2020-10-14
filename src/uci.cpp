@@ -254,7 +254,7 @@ double UCI::win_rate_model_double(double v, int ply) {
 void qsearch_cmd(Position& pos)
 {
   cout << "qsearch : ";
-  auto pv = Learner::qsearch(pos);
+  auto pv = Search::qsearch(pos);
   cout << "Value = " << pv.first << " , " << UCI::value(pv.first) << " , PV = ";
   for (auto m : pv.second)
     cout << UCI::move(m, false) << " ";
@@ -275,7 +275,7 @@ void search_cmd(Position& pos, istringstream& is)
   }
 
   cout << "search depth = " << depth << " , multi_pv = " << multi_pv << " : ";
-  auto pv = Learner::search(pos, depth, multi_pv);
+  auto pv = Search::search(pos, depth, multi_pv);
   cout << "Value = " << pv.first << " , " << UCI::value(pv.first) << " , PV = ";
   for (auto m : pv.second)
     cout << UCI::move(m, false) << " ";

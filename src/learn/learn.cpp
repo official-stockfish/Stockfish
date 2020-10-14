@@ -824,7 +824,7 @@ namespace Learner
         // The value of evaluate() may be used, but when calculating loss, learn_cross_entropy and
         // Use qsearch() because it is difficult to compare the values.
         // EvalHash has been disabled in advance. (If not, the same value will be returned every time)
-        const auto [_, pv] = qsearch(task_pos);
+        const auto [_, pv] = Search::qsearch(task_pos);
 
         const auto rootColor = task_pos.side_to_move();
 
@@ -962,7 +962,7 @@ namespace Learner
 
                 // Determine if the teacher's move and the score of the shallow search match
                 {
-                    const auto [value, pv] = search(task_pos, 1);
+                    const auto [value, pv] = Search::search(task_pos, 1);
                     if ((uint16_t)pv[0] == ps.move)
                         move_accord_count.fetch_add(1, std::memory_order_relaxed);
                 }
@@ -1186,7 +1186,7 @@ namespace Learner
 				goto RETRY_READ;
 
             // Evaluation value of shallow search (qsearch)
-            const auto [_, pv] = qsearch(pos);
+            const auto [_, pv] = Search::qsearch(pos);
 
             // Evaluation value of deep search
             const auto deep_value = (Value)ps.score;

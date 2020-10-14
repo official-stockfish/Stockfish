@@ -110,15 +110,12 @@ extern LimitsType Limits;
 void init();
 void clear();
 
-} // namespace Search
+// A pair of reader and evaluation value. Returned by Learner::search(),Learner::qsearch().
+using ValueAndPV = std::pair<Value, std::vector<Move>>;
 
-namespace Learner {
+ValueAndPV qsearch(Position& pos);
+ValueAndPV search(Position& pos, int depth_, size_t multiPV = 1, uint64_t nodesLimit = 0);
 
-  // A pair of reader and evaluation value. Returned by Learner::search(),Learner::qsearch().
-  using ValueAndPV = std::pair<Value, std::vector<Move>>;
-
-  ValueAndPV qsearch(Position& pos);
-  ValueAndPV search(Position& pos, int depth_, size_t multiPV = 1, uint64_t nodesLimit = 0);
 }
 
 #endif // #ifndef SEARCH_H_INCLUDED
