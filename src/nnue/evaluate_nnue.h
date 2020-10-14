@@ -21,6 +21,8 @@
 
 #include "nnue_feature_transformer.h"
 
+#include "misc.h"
+
 #include <memory>
 
 // header used in NNUE evaluation function
