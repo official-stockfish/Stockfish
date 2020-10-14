@@ -3,7 +3,6 @@
 #include "packed_sfen.h"
 #include "multi_think.h"
 #include "sfen_stream.h"
-#include "../syzygy/tbprobe.h"
 
 #include "misc.h"
 #include "position.h"
@@ -73,7 +72,7 @@ namespace Learner
             file_worker_thread.join();
             output_file_stream.reset();
 
-#if defined(_DEBUG)
+#if !defined(NDEBUG)
             {
                 // All buffers should be empty since file_worker_thread
                 // should have written everything before exiting.

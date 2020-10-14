@@ -1066,14 +1066,14 @@ namespace Learner
 
             pos.do_move((Move)ps.move, state[ply++]);
 
-			// There is a possibility that all the pieces are blocked and stuck.
-			// Also, the declaration win phase is excluded from
-			// learning because you cannot go to leaf with PV moves.
-			// (shouldn't write out such teacher aspect itself,
-			// but may have written it out with an old generation routine)
-			// Skip the position if there are no legal moves (=checkmated or stalemate).
-			if (MoveList<LEGAL>(pos).size() == 0)
-				goto RETRY_READ;
+            // There is a possibility that all the pieces are blocked and stuck.
+            // Also, the declaration win phase is excluded from
+            // learning because you cannot go to leaf with PV moves.
+            // (shouldn't write out such teacher aspect itself,
+            // but may have written it out with an old generation routine)
+            // Skip the position if there are no legal moves (=checkmated or stalemate).
+            if (MoveList<LEGAL>(pos).size() == 0)
+                goto RETRY_READ;
 
             // Evaluation value of shallow search (qsearch)
             const auto [_, pv] = Search::qsearch(pos);
