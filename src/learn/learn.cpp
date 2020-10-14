@@ -964,7 +964,7 @@ namespace Learner
 
                         // Lock the evaluation function so that it is not used during updating.
                         lock_guard<shared_timed_mutex> write_lock(nn_mutex);
-                        Eval::NNUE::UpdateParameters();
+                        Eval::NNUE::update_parameters();
                     }
 
                     ++epoch;
@@ -998,7 +998,7 @@ namespace Learner
                         // loss calculation
                         calc_loss(thread_id, done);
 
-                        Eval::NNUE::CheckHealth();
+                        Eval::NNUE::check_health();
 
                         // Make a note of how far you have totaled.
                         sr.last_done = sr.total_done;
@@ -1127,7 +1127,7 @@ namespace Learner
                 learn_sum_entropy_win += learn_entropy_win;
                 learn_sum_entropy += learn_entropy;
 
-                Eval::NNUE::AddExample(pos, rootColor, ps, 1.0);
+                Eval::NNUE::add_example(pos, rootColor, ps, 1.0);
 
                 // Since the processing is completed, the counter of the processed number is incremented
                 sr.total_done++;
@@ -1194,7 +1194,7 @@ namespace Learner
                 {
                     cout << " < best (" << best_loss << "), accepted" << endl;
                     best_loss = latest_loss;
-                    best_nn_directory = Path::Combine((std::string)Options["EvalSaveDir"], dir_name);
+                    best_nn_directory = Path::combine((std::string)Options["EvalSaveDir"], dir_name);
                     trials = newbob_num_trials;
 
                     if (tot >= last_lr_drop + auto_lr_drop)
@@ -1207,13 +1207,13 @@ namespace Learner
                 {
                     cout << " < best (" << best_loss << "), accepted" << endl;
                     best_loss = latest_loss;
-                    best_nn_directory = Path::Combine((std::string)Options["EvalSaveDir"], dir_name);
+                    best_nn_directory = Path::combine((std::string)Options["EvalSaveDir"], dir_name);
                     trials = newbob_num_trials;
                 }
                 else
                 {
                     cout << " >= best (" << best_loss << "), rejected" << endl;
-                    best_nn_directory = Path::Combine((std::string)Options["EvalSaveDir"], dir_name);
+                    best_nn_directory = Path::combine((std::string)Options["EvalSaveDir"], dir_name);
 
                     if (--trials > 0 && !is_final)
                     {
@@ -1713,14 +1713,14 @@ namespace Learner
         // Display learning game file
         if (target_dir != "")
         {
-            string kif_base_dir = Path::Combine(base_dir, target_dir);
+            string kif_base_dir = Path::combine(base_dir, target_dir);
 
             namespace sys = std::filesystem;
             sys::path p(kif_base_dir); // Origin of enumeration
             std::for_each(sys::directory_iterator(p), sys::directory_iterator(),
                 [&](const sys::path& path) {
                     if (sys::is_regular_file(path))
-                        filenames.push_back(Path::Combine(target_dir, path.filename().generic_string()));
+                        filenames.push_back(Path::combine(target_dir, path.filename().generic_string()));
                 });
         }
 
@@ -1814,7 +1814,7 @@ namespace Learner
             // order so I'll reverse it here. I'm sorry.
             for (auto it = filenames.rbegin(); it != filenames.rend(); ++it)
             {
-                sr.filenames.push_back(Path::Combine(base_dir, *it));
+                sr.filenames.push_back(Path::combine(base_dir, *it));
             }
         }
 
@@ -1858,9 +1858,9 @@ namespace Learner
         set_learning_search_limits();
 
         cout << "init_training.." << endl;
-        Eval::NNUE::InitializeTraining(seed);
-        Eval::NNUE::SetBatchSize(nn_batch_size);
-        Eval::NNUE::SetOptions(nn_options);
+        Eval::NNUE::initialize_training(seed);
+        Eval::NNUE::set_batch_size(nn_batch_size);
+        Eval::NNUE::set_options(nn_options);
         if (newbob_decay != 1.0 && !Options["SkipLoadingEval"]) {
             // Save the current net to [EvalSaveDir]\original.
             Eval::NNUE::save_eval("original");
@@ -1868,7 +1868,7 @@ namespace Learner
             // Set the folder above to best_nn_directory so that the trainer can
             // resotre the network parameters from the original net file.
             learn_think.best_nn_directory =
-                Path::Combine(Options["EvalSaveDir"], "original");
+                Path::combine(Options["EvalSaveDir"], "original");
         }
 
         cout << "init done." << endl;
@@ -1925,7 +1925,7 @@ namespace Learner
         // Start learning.
         learn_think.go_think();
 
-        Eval::NNUE::FinalizeNet();
+        Eval::NNUE::finalize_net();
 
         // Save once at the end.
         learn_think.save(true);

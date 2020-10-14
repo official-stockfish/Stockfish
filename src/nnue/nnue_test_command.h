@@ -5,7 +5,7 @@
 namespace Eval::NNUE {
 
     // USI extended command for NNUE evaluation function
-    void TestCommand(Position& pos, std::istream& stream);
+    void test_command(Position& pos, std::istream& stream);
 
 }  // namespace Eval::NNUE
 

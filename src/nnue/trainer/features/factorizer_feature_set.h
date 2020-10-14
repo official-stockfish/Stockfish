@@ -22,12 +22,12 @@ namespace Eval::NNUE::Features {
             FeatureSet<FirstFeatureType, RemainingFeatureTypes...>::kDimensions;
 
         // Get the dimensionality of the learning feature
-        static constexpr IndexType GetDimensions() {
-            return Head::GetDimensions() + Tail::GetDimensions();
+        static constexpr IndexType get_dimensions() {
+            return Head::get_dimensions() + Tail::get_dimensions();
         }
 
         // Get index of learning feature and scale of learning rate
-        static void AppendTrainingFeatures(
+        static void append_training_features(
             IndexType base_index, std::vector<TrainingFeature>* training_features,
             IndexType base_dimensions = kBaseDimensions) {
 
@@ -36,29 +36,29 @@ namespace Eval::NNUE::Features {
             constexpr auto boundary = FeatureSet<RemainingFeatureTypes...>::kDimensions;
 
             if (base_index < boundary) {
-                Tail::AppendTrainingFeatures(
+                Tail::append_training_features(
                     base_index, training_features, base_dimensions);
             }
             else {
                 const auto start = training_features->size();
 
-                Head::AppendTrainingFeatures(
+                Head::append_training_features(
                     base_index - boundary, training_features, base_dimensions);
 
                 for (auto i = start; i < training_features->size(); ++i) {
                     auto& feature = (*training_features)[i];
-                    const auto index = feature.GetIndex();
+                    const auto index = feature.get_index();
 
-                    assert(index < Head::GetDimensions() ||
+                    assert(index < Head::get_dimensions() ||
                                (index >= base_dimensions &&
                                 index < base_dimensions +
-                                        Head::GetDimensions() - Head::kBaseDimensions));
+                                        Head::get_dimensions() - Head::kBaseDimensions));
 
                     if (index < Head::kBaseDimensions) {
-                        feature.ShiftIndex(Tail::kBaseDimensions);
+                        feature.shift_index(Tail::kBaseDimensions);
                     }
                     else {
-                        feature.ShiftIndex(Tail::GetDimensions() - Tail::kBaseDimensions);
+                        feature.shift_index(Tail::get_dimensions() - Tail::kBaseDimensions);
                     }
                 }
             }
@@ -74,12 +74,12 @@ namespace Eval::NNUE::Features {
         static constexpr IndexType kBaseDimensions = FeatureType::kDimensions;
 
         // Get the dimensionality of the learning feature
-        static constexpr IndexType GetDimensions() {
-            return Factorizer<FeatureType>::GetDimensions();
+        static constexpr IndexType get_dimensions() {
+            return Factorizer<FeatureType>::get_dimensions();
         }
 
         // Get index of learning feature and scale of learning rate
-        static void AppendTrainingFeatures(
+        static void append_training_features(
             IndexType base_index, std::vector<TrainingFeature>* training_features,
             IndexType base_dimensions = kBaseDimensions) {
 
@@ -87,14 +87,14 @@ namespace Eval::NNUE::Features {
 
             const auto start = training_features->size();
 
-            Factorizer<FeatureType>::AppendTrainingFeatures(
+            Factorizer<FeatureType>::append_training_features(
                 base_index, training_features);
 
             for (auto i = start; i < training_features->size(); ++i) {
                 auto& feature = (*training_features)[i];
-                assert(feature.GetIndex() < Factorizer<FeatureType>::GetDimensions());
-                if (feature.GetIndex() >= kBaseDimensions) {
-                    feature.ShiftIndex(base_dimensions - kBaseDimensions);
+                assert(feature.get_index() < Factorizer<FeatureType>::get_dimensions());
+                if (feature.get_index() >= kBaseDimensions) {
+                    feature.shift_index(base_dimensions - kBaseDimensions);
                 }
             }
         }

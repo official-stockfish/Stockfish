@@ -7,28 +7,31 @@
 namespace Eval::NNUE {
 
     // Initialize learning
-    void InitializeTraining(const std::string& seed);
+    void initialize_training(const std::string& seed);
 
     // set the number of samples in the mini-batch
-    void SetBatchSize(uint64_t size);
+    void set_batch_size(uint64_t size);
 
     // Set options such as hyperparameters
-    void SetOptions(const std::string& options);
+    void set_options(const std::string& options);
 
     // Reread the evaluation function parameters for learning from the file
-    void RestoreParameters(const std::string& dir_name);
+    void restore_parameters(const std::string& dir_name);
 
     // Add 1 sample of learning data
-    void AddExample(Position& pos, Color rootColor,
-    	 const Learner::PackedSfenValue& psv, double weight);
+    void add_example(
+        Position& pos,
+        Color rootColor,
+    	const Learner::PackedSfenValue& psv,
+        double weight);
 
     // update the evaluation function parameters
-    void UpdateParameters();
+    void update_parameters();
 
     // Check if there are any problems with learning
-    void CheckHealth();
+    void check_health();
 
-    void FinalizeNet();
+    void finalize_net();
 
     void save_eval(std::string suffix);
 }  // namespace Eval::NNUE

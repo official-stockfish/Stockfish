@@ -19,7 +19,7 @@ namespace Eval::NNUE {
 
     public:
         // factory function
-        static std::shared_ptr<Trainer> Create(
+        static std::shared_ptr<Trainer> create(
             LayerType* target_layer, FeatureTransformer* ft) {
 
             return std::shared_ptr<Trainer>(
@@ -27,27 +27,27 @@ namespace Eval::NNUE {
         }
 
         // Set options such as hyperparameters
-        void SendMessage(Message* message) {
-            previous_layer_trainer_->SendMessage(message);
-            if (ReceiveMessage("check_health", message)) {
-                CheckHealth();
+        void send_message(Message* message) {
+            previous_layer_trainer_->send_message(message);
+            if (receive_message("check_health", message)) {
+                check_health();
             }
         }
 
         // Initialize the parameters with random numbers
         template <typename RNG>
-        void Initialize(RNG& rng) {
-            previous_layer_trainer_->Initialize(rng);
+        void initialize(RNG& rng) {
+            previous_layer_trainer_->initialize(rng);
         }
 
         // forward propagation
-        const LearnFloatType* Propagate(const std::vector<Example>& batch) {
+        const LearnFloatType* propagate(const std::vector<Example>& batch) {
             if (output_.size() < kOutputDimensions * batch.size()) {
               output_.resize(kOutputDimensions * batch.size());
               gradients_.resize(kInputDimensions * batch.size());
             }
 
-            const auto input = previous_layer_trainer_->Propagate(batch);
+            const auto input = previous_layer_trainer_->propagate(batch);
             batch_size_ = static_cast<IndexType>(batch.size());
             for (IndexType b = 0; b < batch_size_; ++b) {
                 const IndexType batch_offset = kOutputDimensions * b;
@@ -63,7 +63,7 @@ namespace Eval::NNUE {
         }
 
         // backpropagation
-        void Backpropagate(const LearnFloatType* gradients,
+        void backpropagate(const LearnFloatType* gradients,
                            LearnFloatType learning_rate) {
 
             for (IndexType b = 0; b < batch_size_; ++b) {
@@ -75,14 +75,14 @@ namespace Eval::NNUE {
                 }
             }
 
-            previous_layer_trainer_->Backpropagate(gradients_.data(), learning_rate);
+            previous_layer_trainer_->backpropagate(gradients_.data(), learning_rate);
         }
 
     private:
         // constructor
         Trainer(LayerType* target_layer, FeatureTransformer* ft) :
             batch_size_(0),
-            previous_layer_trainer_(Trainer<PreviousLayer>::Create(
+            previous_layer_trainer_(Trainer<PreviousLayer>::create(
                 &target_layer->previous_layer_, ft)),
             target_layer_(target_layer) {
 
@@ -93,7 +93,7 @@ namespace Eval::NNUE {
         }
 
         // Check if there are any problems with learning
-        void CheckHealth() {
+        void check_health() {
             const auto largest_min_activation = *std::max_element(
                 std::begin(min_activations_), std::end(min_activations_));
             const auto smallest_max_activation = *std::min_element(

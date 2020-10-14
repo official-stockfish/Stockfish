@@ -14,7 +14,7 @@ namespace Eval::NNUE {
     class SharedInputTrainer {
     public:
         // factory function
-        static std::shared_ptr<SharedInputTrainer> Create(
+        static std::shared_ptr<SharedInputTrainer> create(
             FeatureTransformer* ft) {
 
             static std::shared_ptr<SharedInputTrainer> instance;
@@ -29,10 +29,10 @@ namespace Eval::NNUE {
         }
 
         // Set options such as hyperparameters
-        void SendMessage(Message* message) {
+        void send_message(Message* message) {
             if (num_calls_ == 0) {
                 current_operation_ = Operation::kSendMessage;
-                feature_transformer_trainer_->SendMessage(message);
+                feature_transformer_trainer_->send_message(message);
             }
 
             assert(current_operation_ == Operation::kSendMessage);
@@ -45,10 +45,10 @@ namespace Eval::NNUE {
 
         // Initialize the parameters with random numbers
         template <typename RNG>
-        void Initialize(RNG& rng) {
+        void initialize(RNG& rng) {
             if (num_calls_ == 0) {
                 current_operation_ = Operation::kInitialize;
-                feature_transformer_trainer_->Initialize(rng);
+                feature_transformer_trainer_->initialize(rng);
             }
 
             assert(current_operation_ == Operation::kInitialize);
@@ -60,7 +60,7 @@ namespace Eval::NNUE {
         }
 
         // forward propagation
-        const LearnFloatType* Propagate(const std::vector<Example>& batch) {
+        const LearnFloatType* propagate(const std::vector<Example>& batch) {
             if (gradients_.size() < kInputDimensions * batch.size()) {
                 gradients_.resize(kInputDimensions * batch.size());
             }
@@ -69,7 +69,7 @@ namespace Eval::NNUE {
 
             if (num_calls_ == 0) {
                 current_operation_ = Operation::kPropagate;
-                output_ = feature_transformer_trainer_->Propagate(batch);
+                output_ = feature_transformer_trainer_->propagate(batch);
             }
 
             assert(current_operation_ == Operation::kPropagate);
@@ -83,11 +83,11 @@ namespace Eval::NNUE {
         }
 
         // backpropagation
-        void Backpropagate(const LearnFloatType* gradients,
+        void backpropagate(const LearnFloatType* gradients,
                            LearnFloatType learning_rate) {
 
             if (num_referrers_ == 1) {
-                feature_transformer_trainer_->Backpropagate(gradients, learning_rate);
+                feature_transformer_trainer_->backpropagate(gradients, learning_rate);
                 return;
             }
 
@@ -111,7 +111,7 @@ namespace Eval::NNUE {
             }
 
             if (++num_calls_ == num_referrers_) {
-                feature_transformer_trainer_->Backpropagate(
+                feature_transformer_trainer_->backpropagate(
                     gradients_.data(), learning_rate);
                 num_calls_ = 0;
                 current_operation_ = Operation::kNone;
@@ -125,7 +125,7 @@ namespace Eval::NNUE {
             num_referrers_(0),
             num_calls_(0),
             current_operation_(Operation::kNone),
-            feature_transformer_trainer_(Trainer<FeatureTransformer>::Create(
+            feature_transformer_trainer_(Trainer<FeatureTransformer>::create(
                 ft)),
             output_(nullptr) {
         }
@@ -175,25 +175,25 @@ namespace Eval::NNUE {
 
     public:
         // factory function
-        static std::shared_ptr<Trainer> Create(
+        static std::shared_ptr<Trainer> create(
             LayerType* /*target_layer*/, FeatureTransformer* ft) {
 
             return std::shared_ptr<Trainer>(new Trainer(ft));
         }
 
         // Set options such as hyperparameters
-        void SendMessage(Message* message) {
-            shared_input_trainer_->SendMessage(message);
+        void send_message(Message* message) {
+            shared_input_trainer_->send_message(message);
         }
 
         // Initialize the parameters with random numbers
         template <typename RNG>
-        void Initialize(RNG& rng) {
-            shared_input_trainer_->Initialize(rng);
+        void initialize(RNG& rng) {
+            shared_input_trainer_->initialize(rng);
         }
 
         // forward propagation
-        const LearnFloatType* Propagate(const std::vector<Example>& batch) {
+        const LearnFloatType* propagate(const std::vector<Example>& batch) {
             if (output_.size() < kOutputDimensions * batch.size()) {
               output_.resize(kOutputDimensions * batch.size());
               gradients_.resize(kInputDimensions * batch.size());
@@ -201,7 +201,7 @@ namespace Eval::NNUE {
 
             batch_size_ = static_cast<IndexType>(batch.size());
 
-            const auto input = shared_input_trainer_->Propagate(batch);
+            const auto input = shared_input_trainer_->propagate(batch);
             for (IndexType b = 0; b < batch_size_; ++b) {
                 const IndexType input_offset = kInputDimensions * b;
                 const IndexType output_offset = kOutputDimensions * b;
@@ -219,7 +219,7 @@ namespace Eval::NNUE {
         }
 
         // backpropagation
-        void Backpropagate(const LearnFloatType* gradients,
+        void backpropagate(const LearnFloatType* gradients,
                            LearnFloatType learning_rate) {
 
             for (IndexType b = 0; b < batch_size_; ++b) {
@@ -233,14 +233,14 @@ namespace Eval::NNUE {
                     }
                 }
             }
-            shared_input_trainer_->Backpropagate(gradients_.data(), learning_rate);
+            shared_input_trainer_->backpropagate(gradients_.data(), learning_rate);
         }
 
     private:
         // constructor
         Trainer(FeatureTransformer* ft):
             batch_size_(0),
-            shared_input_trainer_(SharedInputTrainer::Create(ft)) {
+            shared_input_trainer_(SharedInputTrainer::create(ft)) {
         }
 
         // number of input/output dimensions

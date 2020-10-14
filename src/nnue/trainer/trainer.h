@@ -37,22 +37,22 @@ namespace Eval::NNUE {
         }
 
         TrainingFeature& operator+=(const TrainingFeature& other) {
-            assert(other.GetIndex() == GetIndex());
-            assert(other.GetCount() + GetCount() < (1 << kCountBits));
-            index_and_count_ += other.GetCount();
+            assert(other.get_index() == get_index());
+            assert(other.get_index() + get_count() < (1 << kCountBits));
+            index_and_count_ += other.get_count();
             return *this;
         }
 
-        IndexType GetIndex() const {
+        IndexType get_index() const {
             return static_cast<IndexType>(index_and_count_ >> kCountBits);
         }
 
-        void ShiftIndex(IndexType offset) {
-            assert(GetIndex() + offset < (1 << kIndexBits));
+        void shift_index(IndexType offset) {
+            assert(get_index() + offset < (1 << kIndexBits));
             index_and_count_ += offset << kCountBits;
         }
 
-        IndexType GetCount() const {
+        IndexType get_count() const {
             return static_cast<IndexType>(index_and_count_ & ((1 << kCountBits) - 1));
         }
 
@@ -86,7 +86,7 @@ namespace Eval::NNUE {
     };
 
     // determine whether to accept the message
-    bool ReceiveMessage(const std::string& name, Message* message) {
+    bool receive_message(const std::string& name, Message* message) {
         const auto subscript = "[" + std::to_string(message->num_peekers) + "]";
 
         if (message->name.substr(0, name.size() + 1) == name + "[") {
@@ -101,28 +101,15 @@ namespace Eval::NNUE {
         return false;
     }
 
-    // split the string
-    std::vector<std::string> Split(const std::string& input, char delimiter) {
-        std::istringstream stream(input);
-        std::string field;
-        std::vector<std::string> fields;
-
-        while (std::getline(stream, field, delimiter)) {
-            fields.push_back(field);
-        }
-
-        return fields;
-    }
-
     // round a floating point number to an integer
     template <typename IntType>
-    IntType Round(double value) {
+    IntType round(double value) {
         return static_cast<IntType>(std::floor(value + 0.5));
     }
 
     // make_shared with alignment
     template <typename T, typename... ArgumentTypes>
-    std::shared_ptr<T> MakeAlignedSharedPtr(ArgumentTypes&&... arguments) {
+    std::shared_ptr<T> make_aligned_shared_ptr(ArgumentTypes&&... arguments) {
         const auto ptr = new(std_aligned_alloc(alignof(T), sizeof(T)))
             T(std::forward<ArgumentTypes>(arguments)...);
 

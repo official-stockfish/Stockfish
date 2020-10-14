@@ -21,7 +21,7 @@ namespace Eval::NNUE {
 
     public:
         // factory function
-        static std::shared_ptr<Trainer> Create(
+        static std::shared_ptr<Trainer> create(
             LayerType* target_layer, FeatureTransformer* ft) {
 
             return std::shared_ptr<Trainer>(
@@ -29,31 +29,31 @@ namespace Eval::NNUE {
         }
 
         // Set options such as hyperparameters
-        void SendMessage(Message* message) {
-            previous_layer_trainer_->SendMessage(message);
+        void send_message(Message* message) {
+            previous_layer_trainer_->send_message(message);
 
-            if (ReceiveMessage("momentum", message)) {
+            if (receive_message("momentum", message)) {
                 momentum_ = static_cast<LearnFloatType>(std::stod(message->value));
             }
 
-            if (ReceiveMessage("learning_rate_scale", message)) {
+            if (receive_message("learning_rate_scale", message)) {
                 learning_rate_scale_ =
                     static_cast<LearnFloatType>(std::stod(message->value));
             }
 
-            if (ReceiveMessage("reset", message)) {
-                DequantizeParameters();
+            if (receive_message("reset", message)) {
+                dequantize_parameters();
             }
 
-            if (ReceiveMessage("quantize_parameters", message)) {
-                QuantizeParameters();
+            if (receive_message("quantize_parameters", message)) {
+                quantize_parameters();
             }
         }
 
         // Initialize the parameters with random numbers
         template <typename RNG>
-        void Initialize(RNG& rng) {
-            previous_layer_trainer_->Initialize(rng);
+        void initialize(RNG& rng) {
+            previous_layer_trainer_->initialize(rng);
 
             if (kIsOutputLayer) {
                 // Initialize output layer with 0
@@ -80,18 +80,18 @@ namespace Eval::NNUE {
                 }
             }
 
-            QuantizeParameters();
+            quantize_parameters();
         }
 
         // forward propagation
-        const LearnFloatType* Propagate(const std::vector<Example>& batch) {
+        const LearnFloatType* propagate(const std::vector<Example>& batch) {
             if (output_.size() < kOutputDimensions * batch.size()) {
                 output_.resize(kOutputDimensions * batch.size());
                 gradients_.resize(kInputDimensions * batch.size());
             }
 
             batch_size_ = static_cast<IndexType>(batch.size());
-            batch_input_ = previous_layer_trainer_->Propagate(batch);
+            batch_input_ = previous_layer_trainer_->propagate(batch);
 #if defined(USE_BLAS)
             for (IndexType b = 0; b < batch_size_; ++b) {
                 const IndexType batch_offset = kOutputDimensions * b;
@@ -123,7 +123,7 @@ namespace Eval::NNUE {
         }
 
         // backpropagation
-        void Backpropagate(const LearnFloatType* gradients,
+        void backpropagate(const LearnFloatType* gradients,
                            LearnFloatType learning_rate) {
 
             const LearnFloatType local_learning_rate =
@@ -206,7 +206,7 @@ namespace Eval::NNUE {
             }
 
 #endif
-            previous_layer_trainer_->Backpropagate(gradients_.data(), learning_rate);
+            previous_layer_trainer_->backpropagate(gradients_.data(), learning_rate);
         }
 
     private:
@@ -214,7 +214,7 @@ namespace Eval::NNUE {
         Trainer(LayerType* target_layer, FeatureTransformer* ft) :
             batch_size_(0),
             batch_input_(nullptr),
-            previous_layer_trainer_(Trainer<PreviousLayer>::Create(
+            previous_layer_trainer_(Trainer<PreviousLayer>::create(
                 &target_layer->previous_layer_, ft)),
             target_layer_(target_layer),
             biases_(),
@@ -224,11 +224,11 @@ namespace Eval::NNUE {
             momentum_(0.2),
             learning_rate_scale_(1.0) {
 
-            DequantizeParameters();
+            dequantize_parameters();
         }
 
         // Weight saturation and parameterization
-        void QuantizeParameters() {
+        void quantize_parameters() {
             for (IndexType i = 0; i < kOutputDimensions * kInputDimensions; ++i) {
                 weights_[i] = std::max(-kMaxWeightMagnitude,
                                        std::min(+kMaxWeightMagnitude, weights_[i]));
@@ -236,7 +236,7 @@ namespace Eval::NNUE {
 
             for (IndexType i = 0; i < kOutputDimensions; ++i) {
                 target_layer_->biases_[i] =
-                    Round<typename LayerType::BiasType>(biases_[i] * kBiasScale);
+                    round<typename LayerType::BiasType>(biases_[i] * kBiasScale);
             }
 
             for (IndexType i = 0; i < kOutputDimensions; ++i) {
@@ -244,14 +244,14 @@ namespace Eval::NNUE {
                 const auto padded_offset = LayerType::kPaddedInputDimensions * i;
                 for (IndexType j = 0; j < kInputDimensions; ++j) {
                     target_layer_->weights_[padded_offset + j] =
-                        Round<typename LayerType::WeightType>(
+                        round<typename LayerType::WeightType>(
                             weights_[offset + j] * kWeightScale);
                 }
             }
         }
 
         // read parameterized integer
-        void DequantizeParameters() {
+        void dequantize_parameters() {
             for (IndexType i = 0; i < kOutputDimensions; ++i) {
                 biases_[i] = static_cast<LearnFloatType>(
                     target_layer_->biases_[i] / kBiasScale);

@@ -14,12 +14,12 @@ namespace Eval::NNUE::Features {
     class Factorizer {
     public:
         // Get the dimensionality of the learning feature
-        static constexpr IndexType GetDimensions() {
+        static constexpr IndexType get_dimensions() {
             return FeatureType::kDimensions;
         }
 
         // Get index of learning feature and scale of learning rate
-        static void AppendTrainingFeatures(
+        static void append_training_features(
             IndexType base_index, std::vector<TrainingFeature>* training_features) {
 
             assert(base_index <FeatureType::kDimensions);
@@ -35,7 +35,7 @@ namespace Eval::NNUE::Features {
 
     // Add the original input features to the learning features
     template <typename FeatureType>
-    IndexType AppendBaseFeature(
+    IndexType append_base_feature(
         FeatureProperties properties, IndexType base_index,
         std::vector<TrainingFeature>* training_features) {
 
@@ -47,7 +47,7 @@ namespace Eval::NNUE::Features {
 
     // If the learning rate scale is not 0, inherit other types of learning features
     template <typename FeatureType>
-    IndexType InheritFeaturesIfRequired(
+    IndexType inherit_features_if_required(
         IndexType index_offset, FeatureProperties properties, IndexType base_index,
         std::vector<TrainingFeature>* training_features) {
 
@@ -55,17 +55,17 @@ namespace Eval::NNUE::Features {
             return 0;
         }
 
-        assert(properties.dimensions == Factorizer<FeatureType>::GetDimensions());
+        assert(properties.dimensions == Factorizer<FeatureType>::get_dimensions());
         assert(base_index < FeatureType::kDimensions);
 
         const auto start = training_features->size();
-        Factorizer<FeatureType>::AppendTrainingFeatures(
+        Factorizer<FeatureType>::append_training_features(
             base_index, training_features);
 
         for (auto i = start; i < training_features->size(); ++i) {
             auto& feature = (*training_features)[i];
-            assert(feature.GetIndex() < Factorizer<FeatureType>::GetDimensions());
-            feature.ShiftIndex(index_offset);
+            assert(feature.get_index() < Factorizer<FeatureType>::get_dimensions());
+            feature.shift_index(index_offset);
         }
 
         return properties.dimensions;
@@ -73,7 +73,7 @@ namespace Eval::NNUE::Features {
 
     // Return the index difference as needed, without adding learning features
     // Call instead of InheritFeaturesIfRequired() if there are no corresponding features
-    IndexType SkipFeatures(FeatureProperties properties) {
+    IndexType skip_features(FeatureProperties properties) {
         if (!properties.active)
             return 0;
 
@@ -82,7 +82,7 @@ namespace Eval::NNUE::Features {
 
     // Get the dimensionality of the learning feature
     template <std::size_t N>
-    constexpr IndexType GetActiveDimensions(
+    constexpr IndexType get_active_dimensions(
         const FeatureProperties (&properties)[N]) {
 
         static_assert(N > 0, "");
@@ -100,7 +100,7 @@ namespace Eval::NNUE::Features {
 
     // get the number of elements in the array
     template <typename T, std::size_t N>
-    constexpr std::size_t GetArrayLength(const T (&/*array*/)[N]) {
+    constexpr std::size_t get_array_length(const T (&/*array*/)[N]) {
         return N;
     }
 

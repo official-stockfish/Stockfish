@@ -22,12 +22,17 @@ namespace Eval::NNUE::Features {
         static constexpr TriggerEvent kRefreshTrigger = TriggerEvent::kNone;
 
         // Get a list of indices with a value of 1 among the features
-        static void AppendActiveIndices(const Position& pos, Color perspective,
+        static void append_active_indices(
+            const Position& pos,
+            Color perspective,
             IndexList* active);
 
         // Get a list of indices whose values have changed from the previous one in the feature quantity
-        static void AppendChangedIndices(const Position& pos, Color perspective,
-            IndexList* removed, IndexList* added);
+        static void append_changed_indices(
+            const Position& pos,
+            Color perspective,
+            IndexList* removed,
+            IndexList* added);
     };
 
 }  // namespace Eval::NNUE::Features

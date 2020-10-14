@@ -299,7 +299,7 @@ struct Path
 {
 	// Combine the path name and file name and return it.
 	// If the folder name is not an empty string, append it if there is no'/' or'\\' at the end.
-	static std::string Combine(const std::string& folder, const std::string& filename)
+	static std::string combine(const std::string& folder, const std::string& filename)
 	{
 		if (folder.length() >= 1 && *folder.rbegin() != '/' && *folder.rbegin() != '\\')
 			return folder + "/" + filename;
@@ -308,7 +308,7 @@ struct Path
 	}
 
 	// Get the file name part (excluding the folder name) from the full path expression.
-	static std::string GetFileName(const std::string& path)
+	static std::string get_file_name(const std::string& path)
 	{
 		// I don't know which "\" or "/" is used.
 		auto path_index1 = path.find_last_of("\\") + 1;

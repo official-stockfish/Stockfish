@@ -21,7 +21,7 @@ namespace Eval::NNUE {
 
     public:
         // factory function
-        static std::shared_ptr<Trainer> Create(
+        static std::shared_ptr<Trainer> create(
             LayerType* target_layer, FeatureTransformer* ft) {
 
             return std::shared_ptr<Trainer>(
@@ -29,26 +29,26 @@ namespace Eval::NNUE {
         }
 
         // Set options such as hyperparameters
-        void SendMessage(Message* message) {
+        void send_message(Message* message) {
             // The results of other member functions do not depend on the processing order, so
             // Tail is processed first for the purpose of simplifying the implementation, but
             // SendMessage processes Head first to make it easier to understand subscript correspondence
-            previous_layer_trainer_->SendMessage(message);
-            Tail::SendMessage(message);
+            previous_layer_trainer_->send_message(message);
+            Tail::send_message(message);
         }
 
         // Initialize the parameters with random numbers
         template <typename RNG>
-        void Initialize(RNG& rng) {
-            Tail::Initialize(rng);
-            previous_layer_trainer_->Initialize(rng);
+        void initialize(RNG& rng) {
+            Tail::initialize(rng);
+            previous_layer_trainer_->initialize(rng);
         }
 
         // forward propagation
-        /*const*/ LearnFloatType* Propagate(const std::vector<Example>& batch) {
+        /*const*/ LearnFloatType* propagate(const std::vector<Example>& batch) {
             batch_size_ = static_cast<IndexType>(batch.size());
-            auto output = Tail::Propagate(batch);
-            const auto head_output = previous_layer_trainer_->Propagate(batch);
+            auto output = Tail::propagate(batch);
+            const auto head_output = previous_layer_trainer_->propagate(batch);
 
 #if defined(USE_BLAS)
             cblas_saxpy(kOutputDimensions * batch_size_, 1.0,
@@ -66,11 +66,11 @@ namespace Eval::NNUE {
         }
 
         // backpropagation
-        void Backpropagate(const LearnFloatType* gradients,
+        void backpropagate(const LearnFloatType* gradients,
                            LearnFloatType learning_rate) {
 
-            Tail::Backpropagate(gradients, learning_rate);
-            previous_layer_trainer_->Backpropagate(gradients, learning_rate);
+            Tail::backpropagate(gradients, learning_rate);
+            previous_layer_trainer_->backpropagate(gradients, learning_rate);
         }
 
     private:
@@ -78,7 +78,7 @@ namespace Eval::NNUE {
         Trainer(LayerType* target_layer, FeatureTransformer* ft):
             Tail(target_layer, ft),
             batch_size_(0),
-            previous_layer_trainer_(Trainer<FirstPreviousLayer>::Create(
+            previous_layer_trainer_(Trainer<FirstPreviousLayer>::create(
                 &target_layer->previous_layer_, ft)),
             target_layer_(target_layer) {
         }
@@ -110,7 +110,7 @@ namespace Eval::NNUE {
 
     public:
         // factory function
-        static std::shared_ptr<Trainer> Create(
+        static std::shared_ptr<Trainer> create(
             LayerType* target_layer, FeatureTransformer* ft) {
 
             return std::shared_ptr<Trainer>(
@@ -118,24 +118,24 @@ namespace Eval::NNUE {
         }
 
         // Set options such as hyperparameters
-        void SendMessage(Message* message) {
-            previous_layer_trainer_->SendMessage(message);
+        void send_message(Message* message) {
+            previous_layer_trainer_->send_message(message);
         }
 
         // Initialize the parameters with random numbers
         template <typename RNG>
-        void Initialize(RNG& rng) {
-            previous_layer_trainer_->Initialize(rng);
+        void initialize(RNG& rng) {
+            previous_layer_trainer_->initialize(rng);
         }
 
         // forward propagation
-        /*const*/ LearnFloatType* Propagate(const std::vector<Example>& batch) {
+        /*const*/ LearnFloatType* propagate(const std::vector<Example>& batch) {
             if (output_.size() < kOutputDimensions * batch.size()) {
                 output_.resize(kOutputDimensions * batch.size());
             }
 
             batch_size_ = static_cast<IndexType>(batch.size());
-            const auto output = previous_layer_trainer_->Propagate(batch);
+            const auto output = previous_layer_trainer_->propagate(batch);
 
 #if defined(USE_BLAS)
             cblas_scopy(kOutputDimensions * batch_size_, output, 1, &output_[0], 1);
@@ -152,17 +152,17 @@ namespace Eval::NNUE {
         }
 
         // backpropagation
-        void Backpropagate(const LearnFloatType* gradients,
+        void backpropagate(const LearnFloatType* gradients,
                            LearnFloatType learning_rate) {
 
-            previous_layer_trainer_->Backpropagate(gradients, learning_rate);
+            previous_layer_trainer_->backpropagate(gradients, learning_rate);
         }
 
     private:
         // constructor
         Trainer(LayerType* target_layer, FeatureTransformer* ft) :
             batch_size_(0),
-            previous_layer_trainer_(Trainer<PreviousLayer>::Create(
+            previous_layer_trainer_(Trainer<PreviousLayer>::create(
                 &target_layer->previous_layer_, ft)),
             target_layer_(target_layer) {
         }

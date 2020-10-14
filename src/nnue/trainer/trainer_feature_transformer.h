@@ -34,44 +34,44 @@ namespace Eval::NNUE {
         friend struct AlignedDeleter;
 
         template <typename T, typename... ArgumentTypes>
-        friend std::shared_ptr<T> MakeAlignedSharedPtr(ArgumentTypes&&... arguments);
+        friend std::shared_ptr<T> make_aligned_shared_ptr(ArgumentTypes&&... arguments);
 
         // factory function
-        static std::shared_ptr<Trainer> Create(LayerType* target_layer) {
-            return MakeAlignedSharedPtr<Trainer>(target_layer);
+        static std::shared_ptr<Trainer> create(LayerType* target_layer) {
+            return make_aligned_shared_ptr<Trainer>(target_layer);
         }
 
         // Set options such as hyperparameters
-        void SendMessage(Message* message) {
-            if (ReceiveMessage("momentum", message)) {
+        void send_message(Message* message) {
+            if (receive_message("momentum", message)) {
                 momentum_ = static_cast<LearnFloatType>(std::stod(message->value));
             }
 
-            if (ReceiveMessage("learning_rate_scale", message)) {
+            if (receive_message("learning_rate_scale", message)) {
                 learning_rate_scale_ =
                     static_cast<LearnFloatType>(std::stod(message->value));
             }
 
-            if (ReceiveMessage("reset", message)) {
-                DequantizeParameters();
+            if (receive_message("reset", message)) {
+                dequantize_parameters();
             }
 
-            if (ReceiveMessage("quantize_parameters", message)) {
-                QuantizeParameters();
+            if (receive_message("quantize_parameters", message)) {
+                quantize_parameters();
             }
 
-            if (ReceiveMessage("clear_unobserved_feature_weights", message)) {
-                ClearUnobservedFeatureWeights();
+            if (receive_message("clear_unobserved_feature_weights", message)) {
+                clear_unobserved_feature_weights();
             }
 
-            if (ReceiveMessage("check_health", message)) {
-                CheckHealth();
+            if (receive_message("check_health", message)) {
+                check_health();
             }
         }
 
         // Initialize the parameters with random numbers
         template <typename RNG>
-        void Initialize(RNG& rng) {
+        void initialize(RNG& rng) {
             std::fill(std::begin(weights_), std::end(weights_), +kZero);
 
             const double kSigma = 0.1 / std::sqrt(RawFeatures::kMaxActiveDimensions);
@@ -86,11 +86,11 @@ namespace Eval::NNUE {
                 biases_[i] = static_cast<LearnFloatType>(0.5);
             }
 
-            QuantizeParameters();
+            quantize_parameters();
         }
 
         // forward propagation
-        const LearnFloatType* Propagate(const std::vector<Example>& batch) {
+        const LearnFloatType* propagate(const std::vector<Example>& batch) {
             if (output_.size() < kOutputDimensions * batch.size()) {
                 output_.resize(kOutputDimensions * batch.size());
                 gradients_.resize(kOutputDimensions * batch.size());
@@ -106,8 +106,8 @@ namespace Eval::NNUE {
 #if defined(USE_BLAS)
                     cblas_scopy(kHalfDimensions, biases_, 1, &output_[output_offset], 1);
                     for (const auto& feature : batch[b].training_features[c]) {
-                        const IndexType weights_offset = kHalfDimensions * feature.GetIndex();
-                        cblas_saxpy(kHalfDimensions, (float)feature.GetCount(),
+                        const IndexType weights_offset = kHalfDimensions * feature.get_index();
+                        cblas_saxpy(kHalfDimensions, (float)feature.get_count(),
                                     &weights_[weights_offset], 1, &output_[output_offset], 1);
                     }
 #else
@@ -115,10 +115,10 @@ namespace Eval::NNUE {
                         output_[output_offset + i] = biases_[i];
                     }
                     for (const auto& feature : batch[b].training_features[c]) {
-                        const IndexType weights_offset = kHalfDimensions * feature.GetIndex();
+                        const IndexType weights_offset = kHalfDimensions * feature.get_index();
                         for (IndexType i = 0; i < kHalfDimensions; ++i) {
                             output_[output_offset + i] +=
-                                feature.GetCount() * weights_[weights_offset + i];
+                                feature.get_count() * weights_[weights_offset + i];
                         }
                     }
 #endif
@@ -143,7 +143,7 @@ namespace Eval::NNUE {
         }
 
         // backpropagation
-        void Backpropagate(const LearnFloatType* gradients,
+        void backpropagate(const LearnFloatType* gradients,
                            LearnFloatType learning_rate) {
 
             const LearnFloatType local_learning_rate =
@@ -188,13 +188,13 @@ namespace Eval::NNUE {
                         const IndexType output_offset = batch_offset + kHalfDimensions * c;
                         for (const auto& feature : (*batch_)[b].training_features[c]) {
 #if defined(_OPENMP)
-                            if (feature.GetIndex() % num_threads != thread_index)
+                            if (feature.get_index() % num_threads != thread_index)
                                 continue;
 #endif
                             const IndexType weights_offset =
-                                kHalfDimensions * feature.GetIndex();
+                                kHalfDimensions * feature.get_index();
                             const auto scale = static_cast<LearnFloatType>(
-                                effective_learning_rate / feature.GetCount());
+                                effective_learning_rate / feature.get_count());
 
                             cblas_saxpy(kHalfDimensions, -scale,
                                         &gradients_[output_offset], 1,
@@ -228,9 +228,9 @@ namespace Eval::NNUE {
                 for (IndexType c = 0; c < 2; ++c) {
                     const IndexType output_offset = batch_offset + kHalfDimensions * c;
                     for (const auto& feature : (*batch_)[b].training_features[c]) {
-                        const IndexType weights_offset = kHalfDimensions * feature.GetIndex();
+                        const IndexType weights_offset = kHalfDimensions * feature.get_index();
                         const auto scale = static_cast<LearnFloatType>(
-                            effective_learning_rate / feature.GetCount());
+                            effective_learning_rate / feature.get_count());
 
                         for (IndexType i = 0; i < kHalfDimensions; ++i) {
                             weights_[weights_offset + i] -=
@@ -244,7 +244,7 @@ namespace Eval::NNUE {
             for (IndexType b = 0; b < batch_->size(); ++b) {
                 for (IndexType c = 0; c < 2; ++c) {
                     for (const auto& feature : (*batch_)[b].training_features[c]) {
-                        observed_features.set(feature.GetIndex());
+                        observed_features.set(feature.get_index());
                     }
                 }
             }
@@ -269,14 +269,14 @@ namespace Eval::NNUE {
             std::fill(std::begin(max_activations_), std::end(max_activations_),
                       std::numeric_limits<LearnFloatType>::lowest());
 
-            DequantizeParameters();
+            dequantize_parameters();
         }
 
         // Weight saturation and parameterization
-        void QuantizeParameters() {
+        void quantize_parameters() {
             for (IndexType i = 0; i < kHalfDimensions; ++i) {
                 target_layer_->biases_[i] =
-                    Round<typename LayerType::BiasType>(biases_[i] * kBiasScale);
+                    round<typename LayerType::BiasType>(biases_[i] * kBiasScale);
             }
 
             std::vector<TrainingFeature> training_features;
@@ -284,23 +284,23 @@ namespace Eval::NNUE {
 #pragma omp parallel for private(training_features)
             for (IndexType j = 0; j < RawFeatures::kDimensions; ++j) {
                 training_features.clear();
-                Features::Factorizer<RawFeatures>::AppendTrainingFeatures(
+                Features::Factorizer<RawFeatures>::append_training_features(
                     j, &training_features);
 
                 for (IndexType i = 0; i < kHalfDimensions; ++i) {
                     double sum = 0.0;
                     for (const auto& feature : training_features) {
-                        sum += weights_[kHalfDimensions * feature.GetIndex() + i];
+                        sum += weights_[kHalfDimensions * feature.get_index() + i];
                     }
 
                     target_layer_->weights_[kHalfDimensions * j + i] =
-                        Round<typename LayerType::WeightType>(sum * kWeightScale);
+                        round<typename LayerType::WeightType>(sum * kWeightScale);
                 }
             }
         }
 
         // read parameterized integer
-        void DequantizeParameters() {
+        void dequantize_parameters() {
             for (IndexType i = 0; i < kHalfDimensions; ++i) {
                 biases_[i] = static_cast<LearnFloatType>(
                     target_layer_->biases_[i] / kBiasScale);
@@ -317,7 +317,7 @@ namespace Eval::NNUE {
         }
 
         // Set the weight corresponding to the feature that does not appear in the learning data to 0
-        void ClearUnobservedFeatureWeights() {
+        void clear_unobserved_feature_weights() {
             for (IndexType i = 0; i < kInputDimensions; ++i) {
                 if (!observed_features.test(i)) {
                     std::fill(std::begin(weights_) + kHalfDimensions * i,
@@ -325,11 +325,11 @@ namespace Eval::NNUE {
                 }
             }
 
-            QuantizeParameters();
+            quantize_parameters();
         }
 
         // Check if there are any problems with learning
-        void CheckHealth() {
+        void check_health() {
             std::cout << "INFO: observed " << observed_features.count()
                       << " (out of " << kInputDimensions << ") features" << std::endl;
 
@@ -359,7 +359,7 @@ namespace Eval::NNUE {
 
         // number of input/output dimensions
         static constexpr IndexType kInputDimensions =
-            Features::Factorizer<RawFeatures>::GetDimensions();
+            Features::Factorizer<RawFeatures>::get_dimensions();
         static constexpr IndexType kOutputDimensions = LayerType::kOutputDimensions;
         static constexpr IndexType kHalfDimensions = LayerType::kHalfDimensions;
 

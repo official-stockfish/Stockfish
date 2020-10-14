@@ -127,7 +127,7 @@ namespace Eval::NNUE {
 
     // Round n up to be a multiple of base
     template <typename IntType>
-    constexpr IntType CeilToMultiple(IntType n, IntType base) {
+    constexpr IntType ceil_to_multiple(IntType n, IntType base) {
         return (n + base - 1) / base * base;
     }
 

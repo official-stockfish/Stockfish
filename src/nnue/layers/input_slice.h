@@ -45,31 +45,31 @@ namespace Eval::NNUE::Layers {
       static constexpr std::size_t kBufferSize = 0;
 
       // Hash value embedded in the evaluation file
-      static constexpr std::uint32_t GetHashValue() {
+      static constexpr std::uint32_t get_hash_value() {
           std::uint32_t hash_value = 0xEC42E90Du;
           hash_value ^= kOutputDimensions ^ (Offset << 10);
           return hash_value;
       }
 
       // A string that represents the structure from the input layer to this layer
-      static std::string GetStructureString() {
+      static std::string get_structure_string() {
           return "InputSlice[" + std::to_string(kOutputDimensions) + "(" +
               std::to_string(Offset) + ":" +
               std::to_string(Offset + kOutputDimensions) + ")]";
       }
 
       // Read network parameters
-      bool ReadParameters(std::istream& /*stream*/) {
+      bool read_parameters(std::istream& /*stream*/) {
           return true;
       }
 
       // write parameters
-      bool WriteParameters(std::ostream& /*stream*/) const {
+      bool write_parameters(std::ostream& /*stream*/) const {
           return true;
       }
 
       // Forward propagation
-      const OutputType* Propagate(
+      const OutputType* propagate(
           const TransformedFeatureType* transformed_features,
           char* /*buffer*/) const {
 

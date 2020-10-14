@@ -11,16 +11,21 @@ namespace Eval::NNUE::Features {
 
     // Find the index of the feature quantity from the ball position and PieceSquare
     template <Side AssociatedKing>
-    inline IndexType HalfRelativeKP<AssociatedKing>::MakeIndex(
-        Color perspective, Square s, Piece pc, Square sq_k) {
+    inline IndexType HalfRelativeKP<AssociatedKing>::make_index(
+        Color perspective,
+        Square s,
+        Piece pc,
+        Square sq_k) {
+
         const IndexType p = IndexType(orient(perspective, s) + kpp_board_index[pc][perspective]);
-        return MakeIndex(sq_k, p);
+        return make_index(sq_k, p);
     }
 
     // Find the index of the feature quantity from the ball position and PieceSquare
     template <Side AssociatedKing>
-    inline IndexType HalfRelativeKP<AssociatedKing>::MakeIndex(
-        Square sq_k, IndexType p) {
+    inline IndexType HalfRelativeKP<AssociatedKing>::make_index(
+        Square sq_k,
+        IndexType p) {
 
         constexpr IndexType W = kBoardWidth;
         constexpr IndexType H = kBoardHeight;
@@ -33,8 +38,10 @@ namespace Eval::NNUE::Features {
 
     // Get a list of indices with a value of 1 among the features
     template <Side AssociatedKing>
-    void HalfRelativeKP<AssociatedKing>::AppendActiveIndices(
-        const Position& pos, Color perspective, IndexList* active) {
+    void HalfRelativeKP<AssociatedKing>::append_active_indices(
+        const Position& pos,
+        Color perspective,
+        IndexList* active) {
 
         Square ksq = orient(
             perspective,
@@ -44,15 +51,17 @@ namespace Eval::NNUE::Features {
         Bitboard bb = pos.pieces() & ~pos.pieces(KING);
         while (bb) {
             Square s = pop_lsb(&bb);
-            active->push_back(MakeIndex(perspective, s, pos.piece_on(s), ksq));
+            active->push_back(make_index(perspective, s, pos.piece_on(s), ksq));
         }
     }
 
     // Get a list of indices whose values ​​have changed from the previous one in the feature quantity
     template <Side AssociatedKing>
-    void HalfRelativeKP<AssociatedKing>::AppendChangedIndices(
-        const Position& pos, Color perspective,
-        IndexList* removed, IndexList* added) {
+    void HalfRelativeKP<AssociatedKing>::append_changed_indices(
+        const Position& pos,
+        Color perspective,
+        IndexList* removed,
+        IndexList* added) {
 
         Square ksq = orient(
             perspective,
@@ -67,10 +76,10 @@ namespace Eval::NNUE::Features {
                 continue;
 
             if (dp.from[i] != SQ_NONE)
-                removed->push_back(MakeIndex(perspective, dp.from[i], pc, ksq));
+                removed->push_back(make_index(perspective, dp.from[i], pc, ksq));
 
             if (dp.to[i] != SQ_NONE)
-                added->push_back(MakeIndex(perspective, dp.to[i], pc, ksq));
+                added->push_back(make_index(perspective, dp.to[i], pc, ksq));
         }
     }
 

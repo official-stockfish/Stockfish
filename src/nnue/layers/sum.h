@@ -30,51 +30,51 @@ namespace Eval::NNUE::Layers {
 
         // Size of forward propagation buffer used in this layer
         static constexpr std::size_t kSelfBufferSize =
-            CeilToMultiple(kOutputDimensions * sizeof(OutputType), kCacheLineSize);
+            ceil_to_multiple(kOutputDimensions * sizeof(OutputType), kCacheLineSize);
 
         // Size of the forward propagation buffer used from the input layer to this layer
         static constexpr std::size_t kBufferSize =
             std::max(Head::kBufferSize + kSelfBufferSize, Tail::kBufferSize);
 
         // Hash value embedded in the evaluation function file
-        static constexpr std::uint32_t GetHashValue() {
+        static constexpr std::uint32_t get_hash_value() {
             std::uint32_t hash_value = 0xBCE400B4u;
-            hash_value ^= Head::GetHashValue() >> 1;
-            hash_value ^= Head::GetHashValue() << 31;
-            hash_value ^= Tail::GetHashValue() >> 2;
-            hash_value ^= Tail::GetHashValue() << 30;
+            hash_value ^= Head::get_hash_value() >> 1;
+            hash_value ^= Head::get_hash_value() << 31;
+            hash_value ^= Tail::get_hash_value() >> 2;
+            hash_value ^= Tail::get_hash_value() << 30;
             return hash_value;
         }
 
         // A string that represents the structure from the input layer to this layer
-        static std::string GetStructureString() {
+        static std::string get_structure_string() {
             return "Sum[" +
-                std::to_string(kOutputDimensions) + "](" + GetSummandsString() + ")";
+                std::to_string(kOutputDimensions) + "](" + get_summands_string() + ")";
         }
 
         // read parameters
-        bool ReadParameters(std::istream& stream) {
-            if (!Tail::ReadParameters(stream))
+        bool read_parameters(std::istream& stream) {
+            if (!Tail::read_parameters(stream))
                 return false;
 
-            return previous_layer_.ReadParameters(stream);
+            return previous_layer_.read_parameters(stream);
         }
 
         // write parameters
-        bool WriteParameters(std::ostream& stream) const {
-            if (!Tail::WriteParameters(stream))
+        bool write_parameters(std::ostream& stream) const {
+            if (!Tail::write_parameters(stream))
                 return false;
 
-            return previous_layer_.WriteParameters(stream);
+            return previous_layer_.write_parameters(stream);
         }
 
         // forward propagation
-        const OutputType* Propagate(
+        const OutputType* propagate(
             const TransformedFeatureType* transformed_features, char* buffer) const {
 
-            Tail::Propagate(transformed_features, buffer);
+            Tail::propagate(transformed_features, buffer);
 
-            const auto head_output = previous_layer_.Propagate(
+            const auto head_output = previous_layer_.propagate(
                 transformed_features, buffer + kSelfBufferSize);
 
             const auto output = reinterpret_cast<OutputType*>(buffer);
@@ -88,8 +88,8 @@ namespace Eval::NNUE::Layers {
 
     protected:
         // A string that represents the list of layers to be summed
-        static std::string GetSummandsString() {
-            return Head::GetStructureString() + "," + Tail::GetSummandsString();
+        static std::string get_summands_string() {
+            return Head::get_structure_string() + "," + Tail::get_summands_string();
         }
 
         // Make the learning class a friend
@@ -118,40 +118,40 @@ namespace Eval::NNUE::Layers {
         static constexpr std::size_t kBufferSize = PreviousLayer::kBufferSize;
 
         // Hash value embedded in the evaluation function file
-        static constexpr std::uint32_t GetHashValue() {
+        static constexpr std::uint32_t get_hash_value() {
             std::uint32_t hash_value = 0xBCE400B4u;
-            hash_value ^= PreviousLayer::GetHashValue() >> 1;
-            hash_value ^= PreviousLayer::GetHashValue() << 31;
+            hash_value ^= PreviousLayer::get_hash_value() >> 1;
+            hash_value ^= PreviousLayer::get_hash_value() << 31;
             return hash_value;
         }
 
         // A string that represents the structure from the input layer to this layer
-        static std::string GetStructureString() {
+        static std::string get_structure_string() {
             return "Sum[" +
-                std::to_string(kOutputDimensions) + "](" + GetSummandsString() + ")";
+                std::to_string(kOutputDimensions) + "](" + get_summands_string() + ")";
         }
 
         // read parameters
-        bool ReadParameters(std::istream& stream) {
-            return previous_layer_.ReadParameters(stream);
+        bool read_parameters(std::istream& stream) {
+            return previous_layer_.read_parameters(stream);
         }
 
         // write parameters
-        bool WriteParameters(std::ostream& stream) const {
-            return previous_layer_.WriteParameters(stream);
+        bool write_parameters(std::ostream& stream) const {
+            return previous_layer_.write_parameters(stream);
         }
 
         // forward propagation
-        const OutputType* Propagate(
+        const OutputType* propagate(
             const TransformedFeatureType* transformed_features, char* buffer) const {
 
-            return previous_layer_.Propagate(transformed_features, buffer);
+            return previous_layer_.propagate(transformed_features, buffer);
         }
 
     protected:
         // A string that represents the list of layers to be summed
-        static std::string GetSummandsString() {
-            return PreviousLayer::GetStructureString();
+        static std::string get_summands_string() {
+            return PreviousLayer::get_structure_string();
         }
 
         // Make the learning class a friend

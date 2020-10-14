@@ -42,18 +42,23 @@ namespace Eval::NNUE::Features {
             TriggerEvent::kFriendKingMoved : TriggerEvent::kEnemyKingMoved;
 
         // Get a list of indices with a value of 1 among the features
-        static void AppendActiveIndices(const Position& pos, Color perspective,
-                                        IndexList* active);
+        static void append_active_indices(
+            const Position& pos,
+            Color perspective,
+            IndexList* active);
 
         // Get a list of indices whose values ​​have changed from the previous one in the feature quantity
-        static void AppendChangedIndices(const Position& pos, Color perspective,
-                                         IndexList* removed, IndexList* added);
+        static void append_changed_indices(
+            const Position& pos,
+            Color perspective,
+            IndexList* removed,
+            IndexList* added);
 
         // Find the index of the feature quantity from the ball position and PieceSquare
-        static IndexType MakeIndex(Square s, IndexType p);
+        static IndexType make_index(Square s, IndexType p);
 
         // Find the index of the feature quantity from the ball position and PieceSquare
-        static IndexType MakeIndex(Color perspective, Square s, Piece pc, Square sq_k);
+        static IndexType make_index(Color perspective, Square s, Piece pc, Square sq_k);
     };
 
 }  // namespace Eval::NNUE::Features

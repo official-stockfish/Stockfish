@@ -37,25 +37,25 @@ namespace Eval::NNUE::Features {
             // kFeaturesHalfK
             {true, SQUARE_NB},
             // kFeaturesP
-            {true, Factorizer<P>::GetDimensions()},
+            {true, Factorizer<P>::get_dimensions()},
             // kFeaturesHalfRelativeKP
-            {true, Factorizer<HalfRelativeKP<AssociatedKing>>::GetDimensions()},
+            {true, Factorizer<HalfRelativeKP<AssociatedKing>>::get_dimensions()},
         };
 
-        static_assert(GetArrayLength(kProperties) == kNumTrainingFeatureTypes, "");
+        static_assert(get_array_length(kProperties) == kNumTrainingFeatureTypes, "");
 
     public:
         // Get the dimensionality of the learning feature
-        static constexpr IndexType GetDimensions() {
-            return GetActiveDimensions(kProperties);
+        static constexpr IndexType get_dimensions() {
+            return get_active_dimensions(kProperties);
         }
 
         // Get index of learning feature and scale of learning rate
-        static void AppendTrainingFeatures(
+        static void append_training_features(
             IndexType base_index, std::vector<TrainingFeature>* training_features) {
 
             // kFeaturesHalfKP
-            IndexType index_offset = AppendBaseFeature<FeatureType>(
+            IndexType index_offset = append_base_feature<FeatureType>(
                 kProperties[kFeaturesHalfKP], base_index, training_features);
 
             const auto sq_k = static_cast<Square>(base_index / PS_END);
@@ -71,20 +71,20 @@ namespace Eval::NNUE::Features {
             }
 
             // kFeaturesP
-            index_offset += InheritFeaturesIfRequired<P>(
+            index_offset += inherit_features_if_required<P>(
                 index_offset, kProperties[kFeaturesP], p, training_features);
             // kFeaturesHalfRelativeKP
             if (p >= PS_W_PAWN) {
-                index_offset += InheritFeaturesIfRequired<HalfRelativeKP<AssociatedKing>>(
+                index_offset += inherit_features_if_required<HalfRelativeKP<AssociatedKing>>(
                     index_offset, kProperties[kFeaturesHalfRelativeKP],
-                    HalfRelativeKP<AssociatedKing>::MakeIndex(sq_k, p),
+                    HalfRelativeKP<AssociatedKing>::make_index(sq_k, p),
                     training_features);
             }
             else {
-                index_offset += SkipFeatures(kProperties[kFeaturesHalfRelativeKP]);
+                index_offset += skip_features(kProperties[kFeaturesHalfRelativeKP]);
             }
 
-            assert(index_offset == GetDimensions());
+            assert(index_offset == get_dimensions());
         }
     };
 

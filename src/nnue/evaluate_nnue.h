@@ -37,7 +37,7 @@ namespace Eval::NNUE {
 
     // Hash value of evaluation function structure
     constexpr std::uint32_t kHashValue =
-        FeatureTransformer::GetHashValue() ^ Network::GetHashValue();
+        FeatureTransformer::get_hash_value() ^ Network::get_hash_value();
 
     // Deleter for automating release of memory area
     template <typename T>
@@ -79,21 +79,21 @@ namespace Eval::NNUE {
     extern std::string eval_file_loaded;
 
     // Get a string that represents the structure of the evaluation function
-    std::string GetArchitectureString();
+    std::string get_architecture_string();
 
     // read the header
-    bool ReadHeader(std::istream& stream,
+    bool read_header(std::istream& stream,
         std::uint32_t* hash_value, std::string* architecture);
 
     // write the header
-    bool WriteHeader(std::ostream& stream,
+    bool write_header(std::ostream& stream,
         std::uint32_t hash_value, const std::string& architecture);
 
     // read evaluation function parameters
-    bool ReadParameters(std::istream& stream);
+    bool read_parameters(std::istream& stream);
 
     // write evaluation function parameters
-    bool WriteParameters(std::ostream& stream);
+    bool write_parameters(std::ostream& stream);
 
     Value evaluate(const Position& pos);
     bool load_eval(std::string name, std::istream& stream);

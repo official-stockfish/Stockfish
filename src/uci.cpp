@@ -53,7 +53,7 @@ void test_cmd(Position& pos, istringstream& is)
     std::string param;
     is >> param;
 
-    if (param == "nnue") Eval::NNUE::TestCommand(pos, is);
+    if (param == "nnue") Eval::NNUE::test_command(pos, is);
 }
 
 namespace {

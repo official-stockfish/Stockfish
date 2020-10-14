@@ -53,16 +53,21 @@ namespace Eval::NNUE::Features {
             TriggerEvent::kFriendKingMoved : TriggerEvent::kEnemyKingMoved;
 
         // Get a list of indices for active features
-        static void AppendActiveIndices(const Position& pos, Color perspective,
-                                        IndexList* active);
+        static void append_active_indices(
+            const Position& pos,
+            Color perspective,
+            IndexList* active);
 
         // Get a list of indices for recently changed features
-        static void AppendChangedIndices(const Position& pos, Color perspective,
-                                         IndexList* removed, IndexList* added);
+        static void append_changed_indices(
+            const Position& pos,
+            Color perspective,
+            IndexList* removed,
+            IndexList* added);
 
     private:
         // Index of a feature for a given king position and another piece on some square
-        static IndexType MakeIndex(Color perspective, Square s, Piece pc, Square sq_k);
+        static IndexType make_index(Color perspective, Square s, Piece pc, Square sq_k);
     };
 
 }  // namespace Eval::NNUE::Features

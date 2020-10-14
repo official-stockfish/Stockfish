@@ -24,7 +24,7 @@ namespace Eval::NNUE {
     namespace {
 
         // Testing RawFeatures mainly for difference calculation
-        void TestFeatures(Position& pos) {
+        void test_features(Position& pos) {
             const std::uint64_t num_games = 1000;
             StateInfo si;
             pos.set(StartFEN, false, &si, Threads.main());
@@ -47,7 +47,7 @@ namespace Eval::NNUE {
 
                 for (IndexType i = 0; i < kRefreshTriggers.size(); ++i) {
                     Features::IndexList active_indices[2];
-                    RawFeatures::AppendActiveIndices(position, kRefreshTriggers[i],
+                    RawFeatures::append_active_indices(position, kRefreshTriggers[i],
                                                      active_indices);
 
                     for (const auto perspective : Colors) {
@@ -68,7 +68,7 @@ namespace Eval::NNUE {
                 for (IndexType i = 0; i < kRefreshTriggers.size(); ++i) {
                     Features::IndexList removed_indices[2], added_indices[2];
                     bool reset[2] = { false, false };
-                    RawFeatures::AppendChangedIndices(position, kRefreshTriggers[i],
+                    RawFeatures::append_changed_indices(position, kRefreshTriggers[i],
                                                       removed_indices, added_indices, reset);
                     for (const auto perspective : Colors) {
                         if (reset[perspective]) {
@@ -99,7 +99,7 @@ namespace Eval::NNUE {
                 }
             };
 
-            std::cout << "feature set: " << RawFeatures::GetName()
+            std::cout << "feature set: " << RawFeatures::get_name()
                       << "[" << RawFeatures::kDimensions << "]" << std::endl;
             std::cout << "start testing with random games";
 
@@ -154,8 +154,8 @@ namespace Eval::NNUE {
         }
 
         // Output a string that represents the structure of the evaluation function
-        void PrintInfo(std::istream& stream) {
-            std::cout << "network architecture: " << GetArchitectureString() << std::endl;
+        void print_info(std::istream& stream) {
+            std::cout << "network architecture: " << get_architecture_string() << std::endl;
 
             while (true) {
                 std::string file_name;
@@ -170,7 +170,7 @@ namespace Eval::NNUE {
 
                     if (!file_stream)
                         return false;
-                    if (!ReadHeader(file_stream, &hash_value, &architecture))
+                    if (!read_header(file_stream, &hash_value, &architecture))
                         return false;
 
                     return true;
@@ -180,7 +180,7 @@ namespace Eval::NNUE {
                 if (success) {
                     if (hash_value == kHashValue) {
                         std::cout << "matches with this binary";
-                        if (architecture != GetArchitectureString()) {
+                        if (architecture != get_architecture_string()) {
                             std::cout << ", but architecture string differs: " << architecture;
                         }
 
@@ -197,14 +197,14 @@ namespace Eval::NNUE {
     }  // namespace
 
     // USI extended command for NNUE evaluation function
-    void TestCommand(Position& pos, std::istream& stream) {
+    void test_command(Position& pos, std::istream& stream) {
         std::string sub_command;
         stream >> sub_command;
 
         if (sub_command == "test_features") {
-            TestFeatures(pos);
+            test_features(pos);
         } else if (sub_command == "info") {
-            PrintInfo(stream);
+            print_info(stream);
         } else {
             std::cout << "usage:" << std::endl;
             std::cout << " test nnue test_features" << std::endl;

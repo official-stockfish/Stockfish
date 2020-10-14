@@ -47,36 +47,36 @@ namespace Eval::NNUE::Layers {
         static constexpr IndexType kOutputDimensions = OutputDimensions;
 
         static constexpr IndexType kPaddedInputDimensions =
-            CeilToMultiple<IndexType>(kInputDimensions, kMaxSimdWidth);
+            ceil_to_multiple<IndexType>(kInputDimensions, kMaxSimdWidth);
 
         // Size of forward propagation buffer used in this layer
         static constexpr std::size_t kSelfBufferSize =
-            CeilToMultiple(kOutputDimensions * sizeof(OutputType), kCacheLineSize);
+            ceil_to_multiple(kOutputDimensions * sizeof(OutputType), kCacheLineSize);
 
         // Size of the forward propagation buffer used from the input layer to this layer
         static constexpr std::size_t kBufferSize =
             PreviousLayer::kBufferSize + kSelfBufferSize;
 
         // Hash value embedded in the evaluation file
-        static constexpr std::uint32_t GetHashValue() {
+        static constexpr std::uint32_t get_hash_value() {
             std::uint32_t hash_value = 0xCC03DAE4u;
             hash_value += kOutputDimensions;
-            hash_value ^= PreviousLayer::GetHashValue() >> 1;
-            hash_value ^= PreviousLayer::GetHashValue() << 31;
+            hash_value ^= PreviousLayer::get_hash_value() >> 1;
+            hash_value ^= PreviousLayer::get_hash_value() << 31;
             return hash_value;
         }
 
         // A string that represents the structure from the input layer to this layer
-        static std::string GetStructureString() {
+        static std::string get_structure_string() {
             return "AffineTransform[" +
                 std::to_string(kOutputDimensions) + "<-" +
                 std::to_string(kInputDimensions) + "](" +
-                PreviousLayer::GetStructureString() + ")";
+                PreviousLayer::get_structure_string() + ")";
         }
 
        // Read network parameters
-        bool ReadParameters(std::istream& stream) {
-            if (!previous_layer_.ReadParameters(stream))
+        bool read_parameters(std::istream& stream) {
+            if (!previous_layer_.read_parameters(stream))
                 return false;
 
             for (std::size_t i = 0; i < kOutputDimensions; ++i)
@@ -89,8 +89,8 @@ namespace Eval::NNUE::Layers {
         }
 
         // write parameters
-        bool WriteParameters(std::ostream& stream) const {
-            if (!previous_layer_.WriteParameters(stream))
+        bool write_parameters(std::ostream& stream) const {
+            if (!previous_layer_.write_parameters(stream))
                 return false;
 
             stream.write(reinterpret_cast<const char*>(biases_),
@@ -104,10 +104,10 @@ namespace Eval::NNUE::Layers {
         }
 
         // Forward propagation
-        const OutputType* Propagate(
+        const OutputType* propagate(
             const TransformedFeatureType* transformed_features, char* buffer) const {
 
-            const auto input = previous_layer_.Propagate(
+            const auto input = previous_layer_.propagate(
                 transformed_features, buffer + kSelfBufferSize);
             const auto output = reinterpret_cast<OutputType*>(buffer);
 

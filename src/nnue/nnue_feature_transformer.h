@@ -111,20 +111,20 @@ namespace Eval::NNUE {
             kOutputDimensions * sizeof(OutputType);
 
         // Hash value embedded in the evaluation file
-        static constexpr std::uint32_t GetHashValue() {
+        static constexpr std::uint32_t get_hash_value() {
 
             return RawFeatures::kHashValue ^ kOutputDimensions;
         }
 
         // a string representing the structure
-        static std::string GetStructureString() {
-            return RawFeatures::GetName() + "[" +
+        static std::string get_structure_string() {
+            return RawFeatures::get_name() + "[" +
                 std::to_string(kInputDimensions) + "->" +
                 std::to_string(kHalfDimensions) + "x2]";
         }
 
         // Read network parameters
-        bool ReadParameters(std::istream& stream) {
+        bool read_parameters(std::istream& stream) {
 
             for (std::size_t i = 0; i < kHalfDimensions; ++i)
                 biases_[i] = read_little_endian<BiasType>(stream);
@@ -136,7 +136,7 @@ namespace Eval::NNUE {
         }
 
         // write parameters
-        bool WriteParameters(std::ostream& stream) const {
+        bool write_parameters(std::ostream& stream) const {
             stream.write(reinterpret_cast<const char*>(biases_),
                 kHalfDimensions * sizeof(BiasType));
 
@@ -147,7 +147,7 @@ namespace Eval::NNUE {
         }
 
         // Proceed with the difference calculation if possible
-        bool UpdateAccumulatorIfPossible(const Position& pos) const {
+        bool update_accumulator_if_possible(const Position& pos) const {
 
             const auto now = pos.state();
             if (now->accumulator.computed_accumulation)
@@ -155,7 +155,7 @@ namespace Eval::NNUE {
 
             const auto prev = now->previous;
             if (prev && prev->accumulator.computed_accumulation) {
-                UpdateAccumulator(pos);
+                update_accumulator(pos);
                 return true;
             }
 
@@ -163,10 +163,10 @@ namespace Eval::NNUE {
         }
 
         // Convert input features
-        void Transform(const Position& pos, OutputType* output) const {
+        void transform(const Position& pos, OutputType* output) const {
 
-            if (!UpdateAccumulatorIfPossible(pos))
-              RefreshAccumulator(pos);
+            if (!update_accumulator_if_possible(pos))
+              refresh_accumulator(pos);
 
             const auto& accumulation = pos.state()->accumulator.accumulation;
 
@@ -294,13 +294,13 @@ namespace Eval::NNUE {
 
     private:
         // Calculate cumulative value without using difference calculation
-        void RefreshAccumulator(const Position& pos) const {
+        void refresh_accumulator(const Position& pos) const {
 
             auto& accumulator = pos.state()->accumulator;
             for (IndexType i = 0; i < kRefreshTriggers.size(); ++i) {
                 Features::IndexList active_indices[2];
-                RawFeatures::AppendActiveIndices(pos, kRefreshTriggers[i],
-                                                 active_indices);
+                RawFeatures::append_active_indices(pos, kRefreshTriggers[i],
+                                                   active_indices);
                 for (Color perspective : { WHITE, BLACK }) {
 #ifdef TILING
                     for (unsigned j = 0; j < kHalfDimensions / kTileHeight; ++j) {
@@ -357,15 +357,15 @@ namespace Eval::NNUE {
         }
 
         // Calculate cumulative value using difference calculation
-        void UpdateAccumulator(const Position& pos) const {
+        void update_accumulator(const Position& pos) const {
 
             const auto& prev_accumulator = pos.state()->previous->accumulator;
             auto& accumulator = pos.state()->accumulator;
             for (IndexType i = 0; i < kRefreshTriggers.size(); ++i) {
                 Features::IndexList removed_indices[2], added_indices[2];
                 bool reset[2] = { false, false };
-                RawFeatures::AppendChangedIndices(pos, kRefreshTriggers[i],
-                                                  removed_indices, added_indices, reset);
+                RawFeatures::append_changed_indices(pos, kRefreshTriggers[i],
+                                                    removed_indices, added_indices, reset);
 
 #ifdef TILING
                 for (IndexType j = 0; j < kHalfDimensions / kTileHeight; ++j) {
