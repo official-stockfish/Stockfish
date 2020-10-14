@@ -768,12 +768,11 @@ namespace Learner
         atomic<int> move_accord_count;
         move_accord_count = 0;
 
-        // Display the value of eval() in the initial stage of Hirate and see the shaking.
         auto th = Threads[thread_id];
         auto& pos = th->rootPos;
         StateInfo si;
         pos.set(StartFEN, false, &si, th);
-        cout << "hirate eval = " << Eval::evaluate(pos) << endl;
+        cout << "startpos eval = " << Eval::evaluate(pos) << endl;
 
         // It's better to parallelize here, but it's a bit
         // troublesome because the search before slave has not finished.
