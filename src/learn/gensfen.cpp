@@ -2,6 +2,7 @@
 
 #include "packed_sfen.h"
 #include "multi_think.h"
+#include "sfen_stream.h"
 #include "../syzygy/tbprobe.h"
 
 #include "misc.h"
@@ -38,106 +39,11 @@ using namespace std;
 
 namespace Learner
 {
-    enum struct SfenOutputType
-    {
-        Bin,
-        Binpack
-    };
-
     static bool write_out_draw_game_in_training_data_generation = true;
     static bool detect_draw_by_consecutive_low_score = true;
     static bool detect_draw_by_insufficient_mating_material = true;
 
     static SfenOutputType sfen_output_type = SfenOutputType::Bin;
-
-    static bool ends_with(const std::string& lhs, const std::string& end)
-    {
-        if (end.size() > lhs.size()) return false;
-
-        return std::equal(end.rbegin(), end.rend(), lhs.rbegin());
-    }
-
-    static std::string filename_with_extension(const std::string& filename, const std::string& ext)
-    {
-        if (ends_with(filename, ext))
-        {
-            return filename;
-        }
-        else
-        {
-            return filename + "." + ext;
-        }
-    }
-
-    struct BasicSfenOutputStream
-    {
-        virtual void write(const PSVector& sfens) = 0;
-        virtual ~BasicSfenOutputStream() {}
-    };
-
-    struct BinSfenOutputStream : BasicSfenOutputStream
-    {
-        static constexpr auto openmode = ios::out | ios::binary | ios::app;
-        static inline const std::string extension = "bin";
-
-        BinSfenOutputStream(std::string filename) :
-            m_stream(filename_with_extension(filename, extension), openmode)
-        {
-        }
-
-        void write(const PSVector& sfens) override
-        {
-            m_stream.write(reinterpret_cast<const char*>(sfens.data()), sizeof(PackedSfenValue) * sfens.size());
-        }
-
-        ~BinSfenOutputStream() override {}
-
-    private:
-        fstream m_stream;
-    };
-
-    struct BinpackSfenOutputStream : BasicSfenOutputStream
-    {
-        static constexpr auto openmode = ios::out | ios::binary | ios::app;
-        static inline const std::string extension = "binpack";
-
-        BinpackSfenOutputStream(std::string filename) :
-            m_stream(filename_with_extension(filename, extension), openmode)
-        {
-        }
-
-        void write(const PSVector& sfens) override
-        {
-            static_assert(sizeof(binpack::nodchip::PackedSfenValue) == sizeof(PackedSfenValue));
-
-            for(auto& sfen : sfens)
-            {
-                // The library uses a type that's different but layout-compatibile.
-                binpack::nodchip::PackedSfenValue e;
-                std::memcpy(&e, &sfen, sizeof(binpack::nodchip::PackedSfenValue));
-                m_stream.addTrainingDataEntry(binpack::packedSfenValueToTrainingDataEntry(e));
-            }
-        }
-
-        ~BinpackSfenOutputStream() override {}
-
-    private:
-        binpack::CompressedTrainingDataEntryWriter m_stream;
-    };
-
-    static std::unique_ptr<BasicSfenOutputStream> create_new_sfen_output(const std::string& filename)
-    {
-        switch(sfen_output_type)
-        {
-            case SfenOutputType::Bin:
-                return std::make_unique<BinSfenOutputStream>(filename);
-            case SfenOutputType::Binpack:
-                return std::make_unique<BinpackSfenOutputStream>(filename);
-        }
-
-        assert(false);
-        return nullptr;
-    }
 
     // Helper class for exporting Sfen
     struct SfenWriter
@@ -155,7 +61,7 @@ namespace Learner
             sfen_buffers_pool.reserve((size_t)thread_num * 10);
             sfen_buffers.resize(thread_num);
 
-            output_file_stream = create_new_sfen_output(filename_);
+            output_file_stream = create_new_sfen_output(filename_, sfen_output_type);
             filename = filename_;
 
             finished = false;
@@ -283,7 +189,7 @@ namespace Learner
                             // Add ios::app in consideration of overwriting.
                             // (Depending on the operation, it may not be necessary.)
                             string new_filename = filename + "_" + std::to_string(n);
-                            output_file_stream = create_new_sfen_output(new_filename);
+                            output_file_stream = create_new_sfen_output(new_filename, sfen_output_type);
                             cout << endl << "output sfen file = " << new_filename << endl;
                         }
 

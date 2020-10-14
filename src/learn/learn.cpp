@@ -21,6 +21,7 @@
 
 #include "convert.h"
 #include "multi_think.h"
+#include "sfen_stream.h"
 
 #include "misc.h"
 #include "position.h"
@@ -29,8 +30,6 @@
 #include "uci.h"
 #include "search.h"
 #include "timeman.h"
-
-#include "extra/nnue_data_binpack_format.h"
 
 #include "nnue/evaluate_nnue.h"
 #include "nnue/evaluate_nnue_learner.h"
@@ -284,115 +283,6 @@ namespace Learner
     double calc_grad(Value shallow, const PackedSfenValue& psv)
     {
         return calc_grad((Value)psv.score, shallow, psv);
-    }
-
-    struct BasicSfenInputStream
-    {
-        virtual std::optional<PackedSfenValue> next() = 0;
-        virtual bool eof() const = 0;
-        virtual ~BasicSfenInputStream() {}
-    };
-
-    struct BinSfenInputStream : BasicSfenInputStream
-    {
-        static constexpr auto openmode = ios::in | ios::binary;
-        static inline const std::string extension = "bin";
-
-        BinSfenInputStream(std::string filename) :
-            m_stream(filename, openmode),
-            m_eof(!m_stream)
-        {
-        }
-
-        std::optional<PackedSfenValue> next() override
-        {
-            PackedSfenValue e;
-            if(m_stream.read(reinterpret_cast<char*>(&e), sizeof(PackedSfenValue)))
-            {
-                return e;
-            }
-            else
-            {
-                m_eof = true;
-                return std::nullopt;
-            }
-        }
-
-        bool eof() const override
-        {
-            return m_eof;
-        }
-
-        ~BinSfenInputStream() override {}
-
-    private:
-        fstream m_stream;
-        bool m_eof;
-    };
-
-    struct BinpackSfenInputStream : BasicSfenInputStream
-    {
-        static constexpr auto openmode = ios::in | ios::binary;
-        static inline const std::string extension = "binpack";
-
-        BinpackSfenInputStream(std::string filename) :
-            m_stream(filename, openmode),
-            m_eof(!m_stream.hasNext())
-        {
-        }
-
-        std::optional<PackedSfenValue> next() override
-        {
-            static_assert(sizeof(binpack::nodchip::PackedSfenValue) == sizeof(PackedSfenValue));
-
-            if (!m_stream.hasNext())
-            {
-                m_eof = true;
-                return std::nullopt;
-            }
-
-            auto training_data_entry = m_stream.next();
-            auto v = binpack::trainingDataEntryToPackedSfenValue(training_data_entry);
-            PackedSfenValue psv;
-            // same layout, different types. One is from generic library.
-            std::memcpy(&psv, &v, sizeof(PackedSfenValue));
-
-            return psv;
-        }
-
-        bool eof() const override
-        {
-            return m_eof;
-        }
-
-        ~BinpackSfenInputStream() override {}
-
-    private:
-        binpack::CompressedTrainingDataEntryReader m_stream;
-        bool m_eof;
-    };
-
-    static bool ends_with(const std::string& lhs, const std::string& end)
-    {
-        if (end.size() > lhs.size()) return false;
-
-        return std::equal(end.rbegin(), end.rend(), lhs.rbegin());
-    }
-
-    static bool has_extension(const std::string& filename, const std::string& extension)
-    {
-        return ends_with(filename, "." + extension);
-    }
-
-    static std::unique_ptr<BasicSfenInputStream> open_sfen_input_file(const std::string& filename)
-    {
-        if (has_extension(filename, BinSfenInputStream::extension))
-            return std::make_unique<BinSfenInputStream>(filename);
-        else if (has_extension(filename, BinpackSfenInputStream::extension))
-            return std::make_unique<BinpackSfenInputStream>(filename);
-
-        assert(false);
-        return nullptr;
     }
 
     // Sfen reader
