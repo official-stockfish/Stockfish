@@ -903,10 +903,6 @@ namespace Learner
                     << " , learn_entropy = " << learn_sum_entropy / done
                     << endl;
             }
-
-            // Bigger space between progress reports so that they can be more
-            // easly disinguished. Looking for timestamps is hard.
-            cout << endl;
         }
         else
         {
