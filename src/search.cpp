@@ -519,7 +519,7 @@ void Thread::search() {
           }
           double bestMoveInstability = 1 + 2 * totBestMoveChanges / Threads.size();
 
-          double totalTime = rootMoves.size() == 1 ? 0 :
+          double totalTime = rootMoves.size() == 1 ? Time.optimum() * 0.001 :
                              Time.optimum() * fallingEval * reduction * bestMoveInstability;
 
           // Stop the search if we have exceeded the totalTime, at least 1ms search
@@ -529,13 +529,6 @@ void Thread::search() {
               // keep pondering until the GUI sends "ponderhit" or "stop".
               if (mainThread->ponder)
                   mainThread->stopOnPonderhit = true;
-              // If there is only one legal move, use previous score instead
-              // of depth 1 score
-              else if (rootMoves.size() == 1)
-              {
-                  Threads.stop = true;
-                  rootMoves[0].score = rootMoves[0].previousScore;
-              }
               else
                   Threads.stop = true;
           }
