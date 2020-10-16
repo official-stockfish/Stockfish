@@ -1685,7 +1685,6 @@ namespace Learner
             else if (option == "seed") is >> seed;
             else if (option == "set_recommended_uci_options")
             {
-                UCI::setoption("Use NNUE", "pure");
                 UCI::setoption("MultiPV", "1");
                 UCI::setoption("Contempt", "0");
                 UCI::setoption("Skill Level", "20");
@@ -1906,6 +1905,9 @@ namespace Learner
         {
             sr.read_validation_set(validation_set_file_name, eval_limit);
         }
+
+        cout << "Forcing Use NNUE pure.\n";
+        UCI::setoption("Use NNUE", "pure");
 
         Eval::NNUE::verify_any_net_loaded();
 
