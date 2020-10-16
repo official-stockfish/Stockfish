@@ -529,6 +529,11 @@ void Thread::search() {
               // keep pondering until the GUI sends "ponderhit" or "stop".
               if (mainThread->ponder)
                   mainThread->stopOnPonderhit = true;
+              else if (rootMoves.size() == 1)
+              {
+                  Threads.stop = true;
+                  rootMoves[0].score = rootMoves[0].previousScore;
+              }
               else
                   Threads.stop = true;
           }
