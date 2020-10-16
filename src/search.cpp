@@ -529,6 +529,8 @@ void Thread::search() {
               // keep pondering until the GUI sends "ponderhit" or "stop".
               if (mainThread->ponder)
                   mainThread->stopOnPonderhit = true;
+              // If there is only one legal move, use previous score instead
+              // of depth 1 score
               else if (rootMoves.size() == 1)
               {
                   Threads.stop = true;
