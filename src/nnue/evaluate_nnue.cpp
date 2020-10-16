@@ -186,11 +186,6 @@ namespace Eval::NNUE {
 
     Initialize();
 
-    if (Options["SkipLoadingEval"])
-    {
-      std::cout << "info string SkipLoadingEval set to true, Net not loaded!" << std::endl;
-      return true;
-    }
     fileName = name;
     return ReadParameters(stream);
   }
@@ -210,8 +205,12 @@ namespace Eval::NNUE {
   void init() {
 
     useNNUE = nnue_mode_from_option(Options["Use NNUE"]);
-    if (useNNUE == UseNNUEMode::False)
-        return;
+
+    if (Options["SkipLoadingEval"] || useNNUE == UseNNUEMode::False)
+    {
+      eval_file_loaded.clear();
+      return;
+    }
 
     std::string eval_file = std::string(Options["EvalFile"]);
 
@@ -277,7 +276,7 @@ namespace Eval::NNUE {
   /// In training we override eval file so this is useful.
   void verify_any_net_loaded() {
 
-    if (useNNUE != UseNNUEMode::False && eval_file_loaded.empty())
+    if (!Options["SkipLoadingEval"] && useNNUE != UseNNUEMode::False && eval_file_loaded.empty())
     {
         UCI::OptionsMap defaults;
         UCI::init(defaults);
