@@ -24,6 +24,7 @@
 #include <mutex>
 #include <thread>
 #include <vector>
+#include <functional>
 
 #include "material.h"
 #include "movepick.h"
@@ -50,10 +51,12 @@ public:
   explicit Thread(size_t);
   virtual ~Thread();
   virtual void search();
+  virtual void execute_task(std::function<void(Thread&)> t);
   void clear();
   void idle_loop();
   void start_searching();
   void wait_for_search_finished();
+  size_t thread_idx() const { return idx; }
 
   Pawns::Table pawnsTable;
   Material::Table materialTable;
@@ -78,6 +81,7 @@ public:
   bool UseRule50;
   Depth ProbeDepth;
 
+  std::function<void(Thread&)> task;
 };
 
 
@@ -104,6 +108,8 @@ struct MainThread : public Thread {
 /// is done through this class.
 
 struct ThreadPool : public std::vector<Thread*> {
+
+  void execute_parallel(std::function<void(Thread&)> task);
 
   void start_thinking(Position&, StateListPtr&, const Search::LimitsType&, bool = false);
   void clear();

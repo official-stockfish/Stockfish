@@ -345,6 +345,12 @@ void UCI::loop(int argc, char* argv[]) {
       // Command to call qsearch(),search() directly for testing
       else if (token == "qsearch") qsearch_cmd(pos);
       else if (token == "search") search_cmd(pos, is);
+      else if (token == "tasktest")
+      {
+        Threads.execute_parallel([](auto& th) {
+          std::cout << th.thread_idx() << '\n';
+        });
+      }
 
       // test command
       else if (token == "test") test_cmd(pos, is);

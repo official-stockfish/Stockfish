@@ -80,6 +80,13 @@ void Thread::start_searching() {
   cv.notify_one(); // Wake up the thread in idle_loop()
 }
 
+void Thread::execute_task(std::function<void(Thread&)> t)
+{
+  std::lock_guard<std::mutex> lk(mutex);
+  task = std::move(t);
+  cv.notify_one(); // Wake up the thread in idle_loop()
+}
+
 
 /// Thread::wait_for_search_finished() blocks on the condition variable
 /// until the thread has finished searching.
@@ -109,14 +116,22 @@ void Thread::idle_loop() {
       std::unique_lock<std::mutex> lk(mutex);
       searching = false;
       cv.notify_one(); // Wake up anyone waiting for search finished
-      cv.wait(lk, [&]{ return searching; });
+      cv.wait(lk, [&]{ return searching || task; });
 
       if (exit)
           return;
 
       lk.unlock();
 
-      search();
+      if (task)
+      {
+        task(*this);
+        task = nullptr;
+      }
+      else
+      {
+        search();
+      }
   }
 }
 
@@ -161,6 +176,14 @@ void ThreadPool::clear() {
   main()->previousTimeReduction = 1.0;
 }
 
+
+void ThreadPool::execute_parallel(std::function<void(Thread&)> task)
+{
+  for(Thread* th : *this)
+  {
+    th->execute_task(task);
+  }
+}
 
 /// ThreadPool::start_thinking() wakes up main thread waiting in idle_loop() and
 /// returns immediately. Main thread will wake up other threads and start the search.
