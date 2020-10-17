@@ -519,6 +519,7 @@ void Thread::search() {
           }
           double bestMoveInstability = 1 + 2 * totBestMoveChanges / Threads.size();
 
+          // Spend a little amount of time to give reasonable evals when there is only one legal move
           double totalTime = rootMoves.size() == 1 ? Time.optimum() * 0.001 :
                              Time.optimum() * fallingEval * reduction * bestMoveInstability;
 
