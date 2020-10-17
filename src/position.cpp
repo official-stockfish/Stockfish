@@ -999,6 +999,7 @@ void Position::do_null_move(StateInfo& newSt) {
   if (Eval::useNNUE)
   {
       std::memcpy(&newSt, st, sizeof(StateInfo));
+      newSt.dirtyPiece.dirty_num = 0;
   }
   else
       std::memcpy(&newSt, st, offsetof(StateInfo, accumulator));
