@@ -1245,6 +1245,12 @@ namespace Learner
 
             // Specify the folder in which the game record is stored and make it the rooting target.
             else if (option == "targetdir") is >> target_dir;
+            else if (option == "targetfile")
+            {
+                std::string filename;
+                is >> filename;
+                filenames.push_back(filename);
+            }
 
             // Specify the number of loops
             else if (option == "loop")      is >> loop;
@@ -1333,9 +1339,10 @@ namespace Learner
                 UCI::setoption("PruneAtShallowDepth", "false");
                 UCI::setoption("EnableTranspositionTable", "false");
             }
-            // Otherwise, it's a filename.
             else
-                filenames.push_back(option);
+            {
+                cout << "Unknown option: " << option << ". Ignoring.\n";
+            }
         }
 
         if (loss_output_interval == 0)
