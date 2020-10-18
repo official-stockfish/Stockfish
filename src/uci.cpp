@@ -341,6 +341,9 @@ void UCI::loop(int argc, char* argv[]) {
       else if (token == "gensfen") Learner::gen_sfen(pos, is);
       else if (token == "learn") Learner::learn(pos, is);
       else if (token == "convert") Learner::convert(is);
+      else if (token == "convert_bin") Learner::convert_bin(is);
+      else if (token == "convert_plain") Learner::convert_plain(is);
+      else if (token == "convert_bin_from_pgn_extract") Learner::convert_bin_from_pgn_extract(is);
 
       // Command to call qsearch(),search() directly for testing
       else if (token == "qsearch") qsearch_cmd(pos);

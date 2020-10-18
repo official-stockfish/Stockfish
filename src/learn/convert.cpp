@@ -10,6 +10,8 @@
 
 #include "extra/nnue_data_binpack_format.h"
 
+#include "nnue/evaluate_nnue.h"
+
 #include "syzygy/tbprobe.h"
 
 #include <sstream>
@@ -599,5 +601,215 @@ namespace Learner
         }
 
         convert(args);
+    }
+
+    static void append_files_from_dir(
+        std::vector<std::string>& filenames,
+        const std::string& base_dir,
+        const std::string& target_dir)
+    {
+        string kif_base_dir = Path::combine(base_dir, target_dir);
+
+        namespace sys = std::filesystem;
+        sys::path p(kif_base_dir); // Origin of enumeration
+        std::for_each(sys::directory_iterator(p), sys::directory_iterator(),
+            [&](const sys::path& path) {
+                if (sys::is_regular_file(path))
+                    filenames.push_back(Path::combine(target_dir, path.filename().generic_string()));
+            });
+    }
+
+    static void rebase_files(
+        std::vector<std::string>& filenames,
+        const std::string& base_dir)
+    {
+        for (auto& file : filenames)
+        {
+            file = Path::combine(base_dir, file);
+        }
+    }
+
+    void convert_bin_from_pgn_extract(std::istringstream& is)
+    {
+        std::vector<std::string> filenames;
+
+        string base_dir;
+        string target_dir;
+
+        bool pgn_eval_side_to_move = false;
+        bool convert_no_eval_fens_as_score_zero = false;
+
+        string output_file_name = "shuffled_sfen.bin";
+
+        while (true)
+        {
+            string option;
+            is >> option;
+
+            if (option == "")
+                break;
+
+            if (option == "targetdir") is >> target_dir;
+            else if (option == "targetfile")
+            {
+                std::string filename;
+                is >> filename;
+                filenames.push_back(filename);
+            }
+
+            else if (option == "basedir")   is >> base_dir;
+
+            else if (option == "pgn_eval_side_to_move") is >> pgn_eval_side_to_move;
+            else if (option == "convert_no_eval_fens_as_score_zero") is >> convert_no_eval_fens_as_score_zero;
+            else if (option == "output_file_name") is >> output_file_name;
+            else
+            {
+                cout << "Unknown option: " << option << ". Ignoring.\n";
+            }
+        }
+
+        if (!target_dir.empty())
+        {
+            append_files_from_dir(filenames, base_dir, target_dir);
+        }
+        rebase_files(filenames, base_dir);
+
+        Eval::NNUE::init();
+
+        cout << "convert_bin_from_pgn-extract.." << endl;
+        convert_bin_from_pgn_extract(
+            filenames,
+            output_file_name,
+            pgn_eval_side_to_move,
+            convert_no_eval_fens_as_score_zero);
+    }
+
+    void convert_bin(std::istringstream& is)
+    {
+        std::vector<std::string> filenames;
+
+        string base_dir;
+        string target_dir;
+
+        int ply_minimum = 0;
+        int ply_maximum = 114514;
+        bool interpolate_eval = 0;
+        bool check_invalid_fen = false;
+        bool check_illegal_move = false;
+
+        bool pgn_eval_side_to_move = false;
+        bool convert_no_eval_fens_as_score_zero = false;
+
+        double src_score_min_value = 0.0;
+        double src_score_max_value = 1.0;
+        double dest_score_min_value = 0.0;
+        double dest_score_max_value = 1.0;
+
+        string output_file_name = "shuffled_sfen.bin";
+
+        while (true)
+        {
+            string option;
+            is >> option;
+
+            if (option == "")
+                break;
+
+            if (option == "targetdir") is >> target_dir;
+            else if (option == "targetfile")
+            {
+                std::string filename;
+                is >> filename;
+                filenames.push_back(filename);
+            }
+
+            else if (option == "basedir")   is >> base_dir;
+
+            else if (option == "ply_minimum") is >> ply_minimum;
+            else if (option == "ply_maximum") is >> ply_maximum;
+            else if (option == "interpolate_eval") is >> interpolate_eval;
+            else if (option == "check_invalid_fen") is >> check_invalid_fen;
+            else if (option == "check_illegal_move") is >> check_illegal_move;
+            else if (option == "pgn_eval_side_to_move") is >> pgn_eval_side_to_move;
+            else if (option == "convert_no_eval_fens_as_score_zero") is >> convert_no_eval_fens_as_score_zero;
+            else if (option == "src_score_min_value") is >> src_score_min_value;
+            else if (option == "src_score_max_value") is >> src_score_max_value;
+            else if (option == "dest_score_min_value") is >> dest_score_min_value;
+            else if (option == "dest_score_max_value") is >> dest_score_max_value;
+            else if (option == "output_file_name") is >> output_file_name;
+            else
+            {
+                cout << "Unknown option: " << option << ". Ignoring.\n";
+            }
+        }
+
+        if (!target_dir.empty())
+        {
+            append_files_from_dir(filenames, base_dir, target_dir);
+        }
+        rebase_files(filenames, base_dir);
+
+        Eval::NNUE::init();
+
+        cout << "convert_bin.." << endl;
+            convert_bin(
+                filenames,
+                output_file_name,
+                ply_minimum,
+                ply_maximum,
+                interpolate_eval,
+                src_score_min_value,
+                src_score_max_value,
+                dest_score_min_value,
+                dest_score_max_value,
+                check_invalid_fen,
+                check_illegal_move
+            );
+    }
+
+    void convert_plain(std::istringstream& is)
+    {
+        std::vector<std::string> filenames;
+
+        string base_dir;
+        string target_dir;
+
+        string output_file_name = "shuffled_sfen.bin";
+
+        while (true)
+        {
+            string option;
+            is >> option;
+
+            if (option == "")
+                break;
+
+            if (option == "targetdir") is >> target_dir;
+            else if (option == "targetfile")
+            {
+                std::string filename;
+                is >> filename;
+                filenames.push_back(filename);
+            }
+
+            else if (option == "basedir")   is >> base_dir;
+
+            else if (option == "output_file_name") is >> output_file_name;
+            else
+            {
+                cout << "Unknown option: " << option << ". Ignoring.\n";
+            }
+        }
+
+        if (!target_dir.empty())
+        {
+            append_files_from_dir(filenames, base_dir, target_dir);
+        }
+        rebase_files(filenames, base_dir);
+
+        Eval::NNUE::init();
+
+        cout << "convert_plain.." << endl;
+        convert_plain(filenames, output_file_name);
     }
 }
