@@ -521,7 +521,7 @@ void Thread::search() {
 
           // Spend less time if we have found a known win
           double totalTime =  rootMoves.size() == 1 ? 0
-                            : rootMoves[0].tbScore ? Time.optimum() * 0.1
+                            : bestValue >= VALUE_TB_WIN_IN_MAX_PLY ? Time.optimum() * 0.2
                             : Time.optimum() * fallingEval * reduction * bestMoveInstability;
 
           // Stop the search if we have exceeded the totalTime, at least 1ms search
