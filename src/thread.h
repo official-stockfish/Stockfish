@@ -45,18 +45,19 @@ class Thread {
   std::condition_variable cv;
   size_t idx;
   bool exit = false, searching = true; // Set before starting std::thread
+  std::function<void(Thread&)> worker;
   NativeThread stdThread;
 
 public:
   explicit Thread(size_t);
   virtual ~Thread();
   virtual void search();
-  virtual void execute_task(std::function<void(Thread&)> t);
+  virtual void execute_with_worker(std::function<void(Thread&)> t);
   void clear();
   void idle_loop();
   void start_searching();
   void wait_for_search_finished();
-  void wait_for_task_finished();
+  void wait_for_worker_finished();
   size_t thread_idx() const { return idx; }
 
   Pawns::Table pawnsTable;
@@ -81,8 +82,6 @@ public:
   int Cardinality;
   bool UseRule50;
   Depth ProbeDepth;
-
-  std::function<void(Thread&)> task;
 };
 
 
@@ -110,7 +109,7 @@ struct MainThread : public Thread {
 
 struct ThreadPool : public std::vector<Thread*> {
 
-  void execute_parallel(std::function<void(Thread&)> task);
+  void execute_with_workers(std::function<void(Thread&)> worker);
 
   void start_thinking(Position&, StateListPtr&, const Search::LimitsType&, bool = false);
   void clear();
@@ -122,7 +121,7 @@ struct ThreadPool : public std::vector<Thread*> {
   Thread* get_best_thread() const;
   void start_searching();
   void wait_for_search_finished() const;
-  void wait_for_tasks_finished() const;
+  void wait_for_workers_finished() const;
 
   std::atomic_bool stop, increaseDepth;
 
