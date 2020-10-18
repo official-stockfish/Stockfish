@@ -128,6 +128,18 @@ public:
 
   void set_seed(uint64_t seed) { s = seed; }
 
+  uint64_t next_random_seed()
+  {
+    uint64_t seed = 0;
+    for(int i = 0; i < 64; ++i)
+    {
+      const auto off = rand64() % 64;
+      seed |= (rand64() & (uint64_t(1) << off)) >> off;
+      seed <<= 1;
+    }
+    return seed;
+  }
+
   void set_seed_from_time()
   {
       set_seed(std::chrono::system_clock::now().time_since_epoch().count());

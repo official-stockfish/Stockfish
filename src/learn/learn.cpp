@@ -20,7 +20,6 @@
 #include "learn.h"
 
 #include "convert.h"
-#include "multi_think.h"
 #include "sfen_stream.h"
 
 #include "misc.h"
@@ -94,6 +93,68 @@ namespace Learner
 
     // Using stockfish's WDL with win rate model instead of sigmoid
     static bool use_wdl = false;
+
+    namespace Detail {
+        template <bool AtomicV>
+        struct Loss
+        {
+            using T =
+                std::conditional_t<
+                    AtomicV,
+                    atomic<double>,
+                    double
+                >;
+
+            T cross_entropy_eval{0.0};
+            T cross_entropy_win{0.0};
+            T cross_entropy{0.0};
+            T entropy_eval{0.0};
+            T entropy_win{0.0};
+            T entropy{0.0};
+            T count{0.0};
+
+            template <bool OtherAtomicV>
+            Loss& operator += (const Loss<OtherAtomicV>& rhs)
+            {
+                cross_entropy_eval += rhs.cross_entropy_eval;
+                cross_entropy_win += rhs.cross_entropy_win;
+                cross_entropy += rhs.cross_entropy;
+                entropy_eval += rhs.entropy_eval;
+                entropy_win += rhs.entropy_win;
+                entropy += rhs.entropy;
+                count += rhs.count;
+
+                return *this;
+            }
+
+            void reset()
+            {
+                cross_entropy_eval = 0.0;
+                cross_entropy_win = 0.0;
+                cross_entropy = 0.0;
+                entropy_eval = 0.0;
+                entropy_win = 0.0;
+                entropy = 0.0;
+                count = 0.0;
+            }
+
+            void print(const std::string& prefix, ostream& s) const
+            {
+                s
+                    << "INFO: "
+                    << prefix << "_cross_entropy_eval = " << cross_entropy_eval / count
+                    << " , " << prefix << "_cross_entropy_win = " << cross_entropy_win / count
+                    << " , " << prefix << "_entropy_eval = " << entropy_eval / count
+                    << " , " << prefix << "_entropy_win = " << entropy_win / count
+                    << " , " << prefix << "_cross_entropy = " << cross_entropy / count
+                    << " , " << prefix << "_entropy = " << entropy / count
+                    << endl;
+            }
+        };
+    }
+
+    using Loss = Detail::Loss<false>;
+    using AtomicLoss = Detail::Loss<true>;
 
     // A function that converts the evaluation value to the winning rate [0,1]
     double winning_percentage(double value)
@@ -243,16 +304,10 @@ namespace Learner
     // The individual cross entropy of the win/loss term and win
     // rate term of the elmo expression is returned
     // to the arguments cross_entropy_eval and cross_entropy_win.
-    void calc_cross_entropy(
+    Loss calc_cross_entropy(
         Value teacher_signal,
         Value shallow,
-        const PackedSfenValue& psv,
-        double& cross_entropy_eval,
-        double& cross_entropy_win,
-        double& cross_entropy,
-        double& entropy_eval,
-        double& entropy_win,
-        double& entropy)
+        const PackedSfenValue& psv)
     {
         // Teacher winning probability.
         const double q = winning_percentage(shallow, psv.gamePly);
@@ -264,19 +319,25 @@ namespace Learner
 
         const double m = (1.0 - lambda) * t + lambda * p;
 
-        cross_entropy_eval =
+        Loss loss{};
+
+        loss.cross_entropy_eval =
             (-p * std::log(q + epsilon) - (1.0 - p) * std::log(1.0 - q + epsilon));
-        cross_entropy_win =
+        loss.cross_entropy_win =
             (-t * std::log(q + epsilon) - (1.0 - t) * std::log(1.0 - q + epsilon));
-        entropy_eval =
+        loss.entropy_eval =
             (-p * std::log(p + epsilon) - (1.0 - p) * std::log(1.0 - p + epsilon));
-        entropy_win =
+        loss.entropy_win =
             (-t * std::log(t + epsilon) - (1.0 - t) * std::log(1.0 - t + epsilon));
 
-        cross_entropy =
+        loss.cross_entropy =
             (-m * std::log(q + epsilon) - (1.0 - m) * std::log(1.0 - q + epsilon));
-        entropy =
+        loss.entropy =
             (-m * std::log(m + epsilon) - (1.0 - m) * std::log(1.0 - m + epsilon));
+
+        loss.count = 1;
+
+        return loss;
     }
 
     // Other objective functions may be considered in the future...
@@ -288,12 +349,6 @@ namespace Learner
     // Sfen reader
     struct SfenReader
     {
-        // Number of phases used for calculation such as mse
-        // mini-batch size = 1M is standard, so 0.2% of that should be negligible in terms of time.
-        // Since search() is performed with depth = 1 in calculation of
-        // move match rate, simple comparison is not possible...
-        static constexpr uint64_t sfen_for_mse_size = 2000;
-
         // Number of phases buffered by each thread 0.1M phases. 4M phase at 40HT
         static constexpr size_t THREAD_BUFFER_SIZE = 10 * 1000;
 
@@ -303,11 +358,6 @@ namespace Learner
         // SFEN_READ_SIZE is a multiple of THREAD_BUFFER_SIZE.
         static constexpr const size_t SFEN_READ_SIZE = LEARN_SFEN_READ_SIZE;
 
-        // hash to limit the reading of the same situation
-        // Is there too many 64 million phases? Or Not really..
-        // It must be 2**N because it will be used as the mask to calculate hash_index.
-        static constexpr uint64_t READ_SFEN_HASH_SIZE = 64 * 1024 * 1024;
-
         // Do not use std::random_device().
         // Because it always the same integers on MinGW.
         SfenReader(int thread_num, const std::string& seed) :
@@ -315,15 +365,9 @@ namespace Learner
         {
             packed_sfens.resize(thread_num);
             total_read = 0;
-            total_done = 0;
-            last_done = 0;
-            next_update_weights = 0;
-            save_count = 0;
             end_of_files = false;
-            no_shuffle = false;
+            shuffle = true;
             stop_flag = false;
-
-            hash.resize(READ_SFEN_HASH_SIZE);
         }
 
         ~SfenReader()
@@ -333,30 +377,30 @@ namespace Learner
         }
 
         // Load the phase for calculation such as mse.
-        void read_for_mse()
+        PSVector read_for_mse(uint64_t count)
         {
-            auto th = Threads.main();
-            Position& pos = th->rootPos;
-            for (uint64_t i = 0; i < sfen_for_mse_size; ++i)
+            PSVector sfen_for_mse;
+            sfen_for_mse.reserve(count);
+
+            for (uint64_t i = 0; i < count; ++i)
             {
                 PackedSfenValue ps;
                 if (!read_to_thread_buffer(0, ps))
                 {
                     cout << "Error! read packed sfen , failed." << endl;
-                    break;
+                    return sfen_for_mse;
                 }
 
                 sfen_for_mse.push_back(ps);
-
-                // Get the hash key.
-                StateInfo si;
-                pos.set_from_packed_sfen(ps.sfen, &si, th);
-                sfen_for_mse_hash.insert(pos.key());
             }
+
+            return sfen_for_mse;
         }
 
-        void read_validation_set(const string& file_name, int eval_limit)
+        PSVector read_validation_set(const string& file_name, int eval_limit)
         {
+            PSVector sfen_for_mse;
+
             auto input = open_sfen_input_file(file_name);
 
             while(!input->eof())
@@ -379,6 +423,8 @@ namespace Learner
                     break;
                 }
             }
+
+            return sfen_for_mse;
         }
 
         // [ASYNC] Thread returns one aspect. Otherwise returns false.
@@ -465,8 +511,8 @@ namespace Learner
                         return false;
 
                     // Get the next file name.
-                    string filename = filenames.back();
-                    filenames.pop_back();
+                    string filename = filenames.front();
+                    filenames.pop_front();
 
                     sfen_input_stream = open_sfen_input_file(filename);
                     cout << "open filename = " << filename << endl;
@@ -515,7 +561,7 @@ namespace Learner
                 }
 
                 // Shuffle the read phase data.
-                if (!no_shuffle)
+                if (shuffle)
                 {
                     Algo::shuffle(sfens, prng);
                 }
@@ -553,44 +599,36 @@ namespace Learner
             }
         }
 
-        // Determine if it is a phase for calculating rmse.
-        // (The computational aspects of rmse should not be used for learning.)
-        bool is_for_rmse(Key key) const
+        void stop()
         {
-            return sfen_for_mse_hash.count(key) != 0;
+            stop_flag = true;
         }
 
-        // sfen files
-        vector<string> filenames;
+        void set_do_shuffle(bool v)
+        {
+            shuffle = v;
+        }
 
-        // number of phases read (file to memory buffer)
-        atomic<uint64_t> total_read;
-
-        // number of processed phases
-        atomic<uint64_t> total_done;
-
-        // number of cases processed so far
-        uint64_t last_done;
-
-        // If total_read exceeds this value, update_weights() and calculate mse.
-        std::atomic<uint64_t> next_update_weights;
-
-        uint64_t save_count;
-
-        // Do not shuffle when reading the phase.
-        bool no_shuffle;
-
-        std::atomic<bool> stop_flag;
-
-        vector<Key> hash;
-
-        // test phase for mse calculation
-        PSVector sfen_for_mse;
+        void add_file(const std::string& filename)
+        {
+            filenames.push_back(filename);
+        }
 
     protected:
 
         // worker thread reading file in background
         std::thread file_worker_thread;
+
+        // sfen files
+        deque<string> filenames;
+
+        std::atomic<bool> stop_flag;
+
+        // number of phases read (file to memory buffer)
+        atomic<uint64_t> total_read;
+
+        // Do not shuffle when reading the phase.
+        bool shuffle;
 
         // Random number to shuffle when reading the phase
         PRNG prng;
@@ -612,27 +650,25 @@ namespace Learner
         // Each worker thread fills its own packed_sfens[thread_id] from here.
         // * Lock and access the mutex.
         std::list<std::unique_ptr<PSVector>> packed_sfens_pool;
-
-        // Hold the hash key so that the mse calculation phase is not used for learning.
-        std::unordered_set<Key> sfen_for_mse_hash;
     };
 
     // Class to generate sfen with multiple threads
-    struct LearnerThink : public MultiThink
+    struct LearnerThink
     {
-        LearnerThink(SfenReader& sr_, const std::string& seed) :
-            MultiThink(seed),
-            sr(sr_),
-            stop_flag(false),
-            save_only_once(false)
-        {
-            learn_sum_cross_entropy_eval = 0.0;
-            learn_sum_cross_entropy_win = 0.0;
-            learn_sum_cross_entropy = 0.0;
-            learn_sum_entropy_eval = 0.0;
-            learn_sum_entropy_win = 0.0;
-            learn_sum_entropy = 0.0;
+        // Number of phases used for calculation such as mse
+        // mini-batch size = 1M is standard, so 0.2% of that should be negligible in terms of time.
+        // Since search() is performed with depth = 1 in calculation of
+        // move match rate, simple comparison is not possible...
+        static constexpr uint64_t sfen_for_mse_size = 2000;
 
+        LearnerThink(uint64_t thread_num, const std::string& seed) :
+            prng(seed),
+            sr(thread_num, std::to_string(prng.next_random_seed())),
+            learn_loss_sum{}
+        {
+            save_only_once = false;
+            save_count = 0;
+            loss_output_count = 0;
             newbob_decay = 1.0;
             newbob_num_trials = 2;
             auto_lr_drop = 0;
@@ -640,31 +676,26 @@ namespace Learner
             best_loss = std::numeric_limits<double>::infinity();
             latest_loss_sum = 0.0;
             latest_loss_count = 0;
+            total_done = 0;
         }
 
-        virtual void thread_worker(size_t thread_id);
-
-        // Start a thread that loads the phase file in the background.
-        void start_file_read_worker()
+        void set_do_shuffle(bool v)
         {
-            sr.start_file_read_worker();
+            sr.set_do_shuffle(v);
         }
 
-        Value get_shallow_value(Position& task_pos);
+        void add_file(const std::string& filename)
+        {
+            sr.add_file(filename);
+        }
 
-        // save merit function parameters to a file
-        bool save(bool is_final = false);
+        void learn();
 
-        // sfen reader
-        SfenReader& sr;
 
-        // Learning iteration counter
-        uint64_t epoch = 0;
+        std::string validation_set_file_name;
 
         // Mini batch size size. Be sure to set it on the side that uses this class.
         uint64_t mini_batch_size = LEARN_MINI_BATCH_SIZE;
-
-        std::atomic<bool> stop_flag;
 
         // Option to exclude early stage from learning
         int reduction_gameply;
@@ -677,342 +708,143 @@ namespace Learner
         // If true, do not dig the folder.
         bool save_only_once;
 
-        // --- loss calculation
-
-        // For calculation of learning data loss
-        atomic<double> learn_sum_cross_entropy_eval;
-        atomic<double> learn_sum_cross_entropy_win;
-        atomic<double> learn_sum_cross_entropy;
-        atomic<double> learn_sum_entropy_eval;
-        atomic<double> learn_sum_entropy_win;
-        atomic<double> learn_sum_entropy;
-
-        shared_timed_mutex nn_mutex;
         double newbob_decay;
         int newbob_num_trials;
         uint64_t auto_lr_drop;
-        uint64_t last_lr_drop;
-        double best_loss;
-        double latest_loss_sum;
-        uint64_t latest_loss_count;
+
         std::string best_nn_directory;
 
         uint64_t eval_save_interval;
         uint64_t loss_output_interval;
 
-        // Loss calculation.
-        // done: Number of phases targeted this time
-        void calc_loss(size_t thread_id, uint64_t done);
+    private:
+        void learn_worker(Thread& th, std::atomic<uint64_t>& counter, uint64_t limit);
 
-        // Define the loss calculation in ↑ as a task and execute it
-        TaskDispatcher task_dispatcher;
+        void update_weights(const PSVector& psv);
+
+        void calc_loss(const PSVector& psv);
+
+        void calc_loss_worker(
+            Thread& th,
+            std::atomic<uint64_t>& counter,
+            const PSVector& psv,
+            AtomicLoss& test_loss_sum,
+            atomic<double>& sum_norm,
+            atomic<int>& move_accord_count
+        );
+
+        Value get_shallow_value(Position& pos);
+
+        // save merit function parameters to a file
+        bool save(bool is_final = false);
+
+        PRNG prng;
+
+        // sfen reader
+        SfenReader sr;
+
+        uint64_t save_count;
+        uint64_t loss_output_count;
+
+        // Learning iteration counter
+        uint64_t epoch = 0;
+
+        std::atomic<bool> stop_flag;
+
+        uint64_t total_done;
+
+        uint64_t last_lr_drop;
+        double best_loss;
+        double latest_loss_sum;
+        uint64_t latest_loss_count;
+
+        // For calculation of learning data loss
+        AtomicLoss learn_loss_sum;
     };
 
-    Value LearnerThink::get_shallow_value(Position& task_pos)
+    void LearnerThink::learn()
     {
-        // Evaluation value for shallow search
-        // The value of evaluate() may be used, but when calculating loss, learn_cross_entropy and
-        // Use qsearch() because it is difficult to compare the values.
-        // EvalHash has been disabled in advance. (If not, the same value will be returned every time)
-        const auto [_, pv] = Search::qsearch(task_pos);
 
-        const auto rootColor = task_pos.side_to_move();
-
-        std::vector<StateInfo, AlignedAllocator<StateInfo>> states(pv.size());
-        for (size_t i = 0; i < pv.size(); ++i)
-        {
-            task_pos.do_move(pv[i], states[i]);
-        }
-
-        const Value shallow_value =
-            (rootColor == task_pos.side_to_move())
-            ? Eval::evaluate(task_pos)
-            : -Eval::evaluate(task_pos);
-
-        for (auto it = pv.rbegin(); it != pv.rend(); ++it)
-            task_pos.undo_move(*it);
-
-        return shallow_value;
-    }
-
-    void LearnerThink::calc_loss(size_t thread_id, uint64_t done)
-    {
-        // There is no point in hitting the replacement table,
-        // so at this timing the generation of the replacement table is updated.
-        // It doesn't matter if you have disabled the substitution table.
-        TT.new_search();
-        TimePoint elapsed = now() - Search::Limits.startTime + 1;
-
-        cout << "PROGRESS: " << now_string() << ", ";
-        cout << sr.total_done << " sfens, ";
-        cout << sr.total_done * 1000 / elapsed  << " sfens/second";
-        cout << ", iteration " << epoch;
-        cout << ", learning rate = " << global_learning_rate << ", ";
-
-        // For calculation of verification data loss
-        atomic<double> test_sum_cross_entropy_eval, test_sum_cross_entropy_win, test_sum_cross_entropy;
-        atomic<double> test_sum_entropy_eval, test_sum_entropy_win, test_sum_entropy;
-        test_sum_cross_entropy_eval = 0;
-        test_sum_cross_entropy_win = 0;
-        test_sum_cross_entropy = 0;
-        test_sum_entropy_eval = 0;
-        test_sum_entropy_win = 0;
-        test_sum_entropy = 0;
-
-        // norm for learning
-        atomic<double> sum_norm;
-        sum_norm = 0;
-
-        // The number of times the pv first move of deep
-        // search matches the pv first move of search(1).
-        atomic<int> move_accord_count;
-        move_accord_count = 0;
-
-        auto th = Threads[thread_id];
-        auto& pos = th->rootPos;
-        StateInfo si;
-        pos.set(StartFEN, false, &si, th);
-        cout << "startpos eval = " << Eval::evaluate(pos) << endl;
-
-        // It's better to parallelize here, but it's a bit
-        // troublesome because the search before slave has not finished.
-        // I created a mechanism to call task, so I will use it.
-
-        // The number of tasks to do.
-        atomic<int> task_count;
-        task_count = (int)sr.sfen_for_mse.size();
-        task_dispatcher.task_reserve(task_count);
-
-        // Create a task to search for the situation and give it to each thread.
-        for (const auto& ps : sr.sfen_for_mse)
-        {
-            // Assign work to each thread using TaskDispatcher.
-            // A task definition for that.
-            // It is not possible to capture pos used in ↑,
-            // so specify the variables you want to capture one by one.
-            auto task =
-                [
-                    this,
-                    &ps,
-                    &test_sum_cross_entropy_eval,
-                    &test_sum_cross_entropy_win,
-                    &test_sum_cross_entropy,
-                    &test_sum_entropy_eval,
-                    &test_sum_entropy_win,
-                    &test_sum_entropy,
-                    &sum_norm,
-                    &task_count,
-                    &move_accord_count
-                ](size_t task_thread_id)
-            {
-                auto task_th = Threads[task_thread_id];
-                auto& task_pos = task_th->rootPos;
-                StateInfo task_si;
-                if (task_pos.set_from_packed_sfen(ps.sfen, &task_si, task_th) != 0)
-                {
-                    // Unfortunately, as an sfen for rmse calculation, an invalid sfen was drawn.
-                    cout << "Error! : illegal packed sfen " << task_pos.fen() << endl;
-                }
-
-                const Value shallow_value = get_shallow_value(task_pos);
-
-                // Evaluation value of deep search
-                auto deep_value = (Value)ps.score;
-
-                // Note) This code does not consider when
-                //       eval_limit is specified in the learn command.
-
-                // --- calculation of cross entropy
-
-                // For the time being, regarding the win rate and loss terms only in the elmo method
-                // Calculate and display the cross entropy.
-
-                double test_cross_entropy_eval, test_cross_entropy_win, test_cross_entropy;
-                double test_entropy_eval, test_entropy_win, test_entropy;
-                calc_cross_entropy(
-                    deep_value,
-                    shallow_value,
-                    ps,
-                    test_cross_entropy_eval,
-                    test_cross_entropy_win,
-                    test_cross_entropy,
-                    test_entropy_eval,
-                    test_entropy_win,
-                    test_entropy);
-
-                // The total cross entropy need not be abs() by definition.
-                test_sum_cross_entropy_eval += test_cross_entropy_eval;
-                test_sum_cross_entropy_win += test_cross_entropy_win;
-                test_sum_cross_entropy += test_cross_entropy;
-                test_sum_entropy_eval += test_entropy_eval;
-                test_sum_entropy_win += test_entropy_win;
-                test_sum_entropy += test_entropy;
-                sum_norm += (double)abs(shallow_value);
-
-                // Determine if the teacher's move and the score of the shallow search match
-                {
-                    const auto [value, pv] = Search::search(task_pos, 1);
-                    if ((uint16_t)pv[0] == ps.move)
-                        move_accord_count.fetch_add(1, std::memory_order_relaxed);
-                }
-
-                // Reduced one task because I did it
-                --task_count;
-            };
-
-            // Throw the defined task to slave.
-            task_dispatcher.push_task_async(task);
-        }
-
-        // join yourself as a slave
-        task_dispatcher.on_idle(thread_id);
-
-        // wait for all tasks to complete
-        while (task_count)
-            sleep(1);
-
-        latest_loss_sum += test_sum_cross_entropy - test_sum_entropy;
-        latest_loss_count += sr.sfen_for_mse.size();
-
-        // learn_cross_entropy may be called train cross
-        // entropy in the world of machine learning,
-        // When omitting the acronym, it is nice to be able to
-        // distinguish it from test cross entropy(tce) by writing it as lce.
-
-        if (sr.sfen_for_mse.size() && done)
-        {
-            cout << "INFO: "
-                << "test_cross_entropy_eval = " << test_sum_cross_entropy_eval / sr.sfen_for_mse.size()
-                << " , test_cross_entropy_win = " << test_sum_cross_entropy_win / sr.sfen_for_mse.size()
-                << " , test_entropy_eval = " << test_sum_entropy_eval / sr.sfen_for_mse.size()
-                << " , test_entropy_win = " << test_sum_entropy_win / sr.sfen_for_mse.size()
-                << " , test_cross_entropy = " << test_sum_cross_entropy / sr.sfen_for_mse.size()
-                << " , test_entropy = " << test_sum_entropy / sr.sfen_for_mse.size()
-                << " , norm = " << sum_norm
-                << " , move accuracy = " << (move_accord_count * 100.0 / sr.sfen_for_mse.size()) << "%"
-                << endl;
-
-            if (done != static_cast<uint64_t>(-1))
-            {
-                cout << "INFO: "
-                    << "learn_cross_entropy_eval = " << learn_sum_cross_entropy_eval / done
-                    << " , learn_cross_entropy_win = " << learn_sum_cross_entropy_win / done
-                    << " , learn_entropy_eval = " << learn_sum_entropy_eval / done
-                    << " , learn_entropy_win = " << learn_sum_entropy_win / done
-                    << " , learn_cross_entropy = " << learn_sum_cross_entropy / done
-                    << " , learn_entropy = " << learn_sum_entropy / done
-                    << endl;
-            }
-        }
-        else
-        {
-            cout << "Error! : sr.sfen_for_mse.size() = " << sr.sfen_for_mse.size() << " ,  done = " << done << endl;
-        }
-
-        // Clear 0 for next time.
-        learn_sum_cross_entropy_eval = 0.0;
-        learn_sum_cross_entropy_win = 0.0;
-        learn_sum_cross_entropy = 0.0;
-        learn_sum_entropy_eval = 0.0;
-        learn_sum_entropy_win = 0.0;
-        learn_sum_entropy = 0.0;
-    }
-
-    void LearnerThink::thread_worker(size_t thread_id)
-    {
 #if defined(_OPENMP)
         omp_set_num_threads((int)Options["Threads"]);
 #endif
 
-        auto th = Threads[thread_id];
-        auto& pos = th->rootPos;
+        Eval::NNUE::verify_any_net_loaded();
 
-        while (true)
+        // Start a thread that loads the training data in the background
+        sr.start_file_read_worker();
+
+        const PSVector sfen_for_mse =
+            validation_set_file_name.empty()
+            ? sr.read_for_mse(sfen_for_mse_size)
+            : sr.read_validation_set(validation_set_file_name, eval_limit);
+
+        if (validation_set_file_name.empty()
+            && sfen_for_mse.size() != sfen_for_mse_size)
         {
-            // display mse (this is sometimes done only for thread 0)
-            // Immediately after being read from the file...
+            cout
+                << "Error reading sfen_for_mse. Read " << sfen_for_mse.size()
+                << " out of " << sfen_for_mse_size << '\n';
 
-            // Lock the evaluation function so that it is not used during updating.
-            shared_lock<shared_timed_mutex> read_lock(nn_mutex, defer_lock);
-            if (sr.next_update_weights <= sr.total_done ||
-                (thread_id != 0 && !read_lock.try_lock()))
-            {
-                if (thread_id != 0)
-                {
-                    // Wait except thread_id == 0.
+            sr.stop();
 
-                    if (stop_flag)
-                        break;
+            return;
+        }
 
-                    // I want to parallelize rmse calculation etc., so if task() is loaded, process it.
-                    task_dispatcher.on_idle(thread_id);
-                    continue;
-                }
-                else
-                {
-                    // Only thread_id == 0 performs the following update process.
+        if (newbob_decay != 1.0) {
 
-                    // The weight array is not updated for the first time.
-                    if (sr.next_update_weights == 0)
-                    {
-                        sr.next_update_weights += mini_batch_size;
-                        continue;
-                    }
+            calc_loss(sfen_for_mse);
 
-                    {
-                        // update parameters
+            best_loss = latest_loss_sum / latest_loss_count;
+            latest_loss_sum = 0.0;
+            latest_loss_count = 0;
 
-                        // Lock the evaluation function so that it is not used during updating.
-                        lock_guard<shared_timed_mutex> write_lock(nn_mutex);
-                        Eval::NNUE::update_parameters();
-                    }
+            cout << "initial loss: " << best_loss << endl;
+        }
 
-                    ++epoch;
+        stop_flag = false;
 
-                    // However, the elapsed time during update_weights() and calc_rmse() is ignored.
-                    if (++sr.save_count * mini_batch_size >= eval_save_interval)
-                    {
-                        sr.save_count = 0;
+        for(;;)
+        {
+            std::atomic<uint64_t> counter{0};
 
-                        // During this time, as the gradient calculation proceeds,
-                        // the value becomes too large and I feel annoyed, so stop other threads.
-                        const bool converged = save();
-                        if (converged)
-                        {
-                            stop_flag = true;
-                            sr.stop_flag = true;
-                            break;
-                        }
-                    }
+            Threads.execute_with_workers([this, &counter](auto& th){
+                learn_worker(th, counter, mini_batch_size);
+            });
 
-                    // Calculate rmse. This is done for samples of 10,000 phases.
-                    // If you do with 40 cores, update_weights every 1 million phases
-                    static uint64_t loss_output_count = 0;
-                    if (++loss_output_count * mini_batch_size >= loss_output_interval)
-                    {
-                        loss_output_count = 0;
+            total_done += mini_batch_size;
 
-                        // Number of cases processed this time
-                        uint64_t done = sr.total_done - sr.last_done;
+            Threads.wait_for_workers_finished();
 
-                        // loss calculation
-                        calc_loss(thread_id, done);
+            if (stop_flag)
+                break;
 
-                        Eval::NNUE::check_health();
+            update_weights(sfen_for_mse);
 
-                        // Make a note of how far you have totaled.
-                        sr.last_done = sr.total_done;
-                    }
+            if (stop_flag)
+                break;
+        }
 
-                    // Next time, I want you to do this series of
-                    // processing again when you process only mini_batch_size.
-                    sr.next_update_weights += mini_batch_size;
+        sr.stop();
 
-                    // Since I was waiting for the update of this
-                    // sr.next_update_weights except the main thread,
-                    // Once this value is updated, it will start moving again.
-                }
-            }
+        Eval::NNUE::finalize_net();
+
+        save(true);
+    }
+
+    void LearnerThink::learn_worker(Thread& th, std::atomic<uint64_t>& counter, uint64_t limit)
+    {
+        const auto thread_id = th.thread_idx();
+        auto& pos = th.rootPos;
+
+        Loss local_loss_sum{};
+        std::vector<StateInfo, AlignedAllocator<StateInfo>> state(MAX_PLY);
+
+        while(!stop_flag)
+        {
+            const auto iter = counter.fetch_add(1);
+            if (iter >= limit)
+                break;
 
             PackedSfenValue ps;
 
@@ -1020,16 +852,12 @@ namespace Learner
 
             if (!sr.read_to_thread_buffer(thread_id, ps))
             {
-                // ran out of thread pool for my thread.
-                // Because there are almost no phases left,
-                // Terminate all other threads.
-
+                // If we ran out of data we stop completely
+                // because there's nothing left to do.
                 stop_flag = true;
                 break;
             }
 
-            // The evaluation value exceeds the learning target value.
-            // Ignore this aspect information.
             if (eval_limit < abs(ps.score))
                 goto RETRY_READ;
 
@@ -1041,123 +869,242 @@ namespace Learner
                 goto RETRY_READ;
 
             StateInfo si;
-            if (pos.set_from_packed_sfen(ps.sfen, &si, th) != 0)
+            if (pos.set_from_packed_sfen(ps.sfen, &si, &th) != 0)
             {
-                // I got a strange sfen. Should be debugged!
-                // Since it is an illegal sfen, it may not be
-                // displayed with pos.sfen(), but it is better than not.
+                // Malformed sfen
                 cout << "Error! : illigal packed sfen = " << pos.fen() << endl;
                 goto RETRY_READ;
             }
 
-            // I can read it, so try displaying it.
-            //      cout << pos << value << endl;
-
             const auto rootColor = pos.side_to_move();
 
-            int ply = 0;
-            StateInfo state[MAX_PLY]; // PV of qsearch cannot be so long.
-
-            if (!pos.pseudo_legal((Move)ps.move) || !pos.legal((Move)ps.move))
-            {
-                goto RETRY_READ;
-            }
-
-            pos.do_move((Move)ps.move, state[ply++]);
-
-            // There is a possibility that all the pieces are blocked and stuck.
-            // Also, the declaration win phase is excluded from
-            // learning because you cannot go to leaf with PV moves.
-            // (shouldn't write out such teacher aspect itself,
-            // but may have written it out with an old generation routine)
-            // Skip the position if there are no legal moves (=checkmated or stalemate).
-            if (MoveList<LEGAL>(pos).size() == 0)
-                goto RETRY_READ;
-
-            // Evaluation value of shallow search (qsearch)
-            const auto [_, pv] = Search::qsearch(pos);
-
-            // Evaluation value of deep search
-            const auto deep_value = (Value)ps.score;
-
-            // I feel that the mini batch has a better gradient.
-            // Go to the leaf node as it is, add only to the gradient array,
-            // and later try AdaGrad at the time of rmse aggregation.
-
-
-            // If the initial PV is different, it is better not to use it for learning.
-            // If it is the result of searching a completely different place, it may become noise.
-            // It may be better not to study where the difference in evaluation values ​​is too large.
-
-
-            // A helper function that adds the gradient to the current phase.
+            // A function that adds the current `pos` and `ps`
+            // to the training set.
             auto pos_add_grad = [&]() {
-                // Use the value of evaluate in leaf as shallow_value.
-                // Using the return value of qsearch() as shallow_value,
-                // If PV is interrupted in the middle, the phase where
-                // evaluate() is called to calculate the gradient,
-                // and I don't think this is a very desirable property,
-                // as the aspect that gives that gradient will be different.
-                // I have turned off the substitution table, but since
-                // the pv array has not been updated due to one stumbling block etc...
+
+                // Evaluation value of deep search
+                const auto deep_value = (Value)ps.score;
 
                 const Value shallow_value =
                     (rootColor == pos.side_to_move())
                     ? Eval::evaluate(pos)
                     : -Eval::evaluate(pos);
 
-                // Calculate loss for training data
-                double learn_cross_entropy_eval, learn_cross_entropy_win, learn_cross_entropy;
-                double learn_entropy_eval, learn_entropy_win, learn_entropy;
-                calc_cross_entropy(
+                const auto loss = calc_cross_entropy(
                     deep_value,
                     shallow_value,
-                    ps,
-                    learn_cross_entropy_eval,
-                    learn_cross_entropy_win,
-                    learn_cross_entropy,
-                    learn_entropy_eval,
-                    learn_entropy_win,
-                    learn_entropy);
+                    ps);
 
-                learn_sum_cross_entropy_eval += learn_cross_entropy_eval;
-                learn_sum_cross_entropy_win += learn_cross_entropy_win;
-                learn_sum_cross_entropy += learn_cross_entropy;
-                learn_sum_entropy_eval += learn_entropy_eval;
-                learn_sum_entropy_win += learn_entropy_win;
-                learn_sum_entropy += learn_entropy;
+                local_loss_sum += loss;
 
                 Eval::NNUE::add_example(pos, rootColor, ps, 1.0);
-
-                // Since the processing is completed, the counter of the processed number is incremented
-                sr.total_done++;
             };
 
-            bool illegal_move = false;
-            for (auto m : pv)
-            {
-                // I shouldn't be an illegal player.
-                // An illegal move sometimes comes here...
-                if (!pos.pseudo_legal(m) || !pos.legal(m))
-                {
-                    //cout << pos << m << endl;
-                    //assert(false);
-                    illegal_move = true;
-                    break;
-                }
-
-                pos.do_move(m, state[ply++]);
-            }
-
-            if (illegal_move)
+            if (!pos.pseudo_legal((Move)ps.move) || !pos.legal((Move)ps.move))
             {
                 goto RETRY_READ;
+            }
+
+            int ply = 0;
+            pos.do_move((Move)ps.move, state[ply++]);
+
+            // We want to position being trained on not to be terminal
+            if (MoveList<LEGAL>(pos).size() == 0)
+                goto RETRY_READ;
+
+            // Evaluation value of shallow search (qsearch)
+            const auto [_, pv] = Search::qsearch(pos);
+
+            for (auto m : pv)
+            {
+                pos.do_move(m, state[ply++]);
             }
 
             // Since we have reached the end phase of PV, add the slope here.
             pos_add_grad();
         }
 
+        learn_loss_sum += local_loss_sum;
+    }
+
+    void LearnerThink::update_weights(const PSVector& psv)
+    {
+        // I'm not sure this fencing is correct. But either way there
+        // should be no real issues happening since
+        // the read/write phases are isolated.
+        atomic_thread_fence(memory_order_seq_cst);
+        Eval::NNUE::update_parameters();
+        atomic_thread_fence(memory_order_seq_cst);
+
+        ++epoch;
+
+        if (++save_count * mini_batch_size >= eval_save_interval)
+        {
+            save_count = 0;
+
+            const bool converged = save();
+            if (converged)
+            {
+                stop_flag = true;
+                return;
+            }
+        }
+
+        if (++loss_output_count * mini_batch_size >= loss_output_interval)
+        {
+            loss_output_count = 0;
+
+            // loss calculation
+            calc_loss(psv);
+
+            Eval::NNUE::check_health();
+        }
+    }
+
+    void LearnerThink::calc_loss(const PSVector& psv)
+    {
+        TT.new_search();
+        TimePoint elapsed = now() - Search::Limits.startTime + 1;
+
+        cout << "PROGRESS: " << now_string() << ", ";
+        cout << total_done << " sfens, ";
+        cout << total_done * 1000 / elapsed  << " sfens/second";
+        cout << ", iteration " << epoch;
+        cout << ", learning rate = " << global_learning_rate << ", ";
+
+        // For calculation of verification data loss
+        AtomicLoss test_loss_sum{};
+
+        // norm for learning
+        atomic<double> sum_norm{0.0};
+
+        // The number of times the pv first move of deep
+        // search matches the pv first move of search(1).
+        atomic<int> move_accord_count{0};
+
+        auto mainThread = Threads.main();
+        mainThread->execute_with_worker([](auto& th){
+            auto& pos = th.rootPos;
+            StateInfo si;
+            pos.set(StartFEN, false, &si, &th);
+            cout << "startpos eval = " << Eval::evaluate(pos) << endl;
+        });
+        mainThread->wait_for_worker_finished();
+
+        // The number of tasks to do.
+        atomic<uint64_t> counter{0};
+        Threads.execute_with_workers([&](auto& th){
+            calc_loss_worker(
+                th,
+                counter,
+                psv,
+                test_loss_sum,
+                sum_norm,
+                move_accord_count
+            );
+        });
+        Threads.wait_for_workers_finished();
+
+        latest_loss_sum += test_loss_sum.cross_entropy - test_loss_sum.entropy;
+        latest_loss_count += psv.size();
+
+        if (psv.size() && test_loss_sum.count > 0.0)
+        {
+            cout << "INFO: norm = " << sum_norm
+                << " , move accuracy = " << (move_accord_count * 100.0 / psv.size()) << "%"
+                << endl;
+
+            test_loss_sum.print("test", cout);
+
+            if (learn_loss_sum.count > 0.0)
+            {
+                learn_loss_sum.print("learn", cout);
+            }
+        }
+        else
+        {
+            cout << "Error! : psv.size() = " << psv.size() << " ,  done = " << test_loss_sum.count << endl;
+        }
+
+        learn_loss_sum.reset();
+    }
+
+    void LearnerThink::calc_loss_worker(
+        Thread& th,
+        std::atomic<uint64_t>& counter,
+        const PSVector& psv,
+        AtomicLoss& test_loss_sum,
+        atomic<double>& sum_norm,
+        atomic<int>& move_accord_count
+    )
+    {
+        Loss local_loss_sum{};
+        auto& pos = th.rootPos;
+
+        for(;;)
+        {
+            const auto task_id = counter.fetch_add(1);
+            if (task_id >= psv.size())
+            {
+                break;
+            }
+
+            const auto& ps = psv[task_id];
+
+            StateInfo si;
+            if (pos.set_from_packed_sfen(ps.sfen, &si, &th) != 0)
+            {
+                cout << "Error! : illegal packed sfen " << pos.fen() << endl;
+                continue;
+            }
+
+            const Value shallow_value = get_shallow_value(pos);
+
+            // Evaluation value of deep search
+            const auto deep_value = (Value)ps.score;
+
+            const auto loss = calc_cross_entropy(
+                deep_value,
+                shallow_value,
+                ps);
+
+            local_loss_sum += loss;
+            sum_norm += (double)abs(shallow_value);
+
+            // Determine if the teacher's move and the score of the shallow search match
+            const auto [value, pv] = Search::search(pos, 1);
+            if (pv.size() > 0 && (uint16_t)pv[0] == ps.move)
+                move_accord_count.fetch_add(1, std::memory_order_relaxed);
+        }
+
+        test_loss_sum += local_loss_sum;
+    }
+
+    Value LearnerThink::get_shallow_value(Position& pos)
+    {
+        // Evaluation value for shallow search
+        // The value of evaluate() may be used, but when calculating loss, learn_cross_entropy and
+        // Use qsearch() because it is difficult to compare the values.
+        // EvalHash has been disabled in advance. (If not, the same value will be returned every time)
+        const auto [_, pv] = Search::qsearch(pos);
+
+        const auto rootColor = pos.side_to_move();
+
+        std::vector<StateInfo, AlignedAllocator<StateInfo>> states(pv.size());
+        for (size_t i = 0; i < pv.size(); ++i)
+        {
+            pos.do_move(pv[i], states[i]);
+        }
+
+        const Value shallow_value =
+            (rootColor == pos.side_to_move())
+            ? Eval::evaluate(pos)
+            : -Eval::evaluate(pos);
+
+        for (auto it = pv.rbegin(); it != pv.rend(); ++it)
+            pos.undo_move(*it);
+
+        return shallow_value;
     }
 
     // Write evaluation function file.
@@ -1189,7 +1136,7 @@ namespace Learner
                 latest_loss_sum = 0.0;
                 latest_loss_count = 0;
                 cout << "loss: " << latest_loss;
-                auto tot = sr.total_done.load();
+                auto tot = total_done;
                 if (auto_lr_drop)
                 {
                     cout << " < best (" << best_loss << "), accepted" << endl;
@@ -1681,6 +1628,7 @@ namespace Learner
             else if (option == "seed") is >> seed;
             else if (option == "set_recommended_uci_options")
             {
+                UCI::setoption("Use NNUE", "pure");
                 UCI::setoption("MultiPV", "1");
                 UCI::setoption("Contempt", "0");
                 UCI::setoption("Skill Level", "20");
@@ -1707,8 +1655,7 @@ namespace Learner
         cout << "Warning! OpenMP disabled." << endl;
 #endif
 
-        SfenReader sr(thread_num, seed);
-        LearnerThink learn_think(sr, seed);
+        LearnerThink learn_think(thread_num, seed);
 
         // Display learning game file
         if (target_dir != "")
@@ -1807,17 +1754,6 @@ namespace Learner
         cout << "save_only_once    : " << (save_only_once ? "true" : "false") << endl;
         cout << "no_shuffle        : " << (no_shuffle ? "true" : "false") << endl;
 
-        // Insert the file name for the number of loops.
-        for (int i = 0; i < loop; ++i)
-        {
-            // sfen reader, I'll read it in reverse
-            // order so I'll reverse it here. I'm sorry.
-            for (auto it = filenames.rbegin(); it != filenames.rend(); ++it)
-            {
-                sr.filenames.push_back(Path::combine(base_dir, *it));
-            }
-        }
-
         cout << "Loss Function     : " << LOSS_FUNCTION << endl;
         cout << "mini-batch size   : " << mini_batch_size << endl;
 
@@ -1876,7 +1812,7 @@ namespace Learner
         // Reflect other option settings.
         learn_think.eval_limit = eval_limit;
         learn_think.save_only_once = save_only_once;
-        learn_think.sr.no_shuffle = no_shuffle;
+        learn_think.set_do_shuffle(!no_shuffle);
         learn_think.reduction_gameply = reduction_gameply;
 
         learn_think.newbob_decay = newbob_decay;
@@ -1886,49 +1822,20 @@ namespace Learner
         learn_think.eval_save_interval = eval_save_interval;
         learn_think.loss_output_interval = loss_output_interval;
 
-        // Start a thread that loads the phase file in the background
-        // (If this is not started, mse cannot be calculated.)
-        learn_think.start_file_read_worker();
-
         learn_think.mini_batch_size = mini_batch_size;
+        learn_think.validation_set_file_name = validation_set_file_name;
 
-        if (validation_set_file_name.empty())
+        // Insert the file name for the number of loops.
+        for (int i = 0; i < loop; ++i)
         {
-            // Get about 10,000 data for mse calculation.
-            sr.read_for_mse();
+            for(auto& file : filenames)
+            {
+                learn_think.add_file(Path::combine(base_dir, file));
+            }
         }
-        else
-        {
-            sr.read_validation_set(validation_set_file_name, eval_limit);
-        }
-
-        cout << "Forcing Use NNUE pure.\n";
-        UCI::setoption("Use NNUE", "pure");
-
-        Eval::NNUE::verify_any_net_loaded();
-
-        // Calculate rmse once at this point (timing of 0 sfen)
-        // sr.calc_rmse();
-
-        if (newbob_decay != 1.0) {
-            learn_think.calc_loss(0, -1);
-            learn_think.best_loss = learn_think.latest_loss_sum / learn_think.latest_loss_count;
-            learn_think.latest_loss_sum = 0.0;
-            learn_think.latest_loss_count = 0;
-            cout << "initial loss: " << learn_think.best_loss << endl;
-        }
-
-        // -----------------------------------
-        // start learning evaluation function parameters
-        // -----------------------------------
 
         // Start learning.
-        learn_think.go_think();
-
-        Eval::NNUE::finalize_net();
-
-        // Save once at the end.
-        learn_think.save(true);
+        learn_think.learn();
     }
 
 } // namespace Learner
