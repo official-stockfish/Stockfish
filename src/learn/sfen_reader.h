@@ -18,6 +18,12 @@
 
 namespace Learner{
 
+    enum struct SfenReaderMode
+    {
+        Sequential,
+        Cyclic
+    };
+
     // Sfen reader
     struct SfenReader
     {
@@ -32,7 +38,14 @@ namespace Learner{
 
         // Do not use std::random_device().
         // Because it always the same integers on MinGW.
-        SfenReader(int thread_num, const std::string& seed) :
+        SfenReader(
+            const std::vector<std::string>& filenames_,
+            SfenReaderMode mode_,
+            int thread_num,
+            const std::string& seed
+        ) :
+            filenames(filenames_.begin(), filenames_.end()),
+            mode(mode_),
             prng(seed)
         {
             packed_sfens.resize(thread_num);
@@ -173,6 +186,9 @@ namespace Learner{
 
         void file_read_worker()
         {
+            std::string currentFilename;
+            uint64_t numEntriesReadFromCurrentFile = 0;
+
             auto open_next_file = [&]() {
                 // no more
                 for(;;)
@@ -183,18 +199,20 @@ namespace Learner{
                         return false;
 
                     // Get the next file name.
-                    std::string filename = filenames.front();
+                    currentFilename = filenames.front();
                     filenames.pop_front();
 
-                    sfen_input_stream = open_sfen_input_file(filename);
+                    numEntriesReadFromCurrentFile = 0;
+
+                    sfen_input_stream = open_sfen_input_file(currentFilename);
 
                     if (sfen_input_stream == nullptr)
                     {
-                        std::cout << "File does not exist: " << filename << '\n';
+                        std::cout << "File does not exist: " << currentFilename << '\n';
                     }
                     else
                     {
-                        std::cout << "Opened file for reading: " << filename << '\n';
+                        std::cout << "Opened file for reading: " << currentFilename << '\n';
 
                         // in case the file is empty or was deleted.
                         if (sfen_input_stream->eof())
@@ -236,13 +254,24 @@ namespace Learner{
                     if (p.has_value())
                     {
                         sfens.push_back(*p);
+                        ++numEntriesReadFromCurrentFile;
                     }
-                    else if(!open_next_file())
+                    else
                     {
-                        // There was no next file. Abort.
-                        std::cout << "..end of files." << std::endl;
-                        end_of_files = true;
-                        return;
+                        if (mode == SfenReaderMode::Cyclic
+                            && numEntriesReadFromCurrentFile > 0)
+                        {
+                            // The file contained data so we add it again to the end of the queue.
+                            filenames.emplace_back(currentFilename);
+                        }
+
+                        if(!open_next_file())
+                        {
+                            // There was no next file. Abort.
+                            std::cout << "..end of files." << std::endl;
+                            end_of_files = true;
+                            return;
+                        }
                     }
                 }
 
@@ -295,11 +324,6 @@ namespace Learner{
             shuffle = v;
         }
 
-        void add_file(const std::string& filename)
-        {
-            filenames.push_back(filename);
-        }
-
     protected:
 
         // worker thread reading file in background
@@ -315,6 +339,8 @@ namespace Learner{
 
         // Do not shuffle when reading the phase.
         bool shuffle;
+
+        SfenReaderMode mode;
 
         // Random number to shuffle when reading the phase
         PRNG prng;

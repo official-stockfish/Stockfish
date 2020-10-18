@@ -381,9 +381,13 @@ namespace Learner
         // move match rate, simple comparison is not possible...
         static constexpr uint64_t sfen_for_mse_size = 2000;
 
-        LearnerThink(uint64_t thread_num, const std::string& seed) :
+        LearnerThink(
+            const std::vector<std::string>& filenames,
+            uint64_t thread_num,
+            const std::string& seed
+        ) :
             prng(seed),
-            sr(thread_num, std::to_string(prng.next_random_seed())),
+            sr(filenames, SfenReaderMode::Sequential, thread_num, std::to_string(prng.next_random_seed())),
             learn_loss_sum{}
         {
             save_only_once = false;
@@ -402,11 +406,6 @@ namespace Learner
         void set_do_shuffle(bool v)
         {
             sr.set_do_shuffle(v);
-        }
-
-        void add_file(const std::string& filename)
-        {
-            sr.add_file(filename);
         }
 
         void learn();
@@ -1095,10 +1094,25 @@ namespace Learner
 
         // Right now we only have the individual files.
         // We need to apply base_dir here
-        rebase_files(filenames, base_dir);
         if (!target_dir.empty())
         {
             append_files_from_dir(filenames, base_dir, target_dir);
+        }
+        rebase_files(filenames, base_dir);
+
+        // Insert the file name for the number of loops.
+        {
+            std::vector<std::string> filenamesTimesLoop;
+
+            for (int i = 0; i < loop; ++i)
+            {
+                for(auto& file : filenames)
+                {
+                    filenamesTimesLoop.emplace_back(file);
+                }
+            }
+
+            filenames = std::move(filenamesTimesLoop);
         }
 
         cout << "learn from ";
@@ -1154,8 +1168,6 @@ namespace Learner
 
         cout << "init.." << endl;
 
-        LearnerThink learn_think(thread_num, seed);
-
         Threads.main()->ponder = false;
 
         set_learning_search_limits();
@@ -1164,6 +1176,9 @@ namespace Learner
         Eval::NNUE::initialize_training(seed);
         Eval::NNUE::set_batch_size(nn_batch_size);
         Eval::NNUE::set_options(nn_options);
+
+        LearnerThink learn_think(filenames, thread_num, seed);
+
         if (newbob_decay != 1.0 && !Options["SkipLoadingEval"]) {
             // Save the current net to [EvalSaveDir]\original.
             Eval::NNUE::save_eval("original");
@@ -1189,15 +1204,6 @@ namespace Learner
 
         learn_think.mini_batch_size = mini_batch_size;
         learn_think.validation_set_file_name = validation_set_file_name;
-
-        // Insert the file name for the number of loops.
-        for (int i = 0; i < loop; ++i)
-        {
-            for(auto& file : filenames)
-            {
-                learn_think.add_file(Path::combine(base_dir, file));
-            }
-        }
 
         cout << "init done." << endl;
 
