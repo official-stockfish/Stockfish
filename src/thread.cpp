@@ -98,6 +98,12 @@ void Thread::wait_for_search_finished() {
 }
 
 
+void Thread::wait_for_task_finished() {
+
+  std::unique_lock<std::mutex> lk(mutex);
+  cv.wait(lk, [&]{ return !task; });
+}
+
 /// Thread::idle_loop() is where the thread is parked, blocked on the
 /// condition variable, when it has no work to do.
 
@@ -292,4 +298,11 @@ void ThreadPool::wait_for_search_finished() const {
     for (Thread* th : *this)
         if (th != front())
             th->wait_for_search_finished();
+}
+
+
+void ThreadPool::wait_for_tasks_finished() const {
+
+    for (Thread* th : *this)
+        th->wait_for_task_finished();
 }

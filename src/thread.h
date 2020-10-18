@@ -56,6 +56,7 @@ public:
   void idle_loop();
   void start_searching();
   void wait_for_search_finished();
+  void wait_for_task_finished();
   size_t thread_idx() const { return idx; }
 
   Pawns::Table pawnsTable;
@@ -121,6 +122,7 @@ struct ThreadPool : public std::vector<Thread*> {
   Thread* get_best_thread() const;
   void start_searching();
   void wait_for_search_finished() const;
+  void wait_for_tasks_finished() const;
 
   std::atomic_bool stop, increaseDepth;
 
