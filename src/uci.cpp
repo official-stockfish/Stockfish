@@ -347,7 +347,7 @@ void UCI::loop(int argc, char* argv[]) {
       else if (token == "search") search_cmd(pos, is);
       else if (token == "tasktest")
       {
-        Threads.execute_parallel([](auto& th) {
+        Threads.execute_with_workers([](auto& th) {
           std::cout << th.thread_idx() << '\n';
         });
       }
