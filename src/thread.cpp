@@ -191,7 +191,7 @@ void ThreadPool::execute_with_workers(std::function<void(Thread&)> worker)
 {
   for(Thread* th : *this)
   {
-    th->execute_with_worker(std::move(worker));
+    th->execute_with_worker(worker);
   }
 }
 
