@@ -237,7 +237,7 @@ namespace Eval::NNUE {
       StateInfo *st = pos.state();
       while (st->accumulator.state[c] == EMPTY && step < MaxSteps)
       {
-        auto &dp = st->dirtyPiece;
+        auto& dp = st->dirtyPiece;
         if (   dp.piece[0] == make_piece(c, KING)
             || (gain -= dp.dirty_num + 2) <= 0)
           break;
@@ -254,7 +254,7 @@ namespace Eval::NNUE {
         Features::IndexList added[MaxSteps], removed[MaxSteps];
         for (int i = 0; i < step; ++i)
         {
-          auto &dp = stack[i]->dirtyPiece;
+          auto& dp = stack[i]->dirtyPiece;
           Features::HalfKP<Features::Side::kFriend>::AppendChangedIndices(pos, dp, c, &removed[i], &added[i]);
           stack[i]->accumulator.state[c] = COMPUTED;
         }
@@ -294,9 +294,10 @@ namespace Eval::NNUE {
         }
 
   #else
-        for (i = step - 1; i >= 0; --i)
+        for (int i = step - 1; i >= 0; --i)
         {
-          std::memcpy(stack[i]->accumulator[c][0], st->accumulator[c][0],
+          std::memcpy(stack[i]->accumulator.accumulation[c][0],
+              st->accumulator.accumulation[c][0],
               kHalfDimensions * sizeof(BiasType));
           st = stack[i];
 
@@ -306,7 +307,7 @@ namespace Eval::NNUE {
             const IndexType offset = kHalfDimensions * index;
 
             for (IndexType j = 0; j < kHalfDimensions; ++j)
-              st->accumulator.accumulation[perspective][0][j] -= weights_[offset + j];
+              st->accumulator.accumulation[c][0][j] -= weights_[offset + j];
           }
 
           // Difference calculation for the activated features
@@ -315,7 +316,7 @@ namespace Eval::NNUE {
             const IndexType offset = kHalfDimensions * index;
 
             for (IndexType j = 0; j < kHalfDimensions; ++j)
-              st->accumulator.accumulation[perspective][0][j] += weights_[offset + j];
+              st->accumulator.accumulation[c][0][j] += weights_[offset + j];
           }
         }
   #endif
@@ -323,7 +324,7 @@ namespace Eval::NNUE {
       else
       {
         // Refresh the accumulator
-        auto &accumulator = pos.state()->accumulator;
+        auto& accumulator = pos.state()->accumulator;
         accumulator.state[c] = COMPUTED;
         Features::IndexList active;
         Features::HalfKP<Features::Side::kFriend>::AppendActiveIndices(pos, c, &active);
@@ -360,7 +361,7 @@ namespace Eval::NNUE {
           const IndexType offset = kHalfDimensions * index;
 
           for (IndexType j = 0; j < kHalfDimensions; ++j)
-            accumulator.accumulation[perspective][0][j] += weights_[offset + j];
+            accumulator.accumulation[c][0][j] += weights_[offset + j];
         }
   #endif
       }
