@@ -43,90 +43,6 @@ namespace Eval::NNUE::Features {
   template <typename Derived>
   class FeatureSetBase {
 
-   public:
-    // Get a list of indices for active features
-    template <typename IndexListType>
-    static void AppendActiveIndices(
-        const Position& pos, TriggerEvent trigger, IndexListType active[2]) {
-
-      for (Color perspective : { WHITE, BLACK }) {
-        Derived::CollectActiveIndices(
-            pos, trigger, perspective, &active[perspective]);
-      }
-    }
-
-    // Get a list of indices for recently changed features
-    template <typename PositionType, typename IndexListType>
-    static void AppendChangedIndices(
-        const PositionType& pos, TriggerEvent trigger,
-        IndexListType removed[2], IndexListType added[2], bool reset[2]) {
-
-      auto collect_for_one = [&](const DirtyPiece& dp) {
-        for (Color perspective : { WHITE, BLACK }) {
-          switch (trigger) {
-            case TriggerEvent::kFriendKingMoved:
-              reset[perspective] = dp.piece[0] == make_piece(perspective, KING);
-              break;
-            default:
-              assert(false);
-              break;
-          }
-          if (reset[perspective]) {
-            Derived::CollectActiveIndices(
-                pos, trigger, perspective, &added[perspective]);
-          } else {
-            Derived::CollectChangedIndices(
-                pos, dp, trigger, perspective,
-                &removed[perspective], &added[perspective]);
-          }
-        }
-      };
-
-      auto collect_for_two = [&](const DirtyPiece& dp1, const DirtyPiece& dp2) {
-        for (Color perspective : { WHITE, BLACK }) {
-          switch (trigger) {
-            case TriggerEvent::kFriendKingMoved:
-              reset[perspective] = dp1.piece[0] == make_piece(perspective, KING)
-                                || dp2.piece[0] == make_piece(perspective, KING);
-              break;
-            default:
-              assert(false);
-              break;
-          }
-          if (reset[perspective]) {
-            Derived::CollectActiveIndices(
-                pos, trigger, perspective, &added[perspective]);
-          } else {
-            Derived::CollectChangedIndices(
-                pos, dp1, trigger, perspective,
-                &removed[perspective], &added[perspective]);
-            Derived::CollectChangedIndices(
-                pos, dp2, trigger, perspective,
-                &removed[perspective], &added[perspective]);
-          }
-        }
-      };
-
-      if (pos.state()->previous->accumulator.computed_accumulation) {
-        const auto& prev_dp = pos.state()->dirtyPiece;
-        if (prev_dp.dirty_num == 0) return;
-        collect_for_one(prev_dp);
-      } else {
-        const auto& prev_dp = pos.state()->previous->dirtyPiece;
-        if (prev_dp.dirty_num == 0) {
-          const auto& prev2_dp = pos.state()->dirtyPiece;
-          if (prev2_dp.dirty_num == 0) return;
-          collect_for_one(prev2_dp);
-        } else {
-          const auto& prev2_dp = pos.state()->dirtyPiece;
-          if (prev2_dp.dirty_num == 0) {
-            collect_for_one(prev_dp);
-          } else {
-            collect_for_two(prev_dp, prev2_dp);
-          }
-        }
-      }
-    }
   };
 
   // Class template that represents the feature set
@@ -146,30 +62,6 @@ namespace Eval::NNUE::Features {
         CompileTimeList<TriggerEvent, FeatureType::kRefreshTrigger>;
     static constexpr auto kRefreshTriggers = SortedTriggerSet::kValues;
 
-   private:
-    // Get a list of indices for active features
-    static void CollectActiveIndices(
-        const Position& pos, const TriggerEvent trigger, const Color perspective,
-        IndexList* const active) {
-      if (FeatureType::kRefreshTrigger == trigger) {
-        FeatureType::AppendActiveIndices(pos, perspective, active);
-      }
-    }
-
-    // Get a list of indices for recently changed features
-    static void CollectChangedIndices(
-        const Position& pos, const DirtyPiece& dp, const TriggerEvent trigger, const Color perspective,
-        IndexList* const removed, IndexList* const added) {
-
-      if (FeatureType::kRefreshTrigger == trigger) {
-        FeatureType::AppendChangedIndices(pos, dp, perspective, removed, added);
-      }
-    }
-
-    // Make the base class and the class template that recursively uses itself a friend
-    friend class FeatureSetBase<FeatureSet>;
-    template <typename... FeatureTypes>
-    friend class FeatureSet;
   };
 
 }  // namespace Eval::NNUE::Features
