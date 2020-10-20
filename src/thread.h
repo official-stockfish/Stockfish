@@ -52,7 +52,13 @@ public:
   explicit Thread(size_t);
   virtual ~Thread();
   virtual void search();
+
+  // The function object to be executed is taken by value to remove
+  // the need for separate lvalue and rvalue overloads.
+  // The worker thread needs to have ownership of the task
+  // to be executed because otherwise there's no way to manage its lifetime.
   virtual void execute_with_worker(std::function<void(Thread&)> t);
+
   void clear();
   void idle_loop();
   void start_searching();
@@ -109,7 +115,10 @@ struct MainThread : public Thread {
 
 struct ThreadPool : public std::vector<Thread*> {
 
-  void execute_with_workers(std::function<void(Thread&)> worker);
+  // Each thread gets its own copy of the `worker` function object.
+  // This means that each worker thread will have exclusive access
+  // to the state of the `worker` function object.
+  void execute_with_workers(const std::function<void(Thread&)>& worker);
 
   void start_thinking(Position&, StateListPtr&, const Search::LimitsType&, bool = false);
   void clear();

@@ -186,8 +186,7 @@ void ThreadPool::clear() {
   main()->previousTimeReduction = 1.0;
 }
 
-
-void ThreadPool::execute_with_workers(std::function<void(Thread&)> worker)
+void ThreadPool::execute_with_workers(const std::function<void(Thread&)>& worker)
 {
   for(Thread* th : *this)
   {
