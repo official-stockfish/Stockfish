@@ -226,47 +226,56 @@ namespace Eval::NNUE {
       // is defined in the VECTOR code below, once in each branch
       vec_t acc[kNumRegs];
   #endif
-      constexpr int MaxSteps = 6;
-      StateInfo *stack[MaxSteps];
-      int step = 0;
-      int gain = popcount(pos.pieces()) - 2;
 
-      // Look for a usable accumulator of an earlier position at most MaxSteps
-      // back. We keep track of the estimated gain in terms of features to be
-      // added/subtracted and accumulators to be saved.
-      StateInfo *st = pos.state();
-      while (st->accumulator.state[c] == EMPTY && step < MaxSteps)
+      // Look for a usable accumulator of an earlier position. We keep track
+      // of the estimated gain in terms of features to be added/subtracted.
+      StateInfo *st = pos.state(), *next = nullptr;
+      int gain = popcount(pos.pieces()) - 2;
+      while (st->accumulator.state[c] == EMPTY)
       {
         auto& dp = st->dirtyPiece;
+        // The first condition tests whether an incremental update is
+        // possible at all: if this side's king has moved, it is not possible.
         if (   dp.piece[0] == make_piece(c, KING)
-            || (gain -= dp.dirty_num + 2) <= 0)
+            || (gain -= dp.dirty_num + 1) < 0)
           break;
-        stack[step++] = st;
+        next = st;
         st = st->previous;
       }
 
       if (st->accumulator.state[c] == COMPUTED)
       {
-        // Update incrementally, including previous accumulators
+        if (next == nullptr)
+          return;
 
-        // First gather all features to be updated and mark the accumulators
-        // as computed
-        Features::IndexList added[MaxSteps], removed[MaxSteps];
-        for (int i = 0; i < step; ++i)
-        {
-          auto& dp = stack[i]->dirtyPiece;
-          Features::HalfKP<Features::Side::kFriend>::AppendChangedIndices(pos, dp, c, &removed[i], &added[i]);
-          stack[i]->accumulator.state[c] = COMPUTED;
-        }
+        // Update incrementally in two steps. First, we update the "next"
+        // accumulator. Then, we update the current accumulator (pos.state()).
 
+        // Gather all features to be updated.
+        Features::IndexList removed[2], added[2];
+        Features::HalfKP<Features::Side::kFriend>::AppendChangedIndices(pos,
+            next->dirtyPiece, c, &removed[0], &added[0]);
+        for (StateInfo *st2 = pos.state(); st2 != next; st2 = st2->previous)
+          Features::HalfKP<Features::Side::kFriend>::AppendChangedIndices(pos,
+              st2->dirtyPiece, c, &removed[1], &added[1]);
+
+        // Mark the accumulators as computed.
+        next->accumulator.state[c] = COMPUTED;
+        pos.state()->accumulator.state[c] = COMPUTED;
+
+        // Now update the accumulators listed in info[].
+        StateInfo *info[3] =
+          { next, next == pos.state() ? nullptr : pos.state(), nullptr };
   #ifdef VECTOR
         for (IndexType j = 0; j < kHalfDimensions / kTileHeight; ++j)
         {
+          // Load accumulator
           auto accTile = reinterpret_cast<vec_t*>(
             &st->accumulator.accumulation[c][0][j * kTileHeight]);
           for (IndexType k = 0; k < kNumRegs; ++k)
             acc[k] = vec_load(&accTile[k]);
-          for (int i = step - 1; i >= 0; i--)
+
+          for (IndexType i = 0; info[i]; ++i)
           {
             // Difference calculation for the deactivated features
             for (const auto index : removed[i])
@@ -286,20 +295,21 @@ namespace Eval::NNUE {
                 acc[k] = vec_add_16(acc[k], column[k]);
             }
 
+            // Store accumulator
             accTile = reinterpret_cast<vec_t*>(
-              &stack[i]->accumulator.accumulation[c][0][j * kTileHeight]);
+              &info[i]->accumulator.accumulation[c][0][j * kTileHeight]);
             for (IndexType k = 0; k < kNumRegs; ++k)
               vec_store(&accTile[k], acc[k]);
           }
         }
 
   #else
-        for (int i = step - 1; i >= 0; --i)
+        for (IndexType i = 0; info[i]; ++i)
         {
-          std::memcpy(stack[i]->accumulator.accumulation[c][0],
+          std::memcpy(info[i]->accumulator.accumulation[c][0],
               st->accumulator.accumulation[c][0],
               kHalfDimensions * sizeof(BiasType));
-          st = stack[i];
+          st = info[i];
 
           // Difference calculation for the deactivated features
           for (const auto index : removed[i])
