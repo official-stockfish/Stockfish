@@ -157,6 +157,32 @@ namespace Learner
     using Loss = Detail::Loss<false>;
     using AtomicLoss = Detail::Loss<true>;
 
+    static void append_files_from_dir(
+        std::vector<std::string>& filenames,
+        const std::string& base_dir,
+        const std::string& target_dir)
+    {
+        string kif_base_dir = Path::combine(base_dir, target_dir);
+
+        namespace sys = std::filesystem;
+        sys::path p(kif_base_dir); // Origin of enumeration
+        std::for_each(sys::directory_iterator(p), sys::directory_iterator(),
+            [&](const sys::path& path) {
+                if (sys::is_regular_file(path))
+                    filenames.push_back(Path::combine(target_dir, path.filename().generic_string()));
+            });
+    }
+
+    static void rebase_files(
+        std::vector<std::string>& filenames,
+        const std::string& base_dir)
+    {
+        for (auto& file : filenames)
+        {
+            file = Path::combine(base_dir, file);
+        }
+    }
+
     // A function that converts the evaluation value to the winning rate [0,1]
     double winning_percentage(double value)
     {
@@ -1359,18 +1385,10 @@ namespace Learner
 
         LearnerThink learn_think(thread_num, seed);
 
-        // Display learning game file
-        if (target_dir != "")
+        rebase_files(filenames, base_dir);
+        if (!target_dir.empty())
         {
-            string kif_base_dir = Path::combine(base_dir, target_dir);
-
-            namespace sys = std::filesystem;
-            sys::path p(kif_base_dir); // Origin of enumeration
-            std::for_each(sys::directory_iterator(p), sys::directory_iterator(),
-                [&](const sys::path& path) {
-                    if (sys::is_regular_file(path))
-                        filenames.push_back(Path::combine(target_dir, path.filename().generic_string()));
-                });
+            append_files_from_dir(filenames, base_dir, target_dir);
         }
 
         cout << "learn from ";
