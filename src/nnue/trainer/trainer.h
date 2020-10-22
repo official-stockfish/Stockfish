@@ -38,7 +38,7 @@ namespace Eval::NNUE {
 
         TrainingFeature& operator+=(const TrainingFeature& other) {
             assert(other.get_index() == get_index());
-            assert(other.get_index() + get_count() < (1 << kCountBits));
+            assert(other.get_count() + get_count() < (1 << kCountBits));
             index_and_count_ += other.get_count();
             return *this;
         }
