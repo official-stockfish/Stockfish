@@ -191,7 +191,6 @@ namespace Learner {
         else if (has_extension(filename, BinpackSfenInputStream::extension))
             return std::make_unique<BinpackSfenInputStream>(filename);
 
-        assert(false);
         return nullptr;
     }
 

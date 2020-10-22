@@ -187,11 +187,25 @@ namespace Learner{
                     filenames.pop_front();
 
                     sfen_input_stream = open_sfen_input_file(filename);
-                    std::cout << "open filename = " << filename << std::endl;
 
-                    // in case the file is empty or was deleted.
-                    if (!sfen_input_stream->eof())
-                        return true;
+                    if (sfen_input_stream == nullptr)
+                    {
+                        std::cout << "File does not exist: " << filename << '\n';
+                    }
+                    else
+                    {
+                        std::cout << "Opened file for reading: " << filename << '\n';
+
+                        // in case the file is empty or was deleted.
+                        if (sfen_input_stream->eof())
+                        {
+                            std::cout << "File empty, nothing to read.\n";
+                        }
+                        else
+                        {
+                            return true;
+                        }
+                    }
                 }
             };
 
