@@ -20,7 +20,7 @@ Currently the following options are available:
 
 `targetdir` - path to the direction from which training data will be read. All files in this directory are read sequentially. If not specified then only the list of files from positional arguments will be used. If specified then files from the given directory will be used after the explicitly specified files.
 
-`loop` - the number of times to loop over all training data.
+`epochs` - the number of weight update cycles (epochs) to train the network for. One such cycle is `batchsize` positions. If not specified then the training will loop forever.
 
 `basedir` - the base directory for the paths. Default: "" (current directory)
 

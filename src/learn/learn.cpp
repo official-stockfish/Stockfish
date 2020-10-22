@@ -922,7 +922,7 @@ namespace Learner
         auto mini_batch_size = LEARN_MINI_BATCH_SIZE;
 
         // Number of epochs
-        uint64_t epochs = 1;
+        uint64_t epochs = std::numeric_limits<uint64_t>::max();
 
         // Game file storage folder (get game file with relative path from here)
         string base_dir;

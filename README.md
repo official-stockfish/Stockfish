@@ -78,7 +78,7 @@ setoption name SkipLoadingEval value true
 setoption name Use NNUE value pure
 setoption name Threads value x
 isready
-learn targetdir trainingdata loop 100 batchsize 1000000 use_draw_in_training 1 use_draw_in_validation 1 lr 1 lambda 1 eval_limit 32000 nn_batch_size 1000 newbob_decay 0.5 eval_save_interval 250000000 loss_output_interval 1000000 validation_set_file_name validationdata\val.binpack
+learn targetdir trainingdata epochs 10000 batchsize 1000000 use_draw_in_training 1 use_draw_in_validation 1 lr 1 lambda 1 eval_limit 32000 nn_batch_size 1000 newbob_decay 0.5 eval_save_interval 250000000 loss_output_interval 1000000 validation_set_file_name validationdata\val.binpack
 ```
 
 This will utilize training data files in the "trainingdata" directory and validation data from file "validationdata\val.bin". Produced nets are saved in the "evalsave" folder.
