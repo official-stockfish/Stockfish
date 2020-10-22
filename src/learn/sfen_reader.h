@@ -53,6 +53,10 @@ namespace Learner{
             end_of_files = false;
             shuffle = true;
             stop_flag = false;
+
+            file_worker_thread = std::thread([&] {
+                this->file_read_worker();
+            });
         }
 
         ~SfenReader()
@@ -174,14 +178,6 @@ namespace Learner{
                 sleep(1);
             }
 
-        }
-
-        // Start a thread that loads the phase file in the background.
-        void start_file_read_worker()
-        {
-            file_worker_thread = std::thread([&] {
-                this->file_read_worker();
-                });
         }
 
         void file_read_worker()

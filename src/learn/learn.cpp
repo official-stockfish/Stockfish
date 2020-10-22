@@ -490,9 +490,6 @@ namespace Learner
 
         Eval::NNUE::verify_any_net_loaded();
 
-        // Start a thread that loads the training data in the background
-        sr.start_file_read_worker();
-
         const PSVector sfen_for_mse =
             validation_set_file_name.empty()
             ? sr.read_for_mse(sfen_for_mse_size)
