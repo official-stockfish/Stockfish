@@ -6141,6 +6141,11 @@ namespace binpack
 
         [[nodiscard]] bool hasNextChunk()
         {
+            if (!m_file)
+            {
+                return false;
+            }
+
             m_file.peek();
             return !m_file.eof();
         }
