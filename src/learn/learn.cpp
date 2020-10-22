@@ -502,8 +502,6 @@ namespace Learner
                 << "Error reading sfen_for_mse. Read " << sfen_for_mse.size()
                 << " out of " << sfen_for_mse_size << '\n';
 
-            sr.stop();
-
             return;
         }
 
@@ -540,8 +538,6 @@ namespace Learner
             if (stop_flag)
                 break;
         }
-
-        sr.stop();
 
         Eval::NNUE::finalize_net();
 

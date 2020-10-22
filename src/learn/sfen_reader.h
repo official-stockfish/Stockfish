@@ -61,6 +61,8 @@ namespace Learner{
 
         ~SfenReader()
         {
+            stop_flag = true;
+
             if (file_worker_thread.joinable())
                 file_worker_thread.join();
         }
@@ -308,11 +310,6 @@ namespace Learner{
                         packed_sfens_pool.emplace_back(std::move(buf));
                 }
             }
-        }
-
-        void stop()
-        {
-            stop_flag = true;
         }
 
         void set_do_shuffle(bool v)
