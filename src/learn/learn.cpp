@@ -387,7 +387,7 @@ namespace Learner
             const std::string& seed
         ) :
             prng(seed),
-            sr(filenames, SfenReaderMode::Sequential, thread_num, std::to_string(prng.next_random_seed())),
+            sr(filenames, SfenReaderMode::Cyclic, thread_num, std::to_string(prng.next_random_seed())),
             learn_loss_sum{}
         {
             save_only_once = false;
@@ -408,7 +408,7 @@ namespace Learner
             sr.set_do_shuffle(v);
         }
 
-        void learn();
+        void learn(uint64_t epochs);
 
 
         std::string validation_set_file_name;
@@ -439,9 +439,9 @@ namespace Learner
     private:
         void learn_worker(Thread& th, std::atomic<uint64_t>& counter, uint64_t limit);
 
-        void update_weights(const PSVector& psv);
+        void update_weights(const PSVector& psv, uint64_t epoch);
 
-        void calc_loss(const PSVector& psv);
+        void calc_loss(const PSVector& psv, uint64_t epoch);
 
         void calc_loss_worker(
             Thread& th,
@@ -465,9 +465,6 @@ namespace Learner
         uint64_t save_count;
         uint64_t loss_output_count;
 
-        // Learning iteration counter
-        uint64_t epoch = 0;
-
         std::atomic<bool> stop_flag;
 
         uint64_t total_done;
@@ -481,7 +478,7 @@ namespace Learner
         AtomicLoss learn_loss_sum;
     };
 
-    void LearnerThink::learn()
+    void LearnerThink::learn(uint64_t epochs)
     {
 
 #if defined(_OPENMP)
@@ -507,7 +504,7 @@ namespace Learner
 
         if (newbob_decay != 1.0) {
 
-            calc_loss(sfen_for_mse);
+            calc_loss(sfen_for_mse, 0);
 
             best_loss = latest_loss_sum / latest_loss_count;
             latest_loss_sum = 0.0;
@@ -518,7 +515,7 @@ namespace Learner
 
         stop_flag = false;
 
-        for(;;)
+        for(uint64_t epoch = 1; epoch <= epochs; ++epoch)
         {
             std::atomic<uint64_t> counter{0};
 
@@ -533,7 +530,7 @@ namespace Learner
             if (stop_flag)
                 break;
 
-            update_weights(sfen_for_mse);
+            update_weights(sfen_for_mse, epoch);
 
             if (stop_flag)
                 break;
@@ -639,7 +636,7 @@ namespace Learner
         learn_loss_sum += local_loss_sum;
     }
 
-    void LearnerThink::update_weights(const PSVector& psv)
+    void LearnerThink::update_weights(const PSVector& psv, uint64_t epoch)
     {
         // I'm not sure this fencing is correct. But either way there
         // should be no real issues happening since
@@ -647,8 +644,6 @@ namespace Learner
         atomic_thread_fence(memory_order_seq_cst);
         Eval::NNUE::update_parameters();
         atomic_thread_fence(memory_order_seq_cst);
-
-        ++epoch;
 
         if (++save_count * mini_batch_size >= eval_save_interval)
         {
@@ -667,13 +662,13 @@ namespace Learner
             loss_output_count = 0;
 
             // loss calculation
-            calc_loss(psv);
+            calc_loss(psv, epoch);
 
             Eval::NNUE::check_health();
         }
     }
 
-    void LearnerThink::calc_loss(const PSVector& psv)
+    void LearnerThink::calc_loss(const PSVector& psv, uint64_t epoch)
     {
         TT.new_search();
         TimePoint elapsed = now() - Search::Limits.startTime + 1;
@@ -926,8 +921,8 @@ namespace Learner
         // mini_batch_size 1M aspect by default. This can be increased.
         auto mini_batch_size = LEARN_MINI_BATCH_SIZE;
 
-        // Number of loops (read the game record file this number of times)
-        int loop = 1;
+        // Number of epochs
+        uint64_t epochs = 1;
 
         // Game file storage folder (get game file with relative path from here)
         string base_dir;
@@ -996,7 +991,7 @@ namespace Learner
             }
 
             // Specify the number of loops
-            else if (option == "loop")      is >> loop;
+            else if (option == "epochs")      is >> epochs;
 
             // Game file storage folder (get game file with relative path from here)
             else if (option == "basedir")   is >> base_dir;
@@ -1093,21 +1088,6 @@ namespace Learner
         }
         rebase_files(filenames, base_dir);
 
-        // Insert the file name for the number of loops.
-        {
-            std::vector<std::string> filenamesTimesLoop;
-
-            for (int i = 0; i < loop; ++i)
-            {
-                for(auto& file : filenames)
-                {
-                    filenamesTimesLoop.emplace_back(file);
-                }
-            }
-
-            filenames = std::move(filenamesTimesLoop);
-        }
-
         cout << "learn from ";
         for (auto s : filenames)
             cout << s << " , ";
@@ -1121,7 +1101,7 @@ namespace Learner
         cout << "base dir        : " << base_dir << endl;
         cout << "target dir      : " << target_dir << endl;
 
-        cout << "loop              : " << loop << endl;
+        cout << "epochs            : " << epochs << endl;
         cout << "eval_limit        : " << eval_limit << endl;
         cout << "save_only_once    : " << (save_only_once ? "true" : "false") << endl;
         cout << "no_shuffle        : " << (no_shuffle ? "true" : "false") << endl;
@@ -1201,7 +1181,7 @@ namespace Learner
         cout << "init done." << endl;
 
         // Start learning.
-        learn_think.learn();
+        learn_think.learn(epochs);
     }
 
 } // namespace Learner
