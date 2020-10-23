@@ -142,7 +142,7 @@ cat << EOF > syzygy.exp
  exit \$value
 EOF
 
-for exp in game.exp syzygy.exp
+for exp in game.exp
 do
 
   echo "$prefix expect $exp $postfix"
