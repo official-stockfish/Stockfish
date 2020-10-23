@@ -519,8 +519,7 @@ void Thread::search() {
           }
           double bestMoveInstability = 1 + 2 * totBestMoveChanges / Threads.size();
 
-          double totalTime = rootMoves.size() == 1 ? 0 :
-                             Time.optimum() * fallingEval * reduction * bestMoveInstability;
+          double totalTime = Time.optimum() * fallingEval * reduction * bestMoveInstability;
 
           // Stop the search if we have exceeded the totalTime, at least 1ms search
           if (Time.elapsed() > totalTime)
