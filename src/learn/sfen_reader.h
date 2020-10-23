@@ -40,6 +40,7 @@ namespace Learner{
         // Because it always the same integers on MinGW.
         SfenReader(
             const std::vector<std::string>& filenames_,
+            bool do_shuffle,
             SfenReaderMode mode_,
             int thread_num,
             const std::string& seed
@@ -51,7 +52,7 @@ namespace Learner{
             packed_sfens.resize(thread_num);
             total_read = 0;
             end_of_files = false;
-            shuffle = true;
+            shuffle = do_shuffle;
             stop_flag = false;
 
             file_worker_thread = std::thread([&] {
@@ -310,11 +311,6 @@ namespace Learner{
                         packed_sfens_pool.emplace_back(std::move(buf));
                 }
             }
-        }
-
-        void set_do_shuffle(bool v)
-        {
-            shuffle = v;
         }
 
     protected:

@@ -383,11 +383,12 @@ namespace Learner
 
         LearnerThink(
             const std::vector<std::string>& filenames,
+            bool shuffle,
             uint64_t thread_num,
             const std::string& seed
         ) :
             prng(seed),
-            sr(filenames, SfenReaderMode::Cyclic, thread_num, std::to_string(prng.next_random_seed())),
+            sr(filenames, shuffle, SfenReaderMode::Cyclic, thread_num, std::to_string(prng.next_random_seed())),
             learn_loss_sum{}
         {
             save_only_once = false;
@@ -401,11 +402,6 @@ namespace Learner
             latest_loss_sum = 0.0;
             latest_loss_count = 0;
             total_done = 0;
-        }
-
-        void set_do_shuffle(bool v)
-        {
-            sr.set_do_shuffle(v);
         }
 
         void learn(uint64_t epochs);
@@ -1150,7 +1146,7 @@ namespace Learner
         Eval::NNUE::set_batch_size(nn_batch_size);
         Eval::NNUE::set_options(nn_options);
 
-        LearnerThink learn_think(filenames, thread_num, seed);
+        LearnerThink learn_think(filenames, !no_shuffle, thread_num, seed);
 
         if (newbob_decay != 1.0 && !Options["SkipLoadingEval"]) {
             // Save the current net to [EvalSaveDir]\original.
@@ -1165,7 +1161,6 @@ namespace Learner
         // Reflect other option settings.
         learn_think.eval_limit = eval_limit;
         learn_think.save_only_once = save_only_once;
-        learn_think.set_do_shuffle(!no_shuffle);
         learn_think.reduction_gameply = reduction_gameply;
 
         learn_think.newbob_decay = newbob_decay;
