@@ -222,6 +222,12 @@ namespace {
       S(112,178), S(114,185), S(114,187), S(119,221) }
   };
 
+  // BishopPawns[distance from edge] contains a file-dependent penalty for pawns on
+  // squares of the same color as our bishop.
+  constexpr Score BishopPawns[int(FILE_NB) / 2] = {
+    S(3, 8), S(3, 9), S(1, 8), S(3, 7)
+  };
+
   // KingProtector[knight/bishop] contains penalty for each distance unit to own king
   constexpr Score KingProtector[] = { S(8, 9), S(6, 9) };
 
@@ -252,7 +258,6 @@ namespace {
   // Assorted bonuses and penalties
   constexpr Score BadOutpost          = S( -7, 36);
   constexpr Score BishopOnKingRing    = S( 24,  0);
-  constexpr Score BishopPawns         = S(  3,  7);
   constexpr Score BishopXRayPawns     = S(  4,  5);
   constexpr Score CorneredBishop      = S( 50, 50);
   constexpr Score FlankAttacks        = S(  8,  0);
@@ -453,7 +458,7 @@ namespace {
                 // when the bishop is outside the pawn chain.
                 Bitboard blocked = pos.pieces(Us, PAWN) & shift<Down>(pos.pieces());
 
-                score -= BishopPawns * pos.pawns_on_same_color_squares(Us, s)
+                score -= BishopPawns[edge_distance(file_of(s))] * pos.pawns_on_same_color_squares(Us, s)
                                      * (!(attackedBy[Us][PAWN] & s) + popcount(blocked & CenterFiles));
 
                 // Penalty for all enemy pawns x-rayed
@@ -906,7 +911,7 @@ namespace {
                                                         : pos.count<BISHOP>(WHITE) + pos.count<KNIGHT>(WHITE));
         else
             sf = std::min(sf, 36 + 7 * pos.count<PAWN>(strongSide)) - 4 * !pawnsOnBothFlanks;
-      
+
         sf -= 4 * !pawnsOnBothFlanks;
     }
 
