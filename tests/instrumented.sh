@@ -16,6 +16,9 @@ case $1 in
     exeprefix='valgrind --error-exitcode=42'
     postfix='1>/dev/null'
     threads="1"
+    bench_depth=5
+    go_depth=10
+    tt_size=16
   ;;
   --valgrind-thread)
     echo "valgrind-thread testing started"
@@ -23,6 +26,9 @@ case $1 in
     exeprefix='valgrind --fair-sched=try --error-exitcode=42'
     postfix='1>/dev/null'
     threads="2"
+    bench_depth=5
+    go_depth=10
+    tt_size=16
   ;;
   --sanitizer-undefined)
     echo "sanitizer-undefined testing started"
@@ -30,6 +36,9 @@ case $1 in
     exeprefix=''
     postfix='2>&1 | grep -A50 "runtime error:"'
     threads="1"
+    bench_depth=8
+    go_depth=20
+    tt_size=128
   ;;
   --sanitizer-thread)
     echo "sanitizer-thread testing started"
@@ -37,6 +46,9 @@ case $1 in
     exeprefix=''
     postfix='2>&1 | grep -A50 "WARNING: ThreadSanitizer:"'
     threads="2"
+    bench_depth=8
+    go_depth=20
+    tt_size=128
 
 cat << EOF > tsan.supp
 race:TTEntry::move
@@ -70,7 +82,7 @@ for args in "eval" \
             "go depth 10" \
             "go movetime 1000" \
             "go wtime 8000 btime 8000 winc 500 binc 500" \
-            "bench 128 $threads 8 default depth"
+            "bench $tt_size $threads $bench_depth default depth"
 do
 
    echo "$prefix $exeprefix ./stockfish $args $postfix"
@@ -98,7 +110,7 @@ cat << EOF > game.exp
  expect "bestmove"
 
  send "position fen 5rk1/1K4p1/8/8/3B4/8/8/8 b - - 0 1\n"
- send "go depth 20\n"
+ send "go depth $go_depth\n"
  expect "bestmove"
 
  send "quit\n"
@@ -121,7 +133,7 @@ cat << EOF > syzygy.exp
  send "uci\n"
  send "setoption name SyzygyPath value ../tests/syzygy/\n"
  expect "info string Found 35 tablebases" {} timeout {exit 1}
- send "bench 128 1 8 default depth\n"
+ send "bench $tt_size 1 $bench_depth default depth\n"
  send "quit\n"
  expect eof
 
