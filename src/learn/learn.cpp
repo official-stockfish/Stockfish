@@ -951,7 +951,7 @@ namespace Learner
     }
 
     // Learning from the generated game record
-    void learn(Position&, istringstream& is)
+    void learn(istringstream& is)
     {
         LearnerThink::Params params;
 

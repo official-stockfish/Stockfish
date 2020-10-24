@@ -67,7 +67,7 @@ namespace Learner
     double calc_grad(Value shallow, const PackedSfenValue& psv);
 
     // Learning from the generated game record
-    void learn(Position& pos, std::istringstream& is);
+    void learn(std::istringstream& is);
 }
 
 #endif // ifndef _LEARN_H_

@@ -339,7 +339,7 @@ void UCI::loop(int argc, char* argv[]) {
       else if (token == "compiler") sync_cout << compiler_info() << sync_endl;
 
       else if (token == "gensfen") Learner::gensfen(is);
-      else if (token == "learn") Learner::learn(pos, is);
+      else if (token == "learn") Learner::learn(is);
       else if (token == "convert") Learner::convert(is);
       else if (token == "convert_bin") Learner::convert_bin(is);
       else if (token == "convert_plain") Learner::convert_plain(is);
