@@ -49,20 +49,19 @@ namespace Learner
         // Amount of sfens required to flush the buffer.
         static constexpr size_t SFEN_WRITE_SIZE = 5000;
 
-        // Current status is output after
-        // each (SFEN_WRITE_SIZE * STATUS_OUTPUT_PERIOD) sfens
-        static constexpr uint64_t STATUS_OUTPUT_PERIOD = 40;
-
         // File name to write and number of threads to create
-        SfenWriter(string filename_, int thread_num)
+        SfenWriter(string filename_, int thread_num, uint64_t save_count)
         {
             sfen_buffers_pool.reserve((size_t)thread_num * 10);
             sfen_buffers.resize(thread_num);
 
             output_file_stream = create_new_sfen_output(filename_, sfen_output_type);
             filename = filename_;
+            save_every = save_count;
 
             finished = false;
+
+            file_worker_thread = std::thread([&] { this->file_write_worker(); });
         }
 
         ~SfenWriter()
@@ -125,12 +124,6 @@ namespace Learner
             }
         }
 
-        // Start the write_worker thread.
-        void start_file_write_worker()
-        {
-            file_worker_thread = std::thread([&] { this->file_write_worker(); });
-        }
-
         // Dedicated thread to write to file
         void file_write_worker()
         {
@@ -181,11 +174,6 @@ namespace Learner
             }
         }
 
-        void set_save_interval(uint64_t v)
-        {
-            save_every = v;
-        }
-
     private:
 
         std::unique_ptr<BasicSfenOutputStream> output_file_stream;
@@ -201,9 +189,6 @@ namespace Learner
 
         // Flag that all threads have finished
         atomic<bool> finished;
-
-        // Counter for time stamp output
-        uint64_t batch_counter = 0;
 
         // buffer before writing to file
         // sfen_buffers is the buffer for each thread
@@ -238,21 +223,23 @@ namespace Learner
         static constexpr uint64_t REPORT_STATS_EVERY = 200000;
         static_assert(REPORT_STATS_EVERY % REPORT_DOT_EVERY == 0);
 
-        MultiThinkGenSfen(int search_depth_min_, int search_depth_max_, SfenWriter& sw_, const std::string& seed) :
-            prng(seed),
+        MultiThinkGenSfen(
+            int search_depth_min_,
+            int search_depth_max_,
+            std::string output_file_name,
+            int thread_num,
+            uint64_t save_every,
+            const std::string& seed
+        ) :
             search_depth_min(search_depth_min_),
             search_depth_max(search_depth_max_),
-            sfen_writer(sw_)
+            prng(seed),
+            sfen_writer(output_file_name, thread_num, save_every)
         {
             hash.resize(GENSFEN_HASH_SIZE);
 
             // Output seed to veryfy by the user if it's not identical by chance.
             std::cout << prng << std::endl;
-        }
-
-        void start_file_write_worker()
-        {
-            sfen_writer.start_file_write_worker();
         }
 
         void gensfen(uint64_t limit);
@@ -304,7 +291,7 @@ namespace Learner
         TimePoint last_stats_report_time;
 
         // sfen exporter
-        SfenWriter& sfen_writer;
+        SfenWriter sfen_writer;
 
         vector<Key> hash; // 64MB*sizeof(HASH_KEY) = 512MB
 
@@ -345,7 +332,7 @@ namespace Learner
 
         std::atomic<uint64_t> counter{0};
         Threads.execute_with_workers([&counter, limit, this](Thread& th) {
-            thread_worker(th, counter, limit);
+            gensfen_worker(th, counter, limit);
         });
         Threads.wait_for_workers_finished();
 
@@ -1047,10 +1034,7 @@ namespace Learner
 
         // Create and execute threads as many as Options["Threads"].
         {
-            SfenWriter sfen_writer(output_file_name, thread_num);
-            sfen_writer.set_save_interval(save_every);
-
-            MultiThinkGenSfen multi_think(search_depth_min, search_depth_max, sfen_writer, seed);
+            MultiThinkGenSfen multi_think(search_depth_min, search_depth_max, output_file_name, thread_num, save_every, seed);
             multi_think.nodes = nodes;
             multi_think.eval_limit = eval_limit;
             multi_think.random_move_minply = random_move_minply;
@@ -1062,7 +1046,6 @@ namespace Learner
             multi_think.random_multi_pv_depth = random_multi_pv_depth;
             multi_think.write_minply = write_minply;
             multi_think.write_maxply = write_maxply;
-            multi_think.start_file_write_worker();
             multi_think.gensfen(loop_max);
 
             // Since we are joining with the destructor of SfenWriter, please give a message that it has finished after the join
