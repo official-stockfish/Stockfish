@@ -129,7 +129,7 @@ cat << EOF > learn01.exp
  send "isready\n"
  send "learn targetdir training_data epochs 1 sfen_read_size 100 thread_buffer_size 10 batchsize 100 use_draw_in_training 1 use_draw_in_validation 1 lr 1 eval_limit 32000 nn_batch_size 30 newbob_decay 0.5 eval_save_interval 30 loss_output_interval 10 validation_set_file_name validation_data/validation_data.bin\n"
 
- expect "save_eval() finished."
+ expect "INFO (save_eval): Saving current evaluation file in"
 
  send "quit\n"
  expect eof
