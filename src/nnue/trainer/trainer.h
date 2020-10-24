@@ -68,6 +68,7 @@ namespace Eval::NNUE {
     struct Example {
         std::vector<TrainingFeature> training_features[2];
         Learner::PackedSfenValue psv;
+        Value discrete_nn_eval;
         int sign;
         double weight;
     };

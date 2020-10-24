@@ -599,19 +599,16 @@ namespace Learner
                 // Evaluation value of deep search
                 const auto deep_value = (Value)ps.score;
 
-                const Value shallow_value =
-                    (rootColor == pos.side_to_move())
-                    ? Eval::evaluate(pos)
-                    : -Eval::evaluate(pos);
+                const Value shallow_value = Eval::evaluate(pos);
 
                 const auto loss = calc_cross_entropy(
                     deep_value,
-                    shallow_value,
+                    (rootColor == pos.side_to_move()) ? shallow_value : -shallow_value,
                     ps);
 
                 local_loss_sum += loss;
 
-                Eval::NNUE::add_example(pos, rootColor, ps, 1.0);
+                Eval::NNUE::add_example(pos, rootColor, shallow_value, ps, 1.0);
             };
 
             if (!pos.pseudo_legal((Move)ps.move) || !pos.legal((Move)ps.move))

@@ -22,6 +22,7 @@ namespace Eval::NNUE {
     void add_example(
         Position& pos,
         Color rootColor,
+        Value discrete_nn_eval,
     	const Learner::PackedSfenValue& psv,
         double weight);
 

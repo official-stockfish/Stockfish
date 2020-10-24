@@ -118,8 +118,12 @@ namespace Eval::NNUE {
     }
 
     // Add 1 sample of learning data
-    void add_example(Position& pos, Color rootColor,
-                    const Learner::PackedSfenValue& psv, double weight) {
+    void add_example(
+        Position& pos,
+        Color rootColor,
+        Value discrete_nn_eval,
+        const Learner::PackedSfenValue& psv,
+        double weight) {
 
         Example example;
         if (rootColor == pos.side_to_move()) {
@@ -128,6 +132,7 @@ namespace Eval::NNUE {
             example.sign = -1;
         }
 
+        example.discrete_nn_eval = discrete_nn_eval;
         example.psv = psv;
         example.weight = weight;
 
@@ -176,6 +181,13 @@ namespace Eval::NNUE {
 
         std::lock_guard<std::mutex> lock(examples_mutex);
         std::shuffle(examples.begin(), examples.end(), rng);
+
+        double abs_eval_diff_sum = 0.0;
+        double abs_discrete_eval_sum = 0.0;
+        double gradient_norm = 0.0;
+
+        bool is_first_batch = true;
+
         while (examples.size() >= batch_size) {
             std::vector<Example> batch(examples.end() - batch_size, examples.end());
             examples.resize(examples.size() - batch_size);
@@ -186,13 +198,39 @@ namespace Eval::NNUE {
             for (std::size_t b = 0; b < batch.size(); ++b) {
                 const auto shallow = static_cast<Value>(round<std::int32_t>(
                     batch[b].sign * network_output[b] * kPonanzaConstant));
+                const auto discrete = batch[b].sign * batch[b].discrete_nn_eval;
                 const auto& psv = batch[b].psv;
                 const double gradient = batch[b].sign * Learner::calc_grad(shallow, psv);
                 gradients[b] = static_cast<LearnFloatType>(gradient * batch[b].weight);
+
+
+                // The discrete eval will only be valid before first backpropagation,
+                // that is only for the first batch.
+                // Similarily we want only gradients from one batch.
+                if (is_first_batch)
+                {
+                    abs_eval_diff_sum += std::abs(discrete - shallow);
+                    abs_discrete_eval_sum += std::abs(discrete);
+                    gradient_norm += std::abs(gradient);
+                }
             }
 
             trainer->backpropagate(gradients.data(), learning_rate);
+
+            is_first_batch = false;
         }
+
+        const double avg_abs_eval_diff = abs_eval_diff_sum / batch_size;
+        const double avg_abs_discrete_eval = abs_discrete_eval_sum / batch_size;
+
+        std::cout << "INFO (update_weights):"
+            << " avg_abs(trainer_eval-nnue_eval) = " << avg_abs_eval_diff
+            << " , avg_abs(nnue_eval) = " << avg_abs_discrete_eval
+            << " , avg_relative_error = " << avg_abs_eval_diff / avg_abs_discrete_eval
+            << " , batch_size = " << batch_size
+            << " , grad_norm = " << gradient_norm
+            << std::endl;
+
         send_messages({{"quantize_parameters"}});
     }
 
