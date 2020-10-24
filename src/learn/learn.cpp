@@ -87,6 +87,14 @@ namespace Learner
     static double dest_score_min_value = 0.0;
     static double dest_score_max_value = 1.0;
 
+    // A constant used in elmo (WCSC27). Adjustment required.
+    // Since elmo does not internally divide the expression, the value is different.
+    // You can set this value with the learn command.
+    // 0.33 is equivalent to the constant (0.5) used in elmo (WCSC27)
+    static double elmo_lambda_low = 1.0;
+    static double elmo_lambda_high = 1.0;
+    static double elmo_lambda_limit = 32000;
+
     // Using stockfish's WDL with win rate model instead of sigmoid
     static bool use_wdl = false;
 
@@ -239,14 +247,6 @@ namespace Learner
         return ((y2 - y1) / epsilon) / winning_probability_coefficient;
     }
 
-    // A constant used in elmo (WCSC27). Adjustment required.
-    // Since elmo does not internally divide the expression, the value is different.
-    // You can set this value with the learn command.
-    // 0.33 is equivalent to the constant (0.5) used in elmo (WCSC27)
-    double ELMO_LAMBDA = 0.33;
-    double ELMO_LAMBDA2 = 0.33;
-    double ELMO_LAMBDA_LIMIT = 32000;
-
     // Training Formula · Issue #71 · nodchip/Stockfish https://github.com/nodchip/Stockfish/issues/71
     double get_scaled_signal(double signal)
     {
@@ -274,12 +274,12 @@ namespace Learner
 
     double calculate_lambda(double teacher_signal)
     {
-        // If the evaluation value in deep search exceeds ELMO_LAMBDA_LIMIT
-        // then apply ELMO_LAMBDA2 instead of ELMO_LAMBDA.
+        // If the evaluation value in deep search exceeds elmo_lambda_limit
+        // then apply elmo_lambda_high instead of elmo_lambda_low.
         const double lambda =
-            (std::abs(teacher_signal) >= ELMO_LAMBDA_LIMIT)
-            ? ELMO_LAMBDA2
-            : ELMO_LAMBDA;
+            (std::abs(teacher_signal) >= elmo_lambda_limit)
+            ? elmo_lambda_high
+            : elmo_lambda_low;
 
         return lambda;
     }
@@ -964,11 +964,6 @@ namespace Learner
 
         global_learning_rate = 1.0;
 
-        // elmo lambda
-        ELMO_LAMBDA = 1.0;
-        ELMO_LAMBDA2 = 1.0;
-        ELMO_LAMBDA_LIMIT = 32000;
-
         uint64_t nn_batch_size = 1000;
         string nn_options;
 
@@ -1034,9 +1029,9 @@ namespace Learner
 
 
             // LAMBDA
-            else if (option == "lambda") is >> ELMO_LAMBDA;
-            else if (option == "lambda2") is >> ELMO_LAMBDA2;
-            else if (option == "lambda_limit") is >> ELMO_LAMBDA_LIMIT;
+            else if (option == "lambda") is >> elmo_lambda_low;
+            else if (option == "lambda2") is >> elmo_lambda_high;
+            else if (option == "lambda_limit") is >> elmo_lambda_limit;
 
             else if (option == "reduction_gameply") is >> params.reduction_gameply;
 
@@ -1136,9 +1131,9 @@ namespace Learner
 
         out << "  - reduction_gameply        : " << params.reduction_gameply << endl;
 
-        out << "  - LAMBDA                   : " << ELMO_LAMBDA << endl;
-        out << "  - LAMBDA2                  : " << ELMO_LAMBDA2 << endl;
-        out << "  - LAMBDA_LIMIT             : " << ELMO_LAMBDA_LIMIT << endl;
+        out << "  - elmo_lambda_low          : " << elmo_lambda_low << endl;
+        out << "  - elmo_lambda_high         : " << elmo_lambda_high << endl;
+        out << "  - elmo_lambda_limit        : " << elmo_lambda_limit << endl;
         out << "  - eval_save_interval       : " << params.eval_save_interval << " sfens" << endl;
         out << "  - loss_output_interval     : " << params.loss_output_interval << " sfens" << endl;
 
