@@ -467,6 +467,8 @@ namespace Learner
         void learn(uint64_t epochs);
 
     private:
+        static void set_learning_search_limits();
+
         void learn_worker(Thread& th, std::atomic<uint64_t>& counter, uint64_t limit);
 
         void update_weights(const PSVector& psv, uint64_t epoch);
@@ -510,12 +512,36 @@ namespace Learner
         AtomicLoss learn_loss_sum;
     };
 
+    void LearnerThink::set_learning_search_limits()
+    {
+        Threads.main()->ponder = false;
+
+        // About Search::Limits
+        // Be careful because this member variable is global and affects other threads.
+        auto& limits = Search::Limits;
+
+        limits.startTime = now();
+
+        // Make the search equivalent to the "go infinite" command. (Because it is troublesome if time management is done)
+        limits.infinite = true;
+
+        // Since PV is an obstacle when displayed, erase it.
+        limits.silent = true;
+
+        // If you use this, it will be compared with the accumulated nodes of each thread. Therefore, do not use it.
+        limits.nodes = 0;
+
+        // depth is also processed by the one passed as an argument of Learner::search().
+        limits.depth = 0;
+    }
+
     void LearnerThink::learn(uint64_t epochs)
     {
-
 #if defined(_OPENMP)
         omp_set_num_threads((int)Options["Threads"]);
 #endif
+
+        set_learning_search_limits();
 
         Eval::NNUE::verify_any_net_loaded();
 
@@ -929,27 +955,6 @@ namespace Learner
         return false;
     }
 
-    static void set_learning_search_limits()
-    {
-        // About Search::Limits
-        // Be careful because this member variable is global and affects other threads.
-        auto& limits = Search::Limits;
-
-        limits.startTime = now();
-
-        // Make the search equivalent to the "go infinite" command. (Because it is troublesome if time management is done)
-        limits.infinite = true;
-
-        // Since PV is an obstacle when displayed, erase it.
-        limits.silent = true;
-
-        // If you use this, it will be compared with the accumulated nodes of each thread. Therefore, do not use it.
-        limits.nodes = 0;
-
-        // depth is also processed by the one passed as an argument of Learner::search().
-        limits.depth = 0;
-    }
-
     // Learning from the generated game record
     void learn(istringstream& is)
     {
@@ -1158,10 +1163,6 @@ namespace Learner
         out << endl;
 
         out << "INFO: Started initialization." << endl;
-
-        Threads.main()->ponder = false;
-
-        set_learning_search_limits();
 
         Eval::NNUE::initialize_training(params.seed, out);
         Eval::NNUE::set_batch_size(nn_batch_size);
