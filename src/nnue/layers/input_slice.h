@@ -65,8 +65,9 @@ namespace Eval::NNUE::Layers {
         }
 
         static std::string get_layers_info() {
-            std::string info = std::to_string(kLayerIndex);
-            info += ": ";
+            std::string info = "  - ";
+            info += std::to_string(kLayerIndex);
+            info += " - ";
             info += get_name();
             return info;
         }

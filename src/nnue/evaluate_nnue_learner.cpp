@@ -54,23 +54,28 @@ namespace Eval::NNUE {
     }  // namespace
 
     // Initialize learning
-    void initialize_training(const std::string& seed) {
-        std::cout << "Initializing NN training for "
-                  << get_architecture_string() << std::endl;
+    void initialize_training(
+        const std::string& seed,
+        SynchronizedRegionLogger::Region& out) {
 
-        std::cout << std::endl;
+        out << "INFO (initialize_training): Initializing NN training for "
+            << get_architecture_string() << std::endl;
 
-        std::cout << "Layers:\n"
-                  << get_layers_info() << std::endl;
+        out << std::endl;
 
-        std::cout << std::endl;
+        out << "Layers:\n"
+            << get_layers_info() << std::endl;
+
+        out << std::endl;
 
         assert(feature_transformer);
         assert(network);
+
         trainer = Trainer<Network>::create(network.get(), feature_transformer.get());
         rng.seed(PRNG(seed).rand<uint64_t>());
 
         if (Options["SkipLoadingEval"]) {
+            out << "INFO (initialize_training): Performing random net initialization.\n";
             trainer->initialize(rng);
         }
     }

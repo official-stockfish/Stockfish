@@ -141,12 +141,12 @@ namespace Learner
             template <typename StreamT>
             void print(const std::string& prefix, StreamT& s) const
             {
-                s << "==> " << prefix << "_cross_entropy_eval = " << cross_entropy_eval / count << endl;
-                s << "==> " << prefix << "_cross_entropy_win  = " << cross_entropy_win / count << endl;
-                s << "==> " << prefix << "_entropy_eval       = " << entropy_eval / count << endl;
-                s << "==> " << prefix << "_entropy_win        = " << entropy_win / count << endl;
-                s << "==> " << prefix << "_cross_entropy      = " << cross_entropy / count << endl;
-                s << "==> " << prefix << "_entropy            = " << entropy / count << endl;
+                s << "  - " << prefix << "_cross_entropy_eval = " << cross_entropy_eval / count << endl;
+                s << "  - " << prefix << "_cross_entropy_win  = " << cross_entropy_win / count << endl;
+                s << "  - " << prefix << "_entropy_eval       = " << entropy_eval / count << endl;
+                s << "  - " << prefix << "_entropy_win        = " << entropy_win / count << endl;
+                s << "  - " << prefix << "_cross_entropy      = " << cross_entropy / count << endl;
+                s << "  - " << prefix << "_entropy            = " << entropy / count << endl;
             }
         };
     }
@@ -687,7 +687,7 @@ namespace Learner
              << ", epoch " << epoch
              << endl;
 
-        out << "==> learning rate = " << global_learning_rate << endl;
+        out << "  - learning rate = " << global_learning_rate << endl;
 
         // For calculation of verification data loss
         AtomicLoss test_loss_sum{};
@@ -704,7 +704,7 @@ namespace Learner
             auto& pos = th.rootPos;
             StateInfo si;
             pos.set(StartFEN, false, &si, &th);
-            out << "==> startpos eval = " << Eval::evaluate(pos) << endl;
+            out << "  - startpos eval = " << Eval::evaluate(pos) << endl;
         });
         mainThread->wait_for_worker_finished();
 
@@ -734,8 +734,8 @@ namespace Learner
                 learn_loss_sum.print("learn", out);
             }
 
-            out << "==> norm = " << sum_norm << endl;
-            out << "==> move accuracy = " << (move_accord_count * 100.0 / psv.size()) << "%" << endl;
+            out << "  - norm = " << sum_norm << endl;
+            out << "  - move accuracy = " << (move_accord_count * 100.0 / psv.size()) << "%" << endl;
         }
         else
         {
@@ -852,7 +852,7 @@ namespace Learner
                 latest_loss_sum = 0.0;
                 latest_loss_count = 0;
                 cout << "INFO (learning_rate):" << endl;
-                cout << "==> loss = " << latest_loss;
+                cout << "  - loss = " << latest_loss;
                 auto tot = total_done;
                 if (auto_lr_drop)
                 {
@@ -882,7 +882,7 @@ namespace Learner
                     if (--trials > 0 && !is_final)
                     {
                         cout
-                            << "==> reducing learning rate from " << global_learning_rate
+                            << "  - reducing learning rate from " << global_learning_rate
                             << " to " << (global_learning_rate * newbob_decay)
                             << " (" << trials << " more trials)" << endl;
 
@@ -892,7 +892,7 @@ namespace Learner
 
                 if (trials == 0)
                 {
-                    cout << "==> converged" << endl;
+                    cout << "  - converged" << endl;
                     return true;
                 }
             }
@@ -979,6 +979,8 @@ namespace Learner
 
         string validation_set_file_name;
         string seed;
+
+        auto out = sync_region_cout.new_region();
 
         // Assume the filenames are staggered.
         while (true)
@@ -1083,7 +1085,7 @@ namespace Learner
             else if (option == "verbose") verbose = true;
             else
             {
-                cout << "Unknown option: " << option << ". Ignoring.\n";
+                out << "INFO: Unknown option: " << option << ". Ignoring.\n";
             }
         }
 
@@ -1092,11 +1094,14 @@ namespace Learner
             loss_output_interval = LEARN_RMSE_OUTPUT_INTERVAL * mini_batch_size;
         }
 
-        cout << "learn command , ";
+        // If reduction_gameply is set to 0, rand(0) will be divided by 0, so correct it to 1.
+        reduction_gameply = max(reduction_gameply, 1);
+
+        out << "INFO: Executing learn command\n";
 
         // Issue a warning if OpenMP is disabled.
 #if !defined(_OPENMP)
-        cout << "Warning! OpenMP disabled." << endl;
+        out << "WARNING: OpenMP disabled." << endl;
 #endif
 
         // Right now we only have the individual files.
@@ -1107,65 +1112,80 @@ namespace Learner
         }
         rebase_files(filenames, base_dir);
 
-        cout << "learn from ";
+        out << "INFO: Input files:\n";
         for (auto s : filenames)
-            cout << s << " , ";
+            out << "  - " << s << '\n';
 
-        cout << endl;
+        out << "INFO: Parameters:\n";
         if (!validation_set_file_name.empty())
         {
-            cout << "validation set  : " << validation_set_file_name << endl;
+            out << "  - validation set           : " << validation_set_file_name << endl;
         }
 
-        cout << "base dir        : " << base_dir << endl;
-        cout << "target dir      : " << target_dir << endl;
+        out << "  - epochs                   : " << epochs << endl;
+        out << "  - epochs * minibatch size  : " << epochs * mini_batch_size << endl;
+        out << "  - eval_limit               : " << eval_limit << endl;
+        out << "  - save_only_once           : " << (save_only_once ? "true" : "false") << endl;
+        out << "  - shuffle on read          : " << (no_shuffle ? "false" : "true") << endl;
 
-        cout << "epochs            : " << epochs << endl;
-        cout << "eval_limit        : " << eval_limit << endl;
-        cout << "save_only_once    : " << (save_only_once ? "true" : "false") << endl;
-        cout << "no_shuffle        : " << (no_shuffle ? "true" : "false") << endl;
+        out << "  - Loss Function            : " << LOSS_FUNCTION << endl;
+        out << "  - minibatch size           : " << mini_batch_size << endl;
 
-        cout << "Loss Function     : " << LOSS_FUNCTION << endl;
-        cout << "mini-batch size   : " << mini_batch_size << endl;
+        out << "  - nn_batch_size            : " << nn_batch_size << endl;
+        out << "  - nn_options               : " << nn_options << endl;
 
-        cout << "nn_batch_size     : " << nn_batch_size << endl;
-        cout << "nn_options        : " << nn_options << endl;
+        out << "  - learning rate            : " << global_learning_rate << endl;
+        out << "  - use draws in training    : " << use_draw_games_in_training << endl;
+        out << "  - use draws in validation  : " << use_draw_games_in_validation << endl;
+        out << "  - skip repeated positions  : " << skip_duplicated_positions_in_training << endl;
 
-        cout << "learning rate     : " << global_learning_rate << endl;
-        cout << "use_draw_games_in_training : " << use_draw_games_in_training << endl;
-        cout << "use_draw_games_in_validation : " << use_draw_games_in_validation << endl;
-        cout << "skip_duplicated_positions_in_training : " << skip_duplicated_positions_in_training << endl;
+        out << "  - winning prob coeff       : " << winning_probability_coefficient << endl;
+        out << "  - use_wdl                  : " << use_wdl << endl;
 
-        if (newbob_decay != 1.0) {
-            cout << "scheduling        : newbob with decay = " << newbob_decay
-                << ", " << newbob_num_trials << " trials" << endl;
+        out << "  - src_score_min_value      : " << src_score_min_value << endl;
+        out << "  - src_score_max_value      : " << src_score_max_value << endl;
+        out << "  - dest_score_min_value     : " << dest_score_min_value << endl;
+        out << "  - dest_score_max_value     : " << dest_score_max_value << endl;
+
+        out << "  - reduction_gameply        : " << reduction_gameply << endl;
+
+        out << "  - LAMBDA                   : " << ELMO_LAMBDA << endl;
+        out << "  - LAMBDA2                  : " << ELMO_LAMBDA2 << endl;
+        out << "  - LAMBDA_LIMIT             : " << ELMO_LAMBDA_LIMIT << endl;
+        out << "  - eval_save_interval       : " << eval_save_interval << " sfens" << endl;
+        out << "  - loss_output_interval     : " << loss_output_interval << " sfens" << endl;
+
+        out << "  - sfen_read_size           : " << sfen_read_size << endl;
+        out << "  - thread_buffer_size       : " << thread_buffer_size << endl;
+
+        out << "  - seed                     : " << seed << endl;
+        out << "  - verbose                  : " << (verbose ? "true" : "false") << endl;
+
+        if (auto_lr_drop) {
+            out << "  - learning rate scheduling : every " << auto_lr_drop << " sfens" << endl;
+        }
+        else if (newbob_decay != 1.0) {
+            out << "  - learning rate scheduling : newbob with decay" << endl;
+            out << "  - newbob_decay             : " << newbob_decay << endl;
+            out << "  - newbob_num_trials        : " << newbob_num_trials << endl;
         }
         else {
-            cout << "scheduling        : default" << endl;
+            out << "  - learning rate scheduling : fixed learning rate" << endl;
         }
 
-        // If reduction_gameply is set to 0, rand(0) will be divided by 0, so correct it to 1.
-        reduction_gameply = max(reduction_gameply, 1);
-        cout << "reduction_gameply : " << reduction_gameply << endl;
-
-        cout << "LAMBDA            : " << ELMO_LAMBDA << endl;
-        cout << "LAMBDA2           : " << ELMO_LAMBDA2 << endl;
-        cout << "LAMBDA_LIMIT      : " << ELMO_LAMBDA_LIMIT << endl;
-        cout << "eval_save_interval  : " << eval_save_interval << " sfens" << endl;
-        cout << "loss_output_interval: " << loss_output_interval << " sfens" << endl;
+        out << endl;
 
         // -----------------------------------
         // various initialization
         // -----------------------------------
 
-        cout << "init.." << endl;
+        out << "INFO: Started initialization." << endl;
 
         Threads.main()->ponder = false;
 
         set_learning_search_limits();
 
-        cout << "init_training.." << endl;
-        Eval::NNUE::initialize_training(seed);
+        Eval::NNUE::initialize_training(seed, out);
         Eval::NNUE::set_batch_size(nn_batch_size);
         Eval::NNUE::set_options(nn_options);
 
@@ -1204,7 +1224,9 @@ namespace Learner
 
         learn_think.verbose = verbose;
 
-        cout << "init done." << endl;
+        out << "Finished initialization." << endl;
+
+        out.unlock();
 
         // Start learning.
         learn_think.learn(epochs);

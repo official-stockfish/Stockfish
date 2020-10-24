@@ -3,11 +3,15 @@
 
 #include "learn/learn.h"
 
+#include "misc.h"
+
 // Interface used for learning NNUE evaluation function
 namespace Eval::NNUE {
 
     // Initialize learning
-    void initialize_training(const std::string& seed);
+    void initialize_training(
+        const std::string& seed,
+        SynchronizedRegionLogger::Region& out);
 
     // set the number of samples in the mini-batch
     void set_batch_size(uint64_t size);

@@ -347,17 +347,17 @@ namespace Eval::NNUE {
                 << " - " << LayerType::get_name()
                 << std::endl;
 
-            out << "==> observed " << observed_features.count()
+            out << "  - observed " << observed_features.count()
                 << " (out of " << kInputDimensions << ") features"
                 << std::endl;
 
-            out << "==> (min, max) of pre-activations = "
+            out << "  - (min, max) of pre-activations = "
                 << min_pre_activation_ << ", "
                 << max_pre_activation_ << " (limit = "
                 << kPreActivationLimit << ")"
                 << std::endl;
 
-            out << "==> largest min activation = " << largest_min_activation
+            out << "  - largest min activation = " << largest_min_activation
                 << " , smallest max activation = " << smallest_max_activation
                 << std::endl;
 

@@ -78,27 +78,23 @@ std::ostream& operator<<(std::ostream&, SyncCout);
 // current region releases the lock.
 struct SynchronizedRegionLogger
 {
-private:
   using RegionId = std::uint64_t;
 
-  struct RegionLock
+  struct Region
   {
-    RegionLock(SynchronizedRegionLogger& log, RegionId id) :
-      logger(&log), region_id(id), is_held(true)
-    {
-    }
+    friend struct SynchronizedRegionLogger;
 
-    RegionLock(const RegionLock&) = delete;
-    RegionLock& operator=(const RegionLock&) = delete;
+    Region(const Region&) = delete;
+    Region& operator=(const Region&) = delete;
 
-    RegionLock(RegionLock&& other) :
+    Region(Region&& other) :
       logger(other.logger), region_id(other.region_id), is_held(other.is_held)
     {
       other.logger = nullptr;
       other.is_held = false;
     }
 
-    RegionLock& operator=(RegionLock&& other) {
+    Region& operator=(Region&& other) {
       if (is_held && logger != nullptr)
       {
         logger->release_region(region_id);
@@ -113,7 +109,7 @@ private:
       return *this;
     }
 
-    ~RegionLock() { unlock(); }
+    ~Region() { unlock(); }
 
     void unlock() {
       if (is_held) {
@@ -124,7 +120,7 @@ private:
       }
     }
 
-    RegionLock& operator << (std::ostream&(*pManip)(std::ostream&)) {
+    Region& operator << (std::ostream&(*pManip)(std::ostream&)) {
       if (logger != nullptr)
         logger->write(region_id, pManip);
 
@@ -132,7 +128,7 @@ private:
     }
 
     template <typename T>
-    RegionLock& operator << (const T& value) {
+    Region& operator << (const T& value) {
       if (logger != nullptr)
         logger->write(region_id, value);
 
@@ -143,11 +139,17 @@ private:
     SynchronizedRegionLogger* logger;
     RegionId region_id;
     bool is_held;
+
+    Region(SynchronizedRegionLogger& log, RegionId id) :
+      logger(&log), region_id(id), is_held(true)
+    {
+    }
   };
 
-  struct Region
+private:
+  struct RegionBookkeeping
   {
-    Region(RegionId rid) : id(rid), is_held(true) {}
+    RegionBookkeeping(RegionId rid) : id(rid), is_held(true) {}
 
     std::vector<std::string> pending_parts;
     RegionId id;
@@ -215,16 +217,16 @@ private:
 
   std::ostream& out;
 
-  std::deque<Region> regions;
+  std::deque<RegionBookkeeping> regions;
 
   std::mutex mutex;
 
-  Region* find_region_nolock(RegionId id) {
+  RegionBookkeeping* find_region_nolock(RegionId id) {
     // Linear search because the amount of concurrent regions should be small.
     auto it = std::find_if(
       regions.begin(),
       regions.end(),
-      [id](const Region& r) { return r.id == id; });
+      [id](const RegionBookkeeping& r) { return r.id == id; });
 
     if (it == regions.end())
       return nullptr;
@@ -269,9 +271,9 @@ public:
   {
   }
 
-  [[nodiscard]] RegionLock new_region() {
+  [[nodiscard]] Region new_region() {
     const auto id = init_next_region();
-    return RegionLock(*this, id);
+    return Region(*this, id);
   }
 
 };

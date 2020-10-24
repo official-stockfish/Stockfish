@@ -221,7 +221,7 @@ namespace Learner{
                         // in case the file is empty or was deleted.
                         if (sfen_input_stream->eof())
                         {
-                            out << "==> File empty, nothing to read.\n";
+                            out << "  - File empty, nothing to read.\n";
                         }
                         else
                         {

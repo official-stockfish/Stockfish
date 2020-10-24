@@ -107,7 +107,7 @@ namespace Eval::NNUE {
                 << " - " << LayerType::get_name()
                 << std::endl;
 
-            out << "==> largest min activation = " << largest_min_activation
+            out << "  - largest min activation = " << largest_min_activation
                 << " , smallest max activation = " << smallest_max_activation
                 << std::endl;
 
