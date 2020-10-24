@@ -71,6 +71,12 @@ namespace Eval::NNUE {
             ",Network=" + Network::get_structure_string();
     }
 
+    std::string get_layers_info() {
+        return
+            FeatureTransformer::get_layers_info()
+            + '\n' + Network::get_layers_info();
+    }
+
     UseNNUEMode useNNUE;
     std::string eval_file_loaded = "None";
 

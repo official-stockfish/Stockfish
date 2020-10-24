@@ -57,6 +57,8 @@ namespace Eval::NNUE::Layers {
         static constexpr std::size_t kBufferSize =
             PreviousLayer::kBufferSize + kSelfBufferSize;
 
+        static constexpr int kLayerIndex = PreviousLayer::kLayerIndex + 1;
+
         // Hash value embedded in the evaluation file
         static constexpr std::uint32_t get_hash_value() {
             std::uint32_t hash_value = 0xCC03DAE4u;
@@ -66,12 +68,25 @@ namespace Eval::NNUE::Layers {
             return hash_value;
         }
 
-        // A string that represents the structure from the input layer to this layer
-        static std::string get_structure_string() {
+        static std::string get_name() {
             return "AffineTransform[" +
                 std::to_string(kOutputDimensions) + "<-" +
-                std::to_string(kInputDimensions) + "](" +
+                std::to_string(kInputDimensions) + "]";
+        }
+
+        // A string that represents the structure from the input layer to this layer
+        static std::string get_structure_string() {
+            return get_name() + "(" +
                 PreviousLayer::get_structure_string() + ")";
+        }
+
+        static std::string get_layers_info() {
+            std::string info = PreviousLayer::get_layers_info();
+            info += '\n';
+            info += std::to_string(kLayerIndex);
+            info += ": ";
+            info += get_name();
+            return info;
         }
 
        // Read network parameters

@@ -28,56 +28,69 @@
 
 namespace Eval::NNUE::Layers {
 
-  // Input layer
-  template <IndexType OutputDimensions, IndexType Offset = 0>
-  class InputSlice {
-  public:
-      // Need to maintain alignment
-      static_assert(Offset % kMaxSimdWidth == 0, "");
+    // Input layer
+    template <IndexType OutputDimensions, IndexType Offset = 0>
+    class InputSlice {
+    public:
+        // Need to maintain alignment
+        static_assert(Offset % kMaxSimdWidth == 0, "");
 
-      // Output type
-      using OutputType = TransformedFeatureType;
+        // Output type
+        using OutputType = TransformedFeatureType;
 
-      // Output dimensionality
-      static constexpr IndexType kOutputDimensions = OutputDimensions;
+        // Output dimensionality
+        static constexpr IndexType kOutputDimensions = OutputDimensions;
 
-      // Size of forward propagation buffer used from the input layer to this layer
-      static constexpr std::size_t kBufferSize = 0;
+        // Size of forward propagation buffer used from the input layer to this layer
+        static constexpr std::size_t kBufferSize = 0;
 
-      // Hash value embedded in the evaluation file
-      static constexpr std::uint32_t get_hash_value() {
-          std::uint32_t hash_value = 0xEC42E90Du;
-          hash_value ^= kOutputDimensions ^ (Offset << 10);
-          return hash_value;
-      }
+        static constexpr int kLayerIndex = 1;
 
-      // A string that represents the structure from the input layer to this layer
-      static std::string get_structure_string() {
-          return "InputSlice[" + std::to_string(kOutputDimensions) + "(" +
-              std::to_string(Offset) + ":" +
-              std::to_string(Offset + kOutputDimensions) + ")]";
-      }
+        // Hash value embedded in the evaluation file
+        static constexpr std::uint32_t get_hash_value() {
+            std::uint32_t hash_value = 0xEC42E90Du;
+            hash_value ^= kOutputDimensions ^ (Offset << 10);
+            return hash_value;
+        }
 
-      // Read network parameters
-      bool read_parameters(std::istream& /*stream*/) {
-          return true;
-      }
+        static std::string get_name() {
+            return "InputSlice[" + std::to_string(kOutputDimensions) + "(" +
+                std::to_string(Offset) + ":" +
+                std::to_string(Offset + kOutputDimensions) + ")]";
+        }
 
-      // write parameters
-      bool write_parameters(std::ostream& /*stream*/) const {
-          return true;
-      }
+        // A string that represents the structure from the input layer to this layer
+        static std::string get_structure_string() {
+            return get_name();
+        }
 
-      // Forward propagation
-      const OutputType* propagate(
-          const TransformedFeatureType* transformed_features,
-          char* /*buffer*/) const {
+        static std::string get_layers_info() {
+            std::string info = std::to_string(kLayerIndex);
+            info += ": ";
+            info += get_name();
+            return info;
+        }
 
-          return transformed_features + Offset;
-      }
+        // Read network parameters
+        bool read_parameters(std::istream& /*stream*/) {
+            return true;
+        }
 
-  private:
-  };
+        // write parameters
+        bool write_parameters(std::ostream& /*stream*/) const {
+            return true;
+        }
+
+        // Forward propagation
+        const OutputType* propagate(
+            const TransformedFeatureType* transformed_features,
+            char* /*buffer*/) const {
+
+            return transformed_features + Offset;
+        }
+
+    private:
+    };
 
 }  // namespace Layers
 

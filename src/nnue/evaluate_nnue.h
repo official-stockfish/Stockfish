@@ -81,6 +81,8 @@ namespace Eval::NNUE {
     // Get a string that represents the structure of the evaluation function
     std::string get_architecture_string();
 
+    std::string get_layers_info();
+
     // read the header
     bool read_header(std::istream& stream,
         std::uint32_t* hash_value, std::string* architecture);

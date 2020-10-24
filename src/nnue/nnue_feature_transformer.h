@@ -110,17 +110,30 @@ namespace Eval::NNUE {
         static constexpr std::size_t kBufferSize =
             kOutputDimensions * sizeof(OutputType);
 
+        static constexpr int kLayerIndex = 0;
+
         // Hash value embedded in the evaluation file
         static constexpr std::uint32_t get_hash_value() {
 
             return RawFeatures::kHashValue ^ kOutputDimensions;
         }
 
-        // a string representing the structure
-        static std::string get_structure_string() {
+        static std::string get_name() {
             return RawFeatures::get_name() + "[" +
                 std::to_string(kInputDimensions) + "->" +
                 std::to_string(kHalfDimensions) + "x2]";
+        }
+
+        // a string representing the structure
+        static std::string get_structure_string() {
+            return get_name();
+        }
+
+        static std::string get_layers_info() {
+            std::string info = std::to_string(kLayerIndex);
+            info += ": ";
+            info += get_name();
+            return info;
         }
 
         // Read network parameters

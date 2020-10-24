@@ -36,6 +36,8 @@ namespace Eval::NNUE::Layers {
         static constexpr std::size_t kBufferSize =
             std::max(Head::kBufferSize + kSelfBufferSize, Tail::kBufferSize);
 
+        static constexpr int kLayerIndex = Tail::kLayerIndex + 1;
+
         // Hash value embedded in the evaluation function file
         static constexpr std::uint32_t get_hash_value() {
             std::uint32_t hash_value = 0xBCE400B4u;
@@ -46,10 +48,23 @@ namespace Eval::NNUE::Layers {
             return hash_value;
         }
 
+        static std::string get_name() {
+             return "Sum[" +
+                std::to_string(kOutputDimensions) + "]";
+        }
+
         // A string that represents the structure from the input layer to this layer
         static std::string get_structure_string() {
-            return "Sum[" +
-                std::to_string(kOutputDimensions) + "](" + get_summands_string() + ")";
+            return get_name() + "(" + get_summands_string() + ")";
+        }
+
+        static std::string get_layers_info() {
+            std::string info = Tail::get_layers_info();
+            info += '\n';
+            info += std::to_string(kLayerIndex);
+            info += ": ";
+            info += get_name();
+            return info;
         }
 
         // read parameters
@@ -117,6 +132,8 @@ namespace Eval::NNUE::Layers {
         // Size of the forward propagation buffer used from the input layer to this layer
         static constexpr std::size_t kBufferSize = PreviousLayer::kBufferSize;
 
+        static constexpr int kLayerIndex = PreviousLayer::kLayerIndex + 1;
+
         // Hash value embedded in the evaluation function file
         static constexpr std::uint32_t get_hash_value() {
             std::uint32_t hash_value = 0xBCE400B4u;
@@ -125,10 +142,23 @@ namespace Eval::NNUE::Layers {
             return hash_value;
         }
 
+        static std::string get_name() {
+             return "Sum[" +
+                std::to_string(kOutputDimensions) + "]";
+        }
+
         // A string that represents the structure from the input layer to this layer
         static std::string get_structure_string() {
-            return "Sum[" +
-                std::to_string(kOutputDimensions) + "](" + get_summands_string() + ")";
+            return get_name() + "(" + get_summands_string() + ")";
+        }
+
+        static std::string get_layers_info() {
+            std::string info = PreviousLayer::get_layers_info();
+            info += '\n';
+            info += std::to_string(kLayerIndex);
+            info += ": ";
+            info += get_name();
+            return info;
         }
 
         // read parameters

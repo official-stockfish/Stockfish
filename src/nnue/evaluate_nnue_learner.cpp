@@ -58,6 +58,13 @@ namespace Eval::NNUE {
         std::cout << "Initializing NN training for "
                   << get_architecture_string() << std::endl;
 
+        std::cout << std::endl;
+
+        std::cout << "Layers:\n"
+                  << get_layers_info() << std::endl;
+
+        std::cout << std::endl;
+
         assert(feature_transformer);
         assert(network);
         trainer = Trainer<Network>::create(network.get(), feature_transformer.get());
