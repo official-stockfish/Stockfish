@@ -31,7 +31,7 @@ namespace Eval::NNUE {
         double weight);
 
     // update the evaluation function parameters
-    void update_parameters(uint64_t epoch, bool verbose);
+    void update_parameters(uint64_t epoch, bool verbose, Learner::CalcGradFunc calc_grad);
 
     // Check if there are any problems with learning
     void check_health();

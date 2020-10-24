@@ -64,10 +64,10 @@ namespace Learner
     // rmse calculation is done in one thread, so it takes some time, so reducing the output is effective.
     constexpr std::size_t LEARN_RMSE_OUTPUT_INTERVAL = 1;
 
-    double calc_grad(Value shallow, const PackedSfenValue& psv);
-
     // Learning from the generated game record
     void learn(std::istringstream& is);
+
+    using CalcGradFunc = double(Value, Value, int, int);
 }
 
 #endif // ifndef _LEARN_H_
