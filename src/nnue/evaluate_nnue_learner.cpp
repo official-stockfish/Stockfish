@@ -245,7 +245,7 @@ namespace Eval::NNUE {
     // save merit function parameters to a file
     void save_eval(std::string dir_name) {
         auto eval_dir = Path::combine(Options["EvalSaveDir"], dir_name);
-        std::cout << "save_eval() start. folder = " << eval_dir << std::endl;
+        std::cout << "INFO (save_eval): Saving current evaluation file in " << eval_dir << std::endl;
 
         // mkdir() will fail if this folder already exists, but
         // Apart from that. If not, I just want you to make it.
@@ -261,7 +261,5 @@ namespace Eval::NNUE {
 #ifndef NDEBUG
         assert(result);
 #endif
-
-        std::cout << "save_eval() finished. folder = " << eval_dir << std::endl;
     }
 }  // namespace Eval::NNUE

@@ -83,7 +83,7 @@ namespace Learner{
                 PackedSfenValue ps;
                 if (!read_to_thread_buffer(0, ps))
                 {
-                    std::cout << "Error! read packed sfen , failed." << std::endl;
+                    std::cout << "ERROR (sfen_reader): Reading failed." << std::endl;
                     return sfen_for_mse;
                 }
 
@@ -211,16 +211,16 @@ namespace Learner{
 
                     if (sfen_input_stream == nullptr)
                     {
-                        std::cout << "File does not exist: " << currentFilename << '\n';
+                        std::cout << "INFO (sfen_reader): File does not exist: " << currentFilename << '\n';
                     }
                     else
                     {
-                        std::cout << "Opened file for reading: " << currentFilename << '\n';
+                        std::cout << "INFO (sfen_reader): Opened file for reading: " << currentFilename << '\n';
 
                         // in case the file is empty or was deleted.
                         if (sfen_input_stream->eof())
                         {
-                            std::cout << "File empty, nothing to read.\n";
+                            std::cout << "INFO (sfen_reader): File empty, nothing to read.\n";
                         }
                         else
                         {
@@ -232,7 +232,7 @@ namespace Learner{
 
             if (sfen_input_stream == nullptr && !open_next_file())
             {
-                std::cout << "..end of files." << std::endl;
+                std::cout << "INFO (sfen_reader): End of files." << std::endl;
                 end_of_files = true;
                 return;
             }
@@ -271,7 +271,7 @@ namespace Learner{
                         if(!open_next_file())
                         {
                             // There was no next file. Abort.
-                            std::cout << "..end of files." << std::endl;
+                            std::cout << "INFO (sfen_reader): End of files." << std::endl;
                             end_of_files = true;
                             return;
                         }

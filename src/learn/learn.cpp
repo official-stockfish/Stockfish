@@ -140,15 +140,12 @@ namespace Learner
 
             void print(const std::string& prefix, ostream& s) const
             {
-                s
-                    << "--> "
-                    << prefix << "_cross_entropy_eval = " << cross_entropy_eval / count
-                    << " , " << prefix << "_cross_entropy_win = " << cross_entropy_win / count
-                    << " , " << prefix << "_entropy_eval = " << entropy_eval / count
-                    << " , " << prefix << "_entropy_win = " << entropy_win / count
-                    << " , " << prefix << "_cross_entropy = " << cross_entropy / count
-                    << " , " << prefix << "_entropy = " << entropy / count
-                    << endl;
+                s << "==> " << prefix << "_cross_entropy_eval = " << cross_entropy_eval / count << endl;
+                s << "==> " << prefix << "_cross_entropy_win  = " << cross_entropy_win / count << endl;
+                s << "==> " << prefix << "_entropy_eval       = " << entropy_eval / count << endl;
+                s << "==> " << prefix << "_entropy_win        = " << entropy_win / count << endl;
+                s << "==> " << prefix << "_cross_entropy      = " << cross_entropy / count << endl;
+                s << "==> " << prefix << "_entropy            = " << entropy / count << endl;
             }
         };
     }
@@ -678,11 +675,13 @@ namespace Learner
         TimePoint elapsed = now() - Search::Limits.startTime + 1;
 
         cout << "\n";
-        cout << "PROGRESS (calc_loss): " << now_string() << ", ";
-        cout << total_done << " sfens, ";
-        cout << total_done * 1000 / elapsed  << " sfens/second";
-        cout << ", iteration " << epoch;
-        cout << ", learning rate = " << global_learning_rate << ", ";
+        cout << "PROGRESS (calc_loss): " << now_string()
+             << ", " << total_done << " sfens"
+             << ", " << total_done * 1000 / elapsed  << " sfens/second"
+             << ", epoch " << epoch
+             << endl;
+
+        cout << "==> learning rate = " << global_learning_rate << endl;
 
         // For calculation of verification data loss
         AtomicLoss test_loss_sum{};
@@ -699,7 +698,7 @@ namespace Learner
             auto& pos = th.rootPos;
             StateInfo si;
             pos.set(StartFEN, false, &si, &th);
-            cout << "startpos eval = " << Eval::evaluate(pos) << endl;
+            cout << "==> startpos eval = " << Eval::evaluate(pos) << endl;
         });
         mainThread->wait_for_worker_finished();
 
@@ -722,16 +721,15 @@ namespace Learner
 
         if (psv.size() && test_loss_sum.count > 0.0)
         {
-            cout << "--> norm = " << sum_norm
-                << " , move accuracy = " << (move_accord_count * 100.0 / psv.size()) << "%"
-                << endl;
-
             test_loss_sum.print("test", cout);
 
             if (learn_loss_sum.count > 0.0)
             {
                 learn_loss_sum.print("learn", cout);
             }
+
+            cout << "==> norm = " << sum_norm << endl;
+            cout << "==> move accuracy = " << (move_accord_count * 100.0 / psv.size()) << "%" << endl;
         }
         else
         {
@@ -847,7 +845,8 @@ namespace Learner
                 const double latest_loss = latest_loss_sum / latest_loss_count;
                 latest_loss_sum = 0.0;
                 latest_loss_count = 0;
-                cout << "loss: " << latest_loss;
+                cout << "INFO (learning_rate):" << endl;
+                cout << "==> loss = " << latest_loss;
                 auto tot = total_done;
                 if (auto_lr_drop)
                 {
@@ -877,7 +876,7 @@ namespace Learner
                     if (--trials > 0 && !is_final)
                     {
                         cout
-                            << "reducing learning rate from " << global_learning_rate
+                            << "==> reducing learning rate from " << global_learning_rate
                             << " to " << (global_learning_rate * newbob_decay)
                             << " (" << trials << " more trials)" << endl;
 
@@ -887,7 +886,7 @@ namespace Learner
 
                 if (trials == 0)
                 {
-                    cout << "converged" << endl;
+                    cout << "==> converged" << endl;
                     return true;
                 }
             }

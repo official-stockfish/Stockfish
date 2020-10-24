@@ -100,11 +100,11 @@ namespace Eval::NNUE {
                 std::begin(max_activations_), std::end(max_activations_));
 
             std::cout << "INFO (check_health):"
-                      << " layer = " << LayerType::kLayerIndex
-                      << " , name = " << LayerType::get_name()
+                      << " layer " << LayerType::kLayerIndex
+                      << " - " << LayerType::get_name()
                       << std::endl;
 
-            std::cout << "--> largest min activation = " << largest_min_activation
+            std::cout << "==> largest min activation = " << largest_min_activation
                       << " , smallest max activation = " << smallest_max_activation
                       << std::endl;
 

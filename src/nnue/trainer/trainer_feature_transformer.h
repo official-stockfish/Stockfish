@@ -331,11 +331,11 @@ namespace Eval::NNUE {
         // Check if there are any problems with learning
         void check_health() {
             std::cout << "INFO (check_health):"
-                      << " layer = " << LayerType::kLayerIndex
-                      << " , name = " << LayerType::get_name()
+                      << " layer " << LayerType::kLayerIndex
+                      << " - " << LayerType::get_name()
                       << std::endl;
 
-            std::cout << "--> observed " << observed_features.count()
+            std::cout << "==> observed " << observed_features.count()
                       << " (out of " << kInputDimensions << ") features"
                       << std::endl;
 
@@ -343,7 +343,7 @@ namespace Eval::NNUE {
                 std::numeric_limits<typename LayerType::WeightType>::max() /
                 kWeightScale;
 
-            std::cout << "--> (min, max) of pre-activations = "
+            std::cout << "==> (min, max) of pre-activations = "
                       << min_pre_activation_ << ", "
                       << max_pre_activation_ << " (limit = "
                       << kPreActivationLimit << ")"
@@ -354,7 +354,7 @@ namespace Eval::NNUE {
             const auto smallest_max_activation = *std::min_element(
                 std::begin(max_activations_), std::end(max_activations_));
 
-            std::cout << "--> largest min activation = " << largest_min_activation
+            std::cout << "==> largest min activation = " << largest_min_activation
                       << " , smallest max activation = " << smallest_max_activation
                       << std::endl;
 
