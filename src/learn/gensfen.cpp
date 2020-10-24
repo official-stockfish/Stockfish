@@ -61,6 +61,8 @@ namespace Learner
 
         ~SfenWriter()
         {
+            flush();
+
             finished = true;
             file_worker_thread.join();
             output_file_stream.reset();
@@ -105,8 +107,16 @@ namespace Learner
             }
         }
 
+        void flush()
+        {
+            for (size_t i = 0; i < sfen_buffers.size(); ++i)
+            {
+                flush(i);
+            }
+        }
+
         // Move what remains in the buffer for your thread to a buffer for writing to a file.
-        void finalize(size_t thread_id)
+        void flush(size_t thread_id)
         {
             std::unique_lock<std::mutex> lk(mutex);
 
@@ -356,6 +366,8 @@ namespace Learner
             gensfen_worker(th, counter, limit);
         });
         Threads.wait_for_workers_finished();
+
+        sfen_writer.flush();
 
         if (limit % REPORT_STATS_EVERY != 0)
         {
@@ -842,8 +854,6 @@ namespace Learner
 
             }
         }
-
-        sfen_writer.finalize(th.thread_idx());
     }
 
     void set_gensfen_search_limits()
