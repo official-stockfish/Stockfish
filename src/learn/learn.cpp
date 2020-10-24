@@ -456,6 +456,8 @@ namespace Learner
             latest_loss_sum = 0.0;
             latest_loss_count = 0;
             total_done = 0;
+            trials = params.newbob_num_trials;
+            dir_number = 0;
         }
 
         void learn(uint64_t epochs);
@@ -480,6 +482,8 @@ namespace Learner
 
         Value get_shallow_value(Position& pos);
 
+        bool check_progress();
+
         // save merit function parameters to a file
         bool save(bool is_final = false);
 
@@ -501,6 +505,9 @@ namespace Learner
         double best_loss;
         double latest_loss_sum;
         uint64_t latest_loss_count;
+
+        int trials;
+        int dir_number;
 
         // For calculation of learning data loss
         AtomicLoss learn_loss_sum;
@@ -873,11 +880,83 @@ namespace Learner
         return shallow_value;
     }
 
+    bool LearnerThink::check_progress()
+    {
+        auto out = sync_region_cout.new_region();
+
+        const double latest_loss = latest_loss_sum / latest_loss_count;
+        bool converged = false;
+        latest_loss_sum = 0.0;
+        latest_loss_count = 0;
+
+        auto drop_lr = [&]() {
+            last_lr_drop = total_done;
+
+            out
+                << "  - reducing learning rate from " << params.learning_rate
+                << " to " << (params.learning_rate * params.newbob_decay)
+                << " (" << trials << " more trials)" << endl;
+
+            params.learning_rate *= params.newbob_decay;
+        };
+
+        auto accept = [&]() {
+            out << "  - loss = " << latest_loss << " < best (" << best_loss << "), accepted" << endl;
+
+            best_loss = latest_loss;
+            trials = params.newbob_num_trials;
+        };
+
+        auto reject = [&]() {
+            out << "  - loss = " << latest_loss << " >= best (" << best_loss << "), rejected" << endl;
+
+            --trials;
+            if (trials > 0)
+            {
+                drop_lr();
+                return false;
+            }
+            else
+            {
+                return true;
+            }
+        };
+
+        out << "INFO (learning_rate):" << endl;
+
+        if (params.auto_lr_drop)
+        {
+            accept();
+
+            if (total_done >= last_lr_drop + params.auto_lr_drop)
+            {
+                drop_lr();
+            }
+        }
+        else if (latest_loss < best_loss)
+        {
+            accept();
+        }
+        else
+        {
+            converged = reject();
+        }
+
+        if (converged)
+        {
+            out << "  - converged" << endl;
+        }
+
+        return converged;
+    }
+
     // Write evaluation function file.
     bool LearnerThink::save(bool is_final)
     {
         // Each time you save, change the extension part of the file name like "0","1","2",..
         // (Because I want to compare the winning rate for each evaluation function parameter later)
+
+        bool converged = false;
 
         if (params.save_only_once)
         {
@@ -888,65 +967,22 @@ namespace Learner
         else if (is_final)
         {
             Eval::NNUE::save_eval("final");
-            return true;
+            converged = true;
         }
         else
         {
-            static int dir_number = 0;
+            // TODO: consider naming the output directory by epoch.
             const std::string dir_name = std::to_string(dir_number++);
             Eval::NNUE::save_eval(dir_name);
 
-            if (params.newbob_decay != 1.0 && latest_loss_count > 0) {
-                static int trials = params.newbob_num_trials;
-                const double latest_loss = latest_loss_sum / latest_loss_count;
-                latest_loss_sum = 0.0;
-                latest_loss_count = 0;
-                cout << "INFO (learning_rate):" << endl;
-                cout << "  - loss = " << latest_loss;
-                auto tot = total_done;
-                if (params.auto_lr_drop)
-                {
-                    cout << " < best (" << best_loss << "), accepted" << endl;
-                    best_loss = latest_loss;
-                    trials = params.newbob_num_trials;
-
-                    if (tot >= last_lr_drop + params.auto_lr_drop)
-                    {
-                        last_lr_drop = tot;
-                        params.learning_rate *= params.newbob_decay;
-                    }
-                }
-                else if (latest_loss < best_loss)
-                {
-                    cout << " < best (" << best_loss << "), accepted" << endl;
-                    best_loss = latest_loss;
-                    trials = params.newbob_num_trials;
-                }
-                else
-                {
-                    cout << " >= best (" << best_loss << "), rejected" << endl;
-
-                    if (--trials > 0 && !is_final)
-                    {
-                        cout
-                            << "  - reducing learning rate from " << params.learning_rate
-                            << " to " << (params.learning_rate * params.newbob_decay)
-                            << " (" << trials << " more trials)" << endl;
-
-                        params.learning_rate *= params.newbob_decay;
-                    }
-                }
-
+            if (params.newbob_decay != 1.0 && latest_loss_count > 0)
+            {
+                converged = check_progress();
                 params.best_nn_directory = Path::combine((std::string)Options["EvalSaveDir"], dir_name);
-
-                if (trials == 0)
-                {
-                    cout << "  - converged" << endl;
-                    return true;
-                }
             }
         }
-        return false;
+
+        return converged;
     }
 
     // Learning from the generated game record

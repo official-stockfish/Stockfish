@@ -280,6 +280,6 @@ namespace Eval::NNUE {
 #ifndef NDEBUG
         assert(result);
 #endif
-        out << "INFO (save_eval): Saving current evaluation file in " << eval_dir << std::endl;
+        out << "INFO (save_eval): Finished saving evaluation file in " << eval_dir << std::endl;
     }
 }  // namespace Eval::NNUE
