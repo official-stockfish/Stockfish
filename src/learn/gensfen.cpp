@@ -219,12 +219,8 @@ namespace Learner
         uint64_t sfen_write_count_current_file = 0;
     };
 
-    // -----------------------------------
-    // worker that creates the game record (for each thread)
-    // -----------------------------------
-
     // Class to generate sfen with multiple threads
-    struct MultiThinkGenSfen
+    struct Gensfen
     {
         struct Params
         {
@@ -305,7 +301,7 @@ namespace Learner
         static constexpr uint64_t REPORT_STATS_EVERY = 200000;
         static_assert(REPORT_STATS_EVERY % REPORT_DOT_EVERY == 0);
 
-        MultiThinkGenSfen(
+        Gensfen(
             const Params& prm
         ) :
             params(prm),
@@ -318,7 +314,7 @@ namespace Learner
             std::cout << prng << std::endl;
         }
 
-        void gensfen(uint64_t limit);
+        void generate(uint64_t limit);
 
     private:
         Params params;
@@ -335,10 +331,14 @@ namespace Learner
 
         vector<Key> hash; // 64MB*sizeof(HASH_KEY) = 512MB
 
-        void gensfen_worker(
+        static void set_gensfen_search_limits();
+
+        void generate_worker(
             Thread& th,
             std::atomic<uint64_t>& counter,
             uint64_t limit);
+
+        bool was_seen_before(const Position& pos);
 
         optional<int8_t> get_current_game_result(
             Position& pos,
@@ -346,11 +346,11 @@ namespace Learner
 
         vector<uint8_t> generate_random_move_flags();
 
-        bool was_seen_before(const Position& pos);
-
-        void report(uint64_t done, uint64_t new_done);
-
-        void maybe_report(uint64_t done);
+        optional<Move> choose_random_move(
+            Position& pos,
+            std::vector<uint8_t>& random_move_flag,
+            int ply,
+            int& random_move_c);
 
         bool commit_psv(
             Thread& th,
@@ -359,20 +359,39 @@ namespace Learner
             std::atomic<uint64_t>& counter,
             uint64_t limit);
 
-        optional<Move> choose_random_move(
-            Position& pos,
-            std::vector<uint8_t>& random_move_flag,
-            int ply,
-            int& random_move_c);
+        void report(uint64_t done, uint64_t new_done);
+
+        void maybe_report(uint64_t done);
     };
 
-    void MultiThinkGenSfen::gensfen(uint64_t limit)
+    void Gensfen::set_gensfen_search_limits()
+    {
+        // About Search::Limits
+        // Be careful because this member variable is global and affects other threads.
+        auto& limits = Search::Limits;
+
+        // Make the search equivalent to the "go infinite" command. (Because it is troublesome if time management is done)
+        limits.infinite = true;
+
+        // Since PV is an obstacle when displayed, erase it.
+        limits.silent = true;
+
+        // If you use this, it will be compared with the accumulated nodes of each thread. Therefore, do not use it.
+        limits.nodes = 0;
+
+        // depth is also processed by the one passed as an argument of Learner::search().
+        limits.depth = 0;
+    }
+
+    void Gensfen::generate(uint64_t limit)
     {
         last_stats_report_time = 0;
 
+        set_gensfen_search_limits();
+
         std::atomic<uint64_t> counter{0};
         Threads.execute_with_workers([&counter, limit, this](Thread& th) {
-            gensfen_worker(th, counter, limit);
+            generate_worker(th, counter, limit);
         });
         Threads.wait_for_workers_finished();
 
@@ -386,7 +405,154 @@ namespace Learner
         std::cout << std::endl;
     }
 
-    optional<int8_t> MultiThinkGenSfen::get_current_game_result(
+    void Gensfen::generate_worker(
+        Thread& th,
+        std::atomic<uint64_t>& counter,
+        uint64_t limit)
+    {
+        // For the time being, it will be treated as a draw
+        // at the maximum number of steps to write.
+        // Maximum StateInfo + Search PV to advance to leaf buffer
+        std::vector<StateInfo, AlignedAllocator<StateInfo>> states(
+            params.write_maxply + MAX_PLY /* == search_depth_min + α */);
+
+        StateInfo si;
+
+        // end flag
+        bool quit = false;
+
+        // repeat until the specified number of times
+        while (!quit)
+        {
+            // It is necessary to set a dependent thread for Position.
+            // When parallelizing, Threads (since this is a vector<Thread*>,
+            // Do the same for up to Threads[0]...Threads[thread_num-1].
+            auto& pos = th.rootPos;
+            pos.set(StartFEN, false, &si, &th);
+
+            int resign_counter = 0;
+            bool should_resign = prng.rand(10) > 1;
+            // Vector for holding the sfens in the current simulated game.
+            PSVector packed_sfens;
+            packed_sfens.reserve(params.write_maxply + MAX_PLY);
+
+            // Precomputed flags. Used internally by choose_random_move.
+            vector<uint8_t> random_move_flag = generate_random_move_flags();
+
+            // A counter that keeps track of the number of random moves
+            // When random_move_minply == -1, random moves are
+            // performed continuously, so use it at this time.
+            // Used internally by choose_random_move.
+            int actual_random_move_count = 0;
+
+            // Save history of move scores for adjudication
+            vector<int> move_hist_scores;
+
+            auto flush_psv = [&](int8_t result) {
+                quit = commit_psv(th, packed_sfens, result, counter, limit);
+            };
+
+            for (int ply = 0; ; ++ply)
+            {
+                // Current search depth
+                const int depth = params.search_depth_min + (int)prng.rand(params.search_depth_max - params.search_depth_min + 1);
+
+                // Starting search calls init_for_search
+                auto [search_value, search_pv] = Search::search(pos, depth, 1, params.nodes);
+
+                // This has to be performed after search because it needs to know
+                // rootMoves which are filled in init_for_search.
+                const auto result = get_current_game_result(pos, move_hist_scores);
+                if (result.has_value())
+                {
+                    flush_psv(result.value());
+                    break;
+                }
+
+                // Always adjudivate by eval limit.
+                // Also because of this we don't have to check for TB/MATE scores
+                if (abs(search_value) >= params.eval_limit)
+                {
+                    resign_counter++;
+                    if ((should_resign && resign_counter >= 4) || abs(search_value) >= VALUE_KNOWN_WIN) {
+                        flush_psv((search_value >= params.eval_limit) ? 1 : -1);
+                        break;
+                    }
+                }
+                else
+                {
+                    resign_counter = 0;
+                }
+
+                // In case there is no PV and the game was not ended here
+                // there is nothing we can do, we can't continue the game,
+                // we don't know the result, so discard this game.
+                if (search_pv.empty())
+                {
+                    break;
+                }
+
+                // Save the move score for adjudication.
+                move_hist_scores.push_back(search_value);
+
+                // Discard stuff before write_minply is reached
+                // because it can harm training due to overfitting.
+                // Initial positions would be too common.
+                if (ply >= params.write_minply && !was_seen_before(pos))
+                {
+                    packed_sfens.emplace_back(PackedSfenValue());
+
+                    auto& psv = packed_sfens.back();
+
+                    // Here we only write the position data.
+                    // Result is added after the whole game is done.
+                    pos.sfen_pack(psv.sfen);
+
+                    psv.score = search_value;
+                    psv.gamePly = ply;
+                    psv.move = search_pv[0];
+                }
+
+                // Update the next move according to best search result or random move.
+                auto random_move = choose_random_move(pos, random_move_flag, ply, actual_random_move_count);
+                const Move next_move = random_move.has_value() ? *random_move : search_pv[0];
+
+                // We don't have the whole game yet, but it ended,
+                // so the writing process ends and the next game starts.
+                // This shouldn't really happen.
+                if (!is_ok(next_move))
+                {
+                    break;
+                }
+
+                // Do move.
+                pos.do_move(next_move, states[ply]);
+            }
+        }
+    }
+
+    bool Gensfen::was_seen_before(const Position& pos)
+    {
+        // Look into the position hashtable to see if the same
+        // position was seen before.
+        // This is a good heuristic to exlude already seen
+        // positions without many false positives.
+        auto key = pos.key();
+        auto hash_index = (size_t)(key & (GENSFEN_HASH_SIZE - 1));
+        auto old_key = hash[hash_index];
+        if (key == old_key)
+        {
+            return true;
+        }
+        else
+        {
+            // Replace with the current key.
+            hash[hash_index] = key;
+            return false;
+        }
+    }
+
+    optional<int8_t> Gensfen::get_current_game_result(
         Position& pos,
         const vector<int>& move_hist_scores) const
     {
@@ -504,94 +670,44 @@ namespace Learner
         return nullopt;
     }
 
-    void MultiThinkGenSfen::report(uint64_t done, uint64_t new_done)
+    vector<uint8_t> Gensfen::generate_random_move_flags()
     {
-        const auto now_time = now();
-        const TimePoint elapsed = now_time - last_stats_report_time + 1;
+        vector<uint8_t> random_move_flag;
 
-        out
-            << endl
-            << done << " sfens, "
-            << new_done * 1000 / elapsed << " sfens/second, "
-            << "at " << now_string() << sync_endl;
+        // Depending on random move selection parameters setup
+        // the array of flags that indicates whether a random move
+        // be taken at a given ply.
 
-        last_stats_report_time = now_time;
+        // Make an array like a[0] = 0 ,a[1] = 1, ...
+        // Fisher-Yates shuffle and take out the first N items.
+        // Actually, I only want N pieces, so I only need
+        // to shuffle the first N pieces with Fisher-Yates.
 
-        out = sync_region_cout.new_region();
+        vector<int> a;
+        a.reserve((size_t)params.random_move_maxply);
+
+        // random_move_minply ,random_move_maxply is specified by 1 origin,
+        // Note that we are handling 0 origin here.
+        for (int i = std::max(params.random_move_minply - 1, 0); i < params.random_move_maxply; ++i)
+        {
+            a.push_back(i);
+        }
+
+        // In case of Apery random move, insert() may be called random_move_count times.
+        // Reserve only the size considering it.
+        random_move_flag.resize((size_t)params.random_move_maxply + params.random_move_count);
+
+        // A random move that exceeds the size() of a[] cannot be applied, so limit it.
+        for (int i = 0; i < std::min(params.random_move_count, (int)a.size()); ++i)
+        {
+            swap(a[i], a[prng.rand((uint64_t)a.size() - i) + i]);
+            random_move_flag[a[i]] = true;
+        }
+
+        return random_move_flag;
     }
 
-    void MultiThinkGenSfen::maybe_report(uint64_t done)
-    {
-        if (done % REPORT_DOT_EVERY == 0)
-        {
-            std::lock_guard lock(stats_mutex);
-
-            if (last_stats_report_time == 0)
-            {
-                last_stats_report_time = now();
-                out = sync_region_cout.new_region();
-            }
-
-            if (done != 0)
-            {
-                out << '.';
-
-                if (done % REPORT_STATS_EVERY == 0)
-                {
-                    report(done, REPORT_STATS_EVERY);
-                }
-            }
-        }
-    }
-
-    // Write out the phases loaded in sfens to a file.
-    // lastTurnIsWin: win/loss in the next phase after the final phase in sfens
-    // 1 when winning. -1 when losing. Pass 0 for a draw.
-    // Return value: true if the specified number of
-    // sfens has already been reached and the process ends.
-    bool MultiThinkGenSfen::commit_psv(
-        Thread& th,
-        PSVector& sfens,
-        int8_t lastTurnIsWin,
-        std::atomic<uint64_t>& counter,
-        uint64_t limit)
-    {
-        if (!params.write_out_draw_game_in_training_data_generation && lastTurnIsWin == 0)
-        {
-            // We didn't write anything so why quit.
-            return false;
-        }
-
-        int8_t is_win = lastTurnIsWin;
-
-        // From the final stage (one step before) to the first stage, give information on the outcome of the game for each stage.
-        // The phases stored in sfens are assumed to be continuous (in order).
-        for (auto it = sfens.rbegin(); it != sfens.rend(); ++it)
-        {
-            // If is_win == 0 (draw), multiply by -1 and it will remain 0 (draw)
-            is_win = -is_win;
-            it->game_result = is_win;
-        }
-
-        // Write sfens in move order to make potential compression easier
-        for (auto& sfen : sfens)
-        {
-            // Return true if there is already enough data generated.
-            const auto iter = counter.fetch_add(1);
-            if (iter >= limit)
-                return true;
-
-            // because `iter` was done, now we do one more
-            maybe_report(iter + 1);
-
-            // Write out one sfen.
-            sfen_writer.write(th.thread_idx(), sfen);
-        }
-
-        return false;
-    }
-
-    optional<Move> MultiThinkGenSfen::choose_random_move(
+    optional<Move> Gensfen::choose_random_move(
         Position& pos,
         std::vector<uint8_t>& random_move_flag,
         int ply,
@@ -682,214 +798,90 @@ namespace Learner
         return random_move;
     }
 
-    vector<uint8_t> MultiThinkGenSfen::generate_random_move_flags()
-    {
-        vector<uint8_t> random_move_flag;
-
-        // Depending on random move selection parameters setup
-        // the array of flags that indicates whether a random move
-        // be taken at a given ply.
-
-        // Make an array like a[0] = 0 ,a[1] = 1, ...
-        // Fisher-Yates shuffle and take out the first N items.
-        // Actually, I only want N pieces, so I only need
-        // to shuffle the first N pieces with Fisher-Yates.
-
-        vector<int> a;
-        a.reserve((size_t)params.random_move_maxply);
-
-        // random_move_minply ,random_move_maxply is specified by 1 origin,
-        // Note that we are handling 0 origin here.
-        for (int i = std::max(params.random_move_minply - 1, 0); i < params.random_move_maxply; ++i)
-        {
-            a.push_back(i);
-        }
-
-        // In case of Apery random move, insert() may be called random_move_count times.
-        // Reserve only the size considering it.
-        random_move_flag.resize((size_t)params.random_move_maxply + params.random_move_count);
-
-        // A random move that exceeds the size() of a[] cannot be applied, so limit it.
-        for (int i = 0; i < std::min(params.random_move_count, (int)a.size()); ++i)
-        {
-            swap(a[i], a[prng.rand((uint64_t)a.size() - i) + i]);
-            random_move_flag[a[i]] = true;
-        }
-
-        return random_move_flag;
-    }
-
-    bool MultiThinkGenSfen::was_seen_before(const Position& pos)
-    {
-        // Look into the position hashtable to see if the same
-        // position was seen before.
-        // This is a good heuristic to exlude already seen
-        // positions without many false positives.
-        auto key = pos.key();
-        auto hash_index = (size_t)(key & (GENSFEN_HASH_SIZE - 1));
-        auto old_key = hash[hash_index];
-        if (key == old_key)
-        {
-            return true;
-        }
-        else
-        {
-            // Replace with the current key.
-            hash[hash_index] = key;
-            return false;
-        }
-    }
-
-    // thread_id = 0..Threads.size()-1
-    void MultiThinkGenSfen::gensfen_worker(
+    // Write out the phases loaded in sfens to a file.
+    // result: win/loss in the next phase after the final phase in sfens
+    // 1 when winning. -1 when losing. Pass 0 for a draw.
+    // Return value: true if the specified number of
+    // sfens has already been reached and the process ends.
+    bool Gensfen::commit_psv(
         Thread& th,
+        PSVector& sfens,
+        int8_t result,
         std::atomic<uint64_t>& counter,
         uint64_t limit)
     {
-        // For the time being, it will be treated as a draw
-        // at the maximum number of steps to write.
-        // Maximum StateInfo + Search PV to advance to leaf buffer
-        std::vector<StateInfo, AlignedAllocator<StateInfo>> states(
-            params.write_maxply + MAX_PLY /* == search_depth_min + α */);
-
-        StateInfo si;
-
-        // end flag
-        bool quit = false;
-
-        // repeat until the specified number of times
-        while (!quit)
+        if (!params.write_out_draw_game_in_training_data_generation && result == 0)
         {
-            // It is necessary to set a dependent thread for Position.
-            // When parallelizing, Threads (since this is a vector<Thread*>,
-            // Do the same for up to Threads[0]...Threads[thread_num-1].
-            auto& pos = th.rootPos;
-            pos.set(StartFEN, false, &si, &th);
+            // We didn't write anything so why quit.
+            return false;
+        }
 
-            int resign_counter = 0;
-            bool should_resign = prng.rand(10) > 1;
-            // Vector for holding the sfens in the current simulated game.
-            PSVector a_psv;
-            a_psv.reserve(params.write_maxply + MAX_PLY);
+        // From the final stage (one step before) to the first stage, give information on the outcome of the game for each stage.
+        // The phases stored in sfens are assumed to be continuous (in order).
+        for (auto it = sfens.rbegin(); it != sfens.rend(); ++it)
+        {
+            // If is_win == 0 (draw), multiply by -1 and it will remain 0 (draw)
+            result = -result;
+            it->game_result = result;
+        }
 
-            // Precomputed flags. Used internally by choose_random_move.
-            vector<uint8_t> random_move_flag = generate_random_move_flags();
+        // Write sfens in move order to make potential compression easier
+        for (auto& sfen : sfens)
+        {
+            // Return true if there is already enough data generated.
+            const auto iter = counter.fetch_add(1);
+            if (iter >= limit)
+                return true;
 
-            // A counter that keeps track of the number of random moves
-            // When random_move_minply == -1, random moves are
-            // performed continuously, so use it at this time.
-            // Used internally by choose_random_move.
-            int actual_random_move_count = 0;
+            // because `iter` was done, now we do one more
+            maybe_report(iter + 1);
 
-            // Save history of move scores for adjudication
-            vector<int> move_hist_scores;
+            // Write out one sfen.
+            sfen_writer.write(th.thread_idx(), sfen);
+        }
 
-            auto flush_psv = [&](int8_t result) {
-                quit = commit_psv(th, a_psv, result, counter, limit);
-            };
+        return false;
+    }
 
-            for (int ply = 0; ; ++ply)
+    void Gensfen::report(uint64_t done, uint64_t new_done)
+    {
+        const auto now_time = now();
+        const TimePoint elapsed = now_time - last_stats_report_time + 1;
+
+        out
+            << endl
+            << done << " sfens, "
+            << new_done * 1000 / elapsed << " sfens/second, "
+            << "at " << now_string() << sync_endl;
+
+        last_stats_report_time = now_time;
+
+        out = sync_region_cout.new_region();
+    }
+
+    void Gensfen::maybe_report(uint64_t done)
+    {
+        if (done % REPORT_DOT_EVERY == 0)
+        {
+            std::lock_guard lock(stats_mutex);
+
+            if (last_stats_report_time == 0)
             {
-                // Current search depth
-                const int depth = params.search_depth_min + (int)prng.rand(params.search_depth_max - params.search_depth_min + 1);
+                last_stats_report_time = now();
+                out = sync_region_cout.new_region();
+            }
 
-                // Starting search calls init_for_search
-                auto [search_value, search_pv] = Search::search(pos, depth, 1, params.nodes);
+            if (done != 0)
+            {
+                out << '.';
 
-                // This has to be performed after search because it needs to know
-                // rootMoves which are filled in init_for_search.
-                const auto result = get_current_game_result(pos, move_hist_scores);
-                if (result.has_value())
+                if (done % REPORT_STATS_EVERY == 0)
                 {
-                    flush_psv(result.value());
-                    break;
+                    report(done, REPORT_STATS_EVERY);
                 }
-
-                // Always adjudivate by eval limit.
-                // Also because of this we don't have to check for TB/MATE scores
-                if (abs(search_value) >= params.eval_limit)
-                {
-                    resign_counter++;
-                    if ((should_resign && resign_counter >= 4) || abs(search_value) >= VALUE_KNOWN_WIN) {
-                        flush_psv((search_value >= params.eval_limit) ? 1 : -1);
-                        break;
-                    }
-                }
-                else
-                {
-                    resign_counter = 0;
-                }
-
-                // In case there is no PV and the game was not ended here
-                // there is nothing we can do, we can't continue the game,
-                // we don't know the result, so discard this game.
-                if (search_pv.empty())
-                {
-                    break;
-                }
-
-                // Save the move score for adjudication.
-                move_hist_scores.push_back(search_value);
-
-                // Discard stuff before write_minply is reached
-                // because it can harm training due to overfitting.
-                // Initial positions would be too common.
-                if (ply >= params.write_minply && !was_seen_before(pos))
-                {
-                    a_psv.emplace_back(PackedSfenValue());
-
-                    auto& psv = a_psv.back();
-
-                    // Here we only write the position data.
-                    // Result is added after the whole game is done.
-                    pos.sfen_pack(psv.sfen);
-
-                    psv.score = search_value;
-                    psv.gamePly = ply;
-                    psv.move = search_pv[0];
-                }
-
-                // Update the next move according to best search result or random move.
-                auto random_move = choose_random_move(pos, random_move_flag, ply, actual_random_move_count);
-                const Move next_move = random_move.has_value() ? *random_move : search_pv[0];
-
-                // We don't have the whole game yet, but it ended,
-                // so the writing process ends and the next game starts.
-                // This shouldn't really happen.
-                if (!is_ok(next_move))
-                {
-                    break;
-                }
-
-                // Do move.
-                pos.do_move(next_move, states[ply]);
-
             }
         }
     }
-
-    void set_gensfen_search_limits()
-    {
-        // About Search::Limits
-        // Be careful because this member variable is global and affects other threads.
-        auto& limits = Search::Limits;
-
-        // Make the search equivalent to the "go infinite" command. (Because it is troublesome if time management is done)
-        limits.infinite = true;
-
-        // Since PV is an obstacle when displayed, erase it.
-        limits.silent = true;
-
-        // If you use this, it will be compared with the accumulated nodes of each thread. Therefore, do not use it.
-        limits.nodes = 0;
-
-        // depth is also processed by the one passed as an argument of Learner::search().
-        limits.depth = 0;
-    }
-
-    // -----------------------------------
-    // Command to generate a game record (master thread)
-    // -----------------------------------
 
     // Command to generate a game record
     void gensfen(istringstream& is)
@@ -897,7 +889,7 @@ namespace Learner
         // Number of generated game records default = 8 billion phases (Ponanza specification)
         uint64_t loop_max = 8000000000UL;
 
-        MultiThinkGenSfen::Params params;
+        Gensfen::Params params;
 
         // Add a random number to the end of the file name.
         bool random_file_name = false;
@@ -978,9 +970,7 @@ namespace Learner
             else if (sfen_format == "binpack")
                 params.sfen_format = SfenOutputType::Binpack;
             else
-            {
                 cout << "WARNING: Unknown sfen format `" << sfen_format << "`. Using bin\n";
-            }
         }
 
         if (random_file_name)
@@ -988,9 +978,11 @@ namespace Learner
             // Give a random number to output_file_name at this point.
             // Do not use std::random_device().  Because it always the same integers on MinGW.
             PRNG r(params.seed);
+
             // Just in case, reassign the random numbers.
             for (int i = 0; i < 10; ++i)
                 r.rand(1);
+
             auto to_hex = [](uint64_t u) {
                 std::stringstream ss;
                 ss << std::hex << u;
@@ -1034,10 +1026,8 @@ namespace Learner
 
         Threads.main()->ponder = false;
 
-        set_gensfen_search_limits();
-
-        MultiThinkGenSfen multi_think(params);
-        multi_think.gensfen(loop_max);
+        Gensfen gensfen(params);
+        gensfen.generate(loop_max);
 
         std::cout << "INFO: Gensfen finished." << endl;
     }
