@@ -74,6 +74,10 @@ Currently the following options are available:
 
 `validation_set_file_name` - path to the file with training data to be used for validation (loss computation and move accuracy)
 
+`sfen_read_size` - the number of sfens to always keep in the buffer. Default: 10000000 (10M)
+
+`thread_buffer_size` - the number of sfens to copy at once to each thread requesting more sfens for learning. Default: 10000
+
 `seed` - seed for the PRNG. Can be either a number or a string. If it's a string then its hash will be used. If not specified then the current time will be used.
 
 ## Legacy subcommands and parameters
