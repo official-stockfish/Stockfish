@@ -61,6 +61,8 @@ typedef bool(*fun3_t)(HANDLE, CONST GROUP_AFFINITY*, PGROUP_AFFINITY);
 
 using namespace std;
 
+SynchronizedRegionLogger sync_region_cout(std::cout);
+
 namespace {
 
 /// Version number. If Version is left empty, then compile date in the format

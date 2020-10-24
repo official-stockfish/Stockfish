@@ -31,6 +31,7 @@
 #include <cmath>
 #include <cctype>
 #include <sstream>
+#include <deque>
 
 #include "types.h"
 
@@ -69,6 +70,183 @@ std::ostream& operator<<(std::ostream&, SyncCout);
 
 #define sync_cout std::cout << IO_LOCK
 #define sync_endl std::endl << IO_UNLOCK
+
+// This logger allows printing many parts in a region atomically
+// but doesn't block the threads trying to append to other regions.
+// Instead if some region tries to pring while other region holds
+// the lock the messages are queued to be printed as soon as the
+// current region releases the lock.
+struct SynchronizedRegionLogger
+{
+private:
+  using RegionId = std::uint64_t;
+
+  struct RegionLock
+  {
+    RegionLock(SynchronizedRegionLogger& log, RegionId id) :
+      logger(&log), region_id(id), is_held(true)
+    {
+    }
+
+    RegionLock(const RegionLock&) = delete;
+    RegionLock& operator=(const RegionLock&) = delete;
+
+    RegionLock(RegionLock&& other) :
+      logger(other.logger), region_id(other.region_id), is_held(other.is_held)
+    {
+      other.logger = nullptr;
+      other.is_held = false;
+    }
+
+    RegionLock& operator=(RegionLock&& other) {
+      if (is_held && logger != nullptr)
+      {
+        logger->release_region(region_id);
+      }
+
+      logger = other.logger;
+      region_id = other.region_id;
+      is_held = other.is_held;
+
+      other.is_held = false;
+
+      return *this;
+    }
+
+    ~RegionLock() { unlock(); }
+
+    void unlock() {
+      if (is_held) {
+        is_held = false;
+
+        if (logger != nullptr)
+          logger->release_region(region_id);
+      }
+    }
+
+    template <typename T>
+    RegionLock& operator << (const T& value) {
+      if (logger != nullptr)
+        logger->write(region_id, value);
+
+      return *this;
+    }
+
+  private:
+    SynchronizedRegionLogger* logger;
+    RegionId region_id;
+    bool is_held;
+  };
+
+  struct Region
+  {
+    Region(RegionId rid) : id(rid), is_held(true) {}
+
+    std::vector<std::string> pending_parts;
+    RegionId id;
+    bool is_held;
+  };
+
+  RegionId init_next_region()
+  {
+    static RegionId next_id = 0;
+
+    std::lock_guard lock(mutex);
+
+    const auto id = next_id++;
+    regions.emplace_back(id);
+
+    return id;
+  }
+
+  template <typename T>
+  void write(RegionId id, const T& value) {
+    std::lock_guard lock(mutex);
+
+    if (regions.empty())
+      return;
+
+    if (id == regions.front().id) {
+      // We can just directly print to the output because
+      // we are at the front of the region queue.
+      out << value;
+    } else {
+      // We have to schedule the print until previous regions are
+      // processed
+      auto* region = find_region_nolock(id);
+      if (region == nullptr)
+        return;
+
+      std::stringstream ss;
+      ss << value;
+      region->pending_parts.emplace_back(std::move(ss).str());
+    }
+  }
+
+  std::ostream& out;
+
+  std::deque<Region> regions;
+
+  std::mutex mutex;
+
+  Region* find_region_nolock(RegionId id) {
+    // Linear search because the amount of concurrent regions should be small.
+    auto it = std::find_if(
+      regions.begin(),
+      regions.end(),
+      [id](const Region& r) { return r.id == id; });
+
+    if (it == regions.end())
+      return nullptr;
+    else
+      return &*it;
+  }
+
+  void release_region(RegionId id) {
+    std::lock_guard lock(mutex);
+
+    auto* region = find_region_nolock(id);
+    if (region == nullptr)
+      return;
+
+    region->is_held = false;
+
+    process_backlog_nolock();
+  }
+
+  void process_backlog_nolock()
+  {
+    while(!regions.empty()) {
+      auto& region = regions.front();
+
+      for(auto& part : region.pending_parts) {
+        out << part;
+      }
+
+      // If the region is still held then we don't
+      // want to start printing stuff from the next region.
+      if (region.is_held)
+        break;
+
+      regions.pop_front();
+    }
+  }
+
+public:
+
+  SynchronizedRegionLogger(std::ostream& s) :
+    out(s)
+  {
+  }
+
+  [[nodiscard]] RegionLock new_region() {
+    const auto id = init_next_region();
+    return RegionLock(*this, id);
+  }
+
+};
+
+extern SynchronizedRegionLogger sync_region_cout;
 
 
 /// xorshift64star Pseudo-Random Number Generator
