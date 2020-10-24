@@ -99,8 +99,13 @@ namespace Eval::NNUE {
             const auto smallest_max_activation = *std::min_element(
                 std::begin(max_activations_), std::end(max_activations_));
 
-            std::cout << "INFO: largest min activation = " << largest_min_activation
-                      << ", smallest max activation = " << smallest_max_activation
+            std::cout << "INFO (check_health):"
+                      << " layer = " << LayerType::kLayerIndex
+                      << " , name = " << LayerType::get_name()
+                      << std::endl;
+
+            std::cout << "--> largest min activation = " << largest_min_activation
+                      << " , smallest max activation = " << smallest_max_activation
                       << std::endl;
 
             std::fill(std::begin(min_activations_), std::end(min_activations_),

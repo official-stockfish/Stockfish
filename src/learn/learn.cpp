@@ -141,7 +141,7 @@ namespace Learner
             void print(const std::string& prefix, ostream& s) const
             {
                 s
-                    << "INFO: "
+                    << "--> "
                     << prefix << "_cross_entropy_eval = " << cross_entropy_eval / count
                     << " , " << prefix << "_cross_entropy_win = " << cross_entropy_win / count
                     << " , " << prefix << "_entropy_eval = " << entropy_eval / count
@@ -722,7 +722,7 @@ namespace Learner
 
         if (psv.size() && test_loss_sum.count > 0.0)
         {
-            cout << "INFO: norm = " << sum_norm
+            cout << "--> norm = " << sum_norm
                 << " , move accuracy = " << (move_accord_count * 100.0 / psv.size()) << "%"
                 << endl;
 
