@@ -124,6 +124,13 @@ private:
       }
     }
 
+    RegionLock& operator << (std::ostream&(*pManip)(std::ostream&)) {
+      if (logger != nullptr)
+        logger->write(region_id, pManip);
+
+      return *this;
+    }
+
     template <typename T>
     RegionLock& operator << (const T& value) {
       if (logger != nullptr)
@@ -157,6 +164,29 @@ private:
     regions.emplace_back(id);
 
     return id;
+  }
+
+  void write(RegionId id, std::ostream&(*pManip)(std::ostream&)) {
+    std::lock_guard lock(mutex);
+
+    if (regions.empty())
+      return;
+
+    if (id == regions.front().id) {
+      // We can just directly print to the output because
+      // we are at the front of the region queue.
+      out << *pManip;
+    } else {
+      // We have to schedule the print until previous regions are
+      // processed
+      auto* region = find_region_nolock(id);
+      if (region == nullptr)
+        return;
+
+      std::stringstream ss;
+      ss << *pManip;
+      region->pending_parts.emplace_back(std::move(ss).str());
+    }
   }
 
   template <typename T>
