@@ -432,6 +432,8 @@ namespace Learner
         // If true, do not dig the folder.
         bool save_only_once;
 
+        bool verbose;
+
         double newbob_decay;
         int newbob_num_trials;
         uint64_t auto_lr_drop;
@@ -644,7 +646,7 @@ namespace Learner
         // should be no real issues happening since
         // the read/write phases are isolated.
         atomic_thread_fence(memory_order_seq_cst);
-        Eval::NNUE::update_parameters();
+        Eval::NNUE::update_parameters(epoch, verbose);
         atomic_thread_fence(memory_order_seq_cst);
 
         if (++save_count * mini_batch_size >= eval_save_interval)
@@ -943,6 +945,8 @@ namespace Learner
         // Turn on if you want to pass a pre-shuffled file.
         bool no_shuffle = false;
 
+        bool verbose = false;
+
         global_learning_rate = 1.0;
 
         // elmo lambda
@@ -1070,6 +1074,7 @@ namespace Learner
                 UCI::setoption("PruneAtShallowDepth", "false");
                 UCI::setoption("EnableTranspositionTable", "false");
             }
+            else if (option == "verbose") verbose = true;
             else
             {
                 cout << "Unknown option: " << option << ". Ignoring.\n";
@@ -1190,6 +1195,8 @@ namespace Learner
 
         learn_think.mini_batch_size = mini_batch_size;
         learn_think.validation_set_file_name = validation_set_file_name;
+
+        learn_think.verbose = verbose;
 
         cout << "init done." << endl;
 

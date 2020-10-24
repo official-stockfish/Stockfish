@@ -173,7 +173,7 @@ namespace Eval::NNUE {
     }
 
     // update the evaluation function parameters
-    void update_parameters() {
+    void update_parameters(uint64_t epoch, bool verbose) {
         assert(batch_size > 0);
 
         const auto learning_rate = static_cast<LearnFloatType>(
@@ -186,7 +186,7 @@ namespace Eval::NNUE {
         double abs_discrete_eval_sum = 0.0;
         double gradient_norm = 0.0;
 
-        bool is_first_batch = true;
+        bool collect_stats = verbose;
 
         while (examples.size() >= batch_size) {
             std::vector<Example> batch(examples.end() - batch_size, examples.end());
@@ -207,7 +207,7 @@ namespace Eval::NNUE {
                 // The discrete eval will only be valid before first backpropagation,
                 // that is only for the first batch.
                 // Similarily we want only gradients from one batch.
-                if (is_first_batch)
+                if (collect_stats)
                 {
                     abs_eval_diff_sum += std::abs(discrete - shallow);
                     abs_discrete_eval_sum += std::abs(discrete);
@@ -217,19 +217,22 @@ namespace Eval::NNUE {
 
             trainer->backpropagate(gradients.data(), learning_rate);
 
-            is_first_batch = false;
+            collect_stats = false;
         }
 
-        const double avg_abs_eval_diff = abs_eval_diff_sum / batch_size;
-        const double avg_abs_discrete_eval = abs_discrete_eval_sum / batch_size;
+        if (verbose) {
+            const double avg_abs_eval_diff = abs_eval_diff_sum / batch_size;
+            const double avg_abs_discrete_eval = abs_discrete_eval_sum / batch_size;
 
-        std::cout << "INFO (update_weights):"
-            << " avg_abs(trainer_eval-nnue_eval) = " << avg_abs_eval_diff
-            << " , avg_abs(nnue_eval) = " << avg_abs_discrete_eval
-            << " , avg_relative_error = " << avg_abs_eval_diff / avg_abs_discrete_eval
-            << " , batch_size = " << batch_size
-            << " , grad_norm = " << gradient_norm
-            << std::endl;
+            std::cout << "INFO (update_parameters):"
+                << " epoch = " << epoch
+                << " , avg_abs(trainer_eval-nnue_eval) = " << avg_abs_eval_diff
+                << " , avg_abs(nnue_eval) = " << avg_abs_discrete_eval
+                << " , avg_relative_error = " << avg_abs_eval_diff / avg_abs_discrete_eval
+                << " , batch_size = " << batch_size
+                << " , grad_norm = " << gradient_norm
+                << std::endl;
+        }
 
         send_messages({{"quantize_parameters"}});
     }
