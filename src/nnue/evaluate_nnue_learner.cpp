@@ -224,7 +224,9 @@ namespace Eval::NNUE {
             const double avg_abs_eval_diff = abs_eval_diff_sum / batch_size;
             const double avg_abs_discrete_eval = abs_discrete_eval_sum / batch_size;
 
-            std::cout << "INFO (update_parameters):"
+            auto out = sync_region_cout.new_region();
+
+            out << "INFO (update_parameters):"
                 << " epoch = " << epoch
                 << " , avg_abs(trainer_eval-nnue_eval) = " << avg_abs_eval_diff
                 << " , avg_abs(nnue_eval) = " << avg_abs_discrete_eval

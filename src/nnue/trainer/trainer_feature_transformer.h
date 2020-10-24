@@ -330,33 +330,38 @@ namespace Eval::NNUE {
 
         // Check if there are any problems with learning
         void check_health() {
-            std::cout << "INFO (check_health):"
-                      << " layer " << LayerType::kLayerIndex
-                      << " - " << LayerType::get_name()
-                      << std::endl;
-
-            std::cout << "==> observed " << observed_features.count()
-                      << " (out of " << kInputDimensions << ") features"
-                      << std::endl;
 
             constexpr LearnFloatType kPreActivationLimit =
                 std::numeric_limits<typename LayerType::WeightType>::max() /
                 kWeightScale;
-
-            std::cout << "==> (min, max) of pre-activations = "
-                      << min_pre_activation_ << ", "
-                      << max_pre_activation_ << " (limit = "
-                      << kPreActivationLimit << ")"
-                      << std::endl;
 
             const auto largest_min_activation = *std::max_element(
                 std::begin(min_activations_), std::end(min_activations_));
             const auto smallest_max_activation = *std::min_element(
                 std::begin(max_activations_), std::end(max_activations_));
 
-            std::cout << "==> largest min activation = " << largest_min_activation
-                      << " , smallest max activation = " << smallest_max_activation
-                      << std::endl;
+            auto out = sync_region_cout.new_region();
+
+            out << "INFO (check_health):"
+                << " layer " << LayerType::kLayerIndex
+                << " - " << LayerType::get_name()
+                << std::endl;
+
+            out << "==> observed " << observed_features.count()
+                << " (out of " << kInputDimensions << ") features"
+                << std::endl;
+
+            out << "==> (min, max) of pre-activations = "
+                << min_pre_activation_ << ", "
+                << max_pre_activation_ << " (limit = "
+                << kPreActivationLimit << ")"
+                << std::endl;
+
+            out << "==> largest min activation = " << largest_min_activation
+                << " , smallest max activation = " << smallest_max_activation
+                << std::endl;
+
+            out.unlock();
 
             std::fill(std::begin(min_activations_), std::end(min_activations_),
                       std::numeric_limits<LearnFloatType>::max());

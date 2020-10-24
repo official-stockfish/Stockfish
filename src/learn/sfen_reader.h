@@ -209,18 +209,19 @@ namespace Learner{
 
                     sfen_input_stream = open_sfen_input_file(currentFilename);
 
+                    auto out = sync_region_cout.new_region();
                     if (sfen_input_stream == nullptr)
                     {
-                        std::cout << "INFO (sfen_reader): File does not exist: " << currentFilename << '\n';
+                        out << "INFO (sfen_reader): File does not exist: " << currentFilename << '\n';
                     }
                     else
                     {
-                        std::cout << "INFO (sfen_reader): Opened file for reading: " << currentFilename << '\n';
+                        out << "INFO (sfen_reader): Opened file for reading: " << currentFilename << '\n';
 
                         // in case the file is empty or was deleted.
                         if (sfen_input_stream->eof())
                         {
-                            std::cout << "INFO (sfen_reader): File empty, nothing to read.\n";
+                            out << "==> File empty, nothing to read.\n";
                         }
                         else
                         {
@@ -232,7 +233,8 @@ namespace Learner{
 
             if (sfen_input_stream == nullptr && !open_next_file())
             {
-                std::cout << "INFO (sfen_reader): End of files." << std::endl;
+                auto out = sync_region_cout.new_region();
+                out << "INFO (sfen_reader): End of files." << std::endl;
                 end_of_files = true;
                 return;
             }
@@ -271,7 +273,8 @@ namespace Learner{
                         if(!open_next_file())
                         {
                             // There was no next file. Abort.
-                            std::cout << "INFO (sfen_reader): End of files." << std::endl;
+                            auto out = sync_region_cout.new_region();
+                            out << "INFO (sfen_reader): End of files." << std::endl;
                             end_of_files = true;
                             return;
                         }
