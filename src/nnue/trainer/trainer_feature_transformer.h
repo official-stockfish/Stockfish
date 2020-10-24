@@ -349,6 +349,15 @@ namespace Eval::NNUE {
             const auto smallest_max_activation = *std::min_element(
                 std::begin(max_activations_), std::end(max_activations_));
 
+            double abs_bias_sum = 0.0;
+            double abs_weight_sum = 0.0;
+
+            for(auto b : biases_)
+                abs_bias_sum += std::abs(b);
+
+            for(auto w : weights_)
+                abs_weight_sum += std::abs(w);
+
             auto out = sync_region_cout.new_region();
 
             out << "INFO (check_health):"
@@ -369,6 +378,9 @@ namespace Eval::NNUE {
             out << "  - largest min activation = " << largest_min_activation
                 << " , smallest max activation = " << smallest_max_activation
                 << std::endl;
+
+            out << "  - avg_abs_bias   = " << abs_bias_sum / std::size(biases_) << std::endl;
+            out << "  - avg_abs_weight = " << abs_weight_sum / std::size(weights_) << std::endl;
 
             out << "  - clipped " << static_cast<double>(num_clipped_) / num_total_ * 100.0 << "% of outputs"
                 << std::endl;

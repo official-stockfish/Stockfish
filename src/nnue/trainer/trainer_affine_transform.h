@@ -241,6 +241,15 @@ namespace Eval::NNUE {
 
         void check_health() {
 
+            double abs_bias_sum = 0.0;
+            double abs_weight_sum = 0.0;
+
+            for(auto b : biases_)
+                abs_bias_sum += std::abs(b);
+
+            for(auto w : weights_)
+                abs_weight_sum += std::abs(w);
+
             auto out = sync_region_cout.new_region();
 
             out << "INFO (check_health):"
@@ -248,7 +257,9 @@ namespace Eval::NNUE {
                 << " - " << LayerType::get_name()
                 << std::endl;
 
+            out << "  - avg_abs_bias        = " << abs_bias_sum / std::size(biases_) << std::endl;
             out << "  - avg_abs_bias_diff   = " << abs_biases_diff_sum_ / num_biases_diffs_ << std::endl;
+            out << "  - avg_abs_weight      = " << abs_weight_sum / std::size(weights_) << std::endl;
             out << "  - avg_abs_weight_diff = " << abs_weights_diff_sum_ / num_weights_diffs_ << std::endl;
 
             out.unlock();
