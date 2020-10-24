@@ -84,6 +84,11 @@ struct SynchronizedRegionLogger
   {
     friend struct SynchronizedRegionLogger;
 
+    Region() :
+      logger(nullptr), region_id(0), is_held(false)
+    {
+    }
+
     Region(const Region&) = delete;
     Region& operator=(const Region&) = delete;
 

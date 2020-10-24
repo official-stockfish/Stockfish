@@ -8,7 +8,7 @@
 namespace Learner {
 
     // Automatic generation of teacher position
-    void gen_sfen(Position& pos, std::istringstream& is);
+    void gensfen(std::istringstream& is);
 }
 
 #endif

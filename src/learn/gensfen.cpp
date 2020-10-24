@@ -49,6 +49,9 @@ namespace Learner
             sfen_buffers_pool.reserve((size_t)thread_num * 10);
             sfen_buffers.resize(thread_num);
 
+            auto out = sync_region_cout.new_region();
+            out << "INFO (sfen_writer): Creating new data file at " << filename_ << endl;
+
             sfen_format = sfen_output_type;
             output_file_stream = create_new_sfen_output(filename_, sfen_format);
             filename = filename_;
@@ -172,7 +175,9 @@ namespace Learner
                             // (Depending on the operation, it may not be necessary.)
                             string new_filename = filename + "_" + std::to_string(n);
                             output_file_stream = create_new_sfen_output(new_filename, sfen_format);
-                            cout << endl << "output sfen file = " << new_filename << endl;
+
+                            auto out = sync_region_cout.new_region();
+                            out << "INFO (sfen_writer): Creating new data file at " << new_filename << endl;
                         }
                     }
                 }
@@ -285,6 +290,8 @@ namespace Learner
                 // Limit the maximum to a one-stop score. (Otherwise you might not end the loop)
                 eval_limit = std::min(eval_limit, (int)mate_in(2));
 
+                save_every = std::max(save_every, REPORT_STATS_EVERY);
+
                 num_threads = Options["Threads"];
             }
         };
@@ -323,6 +330,8 @@ namespace Learner
 
         // sfen exporter
         SfenWriter sfen_writer;
+
+        SynchronizedRegionLogger::Region out;
 
         vector<Key> hash; // 64MB*sizeof(HASH_KEY) = 512MB
 
@@ -500,13 +509,15 @@ namespace Learner
         const auto now_time = now();
         const TimePoint elapsed = now_time - last_stats_report_time + 1;
 
-        sync_cout
+        out
             << endl
             << done << " sfens, "
             << new_done * 1000 / elapsed << " sfens/second, "
             << "at " << now_string() << sync_endl;
 
         last_stats_report_time = now_time;
+
+        out = sync_region_cout.new_region();
     }
 
     void MultiThinkGenSfen::maybe_report(uint64_t done)
@@ -518,11 +529,12 @@ namespace Learner
             if (last_stats_report_time == 0)
             {
                 last_stats_report_time = now();
+                out = sync_region_cout.new_region();
             }
 
             if (done != 0)
             {
-                std::cout << '.';
+                out << '.';
 
                 if (done % REPORT_STATS_EVERY == 0)
                 {
@@ -880,7 +892,7 @@ namespace Learner
     // -----------------------------------
 
     // Command to generate a game record
-    void gen_sfen(Position&, istringstream& is)
+    void gensfen(istringstream& is)
     {
         // Number of generated game records default = 8 billion phases (Ponanza specification)
         uint64_t loop_max = 8000000000UL;
@@ -956,7 +968,7 @@ namespace Learner
                 UCI::setoption("EnableTranspositionTable", "true");
             }
             else
-                cout << "Error! : Illegal token " << token << endl;
+                cout << "ERROR: Ignoring unknown option " << token << endl;
         }
 
         if (!sfen_format.empty())
@@ -967,7 +979,7 @@ namespace Learner
                 params.sfen_format = SfenOutputType::Binpack;
             else
             {
-                cout << "Unknown sfen format `" << sfen_format << "`. Using bin\n";
+                cout << "WARNING: Unknown sfen format `" << sfen_format << "`. Using bin\n";
             }
         }
 
@@ -991,27 +1003,31 @@ namespace Learner
 
         params.enforce_constraints();
 
-        std::cout << "gensfen : " << endl
-            << "  search_depth_min = " << params.search_depth_min << " to " << params.search_depth_max << endl
-            << "  nodes = " << params.nodes << endl
-            << "  loop_max = " << loop_max << endl
-            << "  eval_limit = " << params.eval_limit << endl
-            << "  thread_num (set by USI setoption) = " << params.num_threads << endl
-            << "  random_move_minply     = " << params.random_move_minply << endl
-            << "  random_move_maxply     = " << params.random_move_maxply << endl
-            << "  random_move_count      = " << params.random_move_count << endl
-            << "  random_move_like_apery = " << params.random_move_like_apery << endl
-            << "  random_multi_pv        = " << params.random_multi_pv << endl
-            << "  random_multi_pv_diff   = " << params.random_multi_pv_diff << endl
-            << "  random_multi_pv_depth  = " << params.random_multi_pv_depth << endl
-            << "  write_minply           = " << params.write_minply << endl
-            << "  write_maxply           = " << params.write_maxply << endl
-            << "  output_file_name       = " << params.output_file_name << endl
-            << "  save_every             = " << params.save_every << endl
-            << "  random_file_name       = " << random_file_name << endl
-            << "  write_out_draw_game_in_training_data_generation = " << params.write_out_draw_game_in_training_data_generation << endl
-            << "  detect_draw_by_consecutive_low_score = " << params.detect_draw_by_consecutive_low_score << endl
-            << "  detect_draw_by_insufficient_mating_material = " << params.detect_draw_by_insufficient_mating_material << endl;
+        std::cout << "INFO: Executing gensfen command\n";
+
+        std::cout << "INFO: Parameters:\n";
+        std::cout
+            << "  - search_depth_min       = " << params.search_depth_min << endl
+            << "  - search_depth_max       = " << params.search_depth_max << endl
+            << "  - nodes                  = " << params.nodes << endl
+            << "  - num sfens to generate  = " << loop_max << endl
+            << "  - eval_limit             = " << params.eval_limit << endl
+            << "  - num threads (UCI)      = " << params.num_threads << endl
+            << "  - random_move_minply     = " << params.random_move_minply << endl
+            << "  - random_move_maxply     = " << params.random_move_maxply << endl
+            << "  - random_move_count      = " << params.random_move_count << endl
+            << "  - random_move_like_apery = " << params.random_move_like_apery << endl
+            << "  - random_multi_pv        = " << params.random_multi_pv << endl
+            << "  - random_multi_pv_diff   = " << params.random_multi_pv_diff << endl
+            << "  - random_multi_pv_depth  = " << params.random_multi_pv_depth << endl
+            << "  - write_minply           = " << params.write_minply << endl
+            << "  - write_maxply           = " << params.write_maxply << endl
+            << "  - output_file_name       = " << params.output_file_name << endl
+            << "  - save_every             = " << params.save_every << endl
+            << "  - random_file_name       = " << random_file_name << endl
+            << "  - write_drawn_games      = " << params.write_out_draw_game_in_training_data_generation << endl
+            << "  - draw by low score      = " << params.detect_draw_by_consecutive_low_score << endl
+            << "  - draw by insuff. mat.   = " << params.detect_draw_by_insufficient_mating_material << endl;
 
         // Show if the training data generator uses NNUE.
         Eval::NNUE::verify_eval_file_loaded();
@@ -1023,6 +1039,6 @@ namespace Learner
         MultiThinkGenSfen multi_think(params);
         multi_think.gensfen(loop_max);
 
-        std::cout << "gensfen finished." << endl;
+        std::cout << "INFO: Gensfen finished." << endl;
     }
 }
