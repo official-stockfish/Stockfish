@@ -153,10 +153,12 @@ namespace Eval::NNUE {
                 const IndexType batch_offset = kOutputDimensions * b;
                 for (IndexType i = 0; i < kOutputDimensions; ++i) {
                     const IndexType index = batch_offset + i;
-                    gradients_[index] = gradients[index] *
-                        ((output_[index] > kZero) * (output_[index] < kOne));
+                    const bool clipped = (output_[index] <= kZero) | (output_[index] >= kOne);
+                    gradients_[index] = gradients[index] * !clipped;
+                    num_clipped_ += clipped;
                 }
             }
+            num_total_ += batch_->size() * kOutputDimensions;
 
             // Since the weight matrix updates only the columns corresponding to the features that appeared in the input,
             // Correct the learning rate and adjust the scale without using momentum
@@ -261,14 +263,6 @@ namespace Eval::NNUE {
             momentum_(0.2),
             learning_rate_scale_(1.0) {
 
-            min_pre_activation_ = std::numeric_limits<LearnFloatType>::max();
-            max_pre_activation_ = std::numeric_limits<LearnFloatType>::lowest();
-
-            std::fill(std::begin(min_activations_), std::end(min_activations_),
-                      std::numeric_limits<LearnFloatType>::max());
-            std::fill(std::begin(max_activations_), std::end(max_activations_),
-                      std::numeric_limits<LearnFloatType>::lowest());
-
             dequantize_parameters();
         }
 
@@ -299,6 +293,19 @@ namespace Eval::NNUE {
             }
         }
 
+        void reset_stats() {
+            min_pre_activation_ = std::numeric_limits<LearnFloatType>::max();
+            max_pre_activation_ = std::numeric_limits<LearnFloatType>::lowest();
+
+            std::fill(std::begin(min_activations_), std::end(min_activations_),
+                      std::numeric_limits<LearnFloatType>::max());
+            std::fill(std::begin(max_activations_), std::end(max_activations_),
+                      std::numeric_limits<LearnFloatType>::lowest());
+
+            num_clipped_ = 0;
+            num_total_ = 0;
+        }
+
         // read parameterized integer
         void dequantize_parameters() {
             for (IndexType i = 0; i < kHalfDimensions; ++i) {
@@ -314,6 +321,8 @@ namespace Eval::NNUE {
             }
 
             std::fill(std::begin(biases_diff_), std::end(biases_diff_), +kZero);
+
+            reset_stats();
         }
 
         // Set the weight corresponding to the feature that does not appear in the learning data to 0
@@ -361,12 +370,12 @@ namespace Eval::NNUE {
                 << " , smallest max activation = " << smallest_max_activation
                 << std::endl;
 
+            out << "  - clipped " << static_cast<double>(num_clipped_) / num_total_ * 100.0 << "% of outputs"
+                << std::endl;
+
             out.unlock();
 
-            std::fill(std::begin(min_activations_), std::end(min_activations_),
-                      std::numeric_limits<LearnFloatType>::max());
-            std::fill(std::begin(max_activations_), std::end(max_activations_),
-                      std::numeric_limits<LearnFloatType>::lowest());
+            reset_stats();
         }
 
         // number of input/output dimensions
@@ -390,6 +399,9 @@ namespace Eval::NNUE {
 
         // layer to learn
         LayerType* const target_layer_;
+
+        IndexType num_clipped_;
+        IndexType num_total_;
 
         // parameter
         alignas(kCacheLineSize) LearnFloatType biases_[kHalfDimensions];

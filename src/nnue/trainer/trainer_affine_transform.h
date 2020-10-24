@@ -48,6 +48,10 @@ namespace Eval::NNUE {
             if (receive_message("quantize_parameters", message)) {
                 quantize_parameters();
             }
+
+            if (receive_message("check_health", message)) {
+                check_health();
+            }
         }
 
         // Initialize the parameters with random numbers
@@ -145,16 +149,11 @@ namespace Eval::NNUE {
                           &gradients[batch_offset], 1, biases_diff_, 1);
             }
 
-            cblas_saxpy(kOutputDimensions, -local_learning_rate,
-                        biases_diff_, 1, biases_, 1);
-
             cblas_sgemm(CblasRowMajor, CblasTrans, CblasNoTrans,
                         kOutputDimensions, kInputDimensions, batch_size_, 1.0,
                         gradients, kOutputDimensions,
                         batch_input_, kInputDimensions,
                         momentum_, weights_diff_, kInputDimensions);
-            cblas_saxpy(kOutputDimensions * kInputDimensions, -local_learning_rate,
-                        weights_diff_, 1, weights_, 1);
 
 #else
             // backpropagate
@@ -196,16 +195,22 @@ namespace Eval::NNUE {
                     }
                 }
             }
+#endif
 
             for (IndexType i = 0; i < kOutputDimensions; ++i) {
-                biases_[i] -= local_learning_rate * biases_diff_[i];
+                const double d = local_learning_rate * biases_diff_[i];
+                biases_[i] -= d;
+                abs_biases_diff_sum_ += std::abs(d);
             }
+            num_biases_diffs_ += kOutputDimensions;
 
             for (IndexType i = 0; i < kOutputDimensions * kInputDimensions; ++i) {
-                weights_[i] -= local_learning_rate * weights_diff_[i];
+                const double d = local_learning_rate * weights_diff_[i];
+                weights_[i] -= d;
+                abs_weights_diff_sum_ += std::abs(d);
             }
+            num_weights_diffs_ += kOutputDimensions * kInputDimensions;
 
-#endif
             previous_layer_trainer_->backpropagate(gradients_.data(), learning_rate);
         }
 
@@ -225,6 +230,30 @@ namespace Eval::NNUE {
             learning_rate_scale_(1.0) {
 
             dequantize_parameters();
+        }
+
+        void reset_stats() {
+            abs_biases_diff_sum_ = 0.0;
+            abs_weights_diff_sum_ = 0.0;
+            num_biases_diffs_ = 0;
+            num_weights_diffs_ = 0;
+        }
+
+        void check_health() {
+
+            auto out = sync_region_cout.new_region();
+
+            out << "INFO (check_health):"
+                << " layer " << LayerType::kLayerIndex
+                << " - " << LayerType::get_name()
+                << std::endl;
+
+            out << "  - avg_abs_bias_diff   = " << abs_biases_diff_sum_ / num_biases_diffs_ << std::endl;
+            out << "  - avg_abs_weight_diff = " << abs_weights_diff_sum_ / num_weights_diffs_ << std::endl;
+
+            out.unlock();
+
+            reset_stats();
         }
 
         // Weight saturation and parameterization
@@ -270,6 +299,8 @@ namespace Eval::NNUE {
                       static_cast<LearnFloatType>(0.0));
             std::fill(std::begin(weights_diff_), std::end(weights_diff_),
                       static_cast<LearnFloatType>(0.0));
+
+            reset_stats();
         }
 
         // number of input/output dimensions
@@ -295,6 +326,11 @@ namespace Eval::NNUE {
 
         // number of samples in mini-batch
         IndexType batch_size_;
+
+        double abs_biases_diff_sum_;
+        double abs_weights_diff_sum_;
+        uint64_t num_biases_diffs_;
+        uint64_t num_weights_diffs_;
 
         // Input mini batch
         const LearnFloatType* batch_input_;

@@ -70,10 +70,12 @@ namespace Eval::NNUE {
                 const IndexType batch_offset = kOutputDimensions * b;
                 for (IndexType i = 0; i < kOutputDimensions; ++i) {
                     const IndexType index = batch_offset + i;
-                    gradients_[index] = gradients[index] *
-                        (output_[index] > kZero) * (output_[index] < kOne);
+                    const bool clipped = (output_[index] <= kZero) | (output_[index] >= kOne);
+                    gradients_[index] = gradients[index] * !clipped;
+                    num_clipped_ += clipped;
                 }
             }
+            num_total_ += batch_size_ * kOutputDimensions;
 
             previous_layer_trainer_->backpropagate(gradients_.data(), learning_rate);
         }
@@ -86,10 +88,17 @@ namespace Eval::NNUE {
                 &target_layer->previous_layer_, ft)),
             target_layer_(target_layer) {
 
+            reset_stats();
+        }
+
+        void reset_stats() {
             std::fill(std::begin(min_activations_), std::end(min_activations_),
                       std::numeric_limits<LearnFloatType>::max());
             std::fill(std::begin(max_activations_), std::end(max_activations_),
                       std::numeric_limits<LearnFloatType>::lowest());
+
+            num_clipped_ = 0;
+            num_total_ = 0;
         }
 
         // Check if there are any problems with learning
@@ -111,12 +120,12 @@ namespace Eval::NNUE {
                 << " , smallest max activation = " << smallest_max_activation
                 << std::endl;
 
+            out << "  - clipped " << static_cast<double>(num_clipped_) / num_total_ * 100.0 << "% of outputs"
+                << std::endl;
+
             out.unlock();
 
-            std::fill(std::begin(min_activations_), std::end(min_activations_),
-                      std::numeric_limits<LearnFloatType>::max());
-            std::fill(std::begin(max_activations_), std::end(max_activations_),
-                      std::numeric_limits<LearnFloatType>::lowest());
+            reset_stats();
         }
 
         // number of input/output dimensions
@@ -129,6 +138,9 @@ namespace Eval::NNUE {
 
         // number of samples in mini-batch
         IndexType batch_size_;
+
+        IndexType num_clipped_;
+        IndexType num_total_;
 
         // Trainer of the previous layer
         const std::shared_ptr<Trainer<PreviousLayer>> previous_layer_trainer_;
