@@ -37,12 +37,6 @@ using namespace std;
 
 namespace Learner
 {
-    static bool write_out_draw_game_in_training_data_generation = true;
-    static bool detect_draw_by_consecutive_low_score = true;
-    static bool detect_draw_by_insufficient_mating_material = true;
-
-    static SfenOutputType sfen_output_type = SfenOutputType::Bin;
-
     // Helper class for exporting Sfen
     struct SfenWriter
     {
@@ -50,12 +44,13 @@ namespace Learner
         static constexpr size_t SFEN_WRITE_SIZE = 5000;
 
         // File name to write and number of threads to create
-        SfenWriter(string filename_, int thread_num, uint64_t save_count)
+        SfenWriter(string filename_, int thread_num, uint64_t save_count, SfenOutputType sfen_output_type)
         {
             sfen_buffers_pool.reserve((size_t)thread_num * 10);
             sfen_buffers.resize(thread_num);
 
-            output_file_stream = create_new_sfen_output(filename_, sfen_output_type);
+            sfen_format = sfen_output_type;
+            output_file_stream = create_new_sfen_output(filename_, sfen_format);
             filename = filename_;
             save_every = save_count;
 
@@ -166,7 +161,7 @@ namespace Learner
                             // Add ios::app in consideration of overwriting.
                             // (Depending on the operation, it may not be necessary.)
                             string new_filename = filename + "_" + std::to_string(n);
-                            output_file_stream = create_new_sfen_output(new_filename, sfen_output_type);
+                            output_file_stream = create_new_sfen_output(new_filename, sfen_format);
                             cout << endl << "output sfen file = " << new_filename << endl;
                         }
                     }
@@ -189,6 +184,8 @@ namespace Learner
 
         // Flag that all threads have finished
         atomic<bool> finished;
+
+        SfenOutputType sfen_format;
 
         // buffer before writing to file
         // sfen_buffers is the buffer for each thread
@@ -214,6 +211,74 @@ namespace Learner
     // Class to generate sfen with multiple threads
     struct MultiThinkGenSfen
     {
+        struct Params
+        {
+            // Min and max depths for search during gensfen
+            int search_depth_min = 3;
+            int search_depth_max = -1;
+
+            // Number of the nodes to be searched.
+            // 0 represents no limits.
+            uint64_t nodes = 0;
+
+            // Upper limit of evaluation value of generated situation
+            int eval_limit = 3000;
+
+            // minimum ply with random move
+            // maximum ply with random move
+            // Number of random moves in one station
+            int random_move_minply = 1;
+            int random_move_maxply = 24;
+            int random_move_count = 5;
+
+            // Move kings with a probability of 1/N when randomly moving like Apery software.
+            // When you move the king again, there is a 1/N chance that it will randomly moved
+            // once in the opponent's turn.
+            // Apery has N=2. Specifying 0 here disables this function.
+            int random_move_like_apery = 0;
+
+            // For when using multi pv instead of random move.
+            // random_multi_pv is the number of candidates for MultiPV.
+            // When adopting the move of the candidate move, the difference
+            // between the evaluation value of the move of the 1st place
+            // and the evaluation value of the move of the Nth place is.
+            // Must be in the range random_multi_pv_diff.
+            // random_multi_pv_depth is the search depth for MultiPV.
+            int random_multi_pv = 0;
+            int random_multi_pv_diff = 32000;
+            int random_multi_pv_depth = -1;
+
+            // The minimum and maximum ply (number of steps from
+            // the initial phase) of the sfens to write out.
+            int write_minply = 16;
+            int write_maxply = 400;
+
+            uint64_t save_every = std::numeric_limits<uint64_t>::max();
+
+            std::string output_file_name = "generated_kifu";
+
+            SfenOutputType sfen_format = SfenOutputType::Binpack;
+
+            std::string seed;
+
+            bool write_out_draw_game_in_training_data_generation = true;
+            bool detect_draw_by_consecutive_low_score = true;
+            bool detect_draw_by_insufficient_mating_material = true;
+
+            uint64_t num_threads;
+
+            void enforce_constraints()
+            {
+                search_depth_max = std::max(search_depth_min, search_depth_max);
+                random_multi_pv_depth = std::max(search_depth_min, random_multi_pv_depth);
+
+                // Limit the maximum to a one-stop score. (Otherwise you might not end the loop)
+                eval_limit = std::min(eval_limit, (int)mate_in(2));
+
+                num_threads = Options["Threads"];
+            }
+        };
+
         // Hash to limit the export of identical sfens
         static constexpr uint64_t GENSFEN_HASH_SIZE = 64 * 1024 * 1024;
         // It must be 2**N because it will be used as the mask to calculate hash_index.
@@ -224,17 +289,11 @@ namespace Learner
         static_assert(REPORT_STATS_EVERY % REPORT_DOT_EVERY == 0);
 
         MultiThinkGenSfen(
-            int search_depth_min_,
-            int search_depth_max_,
-            std::string output_file_name,
-            int thread_num,
-            uint64_t save_every,
-            const std::string& seed
+            const Params& prm
         ) :
-            search_depth_min(search_depth_min_),
-            search_depth_max(search_depth_max_),
-            prng(seed),
-            sfen_writer(output_file_name, thread_num, save_every)
+            params(prm),
+            prng(prm.seed),
+            sfen_writer(prm.output_file_name, prm.num_threads, prm.save_every, prm.sfen_format)
         {
             hash.resize(GENSFEN_HASH_SIZE);
 
@@ -244,47 +303,9 @@ namespace Learner
 
         void gensfen(uint64_t limit);
 
-        // Min and max depths for search during gensfen
-        int search_depth_min;
-        int search_depth_max;
-
-        // Number of the nodes to be searched.
-        // 0 represents no limits.
-        uint64_t nodes;
-
-        // Upper limit of evaluation value of generated situation
-        int eval_limit;
-
-        // minimum ply with random move
-        // maximum ply with random move
-        // Number of random moves in one station
-        int random_move_minply;
-        int random_move_maxply;
-        int random_move_count;
-
-        // Move kings with a probability of 1/N when randomly moving like Apery software.
-        // When you move the king again, there is a 1/N chance that it will randomly moved
-        // once in the opponent's turn.
-        // Apery has N=2. Specifying 0 here disables this function.
-        int random_move_like_apery;
-
-        // For when using multi pv instead of random move.
-        // random_multi_pv is the number of candidates for MultiPV.
-        // When adopting the move of the candidate move, the difference
-        // between the evaluation value of the move of the 1st place
-        // and the evaluation value of the move of the Nth place is.
-        // Must be in the range random_multi_pv_diff.
-        // random_multi_pv_depth is the search depth for MultiPV.
-        int random_multi_pv;
-        int random_multi_pv_diff;
-        int random_multi_pv_depth;
-
-        // The minimum and maximum ply (number of steps from
-        // the initial phase) of the sfens to write out.
-        int write_minply;
-        int write_maxply;
-
     private:
+        Params params;
+
         PRNG prng;
 
         std::mutex stats_mutex;
@@ -365,7 +386,7 @@ namespace Learner
         const int ply = move_hist_scores.size();
 
         // has it reached the max length or is a draw
-        if (ply >= write_maxply || pos.is_draw(ply))
+        if (ply >= params.write_maxply || pos.is_draw(ply))
         {
             return 0;
         }
@@ -379,7 +400,7 @@ namespace Learner
         }
 
         // Adjudicate game to a draw if the last 4 scores of each engine is 0.
-        if (detect_draw_by_consecutive_low_score)
+        if (params.detect_draw_by_consecutive_low_score)
         {
             if (ply >= adj_draw_ply)
             {
@@ -414,7 +435,7 @@ namespace Learner
         }
 
         // Draw by insufficient mating material
-        if (detect_draw_by_insufficient_mating_material)
+        if (params.detect_draw_by_insufficient_mating_material)
         {
             if (pos.count<ALL_PIECES>() <= 4)
             {
@@ -511,7 +532,7 @@ namespace Learner
         std::atomic<uint64_t>& counter,
         uint64_t limit)
     {
-        if (!write_out_draw_game_in_training_data_generation && lastTurnIsWin == 0)
+        if (!params.write_out_draw_game_in_training_data_generation && lastTurnIsWin == 0)
         {
             // We didn't write anything so why quit.
             return false;
@@ -557,21 +578,21 @@ namespace Learner
         // Randomly choose one from legal move
         if (
             // 1. Random move of random_move_count times from random_move_minply to random_move_maxply
-            (random_move_minply != -1 && ply < (int)random_move_flag.size() && random_move_flag[ply]) ||
+            (params.random_move_minply != -1 && ply < (int)random_move_flag.size() && random_move_flag[ply]) ||
             // 2. A mode to perform random move of random_move_count times after leaving the startpos
-            (random_move_minply == -1 && random_move_c < random_move_count))
+            (params.random_move_minply == -1 && random_move_c < params.random_move_count))
         {
             ++random_move_c;
 
             // It's not a mate, so there should be one legal move...
-            if (random_multi_pv == 0)
+            if (params.random_multi_pv == 0)
             {
                 // Normal random move
                 MoveList<LEGAL> list(pos);
 
                 // I don't really know the goodness and badness of making this the Apery method.
-                if (random_move_like_apery == 0
-                    || prng.rand(random_move_like_apery) != 0)
+                if (params.random_move_like_apery == 0
+                    || prng.rand(params.random_move_like_apery) != 0)
                 {
                     // Normally one move from legal move
                     random_move = list.at((size_t)prng.rand((uint64_t)list.size()));
@@ -612,18 +633,18 @@ namespace Learner
             }
             else
             {
-                Search::search(pos, random_multi_pv_depth, random_multi_pv);
+                Search::search(pos, params.random_multi_pv_depth, params.random_multi_pv);
 
                 // Select one from the top N hands of root Moves
                 auto& rm = pos.this_thread()->rootMoves;
 
-                uint64_t s = min((uint64_t)rm.size(), (uint64_t)random_multi_pv);
+                uint64_t s = min((uint64_t)rm.size(), (uint64_t)params.random_multi_pv);
                 for (uint64_t i = 1; i < s; ++i)
                 {
                     // The difference from the evaluation value of rm[0] must
                     // be within the range of random_multi_pv_diff.
                     // It can be assumed that rm[x].score is arranged in descending order.
-                    if (rm[0].score > rm[i].score + random_multi_pv_diff)
+                    if (rm[0].score > rm[i].score + params.random_multi_pv_diff)
                     {
                         s = i;
                         break;
@@ -651,21 +672,21 @@ namespace Learner
         // to shuffle the first N pieces with Fisher-Yates.
 
         vector<int> a;
-        a.reserve((size_t)random_move_maxply);
+        a.reserve((size_t)params.random_move_maxply);
 
         // random_move_minply ,random_move_maxply is specified by 1 origin,
         // Note that we are handling 0 origin here.
-        for (int i = std::max(random_move_minply - 1, 0); i < random_move_maxply; ++i)
+        for (int i = std::max(params.random_move_minply - 1, 0); i < params.random_move_maxply; ++i)
         {
             a.push_back(i);
         }
 
         // In case of Apery random move, insert() may be called random_move_count times.
         // Reserve only the size considering it.
-        random_move_flag.resize((size_t)random_move_maxply + random_move_count);
+        random_move_flag.resize((size_t)params.random_move_maxply + params.random_move_count);
 
         // A random move that exceeds the size() of a[] cannot be applied, so limit it.
-        for (int i = 0; i < std::min(random_move_count, (int)a.size()); ++i)
+        for (int i = 0; i < std::min(params.random_move_count, (int)a.size()); ++i)
         {
             swap(a[i], a[prng.rand((uint64_t)a.size() - i) + i]);
             random_move_flag[a[i]] = true;
@@ -705,7 +726,7 @@ namespace Learner
         // at the maximum number of steps to write.
         // Maximum StateInfo + Search PV to advance to leaf buffer
         std::vector<StateInfo, AlignedAllocator<StateInfo>> states(
-            write_maxply + MAX_PLY /* == search_depth_min + α */);
+            params.write_maxply + MAX_PLY /* == search_depth_min + α */);
 
         StateInfo si;
 
@@ -725,7 +746,7 @@ namespace Learner
             bool should_resign = prng.rand(10) > 1;
             // Vector for holding the sfens in the current simulated game.
             PSVector a_psv;
-            a_psv.reserve(write_maxply + MAX_PLY);
+            a_psv.reserve(params.write_maxply + MAX_PLY);
 
             // Precomputed flags. Used internally by choose_random_move.
             vector<uint8_t> random_move_flag = generate_random_move_flags();
@@ -746,10 +767,10 @@ namespace Learner
             for (int ply = 0; ; ++ply)
             {
                 // Current search depth
-                const int depth = search_depth_min + (int)prng.rand(search_depth_max - search_depth_min + 1);
+                const int depth = params.search_depth_min + (int)prng.rand(params.search_depth_max - params.search_depth_min + 1);
 
                 // Starting search calls init_for_search
-                auto [search_value, search_pv] = Search::search(pos, depth, 1, nodes);
+                auto [search_value, search_pv] = Search::search(pos, depth, 1, params.nodes);
 
                 // This has to be performed after search because it needs to know
                 // rootMoves which are filled in init_for_search.
@@ -762,11 +783,11 @@ namespace Learner
 
                 // Always adjudivate by eval limit.
                 // Also because of this we don't have to check for TB/MATE scores
-                if (abs(search_value) >= eval_limit)
+                if (abs(search_value) >= params.eval_limit)
                 {
                     resign_counter++;
                     if ((should_resign && resign_counter >= 4) || abs(search_value) >= VALUE_KNOWN_WIN) {
-                        flush_psv((search_value >= eval_limit) ? 1 : -1);
+                        flush_psv((search_value >= params.eval_limit) ? 1 : -1);
                         break;
                     }
                 }
@@ -789,7 +810,7 @@ namespace Learner
                 // Discard stuff before write_minply is reached
                 // because it can harm training due to overfitting.
                 // Initial positions would be too common.
-                if (ply >= write_minply && !was_seen_before(pos))
+                if (ply >= params.write_minply && !was_seen_before(pos))
                 {
                     a_psv.emplace_back(PackedSfenValue());
 
@@ -825,6 +846,25 @@ namespace Learner
         sfen_writer.finalize(th.thread_idx());
     }
 
+    void set_gensfen_search_limits()
+    {
+        // About Search::Limits
+        // Be careful because this member variable is global and affects other threads.
+        auto& limits = Search::Limits;
+
+        // Make the search equivalent to the "go infinite" command. (Because it is troublesome if time management is done)
+        limits.infinite = true;
+
+        // Since PV is an obstacle when displayed, erase it.
+        limits.silent = true;
+
+        // If you use this, it will be compared with the accumulated nodes of each thread. Therefore, do not use it.
+        limits.nodes = 0;
+
+        // depth is also processed by the one passed as an argument of Learner::search().
+        limits.depth = 0;
+    }
+
     // -----------------------------------
     // Command to generate a game record (master thread)
     // -----------------------------------
@@ -832,55 +872,16 @@ namespace Learner
     // Command to generate a game record
     void gen_sfen(Position&, istringstream& is)
     {
-        // number of threads (given by USI setoption)
-        uint32_t thread_num = (uint32_t)Options["Threads"];
-
         // Number of generated game records default = 8 billion phases (Ponanza specification)
         uint64_t loop_max = 8000000000UL;
 
-        // Stop the generation when the evaluation value reaches this value.
-        int eval_limit = 3000;
-
-        // search depth
-        int search_depth_min = 3;
-        int search_depth_max = INT_MIN;
-
-        // Number of nodes to be searched.
-        uint64_t nodes = 0;
-
-        // minimum ply, maximum ply and number of random moves
-        int random_move_minply = 1;
-        int random_move_maxply = 24;
-        int random_move_count = 5;
-
-        // A function to move the random move mainly like Apery
-        // If this is set to 3, the ball will move with a probability of 1/3.
-        int random_move_like_apery = 0;
-
-        // If you search with multipv instead of random move and choose from among them randomly, set random_multi_pv = 1 or more.
-        int random_multi_pv = 0;
-        int random_multi_pv_diff = 32000;
-        int random_multi_pv_depth = INT_MIN;
-
-        // The minimum and maximum ply (number of steps from the initial phase) of the phase to write out.
-        int write_minply = 16;
-        int write_maxply = 400;
-
-        // File name to write
-        string output_file_name = "generated_kifu";
-
-        string token;
-
-        // Save to file in this unit.
-        // File names are serialized like file_1.bin, file_2.bin.
-        uint64_t save_every = UINT64_MAX;
+        MultiThinkGenSfen::Params params;
 
         // Add a random number to the end of the file name.
         bool random_file_name = false;
-
         std::string sfen_format = "binpack";
-        std::string seed;
 
+        string token;
         while (true)
         {
             token = "";
@@ -889,55 +890,51 @@ namespace Learner
                 break;
 
             if (token == "depth")
-                is >> search_depth_min;
+                is >> params.search_depth_min;
             else if (token == "depth2")
-                is >> search_depth_max;
+                is >> params.search_depth_max;
             else if (token == "nodes")
-                is >> nodes;
+                is >> params.nodes;
             else if (token == "loop")
                 is >> loop_max;
             else if (token == "output_file_name")
-                is >> output_file_name;
+                is >> params.output_file_name;
             else if (token == "eval_limit")
-            {
-                is >> eval_limit;
-                // Limit the maximum to a one-stop score. (Otherwise you might not end the loop)
-                eval_limit = std::min(eval_limit, (int)mate_in(2));
-            }
+                is >> params.eval_limit;
             else if (token == "random_move_minply")
-                is >> random_move_minply;
+                is >> params.random_move_minply;
             else if (token == "random_move_maxply")
-                is >> random_move_maxply;
+                is >> params.random_move_maxply;
             else if (token == "random_move_count")
-                is >> random_move_count;
+                is >> params.random_move_count;
             else if (token == "random_move_like_apery")
-                is >> random_move_like_apery;
+                is >> params.random_move_like_apery;
             else if (token == "random_multi_pv")
-                is >> random_multi_pv;
+                is >> params.random_multi_pv;
             else if (token == "random_multi_pv_diff")
-                is >> random_multi_pv_diff;
+                is >> params.random_multi_pv_diff;
             else if (token == "random_multi_pv_depth")
-                is >> random_multi_pv_depth;
+                is >> params.random_multi_pv_depth;
             else if (token == "write_minply")
-                is >> write_minply;
+                is >> params.write_minply;
             else if (token == "write_maxply")
-                is >> write_maxply;
+                is >> params.write_maxply;
             else if (token == "save_every")
-                is >> save_every;
+                is >> params.save_every;
             else if (token == "random_file_name")
                 is >> random_file_name;
             // Accept also the old option name.
             else if (token == "use_draw_in_training_data_generation" || token == "write_out_draw_game_in_training_data_generation")
-                is >> write_out_draw_game_in_training_data_generation;
+                is >> params.write_out_draw_game_in_training_data_generation;
             // Accept also the old option name.
             else if (token == "use_game_draw_adjudication" || token == "detect_draw_by_consecutive_low_score")
-                is >> detect_draw_by_consecutive_low_score;
+                is >> params.detect_draw_by_consecutive_low_score;
             else if (token == "detect_draw_by_insufficient_mating_material")
-                is >> detect_draw_by_insufficient_mating_material;
+                is >> params.detect_draw_by_insufficient_mating_material;
             else if (token == "sfen_format")
                 is >> sfen_format;
             else if (token == "seed")
-                is >> seed;
+                is >> params.seed;
             else if (token == "set_recommended_uci_options")
             {
                 UCI::setoption("Contempt", "0");
@@ -955,26 +952,20 @@ namespace Learner
         if (!sfen_format.empty())
         {
             if (sfen_format == "bin")
-                sfen_output_type = SfenOutputType::Bin;
+                params.sfen_format = SfenOutputType::Bin;
             else if (sfen_format == "binpack")
-                sfen_output_type = SfenOutputType::Binpack;
+                params.sfen_format = SfenOutputType::Binpack;
             else
             {
                 cout << "Unknown sfen format `" << sfen_format << "`. Using bin\n";
             }
         }
 
-        // If search depth2 is not set, leave it the same as search depth.
-        if (search_depth_max == INT_MIN)
-            search_depth_max = search_depth_min;
-        if (random_multi_pv_depth == INT_MIN)
-            random_multi_pv_depth = search_depth_min;
-
         if (random_file_name)
         {
             // Give a random number to output_file_name at this point.
             // Do not use std::random_device().  Because it always the same integers on MinGW.
-            PRNG r(seed);
+            PRNG r(params.seed);
             // Just in case, reassign the random numbers.
             for (int i = 0; i < 10; ++i)
                 r.rand(1);
@@ -983,74 +974,44 @@ namespace Learner
                 ss << std::hex << u;
                 return ss.str();
             };
+
             // I don't want to wear 64bit numbers by accident, so I'next_move going to make a 64bit number 2 just in case.
-            output_file_name = output_file_name + "_" + to_hex(r.rand<uint64_t>()) + to_hex(r.rand<uint64_t>());
+            params.output_file_name += "_" + to_hex(r.rand<uint64_t>()) + to_hex(r.rand<uint64_t>());
         }
 
+        params.enforce_constraints();
+
         std::cout << "gensfen : " << endl
-            << "  search_depth_min = " << search_depth_min << " to " << search_depth_max << endl
-            << "  nodes = " << nodes << endl
+            << "  search_depth_min = " << params.search_depth_min << " to " << params.search_depth_max << endl
+            << "  nodes = " << params.nodes << endl
             << "  loop_max = " << loop_max << endl
-            << "  eval_limit = " << eval_limit << endl
-            << "  thread_num (set by USI setoption) = " << thread_num << endl
-            << "  random_move_minply     = " << random_move_minply << endl
-            << "  random_move_maxply     = " << random_move_maxply << endl
-            << "  random_move_count      = " << random_move_count << endl
-            << "  random_move_like_apery = " << random_move_like_apery << endl
-            << "  random_multi_pv        = " << random_multi_pv << endl
-            << "  random_multi_pv_diff   = " << random_multi_pv_diff << endl
-            << "  random_multi_pv_depth  = " << random_multi_pv_depth << endl
-            << "  write_minply           = " << write_minply << endl
-            << "  write_maxply           = " << write_maxply << endl
-            << "  output_file_name       = " << output_file_name << endl
-            << "  save_every             = " << save_every << endl
+            << "  eval_limit = " << params.eval_limit << endl
+            << "  thread_num (set by USI setoption) = " << params.num_threads << endl
+            << "  random_move_minply     = " << params.random_move_minply << endl
+            << "  random_move_maxply     = " << params.random_move_maxply << endl
+            << "  random_move_count      = " << params.random_move_count << endl
+            << "  random_move_like_apery = " << params.random_move_like_apery << endl
+            << "  random_multi_pv        = " << params.random_multi_pv << endl
+            << "  random_multi_pv_diff   = " << params.random_multi_pv_diff << endl
+            << "  random_multi_pv_depth  = " << params.random_multi_pv_depth << endl
+            << "  write_minply           = " << params.write_minply << endl
+            << "  write_maxply           = " << params.write_maxply << endl
+            << "  output_file_name       = " << params.output_file_name << endl
+            << "  save_every             = " << params.save_every << endl
             << "  random_file_name       = " << random_file_name << endl
-            << "  write_out_draw_game_in_training_data_generation = " << write_out_draw_game_in_training_data_generation << endl
-            << "  detect_draw_by_consecutive_low_score = " << detect_draw_by_consecutive_low_score << endl
-            << "  detect_draw_by_insufficient_mating_material = " << detect_draw_by_insufficient_mating_material << endl;
+            << "  write_out_draw_game_in_training_data_generation = " << params.write_out_draw_game_in_training_data_generation << endl
+            << "  detect_draw_by_consecutive_low_score = " << params.detect_draw_by_consecutive_low_score << endl
+            << "  detect_draw_by_insufficient_mating_material = " << params.detect_draw_by_insufficient_mating_material << endl;
 
         // Show if the training data generator uses NNUE.
         Eval::NNUE::verify_eval_file_loaded();
 
         Threads.main()->ponder = false;
 
-        // About Search::Limits
-        // Be careful because this member variable is global and affects other threads.
-        {
-          auto& limits = Search::Limits;
+        set_gensfen_search_limits();
 
-          // Make the search equivalent to the "go infinite" command. (Because it is troublesome if time management is done)
-          limits.infinite = true;
-
-          // Since PV is an obstacle when displayed, erase it.
-          limits.silent = true;
-
-          // If you use this, it will be compared with the accumulated nodes of each thread. Therefore, do not use it.
-          limits.nodes = 0;
-
-          // depth is also processed by the one passed as an argument of Learner::search().
-          limits.depth = 0;
-        }
-
-        // Create and execute threads as many as Options["Threads"].
-        {
-            MultiThinkGenSfen multi_think(search_depth_min, search_depth_max, output_file_name, thread_num, save_every, seed);
-            multi_think.nodes = nodes;
-            multi_think.eval_limit = eval_limit;
-            multi_think.random_move_minply = random_move_minply;
-            multi_think.random_move_maxply = random_move_maxply;
-            multi_think.random_move_count = random_move_count;
-            multi_think.random_move_like_apery = random_move_like_apery;
-            multi_think.random_multi_pv = random_multi_pv;
-            multi_think.random_multi_pv_diff = random_multi_pv_diff;
-            multi_think.random_multi_pv_depth = random_multi_pv_depth;
-            multi_think.write_minply = write_minply;
-            multi_think.write_maxply = write_maxply;
-            multi_think.gensfen(loop_max);
-
-            // Since we are joining with the destructor of SfenWriter, please give a message that it has finished after the join
-            // Enclose this in a block because it should be displayed.
-        }
+        MultiThinkGenSfen multi_think(params);
+        multi_think.gensfen(loop_max);
 
         std::cout << "gensfen finished." << endl;
     }
