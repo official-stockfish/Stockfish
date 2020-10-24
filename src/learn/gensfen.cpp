@@ -134,20 +134,6 @@ namespace Learner
         // Dedicated thread to write to file
         void file_write_worker()
         {
-            auto startTime = now();
-
-            auto output_status = [&]()
-            {
-                // Also output the current time to console.
-                const auto nowTime = now();
-                const TimePoint elapsed = nowTime - startTime + 1;
-
-                sync_cout << endl
-                    << sfen_write_count << " sfens, "
-                    << sfen_write_count * 1000 / elapsed << " sfens/second, "
-                    << "at " << now_string() << sync_endl;
-            };
-
             while (!finished || sfen_buffers_pool.size())
             {
                 vector<std::unique_ptr<PSVector>> buffers;
@@ -190,28 +176,9 @@ namespace Learner
                             output_file_stream = create_new_sfen_output(new_filename, sfen_output_type);
                             cout << endl << "output sfen file = " << new_filename << endl;
                         }
-
-                        // Output '.' every time when writing a game record.
-                        std::cout << ".";
-
-                        // Output the number of phases processed
-                        // every STATUS_OUTPUT_PERIOD times
-                        // Finally, the remainder of the teacher phase
-                        // of each thread is written out,
-                        // so halfway numbers are displayed, but is it okay?
-                        // If you overuse the threads to the maximum number
-                        // of logical cores, the console will be clogged,
-                        // so it may be beneficial to increase that value.
-                        if ((++batch_counter % STATUS_OUTPUT_PERIOD) == 0)
-                        {
-                            output_status();
-                        }
                     }
                 }
             }
-
-            // Output the status again after whole processing is done.
-            output_status();
         }
 
         void set_save_interval(uint64_t v)
@@ -267,6 +234,10 @@ namespace Learner
         // It must be 2**N because it will be used as the mask to calculate hash_index.
         static_assert((GENSFEN_HASH_SIZE& (GENSFEN_HASH_SIZE - 1)) == 0);
 
+        static constexpr uint64_t REPORT_DOT_EVERY = 5000;
+        static constexpr uint64_t REPORT_STATS_EVERY = 200000;
+        static_assert(REPORT_STATS_EVERY % REPORT_DOT_EVERY == 0);
+
         MultiThinkGenSfen(int search_depth_min_, int search_depth_max_, SfenWriter& sw_, const std::string& seed) :
             prng(seed),
             search_depth_min(search_depth_min_),
@@ -295,6 +266,10 @@ namespace Learner
         vector<uint8_t> generate_random_move_flags();
 
         bool was_seen_before(const Position& pos);
+
+        void report(uint64_t done, uint64_t new_done);
+
+        void maybe_report(uint64_t done);
 
         bool commit_psv(
             Thread& th,
@@ -351,6 +326,9 @@ namespace Learner
         int write_minply;
         int write_maxply;
 
+        std::mutex stats_mutex;
+        TimePoint last_stats_report_time;
+
         // sfen exporter
         SfenWriter& sfen_writer;
 
@@ -359,11 +337,20 @@ namespace Learner
 
     void MultiThinkGenSfen::gensfen(uint64_t limit)
     {
+        last_stats_report_time = 0;
+
         std::atomic<uint64_t> counter{0};
         Threads.execute_with_workers([&counter, limit, this](Thread& th) {
             thread_worker(th, counter, limit);
         });
         Threads.wait_for_workers_finished();
+
+        if (limit % REPORT_STATS_EVERY != 0)
+        {
+            report(limit, limit % REPORT_STATS_EVERY);
+        }
+
+        std::cout << std::endl;
     }
 
     optional<int8_t> MultiThinkGenSfen::get_current_game_result(
@@ -484,6 +471,43 @@ namespace Learner
         return nullopt;
     }
 
+    void MultiThinkGenSfen::report(uint64_t done, uint64_t new_done)
+    {
+        const auto now_time = now();
+        const TimePoint elapsed = now_time - last_stats_report_time + 1;
+
+        sync_cout
+            << endl
+            << done << " sfens, "
+            << new_done * 1000 / elapsed << " sfens/second, "
+            << "at " << now_string() << sync_endl;
+
+        last_stats_report_time = now_time;
+    }
+
+    void MultiThinkGenSfen::maybe_report(uint64_t done)
+    {
+        if (done % REPORT_DOT_EVERY == 0)
+        {
+            std::lock_guard lock(stats_mutex);
+
+            if (last_stats_report_time == 0)
+            {
+                last_stats_report_time = now();
+            }
+
+            if (done != 0)
+            {
+                std::cout << '.';
+
+                if (done % REPORT_STATS_EVERY == 0)
+                {
+                    report(done, REPORT_STATS_EVERY);
+                }
+            }
+        }
+    }
+
     // Write out the phases loaded in sfens to a file.
     // lastTurnIsWin: win/loss in the next phase after the final phase in sfens
     // 1 when winning. -1 when losing. Pass 0 for a draw.
@@ -520,6 +544,9 @@ namespace Learner
             const auto iter = counter.fetch_add(1);
             if (iter >= limit)
                 return true;
+
+            // because `iter` was done, now we do one more
+            maybe_report(iter + 1);
 
             // Write out one sfen.
             sfen_writer.write(th.thread_idx(), sfen);
