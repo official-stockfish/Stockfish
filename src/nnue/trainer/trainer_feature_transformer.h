@@ -349,7 +349,7 @@ namespace Eval::NNUE {
 
             std::cout << "INFO: largest min activation = " << largest_min_activation
                       << ", smallest max activation = " << smallest_max_activation
-                      << std::endl << std::endl;
+                      << std::endl;
 
             std::fill(std::begin(min_activations_), std::end(min_activations_),
                       std::numeric_limits<LearnFloatType>::max());

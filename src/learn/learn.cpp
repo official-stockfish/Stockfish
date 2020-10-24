@@ -677,7 +677,8 @@ namespace Learner
         TT.new_search();
         TimePoint elapsed = now() - Search::Limits.startTime + 1;
 
-        cout << "PROGRESS: " << now_string() << ", ";
+        cout << "\n";
+        cout << "PROGRESS (calc_loss): " << now_string() << ", ";
         cout << total_done << " sfens, ";
         cout << total_done * 1000 / elapsed  << " sfens/second";
         cout << ", iteration " << epoch;
