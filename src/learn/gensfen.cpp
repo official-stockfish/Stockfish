@@ -257,35 +257,6 @@ namespace Learner
 
         void gensfen(uint64_t limit);
 
-        void thread_worker(Thread& th, std::atomic<uint64_t>& counter, uint64_t limit);
-
-        optional<int8_t> get_current_game_result(
-            Position& pos,
-            const vector<int>& move_hist_scores) const;
-
-        vector<uint8_t> generate_random_move_flags();
-
-        bool was_seen_before(const Position& pos);
-
-        void report(uint64_t done, uint64_t new_done);
-
-        void maybe_report(uint64_t done);
-
-        bool commit_psv(
-            Thread& th,
-            PSVector& sfens,
-            int8_t lastTurnIsWin,
-            std::atomic<uint64_t>& counter,
-            uint64_t limit);
-
-        optional<Move> choose_random_move(
-            Position& pos,
-            std::vector<uint8_t>& random_move_flag,
-            int ply,
-            int& random_move_c);
-
-        PRNG prng;
-
         // Min and max depths for search during gensfen
         int search_depth_min;
         int search_depth_max;
@@ -326,6 +297,9 @@ namespace Learner
         int write_minply;
         int write_maxply;
 
+    private:
+        PRNG prng;
+
         std::mutex stats_mutex;
         TimePoint last_stats_report_time;
 
@@ -333,6 +307,36 @@ namespace Learner
         SfenWriter& sfen_writer;
 
         vector<Key> hash; // 64MB*sizeof(HASH_KEY) = 512MB
+
+        void gensfen_worker(
+            Thread& th,
+            std::atomic<uint64_t>& counter,
+            uint64_t limit);
+
+        optional<int8_t> get_current_game_result(
+            Position& pos,
+            const vector<int>& move_hist_scores) const;
+
+        vector<uint8_t> generate_random_move_flags();
+
+        bool was_seen_before(const Position& pos);
+
+        void report(uint64_t done, uint64_t new_done);
+
+        void maybe_report(uint64_t done);
+
+        bool commit_psv(
+            Thread& th,
+            PSVector& sfens,
+            int8_t lastTurnIsWin,
+            std::atomic<uint64_t>& counter,
+            uint64_t limit);
+
+        optional<Move> choose_random_move(
+            Position& pos,
+            std::vector<uint8_t>& random_move_flag,
+            int ply,
+            int& random_move_c);
     };
 
     void MultiThinkGenSfen::gensfen(uint64_t limit)
@@ -705,7 +709,10 @@ namespace Learner
     }
 
     // thread_id = 0..Threads.size()-1
-    void MultiThinkGenSfen::thread_worker(Thread& th, std::atomic<uint64_t>& counter, uint64_t limit)
+    void MultiThinkGenSfen::gensfen_worker(
+        Thread& th,
+        std::atomic<uint64_t>& counter,
+        uint64_t limit)
     {
         // For the time being, it will be treated as a draw
         // at the maximum number of steps to write.
