@@ -18,9 +18,6 @@
 #include "misc.h"
 #include "thread_win32_osx.h"
 
-// Learning rate scale
-double global_learning_rate;
-
 // Code for learning NNUE evaluation function
 namespace Eval::NNUE {
 
@@ -181,11 +178,15 @@ namespace Eval::NNUE {
     }
 
     // update the evaluation function parameters
-    void update_parameters(uint64_t epoch, bool verbose, Learner::CalcGradFunc calc_grad) {
+    void update_parameters(
+        uint64_t epoch,
+        bool verbose,
+        double learning_rate,
+        Learner::CalcGradFunc calc_grad)
+    {
         assert(batch_size > 0);
 
-        const auto learning_rate = static_cast<LearnFloatType>(
-            global_learning_rate / batch_size);
+        learning_rate /= batch_size;
 
         std::lock_guard<std::mutex> lock(examples_mutex);
         std::shuffle(examples.begin(), examples.end(), rng);
