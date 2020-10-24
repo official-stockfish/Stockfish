@@ -80,6 +80,8 @@ Currently the following options are available:
 
 `seed` - seed for the PRNG. Can be either a number or a string. If it's a string then its hash will be used. If not specified then the current time will be used.
 
+`verbose` - this is a modifier, not a parameter. When used there will be more detailed output during training.
+
 ## Legacy subcommands and parameters
 
 ### Convert
