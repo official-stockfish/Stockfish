@@ -77,10 +77,6 @@ T operator -= (std::atomic<T>& x, const T rhs) { return x += -rhs; }
 
 namespace Learner
 {
-    static bool use_draw_games_in_training = true;
-    static bool use_draw_games_in_validation = true;
-    static bool skip_duplicated_positions_in_training = true;
-
     static double winning_probability_coefficient = 1.0 / PawnValueEg / 4.0 * std::log(10.0);
 
     // Score scale factors. ex) If we set src_score_min_value = 0.0,
@@ -373,37 +369,94 @@ namespace Learner
     // Class to generate sfen with multiple threads
     struct LearnerThink
     {
+        struct Params
+        {
+            // Mini batch size size. Be sure to set it on the side that uses this class.
+            uint64_t mini_batch_size = LEARN_MINI_BATCH_SIZE;
+
+            // Option to exclude early stage from learning
+            int reduction_gameply = 1;
+
+            // If the absolute value of the evaluation value of the deep search
+            // of the teacher phase exceeds this value, discard the teacher phase.
+            int eval_limit = 32000;
+
+            // Flag whether to dig a folder each time the evaluation function is saved.
+            // If true, do not dig the folder.
+            bool save_only_once = false;
+
+            bool shuffle = true;
+
+            bool verbose = false;
+
+            double newbob_decay = 0.5;
+            int newbob_num_trials = 4;
+            uint64_t auto_lr_drop = 0;
+
+            std::string best_nn_directory;
+
+            uint64_t eval_save_interval = LEARN_EVAL_SAVE_INTERVAL;
+            uint64_t loss_output_interval = 1'000'000;
+
+            size_t sfen_read_size = SfenReader::DEFAULT_SFEN_READ_SIZE;
+            size_t thread_buffer_size = SfenReader::DEFAULT_THREAD_BUFFER_SIZE;
+
+            bool use_draw_games_in_training = true;
+            bool use_draw_games_in_validation = true;
+            bool skip_duplicated_positions_in_training = true;
+
+            string validation_set_file_name;
+            string seed;
+
+            std::vector<std::string> filenames;
+
+            uint64_t num_threads;
+
+            void enforce_constraints()
+            {
+                num_threads = Options["Threads"];
+
+                if (loss_output_interval == 0)
+                {
+                    loss_output_interval = LEARN_RMSE_OUTPUT_INTERVAL * mini_batch_size;
+                }
+
+                // If reduction_gameply is set to 0, rand(0) will be divided by 0, so correct it to 1.
+                reduction_gameply = max(reduction_gameply, 1);
+
+                if (newbob_decay != 1.0 && !Options["SkipLoadingEval"]) {
+                    // Save the current net to [EvalSaveDir]\original.
+                    Eval::NNUE::save_eval("original");
+
+                    // Set the folder above to best_nn_directory so that the trainer can
+                    // resotre the network parameters from the original net file.
+                    best_nn_directory =
+                        Path::combine(Options["EvalSaveDir"], "original");
+                }
+            }
+        };
+
         // Number of phases used for calculation such as mse
         // mini-batch size = 1M is standard, so 0.2% of that should be negligible in terms of time.
         // Since search() is performed with depth = 1 in calculation of
         // move match rate, simple comparison is not possible...
         static constexpr uint64_t sfen_for_mse_size = 2000;
 
-        LearnerThink(
-            const std::vector<std::string>& filenames,
-            bool shuffle,
-            uint64_t thread_num,
-            const std::string& seed,
-            size_t read_size,
-            size_t buffer_size
-        ) :
-            prng(seed),
+        LearnerThink(const Params& prm) :
+            params(prm),
+            prng(prm.seed),
             sr(
-                filenames,
-                shuffle,
+                prm.filenames,
+                prm.shuffle,
                 SfenReaderMode::Cyclic,
-                thread_num,
+                prm.num_threads,
                 std::to_string(prng.next_random_seed()),
-                read_size,
-                buffer_size),
+                prm.sfen_read_size,
+                prm.thread_buffer_size),
             learn_loss_sum{}
         {
-            save_only_once = false;
             save_count = 0;
             loss_output_count = 0;
-            newbob_decay = 1.0;
-            newbob_num_trials = 2;
-            auto_lr_drop = 0;
             last_lr_drop = 0;
             best_loss = std::numeric_limits<double>::infinity();
             latest_loss_sum = 0.0;
@@ -412,34 +465,6 @@ namespace Learner
         }
 
         void learn(uint64_t epochs);
-
-
-        std::string validation_set_file_name;
-
-        // Mini batch size size. Be sure to set it on the side that uses this class.
-        uint64_t mini_batch_size = LEARN_MINI_BATCH_SIZE;
-
-        // Option to exclude early stage from learning
-        int reduction_gameply;
-
-        // If the absolute value of the evaluation value of the deep search
-        // of the teacher phase exceeds this value, discard the teacher phase.
-        int eval_limit;
-
-        // Flag whether to dig a folder each time the evaluation function is saved.
-        // If true, do not dig the folder.
-        bool save_only_once;
-
-        bool verbose;
-
-        double newbob_decay;
-        int newbob_num_trials;
-        uint64_t auto_lr_drop;
-
-        std::string best_nn_directory;
-
-        uint64_t eval_save_interval;
-        uint64_t loss_output_interval;
 
     private:
         void learn_worker(Thread& th, std::atomic<uint64_t>& counter, uint64_t limit);
@@ -461,6 +486,8 @@ namespace Learner
 
         // save merit function parameters to a file
         bool save(bool is_final = false);
+
+        Params params;
 
         PRNG prng;
 
@@ -493,11 +520,14 @@ namespace Learner
         Eval::NNUE::verify_any_net_loaded();
 
         const PSVector sfen_for_mse =
-            validation_set_file_name.empty()
+            params.validation_set_file_name.empty()
             ? sr.read_for_mse(sfen_for_mse_size)
-            : sr.read_validation_set(validation_set_file_name, eval_limit, use_draw_games_in_validation);
+            : sr.read_validation_set(
+                params.validation_set_file_name,
+                params.eval_limit,
+                params.use_draw_games_in_validation);
 
-        if (validation_set_file_name.empty()
+        if (params.validation_set_file_name.empty()
             && sfen_for_mse.size() != sfen_for_mse_size)
         {
             auto out = sync_region_cout.new_region();
@@ -508,7 +538,7 @@ namespace Learner
             return;
         }
 
-        if (newbob_decay != 1.0) {
+        if (params.newbob_decay != 1.0) {
 
             calc_loss(sfen_for_mse, 0);
 
@@ -527,10 +557,10 @@ namespace Learner
             std::atomic<uint64_t> counter{0};
 
             Threads.execute_with_workers([this, &counter](auto& th){
-                learn_worker(th, counter, mini_batch_size);
+                learn_worker(th, counter, params.mini_batch_size);
             });
 
-            total_done += mini_batch_size;
+            total_done += params.mini_batch_size;
 
             Threads.wait_for_workers_finished();
 
@@ -574,14 +604,14 @@ namespace Learner
                 break;
             }
 
-            if (eval_limit < abs(ps.score))
+            if (params.eval_limit < abs(ps.score))
                 goto RETRY_READ;
 
-            if (!use_draw_games_in_training && ps.game_result == 0)
+            if (!params.use_draw_games_in_training && ps.game_result == 0)
                 goto RETRY_READ;
 
             // Skip over the opening phase
-            if (ps.gamePly < prng.rand(reduction_gameply))
+            if (ps.gamePly < prng.rand(params.reduction_gameply))
                 goto RETRY_READ;
 
             StateInfo si;
@@ -647,10 +677,10 @@ namespace Learner
         // should be no real issues happening since
         // the read/write phases are isolated.
         atomic_thread_fence(memory_order_seq_cst);
-        Eval::NNUE::update_parameters(epoch, verbose);
+        Eval::NNUE::update_parameters(epoch, params.verbose);
         atomic_thread_fence(memory_order_seq_cst);
 
-        if (++save_count * mini_batch_size >= eval_save_interval)
+        if (++save_count * params.mini_batch_size >= params.eval_save_interval)
         {
             save_count = 0;
 
@@ -662,7 +692,7 @@ namespace Learner
             }
         }
 
-        if (++loss_output_count * mini_batch_size >= loss_output_interval)
+        if (++loss_output_count * params.mini_batch_size >= params.loss_output_interval)
         {
             loss_output_count = 0;
 
@@ -829,7 +859,7 @@ namespace Learner
         // Each time you save, change the extension part of the file name like "0","1","2",..
         // (Because I want to compare the winning rate for each evaluation function parameter later)
 
-        if (save_only_once)
+        if (params.save_only_once)
         {
             // When EVAL_SAVE_ONLY_ONCE is defined,
             // Do not dig a subfolder because I want to save it only once.
@@ -846,49 +876,48 @@ namespace Learner
             const std::string dir_name = std::to_string(dir_number++);
             Eval::NNUE::save_eval(dir_name);
 
-            if (newbob_decay != 1.0 && latest_loss_count > 0) {
-                static int trials = newbob_num_trials;
+            if (params.newbob_decay != 1.0 && latest_loss_count > 0) {
+                static int trials = params.newbob_num_trials;
                 const double latest_loss = latest_loss_sum / latest_loss_count;
                 latest_loss_sum = 0.0;
                 latest_loss_count = 0;
                 cout << "INFO (learning_rate):" << endl;
                 cout << "  - loss = " << latest_loss;
                 auto tot = total_done;
-                if (auto_lr_drop)
+                if (params.auto_lr_drop)
                 {
                     cout << " < best (" << best_loss << "), accepted" << endl;
                     best_loss = latest_loss;
-                    best_nn_directory = Path::combine((std::string)Options["EvalSaveDir"], dir_name);
-                    trials = newbob_num_trials;
+                    trials = params.newbob_num_trials;
 
-                    if (tot >= last_lr_drop + auto_lr_drop)
+                    if (tot >= last_lr_drop + params.auto_lr_drop)
                     {
                         last_lr_drop = tot;
-                        global_learning_rate *= newbob_decay;
+                        global_learning_rate *= params.newbob_decay;
                     }
                 }
                 else if (latest_loss < best_loss)
                 {
                     cout << " < best (" << best_loss << "), accepted" << endl;
                     best_loss = latest_loss;
-                    best_nn_directory = Path::combine((std::string)Options["EvalSaveDir"], dir_name);
-                    trials = newbob_num_trials;
+                    trials = params.newbob_num_trials;
                 }
                 else
                 {
                     cout << " >= best (" << best_loss << "), rejected" << endl;
-                    best_nn_directory = Path::combine((std::string)Options["EvalSaveDir"], dir_name);
 
                     if (--trials > 0 && !is_final)
                     {
                         cout
                             << "  - reducing learning rate from " << global_learning_rate
-                            << " to " << (global_learning_rate * newbob_decay)
+                            << " to " << (global_learning_rate * params.newbob_decay)
                             << " (" << trials << " more trials)" << endl;
 
-                        global_learning_rate *= newbob_decay;
+                        global_learning_rate *= params.newbob_decay;
                     }
                 }
+
+                params.best_nn_directory = Path::combine((std::string)Options["EvalSaveDir"], dir_name);
 
                 if (trials == 0)
                 {
@@ -924,12 +953,7 @@ namespace Learner
     // Learning from the generated game record
     void learn(Position&, istringstream& is)
     {
-        const auto thread_num = (int)Options["Threads"];
-
-        vector<string> filenames;
-
-        // mini_batch_size 1M aspect by default. This can be increased.
-        auto mini_batch_size = LEARN_MINI_BATCH_SIZE;
+        LearnerThink::Params params;
 
         // Number of epochs
         uint64_t epochs = std::numeric_limits<uint64_t>::max();
@@ -938,21 +962,6 @@ namespace Learner
         string base_dir;
         string target_dir;
 
-        // If the absolute value of the evaluation value
-        // in the deep search of the teacher phase exceeds this value,
-        // that phase is discarded.
-        int eval_limit = 32000;
-
-        // Flag to save the evaluation function file only once near the end.
-        bool save_only_once = false;
-
-        // Shuffle about what you are pre-reading on the teacher aspect.
-        // (Shuffle of about 10 million phases)
-        // Turn on if you want to pass a pre-shuffled file.
-        bool no_shuffle = false;
-
-        bool verbose = false;
-
         global_learning_rate = 1.0;
 
         // elmo lambda
@@ -960,25 +969,8 @@ namespace Learner
         ELMO_LAMBDA2 = 1.0;
         ELMO_LAMBDA_LIMIT = 32000;
 
-        // if (gamePly <rand(reduction_gameply)) continue;
-        // An option to exclude the early stage from the learning target moderately like
-        // If set to 1, rand(1)==0, so nothing is excluded.
-        int reduction_gameply = 1;
-
         uint64_t nn_batch_size = 1000;
-        double newbob_decay = 0.5;
-        int newbob_num_trials = 4;
-        uint64_t auto_lr_drop = 0;
         string nn_options;
-
-        uint64_t eval_save_interval = LEARN_EVAL_SAVE_INTERVAL;
-        uint64_t loss_output_interval = 1'000'000;
-
-        size_t sfen_read_size = SfenReader::DEFAULT_SFEN_READ_SIZE;
-        size_t thread_buffer_size = SfenReader::DEFAULT_THREAD_BUFFER_SIZE;
-
-        string validation_set_file_name;
-        string seed;
 
         auto out = sync_region_cout.new_region();
 
@@ -994,8 +986,8 @@ namespace Learner
             // specify the number of phases of mini-batch
             if (option == "bat")
             {
-                is >> mini_batch_size;
-                mini_batch_size *= 10000; // Unit is ten thousand
+                is >> params.mini_batch_size;
+                params.mini_batch_size *= 10000; // Unit is ten thousand
             }
 
             // Specify the folder in which the game record is stored and make it the rooting target.
@@ -1004,72 +996,73 @@ namespace Learner
             {
                 std::string filename;
                 is >> filename;
-                filenames.push_back(filename);
+                params.filenames.push_back(filename);
             }
 
             // Specify the number of loops
-            else if (option == "epochs")      is >> epochs;
+            else if (option == "epochs") is >> epochs;
 
             // Game file storage folder (get game file with relative path from here)
-            else if (option == "basedir")   is >> base_dir;
+            else if (option == "basedir") is >> base_dir;
 
             // Mini batch size
-            else if (option == "batchsize") is >> mini_batch_size;
+            else if (option == "batchsize") is >> params.mini_batch_size;
 
             // learning rate
-            else if (option == "lr")        is >> global_learning_rate;
+            else if (option == "lr") is >> global_learning_rate;
 
             // Accept also the old option name.
             else if (option == "use_draw_in_training"
                   || option == "use_draw_games_in_training")
-                is >> use_draw_games_in_training;
+                is >> params.use_draw_games_in_training;
 
             // Accept also the old option name.
             else if (option == "use_draw_in_validation"
                   || option == "use_draw_games_in_validation")
-                is >> use_draw_games_in_validation;
+                is >> params.use_draw_games_in_validation;
 
             // Accept also the old option name.
             else if (option == "use_hash_in_training"
                   || option == "skip_duplicated_positions_in_training")
-                is >> skip_duplicated_positions_in_training;
+                is >> params.skip_duplicated_positions_in_training;
 
-            else if (option == "winning_probability_coefficient") is >> winning_probability_coefficient;
+            else if (option == "winning_probability_coefficient")
+                is >> winning_probability_coefficient;
 
             // Using WDL with win rate model instead of sigmoid
             else if (option == "use_wdl") is >> use_wdl;
 
 
             // LAMBDA
-            else if (option == "lambda")       is >> ELMO_LAMBDA;
-            else if (option == "lambda2")      is >> ELMO_LAMBDA2;
+            else if (option == "lambda") is >> ELMO_LAMBDA;
+            else if (option == "lambda2") is >> ELMO_LAMBDA2;
             else if (option == "lambda_limit") is >> ELMO_LAMBDA_LIMIT;
 
-            else if (option == "reduction_gameply") is >> reduction_gameply;
+            else if (option == "reduction_gameply") is >> params.reduction_gameply;
 
-            else if (option == "eval_limit") is >> eval_limit;
-            else if (option == "save_only_once") save_only_once = true;
-            else if (option == "no_shuffle") no_shuffle = true;
+            else if (option == "eval_limit") is >> params.eval_limit;
+            else if (option == "save_only_once") params.save_only_once = true;
+            else if (option == "no_shuffle") params.shuffle = false;
 
             else if (option == "nn_batch_size") is >> nn_batch_size;
-            else if (option == "newbob_decay") is >> newbob_decay;
-            else if (option == "newbob_num_trials") is >> newbob_num_trials;
+            else if (option == "newbob_decay") is >> params.newbob_decay;
+            else if (option == "newbob_num_trials") is >> params.newbob_num_trials;
             else if (option == "nn_options") is >> nn_options;
-            else if (option == "auto_lr_drop") is >> auto_lr_drop;
+            else if (option == "auto_lr_drop") is >> params.auto_lr_drop;
 
-            else if (option == "eval_save_interval") is >> eval_save_interval;
-            else if (option == "loss_output_interval") is >> loss_output_interval;
-            else if (option == "validation_set_file_name") is >> validation_set_file_name;
+            else if (option == "eval_save_interval") is >> params.eval_save_interval;
+            else if (option == "loss_output_interval") is >> params.loss_output_interval;
+            else if (option == "validation_set_file_name") is >> params.validation_set_file_name;
 
             else if (option == "src_score_min_value") is >> src_score_min_value;
             else if (option == "src_score_max_value") is >> src_score_max_value;
             else if (option == "dest_score_min_value") is >> dest_score_min_value;
             else if (option == "dest_score_max_value") is >> dest_score_max_value;
 
-            else if (option == "sfen_read_size") is >> sfen_read_size;
-            else if (option == "thread_buffer_size") is >> thread_buffer_size;
+            else if (option == "sfen_read_size") is >> params.sfen_read_size;
+            else if (option == "thread_buffer_size") is >> params.thread_buffer_size;
 
-            else if (option == "seed") is >> seed;
+            else if (option == "seed") is >> params.seed;
             else if (option == "set_recommended_uci_options")
             {
                 UCI::setoption("Use NNUE", "pure");
@@ -1082,20 +1075,12 @@ namespace Learner
                 UCI::setoption("PruneAtShallowDepth", "false");
                 UCI::setoption("EnableTranspositionTable", "false");
             }
-            else if (option == "verbose") verbose = true;
+            else if (option == "verbose") params.verbose = true;
             else
             {
                 out << "INFO: Unknown option: " << option << ". Ignoring.\n";
             }
         }
-
-        if (loss_output_interval == 0)
-        {
-            loss_output_interval = LEARN_RMSE_OUTPUT_INTERVAL * mini_batch_size;
-        }
-
-        // If reduction_gameply is set to 0, rand(0) will be divided by 0, so correct it to 1.
-        reduction_gameply = max(reduction_gameply, 1);
 
         out << "INFO: Executing learn command\n";
 
@@ -1104,40 +1089,42 @@ namespace Learner
         out << "WARNING: OpenMP disabled." << endl;
 #endif
 
+        params.enforce_constraints();
+
         // Right now we only have the individual files.
         // We need to apply base_dir here
         if (!target_dir.empty())
         {
-            append_files_from_dir(filenames, base_dir, target_dir);
+            append_files_from_dir(params.filenames, base_dir, target_dir);
         }
-        rebase_files(filenames, base_dir);
+        rebase_files(params.filenames, base_dir);
 
         out << "INFO: Input files:\n";
-        for (auto s : filenames)
+        for (auto s : params.filenames)
             out << "  - " << s << '\n';
 
         out << "INFO: Parameters:\n";
-        if (!validation_set_file_name.empty())
+        if (!params.validation_set_file_name.empty())
         {
-            out << "  - validation set           : " << validation_set_file_name << endl;
+            out << "  - validation set           : " << params.validation_set_file_name << endl;
         }
 
         out << "  - epochs                   : " << epochs << endl;
-        out << "  - epochs * minibatch size  : " << epochs * mini_batch_size << endl;
-        out << "  - eval_limit               : " << eval_limit << endl;
-        out << "  - save_only_once           : " << (save_only_once ? "true" : "false") << endl;
-        out << "  - shuffle on read          : " << (no_shuffle ? "false" : "true") << endl;
+        out << "  - epochs * minibatch size  : " << epochs * params.mini_batch_size << endl;
+        out << "  - eval_limit               : " << params.eval_limit << endl;
+        out << "  - save_only_once           : " << (params.save_only_once ? "true" : "false") << endl;
+        out << "  - shuffle on read          : " << (params.shuffle ? "true" : "false") << endl;
 
         out << "  - Loss Function            : " << LOSS_FUNCTION << endl;
-        out << "  - minibatch size           : " << mini_batch_size << endl;
+        out << "  - minibatch size           : " << params.mini_batch_size << endl;
 
         out << "  - nn_batch_size            : " << nn_batch_size << endl;
         out << "  - nn_options               : " << nn_options << endl;
 
         out << "  - learning rate            : " << global_learning_rate << endl;
-        out << "  - use draws in training    : " << use_draw_games_in_training << endl;
-        out << "  - use draws in validation  : " << use_draw_games_in_validation << endl;
-        out << "  - skip repeated positions  : " << skip_duplicated_positions_in_training << endl;
+        out << "  - use draws in training    : " << params.use_draw_games_in_training << endl;
+        out << "  - use draws in validation  : " << params.use_draw_games_in_validation << endl;
+        out << "  - skip repeated positions  : " << params.skip_duplicated_positions_in_training << endl;
 
         out << "  - winning prob coeff       : " << winning_probability_coefficient << endl;
         out << "  - use_wdl                  : " << use_wdl << endl;
@@ -1147,27 +1134,27 @@ namespace Learner
         out << "  - dest_score_min_value     : " << dest_score_min_value << endl;
         out << "  - dest_score_max_value     : " << dest_score_max_value << endl;
 
-        out << "  - reduction_gameply        : " << reduction_gameply << endl;
+        out << "  - reduction_gameply        : " << params.reduction_gameply << endl;
 
         out << "  - LAMBDA                   : " << ELMO_LAMBDA << endl;
         out << "  - LAMBDA2                  : " << ELMO_LAMBDA2 << endl;
         out << "  - LAMBDA_LIMIT             : " << ELMO_LAMBDA_LIMIT << endl;
-        out << "  - eval_save_interval       : " << eval_save_interval << " sfens" << endl;
-        out << "  - loss_output_interval     : " << loss_output_interval << " sfens" << endl;
+        out << "  - eval_save_interval       : " << params.eval_save_interval << " sfens" << endl;
+        out << "  - loss_output_interval     : " << params.loss_output_interval << " sfens" << endl;
 
-        out << "  - sfen_read_size           : " << sfen_read_size << endl;
-        out << "  - thread_buffer_size       : " << thread_buffer_size << endl;
+        out << "  - sfen_read_size           : " << params.sfen_read_size << endl;
+        out << "  - thread_buffer_size       : " << params.thread_buffer_size << endl;
 
-        out << "  - seed                     : " << seed << endl;
-        out << "  - verbose                  : " << (verbose ? "true" : "false") << endl;
+        out << "  - seed                     : " << params.seed << endl;
+        out << "  - verbose                  : " << (params.verbose ? "true" : "false") << endl;
 
-        if (auto_lr_drop) {
-            out << "  - learning rate scheduling : every " << auto_lr_drop << " sfens" << endl;
+        if (params.auto_lr_drop) {
+            out << "  - learning rate scheduling : every " << params.auto_lr_drop << " sfens" << endl;
         }
-        else if (newbob_decay != 1.0) {
+        else if (params.newbob_decay != 1.0) {
             out << "  - learning rate scheduling : newbob with decay" << endl;
-            out << "  - newbob_decay             : " << newbob_decay << endl;
-            out << "  - newbob_num_trials        : " << newbob_num_trials << endl;
+            out << "  - newbob_decay             : " << params.newbob_decay << endl;
+            out << "  - newbob_num_trials        : " << params.newbob_num_trials << endl;
         }
         else {
             out << "  - learning rate scheduling : fixed learning rate" << endl;
@@ -1175,54 +1162,17 @@ namespace Learner
 
         out << endl;
 
-        // -----------------------------------
-        // various initialization
-        // -----------------------------------
-
         out << "INFO: Started initialization." << endl;
 
         Threads.main()->ponder = false;
 
         set_learning_search_limits();
 
-        Eval::NNUE::initialize_training(seed, out);
+        Eval::NNUE::initialize_training(params.seed, out);
         Eval::NNUE::set_batch_size(nn_batch_size);
         Eval::NNUE::set_options(nn_options);
 
-        LearnerThink learn_think(
-            filenames,
-            !no_shuffle,
-            thread_num,
-            seed,
-            sfen_read_size,
-            thread_buffer_size);
-
-        if (newbob_decay != 1.0 && !Options["SkipLoadingEval"]) {
-            // Save the current net to [EvalSaveDir]\original.
-            Eval::NNUE::save_eval("original");
-
-            // Set the folder above to best_nn_directory so that the trainer can
-            // resotre the network parameters from the original net file.
-            learn_think.best_nn_directory =
-                Path::combine(Options["EvalSaveDir"], "original");
-        }
-
-        // Reflect other option settings.
-        learn_think.eval_limit = eval_limit;
-        learn_think.save_only_once = save_only_once;
-        learn_think.reduction_gameply = reduction_gameply;
-
-        learn_think.newbob_decay = newbob_decay;
-        learn_think.newbob_num_trials = newbob_num_trials;
-        learn_think.auto_lr_drop = auto_lr_drop;
-
-        learn_think.eval_save_interval = eval_save_interval;
-        learn_think.loss_output_interval = loss_output_interval;
-
-        learn_think.mini_batch_size = mini_batch_size;
-        learn_think.validation_set_file_name = validation_set_file_name;
-
-        learn_think.verbose = verbose;
+        LearnerThink learn_think(params);
 
         out << "Finished initialization." << endl;
 
