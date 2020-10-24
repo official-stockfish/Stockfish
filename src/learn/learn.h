@@ -54,12 +54,6 @@ namespace Learner
 
     constexpr std::size_t LEARN_MINI_BATCH_SIZE = 1000 * 1000 * 1;
 
-    // The number of phases to read from the file at one time. After reading this much, shuffle.
-    // It is better to have a certain size, but this number x 40 bytes x 3 times as much memory is consumed. 400MB*3 is consumed in the 10M phase.
-    // Must be a multiple of THREAD_BUFFER_SIZE(=10000).
-
-    constexpr std::size_t LEARN_SFEN_READ_SIZE = 1000 * 1000 * 10;
-
     // Saving interval of evaluation function at learning. Save each time you learn this number of phases.
     // Needless to say, the longer the saving interval, the shorter the learning time.
     // Folder name is incremented for each save like 0/, 1/, 2/...

@@ -28,13 +28,13 @@ namespace Learner{
     struct SfenReader
     {
         // Number of phases buffered by each thread 0.1M phases. 4M phase at 40HT
-        static constexpr size_t THREAD_BUFFER_SIZE = 10 * 1000;
+        static constexpr size_t DEFAULT_THREAD_BUFFER_SIZE = 10 * 1000;
 
         // Buffer for reading files (If this is made larger,
         // the shuffle becomes larger and the phases may vary.
         // If it is too large, the memory consumption will increase.
         // SFEN_READ_SIZE is a multiple of THREAD_BUFFER_SIZE.
-        static constexpr const size_t SFEN_READ_SIZE = LEARN_SFEN_READ_SIZE;
+        static constexpr const size_t DEFAULT_SFEN_READ_SIZE = 1000 * 1000 * 10;
 
         // Do not use std::random_device().
         // Because it always the same integers on MinGW.
@@ -43,10 +43,14 @@ namespace Learner{
             bool do_shuffle,
             SfenReaderMode mode_,
             int thread_num,
-            const std::string& seed
+            const std::string& seed,
+            size_t read_size = DEFAULT_SFEN_READ_SIZE,
+            size_t buffer_size = DEFAULT_THREAD_BUFFER_SIZE
         ) :
             filenames(filenames_.begin(), filenames_.end()),
             mode(mode_),
+            sfen_read_size(read_size),
+            thread_buffer_size(buffer_size),
             prng(seed)
         {
             packed_sfens.resize(thread_num);
@@ -165,7 +169,7 @@ namespace Learner{
                         packed_sfens[thread_id] = std::move(packed_sfens_pool.front());
                         packed_sfens_pool.pop_front();
 
-                        total_read += THREAD_BUFFER_SIZE;
+                        total_read += thread_buffer_size;
 
                         return true;
                     }
@@ -237,17 +241,17 @@ namespace Learner{
             {
                 // Wait for the buffer to run out.
                 // This size() is read only, so you don't need to lock it.
-                while (!stop_flag && packed_sfens_pool.size() >= SFEN_READ_SIZE / THREAD_BUFFER_SIZE)
+                while (!stop_flag && packed_sfens_pool.size() >= sfen_read_size / thread_buffer_size)
                     sleep(100);
 
                 if (stop_flag)
                     return;
 
                 PSVector sfens;
-                sfens.reserve(SFEN_READ_SIZE);
+                sfens.reserve(sfen_read_size);
 
                 // Read from the file into the file buffer.
-                while (sfens.size() < SFEN_READ_SIZE)
+                while (sfens.size() < sfen_read_size)
                 {
                     std::optional<PackedSfenValue> p = sfen_input_stream->next();
                     if (p.has_value())
@@ -280,11 +284,11 @@ namespace Learner{
                     Algo::shuffle(sfens, prng);
                 }
 
-                // Divide this by THREAD_BUFFER_SIZE. There should be size pieces.
-                // SFEN_READ_SIZE shall be a multiple of THREAD_BUFFER_SIZE.
-                assert((SFEN_READ_SIZE % THREAD_BUFFER_SIZE) == 0);
+                // Divide this by thread_buffer_size. There should be size pieces.
+                // sfen_read_size shall be a multiple of thread_buffer_size.
+                assert((sfen_read_size % thread_buffer_size) == 0);
 
-                auto size = size_t(SFEN_READ_SIZE / THREAD_BUFFER_SIZE);
+                auto size = size_t(sfen_read_size / thread_buffer_size);
                 std::vector<std::unique_ptr<PSVector>> buffers;
                 buffers.reserve(size);
 
@@ -292,11 +296,11 @@ namespace Learner{
                 {
                     // Delete this pointer on the receiving side.
                     auto buf = std::make_unique<PSVector>();
-                    buf->resize(THREAD_BUFFER_SIZE);
+                    buf->resize(thread_buffer_size);
                     memcpy(
                         buf->data(),
-                        &sfens[i * THREAD_BUFFER_SIZE],
-                        sizeof(PackedSfenValue) * THREAD_BUFFER_SIZE);
+                        &sfens[i * thread_buffer_size],
+                        sizeof(PackedSfenValue) * thread_buffer_size);
 
                     buffers.emplace_back(std::move(buf));
                 }
@@ -330,6 +334,9 @@ namespace Learner{
         bool shuffle;
 
         SfenReaderMode mode;
+
+        size_t sfen_read_size;
+        size_t thread_buffer_size;
 
         // Random number to shuffle when reading the phase
         PRNG prng;

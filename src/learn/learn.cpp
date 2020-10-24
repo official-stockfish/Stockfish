@@ -385,10 +385,19 @@ namespace Learner
             const std::vector<std::string>& filenames,
             bool shuffle,
             uint64_t thread_num,
-            const std::string& seed
+            const std::string& seed,
+            size_t read_size,
+            size_t buffer_size
         ) :
             prng(seed),
-            sr(filenames, shuffle, SfenReaderMode::Cyclic, thread_num, std::to_string(prng.next_random_seed())),
+            sr(
+                filenames,
+                shuffle,
+                SfenReaderMode::Cyclic,
+                thread_num,
+                std::to_string(prng.next_random_seed()),
+                read_size,
+                buffer_size),
             learn_loss_sum{}
         {
             save_only_once = false;
@@ -958,6 +967,9 @@ namespace Learner
         uint64_t eval_save_interval = LEARN_EVAL_SAVE_INTERVAL;
         uint64_t loss_output_interval = 1'000'000;
 
+        size_t sfen_read_size = SfenReader::DEFAULT_SFEN_READ_SIZE;
+        size_t thread_buffer_size = SfenReader::DEFAULT_THREAD_BUFFER_SIZE;
+
         string validation_set_file_name;
         string seed;
 
@@ -1044,6 +1056,9 @@ namespace Learner
             else if (option == "src_score_max_value") is >> src_score_max_value;
             else if (option == "dest_score_min_value") is >> dest_score_min_value;
             else if (option == "dest_score_max_value") is >> dest_score_max_value;
+
+            else if (option == "sfen_read_size") is >> sfen_read_size;
+            else if (option == "thread_buffer_size") is >> thread_buffer_size;
 
             else if (option == "seed") is >> seed;
             else if (option == "set_recommended_uci_options")
@@ -1146,7 +1161,13 @@ namespace Learner
         Eval::NNUE::set_batch_size(nn_batch_size);
         Eval::NNUE::set_options(nn_options);
 
-        LearnerThink learn_think(filenames, !no_shuffle, thread_num, seed);
+        LearnerThink learn_think(
+            filenames,
+            !no_shuffle,
+            thread_num,
+            seed,
+            sfen_read_size,
+            thread_buffer_size);
 
         if (newbob_decay != 1.0 && !Options["SkipLoadingEval"]) {
             // Save the current net to [EvalSaveDir]\original.
