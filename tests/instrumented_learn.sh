@@ -79,11 +79,11 @@ cat << EOF > gensfen01.exp
  send "setoption name Use NNUE value false\n"
  send "isready\n"
  send "gensfen depth 3 loop 100 use_draw_in_training_data_generation 1 eval_limit 32000 output_file_name training_data/training_data.bin sfen_format bin\n"
- expect "gensfen finished."
+ expect "INFO: Gensfen finished."
  send "convert_plain targetfile training_data/training_data.bin output_file_name training_data.txt\n"
  expect "all done"
  send "gensfen depth 3 loop 100 use_draw_in_training_data_generation 1 eval_limit 32000 output_file_name training_data/training_data.binpack sfen_format binpack\n"
- expect "gensfen finished."
+ expect "INFO: Gensfen finished."
 
  send "quit\n"
  expect eof
@@ -105,9 +105,9 @@ cat << EOF > gensfen02.exp
  send "setoption name Use NNUE value true\n"
  send "isready\n"
  send "gensfen depth 4 loop 50 use_draw_in_training_data_generation 1 eval_limit 32000 output_file_name validation_data/validation_data.bin sfen_format bin\n"
- expect "gensfen finished."
+ expect "INFO: Gensfen finished."
  send "gensfen depth 4 loop 50 use_draw_in_training_data_generation 1 eval_limit 32000 output_file_name validation_data/validation_data.binpack sfen_format binpack\n"
- expect "gensfen finished."
+ expect "INFO: Gensfen finished."
 
  send "quit\n"
  expect eof
@@ -129,7 +129,7 @@ cat << EOF > learn01.exp
  send "isready\n"
  send "learn targetdir training_data epochs 1 sfen_read_size 100 thread_buffer_size 10 batchsize 100 use_draw_in_training 1 use_draw_in_validation 1 lr 1 eval_limit 32000 nn_batch_size 30 newbob_decay 0.5 eval_save_interval 30 loss_output_interval 10 validation_set_file_name validation_data/validation_data.bin\n"
 
- expect "INFO (save_eval): Saving current evaluation file in"
+ expect "INFO (save_eval): Finished saving evaluation file in"
 
  send "quit\n"
  expect eof
