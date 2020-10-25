@@ -1,7 +1,5 @@
 #include "convert.h"
 
-#include "multi_think.h"
-
 #include "uci.h"
 #include "misc.h"
 #include "thread.h"
