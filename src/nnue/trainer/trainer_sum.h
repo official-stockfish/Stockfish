@@ -7,6 +7,8 @@
 
 #include "nnue/layers/sum.h"
 
+#include "thread.h"
+
 // Specialization of NNUE evaluation function learning class template for Sum
 namespace Eval::NNUE {
 
@@ -45,10 +47,10 @@ namespace Eval::NNUE {
         }
 
         // forward propagation
-        /*const*/ LearnFloatType* propagate(const std::vector<Example>& batch) {
+        /*const*/ LearnFloatType* propagate(ThreadPool& thread_pool, const std::vector<Example>& batch) {
             batch_size_ = static_cast<IndexType>(batch.size());
-            auto output = Tail::propagate(batch);
-            const auto head_output = previous_layer_trainer_->propagate(batch);
+            auto output = Tail::propagate(thread_pool, batch);
+            const auto head_output = previous_layer_trainer_->propagate(thread_pool, batch);
 
 #if defined(USE_BLAS)
             cblas_saxpy(kOutputDimensions * batch_size_, 1.0,
@@ -66,11 +68,12 @@ namespace Eval::NNUE {
         }
 
         // backpropagation
-        void backpropagate(const LearnFloatType* gradients,
+        void backpropagate(ThreadPool& thread_pool,
+                           const LearnFloatType* gradients,
                            LearnFloatType learning_rate) {
 
-            Tail::backpropagate(gradients, learning_rate);
-            previous_layer_trainer_->backpropagate(gradients, learning_rate);
+            Tail::backpropagate(thread_pool, gradients, learning_rate);
+            previous_layer_trainer_->backpropagate(thread_pool, gradients, learning_rate);
         }
 
     private:

@@ -7,6 +7,8 @@
 
 #include "nnue/layers/clipped_relu.h"
 
+#include "thread.h"
+
 // Specialization of NNUE evaluation function learning class template for ClippedReLU
 namespace Eval::NNUE {
 
@@ -41,13 +43,13 @@ namespace Eval::NNUE {
         }
 
         // forward propagation
-        const LearnFloatType* propagate(const std::vector<Example>& batch) {
+        const LearnFloatType* propagate(ThreadPool& thread_pool, const std::vector<Example>& batch) {
             if (output_.size() < kOutputDimensions * batch.size()) {
               output_.resize(kOutputDimensions * batch.size());
               gradients_.resize(kInputDimensions * batch.size());
             }
 
-            const auto input = previous_layer_trainer_->propagate(batch);
+            const auto input = previous_layer_trainer_->propagate(thread_pool, batch);
             batch_size_ = static_cast<IndexType>(batch.size());
             for (IndexType b = 0; b < batch_size_; ++b) {
                 const IndexType batch_offset = kOutputDimensions * b;
@@ -63,7 +65,8 @@ namespace Eval::NNUE {
         }
 
         // backpropagation
-        void backpropagate(const LearnFloatType* gradients,
+        void backpropagate(ThreadPool& thread_pool,
+                           const LearnFloatType* gradients,
                            LearnFloatType learning_rate) {
 
             for (IndexType b = 0; b < batch_size_; ++b) {
@@ -77,7 +80,7 @@ namespace Eval::NNUE {
             }
             num_total_ += batch_size_ * kOutputDimensions;
 
-            previous_layer_trainer_->backpropagate(gradients_.data(), learning_rate);
+            previous_layer_trainer_->backpropagate(thread_pool, gradients_.data(), learning_rate);
         }
 
     private:

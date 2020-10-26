@@ -7,6 +7,8 @@
 
 #include "nnue/layers/affine_transform.h"
 
+#include "thread.h"
+
 #include <random>
 
 // Specialization of NNUE evaluation function learning class template for AffineTransform
@@ -88,14 +90,14 @@ namespace Eval::NNUE {
         }
 
         // forward propagation
-        const LearnFloatType* propagate(const std::vector<Example>& batch) {
+        const LearnFloatType* propagate(ThreadPool& thread_pool, const std::vector<Example>& batch) {
             if (output_.size() < kOutputDimensions * batch.size()) {
                 output_.resize(kOutputDimensions * batch.size());
                 gradients_.resize(kInputDimensions * batch.size());
             }
 
             batch_size_ = static_cast<IndexType>(batch.size());
-            batch_input_ = previous_layer_trainer_->propagate(batch);
+            batch_input_ = previous_layer_trainer_->propagate(thread_pool, batch);
 #if defined(USE_BLAS)
             for (IndexType b = 0; b < batch_size_; ++b) {
                 const IndexType batch_offset = kOutputDimensions * b;
@@ -127,7 +129,8 @@ namespace Eval::NNUE {
         }
 
         // backpropagation
-        void backpropagate(const LearnFloatType* gradients,
+        void backpropagate(ThreadPool& thread_pool,
+                           const LearnFloatType* gradients,
                            LearnFloatType learning_rate) {
 
             const LearnFloatType local_learning_rate =
@@ -211,7 +214,7 @@ namespace Eval::NNUE {
             }
             num_weights_diffs_ += kOutputDimensions * kInputDimensions;
 
-            previous_layer_trainer_->backpropagate(gradients_.data(), learning_rate);
+            previous_layer_trainer_->backpropagate(thread_pool, gradients_.data(), learning_rate);
         }
 
     private:

@@ -9,6 +9,8 @@
 
 #include "nnue/nnue_feature_transformer.h"
 
+#include "thread.h"
+
 #include <array>
 #include <bitset>
 #include <numeric>
@@ -90,11 +92,13 @@ namespace Eval::NNUE {
         }
 
         // forward propagation
-        const LearnFloatType* propagate(const std::vector<Example>& batch) {
+        const LearnFloatType* propagate(ThreadPool& thread_pool, const std::vector<Example>& batch) {
             if (output_.size() < kOutputDimensions * batch.size()) {
                 output_.resize(kOutputDimensions * batch.size());
                 gradients_.resize(kOutputDimensions * batch.size());
             }
+
+            (void)thread_pool;
 
             batch_ = &batch;
             // affine transform
@@ -143,8 +147,11 @@ namespace Eval::NNUE {
         }
 
         // backpropagation
-        void backpropagate(const LearnFloatType* gradients,
+        void backpropagate(ThreadPool& thread_pool,
+                           const LearnFloatType* gradients,
                            LearnFloatType learning_rate) {
+
+            (void)thread_pool;
 
             const LearnFloatType local_learning_rate =
                 learning_rate * learning_rate_scale_;

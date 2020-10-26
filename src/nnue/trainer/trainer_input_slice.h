@@ -7,6 +7,8 @@
 
 #include "nnue/layers/input_slice.h"
 
+#include "thread.h"
+
 // Specialization of NNUE evaluation function learning class template for InputSlice
 namespace Eval::NNUE {
 
@@ -60,7 +62,7 @@ namespace Eval::NNUE {
         }
 
         // forward propagation
-        const LearnFloatType* propagate(const std::vector<Example>& batch) {
+        const LearnFloatType* propagate(ThreadPool& thread_pool, const std::vector<Example>& batch) {
             if (gradients_.size() < kInputDimensions * batch.size()) {
                 gradients_.resize(kInputDimensions * batch.size());
             }
@@ -69,7 +71,7 @@ namespace Eval::NNUE {
 
             if (num_calls_ == 0) {
                 current_operation_ = Operation::kPropagate;
-                output_ = feature_transformer_trainer_->propagate(batch);
+                output_ = feature_transformer_trainer_->propagate(thread_pool, batch);
             }
 
             assert(current_operation_ == Operation::kPropagate);
@@ -83,11 +85,12 @@ namespace Eval::NNUE {
         }
 
         // backpropagation
-        void backpropagate(const LearnFloatType* gradients,
+        void backpropagate(ThreadPool& thread_pool,
+                           const LearnFloatType* gradients,
                            LearnFloatType learning_rate) {
 
             if (num_referrers_ == 1) {
-                feature_transformer_trainer_->backpropagate(gradients, learning_rate);
+                feature_transformer_trainer_->backpropagate(thread_pool, gradients, learning_rate);
                 return;
             }
 
@@ -112,7 +115,7 @@ namespace Eval::NNUE {
 
             if (++num_calls_ == num_referrers_) {
                 feature_transformer_trainer_->backpropagate(
-                    gradients_.data(), learning_rate);
+                    thread_pool, gradients_.data(), learning_rate);
                 num_calls_ = 0;
                 current_operation_ = Operation::kNone;
             }
@@ -193,7 +196,7 @@ namespace Eval::NNUE {
         }
 
         // forward propagation
-        const LearnFloatType* propagate(const std::vector<Example>& batch) {
+        const LearnFloatType* propagate(ThreadPool& thread_pool,const std::vector<Example>& batch) {
             if (output_.size() < kOutputDimensions * batch.size()) {
               output_.resize(kOutputDimensions * batch.size());
               gradients_.resize(kInputDimensions * batch.size());
@@ -201,7 +204,7 @@ namespace Eval::NNUE {
 
             batch_size_ = static_cast<IndexType>(batch.size());
 
-            const auto input = shared_input_trainer_->propagate(batch);
+            const auto input = shared_input_trainer_->propagate(thread_pool, batch);
             for (IndexType b = 0; b < batch_size_; ++b) {
                 const IndexType input_offset = kInputDimensions * b;
                 const IndexType output_offset = kOutputDimensions * b;
@@ -219,7 +222,8 @@ namespace Eval::NNUE {
         }
 
         // backpropagation
-        void backpropagate(const LearnFloatType* gradients,
+        void backpropagate(ThreadPool& thread_pool,
+                           const LearnFloatType* gradients,
                            LearnFloatType learning_rate) {
 
             for (IndexType b = 0; b < batch_size_; ++b) {
@@ -233,7 +237,7 @@ namespace Eval::NNUE {
                     }
                 }
             }
-            shared_input_trainer_->backpropagate(gradients_.data(), learning_rate);
+            shared_input_trainer_->backpropagate(thread_pool, gradients_.data(), learning_rate);
         }
 
     private:

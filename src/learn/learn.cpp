@@ -704,7 +704,7 @@ namespace Learner
         // should be no real issues happening since
         // the read/write phases are isolated.
         atomic_thread_fence(memory_order_seq_cst);
-        Eval::NNUE::update_parameters(epoch, params.verbose, params.learning_rate, calc_grad);
+        Eval::NNUE::update_parameters(Threads, epoch, params.verbose, params.learning_rate, calc_grad);
         atomic_thread_fence(memory_order_seq_cst);
 
         if (++save_count * params.mini_batch_size >= params.eval_save_interval)

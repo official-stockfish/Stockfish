@@ -5,6 +5,8 @@
 
 #include "misc.h"
 
+struct ThreadPool;
+
 // Interface used for learning NNUE evaluation function
 namespace Eval::NNUE {
 
@@ -32,6 +34,7 @@ namespace Eval::NNUE {
 
     // update the evaluation function parameters
     void update_parameters(
+        ThreadPool& thread_pool,
         uint64_t epoch,
         bool verbose,
         double learning_rate,
