@@ -45,6 +45,14 @@ namespace Eval::NNUE::Features {
         static_assert(get_array_length(kProperties) == kNumTrainingFeatureTypes, "");
 
     public:
+        static constexpr std::string get_name() {
+            return std::string("Factorizer<") + FeatureType::kName + ">";
+        }
+
+        static constexpr std::string get_factorizers_string() {
+            return "  - " + get_name();
+        }
+
         // Get the dimensionality of the learning feature
         static constexpr IndexType get_dimensions() {
             return get_active_dimensions(kProperties);

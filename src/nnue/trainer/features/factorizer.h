@@ -13,6 +13,14 @@ namespace Eval::NNUE::Features {
     template <typename FeatureType>
     class Factorizer {
     public:
+        static constexpr std::string get_name() {
+            return std::string("No factorizer");
+        }
+
+        static constexpr std::string get_factorizers_string() {
+            return "  - " + get_name();
+        }
+
         // Get the dimensionality of the learning feature
         static constexpr IndexType get_dimensions() {
             return FeatureType::kDimensions;

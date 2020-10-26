@@ -21,6 +21,14 @@ namespace Eval::NNUE::Features {
         static constexpr IndexType kBaseDimensions =
             FeatureSet<FirstFeatureType, RemainingFeatureTypes...>::kDimensions;
 
+        static constexpr std::string get_factorizers_string() {
+            std::string str = "  - ";
+            str += Head::get_name();
+            str += '\n';
+            str += Tail::get_factorizers_string();
+            return str;
+        }
+
         // Get the dimensionality of the learning feature
         static constexpr IndexType get_dimensions() {
             return Head::get_dimensions() + Tail::get_dimensions();
@@ -72,6 +80,14 @@ namespace Eval::NNUE::Features {
     public:
         // number of dimensions of original input features
         static constexpr IndexType kBaseDimensions = FeatureType::kDimensions;
+
+        static constexpr std::string get_name() {
+            return FeatureType::kName;
+        }
+
+        static constexpr std::string get_factorizers_string() {
+            return "  - " + get_name();
+        }
 
         // Get the dimensionality of the learning feature
         static constexpr IndexType get_dimensions() {

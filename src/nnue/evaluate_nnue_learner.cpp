@@ -68,6 +68,11 @@ namespace Eval::NNUE {
 
         out << std::endl;
 
+        out << "Factorizers:\n"
+            << Features::Factorizer<RawFeatures>::get_factorizers_string() << std::endl;
+
+        out << std::endl;
+
         assert(feature_transformer);
         assert(network);
 
