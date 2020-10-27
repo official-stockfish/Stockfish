@@ -563,6 +563,23 @@ public:
   void deallocate(T* p, std::size_t ) { std_aligned_free(p); }
 };
 
+template <typename T>
+class CacheLineAlignedAllocator {
+public:
+    using value_type = T;
+
+    constexpr static uint64_t cache_line_size = 64;
+
+    CacheLineAlignedAllocator() {}
+    CacheLineAlignedAllocator(const CacheLineAlignedAllocator&) {}
+    CacheLineAlignedAllocator(CacheLineAlignedAllocator&&) {}
+
+    template <typename U> CacheLineAlignedAllocator(const CacheLineAlignedAllocator<U>&) {}
+
+    T* allocate(std::size_t n) { return (T*)std_aligned_alloc(cache_line_size, n * sizeof(T)); }
+    void deallocate(T* p, std::size_t) { std_aligned_free(p); }
+};
+
 // --------------------
 //  Dependency Wrapper
 // --------------------
