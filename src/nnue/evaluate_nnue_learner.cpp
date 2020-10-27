@@ -244,6 +244,10 @@ namespace Eval::NNUE {
                 << " , batch_size = " << batch_size
                 << " , grad_norm = " << gradient_norm
                 << std::endl;
+        } else {
+            // Display some progress but don't synchronize as
+            // we can't really decide when to release the output lock here
+            std::cout << '.';
         }
 
         send_messages({{"quantize_parameters"}});
