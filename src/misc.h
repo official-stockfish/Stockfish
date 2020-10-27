@@ -397,6 +397,69 @@ inline uint64_t mul_hi64(uint64_t a, uint64_t b) {
 #endif
 }
 
+// This bitset can be accessed concurrently, provided
+// the concurrent accesses are performed on distinct
+// instances of underlying type. That means the cuncurrent
+// accesses need to be spaced by at least 
+// bits_per_bucket bits.
+// But at least best_concurrent_access_stride bits
+// is recommended to prevent false sharing.
+template <uint64_t N>
+struct LargeBitset
+{
+private:
+    constexpr static uint64_t cache_line_size = 64;
+
+public:
+    using UnderlyingType = uint64_t;
+
+    constexpr static uint64_t num_bits = N;
+    constexpr static uint64_t bits_per_bucket = 8 * sizeof(uint64_t);
+    constexpr static uint64_t num_buckets = (num_bits + bits_per_bucket - 1) / bits_per_bucket;
+    constexpr static uint64_t best_concurrent_access_stride = 8 * cache_line_size;
+
+    void set(uint64_t idx)
+    {
+        const uint64_t bucket = idx / bits_per_bucket;
+        const uint64_t bit = uint64_t(1) << (idx % bits_per_bucket);
+        bits[bucket] |= bit;
+    }
+
+    bool test(uint64_t idx) const
+    {
+        const uint64_t bucket = idx / bits_per_bucket;
+        const uint64_t bit = uint64_t(1) << (idx % bits_per_bucket);
+        return bits[bucket] & bit;
+    }
+
+    uint64_t count() const
+    {
+        uint64_t c = 0;
+        uint64_t i = 0;
+
+        for (; i < num_buckets - 3; i += 4)
+        {
+            uint64_t c0 = popcount(bits[i+0]);
+            uint64_t c1 = popcount(bits[i+1]);
+            uint64_t c2 = popcount(bits[i+2]);
+            uint64_t c3 = popcount(bits[i+3]);
+            c0 += c1;
+            c2 += c3;
+            c += c0 + c2;
+        }
+
+        for (; i < num_buckets; ++i)
+        {
+            c += popcount(bits[i]);
+        }
+
+        return c;
+    }
+
+private:
+    alignas(cache_line_size) UnderlyingType bits[num_buckets];
+};
+
 /// Under Windows it is not possible for a process to run on more than one
 /// logical processor group. This usually means to be limited to use max 64
 /// cores. To overcome this, some special platform specific API should be
