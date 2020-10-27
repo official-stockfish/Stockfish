@@ -203,7 +203,7 @@ namespace Eval::NNUE {
                 min_pre_activation_ = m128_hmin_ps(_mm_min_ps(min_pre_activation0, min_pre_activation1));
                 max_pre_activation_ = m128_hmax_ps(_mm_max_ps(max_pre_activation0, max_pre_activation1));
 
-                for (IndexType b = 0; b < batch.size(); ++b) 
+                for (IndexType b = 0; b < batch.size(); ++b)
                 {
                     const IndexType batch_offset = kOutputDimensions * b;
 
@@ -283,7 +283,7 @@ namespace Eval::NNUE {
                 learning_rate * learning_rate_scale_;
 
 #if defined (USE_SSE2)
-            
+
             {
                 static_assert(kHalfDimensions % 16 == 0, "This implementation assumes that it can process 16 floats at a time");
 
@@ -408,10 +408,26 @@ namespace Eval::NNUE {
                         for (IndexType c = 0; c < 2; ++c) {
                             const IndexType output_offset = batch_offset + kHalfDimensions * c;
                             for (const auto& feature : (*batch_)[b].training_features[c]) {
-                                if (feature.get_index() % num_threads != thread_index)
+                                const IndexType feature_index = feature.get_index();
+
+                                // We assign each bucket a continuous range of bits at least
+                                // of cache line size to prevent false sharing.
+                                // For HalfKP this is enough to saturate about 80 threads.
+                                const IndexType thread_bucket =
+                                    (feature_index / BitsetType::best_concurrent_access_stride)
+                                    % num_threads;
+
+                                if (thread_bucket != thread_index)
                                     continue;
+
+                                // This operation can be performed safely because
+                                // each thread accesses a different memory location
+                                // (even a different cache line)
+                                observed_features.set(feature_index);
+
                                 const IndexType weights_offset =
-                                    kHalfDimensions * feature.get_index();
+                                    kHalfDimensions * feature_index;
+
                                 const auto scale = static_cast<LearnFloatType>(
                                     effective_learning_rate / feature.get_count());
 
@@ -437,14 +453,6 @@ namespace Eval::NNUE {
                     }
                 }
             );
-
-            for (IndexType b = 0; b < batch_->size(); ++b) {
-                for (IndexType c = 0; c < 2; ++c) {
-                    for (const auto& feature : (*batch_)[b].training_features[c]) {
-                        observed_features.set(feature.get_index());
-                    }
-                }
-            }
 
             thread_pool.wait_for_workers_finished();
         }
@@ -628,7 +636,8 @@ namespace Eval::NNUE {
         std::vector<LearnFloatType, CacheLineAlignedAllocator<LearnFloatType>> output_;
 
         // Features that appeared in the training data
-        std::bitset<kInputDimensions> observed_features;
+        using BitsetType = LargeBitset<kInputDimensions>;
+        BitsetType observed_features;
 
         // hyper parameter
         LearnFloatType momentum_;

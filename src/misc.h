@@ -400,7 +400,7 @@ inline uint64_t mul_hi64(uint64_t a, uint64_t b) {
 // This bitset can be accessed concurrently, provided
 // the concurrent accesses are performed on distinct
 // instances of underlying type. That means the cuncurrent
-// accesses need to be spaced by at least 
+// accesses need to be spaced by at least
 // bits_per_bucket bits.
 // But at least best_concurrent_access_stride bits
 // is recommended to prevent false sharing.
@@ -417,6 +417,11 @@ public:
     constexpr static uint64_t bits_per_bucket = 8 * sizeof(uint64_t);
     constexpr static uint64_t num_buckets = (num_bits + bits_per_bucket - 1) / bits_per_bucket;
     constexpr static uint64_t best_concurrent_access_stride = 8 * cache_line_size;
+
+    LargeBitset()
+    {
+        std::fill(std::begin(bits), std::end(bits), 0);
+    }
 
     void set(uint64_t idx)
     {
