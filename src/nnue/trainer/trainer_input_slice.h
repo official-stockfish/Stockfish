@@ -163,7 +163,7 @@ namespace Eval::NNUE {
         const LearnFloatType* output_;
 
         // buffer for back propagation
-        std::vector<LearnFloatType> gradients_;
+        std::vector<LearnFloatType, CacheLineAlignedAllocator<LearnFloatType>> gradients_;
     };
 
     // Learning: Input layer
@@ -256,10 +256,10 @@ namespace Eval::NNUE {
         const std::shared_ptr<SharedInputTrainer> shared_input_trainer_;
 
         // Forward propagation buffer
-        std::vector<LearnFloatType> output_;
+        std::vector<LearnFloatType, CacheLineAlignedAllocator<LearnFloatType>> output_;
 
         // buffer for back propagation
-        std::vector<LearnFloatType> gradients_;
+        std::vector<LearnFloatType, CacheLineAlignedAllocator<LearnFloatType>> gradients_;
     };
 
 }  // namespace Eval::NNUE

@@ -421,11 +421,11 @@ namespace Eval::NNUE {
             LearnFloatType weights_[kHalfDimensions * kInputDimensions];
 
         // Buffer used for updating parameters
-        LearnFloatType biases_diff_[kHalfDimensions];
-        std::vector<LearnFloatType> gradients_;
+        alignas(kCacheLineSize) LearnFloatType biases_diff_[kHalfDimensions];
+        std::vector<LearnFloatType, CacheLineAlignedAllocator<LearnFloatType>> gradients_;
 
         // Forward propagation buffer
-        std::vector<LearnFloatType> output_;
+        std::vector<LearnFloatType, CacheLineAlignedAllocator<LearnFloatType>> output_;
 
         // Features that appeared in the training data
         std::bitset<kInputDimensions> observed_features;
@@ -437,8 +437,8 @@ namespace Eval::NNUE {
         // Health check statistics
         LearnFloatType min_pre_activation_;
         LearnFloatType max_pre_activation_;
-        LearnFloatType min_activations_[kHalfDimensions];
-        LearnFloatType max_activations_[kHalfDimensions];
+        alignas(kCacheLineSize) LearnFloatType min_activations_[kHalfDimensions];
+        alignas(kCacheLineSize) LearnFloatType max_activations_[kHalfDimensions];
     };
 
 }  // namespace Eval::NNUE

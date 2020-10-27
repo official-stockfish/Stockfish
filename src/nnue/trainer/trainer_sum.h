@@ -184,7 +184,7 @@ namespace Eval::NNUE {
         LayerType* const target_layer_;
 
         // Forward propagation buffer
-        std::vector<LearnFloatType> output_;
+        std::vector<LearnFloatType, CacheLineAlignedAllocator<LearnFloatType>> output_;
     };
 
 }  // namespace Eval::NNUE

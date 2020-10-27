@@ -353,18 +353,18 @@ namespace Eval::NNUE {
         LayerType* const target_layer_;
 
         // parameter
-        LearnFloatType biases_[kOutputDimensions];
-        LearnFloatType weights_[kOutputDimensions * kInputDimensions];
+        alignas(kCacheLineSize) LearnFloatType biases_[kOutputDimensions];
+        alignas(kCacheLineSize) LearnFloatType weights_[kOutputDimensions * kInputDimensions];
 
         // Buffer used for updating parameters
-        LearnFloatType biases_diff_[kOutputDimensions];
-        LearnFloatType weights_diff_[kOutputDimensions * kInputDimensions];
+        alignas(kCacheLineSize) LearnFloatType biases_diff_[kOutputDimensions];
+        alignas(kCacheLineSize) LearnFloatType weights_diff_[kOutputDimensions * kInputDimensions];
 
         // Forward propagation buffer
-        std::vector<LearnFloatType> output_;
+        std::vector<LearnFloatType, CacheLineAlignedAllocator<LearnFloatType>> output_;
 
         // buffer for back propagation
-        std::vector<LearnFloatType> gradients_;
+        std::vector<LearnFloatType, CacheLineAlignedAllocator<LearnFloatType>> gradients_;
 
         // hyper parameter
         LearnFloatType momentum_;
