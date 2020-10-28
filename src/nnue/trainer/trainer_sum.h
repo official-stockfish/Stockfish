@@ -3,6 +3,8 @@
 
 #include "trainer.h"
 
+#include "extra/stockfish_blas.h"
+
 #include "learn/learn.h"
 
 #include "nnue/layers/sum.h"
@@ -53,15 +55,19 @@ namespace Eval::NNUE {
             const auto head_output = previous_layer_trainer_->propagate(thread_pool, batch);
 
 #if defined(USE_BLAS)
-            cblas_saxpy(kOutputDimensions * batch_size_, 1.0,
-                        head_output, 1, output, 1);
+
+            cblas_saxpy(
+                kOutputDimensions * batch_size_, 1.0,
+                head_output, 1, output, 1
+            );
+
 #else
-            for (IndexType b = 0; b < batch_size_; ++b) {
-                const IndexType batch_offset = kOutputDimensions * b;
-                for (IndexType i = 0; i < kOutputDimensions; ++i) {
-                    output[batch_offset + i] += head_output[batch_offset + i];
-                }
-            }
+
+            Blas::saxpy(
+                thread_pool,
+                kOutputDimensions * batch_size_, 1.0,
+                head_output, 1, output, 1
+            );
 
 #endif
             return output;

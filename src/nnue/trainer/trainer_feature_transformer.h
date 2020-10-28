@@ -3,6 +3,8 @@
 
 #include "trainer.h"
 
+#include "extra/stockfish_blas.h"
+
 #include "features/factorizer_feature_set.h"
 
 #include "learn/learn.h"
@@ -107,24 +109,36 @@ namespace Eval::NNUE {
                 const IndexType batch_offset = kOutputDimensions * b;
                 for (IndexType c = 0; c < 2; ++c) {
                     const IndexType output_offset = batch_offset + kHalfDimensions * c;
+
 #if defined(USE_BLAS)
-                    cblas_scopy(kHalfDimensions, biases_, 1, &output_[output_offset], 1);
+
+                    cblas_scopy(
+                        kHalfDimensions, biases_, 1, &output_[output_offset], 1
+                    );
+
                     for (const auto& feature : batch[b].training_features[c]) {
                         const IndexType weights_offset = kHalfDimensions * feature.get_index();
-                        cblas_saxpy(kHalfDimensions, (float)feature.get_count(),
-                                    &weights_[weights_offset], 1, &output_[output_offset], 1);
+                        cblas_saxpy(
+                            kHalfDimensions, (float)feature.get_count(),
+                            &weights_[weights_offset], 1, &output_[output_offset], 1
+                        );
                     }
+
 #else
-                    for (IndexType i = 0; i < kHalfDimensions; ++i) {
-                        output_[output_offset + i] = biases_[i];
-                    }
+
+                    Blas::scopy(
+                        thread_pool,
+                        kHalfDimensions, biases_, 1, &output_[output_offset], 1
+                    );
                     for (const auto& feature : batch[b].training_features[c]) {
                         const IndexType weights_offset = kHalfDimensions * feature.get_index();
-                        for (IndexType i = 0; i < kHalfDimensions; ++i) {
-                            output_[output_offset + i] +=
-                                feature.get_count() * weights_[weights_offset + i];
-                        }
+                        Blas::saxpy(
+                            thread_pool,
+                            kHalfDimensions, (float)feature.get_count(),
+                            &weights_[weights_offset], 1, &output_[output_offset], 1
+                        );
                     }
+
 #endif
                 }
             }
@@ -171,19 +185,27 @@ namespace Eval::NNUE {
             // Correct the learning rate and adjust the scale without using momentum
             const LearnFloatType effective_learning_rate =
                 static_cast<LearnFloatType>(local_learning_rate / (1.0 - momentum_));
+
 #if defined(USE_BLAS)
-            cblas_sscal(kHalfDimensions, momentum_, biases_diff_, 1);
+
+            cblas_sscal(
+                kHalfDimensions, momentum_, biases_diff_, 1
+            );
             for (IndexType b = 0; b < batch_->size(); ++b) {
                 const IndexType batch_offset = kOutputDimensions * b;
                 for (IndexType c = 0; c < 2; ++c) {
                     const IndexType output_offset = batch_offset + kHalfDimensions * c;
-                    cblas_saxpy(kHalfDimensions, 1.0,
-                                &gradients_[output_offset], 1, biases_diff_, 1);
+                    cblas_saxpy(
+                        kHalfDimensions, 1.0,
+                        &gradients_[output_offset], 1, biases_diff_, 1
+                    );
                 }
             }
 
-            cblas_saxpy(kHalfDimensions, -local_learning_rate,
-                        biases_diff_, 1, biases_, 1);
+            cblas_saxpy(
+                kHalfDimensions, -local_learning_rate,
+                biases_diff_, 1, biases_, 1
+            );
 
 #pragma omp parallel
             {
@@ -205,45 +227,67 @@ namespace Eval::NNUE {
                             const auto scale = static_cast<LearnFloatType>(
                                 effective_learning_rate / feature.get_count());
 
-                            cblas_saxpy(kHalfDimensions, -scale,
-                                        &gradients_[output_offset], 1,
-                                        &weights_[weights_offset], 1);
+                            cblas_saxpy(
+                                kHalfDimensions, -scale,
+                                &gradients_[output_offset], 1,
+                                &weights_[weights_offset], 1
+                            );
                         }
                     }
                 }
             }
 
 #else
-            for (IndexType i = 0; i < kHalfDimensions; ++i) {
-                biases_diff_[i] *= momentum_;
-            }
+
+            Blas::sscal(
+                thread_pool,
+                kHalfDimensions, momentum_, biases_diff_, 1
+            );
 
             for (IndexType b = 0; b < batch_->size(); ++b) {
                 const IndexType batch_offset = kOutputDimensions * b;
                 for (IndexType c = 0; c < 2; ++c) {
                     const IndexType output_offset = batch_offset + kHalfDimensions * c;
-                    for (IndexType i = 0; i < kHalfDimensions; ++i) {
-                        biases_diff_[i] += gradients_[output_offset + i];
-                    }
+                    Blas::saxpy(
+                        thread_pool,
+                        kHalfDimensions, 1.0,
+                        &gradients_[output_offset], 1, biases_diff_, 1
+                    );
                 }
             }
 
-            for (IndexType i = 0; i < kHalfDimensions; ++i) {
-                biases_[i] -= local_learning_rate * biases_diff_[i];
-            }
+            Blas::saxpy(
+                thread_pool,
+                kHalfDimensions, -local_learning_rate,
+                biases_diff_, 1, biases_, 1
+            );
 
-            for (IndexType b = 0; b < batch_->size(); ++b) {
-                const IndexType batch_offset = kOutputDimensions * b;
-                for (IndexType c = 0; c < 2; ++c) {
-                    const IndexType output_offset = batch_offset + kHalfDimensions * c;
-                    for (const auto& feature : (*batch_)[b].training_features[c]) {
-                        const IndexType weights_offset = kHalfDimensions * feature.get_index();
-                        const auto scale = static_cast<LearnFloatType>(
-                            effective_learning_rate / feature.get_count());
+#pragma omp parallel
+            {
+#if defined(_OPENMP)
+                const IndexType num_threads = omp_get_num_threads();
+                const IndexType thread_index = omp_get_thread_num();
+#endif
+                for (IndexType b = 0; b < batch_->size(); ++b) {
+                    const IndexType batch_offset = kOutputDimensions * b;
+                    for (IndexType c = 0; c < 2; ++c) {
+                        const IndexType output_offset = batch_offset + kHalfDimensions * c;
+                        for (const auto& feature : (*batch_)[b].training_features[c]) {
+#if defined(_OPENMP)
+                            if (feature.get_index() % num_threads != thread_index)
+                                continue;
+#endif
+                            const IndexType weights_offset =
+                                kHalfDimensions * feature.get_index();
+                            const auto scale = static_cast<LearnFloatType>(
+                                effective_learning_rate / feature.get_count());
 
-                        for (IndexType i = 0; i < kHalfDimensions; ++i) {
-                            weights_[weights_offset + i] -=
-                                scale * gradients_[output_offset + i];
+                            Blas::saxpy(
+                                thread_pool,
+                                kHalfDimensions, -scale,
+                                &gradients_[output_offset], 1,
+                                &weights_[weights_offset], 1
+                            );
                         }
                     }
                 }

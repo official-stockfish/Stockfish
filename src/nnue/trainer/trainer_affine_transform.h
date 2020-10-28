@@ -3,6 +3,8 @@
 
 #include "trainer.h"
 
+#include "extra/stockfish_blas.h"
+
 #include "learn/learn.h"
 
 #include "nnue/layers/affine_transform.h"
@@ -98,31 +100,45 @@ namespace Eval::NNUE {
 
             batch_size_ = static_cast<IndexType>(batch.size());
             batch_input_ = previous_layer_trainer_->propagate(thread_pool, batch);
+
 #if defined(USE_BLAS)
+
             for (IndexType b = 0; b < batch_size_; ++b) {
                 const IndexType batch_offset = kOutputDimensions * b;
-                cblas_scopy(kOutputDimensions, biases_, 1, &output_[batch_offset], 1);
+                cblas_scopy(
+                    kOutputDimensions, biases_, 1, &output_[batch_offset], 1
+                );
             }
 
-            cblas_sgemm(CblasColMajor, CblasTrans, CblasNoTrans,
-                        kOutputDimensions, batch_size_, kInputDimensions, 1.0,
-                        weights_, kInputDimensions,
-                        batch_input_, kInputDimensions,
-                        1.0, &output_[0], kOutputDimensions);
+            cblas_sgemm(
+                CblasColMajor, CblasTrans, CblasNoTrans,
+                kOutputDimensions, batch_size_, kInputDimensions,
+                1.0,
+                weights_, kInputDimensions,
+                batch_input_, kInputDimensions,
+                1.0,
+                &output_[0], kOutputDimensions
+            );
 #else
-            for (IndexType b = 0; b < batch_size_; ++b) {
-                const IndexType input_batch_offset = kInputDimensions * b;
-                const IndexType output_batch_offset = kOutputDimensions * b;
-                for (IndexType i = 0; i < kOutputDimensions; ++i) {
-                    double sum = biases_[i];
-                    for (IndexType j = 0; j < kInputDimensions; ++j) {
-                        const IndexType index = kInputDimensions * i + j;
-                        sum += weights_[index] * batch_input_[input_batch_offset + j];
-                    }
 
-                    output_[output_batch_offset + i] = static_cast<LearnFloatType>(sum);
-                }
+            for (IndexType b = 0; b < batch_size_; ++b) {
+                const IndexType batch_offset = kOutputDimensions * b;
+                Blas::scopy(
+                    thread_pool,
+                    kOutputDimensions, biases_, 1, &output_[batch_offset], 1
+                );
             }
+
+            Blas::sgemm(
+                thread_pool,
+                Blas::MatrixLayout::ColMajor, Blas::MatrixTranspose::Trans, Blas::MatrixTranspose::NoTrans,
+                kOutputDimensions, batch_size_, kInputDimensions,
+                1.0,
+                weights_, kInputDimensions,
+                batch_input_, kInputDimensions,
+                1.0,
+                &output_[0], kOutputDimensions
+            );
 
 #endif
             return output_.data();
@@ -137,67 +153,77 @@ namespace Eval::NNUE {
                 learning_rate * learning_rate_scale_;
 
 #if defined(USE_BLAS)
-            // backpropagate
-            cblas_sgemm(CblasColMajor, CblasNoTrans, CblasNoTrans,
-                        kInputDimensions, batch_size_, kOutputDimensions, 1.0,
-                        weights_, kInputDimensions,
-                        gradients, kOutputDimensions,
-                        0.0, &gradients_[0], kInputDimensions);
+
+            cblas_sgemm(
+                CblasColMajor, CblasNoTrans, CblasNoTrans,
+                kInputDimensions, batch_size_, kOutputDimensions,
+                1.0,
+                weights_, kInputDimensions,
+                gradients, kOutputDimensions,
+                0.0,
+                &gradients_[0], kInputDimensions
+            );
 
             // update
-            cblas_sscal(kOutputDimensions, momentum_, biases_diff_, 1);
+            cblas_sscal(
+                kOutputDimensions, momentum_, biases_diff_, 1
+            );
+
             for (IndexType b = 0; b < batch_size_; ++b) {
                 const IndexType batch_offset = kOutputDimensions * b;
-                cblas_saxpy(kOutputDimensions, 1.0,
+                cblas_saxpy(
+                    kOutputDimensions, 1.0,
+                    &gradients[batch_offset], 1, biases_diff_, 1
+                );
+            }
+
+            cblas_sgemm(
+                CblasRowMajor, CblasTrans, CblasNoTrans,
+                kOutputDimensions, kInputDimensions, batch_size_,
+                1.0,
+                gradients, kOutputDimensions,
+                batch_input_, kInputDimensions,
+                momentum_,
+                weights_diff_, kInputDimensions
+            );
+
+#else
+
+            // backpropagate
+            Blas::sgemm(
+                thread_pool,
+                Blas::MatrixLayout::ColMajor, Blas::MatrixTranspose::NoTrans, Blas::MatrixTranspose::NoTrans,
+                kInputDimensions, batch_size_, kOutputDimensions,
+                1.0,
+                weights_, kInputDimensions,
+                gradients, kOutputDimensions,
+                0.0,
+                &gradients_[0], kInputDimensions
+            );
+
+
+            Blas::sscal(
+                thread_pool,
+                kOutputDimensions, momentum_, biases_diff_, 1
+            );
+
+            for (IndexType b = 0; b < batch_size_; ++b) {
+                const IndexType batch_offset = kOutputDimensions * b;
+                Blas::saxpy(thread_pool, kOutputDimensions, 1.0,
                           &gradients[batch_offset], 1, biases_diff_, 1);
             }
 
-            cblas_sgemm(CblasRowMajor, CblasTrans, CblasNoTrans,
-                        kOutputDimensions, kInputDimensions, batch_size_, 1.0,
-                        gradients, kOutputDimensions,
-                        batch_input_, kInputDimensions,
-                        momentum_, weights_diff_, kInputDimensions);
+            Blas::sgemm(
+                thread_pool,
+                Blas::MatrixLayout::RowMajor, Blas::MatrixTranspose::Trans, Blas::MatrixTranspose::NoTrans,
+                kOutputDimensions, kInputDimensions, batch_size_,
+                1.0,
+                gradients, kOutputDimensions,
+                batch_input_, kInputDimensions,
+                momentum_,
+                weights_diff_, kInputDimensions
+            );
 
-#else
-            // backpropagate
-            for (IndexType b = 0; b < batch_size_; ++b) {
-                const IndexType input_batch_offset = kInputDimensions * b;
-                const IndexType output_batch_offset = kOutputDimensions * b;
-                for (IndexType j = 0; j < kInputDimensions; ++j) {
-                    double sum = 0.0;
-                    for (IndexType i = 0; i < kOutputDimensions; ++i) {
-                        const IndexType index = kInputDimensions * i + j;
-                        sum += weights_[index] * gradients[output_batch_offset + i];
-                    }
-                    gradients_[input_batch_offset + j] = static_cast<LearnFloatType>(sum);
-                }
-            }
-
-            // update
-            for (IndexType i = 0; i < kOutputDimensions; ++i) {
-                biases_diff_[i] *= momentum_;
-            }
-
-            for (IndexType i = 0; i < kOutputDimensions * kInputDimensions; ++i) {
-                weights_diff_[i] *= momentum_;
-            }
-
-            for (IndexType b = 0; b < batch_size_; ++b) {
-                const IndexType input_batch_offset = kInputDimensions * b;
-                const IndexType output_batch_offset = kOutputDimensions * b;
-
-                for (IndexType i = 0; i < kOutputDimensions; ++i) {
-                    biases_diff_[i] += gradients[output_batch_offset + i];
-                }
-
-                for (IndexType i = 0; i < kOutputDimensions; ++i) {
-                    for (IndexType j = 0; j < kInputDimensions; ++j) {
-                        const IndexType index = kInputDimensions * i + j;
-                        weights_diff_[index] += gradients[output_batch_offset + i] *
-                            batch_input_[input_batch_offset + j];
-                    }
-                }
-            }
 #endif
 
             for (IndexType i = 0; i < kOutputDimensions; ++i) {

@@ -3,6 +3,8 @@
 
 #include "trainer.h"
 
+#include "extra/stockfish_blas.h"
+
 #include "learn/learn.h"
 
 #include "nnue/layers/input_slice.h"
@@ -208,13 +210,21 @@ namespace Eval::NNUE {
             for (IndexType b = 0; b < batch_size_; ++b) {
                 const IndexType input_offset = kInputDimensions * b;
                 const IndexType output_offset = kOutputDimensions * b;
+
 #if defined(USE_BLAS)
-                cblas_scopy(kOutputDimensions, &input[input_offset + Offset], 1,
-                            &output_[output_offset], 1);
+
+                cblas_scopy(
+                    kOutputDimensions, &input[input_offset + Offset], 1,
+                    &output_[output_offset], 1
+                );
 #else
-                for (IndexType i = 0; i < kOutputDimensions; ++i) {
-                    output_[output_offset + i] = input[input_offset + Offset + i];
-                }
+
+                Blas::scopy(
+                    thread_pool,
+                    kOutputDimensions, &input[input_offset + Offset], 1,
+                    &output_[output_offset], 1
+                );
+
 #endif
             }
 
