@@ -22,6 +22,7 @@
 #include <sstream>
 #include <string>
 
+#include "extra/stockfish_blas.h"
 #include "nnue/evaluate_nnue.h"
 #include "evaluate.h"
 #include "movegen.h"
@@ -353,6 +354,14 @@ void UCI::loop(int argc, char* argv[]) {
         Threads.execute_with_workers([](auto& th) {
           std::cout << th.thread_idx() << '\n';
         });
+      }
+      else if (token == "blastest")
+      {
+        Blas::test(Threads);
+      }
+      else if (token == "blasbench")
+      {
+        Blas::bench(Threads);
       }
 
       // test command

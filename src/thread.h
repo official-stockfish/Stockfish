@@ -39,6 +39,15 @@
 /// pointer to an entry its life time is unlimited and we don't have
 /// to care about someone changing the entry under our feet.
 
+namespace Detail {
+
+  template <typename T>
+  struct TypeIdentity {
+    using Type = T;
+  };
+
+}
+
 class Thread {
 
   std::mutex mutex;
@@ -119,6 +128,26 @@ struct ThreadPool : public std::vector<Thread*> {
   // This means that each worker thread will have exclusive access
   // to the state of the `worker` function object.
   void execute_with_workers(const std::function<void(Thread&)>& worker);
+
+  template <typename IndexT, typename FuncT>
+  void for_each_index_with_workers(
+    IndexT begin,
+    typename Detail::TypeIdentity<IndexT>::Type end,
+    FuncT func)
+  {
+    std::atomic<IndexT> i_atomic = begin;
+
+    execute_with_workers(
+      [&i_atomic, end, func](Thread& th) mutable {
+        for(;;) {
+          const auto i = i_atomic.fetch_add(1);
+          if (i >= end)
+            break;
+
+          func(th, i);
+        }
+      });
+  }
 
   void start_thinking(Position&, StateListPtr&, const Search::LimitsType&, bool = false);
   void clear();

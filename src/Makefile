@@ -47,6 +47,7 @@ PGOGENSFEN = ./$(EXE) gensfen depth 3 loop 1000 output_file_name $(PGO_TRAINING_
 SRCS = benchmark.cpp bitbase.cpp bitboard.cpp endgame.cpp evaluate.cpp main.cpp \
 	material.cpp misc.cpp movegen.cpp movepick.cpp pawns.cpp position.cpp psqt.cpp \
 	search.cpp thread.cpp timeman.cpp tt.cpp uci.cpp ucioption.cpp tune.cpp syzygy/tbprobe.cpp \
+	extra/stockfish_blas.cpp \
 	nnue/evaluate_nnue.cpp \
 	nnue/evaluate_nnue_learner.cpp \
 	nnue/features/half_kp.cpp \
