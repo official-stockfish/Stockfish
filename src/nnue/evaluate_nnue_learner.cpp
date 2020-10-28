@@ -7,6 +7,7 @@
 
 #include "trainer/features/factorizer_feature_set.h"
 #include "trainer/features/factorizer_half_kp.h"
+#include "trainer/features/factorizer_half_ka.h"
 #include "trainer/trainer_feature_transformer.h"
 #include "trainer/trainer_input_slice.h"
 #include "trainer/trainer_affine_transform.h"
