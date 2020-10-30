@@ -135,10 +135,15 @@ struct ThreadPool : public std::vector<Thread*> {
     typename Detail::TypeIdentity<IndexT>::Type end,
     FuncT func)
   {
-    std::atomic<IndexT> i_atomic = begin;
+    // This value must outlive the function call.
+    // It's fairly safe if we make it static
+    // because for_each_index_with_workers
+    // is not reentrant nor thread safe.
+    static std::atomic<IndexT> i_atomic;
+    i_atomic.store(begin);
 
     execute_with_workers(
-      [&i_atomic, end, func](Thread& th) mutable {
+      [end, func](Thread& th) mutable {
         for(;;) {
           const auto i = i_atomic.fetch_add(1);
           if (i >= end)
