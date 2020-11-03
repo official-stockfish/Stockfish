@@ -36,16 +36,16 @@ namespace Eval::NNUE {
 
   #ifdef USE_AVX512
   typedef __m512i vec_t;
-  #define vec_load(a) _mm512_loadA_si512(a)
-  #define vec_store(a,b) _mm512_storeA_si512(a,b)
+  #define vec_load(a) _mm512_load_si512(a)
+  #define vec_store(a,b) _mm512_store_si512(a,b)
   #define vec_add_16(a,b) _mm512_add_epi16(a,b)
   #define vec_sub_16(a,b) _mm512_sub_epi16(a,b)
   static constexpr IndexType kNumRegs = 8; // only 8 are needed
 
   #elif USE_AVX2
   typedef __m256i vec_t;
-  #define vec_load(a) _mm256_loadA_si256(a)
-  #define vec_store(a,b) _mm256_storeA_si256(a,b)
+  #define vec_load(a) _mm256_load_si256(a)
+  #define vec_store(a,b) _mm256_store_si256(a,b)
   #define vec_add_16(a,b) _mm256_add_epi16(a,b)
   #define vec_sub_16(a,b) _mm256_sub_epi16(a,b)
   static constexpr IndexType kNumRegs = 16;
@@ -157,11 +157,11 @@ namespace Eval::NNUE {
   #if defined(USE_AVX2)
         auto out = reinterpret_cast<__m256i*>(&output[offset]);
         for (IndexType j = 0; j < kNumChunks; ++j) {
-          __m256i sum0 = _mm256_loadA_si256(
+          __m256i sum0 = _mm256_load_si256(
               &reinterpret_cast<const __m256i*>(accumulation[perspectives[p]][0])[j * 2 + 0]);
-          __m256i sum1 = _mm256_loadA_si256(
+          __m256i sum1 = _mm256_load_si256(
             &reinterpret_cast<const __m256i*>(accumulation[perspectives[p]][0])[j * 2 + 1]);
-          _mm256_storeA_si256(&out[j], _mm256_permute4x64_epi64(_mm256_max_epi8(
+          _mm256_store_si256(&out[j], _mm256_permute4x64_epi64(_mm256_max_epi8(
               _mm256_packs_epi16(sum0, sum1), kZero), kControl));
         }
 
