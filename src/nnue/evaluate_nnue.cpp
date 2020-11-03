@@ -145,6 +145,9 @@ namespace Eval::NNUE {
     alignas(alignment) char buffer[Network::kBufferSize];
 #endif
 
+    ASSERT_ALIGNED(transformed_features, alignment);
+    ASSERT_ALIGNED(buffer, alignment);
+
     feature_transformer->Transform(pos, transformed_features);
     const auto output = network->Propagate(transformed_features, buffer);
 
