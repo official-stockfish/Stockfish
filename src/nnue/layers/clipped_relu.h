@@ -74,12 +74,12 @@ namespace Eval::NNUE::Layers {
       const auto out = reinterpret_cast<__m256i*>(output);
       for (IndexType i = 0; i < kNumChunks; ++i) {
         const __m256i words0 = _mm256_srai_epi16(_mm256_packs_epi32(
-            _mm256_loadA_si256(&in[i * 4 + 0]),
-            _mm256_loadA_si256(&in[i * 4 + 1])), kWeightScaleBits);
+            _mm256_load_si256(&in[i * 4 + 0]),
+            _mm256_load_si256(&in[i * 4 + 1])), kWeightScaleBits);
         const __m256i words1 = _mm256_srai_epi16(_mm256_packs_epi32(
-            _mm256_loadA_si256(&in[i * 4 + 2]),
-            _mm256_loadA_si256(&in[i * 4 + 3])), kWeightScaleBits);
-        _mm256_storeA_si256(&out[i], _mm256_permutevar8x32_epi32(_mm256_max_epi8(
+            _mm256_load_si256(&in[i * 4 + 2]),
+            _mm256_load_si256(&in[i * 4 + 3])), kWeightScaleBits);
+        _mm256_store_si256(&out[i], _mm256_permutevar8x32_epi32(_mm256_max_epi8(
             _mm256_packs_epi16(words0, words1), kZero), kOffsets));
       }
       constexpr IndexType kStart = kNumChunks * kSimdWidth;

@@ -43,29 +43,6 @@
 #include <arm_neon.h>
 #endif
 
-// HACK: Use _mm256_loadu_si256() instead of _mm256_load_si256. Otherwise a binary
-//       compiled with older g++ crashes because the output memory is not aligned
-//       even though alignas is specified.
-#if defined(USE_AVX2)
-#if defined(__GNUC__ ) && (__GNUC__ < 9) && defined(_WIN32) && !defined(__clang__)
-#define _mm256_loadA_si256  _mm256_loadu_si256
-#define _mm256_storeA_si256 _mm256_storeu_si256
-#else
-#define _mm256_loadA_si256  _mm256_load_si256
-#define _mm256_storeA_si256 _mm256_store_si256
-#endif
-#endif
-
-#if defined(USE_AVX512)
-#if defined(__GNUC__ ) && (__GNUC__ < 9) && defined(_WIN32) && !defined(__clang__)
-#define _mm512_loadA_si512   _mm512_loadu_si512
-#define _mm512_storeA_si512  _mm512_storeu_si512
-#else
-#define _mm512_loadA_si512   _mm512_load_si512
-#define _mm512_storeA_si512  _mm512_store_si512
-#endif
-#endif
-
 namespace Eval::NNUE {
 
   // Version of the evaluation file
