@@ -127,7 +127,13 @@ namespace Eval::NNUE {
 
       const auto& accumulation = pos.state()->accumulator.accumulation;
 
-  #if defined(USE_AVX2)
+  #if defined(USE_AVX512)
+      constexpr IndexType kNumChunks = kHalfDimensions / (kSimdWidth * 2);
+      static_assert(kHalfDimensions % (kSimdWidth * 2) == 0);
+      const __m512i kControl = _mm512_setr_epi64(0, 2, 4, 6, 1, 3, 5, 7);
+      const __m512i kZero = _mm512_setzero_si512();
+
+  #elif defined(USE_AVX2)
       constexpr IndexType kNumChunks = kHalfDimensions / kSimdWidth;
       constexpr int kControl = 0b11011000;
       const __m256i kZero = _mm256_setzero_si256();
@@ -154,13 +160,24 @@ namespace Eval::NNUE {
       for (IndexType p = 0; p < 2; ++p) {
         const IndexType offset = kHalfDimensions * p;
 
-  #if defined(USE_AVX2)
+  #if defined(USE_AVX512)
+        auto out = reinterpret_cast<__m512i*>(&output[offset]);
+        for (IndexType j = 0; j < kNumChunks; ++j) {
+          __m512i sum0 = _mm512_load_si512(
+              &reinterpret_cast<const __m512i*>(accumulation[perspectives[p]][0])[j * 2 + 0]);
+          __m512i sum1 = _mm512_load_si512(
+              &reinterpret_cast<const __m512i*>(accumulation[perspectives[p]][0])[j * 2 + 1]);
+          _mm512_store_si512(&out[j], _mm512_permutexvar_epi64(kControl,
+              _mm512_max_epi8(_mm512_packs_epi16(sum0, sum1), kZero)));
+        }
+
+  #elif defined(USE_AVX2)
         auto out = reinterpret_cast<__m256i*>(&output[offset]);
         for (IndexType j = 0; j < kNumChunks; ++j) {
           __m256i sum0 = _mm256_load_si256(
               &reinterpret_cast<const __m256i*>(accumulation[perspectives[p]][0])[j * 2 + 0]);
           __m256i sum1 = _mm256_load_si256(
-            &reinterpret_cast<const __m256i*>(accumulation[perspectives[p]][0])[j * 2 + 1]);
+              &reinterpret_cast<const __m256i*>(accumulation[perspectives[p]][0])[j * 2 + 1]);
           _mm256_store_si256(&out[j], _mm256_permute4x64_epi64(_mm256_max_epi8(
               _mm256_packs_epi16(sum0, sum1), kZero), kControl));
         }
@@ -177,9 +194,9 @@ namespace Eval::NNUE {
           _mm_store_si128(&out[j],
 
   #ifdef USE_SSE41
-            _mm_max_epi8(packedbytes, kZero)
+              _mm_max_epi8(packedbytes, kZero)
   #else
-            _mm_subs_epi8(_mm_adds_epi8(packedbytes, k0x80s), k0x80s)
+              _mm_subs_epi8(_mm_adds_epi8(packedbytes, k0x80s), k0x80s)
   #endif
 
           );
