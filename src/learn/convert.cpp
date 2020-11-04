@@ -525,7 +525,7 @@ namespace Learner
             && ends_with(output_path, expected_output_extension);
     }
 
-    using ConvertFunctionType = void(std::string inputPath, std::string outputPath, std::ios_base::openmode om);
+    using ConvertFunctionType = void(std::string inputPath, std::string outputPath, std::ios_base::openmode om, bool validate);
 
     static ConvertFunctionType* get_convert_function(const std::string& input_path, const std::string& output_path)
     {
@@ -547,7 +547,7 @@ namespace Learner
         return nullptr;
     }
 
-    static void convert(const std::string& input_path, const std::string& output_path, std::ios_base::openmode om)
+    static void convert(const std::string& input_path, const std::string& output_path, std::ios_base::openmode om, bool validate)
     {
         if(!file_exists(input_path))
         {
@@ -558,7 +558,7 @@ namespace Learner
         auto func = get_convert_function(input_path, output_path);
         if (func != nullptr)
         {
-            func(input_path, output_path, om);
+            func(input_path, output_path, om, validate);
         }
         else
         {
@@ -568,20 +568,22 @@ namespace Learner
 
     static void convert(const std::vector<std::string>& args)
     {
-        if (args.size() < 2 || args.size() > 3)
+        if (args.size() < 2 || args.size() > 4)
         {
             std::cerr << "Invalid arguments.\n";
-            std::cerr << "Usage: convert from_path to_path [append]\n";
+            std::cerr << "Usage: convert from_path to_path [append] [validate]\n";
             return;
         }
 
-        const bool append = (args.size() == 3) && (args[2] == "append");
+        const bool append = std::find(args.begin() + 2, args.end(), "append") != args.end();
+        const bool validate = std::find(args.begin() + 2, args.end(), "validate") != args.end();
+
         const std::ios_base::openmode openmode =
             append
             ? std::ios_base::app
             : std::ios_base::trunc;
 
-        convert(args[0], args[1], openmode);
+        convert(args[0], args[1], openmode, validate);
     }
 
     void convert(istringstream& is)
