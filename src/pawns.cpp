@@ -49,10 +49,10 @@ namespace {
   // Strength of pawn shelter for our king by [distance from edge][rank].
   // RANK_1 = 0 is used for files where we have no pawn, or pawn is behind our king.
   constexpr Value ShelterStrength[int(FILE_NB) / 2][RANK_NB] = {
-    { V( -6), V( 81), V( 93), V( 58), V( 39), V( 18), V(  25) },
-    { V(-43), V( 61), V( 35), V(-49), V(-29), V(-11), V( -63) },
-    { V(-10), V( 75), V( 23), V( -2), V( 32), V(  3), V( -45) },
-    { V(-39), V(-13), V(-29), V(-52), V(-48), V(-67), V(-166) }
+    { V( -5), V( 82), V( 92), V( 54), V( 36), V( 22), V(  28) },
+    { V(-44), V( 63), V( 33), V(-50), V(-30), V(-12), V( -62) },
+    { V(-11), V( 77), V( 22), V( -6), V( 31), V(  8), V( -45) },
+    { V(-39), V(-12), V(-29), V(-50), V(-43), V(-68), V(-164) }
   };
 
   // Danger of enemy pawns moving toward our king by [distance from edge][rank].
@@ -60,11 +60,16 @@ namespace {
   // is behind our king. Note that UnblockedStorm[0][1-2] accommodate opponent pawn
   // on edge, likely blocked by our king.
   constexpr Value UnblockedStorm[int(FILE_NB) / 2][RANK_NB] = {
-    { V( 85), V(-289), V(-166), V(97), V(50), V( 45), V( 50) },
-    { V( 46), V( -25), V( 122), V(45), V(37), V(-10), V( 20) },
-    { V( -6), V(  51), V( 168), V(34), V(-2), V(-22), V(-14) },
-    { V(-15), V( -11), V( 101), V( 4), V(11), V(-15), V(-29) }
+    { V( 87), V(-288), V(-168), V( 96), V( 47), V( 44), V( 46) },
+    { V( 42), V( -25), V( 120), V( 45), V( 34), V( -9), V( 24) },
+    { V( -8), V(  51), V( 167), V( 35), V( -4), V(-16), V(-12) },
+    { V(-17), V( -13), V( 100), V(  4), V(  9), V(-16), V(-31) }
   };
+
+  // KingOnFile[semi-open Us][semi-open Them] contains bonuses/penalties
+  // for king when the king is on a semi-open or open file.
+  constexpr Score KingOnFile[2][2] = {{ S(-19,12), S(-6, 7)  },
+                                     {  S(  0, 2), S( 6,-5) }};
 
   #undef S
   #undef V
@@ -236,6 +241,9 @@ Score Entry::evaluate_shelter(const Position& pos, Square ksq) const {
       else
           bonus -= make_score(UnblockedStorm[d][theirRank], 0);
   }
+
+  // King On File
+  bonus -= KingOnFile[pos.is_on_semiopen_file(Us, ksq)][pos.is_on_semiopen_file(Them, ksq)];
 
   return bonus;
 }
