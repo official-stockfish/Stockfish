@@ -49,10 +49,10 @@ namespace {
   // Strength of pawn shelter for our king by [distance from edge][rank].
   // RANK_1 = 0 is used for files where we have no pawn, or pawn is behind our king.
   constexpr Value ShelterStrength[int(FILE_NB) / 2][RANK_NB] = {
-    { V(-5), V(79), V(92), V(61), V(43), V(13), V(23) },
-    { V(-43), V(66), V(38), V(-53), V(-27), V(-11), V(-59) },
-    { V(-10), V(83), V(28), V(-8), V(29), V(1), V(-40) },
-    { V(-45), V(-15), V(-27), V(-54), V(-47), V(-69), V(-167) }
+    { V(-5), V(82), V(92), V(54), V(36), V(22), V(28) },
+    { V(-44), V(63), V(33), V(-50), V(-30), V(-12), V(-62) },
+    { V(-11), V(77), V(22), V(-6), V(31), V(8), V(-45) },
+    { V(-39), V(-12), V(-29), V(-50), V(-43), V(-68), V(-164) }
   };
 
   // Danger of enemy pawns moving toward our king by [distance from edge][rank].
@@ -60,17 +60,17 @@ namespace {
   // is behind our king. Note that UnblockedStorm[0][1-2] accommodate opponent pawn
   // on edge, likely blocked by our king.
   constexpr Value UnblockedStorm[int(FILE_NB) / 2][RANK_NB] = {
-    { V(86), V(-294), V(-169), V(93), V(46), V(44), V(50) },
-    { V(44), V(-24), V(119), V(46), V(35), V(-11), V(19) },
-    { V(-12), V(54), V(173), V(35), V(-1), V(-24), V(-11) },
-    { V(-18), V(-19), V(99), V(6), V(17), V(-18), V(-23) }
+    { V(87), V(-288), V(-168), V(96), V(47), V(44), V(46) },
+    { V(42), V(-25), V(120), V(45), V(34), V(-9), V(24) },
+    { V(-8), V(51), V(167), V(35), V(-4), V(-16), V(-12) },
+    { V(-17), V(-13), V(100), V(4), V(9), V(-16), V(-31) }
   };
   
   // KingOnFile[open/semiopen] contains bonuses/penalties for king
   // when the king is in a semiopen or open file.
 
-  constexpr Score KingOnFile[2][2] = {{ S(-21,14), S(-5, 4)  },  //we have a pawn on file
-                                     {  S(  5,-2), S( 9, 1) }};  //we don't have a pawn on file
+  constexpr Score KingOnFile[2][2] = {{ S(-19,12), S(-6, 7)  },  //we have a pawn on file
+                                     {  S(  0, 2), S( 6,-5) }};  //we don't have a pawn on file
                                  //they have  ^        ^  they don't
 
   #undef S
@@ -243,6 +243,9 @@ Score Entry::evaluate_shelter(const Position& pos, Square ksq) const {
       else
           bonus -= make_score(UnblockedStorm[d][theirRank], 0);
   }
+  
+  // King On File
+  bonus -= KingOnFile[pos.is_on_semiopen_file(Us, ksq)][pos.is_on_semiopen_file(Them, ksq)];
 
   return bonus;
 }
