@@ -49,9 +49,9 @@ namespace {
   // Strength of pawn shelter for our king by [distance from edge][rank].
   // RANK_1 = 0 is used for files where we have no pawn, or pawn is behind our king.
   constexpr Value ShelterStrength[int(FILE_NB) / 2][RANK_NB] = {
-    { V(-5), V(82), V(92), V(54), V(36), V(22), V(28) },
-    { V(-44), V(63), V(33), V(-50), V(-30), V(-12), V(-62) },
-    { V(-11), V(77), V(22), V(-6), V(31), V(8), V(-45) },
+    { V( -5), V( 82), V( 92), V( 54), V( 36), V( 22), V(  28) },
+    { V(-44), V( 63), V( 33), V(-50), V(-30), V(-12), V( -62) },
+    { V(-11), V( 77), V( 22), V( -6), V( 31), V(  8), V( -45) },
     { V(-39), V(-12), V(-29), V(-50), V(-43), V(-68), V(-164) }
   };
 
@@ -60,10 +60,10 @@ namespace {
   // is behind our king. Note that UnblockedStorm[0][1-2] accommodate opponent pawn
   // on edge, likely blocked by our king.
   constexpr Value UnblockedStorm[int(FILE_NB) / 2][RANK_NB] = {
-    { V(87), V(-288), V(-168), V(96), V(47), V(44), V(46) },
-    { V(42), V(-25), V(120), V(45), V(34), V(-9), V(24) },
-    { V(-8), V(51), V(167), V(35), V(-4), V(-16), V(-12) },
-    { V(-17), V(-13), V(100), V(4), V(9), V(-16), V(-31) }
+    { V( 87), V(-288), V(-168), V( 96), V( 47), V( 44), V( 46) },
+    { V( 42), V( -25), V( 120), V( 45), V( 34), V( -9), V( 24) },
+    { V( -8), V(  51), V( 167), V( 35), V( -4), V(-16), V(-12) },
+    { V(-17), V( -13), V( 100), V(  4), V(  9), V(-16), V(-31) }
   };
   
   // KingOnFile[open/semiopen] contains bonuses/penalties for king
