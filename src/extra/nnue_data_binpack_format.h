@@ -5629,13 +5629,13 @@ namespace chess
                     king ^= CastlingTraits::kingDestination[attackerColor][castleType];
                     rooks ^= move.to;
                     rooks ^= CastlingTraits::rookDestination[attackerColor][castleType];
-
-                    break;
                 }
                 else
                 {
                     king ^= occupiedChange;
                 }
+
+                break;
             }
             case PieceType::None:
                 assert(false);
