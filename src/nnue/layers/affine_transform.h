@@ -232,9 +232,14 @@ namespace Eval::NNUE::Layers {
 #else
         __m256i product0 = _mm256_maddubs_epi16(a0, b0);
         __m256i product1 = _mm256_maddubs_epi16(a1, b1);
-        product0 = _mm256_adds_epi16(product0, product1);
+#if defined (ALLOW_SATURATE)
+        product1 = _mm256_adds_epi16(product0, product1);
+#else
         product0 = _mm256_madd_epi16(product0, kOnes256);
         acc = _mm256_add_epi32(acc, product0);
+#endif
+        product1 = _mm256_madd_epi16(product1, kOnes256);
+        acc = _mm256_add_epi32(acc, product1);
 #endif
       };
 
@@ -268,9 +273,14 @@ namespace Eval::NNUE::Layers {
       [[maybe_unused]] auto m128_add_dpbusd_epi32x2 = [=](__m128i& acc, __m128i a0, __m128i b0, __m128i a1, __m128i b1) {
         __m128i product0 = _mm_maddubs_epi16(a0, b0);
         __m128i product1 = _mm_maddubs_epi16(a1, b1);
-        product0 = _mm_adds_epi16(product0, product1);
+#if defined (ALLOW_SATURATE)
+        product1 = _mm_adds_epi16(product0, product1);
+#else
         product0 = _mm_madd_epi16(product0, kOnes128);
         acc = _mm_add_epi32(acc, product0);
+#endif
+        product1 = _mm_madd_epi16(product1, kOnes128);
+        acc = _mm_add_epi32(acc, product1);
       };
 
 #endif
