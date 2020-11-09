@@ -397,6 +397,8 @@ namespace Learner
             bool use_draw_games_in_validation = true;
             bool skip_duplicated_positions_in_training = true;
 
+            bool assume_quiet = false;
+
             double learning_rate = 1.0;
 
             string validation_set_file_name;
@@ -676,19 +678,22 @@ namespace Learner
                 goto RETRY_READ;
             }
 
-            int ply = 0;
-            pos.do_move((Move)ps.move, state[ply++]);
-
-            // We want to position being trained on not to be terminal
-            if (MoveList<LEGAL>(pos).size() == 0)
-                goto RETRY_READ;
-
-            // Evaluation value of shallow search (qsearch)
-            const auto [_, pv] = Search::qsearch(pos);
-
-            for (auto m : pv)
+            if (!params.assume_quiet)
             {
-                pos.do_move(m, state[ply++]);
+                int ply = 0;
+                pos.do_move((Move)ps.move, state[ply++]);
+
+                // We want to position being trained on not to be terminal
+                if (MoveList<LEGAL>(pos).size() == 0)
+                    goto RETRY_READ;
+
+                // Evaluation value of shallow search (qsearch)
+                const auto [_, pv] = Search::qsearch(pos);
+
+                for (auto m : pv)
+                {
+                    pos.do_move(m, state[ply++]);
+                }
             }
 
             // Since we have reached the end phase of PV, add the slope here.
@@ -1106,6 +1111,7 @@ namespace Learner
                 UCI::setoption("EnableTranspositionTable", "false");
             }
             else if (option == "verbose") params.verbose = true;
+            else if (option == "assume_quiet") params.assume_quiet = true;
             else
             {
                 out << "INFO: Unknown option: " << option << ". Ignoring.\n";
