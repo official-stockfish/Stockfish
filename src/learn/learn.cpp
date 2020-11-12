@@ -793,6 +793,8 @@ namespace Learner
 
             out << "  - norm = " << sum_norm << endl;
             out << "  - move accuracy = " << (move_accord_count * 100.0 / psv.size()) << "%" << endl;
+            out << "  - loss (current) = " << (test_loss_sum.cross_entropy - test_loss_sum.entropy) / psv.size() << endl;
+            out << "  - loss (average) = " << latest_loss_sum / latest_loss_count << endl;
         }
         else
         {
