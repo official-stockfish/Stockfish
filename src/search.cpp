@@ -1161,13 +1161,17 @@ moves_loop: // When in check, search starts from here
           if (thisThread->ttHitAverage > 509 * TtHitAverageResolution * TtHitAverageWindow / 1024)
               r--;
 
-          // Reduction if other threads are searching this position
+          // Increase reduction if other threads are searching this position
           if (th.marked())
               r++;
 
           // Decrease reduction if position is or has been on the PV (~10 Elo)
           if (ss->ttPv)
               r -= 2;
+
+          // Increase reduction at root and non-PV nodes when the best move does not change frequently
+          if ((rootNode || !PvNode) && depth > 10 && thisThread->bestMoveChanges <= 2)
+              r++;
 
           if (moveCountPruning && !formerPv)
               r++;
