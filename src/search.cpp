@@ -1058,7 +1058,7 @@ moves_loop: // When in check, search starts from here
                   && captureHistory[movedPiece][to_sq(move)][type_of(pos.piece_on(to_sq(move)))] < 0)
                   continue;
 
-              // See based pruning
+              // SEE based pruning
               if (!pos.see_ge(move, Value(-221) * depth)) // (~25 Elo)
                   continue;
           }
