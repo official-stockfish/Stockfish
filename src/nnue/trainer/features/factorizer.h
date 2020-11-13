@@ -14,7 +14,7 @@ namespace Eval::NNUE::Features {
     class Factorizer {
     public:
         static constexpr std::string get_name() {
-            return std::string("No factorizer");
+            return "Factorizer<" + FeatureType::get_name() + "> -> " + std::string("No factorizer");
         }
 
         static constexpr std::string get_factorizers_string() {

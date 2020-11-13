@@ -46,7 +46,7 @@ namespace Eval::NNUE::Features {
 
     public:
         static constexpr std::string get_name() {
-            return std::string("Factorizer<") + FeatureType::kName + ">";
+            return std::string("Factorizer<") + FeatureType::kName + "> -> " + "HalfK, P, HalfRelativeKP";
         }
 
         static constexpr std::string get_factorizers_string() {

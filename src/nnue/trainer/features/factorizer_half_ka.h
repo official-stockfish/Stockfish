@@ -31,11 +31,11 @@ namespace Eval::NNUE::Features {
 
         // Learning feature information
         static constexpr FeatureProperties kProperties[] = {
-            // kFeaturesHalfKPK
+            // kFeaturesHalfA
             {true, FeatureType::kDimensions},
-            // kFeaturesPK
+            // kFeaturesA
             {true, Factorizer<A>::get_dimensions()},
-            // kFeaturesHalfRelativeKPK
+            // kFeaturesHalfRelativeKA
             {true, Factorizer<HalfRelativeKA<AssociatedKing>>::get_dimensions()},
         };
 
@@ -43,7 +43,7 @@ namespace Eval::NNUE::Features {
 
     public:
         static constexpr std::string get_name() {
-            return std::string("Factorizer<") + FeatureType::kName + ">";
+            return std::string("Factorizer<") + FeatureType::kName + "> -> " + "A, HalfRelativeKA";
         }
 
         static constexpr std::string get_factorizers_string() {
@@ -59,18 +59,18 @@ namespace Eval::NNUE::Features {
         static void append_training_features(
             IndexType base_index, std::vector<TrainingFeature>* training_features) {
 
-            // kFeaturesHalfKPK
+            // kFeaturesHalfA
             IndexType index_offset = append_base_feature<FeatureType>(
                 kProperties[kFeaturesHalfKA], base_index, training_features);
 
             const auto sq_k = static_cast<Square>(base_index / PS_END2);
             const auto a = static_cast<IndexType>(base_index % PS_END2);
 
-            // kFeaturesPK
+            // kFeaturesA
             index_offset += inherit_features_if_required<A>(
                 index_offset, kProperties[kFeaturesA], a, training_features);
 
-            // kFeaturesHalfRelativeKPK
+            // kFeaturesHalfRelativeKA
             if (a >= PS_W_PAWN) {
                 index_offset += inherit_features_if_required<HalfRelativeKA<AssociatedKing>>(
                     index_offset, kProperties[kFeaturesHalfRelativeKA],

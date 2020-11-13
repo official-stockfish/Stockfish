@@ -82,7 +82,7 @@ namespace Eval::NNUE::Features {
         static constexpr IndexType kBaseDimensions = FeatureType::kDimensions;
 
         static constexpr std::string get_name() {
-            return FeatureType::kName;
+            return Factorizer<FeatureType>::get_name();
         }
 
         static constexpr std::string get_factorizers_string() {
