@@ -6717,6 +6717,9 @@ namespace binpack
             m_path(std::move(path)),
             m_file(m_path, std::ios_base::binary | std::ios_base::in | std::ios_base::out | om)
         {
+            // Necessary for MAC because app mode makes it put the reading
+            // head at the end.
+            m_file.seekg(0);
         }
 
         void append(const char* data, std::uint32_t size)
