@@ -1976,7 +1976,7 @@ namespace Search
 
   // Initialization for learning.
   // Called from Learner::search(),Learner::qsearch().
-  static void init_for_search(Position& pos, Stack* ss)
+  static bool init_for_search(Position& pos, Stack* ss)
   {
 
     // RootNode requires ss->ply == 0.
@@ -2026,7 +2026,10 @@ namespace Search
       for (auto m: MoveList<LEGAL>(pos))
         rootMoves.push_back(Search::RootMove(m));
 
-      assert(!rootMoves.empty());
+      // Check if we're at a terminal node. Otherwise we end up returning
+      // malformed PV later on.
+      if (rootMoves.empty())
+        return false;
 
       th->UseRule50 = bool(Options["Syzygy50MoveRule"]);
       th->ProbeDepth = int(Options["SyzygyProbeDepth"]);
@@ -2042,6 +2045,8 @@ namespace Search
 
       Tablebases::rank_root_moves(pos, rootMoves);
     }
+
+    return true;
   }
 
   // Stationary search.
@@ -2061,7 +2066,9 @@ namespace Search
     Stack stack[MAX_PLY+10], *ss = stack+7;
     Move  pv[MAX_PLY+1];
 
-    init_for_search(pos, ss);
+    if (!init_for_search(pos, ss))
+      return {};
+
     ss->pv = pv; // For the time being, it must be a dummy and somewhere with a buffer.
 
     if (pos.is_draw(0)) {
@@ -2116,7 +2123,8 @@ namespace Search
     Stack stack[MAX_PLY + 10], * ss = stack + 7;
     Move pv[MAX_PLY + 1];
 
-    init_for_search(pos, ss);
+    if (!init_for_search(pos, ss))
+      return {};
 
 	ss->pv = pv; // For the time being, it must be a dummy and somewhere with a buffer.
 
