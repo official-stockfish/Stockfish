@@ -5,7 +5,7 @@
 
 #include "extra/stockfish_blas.h"
 
-#include "features/factorizer_feature_set.h"
+#include "features/all_factorizers.h"
 
 #include "learn/learn.h"
 
