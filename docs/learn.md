@@ -50,6 +50,8 @@ Currently the following options are available:
 
 `lambda_limit` - the maximum absolute score value for which `lambda` is used as opposed to `lambda2`. For positions with absolute evaluation higher than `lambda_limit` `lambda2` will be used. Default: 32000 (so always `lambda`).
 
+`max_grad` - the maximum allowed loss gradient for backpropagation. Effectively a form of gradient clipping. Useful for the first iterations with a randomly generated net as with higher lr backpropagation often overshoots and kills the net. The default value is fairly conservative, values as low as 0.25 could be used with lr of 1.0 without problems. Default: 1.0.
+
 `reduction_gameply` - the minimum ply after which positions won't be skipped. Positions at plies below this value are skipped with a probability that lessens linearly with the ply (reaching 0 at `reduction_gameply`). Default: 1.
 
 `eval_limit` - positions with absolute evaluation higher than this will be skipped. Default: 32000 (nothing is skipped).
