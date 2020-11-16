@@ -2,6 +2,7 @@
 
 #include "sfen_writer.h"
 #include "packed_sfen.h"
+#include "opening_book.h"
 
 #include "misc.h"
 #include "position.h"
@@ -98,6 +99,8 @@ namespace Learner
 
             uint64_t num_threads;
 
+            std::string book;
+
             void enforce_constraints()
             {
                 search_depth_max = std::max(search_depth_min, search_depth_max);
@@ -130,6 +133,15 @@ namespace Learner
         {
             hash.resize(GENSFEN_HASH_SIZE);
 
+            if (!prm.book.empty())
+            {
+                opening_book = open_opening_book(prm.book, prng);
+                if (opening_book == nullptr)
+                {
+                    std::cout << "WARNING: Failed to open opening book " << prm.book << ". Falling back to startpos.\n";
+                }
+            }
+
             // Output seed to veryfy by the user if it's not identical by chance.
             std::cout << prng << std::endl;
         }
@@ -150,6 +162,8 @@ namespace Learner
         SynchronizedRegionLogger::Region out;
 
         vector<Key> hash; // 64MB*sizeof(HASH_KEY) = 512MB
+
+        std::unique_ptr<OpeningBook> opening_book;
 
         static void set_gensfen_search_limits();
 
@@ -248,7 +262,15 @@ namespace Learner
             // When parallelizing, Threads (since this is a vector<Thread*>,
             // Do the same for up to Threads[0]...Threads[thread_num-1].
             auto& pos = th.rootPos;
-            pos.set(StartFEN, false, &si, &th);
+            if (opening_book != nullptr)
+            {
+                auto& fen = opening_book->next_fen();
+                pos.set(fen, false, &si, &th);
+            }
+            else
+            {
+                pos.set(StartFEN, false, &si, &th);
+            }
 
             int resign_counter = 0;
             bool should_resign = prng.rand(10) > 1;
@@ -822,6 +844,8 @@ namespace Learner
                 is >> params.write_maxply;
             else if (token == "save_every")
                 is >> params.save_every;
+            else if (token == "book")
+                is >> params.book;
             else if (token == "random_file_name")
                 is >> random_file_name;
             // Accept also the old option name.
@@ -911,6 +935,7 @@ namespace Learner
             << "  - random_multi_pv_depth  = " << params.random_multi_pv_depth << endl
             << "  - write_minply           = " << params.write_minply << endl
             << "  - write_maxply           = " << params.write_maxply << endl
+            << "  - book                   = " << params.book << endl
             << "  - output_file_name       = " << params.output_file_name << endl
             << "  - save_every             = " << params.save_every << endl
             << "  - random_file_name       = " << random_file_name << endl
