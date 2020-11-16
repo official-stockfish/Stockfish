@@ -44,6 +44,8 @@ Currently the following options are available:
 
 `write_maxply` - maximum ply for which the training data entry will be emitted. Default: 400.
 
+`book` - a path to an opening book to use for the starting positions. Currently only .epd format is supported. If not specified then the starting position is always the standard chess starting position.
+
 `save_every` - the number of training data entries per file. If not specified then there will be always one file. If specified there may be more than one file generated (each having at most `save_every` training data entries) and each file will have a unique number attached.
 
 `random_file_name` - if specified then the output filename will be chosen randomly. Overrides `output_file_name`.
