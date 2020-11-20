@@ -113,6 +113,8 @@ There is a builting converted that support all 3 formats described above. Any of
 
 ## Resources
 
+- [Training NNUE for SF](https://docs.google.com/document/d/1os5GH8GGJbV0nKAfXD-qySBclFzKKtXKHbAnA-un8tA/edit) google document with important information and coding priorities
+- [Gensfen data (vondele)](https://drive.google.com/drive/folders/1mftuzYdl9o6tBaceR3d_VBQIrgKJsFpl) over 2b fens available
 - [Stockfish NNUE Wiki](https://www.qhapaq.org/shogi/shogiwiki/stockfish-nnue/)
 - [Training instructions](https://twitter.com/mktakizawa/status/1273042640280252416) from the creator of the Elmo shogi engine
 - [Original Talkchess thread](http://talkchess.com/forum3/viewtopic.php?t=74059) discussing Stockfish NNUE
