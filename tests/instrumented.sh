@@ -24,7 +24,7 @@ case $1 in
     echo "valgrind-thread testing started"
     prefix=''
     exeprefix='valgrind --fair-sched=try --error-exitcode=42'
-    postfix='1>/dev/null'
+    postfix=''
     threads="2"
     bench_depth=5
     go_depth=10
