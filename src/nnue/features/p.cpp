@@ -4,9 +4,11 @@
 //Definition of input feature P of NNUE evaluation function
 namespace Eval::NNUE::Features {
 
-    // Orient a square according to perspective (flip rank for black)
+    // Orient a square according to perspective (rotate the board 180° for black)
+    // this has to stay until we find a better arch that works with "flip".
+    // allows us to use current master net for gensfen (primarily needed for higher quality data)
     inline Square orient(Color perspective, Square s) {
-        return Square(int(s) ^ (bool(perspective) * SQ_A8));
+        return Square(int(s) ^ (bool(perspective) * 63));
     }
 
     // Find the index of the feature quantity from the king position and PieceSquare
