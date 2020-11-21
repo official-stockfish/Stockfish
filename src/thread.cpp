@@ -232,6 +232,9 @@ void ThreadPool::start_thinking(Position& pos, StateListPtr& states,
       th->rootMoves = rootMoves;
       th->rootPos.set(pos.fen(), pos.is_chess960(), &th->rootState, th);
       th->rootState = setupStates->back();
+      // This is also set by rank_root_moves but we need to set it
+      // also when there is no legal moves.
+      th->rootInTB = false;
       th->UseRule50 = bool(Options["Syzygy50MoveRule"]);
       th->ProbeDepth = int(Options["SyzygyProbeDepth"]);
       th->Cardinality = int(Options["SyzygyProbeLimit"]);
