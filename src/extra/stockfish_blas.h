@@ -118,6 +118,16 @@ namespace Blas {
         float * SF_BLAS_RESTRICT C, const int ldc
     );
 
+    void sgemm(
+        MatrixLayout layout, MatrixTranspose TransA, MatrixTranspose TransB,
+        const int M, const int N, const int K,
+        const float alpha,
+        const float * SF_BLAS_RESTRICT A, const int lda,
+        const float * SF_BLAS_RESTRICT B, const int ldb,
+        const float beta,
+        float * SF_BLAS_RESTRICT C, const int ldc
+    );
+
     void test(
         ThreadPool& thread_pool
     );
