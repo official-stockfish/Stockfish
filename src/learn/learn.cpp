@@ -400,6 +400,7 @@ namespace Learner
             bool skip_duplicated_positions_in_training = true;
 
             bool assume_quiet = false;
+            bool smart_fen_skipping = false;
 
             double learning_rate = 1.0;
 
@@ -680,7 +681,8 @@ namespace Learner
                 goto RETRY_READ;
             }
 
-            if (!params.assume_quiet)
+            // We don't need to qsearch when doing smart skipping
+            if (!params.assume_quiet && !params.smart_fen_skipping)
             {
                 int ply = 0;
                 pos.do_move((Move)ps.move, state[ply++]);
@@ -694,6 +696,13 @@ namespace Learner
                 }
             }
 
+            if (params.smart_fen_skipping
+                && (pos.capture_or_promotion((Move)ps.move)
+                    || pos.checkers()))
+            {
+                goto RETRY_READ;
+            }
+            
             // We want to position being trained on not to be terminal
             if (MoveList<LEGAL>(pos).size() == 0)
                 goto RETRY_READ;
@@ -1115,6 +1124,7 @@ namespace Learner
             }
             else if (option == "verbose") params.verbose = true;
             else if (option == "assume_quiet") params.assume_quiet = true;
+            else if (option == "smart_fen_skipping") params.smart_fen_skipping = true;
             else
             {
                 out << "INFO: Unknown option: " << option << ". Ignoring.\n";
