@@ -54,6 +54,12 @@ namespace Eval::NNUE {
         const std::string& seed,
         SynchronizedRegionLogger::Region& out) {
 
+#if defined (OPENBLAS_VERSION)
+        openblas_set_num_threads(1);
+#elif defined (INTEL_MKL_VERSION)
+        mkl_set_num_threads(1);
+#endif
+
         out << "INFO (initialize_training): Initializing NN training for "
             << get_architecture_string() << std::endl;
 
@@ -199,37 +205,60 @@ namespace Eval::NNUE {
 
         bool collect_stats = verbose;
 
+        std::vector<double> abs_eval_diff_sum_local(thread_pool.size(), 0.0);
+        std::vector<double> abs_discrete_eval_sum_local(thread_pool.size(), 0.0);
+        std::vector<double> gradient_norm_local(thread_pool.size(), 0.0);
+
         while (examples.size() >= batch_size) {
             std::vector<Example> batch(examples.end() - batch_size, examples.end());
             examples.resize(examples.size() - batch_size);
 
-            const auto network_output = trainer->propagate(thread_pool, batch);
-
+            const auto network_output = trainer->step_start(thread_pool, batch);
             std::vector<LearnFloatType> gradients(batch.size());
-            for (std::size_t b = 0; b < batch.size(); ++b) {
-                const auto shallow = static_cast<Value>(round<std::int32_t>(
-                    batch[b].sign * network_output[b] * kPonanzaConstant));
-                const auto discrete = batch[b].sign * batch[b].discrete_nn_eval;
-                const auto& psv = batch[b].psv;
-                const double gradient =
-                    batch[b].sign * calc_grad(shallow, (Value)psv.score, psv.game_result, psv.gamePly);
-                gradients[b] = static_cast<LearnFloatType>(gradient * batch[b].weight);
+
+            thread_pool.for_each_index_chunk_with_workers(
+                std::size_t(0), batch.size(),
+                [&](Thread& th, std::size_t offset, std::size_t count) {
+                    const auto thread_id = th.thread_idx();
+
+                    trainer->propagate(th, offset, count);
+
+                    for (std::size_t b = offset; b < offset + count; ++b) {
+                        const auto shallow = static_cast<Value>(round<std::int32_t>(
+                            batch[b].sign * network_output[b] * kPonanzaConstant));
+                        const auto discrete = batch[b].sign * batch[b].discrete_nn_eval;
+                        const auto& psv = batch[b].psv;
+                        const double gradient =
+                            batch[b].sign * calc_grad(shallow, (Value)psv.score, psv.game_result, psv.gamePly);
+                        gradients[b] = static_cast<LearnFloatType>(gradient * batch[b].weight);
 
 
-                // The discrete eval will only be valid before first backpropagation,
-                // that is only for the first batch.
-                // Similarily we want only gradients from one batch.
-                if (collect_stats)
-                {
-                    abs_eval_diff_sum += std::abs(discrete - shallow);
-                    abs_discrete_eval_sum += std::abs(discrete);
-                    gradient_norm += std::abs(gradient);
+                        // The discrete eval will only be valid before first backpropagation,
+                        // that is only for the first batch.
+                        // Similarily we want only gradients from one batch.
+                        if (collect_stats)
+                        {
+                            abs_eval_diff_sum_local[thread_id] += std::abs(discrete - shallow);
+                            abs_discrete_eval_sum_local[thread_id] += std::abs(discrete);
+                            gradient_norm_local[thread_id] += std::abs(gradient);
+                        }
+                    }
+
+                    trainer->backpropagate(th, gradients.data(), offset, count);
                 }
-            }
+            );
+            thread_pool.wait_for_workers_finished();
 
-            trainer->backpropagate(thread_pool, gradients.data(), learning_rate);
+            trainer->step_end(thread_pool, learning_rate);
 
             collect_stats = false;
+        }
+
+        if (verbose)
+        {
+            abs_eval_diff_sum = std::accumulate(abs_eval_diff_sum_local.begin(), abs_eval_diff_sum_local.end(), 0.0);
+            abs_discrete_eval_sum = std::accumulate(abs_discrete_eval_sum_local.begin(), abs_discrete_eval_sum_local.end(), 0.0);
+            gradient_norm = std::accumulate(gradient_norm_local.begin(), gradient_norm_local.end(), 0.0);
         }
 
         if (verbose) {
