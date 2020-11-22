@@ -155,6 +155,31 @@ struct ThreadPool : public std::vector<Thread*> {
       });
   }
 
+  template <typename IndexT, typename FuncT>
+  void for_each_index_chunk_with_workers(
+    IndexT begin,
+    typename Detail::TypeIdentity<IndexT>::Type end,
+    FuncT func)
+  {
+    // This value must outlive the function call.
+    // It's fairly safe if we make it static
+    // because for_each_index_with_workers
+    // is not reentrant nor thread safe.
+    const IndexT size = end - begin;
+    const IndexT chunk_size = (size + this->size()) / this->size();
+
+    execute_with_workers(
+      [chunk_size, end, func](Thread& th) mutable {
+        const IndexT thread_id = th.thread_idx();
+        const IndexT offset = chunk_size * thread_id;
+        if (offset >= end)
+          return;
+
+        const IndexT count = offset + chunk_size > end ? end - offset : chunk_size;
+        func(th, offset, count);
+      });
+  }
+
   void start_thinking(Position&, StateListPtr&, const Search::LimitsType&, bool = false);
   void clear();
   void set(size_t);
