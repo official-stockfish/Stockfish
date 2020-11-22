@@ -27,7 +27,8 @@
 #include <ostream>
 #include <string>
 #include <vector>
-#include <utility>
+
+#include <cstdint>
 #include <cmath>
 #include <cctype>
 #include <sstream>
@@ -70,6 +71,18 @@ std::ostream& operator<<(std::ostream&, SyncCout);
 
 #define sync_cout std::cout << IO_LOCK
 #define sync_endl std::endl << IO_UNLOCK
+
+// `ptr` must point to an array of size at least
+// `sizeof(T) * N + alignment` bytes, where `N` is the
+// number of elements in the array.
+template <uintptr_t Alignment, typename T>
+T* align_ptr_up(T* ptr)
+{
+  static_assert(alignof(T) < Alignment);
+
+  const uintptr_t ptrint = reinterpret_cast<uintptr_t>(reinterpret_cast<char*>(ptr));
+  return reinterpret_cast<T*>(reinterpret_cast<char*>((ptrint + (Alignment - 1)) / Alignment * Alignment));
+}
 
 // This logger allows printing many parts in a region atomically
 // but doesn't block the threads trying to append to other regions.

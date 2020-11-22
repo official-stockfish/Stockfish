@@ -111,7 +111,7 @@ namespace Eval::NNUE {
 #ifndef NDEBUG
         bool result =
 #endif
-        read_parameters(stream);
+        ReadParameters(stream);
 #ifndef NDEBUG
         assert(result);
 #endif
@@ -278,7 +278,7 @@ namespace Eval::NNUE {
 #ifndef NDEBUG
         bool result =
 #endif
-        write_parameters(stream);
+        WriteParameters(stream);
 #ifndef NDEBUG
         assert(result);
 #endif

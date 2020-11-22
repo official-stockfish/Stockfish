@@ -158,6 +158,8 @@ namespace {
   uint64_t perft(Position& pos, Depth depth) {
 
     StateInfo st;
+    ASSERT_ALIGNED(&st, Eval::NNUE::kCacheLineSize);
+
     uint64_t cnt, nodes = 0;
     const bool leaf = (depth == 2);
 
@@ -411,7 +413,7 @@ void Thread::search() {
           // Start with a small aspiration window and, in the case of a fail
           // high/low, re-search with a bigger window until we don't fail
           // high/low anymore.
-          int failedHighCnt = 0;
+          failedHighCnt = 0;
           while (true)
           {
               Depth adjustedDepth = std::max(1, rootDepth - failedHighCnt - searchAgainCounter);
@@ -513,10 +515,14 @@ void Thread::search() {
           }
           double bestMoveInstability = 1 + 2 * totBestMoveChanges / Threads.size();
 
-          double totalTime = rootMoves.size() == 1 ? 0 :
-                             Time.optimum() * fallingEval * reduction * bestMoveInstability;
+          double totalTime = Time.optimum() * fallingEval * reduction * bestMoveInstability;
 
-          // Stop the search if we have exceeded the totalTime, at least 1ms search
+          // Cap used time in case of a single legal move for a better viewer experience in tournaments
+          // yielding correct scores and sufficiently fast moves.
+          if (rootMoves.size() == 1)
+              totalTime = std::min(500.0, totalTime);
+
+          // Stop the search if we have exceeded the totalTime
           if (Time.elapsed() > totalTime)
           {
               // If we are allowed to ponder do not stop the search now but
@@ -559,6 +565,7 @@ namespace {
 
     constexpr bool PvNode = NT == PV;
     const bool rootNode = PvNode && ss->ply == 0;
+    const Depth maxNextDepth = rootNode ? depth : depth + 1;
 
     // Check if we have an upcoming move which draws by repetition, or
     // if the opponent had an alternative move earlier to this position.
@@ -583,6 +590,8 @@ namespace {
 
     Move pv[MAX_PLY+1], capturesSearched[32], quietsSearched[64];
     StateInfo st;
+    ASSERT_ALIGNED(&st, Eval::NNUE::kCacheLineSize);
+
     TTEntry* tte;
     Key posKey;
     Move ttMove, move, excludedMove, bestMove;
@@ -1046,15 +1055,6 @@ moves_loop: // When in check, search starts from here
                   && captureHistory[movedPiece][to_sq(move)][type_of(pos.piece_on(to_sq(move)))] < 0)
                   continue;
 
-              // Futility pruning for captures
-              if (   !givesCheck
-                  && lmrDepth < 6
-                  && !(PvNode && abs(bestValue) < 2)
-                  && !ss->inCheck
-                  && ss->staticEval + 169 + 244 * lmrDepth
-                     + PieceValue[MG][type_of(pos.piece_on(to_sq(move)))] <= alpha)
-                  continue;
-
               // See based pruning
               if (!pos.see_ge(move, Value(-221) * depth)) // (~25 Elo)
                   continue;
@@ -1158,13 +1158,17 @@ moves_loop: // When in check, search starts from here
           if (thisThread->ttHitAverage > 509 * TtHitAverageResolution * TtHitAverageWindow / 1024)
               r--;
 
-          // Reduction if other threads are searching this position
+          // Increase reduction if other threads are searching this position
           if (th.marked())
               r++;
 
           // Decrease reduction if position is or has been on the PV (~10 Elo)
           if (ss->ttPv)
               r -= 2;
+
+          // Increase reduction at root and non-PV nodes when the best move does not change frequently
+          if ((rootNode || !PvNode) && depth > 10 && thisThread->bestMoveChanges <= 2)
+              r++;
 
           if (moveCountPruning && !formerPv)
               r++;
@@ -1182,6 +1186,9 @@ moves_loop: // When in check, search starts from here
               // Increase reduction if ttMove is a capture (~5 Elo)
               if (ttCapture)
                   r++;
+
+              // Increase reduction at root if failing high
+              r += rootNode ? thisThread->failedHighCnt * thisThread->failedHighCnt * moveCount / 512 : 0;
 
               // Increase reduction for cut nodes (~10 Elo)
               if (cutNode)
@@ -1262,7 +1269,8 @@ moves_loop: // When in check, search starts from here
           (ss+1)->pv = pv;
           (ss+1)->pv[0] = MOVE_NONE;
 
-          value = -search<PV>(pos, ss+1, -beta, -alpha, newDepth, false);
+          value = -search<PV>(pos, ss+1, -beta, -alpha,
+                              std::min(maxNextDepth, newDepth), false);
       }
 
       // Step 18. Undo move
@@ -1404,6 +1412,8 @@ moves_loop: // When in check, search starts from here
 
     Move pv[MAX_PLY+1];
     StateInfo st;
+    ASSERT_ALIGNED(&st, Eval::NNUE::kCacheLineSize);
+
     TTEntry* tte;
     Key posKey;
     Move ttMove, move, bestMove;
@@ -1516,8 +1526,7 @@ moves_loop: // When in check, search starts from here
       moveCount++;
 
       // Futility pruning
-      if (   !ss->inCheck
-          && Search::prune_at_shallow_depth
+      if (    bestValue > VALUE_TB_LOSS_IN_MAX_PLY
           && !givesCheck
           &&  futilityBase > -VALUE_KNOWN_WIN
           && !pos.advanced_pawn_push(move))
@@ -1544,8 +1553,7 @@ moves_loop: // When in check, search starts from here
       }
 
       // Do not search moves with negative SEE values
-      if (   !ss->inCheck
-          && Search::prune_at_shallow_depth
+      if (    bestValue > VALUE_TB_LOSS_IN_MAX_PLY
           && !(givesCheck && pos.is_discovery_check_on_king(~pos.side_to_move(), move))
           && !pos.see_ge(move))
           continue;
@@ -1568,8 +1576,7 @@ moves_loop: // When in check, search starts from here
 
       // CounterMove based pruning
       if (  !captureOrPromotion
-          && Search::prune_at_shallow_depth
-          && moveCount
+          && bestValue > VALUE_TB_LOSS_IN_MAX_PLY
           && (*contHist[0])[pos.moved_piece(move)][to_sq(move)] < CounterMovePruneThreshold
           && (*contHist[1])[pos.moved_piece(move)][to_sq(move)] < CounterMovePruneThreshold)
           continue;
@@ -1604,7 +1611,11 @@ moves_loop: // When in check, search starts from here
     // All legal moves have been searched. A special case: if we're in check
     // and no legal moves were found, it is checkmate.
     if (ss->inCheck && bestValue == -VALUE_INFINITE)
+    {
+        assert(!MoveList<LEGAL>(pos).size());
+
         return mated_in(ss->ply); // Plies to mate from the root
+    }
 
     tte->save(posKey, value_to_tt(bestValue, ss->ply), pvHit,
               bestValue >= beta ? BOUND_LOWER :
@@ -1898,6 +1909,8 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
 bool RootMove::extract_ponder_from_tt(Position& pos) {
 
     StateInfo st;
+    ASSERT_ALIGNED(&st, Eval::NNUE::kCacheLineSize);
+
     bool ttHit;
 
     assert(pv.size() == 1);
@@ -1992,7 +2005,7 @@ namespace Search
       th->completedDepth = 0;
       th->selDepth = 0;
       th->rootDepth = 0;
-      th->nmpMinPly = th->bestMoveChanges = 0;
+      th->nmpMinPly = th->bestMoveChanges = th->failedHighCnt = 0;
       th->ttHitAverage = TtHitAverageWindow * TtHitAverageResolution / 2;
 
       // Zero initialization of the number of search nodes

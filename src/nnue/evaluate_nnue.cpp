@@ -30,6 +30,14 @@
 #include <fstream>
 #include <set>
 
+#include "../evaluate.h"
+#include "../position.h"
+#include "../misc.h"
+#include "../uci.h"
+#include "../types.h"
+
+#include "evaluate_nnue.h"
+
 namespace Eval::NNUE {
 
     const uint32_t kpp_board_index[PIECE_NB][COLOR_NB] = {
@@ -101,34 +109,34 @@ namespace Eval::NNUE {
 
         // Read evaluation function parameters
         template <typename T>
-        bool read_parameters(std::istream& stream, T& reference) {
+        bool ReadParameters(std::istream& stream, T& reference) {
 
             std::uint32_t header;
             header = read_little_endian<std::uint32_t>(stream);
 
-            if (!stream || header != T::get_hash_value())
+            if (!stream || header != T::GetHashValue())
                 return false;
 
-            return reference.read_parameters(stream);
+            return reference.ReadParameters(stream);
         }
 
         // write evaluation function parameters
         template <typename T>
-        bool write_parameters(std::ostream& stream, const AlignedPtr<T>& pointer) {
-            constexpr std::uint32_t header = T::get_hash_value();
+        bool WriteParameters(std::ostream& stream, const AlignedPtr<T>& pointer) {
+            constexpr std::uint32_t header = T::GetHashValue();
 
             stream.write(reinterpret_cast<const char*>(&header), sizeof(header));
 
-            return pointer->write_parameters(stream);
+            return pointer->WriteParameters(stream);
         }
 
         template <typename T>
-        bool write_parameters(std::ostream& stream, const LargePagePtr<T>& pointer) {
-            constexpr std::uint32_t header = T::get_hash_value();
+        bool WriteParameters(std::ostream& stream, const LargePagePtr<T>& pointer) {
+            constexpr std::uint32_t header = T::GetHashValue();
 
             stream.write(reinterpret_cast<const char*>(&header), sizeof(header));
 
-            return pointer->write_parameters(stream);
+            return pointer->WriteParameters(stream);
         }
     }  // namespace Detail
 
@@ -173,7 +181,7 @@ namespace Eval::NNUE {
     }
 
     // Read network parameters
-    bool read_parameters(std::istream& stream) {
+    bool ReadParameters(std::istream& stream) {
 
         std::uint32_t hash_value;
         std::string architecture;
@@ -183,24 +191,24 @@ namespace Eval::NNUE {
         if (hash_value != kHashValue)
             return false;
 
-        if (!Detail::read_parameters(stream, *feature_transformer))
+        if (!Detail::ReadParameters(stream, *feature_transformer))
             return false;
 
-        if (!Detail::read_parameters(stream, *network))
+        if (!Detail::ReadParameters(stream, *network))
             return false;
 
         return stream && stream.peek() == std::ios::traits_type::eof();
     }
     // write evaluation function parameters
-    bool write_parameters(std::ostream& stream) {
+    bool WriteParameters(std::ostream& stream) {
 
         if (!write_header(stream, kHashValue, get_architecture_string()))
             return false;
 
-        if (!Detail::write_parameters(stream, feature_transformer))
+        if (!Detail::WriteParameters(stream, feature_transformer))
             return false;
 
-        if (!Detail::write_parameters(stream, network))
+        if (!Detail::WriteParameters(stream, network))
             return false;
 
         return !stream.fail();
@@ -208,14 +216,31 @@ namespace Eval::NNUE {
     // Evaluation function. Perform differential calculation.
     Value evaluate(const Position& pos) {
 
-        alignas(kCacheLineSize) TransformedFeatureType
-            transformed_features[FeatureTransformer::kBufferSize];
+        // We manually align the arrays on the stack because with gcc < 9.3
+        // overaligning stack variables with alignas() doesn't work correctly.
 
-        feature_transformer->transform(pos, transformed_features);
+        constexpr uint64_t alignment = kCacheLineSize;
 
-        alignas(kCacheLineSize) char buffer[Network::kBufferSize];
+#if defined(ALIGNAS_ON_STACK_VARIABLES_BROKEN)
+        TransformedFeatureType transformed_features_unaligned[
+          FeatureTransformer::kBufferSize + alignment / sizeof(TransformedFeatureType)];
+        char buffer_unaligned[Network::kBufferSize + alignment];
 
-        const auto output = network->propagate(transformed_features, buffer);
+        auto* transformed_features = align_ptr_up<alignment>(&transformed_features_unaligned[0]);
+        auto* buffer = align_ptr_up<alignment>(&buffer_unaligned[0]);
+#else
+        alignas(alignment)
+          TransformedFeatureType transformed_features[FeatureTransformer::kBufferSize];
+        alignas(alignment) char buffer[Network::kBufferSize];
+#endif
+
+        ASSERT_ALIGNED(transformed_features, alignment);
+        ASSERT_ALIGNED(buffer, alignment);
+
+        feature_transformer->Transform(pos, transformed_features);
+
+
+        const auto output = network->Propagate(transformed_features, buffer);
 
         return static_cast<Value>(output[0] / FV_SCALE);
     }
@@ -226,7 +251,7 @@ namespace Eval::NNUE {
         initialize();
 
         fileName = name;
-        return read_parameters(stream);
+        return ReadParameters(stream);
     }
 
     static UseNNUEMode nnue_mode_from_option(const UCI::Option& mode)

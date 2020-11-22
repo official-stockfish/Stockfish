@@ -93,6 +93,7 @@ public:
   CapturePieceToHistory captureHistory;
   ContinuationHistory continuationHistory[2][2];
   Score contempt;
+  int failedHighCnt;
   bool rootInTB;
   int Cardinality;
   bool UseRule50;

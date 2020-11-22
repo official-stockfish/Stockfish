@@ -82,6 +82,8 @@ std::ostream& operator<<(std::ostream& os, const Position& pos) {
       && !pos.can_castle(ANY_CASTLING))
   {
       StateInfo st;
+      ASSERT_ALIGNED(&st, Eval::NNUE::kCacheLineSize);
+
       Position p;
       p.set(pos.fen(), pos.is_chess960(), &st, pos.this_thread());
       Tablebases::ProbeState s1, s2;
@@ -1320,6 +1322,8 @@ bool Position::pos_is_ok() const {
               assert(0 && "pos_is_ok: Bitboards");
 
   StateInfo si = *st;
+  ASSERT_ALIGNED(&si, Eval::NNUE::kCacheLineSize);
+
   set_state(&si);
   if (std::memcmp(&si, st, sizeof(StateInfo)))
       assert(0 && "pos_is_ok: State");
@@ -1357,24 +1361,6 @@ int Position::set_from_packed_sfen(const Learner::PackedSfen& sfen , StateInfo* 
 {
   return Learner::set_from_packed_sfen(*this, sfen, si, th);
 }
-
-// Give the board, hand piece, and turn, and return the sfen.
-//std::string Position::sfen_from_rawdata(Piece board[81], Hand hands[2], Color turn, int gamePly_)
-//{
-// // Copy it to an internal structure and call sfen() if the conversion process depends only on it
-// // Maybe it will be converted normally...
-//  Position pos;
-//
-//  memcpy(pos.board, board, sizeof(Piece) * 81);
-//  memcpy(pos.hand, hands, sizeof(Hand) * 2);
-//  pos.sideToMove = turn;
-//  pos.gamePly = gamePly_;
-//
-//  return pos.sfen();
-//
-// // Implementation of ↑ is beautiful, but slow.
-// // This is a bottleneck when learning a large amount of game records, so write a function to unpack directly.
-//}
 
 // Get the packed sfen. Returns to the buffer specified in the argument.
 void Position::sfen_pack(Learner::PackedSfen& sfen)

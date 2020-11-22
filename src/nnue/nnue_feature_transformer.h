@@ -38,8 +38,8 @@ namespace Eval::NNUE {
 
 #ifdef USE_AVX512
     typedef __m512i vec_t;
-#define vec_load(a) _mm512_loadA_si512(a)
-#define vec_store(a,b) _mm512_storeA_si512(a,b)
+#define vec_load(a) _mm512_load_si512(a)
+#define vec_store(a,b) _mm512_store_si512(a,b)
 #define vec_add_16(a,b) _mm512_add_epi16(a,b)
 #define vec_sub_16(a,b) _mm512_sub_epi16(a,b)
 #define vec_zero _mm512_setzero_si512()
@@ -47,8 +47,8 @@ namespace Eval::NNUE {
 
 #elif USE_AVX2
     typedef __m256i vec_t;
-#define vec_load(a) _mm256_loadA_si256(a)
-#define vec_store(a,b) _mm256_storeA_si256(a,b)
+#define vec_load(a) _mm256_load_si256(a)
+#define vec_store(a,b) _mm256_store_si256(a,b)
 #define vec_add_16(a,b) _mm256_add_epi16(a,b)
 #define vec_sub_16(a,b) _mm256_sub_epi16(a,b)
 #define vec_zero _mm256_setzero_si256()
@@ -79,7 +79,7 @@ namespace Eval::NNUE {
 #define vec_add_16(a,b) vaddq_s16(a,b)
 #define vec_sub_16(a,b) vsubq_s16(a,b)
 #define vec_zero {0}
-    static constexpr IndexType kNumRegs = 16;
+  static constexpr IndexType kNumRegs = 16;
 
 #else
 #undef TILING
@@ -113,7 +113,7 @@ namespace Eval::NNUE {
         static constexpr int kLayerIndex = 0;
 
         // Hash value embedded in the evaluation file
-        static constexpr std::uint32_t get_hash_value() {
+        static constexpr std::uint32_t GetHashValue() {
 
             return RawFeatures::kHashValue ^ kOutputDimensions;
         }
@@ -138,7 +138,7 @@ namespace Eval::NNUE {
         }
 
         // Read network parameters
-        bool read_parameters(std::istream& stream) {
+        bool ReadParameters(std::istream& stream) {
 
             for (std::size_t i = 0; i < kHalfDimensions; ++i)
                 biases_[i] = read_little_endian<BiasType>(stream);
@@ -150,7 +150,7 @@ namespace Eval::NNUE {
         }
 
         // write parameters
-        bool write_parameters(std::ostream& stream) const {
+        bool WriteParameters(std::ostream& stream) const {
             stream.write(reinterpret_cast<const char*>(biases_),
                 kHalfDimensions * sizeof(BiasType));
 
@@ -177,7 +177,7 @@ namespace Eval::NNUE {
         }
 
         // Convert input features
-        void transform(const Position& pos, OutputType* output) const {
+        void Transform(const Position& pos, OutputType* output) const {
 
             if (!update_accumulator_if_possible(pos))
               refresh_accumulator(pos);
@@ -214,9 +214,9 @@ namespace Eval::NNUE {
 #if defined(USE_AVX2)
                 auto out = reinterpret_cast<__m256i*>(&output[offset]);
                 for (IndexType j = 0; j < kNumChunks; ++j) {
-                    __m256i sum0 = _mm256_loadA_si256(
+                    __m256i sum0 = _mm256_load_si256(
                         &reinterpret_cast<const __m256i*>(accumulation[perspectives[p]][0])[j * 2 + 0]);
-                    __m256i sum1 = _mm256_loadA_si256(
+                    __m256i sum1 = _mm256_load_si256(
                       &reinterpret_cast<const __m256i*>(accumulation[perspectives[p]][0])[j * 2 + 1]);
                     for (IndexType i = 1; i < kRefreshTriggers.size(); ++i) {
                         sum0 = _mm256_add_epi16(sum0, reinterpret_cast<const __m256i*>(
@@ -225,7 +225,7 @@ namespace Eval::NNUE {
                             accumulation[perspectives[p]][i])[j * 2 + 1]);
                     }
 
-                    _mm256_storeA_si256(&out[j], _mm256_permute4x64_epi64(_mm256_max_epi8(
+                    _mm256_store_si256(&out[j], _mm256_permute4x64_epi64(_mm256_max_epi8(
                         _mm256_packs_epi16(sum0, sum1), kZero), kControl));
                 }
 

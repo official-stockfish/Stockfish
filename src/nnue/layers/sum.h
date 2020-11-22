@@ -30,7 +30,7 @@ namespace Eval::NNUE::Layers {
 
         // Size of forward propagation buffer used in this layer
         static constexpr std::size_t kSelfBufferSize =
-            ceil_to_multiple(kOutputDimensions * sizeof(OutputType), kCacheLineSize);
+            CeilToMultiple(kOutputDimensions * sizeof(OutputType), kCacheLineSize);
 
         // Size of the forward propagation buffer used from the input layer to this layer
         static constexpr std::size_t kBufferSize =
@@ -39,12 +39,12 @@ namespace Eval::NNUE::Layers {
         static constexpr int kLayerIndex = Tail::kLayerIndex + 1;
 
         // Hash value embedded in the evaluation function file
-        static constexpr std::uint32_t get_hash_value() {
+        static constexpr std::uint32_t GetHashValue() {
             std::uint32_t hash_value = 0xBCE400B4u;
-            hash_value ^= Head::get_hash_value() >> 1;
-            hash_value ^= Head::get_hash_value() << 31;
-            hash_value ^= Tail::get_hash_value() >> 2;
-            hash_value ^= Tail::get_hash_value() << 30;
+            hash_value ^= Head::GetHashValue() >> 1;
+            hash_value ^= Head::GetHashValue() << 31;
+            hash_value ^= Tail::GetHashValue() >> 2;
+            hash_value ^= Tail::GetHashValue() << 30;
             return hash_value;
         }
 
@@ -68,19 +68,19 @@ namespace Eval::NNUE::Layers {
         }
 
         // read parameters
-        bool read_parameters(std::istream& stream) {
-            if (!Tail::read_parameters(stream))
+        bool ReadParameters(std::istream& stream) {
+            if (!Tail::ReadParameters(stream))
                 return false;
 
-            return previous_layer_.read_parameters(stream);
+            return previous_layer_.ReadParameters(stream);
         }
 
         // write parameters
-        bool write_parameters(std::ostream& stream) const {
-            if (!Tail::write_parameters(stream))
+        bool WriteParameters(std::ostream& stream) const {
+            if (!Tail::WriteParameters(stream))
                 return false;
 
-            return previous_layer_.write_parameters(stream);
+            return previous_layer_.WriteParameters(stream);
         }
 
         // forward propagation
@@ -89,7 +89,7 @@ namespace Eval::NNUE::Layers {
 
             Tail::propagate(transformed_features, buffer);
 
-            const auto head_output = previous_layer_.propagate(
+            const auto head_output = previous_layer_.Propagate(
                 transformed_features, buffer + kSelfBufferSize);
 
             const auto output = reinterpret_cast<OutputType*>(buffer);
@@ -135,10 +135,10 @@ namespace Eval::NNUE::Layers {
         static constexpr int kLayerIndex = PreviousLayer::kLayerIndex + 1;
 
         // Hash value embedded in the evaluation function file
-        static constexpr std::uint32_t get_hash_value() {
+        static constexpr std::uint32_t GetHashValue() {
             std::uint32_t hash_value = 0xBCE400B4u;
-            hash_value ^= PreviousLayer::get_hash_value() >> 1;
-            hash_value ^= PreviousLayer::get_hash_value() << 31;
+            hash_value ^= PreviousLayer::GetHashValue() >> 1;
+            hash_value ^= PreviousLayer::GetHashValue() << 31;
             return hash_value;
         }
 
@@ -162,20 +162,20 @@ namespace Eval::NNUE::Layers {
         }
 
         // read parameters
-        bool read_parameters(std::istream& stream) {
-            return previous_layer_.read_parameters(stream);
+        bool ReadParameters(std::istream& stream) {
+            return previous_layer_.ReadParameters(stream);
         }
 
         // write parameters
-        bool write_parameters(std::ostream& stream) const {
-            return previous_layer_.write_parameters(stream);
+        bool WriteParameters(std::ostream& stream) const {
+            return previous_layer_.WriteParameters(stream);
         }
 
         // forward propagation
-        const OutputType* propagate(
+        const OutputType* Propagate(
             const TransformedFeatureType* transformed_features, char* buffer) const {
 
-            return previous_layer_.propagate(transformed_features, buffer);
+            return previous_layer_.Propagate(transformed_features, buffer);
         }
 
     protected:
