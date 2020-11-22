@@ -64,6 +64,10 @@ Currently the following options are available:
 
 `newbob_decay` - learning rate will be multiplied by this factor every time a net is rejected (so in other words it controls LR drops). Default: 0.5 (no LR drops)
 
+`assume_quiet` - this is a flag option. When specified learn will not perform qsearch to reach a quiet position.
+
+`smart_fen_skipping` - this is a flag option. When specified some position that are not good candidates for teaching are skipped. This includes positions where the best move is a capture or promotion, and position where a king is in check.
+
 `newbob_num_trials` - determines after how many subsequent rejected nets the training process will be terminated. Default: 4.
 
 `auto_lr_drop` - every time this many positions are processed the learning rate is multiplied by `newbob_decay`. In other words this value specifies for how many positions a single learning rate stage lasts. If 0 then doesn't have any effect. Default: 0.

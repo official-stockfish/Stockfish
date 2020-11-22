@@ -62,4 +62,6 @@ Currently the following options are available:
 
 `sfen_format` - format of the training data to use. Either `bin` or `binpack`. Default: `binpack`.
 
+`ensure_quiet` - this is a flag option. When specified the positions will be from the qsearch leaf.
+
 `seed` - seed for the PRNG. Can be either a number or a string. If it's a string then its hash will be used. If not specified then the current time will be used.
