@@ -191,7 +191,8 @@ namespace Learner
             PSVector& sfens,
             int8_t lastTurnIsWin,
             std::atomic<uint64_t>& counter,
-            uint64_t limit);
+            uint64_t limit,
+            Color result_color);
 
         void report(uint64_t done, uint64_t new_done);
 
@@ -291,7 +292,7 @@ namespace Learner
             vector<int> move_hist_scores;
 
             auto flush_psv = [&](int8_t result) {
-                quit = commit_psv(th, packed_sfens, result, counter, limit);
+                quit = commit_psv(th, packed_sfens, result, counter, limit, pos.side_to_move());
             };
 
             for (int ply = 0; ; ++ply)
@@ -717,7 +718,8 @@ namespace Learner
         PSVector& sfens,
         int8_t result,
         std::atomic<uint64_t>& counter,
-        uint64_t limit)
+        uint64_t limit,
+        Color result_color)
     {
         if (!params.write_out_draw_game_in_training_data_generation && result == 0)
         {
@@ -725,13 +727,17 @@ namespace Learner
             return false;
         }
 
+        auto side_to_move_from_sfen = [](auto& sfen){
+            return (Color)(sfen.sfen.data[0] & 1);
+        };
+
         // From the final stage (one step before) to the first stage, give information on the outcome of the game for each stage.
         // The phases stored in sfens are assumed to be continuous (in order).
         for (auto it = sfens.rbegin(); it != sfens.rend(); ++it)
         {
-            // If is_win == 0 (draw), multiply by -1 and it will remain 0 (draw)
-            result = -result;
-            it->game_result = result;
+            // The side to move is packed as the lowest bit of the first byte
+            const Color side_to_move = side_to_move_from_sfen(*it);
+            it->game_result = side_to_move == result_color ? result : -result;
         }
 
         // Write sfens in move order to make potential compression easier
