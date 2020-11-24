@@ -34,6 +34,7 @@
 #include "tt.h"
 #include "uci.h"
 #include "syzygy/tbprobe.h"
+#include "nnue/evaluate_nnue.h"
 
 namespace Search {
 
@@ -55,6 +56,14 @@ using Eval::evaluate;
 using namespace Search;
 
 namespace {
+
+  // Output layer for endgame
+  int netbias_eg[1] = {-195};
+  int netweights_eg[32] =
+  {
+   -27,	 -13,  -74,   56,  -27,  122, -117,   19,   30,   52,  -33,   23,   20,  -37,  -22,   95,	
+   -50,	  28,   39,   45,  -18,  -23,   16,  -43,  -20,  -40,  -16,   -9,  -29,   28,  -14,   13
+  };
 
   // Different node types, used as a template parameter
   enum NodeType { NonPV, PV };
@@ -221,6 +230,18 @@ void MainThread::search() {
       nodes = perft<true>(rootPos, Limits.perft);
       sync_cout << "\nNodes searched: " << nodes << "\n" << sync_endl;
       return;
+  }
+
+  // Use output layer for endgame
+  if (rootPos.count<ALL_PIECES>() - rootPos.count<PAWN>() <= 8)
+  {
+     Eval::NNUE::network->biases_[0] = netbias_eg[0];
+
+     size_t ndim=Eval::NNUE::Network::kOutputDimensions * Eval::NNUE::Network::kPaddedInputDimensions;
+     for (size_t i=0; i < ndim; ++i)
+     {
+        Eval::NNUE::network->weights_[i] = netweights_eg[i];
+     }
   }
 
   Color us = rootPos.side_to_move();
