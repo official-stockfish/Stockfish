@@ -76,6 +76,21 @@ build_script:
             Invoke-WebRequest -Uri $nnuedownloadurl -OutFile $nnuefilepath
       }
 
+   - ps: |
+      # Download endgame NNUE net from fishtest
+      $nnuenet = Get-Content -Path src\evaluate.h | Select-String -CaseSensitive -Pattern "EvalFileEndgame" | Select-String -CaseSensitive -Pattern "nn-[a-z0-9]{12}.nnue"
+      $dummy = $nnuenet -match "(?<nnuenet>nn-[a-z0-9]{12}.nnue)"
+      $nnuenet = $Matches.nnuenet
+      Write-Host "Endgame net:" $nnuenet
+      $nnuedownloadurl = "https://tests.stockfishchess.org/api/nn/$nnuenet"
+      $nnuefilepath = "src\${env:CONFIGURATION}\$nnuenet"
+      if (Test-Path -Path $nnuefilepath) {
+            Write-Host "Already available."
+      } else {
+            Write-Host "Downloading $nnuedownloadurl to $nnuefilepath"
+            Invoke-WebRequest -Uri $nnuedownloadurl -OutFile $nnuefilepath
+      }
+
 before_test:
   - cd src/%CONFIGURATION%
   - stockfish bench 2> out.txt >NUL

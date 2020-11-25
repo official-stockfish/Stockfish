@@ -223,6 +223,11 @@ void MainThread::search() {
       return;
   }
 
+  if (rootPos.count<ALL_PIECES>() - rootPos.count<PAWN>() <= 8)
+      Options["EvalFile"] = string(EvalFileEndgame);
+  else
+      Options["EvalFile"] = string(EvalFileDefaultName);
+
   Color us = rootPos.side_to_move();
   Time.init(Limits, us, rootPos.game_ply());
   TT.new_search();
