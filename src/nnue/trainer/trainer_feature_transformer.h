@@ -138,6 +138,7 @@ namespace Eval::NNUE {
             for (IndexType b = offset; b < offset + count; ++b)
             {
                 const IndexType batch_offset = kOutputDimensions * b;
+
                 for (IndexType c = 0; c < 2; ++c) {
                     const IndexType output_offset = batch_offset + kHalfDimensions * c;
 
@@ -459,10 +460,16 @@ namespace Eval::NNUE {
 
                     for (IndexType b = 0; b < batch_->size(); ++b) {
                         const IndexType batch_offset = kOutputDimensions * b;
+
                         for (IndexType c = 0; c < 2; ++c) {
                             const IndexType output_offset = batch_offset + kHalfDimensions * c;
                             for (const auto& feature : (*batch_)[b].training_features[c]) {
                                 const IndexType feature_index = feature.get_index();
+                                const IndexType weights_offset =
+                                    kHalfDimensions * feature_index;
+#if defined (USE_SSE2)
+                                _mm_prefetch(reinterpret_cast<const char*>(&weights_[weights_offset]), _MM_HINT_T2);
+#endif
 
                                 // We assign each bucket a continuous range of bits at least
                                 // of cache line size to prevent false sharing.
@@ -478,9 +485,6 @@ namespace Eval::NNUE {
                                 // each thread accesses a different memory location
                                 // (even a different cache line)
                                 observed_features.set(feature_index);
-
-                                const IndexType weights_offset =
-                                    kHalfDimensions * feature_index;
 
                                 const auto scale = static_cast<LearnFloatType>(
                                     effective_learning_rate / feature.get_count());
