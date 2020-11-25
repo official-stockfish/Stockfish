@@ -214,9 +214,10 @@ namespace Eval::NNUE {
         std::vector<double> abs_discrete_eval_sum_local(thread_pool.size(), 0.0);
         std::vector<double> gradient_norm_local(thread_pool.size(), 0.0);
 
-        while (examples.size() >= batch_size) {
-            auto batch_begin = examples.end() - batch_size;
-            auto batch_end = examples.end();
+        auto prev_batch_begin = examples.end();
+        while (prev_batch_begin - examples.begin() >= batch_size) {
+            auto batch_begin = prev_batch_begin - batch_size;
+            auto batch_end = prev_batch_begin;
             auto size = batch_end - batch_begin;
             const auto network_output = trainer->step_start(thread_pool, batch_begin, batch_end);
             std::vector<LearnFloatType> gradients(size);
@@ -253,14 +254,20 @@ namespace Eval::NNUE {
                     trainer->backpropagate(th, gradients.data(), offset, count);
                 }
             );
+
+            // We can asyncronously erase the examples that we used in the previous
+            // step. This can be done safely because we're no longer using these
+            // examples and erase won't invalidate iterators.
+            examples.erase(prev_batch_begin, examples.end());
+            prev_batch_begin = batch_begin;
+
             thread_pool.wait_for_workers_finished();
 
             trainer->step_end(thread_pool, learning_rate);
 
-            examples.resize(examples.size() - size);
-
             collect_stats = false;
         }
+        examples.erase(prev_batch_begin, examples.end());
 
         if (verbose)
         {
