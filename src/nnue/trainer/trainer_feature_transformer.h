@@ -89,11 +89,13 @@ namespace Eval::NNUE {
             quantize_parameters();
         }
 
-        const LearnFloatType* step_start(ThreadPool& thread_pool, const std::vector<Example>& combined_batch)
+        const LearnFloatType* step_start(ThreadPool& thread_pool, std::vector<Example>::const_iterator batch_begin, std::vector<Example>::const_iterator batch_end)
         {
-            if (output_.size() < kOutputDimensions * combined_batch.size()) {
-                output_.resize(kOutputDimensions * combined_batch.size());
-                gradients_.resize(kOutputDimensions * combined_batch.size());
+            const auto size = batch_end - batch_begin;
+
+            if (output_.size() < kOutputDimensions * size) {
+                output_.resize(kOutputDimensions * size);
+                gradients_.resize(kOutputDimensions * size);
             }
 
             if (thread_stat_states_.size() < thread_pool.size())
@@ -106,7 +108,8 @@ namespace Eval::NNUE {
                 thread_bias_states_.resize(thread_pool.size());
             }
 
-            batch_ = &combined_batch;
+            batch_ = &*batch_begin;
+            batch_size_ = size;
 
             auto& main_thread_bias_state = thread_bias_states_[0];
 
@@ -161,7 +164,7 @@ namespace Eval::NNUE {
                     Blas::scopy(
                         kHalfDimensions, biases_, 1, &output_[output_offset], 1
                     );
-                    for (const auto& feature : (*batch_)[b].training_features[c]) {
+                    for (const auto& feature : batch_[b].training_features[c]) {
                         const IndexType weights_offset = kHalfDimensions * feature.get_index();
                         Blas::saxpy(
                             kHalfDimensions, (float)feature.get_count(),
@@ -458,12 +461,12 @@ namespace Eval::NNUE {
                 [&, num_threads = thread_pool.size()](Thread& th) {
                     const auto thread_index = th.thread_idx();
 
-                    for (IndexType b = 0; b < batch_->size(); ++b) {
+                    for (IndexType b = 0; b < batch_size_; ++b) {
                         const IndexType batch_offset = kOutputDimensions * b;
 
                         for (IndexType c = 0; c < 2; ++c) {
                             const IndexType output_offset = batch_offset + kHalfDimensions * c;
-                            for (const auto& feature : (*batch_)[b].training_features[c]) {
+                            for (const auto& feature : batch_[b].training_features[c]) {
                                 const IndexType feature_index = feature.get_index();
                                 const IndexType weights_offset =
                                     kHalfDimensions * feature_index;
@@ -519,6 +522,7 @@ namespace Eval::NNUE {
         // constructor
         Trainer(LayerType* target_layer) :
             batch_(nullptr),
+            batch_size_(0),
             target_layer_(target_layer),
             biases_(),
             weights_(),
@@ -669,7 +673,8 @@ namespace Eval::NNUE {
         static constexpr LearnFloatType kOne = static_cast<LearnFloatType>(1.0);
 
         // mini batch
-        const std::vector<Example>* batch_;
+        const Example* batch_;
+        IndexType batch_size_;
 
         // layer to learn
         LayerType* const target_layer_;

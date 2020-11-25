@@ -91,11 +91,13 @@ namespace Eval::NNUE {
             quantize_parameters();
         }
 
-        const LearnFloatType* step_start(ThreadPool& thread_pool, const std::vector<Example>& combined_batch)
+        const LearnFloatType* step_start(ThreadPool& thread_pool, std::vector<Example>::const_iterator batch_begin, std::vector<Example>::const_iterator batch_end)
         {
-            if (output_.size() < kOutputDimensions * combined_batch.size()) {
-                output_.resize(kOutputDimensions * combined_batch.size());
-                gradients_.resize(kInputDimensions * combined_batch.size());
+            const auto size = batch_end - batch_begin;
+
+            if (output_.size() < kOutputDimensions * size) {
+                output_.resize(kOutputDimensions * size);
+                gradients_.resize(kInputDimensions * size);
             }
 
             if (thread_states_.size() < thread_pool.size())
@@ -103,8 +105,8 @@ namespace Eval::NNUE {
                 thread_states_.resize(thread_pool.size());
             }
 
-            combined_batch_size_ = static_cast<IndexType>(combined_batch.size());
-            combined_batch_input_ = previous_layer_trainer_->step_start(thread_pool, combined_batch);
+            combined_batch_size_ = size;
+            combined_batch_input_ = previous_layer_trainer_->step_start(thread_pool, batch_begin, batch_end);
 
             auto& main_thread_state = thread_states_[0];
 

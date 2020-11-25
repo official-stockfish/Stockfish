@@ -63,9 +63,12 @@ namespace Eval::NNUE {
             }
         }
 
-        const LearnFloatType* step_start(ThreadPool& thread_pool, const std::vector<Example>& combined_batch) {
-            if (gradients_.size() < kInputDimensions * combined_batch.size()) {
-                gradients_.resize(kInputDimensions * combined_batch.size());
+        const LearnFloatType* step_start(ThreadPool& thread_pool, std::vector<Example>::const_iterator batch_begin, std::vector<Example>::const_iterator batch_end)
+        {
+            const auto size = batch_end - batch_begin;
+            
+            if (gradients_.size() < kInputDimensions * size) {
+                gradients_.resize(kInputDimensions * size);
             }
 
             if (num_calls_.size() < thread_pool.size())
@@ -73,11 +76,11 @@ namespace Eval::NNUE {
                 num_calls_.resize(thread_pool.size(), 0);
             }
 
-            batch_size_ = static_cast<IndexType>(combined_batch.size());
+            batch_size_ = size;
 
             if (num_calls_[0] == 0) {
                 current_operation_ = Operation::kStepStart;
-                output_ = feature_transformer_trainer_->step_start(thread_pool, combined_batch);
+                output_ = feature_transformer_trainer_->step_start(thread_pool, batch_begin, batch_end);
             }
 
             assert(current_operation_ == Operation::kStepStart);
@@ -237,15 +240,18 @@ namespace Eval::NNUE {
             shared_input_trainer_->initialize(rng);
         }
 
-        const LearnFloatType* step_start(ThreadPool& thread_pool, const std::vector<Example>& combined_batch) {
-            if (output_.size() < kOutputDimensions * combined_batch.size()) {
-              output_.resize(kOutputDimensions * combined_batch.size());
-              gradients_.resize(kInputDimensions * combined_batch.size());
+        const LearnFloatType* step_start(ThreadPool& thread_pool, std::vector<Example>::const_iterator batch_begin, std::vector<Example>::const_iterator batch_end)
+        {
+            const auto size = batch_end - batch_begin;
+
+            if (output_.size() < kOutputDimensions * size) {
+              output_.resize(kOutputDimensions * size);
+              gradients_.resize(kInputDimensions * size);
             }
 
-            batch_size_ = static_cast<IndexType>(combined_batch.size());
+            batch_size_ = size;
 
-            input_ = shared_input_trainer_->step_start(thread_pool, combined_batch);
+            input_ = shared_input_trainer_->step_start(thread_pool, batch_begin, batch_end);
 
             return output_.data();
         }
