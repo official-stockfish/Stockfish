@@ -178,52 +178,10 @@ namespace Blas {
     )
     {
 
-#if defined (USE_SSE2)
-
-        const __m128 alpha4 = _mm_set1_ps(alpha);
-
-        int i = 0;
-        for(; i < N - 15; i += 16)
-        {
-            __m128 x0 = _mm_loadu_ps(X + i +  0);
-            __m128 x1 = _mm_loadu_ps(X + i +  4);
-            __m128 x2 = _mm_loadu_ps(X + i +  8);
-            __m128 x3 = _mm_loadu_ps(X + i + 12);
-
-            __m128 y0 = _mm_loadu_ps(Y + i +  0);
-            __m128 y1 = _mm_loadu_ps(Y + i +  4);
-            __m128 y2 = _mm_loadu_ps(Y + i +  8);
-            __m128 y3 = _mm_loadu_ps(Y + i + 12);
-
-            x0 = _mm_mul_ps(x0, alpha4);
-            x1 = _mm_mul_ps(x1, alpha4);
-            x2 = _mm_mul_ps(x2, alpha4);
-            x3 = _mm_mul_ps(x3, alpha4);
-
-            x0 = _mm_add_ps(x0, y0);
-            x1 = _mm_add_ps(x1, y1);
-            x2 = _mm_add_ps(x2, y2);
-            x3 = _mm_add_ps(x3, y3);
-
-            _mm_storeu_ps(Y + i +  0, x0);
-            _mm_storeu_ps(Y + i +  4, x1);
-            _mm_storeu_ps(Y + i +  8, x2);
-            _mm_storeu_ps(Y + i + 12, x3);
-        }
-
-        for(; i < N; ++i)
-        {
-            Y[i] += X[i] * alpha;
-        }
-
-#else
-
         for(int i = 0; i < N; ++i)
         {
             Y[i] += X[i] * alpha;
         }
-
-#endif
 
     }
 
@@ -564,7 +522,8 @@ namespace Blas {
         const __m128 alpha4 = _mm_set1_ps(alpha);
         const __m128 beta4 = _mm_set1_ps(beta);
 
-        for (int m = 0; m < M - 1; m += 2)
+        int m = 0;
+        for (; m < M - 1; m += 2)
         {
             int n = 0;
             for (; n < N - 3; n += 4)

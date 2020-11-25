@@ -164,7 +164,7 @@ namespace Eval::NNUE {
                         const IndexType weights_offset = kHalfDimensions * feature.get_index();
                         Blas::saxpy(
                             kHalfDimensions, (float)feature.get_count(),
-                            &weights_[weights_offset], 1, &output_[output_offset], 1
+                            &weights_[weights_offset], &output_[output_offset]
                         );
                     }
 
@@ -497,8 +497,8 @@ namespace Eval::NNUE {
 
                                 Blas::saxpy(
                                     kHalfDimensions, -scale,
-                                    &gradients_[output_offset], 1,
-                                    &weights_[weights_offset], 1
+                                    &gradients_[output_offset],
+                                    &weights_[weights_offset]
                                 );
 
 #endif
