@@ -76,7 +76,9 @@ build_script:
             Invoke-WebRequest -Uri $nnuedownloadurl -OutFile $nnuefilepath
       }
 
-   - ps: |
+build_script:
+  - cmake --build . --config %CONFIGURATION% -- /verbosity:minimal
+  - ps: |
       # Download endgame NNUE net from fishtest
       $nnuenet = Get-Content -Path src\evaluate.h | Select-String -CaseSensitive -Pattern "EvalFileEndgame" | Select-String -CaseSensitive -Pattern "nn-[a-z0-9]{12}.nnue"
       $dummy = $nnuenet -match "(?<nnuenet>nn-[a-z0-9]{12}.nnue)"
