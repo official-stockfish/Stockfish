@@ -157,8 +157,12 @@ namespace Eval::NNUE {
             active_indices[0].swap(active_indices[1]);
         }
 
+        static thread_local std::vector<TrainingFeature> s_training_features;
+        auto& training_features = s_training_features;
+
         for (const auto color : Colors) {
-            std::vector<TrainingFeature> training_features;
+            training_features.clear();
+
             for (const auto base_index : active_indices[color]) {
                 static_assert(Features::Factorizer<RawFeatures>::get_dimensions() <
                               (1 << TrainingFeature::kIndexBits), "");
@@ -169,6 +173,7 @@ namespace Eval::NNUE {
             std::sort(training_features.begin(), training_features.end());
 
             auto& unique_features = example.training_features[color];
+            unique_features.reserve(training_features.size());
             for (const auto& feature : training_features) {
                 if (!unique_features.empty() &&
                     feature.get_index() == unique_features.back().get_index()) {
