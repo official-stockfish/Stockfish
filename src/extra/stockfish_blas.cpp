@@ -177,10 +177,19 @@ namespace Blas {
         float * SF_BLAS_RESTRICT Y
     )
     {
-
-        for(int i = 0; i < N; ++i)
+        if (alpha == 1.0f)
         {
-            Y[i] += X[i] * alpha;
+            for (int i = 0; i < N; ++i)
+            {
+                Y[i] += X[i];
+            }
+        }
+        else
+        {
+            for (int i = 0; i < N; ++i)
+            {
+                Y[i] += X[i] * alpha;
+            }
         }
 
     }
