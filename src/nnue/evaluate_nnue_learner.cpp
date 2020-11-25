@@ -202,7 +202,6 @@ namespace Eval::NNUE {
         learning_rate /= batch_size;
 
         std::lock_guard<std::mutex> lock(examples_mutex);
-        std::shuffle(examples.begin(), examples.end(), rng);
 
         double abs_eval_diff_sum = 0.0;
         double abs_discrete_eval_sum = 0.0;
