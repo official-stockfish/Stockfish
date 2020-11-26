@@ -64,7 +64,8 @@ SRCS = benchmark.cpp bitbase.cpp bitboard.cpp endgame.cpp evaluate.cpp main.cpp 
 	learn/learn.cpp \
 	learn/gensfen.cpp \
 	learn/opening_book.cpp \
-	learn/convert.cpp
+	learn/convert.cpp \
+	learn/transform.cpp
 
 OBJS = $(notdir $(SRCS:.cpp=.o))
 

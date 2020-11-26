@@ -207,6 +207,16 @@ namespace Learner {
         assert(false);
         return nullptr;
     }
+
+    inline std::unique_ptr<BasicSfenOutputStream> create_new_sfen_output(const std::string& filename)
+    {
+        if (has_extension(filename, BinSfenOutputStream::extension))
+            return std::make_unique<BinSfenOutputStream>(filename);
+        else if (has_extension(filename, BinpackSfenOutputStream::extension))
+            return std::make_unique<BinpackSfenOutputStream>(filename);
+
+        return nullptr;
+    }
 }
 
 #endif

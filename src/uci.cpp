@@ -38,6 +38,7 @@
 #include "learn/gensfen.h"
 #include "learn/learn.h"
 #include "learn/convert.h"
+#include "learn/transform.h"
 
 using namespace std;
 
@@ -345,6 +346,7 @@ void UCI::loop(int argc, char* argv[]) {
       else if (token == "convert_bin") Learner::convert_bin(is);
       else if (token == "convert_plain") Learner::convert_plain(is);
       else if (token == "convert_bin_from_pgn_extract") Learner::convert_bin_from_pgn_extract(is);
+      else if (token == "transform") Learner::transform(is);
 
       // Command to call qsearch(),search() directly for testing
       else if (token == "qsearch") qsearch_cmd(pos);
