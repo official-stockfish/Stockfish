@@ -41,7 +41,7 @@ BINDIR = $(PREFIX)/bin
 ### Built-in benchmark for pgo-builds
 PGO_TRAINING_DATA_FILE = pgo_training_data.bin
 PGOBENCH = ./$(EXE) bench
-PGOGENSFEN = ./$(EXE) gensfen depth 3 loop 1000 output_file_name $(PGO_TRAINING_DATA_FILE)
+PGOGENSFEN = ./$(EXE) gensfen depth 3 loop 1000 sfen_format bin output_file_name $(PGO_TRAINING_DATA_FILE)
 
 ### Source and object files
 SRCS = benchmark.cpp bitbase.cpp bitboard.cpp endgame.cpp evaluate.cpp main.cpp \
