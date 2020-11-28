@@ -1554,7 +1554,6 @@ moves_loop: // When in check, search starts from here
 
       // Do not search moves with negative SEE values
       if (    bestValue > VALUE_TB_LOSS_IN_MAX_PLY
-          && !(givesCheck && pos.is_discovery_check_on_king(~pos.side_to_move(), move))
           && !pos.see_ge(move))
           continue;
 
