@@ -79,6 +79,8 @@ namespace Learner::Autograd::UnivariateStatic
     template <typename T, typename ChildT>
     struct Evaluable
     {
+        constexpr Evaluable() = default;
+
         template <typename... ArgsTs>
         auto eval(const std::tuple<ArgsTs...>& args) const
         {
@@ -121,7 +123,7 @@ namespace Learner::Autograd::UnivariateStatic
     {
         using ValueType = T;
 
-        VariableParameter()
+        constexpr VariableParameter()
         {
         }
 
@@ -143,7 +145,7 @@ namespace Learner::Autograd::UnivariateStatic
     {
         using ValueType = T;
 
-        ConstantParameter()
+        constexpr ConstantParameter()
         {
         }
 
@@ -165,7 +167,7 @@ namespace Learner::Autograd::UnivariateStatic
     {
         using ValueType = T;
 
-        Constant(T x) :
+        constexpr Constant(T x) :
             m_x(std::move(x))
         {
         }
@@ -191,7 +193,7 @@ namespace Learner::Autograd::UnivariateStatic
     {
         using ValueType = T;
 
-        Sum(LhsT&& lhs, RhsT&& rhs) :
+        constexpr Sum(LhsT&& lhs, RhsT&& rhs) :
             m_lhs(std::forward<LhsT>(lhs)),
             m_rhs(std::forward<RhsT>(rhs))
         {
@@ -215,19 +217,19 @@ namespace Learner::Autograd::UnivariateStatic
     };
 
     template <typename LhsT, typename RhsT, typename T = typename std::remove_reference_t<LhsT>::ValueType>
-    auto operator+(LhsT&& lhs, RhsT&& rhs)
+    constexpr auto operator+(LhsT&& lhs, RhsT&& rhs)
     {
         return Sum<LhsT&&, RhsT&&>(std::forward<LhsT>(lhs), std::forward<RhsT>(rhs));
     }
 
     template <typename LhsT, typename T = typename std::remove_reference_t<LhsT>::ValueType>
-    auto operator+(LhsT&& lhs, Id<T> rhs)
+    constexpr auto operator+(LhsT&& lhs, Id<T> rhs)
     {
         return Sum<LhsT&&, Constant<T>&&>(std::forward<LhsT>(lhs), Constant(rhs));
     }
 
     template <typename RhsT, typename T = typename std::remove_reference_t<RhsT>::ValueType>
-    auto operator+(Id<T> lhs, RhsT&& rhs)
+    constexpr auto operator+(Id<T> lhs, RhsT&& rhs)
     {
         return Sum<Constant<T>&&, RhsT&&>(Constant(lhs), std::forward<RhsT>(rhs));
     }
@@ -237,7 +239,7 @@ namespace Learner::Autograd::UnivariateStatic
     {
         using ValueType = T;
 
-        Difference(LhsT&& lhs, RhsT&& rhs) :
+        constexpr Difference(LhsT&& lhs, RhsT&& rhs) :
             m_lhs(std::forward<LhsT>(lhs)),
             m_rhs(std::forward<RhsT>(rhs))
         {
@@ -261,19 +263,19 @@ namespace Learner::Autograd::UnivariateStatic
     };
 
     template <typename LhsT, typename RhsT, typename T = typename std::remove_reference_t<LhsT>::ValueType>
-    auto operator-(LhsT&& lhs, RhsT&& rhs)
+    constexpr auto operator-(LhsT&& lhs, RhsT&& rhs)
     {
         return Difference<LhsT&&, RhsT&&>(std::forward<LhsT>(lhs), std::forward<RhsT>(rhs));
     }
 
     template <typename LhsT, typename T = typename std::remove_reference_t<LhsT>::ValueType>
-    auto operator-(LhsT&& lhs, Id<T> rhs)
+    constexpr auto operator-(LhsT&& lhs, Id<T> rhs)
     {
         return Difference<LhsT&&, Constant<T>&&>(std::forward<LhsT>(lhs), Constant(rhs));
     }
 
     template <typename RhsT, typename T = typename std::remove_reference_t<RhsT>::ValueType>
-    auto operator-(Id<T> lhs, RhsT&& rhs)
+    constexpr auto operator-(Id<T> lhs, RhsT&& rhs)
     {
         return Difference<Constant<T>&&, RhsT&&>(Constant(lhs), std::forward<RhsT>(rhs));
     }
@@ -283,7 +285,7 @@ namespace Learner::Autograd::UnivariateStatic
     {
         using ValueType = T;
 
-        Product(LhsT&& lhs, RhsT&& rhs) :
+        constexpr Product(LhsT&& lhs, RhsT&& rhs) :
             m_lhs(std::forward<LhsT>(lhs)),
             m_rhs(std::forward<RhsT>(rhs))
         {
@@ -307,19 +309,19 @@ namespace Learner::Autograd::UnivariateStatic
     };
 
     template <typename LhsT, typename RhsT, typename T = typename std::remove_reference_t<LhsT>::ValueType>
-    auto operator*(LhsT&& lhs, RhsT&& rhs)
+    constexpr auto operator*(LhsT&& lhs, RhsT&& rhs)
     {
         return Product<LhsT&&, RhsT&&>(std::forward<LhsT>(lhs), std::forward<RhsT>(rhs));
     }
 
     template <typename LhsT, typename T = typename std::remove_reference_t<LhsT>::ValueType>
-    auto operator*(LhsT&& lhs, Id<T> rhs)
+    constexpr auto operator*(LhsT&& lhs, Id<T> rhs)
     {
         return Product<LhsT&&, Constant<T>&&>(std::forward<LhsT>(lhs), Constant(rhs));
     }
 
     template <typename RhsT, typename T = typename std::remove_reference_t<RhsT>::ValueType>
-    auto operator*(Id<T> lhs, RhsT&& rhs)
+    constexpr auto operator*(Id<T> lhs, RhsT&& rhs)
     {
         return Product<Constant<T>&&, RhsT&&>(Constant(lhs), std::forward<RhsT>(rhs));
     }
@@ -329,7 +331,7 @@ namespace Learner::Autograd::UnivariateStatic
     {
         using ValueType = T;
 
-        explicit Negation(ArgT&& x) :
+        constexpr explicit Negation(ArgT&& x) :
             m_x(std::forward<ArgT>(x))
         {
         }
@@ -351,7 +353,7 @@ namespace Learner::Autograd::UnivariateStatic
     };
 
     template <typename ArgT, typename T = typename std::remove_reference_t<ArgT>::ValueType>
-    auto operator-(ArgT&& x)
+    constexpr auto operator-(ArgT&& x)
     {
         return Negation<ArgT&&>(std::forward<ArgT>(x));
     }
@@ -361,7 +363,7 @@ namespace Learner::Autograd::UnivariateStatic
     {
         using ValueType = T;
 
-        explicit Sigmoid(ArgT&& x) :
+        constexpr explicit Sigmoid(ArgT&& x) :
             m_x(std::forward<ArgT>(x))
         {
         }
@@ -393,7 +395,7 @@ namespace Learner::Autograd::UnivariateStatic
     };
 
     template <typename ArgT, typename T = typename std::remove_reference_t<ArgT>::ValueType>
-    auto sigmoid(ArgT&& x)
+    constexpr auto sigmoid(ArgT&& x)
     {
         return Sigmoid<ArgT&&>(std::forward<ArgT>(x));
     }
@@ -403,7 +405,7 @@ namespace Learner::Autograd::UnivariateStatic
     {
         using ValueType = T;
 
-        explicit Pow(ArgT&& x, Id<T> exponent) :
+        constexpr explicit Pow(ArgT&& x, Id<T> exponent) :
             m_x(std::forward<ArgT>(x)),
             m_exponent(std::move(exponent))
         {
@@ -427,7 +429,7 @@ namespace Learner::Autograd::UnivariateStatic
     };
 
     template <typename ArgT, typename T = typename std::remove_reference_t<ArgT>::ValueType>
-    auto pow(ArgT&& x, Id<T> exp)
+    constexpr auto pow(ArgT&& x, Id<T> exp)
     {
         return Pow<ArgT&&>(std::forward<ArgT>(x), std::move(exp));
     }
@@ -437,7 +439,7 @@ namespace Learner::Autograd::UnivariateStatic
     {
         using ValueType = T;
 
-        explicit Log(ArgT&& x) :
+        constexpr explicit Log(ArgT&& x) :
             m_x(std::forward<ArgT>(x))
         {
         }
@@ -469,7 +471,7 @@ namespace Learner::Autograd::UnivariateStatic
     };
 
     template <typename ArgT, typename T = typename std::remove_reference_t<ArgT>::ValueType>
-    auto log(ArgT&& x)
+    constexpr auto log(ArgT&& x)
     {
         return Log<ArgT&&>(std::forward<ArgT>(x));
     }
