@@ -45,12 +45,12 @@ namespace Learner
             return *this;
         }
 
-        ValueWithGrad abs() const
+        [[nodiscard]] ValueWithGrad abs() const
         {
             return { std::abs(value), std::abs(grad) };
         }
 
-        ValueWithGrad clamp_grad(T max) const
+        [[nodiscard]] ValueWithGrad clamp_grad(T max) const
         {
             return { value, std::clamp(grad, -max, max) };
         }
@@ -82,13 +82,13 @@ namespace Learner::Autograd::UnivariateStatic
         constexpr Evaluable() = default;
 
         template <typename... ArgsTs>
-        auto eval(const std::tuple<ArgsTs...>& args) const
+        [[nodiscard]] auto eval(const std::tuple<ArgsTs...>& args) const
         {
             return ValueWithGrad<T>{ value(args), grad(args) };
         }
 
         template <typename... ArgsTs>
-        auto value(const std::tuple<ArgsTs...>& args) const
+        [[nodiscard]] auto value(const std::tuple<ArgsTs...>& args) const
         {
             const ChildT* this_ = static_cast<const ChildT*>(this);
 
@@ -101,7 +101,7 @@ namespace Learner::Autograd::UnivariateStatic
         }
 
         template <typename... ArgsTs>
-        auto grad(const std::tuple<ArgsTs...>& args) const
+        [[nodiscard]] auto grad(const std::tuple<ArgsTs...>& args) const
         {
             const ChildT* this_ = static_cast<const ChildT*>(this);
 
@@ -128,13 +128,13 @@ namespace Learner::Autograd::UnivariateStatic
         }
 
         template <typename... ArgsTs>
-        T calculate_value(const std::tuple<ArgsTs...>& args) const
+        [[nodiscard]] T calculate_value(const std::tuple<ArgsTs...>& args) const
         {
             return std::get<I>(args);
         }
 
         template <typename... ArgsTs>
-        T calculate_grad(const std::tuple<ArgsTs...>&) const
+        [[nodiscard]] T calculate_grad(const std::tuple<ArgsTs...>&) const
         {
             return T(1.0);
         }
@@ -150,13 +150,13 @@ namespace Learner::Autograd::UnivariateStatic
         }
 
         template <typename... ArgsTs>
-        T calculate_value(const std::tuple<ArgsTs...>& args) const
+        [[nodiscard]] T calculate_value(const std::tuple<ArgsTs...>& args) const
         {
             return std::get<I>(args);
         }
 
         template <typename... ArgsTs>
-        T calculate_grad(const std::tuple<ArgsTs...>&) const
+        [[nodiscard]] T calculate_grad(const std::tuple<ArgsTs...>&) const
         {
             return T(0.0);
         }
@@ -173,13 +173,13 @@ namespace Learner::Autograd::UnivariateStatic
         }
 
         template <typename... ArgsTs>
-        T calculate_value(const std::tuple<ArgsTs...>&) const
+        [[nodiscard]] T calculate_value(const std::tuple<ArgsTs...>&) const
         {
             return m_x;
         }
 
         template <typename... ArgsTs>
-        T calculate_grad(const std::tuple<ArgsTs...>&) const
+        [[nodiscard]] T calculate_grad(const std::tuple<ArgsTs...>&) const
         {
             return T(0.0);
         }
@@ -200,13 +200,13 @@ namespace Learner::Autograd::UnivariateStatic
         }
 
         template <typename... ArgsTs>
-        T calculate_value(const std::tuple<ArgsTs...>& args) const
+        [[nodiscard]] T calculate_value(const std::tuple<ArgsTs...>& args) const
         {
             return m_lhs.value(args) + m_rhs.value(args);
         }
 
         template <typename... ArgsTs>
-        T calculate_grad(const std::tuple<ArgsTs...>& args) const
+        [[nodiscard]] T calculate_grad(const std::tuple<ArgsTs...>& args) const
         {
             return m_lhs.grad(args) + m_rhs.grad(args);
         }
@@ -217,19 +217,19 @@ namespace Learner::Autograd::UnivariateStatic
     };
 
     template <typename LhsT, typename RhsT, typename T = typename std::remove_reference_t<LhsT>::ValueType>
-    constexpr auto operator+(LhsT&& lhs, RhsT&& rhs)
+    [[nodiscard]] constexpr auto operator+(LhsT&& lhs, RhsT&& rhs)
     {
         return Sum<LhsT&&, RhsT&&>(std::forward<LhsT>(lhs), std::forward<RhsT>(rhs));
     }
 
     template <typename LhsT, typename T = typename std::remove_reference_t<LhsT>::ValueType>
-    constexpr auto operator+(LhsT&& lhs, Id<T> rhs)
+    [[nodiscard]] constexpr auto operator+(LhsT&& lhs, Id<T> rhs)
     {
         return Sum<LhsT&&, Constant<T>&&>(std::forward<LhsT>(lhs), Constant(rhs));
     }
 
     template <typename RhsT, typename T = typename std::remove_reference_t<RhsT>::ValueType>
-    constexpr auto operator+(Id<T> lhs, RhsT&& rhs)
+    [[nodiscard]] constexpr auto operator+(Id<T> lhs, RhsT&& rhs)
     {
         return Sum<Constant<T>&&, RhsT&&>(Constant(lhs), std::forward<RhsT>(rhs));
     }
@@ -246,13 +246,13 @@ namespace Learner::Autograd::UnivariateStatic
         }
 
         template <typename... ArgsTs>
-        T calculate_value(const std::tuple<ArgsTs...>& args) const
+        [[nodiscard]] T calculate_value(const std::tuple<ArgsTs...>& args) const
         {
             return m_lhs.value(args) - m_rhs.value(args);
         }
 
         template <typename... ArgsTs>
-        T calculate_grad(const std::tuple<ArgsTs...>& args) const
+        [[nodiscard]] T calculate_grad(const std::tuple<ArgsTs...>& args) const
         {
             return m_lhs.grad(args) - m_rhs.grad(args);
         }
@@ -263,19 +263,19 @@ namespace Learner::Autograd::UnivariateStatic
     };
 
     template <typename LhsT, typename RhsT, typename T = typename std::remove_reference_t<LhsT>::ValueType>
-    constexpr auto operator-(LhsT&& lhs, RhsT&& rhs)
+    [[nodiscard]] constexpr auto operator-(LhsT&& lhs, RhsT&& rhs)
     {
         return Difference<LhsT&&, RhsT&&>(std::forward<LhsT>(lhs), std::forward<RhsT>(rhs));
     }
 
     template <typename LhsT, typename T = typename std::remove_reference_t<LhsT>::ValueType>
-    constexpr auto operator-(LhsT&& lhs, Id<T> rhs)
+    [[nodiscard]] constexpr auto operator-(LhsT&& lhs, Id<T> rhs)
     {
         return Difference<LhsT&&, Constant<T>&&>(std::forward<LhsT>(lhs), Constant(rhs));
     }
 
     template <typename RhsT, typename T = typename std::remove_reference_t<RhsT>::ValueType>
-    constexpr auto operator-(Id<T> lhs, RhsT&& rhs)
+    [[nodiscard]] constexpr auto operator-(Id<T> lhs, RhsT&& rhs)
     {
         return Difference<Constant<T>&&, RhsT&&>(Constant(lhs), std::forward<RhsT>(rhs));
     }
@@ -292,13 +292,13 @@ namespace Learner::Autograd::UnivariateStatic
         }
 
         template <typename... ArgsTs>
-        T calculate_value(const std::tuple<ArgsTs...>& args) const
+        [[nodiscard]] T calculate_value(const std::tuple<ArgsTs...>& args) const
         {
             return m_lhs.value(args) * m_rhs.value(args);
         }
 
         template <typename... ArgsTs>
-        T calculate_grad(const std::tuple<ArgsTs...>& args) const
+        [[nodiscard]] T calculate_grad(const std::tuple<ArgsTs...>& args) const
         {
             return m_lhs.grad(args) * m_rhs.value(args) + m_lhs.value(args) * m_rhs.grad(args);
         }
@@ -309,19 +309,19 @@ namespace Learner::Autograd::UnivariateStatic
     };
 
     template <typename LhsT, typename RhsT, typename T = typename std::remove_reference_t<LhsT>::ValueType>
-    constexpr auto operator*(LhsT&& lhs, RhsT&& rhs)
+    [[nodiscard]] constexpr auto operator*(LhsT&& lhs, RhsT&& rhs)
     {
         return Product<LhsT&&, RhsT&&>(std::forward<LhsT>(lhs), std::forward<RhsT>(rhs));
     }
 
     template <typename LhsT, typename T = typename std::remove_reference_t<LhsT>::ValueType>
-    constexpr auto operator*(LhsT&& lhs, Id<T> rhs)
+    [[nodiscard]] constexpr auto operator*(LhsT&& lhs, Id<T> rhs)
     {
         return Product<LhsT&&, Constant<T>&&>(std::forward<LhsT>(lhs), Constant(rhs));
     }
 
     template <typename RhsT, typename T = typename std::remove_reference_t<RhsT>::ValueType>
-    constexpr auto operator*(Id<T> lhs, RhsT&& rhs)
+    [[nodiscard]] constexpr auto operator*(Id<T> lhs, RhsT&& rhs)
     {
         return Product<Constant<T>&&, RhsT&&>(Constant(lhs), std::forward<RhsT>(rhs));
     }
@@ -337,13 +337,13 @@ namespace Learner::Autograd::UnivariateStatic
         }
 
         template <typename... ArgsTs>
-        T calculate_value(const std::tuple<ArgsTs...>& args) const
+        [[nodiscard]] T calculate_value(const std::tuple<ArgsTs...>& args) const
         {
             return -m_x.value(args);
         }
 
         template <typename... ArgsTs>
-        T calculate_grad(const std::tuple<ArgsTs...>& args) const
+        [[nodiscard]] T calculate_grad(const std::tuple<ArgsTs...>& args) const
         {
             return -m_x.grad(args);
         }
@@ -353,7 +353,7 @@ namespace Learner::Autograd::UnivariateStatic
     };
 
     template <typename ArgT, typename T = typename std::remove_reference_t<ArgT>::ValueType>
-    constexpr auto operator-(ArgT&& x)
+    [[nodiscard]] constexpr auto operator-(ArgT&& x)
     {
         return Negation<ArgT&&>(std::forward<ArgT>(x));
     }
@@ -369,13 +369,13 @@ namespace Learner::Autograd::UnivariateStatic
         }
 
         template <typename... ArgsTs>
-        T calculate_value(const std::tuple<ArgsTs...>& args) const
+        [[nodiscard]] T calculate_value(const std::tuple<ArgsTs...>& args) const
         {
             return value_(m_x.value(args));
         }
 
         template <typename... ArgsTs>
-        T calculate_grad(const std::tuple<ArgsTs...>& args) const
+        [[nodiscard]] T calculate_grad(const std::tuple<ArgsTs...>& args) const
         {
             return m_x.grad(args) * grad_(m_x.value(args));
         }
@@ -383,19 +383,19 @@ namespace Learner::Autograd::UnivariateStatic
     private:
         StoreValueOrRef<ArgT> m_x;
 
-        T value_(T x) const
+        [[nodiscard]] T value_(T x) const
         {
             return 1.0 / (1.0 + std::exp(-x));
         }
 
-        T grad_(T x) const
+        [[nodiscard]] T grad_(T x) const
         {
             return value_(x) * (1.0 - value_(x));
         }
     };
 
     template <typename ArgT, typename T = typename std::remove_reference_t<ArgT>::ValueType>
-    constexpr auto sigmoid(ArgT&& x)
+    [[nodiscard]] constexpr auto sigmoid(ArgT&& x)
     {
         return Sigmoid<ArgT&&>(std::forward<ArgT>(x));
     }
@@ -412,13 +412,13 @@ namespace Learner::Autograd::UnivariateStatic
         }
 
         template <typename... ArgsTs>
-        T calculate_value(const std::tuple<ArgsTs...>& args) const
+        [[nodiscard]] T calculate_value(const std::tuple<ArgsTs...>& args) const
         {
             return std::pow(m_x.value(args), m_exponent);
         }
 
         template <typename... ArgsTs>
-        T calculate_grad(const std::tuple<ArgsTs...>& args) const
+        [[nodiscard]] T calculate_grad(const std::tuple<ArgsTs...>& args) const
         {
             return m_exponent * std::pow(m_x.value(args), m_exponent - T(1.0)) * m_x.grad(args);
         }
@@ -429,7 +429,7 @@ namespace Learner::Autograd::UnivariateStatic
     };
 
     template <typename ArgT, typename T = typename std::remove_reference_t<ArgT>::ValueType>
-    constexpr auto pow(ArgT&& x, Id<T> exp)
+    [[nodiscard]] constexpr auto pow(ArgT&& x, Id<T> exp)
     {
         return Pow<ArgT&&>(std::forward<ArgT>(x), std::move(exp));
     }
@@ -445,13 +445,13 @@ namespace Learner::Autograd::UnivariateStatic
         }
 
         template <typename... ArgsTs>
-        T calculate_value(const std::tuple<ArgsTs...>& args) const
+        [[nodiscard]] T calculate_value(const std::tuple<ArgsTs...>& args) const
         {
             return value_(m_x.value(args));
         }
 
         template <typename... ArgsTs>
-        T calculate_grad(const std::tuple<ArgsTs...>& args) const
+        [[nodiscard]] T calculate_grad(const std::tuple<ArgsTs...>& args) const
         {
             return m_x.grad(args) * grad_(m_x.value(args));
         }
@@ -471,7 +471,7 @@ namespace Learner::Autograd::UnivariateStatic
     };
 
     template <typename ArgT, typename T = typename std::remove_reference_t<ArgT>::ValueType>
-    constexpr auto log(ArgT&& x)
+    [[nodiscard]] constexpr auto log(ArgT&& x)
     {
         return Log<ArgT&&>(std::forward<ArgT>(x));
     }
