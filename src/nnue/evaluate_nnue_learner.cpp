@@ -195,7 +195,6 @@ namespace Eval::NNUE {
         uint64_t epoch,
         bool verbose,
         double learning_rate,
-        Learner::CalcGradFunc calc_grad,
         Learner::CalcLossFunc calc_loss)
     {
         using namespace Learner::Autograd::UnivariateStatic;
@@ -237,8 +236,8 @@ namespace Eval::NNUE {
                             e.sign * network_output[b] * kPonanzaConstant));
                         const auto discrete = e.sign * e.discrete_nn_eval;
                         const auto& psv = e.psv;
-                        const double gradient =
-                            e.sign * calc_grad(shallow, (Value)psv.score, psv.game_result, psv.gamePly);
+                        const auto loss = calc_loss(shallow, (Value)psv.score, psv.game_result, psv.gamePly);
+                        const double gradient = loss.grad * e.sign * kPonanzaConstant;
                         gradients[b] = static_cast<LearnFloatType>(gradient * e.weight);
 
 

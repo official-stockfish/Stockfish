@@ -42,6 +42,11 @@ namespace Learner
             grad /= rhs;
             return *this;
         }
+
+        ValueWithGrad abs() const
+        {
+            return { std::abs(value), std::abs(grad) };
+        }
     };
 }
 

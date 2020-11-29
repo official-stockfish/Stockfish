@@ -68,7 +68,6 @@ namespace Learner
     // Learning from the generated game record
     void learn(std::istringstream& is);
 
-    using CalcGradFunc = double(Value, Value, int, int);
     using CalcLossFunc = ValueWithGrad<double>(Value, Value, int, int);
 }
 

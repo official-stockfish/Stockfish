@@ -52,6 +52,7 @@
 #include <sstream>
 #include <unordered_set>
 #include <iostream>
+#include <mutex>
 
 #if defined (_OPENMP)
 #include <omp.h>
@@ -99,65 +100,64 @@ namespace Learner
     // Using stockfish's WDL with win rate model instead of sigmoid
     static bool use_wdl = false;
 
-    namespace Detail {
-        template <bool AtomicV>
-        struct Loss
+    struct Loss
+    {
+        double value() const
         {
-            using T =
-                std::conditional_t<
-                    AtomicV,
-                    atomic<double>,
-                    double
-                >;
+            return m_loss.value;
+        }
 
-            T cross_entropy_eval{0.0};
-            T cross_entropy_win{0.0};
-            T cross_entropy{0.0};
-            T entropy_eval{0.0};
-            T entropy_win{0.0};
-            T entropy{0.0};
-            T count{0.0};
+        double grad() const
+        {
+            return m_loss.grad;
+        }
 
-            template <bool OtherAtomicV>
-            Loss& operator += (const Loss<OtherAtomicV>& rhs)
-            {
-                cross_entropy_eval += rhs.cross_entropy_eval;
-                cross_entropy_win += rhs.cross_entropy_win;
-                cross_entropy += rhs.cross_entropy;
-                entropy_eval += rhs.entropy_eval;
-                entropy_win += rhs.entropy_win;
-                entropy += rhs.entropy;
-                count += rhs.count;
+        uint64_t count() const
+        {
+            return m_count;
+        }
 
-                return *this;
-            }
+        Loss& operator += (const ValueWithGrad<double>& rhs)
+        {
+            std::unique_lock lock(m_mutex);
 
-            void reset()
-            {
-                cross_entropy_eval = 0.0;
-                cross_entropy_win = 0.0;
-                cross_entropy = 0.0;
-                entropy_eval = 0.0;
-                entropy_win = 0.0;
-                entropy = 0.0;
-                count = 0.0;
-            }
+            m_loss += rhs.abs();
+            m_count += 1;
 
-            template <typename StreamT>
-            void print(const std::string& prefix, StreamT& s) const
-            {
-                s << "  - " << prefix << "_cross_entropy_eval = " << cross_entropy_eval / count << endl;
-                s << "  - " << prefix << "_cross_entropy_win  = " << cross_entropy_win / count << endl;
-                s << "  - " << prefix << "_entropy_eval       = " << entropy_eval / count << endl;
-                s << "  - " << prefix << "_entropy_win        = " << entropy_win / count << endl;
-                s << "  - " << prefix << "_cross_entropy      = " << cross_entropy / count << endl;
-                s << "  - " << prefix << "_entropy            = " << entropy / count << endl;
-            }
-        };
-    }
+            return *this;
+        }
 
-    using Loss = Detail::Loss<false>;
-    using AtomicLoss = Detail::Loss<true>;
+        Loss& operator += (const Loss& rhs)
+        {
+            std::unique_lock lock(m_mutex);
+
+            m_loss += rhs.m_loss.abs();
+            m_count += rhs.m_count;
+
+            return *this;
+        }
+
+        void reset()
+        {
+            std::unique_lock lock(m_mutex);
+
+            m_loss = ValueWithGrad<double>{ 0.0, 0.0 };
+            m_count = 0;
+        }
+
+        template <typename StreamT>
+        void print(const std::string& prefix, StreamT& s) const
+        {
+            s << "  - " << prefix << "_loss       = " << m_loss.value / (double)m_count << endl;
+            s << "  - " << prefix << "_grad_norm  = " << m_loss.grad / (double)m_count << endl;
+        }
+
+    private:
+        ValueWithGrad<double> m_loss{ 0.0, 0.0 };
+        uint64_t m_count{0};
+        std::mutex m_mutex;
+
+    };
 
     static void append_files_from_dir(
         std::vector<std::string>& filenames,
@@ -185,94 +185,6 @@ namespace Learner
         }
     }
 
-    // A function that converts the evaluation value to the winning rate [0,1]
-    static double winning_percentage(double value)
-    {
-        // 1/(1+10^(-Eval/4))
-        // = 1/(1+e^(-Eval/4*ln(10))
-        // = sigmoid(Eval/4*ln(10))
-        return Math::sigmoid(value * winning_probability_coefficient);
-    }
-
-    // A function that converts the evaluation value to the winning rate [0,1]
-    static double winning_percentage_wdl(double value, int ply)
-    {
-        constexpr double wdl_total = 1000.0;
-        constexpr double draw_score = 0.5;
-
-        const double wdl_w = UCI::win_rate_model_double(value, ply);
-        const double wdl_l = UCI::win_rate_model_double(-value, ply);
-        const double wdl_d = wdl_total - wdl_w - wdl_l;
-
-        return (wdl_w + wdl_d * draw_score) / wdl_total;
-    }
-
-    // A function that converts the evaluation value to the winning rate [0,1]
-    static double winning_percentage(double value, int ply)
-    {
-        if (use_wdl)
-        {
-            return winning_percentage_wdl(value, ply);
-        }
-        else
-        {
-            return winning_percentage(value);
-        }
-    }
-
-    static double calc_cross_entropy_of_winning_percentage(
-        double deep_win_rate,
-        double shallow_eval,
-        int ply)
-    {
-        const double p = deep_win_rate;
-        const double q = winning_percentage(shallow_eval, ply);
-        return -p * std::log(q) - (1.0 - p) * std::log(1.0 - q);
-    }
-
-    static double calc_d_cross_entropy_of_winning_percentage(
-        double deep_win_rate,
-        double shallow_eval,
-        int ply)
-    {
-        constexpr double epsilon = 0.000001;
-
-        const double y1 = calc_cross_entropy_of_winning_percentage(
-            deep_win_rate, shallow_eval, ply);
-
-        const double y2 = calc_cross_entropy_of_winning_percentage(
-            deep_win_rate, shallow_eval + epsilon, ply);
-
-        // Divide by the winning_probability_coefficient to
-        // match scale with the sigmoidal win rate
-        return ((y2 - y1) / epsilon) / winning_probability_coefficient;
-    }
-
-    // Training Formula · Issue #71 · nodchip/Stockfish https://github.com/nodchip/Stockfish/issues/71
-    static double get_scaled_signal(double signal)
-    {
-        double scaled_signal = signal;
-
-        // Normalize to [0.0, 1.0].
-        scaled_signal =
-            (scaled_signal - src_score_min_value)
-            / (src_score_max_value - src_score_min_value);
-
-        // Scale to [dest_score_min_value, dest_score_max_value].
-        scaled_signal =
-            scaled_signal * (dest_score_max_value - dest_score_min_value)
-            + dest_score_min_value;
-
-        return scaled_signal;
-    }
-
-    // Teacher winning probability.
-    static double calculate_p(double teacher_signal, int ply)
-    {
-        const double scaled_teacher_signal = get_scaled_signal(teacher_signal);
-        return winning_percentage(scaled_teacher_signal, ply);
-    }
-
     static double calculate_lambda(double teacher_signal)
     {
         // If the evaluation value in deep search exceeds elmo_lambda_limit
@@ -285,94 +197,31 @@ namespace Learner
         return lambda;
     }
 
-    static double calculate_t(int game_result)
-    {
-        // Use 1 as the correction term if the expected win rate is 1,
-        // 0 if you lose, and 0.5 if you draw.
-        // game_result = 1,0,-1 so add 1 and divide by 2.
-        const double t = double(game_result + 1) * 0.5;
-
-        return t;
-    }
-
-    static double calc_grad(Value shallow, Value teacher_signal, int result, int ply)
-    {
-        // elmo (WCSC27) method
-        // Correct with the actual game wins and losses.
-        const double q = winning_percentage(shallow, ply);
-        const double p = calculate_p(teacher_signal, ply);
-        const double t = calculate_t(result);
-        const double lambda = calculate_lambda(teacher_signal);
-
-        double grad;
-        if (use_wdl)
-        {
-            const double dce_p = calc_d_cross_entropy_of_winning_percentage(p, shallow, ply);
-            const double dce_t = calc_d_cross_entropy_of_winning_percentage(t, shallow, ply);
-            grad = lambda * dce_p + (1.0 - lambda) * dce_t;
-        }
-        else
-        {
-            // Use the actual win rate as a correction term.
-            // This is the idea of ​​elmo (WCSC27), modern O-parts.
-            grad = lambda * (q - p) + (1.0 - lambda) * (q - t);
-        }
-
-        return std::clamp(grad, -max_grad, max_grad);
-    }
-
     static ValueWithGrad<double> get_loss(Value shallow, Value teacher_signal, int result, int ply)
     {
         using namespace Learner::Autograd::UnivariateStatic;
-
         auto q_ = sigmoid(VariableParameter<double, 0>{} * winning_probability_coefficient);
         auto p_ = sigmoid(ConstantParameter<double, 1>{} * winning_probability_coefficient);
         auto t_ = (ConstantParameter<double, 2>{} + 1.0) * 0.5;
         auto lambda_ = ConstantParameter<double, 3>{};
         auto loss_ = pow(lambda_ * (q_ - p_) + (1.0 - lambda_) * (q_ - t_), 2.0);
 
+        /*
+        auto q_ = VariableParameter<double, 0>{};
+        auto p_ = ConstantParameter<double, 1>{};
+        auto loss_ = pow(q_ - p_, 2.0) * (1.0 / (2400.0 * 2.0 * 600.0));
+        */
+
         auto args = std::tuple((double)shallow, (double)teacher_signal, (double)result, calculate_lambda(teacher_signal));
         return loss_.eval(args);
     }
 
-    // Calculate cross entropy during learning
-    // The individual cross entropy of the win/loss term and win
-    // rate term of the elmo expression is returned
-    // to the arguments cross_entropy_eval and cross_entropy_win.
-    static Loss calc_cross_entropy(
+    static auto get_loss(
         Value teacher_signal,
         Value shallow,
         const PackedSfenValue& psv)
     {
-        // Teacher winning probability.
-        const double q = winning_percentage(shallow, psv.gamePly);
-        const double p = calculate_p(teacher_signal, psv.gamePly);
-        const double t = calculate_t(psv.game_result);
-        const double lambda = calculate_lambda(teacher_signal);
-
-        constexpr double epsilon = 0.000001;
-
-        const double m = (1.0 - lambda) * t + lambda * p;
-
-        Loss loss{};
-
-        loss.cross_entropy_eval =
-            (-p * std::log(q + epsilon) - (1.0 - p) * std::log(1.0 - q + epsilon));
-        loss.cross_entropy_win =
-            (-t * std::log(q + epsilon) - (1.0 - t) * std::log(1.0 - q + epsilon));
-        loss.entropy_eval =
-            (-p * std::log(p + epsilon) - (1.0 - p) * std::log(1.0 - p + epsilon));
-        loss.entropy_win =
-            (-t * std::log(t + epsilon) - (1.0 - t) * std::log(1.0 - t + epsilon));
-
-        loss.cross_entropy =
-            (-m * std::log(q + epsilon) - (1.0 - m) * std::log(1.0 - q + epsilon));
-        loss.entropy =
-            (-m * std::log(m + epsilon) - (1.0 - m) * std::log(1.0 - m + epsilon));
-
-        loss.count = 1;
-
-        return loss;
+        return get_loss(shallow, teacher_signal, psv.game_result, psv.gamePly);
     }
 
     // Class to generate sfen with multiple threads
@@ -495,7 +344,7 @@ namespace Learner
             Thread& th,
             std::atomic<uint64_t>& counter,
             const PSVector& psv,
-            AtomicLoss& test_loss_sum,
+            Loss& test_loss_sum,
             atomic<double>& sum_norm,
             atomic<int>& move_accord_count
         );
@@ -530,7 +379,7 @@ namespace Learner
         int dir_number;
 
         // For calculation of learning data loss
-        AtomicLoss learn_loss_sum;
+        Loss learn_loss_sum;
     };
 
     void LearnerThink::set_learning_search_limits()
@@ -681,7 +530,7 @@ namespace Learner
 
                 const Value shallow_value = Eval::evaluate(pos);
 
-                const auto loss = calc_cross_entropy(
+                const auto loss = get_loss(
                     deep_value,
                     (rootColor == pos.side_to_move()) ? shallow_value : -shallow_value,
                     ps);
@@ -735,7 +584,7 @@ namespace Learner
         // should be no real issues happening since
         // the read/write phases are isolated.
         atomic_thread_fence(memory_order_seq_cst);
-        Eval::NNUE::update_parameters(Threads, epoch, params.verbose, params.learning_rate, calc_grad, get_loss);
+        Eval::NNUE::update_parameters(Threads, epoch, params.verbose, params.learning_rate, get_loss);
         atomic_thread_fence(memory_order_seq_cst);
 
         if (++save_count * params.mini_batch_size >= params.eval_save_interval)
@@ -778,7 +627,7 @@ namespace Learner
         out << "  - learning rate = " << params.learning_rate << endl;
 
         // For calculation of verification data loss
-        AtomicLoss test_loss_sum{};
+        Loss test_loss_sum{};
 
         // norm for learning
         atomic<double> sum_norm{0.0};
@@ -810,26 +659,24 @@ namespace Learner
         });
         Threads.wait_for_workers_finished();
 
-        latest_loss_sum += test_loss_sum.cross_entropy - test_loss_sum.entropy;
+        latest_loss_sum += test_loss_sum.value();
         latest_loss_count += psv.size();
 
-        if (psv.size() && test_loss_sum.count > 0.0)
+        if (psv.size() && test_loss_sum.count() > 0)
         {
             test_loss_sum.print("test", out);
 
-            if (learn_loss_sum.count > 0.0)
+            if (learn_loss_sum.count() > 0)
             {
                 learn_loss_sum.print("learn", out);
             }
 
             out << "  - norm = " << sum_norm << endl;
             out << "  - move accuracy = " << (move_accord_count * 100.0 / psv.size()) << "%" << endl;
-            out << "  - loss (current) = " << (test_loss_sum.cross_entropy - test_loss_sum.entropy) / psv.size() << endl;
-            out << "  - loss (average) = " << latest_loss_sum / latest_loss_count << endl;
         }
         else
         {
-            out << "ERROR: psv.size() = " << psv.size() << " ,  done = " << test_loss_sum.count << endl;
+            out << "ERROR: psv.size() = " << psv.size() << " ,  done = " << test_loss_sum.count() << endl;
         }
 
         learn_loss_sum.reset();
@@ -839,7 +686,7 @@ namespace Learner
         Thread& th,
         std::atomic<uint64_t>& counter,
         const PSVector& psv,
-        AtomicLoss& test_loss_sum,
+        Loss& test_loss_sum,
         atomic<double>& sum_norm,
         atomic<int>& move_accord_count
     )
@@ -869,7 +716,7 @@ namespace Learner
             // Evaluation value of deep search
             const auto deep_value = (Value)ps.score;
 
-            const auto loss = calc_cross_entropy(
+            const auto loss = get_loss(
                 deep_value,
                 shallow_value,
                 ps);
