@@ -151,7 +151,7 @@ namespace Eval::NNUE {
                         kHalfDimensions, biases_, 1, &output_[output_offset], 1
                     );
 
-                    for (const auto& feature : (*batch_)[b].training_features[c]) {
+                    for (const auto& feature : batch_[b].training_features[c]) {
                         const IndexType weights_offset = kHalfDimensions * feature.get_index();
                         cblas_saxpy(
                             kHalfDimensions, (float)feature.get_count(),
