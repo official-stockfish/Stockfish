@@ -33,6 +33,7 @@ using LearnFloatType = float;
 // Definition of struct used in Learner
 // ----------------------
 
+#include "autograd.h"
 #include "packed_sfen.h"
 
 #include "position.h"
@@ -68,6 +69,7 @@ namespace Learner
     void learn(std::istringstream& is);
 
     using CalcGradFunc = double(Value, Value, int, int);
+    using CalcLossFunc = ValueWithGrad<double>(Value, Value, int, int);
 }
 
 #endif // ifndef _LEARN_H_
