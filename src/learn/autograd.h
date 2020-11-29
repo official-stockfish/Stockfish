@@ -7,6 +7,7 @@
 #include <memory>
 #include <tuple>
 #include <optional>
+#include <algorithm>
 
 namespace Learner
 {
@@ -47,6 +48,11 @@ namespace Learner
         ValueWithGrad abs() const
         {
             return { std::abs(value), std::abs(grad) };
+        }
+
+        ValueWithGrad clamp_grad(T max) const
+        {
+            return { value, std::clamp(grad, -max, max) };
         }
     };
 }

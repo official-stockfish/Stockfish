@@ -230,7 +230,7 @@ namespace Learner
         auto loss_ = result_ - entropy_;
 
         auto args = std::tuple((double)shallow, (double)teacher_signal, (double)result, calculate_lambda(teacher_signal));
-        return loss_.eval(args);
+        return loss_.eval(args).clamp_grad(max_grad);
     }
 
     static auto get_loss(
