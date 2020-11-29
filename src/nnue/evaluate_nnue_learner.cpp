@@ -214,7 +214,7 @@ namespace Eval::NNUE {
         std::vector<double> gradient_norm_local(thread_pool.size(), 0.0);
 
         auto prev_batch_begin = examples.end();
-        while (prev_batch_begin - examples.begin() >= batch_size) {
+        while ((long)(prev_batch_begin - examples.begin()) >= (long)batch_size) {
             auto batch_begin = prev_batch_begin - batch_size;
             auto batch_end = prev_batch_begin;
             auto size = batch_end - batch_begin;

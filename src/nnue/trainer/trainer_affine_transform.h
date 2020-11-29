@@ -95,7 +95,7 @@ namespace Eval::NNUE {
         {
             const auto size = batch_end - batch_begin;
 
-            if (output_.size() < kOutputDimensions * size) {
+            if ((long)output_.size() < (long)kOutputDimensions * size) {
                 output_.resize(kOutputDimensions * size);
                 gradients_.resize(kInputDimensions * size);
             }

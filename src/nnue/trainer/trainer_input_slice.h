@@ -66,8 +66,8 @@ namespace Eval::NNUE {
         const LearnFloatType* step_start(ThreadPool& thread_pool, std::vector<Example>::const_iterator batch_begin, std::vector<Example>::const_iterator batch_end)
         {
             const auto size = batch_end - batch_begin;
-            
-            if (gradients_.size() < kInputDimensions * size) {
+
+            if ((long)gradients_.size() < (long)kInputDimensions * size) {
                 gradients_.resize(kInputDimensions * size);
             }
 
@@ -244,7 +244,7 @@ namespace Eval::NNUE {
         {
             const auto size = batch_end - batch_begin;
 
-            if (output_.size() < kOutputDimensions * size) {
+            if ((long)output_.size() < (long)kOutputDimensions * size) {
               output_.resize(kOutputDimensions * size);
               gradients_.resize(kInputDimensions * size);
             }
