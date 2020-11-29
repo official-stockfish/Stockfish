@@ -200,17 +200,34 @@ namespace Learner
     static ValueWithGrad<double> get_loss(Value shallow, Value teacher_signal, int result, int ply)
     {
         using namespace Learner::Autograd::UnivariateStatic;
+
+        /*
         auto q_ = sigmoid(VariableParameter<double, 0>{} * winning_probability_coefficient);
         auto p_ = sigmoid(ConstantParameter<double, 1>{} * winning_probability_coefficient);
         auto t_ = (ConstantParameter<double, 2>{} + 1.0) * 0.5;
         auto lambda_ = ConstantParameter<double, 3>{};
         auto loss_ = pow(lambda_ * (q_ - p_) + (1.0 - lambda_) * (q_ - t_), 2.0);
+        */
 
         /*
         auto q_ = VariableParameter<double, 0>{};
         auto p_ = ConstantParameter<double, 1>{};
         auto loss_ = pow(q_ - p_, 2.0) * (1.0 / (2400.0 * 2.0 * 600.0));
         */
+
+        const double epsilon = 1e-12;
+
+        auto q_ = sigmoid(VariableParameter<double, 0>{} * winning_probability_coefficient);
+        auto p_ = sigmoid(ConstantParameter<double, 1>{} * winning_probability_coefficient);
+        auto t_ = (ConstantParameter<double, 2>{} + 1.0) * 0.5;
+        auto lambda_ = ConstantParameter<double, 3>{};
+        auto teacher_entropy_ = -(p_ * log(p_ + epsilon) + (1.0 - p_) * log(1.0 - p_ + epsilon));
+        auto outcome_entropy_ = -(t_ * log(t_ + epsilon) + (1.0 - t_) * log(1.0 - t_ + epsilon));
+        auto teacher_loss_ = -(p_ * log(q_) + (1.0 - p_) * log(1.0 - q_));
+        auto outcome_loss_ = -(t_ * log(q_) + (1.0 - t_) * log(1.0 - q_));
+        auto result_ = lambda_ * teacher_loss_ + (1.0 - lambda_) * outcome_loss_;
+        auto entropy_ = lambda_ * teacher_entropy_ + (1.0 - lambda_) * outcome_entropy_;
+        auto loss_ = result_ - entropy_;
 
         auto args = std::tuple((double)shallow, (double)teacher_signal, (double)result, calculate_lambda(teacher_signal));
         return loss_.eval(args);

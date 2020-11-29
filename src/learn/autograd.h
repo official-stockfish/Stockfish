@@ -283,6 +283,38 @@ namespace Learner::Autograd::UnivariateStatic
     }
 
     template <typename ArgT, typename T = typename ArgT::ValueType>
+    struct Negation : Evaluable<Negation<ArgT, T>>
+    {
+        using ValueType = T;
+
+        explicit Negation(ArgT x) :
+            m_x(std::move(x))
+        {
+        }
+
+        template <typename... ArgsTs>
+        T value(const std::tuple<ArgsTs...>& args) const
+        {
+            return -m_x.value(args);
+        }
+
+        template <typename... ArgsTs>
+        T grad(const std::tuple<ArgsTs...>& args) const
+        {
+            return -m_x.grad(args);
+        }
+
+    private:
+        ArgT m_x;
+    };
+
+    template <typename ArgT, typename T = typename ArgT::ValueType>
+    auto operator-(ArgT x)
+    {
+        return Negation(std::move(x));
+    }
+
+    template <typename ArgT, typename T = typename ArgT::ValueType>
     struct Sigmoid : Evaluable<Sigmoid<ArgT, T>>
     {
         using ValueType = T;
@@ -318,7 +350,7 @@ namespace Learner::Autograd::UnivariateStatic
         }
     };
 
-    template <typename ArgT>
+    template <typename ArgT, typename T = typename ArgT::ValueType>
     auto sigmoid(ArgT x)
     {
         return Sigmoid(std::move(x));
@@ -394,7 +426,7 @@ namespace Learner::Autograd::UnivariateStatic
         }
     };
 
-    template <typename ArgT>
+    template <typename ArgT, typename T = typename ArgT::ValueType>
     auto log(ArgT x)
     {
         return Log(std::move(x));
