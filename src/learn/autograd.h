@@ -209,7 +209,7 @@ namespace Learner::Autograd::UnivariateStatic
     struct VariableParameter : Evaluable<T, VariableParameter<T, I>>
     {
         using ValueType = T;
-        
+
         static constexpr bool is_constant = false;
 
         constexpr VariableParameter()
@@ -279,6 +279,36 @@ namespace Learner::Autograd::UnivariateStatic
 
     private:
         T m_x;
+    };
+
+    // The "constant" may change between executions, but is assumed to be
+    // constant during a single evaluation.
+    template <typename T>
+    struct ConstantRef : Evaluable<T, ConstantRef<T>>
+    {
+        using ValueType = T;
+
+        static constexpr bool is_constant = true;
+
+        constexpr ConstantRef(const T& x) :
+            m_x(x)
+        {
+        }
+
+        template <typename... ArgsTs>
+        [[nodiscard]] T calculate_value(const std::tuple<ArgsTs...>&) const
+        {
+            return m_x;
+        }
+
+        template <typename... ArgsTs>
+        [[nodiscard]] T calculate_grad(const std::tuple<ArgsTs...>&) const
+        {
+            return T(0.0);
+        }
+
+    private:
+        const T& m_x;
     };
 
     template <typename LhsT, typename RhsT, typename T = typename std::remove_reference_t<LhsT>::ValueType>

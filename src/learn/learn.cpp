@@ -220,6 +220,16 @@ namespace Learner
         return loss_;
     }
 
+    template <typename ValueT>
+    static auto& expected_perf_(ValueT&& v_)
+    {
+        using namespace Learner::Autograd::UnivariateStatic;
+
+        static thread_local auto perf_ = sigmoid(std::forward<ValueT>(v_) * ConstantRef<double>(winning_probability_coefficient));
+
+        return perf_;
+    }
+
     static ValueWithGrad<double> get_loss(Value shallow, Value teacher_signal, int result, int ply)
     {
         using namespace Learner::Autograd::UnivariateStatic;
@@ -238,18 +248,17 @@ namespace Learner
         auto loss_ = pow(q_ - p_, 2.0) * (1.0 / (2400.0 * 2.0 * 600.0));
         */
 
-        static thread_local auto q_ = sigmoid(VariableParameter<double, 0>{} * ConstantParameter<double, 4>{});
-        static thread_local auto p_ = sigmoid(ConstantParameter<double, 1>{} * ConstantParameter<double, 4>{});
+        static thread_local auto q_ = expected_perf_(VariableParameter<double, 0>{});
+        static thread_local auto p_ = expected_perf_(ConstantParameter<double, 1>{});
         static thread_local auto t_ = (ConstantParameter<double, 2>{} + 1.0) * 0.5;
         static thread_local auto lambda_ = ConstantParameter<double, 3>{};
         static thread_local auto loss_ = cross_entropy_(q_, p_, t_, lambda_);
 
         auto args = std::tuple(
-            (double)shallow, 
-            (double)teacher_signal, 
-            (double)result, 
-            calculate_lambda(teacher_signal), 
-            winning_probability_coefficient
+            (double)shallow,
+            (double)teacher_signal,
+            (double)result,
+            calculate_lambda(teacher_signal)
         );
 
         return loss_.eval(args).clamp_grad(max_grad);
