@@ -120,6 +120,9 @@ namespace Learner::Autograd::UnivariateStatic
 
         template <typename T, typename Tuple>
         constexpr bool TupleContainsV = TupleContains<T, Tuple>::value;
+
+        template <typename... Ts>
+        constexpr bool AreAllConstantV = (std::remove_reference_t<Ts>::is_constant && ...);
     }
 
     template <typename T, typename ChildT>
@@ -167,16 +170,23 @@ namespace Learner::Autograd::UnivariateStatic
             typename SFINAE = std::enable_if_t<Detail::TupleContainsV<Detail::CallId, std::tuple<ArgsTs...>>>>
         [[nodiscard]] auto grad(const std::tuple<ArgsTs...>& args) const
         {
-            const ChildT* this_ = static_cast<const ChildT*>(this);
-
-            const auto call_id = std::get<Detail::CallId>(args);
-            if (!grad_cache.has_value() || grad_cache_call_id != call_id)
+            if constexpr (ChildT::is_constant)
             {
-                grad_cache_call_id = call_id;
-                grad_cache = this_->calculate_grad(args);
+                return T(0.0);
             }
+            else
+            {
+                const ChildT* this_ = static_cast<const ChildT*>(this);
 
-            return *grad_cache;
+                const auto call_id = std::get<Detail::CallId>(args);
+                if (!grad_cache.has_value() || grad_cache_call_id != call_id)
+                {
+                    grad_cache_call_id = call_id;
+                    grad_cache = this_->calculate_grad(args);
+                }
+
+                return *grad_cache;
+            }
         }
 
         template <typename... ArgsTs,
@@ -199,6 +209,8 @@ namespace Learner::Autograd::UnivariateStatic
     struct VariableParameter : Evaluable<T, VariableParameter<T, I>>
     {
         using ValueType = T;
+        
+        static constexpr bool is_constant = false;
 
         constexpr VariableParameter()
         {
@@ -222,6 +234,8 @@ namespace Learner::Autograd::UnivariateStatic
     {
         using ValueType = T;
 
+        static constexpr bool is_constant = true;
+
         constexpr ConstantParameter()
         {
         }
@@ -243,6 +257,8 @@ namespace Learner::Autograd::UnivariateStatic
     struct Constant : Evaluable<T, Constant<T>>
     {
         using ValueType = T;
+
+        static constexpr bool is_constant = true;
 
         constexpr Constant(T x) :
             m_x(std::move(x))
@@ -269,6 +285,8 @@ namespace Learner::Autograd::UnivariateStatic
     struct Sum : Evaluable<T, Sum<LhsT, RhsT, T>>
     {
         using ValueType = T;
+
+        static constexpr bool is_constant = Detail::AreAllConstantV<LhsT, RhsT>;
 
         constexpr Sum(LhsT&& lhs, RhsT&& rhs) :
             m_lhs(std::forward<LhsT>(lhs)),
@@ -316,6 +334,8 @@ namespace Learner::Autograd::UnivariateStatic
     {
         using ValueType = T;
 
+        static constexpr bool is_constant = Detail::AreAllConstantV<LhsT, RhsT>;
+
         constexpr Difference(LhsT&& lhs, RhsT&& rhs) :
             m_lhs(std::forward<LhsT>(lhs)),
             m_rhs(std::forward<RhsT>(rhs))
@@ -361,6 +381,8 @@ namespace Learner::Autograd::UnivariateStatic
     struct Product : Evaluable<T, Product<LhsT, RhsT, T>>
     {
         using ValueType = T;
+
+        static constexpr bool is_constant = Detail::AreAllConstantV<LhsT, RhsT>;
 
         constexpr Product(LhsT&& lhs, RhsT&& rhs) :
             m_lhs(std::forward<LhsT>(lhs)),
@@ -408,6 +430,8 @@ namespace Learner::Autograd::UnivariateStatic
     {
         using ValueType = T;
 
+        static constexpr bool is_constant = Detail::AreAllConstantV<ArgT>;
+
         constexpr explicit Negation(ArgT&& x) :
             m_x(std::forward<ArgT>(x))
         {
@@ -439,6 +463,8 @@ namespace Learner::Autograd::UnivariateStatic
     struct Sigmoid : Evaluable<T, Sigmoid<ArgT, T>>
     {
         using ValueType = T;
+
+        static constexpr bool is_constant = Detail::AreAllConstantV<ArgT>;
 
         constexpr explicit Sigmoid(ArgT&& x) :
             m_x(std::forward<ArgT>(x))
@@ -482,6 +508,8 @@ namespace Learner::Autograd::UnivariateStatic
     {
         using ValueType = T;
 
+        static constexpr bool is_constant = Detail::AreAllConstantV<ArgT>;
+
         constexpr explicit Pow(ArgT&& x, Id<T> exponent) :
             m_x(std::forward<ArgT>(x)),
             m_exponent(std::move(exponent))
@@ -515,6 +543,8 @@ namespace Learner::Autograd::UnivariateStatic
     struct Log : Evaluable<T, Log<ArgT, T>>
     {
         using ValueType = T;
+
+        static constexpr bool is_constant = Detail::AreAllConstantV<ArgT>;
 
         constexpr explicit Log(ArgT&& x) :
             m_x(std::forward<ArgT>(x))
