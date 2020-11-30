@@ -195,6 +195,48 @@ namespace Learner
         return lambda;
     }
 
+    // We use our own simple static autograd for automatic
+    // differentiation of the loss function. While it works it has it's caveats.
+    // To work fast enough it requires memoization and reference semantics.
+    // Memoization is mostly opaque to the user and is only per eval basis.
+    // As for reference semantics, we cannot copy every node, 
+    // because we need a way to reuse computation.
+    // But we can't really use shared_ptr because of the overhead. That means
+    // that we have to ensure all parts of a loss expression are not destroyed
+    // before use. When lvalue references are used to construct a node it will
+    // store just a reference, it only perform a copy of the rvalue reference arguments.
+    // This means that we need some storage for the whole computation tree
+    // that keeps the values after function returns and never moves them to
+    // a different memory location. This means that we cannot use local
+    // variables and just return by value - because there may be dangling references left.
+    // We also cannot create a struct with this tree on demand because one cannot
+    // use `auto` as a struct members. This is a big issue, and the only way
+    // to solve it as of now is to use static thread_local variables and rely on the
+    // following assumptions:
+    // 1. the expression node must not change for the duration of the program
+    //    within a single instance of a function. This is usually not a problem
+    //    because almost all information is carried by the type. There is an
+    //    exception though, we have ConstantRef and Constant nodes that
+    //    do not encode the constants in the type, so it's possible
+    //    that these nodes are different on the first call to the function
+    //    then later. We MUST ensure that one function is only ever used
+    //    for one specific expression.
+    // 2. thread_local variables are not expensive. Usually after creation
+    //    it only requires a single unsynchronized boolean check and that's
+    //    how most compilers implement it.
+    //
+    // So the general way to do things right now is to use static thread_local
+    // variables for all named autograd nodes. Results being nodes should be
+    // returned by reference, so that there's no need to copy the returned objects.
+    // Parameters being nodes should be taken by lvalue reference if they are
+    // used more than once (to enable reference semantics to reuse computation),
+    // but they can be rvalues and forward on first use if there's only one use
+    // of the node in the scope.
+    // We must keep in mind that the node tree created by such a function
+    // is never going to change as thread_local variables are initialized
+    // on first call. This means that one cannot use one function as a factory
+    // for different autograd expression trees.
+
     template <typename ShallowT, typename TeacherT, typename ResultT, typename LambdaT>
     static auto& cross_entropy_(
         ShallowT& q_,
