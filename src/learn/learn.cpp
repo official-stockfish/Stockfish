@@ -199,7 +199,7 @@ namespace Learner
     // differentiation of the loss function. While it works it has it's caveats.
     // To work fast enough it requires memoization and reference semantics.
     // Memoization is mostly opaque to the user and is only per eval basis.
-    // As for reference semantics, we cannot copy every node, 
+    // As for reference semantics, we cannot copy every node,
     // because we need a way to reuse computation.
     // But we can't really use shared_ptr because of the overhead. That means
     // that we have to ensure all parts of a loss expression are not destroyed
@@ -321,7 +321,7 @@ namespace Learner
 
         // The model captures only up to 240 plies, so limit input (and rescale)
         static thread_local auto m_ = std::forward<PlyT>(ply_) / 64.0;
-         
+
         static thread_local auto a_ = (((as[0] * m_ + as[1]) * m_ + as[2]) * m_) + as[3];
         static thread_local auto b_ = (((bs[0] * m_ + bs[1]) * m_ + bs[2]) * m_) + bs[3];
 
@@ -392,11 +392,11 @@ namespace Learner
     {
         using namespace Learner::Autograd::UnivariateStatic;
 
-        static thread_local auto q_ = expected_perf_(VariableParameter<double, 0>{});
-        static thread_local auto p_ = expected_perf_(scale_score_(ConstantParameter<double, 1>{}));
+        static thread_local auto& q_ = expected_perf_(VariableParameter<double, 0>{});
+        static thread_local auto& p_ = expected_perf_(scale_score_(ConstantParameter<double, 1>{}));
         static thread_local auto t_ = (ConstantParameter<double, 2>{} + 1.0) * 0.5;
         static thread_local auto lambda_ = ConstantParameter<double, 3>{};
-        static thread_local auto loss_ = cross_entropy_(q_, p_, t_, lambda_);
+        static thread_local auto& loss_ = cross_entropy_(q_, p_, t_, lambda_);
 
         auto args = std::tuple(
             (double)shallow,
@@ -415,14 +415,14 @@ namespace Learner
 
         static thread_local auto ply_ = ConstantParameter<double, 4>{};
         static thread_local auto shallow_ = VariableParameter<double, 0>{};
-        static thread_local auto q_ = expected_perf_use_wdl_(shallow_, ply_);
+        static thread_local auto& q_ = expected_perf_use_wdl_(shallow_, ply_);
         // We could do just this but MSVC crashes with an internal compiler error :(
-        // static thread_local auto scaled_teacher_ = scale_score_(ConstantParameter<double, 1>{});
-        // static thread_local auto p_ = expected_perf_use_wdl_(scaled_teacher_, ply_);
+        // static thread_local auto& scaled_teacher_ = scale_score_(ConstantParameter<double, 1>{});
+        // static thread_local auto& p_ = expected_perf_use_wdl_(scaled_teacher_, ply_);
         static thread_local auto p_ = ConstantParameter<double, 1>{};
         static thread_local auto t_ = (ConstantParameter<double, 2>{} + 1.0) * 0.5;
         static thread_local auto lambda_ = ConstantParameter<double, 3>{};
-        static thread_local auto loss_ = cross_entropy_(q_, p_, t_, lambda_);
+        static thread_local auto& loss_ = cross_entropy_(q_, p_, t_, lambda_);
 
         auto args = std::tuple(
             (double)shallow,
