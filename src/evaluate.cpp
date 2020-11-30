@@ -240,9 +240,8 @@ namespace {
     S(0, 0), S(9, 28), S(15, 31), S(17, 39), S(64, 70), S(171, 177), S(277, 260)
   };
 
-  // RookOnFile[semiopen/open] contains bonuses for each rook when there is
-  // no (friendly) pawn on the rook file.
-  constexpr Score RookOnFile[] = { S(19, 7), S(48, 27) };
+  constexpr Score RookOnClosedFile = S(10, 5);
+  constexpr Score RookOnOpenFile[] = { S(19, 7), S(48, 27) };
 
   // ThreatByMinor/ByRook[attacked PieceType] contains bonuses according to
   // which piece type attacks which one. Attacks on lesser pieces which are
@@ -388,15 +387,15 @@ namespace {
     constexpr Direction Down = -pawn_push(Us);
     constexpr Bitboard OutpostRanks = (Us == WHITE ? Rank4BB | Rank5BB | Rank6BB
                                                    : Rank5BB | Rank4BB | Rank3BB);
-    const Square* pl = pos.squares<Pt>(Us);
-
+    Bitboard b1 = pos.pieces(Us, Pt);
     Bitboard b, bb;
     Score score = SCORE_ZERO;
 
     attackedBy[Us][Pt] = 0;
 
-    for (Square s = *pl; s != SQ_NONE; s = *++pl)
-    {
+    while (b1) {
+        Square s = pop_lsb(&b1);
+
         // Find attacked squares, including x-ray attacks for bishops and rooks
         b = Pt == BISHOP ? attacks_bb<BISHOP>(s, pos.pieces() ^ pos.pieces(QUEEN))
           : Pt ==   ROOK ? attacks_bb<  ROOK>(s, pos.pieces() ^ pos.pieces(QUEEN) ^ pos.pieces(Us, ROOK))
@@ -485,16 +484,28 @@ namespace {
 
         if (Pt == ROOK)
         {
-            // Bonus for rook on an open or semi-open file
+            // Bonuses for rook on a (semi-)open or closed file
             if (pos.is_on_semiopen_file(Us, s))
-                score += RookOnFile[pos.is_on_semiopen_file(Them, s)];
-
-            // Penalty when trapped by the king, even more if the king cannot castle
-            else if (mob <= 3)
             {
-                File kf = file_of(pos.square<KING>(Us));
-                if ((kf < FILE_E) == (file_of(s) < kf))
-                    score -= TrappedRook * (1 + !pos.castling_rights(Us));
+                score += RookOnOpenFile[pos.is_on_semiopen_file(Them, s)];
+            }
+            else
+            {
+                // If our pawn on this file is blocked, increase penalty
+                if ( pos.pieces(Us, PAWN)
+                   & shift<Down>(pos.pieces())
+                   & file_bb(s))
+                {
+                    score -= RookOnClosedFile;
+                }
+
+                // Penalty when trapped by the king, even more if the king cannot castle
+                if (mob <= 3)
+                {
+                    File kf = file_of(pos.square<KING>(Us));
+                    if ((kf < FILE_E) == (file_of(s) < kf))
+                        score -= TrappedRook * (1 + !pos.castling_rights(Us));
+                }
             }
         }
 
@@ -1026,7 +1037,7 @@ Value Eval::evaluate(const Position& pos) {
       // Scale and shift NNUE for compatibility with search and classical evaluation
       auto  adjusted_NNUE = [&](){
          int mat = pos.non_pawn_material() + PawnValueMg * pos.count<PAWN>();
-         return NNUE::evaluate(pos) * (720 + mat / 32) / 1024 + Tempo;
+         return NNUE::evaluate(pos) * (679 + mat / 32) / 1024 + Tempo;
       };
 
       // If there is PSQ imbalance use classical eval, with small probability if it is small
