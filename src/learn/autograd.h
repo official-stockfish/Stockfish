@@ -455,6 +455,55 @@ namespace Learner::Autograd::UnivariateStatic
         return Product<Constant<T>&&, RhsT&&>(Constant(lhs), std::forward<RhsT>(rhs));
     }
 
+    template <typename LhsT, typename RhsT, typename T = typename std::remove_reference_t<LhsT>::ValueType>
+    struct Quotient : Evaluable<T, Quotient<LhsT, RhsT, T>>
+    {
+        using ValueType = T;
+
+        static constexpr bool is_constant = Detail::AreAllConstantV<LhsT, RhsT>;
+
+        constexpr Quotient(LhsT&& lhs, RhsT&& rhs) :
+            m_lhs(std::forward<LhsT>(lhs)),
+            m_rhs(std::forward<RhsT>(rhs))
+        {
+        }
+
+        template <typename... ArgsTs>
+        [[nodiscard]] T calculate_value(const std::tuple<ArgsTs...>& args) const
+        {
+            return m_lhs.value(args) / m_rhs.value(args);
+        }
+
+        template <typename... ArgsTs>
+        [[nodiscard]] T calculate_grad(const std::tuple<ArgsTs...>& args) const
+        {
+            auto g = m_rhs.value(args);
+            return (m_lhs.grad(args) * g - m_lhs.value(args) * m_rhs.grad(args)) / (g * g);
+        }
+
+    private:
+        StoreValueOrRef<LhsT> m_lhs;
+        StoreValueOrRef<RhsT> m_rhs;
+    };
+
+    template <typename LhsT, typename RhsT, typename T = typename std::remove_reference_t<LhsT>::ValueType>
+    [[nodiscard]] constexpr auto operator/(LhsT&& lhs, RhsT&& rhs)
+    {
+        return Quotient<LhsT&&, RhsT&&>(std::forward<LhsT>(lhs), std::forward<RhsT>(rhs));
+    }
+
+    template <typename LhsT, typename T = typename std::remove_reference_t<LhsT>::ValueType>
+    [[nodiscard]] constexpr auto operator/(LhsT&& lhs, Id<T> rhs)
+    {
+        return Quotient<LhsT&&, Constant<T>&&>(std::forward<LhsT>(lhs), Constant(rhs));
+    }
+
+    template <typename RhsT, typename T = typename std::remove_reference_t<RhsT>::ValueType>
+    [[nodiscard]] constexpr auto operator/(Id<T> lhs, RhsT&& rhs)
+    {
+        return Quotient<Constant<T>&&, RhsT&&>(Constant(lhs), std::forward<RhsT>(rhs));
+    }
+
     template <typename ArgT, typename T = typename std::remove_reference_t<ArgT>::ValueType>
     struct Negation : Evaluable<T, Negation<ArgT, T>>
     {

@@ -221,6 +221,25 @@ namespace Learner
     }
 
     template <typename ValueT>
+    static auto& scale_score_(ValueT&& v_)
+    {
+        using namespace Learner::Autograd::UnivariateStatic;
+
+        // Normalize to [0.0, 1.0].
+        static thread_local auto normalized_ =
+            (std::forward<ValueT>(v_) - ConstantRef<double>(src_score_min_value))
+            / (ConstantRef<double>(src_score_max_value) - ConstantRef<double>(src_score_min_value));
+
+        // Scale to [dest_score_min_value, dest_score_max_value].
+        static thread_local auto scaled_ =
+            normalized_
+            * (ConstantRef<double>(dest_score_max_value) - ConstantRef<double>(dest_score_min_value))
+            + ConstantRef<double>(dest_score_min_value);
+
+        return scaled_;
+    }
+
+    template <typename ValueT>
     static auto& expected_perf_(ValueT&& v_)
     {
         using namespace Learner::Autograd::UnivariateStatic;
@@ -249,7 +268,7 @@ namespace Learner
         */
 
         static thread_local auto q_ = expected_perf_(VariableParameter<double, 0>{});
-        static thread_local auto p_ = expected_perf_(ConstantParameter<double, 1>{});
+        static thread_local auto p_ = expected_perf_(scale_score_(ConstantParameter<double, 1>{}));
         static thread_local auto t_ = (ConstantParameter<double, 2>{} + 1.0) * 0.5;
         static thread_local auto lambda_ = ConstantParameter<double, 3>{};
         static thread_local auto loss_ = cross_entropy_(q_, p_, t_, lambda_);
