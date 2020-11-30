@@ -40,6 +40,8 @@ using LearnFloatType = float;
 
 #include <sstream>
 #include <vector>
+#include <mutex>
+#include <string>
 
 namespace Learner
 {
@@ -69,6 +71,72 @@ namespace Learner
     void learn(std::istringstream& is);
 
     using CalcLossFunc = ValueWithGrad<double>(Value, Value, int, int);
+
+    struct Loss
+    {
+        double value() const
+        {
+            return m_loss.value;
+        }
+
+        double grad() const
+        {
+            return m_loss.grad;
+        }
+
+        uint64_t count() const
+        {
+            return m_count;
+        }
+
+        Loss() = default;
+
+        Loss(const Loss& other) :
+            m_loss(other.m_loss),
+            m_count(other.m_count)
+        {
+        }
+
+        Loss& operator += (const ValueWithGrad<double>& rhs)
+        {
+            std::unique_lock lock(m_mutex);
+
+            m_loss += rhs.abs();
+            m_count += 1;
+
+            return *this;
+        }
+
+        Loss& operator += (const Loss& rhs)
+        {
+            std::unique_lock lock(m_mutex);
+
+            m_loss += rhs.m_loss.abs();
+            m_count += rhs.m_count;
+
+            return *this;
+        }
+
+        void reset()
+        {
+            std::unique_lock lock(m_mutex);
+
+            m_loss = ValueWithGrad<double>{ 0.0, 0.0 };
+            m_count = 0;
+        }
+
+        template <typename StreamT>
+        void print(const std::string& prefix, StreamT& s) const
+        {
+            s << "  - " << prefix << "_loss       = " << m_loss.value / (double)m_count << std::endl;
+            s << "  - " << prefix << "_grad_norm  = " << m_loss.grad / (double)m_count << std::endl;
+        }
+
+    private:
+        ValueWithGrad<double> m_loss{ 0.0, 0.0 };
+        uint64_t m_count{0};
+        std::mutex m_mutex;
+    };
 }
 
 #endif // ifndef _LEARN_H_

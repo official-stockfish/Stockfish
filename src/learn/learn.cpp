@@ -52,7 +52,6 @@
 #include <sstream>
 #include <unordered_set>
 #include <iostream>
-#include <mutex>
 
 #if defined (_OPENMP)
 #include <omp.h>
@@ -97,65 +96,6 @@ namespace Learner
 
     // Using stockfish's WDL with win rate model instead of sigmoid
     static bool use_wdl = false;
-
-    struct Loss
-    {
-        double value() const
-        {
-            return m_loss.value;
-        }
-
-        double grad() const
-        {
-            return m_loss.grad;
-        }
-
-        uint64_t count() const
-        {
-            return m_count;
-        }
-
-        Loss& operator += (const ValueWithGrad<double>& rhs)
-        {
-            std::unique_lock lock(m_mutex);
-
-            m_loss += rhs.abs();
-            m_count += 1;
-
-            return *this;
-        }
-
-        Loss& operator += (const Loss& rhs)
-        {
-            std::unique_lock lock(m_mutex);
-
-            m_loss += rhs.m_loss.abs();
-            m_count += rhs.m_count;
-
-            return *this;
-        }
-
-        void reset()
-        {
-            std::unique_lock lock(m_mutex);
-
-            m_loss = ValueWithGrad<double>{ 0.0, 0.0 };
-            m_count = 0;
-        }
-
-        template <typename StreamT>
-        void print(const std::string& prefix, StreamT& s) const
-        {
-            s << "  - " << prefix << "_loss       = " << m_loss.value / (double)m_count << endl;
-            s << "  - " << prefix << "_grad_norm  = " << m_loss.grad / (double)m_count << endl;
-        }
-
-    private:
-        ValueWithGrad<double> m_loss{ 0.0, 0.0 };
-        uint64_t m_count{0};
-        std::mutex m_mutex;
-
-    };
 
     static void append_files_from_dir(
         std::vector<std::string>& filenames,
@@ -714,7 +654,6 @@ namespace Learner
         const auto thread_id = th.thread_idx();
         auto& pos = th.rootPos;
 
-        Loss local_loss_sum{};
         std::vector<StateInfo, AlignedAllocator<StateInfo>> state(MAX_PLY);
 
         while(!stop_flag)
@@ -761,16 +700,7 @@ namespace Learner
             auto pos_add_grad = [&]() {
 
                 // Evaluation value of deep search
-                const auto deep_value = (Value)ps.score;
-
                 const Value shallow_value = Eval::evaluate(pos);
-
-                const auto loss = get_loss(
-                    deep_value,
-                    (rootColor == pos.side_to_move()) ? shallow_value : -shallow_value,
-                    ps);
-
-                local_loss_sum += loss;
 
                 Eval::NNUE::add_example(pos, rootColor, shallow_value, ps, 1.0);
             };
@@ -809,8 +739,6 @@ namespace Learner
             // Since we have reached the end phase of PV, add the slope here.
             pos_add_grad();
         }
-
-        learn_loss_sum += local_loss_sum;
     }
 
     void LearnerThink::update_weights(const PSVector& psv, uint64_t epoch)
@@ -819,7 +747,8 @@ namespace Learner
         // should be no real issues happening since
         // the read/write phases are isolated.
         atomic_thread_fence(memory_order_seq_cst);
-        Eval::NNUE::update_parameters(Threads, epoch, params.verbose, params.learning_rate, params.max_grad, get_loss);
+        learn_loss_sum += Eval::NNUE::update_parameters(
+            Threads, epoch, params.verbose, params.learning_rate, params.max_grad, get_loss);
         atomic_thread_fence(memory_order_seq_cst);
 
         if (++save_count * params.mini_batch_size >= params.eval_save_interval)
@@ -899,11 +828,11 @@ namespace Learner
 
         if (psv.size() && test_loss_sum.count() > 0)
         {
-            test_loss_sum.print("test", out);
+            test_loss_sum.print("val", out);
 
             if (learn_loss_sum.count() > 0)
             {
-                learn_loss_sum.print("learn", out);
+                learn_loss_sum.print("train", out);
             }
 
             out << "  - norm = " << sum_norm << endl;

@@ -33,7 +33,7 @@ namespace Eval::NNUE {
         double weight);
 
     // update the evaluation function parameters
-    void update_parameters(
+    Learner::Loss update_parameters(
         ThreadPool& thread_pool,
         uint64_t epoch,
         bool verbose,

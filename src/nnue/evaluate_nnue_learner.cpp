@@ -190,7 +190,7 @@ namespace Eval::NNUE {
     }
 
     // update the evaluation function parameters
-    void update_parameters(
+    Learner::Loss update_parameters(
         ThreadPool& thread_pool,
         uint64_t epoch,
         bool verbose,
@@ -212,9 +212,12 @@ namespace Eval::NNUE {
 
         bool collect_stats = verbose;
 
+        Learner::Loss loss_sum{};
+
         std::vector<double> abs_eval_diff_sum_local(thread_pool.size(), 0.0);
         std::vector<double> abs_discrete_eval_sum_local(thread_pool.size(), 0.0);
         std::vector<double> gradient_norm_local(thread_pool.size(), 0.0);
+        std::vector<Learner::Loss> loss_sum_local(thread_pool.size());
 
         auto prev_batch_begin = examples.end();
         while ((long)(prev_batch_begin - examples.begin()) >= (long)batch_size) {
@@ -237,11 +240,11 @@ namespace Eval::NNUE {
                             e.sign * network_output[b] * kPonanzaConstant));
                         const auto discrete = e.sign * e.discrete_nn_eval;
                         const auto& psv = e.psv;
-                        const auto loss = calc_loss(shallow, (Value)psv.score, psv.game_result, psv.gamePly);
-                        const double gradient = std::clamp(
+                        auto loss = calc_loss(shallow, (Value)psv.score, psv.game_result, psv.gamePly);
+                        loss.grad = std::clamp(
                             loss.grad * e.sign * kPonanzaConstant * e.weight, -max_grad, max_grad);
-                        gradients[b] = static_cast<LearnFloatType>(gradient);
-
+                        gradients[b] = static_cast<LearnFloatType>(loss.grad);
+                        loss_sum_local[thread_id] += loss;
 
                         // The discrete eval will only be valid before first backpropagation,
                         // that is only for the first batch.
@@ -250,7 +253,7 @@ namespace Eval::NNUE {
                         {
                             abs_eval_diff_sum_local[thread_id] += std::abs(discrete - shallow);
                             abs_discrete_eval_sum_local[thread_id] += std::abs(discrete);
-                            gradient_norm_local[thread_id] += std::abs(gradient);
+                            gradient_norm_local[thread_id] += std::abs(loss.grad);
                         }
                     }
 
@@ -277,9 +280,7 @@ namespace Eval::NNUE {
             abs_eval_diff_sum = std::accumulate(abs_eval_diff_sum_local.begin(), abs_eval_diff_sum_local.end(), 0.0);
             abs_discrete_eval_sum = std::accumulate(abs_discrete_eval_sum_local.begin(), abs_discrete_eval_sum_local.end(), 0.0);
             gradient_norm = std::accumulate(gradient_norm_local.begin(), gradient_norm_local.end(), 0.0);
-        }
 
-        if (verbose) {
             const double avg_abs_eval_diff = abs_eval_diff_sum / batch_size;
             const double avg_abs_discrete_eval = abs_discrete_eval_sum / batch_size;
 
@@ -300,6 +301,13 @@ namespace Eval::NNUE {
         }
 
         send_messages({{"quantize_parameters"}});
+
+        for(auto& loss : loss_sum_local)
+        {
+            loss_sum += loss;
+        }
+
+        return loss_sum;
     }
 
     // Check if there are any problems with learning
