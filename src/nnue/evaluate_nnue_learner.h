@@ -38,6 +38,7 @@ namespace Eval::NNUE {
         uint64_t epoch,
         bool verbose,
         double learning_rate,
+        double max_grad,
         Learner::CalcLossFunc calc_loss);
 
     // Check if there are any problems with learning

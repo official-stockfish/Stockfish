@@ -195,6 +195,7 @@ namespace Eval::NNUE {
         uint64_t epoch,
         bool verbose,
         double learning_rate,
+        double max_grad,
         Learner::CalcLossFunc calc_loss)
     {
         using namespace Learner::Autograd::UnivariateStatic;
@@ -237,8 +238,9 @@ namespace Eval::NNUE {
                         const auto discrete = e.sign * e.discrete_nn_eval;
                         const auto& psv = e.psv;
                         const auto loss = calc_loss(shallow, (Value)psv.score, psv.game_result, psv.gamePly);
-                        const double gradient = loss.grad * e.sign * kPonanzaConstant;
-                        gradients[b] = static_cast<LearnFloatType>(gradient * e.weight);
+                        const double gradient = std::clamp(
+                            loss.grad * e.sign * kPonanzaConstant * e.weight, -max_grad, max_grad);
+                        gradients[b] = static_cast<LearnFloatType>(gradient);
 
 
                         // The discrete eval will only be valid before first backpropagation,

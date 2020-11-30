@@ -95,8 +95,6 @@ namespace Learner
     static double elmo_lambda_high = 1.0;
     static double elmo_lambda_limit = 32000;
 
-    static double max_grad = 1.0;
-
     // Using stockfish's WDL with win rate model instead of sigmoid
     static bool use_wdl = false;
 
@@ -280,7 +278,7 @@ namespace Learner
             calculate_lambda(teacher_signal)
         );
 
-        return loss_.eval(args).clamp_grad(max_grad);
+        return loss_.eval(args);
     }
 
     static auto get_loss(
@@ -334,6 +332,7 @@ namespace Learner
             bool smart_fen_skipping = false;
 
             double learning_rate = 1.0;
+            double max_grad = 1.0;
 
             string validation_set_file_name;
             string seed;
@@ -651,7 +650,7 @@ namespace Learner
         // should be no real issues happening since
         // the read/write phases are isolated.
         atomic_thread_fence(memory_order_seq_cst);
-        Eval::NNUE::update_parameters(Threads, epoch, params.verbose, params.learning_rate, get_loss);
+        Eval::NNUE::update_parameters(Threads, epoch, params.verbose, params.learning_rate, params.max_grad, get_loss);
         atomic_thread_fence(memory_order_seq_cst);
 
         if (++save_count * params.mini_batch_size >= params.eval_save_interval)
@@ -985,6 +984,7 @@ namespace Learner
 
             // learning rate
             else if (option == "lr") is >> params.learning_rate;
+            else if (option == "max_grad") is >> params.max_grad;
 
             // Accept also the old option name.
             else if (option == "use_draw_in_training"
@@ -1012,7 +1012,6 @@ namespace Learner
             else if (option == "lambda") is >> elmo_lambda_low;
             else if (option == "lambda2") is >> elmo_lambda_high;
             else if (option == "lambda_limit") is >> elmo_lambda_limit;
-            else if (option == "max_grad") is >> max_grad;
 
             else if (option == "reduction_gameply") is >> params.reduction_gameply;
 
@@ -1100,6 +1099,7 @@ namespace Learner
         out << "  - nn_options               : " << nn_options << endl;
 
         out << "  - learning rate            : " << params.learning_rate << endl;
+        out << "  - max_grad                 : " << params.max_grad << endl;
         out << "  - use draws in training    : " << params.use_draw_games_in_training << endl;
         out << "  - use draws in validation  : " << params.use_draw_games_in_validation << endl;
         out << "  - skip repeated positions  : " << params.skip_duplicated_positions_in_training << endl;
@@ -1117,7 +1117,6 @@ namespace Learner
         out << "  - elmo_lambda_low          : " << elmo_lambda_low << endl;
         out << "  - elmo_lambda_high         : " << elmo_lambda_high << endl;
         out << "  - elmo_lambda_limit        : " << elmo_lambda_limit << endl;
-        out << "  - max_grad                 : " << max_grad << endl;
         out << "  - eval_save_interval       : " << params.eval_save_interval << " sfens" << endl;
         out << "  - loss_output_interval     : " << params.loss_output_interval << " sfens" << endl;
 
