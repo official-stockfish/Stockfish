@@ -29,30 +29,28 @@ namespace {
 
   // Polynomial material imbalance parameters
 
-  Score QuadraticOurs[][PIECE_TYPE_NB] = {
+  constexpr Score QuadraticOurs[][PIECE_TYPE_NB] = {
     //            OUR PIECES
     // pair pawn knight bishop rook queen
-    {S(1434, 1477)                                                                  }, // Bishop pair
-    {S( 100,   31), S( 38,  40)                                                     }, // Pawn
-    {S(  59,   64), S(248, 196), S(-51, -60)                                        }, // Knight      OUR PIECES
-    {S(   0,    0), S(122, 133), S( 10,  28), S(  0,   0)                           }, // Bishop
-    {S( -61,  -64), S( -5,   3), S(100,  78), S(133, 121), S(-247, -240)            }, // Rook
-    {S(-213, -212), S( 36,  14), S(154, 143), S(158,  98), S(-155, -170), S(-8,-30) }  // Queen
+    {S(1487, 1567)                                                                  }, // Bishop pair
+    {S( 108,   37), S( 38,  42)                                                     }, // Pawn
+    {S(  64,   56), S(258, 206), S(-50, -60)                                        }, // Knight      OUR PIECES
+    {S(   0,    0), S(125, 142), S( 11,  32), S(  0,   0)                           }, // Bishop
+    {S( -60,  -62), S( -6,   3), S(109,  82), S(128, 123), S(-232, -250)            }, // Rook
+    {S(-217, -212), S( 33,  16), S(143, 146), S(151,  91), S(-146, -181), S(-7,-29) }  // Queen
   };
 
-  Score QuadraticTheirs[][PIECE_TYPE_NB] = {
+  constexpr Score QuadraticTheirs[][PIECE_TYPE_NB] = {
     //           THEIR PIECES
     // pair pawn knight bishop rook queen
     {                                                                               }, // Bishop pair
-    {S(  34,  30)                                                                   }, // Pawn
-    {S(  45,  18), S(110,  86)                                                      }, // Knight      OUR PIECES
-    {S(  75,  36), S( 58,  43), S( 59,  15)                                         }, // Bishop
-    {S(  27,  36), S(  4,  22), S( 38,  38), S(-11,  -1)                            }, // Rook
-    {S(  97,  92), S( 97, 166), S(-56, -90), S(104, 179), S(277, 227)               }  // Queen
+    {S(  33,  29)                                                                   }, // Pawn
+    {S(  49,  19), S(113,  82)                                                      }, // Knight      OUR PIECES
+    {S(  74,  40), S( 55,  44), S( 64,  11)                                         }, // Bishop
+    {S(  30,  35), S(  5,  20), S( 37,  37), S(-11,  -2)                            }, // Rook
+    {S(  96,  94), S( 92, 173), S(-59, -90), S(105, 193), S(301, 245)               }  // Queen
   };
   
-  TUNE(SetRange(-500, 2000), QuadraticOurs);
-  TUNE(SetRange(-100, 400), QuadraticTheirs);
   
   #undef S
 
