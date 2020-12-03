@@ -58,7 +58,7 @@ struct Entry {
   const EndgameBase<ScaleFactor>* scalingFunction[COLOR_NB]; // Could be one for each
                                                              // side (e.g. KPKP, KBPsK)
   Score score;
-  Phase gamePhase;
+  int16_t gamePhase;
   uint8_t factor[COLOR_NB];
 };
 
