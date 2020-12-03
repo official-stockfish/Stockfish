@@ -32,12 +32,12 @@ namespace {
   constexpr Score QuadraticOurs[][PIECE_TYPE_NB] = {
     //            OUR PIECES
     // pair pawn knight bishop rook queen
-    {S(1419, 1455)                                                                  }, // Bishop pair
-    {S( 101,   28), S( 37,  39)                                                     }, // Pawn
-    {S(  57,   64), S(249, 187), S(-49, -62)                                        }, // Knight      OUR PIECES
-    {S(   0,    0), S(118, 137), S( 10,  27), S(  0,   0)                           }, // Bishop
-    {S( -63,  -68), S( -5,   3), S(100,  81), S(132, 118), S(-246, -244)            }, // Rook
-    {S(-210, -211), S( 37,  14), S(147, 141), S(161, 105), S(-158, -174), S(-9,-31) }  // Queen
+    {S(1446, 1511)                                                                  }, // Bishop pair
+    {S( 106,   32), S( 37,  41)                                                     }, // Pawn
+    {S(  61,   59), S(253, 196), S(-49, -61)                                        }, // Knight      OUR PIECES
+    {S(   0,    0), S(122, 138), S( 10,  30), S(  0,   0)                           }, // Bishop
+    {S( -61,  -65), S( -5,   2), S(106,  80), S(131, 120), S(-239, -241)            }, // Rook
+    {S(-215, -216), S( 35,  15), S(148, 146), S(160, 100), S(-149, -177), S(-8,-30) }  // Queen
   };
 
   constexpr Score QuadraticTheirs[][PIECE_TYPE_NB] = {
@@ -45,10 +45,10 @@ namespace {
     // pair pawn knight bishop rook queen
     {                                                                               }, // Bishop pair
     {S(  33,  30)                                                                   }, // Pawn
-    {S(  46,  18), S(106,  84)                                                      }, // Knight      OUR PIECES
-    {S(  75,  35), S( 59,  44), S( 60,  15)                                         }, // Bishop
-    {S(  26,  35), S(  6,  22), S( 38,  39), S(-12,  -2)                            }, // Rook
-    {S(  97,  93), S(100, 163), S(-58, -91), S(112, 192), S(276, 225)               }  // Queen
+    {S(  47,  19), S(111,  83)                                                      }, // Knight      OUR PIECES
+    {S(  75,  38), S( 57,  44), S( 62,  13)                                         }, // Bishop
+    {S(  28,  36), S(  5,  21), S( 37,  38), S(-12,  -2)                            }, // Rook
+    {S(  96,  93), S( 93, 170), S(-58, -91), S(111, 190), S(287, 237)               }  // Queen
   };
   
   
