@@ -919,8 +919,8 @@ namespace {
                 sf = 22 + 3 * pos.count<ALL_PIECES>(strongSide);
         }
         // For rook endgames with strong side not having overwhelming pawn number advantage
-        // and it pawns being on one flank
-        // and weak side protecting it pieces with a king
+        // and its pawns being on one flank
+        // and weak side protecting its pieces with a king
         // use lower scale factor
         else if (  pos.non_pawn_material(WHITE) == RookValueMg
                 && pos.non_pawn_material(BLACK) == RookValueMg
