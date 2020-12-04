@@ -1261,7 +1261,7 @@ moves_loop: // When in check, search starts from here
       {
           value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth, !cutNode);
 
-          // If the move passed LMR update it stats
+          // If the move passed LMR update its stats
           if (didLMR && !captureOrPromotion)
           {
               int bonus = value > alpha ?  stat_bonus(newDepth)
@@ -1346,7 +1346,7 @@ moves_loop: // When in check, search starts from here
           }
       }
 
-      // If move is worse than some previously searched move remember it to update it stats later
+      // If the move is worse than some previously searched move, remember it to update its stats later
       if (move != bestMove)
       {
           if (captureOrPromotion && captureCount < 32)
@@ -1726,7 +1726,7 @@ moves_loop: // When in check, search starts from here
         }
     }
     else
-        // Increase stats for the best move in case it wa a capture move
+        // Increase stats for the best move in case it was a capture move
         captureHistory[moved_piece][to_sq(bestMove)][captured] << bonus1;
 
     // Extra penalty for a quiet early move that was not a TT move or main killer move in previous ply when it gets refuted
@@ -1764,6 +1764,7 @@ moves_loop: // When in check, search starts from here
 
   void update_quiet_stats(const Position& pos, Stack* ss, Move move, int bonus, int depth) {
 
+    // Update killers
     if (ss->killers[0] != move)
     {
         ss->killers[1] = ss->killers[0];
