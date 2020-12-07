@@ -66,6 +66,7 @@ namespace {
     { V(-17), V( -13), V( 100), V(  4), V(  9), V(-16), V(-31) }
   };
 
+
   // KingOnFile[semi-open Us][semi-open Them] contains bonuses/penalties
   // for king when the king is on a semi-open or open file.
   constexpr Score KingOnFile[2][2] = {{ S(-19,12), S(-6, 7)  },
