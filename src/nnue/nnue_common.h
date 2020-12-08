@@ -25,6 +25,13 @@
 
 #include <cstring>
 #include <iostream>
+#if defined(__GNUC__ ) && (__GNUC__ < 8)
+#include <experimental/filesystem>
+namespace sys = std::experimental::filesystem;
+#else
+#include <filesystem>
+namespace sys = std::filesystem;
+#endif
 
 #if defined(USE_AVX2)
 #include <immintrin.h>

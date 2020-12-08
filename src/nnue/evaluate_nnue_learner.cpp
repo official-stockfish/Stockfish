@@ -1,6 +1,5 @@
 ﻿#include <random>
 #include <fstream>
-#include <filesystem>
 
 #include "evaluate_nnue.h"
 #include "evaluate_nnue_learner.h"
@@ -326,7 +325,7 @@ namespace Eval::NNUE {
         // mkdir() will fail if this folder already exists, but
         // Apart from that. If not, I just want you to make it.
         // Also, assume that the folders up to EvalSaveDir have been dug.
-        std::filesystem::create_directories(eval_dir);
+        sys::create_directories(eval_dir);
 
         const std::string file_name = Path::combine(eval_dir, NNUE::savedfileName);
         std::ofstream stream(file_name, std::ios::binary);

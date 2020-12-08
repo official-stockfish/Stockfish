@@ -8,7 +8,6 @@
 #include "syzygy/tbprobe.h"
 
 #include <cstring>
-#include <filesystem>
 #include <fstream>
 #include <limits>
 #include <list>

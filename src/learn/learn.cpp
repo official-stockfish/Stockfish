@@ -39,7 +39,6 @@
 #include <climits>
 #include <cmath>    // std::exp(),std::pow(),std::log()
 #include <cstring>  // memcpy()
-#include <filesystem>
 #include <fstream>
 #include <iomanip>
 #include <limits>
@@ -104,7 +103,6 @@ namespace Learner
     {
         string kif_base_dir = Path::combine(base_dir, target_dir);
 
-        namespace sys = std::filesystem;
         sys::path p(kif_base_dir); // Origin of enumeration
         std::for_each(sys::directory_iterator(p), sys::directory_iterator(),
             [&](const sys::path& path) {
