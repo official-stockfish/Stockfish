@@ -59,12 +59,18 @@ namespace {
   // RANK_1 = 0 is used for files where the enemy has no pawn, or their pawn
   // is behind our king. Note that UnblockedStorm[0][1-2] accommodate opponent pawn
   // on edge, likely blocked by our king.
-  constexpr Value UnblockedStorm[int(FILE_NB) / 2][RANK_NB] = {
-    { V( 87), V(-288), V(-168), V( 96), V( 47), V( 44), V( 46) },
-    { V( 42), V( -25), V( 120), V( 45), V( 34), V( -9), V( 24) },
-    { V( -8), V(  51), V( 167), V( 35), V( -4), V(-16), V(-12) },
-    { V(-17), V( -13), V( 100), V(  4), V(  9), V(-16), V(-31) }
+  Value ShelterStrength[FILE_NB][RANK_NB] = {
+    { V( -6), V( 81), V( 93), V( 58), V( 39), V( 18), V(  25) }, //A
+    { V(-43), V( 61), V( 35), V(-49), V(-29), V(-11), V( -63) }, //B
+    { V(-10), V( 75), V( 23), V( -2), V( 32), V(  3), V( -45) }, //C
+    { V(-39), V(-13), V(-29), V(-52), V(-48), V(-67), V(-166) }, //D
+    { V(-39), V(-13), V(-29), V(-52), V(-48), V(-67), V(-166) }, //E
+    { V(-10), V( 75), V( 23), V( -2), V( 32), V(  3), V( -45) }, //F
+    { V(-43), V( 61), V( 35), V(-49), V(-29), V(-11), V( -63) }, //G
+    { V( -6), V( 81), V( 93), V( 58), V( 39), V( 18), V(  25) }} //H
   };
+TUNE(SetRange(-250, 150), ShelterStrength);
+
 
   // KingOnFile[semi-open Us][semi-open Them] contains bonuses/penalties
   // for king when the king is on a semi-open or open file.
@@ -235,7 +241,7 @@ Score Entry::evaluate_shelter(const Position& pos, Square ksq) const {
       int theirRank = b ? relative_rank(Us, frontmost_sq(Them, b)) : 0;
 
       int d = edge_distance(f);
-      bonus += make_score(ShelterStrength[d][ourRank], 0);
+      bonus += make_score(ShelterStrength[f][ourRank], 0);
 
       if (ourRank && (ourRank == theirRank - 1))
           bonus -= BlockedStorm[theirRank];
