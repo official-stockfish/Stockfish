@@ -22,19 +22,23 @@
 #include <sstream>
 #include <string>
 
+#include "extra/stockfish_blas.h"
+#include "nnue/evaluate_nnue.h"
 #include "evaluate.h"
 #include "movegen.h"
+#include "nnue/nnue_test_command.h"
 #include "position.h"
 #include "search.h"
+#include "syzygy/tbprobe.h"
 #include "thread.h"
 #include "timeman.h"
 #include "tt.h"
 #include "uci.h"
-#include "syzygy/tbprobe.h"
 
-#if defined(EVAL_NNUE) && defined(ENABLE_TEST_CMD)
-#include "nnue/nnue_test_command.h"
-#endif
+#include "learn/gensfen.h"
+#include "learn/learn.h"
+#include "learn/convert.h"
+#include "learn/transform.h"
 
 using namespace std;
 
@@ -43,42 +47,16 @@ extern vector<string> setup_bench(const Position&, istream&);
 // FEN string of the initial position, normal chess
 const char* StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
-// Command to automatically generate a game record
-#if defined (EVAL_LEARN)
-namespace Learner
-{
-  // Automatic generation of teacher position
-  void gen_sfen(Position& pos, istringstream& is);
-
-  // Learning from the generated game record
-  void learn(Position& pos, istringstream& is);
-
-#if defined(GENSFEN2019)
-  // Automatic generation command of teacher phase under development
-  void gen_sfen2019(Position& pos, istringstream& is);
-#endif
-
-  // A pair of reader and evaluation value. Returned by Learner::search(),Learner::qsearch().
-  typedef std::pair<Value, std::vector<Move> > ValueAndPV;
-
-  ValueAndPV qsearch(Position& pos);
-  ValueAndPV search(Position& pos, int depth_, size_t multiPV = 1, uint64_t nodesLimit = 0);
-
-}
-#endif
-
-#if defined(EVAL_NNUE) && defined(ENABLE_TEST_CMD)
 void test_cmd(Position& pos, istringstream& is)
 {
     // Initialize as it may be searched.
-    Eval::init_NNUE();
+    Eval::NNUE::init();
 
     std::string param;
     is >> param;
 
-    if (param == "nnue") Eval::NNUE::TestCommand(pos, is);
+    if (param == "nnue") Eval::NNUE::test_command(pos, is);
 }
-#endif
 
 namespace {
 
@@ -125,7 +103,7 @@ namespace {
     Position p;
     p.set(pos.fen(), Options["UCI_Chess960"], &states->back(), Threads.main());
 
-    Eval::verify_NNUE();
+    Eval::NNUE::verify_eval_file_loaded();
 
     sync_cout << "\n" << Eval::trace(p) << sync_endl;
   }
@@ -134,7 +112,7 @@ namespace {
   // setoption() is called when engine receives the "setoption" UCI command. The
   // function updates the UCI option ("name") to the given value ("value").
 
-  void setoption(istringstream& is) {
+  void setoption_from_stream(istringstream& is) {
 
     string token, name, value;
 
@@ -148,10 +126,7 @@ namespace {
     while (is >> token)
         value += (value.empty() ? "" : " ") + token;
 
-    if (Options.count(name))
-        Options[name] = value;
-    else
-        sync_cout << "No such option: " << name << sync_endl;
+    UCI::setoption(name, value);
   }
 
 
@@ -210,7 +185,7 @@ namespace {
 
         if (token == "go" || token == "eval")
         {
-            cerr << "\nPosition: " << cnt++ << '/' << num << endl;
+            cerr << "\nPosition: " << cnt++ << '/' << num << " (" << pos.fen() << ")" << endl;
             if (token == "go")
             {
                go(pos, is, states);
@@ -220,7 +195,7 @@ namespace {
             else
                trace_eval(pos);
         }
-        else if (token == "setoption")  setoption(is);
+        else if (token == "setoption")  setoption_from_stream(is);
         else if (token == "position")   position(pos, is, states);
         else if (token == "ucinewgame") { Search::clear(); elapsed = now(); } // Search::clear() may take some while
     }
@@ -235,14 +210,22 @@ namespace {
          << "\nNodes/second    : " << 1000 * nodes / elapsed << endl;
   }
 
-  // The win rate model returns the probability (per mille) of winning given an eval
-  // and a game-ply. The model fits rather accurately the LTC fishtest statistics.
-  int win_rate_model(Value v, int ply) {
-     // Return win rate in per mille (rounded to nearest)
-     return int(0.5 + UCI::win_rate_model_double(v, ply));
-  }
-
 } // namespace
+
+void UCI::setoption(const std::string& name, const std::string& value)
+{
+    if (Options.count(name))
+        Options[name] = value;
+    else
+        sync_cout << "No such option: " << name << sync_endl;
+}
+
+// The win rate model returns the probability (per mille) of winning given an eval
+// and a game-ply. The model fits rather accurately the LTC fishtest statistics.
+int UCI::win_rate_model(Value v, int ply) {
+   // Return win rate in per mille (rounded to nearest)
+   return int(0.5 + win_rate_model_double(v, ply));
+}
 
 // The win rate model returns the probability (per mille) of winning given an eval
 // and a game-ply. The model fits rather accurately the LTC fishtest statistics.
@@ -270,11 +253,10 @@ double UCI::win_rate_model_double(double v, int ply) {
 // Call qsearch(),search() directly for testing
 // --------------------
 
-#if defined(EVAL_LEARN)
 void qsearch_cmd(Position& pos)
 {
   cout << "qsearch : ";
-  auto pv = Learner::qsearch(pos);
+  auto pv = Search::qsearch(pos);
   cout << "Value = " << pv.first << " , " << UCI::value(pv.first) << " , PV = ";
   for (auto m : pv.second)
     cout << UCI::move(m, false) << " ";
@@ -295,14 +277,12 @@ void search_cmd(Position& pos, istringstream& is)
   }
 
   cout << "search depth = " << depth << " , multi_pv = " << multi_pv << " : ";
-  auto pv = Learner::search(pos, depth, multi_pv);
+  auto pv = Search::search(pos, depth, multi_pv);
   cout << "Value = " << pv.first << " , " << UCI::value(pv.first) << " , PV = ";
   for (auto m : pv.second)
     cout << UCI::move(m, false) << " ";
   cout << endl;
 }
-
-#endif
 
 /// UCI::loop() waits for a command from stdin, parses it and calls the appropriate
 /// function. Also intercepts EOF from stdin to ensure gracefully exiting if the
@@ -346,7 +326,7 @@ void UCI::loop(int argc, char* argv[]) {
                     << "\n"       << Options
                     << "\nuciok"  << sync_endl;
 
-      else if (token == "setoption")  setoption(is);
+      else if (token == "setoption")  setoption_from_stream(is);
       else if (token == "go")         go(pos, is, states);
       else if (token == "position")   position(pos, is, states);
       else if (token == "ucinewgame") Search::clear();
@@ -359,24 +339,35 @@ void UCI::loop(int argc, char* argv[]) {
       else if (token == "d")        sync_cout << pos << sync_endl;
       else if (token == "eval")     trace_eval(pos);
       else if (token == "compiler") sync_cout << compiler_info() << sync_endl;
-#if defined (EVAL_LEARN)
-      else if (token == "gensfen") Learner::gen_sfen(pos, is);
-      else if (token == "learn") Learner::learn(pos, is);
 
-#if defined (GENSFEN2019)
-	  // Command to generate teacher phase under development
-      else if (token == "gensfen2019") Learner::gen_sfen2019(pos, is);
-#endif
+      else if (token == "gensfen") Learner::gensfen(is);
+      else if (token == "learn") Learner::learn(is);
+      else if (token == "convert") Learner::convert(is);
+      else if (token == "convert_bin") Learner::convert_bin(is);
+      else if (token == "convert_plain") Learner::convert_plain(is);
+      else if (token == "convert_bin_from_pgn_extract") Learner::convert_bin_from_pgn_extract(is);
+      else if (token == "transform") Learner::transform(is);
+
       // Command to call qsearch(),search() directly for testing
       else if (token == "qsearch") qsearch_cmd(pos);
       else if (token == "search") search_cmd(pos, is);
+      else if (token == "tasktest")
+      {
+        Threads.execute_with_workers([](auto& th) {
+          std::cout << th.thread_idx() << '\n';
+        });
+      }
+      else if (token == "blastest")
+      {
+        Blas::test(Threads);
+      }
+      else if (token == "blasbench")
+      {
+        Blas::bench(Threads);
+      }
 
-#endif
-
-#if defined(EVAL_NNUE) && defined(ENABLE_TEST_CMD)
       // test command
       else if (token == "test") test_cmd(pos, is);
-#endif
       else
           sync_cout << "Unknown command: " << cmd << sync_endl;
 

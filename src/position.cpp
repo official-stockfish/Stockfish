@@ -23,6 +23,8 @@
 #include <iomanip>
 #include <sstream>
 
+#include "nnue/evaluate_nnue.h"
+
 #include "bitboard.h"
 #include "misc.h"
 #include "movegen.h"
@@ -31,6 +33,9 @@
 #include "tt.h"
 #include "uci.h"
 #include "syzygy/tbprobe.h"
+
+#include "learn/packed_sfen.h"
+#include "learn/sfen_packer.h"
 
 using std::string;
 
@@ -77,6 +82,8 @@ std::ostream& operator<<(std::ostream& os, const Position& pos) {
       && !pos.can_castle(ANY_CASTLING))
   {
       StateInfo st;
+      ASSERT_ALIGNED(&st, Eval::NNUE::kCacheLineSize);
+
       Position p;
       p.set(pos.fen(), pos.is_chess960(), &st, pos.this_thread());
       Tablebases::ProbeState s1, s2;
@@ -704,7 +711,6 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
 
   // Used by NNUE
   st->accumulator.computed_accumulation = false;
-  st->accumulator.computed_score = false;
   auto& dp = st->dirtyPiece;
   dp.dirty_num = 1;
 
@@ -755,7 +761,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       else
           st->nonPawnMaterial[them] -= PieceValue[MG][captured];
 
-      if (Eval::useNNUE)
+      if (Eval::NNUE::useNNUE != Eval::NNUE::UseNNUEMode::False)
       {
           dp.dirty_num = 2;  // 1 piece moved, 1 piece captured
           dp.piece[1] = captured;
@@ -799,7 +805,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   // Move the piece. The tricky Chess960 castling is handled earlier
   if (type_of(m) != CASTLING)
   {
-      if (Eval::useNNUE)
+      if (Eval::NNUE::useNNUE != Eval::NNUE::UseNNUEMode::False)
       {
           dp.piece[0] = pc;
           dp.from[0] = from;
@@ -830,7 +836,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
           remove_piece(to);
           put_piece(promotion, to);
 
-          if (Eval::useNNUE)
+          if (Eval::NNUE::useNNUE != Eval::NNUE::UseNNUEMode::False)
           {
               // Promoting pawn to SQ_NONE, promoted piece from SQ_NONE
               dp.to[0] = SQ_NONE;
@@ -968,7 +974,7 @@ void Position::do_castling(Color us, Square from, Square& to, Square& rfrom, Squ
   rto = relative_square(us, kingSide ? SQ_F1 : SQ_D1);
   to = relative_square(us, kingSide ? SQ_G1 : SQ_C1);
 
-  if (Do && Eval::useNNUE)
+  if (Do && Eval::NNUE::useNNUE != Eval::NNUE::UseNNUEMode::False)
   {
       auto& dp = st->dirtyPiece;
       dp.piece[0] = make_piece(us, KING);
@@ -997,16 +1003,15 @@ void Position::do_null_move(StateInfo& newSt) {
   assert(!checkers());
   assert(&newSt != st);
 
-  if (Eval::useNNUE)
-  {
-      std::memcpy(&newSt, st, sizeof(StateInfo));
-      st->accumulator.computed_score = false;
-  }
-  else
-      std::memcpy(&newSt, st, offsetof(StateInfo, accumulator));
+  std::memcpy(&newSt, st, offsetof(StateInfo, accumulator));
 
   newSt.previous = st;
   st = &newSt;
+
+  // Used by NNUE
+  st->accumulator.computed_accumulation = false;
+  auto& dp = st->dirtyPiece;
+  dp.dirty_num = 0;
 
   if (st->epSquare != SQ_NONE)
   {
@@ -1317,6 +1322,8 @@ bool Position::pos_is_ok() const {
               assert(0 && "pos_is_ok: Bitboards");
 
   StateInfo si = *st;
+  ASSERT_ALIGNED(&si, Eval::NNUE::kCacheLineSize);
+
   set_state(&si);
   if (std::memcmp(&si, st, sizeof(StateInfo)))
       assert(0 && "pos_is_ok: State");
@@ -1345,4 +1352,18 @@ bool Position::pos_is_ok() const {
       }
 
   return true;
+}
+
+// Add a function that directly unpacks for speed. It's pretty tough.
+// Write it by combining packer::unpack() and Position::set().
+// If there is a problem with the passed phase and there is an error, non-zero is returned.
+int Position::set_from_packed_sfen(const Learner::PackedSfen& sfen , StateInfo* si, Thread* th)
+{
+  return Learner::set_from_packed_sfen(*this, sfen, si, th);
+}
+
+// Get the packed sfen. Returns to the buffer specified in the argument.
+void Position::sfen_pack(Learner::PackedSfen& sfen)
+{
+  sfen = Learner::sfen_pack(*this);
 }

@@ -24,6 +24,7 @@
 #include <mutex>
 #include <thread>
 #include <vector>
+#include <functional>
 
 #include "material.h"
 #include "movepick.h"
@@ -38,23 +39,41 @@
 /// pointer to an entry its life time is unlimited and we don't have
 /// to care about someone changing the entry under our feet.
 
+namespace Detail {
+
+  template <typename T>
+  struct TypeIdentity {
+    using Type = T;
+  };
+
+}
+
 class Thread {
 
   std::mutex mutex;
   std::condition_variable cv;
   size_t idx;
   bool exit = false, searching = true; // Set before starting std::thread
+  std::function<void(Thread&)> worker;
   NativeThread stdThread;
 
 public:
   explicit Thread(size_t);
   virtual ~Thread();
   virtual void search();
+
+  // The function object to be executed is taken by value to remove
+  // the need for separate lvalue and rvalue overloads.
+  // The worker thread needs to have ownership of the task
+  // to be executed because otherwise there's no way to manage its lifetime.
+  virtual void execute_with_worker(std::function<void(Thread&)> t);
+
   void clear();
   void idle_loop();
   void start_searching();
   void wait_for_search_finished();
-  int best_move_count(Move move) const;
+  void wait_for_worker_finished();
+  size_t thread_idx() const { return idx; }
 
   Pawns::Table pawnsTable;
   Material::Table materialTable;
@@ -74,6 +93,11 @@ public:
   CapturePieceToHistory captureHistory;
   ContinuationHistory continuationHistory[2][2];
   Score contempt;
+  int failedHighCnt;
+  bool rootInTB;
+  int Cardinality;
+  bool UseRule50;
+  Depth ProbeDepth;
 };
 
 
@@ -101,6 +125,61 @@ struct MainThread : public Thread {
 
 struct ThreadPool : public std::vector<Thread*> {
 
+  // Each thread gets its own copy of the `worker` function object.
+  // This means that each worker thread will have exclusive access
+  // to the state of the `worker` function object.
+  void execute_with_workers(const std::function<void(Thread&)>& worker);
+
+  template <typename IndexT, typename FuncT>
+  void for_each_index_with_workers(
+    IndexT begin,
+    typename Detail::TypeIdentity<IndexT>::Type end,
+    FuncT func)
+  {
+    // This value must outlive the function call.
+    // It's fairly safe if we make it static
+    // because for_each_index_with_workers
+    // is not reentrant nor thread safe.
+    static std::atomic<IndexT> i_atomic;
+    i_atomic.store(begin);
+
+    execute_with_workers(
+      [end, func](Thread& th) mutable {
+        for(;;) {
+          const auto i = i_atomic.fetch_add(1);
+          if (i >= end)
+            break;
+
+          func(th, i);
+        }
+      });
+  }
+
+  template <typename IndexT, typename FuncT>
+  void for_each_index_chunk_with_workers(
+    IndexT begin,
+    typename Detail::TypeIdentity<IndexT>::Type end,
+    FuncT func)
+  {
+    // This value must outlive the function call.
+    // It's fairly safe if we make it static
+    // because for_each_index_with_workers
+    // is not reentrant nor thread safe.
+    const IndexT size = end - begin;
+    const IndexT chunk_size = (size + this->size()) / this->size();
+
+    execute_with_workers(
+      [chunk_size, end, func](Thread& th) mutable {
+        const IndexT thread_id = th.thread_idx();
+        const IndexT offset = chunk_size * thread_id;
+        if (offset >= end)
+          return;
+
+        const IndexT count = offset + chunk_size > end ? end - offset : chunk_size;
+        func(th, offset, count);
+      });
+  }
+
   void start_thinking(Position&, StateListPtr&, const Search::LimitsType&, bool = false);
   void clear();
   void set(size_t);
@@ -111,6 +190,7 @@ struct ThreadPool : public std::vector<Thread*> {
   Thread* get_best_thread() const;
   void start_searching();
   void wait_for_search_finished() const;
+  void wait_for_workers_finished() const;
 
   std::atomic_bool stop, increaseDepth;
 

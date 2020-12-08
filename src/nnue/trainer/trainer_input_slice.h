@@ -1,251 +1,377 @@
-﻿// Specialization of NNUE evaluation function learning class template for InputSlice
-
-#ifndef _NNUE_TRAINER_INPUT_SLICE_H_
+﻿#ifndef _NNUE_TRAINER_INPUT_SLICE_H_
 #define _NNUE_TRAINER_INPUT_SLICE_H_
 
-#if defined(EVAL_LEARN) && defined(EVAL_NNUE)
-
-#include "../../learn/learn.h"
-#include "../layers/input_slice.h"
 #include "trainer.h"
 
-namespace Eval {
+#include "extra/stockfish_blas.h"
 
-namespace NNUE {
+#include "learn/learn.h"
 
-// Learning: Input layer
-class SharedInputTrainer {
- public:
-  // factory function
-  static std::shared_ptr<SharedInputTrainer> Create(
-      FeatureTransformer* feature_transformer) {
-    static std::shared_ptr<SharedInputTrainer> instance;
-    if (!instance) {
-      instance.reset(new SharedInputTrainer(feature_transformer));
-    }
-    ++instance->num_referrers_;
-    return instance;
-  }
+#include "nnue/layers/input_slice.h"
 
-  // Set options such as hyperparameters
-  void SendMessage(Message* message) {
-    if (num_calls_ == 0) {
-      current_operation_ = Operation::kSendMessage;
-      feature_transformer_trainer_->SendMessage(message);
-    }
-    assert(current_operation_ == Operation::kSendMessage);
-    if (++num_calls_ == num_referrers_) {
-      num_calls_ = 0;
-      current_operation_ = Operation::kNone;
-    }
-  }
+#include "thread.h"
 
-  // Initialize the parameters with random numbers
-  template <typename RNG>
-  void Initialize(RNG& rng) {
-    if (num_calls_ == 0) {
-      current_operation_ = Operation::kInitialize;
-      feature_transformer_trainer_->Initialize(rng);
-    }
-    assert(current_operation_ == Operation::kInitialize);
-    if (++num_calls_ == num_referrers_) {
-      num_calls_ = 0;
-      current_operation_ = Operation::kNone;
-    }
-  }
+// Specialization of NNUE evaluation function learning class template for InputSlice
+namespace Eval::NNUE {
 
-  // forward propagation
-  const LearnFloatType* Propagate(const std::vector<Example>& batch) {
-    if (gradients_.size() < kInputDimensions * batch.size()) {
-      gradients_.resize(kInputDimensions * batch.size());
-    }
-    batch_size_ = static_cast<IndexType>(batch.size());
-    if (num_calls_ == 0) {
-      current_operation_ = Operation::kPropagate;
-      output_ = feature_transformer_trainer_->Propagate(batch);
-    }
-    assert(current_operation_ == Operation::kPropagate);
-    if (++num_calls_ == num_referrers_) {
-      num_calls_ = 0;
-      current_operation_ = Operation::kNone;
-    }
-    return output_;
-  }
+    // Learning: Input layer
+    // This is tricky. It exists because when there's more than one trainer
+    // on top of a single feature transformer we want to only call propagate/backpropagate
+    // on the feature transformer once. This is straightforward in the old
+    // multithreading case, because propagate/backpropagate is called just once from the
+    // main thread. But with the current implementation of coarser multithreading
+    // we end up calling each method from each thread. Therefore we have to keep
+    // the num_calls and current_operation per thread basis, each thread must work
+    // on its designated batch slice, and the only synchronization points are
+    // step_start and step_end - for which we use state of the first thread.
+    // Each thread requires their own bookkeeping because it's possible that
+    // one thread is still in propagate of some batch slice while the other thread
+    // is doing backpropagate of some other slice. We also ensure the thread state
+    // isn't suspectible to false sharing by using a full cache line for the state.
+    class SharedInputTrainer {
+    public:
+        // factory function
+        static std::shared_ptr<SharedInputTrainer> create(
+            FeatureTransformer* ft) {
 
-  // backpropagation
-  void Backpropagate(const LearnFloatType* gradients,
-                     LearnFloatType learning_rate) {
-    if (num_referrers_ == 1) {
-      feature_transformer_trainer_->Backpropagate(gradients, learning_rate);
-      return;
-    }
-    if (num_calls_ == 0) {
-      current_operation_ = Operation::kBackPropagate;
-      for (IndexType b = 0; b < batch_size_; ++b) {
-        const IndexType batch_offset = kInputDimensions * b;
-        for (IndexType i = 0; i < kInputDimensions; ++i) {
-          gradients_[batch_offset + i] = static_cast<LearnFloatType>(0.0);
+            static std::shared_ptr<SharedInputTrainer> instance;
+
+            if (!instance) {
+                instance.reset(new SharedInputTrainer(ft));
+            }
+
+            ++instance->num_referrers_;
+
+            return instance;
         }
-      }
-    }
-    assert(current_operation_ == Operation::kBackPropagate);
-    for (IndexType b = 0; b < batch_size_; ++b) {
-      const IndexType batch_offset = kInputDimensions * b;
-      for (IndexType i = 0; i < kInputDimensions; ++i) {
-        gradients_[batch_offset + i] += gradients[batch_offset + i];
-      }
-    }
-    if (++num_calls_ == num_referrers_) {
-      feature_transformer_trainer_->Backpropagate(
-          gradients_.data(), learning_rate);
-      num_calls_ = 0;
-      current_operation_ = Operation::kNone;
-    }
-  }
 
- private:
-  // constructor
-  SharedInputTrainer(FeatureTransformer* feature_transformer) :
-      batch_size_(0),
-      num_referrers_(0),
-      num_calls_(0),
-      current_operation_(Operation::kNone),
-      feature_transformer_trainer_(Trainer<FeatureTransformer>::Create(
-          feature_transformer)),
-      output_(nullptr) {
-  }
+        // Set options such as hyperparameters
+        void send_message(Message* message) {
+            auto& thread_state = thread_states_[0];
 
-  // number of input/output dimensions
-  static constexpr IndexType kInputDimensions =
-      FeatureTransformer::kOutputDimensions;
+            if (thread_state.num_calls == 0) {
+                thread_state.current_operation = Operation::kSendMessage;
+                feature_transformer_trainer_->send_message(message);
+            }
 
-  // type of processing
-  enum class Operation {
-    kNone,
-    kSendMessage,
-    kInitialize,
-    kPropagate,
-    kBackPropagate,
-  };
+            assert(thread_state.current_operation == Operation::kSendMessage);
 
-  // number of samples in mini-batch
-  IndexType batch_size_;
+            if (++thread_state.num_calls == num_referrers_) {
+                thread_state.num_calls = 0;
+                thread_state.current_operation = Operation::kNone;
+            }
+        }
 
-  // number of layers sharing this layer as input
-  std::uint32_t num_referrers_;
+        // Initialize the parameters with random numbers
+        template <typename RNG>
+        void initialize(RNG& rng) {
+            auto& thread_state = thread_states_[0];
 
-  // Number of times the current process has been called
-  std::uint32_t num_calls_;
+            if (thread_state.num_calls == 0) {
+                thread_state.current_operation = Operation::kInitialize;
+                feature_transformer_trainer_->initialize(rng);
+            }
 
-  // current processing type
-  Operation current_operation_;
+            assert(thread_state.current_operation == Operation::kInitialize);
 
-  // Trainer of input feature converter
-  const std::shared_ptr<Trainer<FeatureTransformer>>
-      feature_transformer_trainer_;
+            if (++thread_state.num_calls == num_referrers_) {
+                thread_state.num_calls = 0;
+                thread_state.current_operation = Operation::kNone;
+            }
+        }
 
-  // pointer to output shared for forward propagation
-  const LearnFloatType* output_;
+        const LearnFloatType* step_start(ThreadPool& thread_pool, std::vector<Example>::const_iterator batch_begin, std::vector<Example>::const_iterator batch_end)
+        {
+            const auto size = batch_end - batch_begin;
 
-  // buffer for back propagation
-  std::vector<LearnFloatType> gradients_;
-};
+            if ((long)gradients_.size() < (long)kInputDimensions * size) {
+                gradients_.resize(kInputDimensions * size);
+            }
 
-// Learning: Input layer
-template <IndexType OutputDimensions, IndexType Offset>
-class Trainer<Layers::InputSlice<OutputDimensions, Offset>> {
- private:
-  // Type of layer to learn
-  using LayerType = Layers::InputSlice<OutputDimensions, Offset>;
+            if (thread_states_.size() < thread_pool.size())
+            {
+                thread_states_.resize(thread_pool.size());
+            }
 
- public:
-  // factory function
-  static std::shared_ptr<Trainer> Create(
-      LayerType* /*target_layer*/, FeatureTransformer* feature_transformer) {
-    return std::shared_ptr<Trainer>(new Trainer(feature_transformer));
-  }
+            batch_size_ = size;
 
-  // Set options such as hyperparameters
-  void SendMessage(Message* message) {
-    shared_input_trainer_->SendMessage(message);
-  }
+            auto& thread_state = thread_states_[0];
 
-  // Initialize the parameters with random numbers
-  template <typename RNG>
-  void Initialize(RNG& rng) {
-    shared_input_trainer_->Initialize(rng);
-  }
+            if (thread_state.num_calls == 0) {
+                thread_state.current_operation = Operation::kStepStart;
+                output_ = feature_transformer_trainer_->step_start(thread_pool, batch_begin, batch_end);
+            }
 
-  // forward propagation
-  const LearnFloatType* Propagate(const std::vector<Example>& batch) {
-    if (output_.size() < kOutputDimensions * batch.size()) {
-      output_.resize(kOutputDimensions * batch.size());
-      gradients_.resize(kInputDimensions * batch.size());
-    }
-    batch_size_ = static_cast<IndexType>(batch.size());
-    const auto input = shared_input_trainer_->Propagate(batch);
-    for (IndexType b = 0; b < batch_size_; ++b) {
-      const IndexType input_offset = kInputDimensions * b;
-      const IndexType output_offset = kOutputDimensions * b;
+            assert(thread_state.current_operation == Operation::kStepStart);
+
+            if (++thread_state.num_calls == num_referrers_) {
+                thread_state.num_calls = 0;
+                thread_state.current_operation = Operation::kNone;
+            }
+
+            return output_;
+        }
+
+        // forward propagation
+        void propagate(Thread& th, uint64_t offset, uint64_t count) {
+            const auto thread_id = th.thread_idx();
+
+            auto& thread_state = thread_states_[thread_id];
+
+            if (thread_state.num_calls == 0) {
+                thread_state.current_operation = Operation::kPropagate;
+                feature_transformer_trainer_->propagate(th, offset, count);
+            }
+
+            assert(thread_state.current_operation == Operation::kPropagate);
+
+            if (++thread_state.num_calls == num_referrers_) {
+                thread_state.num_calls = 0;
+                thread_state.current_operation = Operation::kNone;
+            }
+        }
+
+        // backpropagation
+        void backpropagate(Thread& th,
+                           const LearnFloatType* gradients,
+                           uint64_t offset,
+                           uint64_t count) {
+
+            const auto thread_id = th.thread_idx();
+
+            auto& thread_state = thread_states_[thread_id];
+
+            if (num_referrers_ == 1) {
+                feature_transformer_trainer_->backpropagate(th, gradients, offset, count);
+                return;
+            }
+
+            if (thread_state.num_calls == 0) {
+                thread_state.current_operation = Operation::kBackPropagate;
+                for (IndexType b = offset; b < offset + count; ++b) {
+                    const IndexType batch_offset = kInputDimensions * b;
+                    for (IndexType i = 0; i < kInputDimensions; ++i) {
+                        gradients_[batch_offset + i] = static_cast<LearnFloatType>(0.0);
+                    }
+                }
+            }
+
+            assert(thread_state.current_operation == Operation::kBackPropagate);
+
+            for (IndexType b = offset; b < offset + count; ++b) {
+                const IndexType batch_offset = kInputDimensions * b;
+                for (IndexType i = 0; i < kInputDimensions; ++i) {
+                    gradients_[batch_offset + i] += gradients[batch_offset + i];
+                }
+            }
+
+            if (++thread_state.num_calls == num_referrers_) {
+                feature_transformer_trainer_->backpropagate(
+                    th, gradients_.data(), offset, count);
+                thread_state.num_calls = 0;
+                thread_state.current_operation = Operation::kNone;
+            }
+        }
+
+        void step_end(ThreadPool& thread_pool, LearnFloatType learning_rate) {
+            auto& thread_state = thread_states_[0];
+
+            if (thread_state.num_calls == 0) {
+                thread_state.current_operation = Operation::kStepEnd;
+                feature_transformer_trainer_->step_end(thread_pool, learning_rate);
+            }
+
+            assert(thread_state.current_operation == Operation::kStepEnd);
+
+            if (++thread_state.num_calls == num_referrers_) {
+                thread_state.num_calls = 0;
+                thread_state.current_operation = Operation::kNone;
+            }
+        }
+
+    private:
+        // constructor
+        SharedInputTrainer(FeatureTransformer* ft) :
+            batch_size_(0),
+            num_referrers_(0),
+            thread_states_(1),
+            feature_transformer_trainer_(Trainer<FeatureTransformer>::create(
+                ft)),
+            output_(nullptr) {
+        }
+
+        // number of input/output dimensions
+        static constexpr IndexType kInputDimensions =
+            FeatureTransformer::kOutputDimensions;
+
+        // type of processing
+        enum class Operation {
+            kNone,
+            kSendMessage,
+            kInitialize,
+            kStepStart,
+            kPropagate,
+            kBackPropagate,
+            kStepEnd,
+        };
+
+        // number of samples in mini-batch
+        IndexType batch_size_;
+
+        // number of layers sharing this layer as input
+        std::uint32_t num_referrers_;
+
+        struct alignas(kCacheLineSize) ThreadState
+        {
+            std::uint32_t num_calls{0};
+
+            // current processing type
+            Operation current_operation = Operation::kNone;
+        };
+
+        // Number of times the current process has been called
+        std::vector<ThreadState, CacheLineAlignedAllocator<ThreadState>> thread_states_;
+
+        // Trainer of input feature converter
+        const std::shared_ptr<Trainer<FeatureTransformer>>
+            feature_transformer_trainer_;
+
+        // pointer to output shared for forward propagation
+        const LearnFloatType* output_;
+
+        // buffer for back propagation
+        std::vector<LearnFloatType, CacheLineAlignedAllocator<LearnFloatType>> gradients_;
+    };
+
+    // Learning: Input layer
+    template <IndexType OutputDimensions, IndexType Offset>
+    class Trainer<Layers::InputSlice<OutputDimensions, Offset>> {
+    private:
+        // Type of layer to learn
+        using LayerType = Layers::InputSlice<OutputDimensions, Offset>;
+
+    public:
+        // factory function
+        static std::shared_ptr<Trainer> create(
+            LayerType* /*target_layer*/, FeatureTransformer* ft) {
+
+            return std::shared_ptr<Trainer>(new Trainer(ft));
+        }
+
+        // Set options such as hyperparameters
+        void send_message(Message* message) {
+            shared_input_trainer_->send_message(message);
+        }
+
+        // Initialize the parameters with random numbers
+        template <typename RNG>
+        void initialize(RNG& rng) {
+            shared_input_trainer_->initialize(rng);
+        }
+
+        const LearnFloatType* step_start(ThreadPool& thread_pool, std::vector<Example>::const_iterator batch_begin, std::vector<Example>::const_iterator batch_end)
+        {
+            const auto size = batch_end - batch_begin;
+
+            if ((long)output_.size() < (long)kOutputDimensions * size) {
+              output_.resize(kOutputDimensions * size);
+              gradients_.resize(kInputDimensions * size);
+            }
+
+            batch_size_ = size;
+
+            input_ = shared_input_trainer_->step_start(thread_pool, batch_begin, batch_end);
+
+            return output_.data();
+        }
+
+        // forward propagation
+        void propagate(Thread& th, uint64_t offset, uint64_t count) {
+
+            shared_input_trainer_->propagate(th, offset, count);
+
+            for (IndexType b = offset; b < offset + count; ++b) {
+                const IndexType input_offset = kInputDimensions * b;
+                const IndexType output_offset = kOutputDimensions * b;
+
 #if defined(USE_BLAS)
-      cblas_scopy(kOutputDimensions, &input[input_offset + Offset], 1,
-                  &output_[output_offset], 1);
+
+                cblas_scopy(
+                    kOutputDimensions, &input_[input_offset + Offset], 1,
+                    &output_[output_offset], 1
+                );
 #else
-      for (IndexType i = 0; i < kOutputDimensions; ++i) {
-        output_[output_offset + i] = input[input_offset + Offset + i];
-      }
+
+                Blas::scopy(
+                    kOutputDimensions, &input_[input_offset + Offset], 1,
+                    &output_[output_offset], 1
+                );
+
 #endif
-    }
-    return output_.data();
-  }
-
-  // backpropagation
-  void Backpropagate(const LearnFloatType* gradients,
-                     LearnFloatType learning_rate) {
-    for (IndexType b = 0; b < batch_size_; ++b) {
-      const IndexType input_offset = kInputDimensions * b;
-      const IndexType output_offset = kOutputDimensions * b;
-      for (IndexType i = 0; i < kInputDimensions; ++i) {
-        if (i < Offset || i >= Offset + kOutputDimensions) {
-          gradients_[input_offset + i] = static_cast<LearnFloatType>(0.0);
-        } else {
-          gradients_[input_offset + i] = gradients[output_offset + i - Offset];
+            }
         }
-      }
-    }
-    shared_input_trainer_->Backpropagate(gradients_.data(), learning_rate);
-  }
 
- private:
-  // constructor
-  Trainer(FeatureTransformer* feature_transformer):
-      batch_size_(0),
-      shared_input_trainer_(SharedInputTrainer::Create(feature_transformer)) {
-  }
+        // backpropagation
+        void backpropagate(Thread& th,
+                           const LearnFloatType* gradients,
+                           uint64_t offset,
+                           uint64_t count) {
 
-  // number of input/output dimensions
-  static constexpr IndexType kInputDimensions =
-      FeatureTransformer::kOutputDimensions;
-  static constexpr IndexType kOutputDimensions = OutputDimensions;
-  static_assert(Offset + kOutputDimensions <= kInputDimensions, "");
+            for (IndexType b = offset; b < offset + count; ++b)
+            {
+                const IndexType input_offset = kInputDimensions * b;
+                const IndexType output_offset = kOutputDimensions * b;
 
-  // number of samples in mini-batch
-  IndexType batch_size_;
+                IndexType i = 0;
+                for (; i < Offset; ++i) {
+                    gradients_[input_offset + i] = static_cast<LearnFloatType>(0.0);
+                }
 
-  // Trainer of shared input layer
-  const std::shared_ptr<SharedInputTrainer> shared_input_trainer_;
+                for (; i < Offset + kOutputDimensions; ++i) {
+                    gradients_[input_offset + i] = gradients[output_offset + i - Offset];
+                }
 
-  // Forward propagation buffer
-  std::vector<LearnFloatType> output_;
+                for (; i < kInputDimensions; ++i)
+                {
+                    gradients_[input_offset + i] = static_cast<LearnFloatType>(0.0);
+                }
+            }
 
-  // buffer for back propagation
-  std::vector<LearnFloatType> gradients_;
-};
+            shared_input_trainer_->backpropagate(th, gradients_.data(), offset, count);
+        }
 
-}  // namespace NNUE
+        void step_end(ThreadPool& thread_pool, LearnFloatType learning_rate) {
+            shared_input_trainer_->step_end(thread_pool, learning_rate);
+        }
 
-}  // namespace Eval
+    private:
+        // constructor
+        Trainer(FeatureTransformer* ft) :
+            batch_size_(0),
+            shared_input_trainer_(SharedInputTrainer::create(ft)) {
+        }
 
-#endif  // defined(EVAL_LEARN) && defined(EVAL_NNUE)
+        // number of input/output dimensions
+        static constexpr IndexType kInputDimensions =
+            FeatureTransformer::kOutputDimensions;
+        static constexpr IndexType kOutputDimensions = OutputDimensions;
+        static_assert(Offset + kOutputDimensions <= kInputDimensions, "");
+
+        // number of samples in mini-batch
+        IndexType batch_size_;
+
+        const LearnFloatType* input_;
+
+        // Trainer of shared input layer
+        const std::shared_ptr<SharedInputTrainer> shared_input_trainer_;
+
+        // Forward propagation buffer
+        std::vector<LearnFloatType, CacheLineAlignedAllocator<LearnFloatType>> output_;
+
+        // buffer for back propagation
+        std::vector<LearnFloatType, CacheLineAlignedAllocator<LearnFloatType>> gradients_;
+    };
+
+}  // namespace Eval::NNUE
 
 #endif

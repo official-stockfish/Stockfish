@@ -1,21 +1,12 @@
-﻿// USI extended command interface for NNUE evaluation function
-
-#ifndef _NNUE_TEST_COMMAND_H_
+﻿#ifndef _NNUE_TEST_COMMAND_H_
 #define _NNUE_TEST_COMMAND_H_
 
-#if defined(ENABLE_TEST_CMD) && defined(EVAL_NNUE)
+// USI extended command interface for NNUE evaluation function
+namespace Eval::NNUE {
 
-namespace Eval {
+    // USI extended command for NNUE evaluation function
+    void test_command(Position& pos, std::istream& stream);
 
-namespace NNUE {
-
-// USI extended command for NNUE evaluation function
-void TestCommand(Position& pos, std::istream& stream);
-
-}  // namespace NNUE
-
-}  // namespace Eval
-
-#endif  // defined(ENABLE_TEST_CMD) && defined(EVAL_NNUE)
+}  // namespace Eval::NNUE
 
 #endif

@@ -19,6 +19,7 @@
 #ifndef MISC_H_INCLUDED
 #define MISC_H_INCLUDED
 
+#include <algorithm>
 #include <cassert>
 #include <chrono>
 #include <functional>
@@ -26,6 +27,12 @@
 #include <ostream>
 #include <string>
 #include <vector>
+
+#include <cstdint>
+#include <cmath>
+#include <cctype>
+#include <sstream>
+#include <deque>
 
 #include "types.h"
 
@@ -35,8 +42,8 @@ void prefetch(void* addr);
 void start_logger(const std::string& fname);
 void* std_aligned_alloc(size_t alignment, size_t size);
 void std_aligned_free(void* ptr);
-void* aligned_ttmem_alloc(size_t size, void*& mem);
-void aligned_ttmem_free(void* mem); // nop if mem == nullptr
+void* aligned_large_pages_alloc(size_t size); // memory aligned by page size, min alignment: 4096 bytes
+void aligned_large_pages_free(void* mem); // nop if mem == nullptr
 
 void dbg_hit_on(bool b);
 void dbg_hit_on(bool c, bool b);
@@ -44,9 +51,7 @@ void dbg_mean_of(int v);
 void dbg_print();
 
 typedef std::chrono::milliseconds::rep TimePoint; // A value in milliseconds
-
 static_assert(sizeof(TimePoint) == sizeof(int64_t), "TimePoint should be 64 bits");
-
 inline TimePoint now() {
   return std::chrono::duration_cast<std::chrono::milliseconds>
         (std::chrono::steady_clock::now().time_since_epoch()).count();
@@ -67,6 +72,232 @@ std::ostream& operator<<(std::ostream&, SyncCout);
 #define sync_cout std::cout << IO_LOCK
 #define sync_endl std::endl << IO_UNLOCK
 
+// `ptr` must point to an array of size at least
+// `sizeof(T) * N + alignment` bytes, where `N` is the
+// number of elements in the array.
+template <uintptr_t Alignment, typename T>
+T* align_ptr_up(T* ptr)
+{
+  static_assert(alignof(T) < Alignment);
+
+  const uintptr_t ptrint = reinterpret_cast<uintptr_t>(reinterpret_cast<char*>(ptr));
+  return reinterpret_cast<T*>(reinterpret_cast<char*>((ptrint + (Alignment - 1)) / Alignment * Alignment));
+}
+
+// This logger allows printing many parts in a region atomically
+// but doesn't block the threads trying to append to other regions.
+// Instead if some region tries to pring while other region holds
+// the lock the messages are queued to be printed as soon as the
+// current region releases the lock.
+struct SynchronizedRegionLogger
+{
+  using RegionId = std::uint64_t;
+
+  struct Region
+  {
+    friend struct SynchronizedRegionLogger;
+
+    Region() :
+      logger(nullptr), region_id(0), is_held(false)
+    {
+    }
+
+    Region(const Region&) = delete;
+    Region& operator=(const Region&) = delete;
+
+    Region(Region&& other) :
+      logger(other.logger), region_id(other.region_id), is_held(other.is_held)
+    {
+      other.logger = nullptr;
+      other.is_held = false;
+    }
+
+    Region& operator=(Region&& other) {
+      if (is_held && logger != nullptr)
+      {
+        logger->release_region(region_id);
+      }
+
+      logger = other.logger;
+      region_id = other.region_id;
+      is_held = other.is_held;
+
+      other.is_held = false;
+
+      return *this;
+    }
+
+    ~Region() { unlock(); }
+
+    void unlock() {
+      if (is_held) {
+        is_held = false;
+
+        if (logger != nullptr)
+          logger->release_region(region_id);
+      }
+    }
+
+    Region& operator << (std::ostream&(*pManip)(std::ostream&)) {
+      if (logger != nullptr)
+        logger->write(region_id, pManip);
+
+      return *this;
+    }
+
+    template <typename T>
+    Region& operator << (const T& value) {
+      if (logger != nullptr)
+        logger->write(region_id, value);
+
+      return *this;
+    }
+
+  private:
+    SynchronizedRegionLogger* logger;
+    RegionId region_id;
+    bool is_held;
+
+    Region(SynchronizedRegionLogger& log, RegionId id) :
+      logger(&log), region_id(id), is_held(true)
+    {
+    }
+  };
+
+private:
+  struct RegionBookkeeping
+  {
+    RegionBookkeeping(RegionId rid) : id(rid), is_held(true) {}
+
+    std::vector<std::string> pending_parts;
+    RegionId id;
+    bool is_held;
+  };
+
+  RegionId init_next_region()
+  {
+    static RegionId next_id = 0;
+
+    std::lock_guard lock(mutex);
+
+    const auto id = next_id++;
+    regions.emplace_back(id);
+
+    return id;
+  }
+
+  void write(RegionId id, std::ostream&(*pManip)(std::ostream&)) {
+    std::lock_guard lock(mutex);
+
+    if (regions.empty())
+      return;
+
+    if (id == regions.front().id) {
+      // We can just directly print to the output because
+      // we are at the front of the region queue.
+      out << *pManip;
+    } else {
+      // We have to schedule the print until previous regions are
+      // processed
+      auto* region = find_region_nolock(id);
+      if (region == nullptr)
+        return;
+
+      std::stringstream ss;
+      ss << *pManip;
+      region->pending_parts.emplace_back(std::move(ss).str());
+    }
+  }
+
+  template <typename T>
+  void write(RegionId id, const T& value) {
+    std::lock_guard lock(mutex);
+
+    if (regions.empty())
+      return;
+
+    if (id == regions.front().id) {
+      // We can just directly print to the output because
+      // we are at the front of the region queue.
+      out << value;
+    } else {
+      // We have to schedule the print until previous regions are
+      // processed
+      auto* region = find_region_nolock(id);
+      if (region == nullptr)
+        return;
+
+      std::stringstream ss;
+      ss << value;
+      region->pending_parts.emplace_back(std::move(ss).str());
+    }
+  }
+
+  std::ostream& out;
+
+  std::deque<RegionBookkeeping> regions;
+
+  std::mutex mutex;
+
+  RegionBookkeeping* find_region_nolock(RegionId id) {
+    // Linear search because the amount of concurrent regions should be small.
+    auto it = std::find_if(
+      regions.begin(),
+      regions.end(),
+      [id](const RegionBookkeeping& r) { return r.id == id; });
+
+    if (it == regions.end())
+      return nullptr;
+    else
+      return &*it;
+  }
+
+  void release_region(RegionId id) {
+    std::lock_guard lock(mutex);
+
+    auto* region = find_region_nolock(id);
+    if (region == nullptr)
+      return;
+
+    region->is_held = false;
+
+    process_backlog_nolock();
+  }
+
+  void process_backlog_nolock()
+  {
+    while(!regions.empty()) {
+      auto& region = regions.front();
+
+      for(auto& part : region.pending_parts) {
+        out << part;
+      }
+
+      // If the region is still held then we don't
+      // want to start printing stuff from the next region.
+      if (region.is_held)
+        break;
+
+      regions.pop_front();
+    }
+  }
+
+public:
+
+  SynchronizedRegionLogger(std::ostream& s) :
+    out(s)
+  {
+  }
+
+  [[nodiscard]] Region new_region() {
+    const auto id = init_next_region();
+    return Region(*this, id);
+  }
+
+};
+
+extern SynchronizedRegionLogger sync_region_cout;
+
 
 /// xorshift64star Pseudo-Random Number Generator
 /// This class is based on original code written and dedicated
@@ -83,6 +314,19 @@ std::ostream& operator<<(std::ostream&, SyncCout);
 /// For further analysis see
 ///   <http://vigna.di.unimi.it/ftp/papers/xorshift.pdf>
 
+static uint64_t string_hash(const std::string& str)
+{
+  uint64_t h = 525201411107845655ull;
+
+  for (auto c : str) {
+    h ^= static_cast<uint64_t>(c);
+    h *= 0x5bd1e9955bd1e995ull;
+    h ^= h >> 47;
+  }
+
+  return h;
+}
+
 class PRNG {
 
   uint64_t s;
@@ -94,7 +338,9 @@ class PRNG {
   }
 
 public:
+  PRNG() { set_seed_from_time(); }
   PRNG(uint64_t seed) : s(seed) { assert(seed); }
+  PRNG(const std::string& seed) { set_seed(seed); }
 
   template<typename T> T rand() { return T(rand64()); }
 
@@ -107,6 +353,40 @@ public:
 
   // Return the random seed used internally.
   uint64_t get_seed() const { return s; }
+
+  void set_seed(uint64_t seed) { s = seed; }
+
+  uint64_t next_random_seed()
+  {
+    uint64_t seed = 0;
+    for(int i = 0; i < 64; ++i)
+    {
+      const auto off = rand64() % 64;
+      seed |= (rand64() & (uint64_t(1) << off)) >> off;
+      seed <<= 1;
+    }
+    return seed;
+  }
+
+  void set_seed_from_time()
+  {
+      set_seed(std::chrono::system_clock::now().time_since_epoch().count());
+  }
+
+  void set_seed(const std::string& str)
+  {
+    if (str.empty())
+    {
+      set_seed_from_time();
+    }
+    else if (std::all_of(str.begin(), str.end(), [](char c) { return std::isdigit(c);} )) {
+      set_seed(std::stoull(str));
+    }
+    else
+    {
+      set_seed(string_hash(str));
+    }
+  }
 };
 
 // Display a random seed. (For debugging)
@@ -129,6 +409,74 @@ inline uint64_t mul_hi64(uint64_t a, uint64_t b) {
     return aH * bH + (c2 >> 32) + (c3 >> 32);
 #endif
 }
+
+// This bitset can be accessed concurrently, provided
+// the concurrent accesses are performed on distinct
+// instances of underlying type. That means the cuncurrent
+// accesses need to be spaced by at least
+// bits_per_bucket bits.
+// But at least best_concurrent_access_stride bits
+// is recommended to prevent false sharing.
+template <uint64_t N>
+struct LargeBitset
+{
+private:
+    constexpr static uint64_t cache_line_size = 64;
+
+public:
+    using UnderlyingType = uint64_t;
+
+    constexpr static uint64_t num_bits = N;
+    constexpr static uint64_t bits_per_bucket = 8 * sizeof(uint64_t);
+    constexpr static uint64_t num_buckets = (num_bits + bits_per_bucket - 1) / bits_per_bucket;
+    constexpr static uint64_t best_concurrent_access_stride = 8 * cache_line_size;
+
+    LargeBitset()
+    {
+        std::fill(std::begin(bits), std::end(bits), 0);
+    }
+
+    void set(uint64_t idx)
+    {
+        const uint64_t bucket = idx / bits_per_bucket;
+        const uint64_t bit = uint64_t(1) << (idx % bits_per_bucket);
+        bits[bucket] |= bit;
+    }
+
+    bool test(uint64_t idx) const
+    {
+        const uint64_t bucket = idx / bits_per_bucket;
+        const uint64_t bit = uint64_t(1) << (idx % bits_per_bucket);
+        return bits[bucket] & bit;
+    }
+
+    uint64_t count() const
+    {
+        uint64_t c = 0;
+        uint64_t i = 0;
+
+        for (; i < num_buckets - 3; i += 4)
+        {
+            uint64_t c0 = popcount(bits[i+0]);
+            uint64_t c1 = popcount(bits[i+1]);
+            uint64_t c2 = popcount(bits[i+2]);
+            uint64_t c3 = popcount(bits[i+3]);
+            c0 += c1;
+            c2 += c3;
+            c += c0 + c2;
+        }
+
+        for (; i < num_buckets; ++i)
+        {
+            c += popcount(bits[i]);
+        }
+
+        return c;
+    }
+
+private:
+    alignas(cache_line_size) UnderlyingType bits[num_buckets];
+};
 
 /// Under Windows it is not possible for a process to run on more than one
 /// logical processor group. This usually means to be limited to use max 64
@@ -155,6 +503,7 @@ std::string now_string();
 // Also, if the buffer cannot be allocated in the callback function or if the file size is different from the expected file size,
 // Return nullptr. At this time, read_file_to_memory() interrupts reading and returns with an error.
 
+std::uint64_t get_file_size(std::fstream& fs);
 int read_file_to_memory(std::string filename, std::function<void* (uint64_t)> callback_func);
 int write_memory_to_file(std::string filename, void* ptr, uint64_t size);
 
@@ -165,7 +514,9 @@ int write_memory_to_file(std::string filename, void* ptr, uint64_t size);
 // async version of PRNG
 struct AsyncPRNG
 {
+  AsyncPRNG() : prng() { }
   AsyncPRNG(uint64_t seed) : prng(seed) { assert(seed); }
+  AsyncPRNG(const std::string& seed) : prng(seed) { }
   // [ASYNC] Extract one random number.
   template<typename T> T rand() {
     std::unique_lock<std::mutex> lk(mutex);
@@ -199,20 +550,51 @@ inline std::ostream& operator<<(std::ostream& os, AsyncPRNG& prng)
 
 // Mathematical function used for progress calculation and learning
 namespace Math {
-	// Sigmoid function
-	// = 1.0 / (1.0 + std::exp(-x))
-	double sigmoid(double x);
+    inline double sigmoid(double x)
+    {
+        return 1.0 / (1.0 + std::exp(-x));
+    }
 
-	// Differentiation of sigmoid function
-	// = sigmoid(x) * (1.0-sigmoid(x))
-	double dsigmoid(double x);
+    inline double dsigmoid(double x)
+    {
+        // Sigmoid function
+        // f(x) = 1/(1+exp(-x))
+        // the first derivative is
+        // f'(x) = df/dx = f(x)・{ 1-f(x)}
+        // becomes
+
+        return sigmoid(x) * (1.0 - sigmoid(x));
+    }
 
 	// Clip v so that it fits between [lo,hi].
 	// * In Stockfish, this function is written in bitboard.h.
 	template<class T> constexpr const T& clamp(const T& v, const T& lo, const T& hi) {
 		return v < lo ? lo : v > hi ? hi : v;
 	}
+}
 
+namespace Algo {
+    // Fisher-Yates
+    template <typename Rng, typename T>
+    void shuffle(std::vector<T>& buf, Rng&& prng)
+    {
+        const auto size = buf.size();
+        for (uint64_t i = 0; i < size; ++i)
+            std::swap(buf[i], buf[prng.rand(size - i) + i]);
+    }
+
+    // split the string
+    inline std::vector<std::string> split(const std::string& input, char delimiter) {
+        std::istringstream stream(input);
+        std::string field;
+        std::vector<std::string> fields;
+
+        while (std::getline(stream, field, delimiter)) {
+            fields.push_back(field);
+        }
+
+        return fields;
+    }
 }
 
 // --------------------
@@ -225,7 +607,7 @@ struct Path
 {
 	// Combine the path name and file name and return it.
 	// If the folder name is not an empty string, append it if there is no'/' or'\\' at the end.
-	static std::string Combine(const std::string& folder, const std::string& filename)
+	static std::string combine(const std::string& folder, const std::string& filename)
 	{
 		if (folder.length() >= 1 && *folder.rbegin() != '/' && *folder.rbegin() != '\\')
 			return folder + "/" + filename;
@@ -234,7 +616,7 @@ struct Path
 	}
 
 	// Get the file name part (excluding the folder name) from the full path expression.
-	static std::string GetFileName(const std::string& path)
+	static std::string get_file_name(const std::string& path)
 	{
 		// I don't know which "\" or "/" is used.
 		auto path_index1 = path.find_last_of("\\") + 1;
@@ -259,7 +641,24 @@ public:
   template <typename U> AlignedAllocator(const AlignedAllocator<U>&) {}
 
   T* allocate(std::size_t n) { return (T*)std_aligned_alloc(alignof(T), n * sizeof(T)); }
-  void deallocate(T* p, std::size_t n) { std_aligned_free(p); }
+  void deallocate(T* p, std::size_t ) { std_aligned_free(p); }
+};
+
+template <typename T>
+class CacheLineAlignedAllocator {
+public:
+    using value_type = T;
+
+    constexpr static uint64_t cache_line_size = 64;
+
+    CacheLineAlignedAllocator() {}
+    CacheLineAlignedAllocator(const CacheLineAlignedAllocator&) {}
+    CacheLineAlignedAllocator(CacheLineAlignedAllocator&&) {}
+
+    template <typename U> CacheLineAlignedAllocator(const CacheLineAlignedAllocator<U>&) {}
+
+    T* allocate(std::size_t n) { return (T*)std_aligned_alloc(cache_line_size, n * sizeof(T)); }
+    void deallocate(T* p, std::size_t) { std_aligned_free(p); }
 };
 
 // --------------------
@@ -273,11 +672,13 @@ namespace Dependency
   // So when calling getline() on fstream,
   // just write getline() instead of std::getline() and use this function.
   extern bool getline(std::ifstream& fs, std::string& s);
+}
 
-  // Create a folder.
-  // Specify relative to the current folder. Japanese is not used for dir_name.
-  // Returns 0 on success, non-zero on failure.
-  extern int mkdir(std::string dir_name);
+namespace CommandLine {
+  void init(int argc, char* argv[]);
+
+  extern std::string binaryDirectory;  // path of the executable directory
+  extern std::string workingDirectory; // path of the working directory
 }
 
 #endif // #ifndef MISC_H_INCLUDED

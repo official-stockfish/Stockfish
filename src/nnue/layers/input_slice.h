@@ -41,6 +41,8 @@ class InputSlice {
   // Size of forward propagation buffer used from the input layer to this layer
   static constexpr std::size_t kBufferSize = 0;
 
+  static constexpr int kLayerIndex = 1;
+
   // Hash value embedded in the evaluation file
   static constexpr std::uint32_t GetHashValue() {
     std::uint32_t hash_value = 0xEC42E90Du;
@@ -48,12 +50,24 @@ class InputSlice {
     return hash_value;
   }
 
-  // A string that represents the structure from the input layer to this layer
-  static std::string GetStructureString() {
-    return "InputSlice[" + std::to_string(kOutputDimensions) + "(" +
-      std::to_string(Offset) + ":" +
-      std::to_string(Offset + kOutputDimensions) + ")]";
-  }
+    static std::string get_name() {
+        return "InputSlice[" + std::to_string(kOutputDimensions) + "(" +
+            std::to_string(Offset) + ":" +
+            std::to_string(Offset + kOutputDimensions) + ")]";
+    }
+
+    // A string that represents the structure from the input layer to this layer
+    static std::string get_structure_string() {
+        return get_name();
+    }
+
+    static std::string get_layers_info() {
+        std::string info = "  - ";
+        info += std::to_string(kLayerIndex);
+        info += " - ";
+        info += get_name();
+        return info;
+    }
 
   // Read network parameters
   bool ReadParameters(std::istream& /*stream*/) {
@@ -62,7 +76,7 @@ class InputSlice {
 
   // write parameters
   bool WriteParameters(std::ostream& /*stream*/) const {
-    return true;
+      return true;
   }
 
   // Forward propagation

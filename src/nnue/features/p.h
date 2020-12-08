@@ -1,52 +1,49 @@
-﻿//Definition of input feature P of NNUE evaluation function
-
-#ifndef _NNUE_FEATURES_P_H_
+﻿#ifndef _NNUE_FEATURES_P_H_
 #define _NNUE_FEATURES_P_H_
 
-#if defined(EVAL_NNUE)
-
-#include "../../evaluate.h"
 #include "features_common.h"
 
-namespace Eval {
+#include "evaluate.h"
 
-namespace NNUE {
+//Definition of input feature P of NNUE evaluation function
+namespace Eval::NNUE::Features {
 
-namespace Features {
+    // Feature P: PieceSquare of pieces other than balls
+    class P {
+    public:
+        // feature quantity name
+        static constexpr const char* kName = "P";
 
-// Feature P: PieceSquare of pieces other than balls
-class P {
- public:
-  // feature quantity name
-  static constexpr const char* kName = "P";
-  // Hash value embedded in the evaluation function file
-  static constexpr std::uint32_t kHashValue = 0x764CFB4Bu;
-  // number of feature dimensions
-  static constexpr IndexType kDimensions = PS_END;
-  // The maximum value of the number of indexes whose value is 1 at the same time among the feature values
-  static constexpr IndexType kMaxActiveDimensions = 30; // Kings don't count
-  // Timing of full calculation instead of difference calculation
-  static constexpr TriggerEvent kRefreshTrigger = TriggerEvent::kNone;
+        // Hash value embedded in the evaluation function file
+        static constexpr std::uint32_t kHashValue = 0x764CFB4Bu;
 
-  // Get a list of indices with a value of 1 among the features
-  static void AppendActiveIndices(const Position& pos, Color perspective,
-                                  IndexList* active);
+        // number of feature dimensions
+        static constexpr IndexType kDimensions = PS_END;
 
-  // Get a list of indices whose values ​​have changed from the previous one in the feature quantity
-  static void AppendChangedIndices(const Position& pos, Color perspective,
-                                   IndexList* removed, IndexList* added);
+        // The maximum value of the number of indexes whose value is 1 at the same time among the feature values
+        static constexpr IndexType kMaxActiveDimensions = 30; // Kings don't count
 
- private:
-  // Index of a feature for a given piece on some square
-  static IndexType MakeIndex(Color perspective, Square s, Piece pc);
-};
+        // Timing of full calculation instead of difference calculation
+        static constexpr TriggerEvent kRefreshTrigger = TriggerEvent::kNone;
 
-}  // namespace Features
+        // Get a list of indices with a value of 1 among the features
+        static void append_active_indices(
+            const Position& pos,
+            Color perspective,
+            IndexList* active);
 
-}  // namespace NNUE
+        // Get a list of indices whose values ​​have changed from the previous one in the feature quantity
+        static void append_changed_indices(
+            const Position& pos,
+            Color perspective,
+            IndexList* removed,
+            IndexList* added);
 
-}  // namespace Eval
+    private:
+        // Index of a feature for a given piece on some square
+        static IndexType make_index(Color perspective, Square s, Piece pc);
+    };
 
-#endif  // defined(EVAL_NNUE)
+}  // namespace Eval::NNUE::Features
 
 #endif

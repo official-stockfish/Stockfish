@@ -28,42 +28,48 @@ else
 EXE = stockfish
 endif
 
-### Installation dir definitions
-PREFIX = /usr/local
-BINDIR = $(PREFIX)/bin
-
-### Built-in benchmark for pgo-builds
-PGOBENCH = ./$(EXE) bench
-PGOGENSFEN = ./$(EXE) gensfen depth 3 loop 100000
-
-### Source and object files
-SRCS = benchmark.cpp bitbase.cpp bitboard.cpp endgame.cpp evaluate.cpp main.cpp \
-	material.cpp misc.cpp movegen.cpp movepick.cpp pawns.cpp position.cpp psqt.cpp \
-	search.cpp thread.cpp timeman.cpp tt.cpp uci.cpp ucioption.cpp tune.cpp syzygy/tbprobe.cpp \
-	nnue/evaluate_nnue.cpp \
-	nnue/evaluate_nnue_learner.cpp \
-	nnue/features/half_kp.cpp \
-	nnue/features/half_relative_kp.cpp \
-	nnue/features/k.cpp \
-	nnue/features/p.cpp \
-	nnue/features/castling_right.cpp \
-	nnue/features/enpassant.cpp \
-	nnue/nnue_test_command.cpp \
-	extra/sfen_packer.cpp \
-	learn/gensfen2019.cpp \
-	learn/learner.cpp \
-	learn/learning_tools.cpp \
-	learn/multi_think.cpp
-
-OBJS = $(notdir $(SRCS:.cpp=.o))
-
-VPATH = syzygy:nnue:nnue/features:eval:extra:learn
-
 ### Establish the operating system name
 KERNEL = $(shell uname -s)
 ifeq ($(KERNEL),Linux)
 	OS = $(shell uname -o)
 endif
+
+### Installation dir definitions
+PREFIX = /usr/local
+BINDIR = $(PREFIX)/bin
+
+### Built-in benchmark for pgo-builds
+PGO_TRAINING_DATA_FILE = pgo_training_data.bin
+PGOBENCH = ./$(EXE) bench
+PGOGENSFEN = ./$(EXE) gensfen depth 3 loop 1000 sfen_format bin output_file_name $(PGO_TRAINING_DATA_FILE)
+
+### Source and object files
+SRCS = benchmark.cpp bitbase.cpp bitboard.cpp endgame.cpp evaluate.cpp main.cpp \
+	material.cpp misc.cpp movegen.cpp movepick.cpp pawns.cpp position.cpp psqt.cpp \
+	search.cpp thread.cpp timeman.cpp tt.cpp uci.cpp ucioption.cpp tune.cpp syzygy/tbprobe.cpp \
+	extra/stockfish_blas.cpp \
+	nnue/evaluate_nnue.cpp \
+	nnue/evaluate_nnue_learner.cpp \
+	nnue/features/half_kp.cpp \
+	nnue/features/half_ka.cpp \
+	nnue/features/half_relative_kp.cpp \
+	nnue/features/half_relative_ka.cpp \
+	nnue/features/k.cpp \
+	nnue/features/p.cpp \
+	nnue/features/a.cpp \
+	nnue/features/castling_right.cpp \
+	nnue/features/enpassant.cpp \
+	nnue/nnue_test_command.cpp \
+	learn/sfen_packer.cpp \
+	learn/learn.cpp \
+	learn/gensfen.cpp \
+	learn/opening_book.cpp \
+	learn/convert.cpp \
+	learn/transform.cpp
+
+OBJS = $(notdir $(SRCS:.cpp=.o))
+
+VPATH = syzygy:nnue:nnue/features:eval:extra:learn
 
 ### ==========================================================================
 ### Section 2. High-level Configuration
@@ -99,17 +105,23 @@ endif
 
 ### 2.1. General and architecture defaults
 
+ifeq ($(ARCH),)
+   ARCH = x86-64-modern
+   help_skip_sanity = yes
+endif
 # explicitly check for the list of supported architectures (as listed with make help),
 # the user can override with `make ARCH=x86-32-vnni256 SUPPORTED_ARCH=true`
-ifeq ($(ARCH),$(filter $(ARCH),x86-64-vnni512 x86-64-vnni256 x86-64-avx512 x86-64-bmi2 x86-64-avx2 \
-                               x86-64-sse41-popcnt x86-64-modern x86-64-ssse3 x86-64-sse3-popcnt \
-                               x86-64 x86-32-sse41-popcnt x86-32-sse2 x86-32 ppc-64 ppc-32 \
-                               armv7 armv7-neon armv8 apple-silicon general-64 general-32))
+ifeq ($(ARCH), $(filter $(ARCH), \
+                 x86-64-vnni512 x86-64-vnni256 x86-64-avx512 x86-64-bmi2 x86-64-avx2 \
+                 x86-64-sse41-popcnt x86-64-modern x86-64-ssse3 x86-64-sse3-popcnt \
+                 x86-64 x86-32-sse41-popcnt x86-32-sse2 x86-32 ppc-64 ppc-32 \
+                 armv7 armv7-neon armv8 apple-silicon general-64 general-32))
    SUPPORTED_ARCH=true
 else
    SUPPORTED_ARCH=false
 endif
 
+blas = no
 optimize = yes
 debug = no
 sanitize = no
@@ -127,7 +139,6 @@ avx512 = no
 vnni256 = no
 vnni512 = no
 neon = no
-ARCH = x86-64-modern
 STRIP = strip
 
 ### 2.2 Architecture specific
@@ -306,9 +317,9 @@ endif
 ### ==========================================================================
 
 ### 3.1 Selecting compiler (default = gcc)
-CXXFLAGS += -Wall -Wcast-qual -fno-exceptions -std=c++17 $(EXTRACXXFLAGS) $(LEARNCXXFLAGS)
-DEPENDFLAGS += -std=c++17
-LDFLAGS += $(EXTRALDFLAGS) $(LEARNLDFLAGS)
+CXXFLAGS += -g -Wall -Wcast-qual -fno-exceptions -std=c++17 -fopenmp -I. $(EXTRACXXFLAGS)
+LDFLAGS += -fopenmp $(EXTRALDFLAGS)
+DEPENDFLAGS += -std=c++17 -I.
 
 ifeq ($(COMP),)
 	COMP=gcc
@@ -391,19 +402,6 @@ ifeq ($(COMP),clang)
 	endif
 endif
 
-ifeq ($(comp),icc)
-	profile_make = icc-profile-make
-	profile_use = icc-profile-use
-else
-ifeq ($(comp),clang)
-	profile_make = clang-profile-make
-	profile_use = clang-profile-use
-else
-	profile_make = gcc-profile-make
-	profile_use = gcc-profile-use
-endif
-endif
-
 ifeq ($(KERNEL),Darwin)
 	CXXFLAGS += -arch $(arch) -mmacosx-version-min=10.14
 	LDFLAGS += -arch $(arch) -mmacosx-version-min=10.14
@@ -415,18 +413,28 @@ endif
 # Currently we don't know how to make PGO builds with the NDK yet.
 ifeq ($(COMP),ndk)
 	CXXFLAGS += -stdlib=libc++ -fPIE
+	comp=clang
 	ifeq ($(arch),armv7)
-		comp=armv7a-linux-androideabi16-clang
 		CXX=armv7a-linux-androideabi16-clang++
 		CXXFLAGS += -mthumb -march=armv7-a -mfloat-abi=softfp -mfpu=neon
 		STRIP=arm-linux-androideabi-strip
 	endif
 	ifeq ($(arch),armv8)
-		comp=aarch64-linux-android21-clang
 		CXX=aarch64-linux-android21-clang++
 		STRIP=aarch64-linux-android-strip
 	endif
 	LDFLAGS += -static-libstdc++ -pie -lm -latomic
+endif
+
+ifeq ($(comp),icc)
+	profile_make = icc-profile-make
+	profile_use = icc-profile-use
+else ifeq ($(comp),clang)
+	profile_make = clang-profile-make
+	profile_use = clang-profile-use
+else
+	profile_make = gcc-profile-make
+	profile_use = gcc-profile-use
 endif
 
 ### Travis CI script uses COMPILER to overwrite CXX
@@ -463,14 +471,33 @@ ifneq ($(comp),mingw)
 endif
 endif
 
-### 3.2.1 Debugging
+### 3.2.1. BLAS libraries
+ifeq ($(blas), yes)
+	LDFLAGS += -lopenblas
+
+	ifeq ($(KERNEL),Linux)
+		LDFLAGS +=
+	else
+		CXXFLAGS += -I/mingw64/include/OpenBLAS
+
+		ifeq ($(debug),yes)
+			LDFLAGS += -Wl,-static
+		else
+			LDFLAGS += -Wl,-s -static
+		endif
+	endif
+
+	CXXFLAGS += -DUSE_BLAS
+endif
+
+### 3.2.2 Debugging
 ifeq ($(debug),no)
 	CXXFLAGS += -DNDEBUG
 else
 	CXXFLAGS += -g
 endif
 
-### 3.2.2 Debugging with undefined behavior sanitizers
+### 3.2.3 Debugging with undefined behavior sanitizers
 ifneq ($(sanitize),no)
         CXXFLAGS += -g3 -fsanitize=$(sanitize)
         LDFLAGS += -fsanitize=$(sanitize)
@@ -600,11 +627,13 @@ endif
 ### needs access to the optimization flags.
 ifeq ($(optimize),yes)
 ifeq ($(debug), no)
-	ifeq ($(COMP),ndk)
+	ifeq ($(comp),clang)
 		CXXFLAGS += -flto=thin
-		LDFLAGS += $(CXXFLAGS)
-	else ifeq ($(comp),clang)
-		CXXFLAGS += -flto=thin
+		ifneq ($(findstring MINGW,$(KERNEL)),)
+			CXXFLAGS += -fuse-ld=lld
+		else ifneq ($(findstring MSYS,$(KERNEL)),)
+			CXXFLAGS += -fuse-ld=lld
+		endif
 		LDFLAGS += $(CXXFLAGS)
 
 # GCC and CLANG use different methods for parallelizing LTO and CLANG pretends to be
@@ -628,8 +657,10 @@ ifeq ($(debug), no)
 # So, only enable it for a cross from Linux by default.
 	else ifeq ($(comp),mingw)
 	ifeq ($(KERNEL),Linux)
+	ifneq ($(arch),i386)
 		CXXFLAGS += -flto
 		LDFLAGS += $(CXXFLAGS) -flto=jobserver
+	endif
 	endif
 	endif
 endif
@@ -707,11 +738,12 @@ help:
 	@echo "make -j build ARCH=x86-64-ssse3 COMP=clang"
 	@echo ""
 	@echo "-------------------------------"
-ifeq ($(SUPPORTED_ARCH), true)
+ifeq ($(SUPPORTED_ARCH)$(help_skip_sanity), true)
 	@echo "The selected architecture $(ARCH) will enable the following configuration: "
 	@$(MAKE) ARCH=$(ARCH) COMP=$(COMP) config-sanity
 else
 	@echo "Specify a supported architecture with the ARCH option for more details"
+	@echo ""
 endif
 
 
@@ -719,7 +751,7 @@ endif
         config-sanity icc-profile-use icc-profile-make gcc-profile-use gcc-profile-make \
         clang-profile-use clang-profile-make
 
-build: config-sanity
+build: net config-sanity
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) all
 
 profile-build: net config-sanity objclean profileclean
@@ -729,6 +761,7 @@ profile-build: net config-sanity objclean profileclean
 	@echo ""
 	@echo "Step 2/4. Running benchmark for pgo-build ..."
 	$(PGOBENCH) > /dev/null
+	$(PGOGENSFEN) > /dev/null
 	@echo ""
 	@echo "Step 3/4. Building optimized executable ..."
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) objclean
@@ -745,12 +778,13 @@ install:
 	-cp $(EXE) $(BINDIR)
 	-strip $(BINDIR)/$(EXE)
 
-#clean all
+# clean all
 clean: objclean profileclean
 	@rm -f .depend *~ core
 
+# evaluation network (nnue)
 net:
-	$(eval nnuenet := $(shell grep EvalFile ucioption.cpp | grep Option | sed 's/.*\(nn-[a-z0-9]\{12\}.nnue\).*/\1/'))
+	$(eval nnuenet := $(shell grep EvalFileDefaultName evaluate.h | grep define | sed 's/.*\(nn-[a-z0-9]\{12\}.nnue\).*/\1/'))
 	@echo "Default net: $(nnuenet)"
 	$(eval nnuedownloadurl := https://tests.stockfishchess.org/api/nn/$(nnuenet))
 	$(eval curl_or_wget := $(shell if hash curl 2>/dev/null; then echo "curl -skL"; elif hash wget 2>/dev/null; then echo "wget -qO-"; fi))
@@ -772,7 +806,6 @@ net:
             echo "shasum / sha256sum not found, skipping net validation"; \
         fi
 
-
 # clean binaries and objects
 objclean:
 	@rm -f $(EXE) *.o ./syzygy/*.o ./nnue/*.o ./nnue/features/*.o ./learn/*.o ./extra/*.o ./eval/*.o
@@ -782,6 +815,7 @@ profileclean:
 	@rm -rf profdir
 	@rm -f bench.txt *.gcda *.gcno ./syzygy/*.gcda ./nnue/*.gcda ./nnue/features/*.gcda *.s ./learn/*.gcda ./extra/*.gcda ./eval/*.gcda
 	@rm -f stockfish.profdata *.profraw
+	@rm -f $(PGO_TRAINING_DATA_FILE)
 
 default:
 	help
@@ -792,7 +826,7 @@ default:
 
 all: $(EXE) .depend
 
-config-sanity:
+config-sanity: net
 	@echo ""
 	@echo "Config:"
 	@echo "debug: '$(debug)'"
@@ -913,6 +947,6 @@ profile-learn: config-sanity objclean profileclean
 	rm generated_kifu.bin
 
 .depend:
-	-@$(CXX) $(DEPENDFLAGS) -MM $(SRCS) > $@ 2> /dev/null
+	-@$(CXX) $(DEPENDFLAGS) -MM $(SRCS) > $@
 
 -include .depend

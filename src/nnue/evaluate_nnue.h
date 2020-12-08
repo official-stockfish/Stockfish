@@ -23,9 +23,18 @@
 
 #include "nnue_feature_transformer.h"
 
+#include "misc.h"
+
 #include <memory>
 
 namespace Eval::NNUE {
+
+  enum struct UseNNUEMode
+  {
+    False,
+    True,
+    Pure
+  };
 
   // Hash value of evaluation function structure
   constexpr std::uint32_t kHashValue =
@@ -41,10 +50,21 @@ namespace Eval::NNUE {
   };
 
   template <typename T>
+  struct LargePageDeleter {
+    void operator()(T* ptr) const {
+      ptr->~T();
+      aligned_large_pages_free(ptr);
+    }
+  };
+
+  template <typename T>
   using AlignedPtr = std::unique_ptr<T, AlignedDeleter<T>>;
 
+  template <typename T>
+  using LargePagePtr = std::unique_ptr<T, LargePageDeleter<T>>;
+
   // Input feature converter
-  extern AlignedPtr<FeatureTransformer> feature_transformer;
+  extern LargePagePtr<FeatureTransformer> feature_transformer;
 
   // Evaluation function
   extern AlignedPtr<Network> network;
@@ -55,22 +75,35 @@ namespace Eval::NNUE {
   // Saved evaluation function file name
   extern std::string savedfileName;
 
+  extern UseNNUEMode useNNUE;
+
+  extern std::string eval_file_loaded;
+
   // Get a string that represents the structure of the evaluation function
-  std::string GetArchitectureString();
+  std::string get_architecture_string();
+
+  std::string get_layers_info();
 
   // read the header
-  bool ReadHeader(std::istream& stream,
-    std::uint32_t* hash_value, std::string* architecture);
+  bool read_header(std::istream& stream,
+      std::uint32_t* hash_value, std::string* architecture);
 
   // write the header
-  bool WriteHeader(std::ostream& stream,
-    std::uint32_t hash_value, const std::string& architecture);
+  bool write_header(std::ostream& stream,
+      std::uint32_t hash_value, const std::string& architecture);
 
   // read evaluation function parameters
   bool ReadParameters(std::istream& stream);
 
   // write evaluation function parameters
   bool WriteParameters(std::ostream& stream);
+
+  Value evaluate(const Position& pos);
+  bool load_eval(std::string name, std::istream& stream);
+  void init();
+
+  void verify_eval_file_loaded();
+  void verify_any_net_loaded();
 
 }  // namespace Eval::NNUE
 

@@ -28,11 +28,16 @@
 
 TranspositionTable TT; // Our global transposition table
 
+bool TranspositionTable::enable_transposition_table = true;
+
 /// TTEntry::save() populates the TTEntry with a new node's data, possibly
 /// overwriting an old position. Update is not atomic and can be racy.
 
 void TTEntry::save(Key k, Value v, bool pv, Bound b, Depth d, Move m, Value ev) {
 
+  if (!TranspositionTable::enable_transposition_table) {
+      return;
+  }
   // Preserve any existing move for the same position
   if (m || (uint16_t)k != key16)
       move16 = (uint16_t)m;
@@ -62,11 +67,12 @@ void TranspositionTable::resize(size_t mbSize) {
 
   Threads.main()->wait_for_search_finished();
 
-  aligned_ttmem_free(mem);
+  aligned_large_pages_free(table);
 
   clusterCount = mbSize * 1024 * 1024 / sizeof(Cluster);
-  table = static_cast<Cluster*>(aligned_ttmem_alloc(clusterCount * sizeof(Cluster), mem));
-  if (!mem)
+
+  table = static_cast<Cluster*>(aligned_large_pages_alloc(clusterCount * sizeof(Cluster)));
+  if (!table)
   {
       std::cerr << "Failed to allocate " << mbSize
                 << "MB for transposition table." << std::endl;
@@ -115,6 +121,11 @@ void TranspositionTable::clear() {
 /// TTEntry t2 if its replace value is greater than that of t2.
 
 TTEntry* TranspositionTable::probe(const Key key, bool& found) const {
+
+  if (!enable_transposition_table) {
+      found = false;
+      return first_entry(0);
+  }
 
   TTEntry* const tte = first_entry(key);
   const uint16_t key16 = (uint16_t)key;  // Use the low 16 bits as key inside the cluster

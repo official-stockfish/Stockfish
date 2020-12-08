@@ -61,6 +61,8 @@ typedef bool(*fun3_t)(HANDLE, CONST GROUP_AFFINITY*, PGROUP_AFFINITY);
 
 using namespace std;
 
+SynchronizedRegionLogger sync_region_cout(std::cout);
+
 namespace {
 
 /// Version number. If Version is left empty, then compile date in the format
@@ -131,6 +133,7 @@ public:
 };
 
 } // namespace
+
 
 /// engine_info() returns the full name of the current Stockfish version. This
 /// will be either "Stockfish <Tag> DD-MM-YY" (where DD-MM-YY is the date when
@@ -356,27 +359,11 @@ void std_aligned_free(void* ptr) {
 #endif
 }
 
-/// aligned_ttmem_alloc() will return suitably aligned memory, if possible using large pages.
-/// The returned pointer is the aligned one, while the mem argument is the one that needs
-/// to be passed to free. With c++17 some of this functionality could be simplified.
+/// aligned_large_pages_alloc() will return suitably aligned memory, if possible using large pages.
 
-#if defined(__linux__) && !defined(__ANDROID__)
+#if defined(_WIN32)
 
-void* aligned_ttmem_alloc(size_t allocSize, void*& mem) {
-
-  constexpr size_t alignment = 2 * 1024 * 1024; // assumed 2MB page sizes
-  size_t size = ((allocSize + alignment - 1) / alignment) * alignment; // multiple of alignment
-  if (posix_memalign(&mem, alignment, size))
-     mem = nullptr;
-#if defined(MADV_HUGEPAGE)
-  madvise(mem, allocSize, MADV_HUGEPAGE);
-#endif
-  return mem;
-}
-
-#elif defined(_WIN64)
-
-static void* aligned_ttmem_alloc_large_pages(size_t allocSize) {
+static void* aligned_large_pages_alloc_win(size_t allocSize) {
 
   HANDLE hProcessToken { };
   LUID luid { };
@@ -421,23 +408,10 @@ static void* aligned_ttmem_alloc_large_pages(size_t allocSize) {
   return mem;
 }
 
-void* aligned_ttmem_alloc(size_t allocSize, void*& mem) {
-
-  static bool firstCall = true;
+void* aligned_large_pages_alloc(size_t allocSize) {
 
   // Try to allocate large pages
-  mem = aligned_ttmem_alloc_large_pages(allocSize);
-
-  // Suppress info strings on the first call. The first call occurs before 'uci'
-  // is received and in that case this output confuses some GUIs.
-  if (!firstCall)
-  {
-      if (mem)
-          sync_cout << "info string Hash table allocation: Windows large pages used." << sync_endl;
-      else
-          sync_cout << "info string Hash table allocation: Windows large pages not used." << sync_endl;
-  }
-  firstCall = false;
+  void* mem = aligned_large_pages_alloc_win(allocSize);
 
   // Fall back to regular, page aligned, allocation if necessary
   if (!mem)
@@ -448,23 +422,31 @@ void* aligned_ttmem_alloc(size_t allocSize, void*& mem) {
 
 #else
 
-void* aligned_ttmem_alloc(size_t allocSize, void*& mem) {
+void* aligned_large_pages_alloc(size_t allocSize) {
 
-  constexpr size_t alignment = 64; // assumed cache line size
-  size_t size = allocSize + alignment - 1; // allocate some extra space
-  mem = malloc(size);
-  void* ret = reinterpret_cast<void*>((uintptr_t(mem) + alignment - 1) & ~uintptr_t(alignment - 1));
-  return ret;
+#if defined(__linux__)
+  constexpr size_t alignment = 2 * 1024 * 1024; // assumed 2MB page size
+#else
+  constexpr size_t alignment = 4096; // assumed small page size
+#endif
+
+  // round up to multiples of alignment
+  size_t size = ((allocSize + alignment - 1) / alignment) * alignment;
+  void *mem = std_aligned_alloc(alignment, size);
+#if defined(MADV_HUGEPAGE)
+  madvise(mem, size, MADV_HUGEPAGE);
+#endif
+  return mem;
 }
 
 #endif
 
 
-/// aligned_ttmem_free() will free the previously allocated ttmem
+/// aligned_large_pages_free() will free the previously allocated ttmem
 
-#if defined(_WIN64)
+#if defined(_WIN32)
 
-void aligned_ttmem_free(void* mem) {
+void aligned_large_pages_free(void* mem) {
 
   if (mem && !VirtualFree(mem, 0, MEM_RELEASE))
   {
@@ -477,8 +459,8 @@ void aligned_ttmem_free(void* mem) {
 
 #else
 
-void aligned_ttmem_free(void *mem) {
-  free(mem);
+void aligned_large_pages_free(void *mem) {
+  std_aligned_free(mem);
 }
 
 #endif
@@ -590,6 +572,62 @@ void bindThisThread(size_t idx) {
 
 } // namespace WinProcGroup
 
+#ifdef _WIN32
+#include <direct.h>
+#define GETCWD _getcwd
+#else
+#include <unistd.h>
+#define GETCWD getcwd
+#endif
+
+namespace CommandLine {
+
+string argv0;            // path+name of the executable binary, as given by argv[0]
+string binaryDirectory;  // path of the executable directory
+string workingDirectory; // path of the working directory
+
+void init(int argc, char* argv[]) {
+    (void)argc;
+    string pathSeparator;
+
+    // extract the path+name of the executable binary
+    argv0 = argv[0];
+
+#ifdef _WIN32
+    pathSeparator = "\\";
+  #ifdef _MSC_VER
+    // Under windows argv[0] may not have the extension. Also _get_pgmptr() had
+    // issues in some windows 10 versions, so check returned values carefully.
+    char* pgmptr = nullptr;
+    if (!_get_pgmptr(&pgmptr) && pgmptr != nullptr && *pgmptr)
+        argv0 = pgmptr;
+  #endif
+#else
+    pathSeparator = "/";
+#endif
+
+    // extract the working directory
+    workingDirectory = "";
+    char buff[40000];
+    char* cwd = GETCWD(buff, 40000);
+    if (cwd)
+        workingDirectory = cwd;
+
+    // extract the binary directory path from argv0
+    binaryDirectory = argv0;
+    size_t pos = binaryDirectory.find_last_of("\\/");
+    if (pos == std::string::npos)
+        binaryDirectory = "." + pathSeparator;
+    else
+        binaryDirectory.resize(pos + 1);
+
+    // pattern replacement: "./" at the start of path is replaced by the working directory
+    if (binaryDirectory.find("." + pathSeparator) == 0)
+        binaryDirectory.replace(0, 1, workingDirectory);
+}
+
+
+} // namespace CommandLine
 // Returns a string that represents the current time. (Used when learning evaluation functions)
 std::string now_string()
 {
@@ -627,18 +665,27 @@ void* aligned_malloc(size_t size, size_t align)
     return p;
 }
 
+std::uint64_t get_file_size(std::fstream& fs)
+{
+    auto pos = fs.tellg();
+
+    fs.seekg(0, fstream::end);
+    const uint64_t eofPos = (uint64_t)fs.tellg();
+    fs.clear(); // Otherwise, the next seek may fail.
+    fs.seekg(0, fstream::beg);
+    const uint64_t begPos = (uint64_t)fs.tellg();
+    fs.seekg(pos);
+
+    return eofPos - begPos;
+}
+
 int read_file_to_memory(std::string filename, std::function<void* (uint64_t)> callback_func)
 {
     fstream fs(filename, ios::in | ios::binary);
     if (fs.fail())
         return 1;
 
-    fs.seekg(0, fstream::end);
-    uint64_t eofPos = (uint64_t)fs.tellg();
-    fs.clear(); // Otherwise the next seek may fail.
-    fs.seekg(0, fstream::beg);
-    uint64_t begPos = (uint64_t)fs.tellg();
-    uint64_t file_size = eofPos - begPos;
+    const uint64_t file_size = get_file_size(fs);
     //std::cout << "filename = " << filename << " , file_size = " << file_size << endl;
 
     // I know the file size, so call callback_func to get a buffer for this,
@@ -687,66 +734,3 @@ int write_memory_to_file(std::string filename, void* ptr, uint64_t size)
     fs.close();
     return 0;
 }
-
-// ----------------------------
-//     mkdir wrapper
-// ----------------------------
-
-// Specify relative to the current folder. Returns 0 on success, non-zero on failure.
-// Create a folder. Japanese is not used.
-// In case of gcc under msys2 environment, folder creation fails with _wmkdir(). Cause unknown.
-// Use _mkdir() because there is no help for it.
-
-#if defined(_WIN32)
-// for Windows
-
-#if defined(_MSC_VER)
-#include <codecvt> // I need this because I want wstring to mkdir
-#include <locale> // This is required for wstring_convert.
-
-namespace Dependency {
-    int mkdir(std::string dir_name)
-    {
-        std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> cv;
-        return _wmkdir(cv.from_bytes(dir_name).c_str());
-        //	::CreateDirectory(cv.from_bytes(dir_name).c_str(),NULL);
-    }
-}
-
-#elif defined(__GNUC__) 
-
-#include <direct.h>
-namespace Dependency {
-    int mkdir(std::string dir_name)
-    {
-        return _mkdir(dir_name.c_str());
-    }
-}
-
-#endif
-#elif defined(__linux__)
-
-// In the linux environment, this symbol _LINUX is defined in the makefile.
-
-// mkdir implementation for Linux.
-#include "sys/stat.h"
-
-namespace Dependency {
-    int mkdir(std::string dir_name)
-    {
-        return ::mkdir(dir_name.c_str(), 0777);
-    }
-}
-#else
-
-// In order to judge whether it is a Linux environment, we have to divide the makefile..
-// The function to dig a folder on linux is good for the time being... Only used to save the evaluation function file...
-
-namespace Dependency {
-    int mkdir(std::string dir_name)
-    {
-        return 0;
-    }
-}
-
-#endif

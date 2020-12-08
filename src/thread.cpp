@@ -35,6 +35,7 @@ ThreadPool Threads; // Global object
 Thread::Thread(size_t n) : idx(n), stdThread(&Thread::idle_loop, this) {
 
   wait_for_search_finished();
+  wait_for_worker_finished();
 }
 
 
@@ -48,17 +49,6 @@ Thread::~Thread() {
   exit = true;
   start_searching();
   stdThread.join();
-}
-
-
-/// Thread::bestMoveCount(Move move) return best move counter for the given root move
-
-int Thread::best_move_count(Move move) const {
-
-  auto rm = std::find(rootMoves.begin() + pvIdx,
-                      rootMoves.begin() + pvLast, move);
-
-  return rm != rootMoves.begin() + pvLast ? rm->bestMoveCount : 0;
 }
 
 
@@ -91,6 +81,14 @@ void Thread::start_searching() {
   cv.notify_one(); // Wake up the thread in idle_loop()
 }
 
+void Thread::execute_with_worker(std::function<void(Thread&)> t)
+{
+  std::lock_guard<std::mutex> lk(mutex);
+  worker = std::move(t);
+  searching = true;
+  cv.notify_one(); // Wake up the thread in idle_loop()
+}
+
 
 /// Thread::wait_for_search_finished() blocks on the condition variable
 /// until the thread has finished searching.
@@ -101,6 +99,12 @@ void Thread::wait_for_search_finished() {
   cv.wait(lk, [&]{ return !searching; });
 }
 
+
+void Thread::wait_for_worker_finished() {
+
+  std::unique_lock<std::mutex> lk(mutex);
+  cv.wait(lk, [&]{ return !searching; });
+}
 
 /// Thread::idle_loop() is where the thread is parked, blocked on the
 /// condition variable, when it has no work to do.
@@ -119,15 +123,25 @@ void Thread::idle_loop() {
   {
       std::unique_lock<std::mutex> lk(mutex);
       searching = false;
+      worker = nullptr;
       cv.notify_one(); // Wake up anyone waiting for search finished
       cv.wait(lk, [&]{ return searching; });
 
       if (exit)
           return;
 
+      auto wrk = std::move(worker);
+
       lk.unlock();
 
-      search();
+      if (wrk)
+      {
+        wrk(*this);
+      }
+      else
+      {
+        search();
+      }
   }
 }
 
@@ -172,6 +186,13 @@ void ThreadPool::clear() {
   main()->previousTimeReduction = 1.0;
 }
 
+void ThreadPool::execute_with_workers(const std::function<void(Thread&)>& worker)
+{
+  for(Thread* th : *this)
+  {
+    th->execute_with_worker(worker);
+  }
+}
 
 /// ThreadPool::start_thinking() wakes up main thread waiting in idle_loop() and
 /// returns immediately. Main thread will wake up other threads and start the search.
@@ -192,9 +213,6 @@ void ThreadPool::start_thinking(Position& pos, StateListPtr& states,
           || std::count(limits.searchmoves.begin(), limits.searchmoves.end(), m))
           rootMoves.emplace_back(m);
 
-  if (!rootMoves.empty())
-      Tablebases::rank_root_moves(pos, rootMoves);
-
   // After ownership transfer 'states' becomes empty, so if we stop the search
   // and call 'go' again without setting a new position states.get() == NULL.
   assert(states.get() || setupStates.get());
@@ -214,6 +232,24 @@ void ThreadPool::start_thinking(Position& pos, StateListPtr& states,
       th->rootMoves = rootMoves;
       th->rootPos.set(pos.fen(), pos.is_chess960(), &th->rootState, th);
       th->rootState = setupStates->back();
+      // This is also set by rank_root_moves but we need to set it
+      // also when there is no legal moves.
+      th->rootInTB = false;
+      th->UseRule50 = bool(Options["Syzygy50MoveRule"]);
+      th->ProbeDepth = int(Options["SyzygyProbeDepth"]);
+      th->Cardinality = int(Options["SyzygyProbeLimit"]);
+
+      // Tables with fewer pieces than SyzygyProbeLimit are searched with
+      // ProbeDepth == DEPTH_ZERO
+      if (th->Cardinality > Tablebases::MaxCardinality)
+      {
+          th->Cardinality = Tablebases::MaxCardinality;
+          th->ProbeDepth = 0;
+      }
+
+      if (!rootMoves.empty())
+          Tablebases::rank_root_moves(pos, rootMoves);
+
   }
 
   main()->start_searching();
@@ -235,16 +271,16 @@ Thread* ThreadPool::get_best_thread() const {
         votes[th->rootMoves[0].pv[0]] +=
             (th->rootMoves[0].score - minScore + 14) * int(th->completedDepth);
 
-          if (abs(bestThread->rootMoves[0].score) >= VALUE_TB_WIN_IN_MAX_PLY)
-          {
-              // Make sure we pick the shortest mate / TB conversion or stave off mate the longest
-              if (th->rootMoves[0].score > bestThread->rootMoves[0].score)
-                  bestThread = th;
-          }
-          else if (   th->rootMoves[0].score >= VALUE_TB_WIN_IN_MAX_PLY
-                   || (   th->rootMoves[0].score > VALUE_TB_LOSS_IN_MAX_PLY
-                       && votes[th->rootMoves[0].pv[0]] > votes[bestThread->rootMoves[0].pv[0]]))
-              bestThread = th;
+        if (abs(bestThread->rootMoves[0].score) >= VALUE_TB_WIN_IN_MAX_PLY)
+        {
+            // Make sure we pick the shortest mate / TB conversion or stave off mate the longest
+            if (th->rootMoves[0].score > bestThread->rootMoves[0].score)
+                bestThread = th;
+        }
+        else if (   th->rootMoves[0].score >= VALUE_TB_WIN_IN_MAX_PLY
+                 || (   th->rootMoves[0].score > VALUE_TB_LOSS_IN_MAX_PLY
+                     && votes[th->rootMoves[0].pv[0]] > votes[bestThread->rootMoves[0].pv[0]]))
+            bestThread = th;
     }
 
     return bestThread;
@@ -268,4 +304,11 @@ void ThreadPool::wait_for_search_finished() const {
     for (Thread* th : *this)
         if (th != front())
             th->wait_for_search_finished();
+}
+
+
+void ThreadPool::wait_for_workers_finished() const {
+
+    for (Thread* th : *this)
+        th->wait_for_worker_finished();
 }

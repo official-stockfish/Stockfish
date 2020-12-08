@@ -1,46 +1,52 @@
-﻿// Interface used for learning NNUE evaluation function
-
-#ifndef _EVALUATE_NNUE_LEARNER_H_
+﻿#ifndef _EVALUATE_NNUE_LEARNER_H_
 #define _EVALUATE_NNUE_LEARNER_H_
 
-#if defined(EVAL_LEARN) && defined(EVAL_NNUE)
+#include "learn/learn.h"
 
-#include "../learn/learn.h"
+#include "misc.h"
 
-namespace Eval {
+struct ThreadPool;
 
-namespace NNUE {
+// Interface used for learning NNUE evaluation function
+namespace Eval::NNUE {
 
-// Initialize learning
-void InitializeTraining(double eta1, uint64_t eta1_epoch,
-                        double eta2, uint64_t eta2_epoch, double eta3);
+    // Initialize learning
+    void initialize_training(
+        const std::string& seed,
+        SynchronizedRegionLogger::Region& out);
 
-// set the number of samples in the mini-batch
-void SetBatchSize(uint64_t size);
+    // set the number of samples in the mini-batch
+    void set_batch_size(uint64_t size);
 
-// set the learning rate scale
-void SetGlobalLearningRateScale(double scale);
+    // Set options such as hyperparameters
+    void set_options(const std::string& options);
 
-// Set options such as hyperparameters
-void SetOptions(const std::string& options);
+    // Reread the evaluation function parameters for learning from the file
+    void restore_parameters(const std::string& dir_name);
 
-// Reread the evaluation function parameters for learning from the file
-void RestoreParameters(const std::string& dir_name);
+    // Add 1 sample of learning data
+    void add_example(
+        Position& pos,
+        Color rootColor,
+        Value discrete_nn_eval,
+    	const Learner::PackedSfenValue& psv,
+        double weight);
 
-// Add 1 sample of learning data
-void AddExample(Position& pos, Color rootColor,
-                const Learner::PackedSfenValue& psv, double weight);
+    // update the evaluation function parameters
+    Learner::Loss update_parameters(
+        ThreadPool& thread_pool,
+        uint64_t epoch,
+        bool verbose,
+        double learning_rate,
+        double max_grad,
+        Learner::CalcLossFunc calc_loss);
 
-// update the evaluation function parameters
-void UpdateParameters(uint64_t epoch);
+    // Check if there are any problems with learning
+    void check_health();
 
-// Check if there are any problems with learning
-void CheckHealth();
+    void finalize_net();
 
-}  // namespace NNUE
-
-}  // namespace Eval
-
-#endif  // defined(EVAL_LEARN) && defined(EVAL_NNUE)
+    void save_eval(std::string suffix);
+}  // namespace Eval::NNUE
 
 #endif

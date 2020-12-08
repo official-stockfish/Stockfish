@@ -23,6 +23,10 @@
 
 #include "../nnue_common.h"
 
+#include <string>
+#include <cstdint>
+#include <type_traits>
+
 namespace Eval::NNUE::Layers {
 
   // Clipped ReLU
@@ -47,6 +51,8 @@ namespace Eval::NNUE::Layers {
     static constexpr std::size_t kBufferSize =
         PreviousLayer::kBufferSize + kSelfBufferSize;
 
+    static constexpr int kLayerIndex = PreviousLayer::kLayerIndex + 1;
+
     // Hash value embedded in the evaluation file
     static constexpr std::uint32_t GetHashValue() {
       std::uint32_t hash_value = 0x538D24C7u;
@@ -54,11 +60,24 @@ namespace Eval::NNUE::Layers {
       return hash_value;
     }
 
+    static std::string get_name() {
+        return "ClippedReLU[" +
+            std::to_string(kOutputDimensions) + "]";
+    }
+
     // A string that represents the structure from the input layer to this layer
-    static std::string GetStructureString() {
-      return "ClippedReLU[" +
-        std::to_string(kOutputDimensions) + "](" +
-        PreviousLayer::GetStructureString() + ")";
+    static std::string get_structure_string() {
+        return get_name() + "(" +
+            PreviousLayer::get_structure_string() + ")";
+    }
+
+    static std::string get_layers_info() {
+        std::string info = PreviousLayer::get_layers_info();
+        info += "\n  - ";
+        info += std::to_string(kLayerIndex);
+        info += " - ";
+        info += get_name();
+        return info;
     }
 
     // Read network parameters
@@ -68,7 +87,7 @@ namespace Eval::NNUE::Layers {
 
     // write parameters
     bool WriteParameters(std::ostream& stream) const {
-      return previous_layer_.WriteParameters(stream);
+        return previous_layer_.WriteParameters(stream);
     }
 
     // Forward propagation
@@ -86,12 +105,12 @@ namespace Eval::NNUE::Layers {
       const auto out = reinterpret_cast<__m256i*>(output);
       for (IndexType i = 0; i < kNumChunks; ++i) {
         const __m256i words0 = _mm256_srai_epi16(_mm256_packs_epi32(
-            _mm256_loadA_si256(&in[i * 4 + 0]),
-            _mm256_loadA_si256(&in[i * 4 + 1])), kWeightScaleBits);
+            _mm256_load_si256(&in[i * 4 + 0]),
+            _mm256_load_si256(&in[i * 4 + 1])), kWeightScaleBits);
         const __m256i words1 = _mm256_srai_epi16(_mm256_packs_epi32(
-            _mm256_loadA_si256(&in[i * 4 + 2]),
-            _mm256_loadA_si256(&in[i * 4 + 3])), kWeightScaleBits);
-        _mm256_storeA_si256(&out[i], _mm256_permutevar8x32_epi32(_mm256_max_epi8(
+            _mm256_load_si256(&in[i * 4 + 2]),
+            _mm256_load_si256(&in[i * 4 + 3])), kWeightScaleBits);
+        _mm256_store_si256(&out[i], _mm256_permutevar8x32_epi32(_mm256_max_epi8(
             _mm256_packs_epi16(words0, words1), kZero), kOffsets));
       }
       constexpr IndexType kStart = kNumChunks * kSimdWidth;
@@ -170,9 +189,9 @@ namespace Eval::NNUE::Layers {
     }
 
    private:
-     // Make the learning class a friend
-     friend class Trainer<ClippedReLU>;
-     
+    // Make the learning class a friend
+    friend class Trainer<ClippedReLU>;
+
     PreviousLayer previous_layer_;
   };
 

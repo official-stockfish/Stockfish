@@ -1,47 +1,49 @@
-//Definition of input feature quantity K of NNUE evaluation function
-
-#if defined(EVAL_NNUE)
-
 #include "enpassant.h"
 #include "index_list.h"
 
-namespace Eval {
+//Definition of input feature quantity EnPassant of NNUE evaluation function
+namespace Eval::NNUE::Features {
 
-  namespace NNUE {
+    // Get a list of indices with a value of 1 among the features
+    void EnPassant::append_active_indices(
+        const Position& pos,
+        Color /* perspective */,
+        IndexList* active) {
 
-    namespace Features {
-
-      // Get a list of indices with a value of 1 among the features
-      void EnPassant::AppendActiveIndices(
-        const Position& pos, Color perspective, IndexList* active) {
         // do nothing if array size is small to avoid compiler warning
-        if (RawFeatures::kMaxActiveDimensions < kMaxActiveDimensions) return;
+        if (RawFeatures::kMaxActiveDimensions < kMaxActiveDimensions)
+            return;
 
         auto epSquare = pos.state()->epSquare;
-        if (epSquare == SQ_NONE) {
-          return;
-        }
-
-        if (perspective == BLACK) {
-          epSquare = rotate180(epSquare);
-        }
+        if (epSquare == SQ_NONE)
+            return;
 
         auto file = file_of(epSquare);
         active->push_back(file);
-      }
+    }
 
-      // Get a list of indices whose values ??have changed from the previous one in the feature quantity
-      void EnPassant::AppendChangedIndices(
-        const Position& pos, Color perspective,
-        IndexList* removed, IndexList* added) {
-        // Not implemented.
-        assert(false);
-      }
+    // Get a list of indices whose values ​​have changed from the previous one in the feature quantity
+    void EnPassant::append_changed_indices(
+        const Position& pos,
+        Color /* perspective */,
+        IndexList* removed,
+        IndexList* added) {
 
-    }  // namespace Features
+        auto previous_epSquare = pos.state()->previous->epSquare;
+        auto epSquare = pos.state()->epSquare;
 
-  }  // namespace NNUE
+        if (previous_epSquare != SQ_NONE) {
+            if (epSquare != SQ_NONE && file_of(epSquare) == file_of(previous_epSquare))
+                return;
 
-}  // namespace Eval
+            auto file = file_of(previous_epSquare);
+            removed->push_back(file);
+        }
 
-#endif  // defined(EVAL_NNUE)
+        if (epSquare != SQ_NONE) {
+            auto file = file_of(epSquare);
+            added->push_back(file);
+        }
+    }
+
+}  // namespace Eval::NNUE::Features
