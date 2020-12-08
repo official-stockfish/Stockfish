@@ -7,6 +7,24 @@
 ## Overview
 Stockfish NNUE is a port of a shogi neural network named NNUE (efficiently updateable neural network backwards) to Stockfish 11. To learn more about the Stockfish chess engine, look [here](stockfish.md) for an overview and [here](https://github.com/official-stockfish/Stockfish) for the official repository.
 
+## Compilation Instructions for Mac
+
+1. Ensure that you have OpenBlas Installed
+```
+brew install openblas
+```
+2. Go to src then build using the makefile
+```
+cd src
+make learn ARCH=x86-64 COMP=gcc
+```
+or
+```
+cd src
+make profile-learn ARCH=x86-64 COMP=gcc
+```
+
+
 ## Training Guide
 ### Generating Training Data
 To generate training data from the classic eval, use the gensfen command with the setting "Use NNUE" set to "false". The given example is generation in its simplest form. There are more commands. 
