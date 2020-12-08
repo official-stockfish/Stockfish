@@ -6238,7 +6238,7 @@ namespace chess
 
                     return Move::castle(castleType, pos.sideToMove());
                 }
-                else if (pos.epSquare() == to)
+                else if (pos.pieceAt(from).type() == PieceType::Pawn && pos.epSquare() == to)
                 {
                     return Move::enPassant(from, to);
                 }
