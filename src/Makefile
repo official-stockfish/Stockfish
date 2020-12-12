@@ -403,8 +403,8 @@ ifeq ($(COMP),clang)
 endif
 
 ifeq ($(KERNEL),Darwin)
-	CXXFLAGS += -arch $(arch) -mmacosx-version-min=10.14
-	LDFLAGS += -arch $(arch) -mmacosx-version-min=10.14
+	CXXFLAGS += -arch $(arch) -mmacosx-version-min=10.15
+	LDFLAGS += -arch $(arch) -mmacosx-version-min=10.15
 	XCRUN = xcrun
 endif
 
@@ -477,6 +477,9 @@ ifeq ($(blas), yes)
 
 	ifeq ($(KERNEL),Linux)
 		LDFLAGS +=
+	else ifeq ($(KERNEL), Darwin)
+		CXXFLAGS += -I/usr/local/opt/openblas/include
+		LDFLAGS += -L/usr/local/opt/openblas/lib -lcblas
 	else
 		CXXFLAGS += -I/mingw64/include/OpenBLAS
 
@@ -919,32 +922,6 @@ icc-profile-use:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
 	EXTRACXXFLAGS='-prof_use -prof_dir ./profdir' \
 	all
-
-learn: config-sanity
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS=' -DEVAL_LEARN -DEVAL_NNUE -DENABLE_TEST_CMD -DUSE_BLAS -I/usr/local/opt/openblas/include' \
-	EXTRALDFLAGS=' -L/usr/local/opt/openblas/lib -Wl,-s -lcblas' \
-	all
-	
-profile-learn: config-sanity objclean profileclean
-	@echo ""
-	@echo "Step 1/4. Building instrumented executable ..."
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_make) \
-	LEARNCXXFLAGS=' -DEVAL_LEARN -DEVAL_NNUE -DENABLE_TEST_CMD -DUSE_BLAS -I/usr/local/opt/openblas/include' \
-	LEARNLDFLAGS=' -L/usr/local/opt/openblas/lib -Wl,-s  -lcblas'
-	@echo ""
-	@echo "Step 2/4. Running benchmark for pgo-build ..."
-	$(PGOGENSFEN) 
-	@echo ""
-	@echo "Step 3/4. Building optimized executable ..."
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) objclean
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_use) \
-	LEARNCXXFLAGS=' -DEVAL_LEARN -DEVAL_NNUE -DENABLE_TEST_CMD -DUSE_BLAS -I/usr/local/opt/openblas/include' \
-	LEARNLDFLAGS=' -L/usr/local/opt/openblas/lib -Wl,-s  -lcblas'
-	@echo ""
-	@echo "Step 4/4. Deleting profile data ..."
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) profileclean
-	rm generated_kifu.bin
 
 .depend:
 	-@$(CXX) $(DEPENDFLAGS) -MM $(SRCS) > $@

@@ -44,12 +44,12 @@ brew install openblas
 2. Go to src then build using the makefile
 ```
 cd src
-make learn ARCH=x86-64 COMP=gcc
+make build ARCH=x86-64 COMP=gcc blas=yes
 ```
 or
 ```
 cd src
-make profile-learn ARCH=x86-64 COMP=gcc
+make profile-build ARCH=x86-64 COMP=gcc blas=yes
 ```
 
 ## Training Guide
