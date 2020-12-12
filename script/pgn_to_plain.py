@@ -9,6 +9,7 @@ from typing import List
 
 commentRe = re.compile("([+-]*M*[0-9.]*)/([0-9]*)")
 mateRe = re.compile("([+-])M([0-9]*)")
+flip_black = False
 
 def parse_result(result_str:str, board:chess.Board) -> int:
     if result_str == "1/2-1/2":
@@ -36,6 +37,7 @@ def game_sanity_check(game: chess.pgn.Game) -> bool:
 def parse_comment_for_score(comment_str: str, board: chess.Board) -> int:
     global commentRe
     global mateRe
+    global flip_black
 
     try:
       m = commentRe.search(comment_str)
@@ -51,7 +53,7 @@ def parse_comment_for_score(comment_str: str, board: chess.Board) -> int:
          else:
             score = int(float(score) * 208) # pawn to SF PawnValueEg
 
-         if board.turn == chess.BLACK:
+         if flip_black and board.turn == chess.BLACK:
             score = -score
       else:
          score = 0
@@ -85,7 +87,11 @@ def main():
     parser.add_argument("--pgn", type=str, required=True)
     parser.add_argument("--start_ply", type=int, default=1)
     parser.add_argument("--output", type=str, default="plain.txt")
+    parser.add_argument("--flip_black_score", action='store_true', dest='flip_black_score', help="Flip black score. Default: False")
     args = parser.parse_args()
+
+    global flip_black
+    flip_black = args.flip_black_score
 
     pgn_files: List[str] = glob.glob(args.pgn)
     pgn_files = sorted(pgn_files, key=lambda x:float(re.findall("-(\d+).pgn",x)[0] if re.findall("-(\d+).pgn",x) else 0.0))
