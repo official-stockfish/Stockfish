@@ -815,13 +815,10 @@ namespace {
         tte->save(posKey, VALUE_NONE, ss->ttPv, BOUND_NONE, DEPTH_NONE, MOVE_NONE, eval);
     }
 
-    // Update static history for previous move
-    if (is_ok((ss-1)->currentMove) && !(ss-1)->inCheck && !priorCapture)
+    if ((ss-1)->moveCount > 1 && is_ok((ss-1)->currentMove) && !(ss-1)->inCheck && !priorCapture && depth < 7)
     {
-        int bonus = ss->staticEval > -(ss-1)->staticEval + 2 * Tempo ? -stat_bonus(depth) :
-                    ss->staticEval < -(ss-1)->staticEval + 2 * Tempo ? stat_bonus(depth) :
-                    0;
-        thisThread->staticHistory[~us][from_to((ss-1)->currentMove)] << bonus;
+        int bonus = std::clamp(- (depth+1) * 2 * int((ss-1)->staticEval + ss->staticEval - 2 * Tempo), -1000, 1000);
+        thisThread->mainHistory[~us][from_to((ss-1)->currentMove)] << bonus;
     }
 
     // Step 7. Razoring (~1 Elo)
@@ -985,7 +982,6 @@ moves_loop: // When in check, search starts from here
     Move countermove = thisThread->counterMoves[pos.piece_on(prevSq)][prevSq];
 
     MovePicker mp(pos, ttMove, depth, &thisThread->mainHistory,
-                                      &thisThread->staticHistory,
                                       &thisThread->lowPlyHistory,
                                       &captureHistory,
                                       contHist,
@@ -1536,7 +1532,6 @@ moves_loop: // When in check, search starts from here
     // queen and checking knight promotions, and other checks(only if depth >= DEPTH_QS_CHECKS)
     // will be generated.
     MovePicker mp(pos, ttMove, depth, &thisThread->mainHistory,
-                                      &thisThread->staticHistory,
                                       &thisThread->captureHistory,
                                       contHist,
                                       to_sq((ss-1)->currentMove));
