@@ -11,6 +11,7 @@
 #include <string>
 #include <cstdint>
 #include <memory>
+#include <mutex>
 
 namespace Learner {
 
@@ -19,6 +20,8 @@ namespace Learner {
         const std::string& next_fen()
         {
             assert(fens.size() > 0);
+
+            std::unique_lock lock(mutex);
 
             auto& fen = fens[current_index++];
             if (current_index >= fens.size())
@@ -39,6 +42,7 @@ namespace Learner {
         }
 
 
+        std::mutex mutex;
         std::string filename;
         std::vector<std::string> fens;
         std::size_t current_index;
