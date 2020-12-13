@@ -721,10 +721,7 @@ namespace {
         // Partial workaround for the graph history interaction problem
         // For high rule50 counts don't produce transposition table cutoffs.
         if (pos.rule50_count() < 90)
-        {
-            ss->staticEval = tte->eval();
             return ttValue;
-        }
     }
 
     // Step 5. Tablebases probe
@@ -816,6 +813,12 @@ namespace {
 
         // Save static evaluation into transposition table
         tte->save(posKey, VALUE_NONE, ss->ttPv, BOUND_NONE, DEPTH_NONE, MOVE_NONE, eval);
+    }
+
+    if ((ss-1)->moveCount > 1 && is_ok((ss-1)->currentMove) && !(ss-1)->inCheck && !priorCapture && depth < 7)
+    {
+        int bonus = std::clamp(- (depth+1) * 2 * int((ss-1)->staticEval + ss->staticEval - 2 * Tempo), -1000, 1000);
+        thisThread->mainHistory[~us][from_to((ss-1)->currentMove)] << bonus;
     }
 
     // Step 7. Razoring (~1 Elo)
@@ -1355,16 +1358,8 @@ moves_loop: // When in check, search starts from here
           if (captureOrPromotion && captureCount < 32)
               capturesSearched[captureCount++] = move;
 
-          else if (!captureOrPromotion)
-          {
-              if (depth < 6 && !givesCheck && !ss->inCheck && (ss+1)->staticEval != VALUE_NONE)
-              {
-                   int bonus = std::clamp(- depth * 2 * int((ss+1)->staticEval + ss->staticEval - 2 * Tempo), -1000, 1000);
-                   thisThread->mainHistory[us][from_to(move)] << bonus;
-              }
-              if (quietCount < 64)
-                  quietsSearched[quietCount++] = move;
-          }
+          if (quietCount < 64)
+              quietsSearched[quietCount++] = move;
       }
     }
 
