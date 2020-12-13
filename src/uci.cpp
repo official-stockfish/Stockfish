@@ -36,6 +36,7 @@
 #include "uci.h"
 
 #include "learn/gensfen.h"
+#include "learn/gensfen_nonpv.h"
 #include "learn/learn.h"
 #include "learn/convert.h"
 #include "learn/transform.h"
@@ -341,6 +342,7 @@ void UCI::loop(int argc, char* argv[]) {
       else if (token == "compiler") sync_cout << compiler_info() << sync_endl;
 
       else if (token == "gensfen") Learner::gensfen(is);
+      else if (token == "gensfen_nonpv") Learner::gensfen_nonpv(is);
       else if (token == "learn") Learner::learn(is);
       else if (token == "convert") Learner::convert(is);
       else if (token == "convert_bin") Learner::convert_bin(is);

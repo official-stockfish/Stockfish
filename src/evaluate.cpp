@@ -914,6 +914,8 @@ make_v:
 
 Value Eval::evaluate(const Position& pos) {
 
+  pos.this_thread()->on_eval();
+
   Value v;
 
   if (NNUE::useNNUE == NNUE::UseNNUEMode::Pure) {

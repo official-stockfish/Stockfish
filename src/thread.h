@@ -55,6 +55,7 @@ class Thread {
   size_t idx;
   bool exit = false, searching = true; // Set before starting std::thread
   std::function<void(Thread&)> worker;
+  std::function<void(Position&)> on_eval_callback;
   NativeThread stdThread;
 
 public:
@@ -74,6 +75,13 @@ public:
   void wait_for_search_finished();
   void wait_for_worker_finished();
   size_t thread_idx() const { return idx; }
+
+  template <typename FuncT>
+  void set_eval_callback(FuncT&& f) { on_eval_callback = std::forward<FuncT>(f); }
+
+  void clear_eval_callback() { on_eval_callback = nullptr; }
+
+  void on_eval() { if (on_eval_callback) on_eval_callback(rootPos); }
 
   Pawns::Table pawnsTable;
   Material::Table materialTable;

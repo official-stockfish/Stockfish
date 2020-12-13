@@ -63,6 +63,7 @@ SRCS = benchmark.cpp bitbase.cpp bitboard.cpp endgame.cpp evaluate.cpp main.cpp 
 	learn/sfen_packer.cpp \
 	learn/learn.cpp \
 	learn/gensfen.cpp \
+	learn/gensfen_nonpv.cpp \
 	learn/opening_book.cpp \
 	learn/convert.cpp \
 	learn/transform.cpp
