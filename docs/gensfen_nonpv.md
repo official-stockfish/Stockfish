@@ -32,6 +32,8 @@ Currently the following options are available:
 
 `exploration_max_ply` the max ply for the exploration self play. Default: 200.
 
+`smart_fen_skipping` - this is a flag option. When specified some position that are not good candidates for teaching are removed from the output. This includes positions where the best move is a capture or promotion, and position where a king is in check.
+
 `book` - a path to an opening book to use for the starting positions. Currently only .epd format is supported. If not specified then the starting position is always the standard chess starting position.
 
 `sfen_format` - format of the training data to use. Either `bin` or `binpack`. Default: `binpack`.

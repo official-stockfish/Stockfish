@@ -72,6 +72,8 @@ namespace Learner
 
             std::string book;
 
+            bool smart_fen_skipping = false;
+
             void enforce_constraints()
             {
                 // Limit the maximum to a one-stop score. (Otherwise you might not end the loop)
@@ -281,6 +283,12 @@ namespace Learner
             {
                 pos.set_from_packed_sfen(ps.sfen, &si, &th);
                 pos.state()->rule50 = 0;
+
+                if (params.smart_fen_skipping && pos.checkers())
+                {
+                    continue;
+                }
+
                 auto [search_value, search_pv] = Search::search(pos, params.search_depth, 1);
 
                 if (search_pv.empty())
@@ -289,6 +297,11 @@ namespace Learner
                 }
 
                 if (std::abs(search_value) > params.eval_limit)
+                {
+                    continue;
+                }
+
+                if (params.smart_fen_skipping && pos.capture_or_promotion(search_pv[0]))
                 {
                     continue;
                 }
@@ -418,6 +431,8 @@ namespace Learner
                 is >> sfen_format;
             else if (token == "seed")
                 is >> params.seed;
+            else if (token == "smart_fen_skipping")
+                params.smart_fen_skipping = true;
             else if (token == "set_recommended_uci_options")
             {
                 UCI::setoption("Contempt", "0");
