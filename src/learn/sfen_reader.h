@@ -73,10 +73,10 @@ namespace Learner{
         }
 
         // Load the phase for calculation such as mse.
-        PSVector read_for_mse(uint64_t count)
+        PSVector read_some(uint64_t count, int eval_limit, bool use_draw_games)
         {
-            PSVector sfen_for_mse;
-            sfen_for_mse.reserve(count);
+            PSVector psv;
+            psv.reserve(count);
 
             for (uint64_t i = 0; i < count; ++i)
             {
@@ -84,43 +84,19 @@ namespace Learner{
                 if (!read_to_thread_buffer(0, ps))
                 {
                     std::cout << "ERROR (sfen_reader): Reading failed." << std::endl;
-                    return sfen_for_mse;
+                    return psv;
                 }
 
-                sfen_for_mse.push_back(ps);
+                if (eval_limit < abs(ps.score))
+                    continue;
+
+                if (!use_draw_games && ps.game_result == 0)
+                    continue;
+
+                psv.push_back(ps);
             }
 
-            return sfen_for_mse;
-        }
-
-        PSVector read_validation_set(const std::string& file_name, int eval_limit, bool use_draw_games)
-        {
-            PSVector sfen_for_mse;
-
-            auto input = open_sfen_input_file(file_name);
-
-            while(!input->eof())
-            {
-                std::optional<PackedSfenValue> p_opt = input->next();
-                if (p_opt.has_value())
-                {
-                    auto& p = *p_opt;
-
-                    if (eval_limit < abs(p.score))
-                        continue;
-
-                    if (!use_draw_games && p.game_result == 0)
-                        continue;
-
-                    sfen_for_mse.push_back(p);
-                }
-                else
-                {
-                    break;
-                }
-            }
-
-            return sfen_for_mse;
+            return psv;
         }
 
         // [ASYNC] Thread returns one aspect. Otherwise returns false.

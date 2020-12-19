@@ -80,6 +80,8 @@ Currently the following options are available:
 
 `validation_set_file_name` - path to the file with training data to be used for validation (loss computation and move accuracy)
 
+`validation_count` - the number of positions to use for validation. Default: 2000.
+
 `sfen_read_size` - the number of sfens to always keep in the buffer. Default: 10000000 (10M)
 
 `thread_buffer_size` - the number of sfens to copy at once to each thread requesting more sfens for learning. Default: 10000
