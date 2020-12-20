@@ -2,6 +2,7 @@
 
 #include "sfen_stream.h"
 #include "packed_sfen.h"
+#include "sfen_writer.h"
 
 #include "thread.h"
 #include "position.h"
@@ -47,11 +48,12 @@ namespace Learner
         }
     };
 
-    struct RescoreFenParams
+    struct RescoreParams
     {
         std::string input_filename = "in.epd";
         std::string output_filename = "out.binpack";
         int depth = 3;
+        bool keep_moves = true;
 
         void enforce_constraints()
         {
@@ -233,13 +235,11 @@ namespace Learner
         do_nudged_static(params);
     }
 
-    void do_rescore_fen(RescoreFenParams& params)
+    void do_rescore_epd(RescoreParams& params)
     {
         std::ifstream fens_file(params.input_filename);
 
-        auto next_fen = [&fens_file]() -> std::optional<std::string>{
-            static std::mutex mutex;
-
+        auto next_fen = [&fens_file, mutex = std::mutex{}]() mutable -> std::optional<std::string>{
             std::string fen;
 
             std::unique_lock lock(mutex);
@@ -333,9 +333,117 @@ namespace Learner
         std::cout << "Finished.\n";
     }
 
-    void rescore_fen(std::istringstream& is)
+    void do_rescore_data(RescoreParams& params)
     {
-        RescoreFenParams params{};
+        // TODO: Use SfenReader once it works correctly in sequential mode. See issue #271
+        auto in = Learner::open_sfen_input_file(params.input_filename);
+        auto readsome = [&in, mutex = std::mutex{}](int n) mutable -> PSVector {
+
+            PSVector psv;
+            psv.reserve(n);
+
+            std::unique_lock lock(mutex);
+
+            for (int i = 0; i < n; ++i)
+            {
+                auto ps_opt = in->next();
+                if (ps_opt.has_value())
+                {
+                    psv.emplace_back(*ps_opt);
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            return psv;
+        };
+
+        auto sfen_format = ends_with(params.output_filename, ".binpack") ? SfenOutputType::Binpack : SfenOutputType::Bin;
+
+        auto out = SfenWriter(
+            params.output_filename,
+            Threads.size(),
+            std::numeric_limits<std::uint64_t>::max(),
+            sfen_format);
+
+        // About Search::Limits
+        // Be careful because this member variable is global and affects other threads.
+        auto& limits = Search::Limits;
+
+        // Make the search equivalent to the "go infinite" command. (Because it is troublesome if time management is done)
+        limits.infinite = true;
+
+        // Since PV is an obstacle when displayed, erase it.
+        limits.silent = true;
+
+        // If you use this, it will be compared with the accumulated nodes of each thread. Therefore, do not use it.
+        limits.nodes = 0;
+
+        // depth is also processed by the one passed as an argument of Learner::search().
+        limits.depth = 0;
+
+        std::atomic<std::uint64_t> num_processed = 0;
+
+        Threads.execute_with_workers([&](auto& th){
+            Position& pos = th.rootPos;
+            StateInfo si;
+
+            for (;;)
+            {
+                PSVector psv = readsome(5000);
+                if (psv.empty())
+                    break;
+
+                for(auto& ps : psv)
+                {
+                    pos.set_from_packed_sfen(ps.sfen, &si, &th);
+
+                    auto [search_value, search_pv] = Search::search(pos, params.depth, 1);
+                    if (search_pv.empty())
+                        continue;
+
+                    pos.sfen_pack(ps.sfen);
+                    ps.score = search_value;
+                    if (!params.keep_moves)
+                        ps.move = search_pv[0];
+                    ps.padding = 0;
+
+                    out.write(th.thread_idx(), ps);
+
+                    auto p = num_processed.fetch_add(1) + 1;
+                    if (p % 10000 == 0)
+                    {
+                        std::cout << "Processed " << p << " positions.\n";
+                    }
+                }
+            }
+        });
+        Threads.wait_for_workers_finished();
+
+        std::cout << "Finished.\n";
+    }
+
+    void do_rescore(RescoreParams& params)
+    {
+        if (ends_with(params.input_filename, ".epd"))
+        {
+            do_rescore_epd(params);
+        }
+        else if (ends_with(params.input_filename, ".bin") || ends_with(params.input_filename, ".binpack"))
+        {
+            do_rescore_data(params);
+        }
+        else
+        {
+            std::cerr << "Invalid input file type.\n";
+        }
+    }
+
+    void rescore(std::istringstream& is)
+    {
+        RescoreParams params{};
 
         while(true)
         {
@@ -351,23 +459,27 @@ namespace Learner
                 is >> params.input_filename;
             else if (token == "output_file")
                 is >> params.output_filename;
+            else if (token == "keep_moves")
+                is >> params.keep_moves;
         }
 
-        std::cout << "Performing transform rescore_fen with parameters:\n";
+        params.enforce_constraints();
+
+        std::cout << "Performing transform rescore with parameters:\n";
         std::cout << "depth               : " << params.depth << '\n';
         std::cout << "input_file          : " << params.input_filename << '\n';
         std::cout << "output_file         : " << params.output_filename << '\n';
+        std::cout << "keep_moves          : " << params.keep_moves << '\n';
         std::cout << '\n';
 
-        params.enforce_constraints();
-        do_rescore_fen(params);
+        do_rescore(params);
     }
 
     void transform(std::istringstream& is)
     {
         const std::map<std::string, CommandFunc> subcommands = {
             { "nudged_static", &nudged_static },
-            { "rescore_fen", &rescore_fen }
+            { "rescore", &rescore }
         };
 
         Eval::NNUE::init();
