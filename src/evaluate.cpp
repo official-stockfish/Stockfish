@@ -799,6 +799,7 @@ namespace {
                 !(unsafeSquares & ~attackedBy[Us][PAWN])  ? 30 :
                         !(unsafeSquares & squaresToQueen) ? 17 :
                         !(unsafeSquares & blockSq)        ?  7 :
+                                                             0 ;
 
                 // Assign a larger bonus if the block square is defended
                 if ((pos.pieces(Us) & bb) || (attackedBy[Us][ALL_PIECES] & blockSq))
