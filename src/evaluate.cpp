@@ -865,14 +865,13 @@ namespace {
   Value Evaluation<T>::winnable(Score score) const {
 
     int outflanking =  distance<File>(pos.square<KING>(WHITE), pos.square<KING>(BLACK))
-                     - distance<Rank>(pos.square<KING>(WHITE), pos.square<KING>(BLACK));
+                     + int(rank_of(pos.square<KING>(WHITE)) - rank_of(pos.square<KING>(BLACK)));
 
     bool pawnsOnBothFlanks =   (pos.pieces(PAWN) & QueenSide)
                             && (pos.pieces(PAWN) & KingSide);
 
     bool almostUnwinnable =   outflanking < 0
-                           && !pawnsOnBothFlanks
-                           && rank_of(pos.square<KING>(WHITE)) < rank_of(pos.square<KING>(BLACK));
+                           && !pawnsOnBothFlanks;
 
     bool infiltration =   rank_of(pos.square<KING>(WHITE)) > RANK_4
                        || rank_of(pos.square<KING>(BLACK)) < RANK_5;
