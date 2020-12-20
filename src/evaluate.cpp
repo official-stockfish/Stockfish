@@ -791,12 +791,14 @@ namespace {
                     unsafeSquares &= attackedBy[Them][ALL_PIECES] | pos.pieces(Them);
 
                 // If there are no enemy pieces or attacks on passed pawn span, assign a big bonus.
+                // Or if there is some, but they are all attacked by our pawns, assign a bit smaller bonus.
                 // Otherwise assign a smaller bonus if the path to queen is not attacked
                 // and even smaller bonus if it is attacked but block square is not.
-                int k = !unsafeSquares                    ? 35 :
-                        !(unsafeSquares & squaresToQueen) ? 20 :
-                        !(unsafeSquares & blockSq)        ?  9 :
-                                                             0 ;
+                
+                int k = !unsafeSquares                    ? 36 :
+                !(unsafeSquares & ~attackedBy[Us][PAWN])  ? 30 :
+                        !(unsafeSquares & squaresToQueen) ? 17 :
+                        !(unsafeSquares & blockSq)        ?  7 :
 
                 // Assign a larger bonus if the block square is defended
                 if ((pos.pieces(Us) & bb) || (attackedBy[Us][ALL_PIECES] & blockSq))
