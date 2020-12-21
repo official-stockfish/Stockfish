@@ -51,6 +51,8 @@
 #include <sstream>
 #include <unordered_set>
 #include <iostream>
+#include <map>
+#include <algorithm>
 
 #if defined (_OPENMP)
 #include <omp.h>
@@ -611,6 +613,8 @@ namespace Learner
             atomic<int>& move_accord_count
         );
 
+        bool has_depth1_move_agreement(Position& pos, Move pvmove);
+
         bool check_progress();
 
         // save merit function parameters to a file
@@ -1007,13 +1011,51 @@ namespace Learner
             local_loss_sum += loss;
             sum_norm += (double)abs(shallow_value);
 
-            // Determine if the teacher's move and the score of the shallow search match
-            const auto [value, pv] = Search::search(pos, 1);
-            if (pv.size() > 0 && (uint16_t)pv[0] == ps.move)
+            // Threat all moves with equal scores as first. This is up to move ordering.
+            if (has_depth1_move_agreement(pos, (Move)ps.move))
                 move_accord_count.fetch_add(1, std::memory_order_relaxed);
         }
 
         test_loss_sum += local_loss_sum;
+    }
+
+    bool LearnerThink::has_depth1_move_agreement(Position& pos, Move pvmove)
+    {
+        // Determine if the depth 1 search pv matches the move from the dataset.
+        // Do a manual depth 1 search so we're not affected by previous searches.
+        std::vector<std::pair<Move, Value>> child_scores;
+
+        // Call evaluate once for the rootpos so that the evals
+        // for children moves use incremental feature transformer updates.
+        (void)Eval::evaluate(pos);
+
+        // Just to get guaranteed alignment.
+        std::vector<StateInfo, AlignedAllocator<StateInfo>> states(1);
+        auto legal_moves = MoveList<LEGAL>(pos);
+        for (auto m : legal_moves)
+        {
+            pos.do_move(m, states[0]);
+            // We don't care if the king is in check or stuff like that.
+            // not a big issue and nnue should digest all.
+            auto value = -Eval::evaluate(pos);
+            child_scores.emplace_back(m, value);
+            pos.undo_move(m);
+        }
+
+        if (child_scores.empty())
+            return false;
+
+        std::sort(
+            child_scores.begin(),
+            child_scores.end(),
+            [](auto& lhs, auto& rhs) { return lhs.second > rhs.second; }
+        );
+
+        // Require the best move to have strictly higher score than the next one.
+        return
+            child_scores[0].first == pvmove
+            && (child_scores.size() == 1
+                || child_scores[1].second != child_scores[0].second);
     }
 
     bool LearnerThink::check_progress()
