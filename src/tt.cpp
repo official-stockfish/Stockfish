@@ -33,8 +33,13 @@ TranspositionTable TT; // Our global transposition table
 
 void TTEntry::save(Key k, Value v, bool pv, Bound b, Depth d, Move m, Value ev) {
 
+  const size_t entryIndex = this - &TT.table[0].entry[0];
+  TranspositionTable::EntryKey &key16 = TT.hashes[entryIndex];
+
+  assert(entryIndex < TT.clusterCount * TranspositionTable::ClusterSize);
+
   // Preserve any existing move for the same position
-  if (m || (uint16_t)k != key16)
+  if (m || (TranspositionTable::EntryKey)k != key16)
       move16 = (uint16_t)m;
 
   // Overwrite less valuable entries (cheapest checks first)
@@ -45,7 +50,7 @@ void TTEntry::save(Key k, Value v, bool pv, Bound b, Depth d, Move m, Value ev) 
       assert(d > DEPTH_OFFSET);
       assert(d < 256 + DEPTH_OFFSET);
 
-      key16     = (uint16_t)k;
+      key16     = (TranspositionTable::EntryKey)k;
       depth8    = (uint8_t)(d - DEPTH_OFFSET);
       genBound8 = (uint8_t)(TT.generation8 | uint8_t(pv) << 2 | b);
       value16   = (int16_t)v;
@@ -64,15 +69,19 @@ void TranspositionTable::resize(size_t mbSize) {
 
   aligned_large_pages_free(table);
 
-  clusterCount = mbSize * 1024 * 1024 / sizeof(Cluster);
+  // + 2 temporarily adds padding for verifying no bench change
+  clusterCount = mbSize * 1024 * 1024 / (sizeof(Cluster) + ClusterSize * sizeof(EntryKey) + 2);
 
-  table = static_cast<Cluster*>(aligned_large_pages_alloc(clusterCount * sizeof(Cluster)));
+  table = static_cast<Cluster*>(aligned_large_pages_alloc(
+                                clusterCount * (sizeof(Cluster) + ClusterSize * sizeof(EntryKey))));
   if (!table)
   {
       std::cerr << "Failed to allocate " << mbSize
                 << "MB for transposition table." << std::endl;
       exit(EXIT_FAILURE);
   }
+
+  hashes = reinterpret_cast<EntryKey *>(uintptr_t(table) + clusterCount * sizeof(Cluster));
 
   clear();
 }
@@ -100,6 +109,7 @@ void TranspositionTable::clear() {
                                 stride : clusterCount - start;
 
           std::memset(&table[start], 0, len * sizeof(Cluster));
+          std::memset(&hashes[start * ClusterSize], 0, len * ClusterSize * sizeof(EntryKey));
       });
   }
 
@@ -117,11 +127,14 @@ void TranspositionTable::clear() {
 
 TTEntry* TranspositionTable::probe(const Key key, bool& found) const {
 
-  TTEntry* const tte = first_entry(key);
-  const uint16_t key16 = (uint16_t)key;  // Use the low 16 bits as key inside the cluster
+  const size_t clusterIndex = getClusterIndex(key);
+  TTEntry* const tte = &TT.table[clusterIndex].entry[0];
+  TranspositionTable::EntryKey *const clusterKeys = &TT.hashes[ClusterSize * clusterIndex];
+
+  const EntryKey key16 = (EntryKey)key;  // Use the low 16 bits as key inside the cluster
 
   for (int i = 0; i < ClusterSize; ++i)
-      if (tte[i].key16 == key16 || !tte[i].depth8)
+      if (clusterKeys[i] == key16 || !tte[i].depth8)
       {
           tte[i].genBound8 = uint8_t(generation8 | (tte[i].genBound8 & 0x7)); // Refresh
 

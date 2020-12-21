@@ -24,7 +24,6 @@
 
 /// TTEntry struct is the 10 bytes transposition table entry, defined as below:
 ///
-/// key        16 bit
 /// depth       8 bit
 /// generation  5 bit
 /// pv node     1 bit
@@ -32,6 +31,8 @@
 /// move       16 bit
 /// value      16 bit
 /// eval value 16 bit
+///
+/// Key is stored separately
 
 struct TTEntry {
 
@@ -46,7 +47,6 @@ struct TTEntry {
 private:
   friend class TranspositionTable;
 
-  uint16_t key16;
   uint8_t  depth8;
   uint8_t  genBound8;
   uint16_t move16;
@@ -67,10 +67,9 @@ class TranspositionTable {
 
   struct Cluster {
     TTEntry entry[ClusterSize];
-    char padding[2]; // Pad to 32 bytes
   };
 
-  static_assert(sizeof(Cluster) == 32, "Unexpected Cluster size");
+  static_assert(sizeof(Cluster) == 24, "Unexpected Cluster size"); // temporary change
 
 public:
  ~TranspositionTable() { aligned_large_pages_free(table); }
@@ -80,16 +79,24 @@ public:
   void resize(size_t mbSize);
   void clear();
 
-  TTEntry* first_entry(const Key key) const {
-    return &table[mul_hi64(key, clusterCount)].entry[0];
+  inline void prefetch(const Key key) const {
+    const size_t clusterIndex = getClusterIndex(key);
+    ::prefetch(&table[clusterIndex]);
+    ::prefetch(&hashes[ClusterSize * clusterIndex]);
   }
 
 private:
   friend struct TTEntry;
+  using EntryKey = uint16_t;
 
   size_t clusterCount;
   Cluster* table;
+  EntryKey* hashes;
   uint8_t generation8; // Size must be not bigger than TTEntry::genBound8
+
+  inline size_t getClusterIndex(const Key key) const {
+    return mul_hi64(key, clusterCount);
+  }
 };
 
 extern TranspositionTable TT;
