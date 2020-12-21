@@ -611,8 +611,6 @@ namespace Learner
             atomic<int>& move_accord_count
         );
 
-        Value get_shallow_value(Position& pos);
-
         bool check_progress();
 
         // save merit function parameters to a file
@@ -996,7 +994,7 @@ namespace Learner
                 continue;
             }
 
-            const Value shallow_value = get_shallow_value(pos);
+            const Value shallow_value = Eval::evaluate(pos);
 
             // Evaluation value of deep search
             const auto deep_value = (Value)ps.score;
@@ -1016,33 +1014,6 @@ namespace Learner
         }
 
         test_loss_sum += local_loss_sum;
-    }
-
-    Value LearnerThink::get_shallow_value(Position& pos)
-    {
-        // Evaluation value for shallow search
-        // The value of evaluate() may be used, but when calculating loss, learn_cross_entropy and
-        // Use qsearch() because it is difficult to compare the values.
-        // EvalHash has been disabled in advance. (If not, the same value will be returned every time)
-        const auto [_, pv] = Search::qsearch(pos);
-
-        const auto rootColor = pos.side_to_move();
-
-        std::vector<StateInfo, AlignedAllocator<StateInfo>> states(pv.size());
-        for (size_t i = 0; i < pv.size(); ++i)
-        {
-            pos.do_move(pv[i], states[i]);
-        }
-
-        const Value shallow_value =
-            (rootColor == pos.side_to_move())
-            ? Eval::evaluate(pos)
-            : -Eval::evaluate(pos);
-
-        for (auto it = pv.rbegin(); it != pv.rend(); ++it)
-            pos.undo_move(*it);
-
-        return shallow_value;
     }
 
     bool LearnerThink::check_progress()
