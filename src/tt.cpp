@@ -69,8 +69,7 @@ void TranspositionTable::resize(size_t mbSize) {
 
   aligned_large_pages_free(table);
 
-  // + 2 temporarily adds padding for verifying no bench change
-  clusterCount = mbSize * 1024 * 1024 / (sizeof(Cluster) + ClusterSize * sizeof(EntryKey) + 2);
+  clusterCount = mbSize * 1024 * 1024 / (sizeof(Cluster) + ClusterSize * sizeof(EntryKey));
 
   table = static_cast<Cluster*>(aligned_large_pages_alloc(
                                 clusterCount * (sizeof(Cluster) + ClusterSize * sizeof(EntryKey))));

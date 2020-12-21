@@ -63,13 +63,13 @@ private:
 
 class TranspositionTable {
 
-  static constexpr int ClusterSize = 3;
+  static constexpr int ClusterSize = 4;
 
   struct Cluster {
     TTEntry entry[ClusterSize];
   };
 
-  static_assert(sizeof(Cluster) == 24, "Unexpected Cluster size"); // temporary change
+  static_assert(sizeof(Cluster) == 32, "Unexpected Cluster size");
 
 public:
  ~TranspositionTable() { aligned_large_pages_free(table); }
