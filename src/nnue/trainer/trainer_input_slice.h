@@ -323,17 +323,23 @@ namespace Eval::NNUE {
                 const IndexType output_offset = kOutputDimensions * b;
 
                 IndexType i = 0;
-                for (; i < Offset; ++i) {
-                    gradients_[input_offset + i] = static_cast<LearnFloatType>(0.0);
+                if constexpr (Offset > 0)
+                {
+                    for (; i < Offset; ++i) {
+                        gradients_[input_offset + i] = static_cast<LearnFloatType>(0.0);
+                    }
                 }
 
                 for (; i < Offset + kOutputDimensions; ++i) {
                     gradients_[input_offset + i] = gradients[output_offset + i - Offset];
                 }
 
-                for (; i < kInputDimensions; ++i)
+                if constexpr (Offset + kOutputDimensions < kInputDimensions)
                 {
-                    gradients_[input_offset + i] = static_cast<LearnFloatType>(0.0);
+                    for (; i < kInputDimensions; ++i)
+                    {
+                        gradients_[input_offset + i] = static_cast<LearnFloatType>(0.0);
+                    }
                 }
             }
 
