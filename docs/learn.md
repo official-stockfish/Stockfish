@@ -66,7 +66,9 @@ Currently the following options are available:
 
 `assume_quiet` - this is a flag option. When specified learn will not perform qsearch to reach a quiet position.
 
-`smart_fen_skipping` - this is a flag option. When specified some position that are not good candidates for teaching are skipped. This includes positions where the best move is a capture or promotion, and position where a king is in check.
+`smart_fen_skipping` - this is a flag option. When specified some position that are not good candidates for teaching are skipped. This includes positions where the best move is a capture or promotion, and position where a king is in check. Default: 1.
+
+`smart_fen_skipping_for_validation` - same as `smart_fen_skipping` but applies to validation data set. Default: 0.
 
 `newbob_num_trials` - determines after how many subsequent rejected nets the training process will be terminated. Default: 4.
 

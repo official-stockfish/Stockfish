@@ -15,6 +15,7 @@
 #include <iostream>
 #include <cstdint>
 #include <thread>
+#include <functional>
 
 namespace Learner{
 
@@ -73,12 +74,12 @@ namespace Learner{
         }
 
         // Load the phase for calculation such as mse.
-        PSVector read_some(uint64_t count, int eval_limit, bool use_draw_games)
+        PSVector read_some(uint64_t count, uint64_t count_tries, std::function<bool(const PackedSfenValue&)> do_take)
         {
             PSVector psv;
             psv.reserve(count);
 
-            for (uint64_t i = 0; i < count; ++i)
+            for (uint64_t i = 0; i < count_tries; ++i)
             {
                 PackedSfenValue ps;
                 if (!read_to_thread_buffer(0, ps))
@@ -87,13 +88,13 @@ namespace Learner{
                     return psv;
                 }
 
-                if (eval_limit < abs(ps.score))
-                    continue;
+                if (do_take(ps))
+                {
+                    psv.push_back(ps);
 
-                if (!use_draw_games && ps.game_result == 0)
-                    continue;
-
-                psv.push_back(ps);
+                    if (psv.size() >= count)
+                        break;
+                }
             }
 
             return psv;
