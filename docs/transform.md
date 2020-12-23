@@ -38,3 +38,5 @@ Currently the following options are available:
 
 `keep_moves` - whether to keep moves from the input file if available. Allows to keep compression in .binpack. Default: 1.
 
+`research_count` - number of additional searches of depth N done on the same position before using the eval. Default: 0.
+

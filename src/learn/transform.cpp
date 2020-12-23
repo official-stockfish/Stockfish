@@ -53,11 +53,13 @@ namespace Learner
         std::string input_filename = "in.epd";
         std::string output_filename = "out.binpack";
         int depth = 3;
+        int research_count = 0;
         bool keep_moves = true;
 
         void enforce_constraints()
         {
             depth = std::max(1, depth);
+            research_count = std::max(0, research_count);
         }
     };
 
@@ -293,7 +295,12 @@ namespace Learner
                 pos.set(*fen, false, &si, &th);
                 pos.state()->rule50 = 0;
 
+
+                for (int cnt = 0; cnt < params.research_count; ++cnt)
+                    Search::search(pos, params.depth, 1);
+
                 auto [search_value, search_pv] = Search::search(pos, params.depth, 1);
+
                 if (search_pv.empty())
                     continue;
 
@@ -400,7 +407,11 @@ namespace Learner
                 {
                     pos.set_from_packed_sfen(ps.sfen, &si, &th);
 
+                    for (int cnt = 0; cnt < params.research_count; ++cnt)
+                        Search::search(pos, params.depth, 1);
+
                     auto [search_value, search_pv] = Search::search(pos, params.depth, 1);
+
                     if (search_pv.empty())
                         continue;
 
@@ -461,6 +472,8 @@ namespace Learner
                 is >> params.output_filename;
             else if (token == "keep_moves")
                 is >> params.keep_moves;
+            else if (token == "research_count")
+                is >> params.research_count;
         }
 
         params.enforce_constraints();
@@ -470,6 +483,7 @@ namespace Learner
         std::cout << "input_file          : " << params.input_filename << '\n';
         std::cout << "output_file         : " << params.output_filename << '\n';
         std::cout << "keep_moves          : " << params.keep_moves << '\n';
+        std::cout << "research_count      : " << params.research_count << '\n';
         std::cout << '\n';
 
         do_rescore(params);
