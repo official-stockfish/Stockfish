@@ -295,8 +295,6 @@ namespace Eval::NNUE {
         // number of samples in mini-batch
         IndexType batch_size_;
 
-        IndexType num_total_;
-
         const LearnFloatType* input_;
 
         // Trainer of the previous layer
@@ -316,8 +314,8 @@ namespace Eval::NNUE {
             // Health check statistics
             LearnFloatType min_activations_[kOutputDimensions];
             LearnFloatType max_activations_[kOutputDimensions];
-            IndexType num_clipped_;
-            IndexType num_total_;
+            uint64_t num_clipped_;
+            uint64_t num_total_;
 
             ThreadState() { reset(); }
 

@@ -690,8 +690,6 @@ namespace Eval::NNUE {
         // layer to learn
         LayerType* const target_layer_;
 
-        IndexType num_total_;
-
         // parameter
         alignas(kCacheLineSize) LearnFloatType biases_[kHalfDimensions];
         alignas(kCacheLineSize)
@@ -717,8 +715,8 @@ namespace Eval::NNUE {
             alignas(kCacheLineSize) LearnFloatType max_activations_[kHalfDimensions];
             LearnFloatType min_pre_activation_;
             LearnFloatType max_pre_activation_;
-            IndexType num_clipped_;
-            IndexType num_total_;
+            uint64_t num_clipped_;
+            uint64_t num_total_;
 
             ThreadStatState() { reset(); }
 
