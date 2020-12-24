@@ -253,9 +253,15 @@ void init() {
 
   useNNUE = nnue_mode_from_option(Options["Use NNUE"]);
 
-  if (Options["SkipLoadingEval"] || useNNUE == UseNNUEMode::False)
+  if (Options["SkipLoadingEval"])
   {
     eval_file_loaded.clear();
+    return;
+  }
+
+  if (useNNUE == UseNNUEMode::False)
+  {
+    // Keep the eval file loaded. Useful for mixed bench.
     return;
   }
 
