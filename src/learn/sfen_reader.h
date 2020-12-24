@@ -50,7 +50,9 @@ namespace Learner{
         ) :
             filenames(filenames_.begin(), filenames_.end()),
             mode(mode_),
-            sfen_read_size(read_size),
+            // Due to the implementation of waiting for buffer empty a bit
+            // the read size must be at least twice the buffer size.
+            sfen_read_size(std::max(read_size, buffer_size * 2)),
             thread_buffer_size(buffer_size),
             prng(seed)
         {

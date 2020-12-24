@@ -576,7 +576,7 @@ namespace Learner
                 SfenReaderMode::Cyclic,
                 1,
                 std::to_string(prng.next_random_seed()),
-                prm.sfen_read_size,
+                std::min<size_t>(prm.validation_count * 10, 1000000),
                 prm.thread_buffer_size),
             learn_loss_sum{}
         {
