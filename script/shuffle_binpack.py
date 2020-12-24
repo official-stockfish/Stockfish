@@ -25,16 +25,18 @@ def index_binpack(file):
 
     return index
 
-def copy_binpack_indexed(in_file, index, out_file):
+def copy_binpack_indexed(in_file, index, out_files):
     print('Copying...')
     total_size = 0
     report_every = 100
     prev_mib = -report_every
+    nextfile = 0
     for offset, size in index:
         in_file.seek(offset, os.SEEK_SET)
         data = in_file.read(size)
         assert len(data) == size
-        out_file.write(data)
+        out_files[nextfile].write(data)
+        nextfile = (nextfile + 1) % len(out_files)
 
         total_size += size
         mib = total_size // 1024 // 1024
@@ -44,26 +46,44 @@ def copy_binpack_indexed(in_file, index, out_file):
 
 def main():
     if len(sys.argv) < 3:
-        print('Usage: python shuffle_binpack.py infile outfile')
+        print('Usage: python shuffle_binpack.py infile outfile [split_count]')
         return
 
     in_filename = sys.argv[1]
-    out_filename = sys.argv[2]
 
-    if (Path(out_filename).exists()):
-        print('Output path already exists. Please specify a path to a file that does not exist.')
-        return
+    if len(sys.argv) > 3:
+       # split the infile in split_count pieces, creating new outfile names based on the provided name
+       basefile = sys.argv[2]
+       split_count = int(sys.argv[3])
+       base=os.path.splitext(basefile)[0]
+       ext=os.path.splitext(basefile)[1]
+       out_filenames = []
+       for i in range(split_count):
+           out_filenames.append(base+"_{}".format(i)+ext)
+    else:
+       out_filenames = [sys.argv[2]]
+
+    for out_filename in out_filenames:
+      if (Path(out_filename).exists()):
+          print('Output path {} already exists. Please specify a path to a file that does not exist.'.format(out_filename))
+          return
+
+    print(out_filenames)
 
     in_file = open(in_filename, 'rb')
-    out_file = open(out_filename, 'wb')
-
     index = index_binpack(in_file)
+
     print('Shuffling...')
     random.shuffle(index)
 
-    copy_binpack_indexed(in_file, index, out_file)
+    out_files = []
+    for out_filename in out_filenames:
+        out_files.append(open(out_filename, 'wb'))
+
+    copy_binpack_indexed(in_file, index, out_files)
 
     in_file.close()
-    out_file.close()
+    for out_file in out_files:
+        out_file.close()
 
 main()
