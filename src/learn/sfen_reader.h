@@ -218,7 +218,9 @@ namespace Learner{
                 return;
             }
 
-            while (true)
+            // We want to set the `end_of_files` only after we read everything AND copy to the buffer pool.
+            bool local_end_of_files = false;
+            while (!local_end_of_files)
             {
                 // Wait for the buffer to run out.
                 // This size() is read only, so you don't need to lock it.
@@ -254,8 +256,8 @@ namespace Learner{
                             // There was no next file. Abort.
                             auto out = sync_region_cout.new_region();
                             out << "INFO (sfen_reader): End of files." << std::endl;
-                            end_of_files = true;
-                            return;
+                            local_end_of_files = true;
+                            break;
                         }
                     }
                 }
@@ -266,23 +268,21 @@ namespace Learner{
                     Algo::shuffle(sfens, prng);
                 }
 
-                // Divide this by thread_buffer_size. There should be size pieces.
-                // sfen_read_size shall be a multiple of thread_buffer_size.
-                assert((sfen_read_size % thread_buffer_size) == 0);
-
-                auto size = size_t(sfen_read_size / thread_buffer_size);
                 std::vector<std::unique_ptr<PSVector>> buffers;
-                buffers.reserve(size);
-
-                for (size_t i = 0; i < size; ++i)
+                for (size_t offset = 0; offset < sfens.size(); offset += thread_buffer_size)
                 {
+                    const size_t count =
+                        offset + thread_buffer_size > sfens.size()
+                        ? sfens.size() - offset
+                        : thread_buffer_size;
+
                     // Delete this pointer on the receiving side.
                     auto buf = std::make_unique<PSVector>();
-                    buf->resize(thread_buffer_size);
+                    buf->resize(count);
                     memcpy(
                         buf->data(),
-                        &sfens[i * thread_buffer_size],
-                        sizeof(PackedSfenValue) * thread_buffer_size);
+                        &sfens[offset],
+                        sizeof(PackedSfenValue) * count);
 
                     buffers.emplace_back(std::move(buf));
                 }
@@ -297,6 +297,8 @@ namespace Learner{
                         packed_sfens_pool.emplace_back(std::move(buf));
                 }
             }
+
+            end_of_files = true;
         }
 
     protected:
