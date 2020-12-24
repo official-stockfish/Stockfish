@@ -621,8 +621,19 @@ namespace Eval::NNUE {
             for(auto b : biases_)
                 abs_bias_sum += std::abs(b);
 
-            for(auto w : weights_)
-                abs_weight_sum += std::abs(w);
+            std::vector<TrainingFeature> training_features;
+            for (IndexType j = 0; j < RawFeatures::kDimensions; ++j)
+            {
+                training_features.clear();
+                Features::Factorizer<RawFeatures>::append_training_features(
+                    j, &training_features);
+
+                for (const auto& feature : training_features) {
+                    for (IndexType i = 0; i < kHalfDimensions; ++i) {
+                        abs_weight_sum += std::abs(weights_[kHalfDimensions * feature.get_index() + i]);
+                    }
+                }
+            }
 
             auto out = sync_region_cout.new_region();
 
