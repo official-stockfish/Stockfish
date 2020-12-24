@@ -561,13 +561,13 @@ namespace Learner
 
         LearnerThink(const Params& prm) :
             params(prm),
-            prng(prm.seed),
+            init_prng(prm.seed),
             train_sr(
                 prm.filenames,
                 prm.shuffle,
                 SfenReaderMode::Cyclic,
                 prm.num_threads,
-                std::to_string(prng.next_random_seed()),
+                std::to_string(init_prng.next_random_seed()),
                 prm.sfen_read_size,
                 prm.thread_buffer_size),
             validation_sr(
@@ -575,7 +575,7 @@ namespace Learner
                 prm.shuffle,
                 SfenReaderMode::Cyclic,
                 1,
-                std::to_string(prng.next_random_seed()),
+                std::to_string(init_prng.next_random_seed()),
                 std::min<size_t>(prm.validation_count * 10, 1000000),
                 prm.thread_buffer_size),
             learn_loss_sum{}
@@ -589,6 +589,12 @@ namespace Learner
             total_done = 0;
             trials = params.newbob_num_trials;
             dir_number = 0;
+
+            prngs.reserve(prm.num_threads);
+            for (uint64_t i = 0; i < prm.num_threads; ++i)
+            {
+                prngs.emplace_back(init_prng.next_random_seed());
+            }
         }
 
         void learn(uint64_t epochs);
@@ -622,7 +628,8 @@ namespace Learner
 
         Params params;
 
-        PRNG prng;
+        PRNG init_prng;
+        std::vector<PRNG> prngs;
 
         // sfen reader
         SfenReader train_sr;
@@ -776,6 +783,7 @@ namespace Learner
     {
         const auto thread_id = th.thread_idx();
         auto& pos = th.rootPos;
+        auto& prng = prngs[th.thread_idx()];
 
         std::vector<StateInfo, AlignedAllocator<StateInfo>> state(MAX_PLY);
 

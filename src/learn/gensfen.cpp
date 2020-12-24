@@ -127,14 +127,20 @@ namespace Learner
             const Params& prm
         ) :
             params(prm),
-            prng(prm.seed),
             sfen_writer(prm.output_file_name, prm.num_threads, prm.save_every, prm.sfen_format)
         {
             hash.resize(GENSFEN_HASH_SIZE);
+            prngs.reserve(prm.num_threads);
+            auto seed = prm.seed;
+            for (uint64_t i = 0; i < prm.num_threads; ++i)
+            {
+                prngs.emplace_back(seed);
+                seed = prngs.back().next_random_seed();
+            }
 
             if (!prm.book.empty())
             {
-                opening_book = open_opening_book(prm.book, prng);
+                opening_book = open_opening_book(prm.book, prngs[0]);
                 if (opening_book == nullptr)
                 {
                     std::cout << "WARNING: Failed to open opening book " << prm.book << ". Falling back to startpos.\n";
@@ -142,7 +148,7 @@ namespace Learner
             }
 
             // Output seed to veryfy by the user if it's not identical by chance.
-            std::cout << prng << std::endl;
+            std::cout << prngs[0] << std::endl;
         }
 
         void generate(uint64_t limit);
@@ -150,7 +156,7 @@ namespace Learner
     private:
         Params params;
 
-        PRNG prng;
+        std::vector<PRNG> prngs;
 
         std::mutex stats_mutex;
         TimePoint last_stats_report_time;
@@ -177,9 +183,10 @@ namespace Learner
             Position& pos,
             const vector<int>& move_hist_scores) const;
 
-        vector<uint8_t> generate_random_move_flags();
+        vector<uint8_t> generate_random_move_flags(PRNG& prng);
 
         optional<Move> choose_random_move(
+            PRNG& prng,
             Position& pos,
             std::vector<uint8_t>& random_move_flag,
             int ply,
@@ -252,6 +259,8 @@ namespace Learner
 
         StateInfo si;
 
+        auto& prng = prngs[th.thread_idx()];
+
         // end flag
         bool quit = false;
 
@@ -279,7 +288,7 @@ namespace Learner
             packed_sfens.reserve(params.write_maxply + MAX_PLY);
 
             // Precomputed flags. Used internally by choose_random_move.
-            vector<uint8_t> random_move_flag = generate_random_move_flags();
+            vector<uint8_t> random_move_flag = generate_random_move_flags(prng);
 
             // A counter that keeps track of the number of random moves
             // When random_move_minply == -1, random moves are
@@ -423,7 +432,7 @@ namespace Learner
                 }
 
                 // Update the next move according to best search result or random move.
-                auto random_move = choose_random_move(pos, random_move_flag, ply, actual_random_move_count);
+                auto random_move = choose_random_move(prng, pos, random_move_flag, ply, actual_random_move_count);
                 const Move next_move = random_move.has_value() ? *random_move : search_pv[0];
 
                 // We don't have the whole game yet, but it ended,
@@ -579,7 +588,7 @@ namespace Learner
         return nullopt;
     }
 
-    vector<uint8_t> Gensfen::generate_random_move_flags()
+    vector<uint8_t> Gensfen::generate_random_move_flags(PRNG& prng)
     {
         vector<uint8_t> random_move_flag;
 
@@ -617,6 +626,7 @@ namespace Learner
     }
 
     optional<Move> Gensfen::choose_random_move(
+        PRNG& prng,
         Position& pos,
         std::vector<uint8_t>& random_move_flag,
         int ply,

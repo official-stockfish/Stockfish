@@ -61,6 +61,7 @@ namespace Learner{
             end_of_files = false;
             shuffle = do_shuffle;
             stop_flag = false;
+            num_buffers_in_pool.store(0);
 
             file_worker_thread = std::thread([&] {
                 this->file_read_worker();
@@ -147,6 +148,7 @@ namespace Learner{
 
                         packed_sfens[thread_id] = std::move(packed_sfens_pool.front());
                         packed_sfens_pool.pop_front();
+                        num_buffers_in_pool.fetch_sub(1);
 
                         total_read += thread_buffer_size;
 
@@ -224,7 +226,7 @@ namespace Learner{
             {
                 // Wait for the buffer to run out.
                 // This size() is read only, so you don't need to lock it.
-                while (!stop_flag && packed_sfens_pool.size() >= sfen_read_size / thread_buffer_size)
+                while (!stop_flag && num_buffers_in_pool.load() >= sfen_read_size / thread_buffer_size)
                     sleep(100);
 
                 if (stop_flag)
@@ -294,7 +296,10 @@ namespace Learner{
                     // contents of packed_sfens_pool are changed.
 
                     for (auto& buf : buffers)
+                    {
+                        num_buffers_in_pool.fetch_add(1);
                         packed_sfens_pool.emplace_back(std::move(buf));
+                    }
                 }
             }
 
@@ -342,5 +347,6 @@ namespace Learner{
         // Each worker thread fills its own packed_sfens[thread_id] from here.
         // * Lock and access the mutex.
         std::list<std::unique_ptr<PSVector>> packed_sfens_pool;
+        std::atomic<size_t> num_buffers_in_pool;
     };
 }
