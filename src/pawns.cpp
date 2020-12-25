@@ -167,12 +167,12 @@ namespace {
                 score -= Doubled;
             else
                 score -=  Isolated
-                        + WeakUnopposed * !opposed * bool(~(FileABB | FileHBB) & s);
+                        + WeakUnopposed * !opposed;
         }
 
         else if (backward)
             score -=  Backward
-                    + WeakUnopposed * !opposed;
+                    + WeakUnopposed * !opposed * bool(~(FileABB | FileHBB) & s);
 
         if (!support)
             score -=  Doubled * doubled
