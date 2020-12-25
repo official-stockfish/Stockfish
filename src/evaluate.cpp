@@ -879,14 +879,14 @@ namespace {
                        || rank_of(pos.square<KING>(BLACK)) < RANK_5;
 
     // Compute the initiative bonus for the attacking side
-    int complexity =   9 * pe->passed_count()
-                    + 12 * pos.count<PAWN>()
-                    +  9 * outflanking
-                    + 21 * pawnsOnBothFlanks
-                    + 24 * infiltration
-                    + 51 * !pos.non_pawn_material()
-                    - 43 * almostUnwinnable
-                    -110 ;
+    int complexity =   9 * pe->passed_count()       // (~  3 Elo)
+                    + 12 * pos.count<PAWN>()        // (~ 40 Elo)
+                    +  9 * outflanking              // (~  2 Elo)
+                    + 21 * pawnsOnBothFlanks        // (~0.5 Elo)
+                    + 24 * infiltration             // (~  2 Elo)
+                    + 51 * !pos.non_pawn_material() // (~0.5 Elo)
+                    - 43 * almostUnwinnable         // (~0.5 Elo)
+                    -110 ;                          // (~ 20 Elo)
 
     Value mg = mg_value(score);
     Value eg = eg_value(score);
