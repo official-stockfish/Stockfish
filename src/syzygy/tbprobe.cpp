@@ -1141,7 +1141,7 @@ void* mapped(TBTable<Type>& e, const Position& pos) {
     if (e.ready.load(std::memory_order_acquire))
         return e.baseAddress; // Could be nullptr if file does not exist
 
-    std::unique_lock<std::mutex> lk(mutex);
+    std::scoped_lock<std::mutex> lk(mutex);
 
     if (e.ready.load(std::memory_order_relaxed)) // Recheck under lock
         return e.baseAddress;
