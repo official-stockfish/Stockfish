@@ -1,0 +1,5 @@
+**/*.o
+src/stockfish
+**/*.nnue
+src/.depend
+
