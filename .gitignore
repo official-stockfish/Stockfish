@@ -1,5 +1,14 @@
+# Files from build
 **/*.o
-src/stockfish
-**/*.nnue
+**/*.s
 src/.depend
+
+# Built binary
+src/stockfish
+
+# Neural network for the NNUE evaluation
+**/*.nnue
+
+# IDE files
+.vscode/**
 
