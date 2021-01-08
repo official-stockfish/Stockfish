@@ -156,10 +156,8 @@ namespace {
         {
             assert(rank_of(pos.ep_square()) == relative_rank(Us, RANK_6));
 
-            // An en passant capture can be an evasion only if the checking piece
-            // is the double pushed pawn and so is in the target. Otherwise this
-            // is a discovery check and we are forced to do otherwise.
-            if (Type == EVASIONS && !(target & (pos.ep_square() - Up)))
+            // An en passant capture cannot resolve a discovered check.
+            if (Type == EVASIONS && (target & (pos.ep_square() + Up)))
                 return moveList;
 
             b1 = pawnsNotOn7 & pawn_attacks_bb(Them, pos.ep_square());
