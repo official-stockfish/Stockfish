@@ -85,7 +85,7 @@ namespace {
 
             // Add pawn pushes which give discovered check. This is possible only
             // if the pawn is not on the same file as the enemy king, because we
-            // don't generate captures. Note that a possible discovery check
+            // don't generate captures. Note that a possible discovered check
             // promotion has been already generated amongst the captures.
             Bitboard dcCandidateQuiets = pos.blockers_for_king(Them) & pawnsNotOn7;
             if (dcCandidateQuiets)
@@ -134,7 +134,7 @@ namespace {
             moveList = make_promotions<Type, Up     >(moveList, pop_lsb(&b3), ksq);
     }
 
-    // Standard and en-passant captures
+    // Standard and en passant captures
     if (Type == CAPTURES || Type == EVASIONS || Type == NON_EVASIONS)
     {
         Bitboard b1 = shift<UpRight>(pawnsNotOn7) & enemies;
@@ -167,7 +167,7 @@ namespace {
             assert(b1);
 
             while (b1)
-                *moveList++ = make<ENPASSANT>(pop_lsb(&b1), pos.ep_square());
+                *moveList++ = make<EN_PASSANT>(pop_lsb(&b1), pos.ep_square());
         }
     }
 
@@ -355,7 +355,7 @@ ExtMove* generate<LEGAL>(const Position& pos, ExtMove* moveList) {
   moveList = pos.checkers() ? generate<EVASIONS    >(pos, moveList)
                             : generate<NON_EVASIONS>(pos, moveList);
   while (cur != moveList)
-      if (   (pinned || from_sq(*cur) == ksq || type_of(*cur) == ENPASSANT)
+      if (   (pinned || from_sq(*cur) == ksq || type_of(*cur) == EN_PASSANT)
           && !pos.legal(*cur))
           *cur = (--moveList)->move;
       else

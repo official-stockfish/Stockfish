@@ -84,7 +84,7 @@ namespace {
     return d > 14 ? 29 : 8 * d * d + 224 * d - 215;
   }
 
-  // Add a small random component to draw evaluations to avoid 3fold-blindness
+  // Add a small random component to draw evaluations to avoid 3-fold blindness
   Value value_draw(Thread* thisThread) {
     return VALUE_DRAW + Value(2 * (thisThread->nodes & 1) - 1);
   }
@@ -1127,7 +1127,7 @@ moves_loop: // When in check, search starts from here
 
       // Check extension (~2 Elo)
       else if (    givesCheck
-               && (pos.is_discovery_check_on_king(~us, move) || pos.see_ge(move)))
+               && (pos.is_discovered_check_on_king(~us, move) || pos.see_ge(move)))
           extension = 1;
 
       // Last captures extension
@@ -1541,7 +1541,7 @@ moves_loop: // When in check, search starts from here
           &&  futilityBase > -VALUE_KNOWN_WIN
           && !pos.advanced_pawn_push(move))
       {
-          assert(type_of(move) != ENPASSANT); // Due to !pos.advanced_pawn_push
+          assert(type_of(move) != EN_PASSANT); // Due to !pos.advanced_pawn_push
 
           // moveCount pruning
           if (moveCount > 2)
