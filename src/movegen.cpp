@@ -175,25 +175,19 @@ namespace {
   }
 
 
-  template<Color Us, PieceType Pt, bool Checks>
-  ExtMove* generate_moves(const Position& pos, ExtMove* moveList, Bitboard target) {
+  template<PieceType Pt, bool Checks>
+  ExtMove* generate_moves(const Position& pos, ExtMove* moveList, Bitboard piecesToMove, Bitboard target) {
 
     static_assert(Pt != KING && Pt != PAWN, "Unsupported piece type in generate_moves()");
 
-    Bitboard bb = pos.pieces(Us, Pt);
+    Bitboard bb = piecesToMove & pos.pieces(Pt);
 
     while (bb) {
         Square from = pop_lsb(&bb);
 
-        if (Checks)
-        {
-            if (    (Pt == BISHOP || Pt == ROOK || Pt == QUEEN)
-                && !(attacks_bb<Pt>(from) & target & pos.check_squares(Pt)))
-                continue;
-
-            if (pos.blockers_for_king(~Us) & from)
-                continue;
-        }
+        if (Checks && (Pt == BISHOP || Pt == ROOK || Pt == QUEEN)
+            && !(attacks_bb<Pt>(from) & target & pos.check_squares(Pt)))
+            continue;
 
         Bitboard b = attacks_bb<Pt>(from, pos.pieces()) & target;
 
@@ -211,7 +205,10 @@ namespace {
   template<Color Us, GenType Type>
   ExtMove* generate_all(const Position& pos, ExtMove* moveList) {
     constexpr bool Checks = Type == QUIET_CHECKS; // Reduce template instantations
-    Bitboard target;
+    Bitboard target, piecesToMove = pos.pieces(Us);
+
+    if(Type == QUIET_CHECKS)
+        piecesToMove &= ~pos.blockers_for_king(~Us);
 
     switch (Type)
     {
@@ -236,10 +233,10 @@ namespace {
     }
 
     moveList = generate_pawn_moves<Us, Type>(pos, moveList, target);
-    moveList = generate_moves<Us, KNIGHT, Checks>(pos, moveList, target);
-    moveList = generate_moves<Us, BISHOP, Checks>(pos, moveList, target);
-    moveList = generate_moves<Us,   ROOK, Checks>(pos, moveList, target);
-    moveList = generate_moves<Us,  QUEEN, Checks>(pos, moveList, target);
+    moveList = generate_moves<KNIGHT, Checks>(pos, moveList, piecesToMove, target);
+    moveList = generate_moves<BISHOP, Checks>(pos, moveList, piecesToMove, target);
+    moveList = generate_moves<  ROOK, Checks>(pos, moveList, piecesToMove, target);
+    moveList = generate_moves< QUEEN, Checks>(pos, moveList, piecesToMove, target);
 
     if (Type != QUIET_CHECKS && Type != EVASIONS)
     {
