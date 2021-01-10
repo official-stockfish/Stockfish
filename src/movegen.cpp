@@ -204,6 +204,9 @@ namespace {
 
   template<Color Us, GenType Type>
   ExtMove* generate_all(const Position& pos, ExtMove* moveList) {
+
+    static_assert(Type != LEGAL, "Unsupported type in generate_all()");
+
     constexpr bool Checks = Type == QUIET_CHECKS; // Reduce template instantations
     Bitboard target, piecesToMove = pos.pieces(Us);
 
@@ -228,8 +231,6 @@ namespace {
         case NON_EVASIONS:
             target = ~pos.pieces(Us);
             break;
-        default:
-            static_assert(true, "Unsupported type in generate_all()");
     }
 
     moveList = generate_pawn_moves<Us, Type>(pos, moveList, target);
