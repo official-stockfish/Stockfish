@@ -182,18 +182,15 @@ namespace {
 
     Bitboard bb = pos.pieces(Us, Pt);
 
+    if(Checks)
+        bb &= ~pos.blockers_for_king(~Us);
+
     while (bb) {
         Square from = pop_lsb(&bb);
 
-        if (Checks)
-        {
-            if (    (Pt == BISHOP || Pt == ROOK || Pt == QUEEN)
-                && !(attacks_bb<Pt>(from) & target & pos.check_squares(Pt)))
-                continue;
-
-            if (pos.blockers_for_king(~Us) & from)
-                continue;
-        }
+        if (Checks && (Pt == BISHOP || Pt == ROOK || Pt == QUEEN)
+            && !(attacks_bb<Pt>(from) & target & pos.check_squares(Pt)))
+            continue;
 
         Bitboard b = attacks_bb<Pt>(from, pos.pieces()) & target;
 
