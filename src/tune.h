@@ -130,9 +130,9 @@ class Tune {
     SetRange range;
   };
 
-  // Our facilty to fill the container, each Entry corresponds to a parameter to tune.
-  // We use variadic templates to deal with an unspecified number of entries, each one
-  // of a possible different type.
+  // Our facility to fill the container, each Entry corresponds to a parameter
+  // to tune. We use variadic templates to deal with an unspecified number of
+  // entries, each one of a possible different type.
   static std::string next(std::string& names, bool pop = true);
 
   int add(const SetRange&, std::string&&) { return 0; }

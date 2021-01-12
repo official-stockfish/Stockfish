@@ -26,6 +26,7 @@
 
 #include "bitboard.h"
 #include "evaluate.h"
+#include "psqt.h"
 #include "types.h"
 
 #include "nnue/nnue_accumulator.h"
@@ -199,10 +200,6 @@ private:
   StateInfo* st;
   bool chess960;
 };
-
-namespace PSQT {
-  extern Score psq[PIECE_NB][SQUARE_NB];
-}
 
 extern std::ostream& operator<<(std::ostream& os, const Position& pos);
 

@@ -205,7 +205,7 @@ namespace {
 
     static_assert(Type != LEGAL, "Unsupported type in generate_all()");
 
-    constexpr bool Checks = Type == QUIET_CHECKS; // Reduce template instantations
+    constexpr bool Checks = Type == QUIET_CHECKS; // Reduce template instantiations
     Bitboard target, piecesToMove = pos.pieces(Us);
 
     if(Type == QUIET_CHECKS)
@@ -257,7 +257,7 @@ namespace {
 
 
 /// <CAPTURES>     Generates all pseudo-legal captures plus queen and checking knight promotions
-/// <QUIETS>       Generates all pseudo-legal non-captures and underpromotions(except checking knight)
+/// <QUIETS>       Generates all pseudo-legal non-captures and underpromotions (except checking knight)
 /// <NON_EVASIONS> Generates all pseudo-legal captures and non-captures
 ///
 /// Returns a pointer to the end of the move list.
@@ -280,8 +280,8 @@ template ExtMove* generate<QUIETS>(const Position&, ExtMove*);
 template ExtMove* generate<NON_EVASIONS>(const Position&, ExtMove*);
 
 
-/// generate<QUIET_CHECKS> generates all pseudo-legal non-captures.
-/// Returns a pointer to the end of the move list.
+/// generate<QUIET_CHECKS> generates all pseudo-legal non-captures giving check,
+/// except castling. Returns a pointer to the end of the move list.
 template<>
 ExtMove* generate<QUIET_CHECKS>(const Position& pos, ExtMove* moveList) {
 
