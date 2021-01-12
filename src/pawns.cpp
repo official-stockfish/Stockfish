@@ -32,6 +32,7 @@ namespace {
   // Pawn penalties
   constexpr Score Backward      = S( 6, 23);
   constexpr Score Doubled       = S(13, 53);
+  constexpr Score DoubledEarly  = S(20, 10);
   constexpr Score Isolated      = S( 2, 15);
   constexpr Score WeakLever     = S( 5, 57);
   constexpr Score WeakUnopposed = S(16, 22);
@@ -86,6 +87,7 @@ namespace {
 
     constexpr Color     Them = ~Us;
     constexpr Direction Up   = pawn_push(Us);
+    constexpr Direction Down = -Up;
 
     Bitboard neighbours, stoppers, support, phalanx, opposed;
     Bitboard lever, leverPush, blocked;
@@ -122,6 +124,13 @@ namespace {
         neighbours = ourPawns   & adjacent_files_bb(s);
         phalanx    = neighbours & rank_bb(s);
         support    = neighbours & rank_bb(s - Up);
+
+        if (doubled)
+        {
+            // Additional doubled penalty if none of their pawns is fixed
+            if (!(ourPawns & shift<Down>(theirPawns | pawn_attacks_bb<Them>(theirPawns))))
+                score -= DoubledEarly;
+        }
 
         // A pawn is backward when it is behind all pawns of the same color on
         // the adjacent files and cannot safely advance.
