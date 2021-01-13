@@ -1440,7 +1440,7 @@ WDLScore Tablebases::probe_wdl(Position& pos, ProbeState* result) {
 // If n = 100 immediately after a capture or pawn move, then the position
 // is also certainly a win, and during the whole phase until the next
 // capture or pawn move, the inequality to be preserved is
-// dtz + 50-movecounter <= 100.
+// dtz + 50-move-counter <= 100.
 //
 // In short, if a move is available resulting in dtz + 50-move-counter <= 99,
 // then do not accept moves leading to dtz + 50-move-counter == 100.

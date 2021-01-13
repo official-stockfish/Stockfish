@@ -205,7 +205,7 @@ namespace {
 
     static_assert(Type != LEGAL, "Unsupported type in generate_all()");
 
-    constexpr bool Checks = Type == QUIET_CHECKS; // Reduce template instantations
+    constexpr bool Checks = Type == QUIET_CHECKS; // Reduce template instantiations
     Bitboard target, piecesToMove = pos.pieces(Us);
 
     if(Type == QUIET_CHECKS)
