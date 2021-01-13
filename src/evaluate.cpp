@@ -37,7 +37,8 @@
 #include "incbin/incbin.h"
 
 
-// Macro to embed the default NNUE file data in the engine binary (using incbin.h, by Dale Weiler).
+// Macro to embed the default efficiently updatable neural network (NNUE) file
+// data in the engine binary (using incbin.h, by Dale Weiler).
 // This macro invocation will declare the following three variables
 //     const unsigned char        gEmbeddedNNUEData[];  // a pointer to the embedded data
 //     const unsigned char *const gEmbeddedNNUEEnd;     // a marker to the end
@@ -60,9 +61,9 @@ namespace Eval {
   bool useNNUE;
   string eval_file_loaded = "None";
 
-  /// NNUE::init() tries to load a nnue network at startup time, or when the engine
+  /// NNUE::init() tries to load a NNUE network at startup time, or when the engine
   /// receives a UCI command "setoption name EvalFile value nn-[a-z0-9]{12}.nnue"
-  /// The name of the nnue network is always retrieved from the EvalFile option.
+  /// The name of the NNUE network is always retrieved from the EvalFile option.
   /// We search the given network in three locations: internally (the default
   /// network may be embedded in the binary), in the active working directory and
   /// in the engine directory. Distro packagers may define the DEFAULT_NNUE_DIRECTORY
