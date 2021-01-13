@@ -108,9 +108,9 @@ typedef Stats<int16_t, 29952, PIECE_NB, SQUARE_NB> PieceToHistory;
 typedef Stats<PieceToHistory, NOT_USED, PIECE_NB, SQUARE_NB> ContinuationHistory;
 
 
-/// MovePicker class is used to pick one pseudo legal move at a time from the
+/// MovePicker class is used to pick one pseudo-legal move at a time from the
 /// current position. The most important method is next_move(), which returns a
-/// new pseudo legal move each time it is called, until there are no moves left,
+/// new pseudo-legal move each time it is called, until there are no moves left,
 /// when MOVE_NONE is returned. In order to improve the efficiency of the alpha
 /// beta algorithm, MovePicker attempts to return the moves which are most likely
 /// to get a cut-off first.
