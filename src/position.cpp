@@ -564,8 +564,10 @@ bool Position::pseudo_legal(const Move m) const {
   Piece pc = moved_piece(m);
 
   // Use a slower but simpler function for uncommon cases
+  // yet we skip the legality check of MoveList<LEGAL>().
   if (type_of(m) != NORMAL)
-      return MoveList<LEGAL>(*this).contains(m);
+      return checkers() ? MoveList<    EVASIONS>(*this).contains(m)
+                        : MoveList<NON_EVASIONS>(*this).contains(m);
 
   // Is not a promotion, so promotion piece must be empty
   if (promotion_type(m) - KNIGHT != NO_PIECE_TYPE)
