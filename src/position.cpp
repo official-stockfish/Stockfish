@@ -570,7 +570,8 @@ bool Position::pseudo_legal(const Move m) const {
 
   if (type_of(m) != NORMAL){
       if (type_of(m) == CASTLING){
-          if (checkers() || type_of(pc) != KING || piece_on(to) != make_piece(us, ROOK))
+          if (checkers() || type_of(pc) != KING || piece_on(to) != make_piece(us, ROOK)
+           || promotion_type(m) - KNIGHT != NO_PIECE_TYPE)
               return false;
 
           CastlingRights cr = us & (to > from ? KING_SIDE : QUEEN_SIDE);
@@ -578,7 +579,7 @@ bool Position::pseudo_legal(const Move m) const {
       }
       else if (type_of(m) == PROMOTION) {
           if (more_than_one(checkers()) || relative_rank(us, from) != RANK_7 || 
-              type_of(pc) != PAWN || !(to == from + pawn_push(us) || (pawn_attacks_bb(us, from) | to)))
+              type_of(pc) != PAWN || !(to == from + pawn_push(us) || (pawn_attacks_bb(us, from) & to)))
                   return false;
 
           if (checkers()){
@@ -590,8 +591,8 @@ bool Position::pseudo_legal(const Move m) const {
           return file_of(to) == file_of(from) ? to & ~pieces() : to & pieces(~us);
       }
       else
-          return ep_square() == to && type_of(pc) == PAWN && (pawn_attacks_bb(us, from) & to)
-                                   && !(checkers() & ~square_bb(to - pawn_push(us)));
+          return ep_square() == to && type_of(pc) == PAWN && (pawn_attacks_bb(us, from) & to) &&
+                 promotion_type(m) - KNIGHT == NO_PIECE_TYPE && !(checkers() & ~square_bb(to - pawn_push(us)));
   }
 
   // Is not a promotion, so promotion piece must be empty
