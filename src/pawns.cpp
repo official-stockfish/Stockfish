@@ -83,11 +83,10 @@ namespace {
   /// be re-used even when the pieces have moved.
 
   template<Color Us>
-  Score evaluate(const Position& pos, Pawns::Entry* e) {
+  Score evaluate(const Position& pos, Pawns::Entry* e, const bool fluentStructure) {
 
     constexpr Color     Them = ~Us;
     constexpr Direction Up   = pawn_push(Us);
-    constexpr Direction Down = -Up;
 
     Bitboard neighbours, stoppers, support, phalanx, opposed;
     Bitboard lever, leverPush, blocked;
@@ -127,8 +126,8 @@ namespace {
 
         if (doubled)
         {
-            // Additional doubled penalty if none of their pawns is fixed
-            if (!(ourPawns & shift<Down>(theirPawns | pawn_attacks_bb<Them>(theirPawns))))
+            // Additional doubled penalty if no pawns are fixed
+            if (fluentStructure)
                 score -= DoubledEarly;
         }
 
@@ -212,10 +211,14 @@ Entry* probe(const Position& pos) {
   if (e->key == key)
       return e;
 
+  const Bitboard whitePawns = pos.pieces(WHITE, PAWN);
+  const Bitboard blackPawns = pos.pieces(BLACK, PAWN);
+  const bool fluentStructure = !(whitePawns & shift<SOUTH>(blackPawns | pawn_attacks_bb<BLACK>(blackPawns)));
+
   e->key = key;
   e->blockedCount = 0;
-  e->scores[WHITE] = evaluate<WHITE>(pos, e);
-  e->scores[BLACK] = evaluate<BLACK>(pos, e);
+  e->scores[WHITE] = evaluate<WHITE>(pos, e, fluentStructure);
+  e->scores[BLACK] = evaluate<BLACK>(pos, e, fluentStructure);
 
   return e;
 }
