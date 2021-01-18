@@ -665,19 +665,15 @@ bool Position::gives_check(Move m) const {
       return  (attacks_bb<  ROOK>(square<KING>(~sideToMove), b) & pieces(sideToMove, QUEEN, ROOK))
             | (attacks_bb<BISHOP>(square<KING>(~sideToMove), b) & pieces(sideToMove, QUEEN, BISHOP));
   }
-  case CASTLING:
+  default: //CASTLING
   {
-      Square kfrom = from;
-      Square rfrom = to; // Castling is encoded as 'king captures the rook'
-      Square kto = relative_square(sideToMove, rfrom > kfrom ? SQ_G1 : SQ_C1);
-      Square rto = relative_square(sideToMove, rfrom > kfrom ? SQ_F1 : SQ_D1);
+      // Castling is encoded as 'king captures the rook'
+      Square ksq = square<KING>(~sideToMove);
+      Square rto = relative_square(sideToMove, to > from ? SQ_F1 : SQ_D1);
 
-      return   (attacks_bb<ROOK>(rto) & square<KING>(~sideToMove))
-            && (attacks_bb<ROOK>(rto, (pieces() ^ kfrom ^ rfrom) | rto | kto) & square<KING>(~sideToMove));
+      return   (attacks_bb<ROOK>(rto) & ksq)
+            && (attacks_bb<ROOK>(rto, pieces() ^ from ^ to) & ksq);
   }
-  default:
-      assert(false);
-      return false;
   }
 }
 
