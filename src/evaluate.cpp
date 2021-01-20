@@ -288,7 +288,7 @@ namespace {
     Evaluation() = delete;
     explicit Evaluation(const Position& p) : pos(p) {}
     Evaluation& operator=(const Evaluation&) = delete;
-    Value value();
+    template<Laziness L> Value value();
 
   private:
     template<Color Us> void initialize();
@@ -961,7 +961,7 @@ namespace {
   // parts of the evaluation and returns the value of the position from the point
   // of view of the side to move.
 
-  template<Tracing T>
+  template<Tracing T> template<Laziness L>
   Value Evaluation<T>::value() {
 
     assert(!pos.checkers());
@@ -987,6 +987,8 @@ namespace {
     auto lazy_skip = [&](Value lazyThreshold) {
         return abs(mg_value(score) + eg_value(score)) / 2 > lazyThreshold + pos.non_pawn_material() / 64;
     };
+
+    if (L == LAZY) goto make_v;
 
     if (lazy_skip(LazyThreshold1))
         goto make_v;
@@ -1042,12 +1044,13 @@ make_v:
 /// evaluate() is the evaluator for the outer world. It returns a static
 /// evaluation of the position from the point of view of the side to move.
 
+template<Laziness L>
 Value Eval::evaluate(const Position& pos) {
 
   Value v;
 
   if (!Eval::useNNUE)
-      v = Evaluation<NO_TRACE>(pos).value();
+    v = Evaluation<NO_TRACE>(pos).value<L>();
   else
   {
       // Scale and shift NNUE for compatibility with search and classical evaluation
@@ -1082,18 +1085,20 @@ Value Eval::evaluate(const Position& pos) {
 
       bool  lowPieceEG = pos.non_pawn_material() < 2 * RookValueMg && pos.count<PAWN>() < 2;
 
-      if (lowPieceEG) v = Evaluation<NO_TRACE>(pos).value();      // case 1
+      if (L == CLASSICAL || L == LAZY) v = Evaluation<NO_TRACE>(pos).value<L>();
+      else if (L == NNUE_ONLY) v = adjusted_NNUE();
+      else if (lowPieceEG) v = Evaluation<NO_TRACE>(pos).value<L>(); // case 1
       else if (largePsq) {
-        v = Evaluation<NO_TRACE>(pos).value();                    // case 2c
-        if (   abs(v) * 16 < NNUEThreshold2 * r50                 // case 2a
-            || (   pos.opposite_bishops()                         // case 2b
+        v = Evaluation<NO_TRACE>(pos).value<L>();                    // case 2c
+        if (   abs(v) * 16 < NNUEThreshold2 * r50                    // case 2a
+            || (   pos.opposite_bishops()                            // case 2b
                 && abs(v) * 16 < thresh
                 && unlikely()))
           v = adjusted_NNUE();
       }
-      else if (psq > PawnValueMg / 4 && unlikely())               // case 3a
-        v = Evaluation<NO_TRACE>(pos).value();
-      else v = adjusted_NNUE();                                   // case 3b
+      else if (psq > PawnValueMg / 4 && unlikely())                  // case 3a
+        v = Evaluation<NO_TRACE>(pos).value<L>();
+      else v = adjusted_NNUE();                                      // case 3b
   }
 
   // Damp down the evaluation linearly when shuffling
@@ -1110,6 +1115,7 @@ Value Eval::evaluate(const Position& pos) {
 /// descriptions and values of each evaluation term. Useful for debugging.
 /// Trace scores are from white's point of view
 
+template<Laziness L>
 std::string Eval::trace(const Position& pos) {
 
   if (pos.checkers())
@@ -1124,7 +1130,7 @@ std::string Eval::trace(const Position& pos) {
 
   pos.this_thread()->contempt = SCORE_ZERO; // Reset any dynamic contempt
 
-  v = Evaluation<TRACE>(pos).value();
+  v = Evaluation<TRACE>(pos).value<L>();
 
   ss << std::showpoint << std::noshowpos << std::fixed << std::setprecision(2)
      << "     Term    |    White    |    Black    |    Total   \n"
@@ -1157,9 +1163,20 @@ std::string Eval::trace(const Position& pos) {
       ss << "\nNNUE evaluation:      " << to_cp(v) << " (white side)\n";
   }
 
-  v = evaluate(pos);
+  v = evaluate<L>(pos);
   v = pos.side_to_move() == WHITE ? v : -v;
   ss << "\nFinal evaluation:     " << to_cp(v) << " (white side)\n";
 
   return ss.str();
 }
+
+// Explicit template instantiation
+template Value Eval::evaluate<HYBRID>(const Position &pos);
+template Value Eval::evaluate<NNUE_ONLY>(const Position &pos);
+template Value Eval::evaluate<CLASSICAL>(const Position &pos);
+template Value Eval::evaluate<LAZY>(const Position &pos);
+
+template std::string Eval::trace<HYBRID>(const Position &pos);
+template std::string Eval::trace<NNUE_ONLY>(const Position &pos);
+template std::string Eval::trace<CLASSICAL>(const Position &pos);
+template std::string Eval::trace<LAZY>(const Position &pos);

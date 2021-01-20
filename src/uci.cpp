@@ -87,7 +87,7 @@ namespace {
 
     Eval::NNUE::verify();
 
-    sync_cout << "\n" << Eval::trace(p) << sync_endl;
+    sync_cout << "\n" << Eval::trace<HYBRID>(p) << sync_endl;
   }
 
 

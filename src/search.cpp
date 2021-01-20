@@ -631,7 +631,7 @@ namespace {
         if (   Threads.stop.load(std::memory_order_relaxed)
             || pos.is_draw(ss->ply)
             || ss->ply >= MAX_PLY)
-            return (ss->ply >= MAX_PLY && !ss->inCheck) ? evaluate(pos)
+          return (ss->ply >= MAX_PLY && !ss->inCheck) ? evaluate<HYBRID>(pos)
                                                         : value_draw(pos.this_thread());
 
         // Step 3. Mate distance pruning. Even if we mate at the next move our score
@@ -790,7 +790,7 @@ namespace {
         // Never assume anything about values stored in TT
         ss->staticEval = eval = tte->eval();
         if (eval == VALUE_NONE)
-            ss->staticEval = eval = evaluate(pos);
+          ss->staticEval = eval = evaluate<HYBRID>(pos);
 
         // Randomize draw evaluation
         if (eval == VALUE_DRAW)
@@ -806,7 +806,7 @@ namespace {
         // In case of null move search use previous static eval with a different sign
         // and addition of two tempos
         if ((ss-1)->currentMove != MOVE_NULL)
-            ss->staticEval = eval = evaluate(pos);
+          ss->staticEval = eval = evaluate<HYBRID>(pos);
         else
             ss->staticEval = eval = -(ss-1)->staticEval + 2 * Tempo;
 
@@ -1451,7 +1451,7 @@ moves_loop: // When in check, search starts from here
     // Check for an immediate draw or maximum ply reached
     if (   pos.is_draw(ss->ply)
         || ss->ply >= MAX_PLY)
-        return (ss->ply >= MAX_PLY && !ss->inCheck) ? evaluate(pos) : VALUE_DRAW;
+      return (ss->ply >= MAX_PLY && !ss->inCheck) ? evaluate<HYBRID>(pos) : VALUE_DRAW;
 
     assert(0 <= ss->ply && ss->ply < MAX_PLY);
 
@@ -1487,7 +1487,7 @@ moves_loop: // When in check, search starts from here
         {
             // Never assume anything about values stored in TT
             if ((ss->staticEval = bestValue = tte->eval()) == VALUE_NONE)
-                ss->staticEval = bestValue = evaluate(pos);
+              ss->staticEval = bestValue = evaluate<HYBRID>(pos);
 
             // Can ttValue be used as a better position evaluation?
             if (    ttValue != VALUE_NONE
@@ -1498,7 +1498,7 @@ moves_loop: // When in check, search starts from here
             // In case of null move search use previous static eval with a different sign
             // and addition of two tempos
             ss->staticEval = bestValue =
-            (ss-1)->currentMove != MOVE_NULL ? evaluate(pos)
+              (ss-1)->currentMove != MOVE_NULL ? evaluate<HYBRID>(pos)
                                              : -(ss-1)->staticEval + 2 * Tempo;
 
         // Stand pat. Return immediately if static value is at least beta
