@@ -115,6 +115,9 @@ void TranspositionTable::clear() {
 /// minus 8 times its relative age. TTEntry t1 is considered more valuable than
 /// TTEntry t2 if its replace value is greater than that of t2.
 
+static constexpr int CYCLE = 255 + (1 << GEN_BITS);    // cycle length
+static constexpr int MASK = (0xFF << GEN_BITS) & 0xFF; // mask to pull out generation #
+
 TTEntry* TranspositionTable::probe(const Key key, bool& found) const {
 
   TTEntry* const tte = first_entry(key);
