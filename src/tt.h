@@ -54,6 +54,10 @@ private:
   int16_t  eval16;
 };
 
+const unsigned GEN_BITS = 3;                // no. of bits used for other things
+const int CYCLE = 255 + (1 << GEN_BITS);    // cycle length
+const int MASK = (0xFF << GEN_BITS) & 0xFF; // mask to pull out generation #
+const int GEN_DELTA = (1 << GEN_BITS);      // increment for generation field
 
 /// A TranspositionTable is an array of Cluster, of size clusterCount. Each
 /// cluster consists of ClusterSize number of TTEntry. Each non-empty TTEntry
@@ -74,7 +78,7 @@ class TranspositionTable {
 
 public:
  ~TranspositionTable() { aligned_large_pages_free(table); }
-  void new_search() { generation8 += 8; } // Lower 3 bits are used by PV flag and Bound
+  void new_search() { generation8 += GEN_DELTA; } // Lower bits used by others
   TTEntry* probe(const Key key, bool& found) const;
   int hashfull() const;
   void resize(size_t mbSize);
