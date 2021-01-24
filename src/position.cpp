@@ -658,10 +658,12 @@ bool Position::gives_check(Move m) const {
   case EN_PASSANT:
   {
       Square capsq = make_square(file_of(to), rank_of(from));
-      Bitboard b = (pieces() ^ from ^ capsq) | to;
+      Square ksq = square<KING>(~sideToMove);
 
-      return  (attacks_bb<  ROOK>(square<KING>(~sideToMove), b) & pieces(sideToMove, QUEEN, ROOK))
-            | (attacks_bb<BISHOP>(square<KING>(~sideToMove), b) & pieces(sideToMove, QUEEN, BISHOP));
+      if (rank_of(capsq) == rank_of(ksq))
+          return attacks_bb<ROOK>(ksq, pieces() ^ from ^ capsq) & pieces(sideToMove, ROOK, QUEEN));
+
+      return (file_of(capsq) != file_of(ksq) && blockers_for_king(~sideToMove) & capsq);
   }
   case CASTLING:
   {
