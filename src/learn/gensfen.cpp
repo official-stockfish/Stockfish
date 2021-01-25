@@ -103,7 +103,6 @@ namespace Learner
             void enforce_constraints()
             {
                 search_depth_max = std::max(search_depth_min, search_depth_max);
-                random_multi_pv_depth = std::max(search_depth_min, random_multi_pv_depth);
 
                 // Limit the maximum to a one-stop score. (Otherwise you might not end the loop)
                 eval_limit = std::min(eval_limit, (int)mate_in(2));
