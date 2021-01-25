@@ -661,9 +661,9 @@ bool Position::gives_check(Move m) const {
       Square ksq = square<KING>(~sideToMove);
 
       if (rank_of(capsq) == rank_of(ksq))
-          return attacks_bb<ROOK>(ksq, pieces() ^ from ^ capsq) & pieces(sideToMove, ROOK, QUEEN));
+          return attacks_bb<ROOK>(ksq, pieces() ^ from ^ capsq) & pieces(sideToMove, ROOK, QUEEN);
 
-      return (file_of(capsq) != file_of(ksq) && blockers_for_king(~sideToMove) & capsq);
+      return file_of(capsq) != file_of(ksq) && blockers_for_king(~sideToMove) & capsq;
   }
   case CASTLING:
   {
