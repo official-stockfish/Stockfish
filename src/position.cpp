@@ -279,6 +279,16 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
 
   chess960 = isChess960;
   thisThread = th;
+
+  if (enpassant && !st->previous){
+      st->previous = new StateInfo();
+      remove_piece(st->epSquare - pawn_push(sideToMove));
+      sideToMove = ~sideToMove;
+      set_state(st->previous);
+      sideToMove = ~sideToMove;
+      put_piece(make_piece(~sideToMove, PAWN), st->epSquare - pawn_push(sideToMove));
+  }
+
   set_state(st);
   st->accumulator.state[WHITE] = Eval::NNUE::INIT;
   st->accumulator.state[BLACK] = Eval::NNUE::INIT;
@@ -506,19 +516,8 @@ bool Position::legal(Move m) const {
   // uncommon, we do it simply by testing whether the king is attacked after
   // the move is made.
   if (type_of(m) == EN_PASSANT)
-  {
-      Square ksq = square<KING>(us);
-      Square capsq = to - pawn_push(us);
-      Bitboard occupied = (pieces() ^ from ^ capsq) | to;
-
-      assert(to == ep_square());
-      assert(moved_piece(m) == make_piece(us, PAWN));
-      assert(piece_on(capsq) == make_piece(~us, PAWN));
-      assert(piece_on(to) == NO_PIECE);
-
-      return   !(attacks_bb<  ROOK>(ksq, occupied) & pieces(~us, QUEEN, ROOK))
-            && !(attacks_bb<BISHOP>(ksq, occupied) & pieces(~us, QUEEN, BISHOP));
-  }
+      return !(st->previous->blockersForKing[sideToMove] & from) ||
+               aligned(from, to, square<KING>(us));
 
   // Castling moves generation does not check if the castling path is clear of
   // enemy attacks, it is delayed at a later time: now!
@@ -656,15 +655,8 @@ bool Position::gives_check(Move m) const {
   // need to handle is the unusual case of a discovered check through
   // the captured pawn.
   case EN_PASSANT:
-  {
-      Square capsq = make_square(file_of(to), rank_of(from));
-      Square ksq = square<KING>(~sideToMove);
-
-      if (rank_of(capsq) == rank_of(ksq))
-          return attacks_bb<ROOK>(ksq, pieces() ^ from ^ capsq) & pieces(sideToMove, ROOK, QUEEN);
-
-      return file_of(capsq) != file_of(ksq) && blockers_for_king(~sideToMove) & capsq;
-  }
+      return st->previous->checkersBB || (rank_of(square<KING>(~sideToMove)) == rank_of(from)
+          && st->previous->blockersForKing[~sideToMove] & from);
   case CASTLING:
   {
       Square kfrom = from;
