@@ -269,6 +269,14 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
 
   if (!enpassant)
       st->epSquare = SQ_NONE;
+  else {
+      st->previous = new StateInfo();
+      remove_piece(st->epSquare - pawn_push(sideToMove));
+      st->previous->checkersBB = attackers_to(square<KING>(~sideToMove)) & pieces(sideToMove);
+      st->previous->blockersForKing[WHITE] = slider_blockers(pieces(BLACK), square<KING>(WHITE), st->previous->pinners[BLACK]);
+      st->previous->blockersForKing[BLACK] = slider_blockers(pieces(WHITE), square<KING>(BLACK), st->previous->pinners[WHITE]);
+      put_piece(make_piece(~sideToMove, PAWN), st->epSquare - pawn_push(sideToMove));
+  }
 
   // 5-6. Halfmove clock and fullmove number
   ss >> std::skipws >> st->rule50 >> gamePly;
@@ -279,16 +287,6 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
 
   chess960 = isChess960;
   thisThread = th;
-
-  if (enpassant && !st->previous){
-      st->previous = new StateInfo();
-      remove_piece(st->epSquare - pawn_push(sideToMove));
-      sideToMove = ~sideToMove;
-      set_state(st->previous);
-      sideToMove = ~sideToMove;
-      put_piece(make_piece(~sideToMove, PAWN), st->epSquare - pawn_push(sideToMove));
-  }
-
   set_state(st);
   st->accumulator.state[WHITE] = Eval::NNUE::INIT;
   st->accumulator.state[BLACK] = Eval::NNUE::INIT;
