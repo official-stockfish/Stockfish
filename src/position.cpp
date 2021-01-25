@@ -512,9 +512,8 @@ bool Position::legal(Move m) const {
   assert(color_of(moved_piece(m)) == us);
   assert(piece_on(square<KING>(us)) == make_piece(us, KING));
 
-  // En passant captures are a tricky special case. Because they are rather
-  // uncommon, we do it simply by testing whether the king is attacked after
-  // the move is made.
+  // Was my pawn blocking the check before the double pushed pawn?
+  // Is it leaving the king unprotected?
   if (type_of(m) == EN_PASSANT)
       return !(st->previous->blockersForKing[sideToMove] & from) ||
                aligned(from, to, square<KING>(us));
@@ -650,10 +649,8 @@ bool Position::gives_check(Move m) const {
   case PROMOTION:
       return attacks_bb(promotion_type(m), to, pieces() ^ from) & square<KING>(~sideToMove);
 
-  // En passant capture with check? We have already handled the case
-  // of direct checks and ordinary discovered check, so the only case we
-  // need to handle is the unusual case of a discovered check through
-  // the captured pawn.
+  // The double pushed pawn blocked the check?
+  // Is it a discovery check?
   case EN_PASSANT:
       return st->previous->checkersBB || (rank_of(square<KING>(~sideToMove)) == rank_of(from)
           && st->previous->blockersForKing[~sideToMove] & from);
