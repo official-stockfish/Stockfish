@@ -511,7 +511,8 @@ bool Position::legal(Move m) const {
   assert(color_of(moved_piece(m)) == us);
   assert(piece_on(square<KING>(us)) == make_piece(us, KING));
 
-  // st->previous->blockersForKing consider capsq as empty
+  // st->previous->blockersForKing consider capsq as empty.
+  // If pinned, it has to move along the king ray.
   if (type_of(m) == EN_PASSANT)
       return !(st->previous->blockersForKing[sideToMove] & from) ||
                aligned(from, to, square<KING>(us));
@@ -649,7 +650,8 @@ bool Position::gives_check(Move m) const {
 
   // The double-pushed pawn blocked a check? En Passant will remove the blocker.
   // The only discovery check that wasn't handle is through capsq and fromsq
-  // So the King must be in the same rank as fromsq to consider this possibility
+  // So the King must be in the same rank as fromsq to consider this possibility.
+  // st->previous->blockersForKing consider capsq as empty.
   case EN_PASSANT:
       return st->previous->checkersBB || (rank_of(square<KING>(~sideToMove)) == rank_of(from)
           && st->previous->blockersForKing[~sideToMove] & from);
