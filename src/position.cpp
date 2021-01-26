@@ -267,9 +267,8 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
                && !(pieces() & (st->epSquare | (st->epSquare + pawn_push(sideToMove))));
   }
 
-  if (!enpassant)
-      st->epSquare = SQ_NONE;
-  else {
+  // It's necessary for st->previous to be intialized in this way because legality check relies on its existence
+  if (enpassant) {
       st->previous = new StateInfo();
       remove_piece(st->epSquare - pawn_push(sideToMove));
       st->previous->checkersBB = attackers_to(square<KING>(~sideToMove)) & pieces(sideToMove);
@@ -277,6 +276,8 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
       st->previous->blockersForKing[BLACK] = slider_blockers(pieces(WHITE), square<KING>(BLACK), st->previous->pinners[WHITE]);
       put_piece(make_piece(~sideToMove, PAWN), st->epSquare - pawn_push(sideToMove));
   }
+  else
+      st->epSquare = SQ_NONE;
 
   // 5-6. Halfmove clock and fullmove number
   ss >> std::skipws >> st->rule50 >> gamePly;
@@ -510,8 +511,7 @@ bool Position::legal(Move m) const {
   assert(color_of(moved_piece(m)) == us);
   assert(piece_on(square<KING>(us)) == make_piece(us, KING));
 
-  // Was my pawn blocking the check before the double pushed pawn?
-  // Is it leaving the king unprotected?
+  // st->previous->blockersForKing consider capsq as empty
   if (type_of(m) == EN_PASSANT)
       return !(st->previous->blockersForKing[sideToMove] & from) ||
                aligned(from, to, square<KING>(us));
@@ -647,8 +647,9 @@ bool Position::gives_check(Move m) const {
   case PROMOTION:
       return attacks_bb(promotion_type(m), to, pieces() ^ from) & square<KING>(~sideToMove);
 
-  // The double pushed pawn blocked the check?
-  // Is it a discovery check?
+  // The double-pushed pawn blocked a check? En Passant will remove the blocker.
+  // The only discovery check that wasn't handle is through capsq and fromsq
+  // So the King must be in the same rank as fromsq to consider this possibility
   case EN_PASSANT:
       return st->previous->checkersBB || (rank_of(square<KING>(~sideToMove)) == rank_of(from)
           && st->previous->blockersForKing[~sideToMove] & from);
