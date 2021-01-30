@@ -55,7 +55,7 @@ inline Bitboard safe_destination(Square s, int step) {
 /// Bitboards::pretty() returns an ASCII representation of a bitboard suitable
 /// to be printed to standard output. Useful for debugging.
 
-const std::string Bitboards::pretty(Bitboard b) {
+std::string Bitboards::pretty(Bitboard b) {
 
   std::string s = "+---+---+---+---+---+---+---+---+\n";
 
