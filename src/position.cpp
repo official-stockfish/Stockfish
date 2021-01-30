@@ -249,6 +249,8 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
       set_castling_right(c, rsq);
   }
 
+  set_state(st);
+
   // 4. En passant square.
   // Ignore if square is invalid or not on side to move relative rank 6.
   bool enpassant = false;
@@ -262,9 +264,12 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
       // a) side to move have a pawn threatening epSquare
       // b) there is an enemy pawn in front of epSquare
       // c) there is no piece on epSquare or behind epSquare
+      // d) enemy pawn didn't block a check of its own color by moving forward
       enpassant = pawn_attacks_bb(~sideToMove, st->epSquare) & pieces(sideToMove, PAWN)
                && (pieces(~sideToMove, PAWN) & (st->epSquare + pawn_push(~sideToMove)))
-               && !(pieces() & (st->epSquare | (st->epSquare + pawn_push(sideToMove))));
+               && !(pieces() & (st->epSquare | (st->epSquare + pawn_push(sideToMove))))
+               && (file_of(square<KING>(sideToMove)) == file_of(st->epSquare)
+               || !(blockers_for_king(sideToMove) & (st->epSquare + pawn_push(sideToMove))));
   }
 
   // It's necessary for st->previous to be intialized in this way because legality check relies on its existence
@@ -288,7 +293,6 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
 
   chess960 = isChess960;
   thisThread = th;
-  set_state(st);
   st->accumulator.state[WHITE] = Eval::NNUE::INIT;
   st->accumulator.state[BLACK] = Eval::NNUE::INIT;
 
