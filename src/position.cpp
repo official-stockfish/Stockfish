@@ -269,7 +269,7 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
                && (pieces(~sideToMove, PAWN) & (st->epSquare + pawn_push(~sideToMove)))
                && !(pieces() & (st->epSquare | (st->epSquare + pawn_push(sideToMove))))
                && (file_of(square<KING>(sideToMove)) == file_of(st->epSquare)
-               || !(blockers_for_king(sideToMove) & (st->epSquare + pawn_push(sideToMove))));
+               || !(blockers_for_king(sideToMove) & (st->epSquare + pawn_push(~sideToMove))));
   }
 
   // It's necessary for st->previous to be intialized in this way because legality check relies on its existence
