@@ -94,7 +94,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, Value th, const CapturePiece
 /// for sorting. Captures are ordered by Most Valuable Victim (MVV), preferring
 /// captures with a good history. Quiets moves are ordered using the histories.
 template<GenType Type>
-constexpr void MovePicker::score() {
+void MovePicker::score() {
 
   static_assert(Type == CAPTURES || Type == QUIETS || Type == EVASIONS, "Wrong type");
 
