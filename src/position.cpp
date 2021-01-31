@@ -249,6 +249,8 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
       set_castling_right(c, rsq);
   }
 
+  set_state(st);
+
   // 4. En passant square.
   // Ignore if square is invalid or not on side to move relative rank 6.
   bool enpassant = false;
@@ -262,12 +264,24 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
       // a) side to move have a pawn threatening epSquare
       // b) there is an enemy pawn in front of epSquare
       // c) there is no piece on epSquare or behind epSquare
+      // d) enemy pawn didn't block a check of its own color by moving forward
       enpassant = pawn_attacks_bb(~sideToMove, st->epSquare) & pieces(sideToMove, PAWN)
                && (pieces(~sideToMove, PAWN) & (st->epSquare + pawn_push(~sideToMove)))
-               && !(pieces() & (st->epSquare | (st->epSquare + pawn_push(sideToMove))));
+               && !(pieces() & (st->epSquare | (st->epSquare + pawn_push(sideToMove))))
+               && (file_of(square<KING>(sideToMove)) == file_of(st->epSquare)
+               || !(blockers_for_king(sideToMove) & (st->epSquare + pawn_push(~sideToMove))));
   }
 
-  if (!enpassant)
+  // It's necessary for st->previous to be intialized in this way because legality check relies on its existence
+  if (enpassant) {
+      st->previous = new StateInfo();
+      remove_piece(st->epSquare - pawn_push(sideToMove));
+      st->previous->checkersBB = attackers_to(square<KING>(~sideToMove)) & pieces(sideToMove);
+      st->previous->blockersForKing[WHITE] = slider_blockers(pieces(BLACK), square<KING>(WHITE), st->previous->pinners[BLACK]);
+      st->previous->blockersForKing[BLACK] = slider_blockers(pieces(WHITE), square<KING>(BLACK), st->previous->pinners[WHITE]);
+      put_piece(make_piece(~sideToMove, PAWN), st->epSquare - pawn_push(sideToMove));
+  }
+  else
       st->epSquare = SQ_NONE;
 
   // 5-6. Halfmove clock and fullmove number
@@ -279,7 +293,6 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
 
   chess960 = isChess960;
   thisThread = th;
-  set_state(st);
   st->accumulator.state[WHITE] = Eval::NNUE::INIT;
   st->accumulator.state[BLACK] = Eval::NNUE::INIT;
 
@@ -502,23 +515,11 @@ bool Position::legal(Move m) const {
   assert(color_of(moved_piece(m)) == us);
   assert(piece_on(square<KING>(us)) == make_piece(us, KING));
 
-  // En passant captures are a tricky special case. Because they are rather
-  // uncommon, we do it simply by testing whether the king is attacked after
-  // the move is made.
+  // st->previous->blockersForKing consider capsq as empty.
+  // If pinned, it has to move along the king ray.
   if (type_of(m) == EN_PASSANT)
-  {
-      Square ksq = square<KING>(us);
-      Square capsq = to - pawn_push(us);
-      Bitboard occupied = (pieces() ^ from ^ capsq) | to;
-
-      assert(to == ep_square());
-      assert(moved_piece(m) == make_piece(us, PAWN));
-      assert(piece_on(capsq) == make_piece(~us, PAWN));
-      assert(piece_on(to) == NO_PIECE);
-
-      return   !(attacks_bb<  ROOK>(ksq, occupied) & pieces(~us, QUEEN, ROOK))
-            && !(attacks_bb<BISHOP>(ksq, occupied) & pieces(~us, QUEEN, BISHOP));
-  }
+      return !(st->previous->blockersForKing[sideToMove] & from) ||
+               aligned(from, to, square<KING>(us));
 
   // Castling moves generation does not check if the castling path is clear of
   // enemy attacks, it is delayed at a later time: now!
@@ -651,18 +652,14 @@ bool Position::gives_check(Move m) const {
   case PROMOTION:
       return attacks_bb(promotion_type(m), to, pieces() ^ from) & square<KING>(~sideToMove);
 
-  // En passant capture with check? We have already handled the case
-  // of direct checks and ordinary discovered check, so the only case we
-  // need to handle is the unusual case of a discovered check through
-  // the captured pawn.
+  // The double-pushed pawn blocked a check? En Passant will remove the blocker.
+  // The only discovery check that wasn't handle is through capsq and fromsq
+  // So the King must be in the same rank as fromsq to consider this possibility.
+  // st->previous->blockersForKing consider capsq as empty.
   case EN_PASSANT:
-  {
-      Square capsq = make_square(file_of(to), rank_of(from));
-      Bitboard b = (pieces() ^ from ^ capsq) | to;
+      return st->previous->checkersBB || (rank_of(square<KING>(~sideToMove)) == rank_of(from)
+          && st->previous->blockersForKing[~sideToMove] & from);
 
-      return  (attacks_bb<  ROOK>(square<KING>(~sideToMove), b) & pieces(sideToMove, QUEEN, ROOK))
-            | (attacks_bb<BISHOP>(square<KING>(~sideToMove), b) & pieces(sideToMove, QUEEN, BISHOP));
-  }
   default: //CASTLING
   {
       // Castling is encoded as 'king captures the rook'
