@@ -30,22 +30,28 @@ namespace {
   #define S(mg, eg) make_score(mg, eg)
 
   // Pawn penalties
-  constexpr Score Backward      = S( 6, 23);
-  constexpr Score Doubled       = S(13, 53);
-  constexpr Score DoubledEarly  = S(20, 10);
-  constexpr Score Isolated      = S( 2, 15);
-  constexpr Score WeakLever     = S( 5, 57);
-  constexpr Score WeakUnopposed = S(16, 22);
+   Score Backward      = S( 6, 23);
+   Score Doubled       = S(13, 53);
+   Score DoubledEarly  = S(19, 10);
+   Score Isolated      = S( 2, 15);
+   Score WeakLever     = S( 5, 57);
+   Score WeakUnopposed = S(16, 22);
+  
+  TUNE(SetRange(-10, 80), Backward, Doubled, DoubledEarly, Isolated, WeakLever, WeakUnopposed);
+
 
   // Bonus for blocked pawns at 5th or 6th rank
-  constexpr Score BlockedPawn[2] = { S(-15, -3), S(-6, 3) };
+   Score BlockedPawn[2] = { S(-15, -3), S(-6, 3) };
+  TUNE(SetRange(-30, 20), PassedRank);
+
 
   constexpr Score BlockedStorm[RANK_NB] = {
     S(0, 0), S(0, 0), S(75, 78), S(-8, 16), S(-6, 10), S(-6, 6), S(0, 2)
   };
 
   // Connected pawn bonus
-  constexpr int Connected[RANK_NB] = { 0, 5, 7, 11, 24, 48, 86 };
+   int Connected[RANK_NB] = { 0, 5, 7, 11, 24, 48, 86 };
+   TUNE(SetRange(-10, 120), Connected);
 
   // Strength of pawn shelter for our king by [distance from edge][rank].
   // RANK_1 = 0 is used for files where we have no pawn, or pawn is behind our king.
