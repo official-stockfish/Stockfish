@@ -97,7 +97,6 @@ Score PBonus[RANK_NB][FILE_NB] =
    { S(  5, 28), S(-12, 20), S( -7, 21), S( 22, 28), S( -8, 30), S( -5,  7), S(-15,  6), S( -8, 13) },
    { S( -7,  0), S(  7,-11), S( -3, 12), S(-13, 21), S(  5, 25), S(-16, 19), S( 10,  4), S( -8,  7) }
   };
-  TUNE(SetRange(-50, 100), PBonus, init);
 
 
 } // namespace
@@ -126,5 +125,5 @@ void init() {
     }
   }
 }
-
+TUNE(SetRange(-50, 100), PBonus, init);
 } // namespace PSQT
