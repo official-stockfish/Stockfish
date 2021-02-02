@@ -423,7 +423,6 @@ namespace {
             score += BishopOnKingRing;
 
         int mob = popcount(b & mobilityArea[Us]);
-
         mobility[Us] += MobilityBonus[Pt - 2][mob];
 
         if (Pt == BISHOP || Pt == KNIGHT)
