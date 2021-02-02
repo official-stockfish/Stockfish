@@ -42,7 +42,7 @@ namespace {
 
   // Bonus for blocked pawns at 5th or 6th rank
    Score BlockedPawn[2] = { S(-15, -3), S(-6, 3) };
-  TUNE(SetRange(-30, 20), PassedRank);
+  TUNE(SetRange(-30, 20), BlockedPawn);
 
 
   constexpr Score BlockedStorm[RANK_NB] = {
@@ -51,7 +51,7 @@ namespace {
 
   // Connected pawn bonus
    int Connected[RANK_NB] = { 0, 5, 7, 11, 24, 48, 86 };
-   TUNE(SetRange(-10, 120), Connected);
+   TUNE(SetRange(-10, 100), Connected);
 
   // Strength of pawn shelter for our king by [distance from edge][rank].
   // RANK_1 = 0 is used for files where we have no pawn, or pawn is behind our king.
