@@ -96,8 +96,7 @@ namespace {
     Bitboard lever, leverPush, blocked;
     Square s;
     bool backward, passed, doubled;
-    Value min=VALUE_INFINITE, max=-VALUE_INFINITE;
-    Score totalScore = SCORE_ZERO;
+    Score score = SCORE_ZERO;
     Bitboard b = pos.pieces(Us, PAWN);
 
     Bitboard ourPawns   = pos.pieces(  Us, PAWN);
@@ -113,8 +112,6 @@ namespace {
     // Loop through all pawns of the current color and score each pawn
     while (b) {
         s = pop_lsb(&b);
-        
-        Score score = SCORE_ZERO;
 
         assert(pos.piece_on(s) == make_piece(Us, PAWN));
 
@@ -196,19 +193,9 @@ namespace {
         if (blocked && r >= RANK_5)
             score += BlockedPawn[r - RANK_5];
             
-        // Get best and worst pawn
-        if (auto eg = eg_value(score); eg < min) min = eg; else
-        if (                           eg > max) max = eg;
-
-        totalScore += score;
     }
-
-   // Double impact of best and worst pawn
-    totalScore -= make_score(0, (min <  VALUE_INFINITE ? min : 0)
-                              + (max > -VALUE_INFINITE ? max : 0)
-                            ) / 2;
-
-    return totalScore;
+    
+return score;
   }
 
 } // namespace
