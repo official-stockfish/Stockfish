@@ -48,7 +48,7 @@ namespace {
   };
 
   // Connected pawn bonus
-   constexpr int Connected[RANK_NB] = { 0, 5, 7, 11, 23, 48, 87 };
+  constexpr int Connected[RANK_NB] = { 0, 5, 7, 11, 23, 48, 87 };
 
   // Strength of pawn shelter for our king by [distance from edge][rank].
   // RANK_1 = 0 is used for files where we have no pawn, or pawn is behind our king.
@@ -191,11 +191,10 @@ namespace {
                     + WeakLever * more_than_one(lever);
 
         if (blocked && r >= RANK_5)
-            score += BlockedPawn[r - RANK_5];
-            
+            score += BlockedPawn[r - RANK_5];    
     }
     
-return score;
+    return score;
   }
 
 } // namespace
