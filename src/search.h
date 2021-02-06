@@ -37,9 +37,14 @@ constexpr int CounterMovePruneThreshold = 0;
 /// shallower and deeper in the tree during the search. Each search thread has
 /// its own array of Stack objects, indexed by the current ply.
 
+/// The instance variable pieceToHistory is initialized to be the entry of
+/// Thread::continuationHistory indexed by
+/// inCheck, captureOrPromotion and the current move (encoded as the pair
+/// piece,to_sq).
+
 struct Stack {
   Move* pv;
-  PieceToHistory* continuationHistory;
+  PieceToHistory* pieceToHistory;
   int ply;
   Move currentMove;
   Move excludedMove;
