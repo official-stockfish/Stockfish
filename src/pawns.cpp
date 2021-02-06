@@ -191,9 +191,9 @@ namespace {
                     + WeakLever * more_than_one(lever);
 
         if (blocked && r >= RANK_5)
-            score += BlockedPawn[r - RANK_5];    
+            score += BlockedPawn[r - RANK_5];
     }
-    
+
     return score;
   }
 
