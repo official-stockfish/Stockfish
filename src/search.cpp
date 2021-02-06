@@ -839,10 +839,10 @@ namespace {
     // Step 8. Null move search with verification search (~40 Elo)
     if (   !PvNode
         && (ss-1)->currentMove != MOVE_NULL
-        && (ss-1)->statScore < 22998
+        && (ss-1)->statScore < 22970
         &&  eval >= beta
         &&  eval >= ss->staticEval
-        &&  ss->staticEval >= beta - 29 * depth - 27 * improving + 87 * ss->ttPv + 172
+        &&  ss->staticEval >= beta - 31 * depth - 32 * improving + 166 * ss->ttPv + 166
         && !excludedMove
         &&  pos.non_pawn_material(us)
         && (ss->ply >= thisThread->nmpMinPly || us != thisThread->nmpColor))
@@ -850,7 +850,7 @@ namespace {
         assert(eval - beta >= 0);
 
         // Null move dynamic reduction based on depth and value
-        Depth R = (1055 + 76 * depth) / 256 + std::min(int(eval - beta) / 202, 3);
+        Depth R = (1006 + 82 * depth) / 256 + std::min(int(eval - beta) / 188, 3);
 
         ss->currentMove = MOVE_NULL;
         ss->continuationHistory = &thisThread->continuationHistory[0][0][NO_PIECE][0];
@@ -886,7 +886,7 @@ namespace {
         }
     }
 
-    probCutBeta = beta + 188 - 47 * improving;
+    probCutBeta = beta + 215 - 41 * improving;
 
     // Step 9. ProbCut (~10 Elo)
     // If we have a good enough capture and a reduced search returns a value
@@ -1063,11 +1063,11 @@ moves_loop: // When in check, search starts from here
               // Futility pruning: parent node (~5 Elo)
               if (   lmrDepth < 7
                   && !ss->inCheck
-                  && ss->staticEval + 246 + 155 * lmrDepth <= alpha
-                  &&  (*contHist[0])[movedPiece][to_sq(move)]
-                    + (*contHist[1])[movedPiece][to_sq(move)]
-                    + (*contHist[3])[movedPiece][to_sq(move)]
-                    + (*contHist[5])[movedPiece][to_sq(move)] / 3 < 26394)
+                  && ss->staticEval + 193 + 160 * lmrDepth <= alpha
+                  && (*contHist[0])[movedPiece][to_sq(move)]
+                   + (*contHist[1])[movedPiece][to_sq(move)]
+                   + (*contHist[3])[movedPiece][to_sq(move)]
+                   + (*contHist[5])[movedPiece][to_sq(move)] / 3 < 26330)
                   continue;
 
               // Prune moves with negative SEE (~20 Elo)
@@ -1223,13 +1223,13 @@ moves_loop: // When in check, search starts from here
                              + (*contHist[0])[movedPiece][to_sq(move)]
                              + (*contHist[1])[movedPiece][to_sq(move)]
                              + (*contHist[3])[movedPiece][to_sq(move)]
-                             - 5400;
+                             - 5333;
 
               // Decrease/increase reduction by comparing opponent's stat score (~10 Elo)
-              if (ss->statScore >= -94 && (ss-1)->statScore < -104)
+              if (ss->statScore >= -99 && (ss-1)->statScore < -112)
                   r--;
 
-              else if ((ss-1)->statScore >= -125 && ss->statScore < -134)
+              else if ((ss-1)->statScore >= -108 && ss->statScore < -102)
                   r++;
 
               // Decrease/increase reduction for moves with a good/bad history (~30 Elo)
@@ -1237,9 +1237,9 @@ moves_loop: // When in check, search starts from here
               // use sum of main history and first continuation history with an offset
               if (ss->inCheck)
                   r -= (thisThread->mainHistory[us][from_to(move)]
-                     + (*contHist[0])[movedPiece][to_sq(move)] - 4333) / 16384;
+                     + (*contHist[0])[movedPiece][to_sq(move)] - 4444) / 16384;
               else
-                  r -= ss->statScore / 15098;
+                  r -= ss->statScore / 14640;
           }
 
           Depth d = std::clamp(newDepth - r, 1, newDepth);
