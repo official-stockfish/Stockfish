@@ -72,9 +72,15 @@ class TranspositionTable {
 
   static_assert(sizeof(Cluster) == 32, "Unexpected Cluster size");
 
+  // Constants used to refresh the hash table periodically
+  static constexpr unsigned GENERATION_BITS  = 3;                                // nb of bits reserved for other things
+  static constexpr int      GENERATION_DELTA = (1 << GENERATION_BITS);           // increment for generation field
+  static constexpr int      GENERATION_CYCLE = 255 + (1 << GENERATION_BITS);     // cycle length
+  static constexpr int      GENERATION_MASK  = (0xFF << GENERATION_BITS) & 0xFF; // mask to pull out generation number
+
 public:
  ~TranspositionTable() { aligned_large_pages_free(table); }
-  void new_search() { generation8 += 8; } // Lower 3 bits are used by PV flag and Bound
+  void new_search() { generation8 += GENERATION_DELTA; } // Lower bits are used for other things
   TTEntry* probe(const Key key, bool& found) const;
   int hashfull() const;
   void resize(size_t mbSize);
