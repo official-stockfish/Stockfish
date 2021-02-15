@@ -217,8 +217,13 @@ void MainThread::search() {
 
   if (Limits.perft)
   {
+      auto elapsed = now();      
       nodes = perft<true>(rootPos, Limits.perft);
-      sync_cout << "\nNodes searched: " << nodes << "\n" << sync_endl;
+      elapsed = now() - elapsed;
+      sync_cout << "\nNodes searched: " << nodes
+                << "\nTime (ms)     : " << elapsed
+                << "\nNodes/second  : " << nodes * 1000 / (elapsed + 1)
+                << sync_endl;
       return;
   }
 
