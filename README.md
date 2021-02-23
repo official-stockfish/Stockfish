@@ -1,3 +1,5 @@
+Modified stockfish to play the worst move. Play against the bot at https://lichess.org/@/KateFish
+
 ## Overview
 
 [![Build Status](https://travis-ci.org/official-stockfish/Stockfish.svg?branch=master)](https://travis-ci.org/official-stockfish/Stockfish)
