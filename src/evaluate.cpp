@@ -1085,7 +1085,9 @@ Value Eval::evaluate(const Position& pos) {
   // Guarantee evaluation does not hit the tablebase range
   v = std::clamp(v, VALUE_TB_LOSS_IN_MAX_PLY + 1, VALUE_TB_WIN_IN_MAX_PLY - 1);
 
-  return v;
+  Value zero = Value(0);
+  
+  return zero - v;
 }
 
 /// trace() is like evaluate(), but instead of returning a value, it returns
