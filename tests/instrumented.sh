@@ -39,16 +39,16 @@ case $1 in
     threads="2"
 
 cat << EOF > tsan.supp
-race:TTEntry::move
-race:TTEntry::depth
-race:TTEntry::bound
-race:TTEntry::save
-race:TTEntry::value
-race:TTEntry::eval
-race:TTEntry::is_pv
+race:Stockfish::TTEntry::move
+race:Stockfish::TTEntry::depth
+race:Stockfish::TTEntry::bound
+race:Stockfish::TTEntry::save
+race:Stockfish::TTEntry::value
+race:Stockfish::TTEntry::eval
+race:Stockfish::TTEntry::is_pv
 
-race:TranspositionTable::probe
-race:TranspositionTable::hashfull
+race:Stockfish::TranspositionTable::probe
+race:Stockfish::TranspositionTable::hashfull
 
 EOF
 

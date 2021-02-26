@@ -27,7 +27,7 @@
 
 #include <cstring> // std::memset()
 
-namespace Eval::NNUE {
+namespace Stockfish::Eval::NNUE {
 
   // If vector instructions are enabled, we update and refresh the
   // accumulator tile by tile such that each tile fits in the CPU's
@@ -412,6 +412,6 @@ namespace Eval::NNUE {
         WeightType weights_[kHalfDimensions * kInputDimensions];
   };
 
-}  // namespace Eval::NNUE
+}  // namespace Stockfish::Eval::NNUE
 
 #endif // #ifndef NNUE_FEATURE_TRANSFORMER_H_INCLUDED

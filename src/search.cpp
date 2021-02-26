@@ -35,6 +35,8 @@
 #include "uci.h"
 #include "syzygy/tbprobe.h"
 
+namespace Stockfish {
+
 namespace Search {
 
   LimitsType Limits;
@@ -422,7 +424,7 @@ void Thread::search() {
           while (true)
           {
               Depth adjustedDepth = std::max(1, rootDepth - failedHighCnt - searchAgainCounter);
-              bestValue = ::search<PV>(rootPos, ss, alpha, beta, adjustedDepth, false);
+              bestValue = Stockfish::search<PV>(rootPos, ss, alpha, beta, adjustedDepth, false);
 
               // Bring the best move to the front. It is critical that sorting
               // is done with a stable algorithm because all the values but the
@@ -2034,3 +2036,5 @@ void Tablebases::rank_root_moves(Position& pos, Search::RootMoves& rootMoves) {
             m.tbRank = 0;
     }
 }
+
+} // namespace Stockfish

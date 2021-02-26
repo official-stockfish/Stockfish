@@ -54,7 +54,9 @@
 
 
 using namespace std;
-using namespace Eval::NNUE;
+using namespace Stockfish::Eval::NNUE;
+
+namespace Stockfish {
 
 namespace Eval {
 
@@ -1146,3 +1148,5 @@ std::string Eval::trace(const Position& pos) {
 
   return ss.str();
 }
+
+} // namespace Stockfish
