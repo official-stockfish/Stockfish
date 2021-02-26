@@ -24,6 +24,8 @@
 
 using namespace std;
 
+namespace Stockfish {
+
 namespace {
   #define S(mg, eg) make_score(mg, eg)
 
@@ -223,3 +225,5 @@ Entry* probe(const Position& pos) {
 }
 
 } // namespace Material
+
+} // namespace Stockfish

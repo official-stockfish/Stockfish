@@ -22,6 +22,8 @@
 #include "bitboard.h"
 #include "misc.h"
 
+namespace Stockfish {
+
 uint8_t PopCnt16[1 << 16];
 uint8_t SquareDistance[SQUARE_NB][SQUARE_NB];
 
@@ -41,7 +43,6 @@ namespace {
   void init_magics(PieceType pt, Bitboard table[], Magic magics[]);
 
 }
-
 
 /// safe_destination() returns the bitboard of target square for the given step
 /// from the given square. If the step is off the board, returns empty bitboard.
@@ -110,7 +111,6 @@ void Bitboards::init() {
                   LineBB[s1][s2] = (attacks_bb(pt, s1, 0) & attacks_bb(pt, s2, 0)) | s1 | s2;
   }
 }
-
 
 namespace {
 
@@ -211,3 +211,5 @@ namespace {
     }
   }
 }
+
+} // namespace Stockfish

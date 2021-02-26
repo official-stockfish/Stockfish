@@ -24,6 +24,8 @@
 #include "position.h"
 #include "thread.h"
 
+namespace Stockfish {
+
 namespace {
 
   #define V Value
@@ -298,3 +300,5 @@ template Score Entry::do_king_safety<WHITE>(const Position& pos);
 template Score Entry::do_king_safety<BLACK>(const Position& pos);
 
 } // namespace Pawns
+
+} // namespace Stockfish

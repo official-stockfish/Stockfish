@@ -24,7 +24,7 @@
 #include "../../evaluate.h"
 #include "features_common.h"
 
-namespace Eval::NNUE::Features {
+namespace Stockfish::Eval::NNUE::Features {
 
   // Feature HalfKP: Combination of the position of own king
   // and the position of pieces other than kings
@@ -54,6 +54,6 @@ namespace Eval::NNUE::Features {
                                      IndexList* removed, IndexList* added);
   };
 
-}  // namespace Eval::NNUE::Features
+}  // namespace Stockfish::Eval::NNUE::Features
 
 #endif // #ifndef NNUE_FEATURES_HALF_KP_H_INCLUDED

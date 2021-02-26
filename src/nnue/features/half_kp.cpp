@@ -21,7 +21,7 @@
 #include "half_kp.h"
 #include "index_list.h"
 
-namespace Eval::NNUE::Features {
+namespace Stockfish::Eval::NNUE::Features {
 
   // Orient a square according to perspective (rotates by 180 for black)
   inline Square orient(Color perspective, Square s) {
@@ -65,4 +65,4 @@ namespace Eval::NNUE::Features {
 
   template class HalfKP<Side::kFriend>;
 
-}  // namespace Eval::NNUE::Features
+}  // namespace Stockfish::Eval::NNUE::Features

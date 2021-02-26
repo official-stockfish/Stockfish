@@ -29,7 +29,7 @@
 
 #include "evaluate_nnue.h"
 
-namespace Eval::NNUE {
+namespace Stockfish::Eval::NNUE {
 
   // Input feature converter
   LargePagePtr<FeatureTransformer> feature_transformer;
@@ -141,4 +141,4 @@ namespace Eval::NNUE {
     return ReadParameters(stream);
   }
 
-} // namespace Eval::NNUE
+} // namespace Stockfish::Eval::NNUE
