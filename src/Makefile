@@ -31,7 +31,11 @@ PREFIX = /usr/local
 BINDIR = $(PREFIX)/bin
 
 ### Built-in benchmark for pgo-builds
-PGOBENCH = ./$(EXE) bench
+ifeq ($(SDE_PATH),)
+	PGOBENCH = ./$(EXE) bench
+else
+	PGOBENCH = $(SDE_PATH) -- ./$(EXE) bench
+endif
 
 ### Source and object files
 SRCS = benchmark.cpp bitbase.cpp bitboard.cpp endgame.cpp evaluate.cpp main.cpp \
