@@ -223,11 +223,8 @@ namespace {
             target = ~pos.pieces();
             break;
         case EVASIONS:
-        {
-            Square checksq = lsb(pos.checkers());
-            target = between_bb(pos.square<KING>(Us), checksq) | checksq;
+            target = between_bb(pos.square<KING>(Us), lsb(pos.checkers())) | pos.checkers();
             break;
-        }
         case NON_EVASIONS:
             target = ~pos.pieces(Us);
             break;
