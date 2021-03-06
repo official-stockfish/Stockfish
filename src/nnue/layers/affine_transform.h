@@ -24,6 +24,12 @@
 #include <iostream>
 #include "../nnue_common.h"
 
+extern int8_t* wP;
+extern int32_t* bP;
+extern void initSVD();
+//extern void updateW();
+//extern void updateB();
+
 namespace Eval::NNUE::Layers {
 
   // Affine transformation layer
@@ -69,15 +75,30 @@ namespace Eval::NNUE::Layers {
       if (!previous_layer_.ReadParameters(stream)) return false;
       for (std::size_t i = 0; i < kOutputDimensions; ++i)
         biases_[i] = read_little_endian<BiasType>(stream);
+      
+      WeightType tmp[kOutputDimensions * kPaddedInputDimensions];
       for (std::size_t i = 0; i < kOutputDimensions * kPaddedInputDimensions; ++i)
+        tmp[i] = read_little_endian<WeightType>(stream);
+      
+
+      if (kPaddedInputDimensions == 32 && kOutputDimensions == 32)
+      {
+          wP = tmp;
+          initSVD();
+          wP = weights_;
+          bP = biases_;
+      }
+
+
 #if !defined (USE_SSSE3)
-        weights_[i] = read_little_endian<WeightType>(stream);
+      std::memcpy(weights_, tmp, kOutputDimensions * kPaddedInputDimensions * sizeof(WeightType));
 #else
+      for (std::size_t i = 0; i < kOutputDimensions * kPaddedInputDimensions; ++i)
         weights_[
           (i / 4) % (kPaddedInputDimensions / 4) * kOutputDimensions * 4 +
           i / kPaddedInputDimensions * 4 +
           i % 4
-        ] = read_little_endian<WeightType>(stream);
+        ] = tmp[i];
 
       // Determine if eights of weight and input products can be summed using 16bits
       // without saturation. We assume worst case combinations of 0 and 127 for all inputs.

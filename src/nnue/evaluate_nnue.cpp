@@ -142,3 +142,100 @@ namespace Eval::NNUE {
   }
 
 } // namespace Eval::NNUE
+
+
+#include "../eigen3/Eigen/Dense"
+
+int8_t* wP = nullptr;
+int32_t* bP = nullptr;
+
+int TuneS[10] = { 0 };
+int TuneB[32] = { -6683, 8069, -4843, -8680, 9799, -11012, -10695, 571, -5559, -5293, -2670, -6079, 1297, -1331, -9148, -10851,
+                  -3941, -4830, -2393, -6169, 2991, -2562, -4842, -11015, 5335, -2852, 1087, 2347, -1115, -733, -2040, -5415 };
+
+constexpr int WI = 32, HI = 32;  //WI=512
+//typedef Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> Mtx;
+typedef Eigen::Matrix<double, HI, WI> Mtx;
+Eigen::BDCSVD<typename Eigen::MatrixBase<Mtx>::PlainObject> BdcSVD;
+const Eigen::BDCSVD<Mtx>* SVD = nullptr;
+Mtx W, U, VT, SM;
+double Sigma[32];
+
+
+void initSVD()
+{
+    //W.resize(HI, WI);
+    for (int i = 0; i < HI; ++i)
+        for (int j = 0; j < WI; ++j)
+            W(i, j) = wP[i * WI + j];
+
+    BdcSVD = W.bdcSvd(Eigen::ComputeFullU | Eigen::ComputeFullV);
+    SVD = &BdcSVD.compute(W, Eigen::ComputeFullU | Eigen::ComputeFullV);
+
+    U = SVD->matrixU();
+    VT = SVD->matrixV().transpose();
+
+    //SM.resize(HI, WI);
+    SM.setZero();
+    auto S = SVD->singularValues();
+    for (int i = 0; i < HI; ++i)
+        SM(i, i) = Sigma[i] = S(i);
+}
+
+void updateW()
+{
+    if (!wP)
+        return;
+
+    // Tune the first 10 biggest singular values
+    for (int i = 0; i < 10; ++i)
+        if (TuneS[i] > 0)
+            SM(i, i) = Sigma[i] * (100.0 + TuneS[i] * (9.0 + i) / 18.0) / 100.0;
+        else
+            SM(i, i) = Sigma[i] * 100.0 / (100.0 - TuneS[i] * (9.0 + i) / 18.0);
+
+    // Reconstruct matrix
+    Mtx WNew = U * SM * VT;
+    //Mtx Delta = W - WNew;
+
+    for (int i = 0; i < HI; ++i)
+        for (int j = 0; j < WI; ++j)
+        {
+            double w = WNew(i, j);
+            int iw = std::min(std::max((int)round(w), -127), 127);
+            wP[i * WI + j] = iw;
+        }
+
+#if defined (USE_SSSE3)
+    // Permute weights
+    int8_t tmp[HI * WI];
+    std::memcpy(tmp, wP, HI * WI);
+
+    for (std::size_t i = 0; i < HI * WI; ++i)
+        wP[
+           (i / 4) % (WI / 4) * HI * 4 +
+            i / WI * 4 +
+            i % 4
+          ] = tmp[i];
+#endif
+}
+
+void updateB()
+{
+    if (!bP)
+        return;
+
+    for (int i = 0; i < 32; ++i)
+        bP[i] = TuneB[i];
+}
+
+
+#if 1
+auto rangeFuncW = [](int m) { return std::pair<int, int>(m - 40, m + 40); };
+TUNE(SetRange(rangeFuncW), TuneS, updateW);
+
+auto rangeFuncB = [](int m) { return std::pair<int, int>(m - 1500, m + 1500); };
+TUNE(SetRange(rangeFuncB), TuneB, updateB);
+
+UPDATE_ON_LAST();
+#endif
