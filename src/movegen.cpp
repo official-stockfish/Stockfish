@@ -318,19 +318,20 @@ ExtMove* generate<EVASIONS>(const Position& pos, ExtMove* moveList) {
 
   Color us = pos.side_to_move();
   Square ksq = pos.square<KING>(us);
-  Bitboard sliderAttacks = 0;
-  Bitboard sliders = pos.checkers() & ~pos.pieces(KNIGHT, PAWN);
+  Bitboard kingSquares = attacks_bb<KING>(ksq) & ~pos.pieces(us);
+  Bitboard attackers = pos.checkers() & ~pos.pieces(KNIGHT);
 
-  // Find all the squares attacked by slider checkers. We will remove them from
+  // Find all the squares attacked by non-Knight checkers. We will remove them from
   // the king evasions in order to skip known illegal moves, which avoids any
   // useless legality checks later on.
-  while (sliders)
-      sliderAttacks |= line_bb(ksq, pop_lsb(&sliders)) & ~pos.checkers();
+  while (attackers){
+      Square attackerSq = pop_lsb(&attackers);
+      kingSquares &= ~attacks_bb(type_of(pos.piece_on(attackerSq)), attackerSq, pos.pieces() ^ pos.pieces(KING));
+  }
 
   // Generate evasions for king, capture and non capture moves
-  Bitboard b = attacks_bb<KING>(ksq) & ~pos.pieces(us) & ~sliderAttacks;
-  while (b)
-      *moveList++ = make_move(ksq, pop_lsb(&b));
+  while (kingSquares)
+      *moveList++ = make_move(ksq, pop_lsb(&kingSquares));
 
   if (more_than_one(pos.checkers()))
       return moveList; // Double check, only a king move can save the day
