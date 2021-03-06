@@ -150,12 +150,12 @@ int8_t* wP = nullptr;
 int32_t* bP = nullptr;
 
 int TuneS[10] = { 0 };
-int TuneB[32] = { -6683, 8069, -4843, -8680, 9799, -11012, -10695, 571, -5559, -5293, -2670, -6079, 1297, -1331, -9148, -10851,
-                  -3941, -4830, -2393, -6169, 2991, -2562, -4842, -11015, 5335, -2852, 1087, 2347, -1115, -733, -2040, -5415 };
+int TuneB[32] = { -1636, -1296, 1434, -1881, -1544, 669, -454, 3617, -458, 11188, 2007, 3096, -3710, 6217, 1033, 4988,
+                  4811, -546, 8955, -2867, -2619, 6637, 14132, 2474, -7371, 2994, -3596, 5869, 53, -4729, -8574, -8788 };
 
-constexpr int WI = 32, HI = 32;  //WI=512
-//typedef Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> Mtx;
-typedef Eigen::Matrix<double, HI, WI> Mtx;
+constexpr int WI = 512, HI = 32;
+typedef Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> Mtx;
+//typedef Eigen::Matrix<double, HI, WI> Mtx;
 Eigen::BDCSVD<typename Eigen::MatrixBase<Mtx>::PlainObject> BdcSVD;
 const Eigen::BDCSVD<Mtx>* SVD = nullptr;
 Mtx W, U, VT, SM;
@@ -164,7 +164,7 @@ double Sigma[32];
 
 void initSVD()
 {
-    //W.resize(HI, WI);
+    W.resize(HI, WI);
     for (int i = 0; i < HI; ++i)
         for (int j = 0; j < WI; ++j)
             W(i, j) = wP[i * WI + j];
@@ -175,7 +175,7 @@ void initSVD()
     U = SVD->matrixU();
     VT = SVD->matrixV().transpose();
 
-    //SM.resize(HI, WI);
+    SM.resize(HI, WI);
     SM.setZero();
     auto S = SVD->singularValues();
     for (int i = 0; i < HI; ++i)

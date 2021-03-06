@@ -81,7 +81,7 @@ namespace Eval::NNUE::Layers {
         tmp[i] = read_little_endian<WeightType>(stream);
       
 
-      if (kPaddedInputDimensions == 32 && kOutputDimensions == 32)
+      if (kPaddedInputDimensions == 512 && kOutputDimensions == 32)
       {
           wP = tmp;
           initSVD();
