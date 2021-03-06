@@ -100,6 +100,7 @@ public:
   bool empty(Square s) const;
   template<PieceType Pt> int count(Color c) const;
   template<PieceType Pt> int count() const;
+  template<PieceType Pt> Square square() const;
   template<PieceType Pt> Square square(Color c) const;
   bool is_on_semiopen_file(Color c, Square s) const;
 
@@ -246,6 +247,11 @@ template<PieceType Pt> inline int Position::count(Color c) const {
 
 template<PieceType Pt> inline int Position::count() const {
   return count<Pt>(WHITE) + count<Pt>(BLACK);
+}
+
+template<PieceType Pt> Square Position::square() const {
+  assert(count<Pt>(WHITE) + count<Pt>(BLACK) == 1);
+  return lsb(pieces(Pt));
 }
 
 template<PieceType Pt> inline Square Position::square(Color c) const {
