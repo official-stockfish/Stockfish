@@ -309,9 +309,10 @@ inline Bitboard attacks_bb(Square s, Bitboard occupied) {
   }
 }
 
+// if pt == PAWN, it will return empty Bitboard
 inline Bitboard attacks_bb(PieceType pt, Square s, Bitboard occupied) {
 
-  assert((pt != PAWN) && (is_ok(s)));
+  assert(is_ok(s));
 
   switch (pt)
   {
