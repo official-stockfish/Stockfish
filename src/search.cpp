@@ -1162,6 +1162,7 @@ moves_loop: // When in check, search starts from here
                && pos.non_pawn_material() <= 2 * RookValueMg)
           extension = 1;
 
+
       // Add extension to new depth
       newDepth += extension;
 
@@ -1579,9 +1580,9 @@ moves_loop: // When in check, search starts from here
       if (    bestValue > VALUE_TB_LOSS_IN_MAX_PLY
           && !givesCheck
           &&  futilityBase > -VALUE_KNOWN_WIN
-          && !pos.advanced_pawn_push(move))
+          && !pos.passed_pawn_push(move))
       {
-          assert(type_of(move) != EN_PASSANT); // Due to !pos.advanced_pawn_push
+          assert(type_of(move) != EN_PASSANT); // Due to !pos.passed_pawn_push
 
           // moveCount pruning
           if (moveCount > 2)
