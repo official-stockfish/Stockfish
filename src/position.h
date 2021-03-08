@@ -312,7 +312,7 @@ inline bool Position::pawn_passed(Color c, Square s) const {
 
 inline bool Position::advanced_pawn_push(Move m) const {
   return   type_of(moved_piece(m)) == PAWN
-        && relative_rank(sideToMove, to_sq(m)) > RANK_5;
+        && relative_rank(sideToMove, to_sq(m)) > RANK_6;
 }
 
 inline int Position::pawns_on_same_color_squares(Color c, Square s) const {
