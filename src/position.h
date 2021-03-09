@@ -318,7 +318,7 @@ inline bool Position::advanced_pawn_push(Move m) const {
 
 inline bool Position::passed_pawn_push(Move m) const {
     return   advanced_pawn_push(m)
-        && pawn_passed(sideToMove, from_sq(m));
+        && pawn_passed(sideToMove, to_sq(m));
 
 }
 
