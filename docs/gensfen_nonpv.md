@@ -18,7 +18,7 @@ Currently the following options are available:
 
 `exploration_min_nodes` - the min number of nodes to use for exploraton during selfplay. Default: 5000.
 
-`exploration_max_nodes` - the min number of nodes to use for exploraton during selfplay. The number of nodes is chosen from a uniform distribution between min and max. Default: 15000.
+`exploration_max_nodes` - the max number of nodes to use for exploraton during selfplay. The number of nodes is chosen from a uniform distribution between min and max. Default: 15000.
 
 `exploration_save_rate` - the ratio of positions seen during exploration self play games that are saved for later rescoring. Default: 0.01 (meaning 1 in 100 positions seen during search get saved for rescoring).
 
