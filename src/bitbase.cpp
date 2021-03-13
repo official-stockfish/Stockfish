@@ -150,8 +150,8 @@ namespace {
     Bitboard b = attacks_bb<KING>(ksq[stm]);
 
     while (b)
-        r |= stm == WHITE ? db[index(BLACK, ksq[BLACK] , pop_lsb(&b), psq)]
-                          : db[index(WHITE, pop_lsb(&b),  ksq[WHITE], psq)];
+        r |= stm == WHITE ? db[index(BLACK, ksq[BLACK] , pop_lsb(b), psq)]
+                          : db[index(WHITE, pop_lsb(b),  ksq[WHITE], psq)];
 
     if (stm == WHITE)
     {

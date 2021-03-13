@@ -397,7 +397,7 @@ namespace {
     attackedBy[Us][Pt] = 0;
 
     while (b1) {
-        Square s = pop_lsb(&b1);
+        Square s = pop_lsb(b1);
 
         // Find attacked squares, including x-ray attacks for bishops and rooks
         b = Pt == BISHOP ? attacks_bb<BISHOP>(s, pos.pieces() ^ pos.pieces(QUEEN))
@@ -658,11 +658,11 @@ namespace {
     {
         b = (defended | weak) & (attackedBy[Us][KNIGHT] | attackedBy[Us][BISHOP]);
         while (b)
-            score += ThreatByMinor[type_of(pos.piece_on(pop_lsb(&b)))];
+            score += ThreatByMinor[type_of(pos.piece_on(pop_lsb(b)))];
 
         b = weak & attackedBy[Us][ROOK];
         while (b)
-            score += ThreatByRook[type_of(pos.piece_on(pop_lsb(&b)))];
+            score += ThreatByRook[type_of(pos.piece_on(pop_lsb(b)))];
 
         if (weak & attackedBy[Us][KING])
             score += ThreatByKing;
@@ -760,7 +760,7 @@ namespace {
 
     while (b)
     {
-        Square s = pop_lsb(&b);
+        Square s = pop_lsb(b);
 
         assert(!(pos.pieces(Them, PAWN) & forward_file_bb(Us, s + Up)));
 
