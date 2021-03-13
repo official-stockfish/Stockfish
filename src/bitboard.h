@@ -417,6 +417,7 @@ inline Square msb(Bitboard b) {
 /// lsb_bb() finds the least significant bit and it return on its position in a non-zero bitboard
 
 inline Bitboard lsb_bb(Bitboard b) {
+  assert(b);
   return b & -b;
 }
 
