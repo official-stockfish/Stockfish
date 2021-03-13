@@ -414,6 +414,11 @@ inline Square msb(Bitboard b) {
 
 #endif
 
+/// lsb_bb() finds the least significant bit and it return on its position in a non-zero bitboard
+
+inline Bitboard lsb_bb(Bitboard b) {
+  return b & -b;
+}
 
 /// pop_lsb() finds and clears the least significant bit in a non-zero bitboard
 
