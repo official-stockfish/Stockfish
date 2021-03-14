@@ -1221,7 +1221,9 @@ namespace Learner
             else if (option == "basedir") is >> base_dir;
 
             // Mini batch size
-            else if (option == "batchsize") is >> params.mini_batch_size;
+            else if (option == "batchsize"
+                  || option == "epoch_size")
+                is >> params.mini_batch_size;
 
             // learning rate
             else if (option == "lr") is >> params.learning_rate;
@@ -1260,9 +1262,15 @@ namespace Learner
             else if (option == "save_only_once") params.save_only_once = true;
             else if (option == "no_shuffle") params.shuffle = false;
 
-            else if (option == "nn_batch_size") is >> nn_batch_size;
-            else if (option == "newbob_decay") is >> params.newbob_decay;
-            else if (option == "newbob_num_trials") is >> params.newbob_num_trials;
+            else if (option == "nn_batch_size"
+                  || option == "batch_size")
+                is >> nn_batch_size;
+            else if (option == "newbob_decay"
+                  || option == "lr_step")
+                is >> params.newbob_decay;
+            else if (option == "newbob_num_trials"
+                  || option == "max_consecutive_rejections")
+                is >> params.newbob_num_trials;
             else if (option == "nn_options") is >> nn_options;
             else if (option == "auto_lr_drop") is >> params.auto_lr_drop;
 

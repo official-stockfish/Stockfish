@@ -16,29 +16,21 @@ Currently the following options are available:
 
 `set_recommended_uci_options` - this is a modifier not a parameter, no value follows it. If specified then some UCI options are set to recommended values.
 
-`bat` - the size of a batch in multiples of 10000. This determines how many entries are read and shuffled at once during training. Default: 100 (meaning batch size of 1000000).
-
 `targetdir` - path to the direction from which training data will be read. All files in this directory are read sequentially. If not specified then only the list of files from positional arguments will be used. If specified then files from the given directory will be used after the explicitly specified files.
 
-`epochs` - the number of weight update cycles (epochs) to train the network for. One such cycle is `batchsize` positions. If not specified then the training will loop forever.
+`epochs` - the number of weight update cycles (epochs) to train the network for. One such cycle is `epoch_size` positions. If not specified then the training will loop forever.
+
+`epoch_size` - The number of positions per epoch. Should be kept lowish as the current implementation loads all into memory before processing. Default is already high enough. The epoch size is not tied to validation nor net serialization, there are more specific options for that. Default: 1000000
 
 `basedir` - the base directory for the paths. Default: "" (current directory)
-
-`batchsize` - same as `bat` but doesn't scale by 10000. Default: 1000000
 
 `lr` - initial learning rate. Default: 1.
 
 `use_draw_games_in_training` - either 0 or 1. If 1 then draws will be used in training too. Default: 1.
 
-`use_draw_in_training` - deprecated, alias for `use_draw_games_in_training`
-
 `use_draw_games_in_validation` - either 0 or 1. If 1 then draws will be used in validation too. Default: 1.
 
-`use_draw_in_validation` - deprecated, alias for `use_draw_games_in_validation`
-
 `skip_duplicated_positions_in_training` - either 0 or 1. If 1 then a small hashtable will be used to try to eliminate duplicated position from training. Default: 0.
-
-`use_hash_in_training` - deprecated, alias for `skip_duplicated_positions_in_training`
 
 `winning_probability_coefficient` - some magic value for winning probability. If you need to read this then don't touch it. Default: 1.0 / PawnValueEg / 4.0 * std::log(10.0)
 
@@ -60,17 +52,17 @@ Currently the following options are available:
 
 `no_shuffle` - this is a modifier not a parameter, no value follows it. If specified then data within a batch won't be shuffled.
 
-`nn_batch_size` - minibatch size used for learning. Should be smaller than batch size. Default: 1000.
+`batch_size` - the number of positions per one learning step. Default: 1000
 
-`newbob_decay` - learning rate will be multiplied by this factor every time a net is rejected (so in other words it controls LR drops). Default: 0.5 (no LR drops)
+`lr_step` - learning rate will be multiplied by this factor every time a net is rejected (so in other words it controls LR drops). Default: 0.5 (no LR drops)
 
 `assume_quiet` - this is a flag option. When specified learn will not perform qsearch to reach a quiet position.
 
-`smart_fen_skipping` - this is a flag option. When specified some position that are not good candidates for teaching are skipped. This includes positions where the best move is a capture or promotion, and position where a king is in check. Default: 1.
+`smart_fen_skipping` - this is a flag option. When specified some position that are not good candidates for teaching are skipped. This includes positions where the best move is a capture or promotion, and position where a king is in check. Default: 0.
 
 `smart_fen_skipping_for_validation` - same as `smart_fen_skipping` but applies to validation data set. Default: 0.
 
-`newbob_num_trials` - determines after how many subsequent rejected nets the training process will be terminated. Default: 4.
+`max_consecutive_rejections` - determines after how many subsequent rejected nets the training process will be terminated. Default: 4.
 
 `auto_lr_drop` - every time this many positions are processed the learning rate is multiplied by `newbob_decay`. In other words this value specifies for how many positions a single learning rate stage lasts. If 0 then doesn't have any effect. Default: 0.
 
@@ -91,6 +83,24 @@ Currently the following options are available:
 `seed` - seed for the PRNG. Can be either a number or a string. If it's a string then its hash will be used. If not specified then the current time will be used.
 
 `verbose` - this is a modifier, not a parameter. When used there will be more detailed output during training.
+
+### Deprecated options
+
+`bat` (deprecated) - the size of a batch in multiples of 10000. This determines how many entries are read and shuffled at once during training. Default: 100 (meaning batch size of 1000000).
+
+`newbob_num_trials` (deprecated) - same as `max_consecutive_rejections`
+
+`newbob_decay` (deprecated) - same as `lr_step`
+
+`nn_batch_size` (deprecated) - same as `batch_size`
+
+`use_hash_in_training` (deprecated) - alias for `skip_duplicated_positions_in_training`
+
+`batchsize` (deprecated) - same as `epoch_size`
+
+`use_draw_in_training` (deprecated) - alias for `use_draw_games_in_training`
+
+`use_draw_in_validation` (deprecated) - alias for `use_draw_games_in_validation`
 
 ## Legacy subcommands and parameters
 
