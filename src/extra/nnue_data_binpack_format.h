@@ -4506,12 +4506,12 @@ namespace chess
 
         [[nodiscard]] inline std::uint16_t fullMove() const
         {
-            return (m_ply + 1) / 2;
+            return m_ply / 2 + 1;
         }
 
         inline void setFullMove(std::uint16_t hm)
         {
-            m_ply = 2 * hm - 1 + (m_sideToMove == Color::Black);
+            m_ply = 2 * (hm - 1) + (m_sideToMove == Color::Black);
         }
 
         [[nodiscard]] inline bool isCheck() const;
@@ -5979,7 +5979,7 @@ namespace chess
             const auto fullMove = nextPart();
             if (!fullMove.empty())
             {
-                m_ply = std::stoi(fullMove.data()) * 2 - (m_sideToMove == Color::White);
+                m_ply = 2 * (std::stoi(fullMove.data()) - 1) + (m_sideToMove == Color::Black);
             }
             else
             {
