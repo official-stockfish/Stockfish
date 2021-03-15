@@ -223,7 +223,7 @@ namespace {
             target = ~pos.pieces();
             break;
         case EVASIONS:
-            target = between_bb(pos.square<KING>(Us), lsb(pos.checkers())) | pos.checkers();
+            target = ray_bb(pos.square<KING>(Us), lsb(pos.checkers()));
             break;
         case NON_EVASIONS:
             target = ~pos.pieces(Us);

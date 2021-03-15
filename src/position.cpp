@@ -320,7 +320,7 @@ void Position::set_castling_right(Color c, Square rfrom) {
   Square kto = relative_square(c, cr & KING_SIDE ? SQ_G1 : SQ_C1);
   Square rto = relative_square(c, cr & KING_SIDE ? SQ_F1 : SQ_D1);
 
-  castlingPath[cr] =   (between_bb(rfrom, rto) | between_bb(kfrom, kto) | rto | kto)
+  castlingPath[cr] =   (ray_bb(rfrom, rto) | ray_bb(kfrom, kto))
                     & ~(kfrom | rfrom);
 }
 
@@ -477,7 +477,7 @@ Bitboard Position::slider_blockers(Bitboard sliders, Square s, Bitboard& pinners
   while (snipers)
   {
     Square sniperSq = pop_lsb(&snipers);
-    Bitboard b = between_bb(s, sniperSq) & occupancy;
+    Bitboard b = ray_bb(s, sniperSq) & occupancy;
 
     if (b && !more_than_one(b))
     {
@@ -614,7 +614,7 @@ bool Position::pseudo_legal(const Move m) const {
               return false;
 
           // Our move must be a blocking evasion or a capture of the checking piece
-          if (!((between_bb(lsb(checkers()), square<KING>(us)) | checkers()) & to))
+          if (!(ray_bb(square<KING>(us), lsb(checkers())) & to))
               return false;
       }
       // In case of king moves under check we have to remove king so as to catch
@@ -1218,7 +1218,7 @@ bool Position::has_game_cycle(int ply) const {
           Square s1 = from_sq(move);
           Square s2 = to_sq(move);
 
-          if (!(between_bb(s1, s2) & pieces()))
+          if (!((ray_bb(s1, s2) ^ s2) & pieces()))
           {
               if (ply > i)
                   return true;

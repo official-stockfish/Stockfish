@@ -28,6 +28,7 @@ uint8_t PopCnt16[1 << 16];
 uint8_t SquareDistance[SQUARE_NB][SQUARE_NB];
 
 Bitboard SquareBB[SQUARE_NB];
+Bitboard RayBB[SQUARE_NB][SQUARE_NB];
 Bitboard LineBB[SQUARE_NB][SQUARE_NB];
 Bitboard PseudoAttacks[PIECE_TYPE_NB][SQUARE_NB];
 Bitboard PawnAttacks[COLOR_NB][SQUARE_NB];
@@ -106,9 +107,14 @@ void Bitboards::init() {
       PseudoAttacks[QUEEN][s1] |= PseudoAttacks[  ROOK][s1] = attacks_bb<  ROOK>(s1, 0);
 
       for (PieceType pt : { BISHOP, ROOK })
-          for (Square s2 = SQ_A1; s2 <= SQ_H8; ++s2)
+          for (Square s2 = SQ_A1; s2 <= SQ_H8; ++s2){
               if (PseudoAttacks[pt][s1] & s2)
                   LineBB[s1][s2] = (attacks_bb(pt, s1, 0) & attacks_bb(pt, s2, 0)) | s1 | s2;
+
+              RayBB[s1][s2] = LineBB[s1][s2] & ((AllSquares << s1) ^ (AllSquares << s2));
+              RayBB[s1][s2] &= RayBB[s1][s2] - 1;
+              RayBB[s1][s2] |= s2;
+          }
   }
 }
 
