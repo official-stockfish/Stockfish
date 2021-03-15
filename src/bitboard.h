@@ -75,6 +75,7 @@ extern uint8_t PopCnt16[1 << 16];
 extern uint8_t SquareDistance[SQUARE_NB][SQUARE_NB];
 
 extern Bitboard SquareBB[SQUARE_NB];
+extern Bitboard BetweenBB[SQUARE_NB][SQUARE_NB];
 extern Bitboard LineBB[SQUARE_NB][SQUARE_NB];
 extern Bitboard PseudoAttacks[PIECE_TYPE_NB][SQUARE_NB];
 extern Bitboard PawnAttacks[COLOR_NB][SQUARE_NB];
@@ -215,19 +216,22 @@ inline Bitboard line_bb(Square s1, Square s2) {
 }
 
 
-/// between_bb() returns a bitboard representing squares that are linearly
-/// between the two given squares (excluding the given squares). If the given
-/// squares are not on a same file/rank/diagonal, we return 0. For instance,
-/// between_bb(SQ_C4, SQ_F7) will return a bitboard with squares D5 and E6.
+/// between_bb(s1, s2) returns a bitboard representing the squares in the semi-open
+/// segment between the squares s1 and s2 (excluding s1 but including s2). If the
+/// given squares are not on a same file/rank/diagonal, it returns s2. For instance,
+/// between_bb(SQ_C4, SQ_F7) will return a bitboard with squares D5, E6 and F7, but
+/// between_bb(SQ_E6, SQ_F8) will return a bitboard with the square F8. This trick
+/// allows to generate non-king evasion moves faster: the defending piece must either
+/// interpose itself to cover the check or capture the checking piece.
 
 inline Bitboard between_bb(Square s1, Square s2) {
-  Bitboard b = line_bb(s1, s2) & ((AllSquares << s1) ^ (AllSquares << s2));
-  return b & (b - 1); //exclude lsb
+  assert(is_ok(s1) && is_ok(s2));
+  return BetweenBB[s1][s2];
 }
 
 
-/// forward_ranks_bb() returns a bitboard representing the squares on the ranks
-/// in front of the given one, from the point of view of the given color. For instance,
+/// forward_ranks_bb() returns a bitboard representing the squares on the ranks in
+/// front of the given one, from the point of view of the given color. For instance,
 /// forward_ranks_bb(BLACK, SQ_D3) will return the 16 squares on ranks 1 and 2.
 
 constexpr Bitboard forward_ranks_bb(Color c, Square s) {
