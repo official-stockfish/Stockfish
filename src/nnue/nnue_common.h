@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2021 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -43,30 +43,7 @@
 #include <arm_neon.h>
 #endif
 
-// HACK: Use _mm256_loadu_si256() instead of _mm256_load_si256. Otherwise a binary
-//       compiled with older g++ crashes because the output memory is not aligned
-//       even though alignas is specified.
-#if defined(USE_AVX2)
-#if defined(__GNUC__ ) && (__GNUC__ < 9) && defined(_WIN32) && !defined(__clang__)
-#define _mm256_loadA_si256  _mm256_loadu_si256
-#define _mm256_storeA_si256 _mm256_storeu_si256
-#else
-#define _mm256_loadA_si256  _mm256_load_si256
-#define _mm256_storeA_si256 _mm256_store_si256
-#endif
-#endif
-
-#if defined(USE_AVX512)
-#if defined(__GNUC__ ) && (__GNUC__ < 9) && defined(_WIN32) && !defined(__clang__)
-#define _mm512_loadA_si512   _mm512_loadu_si512
-#define _mm512_storeA_si512  _mm512_storeu_si512
-#else
-#define _mm512_loadA_si512   _mm512_load_si512
-#define _mm512_storeA_si512  _mm512_store_si512
-#endif
-#endif
-
-namespace Eval::NNUE {
+namespace Stockfish::Eval::NNUE {
 
   // Version of the evaluation file
   constexpr std::uint32_t kVersion = 0x7AF32F16u;
@@ -113,7 +90,14 @@ namespace Eval::NNUE {
     PS_END2     = 12 * SQUARE_NB + 1
   };
 
-  extern uint32_t kpp_board_index[PIECE_NB][COLOR_NB];
+  constexpr uint32_t kpp_board_index[COLOR_NB][PIECE_NB] = {
+    // convention: W - us, B - them
+    // viewed from other side, W and B are reversed
+    { PS_NONE, PS_W_PAWN, PS_W_KNIGHT, PS_W_BISHOP, PS_W_ROOK, PS_W_QUEEN, PS_W_KING, PS_NONE,
+      PS_NONE, PS_B_PAWN, PS_B_KNIGHT, PS_B_BISHOP, PS_B_ROOK, PS_B_QUEEN, PS_B_KING, PS_NONE },
+    { PS_NONE, PS_B_PAWN, PS_B_KNIGHT, PS_B_BISHOP, PS_B_ROOK, PS_B_QUEEN, PS_B_KING, PS_NONE,
+      PS_NONE, PS_W_PAWN, PS_W_KNIGHT, PS_W_BISHOP, PS_W_ROOK, PS_W_QUEEN, PS_W_KING, PS_NONE }
+  };
 
   // Type of input feature after conversion
   using TransformedFeatureType = std::uint8_t;
@@ -143,6 +127,6 @@ namespace Eval::NNUE {
       return result;
   }
 
-}  // namespace Eval::NNUE
+}  // namespace Stockfish::Eval::NNUE
 
 #endif // #ifndef NNUE_COMMON_H_INCLUDED

@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2021 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -24,35 +24,38 @@
 #include "position.h"
 #include "thread.h"
 
+namespace Stockfish {
+
 namespace {
 
   #define V Value
   #define S(mg, eg) make_score(mg, eg)
 
   // Pawn penalties
-  constexpr Score Backward      = S( 8, 27);
-  constexpr Score Doubled       = S(11, 55);
-  constexpr Score Isolated      = S( 5, 17);
-  constexpr Score WeakLever     = S( 2, 54);
-  constexpr Score WeakUnopposed = S(15, 25);
+  constexpr Score Backward      = S( 9, 22);
+  constexpr Score Doubled       = S(13, 51);
+  constexpr Score DoubledEarly  = S(20,  7);
+  constexpr Score Isolated      = S( 3, 15);
+  constexpr Score WeakLever     = S( 4, 58);
+  constexpr Score WeakUnopposed = S(13, 24);
 
   // Bonus for blocked pawns at 5th or 6th rank
-  constexpr Score BlockedPawn[2] = { S(-13, -4), S(-4, 3) };
+  constexpr Score BlockedPawn[2] = { S(-17, -6), S(-9, 2) };
 
   constexpr Score BlockedStorm[RANK_NB] = {
-    S(0, 0), S(0, 0), S(76, 78), S(-10, 15), S(-7, 10), S(-4, 6), S(-1, 2)
+    S(0, 0), S(0, 0), S(75, 78), S(-8, 16), S(-6, 10), S(-6, 6), S(0, 2)
   };
 
   // Connected pawn bonus
-  constexpr int Connected[RANK_NB] = { 0, 7, 8, 11, 24, 45, 85 };
+  constexpr int Connected[RANK_NB] = { 0, 5, 7, 11, 23, 48, 87 };
 
   // Strength of pawn shelter for our king by [distance from edge][rank].
   // RANK_1 = 0 is used for files where we have no pawn, or pawn is behind our king.
   constexpr Value ShelterStrength[int(FILE_NB) / 2][RANK_NB] = {
-    { V( -6), V( 81), V( 93), V( 58), V( 39), V( 18), V(  25) },
-    { V(-43), V( 61), V( 35), V(-49), V(-29), V(-11), V( -63) },
-    { V(-10), V( 75), V( 23), V( -2), V( 32), V(  3), V( -45) },
-    { V(-39), V(-13), V(-29), V(-52), V(-48), V(-67), V(-166) }
+    { V( -5), V( 82), V( 92), V( 54), V( 36), V( 22), V(  28) },
+    { V(-44), V( 63), V( 33), V(-50), V(-30), V(-12), V( -62) },
+    { V(-11), V( 77), V( 22), V( -6), V( 31), V(  8), V( -45) },
+    { V(-39), V(-12), V(-29), V(-50), V(-43), V(-68), V(-164) }
   };
 
   // Danger of enemy pawns moving toward our king by [distance from edge][rank].
@@ -60,11 +63,17 @@ namespace {
   // is behind our king. Note that UnblockedStorm[0][1-2] accommodate opponent pawn
   // on edge, likely blocked by our king.
   constexpr Value UnblockedStorm[int(FILE_NB) / 2][RANK_NB] = {
-    { V( 85), V(-289), V(-166), V(97), V(50), V( 45), V( 50) },
-    { V( 46), V( -25), V( 122), V(45), V(37), V(-10), V( 20) },
-    { V( -6), V(  51), V( 168), V(34), V(-2), V(-22), V(-14) },
-    { V(-15), V( -11), V( 101), V( 4), V(11), V(-15), V(-29) }
+    { V( 87), V(-288), V(-168), V( 96), V( 47), V( 44), V( 46) },
+    { V( 42), V( -25), V( 120), V( 45), V( 34), V( -9), V( 24) },
+    { V( -8), V(  51), V( 167), V( 35), V( -4), V(-16), V(-12) },
+    { V(-17), V( -13), V( 100), V(  4), V(  9), V(-16), V(-31) }
   };
+
+
+  // KingOnFile[semi-open Us][semi-open Them] contains bonuses/penalties
+  // for king when the king is on a semi-open or open file.
+  constexpr Score KingOnFile[2][2] = {{ S(-21,10), S(-7, 1)  },
+                                     {  S(  0,-3), S( 9,-4) }};
 
   #undef S
   #undef V
@@ -80,13 +89,14 @@ namespace {
 
     constexpr Color     Them = ~Us;
     constexpr Direction Up   = pawn_push(Us);
+    constexpr Direction Down = -Up;
 
     Bitboard neighbours, stoppers, support, phalanx, opposed;
     Bitboard lever, leverPush, blocked;
     Square s;
     bool backward, passed, doubled;
     Score score = SCORE_ZERO;
-    const Square* pl = pos.squares<PAWN>(Us);
+    Bitboard b = pos.pieces(Us, PAWN);
 
     Bitboard ourPawns   = pos.pieces(  Us, PAWN);
     Bitboard theirPawns = pos.pieces(Them, PAWN);
@@ -99,8 +109,9 @@ namespace {
     e->blockedCount += popcount(shift<Up>(ourPawns) & (theirPawns | doubleAttackThem));
 
     // Loop through all pawns of the current color and score each pawn
-    while ((s = *pl++) != SQ_NONE)
-    {
+    while (b) {
+        s = pop_lsb(&b);
+
         assert(pos.piece_on(s) == make_piece(Us, PAWN));
 
         Rank r = relative_rank(Us, s);
@@ -115,6 +126,13 @@ namespace {
         neighbours = ourPawns   & adjacent_files_bb(s);
         phalanx    = neighbours & rank_bb(s);
         support    = neighbours & rank_bb(s - Up);
+
+        if (doubled)
+        {
+            // Additional doubled penalty if none of their pawns is fixed
+            if (!(ourPawns & shift<Down>(theirPawns | pawn_attacks_bb<Them>(theirPawns))))
+                score -= DoubledEarly;
+        }
 
         // A pawn is backward when it is behind all pawns of the same color on
         // the adjacent files and cannot safely advance.
@@ -147,7 +165,7 @@ namespace {
         if (support | phalanx)
         {
             int v =  Connected[r] * (2 + bool(phalanx) - bool(opposed))
-                   + 21 * popcount(support);
+                   + 22 * popcount(support);
 
             score += make_score(v, v * (r - 2) / 4);
         }
@@ -165,14 +183,14 @@ namespace {
 
         else if (backward)
             score -=  Backward
-                    + WeakUnopposed * !opposed;
+                    + WeakUnopposed * !opposed * bool(~(FileABB | FileHBB) & s);
 
         if (!support)
             score -=  Doubled * doubled
                     + WeakLever * more_than_one(lever);
 
-        if (blocked && r > RANK_4)
-            score += BlockedPawn[r-4];
+        if (blocked && r >= RANK_5)
+            score += BlockedPawn[r - RANK_5];
     }
 
     return score;
@@ -237,6 +255,9 @@ Score Entry::evaluate_shelter(const Position& pos, Square ksq) const {
           bonus -= make_score(UnblockedStorm[d][theirRank], 0);
   }
 
+  // King On File
+  bonus -= KingOnFile[pos.is_on_semiopen_file(Us, ksq)][pos.is_on_semiopen_file(Them, ksq)];
+
   return bonus;
 }
 
@@ -279,3 +300,5 @@ template Score Entry::do_king_safety<WHITE>(const Position& pos);
 template Score Entry::do_king_safety<BLACK>(const Position& pos);
 
 } // namespace Pawns
+
+} // namespace Stockfish

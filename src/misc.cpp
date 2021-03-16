@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2021 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -60,6 +60,8 @@ typedef bool(*fun3_t)(HANDLE, CONST GROUP_AFFINITY*, PGROUP_AFFINITY);
 #include "thread.h"
 
 using namespace std;
+
+namespace Stockfish {
 
 namespace {
 
@@ -138,7 +140,7 @@ public:
 /// the program was compiled) or "Stockfish <Version>", depending on whether
 /// Version is empty.
 
-const string engine_info(bool to_uci) {
+string engine_info(bool to_uci) {
 
   const string months("Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec");
   string month, day, year;
@@ -161,7 +163,7 @@ const string engine_info(bool to_uci) {
 
 /// compiler_info() returns a string trying to describe the compiler we use
 
-const std::string compiler_info() {
+std::string compiler_info() {
 
   #define stringify2(x) #x
   #define stringify(x) stringify2(x)
@@ -357,27 +359,11 @@ void std_aligned_free(void* ptr) {
 #endif
 }
 
-/// aligned_ttmem_alloc() will return suitably aligned memory, if possible using large pages.
-/// The returned pointer is the aligned one, while the mem argument is the one that needs
-/// to be passed to free. With c++17 some of this functionality could be simplified.
+/// aligned_large_pages_alloc() will return suitably aligned memory, if possible using large pages.
 
-#if defined(__linux__) && !defined(__ANDROID__)
-
-void* aligned_ttmem_alloc(size_t allocSize, void*& mem) {
-
-  constexpr size_t alignment = 2 * 1024 * 1024; // assumed 2MB page sizes
-  size_t size = ((allocSize + alignment - 1) / alignment) * alignment; // multiple of alignment
-  if (posix_memalign(&mem, alignment, size))
-     mem = nullptr;
-#if defined(MADV_HUGEPAGE)
-  madvise(mem, allocSize, MADV_HUGEPAGE);
-#endif
-  return mem;
-}
-
-#elif defined(_WIN64)
-
-static void* aligned_ttmem_alloc_large_pages(size_t allocSize) {
+#if defined(_WIN32)
+#if defined(_WIN64)
+static void* aligned_large_pages_alloc_win(size_t allocSize) {
 
   HANDLE hProcessToken { };
   LUID luid { };
@@ -421,51 +407,51 @@ static void* aligned_ttmem_alloc_large_pages(size_t allocSize) {
 
   return mem;
 }
+#endif
 
-void* aligned_ttmem_alloc(size_t allocSize, void*& mem) {
+void* aligned_large_pages_alloc(size_t allocSize) {
 
-  static bool firstCall = true;
-
+#if defined(_WIN64)
   // Try to allocate large pages
-  mem = aligned_ttmem_alloc_large_pages(allocSize);
-
-  // Suppress info strings on the first call. The first call occurs before 'uci'
-  // is received and in that case this output confuses some GUIs.
-  if (!firstCall)
-  {
-      if (mem)
-          sync_cout << "info string Hash table allocation: Windows large pages used." << sync_endl;
-      else
-          sync_cout << "info string Hash table allocation: Windows large pages not used." << sync_endl;
-  }
-  firstCall = false;
+  void* mem = aligned_large_pages_alloc_win(allocSize);
 
   // Fall back to regular, page aligned, allocation if necessary
   if (!mem)
       mem = VirtualAlloc(NULL, allocSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+#else
+  void* mem = VirtualAlloc(NULL, allocSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+#endif
 
   return mem;
 }
 
 #else
 
-void* aligned_ttmem_alloc(size_t allocSize, void*& mem) {
+void* aligned_large_pages_alloc(size_t allocSize) {
 
-  constexpr size_t alignment = 64; // assumed cache line size
-  size_t size = allocSize + alignment - 1; // allocate some extra space
-  mem = malloc(size);
-  void* ret = reinterpret_cast<void*>((uintptr_t(mem) + alignment - 1) & ~uintptr_t(alignment - 1));
-  return ret;
+#if defined(__linux__)
+  constexpr size_t alignment = 2 * 1024 * 1024; // assumed 2MB page size
+#else
+  constexpr size_t alignment = 4096; // assumed small page size
+#endif
+
+  // round up to multiples of alignment
+  size_t size = ((allocSize + alignment - 1) / alignment) * alignment;
+  void *mem = std_aligned_alloc(alignment, size);
+#if defined(MADV_HUGEPAGE)
+  madvise(mem, size, MADV_HUGEPAGE);
+#endif
+  return mem;
 }
 
 #endif
 
 
-/// aligned_ttmem_free() will free the previously allocated ttmem
+/// aligned_large_pages_free() will free the previously allocated ttmem
 
-#if defined(_WIN64)
+#if defined(_WIN32)
 
-void aligned_ttmem_free(void* mem) {
+void aligned_large_pages_free(void* mem) {
 
   if (mem && !VirtualFree(mem, 0, MEM_RELEASE))
   {
@@ -478,8 +464,8 @@ void aligned_ttmem_free(void* mem) {
 
 #else
 
-void aligned_ttmem_free(void *mem) {
-  free(mem);
+void aligned_large_pages_free(void *mem) {
+  std_aligned_free(mem);
 }
 
 #endif
@@ -604,11 +590,10 @@ namespace CommandLine {
 string argv0;            // path+name of the executable binary, as given by argv[0]
 string binaryDirectory;  // path of the executable directory
 string workingDirectory; // path of the working directory
-string pathSeparator;    // Separator for our current OS
 
 void init(int argc, char* argv[]) {
     (void)argc;
-    string separator;
+    string pathSeparator;
 
     // extract the path+name of the executable binary
     argv0 = argv[0];
@@ -648,3 +633,5 @@ void init(int argc, char* argv[]) {
 
 
 } // namespace CommandLine
+
+} // namespace Stockfish

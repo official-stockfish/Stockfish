@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2021 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -33,6 +33,7 @@
 #include "search.h"
 #include "thread_win32_osx.h"
 
+namespace Stockfish {
 
 /// Thread class keeps together all the thread-related stuff. We use
 /// per-thread pawn and material hash tables so that once we get a
@@ -74,7 +75,7 @@ public:
   CapturePieceToHistory captureHistory;
   ContinuationHistory continuationHistory[2][2];
   Score contempt;
-
+  int failedHighCnt;
 #ifdef USE_MPI
   struct {
       std::mutex mutex;
@@ -135,5 +136,7 @@ private:
 };
 
 extern ThreadPool Threads;
+
+} // namespace Stockfish
 
 #endif // #ifndef THREAD_H_INCLUDED

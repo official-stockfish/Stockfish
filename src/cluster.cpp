@@ -33,6 +33,7 @@
 #include "tt.h"
 #include "timeman.h"
 
+namespace Stockfish {
 namespace Cluster {
 
 // Total number of ranks and rank within the communicator
@@ -451,12 +452,14 @@ uint64_t TT_saves() {
 
 
 }
+}
 
 #else
 
 #include "cluster.h"
 #include "thread.h"
 
+namespace Stockfish {
 namespace Cluster {
 
 uint64_t nodes_searched() {
@@ -474,6 +477,7 @@ uint64_t TT_saves() {
   return Threads.TT_saves();
 }
 
+}
 }
 
 #endif // USE_MPI

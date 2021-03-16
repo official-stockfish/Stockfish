@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2021 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 
 #include "../nnue_common.h"
 
-namespace Eval::NNUE::Layers {
+namespace Stockfish::Eval::NNUE::Layers {
 
   // Clipped ReLU
   template <typename PreviousLayer>
@@ -74,12 +74,12 @@ namespace Eval::NNUE::Layers {
       const auto out = reinterpret_cast<__m256i*>(output);
       for (IndexType i = 0; i < kNumChunks; ++i) {
         const __m256i words0 = _mm256_srai_epi16(_mm256_packs_epi32(
-            _mm256_loadA_si256(&in[i * 4 + 0]),
-            _mm256_loadA_si256(&in[i * 4 + 1])), kWeightScaleBits);
+            _mm256_load_si256(&in[i * 4 + 0]),
+            _mm256_load_si256(&in[i * 4 + 1])), kWeightScaleBits);
         const __m256i words1 = _mm256_srai_epi16(_mm256_packs_epi32(
-            _mm256_loadA_si256(&in[i * 4 + 2]),
-            _mm256_loadA_si256(&in[i * 4 + 3])), kWeightScaleBits);
-        _mm256_storeA_si256(&out[i], _mm256_permutevar8x32_epi32(_mm256_max_epi8(
+            _mm256_load_si256(&in[i * 4 + 2]),
+            _mm256_load_si256(&in[i * 4 + 3])), kWeightScaleBits);
+        _mm256_store_si256(&out[i], _mm256_permutevar8x32_epi32(_mm256_max_epi8(
             _mm256_packs_epi16(words0, words1), kZero), kOffsets));
       }
       constexpr IndexType kStart = kNumChunks * kSimdWidth;
@@ -161,6 +161,6 @@ namespace Eval::NNUE::Layers {
     PreviousLayer previous_layer_;
   };
 
-}  // namespace Eval::NNUE::Layers
+}  // namespace Stockfish::Eval::NNUE::Layers
 
 #endif // NNUE_LAYERS_CLIPPED_RELU_H_INCLUDED

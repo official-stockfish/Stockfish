@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2021 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -23,19 +23,21 @@
 
 #include "types.h"
 
+namespace Stockfish {
+
 namespace Bitbases {
 
 void init();
 bool probe(Square wksq, Square wpsq, Square bksq, Color us);
 
-}
+} // namespace Stockfish::Bitbases
 
 namespace Bitboards {
 
 void init();
-const std::string pretty(Bitboard b);
+std::string pretty(Bitboard b);
 
-}
+} // namespace Stockfish::Bitboards
 
 constexpr Bitboard AllSquares = ~Bitboard(0);
 constexpr Bitboard DarkSquares = 0xAA55AA55AA55AA55ULL;
@@ -429,5 +431,7 @@ inline Square frontmost_sq(Color c, Bitboard b) {
   assert(b);
   return c == WHITE ? msb(b) : lsb(b);
 }
+
+} // namespace Stockfish
 
 #endif // #ifndef BITBOARD_H_INCLUDED

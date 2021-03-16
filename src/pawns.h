@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2021 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 #include "position.h"
 #include "types.h"
 
-namespace Pawns {
+namespace Stockfish::Pawns {
 
 /// Pawns::Entry contains various information about a pawn structure. A lookup
 /// to the pawn hash table (performed by calling the probe function) returns a
@@ -65,6 +65,6 @@ typedef HashTable<Entry, 131072> Table;
 
 Entry* probe(const Position& pos);
 
-} // namespace Pawns
+} // namespace Stockfish::Pawns
 
 #endif // #ifndef PAWNS_H_INCLUDED

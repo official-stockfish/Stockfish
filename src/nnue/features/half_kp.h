@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2021 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
 #include "../../evaluate.h"
 #include "features_common.h"
 
-namespace Eval::NNUE::Features {
+namespace Stockfish::Eval::NNUE::Features {
 
   // Feature HalfKP: Combination of the position of own king
   // and the position of pieces other than kings
@@ -50,14 +50,10 @@ namespace Eval::NNUE::Features {
                                     IndexList* active);
 
     // Get a list of indices for recently changed features
-    static void AppendChangedIndices(const Position& pos, Color perspective,
+    static void AppendChangedIndices(const Position& pos, const DirtyPiece& dp, Color perspective,
                                      IndexList* removed, IndexList* added);
-
-   private:
-    // Index of a feature for a given king position and another piece on some square
-    static IndexType MakeIndex(Color perspective, Square s, Piece pc, Square sq_k);
   };
 
-}  // namespace Eval::NNUE::Features
+}  // namespace Stockfish::Eval::NNUE::Features
 
 #endif // #ifndef NNUE_FEATURES_HALF_KP_H_INCLUDED

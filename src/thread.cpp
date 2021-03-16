@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2021 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -25,6 +25,8 @@
 #include "uci.h"
 #include "syzygy/tbprobe.h"
 #include "tt.h"
+
+namespace Stockfish {
 
 ThreadPool Threads; // Global object
 
@@ -229,16 +231,16 @@ Thread* ThreadPool::get_best_thread() const {
         votes[th->rootMoves[0].pv[0]] +=
             (th->rootMoves[0].score - minScore + 14) * int(th->completedDepth);
 
-          if (abs(bestThread->rootMoves[0].score) >= VALUE_TB_WIN_IN_MAX_PLY)
-          {
-              // Make sure we pick the shortest mate / TB conversion or stave off mate the longest
-              if (th->rootMoves[0].score > bestThread->rootMoves[0].score)
-                  bestThread = th;
-          }
-          else if (   th->rootMoves[0].score >= VALUE_TB_WIN_IN_MAX_PLY
-                   || (   th->rootMoves[0].score > VALUE_TB_LOSS_IN_MAX_PLY
-                       && votes[th->rootMoves[0].pv[0]] > votes[bestThread->rootMoves[0].pv[0]]))
-              bestThread = th;
+        if (abs(bestThread->rootMoves[0].score) >= VALUE_TB_WIN_IN_MAX_PLY)
+        {
+            // Make sure we pick the shortest mate / TB conversion or stave off mate the longest
+            if (th->rootMoves[0].score > bestThread->rootMoves[0].score)
+                bestThread = th;
+        }
+        else if (   th->rootMoves[0].score >= VALUE_TB_WIN_IN_MAX_PLY
+                 || (   th->rootMoves[0].score > VALUE_TB_LOSS_IN_MAX_PLY
+                     && votes[th->rootMoves[0].pv[0]] > votes[bestThread->rootMoves[0].pv[0]]))
+            bestThread = th;
     }
 
     return bestThread;
@@ -263,3 +265,5 @@ void ThreadPool::wait_for_search_finished() const {
         if (th != front())
             th->wait_for_search_finished();
 }
+
+} // namespace Stockfish

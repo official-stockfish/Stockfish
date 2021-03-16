@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2021 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
 // Defines the network structure
 #include "architectures/halfkp_256x2-32-32.h"
 
-namespace Eval::NNUE {
+namespace Stockfish::Eval::NNUE {
 
   static_assert(kTransformedFeatureDimensions % kMaxSimdWidth == 0, "");
   static_assert(Network::kOutputDimensions == 1, "");
@@ -33,6 +33,6 @@ namespace Eval::NNUE {
   // Trigger for full calculation instead of difference calculation
   constexpr auto kRefreshTriggers = RawFeatures::kRefreshTriggers;
 
-}  // namespace Eval::NNUE
+}  // namespace Stockfish::Eval::NNUE
 
 #endif // #ifndef NNUE_ARCHITECTURE_H_INCLUDED

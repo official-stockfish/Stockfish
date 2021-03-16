@@ -26,6 +26,7 @@
 
 #include "tt.h"
 
+namespace Stockfish {
 class Thread;
 
 /// The Cluster namespace contains functionality required to run on distributed
@@ -119,6 +120,7 @@ inline void signals_sync() { }
 
 #endif /* USE_MPI */
 
+}
 }
 
 #endif // #ifndef CLUSTER_H_INCLUDED

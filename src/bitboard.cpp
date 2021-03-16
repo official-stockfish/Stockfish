@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2021 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -22,6 +22,8 @@
 #include "bitboard.h"
 #include "misc.h"
 
+namespace Stockfish {
+
 uint8_t PopCnt16[1 << 16];
 uint8_t SquareDistance[SQUARE_NB][SQUARE_NB];
 
@@ -42,7 +44,6 @@ namespace {
 
 }
 
-
 /// safe_destination() returns the bitboard of target square for the given step
 /// from the given square. If the step is off the board, returns empty bitboard.
 
@@ -55,7 +56,7 @@ inline Bitboard safe_destination(Square s, int step) {
 /// Bitboards::pretty() returns an ASCII representation of a bitboard suitable
 /// to be printed to standard output. Useful for debugging.
 
-const std::string Bitboards::pretty(Bitboard b) {
+std::string Bitboards::pretty(Bitboard b) {
 
   std::string s = "+---+---+---+---+---+---+---+---+\n";
 
@@ -110,7 +111,6 @@ void Bitboards::init() {
                   LineBB[s1][s2] = (attacks_bb(pt, s1, 0) & attacks_bb(pt, s2, 0)) | s1 | s2;
   }
 }
-
 
 namespace {
 
@@ -211,3 +211,5 @@ namespace {
     }
   }
 }
+
+} // namespace Stockfish
