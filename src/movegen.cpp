@@ -57,7 +57,6 @@ namespace {
     constexpr Direction UpRight  = (Us == WHITE ? NORTH_EAST : SOUTH_WEST);
     constexpr Direction UpLeft   = (Us == WHITE ? NORTH_WEST : SOUTH_EAST);
 
-    const Square ksq = pos.square<KING>(Them);
     Bitboard emptySquares;
 
     Bitboard pawnsOn7    = pos.pieces(Us, PAWN) &  TRank7BB;
@@ -82,6 +81,8 @@ namespace {
 
         if (Type == QUIET_CHECKS)
         {
+            const Square ksq = pos.square<KING>(Them);
+
             b1 &= pawn_attacks_bb(Them, ksq);
             b2 &= pawn_attacks_bb(Them, ksq);
 
@@ -114,8 +115,10 @@ namespace {
     }
 
     // Promotions and underpromotions
-    if (pawnsOn7)
+    if (Type != QUIET_CHECKS && pawnsOn7)
     {
+        const Square ksq = pos.square<KING>(Them);
+
         if (Type == CAPTURES)
             emptySquares = ~pos.pieces();
 
