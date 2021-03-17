@@ -1,7 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (c) 2013 Ronald de Man
-  Copyright (C) 2016-2019 Marco Costalba, Lucas Braesch
+  Copyright (C) 2004-2021 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -24,7 +23,7 @@
 
 #include "../search.h"
 
-namespace Tablebases {
+namespace Stockfish::Tablebases {
 
 enum WDLScore {
     WDLLoss        = -2, // Loss
@@ -74,6 +73,6 @@ inline std::ostream& operator<<(std::ostream& os, const ProbeState v) {
     return os;
 }
 
-}
+} // namespace Stockfish::Tablebases
 
 #endif

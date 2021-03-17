@@ -4,10 +4,9 @@ clone_depth: 50
 branches:
   only:
     - master
-    - appveyor
 
 # Operating system (build VM template)
-os: Visual Studio 2017
+os: Visual Studio 2019
 
 # Build platform, i.e. x86, x64, AnyCPU. This setting is optional.
 platform:
@@ -36,8 +35,11 @@ before_build:
       $src = $src.Replace("\", "/")
 
       # Build CMakeLists.txt
-      $t = 'cmake_minimum_required(VERSION 3.8)',
+      $t = 'cmake_minimum_required(VERSION 3.17)',
            'project(Stockfish)',
+           'set(CMAKE_CXX_STANDARD 17)',
+           'set(CMAKE_CXX_STANDARD_REQUIRED ON)',
+           'set (CMAKE_CXX_EXTENSIONS OFF)',
            'set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/src)',
            'set(source_files', $src, ')',
            'add_executable(stockfish ${source_files})'
@@ -51,13 +53,28 @@ before_build:
       $b = git log HEAD | sls "\b[Bb]ench[ :]+[0-9]{7}" | select -first 1
       $bench = $b -match '\D+(\d+)' | % { $matches[1] }
       Write-Host "Reference bench:" $bench
-      $g = "Visual Studio 15 2017"
-      If (${env:PLATFORM} -eq 'x64') { $g = $g + ' Win64' }
-      cmake -G "${g}" .
-      Write-Host "Generated files for: " $g
+      $g = "Visual Studio 16 2019"
+      If (${env:PLATFORM} -eq 'x64') { $a = "x64" }
+      If (${env:PLATFORM} -eq 'x86') { $a = "Win32" }
+      cmake -G "${g}" -A ${a} .
+      Write-Host "Generated files for: " $g $a
 
 build_script:
   - cmake --build . --config %CONFIGURATION% -- /verbosity:minimal
+  - ps: |
+      # Download default NNUE net from fishtest
+      $nnuenet = Get-Content -Path src\evaluate.h | Select-String -CaseSensitive -Pattern "EvalFileDefaultName" | Select-String -CaseSensitive -Pattern "nn-[a-z0-9]{12}.nnue"
+      $dummy = $nnuenet -match "(?<nnuenet>nn-[a-z0-9]{12}.nnue)"
+      $nnuenet = $Matches.nnuenet
+      Write-Host "Default net:" $nnuenet
+      $nnuedownloadurl = "https://tests.stockfishchess.org/api/nn/$nnuenet"
+      $nnuefilepath = "src\${env:CONFIGURATION}\$nnuenet"
+      if (Test-Path -Path $nnuefilepath) {
+            Write-Host "Already available."
+      } else {
+            Write-Host "Downloading $nnuedownloadurl to $nnuefilepath"
+            Invoke-WebRequest -Uri $nnuedownloadurl -OutFile $nnuefilepath
+      }
 
 before_test:
   - cd src/%CONFIGURATION%

@@ -1,8 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
-  Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2019 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -28,6 +26,7 @@
 
 #include "tt.h"
 
+namespace Stockfish {
 class Thread;
 
 /// The Cluster namespace contains functionality required to run on distributed
@@ -121,6 +120,7 @@ inline void signals_sync() { }
 
 #endif /* USE_MPI */
 
+}
 }
 
 #endif // #ifndef CLUSTER_H_INCLUDED
