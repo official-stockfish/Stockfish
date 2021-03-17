@@ -217,9 +217,9 @@ inline Bitboard line_bb(Square s1, Square s2) {
 
 
 /// ray_bb() returns a bitboard representing squares that are linearly
-/// between the two given squares (including last given square and excluding first).
-/// If the given squares are not on a same file/rank/diagonal, we return 0. For instance,
-/// ray_bb(SQ_C4, SQ_F7) will return a bitboard with squares D5, E6 and F7.
+/// between the two given squares (excluding first given square and including last square).
+/// If both square are not in a file/rank/diagonal, we return square_bb(s2).
+/// For instance, ray_bb(SQ_C4, SQ_F7) will return a bitboard with squares D5, E6 and F7.
 
 inline Bitboard ray_bb(Square ksq, Square checkersq){
   assert(is_ok(ksq) && is_ok(checkersq));
