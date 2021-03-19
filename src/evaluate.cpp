@@ -1041,40 +1041,42 @@ make_v:
   // Correction for cornered bishops to fix chess960 play (Fisher Random Chess) with NNUE
   Value fix_FRC(const Position& pos) {
 
-    Value bAdjust = Value(0);
+    int correction = 0;
 
-    constexpr Value p1=Value(209), p2=Value(136), p3=Value(148);
+    constexpr int p1 = 209;
+    constexpr int p2 = 136;
+    constexpr int p3 = 148;
 
-    Color Us = pos.side_to_move();
-    if (   (pos.pieces(Us, BISHOP) & relative_square(Us, SQ_A1))
-        && (pos.pieces(Us, PAWN) & relative_square(Us, SQ_B2)))
+    Color us = pos.side_to_move();
+    if (   (pos.pieces(us, BISHOP) & relative_square(us, SQ_A1))
+        && (pos.pieces(us, PAWN) & relative_square(us, SQ_B2)))
     {
-        bAdjust      -= !pos.empty(relative_square(Us,SQ_B3))                            ? p1
-                       : pos.piece_on(relative_square(Us,SQ_C3)) == make_piece(Us, PAWN) ? p2
+        correction -= !pos.empty(relative_square(us, SQ_B3))                            ? p1
+                     : pos.piece_on(relative_square(us, SQ_C3)) == make_piece(us, PAWN) ? p2
+                                                                                        : p3;
+    }
+    if (   (pos.pieces(us, BISHOP) & relative_square(us, SQ_H1))
+        && (pos.pieces(us, PAWN) & relative_square(us, SQ_G2)))
+    {
+        correction -= !pos.empty(relative_square(us, SQ_G3))                            ? p1
+                     : pos.piece_on(relative_square(us, SQ_F3)) == make_piece(us, PAWN) ? p2
+                                                                                        : p3;
+    }
+    if (   (pos.pieces(~us, BISHOP) & relative_square(us, SQ_A8))
+        && (pos.pieces(~us, PAWN) & relative_square(us, SQ_B7)))
+    {
+        correction += !pos.empty(relative_square(us, SQ_B6))                             ? p1
+                     : pos.piece_on(relative_square(us, SQ_C6)) == make_piece(~us, PAWN) ? p2
                                                                                          : p3;
     }
-    if (   (pos.pieces(Us, BISHOP) & relative_square(Us, SQ_H1))
-        && (pos.pieces(Us, PAWN) & relative_square(Us, SQ_G2)))
+    if (   (pos.pieces(~us, BISHOP) & relative_square(us, SQ_H8))
+        && (pos.pieces(~us, PAWN) & relative_square(us, SQ_G7)))
     {
-        bAdjust      -= !pos.empty(relative_square(Us,SQ_G3))                            ? p1
-                       : pos.piece_on(relative_square(Us,SQ_F3)) == make_piece(Us, PAWN) ? p2
+        correction += !pos.empty(relative_square(us, SQ_G6))                             ? p1
+                     : pos.piece_on(relative_square(us, SQ_F6)) == make_piece(~us, PAWN) ? p2
                                                                                          : p3;
     }
-    if (   (pos.pieces(~Us, BISHOP) & relative_square(Us, SQ_A8))
-        && (pos.pieces(~Us, PAWN) & relative_square(Us, SQ_B7)))
-    {
-        bAdjust      += !pos.empty(relative_square(Us,SQ_B6))                             ? p1
-                       : pos.piece_on(relative_square(Us,SQ_C6)) == make_piece(~Us, PAWN) ? p2
-                                                                                          : p3;
-    }
-    if (   (pos.pieces(~Us, BISHOP) & relative_square(Us, SQ_H8))
-        && (pos.pieces(~Us, PAWN) & relative_square(Us, SQ_G7)))
-    {
-        bAdjust      += !pos.empty(relative_square(Us,SQ_G6))                             ? p1
-                       : pos.piece_on(relative_square(Us,SQ_F6)) == make_piece(~Us, PAWN) ? p2
-                                                                                          : p3;
-    }
-    return bAdjust;
+    return Value(correction);
   }
 
 } // namespace Eval
