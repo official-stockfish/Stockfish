@@ -1038,7 +1038,7 @@ make_v:
     return v;
   }
 
-  // specifically correct for cornered bishops to fix FRC with NNUE.
+  // Correction for cornered bishops to fix chess960 play (Fisher Random Chess) with NNUE
   Value fix_FRC(const Position& pos) {
 
     Value bAdjust = Value(0);
@@ -1077,7 +1077,7 @@ make_v:
     return bAdjust;
   }
 
-} // namespace
+} // namespace Eval
 
 
 /// evaluate() is the evaluator for the outer world. It returns a static
