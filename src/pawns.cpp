@@ -109,7 +109,8 @@ namespace {
     e->blockedCount += popcount(shift<Up>(ourPawns) & (theirPawns | doubleAttackThem));
 
     // Loop through all pawns of the current color and score each pawn
-    while (b) {
+    while (b)
+    {
         s = pop_lsb(b);
 
         assert(pos.piece_on(s) == make_piece(Us, PAWN));

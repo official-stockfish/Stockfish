@@ -182,7 +182,8 @@ namespace {
 
     Bitboard bb = piecesToMove & pos.pieces(Pt);
 
-    while (bb) {
+    while (bb)
+    {
         Square from = pop_lsb(bb);
 
         Bitboard b = attacks_bb<Pt>(from, pos.pieces()) & target;
