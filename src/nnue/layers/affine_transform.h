@@ -96,7 +96,7 @@ namespace Stockfish::Eval::NNUE::Layers {
                           IndexType idx = k / 2 * kOutputDimensions * 4 + k % 2;
                           sum[w[idx] < 0] += w[idx];
                       }
-                      for (int sign : {-1, 1})
+                      for (int sign : { -1, 1 })
                           while (sign * sum[sign == -1] > 258)
                           {
                               int maxK = 0, maxW = 0;

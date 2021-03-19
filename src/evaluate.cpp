@@ -396,7 +396,8 @@ namespace {
 
     attackedBy[Us][Pt] = 0;
 
-    while (b1) {
+    while (b1) 
+    {
         Square s = pop_lsb(b1);
 
         // Find attacked squares, including x-ray attacks for bishops and rooks
