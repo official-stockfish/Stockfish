@@ -23,7 +23,7 @@
 
 #include "nnue_architecture.h"
 
-namespace Eval::NNUE {
+namespace Stockfish::Eval::NNUE {
 
   // The accumulator of a StateInfo without parent is set to the INIT state
   enum AccumulatorState { EMPTY, COMPUTED, INIT };
@@ -35,6 +35,6 @@ namespace Eval::NNUE {
     AccumulatorState state[2];
   };
 
-}  // namespace Eval::NNUE
+}  // namespace Stockfish::Eval::NNUE
 
 #endif // NNUE_ACCUMULATOR_H_INCLUDED

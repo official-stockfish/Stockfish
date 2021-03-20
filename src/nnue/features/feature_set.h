@@ -24,7 +24,7 @@
 #include "features_common.h"
 #include <array>
 
-namespace Eval::NNUE::Features {
+namespace Stockfish::Eval::NNUE::Features {
 
   // Class template that represents a list of values
   template <typename T, T... Values>
@@ -64,6 +64,6 @@ namespace Eval::NNUE::Features {
 
   };
 
-}  // namespace Eval::NNUE::Features
+}  // namespace Stockfish::Eval::NNUE::Features
 
 #endif // #ifndef NNUE_FEATURE_SET_H_INCLUDED

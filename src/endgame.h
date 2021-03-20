@@ -28,6 +28,7 @@
 #include "position.h"
 #include "types.h"
 
+namespace Stockfish {
 
 /// EndgameCode lists all supported endgame functions by corresponding codes
 
@@ -119,5 +120,7 @@ namespace Endgames {
     return it != map<T>().end() ? it->second.get() : nullptr;
   }
 }
+
+} // namespace Stockfish
 
 #endif // #ifndef ENDGAME_H_INCLUDED

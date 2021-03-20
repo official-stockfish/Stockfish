@@ -22,6 +22,8 @@
 #include "endgame.h"
 #include "movegen.h"
 
+namespace Stockfish {
+
 namespace {
 
   // Used to drive the king towards the edge of the board
@@ -741,3 +743,5 @@ ScaleFactor Endgame<KPKP>::operator()(const Position& pos) const {
   // it's probably at least a draw even with the pawn.
   return Bitbases::probe(strongKing, strongPawn, weakKing, us) ? SCALE_FACTOR_NONE : SCALE_FACTOR_DRAW;
 }
+
+} // namespace Stockfish

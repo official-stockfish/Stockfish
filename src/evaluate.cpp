@@ -54,7 +54,9 @@
 
 
 using namespace std;
-using namespace Eval::NNUE;
+using namespace Stockfish::Eval::NNUE;
+
+namespace Stockfish {
 
 namespace Eval {
 
@@ -395,7 +397,7 @@ namespace {
     attackedBy[Us][Pt] = 0;
 
     while (b1) {
-        Square s = pop_lsb(&b1);
+        Square s = pop_lsb(b1);
 
         // Find attacked squares, including x-ray attacks for bishops and rooks
         b = Pt == BISHOP ? attacks_bb<BISHOP>(s, pos.pieces() ^ pos.pieces(QUEEN))
@@ -656,11 +658,11 @@ namespace {
     {
         b = (defended | weak) & (attackedBy[Us][KNIGHT] | attackedBy[Us][BISHOP]);
         while (b)
-            score += ThreatByMinor[type_of(pos.piece_on(pop_lsb(&b)))];
+            score += ThreatByMinor[type_of(pos.piece_on(pop_lsb(b)))];
 
         b = weak & attackedBy[Us][ROOK];
         while (b)
-            score += ThreatByRook[type_of(pos.piece_on(pop_lsb(&b)))];
+            score += ThreatByRook[type_of(pos.piece_on(pop_lsb(b)))];
 
         if (weak & attackedBy[Us][KING])
             score += ThreatByKing;
@@ -758,7 +760,7 @@ namespace {
 
     while (b)
     {
-        Square s = pop_lsb(&b);
+        Square s = pop_lsb(b);
 
         assert(!(pos.pieces(Them, PAWN) & forward_file_bb(Us, s + Up)));
 
@@ -1036,6 +1038,45 @@ make_v:
     return v;
   }
 
+  // specifically correct for cornered bishops to fix FRC with NNUE.
+  Value fix_FRC(const Position& pos) {
+
+    Value bAdjust = Value(0);
+
+    constexpr Value p1=Value(209), p2=Value(136), p3=Value(148);
+
+    Color Us = pos.side_to_move();
+    if (   (pos.pieces(Us, BISHOP) & relative_square(Us, SQ_A1))
+        && (pos.pieces(Us, PAWN) & relative_square(Us, SQ_B2)))
+    {
+        bAdjust      -= !pos.empty(relative_square(Us,SQ_B3))                            ? p1
+                       : pos.piece_on(relative_square(Us,SQ_C3)) == make_piece(Us, PAWN) ? p2
+                                                                                         : p3;
+    }
+    if (   (pos.pieces(Us, BISHOP) & relative_square(Us, SQ_H1))
+        && (pos.pieces(Us, PAWN) & relative_square(Us, SQ_G2)))
+    {
+        bAdjust      -= !pos.empty(relative_square(Us,SQ_G3))                            ? p1
+                       : pos.piece_on(relative_square(Us,SQ_F3)) == make_piece(Us, PAWN) ? p2
+                                                                                         : p3;
+    }
+    if (   (pos.pieces(~Us, BISHOP) & relative_square(Us, SQ_A8))
+        && (pos.pieces(~Us, PAWN) & relative_square(Us, SQ_B7)))
+    {
+        bAdjust      += !pos.empty(relative_square(Us,SQ_B6))                             ? p1
+                       : pos.piece_on(relative_square(Us,SQ_C6)) == make_piece(~Us, PAWN) ? p2
+                                                                                          : p3;
+    }
+    if (   (pos.pieces(~Us, BISHOP) & relative_square(Us, SQ_H8))
+        && (pos.pieces(~Us, PAWN) & relative_square(Us, SQ_G7)))
+    {
+        bAdjust      += !pos.empty(relative_square(Us,SQ_G6))                             ? p1
+                       : pos.piece_on(relative_square(Us,SQ_F6)) == make_piece(~Us, PAWN) ? p2
+                                                                                          : p3;
+    }
+    return bAdjust;
+  }
+
 } // namespace
 
 
@@ -1053,7 +1094,12 @@ Value Eval::evaluate(const Position& pos) {
       // Scale and shift NNUE for compatibility with search and classical evaluation
       auto  adjusted_NNUE = [&](){
          int mat = pos.non_pawn_material() + 2 * PawnValueMg * pos.count<PAWN>();
-         return NNUE::evaluate(pos) * (641 + mat / 32 - 4 * pos.rule50_count()) / 1024 + Tempo;
+         Value nnueValue = NNUE::evaluate(pos) * (641 + mat / 32 - 4 * pos.rule50_count()) / 1024 + Tempo;
+
+         if (pos.is_chess960())
+            nnueValue += fix_FRC(pos);
+
+         return nnueValue;
       };
 
       // If there is PSQ imbalance use classical eval, with small probability if it is small
@@ -1146,3 +1192,5 @@ std::string Eval::trace(const Position& pos) {
 
   return ss.str();
 }
+
+} // namespace Stockfish
