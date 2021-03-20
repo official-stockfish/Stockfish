@@ -182,7 +182,7 @@ namespace {
 
     Bitboard bb = piecesToMove & pos.pieces(Pt);
 
-    while (bb) 
+    while (bb)
     {
         Square from = pop_lsb(bb);
 

@@ -917,6 +917,7 @@ namespace {
             return probCutBeta;
 
         assert(probCutBeta < VALUE_INFINITE);
+
         MovePicker mp(pos, ttMove, probCutBeta - ss->staticEval, &captureHistory);
         int probCutCount = 0;
         bool ttPv = ss->ttPv;
@@ -1121,6 +1122,7 @@ moves_loop: // When in check, search starts from here
       {
           Value singularBeta = ttValue - ((formerPv + 4) * depth) / 2;
           Depth singularDepth = (depth - 1 + 3 * formerPv) / 2;
+
           ss->excludedMove = move;
           value = search<NonPV>(pos, ss, singularBeta - 1, singularBeta, singularDepth, cutNode);
           ss->excludedMove = MOVE_NONE;
@@ -1205,15 +1207,19 @@ moves_loop: // When in check, search starts from here
 
           // Decrease reduction if position is or has been on the PV
           // and node is not likely to fail low. (~10 Elo)
-          if (ss->ttPv && !likelyFailLow)
+          if (   ss->ttPv
+              && !likelyFailLow)
               r -= 2;
 
           // Increase reduction at root and non-PV nodes when the best move does not change frequently
-          if ((rootNode || !PvNode) && thisThread->rootDepth > 10 && thisThread->bestMoveChanges <= 2)
+          if (   (rootNode || !PvNode)
+              && thisThread->rootDepth > 10
+              && thisThread->bestMoveChanges <= 2)
               r++;
 
           // More reductions for late moves if position was not in previous PV
-          if (moveCountPruning && !formerPv)
+          if (   moveCountPruning
+              && !formerPv)
               r++;
 
           // Decrease reduction if opponent's move count is high (~5 Elo)

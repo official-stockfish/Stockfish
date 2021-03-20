@@ -396,7 +396,7 @@ namespace {
 
     attackedBy[Us][Pt] = 0;
 
-    while (b1) 
+    while (b1)
     {
         Square s = pop_lsb(b1);
 
