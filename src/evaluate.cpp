@@ -54,7 +54,6 @@
 
 
 using namespace std;
-using namespace Stockfish::Eval::NNUE;
 
 namespace Stockfish {
 
