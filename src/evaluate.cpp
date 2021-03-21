@@ -1146,7 +1146,7 @@ Value Eval::evaluate(const Position& pos) {
          Value nnue = NNUE::evaluate(pos) * scale / 1024 + Tempo;
 
          if (pos.is_chess960())
-            nnue += fix_FRC(pos);
+             nnue += fix_FRC(pos);
 
          return nnue;
       };
