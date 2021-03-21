@@ -1038,48 +1038,9 @@ make_v:
     return v;
   }
 
-  // Fisher Random Chess: correction for cornered bishops to fix chess960 play with NNUE
-  Value fix_FRC_old(const Position& pos) {
 
-    int correction = 0;
+  /// Fisher Random Chess: correction for cornered bishops, to fix chess960 play with NNUE
 
-    constexpr int p1 = 209;
-    constexpr int p2 = 136;
-    constexpr int p3 = 148;
-
-    Color us = pos.side_to_move();
-    if (   (pos.pieces(us, BISHOP) & relative_square(us, SQ_A1))
-        && (pos.pieces(us, PAWN) & relative_square(us, SQ_B2)))
-    {
-        correction -= !pos.empty(relative_square(us, SQ_B3))                            ? p1
-                     : pos.piece_on(relative_square(us, SQ_C3)) == make_piece(us, PAWN) ? p2
-                                                                                        : p3;
-    }
-    if (   (pos.pieces(us, BISHOP) & relative_square(us, SQ_H1))
-        && (pos.pieces(us, PAWN) & relative_square(us, SQ_G2)))
-    {
-        correction -= !pos.empty(relative_square(us, SQ_G3))                            ? p1
-                     : pos.piece_on(relative_square(us, SQ_F3)) == make_piece(us, PAWN) ? p2
-                                                                                        : p3;
-    }
-    if (   (pos.pieces(~us, BISHOP) & relative_square(us, SQ_A8))
-        && (pos.pieces(~us, PAWN) & relative_square(us, SQ_B7)))
-    {
-        correction += !pos.empty(relative_square(us, SQ_B6))                             ? p1
-                     : pos.piece_on(relative_square(us, SQ_C6)) == make_piece(~us, PAWN) ? p2
-                                                                                         : p3;
-    }
-    if (   (pos.pieces(~us, BISHOP) & relative_square(us, SQ_H8))
-        && (pos.pieces(~us, PAWN) & relative_square(us, SQ_G7)))
-    {
-        correction += !pos.empty(relative_square(us, SQ_G6))                             ? p1
-                     : pos.piece_on(relative_square(us, SQ_F6)) == make_piece(~us, PAWN) ? p2
-                                                                                         : p3;
-    }
-    return Value(correction);
-  }
-  
-  // Fisher Random Chess: correction for cornered bishops to fix chess960 play with NNUE
   Value fix_FRC(const Position& pos) {
 
     constexpr Bitboard Corners =  1ULL << SQ_A1 | 1ULL << SQ_H1 | 1ULL << SQ_A8 | 1ULL << SQ_H8;
@@ -1136,11 +1097,11 @@ Value Eval::evaluate(const Position& pos) {
   else
   {
       // Scale and shift NNUE for compatibility with search and classical evaluation
-      auto  adjusted_NNUE = [&](){
-
+      auto  adjusted_NNUE = [&]()
+      {
          int material = pos.non_pawn_material() + 2 * PawnValueMg * pos.count<PAWN>();
-         int scale =  641 
-                    + material / 32 
+         int scale =  641
+                    + material / 32
                     - 4 * pos.rule50_count();
 
          Value nnue = NNUE::evaluate(pos) * scale / 1024 + Tempo;
