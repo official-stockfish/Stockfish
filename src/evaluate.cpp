@@ -1038,8 +1038,8 @@ make_v:
     return v;
   }
 
-  // Correction for cornered bishops to fix chess960 play (Fisher Random Chess) with NNUE
-  Value fix_FRC(const Position& pos) {
+  // Fisher Random Chess: correction for cornered bishops to fix chess960 play with NNUE
+  Value fix_FRC_old(const Position& pos) {
 
     int correction = 0;
 
@@ -1077,6 +1077,48 @@ make_v:
                                                                                          : p3;
     }
     return Value(correction);
+  }
+  
+  // Fisher Random Chess: correction for cornered bishops to fix chess960 play with NNUE
+  Value fix_FRC(const Position& pos) {
+
+    constexpr Bitboard Corners =  1ULL << SQ_A1 | 1ULL << SQ_H1 | 1ULL << SQ_A8 | 1ULL << SQ_H8;
+
+    if (!(pos.pieces(BISHOP) & Corners))
+        return VALUE_ZERO;
+
+    constexpr int penalty1 = -209;
+    constexpr int penalty2 = -136;
+    constexpr int penalty3 = -148;
+
+    int correction = 0;
+
+    if (   pos.piece_on(SQ_A1) == W_BISHOP
+        && pos.piece_on(SQ_B2) == W_PAWN)
+        correction += !pos.empty(SQ_B3)              ? penalty1
+                     : pos.piece_on(SQ_C3) == W_PAWN ? penalty2
+                                                     : penalty3;
+
+    if (   pos.piece_on(SQ_H1) == W_BISHOP
+        && pos.piece_on(SQ_G2) == W_PAWN)
+        correction += !pos.empty(SQ_G3)              ? penalty1
+                     : pos.piece_on(SQ_F3) == W_PAWN ? penalty2
+                                                     : penalty3;
+
+    if (   pos.piece_on(SQ_A8) == B_BISHOP
+        && pos.piece_on(SQ_B7) == B_PAWN)
+        correction += !pos.empty(SQ_B6)              ? -penalty1
+                     : pos.piece_on(SQ_C6) == B_PAWN ? -penalty2
+                                                     : -penalty3;
+
+    if (   pos.piece_on(SQ_H8) == B_BISHOP
+        && pos.piece_on(SQ_G7) == B_PAWN)
+        correction += !pos.empty(SQ_G6)              ? -penalty1
+                     : pos.piece_on(SQ_F6) == B_PAWN ? -penalty2
+                                                     : -penalty3;
+
+    return pos.side_to_move() == WHITE ?  Value(correction)
+                                       : -Value(correction);
   }
 
 } // namespace Eval
