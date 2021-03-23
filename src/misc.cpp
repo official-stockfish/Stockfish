@@ -362,8 +362,12 @@ void std_aligned_free(void* ptr) {
 /// aligned_large_pages_alloc() will return suitably aligned memory, if possible using large pages.
 
 #if defined(_WIN32)
-#if defined(_WIN64)
-static void* aligned_large_pages_alloc_win(size_t allocSize) {
+
+static void* aligned_large_pages_alloc_windows(size_t allocSize) {
+
+  #if !defined(_WIN64)
+    return nullptr;
+  #endif
 
   HANDLE hProcessToken { };
   LUID luid { };
@@ -407,20 +411,15 @@ static void* aligned_large_pages_alloc_win(size_t allocSize) {
 
   return mem;
 }
-#endif
 
 void* aligned_large_pages_alloc(size_t allocSize) {
 
-#if defined(_WIN64)
   // Try to allocate large pages
-  void* mem = aligned_large_pages_alloc_win(allocSize);
+  void* mem = aligned_large_pages_alloc_windows(allocSize);
 
   // Fall back to regular, page aligned, allocation if necessary
   if (!mem)
       mem = VirtualAlloc(NULL, allocSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
-#else
-  void* mem = VirtualAlloc(NULL, allocSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
-#endif
 
   return mem;
 }
