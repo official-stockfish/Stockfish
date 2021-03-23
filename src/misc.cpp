@@ -457,7 +457,7 @@ void aligned_large_pages_free(void* mem) {
   if (mem && !VirtualFree(mem, 0, MEM_RELEASE))
   {
       DWORD err = GetLastError();
-      std::cerr << "Failed to free transposition table. Error code: 0x" <<
+      std::cerr << "Failed to free large page memory. Error code: 0x" <<
           std::hex << err << std::dec << std::endl;
       exit(EXIT_FAILURE);
   }
