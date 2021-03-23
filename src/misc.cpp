@@ -367,7 +367,7 @@ static void* aligned_large_pages_alloc_windows(size_t allocSize) {
 
   #if !defined(_WIN64)
     return nullptr;
-  #endif
+  #else
 
   HANDLE hProcessToken { };
   LUID luid { };
@@ -410,6 +410,8 @@ static void* aligned_large_pages_alloc_windows(size_t allocSize) {
   CloseHandle(hProcessToken);
 
   return mem;
+
+  #endif
 }
 
 void* aligned_large_pages_alloc(size_t allocSize) {
