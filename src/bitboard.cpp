@@ -130,7 +130,7 @@ namespace {
     for (Direction d : (pt == ROOK ? RookDirections : BishopDirections))
     {
         Square s = sq;
-        while(safe_destination(s, d) && !(occupied & s))
+        while (safe_destination(s, d) && !(occupied & s))
             attacks |= (s += d);
     }
 
