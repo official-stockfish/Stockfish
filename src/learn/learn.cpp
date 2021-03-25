@@ -526,6 +526,7 @@ namespace Learner
             bool smart_fen_skipping_for_validation = false;
 
             double learning_rate = 1.0;
+            double warmup_learning_rate = 0.1;
             double max_grad = 1.0;
 
             string validation_set_file_name;
@@ -597,7 +598,7 @@ namespace Learner
             }
         }
 
-        void learn(uint64_t epochs);
+        void learn(uint64_t epochs, uint64_t warmup_epochs = 0);
 
     private:
         static void set_learning_search_limits();
@@ -607,6 +608,7 @@ namespace Learner
         void learn_worker(Thread& th, std::atomic<uint64_t>& counter, uint64_t limit);
 
         void update_weights(const PSVector& psv, uint64_t epoch);
+        void update_weights_warmup(uint64_t warmup_epoch);
 
         void calc_loss(const PSVector& psv, uint64_t epoch);
 
@@ -716,7 +718,7 @@ namespace Learner
         return validation_data;
     }
 
-    void LearnerThink::learn(uint64_t epochs)
+    void LearnerThink::learn(uint64_t epochs, uint64_t warmup_epochs)
     {
 #if defined(_OPENMP)
         omp_set_num_threads((int)Options["Threads"]);
@@ -740,6 +742,36 @@ namespace Learner
             return;
         }
 
+        stop_flag = false;
+
+        if (warmup_epochs > 0)
+        {
+            cout << "Doing " << warmup_epochs << " warmup epochs." << endl;
+        }
+
+        for(uint64_t warmup_epoch = 1; warmup_epoch <= warmup_epochs; ++warmup_epoch)
+        {
+            std::atomic<uint64_t> counter{0};
+
+            Threads.execute_with_workers([this, &counter](auto& th){
+                learn_worker(th, counter, params.mini_batch_size);
+            });
+
+            total_done += params.mini_batch_size;
+
+            Threads.wait_for_workers_finished();
+
+            if (stop_flag)
+                break;
+
+            update_weights_warmup(warmup_epoch);
+
+            if (stop_flag)
+                break;
+
+            cout << "Finished " << warmup_epoch << " out of " << warmup_epochs << " warmup epochs." << endl;
+        }
+
         if (params.newbob_decay != 1.0) {
 
             calc_loss(validation_data, 0);
@@ -751,8 +783,6 @@ namespace Learner
             auto out = sync_region_cout.new_region();
             out << "INFO (learn): initial loss = " << best_loss << endl;
         }
-
-        stop_flag = false;
 
         for(uint64_t epoch = 1; epoch <= epochs; ++epoch)
         {
@@ -871,6 +901,17 @@ namespace Learner
             // Since we have reached the end phase of PV, add the slope here.
             pos_add_grad();
         }
+    }
+
+    void LearnerThink::update_weights_warmup(uint64_t warmup_epoch)
+    {
+        // I'm not sure this fencing is correct. But either way there
+        // should be no real issues happening since
+        // the read/write phases are isolated.
+        atomic_thread_fence(memory_order_seq_cst);
+        Eval::NNUE::update_parameters(
+            Threads, warmup_epoch, params.verbose, params.warmup_learning_rate, params.max_grad, get_loss);
+        atomic_thread_fence(memory_order_seq_cst);
     }
 
     void LearnerThink::update_weights(const PSVector& psv, uint64_t epoch)
@@ -1192,6 +1233,7 @@ namespace Learner
 
         // Number of epochs
         uint64_t epochs = std::numeric_limits<uint64_t>::max();
+        uint64_t warmup_epochs = 0;
 
         // Game file storage folder (get game file with relative path from here)
         string base_dir;
@@ -1230,6 +1272,7 @@ namespace Learner
 
             // Specify the number of loops
             else if (option == "epochs") is >> epochs;
+            else if (option == "warmup_epochs") is >> warmup_epochs;
 
             // Game file storage folder (get game file with relative path from here)
             else if (option == "basedir") is >> base_dir;
@@ -1241,6 +1284,7 @@ namespace Learner
 
             // learning rate
             else if (option == "lr") is >> params.learning_rate;
+            else if (option == "warmup_lr") is >> params.warmup_learning_rate;
             else if (option == "max_grad") is >> params.max_grad;
 
             // Accept also the old option name.
@@ -1352,7 +1396,9 @@ namespace Learner
 
         out << "  - validation count         : " << params.validation_count << endl;
         out << "  - epochs                   : " << epochs << endl;
-        out << "  - epochs * minibatch size  : " << epochs * params.mini_batch_size << endl;
+        out << "  - positions                : " << epochs * params.mini_batch_size << endl;
+        out << "  - warmup epochs            : " << warmup_epochs << endl;
+        out << "  - warmup positions         : " << warmup_epochs * params.mini_batch_size << endl;
         out << "  - eval_limit               : " << params.eval_limit << endl;
         out << "  - save_only_once           : " << (params.save_only_once ? "true" : "false") << endl;
         out << "  - shuffle on read          : " << (params.shuffle ? "true" : "false") << endl;
@@ -1364,6 +1410,7 @@ namespace Learner
         out << "  - nn_options               : " << nn_options << endl;
 
         out << "  - learning rate            : " << params.learning_rate << endl;
+        out << "  - warmup learning rate     : " << params.warmup_learning_rate << endl;
         out << "  - max_grad                 : " << params.max_grad << endl;
         out << "  - use draws in training    : " << params.use_draw_games_in_training << endl;
         out << "  - use draws in validation  : " << params.use_draw_games_in_validation << endl;
@@ -1421,7 +1468,7 @@ namespace Learner
         out.unlock();
 
         // Start learning.
-        learn_think.learn(epochs);
+        learn_think.learn(epochs, warmup_epochs);
     }
 
 } // namespace Learner

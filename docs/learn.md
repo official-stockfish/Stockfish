@@ -20,11 +20,15 @@ Currently the following options are available:
 
 `epochs` - the number of weight update cycles (epochs) to train the network for. One such cycle is `epoch_size` positions. If not specified then the training will loop forever.
 
+`warmup_epochs` - the number of epochs to "pretrain" the net for with `warmup_lr` learning rate. Default: 0.
+
 `epoch_size` - The number of positions per epoch. Should be kept lowish as the current implementation loads all into memory before processing. Default is already high enough. The epoch size is not tied to validation nor net serialization, there are more specific options for that. Default: 1000000
 
 `basedir` - the base directory for the paths. Default: "" (current directory)
 
 `lr` - initial learning rate. Default: 1.
+
+`warmup_lr` - the learning rate to use during warmup epochs. Default: 0.1.
 
 `use_draw_games_in_training` - either 0 or 1. If 1 then draws will be used in training too. Default: 1.
 
