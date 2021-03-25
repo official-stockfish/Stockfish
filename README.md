@@ -242,9 +242,9 @@ When not using the Makefile to compile (for instance, with Microsoft MSVC) you
 need to manually set/unset some switches in the compiler command line; see
 file *types.h* for a quick reference.
 
-When reporting an issue or a bug, please tell us which version and
-compiler you used to create your executable. These informations can
-be found by typing the following command in a console:
+When reporting an issue or a bug, please tell us which Stockfish version
+and which compiler you used to create your executable. This information
+can be found by typing the following command in a console:
 
 ```
     ./stockfish compiler
