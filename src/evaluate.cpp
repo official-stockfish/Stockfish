@@ -260,7 +260,8 @@ namespace {
   constexpr Score UncontestedOutpost  = S(  1, 10);
   constexpr Score BishopOnKingRing    = S( 24,  0);
   constexpr Score BishopXRayPawns     = S(  4,  5);
-  constexpr Score CorneredBishop      = S( 50, 50);
+  constexpr Value CorneredBishopV     = Value(50);
+  constexpr Score CorneredBishop      = S(CorneredBishopV, CorneredBishopV);
   constexpr Score FlankAttacks        = S(  8,  0);
   constexpr Score Hanging             = S( 69, 36);
   constexpr Score KnightOnQueen       = S( 16, 11);
@@ -477,9 +478,8 @@ namespace {
                 {
                     Direction d = pawn_push(Us) + (file_of(s) == FILE_A ? EAST : WEST);
                     if (pos.piece_on(s + d) == make_piece(Us, PAWN))
-                        score -= !pos.empty(s + d + pawn_push(Us))                ? CorneredBishop * 4
-                                : pos.piece_on(s + d + d) == make_piece(Us, PAWN) ? CorneredBishop * 2
-                                                                                  : CorneredBishop;
+                        score -= !pos.empty(s + d + pawn_push(Us)) ? CorneredBishop * 4
+                                                                   : CorneredBishop * 3;
                 }
             }
         }
@@ -1048,35 +1048,27 @@ make_v:
     if (!(pos.pieces(BISHOP) & Corners))
         return VALUE_ZERO;
 
-    constexpr int penalty1 = -209;
-    constexpr int penalty2 = -136;
-    constexpr int penalty3 = -148;
-
     int correction = 0;
 
     if (   pos.piece_on(SQ_A1) == W_BISHOP
         && pos.piece_on(SQ_B2) == W_PAWN)
-        correction += !pos.empty(SQ_B3)              ? penalty1
-                     : pos.piece_on(SQ_C3) == W_PAWN ? penalty2
-                                                     : penalty3;
+        correction += !pos.empty(SQ_B3) ? -CorneredBishopV * 4
+                                        : -CorneredBishopV * 3;
 
     if (   pos.piece_on(SQ_H1) == W_BISHOP
         && pos.piece_on(SQ_G2) == W_PAWN)
-        correction += !pos.empty(SQ_G3)              ? penalty1
-                     : pos.piece_on(SQ_F3) == W_PAWN ? penalty2
-                                                     : penalty3;
+        correction += !pos.empty(SQ_G3) ? -CorneredBishopV * 4
+                                        : -CorneredBishopV * 3;
 
     if (   pos.piece_on(SQ_A8) == B_BISHOP
         && pos.piece_on(SQ_B7) == B_PAWN)
-        correction += !pos.empty(SQ_B6)              ? -penalty1
-                     : pos.piece_on(SQ_C6) == B_PAWN ? -penalty2
-                                                     : -penalty3;
+        correction += !pos.empty(SQ_B6) ? CorneredBishopV * 4
+                                        : CorneredBishopV * 3;
 
     if (   pos.piece_on(SQ_H8) == B_BISHOP
         && pos.piece_on(SQ_G7) == B_PAWN)
-        correction += !pos.empty(SQ_G6)              ? -penalty1
-                     : pos.piece_on(SQ_F6) == B_PAWN ? -penalty2
-                                                     : -penalty3;
+        correction += !pos.empty(SQ_G6) ? CorneredBishopV * 4
+                                        : CorneredBishopV * 3;
 
     return pos.side_to_move() == WHITE ?  Value(correction)
                                        : -Value(correction);
