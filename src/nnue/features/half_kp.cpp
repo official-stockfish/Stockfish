@@ -21,7 +21,7 @@
 #include "half_kp.h"
 #include "index_list.h"
 
-namespace Eval::NNUE::Features {
+namespace Stockfish::Eval::NNUE::Features {
 
   // Orient a square according to perspective (rotates by 180 for black)
   inline Square orient(Color perspective, Square s) {
@@ -41,7 +41,7 @@ namespace Eval::NNUE::Features {
     Square ksq = orient(perspective, pos.square<KING>(perspective));
     Bitboard bb = pos.pieces() & ~pos.pieces(KING);
     while (bb) {
-      Square s = pop_lsb(&bb);
+      Square s = pop_lsb(bb);
       active->push_back(make_index(perspective, s, pos.piece_on(s), ksq));
     }
   }
@@ -65,4 +65,4 @@ namespace Eval::NNUE::Features {
 
   template class HalfKP<Side::kFriend>;
 
-}  // namespace Eval::NNUE::Features
+}  // namespace Stockfish::Eval::NNUE::Features

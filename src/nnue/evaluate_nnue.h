@@ -25,7 +25,7 @@
 
 #include <memory>
 
-namespace Eval::NNUE {
+namespace Stockfish::Eval::NNUE {
 
   // Hash value of evaluation function structure
   constexpr std::uint32_t kHashValue =
@@ -54,6 +54,6 @@ namespace Eval::NNUE {
   template <typename T>
   using LargePagePtr = std::unique_ptr<T, LargePageDeleter<T>>;
 
-}  // namespace Eval::NNUE
+}  // namespace Stockfish::Eval::NNUE
 
 #endif // #ifndef NNUE_EVALUATE_NNUE_H_INCLUDED

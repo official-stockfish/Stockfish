@@ -61,6 +61,8 @@ typedef bool(*fun3_t)(HANDLE, CONST GROUP_AFFINITY*, PGROUP_AFFINITY);
 
 using namespace std;
 
+namespace Stockfish {
+
 namespace {
 
 /// Version number. If Version is left empty, then compile date in the format
@@ -138,7 +140,7 @@ public:
 /// the program was compiled) or "Stockfish <Version>", depending on whether
 /// Version is empty.
 
-const string engine_info(bool to_uci) {
+string engine_info(bool to_uci) {
 
   const string months("Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec");
   string month, day, year;
@@ -161,7 +163,7 @@ const string engine_info(bool to_uci) {
 
 /// compiler_info() returns a string trying to describe the compiler we use
 
-const std::string compiler_info() {
+std::string compiler_info() {
 
   #define stringify2(x) #x
   #define stringify(x) stringify2(x)
@@ -360,7 +362,7 @@ void std_aligned_free(void* ptr) {
 /// aligned_large_pages_alloc() will return suitably aligned memory, if possible using large pages.
 
 #if defined(_WIN32)
-
+#if defined(_WIN64)
 static void* aligned_large_pages_alloc_win(size_t allocSize) {
 
   HANDLE hProcessToken { };
@@ -405,15 +407,20 @@ static void* aligned_large_pages_alloc_win(size_t allocSize) {
 
   return mem;
 }
+#endif
 
 void* aligned_large_pages_alloc(size_t allocSize) {
 
+#if defined(_WIN64)
   // Try to allocate large pages
   void* mem = aligned_large_pages_alloc_win(allocSize);
 
   // Fall back to regular, page aligned, allocation if necessary
   if (!mem)
       mem = VirtualAlloc(NULL, allocSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+#else
+  void* mem = VirtualAlloc(NULL, allocSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+#endif
 
   return mem;
 }
@@ -626,3 +633,5 @@ void init(int argc, char* argv[]) {
 
 
 } // namespace CommandLine
+
+} // namespace Stockfish

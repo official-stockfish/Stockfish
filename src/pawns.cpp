@@ -24,6 +24,8 @@
 #include "position.h"
 #include "thread.h"
 
+namespace Stockfish {
+
 namespace {
 
   #define V Value
@@ -108,7 +110,7 @@ namespace {
 
     // Loop through all pawns of the current color and score each pawn
     while (b) {
-        s = pop_lsb(&b);
+        s = pop_lsb(b);
 
         assert(pos.piece_on(s) == make_piece(Us, PAWN));
 
@@ -288,7 +290,7 @@ Score Entry::do_king_safety(const Position& pos) {
   if (pawns & attacks_bb<KING>(ksq))
       minPawnDist = 1;
   else while (pawns)
-      minPawnDist = std::min(minPawnDist, distance(ksq, pop_lsb(&pawns)));
+      minPawnDist = std::min(minPawnDist, distance(ksq, pop_lsb(pawns)));
 
   return shelter - make_score(0, 16 * minPawnDist);
 }
@@ -298,3 +300,5 @@ template Score Entry::do_king_safety<WHITE>(const Position& pos);
 template Score Entry::do_king_safety<BLACK>(const Position& pos);
 
 } // namespace Pawns
+
+} // namespace Stockfish

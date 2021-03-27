@@ -23,6 +23,8 @@
 #include "search.h"
 #include "thread.h"
 
+namespace Stockfish {
+
 /// The TimeManagement class computes the optimal time to think depending on
 /// the maximum available time, the game move number and other parameters.
 
@@ -43,5 +45,7 @@ private:
 };
 
 extern TimeManagement Time;
+
+} // namespace Stockfish
 
 #endif // #ifndef TIMEMAN_H_INCLUDED

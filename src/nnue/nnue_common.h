@@ -43,7 +43,7 @@
 #include <arm_neon.h>
 #endif
 
-namespace Eval::NNUE {
+namespace Stockfish::Eval::NNUE {
 
   // Version of the evaluation file
   constexpr std::uint32_t kVersion = 0x7AF32F16u;
@@ -127,6 +127,6 @@ namespace Eval::NNUE {
       return result;
   }
 
-}  // namespace Eval::NNUE
+}  // namespace Stockfish::Eval::NNUE
 
 #endif // #ifndef NNUE_COMMON_H_INCLUDED

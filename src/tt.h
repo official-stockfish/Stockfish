@@ -22,6 +22,8 @@
 #include "misc.h"
 #include "types.h"
 
+namespace Stockfish {
+
 /// TTEntry struct is the 10 bytes transposition table entry, defined as below:
 ///
 /// key        16 bit
@@ -99,5 +101,7 @@ private:
 };
 
 extern TranspositionTable TT;
+
+} // namespace Stockfish
 
 #endif // #ifndef TT_H_INCLUDED
