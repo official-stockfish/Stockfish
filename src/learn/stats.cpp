@@ -31,34 +31,6 @@ namespace Learner::Stats
         [[nodiscard]] virtual std::map<std::string, std::string> get_formatted_stats() const = 0;
     };
 
-    struct PositionCounter : StatisticGathererBase
-    {
-        PositionCounter() :
-            m_num_positions(0)
-        {
-        }
-
-        void on_position(const Position&) override
-        {
-            m_num_positions += 1;
-        }
-
-        void reset() override
-        {
-            m_num_positions = 0;
-        }
-
-        [[nodiscard]] std::map<std::string, std::string> get_formatted_stats() const override
-        {
-            return {
-                { "Number of positions", std::to_string(m_num_positions) }
-            };
-        }
-
-    private:
-        std::uint64_t m_num_positions;
-    };
-
     struct StatisticGathererFactoryBase
     {
         [[nodiscard]] virtual std::unique_ptr<StatisticGathererBase> create() const = 0;
@@ -102,6 +74,42 @@ namespace Learner::Stats
         std::map<std::string, std::vector<std::unique_ptr<StatisticGathererFactoryBase>>> m_gatherers_by_group;
     };
 
+    /*
+        Definitions for specific statistic gatherers follow:
+    */
+
+    struct PositionCounter : StatisticGathererBase
+    {
+        PositionCounter() :
+            m_num_positions(0)
+        {
+        }
+
+        void on_position(const Position&) override
+        {
+            m_num_positions += 1;
+        }
+
+        void reset() override
+        {
+            m_num_positions = 0;
+        }
+
+        [[nodiscard]] std::map<std::string, std::string> get_formatted_stats() const override
+        {
+            return {
+                { "Number of positions", std::to_string(m_num_positions) }
+            };
+        }
+
+    private:
+        std::uint64_t m_num_positions;
+    };
+
+    /*
+        This function provides factories for all possible statistic gatherers.
+        Each new statistic gatherer needs to be added there.
+    */
     const auto& get_statistics_gatherers_registry()
     {
         static StatisticGathererRegistry s_reg = [](){
