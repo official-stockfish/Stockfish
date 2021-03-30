@@ -125,7 +125,8 @@ namespace Learner::Stats
 
     void do_gather_statistics(
         const std::string& filename,
-        std::vector<std::unique_ptr<StatisticGathererBase>>& statistic_gatherers)
+        std::vector<std::unique_ptr<StatisticGathererBase>>& statistic_gatherers,
+        std::uint64_t max_count)
     {
         Thread* th = Threads.main();
         Position& pos = th->rootPos;
@@ -154,7 +155,7 @@ namespace Learner::Stats
         }
 
         uint64_t num_processed = 0;
-        for (;;)
+        while (num_processed < max_count)
         {
             auto v = in->next();
             if (!v.has_value())
@@ -196,6 +197,7 @@ namespace Learner::Stats
         std::vector<std::unique_ptr<StatisticGathererBase>> statistic_gatherers;
 
         std::string input_file;
+        std::uint64_t max_count = std::numeric_limits<std::uint64_t>::max();
 
         while(true)
         {
@@ -207,11 +209,13 @@ namespace Learner::Stats
 
             if (token == "input_file")
                 is >> input_file;
+            else if (token == "max_count")
+                is >> max_count;
             else
                 registry.add_statistic_gatherers_by_group(statistic_gatherers, token);
         }
 
-        do_gather_statistics(input_file, statistic_gatherers);
+        do_gather_statistics(input_file, statistic_gatherers, max_count);
     }
 
 }

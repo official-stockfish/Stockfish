@@ -4,6 +4,14 @@
 
 Simplest usage: `stockfish.exe gather_statistics all input_file a.binpack`
 
+Any name that doesn't designate an argument name or is not an argument will be interpreted as a group name.
+
+## Parameters
+
+`input_file` - the path to the .bin or .binpack input file to read
+
+`max_count` - the maximum number of positions to process. Default: no limit.
+
 ## Groups
 
 `all`
