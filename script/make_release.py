@@ -4,6 +4,7 @@
 import subprocess
 import threading
 import os
+import sys
 import re
 import shutil
 import uuid
@@ -51,6 +52,8 @@ parser.add_argument('--compiler', default=None, type=str,
                     help='If specified this will be passed as COMP to the make script.')
 parser.add_argument('--clone-depth', default=25, type=int,
                     help='The number of commits to clone history of. For retrieving bench more than one might be needed. Default is setup such that it should work for all normal cases.')
+parser.add_argument('--max-tries', default=1, type=int,
+                    help='How many times a build for a single target can be attempted. Builds fail sometimes for weird reasons.')
 parser.add_argument('archs', nargs='*', default=None, type=str,
                     help='A list of architectures to compile. If not provided then most sensible archs will be built.')
 
@@ -75,6 +78,7 @@ EXE_SUFFIX = '.exe' if IS_WINDOWS else ''
 ZIP_SUFFIX = '.zip'
 EXPECTED_BENCH = args.bench
 MAX_NUM_WORKERS = NUM_THREADS if args.max_num_workers is None else args.max_num_workers
+MAX_TRIES = args.max_tries
 COMPILER = args.compiler
 LOGGER = get_logger()
 
@@ -362,6 +366,12 @@ def main():
             LOGGER.info('No archs specified. Exiting.')
             return
 
+        num_tries = dict()
+        successfully_completed = dict()
+        for arch in archs:
+            num_tries[arch] = 0
+            successfully_completed[arch] = False
+
         # Compute how many threads each worker can use
         # Try to find as equal distribution as possible
         num_workers = min([NUM_THREADS, len(archs), MAX_NUM_WORKERS])
@@ -403,7 +413,8 @@ def main():
         with concurrent.futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
             tasks = dict()
             for arch in archs:
-                LOGGER.info('Scheduling ARCH={}'.format(arch))
+                LOGGER.info('Scheduling ARCH={}. Try 1 out of {}'.format(arch, MAX_TRIES))
+                num_tries[arch] += 1
                 future = executor.submit(run_task, arch)
                 tasks[future] = arch
 
@@ -411,9 +422,37 @@ def main():
                 arch = tasks[future]
                 success = future.result()
                 if success:
+                    # If the build was successful then note it. We're done with this target
                     LOGGER.info('Sucessfully finished building {}'.format(arch))
+                    successfully_completed[arch] = True
                 else:
-                    LOGGER.info('Failed building {}'.format(arch))
+                    # If the build was not succesfull we retry, unless max number of tries was reached.
+                    LOGGER.info('Failed building {} in an attempt {} out of {}'.format(arch, num_tries[arch], MAX_TRIES))
+                    if num_tries[arch] < MAX_TRIES:
+                        LOGGER.info('Scheduling ARCH={}. Try {} out of {}'.format(arch, num_tries[arch]+1, MAX_TRIES))
+                        num_tries[arch] += 1
+                        future = executor.submit(run_task, arch)
+                        tasks[future] = arch
+
+    num_successful = list(successfully_completed.values()).count(True)
+    num_failed = len(successfully_completed) - num_successful
+    msg = 'Finished all tasks. {} successful, {} failed.'.format(num_successful, num_failed)
+    if num_failed == 0:
+        LOGGER.info(msg)
+    else:
+        LOGGER.info(msg)
+
+    for arch, success in sorted(successfully_completed.items(), key=lambda x: -int(x[1])):
+        msg = '{}: {} after {} tries.'.format(arch, 'Success' if success else 'Failed', num_tries[arch])
+        if success:
+            LOGGER.info(msg)
+        else:
+            LOGGER.error(msg)
+
+    if num_failed == 0:
+        return 0
+    else:
+        return 1
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())
