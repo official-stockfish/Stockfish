@@ -6116,6 +6116,26 @@ namespace chess
 
     [[nodiscard]] inline bool Position::isEpPossibleColdPath(Square epSquare, Bitboard pawnsAttackingEpSquare, Color sideToMove) const
     {
+        if (pieceAt(epSquare) != Piece::none())
+        {
+            return false;
+        }
+
+        const auto forward =
+            sideToMove == chess::Color::White
+            ? FlatSquareOffset(0, 1)
+            : FlatSquareOffset(0, -1);
+
+        if (pieceAt(epSquare + forward) != Piece::none())
+        {
+            return false;
+        }
+
+        if (pieceAt(epSquare + -forward) != Piece(PieceType::Pawn, !sideToMove))
+        {
+            return false;
+        }
+
         // only set m_epSquare when it matters, ie. when
         // the opposite side can actually capture
         for (Square sq : pawnsAttackingEpSquare)
