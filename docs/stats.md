@@ -14,23 +14,9 @@ Any name that doesn't designate an argument name or is not an argument will be i
 
 ## Groups
 
-`all`
+`all` - a special group designating all statistics gatherers available.
 
- - A special group designating all statistics gatherers available.
-
-`position_count`
-
- - `struct PositionCounter` - the total number of positions in the file.
-
-
-            reg.add<KingSquareCounter>("king", "king_square_count");
-
-            reg.add<MoveFromCounter>("move", "move_from_count");
-            reg.add<MoveToCounter>("move", "move_to_count");
-            reg.add<MoveTypeCounter>("move", "move_type");
-            reg.add<MovedPieceTypeCounter>("move", "moved_piece_type");
-
-            reg.add<PieceCountCounter>("piece_count");
+`position_count` - the total number of positions in the file.
 
 `king`, `king_square_count` - the number of times a king was on each square. Output is layed out as a chessboard, with the 8th rank being the topmost. Separate values for white and black kings.
 
