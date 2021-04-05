@@ -33,7 +33,7 @@ namespace Learner::Stats
         virtual void on_move(const Position&, const Move&) {}
         virtual void reset() = 0;
         [[nodiscard]] virtual const std::string& get_name() const = 0;
-        [[nodiscard]] virtual std::map<std::string, std::string> get_formatted_stats() const = 0;
+        [[nodiscard]] virtual std::vector<std::pair<std::string, std::string>> get_formatted_stats() const = 0;
     };
 
     struct StatisticGathererFactoryBase
@@ -110,12 +110,13 @@ namespace Learner::Stats
             return name;
         }
 
-        [[nodiscard]] virtual std::map<std::string, std::string> get_formatted_stats() const override
+        [[nodiscard]] virtual std::vector<std::pair<std::string, std::string>> get_formatted_stats() const override
         {
-            std::map<std::string, std::string> parts;
+            std::vector<std::pair<std::string, std::string>> parts;
             for (auto&& s : m_gatherers)
             {
-                parts.merge(s->get_formatted_stats());
+                auto part = s->get_formatted_stats();
+                parts.insert(parts.end(), part.begin(), part.end());
             }
             return parts;
         }
@@ -233,7 +234,7 @@ namespace Learner::Stats
             return name;
         }
 
-        [[nodiscard]] std::map<std::string, std::string> get_formatted_stats() const override
+        [[nodiscard]] std::vector<std::pair<std::string, std::string>> get_formatted_stats() const override
         {
             return {
                 { "Number of positions", std::to_string(m_num_positions) }
@@ -272,7 +273,7 @@ namespace Learner::Stats
             return name;
         }
 
-        [[nodiscard]] std::map<std::string, std::string> get_formatted_stats() const override
+        [[nodiscard]] std::vector<std::pair<std::string, std::string>> get_formatted_stats() const override
         {
             return {
                 { "White king squares", '\n' + m_white.get_formatted_stats() },
@@ -315,7 +316,7 @@ namespace Learner::Stats
             return name;
         }
 
-        [[nodiscard]] std::map<std::string, std::string> get_formatted_stats() const override
+        [[nodiscard]] std::vector<std::pair<std::string, std::string>> get_formatted_stats() const override
         {
             return {
                 { "White move from squares", '\n' + m_white.get_formatted_stats() },
@@ -358,7 +359,7 @@ namespace Learner::Stats
             return name;
         }
 
-        [[nodiscard]] std::map<std::string, std::string> get_formatted_stats() const override
+        [[nodiscard]] std::vector<std::pair<std::string, std::string>> get_formatted_stats() const override
         {
             return {
                 { "White move to squares", '\n' + m_white.get_formatted_stats() },
@@ -418,7 +419,7 @@ namespace Learner::Stats
             return name;
         }
 
-        [[nodiscard]] std::map<std::string, std::string> get_formatted_stats() const override
+        [[nodiscard]] std::vector<std::pair<std::string, std::string>> get_formatted_stats() const override
         {
             return {
                 { "Total moves", std::to_string(m_total) },
@@ -464,11 +465,11 @@ namespace Learner::Stats
             return name;
         }
 
-        [[nodiscard]] std::map<std::string, std::string> get_formatted_stats() const override
+        [[nodiscard]] std::vector<std::pair<std::string, std::string>> get_formatted_stats() const override
         {
-            std::map<std::string, std::string> result;
+            std::vector<std::pair<std::string, std::string>> result;
             bool do_write = false;
-            for (int i = SQUARE_NB; i >= 0; --i)
+            for (int i = SQUARE_NB - 1; i >= 0; --i)
             {
                 if (m_piece_count_hist[i] != 0)
                     do_write = true;
@@ -476,7 +477,7 @@ namespace Learner::Stats
                 // Start writing when the first non-zero number pops up.
                 if (do_write)
                 {
-                    result.try_emplace(
+                    result.emplace_back(
                         std::string("Number of positions with ") + std::to_string(i) + " pieces",
                         std::to_string(m_piece_count_hist[i])
                     );
@@ -514,7 +515,7 @@ namespace Learner::Stats
             return name;
         }
 
-        [[nodiscard]] std::map<std::string, std::string> get_formatted_stats() const override
+        [[nodiscard]] std::vector<std::pair<std::string, std::string>> get_formatted_stats() const override
         {
             return {
                 { "Pawn moves", std::to_string(m_moved_piece_type_hist[PAWN]) },
