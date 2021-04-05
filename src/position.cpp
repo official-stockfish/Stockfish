@@ -989,7 +989,9 @@ void Position::do_castling(Color us, Square from, Square& to, Square& rfrom, Squ
 
 
 /// Position::do(undo)_null_move() is used to do(undo) a "null move": it flips
-/// the side to move without executing any move on the board.
+/// the side to move without executing any move on the board.  NOTE THAT
+/// DO_NULL_MOVE CAN ONLY BE INVERTED BY UNDO_NULL_MOVE.  Two consecutive
+/// calls to do_null_move will alter the halfply count.
 
 void Position::do_null_move(StateInfo& newSt) {
 
