@@ -45,6 +45,8 @@ namespace Learner::Stats
     template <typename T>
     struct StatisticGathererFactory : StatisticGathererFactoryBase
     {
+        static inline std::string name = T::name;
+
         [[nodiscard]] std::unique_ptr<StatisticGathererBase> create() const override
         {
             return std::make_unique<T>();
@@ -52,7 +54,7 @@ namespace Learner::Stats
 
         [[nodiscard]] const std::string& get_name() const override
         {
-            return T::name;
+            return name;
         }
     };
 
@@ -139,17 +141,29 @@ namespace Learner::Stats
             }
         }
 
-        template <typename T>
-        void add(const std::string& group)
+        template <typename T, typename... ArgsTs>
+        void add(const ArgsTs&... group)
         {
-            m_gatherers_by_group[group].emplace_back(std::make_unique<StatisticGathererFactory<T>>());
-
-            // Always add to the special group "all".
-            m_gatherers_by_group["all"].emplace_back(std::make_unique<StatisticGathererFactory<T>>());
+            auto dummy = {(add_single<T>(group), 0)...};
+            (void)dummy;
+            add_single<T>("all");
         }
 
     private:
         std::map<std::string, std::vector<std::unique_ptr<StatisticGathererFactoryBase>>> m_gatherers_by_group;
+        std::map<std::string, std::set<std::string>> m_gatherers_names_by_group;
+
+        template <typename T, typename ArgT>
+        void add_single(const ArgT& group)
+        {
+            using FactoryT = StatisticGathererFactory<T>;
+
+            if (m_gatherers_names_by_group[group].count(FactoryT::name) == 0)
+            {
+                m_gatherers_by_group[group].emplace_back(std::make_unique<FactoryT>());
+                m_gatherers_names_by_group[group].insert(FactoryT::name);
+            }
+        }
     };
 
     /*
@@ -442,7 +456,7 @@ namespace Learner::Stats
         void reset() override
         {
             for (int i = 0; i < SQUARE_NB; ++i)
-                m_num_pieces[i] = 0;
+                m_piece_count_hist[i] = 0;
         }
 
         [[nodiscard]] const std::string& get_name() const override
@@ -527,16 +541,14 @@ namespace Learner::Stats
 
             reg.add<PositionCounter>("position_count");
 
-            reg.add<KingSquareCounter>("king");
-            reg.add<KingSquareCounter>("king_square_count");
+            reg.add<KingSquareCounter>("king", "king_square_count");
 
-            reg.add<MoveFromCounter>("move");
-            reg.add<MoveFromCounter>("move_from_count");
-            reg.add<MoveToCounter>("move_to_count");
-            reg.add<MoveTypeCounter>("move_type");
-            reg.add<MovedPieceTypeCounter>("moved_piece_type");
+            reg.add<MoveFromCounter>("move", "move_from_count");
+            reg.add<MoveToCounter>("move", "move_to_count");
+            reg.add<MoveTypeCounter>("move", "move_type");
+            reg.add<MovedPieceTypeCounter>("move", "moved_piece_type");
 
-            reg.add<PieceCountCounter>("piece_count")
+            reg.add<PieceCountCounter>("piece_count");
 
             return reg;
         }();
