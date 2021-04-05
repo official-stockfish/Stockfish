@@ -6115,26 +6115,6 @@ namespace chess
             return false;
         }
 
-        if (pieceAt(epSquare) != Piece::none())
-        {
-            return false;
-        }
-
-        const auto forward =
-            sideToMove == chess::Color::White
-            ? FlatSquareOffset(0, 1)
-            : FlatSquareOffset(0, -1);
-
-        if (pieceAt(epSquare + forward) != Piece::none())
-        {
-            return false;
-        }
-
-        if (pieceAt(epSquare + -forward) != Piece(PieceType::Pawn, !sideToMove))
-        {
-            return false;
-        }
-
         return isEpPossibleColdPath(epSquare, pawnsAttackingEpSquare, sideToMove);
     }
 
