@@ -11,12 +11,15 @@
 
 #include "nnue/evaluate_nnue.h"
 
+#include <array>
 #include <string>
 #include <map>
 #include <iostream>
 #include <cmath>
 #include <algorithm>
 #include <cstdint>
+#include <sstream>
+#include <iomanip>
 #include <limits>
 #include <mutex>
 #include <optional>
@@ -72,6 +75,44 @@ namespace Learner::Stats
 
     private:
         std::map<std::string, std::vector<std::unique_ptr<StatisticGathererFactoryBase>>> m_gatherers_by_group;
+    };
+
+    /*
+        Statistic gatherer helpers
+    */
+
+    template <typename T>
+    struct StatPerSquare
+    {
+        StatPerSquare()
+        {
+            for (int i = 0; i < SQUARE_NB; ++i)
+                m_squares[i] = 0;
+        }
+
+        [[nodiscard]] T& operator[](Square sq)
+        {
+            return m_squares[sq];
+        }
+
+        [[nodiscard]] const T& operator[](Square sq) const
+        {
+            return m_squares[sq];
+        }
+
+        [[nodiscard]] std::string get_formatted_stats() const
+        {
+            std::stringstream ss;
+            for (int i = 0; i < SQUARE_NB; ++i)
+            {
+                ss << std::setw(8) << m_squares[i] << ' ';
+                if ((i + 1) % 8 == 0)
+                    ss << '\n';
+            }
+        }
+
+    private:
+        std::array<T, SQUARE_NB> m_squares;
     };
 
     /*
