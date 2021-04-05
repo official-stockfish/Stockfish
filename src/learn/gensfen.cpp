@@ -110,6 +110,8 @@ namespace Learner
                 save_every = std::max(save_every, REPORT_STATS_EVERY);
 
                 num_threads = Options["Threads"];
+
+                random_multi_pv_depth = std::max(search_depth_max, random_multi_pv_depth);
             }
         };
 
@@ -489,8 +491,11 @@ namespace Learner
         // draw at the maximum number of steps to write.
         const int ply = move_hist_scores.size();
 
-        // has it reached the max length or is a draw
-        if (ply >= params.write_maxply || pos.is_draw(ply))
+        // has it reached the max length or is a draw by fifty-move rule
+        // or by 3-fold repetition
+        if (ply >= params.write_maxply 
+            || pos.is_fifty_move_draw() 
+            || pos.is_three_fold_repetition())
         {
             return 0;
         }
