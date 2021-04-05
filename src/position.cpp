@@ -1180,6 +1180,22 @@ bool Position::is_draw(int ply) const {
 }
 
 
+/// Position::is_fifty_move_draw() returns true if a game can be claimed
+/// by a fifty-move draw rule.
+
+bool Position::is_fifty_move_draw() const {
+
+  return (st->rule50 > 99 && (!checkers() || MoveList<LEGAL>(*this).size()));
+}
+
+
+/// Position::is_three_fold_repetition() returns true if there is 3-fold repetition.
+bool Position::is_three_fold_repetition() const {
+
+  return st->repetition < 0;
+}
+
+
 // Position::has_repeated() tests whether there has been at least one repetition
 // of positions since the last capture or pawn move.
 
