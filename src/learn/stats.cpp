@@ -194,7 +194,7 @@ namespace Learner::Stats
             std::stringstream ss;
             for (int i = 0; i < SQUARE_NB; ++i)
             {
-                ss << std::setw(8) << m_squares[i] << ' ';
+                ss << std::setw(8) << m_squares[i ^ (int)SQ_A8] << ' ';
                 if ((i + 1) % 8 == 0)
                     ss << '\n';
             }
