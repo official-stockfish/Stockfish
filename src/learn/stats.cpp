@@ -147,6 +147,32 @@ namespace Learner::Stats
         std::uint64_t m_num_positions;
     };
 
+    struct KingSquareCounter : StatisticGathererBase
+    {
+        KingSquareCounter() :
+            m_white{},
+            m_black{}
+        {
+
+        }
+
+        void on_position(const Position& pos) override
+        {
+            m_white[pos.square<KING>(WHITE)] += 1;
+            m_black[pos.square<KING>(BLACK)] += 1;
+        }
+
+        void reset() override
+        {
+            m_white = StatPerSquare<std::uint64_t>{};
+            m_black = StatPerSquare<std::uint64_t>{};
+        }
+
+    private:
+        StatPerSquare<std::uint64_t> m_white;
+        StatPerSquare<std::uint64_t> m_black;
+    };
+
     /*
         This function provides factories for all possible statistic gatherers.
         Each new statistic gatherer needs to be added there.
@@ -157,6 +183,9 @@ namespace Learner::Stats
             StatisticGathererRegistry reg;
 
             reg.add<PositionCounter>("position_count");
+
+            reg.add<KingSquareCounter>("king");
+            reg.add<KingSquareCounter>("king_square_count");
 
             return reg;
         }();
