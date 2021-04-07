@@ -188,12 +188,15 @@ def pack_binary_with_source(dest_dir, repo_dir, src_file, dest_filename):
         for path_from, name in main_level_files:
             archive.write(path_from, os.path.join(artifact_name, name))
 
-        # Write the source directory, excluding .git.
+        # Write the source directory, excluding .git and *.nnue.
         for path, subdirs, files in os.walk(repo_dir, followlinks=False):
             if '.git' in path:
                 continue
 
             for filename in files:
+                if filename.endswith('.nnue'):
+                    continue
+
                 full_path = os.path.join(path, filename)
                 rel_path = os.path.relpath(full_path, repo_dir)
                 internal_path = os.path.join(artifact_name, 'Stockfish', rel_path)
