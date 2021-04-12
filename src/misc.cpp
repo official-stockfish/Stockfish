@@ -51,7 +51,7 @@ typedef bool(*fun3_t)(HANDLE, CONST GROUP_AFFINITY*, PGROUP_AFFINITY);
 #include <sys/mman.h>
 #endif
 
-#if defined(__APPLE__) || defined(__ANDROID__) || defined(__OpenBSD__) || (defined(__GLIBCXX__) && !defined(_GLIBCXX_HAVE_ALIGNED_ALLOC) && !defined(_WIN32))
+#if defined(__APPLE__) || defined(__ANDROID__) || defined(__OpenBSD__) || (defined(__GLIBCXX__) && !defined(_GLIBCXX_HAVE_ALIGNED_ALLOC) && !defined(_WIN32)) || (defined(__LCC__) && !defined(_WIN32))
 #define POSIXALIGNEDALLOC
 #include <stdlib.h>
 #endif
@@ -195,6 +195,8 @@ std::string compiler_info() {
   #elif __GNUC__
      compiler += "g++ (GNUC) ";
      compiler += make_version_string(__GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
+  #elif __LCC__ && !defined(_WIN32)
+     compiler += "Elbrus C Compiler";
   #else
      compiler += "Unknown compiler ";
      compiler += "(unknown version)";
