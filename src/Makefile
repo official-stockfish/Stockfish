@@ -485,7 +485,7 @@ endif
 ### 3.3 Optimization
 ifeq ($(optimize),yes)
 
-	ifeq ($(ARCH),e2k)
+	ifeq ($(findstring e2k,$(ARCH)),e2k)
 		CXXFLAGS += -O4
 	else
 		CXXFLAGS += -O3
