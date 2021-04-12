@@ -294,7 +294,7 @@ endif
 
 ifeq ($(findstring e2k,$(ARCH)),e2k)
 	arch = e2k
-	bits = 32
+	bits = 64
 	sse = yes
 	sse2 = yes
 
@@ -696,6 +696,8 @@ help:
 	@echo "armv7                   > ARMv7 32-bit"
 	@echo "armv7-neon              > ARMv7 32-bit with popcnt and neon"
 	@echo "armv8                   > ARMv8 64-bit with popcnt and neon"
+	@echo "e2k                     > Elbrus 2000"
+	@echo "e2k-v5                  > Elbrus 2000 Version 5 with SIMD 128 bit support"
 	@echo "apple-silicon           > Apple silicon ARM64"
 	@echo "general-64              > unspecified 64-bit"
 	@echo "general-32              > unspecified 32-bit"
