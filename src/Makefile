@@ -297,9 +297,10 @@ ifeq ($(findstring e2k,$(ARCH)),e2k)
 	bits = 64
 	sse = yes
 	sse2 = yes
+	ssse3 = yes
+	popcnt = yes
 
 ifeq ($(findstring -v5,$(ARCH)),-v5)
-	ssse3 = yes
 	sse41 = yes
 endif
 
@@ -484,7 +485,11 @@ endif
 ### 3.3 Optimization
 ifeq ($(optimize),yes)
 
-	CXXFLAGS += -O3
+	ifeq ($(ARCH),e2k)
+		CXXFLAGS += -O4
+	else
+		CXXFLAGS += -O3
+	endif
 
 	ifeq ($(comp),gcc)
 		ifeq ($(OS), Android)
