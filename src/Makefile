@@ -97,6 +97,7 @@ ifeq ($(ARCH), $(filter $(ARCH), \
                  x86-64-vnni512 x86-64-vnni256 x86-64-avx512 x86-64-bmi2 x86-64-avx2 \
                  x86-64-sse41-popcnt x86-64-modern x86-64-ssse3 x86-64-sse3-popcnt \
                  x86-64 x86-32-sse41-popcnt x86-32-sse2 x86-32 ppc-64 ppc-32 \
+                 e2k \
                  armv7 armv7-neon armv8 apple-silicon general-64 general-32))
    SUPPORTED_ARCH=true
 else
@@ -289,6 +290,17 @@ ifeq ($(ARCH),ppc-64)
 	arch = ppc64
 	popcnt = yes
 	prefetch = yes
+endif
+
+ifeq ($(findstring e2k,$(ARCH)),e2k)
+	arch = e2k
+	mmx = yes
+	bits = 64
+	sse = yes
+	sse2 = yes
+	ssse3 = yes
+	sse41 = yes
+	popcnt = yes
 endif
 
 endif
@@ -514,7 +526,6 @@ ifeq ($(popcnt),yes)
 	endif
 endif
 
-
 ifeq ($(avx2),yes)
 	CXXFLAGS += -DUSE_AVX2
 	ifeq ($(comp),$(filter $(comp),gcc clang mingw))
@@ -682,6 +693,7 @@ help:
 	@echo "armv7                   > ARMv7 32-bit"
 	@echo "armv7-neon              > ARMv7 32-bit with popcnt and neon"
 	@echo "armv8                   > ARMv8 64-bit with popcnt and neon"
+	@echo "e2k                     > Elbrus 2000"
 	@echo "apple-silicon           > Apple silicon ARM64"
 	@echo "general-64              > unspecified 64-bit"
 	@echo "general-32              > unspecified 32-bit"
@@ -829,6 +841,7 @@ config-sanity: net
 	@test "$(SUPPORTED_ARCH)" = "true"
 	@test "$(arch)" = "any" || test "$(arch)" = "x86_64" || test "$(arch)" = "i386" || \
 	 test "$(arch)" = "ppc64" || test "$(arch)" = "ppc" || \
+	 test "$(arch)" = "e2k" || \
 	 test "$(arch)" = "armv7" || test "$(arch)" = "armv8" || test "$(arch)" = "arm64"
 	@test "$(bits)" = "32" || test "$(bits)" = "64"
 	@test "$(prefetch)" = "yes" || test "$(prefetch)" = "no"
