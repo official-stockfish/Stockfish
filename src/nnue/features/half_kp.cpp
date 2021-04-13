@@ -48,6 +48,25 @@ namespace Stockfish::Eval::NNUE::Features {
   }
 
   // Get a list of indices for recently changed features
+  // IMPORTANT: The `pos` in this function is pretty much useless as it's
+  // not always the position the features are updated to. The feature
+  // transformer code right now can update multiple accumulators per move,
+  // but since stockfish only keeps the full state of the current leaf
+  // search position it's not possible to always pass here the position for
+  // which the accumulator is being updated. Therefore the only thing that
+  // can be reliably extracted from `pos` is the king square for the king
+  // of the `perspective` color (note: not even the other king's square will
+  // match reality in all cases). This is of particular problem for other
+  // feature sets, where updating the active feature might require more
+  // information from the intermediate positions. In this case the only
+  // easy solution is to remove the multiple updates from the
+  // feature transformer update code and only update the accumulator
+  // for the current leaf position (the position after the move).
+  // This is also the reason why `dp` is passed as a parameter and
+  // not extracted from pos.state(). A proper fix for a given
+  // architecture would require storing all the information relevant
+  // to active feature updates in the StateInfo structure and this
+  // structure be passed to this function instead of just `dp`.
   template <Side AssociatedKing>
   void HalfKP<AssociatedKing>::AppendChangedIndices(
       const Position& pos, const DirtyPiece& dp, Color perspective,
