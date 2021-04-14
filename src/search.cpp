@@ -1158,11 +1158,6 @@ moves_loop: // When in check, search starts from here
                && (pos.is_discovered_check_on_king(~us, move) || pos.see_ge(move)))
           extension = 1;
 
-      // Last captures extension
-      else if (   PieceValue[EG][pos.captured_piece()] > PawnValueEg
-               && pos.non_pawn_material() <= 2 * RookValueMg)
-          extension = 1;
-
       // Add extension to new depth
       newDepth += extension;
 
