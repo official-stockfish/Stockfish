@@ -87,6 +87,7 @@ struct MainThread : public Thread {
 
   void search() override;
   void check_time();
+  void perft();
 
   double previousTimeReduction;
   Value bestPreviousScore;
