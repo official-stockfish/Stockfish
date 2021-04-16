@@ -309,6 +309,9 @@ void Thread::search() {
   bestValue = delta = alpha = -VALUE_INFINITE;
   beta = VALUE_INFINITE;
 
+  if (!this->rootMoves.empty())
+    Tablebases::rank_root_moves(this->rootPos, this->rootMoves);
+      
   if (mainThread)
   {
       if (mainThread->bestPreviousScore == VALUE_INFINITE)
@@ -1934,10 +1937,14 @@ bool RootMove::extract_ponder_from_tt(Position& pos) {
 
 void Tablebases::rank_root_moves(Position& pos, Search::RootMoves& rootMoves) {
 
-    auto& rootInTB = pos.this_thread()->rootInTB;
+    pos.this_thread()->Cardinality = int(Options["SyzygyProbeLimit"]);
+    pos.this_thread()->ProbeDepth = int(Options["SyzygyProbeDepth"]);
+    pos.this_thread()->UseRule50 = bool(Options["Syzygy50MoveRule"]);
+    pos.this_thread()->rootInTB = false;
+
     auto& cardinality = pos.this_thread()->Cardinality;
     auto& probeDepth = pos.this_thread()->ProbeDepth;
-    rootInTB = false;
+    auto& rootInTB = pos.this_thread()->rootInTB;
     bool dtz_available = true;
 
     // Tables with fewer pieces than SyzygyProbeLimit are searched with
@@ -2043,18 +2050,6 @@ namespace Search
       // malformed PV later on.
       if (rootMoves.empty())
         return false;
-
-      th->UseRule50 = bool(Options["Syzygy50MoveRule"]);
-      th->ProbeDepth = int(Options["SyzygyProbeDepth"]);
-      th->Cardinality = int(Options["SyzygyProbeLimit"]);
-
-      // Tables with fewer pieces than SyzygyProbeLimit are searched with
-      // ProbeDepth == DEPTH_ZERO
-      if (th->Cardinality > Tablebases::MaxCardinality)
-      {
-          th->Cardinality = Tablebases::MaxCardinality;
-          th->ProbeDepth = 0;
-      }
 
       Tablebases::rank_root_moves(pos, rootMoves);
     }

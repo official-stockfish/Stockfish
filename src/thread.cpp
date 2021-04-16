@@ -232,24 +232,6 @@ void ThreadPool::start_thinking(Position& pos, StateListPtr& states,
       th->rootMoves = rootMoves;
       th->rootPos.set(pos.fen(), pos.is_chess960(), &th->rootState, th);
       th->rootState = setupStates->back();
-      // This is also set by rank_root_moves but we need to set it
-      // also when there is no legal moves.
-      th->rootInTB = false;
-      th->UseRule50 = bool(Options["Syzygy50MoveRule"]);
-      th->ProbeDepth = int(Options["SyzygyProbeDepth"]);
-      th->Cardinality = int(Options["SyzygyProbeLimit"]);
-
-      // Tables with fewer pieces than SyzygyProbeLimit are searched with
-      // ProbeDepth == DEPTH_ZERO
-      if (th->Cardinality > Tablebases::MaxCardinality)
-      {
-          th->Cardinality = Tablebases::MaxCardinality;
-          th->ProbeDepth = 0;
-      }
-
-      if (!rootMoves.empty())
-          Tablebases::rank_root_moves(pos, rootMoves);
-
   }
 
   main()->start_searching();
