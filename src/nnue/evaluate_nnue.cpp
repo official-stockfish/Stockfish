@@ -18,7 +18,7 @@
 
 // Code for calculating NNUE evaluation function
 
-#include <androidtream>
+#include <androidstream>
 #include <set>
 
 #include "../evaluate.h"
