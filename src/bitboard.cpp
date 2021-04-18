@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2021 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -22,11 +22,14 @@
 #include "bitboard.h"
 #include "misc.h"
 
+namespace Stockfish {
+
 uint8_t PopCnt16[1 << 16];
 uint8_t SquareDistance[SQUARE_NB][SQUARE_NB];
 
 Bitboard SquareBB[SQUARE_NB];
 Bitboard LineBB[SQUARE_NB][SQUARE_NB];
+Bitboard BetweenBB[SQUARE_NB][SQUARE_NB];
 Bitboard PseudoAttacks[PIECE_TYPE_NB][SQUARE_NB];
 Bitboard PawnAttacks[COLOR_NB][SQUARE_NB];
 
@@ -42,7 +45,6 @@ namespace {
 
 }
 
-
 /// safe_destination() returns the bitboard of target square for the given step
 /// from the given square. If the step is off the board, returns empty bitboard.
 
@@ -55,7 +57,7 @@ inline Bitboard safe_destination(Square s, int step) {
 /// Bitboards::pretty() returns an ASCII representation of a bitboard suitable
 /// to be printed to standard output. Useful for debugging.
 
-const std::string Bitboards::pretty(Bitboard b) {
+std::string Bitboards::pretty(Bitboard b) {
 
   std::string s = "+---+---+---+---+---+---+---+---+\n";
 
@@ -106,11 +108,16 @@ void Bitboards::init() {
 
       for (PieceType pt : { BISHOP, ROOK })
           for (Square s2 = SQ_A1; s2 <= SQ_H8; ++s2)
+          {
               if (PseudoAttacks[pt][s1] & s2)
-                  LineBB[s1][s2] = (attacks_bb(pt, s1, 0) & attacks_bb(pt, s2, 0)) | s1 | s2;
+              {
+                  LineBB[s1][s2]    = (attacks_bb(pt, s1, 0) & attacks_bb(pt, s2, 0)) | s1 | s2;
+                  BetweenBB[s1][s2] = (attacks_bb(pt, s1, square_bb(s2)) & attacks_bb(pt, s2, square_bb(s1)));
+              }
+              BetweenBB[s1][s2] |= s2;
+          }
   }
 }
-
 
 namespace {
 
@@ -123,7 +130,7 @@ namespace {
     for (Direction d : (pt == ROOK ? RookDirections : BishopDirections))
     {
         Square s = sq;
-        while(safe_destination(s, d) && !(occupied & s))
+        while (safe_destination(s, d) && !(occupied & s))
             attacks |= (s += d);
     }
 
@@ -211,3 +218,5 @@ namespace {
     }
   }
 }
+
+} // namespace Stockfish

@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2021 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -62,6 +62,8 @@ typedef bool(*fun3_t)(HANDLE, CONST GROUP_AFFINITY*, PGROUP_AFFINITY);
 using namespace std;
 
 SynchronizedRegionLogger sync_region_cout(std::cout);
+
+namespace Stockfish {
 
 namespace {
 
@@ -140,7 +142,7 @@ public:
 /// the program was compiled) or "Stockfish <Version>", depending on whether
 /// Version is empty.
 
-const string engine_info(bool to_uci) {
+string engine_info(bool to_uci) {
 
   const string months("Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec");
   string month, day, year;
@@ -163,7 +165,7 @@ const string engine_info(bool to_uci) {
 
 /// compiler_info() returns a string trying to describe the compiler we use
 
-const std::string compiler_info() {
+std::string compiler_info() {
 
   #define stringify2(x) #x
   #define stringify(x) stringify2(x)
@@ -363,7 +365,11 @@ void std_aligned_free(void* ptr) {
 
 #if defined(_WIN32)
 
-static void* aligned_large_pages_alloc_win(size_t allocSize) {
+static void* aligned_large_pages_alloc_windows(size_t allocSize) {
+
+  #if !defined(_WIN64)
+    return nullptr;
+  #else
 
   HANDLE hProcessToken { };
   LUID luid { };
@@ -406,12 +412,14 @@ static void* aligned_large_pages_alloc_win(size_t allocSize) {
   CloseHandle(hProcessToken);
 
   return mem;
+
+  #endif
 }
 
 void* aligned_large_pages_alloc(size_t allocSize) {
 
   // Try to allocate large pages
-  void* mem = aligned_large_pages_alloc_win(allocSize);
+  void* mem = aligned_large_pages_alloc_windows(allocSize);
 
   // Fall back to regular, page aligned, allocation if necessary
   if (!mem)
@@ -451,8 +459,9 @@ void aligned_large_pages_free(void* mem) {
   if (mem && !VirtualFree(mem, 0, MEM_RELEASE))
   {
       DWORD err = GetLastError();
-      std::cerr << "Failed to free transposition table. Error code: 0x" <<
-          std::hex << err << std::dec << std::endl;
+      std::cerr << "Failed to free large page memory. Error code: 0x"
+                << std::hex << err
+                << std::dec << std::endl;
       exit(EXIT_FAILURE);
   }
 }
@@ -628,6 +637,7 @@ void init(int argc, char* argv[]) {
 
 
 } // namespace CommandLine
+
 // Returns a string that represents the current time. (Used when learning evaluation functions)
 std::string now_string()
 {
@@ -734,3 +744,5 @@ int write_memory_to_file(std::string filename, void* ptr, uint64_t size)
     fs.close();
     return 0;
 }
+
+} // namespace Stockfish

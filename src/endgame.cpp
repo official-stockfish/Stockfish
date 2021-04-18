@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2021 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -21,6 +21,8 @@
 #include "bitboard.h"
 #include "endgame.h"
 #include "movegen.h"
+
+namespace Stockfish {
 
 namespace {
 
@@ -553,8 +555,8 @@ ScaleFactor Endgame<KRPPKRP>::operator()(const Position& pos) const {
   assert(verify_material(pos, strongSide, RookValueMg, 2));
   assert(verify_material(pos, weakSide,   RookValueMg, 1));
 
-  Square strongPawn1 = pos.squares<PAWN>(strongSide)[0];
-  Square strongPawn2 = pos.squares<PAWN>(strongSide)[1];
+  Square strongPawn1 = lsb(pos.pieces(strongSide, PAWN));
+  Square strongPawn2 = msb(pos.pieces(strongSide, PAWN));
   Square weakKing = pos.square<KING>(weakSide);
 
   // Does the stronger side have a passed pawn?
@@ -638,8 +640,8 @@ ScaleFactor Endgame<KBPPKB>::operator()(const Position& pos) const {
       return SCALE_FACTOR_NONE;
 
   Square weakKing = pos.square<KING>(weakSide);
-  Square strongPawn1 = pos.squares<PAWN>(strongSide)[0];
-  Square strongPawn2 = pos.squares<PAWN>(strongSide)[1];
+  Square strongPawn1 = lsb(pos.pieces(strongSide, PAWN));
+  Square strongPawn2 = msb(pos.pieces(strongSide, PAWN));
   Square blockSq1, blockSq2;
 
   if (relative_rank(strongSide, strongPawn1) > relative_rank(strongSide, strongPawn2))
@@ -741,3 +743,5 @@ ScaleFactor Endgame<KPKP>::operator()(const Position& pos) const {
   // it's probably at least a draw even with the pawn.
   return Bitbases::probe(strongKing, strongPawn, weakKing, us) ? SCALE_FACTOR_NONE : SCALE_FACTOR_DRAW;
 }
+
+} // namespace Stockfish

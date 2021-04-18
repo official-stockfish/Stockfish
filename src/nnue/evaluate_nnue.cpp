@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2021 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -38,28 +38,7 @@
 
 #include "evaluate_nnue.h"
 
-namespace Eval::NNUE {
-
-  const uint32_t kpp_board_index[PIECE_NB][COLOR_NB] = {
-   // convention: W - us, B - them
-   // viewed from other side, W and B are reversed
-      { PS_NONE,     PS_NONE     },
-      { PS_W_PAWN,   PS_B_PAWN   },
-      { PS_W_KNIGHT, PS_B_KNIGHT },
-      { PS_W_BISHOP, PS_B_BISHOP },
-      { PS_W_ROOK,   PS_B_ROOK   },
-      { PS_W_QUEEN,  PS_B_QUEEN  },
-      { PS_W_KING,   PS_B_KING   },
-      { PS_NONE,     PS_NONE     },
-      { PS_NONE,     PS_NONE     },
-      { PS_B_PAWN,   PS_W_PAWN   },
-      { PS_B_KNIGHT, PS_W_KNIGHT },
-      { PS_B_BISHOP, PS_W_BISHOP },
-      { PS_B_ROOK,   PS_W_ROOK   },
-      { PS_B_QUEEN,  PS_W_QUEEN  },
-      { PS_B_KING,   PS_W_KING   },
-      { PS_NONE,     PS_NONE     }
-  };
+namespace Stockfish::Eval::NNUE {
 
   // Input feature converter
   LargePagePtr<FeatureTransformer> feature_transformer;
@@ -293,66 +272,4 @@ void init() {
     }
   }
 
-#undef stringify2
-#undef stringify
-}
-
-/// NNUE::verify() verifies that the last net used was loaded successfully
-void verify_eval_file_loaded() {
-
-  std::string eval_file = std::string(Options["EvalFile"]);
-
-  if (useNNUE != UseNNUEMode::False && eval_file_loaded != eval_file)
-  {
-    UCI::OptionsMap defaults;
-    UCI::init(defaults);
-
-    std::string msg1 = "If the UCI option \"Use NNUE\" is set to true, network evaluation parameters compatible with the engine must be available.";
-    std::string msg2 = "The option is set to true, but the network file " + eval_file + " was not loaded successfully.";
-    std::string msg3 = "The UCI option EvalFile might need to specify the full path, including the directory name, to the network file.";
-    std::string msg4 = "The default net can be downloaded from: https://tests.stockfishchess.org/api/nn/" + std::string(defaults["EvalFile"]);
-    std::string msg5 = "The engine will be terminated now.";
-
-    sync_cout << "info string ERROR: " << msg1 << sync_endl;
-    sync_cout << "info string ERROR: " << msg2 << sync_endl;
-    sync_cout << "info string ERROR: " << msg3 << sync_endl;
-    sync_cout << "info string ERROR: " << msg4 << sync_endl;
-    sync_cout << "info string ERROR: " << msg5 << sync_endl;
-
-    std::exit(EXIT_FAILURE);
-  }
-
-  if (useNNUE != UseNNUEMode::False)
-    sync_cout << "info string NNUE evaluation using " << eval_file << " enabled" << sync_endl;
-  else
-    sync_cout << "info string classical evaluation enabled" << sync_endl;
-}
-
-/// In training we override eval file so this is useful.
-void verify_any_net_loaded() {
-
-  if (!Options["SkipLoadingEval"] && useNNUE != UseNNUEMode::False && eval_file_loaded.empty())
-  {
-    UCI::OptionsMap defaults;
-    UCI::init(defaults);
-
-    std::string msg1 = "If the UCI option \"Use NNUE\" is set to true, network evaluation parameters compatible with the engine must be available.";
-    std::string msg2 = "The option is set to true, but the network file was not loaded successfully.";
-    std::string msg3 = "The UCI option EvalFile might need to specify the full path, including the directory name, to the network file.";
-    std::string msg5 = "The engine will be terminated now.";
-
-    sync_cout << "info string ERROR: " << msg1 << sync_endl;
-    sync_cout << "info string ERROR: " << msg2 << sync_endl;
-    sync_cout << "info string ERROR: " << msg3 << sync_endl;
-    sync_cout << "info string ERROR: " << msg5 << sync_endl;
-
-    std::exit(EXIT_FAILURE);
-  }
-
-  if (useNNUE != UseNNUEMode::False)
-    sync_cout << "info string NNUE evaluation using " << eval_file_loaded << " enabled" << sync_endl;
-  else
-    sync_cout << "info string classical evaluation enabled" << sync_endl;
-}
-
-} // namespace Eval::NNUE
+} // namespace Stockfish::Eval::NNUE

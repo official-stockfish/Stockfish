@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2021 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -16,19 +16,23 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+
+#include "psqt.h"
+
 #include <algorithm>
 
-#include "types.h"
 #include "bitboard.h"
+#include "types.h"
 
-namespace PSQT {
+namespace Stockfish {
 
-#define S(mg, eg) make_score(mg, eg)
+namespace
+{
 
-// Bonus[PieceType][Square / 2] contains Piece-Square scores. For each piece
-// type on a given square a (middlegame, endgame) score pair is assigned. Table
-// is defined for files A..D and white side: it is symmetric for black side and
-// second half of the files.
+auto constexpr S = make_score;
+
+// 'Bonus' contains Piece-Square parameters.
+// Scores are explicit for files A to D, implicitly mirrored for E to H.
 constexpr Score Bonus[][RANK_NB][int(FILE_NB) / 2] = {
   { },
   { },
@@ -43,14 +47,14 @@ constexpr Score Bonus[][RANK_NB][int(FILE_NB) / 2] = {
    { S(-201,-100), S(-83,-88), S(-56,-56), S(-26,-17) }
   },
   { // Bishop
-   { S(-53,-57), S( -5,-30), S( -8,-37), S(-23,-12) },
-   { S(-15,-37), S(  8,-13), S( 19,-17), S(  4,  1) },
-   { S( -7,-16), S( 21, -1), S( -5, -2), S( 17, 10) },
-   { S( -5,-20), S( 11, -6), S( 25,  0), S( 39, 17) },
-   { S(-12,-17), S( 29, -1), S( 22,-14), S( 31, 15) },
-   { S(-16,-30), S(  6,  6), S(  1,  4), S( 11,  6) },
-   { S(-17,-31), S(-14,-20), S(  5, -1), S(  0,  1) },
-   { S(-48,-46), S(  1,-42), S(-14,-37), S(-23,-24) }
+   { S(-37,-40), S(-4 ,-21), S( -6,-26), S(-16, -8) },
+   { S(-11,-26), S(  6, -9), S( 13,-12), S(  3,  1) },
+   { S(-5 ,-11), S( 15, -1), S( -4, -1), S( 12,  7) },
+   { S(-4 ,-14), S(  8, -4), S( 18,  0), S( 27, 12) },
+   { S(-8 ,-12), S( 20, -1), S( 15,-10), S( 22, 11) },
+   { S(-11,-21), S(  4,  4), S(  1,  3), S(  8,  4) },
+   { S(-12,-22), S(-10,-14), S(  4, -1), S(  0,  1) },
+   { S(-34,-32), S(  1,-29), S(-10,-26), S(-16,-17) }
   },
   { // Rook
    { S(-31, -9), S(-20,-13), S(-14,-10), S(-5, -9) },
@@ -64,13 +68,13 @@ constexpr Score Bonus[][RANK_NB][int(FILE_NB) / 2] = {
   },
   { // Queen
    { S( 3,-69), S(-5,-57), S(-5,-47), S( 4,-26) },
-   { S(-3,-55), S( 5,-31), S( 8,-22), S(12, -4) },
+   { S(-3,-54), S( 5,-31), S( 8,-22), S(12, -4) },
    { S(-3,-39), S( 6,-18), S(13, -9), S( 7,  3) },
    { S( 4,-23), S( 5, -3), S( 9, 13), S( 8, 24) },
    { S( 0,-29), S(14, -6), S(12,  9), S( 5, 21) },
-   { S(-4,-38), S(10,-18), S( 6,-12), S( 8,  1) },
+   { S(-4,-38), S(10,-18), S( 6,-11), S( 8,  1) },
    { S(-5,-50), S( 6,-27), S(10,-24), S( 8, -8) },
-   { S(-2,-75), S(-2,-52), S( 1,-43), S(-2,-36) }
+   { S(-2,-74), S(-2,-52), S( 1,-43), S(-2,-34) }
   },
   { // King
    { S(271,  1), S(327, 45), S(271, 85), S(198, 76) },
@@ -87,18 +91,21 @@ constexpr Score Bonus[][RANK_NB][int(FILE_NB) / 2] = {
 constexpr Score PBonus[RANK_NB][FILE_NB] =
   { // Pawn (asymmetric distribution)
    { },
-   { S(  3,-10), S(  3, -6), S( 10, 10), S( 19,  0), S( 16, 14), S( 19,  7), S(  7, -5), S( -5,-19) },
-   { S( -9,-10), S(-15,-10), S( 11,-10), S( 15,  4), S( 32,  4), S( 22,  3), S(  5, -6), S(-22, -4) },
-   { S( -4,  6), S(-23, -2), S(  6, -8), S( 20, -4), S( 40,-13), S( 17,-12), S(  4,-10), S( -8, -9) },
-   { S( 13, 10), S(  0,  5), S(-13,  4), S(  1, -5), S( 11, -5), S( -2, -5), S(-13, 14), S(  5,  9) },
-   { S(  5, 28), S(-12, 20), S( -7, 21), S( 22, 28), S( -8, 30), S( -5,  7), S(-15,  6), S( -8, 13) },
-   { S( -7,  0), S(  7,-11), S( -3, 12), S(-13, 21), S(  5, 25), S(-16, 19), S( 10,  4), S( -8,  7) }
+   { S(  2, -8), S(  4, -6), S( 11,  9), S( 18,  5), S( 16, 16), S( 21,  6), S(  9, -6), S( -3,-18) },
+   { S( -9, -9), S(-15, -7), S( 11,-10), S( 15,  5), S( 31,  2), S( 23,  3), S(  6, -8), S(-20, -5) },
+   { S( -3,  7), S(-20,  1), S(  8, -8), S( 19, -2), S( 39,-14), S( 17,-13), S(  2,-11), S( -5, -6) },
+   { S( 11, 12), S( -4,  6), S(-11,  2), S(  2, -6), S( 11, -5), S(  0, -4), S(-12, 14), S(  5,  9) },
+   { S(  3, 27), S(-11, 18), S( -6, 19), S( 22, 29), S( -8, 30), S( -5,  9), S(-14,  8), S(-11, 14) },
+   { S( -7, -1), S(  6,-14), S( -2, 13), S(-11, 22), S(  4, 24), S(-14, 17), S( 10,  7), S( -9,  7) }
   };
 
-#undef S
+} // namespace
+
+
+namespace PSQT
+{
 
 Score psq[PIECE_NB][SQUARE_NB];
-
 
 // PSQT::init() initializes piece-square tables: the white halves of the tables are
 // copied from Bonus[] and PBonus[], adding the piece value, then the black halves of
@@ -107,16 +114,18 @@ void init() {
 
   for (Piece pc : {W_PAWN, W_KNIGHT, W_BISHOP, W_ROOK, W_QUEEN, W_KING})
   {
-      Score score = make_score(PieceValue[MG][pc], PieceValue[EG][pc]);
+    Score score = make_score(PieceValue[MG][pc], PieceValue[EG][pc]);
 
-      for (Square s = SQ_A1; s <= SQ_H8; ++s)
-      {
-          File f = File(edge_distance(file_of(s)));
-          psq[ pc][s] = score + (type_of(pc) == PAWN ? PBonus[rank_of(s)][file_of(s)]
-                                                     : Bonus[pc][rank_of(s)][f]);
-          psq[~pc][flip_rank(s)] = -psq[pc][s];
-      }
+    for (Square s = SQ_A1; s <= SQ_H8; ++s)
+    {
+      File f = File(edge_distance(file_of(s)));
+      psq[ pc][s] = score + (type_of(pc) == PAWN ? PBonus[rank_of(s)][file_of(s)]
+                                                 : Bonus[pc][rank_of(s)][f]);
+      psq[~pc][flip_rank(s)] = -psq[pc][s];
+    }
   }
 }
 
 } // namespace PSQT
+
+} // namespace Stockfish

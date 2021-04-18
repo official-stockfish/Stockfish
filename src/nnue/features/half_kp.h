@@ -1,6 +1,6 @@
 /*
-    Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-    Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
+  Stockfish, a UCI chess playing engine derived from Glaurung 2.1
+  Copyright (C) 2004-2021 The Stockfish developers (see AUTHORS file)
 
     Stockfish is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -21,55 +21,36 @@
 
 #include "features_common.h"
 
-#include "evaluate.h"
+namespace Stockfish::Eval::NNUE::Features {
 
-//Definition of input features HalfKP of NNUE evaluation function
-namespace Eval::NNUE::Features {
+  // Feature HalfKP: Combination of the position of own king
+  // and the position of pieces other than kings
+  template <Side AssociatedKing>
+  class HalfKP {
 
-    // Feature HalfKP: Combination of the position of own king
-    // and the position of pieces other than kings
-    template <Side AssociatedKing>
-    class HalfKP {
+   public:
+    // Feature name
+    static constexpr const char* kName = "HalfKP(Friend)";
+    // Hash value embedded in the evaluation file
+    static constexpr std::uint32_t kHashValue =
+        0x5D69D5B9u ^ (AssociatedKing == Side::kFriend);
+    // Number of feature dimensions
+    static constexpr IndexType kDimensions =
+        static_cast<IndexType>(SQUARE_NB) * static_cast<IndexType>(PS_END);
+    // Maximum number of simultaneously active features
+    static constexpr IndexType kMaxActiveDimensions = 30; // Kings don't count
+    // Trigger for full calculation instead of difference calculation
+    static constexpr TriggerEvent kRefreshTrigger = TriggerEvent::kFriendKingMoved;
 
-    public:
-        // Feature name
-        static constexpr const char* kName = (AssociatedKing == Side::kFriend) ?
-            "HalfKP(Friend)" : "HalfKP(Enemy)";
+    // Get a list of indices for active features
+    static void AppendActiveIndices(const Position& pos, Color perspective,
+                                    IndexList* active);
 
-        // Hash value embedded in the evaluation file
-        static constexpr std::uint32_t kHashValue =
-            0x5D69D5B9u ^ (AssociatedKing == Side::kFriend);
+    // Get a list of indices for recently changed features
+    static void AppendChangedIndices(const Position& pos, const DirtyPiece& dp, Color perspective,
+                                     IndexList* removed, IndexList* added);
+  };
 
-        // Number of feature dimensions
-        static constexpr IndexType kDimensions =
-            static_cast<IndexType>(SQUARE_NB) * static_cast<IndexType>(PS_END);
-
-        // Maximum number of simultaneously active features
-        static constexpr IndexType kMaxActiveDimensions = 30; // Kings don't count
-
-        // Trigger for full calculation instead of difference calculation
-        static constexpr TriggerEvent kRefreshTrigger =
-            (AssociatedKing == Side::kFriend) ?
-            TriggerEvent::kFriendKingMoved : TriggerEvent::kEnemyKingMoved;
-
-        // Get a list of indices for active features
-        static void append_active_indices(
-            const Position& pos,
-            Color perspective,
-            IndexList* active);
-
-        // Get a list of indices for recently changed features
-        static void append_changed_indices(
-            const Position& pos,
-            Color perspective,
-            IndexList* removed,
-            IndexList* added);
-
-    private:
-        // Index of a feature for a given king position and another piece on some square
-        static IndexType make_index(Color perspective, Square s, Piece pc, Square sq_k);
-    };
-
-}  // namespace Eval::NNUE::Features
+}  // namespace Stockfish::Eval::NNUE::Features
 
 #endif // #ifndef NNUE_FEATURES_HALF_KP_H_INCLUDED

@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2021 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -23,19 +23,21 @@
 
 #include "types.h"
 
+namespace Stockfish {
+
 namespace Bitbases {
 
 void init();
 bool probe(Square wksq, Square wpsq, Square bksq, Color us);
 
-}
+} // namespace Stockfish::Bitbases
 
 namespace Bitboards {
 
 void init();
-const std::string pretty(Bitboard b);
+std::string pretty(Bitboard b);
 
-}
+} // namespace Stockfish::Bitboards
 
 constexpr Bitboard AllSquares = ~Bitboard(0);
 constexpr Bitboard DarkSquares = 0xAA55AA55AA55AA55ULL;
@@ -73,6 +75,7 @@ extern uint8_t PopCnt16[1 << 16];
 extern uint8_t SquareDistance[SQUARE_NB][SQUARE_NB];
 
 extern Bitboard SquareBB[SQUARE_NB];
+extern Bitboard BetweenBB[SQUARE_NB][SQUARE_NB];
 extern Bitboard LineBB[SQUARE_NB][SQUARE_NB];
 extern Bitboard PseudoAttacks[PIECE_TYPE_NB][SQUARE_NB];
 extern Bitboard PawnAttacks[COLOR_NB][SQUARE_NB];
@@ -209,23 +212,29 @@ constexpr Bitboard adjacent_files_bb(Square s) {
 inline Bitboard line_bb(Square s1, Square s2) {
 
   assert(is_ok(s1) && is_ok(s2));
+
   return LineBB[s1][s2];
 }
 
 
-/// between_bb() returns a bitboard representing squares that are linearly
-/// between the two given squares (excluding the given squares). If the given
-/// squares are not on a same file/rank/diagonal, we return 0. For instance,
-/// between_bb(SQ_C4, SQ_F7) will return a bitboard with squares D5 and E6.
+/// between_bb(s1, s2) returns a bitboard representing the squares in the semi-open
+/// segment between the squares s1 and s2 (excluding s1 but including s2). If the
+/// given squares are not on a same file/rank/diagonal, it returns s2. For instance,
+/// between_bb(SQ_C4, SQ_F7) will return a bitboard with squares D5, E6 and F7, but
+/// between_bb(SQ_E6, SQ_F8) will return a bitboard with the square F8. This trick
+/// allows to generate non-king evasion moves faster: the defending piece must either
+/// interpose itself to cover the check or capture the checking piece.
 
 inline Bitboard between_bb(Square s1, Square s2) {
-  Bitboard b = line_bb(s1, s2) & ((AllSquares << s1) ^ (AllSquares << s2));
-  return b & (b - 1); //exclude lsb
+
+  assert(is_ok(s1) && is_ok(s2));
+
+  return BetweenBB[s1][s2];
 }
 
 
-/// forward_ranks_bb() returns a bitboard representing the squares on the ranks
-/// in front of the given one, from the point of view of the given color. For instance,
+/// forward_ranks_bb() returns a bitboard representing the squares on the ranks in
+/// front of the given one, from the point of view of the given color. For instance,
 /// forward_ranks_bb(BLACK, SQ_D3) will return the 16 squares on ranks 1 and 2.
 
 constexpr Bitboard forward_ranks_bb(Color c, Square s) {
@@ -412,13 +421,20 @@ inline Square msb(Bitboard b) {
 
 #endif
 
+/// least_significant_square_bb() returns the bitboard of the least significant
+/// square of a non-zero bitboard. It is equivalent to square_bb(lsb(bb)).
+
+inline Bitboard least_significant_square_bb(Bitboard b) {
+  assert(b);
+  return b & -b;
+}
 
 /// pop_lsb() finds and clears the least significant bit in a non-zero bitboard
 
-inline Square pop_lsb(Bitboard* b) {
-  assert(*b);
-  const Square s = lsb(*b);
-  *b &= *b - 1;
+inline Square pop_lsb(Bitboard& b) {
+  assert(b);
+  const Square s = lsb(b);
+  b &= b - 1;
   return s;
 }
 
@@ -429,5 +445,7 @@ inline Square frontmost_sq(Color c, Bitboard b) {
   assert(b);
   return c == WHITE ? msb(b) : lsb(b);
 }
+
+} // namespace Stockfish
 
 #endif // #ifndef BITBOARD_H_INCLUDED

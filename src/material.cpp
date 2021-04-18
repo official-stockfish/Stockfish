@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2021 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -24,31 +24,38 @@
 
 using namespace std;
 
+namespace Stockfish {
+
 namespace {
+  #define S(mg, eg) make_score(mg, eg)
 
   // Polynomial material imbalance parameters
 
-  constexpr int QuadraticOurs[][PIECE_TYPE_NB] = {
-    //            OUR PIECES
-    // pair pawn knight bishop rook queen
-    {1438                               }, // Bishop pair
-    {  40,   38                         }, // Pawn
-    {  32,  255, -62                    }, // Knight      OUR PIECES
-    {   0,  104,   4,    0              }, // Bishop
-    { -26,   -2,  47,   105,  -208      }, // Rook
-    {-189,   24, 117,   133,  -134, -6  }  // Queen
+  // One Score parameter for each pair (our piece, another of our pieces)
+  constexpr Score QuadraticOurs[][PIECE_TYPE_NB] = {
+    // OUR PIECE 2
+    // bishop pair    pawn         knight       bishop       rook           queen
+    {S(1419, 1455)                                                                  }, // Bishop pair
+    {S( 101,   28), S( 37,  39)                                                     }, // Pawn
+    {S(  57,   64), S(249, 187), S(-49, -62)                                        }, // Knight      OUR PIECE 1
+    {S(   0,    0), S(118, 137), S( 10,  27), S(  0,   0)                           }, // Bishop
+    {S( -63,  -68), S( -5,   3), S(100,  81), S(132, 118), S(-246, -244)            }, // Rook
+    {S(-210, -211), S( 37,  14), S(147, 141), S(161, 105), S(-158, -174), S(-9,-31) }  // Queen
   };
 
-  constexpr int QuadraticTheirs[][PIECE_TYPE_NB] = {
-    //           THEIR PIECES
-    // pair pawn knight bishop rook queen
-    {                                   }, // Bishop pair
-    {  36,                              }, // Pawn
-    {   9,   63,                        }, // Knight      OUR PIECES
-    {  59,   65,  42,                   }, // Bishop
-    {  46,   39,  24,   -24,            }, // Rook
-    {  97,  100, -42,   137,  268,      }  // Queen
+  // One Score parameter for each pair (our piece, their piece)
+  constexpr Score QuadraticTheirs[][PIECE_TYPE_NB] = {
+    // THEIR PIECE
+    // bishop pair   pawn         knight       bishop       rook         queen
+    {                                                                               }, // Bishop pair
+    {S(  33,  30)                                                                   }, // Pawn
+    {S(  46,  18), S(106,  84)                                                      }, // Knight      OUR PIECE
+    {S(  75,  35), S( 59,  44), S( 60,  15)                                         }, // Bishop
+    {S(  26,  35), S(  6,  22), S( 38,  39), S(-12,  -2)                            }, // Rook
+    {S(  97,  93), S(100, 163), S(-58, -91), S(112, 192), S(276, 225)               }  // Queen
   };
+
+  #undef S
 
   // Endgame evaluation and scaling functions are accessed directly and not through
   // the function maps because they correspond to more than one material hash key.
@@ -67,7 +74,7 @@ namespace {
 
   bool is_KBPsK(const Position& pos, Color us) {
     return   pos.non_pawn_material(us) == BishopValueMg
-          && pos.count<PAWN  >(us) >= 1;
+          && pos.count<PAWN>(us) >= 1;
   }
 
   bool is_KQKRPs(const Position& pos, Color us) {
@@ -82,11 +89,11 @@ namespace {
   /// piece type for both colors.
 
   template<Color Us>
-  int imbalance(const int pieceCount[][PIECE_TYPE_NB]) {
+  Score imbalance(const int pieceCount[][PIECE_TYPE_NB]) {
 
     constexpr Color Them = ~Us;
 
-    int bonus = 0;
+    Score bonus = SCORE_ZERO;
 
     // Second-degree polynomial material imbalance, by Tord Romstad
     for (int pt1 = NO_PIECE_TYPE; pt1 <= QUEEN; ++pt1)
@@ -213,8 +220,10 @@ Entry* probe(const Position& pos) {
   { pos.count<BISHOP>(BLACK) > 1, pos.count<PAWN>(BLACK), pos.count<KNIGHT>(BLACK),
     pos.count<BISHOP>(BLACK)    , pos.count<ROOK>(BLACK), pos.count<QUEEN >(BLACK) } };
 
-  e->value = int16_t((imbalance<WHITE>(pieceCount) - imbalance<BLACK>(pieceCount)) / 16);
+  e->score = (imbalance<WHITE>(pieceCount) - imbalance<BLACK>(pieceCount)) / 16;
   return e;
 }
 
 } // namespace Material
+
+} // namespace Stockfish

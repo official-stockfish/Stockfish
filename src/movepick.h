@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2021 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -26,6 +26,8 @@
 #include "movegen.h"
 #include "position.h"
 #include "types.h"
+
+namespace Stockfish {
 
 /// StatsEntry stores the stat table value. It is usually a number but could
 /// be a move or even a nested history. We use a class instead of naked value
@@ -84,7 +86,7 @@ enum StatsType { NoCaptures, Captures };
 /// unsuccessful during the current search, and is used for reduction and move
 /// ordering decisions. It uses 2 tables (one for each color) indexed by
 /// the move's from and to squares, see www.chessprogramming.org/Butterfly_Boards
-typedef Stats<int16_t, 10692, COLOR_NB, int(SQUARE_NB) * int(SQUARE_NB)> ButterflyHistory;
+typedef Stats<int16_t, 13365, COLOR_NB, int(SQUARE_NB) * int(SQUARE_NB)> ButterflyHistory;
 
 /// At higher depths LowPlyHistory records successful quiet moves near the root
 /// and quiet moves which are/were in the PV (ttPv). It is cleared with each new
@@ -108,12 +110,12 @@ typedef Stats<int16_t, 29952, PIECE_NB, SQUARE_NB> PieceToHistory;
 typedef Stats<PieceToHistory, NOT_USED, PIECE_NB, SQUARE_NB> ContinuationHistory;
 
 
-/// MovePicker class is used to pick one pseudo legal move at a time from the
+/// MovePicker class is used to pick one pseudo-legal move at a time from the
 /// current position. The most important method is next_move(), which returns a
-/// new pseudo legal move each time it is called, until there are no moves left,
-/// when MOVE_NONE is returned. In order to improve the efficiency of the alpha
-/// beta algorithm, MovePicker attempts to return the moves which are most likely
-/// to get a cut-off first.
+/// new pseudo-legal move each time it is called, until there are no moves left,
+/// when MOVE_NONE is returned. In order to improve the efficiency of the
+/// alpha-beta algorithm, MovePicker attempts to return the moves which are most
+/// likely to get a cut-off first.
 class MovePicker {
 
   enum PickType { Next, Best };
@@ -155,5 +157,7 @@ private:
   int ply;
   ExtMove moves[MAX_MOVES];
 };
+
+} // namespace Stockfish
 
 #endif // #ifndef MOVEPICK_H_INCLUDED

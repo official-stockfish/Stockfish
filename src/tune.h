@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2021 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -23,6 +23,8 @@
 #include <string>
 #include <type_traits>
 #include <vector>
+
+namespace Stockfish {
 
 typedef std::pair<int, int> Range; // Option's min-max values
 typedef Range (RangeFun) (int);
@@ -130,9 +132,9 @@ class Tune {
     SetRange range;
   };
 
-  // Our facilty to fill the container, each Entry corresponds to a parameter to tune.
-  // We use variadic templates to deal with an unspecified number of entries, each one
-  // of a possible different type.
+  // Our facility to fill the container, each Entry corresponds to a parameter
+  // to tune. We use variadic templates to deal with an unspecified number of
+  // entries, each one of a possible different type.
   static std::string next(std::string& names, bool pop = true);
 
   int add(const SetRange&, std::string&&) { return 0; }
@@ -189,5 +191,7 @@ public:
 #define CONDITION(x) (Conditions.binary[__COUNTER__] || (x))
 #define TUNE_CONDITIONS() int UNIQUE(c, __LINE__) = (Conditions.init(__COUNTER__), 0); \
                           TUNE(Conditions, set_conditions)
+
+} // namespace Stockfish
 
 #endif // #ifndef TUNE_H_INCLUDED

@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2021 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -23,6 +23,8 @@
 
 #include "types.h"
 
+namespace Stockfish {
+
 class Position;
 
 namespace Eval {
@@ -32,8 +34,10 @@ namespace Eval {
   // The default net name MUST follow the format nn-[SHA256 first 12 digits].nnue
   // for the build process (profile-build and fishtest) to work. Do not change the
   // name of the macro, as it is used in the Makefile.
-  #define EvalFileDefaultName   "nn-c3ca321c51c9.nnue"
+  #define EvalFileDefaultName   "nn-62ef826d1a6d.nnue"
 
 } // namespace Eval
+
+} // namespace Stockfish
 
 #endif // #ifndef EVALUATE_H_INCLUDED

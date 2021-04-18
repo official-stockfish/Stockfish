@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2021 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -25,6 +25,8 @@
 #include "movepick.h"
 #include "types.h"
 #include "uci.h"
+
+namespace Stockfish {
 
 class Position;
 
@@ -117,5 +119,7 @@ ValueAndPV qsearch(Position& pos);
 ValueAndPV search(Position& pos, int depth_, size_t multiPV = 1, uint64_t nodesLimit = 0);
 
 }
+
+} // namespace Stockfish
 
 #endif // #ifndef SEARCH_H_INCLUDED

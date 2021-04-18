@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2021 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@
 
 #include <memory>
 
-namespace Eval::NNUE {
+namespace Stockfish::Eval::NNUE {
 
   enum struct UseNNUEMode
   {
@@ -63,48 +63,6 @@ namespace Eval::NNUE {
   template <typename T>
   using LargePagePtr = std::unique_ptr<T, LargePageDeleter<T>>;
 
-  // Input feature converter
-  extern LargePagePtr<FeatureTransformer> feature_transformer;
-
-  // Evaluation function
-  extern AlignedPtr<Network> network;
-
-  // Evaluation function file name
-  extern std::string fileName;
-
-  // Saved evaluation function file name
-  extern std::string savedfileName;
-
-  extern UseNNUEMode useNNUE;
-
-  extern std::string eval_file_loaded;
-
-  // Get a string that represents the structure of the evaluation function
-  std::string get_architecture_string();
-
-  std::string get_layers_info();
-
-  // read the header
-  bool read_header(std::istream& stream,
-      std::uint32_t* hash_value, std::string* architecture);
-
-  // write the header
-  bool write_header(std::ostream& stream,
-      std::uint32_t hash_value, const std::string& architecture);
-
-  // read evaluation function parameters
-  bool ReadParameters(std::istream& stream);
-
-  // write evaluation function parameters
-  bool WriteParameters(std::ostream& stream);
-
-  Value evaluate(const Position& pos);
-  bool load_eval(std::string name, std::istream& stream);
-  void init();
-
-  void verify_eval_file_loaded();
-  void verify_any_net_loaded();
-
-}  // namespace Eval::NNUE
+}  // namespace Stockfish::Eval::NNUE
 
 #endif // #ifndef NNUE_EVALUATE_NNUE_H_INCLUDED
