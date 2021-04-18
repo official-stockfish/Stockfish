@@ -1,17 +1,14 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2021 The Stockfish developers (see AUTHORS file)
-
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
   the Free Software Foundation, either version 3 of the License, or
   (at your option) any later version.
-
   Stockfish is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
   GNU General Public License for more details.
-
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
@@ -25,8 +22,7 @@
 #include "nnue_architecture.h"
 #include "features/index_list.h"
 
-#include <cstring>
-#include <string>
+#include <cstring> // std::memset()
 
 namespace Stockfish::Eval::NNUE {
 
@@ -41,7 +37,6 @@ namespace Stockfish::Eval::NNUE {
   #define vec_store(a,b) _mm512_store_si512(a,b)
   #define vec_add_16(a,b) _mm512_add_epi16(a,b)
   #define vec_sub_16(a,b) _mm512_sub_epi16(a,b)
-  #define vec_zero _mm512_setzero_si512()
   static constexpr IndexType kNumRegs = 8; // only 8 are needed
 
   #elif USE_AVX2
@@ -50,7 +45,6 @@ namespace Stockfish::Eval::NNUE {
   #define vec_store(a,b) _mm256_store_si256(a,b)
   #define vec_add_16(a,b) _mm256_add_epi16(a,b)
   #define vec_sub_16(a,b) _mm256_sub_epi16(a,b)
-  #define vec_zero _mm256_setzero_si256()
   static constexpr IndexType kNumRegs = 16;
 
   #elif USE_SSE2
@@ -59,7 +53,6 @@ namespace Stockfish::Eval::NNUE {
   #define vec_store(a,b) *(a)=(b)
   #define vec_add_16(a,b) _mm_add_epi16(a,b)
   #define vec_sub_16(a,b) _mm_sub_epi16(a,b)
-  #define vec_zero _mm_setzero_si128()
   static constexpr IndexType kNumRegs = Is64Bit ? 16 : 8;
 
   #elif USE_MMX
@@ -68,7 +61,6 @@ namespace Stockfish::Eval::NNUE {
   #define vec_store(a,b) *(a)=(b)
   #define vec_add_16(a,b) _mm_add_pi16(a,b)
   #define vec_sub_16(a,b) _mm_sub_pi16(a,b)
-  #define vec_zero _mm_setzero_si64()
   static constexpr IndexType kNumRegs = 8;
 
   #elif USE_NEON
@@ -77,7 +69,6 @@ namespace Stockfish::Eval::NNUE {
   #define vec_store(a,b) *(a)=(b)
   #define vec_add_16(a,b) vaddq_s16(a,b)
   #define vec_sub_16(a,b) vsubq_s16(a,b)
-  #define vec_zero {0}
   static constexpr IndexType kNumRegs = 16;
 
   #else
@@ -109,31 +100,10 @@ namespace Stockfish::Eval::NNUE {
     static constexpr std::size_t kBufferSize =
         kOutputDimensions * sizeof(OutputType);
 
-    static constexpr int kLayerIndex = 0;
-
     // Hash value embedded in the evaluation file
     static constexpr std::uint32_t GetHashValue() {
 
       return RawFeatures::kHashValue ^ kOutputDimensions;
-    }
-
-    static std::string get_name() {
-      return RawFeatures::get_name() + "[" +
-          std::to_string(kInputDimensions) + "->" +
-          std::to_string(kHalfDimensions) + "x2]";
-    }
-
-    // a string representing the structure
-    static std::string get_structure_string() {
-      return get_name();
-    }
-
-    static std::string get_layers_info() {
-      std::string info = "  - ";
-      info += std::to_string(kLayerIndex);
-      info += " - ";
-      info += get_name();
-      return info;
     }
 
     // Read network parameters
@@ -146,38 +116,11 @@ namespace Stockfish::Eval::NNUE {
       return !stream.fail();
     }
 
-    // write parameters
-    bool WriteParameters(std::ostream& stream) const {
-      stream.write(reinterpret_cast<const char*>(biases_),
-          kHalfDimensions * sizeof(BiasType));
-
-      stream.write(reinterpret_cast<const char*>(weights_),
-          kHalfDimensions * kInputDimensions * sizeof(WeightType));
-
-      return !stream.fail();
-    }
-
-    // Proceed with the difference calculation if possible
-    bool update_accumulator_if_possible(const Position& pos) const {
-
-      const auto now = pos.state();
-      if (now->accumulator.computed_accumulation)
-        return true;
-
-      const auto prev = now->previous;
-      if (prev && prev->accumulator.computed_accumulation) {
-        update_accumulator(pos);
-        return true;
-      }
-
-      return false;
-    }
-
     // Convert input features
     void Transform(const Position& pos, OutputType* output) const {
 
-      if (!update_accumulator_if_possible(pos))
-        refresh_accumulator(pos);
+      UpdateAccumulator(pos, WHITE);
+      UpdateAccumulator(pos, BLACK);
 
       const auto& accumulation = pos.state()->accumulator.accumulation;
 
@@ -221,13 +164,6 @@ namespace Stockfish::Eval::NNUE {
               &reinterpret_cast<const __m512i*>(accumulation[perspectives[p]][0])[j * 2 + 0]);
           __m512i sum1 = _mm512_load_si512(
               &reinterpret_cast<const __m512i*>(accumulation[perspectives[p]][0])[j * 2 + 1]);
-          for (IndexType i = 1; i < kRefreshTriggers.size(); ++i) {
-              sum0 = _mm512_add_epi16(sum0, reinterpret_cast<const __m512i*>(
-                  accumulation[perspectives[p]][i])[j * 2 + 0]);
-              sum1 = _mm512_add_epi16(sum1, reinterpret_cast<const __m512i*>(
-                  accumulation[perspectives[p]][i])[j * 2 + 1]);
-          }
-
           _mm512_store_si512(&out[j], _mm512_permutexvar_epi64(kControl,
               _mm512_max_epi8(_mm512_packs_epi16(sum0, sum1), kZero)));
         }
@@ -239,13 +175,6 @@ namespace Stockfish::Eval::NNUE {
               &reinterpret_cast<const __m256i*>(accumulation[perspectives[p]][0])[j * 2 + 0]);
           __m256i sum1 = _mm256_load_si256(
               &reinterpret_cast<const __m256i*>(accumulation[perspectives[p]][0])[j * 2 + 1]);
-          for (IndexType i = 1; i < kRefreshTriggers.size(); ++i) {
-              sum0 = _mm256_add_epi16(sum0, reinterpret_cast<const __m256i*>(
-                  accumulation[perspectives[p]][i])[j * 2 + 0]);
-              sum1 = _mm256_add_epi16(sum1, reinterpret_cast<const __m256i*>(
-                  accumulation[perspectives[p]][i])[j * 2 + 1]);
-          }
-
           _mm256_store_si256(&out[j], _mm256_permute4x64_epi64(_mm256_max_epi8(
               _mm256_packs_epi16(sum0, sum1), kZero), kControl));
         }
@@ -257,13 +186,6 @@ namespace Stockfish::Eval::NNUE {
               accumulation[perspectives[p]][0])[j * 2 + 0]);
           __m128i sum1 = _mm_load_si128(&reinterpret_cast<const __m128i*>(
               accumulation[perspectives[p]][0])[j * 2 + 1]);
-          for (IndexType i = 1; i < kRefreshTriggers.size(); ++i) {
-            sum0 = _mm_add_epi16(sum0, reinterpret_cast<const __m128i*>(
-                accumulation[perspectives[p]][i])[j * 2 + 0]);
-            sum1 = _mm_add_epi16(sum1, reinterpret_cast<const __m128i*>(
-                accumulation[perspectives[p]][i])[j * 2 + 1]);
-          }
-
       const __m128i packedbytes = _mm_packs_epi16(sum0, sum1);
 
           _mm_store_si128(&out[j],
@@ -284,13 +206,6 @@ namespace Stockfish::Eval::NNUE {
               accumulation[perspectives[p]][0])[j * 2 + 0]);
           __m64 sum1 = *(&reinterpret_cast<const __m64*>(
               accumulation[perspectives[p]][0])[j * 2 + 1]);
-          for (IndexType i = 1; i < kRefreshTriggers.size(); ++i) {
-              sum0 = _mm_add_pi16(sum0, reinterpret_cast<const __m64*>(
-                  accumulation[perspectives[p]][i])[j * 2 + 0]);
-              sum1 = _mm_add_pi16(sum1, reinterpret_cast<const __m64*>(
-                  accumulation[perspectives[p]][i])[j * 2 + 1]);
-          }
-
           const __m64 packedbytes = _mm_packs_pi16(sum0, sum1);
           out[j] = _mm_subs_pi8(_mm_adds_pi8(packedbytes, k0x80s), k0x80s);
         }
@@ -300,22 +215,12 @@ namespace Stockfish::Eval::NNUE {
         for (IndexType j = 0; j < kNumChunks; ++j) {
           int16x8_t sum = reinterpret_cast<const int16x8_t*>(
               accumulation[perspectives[p]][0])[j];
-
-          for (IndexType i = 1; i < kRefreshTriggers.size(); ++i) {
-              sum = vaddq_s16(sum, reinterpret_cast<const int16x8_t*>(
-                  accumulation[perspectives[p]][i])[j]);
-          }
-
           out[j] = vmax_s8(vqmovn_s16(sum), kZero);
         }
 
   #else
         for (IndexType j = 0; j < kHalfDimensions; ++j) {
           BiasType sum = accumulation[static_cast<int>(perspectives[p])][0][j];
-          for (IndexType i = 1; i < kRefreshTriggers.size(); ++i) {
-              sum += accumulation[static_cast<int>(perspectives[p])][i][j];
-          }
-
           output[offset + j] = static_cast<OutputType>(
               std::max<int>(0, std::min<int>(127, sum)));
         }
@@ -328,182 +233,176 @@ namespace Stockfish::Eval::NNUE {
     }
 
    private:
-    // Calculate cumulative value without using difference calculation
-    void refresh_accumulator(const Position& pos) const {
+    void UpdateAccumulator(const Position& pos, const Color c) const {
 
   #ifdef VECTOR
       // Gcc-10.2 unnecessarily spills AVX2 registers if this array
       // is defined in the VECTOR code below, once in each branch
       vec_t acc[kNumRegs];
   #endif
-      auto& accumulator = pos.state()->accumulator;
-      for (IndexType i = 0; i < kRefreshTriggers.size(); ++i) {
-        Features::IndexList active_indices[2];
-        RawFeatures::append_active_indices(pos, kRefreshTriggers[i],
-                                           active_indices);
-          for (Color perspective : { WHITE, BLACK }) {
-#ifdef VECTOR
-            for (IndexType j = 0; j < kHalfDimensions / kTileHeight; ++j) {
-              auto accTile = reinterpret_cast<vec_t*>(
-                  &accumulator.accumulation[perspective][i][j * kTileHeight]);
 
-              if (i == 0) {
-                auto biasesTile = reinterpret_cast<const vec_t*>(
-                    &biases_[j * kTileHeight]);
-                for (IndexType k = 0; k < kNumRegs; ++k)
-                  acc[k] = biasesTile[k];
-              } else {
-                for (IndexType k = 0; k < kNumRegs; ++k)
-                  acc[k] = vec_zero;
-              }
+      // Look for a usable accumulator of an earlier position. We keep track
+      // of the estimated gain in terms of features to be added/subtracted.
+      StateInfo *st = pos.state(), *next = nullptr;
+      int gain = pos.count<ALL_PIECES>() - 2;
+      while (st->accumulator.state[c] == EMPTY)
+      {
+        auto& dp = st->dirtyPiece;
+        // The first condition tests whether an incremental update is
+        // possible at all: if this side's king has moved, it is not possible.
+        static_assert(std::is_same_v<RawFeatures::SortedTriggerSet,
+              Features::CompileTimeList<Features::TriggerEvent, Features::TriggerEvent::kFriendKingMoved>>,
+              "Current code assumes that only kFriendlyKingMoved refresh trigger is being used.");
+        if (   dp.piece[0] == make_piece(c, KING)
+            || (gain -= dp.dirty_num + 1) < 0)
+          break;
+        next = st;
+        st = st->previous;
+      }
 
-              for (const auto index : active_indices[perspective]) {
-                const IndexType offset = kHalfDimensions * index + j * kTileHeight;
-                auto column = reinterpret_cast<const vec_t*>(&weights_[offset]);
+      if (st->accumulator.state[c] == COMPUTED)
+      {
+        if (next == nullptr)
+          return;
 
-                for (IndexType k = 0; k < kNumRegs; ++k)
-                  acc[k] = vec_add_16(acc[k], column[k]);
-              }
+        // Update incrementally in two steps. First, we update the "next"
+        // accumulator. Then, we update the current accumulator (pos.state()).
 
-              for (IndexType k = 0; k < kNumRegs; k++)
-                vec_store(&accTile[k], acc[k]);
-            }
-#else
-            if (i == 0) {
-              std::memcpy(accumulator.accumulation[perspective][i], biases_,
-                          kHalfDimensions * sizeof(BiasType));
-            } else {
-              std::memset(accumulator.accumulation[perspective][i], 0,
-                          kHalfDimensions * sizeof(BiasType));
-            }
+        // Gather all features to be updated. This code assumes HalfKP features
+        // only and doesn't support refresh triggers.
+        static_assert(std::is_same_v<Features::FeatureSet<Features::HalfKP<Features::Side::kFriend>>,
+                                     RawFeatures>);
+        Features::IndexList removed[2], added[2];
+        Features::HalfKP<Features::Side::kFriend>::AppendChangedIndices(pos,
+            next->dirtyPiece, c, &removed[0], &added[0]);
+        for (StateInfo *st2 = pos.state(); st2 != next; st2 = st2->previous)
+          Features::HalfKP<Features::Side::kFriend>::AppendChangedIndices(pos,
+              st2->dirtyPiece, c, &removed[1], &added[1]);
 
-            for (const auto index : active_indices[perspective]) {
-              const IndexType offset = kHalfDimensions * index;
+        // Mark the accumulators as computed.
+        next->accumulator.state[c] = COMPUTED;
+        pos.state()->accumulator.state[c] = COMPUTED;
 
-              for (IndexType j = 0; j < kHalfDimensions; ++j)
-                accumulator.accumulation[perspective][i][j] += weights_[offset + j];
-            }
-#endif
-          }
-
-        }
-
-#if defined(USE_MMX)
-        _mm_empty();
-#endif
-
-        accumulator.computed_accumulation = true;
-    }
-
-    // Calculate cumulative value using difference calculation
-    void update_accumulator(const Position& pos) const {
-
+        // Now update the accumulators listed in info[], where the last element is a sentinel.
+        StateInfo *info[3] =
+          { next, next == pos.state() ? nullptr : pos.state(), nullptr };
   #ifdef VECTOR
-      // Gcc-10.2 unnecessarily spills AVX2 registers if this array
-      // is defined in the VECTOR code below, once in each branch
-      vec_t acc[kNumRegs];
-  #endif
-    const auto& prev_accumulator = pos.state()->previous->accumulator;
-    auto& accumulator = pos.state()->accumulator;
-    for (IndexType i = 0; i < kRefreshTriggers.size(); ++i) {
-      Features::IndexList removed_indices[2], added_indices[2];
-      bool reset[2] = { false, false };
-      RawFeatures::append_changed_indices(pos, kRefreshTriggers[i],
-                                          removed_indices, added_indices, reset);
-
-#ifdef VECTOR
-      for (IndexType j = 0; j < kHalfDimensions / kTileHeight; ++j) {
-        for (Color perspective : { WHITE, BLACK }) {
+        for (IndexType j = 0; j < kHalfDimensions / kTileHeight; ++j)
+        {
+          // Load accumulator
           auto accTile = reinterpret_cast<vec_t*>(
-              &accumulator.accumulation[perspective][i][j * kTileHeight]);
+            &st->accumulator.accumulation[c][0][j * kTileHeight]);
+          for (IndexType k = 0; k < kNumRegs; ++k)
+            acc[k] = vec_load(&accTile[k]);
 
-          if (reset[perspective]) {
-            if (i == 0) {
-              auto biasesTile = reinterpret_cast<const vec_t*>(
-                  &biases_[j * kTileHeight]);
-              for (IndexType k = 0; k < kNumRegs; ++k)
-                acc[k] = biasesTile[k];
-            } else {
-              for (IndexType k = 0; k < kNumRegs; ++k)
-                acc[k] = vec_zero;
-            }
-          } else {
-            auto prevAccTile = reinterpret_cast<const vec_t*>(
-                &prev_accumulator.accumulation[perspective][i][j * kTileHeight]);
-
-            for (IndexType k = 0; k < kNumRegs; ++k)
-              acc[k] = vec_load(&prevAccTile[k]);
-
+          for (IndexType i = 0; info[i]; ++i)
+          {
             // Difference calculation for the deactivated features
-            for (const auto index : removed_indices[perspective]) {
+            for (const auto index : removed[i])
+            {
               const IndexType offset = kHalfDimensions * index + j * kTileHeight;
               auto column = reinterpret_cast<const vec_t*>(&weights_[offset]);
-
               for (IndexType k = 0; k < kNumRegs; ++k)
                 acc[k] = vec_sub_16(acc[k], column[k]);
             }
-          }
 
-          { // Difference calculation for the activated features
-            for (const auto index : added_indices[perspective]) {
+            // Difference calculation for the activated features
+            for (const auto index : added[i])
+            {
               const IndexType offset = kHalfDimensions * index + j * kTileHeight;
               auto column = reinterpret_cast<const vec_t*>(&weights_[offset]);
-
               for (IndexType k = 0; k < kNumRegs; ++k)
                 acc[k] = vec_add_16(acc[k], column[k]);
             }
+
+            // Store accumulator
+            accTile = reinterpret_cast<vec_t*>(
+              &info[i]->accumulator.accumulation[c][0][j * kTileHeight]);
+            for (IndexType k = 0; k < kNumRegs; ++k)
+              vec_store(&accTile[k], acc[k]);
+          }
+        }
+
+  #else
+        for (IndexType i = 0; info[i]; ++i)
+        {
+          std::memcpy(info[i]->accumulator.accumulation[c][0],
+              st->accumulator.accumulation[c][0],
+              kHalfDimensions * sizeof(BiasType));
+          st = info[i];
+
+          // Difference calculation for the deactivated features
+          for (const auto index : removed[i])
+          {
+            const IndexType offset = kHalfDimensions * index;
+
+            for (IndexType j = 0; j < kHalfDimensions; ++j)
+              st->accumulator.accumulation[c][0][j] -= weights_[offset + j];
           }
 
+          // Difference calculation for the activated features
+          for (const auto index : added[i])
+          {
+            const IndexType offset = kHalfDimensions * index;
+
+            for (IndexType j = 0; j < kHalfDimensions; ++j)
+              st->accumulator.accumulation[c][0][j] += weights_[offset + j];
+          }
+        }
+  #endif
+      }
+      else
+      {
+        // Refresh the accumulator
+        auto& accumulator = pos.state()->accumulator;
+        accumulator.state[c] = COMPUTED;
+        Features::IndexList active;
+        Features::HalfKP<Features::Side::kFriend>::AppendActiveIndices(pos, c, &active);
+
+  #ifdef VECTOR
+        for (IndexType j = 0; j < kHalfDimensions / kTileHeight; ++j)
+        {
+          auto biasesTile = reinterpret_cast<const vec_t*>(
+              &biases_[j * kTileHeight]);
           for (IndexType k = 0; k < kNumRegs; ++k)
+            acc[k] = biasesTile[k];
+
+          for (const auto index : active)
+          {
+            const IndexType offset = kHalfDimensions * index + j * kTileHeight;
+            auto column = reinterpret_cast<const vec_t*>(&weights_[offset]);
+
+            for (unsigned k = 0; k < kNumRegs; ++k)
+              acc[k] = vec_add_16(acc[k], column[k]);
+          }
+
+          auto accTile = reinterpret_cast<vec_t*>(
+              &accumulator.accumulation[c][0][j * kTileHeight]);
+          for (unsigned k = 0; k < kNumRegs; k++)
             vec_store(&accTile[k], acc[k]);
         }
+
+  #else
+        std::memcpy(accumulator.accumulation[c][0], biases_,
+            kHalfDimensions * sizeof(BiasType));
+
+        for (const auto index : active)
+        {
+          const IndexType offset = kHalfDimensions * index;
+
+          for (IndexType j = 0; j < kHalfDimensions; ++j)
+            accumulator.accumulation[c][0][j] += weights_[offset + j];
+        }
+  #endif
       }
-#if defined(USE_MMX)
+
+  #if defined(USE_MMX)
       _mm_empty();
-#endif
-
-#else
-      for (Color perspective : { WHITE, BLACK }) {
-
-        if (reset[perspective]) {
-          if (i == 0) {
-            std::memcpy(accumulator.accumulation[perspective][i], biases_,
-                        kHalfDimensions * sizeof(BiasType));
-          } else {
-            std::memset(accumulator.accumulation[perspective][i], 0,
-                        kHalfDimensions * sizeof(BiasType));
-          }
-        } else {
-          std::memcpy(accumulator.accumulation[perspective][i],
-                      prev_accumulator.accumulation[perspective][i],
-                      kHalfDimensions * sizeof(BiasType));
-          // Difference calculation for the deactivated features
-          for (const auto index : removed_indices[perspective]) {
-            const IndexType offset = kHalfDimensions * index;
-
-            for (IndexType j = 0; j < kHalfDimensions; ++j)
-              accumulator.accumulation[perspective][i][j] -= weights_[offset + j];
-          }
-        }
-        { // Difference calculation for the activated features
-          for (const auto index : added_indices[perspective]) {
-            const IndexType offset = kHalfDimensions * index;
-
-            for (IndexType j = 0; j < kHalfDimensions; ++j)
-              accumulator.accumulation[perspective][i][j] += weights_[offset + j];
-          }
-        }
-      }
-#endif
-      }
-      accumulator.computed_accumulation = true;
+  #endif
     }
 
     using BiasType = std::int16_t;
     using WeightType = std::int16_t;
-
-    // Make the learning class a friend
-    friend class Trainer<FeatureTransformer>;
 
     alignas(kCacheLineSize) BiasType biases_[kHalfDimensions];
     alignas(kCacheLineSize)

@@ -11,7 +11,7 @@
 
 using namespace std;
 
-namespace Tools {
+namespace Stockfish::Tools {
 
     // Class that handles bitstream
     // useful when doing aspect encoding
@@ -260,14 +260,10 @@ namespace Tools {
 
         pos.clear();
         std::memset(si, 0, sizeof(StateInfo));
-        std::fill_n(&pos.pieceList[0][0], sizeof(pos.pieceList) / sizeof(Square), SQ_NONE);
         pos.st = si;
 
         // Active color
         pos.sideToMove = (Color)stream.read_one_bit();
-
-        pos.pieceList[W_KING][0] = SQUARE_NB;
-        pos.pieceList[B_KING][0] = SQUARE_NB;
 
         // First the position of the ball
         for (auto c : Colors)

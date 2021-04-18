@@ -13,7 +13,7 @@
 #include <memory>
 #include <mutex>
 
-namespace Tools {
+namespace Stockfish::Tools {
 
     struct OpeningBook {
 

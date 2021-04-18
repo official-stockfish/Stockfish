@@ -34,7 +34,7 @@
 
 using namespace std;
 
-namespace Tools
+namespace Stockfish::Tools
 {
     // Class to generate sfen with multiple threads
     struct Gensfen
@@ -962,7 +962,7 @@ namespace Tools
             << "  - draw by insuff. mat.   = " << params.detect_draw_by_insufficient_mating_material << endl;
 
         // Show if the training data generator uses NNUE.
-        Eval::NNUE::verify_eval_file_loaded();
+        Eval::NNUE::verify();
 
         Threads.main()->ponder = false;
 

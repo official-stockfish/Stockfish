@@ -17,7 +17,7 @@
 #include <thread>
 #include <functional>
 
-namespace Tools{
+namespace Stockfish::Tools{
 
     enum struct SfenReaderMode
     {

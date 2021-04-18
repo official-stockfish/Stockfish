@@ -25,7 +25,7 @@
 #include <mutex>
 #include <optional>
 
-namespace Tools::Stats
+namespace Stockfish::Tools::Stats
 {
     struct StatisticGathererBase
     {
@@ -398,7 +398,7 @@ namespace Tools::Stats
                 m_castling += 1;
             else if (type_of(move) == PROMOTION)
                 m_promotion += 1;
-            else if (type_of(move) == ENPASSANT)
+            else if (type_of(move) == EN_PASSANT)
                 m_enpassant += 1;
             else if (type_of(move) == NORMAL)
                 m_normal += 1;

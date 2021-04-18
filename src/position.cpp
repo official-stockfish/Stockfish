@@ -707,7 +707,8 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   ++st->pliesFromNull;
 
   // Used by NNUE
-  st->accumulator.computed_accumulation = false;
+  st->accumulator.state[WHITE] = Eval::NNUE::EMPTY;
+  st->accumulator.state[BLACK] = Eval::NNUE::EMPTY;
   auto& dp = st->dirtyPiece;
   dp.dirty_num = 1;
 
@@ -1006,7 +1007,8 @@ void Position::do_null_move(StateInfo& newSt) {
   st = &newSt;
 
   // Used by NNUE
-  st->accumulator.computed_accumulation = false;
+  st->accumulator.state[WHITE] = Eval::NNUE::EMPTY;
+  st->accumulator.state[BLACK] = Eval::NNUE::EMPTY;
   auto& dp = st->dirtyPiece;
   dp.dirty_num = 0;
 

@@ -17,9 +17,7 @@
 #include <thread>
 #include <atomic>
 
-using namespace std;
-
-namespace Tools {
+namespace Stockfish::Tools {
 
     // Helper class for exporting Sfen
     struct SfenWriter
@@ -28,13 +26,13 @@ namespace Tools {
         static constexpr size_t SFEN_WRITE_SIZE = 5000;
 
         // File name to write and number of threads to create
-        SfenWriter(string filename_, int thread_num, uint64_t save_count, SfenOutputType sfen_output_type)
+        SfenWriter(std::string filename_, int thread_num, uint64_t save_count, SfenOutputType sfen_output_type)
         {
             sfen_buffers_pool.reserve((size_t)thread_num * 10);
             sfen_buffers.resize(thread_num);
 
             auto out = sync_region_cout.new_region();
-            out << "INFO (sfen_writer): Creating new data file at " << filename_ << endl;
+            out << "INFO (sfen_writer): Creating new data file at " << filename_ << std::endl;
 
             sfen_format = sfen_output_type;
             output_file_stream = create_new_sfen_output(filename_, sfen_format);
@@ -121,7 +119,7 @@ namespace Tools {
         {
             while (!finished || sfen_buffers_pool.size())
             {
-                vector<std::unique_ptr<PSVector>> buffers;
+                std::vector<std::unique_ptr<PSVector>> buffers;
                 {
                     std::unique_lock<std::mutex> lk(mutex);
 
@@ -157,11 +155,11 @@ namespace Tools {
                             // Rename the file and open it again.
                             // Add ios::app in consideration of overwriting.
                             // (Depending on the operation, it may not be necessary.)
-                            string new_filename = filename + "_" + std::to_string(n);
+                            std::string new_filename = filename + "_" + std::to_string(n);
                             output_file_stream = create_new_sfen_output(new_filename, sfen_format);
 
                             auto out = sync_region_cout.new_region();
-                            out << "INFO (sfen_writer): Creating new data file at " << new_filename << endl;
+                            out << "INFO (sfen_writer): Creating new data file at " << new_filename << std::endl;
                         }
                     }
                 }
@@ -182,7 +180,7 @@ namespace Tools {
         std::thread file_worker_thread;
 
         // Flag that all threads have finished
-        atomic<bool> finished;
+        std::atomic<bool> finished;
 
         SfenOutputType sfen_format;
 

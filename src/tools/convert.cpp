@@ -28,7 +28,7 @@
 
 using namespace std;
 
-namespace Tools
+namespace Stockfish::Tools
 {
     bool fen_is_ok(Position& pos, std::string input_fen) {
         std::string pos_fen = pos.fen();

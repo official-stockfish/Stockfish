@@ -197,7 +197,7 @@ public:
   //static std::string sfen_from_rawdata(Piece board[81], Hand hands[2], Color turn, int gamePly);
 
   // Returns the position of the ball on the c side.
-  Square king_square(Color c) const { return pieceList[make_piece(c, KING)][0]; }
+  Square king_square(Color c) const { return lsb(pieces(c, KING)); }
 
 private:
   // Initialization helpers (used while setting up a position)
@@ -444,6 +444,8 @@ inline StateInfo* Position::state() const {
 
   return st;
 }
+
+static const char* const StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 } // namespace Stockfish
 

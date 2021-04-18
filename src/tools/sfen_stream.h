@@ -10,7 +10,7 @@
 #include <string>
 #include <memory>
 
-namespace Tools {
+namespace Stockfish::Tools {
 
     enum struct SfenOutputType
     {

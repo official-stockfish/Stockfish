@@ -3,7 +3,7 @@
 
 #include <sstream>
 
-namespace Tools {
+namespace Stockfish::Tools {
 
     // Automatic generation of teacher position
     void gensfen_nonpv(std::istringstream& is);

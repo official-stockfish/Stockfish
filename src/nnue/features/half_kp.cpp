@@ -80,6 +80,7 @@ namespace Stockfish::Eval::NNUE::Features {
       if (dp.to[i] != SQ_NONE)
         added->push_back(make_index(perspective, dp.to[i], pc, ksq));
     }
+  }
 
   template class HalfKP<Side::kFriend>;
 

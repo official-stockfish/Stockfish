@@ -222,7 +222,7 @@ void MainThread::search() {
   Time.init(Limits, us, rootPos.game_ply());
   TT.new_search();
 
-  Eval::NNUE::verify_eval_file_loaded();
+  Eval::NNUE::verify();
 
   if (rootMoves.empty())
   {
@@ -2143,7 +2143,7 @@ namespace Search
       return { mated_in(/*ss->ply*/ 0 + 1), {} };
     }
 
-    auto bestValue = ::qsearch<PV>(pos, ss, -VALUE_INFINITE, VALUE_INFINITE, 0);
+    auto bestValue = Stockfish::qsearch<PV>(pos, ss, -VALUE_INFINITE, VALUE_INFINITE, 0);
 
     // Returns the PV obtained.
     std::vector<Move> pvs;
@@ -2249,7 +2249,7 @@ namespace Search
         while (true)
         {
           Depth adjustedDepth = std::max(1, rootDepth);
-          bestValue = ::search<PV>(pos, ss, alpha, beta, adjustedDepth, false);
+          bestValue = Stockfish::search<PV>(pos, ss, alpha, beta, adjustedDepth, false);
 
           stable_sort(rootMoves.begin() + pvIdx, rootMoves.end());
           //my_stable_sort(pos.this_thread()->thread_id(),&rootMoves[0] + pvIdx, rootMoves.size() - pvIdx);

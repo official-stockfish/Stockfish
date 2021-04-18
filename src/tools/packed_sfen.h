@@ -4,7 +4,7 @@
 #include <vector>
 #include <cstdint>
 
-namespace Tools {
+namespace Stockfish::Tools {
 
     // packed sfen
     struct PackedSfen { std::uint8_t data[32]; };

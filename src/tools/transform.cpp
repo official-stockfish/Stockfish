@@ -21,7 +21,7 @@
 #include <mutex>
 #include <optional>
 
-namespace Tools
+namespace Stockfish::Tools
 {
     using CommandFunc = void(*)(std::istringstream&);
 

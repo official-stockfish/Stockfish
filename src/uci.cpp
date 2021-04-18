@@ -45,9 +45,6 @@ namespace Stockfish {
 
 extern vector<string> setup_bench(const Position&, istream&);
 
-// FEN string of the initial position, normal chess
-const char* StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-
 namespace {
 
   // position() is called when engine receives the "position" UCI command.
@@ -93,7 +90,7 @@ namespace {
     Position p;
     p.set(pos.fen(), Options["UCI_Chess960"], &states->back(), Threads.main());
 
-    Eval::NNUE::verify_eval_file_loaded();
+    Eval::NNUE::verify();
 
     sync_cout << "\n" << Eval::trace(p) << sync_endl;
   }

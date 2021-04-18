@@ -3,7 +3,7 @@
 
 #include <sstream>
 
-namespace Tools {
+namespace Stockfish::Tools {
 
     void transform(std::istringstream& is);
 

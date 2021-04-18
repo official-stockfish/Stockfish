@@ -34,7 +34,7 @@
 
 using namespace std;
 
-namespace Tools
+namespace Stockfish::Tools
 {
     // Class to generate sfen with multiple threads
     struct GensfenNonPv
@@ -476,7 +476,7 @@ namespace Tools
             << "  - count                  = " << count << endl;
 
         // Show if the training data generator uses NNUE.
-        Eval::NNUE::verify_eval_file_loaded();
+        Eval::NNUE::verify();
 
         Threads.main()->ponder = false;
 

@@ -2,7 +2,7 @@
 
 #include <fstream>
 
-namespace Tools {
+namespace Stockfish::Tools {
 
     EpdOpeningBook::EpdOpeningBook(const std::string& file, PRNG& prng) :
         OpeningBook(file)

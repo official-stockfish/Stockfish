@@ -7,11 +7,13 @@
 
 #include <cstdint>
 
-class Position;
-struct StateInfo;
-class Thread;
+namespace Stockfish {
+    class Position;
+    struct StateInfo;
+    class Thread;
+}
 
-namespace Tools {
+namespace Stockfish::Tools {
 
     int set_from_packed_sfen(Position& pos, const PackedSfen& sfen, StateInfo* si, Thread* th);
     PackedSfen sfen_pack(Position& pos);
