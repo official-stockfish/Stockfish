@@ -13,7 +13,6 @@
 #include "extra/nnue_data_binpack_format.h"
 
 #include "nnue/evaluate_nnue.h"
-#include "nnue/evaluate_nnue_learner.h"
 
 #include "syzygy/tbprobe.h"
 
@@ -493,8 +492,8 @@ namespace Learner
 
         // has it reached the max length or is a draw by fifty-move rule
         // or by 3-fold repetition
-        if (ply >= params.write_maxply 
-            || pos.is_fifty_move_draw() 
+        if (ply >= params.write_maxply
+            || pos.is_fifty_move_draw()
             || pos.is_three_fold_repetition())
         {
             return 0;

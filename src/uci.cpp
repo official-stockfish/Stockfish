@@ -22,11 +22,9 @@
 #include <sstream>
 #include <string>
 
-#include "extra/stockfish_blas.h"
 #include "nnue/evaluate_nnue.h"
 #include "evaluate.h"
 #include "movegen.h"
-#include "nnue/nnue_test_command.h"
 #include "position.h"
 #include "search.h"
 #include "syzygy/tbprobe.h"
@@ -37,7 +35,6 @@
 
 #include "learn/gensfen.h"
 #include "learn/gensfen_nonpv.h"
-#include "learn/learn.h"
 #include "learn/convert.h"
 #include "learn/transform.h"
 #include "learn/stats.h"
@@ -48,17 +45,6 @@ extern vector<string> setup_bench(const Position&, istream&);
 
 // FEN string of the initial position, normal chess
 const char* StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-
-void test_cmd(Position& pos, istringstream& is)
-{
-    // Initialize as it may be searched.
-    Eval::NNUE::init();
-
-    std::string param;
-    is >> param;
-
-    if (param == "nnue") Eval::NNUE::test_command(pos, is);
-}
 
 namespace {
 
@@ -344,7 +330,6 @@ void UCI::loop(int argc, char* argv[]) {
 
       else if (token == "gensfen") Learner::gensfen(is);
       else if (token == "gensfen_nonpv") Learner::gensfen_nonpv(is);
-      else if (token == "learn") Learner::learn(is);
       else if (token == "convert") Learner::convert(is);
       else if (token == "convert_bin") Learner::convert_bin(is);
       else if (token == "convert_plain") Learner::convert_plain(is);
@@ -361,17 +346,7 @@ void UCI::loop(int argc, char* argv[]) {
           std::cout << th.thread_idx() << '\n';
         });
       }
-      else if (token == "blastest")
-      {
-        Blas::test(Threads);
-      }
-      else if (token == "blasbench")
-      {
-        Blas::bench(Threads);
-      }
 
-      // test command
-      else if (token == "test") test_cmd(pos, is);
       else
           sync_cout << "Unknown command: " << cmd << sync_endl;
 

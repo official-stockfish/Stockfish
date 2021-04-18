@@ -13,7 +13,6 @@
 #include "extra/nnue_data_binpack_format.h"
 
 #include "nnue/evaluate_nnue.h"
-#include "nnue/evaluate_nnue_learner.h"
 
 #include "syzygy/tbprobe.h"
 

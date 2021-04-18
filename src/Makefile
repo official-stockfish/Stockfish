@@ -47,9 +47,7 @@ PGOGENSFEN = ./$(EXE) gensfen depth 3 loop 1000 sfen_format bin output_file_name
 SRCS = benchmark.cpp bitbase.cpp bitboard.cpp endgame.cpp evaluate.cpp main.cpp \
 	material.cpp misc.cpp movegen.cpp movepick.cpp pawns.cpp position.cpp psqt.cpp \
 	search.cpp thread.cpp timeman.cpp tt.cpp uci.cpp ucioption.cpp tune.cpp syzygy/tbprobe.cpp \
-	extra/stockfish_blas.cpp \
 	nnue/evaluate_nnue.cpp \
-	nnue/evaluate_nnue_learner.cpp \
 	nnue/features/half_kp.cpp \
 	nnue/features/half_ka.cpp \
 	nnue/features/half_relative_kp.cpp \
@@ -59,9 +57,7 @@ SRCS = benchmark.cpp bitbase.cpp bitboard.cpp endgame.cpp evaluate.cpp main.cpp 
 	nnue/features/a.cpp \
 	nnue/features/castling_right.cpp \
 	nnue/features/enpassant.cpp \
-	nnue/nnue_test_command.cpp \
 	learn/sfen_packer.cpp \
-	learn/learn.cpp \
 	learn/gensfen.cpp \
 	learn/gensfen_nonpv.cpp \
 	learn/opening_book.cpp \
