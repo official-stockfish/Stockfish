@@ -49,14 +49,6 @@ SRCS = benchmark.cpp bitbase.cpp bitboard.cpp endgame.cpp evaluate.cpp main.cpp 
 	search.cpp thread.cpp timeman.cpp tt.cpp uci.cpp ucioption.cpp tune.cpp syzygy/tbprobe.cpp \
 	nnue/evaluate_nnue.cpp \
 	nnue/features/half_kp.cpp \
-	nnue/features/half_ka.cpp \
-	nnue/features/half_relative_kp.cpp \
-	nnue/features/half_relative_ka.cpp \
-	nnue/features/k.cpp \
-	nnue/features/p.cpp \
-	nnue/features/a.cpp \
-	nnue/features/castling_right.cpp \
-	nnue/features/enpassant.cpp \
 	tools/sfen_packer.cpp \
 	tools/gensfen.cpp \
 	tools/gensfen_nonpv.cpp \
