@@ -28,7 +28,7 @@
 
 using namespace std;
 
-namespace Learner
+namespace Tools
 {
     bool fen_is_ok(Position& pos, std::string input_fen) {
         std::string pos_fen = pos.fen();

@@ -3,7 +3,7 @@
 
 #include <sstream>
 
-namespace Learner {
+namespace Tools {
 
     void transform(std::istringstream& is);
 

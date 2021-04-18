@@ -19,7 +19,7 @@
 
 using namespace std;
 
-namespace Learner {
+namespace Tools {
 
     // Helper class for exporting Sfen
     struct SfenWriter

@@ -13,7 +13,7 @@
 #include <memory>
 #include <mutex>
 
-namespace Learner {
+namespace Tools {
 
     struct OpeningBook {
 

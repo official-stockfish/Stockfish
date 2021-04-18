@@ -5,7 +5,7 @@
 
 #include <sstream>
 
-namespace Learner {
+namespace Tools {
 
     // Automatic generation of teacher position
     void gensfen(std::istringstream& is);

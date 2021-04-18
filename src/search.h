@@ -110,7 +110,7 @@ extern LimitsType Limits;
 void init();
 void clear();
 
-// A pair of reader and evaluation value. Returned by Learner::search(),Learner::qsearch().
+// A pair of reader and evaluation value. Returned by Tools::search(),Tools::qsearch().
 using ValueAndPV = std::pair<Value, std::vector<Move>>;
 
 ValueAndPV qsearch(Position& pos);

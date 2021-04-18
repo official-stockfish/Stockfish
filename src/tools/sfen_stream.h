@@ -10,7 +10,7 @@
 #include <string>
 #include <memory>
 
-namespace Learner {
+namespace Tools {
 
     enum struct SfenOutputType
     {

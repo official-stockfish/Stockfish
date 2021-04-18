@@ -17,7 +17,7 @@
 #include <thread>
 #include <functional>
 
-namespace Learner{
+namespace Tools{
 
     enum struct SfenReaderMode
     {

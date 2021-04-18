@@ -34,7 +34,7 @@
 
 using namespace std;
 
-namespace Learner
+namespace Tools
 {
     // Class to generate sfen with multiple threads
     struct GensfenNonPv
@@ -163,7 +163,7 @@ namespace Learner
         // If you use this, it will be compared with the accumulated nodes of each thread. Therefore, do not use it.
         limits.nodes = 0;
 
-        // depth is also processed by the one passed as an argument of Learner::search().
+        // depth is also processed by the one passed as an argument of Tools::search().
         limits.depth = 0;
     }
 

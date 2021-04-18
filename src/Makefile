@@ -57,17 +57,17 @@ SRCS = benchmark.cpp bitbase.cpp bitboard.cpp endgame.cpp evaluate.cpp main.cpp 
 	nnue/features/a.cpp \
 	nnue/features/castling_right.cpp \
 	nnue/features/enpassant.cpp \
-	learn/sfen_packer.cpp \
-	learn/gensfen.cpp \
-	learn/gensfen_nonpv.cpp \
-	learn/opening_book.cpp \
-	learn/convert.cpp \
-	learn/transform.cpp \
-	learn/stats.cpp
+	tools/sfen_packer.cpp \
+	tools/gensfen.cpp \
+	tools/gensfen_nonpv.cpp \
+	tools/opening_book.cpp \
+	tools/convert.cpp \
+	tools/transform.cpp \
+	tools/stats.cpp
 
 OBJS = $(notdir $(SRCS:.cpp=.o))
 
-VPATH = syzygy:nnue:nnue/features:eval:extra:learn
+VPATH = syzygy:nnue:nnue/features:eval:extra:tools
 
 ### ==========================================================================
 ### Section 2. High-level Configuration

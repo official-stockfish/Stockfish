@@ -5,7 +5,7 @@
 #include <string>
 #include <sstream>
 
-namespace Learner {
+namespace Tools {
     void convert(std::istringstream& is);
 
     void convert_bin_from_pgn_extract(std::istringstream& is);

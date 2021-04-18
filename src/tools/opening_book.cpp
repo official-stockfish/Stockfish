@@ -2,7 +2,7 @@
 
 #include <fstream>
 
-namespace Learner {
+namespace Tools {
 
     EpdOpeningBook::EpdOpeningBook(const std::string& file, PRNG& prng) :
         OpeningBook(file)

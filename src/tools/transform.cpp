@@ -21,7 +21,7 @@
 #include <mutex>
 #include <optional>
 
-namespace Learner
+namespace Tools
 {
     using CommandFunc = void(*)(std::istringstream&);
 
@@ -120,8 +120,8 @@ namespace Learner
         Position& pos = th->rootPos;
         StateInfo si;
 
-        auto in = Learner::open_sfen_input_file(params.input_filename);
-        auto out = Learner::create_new_sfen_output(params.output_filename);
+        auto in = Tools::open_sfen_input_file(params.input_filename);
+        auto out = Tools::create_new_sfen_output(params.output_filename);
 
         if (in == nullptr)
         {
@@ -261,7 +261,7 @@ namespace Learner
 
         buffer.reserve(batch_size);
 
-        auto out = Learner::create_new_sfen_output(params.output_filename);
+        auto out = Tools::create_new_sfen_output(params.output_filename);
 
         std::mutex mutex;
         uint64_t num_processed = 0;
@@ -279,7 +279,7 @@ namespace Learner
         // If you use this, it will be compared with the accumulated nodes of each thread. Therefore, do not use it.
         limits.nodes = 0;
 
-        // depth is also processed by the one passed as an argument of Learner::search().
+        // depth is also processed by the one passed as an argument of Tools::search().
         limits.depth = 0;
 
         Threads.execute_with_workers([&](auto& th){
@@ -343,7 +343,7 @@ namespace Learner
     void do_rescore_data(RescoreParams& params)
     {
         // TODO: Use SfenReader once it works correctly in sequential mode. See issue #271
-        auto in = Learner::open_sfen_input_file(params.input_filename);
+        auto in = Tools::open_sfen_input_file(params.input_filename);
         auto readsome = [&in, mutex = std::mutex{}](int n) mutable -> PSVector {
 
             PSVector psv;
@@ -388,7 +388,7 @@ namespace Learner
         // If you use this, it will be compared with the accumulated nodes of each thread. Therefore, do not use it.
         limits.nodes = 0;
 
-        // depth is also processed by the one passed as an argument of Learner::search().
+        // depth is also processed by the one passed as an argument of Tools::search().
         limits.depth = 0;
 
         std::atomic<std::uint64_t> num_processed = 0;

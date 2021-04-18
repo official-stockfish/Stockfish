@@ -33,11 +33,11 @@
 #include "tt.h"
 #include "uci.h"
 
-#include "learn/gensfen.h"
-#include "learn/gensfen_nonpv.h"
-#include "learn/convert.h"
-#include "learn/transform.h"
-#include "learn/stats.h"
+#include "tools/gensfen.h"
+#include "tools/gensfen_nonpv.h"
+#include "tools/convert.h"
+#include "tools/transform.h"
+#include "tools/stats.h"
 
 using namespace std;
 
@@ -328,14 +328,14 @@ void UCI::loop(int argc, char* argv[]) {
       else if (token == "eval")     trace_eval(pos);
       else if (token == "compiler") sync_cout << compiler_info() << sync_endl;
 
-      else if (token == "gensfen") Learner::gensfen(is);
-      else if (token == "gensfen_nonpv") Learner::gensfen_nonpv(is);
-      else if (token == "convert") Learner::convert(is);
-      else if (token == "convert_bin") Learner::convert_bin(is);
-      else if (token == "convert_plain") Learner::convert_plain(is);
-      else if (token == "convert_bin_from_pgn_extract") Learner::convert_bin_from_pgn_extract(is);
-      else if (token == "transform") Learner::transform(is);
-      else if (token == "gather_statistics") Learner::Stats::gather_statistics(is);
+      else if (token == "gensfen") Tools::gensfen(is);
+      else if (token == "gensfen_nonpv") Tools::gensfen_nonpv(is);
+      else if (token == "convert") Tools::convert(is);
+      else if (token == "convert_bin") Tools::convert_bin(is);
+      else if (token == "convert_plain") Tools::convert_plain(is);
+      else if (token == "convert_bin_from_pgn_extract") Tools::convert_bin_from_pgn_extract(is);
+      else if (token == "transform") Tools::transform(is);
+      else if (token == "gather_statistics") Tools::Stats::gather_statistics(is);
 
       // Command to call qsearch(),search() directly for testing
       else if (token == "qsearch") qsearch_cmd(pos);

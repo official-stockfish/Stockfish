@@ -4,7 +4,7 @@
 #include <vector>
 #include <cstdint>
 
-namespace Learner {
+namespace Tools {
 
     // packed sfen
     struct PackedSfen { std::uint8_t data[32]; };
@@ -17,7 +17,7 @@ namespace Learner {
         // phase
         PackedSfen sfen;
 
-        // Evaluation value returned from Learner::search()
+        // Evaluation value returned from Tools::search()
         std::int16_t score;
 
         // PV first move

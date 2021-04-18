@@ -311,7 +311,7 @@ void Thread::search() {
 
   if (!this->rootMoves.empty())
     Tablebases::rank_root_moves(this->rootPos, this->rootMoves);
-      
+
   if (mainThread)
   {
       if (mainThread->bestPreviousScore == VALUE_INFINITE)
@@ -1995,7 +1995,7 @@ namespace Search
   // It might have been good.
 
   // Initialization for learning.
-  // Called from Learner::search(),Learner::qsearch().
+  // Called from Tools::search(),Tools::qsearch().
   static bool init_for_search(Position& pos, Stack* ss)
   {
 

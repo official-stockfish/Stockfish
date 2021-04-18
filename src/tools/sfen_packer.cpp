@@ -11,7 +11,7 @@
 
 using namespace std;
 
-namespace Learner {
+namespace Tools {
 
     // Class that handles bitstream
     // useful when doing aspect encoding

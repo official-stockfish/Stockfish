@@ -3,7 +3,7 @@
 
 #include <sstream>
 
-namespace Learner::Stats {
+namespace Tools::Stats {
 
     void gather_statistics(std::istringstream& is);
 

@@ -34,8 +34,8 @@
 #include "uci.h"
 #include "syzygy/tbprobe.h"
 
-#include "learn/packed_sfen.h"
-#include "learn/sfen_packer.h"
+#include "tools/packed_sfen.h"
+#include "tools/sfen_packer.h"
 
 using std::string;
 
@@ -1373,13 +1373,13 @@ bool Position::pos_is_ok() const {
 // Add a function that directly unpacks for speed. It's pretty tough.
 // Write it by combining packer::unpack() and Position::set().
 // If there is a problem with the passed phase and there is an error, non-zero is returned.
-int Position::set_from_packed_sfen(const Learner::PackedSfen& sfen , StateInfo* si, Thread* th)
+int Position::set_from_packed_sfen(const Tools::PackedSfen& sfen , StateInfo* si, Thread* th)
 {
-  return Learner::set_from_packed_sfen(*this, sfen, si, th);
+  return Tools::set_from_packed_sfen(*this, sfen, si, th);
 }
 
 // Get the packed sfen. Returns to the buffer specified in the argument.
-void Position::sfen_pack(Learner::PackedSfen& sfen)
+void Position::sfen_pack(Tools::PackedSfen& sfen)
 {
-  sfen = Learner::sfen_pack(*this);
+  sfen = Tools::sfen_pack(*this);
 }

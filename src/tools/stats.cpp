@@ -25,7 +25,7 @@
 #include <mutex>
 #include <optional>
 
-namespace Learner::Stats
+namespace Tools::Stats
 {
     struct StatisticGathererBase
     {
@@ -566,7 +566,7 @@ namespace Learner::Stats
         Position& pos = th->rootPos;
         StateInfo si;
 
-        auto in = Learner::open_sfen_input_file(filename);
+        auto in = Tools::open_sfen_input_file(filename);
 
         auto on_move = [&](const Position& position, const Move& move) {
             statistic_gatherers.on_move(position, move);
