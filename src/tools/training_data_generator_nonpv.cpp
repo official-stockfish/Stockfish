@@ -61,7 +61,7 @@ namespace Stockfish::Tools
 
             int exploration_min_pieces = 8;
 
-            std::string output_file_name = "generated_gensfen_nonpv";
+            std::string output_file_name = "training_data_nonpv";
 
             SfenOutputType sfen_format = SfenOutputType::Binpack;
 
@@ -426,7 +426,7 @@ namespace Stockfish::Tools
                 is >> params.exploration_save_rate;
             else if (token == "book")
                 is >> params.book;
-            else if (token == "sfen_format")
+            else if (token == "data_format")
                 is >> sfen_format;
             else if (token == "seed")
                 is >> params.seed;
@@ -458,7 +458,7 @@ namespace Stockfish::Tools
 
         params.enforce_constraints();
 
-        std::cout << "INFO: Executing gensfen_nonpv command\n";
+        std::cout << "INFO: Executing generate_training_data_nonpv command\n";
 
         std::cout << "INFO: Parameters:\n";
         std::cout
@@ -471,7 +471,7 @@ namespace Stockfish::Tools
             << "  - exploration_min_pieces = " << params.exploration_min_pieces << endl
             << "  - exploration_save_rate  = " << params.exploration_save_rate << endl
             << "  - book                   = " << params.book << endl
-            << "  - sfen_format            = " << sfen_format << endl
+            << "  - data_format            = " << sfen_format << endl
             << "  - seed                   = " << params.seed << endl
             << "  - count                  = " << count << endl;
 
@@ -483,6 +483,6 @@ namespace Stockfish::Tools
         TrainingDataGeneratorNonPv gensfen(params);
         gensfen.generate(count);
 
-        std::cout << "INFO: gensfen_nonpv finished." << endl;
+        std::cout << "INFO: generate_training_data_nonpv finished." << endl;
     }
 }

@@ -83,7 +83,7 @@ namespace Stockfish::Tools
 
             uint64_t save_every = std::numeric_limits<uint64_t>::max();
 
-            std::string output_file_name = "generated_kifu";
+            std::string output_file_name = "training_data";
 
             SfenOutputType sfen_format = SfenOutputType::Binpack;
 
@@ -831,20 +831,25 @@ namespace Stockfish::Tools
                 break;
 
             if (token == "depth")
+            {
                 is >> params.search_depth_min;
-            else if (token == "depth2")
-                is >> params.search_depth_max;
+                params.search_depth_max = params.search_depth_min;
+            }
+            else if (token == "min_depth")
+                is >> params.search_depth_min;
+            else if (token == "max_depth")
+                is >> params.search_depth_min;
             else if (token == "nodes")
                 is >> params.nodes;
-            else if (token == "loop")
+            else if (token == "count")
                 is >> loop_max;
             else if (token == "output_file_name")
                 is >> params.output_file_name;
             else if (token == "eval_limit")
                 is >> params.eval_limit;
-            else if (token == "random_move_minply")
+            else if (token == "random_move_min_ply")
                 is >> params.random_move_minply;
-            else if (token == "random_move_maxply")
+            else if (token == "random_move_max_ply")
                 is >> params.random_move_maxply;
             else if (token == "random_move_count")
                 is >> params.random_move_count;
@@ -856,9 +861,9 @@ namespace Stockfish::Tools
                 is >> params.random_multi_pv_diff;
             else if (token == "random_multi_pv_depth")
                 is >> params.random_multi_pv_depth;
-            else if (token == "write_minply")
+            else if (token == "write_min_ply")
                 is >> params.write_minply;
-            else if (token == "write_maxply")
+            else if (token == "write_max_ply")
                 is >> params.write_maxply;
             else if (token == "save_every")
                 is >> params.save_every;
@@ -866,15 +871,13 @@ namespace Stockfish::Tools
                 is >> params.book;
             else if (token == "random_file_name")
                 is >> random_file_name;
-            // Accept also the old option name.
-            else if (token == "use_draw_in_training_data_generation" || token == "write_out_draw_game_in_training_data_generation")
+            else if (token == "keep_draws")
                 is >> params.write_out_draw_game_in_training_data_generation;
-            // Accept also the old option name.
-            else if (token == "use_game_draw_adjudication" || token == "detect_draw_by_consecutive_low_score")
+            else if (token == "adjudicate_draws_by_score")
                 is >> params.detect_draw_by_consecutive_low_score;
-            else if (token == "detect_draw_by_insufficient_mating_material")
+            else if (token == "adjudicate_draws_by_insufficient_material")
                 is >> params.detect_draw_by_insufficient_mating_material;
-            else if (token == "sfen_format")
+            else if (token == "data_format")
                 is >> sfen_format;
             else if (token == "seed")
                 is >> params.seed;
@@ -934,25 +937,25 @@ namespace Stockfish::Tools
 
         params.enforce_constraints();
 
-        std::cout << "INFO: Executing gensfen command\n";
+        std::cout << "INFO: Executing generate_training_data command\n";
 
         std::cout << "INFO: Parameters:\n";
         std::cout
             << "  - search_depth_min       = " << params.search_depth_min << endl
             << "  - search_depth_max       = " << params.search_depth_max << endl
             << "  - nodes                  = " << params.nodes << endl
-            << "  - num sfens to generate  = " << loop_max << endl
+            << "  - count                  = " << loop_max << endl
             << "  - eval_limit             = " << params.eval_limit << endl
             << "  - num threads (UCI)      = " << params.num_threads << endl
-            << "  - random_move_minply     = " << params.random_move_minply << endl
-            << "  - random_move_maxply     = " << params.random_move_maxply << endl
+            << "  - random_move_min_ply    = " << params.random_move_minply << endl
+            << "  - random_move_max_ply    = " << params.random_move_maxply << endl
             << "  - random_move_count      = " << params.random_move_count << endl
             << "  - random_move_like_apery = " << params.random_move_like_apery << endl
             << "  - random_multi_pv        = " << params.random_multi_pv << endl
             << "  - random_multi_pv_diff   = " << params.random_multi_pv_diff << endl
             << "  - random_multi_pv_depth  = " << params.random_multi_pv_depth << endl
-            << "  - write_minply           = " << params.write_minply << endl
-            << "  - write_maxply           = " << params.write_maxply << endl
+            << "  - write_min_ply          = " << params.write_minply << endl
+            << "  - write_max_ply          = " << params.write_maxply << endl
             << "  - book                   = " << params.book << endl
             << "  - output_file_name       = " << params.output_file_name << endl
             << "  - save_every             = " << params.save_every << endl
@@ -969,6 +972,6 @@ namespace Stockfish::Tools
         TrainingDataGenerator gensfen(params);
         gensfen.generate(loop_max);
 
-        std::cout << "INFO: TrainingDataGenerator finished." << endl;
+        std::cout << "INFO: generate_training_data finished." << endl;
     }
 }

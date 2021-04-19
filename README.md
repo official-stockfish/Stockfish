@@ -138,7 +138,7 @@ Currently, Stockfish has the following UCI options:
 
 ### Generating Training Data
 
-To generate training data from the classic eval, use the gensfen command with the setting "Use NNUE" set to "false". The given example is generation in its simplest form. There are more commands.
+To generate training data from the classic eval, use the generate_training_data command with the setting "Use NNUE" set to "false". The given example is generation in its simplest form. There are more commands.
 
 ```
 uci
@@ -148,7 +148,7 @@ setoption name Threads value X
 setoption name Hash value Y
 setoption name SyzygyPath value path
 isready
-gensfen depth A count B keep_draws 1 eval_limit 32000
+generate_training_data depth A count B keep_draws 1 eval_limit 32000
 ```
 
 - `A` is the searched depth per move, or how far the engine looks forward. This value is an integer.
@@ -164,9 +164,9 @@ You will also need validation data that is used for loss calculation and accurac
 
 Currently there are 3 training data formats. Two of them are supported directly.
 
-- `.bin` - the original training data format. Uses 40 bytes per entry. Is supported directly by the `gensfen` and `learn` commands.
-- `.plain` - a human readable training data format. This one is not supported directly by the `gensfen` and `learn` commands. It should not be used for data exchange because it's less compact than other formats. It is mostly useful for inspection of the data.
-- `.binpack` - a compact binary training data format that exploits positions chains to further reduce size. It uses on average between 2 to 3 bytes per entry when generating data with `gensfen`. It is supported directly by `gensfen` and `learn` commands. It is currently the default for the `gensfen` command. A more in depth description can be found [here](docs/binpack.md)
+- `.bin` - the original training data format. Uses 40 bytes per entry. Is supported directly by the `generate_training_data` command.
+- `.plain` - a human readable training data format. This one is not supported directly by the `generate_training_data` command. It should not be used for data exchange because it's less compact than other formats. It is mostly useful for inspection of the data.
+- `.binpack` - a compact binary training data format that exploits positions chains to further reduce size. It uses on average between 2 to 3 bytes per entry when generating data with `generate_training_data`. It is supported directly by `generate_training_data` command. It is currently the default for the `generate_training_data` command. A more in depth description can be found [here](docs/binpack.md)
 
 ### Conversion between formats.
 
