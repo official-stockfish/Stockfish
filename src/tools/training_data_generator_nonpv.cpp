@@ -1,4 +1,4 @@
-﻿#include "gensfen_nonpv.h"
+﻿#include "training_data_generator_nonpv.h"
 
 #include "sfen_writer.h"
 #include "packed_sfen.h"
@@ -37,7 +37,7 @@ using namespace std;
 namespace Stockfish::Tools
 {
     // Class to generate sfen with multiple threads
-    struct GensfenNonPv
+    struct TrainingDataGeneratorNonPv
     {
         struct Params
         {
@@ -89,7 +89,7 @@ namespace Stockfish::Tools
         static constexpr uint64_t REPORT_STATS_EVERY = 200000;
         static_assert(REPORT_STATS_EVERY % REPORT_DOT_EVERY == 0);
 
-        GensfenNonPv(
+        TrainingDataGeneratorNonPv(
             const Params& prm
         ) :
             params(prm),
@@ -148,7 +148,7 @@ namespace Stockfish::Tools
         void maybe_report(uint64_t done);
     };
 
-    void GensfenNonPv::set_gensfen_search_limits()
+    void TrainingDataGeneratorNonPv::set_gensfen_search_limits()
     {
         // About Search::Limits
         // Be careful because this member variable is global and affects other threads.
@@ -167,7 +167,7 @@ namespace Stockfish::Tools
         limits.depth = 0;
     }
 
-    void GensfenNonPv::generate(uint64_t limit)
+    void TrainingDataGeneratorNonPv::generate(uint64_t limit)
     {
         last_stats_report_time = 0;
 
@@ -189,7 +189,7 @@ namespace Stockfish::Tools
         std::cout << std::endl;
     }
 
-    PSVector GensfenNonPv::do_exploration(
+    PSVector TrainingDataGeneratorNonPv::do_exploration(
         Thread& th,
         int count)
     {
@@ -253,7 +253,7 @@ namespace Stockfish::Tools
         return psv;
     }
 
-    void GensfenNonPv::generate_worker(
+    void TrainingDataGeneratorNonPv::generate_worker(
         Thread& th,
         std::atomic<uint64_t>& counter,
         uint64_t limit)
@@ -323,7 +323,7 @@ namespace Stockfish::Tools
     // 1 when winning. -1 when losing. Pass 0 for a draw.
     // Return value: true if the specified number of
     // sfens has already been reached and the process ends.
-    bool GensfenNonPv::commit_psv(
+    bool TrainingDataGeneratorNonPv::commit_psv(
         Thread& th,
         PSVector& sfens,
         std::atomic<uint64_t>& counter,
@@ -347,7 +347,7 @@ namespace Stockfish::Tools
         return false;
     }
 
-    void GensfenNonPv::report(uint64_t done, uint64_t new_done)
+    void TrainingDataGeneratorNonPv::report(uint64_t done, uint64_t new_done)
     {
         const auto now_time = now();
         const TimePoint elapsed = now_time - last_stats_report_time + 1;
@@ -363,7 +363,7 @@ namespace Stockfish::Tools
         out = sync_region_cout.new_region();
     }
 
-    void GensfenNonPv::maybe_report(uint64_t done)
+    void TrainingDataGeneratorNonPv::maybe_report(uint64_t done)
     {
         if (done % REPORT_DOT_EVERY == 0)
         {
@@ -388,10 +388,10 @@ namespace Stockfish::Tools
     }
 
     // Command to generate a game record
-    void gensfen_nonpv(istringstream& is)
+    void generate_training_data_nonpv(istringstream& is)
     {
         // Number of generated game records default = 8 billion phases (Ponanza specification)
-        GensfenNonPv::Params params;
+        TrainingDataGeneratorNonPv::Params params;
 
         uint64_t count = 1'000'000;
 
@@ -480,7 +480,7 @@ namespace Stockfish::Tools
 
         Threads.main()->ponder = false;
 
-        GensfenNonPv gensfen(params);
+        TrainingDataGeneratorNonPv gensfen(params);
         gensfen.generate(count);
 
         std::cout << "INFO: gensfen_nonpv finished." << endl;

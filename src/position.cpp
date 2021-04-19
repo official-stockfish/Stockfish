@@ -1007,10 +1007,10 @@ void Position::do_null_move(StateInfo& newSt) {
   st = &newSt;
 
   // Used by NNUE
+  st->dirtyPiece.dirty_num = 0;
+  st->dirtyPiece.piece[0] = NO_PIECE; // Avoid checks in UpdateAccumulator()
   st->accumulator.state[WHITE] = Eval::NNUE::EMPTY;
   st->accumulator.state[BLACK] = Eval::NNUE::EMPTY;
-  auto& dp = st->dirtyPiece;
-  dp.dirty_num = 0;
 
   if (st->epSquare != SQ_NONE)
   {

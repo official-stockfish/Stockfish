@@ -1,4 +1,4 @@
-﻿#include "gensfen.h"
+﻿#include "training_data_generator.h"
 
 #include "sfen_writer.h"
 #include "packed_sfen.h"
@@ -37,7 +37,7 @@ using namespace std;
 namespace Stockfish::Tools
 {
     // Class to generate sfen with multiple threads
-    struct Gensfen
+    struct TrainingDataGenerator
     {
         struct Params
         {
@@ -123,7 +123,7 @@ namespace Stockfish::Tools
         static constexpr uint64_t REPORT_STATS_EVERY = 200000;
         static_assert(REPORT_STATS_EVERY % REPORT_DOT_EVERY == 0);
 
-        Gensfen(
+        TrainingDataGenerator(
             const Params& prm
         ) :
             params(prm),
@@ -205,7 +205,7 @@ namespace Stockfish::Tools
         void maybe_report(uint64_t done);
     };
 
-    void Gensfen::set_gensfen_search_limits()
+    void TrainingDataGenerator::set_gensfen_search_limits()
     {
         // About Search::Limits
         // Be careful because this member variable is global and affects other threads.
@@ -224,7 +224,7 @@ namespace Stockfish::Tools
         limits.depth = 0;
     }
 
-    void Gensfen::generate(uint64_t limit)
+    void TrainingDataGenerator::generate(uint64_t limit)
     {
         last_stats_report_time = 0;
 
@@ -246,7 +246,7 @@ namespace Stockfish::Tools
         std::cout << std::endl;
     }
 
-    void Gensfen::generate_worker(
+    void TrainingDataGenerator::generate_worker(
         Thread& th,
         std::atomic<uint64_t>& counter,
         uint64_t limit)
@@ -449,7 +449,7 @@ namespace Stockfish::Tools
         }
     }
 
-    bool Gensfen::was_seen_before(const Position& pos)
+    bool TrainingDataGenerator::was_seen_before(const Position& pos)
     {
         // Look into the position hashtable to see if the same
         // position was seen before.
@@ -470,7 +470,7 @@ namespace Stockfish::Tools
         }
     }
 
-    optional<int8_t> Gensfen::get_current_game_result(
+    optional<int8_t> TrainingDataGenerator::get_current_game_result(
         Position& pos,
         const vector<int>& move_hist_scores) const
     {
@@ -591,7 +591,7 @@ namespace Stockfish::Tools
         return nullopt;
     }
 
-    vector<uint8_t> Gensfen::generate_random_move_flags(PRNG& prng)
+    vector<uint8_t> TrainingDataGenerator::generate_random_move_flags(PRNG& prng)
     {
         vector<uint8_t> random_move_flag;
 
@@ -628,7 +628,7 @@ namespace Stockfish::Tools
         return random_move_flag;
     }
 
-    optional<Move> Gensfen::choose_random_move(
+    optional<Move> TrainingDataGenerator::choose_random_move(
         PRNG& prng,
         Position& pos,
         std::vector<uint8_t>& random_move_flag,
@@ -725,7 +725,7 @@ namespace Stockfish::Tools
     // 1 when winning. -1 when losing. Pass 0 for a draw.
     // Return value: true if the specified number of
     // sfens has already been reached and the process ends.
-    bool Gensfen::commit_psv(
+    bool TrainingDataGenerator::commit_psv(
         Thread& th,
         PSVector& sfens,
         int8_t result,
@@ -770,7 +770,7 @@ namespace Stockfish::Tools
         return false;
     }
 
-    void Gensfen::report(uint64_t done, uint64_t new_done)
+    void TrainingDataGenerator::report(uint64_t done, uint64_t new_done)
     {
         const auto now_time = now();
         const TimePoint elapsed = now_time - last_stats_report_time + 1;
@@ -786,7 +786,7 @@ namespace Stockfish::Tools
         out = sync_region_cout.new_region();
     }
 
-    void Gensfen::maybe_report(uint64_t done)
+    void TrainingDataGenerator::maybe_report(uint64_t done)
     {
         if (done % REPORT_DOT_EVERY == 0)
         {
@@ -811,12 +811,12 @@ namespace Stockfish::Tools
     }
 
     // Command to generate a game record
-    void gensfen(istringstream& is)
+    void generate_training_data(istringstream& is)
     {
         // Number of generated game records default = 8 billion phases (Ponanza specification)
         uint64_t loop_max = 8000000000UL;
 
-        Gensfen::Params params;
+        TrainingDataGenerator::Params params;
 
         // Add a random number to the end of the file name.
         bool random_file_name = false;
@@ -966,9 +966,9 @@ namespace Stockfish::Tools
 
         Threads.main()->ponder = false;
 
-        Gensfen gensfen(params);
+        TrainingDataGenerator gensfen(params);
         gensfen.generate(loop_max);
 
-        std::cout << "INFO: Gensfen finished." << endl;
+        std::cout << "INFO: TrainingDataGenerator finished." << endl;
     }
 }

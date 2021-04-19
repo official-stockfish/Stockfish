@@ -25,8 +25,10 @@
 #include <chrono>
 #include <random>
 #include <regex>
+#include <filesystem>
 
 using namespace std;
+namespace sys = std::filesystem;
 
 namespace Stockfish::Tools
 {
@@ -123,7 +125,7 @@ namespace Stockfish::Tools
                     score = (score - src_score_min_value) / (src_score_max_value - src_score_min_value);
                     // Scale to [dest_score_min_value, dest_score_max_value].
                     score = score * (dest_score_max_value - dest_score_min_value) + dest_score_min_value;
-                    p.score = Math::clamp((int32_t)std::round(score), -(int32_t)VALUE_MATE, (int32_t)VALUE_MATE);
+                    p.score = std::clamp((int32_t)std::round(score), -(int32_t)VALUE_MATE, (int32_t)VALUE_MATE);
                 }
                 else if (token == "ply") {
                     int temp;
@@ -414,7 +416,7 @@ namespace Stockfish::Tools
                                     Value value = parse_score_from_pgn_extract(str_eval, success);
                                     if (success) {
                                         eval_found = true;
-                                        psv.score = Math::clamp(value, -VALUE_MATE, VALUE_MATE);
+                                        psv.score = std::clamp(value, -VALUE_MATE, VALUE_MATE);
                                     }
 
 #if defined(DEBUG_CONVERT_BIN_FROM_PGN_EXTRACT)

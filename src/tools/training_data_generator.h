@@ -8,7 +8,7 @@
 namespace Stockfish::Tools {
 
     // Automatic generation of teacher position
-    void gensfen(std::istringstream& is);
+    void generate_training_data(std::istringstream& is);
 }
 
 #endif

@@ -489,91 +489,10 @@ private:
 namespace WinProcGroup {
   void bindThisThread(size_t idx);
 }
-// sleep for the specified number of milliseconds.
-extern void sleep(int ms);
 
 // Returns a string that represents the current time. (Used for log output when learning evaluation function)
 std::string now_string();
-
-// When compiled with gcc/clang such as msys2, Windows Subsystem for Linux,
-// In C++ std::ifstream, ::read() is a wrapper for that because it is not possible to read and write files larger than 2GB in one shot.
-//
-// callback_func of the argument of read_file_to_memory() uses the file size as an argument when the file can be opened
-// It will be called back, so if you allocate a buffer and pass a function that returns the first pointer, it will be read there.
-// These functions return non-zero on error, such as when the file cannot be found.
-//
-// Also, if the buffer cannot be allocated in the callback function or if the file size is different from the expected file size,
-// Return nullptr. At this time, read_file_to_memory() interrupts reading and returns with an error.
-
-std::uint64_t get_file_size(std::fstream& fs);
-int read_file_to_memory(std::string filename, std::function<void* (uint64_t)> callback_func);
-int write_memory_to_file(std::string filename, void* ptr, uint64_t size);
-
-// --------------------
-// async version of PRNG
-// --------------------
-
-// async version of PRNG
-struct AsyncPRNG
-{
-  AsyncPRNG() : prng() { }
-  AsyncPRNG(uint64_t seed) : prng(seed) { assert(seed); }
-  AsyncPRNG(const std::string& seed) : prng(seed) { }
-  // [ASYNC] Extract one random number.
-  template<typename T> T rand() {
-    std::unique_lock<std::mutex> lk(mutex);
-    return prng.rand<T>();
-  }
-
-  // [ASYNC] Returns a random number from 0 to n-1. (Not uniform distribution, but this is enough in reality)
-  uint64_t rand(uint64_t n) {
-    std::unique_lock<std::mutex> lk(mutex);
-    return prng.rand(n);
-  }
-
-  // Return the random seed used internally.
-  uint64_t get_seed() const { return prng.get_seed(); }
-
-protected:
-  std::mutex mutex;
-  PRNG prng;
-};
-
-// Display a random seed. (For debugging)
-inline std::ostream& operator<<(std::ostream& os, AsyncPRNG& prng)
-{
-  os << "AsyncPRNG::seed = " << std::hex << prng.get_seed() << std::dec;
-  return os;
-}
-
-// --------------------
-//       Math
-// --------------------
-
-// Mathematical function used for progress calculation and learning
-namespace Math {
-    inline double sigmoid(double x)
-    {
-        return 1.0 / (1.0 + std::exp(-x));
-    }
-
-    inline double dsigmoid(double x)
-    {
-        // Sigmoid function
-        // f(x) = 1/(1+exp(-x))
-        // the first derivative is
-        // f'(x) = df/dx = f(x)・{ 1-f(x)}
-        // becomes
-
-        return sigmoid(x) * (1.0 - sigmoid(x));
-    }
-
-	// Clip v so that it fits between [lo,hi].
-	// * In Stockfish, this function is written in bitboard.h.
-	template<class T> constexpr const T& clamp(const T& v, const T& lo, const T& hi) {
-		return v < lo ? lo : v > hi ? hi : v;
-	}
-}
+void sleep(int ms);
 
 namespace Algo {
     // Fisher-Yates
