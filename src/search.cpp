@@ -189,8 +189,6 @@ namespace {
 
 } // namespace
 
-int A = 124, B = 164, C = 60, D = 100, E = 100;
-TUNE(A, B, C, D, E);
 
 /// Search::init() is called at startup to initialize various lookup tables
 
@@ -508,10 +506,10 @@ void Thread::search() {
           && !Threads.stop
           && !mainThread->stopOnPonderhit)
       {
-          double fallingEval = (318 + A * (mainThread->bestPreviousScore - bestValue) / 20
-                                    + B * (mainThread->iterValue[iterIdx] - bestValue) / 20
-                                    + std::clamp(int(-bestValue) - D, 0, 2 * E) * C / 512
-                               ) / 825.0;
+          double fallingEval = (3180 +  64 * (mainThread->bestPreviousScore - bestValue)
+                                     +  79 * (mainThread->iterValue[iterIdx] - bestValue)
+                                     + 325 * std::clamp(int(-bestValue) - 100, 0, 200) / 256
+                               ) / 8250.0;
           fallingEval =  std::clamp(fallingEval, 0.5, 1.5);
 
           // If the bestMove is stable over several iterations, reduce time accordingly
