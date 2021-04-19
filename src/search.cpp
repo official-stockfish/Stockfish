@@ -506,9 +506,9 @@ void Thread::search() {
           && !Threads.stop
           && !mainThread->stopOnPonderhit)
       {
-          double fallingEval = (3180 +  67 * (mainThread->bestPreviousScore - bestValue)
-                                     +  71 * (mainThread->iterValue[iterIdx] - bestValue)
-                                     + 410 * std::clamp(int(-bestValue) - 100, 0, 200) / 256
+          double fallingEval = (3180 +  74 * (mainThread->bestPreviousScore - bestValue)
+                                     +  96 * (mainThread->iterValue[iterIdx] - bestValue)
+                                     + 316 * std::clamp(int(-bestValue) - 117, 0, 232) / 256
                                ) / 8250.0;
           fallingEval =  std::clamp(fallingEval, 0.5, 1.5);
 
