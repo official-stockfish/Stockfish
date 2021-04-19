@@ -36,7 +36,7 @@ namespace Stockfish::Eval::NNUE::Features {
       return value == First || CompileTimeList<T, Remaining...>::Contains(value);
     }
     static constexpr std::array<T, sizeof...(Remaining) + 1>
-        kValues = {{First, Remaining...}};
+        Values = {{First, Remaining...}};
   };
 
   // Base class of feature set
@@ -51,16 +51,16 @@ namespace Stockfish::Eval::NNUE::Features {
 
    public:
     // Hash value embedded in the evaluation file
-    static constexpr std::uint32_t kHashValue = FeatureType::kHashValue;
+    static constexpr std::uint32_t HashValue = FeatureType::HashValue;
     // Number of feature dimensions
-    static constexpr IndexType kDimensions = FeatureType::kDimensions;
+    static constexpr IndexType Dimensions = FeatureType::Dimensions;
     // Maximum number of simultaneously active features
-    static constexpr IndexType kMaxActiveDimensions =
-        FeatureType::kMaxActiveDimensions;
+    static constexpr IndexType MaxActiveDimensions =
+        FeatureType::MaxActiveDimensions;
     // Trigger for full calculation instead of difference calculation
     using SortedTriggerSet =
-        CompileTimeList<TriggerEvent, FeatureType::kRefreshTrigger>;
-    static constexpr auto kRefreshTriggers = SortedTriggerSet::kValues;
+        CompileTimeList<TriggerEvent, FeatureType::RefreshTrigger>;
+    static constexpr auto RefreshTriggers = SortedTriggerSet::Values;
 
   };
 

@@ -30,12 +30,12 @@ namespace Stockfish::Eval::NNUE::Features {
 
   // Index of a feature for a given king position and another piece on some square
   inline IndexType make_index(Color perspective, Square s, Piece pc, Square ksq) {
-    return IndexType(orient(perspective, s) + kpp_board_index[perspective][pc] + PS_END * ksq);
+    return IndexType(orient(perspective, s) + PieceSquareIndex[perspective][pc] + PS_NB * ksq);
   }
 
   // Get a list of indices for active features
   template <Side AssociatedKing>
-  void HalfKP<AssociatedKing>::AppendActiveIndices(
+  void HalfKP<AssociatedKing>::append_active_indices(
       const Position& pos, Color perspective, IndexList* active) {
 
     Square ksq = orient(perspective, pos.square<KING>(perspective));
@@ -48,7 +48,7 @@ namespace Stockfish::Eval::NNUE::Features {
   }
 
 
-  // AppendChangedIndices() : get a list of indices for recently changed features
+  // append_changed_indices() : get a list of indices for recently changed features
 
   // IMPORTANT: The `pos` in this function is pretty much useless as it
   // is not always the position the features are updated to. The feature
@@ -67,7 +67,7 @@ namespace Stockfish::Eval::NNUE::Features {
   // the current leaf position (the position after the move).
 
   template <Side AssociatedKing>
-  void HalfKP<AssociatedKing>::AppendChangedIndices(
+  void HalfKP<AssociatedKing>::append_changed_indices(
       const Position& pos, const DirtyPiece& dp, Color perspective,
       IndexList* removed, IndexList* added) {
 
@@ -82,6 +82,6 @@ namespace Stockfish::Eval::NNUE::Features {
     }
   }
 
-  template class HalfKP<Side::kFriend>;
+  template class HalfKP<Side::Friend>;
 
 }  // namespace Stockfish::Eval::NNUE::Features

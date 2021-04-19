@@ -32,7 +32,7 @@
 namespace Stockfish::Eval::NNUE {
 
   // Input feature converter
-  LargePagePtr<FeatureTransformer> feature_transformer;
+  LargePagePtr<FeatureTransformer> featureTransformer;
 
   // Evaluation function
   AlignedPtr<Network> network;
@@ -44,14 +44,14 @@ namespace Stockfish::Eval::NNUE {
 
   // Initialize the evaluation function parameters
   template <typename T>
-  void Initialize(AlignedPtr<T>& pointer) {
+  void initialize(AlignedPtr<T>& pointer) {
 
     pointer.reset(reinterpret_cast<T*>(std_aligned_alloc(alignof(T), sizeof(T))));
     std::memset(pointer.get(), 0, sizeof(T));
   }
 
   template <typename T>
-  void Initialize(LargePagePtr<T>& pointer) {
+  void initialize(LargePagePtr<T>& pointer) {
 
     static_assert(alignof(T) <= 4096, "aligned_large_pages_alloc() may fail for such a big alignment requirement of T");
     pointer.reset(reinterpret_cast<T*>(aligned_large_pages_alloc(sizeof(T))));
@@ -60,46 +60,46 @@ namespace Stockfish::Eval::NNUE {
 
   // Read evaluation function parameters
   template <typename T>
-  bool ReadParameters(std::istream& stream, T& reference) {
+  bool read_parameters(std::istream& stream, T& reference) {
 
     std::uint32_t header;
     header = read_little_endian<std::uint32_t>(stream);
-    if (!stream || header != T::GetHashValue()) return false;
-    return reference.ReadParameters(stream);
+    if (!stream || header != T::get_hash_value()) return false;
+    return reference.read_parameters(stream);
   }
 
   }  // namespace Detail
 
   // Initialize the evaluation function parameters
-  void Initialize() {
+  void initialize() {
 
-    Detail::Initialize(feature_transformer);
-    Detail::Initialize(network);
+    Detail::initialize(featureTransformer);
+    Detail::initialize(network);
   }
 
   // Read network header
-  bool ReadHeader(std::istream& stream, std::uint32_t* hash_value, std::string* architecture)
+  bool read_header(std::istream& stream, std::uint32_t* hashValue, std::string* architecture)
   {
     std::uint32_t version, size;
 
     version     = read_little_endian<std::uint32_t>(stream);
-    *hash_value = read_little_endian<std::uint32_t>(stream);
+    *hashValue = read_little_endian<std::uint32_t>(stream);
     size        = read_little_endian<std::uint32_t>(stream);
-    if (!stream || version != kVersion) return false;
+    if (!stream || version != Version) return false;
     architecture->resize(size);
     stream.read(&(*architecture)[0], size);
     return !stream.fail();
   }
 
   // Read network parameters
-  bool ReadParameters(std::istream& stream) {
+  bool read_parameters(std::istream& stream) {
 
-    std::uint32_t hash_value;
+    std::uint32_t hashValue;
     std::string architecture;
-    if (!ReadHeader(stream, &hash_value, &architecture)) return false;
-    if (hash_value != kHashValue) return false;
-    if (!Detail::ReadParameters(stream, *feature_transformer)) return false;
-    if (!Detail::ReadParameters(stream, *network)) return false;
+    if (!read_header(stream, &hashValue, &architecture)) return false;
+    if (hashValue != HashValue) return false;
+    if (!Detail::read_parameters(stream, *featureTransformer)) return false;
+    if (!Detail::read_parameters(stream, *network)) return false;
     return stream && stream.peek() == std::ios::traits_type::eof();
   }
 
@@ -109,36 +109,36 @@ namespace Stockfish::Eval::NNUE {
     // We manually align the arrays on the stack because with gcc < 9.3
     // overaligning stack variables with alignas() doesn't work correctly.
 
-    constexpr uint64_t alignment = kCacheLineSize;
+    constexpr uint64_t alignment = CacheLineSize;
 
 #if defined(ALIGNAS_ON_STACK_VARIABLES_BROKEN)
-    TransformedFeatureType transformed_features_unaligned[
-      FeatureTransformer::kBufferSize + alignment / sizeof(TransformedFeatureType)];
-    char buffer_unaligned[Network::kBufferSize + alignment];
+    TransformedFeatureType transformedFeaturesUnaligned[
+      FeatureTransformer::BufferSize + alignment / sizeof(TransformedFeatureType)];
+    char bufferUnaligned[Network::BufferSize + alignment];
 
-    auto* transformed_features = align_ptr_up<alignment>(&transformed_features_unaligned[0]);
-    auto* buffer = align_ptr_up<alignment>(&buffer_unaligned[0]);
+    auto* transformedFeatures = align_ptr_up<alignment>(&transformedFeaturesUnaligned[0]);
+    auto* buffer = align_ptr_up<alignment>(&bufferUnaligned[0]);
 #else
     alignas(alignment)
-      TransformedFeatureType transformed_features[FeatureTransformer::kBufferSize];
-    alignas(alignment) char buffer[Network::kBufferSize];
+      TransformedFeatureType transformedFeatures[FeatureTransformer::BufferSize];
+    alignas(alignment) char buffer[Network::BufferSize];
 #endif
 
-    ASSERT_ALIGNED(transformed_features, alignment);
+    ASSERT_ALIGNED(transformedFeatures, alignment);
     ASSERT_ALIGNED(buffer, alignment);
 
-    feature_transformer->Transform(pos, transformed_features);
-    const auto output = network->Propagate(transformed_features, buffer);
+    featureTransformer->transform(pos, transformedFeatures);
+    const auto output = network->propagate(transformedFeatures, buffer);
 
-    return static_cast<Value>(output[0] / FV_SCALE);
+    return static_cast<Value>(output[0] / OutputScale);
   }
 
   // Load eval, from a file stream or a memory stream
   bool load_eval(std::string name, std::istream& stream) {
 
-    Initialize();
+    initialize();
     fileName = name;
-    return ReadParameters(stream);
+    return read_parameters(stream);
   }
 
 } // namespace Stockfish::Eval::NNUE
