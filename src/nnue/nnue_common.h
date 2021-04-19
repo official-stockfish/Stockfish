@@ -46,30 +46,30 @@
 namespace Stockfish::Eval::NNUE {
 
   // Version of the evaluation file
-  constexpr std::uint32_t kVersion = 0x7AF32F16u;
+  constexpr std::uint32_t Version = 0x7AF32F16u;
 
   // Constant used in evaluation value calculation
-  constexpr int FV_SCALE = 16;
-  constexpr int kWeightScaleBits = 6;
+  constexpr int OutputScale = 16;
+  constexpr int WeightScaleBits = 6;
 
   // Size of cache line (in bytes)
-  constexpr std::size_t kCacheLineSize = 64;
+  constexpr std::size_t CacheLineSize = 64;
 
   // SIMD width (in bytes)
   #if defined(USE_AVX2)
-  constexpr std::size_t kSimdWidth = 32;
+  constexpr std::size_t SimdWidth = 32;
 
   #elif defined(USE_SSE2)
-  constexpr std::size_t kSimdWidth = 16;
+  constexpr std::size_t SimdWidth = 16;
 
   #elif defined(USE_MMX)
-  constexpr std::size_t kSimdWidth = 8;
+  constexpr std::size_t SimdWidth = 8;
 
   #elif defined(USE_NEON)
-  constexpr std::size_t kSimdWidth = 16;
+  constexpr std::size_t SimdWidth = 16;
   #endif
 
-  constexpr std::size_t kMaxSimdWidth = 32;
+  constexpr std::size_t MaxSimdWidth = 32;
 
   // unique number for each piece type on each square
   enum {
@@ -84,19 +84,16 @@ namespace Stockfish::Eval::NNUE {
     PS_B_ROOK   =  7 * SQUARE_NB + 1,
     PS_W_QUEEN  =  8 * SQUARE_NB + 1,
     PS_B_QUEEN  =  9 * SQUARE_NB + 1,
-    PS_W_KING   = 10 * SQUARE_NB + 1,
-    PS_END      = PS_W_KING, // pieces without kings (pawns included)
-    PS_B_KING   = 11 * SQUARE_NB + 1,
-    PS_END2     = 12 * SQUARE_NB + 1
+    PS_NB = 10 * SQUARE_NB + 1
   };
 
-  constexpr uint32_t kpp_board_index[COLOR_NB][PIECE_NB] = {
+  constexpr uint32_t PieceSquareIndex[COLOR_NB][PIECE_NB] = {
     // convention: W - us, B - them
     // viewed from other side, W and B are reversed
-    { PS_NONE, PS_W_PAWN, PS_W_KNIGHT, PS_W_BISHOP, PS_W_ROOK, PS_W_QUEEN, PS_W_KING, PS_NONE,
-      PS_NONE, PS_B_PAWN, PS_B_KNIGHT, PS_B_BISHOP, PS_B_ROOK, PS_B_QUEEN, PS_B_KING, PS_NONE },
-    { PS_NONE, PS_B_PAWN, PS_B_KNIGHT, PS_B_BISHOP, PS_B_ROOK, PS_B_QUEEN, PS_B_KING, PS_NONE,
-      PS_NONE, PS_W_PAWN, PS_W_KNIGHT, PS_W_BISHOP, PS_W_ROOK, PS_W_QUEEN, PS_W_KING, PS_NONE }
+    { PS_NONE, PS_W_PAWN, PS_W_KNIGHT, PS_W_BISHOP, PS_W_ROOK, PS_W_QUEEN, PS_NONE, PS_NONE,
+      PS_NONE, PS_B_PAWN, PS_B_KNIGHT, PS_B_BISHOP, PS_B_ROOK, PS_B_QUEEN, PS_NONE, PS_NONE },
+    { PS_NONE, PS_B_PAWN, PS_B_KNIGHT, PS_B_BISHOP, PS_B_ROOK, PS_B_QUEEN, PS_NONE, PS_NONE,
+      PS_NONE, PS_W_PAWN, PS_W_KNIGHT, PS_W_BISHOP, PS_W_ROOK, PS_W_QUEEN, PS_NONE, PS_NONE }
   };
 
   // Type of input feature after conversion
@@ -105,7 +102,7 @@ namespace Stockfish::Eval::NNUE {
 
   // Round n up to be a multiple of base
   template <typename IntType>
-  constexpr IntType CeilToMultiple(IntType n, IntType base) {
+  constexpr IntType ceil_to_multiple(IntType n, IntType base) {
       return (n + base - 1) / base * base;
   }
 

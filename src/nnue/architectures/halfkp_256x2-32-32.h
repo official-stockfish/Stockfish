@@ -32,15 +32,15 @@ namespace Stockfish::Eval::NNUE {
 
 // Input features used in evaluation function
 using RawFeatures = Features::FeatureSet<
-    Features::HalfKP<Features::Side::kFriend>>;
+    Features::HalfKP<Features::Side::Friend>>;
 
 // Number of input feature dimensions after conversion
-constexpr IndexType kTransformedFeatureDimensions = 256;
+constexpr IndexType TransformedFeatureDimensions = 256;
 
 namespace Layers {
 
 // Define network structure
-using InputLayer = InputSlice<kTransformedFeatureDimensions * 2>;
+using InputLayer = InputSlice<TransformedFeatureDimensions * 2>;
 using HiddenLayer1 = ClippedReLU<AffineTransform<InputLayer, 32>>;
 using HiddenLayer2 = ClippedReLU<AffineTransform<HiddenLayer1, 32>>;
 using OutputLayer = AffineTransform<HiddenLayer2, 1>;
