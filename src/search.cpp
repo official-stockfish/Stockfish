@@ -189,7 +189,7 @@ namespace {
 
 } // namespace
 
-int A = 120, B = 120, C = 128, D = 100, E = 100;
+int A = 124, B = 164, C = 60, D = 100, E = 100;
 TUNE(A, B, C, D, E);
 
 /// Search::init() is called at startup to initialize various lookup tables
