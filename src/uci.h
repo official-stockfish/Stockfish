@@ -74,8 +74,6 @@ std::string square(Square s);
 std::string move(Move m, bool chess960);
 std::string pv(const Position& pos, Depth depth, Value alpha, Value beta);
 std::string wdl(Value v, int ply);
-int win_rate_model(Value v, int ply);
-double win_rate_model_double(double v, int ply);
 Move to_move(const Position& pos, std::string& str);
 void setoption(const std::string& name, const std::string& value);
 

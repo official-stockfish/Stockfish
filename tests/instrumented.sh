@@ -24,7 +24,7 @@ case $1 in
     echo "valgrind-thread testing started"
     prefix=''
     exeprefix='valgrind --fair-sched=try --error-exitcode=42'
-    postfix=''
+    postfix='1>/dev/null'
     threads="2"
     bench_depth=5
     go_depth=10
@@ -142,7 +142,57 @@ cat << EOF > syzygy.exp
  exit \$value
 EOF
 
-for exp in game.exp
+# generate_training_data testing 01
+cat << EOF > data_generation01.exp
+ set timeout 240
+ spawn $exeprefix ./stockfish
+
+ send "uci\n"
+ expect "uciok"
+
+ send "setoption name Threads value $threads\n"
+ send "setoption name Use NNUE value false\n"
+ send "isready\n"
+ send "generate_training_data depth 3 count 100 keep_draws 1 eval_limit 32000 output_file_name training_data/training_data.bin output_format bin\n"
+ expect "INFO: Gensfen finished."
+ send "convert_plain targetfile training_data/training_data.bin output_file_name training_data.txt\n"
+ expect "all done"
+ send "generate_training_data depth 3 count 100 keep_draws 1 eval_limit 32000 output_file_name training_data/training_data.binpack output_format binpack\n"
+ expect "INFO: Gensfen finished."
+
+ send "quit\n"
+ expect eof
+
+ # return error code of the spawned program, useful for valgrind
+ lassign [wait] pid spawnid os_error_flag value
+ exit \$value
+EOF
+
+# generate_training_data testing 02
+cat << EOF > data_generation02.exp
+ set timeout 240
+ spawn $exeprefix ./stockfish
+
+ send "uci\n"
+ expect "uciok"
+
+ send "setoption name Threads value $threads\n"
+ send "setoption name Use NNUE value true\n"
+ send "isready\n"
+ send "generate_training_data depth 4 count 50 keep_draws 1 eval_limit 32000 output_file_name validation_data/validation_data.bin output_format bin\n"
+ expect "INFO: Gensfen finished."
+ send "generate_training_data depth 4 count 50 keep_draws 1 eval_limit 32000 output_file_name validation_data/validation_data.binpack output_format binpack\n"
+ expect "INFO: Gensfen finished."
+
+ send "quit\n"
+ expect eof
+
+ # return error code of the spawned program, useful for valgrind
+ lassign [wait] pid spawnid os_error_flag value
+ exit \$value
+EOF
+
+for exp in game.exp data_generation01.exe data_generation02.exp
 do
 
   echo "$prefix expect $exp $postfix"

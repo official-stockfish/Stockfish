@@ -52,8 +52,8 @@ SRCS = benchmark.cpp bitbase.cpp bitboard.cpp endgame.cpp evaluate.cpp main.cpp 
 	nnue/evaluate_nnue.cpp \
 	nnue/features/half_kp.cpp \
 	tools/sfen_packer.cpp \
-	tools/gensfen.cpp \
-	tools/gensfen_nonpv.cpp \
+	tools/training_data_generator.cpp \
+	tools/training_data_generator_nonpv.cpp \
 	tools/opening_book.cpp \
 	tools/convert.cpp \
 	tools/transform.cpp \
@@ -113,7 +113,6 @@ else
    SUPPORTED_ARCH=false
 endif
 
-blas = no
 optimize = yes
 debug = no
 sanitize = no
@@ -309,9 +308,9 @@ endif
 ### ==========================================================================
 
 ### 3.1 Selecting compiler (default = gcc)
-CXXFLAGS += -g -Wall -Wcast-qual -fno-exceptions -std=c++17 -fopenmp -I. $(EXTRACXXFLAGS)
-LDFLAGS += -fopenmp $(EXTRALDFLAGS)
-DEPENDFLAGS += -std=c++17 -I.
+CXXFLAGS += -Wall -Wcast-qual -fno-exceptions -std=c++17 -I. $(EXTRACXXFLAGS)
+DEPENDFLAGS += -std=c++17
+LDFLAGS += $(EXTRALDFLAGS)
 
 ifeq ($(COMP),)
 	COMP=gcc
@@ -463,28 +462,6 @@ ifneq ($(comp),mingw)
 		endif
 	endif
 endif
-endif
-
-### 3.2.1. BLAS libraries
-ifeq ($(blas), yes)
-	LDFLAGS += -lopenblas
-
-	ifeq ($(KERNEL),Linux)
-		LDFLAGS +=
-	else ifeq ($(KERNEL), Darwin)
-		CXXFLAGS += -I/usr/local/opt/openblas/include
-		LDFLAGS += -L/usr/local/opt/openblas/lib -lcblas
-	else
-		CXXFLAGS += -I/mingw64/include/OpenBLAS
-
-		ifeq ($(debug),yes)
-			LDFLAGS += -Wl,-static
-		else
-			LDFLAGS += -Wl,-s -static
-		endif
-	endif
-
-	CXXFLAGS += -DUSE_BLAS
 endif
 
 ### 3.2.2 Debugging
@@ -809,12 +786,12 @@ net:
 
 # clean binaries and objects
 objclean:
-	@rm -f $(EXE) *.o ./syzygy/*.o ./nnue/*.o ./nnue/features/*.o ./learn/*.o ./extra/*.o ./eval/*.o
+	@rm -f $(EXE) *.o ./syzygy/*.o ./nnue/*.o ./nnue/features/*.o ./tools/*.o ./extra/*.o ./eval/*.o
 
 # clean auxiliary profiling files
 profileclean:
 	@rm -rf profdir
-	@rm -f bench.txt *.gcda *.gcno ./syzygy/*.gcda ./nnue/*.gcda ./nnue/features/*.gcda *.s ./learn/*.gcda ./extra/*.gcda ./eval/*.gcda
+	@rm -f bench.txt *.gcda *.gcno ./syzygy/*.gcda ./nnue/*.gcda ./nnue/features/*.gcda *.s ./tools/*.gcda ./extra/*.gcda ./eval/*.gcda
 	@rm -f stockfish.profdata *.profraw
 	@rm -f $(PGO_TRAINING_DATA_FILE)
 

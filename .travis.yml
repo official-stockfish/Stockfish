@@ -7,33 +7,10 @@ matrix:
       compiler: gcc
       addons:
         apt:
-          packages: ['g++-multilib', 'valgrind', 'expect', 'curl', 'libopenblas-dev']
+          packages: ['g++-multilib', 'valgrind', 'expect', 'curl']
       env:
         - COMPILER=g++
         - COMP=gcc
-
-#    - os: linux
-#      compiler: clang
-#      addons:
-#        apt:
-#          packages: ['clang-10', 'llvm-10-dev', 'g++-multilib', 'valgrind', 'expect', 'curl', 'openblas']
-#      env:
-#        - COMPILER=clang++-10
-#        - COMP=clang
-#
-#    - os: osx
-#      osx_image: xcode12
-#      compiler: gcc
-#      env:
-#        - COMPILER=g++
-#        - COMP=gcc
-#
-#    - os: osx
-#      osx_image: xcode12
-#      compiler: clang
-#      env:
-#        - COMPILER=clang++
-#        - COMP=clang
 
 branches:
   only:
@@ -96,9 +73,3 @@ script:
   #
   - make clean && make -j2 ARCH=x86-64-modern sanitize=undefined optimize=no debug=yes build > /dev/null && ../tests/instrumented.sh --sanitizer-undefined
   - make clean && make -j2 ARCH=x86-64-modern sanitize=thread    optimize=no debug=yes build > /dev/null && ../tests/instrumented.sh --sanitizer-thread
-
-  # NNUE testing
-  - export CXXFLAGS="-O1 -fno-inline"
-  - make clean && make -j2 ARCH=x86-64-modern debug=no optimize=no build > /dev/null && ../tests/instrumented_learn.sh --valgrind
-  - make clean && make -j2 ARCH=x86-64-modern sanitize=undefined optimize=no debug=yes build > /dev/null && ../tests/instrumented_learn.sh --sanitizer-undefined
-  - make clean && make -j2 ARCH=x86-64-modern sanitize=thread    optimize=no debug=yes build > /dev/null && ../tests/instrumented_learn.sh --sanitizer-thread

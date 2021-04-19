@@ -1,4 +1,4 @@
-﻿#include "gensfen.h"
+﻿#include "training_data_generator.h"
 
 #include "sfen_writer.h"
 #include "packed_sfen.h"
@@ -37,7 +37,7 @@ using namespace std;
 namespace Stockfish::Tools
 {
     // Class to generate sfen with multiple threads
-    struct Gensfen
+    struct TrainingDataGenerator
     {
         struct Params
         {
@@ -83,7 +83,7 @@ namespace Stockfish::Tools
 
             uint64_t save_every = std::numeric_limits<uint64_t>::max();
 
-            std::string output_file_name = "generated_kifu";
+            std::string output_file_name = "training_data";
 
             SfenOutputType sfen_format = SfenOutputType::Binpack;
 
@@ -123,7 +123,7 @@ namespace Stockfish::Tools
         static constexpr uint64_t REPORT_STATS_EVERY = 200000;
         static_assert(REPORT_STATS_EVERY % REPORT_DOT_EVERY == 0);
 
-        Gensfen(
+        TrainingDataGenerator(
             const Params& prm
         ) :
             params(prm),
@@ -205,7 +205,7 @@ namespace Stockfish::Tools
         void maybe_report(uint64_t done);
     };
 
-    void Gensfen::set_gensfen_search_limits()
+    void TrainingDataGenerator::set_gensfen_search_limits()
     {
         // About Search::Limits
         // Be careful because this member variable is global and affects other threads.
@@ -224,7 +224,7 @@ namespace Stockfish::Tools
         limits.depth = 0;
     }
 
-    void Gensfen::generate(uint64_t limit)
+    void TrainingDataGenerator::generate(uint64_t limit)
     {
         last_stats_report_time = 0;
 
@@ -246,7 +246,7 @@ namespace Stockfish::Tools
         std::cout << std::endl;
     }
 
-    void Gensfen::generate_worker(
+    void TrainingDataGenerator::generate_worker(
         Thread& th,
         std::atomic<uint64_t>& counter,
         uint64_t limit)
@@ -449,7 +449,7 @@ namespace Stockfish::Tools
         }
     }
 
-    bool Gensfen::was_seen_before(const Position& pos)
+    bool TrainingDataGenerator::was_seen_before(const Position& pos)
     {
         // Look into the position hashtable to see if the same
         // position was seen before.
@@ -470,7 +470,7 @@ namespace Stockfish::Tools
         }
     }
 
-    optional<int8_t> Gensfen::get_current_game_result(
+    optional<int8_t> TrainingDataGenerator::get_current_game_result(
         Position& pos,
         const vector<int>& move_hist_scores) const
     {
@@ -591,7 +591,7 @@ namespace Stockfish::Tools
         return nullopt;
     }
 
-    vector<uint8_t> Gensfen::generate_random_move_flags(PRNG& prng)
+    vector<uint8_t> TrainingDataGenerator::generate_random_move_flags(PRNG& prng)
     {
         vector<uint8_t> random_move_flag;
 
@@ -628,7 +628,7 @@ namespace Stockfish::Tools
         return random_move_flag;
     }
 
-    optional<Move> Gensfen::choose_random_move(
+    optional<Move> TrainingDataGenerator::choose_random_move(
         PRNG& prng,
         Position& pos,
         std::vector<uint8_t>& random_move_flag,
@@ -725,7 +725,7 @@ namespace Stockfish::Tools
     // 1 when winning. -1 when losing. Pass 0 for a draw.
     // Return value: true if the specified number of
     // sfens has already been reached and the process ends.
-    bool Gensfen::commit_psv(
+    bool TrainingDataGenerator::commit_psv(
         Thread& th,
         PSVector& sfens,
         int8_t result,
@@ -770,7 +770,7 @@ namespace Stockfish::Tools
         return false;
     }
 
-    void Gensfen::report(uint64_t done, uint64_t new_done)
+    void TrainingDataGenerator::report(uint64_t done, uint64_t new_done)
     {
         const auto now_time = now();
         const TimePoint elapsed = now_time - last_stats_report_time + 1;
@@ -786,7 +786,7 @@ namespace Stockfish::Tools
         out = sync_region_cout.new_region();
     }
 
-    void Gensfen::maybe_report(uint64_t done)
+    void TrainingDataGenerator::maybe_report(uint64_t done)
     {
         if (done % REPORT_DOT_EVERY == 0)
         {
@@ -811,12 +811,12 @@ namespace Stockfish::Tools
     }
 
     // Command to generate a game record
-    void gensfen(istringstream& is)
+    void generate_training_data(istringstream& is)
     {
         // Number of generated game records default = 8 billion phases (Ponanza specification)
         uint64_t loop_max = 8000000000UL;
 
-        Gensfen::Params params;
+        TrainingDataGenerator::Params params;
 
         // Add a random number to the end of the file name.
         bool random_file_name = false;
@@ -831,20 +831,25 @@ namespace Stockfish::Tools
                 break;
 
             if (token == "depth")
+            {
                 is >> params.search_depth_min;
-            else if (token == "depth2")
-                is >> params.search_depth_max;
+                params.search_depth_max = params.search_depth_min;
+            }
+            else if (token == "min_depth")
+                is >> params.search_depth_min;
+            else if (token == "max_depth")
+                is >> params.search_depth_min;
             else if (token == "nodes")
                 is >> params.nodes;
-            else if (token == "loop")
+            else if (token == "count")
                 is >> loop_max;
             else if (token == "output_file_name")
                 is >> params.output_file_name;
             else if (token == "eval_limit")
                 is >> params.eval_limit;
-            else if (token == "random_move_minply")
+            else if (token == "random_move_min_ply")
                 is >> params.random_move_minply;
-            else if (token == "random_move_maxply")
+            else if (token == "random_move_max_ply")
                 is >> params.random_move_maxply;
             else if (token == "random_move_count")
                 is >> params.random_move_count;
@@ -856,9 +861,9 @@ namespace Stockfish::Tools
                 is >> params.random_multi_pv_diff;
             else if (token == "random_multi_pv_depth")
                 is >> params.random_multi_pv_depth;
-            else if (token == "write_minply")
+            else if (token == "write_min_ply")
                 is >> params.write_minply;
-            else if (token == "write_maxply")
+            else if (token == "write_max_ply")
                 is >> params.write_maxply;
             else if (token == "save_every")
                 is >> params.save_every;
@@ -866,15 +871,13 @@ namespace Stockfish::Tools
                 is >> params.book;
             else if (token == "random_file_name")
                 is >> random_file_name;
-            // Accept also the old option name.
-            else if (token == "use_draw_in_training_data_generation" || token == "write_out_draw_game_in_training_data_generation")
+            else if (token == "keep_draws")
                 is >> params.write_out_draw_game_in_training_data_generation;
-            // Accept also the old option name.
-            else if (token == "use_game_draw_adjudication" || token == "detect_draw_by_consecutive_low_score")
+            else if (token == "adjudicate_draws_by_score")
                 is >> params.detect_draw_by_consecutive_low_score;
-            else if (token == "detect_draw_by_insufficient_mating_material")
+            else if (token == "adjudicate_draws_by_insufficient_material")
                 is >> params.detect_draw_by_insufficient_mating_material;
-            else if (token == "sfen_format")
+            else if (token == "data_format")
                 is >> sfen_format;
             else if (token == "seed")
                 is >> params.seed;
@@ -934,25 +937,25 @@ namespace Stockfish::Tools
 
         params.enforce_constraints();
 
-        std::cout << "INFO: Executing gensfen command\n";
+        std::cout << "INFO: Executing generate_training_data command\n";
 
         std::cout << "INFO: Parameters:\n";
         std::cout
             << "  - search_depth_min       = " << params.search_depth_min << endl
             << "  - search_depth_max       = " << params.search_depth_max << endl
             << "  - nodes                  = " << params.nodes << endl
-            << "  - num sfens to generate  = " << loop_max << endl
+            << "  - count                  = " << loop_max << endl
             << "  - eval_limit             = " << params.eval_limit << endl
             << "  - num threads (UCI)      = " << params.num_threads << endl
-            << "  - random_move_minply     = " << params.random_move_minply << endl
-            << "  - random_move_maxply     = " << params.random_move_maxply << endl
+            << "  - random_move_min_ply    = " << params.random_move_minply << endl
+            << "  - random_move_max_ply    = " << params.random_move_maxply << endl
             << "  - random_move_count      = " << params.random_move_count << endl
             << "  - random_move_like_apery = " << params.random_move_like_apery << endl
             << "  - random_multi_pv        = " << params.random_multi_pv << endl
             << "  - random_multi_pv_diff   = " << params.random_multi_pv_diff << endl
             << "  - random_multi_pv_depth  = " << params.random_multi_pv_depth << endl
-            << "  - write_minply           = " << params.write_minply << endl
-            << "  - write_maxply           = " << params.write_maxply << endl
+            << "  - write_min_ply          = " << params.write_minply << endl
+            << "  - write_max_ply          = " << params.write_maxply << endl
             << "  - book                   = " << params.book << endl
             << "  - output_file_name       = " << params.output_file_name << endl
             << "  - save_every             = " << params.save_every << endl
@@ -966,9 +969,9 @@ namespace Stockfish::Tools
 
         Threads.main()->ponder = false;
 
-        Gensfen gensfen(params);
+        TrainingDataGenerator gensfen(params);
         gensfen.generate(loop_max);
 
-        std::cout << "INFO: Gensfen finished." << endl;
+        std::cout << "INFO: generate_training_data finished." << endl;
     }
 }

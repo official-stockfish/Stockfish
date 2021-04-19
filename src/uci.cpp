@@ -33,8 +33,8 @@
 #include "tt.h"
 #include "uci.h"
 
-#include "tools/gensfen.h"
-#include "tools/gensfen_nonpv.h"
+#include "tools/training_data_generator.h"
+#include "tools/training_data_generator_nonpv.h"
 #include "tools/convert.h"
 #include "tools/transform.h"
 #include "tools/stats.h"
@@ -209,14 +209,7 @@ void UCI::setoption(const std::string& name, const std::string& value)
 
 // The win rate model returns the probability (per mille) of winning given an eval
 // and a game-ply. The model fits rather accurately the LTC fishtest statistics.
-int UCI::win_rate_model(Value v, int ply) {
-   // Return win rate in per mille (rounded to nearest)
-   return int(0.5 + win_rate_model_double(v, ply));
-}
-
-// The win rate model returns the probability (per mille) of winning given an eval
-// and a game-ply. The model fits rather accurately the LTC fishtest statistics.
-double UCI::win_rate_model_double(double v, int ply) {
+int win_rate_model(Value v, int ply) {
 
    // The model captures only up to 240 plies, so limit input (and rescale)
    double m = std::min(240, ply) / 64.0;
@@ -230,10 +223,10 @@ double UCI::win_rate_model_double(double v, int ply) {
    double b = (((bs[0] * m + bs[1]) * m + bs[2]) * m) + bs[3];
 
    // Transform eval to centipawns with limited range
-     double x = std::clamp(double(100 * v) / PawnValueEg, -1000.0, 1000.0);
+   double x = std::clamp(double(100 * v) / PawnValueEg, -1000.0, 1000.0);
 
-   // Return win rate in per mille
-   return 1000.0 / (1 + std::exp((a - x) / b));
+   // Return win rate in per mille (rounded to nearest)
+   return int(0.5 + 1000 / (1 + std::exp((a - x) / b)));
 }
 
 // --------------------
@@ -327,8 +320,8 @@ void UCI::loop(int argc, char* argv[]) {
       else if (token == "eval")     trace_eval(pos);
       else if (token == "compiler") sync_cout << compiler_info() << sync_endl;
 
-      else if (token == "gensfen") Tools::gensfen(is);
-      else if (token == "gensfen_nonpv") Tools::gensfen_nonpv(is);
+      else if (token == "generate_training_data") Tools::generate_training_data(is);
+      else if (token == "generate_training_data") Tools::generate_training_data_nonpv(is);
       else if (token == "convert") Tools::convert(is);
       else if (token == "convert_bin") Tools::convert_bin(is);
       else if (token == "convert_plain") Tools::convert_plain(is);

@@ -25,13 +25,6 @@
 
 #include <cstring>
 #include <iostream>
-#if defined(__GNUC__ ) && (__GNUC__ < 8)
-#include <experimental/filesystem>
-namespace sys = std::experimental::filesystem;
-#else
-#include <filesystem>
-namespace sys = std::filesystem;
-#endif
 
 #if defined(USE_AVX2)
 #include <immintrin.h>
@@ -111,10 +104,6 @@ namespace Stockfish::Eval::NNUE {
   // Type of input feature after conversion
   using TransformedFeatureType = std::uint8_t;
   using IndexType = std::uint32_t;
-
-  // Forward declaration of learning class template
-  template <typename Layer>
-  class Trainer;
 
   // Round n up to be a multiple of base
   template <typename IntType>

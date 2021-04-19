@@ -1,14 +1,14 @@
-# Gensfen NonPV
+# generate_training_data_nonpv
 
-`gensfen_nonpv` command allows generation of training data from self-play in a manner that suits training better than traditional games. It plays fixed nodes self play games for exploration and records [some of] the evaluated positions. Then rescores them with fixed depth search.
+`generate_training_data_nonpv` command allows generation of training data from self-play in a manner that suits training better than traditional games. It plays fixed nodes self play games for exploration and records [some of] the evaluated positions. Then rescores them with fixed depth search.
 
-As all commands in stockfish `gensfen_nonpv` can be invoked either from command line (as `stockfish.exe gensfen_nonpv ...`, but this is not recommended because it's not possible to specify UCI options before `gensfen_nonpv` executes) or in the interactive prompt.
+As all commands in stockfish `generate_training_data_nonpv` can be invoked either from command line (as `stockfish.exe generate_training_data_nonpv ...`, but this is not recommended because it's not possible to specify UCI options before `generate_training_data_nonpv` executes) or in the interactive prompt.
 
 It is recommended to set the `PruneAtShallowDepth` UCI option to `false` as it will increase the quality of fixed depth searches.
 
 It is recommended to keep the `EnableTranspositionTable` UCI option at the default `true` value as it will make the generation process faster without noticably harming the uniformity of the data.
 
-`gensfen_nonpv` takes named parameters in the form of `gensfen_nonpv param_1_name param_1_value param_2_name param_2_value ...`.
+`generate_training_data_nonpv` takes named parameters in the form of `generate_training_data_nonpv param_1_name param_1_value param_2_name param_2_value ...`.
 
 Currently the following options are available:
 
@@ -36,6 +36,6 @@ Currently the following options are available:
 
 `book` - a path to an opening book to use for the starting positions. Currently only .epd format is supported. If not specified then the starting position is always the standard chess starting position.
 
-`sfen_format` - format of the training data to use. Either `bin` or `binpack`. Default: `binpack`.
+`data_format` - format of the training data to use. Either `bin` or `binpack`. Default: `binpack`.
 
 `seed` - seed for the PRNG. Can be either a number or a string. If it's a string then its hash will be used. If not specified then the current time will be used.
