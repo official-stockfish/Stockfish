@@ -21,37 +21,88 @@
 #ifndef NNUE_FEATURES_HALF_KP_H_INCLUDED
 #define NNUE_FEATURES_HALF_KP_H_INCLUDED
 
+#include "../nnue_common.h"
+
 #include "../../evaluate.h"
-#include "features_common.h"
+#include "../../misc.h"
+
+namespace Stockfish {
+  struct StateInfo;
+}
 
 namespace Stockfish::Eval::NNUE::Features {
 
   // Feature HalfKP: Combination of the position of own king
   // and the position of pieces other than kings
-  template <Side AssociatedKing>
   class HalfKP {
+
+    // unique number for each piece type on each square
+    enum {
+      PS_NONE     =  0,
+      PS_W_PAWN   =  1,
+      PS_B_PAWN   =  1 * SQUARE_NB + 1,
+      PS_W_KNIGHT =  2 * SQUARE_NB + 1,
+      PS_B_KNIGHT =  3 * SQUARE_NB + 1,
+      PS_W_BISHOP =  4 * SQUARE_NB + 1,
+      PS_B_BISHOP =  5 * SQUARE_NB + 1,
+      PS_W_ROOK   =  6 * SQUARE_NB + 1,
+      PS_B_ROOK   =  7 * SQUARE_NB + 1,
+      PS_W_QUEEN  =  8 * SQUARE_NB + 1,
+      PS_B_QUEEN  =  9 * SQUARE_NB + 1,
+      PS_NB = 10 * SQUARE_NB + 1
+    };
+
+    static constexpr IndexType PieceSquareIndex[COLOR_NB][PIECE_NB] = {
+      // convention: W - us, B - them
+      // viewed from other side, W and B are reversed
+      { PS_NONE, PS_W_PAWN, PS_W_KNIGHT, PS_W_BISHOP, PS_W_ROOK, PS_W_QUEEN, PS_NONE, PS_NONE,
+        PS_NONE, PS_B_PAWN, PS_B_KNIGHT, PS_B_BISHOP, PS_B_ROOK, PS_B_QUEEN, PS_NONE, PS_NONE },
+      { PS_NONE, PS_B_PAWN, PS_B_KNIGHT, PS_B_BISHOP, PS_B_ROOK, PS_B_QUEEN, PS_NONE, PS_NONE,
+        PS_NONE, PS_W_PAWN, PS_W_KNIGHT, PS_W_BISHOP, PS_W_ROOK, PS_W_QUEEN, PS_NONE, PS_NONE }
+    };
+
+    // Orient a square according to perspective (rotates by 180 for black)
+    static Square orient(Color perspective, Square s);
+
+    // Index of a feature for a given king position and another piece on some square
+    static IndexType make_index(Color perspective, Square s, Piece pc, Square ksq);
 
    public:
     // Feature name
     static constexpr const char* Name = "HalfKP(Friend)";
+
     // Hash value embedded in the evaluation file
-    static constexpr std::uint32_t HashValue =
-        0x5D69D5B9u ^ (AssociatedKing == Side::Friend);
+    static constexpr std::uint32_t HashValue = 0x5D69D5B8u;
+
     // Number of feature dimensions
     static constexpr IndexType Dimensions =
         static_cast<IndexType>(SQUARE_NB) * static_cast<IndexType>(PS_NB);
-    // Maximum number of simultaneously active features
-    static constexpr IndexType MaxActiveDimensions = 30; // Kings don't count
-    // Trigger for full calculation instead of difference calculation
-    static constexpr TriggerEvent RefreshTrigger = TriggerEvent::FriendKingMoved;
+
+    // Maximum number of simultaneously active features. 30 because kins are not included.
+    static constexpr IndexType MaxActiveDimensions = 30;
 
     // Get a list of indices for active features
-    static void append_active_indices(const Position& pos, Color perspective,
-                                      IndexList* active);
+    static void append_active_indices(
+      const Position& pos,
+      Color perspective,
+      ValueListInserter<IndexType> active);
 
     // Get a list of indices for recently changed features
-    static void append_changed_indices(const Position& pos, const DirtyPiece& dp, Color perspective,
-                                       IndexList* removed, IndexList* added);
+    static void append_changed_indices(
+      Square ksq,
+      StateInfo* st,
+      Color perspective,
+      ValueListInserter<IndexType> removed,
+      ValueListInserter<IndexType> added);
+
+    // Returns the cost of updating one perspective, the most costly one.
+    // Assumes no refresh needed.
+    static int update_cost(StateInfo* st);
+    static int refresh_cost(const Position& pos);
+
+    // Returns whether the change stored in this StateInfo means that
+    // a full accumulator refresh is required.
+    static bool requires_refresh(StateInfo* st, Color perspective);
   };
 
 }  // namespace Stockfish::Eval::NNUE::Features

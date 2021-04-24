@@ -19,69 +19,68 @@
 //Definition of input features HalfKP of NNUE evaluation function
 
 #include "half_kp.h"
-#include "index_list.h"
+
+#include "../../position.h"
 
 namespace Stockfish::Eval::NNUE::Features {
 
   // Orient a square according to perspective (rotates by 180 for black)
-  inline Square orient(Color perspective, Square s) {
+  inline Square HalfKP::orient(Color perspective, Square s) {
     return Square(int(s) ^ (bool(perspective) * 63));
   }
 
   // Index of a feature for a given king position and another piece on some square
-  inline IndexType make_index(Color perspective, Square s, Piece pc, Square ksq) {
+  inline IndexType HalfKP::make_index(Color perspective, Square s, Piece pc, Square ksq) {
     return IndexType(orient(perspective, s) + PieceSquareIndex[perspective][pc] + PS_NB * ksq);
   }
 
   // Get a list of indices for active features
-  template <Side AssociatedKing>
-  void HalfKP<AssociatedKing>::append_active_indices(
-      const Position& pos, Color perspective, IndexList* active) {
-
+  void HalfKP::append_active_indices(
+    const Position& pos,
+    Color perspective,
+    ValueListInserter<IndexType> active
+  ) {
     Square ksq = orient(perspective, pos.square<KING>(perspective));
     Bitboard bb = pos.pieces() & ~pos.pieces(KING);
     while (bb)
     {
       Square s = pop_lsb(bb);
-      active->push_back(make_index(perspective, s, pos.piece_on(s), ksq));
+      active.push_back(make_index(perspective, s, pos.piece_on(s), ksq));
     }
   }
 
 
   // append_changed_indices() : get a list of indices for recently changed features
 
-  // IMPORTANT: The `pos` in this function is pretty much useless as it
-  // is not always the position the features are updated to. The feature
-  // transformer code right now can update multiple accumulators per move,
-  // but since Stockfish only keeps the full state of the current leaf
-  // search position it is not possible to always pass here the position for
-  // which the accumulator is being updated. Therefore the only thing that
-  // can be reliably extracted from `pos` is the king square for the king
-  // of the `perspective` color (note: not even the other king's square will
-  // match reality in all cases, this is also the reason why `dp` is passed
-  // as a parameter and not extracted from pos.state()). This is of particular
-  // problem for future nets with other feature sets, where updating the active
-  // feature might require more information from the intermediate positions. In
-  // this case the only easy solution is to remove the multiple updates from
-  // the feature transformer update code and only update the accumulator for
-  // the current leaf position (the position after the move).
-
-  template <Side AssociatedKing>
-  void HalfKP<AssociatedKing>::append_changed_indices(
-      const Position& pos, const DirtyPiece& dp, Color perspective,
-      IndexList* removed, IndexList* added) {
-
-    Square ksq = orient(perspective, pos.square<KING>(perspective));
+  void HalfKP::append_changed_indices(
+    Square ksq,
+    StateInfo* st,
+    Color perspective,
+    ValueListInserter<IndexType> removed,
+    ValueListInserter<IndexType> added
+  ) {
+    const auto& dp = st->dirtyPiece;
+    Square oriented_ksq = orient(perspective, ksq);
     for (int i = 0; i < dp.dirty_num; ++i) {
       Piece pc = dp.piece[i];
       if (type_of(pc) == KING) continue;
       if (dp.from[i] != SQ_NONE)
-        removed->push_back(make_index(perspective, dp.from[i], pc, ksq));
+        removed.push_back(make_index(perspective, dp.from[i], pc, oriented_ksq));
       if (dp.to[i] != SQ_NONE)
-        added->push_back(make_index(perspective, dp.to[i], pc, ksq));
+        added.push_back(make_index(perspective, dp.to[i], pc, oriented_ksq));
     }
   }
 
-  template class HalfKP<Side::Friend>;
+  int HalfKP::update_cost(StateInfo* st) {
+    return st->dirtyPiece.dirty_num;
+  }
+
+  int HalfKP::refresh_cost(const Position& pos) {
+    return pos.count<ALL_PIECES>() - 2;
+  }
+
+  bool HalfKP::requires_refresh(StateInfo* st, Color perspective) {
+    return st->dirtyPiece.piece[0] == make_piece(perspective, KING);
+  }
 
 }  // namespace Stockfish::Eval::NNUE::Features

@@ -31,7 +31,7 @@ namespace Stockfish::Eval::NNUE {
   // Class that holds the result of affine transformation of input features
   struct alignas(CacheLineSize) Accumulator {
     std::int16_t
-        accumulation[2][RefreshTriggers.size()][TransformedFeatureDimensions];
+        accumulation[2][TransformedFeatureDimensions];
     AccumulatorState state[2];
   };
 
