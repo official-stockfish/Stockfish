@@ -33,6 +33,7 @@
 #include "misc.h"
 #include "pawns.h"
 #include "thread.h"
+#include "timeman.h"
 #include "uci.h"
 #include "incbin/incbin.h"
 
@@ -1096,7 +1097,7 @@ Value Eval::evaluate(const Position& pos) {
                     + material / 32
                     - 4 * pos.rule50_count();
 
-         Value nnue = NNUE::evaluate(pos) * scale / 1024 + Tempo;
+         Value nnue = NNUE::evaluate(pos) * scale / 1024 + Time.tempoNNUE;
 
          if (pos.is_chess960())
              nnue += fix_FRC(pos);
