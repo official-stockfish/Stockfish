@@ -37,6 +37,7 @@ public:
                                      TimePoint(Threads.nodes_searched()) : now() - startTime; }
 
   int64_t availableNodes; // When in 'nodes as time' mode
+  int tempoNNUE;
 
 private:
   TimePoint startTime;
