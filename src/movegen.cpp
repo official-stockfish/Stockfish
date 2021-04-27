@@ -58,19 +58,16 @@ namespace {
     constexpr Direction UpLeft   = (Us == WHITE ? NORTH_WEST : SOUTH_EAST);
 
     const Square ksq = pos.square<KING>(Them);
-    Bitboard emptySquares;
+    const Bitboard emptySquares = Type == QUIETS || Type == QUIET_CHECKS ? target : ~pos.pieces();
+    const Bitboard enemies      = Type == EVASIONS ? pos.checkers()
+                                : Type == CAPTURES ? target : pos.pieces(Them);
 
     Bitboard pawnsOn7    = pos.pieces(Us, PAWN) &  TRank7BB;
     Bitboard pawnsNotOn7 = pos.pieces(Us, PAWN) & ~TRank7BB;
 
-    Bitboard enemies = (Type == EVASIONS ? pos.checkers()
-                     :  Type == CAPTURES ? target : pos.pieces(Them));
-
     // Single and double pawn pushes, no promotions
     if (Type != CAPTURES)
     {
-        emptySquares = (Type == QUIETS || Type == QUIET_CHECKS ? target : ~pos.pieces());
-
         Bitboard b1 = shift<Up>(pawnsNotOn7)   & emptySquares;
         Bitboard b2 = shift<Up>(b1 & TRank3BB) & emptySquares;
 
@@ -82,22 +79,12 @@ namespace {
 
         if (Type == QUIET_CHECKS)
         {
-            b1 &= pawn_attacks_bb(Them, ksq);
-            b2 &= pawn_attacks_bb(Them, ksq);
-
-            // Add pawn pushes which give discovered check. This is possible only
-            // if the pawn is not on the same file as the enemy king, because we
-            // don't generate captures. Note that a possible discovered check
-            // promotion has been already generated amongst the captures.
-            Bitboard dcCandidateQuiets = pos.blockers_for_king(Them) & pawnsNotOn7;
-            if (dcCandidateQuiets)
-            {
-                Bitboard dc1 = shift<Up>(dcCandidateQuiets) & emptySquares & ~file_bb(ksq);
-                Bitboard dc2 = shift<Up>(dc1 & TRank3BB) & emptySquares;
-
-                b1 |= dc1;
-                b2 |= dc2;
-            }
+            // To make a quiet check, you either make a direct check by pushing a pawn
+            // or push a blocker pawn that is not on the same file as the enemy king.
+            // Discovered check promotion has been already generated amongst the captures.
+            Bitboard dcCandidatePawns = pos.blockers_for_king(Them) & ~file_bb(ksq);
+            b1 &= pawn_attacks_bb(Them, ksq) | shift<   Up>(dcCandidatePawns);
+            b2 &= pawn_attacks_bb(Them, ksq) | shift<Up+Up>(dcCandidatePawns);
         }
 
         while (b1)
@@ -116,15 +103,12 @@ namespace {
     // Promotions and underpromotions
     if (pawnsOn7)
     {
-        if (Type == CAPTURES)
-            emptySquares = ~pos.pieces();
-
-        if (Type == EVASIONS)
-            emptySquares &= target;
-
         Bitboard b1 = shift<UpRight>(pawnsOn7) & enemies;
         Bitboard b2 = shift<UpLeft >(pawnsOn7) & enemies;
         Bitboard b3 = shift<Up     >(pawnsOn7) & emptySquares;
+
+        if (Type == EVASIONS)
+            b3 &= target;
 
         while (b1)
             moveList = make_promotions<Type, UpRight>(moveList, pop_lsb(b1), ksq);
@@ -185,8 +169,9 @@ namespace {
     while (bb)
     {
         Square from = pop_lsb(bb);
-
         Bitboard b = attacks_bb<Pt>(from, pos.pieces()) & target;
+
+        // To check, you either move freely a blocker or make a direct check.
         if (Checks && (Pt == QUEEN || !(pos.blockers_for_king(~Us) & from)))
             b &= pos.check_squares(Pt);
 
