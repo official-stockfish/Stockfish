@@ -35,7 +35,7 @@ namespace Stockfish::Eval::NNUE {
   LargePagePtr<FeatureTransformer> featureTransformer;
 
   // Evaluation function
-  AlignedPtr<Network> network;
+  AlignedPtr<Network> network[LayerStacks];
 
   // Evaluation function file name
   std::string fileName;
@@ -74,7 +74,8 @@ namespace Stockfish::Eval::NNUE {
   void initialize() {
 
     Detail::initialize(featureTransformer);
-    Detail::initialize(network);
+    for (std::size_t i = 0; i < LayerStacks; ++i)
+      Detail::initialize(network[i]);
   }
 
   // Read network header
@@ -83,7 +84,7 @@ namespace Stockfish::Eval::NNUE {
     std::uint32_t version, size;
 
     version     = read_little_endian<std::uint32_t>(stream);
-    *hashValue = read_little_endian<std::uint32_t>(stream);
+    *hashValue  = read_little_endian<std::uint32_t>(stream);
     size        = read_little_endian<std::uint32_t>(stream);
     if (!stream || version != Version) return false;
     architecture->resize(size);
@@ -99,7 +100,8 @@ namespace Stockfish::Eval::NNUE {
     if (!read_header(stream, &hashValue, &architecture)) return false;
     if (hashValue != HashValue) return false;
     if (!Detail::read_parameters(stream, *featureTransformer)) return false;
-    if (!Detail::read_parameters(stream, *network)) return false;
+    for (std::size_t i = 0; i < LayerStacks; ++i)
+      if (!Detail::read_parameters(stream, *(network[i]))) return false;
     return stream && stream.peek() == std::ios::traits_type::eof();
   }
 
@@ -127,10 +129,12 @@ namespace Stockfish::Eval::NNUE {
     ASSERT_ALIGNED(transformedFeatures, alignment);
     ASSERT_ALIGNED(buffer, alignment);
 
-    featureTransformer->transform(pos, transformedFeatures);
-    const auto output = network->propagate(transformedFeatures, buffer);
+    const std::size_t bucket = (popcount(pos.pieces()) - 1) / 4;
 
-    return static_cast<Value>(output[0] / OutputScale);
+    const auto psqt = featureTransformer->transform(pos, transformedFeatures, bucket);
+    const auto output = network[bucket]->propagate(transformedFeatures, buffer);
+
+    return static_cast<Value>((output[0] + psqt) / OutputScale);
   }
 
   // Load eval, from a file stream or a memory stream

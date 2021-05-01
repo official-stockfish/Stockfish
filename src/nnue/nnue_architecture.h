@@ -36,6 +36,8 @@ namespace Stockfish::Eval::NNUE {
 
   // Number of input feature dimensions after conversion
   constexpr IndexType TransformedFeatureDimensions = 512;
+  constexpr IndexType PSQTBuckets = 8;
+  constexpr IndexType LayerStacks = 8;
 
   namespace Layers {
 
