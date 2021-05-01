@@ -23,7 +23,7 @@
 
 #include "nnue_common.h"
 
-#include "features/half_kp.h"
+#include "features/half_ka_v2.h"
 
 #include "layers/input_slice.h"
 #include "layers/affine_transform.h"
@@ -32,7 +32,7 @@
 namespace Stockfish::Eval::NNUE {
 
   // Input features used in evaluation function
-  using FeatureSet = Features::HalfKP;
+  using FeatureSet = Features::HalfKAv2;
 
   // Number of input feature dimensions after conversion
   constexpr IndexType TransformedFeatureDimensions = 256;
