@@ -267,6 +267,8 @@ namespace Stockfish::Eval::NNUE::Layers {
 #endif
 
 #if defined (USE_SSSE3)
+      // Different layout, we process 4 inputs at a time, always.
+      static_assert(InputDimensions % 4 == 0);
 
       const auto output = reinterpret_cast<OutputType*>(buffer);
       const auto inputVector = reinterpret_cast<const vec_t*>(input);
@@ -277,7 +279,7 @@ namespace Stockfish::Eval::NNUE::Layers {
       // because then it is also an input dimension.
       if constexpr (OutputDimensions % OutputSimdWidth == 0)
       {
-          constexpr IndexType NumChunks = PaddedInputDimensions / 4;
+          constexpr IndexType NumChunks = InputDimensions / 4;
 
           const auto input32 = reinterpret_cast<const std::int32_t*>(input);
           vec_t* outptr = reinterpret_cast<vec_t*>(output);
@@ -344,17 +346,21 @@ namespace Stockfish::Eval::NNUE::Layers {
       auto output = reinterpret_cast<OutputType*>(buffer);
 
 #if defined(USE_SSE2)
-      constexpr IndexType NumChunks = PaddedInputDimensions / SimdWidth;
+      // At least a multiple of 16, with SSE2.
+      static_assert(InputDimensions % SimdWidth == 0);
+      constexpr IndexType NumChunks = InputDimensions / SimdWidth;
       const __m128i Zeros = _mm_setzero_si128();
       const auto inputVector = reinterpret_cast<const __m128i*>(input);
 
 #elif defined(USE_MMX)
-      constexpr IndexType NumChunks = PaddedInputDimensions / SimdWidth;
+      static_assert(InputDimensions % SimdWidth == 0);
+      constexpr IndexType NumChunks = InputDimensions / SimdWidth;
       const __m64 Zeros = _mm_setzero_si64();
       const auto inputVector = reinterpret_cast<const __m64*>(input);
 
 #elif defined(USE_NEON)
-      constexpr IndexType NumChunks = PaddedInputDimensions / SimdWidth;
+      static_assert(InputDimensions % SimdWidth == 0);
+      constexpr IndexType NumChunks = InputDimensions / SimdWidth;
       const auto inputVector = reinterpret_cast<const int8x8_t*>(input);
 #endif
 
