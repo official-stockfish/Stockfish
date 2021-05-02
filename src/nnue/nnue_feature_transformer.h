@@ -124,6 +124,8 @@ namespace Stockfish::Eval::NNUE {
     // Number of output dimensions for one side
     static constexpr IndexType HalfDimensions = TransformedFeatureDimensions;
 
+    static constexpr int LazyThreshold = 1400;
+
     #ifdef VECTOR
     static constexpr IndexType TileHeight = NumRegs * sizeof(vec_t) / 2;
     static constexpr IndexType PsqtTileHeight = NumPsqtRegs * sizeof(psqt_vec_t) / 4;
@@ -160,12 +162,21 @@ namespace Stockfish::Eval::NNUE {
     }
 
     // Convert input features
-    std::int32_t transform(const Position& pos, OutputType* output, int bucket) const {
+    std::pair<std::int32_t, bool> transform(const Position& pos, OutputType* output, int bucket) const {
       update_accumulator(pos, WHITE);
       update_accumulator(pos, BLACK);
 
+      const Color perspectives[2] = {pos.side_to_move(), ~pos.side_to_move()};
       const auto& accumulation = pos.state()->accumulator.accumulation;
       const auto& psqtAccumulation = pos.state()->accumulator.psqtAccumulation;
+
+      const auto psqt = (
+            psqtAccumulation[static_cast<int>(perspectives[0])][bucket]
+          - psqtAccumulation[static_cast<int>(perspectives[1])][bucket]
+        ) / 2;
+
+      if (abs(psqt) > LazyThreshold * OutputScale)
+        return { psqt, true };
 
   #if defined(USE_AVX512)
       constexpr IndexType NumChunks = HalfDimensions / (SimdWidth * 2);
@@ -196,7 +207,6 @@ namespace Stockfish::Eval::NNUE {
       const int8x8_t Zero = {0};
   #endif
 
-      const Color perspectives[2] = {pos.side_to_move(), ~pos.side_to_move()};
       for (IndexType p = 0; p < 2; ++p) {
         const IndexType offset = HalfDimensions * p;
 
@@ -274,11 +284,7 @@ namespace Stockfish::Eval::NNUE {
       _mm_empty();
   #endif
 
-      const auto psqt = (
-            psqtAccumulation[static_cast<int>(perspectives[0])][bucket]
-          - psqtAccumulation[static_cast<int>(perspectives[1])][bucket]
-        ) / 2;
-      return psqt;
+      return { psqt, false };
     }
 
    private:
