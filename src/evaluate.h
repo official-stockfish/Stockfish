@@ -45,6 +45,7 @@ namespace Eval {
     Value evaluate(const Position& pos);
     bool load_eval(std::string name, std::istream& stream);
     void init();
+    void export_net();
     void verify();
 
   } // namespace NNUE

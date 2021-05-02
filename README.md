@@ -143,21 +143,25 @@ For users, the following UCI options, which can typically be set via a GUI, are 
 
 For developers the following non-standard commands might be of interest, mainly useful for debugging:
 
-  * #### compiler
-    Give information about the compiler and environment used for building a binary.
-
-  * #### flip
-    Flips the side to move.
-
   * #### bench ttSize threads limit fenFile limitType evalType
     Performs a standard benchmark using various options. The signature or standard node
     count is obtained using all defaults. `bench` is currently `bench 16 1 13 default depth mixed`.
+
+  * #### compiler
+    Give information about the compiler and environment used for building a binary.
 
   * #### d
     Display the current position, with ascii art and fen.
 
   * #### eval
     Return the evaluation of the current position.
+
+  * #### export_net
+    If the binary contains an embedded net, save it in a file (named according to the default value of EvalFile).
+
+  * #### flip
+    Flips the side to move.
+
 
 ## A note on classical evaluation versus NNUE evaluation
 

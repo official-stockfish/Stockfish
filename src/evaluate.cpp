@@ -47,7 +47,9 @@
 // Note that this does not work in Microsoft Visual Studio.
 #if !defined(_MSC_VER) && !defined(NNUE_EMBEDDING_OFF)
   INCBIN(EmbeddedNNUE, EvalFileDefaultName);
+  constexpr bool             gHasEmbeddedNet = true;
 #else
+  constexpr bool             gHasEmbeddedNet = false;
   const unsigned char        gEmbeddedNNUEData[1] = {0x0};
   const unsigned char *const gEmbeddedNNUEEnd = &gEmbeddedNNUEData[1];
   const unsigned int         gEmbeddedNNUESize = 1;
@@ -112,6 +114,15 @@ namespace Eval {
                     eval_file_loaded = eval_file;
             }
         }
+  }
+
+  void NNUE::export_net() {
+    if constexpr (gHasEmbeddedNet) {
+      ofstream stream(EvalFileDefaultName, std::ios_base::binary);
+      stream.write(reinterpret_cast<const char*>(gEmbeddedNNUEData), gEmbeddedNNUESize);
+    } else {
+      sync_cout << "No embedded network file." << sync_endl;
+    }
   }
 
   /// NNUE::verify() verifies that the last net used was loaded successfully
