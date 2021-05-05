@@ -78,48 +78,6 @@ namespace Stockfish::Eval::NNUE::Layers {
           i / PaddedInputDimensions * 4 +
           i % 4
         ] = read_little_endian<WeightType>(stream);
-
-      // Determine if eights of weight and input products can be summed using 16bits
-      // without saturation. We assume worst case combinations of 0 and 127 for all inputs.
-      if (OutputDimensions > 1 && !stream.fail())
-      {
-          canSaturate16.count = 0;
-#if !defined(USE_VNNI)
-          for (IndexType i = 0; i < PaddedInputDimensions; i += 16)
-              for (IndexType j = 0; j < OutputDimensions; ++j)
-                  for (int x = 0; x < 2; ++x)
-                  {
-                      WeightType* w = &weights[i * OutputDimensions + j * 4 + x * 2];
-                      int sum[2] = {0, 0};
-                      for (int k = 0; k < 8; ++k)
-                      {
-                          IndexType idx = k / 2 * OutputDimensions * 4 + k % 2;
-                          sum[w[idx] < 0] += w[idx];
-                      }
-                      for (int sign : { -1, 1 })
-                          while (sign * sum[sign == -1] > 258)
-                          {
-                              int maxK = 0, maxW = 0;
-                              for (int k = 0; k < 8; ++k)
-                              {
-                                  IndexType idx = k / 2 * OutputDimensions * 4 + k % 2;
-                                  if (maxW < sign * w[idx])
-                                      maxK = k, maxW = sign * w[idx];
-                              }
-
-                              IndexType idx = maxK / 2 * OutputDimensions * 4 + maxK % 2;
-                              sum[sign == -1] -= w[idx];
-                              canSaturate16.add(j, i + maxK / 2 * 4 + maxK % 2 + x * 2, w[idx]);
-                              w[idx] = 0;
-                          }
-                  }
-
-          // Non functional optimization for faster more linear access
-          std::sort(canSaturate16.ids, canSaturate16.ids + canSaturate16.count,
-                    [](const typename CanSaturate::Entry& e1, const typename CanSaturate::Entry& e2)
-                    { return e1.in == e2.in ? e1.out < e2.out : e1.in < e2.in; });
-#endif
-      }
 #endif
 
       return !stream.fail();
@@ -162,10 +120,10 @@ namespace Stockfish::Eval::NNUE::Layers {
         __m512i product2 = _mm512_maddubs_epi16(a2, b2);
         __m512i product3 = _mm512_maddubs_epi16(a3, b3);
         product0 = _mm512_add_epi16(product0, product1);
-        product2 = _mm512_add_epi16(product2, product3);
-        product0 = _mm512_add_epi16(product0, product2);
         product0 = _mm512_madd_epi16(product0, Ones512);
-        acc = _mm512_add_epi32(acc, product0);
+        product2 = _mm512_add_epi16(product2, product3);
+        product2 = _mm512_madd_epi16(product2, Ones512);
+        acc = _mm512_add_epi32(acc, _mm512_add_epi32(product0, product2));
 #endif
       };
 
@@ -204,10 +162,10 @@ namespace Stockfish::Eval::NNUE::Layers {
         __m256i product2 = _mm256_maddubs_epi16(a2, b2);
         __m256i product3 = _mm256_maddubs_epi16(a3, b3);
         product0 = _mm256_add_epi16(product0, product1);
-        product2 = _mm256_add_epi16(product2, product3);
-        product0 = _mm256_add_epi16(product0, product2);
         product0 = _mm256_madd_epi16(product0, Ones256);
-        acc = _mm256_add_epi32(acc, product0);
+        product2 = _mm256_add_epi16(product2, product3);
+        product2 = _mm256_madd_epi16(product2, Ones256);
+        acc = _mm256_add_epi32(acc, _mm256_add_epi32(product0, product2));
 #endif
       };
 
@@ -235,10 +193,10 @@ namespace Stockfish::Eval::NNUE::Layers {
         __m128i product2 = _mm_maddubs_epi16(a2, b2);
         __m128i product3 = _mm_maddubs_epi16(a3, b3);
         product0 = _mm_add_epi16(product0, product1);
-        product2 = _mm_add_epi16(product2, product3);
-        product0 = _mm_add_epi16(product0, product2);
         product0 = _mm_madd_epi16(product0, Ones128);
-        acc = _mm_add_epi32(acc, product0);
+        product2 = _mm_add_epi16(product2, product3);
+        product2 = _mm_madd_epi16(product2, Ones128);
+        acc = _mm_add_epi32(acc, _mm_add_epi32(product0, product2));
       };
 
 #endif
@@ -298,8 +256,6 @@ namespace Stockfish::Eval::NNUE::Layers {
               for (int j = 0; j * OutputSimdWidth < OutputDimensions; ++j)
                   vec_add_dpbusd_32x4(outptr[j], in0, col0[j], in1, col1[j], in2, col2[j], in3, col3[j]);
           }
-          for (int i = 0; i < canSaturate16.count; ++i)
-              output[canSaturate16.ids[i].out] += input[canSaturate16.ids[i].in] * canSaturate16.ids[i].w;
       }
       else if constexpr (OutputDimensions == 1)
       {
@@ -446,23 +402,6 @@ namespace Stockfish::Eval::NNUE::Layers {
 
     alignas(CacheLineSize) BiasType biases[OutputDimensions];
     alignas(CacheLineSize) WeightType weights[OutputDimensions * PaddedInputDimensions];
-#if defined (USE_SSSE3)
-    struct CanSaturate {
-        int count;
-        struct Entry {
-            uint16_t out;
-            uint16_t in;
-            int8_t w;
-        } ids[PaddedInputDimensions * OutputDimensions * 3 / 4];
-
-        void add(int i, int j, int8_t w) {
-            ids[count].out = i;
-            ids[count].in = j;
-            ids[count].w = w;
-            ++count;
-        }
-    } canSaturate16;
-#endif
   };
 
 }  // namespace Stockfish::Eval::NNUE::Layers
