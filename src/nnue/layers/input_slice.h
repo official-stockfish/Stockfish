@@ -53,6 +53,11 @@ class InputSlice {
     return true;
   }
 
+  // Read network parameters
+  bool write_parameters(std::ostream& /*stream*/) const {
+    return true;
+  }
+
   // Forward propagation
   const OutputType* propagate(
       const TransformedFeatureType* transformedFeatures,

@@ -59,6 +59,11 @@ namespace Stockfish::Eval::NNUE::Layers {
       return previousLayer.read_parameters(stream);
     }
 
+    // Write network parameters
+    bool write_parameters(std::ostream& stream) const {
+      return previousLayer.write_parameters(stream);
+    }
+
     // Forward propagation
     const OutputType* propagate(
         const TransformedFeatureType* transformedFeatures, char* buffer) const {
