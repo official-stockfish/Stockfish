@@ -1,5 +1,7 @@
+#!/usr/bin/env python3
+
 # For usage example use:
-#    python ./make_release.py --help
+#   python3 ./make_release.py --help
 
 import subprocess
 import threading
