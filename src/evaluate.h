@@ -20,6 +20,7 @@
 #define EVALUATE_H_INCLUDED
 
 #include <string>
+#include <optional>
 
 #include "types.h"
 
@@ -44,8 +45,9 @@ namespace Eval {
 
     Value evaluate(const Position& pos);
     bool load_eval(std::string name, std::istream& stream);
+    bool save_eval(std::ostream& stream);
     void init();
-    void export_net();
+    void export_net(const std::optional<std::string>& filename);
     void verify();
 
   } // namespace NNUE
