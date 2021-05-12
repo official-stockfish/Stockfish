@@ -192,7 +192,7 @@ namespace {
     const Square ksq = pos.square<KING>(Us);
     Bitboard target;
 
-    if (Type != EVASIONS || !more_than_one(pos.checkers())) // Double check, only a king move can save the day
+    if (Type != EVASIONS || !more_than_one(pos.checkers())) // Skip generating non-king moves when in double check
     {
         target = Type == EVASIONS     ?  between_bb(ksq, lsb(pos.checkers()))
                : Type == NON_EVASIONS ? ~pos.pieces( Us)
