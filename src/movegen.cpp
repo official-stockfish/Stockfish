@@ -192,21 +192,20 @@ namespace {
     const Square ksq = pos.square<KING>(Us);
     Bitboard target;
 
-    if (Type == EVASIONS && more_than_one(pos.checkers()))
-        goto kingMoves; // Double check, only a king move can save the day
+    // Skip generating non-king moves when in double check
+    if (Type != EVASIONS || !more_than_one(pos.checkers()))
+    {
+        target = Type == EVASIONS     ?  between_bb(ksq, lsb(pos.checkers()))
+               : Type == NON_EVASIONS ? ~pos.pieces( Us)
+               : Type == CAPTURES     ?  pos.pieces(~Us)
+                                      : ~pos.pieces(   ); // QUIETS || QUIET_CHECKS
 
-    target = Type == EVASIONS     ?  between_bb(ksq, lsb(pos.checkers()))
-           : Type == NON_EVASIONS ? ~pos.pieces( Us)
-           : Type == CAPTURES     ?  pos.pieces(~Us)
-                                  : ~pos.pieces(   ); // QUIETS || QUIET_CHECKS
-
-    moveList = generate_pawn_moves<Us, Type>(pos, moveList, target);
-    moveList = generate_moves<Us, KNIGHT, Checks>(pos, moveList, target);
-    moveList = generate_moves<Us, BISHOP, Checks>(pos, moveList, target);
-    moveList = generate_moves<Us,   ROOK, Checks>(pos, moveList, target);
-    moveList = generate_moves<Us,  QUEEN, Checks>(pos, moveList, target);
-
-kingMoves:
+        moveList = generate_pawn_moves<Us, Type>(pos, moveList, target);
+        moveList = generate_moves<Us, KNIGHT, Checks>(pos, moveList, target);
+        moveList = generate_moves<Us, BISHOP, Checks>(pos, moveList, target);
+        moveList = generate_moves<Us,   ROOK, Checks>(pos, moveList, target);
+        moveList = generate_moves<Us,  QUEEN, Checks>(pos, moveList, target);
+    }
     if (!Checks || pos.blockers_for_king(~Us) & ksq)
     {
         Bitboard b = attacks_bb<KING>(ksq) & (Type == EVASIONS ? ~pos.pieces(Us) : target);
