@@ -74,6 +74,7 @@ public:
   void idle_loop();
   void start_searching();
   void wait_for_search_finished();
+  int id() const { return idx; }
   void wait_for_worker_finished();
   size_t thread_idx() const { return idx; }
 

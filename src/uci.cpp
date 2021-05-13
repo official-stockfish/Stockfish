@@ -319,7 +319,14 @@ void UCI::loop(int argc, char* argv[]) {
       else if (token == "d")        sync_cout << pos << sync_endl;
       else if (token == "eval")     trace_eval(pos);
       else if (token == "compiler") sync_cout << compiler_info() << sync_endl;
-
+      else if (token == "export_net") {
+          std::optional<std::string> filename;
+          std::string f;
+          if (is >> skipws >> f) {
+            filename = f;
+          }
+          Eval::NNUE::export_net(filename);
+      }
       else if (token == "generate_training_data") Tools::generate_training_data(is);
       else if (token == "generate_training_data") Tools::generate_training_data_nonpv(is);
       else if (token == "convert") Tools::convert(is);
