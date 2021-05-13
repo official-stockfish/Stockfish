@@ -161,6 +161,15 @@ namespace Stockfish::Eval::NNUE {
       return !stream.fail();
     }
 
+    // Write network parameters
+    bool write_parameters(std::ostream& stream) const {
+      for (std::size_t i = 0; i < HalfDimensions; ++i)
+        write_little_endian<BiasType>(stream, biases[i]);
+      for (std::size_t i = 0; i < HalfDimensions * InputDimensions; ++i)
+        write_little_endian<WeightType>(stream, weights[i]);
+      return !stream.fail();
+    }
+
     // Convert input features
     std::pair<std::int32_t, bool> transform(const Position& pos, OutputType* output, int bucket) const {
       update_accumulator(pos, WHITE);
