@@ -127,28 +127,28 @@ namespace Eval {
           }
     }
 
-  void NNUE::export_net(const std::optional<std::string>& filename) {
-    std::string actualFilename;
-    if (filename.has_value()) {
-      actualFilename = filename.value();
-    } else {
-      if (eval_file_loaded != EvalFileDefaultName) {
-        sync_cout << "Failed to export a net. A non-embedded net can only be saved if the filename is specified." << sync_endl;
-        return;
+    void export_net(const std::optional<std::string>& filename) {
+      std::string actualFilename;
+      if (filename.has_value()) {
+        actualFilename = filename.value();
+      } else {
+        if (eval_file_loaded != EvalFileDefaultName) {
+          sync_cout << "Failed to export a net. A non-embedded net can only be saved if the filename is specified." << sync_endl;
+          return;
+        }
+        actualFilename = EvalFileDefaultName;
       }
-      actualFilename = EvalFileDefaultName;
+
+      ofstream stream(actualFilename, std::ios_base::binary);
+      if (save_eval(stream)) {
+          sync_cout << "Network saved successfully to " << actualFilename << "." << sync_endl;
+      } else {
+          sync_cout << "Failed to export a net." << sync_endl;
+      }
     }
 
-    ofstream stream(actualFilename, std::ios_base::binary);
-    if (save_eval(stream)) {
-        sync_cout << "Network saved successfully to " << actualFilename << "." << sync_endl;
-    } else {
-        sync_cout << "Failed to export a net." << sync_endl;
-    }
-  }
-
-  /// NNUE::verify() verifies that the last net used was loaded successfully
-  void NNUE::verify() {
+    /// NNUE::verify() verifies that the last net used was loaded successfully
+    void verify() {
 
       string eval_file = string(Options["EvalFile"]);
 
