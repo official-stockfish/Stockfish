@@ -99,6 +99,24 @@ namespace Stockfish::Eval::NNUE {
       return result;
   }
 
+  template <typename IntType>
+  inline void write_little_endian(std::ostream& stream, IntType value) {
+
+      std::uint8_t u[sizeof(IntType)];
+      typename std::make_unsigned<IntType>::type v = value;
+
+      std::size_t i = 0;
+      // if constexpr to silence the warning about shift by 8
+      if constexpr (sizeof(IntType) > 1) {
+        for (; i + 1 < sizeof(IntType); ++i) {
+            u[i] = v;
+            v >>= 8;
+        }
+      }
+      u[i] = v;
+
+      stream.write(reinterpret_cast<char*>(u), sizeof(IntType));
+  }
 }  // namespace Stockfish::Eval::NNUE
 
 #endif // #ifndef NNUE_COMMON_H_INCLUDED

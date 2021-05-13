@@ -83,6 +83,32 @@ namespace Stockfish::Eval::NNUE::Layers {
       return !stream.fail();
     }
 
+    // Write network parameters
+    bool write_parameters(std::ostream& stream) const {
+      if (!previousLayer.write_parameters(stream)) return false;
+      for (std::size_t i = 0; i < OutputDimensions; ++i)
+          write_little_endian<BiasType>(stream, biases[i]);
+#if !defined (USE_SSSE3)
+      for (std::size_t i = 0; i < OutputDimensions * PaddedInputDimensions; ++i)
+          write_little_endian<WeightType>(stream, weights[i]);
+#else
+      std::unique_ptr<WeightType[]> unscrambledWeights = std::make_unique<WeightType[]>(OutputDimensions * PaddedInputDimensions);
+      for (std::size_t i = 0; i < OutputDimensions * PaddedInputDimensions; ++i) {
+          unscrambledWeights[i] =
+              weights[
+                (i / 4) % (PaddedInputDimensions / 4) * OutputDimensions * 4 +
+                i / PaddedInputDimensions * 4 +
+                i % 4
+              ];
+      }
+
+      for (std::size_t i = 0; i < OutputDimensions * PaddedInputDimensions; ++i)
+          write_little_endian<WeightType>(stream, unscrambledWeights[i]);
+#endif
+
+      return !stream.fail();
+    }
+
     // Forward propagation
     const OutputType* propagate(
         const TransformedFeatureType* transformedFeatures, char* buffer) const {
