@@ -69,11 +69,10 @@ namespace Stockfish::Eval::NNUE::Layers {
       if (!previousLayer.read_parameters(stream)) return false;
       for (std::size_t i = 0; i < OutputDimensions; ++i)
         biases[i] = read_little_endian<BiasType>(stream);
-#if !defined (USE_SSSE3)
       for (std::size_t i = 0; i < OutputDimensions * PaddedInputDimensions; ++i)
+#if !defined (USE_SSSE3)
         weights[i] = read_little_endian<WeightType>(stream);
 #else
-      for (std::size_t i = 0; i < OutputDimensions * PaddedInputDimensions; ++i) {
         weights[
           (i / 4) % (PaddedInputDimensions / 4) * OutputDimensions * 4 +
           i / PaddedInputDimensions * 4 +
