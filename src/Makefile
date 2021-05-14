@@ -320,8 +320,9 @@ endif
 ### ==========================================================================
 
 ### 3.1 Selecting compiler (default = gcc)
-CXXFLAGS += -Wall -Wcast-qual -fno-exceptions -std=c++17 -I. $(EXTRACXXFLAGS)
-DEPENDFLAGS += -std=c++17
+ADDITIONAL_INCLUDE_DIRECTORIES = -I.
+CXXFLAGS += -Wall -Wcast-qual -fno-exceptions -std=c++17 $(ADDITIONAL_INCLUDE_DIRECTORIES) $(EXTRACXXFLAGS)
+DEPENDFLAGS += -std=c++17 $(ADDITIONAL_INCLUDE_DIRECTORIES)
 LDFLAGS += $(EXTRALDFLAGS)
 
 ifeq ($(COMP),)
