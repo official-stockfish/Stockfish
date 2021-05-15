@@ -847,7 +847,7 @@ namespace {
 
     probCutBeta = beta + 209 - 44 * improving;
 
-    // Step 9. ProbCut (~10 Elo)
+    // Step 9. ProbCut (~4 Elo)
     // If we have a good enough capture and a reduced search returns a value
     // much above beta, we can (almost) safely prune the previous move.
     if (   !PvNode
@@ -862,15 +862,6 @@ namespace {
              && ttValue != VALUE_NONE
              && ttValue < probCutBeta))
     {
-        // if ttMove is a capture and value from transposition table is good enough produce probCut
-        // cutoff without digging into actual probCut search
-        if (   ss->ttHit
-            && tte->depth() >= depth - 3
-            && ttValue != VALUE_NONE
-            && ttValue >= probCutBeta
-            && ttMove
-            && pos.capture_or_promotion(ttMove))
-            return probCutBeta;
 
         assert(probCutBeta < VALUE_INFINITE);
 
@@ -1035,7 +1026,7 @@ moves_loop: // When in check, search starts from here
           else
           {
               // Countermoves based pruning (~20 Elo)
-              if (   lmrDepth < 4 + ((ss-1)->statScore > 0 || (ss-1)->moveCount == 1)
+              if (   lmrDepth < 4
                   && (*contHist[0])[movedPiece][to_sq(move)] < CounterMovePruneThreshold
                   && (*contHist[1])[movedPiece][to_sq(move)] < CounterMovePruneThreshold)
                   continue;
@@ -1140,12 +1131,12 @@ moves_loop: // When in check, search starts from here
       {
           Depth r = reduction(improving, depth, moveCount);
 
-          // Decrease reduction if the ttHit running average is large
+          // Decrease reduction if the ttHit running average is large (~0 Elo)
           if (thisThread->ttHitAverage > 537 * TtHitAverageResolution * TtHitAverageWindow / 1024)
               r--;
 
           // Decrease reduction if position is or has been on the PV
-          // and node is not likely to fail low. (~10 Elo)
+          // and node is not likely to fail low. (~3 Elo)
           if (   ss->ttPv
               && !likelyFailLow)
               r -= 2;
@@ -1171,9 +1162,10 @@ moves_loop: // When in check, search starts from here
                   r++;
 
               // Increase reduction at root if failing high
-              r += rootNode ? thisThread->failedHighCnt * thisThread->failedHighCnt * moveCount / 512 : 0;
+              if (rootNode)
+                  r += thisThread->failedHighCnt * thisThread->failedHighCnt * moveCount / 512;
 
-              // Increase reduction for cut nodes (~10 Elo)
+              // Increase reduction for cut nodes (~3 Elo)
               if (cutNode)
                   r += 2;
 
@@ -1183,20 +1175,8 @@ moves_loop: // When in check, search starts from here
                              + (*contHist[3])[movedPiece][to_sq(move)]
                              - 4791;
 
-              // Decrease/increase reduction by comparing opponent's stat score (~10 Elo)
-              if (ss->statScore >= -89 && (ss-1)->statScore < -116)
-                  r--;
-
-              else if ((ss-1)->statScore >= -112 && ss->statScore < -100)
-                  r++;
-
               // Decrease/increase reduction for moves with a good/bad history (~30 Elo)
-              // If we are not in check use statScore, but if we are in check we use
-              // the sum of main history and first continuation history with an offset.
-              if (ss->inCheck)
-                  r -= (thisThread->mainHistory[us][from_to(move)]
-                     + (*contHist[0])[movedPiece][to_sq(move)] - 3833) / 16384;
-              else
+              if (!ss->inCheck)
                   r -= ss->statScore / 14790;
           }
 
