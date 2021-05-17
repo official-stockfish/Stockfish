@@ -443,7 +443,10 @@ namespace Stockfish::Tools
                 UCI::setoption("EnableTranspositionTable", "true");
             }
             else
-                cout << "ERROR: Ignoring unknown option " << token << endl;
+            {
+                cout << "ERROR: Unknown option " << token << ". Exiting...\n";
+                return;
+            }
         }
 
         if (!sfen_format.empty())

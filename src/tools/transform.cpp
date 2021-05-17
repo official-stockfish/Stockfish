@@ -210,6 +210,11 @@ namespace Stockfish::Tools
                 is >> params.input_filename;
             else if (token == "output_file")
                 is >> params.output_filename;
+            else
+            {
+                std::cout << "ERROR: Unknown option " << token << ". Exiting...\n";
+                return;
+            }
         }
 
         std::cout << "Performing transform nudged_static with parameters:\n";
@@ -474,6 +479,11 @@ namespace Stockfish::Tools
                 is >> params.keep_moves;
             else if (token == "research_count")
                 is >> params.research_count;
+            else
+            {
+                std::cout << "ERROR: Unknown option " << token << ". Exiting...\n";
+                return;
+            }
         }
 
         params.enforce_constraints();
