@@ -896,7 +896,10 @@ namespace Stockfish::Tools
                 params.ensure_quiet = true;
             }
             else
-                cout << "ERROR: Ignoring unknown option " << token << endl;
+            {
+                cout << "ERROR: Unknown option " << token << ". Exiting...\n";
+                return;
+            }
         }
 
         if (!sfen_format.empty())
