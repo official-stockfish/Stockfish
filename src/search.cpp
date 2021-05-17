@@ -862,7 +862,6 @@ namespace {
              && ttValue != VALUE_NONE
              && ttValue < probCutBeta))
     {
-
         assert(probCutBeta < VALUE_INFINITE);
 
         MovePicker mp(pos, ttMove, probCutBeta - ss->staticEval, &captureHistory);
