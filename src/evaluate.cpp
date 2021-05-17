@@ -114,24 +114,28 @@ namespace Eval {
         }
   }
 
+  /// NNUE::export_net() exports the currently loaded network to a file
   void NNUE::export_net(const std::optional<std::string>& filename) {
     std::string actualFilename;
-    if (filename.has_value()) {
-      actualFilename = filename.value();
-    } else {
-      if (eval_file_loaded != EvalFileDefaultName) {
-        sync_cout << "Failed to export a net. A non-embedded net can only be saved if the filename is specified." << sync_endl;
-        return;
-      }
-      actualFilename = EvalFileDefaultName;
+
+    if (filename.has_value())
+        actualFilename = filename.value();
+    else 
+    {
+        if (eval_file_loaded != EvalFileDefaultName)
+        {
+             sync_cout << "Failed to export a net. A non-embedded net can only be saved if the filename is specified." << sync_endl;
+             return;
+        }
+        actualFilename = EvalFileDefaultName;
     }
 
     ofstream stream(actualFilename, std::ios_base::binary);
-    if (save_eval(stream)) {
+
+    if (save_eval(stream))
         sync_cout << "Network saved successfully to " << actualFilename << "." << sync_endl;
-    } else {
+    else
         sync_cout << "Failed to export a net." << sync_endl;
-    }
   }
 
   /// NNUE::verify() verifies that the last net used was loaded successfully
@@ -927,7 +931,7 @@ namespace {
     Color strongSide = eg > VALUE_DRAW ? WHITE : BLACK;
     int sf = me->scale_factor(pos, strongSide);
 
-    // If scale factor is not already specific, scale down via general heuristics
+    // If scale factor is not already specific, scale up/down via general heuristics
     if (sf == SCALE_FACTOR_NORMAL)
     {
         if (pos.opposite_bishops())

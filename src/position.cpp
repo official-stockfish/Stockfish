@@ -988,7 +988,7 @@ void Position::do_castling(Color us, Square from, Square& to, Square& rfrom, Squ
 }
 
 
-/// Position::do(undo)_null_move() is used to do(undo) a "null move": it flips
+/// Position::do_null_move() is used to do a "null move": it flips
 /// the side to move without executing any move on the board.
 
 void Position::do_null_move(StateInfo& newSt) {
@@ -1026,6 +1026,9 @@ void Position::do_null_move(StateInfo& newSt) {
 
   assert(pos_is_ok());
 }
+
+
+/// Position::undo_null_move() must be used to undo a "null move"
 
 void Position::undo_null_move() {
 
@@ -1092,8 +1095,8 @@ bool Position::see_ge(Move m, Value threshold) const {
       if (!(stmAttackers = attackers & pieces(stm)))
           break;
 
-      // Don't allow pinned pieces to attack (except the king) as long as
-      // there are pinners on their original square.
+      // Don't allow pinned pieces to attack as long as there are
+      // pinners on their original square.
       if (pinners(~stm) & occupied)
           stmAttackers &= ~blockers_for_king(stm);
 
