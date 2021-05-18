@@ -24,16 +24,245 @@
 #include <limits>
 #include <mutex>
 #include <optional>
+#include <type_traits>
 
 namespace Stockfish::Tools::Stats
 {
+    struct Indentation
+    {
+        char character = ' ';
+        int width_per_indent = 4;
+        int num_indents = 0;
+
+        [[nodiscard]] Indentation next() const
+        {
+            return Indentation{ character, width_per_indent, num_indents + 1 };
+        }
+
+        [[nodiscard]] std::string to_string() const
+        {
+            return std::string(num_indents * width_per_indent, character);
+        }
+    };
+
+    template <typename IntT>
+    [[nodiscard]] int get_num_base_10_digits(IntT v)
+    {
+        int digits = 1;
+        while (v != 0)
+        {
+            digits += 1;
+            v /= 10;
+        }
+        return digits;
+    }
+
+    [[nodiscard]] std::string indent_text(const std::string& text, Indentation indent)
+    {
+        std::string delimiter = "\n";
+        std::string indent_str = indent.to_string();
+
+        std::string indented;
+
+        std::string::size_type pos = 0;
+        std::string::size_type prev = 0;
+        while ((pos = text.find(delimiter, prev)) != std::string::npos)
+        {
+            std::string line = text.substr(prev, pos - prev);
+            indented += indent_str + line + delimiter;
+            prev = pos + delimiter.size();
+        }
+
+        {
+            std::string line = text.substr(prev);
+            indented += indent_str + line;
+        }
+
+        return indented;
+    }
+
+    struct IndentedTextBlock
+    {
+        Indentation indentation;
+        std::string text;
+
+        IndentedTextBlock(Indentation indent, std::string str) :
+            indentation(indent),
+            text(std::move(str))
+        {
+        }
+
+        [[nodiscard]] static std::string join(const std::vector<IndentedTextBlock>& blocks, const std::string& delimiter)
+        {
+            std::string result;
+
+            bool is_first = true;
+            for (auto&& [indentation, text] : blocks)
+            {
+                if (!is_first)
+                {
+                    result += delimiter;
+                }
+
+                result += indent_text(text, indentation);
+
+                is_first = false;
+            }
+
+            return result;
+        }
+    };
+
+    struct StatisticOutputEntryNode
+    {
+        [[nodiscard]] const std::vector<std::unique_ptr<StatisticOutputEntryNode>>& get_children() const
+        {
+            return m_children;
+        }
+
+        template <typename NodeT, typename... Ts>
+        StatisticOutputEntryNode& emplace_child(Ts&&... args)
+        {
+            return *(m_children.emplace_back(std::make_unique<NodeT>(std::forward<Ts>(args)...)));
+        }
+
+        template <typename NodeT>
+        StatisticOutputEntryNode& add_child(std::unique_ptr<NodeT>&& node)
+        {
+            return *(m_children.emplace_back(std::move(node)));
+        }
+
+        [[nodiscard]] virtual std::vector<IndentedTextBlock> to_indented_text_blocks(Indentation indent) const = 0;
+
+    protected:
+        std::vector<std::unique_ptr<StatisticOutputEntryNode>> m_children;
+
+        void add_indented_children_blocks(std::vector<IndentedTextBlock>& blocks, Indentation indent) const
+        {
+            for (auto&& child : m_children)
+            {
+                auto part = child->to_indented_text_blocks(indent.next());
+                blocks.insert(blocks.end(), part.begin(), part.end());
+            }
+        }
+    };
+
+    struct StatisticOutputEntryHeader : StatisticOutputEntryNode
+    {
+        StatisticOutputEntryHeader(const std::string& text) :
+            m_text(text)
+        {
+        }
+
+        [[nodiscard]] virtual std::vector<IndentedTextBlock> to_indented_text_blocks(Indentation indent) const override
+        {
+            std::vector<IndentedTextBlock> blocks;
+
+            blocks.emplace_back(indent, m_text);
+
+            this->add_indented_children_blocks(blocks, indent);
+
+            return blocks;
+        }
+
+    private:
+        std::string m_text;
+    };
+
+    template <typename T>
+    struct StatisticOutputEntryValue : StatisticOutputEntryNode
+    {
+        StatisticOutputEntryValue(const std::string& name, const T& value, bool value_in_new_line = false) :
+            m_value(name, value),
+            m_value_in_new_line(value_in_new_line)
+        {
+        }
+
+        [[nodiscard]] virtual std::vector<IndentedTextBlock> to_indented_text_blocks(Indentation indent) const override
+        {
+            std::vector<IndentedTextBlock> blocks;
+
+            std::string value_str;
+            if constexpr (std::is_same_v<T, std::string>)
+            {
+                value_str = m_value.second;
+            }
+            else
+            {
+                value_str = std::to_string(m_value.second);
+            }
+
+            if (m_value_in_new_line)
+            {
+                blocks.emplace_back(indent, m_value.first + ": ");
+                blocks.emplace_back(indent.next(), value_str);
+            }
+            else
+            {
+                blocks.emplace_back(indent, m_value.first + ": " + value_str);
+            }
+
+            this->add_indented_children_blocks(blocks, indent);
+
+            return blocks;
+        }
+
+    private:
+        std::pair<std::string, T> m_value;
+        bool m_value_in_new_line;
+    };
+
+    struct StatisticOutput
+    {
+        template <typename NodeT, typename... Ts>
+        StatisticOutputEntryNode& emplace_node(Ts&&... args)
+        {
+            return *(m_nodes.emplace_back(std::make_unique<NodeT>(std::forward<Ts>(args)...)));
+        }
+
+        template <typename NodeT>
+        StatisticOutputEntryNode& add_child(std::unique_ptr<NodeT>&& node)
+        {
+            return *(m_nodes.emplace_back(std::move(node)));
+        }
+
+        [[nodiscard]] const std::vector<std::unique_ptr<StatisticOutputEntryNode>>& get_nodes() const
+        {
+            return m_nodes;
+        }
+
+        void add(StatisticOutput&& other)
+        {
+            for (auto&& node : other.m_nodes)
+            {
+                m_nodes.emplace_back(std::move(node));
+            }
+        }
+
+        [[nodiscard]] std::string to_string() const
+        {
+            std::vector<IndentedTextBlock> blocks;
+
+            for (auto&& node : m_nodes)
+            {
+                auto part = node->to_indented_text_blocks(Indentation{});
+                blocks.insert(blocks.end(), part.begin(), part.end());
+            }
+
+            return IndentedTextBlock::join(blocks, "\n");
+        }
+
+    private:
+        std::vector<std::unique_ptr<StatisticOutputEntryNode>> m_nodes;
+    };
+
     struct StatisticGathererBase
     {
         virtual void on_position(const Position&) {}
         virtual void on_move(const Position&, const Move&) {}
         virtual void reset() = 0;
         [[nodiscard]] virtual const std::string& get_name() const = 0;
-        [[nodiscard]] virtual std::vector<std::pair<std::string, std::string>> get_formatted_stats() const = 0;
+        [[nodiscard]] virtual StatisticOutput get_output() const = 0;
     };
 
     struct StatisticGathererFactoryBase
@@ -104,21 +333,20 @@ namespace Stockfish::Tools::Stats
             }
         }
 
-        [[nodiscard]] virtual const std::string& get_name() const override
+        [[nodiscard]] const std::string& get_name() const override
         {
             static std::string name = "SET";
             return name;
         }
 
-        [[nodiscard]] virtual std::vector<std::pair<std::string, std::string>> get_formatted_stats() const override
+        [[nodiscard]] StatisticOutput get_output() const override
         {
-            std::vector<std::pair<std::string, std::string>> parts;
+            StatisticOutput out;
             for (auto&& s : m_gatherers)
             {
-                auto part = s->get_formatted_stats();
-                parts.insert(parts.end(), part.begin(), part.end());
+                out.add(s->get_output());
             }
-            return parts;
+            return out;
         }
 
     private:
@@ -190,16 +418,27 @@ namespace Stockfish::Tools::Stats
             return m_squares[sq];
         }
 
-        [[nodiscard]] std::string get_formatted_stats() const
+        [[nodiscard]] std::unique_ptr<StatisticOutputEntryNode> get_output_node(const std::string& name) const
         {
+            int max_digits = 1;
+            for (int i = 0; i < SQUARE_NB; ++i)
+            {
+                const int d = get_num_base_10_digits(m_squares[i]);
+                if (d > max_digits)
+                {
+                    max_digits = d;
+                }
+            }
+
             std::stringstream ss;
             for (int i = 0; i < SQUARE_NB; ++i)
             {
-                ss << std::setw(8) << m_squares[i ^ (int)SQ_A8] << ' ';
+                ss << std::setw(max_digits) << m_squares[i ^ (int)SQ_A8] << ' ';
                 if ((i + 1) % 8 == 0)
                     ss << '\n';
             }
-            return ss.str();
+
+            return std::make_unique<StatisticOutputEntryValue<std::string>>(name, ss.str(), true);
         }
 
     private:
@@ -234,11 +473,11 @@ namespace Stockfish::Tools::Stats
             return name;
         }
 
-        [[nodiscard]] std::vector<std::pair<std::string, std::string>> get_formatted_stats() const override
+        [[nodiscard]] StatisticOutput get_output() const override
         {
-            return {
-                { "Number of positions", std::to_string(m_num_positions) }
-            };
+            StatisticOutput out;
+            out.emplace_node<StatisticOutputEntryValue<std::uint64_t>>("Number of positions", m_num_positions);
+            return out;
         }
 
     private:
@@ -273,12 +512,13 @@ namespace Stockfish::Tools::Stats
             return name;
         }
 
-        [[nodiscard]] std::vector<std::pair<std::string, std::string>> get_formatted_stats() const override
+        [[nodiscard]] StatisticOutput get_output() const override
         {
-            return {
-                { "White king squares", '\n' + m_white.get_formatted_stats() },
-                { "Black king squares", '\n' + m_black.get_formatted_stats() }
-            };
+            StatisticOutput out;
+            auto& header = out.emplace_node<StatisticOutputEntryHeader>("King square distribution:");
+            header.add_child(m_white.get_output_node("White king squares"));
+            header.add_child(m_black.get_output_node("Black king squares"));
+            return out;
         }
 
     private:
@@ -316,12 +556,13 @@ namespace Stockfish::Tools::Stats
             return name;
         }
 
-        [[nodiscard]] std::vector<std::pair<std::string, std::string>> get_formatted_stats() const override
+        [[nodiscard]] StatisticOutput get_output() const override
         {
-            return {
-                { "White move from squares", '\n' + m_white.get_formatted_stats() },
-                { "Black move from squares", '\n' + m_black.get_formatted_stats() }
-            };
+            StatisticOutput out;
+            auto& header = out.emplace_node<StatisticOutputEntryHeader>("Move from square distribution:");
+            header.add_child(m_white.get_output_node("White move from squares"));
+            header.add_child(m_black.get_output_node("Black move from squares"));
+            return out;
         }
 
     private:
@@ -359,12 +600,13 @@ namespace Stockfish::Tools::Stats
             return name;
         }
 
-        [[nodiscard]] std::vector<std::pair<std::string, std::string>> get_formatted_stats() const override
+        [[nodiscard]] StatisticOutput get_output() const override
         {
-            return {
-                { "White move to squares", '\n' + m_white.get_formatted_stats() },
-                { "Black move to squares", '\n' + m_black.get_formatted_stats() }
-            };
+            StatisticOutput out;
+            auto& header = out.emplace_node<StatisticOutputEntryHeader>("Move to square distribution:");
+            header.add_child(m_white.get_output_node("White move to squares"));
+            header.add_child(m_black.get_output_node("Black move to squares"));
+            return out;
         }
 
     private:
@@ -419,16 +661,17 @@ namespace Stockfish::Tools::Stats
             return name;
         }
 
-        [[nodiscard]] std::vector<std::pair<std::string, std::string>> get_formatted_stats() const override
+        [[nodiscard]] StatisticOutput get_output() const override
         {
-            return {
-                { "Total moves", std::to_string(m_total) },
-                { "Normal moves", std::to_string(m_normal) },
-                { "Capture moves", std::to_string(m_capture) },
-                { "Promotion moves", std::to_string(m_promotion) },
-                { "Castling moves", std::to_string(m_castling) },
-                { "En-passant moves", std::to_string(m_enpassant) }
-            };
+            StatisticOutput out;
+            auto& header = out.emplace_node<StatisticOutputEntryHeader>("Number of moves by type:");
+            header.emplace_child<StatisticOutputEntryValue<std::uint64_t>>("Total", m_total);
+            header.emplace_child<StatisticOutputEntryValue<std::uint64_t>>("Normal", m_normal);
+            header.emplace_child<StatisticOutputEntryValue<std::uint64_t>>("Capture", m_capture);
+            header.emplace_child<StatisticOutputEntryValue<std::uint64_t>>("Promotion", m_promotion);
+            header.emplace_child<StatisticOutputEntryValue<std::uint64_t>>("Castling", m_castling);
+            header.emplace_child<StatisticOutputEntryValue<std::uint64_t>>("En-passant", m_enpassant);
+            return out;
         }
 
     private:
@@ -465,9 +708,10 @@ namespace Stockfish::Tools::Stats
             return name;
         }
 
-        [[nodiscard]] std::vector<std::pair<std::string, std::string>> get_formatted_stats() const override
+        [[nodiscard]] StatisticOutput get_output() const override
         {
-            std::vector<std::pair<std::string, std::string>> result;
+            StatisticOutput out;
+            auto& header = out.emplace_node<StatisticOutputEntryHeader>("Number of positions by piece count:");
             bool do_write = false;
             for (int i = SQUARE_NB - 1; i >= 0; --i)
             {
@@ -477,13 +721,10 @@ namespace Stockfish::Tools::Stats
                 // Start writing when the first non-zero number pops up.
                 if (do_write)
                 {
-                    result.emplace_back(
-                        std::string("Number of positions with ") + std::to_string(i) + " pieces",
-                        std::to_string(m_piece_count_hist[i])
-                    );
+                    header.emplace_child<StatisticOutputEntryValue<std::uint64_t>>(std::to_string(i), m_piece_count_hist[i]);
                 }
             }
-            return result;
+            return out;
         }
 
     private:
@@ -515,16 +756,17 @@ namespace Stockfish::Tools::Stats
             return name;
         }
 
-        [[nodiscard]] std::vector<std::pair<std::string, std::string>> get_formatted_stats() const override
+        [[nodiscard]] StatisticOutput get_output() const override
         {
-            return {
-                { "Pawn moves", std::to_string(m_moved_piece_type_hist[PAWN]) },
-                { "Knight moves", std::to_string(m_moved_piece_type_hist[KNIGHT]) },
-                { "Bishop moves", std::to_string(m_moved_piece_type_hist[BISHOP]) },
-                { "Rook moves", std::to_string(m_moved_piece_type_hist[ROOK]) },
-                { "Queen moves", std::to_string(m_moved_piece_type_hist[QUEEN]) },
-                { "King moves", std::to_string(m_moved_piece_type_hist[KING]) }
-            };
+            StatisticOutput out;
+            auto& header = out.emplace_node<StatisticOutputEntryHeader>("Number of moves by piece type:");
+            header.emplace_child<StatisticOutputEntryValue<std::uint64_t>>("Pawn", m_moved_piece_type_hist[PAWN]);
+            header.emplace_child<StatisticOutputEntryValue<std::uint64_t>>("Knight", m_moved_piece_type_hist[KNIGHT]);
+            header.emplace_child<StatisticOutputEntryValue<std::uint64_t>>("Bishop", m_moved_piece_type_hist[BISHOP]);
+            header.emplace_child<StatisticOutputEntryValue<std::uint64_t>>("Rook", m_moved_piece_type_hist[ROOK]);
+            header.emplace_child<StatisticOutputEntryValue<std::uint64_t>>("Queen", m_moved_piece_type_hist[QUEEN]);
+            header.emplace_child<StatisticOutputEntryValue<std::uint64_t>>("King", m_moved_piece_type_hist[KING]);
+            return out;
         }
 
     private:
@@ -606,10 +848,7 @@ namespace Stockfish::Tools::Stats
         std::cout << "Finished gathering statistics.\n\n";
         std::cout << "Results:\n\n";
 
-        for (auto&& [name, value] : statistic_gatherers.get_formatted_stats())
-        {
-            std::cout << name << ": " << value << '\n';
-        }
+        std::cout << statistic_gatherers.get_output().to_string();
     }
 
     void gather_statistics(std::istringstream& is)
