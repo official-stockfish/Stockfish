@@ -869,7 +869,18 @@ namespace Stockfish::Tools::Stats
             StatisticOutput out;
             auto& header = out.emplace_node<StatisticOutputEntryHeader>("Number of \"simple eval\" imbalances for white's perspective:");
             const int key_length = get_num_base_10_digits(max_imbalance) + 1;
+            int min_non_zero = max_imbalance;
+            int max_non_zero = -max_imbalance;
             for (int i = -max_imbalance; i <= max_imbalance; ++i)
+            {
+                if (m_num_imbalances[i + max_imbalance] != 0)
+                {
+                    min_non_zero = std::min(min_non_zero, i);
+                    max_non_zero = std::max(max_non_zero, i);
+                }
+            }
+
+            for (int i = min_non_zero; i <= max_non_zero; ++i)
             {
                 header.emplace_child<StatisticOutputEntryValue<std::uint64_t>>(
                     left_pad_to_length(std::to_string(i), ' ', key_length),
