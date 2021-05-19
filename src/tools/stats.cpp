@@ -59,9 +59,23 @@ namespace Stockfish::Tools::Stats
 
     [[nodiscard]] std::string left_pad_to_length(const std::string& str, char ch, int length)
     {
-        if (str.size() < length)
+        const int str_size = static_cast<int>(str.size());
+        if (str_size < length)
         {
-            return std::string(length - static_cast<int>(str.size()), ch) + str;
+            return std::string(length - str_size, ch) + str;
+        }
+        else
+        {
+            return str;
+        }
+    }
+
+    [[nodiscard]] std::string right_pad_to_length(const std::string& str, char ch, int length)
+    {
+        const int str_size = static_cast<int>(str.size());
+        if (str_size < length)
+        {
+            return str + std::string(length - str_size, ch);
         }
         else
         {
@@ -940,6 +954,134 @@ namespace Stockfish::Tools::Stats
         std::uint64_t m_stm_loses;
     };
 
+    template <int MaxManCount>
+    struct EndgameConfigurations : StatisticGathererBase
+    {
+        static_assert(MaxManCount < 10);
+        static_assert(MaxManCount > 2);
+
+        static inline std::string name = std::string("EndgameConfigurations") + std::to_string(MaxManCount);
+
+        using MaterialKey = std::uint64_t;
+
+        EndgameConfigurations()
+        {
+            reset();
+        }
+
+        void on_entry(const Position& pos, const Move&, const PackedSfenValue&) override
+        {
+            const int piece_count = pos.count<ALL_PIECES>();
+            if (piece_count > MaxManCount)
+            {
+                return;
+            }
+
+            const auto index = get_material_key_for_position(pos);
+            m_counts[index] += 1;
+        }
+
+        void reset() override
+        {
+            m_counts.clear();
+        }
+
+        [[nodiscard]] const std::string& get_name() const override
+        {
+            return name;
+        }
+
+        [[nodiscard]] StatisticOutput get_output() const override
+        {
+            StatisticOutput out;
+            auto& header = out.emplace_node<StatisticOutputEntryHeader>("Distribution of endgame configurations:");
+            std::vector<std::pair<MaterialKey, std::uint64_t>> flattened(m_counts.begin(), m_counts.end());
+            std::sort(flattened.begin(), flattened.end(), [](const auto& lhs, const auto& rhs) { return lhs.second > rhs.second; });
+            for (auto&& [index, count] : flattened)
+            {
+                header.emplace_child<StatisticOutputEntryValue<std::uint64_t>>(
+                    get_padded_name_by_material_key(index),
+                    count
+                );
+            }
+            return out;
+        }
+
+    private:
+        // can support up to 17 pieces.
+        // it's basically the material string encoded as a number in base 8
+        // encoding is from the least significant digit to most significant
+        // v=1, P=2, N=3, B=4, R=5, Q=6, K=7. 0 indicates end
+        std::map<MaterialKey, std::uint64_t> m_counts;
+
+        [[nodiscard]] MaterialKey get_material_key_for_position(const Position& pos) const
+        {
+            MaterialKey index = 0;
+            std::uint64_t shift = 0;
+
+            index += 7 << shift; shift += 3;
+
+            for (int i = 0; i < pos.count<PAWN>(WHITE); ++i) { index += 2 << shift; shift += 3; }
+            for (int i = 0; i < pos.count<BISHOP>(WHITE); ++i) { index += 3 << shift; shift += 3; }
+            for (int i = 0; i < pos.count<KNIGHT>(WHITE); ++i) { index += 4 << shift; shift += 3; }
+            for (int i = 0; i < pos.count<ROOK>(WHITE); ++i) { index += 5 << shift; shift += 3; }
+            for (int i = 0; i < pos.count<QUEEN>(WHITE); ++i) { index += 6 << shift; shift += 3; }
+
+            index += 1 << shift; shift += 3;
+            index += 7 << shift; shift += 3;
+
+            for (int i = 0; i < pos.count<PAWN>(BLACK); ++i) { index += 2 << shift; shift += 3; }
+            for (int i = 0; i < pos.count<BISHOP>(BLACK); ++i) { index += 3 << shift; shift += 3; }
+            for (int i = 0; i < pos.count<KNIGHT>(BLACK); ++i) { index += 4 << shift; shift += 3; }
+            for (int i = 0; i < pos.count<ROOK>(BLACK); ++i) { index += 5 << shift; shift += 3; }
+            for (int i = 0; i < pos.count<QUEEN>(BLACK); ++i) { index += 6 << shift; shift += 3; }
+
+            return index;
+        }
+
+        [[nodiscard]] std::string get_padded_name_by_material_key(MaterialKey index) const
+        {
+            std::string sides[COLOR_NB];
+            Color side = WHITE;
+
+            while (index != 0)
+            {
+                switch (index % 8)
+                {
+                    case 1:
+                        side = BLACK;
+                        break;
+                    case 2:
+                        sides[side] += 'P';
+                        break;
+                    case 3:
+                        sides[side] += 'N';
+                        break;
+                    case 4:
+                        sides[side] += 'B';
+                        break;
+                    case 5:
+                        sides[side] += 'R';
+                        break;
+                    case 6:
+                        sides[side] += 'Q';
+                        break;
+                    case 7:
+                        sides[side] += 'K';
+                        break;
+                    default:
+                        break;
+                }
+                index >>= 3;
+            }
+
+            return
+                  right_pad_to_length(sides[WHITE], ' ', MaxManCount-1)
+                + 'v'
+                + right_pad_to_length(sides[BLACK], ' ', MaxManCount-1);
+        }
+    };
+
     /*
         This function provides factories for all possible statistic gatherers.
         Each new statistic gatherer needs to be added there.
@@ -965,6 +1107,8 @@ namespace Stockfish::Tools::Stats
             reg.add<ResultDistribution>("results");
 
             reg.add<PieceCountCounter>("piece_count");
+
+            reg.add<EndgameConfigurations<6>>("endgames_6man");
 
             return reg;
         }();
