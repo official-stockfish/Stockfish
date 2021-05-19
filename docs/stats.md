@@ -35,3 +35,5 @@ Any name that doesn't designate an argument name or is not an argument will be i
 `material_imbalance` - the histogram of imbalances, with values computed using "simple eval", that is pawn=1, bishop=knight=3, rook=5, queen=9
 
 `results` - the distribution of game results
+
+`endgames_6man` - distribution of endgame configurations for <=6 pieces (including kings)
