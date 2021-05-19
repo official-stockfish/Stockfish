@@ -29,3 +29,9 @@ Any name that doesn't designate an argument name or is not an argument will be i
 `move`, `moved_piece_type` - the number of times a piece of each type was moved
 
 `piece_count` - the histogram of the number of pieces on the board
+
+`ply_discontinuities` - the number of times the ply jumped by a value different than 1 between two consecutive positions. Usually the number of games.
+
+`material_imbalance` - the histogram of imbalances, with values computed using "simple eval", that is pawn=1, bishop=knight=3, rook=5, queen=9
+
+`results` - the distribution of game results
