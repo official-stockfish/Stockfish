@@ -10,6 +10,8 @@ Any name that doesn't designate an argument name or is not an argument will be i
 
 `input_file` - the path to the .bin or .binpack input file to read
 
+`output_file` - optional path to the output file to write the results too. Results are always written on the console, so if this is specified the results will be written in both places.
+
 `max_count` - the maximum number of positions to process. Default: no limit.
 
 ## Groups
