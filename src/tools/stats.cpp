@@ -980,7 +980,7 @@ namespace Stockfish::Tools::Stats
             reset();
         }
 
-        void on_entry(const Position& pos, const Move&, const PackedSfenValue&) override
+        void on_entry(const Position& pos, const Move&, const PackedSfenValue& psv) override
         {
             const int piece_count = pos.count<ALL_PIECES>();
             if (piece_count > MaxManCount)
@@ -989,12 +989,29 @@ namespace Stockfish::Tools::Stats
             }
 
             const auto index = get_material_key_for_position(pos);
-            m_counts[index] += 1;
+            auto& entry = m_entries[index];
+            entry.count += 1;
+            if (psv.game_result == 0)
+            {
+                entry.draws += 1;
+            }
+            else
+            {
+                const Color winner_side = psv.game_result == 1 ? pos.side_to_move() : ~pos.side_to_move();
+                if (winner_side == WHITE)
+                {
+                    entry.white_wins += 1;
+                }
+                else
+                {
+                    entry.black_wins += 1;
+                }
+            }
         }
 
         void reset() override
         {
-            m_counts.clear();
+            m_entries.clear();
         }
 
         [[nodiscard]] const std::string& get_name() const override
@@ -1005,25 +1022,49 @@ namespace Stockfish::Tools::Stats
         [[nodiscard]] StatisticOutput get_output() const override
         {
             StatisticOutput out;
-            auto& header = out.emplace_node<StatisticOutputEntryHeader>("Distribution of endgame configurations:");
-            std::vector<std::pair<MaterialKey, std::uint64_t>> flattened(m_counts.begin(), m_counts.end());
-            std::sort(flattened.begin(), flattened.end(), [](const auto& lhs, const auto& rhs) { return lhs.second > rhs.second; });
-            for (auto&& [index, count] : flattened)
+            auto& header = out.emplace_node<StatisticOutputEntryHeader>("Distribution of endgame configurations (count W D L):");
+            std::vector<std::pair<MaterialKey, Entry>> flattened(m_entries.begin(), m_entries.end());
+            std::sort(flattened.begin(), flattened.end(), [](const auto& lhs, const auto& rhs) { return lhs.second.count > rhs.second.count; });
+            for (auto&& [index, entry] : flattened)
             {
-                header.emplace_child<StatisticOutputEntryValue<std::uint64_t>>(
+                header.emplace_child<StatisticOutputEntryValue<std::string>>(
                     get_padded_name_by_material_key(index),
-                    count
+                    entry.to_string()
                 );
             }
             return out;
         }
 
     private:
+        struct Entry
+        {
+            std::uint64_t count = 0;
+            std::uint64_t white_wins = 0;
+            std::uint64_t black_wins = 0;
+            std::uint64_t draws = 0;
+
+            [[nodiscard]] std::string to_string() const
+            {
+                constexpr int wide_column_width = 9;
+                constexpr int narrow_column_width = 4;
+
+                const float perf =
+                      (white_wins + draws / 2.0f)
+                    / (white_wins + black_wins + draws);
+
+                return
+                      left_pad_to_length(std::to_string(count), ' ', wide_column_width) + ' '
+                    + left_pad_to_length(std::to_string(white_wins), ' ', wide_column_width) + ' '
+                    + left_pad_to_length(std::to_string(black_wins), ' ', wide_column_width) + ' '
+                    + left_pad_to_length(std::to_string(draws), ' ', wide_column_width) + ' '
+                    + left_pad_to_length(std::to_string(static_cast<int>(perf * 100.0f + 0.5f)), ' ', narrow_column_width) + '%';
+            }
+        };
         // can support up to 17 pieces.
         // it's basically the material string encoded as a number in base 8
         // encoding is from the least significant digit to most significant
         // v=1, P=2, N=3, B=4, R=5, Q=6, K=7. 0 indicates end
-        std::map<MaterialKey, std::uint64_t> m_counts;
+        std::map<MaterialKey, Entry> m_entries;
 
         [[nodiscard]] MaterialKey get_material_key_for_position(const Position& pos) const
         {
@@ -1053,6 +1094,7 @@ namespace Stockfish::Tools::Stats
         [[nodiscard]] std::string get_padded_name_by_material_key(MaterialKey index) const
         {
             std::string sides[COLOR_NB];
+            int material[COLOR_NB] = { 0, 0 };
             Color side = WHITE;
 
             while (index != 0)
@@ -1064,18 +1106,23 @@ namespace Stockfish::Tools::Stats
                         break;
                     case 2:
                         sides[side] += 'P';
+                        material[side] += 1;
                         break;
                     case 3:
                         sides[side] += 'N';
+                        material[side] += 3;
                         break;
                     case 4:
                         sides[side] += 'B';
+                        material[side] += 3;
                         break;
                     case 5:
                         sides[side] += 'R';
+                        material[side] += 5;
                         break;
                     case 6:
                         sides[side] += 'Q';
+                        material[side] += 9;
                         break;
                     case 7:
                         sides[side] += 'K';
@@ -1086,10 +1133,19 @@ namespace Stockfish::Tools::Stats
                 index >>= 3;
             }
 
+            const int imbalance = material[WHITE] - material[BLACK];
+            const std::string imbalance_str =
+                  std::string(imbalance > 0 ? "+" : "") // force + sign for positive values
+                + std::string(imbalance == 0 ? " " : "") // pad 0
+                + std::to_string(imbalance);
+
             return
                   right_pad_to_length(sides[WHITE], ' ', MaxManCount-1)
                 + 'v'
-                + right_pad_to_length(sides[BLACK], ' ', MaxManCount-1);
+                + right_pad_to_length(sides[BLACK], ' ', MaxManCount-1)
+                + " ("
+                + right_pad_to_length(imbalance_str, ' ', 3)
+                + ')';
         }
     };
 
