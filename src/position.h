@@ -51,11 +51,11 @@ struct StateInfo {
   // Not copied when making a move (will be recomputed anyhow)
   Key        key;
   Bitboard   checkersBB;
-  Piece      capturedPiece;
   StateInfo* previous;
   Bitboard   blockersForKing[COLOR_NB];
   Bitboard   pinners[COLOR_NB];
   Bitboard   checkSquares[PIECE_TYPE_NB];
+  Piece      capturedPiece;
   int        repetition;
 
   // Used by NNUE
@@ -192,11 +192,11 @@ private:
   int castlingRightsMask[SQUARE_NB];
   Square castlingRookSquare[CASTLING_RIGHT_NB];
   Bitboard castlingPath[CASTLING_RIGHT_NB];
+  Thread* thisThread;
+  StateInfo* st;
   int gamePly;
   Color sideToMove;
   Score psq;
-  Thread* thisThread;
-  StateInfo* st;
   bool chess960;
 };
 
