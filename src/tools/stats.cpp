@@ -1130,7 +1130,8 @@ namespace Stockfish::Tools::Stats
     void do_gather_statistics(
         const std::string& filename,
         StatisticGathererSet& statistic_gatherers,
-        std::uint64_t max_count)
+        std::uint64_t max_count,
+        const std::optional<std::string>& output_filename)
     {
         Thread* th = Threads.main();
         Position& pos = th->rootPos;
@@ -1171,7 +1172,13 @@ namespace Stockfish::Tools::Stats
         std::cout << "Finished gathering statistics.\n\n";
         std::cout << "Results:\n\n";
 
-        std::cout << statistic_gatherers.get_output().to_string();
+        const auto output_str = statistic_gatherers.get_output().to_string();
+        std::cout << output_str;
+        if (output_filename.has_value())
+        {
+            std::ofstream out_file(*output_filename);
+            out_file << output_str;
+        }
     }
 
     void gather_statistics(std::istringstream& is)
@@ -1183,6 +1190,7 @@ namespace Stockfish::Tools::Stats
         StatisticGathererSet statistic_gatherers;
 
         std::string input_file;
+        std::optional<std::string> output_file;
         std::uint64_t max_count = std::numeric_limits<std::uint64_t>::max();
 
         while(true)
@@ -1195,13 +1203,19 @@ namespace Stockfish::Tools::Stats
 
             if (token == "input_file")
                 is >> input_file;
+            else if (token == "output_file")
+            {
+                std::string s;
+                is >> s;
+                output_file = s;
+            }
             else if (token == "max_count")
                 is >> max_count;
             else
                 registry.add_statistic_gatherers_by_group(statistic_gatherers, token);
         }
 
-        do_gather_statistics(input_file, statistic_gatherers, max_count);
+        do_gather_statistics(input_file, statistic_gatherers, max_count, output_file);
     }
 
 }
