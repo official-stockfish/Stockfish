@@ -93,8 +93,6 @@ namespace Stockfish::Tools
             bool detect_draw_by_consecutive_low_score = true;
             bool detect_draw_by_insufficient_mating_material = true;
 
-            bool ensure_quiet = false;
-
             uint64_t num_threads;
 
             std::string book;
@@ -349,86 +347,17 @@ namespace Stockfish::Tools
                 // Discard stuff before write_minply is reached
                 // because it can harm training due to overfitting.
                 // Initial positions would be too common.
-                if (ply >= params.write_minply)
+                if (ply >= params.write_minply && !was_seen_before(pos))
                 {
-                    packed_sfens.emplace_back(PackedSfenValue());
+                    auto& psv = packed_sfens.emplace_back();
 
-                    auto& psv = packed_sfens.back();
+                    // Here we only write the position data.
+                    // Result is added after the whole game is done.
+                    pos.sfen_pack(psv.sfen);
 
-                    if (params.ensure_quiet)
-                    {
-                        auto [qsearch_value, qsearch_pv] = Search::qsearch(pos);
-                        if (qsearch_pv.empty())
-                        {
-                            // Here we only write the position data.
-                            // Result is added after the whole game is done.
-                            pos.sfen_pack(psv.sfen);
-
-                            // Already a quiet position
-                            psv.score = search_value;
-                            psv.move = search_pv[0];
-                            psv.gamePly = ply;
-                        }
-                        else
-                        {
-                            // Navigate to a quiet
-                            int old_ply = ply;
-                            for (auto m : qsearch_pv)
-                            {
-                                pos.do_move(m, states[ply++]);
-                            }
-
-                            if (was_seen_before(pos))
-                            {
-                                // Just skip the move.
-                                packed_sfens.pop_back();
-                            }
-                            else
-                            {
-                                // Reevaluate
-                                auto [quiet_search_value, quiet_search_pv] = Search::search(pos, depth, 1, params.nodes);
-                                if (quiet_search_pv.empty())
-                                {
-                                    // Just skip the move.
-                                    packed_sfens.pop_back();
-                                }
-                                else
-                                {
-                                    // Here we only write the position data.
-                                    // Result is added after the whole game is done.
-                                    pos.sfen_pack(psv.sfen);
-
-                                    psv.score = quiet_search_value;
-                                    psv.move = quiet_search_pv[0];
-                                    psv.gamePly = ply;
-                                }
-                            }
-
-                            // Get back to the game
-                            for (auto it = qsearch_pv.rbegin(); it != qsearch_pv.rend(); ++it)
-                            {
-                                pos.undo_move(*it);
-                            }
-                            ply = old_ply;
-                        }
-                    }
-                    else
-                    {
-                        if (was_seen_before(pos))
-                        {
-                            packed_sfens.pop_back();
-                        }
-                        else
-                        {
-                            // Here we only write the position data.
-                            // Result is added after the whole game is done.
-                            pos.sfen_pack(psv.sfen);
-
-                            psv.score = search_value;
-                            psv.move = search_pv[0];
-                            psv.gamePly = ply;
-                        }
-                    }
+                    psv.score = search_value;
+                    psv.move = search_pv[0];
+                    psv.gamePly = ply;
                 }
 
                 // Update the next move according to best search result or random move.
@@ -891,10 +820,6 @@ namespace Stockfish::Tools
                 UCI::setoption("PruneAtShallowDepth", "false");
                 UCI::setoption("EnableTranspositionTable", "true");
             }
-            else if (token == "ensure_quiet")
-            {
-                params.ensure_quiet = true;
-            }
             else
             {
                 cout << "ERROR: Unknown option " << token << ". Exiting...\n";
@@ -910,12 +835,6 @@ namespace Stockfish::Tools
                 params.sfen_format = SfenOutputType::Binpack;
             else
                 cout << "WARNING: Unknown sfen format `" << sfen_format << "`. Using bin\n";
-        }
-
-        if (params.ensure_quiet)
-        {
-            // Otherwise we can't ensure quiet positions...
-            UCI::setoption("EnableTranspositionTable", "false");
         }
 
         if (random_file_name)
