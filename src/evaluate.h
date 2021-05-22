@@ -43,7 +43,7 @@ namespace Eval {
 
   namespace NNUE {
 
-    Value evaluate(const Position& pos);
+    Value evaluate(const Position& pos, bool adjusted = false);
     bool load_eval(std::string name, std::istream& stream);
     bool save_eval(std::ostream& stream);
     void init();
