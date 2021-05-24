@@ -50,7 +50,7 @@ SRCS = benchmark.cpp bitbase.cpp bitboard.cpp endgame.cpp evaluate.cpp main.cpp 
 	material.cpp misc.cpp movegen.cpp movepick.cpp pawns.cpp position.cpp psqt.cpp \
 	search.cpp thread.cpp timeman.cpp tt.cpp uci.cpp ucioption.cpp tune.cpp syzygy/tbprobe.cpp \
 	nnue/evaluate_nnue.cpp \
-	nnue/features/half_kp.cpp \
+	nnue/features/half_ka_v2.cpp \
 	tools/sfen_packer.cpp \
 	tools/training_data_generator.cpp \
 	tools/training_data_generator_nonpv.cpp \
@@ -106,8 +106,7 @@ endif
 ifeq ($(ARCH), $(filter $(ARCH), \
                  x86-64-vnni512 x86-64-vnni256 x86-64-avx512 x86-64-bmi2 x86-64-avx2 \
                  x86-64-sse41-popcnt x86-64-modern x86-64-ssse3 x86-64-sse3-popcnt \
-                 x86-64 x86-32-sse41-popcnt x86-32-sse2 x86-32 ppc-64 ppc-32 \
-                 e2k \
+                 x86-64 x86-32-sse41-popcnt x86-32-sse2 x86-32 ppc-64 ppc-32 e2k \
                  armv7 armv7-neon armv8 apple-silicon general-64 general-32))
    SUPPORTED_ARCH=true
 else
@@ -853,8 +852,7 @@ config-sanity: net
 	@test "$(optimize)" = "yes" || test "$(optimize)" = "no"
 	@test "$(SUPPORTED_ARCH)" = "true"
 	@test "$(arch)" = "any" || test "$(arch)" = "x86_64" || test "$(arch)" = "i386" || \
-	 test "$(arch)" = "ppc64" || test "$(arch)" = "ppc" || \
-	 test "$(arch)" = "e2k" || \
+	 test "$(arch)" = "ppc64" || test "$(arch)" = "ppc" || test "$(arch)" = "e2k" || \
 	 test "$(arch)" = "armv7" || test "$(arch)" = "armv8" || test "$(arch)" = "arm64"
 	@test "$(bits)" = "32" || test "$(bits)" = "64"
 	@test "$(prefetch)" = "yes" || test "$(prefetch)" = "no"

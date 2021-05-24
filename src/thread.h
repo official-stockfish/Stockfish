@@ -74,16 +74,7 @@ public:
   void idle_loop();
   void start_searching();
   void wait_for_search_finished();
-  int id() const { return idx; }
-  void wait_for_worker_finished();
-  size_t thread_idx() const { return idx; }
-
-  template <typename FuncT>
-  void set_eval_callback(FuncT&& f) { on_eval_callback = std::forward<FuncT>(f); }
-
-  void clear_eval_callback() { on_eval_callback = nullptr; }
-
-  void on_eval() { if (on_eval_callback) on_eval_callback(rootPos); }
+  size_t id() const { return idx; }
 
   Pawns::Table pawnsTable;
   Material::Table materialTable;
@@ -103,11 +94,6 @@ public:
   CapturePieceToHistory captureHistory;
   ContinuationHistory continuationHistory[2][2];
   Score contempt;
-  int failedHighCnt;
-  bool rootInTB;
-  int Cardinality;
-  bool UseRule50;
-  Depth ProbeDepth;
 };
 
 

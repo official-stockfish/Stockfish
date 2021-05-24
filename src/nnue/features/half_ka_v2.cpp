@@ -16,32 +16,32 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-//Definition of input features HalfKP of NNUE evaluation function
+//Definition of input features HalfKAv2 of NNUE evaluation function
 
-#include "half_kp.h"
+#include "half_ka_v2.h"
 
 #include "../../position.h"
 
 namespace Stockfish::Eval::NNUE::Features {
 
   // Orient a square according to perspective (rotates by 180 for black)
-  inline Square HalfKP::orient(Color perspective, Square s) {
-    return Square(int(s) ^ (bool(perspective) * 63));
+  inline Square HalfKAv2::orient(Color perspective, Square s) {
+    return Square(int(s) ^ (bool(perspective) * 56));
   }
 
   // Index of a feature for a given king position and another piece on some square
-  inline IndexType HalfKP::make_index(Color perspective, Square s, Piece pc, Square ksq) {
+  inline IndexType HalfKAv2::make_index(Color perspective, Square s, Piece pc, Square ksq) {
     return IndexType(orient(perspective, s) + PieceSquareIndex[perspective][pc] + PS_NB * ksq);
   }
 
   // Get a list of indices for active features
-  void HalfKP::append_active_indices(
+  void HalfKAv2::append_active_indices(
     const Position& pos,
     Color perspective,
     ValueListInserter<IndexType> active
   ) {
     Square ksq = orient(perspective, pos.square<KING>(perspective));
-    Bitboard bb = pos.pieces() & ~pos.pieces(KING);
+    Bitboard bb = pos.pieces();
     while (bb)
     {
       Square s = pop_lsb(bb);
@@ -52,7 +52,7 @@ namespace Stockfish::Eval::NNUE::Features {
 
   // append_changed_indices() : get a list of indices for recently changed features
 
-  void HalfKP::append_changed_indices(
+  void HalfKAv2::append_changed_indices(
     Square ksq,
     StateInfo* st,
     Color perspective,
@@ -63,7 +63,6 @@ namespace Stockfish::Eval::NNUE::Features {
     Square oriented_ksq = orient(perspective, ksq);
     for (int i = 0; i < dp.dirty_num; ++i) {
       Piece pc = dp.piece[i];
-      if (type_of(pc) == KING) continue;
       if (dp.from[i] != SQ_NONE)
         removed.push_back(make_index(perspective, dp.from[i], pc, oriented_ksq));
       if (dp.to[i] != SQ_NONE)
@@ -71,15 +70,15 @@ namespace Stockfish::Eval::NNUE::Features {
     }
   }
 
-  int HalfKP::update_cost(StateInfo* st) {
+  int HalfKAv2::update_cost(StateInfo* st) {
     return st->dirtyPiece.dirty_num;
   }
 
-  int HalfKP::refresh_cost(const Position& pos) {
-    return pos.count<ALL_PIECES>() - 2;
+  int HalfKAv2::refresh_cost(const Position& pos) {
+    return pos.count<ALL_PIECES>();
   }
 
-  bool HalfKP::requires_refresh(StateInfo* st, Color perspective) {
+  bool HalfKAv2::requires_refresh(StateInfo* st, Color perspective) {
     return st->dirtyPiece.piece[0] == make_piece(perspective, KING);
   }
 
