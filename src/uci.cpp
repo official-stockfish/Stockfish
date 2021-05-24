@@ -33,6 +33,7 @@
 #include "tt.h"
 #include "uci.h"
 
+#include "tools/validate_training_data.h"
 #include "tools/training_data_generator.h"
 #include "tools/training_data_generator_nonpv.h"
 #include "tools/convert.h"
@@ -330,6 +331,7 @@ void UCI::loop(int argc, char* argv[]) {
       else if (token == "generate_training_data") Tools::generate_training_data(is);
       else if (token == "generate_training_data") Tools::generate_training_data_nonpv(is);
       else if (token == "convert") Tools::convert(is);
+      else if (token == "validate_training_data") Tools::validate_training_data(is);
       else if (token == "convert_bin") Tools::convert_bin(is);
       else if (token == "convert_plain") Tools::convert_plain(is);
       else if (token == "convert_bin_from_pgn_extract") Tools::convert_bin_from_pgn_extract(is);
