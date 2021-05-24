@@ -426,7 +426,7 @@ namespace Stockfish::Tools
                         ps.move = search_pv[0];
                     ps.padding = 0;
 
-                    out.write(th.thread_idx(), ps);
+                    out.write(th.id(), ps);
 
                     auto p = num_processed.fetch_add(1) + 1;
                     if (p % 10000 == 0)

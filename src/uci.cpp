@@ -342,7 +342,7 @@ void UCI::loop(int argc, char* argv[]) {
       else if (token == "tasktest")
       {
         Threads.execute_with_workers([](auto& th) {
-          std::cout << th.thread_idx() << '\n';
+          std::cout << th.id() << '\n';
         });
       }
       else if (!token.empty() && token[0] != '#')

@@ -63,18 +63,18 @@ namespace Eval {
   namespace NNUE {
     string eval_file_loaded = "None";
     UseNNUEMode useNNUE;
-  }
 
-  static UseNNUEMode NNUE::nnue_mode_from_option(const UCI::Option& mode)
-  {
-    if (mode == "false")
+    static UseNNUEMode nnue_mode_from_option(const UCI::Option& mode)
+    {
+      if (mode == "false")
+        return UseNNUEMode::False;
+      else if (mode == "true")
+         return UseNNUEMode::True;
+      else if (mode == "pure")
+        return UseNNUEMode::Pure;
+
       return UseNNUEMode::False;
-    else if (mode == "true")
-       return UseNNUEMode::True;
-    else if (mode == "pure")
-      return UseNNUEMode::Pure;
-
-    return UseNNUEMode::False;
+    }
   }
 
   /// NNUE::init() tries to load a NNUE network at startup time, or when the engine

@@ -76,6 +76,15 @@ public:
   void wait_for_search_finished();
   size_t id() const { return idx; }
 
+  void wait_for_worker_finished();
+
+  template <typename FuncT>
+  void set_eval_callback(FuncT&& f) { on_eval_callback = std::forward<FuncT>(f); }
+
+  void clear_eval_callback() { on_eval_callback = nullptr; }
+
+  void on_eval() { if (on_eval_callback) on_eval_callback(rootPos); }
+
   Pawns::Table pawnsTable;
   Material::Table materialTable;
   size_t pvIdx, pvLast;
@@ -94,6 +103,11 @@ public:
   CapturePieceToHistory captureHistory;
   ContinuationHistory continuationHistory[2][2];
   Score contempt;
+  int failedHighCnt;
+  bool rootInTB;
+  int Cardinality;
+  bool UseRule50;
+  Depth ProbeDepth;
 };
 
 
@@ -166,7 +180,7 @@ struct ThreadPool : public std::vector<Thread*> {
 
     execute_with_workers(
       [chunk_size, end, func](Thread& th) mutable {
-        const IndexT thread_id = th.thread_idx();
+        const IndexT thread_id = th.id();
         const IndexT offset = chunk_size * thread_id;
         if (offset >= end)
           return;
