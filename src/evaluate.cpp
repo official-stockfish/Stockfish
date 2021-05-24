@@ -64,14 +64,6 @@ namespace Eval {
     string eval_file_loaded = "None";
     UseNNUEMode useNNUE;
 
-    /// NNUE::init() tries to load a NNUE network at startup time, or when the engine
-    /// receives a UCI command "setoption name EvalFile value nn-[a-z0-9]{12}.nnue"
-    /// The name of the NNUE network is always retrieved from the EvalFile option.
-    /// We search the given network in three locations: internally (the default
-    /// network may be embedded in the binary), in the active working directory and
-    /// in the engine directory. Distro packagers may define the DEFAULT_NNUE_DIRECTORY
-    /// variable to have the engine search in a special directory in their distro.
-
     static UseNNUEMode nnue_mode_from_option(const UCI::Option& mode)
     {
       if (mode == "false")
@@ -83,100 +75,112 @@ namespace Eval {
 
       return UseNNUEMode::False;
     }
+  }
 
-    void init() {
+  /// NNUE::init() tries to load a NNUE network at startup time, or when the engine
+  /// receives a UCI command "setoption name EvalFile value nn-[a-z0-9]{12}.nnue"
+  /// The name of the NNUE network is always retrieved from the EvalFile option.
+  /// We search the given network in three locations: internally (the default
+  /// network may be embedded in the binary), in the active working directory and
+  /// in the engine directory. Distro packagers may define the DEFAULT_NNUE_DIRECTORY
+  /// variable to have the engine search in a special directory in their distro.
 
-      useNNUE = nnue_mode_from_option(Options["Use NNUE"]);
-      if (useNNUE == UseNNUEMode::False)
-          return;
+  void NNUE::init() {
 
-      string eval_file = string(Options["EvalFile"]);
+    useNNUE = nnue_mode_from_option(Options["Use NNUE"]);
+    if (useNNUE == UseNNUEMode::False)
+        return;
 
-      #if defined(DEFAULT_NNUE_DIRECTORY)
-      #define stringify2(x) #x
-      #define stringify(x) stringify2(x)
-      vector<string> dirs = { "<internal>" , "" , CommandLine::binaryDirectory , stringify(DEFAULT_NNUE_DIRECTORY) };
-      #else
-      vector<string> dirs = { "<internal>" , "" , CommandLine::binaryDirectory };
-      #endif
+    string eval_file = string(Options["EvalFile"]);
 
-      for (string directory : dirs)
-          if (eval_file_loaded != eval_file)
-          {
-              if (directory != "<internal>")
-              {
-                  ifstream stream(directory + eval_file, ios::binary);
-                  if (load_eval(eval_file, stream))
-                      eval_file_loaded = eval_file;
-              }
+    #if defined(DEFAULT_NNUE_DIRECTORY)
+    #define stringify2(x) #x
+    #define stringify(x) stringify2(x)
+    vector<string> dirs = { "<internal>" , "" , CommandLine::binaryDirectory , stringify(DEFAULT_NNUE_DIRECTORY) };
+    #else
+    vector<string> dirs = { "<internal>" , "" , CommandLine::binaryDirectory };
+    #endif
 
-              if (directory == "<internal>" && eval_file == EvalFileDefaultName)
-              {
-                  // C++ way to prepare a buffer for a memory stream
-                  class MemoryBuffer : public basic_streambuf<char> {
-                      public: MemoryBuffer(char* p, size_t n) { setg(p, p, p + n); setp(p, p + n); }
-                  };
+    for (string directory : dirs)
+        if (eval_file_loaded != eval_file)
+        {
+            if (directory != "<internal>")
+            {
+                ifstream stream(directory + eval_file, ios::binary);
+                if (load_eval(eval_file, stream))
+                    eval_file_loaded = eval_file;
+            }
 
-                  MemoryBuffer buffer(const_cast<char*>(reinterpret_cast<const char*>(gEmbeddedNNUEData)),
-                                      size_t(gEmbeddedNNUESize));
+            if (directory == "<internal>" && eval_file == EvalFileDefaultName)
+            {
+                // C++ way to prepare a buffer for a memory stream
+                class MemoryBuffer : public basic_streambuf<char> {
+                    public: MemoryBuffer(char* p, size_t n) { setg(p, p, p + n); setp(p, p + n); }
+                };
 
-                  istream stream(&buffer);
-                  if (load_eval(eval_file, stream))
-                      eval_file_loaded = eval_file;
-              }
-          }
-    }
+                MemoryBuffer buffer(const_cast<char*>(reinterpret_cast<const char*>(gEmbeddedNNUEData)),
+                                    size_t(gEmbeddedNNUESize));
 
-    void export_net(const std::optional<std::string>& filename) {
-      std::string actualFilename;
-      if (filename.has_value()) {
+                istream stream(&buffer);
+                if (load_eval(eval_file, stream))
+                    eval_file_loaded = eval_file;
+            }
+        }
+  }
+
+  /// NNUE::export_net() exports the currently loaded network to a file
+  void NNUE::export_net(const std::optional<std::string>& filename) {
+    std::string actualFilename;
+
+    if (filename.has_value())
         actualFilename = filename.value();
-      } else {
-        if (eval_file_loaded != EvalFileDefaultName) {
-          sync_cout << "Failed to export a net. A non-embedded net can only be saved if the filename is specified." << sync_endl;
-          return;
+    else
+    {
+        if (eval_file_loaded != EvalFileDefaultName)
+        {
+             sync_cout << "Failed to export a net. A non-embedded net can only be saved if the filename is specified." << sync_endl;
+             return;
         }
         actualFilename = EvalFileDefaultName;
-      }
-
-      ofstream stream(actualFilename, std::ios_base::binary);
-      if (save_eval(stream)) {
-          sync_cout << "Network saved successfully to " << actualFilename << "." << sync_endl;
-      } else {
-          sync_cout << "Failed to export a net." << sync_endl;
-      }
     }
 
-    /// NNUE::verify() verifies that the last net used was loaded successfully
-    void verify() {
+    ofstream stream(actualFilename, std::ios_base::binary);
 
-      string eval_file = string(Options["EvalFile"]);
+    if (save_eval(stream))
+        sync_cout << "Network saved successfully to " << actualFilename << "." << sync_endl;
+    else
+        sync_cout << "Failed to export a net." << sync_endl;
+  }
 
-      if (useNNUE != UseNNUEMode::False && eval_file_loaded != eval_file)
-      {
-          UCI::OptionsMap defaults;
-          UCI::init(defaults);
+  /// NNUE::verify() verifies that the last net used was loaded successfully
+  void NNUE::verify() {
 
-          string msg1 = "If the UCI option \"Use NNUE\" is set to true, network evaluation parameters compatible with the engine must be available.";
-          string msg2 = "The option is set to true, but the network file " + eval_file + " was not loaded successfully.";
-          string msg3 = "The UCI option EvalFile might need to specify the full path, including the directory name, to the network file.";
-          string msg4 = "The default net can be downloaded from: https://tests.stockfishchess.org/api/nn/" + string(defaults["EvalFile"]);
-          string msg5 = "The engine will be terminated now.";
+    string eval_file = string(Options["EvalFile"]);
 
-          sync_cout << "info string ERROR: " << msg1 << sync_endl;
-          sync_cout << "info string ERROR: " << msg2 << sync_endl;
-          sync_cout << "info string ERROR: " << msg3 << sync_endl;
-          sync_cout << "info string ERROR: " << msg4 << sync_endl;
-          sync_cout << "info string ERROR: " << msg5 << sync_endl;
+    if (useNNUE != UseNNUEMode::False && eval_file_loaded != eval_file)
+    {
+        UCI::OptionsMap defaults;
+        UCI::init(defaults);
 
-          exit(EXIT_FAILURE);
-      }
+        string msg1 = "If the UCI option \"Use NNUE\" is set to true, network evaluation parameters compatible with the engine must be available.";
+        string msg2 = "The option is set to true, but the network file " + eval_file + " was not loaded successfully.";
+        string msg3 = "The UCI option EvalFile might need to specify the full path, including the directory name, to the network file.";
+        string msg4 = "The default net can be downloaded from: https://tests.stockfishchess.org/api/nn/" + string(defaults["EvalFile"]);
+        string msg5 = "The engine will be terminated now.";
 
-      if (useNNUE != UseNNUEMode::False)
-          sync_cout << "info string NNUE evaluation using " << eval_file << " enabled" << sync_endl;
-      else
-          sync_cout << "info string classical evaluation enabled" << sync_endl;
+        sync_cout << "info string ERROR: " << msg1 << sync_endl;
+        sync_cout << "info string ERROR: " << msg2 << sync_endl;
+        sync_cout << "info string ERROR: " << msg3 << sync_endl;
+        sync_cout << "info string ERROR: " << msg4 << sync_endl;
+        sync_cout << "info string ERROR: " << msg5 << sync_endl;
+
+        exit(EXIT_FAILURE);
     }
+
+    if (useNNUE != UseNNUEMode::False)
+        sync_cout << "info string NNUE evaluation using " << eval_file << " enabled" << sync_endl;
+    else
+        sync_cout << "info string classical evaluation enabled" << sync_endl;
   }
 }
 
@@ -941,7 +945,7 @@ namespace {
     Color strongSide = eg > VALUE_DRAW ? WHITE : BLACK;
     int sf = me->scale_factor(pos, strongSide);
 
-    // If scale factor is not already specific, scale down via general heuristics
+    // If scale factor is not already specific, scale up/down via general heuristics
     if (sf == SCALE_FACTOR_NORMAL)
     {
         if (pos.opposite_bishops())
@@ -1068,7 +1072,7 @@ make_v:
     v = (v / 16) * 16;
 
     // Side to move point of view
-    v = (pos.side_to_move() == WHITE ? v : -v) + Tempo;
+    v = (pos.side_to_move() == WHITE ? v : -v);
 
     return v;
   }
@@ -1136,12 +1140,10 @@ Value Eval::evaluate(const Position& pos) {
       // Scale and shift NNUE for compatibility with search and classical evaluation
       auto  adjusted_NNUE = [&]()
       {
-         int material = pos.non_pawn_material() + 4 * PawnValueMg * pos.count<PAWN>();
-         int scale =  580
-                    + material / 32
-                    - 4 * pos.rule50_count();
 
-         Value nnue = NNUE::evaluate(pos) * scale / 1024 + Time.tempoNNUE;
+         int scale = 903 + 28 * pos.count<PAWN>() + 28 * pos.non_pawn_material() / 1024;
+
+         Value nnue = NNUE::evaluate(pos, true) * scale / 1024;
 
          if (pos.is_chess960())
              nnue += fix_FRC(pos);
@@ -1154,7 +1156,7 @@ Value Eval::evaluate(const Position& pos) {
       Value psq = Value(abs(eg_value(pos.psq_score())));
       int   r50 = 16 + pos.rule50_count();
       bool  largePsq = psq * 16 > (NNUEThreshold1 + pos.non_pawn_material() / 64) * r50;
-      bool  classical = largePsq || (psq > PawnValueMg / 4 && !(pos.this_thread()->nodes & 0xB));
+      bool  classical = largePsq;
 
       // Use classical evaluation for really low piece endgames.
       // One critical case is the draw for bishop + A/H file pawn vs naked king.
@@ -1171,8 +1173,7 @@ Value Eval::evaluate(const Position& pos) {
           && !lowPieceEndgame
           && (   abs(v) * 16 < NNUEThreshold2 * r50
               || (   pos.opposite_bishops()
-                  && abs(v) * 16 < (NNUEThreshold1 + pos.non_pawn_material() / 64) * r50
-                  && !(pos.this_thread()->nodes & 0xB))))
+                  && abs(v) * 16 < (NNUEThreshold1 + pos.non_pawn_material() / 64) * r50)))
           v = adjusted_NNUE();
   }
 

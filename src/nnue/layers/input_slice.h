@@ -53,7 +53,7 @@ class InputSlice {
     return true;
   }
 
-  // Read network parameters
+  // Write network parameters
   bool write_parameters(std::ostream& /*stream*/) const {
     return true;
   }

@@ -341,7 +341,7 @@ namespace Stockfish::Tools
             maybe_report(iter + 1);
 
             // Write out one sfen.
-            sfen_writer.write(th.thread_idx(), sfen);
+            sfen_writer.write(th.id(), sfen);
         }
 
         return false;
