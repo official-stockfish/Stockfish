@@ -6078,18 +6078,14 @@ namespace chess
         // for double pushes move index differs by 16 or -16;
         if((movedPiece == PieceType::Pawn) & ((ordinal(move.to) ^ ordinal(move.from)) == 16))
         {
-            const Square potentialEpSquare = fromOrdinal<Square>((ordinal(move.to) + ordinal(move.from)) >> 1);
-            // Even though the move has not yet been made we can safely call
-            // this function and get the right result because the position of the
-            // pawn to be captured is not really relevant.
-            if (isEpPossible(potentialEpSquare, !m_sideToMove))
-            {
-                m_epSquare = potentialEpSquare;
-            }
+            m_epSquare = fromOrdinal<Square>((ordinal(move.to) + ordinal(move.from)) >> 1);
         }
 
         const Piece captured = BaseType::doMove(move);
         m_sideToMove = !m_sideToMove;
+
+        nullifyEpSquareIfNotPossible();
+
         return { move, captured, oldEpSquare, oldCastlingRights };
     }
 
