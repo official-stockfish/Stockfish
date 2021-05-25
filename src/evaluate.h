@@ -43,7 +43,7 @@ namespace Eval {
 
   namespace NNUE {
 
-    Value evaluate(const Position& pos, bool adjusted = false);
+    Value evaluate(const Position& pos, bool adjusted = false, Value lazyThreshold = VALUE_INFINITE);
     bool load_eval(std::string name, std::istream& stream);
     bool save_eval(std::ostream& stream);
     void init();
