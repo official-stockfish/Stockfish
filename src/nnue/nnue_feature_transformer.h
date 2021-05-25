@@ -124,8 +124,6 @@ namespace Stockfish::Eval::NNUE {
     // Number of output dimensions for one side
     static constexpr IndexType HalfDimensions = TransformedFeatureDimensions;
 
-    static constexpr int LazyThreshold = 1400;
-
     #ifdef VECTOR
     static constexpr IndexType TileHeight = NumRegs * sizeof(vec_t) / 2;
     static constexpr IndexType PsqtTileHeight = NumPsqtRegs * sizeof(psqt_vec_t) / 4;
@@ -171,7 +169,7 @@ namespace Stockfish::Eval::NNUE {
     }
 
     // Convert input features
-    std::pair<std::int32_t, bool> transform(const Position& pos, OutputType* output, int bucket) const {
+    std::pair<std::int32_t, bool> transform(const Position& pos, OutputType* output, int bucket, Value lazyThreshold) const {
       update_accumulator(pos, WHITE);
       update_accumulator(pos, BLACK);
 
@@ -184,7 +182,7 @@ namespace Stockfish::Eval::NNUE {
           - psqtAccumulation[static_cast<int>(perspectives[1])][bucket]
         ) / 2;
 
-      if (abs(psqt) > LazyThreshold * OutputScale)
+      if (abs(psqt) > (int)lazyThreshold * OutputScale)
         return { psqt, true };
 
   #if defined(USE_AVX512)

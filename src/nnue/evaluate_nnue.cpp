@@ -134,7 +134,7 @@ namespace Stockfish::Eval::NNUE {
   }
 
   // Evaluation function. Perform differential calculation.
-  Value evaluate(const Position& pos, bool adjusted) {
+  Value evaluate(const Position& pos, bool adjusted, Value lazyThreshold) {
 
     // We manually align the arrays on the stack because with gcc < 9.3
     // overaligning stack variables with alignas() doesn't work correctly.
@@ -158,7 +158,7 @@ namespace Stockfish::Eval::NNUE {
     ASSERT_ALIGNED(buffer, alignment);
 
     const std::size_t bucket = (pos.count<ALL_PIECES>() - 1) / 4;
-    const auto [psqt, lazy] = featureTransformer->transform(pos, transformedFeatures, bucket);
+    const auto [psqt, lazy] = featureTransformer->transform(pos, transformedFeatures, bucket, lazyThreshold);
 
     if (lazy)
       return static_cast<Value>(psqt / OutputScale);

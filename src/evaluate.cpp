@@ -214,11 +214,12 @@ using namespace Trace;
 namespace {
 
   // Threshold for lazy and space evaluation
-  constexpr Value LazyThreshold1 =  Value(1565);
-  constexpr Value LazyThreshold2 =  Value(1102);
-  constexpr Value SpaceThreshold = Value(11551);
-  constexpr Value NNUEThreshold1 =   Value(682);
-  constexpr Value NNUEThreshold2 =   Value(176);
+  constexpr Value LazyThreshold1    =  Value(1565);
+  constexpr Value LazyThreshold2    =  Value(1102);
+  constexpr Value LazyThresholdNNUE =  Value(1400);
+  constexpr Value SpaceThreshold    = Value(11551);
+  constexpr Value NNUEThreshold1    =   Value(682);
+  constexpr Value NNUEThreshold2    =   Value(176);
 
   // KingAttackWeights[PieceType] contains king attack weights by piece type
   constexpr int KingAttackWeights[PIECE_TYPE_NB] = { 0, 0, 81, 52, 44, 10 };
@@ -1119,7 +1120,7 @@ Value Eval::evaluate(const Position& pos) {
 
          int scale = 903 + 28 * pos.count<PAWN>() + 28 * pos.non_pawn_material() / 1024;
 
-         Value nnue = NNUE::evaluate(pos, true) * scale / 1024;
+         Value nnue = NNUE::evaluate(pos, true, LazyThresholdNNUE) * scale / 1024;
 
          if (pos.is_chess960())
              nnue += fix_FRC(pos);
