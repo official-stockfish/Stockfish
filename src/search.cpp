@@ -1121,7 +1121,7 @@ moves_loop: // When in check, search starts from here
       if (    depth >= 3
           &&  moveCount > 1 + 2 * rootNode
           && (  !captureOrPromotion
-              || cutNode
+              || (cutNode && (ss-1)->moveCount > 1)
               || (!PvNode && !formerPv))
           && (!PvNode || ss->ply > 1 || thisThread->id() % 4 != 3))
       {
