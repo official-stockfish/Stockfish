@@ -169,7 +169,7 @@ namespace Stockfish::Eval::NNUE {
     }
 
     // Convert input features
-    std::pair<std::int32_t, bool> transform(const Position& pos, OutputType* output, int bucket, Value lazyThreshold) const {
+    std::int32_t transform(const Position& pos, OutputType* output, int bucket) const {
       update_accumulator(pos, WHITE);
       update_accumulator(pos, BLACK);
 
@@ -181,9 +181,6 @@ namespace Stockfish::Eval::NNUE {
             psqtAccumulation[static_cast<int>(perspectives[0])][bucket]
           - psqtAccumulation[static_cast<int>(perspectives[1])][bucket]
         ) / 2;
-
-      if (abs(psqt) > (int)lazyThreshold * OutputScale)
-        return { psqt, true };
 
   #if defined(USE_AVX512)
       constexpr IndexType NumChunks = HalfDimensions / (SimdWidth * 2);
@@ -291,7 +288,7 @@ namespace Stockfish::Eval::NNUE {
       _mm_empty();
   #endif
 
-      return { psqt, false };
+      return psqt;
     }
 
    private:

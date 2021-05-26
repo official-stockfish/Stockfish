@@ -134,7 +134,7 @@ namespace Stockfish::Eval::NNUE {
   }
 
   // Evaluation function. Perform differential calculation.
-  Value evaluate(const Position& pos, bool adjusted, Value lazyThreshold) {
+  Value evaluate(const Position& pos, bool adjusted) {
 
     // We manually align the arrays on the stack because with gcc < 9.3
     // overaligning stack variables with alignas() doesn't work correctly.
@@ -158,27 +158,21 @@ namespace Stockfish::Eval::NNUE {
     ASSERT_ALIGNED(buffer, alignment);
 
     const std::size_t bucket = (pos.count<ALL_PIECES>() - 1) / 4;
-    const auto [psqt, lazy] = featureTransformer->transform(pos, transformedFeatures, bucket, lazyThreshold);
+    const auto psqt = featureTransformer->transform(pos, transformedFeatures, bucket);
+    const auto output = network[bucket]->propagate(transformedFeatures, buffer);
 
-    if (lazy)
-      return static_cast<Value>(psqt / OutputScale);
-    else
-    {
-      const auto output = network[bucket]->propagate(transformedFeatures, buffer);
+    int materialist = psqt;
+    int positional  = output[0];
 
-      int materialist = psqt;
-      int positional  = output[0];
+    int delta_npm = abs(pos.non_pawn_material(WHITE) - pos.non_pawn_material(BLACK));
+    int entertainment = (adjusted && delta_npm <= BishopValueMg - KnightValueMg ? 7 : 0);
 
-      int delta_npm = abs(pos.non_pawn_material(WHITE) - pos.non_pawn_material(BLACK));
-      int entertainment = (adjusted && delta_npm <= BishopValueMg - KnightValueMg ? 7 : 0);
+    int A = 128 - entertainment;
+    int B = 128 + entertainment;
 
-      int A = 128 - entertainment;
-      int B = 128 + entertainment;
+    int sum = (A * materialist + B * positional) / 128;
 
-      int sum = (A * materialist + B * positional) / 128;
-
-      return static_cast<Value>( sum / OutputScale );
-    }
+    return static_cast<Value>( sum / OutputScale );
   }
 
   // Load eval, from a file stream or a memory stream
