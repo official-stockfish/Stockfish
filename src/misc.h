@@ -27,6 +27,7 @@
 #include <ostream>
 #include <string>
 #include <vector>
+#include <iostream>
 
 #include <cstdint>
 #include <cmath>
@@ -51,6 +52,16 @@ void dbg_hit_on(bool b);
 void dbg_hit_on(bool c, bool b);
 void dbg_mean_of(int v);
 void dbg_print();
+
+#if defined(NDEBUG)
+template <typename... Ts>
+void debug_print(const Ts&...) {}
+#else
+template <typename... Ts>
+void debug_print(const Ts&... v) {
+  ((std::cerr << v), ...);
+}
+#endif
 
 typedef std::chrono::milliseconds::rep TimePoint; // A value in milliseconds
 static_assert(sizeof(TimePoint) == sizeof(int64_t), "TimePoint should be 64 bits");
