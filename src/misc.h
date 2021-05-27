@@ -43,6 +43,9 @@ void aligned_large_pages_free(void* mem); // nop if mem == nullptr
 void dbg_hit_on(bool b,         int n = 0);
 void dbg_hit_on(bool c, bool b, int n = 0);
 void dbg_mean_of(int v,         int n = 0);
+void dbg_hit_on(bool b,         std::string s);
+void dbg_hit_on(bool c, bool b, std::string s);
+void dbg_mean_of(int v,         std::string s);
 void dbg_print();
 
 typedef std::chrono::milliseconds::rep TimePoint; // A value in milliseconds
