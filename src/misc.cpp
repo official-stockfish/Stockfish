@@ -288,10 +288,6 @@ void dbg_hit_on(bool b,         int n)  { ++hits[n][0]; if (b) ++hits[n][1]; }
 void dbg_hit_on(bool c, bool b, int n)  { if (c) dbg_hit_on(b, n); }
 void dbg_mean_of(int v,         int n)  { ++means[n][0]; means[n][1] += v; }
 
-void dbg_hit_on(bool b)                 { dbg_hit_on(b, 0); }
-void dbg_hit_on(bool c, bool b)         { dbg_hit_on(c, b, 0); }
-void dbg_mean_of(int v)                 { dbg_mean_of(v, 0); }
-
 void dbg_print() {
 
   for (int n = 0 ; n < MAX_DEBUG ; ++n)
