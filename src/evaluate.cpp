@@ -1,4 +1,4 @@
-/* 
+/*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2021 The Stockfish developers (see AUTHORS file)
 
