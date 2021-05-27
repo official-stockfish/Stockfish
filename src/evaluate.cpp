@@ -61,7 +61,7 @@ namespace Stockfish {
 namespace Eval {
 
   bool useNNUE;
-  string eval_file_loaded = "None";
+  string currentEvalFileName = "None";
 
   /// NNUE::init() tries to load a NNUE network at startup time, or when the engine
   /// receives a UCI command "setoption name EvalFile value nn-[a-z0-9]{12}.nnue"
@@ -90,13 +90,13 @@ namespace Eval {
     #endif
 
     for (string directory : dirs)
-        if (eval_file_loaded != eval_file)
+        if (currentEvalFileName != eval_file)
         {
             if (directory != "<internal>")
             {
                 ifstream stream(directory + eval_file, ios::binary);
                 if (load_eval(eval_file, stream))
-                    eval_file_loaded = eval_file;
+                    currentEvalFileName = eval_file;
             }
 
             if (directory == "<internal>" && eval_file == EvalFileDefaultName)
@@ -111,7 +111,7 @@ namespace Eval {
 
                 istream stream(&buffer);
                 if (load_eval(eval_file, stream))
-                    eval_file_loaded = eval_file;
+                    currentEvalFileName = eval_file;
             }
         }
   }
@@ -123,7 +123,7 @@ namespace Eval {
     if (eval_file.empty())
         eval_file = EvalFileDefaultName;
 
-    if (useNNUE && eval_file_loaded != eval_file)
+    if (useNNUE && currentEvalFileName != eval_file)
     {
 
         string msg1 = "If the UCI option \"Use NNUE\" is set to true, network evaluation parameters compatible with the engine must be available.";
@@ -1081,7 +1081,7 @@ Value Eval::evaluate(const Position& pos) {
 
   Value v;
 
-  if (!Eval::useNNUE)
+  if (!useNNUE)
       v = Evaluation<NO_TRACE>(pos).value();
   else
   {
