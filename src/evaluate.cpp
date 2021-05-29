@@ -218,7 +218,6 @@ namespace {
   constexpr Value LazyThreshold2    =  Value(1102);
   constexpr Value SpaceThreshold    = Value(11551);
   constexpr Value NNUEThreshold1    =   Value(800);
-  constexpr Value NNUEThreshold2    =   Value(176);
 
   // KingAttackWeights[PieceType] contains king attack weights by piece type
   constexpr int KingAttackWeights[PIECE_TYPE_NB] = { 0, 0, 81, 52, 44, 10 };
@@ -1127,29 +1126,14 @@ Value Eval::evaluate(const Position& pos) {
          return nnue;
       };
 
-      // If there is PSQ imbalance we use the classical eval. We also introduce
-      // a small probability of using the classical eval when PSQ imbalance is small.
+      // If there is PSQ imbalance we use the classical eval.
       Value psq = Value(abs(eg_value(pos.psq_score())));
       int   r50 = 16 + pos.rule50_count();
       bool  largePsq = psq * 16 > (NNUEThreshold1 + pos.non_pawn_material() / 64) * r50;
 
-      // Use classical evaluation for really low piece endgames.
-      // One critical case is the draw for bishop + A/H file pawn vs naked king.
-      bool lowPieceEndgame =   pos.non_pawn_material() == BishopValueMg
-                            || (pos.non_pawn_material() < 2 * RookValueMg && pos.count<PAWN>() < 2);
+      v = largePsq ? Evaluation<NO_TRACE>(pos).value()  // classical
+                   : adjusted_NNUE();                   // NNUE
 
-      v = largePsq || lowPieceEndgame ? Evaluation<NO_TRACE>(pos).value()  // classical
-                                      : adjusted_NNUE();                   // NNUE
-
-      // If the classical eval is small and imbalance large, use NNUE nevertheless.
-      // For the case of opposite colored bishops, switch to NNUE eval with small
-      // probability if the classical eval is less than the threshold.
-      if (    largePsq
-          && !lowPieceEndgame
-          && (   abs(v) * 16 < NNUEThreshold2 * r50
-              || (   pos.opposite_bishops()
-                  && abs(v) * 16 < (NNUEThreshold1 + pos.non_pawn_material() / 64) * r50)))
-          v = adjusted_NNUE();
   }
 
   // Damp down the evaluation linearly when shuffling
