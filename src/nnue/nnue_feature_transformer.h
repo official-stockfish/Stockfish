@@ -165,6 +165,8 @@ namespace Stockfish::Eval::NNUE {
         write_little_endian<BiasType>(stream, biases[i]);
       for (std::size_t i = 0; i < HalfDimensions * InputDimensions; ++i)
         write_little_endian<WeightType>(stream, weights[i]);
+      for (std::size_t i = 0; i < PSQTBuckets * InputDimensions; ++i)
+        write_little_endian<PSQTWeightType>(stream, psqtWeights[i]);
       return !stream.fail();
     }
 
