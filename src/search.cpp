@@ -564,7 +564,7 @@ namespace {
     Move ttMove, move, excludedMove, bestMove;
     Depth extension, newDepth;
     Value bestValue, value, ttValue, eval, maxValue, probCutBeta;
-    bool formerPv, givesCheck, improving, didLMR, priorCapture;
+    bool givesCheck, improving, didLMR, priorCapture;
     bool captureOrPromotion, doFullDepthSearch, moveCountPruning,
          ttCapture, singularQuietLMR;
     Piece movedPiece;
@@ -634,7 +634,6 @@ namespace {
             : ss->ttHit    ? tte->move() : MOVE_NONE;
     if (!excludedMove)
         ss->ttPv = PvNode || (ss->ttHit && tte->is_pv());
-    formerPv = ss->ttPv && !PvNode;
 
     // Update low ply history for previous move if we are near root and position is or has been in PV
     if (   ss->ttPv
@@ -1064,8 +1063,8 @@ moves_loop: // When in check, search starts from here
           && (tte->bound() & BOUND_LOWER)
           &&  tte->depth() >= depth - 3)
       {
-          Value singularBeta = ttValue - ((formerPv + 4) * depth) / 2;
-          Depth singularDepth = (depth - 1 + 3 * formerPv) / 2;
+          Value singularBeta = ttValue - 2 * depth;
+          Depth singularDepth = (depth - 1) / 2;
 
           ss->excludedMove = move;
           value = search<NonPV>(pos, ss, singularBeta - 1, singularBeta, singularDepth, cutNode);
@@ -1128,7 +1127,7 @@ moves_loop: // When in check, search starts from here
           &&  moveCount > 1 + 2 * rootNode
           && (  !captureOrPromotion
               || (cutNode && (ss-1)->moveCount > 1)
-              || (!PvNode && !formerPv))
+              || !ss->ttPv)
           && (!PvNode || ss->ply > 1 || thisThread->id() % 4 != 3))
       {
           Depth r = reduction(improving, depth, moveCount);
