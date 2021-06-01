@@ -196,11 +196,14 @@ namespace Stockfish::Eval::NNUE {
       {
           const IndexType offset = HalfDimensions * p;
           auto out = reinterpret_cast<__m512i*>(&output[offset]);
+          auto acc = reinterpret_cast<const __m512i*>(accumulation[perspectives[p]]);
+
           for (IndexType j = 0; j < NumChunks; ++j)
           {
-              __m512i sum0 = _mm512_load_si512(&reinterpret_cast<const __m512i*>(accumulation[perspectives[p]])[j * 2 + 0]);
-              __m512i sum1 = _mm512_load_si512(&reinterpret_cast<const __m512i*>(accumulation[perspectives[p]])[j * 2 + 1]);
-              _mm512_store_si512(&out[j], _mm512_permutexvar_epi64(Control,_mm512_max_epi8(_mm512_packs_epi16(sum0, sum1), Zero)));
+              __m512i sum0 = _mm512_load_si512(&acc[j * 2 + 0]);
+              __m512i sum1 = _mm512_load_si512(&acc[j * 2 + 1]);
+              _mm512_store_si512(&out[j], _mm512_permutexvar_epi64(Control,
+                                _mm512_max_epi8(_mm512_packs_epi16(sum0, sum1), Zero)));
           }
       }
       return psqt;
@@ -216,11 +219,14 @@ namespace Stockfish::Eval::NNUE {
       {
           const IndexType offset = HalfDimensions * p;
           auto out = reinterpret_cast<__m256i*>(&output[offset]);
+          auto acc = reinterpret_cast<const __m256i*>(accumulation[perspectives[p]]);
+
           for (IndexType j = 0; j < NumChunks; ++j)
           {
-              __m256i sum0 = _mm256_load_si256(&reinterpret_cast<const __m256i*>(accumulation[perspectives[p]])[j * 2 + 0]);
-              __m256i sum1 = _mm256_load_si256(&reinterpret_cast<const __m256i*>(accumulation[perspectives[p]])[j * 2 + 1]);
-              _mm256_store_si256(&out[j], _mm256_permute4x64_epi64(_mm256_max_epi8(_mm256_packs_epi16(sum0, sum1), Zero), Control));
+              __m256i sum0 = _mm256_load_si256(&acc[j * 2 + 0]);
+              __m256i sum1 = _mm256_load_si256(&acc[j * 2 + 1]);
+              _mm256_store_si256(&out[j], _mm256_permute4x64_epi64(
+                                 _mm256_max_epi8(_mm256_packs_epi16(sum0, sum1), Zero), Control));
           }
       }
       return psqt;
@@ -240,10 +246,12 @@ namespace Stockfish::Eval::NNUE {
       {
           const IndexType offset = HalfDimensions * p;
           auto out = reinterpret_cast<__m128i*>(&output[offset]);
+          auto acc = reinterpret_cast<const __m128i*>(accumulation[perspectives[p]]);
+
           for (IndexType j = 0; j < NumChunks; ++j)
           {
-              __m128i sum0 = _mm_load_si128(&reinterpret_cast<const __m128i*>(accumulation[perspectives[p]])[j * 2 + 0]);
-              __m128i sum1 = _mm_load_si128(&reinterpret_cast<const __m128i*>(accumulation[perspectives[p]])[j * 2 + 1]);
+              __m128i sum0 = _mm_load_si128(&acc[j * 2 + 0]);
+              __m128i sum1 = _mm_load_si128(&acc[j * 2 + 1]);
               const __m128i packedbytes = _mm_packs_epi16(sum0, sum1);
 
               #ifdef USE_SSE41
@@ -265,10 +273,12 @@ namespace Stockfish::Eval::NNUE {
       {
           const IndexType offset = HalfDimensions * p;
           auto out = reinterpret_cast<__m64*>(&output[offset]);
+          auto acc = reinterpret_cast<const __m64*>(accumulation[perspectives[p]]);
+
           for (IndexType j = 0; j < NumChunks; ++j)
           {
-              __m64 sum0 = *(&reinterpret_cast<const __m64*>(accumulation[perspectives[p]])[j * 2 + 0]);
-              __m64 sum1 = *(&reinterpret_cast<const __m64*>(accumulation[perspectives[p]])[j * 2 + 1]);
+              __m64 sum0 = *(&acc[j * 2 + 0]);
+              __m64 sum1 = *(&acc[j * 2 + 1]);
               const __m64 packedbytes = _mm_packs_pi16(sum0, sum1);
               out[j] = _mm_subs_pi8(_mm_adds_pi8(packedbytes, k0x80s), k0x80s);
           }
@@ -279,6 +289,7 @@ namespace Stockfish::Eval::NNUE {
     }
 
   #elif defined(USE_NEON)
+
       constexpr IndexType NumChunks = HalfDimensions / (SimdWidth / 2);
       const int8x8_t Zero = {0};
 
@@ -286,9 +297,11 @@ namespace Stockfish::Eval::NNUE {
       {
           const IndexType offset = HalfDimensions * p;
           const auto out = reinterpret_cast<int8x8_t*>(&output[offset]);
+          auto       acc = reinterpret_cast<const int16x8_t*>(accumulation[perspectives[p]])
+
           for (IndexType j = 0; j < NumChunks; ++j)
           {
-              int16x8_t sum = reinterpret_cast<const int16x8_t*>(accumulation[perspectives[p]])[j];
+              int16x8_t sum = acc[j];
               out[j] = vmax_s8(vqmovn_s16(sum), Zero);
           }
       }
