@@ -180,8 +180,8 @@ namespace Stockfish::Eval::NNUE {
       const auto& psqtAccumulation = pos.state()->accumulator.psqtAccumulation;
 
       const auto psqt = (
-            psqtAccumulation[static_cast<int>(perspectives[0])][bucket]
-          - psqtAccumulation[static_cast<int>(perspectives[1])][bucket]
+            psqtAccumulation[perspectives[0]][bucket]
+          - psqtAccumulation[perspectives[1]][bucket]
         ) / 2;
 
 
@@ -192,11 +192,11 @@ namespace Stockfish::Eval::NNUE {
       const __m512i Control = _mm512_setr_epi64(0, 2, 4, 6, 1, 3, 5, 7);
       const __m512i Zero = _mm512_setzero_si512();
 
-      for (IndexType p = 0; p < 2; ++p) 
+      for (IndexType p = 0; p < 2; ++p)
       {
           const IndexType offset = HalfDimensions * p;
           auto out = reinterpret_cast<__m512i*>(&output[offset]);
-          for (IndexType j = 0; j < NumChunks; ++j) 
+          for (IndexType j = 0; j < NumChunks; ++j)
           {
               __m512i sum0 = _mm512_load_si512(&reinterpret_cast<const __m512i*>(accumulation[perspectives[p]])[j * 2 + 0]);
               __m512i sum1 = _mm512_load_si512(&reinterpret_cast<const __m512i*>(accumulation[perspectives[p]])[j * 2 + 1]);
@@ -212,11 +212,11 @@ namespace Stockfish::Eval::NNUE {
       constexpr int Control = 0b11011000;
       const __m256i Zero = _mm256_setzero_si256();
 
-      for (IndexType p = 0; p < 2; ++p) 
+      for (IndexType p = 0; p < 2; ++p)
       {
           const IndexType offset = HalfDimensions * p;
           auto out = reinterpret_cast<__m256i*>(&output[offset]);
-          for (IndexType j = 0; j < NumChunks; ++j) 
+          for (IndexType j = 0; j < NumChunks; ++j)
           {
               __m256i sum0 = _mm256_load_si256(&reinterpret_cast<const __m256i*>(accumulation[perspectives[p]])[j * 2 + 0]);
               __m256i sum1 = _mm256_load_si256(&reinterpret_cast<const __m256i*>(accumulation[perspectives[p]])[j * 2 + 1]);
@@ -236,11 +236,11 @@ namespace Stockfish::Eval::NNUE {
       const __m128i k0x80s = _mm_set1_epi8(-128);
       #endif
 
-      for (IndexType p = 0; p < 2; ++p) 
+      for (IndexType p = 0; p < 2; ++p)
       {
           const IndexType offset = HalfDimensions * p;
           auto out = reinterpret_cast<__m128i*>(&output[offset]);
-          for (IndexType j = 0; j < NumChunks; ++j) 
+          for (IndexType j = 0; j < NumChunks; ++j)
           {
               __m128i sum0 = _mm_load_si128(&reinterpret_cast<const __m128i*>(accumulation[perspectives[p]])[j * 2 + 0]);
               __m128i sum1 = _mm_load_si128(&reinterpret_cast<const __m128i*>(accumulation[perspectives[p]])[j * 2 + 1]);
@@ -261,11 +261,11 @@ namespace Stockfish::Eval::NNUE {
       constexpr IndexType NumChunks = HalfDimensions / SimdWidth;
       const __m64 k0x80s = _mm_set1_pi8(-128);
 
-      for (IndexType p = 0; p < 2; ++p) 
+      for (IndexType p = 0; p < 2; ++p)
       {
           const IndexType offset = HalfDimensions * p;
           auto out = reinterpret_cast<__m64*>(&output[offset]);
-          for (IndexType j = 0; j < NumChunks; ++j) 
+          for (IndexType j = 0; j < NumChunks; ++j)
           {
               __m64 sum0 = *(&reinterpret_cast<const __m64*>(accumulation[perspectives[p]])[j * 2 + 0]);
               __m64 sum1 = *(&reinterpret_cast<const __m64*>(accumulation[perspectives[p]])[j * 2 + 1]);
@@ -282,11 +282,11 @@ namespace Stockfish::Eval::NNUE {
       constexpr IndexType NumChunks = HalfDimensions / (SimdWidth / 2);
       const int8x8_t Zero = {0};
 
-      for (IndexType p = 0; p < 2; ++p) 
+      for (IndexType p = 0; p < 2; ++p)
       {
           const IndexType offset = HalfDimensions * p;
           const auto out = reinterpret_cast<int8x8_t*>(&output[offset]);
-          for (IndexType j = 0; j < NumChunks; ++j) 
+          for (IndexType j = 0; j < NumChunks; ++j)
           {
               int16x8_t sum = reinterpret_cast<const int16x8_t*>(accumulation[perspectives[p]])[j];
               out[j] = vmax_s8(vqmovn_s16(sum), Zero);
@@ -297,12 +297,12 @@ namespace Stockfish::Eval::NNUE {
 
   #else
 
-      for (IndexType p = 0; p < 2; ++p) 
+      for (IndexType p = 0; p < 2; ++p)
       {
           const IndexType offset = HalfDimensions * p;
-          for (IndexType j = 0; j < HalfDimensions; ++j) 
+          for (IndexType j = 0; j < HalfDimensions; ++j)
           {
-              BiasType sum = accumulation[static_cast<int>(perspectives[p])][j];
+              BiasType sum = accumulation[perspectives[p]][j];
               output[offset + j] = static_cast<OutputType>(std::max<int>(0, std::min<int>(127, sum)));
           }
       }
