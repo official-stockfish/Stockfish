@@ -850,7 +850,7 @@ namespace {
         // so effective depth is equal to depth - 3
         && !(   ss->ttHit
              && tte->depth() >= depth - 3
-             && ttValue != VALUE_NONE
+//           && ttValue != VALUE_NONE Already implicit in the next condition */
              && ttValue < probCutBeta))
     {
         assert(probCutBeta < VALUE_INFINITE);
