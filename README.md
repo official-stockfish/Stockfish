@@ -143,9 +143,9 @@ For users, the following UCI options, which can typically be set via a GUI, are 
 
 For developers the following non-standard commands might be of interest, mainly useful for debugging:
 
-  * #### bench ttSize threads limit fenFile limitType evalType
-    Performs a standard benchmark using various options. The signature or standard node
-    count is obtained using all defaults. `bench` is currently `bench 16 1 13 default depth mixed`.
+  * #### bench *ttSize threads limit fenFile limitType evalType*
+    Performs a standard benchmark using various options. The signature of a version (standard node
+    count) is obtained using all defaults. `bench` is currently `bench 16 1 13 default depth mixed`.
 
   * #### compiler
     Give information about the compiler and environment used for building a binary.
