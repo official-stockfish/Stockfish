@@ -793,6 +793,9 @@ profileclean:
 	@rm -rf profdir
 	@rm -f bench.txt *.gcda *.gcno ./syzygy/*.gcda ./nnue/*.gcda ./nnue/features/*.gcda *.s
 	@rm -f stockfish.profdata *.profraw
+	@rm -f stockfish.exe.lto_wrapper_args
+	@rm -f stockfish.exe.ltrans.out
+	@rm -f ./-lstdc++.res
 
 default:
 	help
