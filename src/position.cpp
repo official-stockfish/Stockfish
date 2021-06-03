@@ -277,6 +277,7 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, St
 
   // It's necessary for st->previous to be intialized in this way because legality check relies on its existence
   if (enpassant) {
+      std::memset(ep, 0, sizeof(StateInfo));
       st->previous = ep;
       remove_piece(st->epSquare - pawn_push(sideToMove));
       st->previous->checkersBB = attackers_to(square<KING>(~sideToMove)) & pieces(sideToMove);
