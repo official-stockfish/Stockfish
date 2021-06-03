@@ -78,11 +78,12 @@ std::ostream& operator<<(std::ostream& os, const Position& pos) {
   if (    int(Tablebases::MaxCardinality) >= popcount(pos.pieces())
       && !pos.can_castle(ANY_CASTLING))
   {
-      StateInfo st;
-      ASSERT_ALIGNED(&st, Eval::NNUE::CacheLineSize);
+      StateInfo st[2];
+      ASSERT_ALIGNED(&st[0], Eval::NNUE::CacheLineSize);
+      ASSERT_ALIGNED(&st[1], Eval::NNUE::CacheLineSize);
 
       Position p;
-      p.set(pos.fen(), pos.is_chess960(), &st, pos.this_thread());
+      p.set(pos.fen(), pos.is_chess960(), &st[0], &st[1], pos.this_thread());
       Tablebases::ProbeState s1, s2;
       Tablebases::WDLScore wdl = Tablebases::probe_wdl(p, &s1);
       int dtz = Tablebases::probe_dtz(p, &s2);
@@ -156,7 +157,7 @@ void Position::init() {
 /// This function is not very robust - make sure that input FENs are correct,
 /// this is assumed to be the responsibility of the GUI.
 
-Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Thread* th) {
+Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, StateInfo* ep, Thread* th) {
 /*
    A FEN string defines a particular position using only the ASCII character set.
 
@@ -276,8 +277,7 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
 
   // It's necessary for st->previous to be intialized in this way because legality check relies on its existence
   if (enpassant) {
-      assert(th != nullptr);
-      st->previous = &th->sentinelState;
+      st->previous = ep;
       remove_piece(st->epSquare - pawn_push(sideToMove));
       st->previous->checkersBB = attackers_to(square<KING>(~sideToMove)) & pieces(sideToMove);
       st->previous->blockersForKing[WHITE] = slider_blockers(pieces(BLACK), square<KING>(WHITE), st->previous->pinners[BLACK]);
@@ -389,7 +389,7 @@ void Position::set_state(StateInfo* si) const {
 /// the given endgame code string like "KBPKN". It is mainly a helper to
 /// get the material key out of an endgame code.
 
-Position& Position::set(const string& code, Color c, StateInfo* si) {
+Position& Position::set(const string& code, Color c, StateInfo* si, StateInfo* ep) {
 
   assert(code[0] == 'K');
 
@@ -404,7 +404,7 @@ Position& Position::set(const string& code, Color c, StateInfo* si) {
   string fenStr = "8/" + sides[0] + char(8 - sides[0].length() + '0') + "/8/8/8/8/"
                        + sides[1] + char(8 - sides[1].length() + '0') + "/8 w - - 0 10";
 
-  return set(fenStr, false, si, nullptr);
+  return set(fenStr, false, si, ep, nullptr);
 }
 
 
@@ -1273,7 +1273,7 @@ void Position::flip() {
   std::getline(ss, token); // Half and full moves
   f += token;
 
-  set(f, is_chess960(), st, this_thread());
+  set(f, is_chess960(), st, st->previous, this_thread());
 
   assert(pos_is_ok());
 }

@@ -86,8 +86,8 @@ public:
   Position& operator=(const Position&) = delete;
 
   // FEN string input/output
-  Position& set(const std::string& fenStr, bool isChess960, StateInfo* si, Thread* th);
-  Position& set(const std::string& code, Color c, StateInfo* si);
+  Position& set(const std::string& fenStr, bool isChess960, StateInfo* si, StateInfo* ep, Thread* th);
+  Position& set(const std::string& code, Color c, StateInfo* si, StateInfo* ep);
   std::string fen() const;
 
   // Position representation
@@ -183,8 +183,6 @@ private:
   void move_piece(Square from, Square to);
   template<bool Do>
   void do_castling(Color us, Square from, Square& to, Square& rfrom, Square& rto);
-
-  static StateInfo* sentinel();
 
   // Data members
   Piece board[SQUARE_NB];
@@ -414,13 +412,6 @@ inline StateInfo* Position::state() const {
 
   return st;
 }
-
-inline StateInfo* Position::sentinel() {
-
-    static StateInfo singleton;
-    return &singleton;
-}
-
 
 } // namespace Stockfish
 

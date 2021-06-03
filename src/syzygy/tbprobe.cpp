@@ -364,10 +364,10 @@ struct TBTable {
 template<>
 TBTable<WDL>::TBTable(const std::string& code) : TBTable() {
 
-    StateInfo st;
+    StateInfo st[2];
     Position pos;
 
-    key = pos.set(code, WHITE, &st).material_key();
+    key = pos.set(code, WHITE, &st[0], &st[1]).material_key();
     pieceCount = pos.count<ALL_PIECES>();
     hasPawns = pos.pieces(PAWN);
 
@@ -386,7 +386,7 @@ TBTable<WDL>::TBTable(const std::string& code) : TBTable() {
     pawnCount[0] = pos.count<PAWN>(c ? WHITE : BLACK);
     pawnCount[1] = pos.count<PAWN>(c ? BLACK : WHITE);
 
-    key2 = pos.set(code, BLACK, &st).material_key();
+    key2 = pos.set(code, BLACK, &st[0], &st[1]).material_key();
 }
 
 template<>
