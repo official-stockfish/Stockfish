@@ -184,6 +184,8 @@ private:
   template<bool Do>
   void do_castling(Color us, Square from, Square& to, Square& rfrom, Square& rto);
 
+  static StateInfo* sentinel();
+
   // Data members
   Piece board[SQUARE_NB];
   Bitboard byTypeBB[PIECE_TYPE_NB];
@@ -412,6 +414,13 @@ inline StateInfo* Position::state() const {
 
   return st;
 }
+
+inline StateInfo* Position::sentinel() {
+
+    static StateInfo singleton;
+    return &singleton;
+}
+
 
 } // namespace Stockfish
 
