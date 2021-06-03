@@ -13,7 +13,7 @@ case $1 in
   --valgrind)
     echo "valgrind testing started"
     prefix=''
-    exeprefix='valgrind --error-exitcode=42'
+    exeprefix='valgrind --error-exitcode=42 --errors-for-leak-kinds=all --leak-check=full'
     postfix='1>/dev/null'
     threads="1"
   ;;
