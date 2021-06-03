@@ -276,7 +276,8 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
 
   // It's necessary for st->previous to be intialized in this way because legality check relies on its existence
   if (enpassant) {
-      st->previous = sentinel();
+      assert(th != nullptr);
+      st->previous = &th->sentinelState;
       remove_piece(st->epSquare - pawn_push(sideToMove));
       st->previous->checkersBB = attackers_to(square<KING>(~sideToMove)) & pieces(sideToMove);
       st->previous->blockersForKing[WHITE] = slider_blockers(pieces(BLACK), square<KING>(WHITE), st->previous->pinners[BLACK]);
