@@ -839,7 +839,6 @@ config-sanity: net
 	@echo ""
 	@test "$(debug)" = "yes" || test "$(debug)" = "no"
 	# Don't test sanitizers because there are far too many
-	#@test "$(sanitize)" = "undefined" || test "$(sanitize)" = "thread" || test "$(sanitize)" = "address" || test "$(sanitize)" = "no"
 	@test "$(optimize)" = "yes" || test "$(optimize)" = "no"
 	@test "$(SUPPORTED_ARCH)" = "true"
 	@test "$(arch)" = "any" || test "$(arch)" = "x86_64" || test "$(arch)" = "i386" || \
