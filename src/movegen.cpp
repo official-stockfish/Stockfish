@@ -26,21 +26,16 @@ namespace Stockfish {
 namespace {
 
   template<GenType Type, Direction D>
-  ExtMove* make_promotions(ExtMove* moveList, Square to, Square ksq) {
+  ExtMove* make_promotions(ExtMove* moveList, Square to) {
 
     if (Type == CAPTURES || Type == EVASIONS || Type == NON_EVASIONS)
-    {
         *moveList++ = make<PROMOTION>(to - D, to, QUEEN);
-        if (attacks_bb<KNIGHT>(to) & ksq)
-            *moveList++ = make<PROMOTION>(to - D, to, KNIGHT);
-    }
 
     if (Type == QUIETS || Type == EVASIONS || Type == NON_EVASIONS)
     {
         *moveList++ = make<PROMOTION>(to - D, to, ROOK);
         *moveList++ = make<PROMOTION>(to - D, to, BISHOP);
-        if (!(attacks_bb<KNIGHT>(to) & ksq))
-            *moveList++ = make<PROMOTION>(to - D, to, KNIGHT);
+        *moveList++ = make<PROMOTION>(to - D, to, KNIGHT);
     }
 
     return moveList;
@@ -57,7 +52,6 @@ namespace {
     constexpr Direction UpRight  = (Us == WHITE ? NORTH_EAST : SOUTH_WEST);
     constexpr Direction UpLeft   = (Us == WHITE ? NORTH_WEST : SOUTH_EAST);
 
-    const Square ksq = pos.square<KING>(Them);
     const Bitboard emptySquares = Type == QUIETS || Type == QUIET_CHECKS ? target : ~pos.pieces();
     const Bitboard enemies      = Type == EVASIONS ? pos.checkers()
                                 : Type == CAPTURES ? target : pos.pieces(Them);
@@ -82,6 +76,7 @@ namespace {
             // To make a quiet check, you either make a direct check by pushing a pawn
             // or push a blocker pawn that is not on the same file as the enemy king.
             // Discovered check promotion has been already generated amongst the captures.
+            Square ksq = pos.square<KING>(Them);
             Bitboard dcCandidatePawns = pos.blockers_for_king(Them) & ~file_bb(ksq);
             b1 &= pawn_attacks_bb(Them, ksq) | shift<   Up>(dcCandidatePawns);
             b2 &= pawn_attacks_bb(Them, ksq) | shift<Up+Up>(dcCandidatePawns);
@@ -111,13 +106,13 @@ namespace {
             b3 &= target;
 
         while (b1)
-            moveList = make_promotions<Type, UpRight>(moveList, pop_lsb(b1), ksq);
+            moveList = make_promotions<Type, UpRight>(moveList, pop_lsb(b1));
 
         while (b2)
-            moveList = make_promotions<Type, UpLeft >(moveList, pop_lsb(b2), ksq);
+            moveList = make_promotions<Type, UpLeft >(moveList, pop_lsb(b2));
 
         while (b3)
-            moveList = make_promotions<Type, Up     >(moveList, pop_lsb(b3), ksq);
+            moveList = make_promotions<Type, Up     >(moveList, pop_lsb(b3));
     }
 
     // Standard and en passant captures
@@ -206,6 +201,7 @@ namespace {
         moveList = generate_moves<Us,   ROOK, Checks>(pos, moveList, target);
         moveList = generate_moves<Us,  QUEEN, Checks>(pos, moveList, target);
     }
+
     if (!Checks || pos.blockers_for_king(~Us) & ksq)
     {
         Bitboard b = attacks_bb<KING>(ksq) & (Type == EVASIONS ? ~pos.pieces(Us) : target);
@@ -227,10 +223,10 @@ namespace {
 } // namespace
 
 
-/// <CAPTURES>     Generates all pseudo-legal captures plus queen and checking knight promotions
-/// <QUIETS>       Generates all pseudo-legal non-captures and underpromotions (except checking knight)
+/// <CAPTURES>     Generates all pseudo-legal captures plus queen promotions
+/// <QUIETS>       Generates all pseudo-legal non-captures and underpromotions
 /// <EVASIONS>     Generates all pseudo-legal check evasions when the side to move is in check
-/// <QUIET_CHECKS> Generates all pseudo-legal non-captures giving check, except castling
+/// <QUIET_CHECKS> Generates all pseudo-legal non-captures giving check, except castling and promotions
 /// <NON_EVASIONS> Generates all pseudo-legal captures and non-captures
 ///
 /// Returns a pointer to the end of the move list.
