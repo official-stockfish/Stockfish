@@ -306,7 +306,10 @@ def compile_target(
                 LOGGER.info('{}: Finished build of {}.'.format(arch, src_file))
                 LOGGER.info('{}: Running `make strip`.'.format(arch))
 
-                subprocess.run(['make', 'strip'], cwd=src_dir, stdout=stdout, stderr=STDERR)
+                make_strip_command = ['make', 'strip']
+                if compiler:
+                    make_strip_command += ['COMP={}'.format(compiler)]
+                subprocess.run(make_strip_command, cwd=src_dir, stdout=stdout, stderr=STDERR)
 
                 LOGGER.info('{}: Verifying bench.'.format(arch))
 
