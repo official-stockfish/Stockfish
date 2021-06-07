@@ -279,7 +279,7 @@ def compile_target(
             # There is no downside to always running under SDE if provided.
             make_command = ['make', build_type, 'ARCH={}'.format(arch)]
             if SDE_PATH:
-                make_command += ['SDE_PATH="{}"'.format(SDE_PATH)]
+                make_command += ['SDE_PATH=\'{}\''.format(SDE_PATH)]
             if compiler:
                 make_command += ['COMP={}'.format(compiler)]
             if num_threads > 1:
