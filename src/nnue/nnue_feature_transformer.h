@@ -24,8 +24,6 @@
 #include "nnue_common.h"
 #include "nnue_architecture.h"
 
-#include "../misc.h"
-
 #include <cstring> // std::memset()
 
 namespace Stockfish::Eval::NNUE {
@@ -150,23 +148,21 @@ namespace Stockfish::Eval::NNUE {
 
     // Read network parameters
     bool read_parameters(std::istream& stream) {
-      for (std::size_t i = 0; i < HalfDimensions; ++i)
-        biases[i] = read_little_endian<BiasType>(stream);
-      for (std::size_t i = 0; i < HalfDimensions * InputDimensions; ++i)
-        weights[i] = read_little_endian<WeightType>(stream);
-      for (std::size_t i = 0; i < PSQTBuckets * InputDimensions; ++i)
-        psqtWeights[i] = read_little_endian<PSQTWeightType>(stream);
+
+      read_little_endian<BiasType      >(stream, biases     , HalfDimensions                  );
+      read_little_endian<WeightType    >(stream, weights    , HalfDimensions * InputDimensions);
+      read_little_endian<PSQTWeightType>(stream, psqtWeights, PSQTBuckets    * InputDimensions);
+
       return !stream.fail();
     }
 
     // Write network parameters
     bool write_parameters(std::ostream& stream) const {
-      for (std::size_t i = 0; i < HalfDimensions; ++i)
-        write_little_endian<BiasType>(stream, biases[i]);
-      for (std::size_t i = 0; i < HalfDimensions * InputDimensions; ++i)
-        write_little_endian<WeightType>(stream, weights[i]);
-      for (std::size_t i = 0; i < PSQTBuckets * InputDimensions; ++i)
-        write_little_endian<PSQTWeightType>(stream, psqtWeights[i]);
+
+      write_little_endian<BiasType      >(stream, biases     , HalfDimensions                  );
+      write_little_endian<WeightType    >(stream, weights    , HalfDimensions * InputDimensions);
+      write_little_endian<PSQTWeightType>(stream, psqtWeights, PSQTBuckets    * InputDimensions);
+
       return !stream.fail();
     }
 

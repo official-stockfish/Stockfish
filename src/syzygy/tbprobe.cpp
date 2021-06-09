@@ -105,9 +105,6 @@ template<> inline void swap_endian<uint8_t>(uint8_t&) {}
 
 template<typename T, int LE> T number(void* addr)
 {
-    static const union { uint32_t i; char c[4]; } Le = { 0x01020304 };
-    static const bool IsLittleEndian = (Le.c[0] == 4);
-
     T v;
 
     if ((uintptr_t)addr & (alignof(T) - 1)) // Unaligned pointer (very rare)
