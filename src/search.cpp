@@ -611,6 +611,7 @@ namespace {
     assert(0 <= ss->ply && ss->ply < MAX_PLY);
 
     (ss+1)->ttPv = false;
+    ss->doubleExt      = (ss-1)->doubleExt;
     (ss+1)->excludedMove = bestMove = MOVE_NONE;
     (ss+2)->killers[0] = (ss+2)->killers[1] = MOVE_NONE;
     Square prevSq = to_sq((ss-1)->currentMove);
@@ -1074,7 +1075,8 @@ moves_loop: // When in check, search starts from here
           {
               extension = 1;
               singularQuietLMR = !ttCapture;
-              if (!PvNode && value < singularBeta - 93)
+              // avoid search explosion by limiting the number of double extensions to at most 3.
+              if (!PvNode && value < singularBeta - 93 && ss->doubleExt < 3)
                   extension = 2;
           }
 
@@ -1104,6 +1106,7 @@ moves_loop: // When in check, search starts from here
           extension = 1;
 
       // Add extension to new depth
+      ss->doubleExt      = (ss-1)->doubleExt + (extension == 2);
       newDepth += extension;
 
       // Speculative prefetch as early as possible
