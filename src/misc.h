@@ -44,6 +44,9 @@ void dbg_hit_on(bool c, bool b);
 void dbg_mean_of(int v);
 void dbg_print();
 
+static inline const union { uint32_t i; char c[4]; } Le = { 0x01020304 };
+static inline const bool IsLittleEndian = (Le.c[0] == 4);
+
 typedef std::chrono::milliseconds::rep TimePoint; // A value in milliseconds
 static_assert(sizeof(TimePoint) == sizeof(int64_t), "TimePoint should be 64 bits");
 inline TimePoint now() {
