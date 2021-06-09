@@ -52,6 +52,7 @@ struct Stack {
   bool inCheck;
   bool ttPv;
   bool ttHit;
+  int doubleExtensions;
 };
 
 

@@ -610,10 +610,11 @@ namespace {
 
     assert(0 <= ss->ply && ss->ply < MAX_PLY);
 
-    (ss+1)->ttPv = false;
+    (ss+1)->ttPv         = false;
     (ss+1)->excludedMove = bestMove = MOVE_NONE;
-    (ss+2)->killers[0] = (ss+2)->killers[1] = MOVE_NONE;
-    Square prevSq = to_sq((ss-1)->currentMove);
+    (ss+2)->killers[0]   = (ss+2)->killers[1] = MOVE_NONE;
+    ss->doubleExtensions = (ss-1)->doubleExtensions;
+    Square prevSq        = to_sq((ss-1)->currentMove);
 
     // Initialize statScore to zero for the grandchildren of the current position.
     // So statScore is shared between all grandchildren and only the first grandchild
@@ -1074,7 +1075,11 @@ moves_loop: // When in check, search starts from here
           {
               extension = 1;
               singularQuietLMR = !ttCapture;
-              if (!PvNode && value < singularBeta - 93)
+
+              // Avoid search explosion by limiting the number of double extensions to at most 3
+              if (   !PvNode
+                  && value < singularBeta - 93
+                  && ss->doubleExtensions < 3)
                   extension = 2;
           }
 
@@ -1105,6 +1110,7 @@ moves_loop: // When in check, search starts from here
 
       // Add extension to new depth
       newDepth += extension;
+      ss->doubleExtensions = (ss-1)->doubleExtensions + (extension == 2);
 
       // Speculative prefetch as early as possible
       prefetch(TT.first_entry(pos.key_after(move)));
