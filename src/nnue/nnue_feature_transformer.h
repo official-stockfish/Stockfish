@@ -30,12 +30,47 @@
 
 namespace Stockfish::Eval::NNUE {
 
+// We use __m* types as template arguments which causes GCC to emit warnings
+// about losing some attribute information. This is irrelevant to us as we
+// only take their size.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wignored-attributes"
+
+  namespace Detail {
+    template <int RegisterWidth, int LaneWidth, int NumLanes, int MaxRegs>
+    static inline constexpr int compute_best_reg_count() {
+      static_assert(RegisterWidth > 0);
+      static_assert(LaneWidth > 0);
+      static_assert(RegisterWidth >= LaneWidth);
+      static_assert(MaxRegs > 0);
+      static_assert(RegisterWidth % LaneWidth == 0);
+      static_assert((NumLanes * LaneWidth) % RegisterWidth == 0);
+
+      const int idealRegisterCount = (NumLanes * LaneWidth) / RegisterWidth;
+      if (idealRegisterCount <= MaxRegs)
+        return idealRegisterCount;
+
+      // Look for the largest divisor of idealRegisterCount that is smaller than MaxRegs
+      int divisor = MaxRegs;
+      for (; divisor > 1; --divisor)
+        if (idealRegisterCount % divisor == 0)
+          break;
+
+      return divisor;
+    }
+  }
+
+  template <typename RegisterT, typename LaneT, int NumLanes, int MaxRegs>
+  static inline constexpr int BestRegCount =
+    Detail::compute_best_reg_count<sizeof(RegisterT), sizeof(LaneT), NumLanes, MaxRegs>();
+
   // If vector instructions are enabled, we update and refresh the
   // accumulator tile by tile such that each tile fits in the CPU's
   // vector registers.
   #define VECTOR
 
-  static_assert(PSQTBuckets == 8, "Assumed by the current choice of constants.");
+  static_assert(PSQTBuckets % 8 == 0,
+    "Per feature PSQT values cannot be processed at granularity lower than 8 at a time.");
 
   #ifdef USE_AVX512
   typedef __m512i vec_t;
@@ -49,8 +84,8 @@ namespace Stockfish::Eval::NNUE {
   #define vec_add_psqt_32(a,b) _mm256_add_epi32(a,b)
   #define vec_sub_psqt_32(a,b) _mm256_sub_epi32(a,b)
   #define vec_zero_psqt() _mm256_setzero_si256()
-  static constexpr IndexType NumRegs = 8; // only 8 are needed
-  static constexpr IndexType NumPsqtRegs = 1;
+  static constexpr IndexType NumRegs = BestRegCount<vec_t, std::int16_t, TransformedFeatureDimensions, 32>;
+  static constexpr IndexType NumPsqtRegs = BestRegCount<psqt_vec_t, std::int32_t, PSQTBuckets, 32>;
 
   #elif USE_AVX2
   typedef __m256i vec_t;
@@ -64,8 +99,8 @@ namespace Stockfish::Eval::NNUE {
   #define vec_add_psqt_32(a,b) _mm256_add_epi32(a,b)
   #define vec_sub_psqt_32(a,b) _mm256_sub_epi32(a,b)
   #define vec_zero_psqt() _mm256_setzero_si256()
-  static constexpr IndexType NumRegs = 16;
-  static constexpr IndexType NumPsqtRegs = 1;
+  static constexpr IndexType NumRegs = BestRegCount<vec_t, std::int16_t, TransformedFeatureDimensions, 16>;
+  static constexpr IndexType NumPsqtRegs = BestRegCount<psqt_vec_t, std::int32_t, PSQTBuckets, 16>;
 
   #elif USE_SSE2
   typedef __m128i vec_t;
@@ -79,8 +114,8 @@ namespace Stockfish::Eval::NNUE {
   #define vec_add_psqt_32(a,b) _mm_add_epi32(a,b)
   #define vec_sub_psqt_32(a,b) _mm_sub_epi32(a,b)
   #define vec_zero_psqt() _mm_setzero_si128()
-  static constexpr IndexType NumRegs = Is64Bit ? 16 : 8;
-  static constexpr IndexType NumPsqtRegs = 2;
+  static constexpr IndexType NumRegs = BestRegCount<vec_t, std::int16_t, TransformedFeatureDimensions, Is64Bit ? 16 : 8>;
+  static constexpr IndexType NumPsqtRegs = BestRegCount<psqt_vec_t, std::int32_t, PSQTBuckets, Is64Bit ? 16 : 8>;
 
   #elif USE_MMX
   typedef __m64 vec_t;
@@ -94,8 +129,8 @@ namespace Stockfish::Eval::NNUE {
   #define vec_add_psqt_32(a,b) _mm_add_pi32(a,b)
   #define vec_sub_psqt_32(a,b) _mm_sub_pi32(a,b)
   #define vec_zero_psqt() _mm_setzero_si64()
-  static constexpr IndexType NumRegs = 8;
-  static constexpr IndexType NumPsqtRegs = 4;
+  static constexpr IndexType NumRegs = BestRegCount<vec_t, std::int16_t, TransformedFeatureDimensions, 8>;
+  static constexpr IndexType NumPsqtRegs = BestRegCount<psqt_vec_t, std::int32_t, PSQTBuckets, 8>;
 
   #elif USE_NEON
   typedef int16x8_t vec_t;
@@ -109,13 +144,15 @@ namespace Stockfish::Eval::NNUE {
   #define vec_add_psqt_32(a,b) vaddq_s32(a,b)
   #define vec_sub_psqt_32(a,b) vsubq_s32(a,b)
   #define vec_zero_psqt() psqt_vec_t{0}
-  static constexpr IndexType NumRegs = 16;
-  static constexpr IndexType NumPsqtRegs = 2;
+  static constexpr IndexType NumRegs = BestRegCount<vec_t, std::int16_t, TransformedFeatureDimensions, 16>;
+  static constexpr IndexType NumPsqtRegs = BestRegCount<psqt_vec_t, std::int32_t, PSQTBuckets, 16>;
 
   #else
   #undef VECTOR
 
   #endif
+
+#pragma GCC diagnostic pop
 
   // Input feature converter
   class FeatureTransformer {
