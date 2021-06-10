@@ -88,7 +88,7 @@ endif
 # at the end of the line for flag values.
 #
 # Example of use for these flags:
-# make build ARCH=x86-64-avx512 debug=on sanitize="address undefined"
+# make build ARCH=x86-64-avx512 debug=yes sanitize="address undefined"
 
 
 ### 2.1. General and architecture defaults
