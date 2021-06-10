@@ -1129,6 +1129,7 @@ moves_loop: // When in check, search starts from here
       {
           Depth r = reduction(improving, depth, moveCount);
 
+          // Decrease reduction if on the PV (~1 Elo)
           if (PvNode)
               r--;
 
