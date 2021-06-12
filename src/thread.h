@@ -39,6 +39,8 @@ namespace Stockfish {
 /// pointer to an entry its life time is unlimited and we don't have
 /// to care about someone changing the entry under our feet.
 
+struct MainThread;
+
 class Thread {
 
   std::mutex mutex;
@@ -51,6 +53,8 @@ public:
   explicit Thread(size_t);
   virtual ~Thread();
   virtual void search();
+  Value aspiration_search(size_t multiPV, int ct, int searchAgainCounter,
+                          MainThread *mainThread, Search::Stack *ss);
   void clear();
   void idle_loop();
   void start_searching();

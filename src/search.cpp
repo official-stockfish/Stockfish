@@ -243,113 +243,17 @@ void MainThread::search() {
   std::cout << sync_endl;
 }
 
+Value Thread::aspiration_search(size_t multiPV, int ct, int searchAgainCounter,
+                                MainThread *mainThread, Stack *ss)
+{
+    Value bestValue, delta, alpha, beta;
+    bestValue = delta = alpha = -VALUE_INFINITE;
+    beta = VALUE_INFINITE;
+    Color us = rootPos.side_to_move();
 
-/// Thread::search() is the main iterative deepening loop. It calls search()
-/// repeatedly with increasing depth until the allocated thinking time has been
-/// consumed, the user stops the search, or the maximum search depth is reached.
-
-void Thread::search() {
-
-  // To allow access to (ss-7) up to (ss+2), the stack must be oversized.
-  // The former is needed to allow update_continuation_histories(ss-1, ...),
-  // which accesses its argument at ss-6, also near the root.
-  // The latter is needed for statScore and killer initialization.
-  Stack stack[MAX_PLY+10], *ss = stack+7;
-  Move  pv[MAX_PLY+1];
-  Value bestValue, alpha, beta, delta;
-  Move  lastBestMove = MOVE_NONE;
-  Depth lastBestMoveDepth = 0;
-  MainThread* mainThread = (this == Threads.main() ? Threads.main() : nullptr);
-  double timeReduction = 1, totBestMoveChanges = 0;
-  Color us = rootPos.side_to_move();
-  int iterIdx = 0;
-
-  std::memset(ss-7, 0, 10 * sizeof(Stack));
-  for (int i = 7; i > 0; i--)
-      (ss-i)->continuationHistory = &this->continuationHistory[0][0][NO_PIECE][0]; // Use as a sentinel
-
-  for (int i = 0; i <= MAX_PLY + 2; ++i)
-      (ss+i)->ply = i;
-
-  ss->pv = pv;
-
-  bestValue = delta = alpha = -VALUE_INFINITE;
-  beta = VALUE_INFINITE;
-
-  if (mainThread)
-  {
-      if (mainThread->bestPreviousScore == VALUE_INFINITE)
-          for (int i = 0; i < 4; ++i)
-              mainThread->iterValue[i] = VALUE_ZERO;
-      else
-          for (int i = 0; i < 4; ++i)
-              mainThread->iterValue[i] = mainThread->bestPreviousScore;
-  }
-
-  std::copy(&lowPlyHistory[2][0], &lowPlyHistory.back().back() + 1, &lowPlyHistory[0][0]);
-  std::fill(&lowPlyHistory[MAX_LPH - 2][0], &lowPlyHistory.back().back() + 1, 0);
-
-  size_t multiPV = size_t(Options["MultiPV"]);
-
-  // Pick integer skill levels, but non-deterministically round up or down
-  // such that the average integer skill corresponds to the input floating point one.
-  // UCI_Elo is converted to a suitable fractional skill level, using anchoring
-  // to CCRL Elo (goldfish 1.13 = 2000) and a fit through Ordo derived Elo
-  // for match (TC 60+0.6) results spanning a wide range of k values.
-  PRNG rng(now());
-  double floatLevel = Options["UCI_LimitStrength"] ?
-                      std::clamp(std::pow((Options["UCI_Elo"] - 1346.6) / 143.4, 1 / 0.806), 0.0, 20.0) :
-                        double(Options["Skill Level"]);
-  int intLevel = int(floatLevel) +
-                 ((floatLevel - int(floatLevel)) * 1024 > rng.rand<unsigned>() % 1024  ? 1 : 0);
-  Skill skill(intLevel);
-
-  // When playing with strength handicap enable MultiPV search that we will
-  // use behind the scenes to retrieve a set of possible moves.
-  if (skill.enabled())
-      multiPV = std::max(multiPV, (size_t)4);
-
-  multiPV = std::min(multiPV, rootMoves.size());
-  ttHitAverage = TtHitAverageWindow * TtHitAverageResolution / 2;
-
-  int ct = int(Options["Contempt"]) * PawnValueEg / 100; // From centipawns
-
-  // In analysis mode, adjust contempt in accordance with user preference
-  if (Limits.infinite || Options["UCI_AnalyseMode"])
-      ct =  Options["Analysis Contempt"] == "Off"  ? 0
-          : Options["Analysis Contempt"] == "Both" ? ct
-          : Options["Analysis Contempt"] == "White" && us == BLACK ? -ct
-          : Options["Analysis Contempt"] == "Black" && us == WHITE ? -ct
-          : ct;
-
-  // Evaluation score is from the white point of view
-  contempt = (us == WHITE ?  make_score(ct, ct / 2)
-                          : -make_score(ct, ct / 2));
-
-  int searchAgainCounter = 0;
-
-  // Iterative deepening loop until requested to stop or the target depth is reached
-  while (   ++rootDepth < MAX_PLY
-         && !Threads.stop
-         && !(Limits.depth && mainThread && rootDepth > Limits.depth))
-  {
-      // Age out PV variability metric
-      if (mainThread)
-          totBestMoveChanges /= 2;
-
-      // Save the last iteration's scores before first PV line is searched and
-      // all the move scores except the (new) PV are set to -VALUE_INFINITE.
-      for (RootMove& rm : rootMoves)
-          rm.previousScore = rm.score;
-
-      size_t pvFirst = 0;
-      pvLast = 0;
-
-      if (!Threads.increaseDepth)
-         searchAgainCounter++;
-
-      // MultiPV loop. We perform a full root search for each PV line
-      for (pvIdx = 0; pvIdx < multiPV && !Threads.stop; ++pvIdx)
+    size_t pvFirst = 0;
+    // MultiPV loop. We perform a full root search for each PV line
+    for (pvIdx = 0; pvIdx < multiPV && !Threads.stop; ++pvIdx)
       {
           if (pvIdx == pvLast)
           {
@@ -439,6 +343,110 @@ void Thread::search() {
               && (Threads.stop || pvIdx + 1 == multiPV || Time.elapsed() > 3000))
               sync_cout << UCI::pv(rootPos, rootDepth, alpha, beta) << sync_endl;
       }
+    return bestValue;
+}
+
+/// Thread::search() is the main iterative deepening loop. It calls search()
+/// repeatedly with increasing depth until the allocated thinking time has been
+/// consumed, the user stops the search, or the maximum search depth is reached.
+
+void Thread::search() {
+
+  // To allow access to (ss-7) up to (ss+2), the stack must be oversized.
+  // The former is needed to allow update_continuation_histories(ss-1, ...),
+  // which accesses its argument at ss-6, also near the root.
+  // The latter is needed for statScore and killer initialization.
+  Stack stack[MAX_PLY+10], *ss = stack+7;
+  Move  pv[MAX_PLY+1];
+  Move  lastBestMove = MOVE_NONE;
+  Depth lastBestMoveDepth = 0;
+  MainThread* mainThread = (this == Threads.main() ? Threads.main() : nullptr);
+  double timeReduction = 1, totBestMoveChanges = 0;
+  Color us = rootPos.side_to_move();
+  int iterIdx = 0;
+
+  std::memset(ss-7, 0, 10 * sizeof(Stack));
+  for (int i = 7; i > 0; i--)
+      (ss-i)->continuationHistory = &this->continuationHistory[0][0][NO_PIECE][0]; // Use as a sentinel
+
+  for (int i = 0; i <= MAX_PLY + 2; ++i)
+      (ss+i)->ply = i;
+
+  ss->pv = pv;
+
+  if (mainThread)
+  {
+      if (mainThread->bestPreviousScore == VALUE_INFINITE)
+          for (int i = 0; i < 4; ++i)
+              mainThread->iterValue[i] = VALUE_ZERO;
+      else
+          for (int i = 0; i < 4; ++i)
+              mainThread->iterValue[i] = mainThread->bestPreviousScore;
+  }
+
+  std::copy(&lowPlyHistory[2][0], &lowPlyHistory.back().back() + 1, &lowPlyHistory[0][0]);
+  std::fill(&lowPlyHistory[MAX_LPH - 2][0], &lowPlyHistory.back().back() + 1, 0);
+
+  size_t multiPV = size_t(Options["MultiPV"]);
+
+  // Pick integer skill levels, but non-deterministically round up or down
+  // such that the average integer skill corresponds to the input floating point one.
+  // UCI_Elo is converted to a suitable fractional skill level, using anchoring
+  // to CCRL Elo (goldfish 1.13 = 2000) and a fit through Ordo derived Elo
+  // for match (TC 60+0.6) results spanning a wide range of k values.
+  PRNG rng(now());
+  double floatLevel = Options["UCI_LimitStrength"] ?
+                      std::clamp(std::pow((Options["UCI_Elo"] - 1346.6) / 143.4, 1 / 0.806), 0.0, 20.0) :
+                        double(Options["Skill Level"]);
+  int intLevel = int(floatLevel) +
+                 ((floatLevel - int(floatLevel)) * 1024 > rng.rand<unsigned>() % 1024  ? 1 : 0);
+  Skill skill(intLevel);
+
+  // When playing with strength handicap enable MultiPV search that we will
+  // use behind the scenes to retrieve a set of possible moves.
+  if (skill.enabled())
+      multiPV = std::max(multiPV, (size_t)4);
+
+  multiPV = std::min(multiPV, rootMoves.size());
+  ttHitAverage = TtHitAverageWindow * TtHitAverageResolution / 2;
+
+  int ct = int(Options["Contempt"]) * PawnValueEg / 100; // From centipawns
+
+  // In analysis mode, adjust contempt in accordance with user preference
+  if (Limits.infinite || Options["UCI_AnalyseMode"])
+      ct =  Options["Analysis Contempt"] == "Off"  ? 0
+          : Options["Analysis Contempt"] == "Both" ? ct
+          : Options["Analysis Contempt"] == "White" && us == BLACK ? -ct
+          : Options["Analysis Contempt"] == "Black" && us == WHITE ? -ct
+          : ct;
+
+  // Evaluation score is from the white point of view
+  contempt = (us == WHITE ?  make_score(ct, ct / 2)
+                          : -make_score(ct, ct / 2));
+
+  int searchAgainCounter = 0;
+
+  // Iterative deepening loop until requested to stop or the target depth is reached
+  while (   ++rootDepth < MAX_PLY
+         && !Threads.stop
+         && !(Limits.depth && mainThread && rootDepth > Limits.depth))
+  {
+      // Age out PV variability metric
+      if (mainThread)
+          totBestMoveChanges /= 2;
+
+      // Save the last iteration's scores before first PV line is searched and
+      // all the move scores except the (new) PV are set to -VALUE_INFINITE.
+      for (RootMove& rm : rootMoves)
+          rm.previousScore = rm.score;
+
+      pvLast = 0;
+
+      if (!Threads.increaseDepth)
+         searchAgainCounter++;
+
+      Value bestValue =
+          aspiration_search(multiPV,ct,searchAgainCounter,mainThread,ss);
 
       if (!Threads.stop)
           completedDepth = rootDepth;
