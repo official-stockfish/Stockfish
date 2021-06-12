@@ -383,7 +383,7 @@ namespace Stockfish::Eval::NNUE {
       // of the estimated gain in terms of features to be added/subtracted.
       StateInfo *st = pos.state(), *next = nullptr;
       int gain = FeatureSet::refresh_cost(pos);
-      while (st->accumulator.state[perspective] == EMPTY)
+      while (st->previous && !st->accumulator.computed[perspective])
       {
         // This governs when a full feature refresh is needed and how many
         // updates are better than just one full refresh.
@@ -394,7 +394,7 @@ namespace Stockfish::Eval::NNUE {
         st = st->previous;
       }
 
-      if (st->accumulator.state[perspective] == COMPUTED)
+      if (st->accumulator.computed[perspective])
       {
         if (next == nullptr)
           return;
@@ -412,8 +412,8 @@ namespace Stockfish::Eval::NNUE {
             ksq, st2, perspective, removed[1], added[1]);
 
         // Mark the accumulators as computed.
-        next->accumulator.state[perspective] = COMPUTED;
-        pos.state()->accumulator.state[perspective] = COMPUTED;
+        next->accumulator.computed[perspective] = true;
+        pos.state()->accumulator.computed[perspective] = true;
 
         // Now update the accumulators listed in states_to_update[], where the last element is a sentinel.
         StateInfo *states_to_update[3] =
@@ -533,7 +533,7 @@ namespace Stockfish::Eval::NNUE {
       {
         // Refresh the accumulator
         auto& accumulator = pos.state()->accumulator;
-        accumulator.state[perspective] = COMPUTED;
+        accumulator.computed[perspective] = true;
         IndexList active;
         FeatureSet::append_active_indices(pos, perspective, active);
 
