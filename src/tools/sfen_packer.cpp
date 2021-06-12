@@ -260,6 +260,8 @@ namespace Stockfish::Tools {
 
         pos.clear();
         std::memset(si, 0, sizeof(StateInfo));
+        si->accumulator.state[WHITE] = Eval::NNUE::INIT;
+        si->accumulator.state[BLACK] = Eval::NNUE::INIT;
         pos.st = si;
 
         // Active color
