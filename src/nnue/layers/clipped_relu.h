@@ -72,6 +72,7 @@ namespace Stockfish::Eval::NNUE::Layers {
       const auto output = reinterpret_cast<OutputType*>(buffer);
 
   #if defined(USE_AVX2)
+      constexpr auto SimdWidth = Simd::Traits<Simd::Arch::AVX2>::template NumLanes<InputType>;
       if constexpr (InputDimensions % SimdWidth == 0) {
         constexpr IndexType NumChunks = InputDimensions / SimdWidth;
         const __m256i Zero = _mm256_setzero_si256();
@@ -110,6 +111,7 @@ namespace Stockfish::Eval::NNUE::Layers {
         : InputDimensions / (SimdWidth / 2) * (SimdWidth / 2);
 
   #elif defined(USE_SSE2)
+      constexpr auto SimdWidth = Simd::Traits<Simd::Arch::SSE2>::template NumLanes<InputType>;
       constexpr IndexType NumChunks = InputDimensions / SimdWidth;
 
   #ifdef USE_SSE41
@@ -141,6 +143,7 @@ namespace Stockfish::Eval::NNUE::Layers {
       constexpr IndexType Start = NumChunks * SimdWidth;
 
   #elif defined(USE_MMX)
+      constexpr auto SimdWidth = Simd::Traits<Simd::Arch::MMX>::template NumLanes<InputType>;
       constexpr IndexType NumChunks = InputDimensions / SimdWidth;
       const __m64 k0x80s = _mm_set1_pi8(-128);
       const auto in = reinterpret_cast<const __m64*>(input);
@@ -159,6 +162,7 @@ namespace Stockfish::Eval::NNUE::Layers {
       constexpr IndexType Start = NumChunks * SimdWidth;
 
   #elif defined(USE_NEON)
+      constexpr auto SimdWidth = Simd::Traits<Simd::Arch::NEON>::template NumLanes<InputType>;
       constexpr IndexType NumChunks = InputDimensions / (SimdWidth / 2);
       const int8x8_t Zero = {0};
       const auto in = reinterpret_cast<const int32x4_t*>(input);

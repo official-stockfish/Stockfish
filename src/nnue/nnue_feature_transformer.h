@@ -32,150 +32,74 @@ namespace Stockfish::Eval::NNUE {
   using WeightType     = std::int16_t;
   using PSQTWeightType = std::int32_t;
 
-  // If vector instructions are enabled, we update and refresh the
-  // accumulator tile by tile such that each tile fits in the CPU's
-  // vector registers.
-  #define VECTOR
-
   static_assert(PSQTBuckets % 8 == 0,
     "Per feature PSQT values cannot be processed at granularity lower than 8 at a time.");
 
-  #ifdef USE_AVX512
-  typedef __m512i vec_t;
-  typedef __m256i psqt_vec_t;
-  #define vec_load(a) _mm512_load_si512(a)
-  #define vec_store(a,b) _mm512_store_si512(a,b)
-  #define vec_add_16(a,b) _mm512_add_epi16(a,b)
-  #define vec_sub_16(a,b) _mm512_sub_epi16(a,b)
-  #define vec_load_psqt(a) _mm256_load_si256(a)
-  #define vec_store_psqt(a,b) _mm256_store_si256(a,b)
-  #define vec_add_psqt_32(a,b) _mm256_add_epi32(a,b)
-  #define vec_sub_psqt_32(a,b) _mm256_sub_epi32(a,b)
-  #define vec_zero_psqt() _mm256_setzero_si256()
-  #define NumRegistersSIMD 32
+#if defined(SIMD_AVAILABLE)
 
-  #elif USE_AVX2
-  typedef __m256i vec_t;
-  typedef __m256i psqt_vec_t;
-  #define vec_load(a) _mm256_load_si256(a)
-  #define vec_store(a,b) _mm256_store_si256(a,b)
-  #define vec_add_16(a,b) _mm256_add_epi16(a,b)
-  #define vec_sub_16(a,b) _mm256_sub_epi16(a,b)
-  #define vec_load_psqt(a) _mm256_load_si256(a)
-  #define vec_store_psqt(a,b) _mm256_store_si256(a,b)
-  #define vec_add_psqt_32(a,b) _mm256_add_epi32(a,b)
-  #define vec_sub_psqt_32(a,b) _mm256_sub_epi32(a,b)
-  #define vec_zero_psqt() _mm256_setzero_si256()
-  #define NumRegistersSIMD 16
+  static constexpr auto mainSimdArch = Simd::BestAvailableArchFromSubset<
+    Simd::Arch::AVX512, Simd::Arch::AVX2, Simd::Arch::SSE2, Simd::Arch::MMX, Simd::Arch::NEON>;
+  static constexpr auto psqtSimdArch = Simd::BestAvailableArchFromSubset<
+    Simd::Arch::AVX2, Simd::Arch::SSE2, Simd::Arch::MMX, Simd::Arch::NEON>;
 
-  #elif USE_SSE2
-  typedef __m128i vec_t;
-  typedef __m128i psqt_vec_t;
-  #define vec_load(a) (*(a))
-  #define vec_store(a,b) *(a)=(b)
-  #define vec_add_16(a,b) _mm_add_epi16(a,b)
-  #define vec_sub_16(a,b) _mm_sub_epi16(a,b)
-  #define vec_load_psqt(a) (*(a))
-  #define vec_store_psqt(a,b) *(a)=(b)
-  #define vec_add_psqt_32(a,b) _mm_add_epi32(a,b)
-  #define vec_sub_psqt_32(a,b) _mm_sub_epi32(a,b)
-  #define vec_zero_psqt() _mm_setzero_si128()
-  #define NumRegistersSIMD (Is64Bit ? 16 : 8)
+  // Compute optimal SIMD register count for feature transformer accumulation.
 
-  #elif USE_MMX
-  typedef __m64 vec_t;
-  typedef __m64 psqt_vec_t;
-  #define vec_load(a) (*(a))
-  #define vec_store(a,b) *(a)=(b)
-  #define vec_add_16(a,b) _mm_add_pi16(a,b)
-  #define vec_sub_16(a,b) _mm_sub_pi16(a,b)
-  #define vec_load_psqt(a) (*(a))
-  #define vec_store_psqt(a,b) *(a)=(b)
-  #define vec_add_psqt_32(a,b) _mm_add_pi32(a,b)
-  #define vec_sub_psqt_32(a,b) _mm_sub_pi32(a,b)
-  #define vec_zero_psqt() _mm_setzero_si64()
-  #define NumRegistersSIMD 8
+  template <Simd::Arch ArchV, typename LaneType, IndexType NumLanes>
+  static constexpr IndexType BestRegisterCount()
+  {
+      constexpr IndexType NumRegisters = Simd::Traits<ArchV>::NumRegisters;
+      constexpr IndexType NumLanesPerRegister = Simd::Traits<ArchV>::template NumLanes<LaneType>;
 
-  #elif USE_NEON
-  typedef int16x8_t vec_t;
-  typedef int32x4_t psqt_vec_t;
-  #define vec_load(a) (*(a))
-  #define vec_store(a,b) *(a)=(b)
-  #define vec_add_16(a,b) vaddq_s16(a,b)
-  #define vec_sub_16(a,b) vsubq_s16(a,b)
-  #define vec_load_psqt(a) (*(a))
-  #define vec_store_psqt(a,b) *(a)=(b)
-  #define vec_add_psqt_32(a,b) vaddq_s32(a,b)
-  #define vec_sub_psqt_32(a,b) vsubq_s32(a,b)
-  #define vec_zero_psqt() psqt_vec_t{0}
-  #define NumRegistersSIMD 16
+      static_assert(NumRegisters > 0);
+      static_assert(NumLanesPerRegister > 0);
 
-  #else
-  #undef VECTOR
+      const IndexType ideal = NumLanes / NumLanesPerRegister;
+      if (ideal <= NumRegisters)
+        return ideal;
 
-  #endif
+      // Look for the largest divisor of the ideal register count that is smaller than NumRegisters
+      for (IndexType divisor = NumRegisters; divisor > 1; --divisor)
+        if (ideal % divisor == 0)
+          return divisor;
 
+      return 1;
+  }
 
-  #ifdef VECTOR
+  static constexpr IndexType NumMainRegs = BestRegisterCount<mainSimdArch, WeightType, TransformedFeatureDimensions>();
+  static constexpr IndexType NumPsqtRegs = BestRegisterCount<psqtSimdArch, PSQTWeightType, PSQTBuckets>();
 
-      // Compute optimal SIMD register count for feature transformer accumulation.
+  static constexpr auto vec_load_main = Simd::Traits<mainSimdArch>::template LoadAligned<WeightType>;
+  static constexpr auto vec_store_main = Simd::Traits<mainSimdArch>::template StoreAligned<WeightType>;
+  static constexpr auto vec_add_main = Simd::Traits<mainSimdArch>::template Add<WeightType>;
+  static constexpr auto vec_sub_main = Simd::Traits<mainSimdArch>::template Sub<WeightType>;
+  static constexpr auto vec_load_psqt = Simd::Traits<psqtSimdArch>::template LoadAligned<PSQTWeightType>;
+  static constexpr auto vec_store_psqt = Simd::Traits<psqtSimdArch>::template StoreAligned<PSQTWeightType>;
+  static constexpr auto vec_add_psqt = Simd::Traits<psqtSimdArch>::template Add<PSQTWeightType>;
+  static constexpr auto vec_sub_psqt = Simd::Traits<psqtSimdArch>::template Sub<PSQTWeightType>;
+  static constexpr auto vec_zero_psqt = Simd::Traits<psqtSimdArch>::template Zeros<PSQTWeightType>;
 
-      // We use __m* types as template arguments, which causes GCC to emit warnings
-      // about losing some attribute information. This is irrelevant to us as we
-      // only take their size, so the following pragma are harmless.
-      #pragma GCC diagnostic push
-      #pragma GCC diagnostic ignored "-Wignored-attributes"
+  using MainVecType = Simd::Traits<mainSimdArch>::Type<WeightType>;
+  using PsqtVecType = Simd::Traits<psqtSimdArch>::Type<PSQTWeightType>;
 
-      template <typename SIMDRegisterType,
-                typename LaneType,
-                int      NumLanes,
-                int      MaxRegisters>
-      static constexpr int BestRegisterCount()
-      {
-          #define RegisterSize  sizeof(SIMDRegisterType)
-          #define LaneSize      sizeof(LaneType)
-
-          static_assert(RegisterSize >= LaneSize);
-          static_assert(MaxRegisters <= NumRegistersSIMD);
-          static_assert(MaxRegisters > 0);
-          static_assert(NumRegistersSIMD > 0);
-          static_assert(RegisterSize % LaneSize == 0);
-          static_assert((NumLanes * LaneSize) % RegisterSize == 0);
-
-          const int ideal = (NumLanes * LaneSize) / RegisterSize;
-          if (ideal <= MaxRegisters)
-            return ideal;
-
-          // Look for the largest divisor of the ideal register count that is smaller than MaxRegisters
-          for (int divisor = MaxRegisters; divisor > 1; --divisor)
-            if (ideal % divisor == 0)
-              return divisor;
-
-          return 1;
-      }
-
-      static constexpr int NumRegs     = BestRegisterCount<vec_t, WeightType, TransformedFeatureDimensions, NumRegistersSIMD>();
-      static constexpr int NumPsqtRegs = BestRegisterCount<psqt_vec_t, PSQTWeightType, PSQTBuckets, NumRegistersSIMD>();
-
-      #pragma GCC diagnostic pop
-
-  #endif
-
-
+#endif
 
   // Input feature converter
   class FeatureTransformer {
 
    private:
+    static constexpr IndexType MinTransformedFreatureDimensions = 32;
     // Number of output dimensions for one side
     static constexpr IndexType HalfDimensions = TransformedFeatureDimensions;
 
-    #ifdef VECTOR
-    static constexpr IndexType TileHeight = NumRegs * sizeof(vec_t) / 2;
-    static constexpr IndexType PsqtTileHeight = NumPsqtRegs * sizeof(psqt_vec_t) / 4;
-    static_assert(HalfDimensions % TileHeight == 0, "TileHeight must divide HalfDimensions");
+    static_assert(TransformedFeatureDimensions > MinTransformedFreatureDimensions);
+    static_assert(TransformedFeatureDimensions % MinTransformedFreatureDimensions == 0);
+
+#if defined(SIMD_AVAILABLE)
+    static constexpr IndexType MainTileHeight = NumMainRegs * Simd::Traits<mainSimdArch>::template NumLanes<WeightType>;
+    static constexpr IndexType PsqtTileHeight = NumPsqtRegs * Simd::Traits<psqtSimdArch>::template NumLanes<PSQTWeightType>;
+    static_assert(HalfDimensions % MainTileHeight == 0, "MainTileHeight must divide HalfDimensions");
     static_assert(PSQTBuckets % PsqtTileHeight == 0, "PsqtTileHeight must divide PSQTBuckets");
-    #endif
+#endif
 
    public:
     // Output type
@@ -186,8 +110,7 @@ namespace Stockfish::Eval::NNUE {
     static constexpr IndexType OutputDimensions = HalfDimensions * 2;
 
     // Size of forward propagation buffer
-    static constexpr std::size_t BufferSize =
-        OutputDimensions * sizeof(OutputType);
+    static constexpr std::size_t BufferSize = OutputDimensions * sizeof(OutputType);
 
     // Hash value embedded in the evaluation file
     static constexpr std::uint32_t get_hash_value() {
@@ -228,11 +151,12 @@ namespace Stockfish::Eval::NNUE {
           - psqtAccumulation[perspectives[1]][bucket]
         ) / 2;
 
+#if defined(USE_AVX512)
 
-  #if defined(USE_AVX512)
+      constexpr IndexType NumLanes = Simd::Traits<Simd::Arch::AVX512>::NumLanes<TransformedFeatureType>;
+      static_assert(HalfDimensions % NumLanes == 0);
 
-      constexpr IndexType NumChunks = HalfDimensions / (SimdWidth * 2);
-      static_assert(HalfDimensions % (SimdWidth * 2) == 0);
+      constexpr IndexType NumChunks = HalfDimensions / NumLanes;
       const __m512i Control = _mm512_setr_epi64(0, 2, 4, 6, 1, 3, 5, 7);
       const __m512i Zero = _mm512_setzero_si512();
 
@@ -253,9 +177,12 @@ namespace Stockfish::Eval::NNUE {
       }
       return psqt;
 
-  #elif defined(USE_AVX2)
+#elif defined(USE_AVX2)
 
-      constexpr IndexType NumChunks = HalfDimensions / SimdWidth;
+      constexpr IndexType NumLanes = Simd::Traits<Simd::Arch::AVX2>::NumLanes<TransformedFeatureType>;
+      static_assert(HalfDimensions % NumLanes == 0);
+
+      constexpr IndexType NumChunks = HalfDimensions / NumLanes;
       constexpr int Control = 0b11011000;
       const __m256i Zero = _mm256_setzero_si256();
 
@@ -276,15 +203,18 @@ namespace Stockfish::Eval::NNUE {
       }
       return psqt;
 
-  #elif defined(USE_SSE2)
+#elif defined(USE_SSE2)
 
-      #ifdef USE_SSE41
-      constexpr IndexType NumChunks = HalfDimensions / SimdWidth;
+      constexpr IndexType NumLanes = Simd::Traits<Simd::Arch::SSE2>::NumLanes<TransformedFeatureType>;
+      static_assert(HalfDimensions % NumLanes == 0);
+
+      constexpr IndexType NumChunks = HalfDimensions / NumLanes;
+
+#  if defined(USE_SSE41)
       const __m128i Zero = _mm_setzero_si128();
-      #else
-      constexpr IndexType NumChunks = HalfDimensions / SimdWidth;
+#  else
       const __m128i k0x80s = _mm_set1_epi8(-128);
-      #endif
+#  endif
 
       for (IndexType p = 0; p < 2; ++p)
       {
@@ -298,18 +228,21 @@ namespace Stockfish::Eval::NNUE {
                                            (accumulation[perspectives[p]])[j * 2 + 1]);
               const __m128i packedbytes = _mm_packs_epi16(sum0, sum1);
 
-              #ifdef USE_SSE41
+#  if defined(USE_SSE41)
               _mm_store_si128(&out[j], _mm_max_epi8(packedbytes, Zero));
-              #else
+#  else
               _mm_store_si128(&out[j], _mm_subs_epi8(_mm_adds_epi8(packedbytes, k0x80s), k0x80s));
-              #endif
+#  endif
           }
       }
       return psqt;
 
-  #elif defined(USE_MMX)
+#elif defined(USE_MMX)
 
-      constexpr IndexType NumChunks = HalfDimensions / SimdWidth;
+      constexpr IndexType NumLanes = Simd::Traits<Simd::Arch::MMX>::NumLanes<TransformedFeatureType>;
+      static_assert(HalfDimensions % NumLanes == 0);
+
+      constexpr IndexType NumChunks = HalfDimensions / NumLanes;
       const __m64 k0x80s = _mm_set1_pi8(-128);
 
       for (IndexType p = 0; p < 2; ++p)
@@ -327,9 +260,13 @@ namespace Stockfish::Eval::NNUE {
       _mm_empty();
       return psqt;
 
-  #elif defined(USE_NEON)
+#elif defined(USE_NEON)
 
-      constexpr IndexType NumChunks = HalfDimensions / (SimdWidth / 2);
+      // No packing possible like with x86 so we process by uint16s instead.
+      constexpr IndexType NumLanes = Simd::Traits<Simd::Arch::NEON>::NumLanes<WeightType>;
+      static_assert(HalfDimensions % NumLanes == 0);
+
+      constexpr IndexType NumChunks = HalfDimensions / NumLanes;
       const int8x8_t Zero = {0};
 
       for (IndexType p = 0; p < 2; ++p)
@@ -344,7 +281,7 @@ namespace Stockfish::Eval::NNUE {
       }
       return psqt;
 
-  #else
+#else
 
       for (IndexType p = 0; p < 2; ++p)
       {
@@ -357,7 +294,7 @@ namespace Stockfish::Eval::NNUE {
       }
       return psqt;
 
-  #endif
+#endif
 
    } // end of function transform()
 
@@ -372,12 +309,12 @@ namespace Stockfish::Eval::NNUE {
       // allow updates with more added/removed features than MaxActiveDimensions.
       using IndexList = ValueList<IndexType, FeatureSet::MaxActiveDimensions>;
 
-  #ifdef VECTOR
+#if defined(SIMD_AVAILABLE)
       // Gcc-10.2 unnecessarily spills AVX2 registers if this array
       // is defined in the VECTOR code below, once in each branch
-      vec_t acc[NumRegs];
-      psqt_vec_t psqt[NumPsqtRegs];
-  #endif
+      MainVecType acc[NumMainRegs];
+      PsqtVecType psqt[NumPsqtRegs];
+#endif
 
       // Look for a usable accumulator of an earlier position. We keep track
       // of the estimated gain in terms of features to be added/subtracted.
@@ -418,47 +355,49 @@ namespace Stockfish::Eval::NNUE {
         // Now update the accumulators listed in states_to_update[], where the last element is a sentinel.
         StateInfo *states_to_update[3] =
           { next, next == pos.state() ? nullptr : pos.state(), nullptr };
-  #ifdef VECTOR
-        for (IndexType j = 0; j < HalfDimensions / TileHeight; ++j)
+
+#if defined(SIMD_AVAILABLE)
+
+        for (IndexType j = 0; j < HalfDimensions / MainTileHeight; ++j)
         {
           // Load accumulator
-          auto accTile = reinterpret_cast<vec_t*>(
-            &st->accumulator.accumulation[perspective][j * TileHeight]);
-          for (IndexType k = 0; k < NumRegs; ++k)
-            acc[k] = vec_load(&accTile[k]);
+          auto accTile = reinterpret_cast<MainVecType*>(
+            &st->accumulator.accumulation[perspective][j * MainTileHeight]);
+          for (IndexType k = 0; k < NumMainRegs; ++k)
+            acc[k] = vec_load_main(&accTile[k]);
 
           for (IndexType i = 0; states_to_update[i]; ++i)
           {
             // Difference calculation for the deactivated features
             for (const auto index : removed[i])
             {
-              const IndexType offset = HalfDimensions * index + j * TileHeight;
-              auto column = reinterpret_cast<const vec_t*>(&weights[offset]);
-              for (IndexType k = 0; k < NumRegs; ++k)
-                acc[k] = vec_sub_16(acc[k], column[k]);
+              const IndexType offset = HalfDimensions * index + j * MainTileHeight;
+              auto column = reinterpret_cast<const MainVecType*>(&weights[offset]);
+              for (IndexType k = 0; k < NumMainRegs; ++k)
+                acc[k] = vec_sub_main(acc[k], column[k]);
             }
 
             // Difference calculation for the activated features
             for (const auto index : added[i])
             {
-              const IndexType offset = HalfDimensions * index + j * TileHeight;
-              auto column = reinterpret_cast<const vec_t*>(&weights[offset]);
-              for (IndexType k = 0; k < NumRegs; ++k)
-                acc[k] = vec_add_16(acc[k], column[k]);
+              const IndexType offset = HalfDimensions * index + j * MainTileHeight;
+              auto column = reinterpret_cast<const MainVecType*>(&weights[offset]);
+              for (IndexType k = 0; k < NumMainRegs; ++k)
+                acc[k] = vec_add_main(acc[k], column[k]);
             }
 
             // Store accumulator
-            accTile = reinterpret_cast<vec_t*>(
-              &states_to_update[i]->accumulator.accumulation[perspective][j * TileHeight]);
-            for (IndexType k = 0; k < NumRegs; ++k)
-              vec_store(&accTile[k], acc[k]);
+            accTile = reinterpret_cast<MainVecType*>(
+              &states_to_update[i]->accumulator.accumulation[perspective][j * MainTileHeight]);
+            for (IndexType k = 0; k < NumMainRegs; ++k)
+              vec_store_main(&accTile[k], acc[k]);
           }
         }
 
         for (IndexType j = 0; j < PSQTBuckets / PsqtTileHeight; ++j)
         {
           // Load accumulator
-          auto accTilePsqt = reinterpret_cast<psqt_vec_t*>(
+          auto accTilePsqt = reinterpret_cast<PsqtVecType*>(
             &st->accumulator.psqtAccumulation[perspective][j * PsqtTileHeight]);
           for (std::size_t k = 0; k < NumPsqtRegs; ++k)
             psqt[k] = vec_load_psqt(&accTilePsqt[k]);
@@ -469,29 +408,30 @@ namespace Stockfish::Eval::NNUE {
             for (const auto index : removed[i])
             {
               const IndexType offset = PSQTBuckets * index + j * PsqtTileHeight;
-              auto columnPsqt = reinterpret_cast<const psqt_vec_t*>(&psqtWeights[offset]);
+              auto columnPsqt = reinterpret_cast<const PsqtVecType*>(&psqtWeights[offset]);
               for (std::size_t k = 0; k < NumPsqtRegs; ++k)
-                psqt[k] = vec_sub_psqt_32(psqt[k], columnPsqt[k]);
+                psqt[k] = vec_sub_psqt(psqt[k], columnPsqt[k]);
             }
 
             // Difference calculation for the activated features
             for (const auto index : added[i])
             {
               const IndexType offset = PSQTBuckets * index + j * PsqtTileHeight;
-              auto columnPsqt = reinterpret_cast<const psqt_vec_t*>(&psqtWeights[offset]);
+              auto columnPsqt = reinterpret_cast<const PsqtVecType*>(&psqtWeights[offset]);
               for (std::size_t k = 0; k < NumPsqtRegs; ++k)
-                psqt[k] = vec_add_psqt_32(psqt[k], columnPsqt[k]);
+                psqt[k] = vec_add_psqt(psqt[k], columnPsqt[k]);
             }
 
             // Store accumulator
-            accTilePsqt = reinterpret_cast<psqt_vec_t*>(
+            accTilePsqt = reinterpret_cast<PsqtVecType*>(
               &states_to_update[i]->accumulator.psqtAccumulation[perspective][j * PsqtTileHeight]);
             for (std::size_t k = 0; k < NumPsqtRegs; ++k)
               vec_store_psqt(&accTilePsqt[k], psqt[k]);
           }
         }
 
-  #else
+#else
+
         for (IndexType i = 0; states_to_update[i]; ++i)
         {
           std::memcpy(states_to_update[i]->accumulator.accumulation[perspective],
@@ -527,7 +467,9 @@ namespace Stockfish::Eval::NNUE {
               st->accumulator.psqtAccumulation[perspective][k] += psqtWeights[index * PSQTBuckets + k];
           }
         }
-  #endif
+
+#endif
+
       }
       else
       {
@@ -537,27 +479,28 @@ namespace Stockfish::Eval::NNUE {
         IndexList active;
         FeatureSet::append_active_indices(pos, perspective, active);
 
-  #ifdef VECTOR
-        for (IndexType j = 0; j < HalfDimensions / TileHeight; ++j)
+#if defined(SIMD_AVAILABLE)
+
+        for (IndexType j = 0; j < HalfDimensions / MainTileHeight; ++j)
         {
-          auto biasesTile = reinterpret_cast<const vec_t*>(
-              &biases[j * TileHeight]);
-          for (IndexType k = 0; k < NumRegs; ++k)
+          auto biasesTile = reinterpret_cast<const MainVecType*>(
+              &biases[j * MainTileHeight]);
+          for (IndexType k = 0; k < NumMainRegs; ++k)
             acc[k] = biasesTile[k];
 
           for (const auto index : active)
           {
-            const IndexType offset = HalfDimensions * index + j * TileHeight;
-            auto column = reinterpret_cast<const vec_t*>(&weights[offset]);
+            const IndexType offset = HalfDimensions * index + j * MainTileHeight;
+            auto column = reinterpret_cast<const MainVecType*>(&weights[offset]);
 
-            for (unsigned k = 0; k < NumRegs; ++k)
-              acc[k] = vec_add_16(acc[k], column[k]);
+            for (unsigned k = 0; k < NumMainRegs; ++k)
+              acc[k] = vec_add_main(acc[k], column[k]);
           }
 
-          auto accTile = reinterpret_cast<vec_t*>(
-              &accumulator.accumulation[perspective][j * TileHeight]);
-          for (unsigned k = 0; k < NumRegs; k++)
-            vec_store(&accTile[k], acc[k]);
+          auto accTile = reinterpret_cast<MainVecType*>(
+              &accumulator.accumulation[perspective][j * MainTileHeight]);
+          for (unsigned k = 0; k < NumMainRegs; k++)
+            vec_store_main(&accTile[k], acc[k]);
         }
 
         for (IndexType j = 0; j < PSQTBuckets / PsqtTileHeight; ++j)
@@ -568,19 +511,20 @@ namespace Stockfish::Eval::NNUE {
           for (const auto index : active)
           {
             const IndexType offset = PSQTBuckets * index + j * PsqtTileHeight;
-            auto columnPsqt = reinterpret_cast<const psqt_vec_t*>(&psqtWeights[offset]);
+            auto columnPsqt = reinterpret_cast<const PsqtVecType*>(&psqtWeights[offset]);
 
             for (std::size_t k = 0; k < NumPsqtRegs; ++k)
-              psqt[k] = vec_add_psqt_32(psqt[k], columnPsqt[k]);
+              psqt[k] = vec_add_psqt(psqt[k], columnPsqt[k]);
           }
 
-          auto accTilePsqt = reinterpret_cast<psqt_vec_t*>(
+          auto accTilePsqt = reinterpret_cast<PsqtVecType*>(
             &accumulator.psqtAccumulation[perspective][j * PsqtTileHeight]);
           for (std::size_t k = 0; k < NumPsqtRegs; ++k)
             vec_store_psqt(&accTilePsqt[k], psqt[k]);
         }
 
-  #else
+#else
+
         std::memcpy(accumulator.accumulation[perspective], biases,
             HalfDimensions * sizeof(BiasType));
 
@@ -597,12 +541,13 @@ namespace Stockfish::Eval::NNUE {
           for (std::size_t k = 0; k < PSQTBuckets; ++k)
             accumulator.psqtAccumulation[perspective][k] += psqtWeights[index * PSQTBuckets + k];
         }
-  #endif
+
+#endif
       }
 
-  #if defined(USE_MMX)
+#if defined(USE_MMX)
       _mm_empty();
-  #endif
+#endif
     }
 
     alignas(CacheLineSize) BiasType biases[HalfDimensions];
