@@ -148,7 +148,7 @@ namespace Stockfish::Eval::NNUE {
               out[i] = read_little_endian<IntType>(stream);
   }
 
-  // write_little_endian(s, out, N) : write integers in bulk to a little indian stream.
+  // write_little_endian(s, values, N) : write integers in bulk to a little indian stream.
   // This takes N integers from array values and writes them on stream s.
   template <typename IntType>
   inline void write_little_endian(std::ostream& stream, const IntType* values, std::size_t count) {
