@@ -511,7 +511,7 @@ ifeq ($(bits),64)
 	CXXFLAGS += -DIS_64BIT
 endif
 
-### 3.5 prefetch
+### 3.5 prefetch and popcount
 ifeq ($(prefetch),yes)
 	ifeq ($(sse),yes)
 		CXXFLAGS += -msse
@@ -520,7 +520,6 @@ else
 	CXXFLAGS += -DNO_PREFETCH
 endif
 
-### 3.6 popcnt
 ifeq ($(popcnt),yes)
 	ifeq ($(arch),$(filter $(arch),ppc64 armv7 armv8 arm64))
 		CXXFLAGS += -DUSE_POPCNT
@@ -531,6 +530,7 @@ ifeq ($(popcnt),yes)
 	endif
 endif
 
+### 3.6 SIMD architectures
 ifeq ($(avx2),yes)
 	CXXFLAGS += -DUSE_AVX2
 	ifeq ($(comp),$(filter $(comp),gcc clang mingw))
