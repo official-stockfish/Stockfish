@@ -1,7 +1,7 @@
 language: cpp
 dist: bionic
 
-# linux and osx??
+# linux and osx???
 matrix:
   include:
     - os: linux
