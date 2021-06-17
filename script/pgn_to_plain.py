@@ -61,7 +61,7 @@ def parse_comment_for_score(comment_str: str, board: chess.Board) -> int:
       score = 0
 
     return score
-    
+
 def parse_game(game: chess.pgn.Game, writer, start_play: int=1)->None:
     board: chess.Board = game.board()
     if not game_sanity_check(game):
@@ -105,6 +105,6 @@ def main():
                 break
             parse_game(game, f, args.start_ply)
     f.close()
-    
+
 if __name__=="__main__":
     main()
