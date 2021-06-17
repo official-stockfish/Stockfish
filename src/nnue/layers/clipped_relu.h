@@ -74,7 +74,10 @@ namespace Stockfish::Eval::NNUE::Layers {
       for (IndexType i = 0; i < InputDimensions; ++i)
       {
           int x = (input[i] >> WeightScaleBits);
-          output[i] = std::clamp(x, 0, 127);
+          if (x < 0)   x = 0;
+          if (x > 127) x = 127;
+
+          output[i] = x;
       }
 
       return output;
