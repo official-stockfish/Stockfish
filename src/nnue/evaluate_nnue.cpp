@@ -20,6 +20,8 @@
 
 #include <iostream>
 #include <set>
+#include <sstream>
+#include <iomanip>
 
 #include "../evaluate.h"
 #include "../position.h"
@@ -173,6 +175,185 @@ namespace Stockfish::Eval::NNUE {
     int sum = (A * materialist + B * positional) / 128;
 
     return static_cast<Value>( sum / OutputScale );
+  }
+
+  struct NnueEvalTrace {
+    static_assert(LayerStacks == PSQTBuckets);
+
+    Value psqt[LayerStacks];
+    Value positional[LayerStacks];
+    std::size_t correctBucket;
+  };
+
+  static NnueEvalTrace trace_evaluate(const Position& pos) {
+
+    // We manually align the arrays on the stack because with gcc < 9.3
+    // overaligning stack variables with alignas() doesn't work correctly.
+
+    constexpr uint64_t alignment = CacheLineSize;
+
+#if defined(ALIGNAS_ON_STACK_VARIABLES_BROKEN)
+    TransformedFeatureType transformedFeaturesUnaligned[
+      FeatureTransformer::BufferSize + alignment / sizeof(TransformedFeatureType)];
+    char bufferUnaligned[Network::BufferSize + alignment];
+
+    auto* transformedFeatures = align_ptr_up<alignment>(&transformedFeaturesUnaligned[0]);
+    auto* buffer = align_ptr_up<alignment>(&bufferUnaligned[0]);
+#else
+    alignas(alignment)
+      TransformedFeatureType transformedFeatures[FeatureTransformer::BufferSize];
+    alignas(alignment) char buffer[Network::BufferSize];
+#endif
+
+    ASSERT_ALIGNED(transformedFeatures, alignment);
+    ASSERT_ALIGNED(buffer, alignment);
+
+    NnueEvalTrace t{};
+    t.correctBucket = (pos.count<ALL_PIECES>() - 1) / 4;
+    for (std::size_t bucket = 0; bucket < LayerStacks; ++bucket) {
+      const auto psqt = featureTransformer->transform(pos, transformedFeatures, bucket);
+      const auto output = network[bucket]->propagate(transformedFeatures, buffer);
+
+      int materialist = psqt;
+      int positional  = output[0];
+
+      t.psqt[bucket] = static_cast<Value>( materialist / OutputScale );
+      t.positional[bucket] = static_cast<Value>( positional / OutputScale );
+    }
+
+    return t;
+  }
+
+  static const std::string PieceToChar(" PNBRQK  pnbrqk");
+
+  // Requires the buffer to have capacity for at least 5 values
+  static void format_cp_compact(Value v, char* buffer) {
+    buffer[0] = (v < 0 ? '-' : v > 0 ? '+' : ' ');
+    int cp = (int)(std::abs((float)v / PawnValueEg * 100.0f + 0.5f));
+    if (cp >= 10000) {
+      buffer[1] = '0' + cp / 10000; cp %= 10000;
+      buffer[2] = '0' + cp / 1000; cp %= 1000;
+      buffer[3] = '0' + cp / 100; cp %= 100;
+      buffer[4] = ' ';
+    }
+    else if (cp >= 1000) {
+      buffer[1] = '0' + cp / 1000; cp %= 1000;
+      buffer[2] = '0' + cp / 100; cp %= 100;
+      buffer[3] = '.';
+      buffer[4] = '0' + cp / 10;
+    }
+    else {
+      buffer[1] = '0' + cp / 100; cp %= 100;
+      buffer[2] = '.';
+      buffer[3] = '0' + cp / 10; cp %= 10;
+      buffer[4] = '0' + cp / 1;
+    }
+  }
+
+  // Requires the buffer to have capacity for at least 7 values
+  static void format_cp_aligned_dot(Value v, char* buffer) {
+    buffer[0] = (v < 0 ? '-' : v > 0 ? '+' : ' ');
+    int cp = (int)(std::abs((float)v / PawnValueEg * 100.0f + 0.5f));
+    if (cp >= 10000) {
+      buffer[1] = '0' + cp / 10000; cp %= 10000;
+      buffer[2] = '0' + cp / 1000; cp %= 1000;
+      buffer[3] = '0' + cp / 100; cp %= 100;
+      buffer[4] = '.';
+      buffer[5] = '0' + cp / 10; cp %= 10;
+      buffer[6] = '0' + cp;
+    }
+    else if (cp >= 1000) {
+      buffer[1] = ' ';
+      buffer[2] = '0' + cp / 1000; cp %= 1000;
+      buffer[3] = '0' + cp / 100; cp %= 100;
+      buffer[4] = '.';
+      buffer[5] = '0' + cp / 10;
+      buffer[6] = '0' + cp;
+    }
+    else {
+      buffer[1] = ' ';
+      buffer[2] = ' ';
+      buffer[3] = '0' + cp / 100; cp %= 100;
+      buffer[4] = '.';
+      buffer[5] = '0' + cp / 10; cp %= 10;
+      buffer[6] = '0' + cp / 1;
+    }
+  }
+
+  std::string trace(Position& pos) {
+    std::stringstream ss;
+
+    char board[3*8+1][8*8+2];
+    std::memset(board, ' ', sizeof(board));
+    for (int row = 0; row < 3*8+1; ++row) board[row][8*8+1] = '\0';
+    auto placeSquare = [&board](File file, Rank rank, Piece pc, Value value) {
+      const int x = ((int)file) * 8;
+      const int y = (7 - (int)rank) * 3;
+      for (int i = 1; i < 8; ++i) board[y][x+i] = board[y+3][x+i] = '-';
+      for (int i = 1; i < 3; ++i) board[y+i][x] = board[y+i][x+8] = '|';
+      board[y][x] = board[y][x+8] = board[y+3][x+8] = board[y+3][x] = '+';
+      if (pc != NO_PIECE)
+        board[y+1][x+4] = PieceToChar[pc];
+      if (value != VALUE_NONE) {
+        format_cp_compact(value, &board[y+2][x+2]);
+      }
+    };
+
+    Value baseValue = evaluate(pos, false);
+    baseValue = pos.side_to_move() == WHITE ? baseValue : -baseValue;
+    for (File f = FILE_A; f <= FILE_H; ++f) {
+      for (Rank r = RANK_1; r <= RANK_8; ++r) {
+        Square sq = make_square(f, r);
+        Piece pc = pos.piece_on(sq);
+        Value v = VALUE_NONE;
+        if (pc != NO_PIECE && type_of(pc) != KING) {
+          auto st = pos.state();
+
+          pos.remove_piece(sq);
+          st->accumulator.computed[WHITE] = false;
+          st->accumulator.computed[BLACK] = false;
+
+          Value eval = evaluate(pos, false);
+          eval = pos.side_to_move() == WHITE ? eval : -eval;
+          v = baseValue - eval;
+
+          pos.put_piece(pc, sq);
+          st->accumulator.computed[WHITE] = false;
+          st->accumulator.computed[BLACK] = false;
+        }
+        placeSquare(f, r, pc, v);
+      }
+    }
+
+    for (int row = 0; row < 3*8+1; ++row) {
+      ss << board[row] << '\n';
+    }
+
+    ss << '\n';
+
+    auto t = trace_evaluate(pos);
+    ss << "+------------+------------+------------+------------+\n";
+    ss << "|   Bucket   |  Material  | Positional |   Total    |\n";
+    ss << "|            |   (PSQT)   |  (Layers)  |            |\n";
+    ss << "+------------+------------+------------+------------+\n";
+    for (std::size_t bucket = 0; bucket < LayerStacks; ++bucket) {
+      char buffer[3][8];
+      std::memset(buffer, '\0', sizeof(buffer));
+      format_cp_aligned_dot(t.psqt[bucket], buffer[0]);
+      format_cp_aligned_dot(t.positional[bucket], buffer[1]);
+      format_cp_aligned_dot(t.psqt[bucket] + t.positional[bucket], buffer[2]);
+      ss << "|  " << bucket << "        "
+         << " |  " << buffer[0] << "  "
+         << " |  " << buffer[1] << "  "
+         << " |  " << buffer[2] << "  "
+         << " |";
+      if (bucket == t.correctBucket)
+        ss << " <-- this bucket is used";
+      ss << '\n';
+    }
+    ss << "+------------+------------+------------+------------+\n";
+
+    return ss.str();
   }
 
   // Load eval, from a file stream or a memory stream

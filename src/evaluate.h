@@ -30,7 +30,7 @@ class Position;
 
 namespace Eval {
 
-  std::string trace(const Position& pos);
+  std::string trace(Position& pos);
   Value evaluate(const Position& pos);
 
   extern bool useNNUE;
@@ -43,6 +43,7 @@ namespace Eval {
 
   namespace NNUE {
 
+    std::string trace(Position& pos);
     Value evaluate(const Position& pos, bool adjusted = false);
     bool load_eval(std::string name, std::istream& stream);
     bool save_eval(std::ostream& stream);

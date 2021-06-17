@@ -1150,7 +1150,7 @@ Value Eval::evaluate(const Position& pos) {
 /// descriptions and values of each evaluation term. Useful for debugging.
 /// Trace scores are from white's point of view
 
-std::string Eval::trace(const Position& pos) {
+std::string Eval::trace(Position& pos) {
 
   if (pos.checkers())
       return "Final evaluation: none (in check)";
@@ -1187,6 +1187,11 @@ std::string Eval::trace(const Position& pos) {
      << "       Total | " << Term(TOTAL);
 
   v = pos.side_to_move() == WHITE ? v : -v;
+
+  if (Eval::useNNUE)
+  {
+      ss << '\n' << NNUE::trace(pos) << '\n';
+  }
 
   ss << "\nClassical evaluation: " << to_cp(v) << " (white side)\n";
 
