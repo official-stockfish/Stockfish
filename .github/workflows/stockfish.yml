@@ -1,0 +1,201 @@
+name: Stockfish
+on:
+  push:
+    branches:
+      - master
+      - tools
+      - github_ci
+  pull_request:
+    branches:
+      - master
+      - tools
+jobs:
+  Stockfish:
+    name: ${{ matrix.config.name }}
+    runs-on: ${{ matrix.config.os }}
+    env:
+      COMPILER: ${{ matrix.config.compiler }}
+      COMP: ${{ matrix.config.comp }}
+      CXXFLAGS: "-Werror"
+    strategy:
+      matrix:
+        config:
+          - {
+              name: "Ubuntu 20.04 GCC",
+              os: ubuntu-20.04,
+              compiler: g++,
+              comp: gcc,
+              run_expensive_tests: true
+            }
+          - {
+              name: "Ubuntu 20.04 Clang",
+              os: ubuntu-20.04,
+              compiler: clang++,
+              comp: clang,
+              run_expensive_tests: false
+            }
+
+    defaults:
+      run:
+        working-directory: src
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Download required packages
+        run: |
+          sudo apt update
+          sudo apt install expect valgrind g++-multilib
+
+      - name: Download the used network from the fishtest framework
+        run: |
+          make net
+
+      - name: Extract the bench number from the commit history
+        run: |
+          git log HEAD | grep "\b[Bb]ench[ :]\+[0-9]\{7\}" | head -n 1 | sed "s/[^0-9]*\([0-9]*\).*/\1/g" > git_sig
+          [ -s git_sig ] && echo "benchref=$(cat git_sig)" >> $GITHUB_ENV && echo "Reference bench:" $(cat git_sig) || echo "No bench found"
+
+      - name: Check compiler
+        run: |
+          $COMPILER -v
+
+      - name: Test help target
+        run: |
+          make help
+
+      # x86-32 tests
+
+      - name: Test debug x86-32 build
+        run: |
+          export CXXFLAGS="-Werror -D_GLIBCXX_DEBUG"
+          make clean
+          make -j2 ARCH=x86-32 optimize=no debug=yes build
+          ../tests/signature.sh $benchref
+
+      - name: Test x86-32 build
+        run: |
+          make clean
+          make -j2 ARCH=x86-32 build
+          ../tests/signature.sh $benchref
+
+      - name: Test x86-32-sse41-popcnt build
+        run: |
+          make clean
+          make -j2 ARCH=x86-32-sse41-popcnt build
+          ../tests/signature.sh $benchref
+
+      - name: Test x86-32-sse2 build
+        run: |
+          make clean
+          make -j2 ARCH=x86-32-sse2 build
+          ../tests/signature.sh $benchref
+
+      - name: Test general-32 build
+        run: |
+          make clean
+          make -j2 ARCH=general-32 build
+          ../tests/signature.sh $benchref
+
+      # x86-64 tests
+
+      - name: Test debug x86-64-modern build
+        run: |
+          export CXXFLAGS="-Werror -D_GLIBCXX_DEBUG"
+          make clean
+          make -j2 ARCH=x86-64-modern optimize=no debug=yes build
+          ../tests/signature.sh $benchref
+
+      - name: Test x86-64-modern build
+        run: |
+          make clean
+          make -j2 ARCH=x86-64-modern build
+          ../tests/signature.sh $benchref
+
+      - name: Test x86-64-ssse3 build
+        run: |
+          make clean
+          make -j2 ARCH=x86-64-ssse3 build
+          ../tests/signature.sh $benchref
+
+      - name: Test x86-64-sse3-popcnt build
+        run: |
+          make clean
+          make -j2 ARCH=x86-64-sse3-popcnt build
+          ../tests/signature.sh $benchref
+
+      - name: Test x86-64 build
+        run: |
+          make clean
+          make -j2 ARCH=x86-64 build
+          ../tests/signature.sh $benchref
+
+      - name: Test general-64 build
+        run: |
+          make clean
+          make -j2 ARCH=general-64 build
+          ../tests/signature.sh $benchref
+
+      # x86-64 with newer extensions tests
+
+      - name: Compile x86-64-avx2 build
+        run: |
+          make clean
+          make -j2 ARCH=x86-64-avx2 build
+
+      - name: Compile x86-64-bmi2 build
+        run: |
+          make clean
+          make -j2 ARCH=x86-64-bmi2 build
+
+      - name: Compile x86-64-avx512 build
+        run: |
+          make clean
+          make -j2 ARCH=x86-64-avx512 build
+
+      - name: Compile x86-64-vnni512 build
+        run: |
+          make clean
+          make -j2 ARCH=x86-64-vnni512 build
+
+      - name: Compile x86-64-vnni256 build
+        run: |
+          make clean
+          make -j2 ARCH=x86-64-vnni256 build
+
+      # Other tests
+
+      - name: Check perft and search reproducibility
+        run: |
+          make clean
+          make -j2 ARCH=x86-64-modern build
+          ../tests/perft.sh
+          ../tests/reprosearch.sh
+
+      # Sanitizers
+
+      - name: Run under valgrind
+        if: ${{ matrix.config.run_expensive_tests }}
+        run: |
+          export CXXFLAGS="-O1 -fno-inline"
+          make clean
+          make -j2 ARCH=x86-64-modern debug=yes optimize=no build > /dev/null
+          ../tests/instrumented.sh --valgrind
+          ../tests/instrumented.sh --valgrind-thread
+
+      - name: Run with UB sanitizer
+        if: ${{ matrix.config.run_expensive_tests }}
+        run: |
+          export CXXFLAGS="-O1 -fno-inline"
+          make clean
+          make -j2 ARCH=x86-64-modern sanitize=undefined optimize=no debug=yes build > /dev/null
+          ../tests/instrumented.sh --sanitizer-undefined
+
+      - name: Run with thread sanitizer
+        if: ${{ matrix.config.run_expensive_tests }}
+        run: |
+          export CXXFLAGS="-O1 -fno-inline"
+          make clean
+          make -j2 ARCH=x86-64-modern sanitize=thread optimize=no debug=yes build > /dev/null
+          ../tests/instrumented.sh --sanitizer-thread
