@@ -232,7 +232,7 @@ namespace Stockfish::Eval::NNUE {
 
     buffer[0] = (v < 0 ? '-' : v > 0 ? '+' : ' ');
 
-    int cp = (int)(std::abs(100.0 * double(v) / PawnValueEg));
+    int cp = std::abs(100 * v / PawnValueEg);
 
     if (cp >= 10000)
     {
