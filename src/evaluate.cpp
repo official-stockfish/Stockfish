@@ -192,8 +192,7 @@ namespace {
   // Threshold for lazy and space evaluation
   constexpr Value LazyThreshold1    =  Value(1565);
   constexpr Value LazyThreshold2    =  Value(1102);
-  constexpr Value SpaceThreshold    = Value(11551);
-  constexpr Value NNUEThreshold1    =   Value(800);
+  constexpr Value SpaceThreshold    =  Value(11551);
 
   // KingAttackWeights[PieceType] contains king attack weights by piece type
   constexpr int KingAttackWeights[PIECE_TYPE_NB] = { 0, 0, 81, 52, 44, 10 };
@@ -1103,14 +1102,14 @@ Value Eval::evaluate(const Position& pos) {
          return nnue;
       };
 
-      // If there is PSQ imbalance we use the classical eval.
+      // If there is PSQ imbalance we use the classical eval, but we switch to
+      // NNUE eval faster when shuffling or if the material on the board is high.
+      int r50 = pos.rule50_count();
       Value psq = Value(abs(eg_value(pos.psq_score())));
-      int   r50 = 16 + pos.rule50_count();
-      bool  largePsq = psq * 16 > (NNUEThreshold1 + pos.non_pawn_material() / 64) * r50;
+      bool classical = psq * 5 > (750 + pos.non_pawn_material() / 64) * (5 + r50);
 
-      v = largePsq ? Evaluation<NO_TRACE>(pos).value()  // classical
-                   : adjusted_NNUE();                   // NNUE
-
+      v = classical ? Evaluation<NO_TRACE>(pos).value()  // classical
+                    : adjusted_NNUE();                   // NNUE
   }
 
   // Damp down the evaluation linearly when shuffling
