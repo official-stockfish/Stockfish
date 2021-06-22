@@ -300,37 +300,48 @@ namespace Stockfish::Eval::NNUE {
 
     std::stringstream ss;
 
-    char board[3*8+1][8*8+2];
+    static constexpr int squareWidth = 8;
+    static constexpr int squareHeight = 5;
+    static_assert(squareWidth >= 8);
+    static_assert(squareHeight >= 5);
+
+    char board[squareHeight*8+1][squareWidth*8+2];
     std::memset(board, ' ', sizeof(board));
-    for (int row = 0; row < 3*8+1; ++row)
-      board[row][8*8+1] = '\0';
+    for (int row = 0; row < squareHeight*8+1; ++row)
+      board[row][squareWidth*8+1] = '\0';
 
     // A lambda to output one box of the board
-    auto writeSquare = [&board](File file, Rank rank, Piece pc, Value value) {
+    auto writeSquare = [&board](File file, Rank rank, Piece pc, Value value0, Value value1, Value value2) {
 
-      const int x = ((int)file) * 8;
-      const int y = (7 - (int)rank) * 3;
-      for (int i = 1; i < 8; ++i)
-         board[y][x+i] = board[y+3][x+i] = '-';
-      for (int i = 1; i < 3; ++i)
-         board[y+i][x] = board[y+i][x+8] = '|';
-      board[y][x] = board[y][x+8] = board[y+3][x+8] = board[y+3][x] = '+';
+      const int x = ((int)file) * squareWidth;
+      const int y = (7 - (int)rank) * squareHeight;
+      for (int i = 1; i < squareWidth; ++i)
+         board[y][x+i] = board[y+squareHeight][x+i] = '-';
+      for (int i = 1; i < squareHeight; ++i)
+         board[y+i][x] = board[y+i][x+squareWidth] = '|';
+      board[y][x] = board[y][x+squareWidth] = board[y+squareHeight][x+squareWidth] = board[y+squareHeight][x] = '+';
       if (pc != NO_PIECE)
         board[y+1][x+4] = PieceToChar[pc];
-      if (value != VALUE_NONE)
-        format_cp_compact(value, &board[y+2][x+2]);
+      if (value0 != VALUE_NONE)
+        format_cp_compact(value0, &board[y+2][x+2]);
+      if (value1 != VALUE_NONE)
+        format_cp_compact(value1, &board[y+3][x+2]);
+      if (value2 != VALUE_NONE)
+        format_cp_compact(value2, &board[y+4][x+2]);
     };
 
     // We estimate the value of each piece by doing a differential evaluation from
     // the current base eval, simulating the removal of the piece from its square.
-    Value base = evaluate(pos);
+    auto base = trace_evaluate(pos);
 
     for (File f = FILE_A; f <= FILE_H; ++f)
       for (Rank r = RANK_1; r <= RANK_8; ++r)
       {
         Square sq = make_square(f, r);
         Piece pc = pos.piece_on(sq);
-        Value v = VALUE_NONE;
+        Value v0 = VALUE_NONE;
+        Value v1 = VALUE_NONE;
+        Value v2 = VALUE_NONE;
 
         if (pc != NO_PIECE && type_of(pc) != KING)
         {
@@ -340,24 +351,27 @@ namespace Stockfish::Eval::NNUE {
           st->accumulator.computed[WHITE] = false;
           st->accumulator.computed[BLACK] = false;
 
-          Value eval = evaluate(pos);
-          v = base - eval;
-          v = pos.side_to_move() == WHITE ? v : -v;
+          auto eval = trace_evaluate(pos);
+          Value psqt_diff = base.psqt[base.correctBucket] - eval.psqt[eval.correctBucket];
+          Value pos_diff = base.positional[base.correctBucket] - eval.positional[eval.correctBucket];
+          psqt_diff = pos.side_to_move() == WHITE ? psqt_diff : -psqt_diff;
+          pos_diff = pos.side_to_move() == WHITE ? pos_diff : -pos_diff;
+          v0 = psqt_diff;
+          v1 = pos_diff;
+          v2 = v0 + v1;
 
           pos.put_piece(pc, sq);
           st->accumulator.computed[WHITE] = false;
           st->accumulator.computed[BLACK] = false;
         }
 
-        writeSquare(f, r, pc, v);
+        writeSquare(f, r, pc, v0, v1, v2);
       }
 
-    ss << " NNUE derived piece values (white side):\n";
-    for (int row = 0; row < 3*8+1; ++row)
+    ss << " NNUE derived piece values (white side) [order: material, positional, total]:\n";
+    for (int row = 0; row < squareHeight*8+1; ++row)
         ss << board[row] << '\n';
     ss << '\n';
-
-    auto t = trace_evaluate(pos);
 
     ss << " NNUE network contributions (white side)\n"
        << "+------------+------------+------------+------------+\n"
@@ -372,20 +386,20 @@ namespace Stockfish::Eval::NNUE {
 
       if (pos.side_to_move() == BLACK)
       {
-        t.psqt[bucket] *= -1;
-        t.positional[bucket] *= -1;
+        base.psqt[bucket] *= -1;
+        base.positional[bucket] *= -1;
       }
 
-      format_cp_aligned_dot(t.psqt[bucket], buffer[0]);
-      format_cp_aligned_dot(t.positional[bucket], buffer[1]);
-      format_cp_aligned_dot(t.psqt[bucket] + t.positional[bucket], buffer[2]);
+      format_cp_aligned_dot(base.psqt[bucket], buffer[0]);
+      format_cp_aligned_dot(base.positional[bucket], buffer[1]);
+      format_cp_aligned_dot(base.psqt[bucket] + base.positional[bucket], buffer[2]);
 
       ss <<  "|  " << bucket    << "        "
          << " |  " << buffer[0] << "  "
          << " |  " << buffer[1] << "  "
          << " |  " << buffer[2] << "  "
          << " |";
-      if (bucket == t.correctBucket)
+      if (bucket == base.correctBucket)
           ss << " <-- this bucket is used";
       ss << '\n';
     }
