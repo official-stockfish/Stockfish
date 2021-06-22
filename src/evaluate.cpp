@@ -1172,17 +1172,21 @@ std::string Eval::trace(Position& pos) {
   ss << std::showpoint << std::showpos << std::fixed << std::setprecision(2) << std::setw(15);
 
   v = pos.side_to_move() == WHITE ? v : -v;
-  ss << "\nClassical evaluation   " << to_cp(v) << " (white side)\n";
+  ss << "\nClassical evaluation       " << to_cp(v) << " (white side)\n";
   if (Eval::useNNUE)
   {
       v = NNUE::evaluate(pos, false);
       v = pos.side_to_move() == WHITE ? v : -v;
-      ss << "NNUE evaluation        " << to_cp(v) << " (white side)\n";
+      ss << "NNUE evaluation            " << to_cp(v) << " (white side)\n";
+
+      v = NNUE::evaluate(pos, true);
+      v = pos.side_to_move() == WHITE ? v : -v;
+      ss << "NNUE evaluation (adjusted) " << to_cp(v) << " (white side)\n";
   }
 
   v = evaluate(pos);
   v = pos.side_to_move() == WHITE ? v : -v;
-  ss << "Final evaluation       " << to_cp(v) << " (white side)";
+  ss << "Final evaluation           " << to_cp(v) << " (white side)";
   if (Eval::useNNUE)
      ss << " [with scaled NNUE, hybrid, ...]";
   ss << "\n";
