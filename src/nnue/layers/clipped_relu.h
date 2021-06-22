@@ -175,9 +175,12 @@ namespace Stockfish::Eval::NNUE::Layers {
       constexpr IndexType Start = 0;
   #endif
 
-      for (IndexType i = Start; i < InputDimensions; ++i) {
-        output[i] = static_cast<OutputType>(
-            std::max(0, std::min(127, input[i] >> WeightScaleBits)));
+      if constexpr (Start < InputDimensions)
+      {
+        for (IndexType i = Start; i < InputDimensions; ++i) {
+          output[i] = static_cast<OutputType>(
+              std::max(0, std::min(127, input[i] >> WeightScaleBits)));
+        }
       }
       return output;
     }
