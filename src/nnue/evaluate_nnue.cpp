@@ -324,7 +324,6 @@ namespace Stockfish::Eval::NNUE {
     // We estimate the value of each piece by doing a differential evaluation from
     // the current base eval, simulating the removal of the piece from its square.
     Value base = evaluate(pos);
-    base = pos.side_to_move() == WHITE ? base : -base;
 
     for (File f = FILE_A; f <= FILE_H; ++f)
       for (Rank r = RANK_1; r <= RANK_8; ++r)
@@ -342,8 +341,8 @@ namespace Stockfish::Eval::NNUE {
           st->accumulator.computed[BLACK] = false;
 
           Value eval = evaluate(pos);
-          eval = pos.side_to_move() == WHITE ? eval : -eval;
           v = base - eval;
+          v = pos.side_to_move() == WHITE ? v : -v;
 
           pos.put_piece(pc, sq);
           st->accumulator.computed[WHITE] = false;
@@ -353,15 +352,14 @@ namespace Stockfish::Eval::NNUE {
         writeSquare(f, r, pc, v);
       }
 
-    ss << " NNUE derived piece values:\n";
+    ss << " NNUE derived piece values (white side):\n";
     for (int row = 0; row < 3*8+1; ++row)
         ss << board[row] << '\n';
     ss << '\n';
 
     auto t = trace_evaluate(pos);
 
-    ss << " NNUE network contributions "
-       << (pos.side_to_move() == WHITE ? "(White to move)" : "(Black to move)") << std::endl
+    ss << " NNUE network contributions (white side)\n"
        << "+------------+------------+------------+------------+\n"
        << "|   Bucket   |  Material  | Positional |   Total    |\n"
        << "|            |   (PSQT)   |  (Layers)  |            |\n"
@@ -371,6 +369,12 @@ namespace Stockfish::Eval::NNUE {
     {
       char buffer[3][8];
       std::memset(buffer, '\0', sizeof(buffer));
+
+      if (pos.side_to_move() == BLACK)
+      {
+        t.psqt[bucket] *= -1;
+        t.positional[bucket] *= -1;
+      }
 
       format_cp_aligned_dot(t.psqt[bucket], buffer[0]);
       format_cp_aligned_dot(t.positional[bucket], buffer[1]);
