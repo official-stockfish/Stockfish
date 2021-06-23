@@ -223,7 +223,7 @@ void MainThread::search() {
 
   Thread* bestThread = this;
 
-  if (   int(Options["MultiPV"]) == 1
+  if (static_cast<int>(Options["MultiPV"]) == 1
       && !Limits.depth
       && !(Skill(static_cast<int>(Options["Skill Level"])).enabled() || static_cast<int>(Options["UCI_LimitStrength"]))
       && rootMoves[0].pv[0] != MOVE_NONE)
