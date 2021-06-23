@@ -109,7 +109,7 @@ namespace Stockfish::Eval::NNUE {
   {
     write_little_endian<std::uint32_t>(stream, Version);
     write_little_endian<std::uint32_t>(stream, hashValue);
-    write_little_endian<std::uint32_t>(stream, desc.size());
+    write_little_endian<std::uint32_t>(stream, static_cast<uint32_t>(desc.size()));
     stream.write(&desc[0], desc.size());
     return !stream.fail();
   }

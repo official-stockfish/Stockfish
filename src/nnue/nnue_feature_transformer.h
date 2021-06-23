@@ -123,8 +123,10 @@ namespace Stockfish::Eval::NNUE {
       // We use __m* types as template arguments, which causes GCC to emit warnings
       // about losing some attribute information. This is irrelevant to us as we
       // only take their size, so the following pragma are harmless.
+#ifndef _MSC_VER
       #pragma GCC diagnostic push
       #pragma GCC diagnostic ignored "-Wignored-attributes"
+#endif
 
       template <typename SIMDRegisterType,
                 typename LaneType,
@@ -157,7 +159,9 @@ namespace Stockfish::Eval::NNUE {
       static constexpr int NumRegs     = BestRegisterCount<vec_t, WeightType, TransformedFeatureDimensions, NumRegistersSIMD>();
       static constexpr int NumPsqtRegs = BestRegisterCount<psqt_vec_t, PSQTWeightType, PSQTBuckets, NumRegistersSIMD>();
 
+#ifndef _MSC_VER
       #pragma GCC diagnostic pop
+#endif
 
   #endif
 
@@ -215,7 +219,7 @@ namespace Stockfish::Eval::NNUE {
     }
 
     // Convert input features
-    std::int32_t transform(const Position& pos, OutputType* output, int bucket) const {
+    std::int32_t transform(const Position& pos, OutputType* output, std::size_t bucket) const {
       update_accumulator(pos, WHITE);
       update_accumulator(pos, BLACK);
 
