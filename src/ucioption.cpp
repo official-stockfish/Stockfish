@@ -129,8 +129,8 @@ Option::Option(const char* v, const char* cur, OnChange f) : type("combo"), min(
 { defaultValue = v; currentValue = cur; }
 
 Option::operator double() const {
-    assert(type == "check" || type == "spin");
-    return (type == "spin" ? stof(currentValue) : currentValue == "true");
+  assert(type == "check" || type == "spin");
+  return (type == "spin" ? stof(currentValue) : currentValue == "true");
 }
 
 Option::operator std::string() const {
