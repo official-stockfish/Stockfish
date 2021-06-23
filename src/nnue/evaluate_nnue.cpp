@@ -227,69 +227,46 @@ namespace Stockfish::Eval::NNUE {
 
   static const std::string PieceToChar(" PNBRQK  pnbrqk");
 
-  // Requires the buffer to have capacity for at least 5 values
+
+  // format_cp_compact() converts a Value into (centi)pawns and writes it in a buffer.
+  // The buffer must have capacity for at least 5 chars.
   static void format_cp_compact(Value v, char* buffer) {
 
     buffer[0] = (v < 0 ? '-' : v > 0 ? '+' : ' ');
 
     int cp = std::abs(100 * v / PawnValueEg);
-
     if (cp >= 10000)
     {
-      buffer[1] = '0' + cp / 10000; cp %= 10000;
-      buffer[2] = '0' + cp / 1000; cp %= 1000;
-      buffer[3] = '0' + cp / 100; cp %= 100;
-      buffer[4] = ' ';
+        buffer[1] = '0' + cp / 10000; cp %= 10000;
+        buffer[2] = '0' + cp / 1000; cp %= 1000;
+        buffer[3] = '0' + cp / 100; cp %= 100;
+        buffer[4] = ' ';
     }
     else if (cp >= 1000)
     {
-      buffer[1] = '0' + cp / 1000; cp %= 1000;
-      buffer[2] = '0' + cp / 100; cp %= 100;
-      buffer[3] = '.';
-      buffer[4] = '0' + cp / 10;
+        buffer[1] = '0' + cp / 1000; cp %= 1000;
+        buffer[2] = '0' + cp / 100; cp %= 100;
+        buffer[3] = '.';
+        buffer[4] = '0' + cp / 10;
     }
     else
     {
-      buffer[1] = '0' + cp / 100; cp %= 100;
-      buffer[2] = '.';
-      buffer[3] = '0' + cp / 10; cp %= 10;
-      buffer[4] = '0' + cp / 1;
+        buffer[1] = '0' + cp / 100; cp %= 100;
+        buffer[2] = '.';
+        buffer[3] = '0' + cp / 10; cp %= 10;
+        buffer[4] = '0' + cp / 1;
     }
   }
 
-  // Requires the buffer to have capacity for at least 7 values
+
+  // format_cp_aligned_dot() converts a Value into (centi)pawns and writes it in a buffer,
+  // always keeping two decimals. The buffer must have capacity for at least 7 chars.
   static void format_cp_aligned_dot(Value v, char* buffer) {
+
     buffer[0] = (v < 0 ? '-' : v > 0 ? '+' : ' ');
 
-    int cp = std::abs(100 * v / PawnValueEg);
-
-    if (cp >= 10000)
-    {
-      buffer[1] = '0' + cp / 10000; cp %= 10000;
-      buffer[2] = '0' + cp / 1000; cp %= 1000;
-      buffer[3] = '0' + cp / 100; cp %= 100;
-      buffer[4] = '.';
-      buffer[5] = '0' + cp / 10; cp %= 10;
-      buffer[6] = '0' + cp;
-    }
-    else if (cp >= 1000)
-    {
-      buffer[1] = ' ';
-      buffer[2] = '0' + cp / 1000; cp %= 1000;
-      buffer[3] = '0' + cp / 100; cp %= 100;
-      buffer[4] = '.';
-      buffer[5] = '0' + cp / 10; cp %= 10;
-      buffer[6] = '0' + cp;
-    }
-    else
-    {
-      buffer[1] = ' ';
-      buffer[2] = ' ';
-      buffer[3] = '0' + cp / 100; cp %= 100;
-      buffer[4] = '.';
-      buffer[5] = '0' + cp / 10; cp %= 10;
-      buffer[6] = '0' + cp / 1;
-    }
+    double cp = 1.0 * std::abs(int(v)) / PawnValueEg;
+    sprintf(&buffer[1], "%6.2f", cp);
   }
 
 
