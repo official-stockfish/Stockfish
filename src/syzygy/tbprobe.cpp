@@ -535,14 +535,14 @@ int decompress_pairs(PairsData* d, uint64_t idx) {
 
     // Then we read the corresponding SparseIndex[] entry
     uint32_t block = number<uint32_t, LittleEndian>(&d->sparseIndex[k].block);
-    size_t offset  = number<uint16_t, LittleEndian>(&d->sparseIndex[k].offset);
+    int offset     = number<uint16_t, LittleEndian>(&d->sparseIndex[k].offset);
 
     // Now compute the difference idx - I(k). From definition of k we know that
     //
     //       idx = k * d->span + idx % d->span    (2)
     //
     // So from (1) and (2) we can compute idx - I(K):
-    size_t diff = idx % d->span - d->span / 2;
+    int diff = idx % d->span - d->span / 2;
 
     // Sum the above to offset to find the offset corresponding to our idx
     offset += diff;
@@ -1002,7 +1002,7 @@ uint8_t* set_sizes(PairsData* d, uint8_t* data) {
     // Starting from this we compute a base64[] table indexed by symbol length
     // and containing 64 bit values so that d->base64[i] >= d->base64[i+1].
     // See https://en.wikipedia.org/wiki/Huffman_coding
-    for (size_t i = d->base64.size() - 2; i >= 0; --i) {
+    for (int i = d->base64.size() - 2; i >= 0; --i) {
         d->base64[i] = (d->base64[i + 1] + number<Sym, LittleEndian>(&d->lowestSym[i])
                                          - number<Sym, LittleEndian>(&d->lowestSym[i + 1])) / 2;
 
