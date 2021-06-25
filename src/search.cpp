@@ -1104,6 +1104,9 @@ moves_loop: // When in check, search starts from here
       newDepth += extension;
       ss->doubleExtensions = (ss-1)->doubleExtensions + (extension == 2);
 
+      // Speculative prefetch as early as possible
+      prefetch(TT.first_entry(pos.key_after(move)));
+
       // Update the current move (this must be done after singular extension search)
       ss->currentMove = move;
       ss->continuationHistory = &thisThread->continuationHistory[ss->inCheck]
@@ -1504,6 +1507,9 @@ moves_loop: // When in check, search starts from here
       if (    bestValue > VALUE_TB_LOSS_IN_MAX_PLY
           && !pos.see_ge(move))
           continue;
+
+      // Speculative prefetch as early as possible
+      prefetch(TT.first_entry(pos.key_after(move)));
 
       // Check for legality just before making the move
       if (!pos.legal(move))
