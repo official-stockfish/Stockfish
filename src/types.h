@@ -26,15 +26,6 @@
 /// need to be set manually:
 ///
 /// -DNDEBUG      | Disable debugging mode. Always use this for release.
-///
-/// -DNO_PREFETCH | Disable use of prefetch asm-instruction. You may need this to
-///               | run on some very old machines.
-///
-/// -DUSE_POPCNT  | Add runtime support for use of popcnt asm-instruction. Works
-///               | only in 64-bit mode and requires hardware with popcnt support.
-///
-/// -DUSE_PEXT    | Add runtime support for use of pext asm-instruction. Works
-///               | only in 64-bit mode and requires hardware with pext support.
 
 #include <cassert>
 #include <cctype>
@@ -68,34 +59,7 @@
 #  define IS_64BIT
 #endif
 
-#if defined(USE_POPCNT) && (defined(__INTEL_COMPILER) || defined(_MSC_VER))
-#  include <nmmintrin.h> // Intel and Microsoft header for _mm_popcnt_u64()
-#endif
-
-#if !defined(NO_PREFETCH) && (defined(__INTEL_COMPILER) || defined(_MSC_VER))
-#  include <xmmintrin.h> // Intel and Microsoft header for _mm_prefetch()
-#endif
-
-#if defined(USE_PEXT)
-#  include <immintrin.h> // Header for _pext_u64() intrinsic
-#  define pext(b, m) _pext_u64(b, m)
-#else
-#  define pext(b, m) 0
-#endif
-
 namespace Stockfish {
-
-#ifdef USE_POPCNT
-constexpr bool HasPopCnt = true;
-#else
-constexpr bool HasPopCnt = false;
-#endif
-
-#ifdef USE_PEXT
-constexpr bool HasPext = true;
-#else
-constexpr bool HasPext = false;
-#endif
 
 #ifdef IS_64BIT
 constexpr bool Is64Bit = true;

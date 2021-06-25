@@ -80,18 +80,6 @@ jobs:
           make -j2 ARCH=x86-32 build
           ../tests/signature.sh $benchref
 
-      - name: Test x86-32-sse41-popcnt build
-        run: |
-          make clean
-          make -j2 ARCH=x86-32-sse41-popcnt build
-          ../tests/signature.sh $benchref
-
-      - name: Test x86-32-sse2 build
-        run: |
-          make clean
-          make -j2 ARCH=x86-32-sse2 build
-          ../tests/signature.sh $benchref
-
       - name: Test general-32 build
         run: |
           make clean
@@ -99,31 +87,6 @@ jobs:
           ../tests/signature.sh $benchref
 
       # x86-64 tests
-
-      - name: Test debug x86-64-modern build
-        run: |
-          export CXXFLAGS="-Werror -D_GLIBCXX_DEBUG"
-          make clean
-          make -j2 ARCH=x86-64-modern optimize=no debug=yes build
-          ../tests/signature.sh $benchref
-
-      - name: Test x86-64-modern build
-        run: |
-          make clean
-          make -j2 ARCH=x86-64-modern build
-          ../tests/signature.sh $benchref
-
-      - name: Test x86-64-ssse3 build
-        run: |
-          make clean
-          make -j2 ARCH=x86-64-ssse3 build
-          ../tests/signature.sh $benchref
-
-      - name: Test x86-64-sse3-popcnt build
-        run: |
-          make clean
-          make -j2 ARCH=x86-64-sse3-popcnt build
-          ../tests/signature.sh $benchref
 
       - name: Test x86-64 build
         run: |
@@ -137,39 +100,12 @@ jobs:
           make -j2 ARCH=general-64 build
           ../tests/signature.sh $benchref
 
-      # x86-64 with newer extensions tests
-
-      - name: Compile x86-64-avx2 build
-        run: |
-          make clean
-          make -j2 ARCH=x86-64-avx2 build
-
-      - name: Compile x86-64-bmi2 build
-        run: |
-          make clean
-          make -j2 ARCH=x86-64-bmi2 build
-
-      - name: Compile x86-64-avx512 build
-        run: |
-          make clean
-          make -j2 ARCH=x86-64-avx512 build
-
-      - name: Compile x86-64-vnni512 build
-        run: |
-          make clean
-          make -j2 ARCH=x86-64-vnni512 build
-
-      - name: Compile x86-64-vnni256 build
-        run: |
-          make clean
-          make -j2 ARCH=x86-64-vnni256 build
-
       # Other tests
 
       - name: Check perft and search reproducibility
         run: |
           make clean
-          make -j2 ARCH=x86-64-modern build
+          make -j2 ARCH=x86-64 build
           ../tests/perft.sh
           ../tests/reprosearch.sh
 
@@ -180,7 +116,7 @@ jobs:
         run: |
           export CXXFLAGS="-O1 -fno-inline"
           make clean
-          make -j2 ARCH=x86-64-modern debug=yes optimize=no build > /dev/null
+          make -j2 ARCH=x86-64 debug=yes optimize=no build > /dev/null
           ../tests/instrumented.sh --valgrind
           ../tests/instrumented.sh --valgrind-thread
 
@@ -189,7 +125,7 @@ jobs:
         run: |
           export CXXFLAGS="-O1 -fno-inline"
           make clean
-          make -j2 ARCH=x86-64-modern sanitize=undefined optimize=no debug=yes build > /dev/null
+          make -j2 ARCH=x86-64 sanitize=undefined optimize=no debug=yes build > /dev/null
           ../tests/instrumented.sh --sanitizer-undefined
 
       - name: Run with thread sanitizer
@@ -197,5 +133,5 @@ jobs:
         run: |
           export CXXFLAGS="-O1 -fno-inline"
           make clean
-          make -j2 ARCH=x86-64-modern sanitize=thread optimize=no debug=yes build > /dev/null
+          make -j2 ARCH=x86-64 sanitize=thread optimize=no debug=yes build > /dev/null
           ../tests/instrumented.sh --sanitizer-thread

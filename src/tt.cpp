@@ -64,11 +64,11 @@ void TranspositionTable::resize(size_t mbSize) {
 
   Threads.main()->wait_for_search_finished();
 
-  aligned_large_pages_free(table);
+  std_aligned_free(table);
 
   clusterCount = mbSize * 1024 * 1024 / sizeof(Cluster);
 
-  table = static_cast<Cluster*>(aligned_large_pages_alloc(clusterCount * sizeof(Cluster)));
+  table = static_cast<Cluster*>(std_aligned_alloc(alignof(Cluster), clusterCount * sizeof(Cluster)));
   if (!table)
   {
       std::cerr << "Failed to allocate " << mbSize
@@ -90,11 +90,6 @@ void TranspositionTable::clear() {
   for (size_t idx = 0; idx < Options["Threads"]; ++idx)
   {
       threads.emplace_back([this, idx]() {
-
-          // Thread binding gives faster search on systems with a first-touch policy
-          if (Options["Threads"] > 8)
-              WinProcGroup::bindThisThread(idx);
-
           // Each thread will zero its part of the hash table
           const size_t stride = size_t(clusterCount / Options["Threads"]),
                        start  = size_t(stride * idx),

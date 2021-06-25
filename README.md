@@ -223,31 +223,6 @@ more compact than Nalimov tablebases, while still storing all information
 needed for optimal play and in addition being able to take into account
 the 50-move rule.
 
-## Large Pages
-
-Stockfish supports large pages on Linux and Windows. Large pages make
-the hash access more efficient, improving the engine speed, especially
-on large hash sizes. Typical increases are 5..10% in terms of nodes per
-second, but speed increases up to 30% have been measured. The support is
-automatic. Stockfish attempts to use large pages when available and
-will fall back to regular memory allocation when this is not the case.
-
-### Support on Linux
-
-Large page support on Linux is obtained by the Linux kernel
-transparent huge pages functionality. Typically, transparent huge pages
-are already enabled, and no configuration is needed.
-
-### Support on Windows
-
-The use of large pages requires "Lock Pages in Memory" privilege. See
-[Enable the Lock Pages in Memory Option (Windows)](https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/enable-the-lock-pages-in-memory-option-windows)
-on how to enable this privilege, then run [RAMMap](https://docs.microsoft.com/en-us/sysinternals/downloads/rammap)
-to double-check that large pages are used. We suggest that you reboot
-your computer after you have enabled large pages, because long Windows
-sessions suffer from memory fragmentation, which may prevent Stockfish
-from getting large pages: a fresh session is better in this regard.
-
 ## Compiling Stockfish yourself from the sources
 
 Stockfish has support for 32 or 64-bit CPUs, certain hardware

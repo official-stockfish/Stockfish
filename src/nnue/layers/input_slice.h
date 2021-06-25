@@ -29,9 +29,6 @@ namespace Stockfish::Eval::NNUE::Layers {
 template <IndexType OutDims, IndexType Offset = 0>
 class InputSlice {
  public:
-  // Need to maintain alignment
-  static_assert(Offset % MaxSimdWidth == 0, "");
-
   // Output type
   using OutputType = TransformedFeatureType;
 

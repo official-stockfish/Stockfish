@@ -32,12 +32,9 @@ namespace Stockfish {
 
 std::string engine_info(bool to_uci = false);
 std::string compiler_info();
-void prefetch(void* addr);
 void start_logger(const std::string& fname);
 void* std_aligned_alloc(size_t alignment, size_t size);
 void std_aligned_free(void* ptr);
-void* aligned_large_pages_alloc(size_t size); // memory aligned by page size, min alignment: 4096 bytes
-void aligned_large_pages_free(void* mem); // nop if mem == nullptr
 
 void dbg_hit_on(bool b);
 void dbg_hit_on(bool c, bool b);
@@ -176,16 +173,6 @@ inline uint64_t mul_hi64(uint64_t a, uint64_t b) {
     uint64_t c3 = aL * bH + (uint32_t)c2;
     return aH * bH + (c2 >> 32) + (c3 >> 32);
 #endif
-}
-
-/// Under Windows it is not possible for a process to run on more than one
-/// logical processor group. This usually means to be limited to use max 64
-/// cores. To overcome this, some special platform specific API should be
-/// called to set group affinity for each thread. Original code from Texel by
-/// Peter Österlund.
-
-namespace WinProcGroup {
-  void bindThisThread(size_t idx);
 }
 
 namespace CommandLine {

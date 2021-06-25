@@ -35,7 +35,7 @@
 namespace Stockfish::Eval::NNUE {
 
   // Input feature converter
-  LargePagePtr<FeatureTransformer> featureTransformer;
+  AlignedPtr<FeatureTransformer> featureTransformer;
 
   // Evaluation function
   AlignedPtr<Network> network[LayerStacks];
@@ -51,14 +51,6 @@ namespace Stockfish::Eval::NNUE {
   void initialize(AlignedPtr<T>& pointer) {
 
     pointer.reset(reinterpret_cast<T*>(std_aligned_alloc(alignof(T), sizeof(T))));
-    std::memset(pointer.get(), 0, sizeof(T));
-  }
-
-  template <typename T>
-  void initialize(LargePagePtr<T>& pointer) {
-
-    static_assert(alignof(T) <= 4096, "aligned_large_pages_alloc() may fail for such a big alignment requirement of T");
-    pointer.reset(reinterpret_cast<T*>(aligned_large_pages_alloc(sizeof(T))));
     std::memset(pointer.get(), 0, sizeof(T));
   }
 
