@@ -124,8 +124,15 @@ ifeq ($(ARCH),x86-64-bmi2)
 	pext = yes
 endif
 
+ifeq ($(ARCH),armv8.2)
+        arch = armv8.2
+	bits = 64
+	prefetch = yes
+endif
+
+
 ifeq ($(ARCH),armv7)
-	arch = armv7
+        arch = armv7
 	prefetch = yes
 endif
 
@@ -160,11 +167,7 @@ ifeq ($(COMP),gcc)
 	CXX=g++
 	CXXFLAGS += -pedantic -Wextra -Wshadow
 
-	ifeq ($(ARCH),armv7)
-		ifeq ($(OS),Android)
-			CXXFLAGS += -m$(bits)
-			LDFLAGS += -m$(bits)
-		endif
+	ifeq ($(ARCH),armv8.2)
 	else
 		CXXFLAGS += -m$(bits)
 		LDFLAGS += -m$(bits)
@@ -217,11 +220,7 @@ ifeq ($(COMP),clang)
 	endif
 	endif
 
-	ifeq ($(ARCH),armv7)
-		ifeq ($(OS),Android)
-			CXXFLAGS += -m$(bits)
-			LDFLAGS += -m$(bits)
-		endif
+	ifeq ($(ARCH),armv8.2)
 	else
 		CXXFLAGS += -m$(bits)
 		LDFLAGS += -m$(bits)
@@ -386,6 +385,7 @@ help:
 	@echo "x86-32-old              > x86 32-bit fall back for old hardware"
 	@echo "ppc-64                  > PPC 64-bit"
 	@echo "ppc-32                  > PPC 32-bit"
+	@echo "armv8		       > ARMv8 64-bit"
 	@echo "armv7                   > ARMv7 32-bit"
 	@echo "general-64              > unspecified 64-bit"
 	@echo "general-32              > unspecified 32-bit"
@@ -488,7 +488,7 @@ config-sanity:
 	@test "$(sanitize)" = "undefined" || test "$(sanitize)" = "thread" || test "$(sanitize)" = "address" || test "$(sanitize)" = "no"
 	@test "$(optimize)" = "yes" || test "$(optimize)" = "no"
 	@test "$(arch)" = "any" || test "$(arch)" = "x86_64" || test "$(arch)" = "i386" || \
-	 test "$(arch)" = "ppc64" || test "$(arch)" = "ppc" || test "$(arch)" = "armv7"
+	 test "$(arch)" = "ppc64" || test "$(arch)" = "ppc" || test "$(arch)" = "armv7" || test "$(arch)" = "armv8.2"
 	@test "$(bits)" = "32" || test "$(bits)" = "64"
 	@test "$(prefetch)" = "yes" || test "$(prefetch)" = "no"
 	@test "$(popcnt)" = "yes" || test "$(popcnt)" = "no"
