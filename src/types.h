@@ -42,18 +42,9 @@
 #include <cstdlib>
 #include <algorithm>
 
-#if defined(_MSC_VER)
-// Disable some silly and noisy warning from MSVC compiler
-#pragma warning(disable: 4127) // Conditional expression is constant
-#pragma warning(disable: 4146) // Unary minus operator applied to unsigned type
-#pragma warning(disable: 4800) // Forcing value to bool 'true' or 'false'
-#endif
-
 /// Predefined macros hell:
 ///
-/// __GNUC__           Compiler is gcc, Clang or Intel on Linux
-/// __INTEL_COMPILER   Compiler is Intel
-/// _MSC_VER           Compiler is MSVC or Intel on Windows
+/// __GNUC__           Compiler is GCC or Clang on Linux
 /// _WIN32             Building on Windows (any)
 /// _WIN64             Building on Windows 64 bit
 
@@ -62,19 +53,6 @@
 #endif
 
 #define ASSERT_ALIGNED(ptr, alignment) assert(reinterpret_cast<uintptr_t>(ptr) % alignment == 0)
-
-#if defined(_WIN64) && defined(_MSC_VER) // No Makefile used
-#  include <intrin.h> // Microsoft header for _BitScanForward64()
-#  define IS_64BIT
-#endif
-
-#if defined(USE_POPCNT) && (defined(__INTEL_COMPILER) || defined(_MSC_VER))
-#  include <nmmintrin.h> // Intel and Microsoft header for _mm_popcnt_u64()
-#endif
-
-#if !defined(NO_PREFETCH) && (defined(__INTEL_COMPILER) || defined(_MSC_VER))
-#  include <xmmintrin.h> // Intel and Microsoft header for _mm_prefetch()
-#endif
 
 #if defined(USE_PEXT)
 #  include <immintrin.h> // Header for _pext_u64() intrinsic

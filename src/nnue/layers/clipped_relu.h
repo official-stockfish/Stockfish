@@ -31,7 +31,7 @@ namespace Stockfish::Eval::NNUE::Layers {
    public:
     // Input/output type
     using InputType = typename PreviousLayer::OutputType;
-    using OutputType = std::uint8_t;
+    using OutputType = std::int8_t;
     static_assert(std::is_same<InputType, std::int32_t>::value, "");
 
     // Number of input/output dimensions
@@ -70,10 +70,17 @@ namespace Stockfish::Eval::NNUE::Layers {
       const auto input = previousLayer.propagate(
           transformedFeatures, buffer + SelfBufferSize);
       const auto output = reinterpret_cast<OutputType*>(buffer);
-      for (IndexType i = 0; i < InputDimensions; ++i) {
-        output[i] = static_cast<OutputType>(
-            std::max(0, std::min(127, input[i] >> WeightScaleBits)));
+
+      // We implement a clipped ReLu of the input, keeping the output in the 0..127 range
+      for (IndexType i = 0; i < InputDimensions; ++i)
+      {
+          int x = (input[i] >> WeightScaleBits);
+          if (x < 0)   x = 0;
+          if (x > 127) x = 127;
+
+          output[i] = x;
       }
+
       return output;
     }
 

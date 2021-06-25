@@ -13,7 +13,8 @@ about how to use Stockfish with it.
 The Stockfish engine features two evaluation functions for chess, the classical
 evaluation based on handcrafted terms, and the NNUE evaluation based on efficiently
 updatable neural networks. The classical evaluation runs efficiently on almost all
-CPU architectures.
+CPU architectures, while the NNUE evaluation benefits from the vector
+intrinsics available on most CPUs (sse2, avx2, neon, or similar).
 
 
 ## Files
@@ -175,7 +176,10 @@ The NNUE evaluation was first introduced in shogi, and ported to Stockfish after
 It can be evaluated efficiently on CPUs, and exploits the fact that only parts
 of the neural network need to be updated after a typical chess move.
 [The nodchip repository](https://github.com/nodchip/Stockfish) provides additional
-tools to train and develop the NNUE networks.
+tools to train and develop the NNUE networks. On CPUs supporting modern vector instructions
+(avx2 and similar), the NNUE evaluation results in much stronger playing strength, even
+if the nodes per second computed by the engine is somewhat lower (roughly 80% of nps
+is typical).
 
 Notes:
 
@@ -260,10 +264,6 @@ targets with corresponding descriptions.
     make net
     make build ARCH=x86-64-modern
 ```
-
-When not using the Makefile to compile (for instance, with Microsoft MSVC) you
-need to manually set/unset some switches in the compiler command line; see
-file *types.h* for a quick reference.
 
 When reporting an issue or a bug, please tell us which Stockfish version
 and which compiler you used to create your executable. This information

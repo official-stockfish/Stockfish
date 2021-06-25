@@ -372,12 +372,6 @@ ifeq ($(COMP),mingw)
 	LDFLAGS += -static
 endif
 
-ifeq ($(COMP),icc)
-	comp=icc
-	CXX=icpc
-	CXXFLAGS += -diag-disable 1476,10120 -Wcheck -Wabi -Wdeprecated -strict-ansi
-endif
-
 ifeq ($(COMP),clang)
 	comp=clang
 	CXX=clang++
@@ -426,10 +420,7 @@ ifeq ($(COMP),ndk)
 	LDFLAGS += -static-libstdc++ -pie -lm -latomic
 endif
 
-ifeq ($(comp),icc)
-	profile_make = icc-profile-make
-	profile_use = icc-profile-use
-else ifeq ($(comp),clang)
+ifeq ($(comp),clang)
 	profile_make = clang-profile-make
 	profile_use = clang-profile-use
 else
@@ -495,7 +486,7 @@ ifeq ($(optimize),yes)
 		endif
 	endif
 
-	ifeq ($(comp),$(filter $(comp),gcc clang icc))
+	ifeq ($(comp),$(filter $(comp),gcc clang))
 		ifeq ($(KERNEL),Darwin)
 			CXXFLAGS += -mdynamic-no-pic
 		endif
@@ -524,8 +515,6 @@ endif
 ifeq ($(popcnt),yes)
 	ifeq ($(arch),$(filter $(arch),ppc64 armv7 armv8 arm64))
 		CXXFLAGS += -DUSE_POPCNT
-	else ifeq ($(comp),icc)
-		CXXFLAGS += -msse3 -DUSE_POPCNT
 	else
 		CXXFLAGS += -msse3 -mpopcnt -DUSE_POPCNT
 	endif
@@ -708,7 +697,6 @@ help:
 	@echo "gcc                     > Gnu compiler (default)"
 	@echo "mingw                   > Gnu compiler with MinGW under Windows"
 	@echo "clang                   > LLVM Clang compiler"
-	@echo "icc                     > Intel compiler"
 	@echo "ndk                     > Google NDK to cross-compile for Android"
 	@echo ""
 	@echo "Simple examples. If you don't know what to do, you likely want to run: "
@@ -733,7 +721,7 @@ endif
 
 
 .PHONY: help build profile-build strip install clean net objclean profileclean \
-        config-sanity icc-profile-use icc-profile-make gcc-profile-use gcc-profile-make \
+        config-sanity gcc-profile-use gcc-profile-make \
         clang-profile-use clang-profile-make
 
 build: net config-sanity
@@ -863,7 +851,7 @@ config-sanity: net
 	@test "$(vnni256)" = "yes" || test "$(vnni256)" = "no"
 	@test "$(vnni512)" = "yes" || test "$(vnni512)" = "no"
 	@test "$(neon)" = "yes" || test "$(neon)" = "no"
-	@test "$(comp)" = "gcc" || test "$(comp)" = "icc" || test "$(comp)" = "mingw" || test "$(comp)" = "clang" \
+	@test "$(comp)" = "gcc" || test "$(comp)" = "mingw" || test "$(comp)" = "clang" \
 	|| test "$(comp)" = "armv7a-linux-androideabi16-clang"  || test "$(comp)" = "aarch64-linux-android21-clang"
 
 $(EXE): $(OBJS)
@@ -893,17 +881,6 @@ gcc-profile-use:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
 	EXTRACXXFLAGS='-fprofile-use=profdir -fno-peel-loops -fno-tracer' \
 	EXTRALDFLAGS='-lgcov' \
-	all
-
-icc-profile-make:
-	@mkdir -p profdir
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS='-prof-gen=srcpos -prof_dir ./profdir' \
-	all
-
-icc-profile-use:
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS='-prof_use -prof_dir ./profdir' \
 	all
 
 .depend:

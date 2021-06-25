@@ -171,9 +171,7 @@ std::string compiler_info() {
 
 /// Predefined macros hell:
 ///
-/// __GNUC__           Compiler is gcc, Clang or Intel on Linux
-/// __INTEL_COMPILER   Compiler is Intel
-/// _MSC_VER           Compiler is MSVC or Intel on Windows
+/// __GNUC__           Compiler is GCC or Clang on Linux
 /// _WIN32             Building on Windows (any)
 /// _WIN64             Building on Windows 64 bit
 
@@ -182,16 +180,6 @@ std::string compiler_info() {
   #ifdef __clang__
      compiler += "clang++ ";
      compiler += make_version_string(__clang_major__, __clang_minor__, __clang_patchlevel__);
-  #elif __INTEL_COMPILER
-     compiler += "Intel compiler ";
-     compiler += "(version ";
-     compiler += stringify(__INTEL_COMPILER) " update " stringify(__INTEL_COMPILER_UPDATE);
-     compiler += ")";
-  #elif _MSC_VER
-     compiler += "MSVC ";
-     compiler += "(version ";
-     compiler += stringify(_MSC_FULL_VER) "." stringify(_MSC_BUILD);
-     compiler += ")";
   #elif defined(__e2k__) && defined(__LCC__)
     #define dot_ver2(n) \
       compiler += (char)'.'; \
@@ -327,18 +315,7 @@ void prefetch(void*) {}
 #else
 
 void prefetch(void* addr) {
-
-#  if defined(__INTEL_COMPILER)
-   // This hack prevents prefetches from being optimized away by
-   // Intel compiler. Both MSVC and gcc seem not be affected by this.
-   __asm__ ("");
-#  endif
-
-#  if defined(__INTEL_COMPILER) || defined(_MSC_VER)
-  _mm_prefetch((char*)addr, _MM_HINT_T0);
-#  else
   __builtin_prefetch(addr);
-#  endif
 }
 
 #endif
@@ -614,13 +591,6 @@ void init(int argc, char* argv[]) {
 
 #ifdef _WIN32
     pathSeparator = "\\";
-  #ifdef _MSC_VER
-    // Under windows argv[0] may not have the extension. Also _get_pgmptr() had
-    // issues in some windows 10 versions, so check returned values carefully.
-    char* pgmptr = nullptr;
-    if (!_get_pgmptr(&pgmptr) && pgmptr != nullptr && *pgmptr)
-        argv0 = pgmptr;
-  #endif
 #else
     pathSeparator = "/";
 #endif
