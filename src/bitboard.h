@@ -91,10 +91,10 @@ struct Magic {
   // Compute the attack's index using the 'magic bitboards' approach
   unsigned index(Bitboard occupied) const {
 
-    if (HasPext)
+    if constexpr (HasPext)
         return unsigned(pext(occupied, mask));
 
-    if (Is64Bit)
+    if constexpr (Is64Bit)
         return unsigned(((occupied & mask) * magic) >> shift);
 
     unsigned lo = unsigned(occupied) & unsigned(mask);

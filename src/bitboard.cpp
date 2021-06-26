@@ -177,14 +177,14 @@ namespace {
             occupancy[size] = b;
             reference[size] = sliding_attack(pt, s, b);
 
-            if (HasPext)
+            if constexpr (HasPext)
                 m.attacks[pext(b, m.mask)] = reference[size];
 
             size++;
             b = (b - m.mask) & m.mask;
         } while (b);
 
-        if (HasPext)
+        if constexpr (HasPext)
             continue;
 
         PRNG rng(seeds[Is64Bit][rank_of(s)]);

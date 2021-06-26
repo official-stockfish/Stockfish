@@ -85,12 +85,6 @@
 
 namespace Stockfish {
 
-#ifdef USE_POPCNT
-constexpr bool HasPopCnt = true;
-#else
-constexpr bool HasPopCnt = false;
-#endif
-
 #ifdef USE_PEXT
 constexpr bool HasPext = true;
 #else
