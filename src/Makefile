@@ -73,8 +73,6 @@ endif
 # popcnt = yes/no     --- -DUSE_POPCNT     --- Use popcnt asm-instruction
 # pext = yes/no       --- -DUSE_PEXT       --- Use pext x86_64 asm-instruction
 # sse = yes/no        --- -msse            --- Use Intel Streaming SIMD Extensions
-# mmx = yes/no        --- -mmmx            --- Use Intel MMX instructions
-# sse2 = yes/no       --- -msse2           --- Use Intel Streaming SIMD Extensions 2
 # ssse3 = yes/no      --- -mssse3          --- Use Intel Supplemental Streaming SIMD Extensions 3
 # sse41 = yes/no      --- -msse4.1         --- Use Intel Streaming SIMD Extensions 4.1
 # avx2 = yes/no       --- -mavx2           --- Use Intel Advanced Vector Extensions 2
@@ -102,7 +100,7 @@ endif
 ifeq ($(ARCH), $(filter $(ARCH), \
                  x86-64-vnni512 x86-64-vnni256 x86-64-avx512 x86-64-bmi2 x86-64-avx2 \
                  x86-64-sse41-popcnt x86-64-modern x86-64-ssse3 x86-64-sse3-popcnt \
-                 x86-64 x86-32-sse41-popcnt x86-32-sse2 x86-32 ppc-64 ppc-32 e2k \
+                 x86-64 x86-32-sse41-popcnt x86-32 ppc-64 ppc-32 e2k \
                  armv7 armv7-neon armv8 apple-silicon general-64 general-32))
    SUPPORTED_ARCH=true
 else
@@ -117,8 +115,6 @@ prefetch = no
 popcnt = no
 pext = no
 sse = no
-mmx = no
-sse2 = no
 ssse3 = no
 sse41 = no
 avx2 = no
@@ -138,11 +134,9 @@ ifeq ($(findstring x86-32,$(ARCH)),x86-32)
 	arch = i386
 	bits = 32
 	sse = yes
-	mmx = yes
 else
 	arch = x86_64
 	sse = yes
-	sse2 = yes
 endif
 
 ifeq ($(findstring -sse,$(ARCH)),-sse)
@@ -153,24 +147,13 @@ ifeq ($(findstring -popcnt,$(ARCH)),-popcnt)
 	popcnt = yes
 endif
 
-ifeq ($(findstring -mmx,$(ARCH)),-mmx)
-	mmx = yes
-endif
-
-ifeq ($(findstring -sse2,$(ARCH)),-sse2)
-	sse = yes
-	sse2 = yes
-endif
-
 ifeq ($(findstring -ssse3,$(ARCH)),-ssse3)
 	sse = yes
-	sse2 = yes
 	ssse3 = yes
 endif
 
 ifeq ($(findstring -sse41,$(ARCH)),-sse41)
 	sse = yes
-	sse2 = yes
 	ssse3 = yes
 	sse41 = yes
 endif
@@ -178,7 +161,6 @@ endif
 ifeq ($(findstring -modern,$(ARCH)),-modern)
 	popcnt = yes
 	sse = yes
-	sse2 = yes
 	ssse3 = yes
 	sse41 = yes
 endif
@@ -186,7 +168,6 @@ endif
 ifeq ($(findstring -avx2,$(ARCH)),-avx2)
 	popcnt = yes
 	sse = yes
-	sse2 = yes
 	ssse3 = yes
 	sse41 = yes
 	avx2 = yes
@@ -195,7 +176,6 @@ endif
 ifeq ($(findstring -bmi2,$(ARCH)),-bmi2)
 	popcnt = yes
 	sse = yes
-	sse2 = yes
 	ssse3 = yes
 	sse41 = yes
 	avx2 = yes
@@ -205,7 +185,6 @@ endif
 ifeq ($(findstring -avx512,$(ARCH)),-avx512)
 	popcnt = yes
 	sse = yes
-	sse2 = yes
 	ssse3 = yes
 	sse41 = yes
 	avx2 = yes
@@ -216,7 +195,6 @@ endif
 ifeq ($(findstring -vnni256,$(ARCH)),-vnni256)
 	popcnt = yes
 	sse = yes
-	sse2 = yes
 	ssse3 = yes
 	sse41 = yes
 	avx2 = yes
@@ -227,7 +205,6 @@ endif
 ifeq ($(findstring -vnni512,$(ARCH)),-vnni512)
 	popcnt = yes
 	sse = yes
-	sse2 = yes
 	ssse3 = yes
 	sse41 = yes
 	avx2 = yes
@@ -299,10 +276,8 @@ endif
 
 ifeq ($(findstring e2k,$(ARCH)),e2k)
 	arch = e2k
-	mmx = yes
 	bits = 64
 	sse = yes
-	sse2 = yes
 	ssse3 = yes
 	sse41 = yes
 	popcnt = yes
@@ -573,20 +548,6 @@ ifeq ($(ssse3),yes)
 	endif
 endif
 
-ifeq ($(sse2),yes)
-	CXXFLAGS += -DUSE_SSE2
-	ifeq ($(comp),$(filter $(comp),gcc clang mingw))
-		CXXFLAGS += -msse2
-	endif
-endif
-
-ifeq ($(mmx),yes)
-	CXXFLAGS += -DUSE_MMX
-	ifeq ($(comp),$(filter $(comp),gcc clang mingw))
-		CXXFLAGS += -mmmx
-	endif
-endif
-
 ifeq ($(neon),yes)
 	CXXFLAGS += -DUSE_NEON
 	ifeq ($(KERNEL),Linux)
@@ -689,10 +650,9 @@ help:
 	@echo "x86-64-modern           > common modern CPU, currently x86-64-sse41-popcnt"
 	@echo "x86-64-ssse3            > x86 64-bit with ssse3 support"
 	@echo "x86-64-sse3-popcnt      > x86 64-bit with sse3 and popcnt support"
-	@echo "x86-64                  > x86 64-bit generic (with sse2 support)"
+	@echo "x86-64                  > x86 64-bit generic"
 	@echo "x86-32-sse41-popcnt     > x86 32-bit with sse41 and popcnt support"
-	@echo "x86-32-sse2             > x86 32-bit with sse2 support"
-	@echo "x86-32                  > x86 32-bit generic (with mmx and sse support)"
+	@echo "x86-32                  > x86 32-bit generic (with sse support)"
 	@echo "ppc-64                  > PPC 64-bit"
 	@echo "ppc-32                  > PPC 32-bit"
 	@echo "armv7                   > ARMv7 32-bit"
@@ -826,8 +786,6 @@ config-sanity: net
 	@echo "popcnt: '$(popcnt)'"
 	@echo "pext: '$(pext)'"
 	@echo "sse: '$(sse)'"
-	@echo "mmx: '$(mmx)'"
-	@echo "sse2: '$(sse2)'"
 	@echo "ssse3: '$(ssse3)'"
 	@echo "sse41: '$(sse41)'"
 	@echo "avx2: '$(avx2)'"
@@ -854,8 +812,6 @@ config-sanity: net
 	@test "$(popcnt)" = "yes" || test "$(popcnt)" = "no"
 	@test "$(pext)" = "yes" || test "$(pext)" = "no"
 	@test "$(sse)" = "yes" || test "$(sse)" = "no"
-	@test "$(mmx)" = "yes" || test "$(mmx)" = "no"
-	@test "$(sse2)" = "yes" || test "$(sse2)" = "no"
 	@test "$(ssse3)" = "yes" || test "$(ssse3)" = "no"
 	@test "$(sse41)" = "yes" || test "$(sse41)" = "no"
 	@test "$(avx2)" = "yes" || test "$(avx2)" = "no"
