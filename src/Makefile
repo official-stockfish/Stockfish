@@ -386,7 +386,9 @@ ifeq ($(COMP),clang)
 	ifneq ($(KERNEL),Darwin)
 	ifneq ($(KERNEL),OpenBSD)
 	ifneq ($(KERNEL),FreeBSD)
+	ifneq ($(RTLIB),compiler-rt)
 		LDFLAGS += -latomic
+	endif
 	endif
 	endif
 	endif
