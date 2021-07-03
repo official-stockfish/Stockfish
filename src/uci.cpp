@@ -27,6 +27,7 @@
 #include "position.h"
 #include "search.h"
 #include "thread.h"
+#include "cpuinfo.h"
 #include "timeman.h"
 #include "tt.h"
 #include "uci.h"
@@ -277,6 +278,7 @@ void UCI::loop(int argc, char* argv[]) {
       else if (token == "d")        sync_cout << pos << sync_endl;
       else if (token == "eval")     trace_eval(pos);
       else if (token == "compiler") sync_cout << compiler_info() << sync_endl;
+      else if (token == "cpu")      sync_cout << CpuInfo::get_info_string() << sync_endl;
       else if (token == "export_net")
       {
           std::optional<std::string> filename;
