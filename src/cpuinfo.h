@@ -147,7 +147,7 @@ namespace Stockfish {
                 // call each function and store results in _data
                 for (int32_t i = 0; i <= _idMax; ++i)
                 {
-                    __cpuidex(info.data(), i, 0);
+                    cpuid(info.data(), i, 0);
                     _data.push_back(info);
                 }
 
@@ -189,7 +189,7 @@ namespace Stockfish {
                 // call each extended function and store results in _dataExt
                 for (int32_t i = 0x80000000; i <= _idExtMax; ++i)
                 {
-                    __cpuidex(info.data(), i, 0);
+                    cpuid(info.data(), i, 0);
                     _dataExt.push_back(info);
                 }
 
