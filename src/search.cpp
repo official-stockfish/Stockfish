@@ -854,7 +854,7 @@ namespace {
     {
         assert(probCutBeta < VALUE_INFINITE);
 
-        MovePicker mp(pos, ttMove, probCutBeta - ss->staticEval, &captureHistory);
+        MovePicker_ProbCut mp(pos, ttMove, probCutBeta - ss->staticEval, &captureHistory);
         int probCutCount = 0;
         bool ttPv = ss->ttPv;
         ss->ttPv = false;
@@ -932,13 +932,16 @@ moves_loop: // When in check, search starts from here
 
     Move countermove = thisThread->counterMoves[pos.piece_on(prevSq)][prevSq];
 
-    MovePicker mp(pos, ttMove, depth, &thisThread->mainHistory,
-                                      &thisThread->lowPlyHistory,
-                                      &captureHistory,
-                                      contHist,
-                                      countermove,
-                                      ss->killers,
-                                      ss->ply);
+    MovePicker_Main mp(pos,
+                       ttMove,
+                       depth,
+                       &thisThread->mainHistory,
+                       &thisThread->lowPlyHistory,
+                       &captureHistory,
+                       contHist,
+                       countermove,
+                       ss->killers,
+                       ss->ply);
 
     value = bestValue;
     singularQuietLMR = moveCountPruning = false;
@@ -1463,10 +1466,13 @@ moves_loop: // When in check, search starts from here
     // to search the moves. Because the depth is <= 0 here, only captures,
     // queen promotions, and other checks (only if depth >= DEPTH_QS_CHECKS)
     // will be generated.
-    MovePicker mp(pos, ttMove, depth, &thisThread->mainHistory,
-                                      &thisThread->captureHistory,
-                                      contHist,
-                                      to_sq((ss-1)->currentMove));
+    MovePicker_Quiescence mp(pos,
+                             ttMove,
+                             depth,
+                             &thisThread->mainHistory,
+                             &thisThread->captureHistory,
+                             contHist,
+                             to_sq((ss-1)->currentMove));
 
     // Loop through the moves until no moves remain or a beta cutoff occurs
     while ((move = mp.next_move()) != MOVE_NONE)
