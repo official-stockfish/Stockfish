@@ -760,6 +760,7 @@ namespace {
             ss->staticEval = eval = -(ss-1)->staticEval;
 
         // Save static evaluation into transposition table
+        if(!excludedMove)
         tte->save(posKey, VALUE_NONE, ss->ttPv, BOUND_NONE, DEPTH_NONE, MOVE_NONE, eval);
     }
 
