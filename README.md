@@ -148,7 +148,14 @@ For developers the following non-standard commands might be of interest, mainly 
     Display the current position, with ascii art and fen.
 
   * #### eval
-    Return the evaluation of the current position.
+    Display a detailed evaluation of the current position.
+      > Specific classical evaluation terms
+      > Estimated value of each piece on the board, from the NNUE evaluation.
+        It is computed by removing the piece from the board and comparing
+        the evaluation before and after. Each square displays both
+        the material (PSQT) and the positional (layers) parts, along with the total.
+      > NNUE evaluation given by each subnetwork. Material, positional, total.
+      > Total evaluation for classical, pure NNUE, adjusted NNUE, and the actual value used.
 
   * #### export_net [filename]
     Exports the currently loaded network to a file.
