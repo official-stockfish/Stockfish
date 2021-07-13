@@ -51,7 +51,6 @@ namespace Stockfish::Eval::NNUE {
 
   using Network = Layers::OutputLayer;
 
-  static_assert(TransformedFeatureDimensions % MaxSimdWidth == 0, "");
   static_assert(Network::OutputDimensions == 1, "");
   static_assert(std::is_same<Network::OutputType, std::int32_t>::value, "");
 
