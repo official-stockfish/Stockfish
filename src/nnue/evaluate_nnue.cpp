@@ -396,7 +396,7 @@ namespace Stockfish::Eval::NNUE {
         actualFilename = filename.value();
     else
     {
-        if (eval_file_loaded != EvalFileDefaultName)
+        if (currentEvalFileName != EvalFileDefaultName)
         {
              msg = "Failed to export a net. A non-embedded net can only be saved if the filename is specified";
 
