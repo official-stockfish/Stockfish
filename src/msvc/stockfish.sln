@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.31410.357
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "stockfish", "stockfish.vcxproj", "{E5B3CC35-2723-4A39-8A5F-62C5ECFF7C90}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Windows 32 = Debug|Windows 32
+		Debug|Windows x64 for Haswell CPUs = Debug|Windows x64 for Haswell CPUs
+		Release|Windows 32 = Release|Windows 32
+		Release|Windows x64 for Haswell CPUs = Release|Windows x64 for Haswell CPUs
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{E5B3CC35-2723-4A39-8A5F-62C5ECFF7C90}.Debug|Windows 32.ActiveCfg = Debug|Win32
+		{E5B3CC35-2723-4A39-8A5F-62C5ECFF7C90}.Debug|Windows 32.Build.0 = Debug|Win32
+		{E5B3CC35-2723-4A39-8A5F-62C5ECFF7C90}.Debug|Windows x64 for Haswell CPUs.ActiveCfg = Debug|x64
+		{E5B3CC35-2723-4A39-8A5F-62C5ECFF7C90}.Debug|Windows x64 for Haswell CPUs.Build.0 = Debug|x64
+		{E5B3CC35-2723-4A39-8A5F-62C5ECFF7C90}.Release|Windows 32.ActiveCfg = Release|Win32
+		{E5B3CC35-2723-4A39-8A5F-62C5ECFF7C90}.Release|Windows 32.Build.0 = Release|Win32
+		{E5B3CC35-2723-4A39-8A5F-62C5ECFF7C90}.Release|Windows x64 for Haswell CPUs.ActiveCfg = Release|x64
+		{E5B3CC35-2723-4A39-8A5F-62C5ECFF7C90}.Release|Windows x64 for Haswell CPUs.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {0F72F623-25D3-4836-8FAE-2129204F9FEF}
+	EndGlobalSection
+EndGlobal
