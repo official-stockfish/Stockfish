@@ -250,13 +250,7 @@ std::string compiler_info() {
   #if defined(USE_SSSE3)
     compiler += " SSSE3";
   #endif
-  #if defined(USE_SSE2)
-    compiler += " SSE2";
-  #endif
   compiler += (HasPopCnt ? " POPCNT" : "");
-  #if defined(USE_MMX)
-    compiler += " MMX";
-  #endif
   #if defined(USE_NEON)
     compiler += " NEON";
   #endif

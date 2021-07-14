@@ -327,20 +327,7 @@ namespace Stockfish::Eval::NNUE::Layers {
 
       auto output = reinterpret_cast<OutputType*>(buffer);
 
-#if defined(USE_SSE2)
-      // At least a multiple of 16, with SSE2.
-      static_assert(InputDimensions % SimdWidth == 0);
-      constexpr IndexType NumChunks = InputDimensions / SimdWidth;
-      const __m128i Zeros = _mm_setzero_si128();
-      const auto inputVector = reinterpret_cast<const __m128i*>(input);
-
-#elif defined(USE_MMX)
-      static_assert(InputDimensions % SimdWidth == 0);
-      constexpr IndexType NumChunks = InputDimensions / SimdWidth;
-      const __m64 Zeros = _mm_setzero_si64();
-      const auto inputVector = reinterpret_cast<const __m64*>(input);
-
-#elif defined(USE_NEON)
+#if defined(USE_NEON)
       static_assert(InputDimensions % SimdWidth == 0);
       constexpr IndexType NumChunks = InputDimensions / SimdWidth;
       const auto inputVector = reinterpret_cast<const int8x8_t*>(input);
@@ -349,50 +336,7 @@ namespace Stockfish::Eval::NNUE::Layers {
       for (IndexType i = 0; i < OutputDimensions; ++i) {
         const IndexType offset = i * PaddedInputDimensions;
 
-#if defined(USE_SSE2)
-        __m128i sumLo = _mm_cvtsi32_si128(biases[i]);
-        __m128i sumHi = Zeros;
-        const auto row = reinterpret_cast<const __m128i*>(&weights[offset]);
-        for (IndexType j = 0; j < NumChunks; ++j) {
-          __m128i row_j = _mm_load_si128(&row[j]);
-          __m128i input_j = _mm_load_si128(&inputVector[j]);
-          __m128i extendedRowLo = _mm_srai_epi16(_mm_unpacklo_epi8(row_j, row_j), 8);
-          __m128i extendedRowHi = _mm_srai_epi16(_mm_unpackhi_epi8(row_j, row_j), 8);
-          __m128i extendedInputLo = _mm_unpacklo_epi8(input_j, Zeros);
-          __m128i extendedInputHi = _mm_unpackhi_epi8(input_j, Zeros);
-          __m128i productLo = _mm_madd_epi16(extendedRowLo, extendedInputLo);
-          __m128i productHi = _mm_madd_epi16(extendedRowHi, extendedInputHi);
-          sumLo = _mm_add_epi32(sumLo, productLo);
-          sumHi = _mm_add_epi32(sumHi, productHi);
-        }
-        __m128i sum = _mm_add_epi32(sumLo, sumHi);
-        __m128i sumHigh_64 = _mm_shuffle_epi32(sum, _MM_SHUFFLE(1, 0, 3, 2));
-        sum = _mm_add_epi32(sum, sumHigh_64);
-        __m128i sum_second_32 = _mm_shufflelo_epi16(sum, _MM_SHUFFLE(1, 0, 3, 2));
-        sum = _mm_add_epi32(sum, sum_second_32);
-        output[i] = _mm_cvtsi128_si32(sum);
-
-#elif defined(USE_MMX)
-        __m64 sumLo = _mm_cvtsi32_si64(biases[i]);
-        __m64 sumHi = Zeros;
-        const auto row = reinterpret_cast<const __m64*>(&weights[offset]);
-        for (IndexType j = 0; j < NumChunks; ++j) {
-          __m64 row_j = row[j];
-          __m64 input_j = inputVector[j];
-          __m64 extendedRowLo = _mm_srai_pi16(_mm_unpacklo_pi8(row_j, row_j), 8);
-          __m64 extendedRowHi = _mm_srai_pi16(_mm_unpackhi_pi8(row_j, row_j), 8);
-          __m64 extendedInputLo = _mm_unpacklo_pi8(input_j, Zeros);
-          __m64 extendedInputHi = _mm_unpackhi_pi8(input_j, Zeros);
-          __m64 productLo = _mm_madd_pi16(extendedRowLo, extendedInputLo);
-          __m64 productHi = _mm_madd_pi16(extendedRowHi, extendedInputHi);
-          sumLo = _mm_add_pi32(sumLo, productLo);
-          sumHi = _mm_add_pi32(sumHi, productHi);
-        }
-        __m64 sum = _mm_add_pi32(sumLo, sumHi);
-        sum = _mm_add_pi32(sum, _mm_unpackhi_pi32(sum, sum));
-        output[i] = _mm_cvtsi64_si32(sum);
-
-#elif defined(USE_NEON)
+#if defined(USE_NEON)
         int32x4_t sum = {biases[i]};
         const auto row = reinterpret_cast<const int8x8_t*>(&weights[offset]);
         for (IndexType j = 0; j < NumChunks; ++j) {
@@ -411,9 +355,6 @@ namespace Stockfish::Eval::NNUE::Layers {
 #endif
 
       }
-#if defined(USE_MMX)
-      _mm_empty();
-#endif
 
 #endif
 

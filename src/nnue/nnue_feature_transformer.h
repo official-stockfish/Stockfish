@@ -68,7 +68,7 @@ namespace Stockfish::Eval::NNUE {
   #define vec_zero_psqt() _mm256_setzero_si256()
   #define NumRegistersSIMD 16
 
-  #elif USE_SSE2
+  #elif USE_SSSE3
   typedef __m128i vec_t;
   typedef __m128i psqt_vec_t;
   #define vec_load(a) (*(a))
@@ -81,20 +81,6 @@ namespace Stockfish::Eval::NNUE {
   #define vec_sub_psqt_32(a,b) _mm_sub_epi32(a,b)
   #define vec_zero_psqt() _mm_setzero_si128()
   #define NumRegistersSIMD (Is64Bit ? 16 : 8)
-
-  #elif USE_MMX
-  typedef __m64 vec_t;
-  typedef __m64 psqt_vec_t;
-  #define vec_load(a) (*(a))
-  #define vec_store(a,b) *(a)=(b)
-  #define vec_add_16(a,b) _mm_add_pi16(a,b)
-  #define vec_sub_16(a,b) _mm_sub_pi16(a,b)
-  #define vec_load_psqt(a) (*(a))
-  #define vec_store_psqt(a,b) *(a)=(b)
-  #define vec_add_psqt_32(a,b) _mm_add_pi32(a,b)
-  #define vec_sub_psqt_32(a,b) _mm_sub_pi32(a,b)
-  #define vec_zero_psqt() _mm_setzero_si64()
-  #define NumRegistersSIMD 8
 
   #elif USE_NEON
   typedef int16x8_t vec_t;
@@ -276,7 +262,7 @@ namespace Stockfish::Eval::NNUE {
       }
       return psqt;
 
-  #elif defined(USE_SSE2)
+  #elif defined(USE_SSSE3)
 
       #ifdef USE_SSE41
       constexpr IndexType NumChunks = HalfDimensions / SimdWidth;
@@ -305,26 +291,6 @@ namespace Stockfish::Eval::NNUE {
               #endif
           }
       }
-      return psqt;
-
-  #elif defined(USE_MMX)
-
-      constexpr IndexType NumChunks = HalfDimensions / SimdWidth;
-      const __m64 k0x80s = _mm_set1_pi8(-128);
-
-      for (IndexType p = 0; p < 2; ++p)
-      {
-          const IndexType offset = HalfDimensions * p;
-          auto out = reinterpret_cast<__m64*>(&output[offset]);
-          for (IndexType j = 0; j < NumChunks; ++j)
-          {
-              __m64 sum0 = *(&reinterpret_cast<const __m64*>(accumulation[perspectives[p]])[j * 2 + 0]);
-              __m64 sum1 = *(&reinterpret_cast<const __m64*>(accumulation[perspectives[p]])[j * 2 + 1]);
-              const __m64 packedbytes = _mm_packs_pi16(sum0, sum1);
-              out[j] = _mm_subs_pi8(_mm_adds_pi8(packedbytes, k0x80s), k0x80s);
-          }
-      }
-      _mm_empty();
       return psqt;
 
   #elif defined(USE_NEON)
@@ -600,9 +566,6 @@ namespace Stockfish::Eval::NNUE {
   #endif
       }
 
-  #if defined(USE_MMX)
-      _mm_empty();
-  #endif
     }
 
     alignas(CacheLineSize) BiasType biases[HalfDimensions];

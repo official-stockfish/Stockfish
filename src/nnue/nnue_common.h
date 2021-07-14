@@ -35,12 +35,6 @@
 #elif defined(USE_SSSE3)
 #include <tmmintrin.h>
 
-#elif defined(USE_SSE2)
-#include <emmintrin.h>
-
-#elif defined(USE_MMX)
-#include <mmintrin.h>
-
 #elif defined(USE_NEON)
 #include <arm_neon.h>
 #endif
@@ -61,11 +55,8 @@ namespace Stockfish::Eval::NNUE {
   #if defined(USE_AVX2)
   constexpr std::size_t SimdWidth = 32;
 
-  #elif defined(USE_SSE2)
+  #elif defined(USE_SSSE3)
   constexpr std::size_t SimdWidth = 16;
-
-  #elif defined(USE_MMX)
-  constexpr std::size_t SimdWidth = 8;
 
   #elif defined(USE_NEON)
   constexpr std::size_t SimdWidth = 16;
