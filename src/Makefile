@@ -102,8 +102,8 @@ endif
 ifeq ($(ARCH), $(filter $(ARCH), \
                  x86-64-vnni512 x86-64-vnni256 x86-64-avx512 x86-64-bmi2 x86-64-avx2 \
                  x86-64-sse41-popcnt x86-64-modern x86-64-ssse3 x86-64-sse3-popcnt \
-                 x86-64 x86-32-sse41-popcnt x86-32-sse2 x86-32 ppc-64 ppc-32 e2k \
-                 armv7 armv7-neon armv8 apple-silicon general-64 general-32))
+                 x86-64 x86-32-sse41-popcnt x86-32-sse2 x86-32 ppc-64 ppc-32 \
+                 armv7 armv7-neon armv8 e2k apple-silicon general-64 general-32))
    SUPPORTED_ARCH=true
 else
    SUPPORTED_ARCH=false
@@ -188,7 +188,6 @@ ifeq ($(findstring -avx2,$(ARCH)),-avx2)
 	sse = yes
 	sse2 = yes
 	ssse3 = yes
-	sse41 = yes
 	avx2 = yes
 endif
 
@@ -197,7 +196,6 @@ ifeq ($(findstring -bmi2,$(ARCH)),-bmi2)
 	sse = yes
 	sse2 = yes
 	ssse3 = yes
-	sse41 = yes
 	avx2 = yes
 	pext = yes
 endif
@@ -207,7 +205,6 @@ ifeq ($(findstring -avx512,$(ARCH)),-avx512)
 	sse = yes
 	sse2 = yes
 	ssse3 = yes
-	sse41 = yes
 	avx2 = yes
 	pext = yes
 	avx512 = yes
@@ -218,7 +215,6 @@ ifeq ($(findstring -vnni256,$(ARCH)),-vnni256)
 	sse = yes
 	sse2 = yes
 	ssse3 = yes
-	sse41 = yes
 	avx2 = yes
 	pext = yes
 	vnni256 = yes
@@ -229,7 +225,6 @@ ifeq ($(findstring -vnni512,$(ARCH)),-vnni512)
 	sse = yes
 	sse2 = yes
 	ssse3 = yes
-	sse41 = yes
 	avx2 = yes
 	pext = yes
 	avx512 = yes
