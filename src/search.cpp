@@ -152,7 +152,7 @@ namespace {
 void Search::init() {
 
   for (int i = 1; i < MAX_MOVES; ++i)
-      Reductions[i] = int(21.3 * std::log(i + 0.25 * std::log(i)));
+      Reductions[i] = int(21.9 * std::log(i));
 }
 
 
@@ -760,6 +760,7 @@ namespace {
             ss->staticEval = eval = -(ss-1)->staticEval;
 
         // Save static evaluation into transposition table
+        if(!excludedMove)
         tte->save(posKey, VALUE_NONE, ss->ttPv, BOUND_NONE, DEPTH_NONE, MOVE_NONE, eval);
     }
 
@@ -780,7 +781,6 @@ namespace {
 
     // Step 7. Futility pruning: child node (~50 Elo)
     if (   !PvNode
-        &&  depth < 9
         &&  eval - futility_margin(depth, improving) >= beta
         &&  eval < VALUE_KNOWN_WIN) // Do not return unproven wins
         return eval;
@@ -1022,8 +1022,7 @@ moves_loop: // When in check, search starts from here
                   continue;
 
               // Futility pruning: parent node (~5 Elo)
-              if (   lmrDepth < 7
-                  && !ss->inCheck
+              if (   !ss->inCheck
                   && ss->staticEval + 174 + 157 * lmrDepth <= alpha
                   &&  (*contHist[0])[movedPiece][to_sq(move)]
                     + (*contHist[1])[movedPiece][to_sq(move)]
@@ -1157,8 +1156,8 @@ moves_loop: // When in check, search starts from here
               r--;
 
           // Increase reduction for cut nodes (~3 Elo)
-          if (cutNode)
-              r += 1 + !captureOrPromotion;
+          if (cutNode && move != ss->killers[0])
+              r += 2;
 
           if (!captureOrPromotion)
           {
