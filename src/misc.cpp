@@ -378,6 +378,7 @@ void std_aligned_free(void* ptr) {
 static void* aligned_large_pages_alloc_windows(size_t allocSize) {
 
   #if !defined(_WIN64)
+    (void)allocSize; // suppress unused-parameter compiler warning
     return nullptr;
   #else
 
