@@ -256,12 +256,6 @@ endif
 
 ifeq ($(ARCH),general-64)
 	arch = any
-	# avoid apple clang error: "invalid arch name '-arch any'"
-	ifeq ($(KERNEL),Darwin)
-		arch = x86_64
-		sse = yes
-		sse2 = yes
-	endif
 endif
 
 ifeq ($(ARCH),armv7)
@@ -411,8 +405,12 @@ ifeq ($(COMP),clang)
 endif
 
 ifeq ($(KERNEL),Darwin)
-	CXXFLAGS += -arch $(arch) -mmacosx-version-min=10.14
-	LDFLAGS += -arch $(arch) -mmacosx-version-min=10.14
+	CXXFLAGS += -mmacosx-version-min=10.14
+	LDFLAGS += -mmacosx-version-min=10.14
+	ifneq ($(arch),any)
+		CXXFLAGS += -arch $(arch)
+		LDFLAGS += -arch $(arch)
+	endif
 	XCRUN = xcrun
 endif
 
