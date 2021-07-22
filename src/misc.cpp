@@ -253,7 +253,9 @@ std::string compiler_info() {
   #if defined(USE_SSE2)
     compiler += " SSE2";
   #endif
-  compiler += (HasPopCnt ? " POPCNT" : "");
+  #if defined(USE_POPCNT)
+    compiler += " POPCNT";
+  #endif
   #if defined(USE_MMX)
     compiler += " MMX";
   #endif
