@@ -19,8 +19,10 @@
 #include <cstring>
 #include "cpuinfo.h"
 
+namespace Stockfish {
+
 // query CPU at runtime and initialize static member data
-const Stockfish::CpuInfo::CpuId Stockfish::CpuInfo::CPUID;
+const CpuInfo::CpuId Stockfish::CpuInfo::CPUID;
 
 #if defined(__x86_64__) || defined(_M_X64) || defined(__i386) || defined(_M_IX86)
 #if _WIN32
@@ -28,31 +30,35 @@ const Stockfish::CpuInfo::CpuId Stockfish::CpuInfo::CPUID;
 #include <windows.h>
 #include <intrin.h>
 
-namespace Stockfish {
-
     void CpuInfo::cpuid(int32_t out[4], int32_t eax, int32_t ecx) {
         __cpuidex(out, eax, ecx);
     }
+
     uint64_t CpuInfo::xgetbv(unsigned int x) {
         return _xgetbv(x);
     }
 
 # elif defined(__GNUC__) || defined(__clang__)
+
 #include <cpuid.h>
-void CpuInfo::cpuid(int32_t out[4], int32_t eax, int32_t ecx) {
-    __cpuid_count(eax, ecx, out[0], out[1], out[2], out[3]);
-}
-uint64_t CpuInfo::xgetbv(unsigned int index) {
-    uint32_t eax, edx;
-    __asm__ __volatile__("xgetbv" : "=a"(eax), "=d"(edx) : "c"(index));
-    return ((uint64_t)edx << 32) | eax;
-}
-#define _XCR_XFEATURE_ENABLED_MASK  0
+
+    void CpuInfo::cpuid(int32_t out[4], int32_t eax, int32_t ecx) {
+        __cpuid_count(eax, ecx, out[0], out[1], out[2], out[3]);
+    }
+
+    uint64_t CpuInfo::xgetbv(unsigned int index) {
+        uint32_t eax, edx;
+        __asm__ __volatile__("xgetbv" : "=a"(eax), "=d"(edx) : "c"(index));
+        return ((uint64_t)edx << 32) | eax;
+    }
+    
+    #define _XCR_XFEATURE_ENABLED_MASK  0
+
 #else
-#   error "No CPU-ID intrinsic defined for compiler."
+#   message "No CPU-ID intrinsic defined for compiler."
 #endif
 #else
-#   error "No CPU-ID intrinsic defined for processor architecture."
+#   message "No CPU-ID intrinsic defined for processor architecture (currently only x86-32/64 is supported)."
 #endif
 
 bool CpuInfo::detect_OS_AVX() {
@@ -61,8 +67,8 @@ bool CpuInfo::detect_OS_AVX() {
 
     if (OSXSAVE() && AVX())
     {
-        uint64_t xcrFeatureMask = _xgetbv(_XCR_XFEATURE_ENABLED_MASK);
-        avxSupported = (xcrFeatureMask & 0x6) == 0x6;
+        uint64_t xcrFeatureMask = xgetbv(_XCR_XFEATURE_ENABLED_MASK);
+        avxSupported = (xcrFeatureMask & 0x06) == 0x06;
     }
 
     return avxSupported;
@@ -72,8 +78,8 @@ bool CpuInfo::detect_OS_AVX512() {
     if (!detect_OS_AVX())
         return false;
 
-    uint64_t xcrFeatureMask = _xgetbv(_XCR_XFEATURE_ENABLED_MASK);
-    return (xcrFeatureMask & 0xe6) == 0xe6;
+    uint64_t xcrFeatureMask = xgetbv(_XCR_XFEATURE_ENABLED_MASK);
+    return (xcrFeatureMask & 0xE6) == 0xE6;
 }
 
 std::string CpuInfo::get_info_string() {
@@ -88,8 +94,8 @@ std::string CpuInfo::get_info_string() {
     s += "\n";
 
     s += "Hardware Features: ";
+    if (X64())         s += "64bit ";
     if (MMX())         s += "MMX ";
-    if (X64())         s += "X64 ";
     if (ABM())         s += "ABM ";
     if (RDRAND())      s += "RDRAND ";
     if (RDSEED())      s += "RDSEED ";

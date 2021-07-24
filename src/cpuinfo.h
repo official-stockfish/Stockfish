@@ -20,8 +20,6 @@
 #define CPUINFO_H_INCLUDED
 
 #include <stdint.h>
-#include <intrin.h>
-
 #include <string>
 #include <bitset>
 #include <vector>
@@ -127,6 +125,7 @@ namespace Stockfish {
                 _idExtMax{ 0 },
                 _isIntel{ false },
                 _isAMD{ false },
+                //_f1_EBX{ 0 },
                 _f1_ECX{ 0 },
                 _f1_EDX{ 0 },
                 _f7_EBX{ 0 },
@@ -145,7 +144,7 @@ namespace Stockfish {
                 cpuid(info.data(), 0, 0);
                 _idMax = info[0];
                 // call each function and store results in _data
-                for (int32_t i = 0; i <= _idMax; ++i)
+                for (uint32_t i = 0; i <= _idMax; ++i)
                 {
                     cpuid(info.data(), i, 0);
                     _data.push_back(info);
@@ -170,6 +169,7 @@ namespace Stockfish {
                 // load bitset with flags for function 0x00000001
                 if (_idMax >= 1)
                 {
+                    //_f1_EBX = _data[1][1];
                     _f1_ECX = _data[1][2];
                     _f1_EDX = _data[1][3];
                 }
@@ -187,7 +187,7 @@ namespace Stockfish {
                 cpuid(info.data(), 0x80000000, 0);
                 _idExtMax = info[0];
                 // call each extended function and store results in _dataExt
-                for (int32_t i = 0x80000000; i <= _idExtMax; ++i)
+                for (uint32_t i = 0x80000000; i <= _idExtMax; ++i)
                 {
                     cpuid(info.data(), i, 0);
                     _dataExt.push_back(info);
@@ -212,10 +212,11 @@ namespace Stockfish {
                 }
             };
 
-            int32_t _idMax;
-            int32_t _idExtMax;
+            uint32_t _idMax;
+            uint32_t _idExtMax;
             bool _isIntel;
             bool _isAMD;
+            //std::bitset<32> _f1_EBX;
             std::bitset<32> _f1_ECX;
             std::bitset<32> _f1_EDX;
             std::bitset<32> _f7_EBX;
