@@ -51,14 +51,16 @@ const CpuInfo::CpuId Stockfish::CpuInfo::CPUID;
         __asm__ __volatile__("xgetbv" : "=a"(eax), "=d"(edx) : "c"(index));
         return ((uint64_t)edx << 32) | eax;
     }
-    
-    #define _XCR_XFEATURE_ENABLED_MASK  0
 
 #else
 #   message "No CPU-ID intrinsic defined for compiler."
 #endif
 #else
 #   message "No CPU-ID intrinsic defined for processor architecture (currently only x86-32/64 is supported)."
+#endif
+
+#ifndef _XCR_XFEATURE_ENABLED_MASK
+    #define _XCR_XFEATURE_ENABLED_MASK 0
 #endif
 
 bool CpuInfo::detect_OS_AVX() {
