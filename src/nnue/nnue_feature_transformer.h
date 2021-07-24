@@ -126,7 +126,7 @@ namespace Stockfish::Eval::NNUE {
   #ifdef __GNUC__
       #pragma GCC diagnostic push
       #pragma GCC diagnostic ignored "-Wignored-attributes"
-#endif
+  #endif
 
       template <typename SIMDRegisterType,
                 typename LaneType,
@@ -161,7 +161,7 @@ namespace Stockfish::Eval::NNUE {
 
   #ifdef __GNUC__
       #pragma GCC diagnostic pop
-#endif
+  #endif
 
   #endif
 
