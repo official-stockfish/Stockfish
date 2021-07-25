@@ -89,8 +89,8 @@ enum StatsType { NoCaptures, Captures };
 typedef Stats<int16_t, 13365, COLOR_NB, int(SQUARE_NB) * int(SQUARE_NB)> ButterflyHistory;
 
 /// At higher depths LowPlyHistory records successful quiet moves near the root
-/// and quiet moves which are/were in the PV (ttPv). It is cleared with each new
-/// search and filled during iterative deepening.
+/// and quiet moves which are/were in the PV (ttPv). LowPlyHistory is populated during
+/// iterative deepening and at each new search the data is shifted down by 2 plies
 constexpr int MAX_LPH = 4;
 typedef Stats<int16_t, 10692, MAX_LPH, int(SQUARE_NB) * int(SQUARE_NB)> LowPlyHistory;
 
