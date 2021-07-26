@@ -74,6 +74,8 @@ namespace Stockfish {
 // the runtime CPUInfo and updates "prefetch" pointer based on detected CPU capabilities.
 // From that point on, the code uses the version of the function set by the selector.
 
+void prefetch_function_generic(void* /*addr*/) {}
+
 void prefetch_function_fast(void* addr) {
 #  if defined(__INTEL_COMPILER)
     // This hack prevents prefetches from being optimized away by
@@ -88,10 +90,7 @@ void prefetch_function_fast(void* addr) {
 #  endif
 }
 
-void prefetch_function_generic(void* /*addr*/) {}
-
 void select_optimal_prefetch_function_at_runtime(void* addr) {
-
     if (CpuInfo::PREFETCHWT1()) {
         prefetch = &prefetch_function_fast;
         prefetch_function_fast(addr);

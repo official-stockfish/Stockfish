@@ -45,29 +45,32 @@ Magic BishopMagics[SQUARE_NB];
 // runtime CPUInfo and updates the "popcount" pointer based on the detected CPU capabilities.
 // From this point on, the code uses the version of the function set by the selector.
 
+int popcount_function_generic(Bitboard b) {
+    union { Bitboard bb; uint16_t u[4]; } v = { b };
+    return PopCnt16[v.u[0]] + PopCnt16[v.u[1]] + PopCnt16[v.u[2]] + PopCnt16[v.u[3]];
+}
+
 int popcount_function_fast(Bitboard b) {
 #if defined(_MSC_VER) || defined(__INTEL_COMPILER)
+#if defined(_M_X64)
     return (int)_mm_popcnt_u64(b);
+#else // _M_IX86
+    return popcount_function_generic(b);
+#endif
 #else // Assumed gcc or compatible compiler
     return __builtin_popcountll(b);
 #endif
 }
 
-int popcount_function_generic(Bitboard b) {
-
-    union { Bitboard bb; uint16_t u[4]; } v = { b };
-    return PopCnt16[v.u[0]] + PopCnt16[v.u[1]] + PopCnt16[v.u[2]] + PopCnt16[v.u[3]];
-}
-
 int select_optimal_popcount_function_at_runtime(Bitboard b) {
-
+#if defined(IS_64BIT)
     if (CpuInfo::POPCNT()) {
         popcount = &popcount_function_fast;
         return popcount_function_fast(b);
-    } else {
-        popcount = &popcount_function_generic;
-        return popcount_function_generic(b);
     }
+#endif
+    popcount = &popcount_function_generic;
+    return popcount_function_generic(b);
 }
 
 PopCntFunctionPtr popcount = &select_optimal_popcount_function_at_runtime;
