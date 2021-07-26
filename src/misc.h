@@ -216,7 +216,7 @@ inline void prefetch_function_fast(void* addr) {
 #  endif
 }
 
-inline void prefetch_function_generic(void* addr) {}
+inline void prefetch_function_generic(void* /*addr*/) {}
 
 inline void select_optimal_prefetch_function_at_runtime(void* addr) {
     if (CpuInfo::PREFETCHWT1()) {

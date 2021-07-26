@@ -20,6 +20,7 @@
 #define CPUINFO_H_INCLUDED
 
 #include <stdint.h>
+#include <cstring>
 #include <string>
 #include <bitset>
 #include <vector>
