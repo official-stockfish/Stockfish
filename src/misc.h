@@ -27,7 +27,6 @@
 #include <cstdint>
 
 #include "types.h"
-#include "cpuinfo.h"
 
 namespace Stockfish {
 

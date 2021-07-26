@@ -57,6 +57,7 @@ typedef bool(*fun3_t)(HANDLE, CONST GROUP_AFFINITY*, PGROUP_AFFINITY);
 #endif
 
 #include "misc.h"
+#include "cpuinfo.h"
 #include "thread.h"
 
 using namespace std;
@@ -66,6 +67,12 @@ namespace Stockfish {
 /// prefetch() preloads the given address in L1/L2 cache. This is a non-blocking
 /// function that doesn't stall the CPU waiting for data to be loaded from memory,
 /// which can be quite slow.
+
+// To enable one binary for all x86 CPUs, we call prefetch() using a function pointer.
+// This pointer is initialized with "select_optimal_prefetch_function_at_runtime".
+// At the first execution "select_optimal_prefetch_function_at_runtime" reads the
+// the runtime CPUInfo and updates "prefetch" pointer based on detected CPU capabilities.
+// From that point on, the code uses the version of the function set by the selector.
 
 void prefetch_function_fast(void* addr) {
 #  if defined(__INTEL_COMPILER)
@@ -94,11 +101,6 @@ void select_optimal_prefetch_function_at_runtime(void* addr) {
     }
 }
 
-// To enable one binary for all x86 CPUs, we call "prefetch" using a function pointer.
-// This pointer is initialized with "select_optimal_prefetch_function_at_runtime".
-// At the first execution "select_optimal_prefetch_function_at_runtime" reads the
-// the runtime CPUInfo and updates "prefetch" pointer based on detected CPU capabilities.
-// From that point on, the code uses the version of the function set by the selector.
 PrefetchFunctionPtr prefetch = &select_optimal_prefetch_function_at_runtime;
 
 namespace {

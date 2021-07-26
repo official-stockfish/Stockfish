@@ -20,6 +20,7 @@
 #include <bitset>
 
 #include "bitboard.h"
+#include "cpuinfo.h"
 #include "misc.h"
 
 namespace Stockfish {
@@ -37,6 +38,12 @@ Magic RookMagics[SQUARE_NB];
 Magic BishopMagics[SQUARE_NB];
 
 /// popcount() counts the number of non-zero bits in a bitboard
+
+// To enable one binary for all x86 CPUs, we call popcount() using a function pointer.
+// This pointer is initialized with "select_optimal_popcount_function_at_runtime".
+// At the first execution "select_optimal_popcount_function_at_runtime" reads the
+// runtime CPUInfo and updates the "popcount" pointer based on the detected CPU capabilities.
+// From this point on, the code uses the version of the function set by the selector.
 
 int popcount_function_fast(Bitboard b) {
 #if defined(_MSC_VER) || defined(__INTEL_COMPILER)
@@ -63,11 +70,6 @@ int select_optimal_popcount_function_at_runtime(Bitboard b) {
     }
 }
 
-// To enable one binary for all x86 CPUs, we call "popcount" using a function pointer.
-// This pointer is initialized with "select_optimal_popcount_function_at_runtime".
-// At the first execution "select_optimal_popcount_function_at_runtime" reads the
-// runtime CPUInfo and updates the "popcount" pointer based on the detected CPU capabilities.
-// From this point on, the code uses the version of the function set by the selector.
 PopCntFunctionPtr popcount = &select_optimal_popcount_function_at_runtime;
 
 namespace {
