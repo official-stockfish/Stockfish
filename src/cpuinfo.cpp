@@ -88,6 +88,10 @@ std::string CpuInfo::get_info_string() {
 
     s += "\nCPU Vendor: ";
     s += Vendor();
+    s += ", Family: ";
+    s += std::to_string(CPUID._family);
+    s += ", Model: ";
+    s += std::to_string(CPUID._model);
     s += "\n";
 
     s += "CPU Brand: ";
