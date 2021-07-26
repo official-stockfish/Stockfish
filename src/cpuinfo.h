@@ -38,6 +38,7 @@ namespace Stockfish {
 
         static bool isIntel() { return CPUID._isIntel; }
         static bool isAMD() { return CPUID._isAMD; }
+        static bool isAMDZen3() { return CPUID._isAMD && CPUID._family > 24; }
         static bool detect_OS_AVX();
         static bool detect_OS_AVX512();
 
@@ -125,17 +126,24 @@ namespace Stockfish {
                 _idExtMax{ 0 },
                 _isIntel{ false },
                 _isAMD{ false },
-                //_f1_EBX{ 0 },
+                _f1_EAX{ 0 },
+                _f1_EBX{ 0 },
                 _f1_ECX{ 0 },
                 _f1_EDX{ 0 },
+                _f7_EAX{ 0 },
                 _f7_EBX{ 0 },
                 _f7_ECX{ 0 },
                 _f7_EDX{ 0 },
-                //_f81_EBX{ 0 },
+                _f81_EAX{ 0 },
+                _f81_EBX{ 0 },
                 _f81_ECX{ 0 },
                 _f81_EDX{ 0 },
                 _data{},
-                _dataExt{}
+                _dataExt{},
+                _family{ 0 },
+                _model{ 0 },
+                _ext_family{ 0 },
+                _ext_model{ 0 }
             {
                 std::array<int32_t, 4> info;
 
@@ -169,7 +177,8 @@ namespace Stockfish {
                 // load bitset with flags for function 0x00000001
                 if (_idMax >= 1)
                 {
-                    //_f1_EBX = _data[1][1];
+                    _f1_EAX = _data[1][0];
+                    _f1_EBX = _data[1][1];
                     _f1_ECX = _data[1][2];
                     _f1_EDX = _data[1][3];
                 }
@@ -177,6 +186,7 @@ namespace Stockfish {
                 // load bitset with flags for function 0x00000007
                 if (_idMax >= 7)
                 {
+                    _f7_EAX = _data[7][0];
                     _f7_EBX = _data[7][1];
                     _f7_ECX = _data[7][2];
                     _f7_EDX = _data[7][3];
@@ -196,7 +206,8 @@ namespace Stockfish {
                 // load bitset with flags for extended function 0x80000001
                 if (_idExtMax >= 0x80000001)
                 {
-                    //_f81_EBX = _dataExt[1][1];
+                    _f81_EAX = _dataExt[1][0];
+                    _f81_EBX = _dataExt[1][1];
                     _f81_ECX = _dataExt[1][2];
                     _f81_EDX = _dataExt[1][3];
                 }
@@ -210,25 +221,67 @@ namespace Stockfish {
                     memcpy(brand + 32, _dataExt[4].data(), sizeof(info));
                     _brand = brand;
                 }
+                
+                // compute X86 Family and Model
+                const int32_t signature = _data[1][0];
+                _family = (signature >> 8) & 0x0F;
+                _model = (signature >> 4) & 0x0F;
+                _ext_family = 0;
+                _ext_model = 0;
+                // The "Intel 64 and IA-32 Architectures Developer's Manual: Vol. 2A"
+                // specifies the Extended Model is defined only when the Base Family is
+                // 06h or 0Fh.
+                // The "AMD CPUID Specification" specifies that the Extended Model is
+                // defined only when Base Family is 0Fh.
+                // Both manuals define the display model as
+                // {ExtendedModel[3:0],BaseModel[3:0]} in that case.
+                if (_family == 0x0F || (_family == 0x06 && _isIntel))
+                {
+                    _ext_model = (signature >> 16) & 0x0F;
+                    _model += _ext_model << 4;
+                }
+                // Both the "Intel 64 and IA-32 Architectures Developer's Manual: Vol. 2A"
+                // and the "AMD CPUID Specification" specify that the Extended Family is
+                // defined only when the Base Family is 0Fh.
+                // Both manuals define the display family as {0000b,BaseFamily[3:0]} +
+                // ExtendedFamily[7:0] in that case.
+                if (_family == 0x0F)
+                {
+                    _ext_family = (signature >> 20) & 0xFF;
+                    _family += _ext_family;
+                }
             };
 
             uint32_t _idMax;
             uint32_t _idExtMax;
             bool _isIntel;
             bool _isAMD;
-            //std::bitset<32> _f1_EBX;
+
+            std::bitset<32> _f1_EAX;
+            std::bitset<32> _f1_EBX;
             std::bitset<32> _f1_ECX;
             std::bitset<32> _f1_EDX;
+
+            std::bitset<32> _f7_EAX;
             std::bitset<32> _f7_EBX;
             std::bitset<32> _f7_ECX;
             std::bitset<32> _f7_EDX;
-            //std::bitset<32> _f81_EBX;
+
+            std::bitset<32> _f81_EAX;
+            std::bitset<32> _f81_EBX;
             std::bitset<32> _f81_ECX;
             std::bitset<32> _f81_EDX;
+
             std::vector<std::array<int32_t, 4>> _data;
             std::vector<std::array<int32_t, 4>> _dataExt;
+
             std::string _vendor;
             std::string _brand;
+
+            int32_t _family;
+            int32_t _model;
+            int32_t _ext_family;
+            int32_t _ext_model;
         };
     private:
         static void cpuid(int32_t out[4], int32_t eax, int32_t ecx);

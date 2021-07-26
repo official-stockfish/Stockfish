@@ -36,6 +36,13 @@ Bitboard PawnAttacks[COLOR_NB][SQUARE_NB];
 Magic RookMagics[SQUARE_NB];
 Magic BishopMagics[SQUARE_NB];
 
+// To enable one binary for all x86 CPUs, we call "popcount" using a function pointer.
+// This pointer is initialized with "select_optimal_popcount_function_at_runtime".
+// At the first execution "select_optimal_popcount_function_at_runtime" reads the
+// runtime CPUInfo and updates the "popcount" pointer based on the detected CPU capabilities.
+// From this point on, the code uses the version of the function set by the selector.
+PopCntFunctionPtr popcount = &select_optimal_popcount_function_at_runtime;
+
 namespace {
 
   Bitboard RookTable[0x19000];  // To store rook attacks

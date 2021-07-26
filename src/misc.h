@@ -27,12 +27,15 @@
 #include <cstdint>
 
 #include "types.h"
+#include "cpuinfo.h"
 
 namespace Stockfish {
 
+using PrefetchFunctionPtr = std::add_pointer<void(void* addr)>::type;
+extern PrefetchFunctionPtr prefetch;
+
 std::string engine_info(bool to_uci = false);
 std::string compiler_info();
-void prefetch(void* addr);
 void start_logger(const std::string& fname);
 void* std_aligned_alloc(size_t alignment, size_t size);
 void std_aligned_free(void* ptr);
@@ -193,6 +196,37 @@ namespace CommandLine {
 
   extern std::string binaryDirectory;  // path of the executable directory
   extern std::string workingDirectory; // path of the working directory
+}
+
+/// prefetch() preloads the given address in L1/L2 cache. This is a non-blocking
+/// function that doesn't stall the CPU waiting for data to be loaded from memory,
+/// which can be quite slow.
+
+inline void prefetch_function_fast(void* addr) {
+#  if defined(__INTEL_COMPILER)
+    // This hack prevents prefetches from being optimized away by
+    // Intel compiler. Both MSVC and gcc seem not be affected by this.
+    __asm__("");
+#  endif
+
+#  if defined(__INTEL_COMPILER) || defined(_MSC_VER)
+    _mm_prefetch((char*)addr, _MM_HINT_T0);
+#  else
+    __builtin_prefetch(addr);
+#  endif
+}
+
+inline void prefetch_function_generic(void* addr) {}
+
+inline void select_optimal_prefetch_function_at_runtime(void* addr) {
+    if (CpuInfo::PREFETCHWT1()) {
+        prefetch = &prefetch_function_fast;
+        prefetch_function_fast(addr);
+    }
+    else {
+        prefetch = &prefetch_function_generic;
+        prefetch_function_generic(addr);
+    }
 }
 
 } // namespace Stockfish
