@@ -63,6 +63,37 @@ using namespace std;
 
 namespace Stockfish {
 
+/// prefetch() preloads the given address in L1/L2 cache. This is a non-blocking
+/// function that doesn't stall the CPU waiting for data to be loaded from memory,
+/// which can be quite slow.
+
+void prefetch_function_fast(void* addr) {
+#  if defined(__INTEL_COMPILER)
+    // This hack prevents prefetches from being optimized away by
+    // Intel compiler. Both MSVC and gcc seem not be affected by this.
+    __asm__("");
+#  endif
+
+#  if defined(__INTEL_COMPILER) || defined(_MSC_VER)
+    _mm_prefetch((char*)addr, _MM_HINT_T0);
+#  else
+    __builtin_prefetch(addr);
+#  endif
+}
+
+void prefetch_function_generic(void* /*addr*/) {}
+
+void select_optimal_prefetch_function_at_runtime(void* addr) {
+
+    if (CpuInfo::PREFETCHWT1()) {
+        prefetch = &prefetch_function_fast;
+        prefetch_function_fast(addr);
+    } else {
+        prefetch = &prefetch_function_generic;
+        prefetch_function_generic(addr);
+    }
+}
+
 // To enable one binary for all x86 CPUs, we call "prefetch" using a function pointer.
 // This pointer is initialized with "select_optimal_prefetch_function_at_runtime".
 // At the first execution "select_optimal_prefetch_function_at_runtime" reads the

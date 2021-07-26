@@ -335,34 +335,6 @@ inline Bitboard attacks_bb(PieceType pt, Square s, Bitboard occupied) {
   }
 }
 
-
-/// popcount() counts the number of non-zero bits in a bitboard
-
-inline int popcount_function_fast(Bitboard b) {
-#if defined(_MSC_VER) || defined(__INTEL_COMPILER)
-  return (int)_mm_popcnt_u64(b);
-#else // Assumed gcc or compatible compiler
-  return __builtin_popcountll(b);
-#endif
-}
-
-inline int popcount_function_generic(Bitboard b) {
-
-    union { Bitboard bb; uint16_t u[4]; } v = { b };
-    return PopCnt16[v.u[0]] + PopCnt16[v.u[1]] + PopCnt16[v.u[2]] + PopCnt16[v.u[3]];
-}
-
-inline int select_optimal_popcount_function_at_runtime(Bitboard b) {
-
-    if (CpuInfo::POPCNT()) {
-        popcount = &popcount_function_fast;
-        return popcount_function_fast(b);
-    } else {
-        popcount = &popcount_function_generic;
-        return popcount_function_generic(b);
-    }
-}
-
 /// lsb() and msb() return the least/most significant bit in a non-zero bitboard
 
 #if defined(__GNUC__)  // GCC, Clang, ICC
