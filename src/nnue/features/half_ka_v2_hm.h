@@ -18,8 +18,8 @@
 
 //Definition of input features HalfKP of NNUE evaluation function
 
-#ifndef NNUE_FEATURES_HALF_KA_V2_H_INCLUDED
-#define NNUE_FEATURES_HALF_KA_V2_H_INCLUDED
+#ifndef NNUE_FEATURES_HALF_KA_V2_HM_H_INCLUDED
+#define NNUE_FEATURES_HALF_KA_V2_HM_H_INCLUDED
 
 #include "../nnue_common.h"
 
@@ -32,9 +32,9 @@ namespace Stockfish {
 
 namespace Stockfish::Eval::NNUE::Features {
 
-  // Feature HalfKAv2: Combination of the position of own king
-  // and the position of pieces
-  class HalfKAv2 {
+  // Feature HalfKAv2_hm: Combination of the position of own king
+  // and the position of pieces. Position mirrored such that king always on e..h files.
+  class HalfKAv2_hm {
 
     // unique number for each piece type on each square
     enum {
@@ -63,21 +63,32 @@ namespace Stockfish::Eval::NNUE::Features {
     };
 
     // Orient a square according to perspective (rotates by 180 for black)
-    static Square orient(Color perspective, Square s);
+    static Square orient(Color perspective, Square s, Square ksq);
 
     // Index of a feature for a given king position and another piece on some square
     static IndexType make_index(Color perspective, Square s, Piece pc, Square ksq);
 
    public:
     // Feature name
-    static constexpr const char* Name = "HalfKAv2(Friend)";
+    static constexpr const char* Name = "HalfKAv2_hm(Friend)";
 
     // Hash value embedded in the evaluation file
-    static constexpr std::uint32_t HashValue = 0x5f234cb8u;
+    static constexpr std::uint32_t HashValue = 0x7f234cb8u;
 
     // Number of feature dimensions
     static constexpr IndexType Dimensions =
-        static_cast<IndexType>(SQUARE_NB) * static_cast<IndexType>(PS_NB);
+        static_cast<IndexType>(SQUARE_NB) * static_cast<IndexType>(PS_NB) / 2;
+
+    static constexpr int KingBuckets[64] = {
+      -1, -1, -1, -1, 31, 30, 29, 28,
+      -1, -1, -1, -1, 27, 26, 25, 24,
+      -1, -1, -1, -1, 23, 22, 21, 20,
+      -1, -1, -1, -1, 19, 18, 17, 16,
+      -1, -1, -1, -1, 15, 14, 13, 12,
+      -1, -1, -1, -1, 11, 10, 9, 8,
+      -1, -1, -1, -1, 7, 6, 5, 4,
+      -1, -1, -1, -1, 3, 2, 1, 0
+    };
 
     // Maximum number of simultaneously active features.
     static constexpr IndexType MaxActiveDimensions = 32;
@@ -108,4 +119,4 @@ namespace Stockfish::Eval::NNUE::Features {
 
 }  // namespace Stockfish::Eval::NNUE::Features
 
-#endif // #ifndef NNUE_FEATURES_HALF_KA_V2_H_INCLUDED
+#endif // #ifndef NNUE_FEATURES_HALF_KA_V2_HM_H_INCLUDED
