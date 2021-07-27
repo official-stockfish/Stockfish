@@ -62,31 +62,38 @@ const CpuInfo::CpuId Stockfish::CpuInfo::CPUID;
     #define _XCR_XFEATURE_ENABLED_MASK 0
 #endif
 
-bool CpuInfo::detect_OS_AVX() {
-
-    bool avxSupported = false;
-
+bool CpuInfo::OS_AVX() {
     if (OSXSAVE() && AVX())
     {
-        uint64_t xcrFeatureMask = xgetbv(_XCR_XFEATURE_ENABLED_MASK);
-        avxSupported = (xcrFeatureMask & 0x06) == 0x06;
+        const uint64_t xcrFeatureMask = xgetbv(_XCR_XFEATURE_ENABLED_MASK);
+        // check for OS-support of YMM state. Necessary for AVX and AVX2.
+        return (xcrFeatureMask & 0x06) == 0x06;
     }
-
-    return avxSupported;
+    return false;
 }
 
-bool CpuInfo::detect_OS_AVX512() {
-    if (!detect_OS_AVX())
-        return false;
+bool CpuInfo::OS_AVX2() {
+    if (OS_AVX())
+    {
+        return AVX2();
+    }
+    return false;
+}
 
-    uint64_t xcrFeatureMask = xgetbv(_XCR_XFEATURE_ENABLED_MASK);
-    return (xcrFeatureMask & 0xE6) == 0xE6;
+bool CpuInfo::OS_AVX512() {
+    if (OS_AVX() && AVX512F() && AVX512DQ() && AVX512CD() && AVX512BW() && AVX512VL())
+    {
+        const uint64_t xcrFeatureMask = xgetbv(_XCR_XFEATURE_ENABLED_MASK);
+        // Check for OS-support of ZMM and YMM state. Necessary for AVX-512.
+        return (xcrFeatureMask & 0xE6) == 0xE6;
+    }
+    return false;
 }
 
 std::string CpuInfo::get_info_string() {
     std::string s;
 
-    s += "\nCPU Vendor: ";
+    s += "\nVendor: ";
     s += Vendor();
     s += ", Family: ";
     s += std::to_string(CPUID._family);
@@ -94,7 +101,7 @@ std::string CpuInfo::get_info_string() {
     s += std::to_string(CPUID._model);
     s += "\n";
 
-    s += "CPU Brand: ";
+    s += "Brand: ";
     s += Brand();
     s += "\n";
 
@@ -112,9 +119,6 @@ std::string CpuInfo::get_info_string() {
     if (RDPID())       s += "RDPID ";
     if (GFNI())        s += "GFNI ";
     if (VAES())        s += "VAES ";
-    s += "\n";
-
-    s += "SIMD 128-bit: ";
     if (SSE())         s += "SSE ";
     if (SSE2())        s += "SSE2 ";
     if (SSE3())        s += "SSE3 ";
@@ -126,31 +130,10 @@ std::string CpuInfo::get_info_string() {
     if (SHA())         s += "SHA ";
     s += "\n";
 
-    s += "SIMD 256-bit: ";
-    if (AVX())         s += "AVX ";
-    if (XOP())         s += "XOP ";
-    if (FMA3())        s += "FMA3 ";
-    if (FMA4())        s += "FMA4 ";
-    if (AVX2())        s += "AVX2 ";
-    s += "\n";
-
-    s += "SIMD 512-bit: ";
-    if (AVX512F())         s += "AVX512-F ";
-    if (AVX512CD())        s += "AVX512-CD ";
-    if (AVX512PF())        s += "AVX512-PF ";
-    if (AVX512ER())        s += "AVX512-ER ";
-    if (AVX512VL())        s += "AVX512-VL ";
-    if (AVX512BW())        s += "AVX512-BW ";
-    if (AVX512DQ())        s += "AVX512-DQ ";
-    if (AVX512IFMA())      s += "AVX512-IFMA ";
-    if (AVX512VBMI())      s += "AVX512-VBMI ";
-    if (AVX512VPOPCNTDQ()) s += "AVX512-VPOPCNTDQ ";
-    if (AVX5124FMAPS())    s += "AVX512-4FMAPS ";
-    if (AVX5124VNNIW())    s += "AVX512-4VNNIW ";
-    if (AVX512VBMI2())     s += "AVX512-VBMI2 ";
-    if (AVX512VPCLMUL())   s += "AVX512-VPCLMUL ";
-    if (AVX512VNNI())      s += "AVX512-VNNI ";
-    if (AVX512BITALG())    s += "AVX512-BITALG ";
+    s += "OS + Hardware Features: ";
+    (OS_AVX())    ? s += "AVX = yes, "   : s += "AVX = no, ";
+    (OS_AVX2())   ? s += "AVX2 = yes, "  : s += "AVX2 = no, ";
+    (OS_AVX512()) ? s += "AVX-512 = yes" : s += "AVX-512 = no";
     s += "\n";
 
     return s;

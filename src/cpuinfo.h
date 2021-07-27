@@ -40,8 +40,9 @@ namespace Stockfish {
         static bool isIntel() { return CPUID._isIntel; }
         static bool isAMD() { return CPUID._isAMD; }
         static bool isAMDZen3() { return CPUID._isAMD && CPUID._family > 24; }
-        static bool detect_OS_AVX();
-        static bool detect_OS_AVX512();
+        static bool OS_AVX();
+        static bool OS_AVX2();
+        static bool OS_AVX512();
 
         // flags reported by function 0x00000001
         static bool SSE3()        { return CPUID._f1_ECX[0]; }
