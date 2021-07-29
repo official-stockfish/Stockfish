@@ -57,50 +57,11 @@ typedef bool(*fun3_t)(HANDLE, CONST GROUP_AFFINITY*, PGROUP_AFFINITY);
 #endif
 
 #include "misc.h"
-#include "cpuinfo.h"
 #include "thread.h"
 
 using namespace std;
 
 namespace Stockfish {
-
-/// prefetch() preloads the given address in L1/L2 cache. This is a non-blocking
-/// function that doesn't stall the CPU waiting for data to be loaded from memory,
-/// which can be quite slow.
-
-// To enable one binary for all x86 CPUs, we call prefetch() using a function pointer.
-// This pointer is initialized with "select_optimal_prefetch_function_at_runtime".
-// At the first execution "select_optimal_prefetch_function_at_runtime" reads the
-// the runtime CPUInfo and updates "prefetch" pointer based on detected CPU capabilities.
-// From that point on, the code uses the version of the function set by the selector.
-
-void prefetch_function_generic(void* /*addr*/) {}
-
-void prefetch_function_fast(void* addr) {
-#  if defined(__INTEL_COMPILER)
-    // This hack prevents prefetches from being optimized away by
-    // Intel compiler. Both MSVC and gcc seem not be affected by this.
-    __asm__("");
-#  endif
-
-#  if defined(__INTEL_COMPILER) || defined(_MSC_VER)
-    _mm_prefetch((char*)addr, _MM_HINT_T0);
-#  else
-    __builtin_prefetch(addr);
-#  endif
-}
-
-void select_optimal_prefetch_function_at_runtime(void* addr) {
-    if (CpuInfo::PREFETCHWT1()) {
-        prefetch = &prefetch_function_fast;
-        prefetch_function_fast(addr);
-    } else {
-        prefetch = &prefetch_function_generic;
-        prefetch_function_generic(addr);
-    }
-}
-
-PrefetchFunctionPtr prefetch = &select_optimal_prefetch_function_at_runtime;
 
 namespace {
 
@@ -356,6 +317,33 @@ std::ostream& operator<<(std::ostream& os, SyncCout sc) {
 
 /// Trampoline helper to avoid moving Logger to misc.h
 void start_logger(const std::string& fname) { Logger::start(fname); }
+
+
+/// prefetch() preloads the given address in L1/L2 cache. This is a non-blocking
+/// function that doesn't stall the CPU waiting for data to be loaded from memory,
+/// which can be quite slow.
+#ifdef NO_PREFETCH
+
+void prefetch(void*) {}
+
+#else
+
+void prefetch(void* addr) {
+
+#  if defined(__INTEL_COMPILER)
+   // This hack prevents prefetches from being optimized away by
+   // Intel compiler. Both MSVC and gcc seem not be affected by this.
+   __asm__ ("");
+#  endif
+
+#  if defined(__INTEL_COMPILER) || defined(_MSC_VER)
+  _mm_prefetch((char*)addr, _MM_HINT_T0);
+#  else
+  __builtin_prefetch(addr);
+#  endif
+}
+
+#endif
 
 
 /// std_aligned_alloc() is our wrapper for systems where the c++17 implementation
