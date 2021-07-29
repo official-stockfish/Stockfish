@@ -85,6 +85,7 @@ namespace Stockfish {
                 _f7_ECX{ 0 },
                 _f7_EDX{ 0 },
                 _f81_EDX{ 0 },
+                _xcrFeatureMask{ 0 },
                 _data{},
                 _dataExt{},
                 _family{ 0 },
@@ -194,15 +195,11 @@ namespace Stockfish {
                 }
             };
 
-            std::string _vendor;
-            std::string _brand;
+            uint32_t _idMax;
+            uint32_t _idExtMax;
 
             bool _isIntel;
             bool _isAMD;
-
-            int32_t _family;
-            int32_t _model;
-            int32_t _stepping;
 
             int32_t         _f1_EAX;
             std::bitset<32> _f1_ECX;
@@ -214,11 +211,15 @@ namespace Stockfish {
 
             uint64_t        _xcrFeatureMask; // XCR0 XFEATURE_ENABLED_MASK
 
-        private:
-            uint32_t _idMax;
-            uint32_t _idExtMax;
             std::vector<std::array<int32_t, 4>> _data;
             std::vector<std::array<int32_t, 4>> _dataExt;
+
+            int32_t _family;
+            int32_t _model;
+            int32_t _stepping;
+
+            std::string _vendor;
+            std::string _brand;
         };
 
     private:
