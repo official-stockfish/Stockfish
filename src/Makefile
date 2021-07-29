@@ -79,7 +79,7 @@ endif
 # sse41 = yes/no      --- -msse4.1         --- Use Intel Streaming SIMD Extensions 4.1
 # avx2 = yes/no       --- -mavx2           --- Use Intel Advanced Vector Extensions 2
 # avx512 = yes/no     --- -mavx512bw       --- Use Intel Advanced Vector Extensions 512
-# vnni256 = yes/no    --- -mavx256vnni     --- Use Intel Vector Neural Network Instructions 256
+# vnni256 = yes/no    --- -mavx512vnni     --- Use Intel Vector Neural Network Instructions 256
 # vnni512 = yes/no    --- -mavx512vnni     --- Use Intel Vector Neural Network Instructions 512
 # neon = yes/no       --- -DUSE_NEON       --- Use ARM SIMD architecture
 #
