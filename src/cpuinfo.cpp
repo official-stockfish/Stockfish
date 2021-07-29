@@ -29,17 +29,13 @@ const CpuInfo::CpuId Stockfish::CpuInfo::CPUID;
 #include <windows.h>
 #include <intrin.h>
 
-    void CpuInfo::cpuid(int32_t out[4], int32_t eax, int32_t ecx) {
-        __cpuidex(out, eax, ecx);
-    }
+    void CpuInfo::cpuid(int32_t out[4], int32_t eax, int32_t ecx) { __cpuidex(out, eax, ecx);  }
 
 # elif defined(__GNUC__) || defined(__clang__)
 
 #include <cpuid.h>
 
-    void CpuInfo::cpuid(int32_t out[4], int32_t eax, int32_t ecx) {
-        __cpuid_count(eax, ecx, out[0], out[1], out[2], out[3]);
-    }
+    void CpuInfo::cpuid(int32_t out[4], int32_t eax, int32_t ecx) { __cpuid_count(eax, ecx, out[0], out[1], out[2], out[3]);  }
 
 #else
 #   message "No CPU-ID intrinsic defined for compiler."
@@ -52,7 +48,7 @@ bool CpuInfo::osAVX() {
     if (OSXSAVE() && AVX())
     {
         // Check OS has enabled both XMM and YMM state support. Necessary for AVX and AVX2.
-        return (CPUID._xcrFeatureMask & 0x06) == 0x06;
+        return (xcrFeatureMask() & 0x06) == 0x06;
     }
     return false;
 }
@@ -69,7 +65,7 @@ bool CpuInfo::osAVX512() {
     if (osAVX() && AVX512F() && AVX512BW())
     {
         // Check for OS-support of ZMM and YMM state. Necessary for AVX-512.
-        return (CPUID._xcrFeatureMask & 0xE6) == 0xE6;
+        return (xcrFeatureMask() & 0xE6) == 0xE6;
     }
     return false;
 }

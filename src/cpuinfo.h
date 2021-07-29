@@ -62,7 +62,8 @@ namespace Stockfish {
         static bool AVX512BW()   { return CPUID._f7_EBX[30]; } // -mavx512bw
         static bool AVX512VL()   { return CPUID._f7_EBX[31]; } // -mavx512vl
         static bool AVX512VNNI() { return CPUID._f7_ECX[11]; } // -mavx512vnni
-        // flags reported by function 0x0D
+        // XCR0 XFEATURE_ENABLED_MASK reported by function 0x0D
+        static uint64_t xcrFeatureMask() { return CPUID._xcrFeatureMask; }
 
         // flags reported by extended function 0x80000001
         static bool X64()        { return CPUID._f81_EDX[29]; } // -DIS_64BIT
@@ -209,7 +210,7 @@ namespace Stockfish {
             std::bitset<32> _f7_EDX;
             std::bitset<32> _f81_EDX;
 
-            uint64_t        _xcrFeatureMask; // XCR0 XFEATURE_ENABLED_MASK
+            uint64_t        _xcrFeatureMask;
 
             std::vector<std::array<int32_t, 4>> _data;
             std::vector<std::array<int32_t, 4>> _dataExt;
