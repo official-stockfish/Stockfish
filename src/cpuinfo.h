@@ -84,8 +84,6 @@ namespace Stockfish {
                 _f7_EBX{ 0 },
                 _f7_ECX{ 0 },
                 _f7_EDX{ 0 },
-                _fD_EAX{ 0 },
-                _fD_EDX{ 0 },
                 _f81_EDX{ 0 },
                 _data{},
                 _dataExt{},
@@ -141,8 +139,7 @@ namespace Stockfish {
                 // load output of function 0x0D
                 if (_idMax >= 0x0D)
                 {
-                    _fD_EAX = _data[13][0];
-                    _fD_EDX = _data[13][3];
+                    _xcrFeatureMask = ((uint64_t)_data[13][3] << 32) | _data[13][0];
                 }
 
                 // calling cpuid with 0x80000000
@@ -213,11 +210,11 @@ namespace Stockfish {
             std::bitset<32> _f7_EBX;
             std::bitset<32> _f7_ECX;
             std::bitset<32> _f7_EDX;
-            int32_t         _fD_EAX;
-            int32_t         _fD_EDX;
             std::bitset<32> _f81_EDX;
 
-     private:
+            uint64_t        _xcrFeatureMask; // XCR0 XFEATURE_ENABLED_MASK
+
+        private:
             uint32_t _idMax;
             uint32_t _idExtMax;
             std::vector<std::array<int32_t, 4>> _data;
@@ -226,7 +223,6 @@ namespace Stockfish {
 
     private:
         static void cpuid(int32_t out[4], int32_t eax, int32_t ecx);
-        static inline uint64_t xcrFeatureMask() { return ((uint64_t)CPUID._fD_EDX << 32) | CPUID._fD_EAX; } // XCR0 XFEATURE_ENABLED_MASK
     };
 } // namespace Stockfish
 

@@ -52,7 +52,7 @@ bool CpuInfo::osAVX() {
     if (OSXSAVE() && AVX())
     {
         // Check OS has enabled both XMM and YMM state support. Necessary for AVX and AVX2.
-        return (xcrFeatureMask() & 0x06) == 0x06;
+        return (CPUID._xcrFeatureMask & 0x06) == 0x06;
     }
     return false;
 }
@@ -69,7 +69,7 @@ bool CpuInfo::osAVX512() {
     if (osAVX() && AVX512F() && AVX512BW())
     {
         // Check for OS-support of ZMM and YMM state. Necessary for AVX-512.
-        return (xcrFeatureMask() & 0xE6) == 0xE6;
+        return (CPUID._xcrFeatureMask & 0xE6) == 0xE6;
     }
     return false;
 }
