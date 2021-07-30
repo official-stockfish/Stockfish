@@ -62,36 +62,36 @@ namespace Stockfish {
         static bool AVX512BW()   { return CPUID._f7_EBX[30]; } // -mavx512bw
         static bool AVX512VL()   { return CPUID._f7_EBX[31]; } // -mavx512vl
         static bool AVX512VNNI() { return CPUID._f7_ECX[11]; } // -mavx512vnni
-        // XCR0 XFEATURE_ENABLED_MASK reported by function 0x0D
-        static uint64_t xcrFeatureMask() { return CPUID._xcrFeatureMask; }
-
+        // flags reported by function 0x0D
+        static uint64_t xcrFeatureMask() { return CPUID._fD_xcrFeatureMask; } // XCR0 XFEATURE_ENABLED_MASK 
         // flags reported by extended function 0x80000001
         static bool X64()        { return CPUID._f81_EDX[29]; } // -DIS_64BIT
 
     private:
         static const CpuId CPUID;
+        static void cpuid(int32_t out[4], int32_t eax, int32_t ecx);
 
         class CpuId
         {
         public:
             CpuId() :
-                _idMax{ 0 },
-                _idExtMax{ 0 },
                 _isIntel{ false },
                 _isAMD{ false },
+                _family{ 0 },
+                _model{ 0 },
+                _stepping{ 0 },
                 _f1_EAX{ 0 },
                 _f1_ECX{ 0 },
                 _f1_EDX{ 0 },
                 _f7_EBX{ 0 },
                 _f7_ECX{ 0 },
                 _f7_EDX{ 0 },
+                _fD_xcrFeatureMask{ 0 },
                 _f81_EDX{ 0 },
-                _xcrFeatureMask{ 0 },
+                _idMax{ 0 },
+                _idExtMax{ 0 },
                 _data{},
-                _dataExt{},
-                _family{ 0 },
-                _model{ 0 },
-                _stepping{ 0 }
+                _dataExt{}
             {
                 std::array<int32_t, 4> info;
 
@@ -141,7 +141,7 @@ namespace Stockfish {
                 // load output of function 0x0D
                 if (_idMax >= 0x0D)
                 {
-                    _xcrFeatureMask = ((uint64_t)_data[13][3] << 32) | _data[13][0];
+                    _fD_xcrFeatureMask = ((uint64_t)_data[13][3] << 32) | _data[13][0];
                 }
 
                 // calling cpuid with 0x80000000
@@ -196,24 +196,8 @@ namespace Stockfish {
                 }
             };
 
-            uint32_t _idMax;
-            uint32_t _idExtMax;
-
             bool _isIntel;
             bool _isAMD;
-
-            int32_t         _f1_EAX;
-            std::bitset<32> _f1_ECX;
-            std::bitset<32> _f1_EDX;
-            std::bitset<32> _f7_EBX;
-            std::bitset<32> _f7_ECX;
-            std::bitset<32> _f7_EDX;
-            std::bitset<32> _f81_EDX;
-
-            uint64_t        _xcrFeatureMask;
-
-            std::vector<std::array<int32_t, 4>> _data;
-            std::vector<std::array<int32_t, 4>> _dataExt;
 
             int32_t _family;
             int32_t _model;
@@ -221,10 +205,23 @@ namespace Stockfish {
 
             std::string _vendor;
             std::string _brand;
-        };
 
-    private:
-        static void cpuid(int32_t out[4], int32_t eax, int32_t ecx);
+            int32_t         _f1_EAX;
+            std::bitset<32> _f1_ECX;
+            std::bitset<32> _f1_EDX;
+            std::bitset<32> _f7_EBX;
+            std::bitset<32> _f7_ECX;
+            std::bitset<32> _f7_EDX;
+            uint64_t        _fD_xcrFeatureMask;
+            std::bitset<32> _f81_EDX;
+
+        private:
+            uint32_t _idMax;
+            uint32_t _idExtMax;
+
+            std::vector<std::array<int32_t, 4>> _data;
+            std::vector<std::array<int32_t, 4>> _dataExt;
+        }; // class CpuId
     };
 } // namespace Stockfish
 
