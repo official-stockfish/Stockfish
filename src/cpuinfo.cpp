@@ -49,8 +49,7 @@ void CpuInfo::cpuid(int32_t out[4], int32_t eax, int32_t ecx) {
 #endif
 
 bool CpuInfo::osAVX() {
-    if (OSXSAVE() && AVX())
-    {
+    if (OSXSAVE() && AVX()) {
         // check OS has enabled XMM and YMM state support (necessary for AVX and AVX2)
         return (xcrFeatureMask() & 0x06) == 0x06;
     }
@@ -58,16 +57,14 @@ bool CpuInfo::osAVX() {
 }
 
 bool CpuInfo::osAVX2() {
-    if (osAVX())
-    {
+    if (osAVX()) {
         return AVX2();
     }
     return false;
 }
 
 bool CpuInfo::osAVX512() {
-    if (osAVX() && AVX512F() && AVX512BW())
-    {
+    if (osAVX() && AVX512F() && AVX512BW()) {
         // check OS has enabled XMM, YMM and ZMM state support (necessary for AVX-512)
         return (xcrFeatureMask() & 0xE6) == 0xE6;
     }
@@ -76,6 +73,7 @@ bool CpuInfo::osAVX512() {
 
 std::string CpuInfo::infoString() {
     std::string s;
+    bool fs = true; // full set of featues supported?
 
     s += "\nVendor : ";
     s += vendor();
@@ -89,7 +87,6 @@ std::string CpuInfo::infoString() {
     s += "Brand  : ";
     s += brand();
     s += "\nCPU    : ";
-    bool fs = true; // full set of featues supported?
     if (X64())    { s += "64bit "; }  else { s += "[64bit] "; fs = false; }
     if (MMX())    { s += "MMX "; }    else { s += "[MMX] "; fs = false; }
     if (SSE())    { s += "SSE "; }    else { s += "[SSE] "; fs = false; }
@@ -111,8 +108,8 @@ std::string CpuInfo::infoString() {
     if (osAVX())    { s += "AVX "; }    else { s += "[AVX] "; fs = false; }
     if (osAVX2())   { s += "AVX2 "; }   else { s += "[AVX2] "; fs = false; }
     if (osAVX512()) { s += "AVX-512"; } else { s += "[AVX-512]"; fs = false; }
-    fs ? s += "\nAll features are supported.\n" :
-         s += "\nValues in brackets mean that this feature is not supported by the CPU or the OS.\n";
+    fs ? s += "\nAll features are supported by your CPU and OS.\n" :
+         s += "\nValues in brackets mean that this feature is not supported by your CPU or OS.\n";
 
     return s;
 }

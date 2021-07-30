@@ -28,8 +28,7 @@
 
 namespace Stockfish {
 
-    class CpuInfo
-    {
+    class CpuInfo {
         class CpuId;
 
     public:
@@ -71,8 +70,7 @@ namespace Stockfish {
         static const CpuId CPUID;
         static void cpuid(int32_t out[4], int32_t eax, int32_t ecx);
 
-        class CpuId
-        {
+        class CpuId {
         public:
             CpuId() :
                 _isIntel{ false },
@@ -102,8 +100,7 @@ namespace Stockfish {
                 // Optimization: 0x0D is the highest function we need to know results of
                 if (idMax > 0x0D) { idMax = 0x0D; }
                 // call each function and store results in _data
-                for (uint32_t i = 0; i <= idMax; ++i)
-                {
+                for (uint32_t i = 0; i <= idMax; ++i) {
                     cpuid(info.data(), i, 0);
                     data.push_back(info);
                 }
@@ -115,34 +112,28 @@ namespace Stockfish {
                 memcpy(vendor + 8, &data[0][2], sizeof(int32_t));
                 _vendor = vendor;
 
-                if (_vendor == "GenuineIntel")
-                {
+                if (_vendor == "GenuineIntel") {
                     _isIntel = true;
-                }
-                else if (_vendor == "AuthenticAMD")
-                {
+                } else if (_vendor == "AuthenticAMD") {
                     _isAMD = true;
                 }
 
                 // load bitsets with flags for function 0x01
-                if (idMax >= 0x01)
-                {
+                if (idMax >= 0x01) {
                     _f1_EAX = data[1][0];
                     _f1_ECX = data[1][2];
                     _f1_EDX = data[1][3];
                 }
 
                 // load bitsets with flags for function 0x07
-                if (idMax >= 0x07)
-                {
+                if (idMax >= 0x07) {
                     _f7_EBX = data[7][1];
                     _f7_ECX = data[7][2];
                     _f7_EDX = data[7][3];
                 }
 
                 // load output of function 0x0D
-                if (idMax >= 0x0D)
-                {
+                if (idMax >= 0x0D) {
                     _fD_xcrFeatureMask = ((uint64_t)data[13][3] << 32) | data[13][0];
                 }
 
@@ -153,21 +144,18 @@ namespace Stockfish {
                 // Optimization: 0x80000004 is the highest extended function we need to know results of
                 if (idExtMax > 0x80000004) { idExtMax = 0x80000004; }
                 // call each extended function and store results in _dataExt
-                for (uint32_t i = 0x80000000; i <= idExtMax; ++i)
-                {
+                for (uint32_t i = 0x80000000; i <= idExtMax; ++i) {
                     cpuid(info.data(), i, 0);
                     dataExt.push_back(info);
                 }
 
                 // load bitset with flags for extended function 0x80000001
-                if (idExtMax >= 0x80000001)
-                {
+                if (idExtMax >= 0x80000001) {
                     _f81_EDX = dataExt[1][3];
                 }
 
                 // retrieve CPU brand string if reported
-                if (idExtMax >= 0x80000004)
-                {
+                if (idExtMax >= 0x80000004) {
                     char brand[3*sizeof(info) + 1] { 0 };
                     memcpy(brand,      dataExt[2].data(), sizeof(info));
                     memcpy(brand + 16, dataExt[3].data(), sizeof(info));
@@ -185,16 +173,14 @@ namespace Stockfish {
                 // is defined only when the Base Family is 06h or 0Fh.
                 // The "AMD CPUID Specification" specifies that the Extended Model is defined only when Base Family is 0Fh.
                 // Both manuals define the display model as {ExtendedModel[3:0],BaseModel[3:0]} in that case.
-                if (_family == 0x0F || (_family == 0x06 && _isIntel))
-                {
+                if (_family == 0x0F || (_family == 0x06 && _isIntel)) {
                     ext_model = (_f1_EAX >> 16) & 0x0F;
                     _model += ext_model << 4;
                 }
                 // Both the "Intel 64 and IA-32 Architectures Developer's Manual: Vol. 2A" and the "AMD CPUID Specification"
                 // specify that the Extended Family is defined only when the Base Family is 0Fh.
                 // Both manuals define the display family as {0000b,BaseFamily[3:0]} + ExtendedFamily[7:0] in that case.
-                if (_family == 0x0F)
-                {
+                if (_family == 0x0F) {
                     ext_family = (_f1_EAX >> 20) & 0xFF;
                     _family += ext_family;
                 }
