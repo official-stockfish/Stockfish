@@ -37,9 +37,9 @@ namespace Stockfish {
         static std::string brand()  { return CPUID._brand; }
         static std::string infoString();
 
-        static bool isIntel()    { return CPUID._isIntel; }
-        static bool isAMD()      { return CPUID._isAMD; }
-        static bool isAMDZen3()  { return CPUID._isAMD && CPUID._family > 24; }
+        static bool isIntel() { return CPUID._isIntel; }
+        static bool isAMD()   { return CPUID._isAMD; }
+        static bool isAMDBeforeZen3() { return CPUID._isAMD && CPUID._family < 25; }
         static bool osAVX();
         static bool osAVX2();
         static bool osAVX512();
@@ -87,30 +87,32 @@ namespace Stockfish {
                 _f7_ECX{ 0 },
                 _f7_EDX{ 0 },
                 _fD_xcrFeatureMask{ 0 },
-                _f81_EDX{ 0 },
-                _idMax{ 0 },
-                _idExtMax{ 0 },
-                _data{},
-                _dataExt{}
+                _f81_EDX{ 0 }
             {
                 std::array<int32_t, 4> info;
+                uint32_t idMax{ 0 };
+                uint32_t idExtMax{ 0 };
+                std::vector<std::array<int32_t, 4>> data;
+                std::vector<std::array<int32_t, 4>> dataExt;
 
                 // calling cpuid with 0x0
                 // gets the number of the highest valid function ID
                 cpuid(info.data(), 0, 0);
-                _idMax = info[0];
+                idMax = info[0];
+                // Optimization: 0x0D is the highest function we need to know results of
+                if (idMax > 0x0D) { idMax = 0x0D; }
                 // call each function and store results in _data
-                for (uint32_t i = 0; i <= _idMax; ++i)
+                for (uint32_t i = 0; i <= idMax; ++i)
                 {
                     cpuid(info.data(), i, 0);
-                    _data.push_back(info);
+                    data.push_back(info);
                 }
 
                 // retrieve CPU vendor string
                 char vendor[3*sizeof(int32_t) + 1] { 0 };
-                memcpy(vendor,     &_data[0][1], sizeof(int32_t));
-                memcpy(vendor + 4, &_data[0][3], sizeof(int32_t));
-                memcpy(vendor + 8, &_data[0][2], sizeof(int32_t));
+                memcpy(vendor,     &data[0][1], sizeof(int32_t));
+                memcpy(vendor + 4, &data[0][3], sizeof(int32_t));
+                memcpy(vendor + 8, &data[0][2], sizeof(int32_t));
                 _vendor = vendor;
 
                 if (_vendor == "GenuineIntel")
@@ -123,51 +125,53 @@ namespace Stockfish {
                 }
 
                 // load bitsets with flags for function 0x01
-                if (_idMax >= 0x01)
+                if (idMax >= 0x01)
                 {
-                    _f1_EAX = _data[1][0];
-                    _f1_ECX = _data[1][2];
-                    _f1_EDX = _data[1][3];
+                    _f1_EAX = data[1][0];
+                    _f1_ECX = data[1][2];
+                    _f1_EDX = data[1][3];
                 }
 
                 // load bitsets with flags for function 0x07
-                if (_idMax >= 0x07)
+                if (idMax >= 0x07)
                 {
-                    _f7_EBX = _data[7][1];
-                    _f7_ECX = _data[7][2];
-                    _f7_EDX = _data[7][3];
+                    _f7_EBX = data[7][1];
+                    _f7_ECX = data[7][2];
+                    _f7_EDX = data[7][3];
                 }
 
                 // load output of function 0x0D
-                if (_idMax >= 0x0D)
+                if (idMax >= 0x0D)
                 {
-                    _fD_xcrFeatureMask = ((uint64_t)_data[13][3] << 32) | _data[13][0];
+                    _fD_xcrFeatureMask = ((uint64_t)data[13][3] << 32) | data[13][0];
                 }
 
                 // calling cpuid with 0x80000000
                 // gets the number of the highest valid extended function ID
                 cpuid(info.data(), 0x80000000, 0);
-                _idExtMax = info[0];
+                idExtMax = info[0];
+                // Optimization: 0x80000004 is the highest extended function we need to know results of
+                if (idExtMax > 0x80000004) { idExtMax = 0x80000004; }
                 // call each extended function and store results in _dataExt
-                for (uint32_t i = 0x80000000; i <= _idExtMax; ++i)
+                for (uint32_t i = 0x80000000; i <= idExtMax; ++i)
                 {
                     cpuid(info.data(), i, 0);
-                    _dataExt.push_back(info);
+                    dataExt.push_back(info);
                 }
 
                 // load bitset with flags for extended function 0x80000001
-                if (_idExtMax >= 0x80000001)
+                if (idExtMax >= 0x80000001)
                 {
-                    _f81_EDX = _dataExt[1][3];
+                    _f81_EDX = dataExt[1][3];
                 }
 
                 // retrieve CPU brand string if reported
-                if (_idExtMax >= 0x80000004)
+                if (idExtMax >= 0x80000004)
                 {
                     char brand[3*sizeof(info) + 1] { 0 };
-                    memcpy(brand,      _dataExt[2].data(), sizeof(info));
-                    memcpy(brand + 16, _dataExt[3].data(), sizeof(info));
-                    memcpy(brand + 32, _dataExt[4].data(), sizeof(info));
+                    memcpy(brand,      dataExt[2].data(), sizeof(info));
+                    memcpy(brand + 16, dataExt[3].data(), sizeof(info));
+                    memcpy(brand + 32, dataExt[4].data(), sizeof(info));
                     _brand = brand;
                 }
                 
@@ -214,14 +218,7 @@ namespace Stockfish {
             std::bitset<32> _f7_EDX;
             uint64_t        _fD_xcrFeatureMask;
             std::bitset<32> _f81_EDX;
-
-        private:
-            uint32_t _idMax;
-            uint32_t _idExtMax;
-
-            std::vector<std::array<int32_t, 4>> _data;
-            std::vector<std::array<int32_t, 4>> _dataExt;
-        }; // class CpuId
+        };
     };
 } // namespace Stockfish
 

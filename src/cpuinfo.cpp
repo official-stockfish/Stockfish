@@ -29,13 +29,17 @@ const CpuInfo::CpuId Stockfish::CpuInfo::CPUID;
 #include <windows.h>
 #include <intrin.h>
 
-    void CpuInfo::cpuid(int32_t out[4], int32_t eax, int32_t ecx) { __cpuidex(out, eax, ecx);  }
+void CpuInfo::cpuid(int32_t out[4], int32_t eax, int32_t ecx) {
+    __cpuidex(out, eax, ecx);
+}
 
 # elif defined(__GNUC__) || defined(__clang__)
 
 #include <cpuid.h>
 
-    void CpuInfo::cpuid(int32_t out[4], int32_t eax, int32_t ecx) { __cpuid_count(eax, ecx, out[0], out[1], out[2], out[3]);  }
+void CpuInfo::cpuid(int32_t out[4], int32_t eax, int32_t ecx) {
+    __cpuid_count(eax, ecx, out[0], out[1], out[2], out[3]);
+}
 
 #else
 #   message "No CPU-ID intrinsic defined for compiler."
@@ -47,7 +51,7 @@ const CpuInfo::CpuId Stockfish::CpuInfo::CPUID;
 bool CpuInfo::osAVX() {
     if (OSXSAVE() && AVX())
     {
-        // Check OS has enabled both XMM and YMM state support. Necessary for AVX and AVX2.
+        // check OS has enabled XMM and YMM state support (necessary for AVX and AVX2)
         return (xcrFeatureMask() & 0x06) == 0x06;
     }
     return false;
@@ -64,7 +68,7 @@ bool CpuInfo::osAVX2() {
 bool CpuInfo::osAVX512() {
     if (osAVX() && AVX512F() && AVX512BW())
     {
-        // Check for OS-support of ZMM and YMM state. Necessary for AVX-512.
+        // check OS has enabled XMM, YMM and ZMM state support (necessary for AVX-512)
         return (xcrFeatureMask() & 0xE6) == 0xE6;
     }
     return false;
@@ -73,7 +77,7 @@ bool CpuInfo::osAVX512() {
 std::string CpuInfo::infoString() {
     std::string s;
 
-    s += "\nVendor: ";
+    s += "\nVendor : ";
     s += vendor();
     s += ", Family: ";
     s += std::to_string(CPUID._family);
@@ -82,30 +86,33 @@ std::string CpuInfo::infoString() {
     s += ", Stepping: ";
     s += std::to_string(CPUID._stepping);
     s += "\n";
-    s += "Brand: ";
+    s += "Brand  : ";
     s += brand();
-    s += "\n";
-
-    s += "Hardware Features: ";
-    if (X64())         s += "64bit ";
-    if (MMX())         s += "MMX ";
-    if (SSE())         s += "SSE ";
-    if (SSE2())        s += "SSE2 ";
-    if (SSE3())        s += "SSE3 ";
-    if (SSSE3())       s += "SSSE3 ";
-    if (SSE41())       s += "SSE4.1 ";
-    if (POPCNT())      s += "POPCNT ";
-    if (AVX())         s += "AVX ";
-    if (AVX2())        s += "AVX2 ";
-    if (BMI2())        s += "BMI2 ";
-
-    s += "\n";
-
-    s += "OS Supported Features: ";
-    (osAVX())    ? s += "AVX = yes, "   : s += "AVX = no, ";
-    (osAVX2())   ? s += "AVX2 = yes, "  : s += "AVX2 = no, ";
-    (osAVX512()) ? s += "AVX-512 = yes" : s += "AVX-512 = no";
-    s += "\n";
+    s += "\nCPU    : ";
+    bool fs = true; // full set of featues supported?
+    if (X64())    { s += "64bit "; }  else { s += "[64bit] "; fs = false; }
+    if (MMX())    { s += "MMX "; }    else { s += "[MMX] "; fs = false; }
+    if (SSE())    { s += "SSE "; }    else { s += "[SSE] "; fs = false; }
+    if (SSE2())   { s += "SSE2 "; }   else { s += "[SSE2] "; fs = false; }
+    if (SSE3())   { s += "SSE3 "; }   else { s += "[SSE3] "; fs = false; }
+    if (SSSE3())  { s += "SSSE3 "; }  else { s += "[SSSE3] "; fs = false; }
+    if (SSE41())  { s += "SSE4.1 "; } else { s += "[SSE4.1] "; fs = false; }
+    if (POPCNT()) { s += "POPCNT "; } else { s += "[POPCNT] "; fs = false; }
+    if (AVX())    { s += "AVX "; }    else { s += "[AVX] "; fs = false; }
+    if (AVX2())   { s += "AVX2 "; }   else { s += "[AVX2] "; fs = false; }
+    if (BMI2())   { isAMDBeforeZen3() ? s += "BMI2(slow PEXT)" : s += "BMI2"; } else { s += "[BMI2]"; fs = false; }
+    s += "\n         ";
+    if (AVX512F())    { s += "AVX-512F "; }   else { s += "[AVX-512F] "; fs = false; }
+    if (AVX512DQ())   { s += "AVX-512DQ "; }  else { s += "[AVX-512DQ] "; fs = false; }
+    if (AVX512BW())   { s += "AVX-512BW "; }  else { s += "[AVX-512BW] "; fs = false; }
+    if (AVX512VL())   { s += "AVX-512VL "; }  else { s += "[AVX-512VL] "; fs = false; }
+    if (AVX512VNNI()) { s += "AVX-512VNNI"; } else { s += "[AVX-512VNNI]"; fs = false; }
+    s += "\nOS     : ";
+    if (osAVX())    { s += "AVX "; }    else { s += "[AVX] "; fs = false; }
+    if (osAVX2())   { s += "AVX2 "; }   else { s += "[AVX2] "; fs = false; }
+    if (osAVX512()) { s += "AVX-512"; } else { s += "[AVX-512]"; fs = false; }
+    fs ? s += "\nAll features are supported.\n" :
+         s += "\nValues in brackets mean that this feature is not supported by the CPU or the OS.\n";
 
     return s;
 }
