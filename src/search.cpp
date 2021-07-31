@@ -22,6 +22,7 @@
 #include <cstring>   // For std::memset
 #include <iostream>
 #include <sstream>
+#include <numeric>
 
 #include "evaluate.h"
 #include "misc.h"
@@ -57,6 +58,29 @@ using Eval::evaluate;
 using namespace Search;
 
 namespace {
+
+  // Net weights and biases of a small neural network for time management
+  constexpr int nw[10][2][10] =
+  {
+    // Hidden Layer 1 weights                  // Hidden Layer 2 weights
+    23, 21,  5,-20,-27,  4, 2, 14, 11,-12,     -11,-3, 2, 15,  7, 29,-14,-39,-18,-22,
+     4, -1,  9, -1, -2, -3,-9,  2, -5,  7,      -7,-7,14,  0, 28,-18,  4,-18, -4,-22,
+   -23,-15,  6, 14, 15,  4,10, -8,-15, 14,      -2,-1,16, 15,  7, 23, 18, -7,  3, 17,
+   -46, 11, 11,-28,-23,  8,10, 10, 13, -3,     -21, 5,36,  6,-13, 13, -9,  4, -4,-16,
+    18, -6,-15,-10,  9, 25,-6,  5,  8, -5,       6, 4,-4,-21,-14, 26, -6,-39, -2, 24,
+     4, 18, -7, -9, -2,  1, 4, -3,  6, 10,      -1,11, 0,-32,  1, -2, -5, -9, 21, 29,
+    16,  3, 11, -6,  5, 29,-1, 11,  4, 18,      24,10, 3,-28, -1, 10,  8, 23,-13,-32,
+   -31,  1, -2, -3,  2, 19,15,-14,-13,-27,     -20,-5, 8, -8,-19, -6, 17, 12, -2, 25,
+   -20,-19, -6,-23, -3, -9,-6, 21,  6, 17,       4,-6,-6,  8,-12, -4,-12,  4,  1,  2,
+    -4, 27, 10,  3,  0,-17,-7,-12,  7,  4,      -7,-4,22, -7, 31, -4,  5,-12, 10, 16
+  };
+  constexpr int nbw[3][10] =
+  {
+   -20,-13, -1,-19, 4,-48,  8,35,-46,-18, // Hidden Layer 1 biases
+    -5,  6, 27,  9,-8, 29,-23,-3, -5, -3, // Hidden Layer 2 biases
+    48, 39, 28, 22,18, 45, 36,22, 15, 27  // Output layer weights
+  };
+  constexpr int nbo = -35; // Output layer bias
 
   // Different node types, used as a template parameter
   enum NodeType { NonPV, PV, Root };
@@ -470,7 +494,23 @@ void Thread::search() {
           }
           double bestMoveInstability = 1.073 + std::max(1.0, 2.25 - 9.9 / rootDepth)
                                               * totBestMoveChanges / Threads.size();
-          double totalTime = Time.optimum() * fallingEval * reduction * bestMoveInstability;
+
+          // Inputs of the neural network
+          int ft[10]={rootPos.count<PAWN>(WHITE),rootPos.count<ROOK>(WHITE),rootPos.count<KNIGHT>(WHITE),rootPos.count<BISHOP>(WHITE),rootPos.count<QUEEN>(WHITE),
+                      rootPos.count<PAWN>(BLACK),rootPos.count<ROOK>(BLACK),rootPos.count<KNIGHT>(BLACK),rootPos.count<BISHOP>(BLACK),rootPos.count<QUEEN>(BLACK)};
+          // Matrix multiplication (layers)
+          for (size_t m = 0; m < 2; ++m)
+          {
+              int temp[10] = {0};
+              for (size_t i = 0; i < 10; ++i)
+                  temp[i]= std::max(0, std::inner_product(ft, ft+10, nw[i][m], 0) - nbw[m][i]); // ReLU activation function
+              for (size_t n = 0; n < 10; ++n)
+                  ft[n] = temp[n];
+          }
+          // Alternative form of the sigmoid function
+          double factor = 0.5016 + 0.5028 * tanh ((std::inner_product(ft, ft+10, nbw[2], 0) - nbo) / 2.0);
+
+          double totalTime = Time.optimum() * fallingEval * reduction * bestMoveInstability * factor;
 
           // Cap used time in case of a single legal move for a better viewer experience in tournaments
           // yielding correct scores and sufficiently fast moves.
