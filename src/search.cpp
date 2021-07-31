@@ -907,7 +907,7 @@ namespace {
         && !ttMove)
         depth -= 2;
 
-moves_loop: // When in check, search starts from here
+moves_loop: // When in check, search starts here
 
     ttCapture = ttMove && pos.capture_or_promotion(ttMove);
 
