@@ -60,7 +60,7 @@ using namespace Search;
 namespace {
 
   // Net weights and biases of a small neural network for time management
-  constexpr int nw[10][2][10] =
+  int nw[10][2][10] =
   {
     // Hidden Layer 1 weights                  // Hidden Layer 2 weights
     23, 21,  5,-20,-27,  4, 2, 14, 11,-12,     -11,-3, 2, 15,  7, 29,-14,-39,-18,-22,
@@ -74,14 +74,18 @@ namespace {
    -20,-19, -6,-23, -3, -9,-6, 21,  6, 17,       4,-6,-6,  8,-12, -4,-12,  4,  1,  2,
     -4, 27, 10,  3,  0,-17,-7,-12,  7,  4,      -7,-4,22, -7, 31, -4,  5,-12, 10, 16
   };
-  constexpr int nbw[3][10] =
+  int nbw[3][10] =
   {
    -20,-13, -1,-19, 4,-48,  8,35,-46,-18, // Hidden Layer 1 biases
     -5,  6, 27,  9,-8, 29,-23,-3, -5, -3, // Hidden Layer 2 biases
     48, 39, 28, 22,18, 45, 36,22, 15, 27  // Output layer weights
   };
-  constexpr int nbo = -35; // Output layer bias
+  int nbo = -35; // Output layer bias
 
+  auto myfunc127 = [](int m){return m == 0   ? std::pair<int, int>(-5, 5)
+                                  : m <  0   ? std::pair<int, int>(std::max(-127, 2 * m),0)
+                                  : std::pair<int, int>(0,std::min(127, 2 * m));};
+  TUNE(SetRange(myfunc127), nw, nbw, nbo);
   // Different node types, used as a template parameter
   enum NodeType { NonPV, PV, Root };
 
