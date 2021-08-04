@@ -17,6 +17,7 @@
 */
 
 #include "cpuinfo.h"
+#include <iostream>
 
 namespace Stockfish {
 
@@ -71,9 +72,66 @@ bool CpuInfo::osAVX512() {
     return false;
 }
 
-std::string CpuInfo::infoString() {
+void CpuInfo::checkCompatibility() {
+
+    if (!isSupported()) {
+        return;
+    }
+
     std::string s;
-    bool fs = true; // full set of featues supported?
+
+#if defined(USE_MMX)
+    if (!MMX()) { s += "MMX, "; }
+#endif
+
+#if defined(USE_SSE2)
+    if (!SSE2()) { s += "SSE2, "; }
+#endif
+
+#if defined(USE_SSSE3)
+    if (!SSSE3()) { s += "SSSE3, "; }
+#endif
+
+#if defined(USE_SSE41)
+    if (!SSE41()) { s += "SSE4.1, "; }
+#endif
+
+#if defined(USE_POPCNT)
+    if (!POPCNT()) { s += "POPCNT, "; }
+#endif
+
+#if defined(USE_PEXT)
+    if (!BMI2()) { s += "BMI2, "; }
+#endif
+
+#if defined(USE_AVX2)
+    if (!osAVX2()) { s += "AVX2, "; }
+#endif
+
+#if defined(USE_AVX512)
+    if (!osAVX512()) { s += "AVX-512, "; }
+#endif
+
+#if defined(USE_VNNI)
+    if (!AVX512VNNI() || !AVX512DQ() || !AVX512VL()) { s += "VNNI, "; }
+#endif
+
+    const auto len = s.size();
+    if (len > 2)
+    {
+        s.resize(len - 2);
+        std::cout << "Your system does not support " << s << " instructions that this binary makes use of." << std::endl;
+    }
+}
+
+std::string CpuInfo::infoString() {
+
+    if (!isSupported()) {
+        return "\nRuntime CPU information is only available for the x86 architecture.\n";
+    }
+
+    std::string s;
+    bool fs = true; // full set
 
     s += "\nVendor : ";
     s += vendor();
@@ -97,7 +155,7 @@ std::string CpuInfo::infoString() {
     if (POPCNT()) { s += "POPCNT "; } else { s += "[POPCNT] "; fs = false; }
     if (AVX())    { s += "AVX "; }    else { s += "[AVX] "; fs = false; }
     if (AVX2())   { s += "AVX2 "; }   else { s += "[AVX2] "; fs = false; }
-    if (BMI2())   { isAMDBeforeZen3() ? s += "BMI2(slow PEXT)" : s += "BMI2"; } else { s += "[BMI2]"; fs = false; }
+    if (BMI2())   { isAMDBeforeZen3() ? s += "BMI2(slow PEXT)" : s += "BMI2"; fs = false; } else { s += "[BMI2]"; fs = false; }
     s += "\n         ";
     if (AVX512F())    { s += "AVX-512F "; }   else { s += "[AVX-512F] "; fs = false; }
     if (AVX512DQ())   { s += "AVX-512DQ "; }  else { s += "[AVX-512DQ] "; fs = false; }

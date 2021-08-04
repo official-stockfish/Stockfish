@@ -32,39 +32,50 @@ namespace Stockfish {
         class CpuId;
 
     public:
-        static std::string vendor() { return CPUID._vendor; }
-        static std::string brand()  { return CPUID._brand; }
+        static inline constexpr bool isSupported()
+        {
+#if defined(__x86_64__) || defined(_M_X64) || defined(__i386) || defined(_M_IX86)
+            return true;
+#else
+            return false;
+#endif
+        }
+
+        static void checkCompatibility();
         static std::string infoString();
 
-        static bool isIntel() { return CPUID._isIntel; }
-        static bool isAMD()   { return CPUID._isAMD; }
-        static bool isAMDBeforeZen3() { return CPUID._isAMD && CPUID._family < 25; }
+        static inline std::string vendor() { return CPUID._vendor; }
+        static inline std::string brand() { return CPUID._brand; }
+        static inline bool isIntel() { return CPUID._isIntel; }
+        static inline bool isAMD() { return CPUID._isAMD; }
+        static inline bool isAMDBeforeZen3() { return CPUID._isAMD && CPUID._family < 25; }
+
+        // flags reported by function 0x01
+        static inline bool SSE3()       { return CPUID._f1_ECX[0]; }  // -msse3
+        static inline bool SSSE3()      { return CPUID._f1_ECX[9]; }  // -DUSE_SSSE3 -mssse3
+        static inline bool SSE41()      { return CPUID._f1_ECX[19]; } // -DUSE_SSE41 -msse4.1
+        static inline bool POPCNT()     { return CPUID._f1_ECX[23]; } // -DUSE_POPCNT -mpopcnt
+        static inline bool OSXSAVE()    { return CPUID._f1_ECX[27]; } // OS uses XSAVE/XRSTOR
+        static inline bool AVX()        { return CPUID._f1_ECX[28]; } // AVX supported by CPU
+        static inline bool MMX()        { return CPUID._f1_EDX[23]; } // -DUSE_MMX -mmmx
+        static inline bool SSE()        { return CPUID._f1_EDX[25]; } // -msse
+        static inline bool SSE2()       { return CPUID._f1_EDX[26]; } // -DUSE_SSE2 -msse2
+        // flags reported by function 0x07
+        static inline bool AVX2()       { return CPUID._f7_EBX[5]; }  // -mavx2
+        static inline bool BMI2()       { return CPUID._f7_EBX[8]; }  // -DUSE_PEXT -mbmi2
+        static inline bool AVX512F()    { return CPUID._f7_EBX[16]; } // -mavx512f
+        static inline bool AVX512DQ()   { return CPUID._f7_EBX[17]; } // -mavx512dq
+        static inline bool AVX512BW()   { return CPUID._f7_EBX[30]; } // -mavx512bw
+        static inline bool AVX512VL()   { return CPUID._f7_EBX[31]; } // -mavx512vl
+        static inline bool AVX512VNNI() { return CPUID._f7_ECX[11]; } // -mavx512vnni
+        // flags reported by function 0x0D
+        static inline uint64_t xcrFeatureMask() { return CPUID._fD_xcrFeatureMask; } // XCR0 XFEATURE_ENABLED_MASK 
+        // flags reported by extended function 0x80000001
+        static inline bool X64()        { return CPUID._f81_EDX[29]; } // -DIS_64BIT
+
         static bool osAVX();
         static bool osAVX2();
         static bool osAVX512();
-
-        // flags reported by function 0x01
-        static bool SSE3()       { return CPUID._f1_ECX[0]; }  // -msse3
-        static bool SSSE3()      { return CPUID._f1_ECX[9]; }  // -DUSE_SSSE3 -mssse3
-        static bool SSE41()      { return CPUID._f1_ECX[19]; } // -DUSE_SSE41 -msse4.1
-        static bool POPCNT()     { return CPUID._f1_ECX[23]; } // -DUSE_POPCNT -mpopcnt
-        static bool OSXSAVE()    { return CPUID._f1_ECX[27]; } // OS uses XSAVE/XRSTOR
-        static bool AVX()        { return CPUID._f1_ECX[28]; } // AVX supported by CPU
-        static bool MMX()        { return CPUID._f1_EDX[23]; } // -DUSE_MMX -mmmx
-        static bool SSE()        { return CPUID._f1_EDX[25]; } // -msse
-        static bool SSE2()       { return CPUID._f1_EDX[26]; } // -DUSE_SSE2 -msse2
-        // flags reported by function 0x07
-        static bool AVX2()       { return CPUID._f7_EBX[5]; }  // -mavx2
-        static bool BMI2()       { return CPUID._f7_EBX[8]; }  // -DUSE_PEXT -mbmi2
-        static bool AVX512F()    { return CPUID._f7_EBX[16]; } // -mavx512f
-        static bool AVX512DQ()   { return CPUID._f7_EBX[17]; } // -mavx512dq
-        static bool AVX512BW()   { return CPUID._f7_EBX[30]; } // -mavx512bw
-        static bool AVX512VL()   { return CPUID._f7_EBX[31]; } // -mavx512vl
-        static bool AVX512VNNI() { return CPUID._f7_ECX[11]; } // -mavx512vnni
-        // flags reported by function 0x0D
-        static uint64_t xcrFeatureMask() { return CPUID._fD_xcrFeatureMask; } // XCR0 XFEATURE_ENABLED_MASK 
-        // flags reported by extended function 0x80000001
-        static bool X64()        { return CPUID._f81_EDX[29]; } // -DIS_64BIT
 
     private:
         static const CpuId CPUID;
