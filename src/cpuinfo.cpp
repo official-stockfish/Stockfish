@@ -155,7 +155,7 @@ std::string CpuInfo::infoString() {
     if (POPCNT()) { s += "POPCNT "; } else { s += "[POPCNT] "; fs = false; }
     if (AVX())    { s += "AVX "; }    else { s += "[AVX] "; fs = false; }
     if (AVX2())   { s += "AVX2 "; }   else { s += "[AVX2] "; fs = false; }
-    if (BMI2())   { isAMDBeforeZen3() ? s += "BMI2(slow PEXT)" : s += "BMI2"; fs = false; } else { s += "[BMI2]"; fs = false; }
+    if (BMI2())   { isAMDBeforeZen3() ? s += "BMI2(slow PEXT)" : s += "BMI2"; } else { s += "[BMI2]"; fs = false; }
     s += "\n         ";
     if (AVX512F())    { s += "AVX-512F "; }   else { s += "[AVX-512F] "; fs = false; }
     if (AVX512DQ())   { s += "AVX-512DQ "; }  else { s += "[AVX-512DQ] "; fs = false; }
