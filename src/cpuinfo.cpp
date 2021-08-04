@@ -147,8 +147,7 @@ std::string CpuInfo::infoString() {
     s += std::to_string(CPUID._model);
     s += ", Stepping: ";
     s += std::to_string(CPUID._stepping);
-    s += "\n";
-    s += "Brand  : ";
+    s += "\nBrand  : ";
     s += brand();
     s += "\nCPU    : ";
     if (X64())    { s += "64bit "; }  else { s += "[64bit] "; fs = false; }
