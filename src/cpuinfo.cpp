@@ -25,28 +25,34 @@ namespace Stockfish {
 const CpuInfo::CpuId Stockfish::CpuInfo::CPUID;
 
 #if defined(__x86_64__) || defined(_M_X64) || defined(__i386) || defined(_M_IX86)
-#if _WIN32
+
+#if defined(_WIN32)
 
 #include <windows.h>
 #include <intrin.h>
-
 void CpuInfo::cpuid(int32_t out[4], int32_t eax, int32_t ecx) {
     __cpuidex(out, eax, ecx);
 }
 
-# elif defined(__GNUC__) || defined(__clang__)
+#elif defined(__GNUC__) || defined(__clang__)
 
 #include <cpuid.h>
-
 void CpuInfo::cpuid(int32_t out[4], int32_t eax, int32_t ecx) {
     __cpuid_count(eax, ecx, out[0], out[1], out[2], out[3]);
 }
 
-#else
-#   message "No CPU-ID intrinsic defined for compiler."
+#else // unknown x86 compiler
+
+#pragma message "No CPUID intrinsic defined for compiler."
+void CpuInfo::cpuid(int32_t out[4], int32_t eax, int32_t ecx) {}
+
 #endif
-#else
-#   message "No CPU-ID intrinsic defined for processor architecture (currently only x86-32/64 is supported)."
+
+#else // CPU architechture other than x86
+
+#pragma message "No CPUID intrinsic defined for processor architecture (currently only x86 is supported)."
+void CpuInfo::cpuid(int32_t out[4], int32_t eax, int32_t ecx) {}
+
 #endif
 
 bool CpuInfo::osAVX() {
@@ -166,8 +172,8 @@ std::string CpuInfo::infoString() {
     if (osAVX())    { s += "AVX "; }    else { s += "[AVX] "; fs = false; }
     if (osAVX2())   { s += "AVX2 "; }   else { s += "[AVX2] "; fs = false; }
     if (osAVX512()) { s += "AVX-512"; } else { s += "[AVX-512]"; fs = false; }
-    fs ? s += "\nAll features are supported by your CPU and OS.\n" :
-         s += "\nValues in brackets mean that this feature is not supported by your CPU or OS.\n";
+    fs ? s += "\nYour system supports all features.\n" :
+         s += "\nValues in brackets mean that this feature is not supported by your system.\n";
 
     return s;
 }
