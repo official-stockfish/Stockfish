@@ -68,11 +68,11 @@
 #  define IS_64BIT
 #endif
 
-#if defined(__INTEL_COMPILER) || defined(_MSC_VER)
+#if defined(USE_POPCNT) && (defined(__INTEL_COMPILER) || defined(_MSC_VER))
 #  include <nmmintrin.h> // Intel and Microsoft header for _mm_popcnt_u64()
 #endif
 
-#if defined(__INTEL_COMPILER) || defined(_MSC_VER)
+#if !defined(NO_PREFETCH) && (defined(__INTEL_COMPILER) || defined(_MSC_VER))
 #  include <xmmintrin.h> // Intel and Microsoft header for _mm_prefetch()
 #endif
 
