@@ -493,7 +493,7 @@ endif
 ### 3.3 Optimization
 ifeq ($(optimize),yes)
 
-	CXXFLAGS += -O3 -fno-tree-slp-vectorize
+	CXXFLAGS += -O3
 
 	ifeq ($(comp),gcc)
 		ifeq ($(OS), Android)
@@ -662,6 +662,8 @@ ifeq ($(OS), Android)
 	CXXFLAGS += -fPIE
 	LDFLAGS += -fPIE -pie
 endif
+
+half_ka_v2.o : CXXFLAGS += -fno-tree-slp-vectorize
 
 ### ==========================================================================
 ### Section 4. Public Targets
