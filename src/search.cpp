@@ -3076,20 +3076,8 @@ namespace Search
         for (int i = 1; i <= MAX_PLY; ++i)
           (stack + i)->ply = i;
 
-        int ct = int(Options["Contempt"]) * PawnValueEg / 100; // From centipawns
-        Color us = pos.side_to_move();
-
-        // In analysis mode, adjust contempt in accordance with user preference
-        if (Limits.infinite || Options["UCI_AnalyseMode"])
-          ct =   Options["Analysis Contempt"] == "Off"  ? 0
-               : Options["Analysis Contempt"] == "Both" ? ct
-               : Options["Analysis Contempt"] == "White" && us == BLACK ? -ct
-               : Options["Analysis Contempt"] == "Black" && us == WHITE ? -ct
-               : ct;
-
         // Evaluation score is from the white point of view
-        th->contempt = (us == WHITE ?  make_score(ct, ct / 2)
-                                    : -make_score(ct, ct / 2));
+        th->trend = make_score(0, 0);
 
         create_new_root(pos);
 
