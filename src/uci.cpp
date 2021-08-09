@@ -198,6 +198,10 @@ namespace {
          << "\nNodes/second    : " << 1000 * nodes / elapsed << endl;
   }
 
+} // namespace
+
+namespace UCI {
+
   void setoption(const std::string& name, const std::string& value)
   {
       if (Options.count(name))
@@ -220,9 +224,6 @@ namespace {
      double bs[] = {-2.0181857,   15.85685038, -29.83452023,  47.59078827};
      double a = (((as[0] * m + as[1]) * m + as[2]) * m) + as[3];
      double b = (((bs[0] * m + bs[1]) * m + bs[2]) * m) + bs[3];
-
-     // Transform eval to centipawns with limited range
-     double x = std::clamp(double(100 * v) / PawnValueEg, -2000.0, 2000.0);
 
      // Transform eval to centipawns with limited range
      double x = std::clamp(double(100 * v) / PawnValueEg, -1000.0, 1000.0);
@@ -332,7 +333,7 @@ void UCI::loop(int argc, char* argv[]) {
           Eval::NNUE::save_eval(filename);
       }
       else if (token == "generate_training_data") Tools::generate_training_data(is);
-      else if (token == "generate_training_data") Tools::generate_training_data_nonpv(is);
+      else if (token == "generate_training_data_nonpv") Tools::generate_training_data_nonpv(is);
       else if (token == "convert") Tools::convert(is);
       else if (token == "validate_training_data") Tools::validate_training_data(is);
       else if (token == "convert_bin") Tools::convert_bin(is);

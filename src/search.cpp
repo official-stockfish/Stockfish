@@ -1968,20 +1968,8 @@ namespace Search
       // Clear all history types. This initialization takes a little time, and the accuracy of the search is rather low, so the good and bad are not well understood.
       // th->clear();
 
-      int ct = int(Options["Contempt"]) * PawnValueEg / 100; // From centipawns
-      Color us = pos.side_to_move();
-
-      // In analysis mode, adjust contempt in accordance with user preference
-      if (Limits.infinite || Options["UCI_AnalyseMode"])
-        ct = Options["Analysis Contempt"] == "Off" ? 0
-        : Options["Analysis Contempt"] == "Both" ? ct
-        : Options["Analysis Contempt"] == "White" && us == BLACK ? -ct
-        : Options["Analysis Contempt"] == "Black" && us == WHITE ? -ct
-        : ct;
-
       // Evaluation score is from the white point of view
-      th->contempt = (us == WHITE ? make_score(ct, ct / 2)
-        : -make_score(ct, ct / 2));
+      th->trend = make_score(0, 0);
 
       for (int i = 7; i > 0; i--)
           (ss - i)->continuationHistory = &th->continuationHistory[0][0][NO_PIECE][0]; // Use as a sentinel
@@ -2144,7 +2132,7 @@ namespace Search
         while (true)
         {
           Depth adjustedDepth = std::max(1, rootDepth);
-          bestValue = Stockfish::search<PV>(pos, ss, alpha, beta, adjustedDepth, false);
+          bestValue = Stockfish::search<Root>(pos, ss, alpha, beta, adjustedDepth, false);
 
           stable_sort(rootMoves.begin() + pvIdx, rootMoves.end());
           //my_stable_sort(pos.this_thread()->thread_id(),&rootMoves[0] + pvIdx, rootMoves.size() - pvIdx);

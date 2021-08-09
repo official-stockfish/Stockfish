@@ -1189,7 +1189,7 @@ std::string Eval::trace(Position& pos) {
      << "|      Total | " << Term(TOTAL)
      << "+------------+-------------+-------------+-------------+\n";
 
-  if (Eval::useNNUE)
+  if (NNUE::useNNUE != NNUE::UseNNUEMode::False)
       ss << '\n' << NNUE::trace(pos) << '\n';
 
   ss << std::showpoint << std::showpos << std::fixed << std::setprecision(2) << std::setw(15);
@@ -1206,7 +1206,7 @@ std::string Eval::trace(Position& pos) {
   v = evaluate(pos);
   v = pos.side_to_move() == WHITE ? v : -v;
   ss << "Final evaluation       " << to_cp(v) << " (white side)";
-  if (Eval::useNNUE)
+  if (NNUE::useNNUE != NNUE::UseNNUEMode::False)
      ss << " [with scaled NNUE, hybrid, ...]";
   ss << "\n";
 
