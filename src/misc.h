@@ -27,6 +27,7 @@
 #include <ostream>
 #include <string>
 #include <vector>
+#include <iostream>
 
 #include <cstdint>
 #include <cmath>
@@ -51,6 +52,20 @@ void dbg_hit_on(bool b);
 void dbg_hit_on(bool c, bool b);
 void dbg_mean_of(int v);
 void dbg_print();
+
+/// Debug macro to write to std::err if NDEBUG flag is set, and do nothing otherwise
+#if defined(NDEBUG)
+#define debug 1 && std::cerr
+#else
+#define debug 0 && std::cerr
+#endif
+
+inline void hit_any_key() {
+#ifndef NDEBUG
+  debug << "Hit any key to continue..." << std::endl << std::flush;
+  system("read");   // on Windows, should be system("pause");
+#endif
+}
 
 typedef std::chrono::milliseconds::rep TimePoint; // A value in milliseconds
 static_assert(sizeof(TimePoint) == sizeof(int64_t), "TimePoint should be 64 bits");

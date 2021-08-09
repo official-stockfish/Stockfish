@@ -119,6 +119,28 @@ using ValueAndPV = std::pair<Value, std::vector<Move>>;
 ValueAndPV qsearch(Position& pos);
 ValueAndPV search(Position& pos, int depth_, size_t multiPV = 1, uint64_t nodesLimit = 0);
 
+namespace MCTS {
+
+  struct MctsContinuation {
+    std::uint64_t numVisits;
+    Value value;
+    float actionValue;
+    std::vector<Move> pv;
+  };
+
+  ValueAndPV search_mcts(
+    Position& pos,
+    std::uint64_t nodes,
+    Depth leafDepth,
+    float explorationFactor);
+
+  std::vector<MctsContinuation> search_mcts_multipv(
+    Position& pos,
+    std::uint64_t numPlayouts,
+    Depth leafDepth,
+    float explorationFactor);
+}
+
 }
 
 } // namespace Stockfish

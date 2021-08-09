@@ -767,7 +767,7 @@ namespace Stockfish::Tools
             else if (token == "min_depth")
                 is >> params.search_depth_min;
             else if (token == "max_depth")
-                is >> params.search_depth_min;
+                is >> params.search_depth_max;
             else if (token == "nodes")
                 is >> params.nodes;
             else if (token == "count")

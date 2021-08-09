@@ -12,7 +12,7 @@ You can download data from [here](http://rebel13.nl/index.html)
 
 ## Convert pgn files
 
-**Important : convert text will be superheavy (approx 200 byte / position)** 
+**Important : convert text will be superheavy (approx 200 byte / position)**
 
     python pgn_to_plain.py --pgn "pgn/*.pgn" --start_ply 1 --output converted_pgn.txt
 

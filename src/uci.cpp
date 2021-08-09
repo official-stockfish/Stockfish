@@ -269,6 +269,34 @@ void search_cmd(Position& pos, istringstream& is)
   cout << endl;
 }
 
+void search_mcts_cmd(Position& pos, istringstream& is)
+{
+  string token;
+  int nodes = 1000;
+  int leafDepth = 3;
+  float explorationFactor = 0.25f;
+  while (is >> token)
+  {
+    if (token == "nodes")
+      is >> nodes;
+    if (token == "leaf_depth")
+      is >> leafDepth;
+    if (token == "exploration_factor")
+      is >> explorationFactor;
+  }
+
+  cout << "search nodes = " << nodes << " , leaf_depth = " << leafDepth << " :\n";
+  auto continuations = Search::MCTS::search_mcts_multipv(pos, nodes, leafDepth, explorationFactor);
+  for (auto&& [numVisits, value, actionValue, pv] : continuations)
+  {
+    cout << "NumVisits = " << numVisits << " , Value = " << UCI::value(value) << " , ActionValue = " << actionValue << " , PV = ";
+    for (auto m : pv)
+      cout << UCI::move(m, false) << " ";
+    cout << endl;
+  }
+  cout << endl;
+}
+
 /// UCI::loop() waits for a command from stdin, parses it and calls the appropriate
 /// function. Also intercepts EOF from stdin to ensure gracefully exiting if the
 /// GUI dies unexpectedly. When called with some command line arguments, e.g. to
@@ -344,6 +372,7 @@ void UCI::loop(int argc, char* argv[]) {
 
       // Command to call qsearch(),search() directly for testing
       else if (token == "qsearch") qsearch_cmd(pos);
+      else if (token == "search_mcts") search_mcts_cmd(pos, is);
       else if (token == "search") search_cmd(pos, is);
       else if (token == "tasktest")
       {
