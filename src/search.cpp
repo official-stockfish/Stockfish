@@ -23,6 +23,8 @@
 #include <iostream>
 #include <sstream>
 
+#include "nnue/evaluate_nnue.h"
+
 #include "evaluate.h"
 #include "misc.h"
 #include "movegen.h"
@@ -42,19 +44,11 @@ namespace Search {
   LimitsType Limits;
 }
 
-namespace Tablebases {
-
-  int Cardinality;
-  bool RootInTB;
-  bool UseRule50;
-  Depth ProbeDepth;
-}
-
-namespace TB = Tablebases;
-
 using std::string;
 using Eval::evaluate;
 using namespace Search;
+
+bool Search::prune_at_shallow_depth = true;
 
 namespace {
 
@@ -276,6 +270,9 @@ void Thread::search() {
   bestValue = delta = alpha = -VALUE_INFINITE;
   beta = VALUE_INFINITE;
 
+  if (!this->rootMoves.empty())
+    Tablebases::rank_root_moves(this->rootPos, this->rootMoves);
+
   if (mainThread)
   {
       if (mainThread->bestPreviousScore == VALUE_INFINITE)
@@ -368,7 +365,7 @@ void Thread::search() {
           // Start with a small aspiration window and, in the case of a fail
           // high/low, re-search with a bigger window until we don't fail
           // high/low anymore.
-          int failedHighCnt = 0;
+          failedHighCnt = 0;
           while (true)
           {
               Depth adjustedDepth = std::max(1, rootDepth - failedHighCnt - searchAgainCounter);
@@ -673,27 +670,27 @@ namespace {
     }
 
     // Step 5. Tablebases probe
-    if (!rootNode && TB::Cardinality)
+    if (!rootNode && thisThread->Cardinality)
     {
         int piecesCount = pos.count<ALL_PIECES>();
 
-        if (    piecesCount <= TB::Cardinality
-            && (piecesCount <  TB::Cardinality || depth >= TB::ProbeDepth)
+        if (    piecesCount <= thisThread->Cardinality
+            && (piecesCount <  thisThread->Cardinality || depth >= thisThread->ProbeDepth)
             &&  pos.rule50_count() == 0
             && !pos.can_castle(ANY_CASTLING))
         {
-            TB::ProbeState err;
-            TB::WDLScore wdl = Tablebases::probe_wdl(pos, &err);
+            Tablebases::ProbeState err;
+            Tablebases::WDLScore wdl = Tablebases::probe_wdl(pos, &err);
 
             // Force check of time on the next occasion
             if (thisThread == Threads.main())
                 static_cast<MainThread*>(thisThread)->callsCnt = 0;
 
-            if (err != TB::ProbeState::FAIL)
+            if (err != Tablebases::ProbeState::FAIL)
             {
                 thisThread->tbHits.fetch_add(1, std::memory_order_relaxed);
 
-                int drawScore = TB::UseRule50 ? 1 : 0;
+                int drawScore = thisThread->UseRule50 ? 1 : 0;
 
                 // use the range VALUE_MATE_IN_MAX_PLY to VALUE_TB_WIN_IN_MAX_PLY to score
                 value =  wdl < -drawScore ? VALUE_MATED_IN_MAX_PLY + ss->ply + 1
@@ -976,7 +973,9 @@ moves_loop: // When in check, search starts here
 
       ss->moveCount = ++moveCount;
 
-      if (rootNode && thisThread == Threads.main() && Time.elapsed() > 3000)
+      if (rootNode && thisThread == Threads.main() && Time.elapsed() > 3000
+          && !Limits.silent
+          )
           sync_cout << "info depth " << depth
                     << " currmove " << UCI::move(move, pos.is_chess960())
                     << " currmovenumber " << moveCount + thisThread->pvIdx << sync_endl;
@@ -993,6 +992,7 @@ moves_loop: // When in check, search starts here
 
       // Step 13. Pruning at shallow depth (~200 Elo). Depth conditions are important for mate finding.
       if (  !rootNode
+          && (PvNode ? prune_at_shallow_depth : true)
           && pos.non_pawn_material(us)
           && bestValue > VALUE_TB_LOSS_IN_MAX_PLY)
       {
@@ -1800,7 +1800,7 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
   size_t pvIdx = pos.this_thread()->pvIdx;
   size_t multiPV = std::min((size_t)Options["MultiPV"], rootMoves.size());
   uint64_t nodesSearched = Threads.nodes_searched();
-  uint64_t tbHits = Threads.tb_hits() + (TB::RootInTB ? rootMoves.size() : 0);
+  uint64_t tbHits = Threads.tb_hits() + (pos.this_thread()->rootInTB ? rootMoves.size() : 0);
 
   for (size_t i = 0; i < multiPV; ++i)
   {
@@ -1815,7 +1815,7 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
       if (v == -VALUE_INFINITE)
           v = VALUE_ZERO;
 
-      bool tb = TB::RootInTB && abs(v) < VALUE_MATE_IN_MAX_PLY;
+      bool tb = pos.this_thread()->rootInTB && abs(v) < VALUE_MATE_IN_MAX_PLY;
       v = tb ? rootMoves[i].tbScore : v;
 
       if (ss.rdbuf()->in_avail()) // Not at first line
@@ -1884,34 +1884,38 @@ bool RootMove::extract_ponder_from_tt(Position& pos) {
 
 void Tablebases::rank_root_moves(Position& pos, Search::RootMoves& rootMoves) {
 
-    RootInTB = false;
-    UseRule50 = bool(Options["Syzygy50MoveRule"]);
-    ProbeDepth = int(Options["SyzygyProbeDepth"]);
-    Cardinality = int(Options["SyzygyProbeLimit"]);
+    pos.this_thread()->Cardinality = int(Options["SyzygyProbeLimit"]);
+    pos.this_thread()->ProbeDepth = int(Options["SyzygyProbeDepth"]);
+    pos.this_thread()->UseRule50 = bool(Options["Syzygy50MoveRule"]);
+    pos.this_thread()->rootInTB = false;
+
+    auto& cardinality = pos.this_thread()->Cardinality;
+    auto& probeDepth = pos.this_thread()->ProbeDepth;
+    auto& rootInTB = pos.this_thread()->rootInTB;
     bool dtz_available = true;
 
     // Tables with fewer pieces than SyzygyProbeLimit are searched with
     // ProbeDepth == DEPTH_ZERO
-    if (Cardinality > MaxCardinality)
+    if (cardinality > Tablebases::MaxCardinality)
     {
-        Cardinality = MaxCardinality;
-        ProbeDepth = 0;
+        cardinality = Tablebases::MaxCardinality;
+        probeDepth = 0;
     }
 
-    if (Cardinality >= popcount(pos.pieces()) && !pos.can_castle(ANY_CASTLING))
+    if (cardinality >= popcount(pos.pieces()) && !pos.can_castle(ANY_CASTLING))
     {
         // Rank moves using DTZ tables
-        RootInTB = root_probe(pos, rootMoves);
+        rootInTB = root_probe(pos, rootMoves);
 
-        if (!RootInTB)
+        if (!rootInTB)
         {
             // DTZ tables are missing; try to rank moves using WDL tables
             dtz_available = false;
-            RootInTB = root_probe_wdl(pos, rootMoves);
+            rootInTB = root_probe_wdl(pos, rootMoves);
         }
     }
 
-    if (RootInTB)
+    if (rootInTB)
     {
         // Sort moves according to TB rank
         std::stable_sort(rootMoves.begin(), rootMoves.end(),
@@ -1919,7 +1923,7 @@ void Tablebases::rank_root_moves(Position& pos, Search::RootMoves& rootMoves) {
 
         // Probe during search only if DTZ is not available and we are winning
         if (dtz_available || rootMoves[0].tbScore <= VALUE_DRAW)
-            Cardinality = 0;
+            cardinality = 0;
     }
     else
     {
@@ -1927,6 +1931,270 @@ void Tablebases::rank_root_moves(Position& pos, Search::RootMoves& rootMoves) {
         for (auto& m : rootMoves)
             m.tbRank = 0;
     }
+
+}
+
+// --- expose the functions such as fixed depth search used for learning to the outside
+namespace Search
+{
+  // For learning, prepare a stub that can call search,qsearch() from one thread.
+  // From now on, it is better to have a Searcher and prepare a substitution table for each thread like Apery.
+  // It might have been good.
+
+  // Initialization for learning.
+  // Called from Tools::search(),Tools::qsearch().
+  static bool init_for_search(Position& pos, Stack* ss)
+  {
+
+    // RootNode requires ss->ply == 0.
+    // Because it clears to zero, ss->ply == 0, so it's okay...
+
+    std::memset(ss - 7, 0, 10 * sizeof(Stack));
+
+    // Regarding this_thread.
+
+    {
+      auto th = pos.this_thread();
+
+      th->completedDepth = 0;
+      th->selDepth = 0;
+      th->rootDepth = 0;
+      th->nmpMinPly = th->bestMoveChanges = th->failedHighCnt = 0;
+      th->ttHitAverage = TtHitAverageWindow * TtHitAverageResolution / 2;
+
+      // Zero initialization of the number of search nodes
+      th->nodes = 0;
+
+      // Clear all history types. This initialization takes a little time, and the accuracy of the search is rather low, so the good and bad are not well understood.
+      // th->clear();
+
+      int ct = int(Options["Contempt"]) * PawnValueEg / 100; // From centipawns
+      Color us = pos.side_to_move();
+
+      // In analysis mode, adjust contempt in accordance with user preference
+      if (Limits.infinite || Options["UCI_AnalyseMode"])
+        ct = Options["Analysis Contempt"] == "Off" ? 0
+        : Options["Analysis Contempt"] == "Both" ? ct
+        : Options["Analysis Contempt"] == "White" && us == BLACK ? -ct
+        : Options["Analysis Contempt"] == "Black" && us == WHITE ? -ct
+        : ct;
+
+      // Evaluation score is from the white point of view
+      th->contempt = (us == WHITE ? make_score(ct, ct / 2)
+        : -make_score(ct, ct / 2));
+
+      for (int i = 7; i > 0; i--)
+          (ss - i)->continuationHistory = &th->continuationHistory[0][0][NO_PIECE][0]; // Use as a sentinel
+
+      // set rootMoves
+      auto& rootMoves = th->rootMoves;
+
+      rootMoves.clear();
+      for (auto m: MoveList<LEGAL>(pos))
+        rootMoves.push_back(Search::RootMove(m));
+
+      // Check if we're at a terminal node. Otherwise we end up returning
+      // malformed PV later on.
+      if (rootMoves.empty())
+        return false;
+
+      Tablebases::rank_root_moves(pos, rootMoves);
+    }
+
+    return true;
+  }
+
+  // Stationary search.
+  //
+  // Precondition) Search thread is set by pos.set_this_thread(Threads[thread_id]).
+  // Also, when Threads.stop arrives, the search is interrupted, so the PV at that time is not correct.
+  // After returning from search(), if Threads.stop == true, do not use the search result.
+  // Also, note that before calling, if you do not call it with Threads.stop == false, the search will be interrupted and it will return.
+  //
+  // If it is clogged, MOVE_RESIGN is returned in the PV array.
+  //
+  //Although it was possible to specify alpha and beta with arguments, this will show the result when searching in that window
+  // Because it writes to the substitution table, the value that can be pruned is written to that window when learning
+  // As it has a bad effect, I decided to stop allowing the window range to be specified.
+  ValueAndPV qsearch(Position& pos)
+  {
+    Stack stack[MAX_PLY+10], *ss = stack+7;
+    Move  pv[MAX_PLY+1];
+
+    if (!init_for_search(pos, ss))
+      return {};
+
+    ss->pv = pv; // For the time being, it must be a dummy and somewhere with a buffer.
+
+    if (pos.is_draw(0)) {
+      // Return draw value if draw.
+      return { VALUE_DRAW, {} };
+    }
+
+    // Is it stuck?
+    if (MoveList<LEGAL>(pos).size() == 0)
+    {
+      // Return the mated value if checkmated.
+      return { mated_in(/*ss->ply*/ 0 + 1), {} };
+    }
+
+    auto bestValue = Stockfish::qsearch<PV>(pos, ss, -VALUE_INFINITE, VALUE_INFINITE, 0);
+
+    // Returns the PV obtained.
+    std::vector<Move> pvs;
+    for (Move* p = &ss->pv[0]; is_ok(*p); ++p)
+      pvs.push_back(*p);
+
+    return ValueAndPV(bestValue, pvs);
+  }
+
+  // Normal search. Depth depth (specified as an integer).
+  // 3 If you want a score for hand reading,
+  // auto v = search(pos,3);
+  // Do something like
+  // Evaluation value is obtained in v.first and PV is obtained in v.second.
+  // When multi pv is enabled, you can get the PV (reading line) array in pos.this_thread()->rootMoves[N].pv.
+  // Specify multi pv with the argument multiPV of this function. (The value of Options["MultiPV"] is ignored)
+  //
+  // Declaration win judgment is not done as root (because it is troublesome to handle), so it is not done here.
+  // Handle it by the caller.
+  //
+  // Precondition) Search thread is set by pos.set_this_thread(Threads[thread_id]).
+  // Also, when Threads.stop arrives, the search is interrupted, so the PV at that time is not correct.
+  // After returning from search(), if Threads.stop == true, do not use the search result.
+  // Also, note that before calling, if you do not call it with Threads.stop == false, the search will be interrupted and it will return.
+
+  ValueAndPV search(Position& pos, int depth_, size_t multiPV /* = 1 */, uint64_t nodesLimit /* = 0 */)
+  {
+    std::vector<Move> pvs;
+
+    Depth depth = depth_;
+    if (depth < 0)
+      return std::pair<Value, std::vector<Move>>(Eval::evaluate(pos), std::vector<Move>());
+
+    if (depth == 0)
+      return qsearch(pos);
+
+    Stack stack[MAX_PLY + 10], * ss = stack + 7;
+    Move pv[MAX_PLY + 1];
+
+    if (!init_for_search(pos, ss))
+      return {};
+
+	ss->pv = pv; // For the time being, it must be a dummy and somewhere with a buffer.
+
+    // Initialize the variables related to this_thread
+    auto th = pos.this_thread();
+    auto& rootDepth = th->rootDepth;
+    auto& pvIdx = th->pvIdx;
+    auto& pvLast = th->pvLast;
+    auto& rootMoves = th->rootMoves;
+    auto& completedDepth = th->completedDepth;
+    auto& selDepth = th->selDepth;
+
+     // A function to search the top N of this stage as best move
+     //size_t multiPV = Options["MultiPV"];
+
+     // Do not exceed the number of moves in this situation
+    multiPV = std::min(multiPV, rootMoves.size());
+
+     // If you do not multiply the node limit by the value of MultiPV, you will not be thinking about the same node for one candidate hand when you fix the depth and have MultiPV.
+    nodesLimit *= multiPV;
+
+    Value alpha = -VALUE_INFINITE;
+    Value beta = VALUE_INFINITE;
+    Value delta = -VALUE_INFINITE;
+    Value bestValue = -VALUE_INFINITE;
+
+    while ((rootDepth += 1) <= depth
+      // exit this loop even if the node limit is exceeded
+      // The number of search nodes is passed in the argument of this function.
+      && !(nodesLimit /* limited nodes */ && th->nodes.load(std::memory_order_relaxed) >= nodesLimit)
+      )
+    {
+      for (RootMove& rm : rootMoves)
+        rm.previousScore = rm.score;
+
+      size_t pvFirst = 0;
+      pvLast = 0;
+
+      // MultiPV loop. We perform a full root search for each PV line
+      for (pvIdx = 0; pvIdx < multiPV && !Threads.stop; ++pvIdx)
+      {
+        if (pvIdx == pvLast)
+        {
+          pvFirst = pvLast;
+          for (pvLast++; pvLast < rootMoves.size(); pvLast++)
+            if (rootMoves[pvLast].tbRank != rootMoves[pvFirst].tbRank)
+              break;
+        }
+
+        // selDepth output with USI info for each depth and PV line
+        selDepth = 0;
+
+        // Switch to aspiration search for depth 5 and above.
+        if (rootDepth >= 4)
+        {
+            Value prev = rootMoves[pvIdx].previousScore;
+            delta = Value(17);
+            alpha = std::max(prev - delta,-VALUE_INFINITE);
+            beta  = std::min(prev + delta, VALUE_INFINITE);
+        }
+
+        while (true)
+        {
+          Depth adjustedDepth = std::max(1, rootDepth);
+          bestValue = Stockfish::search<PV>(pos, ss, alpha, beta, adjustedDepth, false);
+
+          stable_sort(rootMoves.begin() + pvIdx, rootMoves.end());
+          //my_stable_sort(pos.this_thread()->thread_id(),&rootMoves[0] + pvIdx, rootMoves.size() - pvIdx);
+
+          // Expand aspiration window for fail low/high.
+          // However, if it is the value specified by the argument, it will be treated as fail low/high and break.
+          if (bestValue <= alpha)
+          {
+            beta = (alpha + beta) / 2;
+            alpha = std::max(bestValue - delta, -VALUE_INFINITE);
+          }
+          else if (bestValue >= beta)
+          {
+            beta = std::min(bestValue + delta, VALUE_INFINITE);
+          }
+          else
+            break;
+
+          delta += delta / 4 + 5;
+          assert(-VALUE_INFINITE <= alpha && beta <= VALUE_INFINITE);
+
+          // runaway check
+          //assert(th->nodes.load(std::memory_order_relaxed) <= 1000000 );
+        }
+
+        stable_sort(rootMoves.begin(), rootMoves.begin() + pvIdx + 1);
+        //my_stable_sort(pos.this_thread()->thread_id() , &rootMoves[0] , pvIdx + 1);
+
+      } // multi PV
+
+      completedDepth = rootDepth;
+    }
+
+    // Pass PV_is(ok) to eliminate this PV, there may be NULL_MOVE in the middle.
+    // MOVE_WIN has never been thrust. (For now)
+    for (Move move : rootMoves[0].pv)
+    {
+      if (!is_ok(move))
+        break;
+      pvs.push_back(move);
+    }
+
+    //sync_cout << rootDepth << sync_endl;
+
+    // Considering multiPV, the score of rootMoves[0] is returned as bestValue.
+    bestValue = rootMoves[0].score;
+
+    return ValueAndPV(bestValue, pvs);
+  }
+
 }
 
 } // namespace Stockfish

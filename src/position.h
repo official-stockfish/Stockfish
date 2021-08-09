@@ -31,6 +31,9 @@
 
 #include "nnue/nnue_accumulator.h"
 
+#include "tools/packed_sfen.h"
+#include "tools/sfen_packer.h"
+
 namespace Stockfish {
 
 /// StateInfo struct stores information needed to restore a Position object to
@@ -157,6 +160,8 @@ public:
   bool is_chess960() const;
   Thread* this_thread() const;
   bool is_draw(int ply) const;
+  bool is_fifty_move_draw() const;
+  bool is_three_fold_repetition() const;
   bool has_game_cycle(int ply) const;
   bool has_repeated() const;
   int rule50_count() const;
@@ -171,6 +176,28 @@ public:
   // Used by NNUE
   StateInfo* state() const;
 
+  // --sfenization helper
+
+  friend int Tools::set_from_packed_sfen(Position& pos, const Tools::PackedSfen& sfen, StateInfo* si, Thread* th);
+
+  // Get the packed sfen. Returns to the buffer specified in the argument.
+  // Do not include gamePly in pack.
+  void sfen_pack(Tools::PackedSfen& sfen);
+
+  // It is slow to go through sfen, so I made a function to set packed sfen directly.
+  // Equivalent to pos.set(sfen_unpack(data),si,th);.
+  // If there is a problem with the passed phase and there is an error, non-zero is returned.
+  // PackedSfen does not include gamePly so it cannot be restored. If you want to set it, specify it with an argument.
+  int set_from_packed_sfen(const Tools::PackedSfen& sfen, StateInfo* si, Thread* th);
+
+  void clear() { std::memset(this, 0, sizeof(Position)); }
+
+  // Give the board, hand piece, and turn, and return the sfen.
+  //static std::string sfen_from_rawdata(Piece board[81], Hand hands[2], Color turn, int gamePly);
+
+  // Returns the position of the ball on the c side.
+  Square king_square(Color c) const { return lsb(pieces(c, KING)); }
+  
   void put_piece(Piece pc, Square s);
   void remove_piece(Square s);
 
@@ -413,6 +440,8 @@ inline StateInfo* Position::state() const {
 
   return st;
 }
+
+static const char* const StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 } // namespace Stockfish
 

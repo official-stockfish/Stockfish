@@ -162,6 +162,41 @@ For developers the following non-standard commands might be of interest, mainly 
   * #### flip
     Flips the side to move.
 
+### Generating Training Data
+
+To generate training data from the classic eval, use the generate_training_data command with the setting "Use NNUE" set to "false". The given example is generation in its simplest form. There are more commands.
+
+```
+uci
+setoption name PruneAtShallowDepth value false
+setoption name Use NNUE value false
+setoption name Threads value X
+setoption name Hash value Y
+setoption name SyzygyPath value path
+isready
+generate_training_data depth A count B keep_draws 1 eval_limit 32000
+```
+
+- `A` is the searched depth per move, or how far the engine looks forward. This value is an integer.
+- `B` is the amount of positions generated. This value is also an integer.
+
+Specify how many threads and how much memory you would like to use with the `x` and `y` values. The option SyzygyPath is not necessary, but if you would like to use it, you must first have Syzygy endgame tablebases on your computer, which you can find [here](http://oics.olympuschess.com/tracker/index.php). You will need to have a torrent client to download these tablebases, as that is probably the fastest way to obtain them. The `path` is the path to the folder containing those tablebases. It does not have to be surrounded in quotes.
+
+This will create a file named "training_data.binpack" in the same folder as the binary containing the generated training data. Once generation is done, you can rename the file to something like "1billiondepth12.binpack" to remember the depth and quantity of the positions and move it to a folder named "trainingdata" in the same directory as the binaries.
+
+You will also need validation data that is used for loss calculation and accuracy computation. Validation data is generated in the same way as training data, but generally at most 1 million positions should be used as there's no need for more and it would just slow the learning process down. It may also be better to slightly increase the depth for validation data. After generation you can rename the validation data file to "val.binpack" and drop it in a folder named "validationdata" in the same directory to make it easier.
+
+## Training data formats.
+
+Currently there are 3 training data formats. Two of them are supported directly.
+
+- `.bin` - the original training data format. Uses 40 bytes per entry. Is supported directly by the `generate_training_data` command.
+- `.plain` - a human readable training data format. This one is not supported directly by the `generate_training_data` command. It should not be used for data exchange because it's less compact than other formats. It is mostly useful for inspection of the data.
+- `.binpack` - a compact binary training data format that exploits positions chains to further reduce size. It uses on average between 2 to 3 bytes per entry when generating data with `generate_training_data`. It is supported directly by `generate_training_data` command. It is currently the default for the `generate_training_data` command. A more in depth description can be found [here](docs/binpack.md)
+
+### Conversion between formats.
+
+There is a builting converted that support all 3 formats described above. Any of them can be converted to any other. For more information and usage guide see [here](docs/convert.md).
 
 ## A note on classical evaluation versus NNUE evaluation
 

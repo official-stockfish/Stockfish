@@ -26,6 +26,12 @@ else
 EXE = stockfish
 endif
 
+### Establish the operating system name
+KERNEL = $(shell uname -s)
+ifeq ($(KERNEL),Linux)
+	OS = $(shell uname -o)
+endif
+
 ### Installation dir definitions
 PREFIX = /usr/local
 BINDIR = $(PREFIX)/bin
@@ -33,25 +39,30 @@ BINDIR = $(PREFIX)/bin
 ### Built-in benchmark for pgo-builds
 ifeq ($(SDE_PATH),)
 	PGOBENCH = ./$(EXE) bench
+	PGOGENSFEN = ./$(EXE) gensfen depth 3 loop 1000 sfen_format bin output_file_name $(PGO_TRAINING_DATA_FILE)
 else
 	PGOBENCH = $(SDE_PATH) -- ./$(EXE) bench
+	PGOGENSFEN = $(SDE_PATH) -- ./$(EXE) gensfen depth 3 loop 1000 sfen_format bin output_file_name $(PGO_TRAINING_DATA_FILE)
 endif
 
 ### Source and object files
 SRCS = benchmark.cpp bitbase.cpp bitboard.cpp endgame.cpp evaluate.cpp main.cpp \
 	material.cpp misc.cpp movegen.cpp movepick.cpp pawns.cpp position.cpp psqt.cpp \
 	search.cpp thread.cpp timeman.cpp tt.cpp uci.cpp ucioption.cpp tune.cpp syzygy/tbprobe.cpp \
-	nnue/evaluate_nnue.cpp nnue/features/half_ka_v2.cpp
+	nnue/evaluate_nnue.cpp \
+	nnue/features/half_ka_v2.cpp \
+	tools/validate_training_data.cpp \
+	tools/sfen_packer.cpp \
+	tools/training_data_generator.cpp \
+	tools/training_data_generator_nonpv.cpp \
+	tools/opening_book.cpp \
+	tools/convert.cpp \
+	tools/transform.cpp \
+	tools/stats.cpp
 
 OBJS = $(notdir $(SRCS:.cpp=.o))
 
-VPATH = syzygy:nnue:nnue/features
-
-### Establish the operating system name
-KERNEL = $(shell uname -s)
-ifeq ($(KERNEL),Linux)
-	OS = $(shell uname -o)
-endif
+VPATH = syzygy:nnue:nnue/features:eval:extra:tools
 
 ### ==========================================================================
 ### Section 2. High-level Configuration
@@ -315,8 +326,9 @@ endif
 ### ==========================================================================
 
 ### 3.1 Selecting compiler (default = gcc)
-CXXFLAGS += -Wall -Wcast-qual -fno-exceptions -std=c++17 $(EXTRACXXFLAGS)
-DEPENDFLAGS += -std=c++17
+ADDITIONAL_INCLUDE_DIRECTORIES = -I.
+CXXFLAGS += -Wall -Wcast-qual -fno-exceptions -std=c++17 $(ADDITIONAL_INCLUDE_DIRECTORIES) $(EXTRACXXFLAGS)
+DEPENDFLAGS += -std=c++17 $(ADDITIONAL_INCLUDE_DIRECTORIES)
 LDFLAGS += $(EXTRALDFLAGS)
 
 ifeq ($(COMP),)
@@ -326,7 +338,7 @@ endif
 ifeq ($(COMP),gcc)
 	comp=gcc
 	CXX=g++
-	CXXFLAGS += -pedantic -Wextra -Wshadow
+	CXXFLAGS += -pedantic -Wextra -Wshadow -lstdc++fs
 
 	ifeq ($(arch),$(filter $(arch),armv7 armv8))
 		ifeq ($(OS),Android)
@@ -471,13 +483,13 @@ ifneq ($(comp),mingw)
 		# Haiku has pthreads in its libroot, so only link it in on other platforms
 		ifneq ($(KERNEL),Haiku)
 			ifneq ($(COMP),ndk)
-				LDFLAGS += -lpthread
-			endif
+			LDFLAGS += -lpthread
 		endif
 	endif
 endif
+endif
 
-### 3.2.1 Debugging
+### 3.2.2 Debugging
 ifeq ($(debug),no)
 	CXXFLAGS += -DNDEBUG
 else
@@ -601,7 +613,7 @@ ifeq ($(neon),yes)
 		CXXFLAGS += -mfpu=neon
 	endif
 	endif
-	endif
+endif
 endif
 
 ### 3.7 pext
@@ -752,6 +764,7 @@ profile-build: net config-sanity objclean profileclean
 	@echo ""
 	@echo "Step 2/4. Running benchmark for pgo-build ..."
 	$(PGOBENCH) > /dev/null
+	$(PGOGENSFEN) > /dev/null
 	@echo ""
 	@echo "Step 3/4. Building optimized executable ..."
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) objclean
@@ -798,12 +811,12 @@ net:
 
 # clean binaries and objects
 objclean:
-	@rm -f $(EXE) *.o ./syzygy/*.o ./nnue/*.o ./nnue/features/*.o
+	@rm -f $(EXE) *.o ./syzygy/*.o ./nnue/*.o ./nnue/features/*.o ./tools/*.o ./extra/*.o ./eval/*.o
 
 # clean auxiliary profiling files
 profileclean:
 	@rm -rf profdir
-	@rm -f bench.txt *.gcda *.gcno ./syzygy/*.gcda ./nnue/*.gcda ./nnue/features/*.gcda *.s
+	@rm -f bench.txt *.gcda *.gcno ./syzygy/*.gcda ./nnue/*.gcda ./nnue/features/*.gcda *.s ./tools/*.gcda ./extra/*.gcda ./eval/*.gcda
 	@rm -f stockfish.profdata *.profraw
 	@rm -f stockfish.exe.lto_wrapper_args
 	@rm -f stockfish.exe.ltrans.out
@@ -913,6 +926,6 @@ icc-profile-use:
 	all
 
 .depend:
-	-@$(CXX) $(DEPENDFLAGS) -MM $(SRCS) > $@ 2> /dev/null
+	-@$(CXX) $(DEPENDFLAGS) -MM $(SRCS) > $@
 
 -include .depend

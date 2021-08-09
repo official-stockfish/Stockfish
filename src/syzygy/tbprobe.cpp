@@ -52,7 +52,7 @@
 
 using namespace Stockfish::Tablebases;
 
-int Stockfish::Tablebases::MaxCardinality;
+int Stockfish::Tablebases::MaxCardinality = 0;
 
 namespace Stockfish {
 

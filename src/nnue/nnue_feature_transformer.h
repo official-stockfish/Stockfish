@@ -24,6 +24,9 @@
 #include "nnue_common.h"
 #include "nnue_architecture.h"
 
+#include "../misc.h"
+#include "../position.h"
+
 #include <cstring> // std::memset()
 
 namespace Stockfish::Eval::NNUE {

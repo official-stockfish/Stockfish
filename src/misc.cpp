@@ -63,6 +63,8 @@ using namespace std;
 
 namespace Stockfish {
 
+SynchronizedRegionLogger sync_region_cout(std::cout);
+
 namespace {
 
 /// Version number. If Version is left empty, then compile date in the format
@@ -648,5 +650,31 @@ void init(int argc, char* argv[]) {
 
 
 } // namespace CommandLine
+
+// Returns a string that represents the current time. (Used when learning evaluation functions)
+std::string now_string()
+{
+    // Using std::ctime(), localtime() gives a warning that MSVC is not secure.
+    // This shouldn't happen in the C++ standard, but...
+
+#if defined(_MSC_VER)
+  // C4996 : 'ctime' : This function or variable may be unsafe.Consider using ctime_s instead.
+#pragma warning(disable : 4996)
+#endif
+
+    auto now = std::chrono::system_clock::now();
+    auto tp = std::chrono::system_clock::to_time_t(now);
+    auto result = string(std::ctime(&tp));
+
+    // remove line endings if they are included at the end
+    while (*result.rbegin() == '\n' || (*result.rbegin() == '\r'))
+        result.pop_back();
+    return result;
+}
+
+void sleep(int ms)
+{
+    std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+}
 
 } // namespace Stockfish

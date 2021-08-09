@@ -1,0 +1,75 @@
+language: cpp
+dist: focal
+
+matrix:
+  include:
+    - os: linux
+      compiler: gcc
+      addons:
+        apt:
+          packages: ['g++-multilib', 'valgrind', 'expect', 'curl']
+      env:
+        - COMPILER=g++
+        - COMP=gcc
+
+branches:
+  only:
+   - master
+
+before_script:
+  - cd src
+
+script:
+  # Download net
+  - make net
+
+  # Obtain bench reference from git log
+  - git log HEAD | grep "\b[Bb]ench[ :]\+[0-9]\{7\}" | head -n 1 | sed "s/[^0-9]*\([0-9]*\).*/\1/g" > git_sig
+  - export benchref=$(cat git_sig)
+  - echo "Reference bench:" $benchref
+
+  # Compiler version string
+  - $COMPILER -v
+
+  # test help target
+  - make help
+
+  # Verify bench number against various builds
+  - export CXXFLAGS="-Werror -D_GLIBCXX_DEBUG"
+  - make clean && make -j2 ARCH=x86-64-modern optimize=no debug=yes build && ../tests/signature.sh $benchref
+  - export CXXFLAGS="-Werror"
+  - make clean && make -j2 ARCH=x86-64-modern build && ../tests/signature.sh $benchref
+  - make clean && make -j2 ARCH=x86-64-ssse3 build && ../tests/signature.sh $benchref
+  - make clean && make -j2 ARCH=x86-64-sse3-popcnt build && ../tests/signature.sh $benchref
+  - make clean && make -j2 ARCH=x86-64 build && ../tests/signature.sh $benchref
+  # TODO avoid _mm_malloc
+  # - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make clean && make -j2 ARCH=general-64 build && ../tests/signature.sh $benchref; fi
+  - make clean && make -j2 ARCH=x86-64-modern profile-build && ../tests/signature.sh $benchref
+
+  # compile only for some more advanced architectures (might not run in travis)
+  - make clean && make -j2 ARCH=x86-64-avx2 blas=yes build
+
+  - make clean && make -j2 ARCH=x86-64-avx2 build
+  - make clean && make -j2 ARCH=x86-64-bmi2 build
+  - make clean && make -j2 ARCH=x86-64-avx512 build
+  - make clean && make -j2 ARCH=x86-64-vnni512 build
+  - make clean && make -j2 ARCH=x86-64-vnni256 build
+
+  #
+  # Check perft and reproducible search
+  - make clean && make -j2 ARCH=x86-64-modern build
+  - ../tests/perft.sh
+  - ../tests/reprosearch.sh
+
+  #
+  # Valgrind
+  #
+  - export CXXFLAGS="-O1 -fno-inline"
+  - make clean && make -j2 ARCH=x86-64-modern debug=yes optimize=no build > /dev/null && ../tests/instrumented.sh --valgrind
+  - ../tests/instrumented.sh --valgrind-thread
+
+  #
+  # Sanitizer
+  #
+  - make clean && make -j2 ARCH=x86-64-modern sanitize=undefined optimize=no debug=yes build > /dev/null && ../tests/instrumented.sh --sanitizer-undefined
+  - make clean && make -j2 ARCH=x86-64-modern sanitize=thread    optimize=no debug=yes build > /dev/null && ../tests/instrumented.sh --sanitizer-thread

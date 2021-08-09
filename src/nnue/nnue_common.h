@@ -21,6 +21,8 @@
 #ifndef NNUE_COMMON_H_INCLUDED
 #define NNUE_COMMON_H_INCLUDED
 
+#include "../types.h"
+
 #include <cstring>
 #include <iostream>
 

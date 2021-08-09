@@ -22,15 +22,23 @@
 #include <sstream>
 #include <string>
 
+#include "nnue/evaluate_nnue.h"
 #include "evaluate.h"
 #include "movegen.h"
 #include "position.h"
 #include "search.h"
+#include "syzygy/tbprobe.h"
 #include "thread.h"
 #include "timeman.h"
 #include "tt.h"
 #include "uci.h"
-#include "syzygy/tbprobe.h"
+
+#include "tools/validate_training_data.h"
+#include "tools/training_data_generator.h"
+#include "tools/training_data_generator_nonpv.h"
+#include "tools/convert.h"
+#include "tools/transform.h"
+#include "tools/stats.h"
 
 using namespace std;
 
@@ -39,10 +47,6 @@ namespace Stockfish {
 extern vector<string> setup_bench(const Position&, istream&);
 
 namespace {
-
-  // FEN string of the initial position, normal chess
-  const char* StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-
 
   // position() is called when engine receives the "position" UCI command.
   // The function sets up the position described in the given FEN string ("fen")
@@ -96,7 +100,7 @@ namespace {
   // setoption() is called when engine receives the "setoption" UCI command. The
   // function updates the UCI option ("name") to the given value ("value").
 
-  void setoption(istringstream& is) {
+  void setoption_from_stream(istringstream& is) {
 
     string token, name, value;
 
@@ -110,10 +114,7 @@ namespace {
     while (is >> token)
         value += (value.empty() ? "" : " ") + token;
 
-    if (Options.count(name))
-        Options[name] = value;
-    else
-        sync_cout << "No such option: " << name << sync_endl;
+    UCI::setoption(name, value);
   }
 
 
@@ -182,7 +183,7 @@ namespace {
             else
                trace_eval(pos);
         }
-        else if (token == "setoption")  setoption(is);
+        else if (token == "setoption")  setoption_from_stream(is);
         else if (token == "position")   position(pos, is, states);
         else if (token == "ucinewgame") { Search::clear(); elapsed = now(); } // Search::clear() may take some while
     }
@@ -195,6 +196,14 @@ namespace {
          << "\nTotal time (ms) : " << elapsed
          << "\nNodes searched  : " << nodes
          << "\nNodes/second    : " << 1000 * nodes / elapsed << endl;
+  }
+
+  void setoption(const std::string& name, const std::string& value)
+  {
+      if (Options.count(name))
+          Options[name] = value;
+      else
+          sync_cout << "No such option: " << name << sync_endl;
   }
 
   // The win rate model returns the probability (per mille) of winning given an eval
@@ -215,12 +224,49 @@ namespace {
      // Transform eval to centipawns with limited range
      double x = std::clamp(double(100 * v) / PawnValueEg, -2000.0, 2000.0);
 
+     // Transform eval to centipawns with limited range
+     double x = std::clamp(double(100 * v) / PawnValueEg, -1000.0, 1000.0);
+
      // Return win rate in per mille (rounded to nearest)
      return int(0.5 + 1000 / (1 + std::exp((a - x) / b)));
   }
 
 } // namespace
 
+// --------------------
+// Call qsearch(),search() directly for testing
+// --------------------
+
+void qsearch_cmd(Position& pos)
+{
+  cout << "qsearch : ";
+  auto pv = Search::qsearch(pos);
+  cout << "Value = " << pv.first << " , " << UCI::value(pv.first) << " , PV = ";
+  for (auto m : pv.second)
+    cout << UCI::move(m, false) << " ";
+  cout << endl;
+}
+
+void search_cmd(Position& pos, istringstream& is)
+{
+  string token;
+  int depth = 1;
+  int multi_pv = (int)Options["MultiPV"];
+  while (is >> token)
+  {
+    if (token == "depth")
+      is >> depth;
+    if (token == "multipv")
+      is >> multi_pv;
+  }
+
+  cout << "search depth = " << depth << " , multi_pv = " << multi_pv << " : ";
+  auto pv = Search::search(pos, depth, multi_pv);
+  cout << "Value = " << pv.first << " , " << UCI::value(pv.first) << " , PV = ";
+  for (auto m : pv.second)
+    cout << UCI::move(m, false) << " ";
+  cout << endl;
+}
 
 /// UCI::loop() waits for a command from stdin, parses it and calls the appropriate
 /// function. Also intercepts EOF from stdin to ensure gracefully exiting if the
@@ -264,7 +310,7 @@ void UCI::loop(int argc, char* argv[]) {
                     << "\n"       << Options
                     << "\nuciok"  << sync_endl;
 
-      else if (token == "setoption")  setoption(is);
+      else if (token == "setoption")  setoption_from_stream(is);
       else if (token == "go")         go(pos, is, states);
       else if (token == "position")   position(pos, is, states);
       else if (token == "ucinewgame") Search::clear();
@@ -284,6 +330,25 @@ void UCI::loop(int argc, char* argv[]) {
           if (is >> skipws >> f)
               filename = f;
           Eval::NNUE::save_eval(filename);
+      }
+      else if (token == "generate_training_data") Tools::generate_training_data(is);
+      else if (token == "generate_training_data") Tools::generate_training_data_nonpv(is);
+      else if (token == "convert") Tools::convert(is);
+      else if (token == "validate_training_data") Tools::validate_training_data(is);
+      else if (token == "convert_bin") Tools::convert_bin(is);
+      else if (token == "convert_plain") Tools::convert_plain(is);
+      else if (token == "convert_bin_from_pgn_extract") Tools::convert_bin_from_pgn_extract(is);
+      else if (token == "transform") Tools::transform(is);
+      else if (token == "gather_statistics") Tools::Stats::gather_statistics(is);
+
+      // Command to call qsearch(),search() directly for testing
+      else if (token == "qsearch") qsearch_cmd(pos);
+      else if (token == "search") search_cmd(pos, is);
+      else if (token == "tasktest")
+      {
+        Threads.execute_with_workers([](auto& th) {
+          std::cout << th.id() << '\n';
+        });
       }
       else if (!token.empty() && token[0] != '#')
           sync_cout << "Unknown command: " << cmd << sync_endl;

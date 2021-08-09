@@ -92,6 +92,8 @@ public:
     return &table[mul_hi64(key, clusterCount)].entry[0];
   }
 
+  static bool enable_transposition_table;
+
 private:
   friend struct TTEntry;
 
