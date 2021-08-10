@@ -70,7 +70,7 @@ namespace {
    318,   6, 6,8250,192,95,147,232,1073,225,99
   };
 
-//  TUNE(SetRange(-40,40), nw, nbw);
+  TUNE(SetRange(-40,40), nw, nbw[0]);
 
   // Different node types, used as a template parameter
   enum NodeType { NonPV, PV, Root };
