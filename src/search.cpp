@@ -67,7 +67,7 @@ namespace {
   int nbw[2][11] =
   {
    0,0, 0,0, 0,0,  0,0,0,0,0,
-   318,   6, 6,8250,192,95,147,232,1073,225,99
+   318, 600, 600,825,192,950,147,232,1073,225,990
   };
 
   TUNE(SetRange(-40,40), nw, nbw[0]);
@@ -482,12 +482,12 @@ void Thread::search() {
                   ft[n] = temp[n];
           }
 
-          double fallingEval = (ft[0] + ft[1] * (mainThread->bestPreviousScore - bestValue)
-                                      + ft[2] * (mainThread->iterValue[iterIdx] - bestValue)) / (ft[3] / 10.0);
+          double fallingEval = (ft[0] + (ft[1]/100.0) * (mainThread->bestPreviousScore - bestValue)
+                                      + (ft[2]/100.0) * (mainThread->iterValue[iterIdx] - bestValue)) / (ft[3]/1.0);
           fallingEval = std::clamp(fallingEval, 0.5, 1.5);
 
           // If the bestMove is stable over several iterations, reduce time accordingly
-          timeReduction = lastBestMoveDepth + 9 < completedDepth ? ft[4]/100.0 : ft[5]/100.0;
+          timeReduction = lastBestMoveDepth + 9 < completedDepth ? ft[4]/100.0 : ft[5]/1000.0;
           double reduction = (ft[6]/100.0 + mainThread->previousTimeReduction) / ((ft[7]/100.0) * timeReduction);
 
           // Use part of the gained time from a previous stable move for the current move
@@ -496,7 +496,7 @@ void Thread::search() {
               totBestMoveChanges += th->bestMoveChanges;
               th->bestMoveChanges = 0;
           }
-          double bestMoveInstability = ft[8]/1000.0 + std::max(1.0, ft[9]/100.0 - (ft[10]/10.0) / rootDepth)
+          double bestMoveInstability = ft[8]/1000.0 + std::max(1.0, ft[9]/100.0 - (ft[10]/100.0) / rootDepth)
                                               * totBestMoveChanges / Threads.size();
 
           double totalTime = Time.optimum() * fallingEval * reduction * bestMoveInstability;
