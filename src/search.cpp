@@ -62,15 +62,29 @@ namespace {
   // Net weights and biases of a small neural network for time management
   int nw[11][2][11] = 
   {
-     0
+-17,-14,-6,8,14,5,-7,3,-4,-10,-4,-5,-5,0,-5,-10,
+3,-7,6,8,3,-4,-10,2,-3,3,7,-4,10,-8,-5,-1,-13,8,
+11,2,6,-4,-2,4,4,9,-6,-8,-20,10,-2,-4,-2,-4,-14,-6,
+1,1,0,1,2,4,-1,-9,-6,-8,1,-10,6,5,-15,-4,-16,
+-1,-6,-11,-2,-14,0,2,-1,1,0,7,-5,1,-3,0,-2,3,
+1,4,-6,-8,-15,2,-8,-15,-13,-11,4,-10,-3,13,
+10,0,-9,7,6,1,3,8,9,7,2,-8,5,-28,2,-5,-2,4,
+-4,-8,-9,-7,16,-12,-1,-14,3,-11,3,-2,8,3,-11,
+-7,-10,-7,-2,-2,8,9,-6,-2,-1,11,9,-8,1,-2,2,9,11,
+14,14,0,-3,-5,-7,-4,7,-8,-6,-7,1,-11,-9,4,15,-5,1,
+1,3,3,5,12,12,-2,-12,-3,2,-1,9,-11,-4,9,-6,-4,
+1,-1,5,2,-5,4,3,11,-9,15,23,15,-6,2,-4,-1,-6,-10,
+16,-3,-2,5,-1,-6,-5,-4,3,7,9,-1,8,4,3,2,-1,-4,2,
+-3,-15,-15,14,-2,-18,1,-15,-1,10,-1,6,-6,4,-7,
+-13,-3,-1,-1
   };
   int nbw[2][11] =
   {
-   0,0, 0,0, 0,0,  0,0,0,0,0,
+-1,4,-12,0,14,-18,-8,1,-3,-6,0,
    318, 600, 600,825,192,950,147,232,1073,225,990
   };
 
-  TUNE(SetRange(-40,40), nw, nbw[0]);
+ // TUNE(SetRange(-40,40), nw, nbw[0]);
 
   // Different node types, used as a template parameter
   enum NodeType { NonPV, PV, Root };
@@ -482,8 +496,8 @@ void Thread::search() {
                   ft[n] = temp[n];
           }
 
-          double fallingEval = (ft[0] + (ft[1]/100.0) * (mainThread->bestPreviousScore - bestValue)
-                                      + (ft[2]/100.0) * (mainThread->iterValue[iterIdx] - bestValue)) / (ft[3]/1.0);
+          double fallingEval = (ft[0] * 100.0 + ft[1] * (mainThread->bestPreviousScore - bestValue)
+                              + ft[2] * (mainThread->iterValue[iterIdx] - bestValue)) / (ft[3]*100.0);
           fallingEval = std::clamp(fallingEval, 0.5, 1.5);
 
           // If the bestMove is stable over several iterations, reduce time accordingly
