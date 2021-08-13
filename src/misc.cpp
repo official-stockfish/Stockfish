@@ -110,7 +110,14 @@ public:
 
     static Logger l;
 
-    if (!fname.empty() && !l.file.is_open())
+    if (l.file.is_open())
+    {
+        cout.rdbuf(l.out.buf);
+        cin.rdbuf(l.in.buf);
+        l.file.close();
+    }
+
+    if (!fname.empty())
     {
         l.file.open(fname, ifstream::out);
 
@@ -122,12 +129,6 @@ public:
 
         cin.rdbuf(&l.in);
         cout.rdbuf(&l.out);
-    }
-    else if (fname.empty() && l.file.is_open())
-    {
-        cout.rdbuf(l.out.buf);
-        cin.rdbuf(l.in.buf);
-        l.file.close();
     }
   }
 };
