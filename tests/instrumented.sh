@@ -192,7 +192,7 @@ cat << EOF > data_generation02.exp
  exit \$value
 EOF
 
-for exp in game.exp data_generation01.exe data_generation02.exp
+for exp in game.exp data_generation01.exp data_generation02.exp
 do
 
   echo "$prefix expect $exp $postfix"
