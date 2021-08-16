@@ -16,31 +16,32 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-//Definition of input features HalfKAv2 of NNUE evaluation function
+//Definition of input features HalfKAv2_hm of NNUE evaluation function
 
-#include "half_ka_v2.h"
+#include "half_ka_v2_hm.h"
 
 #include "../../position.h"
 
 namespace Stockfish::Eval::NNUE::Features {
 
   // Orient a square according to perspective (rotates by 180 for black)
-  inline Square HalfKAv2::orient(Color perspective, Square s) {
-    return Square(int(s) ^ (bool(perspective) * 56));
+  inline Square HalfKAv2_hm::orient(Color perspective, Square s, Square ksq) {
+    return Square(int(s) ^ (bool(perspective) * SQ_A8) ^ ((file_of(ksq) < FILE_E) * SQ_H1));
   }
 
   // Index of a feature for a given king position and another piece on some square
-  inline IndexType HalfKAv2::make_index(Color perspective, Square s, Piece pc, Square ksq) {
-    return IndexType(orient(perspective, s) + PieceSquareIndex[perspective][pc] + PS_NB * ksq);
+  inline IndexType HalfKAv2_hm::make_index(Color perspective, Square s, Piece pc, Square ksq) {
+    Square o_ksq = orient(perspective, ksq, ksq);
+    return IndexType(orient(perspective, s, ksq) + PieceSquareIndex[perspective][pc] + PS_NB * KingBuckets[o_ksq]);
   }
 
   // Get a list of indices for active features
-  void HalfKAv2::append_active_indices(
+  void HalfKAv2_hm::append_active_indices(
     const Position& pos,
     Color perspective,
     ValueListInserter<IndexType> active
   ) {
-    Square ksq = orient(perspective, pos.square<KING>(perspective));
+    Square ksq = pos.square<KING>(perspective);
     Bitboard bb = pos.pieces();
     while (bb)
     {
@@ -52,7 +53,7 @@ namespace Stockfish::Eval::NNUE::Features {
 
   // append_changed_indices() : get a list of indices for recently changed features
 
-  void HalfKAv2::append_changed_indices(
+  void HalfKAv2_hm::append_changed_indices(
     Square ksq,
     StateInfo* st,
     Color perspective,
@@ -60,25 +61,24 @@ namespace Stockfish::Eval::NNUE::Features {
     ValueListInserter<IndexType> added
   ) {
     const auto& dp = st->dirtyPiece;
-    Square oriented_ksq = orient(perspective, ksq);
     for (int i = 0; i < dp.dirty_num; ++i) {
       Piece pc = dp.piece[i];
       if (dp.from[i] != SQ_NONE)
-        removed.push_back(make_index(perspective, dp.from[i], pc, oriented_ksq));
+        removed.push_back(make_index(perspective, dp.from[i], pc, ksq));
       if (dp.to[i] != SQ_NONE)
-        added.push_back(make_index(perspective, dp.to[i], pc, oriented_ksq));
+        added.push_back(make_index(perspective, dp.to[i], pc, ksq));
     }
   }
 
-  int HalfKAv2::update_cost(StateInfo* st) {
+  int HalfKAv2_hm::update_cost(StateInfo* st) {
     return st->dirtyPiece.dirty_num;
   }
 
-  int HalfKAv2::refresh_cost(const Position& pos) {
+  int HalfKAv2_hm::refresh_cost(const Position& pos) {
     return pos.count<ALL_PIECES>();
   }
 
-  bool HalfKAv2::requires_refresh(StateInfo* st, Color perspective) {
+  bool HalfKAv2_hm::requires_refresh(StateInfo* st, Color perspective) {
     return st->dirtyPiece.piece[0] == make_piece(perspective, KING);
   }
 
