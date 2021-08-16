@@ -20,6 +20,7 @@
 #include <cassert>
 #include <ostream>
 #include <sstream>
+#include <thread>
 
 #include "evaluate.h"
 #include "misc.h"
@@ -59,9 +60,10 @@ bool CaseInsensitiveLess::operator() (const string& s1, const string& s2) const 
 void init(OptionsMap& o) {
 
   constexpr int MaxHashMB = Is64Bit ? 33554432 : 2048;
+  const auto HardwareConcurrency = std::thread::hardware_concurrency();
 
   o["Debug Log File"]        << Option("", on_logger);
-  o["Threads"]               << Option(1, 1, 512, on_threads);
+  o["Threads"]               << Option(HardwareConcurrency > 0 ? HardwareConcurrency : 1, 1, 512, on_threads);
   o["Hash"]                  << Option(16, 1, MaxHashMB, on_hash_size);
   o["Clear Hash"]            << Option(on_clear_hash);
   o["Ponder"]                << Option(false);
@@ -113,19 +115,19 @@ std::ostream& operator<<(std::ostream& os, const OptionsMap& om) {
 
 /// Option class constructors and conversion operators
 
-Option::Option(const char* v, OnChange f) : type("string"), min(0), max(0), idx(0), on_change(f)
+Option::Option(const char* v, OnChange f) : type("string"), min(0), max(0), on_change(f)
 { defaultValue = currentValue = v; }
 
-Option::Option(bool v, OnChange f) : type("check"), min(0), max(0), idx(0), on_change(f)
+Option::Option(bool v, OnChange f) : type("check"), min(0), max(0), on_change(f)
 { defaultValue = currentValue = (v ? "true" : "false"); }
 
-Option::Option(OnChange f) : type("button"), min(0), max(0), idx(0), on_change(f)
+Option::Option(OnChange f) : type("button"), min(0), max(0), on_change(f)
 {}
 
-Option::Option(double v, int minv, int maxv, OnChange f) : type("spin"), min(minv), max(maxv), idx(0), on_change(f)
+Option::Option(double v, int minv, int maxv, OnChange f) : type("spin"), min(minv), max(maxv), on_change(f)
 { defaultValue = currentValue = std::to_string(v); }
 
-Option::Option(const char* v, const char* cur, OnChange f) : type("combo"), min(0), max(0), idx(0), on_change(f)
+Option::Option(const char* v, const char* cur, OnChange f) : type("combo"), min(0), max(0), on_change(f)
 { defaultValue = v; currentValue = cur; }
 
 Option::operator double() const {
