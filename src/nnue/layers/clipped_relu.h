@@ -35,9 +35,10 @@ namespace Stockfish::Eval::NNUE::Layers {
     static_assert(std::is_same<InputType, std::int32_t>::value, "");
 
     // Number of input/output dimensions
-    static constexpr IndexType InputDimensions =
-        PreviousLayer::OutputDimensions;
+    static constexpr IndexType InputDimensions = PreviousLayer::OutputDimensions;
     static constexpr IndexType OutputDimensions = InputDimensions;
+    static constexpr IndexType PaddedOutputDimensions =
+        ceil_to_multiple<IndexType>(OutputDimensions, 32);
 
     // Size of forward propagation buffer used in this layer
     static constexpr std::size_t SelfBufferSize =
@@ -179,6 +180,15 @@ namespace Stockfish::Eval::NNUE::Layers {
         output[i] = static_cast<OutputType>(
             std::max(0, std::min(127, input[i] >> WeightScaleBits)));
       }
+
+      // Affine transform layers expect that there is at least
+      // ceil_to_multiple(OutputDimensions, 32) initialized values.
+      // We cannot do this in the affine transform because it requires
+      // preallocating space here.
+      for (IndexType i = OutputDimensions; i < PaddedOutputDimensions; ++i) {
+        output[i] = 0;
+      }
+
       return output;
     }
 
