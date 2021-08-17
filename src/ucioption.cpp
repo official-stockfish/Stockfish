@@ -20,6 +20,7 @@
 #include <cassert>
 #include <ostream>
 #include <sstream>
+#include <thread>
 
 #include "evaluate.h"
 #include "misc.h"
@@ -59,9 +60,10 @@ bool CaseInsensitiveLess::operator() (const string& s1, const string& s2) const 
 void init(OptionsMap& o) {
 
   constexpr int MaxHashMB = Is64Bit ? 33554432 : 2048;
+  const auto HardwareConcurrency = std::thread::hardware_concurrency();
 
   o["Debug Log File"]        << Option("", on_logger);
-  o["Threads"]               << Option(1, 1, 512, on_threads);
+  o["Threads"]               << Option(HardwareConcurrency > 0 ? HardwareConcurrency : 1, 1, 512, on_threads);
   o["Hash"]                  << Option(16, 1, MaxHashMB, on_hash_size);
   o["Clear Hash"]            << Option(on_clear_hash);
   o["Ponder"]                << Option(false);
