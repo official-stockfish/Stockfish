@@ -21,6 +21,7 @@ cat << EOF > repeat.exp
  send "uci\n"
  expect "uciok"
 
+ send "setoption name Threads value 1\n"
  send "ucinewgame\n"
  send "position startpos\n"
  send "go nodes \$nodes\n"
