@@ -74,7 +74,7 @@
     <ClCompile Include="..\nnue\evaluate_nnue.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\nnue\features\half_ka_v2.cpp">
+    <ClCompile Include="..\nnue\features\half_ka_v2_hm.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\syzygy\tbprobe.cpp">
@@ -154,7 +154,7 @@
     <ClInclude Include="..\nnue\nnue_feature_transformer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\nnue\features\half_ka_v2.h">
+    <ClInclude Include="..\nnue\features\half_ka_v2_hm.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\nnue\layers\affine_transform.h">

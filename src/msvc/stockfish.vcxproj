@@ -169,7 +169,7 @@
     <ClCompile Include="..\movegen.cpp" />
     <ClCompile Include="..\movepick.cpp" />
     <ClCompile Include="..\nnue\evaluate_nnue.cpp" />
-    <ClCompile Include="..\nnue\features\half_ka_v2.cpp" />
+    <ClCompile Include="..\nnue\features\half_ka_v2_hm.cpp" />
     <ClCompile Include="..\pawns.cpp" />
     <ClCompile Include="..\position.cpp" />
     <ClCompile Include="..\psqt.cpp" />
@@ -192,7 +192,7 @@
     <ClInclude Include="..\movegen.h" />
     <ClInclude Include="..\movepick.h" />
     <ClInclude Include="..\nnue\evaluate_nnue.h" />
-    <ClInclude Include="..\nnue\features\half_ka_v2.h" />
+    <ClInclude Include="..\nnue\features\half_ka_v2_hm.h" />
     <ClInclude Include="..\nnue\layers\affine_transform.h" />
     <ClInclude Include="..\nnue\layers\clipped_relu.h" />
     <ClInclude Include="..\nnue\layers\input_slice.h" />
