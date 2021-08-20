@@ -200,35 +200,39 @@ namespace {
 
 } // namespace
 
-void UCI::setoption(const std::string& name, const std::string& value)
-{
-    if (Options.count(name))
-        Options[name] = value;
-    else
-        sync_cout << "No such option: " << name << sync_endl;
-}
+namespace UCI {
 
-// The win rate model returns the probability (per mille) of winning given an eval
-// and a game-ply. The model fits rather accurately the LTC fishtest statistics.
-int win_rate_model(Value v, int ply) {
+  void setoption(const std::string& name, const std::string& value)
+  {
+      if (Options.count(name))
+          Options[name] = value;
+      else
+          sync_cout << "No such option: " << name << sync_endl;
+  }
 
-   // The model captures only up to 240 plies, so limit input (and rescale)
-   double m = std::min(240, ply) / 64.0;
+  // The win rate model returns the probability (per mille) of winning given an eval
+  // and a game-ply. The model fits rather accurately the LTC fishtest statistics.
+  int win_rate_model(Value v, int ply) {
 
-   // Coefficients of a 3rd order polynomial fit based on fishtest data
-   // for two parameters needed to transform eval to the argument of a
-   // logistic function.
-   double as[] = {-8.24404295, 64.23892342, -95.73056462, 153.86478679};
-   double bs[] = {-3.37154371, 28.44489198, -56.67657741,  72.05858751};
-   double a = (((as[0] * m + as[1]) * m + as[2]) * m) + as[3];
-   double b = (((bs[0] * m + bs[1]) * m + bs[2]) * m) + bs[3];
+     // The model captures only up to 240 plies, so limit input (and rescale)
+     double m = std::min(240, ply) / 64.0;
 
-   // Transform eval to centipawns with limited range
-   double x = std::clamp(double(100 * v) / PawnValueEg, -1000.0, 1000.0);
+     // Coefficients of a 3rd order polynomial fit based on fishtest data
+     // for two parameters needed to transform eval to the argument of a
+     // logistic function.
+     double as[] = {-3.68389304,  30.07065921, -60.52878723, 149.53378557};
+     double bs[] = {-2.0181857,   15.85685038, -29.83452023,  47.59078827};
+     double a = (((as[0] * m + as[1]) * m + as[2]) * m) + as[3];
+     double b = (((bs[0] * m + bs[1]) * m + bs[2]) * m) + bs[3];
 
-   // Return win rate in per mille (rounded to nearest)
-   return int(0.5 + 1000 / (1 + std::exp((a - x) / b)));
-}
+     // Transform eval to centipawns with limited range
+     double x = std::clamp(double(100 * v) / PawnValueEg, -1000.0, 1000.0);
+
+     // Return win rate in per mille (rounded to nearest)
+     return int(0.5 + 1000 / (1 + std::exp((a - x) / b)));
+  }
+
+} // namespace
 
 // --------------------
 // Call qsearch(),search() directly for testing
@@ -348,16 +352,16 @@ void UCI::loop(int argc, char* argv[]) {
       else if (token == "d")        sync_cout << pos << sync_endl;
       else if (token == "eval")     trace_eval(pos);
       else if (token == "compiler") sync_cout << compiler_info() << sync_endl;
-      else if (token == "export_net") {
+      else if (token == "export_net")
+      {
           std::optional<std::string> filename;
           std::string f;
-          if (is >> skipws >> f) {
-            filename = f;
-          }
-          Eval::NNUE::export_net(filename);
+          if (is >> skipws >> f)
+              filename = f;
+          Eval::NNUE::save_eval(filename);
       }
       else if (token == "generate_training_data") Tools::generate_training_data(is);
-      else if (token == "generate_training_data") Tools::generate_training_data_nonpv(is);
+      else if (token == "generate_training_data_nonpv") Tools::generate_training_data_nonpv(is);
       else if (token == "convert") Tools::convert(is);
       else if (token == "validate_training_data") Tools::validate_training_data(is);
       else if (token == "convert_bin") Tools::convert_bin(is);

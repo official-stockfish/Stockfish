@@ -50,7 +50,7 @@ SRCS = benchmark.cpp bitbase.cpp bitboard.cpp endgame.cpp evaluate.cpp main.cpp 
 	material.cpp misc.cpp movegen.cpp movepick.cpp pawns.cpp position.cpp psqt.cpp \
 	search.cpp thread.cpp timeman.cpp tt.cpp uci.cpp ucioption.cpp tune.cpp syzygy/tbprobe.cpp \
 	nnue/evaluate_nnue.cpp \
-	nnue/features/half_ka_v2.cpp \
+	nnue/features/half_ka_v2_hm.cpp \
 	tools/validate_training_data.cpp \
 	tools/sfen_packer.cpp \
 	tools/training_data_generator.cpp \
@@ -72,9 +72,11 @@ VPATH = syzygy:nnue:nnue/features:eval:extra:tools
 # ----------------------------------------------------------------------------
 #
 # debug = yes/no      --- -DNDEBUG         --- Enable/Disable debug mode
-# sanitize = undefined/thread/no (-fsanitize )
+# sanitize = none/<sanitizer> ... (-fsanitize )
 #                     --- ( undefined )    --- enable undefined behavior checks
-#                     --- ( thread    )    --- enable threading error  checks
+#                     --- ( thread    )    --- enable threading error checks
+#                     --- ( address   )    --- enable memory access checks
+#                     --- ...etc...        --- see compiler documentation for supported sanitizers
 # optimize = yes/no   --- (-O3/-fast etc.) --- Enable/Disable optimizations
 # arch = (name)       --- (-arch)          --- Target architecture
 # bits = 64/32        --- -DIS_64BIT       --- 64-/32-bit operating system
@@ -95,6 +97,10 @@ VPATH = syzygy:nnue:nnue/features:eval:extra:tools
 # Note that Makefile is space sensitive, so when adding new architectures
 # or modifying existing flags, you have to make sure there are no extra spaces
 # at the end of the line for flag values.
+#
+# Example of use for these flags:
+# make build ARCH=x86-64-avx512 debug=on sanitize="address undefined"
+
 
 ### 2.1. General and architecture defaults
 
@@ -116,7 +122,7 @@ endif
 
 optimize = yes
 debug = no
-sanitize = no
+sanitize = none
 bits = 64
 prefetch = no
 popcnt = no
@@ -392,7 +398,9 @@ ifeq ($(COMP),clang)
 	ifneq ($(KERNEL),Darwin)
 	ifneq ($(KERNEL),OpenBSD)
 	ifneq ($(KERNEL),FreeBSD)
+	ifneq ($(RTLIB),compiler-rt)
 		LDFLAGS += -latomic
+	endif
 	endif
 	endif
 	endif
@@ -409,8 +417,12 @@ ifeq ($(COMP),clang)
 endif
 
 ifeq ($(KERNEL),Darwin)
-	CXXFLAGS += -arch $(arch) -mmacosx-version-min=10.15
-	LDFLAGS += -arch $(arch) -mmacosx-version-min=10.15
+	CXXFLAGS += -mmacosx-version-min=10.15
+	LDFLAGS += -mmacosx-version-min=10.15
+	ifneq ($(arch),any)
+		CXXFLAGS += -arch $(arch)
+		LDFLAGS += -arch $(arch)
+	endif
 	XCRUN = xcrun
 endif
 
@@ -484,10 +496,10 @@ else
 	CXXFLAGS += -g
 endif
 
-### 3.2.3 Debugging with undefined behavior sanitizers
-ifneq ($(sanitize),no)
-        CXXFLAGS += -g3 -fsanitize=$(sanitize)
-        LDFLAGS += -fsanitize=$(sanitize)
+### 3.2.2 Debugging with undefined behavior sanitizers
+ifneq ($(sanitize),none)
+        CXXFLAGS += -g3 $(addprefix -fsanitize=,$(sanitize))
+        LDFLAGS += $(addprefix -fsanitize=,$(sanitize))
 endif
 
 ### 3.3 Optimization
@@ -806,7 +818,9 @@ profileclean:
 	@rm -rf profdir
 	@rm -f bench.txt *.gcda *.gcno ./syzygy/*.gcda ./nnue/*.gcda ./nnue/features/*.gcda *.s ./tools/*.gcda ./extra/*.gcda ./eval/*.gcda
 	@rm -f stockfish.profdata *.profraw
-	@rm -f $(PGO_TRAINING_DATA_FILE)
+	@rm -f stockfish.exe.lto_wrapper_args
+	@rm -f stockfish.exe.ltrans.out
+	@rm -f ./-lstdc++.res
 
 default:
 	help
@@ -849,7 +863,6 @@ config-sanity: net
 	@echo "Testing config sanity. If this fails, try 'make help' ..."
 	@echo ""
 	@test "$(debug)" = "yes" || test "$(debug)" = "no"
-	@test "$(sanitize)" = "undefined" || test "$(sanitize)" = "thread" || test "$(sanitize)" = "address" || test "$(sanitize)" = "no"
 	@test "$(optimize)" = "yes" || test "$(optimize)" = "no"
 	@test "$(SUPPORTED_ARCH)" = "true"
 	@test "$(arch)" = "any" || test "$(arch)" = "x86_64" || test "$(arch)" = "i386" || \
@@ -889,14 +902,15 @@ clang-profile-use:
 	all
 
 gcc-profile-make:
+	@mkdir -p profdir
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS='-fprofile-generate' \
+	EXTRACXXFLAGS='-fprofile-generate=profdir' \
 	EXTRALDFLAGS='-lgcov' \
 	all
 
 gcc-profile-use:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS='-fprofile-use -fno-peel-loops -fno-tracer' \
+	EXTRACXXFLAGS='-fprofile-use=profdir -fno-peel-loops -fno-tracer' \
 	EXTRALDFLAGS='-lgcov' \
 	all
 

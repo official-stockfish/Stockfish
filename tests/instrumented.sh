@@ -13,7 +13,7 @@ case $1 in
   --valgrind)
     echo "valgrind testing started"
     prefix=''
-    exeprefix='valgrind --error-exitcode=42'
+    exeprefix='valgrind --error-exitcode=42 --errors-for-leak-kinds=all --leak-check=full'
     postfix='1>/dev/null'
     threads="1"
     bench_depth=5
@@ -110,7 +110,7 @@ cat << EOF > game.exp
  expect "bestmove"
 
  send "position fen 5rk1/1K4p1/8/8/3B4/8/8/8 b - - 0 1\n"
- send "go depth $go_depth\n"
+ send "go depth 10\n"
  expect "bestmove"
 
  send "quit\n"
@@ -192,7 +192,7 @@ cat << EOF > data_generation02.exp
  exit \$value
 EOF
 
-for exp in game.exp data_generation01.exe data_generation02.exp
+for exp in game.exp data_generation01.exp data_generation02.exp
 do
 
   echo "$prefix expect $exp $postfix"

@@ -197,6 +197,9 @@ public:
 
   // Returns the position of the ball on the c side.
   Square king_square(Color c) const { return lsb(pieces(c, KING)); }
+  
+  void put_piece(Piece pc, Square s);
+  void remove_piece(Square s);
 
 private:
   // Initialization helpers (used while setting up a position)
@@ -205,8 +208,6 @@ private:
   void set_check_info(StateInfo* si) const;
 
   // Other helpers
-  void put_piece(Piece pc, Square s);
-  void remove_piece(Square s);
   void move_piece(Square from, Square to);
   template<bool Do>
   void do_castling(Color us, Square from, Square& to, Square& rfrom, Square& rto);
@@ -413,7 +414,7 @@ inline void Position::remove_piece(Square s) {
   byTypeBB[ALL_PIECES] ^= s;
   byTypeBB[type_of(pc)] ^= s;
   byColorBB[color_of(pc)] ^= s;
-  /* board[s] = NO_PIECE;  Not needed, overwritten by the capturing one */
+  board[s] = NO_PIECE;
   pieceCount[pc]--;
   pieceCount[make_piece(color_of(pc), ALL_PIECES)]--;
   psq -= PSQT::psq[pc][s];
