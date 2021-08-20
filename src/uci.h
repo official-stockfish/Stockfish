@@ -58,6 +58,8 @@ public:
   operator std::string() const;
   bool operator==(const char*) const;
 
+  void set_allow_empty(bool v);
+
 private:
   friend std::ostream& operator<<(std::ostream&, const OptionsMap&);
 
@@ -65,6 +67,7 @@ private:
   int min, max;
   size_t idx;
   OnChange on_change;
+  bool allowEmpty;
 };
 
 void init(OptionsMap&);

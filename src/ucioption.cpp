@@ -81,6 +81,8 @@ void init(OptionsMap& o) {
   o["SyzygyProbeLimit"]      << Option(7, 0, 7);
   o["Use NNUE"]              << Option(true, on_use_NNUE);
   o["EvalFile"]              << Option(EvalFileDefaultName, on_eval_file);
+
+  o["EvalFile"].set_allow_empty(false);
 }
 
 
@@ -113,19 +115,19 @@ std::ostream& operator<<(std::ostream& os, const OptionsMap& om) {
 
 /// Option class constructors and conversion operators
 
-Option::Option(const char* v, OnChange f) : type("string"), min(0), max(0), on_change(f)
+Option::Option(const char* v, OnChange f) : type("string"), min(0), max(0), on_change(f), allowEmpty(true)
 { defaultValue = currentValue = v; }
 
-Option::Option(bool v, OnChange f) : type("check"), min(0), max(0), on_change(f)
+Option::Option(bool v, OnChange f) : type("check"), min(0), max(0), on_change(f), allowEmpty(false)
 { defaultValue = currentValue = (v ? "true" : "false"); }
 
-Option::Option(OnChange f) : type("button"), min(0), max(0), on_change(f)
+Option::Option(OnChange f) : type("button"), min(0), max(0), on_change(f), allowEmpty(true)
 {}
 
-Option::Option(double v, int minv, int maxv, OnChange f) : type("spin"), min(minv), max(maxv), on_change(f)
+Option::Option(double v, int minv, int maxv, OnChange f) : type("spin"), min(minv), max(maxv), on_change(f), allowEmpty(false)
 { defaultValue = currentValue = std::to_string(v); }
 
-Option::Option(const char* v, const char* cur, OnChange f) : type("combo"), min(0), max(0), on_change(f)
+Option::Option(const char* v, const char* cur, OnChange f) : type("combo"), min(0), max(0), on_change(f), allowEmpty(false)
 { defaultValue = v; currentValue = cur; }
 
 Option::operator double() const {
@@ -142,6 +144,10 @@ bool Option::operator==(const char* s) const {
   assert(type == "combo");
   return   !CaseInsensitiveLess()(currentValue, s)
         && !CaseInsensitiveLess()(s, currentValue);
+}
+
+void Option::set_allow_empty(bool v) {
+  allowEmpty = v;
 }
 
 
@@ -164,7 +170,7 @@ Option& Option::operator=(const string& v) {
 
   assert(!type.empty());
 
-  if (   (type != "button" && type != "string" && v.empty())
+  if (   (!allowEmpty && v.empty())
       || (type == "check" && v != "true" && v != "false")
       || (type == "spin" && (stof(v) < min || stof(v) > max)))
       return *this;
