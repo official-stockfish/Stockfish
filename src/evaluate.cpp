@@ -1027,10 +1027,7 @@ make_v:
         Trace::add(PAWN, pe->pawn_score(WHITE), pe->pawn_score(BLACK));
         Trace::add(MOBILITY, mobility[WHITE], mobility[BLACK]);
     }
-
-    // Evaluation grain
-    v = (v / 16) * 16;
-
+    
     // Side to move point of view
     v = (pos.side_to_move() == WHITE ? v : -v);
 
