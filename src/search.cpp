@@ -22,6 +22,7 @@
 #include <cstring>   // For std::memset
 #include <iostream>
 #include <sstream>
+#include <numeric>
 
 #include "evaluate.h"
 #include "misc.h"
@@ -57,6 +58,20 @@ using Eval::evaluate;
 using namespace Search;
 
 namespace {
+
+  // Net weights and biases of a small neural network for time management
+  constexpr int nw[2][2][2] = 
+  {
+    {{3,3},{1,1}},
+    {{3,3},{1,1}}
+  };
+  constexpr int nb[2][2] =
+  {
+    {159,159},
+    {0,0}
+  };
+  constexpr int nwo[2] = {1,1};
+  constexpr int nbo = 0;
 
   // Different node types, used as a template parameter
   enum NodeType { NonPV, PV, Root };
@@ -454,10 +469,6 @@ void Thread::search() {
           && !Threads.stop
           && !mainThread->stopOnPonderhit)
       {
-          double fallingEval = (318 + 6 * (mainThread->bestPreviousScore - bestValue)
-                                    + 6 * (mainThread->iterValue[iterIdx] - bestValue)) / 825.0;
-          fallingEval = std::clamp(fallingEval, 0.5, 1.5);
-
           // If the bestMove is stable over several iterations, reduce time accordingly
           timeReduction = lastBestMoveDepth + 9 < completedDepth ? 1.92 : 0.95;
           double reduction = (1.47 + mainThread->previousTimeReduction) / (2.32 * timeReduction);
@@ -470,6 +481,20 @@ void Thread::search() {
           }
           double bestMoveInstability = 1.073 + std::max(1.0, 2.25 - 9.9 / rootDepth)
                                               * totBestMoveChanges / Threads.size();
+
+          // Inputs of the neural network
+          int ft[2]={mainThread->bestPreviousScore - bestValue,mainThread->iterValue[iterIdx] - bestValue};
+          // Matrix multiplication (layers)
+          for (size_t m = 0; m < 2; ++m)
+          {
+              int temp[2] = {0};
+              for (size_t i = 0; i < 2; ++i)
+                  temp[i]= std::max(0, std::inner_product(ft, ft+2, nw[i][m], 0) + nb[m][i]); // ReLU activation function
+              for (size_t n = 0; n < 2; ++n)
+                  ft[n] = temp[n];
+          }
+          double fallingEval = std::clamp((std::inner_product(ft, ft+2, nwo, 0) + nbo) / 1650.0, 0.5, 1.5);
+
           double totalTime = Time.optimum() * fallingEval * reduction * bestMoveInstability;
 
           // Cap used time in case of a single legal move for a better viewer experience in tournaments
