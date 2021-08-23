@@ -67,11 +67,11 @@ namespace {
   };
   constexpr int nb[2][2] =
   {
-    {159,159},
-    {0,0}
+    {157,177},
+    {2,5}
   };
   constexpr int nwo[2] = {1,1};
-  constexpr int nbo = 0;
+  constexpr int nbo = 7;
 
   // Different node types, used as a template parameter
   enum NodeType { NonPV, PV, Root };
