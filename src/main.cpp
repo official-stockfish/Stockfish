@@ -35,14 +35,14 @@ int main(int argc, char* argv[]) {
   std::cout << engine_info() << std::endl;
 
   CommandLine::init(argc, argv);
-  UCI::init(Options);
+  UCI::init();
   Tune::init();
   PSQT::init();
   Bitboards::init();
   Position::init();
   Bitbases::init();
   Endgames::init();
-  Threads.set(size_t(Options["Threads"]));
+  Threads.set(UCI::Options.get_int("Threads"));
   Search::clear(); // After threads are up
   Eval::NNUE::init();
 

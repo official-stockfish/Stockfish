@@ -36,9 +36,9 @@ TimeManagement Time; // Our global time management object
 
 void TimeManagement::init(Search::LimitsType& limits, Color us, int ply) {
 
-  TimePoint moveOverhead    = TimePoint(Options["Move Overhead"]);
-  TimePoint slowMover       = TimePoint(Options["Slow Mover"]);
-  TimePoint npmsec          = TimePoint(Options["nodestime"]);
+  TimePoint moveOverhead    = TimePoint(UCI::Options.get_int("Move Overhead"));
+  TimePoint slowMover       = TimePoint(UCI::Options.get_int("Slow Mover"));
+  TimePoint npmsec          = TimePoint(UCI::Options.get_int("nodestime"));
 
   // optScale is a percentage of available time to use for the current move.
   // maxScale is a multiplier applied to optimumTime.
@@ -94,7 +94,7 @@ void TimeManagement::init(Search::LimitsType& limits, Color us, int ply) {
   optimumTime = TimePoint(optScale * timeLeft);
   maximumTime = TimePoint(std::min(0.8 * limits.time[us] - moveOverhead, maxScale * optimumTime));
 
-  if (Options["Ponder"])
+  if (UCI::Options.get_bool("Ponder"))
       optimumTime += optimumTime / 4;
 }
 

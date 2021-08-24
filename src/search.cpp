@@ -165,7 +165,7 @@ void Search::clear() {
   Time.availableNodes = 0;
   TT.clear();
   Threads.clear();
-  Tablebases::init(Options["SyzygyPath"]); // Free mapped files
+  Tablebases::init(UCI::Options.get_string("SyzygyPath")); // Free mapped files
 }
 
 
@@ -223,9 +223,9 @@ void MainThread::search() {
 
   Thread* bestThread = this;
 
-  if (   int(Options["MultiPV"]) == 1
+  if (   UCI::Options.get_int("MultiPV") == 1
       && !Limits.depth
-      && !(Skill(Options["Skill Level"]).enabled() || int(Options["UCI_LimitStrength"]))
+      && !(Skill(UCI::Options.get_int("Skill Level")).enabled() || UCI::Options.get_bool("UCI_LimitStrength"))
       && rootMoves[0].pv[0] != MOVE_NONE)
       bestThread = Threads.get_best_thread();
 
@@ -289,7 +289,7 @@ void Thread::search() {
   std::copy(&lowPlyHistory[2][0], &lowPlyHistory.back().back() + 1, &lowPlyHistory[0][0]);
   std::fill(&lowPlyHistory[MAX_LPH - 2][0], &lowPlyHistory.back().back() + 1, 0);
 
-  size_t multiPV = size_t(Options["MultiPV"]);
+  size_t multiPV = UCI::Options.get_int("MultiPV");
 
   // Pick integer skill levels, but non-deterministically round up or down
   // such that the average integer skill corresponds to the input floating point one.
@@ -297,9 +297,9 @@ void Thread::search() {
   // to CCRL Elo (goldfish 1.13 = 2000) and a fit through Ordo derived Elo
   // for match (TC 60+0.6) results spanning a wide range of k values.
   PRNG rng(now());
-  double floatLevel = Options["UCI_LimitStrength"] ?
-                      std::clamp(std::pow((Options["UCI_Elo"] - 1346.6) / 143.4, 1 / 0.806), 0.0, 20.0) :
-                        double(Options["Skill Level"]);
+  double floatLevel = UCI::Options.get_bool("UCI_LimitStrength")
+                        ? std::clamp(std::pow((UCI::Options.get_double("UCI_Elo") - 1346.6) / 143.4, 1 / 0.806), 0.0, 20.0)
+                        : UCI::Options.get_double("Skill Level");
   int intLevel = int(floatLevel) +
                  ((floatLevel - int(floatLevel)) * 1024 > rng.rand<unsigned>() % 1024  ? 1 : 0);
   Skill skill(intLevel);
@@ -1798,7 +1798,7 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
   TimePoint elapsed = Time.elapsed() + 1;
   const RootMoves& rootMoves = pos.this_thread()->rootMoves;
   size_t pvIdx = pos.this_thread()->pvIdx;
-  size_t multiPV = std::min((size_t)Options["MultiPV"], rootMoves.size());
+  size_t multiPV = std::min((size_t)UCI::Options.get_int("MultiPV"), rootMoves.size());
   uint64_t nodesSearched = Threads.nodes_searched();
   uint64_t tbHits = Threads.tb_hits() + (TB::RootInTB ? rootMoves.size() : 0);
 
@@ -1827,7 +1827,7 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
          << " multipv "  << i + 1
          << " score "    << UCI::value(v);
 
-      if (Options["UCI_ShowWDL"])
+      if (UCI::Options.get_bool("UCI_ShowWDL"))
           ss << UCI::wdl(v, pos.game_ply());
 
       if (!tb && i == pvIdx)
@@ -1885,9 +1885,9 @@ bool RootMove::extract_ponder_from_tt(Position& pos) {
 void Tablebases::rank_root_moves(Position& pos, Search::RootMoves& rootMoves) {
 
     RootInTB = false;
-    UseRule50 = bool(Options["Syzygy50MoveRule"]);
-    ProbeDepth = int(Options["SyzygyProbeDepth"]);
-    Cardinality = int(Options["SyzygyProbeLimit"]);
+    UseRule50 = UCI::Options.get_bool("Syzygy50MoveRule");
+    ProbeDepth = UCI::Options.get_int("SyzygyProbeDepth");
+    Cardinality = UCI::Options.get_int("SyzygyProbeLimit");
     bool dtz_available = true;
 
     // Tables with fewer pieces than SyzygyProbeLimit are searched with

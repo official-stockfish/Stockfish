@@ -66,8 +66,8 @@ static void make_option(const string& n, int v, const SetRange& r) {
   if (TuneResults.count(n))
       v = TuneResults[n];
 
-  Options[n] << UCI::Option(v, r(v).first, r(v).second, on_tune);
-  LastOption = &Options[n];
+  UCI::Options.add(n, UCI::Option::spin(v, r(v).first, r(v).second).on_change(on_tune));
+  LastOption = &UCI::Options.get(n);
 
   // Print formatted parameters, ready to be copy-pasted in Fishtest
   std::cout << n << ","
@@ -81,15 +81,15 @@ static void make_option(const string& n, int v, const SetRange& r) {
 template<> void Tune::Entry<int>::init_option() { make_option(name, value, range); }
 
 template<> void Tune::Entry<int>::read_option() {
-  if (Options.count(name))
-      value = int(Options[name]);
+  if (UCI::Options.exists(name))
+      value = UCI::Options.get_int(name);
 }
 
 template<> void Tune::Entry<Value>::init_option() { make_option(name, value, range); }
 
 template<> void Tune::Entry<Value>::read_option() {
-  if (Options.count(name))
-      value = Value(int(Options[name]));
+  if (UCI::Options.exists(name))
+      value = Value(UCI::Options.get_int(name));
 }
 
 template<> void Tune::Entry<Score>::init_option() {
@@ -98,11 +98,11 @@ template<> void Tune::Entry<Score>::init_option() {
 }
 
 template<> void Tune::Entry<Score>::read_option() {
-  if (Options.count("m" + name))
-      value = make_score(int(Options["m" + name]), eg_value(value));
+  if (UCI::Options.exists("m" + name))
+      value = make_score(UCI::Options.get_int("m" + name), eg_value(value));
 
-  if (Options.count("e" + name))
-      value = make_score(mg_value(value), int(Options["e" + name]));
+  if (UCI::Options.exists("e" + name))
+      value = make_score(mg_value(value), UCI::Options.get_int("e" + name));
 }
 
 // Instead of a variable here we have a PostUpdate function: just call it

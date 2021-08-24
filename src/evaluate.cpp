@@ -73,11 +73,11 @@ namespace Eval {
 
   void NNUE::init() {
 
-    useNNUE = Options["Use NNUE"];
+    useNNUE = UCI::Options.get_bool("Use NNUE");
     if (!useNNUE)
         return;
 
-    string eval_file = string(Options["EvalFile"]);
+    string eval_file = UCI::Options.get_string("EvalFile");
 
     #if defined(DEFAULT_NNUE_DIRECTORY)
     #define stringify2(x) #x
@@ -117,17 +117,14 @@ namespace Eval {
   /// NNUE::verify() verifies that the last net used was loaded successfully
   void NNUE::verify() {
 
-    string eval_file = string(Options["EvalFile"]);
+    string eval_file = UCI::Options.get_string("EvalFile");
 
     if (useNNUE && eval_file_loaded != eval_file)
     {
-        UCI::OptionsMap defaults;
-        UCI::init(defaults);
-
         string msg1 = "If the UCI option \"Use NNUE\" is set to true, network evaluation parameters compatible with the engine must be available.";
         string msg2 = "The option is set to true, but the network file " + eval_file + " was not loaded successfully.";
         string msg3 = "The UCI option EvalFile might need to specify the full path, including the directory name, to the network file.";
-        string msg4 = "The default net can be downloaded from: https://tests.stockfishchess.org/api/nn/" + string(defaults["EvalFile"]);
+        string msg4 = "The default net can be downloaded from: https://tests.stockfishchess.org/api/nn/" + std::string(EvalFileDefaultName);
         string msg5 = "The engine will be terminated now.";
 
         sync_cout << "info string ERROR: " << msg1 << sync_endl;

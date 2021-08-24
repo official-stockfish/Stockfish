@@ -1522,7 +1522,7 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves) {
     // Check whether a position was repeated since the last zeroing move.
     bool rep = pos.has_repeated();
 
-    int dtz, bound = Options["Syzygy50MoveRule"] ? 900 : 1;
+    int dtz, bound = UCI::Options.get_bool("Syzygy50MoveRule") ? 900 : 1;
 
     // Probe and rank each move
     for (auto& m : rootMoves)
@@ -1596,7 +1596,7 @@ bool Tablebases::root_probe_wdl(Position& pos, Search::RootMoves& rootMoves) {
     StateInfo st;
     WDLScore wdl;
 
-    bool rule50 = Options["Syzygy50MoveRule"];
+    bool rule50 = UCI::Options.get_bool("Syzygy50MoveRule");
 
     // Probe and rank each move
     for (auto& m : rootMoves)

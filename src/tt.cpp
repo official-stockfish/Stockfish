@@ -87,18 +87,19 @@ void TranspositionTable::clear() {
 
   std::vector<std::thread> threads;
 
-  for (size_t idx = 0; idx < Options["Threads"]; ++idx)
+  const size_t numThreads = UCI::Options.get_int("Threads");
+  for (size_t idx = 0; idx < numThreads; ++idx)
   {
-      threads.emplace_back([this, idx]() {
+      threads.emplace_back([this, idx, numThreads]() {
 
           // Thread binding gives faster search on systems with a first-touch policy
-          if (Options["Threads"] > 8)
+          if (numThreads > 8)
               WinProcGroup::bindThisThread(idx);
 
           // Each thread will zero its part of the hash table
-          const size_t stride = size_t(clusterCount / Options["Threads"]),
+          const size_t stride = size_t(clusterCount / numThreads),
                        start  = size_t(stride * idx),
-                       len    = idx != Options["Threads"] - 1 ?
+                       len    = idx != numThreads - 1 ?
                                 stride : clusterCount - start;
 
           std::memset(&table[start], 0, len * sizeof(Cluster));
