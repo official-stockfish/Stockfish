@@ -60,17 +60,19 @@ using namespace Search;
 namespace {
 
   // Net weights and biases of a small neural network for time management
-  constexpr int nw[2][2][2] = 
+  constexpr int nw[4][2][4] = 
   {
-    {{3,3},{1,1}},
-    {{3,3},{1,1}}
+    {{3,3,10,10},{1,1,1,1}},
+    {{3,3,10,10},{1,1,1,1}},
+    {{3,3,10,10},{1,1,1,1}},
+    {{3,3,10,10},{1,1,1,1}}
   };
-  constexpr int nb[2][2] =
+  constexpr int nb[2][4] =
   {
-    {157,177},
-    {2,5}
+    {316,338,318,318},
+    {2,5,0,0}
   };
-  constexpr int nwo[2] = {1,1};
+  constexpr int nwo[4] = {1,1,1,1};
   constexpr int nbo = 7;
 
   // Different node types, used as a template parameter
@@ -275,7 +277,7 @@ void Thread::search() {
   Move  lastBestMove = MOVE_NONE;
   Depth lastBestMoveDepth = 0;
   MainThread* mainThread = (this == Threads.main() ? Threads.main() : nullptr);
-  double timeReduction = 1, totBestMoveChanges = 0;
+  double totBestMoveChanges = 0;
   Color us = rootPos.side_to_move();
   int iterIdx = 0;
 
@@ -469,10 +471,6 @@ void Thread::search() {
           && !Threads.stop
           && !mainThread->stopOnPonderhit)
       {
-          // If the bestMove is stable over several iterations, reduce time accordingly
-          timeReduction = lastBestMoveDepth + 9 < completedDepth ? 1.92 : 0.95;
-          double reduction = (1.47 + mainThread->previousTimeReduction) / (2.32 * timeReduction);
-
           // Use part of the gained time from a previous stable move for the current move
           for (Thread* th : Threads)
           {
@@ -483,19 +481,20 @@ void Thread::search() {
                                               * totBestMoveChanges / Threads.size();
 
           // Inputs of the neural network
-          int ft[2]={mainThread->bestPreviousScore - bestValue,mainThread->iterValue[iterIdx] - bestValue};
-          // Matrix multiplication (layers)
+          int ft[4]={mainThread->bestPreviousScore - bestValue , mainThread->iterValue[iterIdx] - bestValue,
+                     mainThread->previousTimeReduction         , completedDepth - lastBestMoveDepth          };
+          // Matrix multiplication between layers
           for (size_t m = 0; m < 2; ++m)
           {
-              int temp[2] = {0};
-              for (size_t i = 0; i < 2; ++i)
-                  temp[i]= std::max(0, std::inner_product(ft, ft+2, nw[i][m], 0) + nb[m][i]); // ReLU activation function
-              for (size_t n = 0; n < 2; ++n)
+              int temp[4] = {0};
+              for (size_t i = 0; i < 4; ++i)
+                  temp[i]= std::max(0, std::inner_product(ft, ft+4, nw[i][m], 0) + nb[m][i]); // ReLU activation function
+              for (size_t n = 0; n < 4; ++n)
                   ft[n] = temp[n];
           }
-          double fallingEval = std::clamp((std::inner_product(ft, ft+2, nwo, 0) + nbo) / 1650.0, 0.5, 1.5);
+          double nn = std::clamp((std::inner_product(ft, ft+4, nwo, 0) + nbo) / 16384.0, 0.2, 2.5);
 
-          double totalTime = Time.optimum() * fallingEval * reduction * bestMoveInstability;
+          double totalTime = Time.optimum() * nn * bestMoveInstability;
 
           // Cap used time in case of a single legal move for a better viewer experience in tournaments
           // yielding correct scores and sufficiently fast moves.
@@ -527,7 +526,7 @@ void Thread::search() {
   if (!mainThread)
       return;
 
-  mainThread->previousTimeReduction = timeReduction;
+  mainThread->previousTimeReduction = completedDepth - lastBestMoveDepth;
 
   // If skill level is enabled, swap best PV line with the sub-optimal one
   if (skill.enabled())
