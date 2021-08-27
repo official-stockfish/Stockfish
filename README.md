@@ -21,7 +21,7 @@ intrinsics available on most CPUs (sse2, avx2, neon, or similar).
 
 This distribution of Stockfish consists of the following files:
 
-  * [Readme.md](https://github.com/official-stockfish/Stockfish/blob/master/README.md), the file you are currently reading.
+  * [Readme.md](https://github.com/official-stockfish/Stockfish/blob/master/README.md), the file you are currently reading now.
 
   * [Copying.txt](https://github.com/official-stockfish/Stockfish/blob/master/Copying.txt), a text file containing the GNU General Public License version 3.
 
