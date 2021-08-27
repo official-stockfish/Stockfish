@@ -23,6 +23,7 @@
 #include <iostream>
 #include <sstream>
 #include <numeric>
+#include <vector>
 
 #include "evaluate.h"
 #include "misc.h"
@@ -60,27 +61,43 @@ using namespace Search;
 namespace {
 
   // Net weights and biases of a small neural network for time management
-  int nw[4][2][4] = 
+  int nw_time[32] = 
   {
-    {{3,3,0,0},{1,1,0,0}},
-    {{3,3,0,0},{1,1,0,0}},
-    {{0,0,0,0},{0,0,0,0}},
-    {{0,0,0,0},{0,0,0,0}}
+    3,3,0,0,1,1,0,0,
+    3,3,0,0,1,1,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0
   };
-  int nb[2][4] =
+  int nb_time[8] =
   {
-    {157,177,0,0},
-    {2,5,0,0}
+    157,177,  0,  0,
+      2,  5,  0,  0
   };
-  int nwo[4] = {1,1,0,0};
-  int nbo = 7;
+  int nwo_time[4] = { 1, 1, 0, 0};
+  int nbo_time = 7;
   int nn_scale = 1650;
 
-  TUNE(SetRange(-10, 10),nw);
-  TUNE(SetRange(-10, 10),nwo);
-  TUNE(SetRange(-1000, 1000),nb);
-  TUNE(SetRange(-1000, 1000), nbo);
-  TUNE(nn_scale);
+  // Matrix multiplication function for generating output of the neural network
+  int multiplyMatrices (int ft[], size_t dim, string kind) {
+    std::vector<int> nw, nb, nwo;
+    int nbo;
+    if (kind == "time")
+    {
+        nw.assign(nw_time, nw_time+2*dim*dim); // nw_time[4][2][4]
+        nb.assign(nb_time, nb_time+2*dim);     // nb_time[2][4]
+        nwo.assign(nwo_time, nwo_time+dim);    // nwo_time[4]
+        nbo = nbo_time;
+    }
+	for (size_t m = 0; m < 2; ++m)
+	{
+		int temp[] = {0};
+		for (size_t i = 0; i < dim; ++i)
+			temp[i]= std::max(0, std::inner_product(ft, ft+dim, nw.begin()+dim*(2*i+m), 0) + nb.at(m*dim+i)); // ReLU activation function
+		for (size_t n = 0; n < dim; ++n)
+			ft[n] = temp[n];
+	}
+    return std::inner_product(ft, ft+dim, nwo.begin()+0, 0) + nbo;
+  }
 
   // Different node types, used as a template parameter
   enum NodeType { NonPV, PV, Root };
@@ -488,19 +505,9 @@ void Thread::search() {
                                               * totBestMoveChanges / Threads.size();
 
           // Inputs of the neural network
-          int ft[4]={mainThread->bestPreviousScore - bestValue , mainThread->iterValue[iterIdx] - bestValue,
-                     mainThread->previousTimeReduction         , completedDepth - lastBestMoveDepth          };
-          // Matrix multiplication between layers
-          for (size_t m = 0; m < 2; ++m)
-          {
-              int temp[4] = {0};
-              for (size_t i = 0; i < 4; ++i)
-                  temp[i]= std::max(0, std::inner_product(ft, ft+4, nw[i][m], 0) + nb[m][i]); // ReLU activation function
-              for (size_t n = 0; n < 4; ++n)
-                  ft[n] = temp[n];
-          }
-          double nn = std::clamp((std::inner_product(ft, ft+4, nwo, 0) + nbo) / (nn_scale * 1.0), 0.2, 2.5);
-
+          int input[4]={mainThread->bestPreviousScore - bestValue , mainThread->iterValue[iterIdx] - bestValue,
+                        mainThread->previousTimeReduction         , completedDepth - lastBestMoveDepth          };
+          double nn = std::clamp(multiplyMatrices(input, 4, "time") / (nn_scale * 1.0), 0.2, 2.5);
           double totalTime = Time.optimum() * nn * bestMoveInstability;
 
           // Cap used time in case of a single legal move for a better viewer experience in tournaments
