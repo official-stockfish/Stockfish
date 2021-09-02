@@ -1978,6 +1978,9 @@ namespace Search
       for (int i = 7; i > 0; i--)
           (ss - i)->continuationHistory = &th->continuationHistory[0][0][NO_PIECE][0]; // Use as a sentinel
 
+      for (int i = 0; i <= MAX_PLY + 2; ++i)
+          (ss + i)->ply = i;
+
       // set rootMoves
       auto& rootMoves = th->rootMoves;
 
