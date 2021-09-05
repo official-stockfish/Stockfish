@@ -1094,6 +1094,9 @@ moves_loop: // When in check, search starts here
                   return beta;
           }
       }
+      // Captures extension for PvNodes and cutNodes
+      else if (   (PvNode || cutNode) && captureOrPromotion && moveCount != 1)
+          extension = 1;
       else if (   givesCheck
                && depth > 6
                && abs(ss->staticEval) > Value(100))
