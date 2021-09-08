@@ -22,6 +22,7 @@
 #include <cstring>   // For std::memset
 #include <iostream>
 #include <sstream>
+#include <numeric>
 
 #include "evaluate.h"
 #include "misc.h"
@@ -57,6 +58,31 @@ using Eval::evaluate;
 using namespace Search;
 
 namespace {
+
+  constexpr int TMN = 3; // Number of inputs to TM neural network
+
+  // Net weights and biases of a small neural network for time management
+  int nw[TMN][2][TMN] =
+  { // Hidden Layer 1 weights        // Hidden Layer 2 weights
+    {{ 11,  11,  11},                { 11,  11,  11}},
+    {{ 11,  11,  11},                { 11,  11,  11}},
+    {{ 11,  11,  11},                { 11,  11,  11}}
+  };
+  int nb[2][TMN] =
+  {
+    {  9,   9,  9},  // Hidden Layer 1 biases
+    {  9,   9,  9}   // Hidden Layer 2 biases
+  };
+  int nwo[TMN] = {10, 10, 10}; // Output Layer weights
+  int nbo = 11;                // Output Layer bias
+
+auto f90 = [](int m){return std::pair<int, int>(m - 90, m + 90);};
+auto f200 = [](int m){return std::pair<int, int>(m - 200, m + 200);};
+
+  TUNE(SetRange(f200), nw);
+  TUNE(SetRange(f200), nb);
+  TUNE(SetRange(f90),  nwo);
+  TUNE(SetRange(f200), nbo);
 
   // Different node types, used as a template parameter
   enum NodeType { NonPV, PV, Root };
@@ -371,6 +397,8 @@ void Thread::search() {
           int failedHighCnt = 0;
           while (true)
           {
+              numMoves[BLACK] = numMoves[WHITE] = 0;
+
               Depth adjustedDepth = std::max(1, rootDepth - failedHighCnt - searchAgainCounter);
               bestValue = Stockfish::search<Root>(rootPos, ss, alpha, beta, adjustedDepth, false);
 
@@ -470,7 +498,28 @@ void Thread::search() {
           }
           double bestMoveInstability = 1.073 + std::max(1.0, 2.25 - 9.9 / rootDepth)
                                               * totBestMoveChanges / Threads.size();
-          double totalTime = Time.optimum() * fallingEval * reduction * bestMoveInstability;
+
+          // Inputs of the neural network
+          int ft[TMN] = { mainThread->numMoves[us],
+                          mainThread->numMoves[~us],
+                          std::clamp(int(bestValue / 4), -100, 100) };
+
+          // Matrix multiplication (layers)
+          for (size_t m = 0; m < 2; ++m)
+          {
+              int temp[TMN] = {0};
+              for (size_t i = 0; i < TMN; ++i)
+                  temp[i]= std::max(0, std::inner_product(ft, ft+TMN, nw[i][m], 0) + nb[m][i]); // ReLU activation function
+              for (size_t n = 0; n < TMN; ++n)
+                  ft[n] = temp[n];
+          }
+//int prod = std::inner_product(ft, ft+TMN, nwo, 0) + nbo;
+          double nn = std::clamp((std::inner_product(ft, ft+TMN, nwo, 0) + nbo) / 1000000.0,
+                                 0.5, 1.5);
+
+//sync_cout << "info string nntim " << nn << " prod " << prod << sync_endl;
+
+          double totalTime = Time.optimum() * fallingEval * reduction * nn * bestMoveInstability;
 
           // Cap used time in case of a single legal move for a better viewer experience in tournaments
           // yielding correct scores and sufficiently fast moves.
@@ -1120,6 +1169,10 @@ moves_loop: // When in check, search starts here
                                                                 [captureOrPromotion]
                                                                 [movedPiece]
                                                                 [to_sq(move)];
+
+      // Record number of moves (not quite right for ply == 1)
+      if (ss->ply ==0 || (ss->ply == 1 && (ss-1)->moveCount == 1))
+        thisThread->numMoves[us]++;
 
       // Step 15. Make the move
       pos.do_move(move, st, givesCheck);
