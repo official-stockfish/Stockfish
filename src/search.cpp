@@ -76,13 +76,13 @@ namespace {
   int nwo[TMN] = {10, 10, 10}; // Output Layer weights
   int nbo = 11;                // Output Layer bias
 
-auto f90 = [](int m){return std::pair<int, int>(m - 90, m + 90);};
-auto f200 = [](int m){return std::pair<int, int>(m - 200, m + 200);};
+//auto f90 = [](int m){return std::pair<int, int>(m - 90, m + 90);};
+//auto f200 = [](int m){return std::pair<int, int>(m - 200, m + 200);};
 
-  TUNE(SetRange(f200), nw);
-  TUNE(SetRange(f200), nb);
-  TUNE(SetRange(f90),  nwo);
-  TUNE(SetRange(f200), nbo);
+//TUNE(SetRange(f200), nw);
+//TUNE(SetRange(f200), nb);
+//TUNE(SetRange(f90),  nwo);
+//TUNE(SetRange(f200), nbo);
 
   // Different node types, used as a template parameter
   enum NodeType { NonPV, PV, Root };
