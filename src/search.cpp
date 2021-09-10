@@ -903,11 +903,16 @@ namespace {
          ss->ttPv = ttPv;
     }
 
-    // Step 10. If the position is not in TT, decrease depth by 2
+    // Step 10. If the position is not in TT, decrease depth by 2 or 1 depending on node type
     if (   PvNode
         && depth >= 6
         && !ttMove)
         depth -= 2;
+
+    if (   cutNode
+        && depth >= 9
+        && !ttMove)
+        depth--;
 
 moves_loop: // When in check, search starts here
 
