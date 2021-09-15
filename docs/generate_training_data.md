@@ -44,6 +44,8 @@ Currently the following options are available:
 
 `random_multi_pv_depth` - the depth to use for multiPV search for random move. Default: `depth2`.
 
+`random_multi_pv_nodes` - the maximum number of nodes for a multiPV search for random move. Default: `nodes`.
+
 `write_min_ply` - minimum ply for which the training data entry will be emitted. Default: 16.
 
 `write_max_ply` - maximum ply for which the training data entry will be emitted. Default: 400.

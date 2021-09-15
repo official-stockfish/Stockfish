@@ -75,6 +75,7 @@ namespace Stockfish::Tools
             int random_multi_pv = 0;
             int random_multi_pv_diff = 32000;
             int random_multi_pv_depth = -1;
+            uint64_t random_multi_pv_nodes = 0;
 
             // The minimum and maximum ply (number of steps from
             // the initial phase) of the sfens to write out.
@@ -108,7 +109,11 @@ namespace Stockfish::Tools
 
                 num_threads = Options["Threads"];
 
-                random_multi_pv_depth = std::max(search_depth_max, random_multi_pv_depth);
+                if (random_multi_pv_depth == -1)
+                    random_multi_pv_depth = search_depth_max;
+
+                if (random_multi_pv_nodes == 0)
+                    random_multi_pv_nodes = nodes;
             }
         };
 
@@ -633,7 +638,7 @@ namespace Stockfish::Tools
             }
             else
             {
-                Search::search(pos, params.random_multi_pv_depth, params.random_multi_pv);
+                Search::search(pos, params.random_multi_pv_depth, params.random_multi_pv, params.random_multi_pv_nodes);
 
                 // Select one from the top N hands of root Moves
                 auto& rm = pos.this_thread()->rootMoves;
@@ -828,6 +833,8 @@ namespace Stockfish::Tools
                 is >> params.random_multi_pv_diff;
             else if (token == "random_multi_pv_depth")
                 is >> params.random_multi_pv_depth;
+            else if (token == "random_multi_pv_nodes")
+                is >> params.random_multi_pv_nodes;
             else if (token == "write_min_ply")
                 is >> params.write_minply;
             else if (token == "write_max_ply")
@@ -913,6 +920,7 @@ namespace Stockfish::Tools
             << "  - random_multi_pv        = " << params.random_multi_pv << endl
             << "  - random_multi_pv_diff   = " << params.random_multi_pv_diff << endl
             << "  - random_multi_pv_depth  = " << params.random_multi_pv_depth << endl
+            << "  - random_multi_pv_nodes  = " << params.random_multi_pv_nodes << endl
             << "  - write_min_ply          = " << params.write_minply << endl
             << "  - write_max_ply          = " << params.write_maxply << endl
             << "  - book                   = " << params.book << endl
