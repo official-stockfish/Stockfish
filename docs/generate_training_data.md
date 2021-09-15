@@ -22,7 +22,9 @@ Currently the following options are available:
 
 `nodes` - the number of nodes to use for evaluation of each position. This number is multiplied by the number of PVs of the current search. This does NOT override the `depth` and `depth2` options. If specified then whichever of depth or nodes limit is reached first applies.
 
-`count` - the number of training data entries to generate. 1 entry == 1 position. Default: 8000000000 (8B).
+`count` - the number of training data entries to generate. 1 entry == 1 position. If both `count` and `max_time_*` are specified the data generation process will end when any of conditions is fullfilled. Default: 8000000000 (8B).
+
+`max_time_seconds`, `max_time_minutes`, `max_time_hours` - specifies the maximum runtime for the data generation. The data generation will NOT be interrupted while a self-play game is in progress. If both `count` and `max_time_*` are specified the data generation process will end when any of conditions is fullfilled. Default: \~250 years.
 
 `output_file_name` - the name of the file to output to. If the extension is not present or doesn't match the selected training data format the right extension will be appened. Default: generated_kifu
 
