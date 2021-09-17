@@ -720,9 +720,9 @@ namespace Stockfish::Tools
         const auto now_time = now();
 
         out
-            << endl
+            << '\n'
             << 0 << " sfens, "
-            << "at " << now_string() << sync_endl;
+            << "at " << now_string() << endl;
 
         last_stats_report_time = now_time;
 
@@ -735,10 +735,10 @@ namespace Stockfish::Tools
         const TimePoint elapsed = now_time - last_stats_report_time + 1;
 
         out
-            << endl
+            << '\n'
             << done << " sfens, "
             << new_done * 1000 / elapsed << " sfens/second, "
-            << "at " << now_string() << sync_endl;
+            << "at " << now_string() << endl;
 
         last_stats_report_time = now_time;
 
