@@ -224,6 +224,7 @@ namespace Stockfish::Tools
 
         // If you use this, it will be compared with the accumulated nodes of each thread. Therefore, do not use it.
         limits.nodes = 0;
+        limits.nodesThisThread = 0;
 
         // depth is also processed by the one passed as an argument of Tools::search().
         limits.depth = 0;
