@@ -92,6 +92,7 @@ public:
   int selDepth, nmpMinPly;
   Color nmpColor;
   std::atomic<uint64_t> nodes, tbHits, bestMoveChanges;
+  uint64_t maxNodes;
 
   Position rootPos;
   StateInfo rootState;
