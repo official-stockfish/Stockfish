@@ -577,6 +577,7 @@ namespace {
     {
         // Step 2. Check for aborted search and immediate draw
         if (   Threads.stop.load(std::memory_order_relaxed)
+            || (thisThread->maxNodes && thisThread->nodes.load(std::memory_order_relaxed) >= thisThread->maxNodes)
             || pos.is_draw(ss->ply)
             || ss->ply >= MAX_PLY)
             return (ss->ply >= MAX_PLY && !ss->inCheck) ? evaluate(pos)
@@ -1965,6 +1966,7 @@ namespace Search
 
       // Zero initialization of the number of search nodes
       th->nodes = 0;
+      th->maxNodes = 0;
 
       // Clear all history types. This initialization takes a little time, and
       // the accuracy of the search is rather low, so the good and bad are
@@ -2061,6 +2063,13 @@ namespace Search
 
   ValueAndPV search(Position& pos, int depth_, size_t multiPV /* = 1 */, uint64_t nodesLimit /* = 0 */)
   {
+    // Sometimes a depth takes extreme amount of time (in the order of x1000 or more)
+    // than the previous depth, which can cause the search bounded by nodes to go for a long time.
+    // Because of that we add an additional limit that's 10x higher and is checked within
+    // the search function and can kill the search regardless of whether the full depth
+    // has been completed or not.
+    constexpr uint64_t nodesOversearchFactor = 10;
+
     std::vector<Move> pvs;
 
     Depth depth = depth_;
@@ -2101,6 +2110,11 @@ namespace Search
     Value delta = -VALUE_INFINITE;
     Value bestValue = -VALUE_INFINITE;
 
+    if (nodesLimit != 0)
+    {
+      th->maxNodes = nodesLimit * nodesOversearchFactor;
+    }
+
     while ((rootDepth += 1) <= depth
       // exit this loop even if the node limit is exceeded
       // The number of search nodes is passed in the argument of this function.
@@ -2140,6 +2154,11 @@ namespace Search
         {
           Depth adjustedDepth = std::max(1, rootDepth);
           bestValue = Stockfish::search<Root>(pos, ss, alpha, beta, adjustedDepth, false);
+
+          if (th->maxNodes && th->nodes.load(std::memory_order_relaxed) >= th->maxNodes)
+          {
+            break;
+          }
 
           stable_sort(rootMoves.begin() + pvIdx, rootMoves.end());
           //my_stable_sort(pos.this_thread()->thread_id(),&rootMoves[0] + pvIdx, rootMoves.size() - pvIdx);
@@ -2186,6 +2205,8 @@ namespace Search
 
     // Considering multiPV, the score of rootMoves[0] is returned as bestValue.
     bestValue = rootMoves[0].score;
+
+    th->maxNodes = 0;
 
     return ValueAndPV(bestValue, pvs);
   }
@@ -2764,6 +2785,7 @@ namespace Search
         th->nmpMinPly = th->bestMoveChanges = th->failedHighCnt = 0;
         th->ttHitAverage = TtHitAverageWindow * TtHitAverageResolution / 2;
         th->nodes = 0;
+        th->maxNodes = 0;
       }
 
 
