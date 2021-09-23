@@ -1,0 +1,31 @@
+name: build
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: install
+        run: sudo apt install mingw-w64
+
+      - name: make default
+        run: cd src && make clean && make -j build COMP=mingw ARCH=x86-64 EXE=stockfish_x64.exe && strip stockfish_x64.exe
+
+      - name: make modern
+        run: cd src && make clean && make -j build COMP=mingw ARCH=x86-64-modern EXE=stockfish_x64_modern.exe && strip stockfish_x64_modern.exe
+
+      - name: make bmi2
+        run: cd src && make clean && make -j build COMP=mingw ARCH=x86-64-bmi2 EXE=stockfish_x64_bmi2.exe && strip stockfish_x64_bmi2.exe
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: stockfish
+          path: src/stockfish*.exe
