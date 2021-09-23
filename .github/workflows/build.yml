@@ -25,7 +25,74 @@ jobs:
       - name: make bmi2
         run: cd src && make clean && make -j build COMP=mingw ARCH=x86-64-bmi2 EXE=stockfish_x64_bmi2.exe && strip stockfish_x64_bmi2.exe
 
-      - uses: actions/upload-artifact@v2
+      - uses: actions/checkout@v2
         with:
-          name: stockfish
-          path: src/stockfish*.exe
+          path: main
+      - name: Download artifact to get build-windows
+        uses: actions/download-artifact@v2
+        with:
+          name: build-windows
+          path: release
+      - name: Display structure of downloaded files
+        run: ls -R
+        working-directory: release
+      - name: copy docs
+        run: |
+          cp main/Copying.txt release/windows
+          cp -r main/docs/ release/windows
+      - name: Display structure of release files
+        run: ls -R
+        working-directory: release
+      - name: make build-windows zip/7z
+        run: |
+          7z a -tzip build-windows.zip windows
+          7z a -t7z build-windows.7z windows
+        working-directory: release
+      - name: Archive Size
+        id: archive_size
+        run: |
+          echo ::set-output name=windows_zip::$(stat -c%s "release/build-windows.zip" | awk '{ split( "B KB MB GB TB PB" , v ); s=1; while( $1>1024 ){ $1/=1024; s++ } printf "%.2f %s", $1, v[s] }')
+          echo ::set-output name=windows_7z::$(stat -c%s "release/build-windows.7z" | awk '{ split( "B KB MB GB TB PB" , v ); s=1; while( $1>1024 ){ $1/=1024; s++ } printf "%.2f %s", $1, v[s] }')
+      - name: Create release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets. GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Stockfish assorted executables ${{ steps.version.outputs.version }}
+          body: |
+            やねうら王の最新の思考エンジン
+            『やねうら王』 ${{ steps.version.outputs.version }} の各評価関数用、各CPU用実行ファイルの詰め合わせです。
+             1. Dev
+            for
+            - [${{ steps.version.outputs.filename }}-windows.zip](https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.version }}/${{ steps.version.outputs.filename }}-windows.zip) (${{ steps.archive_size.outputs.windows_zip }})
+            - [${{ steps.version.outputs.filename }}-windows.7z](https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.version }}/${{ steps.version.outputs.filename }}-windows.7z) (${{ steps.archive_size.outputs.windows_7z }})
+            - Executable Windows version for each CPU (zen2/ZEN1/AVX512/AVX2/SSE4.2/SSE4.1/SSE3/SSE2/32bit environments)
+            - Tournament Windows Version (ZEN2/ZEN1/AVX512/AVX2/SSE4.2)
+            - 1.2.3.Learning Executable Windows Version (ZEN2/ZEN1/AVX512/AVX2/SSE4.2)
+            how to use it is in the attachment
+            docs
+            see .
+          # do not in draft (false) state
+          draft: false
+          # flag early releases (true)
+          prerelease: true
+      - name: Upload release asset build-windows.zip
+        uses: actions/upload-release-asset@v1.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets. GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: release/build-windows.zip
+          asset_name: ${{ steps.version.outputs.filename }}-windows.zip
+          asset_content_type: application/zip
+      - name: Upload release asset build-windows.7z
+        uses: actions/upload-release-asset@v1.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets. GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: release/build-windows.7z
+          asset_name: ${{ steps.version.outputs.filename }}-windows.7z
+          asset_content_type: application/octet-stream
