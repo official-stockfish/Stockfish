@@ -61,9 +61,13 @@ public:
   Material::Table materialTable;
   size_t pvIdx, pvLast;
   RunningAverage ttHitAverage;
+  RunningAverage doubleExtensionAverage[COLOR_NB];
+  uint64_t lastExplosiveTime;
+  uint64_t lastNormalTime;
+  std::atomic<uint64_t> nodes, tbHits, bestMoveChanges;
   int selDepth, nmpMinPly;
   Color nmpColor;
-  std::atomic<uint64_t> nodes, tbHits, bestMoveChanges;
+  ExplosionState state;
 
   Position rootPos;
   StateInfo rootState;
