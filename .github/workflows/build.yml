@@ -25,6 +25,9 @@ jobs:
       - name: make bmi2
         run: cd src && make clean && make -j build COMP=mingw ARCH=x86-64-bmi2 EXE=stockfish_x64_bmi2.exe && strip stockfish_x64_bmi2.exe
 
+      - run: mkdir -p path/to/artifact
+      - run: echo hello > path/to/artifact/copying.txt
+      
       - uses: actions/upload-artifact@v2
         with:
           name: stockfish
