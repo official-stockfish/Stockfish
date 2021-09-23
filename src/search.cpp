@@ -61,9 +61,6 @@ namespace {
   // Different node types, used as a template parameter
   enum NodeType { NonPV, PV, Root };
 
-  constexpr uint64_t TtHitAverageWindow     = 4096;
-  constexpr uint64_t TtHitAverageResolution = 1024;
-
   // Futility margin
   Value futility_margin(Depth d, bool improving) {
     return Value(214 * (d - improving));
@@ -89,6 +86,30 @@ namespace {
   // Add a small random component to draw evaluations to avoid 3-fold blindness
   Value value_draw(Thread* thisThread) {
     return VALUE_DRAW + Value(2 * (thisThread->nodes & 1) - 1);
+  }
+
+  // Check if the current thread is in a search explosion
+  ExplosionState search_explosion(Thread* thisThread) {
+
+    uint64_t nodesNow = thisThread->nodes;
+    bool explosive =    thisThread->doubleExtensionAverage[WHITE].is_greater(2, 100)
+                     || thisThread->doubleExtensionAverage[BLACK].is_greater(2, 100);
+
+    if (explosive)
+       thisThread->nodesLastExplosive = nodesNow;
+    else
+       thisThread->nodesLastNormal = nodesNow;
+
+    if (   explosive
+        && thisThread->state == EXPLOSION_NONE
+        && nodesNow - thisThread->nodesLastNormal > 6000000)
+        thisThread->state = MUST_CALM_DOWN;
+
+    if (   thisThread->state == MUST_CALM_DOWN
+        && nodesNow - thisThread->nodesLastExplosive > 6000000)
+        thisThread->state = EXPLOSION_NONE;
+
+    return thisThread->state;
   }
 
   // Skill structure is used to implement strength limit
@@ -310,8 +331,14 @@ void Thread::search() {
       multiPV = std::max(multiPV, (size_t)4);
 
   multiPV = std::min(multiPV, rootMoves.size());
-  ttHitAverage = TtHitAverageWindow * TtHitAverageResolution / 2;
 
+  ttHitAverage.set(50, 100);                  // initialize the running average at 50%
+  doubleExtensionAverage[WHITE].set(0, 100);  // initialize the running average at 0%
+  doubleExtensionAverage[BLACK].set(0, 100);  // initialize the running average at 0%
+
+  nodesLastExplosive = nodes;
+  nodesLastNormal    = nodes;
+  state = EXPLOSION_NONE;
   trend = SCORE_ZERO;
 
   int searchAgainCounter = 0;
@@ -518,6 +545,14 @@ namespace {
   template <NodeType nodeType>
   Value search(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth, bool cutNode) {
 
+    Thread* thisThread = pos.this_thread();
+
+    // Step 0. Limit search explosion
+    if (   ss->ply > 10
+        && search_explosion(thisThread) == MUST_CALM_DOWN
+        && depth > (ss-1)->depth)
+       depth = (ss-1)->depth;
+
     constexpr bool PvNode = nodeType != NonPV;
     constexpr bool rootNode = nodeType == Root;
     const Depth maxNextDepth = rootNode ? depth : depth + 1;
@@ -554,12 +589,11 @@ namespace {
     Value bestValue, value, ttValue, eval, maxValue, probCutBeta;
     bool givesCheck, improving, didLMR, priorCapture;
     bool captureOrPromotion, doFullDepthSearch, moveCountPruning,
-         ttCapture, singularQuietLMR;
+         ttCapture, singularQuietLMR, noLMRExtension;
     Piece movedPiece;
     int moveCount, captureCount, quietCount;
 
     // Step 1. Initialize node
-    Thread* thisThread = pos.this_thread();
     ss->inCheck        = pos.checkers();
     priorCapture       = pos.captured_piece();
     Color us           = pos.side_to_move();
@@ -602,7 +636,11 @@ namespace {
     (ss+1)->excludedMove = bestMove = MOVE_NONE;
     (ss+2)->killers[0]   = (ss+2)->killers[1] = MOVE_NONE;
     ss->doubleExtensions = (ss-1)->doubleExtensions;
+    ss->depth            = depth;
     Square prevSq        = to_sq((ss-1)->currentMove);
+
+    // Update the running average statistics for double extensions
+    thisThread->doubleExtensionAverage[us].update(ss->depth > (ss-1)->depth);
 
     // Initialize statScore to zero for the grandchildren of the current position.
     // So statScore is shared between all grandchildren and only the first grandchild
@@ -632,9 +670,8 @@ namespace {
         && is_ok((ss-1)->currentMove))
         thisThread->lowPlyHistory[ss->ply - 1][from_to((ss-1)->currentMove)] << stat_bonus(depth - 5);
 
-    // thisThread->ttHitAverage can be used to approximate the running average of ttHit
-    thisThread->ttHitAverage =   (TtHitAverageWindow - 1) * thisThread->ttHitAverage / TtHitAverageWindow
-                                + TtHitAverageResolution * ss->ttHit;
+    // running average of ttHit
+    thisThread->ttHitAverage.update(ss->ttHit);
 
     // At non-PV nodes we check for an early TT cutoff
     if (  !PvNode
@@ -948,8 +985,7 @@ moves_loop: // When in check, search starts here
                                       ss->ply);
 
     value = bestValue;
-    singularQuietLMR = moveCountPruning = false;
-    bool doubleExtension = false;
+    singularQuietLMR = moveCountPruning = noLMRExtension = false;
 
     // Indicate PvNodes that will probably fail low if the node was searched
     // at a depth equal or greater than the current depth, and the result of this search was a fail low.
@@ -1069,13 +1105,13 @@ moves_loop: // When in check, search starts here
               extension = 1;
               singularQuietLMR = !ttCapture;
 
-              // Avoid search explosion by limiting the number of double extensions to at most 3
+              // Avoid search explosion by limiting the number of double extensions
               if (   !PvNode
                   && value < singularBeta - 93
                   && ss->doubleExtensions < 3)
               {
                   extension = 2;
-                  doubleExtension = true;
+                  noLMRExtension = true;
               }
           }
 
@@ -1146,7 +1182,7 @@ moves_loop: // When in check, search starts here
               r--;
 
           // Decrease reduction if the ttHit running average is large (~0 Elo)
-          if (thisThread->ttHitAverage > 537 * TtHitAverageResolution * TtHitAverageWindow / 1024)
+          if (thisThread->ttHitAverage.is_greater(537, 1024))
               r--;
 
           // Decrease reduction if position is or has been on the PV
@@ -1187,8 +1223,16 @@ moves_loop: // When in check, search starts here
 
           // In general we want to cap the LMR depth search at newDepth. But if
           // reductions are really negative and movecount is low, we allow this move
-          // to be searched deeper than the first move in specific cases.
-          Depth d = std::clamp(newDepth - r, 1, newDepth + (r < -1 && (moveCount <= 5 || (depth > 6 && PvNode)) && !doubleExtension));
+          // to be searched deeper than the first move in specific cases (note that
+          // this may lead to hidden double extensions if newDepth got it own extension
+          // before).
+          int deeper =   r >= -1               ? 0
+                       : noLMRExtension        ? 0
+                       : moveCount <= 5        ? 1
+                       : (depth > 6 && PvNode) ? 1
+                       :                         0;
+
+          Depth d = std::clamp(newDepth - r, 1, newDepth + deeper);
 
           value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, d, true);
 
