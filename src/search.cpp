@@ -1236,6 +1236,8 @@ moves_loop: // When in check, search starts here
           Depth d = std::clamp(newDepth - r, 1, newDepth + deeper);
 
           value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, d, true);
+
+          // range reductions
           if (ss->staticEval - value < 30 && depth > 7) {
               b += 1;
           }
