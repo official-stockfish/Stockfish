@@ -85,6 +85,33 @@ static inline const union { uint32_t i; char c[4]; } Le = { 0x01020304 };
 static inline const bool IsLittleEndian = (Le.c[0] == 4);
 
 
+// RunningAverage : a class to calculate a running average of a series of values.
+// For efficiency, all computations are done with integers.
+class RunningAverage {
+  public:
+
+      // Constructor
+      RunningAverage() {}
+
+      // Reset the running average to rational value p / q
+      void set(int64_t p, int64_t q)
+        { average = p * PERIOD * RESOLUTION / q; }
+
+      // Update average with value v
+      void update(int64_t v)
+        { average = RESOLUTION * v + (PERIOD - 1) * average / PERIOD; }
+
+      // Test if average is strictly greater than rational a / b
+      bool is_greater(int64_t a, int64_t b)
+        { return b * average > a * PERIOD * RESOLUTION ; }
+
+  private :
+      static constexpr int64_t PERIOD     = 4096;
+      static constexpr int64_t RESOLUTION = 1024;
+      int64_t average;
+};
+
+
 template <typename T>
 class ValueListInserter {
 public:
