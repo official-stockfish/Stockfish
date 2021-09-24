@@ -955,7 +955,7 @@ moves_loop: // When in check, search starts here
 
     ttCapture = ttMove && pos.capture_or_promotion(ttMove);
 
-    int b = 0;
+    int rangeReduction = 0;
     // Step 11. A small Probcut idea, when we are in check
     probCutBeta = beta + 409;
     if (   ss->inCheck
@@ -1237,9 +1237,9 @@ moves_loop: // When in check, search starts here
 
           value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, d, true);
 
-          // range reductions
+          // Range reductions (~3 Elo)
           if (ss->staticEval - value < 30 && depth > 7) {
-              b += 1;
+              rangeReduction += 1;
           }
 
           // If the son is reduced and fails high it will be re-searched at full depth
