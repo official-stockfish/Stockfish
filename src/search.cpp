@@ -918,7 +918,7 @@ moves_loop: // When in check, search starts here
 
     ttCapture = ttMove && pos.capture_or_promotion(ttMove);
 
-    bool b = false;
+    int b = 0;
     // Step 11. A small Probcut idea, when we are in check
     probCutBeta = beta + 409;
     if (   ss->inCheck
@@ -1006,7 +1006,7 @@ moves_loop: // When in check, search starts here
           moveCountPruning = moveCount >= futility_move_count(improving, depth);
 
           // Reduced depth of the next LMR search
-          int lmrDepth = std::max(newDepth - reduction(improving, depth, moveCount, b), 0);
+          int lmrDepth = std::max(newDepth - reduction(improving, depth, moveCount, b > 1), 0);
 
           if (   captureOrPromotion
               || givesCheck)
@@ -1141,7 +1141,7 @@ moves_loop: // When in check, search starts here
               || !ss->ttPv)
           && (!PvNode || ss->ply > 1 || thisThread->id() % 4 != 3))
       {
-          Depth r = reduction(improving, depth, moveCount, b);
+          Depth r = reduction(improving, depth, moveCount, b > 1);
 
           if (PvNode)
               r--;
@@ -1192,6 +1192,9 @@ moves_loop: // When in check, search starts here
           Depth d = std::clamp(newDepth - r, 1, newDepth + (r < -1 && (moveCount <= 5 || (depth > 6 && PvNode)) && !doubleExtension));
 
           value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, d, true);
+          if (ss->staticEval - value < 30 && depth > 7) {
+              b += 1;
+          }
 
           // If the son is reduced and fails high it will be re-searched at full depth
           doFullDepthSearch = value > alpha && d < newDepth;
@@ -1228,9 +1231,6 @@ moves_loop: // When in check, search starts here
 
           value = -search<PV>(pos, ss+1, -beta, -alpha,
                               std::min(maxNextDepth, newDepth), false);
-          if (value > ss->staticEval) {
-              b = true;
-          }
       }
 
       // Step 18. Undo move
