@@ -17,7 +17,6 @@
 */
 
 #include <algorithm>
-#include <cassert>
 #include <ostream>
 #include <sstream>
 
@@ -79,7 +78,11 @@ void init(OptionsMap& o) {
   o["SyzygyProbeDepth"]      << Option(1, 1, 100);
   o["Syzygy50MoveRule"]      << Option(true);
   o["SyzygyProbeLimit"]      << Option(7, 0, 7);
+#ifndef NNUE_EMBEDDING_OFF
   o["Use NNUE"]              << Option(true, on_use_NNUE);
+#else
+  o["Use NNUE"]              << Option(false, on_use_NNUE);
+#endif
   o["EvalFile"]              << Option(EvalFileDefaultName, on_eval_file);
 }
 
@@ -87,7 +90,7 @@ void init(OptionsMap& o) {
 /// operator<<() is used to print all the options default values in chronological
 /// insertion order (the idx field) and in the format defined by the UCI protocol.
 
-std::ostream& operator<<(std::ostream& os, const OptionsMap& om) {
+Outstream& operator<<(Outstream& os, const OptionsMap& om) {
 
   for (size_t idx = 0; idx < om.size(); ++idx)
       for (const auto& it : om)

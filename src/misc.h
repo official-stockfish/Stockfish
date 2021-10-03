@@ -19,14 +19,117 @@
 #ifndef MISC_H_INCLUDED
 #define MISC_H_INCLUDED
 
-#include <cassert>
 #include <chrono>
+#include <iostream>
+#include <sstream>
 #include <ostream>
 #include <string>
 #include <vector>
 #include <cstdint>
+#include <mutex>
+#include <thread>
 
 #include "types.h"
+
+//#define DEBUG
+//#ifdef DEBUG
+//#define DEBUG_PRINT(x) printf x
+//#else
+//#define DEBUG_PRINT(x)
+//#endif
+
+enum SyncCout { IO_LOCK, IO_UNLOCK };
+#define sync_endl IO_UNLOCK
+/*
+ * It is recommended to unblock sync_cout (with sync_endl) prior to using sync_cerr
+ * to avoid possible deadlock.
+*/
+#define sync_cout outstream << IO_LOCK
+#define sync_cerr errstream << IO_LOCK
+
+class Outstream {
+public:
+    int read(std::string& buf) {
+        if (done) {
+            return -1;
+        } else {
+            std::unique_lock<std::mutex> mlock(mutex_);
+            _DEBUG_PRINT("read() cond_.wait\n");
+            cond_.wait(mlock);
+//        cond_.wait(mlock, [this]{return !buf_.empty();});
+            _DEBUG_PRINT("read() unblocked\n");
+            if (done) {
+                mlock.unlock();
+                return -1;
+            }
+            buf = buf_;
+            buf_.clear();
+            mlock.unlock();
+            return buf.length();
+        }
+    }
+
+//    bool empty() {
+//        return buf_.empty();
+//    }
+
+    void finish() {
+        std::cout << "finish!!!" << std::endl;
+        done = true;
+        cond_.notify_one();
+    }
+
+    Outstream& operator<<(SyncCout sc) {
+        if (sc == IO_LOCK) {
+            std::thread::id current_thread_id = std::this_thread::get_id();
+            if (current_thread_id != owner_thread_id) {
+                _DEBUG_PRINT("locking mutex_\n");
+                mutex_.lock();
+                _DEBUG_PRINT("mutex_ locked\n");
+                owner_thread_id = current_thread_id;
+            }
+        }
+        if (sc == IO_UNLOCK) {
+            buf_ += "\n";
+            owner_thread_id = no_thread_id;
+            mutex_.unlock();
+            cond_.notify_one();
+        }
+
+        return *this;
+    }
+
+    Outstream& operator<<(const char* str) {
+        buf_ += str;
+        return *this;
+    }
+
+    Outstream& operator<<(std::string str) {
+        buf_ += str;
+        return *this;
+    }
+
+    Outstream& operator<<(int num) {
+        buf_ += std::to_string(num);
+        return *this;
+    }
+
+private:
+//    std::string get_buf() {
+//        std::string res(buf_);
+//        buf_.clear();
+//        return res;
+//    }
+
+    const std::thread::id no_thread_id;
+    std::mutex mutex_;
+    std::thread::id owner_thread_id;
+    std::condition_variable cond_;
+    std::string buf_;
+    bool done = false;
+};
+
+extern Outstream outstream, errstream;
 
 namespace Stockfish {
 
@@ -58,14 +161,6 @@ struct HashTable {
 private:
   std::vector<Entry> table = std::vector<Entry>(Size); // Allocate on the heap
 };
-
-
-enum SyncCout { IO_LOCK, IO_UNLOCK };
-std::ostream& operator<<(std::ostream&, SyncCout);
-
-#define sync_cout std::cout << IO_LOCK
-#define sync_endl std::endl << IO_UNLOCK
-
 
 // align_ptr_up() : get the first aligned element of an array.
 // ptr must point to an array of size at least `sizeof(T) * N + alignment` bytes,

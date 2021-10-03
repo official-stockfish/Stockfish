@@ -17,13 +17,10 @@
 */
 
 #include <algorithm>
-#include <cassert>
 #include <cstdlib>
 #include <cstring>   // For std::memset
 #include <fstream>
 #include <iomanip>
-#include <sstream>
-#include <iostream>
 #include <streambuf>
 #include <vector>
 
@@ -49,7 +46,9 @@
   INCBIN(EmbeddedNNUE, EvalFileDefaultName);
 #else
   const unsigned char        gEmbeddedNNUEData[1] = {0x0};
+#ifndef NNUE_EMBEDDING_OFF
   const unsigned char *const gEmbeddedNNUEEnd = &gEmbeddedNNUEData[1];
+#endif
   const unsigned int         gEmbeddedNNUESize = 1;
 #endif
 
@@ -58,6 +57,7 @@ using namespace std;
 
 namespace Stockfish {
 
+#ifndef _NNUE_EMBEDDING_OFF
 namespace Eval {
 
   bool useNNUE;
@@ -125,20 +125,14 @@ namespace Eval {
 
     if (useNNUE && eval_file_loaded != eval_file)
     {
-
-        string msg1 = "If the UCI option \"Use NNUE\" is set to true, network evaluation parameters compatible with the engine must be available.";
-        string msg2 = "The option is set to true, but the network file " + eval_file + " was not loaded successfully.";
-        string msg3 = "The UCI option EvalFile might need to specify the full path, including the directory name, to the network file.";
-        string msg4 = "The default net can be downloaded from: https://tests.stockfishchess.org/api/nn/" + std::string(EvalFileDefaultName);
-        string msg5 = "The engine will be terminated now.";
-
-        sync_cout << "info string ERROR: " << msg1 << sync_endl;
-        sync_cout << "info string ERROR: " << msg2 << sync_endl;
-        sync_cout << "info string ERROR: " << msg3 << sync_endl;
-        sync_cout << "info string ERROR: " << msg4 << sync_endl;
-        sync_cout << "info string ERROR: " << msg5 << sync_endl;
-
-        exit(EXIT_FAILURE);
+        std::stringstream stream;
+        stream
+            << "info string ERROR: If the UCI option \"Use NNUE\" is set to true, network evaluation parameters compatible with the engine must be available."  << std::endl
+            << "info string ERROR: The option is set to true, but the network file " << eval_file << " was not loaded successfully."  << std::endl
+            << "info string ERROR: The UCI option EvalFile might need to specify the full path, including the directory name, to the network file."  << std::endl
+            << "info string ERROR: The default net can be downloaded from: https://tests.stockfishchess.org/api/nn/" << EvalFileDefaultName  << std::endl
+            ;
+        throw std::runtime_error(stream.str());
     }
 
     if (useNNUE)
@@ -147,6 +141,7 @@ namespace Eval {
         sync_cout << "info string classical evaluation enabled" << sync_endl;
   }
 }
+#endif
 
 namespace Trace {
 

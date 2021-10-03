@@ -217,8 +217,7 @@ public:
 
         if (statbuf.st_size % 64 != 16)
         {
-            std::cerr << "Corrupt tablebase file " << fname << std::endl;
-            exit(EXIT_FAILURE);
+            throw std::runtime_error("Corrupt tablebase file " + fname);
         }
 
         *mapping = statbuf.st_size;
@@ -230,8 +229,7 @@ public:
 
         if (*baseAddress == MAP_FAILED)
         {
-            std::cerr << "Could not mmap() " << fname << std::endl;
-            exit(EXIT_FAILURE);
+            throw std::runtime_error("Could not mmap() " + fname);
         }
 #else
         // Note FILE_FLAG_RANDOM_ACCESS is only a hint to Windows and as such may get ignored.
@@ -246,8 +244,9 @@ public:
 
         if (size_low % 64 != 16)
         {
-            std::cerr << "Corrupt tablebase file " << fname << std::endl;
-            exit(EXIT_FAILURE);
+            std::stringstream stream;
+            stream << "Corrupt tablebase file " << fname << std::endl;
+            throw std::runtime_error(stream.str();
         }
 
         HANDLE mmap = CreateFileMapping(fd, nullptr, PAGE_READONLY, size_high, size_low, nullptr);
@@ -255,8 +254,7 @@ public:
 
         if (!mmap)
         {
-            std::cerr << "CreateFileMapping() failed" << std::endl;
-            exit(EXIT_FAILURE);
+            throw std::runtime_error("CreateFileMapping() failed");
         }
 
         *mapping = (uint64_t)mmap;
@@ -264,9 +262,10 @@ public:
 
         if (!*baseAddress)
         {
-            std::cerr << "MapViewOfFile() failed, name = " << fname
+            std::stringstream stream;
+            stream << "MapViewOfFile() failed, name = " << fname
                       << ", error = " << GetLastError() << std::endl;
-            exit(EXIT_FAILURE);
+            throw std::runtime_error(stream.str());
         }
 #endif
         uint8_t* data = (uint8_t*)*baseAddress;
@@ -276,7 +275,7 @@ public:
 
         if (memcmp(data, Magics[type == WDL], 4))
         {
-            std::cerr << "Corrupted table in file " << fname << std::endl;
+            sync_cerr << "Corrupted table in file " << fname << sync_endl;
             unmap(*baseAddress, *mapping);
             return *baseAddress = nullptr, nullptr;
         }
@@ -445,8 +444,7 @@ class TBTables {
                 homeBucket = otherHomeBucket;
             }
         }
-        std::cerr << "TB hash table size too low!" << std::endl;
-        exit(EXIT_FAILURE);
+        throw std::runtime_error("TB hash table size too low!");
     }
 
 public:

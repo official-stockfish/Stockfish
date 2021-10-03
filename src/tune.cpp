@@ -70,12 +70,12 @@ static void make_option(const string& n, int v, const SetRange& r) {
   LastOption = &Options[n];
 
   // Print formatted parameters, ready to be copy-pasted in Fishtest
-  std::cout << n << ","
+  sync_cout << n << ","
             << v << ","
             << r(v).first << "," << r(v).second << ","
             << (r(v).second - r(v).first) / 20.0 << ","
             << "0.0020"
-            << std::endl;
+            << sync_endl;
 }
 
 template<> void Tune::Entry<int>::init_option() { make_option(name, value, range); }

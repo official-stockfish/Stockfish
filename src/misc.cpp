@@ -42,9 +42,7 @@ typedef bool(*fun3_t)(HANDLE, CONST GROUP_AFFINITY*, PGROUP_AFFINITY);
 #include <fstream>
 #include <iomanip>
 #include <iostream>
-#include <sstream>
 #include <vector>
-#include <cstdlib>
 
 #if defined(__linux__) && !defined(__ANDROID__)
 #include <stdlib.h>
@@ -58,6 +56,14 @@ typedef bool(*fun3_t)(HANDLE, CONST GROUP_AFFINITY*, PGROUP_AFFINITY);
 
 #include "misc.h"
 #include "thread.h"
+
+int throw_exception(const char* func, const char* file, int line, const char* msg) {
+    std::stringstream stream;
+    stream << "Assertion failed: " << msg << ", function " << func <<", file " << file
+        << ", line " << line;
+    throw std::runtime_error(stream.str());
+    return 0;
+}
 
 using namespace std;
 
@@ -123,8 +129,7 @@ public:
 
         if (!l.file.is_open())
         {
-            cerr << "Unable to open debug log file " << fname << endl;
-            exit(EXIT_FAILURE);
+            throw std::runtime_error("Unable to open debug log file " + fname);
         }
 
         cin.rdbuf(&l.in);
@@ -288,31 +293,13 @@ void dbg_mean_of(int v) { ++means[0]; means[1] += v; }
 void dbg_print() {
 
   if (hits[0])
-      cerr << "Total " << hits[0] << " Hits " << hits[1]
-           << " hit rate (%) " << 100 * hits[1] / hits[0] << endl;
+      sync_cerr << "Total " << hits[0] << " Hits " << hits[1]
+           << " hit rate (%) " << 100 * hits[1] / hits[0] << sync_endl;
 
   if (means[0])
-      cerr << "Total " << means[0] << " Mean "
-           << (double)means[1] / means[0] << endl;
+      sync_cerr << "Total " << means[0] << " Mean "
+           << (double)means[1] / means[0] << sync_endl;
 }
-
-
-/// Used to serialize access to std::cout to avoid multiple threads writing at
-/// the same time.
-
-std::ostream& operator<<(std::ostream& os, SyncCout sc) {
-
-  static std::mutex m;
-
-  if (sc == IO_LOCK)
-      m.lock();
-
-  if (sc == IO_UNLOCK)
-      m.unlock();
-
-  return os;
-}
-
 
 /// Trampoline helper to avoid moving Logger to misc.h
 void start_logger(const std::string& fname) { Logger::start(fname); }
@@ -471,10 +458,11 @@ void aligned_large_pages_free(void* mem) {
   if (mem && !VirtualFree(mem, 0, MEM_RELEASE))
   {
       DWORD err = GetLastError();
-      std::cerr << "Failed to free large page memory. Error code: 0x"
+      std::stringstream stream;
+      stream << "Failed to free large page memory. Error code: 0x"
                 << std::hex << err
                 << std::dec << std::endl;
-      exit(EXIT_FAILURE);
+    throw std::runtime_error(stream.str();
   }
 }
 

@@ -135,8 +135,8 @@ vector<string> setup_bench(const Position& current, istream& is) {
 
       if (!file.is_open())
       {
-          cerr << "Unable to open file " << fenFile << endl;
-          exit(EXIT_FAILURE);
+          throw std::runtime_error("Unable to open file " + fenFile);
+          throw std::runtime_error("Unable to open file " + fenFile);
       }
 
       while (getline(file, fen))
@@ -157,16 +157,20 @@ vector<string> setup_bench(const Position& current, istream& is) {
           list.emplace_back(fen);
       else
       {
+#ifndef NNUE_EMBEDDING_OFF
           if (evalType == "classical" || (evalType == "mixed" && posCounter % 2 == 0))
               list.emplace_back("setoption name Use NNUE value false");
           else if (evalType == "NNUE" || (evalType == "mixed" && posCounter % 2 != 0))
               list.emplace_back("setoption name Use NNUE value true");
+#endif
           list.emplace_back("position fen " + fen);
           list.emplace_back(go);
           ++posCounter;
       }
 
+#ifndef NNUE_EMBEDDING_OFF
   list.emplace_back("setoption name Use NNUE value true");
+#endif
 
   return list;
 }

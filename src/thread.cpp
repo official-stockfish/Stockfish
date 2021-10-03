@@ -18,6 +18,7 @@
 
 #include <cassert>
 
+#include <iostream>
 #include <algorithm> // For std::count
 #include "movegen.h"
 #include "search.h"
@@ -77,9 +78,11 @@ void Thread::clear() {
 
 void Thread::start_searching() {
 
+std::cout << "start_searching lock_guard " << std::this_thread::get_id() << std::endl;
   std::lock_guard<std::mutex> lk(mutex);
   searching = true;
   cv.notify_one(); // Wake up the thread in idle_loop()
+std::cout << "start_searching lock_guard freed " << std::this_thread::get_id() << std::endl;
 }
 
 
@@ -88,8 +91,12 @@ void Thread::start_searching() {
 
 void Thread::wait_for_search_finished() {
 
+std::cout << "wait_for_search_finished unique_lock " << std::this_thread::get_id() << std::endl;
   std::unique_lock<std::mutex> lk(mutex);
+std::cout << "wait_for_search_finished cv.wait 1 " << std::this_thread::get_id() << std::endl;
   cv.wait(lk, [&]{ return !searching; });
+std::cout << "wait_for_search_finished cv.wait 1 done " << std::this_thread::get_id() << std::endl;
+  lk.unlock();
 }
 
 
@@ -108,17 +115,24 @@ void Thread::idle_loop() {
 
   while (true)
   {
+std::cout << "idle_loop unique_lock " << std::this_thread::get_id() << std::endl;
       std::unique_lock<std::mutex> lk(mutex);
       searching = false;
       cv.notify_one(); // Wake up anyone waiting for search finished
+std::cout << "idle_loop cv.wait " << std::this_thread::get_id() << std::endl;
       cv.wait(lk, [&]{ return searching; });
-
-      if (exit)
-          return;
+std::cout << "idle_loop cv.wait done " << std::this_thread::get_id() << std::endl;
 
       lk.unlock();
+      if (exit) {
+          break;
+      }
 
-      search();
+      try {
+        search();
+      } catch (const std::exception& e) {
+          sync_cerr << e.what() << sync_endl;     // report error and continue
+      }
   }
 }
 

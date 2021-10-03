@@ -16,7 +16,6 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <cassert>
 #include <cmath>
 #include <iostream>
 #include <sstream>
@@ -172,7 +171,7 @@ namespace {
 
         if (token == "go" || token == "eval")
         {
-            cerr << "\nPosition: " << cnt++ << '/' << num << " (" << pos.fen() << ")" << endl;
+            sync_cerr << "\nPosition: " << cnt++ << '/' << num << " (" << pos.fen() << ")" << sync_endl;
             if (token == "go")
             {
                go(pos, is, states);
@@ -191,10 +190,10 @@ namespace {
 
     dbg_print(); // Just before exiting
 
-    cerr << "\n==========================="
+    sync_cerr << "\n==========================="
          << "\nTotal time (ms) : " << elapsed
          << "\nNodes searched  : " << nodes
-         << "\nNodes/second    : " << 1000 * nodes / elapsed << endl;
+         << "\nNodes/second    : " << 1000 * nodes / elapsed << sync_endl;
   }
 
   // The win rate model returns the probability (per mille) of winning given an eval
@@ -222,35 +221,29 @@ namespace {
 } // namespace
 
 
-/// UCI::loop() waits for a command from stdin, parses it and calls the appropriate
-/// function. Also intercepts EOF from stdin to ensure gracefully exiting if the
-/// GUI dies unexpectedly. When called with some command line arguments, e.g. to
-/// run 'bench', once the command is executed the function returns immediately.
+static StateListPtr states(new std::deque<StateInfo>(1));
+static Position pos;
+
+void UCI::init_pos() {
+    pos.set(StartFEN, false, &states->back(), Threads.main());
+}
+
+/// UCI::execute parses the command and calls the appropriate function.
 /// In addition to the UCI ones, also some additional debug commands are supported.
-
-void UCI::loop(int argc, char* argv[]) {
-
-  Position pos;
-  string token, cmd;
-  StateListPtr states(new std::deque<StateInfo>(1));
-
-  pos.set(StartFEN, false, &states->back(), Threads.main());
-
-  for (int i = 1; i < argc; ++i)
-      cmd += std::string(argv[i]) + " ";
-
-  do {
-      if (argc == 1 && !getline(cin, cmd)) // Block here waiting for input or EOF
-          cmd = "quit";
+void UCI::execute(std::string cmd) {
+    try {
+      string token;
 
       istringstream is(cmd);
 
       token.clear(); // Avoid a stale if getline() returns empty or blank line
       is >> skipws >> token;
 
-      if (    token == "quit"
-          ||  token == "stop")
+      if (token == "quit"
+              || token == "stop") {
           Threads.stop = true;
+          Threads.set(0);
+      }
 
       // The GUI sends 'ponderhit' to tell us the user has played the expected move.
       // So 'ponderhit' will be sent if we were told to ponder on the same move the
@@ -286,9 +279,12 @@ void UCI::loop(int argc, char* argv[]) {
           Eval::NNUE::save_eval(filename);
       }
       else if (!token.empty() && token[0] != '#')
-          sync_cout << "Unknown command: " << cmd << sync_endl;
-
-  } while (token != "quit" && argc == 1); // Command line args are one-shot
+          throw std::invalid_argument("Unknown command: " + cmd);
+    } catch (const std::exception& e) {
+        sync_cerr << e.what() << sync_endl;
+    } catch(...) {
+        sync_cerr << "unknown error" << sync_endl;
+    }
 }
 
 
@@ -368,6 +364,8 @@ string UCI::move(Move m, bool chess960) {
 /// UCI::to_move() converts a string representing a move in coordinate notation
 /// (g1f3, a7a8q) to the corresponding legal Move, if any.
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wshadow"
 Move UCI::to_move(const Position& pos, string& str) {
 
   if (str.length() == 5) // Junior could send promotion piece in uppercase
@@ -379,5 +377,6 @@ Move UCI::to_move(const Position& pos, string& str) {
 
   return MOVE_NONE;
 }
+#pragma clang diagnostic pop
 
 } // namespace Stockfish

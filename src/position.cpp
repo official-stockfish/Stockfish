@@ -17,7 +17,6 @@
 */
 
 #include <algorithm>
-#include <cassert>
 #include <cstddef> // For offsetof()
 #include <cstring> // For std::memset, std::memcmp
 #include <iomanip>
@@ -55,7 +54,7 @@ constexpr Piece Pieces[] = { W_PAWN, W_KNIGHT, W_BISHOP, W_ROOK, W_QUEEN, W_KING
 
 /// operator<<(Position) returns an ASCII representation of the position
 
-std::ostream& operator<<(std::ostream& os, const Position& pos) {
+Outstream& operator<<(Outstream& os, const Position& pos) {
 
   os << "\n +---+---+---+---+---+---+---+---+\n";
 
@@ -67,10 +66,12 @@ std::ostream& operator<<(std::ostream& os, const Position& pos) {
       os << " | " << (1 + r) << "\n +---+---+---+---+---+---+---+---+\n";
   }
 
-  os << "   a   b   c   d   e   f   g   h\n"
-     << "\nFen: " << pos.fen() << "\nKey: " << std::hex << std::uppercase
-     << std::setfill('0') << std::setw(16) << pos.key()
-     << std::setfill(' ') << std::dec << "\nCheckers: ";
+  std::stringstream stream;
+  stream << "   a   b   c   d   e   f   g   h\n"
+      << "\nFen: " << pos.fen() << "\nKey: " << std::hex << std::uppercase
+      << std::setfill('0') << std::setw(16) << pos.key()
+      << std::setfill(' ') << std::dec << "\nCheckers: ";
+  os << stream.str();
 
   for (Bitboard b = pos.checkers(); b; )
       os << UCI::square(pop_lsb(b)) << " ";
@@ -86,8 +87,10 @@ std::ostream& operator<<(std::ostream& os, const Position& pos) {
       Tablebases::ProbeState s1, s2;
       Tablebases::WDLScore wdl = Tablebases::probe_wdl(p, &s1);
       int dtz = Tablebases::probe_dtz(p, &s2);
-      os << "\nTablebases WDL: " << std::setw(4) << wdl << " (" << s1 << ")"
+      stream.clear();
+      stream << "\nTablebases WDL: " << std::setw(4) << wdl << " (" << s1 << ")"
          << "\nTablebases DTZ: " << std::setw(4) << dtz << " (" << s2 << ")";
+      os << stream.str();
   }
 
   return os;

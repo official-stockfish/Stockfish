@@ -16,11 +16,10 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <cassert>
-
 #include "bitboard.h"
 #include "endgame.h"
 #include "movegen.h"
+#include "types.h"
 
 namespace Stockfish {
 
@@ -44,11 +43,9 @@ namespace {
   inline int push_close(Square s1, Square s2) { return 140 - 20 * distance(s1, s2); }
   inline int push_away(Square s1, Square s2) { return 120 - push_close(s1, s2); }
 
-#ifndef NDEBUG
   bool verify_material(const Position& pos, Color c, Value npm, int pawnsCnt) {
     return pos.non_pawn_material(c) == npm && pos.count<PAWN>(c) == pawnsCnt;
   }
-#endif
 
   // Map the square as if strongSide is white and strongSide's only pawn
   // is on the left half of the board.

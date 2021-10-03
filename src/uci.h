@@ -23,6 +23,10 @@
 #include <string>
 
 #include "types.h"
+#include "misc.h"
+
+int sf_init();
+void unblock_readers();
 
 namespace Stockfish {
 
@@ -59,7 +63,7 @@ public:
   bool operator==(const char*) const;
 
 private:
-  friend std::ostream& operator<<(std::ostream&, const OptionsMap&);
+  friend Outstream& operator<<(Outstream&, const OptionsMap&);
 
   std::string defaultValue, currentValue, type;
   int min, max;
@@ -68,7 +72,8 @@ private:
 };
 
 void init(OptionsMap&);
-void loop(int argc, char* argv[]);
+void init_pos();
+void execute(std::string cmd);
 std::string value(Value v);
 std::string square(Square s);
 std::string move(Move m, bool chess960);

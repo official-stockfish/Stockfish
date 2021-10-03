@@ -30,11 +30,12 @@
 
 using namespace Stockfish;
 
-int main(int argc, char* argv[]) {
+Outstream outstream, errstream;
+std::atomic<int> done = 0;
 
+int sf_init() {
   std::cout << engine_info() << std::endl;
 
-  CommandLine::init(argc, argv);
   UCI::init(Options);
   Tune::init();
   PSQT::init();
@@ -45,9 +46,103 @@ int main(int argc, char* argv[]) {
   Threads.set(size_t(Options["Threads"]));
   Search::clear(); // After threads are up
   Eval::NNUE::init();
-
-  UCI::loop(argc, argv);
-
-  Threads.set(0);
+  UCI::init_pos();
   return 0;
 }
+
+void unblock_readers() {
+    done = 1;
+    outstream.finish();
+    errstream.finish();
+}
+
+#ifndef jni
+/// input_reader() waits for a command from stdin and invokes UCI::execute()
+/// Also intercepts EOF from stdin to ensure gracefully exiting if the
+/// GUI dies unexpectedly.
+void input_reader() {
+    std::string cmd;
+    while (getline(std::cin, cmd)) {
+        UCI::execute(cmd);
+        if (cmd == "quit")
+            break;
+    }
+//    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+//    sync_cout << "done1" << sync_endl;	// need to unblock reader
+//    sync_cerr << "done" << sync_endl;	// need to unblock reader
+}
+
+void print_lines(std::string str, std::ostream& os) {
+    std::stringstream ss(str);
+    std::string line;
+
+    while(std::getline(ss, line, '\n')) {
+        os << line.c_str() << std::endl;
+    }
+}
+
+static std::mutex mutex_;
+
+void output_reader() {
+    while (!done) {
+//        while (!done || !outstream.empty()) {
+//        std::string res = outstream.read();
+        std::string res;
+        int len = outstream.read(res);
+        if (len < 0) {
+            break;
+        }
+//        print_lines(res, std::cout);
+        mutex_.lock();
+        std::cout << res;
+        mutex_.unlock();
+    }
+}
+
+void error_reader() {
+//    while (!done) {
+////        while (!done || !errstream.empty()) {
+//        print_lines(errstream.read(), std::cerr);
+//    }
+    while (!done) {
+//        while (!done || !outstream.empty()) {
+//        std::string res = outstream.read();
+        std::string res;
+        int len = errstream.read(res);
+        if (len < 0) {
+            break;
+        }
+//        print_lines(res, std::cerr);
+        mutex_.lock();
+        std::cerr << res;
+        mutex_.unlock();
+    }
+}
+
+/// When SF is called with some command line arguments, e.g. to
+/// run 'bench', once the command is executed the program stops.
+int main(int argc, char* argv[]) {
+    std::thread* input_reader_thread = NULL;
+    std::thread output_reader_thread(output_reader);
+    std::thread error_reader_thread(error_reader);
+
+    int res = sf_init();
+
+    if (argc > 1) {
+        std::string cmd;
+        for (int i = 1; i < argc; ++i)
+            cmd += std::string(argv[i]) + " ";
+        UCI::execute(cmd);
+    } else {
+        input_reader_thread = new std::thread(input_reader);
+        input_reader_thread->join();
+        delete input_reader_thread;
+    }
+    unblock_readers();
+//    sync_cout << sync_endl;	// need to unblock reader
+//    sync_cerr << sync_endl;	// need to unblock reader
+    output_reader_thread.join();
+    error_reader_thread.join();
+    return res;
+}
+#endif

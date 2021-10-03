@@ -19,7 +19,6 @@
 #ifndef POSITION_H_INCLUDED
 #define POSITION_H_INCLUDED
 
-#include <cassert>
 #include <deque>
 #include <memory> // For std::unique_ptr
 #include <string>
@@ -201,7 +200,7 @@ private:
   bool chess960;
 };
 
-extern std::ostream& operator<<(std::ostream& os, const Position& pos);
+extern Outstream& operator<<(Outstream&, const Position&);
 
 inline Color Position::side_to_move() const {
   return sideToMove;

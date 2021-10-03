@@ -20,10 +20,18 @@
 ### ==========================================================================
 
 ### Executable name
-ifeq ($(COMP),mingw)
-EXE = stockfish.exe
+ifeq ($(jni),yes)
+  ifeq ($(COMP),mingw)
+    EXE = stockfish.dll
+  else
+    EXE = stockfish.so
+  endif
 else
-EXE = stockfish
+  ifeq ($(COMP),mingw)
+    EXE = stockfish.exe
+  else
+    EXE = stockfish
+  endif
 endif
 
 ### Installation dir definitions
@@ -42,6 +50,9 @@ SRCS = benchmark.cpp bitbase.cpp bitboard.cpp endgame.cpp evaluate.cpp main.cpp 
 	material.cpp misc.cpp movegen.cpp movepick.cpp pawns.cpp position.cpp psqt.cpp \
 	search.cpp thread.cpp timeman.cpp tt.cpp uci.cpp ucioption.cpp tune.cpp syzygy/tbprobe.cpp \
 	nnue/evaluate_nnue.cpp nnue/features/half_ka_v2_hm.cpp
+ifeq ($(jni),yes)
+	SRCS += stockfishlib.cpp
+endif
 
 OBJS = $(notdir $(SRCS:.cpp=.o))
 
@@ -82,6 +93,8 @@ endif
 # vnni256 = yes/no    --- -mavx512vnni     --- Use Intel Vector Neural Network Instructions 256
 # vnni512 = yes/no    --- -mavx512vnni     --- Use Intel Vector Neural Network Instructions 512
 # neon = yes/no       --- -DUSE_NEON       --- Use ARM SIMD architecture
+# nnue = yes/no       --- -DNNUE_EMBEDDING_OFF --- Do not use NNUE
+# jni = yes           --- -DBUILD_JNI      --- Build SF as shared library for use with JNI
 #
 # Note that Makefile is space sensitive, so when adding new architectures
 # or modifying existing flags, you have to make sure there are no extra spaces
@@ -127,6 +140,7 @@ vnni256 = no
 vnni512 = no
 neon = no
 STRIP = strip
+nnue = yes
 
 ### 2.2 Architecture specific
 
@@ -315,7 +329,7 @@ endif
 ### ==========================================================================
 
 ### 3.1 Selecting compiler (default = gcc)
-CXXFLAGS += -Wall -Wcast-qual -fno-exceptions -std=c++17 $(EXTRACXXFLAGS)
+CXXFLAGS += -Wall -Wcast-qual -fexceptions -std=c++17 $(EXTRACXXFLAGS)
 DEPENDFLAGS += -std=c++17
 LDFLAGS += $(EXTRALDFLAGS)
 
@@ -412,6 +426,14 @@ ifeq ($(KERNEL),Darwin)
 		LDFLAGS += -arch $(arch)
 	endif
 	XCRUN = xcrun
+endif
+
+ifeq ($(nnue),no)
+    CXXFLAGS += -DNNUE_EMBEDDING_OFF
+endif
+
+ifeq ($(jni),yes)
+	CXXFLAGS += -shared -I${JAVA_HOME}/include -I${JAVA_HOME}/include/darwin
 endif
 
 # To cross-compile for Android, NDK version r21 or later is recommended.
@@ -717,6 +739,11 @@ help:
 	@echo "icc                     > Intel compiler"
 	@echo "ndk                     > Google NDK to cross-compile for Android"
 	@echo ""
+	@echo "Build options:"
+	@echo ""
+	@echo "nnue=no                 > Build SF without NNUE"
+	@echo "jni=yes"
+	@echo ""
 	@echo "Simple examples. If you don't know what to do, you likely want to run: "
 	@echo ""
 	@echo "make -j build ARCH=x86-64  (A portable, slow compile for 64-bit systems)"
@@ -774,6 +801,7 @@ clean: objclean profileclean
 
 # evaluation network (nnue)
 net:
+  ifneq ($(nnue),no)
 	$(eval nnuenet := $(shell grep EvalFileDefaultName evaluate.h | grep define | sed 's/.*\(nn-[a-z0-9]\{12\}.nnue\).*/\1/'))
 	@echo "Default net: $(nnuenet)"
 	$(eval nnuedownloadurl := https://tests.stockfishchess.org/api/nn/$(nnuenet))
@@ -795,6 +823,7 @@ net:
          else \
             echo "shasum / sha256sum not found, skipping net validation"; \
         fi
+  endif
 
 # clean binaries and objects
 objclean:
