@@ -47,6 +47,17 @@ Java_com_ab_pgn_stockfish_Stockfish__1init
 }
 
 /*
+* Class:     com_ab_pgn_stockfish_Stockfish
+* Method:    _quit
+* Signature: ()V
+*/
+JNIEXPORT void JNICALL
+Java_com_ab_pgn_stockfish_Stockfish__1quit
+    (JNIEnv *, jobject) {
+    unblock_readers();
+}
+
+/*
  * Class:     com_ab_pgn_stockfish_Stockfish
  * Method:    _write
  * Signature: (Ljava/lang/String;)V
@@ -56,6 +67,19 @@ Java_com_ab_pgn_stockfish_Stockfish__1write
     (JNIEnv *env, jobject, jstring _command) {
 	const char *cmd = env->GetStringUTFChars(_command, NULL);
     Stockfish::UCI::execute(cmd);
+    if (strcmp(cmd, "quit") == 0) {
+        unblock_readers();
+    }
+}
+
+jstring _read(JNIEnv *env, Outstream& os) {
+    std::string from_uci;
+    int len = os.read(from_uci);
+    jstring res = NULL;
+    if (len >= 0) {
+        res = env->NewStringUTF(from_uci.c_str());
+    }
+    return res;
 }
 
 /*
@@ -66,15 +90,7 @@ Java_com_ab_pgn_stockfish_Stockfish__1write
 JNIEXPORT jstring JNICALL
 Java_com_ab_pgn_stockfish_Stockfish__1read
     (JNIEnv *env, jobject) {
-printf("outstream.read() blocking\n");
-    std::string from_uci;
-    int len = outstream.read(from_uci);
-printf("outstream.read() unblocked\n");
-    jstring res;
-    if (len >= 0) {
-        res = env->NewStringUTF(from_uci.c_str());
-    }
-    return res;
+     return _read(env, outstream);
 }
 
 /*
@@ -85,17 +101,7 @@ printf("outstream.read() unblocked\n");
 JNIEXPORT jstring JNICALL
 Java_com_ab_pgn_stockfish_Stockfish__1read_1err
         (JNIEnv *env, jobject) {
-//    std::string from_uci = errstream.read();
-//    jstring res = env->NewStringUTF(from_uci.c_str());
-//    return res;
-    std::string from_uci;
-    int len = errstream.read(from_uci);
-    printf("errstream.read() unblocked\n");
-    jstring res;
-    if (len >= 0) {
-        res = env->NewStringUTF(from_uci.c_str());
-    }
-    return res;
+    return _read(env, errstream);
 }
 
 #ifdef __cplusplus

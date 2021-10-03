@@ -742,7 +742,7 @@ help:
 	@echo "Build options:"
 	@echo ""
 	@echo "nnue=no                 > Build SF without NNUE"
-	@echo "jni=yes"
+	@echo "jni=yes                 > Build SF as shared library for JVI, don't forget to specify JAVA_HOME"
 	@echo ""
 	@echo "Simple examples. If you don't know what to do, you likely want to run: "
 	@echo ""
