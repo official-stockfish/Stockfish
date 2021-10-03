@@ -68,9 +68,9 @@ namespace {
   // Reductions lookup table, initialized at startup
   int Reductions[MAX_MOVES]; // [depth or moveNumber]
 
-  Depth reduction(bool i, Depth d, int mn) {
+  Depth reduction(bool i, Depth d, int mn, bool rangeReduction) {
     int r = Reductions[d] * Reductions[mn];
-    return (r + 534) / 1024 + (!i && r > 904);
+    return (r + 534) / 1024 + (!i && r > 904) + rangeReduction;
   }
 
   constexpr int futility_move_count(bool improving, Depth depth) {
@@ -172,7 +172,7 @@ namespace {
 void Search::init() {
 
   for (int i = 1; i < MAX_MOVES; ++i)
-      Reductions[i] = int(21.9 * std::log(i));
+      Reductions[i] = int((21.9 + std::log(Threads.size()) / 2) * std::log(i));
 }
 
 
@@ -953,6 +953,7 @@ namespace {
 moves_loop: // When in check, search starts here
 
     ttCapture = ttMove && pos.capture_or_promotion(ttMove);
+    int rangeReduction = 0;
 
     // Step 11. A small Probcut idea, when we are in check
     probCutBeta = beta + 409;
@@ -1040,7 +1041,7 @@ moves_loop: // When in check, search starts here
           moveCountPruning = moveCount >= futility_move_count(improving, depth);
 
           // Reduced depth of the next LMR search
-          int lmrDepth = std::max(newDepth - reduction(improving, depth, moveCount), 0);
+          int lmrDepth = std::max(newDepth - reduction(improving, depth, moveCount, rangeReduction > 2), 0);
 
           if (   captureOrPromotion
               || givesCheck)
@@ -1123,7 +1124,8 @@ moves_loop: // When in check, search starts here
               return singularBeta;
 
           // If the eval of ttMove is greater than beta we try also if there is another
-          // move that pushes it over beta, if so also produce a cutoff.
+          // move that pushes it over beta, if so the position also has probably multiple
+          // moves giving fail highs. We will then reduce the ttMove (negative extension).
           else if (ttValue >= beta)
           {
               ss->excludedMove = move;
@@ -1131,7 +1133,7 @@ moves_loop: // When in check, search starts here
               ss->excludedMove = MOVE_NONE;
 
               if (value >= beta)
-                  return beta;
+                  extension = -2;
           }
       }
 
@@ -1144,7 +1146,14 @@ moves_loop: // When in check, search starts here
       // Check extensions
       else if (   givesCheck
                && depth > 6
-               && abs(ss->staticEval) > Value(100))
+               && abs(ss->staticEval) > 100)
+          extension = 1;
+
+      // Quiet ttMove extensions
+      else if (   PvNode
+               && move == ttMove
+               && move == ss->killers[0]
+               && (*contHist[0])[movedPiece][to_sq(move)] >= 10000)
           extension = 1;
 
       // Add extension to new depth
@@ -1175,7 +1184,7 @@ moves_loop: // When in check, search starts here
               || !ss->ttPv)
           && (!PvNode || ss->ply > 1 || thisThread->id() % 4 != 3))
       {
-          Depth r = reduction(improving, depth, moveCount);
+          Depth r = reduction(improving, depth, moveCount, rangeReduction > 2);
 
           if (PvNode)
               r--;
@@ -1220,11 +1229,10 @@ moves_loop: // When in check, search starts here
           // Decrease/increase reduction for moves with a good/bad history (~30 Elo)
           r -= ss->statScore / 14721;
 
-          // In general we want to cap the LMR depth search at newDepth. But if
-          // reductions are really negative and movecount is low, we allow this move
-          // to be searched deeper than the first move in specific cases (note that
-          // this may lead to hidden double extensions if newDepth got it own extension
-          // before).
+          // In general we want to cap the LMR depth search at newDepth. But if reductions
+          // are really negative and movecount is low, we allow this move to be searched
+          // deeper than the first move (this may lead to hidden double extensions if
+          // newDepth got its own extension before).
           int deeper =   r >= -1               ? 0
                        : noLMRExtension        ? 0
                        : moveCount <= 5        ? 1
@@ -1234,6 +1242,10 @@ moves_loop: // When in check, search starts here
           Depth d = std::clamp(newDepth - r, 1, newDepth + deeper);
 
           value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, d, true);
+
+          // Range reductions (~3 Elo)
+          if (ss->staticEval - value < 30 && depth > 7)
+              rangeReduction++;
 
           // If the son is reduced and fails high it will be re-searched at full depth
           doFullDepthSearch = value > alpha && d < newDepth;
