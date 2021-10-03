@@ -16,8 +16,6 @@
 
 */
 
-//#include </Library/Java/JavaVirtualMachines/jdk-9.0.1.jdk/Contents/Home/include/jni.h>
-//#include </Library/Java/JavaVirtualMachines/jdk-9.0.1.jdk/Contents/Home/include/darwin/jni_md.h>
 #include <jni.h>
 #include <unistd.h>
 #include <stdlib.h>
