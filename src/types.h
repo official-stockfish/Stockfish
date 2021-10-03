@@ -65,14 +65,6 @@
 
 int throw_exception(const char* func, const char* file, int line, const char* msg);
 
-//#define DEBUG
-//#ifdef DEBUG
-//#define DEBUG_PRINT(x) printf x
-//#else
-//#define DEBUG_PRINT(x)
-//#endif
-#define _DEBUG_PRINT(x)
-
 #undef assert
 #define	assert(e) \
     (__builtin_expect(!(e), 0) ? (void)throw_exception(__func__, __FILE__, __LINE__, #e) : (void)0)

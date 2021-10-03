@@ -78,11 +78,9 @@ void Thread::clear() {
 
 void Thread::start_searching() {
 
-std::cout << "start_searching lock_guard " << std::this_thread::get_id() << std::endl;
   std::lock_guard<std::mutex> lk(mutex);
   searching = true;
   cv.notify_one(); // Wake up the thread in idle_loop()
-std::cout << "start_searching lock_guard freed " << std::this_thread::get_id() << std::endl;
 }
 
 
@@ -91,12 +89,8 @@ std::cout << "start_searching lock_guard freed " << std::this_thread::get_id() <
 
 void Thread::wait_for_search_finished() {
 
-std::cout << "wait_for_search_finished unique_lock " << std::this_thread::get_id() << std::endl;
   std::unique_lock<std::mutex> lk(mutex);
-std::cout << "wait_for_search_finished cv.wait 1 " << std::this_thread::get_id() << std::endl;
   cv.wait(lk, [&]{ return !searching; });
-std::cout << "wait_for_search_finished cv.wait 1 done " << std::this_thread::get_id() << std::endl;
-  lk.unlock();
 }
 
 
@@ -112,21 +106,18 @@ void Thread::idle_loop() {
   // NUMA machinery is not needed.
   if (Options["Threads"] > 8)
       WinProcGroup::bindThisThread(idx);
-std::cout << "idle_loop start " << std::this_thread::get_id() << std::endl;
+
   while (true)
   {
-std::cout << "idle_loop unique_lock " << std::this_thread::get_id() << std::endl;
       std::unique_lock<std::mutex> lk(mutex);
       searching = false;
       cv.notify_one(); // Wake up anyone waiting for search finished
-std::cout << "idle_loop cv.wait " << std::this_thread::get_id() << std::endl;
       cv.wait(lk, [&]{ return searching; });
-std::cout << "idle_loop cv.wait done " << std::this_thread::get_id() << std::endl;
+
+      if (exit)
+          break;
 
       lk.unlock();
-      if (exit) {
-          break;
-      }
 
       try {
         search();
@@ -134,7 +125,6 @@ std::cout << "idle_loop cv.wait done " << std::this_thread::get_id() << std::end
           sync_cerr << e.what() << sync_endl;     // report error and continue
       }
   }
-std::cout << "idle_loop ended " << std::this_thread::get_id() << std::endl;
 }
 
 /// ThreadPool::set() creates/destroys threads to match the requested number.

@@ -23,7 +23,6 @@
 #include "position.h"
 #include "psqt.h"
 #include "search.h"
-#include "syzygy/tbprobe.h"
 #include "thread.h"
 #include "tt.h"
 #include "uci.h"
@@ -34,8 +33,7 @@ Outstream outstream, errstream;
 std::atomic<int> done = 0;
 
 int sf_init() {
-  std::cout << engine_info() << std::endl;
-
+  sync_cout << engine_info() << sync_endl;
   UCI::init(Options);
   Tune::init();
   PSQT::init();
@@ -67,32 +65,17 @@ void input_reader() {
         if (cmd == "quit")
             break;
     }
-//    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-//    sync_cout << "done1" << sync_endl;	// need to unblock reader
-//    sync_cerr << "done" << sync_endl;	// need to unblock reader
-}
-
-void print_lines(std::string str, std::ostream& os) {
-    std::stringstream ss(str);
-    std::string line;
-
-    while(std::getline(ss, line, '\n')) {
-        os << line.c_str() << std::endl;
-    }
 }
 
 static std::mutex mutex_;
 
 void output_reader() {
     while (!done) {
-//        while (!done || !outstream.empty()) {
-//        std::string res = outstream.read();
         std::string res;
         int len = outstream.read(res);
         if (len < 0) {
             break;
         }
-//        print_lines(res, std::cout);
         mutex_.lock();
         std::cout << res;
         mutex_.unlock();
@@ -100,19 +83,12 @@ void output_reader() {
 }
 
 void error_reader() {
-//    while (!done) {
-////        while (!done || !errstream.empty()) {
-//        print_lines(errstream.read(), std::cerr);
-//    }
     while (!done) {
-//        while (!done || !outstream.empty()) {
-//        std::string res = outstream.read();
         std::string res;
         int len = errstream.read(res);
         if (len < 0) {
             break;
         }
-//        print_lines(res, std::cerr);
         mutex_.lock();
         std::cerr << res;
         mutex_.unlock();
@@ -122,7 +98,6 @@ void error_reader() {
 /// When SF is called with some command line arguments, e.g. to
 /// run 'bench', once the command is executed the program stops.
 int main(int argc, char* argv[]) {
-    std::thread* input_reader_thread = NULL;
     std::thread output_reader_thread(output_reader);
     std::thread error_reader_thread(error_reader);
 
@@ -134,9 +109,8 @@ int main(int argc, char* argv[]) {
             cmd += std::string(argv[i]) + " ";
         UCI::execute(cmd);
     } else {
-        input_reader_thread = new std::thread(input_reader);
-        input_reader_thread->join();
-        delete input_reader_thread;
+        std::thread input_reader_thread(input_reader);
+        input_reader_thread.join();
     }
     unblock_readers();
     output_reader_thread.join();

@@ -31,13 +31,6 @@
 
 #include "types.h"
 
-//#define DEBUG
-//#ifdef DEBUG
-//#define DEBUG_PRINT(x) printf x
-//#else
-//#define DEBUG_PRINT(x)
-//#endif
-
 enum SyncCout { IO_LOCK, IO_UNLOCK };
 #define sync_endl IO_UNLOCK
 /*
@@ -54,10 +47,7 @@ public:
             return -1;
         } else {
             std::unique_lock<std::mutex> mlock(mutex_);
-            _DEBUG_PRINT("read() cond_.wait\n");
             cond_.wait(mlock);
-//        cond_.wait(mlock, [this]{return !buf_.empty();});
-            _DEBUG_PRINT("read() unblocked\n");
             if (done) {
                 mlock.unlock();
                 return -1;
@@ -69,12 +59,7 @@ public:
         }
     }
 
-//    bool empty() {
-//        return buf_.empty();
-//    }
-
     void finish() {
-        std::cout << "finish!!!" << std::endl;
         done = true;
         cond_.notify_one();
     }
@@ -83,9 +68,7 @@ public:
         if (sc == IO_LOCK) {
             std::thread::id current_thread_id = std::this_thread::get_id();
             if (current_thread_id != owner_thread_id) {
-                _DEBUG_PRINT("locking mutex_\n");
                 mutex_.lock();
-                _DEBUG_PRINT("mutex_ locked\n");
                 owner_thread_id = current_thread_id;
             }
         }
@@ -115,12 +98,6 @@ public:
     }
 
 private:
-//    std::string get_buf() {
-//        std::string res(buf_);
-//        buf_.clear();
-//        return res;
-//    }
-
     const std::thread::id no_thread_id;
     std::mutex mutex_;
     std::thread::id owner_thread_id;
