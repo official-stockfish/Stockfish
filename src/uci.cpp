@@ -365,8 +365,6 @@ string UCI::move(Move m, bool chess960) {
 /// UCI::to_move() converts a string representing a move in coordinate notation
 /// (g1f3, a7a8q) to the corresponding legal Move, if any.
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wshadow"
 Move UCI::to_move(const Position& pos, string& str) {
 
   if (str.length() == 5) // Junior could send promotion piece in uppercase
@@ -378,6 +376,5 @@ Move UCI::to_move(const Position& pos, string& str) {
 
   return MOVE_NONE;
 }
-#pragma clang diagnostic pop
 
 } // namespace Stockfish
