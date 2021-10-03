@@ -28,6 +28,7 @@
 #include <cstdint>
 #include <mutex>
 #include <thread>
+#include <condition_variable>
 
 #include "types.h"
 
