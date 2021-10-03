@@ -239,10 +239,11 @@ void UCI::execute(std::string cmd) {
       token.clear(); // Avoid a stale if getline() returns empty or blank line
       is >> skipws >> token;
 
-      if (token == "quit"
-              || token == "stop") {
+      if (token == "quit") {
           Threads.stop = true;
           Threads.set(0);
+      } else if (token == "stop") {
+          Threads.stop = true;
       }
 
       // The GUI sends 'ponderhit' to tell us the user has played the expected move.

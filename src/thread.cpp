@@ -112,7 +112,7 @@ void Thread::idle_loop() {
   // NUMA machinery is not needed.
   if (Options["Threads"] > 8)
       WinProcGroup::bindThisThread(idx);
-
+std::cout << "idle_loop start " << std::this_thread::get_id() << std::endl;
   while (true)
   {
 std::cout << "idle_loop unique_lock " << std::this_thread::get_id() << std::endl;
@@ -134,6 +134,7 @@ std::cout << "idle_loop cv.wait done " << std::this_thread::get_id() << std::end
           sync_cerr << e.what() << sync_endl;     // report error and continue
       }
   }
+std::cout << "idle_loop ended " << std::this_thread::get_id() << std::endl;
 }
 
 /// ThreadPool::set() creates/destroys threads to match the requested number.

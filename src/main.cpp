@@ -139,8 +139,6 @@ int main(int argc, char* argv[]) {
         delete input_reader_thread;
     }
     unblock_readers();
-//    sync_cout << sync_endl;	// need to unblock reader
-//    sync_cerr << sync_endl;	// need to unblock reader
     output_reader_thread.join();
     error_reader_thread.join();
     return res;
