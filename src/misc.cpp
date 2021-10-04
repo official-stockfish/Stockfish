@@ -466,7 +466,7 @@ void aligned_large_pages_free(void* mem) {
       stream << "Failed to free large page memory. Error code: 0x"
                 << std::hex << err
                 << std::dec << std::endl;
-    throw std::runtime_error(stream.str();
+    throw std::runtime_error(stream.str());
   }
 }
 
