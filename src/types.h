@@ -64,13 +64,14 @@
 #define ASSERT_ALIGNED(ptr, alignment) assert(reinterpret_cast<uintptr_t>(ptr) % alignment == 0)
 
 int throw_exception(const char* func, const char* file, int line, const char* msg);
+int check_expect(int actual, int expect);
 
 #undef assert
 #define	assert(e) \
-    (__builtin_expect(!(e), 0) ? (void)throw_exception(__func__, __FILE__, __LINE__, #e) : (void)0)
+    (check_expect(!(e), 0) ? (void)0 : (void)throw_exception(__func__, __FILE__, __LINE__, #e))
 // TODO: replace non-informative assert with assert_m
 #define	assert_m(e, m) \
-    (__builtin_expect(!(e), 0) ? (void)throw_exception(__func__, __FILE__, __LINE__, #m) : (void)0)
+    (check_expect(!(e), 0) ? (void)0 : (void)throw_exception(__func__, __FILE__, __LINE__, #m))
 
 #if defined(_WIN64) && defined(_MSC_VER) // No Makefile used
 #  include <intrin.h> // Microsoft header for _BitScanForward64()

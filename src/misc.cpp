@@ -65,6 +65,10 @@ int throw_exception(const char* func, const char* file, int line, const char* ms
     return 0;
 }
 
+int check_expect(int actual, int expect) {
+    return actual == expect;
+}
+
 using namespace std;
 
 namespace Stockfish {

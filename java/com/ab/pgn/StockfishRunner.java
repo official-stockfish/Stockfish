@@ -17,6 +17,10 @@
 package com.ab.pgn;
 
 import com.ab.pgn.stockfish.Stockfish;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.Scanner;
 
 public class StockfishRunner {
@@ -26,17 +30,15 @@ public class StockfishRunner {
         stockfish = new Stockfish(path);
     }
 
-    void input_reader() {
-        Scanner scanner = ScannerHolder.getScanner();
-        System.out.print("Enter Stockfish commands:");
+    void input_reader() throws IOException {
+        BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+        System.out.println("Enter Stockfish commands:");
 
-        while (scanner.hasNext()) {
-            String cmd = scanner.next();
+        String cmd;
+        do {
+            cmd = reader.readLine();
             stockfish.write(cmd);
-            if (cmd.equals("quit")) {
-                break;
-            }
-        }
+        } while (!"quit".equals(cmd));
     }
 
     void output_reader() {
@@ -54,7 +56,13 @@ public class StockfishRunner {
     }
 
     public void run() throws InterruptedException {
-        Thread inputThread = new Thread(() -> input_reader());
+        Thread inputThread = new Thread(() -> {
+            try {
+                input_reader();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        });
         inputThread.start();
 
         Thread outputThread = new Thread(() -> output_reader());
@@ -67,12 +75,4 @@ public class StockfishRunner {
         outputThread.join();
         errorThread.join();
     }
-
-    private static class ScannerHolder {
-        private static final Scanner scanner = new Scanner(System.in);  // singleton
-        private static Scanner getScanner() {
-            return scanner;
-        }
-    }
-
 }
