@@ -246,7 +246,7 @@ public:
         {
             std::stringstream stream;
             stream << "Corrupt tablebase file " << fname << std::endl;
-            throw std::runtime_error(stream.str();
+            throw std::runtime_error(stream.str());
         }
 
         HANDLE mmap = CreateFileMapping(fd, nullptr, PAGE_READONLY, size_high, size_low, nullptr);
