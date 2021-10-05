@@ -1314,9 +1314,11 @@ moves_loop: // When in check, search starts here
               for (Move* m = (ss+1)->pv; *m != MOVE_NONE; ++m)
                   rm.pv.push_back(*m);
 
-              // We record how often the best move has been changed in each
-              // iteration. This information is used for time management and LMR
-              if (moveCount > 1)
+              // We record how often the best move has been changed in each iteration.
+              // This information is used for time management and LMR. In MultiPV mode,
+              // we must take care to only do this for the first PV line.
+              if (   moveCount > 1
+                  && !thisThread->pvIdx)
                   ++thisThread->bestMoveChanges;
           }
           else
