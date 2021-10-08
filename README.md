@@ -1,3 +1,24 @@
+## Preamble
+The main goal of my work is to build Stockfish as a shared library,
+so that it can be used with the latest Android SDK (currently 30).
+Additionally, I replaced all 'exit' statements with exceptions and
+removed the large nnue file download from build when nnue is opted out.<br>
+This repository is a fork from the official Stockfish repository 
+and most probably it will stay this way. 
+SF people think that the suggested updates are too large which is
+probably true, considering that I had to change the program architecture.
+I tried my best to minimize the code impact, but apparently I failed.<br>
+It is possible to split this work into smaller, more manageable
+parts, but to think that each update will cause the long discussion,
+taking into account that most SF people believe that it is ok for
+a program to crash and some other differences of opinions, I have decided 
+to leave it as is.<br>
+To prove the concept, I created a simple GUI-minimalistic Android
+program that is built with SDK 30. It does not verify any user's input
+(which is intentional), but non the less it should not crash. 
+<b>If it still  crashes, it's all on me. 
+Please report it and I'll fix it ASAIC.</b>
+
 ## Overview
 
 [![Build Status](https://github.com/official-stockfish/Stockfish/actions/workflows/stockfish.yml/badge.svg)](https://github.com/official-stockfish/Stockfish/actions)
