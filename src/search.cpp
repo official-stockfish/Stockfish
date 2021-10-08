@@ -591,13 +591,13 @@ namespace {
     bool captureOrPromotion, doFullDepthSearch, moveCountPruning,
          ttCapture, singularQuietLMR, noLMRExtension;
     Piece movedPiece;
-    int moveCount, captureCount, quietCount;
+    int moveCount, captureCount, quietCount, bestMoveCount;
 
     // Step 1. Initialize node
     ss->inCheck        = pos.checkers();
     priorCapture       = pos.captured_piece();
     Color us           = pos.side_to_move();
-    moveCount          = captureCount = quietCount = ss->moveCount = 0;
+    moveCount          = bestMoveCount = captureCount = quietCount = ss->moveCount = 0;
     bestValue          = -VALUE_INFINITE;
     maxValue           = VALUE_INFINITE;
 
@@ -1186,8 +1186,9 @@ moves_loop: // When in check, search starts here
       {
           Depth r = reduction(improving, depth, moveCount, rangeReduction > 2);
 
-          // Decrease reduction if on the PV (~1 Elo)
-          if (PvNode)
+          // Decrease reduction if on the PV (~2 Elo)
+          if (   PvNode
+              && bestMoveCount <= 3)
               r--;
 
           // Decrease reduction if the ttHit running average is large (~0 Elo)
@@ -1340,7 +1341,10 @@ moves_loop: // When in check, search starts here
                   update_pv(ss->pv, move, (ss+1)->pv);
 
               if (PvNode && value < beta) // Update alpha! Always alpha < beta
+              {
                   alpha = value;
+                  bestMoveCount++;
+              }
               else
               {
                   assert(value >= beta); // Fail high
