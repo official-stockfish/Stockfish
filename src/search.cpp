@@ -1123,18 +1123,9 @@ moves_loop: // When in check, search starts here
           else if (singularBeta >= beta)
               return singularBeta;
 
-          // If the eval of ttMove is greater than beta we try also if there is another
-          // move that pushes it over beta, if so the position also has probably multiple
-          // moves giving fail highs. We will then reduce the ttMove (negative extension).
+          // If the eval of ttMove is greater than beta, we reduce it (negative extension)
           else if (ttValue >= beta)
-          {
-              ss->excludedMove = move;
-              value = search<NonPV>(pos, ss, beta - 1, beta, (depth + 3) / 2, cutNode);
-              ss->excludedMove = MOVE_NONE;
-
-              if (value >= beta)
-                  extension = -2;
-          }
+              extension = -2;
       }
 
       // Capture extensions for PvNodes and cutNodes
