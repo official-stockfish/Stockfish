@@ -332,7 +332,6 @@ void Thread::search() {
 
   multiPV = std::min(multiPV, rootMoves.size());
 
-  ttHitAverage.set(50, 100);                  // initialize the running average at 50%
   doubleExtensionAverage[WHITE].set(0, 100);  // initialize the running average at 0%
   doubleExtensionAverage[BLACK].set(0, 100);  // initialize the running average at 0%
 
@@ -669,9 +668,6 @@ namespace {
         && !priorCapture
         && is_ok((ss-1)->currentMove))
         thisThread->lowPlyHistory[ss->ply - 1][from_to((ss-1)->currentMove)] << stat_bonus(depth - 5);
-
-    // running average of ttHit
-    thisThread->ttHitAverage.update(ss->ttHit);
 
     // At non-PV nodes we check for an early TT cutoff
     if (  !PvNode
@@ -1180,10 +1176,6 @@ moves_loop: // When in check, search starts here
           // Decrease reduction if on the PV (~2 Elo)
           if (   PvNode
               && bestMoveCount <= 3)
-              r--;
-
-          // Decrease reduction if the ttHit running average is large (~0 Elo)
-          if (thisThread->ttHitAverage.is_greater(537, 1024))
               r--;
 
           // Decrease reduction if position is or has been on the PV
