@@ -1219,13 +1219,13 @@ moves_loop: // When in check, search starts here
 
           // In general we want to cap the LMR depth search at newDepth. But if reductions
           // are really negative and movecount is low, we allow this move to be searched
-          // deeper than the first move (this may lead to hidden double extensions if
-          // newDepth got its own extension before).
-          int deeper =   r >= -1               ? 0
-                       : noLMRExtension        ? 0
-                       : moveCount <= 5        ? 1
-                       : (depth > 6 && PvNode) ? 1
-                       :                         0;
+          // deeper than the first move (this may lead to hidden double extensions).
+          int deeper =   r >= -1                   ? 0
+                       : noLMRExtension            ? 0
+                       : moveCount <= 3 && r <= -3 ? 2
+                       : moveCount <= 5            ? 1
+                       : PvNode && depth > 6       ? 1
+                       :                             0;
 
           Depth d = std::clamp(newDepth - r, 1, newDepth + deeper);
 
