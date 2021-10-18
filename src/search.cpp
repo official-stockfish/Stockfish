@@ -893,19 +893,16 @@ namespace {
         assert(probCutBeta < VALUE_INFINITE);
 
         MovePicker mp(pos, ttMove, probCutBeta - ss->staticEval, &captureHistory);
-        int probCutCount = 0;
         bool ttPv = ss->ttPv;
         ss->ttPv = false;
 
-        while (   (move = mp.next_move()) != MOVE_NONE
-               && probCutCount < 2 + 2 * cutNode)
+        while ((move = mp.next_move()) != MOVE_NONE)
             if (move != excludedMove && pos.legal(move))
             {
                 assert(pos.capture_or_promotion(move));
                 assert(depth >= 5);
 
                 captureOrPromotion = true;
-                probCutCount++;
 
                 ss->currentMove = move;
                 ss->continuationHistory = &thisThread->continuationHistory[ss->inCheck]
