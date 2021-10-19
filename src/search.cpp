@@ -92,8 +92,7 @@ namespace {
   ExplosionState search_explosion(Thread* thisThread) {
 
     uint64_t nodesNow = thisThread->nodes;
-    bool explosive =    thisThread->doubleExtensionAverage[WHITE].is_greater(2, 100)
-                     || thisThread->doubleExtensionAverage[BLACK].is_greater(2, 100);
+    bool explosive = thisThread->doubleExtensionAverage.is_greater(1, 100);
 
     if (explosive)
        thisThread->nodesLastExplosive = nodesNow;
@@ -332,8 +331,7 @@ void Thread::search() {
 
   multiPV = std::min(multiPV, rootMoves.size());
 
-  doubleExtensionAverage[WHITE].set(0, 100);  // initialize the running average at 0%
-  doubleExtensionAverage[BLACK].set(0, 100);  // initialize the running average at 0%
+  doubleExtensionAverage.set(0, 100);  // initialize the running average at 0%
 
   nodesLastExplosive = nodes;
   nodesLastNormal    = nodes;
@@ -639,7 +637,7 @@ namespace {
     Square prevSq        = to_sq((ss-1)->currentMove);
 
     // Update the running average statistics for double extensions
-    thisThread->doubleExtensionAverage[us].update(ss->depth > (ss-1)->depth);
+    thisThread->doubleExtensionAverage.update(ss->depth > (ss-1)->depth);
 
     // Initialize statScore to zero for the grandchildren of the current position.
     // So statScore is shared between all grandchildren and only the first grandchild
