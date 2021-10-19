@@ -111,22 +111,6 @@ class RunningAverage {
       int64_t average;
 };
 
-
-template <typename T>
-class ValueListInserter {
-public:
-  ValueListInserter(T* v, std::size_t& s) :
-    values(v),
-    size(&s)
-  {
-  }
-
-  void push_back(const T& value) { values[(*size)++] = value; }
-private:
-  T* values;
-  std::size_t* size;
-};
-
 template <typename T, std::size_t MaxSize>
 class ValueList {
 
@@ -140,7 +124,6 @@ public:
   const T& operator[](std::size_t index) const { return values_[index]; }
   const T* begin() const { return values_; }
   const T* end() const { return values_ + size_; }
-  operator ValueListInserter<T>() { return ValueListInserter(values_, size_); }
 
   void swap(ValueList& other) {
     const std::size_t maxSize = std::max(size_, other.size_);
