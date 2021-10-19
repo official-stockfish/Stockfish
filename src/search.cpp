@@ -787,11 +787,7 @@ namespace {
     }
     else
     {
-        // In case of null move search use previous static eval with a different sign
-        if ((ss-1)->currentMove != MOVE_NULL)
-            ss->staticEval = eval = evaluate(pos);
-        else
-            ss->staticEval = eval = -(ss-1)->staticEval;
+        ss->staticEval = eval = evaluate(pos);
 
         // Save static evaluation into transposition table
         if(!excludedMove)
