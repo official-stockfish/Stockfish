@@ -790,8 +790,8 @@ namespace {
         ss->staticEval = eval = evaluate(pos);
 
         // Save static evaluation into transposition table
-        if(!excludedMove)
-        tte->save(posKey, VALUE_NONE, ss->ttPv, BOUND_NONE, DEPTH_NONE, MOVE_NONE, eval);
+        if (!excludedMove)
+            tte->save(posKey, VALUE_NONE, ss->ttPv, BOUND_NONE, DEPTH_NONE, MOVE_NONE, eval);
     }
 
     // Use static evaluation difference to improve quiet move ordering
@@ -1210,11 +1210,11 @@ moves_loop: // When in check, search starts here
           // In general we want to cap the LMR depth search at newDepth. But if reductions
           // are really negative and movecount is low, we allow this move to be searched
           // deeper than the first move (this may lead to hidden double extensions).
-          int deeper =   r >= -1                   ? 0
-                       : moveCount <= 3 && r <= -3 ? 2
-                       : moveCount <= 5            ? 1
-                       : PvNode && depth > 6       ? 1
-                       :                             0;
+          int deeper =   r >= -1             ? 0
+                       : moveCount <= 3      ? 2
+                       : moveCount <= 5      ? 1
+                       : PvNode && depth > 6 ? 1
+                       :                       0;
 
           Depth d = std::clamp(newDepth - r, 1, newDepth + deeper);
 
