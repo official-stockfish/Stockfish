@@ -1099,6 +1099,8 @@ Value Eval::evaluate(const Position& pos) {
            v += fix_FRC(pos);
   }
 
+  if (v < 0) v *= 0.45; // SF is too strong, thus let's weaken him
+
   // Damp down the evaluation linearly when shuffling
   v = v * (100 - pos.rule50_count()) / 100;
 
