@@ -39,7 +39,7 @@ namespace Stockfish::Eval::NNUE::Features {
   void HalfKAv2_hm::append_active_indices(
     const Position& pos,
     Color perspective,
-    ValueListInserter<IndexType> active
+    IndexList& active
   ) {
     Square ksq = pos.square<KING>(perspective);
     Bitboard bb = pos.pieces();
@@ -55,22 +55,20 @@ namespace Stockfish::Eval::NNUE::Features {
 
   void HalfKAv2_hm::append_changed_indices(
     Square ksq,
-    StateInfo* st,
+    const DirtyPiece& dp,
     Color perspective,
-    ValueListInserter<IndexType> removed,
-    ValueListInserter<IndexType> added
+    IndexList& removed,
+    IndexList& added
   ) {
-    const auto& dp = st->dirtyPiece;
     for (int i = 0; i < dp.dirty_num; ++i) {
-      Piece pc = dp.piece[i];
       if (dp.from[i] != SQ_NONE)
-        removed.push_back(make_index(perspective, dp.from[i], pc, ksq));
+        removed.push_back(make_index(perspective, dp.from[i], dp.piece[i], ksq));
       if (dp.to[i] != SQ_NONE)
-        added.push_back(make_index(perspective, dp.to[i], pc, ksq));
+        added.push_back(make_index(perspective, dp.to[i], dp.piece[i], ksq));
     }
   }
 
-  int HalfKAv2_hm::update_cost(StateInfo* st) {
+  int HalfKAv2_hm::update_cost(const StateInfo* st) {
     return st->dirtyPiece.dirty_num;
   }
 
@@ -78,7 +76,7 @@ namespace Stockfish::Eval::NNUE::Features {
     return pos.count<ALL_PIECES>();
   }
 
-  bool HalfKAv2_hm::requires_refresh(StateInfo* st, Color perspective) {
+  bool HalfKAv2_hm::requires_refresh(const StateInfo* st, Color perspective) {
     return st->dirtyPiece.piece[0] == make_piece(perspective, KING);
   }
 

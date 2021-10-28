@@ -143,6 +143,7 @@ namespace Stockfish::Eval::NNUE {
     // overaligning stack variables with alignas() doesn't work correctly.
 
     constexpr uint64_t alignment = CacheLineSize;
+    int delta = 7;
 
 #if defined(ALIGNAS_ON_STACK_VARIABLES_BROKEN)
     TransformedFeatureType transformedFeaturesUnaligned[
@@ -162,20 +163,14 @@ namespace Stockfish::Eval::NNUE {
 
     const std::size_t bucket = (pos.count<ALL_PIECES>() - 1) / 4;
     const auto psqt = featureTransformer->transform(pos, transformedFeatures, bucket);
-    const auto output = network[bucket]->propagate(transformedFeatures, buffer);
+    const auto positional = network[bucket]->propagate(transformedFeatures, buffer)[0];
 
-    int materialist = psqt;
-    int positional  = output[0];
-
-    int delta_npm = abs(pos.non_pawn_material(WHITE) - pos.non_pawn_material(BLACK));
-    int entertainment = (adjusted && delta_npm <= RookValueMg - BishopValueMg ? 7 : 0);
-
-    int A = 128 - entertainment;
-    int B = 128 + entertainment;
-
-    int sum = (A * materialist + B * positional) / 128;
-
-    return static_cast<Value>( sum / OutputScale );
+    // Give more value to positional evaluation when material is balanced
+    if (   adjusted
+        && abs(pos.non_pawn_material(WHITE) - pos.non_pawn_material(BLACK)) <= RookValueMg - BishopValueMg)
+      return  static_cast<Value>(((128 - delta) * psqt + (128 + delta) * positional) / 128 / OutputScale);
+    else
+      return static_cast<Value>((psqt + positional) / OutputScale);
   }
 
   struct NnueEvalTrace {

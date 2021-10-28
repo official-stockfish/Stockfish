@@ -1016,9 +1016,9 @@ void Position::do_null_move(StateInfo& newSt) {
   }
 
   st->key ^= Zobrist::side;
+  ++st->rule50;
   prefetch(TT.first_entry(key()));
 
-  ++st->rule50;
   st->pliesFromNull = 0;
 
   sideToMove = ~sideToMove;

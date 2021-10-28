@@ -60,7 +60,6 @@ public:
   Pawns::Table pawnsTable;
   Material::Table materialTable;
   size_t pvIdx, pvLast;
-  RunningAverage ttHitAverage;
   RunningAverage doubleExtensionAverage[COLOR_NB];
   uint64_t nodesLastExplosive;
   uint64_t nodesLastNormal;
