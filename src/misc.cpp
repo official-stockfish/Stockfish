@@ -123,8 +123,7 @@ public:
 
         if (!l.file.is_open())
         {
-            cerr << "Unable to open debug log file " << fname << endl;
-            exit(EXIT_FAILURE);
+            throw std::runtime_error("Unable to open debug log file " + fname);
         }
 
         cin.rdbuf(&l.in);
@@ -471,10 +470,11 @@ void aligned_large_pages_free(void* mem) {
   if (mem && !VirtualFree(mem, 0, MEM_RELEASE))
   {
       DWORD err = GetLastError();
-      std::cerr << "Failed to free large page memory. Error code: 0x"
-                << std::hex << err
-                << std::dec << std::endl;
-      exit(EXIT_FAILURE);
+      std::stringstream stream;
+      stream << "Failed to free large page memory. Error code: 0x"
+             << std::hex << err
+             << std::dec << std::endl;
+      throw std::runtime_error(stream.str());
   }
 }
 

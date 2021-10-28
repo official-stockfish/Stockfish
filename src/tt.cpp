@@ -18,6 +18,7 @@
 
 #include <cstring>   // For std::memset
 #include <iostream>
+#include <sstream>
 #include <thread>
 
 #include "bitboard.h"
@@ -71,9 +72,10 @@ void TranspositionTable::resize(size_t mbSize) {
   table = static_cast<Cluster*>(aligned_large_pages_alloc(clusterCount * sizeof(Cluster)));
   if (!table)
   {
-      std::cerr << "Failed to allocate " << mbSize
-                << "MB for transposition table." << std::endl;
-      exit(EXIT_FAILURE);
+      std::stringstream stream;
+      stream << "Failed to allocate " << mbSize
+             << "MB for transposition table.";
+      throw std::runtime_error(stream.str());
   }
 
   clear();

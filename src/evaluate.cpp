@@ -125,20 +125,13 @@ namespace Eval {
 
     if (useNNUE && currentEvalFileName != eval_file)
     {
-
-        string msg1 = "If the UCI option \"Use NNUE\" is set to true, network evaluation parameters compatible with the engine must be available.";
-        string msg2 = "The option is set to true, but the network file " + eval_file + " was not loaded successfully.";
-        string msg3 = "The UCI option EvalFile might need to specify the full path, including the directory name, to the network file.";
-        string msg4 = "The default net can be downloaded from: https://tests.stockfishchess.org/api/nn/" + std::string(EvalFileDefaultName);
-        string msg5 = "The engine will be terminated now.";
-
-        sync_cout << "info string ERROR: " << msg1 << sync_endl;
-        sync_cout << "info string ERROR: " << msg2 << sync_endl;
-        sync_cout << "info string ERROR: " << msg3 << sync_endl;
-        sync_cout << "info string ERROR: " << msg4 << sync_endl;
-        sync_cout << "info string ERROR: " << msg5 << sync_endl;
-
-        exit(EXIT_FAILURE);
+        std::stringstream stream;
+        stream
+            << "info string ERROR: If the UCI option \"Use NNUE\" is set to true, network evaluation parameters compatible with the engine must be available." << std::endl
+            << "info string ERROR: The option is set to true, but the network file " + eval_file + " was not loaded successfully." << std::endl
+            << "info string ERROR: The UCI option EvalFile might need to specify the full path, including the directory name, to the network file." << std::endl
+            << "info string ERROR: The default net can be downloaded from: https://tests.stockfishchess.org/api/nn/" + std::string(EvalFileDefaultName);
+        throw std::runtime_error(stream.str());
     }
 
     if (useNNUE)

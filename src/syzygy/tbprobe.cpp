@@ -217,9 +217,7 @@ public:
 
         if (statbuf.st_size % 64 != 16)
         {
-            std::cerr << "Corrupt tablebase file " << fname << std::endl;
-            exit(EXIT_FAILURE);
-        }
+            throw std::runtime_error("Corrupt tablebase file " + fname);        }
 
         *mapping = statbuf.st_size;
         *baseAddress = mmap(nullptr, statbuf.st_size, PROT_READ, MAP_SHARED, fd, 0);
@@ -230,8 +228,9 @@ public:
 
         if (*baseAddress == MAP_FAILED)
         {
-            std::cerr << "Could not mmap() " << fname << std::endl;
-            exit(EXIT_FAILURE);
+            std::stringstream stream;
+            stream << "Could not mmap() " << fname;
+            throw std::runtime_error(stream.str());
         }
 #else
         // Note FILE_FLAG_RANDOM_ACCESS is only a hint to Windows and as such may get ignored.
@@ -246,8 +245,7 @@ public:
 
         if (size_low % 64 != 16)
         {
-            std::cerr << "Corrupt tablebase file " << fname << std::endl;
-            exit(EXIT_FAILURE);
+            throw std::runtime_error("Corrupt tablebase file " + fname);
         }
 
         HANDLE mmap = CreateFileMapping(fd, nullptr, PAGE_READONLY, size_high, size_low, nullptr);
@@ -255,8 +253,7 @@ public:
 
         if (!mmap)
         {
-            std::cerr << "CreateFileMapping() failed" << std::endl;
-            exit(EXIT_FAILURE);
+            throw std::runtime_error("CreateFileMapping() failed");
         }
 
         *mapping = (uint64_t)mmap;
@@ -264,9 +261,10 @@ public:
 
         if (!*baseAddress)
         {
-            std::cerr << "MapViewOfFile() failed, name = " << fname
-                      << ", error = " << GetLastError() << std::endl;
-            exit(EXIT_FAILURE);
+            std::stringstream stream;
+            stream << "MapViewOfFile() failed, name = " << fname
+                   << ", error = " << GetLastError() << std::endl;
+            throw std::runtime_error(stream.str());
         }
 #endif
         uint8_t* data = (uint8_t*)*baseAddress;
@@ -445,8 +443,7 @@ class TBTables {
                 homeBucket = otherHomeBucket;
             }
         }
-        std::cerr << "TB hash table size too low!" << std::endl;
-        exit(EXIT_FAILURE);
+        throw std::runtime_error("TB hash table size too low!");
     }
 
 public:
