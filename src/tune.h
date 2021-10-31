@@ -46,27 +46,6 @@ struct SetRange {
 #define SetDefaultRange SetRange(default_range)
 
 
-/// BoolConditions struct is used to tune boolean conditions in the
-/// code by toggling them on/off according to a probability that
-/// depends on the value of a tuned integer parameter: for high
-/// values of the parameter condition is always disabled, for low
-/// values is always enabled, otherwise it is enabled with a given
-/// probability that depnends on the parameter under tuning.
-
-struct BoolConditions {
-  void init(size_t size) { values.resize(size, defaultValue), binary.resize(size, 0); }
-  void set();
-
-  std::vector<int> binary, values;
-  int defaultValue = 465, variance = 40, threshold = 500;
-  SetRange range = SetRange(0, 1000);
-};
-
-extern BoolConditions Conditions;
-
-inline void set_conditions() { Conditions.set(); }
-
-
 /// Tune class implements the 'magic' code that makes the setup of a fishtest
 /// tuning session as easy as it can be. Mainly you have just to remove const
 /// qualifiers from the variables you want to tune and flag them for tuning, so
@@ -159,14 +138,6 @@ class Tune {
     return add(value, (next(names), std::move(names)), args...);
   }
 
-  // Template specialization for BoolConditions
-  template<typename... Args>
-  int add(const SetRange& range, std::string&& names, BoolConditions& cond, Args&&... args) {
-    for (size_t size = cond.values.size(), i = 0; i < size; i++)
-        add(cond.range, next(names, i == size - 1) + "_" + std::to_string(i), cond.values[i]);
-    return add(range, std::move(names), args...);
-  }
-
   std::vector<std::unique_ptr<EntryBase>> list;
 
 public:
@@ -186,11 +157,6 @@ public:
 #define TUNE(...) int UNIQUE(p, __LINE__) = Tune::add(STRINGIFY((__VA_ARGS__)), __VA_ARGS__)
 
 #define UPDATE_ON_LAST() bool UNIQUE(p, __LINE__) = Tune::update_on_last = true
-
-// Some macro to tune toggling of boolean conditions
-#define CONDITION(x) (Conditions.binary[__COUNTER__] || (x))
-#define TUNE_CONDITIONS() int UNIQUE(c, __LINE__) = (Conditions.init(__COUNTER__), 0); \
-                          TUNE(Conditions, set_conditions)
 
 } // namespace Stockfish
 

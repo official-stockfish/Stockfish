@@ -22,13 +22,141 @@
 #define NNUE_LAYERS_AFFINE_TRANSFORM_H_INCLUDED
 
 #include <iostream>
+#include <algorithm>
+#include <type_traits>
 #include "../nnue_common.h"
+#include "../../simd.h"
+
+/*
+  This file contains the definition for a fully connected layer (aka affine transform).
+  Two approaches are employed, depending on the sizes of the transform.
+
+  Approach 1:
+    - used when the PaddedInputDimensions >= 128
+    - uses AVX512 if possible
+    - processes inputs in batches of 2*InputSimdWidth
+      - so in batches of 128 for AVX512
+    - the weight blocks of size InputSimdWidth are transposed such that
+      access is sequential
+    - N columns of the weight matrix are processed a time, where N
+      depends on the architecture (the amount of registers)
+    - accumulate + hadd is used
+
+  Approach 2:
+    - used when the PaddedInputDimensions < 128
+    - does not use AVX512
+    - expected use-case is for when PaddedInputDimensions == 32 and InputDimensions <= 32.
+      - that's why AVX512 is hard to implement
+    - expected use-case is small layers
+      - not optimized as well as the approach 1
+    - inputs are processed in chunks of 4, weights are respectively transposed
+    - accumulation happens directly to int32s
+*/
 
 namespace Stockfish::Eval::NNUE::Layers {
 
-  // Affine transformation layer
-  template <typename PreviousLayer, IndexType OutputDimensions>
-  class AffineTransform {
+// Fallback implementation for older/other architectures.
+// Identical for both approaches. Requires the input to be padded to at least 16 values.
+#if !defined(USE_SSSE3)
+  template <IndexType InputDimensions, IndexType PaddedInputDimensions, IndexType OutputDimensions>
+  static void affine_transform_non_ssse3(std::int32_t* output, const std::int8_t* weights, const std::int32_t* biases, const std::uint8_t* input)
+  {
+# if defined(USE_SSE2)
+    // At least a multiple of 16, with SSE2.
+    static_assert(PaddedInputDimensions % 16 == 0);
+    constexpr IndexType NumChunks = PaddedInputDimensions / 16;
+    const __m128i Zeros = _mm_setzero_si128();
+    const auto inputVector = reinterpret_cast<const __m128i*>(input);
+
+# elif defined(USE_MMX)
+    static_assert(InputDimensions % 8 == 0);
+    constexpr IndexType NumChunks = InputDimensions / 8;
+    const __m64 Zeros = _mm_setzero_si64();
+    const auto inputVector = reinterpret_cast<const __m64*>(input);
+
+# elif defined(USE_NEON)
+    static_assert(PaddedInputDimensions % 16 == 0);
+    constexpr IndexType NumChunks = PaddedInputDimensions / 16;
+    const auto inputVector = reinterpret_cast<const int8x8_t*>(input);
+# endif
+
+    for (IndexType i = 0; i < OutputDimensions; ++i) {
+      const IndexType offset = i * PaddedInputDimensions;
+
+# if defined(USE_SSE2)
+      __m128i sumLo = _mm_cvtsi32_si128(biases[i]);
+      __m128i sumHi = Zeros;
+      const auto row = reinterpret_cast<const __m128i*>(&weights[offset]);
+      for (IndexType j = 0; j < NumChunks; ++j) {
+        __m128i row_j = _mm_load_si128(&row[j]);
+        __m128i input_j = _mm_load_si128(&inputVector[j]);
+        __m128i extendedRowLo = _mm_srai_epi16(_mm_unpacklo_epi8(row_j, row_j), 8);
+        __m128i extendedRowHi = _mm_srai_epi16(_mm_unpackhi_epi8(row_j, row_j), 8);
+        __m128i extendedInputLo = _mm_unpacklo_epi8(input_j, Zeros);
+        __m128i extendedInputHi = _mm_unpackhi_epi8(input_j, Zeros);
+        __m128i productLo = _mm_madd_epi16(extendedRowLo, extendedInputLo);
+        __m128i productHi = _mm_madd_epi16(extendedRowHi, extendedInputHi);
+        sumLo = _mm_add_epi32(sumLo, productLo);
+        sumHi = _mm_add_epi32(sumHi, productHi);
+      }
+      __m128i sum = _mm_add_epi32(sumLo, sumHi);
+      __m128i sumHigh_64 = _mm_shuffle_epi32(sum, _MM_SHUFFLE(1, 0, 3, 2));
+      sum = _mm_add_epi32(sum, sumHigh_64);
+      __m128i sum_second_32 = _mm_shufflelo_epi16(sum, _MM_SHUFFLE(1, 0, 3, 2));
+      sum = _mm_add_epi32(sum, sum_second_32);
+      output[i] = _mm_cvtsi128_si32(sum);
+
+# elif defined(USE_MMX)
+      __m64 sumLo = _mm_cvtsi32_si64(biases[i]);
+      __m64 sumHi = Zeros;
+      const auto row = reinterpret_cast<const __m64*>(&weights[offset]);
+      for (IndexType j = 0; j < NumChunks; ++j) {
+        __m64 row_j = row[j];
+        __m64 input_j = inputVector[j];
+        __m64 extendedRowLo = _mm_srai_pi16(_mm_unpacklo_pi8(row_j, row_j), 8);
+        __m64 extendedRowHi = _mm_srai_pi16(_mm_unpackhi_pi8(row_j, row_j), 8);
+        __m64 extendedInputLo = _mm_unpacklo_pi8(input_j, Zeros);
+        __m64 extendedInputHi = _mm_unpackhi_pi8(input_j, Zeros);
+        __m64 productLo = _mm_madd_pi16(extendedRowLo, extendedInputLo);
+        __m64 productHi = _mm_madd_pi16(extendedRowHi, extendedInputHi);
+        sumLo = _mm_add_pi32(sumLo, productLo);
+        sumHi = _mm_add_pi32(sumHi, productHi);
+      }
+      __m64 sum = _mm_add_pi32(sumLo, sumHi);
+      sum = _mm_add_pi32(sum, _mm_unpackhi_pi32(sum, sum));
+      output[i] = _mm_cvtsi64_si32(sum);
+
+# elif defined(USE_NEON)
+      int32x4_t sum = {biases[i]};
+      const auto row = reinterpret_cast<const int8x8_t*>(&weights[offset]);
+      for (IndexType j = 0; j < NumChunks; ++j) {
+        int16x8_t product = vmull_s8(inputVector[j * 2], row[j * 2]);
+        product = vmlal_s8(product, inputVector[j * 2 + 1], row[j * 2 + 1]);
+        sum = vpadalq_s16(sum, product);
+      }
+      output[i] = sum[0] + sum[1] + sum[2] + sum[3];
+
+# else
+      std::int32_t sum = biases[i];
+      for (IndexType j = 0; j < InputDimensions; ++j) {
+        sum += weights[offset + j] * input[j];
+      }
+      output[i] = sum;
+# endif
+    }
+
+# if defined(USE_MMX)
+    _mm_empty();
+# endif
+  }
+#endif
+
+  template <typename PreviousLayer, IndexType OutDims, typename Enabled = void>
+  class AffineTransform;
+
+  // A specialization for large inputs.
+  template <typename PreviousLayer, IndexType OutDims>
+  class AffineTransform<PreviousLayer, OutDims, std::enable_if_t<(PreviousLayer::OutputDimensions >= 2*64-1)>> {
    public:
     // Input/output type
     using InputType = typename PreviousLayer::OutputType;
@@ -36,396 +164,197 @@ namespace Stockfish::Eval::NNUE::Layers {
     static_assert(std::is_same<InputType, std::uint8_t>::value, "");
 
     // Number of input/output dimensions
-    static constexpr IndexType kInputDimensions =
-        PreviousLayer::kOutputDimensions;
-    static constexpr IndexType kOutputDimensions = OutputDimensions;
-    static constexpr IndexType kPaddedInputDimensions =
-        CeilToMultiple<IndexType>(kInputDimensions, kMaxSimdWidth);
+    static constexpr IndexType InputDimensions = PreviousLayer::OutputDimensions;
+    static constexpr IndexType OutputDimensions = OutDims;
+
+    static constexpr IndexType PaddedInputDimensions =
+      ceil_to_multiple<IndexType>(InputDimensions, MaxSimdWidth);
+
+    static_assert(PaddedInputDimensions >= 128, "Something went wrong. This specialization should not have been chosen.");
+
 #if defined (USE_AVX512)
-    static constexpr const IndexType kOutputSimdWidth = kSimdWidth / 2;
+    static constexpr const IndexType InputSimdWidth = 64;
+    static constexpr const IndexType MaxNumOutputRegs = 16;
+#elif defined (USE_AVX2)
+    static constexpr const IndexType InputSimdWidth = 32;
+    static constexpr const IndexType MaxNumOutputRegs = 8;
 #elif defined (USE_SSSE3)
-    static constexpr const IndexType kOutputSimdWidth = kSimdWidth / 4;
+    static constexpr const IndexType InputSimdWidth = 16;
+    static constexpr const IndexType MaxNumOutputRegs = 8;
+#else
+    // The fallback implementation will not have permuted weights.
+    // We define these to avoid a lot of ifdefs later.
+    static constexpr const IndexType InputSimdWidth = 1;
+    static constexpr const IndexType MaxNumOutputRegs = 1;
 #endif
+
+    // A big block is a region in the weight matrix of the size [PaddedInputDimensions, NumOutputRegs].
+    // A small block is a region of size [InputSimdWidth, 1]
+
+    static constexpr const IndexType NumOutputRegs = std::min(MaxNumOutputRegs, OutputDimensions);
+    static constexpr const IndexType SmallBlockSize = InputSimdWidth;
+    static constexpr const IndexType BigBlockSize = NumOutputRegs * PaddedInputDimensions;
+    static constexpr const IndexType NumSmallBlocksInBigBlock = BigBlockSize / SmallBlockSize;
+    static constexpr const IndexType NumSmallBlocksPerOutput = PaddedInputDimensions / SmallBlockSize;
+    static constexpr const IndexType NumBigBlocks = OutputDimensions / NumOutputRegs;
+
+    static_assert(OutputDimensions % NumOutputRegs == 0);
 
     // Size of forward propagation buffer used in this layer
-    static constexpr std::size_t kSelfBufferSize =
-        CeilToMultiple(kOutputDimensions * sizeof(OutputType), kCacheLineSize);
+    static constexpr std::size_t SelfBufferSize =
+      ceil_to_multiple(OutputDimensions * sizeof(OutputType), CacheLineSize);
 
     // Size of the forward propagation buffer used from the input layer to this layer
-    static constexpr std::size_t kBufferSize =
-        PreviousLayer::kBufferSize + kSelfBufferSize;
+    static constexpr std::size_t BufferSize =
+      PreviousLayer::BufferSize + SelfBufferSize;
 
     // Hash value embedded in the evaluation file
-    static constexpr std::uint32_t GetHashValue() {
-      std::uint32_t hash_value = 0xCC03DAE4u;
-      hash_value += kOutputDimensions;
-      hash_value ^= PreviousLayer::GetHashValue() >> 1;
-      hash_value ^= PreviousLayer::GetHashValue() << 31;
-      return hash_value;
+    static constexpr std::uint32_t get_hash_value() {
+      std::uint32_t hashValue = 0xCC03DAE4u;
+      hashValue += OutputDimensions;
+      hashValue ^= PreviousLayer::get_hash_value() >> 1;
+      hashValue ^= PreviousLayer::get_hash_value() << 31;
+      return hashValue;
     }
 
-   // Read network parameters
-    bool ReadParameters(std::istream& stream) {
-      if (!previous_layer_.ReadParameters(stream)) return false;
-      for (std::size_t i = 0; i < kOutputDimensions; ++i)
-        biases_[i] = read_little_endian<BiasType>(stream);
-      for (std::size_t i = 0; i < kOutputDimensions * kPaddedInputDimensions; ++i)
-#if !defined (USE_SSSE3)
-        weights_[i] = read_little_endian<WeightType>(stream);
-#else
-        weights_[
-          (i / 4) % (kPaddedInputDimensions / 4) * kOutputDimensions * 4 +
-          i / kPaddedInputDimensions * 4 +
-          i % 4
-        ] = read_little_endian<WeightType>(stream);
+    /*
+      Transposes the small blocks within a block.
+      Effectively means that weights can be traversed sequentially during inference.
+    */
+    static IndexType get_weight_index(IndexType i)
+    {
+      const IndexType smallBlock = (i / SmallBlockSize) % NumSmallBlocksInBigBlock;
+      const IndexType smallBlockCol = smallBlock / NumSmallBlocksPerOutput;
+      const IndexType smallBlockRow = smallBlock % NumSmallBlocksPerOutput;
+      const IndexType bigBlock   = i / BigBlockSize;
+      const IndexType rest       = i % SmallBlockSize;
 
-      // Determine if eights of weight and input products can be summed using 16bits
-      // without saturation. We assume worst case combinations of 0 and 127 for all inputs.
-      if (kOutputDimensions > 1 && !stream.fail())
-      {
-          canSaturate16.count = 0;
-#if !defined(USE_VNNI)
-          for (IndexType i = 0; i < kPaddedInputDimensions; i += 16)
-              for (IndexType j = 0; j < kOutputDimensions; ++j)
-                  for (int x = 0; x < 2; ++x)
-                  {
-                      WeightType* w = &weights_[i * kOutputDimensions + j * 4 + x * 2];
-                      int sum[2] = {0, 0};
-                      for (int k = 0; k < 8; ++k)
-                      {
-                          IndexType idx = k / 2 * kOutputDimensions * 4 + k % 2;
-                          sum[w[idx] < 0] += w[idx];
-                      }
-                      for (int sign : {-1, 1})
-                          while (sign * sum[sign == -1] > 258)
-                          {
-                              int maxK = 0, maxW = 0;
-                              for (int k = 0; k < 8; ++k)
-                              {
-                                  IndexType idx = k / 2 * kOutputDimensions * 4 + k % 2;
-                                  if (maxW < sign * w[idx])
-                                      maxK = k, maxW = sign * w[idx];
-                              }
+      const IndexType idx =
+          bigBlock * BigBlockSize
+        + smallBlockRow * SmallBlockSize * NumOutputRegs
+        + smallBlockCol * SmallBlockSize
+        + rest;
 
-                              IndexType idx = maxK / 2 * kOutputDimensions * 4 + maxK % 2;
-                              sum[sign == -1] -= w[idx];
-                              canSaturate16.add(j, i + maxK / 2 * 4 + maxK % 2 + x * 2, w[idx]);
-                              w[idx] = 0;
-                          }
-                  }
+      return idx;
+    }
 
-          // Non functional optimization for faster more linear access
-          std::sort(canSaturate16.ids, canSaturate16.ids + canSaturate16.count,
-                    [](const typename CanSaturate::Entry& e1, const typename CanSaturate::Entry& e2)
-                    { return e1.in == e2.in ? e1.out < e2.out : e1.in < e2.in; });
-#endif
-      }
-#endif
+    // Read network parameters
+    bool read_parameters(std::istream& stream) {
+      if (!previousLayer.read_parameters(stream)) return false;
+      for (std::size_t i = 0; i < OutputDimensions; ++i)
+        biases[i] = read_little_endian<BiasType>(stream);
+
+      for (std::size_t i = 0; i < OutputDimensions * PaddedInputDimensions; ++i)
+        weights[get_weight_index(i)] = read_little_endian<WeightType>(stream);
+
+      return !stream.fail();
+    }
+
+    // Write network parameters
+    bool write_parameters(std::ostream& stream) const {
+      if (!previousLayer.write_parameters(stream)) return false;
+      for (std::size_t i = 0; i < OutputDimensions; ++i)
+          write_little_endian<BiasType>(stream, biases[i]);
+
+      for (std::size_t i = 0; i < OutputDimensions * PaddedInputDimensions; ++i)
+        write_little_endian<WeightType>(stream, weights[get_weight_index(i)]);
 
       return !stream.fail();
     }
 
     // Forward propagation
-    const OutputType* Propagate(
-        const TransformedFeatureType* transformed_features, char* buffer) const {
-      const auto input = previous_layer_.Propagate(
-          transformed_features, buffer + kSelfBufferSize);
-
-#if defined (USE_AVX512)
-
-      [[maybe_unused]] const __m512i kOnes512 = _mm512_set1_epi16(1);
-
-      [[maybe_unused]] auto m512_hadd = [](__m512i sum, int bias) -> int {
-        return _mm512_reduce_add_epi32(sum) + bias;
-      };
-
-      [[maybe_unused]] auto m512_add_dpbusd_epi32 = [=](__m512i& acc, __m512i a, __m512i b) {
-#if defined (USE_VNNI)
-        acc = _mm512_dpbusd_epi32(acc, a, b);
-#else
-        __m512i product0 = _mm512_maddubs_epi16(a, b);
-        product0 = _mm512_madd_epi16(product0, kOnes512);
-        acc = _mm512_add_epi32(acc, product0);
-#endif
-      };
-
-      [[maybe_unused]] auto m512_add_dpbusd_epi32x4 = [=](__m512i& acc, __m512i a0, __m512i b0, __m512i a1, __m512i b1,
-                                                                        __m512i a2, __m512i b2, __m512i a3, __m512i b3) {
-#if defined (USE_VNNI)
-        acc = _mm512_dpbusd_epi32(acc, a0, b0);
-        acc = _mm512_dpbusd_epi32(acc, a1, b1);
-        acc = _mm512_dpbusd_epi32(acc, a2, b2);
-        acc = _mm512_dpbusd_epi32(acc, a3, b3);
-#else
-        __m512i product0 = _mm512_maddubs_epi16(a0, b0);
-        __m512i product1 = _mm512_maddubs_epi16(a1, b1);
-        __m512i product2 = _mm512_maddubs_epi16(a2, b2);
-        __m512i product3 = _mm512_maddubs_epi16(a3, b3);
-        product0 = _mm512_add_epi16(product0, product1);
-        product2 = _mm512_add_epi16(product2, product3);
-        product0 = _mm512_add_epi16(product0, product2);
-        product0 = _mm512_madd_epi16(product0, kOnes512);
-        acc = _mm512_add_epi32(acc, product0);
-#endif
-      };
-
-#endif
-#if defined (USE_AVX2)
-
-      [[maybe_unused]] const __m256i kOnes256 = _mm256_set1_epi16(1);
-
-      [[maybe_unused]] auto m256_hadd = [](__m256i sum, int bias) -> int {
-        __m128i sum128 = _mm_add_epi32(_mm256_castsi256_si128(sum), _mm256_extracti128_si256(sum, 1));
-        sum128 = _mm_add_epi32(sum128, _mm_shuffle_epi32(sum128, _MM_PERM_BADC));
-        sum128 = _mm_add_epi32(sum128, _mm_shuffle_epi32(sum128, _MM_PERM_CDAB));
-        return _mm_cvtsi128_si32(sum128) + bias;
-      };
-
-      [[maybe_unused]] auto m256_add_dpbusd_epi32 = [=](__m256i& acc, __m256i a, __m256i b) {
-#if defined (USE_VNNI)
-        acc = _mm256_dpbusd_epi32(acc, a, b);
-#else
-        __m256i product0 = _mm256_maddubs_epi16(a, b);
-        product0 = _mm256_madd_epi16(product0, kOnes256);
-        acc = _mm256_add_epi32(acc, product0);
-#endif
-      };
-
-      [[maybe_unused]] auto m256_add_dpbusd_epi32x4 = [=](__m256i& acc, __m256i a0, __m256i b0, __m256i a1, __m256i b1,
-                                                                        __m256i a2, __m256i b2, __m256i a3, __m256i b3) {
-#if defined (USE_VNNI)
-        acc = _mm256_dpbusd_epi32(acc, a0, b0);
-        acc = _mm256_dpbusd_epi32(acc, a1, b1);
-        acc = _mm256_dpbusd_epi32(acc, a2, b2);
-        acc = _mm256_dpbusd_epi32(acc, a3, b3);
-#else
-        __m256i product0 = _mm256_maddubs_epi16(a0, b0);
-        __m256i product1 = _mm256_maddubs_epi16(a1, b1);
-        __m256i product2 = _mm256_maddubs_epi16(a2, b2);
-        __m256i product3 = _mm256_maddubs_epi16(a3, b3);
-        product0 = _mm256_add_epi16(product0, product1);
-        product2 = _mm256_add_epi16(product2, product3);
-        product0 = _mm256_add_epi16(product0, product2);
-        product0 = _mm256_madd_epi16(product0, kOnes256);
-        acc = _mm256_add_epi32(acc, product0);
-#endif
-      };
-
-#endif
-#if defined (USE_SSSE3)
-
-      [[maybe_unused]] const __m128i kOnes128 = _mm_set1_epi16(1);
-
-      [[maybe_unused]] auto m128_hadd = [](__m128i sum, int bias) -> int {
-        sum = _mm_add_epi32(sum, _mm_shuffle_epi32(sum, 0x4E)); //_MM_PERM_BADC
-        sum = _mm_add_epi32(sum, _mm_shuffle_epi32(sum, 0xB1)); //_MM_PERM_CDAB
-        return _mm_cvtsi128_si32(sum) + bias;
-      };
-
-      [[maybe_unused]] auto m128_add_dpbusd_epi32 = [=](__m128i& acc, __m128i a, __m128i b) {
-        __m128i product0 = _mm_maddubs_epi16(a, b);
-        product0 = _mm_madd_epi16(product0, kOnes128);
-        acc = _mm_add_epi32(acc, product0);
-      };
-
-      [[maybe_unused]] auto m128_add_dpbusd_epi32x4 = [=](__m128i& acc, __m128i a0, __m128i b0, __m128i a1, __m128i b1,
-                                                                        __m128i a2, __m128i b2, __m128i a3, __m128i b3) {
-        __m128i product0 = _mm_maddubs_epi16(a0, b0);
-        __m128i product1 = _mm_maddubs_epi16(a1, b1);
-        __m128i product2 = _mm_maddubs_epi16(a2, b2);
-        __m128i product3 = _mm_maddubs_epi16(a3, b3);
-        product0 = _mm_adds_epi16(product0, product1);
-        product2 = _mm_adds_epi16(product2, product3);
-        product0 = _mm_adds_epi16(product0, product2);
-        product0 = _mm_madd_epi16(product0, kOnes128);
-        acc = _mm_add_epi32(acc, product0);
-      };
-
-#endif
+    const OutputType* propagate(
+        const TransformedFeatureType* transformedFeatures, char* buffer) const {
+      const auto input = previousLayer.propagate(
+        transformedFeatures, buffer + SelfBufferSize);
+      OutputType* output = reinterpret_cast<OutputType*>(buffer);
 
 #if defined (USE_AVX512)
       using vec_t = __m512i;
       #define vec_setzero _mm512_setzero_si512
       #define vec_set_32 _mm512_set1_epi32
-      auto& vec_add_dpbusd_32 = m512_add_dpbusd_epi32;
-      auto& vec_add_dpbusd_32x4 = m512_add_dpbusd_epi32x4;
-      auto& vec_hadd = m512_hadd;
+      #define vec_add_dpbusd_32 Simd::m512_add_dpbusd_epi32
+      #define vec_add_dpbusd_32x2 Simd::m512_add_dpbusd_epi32x2
+      #define vec_hadd Simd::m512_hadd
+      #define vec_haddx4 Simd::m512_haddx4
 #elif defined (USE_AVX2)
       using vec_t = __m256i;
       #define vec_setzero _mm256_setzero_si256
       #define vec_set_32 _mm256_set1_epi32
-      auto& vec_add_dpbusd_32 = m256_add_dpbusd_epi32;
-      auto& vec_add_dpbusd_32x4 = m256_add_dpbusd_epi32x4;
-      auto& vec_hadd = m256_hadd;
+      #define vec_add_dpbusd_32 Simd::m256_add_dpbusd_epi32
+      #define vec_add_dpbusd_32x2 Simd::m256_add_dpbusd_epi32x2
+      #define vec_hadd Simd::m256_hadd
+      #define vec_haddx4 Simd::m256_haddx4
 #elif defined (USE_SSSE3)
       using vec_t = __m128i;
       #define vec_setzero _mm_setzero_si128
       #define vec_set_32 _mm_set1_epi32
-      auto& vec_add_dpbusd_32 = m128_add_dpbusd_epi32;
-      auto& vec_add_dpbusd_32x4 = m128_add_dpbusd_epi32x4;
-      auto& vec_hadd = m128_hadd;
+      #define vec_add_dpbusd_32 Simd::m128_add_dpbusd_epi32
+      #define vec_add_dpbusd_32x2 Simd::m128_add_dpbusd_epi32x2
+      #define vec_hadd Simd::m128_hadd
+      #define vec_haddx4 Simd::m128_haddx4
 #endif
 
 #if defined (USE_SSSE3)
+      const vec_t* invec = reinterpret_cast<const vec_t*>(input);
 
-      const auto output = reinterpret_cast<OutputType*>(buffer);
-      const auto input_vector = reinterpret_cast<const vec_t*>(input);
 
-      static_assert(kOutputDimensions % kOutputSimdWidth == 0 || kOutputDimensions == 1);
-
-      // kOutputDimensions is either 1 or a multiple of kSimdWidth
-      // because then it is also an input dimension.
-      if constexpr (kOutputDimensions % kOutputSimdWidth == 0)
+      // Perform accumulation to registers for each big block
+      for (IndexType bigBlock = 0; bigBlock < NumBigBlocks; ++bigBlock)
       {
-          constexpr IndexType kNumChunks = kPaddedInputDimensions / 4;
+        vec_t acc[NumOutputRegs] = { vec_setzero() };
 
-          const auto input32 = reinterpret_cast<const std::int32_t*>(input);
-          vec_t* outptr = reinterpret_cast<vec_t*>(output);
-          std::memcpy(output, biases_, kOutputDimensions * sizeof(OutputType));
+        // Each big block has NumOutputRegs small blocks in each "row", one per register.
+        // We process two small blocks at a time to save on one addition without VNNI.
+        for (IndexType smallBlock = 0; smallBlock < NumSmallBlocksPerOutput; smallBlock += 2)
+        {
+          const vec_t* weightvec =
+            reinterpret_cast<const vec_t*>(
+                weights
+              + bigBlock * BigBlockSize
+              + smallBlock * SmallBlockSize * NumOutputRegs);
 
-          for (int i = 0; i < (int)kNumChunks - 3; i += 4)
+          const vec_t in0 = invec[smallBlock + 0];
+          const vec_t in1 = invec[smallBlock + 1];
+
+          for (IndexType k = 0; k < NumOutputRegs; ++k)
+            vec_add_dpbusd_32x2(acc[k], in0, weightvec[k], in1, weightvec[k + NumOutputRegs]);
+        }
+
+        // Horizontally add all accumulators.
+        if constexpr (NumOutputRegs % 4 == 0)
+        {
+          __m128i* outputvec = reinterpret_cast<__m128i*>(output);
+          const __m128i* biasvec = reinterpret_cast<const __m128i*>(biases);
+
+          for (IndexType k = 0; k < NumOutputRegs; k += 4)
           {
-              const vec_t in0 = vec_set_32(input32[i + 0]);
-              const vec_t in1 = vec_set_32(input32[i + 1]);
-              const vec_t in2 = vec_set_32(input32[i + 2]);
-              const vec_t in3 = vec_set_32(input32[i + 3]);
-              const auto col0 = reinterpret_cast<const vec_t*>(&weights_[(i + 0) * kOutputDimensions * 4]);
-              const auto col1 = reinterpret_cast<const vec_t*>(&weights_[(i + 1) * kOutputDimensions * 4]);
-              const auto col2 = reinterpret_cast<const vec_t*>(&weights_[(i + 2) * kOutputDimensions * 4]);
-              const auto col3 = reinterpret_cast<const vec_t*>(&weights_[(i + 3) * kOutputDimensions * 4]);
-              for (int j = 0; j * kOutputSimdWidth < kOutputDimensions; ++j)
-                  vec_add_dpbusd_32x4(outptr[j], in0, col0[j], in1, col1[j], in2, col2[j], in3, col3[j]);
+            const IndexType idx = (bigBlock * NumOutputRegs + k) / 4;
+            outputvec[idx] = vec_haddx4(acc[k+0], acc[k+1], acc[k+2], acc[k+3], biasvec[idx]);
           }
-          for (int i = 0; i < canSaturate16.count; ++i)
-              output[canSaturate16.ids[i].out] += input[canSaturate16.ids[i].in] * canSaturate16.ids[i].w;
-      }
-      else if constexpr (kOutputDimensions == 1)
-      {
-#if defined (USE_AVX512)
-          if constexpr (kPaddedInputDimensions % (kSimdWidth * 2) != 0)
+        }
+        else
+        {
+          for (IndexType k = 0; k < NumOutputRegs; ++k)
           {
-              constexpr IndexType kNumChunks = kPaddedInputDimensions / kSimdWidth;
-              const auto input_vector256 = reinterpret_cast<const __m256i*>(input);
-
-              __m256i sum0 = _mm256_setzero_si256();
-              const auto row0 = reinterpret_cast<const __m256i*>(&weights_[0]);
-
-              for (int j = 0; j < (int)kNumChunks; ++j)
-              {
-                  const __m256i in = input_vector256[j];
-                  m256_add_dpbusd_epi32(sum0, in, row0[j]);
-              }
-              output[0] = m256_hadd(sum0, biases_[0]);
+            const IndexType idx = (bigBlock * NumOutputRegs + k);
+            output[idx] = vec_hadd(acc[k], biases[idx]);
           }
-          else
-#endif
-          {
-#if defined (USE_AVX512)
-              constexpr IndexType kNumChunks = kPaddedInputDimensions / (kSimdWidth * 2);
-#else
-              constexpr IndexType kNumChunks = kPaddedInputDimensions / kSimdWidth;
-#endif
-              vec_t sum0 = vec_setzero();
-              const auto row0 = reinterpret_cast<const vec_t*>(&weights_[0]);
-
-              for (int j = 0; j < (int)kNumChunks; ++j)
-              {
-                  const vec_t in = input_vector[j];
-                  vec_add_dpbusd_32(sum0, in, row0[j]);
-              }
-              output[0] = vec_hadd(sum0, biases_[0]);
-          }
+        }
       }
 
+# undef vec_setzero
+# undef vec_set_32
+# undef vec_add_dpbusd_32
+# undef vec_add_dpbusd_32x2
+# undef vec_hadd
+# undef vec_haddx4
 #else
-
-// Use old implementation for the other architectures.
-
-      auto output = reinterpret_cast<OutputType*>(buffer);
-
-#if defined(USE_SSE2)
-      constexpr IndexType kNumChunks = kPaddedInputDimensions / kSimdWidth;
-      const __m128i kZeros = _mm_setzero_si128();
-      const auto input_vector = reinterpret_cast<const __m128i*>(input);
-
-#elif defined(USE_MMX)
-      constexpr IndexType kNumChunks = kPaddedInputDimensions / kSimdWidth;
-      const __m64 kZeros = _mm_setzero_si64();
-      const auto input_vector = reinterpret_cast<const __m64*>(input);
-
-#elif defined(USE_NEON)
-      constexpr IndexType kNumChunks = kPaddedInputDimensions / kSimdWidth;
-      const auto input_vector = reinterpret_cast<const int8x8_t*>(input);
-#endif
-
-      for (IndexType i = 0; i < kOutputDimensions; ++i) {
-        const IndexType offset = i * kPaddedInputDimensions;
-
-#if defined(USE_SSE2)
-        __m128i sum_lo = _mm_cvtsi32_si128(biases_[i]);
-        __m128i sum_hi = kZeros;
-        const auto row = reinterpret_cast<const __m128i*>(&weights_[offset]);
-        for (IndexType j = 0; j < kNumChunks; ++j) {
-          __m128i row_j = _mm_load_si128(&row[j]);
-          __m128i input_j = _mm_load_si128(&input_vector[j]);
-          __m128i extended_row_lo = _mm_srai_epi16(_mm_unpacklo_epi8(row_j, row_j), 8);
-          __m128i extended_row_hi = _mm_srai_epi16(_mm_unpackhi_epi8(row_j, row_j), 8);
-          __m128i extended_input_lo = _mm_unpacklo_epi8(input_j, kZeros);
-          __m128i extended_input_hi = _mm_unpackhi_epi8(input_j, kZeros);
-          __m128i product_lo = _mm_madd_epi16(extended_row_lo, extended_input_lo);
-          __m128i product_hi = _mm_madd_epi16(extended_row_hi, extended_input_hi);
-          sum_lo = _mm_add_epi32(sum_lo, product_lo);
-          sum_hi = _mm_add_epi32(sum_hi, product_hi);
-        }
-        __m128i sum = _mm_add_epi32(sum_lo, sum_hi);
-        __m128i sum_high_64 = _mm_shuffle_epi32(sum, _MM_SHUFFLE(1, 0, 3, 2));
-        sum = _mm_add_epi32(sum, sum_high_64);
-        __m128i sum_second_32 = _mm_shufflelo_epi16(sum, _MM_SHUFFLE(1, 0, 3, 2));
-        sum = _mm_add_epi32(sum, sum_second_32);
-        output[i] = _mm_cvtsi128_si32(sum);
-
-#elif defined(USE_MMX)
-        __m64 sum_lo = _mm_cvtsi32_si64(biases_[i]);
-        __m64 sum_hi = kZeros;
-        const auto row = reinterpret_cast<const __m64*>(&weights_[offset]);
-        for (IndexType j = 0; j < kNumChunks; ++j) {
-          __m64 row_j = row[j];
-          __m64 input_j = input_vector[j];
-          __m64 extended_row_lo = _mm_srai_pi16(_mm_unpacklo_pi8(row_j, row_j), 8);
-          __m64 extended_row_hi = _mm_srai_pi16(_mm_unpackhi_pi8(row_j, row_j), 8);
-          __m64 extended_input_lo = _mm_unpacklo_pi8(input_j, kZeros);
-          __m64 extended_input_hi = _mm_unpackhi_pi8(input_j, kZeros);
-          __m64 product_lo = _mm_madd_pi16(extended_row_lo, extended_input_lo);
-          __m64 product_hi = _mm_madd_pi16(extended_row_hi, extended_input_hi);
-          sum_lo = _mm_add_pi32(sum_lo, product_lo);
-          sum_hi = _mm_add_pi32(sum_hi, product_hi);
-        }
-        __m64 sum = _mm_add_pi32(sum_lo, sum_hi);
-        sum = _mm_add_pi32(sum, _mm_unpackhi_pi32(sum, sum));
-        output[i] = _mm_cvtsi64_si32(sum);
-
-#elif defined(USE_NEON)
-        int32x4_t sum = {biases_[i]};
-        const auto row = reinterpret_cast<const int8x8_t*>(&weights_[offset]);
-        for (IndexType j = 0; j < kNumChunks; ++j) {
-          int16x8_t product = vmull_s8(input_vector[j * 2], row[j * 2]);
-          product = vmlal_s8(product, input_vector[j * 2 + 1], row[j * 2 + 1]);
-          sum = vpadalq_s16(sum, product);
-        }
-        output[i] = sum[0] + sum[1] + sum[2] + sum[3];
-
-#else
-        OutputType sum = biases_[i];
-        for (IndexType j = 0; j < kInputDimensions; ++j) {
-          sum += weights_[offset + j] * input[j];
-        }
-        output[i] = sum;
-#endif
-
-      }
-#if defined(USE_MMX)
-      _mm_empty();
-#endif
+      // Use old implementation for the other architectures.
+      affine_transform_non_ssse3<
+        InputDimensions,
+        PaddedInputDimensions,
+        OutputDimensions>(output, weights, biases, input);
 
 #endif
 
@@ -436,27 +365,188 @@ namespace Stockfish::Eval::NNUE::Layers {
     using BiasType = OutputType;
     using WeightType = std::int8_t;
 
-    PreviousLayer previous_layer_;
+    PreviousLayer previousLayer;
 
-    alignas(kCacheLineSize) BiasType biases_[kOutputDimensions];
-    alignas(kCacheLineSize) WeightType weights_[kOutputDimensions * kPaddedInputDimensions];
+    alignas(CacheLineSize) BiasType biases[OutputDimensions];
+    alignas(CacheLineSize) WeightType weights[OutputDimensions * PaddedInputDimensions];
+  };
+
+  template <typename PreviousLayer, IndexType OutDims>
+  class AffineTransform<PreviousLayer, OutDims, std::enable_if_t<(PreviousLayer::OutputDimensions < 2*64-1)>> {
+   public:
+    // Input/output type
+    using InputType = typename PreviousLayer::OutputType;
+    using OutputType = std::int32_t;
+    static_assert(std::is_same<InputType, std::uint8_t>::value, "");
+
+    // Number of input/output dimensions
+    static constexpr IndexType InputDimensions =
+        PreviousLayer::OutputDimensions;
+    static constexpr IndexType OutputDimensions = OutDims;
+    static constexpr IndexType PaddedInputDimensions =
+        ceil_to_multiple<IndexType>(InputDimensions, MaxSimdWidth);
+
+    static_assert(PaddedInputDimensions < 128, "Something went wrong. This specialization should not have been chosen.");
+
 #if defined (USE_SSSE3)
-    struct CanSaturate {
-        int count;
-        struct Entry {
-            uint16_t out;
-            uint16_t in;
-            int8_t w;
-        } ids[kPaddedInputDimensions * kOutputDimensions * 3 / 4];
-
-        void add(int i, int j, int8_t w) {
-            ids[count].out = i;
-            ids[count].in = j;
-            ids[count].w = w;
-            ++count;
-        }
-    } canSaturate16;
+    static constexpr const IndexType OutputSimdWidth = SimdWidth / 4;
+    static constexpr const IndexType InputSimdWidth = SimdWidth;
 #endif
+
+    // Size of forward propagation buffer used in this layer
+    static constexpr std::size_t SelfBufferSize =
+      ceil_to_multiple(OutputDimensions * sizeof(OutputType), CacheLineSize);
+
+    // Size of the forward propagation buffer used from the input layer to this layer
+    static constexpr std::size_t BufferSize =
+      PreviousLayer::BufferSize + SelfBufferSize;
+
+    // Hash value embedded in the evaluation file
+    static constexpr std::uint32_t get_hash_value() {
+      std::uint32_t hashValue = 0xCC03DAE4u;
+      hashValue += OutputDimensions;
+      hashValue ^= PreviousLayer::get_hash_value() >> 1;
+      hashValue ^= PreviousLayer::get_hash_value() << 31;
+      return hashValue;
+    }
+
+    static IndexType get_weight_index_scrambled(IndexType i)
+    {
+      return
+        (i / 4) % (PaddedInputDimensions / 4) * OutputDimensions * 4 +
+        i / PaddedInputDimensions * 4 +
+        i % 4;
+    }
+
+    static IndexType get_weight_index(IndexType i)
+    {
+#if defined (USE_SSSE3)
+      return get_weight_index_scrambled(i);
+#else
+      return i;
+#endif
+    }
+
+    // Read network parameters
+    bool read_parameters(std::istream& stream) {
+      if (!previousLayer.read_parameters(stream)) return false;
+      for (std::size_t i = 0; i < OutputDimensions; ++i)
+        biases[i] = read_little_endian<BiasType>(stream);
+      for (std::size_t i = 0; i < OutputDimensions * PaddedInputDimensions; ++i)
+        weights[get_weight_index(i)] = read_little_endian<WeightType>(stream);
+
+      return !stream.fail();
+    }
+
+    // Write network parameters
+    bool write_parameters(std::ostream& stream) const {
+      if (!previousLayer.write_parameters(stream)) return false;
+      for (std::size_t i = 0; i < OutputDimensions; ++i)
+        write_little_endian<BiasType>(stream, biases[i]);
+
+      for (std::size_t i = 0; i < OutputDimensions * PaddedInputDimensions; ++i)
+        write_little_endian<WeightType>(stream, weights[get_weight_index(i)]);
+
+      return !stream.fail();
+    }
+    // Forward propagation
+    const OutputType* propagate(
+        const TransformedFeatureType* transformedFeatures, char* buffer) const {
+      const auto input = previousLayer.propagate(
+        transformedFeatures, buffer + SelfBufferSize);
+      const auto output = reinterpret_cast<OutputType*>(buffer);
+
+#if defined (USE_AVX2)
+      using vec_t = __m256i;
+      #define vec_setzero _mm256_setzero_si256
+      #define vec_set_32 _mm256_set1_epi32
+      #define vec_add_dpbusd_32 Simd::m256_add_dpbusd_epi32
+      #define vec_add_dpbusd_32x2 Simd::m256_add_dpbusd_epi32x2
+      #define vec_add_dpbusd_32x4 Simd::m256_add_dpbusd_epi32x4
+      #define vec_hadd Simd::m256_hadd
+      #define vec_haddx4 Simd::m256_haddx4
+#elif defined (USE_SSSE3)
+      using vec_t = __m128i;
+      #define vec_setzero _mm_setzero_si128
+      #define vec_set_32 _mm_set1_epi32
+      #define vec_add_dpbusd_32 Simd::m128_add_dpbusd_epi32
+      #define vec_add_dpbusd_32x2 Simd::m128_add_dpbusd_epi32x2
+      #define vec_add_dpbusd_32x4 Simd::m128_add_dpbusd_epi32x4
+      #define vec_hadd Simd::m128_hadd
+      #define vec_haddx4 Simd::m128_haddx4
+#endif
+
+#if defined (USE_SSSE3)
+      const auto inputVector = reinterpret_cast<const vec_t*>(input);
+
+      static_assert(InputDimensions % 8 == 0);
+      static_assert(OutputDimensions % OutputSimdWidth == 0 || OutputDimensions == 1);
+
+      if constexpr (OutputDimensions % OutputSimdWidth == 0)
+      {
+        constexpr IndexType NumChunks = InputDimensions / 4;
+        constexpr IndexType NumRegs = OutputDimensions / OutputSimdWidth;
+
+        const auto input32 = reinterpret_cast<const std::int32_t*>(input);
+        const vec_t* biasvec = reinterpret_cast<const vec_t*>(biases);
+        vec_t acc[NumRegs];
+        for (IndexType k = 0; k < NumRegs; ++k)
+          acc[k] = biasvec[k];
+
+        for (IndexType i = 0; i < NumChunks; i += 2)
+        {
+          const vec_t in0 = vec_set_32(input32[i + 0]);
+          const vec_t in1 = vec_set_32(input32[i + 1]);
+          const auto col0 = reinterpret_cast<const vec_t*>(&weights[(i + 0) * OutputDimensions * 4]);
+          const auto col1 = reinterpret_cast<const vec_t*>(&weights[(i + 1) * OutputDimensions * 4]);
+          for (IndexType k = 0; k < NumRegs; ++k)
+            vec_add_dpbusd_32x2(acc[k], in0, col0[k], in1, col1[k]);
+        }
+
+        vec_t* outptr = reinterpret_cast<vec_t*>(output);
+        for (IndexType k = 0; k < NumRegs; ++k)
+          outptr[k] = acc[k];
+      }
+      else if constexpr (OutputDimensions == 1)
+      {
+        constexpr IndexType NumChunks = PaddedInputDimensions / SimdWidth;
+        vec_t sum0 = vec_setzero();
+        const auto row0 = reinterpret_cast<const vec_t*>(&weights[0]);
+
+        for (int j = 0; j < (int)NumChunks; ++j)
+        {
+          const vec_t in = inputVector[j];
+          vec_add_dpbusd_32(sum0, in, row0[j]);
+        }
+        output[0] = vec_hadd(sum0, biases[0]);
+      }
+
+# undef vec_setzero
+# undef vec_set_32
+# undef vec_add_dpbusd_32
+# undef vec_add_dpbusd_32x2
+# undef vec_add_dpbusd_32x4
+# undef vec_hadd
+# undef vec_haddx4
+#else
+      // Use old implementation for the other architectures.
+      affine_transform_non_ssse3<
+        InputDimensions,
+        PaddedInputDimensions,
+        OutputDimensions>(output, weights, biases, input);
+#endif
+
+      return output;
+    }
+
+   private:
+    using BiasType = OutputType;
+    using WeightType = std::int8_t;
+
+    PreviousLayer previousLayer;
+
+    alignas(CacheLineSize) BiasType biases[OutputDimensions];
+    alignas(CacheLineSize) WeightType weights[OutputDimensions * PaddedInputDimensions];
   };
 
 }  // namespace Stockfish::Eval::NNUE::Layers

@@ -211,13 +211,13 @@ namespace {
      // Coefficients of a 3rd order polynomial fit based on fishtest data
      // for two parameters needed to transform eval to the argument of a
      // logistic function.
-     double as[] = {-8.24404295, 64.23892342, -95.73056462, 153.86478679};
-     double bs[] = {-3.37154371, 28.44489198, -56.67657741,  72.05858751};
+     double as[] = {-3.68389304,  30.07065921, -60.52878723, 149.53378557};
+     double bs[] = {-2.0181857,   15.85685038, -29.83452023,  47.59078827};
      double a = (((as[0] * m + as[1]) * m + as[2]) * m) + as[3];
      double b = (((bs[0] * m + bs[1]) * m + bs[2]) * m) + bs[3];
 
      // Transform eval to centipawns with limited range
-     double x = std::clamp(double(100 * v) / PawnValueEg, -1000.0, 1000.0);
+     double x = std::clamp(double(100 * v) / PawnValueEg, -2000.0, 2000.0);
 
      // Return win rate in per mille (rounded to nearest)
      return int(0.5 + 1000 / (1 + std::exp((a - x) / b)));
@@ -285,6 +285,14 @@ void UCI::loop(int argc, char* argv[]) {
           trace_eval(pos);
       else if (token == "compiler" && Cluster::is_root())
           sync_cout << compiler_info() << sync_endl;
+      else if (token == "export_net" && Cluster::is_root())
+      {
+          std::optional<std::string> filename;
+          std::string f;
+          if (is >> skipws >> f)
+              filename = f;
+          Eval::NNUE::save_eval(filename);
+      }
       else if (!token.empty() && token[0] != '#' && Cluster::is_root())
           sync_cout << "Unknown command: " << cmd << sync_endl;
 

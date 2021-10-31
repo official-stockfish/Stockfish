@@ -51,7 +51,7 @@ typedef bool(*fun3_t)(HANDLE, CONST GROUP_AFFINITY*, PGROUP_AFFINITY);
 #include <sys/mman.h>
 #endif
 
-#if defined(__APPLE__) || defined(__ANDROID__) || defined(__OpenBSD__) || (defined(__GLIBCXX__) && !defined(_GLIBCXX_HAVE_ALIGNED_ALLOC) && !defined(_WIN32))
+#if defined(__APPLE__) || defined(__ANDROID__) || defined(__OpenBSD__) || (defined(__GLIBCXX__) && !defined(_GLIBCXX_HAVE_ALIGNED_ALLOC) && !defined(_WIN32)) || defined(__e2k__)
 #define POSIXALIGNEDALLOC
 #include <stdlib.h>
 #endif
@@ -67,7 +67,7 @@ namespace {
 
 /// Version number. If Version is left empty, then compile date in the format
 /// DD-MM-YY and show in engine_info.
-const string Version = "";
+const string Version = "14.1";
 
 /// Our fancy logging facility. The trick here is to replace cin.rdbuf() and
 /// cout.rdbuf() with two Tie objects that tie cin and cout to a file stream. We
@@ -110,7 +110,14 @@ public:
 
     static Logger l;
 
-    if (!fname.empty() && !l.file.is_open())
+    if (l.file.is_open())
+    {
+        cout.rdbuf(l.out.buf);
+        cin.rdbuf(l.in.buf);
+        l.file.close();
+    }
+
+    if (!fname.empty())
     {
         l.file.open(fname, ifstream::out);
 
@@ -122,12 +129,6 @@ public:
 
         cin.rdbuf(&l.in);
         cout.rdbuf(&l.out);
-    }
-    else if (fname.empty() && l.file.is_open())
-    {
-        cout.rdbuf(l.out.buf);
-        cin.rdbuf(l.in.buf);
-        l.file.close();
     }
   }
 };
@@ -191,6 +192,18 @@ std::string compiler_info() {
      compiler += "MSVC ";
      compiler += "(version ";
      compiler += stringify(_MSC_FULL_VER) "." stringify(_MSC_BUILD);
+     compiler += ")";
+  #elif defined(__e2k__) && defined(__LCC__)
+    #define dot_ver2(n) \
+      compiler += (char)'.'; \
+      compiler += (char)('0' + (n) / 10); \
+      compiler += (char)('0' + (n) % 10);
+
+     compiler += "MCST LCC ";
+     compiler += "(version ";
+     compiler += std::to_string(__LCC__ / 100);
+     dot_ver2(__LCC__ % 100)
+     dot_ver2(__LCC_MINOR__)
      compiler += ")";
   #elif __GNUC__
      compiler += "g++ (GNUC) ";
@@ -362,8 +375,13 @@ void std_aligned_free(void* ptr) {
 /// aligned_large_pages_alloc() will return suitably aligned memory, if possible using large pages.
 
 #if defined(_WIN32)
-#if defined(_WIN64)
-static void* aligned_large_pages_alloc_win(size_t allocSize) {
+
+static void* aligned_large_pages_alloc_windows(size_t allocSize) {
+
+  #if !defined(_WIN64)
+    (void)allocSize; // suppress unused-parameter compiler warning
+    return nullptr;
+  #else
 
   HANDLE hProcessToken { };
   LUID luid { };
@@ -406,21 +424,18 @@ static void* aligned_large_pages_alloc_win(size_t allocSize) {
   CloseHandle(hProcessToken);
 
   return mem;
+
+  #endif
 }
-#endif
 
 void* aligned_large_pages_alloc(size_t allocSize) {
 
-#if defined(_WIN64)
   // Try to allocate large pages
-  void* mem = aligned_large_pages_alloc_win(allocSize);
+  void* mem = aligned_large_pages_alloc_windows(allocSize);
 
   // Fall back to regular, page aligned, allocation if necessary
   if (!mem)
       mem = VirtualAlloc(NULL, allocSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
-#else
-  void* mem = VirtualAlloc(NULL, allocSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
-#endif
 
   return mem;
 }
@@ -456,8 +471,9 @@ void aligned_large_pages_free(void* mem) {
   if (mem && !VirtualFree(mem, 0, MEM_RELEASE))
   {
       DWORD err = GetLastError();
-      std::cerr << "Failed to free transposition table. Error code: 0x" <<
-          std::hex << err << std::dec << std::endl;
+      std::cerr << "Failed to free large page memory. Error code: 0x"
+                << std::hex << err
+                << std::dec << std::endl;
       exit(EXIT_FAILURE);
   }
 }

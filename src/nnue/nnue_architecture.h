@@ -21,17 +21,39 @@
 #ifndef NNUE_ARCHITECTURE_H_INCLUDED
 #define NNUE_ARCHITECTURE_H_INCLUDED
 
-// Defines the network structure
-#include "architectures/halfkp_256x2-32-32.h"
+#include "nnue_common.h"
+
+#include "features/half_ka_v2_hm.h"
+
+#include "layers/input_slice.h"
+#include "layers/affine_transform.h"
+#include "layers/clipped_relu.h"
 
 namespace Stockfish::Eval::NNUE {
 
-  static_assert(kTransformedFeatureDimensions % kMaxSimdWidth == 0, "");
-  static_assert(Network::kOutputDimensions == 1, "");
-  static_assert(std::is_same<Network::OutputType, std::int32_t>::value, "");
+  // Input features used in evaluation function
+  using FeatureSet = Features::HalfKAv2_hm;
 
-  // Trigger for full calculation instead of difference calculation
-  constexpr auto kRefreshTriggers = RawFeatures::kRefreshTriggers;
+  // Number of input feature dimensions after conversion
+  constexpr IndexType TransformedFeatureDimensions = 1024;
+  constexpr IndexType PSQTBuckets = 8;
+  constexpr IndexType LayerStacks = 8;
+
+  namespace Layers {
+
+    // Define network structure
+    using InputLayer = InputSlice<TransformedFeatureDimensions * 2>;
+    using HiddenLayer1 = ClippedReLU<AffineTransform<InputLayer, 8>>;
+    using HiddenLayer2 = ClippedReLU<AffineTransform<HiddenLayer1, 32>>;
+    using OutputLayer = AffineTransform<HiddenLayer2, 1>;
+
+  }  // namespace Layers
+
+  using Network = Layers::OutputLayer;
+
+  static_assert(TransformedFeatureDimensions % MaxSimdWidth == 0, "");
+  static_assert(Network::OutputDimensions == 1, "");
+  static_assert(std::is_same<Network::OutputType, std::int32_t>::value, "");
 
 }  // namespace Stockfish::Eval::NNUE
 

@@ -143,7 +143,7 @@ bool getline(std::istream& input, std::string& str) {
 
   int size;
   std::vector<char> vec;
-  bool state;
+  int state;
 
   if (is_root())
   {
@@ -177,7 +177,7 @@ bool getline(std::istream& input, std::string& str) {
   MPI_Bcast(vec.data(), size, MPI_CHAR, 0, InputComm);
   if (!is_root())
       str.assign(vec.begin(), vec.end());
-  MPI_Bcast(&state, 1, MPI_CXX_BOOL, 0, InputComm);
+  MPI_Bcast(&state, 1, MPI_INT, 0, InputComm);
 
   return state;
 }

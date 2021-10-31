@@ -25,14 +25,11 @@
 
 namespace Stockfish::Eval::NNUE {
 
-  // The accumulator of a StateInfo without parent is set to the INIT state
-  enum AccumulatorState { EMPTY, COMPUTED, INIT };
-
   // Class that holds the result of affine transformation of input features
-  struct alignas(kCacheLineSize) Accumulator {
-    std::int16_t
-        accumulation[2][kRefreshTriggers.size()][kTransformedFeatureDimensions];
-    AccumulatorState state[2];
+  struct alignas(CacheLineSize) Accumulator {
+    std::int16_t accumulation[2][TransformedFeatureDimensions];
+    std::int32_t psqtAccumulation[2][PSQTBuckets];
+    bool computed[2];
   };
 
 }  // namespace Stockfish::Eval::NNUE
