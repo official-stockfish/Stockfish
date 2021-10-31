@@ -173,6 +173,11 @@ enum Bound {
   BOUND_EXACT = BOUND_UPPER | BOUND_LOWER
 };
 
+enum ExplosionState {
+  EXPLOSION_NONE,
+  MUST_CALM_DOWN
+};
+
 enum Value : int {
   VALUE_ZERO      = 0,
   VALUE_DRAW      = 0,
@@ -191,7 +196,6 @@ enum Value : int {
   BishopValueMg = 825,   BishopValueEg = 915,
   RookValueMg   = 1276,  RookValueEg   = 1380,
   QueenValueMg  = 2538,  QueenValueEg  = 2682,
-  Tempo = 28,
 
   MidgameLimit  = 15258, EndgameLimit  = 3915
 };

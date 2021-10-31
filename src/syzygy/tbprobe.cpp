@@ -106,9 +106,6 @@ template<> inline void swap_endian<uint8_t>(uint8_t&) {}
 
 template<typename T, int LE> T number(void* addr)
 {
-    static const union { uint32_t i; char c[4]; } Le = { 0x01020304 };
-    static const bool IsLittleEndian = (Le.c[0] == 4);
-
     T v;
 
     if ((uintptr_t)addr & (alignof(T) - 1)) // Unaligned pointer (very rare)
@@ -193,7 +190,8 @@ public:
         std::stringstream ss(Paths);
         std::string path;
 
-        while (std::getline(ss, path, SepChar)) {
+        while (std::getline(ss, path, SepChar))
+        {
             fname = path + "/" + f;
             std::ifstream::open(fname);
             if (is_open())
@@ -568,7 +566,8 @@ int decompress_pairs(PairsData* d, uint64_t idx) {
     int buf64Size = 64;
     Sym sym;
 
-    while (true) {
+    while (true)
+    {
         int len = 0; // This is the symbol length - d->min_sym_len
 
         // Now get the symbol length. For any symbol s64 of length l right-padded
@@ -606,8 +605,8 @@ int decompress_pairs(PairsData* d, uint64_t idx) {
     // We binary-search for our value recursively expanding into the left and
     // right child symbols until we reach a leaf node where symlen[sym] + 1 == 1
     // that will store the value we need.
-    while (d->symlen[sym]) {
-
+    while (d->symlen[sym])
+    {
         Sym left = d->btree[sym].get<LR::Left>();
 
         // If a symbol contains 36 sub-symbols (d->symlen[sym] + 1 = 36) and
@@ -712,7 +711,7 @@ Ret do_probe_table(const Position& pos, T* entry, WDLScore wdl, ProbeState* resu
 
         leadPawns = b = pos.pieces(color_of(pc), PAWN);
         do
-            squares[size++] = pop_lsb(&b) ^ flipSquares;
+            squares[size++] = pop_lsb(b) ^ flipSquares;
         while (b);
 
         leadPawnsCnt = size;
@@ -732,7 +731,7 @@ Ret do_probe_table(const Position& pos, T* entry, WDLScore wdl, ProbeState* resu
     // directly map them to the correct color and square.
     b = pos.pieces() ^ leadPawns;
     do {
-        Square s = pop_lsb(&b);
+        Square s = pop_lsb(b);
         squares[size] = s ^ flipSquares;
         pieces[size++] = Piece(pos.piece_on(s) ^ flipColor);
     } while (b);
@@ -1539,6 +1538,14 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves) {
             WDLScore wdl = -probe_wdl(pos, &result);
             dtz = dtz_before_zeroing(wdl);
         }
+        else if (pos.is_draw(1))
+        {
+            // In case a root move leads to a draw by repetition or
+            // 50-move rule, we set dtz to zero. Note: since we are
+            // only 1 ply from the root, this must be a true 3-fold
+            // repetition inside the game history.
+            dtz = 0;
+        }
         else
         {
             // Otherwise, take dtz for the new position and correct by 1 ply
@@ -1589,6 +1596,7 @@ bool Tablebases::root_probe_wdl(Position& pos, Search::RootMoves& rootMoves) {
 
     ProbeState result;
     StateInfo st;
+    WDLScore wdl;
 
     bool rule50 = Options["Syzygy50MoveRule"];
 
@@ -1597,7 +1605,10 @@ bool Tablebases::root_probe_wdl(Position& pos, Search::RootMoves& rootMoves) {
     {
         pos.do_move(m.pv[0], st);
 
-        WDLScore wdl = -probe_wdl(pos, &result);
+        if (pos.is_draw(1))
+            wdl = WDLDraw;
+        else
+            wdl = -probe_wdl(pos, &result);
 
         pos.undo_move(m.pv[0]);
 

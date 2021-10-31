@@ -10,7 +10,7 @@ trap 'error ${LINENO}' ERR
 
 echo "reprosearch testing started"
 
-# repeat two short games, separated by ucinewgame. 
+# repeat two short games, separated by ucinewgame.
 # with go nodes $nodes they should result in exactly
 # the same node count for each iteration.
 cat << EOF > repeat.exp

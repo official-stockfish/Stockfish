@@ -56,14 +56,18 @@ public:
   void idle_loop();
   void start_searching();
   void wait_for_search_finished();
+  size_t id() const { return idx; }
 
   Pawns::Table pawnsTable;
   Material::Table materialTable;
   size_t pvIdx, pvLast;
-  uint64_t ttHitAverage;
+  RunningAverage doubleExtensionAverage[COLOR_NB];
+  uint64_t nodesLastExplosive;
+  uint64_t nodesLastNormal;
+  std::atomic<uint64_t> nodes, tbHits, TTsaves, bestMoveChanges;
   int selDepth, nmpMinPly;
   Color nmpColor;
-  std::atomic<uint64_t> nodes, tbHits, TTsaves, bestMoveChanges;
+  ExplosionState state;
 
   Position rootPos;
   StateInfo rootState;
@@ -74,8 +78,7 @@ public:
   LowPlyHistory lowPlyHistory;
   CapturePieceToHistory captureHistory;
   ContinuationHistory continuationHistory[2][2];
-  Score contempt;
-  int failedHighCnt;
+  Score trend;
 #ifdef USE_MPI
   struct {
       std::mutex mutex;

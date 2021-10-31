@@ -31,13 +31,17 @@ PREFIX = /usr/local
 BINDIR = $(PREFIX)/bin
 
 ### Built-in benchmark for pgo-builds
-PGOBENCH = ./$(EXE) bench
+ifeq ($(SDE_PATH),)
+	PGOBENCH = ./$(EXE) bench
+else
+	PGOBENCH = $(SDE_PATH) -- ./$(EXE) bench
+endif
 
 ### Source and object files
 SRCS = benchmark.cpp bitbase.cpp bitboard.cpp cluster.cpp endgame.cpp evaluate.cpp main.cpp \
 	material.cpp misc.cpp movegen.cpp movepick.cpp pawns.cpp position.cpp psqt.cpp \
 	search.cpp thread.cpp timeman.cpp tt.cpp uci.cpp ucioption.cpp tune.cpp syzygy/tbprobe.cpp \
-	nnue/evaluate_nnue.cpp nnue/features/half_kp.cpp
+	nnue/evaluate_nnue.cpp nnue/features/half_ka_v2_hm.cpp
 
 OBJS = $(notdir $(SRCS:.cpp=.o))
 
@@ -57,9 +61,11 @@ endif
 # ----------------------------------------------------------------------------
 #
 # debug = yes/no      --- -DNDEBUG         --- Enable/Disable debug mode
-# sanitize = undefined/thread/no (-fsanitize )
+# sanitize = none/<sanitizer> ... (-fsanitize )
 #                     --- ( undefined )    --- enable undefined behavior checks
-#                     --- ( thread    )    --- enable threading error  checks
+#                     --- ( thread    )    --- enable threading error checks
+#                     --- ( address   )    --- enable memory access checks
+#                     --- ...etc...        --- see compiler documentation for supported sanitizers
 # optimize = yes/no   --- (-O3/-fast etc.) --- Enable/Disable optimizations
 # arch = (name)       --- (-arch)          --- Target architecture
 # bits = 64/32        --- -DIS_64BIT       --- 64-/32-bit operating system
@@ -81,6 +87,10 @@ endif
 # Note that Makefile is space sensitive, so when adding new architectures
 # or modifying existing flags, you have to make sure there are no extra spaces
 # at the end of the line for flag values.
+#
+# Example of use for these flags:
+# make build ARCH=x86-64-avx512 debug=yes sanitize="address undefined"
+
 
 ### 2.1. General and architecture defaults
 
@@ -93,7 +103,7 @@ endif
 ifeq ($(ARCH), $(filter $(ARCH), \
                  x86-64-vnni512 x86-64-vnni256 x86-64-avx512 x86-64-bmi2 x86-64-avx2 \
                  x86-64-sse41-popcnt x86-64-modern x86-64-ssse3 x86-64-sse3-popcnt \
-                 x86-64 x86-32-sse41-popcnt x86-32-sse2 x86-32 ppc-64 ppc-32 \
+                 x86-64 x86-32-sse41-popcnt x86-32-sse2 x86-32 ppc-64 ppc-32 e2k \
                  armv7 armv7-neon armv8 apple-silicon general-64 general-32))
    SUPPORTED_ARCH=true
 else
@@ -102,7 +112,7 @@ endif
 
 optimize = yes
 debug = no
-sanitize = no
+sanitize = none
 bits = 64
 prefetch = no
 popcnt = no
@@ -289,6 +299,17 @@ ifeq ($(ARCH),ppc-64)
 	prefetch = yes
 endif
 
+ifeq ($(findstring e2k,$(ARCH)),e2k)
+	arch = e2k
+	mmx = yes
+	bits = 64
+	sse = yes
+	sse2 = yes
+	ssse3 = yes
+	sse41 = yes
+	popcnt = yes
+endif
+
 endif
 
 ### ==========================================================================
@@ -349,7 +370,7 @@ ifeq ($(COMP),mingw)
 		CXX=g++
 	endif
 
-	CXXFLAGS += -Wextra -Wshadow
+	CXXFLAGS += -pedantic -Wextra -Wshadow
 	LDFLAGS += -static
 endif
 
@@ -367,7 +388,9 @@ ifeq ($(COMP),clang)
 	ifneq ($(KERNEL),Darwin)
 	ifneq ($(KERNEL),OpenBSD)
 	ifneq ($(KERNEL),FreeBSD)
+	ifneq ($(RTLIB),compiler-rt)
 		LDFLAGS += -latomic
+	endif
 	endif
 	endif
 	endif
@@ -384,8 +407,12 @@ ifeq ($(COMP),clang)
 endif
 
 ifeq ($(KERNEL),Darwin)
-	CXXFLAGS += -arch $(arch) -mmacosx-version-min=10.14
-	LDFLAGS += -arch $(arch) -mmacosx-version-min=10.14
+	CXXFLAGS += -mmacosx-version-min=10.14
+	LDFLAGS += -mmacosx-version-min=10.14
+	ifneq ($(arch),any)
+		CXXFLAGS += -arch $(arch)
+		LDFLAGS += -arch $(arch)
+	endif
 	XCRUN = xcrun
 endif
 
@@ -460,9 +487,9 @@ else
 endif
 
 ### 3.2.2 Debugging with undefined behavior sanitizers
-ifneq ($(sanitize),no)
-        CXXFLAGS += -g3 -fsanitize=$(sanitize)
-        LDFLAGS += -fsanitize=$(sanitize)
+ifneq ($(sanitize),none)
+        CXXFLAGS += -g3 $(addprefix -fsanitize=,$(sanitize))
+        LDFLAGS += $(addprefix -fsanitize=,$(sanitize))
 endif
 
 ### 3.3 Optimization
@@ -492,7 +519,7 @@ ifeq ($(bits),64)
 	CXXFLAGS += -DIS_64BIT
 endif
 
-### 3.5 prefetch
+### 3.5 prefetch and popcount
 ifeq ($(prefetch),yes)
 	ifeq ($(sse),yes)
 		CXXFLAGS += -msse
@@ -501,7 +528,6 @@ else
 	CXXFLAGS += -DNO_PREFETCH
 endif
 
-### 3.6 popcnt
 ifeq ($(popcnt),yes)
 	ifeq ($(arch),$(filter $(arch),ppc64 armv7 armv8 arm64))
 		CXXFLAGS += -DUSE_POPCNT
@@ -512,7 +538,7 @@ ifeq ($(popcnt),yes)
 	endif
 endif
 
-
+### 3.6 SIMD architectures
 ifeq ($(avx2),yes)
 	CXXFLAGS += -DUSE_AVX2
 	ifeq ($(comp),$(filter $(comp),gcc clang mingw))
@@ -642,6 +668,8 @@ endif
 ### 3.10 MPI
 ifneq (,$(findstring mpi, $(CXX)))
 	mpi = yes
+endif
+ifeq ($(mpi),yes)
 	CXXFLAGS += -DUSE_MPI -Wno-cast-qual -fexceptions
         DEPENDFLAGS += -DUSE_MPI
 endif
@@ -687,6 +715,7 @@ help:
 	@echo "armv7                   > ARMv7 32-bit"
 	@echo "armv7-neon              > ARMv7 32-bit with popcnt and neon"
 	@echo "armv8                   > ARMv8 64-bit with popcnt and neon"
+	@echo "e2k                     > Elbrus 2000"
 	@echo "apple-silicon           > Apple silicon ARM64"
 	@echo "general-64              > unspecified 64-bit"
 	@echo "general-32              > unspecified 32-bit"
@@ -787,6 +816,9 @@ profileclean:
 	@rm -rf profdir
 	@rm -f bench.txt *.gcda *.gcno ./syzygy/*.gcda ./nnue/*.gcda ./nnue/features/*.gcda *.s
 	@rm -f stockfish.profdata *.profraw
+	@rm -f stockfish.exe.lto_wrapper_args
+	@rm -f stockfish.exe.ltrans.out
+	@rm -f ./-lstdc++.res
 
 default:
 	help
@@ -830,11 +862,10 @@ config-sanity: net
 	@echo "Testing config sanity. If this fails, try 'make help' ..."
 	@echo ""
 	@test "$(debug)" = "yes" || test "$(debug)" = "no"
-	@test "$(sanitize)" = "undefined" || test "$(sanitize)" = "thread" || test "$(sanitize)" = "address" || test "$(sanitize)" = "no"
 	@test "$(optimize)" = "yes" || test "$(optimize)" = "no"
 	@test "$(SUPPORTED_ARCH)" = "true"
 	@test "$(arch)" = "any" || test "$(arch)" = "x86_64" || test "$(arch)" = "i386" || \
-	 test "$(arch)" = "ppc64" || test "$(arch)" = "ppc" || \
+	 test "$(arch)" = "ppc64" || test "$(arch)" = "ppc" || test "$(arch)" = "e2k" || \
 	 test "$(arch)" = "armv7" || test "$(arch)" = "armv8" || test "$(arch)" = "arm64"
 	@test "$(bits)" = "32" || test "$(bits)" = "64"
 	@test "$(prefetch)" = "yes" || test "$(prefetch)" = "no"
@@ -870,14 +901,15 @@ clang-profile-use:
 	all
 
 gcc-profile-make:
+	@mkdir -p profdir
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS='-fprofile-generate' \
+	EXTRACXXFLAGS='-fprofile-generate=profdir' \
 	EXTRALDFLAGS='-lgcov' \
 	all
 
 gcc-profile-use:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS='-fprofile-use -fno-peel-loops -fno-tracer' \
+	EXTRACXXFLAGS='-fprofile-use=profdir -fno-peel-loops -fno-tracer' \
 	EXTRALDFLAGS='-lgcov' \
 	all
 
@@ -892,7 +924,7 @@ icc-profile-use:
 	EXTRACXXFLAGS='-prof_use -prof_dir ./profdir' \
 	all
 
-.depend:
+.depend: $(SRCS)
 	-@$(CXX) $(DEPENDFLAGS) -MM $(SRCS) > $@ 2> /dev/null
 
 -include .depend
