@@ -124,11 +124,9 @@ namespace {
             level = double(skill_level);
     }
     bool enabled() const { return level < 20.0; }
-    bool time_to_pick(Depth depth) const { return depth == 1 + int(level); }
-    Move pick_best(size_t multiPV);
+    Move pick_move(const RootMoves& rootMoves, size_t multiPV);
 
     double level;
-    Move best = MOVE_NONE;
   };
 
   template <NodeType nodeType>
@@ -468,10 +466,6 @@ void Thread::search() {
       if (!mainThread)
           continue;
 
-      // If skill level is enabled and time is up, pick a sub-optimal best move
-      if (skill.enabled() && skill.time_to_pick(rootDepth))
-          skill.pick_best(multiPV);
-
       // Do we have time for the next iteration? Can we stop searching now?
       if (    Limits.use_time_management()
           && !Threads.stop
@@ -529,8 +523,10 @@ void Thread::search() {
 
   // If skill level is enabled, swap best PV line with the sub-optimal one
   if (skill.enabled())
-      std::swap(rootMoves[0], *std::find(rootMoves.begin(), rootMoves.end(),
-                skill.best ? skill.best : skill.pick_best(multiPV)));
+  {
+      auto move = std::find(rootMoves.begin(), rootMoves.end(), skill.pick_move(rootMoves, multiPV));
+      std::swap(rootMoves[0], *move);
+  }
 }
 
 
@@ -1769,12 +1765,12 @@ moves_loop: // When in check, search starts here
   // When playing with strength handicap, choose best move among a set of RootMoves
   // using a statistical rule dependent on 'level'. Idea by Heinz van Saanen.
 
-  Move Skill::pick_best(size_t multiPV) {
+  Move Skill::pick_move(const RootMoves& rootMoves, size_t multiPV) {
 
-    const RootMoves& rootMoves = Threads.main()->rootMoves;
     static PRNG rng(now()); // PRNG sequence should be non-deterministic
 
     // RootMoves are already sorted by score in descending order
+    Move best = MOVE_NONE;
     Value topScore = rootMoves[0].score;
     int delta = std::min(topScore - rootMoves[multiPV - 1].score, PawnValueMg);
     int maxScore = -VALUE_INFINITE;
