@@ -50,7 +50,7 @@ namespace Stockfish::Eval::NNUE::Features {
       PS_W_QUEEN  =  8 * SQUARE_NB,
       PS_B_QUEEN  =  9 * SQUARE_NB,
       PS_KING     =  10 * SQUARE_NB,
-      PS_NB = 11 * SQUARE_NB
+      PS_NB       =  11 * SQUARE_NB
     };
 
     static constexpr IndexType PieceSquareIndex[COLOR_NB][PIECE_NB] = {
@@ -85,36 +85,38 @@ namespace Stockfish::Eval::NNUE::Features {
       -1, -1, -1, -1, 23, 22, 21, 20,
       -1, -1, -1, -1, 19, 18, 17, 16,
       -1, -1, -1, -1, 15, 14, 13, 12,
-      -1, -1, -1, -1, 11, 10, 9, 8,
-      -1, -1, -1, -1, 7, 6, 5, 4,
-      -1, -1, -1, -1, 3, 2, 1, 0
+      -1, -1, -1, -1, 11, 10,  9,  8,
+      -1, -1, -1, -1,  7,  6,  5,  4,
+      -1, -1, -1, -1,  3,  2,  1,  0
     };
 
     // Maximum number of simultaneously active features.
     static constexpr IndexType MaxActiveDimensions = 32;
+    using IndexList = ValueList<IndexType, MaxActiveDimensions>;
 
     // Get a list of indices for active features
     static void append_active_indices(
       const Position& pos,
       Color perspective,
-      ValueListInserter<IndexType> active);
+      IndexList& active);
 
     // Get a list of indices for recently changed features
     static void append_changed_indices(
       Square ksq,
-      StateInfo* st,
+      const DirtyPiece& dp,
       Color perspective,
-      ValueListInserter<IndexType> removed,
-      ValueListInserter<IndexType> added);
+      IndexList& removed,
+      IndexList& added
+    );
 
     // Returns the cost of updating one perspective, the most costly one.
     // Assumes no refresh needed.
-    static int update_cost(StateInfo* st);
+    static int update_cost(const StateInfo* st);
     static int refresh_cost(const Position& pos);
 
     // Returns whether the change stored in this StateInfo means that
     // a full accumulator refresh is required.
-    static bool requires_refresh(StateInfo* st, Color perspective);
+    static bool requires_refresh(const StateInfo* st, Color perspective);
   };
 
 }  // namespace Stockfish::Eval::NNUE::Features
