@@ -625,6 +625,8 @@ namespace {
         if (alpha >= beta)
             return alpha;
     }
+    else
+        thisThread->rootDelta = beta - alpha;
 
     assert(0 <= ss->ply && ss->ply < MAX_PLY);
 
@@ -1166,6 +1168,10 @@ moves_loop: // When in check, search starts here
           if (   PvNode
               && bestMoveCount <= 3)
               r--;
+
+          // Increases reduction for PvNodes that have small window
+          if (PvNode && beta - alpha < thisThread->rootDelta / 4)
+              r++;
 
           // Decrease reduction if position is or has been on the PV
           // and node is not likely to fail low. (~3 Elo)
