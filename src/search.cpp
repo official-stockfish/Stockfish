@@ -21,6 +21,7 @@
 #include <cmath>
 #include <cstring>   // For std::memset
 #include <iostream>
+#include <random>
 #include <sstream>
 
 #include "evaluate.h"
@@ -1776,6 +1777,12 @@ moves_loop: // When in check, search starts here
     int maxScore = -VALUE_INFINITE;
     double weakness = 120 - 2 * level;
 
+    float mean = delta * weakness / 2;
+    float stddev = mean * 0.3;
+
+    std::default_random_engine generator;
+    std::normal_distribution<float> distribution(mean, stddev);
+
     // Choose best move. For each move score we add two terms, both dependent on
     // weakness. One is deterministic and bigger for weaker levels, and one is
     // random. Then we choose the move with the resulting highest score.
@@ -1783,7 +1790,7 @@ moves_loop: // When in check, search starts here
     {
         // This is our magic formula
         int push = int((  weakness * int(topScore - rootMoves[i].score)
-                        + delta * (rng.rand<unsigned>() % int(weakness))) / 128);
+                        + distribution(generator)) / 128);
 
         if (rootMoves[i].score + push >= maxScore)
         {
