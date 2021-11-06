@@ -348,11 +348,6 @@ void Thread::search() {
       if (mainThread)
           totBestMoveChanges /= 2;
 
-      // Save the last iteration's scores before first PV line is searched and
-      // all the move scores except the (new) PV are set to -VALUE_INFINITE.
-      for (RootMove& rm : rootMoves)
-          rm.previousScore = rm.score;
-
       size_t pvFirst = 0;
       pvLast = 0;
 
@@ -1858,7 +1853,7 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
           continue;
 
       Depth d = updated ? depth : std::max(1, depth - 1);
-      Value v = updated ? rootMoves[i].score : rootMoves[i].previousScore;
+      Value v = updated ? rootMoves[i].score : rootMoves[i].averageScore;
 
       if (v == -VALUE_INFINITE)
           v = VALUE_ZERO;
