@@ -1775,7 +1775,7 @@ moves_loop: // When in check, search starts here
     Value topScore = rootMoves[0].score;
     int delta = std::min(topScore - rootMoves[multiPV - 1].score, PawnValueMg);
     int maxScore = -VALUE_INFINITE;
-    double weakness = 140 - 3 * level;
+    double weakness = 130 - 2 * level;
 
     float mean = delta * weakness / 2;
     float stddev = mean * 0.3;
