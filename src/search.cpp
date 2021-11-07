@@ -1778,7 +1778,7 @@ moves_loop: // When in check, search starts here
     double weakness = 130 - 2 * level;
 
     float mean = delta * weakness / 2;
-    float stddev = mean * 0.25;
+    float stddev = mean * 0.2;
 
     std::default_random_engine generator;
     std::normal_distribution<float> distribution(mean, stddev);
