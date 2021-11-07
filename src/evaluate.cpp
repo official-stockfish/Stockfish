@@ -988,7 +988,9 @@ namespace {
 
     // Early exit if score is high
     auto lazy_skip = [&](Value lazyThreshold) {
-        return abs(mg_value(score) + eg_value(score)) > lazyThreshold + pos.non_pawn_material() / 32;
+        return abs(mg_value(score) + eg_value(score)) >   lazyThreshold
+                                                        + std::abs(pos.this_thread()->bestValue) * 5 / 4
+                                                        + pos.non_pawn_material() / 32;
     };
 
     if (lazy_skip(LazyThreshold1))
@@ -1126,6 +1128,7 @@ std::string Eval::trace(Position& pos) {
   std::memset(scores, 0, sizeof(scores));
 
   pos.this_thread()->trend = SCORE_ZERO; // Reset any dynamic contempt
+  pos.this_thread()->bestValue = VALUE_ZERO; // Reset bestValue for lazyEval
 
   v = Evaluation<TRACE>(pos).value();
 
