@@ -1768,29 +1768,29 @@ moves_loop: // When in check, search starts here
 
   Move Skill::pick_move(const RootMoves& rootMoves, size_t multiPV) {
 
-    static PRNG rng(now()); // PRNG sequence should be non-deterministic
-
     // RootMoves are already sorted by score in descending order
     Move best = MOVE_NONE;
+    int maxScore = -VALUE_INFINITE;
     Value topScore = rootMoves[0].score;
     int delta = std::min(topScore - rootMoves[multiPV - 1].score, PawnValueMg);
-    int maxScore = -VALUE_INFINITE;
     double weakness = 130 - 2 * level;
 
+    // Use a normal distribution to not spread too much the random values, so
+    // that moves quality remains consistent with the set skill level.
     float mean = delta * weakness / 2;
-    float stddev = mean * 0.2;
-
-    std::default_random_engine generator;
-    std::normal_distribution<float> distribution(mean, stddev);
+    float stddev = mean * 0.25;
+    std::default_random_engine rng;
+    std::normal_distribution<float> normal(mean, stddev);
 
     // Choose best move. For each move score we add two terms, both dependent on
     // weakness. One is deterministic and bigger for weaker levels, and one is
-    // random. Then we choose the move with the resulting highest score.
+    // random with a normal probability distribution. Then we choose the move with
+    // the resulting highest score.
     for (size_t i = 0; i < multiPV; ++i)
     {
         // This is our magic formula
-        int push = int((  weakness * int(topScore - rootMoves[i].score)
-                        + distribution(generator)) / 128);
+        int diff_to_top = topScore - rootMoves[i].score;
+        int push = int((weakness * diff_to_top + normal(rng)) / 128);
 
         if (rootMoves[i].score + push >= maxScore)
         {
