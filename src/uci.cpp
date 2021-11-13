@@ -180,7 +180,7 @@ namespace {
             {
                go(pos, is, states);
                Threads.main()->wait_for_search_finished();
-               nodes += Threads.nodes_searched();
+               nodes += Cluster::nodes_searched();
             }
             else if (Cluster::is_root())
                trace_eval(pos);
