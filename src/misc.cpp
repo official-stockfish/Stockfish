@@ -26,6 +26,7 @@
 #define NOMINMAX
 #endif
 
+#include <libloaderapi.h> // For GetModuleFileName()
 #include <windows.h>
 // The needed Windows API for processor groups could be missed from old Windows
 // versions, so instead of calling them directly (forcing the linker to resolve
@@ -39,6 +40,7 @@ typedef bool(*fun3_t)(HANDLE, CONST GROUP_AFFINITY*, PGROUP_AFFINITY);
 }
 #endif
 
+#include <filesystem>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -60,6 +62,7 @@ typedef bool(*fun3_t)(HANDLE, CONST GROUP_AFFINITY*, PGROUP_AFFINITY);
 #include "thread.h"
 
 using namespace std;
+namespace fs = std::filesystem;
 
 namespace Stockfish {
 
@@ -275,6 +278,38 @@ std::string compiler_info() {
   compiler += "\n";
 
   return compiler;
+}
+
+
+/// Returns the path of the engine's directory. Used by NNUE.
+/// Under Windows we can reliably use GetModuleFileName(), otherwise
+/// we have to rely on arg[0], although is a bit tricky because arg[0]
+/// could return an absolute path, a pwd relative path, or even just
+/// a base name, to be found in PATH.
+
+string binary_directory(char* arg0) {
+
+  static string sf_dir;
+
+  if (!arg0)
+    return sf_dir;
+
+#ifdef _WIN32
+  char buf[MAX_PATH];
+  GetModuleFileName(nullptr, buf, MAX_PATH);
+  fs::path p(buf);
+#else
+  fs::path p(arg0);
+#endif
+
+  // If exe is not found try as relative to current working sirectory
+  if (!fs::exists(p))
+  {
+    p = fs::current_path() / p;
+    if (!fs::exists(p))
+      cerr << "Cannot find: " << string(arg0) << " file!" << endl;
+  }
+  return sf_dir = p.parent_path().string();
 }
 
 
@@ -592,62 +627,5 @@ void bindThisThread(size_t idx) {
 #endif
 
 } // namespace WinProcGroup
-
-#ifdef _WIN32
-#include <direct.h>
-#define GETCWD _getcwd
-#else
-#include <unistd.h>
-#define GETCWD getcwd
-#endif
-
-namespace CommandLine {
-
-string argv0;            // path+name of the executable binary, as given by argv[0]
-string binaryDirectory;  // path of the executable directory
-string workingDirectory; // path of the working directory
-
-void init(int argc, char* argv[]) {
-    (void)argc;
-    string pathSeparator;
-
-    // extract the path+name of the executable binary
-    argv0 = argv[0];
-
-#ifdef _WIN32
-    pathSeparator = "\\";
-  #ifdef _MSC_VER
-    // Under windows argv[0] may not have the extension. Also _get_pgmptr() had
-    // issues in some windows 10 versions, so check returned values carefully.
-    char* pgmptr = nullptr;
-    if (!_get_pgmptr(&pgmptr) && pgmptr != nullptr && *pgmptr)
-        argv0 = pgmptr;
-  #endif
-#else
-    pathSeparator = "/";
-#endif
-
-    // extract the working directory
-    workingDirectory = "";
-    char buff[40000];
-    char* cwd = GETCWD(buff, 40000);
-    if (cwd)
-        workingDirectory = cwd;
-
-    // extract the binary directory path from argv0
-    binaryDirectory = argv0;
-    size_t pos = binaryDirectory.find_last_of("\\/");
-    if (pos == std::string::npos)
-        binaryDirectory = "." + pathSeparator;
-    else
-        binaryDirectory.resize(pos + 1);
-
-    // pattern replacement: "./" at the start of path is replaced by the working directory
-    if (binaryDirectory.find("." + pathSeparator) == 0)
-        binaryDirectory.replace(0, 1, workingDirectory);
-}
-
-
-} // namespace CommandLine
 
 } // namespace Stockfish

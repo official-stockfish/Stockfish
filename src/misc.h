@@ -32,6 +32,7 @@ namespace Stockfish {
 
 std::string engine_info(bool to_uci = false);
 std::string compiler_info();
+std::string binary_directory(char* arg0);
 void prefetch(void* addr);
 void start_logger(const std::string& fname);
 void* std_aligned_alloc(size_t alignment, size_t size);
@@ -196,13 +197,6 @@ inline uint64_t mul_hi64(uint64_t a, uint64_t b) {
 
 namespace WinProcGroup {
   void bindThisThread(size_t idx);
-}
-
-namespace CommandLine {
-  void init(int argc, char* argv[]);
-
-  extern std::string binaryDirectory;  // path of the executable directory
-  extern std::string workingDirectory; // path of the working directory
 }
 
 } // namespace Stockfish

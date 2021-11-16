@@ -34,7 +34,6 @@ int main(int argc, char* argv[]) {
 
   std::cout << engine_info() << std::endl;
 
-  CommandLine::init(argc, argv);
   UCI::init(Options);
   Tune::init();
   PSQT::init();
@@ -42,9 +41,9 @@ int main(int argc, char* argv[]) {
   Position::init();
   Bitbases::init();
   Endgames::init();
+  Eval::NNUE::init(argv[0]);
   Threads.set(size_t(Options["Threads"]));
   Search::clear(); // After threads are up
-  Eval::NNUE::init();
 
   UCI::loop(argc, argv);
 

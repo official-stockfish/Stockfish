@@ -71,7 +71,7 @@ namespace Eval {
   /// in the engine directory. Distro packagers may define the DEFAULT_NNUE_DIRECTORY
   /// variable to have the engine search in a special directory in their distro.
 
-  void NNUE::init() {
+  void NNUE::init(char* arg0) {
 
     useNNUE = Options["Use NNUE"];
     if (!useNNUE)
@@ -81,12 +81,14 @@ namespace Eval {
     if (eval_file.empty())
         eval_file = EvalFileDefaultName;
 
+    string sf_dir = binary_directory(arg0);
+
     #if defined(DEFAULT_NNUE_DIRECTORY)
     #define stringify2(x) #x
     #define stringify(x) stringify2(x)
-    vector<string> dirs = { "<internal>" , "" , CommandLine::binaryDirectory , stringify(DEFAULT_NNUE_DIRECTORY) };
+    vector<string> dirs = { "<internal>" , "" , sf_dir, stringify(DEFAULT_NNUE_DIRECTORY) };
     #else
-    vector<string> dirs = { "<internal>" , "" , CommandLine::binaryDirectory };
+    vector<string> dirs = { "<internal>" , "" , sf_dir };
     #endif
 
     for (string directory : dirs)
