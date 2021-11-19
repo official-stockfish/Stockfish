@@ -1091,11 +1091,15 @@ Value Eval::evaluate(const Position& pos) {
       v = Evaluation<NO_TRACE>(pos).value();          // classical
   else
   {
-      int scale =   898
-                  + 24 * pos.count<PAWN>()
-                  + 33 * pos.non_pawn_material() / 1024;
+       int scale =   898
+                   + 24 * pos.count<PAWN>()
+                   + 33 * pos.non_pawn_material() / 1024;
 
-       v = NNUE::evaluate(pos, true) * scale / 1024;  // NNUE
+       Value nnue     = NNUE::evaluate(pos, true);     // NNUE
+       Color stm      = pos.side_to_move();
+       Value optimism = pos.this_thread()->optimism[stm];
+
+       v = (nnue + optimism) * scale / 1024 - optimism;
 
        if (pos.is_chess960())
            v += fix_FRC(pos);
@@ -1127,8 +1131,11 @@ std::string Eval::trace(Position& pos) {
 
   std::memset(scores, 0, sizeof(scores));
 
-  pos.this_thread()->trend = SCORE_ZERO; // Reset any dynamic contempt
-  pos.this_thread()->bestValue = VALUE_ZERO; // Reset bestValue for lazyEval
+  // Reset any global variable used in eval
+  pos.this_thread()->trend           = SCORE_ZERO;
+  pos.this_thread()->bestValue       = VALUE_ZERO;
+  pos.this_thread()->optimism[WHITE] = VALUE_ZERO;
+  pos.this_thread()->optimism[BLACK] = VALUE_ZERO;
 
   v = Evaluation<TRACE>(pos).value();
 
