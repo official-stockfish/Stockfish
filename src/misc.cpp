@@ -502,7 +502,7 @@ void bindThisThread(size_t) {}
 int best_group(size_t idx) {
 
   int threads = 0;
-  int nodes = 0;
+  int groups = 0;
   int cores = 0;
   DWORD returnLength = 0;
   DWORD byteOffset = 0;
@@ -530,8 +530,8 @@ int best_group(size_t idx) {
 
   while (byteOffset < returnLength)
   {
-      if (ptr->Relationship == RelationNumaNode)
-          nodes++;
+      if (ptr->Relationship == RelationGroup)
+          groups += ptr->Group.MaximumGroupCount;
 
       else if (ptr->Relationship == RelationProcessorCore)
       {
@@ -546,23 +546,23 @@ int best_group(size_t idx) {
 
   free(buffer);
 
-  std::vector<int> groups;
+  std::vector<int> core_groups;
 
-  // Run as many threads as possible on the same node until core limit is
-  // reached, then move on filling the next node.
-  for (int n = 0; n < nodes; n++)
-      for (int i = 0; i < cores / nodes; i++)
-          groups.push_back(n);
+  // Run as many threads as possible on the same group until core limit is
+  // reached, then move on filling the next group.
+  for (int n = 0; n < groups; n++)
+      for (int i = 0; i < cores / groups; i++)
+          core_groups.push_back(n);
 
   // In case a core has more than one logical processor (we assume 2) and we
   // have still threads to allocate, then spread them evenly across available
-  // nodes.
+  // groups.
   for (int t = 0; t < threads - cores; t++)
-      groups.push_back(t % nodes);
+      core_groups.push_back(t % groups);
 
   // If we still have more threads than the total number of logical processors
   // then return -1 and let the OS to decide what to do.
-  return idx < groups.size() ? groups[idx] : -1;
+  return idx < core_groups.size() ? core_groups[idx] : -1;
 }
 
 
