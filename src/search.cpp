@@ -334,8 +334,10 @@ void Thread::search() {
 
   nodesLastExplosive = nodes;
   nodesLastNormal    = nodes;
-  state = EXPLOSION_NONE;
-  trend = SCORE_ZERO;
+  state              = EXPLOSION_NONE;
+  trend              = SCORE_ZERO;
+  optimism[ us]      = Value(25);
+  optimism[~us]      = -optimism[us];
 
   int searchAgainCounter = 0;
 
@@ -381,11 +383,14 @@ void Thread::search() {
               alpha = std::max(prev - delta,-VALUE_INFINITE);
               beta  = std::min(prev + delta, VALUE_INFINITE);
 
-              // Adjust trend based on root move's previousScore (dynamic contempt)
-              int tr = 113 * prev / (abs(prev) + 147);
-
+              // Adjust trend and optimism based on root move's previousScore
+              int tr = sigmoid(prev, 0, 0, 147, 113, 1);
               trend = (us == WHITE ?  make_score(tr, tr / 2)
                                    : -make_score(tr, tr / 2));
+
+              int opt = sigmoid(prev, 0, 25, 147, 14464, 256);
+              optimism[ us] = Value(opt);
+              optimism[~us] = -optimism[us];
           }
 
           // Start with a small aspiration window and, in the case of a fail
