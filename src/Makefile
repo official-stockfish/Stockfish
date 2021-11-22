@@ -330,8 +330,8 @@ ifeq ($(COMP),gcc)
 
 	ifeq ($(arch),$(filter $(arch),armv7 armv8))
 		ifeq ($(OS),Android)
-			CXXFLAGS += -m$(bits)
-			LDFLAGS += -m$(bits)
+			CXXFLAGS += -Wno-missing-profile
+			LDFLAGS +=
 		endif
 	else
 		CXXFLAGS += -m$(bits)
@@ -396,7 +396,7 @@ ifeq ($(COMP),clang)
 	ifeq ($(arch),$(filter $(arch),armv7 armv8))
 		ifeq ($(OS),Android)
 			CXXFLAGS += -m$(bits)
-			LDFLAGS += -m$(bits)
+			LDFLAGS += -m$(bits) -static-libstdc++	
 		endif
 	else
 		CXXFLAGS += -m$(bits)
