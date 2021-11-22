@@ -1088,7 +1088,7 @@ make_v:
 Value Eval::evaluate(const Position& pos) {
 
 
-  static thread_local std::mt19937_64 tls_rng = [](){
+  static thread_local std::mt19937_64 rng = [](){
     return std::mt19937_64(std::time(0));
   }();
 
@@ -1121,8 +1121,8 @@ Value Eval::evaluate(const Position& pos) {
   v = v * (207 - pos.rule50_count()) / 207;
   
 
-  std::normal_distribution<float> d(0.0, RookValueEg);
-  float r = d(tls_rng);
+  std::normal_distribution<float> d(0.0, PawnValueEg);
+  float r = d(rng);
   r = std::clamp<float>(r, VALUE_TB_LOSS_IN_MAX_PLY + 1, VALUE_TB_WIN_IN_MAX_PLY - 1);
 
   v = (NNUE::RandomEvalPerturb * Value(r) + (100 - NNUE::RandomEvalPerturb) * v) / 100;
