@@ -42,6 +42,8 @@ void on_clear_hash(const Option&) { Search::clear(); }
 void on_hash_size(const Option& o) { TT.resize(size_t(o)); }
 void on_logger(const Option& o) { start_logger(o); }
 void on_threads(const Option& o) { Threads.set(size_t(o)); }
+void on_waitms(const Option& o) { Eval::NNUE::waitms = o; }
+void on_eval_perturb(const Option& o) { Eval::NNUE::RandomEvalPerturb = o; }
 void on_tb_path(const Option& o) { Tablebases::init(o); }
 void on_use_NNUE(const Option& ) { Eval::NNUE::init(); }
 void on_eval_file(const Option& ) { Eval::NNUE::init(); }
@@ -62,6 +64,8 @@ void init(OptionsMap& o) {
 
   o["Debug Log File"]        << Option("", on_logger);
   o["Threads"]               << Option(1, 1, 512, on_threads);
+  o["Wait ms"]               << Option(10, 0, 100, on_waitms);
+  o["RandomEvalPerturb"]     << Option(10, 0, 100, on_eval_perturb);
   o["Hash"]                  << Option(16, 1, MaxHashMB, on_hash_size);
   o["Clear Hash"]            << Option(on_clear_hash);
   o["Ponder"]                << Option(false);

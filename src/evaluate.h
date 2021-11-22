@@ -42,6 +42,9 @@ namespace Eval {
   #define EvalFileDefaultName   "nn-13406b1dcbe0.nnue"
 
   namespace NNUE {
+  
+    extern int RandomEvalPerturb;
+    extern int waitms;
 
     std::string trace(Position& pos);
     Value evaluate(const Position& pos, bool adjusted = false);
