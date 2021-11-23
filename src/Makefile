@@ -798,7 +798,11 @@ net:
 
 # clean binaries and objects
 objclean:
-	@rm -f $(EXE) *.o ./syzygy/*.o ./nnue/*.o ./nnue/features/*.o
+	@if [ "$(EXE)" != "stockfish" ]; then \
+	    rm -f $(EXE) *.o ./syzygy/*.o ./nnue/*.o ./nnue/features/*.o; \
+	else \
+	    rm -f *.o ./syzygy/*.o ./nnue/*.o ./nnue/features/*.o; \
+	fi \
 
 # clean auxiliary profiling files
 profileclean:
