@@ -234,7 +234,7 @@ namespace Stockfish::Eval::NNUE {
     {
         buffer[1] = '0' + cp / 10000; cp %= 10000;
         buffer[2] = '0' + cp / 1000; cp %= 1000;
-        buffer[3] = '0' + cp / 100; cp %= 100;
+        buffer[3] = '0' + cp / 100;
         buffer[4] = ' ';
     }
     else if (cp >= 1000)
