@@ -1801,6 +1801,7 @@ moves_loop: // When in check, search starts here
         {
             maxScore = rootMoves[i].score + push;
             best = rootMoves[i].pv[0];
+          
         }
     }
 
