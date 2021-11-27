@@ -63,19 +63,17 @@ namespace Stockfish::Eval::NNUE::Layers {
   {
 # if defined(USE_SSE2)
     // At least a multiple of 16, with SSE2.
-    static_assert(PaddedInputDimensions % 16 == 0);
-    constexpr IndexType NumChunks = PaddedInputDimensions / 16;
+    constexpr IndexType NumChunks = ceil_to_multiple<IndexType>(InputDimensions, 16) / 16;
     const __m128i Zeros = _mm_setzero_si128();
     const auto inputVector = reinterpret_cast<const __m128i*>(input);
 
 # elif defined(USE_MMX)
-    static_assert(InputDimensions % 8 == 0);
-    constexpr IndexType NumChunks = InputDimensions / 8;
+    constexpr IndexType NumChunks = ceil_to_multiple<IndexType>(InputDimensions, 8) / 8;
     const __m64 Zeros = _mm_setzero_si64();
     const auto inputVector = reinterpret_cast<const __m64*>(input);
 
 # elif defined(USE_NEON)
-    constexpr IndexType NumChunks = (InputDimensions + 15) / 16;
+    constexpr IndexType NumChunks = ceil_to_multiple<IndexType>(InputDimensions, 16) / 16;
     const auto inputVector = reinterpret_cast<const int8x8_t*>(input);
 # endif
 
@@ -150,24 +148,27 @@ namespace Stockfish::Eval::NNUE::Layers {
   }
 #endif
 
-  template <typename PreviousLayer, IndexType OutDims, typename Enabled = void>
+  template <IndexType InDims, IndexType OutDims, typename Enabled = void>
   class AffineTransform;
 
   // A specialization for large inputs.
-  template <typename PreviousLayer, IndexType OutDims>
-  class AffineTransform<PreviousLayer, OutDims, std::enable_if_t<(PreviousLayer::OutputDimensions >= 2*64-1)>> {
+  template <IndexType InDims, IndexType OutDims>
+  class AffineTransform<InDims, OutDims, std::enable_if_t<(ceil_to_multiple<IndexType>(InDims, MaxSimdWidth) >= 2*64)>> {
    public:
     // Input/output type
-    using InputType = typename PreviousLayer::OutputType;
+    using InputType = std::uint8_t;
     using OutputType = std::int32_t;
-    static_assert(std::is_same<InputType, std::uint8_t>::value, "");
 
     // Number of input/output dimensions
-    static constexpr IndexType InputDimensions = PreviousLayer::OutputDimensions;
+    static constexpr IndexType InputDimensions = InDims;
     static constexpr IndexType OutputDimensions = OutDims;
 
     static constexpr IndexType PaddedInputDimensions =
       ceil_to_multiple<IndexType>(InputDimensions, MaxSimdWidth);
+    static constexpr IndexType PaddedOutputDimensions =
+      ceil_to_multiple<IndexType>(OutputDimensions, MaxSimdWidth);
+
+    using OutputBuffer = OutputType[PaddedOutputDimensions];
 
     static_assert(PaddedInputDimensions >= 128, "Something went wrong. This specialization should not have been chosen.");
 
@@ -202,20 +203,12 @@ namespace Stockfish::Eval::NNUE::Layers {
 
     static_assert(OutputDimensions % NumOutputRegs == 0);
 
-    // Size of forward propagation buffer used in this layer
-    static constexpr std::size_t SelfBufferSize =
-      ceil_to_multiple(OutputDimensions * sizeof(OutputType), CacheLineSize);
-
-    // Size of the forward propagation buffer used from the input layer to this layer
-    static constexpr std::size_t BufferSize =
-      PreviousLayer::BufferSize + SelfBufferSize;
-
     // Hash value embedded in the evaluation file
-    static constexpr std::uint32_t get_hash_value() {
+    static constexpr std::uint32_t get_hash_value(std::uint32_t prevHash) {
       std::uint32_t hashValue = 0xCC03DAE4u;
       hashValue += OutputDimensions;
-      hashValue ^= PreviousLayer::get_hash_value() >> 1;
-      hashValue ^= PreviousLayer::get_hash_value() << 31;
+      hashValue ^= prevHash >> 1;
+      hashValue ^= prevHash << 31;
       return hashValue;
     }
 
@@ -242,7 +235,6 @@ namespace Stockfish::Eval::NNUE::Layers {
 
     // Read network parameters
     bool read_parameters(std::istream& stream) {
-      if (!previousLayer.read_parameters(stream)) return false;
       for (std::size_t i = 0; i < OutputDimensions; ++i)
         biases[i] = read_little_endian<BiasType>(stream);
 
@@ -254,7 +246,6 @@ namespace Stockfish::Eval::NNUE::Layers {
 
     // Write network parameters
     bool write_parameters(std::ostream& stream) const {
-      if (!previousLayer.write_parameters(stream)) return false;
       for (std::size_t i = 0; i < OutputDimensions; ++i)
           write_little_endian<BiasType>(stream, biases[i]);
 
@@ -266,10 +257,7 @@ namespace Stockfish::Eval::NNUE::Layers {
 
     // Forward propagation
     const OutputType* propagate(
-        const TransformedFeatureType* transformedFeatures, char* buffer) const {
-      const auto input = previousLayer.propagate(
-        transformedFeatures, buffer + SelfBufferSize);
-      OutputType* output = reinterpret_cast<OutputType*>(buffer);
+        const InputType* input, OutputType* output) const {
 
 #if defined (USE_AVX512)
       using acc_vec_t = __m512i;
@@ -311,7 +299,6 @@ namespace Stockfish::Eval::NNUE::Layers {
 
 #if defined (USE_SSSE3) || defined (USE_NEON)
       const in_vec_t* invec = reinterpret_cast<const in_vec_t*>(input);
-
 
       // Perform accumulation to registers for each big block
       for (IndexType bigBlock = 0; bigBlock < NumBigBlocks; ++bigBlock)
@@ -377,26 +364,28 @@ namespace Stockfish::Eval::NNUE::Layers {
     using BiasType = OutputType;
     using WeightType = std::int8_t;
 
-    PreviousLayer previousLayer;
-
     alignas(CacheLineSize) BiasType biases[OutputDimensions];
     alignas(CacheLineSize) WeightType weights[OutputDimensions * PaddedInputDimensions];
   };
 
-  template <typename PreviousLayer, IndexType OutDims>
-  class AffineTransform<PreviousLayer, OutDims, std::enable_if_t<(PreviousLayer::OutputDimensions < 2*64-1)>> {
+  template <IndexType InDims, IndexType OutDims>
+  class AffineTransform<InDims, OutDims, std::enable_if_t<(ceil_to_multiple<IndexType>(InDims, MaxSimdWidth) < 2*64)>> {
    public:
     // Input/output type
-    using InputType = typename PreviousLayer::OutputType;
+    // Input/output type
+    using InputType = std::uint8_t;
     using OutputType = std::int32_t;
-    static_assert(std::is_same<InputType, std::uint8_t>::value, "");
 
     // Number of input/output dimensions
-    static constexpr IndexType InputDimensions =
-        PreviousLayer::OutputDimensions;
+    static constexpr IndexType InputDimensions = InDims;
     static constexpr IndexType OutputDimensions = OutDims;
+
     static constexpr IndexType PaddedInputDimensions =
-        ceil_to_multiple<IndexType>(InputDimensions, MaxSimdWidth);
+      ceil_to_multiple<IndexType>(InputDimensions, MaxSimdWidth);
+    static constexpr IndexType PaddedOutputDimensions =
+      ceil_to_multiple<IndexType>(OutputDimensions, MaxSimdWidth);
+
+    using OutputBuffer = OutputType[PaddedOutputDimensions];
 
     static_assert(PaddedInputDimensions < 128, "Something went wrong. This specialization should not have been chosen.");
 
@@ -405,20 +394,12 @@ namespace Stockfish::Eval::NNUE::Layers {
     static constexpr const IndexType InputSimdWidth = SimdWidth;
 #endif
 
-    // Size of forward propagation buffer used in this layer
-    static constexpr std::size_t SelfBufferSize =
-      ceil_to_multiple(OutputDimensions * sizeof(OutputType), CacheLineSize);
-
-    // Size of the forward propagation buffer used from the input layer to this layer
-    static constexpr std::size_t BufferSize =
-      PreviousLayer::BufferSize + SelfBufferSize;
-
     // Hash value embedded in the evaluation file
-    static constexpr std::uint32_t get_hash_value() {
+    static constexpr std::uint32_t get_hash_value(std::uint32_t prevHash) {
       std::uint32_t hashValue = 0xCC03DAE4u;
       hashValue += OutputDimensions;
-      hashValue ^= PreviousLayer::get_hash_value() >> 1;
-      hashValue ^= PreviousLayer::get_hash_value() << 31;
+      hashValue ^= prevHash >> 1;
+      hashValue ^= prevHash << 31;
       return hashValue;
     }
 
@@ -441,7 +422,6 @@ namespace Stockfish::Eval::NNUE::Layers {
 
     // Read network parameters
     bool read_parameters(std::istream& stream) {
-      if (!previousLayer.read_parameters(stream)) return false;
       for (std::size_t i = 0; i < OutputDimensions; ++i)
         biases[i] = read_little_endian<BiasType>(stream);
       for (std::size_t i = 0; i < OutputDimensions * PaddedInputDimensions; ++i)
@@ -452,7 +432,6 @@ namespace Stockfish::Eval::NNUE::Layers {
 
     // Write network parameters
     bool write_parameters(std::ostream& stream) const {
-      if (!previousLayer.write_parameters(stream)) return false;
       for (std::size_t i = 0; i < OutputDimensions; ++i)
         write_little_endian<BiasType>(stream, biases[i]);
 
@@ -463,10 +442,7 @@ namespace Stockfish::Eval::NNUE::Layers {
     }
     // Forward propagation
     const OutputType* propagate(
-        const TransformedFeatureType* transformedFeatures, char* buffer) const {
-      const auto input = previousLayer.propagate(
-        transformedFeatures, buffer + SelfBufferSize);
-      const auto output = reinterpret_cast<OutputType*>(buffer);
+        const InputType* input, OutputType* output) const {
 
 #if defined (USE_AVX2)
       using vec_t = __m256i;
@@ -491,12 +467,11 @@ namespace Stockfish::Eval::NNUE::Layers {
 #if defined (USE_SSSE3)
       const auto inputVector = reinterpret_cast<const vec_t*>(input);
 
-      static_assert(InputDimensions % 8 == 0);
       static_assert(OutputDimensions % OutputSimdWidth == 0 || OutputDimensions == 1);
 
       if constexpr (OutputDimensions % OutputSimdWidth == 0)
       {
-        constexpr IndexType NumChunks = InputDimensions / 4;
+        constexpr IndexType NumChunks = ceil_to_multiple<IndexType>(InputDimensions, 8) / 4;
         constexpr IndexType NumRegs = OutputDimensions / OutputSimdWidth;
 
         const auto input32 = reinterpret_cast<const std::int32_t*>(input);
@@ -554,8 +529,6 @@ namespace Stockfish::Eval::NNUE::Layers {
    private:
     using BiasType = OutputType;
     using WeightType = std::int8_t;
-
-    PreviousLayer previousLayer;
 
     alignas(CacheLineSize) BiasType biases[OutputDimensions];
     alignas(CacheLineSize) WeightType weights[OutputDimensions * PaddedInputDimensions];
