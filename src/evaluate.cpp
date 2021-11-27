@@ -23,12 +23,9 @@
 #include <fstream>
 #include <iomanip>
 #include <sstream>
-#include <random>
 #include <iostream>
 #include <streambuf>
 #include <vector>
-#include <chrono>
-#include <thread>
 
 #include "bitboard.h"
 #include "evaluate.h"
@@ -65,9 +62,6 @@ namespace Eval {
 
   bool useNNUE;
   string currentEvalFileName = "None";
-
-  int NNUE::RandomEvalPerturb = 10;
-  int NNUE::waitms = 10;
 
   /// NNUE::init() tries to load a NNUE network at startup time, or when the engine
   /// receives a UCI command "setoption name EvalFile value nn-[a-z0-9]{12}.nnue"
@@ -1087,46 +1081,32 @@ make_v:
 
 Value Eval::evaluate(const Position& pos) {
 
-
-  static thread_local std::mt19937_64 rng = [](){
-    return std::mt19937_64(std::time(0));
-  }();
-
-
   Value v;
 
   // Deciding between classical and NNUE eval: for high PSQ imbalance we use classical,
   // but we switch to NNUE during long shuffling or with high material on the board.
 
   if (  !useNNUE
-     || abs(eg_value(pos.psq_score())) * 5 > (850 + pos.non_pawn_material() / 64) * (5 + pos.rule50_count()))
-     v = Evaluation<NO_TRACE>(pos).value();          // classical
+      || abs(eg_value(pos.psq_score())) * 5 > (850 + pos.non_pawn_material() / 64) * (5 + pos.rule50_count()))
+      v = Evaluation<NO_TRACE>(pos).value();          // classical
   else
   {
-      int scale =   898
-                  + 24 * pos.count<PAWN>()
-                  + 33 * pos.non_pawn_material() / 1024;
+       int scale = 1049
+                   +  8 * pos.count<PAWN>()
+                   + 20 * pos.non_pawn_material() / 1024;
 
-       v = NNUE::evaluate(pos, true) * scale / 1024;  // NNUE
+       Value nnue     = NNUE::evaluate(pos, true);     // NNUE
+       Color stm      = pos.side_to_move();
+       Value optimism = pos.this_thread()->optimism[stm];
+
+       v = (nnue + optimism) * scale / 1024 - optimism;
 
        if (pos.is_chess960())
            v += fix_FRC(pos);
   }
 
-
-  // waitms warten
-  std::this_thread::sleep_for(std::chrono::milliseconds(NNUE::waitms));
-  
   // Damp down the evaluation linearly when shuffling
   v = v * (207 - pos.rule50_count()) / 207;
-  
-
-  std::normal_distribution<float> d(0.0, PawnValueEg);
-  float r = d(rng);
-  r = std::clamp<float>(r, VALUE_TB_LOSS_IN_MAX_PLY + 1, VALUE_TB_WIN_IN_MAX_PLY - 1);
-
-  v = (NNUE::RandomEvalPerturb * Value(r) + (100 - NNUE::RandomEvalPerturb) * v) / 100;
-
 
   // Guarantee evaluation does not hit the tablebase range
   v = std::clamp(v, VALUE_TB_LOSS_IN_MAX_PLY + 1, VALUE_TB_WIN_IN_MAX_PLY - 1);
@@ -1151,8 +1131,11 @@ std::string Eval::trace(Position& pos) {
 
   std::memset(scores, 0, sizeof(scores));
 
-  pos.this_thread()->trend = SCORE_ZERO; // Reset any dynamic contempt
-  pos.this_thread()->bestValue = VALUE_ZERO; // Reset bestValue for lazyEval
+  // Reset any global variable used in eval
+  pos.this_thread()->trend           = SCORE_ZERO;
+  pos.this_thread()->bestValue       = VALUE_ZERO;
+  pos.this_thread()->optimism[WHITE] = VALUE_ZERO;
+  pos.this_thread()->optimism[BLACK] = VALUE_ZERO;
 
   v = Evaluation<TRACE>(pos).value();
 
