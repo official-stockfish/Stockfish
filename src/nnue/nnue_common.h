@@ -109,7 +109,7 @@ namespace Stockfish::Eval::NNUE {
 
   // write_little_endian() is our utility to write an integer (signed or unsigned, any size)
   // to a stream in little-endian order. We swap the byte order before the write if
-  // necessary to always write in little endian order, independantly of the byte
+  // necessary to always write in little endian order, independently of the byte
   // ordering of the compiling machine.
   template <typename IntType>
   inline void write_little_endian(std::ostream& stream, IntType value) {

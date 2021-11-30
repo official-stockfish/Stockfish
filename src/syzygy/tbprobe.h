@@ -38,7 +38,7 @@ enum WDLScore {
 // Possible states after a probing operation
 enum ProbeState {
     FAIL              =  0, // Probe failed (missing file table)
-    OK                =  1, // Probe succesful
+    OK                =  1, // Probe successful
     CHANGE_STM        = -1, // DTZ should check the other side
     ZEROING_BEST_MOVE =  2  // Best move zeroes DTZ (capture or pawn move)
 };
