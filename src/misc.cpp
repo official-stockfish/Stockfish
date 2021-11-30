@@ -37,6 +37,7 @@ typedef bool(*fun1_t)(LOGICAL_PROCESSOR_RELATIONSHIP,
 typedef bool(*fun2_t)(USHORT, PGROUP_AFFINITY);
 typedef bool(*fun3_t)(HANDLE, CONST GROUP_AFFINITY*, PGROUP_AFFINITY);
 typedef bool(*fun4_t)(USHORT, PGROUP_AFFINITY, USHORT, PUSHORT);
+typedef WORD(*fun5_t)();
 }
 #endif
 
@@ -582,11 +583,12 @@ void bindThisThread(size_t idx) {
   auto fun2 = (fun2_t)(void(*)())GetProcAddress(k32, "GetNumaNodeProcessorMaskEx");
   auto fun3 = (fun3_t)(void(*)())GetProcAddress(k32, "SetThreadGroupAffinity");
   auto fun4 = (fun4_t)(void(*)())GetProcAddress(k32, "GetNumaNodeProcessorMask2");
+  auto fun5 = (fun5_t)(void(*)())GetProcAddress(k32, "GetMaximumProcessorGroupCount");
 
   if (!fun2 || !fun3)
       return;
 
-  if (!fun4) {
+  if (!fun4 || !fun5) {
       GROUP_AFFINITY affinity;
       if (fun2(node, &affinity))
           fun3(GetCurrentThread(), &affinity, nullptr);
@@ -594,7 +596,7 @@ void bindThisThread(size_t idx) {
       // If a numa node has more than one processor group, we assume they are
       // sized equal and we spread threads evenly across the groups.
       USHORT elements, returnedElements;
-      elements = GetMaximumProcessorGroupCount();
+      elements = fun5();
       GROUP_AFFINITY *affinity = (GROUP_AFFINITY*)malloc(
           elements * sizeof(GROUP_AFFINITY));
       if (fun4(node, affinity, elements, &returnedElements))
