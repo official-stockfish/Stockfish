@@ -84,7 +84,7 @@ class Tune {
 
   static Tune& instance() { static Tune t; return t; } // Singleton
 
-  // Use polymorphism to accomodate Entry of different types in the same vector
+  // Use polymorphism to accommodate Entry of different types in the same vector
   struct EntryBase {
     virtual ~EntryBase() = default;
     virtual void init_option() = 0;
