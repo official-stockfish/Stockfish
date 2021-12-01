@@ -46,6 +46,13 @@
 #define USE_INLINE_ASM
 #endif
 
+// Use either the AVX512 or AVX-VNNI version of the VNNI instructions.
+#if defined(USE_AVXVNNI)
+#define VNNI_PREFIX "%{vex%} "
+#else
+#define VNNI_PREFIX ""
+#endif
+
 namespace Stockfish::Simd {
 
 #if defined (USE_AVX512)
@@ -208,7 +215,7 @@ namespace Stockfish::Simd {
 # if defined (USE_VNNI)
 #   if defined (USE_INLINE_ASM)
       asm(
-        "vpdpbusd %[b], %[a], %[acc]\n\t"
+        VNNI_PREFIX "vpdpbusd %[b], %[a], %[acc]\n\t"
         : [acc]"+v"(acc)
         : [a]"v"(a), [b]"vm"(b)
       );
@@ -240,8 +247,8 @@ namespace Stockfish::Simd {
 # if defined (USE_VNNI)
 #   if defined (USE_INLINE_ASM)
       asm(
-        "vpdpbusd %[b0], %[a0], %[acc]\n\t"
-        "vpdpbusd %[b1], %[a1], %[acc]\n\t"
+        VNNI_PREFIX "vpdpbusd %[b0], %[a0], %[acc]\n\t"
+        VNNI_PREFIX "vpdpbusd %[b1], %[a1], %[acc]\n\t"
         : [acc]"+v"(acc)
         : [a0]"v"(a0), [b0]"vm"(b0), [a1]"v"(a1), [b1]"vm"(b1)
       );
