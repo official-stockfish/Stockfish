@@ -37,6 +37,7 @@ typedef bool(*fun1_t)(LOGICAL_PROCESSOR_RELATIONSHIP,
 typedef bool(*fun2_t)(USHORT, PGROUP_AFFINITY);
 typedef bool(*fun3_t)(HANDLE, CONST GROUP_AFFINITY*, PGROUP_AFFINITY);
 typedef bool(*fun4_t)(USHORT, PGROUP_AFFINITY, USHORT, PUSHORT);
+typedef WORD(*fun5_t)();
 }
 #endif
 
@@ -514,7 +515,8 @@ int best_node(size_t idx) {
   if (!fun1)
       return -1;
 
-  // First call to get returnLength. We expect it to fail due to null buffer
+  // First call to GetLogicalProcessorInformationEx() to get returnLength. 
+  // We expect the call to fail due to null buffer.
   if (fun1(RelationAll, nullptr, &returnLength))
       return -1;
 
@@ -522,7 +524,7 @@ int best_node(size_t idx) {
   SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX *buffer, *ptr;
   ptr = buffer = (SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX*)malloc(returnLength);
 
-  // Second call, now we expect to succeed
+  // Second call to GetLogicalProcessorInformationEx(), now we expect to succeed
   if (!fun1(RelationAll, buffer, &returnLength))
   {
       free(buffer);
@@ -582,23 +584,26 @@ void bindThisThread(size_t idx) {
   auto fun2 = (fun2_t)(void(*)())GetProcAddress(k32, "GetNumaNodeProcessorMaskEx");
   auto fun3 = (fun3_t)(void(*)())GetProcAddress(k32, "SetThreadGroupAffinity");
   auto fun4 = (fun4_t)(void(*)())GetProcAddress(k32, "GetNumaNodeProcessorMask2");
+  auto fun5 = (fun5_t)(void(*)())GetProcAddress(k32, "GetMaximumProcessorGroupCount");
 
   if (!fun2 || !fun3)
       return;
 
-  if (!fun4) {
+  if (!fun4 || !fun5) 
+  {
       GROUP_AFFINITY affinity;
-      if (fun2(node, &affinity))
-          fun3(GetCurrentThread(), &affinity, nullptr);
-  } else {
+      if (fun2(node, &affinity))                                                 // GetNumaNodeProcessorMaskEx
+          fun3(GetCurrentThread(), &affinity, nullptr);                          // SetThreadGroupAffinity
+  } 
+  else 
+  {
       // If a numa node has more than one processor group, we assume they are
       // sized equal and we spread threads evenly across the groups.
       USHORT elements, returnedElements;
-      elements = GetMaximumProcessorGroupCount();
-      GROUP_AFFINITY *affinity = (GROUP_AFFINITY*)malloc(
-          elements * sizeof(GROUP_AFFINITY));
-      if (fun4(node, affinity, elements, &returnedElements))
-          fun3(GetCurrentThread(), &affinity[idx % returnedElements], nullptr);
+      elements = fun5();                                                         // GetMaximumProcessorGroupCount
+      GROUP_AFFINITY *affinity = (GROUP_AFFINITY*)malloc(elements * sizeof(GROUP_AFFINITY));
+      if (fun4(node, affinity, elements, &returnedElements))                     // GetNumaNodeProcessorMask2
+          fun3(GetCurrentThread(), &affinity[idx % returnedElements], nullptr);  // SetThreadGroupAffinity
       free(affinity);
   }
 }
