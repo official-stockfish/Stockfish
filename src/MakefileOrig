@@ -330,7 +330,7 @@ ifeq ($(COMP),gcc)
 
 	ifeq ($(arch),$(filter $(arch),armv7 armv8))
 		ifeq ($(OS),Android)
-			CXXFLAGS +=
+			CXXFLAGS += -Wno-missing-profile
 			LDFLAGS +=
 		endif
 	else
@@ -454,7 +454,7 @@ ifdef COMPCXX
 endif
 
 ### Sometimes gcc is really clang
-ifeq ($(COMP),)
+ifeq ($(COMP),gcc)
 	gccversion = $(shell $(CXX) --version)
 	gccisclang = $(findstring clang,$(gccversion))
 	ifneq ($(gccisclang),)
@@ -497,7 +497,7 @@ ifeq ($(optimize),yes)
 
 	ifeq ($(comp),gcc)
 		ifeq ($(OS), Android)
-			CXXFLAGS += -march=native
+			CXXFLAGS += -fno-gcse -mthumb -march=armv7-a -mfloat-abi=softfp
 		endif
 	endif
 
