@@ -336,10 +336,17 @@ namespace Stockfish::Eval::NNUE {
       {
           const IndexType offset = HalfDimensions * p;
           const auto out = reinterpret_cast<int8x8_t*>(&output[offset]);
-          for (IndexType j = 0; j < NumChunks; ++j)
+
+          constexpr IndexType UnrollFactor = 16;
+          static_assert(UnrollFactor % UnrollFactor == 0);
+          for (IndexType j = 0; j < NumChunks; j += UnrollFactor)
           {
-              int16x8_t sum = reinterpret_cast<const int16x8_t*>(accumulation[perspectives[p]])[j];
-              out[j] = vmax_s8(vqmovn_s16(sum), Zero);
+              int16x8_t sums[UnrollFactor];
+              for (IndexType i = 0; i < UnrollFactor; ++i)
+                sums[i] = reinterpret_cast<const int16x8_t*>(accumulation[perspectives[p]])[j+i];
+
+              for (IndexType i = 0; i < UnrollFactor; ++i)
+                out[j+i] = vmax_s8(vqmovn_s16(sums[i]), Zero);
           }
       }
       return psqt;

@@ -275,6 +275,7 @@ ifeq ($(ARCH),armv7)
 	arch = armv7
 	prefetch = yes
 	bits = 32
+	CXXFLAGS += -DARM_VERSION=7
 endif
 
 ifeq ($(ARCH),armv7-neon)
@@ -283,6 +284,7 @@ ifeq ($(ARCH),armv7-neon)
 	popcnt = yes
 	neon = yes
 	bits = 32
+	CXXFLAGS += -DARM_VERSION=7
 endif
 
 ifeq ($(ARCH),armv8)
@@ -290,6 +292,7 @@ ifeq ($(ARCH),armv8)
 	prefetch = yes
 	popcnt = yes
 	neon = yes
+	CXXFLAGS += -DARM_VERSION=8
 endif
 
 ifeq ($(ARCH),apple-silicon)
@@ -297,6 +300,7 @@ ifeq ($(ARCH),apple-silicon)
 	prefetch = yes
 	popcnt = yes
 	neon = yes
+	CXXFLAGS += -DARM_VERSION=8
 endif
 
 ifeq ($(ARCH),ppc-32)
