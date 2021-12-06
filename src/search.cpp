@@ -1380,7 +1380,15 @@ moves_loop: // When in check, search starts here
     // Bonus for prior countermove that caused the fail low
     else if (   (depth >= 3 || PvNode)
              && !priorCapture)
-        update_continuation_histories(ss-1, pos.piece_on(prevSq), prevSq, stat_bonus(depth) * (1 + (PvNode || cutNode)));
+    {
+        //Assign extra bonus if current node is PvNode or cutNode
+        //or fail low was really bad
+        bool extraBonus =    PvNode
+                          || cutNode
+                          || bestValue < alpha - 94 * depth;
+
+        update_continuation_histories(ss-1, pos.piece_on(prevSq), prevSq, stat_bonus(depth) * (1 + extraBonus));
+    }
 
     if (PvNode)
         bestValue = std::min(bestValue, maxValue);
