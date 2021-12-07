@@ -346,7 +346,7 @@ namespace Stockfish::Simd {
 #if defined (USE_NEON)
 
     [[maybe_unused]] static int neon_m128_reduce_add_epi32(int32x4_t s) {
-#   if defined (ARM_VERSION) && ARM_VERSION >= 8
+#   if USE_NEON >= 8
       return vaddvq_s32(s);
 #   else
       return s[0] + s[1] + s[2] + s[3];

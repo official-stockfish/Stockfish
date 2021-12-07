@@ -128,6 +128,7 @@ avx512 = no
 vnni256 = no
 vnni512 = no
 neon = no
+arm_version = 0
 STRIP = strip
 
 ### 2.2 Architecture specific
@@ -275,7 +276,7 @@ ifeq ($(ARCH),armv7)
 	arch = armv7
 	prefetch = yes
 	bits = 32
-	CXXFLAGS += -DARM_VERSION=7
+	arm_version = 7
 endif
 
 ifeq ($(ARCH),armv7-neon)
@@ -284,7 +285,7 @@ ifeq ($(ARCH),armv7-neon)
 	popcnt = yes
 	neon = yes
 	bits = 32
-	CXXFLAGS += -DARM_VERSION=7
+	arm_version = 7
 endif
 
 ifeq ($(ARCH),armv8)
@@ -292,7 +293,7 @@ ifeq ($(ARCH),armv8)
 	prefetch = yes
 	popcnt = yes
 	neon = yes
-	CXXFLAGS += -DARM_VERSION=8
+	arm_version = 8
 endif
 
 ifeq ($(ARCH),apple-silicon)
@@ -300,7 +301,7 @@ ifeq ($(ARCH),apple-silicon)
 	prefetch = yes
 	popcnt = yes
 	neon = yes
-	CXXFLAGS += -DARM_VERSION=8
+	arm_version = 8
 endif
 
 ifeq ($(ARCH),ppc-32)
@@ -618,7 +619,7 @@ ifeq ($(mmx),yes)
 endif
 
 ifeq ($(neon),yes)
-	CXXFLAGS += -DUSE_NEON
+	CXXFLAGS += -DUSE_NEON=$(arm_version)
 	ifeq ($(KERNEL),Linux)
 	ifneq ($(COMP),ndk)
 	ifneq ($(arch),armv8)
@@ -867,6 +868,7 @@ config-sanity: net
 	@echo "vnni256: '$(vnni256)'"
 	@echo "vnni512: '$(vnni512)'"
 	@echo "neon: '$(neon)'"
+	@echo "arm_version: '$(arm_version)'"
 	@echo ""
 	@echo "Flags:"
 	@echo "CXX: $(CXX)"
