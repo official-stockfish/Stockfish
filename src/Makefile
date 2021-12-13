@@ -519,9 +519,17 @@ ifeq ($(optimize),yes)
 		endif
 	endif
 
-	ifeq ($(comp),$(filter $(comp),gcc clang icc))
+	ifeq ($(comp),$(filter $(comp),clang icc))
 		ifeq ($(KERNEL),Darwin)
 			CXXFLAGS += -mdynamic-no-pic
+		endif
+	endif
+
+	ifeq ($(comp),gcc)
+		ifeq ($(KERNEL),Darwin)
+			ifneq ($(arch),arm64)
+				CXXFLAGS += -mdynamic-no-pic
+			endif
 		endif
 	endif
 
