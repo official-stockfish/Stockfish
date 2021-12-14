@@ -1104,8 +1104,7 @@ Value Eval::evaluate(const Position& pos) {
   else
   {
      
-       int scale = 1136
-                   + 20 * pos.non_pawn_material() / 1024;
+       int scale = 1136 + 20 * pos.non_pawn_material() / 1024;
 
        v = NNUE::evaluate(pos, true) * scale / 1024;  // NNUE
 
