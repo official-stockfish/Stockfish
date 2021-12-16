@@ -905,39 +905,39 @@ $(EXE): $(OBJS)
 
 clang-profile-make:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS='-fprofile-instr-generate ' \
-	EXTRALDFLAGS=' -fprofile-instr-generate' \
+	EXTRACXXFLAGS+='-fprofile-instr-generate ' \
+	EXTRALDFLAGS+=' -fprofile-instr-generate' \
 	all
 
 clang-profile-use:
 	$(XCRUN) llvm-profdata merge -output=stockfish.profdata *.profraw
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS='-fprofile-instr-use=stockfish.profdata' \
-	EXTRALDFLAGS='-fprofile-use ' \
+	EXTRACXXFLAGS+='-fprofile-instr-use=stockfish.profdata' \
+	EXTRALDFLAGS+='-fprofile-use ' \
 	all
 
 gcc-profile-make:
 	@mkdir -p profdir
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS='-fprofile-generate=profdir' \
-	EXTRALDFLAGS='-lgcov' \
+	EXTRACXXFLAGS+='-fprofile-generate=profdir' \
+	EXTRALDFLAGS+='-lgcov' \
 	all
 
 gcc-profile-use:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS='-fprofile-use=profdir -fno-peel-loops -fno-tracer' \
-	EXTRALDFLAGS='-lgcov' \
+	EXTRACXXFLAGS+='-fprofile-use=profdir -fno-peel-loops -fno-tracer' \
+	EXTRALDFLAGS+='-lgcov' \
 	all
 
 icc-profile-make:
 	@mkdir -p profdir
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS='-prof-gen=srcpos -prof_dir ./profdir' \
+	EXTRACXXFLAGS+='-prof-gen=srcpos -prof_dir ./profdir' \
 	all
 
 icc-profile-use:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS='-prof_use -prof_dir ./profdir' \
+	EXTRACXXFLAGS+='-prof_use -prof_dir ./profdir' \
 	all
 
 .depend: $(SRCS)
