@@ -5,7 +5,7 @@
 
 
 [StockfishNPS](https://github.com/Joachim26/Stockfish) is a slightly modified Stockfish with nps reduction and randomized evaluation. The strength of both modifications can be set in the uci options from 0 to 100.
-The mods can be used in addition to UCI_Elo and Skill Level settings for human play. Without these settings Stockish plays exactly like the current Stockfish_dev.
+The mods can be used in addition to UCI_Elo and Skill Level settings for human play. Without these settings, StockishNPS plays exactly like the current Stockfish_dev.
 
 [Stockfish](https://stockfishchess.org) is a free, powerful UCI chess engine
 derived from Glaurung 2.1. Stockfish is not a complete chess program and requires a
