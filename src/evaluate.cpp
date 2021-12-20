@@ -1083,7 +1083,7 @@ Value Eval::evaluate(const Position& pos) {
 
   Value v;
 
-  // Deciding between classical and NNUE eval: for high PSQ imbalance we use classical,
+  // Deciding between classical and NNUE eval (~10 Elo): for high PSQ imbalance we use classical,
   // but we switch to NNUE during long shuffling or with high material on the board.
 
   if (  !useNNUE
