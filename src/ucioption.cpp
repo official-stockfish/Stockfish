@@ -66,6 +66,7 @@ void init(OptionsMap& o) {
   o["Threads"]               << Option(1, 1, 512, on_threads);
   o["Wait ms"]               << Option(0, 0, 100, on_waitms);
   o["RandomEvalPerturb"]     << Option(0, 0, 100, on_eval_perturb);
+  o["Search_Depth"]          << Option(0, 0, 20);
   o["Hash"]                  << Option(16, 1, MaxHashMB, on_hash_size);
   o["Clear Hash"]            << Option(on_clear_hash);
   o["Ponder"]                << Option(false);
