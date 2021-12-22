@@ -1086,10 +1086,17 @@ Value Eval::evaluate(const Position& pos) {
   // Deciding between classical and NNUE eval (~10 Elo): for high PSQ imbalance we use classical,
   // but we switch to NNUE during long shuffling or with high material on the board.
 
+  bool classical = false;
+
   if (  !useNNUE
       || abs(eg_value(pos.psq_score())) * 5 > (850 + pos.non_pawn_material() / 64) * (5 + pos.rule50_count()))
+  {
       v = Evaluation<NO_TRACE>(pos).value();          // classical
-  else
+      classical = abs(v) >= 300;
+  }
+
+  // If result of a classical evaluation is much lower than threshold fall back to NNUE
+  if (!classical && useNNUE)
   {
        int scale = 1136
                    + 20 * pos.non_pawn_material() / 1024;
