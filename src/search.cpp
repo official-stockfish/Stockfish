@@ -1503,10 +1503,11 @@ moves_loop: // When in check, search starts here
     // to search the moves. Because the depth is <= 0 here, only captures,
     // queen promotions, and other checks (only if depth >= DEPTH_QS_CHECKS)
     // will be generated.
+    Square prevSq = to_sq((ss-1)->currentMove);
     MovePicker mp(pos, ttMove, depth, &thisThread->mainHistory,
                                       &thisThread->captureHistory,
                                       contHist,
-                                      to_sq((ss-1)->currentMove));
+                                      prevSq);
 
     // Loop through the moves until no moves remain or a beta cutoff occurs
     while ((move = mp.next_move()) != MOVE_NONE)
@@ -1525,6 +1526,7 @@ moves_loop: // When in check, search starts here
       // Futility pruning and moveCount pruning (~5 Elo)
       if (    bestValue > VALUE_TB_LOSS_IN_MAX_PLY
           && !givesCheck
+          &&  to_sq(move) != prevSq
           &&  futilityBase > -VALUE_KNOWN_WIN
           &&  type_of(move) != PROMOTION)
       {
