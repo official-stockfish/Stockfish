@@ -215,8 +215,9 @@ void MainThread::search() {
   TT.new_search();
 
   Eval::NNUE::verify();
-  
-  Limits.depth = int(Options["Search_Depth"]);
+
+  if (int(Options["Search_Depth"]) > 0)
+      Limits.depth = int(Options["Search_Depth"]);
 
   if (rootMoves.empty())
   {
