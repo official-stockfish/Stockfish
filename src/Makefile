@@ -404,8 +404,10 @@ ifeq ($(COMP),clang)
 	ifneq ($(KERNEL),Darwin)
 	ifneq ($(KERNEL),OpenBSD)
 	ifneq ($(KERNEL),FreeBSD)
+	ifneq ($(findstring MINGW,$(KERNEL)),MINGW)
 	ifneq ($(RTLIB),compiler-rt)
 		LDFLAGS += -latomic
+	endif
 	endif
 	endif
 	endif
@@ -420,6 +422,11 @@ ifeq ($(COMP),clang)
 		CXXFLAGS += -m$(bits)
 		LDFLAGS += -m$(bits)
 	endif
+
+	ifeq ($(findstring MINGW,$(KERNEL)),MINGW)
+		LDFLAGS += -static
+	endif
+
 endif
 
 ifeq ($(KERNEL),Darwin)
