@@ -198,8 +198,8 @@ using namespace Trace;
 namespace {
 
   // Threshold for lazy and space evaluation
-  constexpr Value LazyThreshold1    =  Value(3130);
-  constexpr Value LazyThreshold2    =  Value(2204);
+  constexpr Value LazyThreshold1    =  Value(3631);
+  constexpr Value LazyThreshold2    =  Value(2084);
   constexpr Value SpaceThreshold    =  Value(11551);
 
   // KingAttackWeights[PieceType] contains king attack weights by piece type
@@ -1099,10 +1099,10 @@ Value Eval::evaluate(const Position& pos) {
   // Deciding between classical and NNUE eval (~10 Elo): for high PSQ imbalance we use classical,
   // but we switch to NNUE during long shuffling or with high material on the board.
   if (  !useNNUE
-      || abs(eg_value(pos.psq_score())) * 5 > (850 + pos.non_pawn_material() / 64) * (5 + pos.rule50_count()))
+      || abs(eg_value(pos.psq_score())) * 5 > (849 + pos.non_pawn_material() / 64) * (5 + pos.rule50_count()))
   {
       v = Evaluation<NO_TRACE>(pos).value();          // classical
-      useClassical = abs(v) >= 300;
+      useClassical = abs(v) >= 298;
   }
 
   // If result of a classical evaluation is much lower than threshold fall back to NNUE
@@ -1113,9 +1113,9 @@ Value Eval::evaluate(const Position& pos) {
        Color stm      = pos.side_to_move();
        Value optimism = pos.this_thread()->optimism[stm];
        Value psq      = (stm == WHITE ? 1 : -1) * eg_value(pos.psq_score());
-       int complexity = abs(nnue - psq) / 256;
+       int complexity = 35 * abs(nnue - psq) / 256;
 
-       optimism *= (1 + complexity);
+       optimism = optimism * (44 + complexity) / 32;
        v = (nnue + optimism) * scale / 1024 - optimism;
 
        if (pos.is_chess960())
@@ -1127,7 +1127,7 @@ Value Eval::evaluate(const Position& pos) {
   std::this_thread::sleep_for(std::chrono::milliseconds(NNUE::waitms));
   
   // Damp down the evaluation linearly when shuffling
-  v = v * (207 - pos.rule50_count()) / 207;
+  v = v * (208 - pos.rule50_count()) / 208;
   
 
   std::normal_distribution<float> d(0.0, PawnValueEg);
