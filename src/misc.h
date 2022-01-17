@@ -105,6 +105,9 @@ class RunningAverage {
       bool is_greater(int64_t a, int64_t b)
         { return b * average > a * PERIOD * RESOLUTION ; }
 
+      int64_t value()
+        { return average / (PERIOD * RESOLUTION); }
+
   private :
       static constexpr int64_t PERIOD     = 4096;
       static constexpr int64_t RESOLUTION = 1024;
