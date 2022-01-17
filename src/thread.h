@@ -61,6 +61,7 @@ public:
   Material::Table materialTable;
   size_t pvIdx, pvLast;
   RunningAverage doubleExtensionAverage[COLOR_NB];
+  RunningAverage complexityAverage;
   uint64_t nodesLastExplosive;
   uint64_t nodesLastNormal;
   std::atomic<uint64_t> nodes, tbHits, bestMoveChanges;
