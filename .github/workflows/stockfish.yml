@@ -61,8 +61,8 @@ jobs:
               shell: 'bash {0}'
             }
           - {
-              name: "Windows 2019 Mingw-w64 GCC x86_64",
-              os: windows-2019,
+              name: "Windows 2022 Mingw-w64 GCC x86_64",
+              os: windows-2022,
               compiler: g++,
               comp: gcc,
               run_expensive_tests: false,
@@ -73,8 +73,8 @@ jobs:
               shell: 'msys2 {0}'
             }
           - {
-              name: "Windows 2019 Mingw-w64 GCC i686",
-              os: windows-2019,
+              name: "Windows 2022 Mingw-w64 GCC i686",
+              os: windows-2022,
               compiler: g++,
               comp: gcc,
               run_expensive_tests: false,
@@ -82,6 +82,18 @@ jobs:
               run_64bit_tests: false,
               msys_sys: 'mingw32',
               msys_env: 'i686',
+              shell: 'msys2 {0}'
+            }
+          - {
+              name: "Windows 2022 Mingw-w64 Clang x86_64",
+              os: windows-2022,
+              compiler: clang++,
+              comp: clang,
+              run_expensive_tests: false,
+              run_32bit_tests: false,
+              run_64bit_tests: true,
+              msys_sys: 'clang64',
+              msys_env: 'clang-x86_64',
               shell: 'msys2 {0}'
             }
 
@@ -105,7 +117,7 @@ jobs:
         uses: msys2/setup-msys2@v2
         with:
           msystem: ${{matrix.config.msys_sys}}
-          install: mingw-w64-${{matrix.config.msys_env}}-gcc make git expect
+          install: mingw-w64-${{matrix.config.msys_env}}-${{matrix.config.comp}} make git expect
 
       - name: Download the used network from the fishtest framework
         run: |
