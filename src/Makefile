@@ -27,7 +27,9 @@ endif
 
 ### Target Windows OS
 ifeq ($(OS),Windows_NT)
-	target_windows = yes
+	ifneq ($(COMP),ndk)
+		target_windows = yes
+	endif
 else ifeq ($(COMP),mingw)
 	target_windows = yes
 	ifeq ($(WINE_PATH),)
@@ -451,11 +453,19 @@ ifeq ($(COMP),ndk)
 	ifeq ($(arch),armv7)
 		CXX=armv7a-linux-androideabi16-clang++
 		CXXFLAGS += -mthumb -march=armv7-a -mfloat-abi=softfp -mfpu=neon
-		STRIP=arm-linux-androideabi-strip
+		ifneq ($(shell which arm-linux-androideabi-strip 2>/dev/null),)
+			STRIP=arm-linux-androideabi-strip
+		else
+			STRIP=llvm-strip
+		endif
 	endif
 	ifeq ($(arch),armv8)
 		CXX=aarch64-linux-android21-clang++
-		STRIP=aarch64-linux-android-strip
+		ifneq ($(shell which aarch64-linux-android-strip 2>/dev/null),)
+			STRIP=aarch64-linux-android-strip
+		else
+			STRIP=llvm-strip
+		endif
 	endif
 	LDFLAGS += -static-libstdc++ -pie -lm -latomic
 endif
@@ -801,7 +811,7 @@ strip:
 install:
 	-mkdir -p -m 755 $(BINDIR)
 	-cp $(EXE) $(BINDIR)
-	-strip $(BINDIR)/$(EXE)
+	$(STRIP) $(BINDIR)/$(EXE)
 
 # clean all
 clean: objclean profileclean
@@ -833,7 +843,7 @@ net:
 
 # clean binaries and objects
 objclean:
-	@rm -f $(EXE) *.o ./syzygy/*.o ./nnue/*.o ./nnue/features/*.o
+	@rm -f stockfish stockfish.exe *.o ./syzygy/*.o ./nnue/*.o ./nnue/features/*.o
 
 # clean auxiliary profiling files
 profileclean:
