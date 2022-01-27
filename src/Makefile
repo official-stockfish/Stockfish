@@ -476,6 +476,9 @@ ifeq ($(comp),icc)
 else ifeq ($(comp),clang)
 	profile_make = clang-profile-make
 	profile_use = clang-profile-use
+	profile_make_0 = clang-profile-make-0
+	profile_use_0 = clang-profile-use-0
+	profile_use_1 = clang-profile-use-1
 else
 	profile_make = gcc-profile-make
 	profile_use = gcc-profile-use
@@ -501,6 +504,9 @@ ifeq ($(COMP),gcc)
 	ifneq ($(gccisclang),)
 		profile_make = clang-profile-make
 		profile_use = clang-profile-use
+		profile_make_0 = clang-profile-make-0
+		profile_use_0 = clang-profile-use-0
+		profile_use_1 = clang-profile-use-1
 	endif
 endif
 
@@ -805,6 +811,28 @@ profile-build: net config-sanity objclean profileclean
 	@echo "Step 4/4. Deleting profile data ..."
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) profileclean
 
+profile-build-clang: net config-sanity objclean profileclean
+	@echo ""
+	@echo "Step 1/6. Building instrumented executable ..."
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_make_0)
+	@echo ""
+	@echo "Step 2/6. Running benchmark for pgo-build ..."
+	$(PGOBENCH) 2>&1 | tail -n 4
+	@echo ""
+	@echo "Step 3/6. Building intrumented optimized executable ..."
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) objclean
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_use_0)
+	@echo ""
+	@echo "Step 4/6. Running benchmark for pgo-build ..."
+	$(PGOBENCH) 2>&1 | tail -n 4
+	@echo ""
+	@echo "Step 5/6. Building optimized executable ..."
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) objclean
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_use_1)
+	@echo ""
+	@echo "Step 6/6. Deleting profile data ..."
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) profileclean
+
 strip:
 	$(STRIP) $(EXE)
 
@@ -847,9 +875,9 @@ objclean:
 
 # clean auxiliary profiling files
 profileclean:
-	@rm -rf profdir
+	@rm -rf profdir*
 	@rm -f bench.txt *.gcda *.gcno ./syzygy/*.gcda ./nnue/*.gcda ./nnue/features/*.gcda *.s
-	@rm -f stockfish.profdata *.profraw
+	@rm -f stockfish*.profdata *.profraw
 	@rm -f stockfish.*args*
 	@rm -f stockfish.*lt*
 	@rm -f stockfish.res
@@ -935,6 +963,28 @@ clang-profile-use:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
 	EXTRACXXFLAGS='-fprofile-use=stockfish.profdata' \
 	EXTRALDFLAGS='-fprofile-use=stockfish.profdata ' \
+	all
+
+clang-profile-make-0:
+	@mkdir -p profdir0
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
+	EXTRACXXFLAGS='-fprofile-generate=profdir0 ' \
+	EXTRALDFLAGS=' -fprofile-generate=profdir0' \
+	all
+
+clang-profile-use-0:
+	@mkdir -p profdir1
+	$(XCRUN) llvm-profdata merge -output=stockfish0.profdata profdir0
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
+	EXTRACXXFLAGS='-fprofile-use=stockfish0.profdata -fcs-profile-generate=profdir1' \
+	EXTRALDFLAGS='-fprofile-use=stockfish0.profdata -fcs-profile-generate=profdir1' \
+	all
+
+clang-profile-use-1:
+	$(XCRUN) llvm-profdata merge -output=stockfish1.profdata profdir1 stockfish0.profdata
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
+	EXTRACXXFLAGS='-fprofile-use=stockfish1.profdata' \
+	EXTRALDFLAGS='-fprofile-use=stockfish1.profdata ' \
 	all
 
 gcc-profile-make:
