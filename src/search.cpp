@@ -1479,6 +1479,8 @@ moves_loop: // When in check, search starts here
                                       contHist,
                                       prevSq);
 
+    int quietCheckEvasions = 0;
+
     // Loop through the moves until no moves remain or a beta cutoff occurs
     while ((move = mp.next_move()) != MOVE_NONE)
     {
@@ -1539,6 +1541,15 @@ moves_loop: // When in check, search starts here
           && (*contHist[0])[pos.moved_piece(move)][to_sq(move)] < CounterMovePruneThreshold
           && (*contHist[1])[pos.moved_piece(move)][to_sq(move)] < CounterMovePruneThreshold)
           continue;
+
+      // movecount pruning for quiet check evasions
+      if (  bestValue > VALUE_TB_LOSS_IN_MAX_PLY
+          && quietCheckEvasions > 1
+          && !captureOrPromotion
+          && ss->inCheck)
+          continue;
+
+      quietCheckEvasions += !captureOrPromotion && ss->inCheck;
 
       // Make and search the move
       pos.do_move(move, st, givesCheck);
