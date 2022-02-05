@@ -163,7 +163,7 @@ inline int64_t sigmoid(int64_t t, int64_t x0,
                                   int64_t  P,
                                   int64_t  Q)
 {
-   assert(C > 0);
+   assert(C > 0 && Q != 0);
    return y0 + P * (t-x0) / (Q * (std::abs(t-x0) + C)) ;
 }
 
