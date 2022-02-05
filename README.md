@@ -10,12 +10,11 @@ Cute Chess, eboard, Arena, Sigma Chess, Shredder, Chess Partner or Fritz) in ord
 to be used comfortably. Read the documentation for your GUI of choice for information
 about how to use Stockfish with it.
 
-The Stockfish engine features two evaluation functions for chess, the classical
-evaluation based on handcrafted terms, and the NNUE evaluation based on efficiently
-updatable neural networks. The classical evaluation runs efficiently on almost all
-CPU architectures, while the NNUE evaluation benefits from the vector
-intrinsics available on most CPUs (sse2, avx2, neon, or similar).
-
+The Stockfish engine features two evaluation functions for chess.
+The efficiently updatable neural network (NNUE) based evaluation is the default and by far the strongest.
+The classical evaluation based on handcrafted terms remains available.
+The strongest network is integrated in the binary and downloaded automatically during the build process.
+The NNUE evaluation benefits from the vector intrinsics available on most CPUs (sse2, avx2, neon, or similar).
 
 ## Files
 
@@ -37,7 +36,7 @@ This distribution of Stockfish consists of the following files:
 
 The Universal Chess Interface (UCI) is a standard protocol used to communicate with
 a chess engine, and is the recommended way to do so for typical graphical user interfaces
-(GUI) or chess tools. Stockfish implements the majority of it options as described
+(GUI) or chess tools. Stockfish implements the majority of its options as described
 in [the UCI protocol](https://www.shredderchess.com/download/div/uci.zip).
 
 Developers can see the default values for UCI options available in Stockfish by typing
@@ -103,7 +102,7 @@ change them via a chess GUI. This is a list of available UCI options in Stockfis
     Example: `C:\tablebases\wdl345;C:\tablebases\wdl6;D:\tablebases\dtz345;D:\tablebases\dtz6`
 
     It is recommended to store .rtbw files on an SSD. There is no loss in storing
-    the .rtbz files on a regular HD. It is recommended to verify all md5 checksums
+    the .rtbz files on a regular HDD. It is recommended to verify all md5 checksums
     of the downloaded tablebase files (`md5sum -c checksum.md5`) as corruption will
     lead to engine crashes.
 
@@ -322,10 +321,10 @@ it (either by itself or as part of some bigger software package), or
 using it as the starting point for a software project of your own.
 
 The only real limitation is that whenever you distribute Stockfish in
-some way, you MUST always include the full source code, or a pointer
+some way, you MUST always include the license, the full source code, or a pointer
 to where the source code can be found, to generate the exact binary
 you are distributing. If you make any changes to the source code,
-these changes must also be made available under the GPL.
+these changes must also be made available under the GPL v3.
 
 For full details, read the copy of the GPL v3 found in the file named
 [*Copying.txt*](https://github.com/official-stockfish/Stockfish/blob/master/Copying.txt).
