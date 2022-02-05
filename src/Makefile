@@ -152,7 +152,7 @@ ifeq ($(findstring x86,$(ARCH)),x86)
 ifeq ($(findstring x86-32,$(ARCH)),x86-32)
 	arch = i386
 	bits = 32
-	sse = yes
+	sse = no
 	mmx = yes
 else
 	arch = x86_64

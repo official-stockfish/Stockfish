@@ -173,11 +173,6 @@ enum Bound {
   BOUND_EXACT = BOUND_UPPER | BOUND_LOWER
 };
 
-enum ExplosionState {
-  EXPLOSION_NONE,
-  MUST_CALM_DOWN
-};
-
 enum Value : int {
   VALUE_ZERO      = 0,
   VALUE_DRAW      = 0,
