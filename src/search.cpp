@@ -773,7 +773,7 @@ namespace {
 
     thisThread->complexityAverage.update(complexity);
 
-    // Step 7. Raroring.
+    // Step 7. Razoring.
     // If eval is really low check with qsearch if it can exceed alpha, if it can't,
     // return a fail low.
     if (!PvNode && depth <= 6 && eval < alpha - 400 - 300 * depth * depth)
