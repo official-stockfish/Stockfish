@@ -228,58 +228,58 @@ namespace {
   // BishopPawns[distance from edge] contains a file-dependent penalty for pawns on
   // squares of the same color as our bishop.
   constexpr Score BishopPawns[int(FILE_NB) / 2] = {
-    S(3, 8), S(3, 9), S(2, 8), S(3, 8)
+    S(3, 8), S(2, 10), S(2, 7), S(2, 7)
   };
 
   // KingProtector[knight/bishop] contains penalty for each distance unit to own king
-  constexpr Score KingProtector[] = { S(8, 9), S(6, 9) };
+  constexpr Score KingProtector[] = { S(9, 8), S(8, 9) };
 
   // Outpost[knight/bishop] contains bonuses for each knight or bishop occupying a
   // pawn protected square on rank 4 to 6 which is also safe from a pawn attack.
-  constexpr Score Outpost[] = { S(57, 38), S(31, 24) };
+  constexpr Score Outpost[] = { S(51, 31), S(31, 26) };
 
   // PassedRank[Rank] contains a bonus according to the rank of a passed pawn
   constexpr Score PassedRank[RANK_NB] = {
-    S(0, 0), S(7, 27), S(16, 32), S(17, 40), S(64, 71), S(170, 174), S(278, 262)
+    S(0, 0), S(0, 48), S(15, 39), S(27, 57), S(63, 90), S(162, 192), S(290, 273)
   };
 
-  constexpr Score RookOnClosedFile = S(10, 5);
-  constexpr Score RookOnOpenFile[] = { S(19, 6), S(47, 26) };
+  constexpr Score RookOnClosedFile = S(11, 5);
+  constexpr Score RookOnOpenFile[] = { S(17, 11), S(52, 26) };
 
   // ThreatByMinor/ByRook[attacked PieceType] contains bonuses according to
   // which piece type attacks which one. Attacks on lesser pieces which are
   // pawn-defended are not considered.
   constexpr Score ThreatByMinor[PIECE_TYPE_NB] = {
-    S(0, 0), S(5, 32), S(55, 41), S(77, 56), S(89, 119), S(79, 162)
+    S(0, 0), S(6, 42), S(73, 58), S(87, 58), S(118, 140), S(83, 163)
   };
 
   constexpr Score ThreatByRook[PIECE_TYPE_NB] = {
-    S(0, 0), S(3, 44), S(37, 68), S(42, 60), S(0, 39), S(58, 43)
+    S(0, 0), S(3, 45), S(34, 74), S(45, 58), S(0, 40), S(62, 34)
   };
 
   constexpr Value CorneredBishop = Value(50);
 
   // Assorted bonuses and penalties
-  constexpr Score UncontestedOutpost  = S(  1, 10);
+  constexpr Score UncontestedOutpost  = S(  0,  9);
   constexpr Score BishopOnKingRing    = S( 24,  0);
   constexpr Score BishopXRayPawns     = S(  4,  5);
-  constexpr Score FlankAttacks        = S(  8,  0);
-  constexpr Score Hanging             = S( 69, 36);
+  constexpr Score FlankAttacks        = S(  7,  0);
+  constexpr Score Hanging             = S( 76, 44);
   constexpr Score KnightOnQueen       = S( 16, 11);
   constexpr Score LongDiagonalBishop  = S( 45,  0);
   constexpr Score MinorBehindPawn     = S( 18,  3);
-  constexpr Score PassedFile          = S( 11,  8);
-  constexpr Score PawnlessFlank       = S( 17, 95);
-  constexpr Score ReachableOutpost    = S( 31, 22);
-  constexpr Score RestrictedPiece     = S(  7,  7);
+  constexpr Score PassedFile          = S( 14,  9);
+  constexpr Score PawnlessFlank       = S( 21,100);
+  constexpr Score ReachableOutpost    = S( 36, 17);
+  constexpr Score RestrictedPiece     = S(  6,  7);
   constexpr Score RookOnKingRing      = S( 16,  0);
-  constexpr Score SliderOnQueen       = S( 60, 18);
-  constexpr Score ThreatByKing        = S( 24, 89);
+  constexpr Score SliderOnQueen       = S( 63, 25);
+  constexpr Score ThreatByKing        = S( 23, 86);
   constexpr Score ThreatByPawnPush    = S( 48, 39);
-  constexpr Score ThreatBySafePawn    = S(173, 94);
+  constexpr Score ThreatBySafePawn    = S(161,103);
   constexpr Score TrappedRook         = S( 55, 13);
   constexpr Score WeakQueenProtection = S( 14,  0);
-  constexpr Score WeakQueen           = S( 56, 15);
+  constexpr Score WeakQueen           = S( 59, 24);
 
 
 #undef S
