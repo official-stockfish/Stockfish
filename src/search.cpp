@@ -871,7 +871,7 @@ namespace {
             if (move != excludedMove && pos.legal(move))
             {
                 assert(pos.capture_or_promotion(move));
-                assert(depth >= 5);
+                assert(depth >= 4);
 
                 captureOrPromotion = true;
 
