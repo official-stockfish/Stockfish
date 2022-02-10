@@ -567,7 +567,7 @@ endif
 ### 3.5 prefetch and popcount
 ifeq ($(prefetch),yes)
 	ifeq ($(sse),yes)
-		CXXFLAGS += -msse
+		CXXFLAGS += -DUSE_SSE -msse
 	endif
 else
 	CXXFLAGS += -DNO_PREFETCH

@@ -39,6 +39,9 @@
 #include <emmintrin.h>
 
 #elif defined(USE_MMX)
+# if defined(USE_SSE)
+#  include <xmmintrin.h>
+# endif
 #include <mmintrin.h>
 
 #elif defined(USE_NEON)

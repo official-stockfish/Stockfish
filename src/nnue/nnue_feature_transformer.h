@@ -313,6 +313,41 @@ namespace Stockfish::Eval::NNUE {
               out[j] = _mm_packs_epi16(pa, pb);
           }
 
+#elif defined(USE_MMX)
+          constexpr IndexType OutputChunkSize = 64 / 8;
+          static_assert((HalfDimensions / 2) % OutputChunkSize == 0);
+          constexpr IndexType NumOutputChunks = HalfDimensions / 2 / OutputChunkSize;
+
+          const __m64 Zero = _mm_setzero_si64();
+          const __m64 One = _mm_set1_pi16(127);
+
+          const __m64* in0 = reinterpret_cast<const __m64*>(&(accumulation[perspectives[p]][0]));
+          const __m64* in1 = reinterpret_cast<const __m64*>(&(accumulation[perspectives[p]][HalfDimensions / 2]));
+                __m64* out = reinterpret_cast<      __m64*>(output + offset);
+# if defined(USE_SSE)
+          const auto clamp = [&](__m64 vec) { return _mm_max_pi16(_mm_min_pi16(vec, One), Zero); };
+# else
+          const auto clamp = [&](__m64 vec) {
+              const __m64 is_gt_one = _mm_cmpgt_pi16(vec, One);
+              const __m64 after_min = _mm_or_si64(_mm_and_si64(is_gt_one, One), _mm_andnot_si64(is_gt_one, vec));
+              const __m64 is_gt_zero = _mm_cmpgt_pi16(after_min, Zero);
+              return _mm_and_si64(is_gt_zero, after_min);
+          };
+# endif
+
+          for (IndexType j = 0; j < NumOutputChunks; j += 1)
+          {
+              const __m64 sum0a = clamp(in0[j * 2 + 0]);
+              const __m64 sum0b = clamp(in0[j * 2 + 1]);
+              const __m64 sum1a = clamp(in1[j * 2 + 0]);
+              const __m64 sum1b = clamp(in1[j * 2 + 1]);
+
+              const __m64 pa = _mm_srli_pi16(_mm_mullo_pi16(sum0a, sum1a), 7);
+              const __m64 pb = _mm_srli_pi16(_mm_mullo_pi16(sum0b, sum1b), 7);
+
+              out[j] = _mm_packs_pi16(pa, pb);
+          }
+
 #elif defined(USE_NEON)
 
           constexpr IndexType OutputChunkSize = 128 / 8;
@@ -352,6 +387,9 @@ namespace Stockfish::Eval::NNUE {
 #endif
       }
 
+#if defined(USE_MMX)
+      _mm_empty();
+#endif
       return psqt;
 
    } // end of function transform()
