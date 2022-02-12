@@ -220,8 +220,7 @@ Value Endgame<KRKP>::operator()(const Position& pos) const {
 template<>
 Value Endgame<KRKB>::operator()(const Position& pos) const {
 
-  assert(verify_material(pos, strongSide, RookValueMg, 0));
-  assert(verify_material(pos, weakSide, BishopValueMg, 0));
+  assert(verify_material(pos, strongSide, RookValueMg, 0) && verify_material(pos, weakSide, BishopValueMg, 0))
 
   Value result = Value(push_to_edge(pos.square<KING>(weakSide)));
   return strongSide == pos.side_to_move() ? result : -result;
@@ -233,9 +232,8 @@ Value Endgame<KRKB>::operator()(const Position& pos) const {
 template<>
 Value Endgame<KRKN>::operator()(const Position& pos) const {
 
-  assert(verify_material(pos, strongSide, RookValueMg, 0));
-  assert(verify_material(pos, weakSide, KnightValueMg, 0));
-
+  assert(verify_material(pos, strongSide, RookValueMg, 0) && verify_material(pos, weakSide, KnightValueMg, 0));
+  
   Square weakKing   = pos.square<KING>(weakSide);
   Square weakKnight = pos.square<KNIGHT>(weakSide);
   Value result = Value(push_to_edge(weakKing) + push_away(weakKing, weakKnight));
@@ -275,8 +273,7 @@ Value Endgame<KQKP>::operator()(const Position& pos) const {
 template<>
 Value Endgame<KQKR>::operator()(const Position& pos) const {
 
-  assert(verify_material(pos, strongSide, QueenValueMg, 0));
-  assert(verify_material(pos, weakSide, RookValueMg, 0));
+  assert(verify_material(pos, strongSide, QueenValueMg, 0) && verify_material(pos, weakSide, RookValueMg, 0));
 
   Square strongKing = pos.square<KING>(strongSide);
   Square weakKing   = pos.square<KING>(weakSide);
@@ -295,8 +292,7 @@ Value Endgame<KQKR>::operator()(const Position& pos) const {
 template<>
 Value Endgame<KNNKP>::operator()(const Position& pos) const {
 
-  assert(verify_material(pos, strongSide, 2 * KnightValueMg, 0));
-  assert(verify_material(pos, weakSide, VALUE_ZERO, 1));
+  assert(verify_material(pos, strongSide, 2 * KnightValueMg, 0) && verify_material(pos, weakSide, VALUE_ZERO, 1));
 
   Square weakKing = pos.square<KING>(weakSide);
   Square weakPawn = pos.square<PAWN>(weakSide);
