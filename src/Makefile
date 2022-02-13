@@ -409,19 +409,13 @@ endif
 ifeq ($(COMP),clang)
 	comp=clang
 	CXX=clang++
+	LDFLAGS += -fuse-ld=lld
+
 	ifeq ($(target_windows),yes)
 		CXX=x86_64-w64-mingw32-clang++
 	endif
 
-	CXXFLAGS += -pedantic -Wextra -Wshadow
-
-	ifeq ($(filter $(KERNEL),Darwin OpenBSD FreeBSD),)
-	ifeq ($(target_windows),)
-	ifneq ($(RTLIB),compiler-rt)
-		LDFLAGS += -latomic
-	endif
-	endif
-	endif
+	CXXFLAGS += -pedantic -Wextra -Wshadow -DLIBCXX_USE_COMPILER_RT=YES
 
 	ifeq ($(arch),$(filter $(arch),armv7 armv8))
 		ifeq ($(OS),Android)
@@ -453,6 +447,7 @@ ifeq ($(COMP),ndk)
 	ifeq ($(arch),armv7)
 		CXX=armv7a-linux-androideabi16-clang++
 		CXXFLAGS += -mthumb -march=armv7-a -mfloat-abi=softfp -mfpu=neon
+		LDFLAGS += -latomic
 		ifneq ($(shell which arm-linux-androideabi-strip 2>/dev/null),)
 			STRIP=arm-linux-androideabi-strip
 		else
@@ -467,7 +462,7 @@ ifeq ($(COMP),ndk)
 			STRIP=llvm-strip
 		endif
 	endif
-	LDFLAGS += -static-libstdc++ -pie -lm -latomic
+	LDFLAGS += -static-libstdc++ -pie -lm
 endif
 
 ifeq ($(comp),icc)
@@ -673,9 +668,6 @@ ifeq ($(optimize),yes)
 ifeq ($(debug), no)
 	ifeq ($(comp),clang)
 		CXXFLAGS += -flto
-		ifeq ($(target_windows),yes)
-			CXXFLAGS += -fuse-ld=lld
-		endif
 		LDFLAGS += $(CXXFLAGS)
 
 # GCC and CLANG use different methods for parallelizing LTO and CLANG pretends to be
@@ -925,41 +917,41 @@ $(EXE): $(OBJS)
 
 clang-profile-make:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS='-fprofile-instr-generate ' \
-	EXTRALDFLAGS=' -fprofile-instr-generate' \
+	EXTRACXXFLAGS+='-fprofile-instr-generate ' \
+	EXTRALDFLAGS+=' -fprofile-instr-generate' \
 	all
 
 clang-profile-use:
 	$(XCRUN) llvm-profdata merge -output=stockfish.profdata *.profraw
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS='-fprofile-instr-use=stockfish.profdata' \
-	EXTRALDFLAGS='-fprofile-use ' \
+	EXTRACXXFLAGS+='-fprofile-instr-use=stockfish.profdata' \
+	EXTRALDFLAGS+='-fprofile-use ' \
 	all
 
 gcc-profile-make:
 	@mkdir -p profdir
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS='-fprofile-generate=profdir' \
+	EXTRACXXFLAGS+='-fprofile-generate=profdir' \
 	EXTRACXXFLAGS+=$(EXTRAPROFILEFLAGS) \
-	EXTRALDFLAGS='-lgcov' \
+	EXTRALDFLAGS+='-lgcov' \
 	all
 
 gcc-profile-use:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS='-fprofile-use=profdir -fno-peel-loops -fno-tracer' \
+	EXTRACXXFLAGS+='-fprofile-use=profdir -fno-peel-loops -fno-tracer' \
 	EXTRACXXFLAGS+=$(EXTRAPROFILEFLAGS) \
-	EXTRALDFLAGS='-lgcov' \
+	EXTRALDFLAGS+='-lgcov' \
 	all
 
 icc-profile-make:
 	@mkdir -p profdir
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS='-prof-gen=srcpos -prof_dir ./profdir' \
+	EXTRACXXFLAGS+='-prof-gen=srcpos -prof_dir ./profdir' \
 	all
 
 icc-profile-use:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS='-prof_use -prof_dir ./profdir' \
+	EXTRACXXFLAGS+='-prof_use -prof_dir ./profdir' \
 	all
 
 .depend: $(SRCS)
