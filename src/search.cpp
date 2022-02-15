@@ -918,6 +918,7 @@ namespace {
         depth--;
 
 moves_loop: // When in check, search starts here
+    int fullDidnt = 0;
 
     // Step 12. A small Probcut idea, when we are in check (~0 Elo)
     probCutBeta = beta + 401;
@@ -1005,7 +1006,7 @@ moves_loop: // When in check, search starts here
           moveCountPruning = moveCount >= futility_move_count(improving, depth);
 
           // Reduced depth of the next LMR search
-          int lmrDepth = std::max(newDepth - reduction(improving, depth, moveCount, delta, thisThread->rootDelta), 0);
+          int lmrDepth = std::max(newDepth - reduction(improving, depth, moveCount, delta, thisThread->rootDelta) - (moveCount > 3 && fullDidnt > 3 && !captureOrPromotion && !ss->inCheck), 0); // instead of complexity < 250 delta < 200 // without the > 3 and just with - fullDidnt is best rn
 
           if (   captureOrPromotion
               || givesCheck)
@@ -1207,6 +1208,9 @@ moves_loop: // When in check, search starts here
           // If the move passed LMR update its stats
           if (didLMR)
           {
+              if (!PvNode
+	          && value < alpha)
+                  fullDidnt++;
               int bonus = value > alpha ?  stat_bonus(newDepth)
                                         : -stat_bonus(newDepth);
 
