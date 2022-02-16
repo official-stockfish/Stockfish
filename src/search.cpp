@@ -1208,7 +1208,7 @@ moves_loop: // When in check, search starts here
           // If the move passed LMR update its stats
           if (didLMR)
           {
-              if (value < alpha)
+              if (alpha - value > 50 * depth)
                   fullDidnt++;
 
 	      int bonus = value > alpha ?  stat_bonus(newDepth)
