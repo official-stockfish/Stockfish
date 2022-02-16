@@ -1167,7 +1167,7 @@ moves_loop: // When in check, search starts here
           if (ttCapture)
               r++;
 
-          r += (moveCount > 3 && fullDidnt > 3 && !captureOrPromotion && !ss->inCheck); // instead of complexity < 250 delta < 200 // without the > 3 and just with - fullDidnt is best rn
+          r += (fullDidnt > 4 && !captureOrPromotion && !ss->inCheck); // instead of complexity < 250 delta < 200 // without the > 3 and just with - fullDidnt is best rn
 
           ss->statScore =  thisThread->mainHistory[us][from_to(move)]
                          + (*contHist[0])[movedPiece][to_sq(move)]
@@ -1210,8 +1210,14 @@ moves_loop: // When in check, search starts here
           // If the move passed LMR update its stats
           if (didLMR)
           {
-              if (alpha - value > 25 * newDepth)
-                  fullDidnt++;
+              fullDidnt += alpha - value > 25 * newDepth;
+
+              if (value > alpha)
+                  fullDidnt = 0;
+              else {
+                  fullDidnt = fullDidnt * 3 / 2;
+                  fullDidnt += alpha - value > 25 * newDepth;
+              }
 
 	      int bonus = value > alpha ?  stat_bonus(newDepth)
                                         : -stat_bonus(newDepth);
