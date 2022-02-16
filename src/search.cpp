@@ -1006,7 +1006,7 @@ moves_loop: // When in check, search starts here
           moveCountPruning = moveCount >= futility_move_count(improving, depth);
 
           // Reduced depth of the next LMR search
-          int lmrDepth = std::max(newDepth - reduction(improving, depth, moveCount, delta, thisThread->rootDelta) - (moveCount > 3 && fullDidnt > 3 && !captureOrPromotion && !ss->inCheck), 0); // instead of complexity < 250 delta < 200 // without the > 3 and just with - fullDidnt is best rn
+          int lmrDepth = std::max(newDepth - reduction(improving, depth, moveCount, delta, thisThread->rootDelta), 0);
 
           if (   captureOrPromotion
               || givesCheck)
@@ -1166,6 +1166,8 @@ moves_loop: // When in check, search starts here
           // Increase reduction if ttMove is a capture (~3 Elo)
           if (ttCapture)
               r++;
+
+          r += (moveCount > 3 && fullDidnt > 3 && !captureOrPromotion && !ss->inCheck); // instead of complexity < 250 delta < 200 // without the > 3 and just with - fullDidnt is best rn
 
           ss->statScore =  thisThread->mainHistory[us][from_to(move)]
                          + (*contHist[0])[movedPiece][to_sq(move)]
