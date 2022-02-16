@@ -1205,12 +1205,12 @@ moves_loop: // When in check, search starts here
       {
           value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth + doDeeperSearch, !cutNode);
 
+          if (value < alpha)
+              fullDidnt++;
+
           // If the move passed LMR update its stats
           if (didLMR)
           {
-              if (!PvNode
-	          && value < alpha)
-                  fullDidnt++;
               int bonus = value > alpha ?  stat_bonus(newDepth)
                                         : -stat_bonus(newDepth);
 
