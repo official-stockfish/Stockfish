@@ -1167,7 +1167,7 @@ moves_loop: // When in check, search starts here
           if (ttCapture)
               r++;
 
-          r += (fullDidnt > 4 && !captureOrPromotion && !ss->inCheck); // instead of complexity < 250 delta < 200 // without the > 3 and just with - fullDidnt is best rn
+          r += (fullDidnt > 4 && !captureOrPromotion && !ss->inCheck);
 
           ss->statScore =  thisThread->mainHistory[us][from_to(move)]
                          + (*contHist[0])[movedPiece][to_sq(move)]
