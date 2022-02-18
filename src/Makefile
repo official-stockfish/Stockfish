@@ -32,8 +32,8 @@ ifeq ($(OS),Windows_NT)
 	endif
 else ifeq ($(COMP),mingw)
 	target_windows = yes
-	ifeq ($(WINE_PATH),)
-		WINE_PATH = $(shell which wine)
+	ifeq ($(EMULATOR_PATH),)
+		EMULATOR_PATH = $(shell which wine)
 	endif
 endif
 
@@ -50,9 +50,9 @@ BINDIR = $(PREFIX)/bin
 
 ### Built-in benchmark for pgo-builds
 ifeq ($(SDE_PATH),)
-	PGOBENCH = $(WINE_PATH) ./$(EXE) bench
+	PGOBENCH = $(EMULATOR_PATH) ./$(EXE) bench
 else
-	PGOBENCH = $(SDE_PATH) -- $(WINE_PATH) ./$(EXE) bench
+	PGOBENCH = $(SDE_PATH) -- $(EMULATOR_PATH) ./$(EXE) bench
 endif
 
 ### Source and object files
