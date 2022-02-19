@@ -360,7 +360,7 @@ ifeq ($(COMP),gcc)
 
 	ifeq ($(arch),$(filter $(arch),armv7 armv8))
 		ifeq ($(OS),Android)
-			CXXFLAGS +=
+			CXXFLAGS += -Wno-missing-profile
 			LDFLAGS +=
 		endif
 	else
