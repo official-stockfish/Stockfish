@@ -103,7 +103,7 @@ change them via a chess GUI. This is a list of available UCI options in Stockfis
     Example: `C:\tablebases\wdl345;C:\tablebases\wdl6;D:\tablebases\dtz345;D:\tablebases\dtz6`
 
     It is recommended to store .rtbw files on an SSD. There is no loss in storing
-    the .rtbz files on a regular HD. It is recommended to verify all md5 checksums
+    the .rtbz files on a regular HDD. It is recommended to verify all md5 checksums
     of the downloaded tablebase files (`md5sum -c checksum.md5`) as corruption will
     lead to engine crashes.
 
