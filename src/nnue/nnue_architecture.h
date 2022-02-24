@@ -46,7 +46,7 @@ struct Network
   static constexpr int FC_1_OUTPUTS = 32;
 
   Layers::AffineTransform<TransformedFeatureDimensions, FC_0_OUTPUTS + 1> fc_0;
-  Layers::ClippedReLU<FC_0_OUTPUTS> ac_0;
+  Layers::ClippedReLU<FC_0_OUTPUTS + 1> ac_0;
   Layers::AffineTransform<FC_0_OUTPUTS, FC_1_OUTPUTS> fc_1;
   Layers::ClippedReLU<FC_1_OUTPUTS> ac_1;
   Layers::AffineTransform<FC_1_OUTPUTS, 1> fc_2;
@@ -97,14 +97,19 @@ struct Network
       alignas(CacheLineSize) decltype(fc_1)::OutputBuffer fc_1_out;
       alignas(CacheLineSize) decltype(ac_1)::OutputBuffer ac_1_out;
       alignas(CacheLineSize) decltype(fc_2)::OutputBuffer fc_2_out;
+
+      Buffer()
+      {
+          std::memset(this, 0, sizeof(*this));
+      }
     };
 
 #if defined(ALIGNAS_ON_STACK_VARIABLES_BROKEN)
-    char bufferRaw[sizeof(Buffer) + alignment];
-    char* bufferRawAligned = align_ptr_up<alignment>(&bufferRaw[0]);
-    Buffer& buffer = *(new (bufferRawAligned) Buffer);
+    static thread_local char bufferRaw[sizeof(Buffer) + alignment];
+    static thread_local char* bufferRawAligned = align_ptr_up<alignment>(&bufferRaw[0]);
+    static thread_local Buffer& buffer = *(new (bufferRawAligned) Buffer);
 #else
-    alignas(alignment) Buffer buffer;
+    alignas(alignment) static thread_local Buffer buffer;
 #endif
 
     fc_0.propagate(transformedFeatures, buffer.fc_0_out);
@@ -117,10 +122,6 @@ struct Network
     // but we want 1.0 to be equal to 600*OutputScale
     std::int32_t fwdOut = int(buffer.fc_0_out[FC_0_OUTPUTS]) * (600*OutputScale) / (127*(1<<WeightScaleBits));
     std::int32_t outputValue = buffer.fc_2_out[0] + fwdOut;
-
-#if defined(ALIGNAS_ON_STACK_VARIABLES_BROKEN)
-    buffer.~Buffer();
-#endif
 
     return outputValue;
   }

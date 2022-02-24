@@ -127,11 +127,11 @@ namespace Stockfish::Eval::NNUE {
           {
             for (; i + 1 < sizeof(IntType); ++i)
             {
-                u[i] = v;
+                u[i] = (std::uint8_t)v;
                 v >>= 8;
             }
           }
-          u[i] = v;
+          u[i] = (std::uint8_t)v;
 
           stream.write(reinterpret_cast<char*>(u), sizeof(IntType));
       }
