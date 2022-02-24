@@ -10,7 +10,7 @@ trap 'error ${LINENO}' ERR
 
 echo "reprosearch testing started"
 
-# repeat two short games, separated by ucinewgame. 
+# repeat two short games, separated by ucinewgame.
 # with go nodes $nodes they should result in exactly
 # the same node count for each iteration.
 cat << EOF > repeat.exp
@@ -43,7 +43,7 @@ cat << EOF > repeat.exp
  expect eof
 EOF
 
-# to increase the likelyhood of finding a non-reproducible case,
+# to increase the likelihood of finding a non-reproducible case,
 # the allowed number of nodes are varied systematically
 for i in `seq 1 20`
 do

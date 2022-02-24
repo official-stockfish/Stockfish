@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2021 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2022 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -82,6 +82,8 @@
 #else
 #  define pext(b, m) 0
 #endif
+
+namespace Stockfish {
 
 #ifdef USE_POPCNT
 constexpr bool HasPopCnt = true;
@@ -189,7 +191,6 @@ enum Value : int {
   BishopValueMg = 825,   BishopValueEg = 915,
   RookValueMg   = 1276,  RookValueEg   = 1380,
   QueenValueMg  = 2538,  QueenValueEg  = 2682,
-  Tempo = 28,
 
   MidgameLimit  = 15258, EndgameLimit  = 3915
 };
@@ -466,10 +467,6 @@ constexpr Move make_move(Square from, Square to) {
   return Move((from << 6) + to);
 }
 
-constexpr Move reverse_move(Move m) {
-  return make_move(to_sq(m), from_sq(m));
-}
-
 template<MoveType T>
 constexpr Move make(Square from, Square to, PieceType pt = KNIGHT) {
   return Move(T + ((pt - KNIGHT) << 12) + (from << 6) + to);
@@ -483,6 +480,8 @@ constexpr bool is_ok(Move m) {
 constexpr Key make_key(uint64_t seed) {
   return seed * 6364136223846793005ULL + 1442695040888963407ULL;
 }
+
+} // namespace Stockfish
 
 #endif // #ifndef TYPES_H_INCLUDED
 

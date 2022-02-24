@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2021 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2022 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -23,6 +23,8 @@
 #include "thread.h"
 
 using namespace std;
+
+namespace Stockfish {
 
 namespace {
   #define S(mg, eg) make_score(mg, eg)
@@ -72,7 +74,7 @@ namespace {
 
   bool is_KBPsK(const Position& pos, Color us) {
     return   pos.non_pawn_material(us) == BishopValueMg
-          && pos.count<PAWN  >(us) >= 1;
+          && pos.count<PAWN>(us) >= 1;
   }
 
   bool is_KQKRPs(const Position& pos, Color us) {
@@ -223,3 +225,5 @@ Entry* probe(const Position& pos) {
 }
 
 } // namespace Material
+
+} // namespace Stockfish

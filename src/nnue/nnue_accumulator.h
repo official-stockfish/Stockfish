@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2021 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2022 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -23,18 +23,15 @@
 
 #include "nnue_architecture.h"
 
-namespace Eval::NNUE {
-
-  // The accumulator of a StateInfo without parent is set to the INIT state
-  enum AccumulatorState { EMPTY, COMPUTED, INIT };
+namespace Stockfish::Eval::NNUE {
 
   // Class that holds the result of affine transformation of input features
-  struct alignas(kCacheLineSize) Accumulator {
-    std::int16_t
-        accumulation[2][kRefreshTriggers.size()][kTransformedFeatureDimensions];
-    AccumulatorState state[2];
+  struct alignas(CacheLineSize) Accumulator {
+    std::int16_t accumulation[2][TransformedFeatureDimensions];
+    std::int32_t psqtAccumulation[2][PSQTBuckets];
+    bool computed[2];
   };
 
-}  // namespace Eval::NNUE
+}  // namespace Stockfish::Eval::NNUE
 
 #endif // NNUE_ACCUMULATOR_H_INCLUDED

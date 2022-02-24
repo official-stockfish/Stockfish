@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2021 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2022 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -36,6 +36,8 @@ typedef bool(*fun1_t)(LOGICAL_PROCESSOR_RELATIONSHIP,
                       PSYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX, PDWORD);
 typedef bool(*fun2_t)(USHORT, PGROUP_AFFINITY);
 typedef bool(*fun3_t)(HANDLE, CONST GROUP_AFFINITY*, PGROUP_AFFINITY);
+typedef bool(*fun4_t)(USHORT, PGROUP_AFFINITY, USHORT, PUSHORT);
+typedef WORD(*fun5_t)();
 }
 #endif
 
@@ -51,7 +53,7 @@ typedef bool(*fun3_t)(HANDLE, CONST GROUP_AFFINITY*, PGROUP_AFFINITY);
 #include <sys/mman.h>
 #endif
 
-#if defined(__APPLE__) || defined(__ANDROID__) || defined(__OpenBSD__) || (defined(__GLIBCXX__) && !defined(_GLIBCXX_HAVE_ALIGNED_ALLOC) && !defined(_WIN32))
+#if defined(__APPLE__) || defined(__ANDROID__) || defined(__OpenBSD__) || (defined(__GLIBCXX__) && !defined(_GLIBCXX_HAVE_ALIGNED_ALLOC) && !defined(_WIN32)) || defined(__e2k__)
 #define POSIXALIGNEDALLOC
 #include <stdlib.h>
 #endif
@@ -60,6 +62,8 @@ typedef bool(*fun3_t)(HANDLE, CONST GROUP_AFFINITY*, PGROUP_AFFINITY);
 #include "thread.h"
 
 using namespace std;
+
+namespace Stockfish {
 
 namespace {
 
@@ -108,7 +112,14 @@ public:
 
     static Logger l;
 
-    if (!fname.empty() && !l.file.is_open())
+    if (l.file.is_open())
+    {
+        cout.rdbuf(l.out.buf);
+        cin.rdbuf(l.in.buf);
+        l.file.close();
+    }
+
+    if (!fname.empty())
     {
         l.file.open(fname, ifstream::out);
 
@@ -121,12 +132,6 @@ public:
         cin.rdbuf(&l.in);
         cout.rdbuf(&l.out);
     }
-    else if (fname.empty() && l.file.is_open())
-    {
-        cout.rdbuf(l.out.buf);
-        cin.rdbuf(l.in.buf);
-        l.file.close();
-    }
   }
 };
 
@@ -138,7 +143,7 @@ public:
 /// the program was compiled) or "Stockfish <Version>", depending on whether
 /// Version is empty.
 
-const string engine_info(bool to_uci) {
+string engine_info(bool to_uci) {
 
   const string months("Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec");
   string month, day, year;
@@ -161,7 +166,7 @@ const string engine_info(bool to_uci) {
 
 /// compiler_info() returns a string trying to describe the compiler we use
 
-const std::string compiler_info() {
+std::string compiler_info() {
 
   #define stringify2(x) #x
   #define stringify(x) stringify2(x)
@@ -189,6 +194,18 @@ const std::string compiler_info() {
      compiler += "MSVC ";
      compiler += "(version ";
      compiler += stringify(_MSC_FULL_VER) "." stringify(_MSC_BUILD);
+     compiler += ")";
+  #elif defined(__e2k__) && defined(__LCC__)
+    #define dot_ver2(n) \
+      compiler += (char)'.'; \
+      compiler += (char)('0' + (n) / 10); \
+      compiler += (char)('0' + (n) % 10);
+
+     compiler += "MCST LCC ";
+     compiler += "(version ";
+     compiler += std::to_string(__LCC__ / 100);
+     dot_ver2(__LCC__ % 100)
+     dot_ver2(__LCC_MINOR__)
      compiler += ")";
   #elif __GNUC__
      compiler += "g++ (GNUC) ";
@@ -361,7 +378,12 @@ void std_aligned_free(void* ptr) {
 
 #if defined(_WIN32)
 
-static void* aligned_large_pages_alloc_win(size_t allocSize) {
+static void* aligned_large_pages_alloc_windows(size_t allocSize) {
+
+  #if !defined(_WIN64)
+    (void)allocSize; // suppress unused-parameter compiler warning
+    return nullptr;
+  #else
 
   HANDLE hProcessToken { };
   LUID luid { };
@@ -404,12 +426,14 @@ static void* aligned_large_pages_alloc_win(size_t allocSize) {
   CloseHandle(hProcessToken);
 
   return mem;
+
+  #endif
 }
 
 void* aligned_large_pages_alloc(size_t allocSize) {
 
   // Try to allocate large pages
-  void* mem = aligned_large_pages_alloc_win(allocSize);
+  void* mem = aligned_large_pages_alloc_windows(allocSize);
 
   // Fall back to regular, page aligned, allocation if necessary
   if (!mem)
@@ -449,8 +473,9 @@ void aligned_large_pages_free(void* mem) {
   if (mem && !VirtualFree(mem, 0, MEM_RELEASE))
   {
       DWORD err = GetLastError();
-      std::cerr << "Failed to free transposition table. Error code: 0x" <<
-          std::hex << err << std::dec << std::endl;
+      std::cerr << "Failed to free large page memory. Error code: 0x"
+                << std::hex << err
+                << std::dec << std::endl;
       exit(EXIT_FAILURE);
   }
 }
@@ -472,11 +497,11 @@ void bindThisThread(size_t) {}
 
 #else
 
-/// best_group() retrieves logical processor information using Windows specific
-/// API and returns the best group id for the thread with index idx. Original
+/// best_node() retrieves logical processor information using Windows specific
+/// API and returns the best node id for the thread with index idx. Original
 /// code from Texel by Peter Österlund.
 
-int best_group(size_t idx) {
+int best_node(size_t idx) {
 
   int threads = 0;
   int nodes = 0;
@@ -490,7 +515,8 @@ int best_group(size_t idx) {
   if (!fun1)
       return -1;
 
-  // First call to get returnLength. We expect it to fail due to null buffer
+  // First call to GetLogicalProcessorInformationEx() to get returnLength.
+  // We expect the call to fail due to null buffer.
   if (fun1(RelationAll, nullptr, &returnLength))
       return -1;
 
@@ -498,7 +524,7 @@ int best_group(size_t idx) {
   SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX *buffer, *ptr;
   ptr = buffer = (SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX*)malloc(returnLength);
 
-  // Second call, now we expect to succeed
+  // Second call to GetLogicalProcessorInformationEx(), now we expect to succeed
   if (!fun1(RelationAll, buffer, &returnLength))
   {
       free(buffer);
@@ -548,22 +574,38 @@ int best_group(size_t idx) {
 void bindThisThread(size_t idx) {
 
   // Use only local variables to be thread-safe
-  int group = best_group(idx);
+  int node = best_node(idx);
 
-  if (group == -1)
+  if (node == -1)
       return;
 
   // Early exit if the needed API are not available at runtime
   HMODULE k32 = GetModuleHandle("Kernel32.dll");
   auto fun2 = (fun2_t)(void(*)())GetProcAddress(k32, "GetNumaNodeProcessorMaskEx");
   auto fun3 = (fun3_t)(void(*)())GetProcAddress(k32, "SetThreadGroupAffinity");
+  auto fun4 = (fun4_t)(void(*)())GetProcAddress(k32, "GetNumaNodeProcessorMask2");
+  auto fun5 = (fun5_t)(void(*)())GetProcAddress(k32, "GetMaximumProcessorGroupCount");
 
   if (!fun2 || !fun3)
       return;
 
-  GROUP_AFFINITY affinity;
-  if (fun2(group, &affinity))
-      fun3(GetCurrentThread(), &affinity, nullptr);
+  if (!fun4 || !fun5)
+  {
+      GROUP_AFFINITY affinity;
+      if (fun2(node, &affinity))                                                 // GetNumaNodeProcessorMaskEx
+          fun3(GetCurrentThread(), &affinity, nullptr);                          // SetThreadGroupAffinity
+  }
+  else
+  {
+      // If a numa node has more than one processor group, we assume they are
+      // sized equal and we spread threads evenly across the groups.
+      USHORT elements, returnedElements;
+      elements = fun5();                                                         // GetMaximumProcessorGroupCount
+      GROUP_AFFINITY *affinity = (GROUP_AFFINITY*)malloc(elements * sizeof(GROUP_AFFINITY));
+      if (fun4(node, affinity, elements, &returnedElements))                     // GetNumaNodeProcessorMask2
+          fun3(GetCurrentThread(), &affinity[idx % returnedElements], nullptr);  // SetThreadGroupAffinity
+      free(affinity);
+  }
 }
 
 #endif
@@ -626,3 +668,5 @@ void init(int argc, char* argv[]) {
 
 
 } // namespace CommandLine
+
+} // namespace Stockfish

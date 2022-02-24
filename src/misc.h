@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2021 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2022 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -28,8 +28,10 @@
 
 #include "types.h"
 
-const std::string engine_info(bool to_uci = false);
-const std::string compiler_info();
+namespace Stockfish {
+
+std::string engine_info(bool to_uci = false);
+std::string compiler_info();
 void prefetch(void* addr);
 void start_logger(const std::string& fname);
 void* std_aligned_alloc(size_t alignment, size_t size);
@@ -64,9 +66,10 @@ std::ostream& operator<<(std::ostream&, SyncCout);
 #define sync_cout std::cout << IO_LOCK
 #define sync_endl std::endl << IO_UNLOCK
 
-// `ptr` must point to an array of size at least
-// `sizeof(T) * N + alignment` bytes, where `N` is the
-// number of elements in the array.
+
+// align_ptr_up() : get the first aligned element of an array.
+// ptr must point to an array of size at least `sizeof(T) * N + alignment` bytes,
+// where N is the number of elements in the array.
 template <uintptr_t Alignment, typename T>
 T* align_ptr_up(T* ptr)
 {
@@ -75,6 +78,95 @@ T* align_ptr_up(T* ptr)
   const uintptr_t ptrint = reinterpret_cast<uintptr_t>(reinterpret_cast<char*>(ptr));
   return reinterpret_cast<T*>(reinterpret_cast<char*>((ptrint + (Alignment - 1)) / Alignment * Alignment));
 }
+
+
+// IsLittleEndian : true if and only if the binary is compiled on a little endian machine
+static inline const union { uint32_t i; char c[4]; } Le = { 0x01020304 };
+static inline const bool IsLittleEndian = (Le.c[0] == 4);
+
+
+// RunningAverage : a class to calculate a running average of a series of values.
+// For efficiency, all computations are done with integers.
+class RunningAverage {
+  public:
+
+      // Constructor
+      RunningAverage() {}
+
+      // Reset the running average to rational value p / q
+      void set(int64_t p, int64_t q)
+        { average = p * PERIOD * RESOLUTION / q; }
+
+      // Update average with value v
+      void update(int64_t v)
+        { average = RESOLUTION * v + (PERIOD - 1) * average / PERIOD; }
+
+      // Test if average is strictly greater than rational a / b
+      bool is_greater(int64_t a, int64_t b)
+        { return b * average > a * PERIOD * RESOLUTION ; }
+
+      int64_t value()
+        { return average / (PERIOD * RESOLUTION); }
+
+  private :
+      static constexpr int64_t PERIOD     = 4096;
+      static constexpr int64_t RESOLUTION = 1024;
+      int64_t average;
+};
+
+template <typename T, std::size_t MaxSize>
+class ValueList {
+
+public:
+  std::size_t size() const { return size_; }
+  void resize(std::size_t newSize) { size_ = newSize; }
+  void push_back(const T& value) { values_[size_++] = value; }
+  T& operator[](std::size_t index) { return values_[index]; }
+  T* begin() { return values_; }
+  T* end() { return values_ + size_; }
+  const T& operator[](std::size_t index) const { return values_[index]; }
+  const T* begin() const { return values_; }
+  const T* end() const { return values_ + size_; }
+
+  void swap(ValueList& other) {
+    const std::size_t maxSize = std::max(size_, other.size_);
+    for (std::size_t i = 0; i < maxSize; ++i) {
+      std::swap(values_[i], other.values_[i]);
+    }
+    std::swap(size_, other.size_);
+  }
+
+private:
+  T values_[MaxSize];
+  std::size_t size_ = 0;
+};
+
+
+/// sigmoid(t, x0, y0, C, P, Q) implements a sigmoid-like function using only integers,
+/// with the following properties:
+///
+///  -  sigmoid is centered in (x0, y0)
+///  -  sigmoid has amplitude [-P/Q , P/Q] instead of [-1 , +1]
+///  -  limit is (y0 - P/Q) when t tends to -infinity
+///  -  limit is (y0 + P/Q) when t tends to +infinity
+///  -  the slope can be adjusted using C > 0, smaller C giving a steeper sigmoid
+///  -  the slope of the sigmoid when t = x0 is P/(Q*C)
+///  -  sigmoid is increasing with t when P > 0 and Q > 0
+///  -  to get a decreasing sigmoid, call with -t, or change sign of P
+///  -  mean value of the sigmoid is y0
+///
+/// Use <https://www.desmos.com/calculator/jhh83sqq92> to draw the sigmoid
+
+inline int64_t sigmoid(int64_t t, int64_t x0,
+                                  int64_t y0,
+                                  int64_t  C,
+                                  int64_t  P,
+                                  int64_t  Q)
+{
+   assert(C > 0);
+   return y0 + P * (t-x0) / (Q * (std::abs(t-x0) + C)) ;
+}
+
 
 /// xorshift64star Pseudo-Random Number Generator
 /// This class is based on original code written and dedicated
@@ -142,5 +234,7 @@ namespace CommandLine {
   extern std::string binaryDirectory;  // path of the executable directory
   extern std::string workingDirectory; // path of the working directory
 }
+
+} // namespace Stockfish
 
 #endif // #ifndef MISC_H_INCLUDED

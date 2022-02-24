@@ -13,7 +13,7 @@ case $1 in
   --valgrind)
     echo "valgrind testing started"
     prefix=''
-    exeprefix='valgrind --error-exitcode=42'
+    exeprefix='valgrind --error-exitcode=42 --errors-for-leak-kinds=all --leak-check=full'
     postfix='1>/dev/null'
     threads="1"
   ;;
@@ -39,16 +39,16 @@ case $1 in
     threads="2"
 
 cat << EOF > tsan.supp
-race:TTEntry::move
-race:TTEntry::depth
-race:TTEntry::bound
-race:TTEntry::save
-race:TTEntry::value
-race:TTEntry::eval
-race:TTEntry::is_pv
+race:Stockfish::TTEntry::move
+race:Stockfish::TTEntry::depth
+race:Stockfish::TTEntry::bound
+race:Stockfish::TTEntry::save
+race:Stockfish::TTEntry::value
+race:Stockfish::TTEntry::eval
+race:Stockfish::TTEntry::is_pv
 
-race:TranspositionTable::probe
-race:TranspositionTable::hashfull
+race:Stockfish::TranspositionTable::probe
+race:Stockfish::TranspositionTable::hashfull
 
 EOF
 
@@ -98,7 +98,7 @@ cat << EOF > game.exp
  expect "bestmove"
 
  send "position fen 5rk1/1K4p1/8/8/3B4/8/8/8 b - - 0 1\n"
- send "go depth 20\n"
+ send "go depth 10\n"
  expect "bestmove"
 
  send "quit\n"

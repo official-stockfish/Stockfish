@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2021 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2022 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -26,9 +26,10 @@
 
 using std::string;
 
+namespace Stockfish {
+
 bool Tune::update_on_last;
 const UCI::Option* LastOption = nullptr;
-BoolConditions Conditions;
 static std::map<std::string, int> TuneResults;
 
 string Tune::next(string& names, bool pop) {
@@ -108,23 +109,7 @@ template<> void Tune::Entry<Score>::read_option() {
 template<> void Tune::Entry<Tune::PostUpdate>::init_option() {}
 template<> void Tune::Entry<Tune::PostUpdate>::read_option() { value(); }
 
-
-// Set binary conditions according to a probability that depends
-// on the corresponding parameter value.
-
-void BoolConditions::set() {
-
-  static PRNG rng(now());
-  static bool startup = true; // To workaround fishtest bench
-
-  for (size_t i = 0; i < binary.size(); i++)
-      binary[i] = !startup && (values[i] + int(rng.rand<unsigned>() % variance) > threshold);
-
-  startup = false;
-
-  for (size_t i = 0; i < binary.size(); i++)
-      sync_cout << binary[i] << sync_endl;
-}
+} // namespace Stockfish
 
 
 // Init options with tuning session results instead of default values. Useful to
@@ -138,7 +123,11 @@ void BoolConditions::set() {
 
 #include <cmath>
 
+namespace Stockfish {
+
 void Tune::read_results() {
 
   /* ...insert your values here... */
 }
+
+} // namespace Stockfish
