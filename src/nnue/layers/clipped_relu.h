@@ -171,14 +171,6 @@ namespace Stockfish::Eval::NNUE::Layers {
             std::max(0, std::min(127, input[i] >> WeightScaleBits)));
       }
 
-      // Affine transform layers expect that there is at least
-      // ceil_to_multiple(OutputDimensions, 32) initialized values.
-      // We cannot do this in the affine transform because it requires
-      // preallocating space here.
-      for (IndexType i = OutputDimensions; i < PaddedOutputDimensions; ++i) {
-        output[i] = 0;
-      }
-
       return output;
     }
   };
