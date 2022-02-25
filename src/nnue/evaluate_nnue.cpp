@@ -109,7 +109,7 @@ namespace Stockfish::Eval::NNUE {
   {
     write_little_endian<std::uint32_t>(stream, Version);
     write_little_endian<std::uint32_t>(stream, hashValue);
-    write_little_endian<std::uint32_t>(stream, desc.size());
+    write_little_endian<std::uint32_t>(stream, (std::uint32_t)desc.size());
     stream.write(&desc[0], desc.size());
     return !stream.fail();
   }
@@ -157,7 +157,7 @@ namespace Stockfish::Eval::NNUE {
 
     ASSERT_ALIGNED(transformedFeatures, alignment);
 
-    const std::size_t bucket = (pos.count<ALL_PIECES>() - 1) / 4;
+    const int bucket = (pos.count<ALL_PIECES>() - 1) / 4;
     const auto psqt = featureTransformer->transform(pos, transformedFeatures, bucket);
     const auto positional = network[bucket]->propagate(transformedFeatures);
 
@@ -197,7 +197,7 @@ namespace Stockfish::Eval::NNUE {
 
     NnueEvalTrace t{};
     t.correctBucket = (pos.count<ALL_PIECES>() - 1) / 4;
-    for (std::size_t bucket = 0; bucket < LayerStacks; ++bucket) {
+    for (IndexType bucket = 0; bucket < LayerStacks; ++bucket) {
       const auto materialist = featureTransformer->transform(pos, transformedFeatures, bucket);
       const auto positional = network[bucket]->propagate(transformedFeatures);
 
