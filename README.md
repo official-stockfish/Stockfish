@@ -37,7 +37,7 @@ This distribution of Stockfish consists of the following files:
 
 The Universal Chess Interface (UCI) is a standard protocol used to communicate with
 a chess engine, and is the recommended way to do so for typical graphical user interfaces
-(GUI) or chess tools. Stockfish implements the majority of it options as described
+(GUI) or chess tools. Stockfish implements the majority of its options as described
 in [the UCI protocol](https://www.shredderchess.com/download/div/uci.zip).
 
 Developers can see the default values for UCI options available in Stockfish by typing
