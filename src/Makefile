@@ -123,7 +123,7 @@ else
 endif
 
 optimize = yes
-debug = yes
+debug =	no 
 sanitize = none
 bits = 64
 prefetch = no
