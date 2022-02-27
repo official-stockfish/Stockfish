@@ -56,7 +56,6 @@ namespace Stockfish::Eval::NNUE {
     vec_t compacted = _mm512_packs_epi16(_mm512_srli_epi16(a,7),_mm512_srli_epi16(b,7));
     return _mm512_permutexvar_epi64(_mm512_setr_epi64(0, 2, 4, 6, 1, 3, 5, 7), compacted);
   }
-  #define vec_pack_16(a,b) _mm512_packs_epi16(a,b)
   #define vec_load_psqt(a) _mm256_load_si256(a)
   #define vec_store_psqt(a,b) _mm256_store_si256(a,b)
   #define vec_add_psqt_32(a,b) _mm256_add_epi32(a,b)
@@ -129,7 +128,6 @@ namespace Stockfish::Eval::NNUE {
       return _mm_or_si64(_mm_and_si64(comparison, b), _mm_andnot_si64(comparison, a));
   }
   #define vec_msb_pack_16(a,b) _mm_packs_pi16(_mm_srli_pi16(a,7),_mm_srli_pi16(b,7))
-  #define vec_pack_16(a,b) _mm_packs_pi16(a,b)
   #define vec_load_psqt(a) (*(a))
   #define vec_store_psqt(a,b) *(a)=(b)
   #define vec_add_psqt_32(a,b) _mm_add_pi32(a,b)
@@ -594,11 +592,9 @@ namespace Stockfish::Eval::NNUE {
 #undef vec_mul_16
 #undef vec_zero
 #undef vec_set_16
-#undef vec_pack_16
 #undef vec_max_16
 #undef vec_min_16
 #undef vec_msb_pack_16
-#undef vec_pack_16
 #undef vec_load_psqt
 #undef vec_store_psqt
 #undef vec_add_psqt_32
