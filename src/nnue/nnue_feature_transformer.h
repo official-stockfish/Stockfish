@@ -152,7 +152,7 @@ namespace Stockfish::Eval::NNUE {
   #define vec_max_16(a,b) vmaxq_s16(a,b)
   #define vec_min_16(a,b) vminq_s16(a,b)
   inline vec_t vec_msb_pack_16(vec_t a, vec_t b){
-  	const int8x8_t shifta = vshrn_n_s16(a, 7);
+        const int8x8_t shifta = vshrn_n_s16(a, 7);
 	const int8x8_t shiftb = vshrn_n_s16(b, 7);
 	const int8x16_t compacted = vcombine_s8(shifta,shiftb);
 	return *reinterpret_cast<const vec_t*> (&compacted);
