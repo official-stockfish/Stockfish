@@ -681,22 +681,22 @@ ifeq ($(debug), no)
 # GCC and CLANG use different methods for parallelizing LTO and CLANG pretends to be
 # GCC on some systems.
 	else ifeq ($(comp),gcc)
-# To use LTO and static linking on Windows,
-# the tool chain requires gcc version 10.1 or later.
-	ifeq ($(comp),mingw)
-	ifneq ($(arch),i386)
-		CXXFLAGS += -flto
-		LDFLAGS += $(CXXFLAGS) -save-temps
-	endif
-	else ifeq ($(gccisclang),)
+	ifeq ($(gccisclang),)
 		CXXFLAGS += -flto
 		LDFLAGS += $(CXXFLAGS) -flto=jobserver
 	else
 		CXXFLAGS += -flto
 		LDFLAGS += $(CXXFLAGS)
 	endif
-	endif
 
+# To use LTO and static linking on Windows,
+# the tool chain requires gcc version 10.1 or later.
+	else ifeq ($(comp),mingw)
+	ifneq ($(arch),i386)
+		CXXFLAGS += -flto
+		LDFLAGS += $(CXXFLAGS) -save-temps
+	endif
+	endif
 endif
 endif
 
