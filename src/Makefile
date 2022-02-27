@@ -520,7 +520,7 @@ endif
 
 ### 3.2.1 Debugging
 ifeq ($(debug),no)
-	#CXXFLAGS += -DNDEBUG
+	CXXFLAGS += -DNDEBUG
 else
 	CXXFLAGS += -g
 endif
