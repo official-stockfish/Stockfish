@@ -288,13 +288,6 @@ namespace Stockfish::Eval::NNUE {
       for (IndexType p = 0; p < 2; ++p)
       {
           const IndexType offset = (HalfDimensions / 2) * p;
-	  for (IndexType j = 0; j < HalfDimensions / 2; ++j) {
-              BiasType sum0 = accumulation[static_cast<int>(perspectives[p])][j + 0];
-              BiasType sum1 = accumulation[static_cast<int>(perspectives[p])][j + HalfDimensions / 2];
-              sum0 = std::max<int>(0, std::min<int>(127, sum0));
-              sum1 = std::max<int>(0, std::min<int>(127, sum1));
-              output[offset + j] = static_cast<OutputType>(sum0 * sum1 / 128);
-          }
 
 #if defined(VECTOR)
 
