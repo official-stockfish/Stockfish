@@ -873,6 +873,8 @@ all: $(EXE) .depend
 config-sanity: net
 	@echo ""
 	@echo "Config:"
+	@echo "comp: '$(comp)'"
+	@echo "gccversion: '$(gccversion)'"
 	@echo "debug: '$(debug)'"
 	@echo "sanitize: '$(sanitize)'"
 	@echo "optimize: '$(optimize)'"
