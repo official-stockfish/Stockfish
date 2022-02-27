@@ -128,6 +128,7 @@ jobs:
         if: runner.os == 'Windows'
         uses: msys2/setup-msys2@v2
         with:
+          update: true
           msystem: ${{matrix.config.msys_sys}}
           install: mingw-w64-${{matrix.config.msys_env}}-${{matrix.config.comp}} make git expect
 
