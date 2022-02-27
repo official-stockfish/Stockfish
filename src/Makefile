@@ -678,6 +678,15 @@ ifeq ($(debug), no)
 		endif
 		LDFLAGS += $(CXXFLAGS)
 
+# To use LTO and static linking on Windows,
+# the tool chain requires gcc version 10.1 or later.
+	else ifeq ($(comp),mingw)
+	ifneq ($(arch),i386)
+		CXXFLAGS += -flto
+		LDFLAGS += $(CXXFLAGS) -save-temps
+	endif
+	endif
+
 # GCC and CLANG use different methods for parallelizing LTO and CLANG pretends to be
 # GCC on some systems.
 	else ifeq ($(comp),gcc)
@@ -687,15 +696,6 @@ ifeq ($(debug), no)
 	else
 		CXXFLAGS += -flto
 		LDFLAGS += $(CXXFLAGS)
-	endif
-
-# To use LTO and static linking on Windows,
-# the tool chain requires gcc version 10.1 or later.
-	else ifeq ($(comp),mingw)
-	ifneq ($(arch),i386)
-		CXXFLAGS += -flto
-		LDFLAGS += $(CXXFLAGS) -save-temps
-	endif
 	endif
 endif
 endif
