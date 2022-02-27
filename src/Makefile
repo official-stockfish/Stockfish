@@ -351,12 +351,13 @@ LDFLAGS += $(EXTRALDFLAGS)
 
 ifeq ($(COMP),)
 	COMP=gcc
+	CXXFLAGS += -D_GLIBCXX_DEBUG
 endif
 
 ifeq ($(COMP),gcc)
 	comp=gcc
 	CXX=g++
-	CXXFLAGS += -pedantic -Wextra -Wshadow
+	CXXFLAGS += -D_GLIBCXX_DEBUG -pedantic -Wextra -Wshadow
 
 	ifeq ($(arch),$(filter $(arch),armv7 armv8))
 		ifeq ($(OS),Android)
@@ -520,7 +521,7 @@ endif
 
 ### 3.2.1 Debugging
 ifeq ($(debug),no)
-	CXXFLAGS += -DNDEBUG
+	CXXFLAGS += -g
 else
 	CXXFLAGS += -g
 endif
