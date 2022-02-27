@@ -593,4 +593,5 @@ namespace Stockfish::Eval::NNUE {
 #undef vec_pack_16
 #undef MaxChunkSIze
 #undef vec_cleanup
+#undef VECTOR
 #endif // #ifndef NNUE_FEATURE_TRANSFORMER_H_INCLUDED
