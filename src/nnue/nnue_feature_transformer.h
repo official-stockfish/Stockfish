@@ -40,7 +40,7 @@ namespace Stockfish::Eval::NNUE {
   static_assert(PSQTBuckets % 8 == 0,
     "Per feature PSQT values cannot be processed at granularity lower than 8 at a time.");
 
-  #ifdef defined(USE_AVX512)
+  #if defined(USE_AVX512)
   typedef __m512i vec_t;
   typedef __m256i psqt_vec_t;
   #define vec_load(a) _mm512_load_si512(a)
