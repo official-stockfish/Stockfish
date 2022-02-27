@@ -123,7 +123,7 @@ else
 endif
 
 optimize = yes
-debug = no
+debug = yes
 sanitize = none
 bits = 64
 prefetch = no
@@ -345,7 +345,7 @@ endif
 ### ==========================================================================
 
 ### 3.1 Selecting compiler (default = gcc)
-CXXFLAGS += -Wall -Wcast-qual -fno-exceptions -std=c++17 $(EXTRACXXFLAGS)
+CXXFLAGS += -D_GLIBCXX_DEBUG -Wall -Wcast-qual -fno-exceptions -std=c++17 $(EXTRACXXFLAGS)
 DEPENDFLAGS += -std=c++17
 LDFLAGS += $(EXTRALDFLAGS)
 
