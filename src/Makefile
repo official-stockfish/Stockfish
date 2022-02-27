@@ -494,7 +494,7 @@ ifdef COMPCXX
 	CXX=$(COMPCXX)
 endif
 
-### Sometimes gcc is really clang or mingw
+### Sometimes gcc is really clang
 ifeq ($(COMP),gcc)
 	gccversion = $(shell $(CXX) --version)
 	gccisclang = $(findstring clang,$(gccversion))
@@ -502,7 +502,6 @@ ifeq ($(COMP),gcc)
 		profile_make = clang-profile-make
 		profile_use = clang-profile-use
 	endif
-	gccismingw = $(findstring mingw, $(gccversion))
 endif
 
 ### On mingw use Windows threads, otherwise POSIX
@@ -682,12 +681,7 @@ ifeq ($(debug), no)
 # GCC and CLANG use different methods for parallelizing LTO and CLANG pretends to be
 # GCC on some systems.
 	else ifeq ($(comp),gcc)
-	ifneq ($(gccismingw),)
-	ifneq ($(arch),i386)
-		CXXFLAGS += -flto
-		LDFLAGS += $(CXXFLAGS) -save-temps
-	endif
-	else ifeq ($(gccisclang),)
+	ifeq ($(gccisclang),)
 		CXXFLAGS += -flto
 		LDFLAGS += $(CXXFLAGS) -flto=jobserver
 	else
