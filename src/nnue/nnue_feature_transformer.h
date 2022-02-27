@@ -135,6 +135,7 @@ namespace Stockfish::Eval::NNUE {
   #define vec_add_psqt_32(a,b) _mm_add_pi32(a,b)
   #define vec_sub_psqt_32(a,b) _mm_sub_pi32(a,b)
   #define vec_zero_psqt() _mm_setzero_si64()
+  #define vec_cleanup() _mm_empty()
   #define NumRegistersSIMD 8
   #define MaxChunkSize 8
 
@@ -327,6 +328,10 @@ namespace Stockfish::Eval::NNUE {
 
 #endif
       }
+
+#if defined(vec_cleanup)
+      vec_cleanup();
+#endif
 
       return psqt;
 
