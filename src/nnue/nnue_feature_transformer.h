@@ -40,7 +40,7 @@ namespace Stockfish::Eval::NNUE {
   static_assert(PSQTBuckets % 8 == 0,
     "Per feature PSQT values cannot be processed at granularity lower than 8 at a time.");
 
-  #ifdef USE_AVX512
+  #ifdef defined(USE_AVX512)
   typedef __m512i vec_t;
   typedef __m256i psqt_vec_t;
   #define vec_load(a) _mm512_load_si512(a)
@@ -65,7 +65,7 @@ namespace Stockfish::Eval::NNUE {
   #define NumRegistersSIMD 32
   #define MaxChunkSize 64
 
-  #elif USE_AVX2
+  #elif defined(USE_AVX2)
   typedef __m256i vec_t;
   typedef __m256i psqt_vec_t;
   #define vec_load(a) _mm256_load_si256(a)
@@ -89,7 +89,7 @@ namespace Stockfish::Eval::NNUE {
   #define NumRegistersSIMD 16
   #define MaxChunkSize 32
 
-  #elif USE_SSE2
+  #elif defined(USE_SSE2)
   typedef __m128i vec_t;
   typedef __m128i psqt_vec_t;
   #define vec_load(a) (*(a))
@@ -110,7 +110,7 @@ namespace Stockfish::Eval::NNUE {
   #define NumRegistersSIMD (Is64Bit ? 16 : 8)
   #define MaxChunkSize 16
 
-  #elif USE_MMX
+  #elif defined(USE_MMX)
   typedef __m64 vec_t;
   typedef __m64 psqt_vec_t;
   #define vec_load(a) (*(a))
@@ -139,7 +139,7 @@ namespace Stockfish::Eval::NNUE {
   #define NumRegistersSIMD 8
   #define MaxChunkSize 8
 
-  #elif USE_NEON
+  #elif defined(USE_NEON)
   typedef int16x8_t vec_t;
   typedef int32x4_t psqt_vec_t;
   #define vec_load(a) (*(a))
