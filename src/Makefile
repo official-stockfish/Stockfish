@@ -683,7 +683,7 @@ ifeq ($(debug), no)
 # GCC on some systems.
 	else ifeq ($(comp),gcc)
 	ifeq ($(gccisclang),)
-		CXXFLAGS += -flto
+		#CXXFLAGS += -flto
 		LDFLAGS += $(CXXFLAGS) -flto=jobserver
 	else
 		CXXFLAGS += -flto
