@@ -587,4 +587,10 @@ namespace Stockfish::Eval::NNUE {
 
 }  // namespace Stockfish::Eval::NNUE
 
+#undef vec_mul_16
+#undef vec_zero
+#undef vec_set_16
+#undef vec_pack_16
+#undef MaxChunkSIze
+#undef vec_cleanup
 #endif // #ifndef NNUE_FEATURE_TRANSFORMER_H_INCLUDED
