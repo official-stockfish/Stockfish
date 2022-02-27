@@ -587,11 +587,25 @@ namespace Stockfish::Eval::NNUE {
 
 }  // namespace Stockfish::Eval::NNUE
 
+#undef vec_load
+#undef vec_store
+#undef vec_add_16
+#undef vec_sub_16
 #undef vec_mul_16
 #undef vec_zero
 #undef vec_set_16
 #undef vec_pack_16
-#undef MaxChunkSize
+#undef vec_max_16
+#undef vec_min_16
+#undef vec_msb_pack_16
+#undef vec_pack_16
+#undef vec_load_psqt
+#undef vec_store_psqt
+#undef vec_add_psqt_32
+#undef vec_add_sub_32
+#undef vec_zero_psqt_32
 #undef vec_cleanup
+#undef NumRegistersSIMD
+#undef MaxChunkSize
 #undef VECTOR
 #endif // #ifndef NNUE_FEATURE_TRANSFORMER_H_INCLUDED
