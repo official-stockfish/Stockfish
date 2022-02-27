@@ -502,7 +502,7 @@ ifeq ($(COMP),gcc)
 		profile_make = clang-profile-make
 		profile_use = clang-profile-use
 	endif
-	gccismingw = $(findstring MSYS2, $(gccversion))
+	gccismingw = $(findstring mingw, $(gccversion))
 endif
 
 ### On mingw use Windows threads, otherwise POSIX
@@ -873,7 +873,6 @@ all: $(EXE) .depend
 config-sanity: net
 	@echo ""
 	@echo "Config:"
-	@echo "Comp: '$(comp)'"
 	@echo "debug: '$(debug)'"
 	@echo "sanitize: '$(sanitize)'"
 	@echo "optimize: '$(optimize)'"
