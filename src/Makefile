@@ -351,11 +351,13 @@ LDFLAGS += $(EXTRALDFLAGS)
 
 ifeq ($(COMP),)
 	COMP=gcc
+	debug = yes
 endif
 
 ifeq ($(COMP),gcc)
 	comp=gcc
 	CXX=g++
+	debug = yes
 	CXXFLAGS += -pedantic -Wextra -Wshadow
 
 	ifeq ($(arch),$(filter $(arch),armv7 armv8))
@@ -672,7 +674,7 @@ endif
 ifeq ($(optimize),yes)
 ifeq ($(debug), no)
 	ifeq ($(comp),clang)
-		##CXXFLAGS += -flto
+		CXXFLAGS += -flto
 		ifeq ($(target_windows),yes)
 			CXXFLAGS += -fuse-ld=lld
 		endif
