@@ -89,8 +89,8 @@ jobs:
               shell: 'msys2 {0}'
             }
           - {
-              name: "Windows 2022 Mingw-w64 GCC i686",
-              os: windows-2022,
+              name: "Windows 2019 Mingw-w64 GCC i686",
+              os: windows-2019,
               compiler: g++,
               comp: gcc,
               run_32bit_tests: true,
@@ -99,8 +99,8 @@ jobs:
               shell: 'msys2 {0}'
             }
           - {
-              name: "Windows 2022 Mingw-w64 Clang x86_64",
-              os: windows-2022,
+              name: "Windows 2019 Mingw-w64 Clang x86_64",
+              os: windows-2019,
               compiler: clang++,
               comp: clang,
               run_64bit_tests: true,
