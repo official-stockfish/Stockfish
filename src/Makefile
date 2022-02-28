@@ -502,8 +502,7 @@ ifeq ($(COMP),gcc)
 		profile_make = clang-profile-make
 		profile_use = clang-profile-use
 	endif
-	gcctarget = $(shell $(CXX) -dumpmachine)
-	gccismingw = $(findstring mingw, $(gcctarget))
+	gccismingw = $(findstring MSYS2, $(gccversion))
 endif
 
 ### On mingw use Windows threads, otherwise POSIX
