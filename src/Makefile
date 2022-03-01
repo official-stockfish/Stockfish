@@ -350,12 +350,7 @@ DEPENDFLAGS += -std=c++17
 LDFLAGS += $(EXTRALDFLAGS)
 
 ifeq ($(COMP),)
-	g++target=$(shell g++ -dumpmachine)
-	ifneq ($(findstring mingw,$(g++target)),)
-		COMP=mingw
-	else
-		COMP=gcc
-	endif
+	COMP=gcc
 endif
 
 ifeq ($(COMP),gcc)
