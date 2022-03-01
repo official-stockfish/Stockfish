@@ -21,6 +21,8 @@
 #ifndef NNUE_ARCHITECTURE_H_INCLUDED
 #define NNUE_ARCHITECTURE_H_INCLUDED
 
+#include <memory>
+
 #include "nnue_common.h"
 
 #include "features/half_ka_v2_hm.h"
@@ -88,9 +90,7 @@ struct Network
 
   std::int32_t propagate(const TransformedFeatureType* transformedFeatures)
   {
-    constexpr uint64_t alignment = CacheLineSize;
-
-    struct Buffer
+    struct alignas(CacheLineSize) Buffer
     {
       alignas(CacheLineSize) decltype(fc_0)::OutputBuffer fc_0_out;
       alignas(CacheLineSize) decltype(ac_0)::OutputBuffer ac_0_out;
@@ -104,12 +104,13 @@ struct Network
       }
     };
 
-#if defined(ALIGNAS_ON_STACK_VARIABLES_BROKEN)
-    static thread_local char bufferRaw[sizeof(Buffer) + alignment];
-    static thread_local char* bufferRawAligned = align_ptr_up<alignment>(&bufferRaw[0]);
-    static thread_local Buffer& buffer = *(new (bufferRawAligned) Buffer);
+#if defined(__clang__) && (__APPLE__)
+    // workaround for a bug reported with xcode 12
+    static thread_local auto tlsBuffer = std::make_unique<Buffer>();
+    // Access TLS only once, cache result.
+    Buffer& buffer = *tlsBuffer;
 #else
-    alignas(alignment) static thread_local Buffer buffer;
+    alignas(CacheLineSize) static thread_local Buffer buffer;
 #endif
 
     fc_0.propagate(transformedFeatures, buffer.fc_0_out);
