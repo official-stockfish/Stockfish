@@ -52,7 +52,7 @@ namespace Stockfish::Eval::NNUE {
   #define vec_set_16(a) _mm512_set1_epi16(a)
   #define vec_max_16(a,b) _mm512_max_epi16(a,b)
   #define vec_min_16(a,b) _mm512_min_epi16(a,b)
-  inline __attribute__((always_inline)) vec_t vec_msb_pack_16(vec_t a, vec_t b){
+  static inline __attribute__((always_inline)) vec_t vec_msb_pack_16(vec_t a, vec_t b){
     vec_t compacted = _mm512_packs_epi16(_mm512_srli_epi16(a,7),_mm512_srli_epi16(b,7));
     return _mm512_permutexvar_epi64(_mm512_setr_epi64(0, 2, 4, 6, 1, 3, 5, 7), compacted);
   }
@@ -76,7 +76,7 @@ namespace Stockfish::Eval::NNUE {
   #define vec_set_16(a) _mm256_set1_epi16(a)
   #define vec_max_16(a,b) _mm256_max_epi16(a,b)
   #define vec_min_16(a,b) _mm256_min_epi16(a,b)
-  inline __attribute__((always_inline)) vec_t vec_msb_pack_16(vec_t a, vec_t b){
+  static inline __attribute__((always_inline)) vec_t vec_msb_pack_16(vec_t a, vec_t b){
     vec_t compacted = _mm256_packs_epi16(_mm256_srli_epi16(a,7), _mm256_srli_epi16(b,7));
     return _mm256_permute4x64_epi64(compacted, 0b11011000);
   }
@@ -119,11 +119,11 @@ namespace Stockfish::Eval::NNUE {
   #define vec_mul_16(a,b) _mm_mullo_pi16(a,b)
   #define vec_zero() _mm_setzero_si64()
   #define vec_set_16(a) _mm_set1_pi16(a)
-  inline __attribute__((always_inline)) vec_t vec_max_16(vec_t a,vec_t b){
+  static inline __attribute__((always_inline)) vec_t vec_max_16(vec_t a,vec_t b){
       vec_t comparison = _mm_cmpgt_pi16(a,b);
       return _mm_or_si64(_mm_and_si64(comparison, a), _mm_andnot_si64(comparison, b));
   }
-  inline __attribute__((always_inline)) vec_t vec_min_16(vec_t a,vec_t b){
+  static inline __attribute__((always_inline)) vec_t vec_min_16(vec_t a,vec_t b){
       vec_t comparison = _mm_cmpgt_pi16(a,b);
       return _mm_or_si64(_mm_and_si64(comparison, b), _mm_andnot_si64(comparison, a));
   }
@@ -149,7 +149,7 @@ namespace Stockfish::Eval::NNUE {
   #define vec_set_16(a) vdupq_n_s16(a)
   #define vec_max_16(a,b) vmaxq_s16(a,b)
   #define vec_min_16(a,b) vminq_s16(a,b)
-  inline __attribute__((always_inline)) vec_t vec_msb_pack_16(vec_t a, vec_t b){
+  static inline __attribute__((always_inline)) vec_t vec_msb_pack_16(vec_t a, vec_t b){
         const int8x8_t shifta = vshrn_n_s16(a, 7);
 	const int8x8_t shiftb = vshrn_n_s16(b, 7);
 	const int8x16_t compacted = vcombine_s8(shifta,shiftb);
