@@ -23,7 +23,6 @@
 
 #include "nnue_common.h"
 #include "nnue_architecture.h"
-#include <xmmintrin.h>
 
 #include <cstring> // std::memset()
 
@@ -120,8 +119,14 @@ namespace Stockfish::Eval::NNUE {
   #define vec_mul_16(a,b) _mm_mullo_pi16(a,b)
   #define vec_zero() _mm_setzero_si64()
   #define vec_set_16(a) _mm_set1_pi16(a)
-  #define vec_max_16(a,b) _mm_max_pi16(a,b)
-  #define vec_min_16(a,b) _mm_min_pi16(a,b)
+  inline vec_t vec_max_16(vec_t a,vec_t b){
+      vec_t comparison = _mm_cmpgt_pi16(a,b);
+      return _mm_or_si64(_mm_and_si64(comparison, a), _mm_andnot_si64(comparison, b));
+  }
+  inline vec_t vec_min_16(vec_t a,vec_t b){
+      vec_t comparison = _mm_cmpgt_pi16(a,b);
+      return _mm_or_si64(_mm_and_si64(comparison, b), _mm_andnot_si64(comparison, a));
+  }
   #define vec_msb_pack_16(a,b) _mm_packs_pi16(_mm_srli_pi16(a,7),_mm_srli_pi16(b,7))
   #define vec_load_psqt(a) (*(a))
   #define vec_store_psqt(a,b) *(a)=(b)
