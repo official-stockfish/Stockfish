@@ -1166,6 +1166,11 @@ moves_loop: // When in check, search starts here
           if (ttCapture)
               r++;
 
+          // Decrease reduction at PvNodes if bestvalue
+          // is vastly different from static evaluation
+          if (PvNode && !ss->inCheck && abs(ss->staticEval - bestValue) > 250)
+              r--;
+
           ss->statScore =  thisThread->mainHistory[us][from_to(move)]
                          + (*contHist[0])[movedPiece][to_sq(move)]
                          + (*contHist[1])[movedPiece][to_sq(move)]
