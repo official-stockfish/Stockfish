@@ -10,23 +10,28 @@ Cute Chess, eboard, Arena, Sigma Chess, Shredder, Chess Partner or Fritz) in ord
 to be used comfortably. Read the documentation for your GUI of choice for information
 about how to use Stockfish with it.
 
-The Stockfish engine features two evaluation functions for chess.
-The efficiently updatable neural network (NNUE) based evaluation is the default and by far the strongest.
-The classical evaluation based on handcrafted terms remains available.
-The strongest network is integrated in the binary and downloaded automatically during the build process.
-The NNUE evaluation benefits from the vector intrinsics available on most CPUs (sse2, avx2, neon, or similar).
+The Stockfish engine features two evaluation functions for chess. The efficiently 
+updatable neural network (NNUE) based evaluation is the default and by far the strongest.
+The classical evaluation based on handcrafted terms remains available. The strongest 
+network is integrated in the binary and downloaded automatically during the build process.
+The NNUE evaluation benefits from the vector intrinsics available on most CPUs (sse2, 
+avx2, neon, or similar).
 
 ## Files
 
 This distribution of Stockfish consists of the following files:
 
-  * [Readme.md](https://github.com/official-stockfish/Stockfish/blob/master/README.md), the file you are currently reading.
+  * [Readme.md](https://github.com/official-stockfish/Stockfish/blob/master/README.md),
+    the file you are currently reading.
 
-  * [Copying.txt](https://github.com/official-stockfish/Stockfish/blob/master/Copying.txt), a text file containing the GNU General Public License version 3.
+  * [Copying.txt](https://github.com/official-stockfish/Stockfish/blob/master/Copying.txt),
+    a text file containing the GNU General Public License version 3.
 
-  * [AUTHORS](https://github.com/official-stockfish/Stockfish/blob/master/AUTHORS), a text file with the list of authors for the project
+  * [AUTHORS](https://github.com/official-stockfish/Stockfish/blob/master/AUTHORS), 
+    a text file with the list of authors for the project
 
-  * [src](https://github.com/official-stockfish/Stockfish/tree/master/src), a subdirectory containing the full source code, including a Makefile
+  * [src](https://github.com/official-stockfish/Stockfish/tree/master/src),
+    a subdirectory containing the full source code, including a Makefile
     that can be used to compile Stockfish on Unix-like systems.
 
   * a file with the .nnue extension, storing the neural network for the NNUE
@@ -67,9 +72,9 @@ change them via a chess GUI. This is a list of available UCI options in Stockfis
 
   * #### EvalFile
     The name of the file of the NNUE evaluation parameters. Depending on the GUI the
-    filename might have to include the full path to the folder/directory that contains the file.
-    Other locations, such as the directory that contains the binary and the working directory,
-    are also searched.
+    filename might have to include the full path to the folder/directory that contains
+    the file. Other locations, such as the directory that contains the binary and the
+    working directory, are also searched.
 
   * #### UCI_AnalyseMode
     An option handled by your GUI.
@@ -137,8 +142,9 @@ change them via a chess GUI. This is a list of available UCI options in Stockfis
 For developers the following non-standard commands might be of interest, mainly useful for debugging:
 
   * #### bench *ttSize threads limit fenFile limitType evalType*
-    Performs a standard benchmark using various options. The signature of a version (standard node
-    count) is obtained using all defaults. `bench` is currently `bench 16 1 13 default depth mixed`.
+    Performs a standard benchmark using various options. The signature of a version 
+    (standard node count) is obtained using all defaults. `bench` is currently 
+    `bench 16 1 13 default depth mixed`.
 
   * #### compiler
     Give information about the compiler and environment used for building a binary.
@@ -174,26 +180,27 @@ on the evaluations of millions of positions at moderate search depth.
 The NNUE evaluation was first introduced in shogi, and ported to Stockfish afterward.
 It can be evaluated efficiently on CPUs, and exploits the fact that only parts
 of the neural network need to be updated after a typical chess move.
-[The nodchip repository](https://github.com/nodchip/Stockfish) provided the first version of
-the needed tools to train and develop the NNUE networks. Today, more advanced training tools are available
-in [the nnue-pytorch repository](https://github.com/glinscott/nnue-pytorch/), while data generation tools
-are available in [a dedicated branch](https://github.com/official-stockfish/Stockfish/tree/tools).
+[The nodchip repository](https://github.com/nodchip/Stockfish) provided the first 
+version of the needed tools to train and develop the NNUE networks. Today, more 
+advanced training tools are available in 
+[the nnue-pytorch repository](https://github.com/glinscott/nnue-pytorch/), 
+while data generation tools are available in 
+[a dedicated branch](https://github.com/official-stockfish/Stockfish/tree/tools).
 
-On CPUs supporting modern vector instructions
-(avx2 and similar), the NNUE evaluation results in much stronger playing strength, even
-if the nodes per second computed by the engine is somewhat lower (roughly 80% of nps
-is typical).
+On CPUs supporting modern vector instructions (avx2 and similar), the NNUE evaluation
+results in much stronger playing strength, even if the nodes per second computed by
+the engine is somewhat lower (roughly 80% of nps is typical).
 
 Notes:
 
-1) the NNUE evaluation depends on the Stockfish binary and the network parameter
-file (see the EvalFile UCI option). Not every parameter file is compatible with a given
-Stockfish binary, but the default value of the EvalFile UCI option is the name of a network
-that is guaranteed to be compatible with that binary.
+1) the NNUE evaluation depends on the Stockfish binary and the network parameter file 
+(see the EvalFile UCI option). Not every parameter file is compatible with a given
+Stockfish binary, but the default value of the EvalFile UCI option is the name of a 
+network that is guaranteed to be compatible with that binary.
 
 2) to use the NNUE evaluation, the additional data file with neural network parameters
-needs to be available. Normally, this file is already embedded in the binary or it
-can be downloaded. The filename for the default (recommended) net can be found as the default
+needs to be available. Normally, this file is already embedded in the binary or it can
+be downloaded. The filename for the default (recommended) net can be found as the default
 value of the `EvalFile` UCI option, with the format `nn-[SHA256 first 12 digits].nnue`
 (for instance, `nn-c157e0a5755b.nnue`). This file can be downloaded from
 ```
@@ -321,10 +328,10 @@ it (either by itself or as part of some bigger software package), or
 using it as the starting point for a software project of your own.
 
 The only real limitation is that whenever you distribute Stockfish in
-some way, you MUST always include the license, the full source code, or a pointer
-to where the source code can be found, to generate the exact binary
-you are distributing. If you make any changes to the source code,
-these changes must also be made available under the GPL v3.
+some way, you MUST always include the license and the full source code
+(or a pointer to where the source code can be found) to generate the 
+exact binary you are distributing. If you make any changes to the
+source code, these changes must also be made available under the GPL v3.
 
 For full details, read the copy of the GPL v3 found in the file named
 [*Copying.txt*](https://github.com/official-stockfish/Stockfish/blob/master/Copying.txt).
