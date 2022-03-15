@@ -1359,10 +1359,6 @@ moves_loop: // When in check, search starts here
     // opponent move is probably good and the new position is added to the search tree.
     if (bestValue <= alpha)
         ss->ttPv = ss->ttPv || ((ss-1)->ttPv && depth > 3);
-    // Otherwise, a counter move has been found and if the position is the last leaf
-    // in the search tree, remove the position from the search tree.
-    else if (depth > 3)
-        ss->ttPv = ss->ttPv && (ss+1)->ttPv;
 
     // Write gathered information in transposition table
     if (!excludedMove && !(rootNode && thisThread->pvIdx))
