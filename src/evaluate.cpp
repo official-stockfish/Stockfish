@@ -438,6 +438,13 @@ namespace {
                               & ~pe->pawn_attacks_span(Them);
             Bitboard targets = pos.pieces(Them) & ~pos.pieces(PAWN);
 
+            // Bonus for a knight or bishop shielded by pawn
+            if (shift<Down>(pos.pieces(PAWN)) & s)
+                score += MinorBehindPawn;
+
+            // Penalty if the piece is far from the king
+            score -= KingProtector[Pt == BISHOP] * distance(pos.square<KING>(Us), s);
+
             if (   Pt == KNIGHT
                 && bb & s & ~CenterFiles // on a side outpost
                 && !(b & targets)        // no relevant attacks
@@ -448,14 +455,7 @@ namespace {
             else if (Pt == KNIGHT && bb & b & ~pos.pieces(Us))
                 score += ReachableOutpost;
 
-            // Bonus for a knight or bishop shielded by pawn
-            if (shift<Down>(pos.pieces(PAWN)) & s)
-                score += MinorBehindPawn;
-
-            // Penalty if the piece is far from the king
-            score -= KingProtector[Pt == BISHOP] * distance(pos.square<KING>(Us), s);
-
-            if constexpr (Pt == BISHOP)
+           else //  (Pt == BISHOP)
             {
                 // Penalty according to the number of our pawns on the same color square as the
                 // bishop, bigger when the center files are blocked with pawns and smaller
