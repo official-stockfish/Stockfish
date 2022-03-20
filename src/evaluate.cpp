@@ -486,7 +486,7 @@ namespace {
             }
         }
 
-        if constexpr (Pt == ROOK)
+        else if constexpr (Pt == ROOK)
         {
             // Bonuses for rook on a (semi-)open or closed file
             if (pos.is_on_semiopen_file(Us, s))
@@ -513,7 +513,7 @@ namespace {
             }
         }
 
-        if constexpr (Pt == QUEEN)
+        else if constexpr (Pt == QUEEN)
         {
             // Penalty if any relative pin or discovered attack against the queen
             Bitboard queenPinners;
