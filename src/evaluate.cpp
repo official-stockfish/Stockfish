@@ -1083,12 +1083,12 @@ make_v:
 Value Eval::evaluate(const Position& pos) {
 
   Value v;
-  bool useClassical = false;
+  bool useClassical = abs(eg_value(pos.psq_score())) * 5 > (856 + pos.non_pawn_material() / 64) * (5 + pos.rule50_count());
 
   // Deciding between classical and NNUE eval (~10 Elo): for high PSQ imbalance we use classical,
   // but we switch to NNUE during long shuffling or with high material on the board.
   if (  !useNNUE
-      || abs(eg_value(pos.psq_score())) * 5 > (856 + pos.non_pawn_material() / 64) * (5 + pos.rule50_count()))
+      || useClassical)
   {
       v = Evaluation<NO_TRACE>(pos).value();          // classical
       useClassical = abs(v) >= 297;
