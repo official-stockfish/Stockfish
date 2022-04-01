@@ -18,6 +18,7 @@
 
 #include <cassert>
 
+#include "bitboard.h"
 #include "movepick.h"
 
 namespace Stockfish {
@@ -97,44 +98,6 @@ MovePicker::MovePicker(const Position& p, Move ttm, Value th, Depth d, const Cap
                              && pos.see_ge(ttm, threshold));
 }
 
-//squares threatened by pawn attacks
-template <Color Us>
-Bitboard threatsByPawn (const Position& pos)
-{
-    return pawn_attacks_bb<Us>(pos.pieces(Us, PAWN));
-}
-
-//squares threatened by minor attacks
-template <Color Us>
-Bitboard threatsByMinor (const Position& pos)
-{
-    Bitboard our = pos.pieces(Us, KNIGHT, BISHOP);
-    Bitboard threats = 0;
-    while (our)
-    {
-        Square s = pop_lsb(our);
-        if (type_of(pos.piece_on(s)) == KNIGHT)
-            threats |= attacks_bb<KNIGHT>(s, pos.pieces());
-        else
-            threats |= attacks_bb<BISHOP>(s, pos.pieces());
-    }
-    return threats;
-}
-
-//squares threatened by rook attacks
-template <Color Us>
-Bitboard threatsByRook (const Position& pos)
-{
-    Bitboard our = pos.pieces(Us, ROOK);
-    Bitboard threats = 0;
-    while (our)
-    {
-        Square s = pop_lsb(our);
-        threats |= attacks_bb<ROOK>(s, pos.pieces());
-    }
-    return threats;
-}
-
 /// MovePicker::score() assigns a numerical value to each move in a list, used
 /// for sorting. Captures are ordered by Most Valuable Victim (MVV), preferring
 /// captures with a good history. Quiets moves are ordered using the histories.
@@ -146,26 +109,22 @@ void MovePicker::score() {
   Bitboard threatened, threatenedByPawn, threatenedByMinor, threatenedByRook;
   if constexpr (Type == QUIETS)
   {
+      Color us = pos.side_to_move();
       // squares threatened by pawns
-      threatenedByPawn   = pos.side_to_move() == WHITE ? threatsByPawn<BLACK>(pos)  : threatsByPawn<WHITE>(pos);
+      threatenedByPawn  = pos.attacks_by<PAWN>(~us);
       // squares threatened by minors or pawns
-      threatenedByMinor  = pos.side_to_move() == WHITE ? threatsByMinor<BLACK>(pos) : threatsByMinor<WHITE>(pos);
-      threatenedByMinor |= threatenedByPawn;
+      threatenedByMinor = pos.attacks_by<KNIGHT>(~us) | pos.attacks_by<BISHOP>(~us) | threatenedByPawn;
       // squares threatened by rooks, minors or pawns
-      threatenedByRook   = pos.side_to_move() == WHITE ? threatsByRook<BLACK>(pos)  : threatsByRook<WHITE>(pos);
-      threatenedByRook  |= threatenedByMinor;
+      threatenedByRook  = pos.attacks_by<ROOK>(~us) | threatenedByMinor;
 
       // pieces threatened by pieces of lesser material value
-      threatened = pos.side_to_move() == WHITE ? ((pos.pieces(WHITE, QUEEN) & threatenedByRook) |
-                                                  (pos.pieces(WHITE, ROOK) & threatenedByMinor) |
-                                                  (pos.pieces(WHITE, KNIGHT, BISHOP) & threatenedByPawn))
-                                               : ((pos.pieces(BLACK, QUEEN) & threatenedByRook) |
-                                                  (pos.pieces(BLACK, ROOK) & threatenedByMinor) |
-                                                  (pos.pieces(BLACK, KNIGHT, BISHOP) & threatenedByPawn));
+      threatened =  (pos.pieces(us, QUEEN) & threatenedByRook)
+                  | (pos.pieces(us, ROOK)  & threatenedByMinor)
+                  | (pos.pieces(us, KNIGHT, BISHOP) & threatenedByPawn);
   }
   else
   {
-      // Silence unused variable warning
+      // Silence unused variable warnings
       (void) threatened;
       (void) threatenedByPawn;
       (void) threatenedByMinor;
@@ -184,11 +143,11 @@ void MovePicker::score() {
                    +     (*continuationHistory[3])[pos.moved_piece(m)][to_sq(m)]
                    +     (*continuationHistory[5])[pos.moved_piece(m)][to_sq(m)]
                    +     (threatened & from_sq(m) ?
-                           (type_of(pos.piece_on(from_sq(m))) == QUEEN && !(to_sq(m) & threatenedByRook)  ? 50000
-                          : type_of(pos.piece_on(from_sq(m))) == ROOK  && !(to_sq(m) & threatenedByMinor) ? 25000
-                          :                                               !(to_sq(m) & threatenedByPawn)  ? 15000
-                          :                                                                                 0)
-                          :                                                                                 0);
+                           (type_of(pos.moved_piece(m)) == QUEEN && !(to_sq(m) & threatenedByRook)  ? 50000
+                          : type_of(pos.moved_piece(m)) == ROOK  && !(to_sq(m) & threatenedByMinor) ? 25000
+                          :                                         !(to_sq(m) & threatenedByPawn)  ? 15000
+                          :                                                                           0)
+                          :                                                                           0);
 
       else // Type == EVASIONS
       {
