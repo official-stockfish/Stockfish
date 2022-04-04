@@ -132,6 +132,7 @@ public:
 private:
   template<PickType T, typename Pred> Move select(Pred);
   template<GenType> void score();
+  void quiet_init();
   ExtMove* begin() { return cur; }
   ExtMove* end() { return endMoves; }
 
@@ -139,6 +140,7 @@ private:
   const ButterflyHistory* mainHistory;
   const CapturePieceToHistory* captureHistory;
   const PieceToHistory** continuationHistory;
+  Bitboard threatened, threatenedByPawn, threatenedByMinor, threatenedByRook;
   Move ttMove;
   ExtMove refutations[3], *cur, *endMoves, *endBadCaptures;
   int stage;

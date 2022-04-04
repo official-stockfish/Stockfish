@@ -98,6 +98,22 @@ MovePicker::MovePicker(const Position& p, Move ttm, Value th, Depth d, const Cap
                              && pos.see_ge(ttm, threshold));
 }
 
+/// MovePicker::quiet_init() computes some attack info used for
+/// scoring quiet moves evading a possible capture.
+void MovePicker::quiet_init() {
+
+  Color us = pos.side_to_move();
+
+  threatenedByPawn  = pos.attacks_by<PAWN>(~us);
+  threatenedByMinor = pos.attacks_by<KNIGHT>(~us) | pos.attacks_by<BISHOP>(~us) | threatenedByPawn;
+  threatenedByRook  = pos.attacks_by<ROOK>(~us) | threatenedByMinor;
+
+  // Pieces threatened by pieces of lesser value
+  threatened =  (pos.pieces(us, QUEEN) & threatenedByRook)
+              | (pos.pieces(us, ROOK)  & threatenedByMinor)
+              | (pos.pieces(us, KNIGHT, BISHOP) & threatenedByPawn);
+}
+
 /// MovePicker::score() assigns a numerical value to each move in a list, used
 /// for sorting. Captures are ordered by Most Valuable Victim (MVV), preferring
 /// captures with a good history. Quiets moves are ordered using the histories.
@@ -105,31 +121,6 @@ template<GenType Type>
 void MovePicker::score() {
 
   static_assert(Type == CAPTURES || Type == QUIETS || Type == EVASIONS, "Wrong type");
-
-  Bitboard threatened, threatenedByPawn, threatenedByMinor, threatenedByRook;
-  if constexpr (Type == QUIETS)
-  {
-      Color us = pos.side_to_move();
-      // squares threatened by pawns
-      threatenedByPawn  = pos.attacks_by<PAWN>(~us);
-      // squares threatened by minors or pawns
-      threatenedByMinor = pos.attacks_by<KNIGHT>(~us) | pos.attacks_by<BISHOP>(~us) | threatenedByPawn;
-      // squares threatened by rooks, minors or pawns
-      threatenedByRook  = pos.attacks_by<ROOK>(~us) | threatenedByMinor;
-
-      // pieces threatened by pieces of lesser material value
-      threatened =  (pos.pieces(us, QUEEN) & threatenedByRook)
-                  | (pos.pieces(us, ROOK)  & threatenedByMinor)
-                  | (pos.pieces(us, KNIGHT, BISHOP) & threatenedByPawn);
-  }
-  else
-  {
-      // Silence unused variable warnings
-      (void) threatened;
-      (void) threatenedByPawn;
-      (void) threatenedByMinor;
-      (void) threatenedByRook;
-  }
 
   for (auto& m : *this)
       if constexpr (Type == CAPTURES)
@@ -238,6 +229,7 @@ top:
           cur = endBadCaptures;
           endMoves = generate<QUIETS>(pos, cur);
 
+          quiet_init();
           score<QUIETS>();
           partial_insertion_sort(cur, endMoves, -3000 * depth);
       }
