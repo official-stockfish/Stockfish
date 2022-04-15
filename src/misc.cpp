@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2021 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2022 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -36,6 +36,8 @@ typedef bool(*fun1_t)(LOGICAL_PROCESSOR_RELATIONSHIP,
                       PSYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX, PDWORD);
 typedef bool(*fun2_t)(USHORT, PGROUP_AFFINITY);
 typedef bool(*fun3_t)(HANDLE, CONST GROUP_AFFINITY*, PGROUP_AFFINITY);
+typedef bool(*fun4_t)(USHORT, PGROUP_AFFINITY, USHORT, PUSHORT);
+typedef WORD(*fun5_t)();
 }
 #endif
 
@@ -67,7 +69,7 @@ namespace {
 
 /// Version number. If Version is left empty, then compile date in the format
 /// DD-MM-YY and show in engine_info.
-const string Version = "14.1";
+const string Version = "";
 
 /// Our fancy logging facility. The trick here is to replace cin.rdbuf() and
 /// cout.rdbuf() with two Tie objects that tie cin and cout to a file stream. We
@@ -495,11 +497,11 @@ void bindThisThread(size_t) {}
 
 #else
 
-/// best_group() retrieves logical processor information using Windows specific
-/// API and returns the best group id for the thread with index idx. Original
+/// best_node() retrieves logical processor information using Windows specific
+/// API and returns the best node id for the thread with index idx. Original
 /// code from Texel by Peter Österlund.
 
-int best_group(size_t idx) {
+int best_node(size_t idx) {
 
   int threads = 0;
   int nodes = 0;
@@ -513,7 +515,8 @@ int best_group(size_t idx) {
   if (!fun1)
       return -1;
 
-  // First call to get returnLength. We expect it to fail due to null buffer
+  // First call to GetLogicalProcessorInformationEx() to get returnLength.
+  // We expect the call to fail due to null buffer.
   if (fun1(RelationAll, nullptr, &returnLength))
       return -1;
 
@@ -521,7 +524,7 @@ int best_group(size_t idx) {
   SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX *buffer, *ptr;
   ptr = buffer = (SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX*)malloc(returnLength);
 
-  // Second call, now we expect to succeed
+  // Second call to GetLogicalProcessorInformationEx(), now we expect to succeed
   if (!fun1(RelationAll, buffer, &returnLength))
   {
       free(buffer);
@@ -571,22 +574,38 @@ int best_group(size_t idx) {
 void bindThisThread(size_t idx) {
 
   // Use only local variables to be thread-safe
-  int group = best_group(idx);
+  int node = best_node(idx);
 
-  if (group == -1)
+  if (node == -1)
       return;
 
   // Early exit if the needed API are not available at runtime
   HMODULE k32 = GetModuleHandle("Kernel32.dll");
   auto fun2 = (fun2_t)(void(*)())GetProcAddress(k32, "GetNumaNodeProcessorMaskEx");
   auto fun3 = (fun3_t)(void(*)())GetProcAddress(k32, "SetThreadGroupAffinity");
+  auto fun4 = (fun4_t)(void(*)())GetProcAddress(k32, "GetNumaNodeProcessorMask2");
+  auto fun5 = (fun5_t)(void(*)())GetProcAddress(k32, "GetMaximumProcessorGroupCount");
 
   if (!fun2 || !fun3)
       return;
 
-  GROUP_AFFINITY affinity;
-  if (fun2(group, &affinity))
-      fun3(GetCurrentThread(), &affinity, nullptr);
+  if (!fun4 || !fun5)
+  {
+      GROUP_AFFINITY affinity;
+      if (fun2(node, &affinity))                                                 // GetNumaNodeProcessorMaskEx
+          fun3(GetCurrentThread(), &affinity, nullptr);                          // SetThreadGroupAffinity
+  }
+  else
+  {
+      // If a numa node has more than one processor group, we assume they are
+      // sized equal and we spread threads evenly across the groups.
+      USHORT elements, returnedElements;
+      elements = fun5();                                                         // GetMaximumProcessorGroupCount
+      GROUP_AFFINITY *affinity = (GROUP_AFFINITY*)malloc(elements * sizeof(GROUP_AFFINITY));
+      if (fun4(node, affinity, elements, &returnedElements))                     // GetNumaNodeProcessorMask2
+          fun3(GetCurrentThread(), &affinity[idx % returnedElements], nullptr);  // SetThreadGroupAffinity
+      free(affinity);
+  }
 }
 
 #endif

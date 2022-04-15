@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2021 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2022 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -109,7 +109,7 @@ namespace Stockfish::Eval::NNUE {
 
   // write_little_endian() is our utility to write an integer (signed or unsigned, any size)
   // to a stream in little-endian order. We swap the byte order before the write if
-  // necessary to always write in little endian order, independantly of the byte
+  // necessary to always write in little endian order, independently of the byte
   // ordering of the compiling machine.
   template <typename IntType>
   inline void write_little_endian(std::ostream& stream, IntType value) {
@@ -127,11 +127,11 @@ namespace Stockfish::Eval::NNUE {
           {
             for (; i + 1 < sizeof(IntType); ++i)
             {
-                u[i] = v;
+                u[i] = (std::uint8_t)v;
                 v >>= 8;
             }
           }
-          u[i] = v;
+          u[i] = (std::uint8_t)v;
 
           stream.write(reinterpret_cast<char*>(u), sizeof(IntType));
       }

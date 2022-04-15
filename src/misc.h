@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2021 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2022 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -90,9 +90,6 @@ static inline const bool IsLittleEndian = (Le.c[0] == 4);
 class RunningAverage {
   public:
 
-      // Constructor
-      RunningAverage() {}
-
       // Reset the running average to rational value p / q
       void set(int64_t p, int64_t q)
         { average = p * PERIOD * RESOLUTION / q; }
@@ -102,8 +99,11 @@ class RunningAverage {
         { average = RESOLUTION * v + (PERIOD - 1) * average / PERIOD; }
 
       // Test if average is strictly greater than rational a / b
-      bool is_greater(int64_t a, int64_t b)
-        { return b * average > a * PERIOD * RESOLUTION ; }
+      bool is_greater(int64_t a, int64_t b) const
+        { return b * average > a * (PERIOD * RESOLUTION); }
+
+      int64_t value() const
+        { return average / (PERIOD * RESOLUTION); }
 
   private :
       static constexpr int64_t PERIOD     = 4096;
@@ -137,6 +137,34 @@ private:
   T values_[MaxSize];
   std::size_t size_ = 0;
 };
+
+
+/// sigmoid(t, x0, y0, C, P, Q) implements a sigmoid-like function using only integers,
+/// with the following properties:
+///
+///  -  sigmoid is centered in (x0, y0)
+///  -  sigmoid has amplitude [-P/Q , P/Q] instead of [-1 , +1]
+///  -  limit is (y0 - P/Q) when t tends to -infinity
+///  -  limit is (y0 + P/Q) when t tends to +infinity
+///  -  the slope can be adjusted using C > 0, smaller C giving a steeper sigmoid
+///  -  the slope of the sigmoid when t = x0 is P/(Q*C)
+///  -  sigmoid is increasing with t when P > 0 and Q > 0
+///  -  to get a decreasing sigmoid, change sign of P
+///  -  mean value of the sigmoid is y0
+///
+/// Use <https://www.desmos.com/calculator/jhh83sqq92> to draw the sigmoid
+
+inline int64_t sigmoid(int64_t t, int64_t x0,
+                                  int64_t y0,
+                                  int64_t  C,
+                                  int64_t  P,
+                                  int64_t  Q)
+{
+   assert(C > 0);
+   assert(Q != 0);
+   return y0 + P * (t-x0) / (Q * (std::abs(t-x0) + C)) ;
+}
+
 
 /// xorshift64star Pseudo-Random Number Generator
 /// This class is based on original code written and dedicated

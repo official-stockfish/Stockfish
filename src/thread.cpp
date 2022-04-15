@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2021 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2022 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -59,7 +59,6 @@ void Thread::clear() {
 
   counterMoves.fill(MOVE_NONE);
   mainHistory.fill(0);
-  lowPlyHistory.fill(0);
   captureHistory.fill(0);
 
   for (bool inCheck : { false, true })
@@ -67,7 +66,7 @@ void Thread::clear() {
       {
           for (auto& to : continuationHistory[inCheck][c])
                 for (auto& h : to)
-                      h->fill(0);
+                      h->fill(-71);
           continuationHistory[inCheck][c][NO_PIECE][0]->fill(Search::CounterMovePruneThreshold - 1);
       }
 }
@@ -165,6 +164,7 @@ void ThreadPool::clear() {
 
   main()->callsCnt = 0;
   main()->bestPreviousScore = VALUE_INFINITE;
+  main()->bestPreviousAverageScore = VALUE_INFINITE;
   main()->previousTimeReduction = 1.0;
 }
 

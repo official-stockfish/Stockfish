@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2021 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2022 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -44,6 +44,13 @@
 // Play around here: https://godbolt.org/z/7EWqrYq51
 #if (defined(__GNUC__) && !defined(__clang__) && !defined(__INTEL_COMPILER))
 #define USE_INLINE_ASM
+#endif
+
+// Use either the AVX512 or AVX-VNNI version of the VNNI instructions.
+#if defined(USE_AVXVNNI)
+#define VNNI_PREFIX "%{vex%} "
+#else
+#define VNNI_PREFIX ""
 #endif
 
 namespace Stockfish::Simd {
@@ -208,7 +215,7 @@ namespace Stockfish::Simd {
 # if defined (USE_VNNI)
 #   if defined (USE_INLINE_ASM)
       asm(
-        "vpdpbusd %[b], %[a], %[acc]\n\t"
+        VNNI_PREFIX "vpdpbusd %[b], %[a], %[acc]\n\t"
         : [acc]"+v"(acc)
         : [a]"v"(a), [b]"vm"(b)
       );
@@ -240,8 +247,8 @@ namespace Stockfish::Simd {
 # if defined (USE_VNNI)
 #   if defined (USE_INLINE_ASM)
       asm(
-        "vpdpbusd %[b0], %[a0], %[acc]\n\t"
-        "vpdpbusd %[b1], %[a1], %[acc]\n\t"
+        VNNI_PREFIX "vpdpbusd %[b0], %[a0], %[acc]\n\t"
+        VNNI_PREFIX "vpdpbusd %[b1], %[a1], %[acc]\n\t"
         : [acc]"+v"(acc)
         : [a0]"v"(a0), [b0]"vm"(b0), [a1]"v"(a1), [b1]"vm"(b1)
       );
@@ -332,6 +339,45 @@ namespace Stockfish::Simd {
       product0 = _mm_madd_epi16(product0, _mm_set1_epi16(1));
       acc = _mm_add_epi32(acc, product0);
 #   endif
+    }
+
+#endif
+
+#if defined (USE_NEON)
+
+    [[maybe_unused]] static int neon_m128_reduce_add_epi32(int32x4_t s) {
+#   if USE_NEON >= 8
+      return vaddvq_s32(s);
+#   else
+      return s[0] + s[1] + s[2] + s[3];
+#   endif
+    }
+
+    [[maybe_unused]] static int neon_m128_hadd(int32x4_t sum, int bias) {
+      return neon_m128_reduce_add_epi32(sum) + bias;
+    }
+
+    [[maybe_unused]] static int32x4_t neon_m128_haddx4(
+        int32x4_t sum0, int32x4_t sum1, int32x4_t sum2, int32x4_t sum3,
+        int32x4_t bias) {
+
+      int32x4_t hsums {
+        neon_m128_reduce_add_epi32(sum0),
+        neon_m128_reduce_add_epi32(sum1),
+        neon_m128_reduce_add_epi32(sum2),
+        neon_m128_reduce_add_epi32(sum3)
+      };
+      return vaddq_s32(hsums, bias);
+    }
+
+    [[maybe_unused]] static void neon_m128_add_dpbusd_epi32x2(
+        int32x4_t& acc,
+        int8x8_t a0, int8x8_t b0,
+        int8x8_t a1, int8x8_t b1) {
+
+      int16x8_t product = vmull_s8(a0, b0);
+      product = vmlal_s8(product, a1, b1);
+      acc = vpadalq_s16(acc, product);
     }
 
 #endif
