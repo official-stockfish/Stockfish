@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2021 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2022 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -109,7 +109,7 @@ namespace Stockfish::Eval::NNUE {
   {
     write_little_endian<std::uint32_t>(stream, Version);
     write_little_endian<std::uint32_t>(stream, hashValue);
-    write_little_endian<std::uint32_t>(stream, desc.size());
+    write_little_endian<std::uint32_t>(stream, (std::uint32_t)desc.size());
     stream.write(&desc[0], desc.size());
     return !stream.fail();
   }
@@ -143,34 +143,29 @@ namespace Stockfish::Eval::NNUE {
     // overaligning stack variables with alignas() doesn't work correctly.
 
     constexpr uint64_t alignment = CacheLineSize;
-    int delta = 7;
+    int delta = 10 - pos.non_pawn_material() / 1515;
 
 #if defined(ALIGNAS_ON_STACK_VARIABLES_BROKEN)
     TransformedFeatureType transformedFeaturesUnaligned[
       FeatureTransformer::BufferSize + alignment / sizeof(TransformedFeatureType)];
-    char bufferUnaligned[Network::BufferSize + alignment];
 
     auto* transformedFeatures = align_ptr_up<alignment>(&transformedFeaturesUnaligned[0]);
-    auto* buffer = align_ptr_up<alignment>(&bufferUnaligned[0]);
 #else
     alignas(alignment)
       TransformedFeatureType transformedFeatures[FeatureTransformer::BufferSize];
-    alignas(alignment) char buffer[Network::BufferSize];
 #endif
 
     ASSERT_ALIGNED(transformedFeatures, alignment);
-    ASSERT_ALIGNED(buffer, alignment);
 
-    const std::size_t bucket = (pos.count<ALL_PIECES>() - 1) / 4;
+    const int bucket = (pos.count<ALL_PIECES>() - 1) / 4;
     const auto psqt = featureTransformer->transform(pos, transformedFeatures, bucket);
-    const auto positional = network[bucket]->propagate(transformedFeatures, buffer)[0];
+    const auto positional = network[bucket]->propagate(transformedFeatures);
 
-    // Give more value to positional evaluation when material is balanced
-    if (   adjusted
-        && abs(pos.non_pawn_material(WHITE) - pos.non_pawn_material(BLACK)) <= RookValueMg - BishopValueMg)
-      return  static_cast<Value>(((128 - delta) * psqt + (128 + delta) * positional) / 128 / OutputScale);
+    // Give more value to positional evaluation when adjusted flag is set
+    if (adjusted)
+        return static_cast<Value>(((128 - delta) * psqt + (128 + delta) * positional) / 128 / OutputScale);
     else
-      return static_cast<Value>((psqt + positional) / OutputScale);
+        return static_cast<Value>((psqt + positional) / OutputScale);
   }
 
   struct NnueEvalTrace {
@@ -191,27 +186,20 @@ namespace Stockfish::Eval::NNUE {
 #if defined(ALIGNAS_ON_STACK_VARIABLES_BROKEN)
     TransformedFeatureType transformedFeaturesUnaligned[
       FeatureTransformer::BufferSize + alignment / sizeof(TransformedFeatureType)];
-    char bufferUnaligned[Network::BufferSize + alignment];
 
     auto* transformedFeatures = align_ptr_up<alignment>(&transformedFeaturesUnaligned[0]);
-    auto* buffer = align_ptr_up<alignment>(&bufferUnaligned[0]);
 #else
     alignas(alignment)
       TransformedFeatureType transformedFeatures[FeatureTransformer::BufferSize];
-    alignas(alignment) char buffer[Network::BufferSize];
 #endif
 
     ASSERT_ALIGNED(transformedFeatures, alignment);
-    ASSERT_ALIGNED(buffer, alignment);
 
     NnueEvalTrace t{};
     t.correctBucket = (pos.count<ALL_PIECES>() - 1) / 4;
-    for (std::size_t bucket = 0; bucket < LayerStacks; ++bucket) {
-      const auto psqt = featureTransformer->transform(pos, transformedFeatures, bucket);
-      const auto output = network[bucket]->propagate(transformedFeatures, buffer);
-
-      int materialist = psqt;
-      int positional  = output[0];
+    for (IndexType bucket = 0; bucket < LayerStacks; ++bucket) {
+      const auto materialist = featureTransformer->transform(pos, transformedFeatures, bucket);
+      const auto positional = network[bucket]->propagate(transformedFeatures);
 
       t.psqt[bucket] = static_cast<Value>( materialist / OutputScale );
       t.positional[bucket] = static_cast<Value>( positional / OutputScale );
@@ -234,7 +222,7 @@ namespace Stockfish::Eval::NNUE {
     {
         buffer[1] = '0' + cp / 10000; cp %= 10000;
         buffer[2] = '0' + cp / 1000; cp %= 1000;
-        buffer[3] = '0' + cp / 100; cp %= 100;
+        buffer[3] = '0' + cp / 100;
         buffer[4] = ' ';
     }
     else if (cp >= 1000)

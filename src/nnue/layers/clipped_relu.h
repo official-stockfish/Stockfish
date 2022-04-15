@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2021 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2022 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -26,51 +26,41 @@
 namespace Stockfish::Eval::NNUE::Layers {
 
   // Clipped ReLU
-  template <typename PreviousLayer>
+  template <IndexType InDims>
   class ClippedReLU {
    public:
     // Input/output type
-    using InputType = typename PreviousLayer::OutputType;
+    using InputType = std::int32_t;
     using OutputType = std::uint8_t;
-    static_assert(std::is_same<InputType, std::int32_t>::value, "");
 
     // Number of input/output dimensions
-    static constexpr IndexType InputDimensions = PreviousLayer::OutputDimensions;
+    static constexpr IndexType InputDimensions = InDims;
     static constexpr IndexType OutputDimensions = InputDimensions;
     static constexpr IndexType PaddedOutputDimensions =
         ceil_to_multiple<IndexType>(OutputDimensions, 32);
 
-    // Size of forward propagation buffer used in this layer
-    static constexpr std::size_t SelfBufferSize =
-        ceil_to_multiple(OutputDimensions * sizeof(OutputType), CacheLineSize);
-
-    // Size of the forward propagation buffer used from the input layer to this layer
-    static constexpr std::size_t BufferSize =
-        PreviousLayer::BufferSize + SelfBufferSize;
+    using OutputBuffer = OutputType[PaddedOutputDimensions];
 
     // Hash value embedded in the evaluation file
-    static constexpr std::uint32_t get_hash_value() {
+    static constexpr std::uint32_t get_hash_value(std::uint32_t prevHash) {
       std::uint32_t hashValue = 0x538D24C7u;
-      hashValue += PreviousLayer::get_hash_value();
+      hashValue += prevHash;
       return hashValue;
     }
 
     // Read network parameters
-    bool read_parameters(std::istream& stream) {
-      return previousLayer.read_parameters(stream);
+    bool read_parameters(std::istream&) {
+      return true;
     }
 
     // Write network parameters
-    bool write_parameters(std::ostream& stream) const {
-      return previousLayer.write_parameters(stream);
+    bool write_parameters(std::ostream&) const {
+      return true;
     }
 
     // Forward propagation
     const OutputType* propagate(
-        const TransformedFeatureType* transformedFeatures, char* buffer) const {
-      const auto input = previousLayer.propagate(
-          transformedFeatures, buffer + SelfBufferSize);
-      const auto output = reinterpret_cast<OutputType*>(buffer);
+        const InputType* input, OutputType* output) const {
 
   #if defined(USE_AVX2)
       if constexpr (InputDimensions % SimdWidth == 0) {
@@ -181,19 +171,8 @@ namespace Stockfish::Eval::NNUE::Layers {
             std::max(0, std::min(127, input[i] >> WeightScaleBits)));
       }
 
-      // Affine transform layers expect that there is at least
-      // ceil_to_multiple(OutputDimensions, 32) initialized values.
-      // We cannot do this in the affine transform because it requires
-      // preallocating space here.
-      for (IndexType i = OutputDimensions; i < PaddedOutputDimensions; ++i) {
-        output[i] = 0;
-      }
-
       return output;
     }
-
-   private:
-    PreviousLayer previousLayer;
   };
 
 }  // namespace Stockfish::Eval::NNUE::Layers
