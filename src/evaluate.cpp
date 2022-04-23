@@ -198,12 +198,12 @@ namespace {
   constexpr Value SpaceThreshold    =  Value(11551);
 
   // KingAttackWeights[PieceType] contains king attack weights by piece type
-  constexpr int KingAttackWeights[PIECE_TYPE_NB] = { 0, 0, 81, 52, 44, 10 };
+  constexpr int KingAttackWeights[PIECE_TYPE_NB] = { 0, 0, 76, 46, 45, 14 };
 
   // SafeCheck[PieceType][single/multiple] contains safe check bonus by piece type,
   // higher if multiple safe checks are possible for that piece type.
   constexpr int SafeCheck[][2] = {
-      {}, {}, {803, 1292}, {639, 974}, {1087, 1878}, {759, 1132}
+      {}, {}, {805, 1292}, {650, 984}, {1071, 1886}, {730, 1128}
   };
 
 #define S(mg, eg) make_score(mg, eg)
@@ -1083,7 +1083,8 @@ make_v:
 Value Eval::evaluate(const Position& pos) {
 
   Value v;
-  bool useClassical = abs(eg_value(pos.psq_score())) * 5 > (856 + pos.non_pawn_material() / 64) * (5 + pos.rule50_count());
+  bool useClassical = (pos.this_thread()->depth > 9 || pos.count<ALL_PIECES>() > 7) &&
+                      abs(eg_value(pos.psq_score())) * 5 > (856 + pos.non_pawn_material() / 64) * (10 + pos.rule50_count());
 
   // Deciding between classical and NNUE eval (~10 Elo): for high PSQ imbalance we use classical,
   // but we switch to NNUE during long shuffling or with high material on the board.
@@ -1098,7 +1099,7 @@ Value Eval::evaluate(const Position& pos) {
   if (useNNUE && !useClassical)
   {
        Value nnue     = NNUE::evaluate(pos, true);     // NNUE
-       int scale      = 1036 + 20 * pos.non_pawn_material() / 1024;
+       int scale      = 1036 + 22 * pos.non_pawn_material() / 1024;
        Color stm      = pos.side_to_move();
        Value optimism = pos.this_thread()->optimism[stm];
        Value psq      = (stm == WHITE ? 1 : -1) * eg_value(pos.psq_score());
@@ -1112,7 +1113,7 @@ Value Eval::evaluate(const Position& pos) {
   }
 
   // Damp down the evaluation linearly when shuffling
-  v = v * (207 - pos.rule50_count()) / 207;
+  v = v * (195 - pos.rule50_count()) / 211;
 
   // Guarantee evaluation does not hit the tablebase range
   v = std::clamp(v, VALUE_TB_LOSS_IN_MAX_PLY + 1, VALUE_TB_WIN_IN_MAX_PLY - 1);
@@ -1138,6 +1139,7 @@ std::string Eval::trace(Position& pos) {
   std::memset(scores, 0, sizeof(scores));
 
   // Reset any global variable used in eval
+  pos.this_thread()->depth           = 0;
   pos.this_thread()->trend           = SCORE_ZERO;
   pos.this_thread()->bestValue       = VALUE_ZERO;
   pos.this_thread()->optimism[WHITE] = VALUE_ZERO;
