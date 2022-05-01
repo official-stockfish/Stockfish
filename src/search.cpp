@@ -1177,7 +1177,7 @@ moves_loop: // When in check, search starts here
           if (PvNode)
               r -= 1 + 15 / ( 3 + depth );
 		  
-		  if ((ss+1)->cutoffCnt > 3 && !PvNode && ss->staticEval < -400)
+		  if ((ss+1)->cutoffCnt > 3 && !PvNode)
               r++;
 
           ss->statScore =  thisThread->mainHistory[us][from_to(move)]
@@ -1309,6 +1309,11 @@ moves_loop: // When in check, search starts here
               }
           }
       }
+	  else
+      {
+         ss->cutoffCnt--;
+      }
+
 
       // If the move is worse than some previously searched move, remember it to update its stats later
       if (move != bestMove)
