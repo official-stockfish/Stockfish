@@ -1311,7 +1311,7 @@ moves_loop: // When in check, search starts here
       }
 	  else
       {
-         ss->cutoffCnt--;
+         ss->cutoffCnt = 0;
       }
 
 
