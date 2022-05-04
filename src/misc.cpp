@@ -69,7 +69,7 @@ namespace {
 
 /// Version number. If Version is left empty, then compile date in the format
 /// DD-MM-YY and show in engine_info.
-const string Version = "";
+const string Version = "15(**JR**)";		// Mod by **JR** on 5/2/22
 
 /// Our fancy logging facility. The trick here is to replace cin.rdbuf() and
 /// cout.rdbuf() with two Tie objects that tie cin and cout to a file stream. We
@@ -158,7 +158,7 @@ string engine_info(bool to_uci) {
   }
 
   ss << (to_uci  ? "\nid author ": " by ")
-     << "the Stockfish developers (see AUTHORS file)";
+     << "the Stockfish developers (see AUTHORS file)\nType HELP at any time\n";	// Mod by **JR** on 5/2/22
 
   return ss.str();
 }
