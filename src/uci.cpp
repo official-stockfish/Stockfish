@@ -40,6 +40,7 @@ extern vector<string> setup_bench(const Position&, istream&);
 
 // mod by **JR** on 5/3/22
 void clrscr();
+void spcInput(string mesg);
 char myChar;
 // end mod by **JR**
 
@@ -322,8 +323,7 @@ void UCI::loop(int argc, char* argv[]) {
 			"to ponder on the same move the user has played.\n"
 			"The engine should continue searching but switch from pondering to normal search.\n\n");
 
-		printf("Press <return> to continue");
-		(void)scanf("%c",&myChar);
+		spcInput("Press <return> to continue --> ");
 		goto jmppoint;
 	}
 	else if (token == "uci/help") {
@@ -338,8 +338,7 @@ void UCI::loop(int argc, char* argv[]) {
 			"If no uciok is sent within a certain time period, the engine task will \n"
 			"be killed by the GUI.\n\n");
 
-		printf("Press <return> to continue");
-		(void)scanf("%c",&myChar);
+		spcInput("Press <return> to continue --> ");
 		goto jmppoint;
 	}
 	else if (token == "setoption/help") {
@@ -360,8 +359,7 @@ void UCI::loop(int argc, char* argv[]) {
 	  		"setoption name Clear Hash\n"
 	  		"setoption name NalimovPath value c:\\chess\\tb\\4;c:\\chess\\tb\\5\\n\n\n");
 
-		printf("Press <return> to continue");
-		(void)scanf("%c",&myChar);
+		spcInput("Press <return> to continue --> ");
 		goto jmppoint;
 	}
 	else if (token == "go/help") {
@@ -373,9 +371,9 @@ void UCI::loop(int argc, char* argv[]) {
 		"If one parameter is not sent its value should be interpreted as it would\n"
 		"not influence the search.\n\n"
 		"The following are the parameters and their associated values\n\n");
-		printf("Press <return> to continue viewing parameters -->");
-		(void)scanf("%c",&myChar);
+		spcInput("Press <return> to continue viewing parameters --> ");
 		clrscr();
+
 		printf("[go parameters]\n\n");
 		printf("* searchmoves <move1> .... <movei>\n"
 		"	restrict search to these moves only\n"
@@ -383,8 +381,7 @@ void UCI::loop(int argc, char* argv[]) {
 		"		       'go infinite searchmoves e2e4 d2d4'\n"
 		"	the engine should only search the two moves e2e4 and d2d4 in the\n"
 		"	initial position.\n\n");
-		printf("Press <return> to continue viewing parameters -->");
-		(void)scanf("%c",&myChar);
+		spcInput("Press <return> to continue viewing parameters --> ");
 		clrscr();
 
 		printf("[go parameters]\n\n");
@@ -401,8 +398,7 @@ void UCI::loop(int argc, char* argv[]) {
 		"	should not display any mainlines as they are likely to be\n"
 		"	misinterpreted by the GUI because the GUI expects the engine\n"
 		"	to ponder on the suggested move.\n\n");
-		printf("Press <return> to continue viewing parameters -->");
-		(void)scanf("%c",&myChar);
+		spcInput("Press <return> to continue viewing parameters --> ");
 		clrscr();
 
 		printf("[go parameters]\n\n");
@@ -423,8 +419,7 @@ void UCI::loop(int argc, char* argv[]) {
 		"	search x plies only.\n"
 		"* nodes <x>\n"
 	   	"	search x nodes only\n\n");
-		printf("Press <return> to continue viewing parameters -->");
-		(void)scanf("%c",&myChar);
+		spcInput("Press <return> to continue viewing parameters --> ");
 		clrscr();
 
 		printf("[go parameters]\n\n");
@@ -435,9 +430,7 @@ void UCI::loop(int argc, char* argv[]) {
 		"* infinite\n"
 		"	search until the 'stop' command. Do not exit the\n"
 		"	search without being told so in this mode!\n\n");
-
-		printf("End of go parameters.  Press <return> to continue");
-		(void)scanf("%c",&myChar);
+		spcInput("End of go parameters. Press <return> to continue --> ");
 		goto jmppoint;
 
 	}
@@ -456,8 +449,7 @@ void UCI::loop(int argc, char* argv[]) {
 			"always send 'isready' after 'ucinewgame' to wait for the engine to finish\n"
 			"its operation. The engine should respond with 'readyok'\n\n");
 
-		printf("Press <return> to continue");
-		(void)scanf("%c",&myChar);
+		spcInput("Press <return> to continue --> ");
 		goto jmppoint;
 	}
 	else if (token == "isready/help") {
@@ -474,8 +466,7 @@ void UCI::loop(int argc, char* argv[]) {
 			"the engine is calculating in which case the engine should also immediately\n"
 			"answer with 'readyok' without stopping the search.\n\n");
 
-		printf("Press <return> to continue");
-		(void)scanf("%c",&myChar);
+		spcInput("Press <return> to continue --> ");
 		goto jmppoint;
 	}
 	else if (token == "position/help") {
@@ -489,8 +480,7 @@ void UCI::loop(int argc, char* argv[]) {
 			"a different game than the last position sent to the engine, the GUI\n"
 			"should have sent a 'ucinewgame' in between.\n\n");
 
-		printf("Press <return> to continue");
-		(void)scanf("%c",&myChar);
+		spcInput("Press <return> to continue --> ");
 		goto jmppoint;
 	}
 	// end mod by **JR** on 5/3/22														
@@ -578,6 +568,14 @@ void clrscr() {
 
 	for(int x=0; x < 24; x++) {
 		sync_cout << sync_endl;
+	}
+}
+
+void spcInput(string mesg) { 
+
+	cout << mesg;
+	if (scanf("%c",&myChar) != 1 ){
+		fprintf( stderr, "Input Error");
 	}
 }
 // end mod by **JR**
