@@ -323,7 +323,7 @@ void UCI::loop(int argc, char* argv[]) {
 			"The engine should continue searching but switch from pondering to normal search.\n\n");
 
 		printf("Press <return> to continue");
-		scanf("%c",&myChar);
+		(void)scanf("%c",&myChar);
 		goto jmppoint;
 	}
 	else if (token == "uci/help") {
@@ -339,7 +339,7 @@ void UCI::loop(int argc, char* argv[]) {
 			"be killed by the GUI.\n\n");
 
 		printf("Press <return> to continue");
-		scanf("%c",&myChar);
+		(void)scanf("%c",&myChar);
 		goto jmppoint;
 	}
 	else if (token == "setoption/help") {
@@ -361,7 +361,7 @@ void UCI::loop(int argc, char* argv[]) {
 	  		"setoption name NalimovPath value c:\\chess\\tb\\4;c:\\chess\\tb\\5\\n\n\n");
 
 		printf("Press <return> to continue");
-		scanf("%c",&myChar);
+		(void)scanf("%c",&myChar);
 		goto jmppoint;
 	}
 	else if (token == "go/help") {
@@ -374,7 +374,7 @@ void UCI::loop(int argc, char* argv[]) {
 		"not influence the search.\n\n"
 		"The following are the parameters and their associated values\n\n");
 		printf("Press <return> to continue viewing parameters -->");
-		scanf("%c",&myChar);
+		(void)scanf("%c",&myChar);
 		clrscr();
 		printf("[go parameters]\n\n");
 		printf("* searchmoves <move1> .... <movei>\n"
@@ -384,7 +384,7 @@ void UCI::loop(int argc, char* argv[]) {
 		"	the engine should only search the two moves e2e4 and d2d4 in the\n"
 		"	initial position.\n\n");
 		printf("Press <return> to continue viewing parameters -->");
-		scanf("%c",&myChar);
+		(void)scanf("%c",&myChar);
 		clrscr();
 
 		printf("[go parameters]\n\n");
@@ -402,7 +402,7 @@ void UCI::loop(int argc, char* argv[]) {
 		"	misinterpreted by the GUI because the GUI expects the engine\n"
 		"	to ponder on the suggested move.\n\n");
 		printf("Press <return> to continue viewing parameters -->");
-		scanf("%c",&myChar);
+		(void)scanf("%c",&myChar);
 		clrscr();
 
 		printf("[go parameters]\n\n");
@@ -424,7 +424,7 @@ void UCI::loop(int argc, char* argv[]) {
 		"* nodes <x>\n"
 	   	"	search x nodes only\n\n");
 		printf("Press <return> to continue viewing parameters -->");
-		scanf("%c",&myChar);
+		(void)scanf("%c",&myChar);
 		clrscr();
 
 		printf("[go parameters]\n\n");
@@ -437,7 +437,7 @@ void UCI::loop(int argc, char* argv[]) {
 		"	search without being told so in this mode!\n\n");
 
 		printf("End of go parameters.  Press <return> to continue");
-		scanf("%c",&myChar);
+		(void)scanf("%c",&myChar);
 		goto jmppoint;
 
 	}
@@ -457,7 +457,7 @@ void UCI::loop(int argc, char* argv[]) {
 			"its operation. The engine should respond with 'readyok'\n\n");
 
 		printf("Press <return> to continue");
-		scanf("%c",&myChar);
+		(void)scanf("%c",&myChar);
 		goto jmppoint;
 	}
 	else if (token == "isready/help") {
@@ -475,7 +475,7 @@ void UCI::loop(int argc, char* argv[]) {
 			"answer with 'readyok' without stopping the search.\n\n");
 
 		printf("Press <return> to continue");
-		scanf("%c",&myChar);
+		(void)scanf("%c",&myChar);
 		goto jmppoint;
 	}
 	else if (token == "position/help") {
@@ -490,7 +490,7 @@ void UCI::loop(int argc, char* argv[]) {
 			"should have sent a 'ucinewgame' in between.\n\n");
 
 		printf("Press <return> to continue");
-		scanf("%c",&myChar);
+		(void)scanf("%c",&myChar);
 		goto jmppoint;
 	}
 	// end mod by **JR** on 5/3/22														
