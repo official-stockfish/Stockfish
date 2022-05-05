@@ -113,12 +113,19 @@ Value Endgame<KXK>::operator()(const Position& pos) const {
                 + push_to_edge(weakKing)
                 + push_close(strongKing, weakKing);
 
+  auto lightBishops = pos.pieces(strongSide, BISHOP) & ~DarkSquares;
+  auto  darkBishops = pos.pieces(strongSide, BISHOP) &  DarkSquares;
+
   if (   pos.count<QUEEN>(strongSide)
       || pos.count<ROOK>(strongSide)
       ||(pos.count<BISHOP>(strongSide) && pos.count<KNIGHT>(strongSide))
-      || (   (pos.pieces(strongSide, BISHOP) & ~DarkSquares)
-          && (pos.pieces(strongSide, BISHOP) &  DarkSquares)))
+      || (lightBishops && darkBishops))
       result = std::min(result + VALUE_KNOWN_WIN, VALUE_TB_WIN_IN_MAX_PLY - 1);
+  
+  // Detect cases where all bishops are in the same color, which is always a draw
+  if (   ( lightBishops && !darkBishops)
+      || (!lightBishops &&  darkBishops))
+      return VALUE_DRAW;
 
   return strongSide == pos.side_to_move() ? result : -result;
 }
