@@ -106,7 +106,7 @@ std::ostream& operator<<(std::ostream& os, const OptionsMap& om) {
 
               break;
           }
-	printf("\n\n Enter HELP at any time to see available commands\n");		// mod by **JR** on 5/3/22
+	printf("\n\n Enter HELP at any time to see available commands\n");		/// HELP system
 
   return os;
 }

@@ -38,11 +38,11 @@ namespace Stockfish {
 
 extern vector<string> setup_bench(const Position&, istream&);
 
-// mod by **JR** on 5/3/22
+/// HELP system
 void clrscr();
 void spcInput(string mesg);
-char myChar;
-// end mod by **JR**
+char theChar;
+
 
 namespace {
 
@@ -291,7 +291,7 @@ void UCI::loop(int argc, char* argv[]) {
               filename = f;
           Eval::NNUE::save_eval(filename);
       }
-	// mod by **JR** on 5/3/22
+	/// HELP system
 	else if (token =="help" || token == "HELP") {
 	jmppoint:
 		clrscr();
@@ -482,8 +482,7 @@ void UCI::loop(int argc, char* argv[]) {
 
 		spcInput("Press <return> to continue --> ");
 		goto jmppoint;
-	}
-	// end mod by **JR** on 5/3/22														
+	}													
       else if (!token.empty() && token[0] != '#')
           sync_cout << "Unknown command: " << cmd << sync_endl;
 
@@ -563,7 +562,7 @@ string UCI::move(Move m, bool chess960) {
   return move;
 }
 
-// mod by **JR** on 5/3/22
+/// HELP System
 void clrscr() {
 
 	for(int x=0; x < 24; x++) {
@@ -574,11 +573,10 @@ void clrscr() {
 void spcInput(string mesg) { 
 
 	cout << mesg;
-	if (scanf("%c",&myChar) != 1 ){
+	if (scanf("%c",&theChar) != 1 ){
 		fprintf( stderr, "Input Error");
 	}
 }
-// end mod by **JR**
 
 
 /// UCI::to_move() converts a string representing a move in coordinate notation
