@@ -296,24 +296,35 @@ void UCI::loop(int argc, char* argv[]) {
 		sync_cout << "---UCI Commands---" << sync_endl;
 		sync_cout << "quit		Exit Stockfish" << sync_endl;
 		sync_cout << "stop		halt move search" << sync_endl;
-		sync_cout << "ponderhit*	start search (ponder) on same move user has played" << sync_endl;
-		sync_cout << "uci*		tell engine to use UCI interface (will display options)" << sync_endl;
-		sync_cout << "setoption*	set specific UCI option" << sync_endl;
-		sync_cout << "go*		start move search based on current position" << sync_endl;
+		sync_cout << "ponderhit	start search (ponder) on same move user has played" << sync_endl;
+		sync_cout << "uci		tell engine to use UCI interface (will display options)" << sync_endl;
+		sync_cout << "setoption	set specific UCI option" << sync_endl;
+		sync_cout << "go		start move search based on current position" << sync_endl;
 		sync_cout << "help		this help screen" << sync_endl;
-		sync_cout << "ucinewgame*	start move search on new/different game" << sync_endl;
-		sync_cout << "isready*	response is 'readyok' if engine is ready and available" << sync_endl;
+		sync_cout << "ucinewgame	start move search on new/different game" << sync_endl;
+		sync_cout << "isready		response is 'readyok' if engine is ready and available" << sync_endl;
 		sync_cout << "flip		flip sides" << sync_endl;
 		sync_cout << "bench		calculate/display benchmarks for this installation of Stockfish" << sync_endl;
 		sync_cout << "d		display chess board and current position of all pieces" << sync_endl;
 		sync_cout << "eval		display current NNUE evaluation" << sync_endl;
 		sync_cout << "compiler	display info re:compiler used for this installation of Stockfish" << sync_endl;
 		sync_cout << "export_net	save current Stockfish neural network to file" << sync_endl;
-		sync_cout << "position* 	set up position in fenstring or use startpos" << sync_endl;
-		sync_cout << "\n* = Add'l help available.  Enter in <command>/help to view. (no spaces)" << sync_endl;
+		sync_cout << "position	 	set up position in fenstring or use startpos" << sync_endl;
+		sync_cout << "\nAdd'l help available.  Enter in <command>/help to view. (no spaces)" << sync_endl;
 		sync_cout << "\n See the following for a full UCI protocol discussion:\n    http://wbec-ridderkerk.nl/html/UCIProtocol.html" << sync_endl;
 		
 	}
+    	else if (token == "quit/help") {	
+	  	printf("[quit]\nquit the program as soon as possible\n\n");
+		spcInput("Press <return> to continue --> ");
+		goto jmppoint;
+      }
+      else if (token == "stop/help") {
+	 	 printf("[stop]\nstop calculating as soon as possible, don't forget\n"
+	  		"the 'bestmove' and possibly the 'ponder' token when finishing the search\n\n");
+		spcInput("Press <return> to continue --> ");
+		goto jmppoint;
+      }
 	else if (token == "ponderhit/help") {
 		printf("[ponderhit]\nThe user has played the expected move. This will be sent if the engine was told\n"
 			"to ponder on the same move the user has played.\n"
@@ -364,7 +375,6 @@ void UCI::loop(int argc, char* argv[]) {
 		"If one parameter is not sent its value should be interpreted as it would\n"
 		"not influence the search.\n\n"
 		"The following are the parameters and their associated values\n\n");
-		spcInput("Press <return> to continue viewing parameters --> ");
 
 		printf("[go parameters]\n\n");
 		printf("* searchmoves <move1> .... <movei>\n"
@@ -373,7 +383,6 @@ void UCI::loop(int argc, char* argv[]) {
 		"		       'go infinite searchmoves e2e4 d2d4'\n"
 		"	the engine should only search the two moves e2e4 and d2d4 in the\n"
 		"	initial position.\n\n");
-		spcInput("Press <return> to continue viewing parameters --> ");
 
 		printf("[go parameters]\n\n");
 		printf("* ponder\n"
@@ -389,7 +398,6 @@ void UCI::loop(int argc, char* argv[]) {
 		"	should not display any mainlines as they are likely to be\n"
 		"	misinterpreted by the GUI because the GUI expects the engine\n"
 		"	to ponder on the suggested move.\n\n");
-		spcInput("Press <return> to continue viewing parameters --> ");
 
 		printf("[go parameters]\n\n");
 		printf("* wtime <x>\n"
@@ -409,7 +417,6 @@ void UCI::loop(int argc, char* argv[]) {
 		"	search x plies only.\n"
 		"* nodes <x>\n"
 	   	"	search x nodes only\n\n");
-		spcInput("Press <return> to continue viewing parameters --> ");
 
 		printf("[go parameters]\n\n");
 		printf("* mate <x>\n"
@@ -422,6 +429,25 @@ void UCI::loop(int argc, char* argv[]) {
 		spcInput("End of go parameters. Press <return> to continue --> ");
 		goto jmppoint;
 
+	}
+	else if (token == "help/help") {
+	  printf("[help]\n"
+		 "internal help engine usage:\n"
+		 "	<uci_cmd>/help\n\n"
+		 "	--will display information on that particular\n"
+		 "	  UCI command\n"
+		 "	     example:  help/help\n"
+		 "	     will display this exact screen\n\n"
+		 "external help engine usage:\n"
+		 "	stockfish --help <uci_cmd optional>\n\n"
+		 "	--help all by itself will display the main help screen\n"
+		 "	--help followed by any UCI command will display specific\n"
+		 "	  information on that particular UCI command\n"
+		 "	     example:  stockfish --help help)\n"
+		 "	     will display this exact screen\n\n");
+		
+		spcInput("Press <return> to continue --> ");
+		goto jmppoint;
 	}
 	else if (token == "ucinewgame/help") {
 		printf("[ucinewgame]\nThis is sent to the engine when the next search (started with 'position' and\n"
@@ -456,6 +482,36 @@ void UCI::loop(int argc, char* argv[]) {
 		spcInput("Press <return> to continue --> ");
 		goto jmppoint;
 	}
+     else if(token == "flip/help") {
+	  	printf("[flip]\nFlip sides in the current game\n\n");
+		spcInput("Press <return> to continue --> ");
+		goto jmppoint;
+      }
+     else if(token == "bench/help") {
+	 	 printf("[bench]\ncalculate/display benchmarks for this installation of stockfish\n\n");
+		spcInput("Press <return> to continue --> ");
+		goto jmppoint;
+      }
+     else if(token == "d/help") {
+	  	printf("[d]\ndisplay chess board and current position of all pieces\n\n");
+		spcInput("Press <return> to continue --> ");
+		goto jmppoint;
+      }
+     else if(token == "eval/help") {
+	 	 printf("[eval]\ndisplay current NNUE evaluation\n\n");
+		spcInput("Press <return> to continue --> ");
+		goto jmppoint;
+      }
+     else if(token == "compiler/help")  {
+	  	printf("[compiler]\ndisplay information about the compiler use for this installation of stockfish\n\n");
+		spcInput("Press <return> to continue --> ");
+		goto jmppoint;
+      }
+     else if(token == "export_net/help") {
+	  	printf("[export_net]\nsave current stockfish neural network to file\n\n");
+		spcInput("Press <return> to continue --> ");
+		goto jmppoint;
+      }
 	else if (token == "position/help") {
 		printf("[position]\nposition [fen <fenstring> | startpos ]  moves <move1> .... <movei>\n"
 			"Set up the position described in fenstring on the internal board and\n"

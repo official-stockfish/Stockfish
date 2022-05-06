@@ -175,7 +175,13 @@ int main(int argc, char* argv[]) {
       }
       if(strcmp(argv[2],"help") == 0) {
 	  printf("[help]\n"
-		 "usage:\n"
+		 "internal help engine usage:\n"
+		 "	<uci_cmd>/help\n\n"
+		 "	--will display information on that particular\n"
+		 "	  UCI command\n"
+		 "	     example:  help/help\n"
+		 "	     will display this exact screen\n\n"
+		 "external help engine usage:\n"
 		 "	stockfish --help <uci_cmd optional>\n\n"
 		 "	--help all by itself will display the main help screen\n"
 		 "	--help followed by any UCI command will display specific\n"
