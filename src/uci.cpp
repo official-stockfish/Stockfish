@@ -311,7 +311,7 @@ void UCI::loop(int argc, char* argv[]) {
 		sync_cout << "export_net	save current Stockfish neural network to file" << sync_endl;
 		sync_cout << "position* 	set up position in fenstring or use startpos" << sync_endl;
 		sync_cout << "\n* = Add'l help available.  Enter in <command>/help to view. (no spaces)" << sync_endl;
-		sync_cout << "\n See the following for a full UCI protocol discussion:\n            http://wbec-ridderkerk.nl/html" << sync_endl;
+		sync_cout << "\n See the following for a full UCI protocol discussion:\n    http://wbec-ridderkerk.nl/html/UCIProtocol.html" << sync_endl;
 		
 	}
 	else if (token == "ponderhit/help") {
