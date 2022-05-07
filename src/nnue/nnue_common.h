@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2021 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2022 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -127,11 +127,11 @@ namespace Stockfish::Eval::NNUE {
           {
             for (; i + 1 < sizeof(IntType); ++i)
             {
-                u[i] = v;
+                u[i] = (std::uint8_t)v;
                 v >>= 8;
             }
           }
-          u[i] = v;
+          u[i] = (std::uint8_t)v;
 
           stream.write(reinterpret_cast<char*>(u), sizeof(IntType));
       }
