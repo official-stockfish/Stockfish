@@ -2795,7 +2795,7 @@ namespace Search
       Value terminal_value(Position& pos) const {
 
         if (MoveList<LEGAL>(pos).size() == 0)
-          return pos.checkers() ? VALUE_MATE : -VALUE_MATE;;
+          return pos.checkers() ? VALUE_MATE : VALUE_DRAW;
 
         if (ply >= MAX_PLY - 2 || pos.is_draw(ply - 1))
           return VALUE_DRAW;
