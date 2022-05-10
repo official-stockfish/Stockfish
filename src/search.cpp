@@ -466,8 +466,7 @@ void Thread::search() {
           // If the bestMove is stable over several iterations, reduce time accordingly
           timeReduction = lastBestMoveDepth + 10 < completedDepth ? 1.63 : 0.73;
           double reduction = (1.56 + mainThread->previousTimeReduction) / (2.20 * timeReduction);
-          double bestMoveInstability = 1.073 + std::max(1.0, 2.25 - 9.9 / rootDepth)
-                                              * totBestMoveChanges / Threads.size();
+          double bestMoveInstability = 1 + 1.7 * totBestMoveChanges / Threads.size();
           int complexity = mainThread->complexityAverage.value();
           double complexPosition = std::clamp(1.0 + (complexity - 326) / 1618.1, 0.5, 1.5);
 
@@ -604,6 +603,7 @@ namespace {
     (ss+1)->ttPv         = false;
     (ss+1)->excludedMove = bestMove = MOVE_NONE;
     (ss+2)->killers[0]   = (ss+2)->killers[1] = MOVE_NONE;
+    (ss+2)->cutoffCnt    = 0;
     ss->doubleExtensions = (ss-1)->doubleExtensions;
     ss->depth            = depth;
     Square prevSq        = to_sq((ss-1)->currentMove);
@@ -1173,6 +1173,10 @@ moves_loop: // When in check, search starts here
           if (PvNode)
               r -= 1 + 15 / ( 3 + depth );
 
+          // Increase reduction if next ply has a lot of fail high else reset count to 0
+          if ((ss+1)->cutoffCnt > 3 && !PvNode)
+              r++;
+
           ss->statScore =  thisThread->mainHistory[us][from_to(move)]
                          + (*contHist[0])[movedPiece][to_sq(move)]
                          + (*contHist[1])[movedPiece][to_sq(move)]
@@ -1293,14 +1297,29 @@ moves_loop: // When in check, search starts here
                   update_pv(ss->pv, move, (ss+1)->pv);
 
               if (PvNode && value < beta) // Update alpha! Always alpha < beta
+              {
                   alpha = value;
+
+                  // Reduce other moves if we have found at least one score improvement
+                  if (   depth > 2
+                      && depth < 7
+                      && beta  <  VALUE_KNOWN_WIN
+                      && alpha > -VALUE_KNOWN_WIN)
+                     depth -= 1;
+
+                  assert(depth > 0);
+              }
               else
               {
+                  ss->cutoffCnt++;
                   assert(value >= beta); // Fail high
                   break;
               }
           }
       }
+      else
+         ss->cutoffCnt = 0;
+
 
       // If the move is worse than some previously searched move, remember it to update its stats later
       if (move != bestMove)
