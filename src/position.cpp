@@ -279,7 +279,12 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
   // handle also common incorrect FEN with fullmove = 0.
   gamePly = std::max(2 * (gamePly - 1), 0) + (sideToMove == BLACK);
 
-  chess960 = isChess960;
+  chess960 =    isChess960
+             || (can_castle(WHITE & KING_SIDE) && (piece_on(SQ_E1) != W_KING || piece_on(SQ_H1) != W_ROOK))
+             || (can_castle(WHITE & QUEEN_SIDE) && (piece_on(SQ_E1) != W_KING || piece_on(SQ_A1) != W_ROOK))
+             || (can_castle(BLACK & KING_SIDE) && (piece_on(SQ_E8) != B_KING || piece_on(SQ_H8) != B_ROOK))
+             || (can_castle(BLACK & QUEEN_SIDE) && (piece_on(SQ_E8) != B_KING || piece_on(SQ_A8) != B_ROOK));
+
   thisThread = th;
   set_state(st);
 
@@ -1338,9 +1343,7 @@ bool Position::pos_is_ok() const {
 
           if (   piece_on(castlingRookSquare[cr]) != make_piece(c, ROOK)
               || castlingRightsMask[castlingRookSquare[cr]] != cr
-              || (castlingRightsMask[square<KING>(c)] & cr) != cr
-              || (!chess960 && (   (c == WHITE && square<KING>(c) != SQ_E1)
-                                || (c == BLACK && square<KING>(c) != SQ_E8))))
+              || (castlingRightsMask[square<KING>(c)] & cr) != cr)
               assert(0 && "pos_is_ok: Castling");
       }
 
