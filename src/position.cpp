@@ -1338,7 +1338,9 @@ bool Position::pos_is_ok() const {
 
           if (   piece_on(castlingRookSquare[cr]) != make_piece(c, ROOK)
               || castlingRightsMask[castlingRookSquare[cr]] != cr
-              || (castlingRightsMask[square<KING>(c)] & cr) != cr)
+              || (castlingRightsMask[square<KING>(c)] & cr) != cr
+              || (!chess960 && (   (c == WHITE && square<KING>(c) != SQ_E1)
+                                || (c == BLACK && square<KING>(c) != SQ_E8))))
               assert(0 && "pos_is_ok: Castling");
       }
 
