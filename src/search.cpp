@@ -238,6 +238,9 @@ void MainThread::search() {
   bestPreviousScore = bestThread->rootMoves[0].score;
   bestPreviousAverageScore = bestThread->rootMoves[0].averageScore;
 
+  for (Thread* th : Threads)
+    th->previousDepth = bestThread->completedDepth;
+
   // Send again PV info if we have a new best thread
   if (bestThread != this)
       sync_cout << UCI::pv(bestThread->rootPos, bestThread->completedDepth, -VALUE_INFINITE, VALUE_INFINITE) << sync_endl;
@@ -1061,7 +1064,7 @@ moves_loop: // When in check, search starts here
           // a reduced search on all the other moves but the ttMove and if the
           // result is lower than ttValue minus a margin, then we will extend the ttMove.
           if (   !rootNode
-              &&  depth >= 4 + 2 * (PvNode && tte->is_pv())
+              &&  depth >= 4 - (thisThread->previousDepth > 27) + 2 * (PvNode && tte->is_pv())
               &&  move == ttMove
               && !excludedMove // Avoid recursive singular search
            /* &&  ttValue != VALUE_NONE Already implicit in the next condition */
