@@ -285,8 +285,14 @@ void UCI::loop(int argc, char* argv[]) {
               filename = f;
           Eval::NNUE::save_eval(filename);
       }
+      else if (token == "--help" || token == "help" || token == "--license" || token == "license")
+          sync_cout << "\nStockfish is a powerful chess engine and free software licensed under the GNU GPLv3."
+                       "\nStockfish is normally used with a separate graphical user interface (GUI)."
+                       "\nStockfish implements the universal chess interface (UCI) to exchange information."
+                       "\nFor further information see https://github.com/official-stockfish/Stockfish#readme"
+                       "\nor the corresponding README.md and Copying.txt files distributed with this program.\n" << sync_endl;
       else if (!token.empty() && token[0] != '#')
-          sync_cout << "Unknown command: " << cmd << sync_endl;
+          sync_cout << "Unknown command: '" << cmd << "'. Type help for more information." << sync_endl;
 
   } while (token != "quit" && argc == 1); // Command line args are one-shot
 }
