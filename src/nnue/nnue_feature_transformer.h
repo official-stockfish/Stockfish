@@ -120,12 +120,12 @@ namespace Stockfish::Eval::NNUE {
   #define vec_zero() _mm_setzero_si64()
   #define vec_set_16(a) _mm_set1_pi16(a)
   inline vec_t vec_max_16(vec_t a,vec_t b){
-      vec_t comparison = _mm_cmpgt_pi16(a,b);
-      return _mm_or_si64(_mm_and_si64(comparison, a), _mm_andnot_si64(comparison, b));
+    vec_t comparison = _mm_cmpgt_pi16(a,b);
+    return _mm_or_si64(_mm_and_si64(comparison, a), _mm_andnot_si64(comparison, b));
   }
   inline vec_t vec_min_16(vec_t a,vec_t b){
-      vec_t comparison = _mm_cmpgt_pi16(a,b);
-      return _mm_or_si64(_mm_and_si64(comparison, b), _mm_andnot_si64(comparison, a));
+    vec_t comparison = _mm_cmpgt_pi16(a,b);
+    return _mm_or_si64(_mm_and_si64(comparison, b), _mm_andnot_si64(comparison, a));
   }
   #define vec_msb_pack_16(a,b) _mm_packs_pi16(_mm_srli_pi16(a,7),_mm_srli_pi16(b,7))
   #define vec_load_psqt(a) (*(a))
@@ -150,10 +150,10 @@ namespace Stockfish::Eval::NNUE {
   #define vec_max_16(a,b) vmaxq_s16(a,b)
   #define vec_min_16(a,b) vminq_s16(a,b)
   inline vec_t vec_msb_pack_16(vec_t a, vec_t b){
-        const int8x8_t shifta = vshrn_n_s16(a, 7);
-        const int8x8_t shiftb = vshrn_n_s16(b, 7);
-	const int8x16_t compacted = vcombine_s8(shifta,shiftb);
-	return *reinterpret_cast<const vec_t*> (&compacted);
+    const int8x8_t shifta = vshrn_n_s16(a, 7);
+    const int8x8_t shiftb = vshrn_n_s16(b, 7);
+    const int8x16_t compacted = vcombine_s8(shifta,shiftb);
+    return *reinterpret_cast<const vec_t*> (&compacted);
   }
   #define vec_load_psqt(a) (*(a))
   #define vec_store_psqt(a,b) *(a)=(b)
@@ -290,7 +290,7 @@ namespace Stockfish::Eval::NNUE {
 
 #if defined(VECTOR)
 
-	  constexpr IndexType OutputChunkSize = MaxChunkSize;
+          constexpr IndexType OutputChunkSize = MaxChunkSize;
           static_assert((HalfDimensions / 2) % OutputChunkSize == 0);
           constexpr IndexType NumOutputChunks = HalfDimensions / 2 / OutputChunkSize;
 

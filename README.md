@@ -1,7 +1,6 @@
 ## Overview
 
 [![Build Status](https://github.com/official-stockfish/Stockfish/actions/workflows/stockfish.yml/badge.svg)](https://github.com/official-stockfish/Stockfish/actions)
-[![Build Status](https://ci.appveyor.com/api/projects/status/github/official-stockfish/Stockfish?branch=master&svg=true)](https://ci.appveyor.com/project/mcostalba/stockfish/branch/master)
 
 
 [StockfishNPS](https://github.com/Joachim26/Stockfish) is a slightly modified Stockfish for human play with nps reduction, randomized evaluation, search-depth-, and search-nodes-limit. The strength of the first two modifications can be set in the uci options from 0 to 100, while search-depth may be limited to values from 1 to 20 and search-nodes to values up to 500000.
@@ -25,7 +24,7 @@ avx2, neon, or similar).
 
 This distribution of Stockfish consists of the following files:
 
-  * [Readme.md](https://github.com/official-stockfish/Stockfish/blob/master/README.md),
+  * [README.md](https://github.com/official-stockfish/Stockfish/blob/master/README.md),
     the file you are currently reading.
 
   * [Copying.txt](https://github.com/official-stockfish/Stockfish/blob/master/Copying.txt),
