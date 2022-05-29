@@ -131,7 +131,7 @@ namespace {
     ASSERT_ALIGNED(&st, Eval::NNUE::CacheLineSize);
 
     uint64_t cnt, nodes = 0;
-    const bool leaf = (depth == 2);
+    const bool leaf = (depth == 1);
 
     for (const auto& m : MoveList<LEGAL>(pos))
     {
@@ -140,7 +140,7 @@ namespace {
         else
         {
             pos.do_move(m, st);
-            cnt = leaf ? MoveList<LEGAL>(pos).size() : perft<false>(pos, depth - 1);
+            cnt = leaf ? 1 : perft<false>(pos, depth - 1);
             nodes += cnt;
             pos.undo_move(m);
         }
