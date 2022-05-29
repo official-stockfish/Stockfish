@@ -11,7 +11,7 @@ trap 'error ${LINENO}' ERR
 echo "perft testing started"
 
 cat << EOF > perft.exp
-   set timeout 10
+   set timeout 30
    lassign \$argv pos depth result
    spawn ./stockfish
    send "position \$pos\\ngo perft \$depth\\n"
