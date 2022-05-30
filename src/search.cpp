@@ -1396,6 +1396,7 @@ moves_loop: // When in check, search starts here
 
   // qsearch() is the quiescence search function, which is called by the main search
   // function with zero depth, or recursively with further decreasing depth per call.
+  // (~155 elo)
   template <NodeType nodeType>
   Value qsearch(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth) {
 
