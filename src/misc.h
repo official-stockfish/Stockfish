@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2021 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2022 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -108,19 +108,30 @@ static inline const union { uint32_t i; char c[4]; } Le = { 0x01020304 };
 static inline const bool IsLittleEndian = (Le.c[0] == 4);
 
 
-template <typename T>
-class ValueListInserter {
-public:
-  ValueListInserter(T* v, std::size_t& s) :
-    values(v),
-    size(&s)
-  {
-  }
+// RunningAverage : a class to calculate a running average of a series of values.
+// For efficiency, all computations are done with integers.
+class RunningAverage {
+  public:
 
-  void push_back(const T& value) { values[(*size)++] = value; }
-private:
-  T* values;
-  std::size_t* size;
+      // Reset the running average to rational value p / q
+      void set(int64_t p, int64_t q)
+        { average = p * PERIOD * RESOLUTION / q; }
+
+      // Update average with value v
+      void update(int64_t v)
+        { average = RESOLUTION * v + (PERIOD - 1) * average / PERIOD; }
+
+      // Test if average is strictly greater than rational a / b
+      bool is_greater(int64_t a, int64_t b) const
+        { return b * average > a * (PERIOD * RESOLUTION); }
+
+      int64_t value() const
+        { return average / (PERIOD * RESOLUTION); }
+
+  private :
+      static constexpr int64_t PERIOD     = 4096;
+      static constexpr int64_t RESOLUTION = 1024;
+      int64_t average;
 };
 
 template <typename T, std::size_t MaxSize>
@@ -136,7 +147,6 @@ public:
   const T& operator[](std::size_t index) const { return values_[index]; }
   const T* begin() const { return values_; }
   const T* end() const { return values_ + size_; }
-  operator ValueListInserter<T>() { return ValueListInserter(values_, size_); }
 
   void swap(ValueList& other) {
     const std::size_t maxSize = std::max(size_, other.size_);
@@ -364,6 +374,32 @@ public:
 };
 
 extern SynchronizedRegionLogger sync_region_cout;
+
+/// sigmoid(t, x0, y0, C, P, Q) implements a sigmoid-like function using only integers,
+/// with the following properties:
+///
+///  -  sigmoid is centered in (x0, y0)
+///  -  sigmoid has amplitude [-P/Q , P/Q] instead of [-1 , +1]
+///  -  limit is (y0 - P/Q) when t tends to -infinity
+///  -  limit is (y0 + P/Q) when t tends to +infinity
+///  -  the slope can be adjusted using C > 0, smaller C giving a steeper sigmoid
+///  -  the slope of the sigmoid when t = x0 is P/(Q*C)
+///  -  sigmoid is increasing with t when P > 0 and Q > 0
+///  -  to get a decreasing sigmoid, change sign of P
+///  -  mean value of the sigmoid is y0
+///
+/// Use <https://www.desmos.com/calculator/jhh83sqq92> to draw the sigmoid
+
+inline int64_t sigmoid(int64_t t, int64_t x0,
+                                  int64_t y0,
+                                  int64_t  C,
+                                  int64_t  P,
+                                  int64_t  Q)
+{
+   assert(C > 0);
+   assert(Q != 0);
+   return y0 + P * (t-x0) / (Q * (std::abs(t-x0) + C)) ;
+}
 
 
 /// xorshift64star Pseudo-Random Number Generator

@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2021 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2022 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -84,7 +84,7 @@ class Tune {
 
   static Tune& instance() { static Tune t; return t; } // Singleton
 
-  // Use polymorphism to accomodate Entry of different types in the same vector
+  // Use polymorphism to accommodate Entry of different types in the same vector
   struct EntryBase {
     virtual ~EntryBase() = default;
     virtual void init_option() = 0;

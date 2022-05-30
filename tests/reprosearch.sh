@@ -43,7 +43,7 @@ cat << EOF > repeat.exp
  expect eof
 EOF
 
-# to increase the likelyhood of finding a non-reproducible case,
+# to increase the likelihood of finding a non-reproducible case,
 # the allowed number of nodes are varied systematically
 for i in `seq 1 20`
 do
