@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2021 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2022 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -38,7 +38,7 @@ enum WDLScore {
 // Possible states after a probing operation
 enum ProbeState {
     FAIL              =  0, // Probe failed (missing file table)
-    OK                =  1, // Probe succesful
+    OK                =  1, // Probe successful
     CHANGE_STM        = -1, // DTZ should check the other side
     ZEROING_BEST_MOVE =  2  // Best move zeroes DTZ (capture or pawn move)
 };

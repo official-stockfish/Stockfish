@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2021 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2022 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -457,7 +457,7 @@ constexpr Square rotate180(Square sq) {
 }
 
 constexpr int from_to(Move m) {
- return m & 0xFFF;
+  return m & 0xFFF;
 }
 
 constexpr MoveType type_of(Move m) {
@@ -470,10 +470,6 @@ constexpr PieceType promotion_type(Move m) {
 
 constexpr Move make_move(Square from, Square to) {
   return Move((from << 6) + to);
-}
-
-constexpr Move reverse_move(Move m) {
-  return make_move(to_sq(m), from_sq(m));
 }
 
 template<MoveType T>

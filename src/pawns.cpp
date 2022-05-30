@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2021 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2022 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -32,30 +32,30 @@ namespace {
   #define S(mg, eg) make_score(mg, eg)
 
   // Pawn penalties
-  constexpr Score Backward      = S( 9, 22);
-  constexpr Score Doubled       = S(13, 51);
-  constexpr Score DoubledEarly  = S(20,  7);
-  constexpr Score Isolated      = S( 3, 15);
-  constexpr Score WeakLever     = S( 4, 58);
-  constexpr Score WeakUnopposed = S(13, 24);
+  constexpr Score Backward      = S( 6, 19);
+  constexpr Score Doubled       = S(11, 51);
+  constexpr Score DoubledEarly  = S(17,  7);
+  constexpr Score Isolated      = S( 1, 20);
+  constexpr Score WeakLever     = S( 2, 57);
+  constexpr Score WeakUnopposed = S(15, 18);
 
   // Bonus for blocked pawns at 5th or 6th rank
-  constexpr Score BlockedPawn[2] = { S(-17, -6), S(-9, 2) };
+  constexpr Score BlockedPawn[2] = { S(-19, -8), S(-7, 3) };
 
   constexpr Score BlockedStorm[RANK_NB] = {
-    S(0, 0), S(0, 0), S(75, 78), S(-8, 16), S(-6, 10), S(-6, 6), S(0, 2)
+    S(0, 0), S(0, 0), S(64, 75), S(-3, 14), S(-12, 19), S(-7, 4), S(-10, 5)
   };
 
   // Connected pawn bonus
-  constexpr int Connected[RANK_NB] = { 0, 5, 7, 11, 23, 48, 87 };
+  constexpr int Connected[RANK_NB] = { 0, 3, 7, 7, 15, 54, 86 };
 
   // Strength of pawn shelter for our king by [distance from edge][rank].
   // RANK_1 = 0 is used for files where we have no pawn, or pawn is behind our king.
   constexpr Value ShelterStrength[int(FILE_NB) / 2][RANK_NB] = {
-    { V( -5), V( 82), V( 92), V( 54), V( 36), V( 22), V(  28) },
-    { V(-44), V( 63), V( 33), V(-50), V(-30), V(-12), V( -62) },
-    { V(-11), V( 77), V( 22), V( -6), V( 31), V(  8), V( -45) },
-    { V(-39), V(-12), V(-29), V(-50), V(-43), V(-68), V(-164) }
+    { V(-2), V(85), V(95), V(53), V(39), V(23), V(25) },
+    { V(-55), V(64), V(32), V(-55), V(-30), V(-11), V(-61) },
+    { V(-11), V(75), V(19), V(-6), V(26), V(9), V(-47) },
+    { V(-41), V(-11), V(-27), V(-58), V(-42), V(-66), V(-163) }
   };
 
   // Danger of enemy pawns moving toward our king by [distance from edge][rank].
@@ -63,17 +63,17 @@ namespace {
   // is behind our king. Note that UnblockedStorm[0][1-2] accommodate opponent pawn
   // on edge, likely blocked by our king.
   constexpr Value UnblockedStorm[int(FILE_NB) / 2][RANK_NB] = {
-    { V( 87), V(-288), V(-168), V( 96), V( 47), V( 44), V( 46) },
-    { V( 42), V( -25), V( 120), V( 45), V( 34), V( -9), V( 24) },
-    { V( -8), V(  51), V( 167), V( 35), V( -4), V(-16), V(-12) },
-    { V(-17), V( -13), V( 100), V(  4), V(  9), V(-16), V(-31) }
+    { V(94), V(-280), V(-170), V(90), V(59), V(47), V(53) },
+    { V(43), V(-17), V(128), V(39), V(26), V(-17), V(15) },
+    { V(-9), V(62), V(170), V(34), V(-5), V(-20), V(-11) },
+    { V(-27), V(-19), V(106), V(10), V(2), V(-13), V(-24) }
   };
 
 
   // KingOnFile[semi-open Us][semi-open Them] contains bonuses/penalties
   // for king when the king is on a semi-open or open file.
-  constexpr Score KingOnFile[2][2] = {{ S(-21,10), S(-7, 1)  },
-                                     {  S(  0,-3), S( 9,-4) }};
+  constexpr Score KingOnFile[2][2] = {{ S(-18,11), S(-6,-3)  },
+                                     {  S(  0, 0), S( 5,-4) }};
 
   #undef S
   #undef V
