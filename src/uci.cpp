@@ -40,14 +40,14 @@ extern vector<string> setup_bench(const Position&, istream&);
 
 namespace {
 
-  // A FEN string for the initial position in standard chess.
+  // FEN string for the initial position in standard chess.
   const char* StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 
   // position() is called when the engine receives the "position" UCI command.
-  // The function sets up a position described in the given FEN string ("fen")
-  // or the starting position ("startpos") and then makes the moves given in the
-  // following move list ("moves").
+  // It sets up the position that is described in the given FEN string ("fen") or
+  // the initial position ("startpos") and then makes the moves given in the following
+  // move list ("moves").
 
   void position(Position& pos, istringstream& is, StateListPtr& states) {
 
