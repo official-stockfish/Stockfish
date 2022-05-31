@@ -455,7 +455,7 @@ void Thread::search() {
       }
 
       // Do we have time for the next iteration? Can we stop searching now?
-      if (    Limits.use_time_management()
+      if (    Limits.use_time_management(us == BLACK)
           && !Threads.stop
           && !mainThread->stopOnPonderhit)
       {
@@ -1835,7 +1835,7 @@ void MainThread::check_time() {
   if (ponder)
       return;
 
-  if (   (Limits.use_time_management() && (elapsed > Time.maximum() - 10 || stopOnPonderhit))
+  if (   (Limits.use_time_management(rootPos.side_to_move() == BLACK) && (elapsed > Time.maximum() - 10 || stopOnPonderhit))
       || (Limits.movetime && elapsed >= Limits.movetime)
       || (Limits.nodes && Threads.nodes_searched() >= (uint64_t)Limits.nodes))
       Threads.stop = true;
