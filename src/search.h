@@ -95,14 +95,14 @@ struct LimitsType {
   }
 
   bool use_time_management() const {
-    return use_wtime_and_btime[0] || use_wtime_and_btime[1];
+    return time_management;
   }
 
   std::vector<Move> searchmoves;
   TimePoint time[COLOR_NB], inc[COLOR_NB], npmsec, movetime, startTime;
   int movestogo, depth, mate, perft, infinite;
   int64_t nodes;
-  bool use_wtime_and_btime[2] = {false};
+  bool time_management = false;
 };
 
 extern LimitsType Limits;

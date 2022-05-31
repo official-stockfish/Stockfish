@@ -137,12 +137,12 @@ namespace {
         else if (token == "wtime")
         {
             is >> limits.time[WHITE];
-            limits.use_wtime_and_btime[0] = pos.side_to_move() == WHITE;
+            limits.time_management |= pos.side_to_move() == WHITE;
         }
         else if (token == "btime")
         {
             is >> limits.time[BLACK];
-            limits.use_wtime_and_btime[1] = pos.side_to_move() == BLACK;
+            limits.time_management |= pos.side_to_move() == BLACK;
         }
         else if (token == "winc")      is >> limits.inc[WHITE];
         else if (token == "binc")      is >> limits.inc[BLACK];
