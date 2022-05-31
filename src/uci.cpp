@@ -134,8 +134,16 @@ namespace {
             while (is >> token)
                 limits.searchmoves.push_back(UCI::to_move(pos, token));
 
-        else if ((limits.use_wtime_and_btime[0] = token == "wtime"))      is >> limits.time[WHITE];
-        else if ((limits.use_wtime_and_btime[1] = token == "btime"))      is >> limits.time[BLACK];
+        else if (token == "wtime")
+        {
+            is >> limits.time[WHITE];
+            limits.use_wtime_and_btime[0] = pos.side_to_move() == WHITE;
+        }
+        else if (token == "btime")
+        {
+            is >> limits.time[BLACK];
+            limits.use_wtime_and_btime[1] = pos.side_to_move() == BLACK;
+        }
         else if (token == "winc")      is >> limits.inc[WHITE];
         else if (token == "binc")      is >> limits.inc[BLACK];
         else if (token == "movestogo") is >> limits.movestogo;

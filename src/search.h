@@ -94,8 +94,8 @@ struct LimitsType {
     nodes = 0;
   }
 
-  bool use_time_management(bool black_to_move) const {
-    return use_wtime_and_btime[black_to_move];
+  bool use_time_management() const {
+    return use_wtime_and_btime[0] || use_wtime_and_btime[1];
   }
 
   std::vector<Move> searchmoves;
