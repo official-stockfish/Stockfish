@@ -1290,7 +1290,7 @@ void Tablebases::init(const std::string& paths) {
     for (auto s : diagonal)
         MapA1D1D4[s] = code++;
 
-    // MapKK[] encodes all the 461 possible legal positions of two kings where
+    // MapKK[] encodes all the 462 possible legal positions of two kings where
     // the first is in the a1-d1-d4 triangle. If the first king is on the a1-d4
     // diagonal, the other one shall not to be above the a1-h8 diagonal.
     std::vector<std::pair<int, Square>> bothOnDiagonal;

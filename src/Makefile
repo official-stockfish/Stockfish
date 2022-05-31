@@ -345,9 +345,15 @@ endif
 ### ==========================================================================
 
 ### 3.1 Selecting compiler (default = gcc)
-CXXFLAGS += -Wall -Wcast-qual -fno-exceptions -std=c++17 $(EXTRACXXFLAGS)
-DEPENDFLAGS += -std=c++17
-LDFLAGS += $(EXTRALDFLAGS)
+ifeq ($(MAKELEVEL),0)
+       export ENV_CXXFLAGS := $(CXXFLAGS)
+       export ENV_DEPENDFLAGS := $(DEPENDFLAGS)
+       export ENV_LDFLAGS := $(LDFLAGS)
+endif
+
+CXXFLAGS = $(ENV_CXXFLAGS) -Wall -Wcast-qual -fno-exceptions -std=c++17 $(EXTRACXXFLAGS)
+DEPENDFLAGS = $(ENV_DEPENDFLAGS) -std=c++17
+LDFLAGS = $(ENV_LDFLAGS) $(EXTRALDFLAGS)
 
 ifeq ($(COMP),)
 	COMP=gcc
@@ -542,17 +548,17 @@ ifeq ($(optimize),yes)
 		endif
 	endif
 
-    ifeq ($(KERNEL),Darwin)
-        ifeq ($(comp),$(filter $(comp),clang icc))
-            CXXFLAGS += -mdynamic-no-pic
-        endif
+	ifeq ($(KERNEL),Darwin)
+		ifeq ($(comp),$(filter $(comp),clang icc))
+			CXXFLAGS += -mdynamic-no-pic
+		endif
 
-        ifeq ($(comp),gcc)
-            ifneq ($(arch),arm64)
-                CXXFLAGS += -mdynamic-no-pic
-            endif
-        endif
-    endif
+		ifeq ($(comp),gcc)
+			ifneq ($(arch),arm64)
+				CXXFLAGS += -mdynamic-no-pic
+			endif
+		endif
+	endif
 
 	ifeq ($(comp),clang)
 		CXXFLAGS += -fexperimental-new-pass-manager
@@ -824,22 +830,22 @@ net:
 	$(eval nnuedownloadurl := https://tests.stockfishchess.org/api/nn/$(nnuenet))
 	$(eval curl_or_wget := $(shell if hash curl 2>/dev/null; then echo "curl -skL"; elif hash wget 2>/dev/null; then echo "wget -qO-"; fi))
 	@if test -f "$(nnuenet)"; then \
-            echo "Already available."; \
-         else \
-            if [ "x$(curl_or_wget)" = "x" ]; then \
-               echo "Automatic download failed: neither curl nor wget is installed. Install one of these tools or download the net manually"; exit 1; \
-            else \
-               echo "Downloading $(nnuedownloadurl)"; $(curl_or_wget) $(nnuedownloadurl) > $(nnuenet);\
-            fi; \
-        fi;
+		echo "Already available."; \
+	else \
+		if [ "x$(curl_or_wget)" = "x" ]; then \
+			echo "Automatic download failed: neither curl nor wget is installed. Install one of these tools or download the net manually"; exit 1; \
+		else \
+			echo "Downloading $(nnuedownloadurl)"; $(curl_or_wget) $(nnuedownloadurl) > $(nnuenet);\
+		fi; \
+	fi;
 	$(eval shasum_command := $(shell if hash shasum 2>/dev/null; then echo "shasum -a 256 "; elif hash sha256sum 2>/dev/null; then echo "sha256sum "; fi))
 	@if [ "x$(shasum_command)" != "x" ]; then \
-	    if [ "$(nnuenet)" != "nn-"`$(shasum_command) $(nnuenet) | cut -c1-12`".nnue" ]; then \
-                echo "Failed download or $(nnuenet) corrupted, please delete!"; exit 1; \
-            fi \
-         else \
-            echo "shasum / sha256sum not found, skipping net validation"; \
-        fi
+		if [ "$(nnuenet)" != "nn-"`$(shasum_command) $(nnuenet) | cut -c1-12`".nnue" ]; then \
+			echo "Failed download or $(nnuenet) corrupted, please delete!"; exit 1; \
+		fi \
+	else \
+		echo "shasum / sha256sum not found, skipping net validation"; \
+	fi
 
 # clean binaries and objects
 objclean:

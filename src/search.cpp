@@ -75,7 +75,8 @@ namespace {
   }
 
   constexpr int futility_move_count(bool improving, Depth depth) {
-    return (3 + depth * depth) / (2 - improving);
+    return improving ? (3 + depth * depth)
+                     : (3 + depth * depth) / 2;
   }
 
   // History and stats update bonus, based on depth
@@ -237,6 +238,9 @@ void MainThread::search() {
 
   bestPreviousScore = bestThread->rootMoves[0].score;
   bestPreviousAverageScore = bestThread->rootMoves[0].averageScore;
+
+  for (Thread* th : Threads)
+    th->previousDepth = bestThread->completedDepth;
 
   // Send again PV info if we have a new best thread
   if (bestThread != this)
@@ -605,7 +609,6 @@ namespace {
     (ss+2)->killers[0]   = (ss+2)->killers[1] = MOVE_NONE;
     (ss+2)->cutoffCnt    = 0;
     ss->doubleExtensions = (ss-1)->doubleExtensions;
-    ss->depth            = depth;
     Square prevSq        = to_sq((ss-1)->currentMove);
 
     // Initialize statScore to zero for the grandchildren of the current position.
@@ -866,7 +869,6 @@ namespace {
 
         MovePicker mp(pos, ttMove, probCutBeta - ss->staticEval, depth - 3, &captureHistory);
         bool ttPv = ss->ttPv;
-        bool captureOrPromotion;
         ss->ttPv = false;
 
         while ((move = mp.next_move()) != MOVE_NONE)
@@ -874,11 +876,9 @@ namespace {
             {
                 assert(pos.capture(move) || promotion_type(move) == QUEEN);
 
-                captureOrPromotion = true;
-
                 ss->currentMove = move;
                 ss->continuationHistory = &thisThread->continuationHistory[ss->inCheck]
-                                                                          [captureOrPromotion]
+                                                                          [true]
                                                                           [pos.moved_piece(move)]
                                                                           [to_sq(move)];
 
@@ -1061,7 +1061,7 @@ moves_loop: // When in check, search starts here
           // a reduced search on all the other moves but the ttMove and if the
           // result is lower than ttValue minus a margin, then we will extend the ttMove.
           if (   !rootNode
-              &&  depth >= 4 + 2 * (PvNode && tte->is_pv())
+              &&  depth >= 4 - (thisThread->previousDepth > 27) + 2 * (PvNode && tte->is_pv())
               &&  move == ttMove
               && !excludedMove // Avoid recursive singular search
            /* &&  ttValue != VALUE_NONE Already implicit in the next condition */
@@ -1194,7 +1194,7 @@ moves_loop: // When in check, search starts here
           // deeper than the first move (this may lead to hidden double extensions).
           int deeper =   r >= -1                   ? 0
                        : moveCount <= 4            ? 2
-                       : PvNode && depth > 4       ? 1
+                       : PvNode                    ? 1
                        : cutNode && moveCount <= 8 ? 1
                        :                             0;
 
