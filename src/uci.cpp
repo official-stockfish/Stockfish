@@ -40,7 +40,7 @@ extern vector<string> setup_bench(const Position&, istream&);
 
 namespace {
 
-  // FEN string for the initial position in standard chess.
+  // FEN string for the initial position in standard chess
   const char* StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 
@@ -59,7 +59,7 @@ namespace {
     if (token == "startpos")
     {
         fen = StartFEN;
-        is >> token; // Consume "moves" token if any
+        is >> token; // Consume the "moves" token, if any
     }
     else if (token == "fen")
         while (is >> token && token != "moves")
@@ -67,10 +67,10 @@ namespace {
     else
         return;
 
-    states = StateListPtr(new std::deque<StateInfo>(1)); // Drop the old and create a new one
+    states = StateListPtr(new std::deque<StateInfo>(1)); // Drop the old state and create a new one
     pos.set(fen, Options["UCI_Chess960"], &states->back(), Threads.main());
 
-    // Parse the move list, if any.
+    // Parse the move list, if any
     while (is >> token && (m = UCI::to_move(pos, token)) != MOVE_NONE)
     {
         states->emplace_back();
@@ -78,8 +78,8 @@ namespace {
     }
   }
 
-  // trace_eval() prints the evaluation for the current position, consistent with the UCI
-  // options set so far.
+  // trace_eval() prints the evaluation of the current position, consistent with
+  // the UCI options set so far.
 
   void trace_eval(Position& pos) {
 
@@ -117,9 +117,9 @@ namespace {
   }
 
 
-  // go() is called when engine receives the "go" UCI command. The function sets
-  // the thinking time and other parameters from the input string, then starts
-  // the search.
+  // go() is called when the engine receives the "go" UCI command. The function
+  // sets the thinking time and other parameters from the input string, then starts
+  // with a search.
 
   void go(Position& pos, istringstream& is, StateListPtr& states) {
 
@@ -127,7 +127,7 @@ namespace {
     string token;
     bool ponderMode = false;
 
-    limits.startTime = now(); // As early as possible!
+    limits.startTime = now(); // The search starts as early as possible
 
     while (is >> token)
         if (token == "searchmoves") // Needs to be the last command on the line
@@ -152,8 +152,8 @@ namespace {
 
 
   // bench() is called when the engine receives the "bench" command.
-  // Firstly, a list of UCI commands is set up according to bench parameters,
-  // then it is run one by one, printing a summary at the end.
+  // Firstly, a list of UCI commands is set up according to the bench
+  // parameters, then it is run one by one, printing a summary at the end.
 
   void bench(Position& pos, istream& args, StateListPtr& states) {
 
@@ -184,12 +184,12 @@ namespace {
         }
         else if (token == "setoption")  setoption(is);
         else if (token == "position")   position(pos, is, states);
-        else if (token == "ucinewgame") { Search::clear(); elapsed = now(); } // Search::clear() may take some while
+        else if (token == "ucinewgame") { Search::clear(); elapsed = now(); } // Search::clear() may take a while
     }
 
     elapsed = now() - elapsed + 1; // Ensure positivity to avoid a 'divide by zero'
 
-    dbg_print(); // Just before exiting
+    dbg_print();
 
     cerr << "\n==========================="
          << "\nTotal time (ms) : " << elapsed
@@ -201,21 +201,21 @@ namespace {
   // eval and a game ply. The model fits the rather accurately LTC fishtest statistics.
   int win_rate_model(Value v, int ply) {
 
-     // The model captures only up to 240 plies, so limit the input and then rescale.
+     // The model captures only up to 240 plies, so limit the input and then rescale
      double m = std::min(240, ply) / 64.0;
 
-     // Coefficients of a third-order polynomial fit based on fishtest data
-     // for two parameters needed to transform eval to the argument of a
-     // logistic function.
+     // The coefficients of a third-order polynomial fit is based on fishtest data
+     // for two parameters that need to transform eval to the argument of a logistic
+     // function.
      double as[] = {-1.17202460e-01, 5.94729104e-01, 1.12065546e+01, 1.22606222e+02};
      double bs[] = {-1.79066759,  11.30759193, -17.43677612,  36.47147479};
      double a = (((as[0] * m + as[1]) * m + as[2]) * m) + as[3];
      double b = (((bs[0] * m + bs[1]) * m + bs[2]) * m) + bs[3];
 
-     // Transform the eval to centipawns with a limited range.
+     // Transform the eval to centipawns with a limited range
      double x = std::clamp(double(100 * v) / PawnValueEg, -2000.0, 2000.0);
 
-     // Return the win rate in per mille units rounded to the nearest value.
+     // Return the win rate in per mille units rounded to the nearest value
      return int(0.5 + 1000 / (1 + std::exp((a - x) / b)));
   }
 
@@ -225,8 +225,8 @@ namespace {
 /// UCI::loop() waits for a command from the stdin, parses it and then calls the appropriate
 /// function. It also intercepts an end-of-file (EOF) indication from the stdin to ensure a
 /// graceful exit if the GUI dies unexpectedly. When called with some command-line arguments, 
-/// like running 'bench', the function returns immediately once the command is executed. In
-/// addition to the UCI ones, some additional debug commands are also supported.
+/// like running 'bench', the function returns immediately after the command is executed.
+/// In addition to the UCI ones, some additional debug commands are also supported.
 
 void UCI::loop(int argc, char* argv[]) {
 
@@ -240,7 +240,7 @@ void UCI::loop(int argc, char* argv[]) {
       cmd += std::string(argv[i]) + " ";
 
   do {
-      if (argc == 1 && !getline(cin, cmd)) // Wait for an input or an EOF
+      if (argc == 1 && !getline(cin, cmd)) // Wait for an input or an end-of-file (EOF) indication 
           cmd = "quit";
 
       istringstream is(cmd);
@@ -286,7 +286,7 @@ void UCI::loop(int argc, char* argv[]) {
           Eval::NNUE::save_eval(filename);
       }
       else if (token == "--help" || token == "help" || token == "--license" || token == "license")
-          sync_cout << "\nStockfish is a powerful chess engine providing NNUE evaluations."
+          sync_cout << "\nStockfish is a powerful chess engine providing NNUE evaluation."
                        "\nIt is released as free software licensed under the GNU GPLv3 License."
                        "\nStockfish is normally used with a graphical user interface (GUI) and implements"
                        "\nthe Universal Chess Interface (UCI) protocol to communicate with a GUI program."
@@ -320,8 +320,8 @@ string UCI::value(Value v) {
 }
 
 
-/// UCI::wdl() reports WDL statistics given an evaluation and a game ply
-/// based on the data gathered for fishtest LTC games.
+/// UCI::wdl() reports the win-draw-loss (WDL) statistics given an evaluation
+/// and a game ply based on the data gathered for fishtest LTC games.
 
 string UCI::wdl(Value v, int ply) {
 
@@ -344,9 +344,9 @@ std::string UCI::square(Square s) {
 
 
 /// UCI::move() converts a Move to a string in coordinate notation (g1f3, a7a8q).
-/// The only special case is castling, where the e1g1 notation is printed in a
-/// normal chess mode and in e1h1 notation in Chess960 mode. Internally, all
-/// castling moves are always encoded as 'king captures rook'.
+/// The only special case is castling where the e1g1 notation is printed in a
+/// standard chess mode and in e1h1 notation it is printed in Chess960 mode.
+/// Internally, all castling moves are always encoded as 'king captures rook'.
 
 string UCI::move(Move m, bool chess960) {
 
@@ -376,7 +376,7 @@ string UCI::move(Move m, bool chess960) {
 
 Move UCI::to_move(const Position& pos, string& str) {
 
-  if (str.length() == 5) // Junior could send promotion piece in uppercase
+  if (str.length() == 5) // The Junior chess engine could send the promotion piece in uppercase
       str[4] = char(tolower(str[4]));
 
   for (const auto& m : MoveList<LEGAL>(pos))
