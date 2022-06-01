@@ -271,6 +271,7 @@ namespace Stockfish::Tools
 
         const auto start_time = now();
 
+        const bool frc = Options["UCI_Chess960"];
         // repeat until the specified number of times
         while (!quit)
         {
@@ -286,11 +287,11 @@ namespace Stockfish::Tools
             if (opening_book != nullptr)
             {
                 auto& fen = opening_book->next_fen();
-                pos.set(fen, false, &si, &th);
+                pos.set(fen, frc, &si, &th);
             }
             else
             {
-                pos.set(StartFEN, false, &si, &th);
+                pos.set(StartFEN, frc, &si, &th);
             }
 
             int resign_counter = 0;
@@ -367,7 +368,7 @@ namespace Stockfish::Tools
 
                     // Here we only write the position data.
                     // Result is added after the whole game is done.
-                    pos.sfen_pack(psv.sfen);
+                    pos.sfen_pack(psv.sfen, pos.is_chess960());
 
                     psv.score = search_value;
                     psv.move = search_pv[0];
@@ -695,9 +696,17 @@ namespace Stockfish::Tools
             it->game_result = side_to_move == result_color ? result : -result;
         }
 
+        const bool frc = th.rootPos.is_chess960();
         // Write sfens in move order to make potential compression easier
         for (auto& sfen : sfens)
         {
+            // Skip positions with castling bestmove in FRC so that we don't
+            // need to support it in the trainer.
+            if (frc && type_of((Move)sfen.move) == CASTLING)
+            {
+                continue;
+            }
+
             // Return true if there is already enough data generated.
             const auto iter = counter.fetch_add(1);
             if (iter >= limit)
@@ -858,7 +867,6 @@ namespace Stockfish::Tools
             else if (token == "set_recommended_uci_options")
             {
                 UCI::setoption("Skill Level", "20");
-                UCI::setoption("UCI_Chess960", "false");
                 UCI::setoption("UCI_LimitStrength", "false");
                 UCI::setoption("PruneAtShallowDepth", "false");
                 UCI::setoption("EnableTranspositionTable", "true");

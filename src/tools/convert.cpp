@@ -103,7 +103,7 @@ namespace Stockfish::Tools
                         filtered_size_fen++;
                     }
                     else {
-                        tpos.sfen_pack(p.sfen);
+                        tpos.sfen_pack(p.sfen, false);
                     }
                 }
                 else if (token == "move") {
@@ -337,7 +337,7 @@ namespace Stockfish::Tools
 
                                     StateInfo si;
                                     pos.set(str_fen, false, &si, th);
-                                    pos.sfen_pack(psv.sfen);
+                                    pos.sfen_pack(psv.sfen, false);
                                 }
 
 #if defined(DEBUG_CONVERT_BIN_FROM_PGN_EXTRACT)
@@ -478,7 +478,7 @@ namespace Stockfish::Tools
             {
                 if (fs.read((char*)&p, sizeof(PackedSfenValue))) {
                     StateInfo si;
-                    tpos.set_from_packed_sfen(p.sfen, &si, th);
+                    tpos.set_from_packed_sfen(p.sfen, &si, th, false);
 
                     // write as plain text
                     ofs << "fen " << tpos.fen() << std::endl;

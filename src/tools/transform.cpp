@@ -140,6 +140,7 @@ namespace Stockfish::Tools
 
         buffer.reserve(batch_size);
 
+        const bool frc = Options["UCI_Chess960"];
         uint64_t num_processed = 0;
         for (;;)
         {
@@ -149,7 +150,7 @@ namespace Stockfish::Tools
 
             auto& ps = v.value();
 
-            pos.set_from_packed_sfen(ps.sfen, &si, th);
+            pos.set_from_packed_sfen(ps.sfen, &si, th, frc);
             auto static_eval = Eval::evaluate(pos);
             auto deep_eval = ps.score;
             ps.score = nudge(params, static_eval, deep_eval);
@@ -290,6 +291,7 @@ namespace Stockfish::Tools
         Threads.execute_with_workers([&](auto& th){
             Position& pos = th.rootPos;
             StateInfo si;
+            const bool frc = Options["UCI_Chess960"];
 
             for(;;)
             {
@@ -297,7 +299,7 @@ namespace Stockfish::Tools
                 if (!fen.has_value())
                     return;
 
-                pos.set(*fen, false, &si, &th);
+                pos.set(*fen, frc, &si, &th);
                 pos.state()->rule50 = 0;
 
 
@@ -310,7 +312,7 @@ namespace Stockfish::Tools
                     continue;
 
                 PackedSfenValue ps;
-                pos.sfen_pack(ps.sfen);
+                pos.sfen_pack(ps.sfen, pos.is_chess960());
                 ps.score = search_value;
                 ps.move = search_pv[0];
                 ps.gamePly = 1;
@@ -401,6 +403,7 @@ namespace Stockfish::Tools
         Threads.execute_with_workers([&](auto& th){
             Position& pos = th.rootPos;
             StateInfo si;
+            const bool frc = Options["UCI_Chess960"];
 
             for (;;)
             {
@@ -410,7 +413,7 @@ namespace Stockfish::Tools
 
                 for(auto& ps : psv)
                 {
-                    pos.set_from_packed_sfen(ps.sfen, &si, &th);
+                    pos.set_from_packed_sfen(ps.sfen, &si, &th, frc);
 
                     for (int cnt = 0; cnt < params.research_count; ++cnt)
                         Search::search(pos, params.depth, 1);
@@ -420,7 +423,7 @@ namespace Stockfish::Tools
                     if (search_pv.empty())
                         continue;
 
-                    pos.sfen_pack(ps.sfen);
+                    pos.sfen_pack(ps.sfen, false);
                     ps.score = search_value;
                     if (!params.keep_moves)
                         ps.move = search_pv[0];

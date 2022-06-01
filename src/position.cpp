@@ -1370,15 +1370,15 @@ bool Position::pos_is_ok() const {
 // Add a function that directly unpacks for speed. It's pretty tough.
 // Write it by combining packer::unpack() and Position::set().
 // If there is a problem with the passed phase and there is an error, non-zero is returned.
-int Position::set_from_packed_sfen(const Tools::PackedSfen& sfen , StateInfo* si, Thread* th)
+int Position::set_from_packed_sfen(const Tools::PackedSfen& sfen , StateInfo* si, Thread* th, bool frc)
 {
-  return Tools::set_from_packed_sfen(*this, sfen, si, th);
+  return Tools::set_from_packed_sfen(*this, sfen, si, th, frc);
 }
 
 // Get the packed sfen. Returns to the buffer specified in the argument.
-void Position::sfen_pack(Tools::PackedSfen& sfen)
+void Position::sfen_pack(Tools::PackedSfen& sfen, bool resetCastlingRights)
 {
-  sfen = Tools::sfen_pack(*this);
+  sfen = Tools::sfen_pack(*this, resetCastlingRights);
 }
 
 } // namespace Stockfish

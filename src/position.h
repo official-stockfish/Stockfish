@@ -179,17 +179,17 @@ public:
 
   // --sfenization helper
 
-  friend int Tools::set_from_packed_sfen(Position& pos, const Tools::PackedSfen& sfen, StateInfo* si, Thread* th);
+  friend int Tools::set_from_packed_sfen(Position& pos, const Tools::PackedSfen& sfen, StateInfo* si, Thread* th, bool frc);
 
   // Get the packed sfen. Returns to the buffer specified in the argument.
   // Do not include gamePly in pack.
-  void sfen_pack(Tools::PackedSfen& sfen);
+  void sfen_pack(Tools::PackedSfen& sfen, bool resetCastlingRights);
 
   // It is slow to go through sfen, so I made a function to set packed sfen directly.
   // Equivalent to pos.set(sfen_unpack(data),si,th);.
   // If there is a problem with the passed phase and there is an error, non-zero is returned.
   // PackedSfen does not include gamePly so it cannot be restored. If you want to set it, specify it with an argument.
-  int set_from_packed_sfen(const Tools::PackedSfen& sfen, StateInfo* si, Thread* th);
+  int set_from_packed_sfen(const Tools::PackedSfen& sfen, StateInfo* si, Thread* th, bool frc);
 
   void clear() { std::memset(this, 0, sizeof(Position)); }
 

@@ -15,8 +15,8 @@ namespace Stockfish {
 
 namespace Stockfish::Tools {
 
-    int set_from_packed_sfen(Position& pos, const PackedSfen& sfen, StateInfo* si, Thread* th);
-    PackedSfen sfen_pack(Position& pos);
+    int set_from_packed_sfen(Position& pos, const PackedSfen& sfen, StateInfo* si, Thread* th, bool frc);
+    PackedSfen sfen_pack(Position& pos, bool resetCastlingRights);
 }
 
 #endif
