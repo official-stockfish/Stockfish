@@ -295,7 +295,7 @@ void UCI::loop(int argc, char* argv[]) {
       else if (!token.empty() && token[0] != '#')
           sync_cout << "Unknown command: '" << cmd << "'. Type help for more information." << sync_endl;
 
-  } while (token != "quit" && argc == 1); // Command-line arguments are one-shot
+  } while (token != "quit" && argc == 1); // The command-line arguments are one-shot
 }
 
 
@@ -376,8 +376,8 @@ string UCI::move(Move m, bool chess960) {
 
 Move UCI::to_move(const Position& pos, string& str) {
 
-  if (str.length() == 5) // The Junior chess engine could send the promotion piece in uppercase
-      str[4] = char(tolower(str[4]));
+  if (str.length() == 5)
+      str[4] = char(tolower(str[4])); // Lowercase the promotion piece character
 
   for (const auto& m : MoveList<LEGAL>(pos))
       if (str == UCI::move(m, pos.is_chess960()))
