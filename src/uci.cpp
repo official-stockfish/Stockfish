@@ -198,13 +198,13 @@ namespace {
   }
 
   // The win rate model returns the probability of winning (in per mille units) given an
-  // eval and a game ply. The model fits the rather accurately LTC fishtest statistics.
+  // eval and a game ply. It fits the LTC fishtest statistics rather accurately.
   int win_rate_model(Value v, int ply) {
 
-     // The model captures only up to 240 plies, so limit the input and then rescale
+     // The model only captures up to 240 plies, so limit the input and then rescale
      double m = std::min(240, ply) / 64.0;
 
-     // The coefficients of a third-order polynomial fit is based on fishtest data
+     // The coefficients of a third-order polynomial fit is based on the fishtest data
      // for two parameters that need to transform eval to the argument of a logistic
      // function.
      double as[] = {-1.17202460e-01, 5.94729104e-01, 1.12065546e+01, 1.22606222e+02};
@@ -212,7 +212,7 @@ namespace {
      double a = (((as[0] * m + as[1]) * m + as[2]) * m) + as[3];
      double b = (((bs[0] * m + bs[1]) * m + bs[2]) * m) + bs[3];
 
-     // Transform the eval to centipawns with a limited range
+     // Transform the eval to centipawns with limited range
      double x = std::clamp(double(100 * v) / PawnValueEg, -2000.0, 2000.0);
 
      // Return the win rate in per mille units rounded to the nearest value
@@ -255,9 +255,9 @@ void UCI::loop(int argc, char* argv[]) {
       // The GUI sends 'ponderhit' to tell that the user has played the expected move.
       // So, 'ponderhit' is sent if pondering was done on the same move that the user
       // has played. The search should continue, but should also switch from pondering
-      // to a normal search.
+      // to the normal search.
       else if (token == "ponderhit")
-          Threads.main()->ponder = false; // Switch to normal search
+          Threads.main()->ponder = false; // Switch to the normal search
 
       else if (token == "uci")
           sync_cout << "id name " << engine_info(true)
@@ -270,8 +270,8 @@ void UCI::loop(int argc, char* argv[]) {
       else if (token == "ucinewgame") Search::clear();
       else if (token == "isready")    sync_cout << "readyok" << sync_endl;
 
-      // Additional custom non-UCI commands, mainly for debugging.
-      // Do not use these commands during a search!
+      // Add custom non-UCI commands, mainly for debugging purposes.
+      // These commands must not be used during a search!
       else if (token == "flip")     pos.flip();
       else if (token == "bench")    bench(pos, is, states);
       else if (token == "d")        sync_cout << pos << sync_endl;
@@ -290,19 +290,19 @@ void UCI::loop(int argc, char* argv[]) {
                        "\nIt is released as free software licensed under the GNU GPLv3 License."
                        "\nStockfish is normally used with a graphical user interface (GUI) and implements"
                        "\nthe Universal Chess Interface (UCI) protocol to communicate with a GUI program."
-                       "\nFor further information, see https://github.com/official-stockfish/Stockfish#readme"
-                       "\nor the corresponding README.md and Copying.txt files distributed along with this program.\n" << sync_endl;
+                       "\nFor any further information, visit https://github.com/official-stockfish/Stockfish#readme"
+                       "\nor read the corresponding README.md and Copying.txt files distributed along with this program.\n" << sync_endl;
       else if (!token.empty() && token[0] != '#')
           sync_cout << "Unknown command: '" << cmd << "'. Type help for more information." << sync_endl;
 
-  } while (token != "quit" && argc == 1); // Command-line args are one-shot
+  } while (token != "quit" && argc == 1); // Command-line arguments are one-shot
 }
 
 
 /// UCI::value() converts a Value to a string by adhering to the UCI protocol specification:
 ///
 /// cp <x>    The score from the engine's point of view in centipawns.
-/// mate <y>  Mate in 'y' moves, not plies. If the engine is getting mated,
+/// mate <y>  Mate in 'y' moves (not plies). If the engine is getting mated,
 ///           uses negative values for 'y'.
 
 string UCI::value(Value v) {
@@ -344,7 +344,7 @@ std::string UCI::square(Square s) {
 
 
 /// UCI::move() converts a Move to a string in coordinate notation (g1f3, a7a8q).
-/// The only special case is castling where the e1g1 notation is printed in a
+/// The only special case is castling where the e1g1 notation is printed in
 /// standard chess mode and in e1h1 notation it is printed in Chess960 mode.
 /// Internally, all castling moves are always encoded as 'king captures rook'.
 
