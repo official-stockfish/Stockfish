@@ -286,10 +286,10 @@ void UCI::loop(int argc, char* argv[]) {
           Eval::NNUE::save_eval(filename);
       }
       else if (token == "--help" || token == "help" || token == "--license" || token == "license")
-          sync_cout << "\nStockfish is a powerful chess engine providing NNUE evaluation."
+          sync_cout << "\nStockfish is a powerful chess engine for playing and analyzing."
                        "\nIt is released as free software licensed under the GNU GPLv3 License."
                        "\nStockfish is normally used with a graphical user interface (GUI) and implements"
-                       "\nthe Universal Chess Interface (UCI) protocol to communicate with a GUI program."
+                       "\nthe Universal Chess Interface (UCI) protocol to communicate with a GUI, an API, etc."
                        "\nFor any further information, visit https://github.com/official-stockfish/Stockfish#readme"
                        "\nor read the corresponding README.md and Copying.txt files distributed along with this program.\n" << sync_endl;
       else if (!token.empty() && token[0] != '#')
@@ -377,7 +377,7 @@ string UCI::move(Move m, bool chess960) {
 Move UCI::to_move(const Position& pos, string& str) {
 
   if (str.length() == 5)
-      str[4] = char(tolower(str[4])); // Lowercase the promotion piece character
+      str[4] = char(tolower(str[4])); // The promotion piece character must be lowercased
 
   for (const auto& m : MoveList<LEGAL>(pos))
       if (str == UCI::move(m, pos.is_chess960()))
