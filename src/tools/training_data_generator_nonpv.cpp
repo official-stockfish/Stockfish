@@ -204,23 +204,24 @@ namespace Stockfish::Tools
             if ((double)prng.rand<uint64_t>() / std::numeric_limits<uint64_t>::max() < params.exploration_save_rate)
             {
                 psv.emplace_back();
-                pos.sfen_pack(psv.back().sfen);
+                pos.sfen_pack(psv.back().sfen, pos.is_chess960());
             }
         });
 
         auto& pos = th.rootPos;
         StateInfo si;
 
+        const bool frc = Options["UCI_Chess960"];
         for (int i = 0; i < count; ++i)
         {
             if (opening_book != nullptr)
             {
                 auto& fen = opening_book->next_fen();
-                pos.set(fen, false, &si, &th);
+                pos.set(fen, frc, &si, &th);
             }
             else
             {
-                pos.set(StartFEN, false, &si, &th);
+                pos.set(StartFEN, frc, &si, &th);
             }
 
             for(int ply = 0; ply < params.exploration_max_ply; ++ply)
@@ -267,6 +268,7 @@ namespace Stockfish::Tools
         // end flag
         bool quit = false;
 
+        const bool frc = Options["UCI_Chess960"];
         // repeat until the specified number of times
         while (!quit)
         {
@@ -280,7 +282,7 @@ namespace Stockfish::Tools
 
             for (auto& ps : packed_sfens)
             {
-                pos.set_from_packed_sfen(ps.sfen, &si, &th);
+                pos.set_from_packed_sfen(ps.sfen, &si, &th, frc);
                 pos.state()->rule50 = 0;
 
                 if (params.smart_fen_skipping && pos.checkers())
@@ -306,7 +308,7 @@ namespace Stockfish::Tools
                 }
 
                 auto& new_ps = psv.emplace_back();
-                pos.sfen_pack(new_ps.sfen);
+                pos.sfen_pack(new_ps.sfen, pos.is_chess960());
                 new_ps.score = search_value;
                 new_ps.move = search_pv[0];
                 new_ps.gamePly = 1;
@@ -329,9 +331,17 @@ namespace Stockfish::Tools
         std::atomic<uint64_t>& counter,
         uint64_t limit)
     {
+        const bool frc = th.rootPos.is_chess960();
         // Write sfens in move order to make potential compression easier
         for (auto& sfen : sfens)
         {
+            // Skip positions with castling bestmove in FRC so that we don't
+            // need to support it in the trainer.
+            if (frc && type_of((Move)sfen.move) == CASTLING)
+            {
+                continue;
+            }
+
             // Return true if there is already enough data generated.
             const auto iter = counter.fetch_add(1);
             if (iter >= limit)
@@ -435,7 +445,6 @@ namespace Stockfish::Tools
             else if (token == "set_recommended_uci_options")
             {
                 UCI::setoption("Skill Level", "20");
-                UCI::setoption("UCI_Chess960", "false");
                 UCI::setoption("UCI_LimitStrength", "false");
                 UCI::setoption("PruneAtShallowDepth", "false");
                 UCI::setoption("EnableTranspositionTable", "true");

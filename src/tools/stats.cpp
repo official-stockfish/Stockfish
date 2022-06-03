@@ -1192,6 +1192,7 @@ namespace Stockfish::Tools::Stats
         Thread* th = Threads.main();
         Position& pos = th->rootPos;
         StateInfo si;
+        const bool frc = Options["UCI_Chess960"];
 
         auto in = Tools::open_sfen_input_file(filename);
 
@@ -1214,7 +1215,7 @@ namespace Stockfish::Tools::Stats
 
             auto& psv = v.value();
 
-            pos.set_from_packed_sfen(psv.sfen, &si, th);
+            pos.set_from_packed_sfen(psv.sfen, &si, th, frc);
 
             on_entry(pos, (Move)psv.move, psv);
 
