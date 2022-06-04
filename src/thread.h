@@ -95,6 +95,7 @@ struct MainThread : public Thread {
   int callsCnt;
   bool stopOnPonderhit;
   std::atomic_bool ponder;
+  std::atomic_bool brain;
 };
 
 
@@ -104,7 +105,7 @@ struct MainThread : public Thread {
 
 struct ThreadPool : public std::vector<Thread*> {
 
-  void start_thinking(Position&, StateListPtr&, const Search::LimitsType&, bool = false);
+  void start_thinking(Position&, StateListPtr&, const Search::LimitsType&, bool = false, bool = false);
   void clear();
   void set(size_t);
 
