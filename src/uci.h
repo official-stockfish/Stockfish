@@ -32,12 +32,15 @@ namespace UCI {
 
 class Option;
 
+/// Define a custom comparator, because the UCI options should be case-insensitive
 struct CaseInsensitiveLess {
   bool operator() (const std::string&, const std::string&) const;
 };
 
+/// The options container is defined as a std::map
 typedef std::map<std::string, Option, CaseInsensitiveLess> OptionsMap;
 
+/// The Option class implements each option as specified by the UCI protocol
 class Option {
 
   typedef void (*OnChange)(const Option&);
