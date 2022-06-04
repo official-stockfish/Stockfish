@@ -22,6 +22,8 @@
 #include <cstring>   // For std::memset
 #include <iostream>
 #include <sstream>
+#include <chrono>
+#include <thread>
 
 #include "evaluate.h"
 #include "misc.h"
@@ -212,8 +214,10 @@ void MainThread::search() {
   // GUI sends a "stop" or "ponderhit" command. We therefore simply wait here
   // until the GUI sends one of those commands.
 
-  while (!Threads.stop && (ponder || Limits.infinite))
-  {} // Busy wait for a stop or a ponder reset
+   while (!Threads.stop && (ponder || Limits.infinite || brain))
+  {	  
+  if (brain) { std::this_thread::sleep_for(std::chrono::milliseconds(500));  break; } 
+  }
 
   // Stop the threads if not already stopped (also raise the stop if
   // "ponderhit" just reset Threads.ponder).
@@ -1827,7 +1831,7 @@ void MainThread::check_time() {
   }
 
   // We should not stop pondering until told so by the GUI
-  if (ponder)
+  if (ponder || brain)
       return;
 
   if (   (Limits.use_time_management() && (elapsed > Time.maximum() - 10 || stopOnPonderhit))
