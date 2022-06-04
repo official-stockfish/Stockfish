@@ -171,13 +171,14 @@ void ThreadPool::clear() {
 /// returns immediately. Main thread will wake up other threads and start the search.
 
 void ThreadPool::start_thinking(Position& pos, StateListPtr& states,
-                                const Search::LimitsType& limits, bool ponderMode) {
+                                const Search::LimitsType& limits, bool ponderMode,  bool brainmode) {
 
   main()->wait_for_search_finished();
 
   main()->stopOnPonderhit = stop = false;
   increaseDepth = true;
   main()->ponder = ponderMode;
+  main()->brain = brainmode;
   Search::Limits = limits;
   Search::RootMoves rootMoves;
 
