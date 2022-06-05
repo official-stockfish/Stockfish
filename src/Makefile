@@ -372,7 +372,7 @@ ifeq ($(COMP),gcc)
 	ifeq ($(arch),$(filter $(arch),armv7 armv8))
 		ifeq ($(OS),Android)
 			CXXFLAGS +=
-			LDFLAGS += 
+			LDFLAGS += -lgcov
 		endif
 	else
 		CXXFLAGS += -m$(bits)
