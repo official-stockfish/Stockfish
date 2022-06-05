@@ -46,7 +46,7 @@ namespace {
   // GCC PGO fix, does not work for GCC
   #ifdef __GNUC__
     #ifndef __clang__
-      extern "C" void __gcov_flush();
+      extern "C" void __gcov_dump();
     #endif
   #endif
 
@@ -200,7 +200,7 @@ namespace {
     // GCC PGO fix
     #ifdef __GNUC__
       #ifndef __clang__
-        __gcov_flush();
+        __gcov_dump();
       #endif
     #endif
 
