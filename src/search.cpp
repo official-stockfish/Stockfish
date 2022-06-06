@@ -85,8 +85,8 @@ namespace {
   }
 
   // Add a small random component to draw evaluations to avoid 3-fold blindness
-  Value value_draw(Thread* thisThread) {
-    return VALUE_DRAW + Value(2 * (thisThread->nodes & 1) - 1);
+  Value value_draw(const Thread* thisThread) {
+    return VALUE_DRAW - 1 + Value(thisThread->nodes & 0x2);
   }
 
   // Skill structure is used to implement strength limit. If we have an uci_elo then
@@ -116,7 +116,7 @@ namespace {
 
   Value value_to_tt(Value v, int ply);
   Value value_from_tt(Value v, int ply, int r50c);
-  void update_pv(Move* pv, Move move, Move* childPv);
+  void update_pv(Move* pv, Move move, const Move* childPv);
   void update_continuation_histories(Stack* ss, Piece pc, Square to, int bonus);
   void update_quiet_stats(const Position& pos, Stack* ss, Move move, int bonus);
   void update_all_stats(const Position& pos, Stack* ss, Move bestMove, Value bestValue, Value beta, Square prevSq,
@@ -635,10 +635,9 @@ namespace {
     // At non-PV nodes we check for an early TT cutoff
     if (  !PvNode
         && ss->ttHit
-        && tte->depth() > depth - (thisThread->id() % 2 == 1)
+        && tte->depth() > depth - ((int)thisThread->id() & 0x1)
         && ttValue != VALUE_NONE // Possible in case of TT access race
-        && (ttValue >= beta ? (tte->bound() & BOUND_LOWER)
-                            : (tte->bound() & BOUND_UPPER)))
+        && (tte->bound() & (ttValue >= beta ? BOUND_LOWER : BOUND_UPPER)))
     {
         // If ttMove is quiet, update move sorting heuristics on TT hit (~1 Elo)
         if (ttMove)
@@ -896,12 +895,11 @@ namespace {
                 if (value >= probCutBeta)
                 {
                     // if transposition table doesn't have equal or more deep info write probCut data into it
-                    if ( !(ss->ttHit
-                       && tte->depth() >= depth - 3
-                       && ttValue != VALUE_NONE))
+                    if (!(   ss->ttHit
+                          && tte->depth() >= depth - 3
+                          && ttValue != VALUE_NONE))
                         tte->save(posKey, value_to_tt(value, ss->ply), ttPv,
-                            BOUND_LOWER,
-                            depth - 3, move, ss->staticEval);
+                                  BOUND_LOWER, depth - 3, move, ss->staticEval);
                     return value;
                 }
             }
@@ -1172,7 +1170,7 @@ moves_loop: // When in check, search starts here
 
           // Decrease reduction for PvNodes based on depth
           if (PvNode)
-              r -= 1 + 15 / ( 3 + depth );
+              r -= 1 + 15 / (3 + depth);
 
           // Increase reduction if next ply has a lot of fail high else reset count to 0
           if ((ss+1)->cutoffCnt > 3 && !PvNode)
@@ -1450,8 +1448,7 @@ moves_loop: // When in check, search starts here
         && ss->ttHit
         && tte->depth() >= ttDepth
         && ttValue != VALUE_NONE // Only in case of TT access race
-        && (ttValue >= beta ? (tte->bound() & BOUND_LOWER)
-                            : (tte->bound() & BOUND_UPPER)))
+        && (tte->bound() & (ttValue >= beta ? BOUND_LOWER : BOUND_UPPER)))
         return ttValue;
 
     // Evaluate the position statically
@@ -1567,14 +1564,14 @@ moves_loop: // When in check, search starts here
                                                                 [to_sq(move)];
 
       // Continuation history based pruning (~2 Elo)
-      if (  !capture
+      if (   !capture
           && bestValue > VALUE_TB_LOSS_IN_MAX_PLY
           && (*contHist[0])[pos.moved_piece(move)][to_sq(move)] < CounterMovePruneThreshold
           && (*contHist[1])[pos.moved_piece(move)][to_sq(move)] < CounterMovePruneThreshold)
           continue;
 
       // movecount pruning for quiet check evasions
-      if (  bestValue > VALUE_TB_LOSS_IN_MAX_PLY
+      if (   bestValue > VALUE_TB_LOSS_IN_MAX_PLY
           && quietCheckEvasions > 1
           && !capture
           && ss->inCheck)
@@ -1675,7 +1672,7 @@ moves_loop: // When in check, search starts here
 
   // update_pv() adds current move and appends child pv[]
 
-  void update_pv(Move* pv, Move move, Move* childPv) {
+  void update_pv(Move* pv, Move move, const Move* childPv) {
 
     for (*pv++ = move; childPv && *childPv != MOVE_NONE; )
         *pv++ = *childPv++;
@@ -1688,19 +1685,18 @@ moves_loop: // When in check, search starts here
   void update_all_stats(const Position& pos, Stack* ss, Move bestMove, Value bestValue, Value beta, Square prevSq,
                         Move* quietsSearched, int quietCount, Move* capturesSearched, int captureCount, Depth depth) {
 
-    int bonus1, bonus2;
     Color us = pos.side_to_move();
     Thread* thisThread = pos.this_thread();
     CapturePieceToHistory& captureHistory = thisThread->captureHistory;
     Piece moved_piece = pos.moved_piece(bestMove);
     PieceType captured = type_of(pos.piece_on(to_sq(bestMove)));
-
-    bonus1 = stat_bonus(depth + 1);
-    bonus2 = bestValue > beta + PawnValueMg ? bonus1               // larger bonus
-                                            : stat_bonus(depth);   // smaller bonus
+    int bonus1 = stat_bonus(depth + 1);
 
     if (!pos.capture(bestMove))
     {
+        int bonus2 = bestValue > beta + PawnValueMg ? bonus1               // larger bonus
+                                                    : stat_bonus(depth);   // smaller bonus
+
         // Increase stats for the best move in case it was a quiet move
         update_quiet_stats(pos, ss, bestMove, bonus2);
 
