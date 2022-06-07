@@ -1094,7 +1094,7 @@ Value Eval::evaluate(const Position& pos) {
   if (useClassical)
   {
       v = Evaluation<NO_TRACE>(pos).value();          // classical
-      useClassical = !useNNUE ? true : abs(v) >= 297;
+      useClassical = abs(v) >= 297;
   }
 
   // If result of a classical evaluation is much lower than threshold fall back to NNUE
