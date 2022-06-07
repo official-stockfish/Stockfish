@@ -908,11 +908,14 @@ namespace {
          ss->ttPv = ttPv;
     }
 
-    // Step 11. If the position is not in TT, decrease depth by 2 or 1 depending on node type (~3 Elo)
+    // Step 11. If the position is not in TT, decrease depth by 3 or 1 depending on node type (~3 Elo)
+    // Use qsearch if depth is equal or below zero (~4 Elo)
     if (   PvNode
-        && depth >= 3
         && !ttMove)
-        depth -= 2;
+        depth -= 3;
+
+    if (depth <= 0)
+        return qsearch<PV>(pos, ss, alpha, beta);
 
     if (   cutNode
         && depth >= 8
