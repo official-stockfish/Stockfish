@@ -307,7 +307,7 @@ void Thread::search() {
 
   multiPV = std::min(multiPV, rootMoves.size());
 
-  complexityAverage.set(202, 1);
+  complexityAverage.set(174, 1);
 
   trend         = SCORE_ZERO;
   optimism[ us] = Value(39);
@@ -472,7 +472,7 @@ void Thread::search() {
           double reduction = (1.56 + mainThread->previousTimeReduction) / (2.20 * timeReduction);
           double bestMoveInstability = 1 + 1.7 * totBestMoveChanges / Threads.size();
           int complexity = mainThread->complexityAverage.value();
-          double complexPosition = std::clamp(1.0 + (complexity - 326) / 1618.1, 0.5, 1.5);
+          double complexPosition = std::clamp(1.0 + (complexity - 277) / 1819, 0.5, 1.5);
 
           double totalTime = Time.optimum() * fallingEval * reduction * bestMoveInstability * complexPosition;
 
@@ -736,7 +736,9 @@ namespace {
         // Never assume anything about values stored in TT
         ss->staticEval = eval = tte->eval();
         if (eval == VALUE_NONE)
-            ss->staticEval = eval = evaluate(pos);
+            ss->staticEval = eval = evaluate(pos, &complexity);
+        else // Fall back to (semi)classical complexity for TT hits, the NNUE complexity is lost
+            complexity = abs(ss->staticEval - pos.psq_eg_stm());
 
         // Randomize draw evaluation
         if (eval == VALUE_DRAW)
@@ -749,12 +751,14 @@ namespace {
     }
     else
     {
-        ss->staticEval = eval = evaluate(pos);
+        ss->staticEval = eval = evaluate(pos, &complexity);
 
         // Save static evaluation into transposition table
         if (!excludedMove)
             tte->save(posKey, VALUE_NONE, ss->ttPv, BOUND_NONE, DEPTH_NONE, MOVE_NONE, eval);
     }
+
+    thisThread->complexityAverage.update(complexity);
 
     // Use static evaluation difference to improve quiet move ordering (~3 Elo)
     if (is_ok((ss-1)->currentMove) && !(ss-1)->inCheck && !priorCapture)
@@ -770,11 +774,7 @@ namespace {
     improvement =   (ss-2)->staticEval != VALUE_NONE ? ss->staticEval - (ss-2)->staticEval
                   : (ss-4)->staticEval != VALUE_NONE ? ss->staticEval - (ss-4)->staticEval
                   :                                    175;
-
     improving = improvement > 0;
-    complexity = abs(ss->staticEval - (us == WHITE ? eg_value(pos.psq_score()) : -eg_value(pos.psq_score())));
-
-    thisThread->complexityAverage.update(complexity);
 
     // Step 7. Razoring.
     // If eval is really low check with qsearch if it can exceed alpha, if it can't,
@@ -803,7 +803,7 @@ namespace {
         && (ss-1)->statScore < 14695
         &&  eval >= beta
         &&  eval >= ss->staticEval
-        &&  ss->staticEval >= beta - 15 * depth - improvement / 15 + 198 + complexity / 28
+        &&  ss->staticEval >= beta - 15 * depth - improvement / 15 + 201 + complexity / 24
         && !excludedMove
         &&  pos.non_pawn_material(us)
         && (ss->ply >= thisThread->nmpMinPly || us != thisThread->nmpColor))
@@ -811,7 +811,7 @@ namespace {
         assert(eval - beta >= 0);
 
         // Null move dynamic reduction based on depth, eval and complexity of position
-        Depth R = std::min(int(eval - beta) / 147, 5) + depth / 3 + 4 - (complexity > 753);
+        Depth R = std::min(int(eval - beta) / 147, 5) + depth / 3 + 4 - (complexity > 650);
 
         ss->currentMove = MOVE_NULL;
         ss->continuationHistory = &thisThread->continuationHistory[0][0][NO_PIECE][0];
