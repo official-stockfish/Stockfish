@@ -271,7 +271,6 @@ jobs:
         run: |
           export PATH=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH
           export LDFLAGS="-static -Wno-unused-command-line-argument"
-          export CXXFLAGS="-ffunction-sections -fdata-sections -Wl,--gc-sections"
           make clean
           make -j2 ARCH=armv8 build
           ls -tlr ./stockfish
@@ -285,7 +284,6 @@ jobs:
         if: ${{ matrix.config.run_armv7_tests }}
         run: |
           export PATH=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH
-          export CXXFLAGS="-ffunction-sections -fdata-sections -Wl,--gc-sections"
           export LDFLAGS="-static -Wno-unused-command-line-argument"
           make clean
           make -j2 ARCH=armv7 build
@@ -295,7 +293,6 @@ jobs:
         if: ${{ matrix.config.run_armv7_tests }}
         run: |
           export PATH=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH
-          export CXXFLAGS="-ffunction-sections -fdata-sections -Wl,--gc-sections"
           export LDFLAGS="-static -Wno-unused-command-line-argument"
           make clean
           make -j2 ARCH=armv7-neon build
