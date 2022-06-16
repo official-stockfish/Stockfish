@@ -867,8 +867,6 @@ namespace {
         assert(probCutBeta < VALUE_INFINITE);
 
         MovePicker mp(pos, ttMove, probCutBeta - ss->staticEval, depth - 3, &captureHistory);
-        bool ttPv = ss->ttPv;
-        ss->ttPv = false;
 
         while ((move = mp.next_move()) != MOVE_NONE)
             if (move != excludedMove && pos.legal(move))
@@ -895,11 +893,10 @@ namespace {
                 if (value >= probCutBeta)
                 {
                     // Save ProbCut data into transposition table
-                    tte->save(posKey, value_to_tt(value, ss->ply), ttPv, BOUND_LOWER, depth - 3, move, ss->staticEval);
+                    tte->save(posKey, value_to_tt(value, ss->ply), ss->ttPv, BOUND_LOWER, depth - 3, move, ss->staticEval);
                     return value;
                 }
             }
-         ss->ttPv = ttPv;
     }
 
     // Step 11. If the position is not in TT, decrease depth by 3.
