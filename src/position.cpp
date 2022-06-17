@@ -72,8 +72,11 @@ std::ostream& operator<<(std::ostream& os, const Position& pos) {
      << std::setfill('0') << std::setw(16) << pos.key()
      << std::setfill(' ') << std::dec << "\nCheckers: ";
 
-  for (Bitboard b = pos.checkers(); b; )
-      os << UCI::square(pop_lsb(b)) << " ";
+  if (!pos.checkers())
+      os << "none";
+  else
+      for (Bitboard b = pos.checkers(); b; )
+          os << UCI::square(pop_lsb(b)) << " ";
 
   if (    int(Tablebases::MaxCardinality) >= popcount(pos.pieces())
       && !pos.can_castle(ANY_CASTLING))
