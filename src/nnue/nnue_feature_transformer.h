@@ -284,48 +284,65 @@ namespace Stockfish::Eval::NNUE {
         ) / 2;
 
 
-      for (IndexType p = 0; p < 2; ++p)
-      {
-          const IndexType offset = (HalfDimensions / 2) * p;
+        const IndexType offset_0 = 0;
+        const IndexType offset_1 = HalfDimensions / 2;
 
 #if defined(VECTOR)
 
-          constexpr IndexType OutputChunkSize = MaxChunkSize;
-          static_assert((HalfDimensions / 2) % OutputChunkSize == 0);
-          constexpr IndexType NumOutputChunks = HalfDimensions / 2 / OutputChunkSize;
+        constexpr IndexType OutputChunkSize = MaxChunkSize;
+        static_assert((HalfDimensions / 2) % OutputChunkSize == 0);
+        constexpr IndexType NumOutputChunks = HalfDimensions / 2 / OutputChunkSize;
 
-          vec_t Zero = vec_zero();
-          vec_t One = vec_set_16(127);
+        vec_t Zero = vec_zero();
+        vec_t One = vec_set_16(127);
 
-          const vec_t* in0 = reinterpret_cast<const vec_t*>(&(accumulation[perspectives[p]][0]));
-          const vec_t* in1 = reinterpret_cast<const vec_t*>(&(accumulation[perspectives[p]][HalfDimensions / 2]));
-                vec_t* out = reinterpret_cast<      vec_t*>(output + offset);
+        const vec_t* in0_p0 = reinterpret_cast<const vec_t*>(&(accumulation[perspectives[0]][0]));
+        const vec_t* in1_p0 = reinterpret_cast<const vec_t*>(&(accumulation[perspectives[0]][HalfDimensions / 2]));
+              vec_t* out_0 = reinterpret_cast<       vec_t*>(output + offset_0);
+        
+        const vec_t* in0_p1 = reinterpret_cast<const vec_t*>(&(accumulation[perspectives[1]][0]));
+        const vec_t* in1_p1 = reinterpret_cast<const vec_t*>(&(accumulation[perspectives[1]][HalfDimensions / 2]));
+              vec_t* out_1 = reinterpret_cast<       vec_t*>(output + offset_1);
 
-          for (IndexType j = 0; j < NumOutputChunks; j += 1)
-          {
-              const vec_t sum0a = vec_max_16(vec_min_16(in0[j * 2 + 0], One), Zero);
-              const vec_t sum0b = vec_max_16(vec_min_16(in0[j * 2 + 1], One), Zero);
-              const vec_t sum1a = vec_max_16(vec_min_16(in1[j * 2 + 0], One), Zero);
-              const vec_t sum1b = vec_max_16(vec_min_16(in1[j * 2 + 1], One), Zero);
+        for (IndexType j = 0; j < NumOutputChunks; j += 1)
+        {
+            const vec_t pa_0 = vec_mul_16(vec_max_16(vec_min_16(in0_p0[j * 2 + 0], One), Zero), 
+                                          vec_max_16(vec_min_16(in1_p0[j * 2 + 0], One), Zero));
 
-              const vec_t pa = vec_mul_16(sum0a, sum1a);
-              const vec_t pb = vec_mul_16(sum0b, sum1b);
+            const vec_t pb_0 = vec_mul_16(vec_max_16(vec_min_16(in0_p0[j * 2 + 1], One), Zero), 
+                                          vec_max_16(vec_min_16(in1_p0[j * 2 + 1], One), Zero));
 
-              out[j] = vec_msb_pack_16(pa, pb);
-          }
+            out_0[j] = vec_msb_pack_16(pa_0, pb_0);
+
+
+            const vec_t pa_1 = vec_mul_16(vec_max_16(vec_min_16(in0_p1[j * 2 + 0], One), Zero), 
+                                          vec_max_16(vec_min_16(in1_p1[j * 2 + 0], One), Zero));
+
+            const vec_t pb_1 = vec_mul_16(vec_max_16(vec_min_16(in0_p1[j * 2 + 1], One), Zero), 
+                                          vec_max_16(vec_min_16(in1_p1[j * 2 + 1], One), Zero));
+
+            out_1[j] = vec_msb_pack_16(pa_1, pb_1);
+        }
 
 #else
 
-          for (IndexType j = 0; j < HalfDimensions / 2; ++j) {
-              BiasType sum0 = accumulation[static_cast<int>(perspectives[p])][j + 0];
-              BiasType sum1 = accumulation[static_cast<int>(perspectives[p])][j + HalfDimensions / 2];
-              sum0 = std::max<int>(0, std::min<int>(127, sum0));
-              sum1 = std::max<int>(0, std::min<int>(127, sum1));
-              output[offset + j] = static_cast<OutputType>(sum0 * sum1 / 128);
-          }
+        for (IndexType j = 0; j < HalfDimensions / 2; ++j) {
+            BiasType sum0_p0 = accumulation[static_cast<int>(perspectives[0])][j + 0];
+            BiasType sum1_p0 = accumulation[static_cast<int>(perspectives[0])][j + HalfDimensions / 2];
+
+            BiasType sum0_p1 = accumulation[static_cast<int>(perspectives[1])][j + 0];
+            BiasType sum1_p1 = accumulation[static_cast<int>(perspectives[1])][j + HalfDimensions / 2];
+
+            sum0_p0 = std::max<int>(0, std::min<int>(127, sum0_p0));
+            sum1_p0 = std::max<int>(0, std::min<int>(127, sum1_p0));
+            output[offset_0 + j] = static_cast<OutputType>(sum0_p0 * sum1_p0 / 128);
+
+            sum0_p1 = std::max<int>(1, std::min<int>(127, sum0_p1));
+            sum1_p1 = std::max<int>(1, std::min<int>(127, sum1_p1));
+            output[offset_1 + j] = static_cast<OutputType>(sum0_p1 * sum1_p1 / 128);
+        }
 
 #endif
-      }
 
 #if defined(vec_cleanup)
       vec_cleanup();
@@ -403,21 +420,28 @@ namespace Stockfish::Eval::NNUE {
           for (IndexType i = 0; states_to_update[i]; ++i)
           {
             // Difference calculation for the deactivated features
-            for (const auto index : removed[i])
+            for (std::size_t n = 0; n < removed[i].size() || n < added[i].size(); ++n)
             {
-              const IndexType offset = HalfDimensions * index + j * TileHeight;
-              auto column = reinterpret_cast<const vec_t*>(&weights[offset]);
-              for (IndexType k = 0; k < NumRegs; ++k)
-                acc[k] = vec_sub_16(acc[k], column[k]);
-            }
+                const IndexType offset_removed = (n < removed[i].size()) * HalfDimensions * removed[i][n] + j * TileHeight;
+                auto column_removed = reinterpret_cast<const vec_t*>(&weights[offset_removed]);
 
-            // Difference calculation for the activated features
-            for (const auto index : added[i])
-            {
-              const IndexType offset = HalfDimensions * index + j * TileHeight;
-              auto column = reinterpret_cast<const vec_t*>(&weights[offset]);
-              for (IndexType k = 0; k < NumRegs; ++k)
-                acc[k] = vec_add_16(acc[k], column[k]);
+                const IndexType offset_added = (n < added[i].size()) * HalfDimensions * added[i][n] + j * TileHeight;
+                auto column_added = reinterpret_cast<const vec_t*>(&weights[offset_added]);
+
+                if (n < removed[i].size())
+                {
+                    for (IndexType k = 0; k < NumRegs; ++k)
+                    {
+                        acc[k] = vec_sub_16(acc[k], column_removed[k]);
+                    }
+                }
+                if (n < added[i].size())
+                {
+                    for (IndexType k = 0; k < NumRegs; ++k)
+                    {
+                        acc[k] = vec_add_16(acc[k], column_added[k]);
+                    }
+                }
             }
 
             // Store accumulator
