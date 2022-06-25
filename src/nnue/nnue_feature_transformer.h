@@ -398,10 +398,6 @@ namespace Stockfish::Eval::NNUE {
         StateInfo *states_to_update[3] =
           { next, next == pos.state() ? nullptr : pos.state(), nullptr };
   #ifdef VECTOR
-
-        #if (defined(__GNUC__) && !defined(__clang__) && !defined(__INTEL_COMPILER))
-        #pragma GCC unroll HalfDimensions / TileHeight
-        #endif
         for (IndexType j = 0; j < HalfDimensions / TileHeight; ++j)
         {
           // Load accumulator
@@ -413,22 +409,28 @@ namespace Stockfish::Eval::NNUE {
           for (IndexType i = 0; states_to_update[i]; ++i)
           {
             // Difference calculation for the deactivated features
-
-            for (const auto index : removed[i])
+            for (std::size_t n = 0; n < removed[i].size() || n < added[i].size(); ++n)
             {
-              const IndexType offset = HalfDimensions * index + j * TileHeight;
-              auto column = reinterpret_cast<const vec_t*>(&weights[offset]);
-              for (IndexType k = 0; k < NumRegs; ++k)
-                acc[k] = vec_sub_16(acc[k], column[k]);
-            }
+                const IndexType offset_removed = (n < removed[i].size()) * HalfDimensions * removed[i][n] + j * TileHeight;
+                auto column_removed = reinterpret_cast<const vec_t*>(&weights[offset_removed]);
 
-            // Difference calculation for the activated features
-            for (const auto index : added[i])
-            {
-                const IndexType offset = HalfDimensions * index + j * TileHeight;
-                auto column = reinterpret_cast<const vec_t*>(&weights[offset]);
-                for (IndexType k = 0; k < NumRegs; ++k)
-                  acc[k] = vec_add_16(acc[k], column[k]);
+                const IndexType offset_added = (n < added[i].size()) * HalfDimensions * added[i][n] + j * TileHeight;
+                auto column_added = reinterpret_cast<const vec_t*>(&weights[offset_added]);
+
+                if (n < removed[i].size())
+                {
+                    for (IndexType k = 0; k < NumRegs; ++k)
+                    {
+                        acc[k] = vec_sub_16(acc[k], column_removed[k]);
+                    }
+                }
+                if (n < added[i].size())
+                {
+                    for (IndexType k = 0; k < NumRegs; ++k)
+                    {
+                        acc[k] = vec_add_16(acc[k], column_added[k]);
+                    }
+                }
             }
 
             // Store accumulator
