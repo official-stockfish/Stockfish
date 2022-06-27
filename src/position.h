@@ -1,6 +1,8 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2022 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
+  Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
+  Copyright (C) 2015-2020 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -25,13 +27,9 @@
 #include <string>
 
 #include "bitboard.h"
-#include "evaluate.h"
-#include "psqt.h"
+#include "neuralnet.h"
 #include "types.h"
 
-#include "nnue/nnue_accumulator.h"
-
-namespace Stockfish {
 
 /// StateInfo struct stores information needed to restore a Position object to
 /// its previous state when we retract a move. Whenever a move is made on the
@@ -51,16 +49,14 @@ struct StateInfo {
   // Not copied when making a move (will be recomputed anyhow)
   Key        key;
   Bitboard   checkersBB;
+  Piece      capturedPiece;
   StateInfo* previous;
   Bitboard   blockersForKing[COLOR_NB];
   Bitboard   pinners[COLOR_NB];
   Bitboard   checkSquares[PIECE_TYPE_NB];
-  Piece      capturedPiece;
   int        repetition;
-
   // Used by NNUE
-  Eval::NNUE::Accumulator accumulator;
-  DirtyPiece dirtyPiece;
+  int16_t    accumulator[HIDDEN_BIAS];
 };
 
 
@@ -70,12 +66,12 @@ struct StateInfo {
 /// elements are not invalidated upon list resizing.
 typedef std::unique_ptr<std::deque<StateInfo>> StateListPtr;
 
+class Thread;
 
 /// Position class stores information regarding the board representation as
 /// pieces, side to move, hash keys, castling info, etc. Important methods are
 /// do_move() and undo_move(), used by the search to update node info when
 /// traversing the search tree.
-class Thread;
 
 class Position {
 public:
@@ -88,7 +84,7 @@ public:
   // FEN string input/output
   Position& set(const std::string& fenStr, bool isChess960, StateInfo* si, Thread* th);
   Position& set(const std::string& code, Color c, StateInfo* si);
-  std::string fen() const;
+  const std::string fen() const;
 
   // Position representation
   Bitboard pieces(PieceType pt) const;
@@ -101,6 +97,7 @@ public:
   bool empty(Square s) const;
   template<PieceType Pt> int count(Color c) const;
   template<PieceType Pt> int count() const;
+  template<PieceType Pt> const Square* squares(Color c) const;
   template<PieceType Pt> Square square(Color c) const;
   bool is_on_semiopen_file(Color c, Square s) const;
 
@@ -114,19 +111,20 @@ public:
   Bitboard checkers() const;
   Bitboard blockers_for_king(Color c) const;
   Bitboard check_squares(PieceType pt) const;
-  Bitboard pinners(Color c) const;
+  bool is_discovery_check_on_king(Color c, Move m) const;
 
   // Attacks to/from a given square
   Bitboard attackers_to(Square s) const;
   Bitboard attackers_to(Square s, Bitboard occupied) const;
   Bitboard slider_blockers(Bitboard sliders, Square s, Bitboard& pinners) const;
-  template<PieceType Pt> Bitboard attacks_by(Color c) const;
 
   // Properties of moves
   bool legal(Move m) const;
   bool pseudo_legal(const Move m) const;
   bool capture(Move m) const;
+  bool capture_or_promotion(Move m) const;
   bool gives_check(Move m) const;
+  bool advanced_pawn_push(Move m) const;
   Piece moved_piece(Move m) const;
   Piece captured_piece() const;
 
@@ -151,6 +149,9 @@ public:
   Key material_key() const;
   Key pawn_key() const;
 
+  // NNUE
+  Value nnue_output() const;
+
   // Other properties of the position
   Color side_to_move() const;
   int game_ply() const;
@@ -161,19 +162,12 @@ public:
   bool has_repeated() const;
   int rule50_count() const;
   Score psq_score() const;
-  Value psq_eg_stm() const;
   Value non_pawn_material(Color c) const;
   Value non_pawn_material() const;
 
   // Position consistency check, for debugging
   bool pos_is_ok() const;
   void flip();
-
-  // Used by NNUE
-  StateInfo* state() const;
-
-  void put_piece(Piece pc, Square s);
-  void remove_piece(Square s);
 
 private:
   // Initialization helpers (used while setting up a position)
@@ -182,6 +176,8 @@ private:
   void set_check_info(StateInfo* si) const;
 
   // Other helpers
+  void put_piece(Piece pc, Square s);
+  void remove_piece(Square s);
   void move_piece(Square from, Square to);
   template<bool Do>
   void do_castling(Color us, Square from, Square& to, Square& rfrom, Square& rto);
@@ -191,16 +187,22 @@ private:
   Bitboard byTypeBB[PIECE_TYPE_NB];
   Bitboard byColorBB[COLOR_NB];
   int pieceCount[PIECE_NB];
+  Square pieceList[PIECE_NB][16];
+  int index[SQUARE_NB];
   int castlingRightsMask[SQUARE_NB];
   Square castlingRookSquare[CASTLING_RIGHT_NB];
   Bitboard castlingPath[CASTLING_RIGHT_NB];
-  Thread* thisThread;
-  StateInfo* st;
   int gamePly;
   Color sideToMove;
   Score psq;
+  Thread* thisThread;
+  StateInfo* st;
   bool chess960;
 };
+
+namespace PSQT {
+  extern Score psq[PIECE_NB][SQUARE_NB];
+}
 
 extern std::ostream& operator<<(std::ostream& os, const Position& pos);
 
@@ -249,9 +251,13 @@ template<PieceType Pt> inline int Position::count() const {
   return count<Pt>(WHITE) + count<Pt>(BLACK);
 }
 
+template<PieceType Pt> inline const Square* Position::squares(Color c) const {
+  return pieceList[make_piece(c, Pt)];
+}
+
 template<PieceType Pt> inline Square Position::square(Color c) const {
-  assert(count<Pt>(c) == 1);
-  return lsb(pieces(c, Pt));
+  assert(pieceCount[make_piece(c, Pt)] == 1);
+  return squares<Pt>(c)[0];
 }
 
 inline Square Position::ep_square() const {
@@ -286,22 +292,6 @@ inline Bitboard Position::attackers_to(Square s) const {
   return attackers_to(s, pieces());
 }
 
-template<PieceType Pt>
-inline Bitboard Position::attacks_by(Color c) const {
-
-  if constexpr (Pt == PAWN)
-      return c == WHITE ? pawn_attacks_bb<WHITE>(pieces(WHITE, PAWN))
-                        : pawn_attacks_bb<BLACK>(pieces(BLACK, PAWN));
-  else
-  {
-      Bitboard threats = 0;
-      Bitboard attackers = pieces(c, Pt);
-      while (attackers)
-          threats |= attacks_bb<Pt>(pop_lsb(attackers), pieces());
-      return threats;
-  }
-}
-
 inline Bitboard Position::checkers() const {
   return st->checkersBB;
 }
@@ -310,16 +300,21 @@ inline Bitboard Position::blockers_for_king(Color c) const {
   return st->blockersForKing[c];
 }
 
-inline Bitboard Position::pinners(Color c) const {
-  return st->pinners[c];
-}
-
 inline Bitboard Position::check_squares(PieceType pt) const {
   return st->checkSquares[pt];
 }
 
+inline bool Position::is_discovery_check_on_king(Color c, Move m) const {
+  return st->blockersForKing[c] & from_sq(m);
+}
+
 inline bool Position::pawn_passed(Color c, Square s) const {
   return !(pieces(~c, PAWN) & passed_pawn_span(c, s));
+}
+
+inline bool Position::advanced_pawn_push(Move m) const {
+  return   type_of(moved_piece(m)) == PAWN
+        && relative_rank(sideToMove, to_sq(m)) > RANK_5;
 }
 
 inline int Position::pawns_on_same_color_squares(Color c, Square s) const {
@@ -327,8 +322,7 @@ inline int Position::pawns_on_same_color_squares(Color c, Square s) const {
 }
 
 inline Key Position::key() const {
-  return st->rule50 < 14 ? st->key
-                         : st->key ^ make_key((st->rule50 - 14) / 8);
+  return st->key;
 }
 
 inline Key Position::pawn_key() const {
@@ -341,10 +335,6 @@ inline Key Position::material_key() const {
 
 inline Score Position::psq_score() const {
   return psq;
-}
-
-inline Value Position::psq_eg_stm() const {
-  return (sideToMove == WHITE ? 1 : -1) * eg_value(psq);
 }
 
 inline Value Position::non_pawn_material(Color c) const {
@@ -373,10 +363,15 @@ inline bool Position::is_chess960() const {
   return chess960;
 }
 
+inline bool Position::capture_or_promotion(Move m) const {
+  assert(is_ok(m));
+  return type_of(m) != NORMAL ? type_of(m) != CASTLING : !empty(to_sq(m));
+}
+
 inline bool Position::capture(Move m) const {
   assert(is_ok(m));
   // Castling is encoded as "king captures rook"
-  return (!empty(to_sq(m)) && type_of(m) != CASTLING) || type_of(m) == EN_PASSANT;
+  return (!empty(to_sq(m)) && type_of(m) != CASTLING) || type_of(m) == ENPASSANT;
 }
 
 inline Piece Position::captured_piece() const {
@@ -392,25 +387,35 @@ inline void Position::put_piece(Piece pc, Square s) {
   board[s] = pc;
   byTypeBB[ALL_PIECES] |= byTypeBB[type_of(pc)] |= s;
   byColorBB[color_of(pc)] |= s;
-  pieceCount[pc]++;
+  index[s] = pieceCount[pc]++;
+  pieceList[pc][index[s]] = s;
   pieceCount[make_piece(color_of(pc), ALL_PIECES)]++;
   psq += PSQT::psq[pc][s];
 }
 
 inline void Position::remove_piece(Square s) {
 
+  // WARNING: This is not a reversible operation. If we remove a piece in
+  // do_move() and then replace it in undo_move() we will put it at the end of
+  // the list and not in its original place, it means index[] and pieceList[]
+  // are not invariant to a do_move() + undo_move() sequence.
   Piece pc = board[s];
   byTypeBB[ALL_PIECES] ^= s;
   byTypeBB[type_of(pc)] ^= s;
   byColorBB[color_of(pc)] ^= s;
-  board[s] = NO_PIECE;
-  pieceCount[pc]--;
+  /* board[s] = NO_PIECE;  Not needed, overwritten by the capturing one */
+  Square lastSquare = pieceList[pc][--pieceCount[pc]];
+  index[lastSquare] = index[s];
+  pieceList[pc][index[lastSquare]] = lastSquare;
+  pieceList[pc][pieceCount[pc]] = SQ_NONE;
   pieceCount[make_piece(color_of(pc), ALL_PIECES)]--;
   psq -= PSQT::psq[pc][s];
 }
 
 inline void Position::move_piece(Square from, Square to) {
 
+  // index[from] is not updated and becomes stale. This works as long as index[]
+  // is accessed just by known occupied squares.
   Piece pc = board[from];
   Bitboard fromTo = from | to;
   byTypeBB[ALL_PIECES] ^= fromTo;
@@ -418,18 +423,13 @@ inline void Position::move_piece(Square from, Square to) {
   byColorBB[color_of(pc)] ^= fromTo;
   board[from] = NO_PIECE;
   board[to] = pc;
+  index[to] = index[from];
+  pieceList[pc][index[to]] = to;
   psq += PSQT::psq[pc][to] - PSQT::psq[pc][from];
 }
 
 inline void Position::do_move(Move m, StateInfo& newSt) {
   do_move(m, newSt, gives_check(m));
 }
-
-inline StateInfo* Position::state() const {
-
-  return st;
-}
-
-} // namespace Stockfish
 
 #endif // #ifndef POSITION_H_INCLUDED

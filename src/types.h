@@ -1,6 +1,8 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2022 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
+  Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
+  Copyright (C) 2015-2020 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -36,11 +38,12 @@
 /// -DUSE_PEXT    | Add runtime support for use of pext asm-instruction. Works
 ///               | only in 64-bit mode and requires hardware with pext support.
 
+#include <algorithm>
 #include <cassert>
 #include <cctype>
 #include <cstdint>
 #include <cstdlib>
-#include <algorithm>
+#include <vector>
 
 #if defined(_MSC_VER)
 // Disable some silly and noisy warning from MSVC compiler
@@ -56,12 +59,6 @@
 /// _MSC_VER           Compiler is MSVC or Intel on Windows
 /// _WIN32             Building on Windows (any)
 /// _WIN64             Building on Windows 64 bit
-
-#if defined(__GNUC__ ) && (__GNUC__ < 9 || (__GNUC__ == 9 && __GNUC_MINOR__ <= 2)) && defined(_WIN32) && !defined(__clang__)
-#define ALIGNAS_ON_STACK_VARIABLES_BROKEN
-#endif
-
-#define ASSERT_ALIGNED(ptr, alignment) assert(reinterpret_cast<uintptr_t>(ptr) % alignment == 0)
 
 #if defined(_WIN64) && defined(_MSC_VER) // No Makefile used
 #  include <intrin.h> // Microsoft header for _BitScanForward64()
@@ -82,8 +79,6 @@
 #else
 #  define pext(b, m) 0
 #endif
-
-namespace Stockfish {
 
 #ifdef USE_POPCNT
 constexpr bool HasPopCnt = true;
@@ -115,7 +110,7 @@ constexpr int MAX_PLY   = 246;
 /// bit  6-11: origin square (from 0 to 63)
 /// bit 12-13: promotion piece type - 2 (from KNIGHT-2 to QUEEN-2)
 /// bit 14-15: special move flag: promotion (1), en passant (2), castling (3)
-/// NOTE: en passant bit is set only when a pawn can be captured
+/// NOTE: EN-PASSANT bit is set only when a pawn can be captured
 ///
 /// Special cases are MOVE_NONE and MOVE_NULL. We can sneak these in because in
 /// any normal move destination square is always different from origin square
@@ -129,7 +124,7 @@ enum Move : int {
 enum MoveType {
   NORMAL,
   PROMOTION = 1 << 14,
-  EN_PASSANT = 2 << 14,
+  ENPASSANT = 2 << 14,
   CASTLING  = 3 << 14
 };
 
@@ -186,11 +181,12 @@ enum Value : int {
   VALUE_MATE_IN_MAX_PLY  =  VALUE_MATE - MAX_PLY,
   VALUE_MATED_IN_MAX_PLY = -VALUE_MATE_IN_MAX_PLY,
 
-  PawnValueMg   = 126,   PawnValueEg   = 208,
+  PawnValueMg   = 124,   PawnValueEg   = 206,
   KnightValueMg = 781,   KnightValueEg = 854,
   BishopValueMg = 825,   BishopValueEg = 915,
   RookValueMg   = 1276,  RookValueEg   = 1380,
   QueenValueMg  = 2538,  QueenValueEg  = 2682,
+  Tempo = 28,
 
   MidgameLimit  = 15258, EndgameLimit  = 3915
 };
@@ -203,8 +199,8 @@ enum PieceType {
 
 enum Piece {
   NO_PIECE,
-  W_PAWN = PAWN,     W_KNIGHT, W_BISHOP, W_ROOK, W_QUEEN, W_KING,
-  B_PAWN = PAWN + 8, B_KNIGHT, B_BISHOP, B_ROOK, B_QUEEN, B_KING,
+  W_PAWN = 1, W_KNIGHT, W_BISHOP, W_ROOK, W_QUEEN, W_KING,
+  B_PAWN = 9, B_KNIGHT, B_BISHOP, B_ROOK, B_QUEEN, B_KING,
   PIECE_NB = 16
 };
 
@@ -223,8 +219,7 @@ enum : int {
   DEPTH_QS_RECAPTURES = -5,
 
   DEPTH_NONE   = -6,
-
-  DEPTH_OFFSET = -7 // value used only for TT entry occupancy check
+  DEPTH_OFFSET = DEPTH_NONE
 };
 
 enum Square : int {
@@ -238,8 +233,7 @@ enum Square : int {
   SQ_A8, SQ_B8, SQ_C8, SQ_D8, SQ_E8, SQ_F8, SQ_G8, SQ_H8,
   SQ_NONE,
 
-  SQUARE_ZERO = 0,
-  SQUARE_NB   = 64
+  SQUARE_NB = 64
 };
 
 enum Direction : int {
@@ -262,21 +256,6 @@ enum Rank : int {
   RANK_1, RANK_2, RANK_3, RANK_4, RANK_5, RANK_6, RANK_7, RANK_8, RANK_NB
 };
 
-// Keep track of what a move changes on the board (used by NNUE)
-struct DirtyPiece {
-
-  // Number of changed pieces
-  int dirty_num;
-
-  // Max 3 pieces can change in one move. A promotion with capture moves
-  // both the pawn and the captured piece to SQ_NONE and the piece promoted
-  // to from SQ_NONE to the capture square.
-  Piece piece[3];
-
-  // From and to squares, which may be SQ_NONE
-  Square from[3];
-  Square to[3];
-};
 
 /// Score enum stores a middlegame and an endgame value in a single integer (enum).
 /// The least significant 16 bits are used to store the middlegame value and the
@@ -302,10 +281,10 @@ inline Value mg_value(Score s) {
 }
 
 #define ENABLE_BASE_OPERATORS_ON(T)                                \
-constexpr T operator+(T d1, int d2) { return T(int(d1) + d2); }    \
-constexpr T operator-(T d1, int d2) { return T(int(d1) - d2); }    \
+constexpr T operator+(T d1, int d2) { return T(int(d1) + d2); } \
+constexpr T operator-(T d1, int d2) { return T(int(d1) - d2); } \
 constexpr T operator-(T d) { return T(-int(d)); }                  \
-inline T& operator+=(T& d1, int d2) { return d1 = d1 + d2; }       \
+inline T& operator+=(T& d1, int d2) { return d1 = d1 + d2; }         \
 inline T& operator-=(T& d1, int d2) { return d1 = d1 - d2; }
 
 #define ENABLE_INCR_OPERATORS_ON(T)                                \
@@ -324,7 +303,6 @@ inline T& operator/=(T& d, int i) { return d = T(int(d) / i); }
 ENABLE_FULL_OPERATORS_ON(Value)
 ENABLE_FULL_OPERATORS_ON(Direction)
 
-ENABLE_INCR_OPERATORS_ON(Piece)
 ENABLE_INCR_OPERATORS_ON(PieceType)
 ENABLE_INCR_OPERATORS_ON(Square)
 ENABLE_INCR_OPERATORS_ON(File)
@@ -450,7 +428,7 @@ constexpr Square to_sq(Move m) {
 }
 
 constexpr int from_to(Move m) {
-  return m & 0xFFF;
+ return m & 0xFFF;
 }
 
 constexpr MoveType type_of(Move m) {
@@ -465,6 +443,10 @@ constexpr Move make_move(Square from, Square to) {
   return Move((from << 6) + to);
 }
 
+constexpr Move reverse_move(Move m) {
+  return make_move(to_sq(m), from_sq(m));
+}
+
 template<MoveType T>
 constexpr Move make(Square from, Square to, PieceType pt = KNIGHT) {
   return Move(T + ((pt - KNIGHT) << 12) + (from << 6) + to);
@@ -474,12 +456,14 @@ constexpr bool is_ok(Move m) {
   return from_sq(m) != to_sq(m); // Catch MOVE_NULL and MOVE_NONE
 }
 
+inline int input_sq(Piece pc, Square s) {
+  return int(s) + (type_of(pc) - 1 + 6 * (color_of(pc) == BLACK)) * 64;
+}
+
 /// Based on a congruential pseudo random number generator
 constexpr Key make_key(uint64_t seed) {
   return seed * 6364136223846793005ULL + 1442695040888963407ULL;
 }
-
-} // namespace Stockfish
 
 #endif // #ifndef TYPES_H_INCLUDED
 
