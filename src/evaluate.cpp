@@ -1085,20 +1085,22 @@ Value Eval::evaluate(const Position& pos, int* complexity) {
   Value v;
   Color stm = pos.side_to_move();
   Value psq = pos.psq_eg_stm();
-  // Deciding between classical and NNUE eval (~10 Elo): for high PSQ imbalance we use classical,
-  // but we switch to NNUE during long shuffling or with high material on the board.
-  bool useClassical =    (pos.this_thread()->depth > 9 || pos.count<ALL_PIECES>() > 7)
-                      && abs(psq) * 5 > (856 + pos.non_pawn_material() / 64) * (10 + pos.rule50_count());
 
-  // Deciding between classical and NNUE eval (~10 Elo): for high PSQ imbalance we use classical,
-  // but we switch to NNUE during long shuffling or with high material on the board.
-  if (!useNNUE || useClassical)
+  bool useClassical = !useNNUE;
+  // In general we prefer NNUE evaluation, but in some cases the classical eval is superior (~10 Elo).
+  // With low piece counts and low depth, always use NNUE; otherwise, if there is also a high
+  // PSQ-vs-simple-material imbalance and little shuffling, we may switch back to classical...
+  useClassical |=    (pos.this_thread()->depth > 9 || pos.count<ALL_PIECES>() > 7)
+                  && 5 * abs(psq) > (856 + pos.non_pawn_material() / 64) * (10 + pos.rule50_count());
+
+  if (useClassical)
   {
       v = Evaluation<NO_TRACE>(pos).value();
+      // ...however, even after computing the classical eval,
+      // we *still* unconditionally fall back to NNUE for drawish positions.
       useClassical = abs(v) >= 297;
   }
 
-  // If result of a classical evaluation is much lower than threshold fall back to NNUE
   if (useNNUE && !useClassical)
   {
        int nnueComplexity;
