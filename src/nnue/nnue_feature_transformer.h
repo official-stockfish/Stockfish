@@ -284,6 +284,9 @@ namespace Stockfish::Eval::NNUE {
         ) / 2;
 
 
+#if (defined(__GNUC__) && !defined(__clang__) && !defined(__INTEL_COMPILER))
+#pragma GCC ivdep
+#endif
       for (IndexType p = 0; p < 2; ++p)
       {
           const IndexType offset = (HalfDimensions / 2) * p;
@@ -301,9 +304,6 @@ namespace Stockfish::Eval::NNUE {
           const vec_t* in1 = reinterpret_cast<const vec_t*>(&(accumulation[perspectives[p]][HalfDimensions / 2]));
                 vec_t* out = reinterpret_cast<      vec_t*>(output + offset);
 
-#if (defined(__GNUC__) && !defined(__clang__) && !defined(__INTEL_COMPILER))
-#pragma GCC unroll NumOutputChunks
-#endif
           for (IndexType j = 0; j < NumOutputChunks; j += 1)
           {
               const vec_t sum0a = vec_max_16(vec_min_16(in0[j * 2 + 0], One), Zero);
