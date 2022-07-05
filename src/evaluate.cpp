@@ -1042,38 +1042,6 @@ make_v:
     return v;
   }
 
-
-  /// Fisher Random Chess: correction for cornered bishops, to fix chess960 play with NNUE
-
-  Value fix_FRC(const Position& pos) {
-
-    constexpr Bitboard Corners =  1ULL << SQ_A1 | 1ULL << SQ_H1 | 1ULL << SQ_A8 | 1ULL << SQ_H8;
-
-    if (!(pos.pieces(BISHOP) & Corners))
-        return VALUE_ZERO;
-
-    int correction = 0;
-
-    if (   pos.piece_on(SQ_A1) == W_BISHOP
-        && pos.piece_on(SQ_B2) == W_PAWN)
-        correction -= CorneredBishop;
-
-    if (   pos.piece_on(SQ_H1) == W_BISHOP
-        && pos.piece_on(SQ_G2) == W_PAWN)
-        correction -= CorneredBishop;
-
-    if (   pos.piece_on(SQ_A8) == B_BISHOP
-        && pos.piece_on(SQ_B7) == B_PAWN)
-        correction += CorneredBishop;
-
-    if (   pos.piece_on(SQ_H8) == B_BISHOP
-        && pos.piece_on(SQ_G7) == B_PAWN)
-        correction += CorneredBishop;
-
-    return pos.side_to_move() == WHITE ?  Value(3 * correction)
-                                       : -Value(3 * correction);
-  }
-
 } // namespace Eval
 
 
@@ -1113,9 +1081,6 @@ Value Eval::evaluate(const Position& pos, int* complexity) {
 
        optimism = optimism * (269 + nnueComplexity) / 256;
        v = (nnue * scale + optimism * (scale - 754)) / 1024;
-
-       if (pos.is_chess960())
-           v += fix_FRC(pos);
   }
 
   // Damp down the evaluation linearly when shuffling
