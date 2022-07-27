@@ -1055,7 +1055,7 @@ Value Eval::evaluate(const Position& pos, int* complexity) {
   Value psq = pos.psq_eg_stm();
   // Deciding between classical and NNUE eval (~10 Elo): for high PSQ imbalance we use classical,
   // but we switch to NNUE during long shuffling or with high material on the board.
-  bool useClassical =    (pos.this_thread()->depth > 9 || pos.count<ALL_PIECES>() > 7)
+  bool useClassical =    (pos.count<ALL_PIECES>() > 7)
                       && abs(psq) * 5 > (856 + pos.non_pawn_material() / 64) * (10 + pos.rule50_count());
 
   // Deciding between classical and NNUE eval (~10 Elo): for high PSQ imbalance we use classical,
