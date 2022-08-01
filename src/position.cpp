@@ -158,7 +158,7 @@ void Position::init() {
 
 Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Thread* th) {
 /*
-   A FEN string defines a particular position using only the ASCII character set.
+   A FEN string defines a particular position using only the ASCII (American Standard Code for Information Interchange) character set.
 
    A FEN string contains six fields separated by a space. The fields are:
 
