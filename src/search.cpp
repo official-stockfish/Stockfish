@@ -565,7 +565,6 @@ namespace {
 
     // Step 1. Initialize node
     Thread* thisThread = pos.this_thread();
-    thisThread->depth  = depth;
     ss->inCheck        = pos.checkers();
     priorCapture       = pos.captured_piece();
     Color us           = pos.side_to_move();

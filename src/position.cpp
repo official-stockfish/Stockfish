@@ -1099,10 +1099,12 @@ bool Position::see_ge(Move m, Value threshold) const {
       // Don't allow pinned pieces to attack as long as there are
       // pinners on their original square.
       if (pinners(~stm) & occupied)
+      {
           stmAttackers &= ~blockers_for_king(stm);
 
-      if (!stmAttackers)
-          break;
+          if (!stmAttackers)
+              break;
+      }
 
       res ^= 1;
 

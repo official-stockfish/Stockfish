@@ -1114,7 +1114,6 @@ std::string Eval::trace(Position& pos) {
   std::memset(scores, 0, sizeof(scores));
 
   // Reset any global variable used in eval
-  pos.this_thread()->depth           = 0;
   pos.this_thread()->trend           = SCORE_ZERO;
   pos.this_thread()->bestValue       = VALUE_ZERO;
   pos.this_thread()->optimism[WHITE] = VALUE_ZERO;

@@ -116,22 +116,9 @@ class ValueList {
 
 public:
   std::size_t size() const { return size_; }
-  void resize(std::size_t newSize) { size_ = newSize; }
   void push_back(const T& value) { values_[size_++] = value; }
-  T& operator[](std::size_t index) { return values_[index]; }
-  T* begin() { return values_; }
-  T* end() { return values_ + size_; }
-  const T& operator[](std::size_t index) const { return values_[index]; }
   const T* begin() const { return values_; }
   const T* end() const { return values_ + size_; }
-
-  void swap(ValueList& other) {
-    const std::size_t maxSize = std::max(size_, other.size_);
-    for (std::size_t i = 0; i < maxSize; ++i) {
-      std::swap(values_[i], other.values_[i]);
-    }
-    std::swap(size_, other.size_);
-  }
 
 private:
   T values_[MaxSize];
