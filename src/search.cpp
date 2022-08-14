@@ -1191,7 +1191,7 @@ moves_loop: // When in check, search starts here
           value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, d, true);
 
           // Do full depth search when reduced LMR search fails high
-          if(value > alpha && d < newDepth)
+          if (value > alpha && d < newDepth)
           {
               const bool doDeeperSearch = value > (alpha + 78 + 11 * (newDepth - d));
               value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth + doDeeperSearch, !cutNode);
@@ -1211,7 +1211,6 @@ moves_loop: // When in check, search starts here
       {
               value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth, !cutNode);
       }
-
 
       // For PV nodes only, do a full PV search on the first move or after a fail
       // high (in the latter case search only if value < beta), otherwise let the
