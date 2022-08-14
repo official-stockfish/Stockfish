@@ -1054,7 +1054,10 @@ Key Position::key_after(Move m) const {
   if (captured)
       k ^= Zobrist::psq[captured][to];
 
-  return k ^ Zobrist::psq[pc][to] ^ Zobrist::psq[pc][from];
+  k ^= Zobrist::psq[pc][to] ^ Zobrist::psq[pc][from];
+
+  return (captured || type_of(pc) == PAWN)
+      ? k : adjust_key50<true>(k);
 }
 
 
