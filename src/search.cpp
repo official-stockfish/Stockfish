@@ -94,11 +94,11 @@ namespace {
   // (goldfish 1.13 = 2000) and a fit through Ordo derived Elo for match (TC 60+0.6)
   // results spanning a wide range of k values.
   struct Skill {
-    Skill(int skill_level, int uci_elo) {
+    Skill(double skill_level, int uci_elo) {
         if (uci_elo)
             level = std::clamp(std::pow((uci_elo - 1346.6) / 143.4, 1 / 0.806), 0.0, 20.0);
         else
-            level = double(skill_level);
+            level = skill_level;
     }
     bool enabled() const { return level < 20.0; }
     bool time_to_pick(Depth depth) const { return depth == 1 + int(level); }
