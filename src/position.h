@@ -33,6 +33,14 @@
 
 namespace Stockfish {
 
+namespace Zobrist {
+
+  extern Key psq[PIECE_NB][SQUARE_NB];
+  extern Key enpassant[FILE_NB];
+  extern Key castling[CASTLING_RIGHT_NB];
+  extern Key side, noPawns;
+}
+
 /// StateInfo struct stores information needed to restore a Position object to
 /// its previous state when we retract a move. Whenever a move is made on the
 /// board (by calling Position::do_move), a StateInfo object must be passed.
@@ -172,14 +180,14 @@ public:
   // Used by NNUE
   StateInfo* state() const;
 
-  void put_piece(Piece pc, Square s);
-  void remove_piece(Square s);
+  void put_piece(Piece pc, Square s, bool materialKey = false);
+  void remove_piece(Square s, bool materialKey = false);
+  void set_check_info(StateInfo* si) const;
 
 private:
   // Initialization helpers (used while setting up a position)
   void set_castling_right(Color c, Square rfrom);
   void set_state(StateInfo* si) const;
-  void set_check_info(StateInfo* si) const;
 
   // Other helpers
   void move_piece(Square from, Square to);
@@ -395,7 +403,7 @@ inline Thread* Position::this_thread() const {
   return thisThread;
 }
 
-inline void Position::put_piece(Piece pc, Square s) {
+inline void Position::put_piece(Piece pc, Square s, bool materialKey) {
 
   board[s] = pc;
   byTypeBB[ALL_PIECES] |= byTypeBB[type_of(pc)] |= s;
@@ -403,9 +411,12 @@ inline void Position::put_piece(Piece pc, Square s) {
   pieceCount[pc]++;
   pieceCount[make_piece(color_of(pc), ALL_PIECES)]++;
   psq += PSQT::psq[pc][s];
+
+  if (materialKey)
+      st->materialKey ^= Zobrist::psq[pc][pieceCount[pc] - 1];
 }
 
-inline void Position::remove_piece(Square s) {
+inline void Position::remove_piece(Square s, bool materialKey) {
 
   Piece pc = board[s];
   byTypeBB[ALL_PIECES] ^= s;
@@ -415,6 +426,9 @@ inline void Position::remove_piece(Square s) {
   pieceCount[pc]--;
   pieceCount[make_piece(color_of(pc), ALL_PIECES)]--;
   psq -= PSQT::psq[pc][s];
+
+  if (materialKey)
+      st->materialKey ^= Zobrist::psq[pc][pieceCount[pc]];
 }
 
 inline void Position::move_piece(Square from, Square to) {

@@ -673,49 +673,104 @@ namespace {
     {
         int piecesCount = pos.count<ALL_PIECES>();
 
-        if (    piecesCount <= TB::Cardinality
-            && (piecesCount <  TB::Cardinality || depth >= TB::ProbeDepth)
+        bool doProbe =    piecesCount <= TB::Cardinality
+                      && (piecesCount <  TB::Cardinality || depth >= TB::ProbeDepth);
+
+        bool subProbe =   !doProbe
+                       &&  piecesCount - 1 <= TB::Cardinality
+                       && (piecesCount - 1 <  TB::Cardinality || depth >= TB::ProbeDepth + 2)
+                       &&  pos.state()->epSquare == SQ_NONE;
+
+        if (   (doProbe || subProbe)
             &&  pos.rule50_count() == 0
             && !pos.can_castle(ANY_CASTLING))
         {
-            TB::ProbeState err;
-            TB::WDLScore wdl = Tablebases::probe_wdl(pos, &err);
-
-            // Force check of time on the next occasion
-            if (thisThread == Threads.main())
-                static_cast<MainThread*>(thisThread)->callsCnt = 0;
-
-            if (err != TB::ProbeState::FAIL)
+            Bitboard removablePieces = 0;
+            if (subProbe)
             {
-                thisThread->tbHits.fetch_add(1, std::memory_order_relaxed);
+                removablePieces = pos.pieces() ^ pos.pieces(KING);
+                removablePieces &= ~(pos.blockers_for_king(us) | pos.blockers_for_king(~us));
+            }
 
-                int drawScore = TB::UseRule50 ? 1 : 0;
-
-                // use the range VALUE_MATE_IN_MAX_PLY to VALUE_TB_WIN_IN_MAX_PLY to score
-                value =  wdl < -drawScore ? VALUE_MATED_IN_MAX_PLY + ss->ply + 1
-                       : wdl >  drawScore ? VALUE_MATE_IN_MAX_PLY - ss->ply - 1
-                                          : VALUE_DRAW + 2 * wdl * drawScore;
-
-                Bound b =  wdl < -drawScore ? BOUND_UPPER
-                         : wdl >  drawScore ? BOUND_LOWER : BOUND_EXACT;
-
-                if (    b == BOUND_EXACT
-                    || (b == BOUND_LOWER ? value >= beta : value <= alpha))
+            Piece rPc = NO_PIECE;
+            Square rSq = SQ_NONE;
+            while (doProbe || removablePieces)
+            {
+                if (removablePieces)
                 {
-                    tte->save(posKey, value_to_tt(value, ss->ply), ss->ttPv, b,
-                              std::min(MAX_PLY - 1, depth + 6),
-                              MOVE_NONE, VALUE_NONE);
+                    if (rPc != NO_PIECE)
+                        pos.put_piece(rPc, rSq, true);
 
-                    return value;
+                    rSq = pop_lsb(removablePieces);
+                    rPc = pos.piece_on(rSq);
+                    pos.remove_piece(rSq, true);
+                    pos.set_check_info(pos.state());
                 }
 
-                if (PvNode)
+                TB::ProbeState err;
+                TB::WDLScore wdl = Tablebases::probe_wdl(pos, &err);
+
+                // Force check of time on the next occasion
+                if (thisThread == Threads.main())
+                    static_cast<MainThread*>(thisThread)->callsCnt = 0;
+
+                if (err != TB::ProbeState::FAIL)
                 {
-                    if (b == BOUND_LOWER)
-                        bestValue = value, alpha = std::max(alpha, bestValue);
-                    else
-                        maxValue = value;
+                    thisThread->tbHits.fetch_add(1, std::memory_order_relaxed);
+
+                    int drawScore = TB::UseRule50 ? 1 : 0;
+
+                    // Only use result if we give up a piece and are still winning
+                    // or opponent gives up a piece and we are still losing.
+                    if (   subProbe
+                        && (   (wdl <=  drawScore && color_of(rPc) ==  us)
+                            || (wdl >= -drawScore && color_of(rPc) == ~us)))
+                        continue;
+
+                    // use the range VALUE_MATE_IN_MAX_PLY to VALUE_TB_WIN_IN_MAX_PLY to score
+                    value =  wdl < -drawScore ? VALUE_MATED_IN_MAX_PLY + ss->ply + 1
+                           : wdl >  drawScore ? VALUE_MATE_IN_MAX_PLY  - ss->ply - 1
+                                              : VALUE_DRAW + 2 * wdl * drawScore;
+
+                    //TODO: should we adjust value in some way?
+                    //if (subProbe)
+                        //value -= MAX_PLY;
+
+                    Bound b =  wdl < -drawScore ? BOUND_UPPER
+                             : wdl >  drawScore ? BOUND_LOWER : BOUND_EXACT;
+                    
+                    if (    b == BOUND_EXACT
+                        || (b == BOUND_LOWER ? value >= beta : value <= alpha))
+                    {
+                        tte->save(posKey, value_to_tt(value, ss->ply), ss->ttPv, b,
+                                  std::min(MAX_PLY - 1, depth + 6),
+                                  MOVE_NONE, VALUE_NONE);
+
+                        if (rPc != NO_PIECE)
+                        {
+                            pos.put_piece(rPc, rSq, true);
+                            pos.set_check_info(pos.state());
+                        }
+
+                        return value;
+                    }
+
+                    if (PvNode)
+                    {
+                        if (b == BOUND_LOWER)
+                            bestValue = value, alpha = std::max(alpha, bestValue);
+                        else
+                            maxValue = value;
+                    }
                 }
+
+                if (doProbe)
+                    break;
+            }
+            if (rPc != NO_PIECE)
+            {
+                pos.put_piece(rPc, rSq, true);
+                pos.set_check_info(pos.state());
             }
         }
     }
