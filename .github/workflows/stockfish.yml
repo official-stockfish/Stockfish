@@ -50,7 +50,7 @@ jobs:
               os: ubuntu-20.04,
               compiler: aarch64-linux-android21-clang++,
               comp: ndk,
-              run_armv8_tests: true,
+              run_armv8_tests: false,
               shell: 'bash {0}'
             }
           - {
@@ -58,7 +58,7 @@ jobs:
               os: ubuntu-20.04,
               compiler: armv7a-linux-androideabi21-clang++,
               comp: ndk,
-              run_armv7_tests: true,
+              run_armv7_tests: false,
               shell: 'bash {0}'
             }
           - {
