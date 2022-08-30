@@ -678,7 +678,7 @@ namespace {
 
         bool subProbe =   !doProbe
                        &&  piecesCount - 1 <= TB::Cardinality
-                       && (piecesCount - 1 <  TB::Cardinality || depth >= TB::ProbeDepth + 2)
+                       && (piecesCount - 1 <  TB::Cardinality || depth >= TB::ProbeDepth)
                        &&  pos.state()->epSquare == SQ_NONE;
 
         if (   (doProbe || subProbe)
@@ -690,6 +690,27 @@ namespace {
             {
                 removablePieces = pos.pieces() ^ pos.pieces(KING);
                 removablePieces &= ~(pos.blockers_for_king(us) | pos.blockers_for_king(~us));
+
+                int minV[COLOR_NB] = { INT_MAX, INT_MAX };
+                Square minS[COLOR_NB] = { SQ_NONE, SQ_NONE };
+                while (removablePieces)
+                {
+                    Square s = pop_lsb(removablePieces);
+                    Piece  p = pos.piece_on(s);
+                    Color  c = color_of(p);
+                    int psqV = abs(eg_value(PSQT::psq[p][s]));
+                    
+                    if (psqV < minV[c])
+                    {
+                        minV[c] = psqV;
+                        minS[c] = s;
+                    }
+                }
+
+                if (minS[WHITE] != SQ_NONE)
+                    removablePieces |= square_bb(minS[WHITE]);
+                if (minS[BLACK] != SQ_NONE)
+                    removablePieces |= square_bb(minS[BLACK]);
             }
 
             Piece rPc = NO_PIECE;
