@@ -242,13 +242,16 @@ void MainThread::search() {
   for (Thread* th : Threads)
     th->previousDepth = bestThread->completedDepth;
 
+  bool resendPV =   bestThread->rootMoves[0].pv.size() == 1
+                 && bestThread->rootMoves[0].extract_ponder_from_tt(rootPos);
+
   // Send again PV info if we have a new best thread
-  if (bestThread != this)
+  if (resendPV || bestThread != this)
       sync_cout << UCI::pv(bestThread->rootPos, bestThread->completedDepth, -VALUE_INFINITE, VALUE_INFINITE) << sync_endl;
 
   sync_cout << "bestmove " << UCI::move(bestThread->rootMoves[0].pv[0], rootPos.is_chess960());
 
-  if (bestThread->rootMoves[0].pv.size() > 1 || bestThread->rootMoves[0].extract_ponder_from_tt(rootPos))
+  if (bestThread->rootMoves[0].pv.size() > 1)
       std::cout << " ponder " << UCI::move(bestThread->rootMoves[0].pv[1], rootPos.is_chess960());
 
   std::cout << sync_endl;
