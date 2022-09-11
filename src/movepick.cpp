@@ -106,7 +106,7 @@ void MovePicker::score() {
 
   static_assert(Type == CAPTURES || Type == QUIETS || Type == EVASIONS, "Wrong type");
 
-  Bitboard threatened, threatenedByPawn, threatenedByMinor, threatenedByRook;
+  [[maybe_unused]] Bitboard threatened, threatenedByPawn, threatenedByMinor, threatenedByRook;
   if constexpr (Type == QUIETS)
   {
       Color us = pos.side_to_move();
@@ -121,14 +121,6 @@ void MovePicker::score() {
       threatened =  (pos.pieces(us, QUEEN) & threatenedByRook)
                   | (pos.pieces(us, ROOK)  & threatenedByMinor)
                   | (pos.pieces(us, KNIGHT, BISHOP) & threatenedByPawn);
-  }
-  else
-  {
-      // Silence unused variable warnings
-      (void) threatened;
-      (void) threatenedByPawn;
-      (void) threatenedByMinor;
-      (void) threatenedByRook;
   }
 
   for (auto& m : *this)
