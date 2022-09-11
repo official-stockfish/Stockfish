@@ -557,7 +557,9 @@ namespace {
     Key posKey;
     Move ttMove, move, excludedMove, bestMove;
     Depth extension, newDepth;
-    Value bestValue, value, ttValue, eval, maxValue, probCutBeta;
+    Value bestValue, value, ttValue, eval, probCutBeta;
+    // maxValue is only read in NonPV instantiations of this function.
+    [[maybe_unused]] Value maxValue;
     bool givesCheck, improving, priorCapture, singularQuietLMR;
     bool capture, moveCountPruning, ttCapture;
     Piece movedPiece;
@@ -580,7 +582,7 @@ namespace {
     if (PvNode && thisThread->selDepth < ss->ply + 1)
         thisThread->selDepth = ss->ply + 1;
 
-    if (!rootNode)
+    if constexpr (!rootNode)
     {
         // Step 2. Check for aborted search and immediate draw
         if (   Threads.stop.load(std::memory_order_relaxed)
@@ -617,7 +619,7 @@ namespace {
     // starts with statScore = 0. Later grandchildren start with the last calculated
     // statScore of the previous grandchild. This influences the reduction rules in
     // LMR which are based on the statScore of parent position.
-    if (!rootNode)
+    if constexpr (!rootNode)
         (ss+2)->statScore = 0;
 
     // Step 4. Transposition table lookup. We don't want the score of a partial
@@ -709,7 +711,7 @@ namespace {
                     return value;
                 }
 
-                if (PvNode)
+                if constexpr (PvNode)
                 {
                     if (b == BOUND_LOWER)
                         bestValue = value, alpha = std::max(alpha, bestValue);
@@ -975,7 +977,7 @@ moves_loop: // When in check, search starts here
           sync_cout << "info depth " << depth
                     << " currmove " << UCI::move(move, pos.is_chess960())
                     << " currmovenumber " << moveCount + thisThread->pvIdx << sync_endl;
-      if (PvNode)
+      if constexpr (PvNode)
           (ss+1)->pv = nullptr;
 
       extension = 0;
@@ -1157,7 +1159,7 @@ moves_loop: // When in check, search starts here
               r++;
 
           // Decrease reduction for PvNodes based on depth
-          if (PvNode)
+          if constexpr (PvNode)
               r -= 1 + 11 / (3 + depth);
 
           // Decrease reduction if ttMove has been singularly extended (~1 Elo)
@@ -1230,7 +1232,7 @@ moves_loop: // When in check, search starts here
       if (Threads.stop.load(std::memory_order_relaxed))
           return VALUE_ZERO;
 
-      if (rootNode)
+      if constexpr (rootNode)
       {
           RootMove& rm = *std::find(thisThread->rootMoves.begin(),
                                     thisThread->rootMoves.end(), move);
@@ -1348,7 +1350,7 @@ moves_loop: // When in check, search starts here
         update_continuation_histories(ss-1, pos.piece_on(prevSq), prevSq, stat_bonus(depth) * (1 + extraBonus));
     }
 
-    if (PvNode)
+    if constexpr (PvNode)
         bestValue = std::min(bestValue, maxValue);
 
     // If no good move is found and the previous position was ttPv, then the previous
