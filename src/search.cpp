@@ -309,9 +309,8 @@ void Thread::search() {
 
   complexityAverage.set(155, 1);
 
-  trend         = SCORE_ZERO;
-  optimism[ us] = Value(37);
-  optimism[~us] = -optimism[us];
+  trend = SCORE_ZERO;
+  optimism[us] = optimism[~us] = VALUE_ZERO;
 
   int searchAgainCounter = 0;
 
@@ -358,11 +357,11 @@ void Thread::search() {
               beta  = std::min(prev + delta, VALUE_INFINITE);
 
               // Adjust trend and optimism based on root move's previousScore
-              int tr = sigmoid(prev, 3, 10, 89, 116, 1);
+              int tr = 116 * prev / (std::abs(prev) + 89);
               trend = (us == WHITE ?  make_score(tr, tr / 2)
                                    : -make_score(tr, tr / 2));
 
-              int opt = sigmoid(prev, 7, 20, 169, 19350, 164);
+              int opt = 118 * prev / (std::abs(prev) + 169);
               optimism[ us] = Value(opt);
               optimism[~us] = -optimism[us];
           }
