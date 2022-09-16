@@ -196,9 +196,7 @@ inline uint64_t mul_hi64(uint64_t a, uint64_t b) {
 #else
     uint64_t aL = (uint32_t)a, aH = a >> 32;
     uint64_t bL = (uint32_t)b, bH = b >> 32;
-    uint64_t c1 = (aL * bL) >> 32;
-    uint64_t c3 = aL * bH + (uint32_t)c2;
-    return aH * bH + (c2 >> 32) + (c3 >> 32);
+    return aH * bH + ((aH * bL) >> 32) + ((aL * bH) >> 32);
 #endif
 }
 
