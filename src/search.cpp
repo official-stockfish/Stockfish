@@ -1163,6 +1163,9 @@ moves_loop: // When in check, search starts here
           if (singularQuietLMR)
               r--;
 
+          if (depth > 9 && mp.positionalThreat & from_sq(move))
+              r--;
+
           // Increase reduction if next ply has a lot of fail high else reset count to 0
           if ((ss+1)->cutoffCnt > 3 && !PvNode)
               r++;
