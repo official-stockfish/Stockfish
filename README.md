@@ -1,13 +1,27 @@
+<div align="center">
+  
+  [![Stockfish][stockfish128-logo]][website-link]
+  
+  [![Build][build-badge]][build-link]
+  [![License][license-badge]][license-link]
+  <br>
+  [![Release][release-badge]][release-link]
+  [![Commits][commits-badge]][commits-link]
+  <br>
+  [![Website][website-badge]][website-link]
+  [![Fishtest][fishtest-badge]][fishtest-link]
+  [![Discord][discord-badge]][discord-link]
+  
+</div>
+
 ## Overview
 
-[![Build Status](https://github.com/official-stockfish/Stockfish/actions/workflows/stockfish.yml/badge.svg)](https://github.com/official-stockfish/Stockfish/actions)
-
-[Stockfish](https://stockfishchess.org) is a free, powerful UCI chess engine
-derived from Glaurung 2.1. Stockfish is not a complete chess program and requires a
-UCI-compatible graphical user interface (GUI) (e.g. XBoard with PolyGlot, Scid,
-Cute Chess, eboard, Arena, Sigma Chess, Shredder, Chess Partner or Fritz) in order
-to be used comfortably. Read the documentation for your GUI of choice for information
-about how to use Stockfish with it.
+[Stockfish][website-link] is a free, powerful UCI chess engine derived from
+Glaurung 2.1. Stockfish is not a complete chess program and requires a UCI-compatible
+graphical user interface (GUI) (e.g. XBoard with PolyGlot, Scid, Cute Chess, eboard,
+Arena, Sigma Chess, Shredder, Chess Partner or Fritz) in order to be used comfortably.
+Read the documentation for your GUI of choice for informationabout how to use
+Stockfish with it.
 
 The Stockfish engine features two evaluation functions for chess. The efficiently 
 updatable neural network (NNUE) based evaluation is the default and by far the strongest.
@@ -20,28 +34,25 @@ avx2, neon, or similar).
 
 This distribution of Stockfish consists of the following files:
 
-  * [README.md](https://github.com/official-stockfish/Stockfish/blob/master/README.md),
-    the file you are currently reading.
+  * [README.md][readme-link], the file you are currently reading.
 
-  * [Copying.txt](https://github.com/official-stockfish/Stockfish/blob/master/Copying.txt),
-    a text file containing the GNU General Public License version 3.
+  * [Copying.txt][license-link], a text file containing the GNU General Public License
+    version 3.
 
-  * [AUTHORS](https://github.com/official-stockfish/Stockfish/blob/master/AUTHORS), 
-    a text file with the list of authors for the project
+  * [AUTHORS][authors-link], a text file with the list of authors for the project.
 
-  * [src](https://github.com/official-stockfish/Stockfish/tree/master/src),
-    a subdirectory containing the full source code, including a Makefile
+  * [src][src-link], a subdirectory containing the full source code, including a Makefile
     that can be used to compile Stockfish on Unix-like systems.
 
-  * a file with the .nnue extension, storing the neural network for the NNUE
-    evaluation. Binary distributions will have this file embedded.
+  * a file with the .nnue extension, storing the neural network for the NNUE evaluation.
+    Binary distributions will have this file embedded.
 
 ## The UCI protocol and available options
 
 The Universal Chess Interface (UCI) is a standard protocol used to communicate with
 a chess engine, and is the recommended way to do so for typical graphical user interfaces
 (GUI) or chess tools. Stockfish implements the majority of its options as described
-in [the UCI protocol](https://www.shredderchess.com/download/div/uci.zip).
+in [the UCI protocol][uci-link].
 
 Developers can see the default values for UCI options available in Stockfish by typing
 `./stockfish uci` in a terminal, but the majority of users will typically see them and
@@ -179,12 +190,10 @@ on the evaluations of millions of positions at moderate search depth.
 The NNUE evaluation was first introduced in shogi, and ported to Stockfish afterward.
 It can be evaluated efficiently on CPUs, and exploits the fact that only parts
 of the neural network need to be updated after a typical chess move.
-[The nodchip repository](https://github.com/nodchip/Stockfish) provided the first 
-version of the needed tools to train and develop the NNUE networks. Today, more 
-advanced training tools are available in 
-[the nnue-pytorch repository](https://github.com/glinscott/nnue-pytorch/), 
-while data generation tools are available in 
-[a dedicated branch](https://github.com/official-stockfish/Stockfish/tree/tools).
+[The nodchip repository][nodchip-link] provided the first version of the needed tools
+to train and develop the NNUE networks. Today, more advanced training tools are
+available in [the nnue-pytorch repository][pytorch-link], while data generation tools
+are available in [a dedicated branch][tools-link].
 
 On CPUs supporting modern vector instructions (avx2 and similar), the NNUE evaluation
 results in much stronger playing strength, even if the nodes per second computed by
@@ -250,8 +259,8 @@ are already enabled, and no configuration is needed.
 ### Support on Windows
 
 The use of large pages requires "Lock Pages in Memory" privilege. See
-[Enable the Lock Pages in Memory Option (Windows)](https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/enable-the-lock-pages-in-memory-option-windows)
-on how to enable this privilege, then run [RAMMap](https://docs.microsoft.com/en-us/sysinternals/downloads/rammap)
+[Enable the Lock Pages in Memory Option (Windows)][lockpages-link]
+on how to enable this privilege, then run [RAMMap][rammap-link]
 to double-check that large pages are used. We suggest that you reboot
 your computer after you have enabled large pages, because long Windows
 sessions suffer from memory fragmentation, which may prevent Stockfish
@@ -294,26 +303,26 @@ effort. There are a few ways to help contribute to its growth.
 ### Donating hardware
 
 Improving Stockfish requires a massive amount of testing. You can donate
-your hardware resources by installing the [Fishtest Worker](https://github.com/glinscott/fishtest/wiki/Running-the-worker:-overview)
-and view the current tests on [Fishtest](https://tests.stockfishchess.org/tests).
+your hardware resources by installing the [Fishtest Worker][worker-link]
+and view the current tests on [Fishtest][fishtest-link].
 
 ### Improving the code
 
 If you want to help improve the code, there are several valuable resources:
 
-* [In this wiki,](https://www.chessprogramming.org) many techniques used in
+* [In this wiki,][programming-link] many techniques used in
 Stockfish are explained with a lot of background information.
 
-* [The section on Stockfish](https://www.chessprogramming.org/Stockfish)
+* [The section on Stockfish][programmingsf-link]
 describes many features and techniques used by Stockfish. However, it is
 generic rather than being focused on Stockfish's precise implementation.
 Nevertheless, a helpful resource.
 
-* The latest source can always be found on [GitHub](https://github.com/official-stockfish/Stockfish).
-Discussions about Stockfish take place these days mainly in the [FishCooking](https://groups.google.com/forum/#!forum/fishcooking)
-group and on the [Stockfish Discord channel](https://discord.gg/nv8gDtt).
-The engine testing is done on [Fishtest](https://tests.stockfishchess.org/tests).
-If you want to help improve Stockfish, please read this [guideline](https://github.com/glinscott/fishtest/wiki/Creating-my-first-test)
+* The latest source can always be found on [GitHub][github-link].
+Discussions about Stockfish take place these days mainly in the [FishCooking][fishcooking-link]
+group and on the [Stockfish Discord channel][discord-link].
+The engine testing is done on [Fishtest][fishtest-link].
+If you want to help improve Stockfish, please read this [guideline][guideline-link]
 first, where the basics of Stockfish development are explained.
 
 
@@ -333,4 +342,35 @@ exact binary you are distributing. If you make any changes to the
 source code, these changes must also be made available under the GPL v3.
 
 For full details, read the copy of the GPL v3 found in the file named
-[*Copying.txt*](https://github.com/official-stockfish/Stockfish/blob/master/Copying.txt).
+[*Copying.txt*][license-link].
+
+[authors-link]:https://github.com/official-stockfish/Stockfish/blob/master/AUTHORS
+[build-badge]:https://img.shields.io/github/workflow/status/official-stockfish/Stockfish/Stockfish?style=for-the-badge&label=stockfish&logo=github
+[build-link]:https://github.com/official-stockfish/Stockfish/actions/workflows/stockfish.yml
+[commits-badge]:https://img.shields.io/github/commits-since/official-stockfish/Stockfish/latest?style=for-the-badge
+[commits-link]:https://github.com/official-stockfish/Stockfish/commits/master
+[discord-badge]:https://img.shields.io/discord/435943710472011776?style=for-the-badge&label=discord&logo=Discord
+[discord-link]:https://discord.com/invite/aefaxmq
+[fishcooking-link]:https://groups.google.com/g/fishcooking
+[fishtest-badge]:https://img.shields.io/website?style=for-the-badge&down_color=red&down_message=Offline&label=Fishtest&up_color=success&up_message=Online&url=https%3A%2F%2Ftests.stockfishchess.org%2Ftests
+[fishtest-link]:https://tests.stockfishchess.org/tests
+[github-link]:https://github.com/official-stockfish/Stockfish
+[guideline-link]:https://github.com/glinscott/fishtest/wiki/Creating-my-first-test
+[license-badge]:https://img.shields.io/github/license/official-stockfish/Stockfish?style=for-the-badge&label=license&color=success
+[license-link]:https://github.com/official-stockfish/Stockfish/blob/master/Copying.txt
+[lockpages-link]:https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/enable-the-lock-pages-in-memory-option-windows
+[nodchip-link]:https://github.com/nodchip/Stockfish
+[programming-link]:https://www.chessprogramming.org/Main_Page
+[programmingsf-link]:https://www.chessprogramming.org/Stockfish
+[pytorch-link]:https://github.com/glinscott/nnue-pytorch
+[rammap-link]:https://docs.microsoft.com/en-us/sysinternals/downloads/rammap
+[readme-link]:https://github.com/official-stockfish/Stockfish/blob/master/README.md
+[release-badge]:https://img.shields.io/github/v/release/official-stockfish/Stockfish?style=for-the-badge&label=official%20release
+[release-link]:https://github.com/official-stockfish/Stockfish/releases/latest
+[src-link]:https://github.com/official-stockfish/Stockfish/tree/master/src
+[stockfish128-logo]:https://stockfishchess.org/images/logo/icon_128x128.png
+[tools-link]:https://github.com/official-stockfish/Stockfish/tree/tools
+[uci-link]:https://www.shredderchess.com/download/div/uci.zip
+[website-badge]:https://img.shields.io/website?style=for-the-badge&down_color=red&down_message=Offline&label=website&up_color=success&up_message=Online&url=https%3A%2F%2Fstockfishchess.org
+[website-link]:https://stockfishchess.org
+[worker-link]:https://github.com/glinscott/fishtest/wiki/Running-the-worker:-overview
