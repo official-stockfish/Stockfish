@@ -1,6 +1,20 @@
-## Overview
+<div align="center">
+  
+  [![Stockfish](https://stockfishchess.org/images/logo/icon_128x128.png)](https://stockfishchess.org)
+  
+  [![Build](https://img.shields.io/github/workflow/status/official-stockfish/Stockfish/Stockfish?style=for-the-badge&label=stockfish&logo=github)](https://github.com/official-stockfish/Stockfish/actions/workflows/stockfish.yml)
+  [![License](https://img.shields.io/github/license/official-stockfish/Stockfish?style=for-the-badge&label=license&color=success)](https://github.com/official-stockfish/Stockfish/blob/master/Copying.txt)
+  <br>
+  [![Release](https://img.shields.io/github/v/release/official-stockfish/Stockfish?style=for-the-badge&label=official%20release)](https://github.com/official-stockfish/Stockfish/releases/latest)
+  [![Commits](https://img.shields.io/github/commits-since/official-stockfish/Stockfish/latest?style=for-the-badge)](https://github.com/official-stockfish/Stockfish/commits/master)
+  <br>
+  [![Stockfish](https://img.shields.io/website?style=for-the-badge&down_color=red&down_message=Offline&label=website&up_color=success&up_message=Online&url=https%3A%2F%2Fstockfishchess.org)](https://stockfishchess.org)
+  [![Fishtest](https://img.shields.io/website?style=for-the-badge&down_color=red&down_message=Offline&label=Fishtest&up_color=success&up_message=Online&url=https%3A%2F%2Ftests.stockfishchess.org%2Ftests)](https://tests.stockfishchess.org/tests)
+  [![Discord](https://img.shields.io/discord/435943710472011776?style=for-the-badge&label=discord&logo=Discord)](https://discord.com/invite/aefaxmq)
+  
+</div>
 
-[![Build Status](https://github.com/official-stockfish/Stockfish/actions/workflows/stockfish.yml/badge.svg)](https://github.com/official-stockfish/Stockfish/actions)
+## Overview
 
 [Stockfish](https://stockfishchess.org) is a free, powerful UCI chess engine
 derived from Glaurung 2.1. Stockfish is not a complete chess program and requires a
