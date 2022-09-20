@@ -10,7 +10,7 @@
   <br>
   [![Stockfish](https://img.shields.io/website?style=for-the-badge&down_color=red&down_message=Offline&label=website&up_color=success&up_message=Online&url=https%3A%2F%2Fstockfishchess.org)](https://stockfishchess.org)
   [![Fishtest](https://img.shields.io/website?style=for-the-badge&down_color=red&down_message=Offline&label=Fishtest&up_color=success&up_message=Online&url=https%3A%2F%2Ftests.stockfishchess.org%2Ftests)](https://tests.stockfishchess.org/tests)
-  [![Discord](https://img.shields.io/discord/435943710472011776?style=for-the-badge&label=discord&logo=Discord)](https://discord.com/invite/aefaxmq)
+  [![Discord](https://img.shields.io/discord/435943710472011776?style=for-the-badge&label=discord&logo=Discord)](https://discord.gg/GWDRS3kU6R)
   
 </div>
 
@@ -325,7 +325,7 @@ Nevertheless, a helpful resource.
 
 * The latest source can always be found on [GitHub](https://github.com/official-stockfish/Stockfish).
 Discussions about Stockfish take place these days mainly in the [FishCooking](https://groups.google.com/forum/#!forum/fishcooking)
-group and on the [Stockfish Discord channel](https://discord.gg/nv8gDtt).
+group and on the [Stockfish Discord channel](https://discord.gg/GWDRS3kU6R).
 The engine testing is done on [Fishtest](https://tests.stockfishchess.org/tests).
 If you want to help improve Stockfish, please read this [guideline](https://github.com/glinscott/fishtest/wiki/Creating-my-first-test)
 first, where the basics of Stockfish development are explained.
