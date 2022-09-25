@@ -1,18 +1,34 @@
 <div align="center">
   
-  [![Stockfish](https://stockfishchess.org/images/logo/icon_128x128.png)](https://stockfishchess.org)
+  [![Stockfish][stockfish-logo]][stockfish-link]
   
-  [![Build](https://img.shields.io/github/workflow/status/official-stockfish/Stockfish/Stockfish?style=for-the-badge&label=stockfish&logo=github)](https://github.com/official-stockfish/Stockfish/actions/workflows/stockfish.yml)
-  [![License](https://img.shields.io/github/license/official-stockfish/Stockfish?style=for-the-badge&label=license&color=success)](https://github.com/official-stockfish/Stockfish/blob/master/Copying.txt)
+  [![Build][build-badge]][build-link]
+  [![License][license-badge]][license-link]
   <br>
-  [![Release](https://img.shields.io/github/v/release/official-stockfish/Stockfish?style=for-the-badge&label=official%20release)](https://github.com/official-stockfish/Stockfish/releases/latest)
-  [![Commits](https://img.shields.io/github/commits-since/official-stockfish/Stockfish/latest?style=for-the-badge)](https://github.com/official-stockfish/Stockfish/commits/master)
+  [![Release][release-badge]][release-link]
+  [![Commits][commits-badge]][commits-link]
   <br>
-  [![Stockfish](https://img.shields.io/website?style=for-the-badge&down_color=red&down_message=Offline&label=website&up_color=success&up_message=Online&url=https%3A%2F%2Fstockfishchess.org)](https://stockfishchess.org)
-  [![Fishtest](https://img.shields.io/website?style=for-the-badge&down_color=red&down_message=Offline&label=Fishtest&up_color=success&up_message=Online&url=https%3A%2F%2Ftests.stockfishchess.org%2Ftests)](https://tests.stockfishchess.org/tests)
-  [![Discord](https://img.shields.io/discord/435943710472011776?style=for-the-badge&label=discord&logo=Discord)](https://discord.gg/GWDRS3kU6R)
+  [![Website][website-badge]][stockfish-link]
+  [![Fishtest][fishtest-badge]][fishtest-link]
+  [![Discord][discord-badge]][discord-link]
   
 </div>
+
+[stockfish-logo]:https://stockfishchess.org/images/logo/icon_128x128.png
+[stockfish-link]:https://stockfishchess.org
+[build-badge]:https://img.shields.io/github/workflow/status/official-stockfish/Stockfish/Stockfish?style=for-the-badge&label=stockfish&logo=github
+[build-link]:https://github.com/official-stockfish/Stockfish/actions/workflows/stockfish.yml
+[license-badge]:https://img.shields.io/github/license/official-stockfish/Stockfish?style=for-the-badge&label=license&color=success
+[license-link]:https://github.com/official-stockfish/Stockfish/blob/master/Copying.txt
+[release-badge]:https://img.shields.io/github/v/release/official-stockfish/Stockfish?style=for-the-badge&label=official%20release
+[release-link]:https://github.com/official-stockfish/Stockfish/releases/latest
+[commits-badge]:https://img.shields.io/github/commits-since/official-stockfish/Stockfish/latest?style=for-the-badge
+[commits-link]:https://github.com/official-stockfish/Stockfish/commits/master
+[website-badge]:https://img.shields.io/website?style=for-the-badge&down_color=red&down_message=Offline&label=website&up_color=success&up_message=Online&url=https%3A%2F%2Fstockfishchess.org
+[fishtest-badge]:https://img.shields.io/website?style=for-the-badge&down_color=red&down_message=Offline&label=Fishtest&up_color=success&up_message=Online&url=https%3A%2F%2Ftests.stockfishchess.org%2Ftests
+[fishtest-link]:https://tests.stockfishchess.org/tests
+[discord-badge]:https://img.shields.io/discord/435943710472011776?style=for-the-badge&label=discord&logo=Discord
+[discord-link]:https://discord.com/invite/aefaxmq
 
 ## Overview
 
