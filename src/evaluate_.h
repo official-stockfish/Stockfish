@@ -42,7 +42,7 @@ namespace Eval {
   #define EvalFileDefaultName   "nn-ad9b42354671.nnue"
 
   namespace NNUE {
-
+  
     extern int RandomEvalPerturb;
     extern int waitms;
 
