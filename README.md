@@ -16,6 +16,10 @@
 
 ## Overview
 
+[StockfishNPS](https://github.com/Joachim26/Stockfish) is a slightly modified Stockfish for human play with nps reduction, randomized evaluation, search-depth-, and search-nodes-limit. The strength of the first two modifications can be set in the uci options from 0 to 100, while search-depth may be limited to values from 1 to 20 and search-nodes to values up to 500000.
+All mods can be used in any combination together with UCI_Elo and Skill Level settings, to reduce the strength of the engine when playing against humans. With default settings, StockfishNPS plays exactly like the current Stockfish16_dev. Changing only Search_Nodes to 1 (or 5 or 10) reduces ELO roughly to 1400. That's a good starting point for additional option changes. Have fun!
+Source can be found in [branch 'Copy220927'!](https://github.com/Joachim26/StockfishNPS/tree/Copy220927)
+
 [Stockfish][website-link] is a free, powerful UCI chess engine derived from
 Glaurung 2.1. Stockfish is not a complete chess program and requires a UCI-compatible
 graphical user interface (GUI) (e.g. XBoard with PolyGlot, Scid, Cute Chess, eboard,
