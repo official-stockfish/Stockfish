@@ -1591,7 +1591,7 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves) {
 // A return value false indicates that not all probes were successful.
 bool Tablebases::root_probe_wdl(Position& pos, Search::RootMoves& rootMoves) {
 
-    static const int WDL_to_rank[] = { -1000, -899, 0, 899, 1000 };
+    static const int WDL_to_rank[] = { -MAX_DTZ, -MAX_DTZ + 101, 0, MAX_DTZ - 101, MAX_DTZ };
 
     ProbeState result;
     StateInfo st;
