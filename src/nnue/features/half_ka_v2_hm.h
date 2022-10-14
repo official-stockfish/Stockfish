@@ -49,8 +49,8 @@ namespace Stockfish::Eval::NNUE::Features {
       PS_B_ROOK   =  7 * SQUARE_NB,
       PS_W_QUEEN  =  8 * SQUARE_NB,
       PS_B_QUEEN  =  9 * SQUARE_NB,
-      PS_KING     =  10 * SQUARE_NB,
-      PS_NB       =  11 * SQUARE_NB
+      PS_KING     = 10 * SQUARE_NB,
+      PS_NB       = 11 * SQUARE_NB
     };
 
     static constexpr IndexType PieceSquareIndex[COLOR_NB][PIECE_NB] = {
@@ -62,11 +62,9 @@ namespace Stockfish::Eval::NNUE::Features {
         PS_NONE, PS_W_PAWN, PS_W_KNIGHT, PS_W_BISHOP, PS_W_ROOK, PS_W_QUEEN, PS_KING, PS_NONE }
     };
 
-    // Orient a square according to perspective (rotates by 180 for black)
-    static Square orient(Color perspective, Square s, Square ksq);
-
     // Index of a feature for a given king position and another piece on some square
-    static IndexType make_index(Color perspective, Square s, Piece pc, Square ksq);
+    template<Color Perspective>
+    static IndexType make_index(Square s, Piece pc, Square ksq);
 
    public:
     // Feature name
@@ -79,15 +77,45 @@ namespace Stockfish::Eval::NNUE::Features {
     static constexpr IndexType Dimensions =
         static_cast<IndexType>(SQUARE_NB) * static_cast<IndexType>(PS_NB) / 2;
 
-    static constexpr int KingBuckets[64] = {
-      -1, -1, -1, -1, 31, 30, 29, 28,
-      -1, -1, -1, -1, 27, 26, 25, 24,
-      -1, -1, -1, -1, 23, 22, 21, 20,
-      -1, -1, -1, -1, 19, 18, 17, 16,
-      -1, -1, -1, -1, 15, 14, 13, 12,
-      -1, -1, -1, -1, 11, 10,  9,  8,
-      -1, -1, -1, -1,  7,  6,  5,  4,
-      -1, -1, -1, -1,  3,  2,  1,  0
+#define B(v) (v * PS_NB)
+    static constexpr int KingBuckets[COLOR_NB][SQUARE_NB] = {
+      { B(28), B(29), B(30), B(31), B(31), B(30), B(29), B(28),
+        B(24), B(25), B(26), B(27), B(27), B(26), B(25), B(24),
+        B(20), B(21), B(22), B(23), B(23), B(22), B(21), B(20),
+        B(16), B(17), B(18), B(19), B(19), B(18), B(17), B(16),
+        B(12), B(13), B(14), B(15), B(15), B(14), B(13), B(12),
+        B( 8), B( 9), B(10), B(11), B(11), B(10), B( 9), B( 8),
+        B( 4), B( 5), B( 6), B( 7), B( 7), B( 6), B( 5), B( 4),
+        B( 0), B( 1), B( 2), B( 3), B( 3), B( 2), B( 1), B( 0) },
+      { B( 0), B( 1), B( 2), B( 3), B( 3), B( 2), B( 1), B( 0),
+        B( 4), B( 5), B( 6), B( 7), B( 7), B( 6), B( 5), B( 4),
+        B( 8), B( 9), B(10), B(11), B(11), B(10), B( 9), B( 8),
+        B(12), B(13), B(14), B(15), B(15), B(14), B(13), B(12),
+        B(16), B(17), B(18), B(19), B(19), B(18), B(17), B(16),
+        B(20), B(21), B(22), B(23), B(23), B(22), B(21), B(20),
+        B(24), B(25), B(26), B(27), B(27), B(26), B(25), B(24),
+        B(28), B(29), B(30), B(31), B(31), B(30), B(29), B(28) }
+    };
+#undef B
+
+    // Orient a square according to perspective (rotates by 180 for black)
+    static constexpr int OrientTBL[COLOR_NB][SQUARE_NB] = {
+      { SQ_H1, SQ_H1, SQ_H1, SQ_H1, SQ_A1, SQ_A1, SQ_A1, SQ_A1,
+        SQ_H1, SQ_H1, SQ_H1, SQ_H1, SQ_A1, SQ_A1, SQ_A1, SQ_A1,
+        SQ_H1, SQ_H1, SQ_H1, SQ_H1, SQ_A1, SQ_A1, SQ_A1, SQ_A1,
+        SQ_H1, SQ_H1, SQ_H1, SQ_H1, SQ_A1, SQ_A1, SQ_A1, SQ_A1,
+        SQ_H1, SQ_H1, SQ_H1, SQ_H1, SQ_A1, SQ_A1, SQ_A1, SQ_A1,
+        SQ_H1, SQ_H1, SQ_H1, SQ_H1, SQ_A1, SQ_A1, SQ_A1, SQ_A1,
+        SQ_H1, SQ_H1, SQ_H1, SQ_H1, SQ_A1, SQ_A1, SQ_A1, SQ_A1,
+        SQ_H1, SQ_H1, SQ_H1, SQ_H1, SQ_A1, SQ_A1, SQ_A1, SQ_A1 },
+      { SQ_H8, SQ_H8, SQ_H8, SQ_H8, SQ_A8, SQ_A8, SQ_A8, SQ_A8,
+        SQ_H8, SQ_H8, SQ_H8, SQ_H8, SQ_A8, SQ_A8, SQ_A8, SQ_A8,
+        SQ_H8, SQ_H8, SQ_H8, SQ_H8, SQ_A8, SQ_A8, SQ_A8, SQ_A8,
+        SQ_H8, SQ_H8, SQ_H8, SQ_H8, SQ_A8, SQ_A8, SQ_A8, SQ_A8,
+        SQ_H8, SQ_H8, SQ_H8, SQ_H8, SQ_A8, SQ_A8, SQ_A8, SQ_A8,
+        SQ_H8, SQ_H8, SQ_H8, SQ_H8, SQ_A8, SQ_A8, SQ_A8, SQ_A8,
+        SQ_H8, SQ_H8, SQ_H8, SQ_H8, SQ_A8, SQ_A8, SQ_A8, SQ_A8,
+        SQ_H8, SQ_H8, SQ_H8, SQ_H8, SQ_A8, SQ_A8, SQ_A8, SQ_A8 }
     };
 
     // Maximum number of simultaneously active features.
@@ -95,16 +123,16 @@ namespace Stockfish::Eval::NNUE::Features {
     using IndexList = ValueList<IndexType, MaxActiveDimensions>;
 
     // Get a list of indices for active features
+    template<Color Perspective>
     static void append_active_indices(
       const Position& pos,
-      Color perspective,
       IndexList& active);
 
     // Get a list of indices for recently changed features
+    template<Color Perspective>
     static void append_changed_indices(
       Square ksq,
       const DirtyPiece& dp,
-      Color perspective,
       IndexList& removed,
       IndexList& added
     );
