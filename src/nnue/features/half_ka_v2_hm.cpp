@@ -24,49 +24,50 @@
 
 namespace Stockfish::Eval::NNUE::Features {
 
-  // Orient a square according to perspective (rotates by 180 for black)
-  inline Square HalfKAv2_hm::orient(Color perspective, Square s, Square ksq) {
-    return Square(int(s) ^ (bool(perspective) * SQ_A8) ^ ((file_of(ksq) < FILE_E) * SQ_H1));
-  }
-
   // Index of a feature for a given king position and another piece on some square
-  inline IndexType HalfKAv2_hm::make_index(Color perspective, Square s, Piece pc, Square ksq) {
-    Square o_ksq = orient(perspective, ksq, ksq);
-    return IndexType(orient(perspective, s, ksq) + PieceSquareIndex[perspective][pc] + PS_NB * KingBuckets[o_ksq]);
+  template<Color Perspective>
+  inline IndexType HalfKAv2_hm::make_index(Square s, Piece pc, Square ksq) {
+    return IndexType((int(s) ^ OrientTBL[Perspective][ksq]) + PieceSquareIndex[Perspective][pc] + KingBuckets[Perspective][ksq]);
   }
 
   // Get a list of indices for active features
+  template<Color Perspective>
   void HalfKAv2_hm::append_active_indices(
     const Position& pos,
-    Color perspective,
     IndexList& active
   ) {
-    Square ksq = pos.square<KING>(perspective);
+    Square ksq = pos.square<KING>(Perspective);
     Bitboard bb = pos.pieces();
     while (bb)
     {
       Square s = pop_lsb(bb);
-      active.push_back(make_index(perspective, s, pos.piece_on(s), ksq));
+      active.push_back(make_index<Perspective>(s, pos.piece_on(s), ksq));
     }
   }
 
-
+  // Explicit template instantiations
+  template void HalfKAv2_hm::append_active_indices<WHITE>(const Position& pos, IndexList& active);
+  template void HalfKAv2_hm::append_active_indices<BLACK>(const Position& pos, IndexList& active);
+  
   // append_changed_indices() : get a list of indices for recently changed features
-
+  template<Color Perspective>
   void HalfKAv2_hm::append_changed_indices(
     Square ksq,
     const DirtyPiece& dp,
-    Color perspective,
     IndexList& removed,
     IndexList& added
   ) {
     for (int i = 0; i < dp.dirty_num; ++i) {
       if (dp.from[i] != SQ_NONE)
-        removed.push_back(make_index(perspective, dp.from[i], dp.piece[i], ksq));
+        removed.push_back(make_index<Perspective>(dp.from[i], dp.piece[i], ksq));
       if (dp.to[i] != SQ_NONE)
-        added.push_back(make_index(perspective, dp.to[i], dp.piece[i], ksq));
+        added.push_back(make_index<Perspective>(dp.to[i], dp.piece[i], ksq));
     }
   }
+
+  // Explicit template instantiations
+  template void HalfKAv2_hm::append_changed_indices<WHITE>(Square ksq, const DirtyPiece& dp, IndexList& removed, IndexList& added);
+  template void HalfKAv2_hm::append_changed_indices<BLACK>(Square ksq, const DirtyPiece& dp, IndexList& removed, IndexList& added);
 
   int HalfKAv2_hm::update_cost(const StateInfo* st) {
     return st->dirtyPiece.dirty_num;
