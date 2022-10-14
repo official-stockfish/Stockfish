@@ -343,7 +343,7 @@ inline int popcount(Bitboard b) {
 
 #elif defined(_MSC_VER) || defined(__INTEL_COMPILER)
 
-  return (int)_mm_popcnt_u64(b);
+  return static_cast<int>(_mm_popcnt_u64(b));
 
 #else // Assumed gcc or compatible compiler
 

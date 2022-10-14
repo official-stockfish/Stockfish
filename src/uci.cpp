@@ -216,7 +216,7 @@ namespace {
      double x = std::clamp(double(100 * v) / PawnValueEg, -2000.0, 2000.0);
 
      // Return the win rate in per mille units rounded to the nearest value
-     return int(0.5 + 1000 / (1 + std::exp((a - x) / b)));
+     return static_cast<int>(0.5 + 1000 / (1 + std::exp((a - x) / b)));
   }
 
 } // namespace

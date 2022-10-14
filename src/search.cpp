@@ -71,7 +71,7 @@ namespace {
 
   Depth reduction(bool i, Depth d, int mn, Value delta, Value rootDelta) {
     int r = Reductions[d] * Reductions[mn];
-    return (r + 1642 - int(delta) * 1024 / int(rootDelta)) / 1024 + (!i && r > 916);
+    return (r + 1642 - static_cast<int>(delta) * 1024 / static_cast<int>(rootDelta)) / 1024 + (!i && r > 916);
   }
 
   constexpr int futility_move_count(bool improving, Depth depth) {
@@ -101,7 +101,7 @@ namespace {
             level = double(skill_level);
     }
     bool enabled() const { return level < 20.0; }
-    bool time_to_pick(Depth depth) const { return depth == 1 + int(level); }
+    bool time_to_pick(Depth depth) const { return depth == 1 + static_cast<int>(level); }
     Move pick_best(size_t multiPV);
 
     double level;
@@ -158,7 +158,7 @@ namespace {
 void Search::init() {
 
   for (int i = 1; i < MAX_MOVES; ++i)
-      Reductions[i] = int((20.26 + std::log(Threads.size()) / 2) * std::log(i));
+      Reductions[i] = static_cast<int>((20.26 + std::log(Threads.size()) / 2) * std::log(i));
 }
 
 
@@ -228,9 +228,9 @@ void MainThread::search() {
       Time.availableNodes += Limits.inc[us] - Threads.nodes_searched();
 
   Thread* bestThread = this;
-  Skill skill = Skill(Options["Skill Level"], Options["UCI_LimitStrength"] ? int(Options["UCI_Elo"]) : 0);
+  Skill skill = Skill(Options["Skill Level"], Options["UCI_LimitStrength"] ? static_cast<int>(Options["UCI_Elo"]) : 0);
 
-  if (   int(Options["MultiPV"]) == 1
+  if (   static_cast<int>(Options["MultiPV"]) == 1
       && !Limits.depth
       && !skill.enabled()
       && rootMoves[0].pv[0] != MOVE_NONE)
@@ -298,7 +298,7 @@ void Thread::search() {
   }
 
   size_t multiPV = size_t(Options["MultiPV"]);
-  Skill skill(Options["Skill Level"], Options["UCI_LimitStrength"] ? int(Options["UCI_Elo"]) : 0);
+  Skill skill(Options["Skill Level"], Options["UCI_LimitStrength"] ? static_cast<int>(Options["UCI_Elo"]) : 0);
 
   // When playing with strength handicap enable MultiPV search that we will
   // use behind the scenes to retrieve a set of possible moves.
@@ -352,7 +352,7 @@ void Thread::search() {
           if (rootDepth >= 4)
           {
               Value prev = rootMoves[pvIdx].averageScore;
-              delta = Value(10) + int(prev) * prev / 15620;
+              delta = Value(10) + static_cast<int>(prev) * prev / 15620;
               alpha = std::max(prev - delta,-VALUE_INFINITE);
               beta  = std::min(prev + delta, VALUE_INFINITE);
 
@@ -759,7 +759,7 @@ namespace {
     // Use static evaluation difference to improve quiet move ordering (~3 Elo)
     if (is_ok((ss-1)->currentMove) && !(ss-1)->inCheck && !priorCapture)
     {
-        int bonus = std::clamp(-19 * int((ss-1)->staticEval + ss->staticEval), -1914, 1914);
+        int bonus = std::clamp(-19 * static_cast<int>((ss-1)->staticEval + ss->staticEval), -1914, 1914);
         thisThread->mainHistory[~us][from_to((ss-1)->currentMove)] << bonus;
     }
 
@@ -806,7 +806,7 @@ namespace {
         assert(eval - beta >= 0);
 
         // Null move dynamic reduction based on depth, eval and complexity of position
-        Depth R = std::min(int(eval - beta) / 168, 7) + depth / 3 + 4 - (complexity > 861);
+        Depth R = std::min(static_cast<int>(eval - beta) / 168, 7) + depth / 3 + 4 - (complexity > 861);
 
         ss->currentMove = MOVE_NULL;
         ss->continuationHistory = &thisThread->continuationHistory[0][0][NO_PIECE][0];
@@ -1770,8 +1770,8 @@ moves_loop: // When in check, search starts here
     for (size_t i = 0; i < multiPV; ++i)
     {
         // This is our magic formula
-        int push = int((  weakness * int(topScore - rootMoves[i].score)
-                        + delta * (rng.rand<unsigned>() % int(weakness))) / 128);
+        int push = static_cast<int>((  weakness * static_cast<int>(topScore - rootMoves[i].score)
+                        + delta * (rng.rand<unsigned>() % static_cast<int>(weakness))) / 128);
 
         if (rootMoves[i].score + push >= maxScore)
         {
@@ -1795,7 +1795,7 @@ void MainThread::check_time() {
       return;
 
   // When using nodes, ensure checking rate is not lower than 0.1% of nodes
-  callsCnt = Limits.nodes ? std::min(1024, int(Limits.nodes / 1024)) : 1024;
+  callsCnt = Limits.nodes ? std::min(1024, static_cast<int>(Limits.nodes / 1024)) : 1024;
 
   static TimePoint lastInfoTime = now();
 
@@ -1913,8 +1913,8 @@ void Tablebases::rank_root_moves(Position& pos, Search::RootMoves& rootMoves) {
 
     RootInTB = false;
     UseRule50 = bool(Options["Syzygy50MoveRule"]);
-    ProbeDepth = int(Options["SyzygyProbeDepth"]);
-    Cardinality = int(Options["SyzygyProbeLimit"]);
+    ProbeDepth = static_cast<int>(Options["SyzygyProbeDepth"]);
+    Cardinality = static_cast<int>(Options["SyzygyProbeLimit"]);
     bool dtz_available = true;
 
     // Tables with fewer pieces than SyzygyProbeLimit are searched with

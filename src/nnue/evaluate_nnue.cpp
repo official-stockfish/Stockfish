@@ -251,7 +251,7 @@ namespace Stockfish::Eval::NNUE {
 
     buffer[0] = (v < 0 ? '-' : v > 0 ? '+' : ' ');
 
-    double cp = 1.0 * std::abs(int(v)) / PawnValueEg;
+    double cp = 1.0 * std::abs(static_cast<int>(v)) / PawnValueEg;
     sprintf(&buffer[1], "%6.2f", cp);
   }
 
@@ -271,8 +271,8 @@ namespace Stockfish::Eval::NNUE {
     // A lambda to output one box of the board
     auto writeSquare = [&board](File file, Rank rank, Piece pc, Value value) {
 
-      const int x = ((int)file) * 8;
-      const int y = (7 - (int)rank) * 3;
+      const int x = (static_cast<int>(file)) * 8;
+      const int y = (7 - static_cast<int>(rank)) * 3;
       for (int i = 1; i < 8; ++i)
          board[y][x+i] = board[y+3][x+i] = '-';
       for (int i = 1; i < 3; ++i)

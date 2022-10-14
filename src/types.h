@@ -285,7 +285,7 @@ struct DirtyPiece {
 enum Score : int { SCORE_ZERO };
 
 constexpr Score make_score(int mg, int eg) {
-  return Score((int)((unsigned int)eg << 16) + mg);
+  return Score(static_cast<int>((unsigned int)eg << 16) + mg);
 }
 
 /// Extracting the signed lower and upper 16 bits is not so trivial because
@@ -302,24 +302,24 @@ inline Value mg_value(Score s) {
 }
 
 #define ENABLE_BASE_OPERATORS_ON(T)                                \
-constexpr T operator+(T d1, int d2) { return T(int(d1) + d2); }    \
-constexpr T operator-(T d1, int d2) { return T(int(d1) - d2); }    \
-constexpr T operator-(T d) { return T(-int(d)); }                  \
+constexpr T operator+(T d1, int d2) { return T(static_cast<int>(d1) + d2); }    \
+constexpr T operator-(T d1, int d2) { return T(static_cast<int>(d1) - d2); }    \
+constexpr T operator-(T d) { return T(-static_cast<int>(d)); }                  \
 inline T& operator+=(T& d1, int d2) { return d1 = d1 + d2; }       \
 inline T& operator-=(T& d1, int d2) { return d1 = d1 - d2; }
 
 #define ENABLE_INCR_OPERATORS_ON(T)                                \
-inline T& operator++(T& d) { return d = T(int(d) + 1); }           \
-inline T& operator--(T& d) { return d = T(int(d) - 1); }
+inline T& operator++(T& d) { return d = T(static_cast<int>(d) + 1); }           \
+inline T& operator--(T& d) { return d = T(static_cast<int>(d) - 1); }
 
 #define ENABLE_FULL_OPERATORS_ON(T)                                \
 ENABLE_BASE_OPERATORS_ON(T)                                        \
-constexpr T operator*(int i, T d) { return T(i * int(d)); }        \
-constexpr T operator*(T d, int i) { return T(int(d) * i); }        \
-constexpr T operator/(T d, int i) { return T(int(d) / i); }        \
-constexpr int operator/(T d1, T d2) { return int(d1) / int(d2); }  \
-inline T& operator*=(T& d, int i) { return d = T(int(d) * i); }    \
-inline T& operator/=(T& d, int i) { return d = T(int(d) / i); }
+constexpr T operator*(int i, T d) { return T(i * static_cast<int>(d)); }        \
+constexpr T operator*(T d, int i) { return T(static_cast<int>(d) * i); }        \
+constexpr T operator/(T d, int i) { return T(static_cast<int>(d) / i); }        \
+constexpr int operator/(T d1, T d2) { return static_cast<int>(d1) / static_cast<int>(d2); }  \
+inline T& operator*=(T& d, int i) { return d = T(static_cast<int>(d) * i); }    \
+inline T& operator/=(T& d, int i) { return d = T(static_cast<int>(d) / i); }
 
 ENABLE_FULL_OPERATORS_ON(Value)
 ENABLE_FULL_OPERATORS_ON(Direction)
@@ -337,8 +337,8 @@ ENABLE_BASE_OPERATORS_ON(Score)
 #undef ENABLE_BASE_OPERATORS_ON
 
 /// Additional operators to add a Direction to a Square
-constexpr Square operator+(Square s, Direction d) { return Square(int(s) + int(d)); }
-constexpr Square operator-(Square s, Direction d) { return Square(int(s) - int(d)); }
+constexpr Square operator+(Square s, Direction d) { return Square(static_cast<int>(s) + static_cast<int>(d)); }
+constexpr Square operator-(Square s, Direction d) { return Square(static_cast<int>(s) - static_cast<int>(d)); }
 inline Square& operator+=(Square& s, Direction d) { return s = s + d; }
 inline Square& operator-=(Square& s, Direction d) { return s = s - d; }
 
@@ -354,7 +354,7 @@ inline Score operator/(Score s, int i) {
 /// Multiplication of a Score by an integer. We check for overflow in debug mode.
 inline Score operator*(Score s, int i) {
 
-  Score result = Score(int(s) * i);
+  Score result = Score(static_cast<int>(s) * i);
 
   assert(eg_value(result) == (i * eg_value(s)));
   assert(mg_value(result) == (i * mg_value(s)));

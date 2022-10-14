@@ -75,7 +75,7 @@ std::ostream& operator<<(std::ostream& os, const Position& pos) {
   for (Bitboard b = pos.checkers(); b; )
       os << UCI::square(pop_lsb(b)) << " ";
 
-  if (    int(Tablebases::MaxCardinality) >= popcount(pos.pieces())
+  if (    static_cast<int>(Tablebases::MaxCardinality) >= popcount(pos.pieces())
       && !pos.can_castle(ANY_CASTLING))
   {
       StateInfo st;
@@ -812,7 +812,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   if (type_of(pc) == PAWN)
   {
       // Set en passant square if the moved pawn can be captured
-      if (   (int(to) ^ int(from)) == 16
+      if (   (static_cast<int>(to) ^ static_cast<int>(from)) == 16
           && (pawn_attacks_bb(us, to - pawn_push(us)) & pieces(them, PAWN)))
       {
           st->epSquare = to - pawn_push(us);

@@ -26,7 +26,7 @@ namespace Stockfish::Eval::NNUE::Features {
 
   // Orient a square according to perspective (rotates by 180 for black)
   inline Square HalfKAv2_hm::orient(Color perspective, Square s, Square ksq) {
-    return Square(int(s) ^ (bool(perspective) * SQ_A8) ^ ((file_of(ksq) < FILE_E) * SQ_H1));
+    return Square(static_cast<int>(s) ^ (bool(perspective) * SQ_A8) ^ ((file_of(ksq) < FILE_E) * SQ_H1));
   }
 
   // Index of a feature for a given king position and another piece on some square

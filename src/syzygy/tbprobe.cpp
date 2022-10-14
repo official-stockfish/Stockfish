@@ -66,8 +66,8 @@ enum TBType { WDL, DTZ }; // Used as template parameter
 // Each table has a set of flags: all of them refer to DTZ tables, the last one to WDL tables
 enum TBFlag { STM = 1, Mapped = 2, WinPlies = 4, LossPlies = 8, Wide = 16, SingleValue = 128 };
 
-inline WDLScore operator-(WDLScore d) { return WDLScore(-int(d)); }
-inline Square operator^(Square s, int i) { return Square(int(s) ^ i); }
+inline WDLScore operator-(WDLScore d) { return WDLScore(-static_cast<int>(d)); }
+inline Square operator^(Square s, int i) { return Square(static_cast<int>(s) ^ i); }
 
 const std::string PieceToChar = " PNBRQK  pnbrqk";
 
@@ -82,7 +82,7 @@ int LeadPawnsSize[6][4];       // [leadPawnsCnt][FILE_A..FILE_D]
 
 // Comparison function to sort leading pawns in ascending MapPawns[] order
 bool pawns_comp(Square i, Square j) { return MapPawns[i] < MapPawns[j]; }
-int off_A1H8(Square sq) { return int(rank_of(sq)) - file_of(sq); }
+int off_A1H8(Square sq) { return static_cast<int>(rank_of(sq)) - file_of(sq); }
 
 constexpr Value WDL_to_value[] = {
    -VALUE_MATE + MAX_PLY + 1,
@@ -485,7 +485,7 @@ void TBTables::add(const std::vector<PieceType>& pieces) {
 
     file.close();
 
-    MaxCardinality = std::max((int)pieces.size(), MaxCardinality);
+    MaxCardinality = std::max(static_cast<int>(pieces.size()), MaxCardinality);
 
     wdlTable.emplace_back(code);
     dtzTable.emplace_back(wdlTable.back());
@@ -1574,9 +1574,9 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves) {
         // 1 cp to cursed wins and let it grow to 49 cp as the positions gets
         // closer to a real win.
         m.tbScore =  r >= bound ? VALUE_MATE - MAX_PLY - 1
-                   : r >  0     ? Value((std::max( 3, r - 800) * int(PawnValueEg)) / 200)
+                   : r >  0     ? Value((std::max( 3, r - 800) * static_cast<int>(PawnValueEg)) / 200)
                    : r == 0     ? VALUE_DRAW
-                   : r > -bound ? Value((std::min(-3, r + 800) * int(PawnValueEg)) / 200)
+                   : r > -bound ? Value((std::min(-3, r + 800) * static_cast<int>(PawnValueEg)) / 200)
                    :             -VALUE_MATE + MAX_PLY + 1;
     }
 

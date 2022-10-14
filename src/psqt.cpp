@@ -33,7 +33,7 @@ auto constexpr S = make_score;
 
 // 'Bonus' contains Piece-Square parameters.
 // Scores are explicit for files A to D, implicitly mirrored for E to H.
-constexpr Score Bonus[][RANK_NB][int(FILE_NB) / 2] = {
+constexpr Score Bonus[][RANK_NB][static_cast<int>(FILE_NB) / 2] = {
   { },
   { },
   { // Knight

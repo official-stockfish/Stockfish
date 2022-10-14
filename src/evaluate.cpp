@@ -228,7 +228,7 @@ namespace {
 
   // BishopPawns[distance from edge] contains a file-dependent penalty for pawns on
   // squares of the same color as our bishop.
-  constexpr Score BishopPawns[int(FILE_NB) / 2] = {
+  constexpr Score BishopPawns[static_cast<int>(FILE_NB) / 2] = {
     S(3, 8), S(3, 9), S(2, 7), S(3, 7)
   };
 
@@ -871,7 +871,7 @@ namespace {
   Value Evaluation<T>::winnable(Score score) const {
 
     int outflanking =  distance<File>(pos.square<KING>(WHITE), pos.square<KING>(BLACK))
-                    + int(rank_of(pos.square<KING>(WHITE)) - rank_of(pos.square<KING>(BLACK)));
+                    + static_cast<int>(rank_of(pos.square<KING>(WHITE)) - rank_of(pos.square<KING>(BLACK)));
 
     bool pawnsOnBothFlanks =   (pos.pieces(PAWN) & QueenSide)
                             && (pos.pieces(PAWN) & KingSide);
@@ -947,8 +947,8 @@ namespace {
     }
 
     // Interpolate between the middlegame and (scaled by 'sf') endgame score
-    v =  mg * int(me->game_phase())
-       + eg * int(PHASE_MIDGAME - me->game_phase()) * ScaleFactor(sf) / SCALE_FACTOR_NORMAL;
+    v =  mg * static_cast<int>(me->game_phase())
+       + eg * static_cast<int>(PHASE_MIDGAME - me->game_phase()) * ScaleFactor(sf) / SCALE_FACTOR_NORMAL;
     v /= PHASE_MIDGAME;
 
     if constexpr (T)
