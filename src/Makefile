@@ -699,7 +699,7 @@ ifeq ($(debug), no)
 # the tool chain requires gcc version 10.1 or later.
 	else ifeq ($(comp),mingw)
 	ifneq ($(arch),i386)
-		CXXFLAGS += -flto
+###		CXXFLAGS += -flto
 		LDFLAGS += $(CXXFLAGS) -save-temps
 	endif
 	endif
