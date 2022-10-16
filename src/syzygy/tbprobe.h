@@ -31,8 +31,6 @@ enum WDLScore {
     WDLDraw        =  0, // Draw
     WDLCursedWin   =  1, // Win, but draw under 50-move rule
     WDLWin         =  2, // Win
-
-    WDLScoreNone  = -1000
 };
 
 // Possible states after a probing operation
