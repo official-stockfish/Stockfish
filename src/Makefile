@@ -678,7 +678,7 @@ endif
 ifeq ($(optimize),yes)
 ifeq ($(debug), no)
 	ifeq ($(comp),clang)
-		CXXFLAGS += -flto
+		CXXFLAGS += -flto=full
 		ifeq ($(target_windows),yes)
 			CXXFLAGS += -fuse-ld=lld
 		endif
@@ -688,10 +688,10 @@ ifeq ($(debug), no)
 # GCC on some systems.
 	else ifeq ($(comp),gcc)
 	ifeq ($(gccisclang),)
-		CXXFLAGS += -flto
+		CXXFLAGS += -flto -flto-partition=one
 		LDFLAGS += $(CXXFLAGS) -flto=jobserver
 	else
-		CXXFLAGS += -flto
+		CXXFLAGS += -flto=full
 		LDFLAGS += $(CXXFLAGS)
 	endif
 
