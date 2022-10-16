@@ -688,10 +688,10 @@ ifeq ($(debug), no)
 # GCC on some systems.
 	else ifeq ($(comp),gcc)
 	ifeq ($(gccisclang),)
-		CXXFLAGS += -flto=full
+		CXXFLAGS += -flto -flto-partition=one
 		LDFLAGS += $(CXXFLAGS) -flto=jobserver
 	else
-		CXXFLAGS += -flto -flto-partition=one
+		CXXFLAGS += -flto=full
 		LDFLAGS += $(CXXFLAGS)
 	endif
 
