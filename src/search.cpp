@@ -272,6 +272,7 @@ void Thread::search() {
   Depth lastBestMoveDepth = 0;
   MainThread* mainThread = (this == Threads.main() ? Threads.main() : nullptr);
   double timeReduction = 1, totBestMoveChanges = 0;
+  double fallingEval, reduction, bestMoveInstability, complexity, complexPosition;
   Color us = rootPos.side_to_move();
   int iterIdx = 0;
 
@@ -464,17 +465,31 @@ void Thread::search() {
           && !Threads.stop
           && !mainThread->stopOnPonderhit)
       {
-          double fallingEval = (71 + 12 * (mainThread->bestPreviousAverageScore - bestValue)
-                                    +  6 * (mainThread->iterValue[iterIdx] - bestValue)) / 656.7;
-          fallingEval = std::clamp(fallingEval, 0.5, 1.5);
+          // We use various heuristics, like stability of the best move over
+          // several iterations, trend of its evaluation over these iterations,
+          // average complexity of the positions seen in the search tree, previous
+          // acceleration of time management, to reduce or extend the time allocated
+          // for the current search.
+          fallingEval         = (  71
+                                 + 12 * (mainThread->bestPreviousAverageScore - bestValue)
+                                 +  6 * (mainThread->iterValue[iterIdx] - bestValue)
+                                 ) / 656.7;
+          fallingEval         = std::clamp(fallingEval, 0.5, 1.5);
+          timeReduction       = lastBestMoveDepth + 9 < completedDepth ? 1.37 : 0.65;
+          reduction           = (1.4 + mainThread->previousTimeReduction) / (2.15 * timeReduction);
+          bestMoveInstability = 1.0 + 1.7 * totBestMoveChanges / Threads.size();
+          complexity          = std::abs(mainThread->complexityAverage.value());
+          complexPosition     = std::clamp(1.0 + (complexity - 261) / 1738.7, 0.5, 1.5);
 
-          // If the bestMove is stable over several iterations, reduce time accordingly
-          timeReduction = lastBestMoveDepth + 9 < completedDepth ? 1.37 : 0.65;
-          double reduction = (1.4 + mainThread->previousTimeReduction) / (2.15 * timeReduction);
-          double bestMoveInstability = 1 + 1.7 * totBestMoveChanges / Threads.size();
-          int complexity = mainThread->complexityAverage.value();
-          double complexPosition = std::min(1.0 + (complexity - 261) / 1738.7, 1.5);
+          // Check that the factors are reasonable
+          assert( 0.5 <= fallingEval          &&  fallingEval         <= 1.5       );
+          assert( 0.5 <= timeReduction        &&  timeReduction       <= 1.5       );
+          assert( 0.5 <= reduction            &&  reduction           <= 3.0       );
+          assert( 1.0 <= bestMoveInstability  &&  bestMoveInstability <= 1000000.0 );
+          assert( 0.0 <= complexity           &&  complexity          <= 1000000.0 );
+          assert( 0.5 <= complexPosition      &&  complexPosition     <= 1.5       );
 
+          // This is our equation for the ideal total time to devote to this move
           double totalTime = Time.optimum() * fallingEval * reduction * bestMoveInstability * complexPosition;
 
           // Cap used time in case of a single legal move for a better viewer experience in tournaments
