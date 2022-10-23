@@ -1082,6 +1082,8 @@ Value Eval::evaluate(const Position& pos, int* complexity) {
 
       optimism = optimism * (269 + nnueComplexity) / 256;
       v = (nnue * scale + optimism * (scale - 754)) / 1024;
+
+      v -= 8 - pos.count<PAWN>(pos.side_to_move());
   }
 
   // Damp down the evaluation linearly when shuffling
