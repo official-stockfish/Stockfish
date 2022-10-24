@@ -20,7 +20,7 @@
 Glaurung 2.1. Stockfish is not a complete chess program and requires a UCI-compatible
 graphical user interface (GUI) (e.g. XBoard with PolyGlot, Scid, Cute Chess, eboard,
 Arena, Sigma Chess, Shredder, Chess Partner or Fritz) in order to be used comfortably.
-Read the documentation for your GUI of choice for informationabout how to use
+Read the documentation for your GUI of choice for information about how to use
 Stockfish with it.
 
 The Stockfish engine features two evaluation functions for chess. The efficiently 
