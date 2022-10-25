@@ -350,7 +350,7 @@ For full details, read the copy of the GPL v3 found in the file named
 [commits-badge]:https://img.shields.io/github/commits-since/official-stockfish/Stockfish/latest?style=for-the-badge
 [commits-link]:https://github.com/official-stockfish/Stockfish/commits/master
 [discord-badge]:https://img.shields.io/discord/435943710472011776?style=for-the-badge&label=discord&logo=Discord
-[discord-link]:https://discord.com/invite/aefaxmq
+[discord-link]:https://discord.gg/GWDRS3kU6R
 [fishcooking-link]:https://groups.google.com/g/fishcooking
 [fishtest-badge]:https://img.shields.io/website?style=for-the-badge&down_color=red&down_message=Offline&label=Fishtest&up_color=success&up_message=Online&url=https%3A%2F%2Ftests.stockfishchess.org%2Ftests
 [fishtest-link]:https://tests.stockfishchess.org/tests
