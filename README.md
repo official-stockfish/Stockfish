@@ -344,33 +344,36 @@ source code, these changes must also be made available under the GPL v3.
 For full details, read the copy of the GPL v3 found in the file named
 [*Copying.txt*][license-link].
 
-[authors-link]:https://github.com/official-stockfish/Stockfish/blob/master/AUTHORS
-[build-badge]:https://img.shields.io/github/workflow/status/official-stockfish/Stockfish/Stockfish?style=for-the-badge&label=stockfish&logo=github
-[build-link]:https://github.com/official-stockfish/Stockfish/actions/workflows/stockfish.yml
-[commits-badge]:https://img.shields.io/github/commits-since/official-stockfish/Stockfish/latest?style=for-the-badge
-[commits-link]:https://github.com/official-stockfish/Stockfish/commits/master
-[discord-badge]:https://img.shields.io/discord/435943710472011776?style=for-the-badge&label=discord&logo=Discord
-[discord-link]:https://discord.com/invite/aefaxmq
-[fishcooking-link]:https://groups.google.com/g/fishcooking
-[fishtest-badge]:https://img.shields.io/website?style=for-the-badge&down_color=red&down_message=Offline&label=Fishtest&up_color=success&up_message=Online&url=https%3A%2F%2Ftests.stockfishchess.org%2Ftests
-[fishtest-link]:https://tests.stockfishchess.org/tests
-[github-link]:https://github.com/official-stockfish/Stockfish
-[guideline-link]:https://github.com/glinscott/fishtest/wiki/Creating-my-first-test
-[license-badge]:https://img.shields.io/github/license/official-stockfish/Stockfish?style=for-the-badge&label=license&color=success
-[license-link]:https://github.com/official-stockfish/Stockfish/blob/master/Copying.txt
-[lockpages-link]:https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/enable-the-lock-pages-in-memory-option-windows
-[nodchip-link]:https://github.com/nodchip/Stockfish
-[programming-link]:https://www.chessprogramming.org/Main_Page
-[programmingsf-link]:https://www.chessprogramming.org/Stockfish
-[pytorch-link]:https://github.com/glinscott/nnue-pytorch
-[rammap-link]:https://docs.microsoft.com/en-us/sysinternals/downloads/rammap
-[readme-link]:https://github.com/official-stockfish/Stockfish/blob/master/README.md
-[release-badge]:https://img.shields.io/github/v/release/official-stockfish/Stockfish?style=for-the-badge&label=official%20release
-[release-link]:https://github.com/official-stockfish/Stockfish/releases/latest
-[src-link]:https://github.com/official-stockfish/Stockfish/tree/master/src
-[stockfish128-logo]:https://stockfishchess.org/images/logo/icon_128x128.png
-[tools-link]:https://github.com/official-stockfish/Stockfish/tree/tools
-[uci-link]:https://www.shredderchess.com/download/div/uci.zip
-[website-badge]:https://img.shields.io/website?style=for-the-badge&down_color=red&down_message=Offline&label=website&up_color=success&up_message=Online&url=https%3A%2F%2Fstockfishchess.org
-[website-link]:https://stockfishchess.org
-[worker-link]:https://github.com/glinscott/fishtest/wiki/Running-the-worker:-overview
+
+[authors-link]:       https://github.com/official-stockfish/Stockfish/blob/master/AUTHORS
+[build-link]:         https://github.com/official-stockfish/Stockfish/actions/workflows/stockfish.yml
+[commits-link]:       https://github.com/official-stockfish/Stockfish/commits/master
+[discord-link]:       https://discord.gg/GWDRS3kU6R
+[fishcooking-link]:   https://groups.google.com/g/fishcooking
+[fishtest-link]:      https://tests.stockfishchess.org/tests
+[github-link]:        https://github.com/official-stockfish/Stockfish
+[guideline-link]:     https://github.com/glinscott/fishtest/wiki/Creating-my-first-test
+[license-link]:       https://github.com/official-stockfish/Stockfish/blob/master/Copying.txt
+[lockpages-link]:     https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/enable-the-lock-pages-in-memory-option-windows
+[nodchip-link]:       https://github.com/nodchip/Stockfish
+[programming-link]:   https://www.chessprogramming.org/Main_Page
+[programmingsf-link]: https://www.chessprogramming.org/Stockfish
+[pytorch-link]:       https://github.com/glinscott/nnue-pytorch
+[rammap-link]:        https://docs.microsoft.com/en-us/sysinternals/downloads/rammap
+[readme-link]:        https://github.com/official-stockfish/Stockfish/blob/master/README.md
+[release-link]:       https://github.com/official-stockfish/Stockfish/releases/latest
+[src-link]:           https://github.com/official-stockfish/Stockfish/tree/master/src
+[stockfish128-logo]:  https://stockfishchess.org/images/logo/icon_128x128.png
+[tools-link]:         https://github.com/official-stockfish/Stockfish/tree/tools
+[uci-link]:           https://www.shredderchess.com/download/div/uci.zip
+[website-link]:       https://stockfishchess.org
+[worker-link]:        https://github.com/glinscott/fishtest/wiki/Running-the-worker:-overview
+
+[build-badge]:        https://img.shields.io/github/workflow/status/official-stockfish/Stockfish/Stockfish?style=for-the-badge&label=stockfish&logo=github
+[commits-badge]:      https://img.shields.io/github/commits-since/official-stockfish/Stockfish/latest?style=for-the-badge
+[discord-badge]:      https://img.shields.io/discord/435943710472011776?style=for-the-badge&label=discord&logo=Discord
+[fishtest-badge]:     https://img.shields.io/website?style=for-the-badge&down_color=red&down_message=Offline&label=Fishtest&up_color=success&up_message=Online&url=https%3A%2F%2Ftests.stockfishchess.org%2Ftests
+[license-badge]:      https://img.shields.io/github/license/official-stockfish/Stockfish?style=for-the-badge&label=license&color=success
+[release-badge]:      https://img.shields.io/github/v/release/official-stockfish/Stockfish?style=for-the-badge&label=official%20release
+
+[website-badge]:      https://img.shields.io/website?style=for-the-badge&down_color=red&down_message=Offline&label=website&up_color=success&up_message=Online&url=https%3A%2F%2Fstockfishchess.org

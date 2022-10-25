@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Discord server
+    url: https://discord.gg/GWDRS3kU6R
+    about: Feel free to ask for support or have a chat with us in our Discord server!
+  - name: Discussions, Q&A, ideas, show us something...
+    url: https://github.com/official-stockfish/Stockfish/discussions/new
+    about: Do you have an idea for Stockfish? Do you want to show something that you made? Please open a discussion about it!
