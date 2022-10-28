@@ -1,0 +1,1700 @@
+<?xml version="1.0"?>
+<AppSettings version="27.0">
+	<SettingGroup Name="ActiveX Controls" Selected="true">
+		<Setting Name="PalettePage" DataType="1" Value="ActiveX"/>
+		<Setting Name="UnitDirName" DataType="1" Value="$(BDSUSERDIR)\Imports"/>
+	</SettingGroup>
+	<SettingGroup Name="Auto Save" Selected="true">
+		<Setting Name="Editor Files" DataType="1" Value="False"/>
+		<Setting Name="Desktop" DataType="1" Value="False"/>
+		<Setting Name="LoadLastProject" DataType="1" Value="False"/>
+		<Setting Name="Symbols" DataType="1" Value="0"/>
+	</SettingGroup>
+	<SettingGroup Name="AutoRecover" Selected="true">
+		<Setting Name="Enabled" DataType="1" Value="True"/>
+		<Setting Name="Interval" DataType="4" Value="10"/>
+	</SettingGroup>
+	<SettingGroup Name="Autorun" Selected="true"/>
+	<SettingGroup Name="Class Completion" Selected="true">
+		<Setting Name="Finish properties" DataType="1" Value="True"/>
+		<Setting Name="Complete navigation" DataType="1" Value="True"/>
+		<Setting Name="Add interface methods" DataType="1" Value="False"/>
+	</SettingGroup>
+	<SettingGroup Name="Code Explorer" Selected="true">
+		<Setting Name="Highlight incomplete" DataType="1" Value="True"/>
+		<Setting Name="Sorting" DataType="1" Value="2"/>
+		<Setting Name="Expanding" DataType="1" Value="0"/>
+		<Setting Name="Grouping" DataType="1" Value="1"/>
+		<Setting Name="CategorySort" DataType="1" Value="Private;Strict Private;Protected;Strict Protected;Protected Internal;Internal;Public;Published;Fields;Properties;Methods;Classes;Interfaces;Procedures;Types;Variables;Uses;Virtuals;Statics;Inherited;Introduced"/>
+		<Setting Name="DeclarationSyntax" DataType="1" Value="True"/>
+		<Setting Name="Show Mod Exp" DataType="1" Value="True"/>
+		<Setting Name="Browser Location" DataType="1" Value=""/>
+		<Setting Name="Initial View" DataType="1" Value="1"/>
+		<Setting Name="Symbol Scope" DataType="1" Value="1"/>
+		<Setting Name="PrivateVisible" DataType="1" Value="False"/>
+		<Setting Name="PrivateExpand" DataType="1" Value="False"/>
+		<Setting Name="PublicVisible" DataType="1" Value="True"/>
+		<Setting Name="PublicExpand" DataType="1" Value="True"/>
+		<Setting Name="InternalVisible" DataType="1" Value="False"/>
+		<Setting Name="InternalExpand" DataType="1" Value="False"/>
+		<Setting Name="Protected InternalVisible" DataType="1" Value="True"/>
+		<Setting Name="Protected InternalExpand" DataType="1" Value="False"/>
+		<Setting Name="ProtectedVisible" DataType="1" Value="True"/>
+		<Setting Name="ProtectedExpand" DataType="1" Value="False"/>
+		<Setting Name="PublishedVisible" DataType="1" Value="True"/>
+		<Setting Name="PublishedExpand" DataType="1" Value="True"/>
+		<Setting Name="MethodsVisible" DataType="1" Value="True"/>
+		<Setting Name="MethodsExpand" DataType="1" Value="False"/>
+		<Setting Name="PropertiesVisible" DataType="1" Value="True"/>
+		<Setting Name="PropertiesExpand" DataType="1" Value="False"/>
+		<Setting Name="FieldsVisible" DataType="1" Value="True"/>
+		<Setting Name="FieldsExpand" DataType="1" Value="False"/>
+		<Setting Name="ClassesVisible" DataType="1" Value="True"/>
+		<Setting Name="ClassesExpand" DataType="1" Value="True"/>
+		<Setting Name="InterfacesVisible" DataType="1" Value="False"/>
+		<Setting Name="InterfacesExpand" DataType="1" Value="False"/>
+		<Setting Name="ProceduresVisible" DataType="1" Value="True"/>
+		<Setting Name="TypesVisible" DataType="1" Value="True"/>
+		<Setting Name="VariablesVisible" DataType="1" Value="True"/>
+		<Setting Name="ProceduresExpand" DataType="1" Value="False"/>
+		<Setting Name="TypesExpand" DataType="1" Value="False"/>
+		<Setting Name="VariablesExpand" DataType="1" Value="False"/>
+		<Setting Name="UsesVisible" DataType="1" Value="True"/>
+		<Setting Name="UsesExpand" DataType="1" Value="False"/>
+		<Setting Name="IncludesVisible" DataType="1" Value="True"/>
+		<Setting Name="IncludesExpand" DataType="1" Value="False"/>
+		<Setting Name="MacrosVisible" DataType="1" Value="True"/>
+		<Setting Name="MacrosExpand" DataType="1" Value="False"/>
+		<Setting Name="VirtualsExpand" DataType="1" Value="True"/>
+		<Setting Name="VirtualsVisible" DataType="1" Value="False"/>
+		<Setting Name="StaticsVisible" DataType="1" Value="False"/>
+		<Setting Name="StaticsExpand" DataType="1" Value="True"/>
+		<Setting Name="InheritedVisible" DataType="1" Value="True"/>
+		<Setting Name="InheritedExpand" DataType="1" Value="False"/>
+		<Setting Name="IntroducedVisible" DataType="1" Value="False"/>
+		<Setting Name="IntroducedExpand" DataType="1" Value="True"/>
+		<Setting Name="Strict PrivateVisible" DataType="1" Value="False"/>
+		<Setting Name="Strict ProtectedVisible" DataType="1" Value="False"/>
+		<Setting Name="Strict PrivateExpand" DataType="1" Value="False"/>
+		<Setting Name="Strict ProtectedExpand" DataType="1" Value="False"/>
+	</SettingGroup>
+	<SettingGroup Name="Code Insight" Selected="true"/>
+	<SettingGroup Name="Code Insight\Borland.EditOptions.Borland.CodeInsight.LSP.Pascal" Selected="true">
+		<Setting Name="Code Templates" DataType="1" Value="True"/>
+		<Setting Name="ToolTip Watches" DataType="1" Value="True"/>
+		<Setting Name="Auto Code Completions" DataType="1" Value="True"/>
+		<Setting Name="Auto Code Parameters" DataType="1" Value="True"/>
+		<Setting Name="Code Complete Delay" DataType="4" Value="1"/>
+		<Setting Name="Scope Sort" DataType="1" Value="True"/>
+		<Setting Name="Declaration Information" DataType="1" Value="True"/>
+		<Setting Name="CodeCompleteHeight" DataType="4" Value="0"/>
+		<Setting Name="CodeCompleteWidth" DataType="4" Value="300"/>
+		<Setting Name="CodeCompleteAutoParens" DataType="1" Value="True"/>
+		<Setting Name="Help Insight" DataType="1" Value="True"/>
+		<Setting Name="Auto-block Completion" DataType="1" Value="True"/>
+		<Setting Name="Auto Complete Templates" DataType="1" Value="True"/>
+		<Setting Name="Sync Edit Hints" DataType="1" Value="False"/>
+		<Setting Name="Block Wrap Style" DataType="1" Value="Without new line"/>
+		<Setting Name="Auto Invoke" DataType="1" Value="True"/>
+		<Setting Name="History" DataType="1" Value="False"/>
+		<Setting Name="Show Reserved Words" DataType="1" Value="False"/>
+		<Setting Name="CodeInsightLSPGenerate" DataType="1" Value="False"/>
+	</SettingGroup>
+	<SettingGroup Name="Code Insight\Borland.EditOptions.HTML" Selected="true">
+		<Setting Name="ToolTip Watches" DataType="1" Value="True"/>
+		<Setting Name="Auto Code Completions" DataType="1" Value="True"/>
+		<Setting Name="Auto Code Parameters" DataType="1" Value="True"/>
+		<Setting Name="Code Complete Delay" DataType="4" Value="1"/>
+		<Setting Name="Scope Sort" DataType="1" Value="True"/>
+		<Setting Name="Declaration Information" DataType="1" Value="True"/>
+		<Setting Name="CodeCompleteHeight" DataType="4" Value="0"/>
+		<Setting Name="CodeCompleteWidth" DataType="4" Value="300"/>
+		<Setting Name="CodeCompleteAutoParens" DataType="1" Value="True"/>
+		<Setting Name="Help Insight" DataType="1" Value="True"/>
+		<Setting Name="Auto-block Completion" DataType="1" Value="True"/>
+		<Setting Name="Code Templates" DataType="1" Value="False"/>
+		<Setting Name="Auto Complete Templates" DataType="1" Value="True"/>
+		<Setting Name="Sync Edit Hints" DataType="1" Value="False"/>
+		<Setting Name="Block Wrap Style" DataType="1" Value="Without new line"/>
+		<Setting Name="Auto Invoke" DataType="1" Value="True"/>
+		<Setting Name="History" DataType="1" Value="False"/>
+		<Setting Name="Show Reserved Words" DataType="1" Value="False"/>
+		<Setting Name="CodeInsightLSPGenerate" DataType="1" Value="False"/>
+	</SettingGroup>
+	<SettingGroup Name="Code Insight\Borland.EditOptions.Pascal" Selected="true">
+		<Setting Name="ToolTip Watches" DataType="1" Value="True"/>
+		<Setting Name="Auto Code Completions" DataType="1" Value="True"/>
+		<Setting Name="Auto Code Parameters" DataType="1" Value="True"/>
+		<Setting Name="Code Complete Delay" DataType="4" Value="1"/>
+		<Setting Name="Scope Sort" DataType="1" Value="True"/>
+		<Setting Name="Declaration Information" DataType="1" Value="True"/>
+		<Setting Name="CodeCompleteHeight" DataType="4" Value="0"/>
+		<Setting Name="CodeCompleteWidth" DataType="4" Value="300"/>
+		<Setting Name="CodeCompleteAutoParens" DataType="1" Value="True"/>
+		<Setting Name="Help Insight" DataType="1" Value="True"/>
+		<Setting Name="Auto-block Completion" DataType="1" Value="True"/>
+		<Setting Name="Code Templates" DataType="1" Value="False"/>
+		<Setting Name="Auto Complete Templates" DataType="1" Value="True"/>
+		<Setting Name="Sync Edit Hints" DataType="1" Value="False"/>
+		<Setting Name="Block Wrap Style" DataType="1" Value="Without new line"/>
+		<Setting Name="Auto Invoke" DataType="1" Value="True"/>
+		<Setting Name="History" DataType="1" Value="False"/>
+		<Setting Name="Show Reserved Words" DataType="1" Value="False"/>
+		<Setting Name="CodeInsightLSPGenerate" DataType="1" Value="False"/>
+	</SettingGroup>
+	<SettingGroup Name="Code Insight\Borland.EditOptions.StyleSheet" Selected="true">
+		<Setting Name="ToolTip Watches" DataType="1" Value="True"/>
+		<Setting Name="Auto Code Completions" DataType="1" Value="True"/>
+		<Setting Name="Auto Code Parameters" DataType="1" Value="True"/>
+		<Setting Name="Code Complete Delay" DataType="4" Value="1"/>
+		<Setting Name="Scope Sort" DataType="1" Value="True"/>
+		<Setting Name="Declaration Information" DataType="1" Value="True"/>
+		<Setting Name="CodeCompleteHeight" DataType="4" Value="0"/>
+		<Setting Name="CodeCompleteWidth" DataType="4" Value="300"/>
+		<Setting Name="CodeCompleteAutoParens" DataType="1" Value="True"/>
+		<Setting Name="Help Insight" DataType="1" Value="True"/>
+		<Setting Name="Auto-block Completion" DataType="1" Value="True"/>
+		<Setting Name="Code Templates" DataType="1" Value="False"/>
+		<Setting Name="Auto Complete Templates" DataType="1" Value="True"/>
+		<Setting Name="Sync Edit Hints" DataType="1" Value="False"/>
+		<Setting Name="Block Wrap Style" DataType="1" Value="Without new line"/>
+		<Setting Name="Auto Invoke" DataType="1" Value="True"/>
+		<Setting Name="History" DataType="1" Value="False"/>
+		<Setting Name="Show Reserved Words" DataType="1" Value="False"/>
+		<Setting Name="CodeInsightLSPGenerate" DataType="1" Value="False"/>
+	</SettingGroup>
+	<SettingGroup Name="Code Metrics" Selected="true">
+		<Setting Name="FunctionLengthThreshold" DataType="4" Value="20"/>
+		<Setting Name="ParamCountThreshold" DataType="4" Value="6"/>
+		<Setting Name="IfDepthThreshold" DataType="4" Value="5"/>
+		<Setting Name="CyclomaticComplexityThreshold" DataType="4" Value="6"/>
+	</SettingGroup>
+	<SettingGroup Name="CodePreviewForm" Selected="true">
+		<Setting Name="Width" DataType="4" Value="430"/>
+		<Setting Name="Height" DataType="4" Value="280"/>
+	</SettingGroup>
+	<SettingGroup Name="Compiling" Selected="true">
+		<Setting Name="Show Compiler Progress" DataType="1" Value="True"/>
+		<Setting Name="Warn on Package Rebuild" DataType="1" Value="False"/>
+		<Setting Name="Compile Beep" DataType="1" Value="False"/>
+		<Setting Name="Cache Headers" DataType="1" Value="False"/>
+		<Setting Name="BackgroundCompilation" DataType="1" Value="False"/>
+		<Setting Name="ShowCommandLine" DataType="1" Value="True"/>
+		<Setting Name="Auto Close Progress Dialog" DataType="1" Value="False"/>
+		<Setting Name="Verbosity" DataType="1" Value="3"/>
+		<Setting Name="Thread Priority" DataType="4" Value="3"/>
+		<Setting Name="BuildModifiedProjects" DataType="1" Value="False"/>
+		<Setting Name="Enable Unit Directory Cache" DataType="1" Value="True"/>
+	</SettingGroup>
+	<SettingGroup Name="Debugging" Selected="true">
+		<Setting Name="Hide Designers On Run" DataType="1" Value="True"/>
+		<Setting Name="Minimize On Run" DataType="1" Value="False"/>
+		<Setting Name="Detailed Exceptions" DataType="1" Value="False"/>
+		<Setting Name="Integrated Debugging" DataType="1" Value="1"/>
+		<Setting Name="DisableEdit" DataType="1" Value="0"/>
+		<Setting Name="TD32Keys" DataType="1" Value="0"/>
+		<Setting Name="RearrangeMenu" DataType="1" Value="0"/>
+		<Setting Name="PromptToRebuildDuringDebugging" DataType="1" Value="1"/>
+		<Setting Name="AutoCompleteExpressionDialogs" DataType="1" Value="1"/>
+		<Setting Name="Allow Side Effects in Watches" DataType="1" Value="0"/>
+		<Setting Name="LogLength" DataType="4" Value="100"/>
+		<Setting Name="LogUnlimited" DataType="1" Value="1"/>
+		<Setting Name="LogClearOnStartup" DataType="1" Value="1"/>
+		<Setting Name="LogAutoScroll" DataType="1" Value="1"/>
+		<Setting Name="LogIncludeProcessInfo" DataType="1" Value="1"/>
+		<Setting Name="Use Log Colors" DataType="1" Value="1"/>
+		<Setting Name="LogOptions" DataType="4" Value="15"/>
+	</SettingGroup>
+	<SettingGroup Name="Debugging\AutoCloseViews" Selected="true">
+		<Setting Name="Implicitly Opened Editor Files" DataType="1" Value="1"/>
+		<Setting Name="Modules View" DataType="1" Value="1"/>
+		<Setting Name="CPU View" DataType="1" Value="1"/>
+	</SettingGroup>
+	<SettingGroup Name="Debugging\Embarcadero Debuggers" Selected="true">
+		<Setting Name="Win32LogOptions" DataType="4" Value="2"/>
+		<Setting Name="DotNetLogOptions" DataType="4" Value="3"/>
+		<Setting Name="Break On Language Exceptions" DataType="1" Value="1"/>
+		<Setting Name="InspectorsStayOnTop" DataType="1" Value="0"/>
+		<Setting Name="InspectorsShowQualNames" DataType="1" Value="0"/>
+		<Setting Name="InspectorsShowInherited" DataType="1" Value="1"/>
+		<Setting Name="InspectorsSortByName" DataType="1" Value="0"/>
+		<Setting Name="ViewCPUOnException" DataType="1" Value="0"/>
+		<Setting Name="InspectExceptionObject" DataType="1" Value="0"/>
+		<Setting Name="Debug Spawned Processes" DataType="1" Value="0"/>
+		<Setting Name="Allow COM Cross-process Stepping" DataType="1" Value="0"/>
+		<Setting Name="Disable Multiple Evaluators" DataType="1" Value="0"/>
+		<Setting Name="Debug Symbols Search Path" DataType="1" Value=""/>
+		<Setting Name="Debug Source Path" DataType="1" Value=""/>
+		<Setting Name="DefaultInspectorRange" DataType="4" Value="131072"/>
+		<Setting Name="Disassembly View Type" DataType="4" Value="0"/>
+		<Setting Name="Ignore Non-User Breakpoints" DataType="1" Value="0"/>
+		<Setting Name="Allow UTF8-encoded data in OutputDebugStringA calls" DataType="1" Value="1"/>
+	</SettingGroup>
+	<SettingGroup Name="Debugging\Embarcadero Debuggers\Evaluators" Selected="true">
+		<Setting Name="" DataType="1" Value="dcc32270.dll"/>
+		<Setting Name="dcc32270.dll" DataType="1" Value="0"/>
+	</SettingGroup>
+	<SettingGroup Name="Debugging\Embarcadero Debuggers\Event Log Colors" Selected="true">
+		<Setting Name="Breakpoint Stack FG" DataType="1" Value="$002080FF"/>
+		<Setting Name="Breakpoint Stack BG" DataType="1" Value="clWindow"/>
+		<Setting Name="Application Domain Created FG" DataType="1" Value="clGreen"/>
+		<Setting Name="Application Domain Created BG" DataType="1" Value="clWindow"/>
+		<Setting Name="Application Domain Deleted FG" DataType="1" Value="clMoneyGreen"/>
+		<Setting Name="Application Domain Deleted BG" DataType="1" Value="clWindow"/>
+		<Setting Name="Managed Debug Assistant FG" DataType="1" Value="clFuchsia"/>
+		<Setting Name="Managed Debug Assistant BG" DataType="1" Value="clWindow"/>
+	</SettingGroup>
+	<SettingGroup Name="Debugging\Embarcadero Debuggers\ExceptionCodes" Selected="true"/>
+	<SettingGroup Name="Debugging\Embarcadero Debuggers\ExceptionCodes\Windows32Exceptions" Selected="true">
+		<Setting Name="ExceptionTypeExpanded" DataType="1" Value="0"/>
+		<Setting Name="Access Violation" DataType="1" Value="1,0"/>
+		<Setting Name="In Page Error" DataType="1" Value="1,0"/>
+		<Setting Name="Invalid Handle" DataType="1" Value="1,0"/>
+		<Setting Name="No Memory" DataType="1" Value="1,0"/>
+		<Setting Name="Illegal Instruction" DataType="1" Value="1,0"/>
+		<Setting Name="Noncontinuable Exception" DataType="1" Value="1,0"/>
+		<Setting Name="Invalid Disposition" DataType="1" Value="1,0"/>
+		<Setting Name="Array Bounds Exceeded" DataType="1" Value="1,0"/>
+		<Setting Name="Float Denormal Operation" DataType="1" Value="1,0"/>
+		<Setting Name="Float Divide By Zero" DataType="1" Value="1,0"/>
+		<Setting Name="Float Inexact Result" DataType="1" Value="1,0"/>
+		<Setting Name="Float Invalid Operation" DataType="1" Value="1,0"/>
+		<Setting Name="Float Overflow" DataType="1" Value="1,0"/>
+		<Setting Name="Float Stack Check" DataType="1" Value="1,0"/>
+		<Setting Name="Float Underflow" DataType="1" Value="1,0"/>
+		<Setting Name="Integer Divide By Zero" DataType="1" Value="1,0"/>
+		<Setting Name="Integer Overflow" DataType="1" Value="1,0"/>
+		<Setting Name="Privileged Instruction" DataType="1" Value="1,0"/>
+		<Setting Name="Stack Overflow" DataType="1" Value="1,0"/>
+		<Setting Name="Control C Exit" DataType="1" Value="1,0"/>
+		<Setting Name="C++ Abort" DataType="1" Value="1,0"/>
+	</SettingGroup>
+	<SettingGroup Name="Debugging\Embarcadero Debuggers\ExceptionCodes\Windows64Exceptions" Selected="true">
+		<Setting Name="ExceptionTypeExpanded" DataType="1" Value="0"/>
+		<Setting Name="Access Violation" DataType="1" Value="1,0"/>
+		<Setting Name="In Page Error" DataType="1" Value="1,0"/>
+		<Setting Name="Invalid Handle" DataType="1" Value="1,0"/>
+		<Setting Name="No Memory" DataType="1" Value="1,0"/>
+		<Setting Name="Illegal Instruction" DataType="1" Value="1,0"/>
+		<Setting Name="Noncontinuable Exception" DataType="1" Value="1,0"/>
+		<Setting Name="Invalid Disposition" DataType="1" Value="1,0"/>
+		<Setting Name="Array Bounds Exceeded" DataType="1" Value="1,0"/>
+		<Setting Name="Float Denormal Operation" DataType="1" Value="1,0"/>
+		<Setting Name="Float Divide By Zero" DataType="1" Value="1,0"/>
+		<Setting Name="Float Inexact Result" DataType="1" Value="1,0"/>
+		<Setting Name="Float Invalid Operation" DataType="1" Value="1,0"/>
+		<Setting Name="Float Overflow" DataType="1" Value="1,0"/>
+		<Setting Name="Float Stack Check" DataType="1" Value="1,0"/>
+		<Setting Name="Float Underflow" DataType="1" Value="1,0"/>
+		<Setting Name="Integer Divide By Zero" DataType="1" Value="1,0"/>
+		<Setting Name="Integer Overflow" DataType="1" Value="1,0"/>
+		<Setting Name="Privileged Instruction" DataType="1" Value="1,0"/>
+		<Setting Name="Stack Overflow" DataType="1" Value="1,0"/>
+		<Setting Name="Control C Exit" DataType="1" Value="1,0"/>
+		<Setting Name="C++ Abort" DataType="1" Value="1,0"/>
+	</SettingGroup>
+	<SettingGroup Name="Debugging\Embarcadero Debuggers\Language Exception Classes" Selected="true">
+		<Setting Name="Delphi EAbort Exceptions" DataType="1" Value="1"/>
+		<Setting Name="Indy Silent Exception" DataType="1" Value="1"/>
+		<Setting Name="Microsoft DAO Exceptions" DataType="1" Value="1"/>
+		<Setting Name="System.Threading.SynchronizationLockException" DataType="1" Value="1"/>
+		<Setting Name="System.Threading.ThreadAbortException" DataType="1" Value="1"/>
+	</SettingGroup>
+	<SettingGroup Name="Debugging\Event Log Colors" Selected="true"/>
+	<SettingGroup Name="Debugging\Event Log Colors\Light" Selected="true">
+		<Setting Name="Default Log Color FG" DataType="1" Value="clBlack"/>
+		<Setting Name="Default Log Color BG" DataType="1" Value="clWhite"/>
+		<Setting Name="Output Debug String FG" DataType="1" Value="$004B6E18"/>
+		<Setting Name="Output Debug String BG" DataType="1" Value="clWhite"/>
+		<Setting Name="WM Sent FG" DataType="1" Value="$00844A0E"/>
+		<Setting Name="WM Sent BG" DataType="1" Value="clWhite"/>
+		<Setting Name="WM Posted FG" DataType="1" Value="$00844A0E"/>
+		<Setting Name="WM Posted BG" DataType="1" Value="clWhite"/>
+		<Setting Name="Ole Client Start FG" DataType="1" Value="clBlack"/>
+		<Setting Name="Ole Client Start BG" DataType="1" Value="clWhite"/>
+		<Setting Name="Ole Server Start FG" DataType="1" Value="clBlack"/>
+		<Setting Name="Ole Server Start BG" DataType="1" Value="clWhite"/>
+		<Setting Name="Ole Client End FG" DataType="1" Value="clBlack"/>
+		<Setting Name="Ole Client End BG" DataType="1" Value="clWhite"/>
+		<Setting Name="Breakpoint Hit FG" DataType="1" Value="clRed"/>
+		<Setting Name="Breakpoint Hit BG" DataType="1" Value="clWhite"/>
+		<Setting Name="Breakpoint Evaluation FG" DataType="1" Value="$00454545"/>
+		<Setting Name="Breakpoint Evaluation BG" DataType="1" Value="clWhite"/>
+		<Setting Name="Breakpoint Message FG" DataType="1" Value="$0001177E"/>
+		<Setting Name="Breakpoint Message BG" DataType="1" Value="clWhite"/>
+		<Setting Name="Process Start FG" DataType="1" Value="$00787878"/>
+		<Setting Name="Process Start BG" DataType="1" Value="clWhite"/>
+		<Setting Name="Process End FG" DataType="1" Value="$00787878"/>
+		<Setting Name="Process End BG" DataType="1" Value="clWhite"/>
+		<Setting Name="Thread Start FG" DataType="1" Value="$00008CFF"/>
+		<Setting Name="Thread Start BG" DataType="1" Value="clWhite"/>
+		<Setting Name="Thread End FG" DataType="1" Value="$00008CFF"/>
+		<Setting Name="Thread End BG" DataType="1" Value="clWhite"/>
+		<Setting Name="Module Load FG" DataType="1" Value="$00844A0E"/>
+		<Setting Name="Module Load BG" DataType="1" Value="clWhite"/>
+		<Setting Name="Module Unload FG" DataType="1" Value="$00844A0E"/>
+		<Setting Name="Module Unload BG" DataType="1" Value="clWhite"/>
+		<Setting Name="Exception First Try FG" DataType="1" Value="$009F528A"/>
+		<Setting Name="Exception First Try BG" DataType="1" Value="clWhite"/>
+	</SettingGroup>
+	<SettingGroup Name="DesignerInsight" Selected="true">
+		<Setting Name="Width" DataType="4" Value="350"/>
+		<Setting Name="Height" DataType="4" Value="250"/>
+		<Setting Name="Visible" DataType="1" Value="False"/>
+	</SettingGroup>
+	<SettingGroup Name="Desktop" Selected="true">
+		<Setting Name="Monitor Layout" DataType="1" Value="2"/>
+	</SettingGroup>
+	<SettingGroup Name="DifferenceViewer" Selected="true">
+		<Setting Name="DefaultDiffViewer" DataType="1" Value="Embarcadero.Default"/>
+		<Setting Name="DefaultExternalDiffViewer" DataType="1" Value=""/>
+		<Setting Name="PreferredViewer" DataType="1" Value="0"/>
+	</SettingGroup>
+	<SettingGroup Name="DotNetFramework" Selected="true">
+		<Setting Name="AssemblyLinker" DataType="1" Value="$FRAMEWORKDIR$\al.exe"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor" Selected="true">
+		<Setting Name="DefaultFileFilter" DataType="1" Value="Borland.FileFilter.ANSI"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Highlight" Selected="true"/>
+	<SettingGroup Name="Editor\Highlight\Additional search match highlight" Selected="true">
+		<Setting Name="Bold" DataType="1" Value="False"/>
+		<Setting Name="Italic" DataType="1" Value="False"/>
+		<Setting Name="Underline" DataType="1" Value="False"/>
+		<Setting Name="Default Foreground" DataType="1" Value="False"/>
+		<Setting Name="Default Background" DataType="1" Value="False"/>
+		<Setting Name="Foreground Color New" DataType="1" Value="clBlack"/>
+		<Setting Name="Background Color New" DataType="1" Value="$0078AAFF"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Highlight\Assembler" Selected="true">
+		<Setting Name="Bold" DataType="1" Value="False"/>
+		<Setting Name="Italic" DataType="1" Value="False"/>
+		<Setting Name="Underline" DataType="1" Value="False"/>
+		<Setting Name="Default Foreground" DataType="1" Value="True"/>
+		<Setting Name="Default Background" DataType="1" Value="True"/>
+		<Setting Name="Foreground Color New" DataType="1" Value="clBlack"/>
+		<Setting Name="Background Color New" DataType="1" Value="clWhite"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Highlight\Attribute Names" Selected="true">
+		<Setting Name="Bold" DataType="1" Value="False"/>
+		<Setting Name="Italic" DataType="1" Value="False"/>
+		<Setting Name="Underline" DataType="1" Value="False"/>
+		<Setting Name="Default Foreground" DataType="1" Value="False"/>
+		<Setting Name="Default Background" DataType="1" Value="True"/>
+		<Setting Name="Foreground Color New" DataType="1" Value="clRed"/>
+		<Setting Name="Background Color New" DataType="1" Value="clWhite"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Highlight\Attribute Values" Selected="true">
+		<Setting Name="Bold" DataType="1" Value="False"/>
+		<Setting Name="Italic" DataType="1" Value="False"/>
+		<Setting Name="Underline" DataType="1" Value="False"/>
+		<Setting Name="Default Foreground" DataType="1" Value="False"/>
+		<Setting Name="Default Background" DataType="1" Value="True"/>
+		<Setting Name="Foreground Color New" DataType="1" Value="clRed"/>
+		<Setting Name="Background Color New" DataType="1" Value="clWhite"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Highlight\Brace Highlight" Selected="true">
+		<Setting Name="Bold" DataType="1" Value="False"/>
+		<Setting Name="Italic" DataType="1" Value="False"/>
+		<Setting Name="Underline" DataType="1" Value="False"/>
+		<Setting Name="Default Foreground" DataType="1" Value="False"/>
+		<Setting Name="Default Background" DataType="1" Value="False"/>
+		<Setting Name="Foreground Color New" DataType="1" Value="$00CCCCD6"/>
+		<Setting Name="Background Color New" DataType="1" Value="clAqua"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Highlight\Character" Selected="true">
+		<Setting Name="Bold" DataType="1" Value="False"/>
+		<Setting Name="Italic" DataType="1" Value="False"/>
+		<Setting Name="Underline" DataType="1" Value="False"/>
+		<Setting Name="Default Foreground" DataType="1" Value="False"/>
+		<Setting Name="Default Background" DataType="1" Value="True"/>
+		<Setting Name="Foreground Color New" DataType="1" Value="clPurple"/>
+		<Setting Name="Background Color New" DataType="1" Value="clWhite"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Highlight\Code folding tree" Selected="true">
+		<Setting Name="Bold" DataType="1" Value="False"/>
+		<Setting Name="Italic" DataType="1" Value="False"/>
+		<Setting Name="Underline" DataType="1" Value="False"/>
+		<Setting Name="Default Foreground" DataType="1" Value="False"/>
+		<Setting Name="Default Background" DataType="1" Value="False"/>
+		<Setting Name="Foreground Color New" DataType="1" Value="$00CC9999"/>
+		<Setting Name="Background Color New" DataType="1" Value="clWhite"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Highlight\Comment" Selected="true">
+		<Setting Name="Bold" DataType="1" Value="False"/>
+		<Setting Name="Italic" DataType="1" Value="True"/>
+		<Setting Name="Underline" DataType="1" Value="False"/>
+		<Setting Name="Default Foreground" DataType="1" Value="False"/>
+		<Setting Name="Default Background" DataType="1" Value="True"/>
+		<Setting Name="Foreground Color New" DataType="1" Value="clGreen"/>
+		<Setting Name="Background Color New" DataType="1" Value="clWhite"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Highlight\Diff addition" Selected="true">
+		<Setting Name="Bold" DataType="1" Value="False"/>
+		<Setting Name="Italic" DataType="1" Value="False"/>
+		<Setting Name="Underline" DataType="1" Value="False"/>
+		<Setting Name="Default Foreground" DataType="1" Value="True"/>
+		<Setting Name="Default Background" DataType="1" Value="False"/>
+		<Setting Name="Foreground Color New" DataType="1" Value="clBlack"/>
+		<Setting Name="Background Color New" DataType="1" Value="$00CCFFCC"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Highlight\Diff deletion" Selected="true">
+		<Setting Name="Bold" DataType="1" Value="False"/>
+		<Setting Name="Italic" DataType="1" Value="False"/>
+		<Setting Name="Underline" DataType="1" Value="False"/>
+		<Setting Name="Default Foreground" DataType="1" Value="True"/>
+		<Setting Name="Default Background" DataType="1" Value="False"/>
+		<Setting Name="Foreground Color New" DataType="1" Value="clBlack"/>
+		<Setting Name="Background Color New" DataType="1" Value="$00FFC7C7"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Highlight\Diff move" Selected="true">
+		<Setting Name="Bold" DataType="1" Value="False"/>
+		<Setting Name="Italic" DataType="1" Value="False"/>
+		<Setting Name="Underline" DataType="1" Value="False"/>
+		<Setting Name="Default Foreground" DataType="1" Value="True"/>
+		<Setting Name="Default Background" DataType="1" Value="False"/>
+		<Setting Name="Foreground Color New" DataType="1" Value="clBlack"/>
+		<Setting Name="Background Color New" DataType="1" Value="$00AAFFFF"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Highlight\Disabled break" Selected="true">
+		<Setting Name="Bold" DataType="1" Value="False"/>
+		<Setting Name="Italic" DataType="1" Value="False"/>
+		<Setting Name="Underline" DataType="1" Value="False"/>
+		<Setting Name="Default Foreground" DataType="1" Value="False"/>
+		<Setting Name="Default Background" DataType="1" Value="False"/>
+		<Setting Name="Foreground Color New" DataType="1" Value="clGray"/>
+		<Setting Name="Background Color New" DataType="1" Value="$00FFC7C7"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Highlight\Enabled break" Selected="true">
+		<Setting Name="Bold" DataType="1" Value="False"/>
+		<Setting Name="Italic" DataType="1" Value="False"/>
+		<Setting Name="Underline" DataType="1" Value="False"/>
+		<Setting Name="Default Foreground" DataType="1" Value="False"/>
+		<Setting Name="Default Background" DataType="1" Value="False"/>
+		<Setting Name="Foreground Color New" DataType="1" Value="clBlack"/>
+		<Setting Name="Background Color New" DataType="1" Value="$00FFC7C7"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Highlight\Error line" Selected="true">
+		<Setting Name="Bold" DataType="1" Value="False"/>
+		<Setting Name="Italic" DataType="1" Value="False"/>
+		<Setting Name="Underline" DataType="1" Value="False"/>
+		<Setting Name="Default Foreground" DataType="1" Value="False"/>
+		<Setting Name="Default Background" DataType="1" Value="False"/>
+		<Setting Name="Foreground Color New" DataType="1" Value="clWhite"/>
+		<Setting Name="Background Color New" DataType="1" Value="$00324CCB"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Highlight\Execution point" Selected="true">
+		<Setting Name="Bold" DataType="1" Value="False"/>
+		<Setting Name="Italic" DataType="1" Value="False"/>
+		<Setting Name="Underline" DataType="1" Value="False"/>
+		<Setting Name="Default Foreground" DataType="1" Value="False"/>
+		<Setting Name="Default Background" DataType="1" Value="False"/>
+		<Setting Name="Foreground Color New" DataType="1" Value="clBlack"/>
+		<Setting Name="Background Color New" DataType="1" Value="$009999CC"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Highlight\Float" Selected="true">
+		<Setting Name="Bold" DataType="1" Value="False"/>
+		<Setting Name="Italic" DataType="1" Value="False"/>
+		<Setting Name="Underline" DataType="1" Value="False"/>
+		<Setting Name="Default Foreground" DataType="1" Value="False"/>
+		<Setting Name="Default Background" DataType="1" Value="True"/>
+		<Setting Name="Foreground Color New" DataType="1" Value="clBlue"/>
+		<Setting Name="Background Color New" DataType="1" Value="clWhite"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Highlight\Folded code" Selected="true">
+		<Setting Name="Bold" DataType="1" Value="False"/>
+		<Setting Name="Italic" DataType="1" Value="False"/>
+		<Setting Name="Underline" DataType="1" Value="False"/>
+		<Setting Name="Default Foreground" DataType="1" Value="False"/>
+		<Setting Name="Default Background" DataType="1" Value="False"/>
+		<Setting Name="Foreground Color New" DataType="1" Value="$00CC9999"/>
+		<Setting Name="Background Color New" DataType="1" Value="clWhite"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Highlight\Hex" Selected="true">
+		<Setting Name="Bold" DataType="1" Value="False"/>
+		<Setting Name="Italic" DataType="1" Value="False"/>
+		<Setting Name="Underline" DataType="1" Value="False"/>
+		<Setting Name="Default Foreground" DataType="1" Value="False"/>
+		<Setting Name="Default Background" DataType="1" Value="True"/>
+		<Setting Name="Foreground Color New" DataType="1" Value="clBlue"/>
+		<Setting Name="Background Color New" DataType="1" Value="clWhite"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Highlight\Hot Link" Selected="true">
+		<Setting Name="Bold" DataType="1" Value="False"/>
+		<Setting Name="Italic" DataType="1" Value="False"/>
+		<Setting Name="Underline" DataType="1" Value="True"/>
+		<Setting Name="Default Foreground" DataType="1" Value="False"/>
+		<Setting Name="Default Background" DataType="1" Value="True"/>
+		<Setting Name="Foreground Color New" DataType="1" Value="clBlue"/>
+		<Setting Name="Background Color New" DataType="1" Value="clWhite"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Highlight\Identifier" Selected="true">
+		<Setting Name="Bold" DataType="1" Value="False"/>
+		<Setting Name="Italic" DataType="1" Value="False"/>
+		<Setting Name="Underline" DataType="1" Value="False"/>
+		<Setting Name="Default Foreground" DataType="1" Value="True"/>
+		<Setting Name="Default Background" DataType="1" Value="True"/>
+		<Setting Name="Foreground Color New" DataType="1" Value="clBlack"/>
+		<Setting Name="Background Color New" DataType="1" Value="clWhite"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Highlight\Illegal Char" Selected="true">
+		<Setting Name="Bold" DataType="1" Value="False"/>
+		<Setting Name="Italic" DataType="1" Value="False"/>
+		<Setting Name="Underline" DataType="1" Value="False"/>
+		<Setting Name="Default Foreground" DataType="1" Value="True"/>
+		<Setting Name="Default Background" DataType="1" Value="True"/>
+		<Setting Name="Foreground Color New" DataType="1" Value="clBlack"/>
+		<Setting Name="Background Color New" DataType="1" Value="clWhite"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Highlight\Invalid break" Selected="true">
+		<Setting Name="Bold" DataType="1" Value="False"/>
+		<Setting Name="Italic" DataType="1" Value="False"/>
+		<Setting Name="Underline" DataType="1" Value="False"/>
+		<Setting Name="Default Foreground" DataType="1" Value="False"/>
+		<Setting Name="Default Background" DataType="1" Value="False"/>
+		<Setting Name="Foreground Color New" DataType="1" Value="clWhite"/>
+		<Setting Name="Background Color New" DataType="1" Value="clGreen"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Highlight\Line Highlight" Selected="true">
+		<Setting Name="Bold" DataType="1" Value="False"/>
+		<Setting Name="Italic" DataType="1" Value="False"/>
+		<Setting Name="Underline" DataType="1" Value="False"/>
+		<Setting Name="Default Foreground" DataType="1" Value="True"/>
+		<Setting Name="Default Background" DataType="1" Value="False"/>
+		<Setting Name="Foreground Color New" DataType="1" Value="clBlack"/>
+		<Setting Name="Background Color New" DataType="1" Value="$00E6FFFA"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Highlight\Line Number" Selected="true">
+		<Setting Name="Bold" DataType="1" Value="False"/>
+		<Setting Name="Italic" DataType="1" Value="False"/>
+		<Setting Name="Underline" DataType="1" Value="False"/>
+		<Setting Name="Default Foreground" DataType="1" Value="False"/>
+		<Setting Name="Default Background" DataType="1" Value="False"/>
+		<Setting Name="Foreground Color New" DataType="1" Value="$00CC9999"/>
+		<Setting Name="Background Color New" DataType="1" Value="clWhite"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Highlight\Marked block" Selected="true">
+		<Setting Name="Bold" DataType="1" Value="False"/>
+		<Setting Name="Italic" DataType="1" Value="False"/>
+		<Setting Name="Underline" DataType="1" Value="False"/>
+		<Setting Name="Default Foreground" DataType="1" Value="False"/>
+		<Setting Name="Default Background" DataType="1" Value="False"/>
+		<Setting Name="Foreground Color New" DataType="1" Value="clWhite"/>
+		<Setting Name="Background Color New" DataType="1" Value="$00A56D53"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Highlight\Modified line" Selected="true">
+		<Setting Name="Bold" DataType="1" Value="False"/>
+		<Setting Name="Italic" DataType="1" Value="False"/>
+		<Setting Name="Underline" DataType="1" Value="False"/>
+		<Setting Name="Default Foreground" DataType="1" Value="False"/>
+		<Setting Name="Default Background" DataType="1" Value="False"/>
+		<Setting Name="Foreground Color New" DataType="1" Value="clLime"/>
+		<Setting Name="Background Color New" DataType="1" Value="clYellow"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Highlight\Number" Selected="true">
+		<Setting Name="Bold" DataType="1" Value="False"/>
+		<Setting Name="Italic" DataType="1" Value="False"/>
+		<Setting Name="Underline" DataType="1" Value="False"/>
+		<Setting Name="Default Foreground" DataType="1" Value="False"/>
+		<Setting Name="Default Background" DataType="1" Value="True"/>
+		<Setting Name="Foreground Color New" DataType="1" Value="clBlue"/>
+		<Setting Name="Background Color New" DataType="1" Value="clWhite"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Highlight\Octal" Selected="true">
+		<Setting Name="Bold" DataType="1" Value="False"/>
+		<Setting Name="Italic" DataType="1" Value="False"/>
+		<Setting Name="Underline" DataType="1" Value="False"/>
+		<Setting Name="Default Foreground" DataType="1" Value="False"/>
+		<Setting Name="Default Background" DataType="1" Value="True"/>
+		<Setting Name="Foreground Color New" DataType="1" Value="clBlue"/>
+		<Setting Name="Background Color New" DataType="1" Value="clWhite"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Highlight\Plain text" Selected="true">
+		<Setting Name="Bold" DataType="1" Value="False"/>
+		<Setting Name="Italic" DataType="1" Value="False"/>
+		<Setting Name="Underline" DataType="1" Value="False"/>
+		<Setting Name="Default Foreground" DataType="1" Value="True"/>
+		<Setting Name="Default Background" DataType="1" Value="True"/>
+		<Setting Name="Foreground Color New" DataType="1" Value="clBlack"/>
+		<Setting Name="Background Color New" DataType="1" Value="clWhite"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Highlight\Preprocessor" Selected="true">
+		<Setting Name="Bold" DataType="1" Value="False"/>
+		<Setting Name="Italic" DataType="1" Value="False"/>
+		<Setting Name="Underline" DataType="1" Value="False"/>
+		<Setting Name="Default Foreground" DataType="1" Value="False"/>
+		<Setting Name="Default Background" DataType="1" Value="True"/>
+		<Setting Name="Foreground Color New" DataType="1" Value="clTeal"/>
+		<Setting Name="Background Color New" DataType="1" Value="clWhite"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Highlight\Reserved word" Selected="true">
+		<Setting Name="Bold" DataType="1" Value="True"/>
+		<Setting Name="Italic" DataType="1" Value="False"/>
+		<Setting Name="Underline" DataType="1" Value="False"/>
+		<Setting Name="Default Foreground" DataType="1" Value="False"/>
+		<Setting Name="Default Background" DataType="1" Value="True"/>
+		<Setting Name="Foreground Color New" DataType="1" Value="clNavy"/>
+		<Setting Name="Background Color New" DataType="1" Value="clWhite"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Highlight\Right margin" Selected="true">
+		<Setting Name="Bold" DataType="1" Value="False"/>
+		<Setting Name="Italic" DataType="1" Value="False"/>
+		<Setting Name="Underline" DataType="1" Value="False"/>
+		<Setting Name="Default Foreground" DataType="1" Value="False"/>
+		<Setting Name="Default Background" DataType="1" Value="False"/>
+		<Setting Name="Foreground Color New" DataType="1" Value="clSilver"/>
+		<Setting Name="Background Color New" DataType="1" Value="clWhite"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Highlight\Scripts" Selected="true">
+		<Setting Name="Bold" DataType="1" Value="False"/>
+		<Setting Name="Italic" DataType="1" Value="False"/>
+		<Setting Name="Underline" DataType="1" Value="False"/>
+		<Setting Name="Default Foreground" DataType="1" Value="False"/>
+		<Setting Name="Default Background" DataType="1" Value="True"/>
+		<Setting Name="Foreground Color New" DataType="1" Value="clPurple"/>
+		<Setting Name="Background Color New" DataType="1" Value="clWhite"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Highlight\Search match" Selected="true">
+		<Setting Name="Bold" DataType="1" Value="False"/>
+		<Setting Name="Italic" DataType="1" Value="False"/>
+		<Setting Name="Underline" DataType="1" Value="False"/>
+		<Setting Name="Default Foreground" DataType="1" Value="False"/>
+		<Setting Name="Default Background" DataType="1" Value="False"/>
+		<Setting Name="Foreground Color New" DataType="1" Value="$00FCFDCD"/>
+		<Setting Name="Background Color New" DataType="1" Value="clBlack"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Highlight\String" Selected="true">
+		<Setting Name="Bold" DataType="1" Value="False"/>
+		<Setting Name="Italic" DataType="1" Value="False"/>
+		<Setting Name="Underline" DataType="1" Value="False"/>
+		<Setting Name="Default Foreground" DataType="1" Value="False"/>
+		<Setting Name="Default Background" DataType="1" Value="True"/>
+		<Setting Name="Foreground Color New" DataType="1" Value="clBlue"/>
+		<Setting Name="Background Color New" DataType="1" Value="clWhite"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Highlight\Structural Highlighting" Selected="true">
+		<Setting Name="Enabled" DataType="1" Value="True"/>
+		<Setting Name="Color1" DataType="1" Value="$00868686"/>
+		<Setting Name="Color2" DataType="1" Value="$00B2783D"/>
+		<Setting Name="Color3" DataType="1" Value="$007D9F4D"/>
+		<Setting Name="Color4" DataType="1" Value="$009F528A"/>
+		<Setting Name="FlowControlEnabled" DataType="1" Value="True"/>
+		<Setting Name="FlowControlLocation" DataType="1" Value="1"/>
+		<Setting Name="ShowSingleLine" DataType="1" Value="True"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Highlight\Symbol" Selected="true">
+		<Setting Name="Bold" DataType="1" Value="False"/>
+		<Setting Name="Italic" DataType="1" Value="False"/>
+		<Setting Name="Underline" DataType="1" Value="False"/>
+		<Setting Name="Default Foreground" DataType="1" Value="True"/>
+		<Setting Name="Default Background" DataType="1" Value="True"/>
+		<Setting Name="Foreground Color New" DataType="1" Value="clBlack"/>
+		<Setting Name="Background Color New" DataType="1" Value="clWhite"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Highlight\Sync edit background" Selected="true">
+		<Setting Name="Bold" DataType="1" Value="False"/>
+		<Setting Name="Italic" DataType="1" Value="False"/>
+		<Setting Name="Underline" DataType="1" Value="False"/>
+		<Setting Name="Default Foreground" DataType="1" Value="True"/>
+		<Setting Name="Default Background" DataType="1" Value="False"/>
+		<Setting Name="Foreground Color New" DataType="1" Value="clBlack"/>
+		<Setting Name="Background Color New" DataType="1" Value="$00FAFFE6"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Highlight\Sync edit highlight" Selected="true">
+		<Setting Name="Bold" DataType="1" Value="False"/>
+		<Setting Name="Italic" DataType="1" Value="False"/>
+		<Setting Name="Underline" DataType="1" Value="False"/>
+		<Setting Name="Default Foreground" DataType="1" Value="False"/>
+		<Setting Name="Default Background" DataType="1" Value="False"/>
+		<Setting Name="Foreground Color New" DataType="1" Value="clBlue"/>
+		<Setting Name="Background Color New" DataType="1" Value="clWhite"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Highlight\Tags" Selected="true">
+		<Setting Name="Bold" DataType="1" Value="True"/>
+		<Setting Name="Italic" DataType="1" Value="False"/>
+		<Setting Name="Underline" DataType="1" Value="False"/>
+		<Setting Name="Default Foreground" DataType="1" Value="False"/>
+		<Setting Name="Default Background" DataType="1" Value="True"/>
+		<Setting Name="Foreground Color New" DataType="1" Value="clNavy"/>
+		<Setting Name="Background Color New" DataType="1" Value="clWhite"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Highlight\Whitespace" Selected="true">
+		<Setting Name="Bold" DataType="1" Value="False"/>
+		<Setting Name="Italic" DataType="1" Value="False"/>
+		<Setting Name="Underline" DataType="1" Value="False"/>
+		<Setting Name="Default Foreground" DataType="1" Value="True"/>
+		<Setting Name="Default Background" DataType="1" Value="True"/>
+		<Setting Name="Foreground Color New" DataType="1" Value="clBlack"/>
+		<Setting Name="Background Color New" DataType="1" Value="clWhite"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\HTML" Selected="true"/>
+	<SettingGroup Name="Editor\HTML\Formatter" Selected="true">
+		<Setting Name="UseTabIndent" DataType="1" Value="False"/>
+		<Setting Name="IndentSize" DataType="4" Value="2"/>
+		<Setting Name="FormatAsXHTML" DataType="1" Value="False"/>
+		<Setting Name="ShowWarnings" DataType="1" Value="False"/>
+		<Setting Name="EndTagsOnSameLine" DataType="1" Value="False"/>
+		<Setting Name="HTMLAttributeCase" DataType="1" Value="0"/>
+		<Setting Name="HTMLTagCase" DataType="1" Value="0"/>
+		<Setting Name="WrapMargin" DataType="4" Value="250"/>
+		<Setting Name="AttributeAlignment" DataType="1" Value="1"/>
+		<Setting Name="WrapAttributes" DataType="1" Value="True"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Options" Selected="true">
+		<Setting Name="Insert" DataType="1" Value="True"/>
+		<Setting Name="Group Undo" DataType="1" Value="True"/>
+		<Setting Name="Cursor Beyond EOF" DataType="1" Value="False"/>
+		<Setting Name="Undo After Save" DataType="1" Value="True"/>
+		<Setting Name="Persistent Blocks" DataType="1" Value="False"/>
+		<Setting Name="Overwrite Blocks" DataType="1" Value="True"/>
+		<Setting Name="Double Click Line" DataType="1" Value="False"/>
+		<Setting Name="Find Text At Cursor" DataType="1" Value="True"/>
+		<Setting Name="Extended Pair Matching" DataType="1" Value="False"/>
+		<Setting Name="Force Cut Copy Enabled" DataType="1" Value="False"/>
+		<Setting Name="Undo Limit" DataType="4" Value="32767"/>
+		<Setting Name="BRIEF Cursor Shapes" DataType="1" Value="False"/>
+		<Setting Name="Create Backup File" DataType="1" Value="True"/>
+		<Setting Name="Zoom To Full Screen" DataType="1" Value="False"/>
+		<Setting Name="Visible Right Margin" DataType="1" Value="True"/>
+		<Setting Name="Right Margin" DataType="4" Value="80"/>
+		<Setting Name="Visible Gutter" DataType="1" Value="True"/>
+		<Setting Name="Gutter Width" DataType="4" Value="20"/>
+		<Setting Name="Editor Font" DataType="1" Value="Courier New"/>
+		<Setting Name="Font Size" DataType="4" Value="10"/>
+		<Setting Name="BRIEF RegEx" DataType="1" Value="False"/>
+		<Setting Name="Editor SpeedSetting" DataType="1" Value="Borland.Default"/>
+		<Setting Name="Editor Keymapping" DataType="1" Value="Default"/>
+		<Setting Name="Editor LineEndings Ignored" DataType="1" Value="$(BDS)"/>
+		<Setting Name="Editor LineEndings KnownExt" DataType="1" Value="pas;dpr;dpk;inc;dfm;xfm;fmx;lfm;nfm;dpkw;cpp;c;cc;hpp;h;hh;cxx;hxx;bpkw;i"/>
+		<Setting Name="Editor LineBreaks" DataType="1" Value="Convert files with known extensions to CRLF"/>
+		<Setting Name="Color SpeedSetting" DataType="1" Value="Defaults"/>
+		<Setting Name="Editor Emulation" DataType="1" Value="Borland.Internal"/>
+		<Setting Name="Sort Pages Menu" DataType="1" Value="True"/>
+		<Setting Name="Preserve Line Ends Int" DataType="1" Value="True"/>
+		<Setting Name="Find AutoCompletes" DataType="1" Value="True"/>
+		<Setting Name="Use CtrlAlt Keys" DataType="1" Value="True"/>
+		<Setting Name="ShowFullPath" DataType="1" Value="False"/>
+		<Setting Name="Enable Elisions" DataType="1" Value="True"/>
+		<Setting Name="Show Line Numbers" DataType="1" Value="True"/>
+		<Setting Name="Auto Collapse Region Blocks" DataType="1" Value="True"/>
+		<Setting Name="File Backup Level" DataType="4" Value="10"/>
+		<Setting Name="Show Image On Tabs" DataType="1" Value="True"/>
+		<Setting Name="Number All Lines" DataType="1" Value="False"/>
+		<Setting Name="Code Insight Use Editor Font" DataType="1" Value="False"/>
+		<Setting Name="Ask To Reload Modified Files" DataType="1" Value="True"/>
+		<Setting Name="Show All Search Matches" DataType="1" Value="True"/>
+		<Setting Name="Highlight Brace Pairs" DataType="1" Value="True"/>
+		<Setting Name="Show Navigation Toolbar" DataType="1" Value="True"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Source Options" Selected="true"/>
+	<SettingGroup Name="Editor\Source Options\Borland.EditOptions.C" Selected="true">
+		<Setting Name="Tab Character" DataType="1" Value="True"/>
+		<Setting Name="Smart Tab" DataType="1" Value="False"/>
+		<Setting Name="Optimal Fill" DataType="1" Value="True"/>
+		<Setting Name="Backspace Unindents" DataType="1" Value="True"/>
+		<Setting Name="ErrorInsight Gutter" DataType="1" Value="True"/>
+		<Setting Name="ErrorInsight Marks" DataType="1" Value="0"/>
+		<Setting Name="Keep Trailing Blanks" DataType="1" Value="False"/>
+		<Setting Name="Use Syntax Highlight" DataType="1" Value="True"/>
+		<Setting Name="Tab Stops" DataType="1" Value="4"/>
+		<Setting Name="Show tab character" DataType="1" Value="False"/>
+		<Setting Name="Show space character" DataType="1" Value="False"/>
+		<Setting Name="File Extensions" DataType="1" Value="cpp;c;cc;hpp;h;hh;cxx;hxx;bpkw;i;&amp;extracppfilemask.txt"/>
+		<Setting Name="Auto Indent" DataType="1" Value="True"/>
+		<Setting Name="Block Indent" DataType="4" Value="4"/>
+		<Setting Name="Source Option Name" DataType="1" Value="C/C++"/>
+		<Setting Name="Syntax Highlighter ID" DataType="1" Value="Borland.Highlighter.Cpp"/>
+		<Setting Name="Source Opt Internal ID" DataType="1" Value="Borland.EditOptions.C"/>
+		<Setting Name="Show line breaks" DataType="1" Value="False"/>
+		<Setting Name="Cursor Through Tabs" DataType="1" Value="True"/>
+		<Setting Name="Highlight Current Line" DataType="1" Value="True"/>
+		<Setting Name="Insight Manager" DataType="1" Value="Borland.CodeInsight.Cpp"/>
+		<Setting Name="InsightChangable" DataType="1" Value="False"/>
+		<Setting Name="ErrorInsightLevel" DataType="1" Value="1"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Source Options\Borland.EditOptions.C\Pair Table" Selected="true">
+		<Setting Name="Pair0" DataType="1" Value="2,1,2,/*,*/"/>
+		<Setting Name="Pair1" DataType="1" Value="1,1,1,(,)"/>
+		<Setting Name="Pair2" DataType="1" Value="1,1,1,[,]"/>
+		<Setting Name="Pair3" DataType="1" Value="1,1,1,{,}"/>
+		<Setting Name="Pair4" DataType="1" Value="1,1,1,&lt;,&gt;"/>
+		<Setting Name="Pair5" DataType="1" Value="0,0,1,','"/>
+		<Setting Name="Pair6" DataType="1" Value="0,0,1,&quot;,&quot;"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Source Options\Borland.EditOptions.C#" Selected="true">
+		<Setting Name="Tab Character" DataType="1" Value="False"/>
+		<Setting Name="Smart Tab" DataType="1" Value="False"/>
+		<Setting Name="Optimal Fill" DataType="1" Value="False"/>
+		<Setting Name="Backspace Unindents" DataType="1" Value="True"/>
+		<Setting Name="ErrorInsight Gutter" DataType="1" Value="True"/>
+		<Setting Name="ErrorInsight Marks" DataType="1" Value="0"/>
+		<Setting Name="Keep Trailing Blanks" DataType="1" Value="False"/>
+		<Setting Name="Use Syntax Highlight" DataType="1" Value="True"/>
+		<Setting Name="Tab Stops" DataType="1" Value="4"/>
+		<Setting Name="Show tab character" DataType="1" Value="False"/>
+		<Setting Name="Show space character" DataType="1" Value="False"/>
+		<Setting Name="File Extensions" DataType="1" Value="cs"/>
+		<Setting Name="Auto Indent" DataType="1" Value="True"/>
+		<Setting Name="Block Indent" DataType="4" Value="4"/>
+		<Setting Name="Source Option Name" DataType="1" Value="C#"/>
+		<Setting Name="Syntax Highlighter ID" DataType="1" Value="Borland.Highlighter.C#"/>
+		<Setting Name="Source Opt Internal ID" DataType="1" Value="Borland.EditOptions.C#"/>
+		<Setting Name="Show line breaks" DataType="1" Value="False"/>
+		<Setting Name="Cursor Through Tabs" DataType="1" Value="True"/>
+		<Setting Name="Highlight Current Line" DataType="1" Value="True"/>
+		<Setting Name="Insight Manager" DataType="1" Value="Borland.CodeInsight.CSharp"/>
+		<Setting Name="InsightChangable" DataType="1" Value="True"/>
+		<Setting Name="ErrorInsightLevel" DataType="1" Value="1"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Source Options\Borland.EditOptions.C#\Pair Table" Selected="true">
+		<Setting Name="Pair0" DataType="1" Value="2,1,2,/*,*/"/>
+		<Setting Name="Pair1" DataType="1" Value="1,1,1,(,)"/>
+		<Setting Name="Pair2" DataType="1" Value="1,1,1,[,]"/>
+		<Setting Name="Pair3" DataType="1" Value="1,1,1,{,}"/>
+		<Setting Name="Pair4" DataType="1" Value="1,1,1,&lt;,&gt;"/>
+		<Setting Name="Pair5" DataType="1" Value="0,0,1,','"/>
+		<Setting Name="Pair6" DataType="1" Value="0,0,1,&quot;,&quot;"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Source Options\Borland.EditOptions.Default" Selected="true">
+		<Setting Name="Tab Character" DataType="1" Value="False"/>
+		<Setting Name="Smart Tab" DataType="1" Value="False"/>
+		<Setting Name="Optimal Fill" DataType="1" Value="False"/>
+		<Setting Name="Backspace Unindents" DataType="1" Value="True"/>
+		<Setting Name="ErrorInsight Gutter" DataType="1" Value="True"/>
+		<Setting Name="ErrorInsight Marks" DataType="1" Value="0"/>
+		<Setting Name="Keep Trailing Blanks" DataType="1" Value="False"/>
+		<Setting Name="Use Syntax Highlight" DataType="1" Value="False"/>
+		<Setting Name="Tab Stops" DataType="1" Value="8"/>
+		<Setting Name="Show tab character" DataType="1" Value="False"/>
+		<Setting Name="Show space character" DataType="1" Value="False"/>
+		<Setting Name="File Extensions" DataType="1" Value=""/>
+		<Setting Name="Auto Indent" DataType="1" Value="True"/>
+		<Setting Name="Block Indent" DataType="4" Value="8"/>
+		<Setting Name="Source Option Name" DataType="1" Value="Default"/>
+		<Setting Name="Syntax Highlighter ID" DataType="1" Value="Borland.Highlighter.None"/>
+		<Setting Name="Source Opt Internal ID" DataType="1" Value="Borland.EditOptions.Default"/>
+		<Setting Name="Show line breaks" DataType="1" Value="False"/>
+		<Setting Name="Cursor Through Tabs" DataType="1" Value="True"/>
+		<Setting Name="Highlight Current Line" DataType="1" Value="True"/>
+		<Setting Name="Insight Manager" DataType="1" Value=""/>
+		<Setting Name="InsightChangable" DataType="1" Value="False"/>
+		<Setting Name="ErrorInsightLevel" DataType="1" Value="1"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Source Options\Borland.EditOptions.Default\Pair Table" Selected="true">
+		<Setting Name="Pair0" DataType="1" Value="1,1,1,(,)"/>
+		<Setting Name="Pair1" DataType="1" Value="1,1,1,[,]"/>
+		<Setting Name="Pair2" DataType="1" Value="0,1,1,{,}"/>
+		<Setting Name="Pair3" DataType="1" Value="1,1,1,&lt;,&gt;"/>
+		<Setting Name="Pair4" DataType="1" Value="0,0,1,','"/>
+		<Setting Name="Pair5" DataType="1" Value="0,0,1,&quot;,&quot;"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Source Options\Borland.EditOptions.HTML" Selected="true">
+		<Setting Name="Tab Character" DataType="1" Value="False"/>
+		<Setting Name="Smart Tab" DataType="1" Value="False"/>
+		<Setting Name="Optimal Fill" DataType="1" Value="False"/>
+		<Setting Name="Backspace Unindents" DataType="1" Value="True"/>
+		<Setting Name="ErrorInsight Gutter" DataType="1" Value="True"/>
+		<Setting Name="ErrorInsight Marks" DataType="1" Value="0"/>
+		<Setting Name="Keep Trailing Blanks" DataType="1" Value="False"/>
+		<Setting Name="Use Syntax Highlight" DataType="1" Value="True"/>
+		<Setting Name="Tab Stops" DataType="1" Value="4"/>
+		<Setting Name="Show tab character" DataType="1" Value="False"/>
+		<Setting Name="Show space character" DataType="1" Value="False"/>
+		<Setting Name="File Extensions" DataType="1" Value="html;htm;asp;aspx;ascx;master;skin"/>
+		<Setting Name="Auto Indent" DataType="1" Value="True"/>
+		<Setting Name="Block Indent" DataType="4" Value="4"/>
+		<Setting Name="Source Option Name" DataType="1" Value="HTML"/>
+		<Setting Name="Syntax Highlighter ID" DataType="1" Value="Borland.Highlighter.HTML"/>
+		<Setting Name="Source Opt Internal ID" DataType="1" Value="Borland.EditOptions.HTML"/>
+		<Setting Name="Show line breaks" DataType="1" Value="False"/>
+		<Setting Name="Cursor Through Tabs" DataType="1" Value="True"/>
+		<Setting Name="Highlight Current Line" DataType="1" Value="True"/>
+		<Setting Name="Insight Manager" DataType="1" Value="Borland.CodeInsight.HTML"/>
+		<Setting Name="InsightChangable" DataType="1" Value="True"/>
+		<Setting Name="ErrorInsightLevel" DataType="1" Value="1"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Source Options\Borland.EditOptions.HTML\Pair Table" Selected="true">
+		<Setting Name="Pair0" DataType="1" Value="2,1,2,/*,*/"/>
+		<Setting Name="Pair1" DataType="1" Value="1,1,1,(,)"/>
+		<Setting Name="Pair2" DataType="1" Value="1,1,1,[,]"/>
+		<Setting Name="Pair3" DataType="1" Value="1,1,1,{,}"/>
+		<Setting Name="Pair4" DataType="1" Value="1,1,1,&lt;,&gt;"/>
+		<Setting Name="Pair5" DataType="1" Value="0,0,1,','"/>
+		<Setting Name="Pair6" DataType="1" Value="0,0,1,&quot;,&quot;"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Source Options\Borland.EditOptions.IDL" Selected="true">
+		<Setting Name="Tab Character" DataType="1" Value="True"/>
+		<Setting Name="Smart Tab" DataType="1" Value="False"/>
+		<Setting Name="Optimal Fill" DataType="1" Value="False"/>
+		<Setting Name="Backspace Unindents" DataType="1" Value="True"/>
+		<Setting Name="ErrorInsight Gutter" DataType="1" Value="True"/>
+		<Setting Name="ErrorInsight Marks" DataType="1" Value="0"/>
+		<Setting Name="Keep Trailing Blanks" DataType="1" Value="False"/>
+		<Setting Name="Use Syntax Highlight" DataType="1" Value="True"/>
+		<Setting Name="Tab Stops" DataType="1" Value="2"/>
+		<Setting Name="Show tab character" DataType="1" Value="False"/>
+		<Setting Name="Show space character" DataType="1" Value="False"/>
+		<Setting Name="File Extensions" DataType="1" Value="idl;ridl"/>
+		<Setting Name="Auto Indent" DataType="1" Value="True"/>
+		<Setting Name="Block Indent" DataType="4" Value="2"/>
+		<Setting Name="Source Option Name" DataType="1" Value="IDL"/>
+		<Setting Name="Syntax Highlighter ID" DataType="1" Value="Borland.Highlighter.IDL"/>
+		<Setting Name="Source Opt Internal ID" DataType="1" Value="Borland.EditOptions.IDL"/>
+		<Setting Name="Show line breaks" DataType="1" Value="False"/>
+		<Setting Name="Cursor Through Tabs" DataType="1" Value="True"/>
+		<Setting Name="Highlight Current Line" DataType="1" Value="True"/>
+		<Setting Name="Insight Manager" DataType="1" Value=""/>
+		<Setting Name="InsightChangable" DataType="1" Value="True"/>
+		<Setting Name="ErrorInsightLevel" DataType="1" Value="1"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Source Options\Borland.EditOptions.IDL\Pair Table" Selected="true">
+		<Setting Name="Pair0" DataType="1" Value="2,1,2,/*,*/"/>
+		<Setting Name="Pair1" DataType="1" Value="1,1,1,(,)"/>
+		<Setting Name="Pair2" DataType="1" Value="1,1,1,[,]"/>
+		<Setting Name="Pair3" DataType="1" Value="1,1,1,{,}"/>
+		<Setting Name="Pair4" DataType="1" Value="1,1,1,&lt;,&gt;"/>
+		<Setting Name="Pair5" DataType="1" Value="0,0,1,','"/>
+		<Setting Name="Pair6" DataType="1" Value="0,0,1,&quot;,&quot;"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Source Options\Borland.EditOptions.INI" Selected="true">
+		<Setting Name="Tab Character" DataType="1" Value="False"/>
+		<Setting Name="Smart Tab" DataType="1" Value="False"/>
+		<Setting Name="Optimal Fill" DataType="1" Value="False"/>
+		<Setting Name="Backspace Unindents" DataType="1" Value="True"/>
+		<Setting Name="ErrorInsight Gutter" DataType="1" Value="True"/>
+		<Setting Name="ErrorInsight Marks" DataType="1" Value="0"/>
+		<Setting Name="Keep Trailing Blanks" DataType="1" Value="False"/>
+		<Setting Name="Use Syntax Highlight" DataType="1" Value="True"/>
+		<Setting Name="Tab Stops" DataType="1" Value="4"/>
+		<Setting Name="Show tab character" DataType="1" Value="False"/>
+		<Setting Name="Show space character" DataType="1" Value="False"/>
+		<Setting Name="File Extensions" DataType="1" Value="ini"/>
+		<Setting Name="Auto Indent" DataType="1" Value="True"/>
+		<Setting Name="Block Indent" DataType="4" Value="4"/>
+		<Setting Name="Source Option Name" DataType="1" Value="INI File"/>
+		<Setting Name="Syntax Highlighter ID" DataType="1" Value="Borland.Highlighter.INI"/>
+		<Setting Name="Source Opt Internal ID" DataType="1" Value="Borland.EditOptions.INI"/>
+		<Setting Name="Show line breaks" DataType="1" Value="False"/>
+		<Setting Name="Cursor Through Tabs" DataType="1" Value="True"/>
+		<Setting Name="Highlight Current Line" DataType="1" Value="True"/>
+		<Setting Name="Insight Manager" DataType="1" Value=""/>
+		<Setting Name="InsightChangable" DataType="1" Value="True"/>
+		<Setting Name="ErrorInsightLevel" DataType="1" Value="1"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Source Options\Borland.EditOptions.INI\Pair Table" Selected="true">
+		<Setting Name="Pair0" DataType="1" Value="1,1,1,(,)"/>
+		<Setting Name="Pair1" DataType="1" Value="1,1,1,[,]"/>
+		<Setting Name="Pair2" DataType="1" Value="0,1,1,{,}"/>
+		<Setting Name="Pair3" DataType="1" Value="1,1,1,&lt;,&gt;"/>
+		<Setting Name="Pair4" DataType="1" Value="0,0,1,','"/>
+		<Setting Name="Pair5" DataType="1" Value="0,0,1,&quot;,&quot;"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Source Options\Borland.EditOptions.JavaScript" Selected="true">
+		<Setting Name="Tab Character" DataType="1" Value="False"/>
+		<Setting Name="Smart Tab" DataType="1" Value="False"/>
+		<Setting Name="Optimal Fill" DataType="1" Value="False"/>
+		<Setting Name="Backspace Unindents" DataType="1" Value="True"/>
+		<Setting Name="ErrorInsight Gutter" DataType="1" Value="True"/>
+		<Setting Name="ErrorInsight Marks" DataType="1" Value="0"/>
+		<Setting Name="Keep Trailing Blanks" DataType="1" Value="False"/>
+		<Setting Name="Use Syntax Highlight" DataType="1" Value="True"/>
+		<Setting Name="Tab Stops" DataType="1" Value="4"/>
+		<Setting Name="Show tab character" DataType="1" Value="False"/>
+		<Setting Name="Show space character" DataType="1" Value="False"/>
+		<Setting Name="File Extensions" DataType="1" Value="js"/>
+		<Setting Name="Auto Indent" DataType="1" Value="True"/>
+		<Setting Name="Block Indent" DataType="4" Value="4"/>
+		<Setting Name="Source Option Name" DataType="1" Value="Java Script"/>
+		<Setting Name="Syntax Highlighter ID" DataType="1" Value="Borland.Highlighter.JavaScript"/>
+		<Setting Name="Source Opt Internal ID" DataType="1" Value="Borland.EditOptions.JavaScript"/>
+		<Setting Name="Show line breaks" DataType="1" Value="False"/>
+		<Setting Name="Cursor Through Tabs" DataType="1" Value="True"/>
+		<Setting Name="Highlight Current Line" DataType="1" Value="True"/>
+		<Setting Name="Insight Manager" DataType="1" Value=""/>
+		<Setting Name="InsightChangable" DataType="1" Value="True"/>
+		<Setting Name="ErrorInsightLevel" DataType="1" Value="1"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Source Options\Borland.EditOptions.JavaScript\Pair Table" Selected="true">
+		<Setting Name="Pair0" DataType="1" Value="1,1,1,(,)"/>
+		<Setting Name="Pair1" DataType="1" Value="1,1,1,[,]"/>
+		<Setting Name="Pair2" DataType="1" Value="0,1,1,{,}"/>
+		<Setting Name="Pair3" DataType="1" Value="1,1,1,&lt;,&gt;"/>
+		<Setting Name="Pair4" DataType="1" Value="0,0,1,','"/>
+		<Setting Name="Pair5" DataType="1" Value="0,0,1,&quot;,&quot;"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Source Options\Borland.EditOptions.ObjectiveC++" Selected="true">
+		<Setting Name="Tab Character" DataType="1" Value="True"/>
+		<Setting Name="Smart Tab" DataType="1" Value="False"/>
+		<Setting Name="Optimal Fill" DataType="1" Value="True"/>
+		<Setting Name="Backspace Unindents" DataType="1" Value="True"/>
+		<Setting Name="ErrorInsight Gutter" DataType="1" Value="True"/>
+		<Setting Name="ErrorInsight Marks" DataType="1" Value="0"/>
+		<Setting Name="Keep Trailing Blanks" DataType="1" Value="False"/>
+		<Setting Name="Use Syntax Highlight" DataType="1" Value="True"/>
+		<Setting Name="Tab Stops" DataType="1" Value="4"/>
+		<Setting Name="Show tab character" DataType="1" Value="False"/>
+		<Setting Name="Show space character" DataType="1" Value="False"/>
+		<Setting Name="File Extensions" DataType="1" Value="mm"/>
+		<Setting Name="Auto Indent" DataType="1" Value="True"/>
+		<Setting Name="Block Indent" DataType="4" Value="4"/>
+		<Setting Name="Source Option Name" DataType="1" Value="Objective C++"/>
+		<Setting Name="Syntax Highlighter ID" DataType="1" Value="Borland.Highlighter.Cpp"/>
+		<Setting Name="Source Opt Internal ID" DataType="1" Value="Borland.EditOptions.ObjectiveC++"/>
+		<Setting Name="Show line breaks" DataType="1" Value="False"/>
+		<Setting Name="Cursor Through Tabs" DataType="1" Value="True"/>
+		<Setting Name="Highlight Current Line" DataType="1" Value="True"/>
+		<Setting Name="Insight Manager" DataType="1" Value="Borland.CodeInsight.Cpp"/>
+		<Setting Name="InsightChangable" DataType="1" Value="False"/>
+		<Setting Name="ErrorInsightLevel" DataType="1" Value="1"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Source Options\Borland.EditOptions.ObjectiveC++\Pair Table" Selected="true">
+		<Setting Name="Pair0" DataType="1" Value="2,1,2,/*,*/"/>
+		<Setting Name="Pair1" DataType="1" Value="1,1,1,(,)"/>
+		<Setting Name="Pair2" DataType="1" Value="1,1,1,[,]"/>
+		<Setting Name="Pair3" DataType="1" Value="1,1,1,{,}"/>
+		<Setting Name="Pair4" DataType="1" Value="1,1,1,&lt;,&gt;"/>
+		<Setting Name="Pair5" DataType="1" Value="0,0,1,','"/>
+		<Setting Name="Pair6" DataType="1" Value="0,0,1,&quot;,&quot;"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Source Options\Borland.EditOptions.Pascal" Selected="true">
+		<Setting Name="Tab Character" DataType="1" Value="False"/>
+		<Setting Name="Smart Tab" DataType="1" Value="False"/>
+		<Setting Name="Optimal Fill" DataType="1" Value="False"/>
+		<Setting Name="Backspace Unindents" DataType="1" Value="True"/>
+		<Setting Name="ErrorInsight Gutter" DataType="1" Value="True"/>
+		<Setting Name="ErrorInsight Marks" DataType="1" Value="0"/>
+		<Setting Name="Keep Trailing Blanks" DataType="1" Value="False"/>
+		<Setting Name="Use Syntax Highlight" DataType="1" Value="True"/>
+		<Setting Name="Tab Stops" DataType="1" Value="2"/>
+		<Setting Name="Show tab character" DataType="1" Value="False"/>
+		<Setting Name="Show space character" DataType="1" Value="False"/>
+		<Setting Name="File Extensions" DataType="1" Value="pas;dpr;dpk;inc;dfm;xfm;fmx;lfm;nfm;dpkw"/>
+		<Setting Name="Auto Indent" DataType="1" Value="True"/>
+		<Setting Name="Block Indent" DataType="4" Value="2"/>
+		<Setting Name="Source Option Name" DataType="1" Value="Delphi"/>
+		<Setting Name="Syntax Highlighter ID" DataType="1" Value="Borland.Highlighter.Pascal"/>
+		<Setting Name="Source Opt Internal ID" DataType="1" Value="Borland.EditOptions.Pascal"/>
+		<Setting Name="Show line breaks" DataType="1" Value="False"/>
+		<Setting Name="Cursor Through Tabs" DataType="1" Value="True"/>
+		<Setting Name="Highlight Current Line" DataType="1" Value="True"/>
+		<Setting Name="Insight Manager" DataType="1" Value="Borland.CodeInsight.LSP.Pascal"/>
+		<Setting Name="InsightChangable" DataType="1" Value="True"/>
+		<Setting Name="ErrorInsightLevel" DataType="1" Value="1"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Source Options\Borland.EditOptions.Pascal\Pair Table" Selected="true">
+		<Setting Name="Pair0" DataType="1" Value="0,1,2,(*,*)"/>
+		<Setting Name="Pair1" DataType="1" Value="1,1,2,(.,.)"/>
+		<Setting Name="Pair2" DataType="1" Value="1,1,1,(,)"/>
+		<Setting Name="Pair3" DataType="1" Value="1,1,1,[,]"/>
+		<Setting Name="Pair4" DataType="1" Value="0,1,1,{,}"/>
+		<Setting Name="Pair5" DataType="1" Value="0,0,1,','"/>
+		<Setting Name="Pair6" DataType="1" Value="0,0,1,&quot;,&quot;"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Source Options\Borland.EditOptions.PHP" Selected="true">
+		<Setting Name="Tab Character" DataType="1" Value="False"/>
+		<Setting Name="Smart Tab" DataType="1" Value="False"/>
+		<Setting Name="Optimal Fill" DataType="1" Value="False"/>
+		<Setting Name="Backspace Unindents" DataType="1" Value="True"/>
+		<Setting Name="ErrorInsight Gutter" DataType="1" Value="True"/>
+		<Setting Name="ErrorInsight Marks" DataType="1" Value="0"/>
+		<Setting Name="Keep Trailing Blanks" DataType="1" Value="False"/>
+		<Setting Name="Use Syntax Highlight" DataType="1" Value="True"/>
+		<Setting Name="Tab Stops" DataType="1" Value="4"/>
+		<Setting Name="Show tab character" DataType="1" Value="False"/>
+		<Setting Name="Show space character" DataType="1" Value="False"/>
+		<Setting Name="File Extensions" DataType="1" Value="php"/>
+		<Setting Name="Auto Indent" DataType="1" Value="True"/>
+		<Setting Name="Block Indent" DataType="4" Value="4"/>
+		<Setting Name="Source Option Name" DataType="1" Value="PHP"/>
+		<Setting Name="Syntax Highlighter ID" DataType="1" Value="Borland.Highlighter.PHP"/>
+		<Setting Name="Source Opt Internal ID" DataType="1" Value="Borland.EditOptions.PHP"/>
+		<Setting Name="Show line breaks" DataType="1" Value="False"/>
+		<Setting Name="Cursor Through Tabs" DataType="1" Value="True"/>
+		<Setting Name="Highlight Current Line" DataType="1" Value="True"/>
+		<Setting Name="Insight Manager" DataType="1" Value=""/>
+		<Setting Name="InsightChangable" DataType="1" Value="True"/>
+		<Setting Name="ErrorInsightLevel" DataType="1" Value="1"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Source Options\Borland.EditOptions.PHP\Pair Table" Selected="true">
+		<Setting Name="Pair0" DataType="1" Value="1,1,1,(,)"/>
+		<Setting Name="Pair1" DataType="1" Value="1,1,1,[,]"/>
+		<Setting Name="Pair2" DataType="1" Value="0,1,1,{,}"/>
+		<Setting Name="Pair3" DataType="1" Value="1,1,1,&lt;,&gt;"/>
+		<Setting Name="Pair4" DataType="1" Value="0,0,1,','"/>
+		<Setting Name="Pair5" DataType="1" Value="0,0,1,&quot;,&quot;"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Source Options\Borland.EditOptions.SQL" Selected="true">
+		<Setting Name="Tab Character" DataType="1" Value="False"/>
+		<Setting Name="Smart Tab" DataType="1" Value="False"/>
+		<Setting Name="Optimal Fill" DataType="1" Value="False"/>
+		<Setting Name="Backspace Unindents" DataType="1" Value="True"/>
+		<Setting Name="ErrorInsight Gutter" DataType="1" Value="True"/>
+		<Setting Name="ErrorInsight Marks" DataType="1" Value="0"/>
+		<Setting Name="Keep Trailing Blanks" DataType="1" Value="False"/>
+		<Setting Name="Use Syntax Highlight" DataType="1" Value="True"/>
+		<Setting Name="Tab Stops" DataType="1" Value="2"/>
+		<Setting Name="Show tab character" DataType="1" Value="False"/>
+		<Setting Name="Show space character" DataType="1" Value="False"/>
+		<Setting Name="File Extensions" DataType="1" Value="sql"/>
+		<Setting Name="Auto Indent" DataType="1" Value="True"/>
+		<Setting Name="Block Indent" DataType="4" Value="2"/>
+		<Setting Name="Source Option Name" DataType="1" Value="SQL"/>
+		<Setting Name="Syntax Highlighter ID" DataType="1" Value="Borland.Highlighter.SQL"/>
+		<Setting Name="Source Opt Internal ID" DataType="1" Value="Borland.EditOptions.SQL"/>
+		<Setting Name="Show line breaks" DataType="1" Value="False"/>
+		<Setting Name="Cursor Through Tabs" DataType="1" Value="True"/>
+		<Setting Name="Highlight Current Line" DataType="1" Value="True"/>
+		<Setting Name="Insight Manager" DataType="1" Value=""/>
+		<Setting Name="InsightChangable" DataType="1" Value="True"/>
+		<Setting Name="ErrorInsightLevel" DataType="1" Value="1"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Source Options\Borland.EditOptions.SQL\Pair Table" Selected="true">
+		<Setting Name="Pair0" DataType="1" Value="2,1,2,/*,*/"/>
+		<Setting Name="Pair1" DataType="1" Value="1,1,1,(,)"/>
+		<Setting Name="Pair2" DataType="1" Value="1,1,1,[,]"/>
+		<Setting Name="Pair3" DataType="1" Value="1,1,1,{,}"/>
+		<Setting Name="Pair4" DataType="1" Value="1,1,1,&lt;,&gt;"/>
+		<Setting Name="Pair5" DataType="1" Value="0,0,1,','"/>
+		<Setting Name="Pair6" DataType="1" Value="0,0,1,&quot;,&quot;"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Source Options\Borland.EditOptions.StyleSheet" Selected="true">
+		<Setting Name="Tab Character" DataType="1" Value="False"/>
+		<Setting Name="Smart Tab" DataType="1" Value="False"/>
+		<Setting Name="Optimal Fill" DataType="1" Value="False"/>
+		<Setting Name="Backspace Unindents" DataType="1" Value="True"/>
+		<Setting Name="ErrorInsight Gutter" DataType="1" Value="True"/>
+		<Setting Name="ErrorInsight Marks" DataType="1" Value="0"/>
+		<Setting Name="Keep Trailing Blanks" DataType="1" Value="False"/>
+		<Setting Name="Use Syntax Highlight" DataType="1" Value="True"/>
+		<Setting Name="Tab Stops" DataType="1" Value="4"/>
+		<Setting Name="Show tab character" DataType="1" Value="False"/>
+		<Setting Name="Show space character" DataType="1" Value="False"/>
+		<Setting Name="File Extensions" DataType="1" Value="css"/>
+		<Setting Name="Auto Indent" DataType="1" Value="True"/>
+		<Setting Name="Block Indent" DataType="4" Value="4"/>
+		<Setting Name="Source Option Name" DataType="1" Value="Style Sheet"/>
+		<Setting Name="Syntax Highlighter ID" DataType="1" Value="Borland.Highlighter.StyleSheet"/>
+		<Setting Name="Source Opt Internal ID" DataType="1" Value="Borland.EditOptions.StyleSheet"/>
+		<Setting Name="Show line breaks" DataType="1" Value="False"/>
+		<Setting Name="Cursor Through Tabs" DataType="1" Value="True"/>
+		<Setting Name="Highlight Current Line" DataType="1" Value="True"/>
+		<Setting Name="Insight Manager" DataType="1" Value="Borland.CodeInsight.CSS"/>
+		<Setting Name="InsightChangable" DataType="1" Value="True"/>
+		<Setting Name="ErrorInsightLevel" DataType="1" Value="1"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Source Options\Borland.EditOptions.StyleSheet\Pair Table" Selected="true">
+		<Setting Name="Pair0" DataType="1" Value="1,1,1,(,)"/>
+		<Setting Name="Pair1" DataType="1" Value="1,1,1,[,]"/>
+		<Setting Name="Pair2" DataType="1" Value="0,1,1,{,}"/>
+		<Setting Name="Pair3" DataType="1" Value="1,1,1,&lt;,&gt;"/>
+		<Setting Name="Pair4" DataType="1" Value="0,0,1,','"/>
+		<Setting Name="Pair5" DataType="1" Value="0,0,1,&quot;,&quot;"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Source Options\Borland.EditOptions.VisualBasic" Selected="true">
+		<Setting Name="Tab Character" DataType="1" Value="False"/>
+		<Setting Name="Smart Tab" DataType="1" Value="False"/>
+		<Setting Name="Optimal Fill" DataType="1" Value="False"/>
+		<Setting Name="Backspace Unindents" DataType="1" Value="True"/>
+		<Setting Name="ErrorInsight Gutter" DataType="1" Value="True"/>
+		<Setting Name="ErrorInsight Marks" DataType="1" Value="0"/>
+		<Setting Name="Keep Trailing Blanks" DataType="1" Value="False"/>
+		<Setting Name="Use Syntax Highlight" DataType="1" Value="True"/>
+		<Setting Name="Tab Stops" DataType="1" Value="4"/>
+		<Setting Name="Show tab character" DataType="1" Value="False"/>
+		<Setting Name="Show space character" DataType="1" Value="False"/>
+		<Setting Name="File Extensions" DataType="1" Value="vb;vbs"/>
+		<Setting Name="Auto Indent" DataType="1" Value="True"/>
+		<Setting Name="Block Indent" DataType="4" Value="4"/>
+		<Setting Name="Source Option Name" DataType="1" Value="Visual Basic .NET"/>
+		<Setting Name="Syntax Highlighter ID" DataType="1" Value="Borland.Highlighter.VisualBasic"/>
+		<Setting Name="Source Opt Internal ID" DataType="1" Value="Borland.EditOptions.VisualBasic"/>
+		<Setting Name="Show line breaks" DataType="1" Value="False"/>
+		<Setting Name="Cursor Through Tabs" DataType="1" Value="True"/>
+		<Setting Name="Highlight Current Line" DataType="1" Value="True"/>
+		<Setting Name="Insight Manager" DataType="1" Value=""/>
+		<Setting Name="InsightChangable" DataType="1" Value="True"/>
+		<Setting Name="ErrorInsightLevel" DataType="1" Value="1"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Source Options\Borland.EditOptions.VisualBasic\Pair Table" Selected="true">
+		<Setting Name="Pair0" DataType="1" Value="1,1,1,(,)"/>
+		<Setting Name="Pair1" DataType="1" Value="1,1,1,[,]"/>
+		<Setting Name="Pair2" DataType="1" Value="0,1,1,{,}"/>
+		<Setting Name="Pair3" DataType="1" Value="1,1,1,&lt;,&gt;"/>
+		<Setting Name="Pair4" DataType="1" Value="0,0,1,','"/>
+		<Setting Name="Pair5" DataType="1" Value="0,0,1,&quot;,&quot;"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Source Options\Borland.EditOptions.XML" Selected="true">
+		<Setting Name="Tab Character" DataType="1" Value="False"/>
+		<Setting Name="Smart Tab" DataType="1" Value="False"/>
+		<Setting Name="Optimal Fill" DataType="1" Value="False"/>
+		<Setting Name="Backspace Unindents" DataType="1" Value="True"/>
+		<Setting Name="ErrorInsight Gutter" DataType="1" Value="True"/>
+		<Setting Name="ErrorInsight Marks" DataType="1" Value="0"/>
+		<Setting Name="Keep Trailing Blanks" DataType="1" Value="False"/>
+		<Setting Name="Use Syntax Highlight" DataType="1" Value="True"/>
+		<Setting Name="Tab Stops" DataType="1" Value="4"/>
+		<Setting Name="Show tab character" DataType="1" Value="False"/>
+		<Setting Name="Show space character" DataType="1" Value="False"/>
+		<Setting Name="File Extensions" DataType="1" Value="xml;xsl;xslt;xsd;xdb;wml;manifest;resx;config;wsdl;disco;map;sitemap;bdstemplatelib;proj;dproj;csproj;targets;settings;config"/>
+		<Setting Name="Auto Indent" DataType="1" Value="True"/>
+		<Setting Name="Block Indent" DataType="4" Value="4"/>
+		<Setting Name="Source Option Name" DataType="1" Value="XML"/>
+		<Setting Name="Syntax Highlighter ID" DataType="1" Value="Borland.Highlighter.HTML"/>
+		<Setting Name="Source Opt Internal ID" DataType="1" Value="Borland.EditOptions.XML"/>
+		<Setting Name="Show line breaks" DataType="1" Value="False"/>
+		<Setting Name="Cursor Through Tabs" DataType="1" Value="True"/>
+		<Setting Name="Highlight Current Line" DataType="1" Value="True"/>
+		<Setting Name="Insight Manager" DataType="1" Value=""/>
+		<Setting Name="InsightChangable" DataType="1" Value="True"/>
+		<Setting Name="ErrorInsightLevel" DataType="1" Value="1"/>
+	</SettingGroup>
+	<SettingGroup Name="Editor\Source Options\Borland.EditOptions.XML\Pair Table" Selected="true">
+		<Setting Name="Pair0" DataType="1" Value="2,1,2,/*,*/"/>
+		<Setting Name="Pair1" DataType="1" Value="1,1,1,(,)"/>
+		<Setting Name="Pair2" DataType="1" Value="1,1,1,[,]"/>
+		<Setting Name="Pair3" DataType="1" Value="1,1,1,{,}"/>
+		<Setting Name="Pair4" DataType="1" Value="1,1,1,&lt;,&gt;"/>
+		<Setting Name="Pair5" DataType="1" Value="0,0,1,','"/>
+		<Setting Name="Pair6" DataType="1" Value="0,0,1,&quot;,&quot;"/>
+	</SettingGroup>
+	<SettingGroup Name="ExpanderForm" Selected="true">
+		<Setting Name="Sorted" DataType="1" Value="True"/>
+	</SettingGroup>
+	<SettingGroup Name="FileAssociation" Selected="true">
+		<Setting Name="DefaultAssociation" DataType="1" Value="1"/>
+	</SettingGroup>
+	<SettingGroup Name="Form Design" Selected="true">
+		<Setting Name="Display Grid" DataType="1" Value="True"/>
+		<Setting Name="Snap to Grid" DataType="1" Value="True"/>
+		<Setting Name="Show Component Captions" DataType="1" Value="True"/>
+		<Setting Name="Grid Size X" DataType="4" Value="8"/>
+		<Setting Name="Grid Size Y" DataType="4" Value="8"/>
+		<Setting Name="Show Designer Hints" DataType="1" Value="True"/>
+		<Setting Name="DFM As Text" DataType="1" Value="True"/>
+		<Setting Name="Auto Create Forms" DataType="1" Value="True"/>
+		<Setting Name="Show Extended Control Hints" DataType="1" Value="True"/>
+		<Setting Name="Show NonVisual Components" DataType="1" Value="True"/>
+		<Setting Name="Embedded Menu Designer" DataType="1" Value="False"/>
+		<Setting Name="Virtual Screen Position" DataType="1" Value="True"/>
+		<Setting Name="Use Designer Guidelines" DataType="1" Value="True"/>
+		<Setting Name="Qualified Types" DataType="1" Value="False"/>
+	</SettingGroup>
+	<SettingGroup Name="Git" Selected="true"/>
+	<SettingGroup Name="Git\Colors" Selected="true"/>
+	<SettingGroup Name="Git\Colors\Light" Selected="true">
+		<Setting Name="Enabled" DataType="4" Value="1"/>
+		<Setting Name="ColorConflicted" DataType="4" Value="71550"/>
+		<Setting Name="ColorAdded" DataType="4" Value="10441354"/>
+		<Setting Name="ColorDeleted" DataType="4" Value="8388736"/>
+		<Setting Name="ColorMerged" DataType="4" Value="4943384"/>
+		<Setting Name="ColorModified" DataType="4" Value="8669710"/>
+	</SettingGroup>
+	<SettingGroup Name="Git\Options" Selected="true">
+		<Setting Name="AlternativeCommitLayout" DataType="4" Value="1"/>
+		<Setting Name="ClearFileStatesAfterCloseAll" DataType="4" Value="0"/>
+		<Setting Name="DeleteBackupFilesAfterCommit" DataType="4" Value="0"/>
+		<Setting Name="KeepCommitViewOpenAfterCommit" DataType="4" Value="0"/>
+	</SettingGroup>
+	<SettingGroup Name="Globals" Selected="true">
+		<Setting Name="Personalities" DataType="4" Value="1"/>
+		<Setting Name="InstalledDemosDir" DataType="1" Value="$(PUBLIC)\Documents\Embarcadero\Studio\21.0\Samples"/>
+		<Setting Name="TargetLocation" DataType="1" Value="$(MSBuildBinPath)"/>
+		<Setting Name="UseActiveModulePathForOpen" DataType="1" Value="1"/>
+		<Setting Name="PreferFolderParent" DataType="1" Value="0"/>
+		<Setting Name="FirstRunTime" DataType="3" Value="DB,45,70,14,DA,E7,E5,40"/>
+		<Setting Name="DefaultProjectsDirectory" DataType="1" Value=""/>
+		<Setting Name="LicenseNotificationEnabled" DataType="1" Value="1"/>
+	</SettingGroup>
+	<SettingGroup Name="History Lists" Selected="true"/>
+	<SettingGroup Name="History Lists\Library" Selected="true"/>
+	<SettingGroup Name="History Lists\Library\DelphiWin32" Selected="true"/>
+	<SettingGroup Name="History Lists\Library\DelphiWin64" Selected="true"/>
+	<SettingGroup Name="HTMLDesigner" Selected="true"/>
+	<SettingGroup Name="HTMLDesigner\General" Selected="true">
+		<Setting Name="GridSizeX" DataType="4" Value="8"/>
+		<Setting Name="GridSizeY" DataType="4" Value="8"/>
+		<Setting Name="ShowGrid" DataType="1" Value="True"/>
+		<Setting Name="SnapToGrid" DataType="1" Value="True"/>
+		<Setting Name="UseWindowsTheme" DataType="1" Value="True"/>
+		<Setting Name="TagEditorSplitterPos" DataType="4" Value="100"/>
+		<Setting Name="DisplayTagEditor" DataType="1" Value="False"/>
+		<Setting Name="InsertDIVonReturn" DataType="1" Value="False"/>
+		<Setting Name="HighlightColor" DataType="1" Value="#FFFFD7"/>
+		<Setting Name="AllowEditingASPNETTags" DataType="1" Value="True"/>
+		<Setting Name="HighlightTagEditorTag" DataType="1" Value="False"/>
+		<Setting Name="TrayPanelSplitterPos" DataType="4" Value="100"/>
+		<Setting Name="MaxInsiteErrors" DataType="4" Value="100"/>
+		<Setting Name="HTMLCodeFolding" DataType="1" Value="False"/>
+		<Setting Name="DefaultPageLayout" DataType="1" Value="1"/>
+		<Setting Name="DefaultEditorView" DataType="1" Value="0"/>
+		<Setting Name="AspDefaultEditorView" DataType="1" Value="0"/>
+		<Setting Name="HighlightErrorColor" DataType="1" Value="lightpink"/>
+		<Setting Name="UseErrorHighlight" DataType="1" Value="False"/>
+		<Setting Name="AutoShowSmartTasks" DataType="1" Value="True"/>
+	</SettingGroup>
+	<SettingGroup Name="InsightGlobalOptions" Selected="true">
+		<Setting Name="FilterStartsWith" DataType="1" Value="True"/>
+		<Setting Name="FilterUnderline" DataType="1" Value="True"/>
+		<Setting Name="PrioritizeShorterSymbols" DataType="1" Value="False"/>
+		<Setting Name="ShowContainedSymbols" DataType="1" Value="True"/>
+	</SettingGroup>
+	<SettingGroup Name="Library" Selected="true"/>
+	<SettingGroup Name="Library\Android32" Selected="true">
+		<Setting Name="Browsing Path" DataType="1" Value="$(BDS)\OCX\Servers;$(BDS)\SOURCE\VCL;$(BDS)\SOURCE\VCL\AppAnalytics;$(BDS)\source\rtl\common;$(BDS)\SOURCE\RTL\SYS;$(BDS)\source\rtl\android;$(BDS)\source\ToolsAPI;$(BDS)\SOURCE\IBX;$(BDS)\source\Internet;$(BDS)\SOURCE\PROPERTY EDITORS;$(BDS)\source\soap;$(BDS)\SOURCE\XML;$(BDS)\source\Indy10\Core;$(BDS)\source\Indy10\System;$(BDS)\source\Indy10\Protocols;$(BDS)\source\fmx;$(BDS)\source\databinding\components;$(BDS)\source\databinding\engine;$(BDS)\source\databinding\graph;$(BDS)\source\data;$(BDS)\source\data\ado;$(BDS)\source\data\bde;$(BDS)\source\data\cloud;$(BDS)\source\data\datasnap;$(BDS)\source\data\dbx;$(BDS)\source\data\dsnap;$(BDS)\source\data\Test;$(BDS)\source\data\vclctrls;$(BDS)\source\rtl\posix;$(BDS)\source\rtl\posix\osx;$(BDS)\source\data\datasnap\connectors;$(BDS)\source\data\datasnap\proxygen;$(BDS)\source\DataExplorer;$(BDS)\source\DUnit\Contrib\DUnitWizard\Source\Common;$(BDS)\source\DUnit\Contrib\DUnitWizard\Source\Common\dunit;$(BDS)\source\DUnit\Contrib\DUnitWizard\Source\DelphiExperts\Common;$(BDS)\source\DUnit\Contrib\DUnitWizard\Source\DelphiExperts\DUnitProject;$(BDS)\source\DUnit\Contrib\DUnitWizard\Source\DelphiExperts\DUnitProject\dunit;$(BDS)\source\DUnit\src;$(BDS)\source\DUnit\tests;$(BDS)\source\Experts;$(BDS)\source\indy\abstraction;$(BDS)\source\indy\implementation;$(BDS)\source\indyimpl;$(BDS)\source\LiveTile;$(BDS)\source\Property Editors\Indy10;$(BDS)\source\soap\wsdlimporter;$(BDS)\source\Visualizers;$(BDS)\source\xtab;$(BDS)\source\DUnit\Contrib\XMLReporting;$(BDS)\source\DUnit\Contrib\XPGen;$(BDS)\source\data\rest;$(BDS)\source\data\firedac;$(BDS)\source\tethering;$(BDS)\source\DUnitX;$(BDS)\source\data\ems;$(BDS)\source\rtl\net;$(BDS)\source\FlatBox2D"/>
+	</SettingGroup>
+	<SettingGroup Name="Library\Android64" Selected="true">
+		<Setting Name="Browsing Path" DataType="1" Value="$(BDS)\OCX\Servers;$(BDS)\SOURCE\VCL;$(BDS)\SOURCE\VCL\AppAnalytics;$(BDS)\source\rtl\common;$(BDS)\SOURCE\RTL\SYS;$(BDS)\source\rtl\android;$(BDS)\source\ToolsAPI;$(BDS)\SOURCE\IBX;$(BDS)\source\Internet;$(BDS)\SOURCE\PROPERTY EDITORS;$(BDS)\source\soap;$(BDS)\SOURCE\XML;$(BDS)\source\Indy10\Core;$(BDS)\source\Indy10\System;$(BDS)\source\Indy10\Protocols;$(BDS)\source\fmx;$(BDS)\source\databinding\components;$(BDS)\source\databinding\engine;$(BDS)\source\databinding\graph;$(BDS)\source\data;$(BDS)\source\data\ado;$(BDS)\source\data\bde;$(BDS)\source\data\cloud;$(BDS)\source\data\datasnap;$(BDS)\source\data\dbx;$(BDS)\source\data\dsnap;$(BDS)\source\data\Test;$(BDS)\source\data\vclctrls;$(BDS)\source\rtl\posix;$(BDS)\source\rtl\posix\osx;$(BDS)\source\data\datasnap\connectors;$(BDS)\source\data\datasnap\proxygen;$(BDS)\source\DataExplorer;$(BDS)\source\DUnit\Contrib\DUnitWizard\Source\Common;$(BDS)\source\DUnit\Contrib\DUnitWizard\Source\Common\dunit;$(BDS)\source\DUnit\Contrib\DUnitWizard\Source\DelphiExperts\Common;$(BDS)\source\DUnit\Contrib\DUnitWizard\Source\DelphiExperts\DUnitProject;$(BDS)\source\DUnit\Contrib\DUnitWizard\Source\DelphiExperts\DUnitProject\dunit;$(BDS)\source\DUnit\src;$(BDS)\source\DUnit\tests;$(BDS)\source\Experts;$(BDS)\source\indy\abstraction;$(BDS)\source\indy\implementation;$(BDS)\source\indyimpl;$(BDS)\source\LiveTile;$(BDS)\source\Property Editors\Indy10;$(BDS)\source\soap\wsdlimporter;$(BDS)\source\Visualizers;$(BDS)\source\xtab;$(BDS)\source\DUnit\Contrib\XMLReporting;$(BDS)\source\DUnit\Contrib\XPGen;$(BDS)\source\data\rest;$(BDS)\source\data\firedac;$(BDS)\source\tethering;$(BDS)\source\DUnitX;$(BDS)\source\data\ems;$(BDS)\source\rtl\net;$(BDS)\source\FlatBox2D"/>
+	</SettingGroup>
+	<SettingGroup Name="Library\iOSDevice32" Selected="true">
+		<Setting Name="Browsing Path" DataType="1" Value="$(BDS)\OCX\Servers;$(BDS)\SOURCE\VCL;$(BDS)\SOURCE\VCL\AppAnalytics;$(BDS)\source\rtl\common;$(BDS)\SOURCE\RTL\SYS;$(BDS)\source\rtl\ios;$(BDS)\source\rtl\osx;$(BDS)\source\ToolsAPI;$(BDS)\SOURCE\IBX;$(BDS)\source\Internet;$(BDS)\SOURCE\PROPERTY EDITORS;$(BDS)\source\soap;$(BDS)\SOURCE\XML;$(BDS)\source\Indy10\Core;$(BDS)\source\Indy10\System;$(BDS)\source\Indy10\Protocols;$(BDS)\source\fmx;$(BDS)\source\databinding\components;$(BDS)\source\databinding\engine;$(BDS)\source\databinding\graph;$(BDS)\source\data;$(BDS)\source\data\ado;$(BDS)\source\data\bde;$(BDS)\source\data\cloud;$(BDS)\source\data\datasnap;$(BDS)\source\data\dbx;$(BDS)\source\data\dsnap;$(BDS)\source\data\Test;$(BDS)\source\data\vclctrls;$(BDS)\source\rtl\posix;$(BDS)\source\rtl\posix\osx;$(BDS)\source\data\datasnap\connectors;$(BDS)\source\data\datasnap\proxygen;$(BDS)\source\DataExplorer;$(BDS)\source\DUnit\Contrib\DUnitWizard\Source\Common;$(BDS)\source\DUnit\Contrib\DUnitWizard\Source\Common\dunit;$(BDS)\source\DUnit\Contrib\DUnitWizard\Source\DelphiExperts\Common;$(BDS)\source\DUnit\Contrib\DUnitWizard\Source\DelphiExperts\DUnitProject;$(BDS)\source\DUnit\Contrib\DUnitWizard\Source\DelphiExperts\DUnitProject\dunit;$(BDS)\source\DUnit\src;$(BDS)\source\DUnit\tests;$(BDS)\source\Experts;$(BDS)\source\indy\abstraction;$(BDS)\source\indy\implementation;$(BDS)\source\indyimpl;$(BDS)\source\LiveTile;$(BDS)\source\Property Editors\Indy10;$(BDS)\source\soap\wsdlimporter;$(BDS)\source\Visualizers;$(BDS)\source\xtab;$(BDS)\source\DUnit\Contrib\XMLReporting;$(BDS)\source\DUnit\Contrib\XPGen;$(BDS)\source\data\rest;$(BDS)\source\data\firedac;$(BDS)\source\tethering;$(BDS)\source\DUnitX;$(BDS)\source\data\ems;$(BDS)\source\rtl\net;$(BDS)\source\FlatBox2D"/>
+		<Setting Name="Debug DCU Path" DataType="1" Value="$(BDSLIB)\$(PLATFORM)\debug"/>
+		<Setting Name="Package DCP Output" DataType="1" Value="$(BDSCOMMONDIR)\Dcp\$(Platform)"/>
+		<Setting Name="Package DPL Output" DataType="1" Value="$(BDSCOMMONDIR)\Bpl\$(PLATFORM)"/>
+		<Setting Name="Package Search Path" DataType="1" Value="$(BDSCOMMONDIR)\Bpl\$(PLATFORM)\Release"/>
+		<Setting Name="Search Path" DataType="1" Value="$(BDSLIB)\$(PLATFORM)\Release"/>
+		<Setting Name="Translated Debug Library Path" DataType="1" Value="$(BDSLIB)\$(Platform)\debug\$(LANGDIR)"/>
+		<Setting Name="Translated Library Path" DataType="1" Value="$(BDSLIB)\$(Platform)\release\$(LANGDIR)"/>
+		<Setting Name="Translated Resource Path" DataType="1" Value="$(BDSLIB)\$(Platform)\release\$(LANGDIR)"/>
+	</SettingGroup>
+	<SettingGroup Name="Library\iOSDevice64" Selected="true">
+		<Setting Name="Browsing Path" DataType="1" Value="$(BDS)\OCX\Servers;$(BDS)\SOURCE\VCL;$(BDS)\SOURCE\VCL\AppAnalytics;$(BDS)\source\rtl\common;$(BDS)\SOURCE\RTL\SYS;$(BDS)\source\rtl\ios;$(BDS)\source\rtl\osx;$(BDS)\source\ToolsAPI;$(BDS)\SOURCE\IBX;$(BDS)\source\Internet;$(BDS)\SOURCE\PROPERTY EDITORS;$(BDS)\source\soap;$(BDS)\SOURCE\XML;$(BDS)\source\Indy10\Core;$(BDS)\source\Indy10\System;$(BDS)\source\Indy10\Protocols;$(BDS)\source\fmx;$(BDS)\source\databinding\components;$(BDS)\source\databinding\engine;$(BDS)\source\databinding\graph;$(BDS)\source\data;$(BDS)\source\data\ado;$(BDS)\source\data\bde;$(BDS)\source\data\cloud;$(BDS)\source\data\datasnap;$(BDS)\source\data\dbx;$(BDS)\source\data\dsnap;$(BDS)\source\data\Test;$(BDS)\source\data\vclctrls;$(BDS)\source\rtl\posix;$(BDS)\source\rtl\posix\osx;$(BDS)\source\data\datasnap\connectors;$(BDS)\source\data\datasnap\proxygen;$(BDS)\source\DataExplorer;$(BDS)\source\DUnit\Contrib\DUnitWizard\Source\Common;$(BDS)\source\DUnit\Contrib\DUnitWizard\Source\Common\dunit;$(BDS)\source\DUnit\Contrib\DUnitWizard\Source\DelphiExperts\Common;$(BDS)\source\DUnit\Contrib\DUnitWizard\Source\DelphiExperts\DUnitProject;$(BDS)\source\DUnit\Contrib\DUnitWizard\Source\DelphiExperts\DUnitProject\dunit;$(BDS)\source\DUnit\src;$(BDS)\source\DUnit\tests;$(BDS)\source\Experts;$(BDS)\source\indy\abstraction;$(BDS)\source\indy\implementation;$(BDS)\source\indyimpl;$(BDS)\source\LiveTile;$(BDS)\source\Property Editors\Indy10;$(BDS)\source\soap\wsdlimporter;$(BDS)\source\Visualizers;$(BDS)\source\xtab;$(BDS)\source\DUnit\Contrib\XMLReporting;$(BDS)\source\DUnit\Contrib\XPGen;$(BDS)\source\data\rest;$(BDS)\source\data\firedac;$(BDS)\source\tethering;$(BDS)\source\DUnitX;$(BDS)\source\data\ems;$(BDS)\source\rtl\net;$(BDS)\source\FlatBox2D"/>
+		<Setting Name="Debug DCU Path" DataType="1" Value="$(BDSLIB)\$(PLATFORM)\debug"/>
+		<Setting Name="Package DCP Output" DataType="1" Value="$(BDSCOMMONDIR)\Dcp\$(Platform)"/>
+		<Setting Name="Package DPL Output" DataType="1" Value="$(BDSCOMMONDIR)\Bpl\$(PLATFORM)"/>
+		<Setting Name="Package Search Path" DataType="1" Value="$(BDSCOMMONDIR)\Bpl\$(PLATFORM)\Release"/>
+		<Setting Name="Search Path" DataType="1" Value="$(BDSLIB)\$(PLATFORM)\Release"/>
+		<Setting Name="Translated Debug Library Path" DataType="1" Value="$(BDSLIB)\$(Platform)\debug\$(LANGDIR)"/>
+		<Setting Name="Translated Library Path" DataType="1" Value="$(BDSLIB)\$(Platform)\release\$(LANGDIR)"/>
+		<Setting Name="Translated Resource Path" DataType="1" Value="$(BDSLIB)\$(Platform)\release\$(LANGDIR)"/>
+	</SettingGroup>
+	<SettingGroup Name="Library\iOSSimulator" Selected="true">
+		<Setting Name="Browsing Path" DataType="1" Value="$(BDS)\OCX\Servers;$(BDS)\SOURCE\VCL;$(BDS)\SOURCE\VCL\AppAnalytics;$(BDS)\source\rtl\common;$(BDS)\SOURCE\RTL\SYS;$(BDS)\source\rtl\ios;$(BDS)\source\rtl\osx;$(BDS)\source\ToolsAPI;$(BDS)\SOURCE\IBX;$(BDS)\source\Internet;$(BDS)\SOURCE\PROPERTY EDITORS;$(BDS)\source\soap;$(BDS)\SOURCE\XML;$(BDS)\source\Indy10\Core;$(BDS)\source\Indy10\System;$(BDS)\source\Indy10\Protocols;$(BDS)\source\fmx;$(BDS)\source\databinding\components;$(BDS)\source\databinding\engine;$(BDS)\source\databinding\graph;$(BDS)\source\data;$(BDS)\source\data\ado;$(BDS)\source\data\bde;$(BDS)\source\data\cloud;$(BDS)\source\data\datasnap;$(BDS)\source\data\dbx;$(BDS)\source\data\dsnap;$(BDS)\source\data\Test;$(BDS)\source\data\vclctrls;$(BDS)\source\rtl\posix;$(BDS)\source\rtl\posix\osx;$(BDS)\source\data\datasnap\connectors;$(BDS)\source\data\datasnap\proxygen;$(BDS)\source\DataExplorer;$(BDS)\source\DUnit\Contrib\DUnitWizard\Source\Common;$(BDS)\source\DUnit\Contrib\DUnitWizard\Source\Common\dunit;$(BDS)\source\DUnit\Contrib\DUnitWizard\Source\DelphiExperts\Common;$(BDS)\source\DUnit\Contrib\DUnitWizard\Source\DelphiExperts\DUnitProject;$(BDS)\source\DUnit\Contrib\DUnitWizard\Source\DelphiExperts\DUnitProject\dunit;$(BDS)\source\DUnit\src;$(BDS)\source\DUnit\tests;$(BDS)\source\Experts;$(BDS)\source\indy\abstraction;$(BDS)\source\indy\implementation;$(BDS)\source\indyimpl;$(BDS)\source\LiveTile;$(BDS)\source\Property Editors\Indy10;$(BDS)\source\soap\wsdlimporter;$(BDS)\source\Visualizers;$(BDS)\source\xtab;$(BDS)\source\DUnit\Contrib\XMLReporting;$(BDS)\source\DUnit\Contrib\XPGen;$(BDS)\source\data\rest;$(BDS)\source\data\firedac;$(BDS)\source\tethering;$(BDS)\source\DUnitX;$(BDS)\source\data\ems;$(BDS)\source\rtl\net;$(BDS)\source\FlatBox2D"/>
+		<Setting Name="Debug DCU Path" DataType="1" Value="$(BDSLIB)\$(PLATFORM)\debug"/>
+		<Setting Name="Package DCP Output" DataType="1" Value="$(BDSCOMMONDIR)\Dcp\$(Platform)"/>
+		<Setting Name="Package DPL Output" DataType="1" Value="$(BDSCOMMONDIR)\Bpl\$(Platform)"/>
+		<Setting Name="Package Search Output" DataType="1" Value="$(BDSCOMMONDIR)\Bpl\$(Platform)\$(Configuration)"/>
+		<Setting Name="Search Path" DataType="1" Value="$(BDSLIB)\$(PLATFORM)\Release"/>
+		<Setting Name="Translated Debug Library Path" DataType="1" Value="$(BDSLIB)\$(Platform)\debug\$(LANGDIR)"/>
+		<Setting Name="Translated Library Path" DataType="1" Value="$(BDSLIB)\$(Platform)\release\$(LANGDIR)"/>
+		<Setting Name="Translated Resource Path" DataType="1" Value="$(BDSLIB)\$(Platform)\release\$(LANGDIR)"/>
+	</SettingGroup>
+	<SettingGroup Name="Library\OSX64" Selected="true">
+		<Setting Name="Browsing Path" DataType="1" Value="$(BDS)\OCX\Servers;$(BDS)\SOURCE\VCL;$(BDS)\SOURCE\VCL\AppAnalytics;$(BDS)\source\rtl\common;$(BDS)\SOURCE\RTL\SYS;$(BDS)\source\rtl\osx;$(BDS)\source\ToolsAPI;$(BDS)\SOURCE\IBX;$(BDS)\source\Internet;$(BDS)\SOURCE\PROPERTY EDITORS;$(BDS)\source\soap;$(BDS)\SOURCE\XML;$(BDS)\source\Indy10\Core;$(BDS)\source\Indy10\System;$(BDS)\source\Indy10\Protocols;$(BDS)\source\fmx;$(BDS)\source\databinding\components;$(BDS)\source\databinding\engine;$(BDS)\source\databinding\graph;$(BDS)\source\data;$(BDS)\source\data\ado;$(BDS)\source\data\bde;$(BDS)\source\data\cloud;$(BDS)\source\data\datasnap;$(BDS)\source\data\dbx;$(BDS)\source\data\dsnap;$(BDS)\source\data\Test;$(BDS)\source\data\vclctrls;$(BDS)\source\rtl\posix;$(BDS)\source\rtl\posix\osx;$(BDS)\source\data\datasnap\connectors;$(BDS)\source\data\datasnap\proxygen;$(BDS)\source\DataExplorer;$(BDS)\source\DUnit\Contrib\DUnitWizard\Source\Common;$(BDS)\source\DUnit\Contrib\DUnitWizard\Source\Common\dunit;$(BDS)\source\DUnit\Contrib\DUnitWizard\Source\DelphiExperts\Common;$(BDS)\source\DUnit\Contrib\DUnitWizard\Source\DelphiExperts\DUnitProject;$(BDS)\source\DUnit\Contrib\DUnitWizard\Source\DelphiExperts\DUnitProject\dunit;$(BDS)\source\DUnit\src;$(BDS)\source\DUnit\tests;$(BDS)\source\Experts;$(BDS)\source\indy\abstraction;$(BDS)\source\indy\implementation;$(BDS)\source\indyimpl;$(BDS)\source\LiveTile;$(BDS)\source\Property Editors\Indy10;$(BDS)\source\soap\wsdlimporter;$(BDS)\source\Visualizers;$(BDS)\source\xtab;$(BDS)\source\DUnit\Contrib\XMLReporting;$(BDS)\source\DUnit\Contrib\XPGen;$(BDS)\source\data\rest;$(BDS)\source\data\firedac;$(BDS)\source\tethering;$(BDS)\source\DUnitX;$(BDS)\source\data\ems;$(BDS)\source\rtl\net;$(BDS)\source\FlatBox2D"/>
+	</SettingGroup>
+	<SettingGroup Name="Library\Win32" Selected="true">
+		<Setting Name="Debug DCU Path" DataType="1" Value="$(BDSLIB)\$(Platform)\debug"/>
+		<Setting Name="HPP Output Directory" DataType="1" Value="$(BDSCOMMONDIR)\hpp\$(Platform)"/>
+		<Setting Name="Language Library Path" DataType="1" Value="$(BDSLIB)\$(Platform)\release\$(LANGDIR);$(BDS)\lib\$(LANGDIR)"/>
+		<Setting Name="Package DCP Output" DataType="1" Value="$(BDSCOMMONDIR)\Dcp"/>
+		<Setting Name="Package DPL Output" DataType="1" Value="$(BDSCOMMONDIR)\Bpl"/>
+		<Setting Name="Package Search Path" DataType="1" Value="$(BDSCOMMONDIR)\Bpl"/>
+		<Setting Name="Search Path" DataType="1" Value="$(BDSLIB)\$(Platform)\release;$(BDSUSERDIR)\Imports;$(BDS)\Imports;$(BDSCOMMONDIR)\Dcp;$(BDS)\include"/>
+		<Setting Name="Translated Debug Library Path" DataType="1" Value="$(BDSLIB)\$(Platform)\debug\$(LANGDIR)"/>
+		<Setting Name="Translated Library Path" DataType="1" Value="$(BDSLIB)\$(Platform)\release\$(LANGDIR)"/>
+		<Setting Name="Translated Resource Path" DataType="1" Value="$(BDSLIB)\$(Platform)\release\$(LANGDIR)"/>
+		<Setting Name="Browsing Path" DataType="1" Value="$(BDS)\OCX\Servers;$(BDS)\SOURCE\VCL;$(BDS)\SOURCE\VCL\AppAnalytics;$(BDS)\source\rtl\common;$(BDS)\SOURCE\RTL\SYS;$(BDS)\source\rtl\win;$(BDS)\source\rtl\win\winrt;$(BDS)\source\ToolsAPI;$(BDS)\SOURCE\IBX;$(BDS)\source\Internet;$(BDS)\SOURCE\PROPERTY EDITORS;$(BDS)\source\soap;$(BDS)\SOURCE\XML;$(BDS)\source\Indy10\Core;$(BDS)\source\Indy10\System;$(BDS)\source\Indy10\Protocols;$(BDS)\source\fmx;$(BDS)\source\databinding\components;$(BDS)\source\databinding\engine;$(BDS)\source\databinding\graph;$(BDS)\source\data;$(BDS)\source\data\ado;$(BDS)\source\data\bde;$(BDS)\source\data\cloud;$(BDS)\source\data\datasnap;$(BDS)\source\data\dbx;$(BDS)\source\data\dsnap;$(BDS)\source\data\Test;$(BDS)\source\data\vclctrls;$(BDS)\source\data\datasnap\connectors;$(BDS)\source\data\datasnap\proxygen;$(BDS)\source\DataExplorer;$(BDS)\source\DUnit\Contrib\DUnitWizard\Source\Common;$(BDS)\source\DUnit\Contrib\DUnitWizard\Source\Common\dunit;$(BDS)\source\DUnit\Contrib\DUnitWizard\Source\DelphiExperts\Common;$(BDS)\source\DUnit\Contrib\DUnitWizard\Source\DelphiExperts\DUnitProject;$(BDS)\source\DUnit\Contrib\DUnitWizard\Source\DelphiExperts\DUnitProject\dunit;$(BDS)\source\DUnit\src;$(BDS)\source\DUnit\tests;$(BDS)\source\Experts;$(BDS)\source\indy\abstraction;$(BDS)\source\indy\implementation;$(BDS)\source\indyimpl;$(BDS)\source\LiveTile;$(BDS)\source\Property Editors\Indy10;$(BDS)\source\soap\wsdlimporter;$(BDS)\source\Visualizers;$(BDS)\source\xtab;$(BDS)\source\DUnit\Contrib\XMLReporting;$(BDS)\source\DUnit\Contrib\XPGen;$(BDS)\source\data\rest;$(BDS)\source\data\firedac;$(BDS)\source\tethering;$(BDS)\source\DUnitX;$(BDS)\source\data\ems;$(BDS)\source\rtl\net;$(BDS)\source\FlatBox2D"/>
+		<Setting Name="Namespace Search Path" DataType="1" Value=""/>
+	</SettingGroup>
+	<SettingGroup Name="Library\Win64" Selected="true">
+		<Setting Name="Browsing Path" DataType="1" Value="$(BDS)\OCX\Servers;$(BDS)\SOURCE\VCL;$(BDS)\SOURCE\VCL\AppAnalytics;$(BDS)\source\rtl\common;$(BDS)\SOURCE\RTL\SYS;$(BDS)\source\rtl\win;$(BDS)\source\rtl\win\winrt;$(BDS)\source\ToolsAPI;$(BDS)\SOURCE\IBX;$(BDS)\source\Internet;$(BDS)\SOURCE\PROPERTY EDITORS;$(BDS)\source\soap;$(BDS)\SOURCE\XML;$(BDS)\source\Indy10\Core;$(BDS)\source\Indy10\System;$(BDS)\source\Indy10\Protocols;$(BDS)\source\fmx;$(BDS)\source\databinding\components;$(BDS)\source\databinding\engine;$(BDS)\source\databinding\graph;$(BDS)\source\data;$(BDS)\source\data\ado;$(BDS)\source\data\bde;$(BDS)\source\data\cloud;$(BDS)\source\data\datasnap;$(BDS)\source\data\dbx;$(BDS)\source\data\dsnap;$(BDS)\source\data\Test;$(BDS)\source\data\vclctrls;$(BDS)\source\data\datasnap\connectors;$(BDS)\source\data\datasnap\proxygen;$(BDS)\source\DataExplorer;$(BDS)\source\DUnit\Contrib\DUnitWizard\Source\Common;$(BDS)\source\DUnit\Contrib\DUnitWizard\Source\Common\dunit;$(BDS)\source\DUnit\Contrib\DUnitWizard\Source\DelphiExperts\Common;$(BDS)\source\DUnit\Contrib\DUnitWizard\Source\DelphiExperts\DUnitProject;$(BDS)\source\DUnit\Contrib\DUnitWizard\Source\DelphiExperts\DUnitProject\dunit;$(BDS)\source\DUnit\src;$(BDS)\source\DUnit\tests;$(BDS)\source\Experts;$(BDS)\source\indy\abstraction;$(BDS)\source\indy\implementation;$(BDS)\source\indyimpl;$(BDS)\source\LiveTile;$(BDS)\source\Property Editors\Indy10;$(BDS)\source\soap\wsdlimporter;$(BDS)\source\Visualizers;$(BDS)\source\xtab;$(BDS)\source\DUnit\Contrib\XMLReporting;$(BDS)\source\DUnit\Contrib\XPGen;$(TP)\runtime\vcl;$(BDS)\source\data\rest;$(BDS)\source\data\firedac;$(BDS)\source\tethering;$(BDS)\source\DUnitX;$(BDS)\source\data\ems;$(BDS)\source\rtl\net;$(BDS)\source\FlatBox2D"/>
+		<Setting Name="Debug DCU Path" DataType="1" Value="$(BDSLIB)\$(Platform)\debug"/>
+		<Setting Name="HPP Output Directory" DataType="1" Value="$(BDSCOMMONDIR)\hpp\$(Platform)"/>
+		<Setting Name="Language Library Path" DataType="1" Value="$(BDSLIB)\$(Platform)\release\$(LANGDIR);$(BDS)\lib\$(LANGDIR)"/>
+		<Setting Name="Package DCP Output" DataType="1" Value="$(BDSCOMMONDIR)\Dcp\$(Platform)"/>
+		<Setting Name="Package DPL Output" DataType="1" Value="$(BDSCOMMONDIR)\Bpl\$(Platform)"/>
+		<Setting Name="Package Search Path" DataType="1" Value="$(BDSCOMMONDIR)\Bpl\$(Platform)"/>
+		<Setting Name="Search Path" DataType="1" Value="$(BDSLIB)\$(Platform)\release;$(BDSUSERDIR)\Imports;$(BDS)\Imports;$(BDSCOMMONDIR)\Dcp\$(Platform);$(BDS)\include"/>
+		<Setting Name="Translated Debug Library Path" DataType="1" Value="$(BDSLIB)\$(Platform)\debug\$(LANGDIR)"/>
+		<Setting Name="Translated Library Path" DataType="1" Value="$(BDSLIB)\$(Platform)\release\$(LANGDIR)"/>
+		<Setting Name="Translated Resource Path" DataType="1" Value="$(BDSLIB)\$(Platform)\release\$(LANGDIR)"/>
+		<Setting Name="Namespace Search Path" DataType="1" Value=""/>
+	</SettingGroup>
+	<SettingGroup Name="LiveBindings Designer" Selected="true"/>
+	<SettingGroup Name="LiveBindings Designer\General" Selected="true">
+		<Setting Name="ExcludedItems" DataType="1" Value="TComponent"/>
+		<Setting Name="IncludedItems" DataType="1" Value="TControl;TBaseBindScopeComponent;TCustomDataGeneratorAdapter;TDataSet"/>
+		<Setting Name="EnableWizardVerb" DataType="1" Value="False"/>
+	</SettingGroup>
+	<SettingGroup Name="LivePreview" Selected="true">
+		<Setting Name="LivePreviewBroadcast" DataType="1" Value="False"/>
+		<Setting Name="LivePreviewServiceName" DataType="1" Value=""/>
+		<Setting Name="LivePreviewServicePassword" DataType="1" Value=""/>
+	</SettingGroup>
+	<SettingGroup Name="Main Window" Selected="true">
+		<Setting Name="Palette Visible" DataType="1" Value="True"/>
+		<Setting Name="Speedbar Visible" DataType="1" Value="True"/>
+		<Setting Name="Palette Hints" DataType="1" Value="True"/>
+		<Setting Name="Speedbar Hints" DataType="1" Value="True"/>
+		<Setting Name="Split Position" DataType="4" Value="0"/>
+		<Setting Name="Auto Drag Docking" DataType="1" Value="True"/>
+		<Setting Name="Sort Window Menu" DataType="1" Value="True"/>
+		<Setting Name="Sort Palette Tabs Menu" DataType="1" Value="True"/>
+		<Setting Name="Show Window Menu" DataType="1" Value="True"/>
+	</SettingGroup>
+	<SettingGroup Name="Mercurial" Selected="true"/>
+	<SettingGroup Name="Mercurial\Colors" Selected="true"/>
+	<SettingGroup Name="Mercurial\Colors\Light" Selected="true">
+		<Setting Name="Enabled" DataType="4" Value="1"/>
+		<Setting Name="ColorConflicted" DataType="4" Value="71550"/>
+		<Setting Name="ColorAdded" DataType="4" Value="10441354"/>
+		<Setting Name="ColorDeleted" DataType="4" Value="2640222"/>
+		<Setting Name="ColorMerged" DataType="4" Value="4943384"/>
+		<Setting Name="ColorModified" DataType="4" Value="8669710"/>
+	</SettingGroup>
+	<SettingGroup Name="Mercurial\Options" Selected="true">
+		<Setting Name="AlternativeCommitLayout" DataType="4" Value="1"/>
+		<Setting Name="ClearFileStatesAfterCloseAll" DataType="4" Value="0"/>
+		<Setting Name="DeleteBackupFilesAfterCommit" DataType="4" Value="0"/>
+		<Setting Name="KeepCommitViewOpenAfterCommit" DataType="4" Value="0"/>
+	</SettingGroup>
+	<SettingGroup Name="MergeViewer" Selected="true">
+		<Setting Name="DefaultMergeViewer" DataType="1" Value=""/>
+		<Setting Name="DefaultExternalMergeViewer" DataType="1" Value=""/>
+		<Setting Name="PreferredViewer" DataType="1" Value="0"/>
+	</SettingGroup>
+	<SettingGroup Name="MetaPrint" Selected="true">
+		<Setting Name="PrintSelected" DataType="1" Value="False"/>
+		<Setting Name="PrintVisible" DataType="1" Value="False"/>
+		<Setting Name="PrintHeader" DataType="1" Value="True"/>
+		<Setting Name="PrintBorder" DataType="1" Value="True"/>
+		<Setting Name="PrintToSingle" DataType="1" Value="True"/>
+		<Setting Name="PrintToFile" DataType="1" Value="False"/>
+		<Setting Name="PrintFile" DataType="1" Value=""/>
+		<Setting Name="PrintDescription" DataType="1" Value="False"/>
+	</SettingGroup>
+	<SettingGroup Name="MUI" Selected="true">
+		<Setting Name="Translated Library Directory" DataType="1" Value=""/>
+	</SettingGroup>
+	<SettingGroup Name="New Component" Selected="true">
+		<Setting Name="PalettePage" DataType="1" Value="Samples"/>
+		<Setting Name="UnitDirName" DataType="1" Value="$(BDSPROJECTSDIR)"/>
+	</SettingGroup>
+	<SettingGroup Name="Object Inspector" Selected="true">
+		<Setting Name="Show Status Bar" DataType="1" Value="True"/>
+		<Setting Name="Show Instance List" DataType="1" Value="True"/>
+		<Setting Name="Show Grid Lines" DataType="1" Value="False"/>
+		<Setting Name="Integral Height" DataType="1" Value="True"/>
+		<Setting Name="Show Classname in Instance List" DataType="1" Value="True"/>
+		<Setting Name="Background Color" DataType="1" Value="clWindow"/>
+		<Setting Name="Column Name Color" DataType="1" Value="clBtnText"/>
+		<Setting Name="Column Value Color" DataType="1" Value="$00844A0E"/>
+		<Setting Name="Category Color" DataType="1" Value="$009F528A"/>
+		<Setting Name="Edit Background Color" DataType="1" Value="clWindow"/>
+		<Setting Name="Instance List Name Color" DataType="1" Value="clWindowText"/>
+		<Setting Name="Instance List Classname Color" DataType="1" Value="clGrayText"/>
+		<Setting Name="Edit Value Color" DataType="1" Value="clWindowText"/>
+		<Setting Name="SubProperties Color" DataType="1" Value="$004B6E18"/>
+		<Setting Name="Reference Expandable" DataType="1" Value="True"/>
+		<Setting Name="Reference On Events Page" DataType="1" Value="True"/>
+		<Setting Name="Reference Color" DataType="1" Value="$0001177E"/>
+		<Setting Name="Show Read Only Properties" DataType="1" Value="True"/>
+		<Setting Name="Readonly Property Color" DataType="1" Value="clGrayText"/>
+		<Setting Name="Non Default Color" DataType="1" Value="$00844A0E"/>
+		<Setting Name="Bold Non Default Values" DataType="1" Value="True"/>
+		<Setting Name="Gutter Color" DataType="1" Value="clWindow"/>
+		<Setting Name="Gutter Edge Color" DataType="1" Value="clWindow"/>
+		<Setting Name="Highlight Color" DataType="1" Value="clHighlight"/>
+		<Setting Name="Highlight Font Color" DataType="1" Value="clHighlightText"/>
+		<Setting Name="Show Gutter" DataType="1" Value="True"/>
+		<Setting Name="ArrangeMode" DataType="4" Value="1"/>
+		<Setting Name="Show Description Panel" DataType="1" Value="False"/>
+		<Setting Name="Show Hot Command Panel" DataType="1" Value="True"/>
+		<Setting Name="Show Filter Box" DataType="1" Value="True"/>
+	</SettingGroup>
+	<SettingGroup Name="Print Selection" Selected="true">
+		<Setting Name="Header Page" DataType="1" Value="False"/>
+		<Setting Name="Line Numbers" DataType="1" Value="False"/>
+		<Setting Name="Syntax Print" DataType="1" Value="True"/>
+		<Setting Name="Use Color" DataType="1" Value="False"/>
+		<Setting Name="Wrap Lines" DataType="1" Value="False"/>
+		<Setting Name="Left Margin" DataType="4" Value="0"/>
+	</SettingGroup>
+	<SettingGroup Name="Project Upgrade" Selected="true">
+		<Setting Name="dummy" DataType="1" Value="False"/>
+	</SettingGroup>
+	<SettingGroup Name="ProjectUpgrading" Selected="true">
+		<Setting Name="DefaultBackupAction" DataType="4" Value="1"/>
+		<Setting Name="DefaultBackupSuffix" DataType="1" Value=""/>
+		<Setting Name="DontPromptForUpgrade" DataType="1" Value="0"/>
+	</SettingGroup>
+	<SettingGroup Name="Replace" Selected="true">
+		<Setting Name="Case Sensitive" DataType="1" Value="False"/>
+		<Setting Name="Whole Words" DataType="1" Value="False"/>
+		<Setting Name="Regular Expression" DataType="1" Value="False"/>
+		<Setting Name="Prompt On Replace" DataType="1" Value="True"/>
+		<Setting Name="From Cursor" DataType="1" Value="True"/>
+		<Setting Name="Global" DataType="1" Value="True"/>
+		<Setting Name="Search Forward" DataType="1" Value="True"/>
+	</SettingGroup>
+	<SettingGroup Name="Repository" Selected="true">
+		<Setting Name="Repository Dir" DataType="1" Value=""/>
+	</SettingGroup>
+	<SettingGroup Name="Search" Selected="true">
+		<Setting Name="Case Sensitive" DataType="1" Value="False"/>
+		<Setting Name="Whole Words" DataType="1" Value="False"/>
+		<Setting Name="Regular Expression" DataType="1" Value="False"/>
+		<Setting Name="Search Forward" DataType="1" Value="True"/>
+		<Setting Name="From Cursor" DataType="1" Value="True"/>
+		<Setting Name="File Mask" DataType="1" Value=""/>
+		<Setting Name="Include Sub Dirs" DataType="1" Value="False"/>
+		<Setting Name="Global" DataType="1" Value="True"/>
+		<Setting Name="Display results in separate tab in message view" DataType="1" Value="False"/>
+		<Setting Name="Group results by file" DataType="1" Value="True"/>
+		<Setting Name="Wrap Around" DataType="1" Value="False"/>
+		<Setting Name="Search Directory" DataType="1" Value=""/>
+		<Setting Name="AdvancedSearch" DataType="4" Value="0"/>
+	</SettingGroup>
+	<SettingGroup Name="Startup Options" Selected="true">
+		<Setting Name="Create New Project" DataType="1" Value="False"/>
+		<Setting Name="New Project Type" DataType="1" Value=""/>
+	</SettingGroup>
+	<SettingGroup Name="Subversion" Selected="true"/>
+	<SettingGroup Name="Subversion\Colors" Selected="true"/>
+	<SettingGroup Name="Subversion\Colors\Light" Selected="true">
+		<Setting Name="Enabled" DataType="4" Value="1"/>
+		<Setting Name="ColorConflicted" DataType="4" Value="71550"/>
+		<Setting Name="ColorAdded" DataType="4" Value="10441354"/>
+		<Setting Name="ColorDeleted" DataType="4" Value="2640222"/>
+		<Setting Name="ColorMerged" DataType="4" Value="4943384"/>
+		<Setting Name="ColorModified" DataType="4" Value="8669710"/>
+	</SettingGroup>
+	<SettingGroup Name="Subversion\Options" Selected="true">
+		<Setting Name="AlternativeCommitLayout" DataType="4" Value="0"/>
+		<Setting Name="ClearFileStatesAfterCloseAll" DataType="4" Value="0"/>
+		<Setting Name="DeleteBackupFilesAfterCommit" DataType="4" Value="0"/>
+		<Setting Name="KeepCommitViewOpenAfterCommit" DataType="4" Value="0"/>
+		<Setting Name="BlameIgnoreEOL" DataType="4" Value="0"/>
+		<Setting Name="BlameCompareSpaces" DataType="4" Value="0"/>
+	</SettingGroup>
+	<SettingGroup Name="TDefaultEnvironmentDialog" Selected="true">
+		<Setting Name="Left" DataType="4" Value="291"/>
+		<Setting Name="Top" DataType="4" Value="75"/>
+		<Setting Name="Width" DataType="4" Value="784"/>
+		<Setting Name="Height" DataType="4" Value="578"/>
+		<Setting Name="Split" DataType="4" Value="218"/>
+	</SettingGroup>
+	<SettingGroup Name="Theme" Selected="true">
+		<Setting Name="Enabled" DataType="4" Value="1"/>
+		<Setting Name="Theme" DataType="1" Value="Light"/>
+		<Setting Name="DarkSpeedSetting" DataType="1" Value="Dark"/>
+		<Setting Name="DarkOISpeedSetting" DataType="1" Value="Dark"/>
+		<Setting Name="LightSpeedSetting" DataType="1" Value="Defaults"/>
+		<Setting Name="LightOISpeedSetting" DataType="1" Value="Default"/>
+		<Setting Name="CustomSpeedSetting" DataType="1" Value="Defaults"/>
+		<Setting Name="CustomOISpeedSetting" DataType="1" Value="Dark"/>
+		<Setting Name="GraySpeedSetting" DataType="1" Value="Defaults"/>
+		<Setting Name="GrayOISpeedSetting" DataType="1" Value="Default"/>
+		<Setting Name="VCLStyle" DataType="1" Value=""/>
+		<Setting Name="FontName" DataType="1" Value="Segoe UI"/>
+		<Setting Name="FontSize" DataType="4" Value="9"/>
+		<Setting Name="TitlebarColor" DataType="4" Value="0"/>
+		<Setting Name="ToggleTheme" DataType="4" Value="0"/>
+	</SettingGroup>
+	<SettingGroup Name="ToolForm" Selected="true">
+		<Setting Name="Last Color Scheme" DataType="1" Value="ModernColorScheme"/>
+		<Setting Name="FullWidthButtons" DataType="1" Value="True"/>
+		<Setting Name="ButtonHeight" DataType="4" Value="22"/>
+		<Setting Name="Collapsed Categories" DataType="1" Value=""/>
+		<Setting Name="Palette Locked" DataType="1" Value="False"/>
+		<Setting Name="First Popup" DataType="1" Value="True"/>
+		<Setting Name="Categories Popup Width" DataType="4" Value="10"/>
+		<Setting Name="Categoreis Popup Height" DataType="4" Value="10"/>
+		<Setting Name="Auto Collapse Palette" DataType="1" Value="True"/>
+		<Setting Name="Vertical Category Captions" DataType="1" Value="False"/>
+		<Setting Name="Vertical Flow Layout" DataType="1" Value="True"/>
+		<Setting Name="MRU History" DataType="1" Value=""/>
+		<Setting Name="ShowPaletteWizards" DataType="1" Value="True"/>
+		<Setting Name="Background Color" DataType="1" Value="clBtnFace"/>
+		<Setting Name="Background Gradient Color" DataType="1" Value="$00F2F8F9"/>
+		<Setting Name="Background Gradient Direction" DataType="4" Value="0"/>
+		<Setting Name="Bold Captions" DataType="1" Value="False"/>
+		<Setting Name="Caption Only Border" DataType="1" Value="True"/>
+		<Setting Name="Use Plus Minus" DataType="1" Value="True"/>
+		<Setting Name="Category Gradient Direction" DataType="4" Value="1"/>
+		<Setting Name="Regular Button Color" DataType="1" Value="clNone"/>
+		<Setting Name="Hot Button Color" DataType="1" Value="$00EFD3C6"/>
+		<Setting Name="Selected Button Color" DataType="1" Value="$00EFBEC6"/>
+		<Setting Name="First Load" DataType="1" Value="False"/>
+		<Setting Name="Category Color" DataType="1" Value="$00D6D6D6"/>
+		<Setting Name="Category Gradient Color" DataType="1" Value="clBtnFace"/>
+		<Setting Name="Category Text Color" DataType="1" Value="clBtnText"/>
+		<Setting Name="Always Show Designer Items" DataType="1" Value="False"/>
+		<Setting Name="Persistent Filter" DataType="1" Value="False"/>
+		<Setting Name="Show Button Hints" DataType="1" Value="True"/>
+		<Setting Name="Last Scheme Index" DataType="4" Value="0"/>
+	</SettingGroup>
+	<SettingGroup Name="ToolForm\Mapping" Selected="true">
+		<Setting Name="Palette Hidden Items" DataType="1" Value=""/>
+		<Setting Name="Copied Palette Items" DataType="1" Value=""/>
+		<Setting Name="" DataType="1" Value="&quot;Window Forms&quot;,&quot;Web Controls&quot;,&quot;HTML Elements&quot;,&quot;Data Components&quot;,&quot;CodeGear Data Provider&quot;,&quot;DB Web&quot;,&quot;Enterprise Core Objects&quot;,Components,Standard,Additional,Win32,System,&quot;Win 3.1&quot;,Dialogs,&quot;Data Access&quot;,&quot;Data Controls&quot;,dbExpress,&quot;Datasnap Client&quot;,&quot;Datasnap Server&quot;,BDE,ActiveX,&quot;Windows Forms Components&quot;,&quot;Windows Forms Data Components&quot;,&quot;Windows Forms Dialogs&quot;,&quot;Code Snippets&quot;,&quot;Delphi Projects&quot;,&quot;Delphi for .NET Projects&quot;,&quot;Delphi Projects | Delphi Files&quot;,&quot;C# Projects&quot;,&quot;Delphi Projects | Active X&quot;,&quot;Delphi for .NET Projects | New Files&quot;,&quot;Markup Files&quot;,&quot;Other Files&quot;,&quot;Delphi | Individual Files&quot;,&quot;Other | Unit Test&quot;,&quot;Delphi | Windows&quot;,&quot;Delphi | Multi-Device&quot;,Delphi,&quot;Other | Web&quot;,Other,&quot;Delphi | DUnitX&quot;,&quot;Delphi | Web&quot;,&quot;Delphi | ActiveX&quot;"/>
+		<Setting Name="Window Forms" DataType="1" Value=""/>
+		<Setting Name="Web Controls" DataType="1" Value=""/>
+		<Setting Name="HTML Elements" DataType="1" Value=""/>
+		<Setting Name="Data Components" DataType="1" Value=""/>
+		<Setting Name="CodeGear Data Provider" DataType="1" Value=""/>
+		<Setting Name="DB Web" DataType="1" Value=""/>
+		<Setting Name="Enterprise Core Objects" DataType="1" Value=""/>
+		<Setting Name="Components" DataType="1" Value=""/>
+		<Setting Name="Standard" DataType="1" Value=""/>
+		<Setting Name="Additional" DataType="1" Value=""/>
+		<Setting Name="Win32" DataType="1" Value=""/>
+		<Setting Name="System" DataType="1" Value=""/>
+		<Setting Name="Win 3.1" DataType="1" Value=""/>
+		<Setting Name="Dialogs" DataType="1" Value=""/>
+		<Setting Name="Data Access" DataType="1" Value=""/>
+		<Setting Name="Data Controls" DataType="1" Value=""/>
+		<Setting Name="dbExpress" DataType="1" Value=""/>
+		<Setting Name="Datasnap Client" DataType="1" Value=""/>
+		<Setting Name="Datasnap Server" DataType="1" Value=""/>
+		<Setting Name="BDE" DataType="1" Value=""/>
+		<Setting Name="ActiveX" DataType="1" Value=""/>
+		<Setting Name="Windows Forms Components" DataType="1" Value=""/>
+		<Setting Name="Windows Forms Data Components" DataType="1" Value=""/>
+		<Setting Name="Windows Forms Dialogs" DataType="1" Value=""/>
+		<Setting Name="Code Snippets" DataType="1" Value=""/>
+		<Setting Name="Delphi Projects" DataType="1" Value=""/>
+		<Setting Name="Delphi for .NET Projects" DataType="1" Value=""/>
+		<Setting Name="Delphi Projects | Delphi Files" DataType="1" Value=""/>
+		<Setting Name="C# Projects" DataType="1" Value=""/>
+		<Setting Name="Delphi Projects | Active X" DataType="1" Value=""/>
+		<Setting Name="Delphi for .NET Projects | New Files" DataType="1" Value=""/>
+		<Setting Name="Markup Files" DataType="1" Value=""/>
+		<Setting Name="Other Files" DataType="1" Value=""/>
+		<Setting Name="Delphi | Individual Files" DataType="1" Value="NewItems_CodeGear.NewMSBuildTargetsPas,NewItems_NewMetroFmxDelphiForm,NewItems_NewDelphiFmxFrame,NewItems_NewDelphiMobFmxForm,NewItems_NewMetroVCLDelphiForm,NewItems_NewDelphiDataModule,NewItems_NewDelphiThread,NewItems_NewDelphiUnit,NewItems_NewDelphiComponent"/>
+		<Setting Name="Other | Unit Test" DataType="1" Value="NewItems_TestProject,NewItems_TestCase"/>
+		<Setting Name="Delphi | Windows" DataType="1" Value="NewItems_NewDelphiFmxMetroApp,NewItems_NewMetroVCLDelphiApp,NewItems_NewVCLDelphiFrame,NewItems_NewVCLDelphiForm,NewItems_Borland.NewAppletApplication,NewItems_Borland.NewNTServiceProject,NewItems_DelphiWin32\SDIAPP,NewItems_DelphiWin32\MDIAPP"/>
+		<Setting Name="Delphi | Multi-Device" DataType="1" Value="NewItems_NewDelphiFmiMobile3DApp,NewItems_NewDelphiFmiMobileHDApp"/>
+		<Setting Name="Delphi" DataType="1" Value="NewItems_NewDelphiFmiApp,NewItems_NewVCLDelphiApp,NewItems_NewDelphiPackage,NewItems_NewDelphiDll,NewItems_NewDelphiConsoleApp"/>
+		<Setting Name="Other | Web" DataType="1" Value="NewItems_NewWML,NewItems_XSLStylesheet,NewItems_JavaScript,NewItems_XSLT,NewItems_XMLSchema,NewItems_XMLPage,NewItems_StyleSheet,NewItems_NewHTMLPage"/>
+		<Setting Name="Other" DataType="1" Value="NewItems_NewTextFileIDString,NewItems_NewWorkspaceIDString,NewItems_Borland.Wizard.CodeTemplate"/>
+		<Setting Name="Delphi | DUnitX" DataType="1" Value="NewItems_DunitX.Wizard.NewUnitWizard.Delphi.Personality,NewItems_DunitX.Wizard.NewProjectWizard.Delphi.Personality"/>
+		<Setting Name="Delphi | Web" DataType="1" Value="NewItems_Borland.NewSoapModule.Delphi.Personality.Delphi.Personality,NewItems_Borland.NewWebModule.Delphi.Personality"/>
+		<Setting Name="Delphi | ActiveX" DataType="1" Value="NewItems_Borland.Delphi.ActiveXLibrary,NewItems_Borland.Delphi.TypeLibrary"/>
+	</SettingGroup>
+	<SettingGroup Name="Type Library" Selected="true">
+		<Setting Name="UILanguage" DataType="1" Value="1"/>
+		<Setting Name="SafeCallMapping" DataType="1" Value="1"/>
+		<Setting Name="ShowUpdatesUI" DataType="1" Value="False"/>
+		<Setting Name="IgnoreSpecialFlags" DataType="1" Value="False"/>
+		<Setting Name="MakeComponent" DataType="1" Value="True"/>
+		<Setting Name="IgnorePreDeclId" DataType="1" Value="False"/>
+		<Setting Name="IgnoreReserved" DataType="1" Value="False"/>
+		<Setting Name="IgnoreHidden" DataType="1" Value="False"/>
+		<Setting Name="IgnoreCanCreate" DataType="1" Value="False"/>
+		<Setting Name="DispInterfInControlWrap" DataType="1" Value="False"/>
+		<Setting Name="MSStylePropGetSet" DataType="1" Value="False"/>
+		<Setting Name="CppChangeSuffixInCompWrap" DataType="1" Value="False"/>
+		<Setting Name="CppOcxSuffix" DataType="1" Value="_OCX"/>
+		<Setting Name="ImplementBase" DataType="1" Value="False"/>
+		<Setting Name="TypeLibOptionsStr" DataType="1" Value="...............................................11.111."/>
+	</SettingGroup>
+	<SettingGroup Name="VersionInsight" Selected="true"/>
+	<SettingGroup Name="VersionInsight\Git" Selected="true">
+		<Setting Name="Executable" DataType="1" Value="C:\Program Files\Common Files\ChessBase\Engines.x64\Stockfish 241022.exe"/>
+		<Setting Name="UserName" DataType="1" Value="al.glead.aa@gmail.com"/>
+		<Setting Name="UserEmail" DataType="1" Value="Cooffe"/>
+	</SettingGroup>
+	<SettingGroup Name="VersionInsight\Mercurial" Selected="true">
+		<Setting Name="Executable" DataType="1" Value="C:\Program Files\Common Files\ChessBase\Engines.x64\Stockfish 241022.exe"/>
+	</SettingGroup>
+</AppSettings>
