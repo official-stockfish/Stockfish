@@ -62,17 +62,17 @@ jobs:
               shell: 'bash {0}'
             }
           - {
-              name: "MacOS 10.15 Apple Clang",
-              os: macos-10.15,
+              name: "MacOS 12 Apple Clang",
+              os: macos-12,
               compiler: clang++,
               comp: clang,
               run_64bit_tests: true,
               shell: 'bash {0}'
             }
           - {
-              name: "MacOS 10.15 GCC 10",
-              os: macos-10.15,
-              compiler: g++-10,
+              name: "MacOS 12 GCC 11",
+              os: macos-12,
+              compiler: g++-11,
               comp: gcc,
               run_64bit_tests: true,
               shell: 'bash {0}'
