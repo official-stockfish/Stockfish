@@ -117,7 +117,7 @@ ifeq ($(ARCH), $(filter $(ARCH), \
                  x86-64-vnni512 x86-64-vnni256 x86-64-avx512 x86-64-avxvnni x86-64-bmi2 \
                  x86-64-avx2 x86-64-sse41-popcnt x86-64-modern x86-64-ssse3 x86-64-sse3-popcnt \
                  x86-64 x86-32-sse41-popcnt x86-32-sse2 x86-32 ppc-64 ppc-32 e2k \
-                 armv7 armv7-neon armv8 apple-silicon general-64 general-32))
+                 armv7 armv7-neon armv8 apple-silicon general-64 general-32 riscv64))
    SUPPORTED_ARCH=true
 else
    SUPPORTED_ARCH=false
@@ -340,16 +340,26 @@ ifeq ($(findstring e2k,$(ARCH)),e2k)
 	popcnt = yes
 endif
 
+ifeq ($(ARCH),riscv64)
+	arch = riscv64
 endif
+endif
+
 
 ### ==========================================================================
 ### Section 3. Low-level Configuration
 ### ==========================================================================
 
 ### 3.1 Selecting compiler (default = gcc)
-CXXFLAGS += -Wall -Wcast-qual -fno-exceptions -std=c++17 $(EXTRACXXFLAGS)
-DEPENDFLAGS += -std=c++17
-LDFLAGS += $(EXTRALDFLAGS)
+ifeq ($(MAKELEVEL),0)
+       export ENV_CXXFLAGS := $(CXXFLAGS)
+       export ENV_DEPENDFLAGS := $(DEPENDFLAGS)
+       export ENV_LDFLAGS := $(LDFLAGS)
+endif
+
+CXXFLAGS = $(ENV_CXXFLAGS) -Wall -Wcast-qual -fno-exceptions -std=c++17 $(EXTRACXXFLAGS)
+DEPENDFLAGS = $(ENV_DEPENDFLAGS) -std=c++17
+LDFLAGS = $(ENV_LDFLAGS) $(EXTRALDFLAGS)
 
 ifeq ($(COMP),)
 	COMP=gcc
@@ -360,10 +370,13 @@ ifeq ($(COMP),gcc)
 	CXX=g++
 	CXXFLAGS += -pedantic -Wextra -Wshadow
 
-	ifeq ($(arch),$(filter $(arch),armv7 armv8))
+	ifeq ($(arch),$(filter $(arch),armv7 armv8 riscv64))
 		ifeq ($(OS),Android)
 			CXXFLAGS += -m$(bits)
 			LDFLAGS += -m$(bits)
+		endif
+		ifeq ($(ARCH),riscv64)
+			CXXFLAGS += -latomic
 		endif
 	else
 		CXXFLAGS += -m$(bits)
@@ -425,10 +438,13 @@ ifeq ($(COMP),clang)
 	endif
 	endif
 
-	ifeq ($(arch),$(filter $(arch),armv7 armv8))
+	ifeq ($(arch),$(filter $(arch),armv7 armv8 riscv64))
 		ifeq ($(OS),Android)
 			CXXFLAGS += -m$(bits)
 			LDFLAGS += -m$(bits)
+		endif
+		ifeq ($(ARCH),riscv64)
+			CXXFLAGS += -latomic
 		endif
 	else
 		CXXFLAGS += -m$(bits)
@@ -544,17 +560,17 @@ ifeq ($(optimize),yes)
 		endif
 	endif
 
-    ifeq ($(KERNEL),Darwin)
-        ifeq ($(comp),$(filter $(comp),clang icc))
-            CXXFLAGS += -mdynamic-no-pic
-        endif
+	ifeq ($(KERNEL),Darwin)
+		ifeq ($(comp),$(filter $(comp),clang icc))
+			CXXFLAGS += -mdynamic-no-pic
+		endif
 
-        ifeq ($(comp),gcc)
-            ifneq ($(arch),arm64)
-                CXXFLAGS += -mdynamic-no-pic
-            endif
-        endif
-    endif
+		ifeq ($(comp),gcc)
+			ifneq ($(arch),arm64)
+				CXXFLAGS += -mdynamic-no-pic
+			endif
+		endif
+	endif
 
 	ifeq ($(comp),clang)
 		CXXFLAGS += -fexperimental-new-pass-manager
@@ -589,7 +605,7 @@ endif
 ifeq ($(avx2),yes)
 	CXXFLAGS += -DUSE_AVX2
 	ifeq ($(comp),$(filter $(comp),gcc clang mingw))
-		CXXFLAGS += -mavx2
+		CXXFLAGS += -mavx2 -mbmi
 	endif
 endif
 
@@ -674,7 +690,7 @@ endif
 ifeq ($(optimize),yes)
 ifeq ($(debug), no)
 	ifeq ($(comp),clang)
-		CXXFLAGS += -flto
+		CXXFLAGS += -flto=full
 		ifeq ($(target_windows),yes)
 			CXXFLAGS += -fuse-ld=lld
 		endif
@@ -684,20 +700,18 @@ ifeq ($(debug), no)
 # GCC on some systems.
 	else ifeq ($(comp),gcc)
 	ifeq ($(gccisclang),)
-		CXXFLAGS += -flto
+		CXXFLAGS += -flto -flto-partition=one
 		LDFLAGS += $(CXXFLAGS) -flto=jobserver
 	else
-		CXXFLAGS += -flto
+		CXXFLAGS += -flto=full
 		LDFLAGS += $(CXXFLAGS)
 	endif
 
 # To use LTO and static linking on Windows,
 # the tool chain requires gcc version 10.1 or later.
 	else ifeq ($(comp),mingw)
-	ifneq ($(arch),i386)
-		CXXFLAGS += -flto
+		CXXFLAGS += -flto -flto-partition=one
 		LDFLAGS += $(CXXFLAGS) -save-temps
-	endif
 	endif
 endif
 endif
@@ -764,6 +778,7 @@ help:
 	@echo "apple-silicon           > Apple silicon ARM64"
 	@echo "general-64              > unspecified 64-bit"
 	@echo "general-32              > unspecified 32-bit"
+	@echo "riscv64                 > RISC-V 64-bit"
 	@echo ""
 	@echo "Supported compilers:"
 	@echo ""
@@ -832,25 +847,35 @@ clean: objclean profileclean
 net:
 	$(eval nnuenet := $(shell grep EvalFileDefaultName evaluate.h | grep define | sed 's/.*\(nn-[a-z0-9]\{12\}.nnue\).*/\1/'))
 	@echo "Default net: $(nnuenet)"
-	$(eval nnuedownloadurl := https://tests.stockfishchess.org/api/nn/$(nnuenet))
+	$(eval nnuedownloadurl1 := https://tests.stockfishchess.org/api/nn/$(nnuenet))
+	$(eval nnuedownloadurl2 := https://github.com/official-stockfish/networks/raw/master/$(nnuenet))
 	$(eval curl_or_wget := $(shell if hash curl 2>/dev/null; then echo "curl -skL"; elif hash wget 2>/dev/null; then echo "wget -qO-"; fi))
-	@if test -f "$(nnuenet)"; then \
-            echo "Already available."; \
-         else \
-            if [ "x$(curl_or_wget)" = "x" ]; then \
-               echo "Automatic download failed: neither curl nor wget is installed. Install one of these tools or download the net manually"; exit 1; \
-            else \
-               echo "Downloading $(nnuedownloadurl)"; $(curl_or_wget) $(nnuedownloadurl) > $(nnuenet);\
-            fi; \
-        fi;
+	@if [ "x$(curl_or_wget)" = "x" ]; then \
+	    echo "Automatic download failed: neither curl nor wget is installed. Install one of these tools or download the net manually"; exit 1; \
+        fi
 	$(eval shasum_command := $(shell if hash shasum 2>/dev/null; then echo "shasum -a 256 "; elif hash sha256sum 2>/dev/null; then echo "sha256sum "; fi))
-	@if [ "x$(shasum_command)" != "x" ]; then \
-	    if [ "$(nnuenet)" != "nn-"`$(shasum_command) $(nnuenet) | cut -c1-12`".nnue" ]; then \
-                echo "Failed download or $(nnuenet) corrupted, please delete!"; exit 1; \
-            fi \
-         else \
+	@if [ "x$(shasum_command)" = "x" ]; then \
             echo "shasum / sha256sum not found, skipping net validation"; \
         fi
+	@for nnuedownloadurl in "$(nnuedownloadurl1)" "$(nnuedownloadurl2)"; do \
+	   if test -f "$(nnuenet)"; then \
+	      echo "$(nnuenet) available."; \
+	   else \
+	      if [ "x$(curl_or_wget)" != "x" ]; then \
+	         echo "Downloading $${nnuedownloadurl}"; $(curl_or_wget) $${nnuedownloadurl} > $(nnuenet);\
+	      fi; \
+	   fi; \
+	   if [ "x$(shasum_command)" != "x" ]; then \
+	      if [ "$(nnuenet)" != "nn-"`$(shasum_command) $(nnuenet) | cut -c1-12`".nnue" ]; then \
+	         echo "Removing failed download"; rm -f $(nnuenet); \
+	      else \
+	         echo "Network validated"; break; \
+	      fi; \
+	   fi; \
+	done
+	@if ! test -f "$(nnuenet)"; then \
+	    echo "Failed to download $(nnuenet)."; \
+	fi
 
 # clean binaries and objects
 objclean:
@@ -914,7 +939,7 @@ config-sanity: net
 	@test "$(SUPPORTED_ARCH)" = "true"
 	@test "$(arch)" = "any" || test "$(arch)" = "x86_64" || test "$(arch)" = "i386" || \
 	 test "$(arch)" = "ppc64" || test "$(arch)" = "ppc" || test "$(arch)" = "e2k" || \
-	 test "$(arch)" = "armv7" || test "$(arch)" = "armv8" || test "$(arch)" = "arm64"
+	 test "$(arch)" = "armv7" || test "$(arch)" = "armv8" || test "$(arch)" = "arm64" || test "$(arch)" = "riscv64"
 	@test "$(bits)" = "32" || test "$(bits)" = "64"
 	@test "$(prefetch)" = "yes" || test "$(prefetch)" = "no"
 	@test "$(popcnt)" = "yes" || test "$(popcnt)" = "no"

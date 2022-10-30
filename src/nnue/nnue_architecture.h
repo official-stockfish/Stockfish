@@ -29,6 +29,7 @@
 
 #include "layers/affine_transform.h"
 #include "layers/clipped_relu.h"
+#include "layers/sqr_clipped_relu.h"
 
 #include "../misc.h"
 
@@ -48,8 +49,9 @@ struct Network
   static constexpr int FC_1_OUTPUTS = 32;
 
   Layers::AffineTransform<TransformedFeatureDimensions, FC_0_OUTPUTS + 1> fc_0;
+  Layers::SqrClippedReLU<FC_0_OUTPUTS + 1> ac_sqr_0;
   Layers::ClippedReLU<FC_0_OUTPUTS + 1> ac_0;
-  Layers::AffineTransform<FC_0_OUTPUTS, FC_1_OUTPUTS> fc_1;
+  Layers::AffineTransform<FC_0_OUTPUTS * 2, FC_1_OUTPUTS> fc_1;
   Layers::ClippedReLU<FC_1_OUTPUTS> ac_1;
   Layers::AffineTransform<FC_1_OUTPUTS, 1> fc_2;
 
@@ -93,6 +95,7 @@ struct Network
     struct alignas(CacheLineSize) Buffer
     {
       alignas(CacheLineSize) decltype(fc_0)::OutputBuffer fc_0_out;
+      alignas(CacheLineSize) decltype(ac_sqr_0)::OutputType ac_sqr_0_out[ceil_to_multiple<IndexType>(FC_0_OUTPUTS * 2, 32)];
       alignas(CacheLineSize) decltype(ac_0)::OutputBuffer ac_0_out;
       alignas(CacheLineSize) decltype(fc_1)::OutputBuffer fc_1_out;
       alignas(CacheLineSize) decltype(ac_1)::OutputBuffer ac_1_out;
@@ -114,8 +117,10 @@ struct Network
 #endif
 
     fc_0.propagate(transformedFeatures, buffer.fc_0_out);
+    ac_sqr_0.propagate(buffer.fc_0_out, buffer.ac_sqr_0_out);
     ac_0.propagate(buffer.fc_0_out, buffer.ac_0_out);
-    fc_1.propagate(buffer.ac_0_out, buffer.fc_1_out);
+    std::memcpy(buffer.ac_sqr_0_out + FC_0_OUTPUTS, buffer.ac_0_out, FC_0_OUTPUTS * sizeof(decltype(ac_0)::OutputType));
+    fc_1.propagate(buffer.ac_sqr_0_out, buffer.fc_1_out);
     ac_1.propagate(buffer.fc_1_out, buffer.ac_1_out);
     fc_2.propagate(buffer.ac_1_out, buffer.fc_2_out);
 

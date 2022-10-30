@@ -161,6 +161,7 @@ public:
   bool has_repeated() const;
   int rule50_count() const;
   Score psq_score() const;
+  Value psq_eg_stm() const;
   Value non_pawn_material(Color c) const;
   Value non_pawn_material() const;
 
@@ -184,6 +185,8 @@ private:
   void move_piece(Square from, Square to);
   template<bool Do>
   void do_castling(Color us, Square from, Square& to, Square& rfrom, Square& rto);
+  template<bool AfterMove>
+  Key adjust_key50(Key k) const;
 
   // Data members
   Piece board[SQUARE_NB];
@@ -326,8 +329,14 @@ inline int Position::pawns_on_same_color_squares(Color c, Square s) const {
 }
 
 inline Key Position::key() const {
-  return st->rule50 < 14 ? st->key
-                         : st->key ^ make_key((st->rule50 - 14) / 8);
+  return adjust_key50<false>(st->key);
+}
+
+template<bool AfterMove>
+inline Key Position::adjust_key50(Key k) const
+{
+  return st->rule50 < 14 - AfterMove
+      ? k : k ^ make_key((st->rule50 - (14 - AfterMove)) / 8);
 }
 
 inline Key Position::pawn_key() const {
@@ -340,6 +349,10 @@ inline Key Position::material_key() const {
 
 inline Score Position::psq_score() const {
   return psq;
+}
+
+inline Value Position::psq_eg_stm() const {
+  return (sideToMove == WHITE ? 1 : -1) * eg_value(psq);
 }
 
 inline Value Position::non_pawn_material(Color c) const {
