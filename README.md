@@ -1,7 +1,7 @@
 <div align="center">
-  
+
   [![Stockfish][stockfish128-logo]][website-link]
-  
+
   [![Build][build-badge]][build-link]
   [![License][license-badge]][license-link]
   <br>
@@ -11,7 +11,7 @@
   [![Website][website-badge]][website-link]
   [![Fishtest][fishtest-badge]][fishtest-link]
   [![Discord][discord-badge]][discord-link]
-  
+
 </div>
 
 ## Overview
@@ -20,14 +20,14 @@
 Glaurung 2.1. Stockfish is not a complete chess program and requires a UCI-compatible
 graphical user interface (GUI) (e.g. XBoard with PolyGlot, Scid, Cute Chess, eboard,
 Arena, Sigma Chess, Shredder, Chess Partner or Fritz) in order to be used comfortably.
-Read the documentation for your GUI of choice for informationabout how to use
+Read the documentation for your GUI of choice for information about how to use
 Stockfish with it.
 
-The Stockfish engine features two evaluation functions for chess. The efficiently 
+The Stockfish engine features two evaluation functions for chess. The efficiently
 updatable neural network (NNUE) based evaluation is the default and by far the strongest.
-The classical evaluation based on handcrafted terms remains available. The strongest 
+The classical evaluation based on handcrafted terms remains available. The strongest
 network is integrated in the binary and downloaded automatically during the build process.
-The NNUE evaluation benefits from the vector intrinsics available on most CPUs (sse2, 
+The NNUE evaluation benefits from the vector intrinsics available on most CPUs (sse2,
 avx2, neon, or similar).
 
 ## Files
@@ -152,8 +152,8 @@ change them via a chess GUI. This is a list of available UCI options in Stockfis
 For developers the following non-standard commands might be of interest, mainly useful for debugging:
 
   * #### bench *ttSize threads limit fenFile limitType evalType*
-    Performs a standard benchmark using various options. The signature of a version 
-    (standard node count) is obtained using all defaults. `bench` is currently 
+    Performs a standard benchmark using various options. The signature of a version
+    (standard node count) is obtained using all defaults. `bench` is currently
     `bench 16 1 13 default depth mixed`.
 
   * #### compiler
@@ -201,9 +201,9 @@ the engine is somewhat lower (roughly 80% of nps is typical).
 
 Notes:
 
-1) the NNUE evaluation depends on the Stockfish binary and the network parameter file 
+1) the NNUE evaluation depends on the Stockfish binary and the network parameter file
 (see the EvalFile UCI option). Not every parameter file is compatible with a given
-Stockfish binary, but the default value of the EvalFile UCI option is the name of a 
+Stockfish binary, but the default value of the EvalFile UCI option is the name of a
 network that is guaranteed to be compatible with that binary.
 
 2) to use the NNUE evaluation, the additional data file with neural network parameters
@@ -337,40 +337,42 @@ using it as the starting point for a software project of your own.
 
 The only real limitation is that whenever you distribute Stockfish in
 some way, you MUST always include the license and the full source code
-(or a pointer to where the source code can be found) to generate the 
+(or a pointer to where the source code can be found) to generate the
 exact binary you are distributing. If you make any changes to the
 source code, these changes must also be made available under the GPL v3.
 
 For full details, read the copy of the GPL v3 found in the file named
 [*Copying.txt*][license-link].
 
-[authors-link]:https://github.com/official-stockfish/Stockfish/blob/master/AUTHORS
-[build-badge]:https://img.shields.io/github/workflow/status/official-stockfish/Stockfish/Stockfish?style=for-the-badge&label=stockfish&logo=github
-[build-link]:https://github.com/official-stockfish/Stockfish/actions/workflows/stockfish.yml
-[commits-badge]:https://img.shields.io/github/commits-since/official-stockfish/Stockfish/latest?style=for-the-badge
-[commits-link]:https://github.com/official-stockfish/Stockfish/commits/master
-[discord-badge]:https://img.shields.io/discord/435943710472011776?style=for-the-badge&label=discord&logo=Discord
-[discord-link]:https://discord.com/invite/aefaxmq
-[fishcooking-link]:https://groups.google.com/g/fishcooking
-[fishtest-badge]:https://img.shields.io/website?style=for-the-badge&down_color=red&down_message=Offline&label=Fishtest&up_color=success&up_message=Online&url=https%3A%2F%2Ftests.stockfishchess.org%2Ftests
-[fishtest-link]:https://tests.stockfishchess.org/tests
-[github-link]:https://github.com/official-stockfish/Stockfish
-[guideline-link]:https://github.com/glinscott/fishtest/wiki/Creating-my-first-test
-[license-badge]:https://img.shields.io/github/license/official-stockfish/Stockfish?style=for-the-badge&label=license&color=success
-[license-link]:https://github.com/official-stockfish/Stockfish/blob/master/Copying.txt
-[lockpages-link]:https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/enable-the-lock-pages-in-memory-option-windows
-[nodchip-link]:https://github.com/nodchip/Stockfish
-[programming-link]:https://www.chessprogramming.org/Main_Page
-[programmingsf-link]:https://www.chessprogramming.org/Stockfish
-[pytorch-link]:https://github.com/glinscott/nnue-pytorch
-[rammap-link]:https://docs.microsoft.com/en-us/sysinternals/downloads/rammap
-[readme-link]:https://github.com/official-stockfish/Stockfish/blob/master/README.md
-[release-badge]:https://img.shields.io/github/v/release/official-stockfish/Stockfish?style=for-the-badge&label=official%20release
-[release-link]:https://github.com/official-stockfish/Stockfish/releases/latest
-[src-link]:https://github.com/official-stockfish/Stockfish/tree/master/src
-[stockfish128-logo]:https://stockfishchess.org/images/logo/icon_128x128.png
-[tools-link]:https://github.com/official-stockfish/Stockfish/tree/tools
-[uci-link]:https://www.shredderchess.com/download/div/uci.zip
-[website-badge]:https://img.shields.io/website?style=for-the-badge&down_color=red&down_message=Offline&label=website&up_color=success&up_message=Online&url=https%3A%2F%2Fstockfishchess.org
-[website-link]:https://stockfishchess.org
-[worker-link]:https://github.com/glinscott/fishtest/wiki/Running-the-worker:-overview
+
+[authors-link]:       https://github.com/official-stockfish/Stockfish/blob/master/AUTHORS
+[build-link]:         https://github.com/official-stockfish/Stockfish/actions/workflows/stockfish.yml
+[commits-link]:       https://github.com/official-stockfish/Stockfish/commits/master
+[discord-link]:       https://discord.gg/GWDRS3kU6R
+[fishcooking-link]:   https://groups.google.com/g/fishcooking
+[fishtest-link]:      https://tests.stockfishchess.org/tests
+[github-link]:        https://github.com/official-stockfish/Stockfish
+[guideline-link]:     https://github.com/glinscott/fishtest/wiki/Creating-my-first-test
+[license-link]:       https://github.com/official-stockfish/Stockfish/blob/master/Copying.txt
+[lockpages-link]:     https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/enable-the-lock-pages-in-memory-option-windows
+[nodchip-link]:       https://github.com/nodchip/Stockfish
+[programming-link]:   https://www.chessprogramming.org/Main_Page
+[programmingsf-link]: https://www.chessprogramming.org/Stockfish
+[pytorch-link]:       https://github.com/glinscott/nnue-pytorch
+[rammap-link]:        https://docs.microsoft.com/en-us/sysinternals/downloads/rammap
+[readme-link]:        https://github.com/official-stockfish/Stockfish/blob/master/README.md
+[release-link]:       https://github.com/official-stockfish/Stockfish/releases/latest
+[src-link]:           https://github.com/official-stockfish/Stockfish/tree/master/src
+[stockfish128-logo]:  https://stockfishchess.org/images/logo/icon_128x128.png
+[tools-link]:         https://github.com/official-stockfish/Stockfish/tree/tools
+[uci-link]:           https://www.shredderchess.com/download/div/uci.zip
+[website-link]:       https://stockfishchess.org
+[worker-link]:        https://github.com/glinscott/fishtest/wiki/Running-the-worker:-overview
+
+[build-badge]:        https://img.shields.io/github/workflow/status/official-stockfish/Stockfish/Stockfish?style=for-the-badge&label=stockfish&logo=github
+[commits-badge]:      https://img.shields.io/github/commits-since/official-stockfish/Stockfish/latest?style=for-the-badge
+[discord-badge]:      https://img.shields.io/discord/435943710472011776?style=for-the-badge&label=discord&logo=Discord
+[fishtest-badge]:     https://img.shields.io/website?style=for-the-badge&down_color=red&down_message=Offline&label=Fishtest&up_color=success&up_message=Online&url=https%3A%2F%2Ftests.stockfishchess.org%2Ftests%2Ffinished
+[license-badge]:      https://img.shields.io/github/license/official-stockfish/Stockfish?style=for-the-badge&label=license&color=success
+[release-badge]:      https://img.shields.io/github/v/release/official-stockfish/Stockfish?style=for-the-badge&label=official%20release
+[website-badge]:      https://img.shields.io/website?style=for-the-badge&down_color=red&down_message=Offline&label=website&up_color=success&up_message=Online&url=https%3A%2F%2Fstockfishchess.org

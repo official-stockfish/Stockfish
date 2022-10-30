@@ -1,0 +1,65 @@
+name: Report issue
+description: Create a report to help us fix issues with the engine
+body:
+- type: textarea
+  attributes:
+    label: Describe the issue
+    description: A clear and concise description of what you're experiencing.
+  validations:
+    required: true
+
+- type: textarea
+  attributes:
+    label: Expected behavior
+    description: A clear and concise description of what you expected to happen.
+  validations:
+    required: true
+
+- type: textarea
+  attributes:
+    label: Steps to reproduce
+    description: |
+      Steps to reproduce the behavior.
+      You can also use this section to paste the command line output.
+    placeholder: |
+      ```
+      position startpos moves g2g4 e7e5 f2f3
+      go mate 1
+      info string NNUE evaluation using nn-6877cd24400e.nnue enabled
+      info depth 1 seldepth 1 multipv 1 score mate 1 nodes 33 nps 11000 tbhits 0 time 3 pv d8h4
+      bestmove d8h4
+      ```
+  validations:
+    required: true
+
+- type: textarea
+  attributes:
+    label: Anything else?
+    description: |
+      Anything that will give us more context about the issue you are encountering.
+      You can also use this section to propose ideas on how to solve the issue. 
+  validations:
+    required: false
+
+- type: dropdown
+  attributes:
+    label: Operating system
+    options:
+      - All
+      - Windows
+      - Linux
+      - MacOS
+      - Android
+      - Other or N/A
+  validations:
+    required: true
+
+- type: input
+  attributes:
+    label: Stockfish version
+    description: |
+      This can be found by running the engine.
+      You can also use the commit ID.
+    placeholder: Stockfish 15 / e6e324e
+  validations:
+    required: true
