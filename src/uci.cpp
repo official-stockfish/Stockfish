@@ -199,7 +199,7 @@ namespace {
 
   // The win rate model returns the probability of winning (in per mille units) given an
   // eval and a game ply. It fits the LTC fishtest statistics rather accurately.
-  int win_rate_model(Value v, int ply) {
+double win_rate_model_double(Value v, int ply) {
 
      // The model only captures up to 240 plies, so limit the input and then rescale
      double m = std::min(240, ply) / 64.0;
@@ -215,10 +215,15 @@ namespace {
      // Transform the eval to centipawns with limited range
      double x = std::clamp(double(100 * v) / PawnValueEg, -2000.0, 2000.0);
 
-     // Return the win rate in per mille units rounded to the nearest value
-     return int(0.5 + 1000 / (1 + std::exp((a - x) / b)));
+
+     return 1 / (1 + std::exp((a - x) / b));
+
   }
 
+int win_rate_model(Value v, int ply) {
+     // Return the win rate in per mille units rounded to the nearest value
+     return int(0.5 + 1000*win_rate_model_double(v, ply));
+  }
 } // namespace
 
 
@@ -305,14 +310,17 @@ void UCI::loop(int argc, char* argv[]) {
 /// mate <y>  Mate in 'y' moves (not plies). If the engine is getting mated,
 ///           uses negative values for 'y'.
 
-string UCI::value(Value v) {
+string UCI::value(Value v, int ply) {
 
   assert(-VALUE_INFINITE < v && v < VALUE_INFINITE);
 
   stringstream ss;
 
   if (abs(v) < VALUE_MATE_IN_MAX_PLY)
-      ss << "cp " << v * 100 / PawnValueEg;
+      if (ply >=0)
+          ss << "cp " << UCI::pawn_eval(v, ply);
+      else
+          ss << "cp " << v * 100 / PawnValueEg;
   else
       ss << "mate " << (v > 0 ? VALUE_MATE - v + 1 : -VALUE_MATE - v) / 2;
 
@@ -333,6 +341,22 @@ string UCI::wdl(Value v, int ply) {
   ss << " wdl " << wdl_w << " " << wdl_d << " " << wdl_l;
 
   return ss.str();
+}
+
+/// UCI::pawn_eval() uses the win_rate_model to convert
+/// and internal score and ply to an objective
+/// pawn evaluation.
+
+int UCI::pawn_eval(Value v, int ply) {
+
+  double wdl_w = win_rate_model_double( v, ply);
+  double wdl_l = win_rate_model_double(-v, ply);
+  double wdl_d = 1 - wdl_w - wdl_l;
+  double score = wdl_w + wdl_d / 2;
+  double r = std::clamp(score / (1-score), 1e-15, 1e15);
+  int pawn_eval = int(400 * log10(r) + 0.5);
+
+  return pawn_eval;
 }
 
 
