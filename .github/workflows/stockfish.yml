@@ -10,6 +10,9 @@ on:
       - master
       - tools
 jobs:
+  Binaries:
+    if: github.ref == 'refs/heads/master'
+    uses: ./.github/workflows/stockfish_binaries.yml
   Stockfish:
     name: ${{ matrix.config.name }}
     runs-on: ${{ matrix.config.os }}
@@ -113,7 +116,7 @@ jobs:
         working-directory: src
         shell: ${{ matrix.config.shell }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0
 
