@@ -8,7 +8,6 @@ jobs:
     env:
       COMPILER: ${{ matrix.config.compiler }}
       COMP: ${{ matrix.config.comp }}
-      CXXFLAGS: "-Werror"
     strategy:
       matrix:
         config:
@@ -17,7 +16,6 @@ jobs:
               os: ubuntu-20.04,
               compiler: g++,
               comp: gcc,
-              run_64bit_tests: true,
               shell: 'bash {0}'
             }
           - {
