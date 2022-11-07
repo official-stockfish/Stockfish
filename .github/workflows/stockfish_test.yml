@@ -92,7 +92,15 @@ jobs:
               msys_env: 'clang-x86_64-clang',
               shell: 'msys2 {0}'
             }
-
+        exclude:
+          - config: 
+              {
+                name: "Ubuntu 20.04 NDK armv7"
+              }
+          - config:
+              {
+                name: "Ubuntu 20.04 NDK armv8"
+              }
     defaults:
       run:
         working-directory: src
