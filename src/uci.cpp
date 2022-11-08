@@ -207,13 +207,17 @@ namespace {
      // The coefficients of a third-order polynomial fit is based on the fishtest data
      // for two parameters that need to transform eval to the argument of a logistic
      // function.
-     double as[] = { 0.50379905,  -4.12755858,  18.95487051, 152.00733652};
-     double bs[] = {-1.71790378,  10.71543602, -17.05515898,  41.15680404};
+     constexpr double as[] = {   1.04790516,   -8.58534089,   39.42615625,  316.17524816};
+     constexpr double bs[] = {  -3.57324784,   22.28816201,  -35.47480551,   85.60617701 };
+
+     // Enforce that NormalizeToPawnValue corresponds to a 50% win rate at ply 64
+     static_assert(UCI::NormalizeToPawnValue == int(as[0] + as[1] + as[2] + as[3]));
+
      double a = (((as[0] * m + as[1]) * m + as[2]) * m) + as[3];
      double b = (((bs[0] * m + bs[1]) * m + bs[2]) * m) + bs[3];
 
      // Transform the eval to centipawns with limited range
-     double x = std::clamp(double(100 * v) / PawnValueEg, -2000.0, 2000.0);
+     double x = std::clamp(double(v), -4000.0, 4000.0);
 
      // Return the win rate in per mille units rounded to the nearest value
      return int(0.5 + 1000 / (1 + std::exp((a - x) / b)));
@@ -312,7 +316,7 @@ string UCI::value(Value v) {
   stringstream ss;
 
   if (abs(v) < VALUE_MATE_IN_MAX_PLY)
-      ss << "cp " << v * 100 / PawnValueEg;
+      ss << "cp " << v * 100 / NormalizeToPawnValue;
   else
       ss << "mate " << (v > 0 ? VALUE_MATE - v + 1 : -VALUE_MATE - v) / 2;
 
