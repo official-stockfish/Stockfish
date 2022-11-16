@@ -210,6 +210,7 @@ void MainThread::search() {
 //SFnps Begin
 
 Limits.nodes = LimitsJ.nodes;
+Limits.depth = LimitsJ.depth;
 
 //SFnps End
 
