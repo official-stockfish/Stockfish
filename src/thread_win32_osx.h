@@ -65,7 +65,7 @@ public:
 
 namespace Stockfish {
 
-typedef std::thread NativeThread;
+    typedef std::thread NativeThread;
 
 } // namespace Stockfish
 

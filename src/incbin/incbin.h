@@ -8,7 +8,9 @@
  */
 #ifndef INCBIN_HDR
 #define INCBIN_HDR
+
 #include <limits.h>
+
 #if   defined(__AVX512BW__) || \
       defined(__AVX512CD__) || \
       defined(__AVX512DQ__) || \
@@ -17,15 +19,15 @@
       defined(__AVX512VL__) || \
       defined(__AVX512F__)
 # define INCBIN_ALIGNMENT_INDEX 6
-#elif defined(__AVX__)      || \
+#elif defined(__AVX__) || \
       defined(__AVX2__)
 # define INCBIN_ALIGNMENT_INDEX 5
-#elif defined(__SSE__)      || \
-      defined(__SSE2__)     || \
-      defined(__SSE3__)     || \
-      defined(__SSSE3__)    || \
-      defined(__SSE4_1__)   || \
-      defined(__SSE4_2__)   || \
+#elif defined(__SSE__) || \
+      defined(__SSE2__) || \
+      defined(__SSE3__) || \
+      defined(__SSSE3__) || \
+      defined(__SSE4_1__) || \
+      defined(__SSE4_2__) || \
       defined(__neon__)
 # define INCBIN_ALIGNMENT_INDEX 4
 #elif ULONG_MAX != 0xffffffffu

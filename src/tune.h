@@ -26,22 +26,24 @@
 
 namespace Stockfish {
 
-typedef std::pair<int, int> Range; // Option's min-max values
-typedef Range (RangeFun) (int);
+    typedef std::pair<int, int> Range; // Option's min-max values
+    typedef Range (RangeFun)(int);
 
 // Default Range function, to calculate Option's min-max values
-inline Range default_range(int v) {
-  return v > 0 ? Range(0, 2 * v) : Range(2 * v, 0);
-}
+    inline Range default_range(int v) {
+        return v > 0 ? Range(0, 2 * v) : Range(2 * v, 0);
+    }
 
-struct SetRange {
-  explicit SetRange(RangeFun f) : fun(f) {}
-  SetRange(int min, int max) : fun(nullptr), range(min, max) {}
-  Range operator()(int v) const { return fun ? fun(v) : range; }
+    struct SetRange {
+        explicit SetRange(RangeFun f) : fun(f) {}
 
-  RangeFun* fun;
-  Range range;
-};
+        SetRange(int min, int max) : fun(nullptr), range(min, max) {}
+
+        Range operator()(int v) const { return fun ? fun(v) : range; }
+
+        RangeFun *fun;
+        Range range;
+    };
 
 #define SetDefaultRange SetRange(default_range)
 
@@ -73,82 +75,98 @@ struct SetRange {
 /// and created as the last one, so the GUI should send the options in the same
 /// order in which have been defined.
 
-class Tune {
+    class Tune {
 
-  typedef void (PostUpdate) (); // Post-update function
+        typedef void (PostUpdate)(); // Post-update function
 
-  Tune() { read_results(); }
-  Tune(const Tune&) = delete;
-  void operator=(const Tune&) = delete;
-  void read_results();
+        Tune() { read_results(); }
 
-  static Tune& instance() { static Tune t; return t; } // Singleton
+        Tune(const Tune &) = delete;
 
-  // Use polymorphism to accommodate Entry of different types in the same vector
-  struct EntryBase {
-    virtual ~EntryBase() = default;
-    virtual void init_option() = 0;
-    virtual void read_option() = 0;
-  };
+        void operator=(const Tune &) = delete;
 
-  template<typename T>
-  struct Entry : public EntryBase {
+        void read_results();
 
-    static_assert(!std::is_const<T>::value, "Parameter cannot be const!");
+        static Tune &instance() {
+            static Tune t;
+            return t;
+        } // Singleton
 
-    static_assert(   std::is_same<T,   int>::value
-                  || std::is_same<T, Value>::value
-                  || std::is_same<T, Score>::value
-                  || std::is_same<T, PostUpdate>::value, "Parameter type not supported!");
+        // Use polymorphism to accommodate Entry of different types in the same vector
+        struct EntryBase {
+            virtual ~EntryBase() = default;
 
-    Entry(const std::string& n, T& v, const SetRange& r) : name(n), value(v), range(r) {}
-    void operator=(const Entry&) = delete; // Because 'value' is a reference
-    void init_option() override;
-    void read_option() override;
+            virtual void init_option() = 0;
 
-    std::string name;
-    T& value;
-    SetRange range;
-  };
+            virtual void read_option() = 0;
+        };
 
-  // Our facility to fill the container, each Entry corresponds to a parameter
-  // to tune. We use variadic templates to deal with an unspecified number of
-  // entries, each one of a possible different type.
-  static std::string next(std::string& names, bool pop = true);
+        template<typename T>
+        struct Entry : public EntryBase {
 
-  int add(const SetRange&, std::string&&) { return 0; }
+            static_assert(!std::is_const<T>::value, "Parameter cannot be const!");
 
-  template<typename T, typename... Args>
-  int add(const SetRange& range, std::string&& names, T& value, Args&&... args) {
-    list.push_back(std::unique_ptr<EntryBase>(new Entry<T>(next(names), value, range)));
-    return add(range, std::move(names), args...);
-  }
+            static_assert(   std::is_same<T, int>::value
+            || std::is_same<T, Value>::value
+            || std::is_same<T, Score>::value
+            || std::is_same<T, PostUpdate>::value, "Parameter type not supported!");
 
-  // Template specialization for arrays: recursively handle multi-dimensional arrays
-  template<typename T, size_t N, typename... Args>
-  int add(const SetRange& range, std::string&& names, T (&value)[N], Args&&... args) {
-    for (size_t i = 0; i < N; i++)
-        add(range, next(names, i == N - 1) + "[" + std::to_string(i) + "]", value[i]);
-    return add(range, std::move(names), args...);
-  }
+            Entry(const std::string &n, T &v, const SetRange &r) : name(n), value(v), range(r) {}
 
-  // Template specialization for SetRange
-  template<typename... Args>
-  int add(const SetRange&, std::string&& names, SetRange& value, Args&&... args) {
-    return add(value, (next(names), std::move(names)), args...);
-  }
+            void operator=(const Entry &) = delete; // Because 'value' is a reference
+            void init_option() override;
 
-  std::vector<std::unique_ptr<EntryBase>> list;
+            void read_option() override;
 
-public:
-  template<typename... Args>
-  static int add(const std::string& names, Args&&... args) {
-    return instance().add(SetDefaultRange, names.substr(1, names.size() - 2), args...); // Remove trailing parenthesis
-  }
-  static void init() { for (auto& e : instance().list) e->init_option(); read_options(); } // Deferred, due to UCI::Options access
-  static void read_options() { for (auto& e : instance().list) e->read_option(); }
-  static bool update_on_last;
-};
+            std::string name;
+            T &value;
+            SetRange range;
+        };
+
+        // Our facility to fill the container, each Entry corresponds to a parameter
+        // to tune. We use variadic templates to deal with an unspecified number of
+        // entries, each one of a possible different type.
+        static std::string next(std::string &names, bool pop = true);
+
+        int add(const SetRange &, std::string &&) { return 0; }
+
+        template<typename T, typename... Args>
+        int add(const SetRange &range, std::string &&names, T &value, Args &&... args) {
+            list.push_back(std::unique_ptr<EntryBase>(new Entry<T>(next(names), value, range)));
+            return add(range, std::move(names), args...);
+        }
+
+        // Template specialization for arrays: recursively handle multi-dimensional arrays
+        template<typename T, size_t N, typename... Args>
+        int add(const SetRange &range, std::string &&names, T (&value)[N], Args &&... args) {
+            for (size_t i = 0; i < N; i++)
+                add(range, next(names, i == N - 1) + "[" + std::to_string(i) + "]", value[i]);
+            return add(range, std::move(names), args...);
+        }
+
+        // Template specialization for SetRange
+        template<typename... Args>
+        int add(const SetRange &, std::string &&names, SetRange &value, Args &&... args) {
+            return add(value, (next(names), std::move(names)), args...);
+        }
+
+        std::vector <std::unique_ptr<EntryBase>> list;
+
+    public:
+        template<typename... Args>
+        static int add(const std::string &names, Args &&... args) {
+            return instance().add(SetDefaultRange, names.substr(1, names.size() - 2),
+                                  args...); // Remove trailing parenthesis
+        }
+
+        static void init() {
+            for (auto &e: instance().list) e->init_option();
+            read_options();
+        } // Deferred, due to UCI::Options access
+        static void read_options() { for (auto &e: instance().list) e->read_option(); }
+
+        static bool update_on_last;
+    };
 
 // Some macro magic :-) we define a dummy int variable that compiler initializes calling Tune::add()
 #define STRINGIFY(x) #x

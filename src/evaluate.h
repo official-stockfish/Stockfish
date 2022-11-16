@@ -26,36 +26,41 @@
 
 namespace Stockfish {
 
-class Position;
+    class Position;
 
-namespace Eval {
+    namespace Eval {
 
-  std::string trace(Position& pos);
-  Value evaluate(const Position& pos, int* complexity = nullptr);
+        std::string trace(Position &pos);
 
-  extern bool useNNUE;
-  extern std::string currentEvalFileName;
+        Value evaluate(const Position &pos, int *complexity = nullptr);
 
-  // The default net name MUST follow the format nn-[SHA256 first 12 digits].nnue
-  // for the build process (profile-build and fishtest) to work. Do not change the
-  // name of the macro, as it is used in the Makefile.
-  #define EvalFileDefaultName   "nn-ad9b42354671.nnue"
+        extern bool useNNUE;
+        extern std::string currentEvalFileName;
 
-  namespace NNUE {
+        // The default net name MUST follow the format nn-[SHA256 first 12 digits].nnue
+        // for the build process (profile-build and fishtest) to work. Do not change the
+        // name of the macro, as it is used in the Makefile.
+#define EvalFileDefaultName   "nn-ad9b42354671.nnue"
 
-    std::string trace(Position& pos);
-    Value evaluate(const Position& pos, bool adjusted = false, int* complexity = nullptr);
+        namespace NNUE {
 
-    void init();
-    void verify();
+            std::string trace(Position &pos);
 
-    bool load_eval(std::string name, std::istream& stream);
-    bool save_eval(std::ostream& stream);
-    bool save_eval(const std::optional<std::string>& filename);
+            Value evaluate(const Position &pos, bool adjusted = false, int *complexity = nullptr);
 
-  } // namespace NNUE
+            void init();
 
-} // namespace Eval
+            void verify();
+
+            bool load_eval(std::string name, std::istream &stream);
+
+            bool save_eval(std::ostream &stream);
+
+            bool save_eval(const std::optional <std::string> &filename);
+
+        } // namespace NNUE
+
+    } // namespace Eval
 
 } // namespace Stockfish
 
