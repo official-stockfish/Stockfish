@@ -62,11 +62,11 @@ void init(OptionsMap& o) {
 
   constexpr int MaxHashMB = Is64Bit ? 33554432 : 2048;
 
-  o["Debug Log File"]        << Option("", on_logger);
+  o["Debug Log File"]        << Option("/storage/emulated/0/DroidFish/uci/logs/SFnpsLog.txt", on_logger);
   o["Threads"]               << Option(1, 1, 1024, on_threads);
   o["Wait ms"]               << Option(0, 0, 100, on_waitms);
   o["RandomEvalPerturb"]     << Option(0, 0, 100, on_eval_perturb);
-  o["Search_Nodes"]          << Option(0, 0, 500000);
+  o["Search_Nodes"]          << Option(2500, 0, 500000);
   o["Search_Depth"]          << Option(0, 0, 20);
   o["Hash"]                  << Option(16, 1, MaxHashMB, on_hash_size);
   o["Clear Hash"]            << Option(on_clear_hash);
@@ -78,8 +78,8 @@ void init(OptionsMap& o) {
   o["nodestime"]             << Option(0, 0, 10000);
   o["UCI_Chess960"]          << Option(false);
   o["UCI_AnalyseMode"]       << Option(false);
-  o["UCI_LimitStrength"]     << Option(false);
-  o["UCI_Elo"]               << Option(1350, 1350, 2850);
+  o["UCI_LimitStrength"]     << Option(true);
+  o["UCI_Elo"]               << Option(2000, 1350, 2850);
   o["UCI_ShowWDL"]           << Option(false);
   o["SyzygyPath"]            << Option("<empty>", on_tb_path);
   o["SyzygyProbeDepth"]      << Option(1, 1, 100);
