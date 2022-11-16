@@ -40,6 +40,7 @@ namespace Stockfish {
 namespace Search {
 
   LimitsType Limits;
+  LimitsType LimitsJ;
 }
 
 namespace Tablebases {
@@ -159,6 +160,12 @@ void Search::init() {
 
   for (int i = 1; i < MAX_MOVES; ++i)
       Reductions[i] = int((20.26 + std::log(Threads.size()) / 2) * std::log(i));
+      
+  if (Options["Search_Nodes"])
+      LimitsJ.nodes = int(Options["Search_Nodes"]);
+
+  if (Options["Search_Depth"])
+      LimitsJ.depth = int(Options["Search_Depth"]);
 }
 
 
@@ -172,6 +179,13 @@ void Search::clear() {
   TT.clear();
   Threads.clear();
   Tablebases::init(Options["SyzygyPath"]); // Free mapped files
+  
+  if (Options["Search_Nodes"])
+      LimitsJ.nodes = int(Options["Search_Nodes"]);
+
+  if (Options["Search_Depth"])
+      LimitsJ.depth = int(Options["Search_Depth"]);
+  
 }
 
 
@@ -195,11 +209,7 @@ void MainThread::search() {
 
 //SFnps Begin
 
-  if (Options["Search_Nodes"])
-      Limits.nodes = int(Options["Search_Nodes"]);
-
-  if (Options["Search_Depth"])
-      Limits.depth = int(Options["Search_Depth"]);
+Limits.nodes = LimitsJ.nodes;
 
 //SFnps End
 
@@ -261,7 +271,20 @@ void MainThread::search() {
   if (bestThread->rootMoves[0].pv.size() > 1 || bestThread->rootMoves[0].extract_ponder_from_tt(rootPos))
       std::cout << " ponder " << UCI::move(bestThread->rootMoves[0].pv[1], rootPos.is_chess960());
 
+  int Dnodes = rootMoves[0].score / 4;
+  LimitsJ.nodes -= Dnodes;
+  LimitsJ.nodes = std::clamp(LimitsJ.nodes, long(5), 2 * Limits.nodes);
+
+  std::cout << " adjust " << Dnodes;
   std::cout << sync_endl;
+
+/*
+  LimitsJ.nodes -= rootMoves[0].score / 4;
+  if (LimitsJ.nodes < 10) LimitsJ.nodes = 10;
+
+  std::cout << " adjust " << rootMoves[0].score / 4;
+  std::cout << sync_endl;
+*/
 }
 
 
@@ -319,7 +342,6 @@ void Thread::search() {
 
   complexityAverage.set(155, 1);
 
-  trend = SCORE_ZERO;
   optimism[us] = optimism[~us] = VALUE_ZERO;
 
   int searchAgainCounter = 0;
@@ -366,11 +388,7 @@ void Thread::search() {
               alpha = std::max(prev - delta,-VALUE_INFINITE);
               beta  = std::min(prev + delta, VALUE_INFINITE);
 
-              // Adjust trend and optimism based on root move's previousScore
-              int tr = 116 * prev / (std::abs(prev) + 89);
-              trend = (us == WHITE ?  make_score(tr, tr / 2)
-                                   : -make_score(tr, tr / 2));
-
+              // Adjust optimism based on root move's previousScore
               int opt = 118 * prev / (std::abs(prev) + 169);
               optimism[ us] = Value(opt);
               optimism[~us] = -optimism[us];
@@ -785,8 +803,7 @@ namespace {
     // Step 7. Razoring.
     // If eval is really low check with qsearch if it can exceed alpha, if it can't,
     // return a fail low.
-    if (   depth <= 7
-        && eval < alpha - 369 - 254 * depth * depth)
+    if (eval < alpha - 369 - 254 * depth * depth)
     {
         value = qsearch<NonPV>(pos, ss, alpha - 1, alpha);
         if (value < alpha)
@@ -799,7 +816,7 @@ namespace {
         &&  depth < 8
         &&  eval - futility_margin(depth, improving) - (ss-1)->statScore / 303 >= beta
         &&  eval >= beta
-        &&  eval < 28031) // larger than VALUE_KNOWN_WIN, but smaller than TB wins.
+        &&  eval < 28031) // larger than VALUE_KNOWN_WIN, but smaller than TB wins
         return eval;
 
     // Step 9. Null move search with verification search (~22 Elo)
@@ -1012,8 +1029,7 @@ moves_loop: // When in check, search starts here
               || givesCheck)
           {
               // Futility pruning for captures (~0 Elo)
-              if (   !pos.empty(to_sq(move))
-                  && !givesCheck
+              if (   !givesCheck
                   && !PvNode
                   && lmrDepth < 7
                   && !ss->inCheck
@@ -1173,7 +1189,12 @@ moves_loop: // When in check, search starts here
           if (singularQuietLMR)
               r--;
 
-          // Increase reduction if next ply has a lot of fail high else reset count to 0
+          // Dicrease reduction if we move a threatened piece (~1 Elo)
+          if (   depth > 9
+              && (mp.threatenedPieces & from_sq(move)))
+              r--;
+
+          // Increase reduction if next ply has a lot of fail high
           if ((ss+1)->cutoffCnt > 3 && !PvNode)
               r++;
 
@@ -1184,7 +1205,7 @@ moves_loop: // When in check, search starts here
                          - 4433;
 
           // Decrease/increase reduction for moves with a good/bad history (~30 Elo)
-          r -= ss->statScore / 13628;
+          r -= ss->statScore / (13628 + 4000 * (depth > 7 && depth < 19));
 
           // In general we want to cap the LMR depth search at newDepth, but when
           // reduction is negative, we allow this move a limited search extension
@@ -1555,8 +1576,8 @@ moves_loop: // When in check, search starts here
       // Continuation history based pruning (~2 Elo)
       if (   !capture
           && bestValue > VALUE_TB_LOSS_IN_MAX_PLY
-          && (*contHist[0])[pos.moved_piece(move)][to_sq(move)] < CounterMovePruneThreshold
-          && (*contHist[1])[pos.moved_piece(move)][to_sq(move)] < CounterMovePruneThreshold)
+          && (*contHist[0])[pos.moved_piece(move)][to_sq(move)] < 0
+          && (*contHist[1])[pos.moved_piece(move)][to_sq(move)] < 0)
           continue;
 
       // movecount pruning for quiet check evasions
