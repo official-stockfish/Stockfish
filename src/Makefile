@@ -1,6 +1,6 @@
 # Updated Makefile for StockfishNPS building on Termux
 # works for clang, gcc, ndk, armv8, armv7, and pgo.
-#
+# 
 #
 #
 # Stockfish, a UCI chess playing engine derived from Glaurung 2.1
