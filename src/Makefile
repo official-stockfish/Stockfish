@@ -574,9 +574,9 @@ ifeq ($(optimize),yes)
 			endif
 		endif
 	endif
-
+###  -mcpu=native
 	ifeq ($(comp),clang)
-		CXXFLAGS += -fexperimental-new-pass-manager -mcpu=native
+		CXXFLAGS += -fexperimental-new-pass-manager
 	endif
 endif
 
