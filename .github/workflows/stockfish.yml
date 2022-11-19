@@ -17,5 +17,5 @@ jobs:
   Compiles:
     uses: ./.github/workflows/stockfish_compile_test.yml
   Binaries:
-    if: github.ref == 'refs/heads/master'
+    #if: github.ref == 'refs/heads/master'
     uses: ./.github/workflows/stockfish_binaries.yml
