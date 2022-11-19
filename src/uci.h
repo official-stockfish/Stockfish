@@ -35,7 +35,7 @@ namespace UCI {
 // the win_rate_model() such that Stockfish outputs an advantage of
 // "100 centipawns" for a position if the engine has a 50% probability to win
 // from this position in selfplay at fishtest LTC time control.
-const int NormalizeToPawnValue = 348;
+const int NormalizeToPawnValue = 361;
 
 class Option;
 
