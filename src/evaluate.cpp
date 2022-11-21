@@ -159,7 +159,7 @@ namespace Trace {
 
   Score scores[TERM_NB][COLOR_NB];
 
-  double to_cp(Value v) { return double(v) / PawnValueEg; }
+  double to_cp(Value v) { return double(v) / UCI::NormalizeToPawnValue; }
 
   void add(int idx, Color c, Score s) {
     scores[idx][c] = s;
