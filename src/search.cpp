@@ -1856,7 +1856,7 @@ string UCI::pv(const Position& pos, Depth depth) {
       if (Options["UCI_ShowWDL"])
           ss << UCI::wdl(v, pos.game_ply());
 
-      if (i == pvIdx && !tb && updated) // TableBase- and previous-scores are exact
+      if (i == pvIdx && !tb && updated) // tablebase- and previous-scores are exact
          ss << (rootMoves[i].scoreLowerbound ? " lowerbound" : (rootMoves[i].scoreUpperbound ? " upperbound" : ""));
 
 
