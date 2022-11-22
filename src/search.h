@@ -73,6 +73,8 @@ struct RootMove {
   Value averageScore = -VALUE_INFINITE;
   int selDepth = 0;
   int tbRank = 0;
+  bool scoreLowerbound;
+  bool scoreUpperbound;
   Value tbScore;
   std::vector<Move> pv;
 };
