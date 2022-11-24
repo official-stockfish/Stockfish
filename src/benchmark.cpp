@@ -20,7 +20,7 @@
 #include <iostream>
 #include <istream>
 #include <vector>
-
+ 
 #include "position.h"
 
 using namespace std;
