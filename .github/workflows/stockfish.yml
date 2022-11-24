@@ -31,9 +31,9 @@ jobs:
               os: ubuntu-20.04,
               compiler: g++,
               comp: gcc,
-              run_expensive_tests: true,
-              run_32bit_tests: true,
-              run_64bit_tests: true,
+              run_expensive_tests: false,
+              run_32bit_tests: false,
+              run_64bit_tests: false,
               shell: 'bash {0}'
             }
           - {
@@ -41,8 +41,8 @@ jobs:
               os: ubuntu-20.04,
               compiler: clang++,
               comp: clang,
-              run_32bit_tests: true,
-              run_64bit_tests: true,
+              run_32bit_tests: false,
+              run_64bit_tests: false,
               shell: 'bash {0}'
             }
           - {
@@ -66,7 +66,7 @@ jobs:
               os: macos-10.15,
               compiler: clang++,
               comp: clang,
-              run_64bit_tests: true,
+              run_64bit_tests: false,
               shell: 'bash {0}'
             }
           - {
@@ -74,7 +74,7 @@ jobs:
               os: macos-10.15,
               compiler: g++-10,
               comp: gcc,
-              run_64bit_tests: true,
+              run_64bit_tests: false,
               shell: 'bash {0}'
             }
           - {
