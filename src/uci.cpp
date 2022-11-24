@@ -44,12 +44,13 @@ namespace {
   const char* StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
   
   // GCC PGO fix, does not work for GCC
+/*
   #ifdef __GNUC__
     #ifndef __clang__
       extern "C" void __gcov_dump();
     #endif
   #endif
-
+*/
   // position() is called when the engine receives the "position" UCI command.
   // It sets up the position that is described in the given FEN string ("fen") or
   // the initial position ("startpos") and then makes the moves given in the following
@@ -196,14 +197,14 @@ namespace {
     elapsed = now() - elapsed + 1; // Ensure positivity to avoid a 'divide by zero'
 
     dbg_print();
-
+/*
     // GCC PGO fix
     #ifdef __GNUC__
       #ifndef __clang__
         __gcov_dump();
       #endif
     #endif
-
+*/
     cerr << "\n==========================="
          << "\nTotal time (ms) : " << elapsed
          << "\nNodes searched  : " << nodes
