@@ -376,7 +376,7 @@ ifeq ($(COMP),gcc)
 	ifeq ($(arch),$(filter $(arch),armv7 armv8 riscv64))
 		ifeq ($(OS),Android)
 			CXXFLAGS +=
-			LDFLAGS += -lgcov
+			LDFLAGS += 
 		endif
 		ifeq ($(ARCH),riscv64)
 			CXXFLAGS += -latomic
@@ -559,7 +559,7 @@ ifeq ($(optimize),yes)
 
 	ifeq ($(comp),gcc)
 		ifeq ($(OS), Android)
-			CXXFLAGS += -fno-gcse -march=native
+			CXXFLAGS += -fno-gcse -march=armv8
 		endif
 	endif
 
