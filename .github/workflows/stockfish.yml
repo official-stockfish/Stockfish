@@ -3,12 +3,12 @@ on:
   push:
     branches:
       - master
-      - tools
+      - Test_Actions
       - github_ci
   pull_request:
     branches:
       - master
-      - tools
+      - Test_Actions
 jobs:
   Stockfish:
     name: ${{ matrix.config.name }}
