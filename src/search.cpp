@@ -1156,7 +1156,7 @@ moves_loop: // When in check, search starts here
           if (singularQuietLMR)
               r--;
 
-          // Dicrease reduction if we move a threatened piece (~1 Elo)
+          // Decrease reduction if we move a threatened piece (~1 Elo)
           if (   depth > 9
               && (mp.threatenedPieces & from_sq(move)))
               r--;
