@@ -81,7 +81,7 @@ namespace {
 
   // History and stats update bonus, based on depth
   int stat_bonus(Depth d) {
-    return std::min((12 * d + 282) * d - 349 , 1328);
+    return std::min((12 * d + 282) * d - 349 , 1480);
   }
 
   // Add a small random component to draw evaluations to avoid 3-fold blindness
@@ -1172,7 +1172,7 @@ moves_loop: // When in check, search starts here
                          - 4433;
 
           // Decrease/increase reduction for moves with a good/bad history (~30 Elo)
-          r -= ss->statScore / (12546 + 4164 * (depth > 7 && depth < 19));
+          r -= ss->statScore / (13000 + 4152 * (depth > 7 && depth < 19));
 
           // In general we want to cap the LMR depth search at newDepth, but when
           // reduction is negative, we allow this move a limited search extension
@@ -1186,8 +1186,8 @@ moves_loop: // When in check, search starts here
           {
               // Adjust full depth search based on LMR results - if result
               // was good enough search deeper, if it was bad enough search shallower
-              const bool doDeeperSearch = value > (alpha + 70 + 11 * (newDepth - d));
-              const bool doEvenDeeperSearch = value > alpha + 568;
+              const bool doDeeperSearch = value > (alpha + 64 + 11 * (newDepth - d));
+              const bool doEvenDeeperSearch = value > alpha + 582;
               const bool doShallowerSearch = value < bestValue + newDepth;
 
               newDepth += doDeeperSearch - doShallowerSearch + doEvenDeeperSearch;
