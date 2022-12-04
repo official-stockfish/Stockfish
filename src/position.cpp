@@ -129,7 +129,7 @@ void Position::init() {
   // Prepare the cuckoo tables
   std::memset(cuckoo, 0, sizeof(cuckoo));
   std::memset(cuckooMove, 0, sizeof(cuckooMove));
-  int count = 0;
+  [[maybe_unused]] int count = 0;
   for (Piece pc : Pieces)
       for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1)
           for (Square s2 = Square(s1 + 1); s2 <= SQ_H8; ++s2)
