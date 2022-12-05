@@ -851,16 +851,17 @@ net:
 	$(eval nnuedownloadurl1 := https://tests.stockfishchess.org/api/nn/$(nnuenet))
 	$(eval nnuedownloadurl2 := https://github.com/official-stockfish/networks/raw/master/$(nnuenet))
 	$(eval curl_or_wget := $(shell if hash curl 2>/dev/null; then echo "curl -skL"; elif hash wget 2>/dev/null; then echo "wget -qO-"; fi))
-	@if [ "x$(curl_or_wget)" = "x" ]; then \
+	@if [ "x$(curl_or_wget)" = "x" ] && [ ! -f "${nnuenet}" ]; then \
 	    echo "Automatic download failed: neither curl nor wget is installed. Install one of these tools or download the net manually"; exit 1; \
         fi
 	$(eval shasum_command := $(shell if hash shasum 2>/dev/null; then echo "shasum -a 256 "; elif hash sha256sum 2>/dev/null; then echo "sha256sum "; fi))
-	@if [ "x$(shasum_command)" = "x" ]; then \
+	@if [ "x$(shasum_command)" = "x" ] && [ ! -f "${nnuenet}" ]; then \
             echo "shasum / sha256sum not found, skipping net validation"; \
         fi
-	@for nnuedownloadurl in "$(nnuedownloadurl1)" "$(nnuedownloadurl2)"; do \
+	@for nnuedownloadurl in "local" "$(nnuedownloadurl1)" "$(nnuedownloadurl2)"; do \
 	   if test -f "$(nnuenet)"; then \
 	      echo "$(nnuenet) available."; \
+	      [ "$${nnuedownloadurl}" != "local" ] && break ; \
 	   else \
 	      if [ "x$(curl_or_wget)" != "x" ]; then \
 	         echo "Downloading $${nnuedownloadurl}"; $(curl_or_wget) $${nnuedownloadurl} > $(nnuenet);\
