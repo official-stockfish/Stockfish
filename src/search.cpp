@@ -855,7 +855,7 @@ namespace {
     {
         assert(probCutBeta < VALUE_INFINITE);
 
-        MovePicker mp(pos, ttMove, probCutBeta - ss->staticEval, depth - 3, &captureHistory);
+        MovePicker mp(pos, ttMove, probCutBeta - ss->staticEval, &captureHistory);
 
         while ((move = mp.next_move()) != MOVE_NONE)
             if (move != excludedMove && pos.legal(move))
@@ -1156,13 +1156,13 @@ moves_loop: // When in check, search starts here
           if (singularQuietLMR)
               r--;
 
-          // Dicrease reduction if we move a threatened piece (~1 Elo)
+          // Decrease reduction if we move a threatened piece (~1 Elo)
           if (   depth > 9
               && (mp.threatenedPieces & from_sq(move)))
               r--;
 
           // Increase reduction if next ply has a lot of fail high
-          if ((ss+1)->cutoffCnt > 3 && !PvNode)
+          if ((ss+1)->cutoffCnt > 3)
               r++;
 
           ss->statScore =  2 * thisThread->mainHistory[us][from_to(move)]
