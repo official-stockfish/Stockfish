@@ -1244,10 +1244,16 @@ moves_loop: // When in check, search starts here
           // PV move or new best move?
           if (moveCount == 1 || value > alpha)
           {
-              rm.score = value;
+              rm.score =  rm.uciScore = value;
               rm.selDepth = thisThread->selDepth;
-              rm.scoreLowerbound = value >= beta;
-              rm.scoreUpperbound = value <= alpha;
+              if (value >= beta) {
+                 rm.scoreLowerbound = true;
+                 rm.uciScore = beta;
+              }
+              else if (value <= alpha) {
+                 rm.scoreUpperbound = true;
+                 rm.uciScore = alpha;
+              }
               rm.pv.resize(1);
 
               assert((ss+1)->pv);
@@ -1840,7 +1846,7 @@ string UCI::pv(const Position& pos, Depth depth) {
           continue;
 
       Depth d = updated ? depth : std::max(1, depth - 1);
-      Value v = updated ? rootMoves[i].score : rootMoves[i].previousScore;
+      Value v = updated ? rootMoves[i].uciScore : rootMoves[i].previousScore;
 
       if (v == -VALUE_INFINITE)
           v = VALUE_ZERO;
