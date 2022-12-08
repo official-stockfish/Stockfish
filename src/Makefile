@@ -21,6 +21,8 @@
 
 ### Establish the operating system name
 KERNEL = $(shell uname -s)
+
+### Target Linux OS
 ifeq ($(KERNEL),Linux)
 	OS = $(shell uname -o)
 endif
@@ -30,6 +32,8 @@ ifeq ($(OS),Windows_NT)
 	ifneq ($(COMP),ndk)
 		target_windows = yes
 	endif
+
+### Target Other OS
 else ifeq ($(COMP),mingw)
 	target_windows = yes
 	ifeq ($(WINE_PATH),)
