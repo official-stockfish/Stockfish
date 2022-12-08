@@ -19,3 +19,6 @@ jobs:
   Binaries:
     if: github.ref == 'refs/heads/master'
     uses: ./.github/workflows/stockfish_binaries.yml
+  ARM_Binaries:
+    if: github.ref == 'refs/heads/master'
+    uses: ./.github/workflows/stockfish_arm_binaries.yml
