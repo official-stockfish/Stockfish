@@ -52,7 +52,7 @@ jobs:
       - name: Download required linux packages
         run: |
           sudo apt update
-          sudo apt install expect valgrind g++-multilib qemu-user
+          sudo apt install expect valgrind g++-multilib
 
       - name: Download the used network from the fishtest framework
         run: |
@@ -60,7 +60,6 @@ jobs:
 
       - name: Check compiler
         run: |
-          export PATH=$PATH:$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin
           $COMPILER -v
 
       - name: Test help target

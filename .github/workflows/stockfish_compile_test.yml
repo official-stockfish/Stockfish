@@ -72,7 +72,7 @@ jobs:
         uses: msys2/setup-msys2@v2
         with:
           msystem: ${{matrix.config.msys_sys}}
-          install: mingw-w64-${{matrix.config.msys_env}} make git expect
+          install: mingw-w64-${{matrix.config.msys_env}} make
 
       - name: Download the used network from the fishtest framework
         run: |
@@ -80,7 +80,6 @@ jobs:
 
       - name: Check compiler
         run: |
-          export PATH=$PATH:$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin
           $COMPILER -v
 
       - name: Test help target
