@@ -35,7 +35,7 @@ jobs:
               os: ubuntu-20.04,
               compiler: aarch64-linux-android21-clang++,
               comp: ndk,
-              run_armv8_tests: false,
+              run_armv8_tests: true,
               shell: 'bash {0}'
             }
           - {
@@ -43,7 +43,7 @@ jobs:
               os: ubuntu-20.04,
               compiler: armv7a-linux-androideabi21-clang++,
               comp: ndk,
-              run_armv7_tests: false,
+              run_armv7_tests: true,
               shell: 'bash {0}'
             }
           - {
@@ -92,15 +92,6 @@ jobs:
               msys_env: 'clang-x86_64-clang',
               shell: 'msys2 {0}'
             }
-        exclude:
-          - config: 
-              {
-                name: "Ubuntu 20.04 NDK armv7"
-              }
-          - config:
-              {
-                name: "Ubuntu 20.04 NDK armv8"
-              }
     defaults:
       run:
         working-directory: src
@@ -120,8 +111,8 @@ jobs:
         if: runner.os == 'Windows'
         uses: msys2/setup-msys2@v2
         with:
-          msystem: ${{matrix.config.msys_sys}}
-          install: mingw-w64-${{matrix.config.msys_env}} make git expect
+          msystem: ${{ matrix.config.msys_sys }}
+          install: mingw-w64-${{ matrix.config.msys_env }} make git expect
 
       - name: Download the used network from the fishtest framework
         run: |
@@ -134,7 +125,14 @@ jobs:
 
       - name: Check compiler
         run: |
-          export PATH=$PATH:$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin
+          if [ $COMP == ndk ]; then
+            ANDROID_ROOT=/usr/local/lib/android
+            ANDROID_SDK_ROOT=${ANDROID_ROOT}/sdk
+            SDKMANAGER=${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager
+            echo "y" | $SDKMANAGER "ndk;21.4.7075529"
+            ANDROID_NDK_ROOT=$ANDROID_SDK_ROOT/ndk/21.4.7075529
+            export PATH=$ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH
+          fi
           $COMPILER -v
 
       - name: Test help target
@@ -233,9 +231,8 @@ jobs:
           ANDROID_SDK_ROOT=${ANDROID_ROOT}/sdk
           SDKMANAGER=${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager
           echo "y" | $SDKMANAGER "ndk;21.4.7075529"
-          ANDROID_NDK_ROOT=${ANDROID_SDK_ROOT}/ndk-bundle
-          ln -sfn $ANDROID_SDK_ROOT/ndk/21.4.7075529 $ANDROID_NDK_ROOT
-          export PATH=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH
+          ANDROID_NDK_ROOT=$ANDROID_SDK_ROOT/ndk/21.4.7075529
+          export PATH=$ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH
           export LDFLAGS="-static -Wno-unused-command-line-argument"
           make clean
           make -j2 ARCH=armv8 build
@@ -250,9 +247,8 @@ jobs:
           ANDROID_SDK_ROOT=${ANDROID_ROOT}/sdk
           SDKMANAGER=${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager
           echo "y" | $SDKMANAGER "ndk;21.4.7075529"
-          ANDROID_NDK_ROOT=${ANDROID_SDK_ROOT}/ndk-bundle
-          ln -sfn $ANDROID_SDK_ROOT/ndk/21.4.7075529 $ANDROID_NDK_ROOT
-          export PATH=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH
+          ANDROID_NDK_ROOT=$ANDROID_SDK_ROOT/ndk/21.4.7075529
+          export PATH=$ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH
           export LDFLAGS="-static -Wno-unused-command-line-argument"
           make clean
           make -j2 ARCH=armv7 build
@@ -265,9 +261,8 @@ jobs:
           ANDROID_SDK_ROOT=${ANDROID_ROOT}/sdk
           SDKMANAGER=${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager
           echo "y" | $SDKMANAGER "ndk;21.4.7075529"
-          ANDROID_NDK_ROOT=${ANDROID_SDK_ROOT}/ndk-bundle
-          ln -sfn $ANDROID_SDK_ROOT/ndk/21.4.7075529 $ANDROID_NDK_ROOT
-          export PATH=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH
+          ANDROID_NDK_ROOT=$ANDROID_SDK_ROOT/ndk/21.4.7075529
+          export PATH=$ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH
           export LDFLAGS="-static -Wno-unused-command-line-argument"
           make clean
           make -j2 ARCH=armv7-neon build
