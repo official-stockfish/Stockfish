@@ -58,8 +58,7 @@ jobs:
           sudo apt install qemu-user
 
       - name: Download the used network from the fishtest framework
-        run: |
-          make net
+        run: make net
 
       - name: Check compiler
         run: |
@@ -74,8 +73,10 @@ jobs:
           $COMPILER -v
 
       - name: Test help target
-        run: |
-          make help
+        run: make help
+
+      - name: Check git
+        run: git --version
 
       # Compile profile guided builds
 
@@ -113,5 +114,4 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: stockfish-android-${{ matrix.binaries }}
-          path: |
-            stockfish-android-${{ matrix.binaries }}.tar
+          path: stockfish-android-${{ matrix.binaries }}.tar
