@@ -112,6 +112,6 @@ jobs:
       - name: Upload binaries
         uses: actions/upload-artifact@v3
         with:
-          name: stockfish-android-${{ matrix.binaries }}
+          name: SFnps-android-${{ matrix.binaries }}
           path: |
             stockfish-android-${{ matrix.binaries }}.tar

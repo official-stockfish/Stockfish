@@ -104,6 +104,6 @@ jobs:
       - name: Upload binaries
         uses: actions/upload-artifact@v3
         with:
-          name: stockfish-${{ matrix.config.os }}-${{ matrix.binaries }}
+          name: SFnps-${{ matrix.config.os }}-${{ matrix.binaries }}
           path: |
             stockfish-${{ matrix.config.os }}-${{ matrix.binaries }}.tar
