@@ -95,7 +95,7 @@ jobs:
       - uses: actions/upload-artifact@v3
         if: ${{ matrix.config.run_armv8_tests }}
         with:
-          name: SFnps_armv8
+          name: SFnps-armv8
           path: /home/runner/work/StockfishNPS/StockfishNPS/src/SFnps_armv8
           
       # armv7 tests
@@ -131,5 +131,5 @@ jobs:
       - uses: actions/upload-artifact@v3
         if: ${{ matrix.config.run_armv7_tests }}
         with:
-          name: SFnps_armv7
+          name: SFnps-armv7
           path: /home/runner/work/StockfishNPS/StockfishNPS/src/SFnps_armv7
