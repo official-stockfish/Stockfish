@@ -86,6 +86,10 @@ jobs:
         run: |
           make help
 
+      - name: Check git
+        run: |
+          git --version
+
       # x86-64 with newer extensions tests
 
       - name: Compile x86-64-avx2 build

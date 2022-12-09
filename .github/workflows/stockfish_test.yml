@@ -139,6 +139,10 @@ jobs:
         run: |
           make help
 
+      - name: Check git
+        run: |
+          git --version
+
       # x86-32 tests
 
       - name: Test debug x86-32 build
