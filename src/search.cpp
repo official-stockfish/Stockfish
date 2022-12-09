@@ -1250,6 +1250,8 @@ moves_loop: // When in check, search starts here
           {
               rm.score =  rm.uciScore = value;
               rm.selDepth = thisThread->selDepth;
+              rm.scoreLowerbound = rm.scoreUpperbound = false;
+
               if (value >= beta) {
                  rm.scoreLowerbound = true;
                  rm.uciScore = beta;
