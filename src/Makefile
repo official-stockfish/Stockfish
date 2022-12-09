@@ -516,8 +516,8 @@ ifdef COMPCXX
 endif
 
 ### Sometimes gcc is really clang
-ifeq ($(COMP),)
-	gccversion = $(shell $(CXX) --version)
+ifeq ($(COMP),gcc)
+	gccversion = $(shell $(CXX) --version 2>/dev/null)
 	gccisclang = $(findstring clang,$(gccversion))
 	ifneq ($(gccisclang),)
 		profile_make = clang-profile-make
@@ -1011,4 +1011,6 @@ icc-profile-use:
 .depend: $(SRCS)
 	-@$(CXX) $(DEPENDFLAGS) -MM $(SRCS) > $@ 2> /dev/null
 
+ifneq (, $(filter $(MAKECMDGOALS), build profile-build))
 -include .depend
+endif
