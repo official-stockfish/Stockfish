@@ -55,16 +55,16 @@ jobs:
           sudo apt install expect valgrind g++-multilib
 
       - name: Download the used network from the fishtest framework
-        run: |
-          make net
+        run: make net
 
       - name: Check compiler
-        run: |
-          $COMPILER -v
+        run: $COMPILER -v
 
       - name: Test help target
-        run: |
-          make help
+        run: make help
+
+      - name: Check git
+        run: git --version
 
       # Sanitizers
 

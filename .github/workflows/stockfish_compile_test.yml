@@ -72,19 +72,19 @@ jobs:
         uses: msys2/setup-msys2@v2
         with:
           msystem: ${{matrix.config.msys_sys}}
-          install: mingw-w64-${{matrix.config.msys_env}} make
+          install: mingw-w64-${{matrix.config.msys_env}} make git
 
       - name: Download the used network from the fishtest framework
-        run: |
-          make net
+        run: make net
 
       - name: Check compiler
-        run: |
-          $COMPILER -v
+        run: $COMPILER -v
 
       - name: Test help target
-        run: |
-          make help
+        run: make help
+
+      - name: Check git
+        run: git --version
 
       # x86-64 with newer extensions tests
 

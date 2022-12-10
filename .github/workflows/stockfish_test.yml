@@ -115,8 +115,7 @@ jobs:
           install: mingw-w64-${{ matrix.config.msys_env }} make git expect
 
       - name: Download the used network from the fishtest framework
-        run: |
-          make net
+        run: make net
 
       - name: Extract the bench number from the commit history
         run: |
@@ -136,8 +135,10 @@ jobs:
           $COMPILER -v
 
       - name: Test help target
-        run: |
-          make help
+        run: make help
+
+      - name: Check git
+        run: git --version
 
       # x86-32 tests
 
