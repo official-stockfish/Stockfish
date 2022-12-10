@@ -56,28 +56,26 @@ jobs:
 
       - name: Download required linux packages
         if: runner.os == 'Linux'
-        run: |
-          sudo apt update
+        run: sudo apt update
 
       - name: Setup msys and install required packages
         if: runner.os == 'Windows'
         uses: msys2/setup-msys2@v2
         with:
-          msystem: ${{matrix.config.msys_sys}}
-          install: mingw-w64-${{matrix.config.msys_env}} make git expect
+          msystem: ${{ matrix.config.msys_sys }}
+          install: mingw-w64-${{ matrix.config.msys_env }} make git
 
       - name: Download the used network from the fishtest framework
-        run: |
-          make net
+        run: make net
 
       - name: Check compiler
-        run: |
-          export PATH=$PATH:$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin
-          $COMPILER -v
+        run: $COMPILER -v
 
       - name: Test help target
-        run: |
-          make help
+        run: make help
+
+      - name: Check git
+        run: git --version
 
       # Compile profile guided builds
 
@@ -85,7 +83,7 @@ jobs:
         run: |
           make clean
           make -j2 profile-build ARCH=$BINARY COMP=$COMP
-          strip ./stockfish$EXT
+          make strip ARCH=$BINARY COMP=$COMP
           mv ./stockfish$EXT ../stockfish-$OS-$BINARY$EXT
 
       - name: Remove non src files
@@ -106,5 +104,4 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: stockfish-${{ matrix.config.os }}-${{ matrix.binaries }}
-          path: |
-            stockfish-${{ matrix.config.os }}-${{ matrix.binaries }}.tar
+          path: stockfish-${{ matrix.config.os }}-${{ matrix.binaries }}.tar

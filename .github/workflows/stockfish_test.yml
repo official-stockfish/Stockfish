@@ -31,7 +31,7 @@ jobs:
               shell: 'bash {0}'
             }
           - {
-              name: "Ubuntu 20.04 NDK armv8",
+              name: "Android NDK aarch64",
               os: ubuntu-20.04,
               compiler: aarch64-linux-android21-clang++,
               comp: ndk,
@@ -39,7 +39,7 @@ jobs:
               shell: 'bash {0}'
             }
           - {
-              name: "Ubuntu 20.04 NDK armv7",
+              name: "Android NDK arm",
               os: ubuntu-20.04,
               compiler: armv7a-linux-androideabi21-clang++,
               comp: ndk,
@@ -115,8 +115,7 @@ jobs:
           install: mingw-w64-${{ matrix.config.msys_env }} make git expect
 
       - name: Download the used network from the fishtest framework
-        run: |
-          make net
+        run: make net
 
       - name: Extract the bench number from the commit history
         run: |
@@ -127,8 +126,8 @@ jobs:
         run: |
           if [ $COMP == ndk ]; then
             ANDROID_ROOT=/usr/local/lib/android
-            ANDROID_SDK_ROOT=${ANDROID_ROOT}/sdk
-            SDKMANAGER=${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager
+            ANDROID_SDK_ROOT=$ANDROID_ROOT/sdk
+            SDKMANAGER=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager
             echo "y" | $SDKMANAGER "ndk;21.4.7075529"
             ANDROID_NDK_ROOT=$ANDROID_SDK_ROOT/ndk/21.4.7075529
             export PATH=$ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH
@@ -136,8 +135,10 @@ jobs:
           $COMPILER -v
 
       - name: Test help target
-        run: |
-          make help
+        run: make help
+
+      - name: Check git
+        run: git --version
 
       # x86-32 tests
 
@@ -228,8 +229,8 @@ jobs:
         if: ${{ matrix.config.run_armv8_tests }}
         run: |
           ANDROID_ROOT=/usr/local/lib/android
-          ANDROID_SDK_ROOT=${ANDROID_ROOT}/sdk
-          SDKMANAGER=${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager
+          ANDROID_SDK_ROOT=$ANDROID_ROOT/sdk
+          SDKMANAGER=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager
           echo "y" | $SDKMANAGER "ndk;21.4.7075529"
           ANDROID_NDK_ROOT=$ANDROID_SDK_ROOT/ndk/21.4.7075529
           export PATH=$ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH
@@ -244,8 +245,8 @@ jobs:
         if: ${{ matrix.config.run_armv7_tests }}
         run: |
           ANDROID_ROOT=/usr/local/lib/android
-          ANDROID_SDK_ROOT=${ANDROID_ROOT}/sdk
-          SDKMANAGER=${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager
+          ANDROID_SDK_ROOT=$ANDROID_ROOT/sdk
+          SDKMANAGER=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager
           echo "y" | $SDKMANAGER "ndk;21.4.7075529"
           ANDROID_NDK_ROOT=$ANDROID_SDK_ROOT/ndk/21.4.7075529
           export PATH=$ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH
@@ -258,8 +259,8 @@ jobs:
         if: ${{ matrix.config.run_armv7_tests }}
         run: |
           ANDROID_ROOT=/usr/local/lib/android
-          ANDROID_SDK_ROOT=${ANDROID_ROOT}/sdk
-          SDKMANAGER=${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager
+          ANDROID_SDK_ROOT=$ANDROID_ROOT/sdk
+          SDKMANAGER=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager
           echo "y" | $SDKMANAGER "ndk;21.4.7075529"
           ANDROID_NDK_ROOT=$ANDROID_SDK_ROOT/ndk/21.4.7075529
           export PATH=$ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH
