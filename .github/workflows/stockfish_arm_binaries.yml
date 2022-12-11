@@ -15,22 +15,18 @@ jobs:
     strategy:
       matrix:
         config:
-          - {
-              name: "Android NDK aarch64",
-              os: ubuntu-20.04,
-              compiler: aarch64-linux-android21-clang++,
-              emu: qemu-aarch64,
-              comp: ndk,
-              shell: 'bash {0}'
-            }
-          - {
-              name: "Android NDK arm",
-              os: ubuntu-20.04,
-              compiler: armv7a-linux-androideabi21-clang++,
-              emu: qemu-arm,
-              comp: ndk,
-              shell: 'bash {0}'
-            }
+          - name: Android NDK aarch64
+            os: ubuntu-22.04
+            compiler: aarch64-linux-android21-clang++
+            emu: qemu-aarch64
+            comp: ndk
+            shell: bash {0}
+          - name: Android NDK arm
+            os: ubuntu-22.04
+            compiler: armv7a-linux-androideabi21-clang++
+            emu: qemu-arm
+            comp: ndk
+            shell: bash {0}
         binaries:
           - armv8
           - armv7
@@ -57,18 +53,27 @@ jobs:
           sudo apt update
           sudo apt install qemu-user
 
+      - name: Install NDK
+        if: runner.os == 'Linux'
+        run: |
+          if [ $COMP == ndk ]; then
+            NDKV="21.4.7075529"
+            ANDROID_ROOT=/usr/local/lib/android
+            ANDROID_SDK_ROOT=$ANDROID_ROOT/sdk
+            SDKMANAGER=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager
+            echo "y" | $SDKMANAGER "ndk;$NDKV"
+            ANDROID_NDK_ROOT=$ANDROID_SDK_ROOT/ndk/$NDKV
+            ANDROID_NDK_BIN=$ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin
+            echo "ANDROID_NDK_BIN=$ANDROID_NDK_BIN" >> $GITHUB_ENV
+          fi
+
       - name: Download the used network from the fishtest framework
         run: make net
 
       - name: Check compiler
         run: |
           if [ $COMP == ndk ]; then
-            ANDROID_ROOT=/usr/local/lib/android
-            ANDROID_SDK_ROOT=$ANDROID_ROOT/sdk
-            SDKMANAGER=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager
-            echo "y" | $SDKMANAGER "ndk;21.4.7075529"
-            ANDROID_NDK_ROOT=$ANDROID_SDK_ROOT/ndk/21.4.7075529
-            export PATH=$ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH
+            export PATH=${{ env.ANDROID_NDK_BIN }}:$PATH
           fi
           $COMPILER -v
 
@@ -83,12 +88,7 @@ jobs:
       - name: Compile ${{ matrix.binaries }} build
         run: |
           if [ $COMP == ndk ]; then
-            ANDROID_ROOT=/usr/local/lib/android
-            ANDROID_SDK_ROOT=$ANDROID_ROOT/sdk
-            SDKMANAGER=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager
-            echo "y" | $SDKMANAGER "ndk;21.4.7075529"
-            ANDROID_NDK_ROOT=$ANDROID_SDK_ROOT/ndk/21.4.7075529
-            export PATH=$ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH
+            export PATH=${{ env.ANDROID_NDK_BIN }}:$PATH
             export LDFLAGS="-static -Wno-unused-command-line-argument"
           fi
           make clean

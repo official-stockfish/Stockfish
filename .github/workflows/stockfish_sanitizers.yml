@@ -12,34 +12,24 @@ jobs:
     strategy:
       matrix:
         config:
-          - {
-              name: "Ubuntu 20.04 GCC",
-              os: ubuntu-20.04,
-              compiler: g++,
-              comp: gcc,
-              shell: 'bash {0}'
-            }
+          - name: Ubuntu 20.04 GCC
+            os: ubuntu-20.04
+            compiler: g++
+            comp: gcc
+            shell: bash {0}
         sanitizers:
-          - {
-              name: Run with thread sanitizer,
-              make_option: sanitize=thread,
-              instrumented_option: sanitizer-thread
-            }
-          - {
-              name: Run with UB sanitizer,
-              make_option: sanitize=undefined,
-              instrumented_option: sanitizer-undefined
-            }
-          - {
-              name: Run under valgrind,
-              make_option: "",
-              instrumented_option: valgrind
-            }
-          - {
-              name: Run under valgrind-thread,
-              make_option: "",
-              instrumented_option: valgrind-thread
-            }
+          - name: Run with thread sanitizer
+            make_option: sanitize=thread
+            instrumented_option: sanitizer-thread
+          - name: Run with UB sanitizer
+            make_option: sanitize=undefined
+            instrumented_option: sanitizer-undefined
+          - name: Run under valgrind
+            make_option: ""
+            instrumented_option: valgrind
+          - name: Run under valgrind-thread
+            make_option: ""
+            instrumented_option: valgrind-thread
     defaults:
       run:
         working-directory: src
