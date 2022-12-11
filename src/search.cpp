@@ -182,9 +182,14 @@ void MainThread::search() {
 
   if (Limits.perft)
   {
-      nodes = perft<true>(rootPos, Limits.perft);
-      sync_cout << "\nNodes searched: " << nodes << "\n" << sync_endl;
-      return;
+	  TimePoint elapsed = now();
+	  nodes = perft<true>(rootPos, Limits.perft);
+	  elapsed = now() - elapsed + 1;
+	  sync_cout << "===========================" << sync_endl;
+	  sync_cout << "Total time (ms) : " << elapsed << sync_endl;
+	  sync_cout << "Nodes searched  : " << nodes << sync_endl;
+	  sync_cout << "Nodes/second    : " << 1000 * nodes / elapsed << sync_endl;
+    return;
   }
 
   Color us = rootPos.side_to_move();
