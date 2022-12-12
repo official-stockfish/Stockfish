@@ -239,7 +239,8 @@ Thread* ThreadPool::get_best_thread() const {
                  || (   th->rootMoves[0].score > VALUE_TB_LOSS_IN_MAX_PLY
                      && (   votes[th->rootMoves[0].pv[0]] > votes[bestThread->rootMoves[0].pv[0]]
                          || (   votes[th->rootMoves[0].pv[0]] == votes[bestThread->rootMoves[0].pv[0]]
-                             && thread_value(th) > thread_value(bestThread)))))
+                             &&   thread_value(th) * int(th->rootMoves[0].pv.size() > 2)
+                                > thread_value(bestThread) * int(bestThread->rootMoves[0].pv.size() > 2)))))
             bestThread = th;
 
     return bestThread;
