@@ -650,7 +650,7 @@ namespace Stockfish::Tools::Stats
         {
             m_total += 1;
 
-            if (!pos.empty(to_sq(move)))
+            if (!pos.empty(to_sq(move)) && type_of(move) != CASTLING)
                 m_capture += 1;
 
             if (type_of(move) == CASTLING)
