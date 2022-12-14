@@ -14,5 +14,5 @@ ifeq ($(TARGET_ARCH_ABI), armeabi-v7a)
   LOCAL_CFLAGS += -DUSE_NEON=7 -DUSE_POPCNT
 endif
 
-LOCAL_LDFLAGS += 
+LOCAL_LDFLAGS += -static
 include $(BUILD_EXECUTABLE)
