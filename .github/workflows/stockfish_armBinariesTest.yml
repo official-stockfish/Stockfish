@@ -42,7 +42,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt update
-          sudo apt install expect valgrind g++-multilib qemu-user qemu-user-static
+          sudo apt install expect valgrind g++-multilib qemu-user
 
       - name: Download the used network from the fishtest framework
         run: |
@@ -76,7 +76,7 @@ jobs:
           ANDROID_SDK_ROOT=${ANDROID_ROOT}/sdk
           ANDROID_NDK_ROOT=${ANDROID_SDK_ROOT}/ndk-bundle
           SDKMANAGER=${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager
-          ndkDefaultFullVersion=$(get_full_ndk_version "21")
+          ndkDefaultFullVersion=$(get_full_ndk_version "25")
           ln -sf $ANDROID_SDK_ROOT/ndk/$ndkDefaultFullVersion $ANDROID_NDK_ROOT
           export PATH=$ANDROID_NDK_HOME:$PATH
           export PATH=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH
@@ -113,7 +113,7 @@ jobs:
           ANDROID_SDK_ROOT=${ANDROID_ROOT}/sdk
           ANDROID_NDK_ROOT=${ANDROID_SDK_ROOT}/ndk-bundle
           SDKMANAGER=${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager
-          ndkDefaultFullVersion=$(get_full_ndk_version "21")
+          ndkDefaultFullVersion=$(get_full_ndk_version "25")
           ln -sf $ANDROID_SDK_ROOT/ndk/$ndkDefaultFullVersion $ANDROID_NDK_ROOT
           export PATH=$ANDROID_NDK_HOME:$PATH
           export PATH=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH

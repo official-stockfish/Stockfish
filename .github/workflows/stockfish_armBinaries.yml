@@ -42,7 +42,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt update
-          sudo apt install expect valgrind g++-multilib qemu-user qemu-user-static
+          sudo apt install expect valgrind g++-multilib qemu-user
 
       - name: Download the used network from the fishtest framework
         run: |
