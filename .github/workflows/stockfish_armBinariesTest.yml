@@ -91,7 +91,7 @@ jobs:
           cp Stockfish ../../src/SFnps_armv8
           #Net is in /src and /jni for tests
           cd ../../src/
-          ./SFnps_armv8 bench >> BenchOutput8.txt
+          #./SFnps_armv8 bench >> BenchOutput8.txt
 
       - uses: actions/upload-artifact@v3
         if: ${{ matrix.config.run_armv8_tests }}
@@ -128,7 +128,7 @@ jobs:
           cp Stockfish ../../src/SFnps_armv7
           #Net is in /src and /jni for tests
           cd ../../src/
-          ./SFnps_armv7 bench >> BenchOutput7.txt
+          #./SFnps_armv7 bench >> BenchOutput7.txt
           
       - uses: actions/upload-artifact@v3
         if: ${{ matrix.config.run_armv7_tests }}
