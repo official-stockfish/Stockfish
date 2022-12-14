@@ -13,16 +13,16 @@ jobs:
       matrix:
         config:
           - {
-              name: "Ubuntu 20.04 NDK armv8",
-              os: ubuntu-20.04,
+              name: "Ubuntu 22.04 NDK armv8",
+              os: ubuntu-22.04,
               compiler: aarch64-linux-android23-clang++,
               comp: ndk,
               run_armv8_tests: true,
               shell: 'bash {0}'
             }
           - {
-              name: "Ubuntu 20.04 NDK armv7",
-              os: ubuntu-20.04,
+              name: "Ubuntu 22.04 NDK armv7",
+              os: ubuntu-22.04,
               compiler: armv7a-linux-androideabi21-clang++,
               comp: ndk,
               run_armv7_tests: true,
