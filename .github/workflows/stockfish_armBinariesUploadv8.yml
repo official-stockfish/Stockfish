@@ -7,19 +7,25 @@ jobs:
     runs-on: ${{ matrix.config.os }}
     env:
       COMPILER: ${{ matrix.config.compiler }}
-      COMP: ${{ matrix.config.comp }}
-      CXXFLAGS: 
+      COMP: ${{ matrix.config.comp }} 
     strategy:
       matrix:
         config:
-          - {
-              name: "Ubuntu 22.04 NDK armv8",
-              os: ubuntu-22.04,
-              compiler: aarch64-linux-android21-clang++,
-              comp: ndk,
-              run_armv8_tests: true,
-              shell: 'bash {0}'
-            }
+          - name: Ubuntu 22.04 NDK armv8
+            os: ubuntu-22.04
+            compiler: aarch64-linux-android21-clang++
+            comp: ndk
+            run_armv8_tests: true
+            shell: bash {0}
+            
+          - name: Windows 2022 Mingw-w64 GCC x86_64
+            os: windows-2022
+            compiler: g++
+            comp: mingw
+            run_win11_tests: true
+            msys_sys: mingw64
+            msys_env: x86_64-gcc
+            shell: msys2 {0}   
 
     defaults:
       run:
@@ -30,12 +36,18 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Setup msys and install required packages
+        if: runner.os == 'Windows'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: ${{ matrix.config.msys_sys }}
+          install: mingw-w64-${{ matrix.config.msys_env }} make git
+
       - name: Download the used network from the fishtest framework
         run: make net
 
-      # armv8 tests
-
       - name: Test armv8 build
+        if: ${{ matrix.config.run_armv8_tests }}
         run: |
             export PATH=$ANDROID_NDK_HOME:$PATH
             export PATH=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH
@@ -46,12 +58,26 @@ jobs:
             ndk-build
             cd ../libs/arm64-v8a
             cp Stockfish ../../src/SFnps_armv8
-            #Net is in /src and /jni for tests
             cd ../../src/
-            #./SFnps_armv8 bench >> BenchOutput8.txt
-
+            
       - uses: actions/upload-artifact@v3
         if: ${{ matrix.config.run_armv8_tests }}
         with:
           name: SFnps-armv8
           path: /home/runner/work/StockfishNPS/StockfishNPS/src/SFnps_armv8
+       
+      - name: win11 build
+        if: ${{ matrix.config.run_win11_tests }}
+        run: |
+          make clean
+          make -j2 build ARCH=x86-64-modern COMP=$COMP
+          make strip ARCH=x86-64-modern COMP=$COMP
+          mv stockfish.exe SFnps_modern.exe
+          
+      - uses: actions/upload-artifact@v3
+        if: ${{ matrix.config.run_win11_tests }}
+        with:
+          name: SFnps-modern
+          path: D:\a\StockfishNPS\StockfishNPS\src\SFnps_modern.exe   
+          
+          
