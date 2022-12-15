@@ -796,7 +796,7 @@ help:
 	@echo ""
 	@echo "Advanced examples, for experienced users looking for performance: "
 	@echo ""
-	@echo "make    help  ARCH=x86-64-bmi2"
+	@echo "make    build ARCH=x86-64-bmi2"
 	@echo "make -j profile-build ARCH=x86-64-bmi2 COMP=gcc COMPCXX=g++-9.0"
 	@echo "make -j build ARCH=x86-64-ssse3 COMP=clang"
 	@echo ""
