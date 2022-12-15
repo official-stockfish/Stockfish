@@ -1,4 +1,4 @@
-name: SFnpsArm8upload
+name: SFnpsArmWinBinariesUpload
 on:
   workflow_dispatch:
 jobs:
@@ -79,5 +79,4 @@ jobs:
         with:
           name: SFnps-modern
           path: D:\a\StockfishNPS\StockfishNPS\src\SFnps_modern.exe   
-          
           
