@@ -1,17 +1,17 @@
 name: Stockfish_Start
 on:
-  workflow_dispatch:
-      #push:
-      #  branches:
-      #    - master
-      #pull_request:
-      #  branches:
-      #    - master
+  #workflow_dispatch:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
 jobs:
   Sanitizers:
     uses: ./.github/workflows/stockfish_sanitizers.yml
-#  Tests:
-#    uses: ./.github/workflows/stockfish_test.yml
+  Tests:
+    uses: ./.github/workflows/stockfish_test.yml
   Compiles:
     uses: ./.github/workflows/stockfish_compile_test.yml
   Binaries:
