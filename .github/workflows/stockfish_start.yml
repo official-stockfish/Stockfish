@@ -1,12 +1,12 @@
 name: Stockfish_Start
 on:
-  #workflow_dispatch:
+  workflow_dispatch:
   push:
     branches:
-      - master
+      - Xmaster
   pull_request:
     branches:
-      - master
+      - Xmaster
 jobs:
   Sanitizers:
     uses: ./.github/workflows/stockfish_sanitizers.yml
