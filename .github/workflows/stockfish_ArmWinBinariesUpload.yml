@@ -70,7 +70,7 @@ jobs:
         if: ${{ matrix.config.run_win11_tests }}
         run: |
           make clean
-          make -j2 build ARCH=x86-64-modern COMP=$COMP
+          make -j profile-build ARCH=x86-64-modern COMP=$COMP
           make strip ARCH=x86-64-modern COMP=$COMP
           mv stockfish.exe SFnps_modern.exe
           
