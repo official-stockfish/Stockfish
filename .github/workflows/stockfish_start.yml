@@ -3,10 +3,10 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - Xmaster
+      - master
   pull_request:
     branches:
-      - Xmaster
+      - master
 jobs:
   Sanitizers:
     uses: ./.github/workflows/stockfish_sanitizers.yml
