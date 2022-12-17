@@ -23,7 +23,7 @@ jobs:
             shell: bash {0}
           - name: Android NDK arm
             os: ubuntu-22.04
-            compiler: armv7a-linux-androideabi21-clang++
+            compiler: armv7a-linux-androideabi19-clang++
             emu: qemu-arm
             comp: ndk
             shell: bash {0}
@@ -33,7 +33,7 @@ jobs:
           - armv7-neon
         exclude:
           - binaries: armv8
-            config: {compiler: armv7a-linux-androideabi21-clang++}
+            config: {compiler: armv7a-linux-androideabi19-clang++}
           - binaries: armv7
             config: {compiler: aarch64-linux-android21-clang++}
           - binaries: armv7-neon
