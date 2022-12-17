@@ -10,8 +10,8 @@ on:
 jobs:
   Sanitizers:
     uses: ./.github/workflows/stockfish_sanitizers.yml
-  Tests:
-    uses: ./.github/workflows/stockfish_test.yml
+  #Tests:
+  #  uses: ./.github/workflows/stockfish_test.yml
   Compiles:
     uses: ./.github/workflows/stockfish_compile_test.yml
   Binaries:
