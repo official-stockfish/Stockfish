@@ -64,7 +64,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          file: "SFnps_armv8"    
+          delete_file: "SFnps_armv8"
+          file: "SFnps_armv8" 
+          update_latest_release: true
               
       - uses: actions/upload-artifact@v3
         if: ${{ matrix.config.run_armv8_tests }}
@@ -86,7 +88,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
+          delete_file: "SFnps_modern.exe"
           file: "SFnps_modern.exe"
+          update_latest_release: true
         
       - uses: actions/upload-artifact@v3
         if: ${{ matrix.config.run_win11_tests }}
