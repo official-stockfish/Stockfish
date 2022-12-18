@@ -65,7 +65,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          file: "SFnps_armv8"    
+          file: SFnps_armv8    
               
       - uses: actions/upload-artifact@v3
         if: ${{ matrix.config.run_armv8_tests }}
@@ -86,7 +86,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          file: "SFnps_modern.exe"      
+          file: SFnps_modern.exe
         
       - uses: actions/upload-artifact@v3
         if: ${{ matrix.config.run_win11_tests }}
