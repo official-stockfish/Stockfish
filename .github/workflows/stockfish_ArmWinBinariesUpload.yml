@@ -22,7 +22,7 @@ jobs:
             os: windows-2022
             compiler: g++
             comp: mingw
-            run_win11_tests: true
+            run_win11_tests: false
             msys_sys: mingw64
             msys_env: x86_64-gcc
             shell: msys2 {0}   
@@ -59,7 +59,13 @@ jobs:
             cd ../libs/arm64-v8a
             cp Stockfish ../../src/SFnps_armv8
             cd ../../src/
-            
+           
+      - uses: xresloader/upload-to-github-release@v1
+        env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+        file: "SFnps_armv8"    
+              
       - uses: actions/upload-artifact@v3
         if: ${{ matrix.config.run_armv8_tests }}
         with:
