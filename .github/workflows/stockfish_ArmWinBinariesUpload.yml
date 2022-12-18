@@ -58,6 +58,7 @@ jobs:
             ndk-build
             cd ../libs/arm64-v8a
             cp Stockfish ../../src/SFnps_armv8
+            cp Stockfish ../../SFnps_armv8
             cd ../../src/
            
       - uses: xresloader/upload-to-github-release@v1
@@ -65,7 +66,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          file: "SFnps_armv8*"    
+          file: "SFnps_armv8"    
               
       - uses: actions/upload-artifact@v3
         if: ${{ matrix.config.run_armv8_tests }}
@@ -79,14 +80,15 @@ jobs:
           make clean
           make -j profile-build ARCH=x86-64-modern COMP=$COMP
           make strip ARCH=x86-64-modern COMP=$COMP
-          mv stockfish.exe SFnps_modern.exe
+          cp stockfish.exe SFnps_modern.exe
+          cp stockfish.exe ../SFnps_modern.exe
         
       - uses: xresloader/upload-to-github-release@v1
         if: ${{ matrix.config.run_win11_tests }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          file: "SFnps_modern*.exe"
+          file: "SFnps_modern.exe"
         
       - uses: actions/upload-artifact@v3
         if: ${{ matrix.config.run_win11_tests }}
