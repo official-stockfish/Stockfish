@@ -57,9 +57,7 @@ jobs:
             cp Application_v8.mk Application.mk
             ndk-build
             cd ../libs/arm64-v8a
-            #cp Stockfish ../../src/SFnps_armv8
             cp Stockfish ../../SFnps_armv8
-            cd ../../src/
            
       - uses: xresloader/upload-to-github-release@v1
         if: ${{ matrix.config.run_armv8_tests }}
@@ -73,7 +71,7 @@ jobs:
         with:
           name: SFnps-armv8
           path: SFnps_armv8
-          #path: /home/runner/work/StockfishNPS/StockfishNPS/src/SFnps_armv8
+          #path: /home/runner/work/StockfishNPS/StockfishNPS/SFnps_armv8
        
       - name: win11 build
         if: ${{ matrix.config.run_win11_tests }}
@@ -81,7 +79,6 @@ jobs:
           make clean
           make -j profile-build ARCH=x86-64-modern COMP=$COMP
           make strip ARCH=x86-64-modern COMP=$COMP
-          #cp stockfish.exe SFnps_modern.exe
           cp stockfish.exe ../SFnps_modern.exe
         
       - uses: xresloader/upload-to-github-release@v1
@@ -96,5 +93,5 @@ jobs:
         with:
           name: SFnps-modern
           path: SFnps_modern.exe
-          #path: D:\a\StockfishNPS\StockfishNPS\src\SFnps_modern.exe   
+          #path: D:\a\StockfishNPS\StockfishNPS\SFnps_modern.exe   
           
