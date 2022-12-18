@@ -22,7 +22,7 @@ jobs:
             os: windows-2022
             compiler: g++
             comp: mingw
-            run_win11_tests: false
+            run_win11_tests: true
             msys_sys: mingw64
             msys_env: x86_64-gcc
             shell: msys2 {0}   
@@ -61,6 +61,7 @@ jobs:
             cd ../../src/
            
       - uses: xresloader/upload-to-github-release@v1
+        if: ${{ matrix.config.run_armv8_tests }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -79,7 +80,14 @@ jobs:
           make -j profile-build ARCH=x86-64-modern COMP=$COMP
           make strip ARCH=x86-64-modern COMP=$COMP
           mv stockfish.exe SFnps_modern.exe
-          
+        
+      - uses: xresloader/upload-to-github-release@v1
+        if: ${{ matrix.config.run_win11_tests }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          file: "SFnps_modern.exe"      
+        
       - uses: actions/upload-artifact@v3
         if: ${{ matrix.config.run_win11_tests }}
         with:
