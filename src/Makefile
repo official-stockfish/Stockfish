@@ -853,7 +853,7 @@ net:
 	$(eval nnuedownloadurl2 := https://github.com/official-stockfish/networks/raw/master/$(nnuenet))
 	$(eval curl_or_wget := $(shell if hash curl 2>/dev/null; then echo "curl -skL"; elif hash wget 2>/dev/null; then echo "wget -qO-"; fi))
 	@if [ "x$(curl_or_wget)" = "x" ]; then \
-	    echo "Automatic download failed: neither curl nor wget is installed. Install one of these tools or download the net manually"; exit 1; \
+	    echo "Neither curl nor wget is installed. Install one of these tools unless the net has been downloaded manually"; \
         fi
 	$(eval shasum_command := $(shell if hash shasum 2>/dev/null; then echo "shasum -a 256 "; elif hash sha256sum 2>/dev/null; then echo "sha256sum "; fi))
 	@if [ "x$(shasum_command)" = "x" ]; then \
@@ -864,7 +864,9 @@ net:
 	      echo "$(nnuenet) available."; \
 	   else \
 	      if [ "x$(curl_or_wget)" != "x" ]; then \
-	         echo "Downloading $${nnuedownloadurl}"; $(curl_or_wget) $${nnuedownloadurl} > $(nnuenet);\
+                 echo "Downloading $${nnuedownloadurl}"; $(curl_or_wget) $${nnuedownloadurl} > $(nnuenet);\
+              else \
+                 echo "No net found and download not possible"; exit 1;\
 	      fi; \
 	   fi; \
 	   if [ "x$(shasum_command)" != "x" ]; then \
