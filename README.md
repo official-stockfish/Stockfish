@@ -369,7 +369,7 @@ For full details, read the copy of the GPL v3 found in the file named
 [website-link]:       https://stockfishchess.org
 [worker-link]:        https://github.com/glinscott/fishtest/wiki/Running-the-worker:-overview
 
-[build-badge]:        https://img.shields.io/github/workflow/status/official-stockfish/Stockfish/Stockfish?style=for-the-badge&label=stockfish&logo=github
+[build-badge]:        https://img.shields.io/github/actions/workflow/status/official-stockfish/Stockfish/stockfish.yml?branch=master&style=for-the-badge&label=stockfish&logo=github
 [commits-badge]:      https://img.shields.io/github/commits-since/official-stockfish/Stockfish/latest?style=for-the-badge
 [discord-badge]:      https://img.shields.io/discord/435943710472011776?style=for-the-badge&label=discord&logo=Discord
 [fishtest-badge]:     https://img.shields.io/website?style=for-the-badge&down_color=red&down_message=Offline&label=Fishtest&up_color=success&up_message=Online&url=https%3A%2F%2Ftests.stockfishchess.org%2Ftests%2Ffinished

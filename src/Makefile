@@ -747,9 +747,9 @@ help:
 	@echo "Supported targets:"
 	@echo ""
 	@echo "help                    > Display architecture details"
-	@echo "build                   > Standard build"
+	@echo "profile-build           > standard build with profile-guided optimization"
+	@echo "build                   > skip profile-guided optimization"
 	@echo "net                     > Download the default nnue net"
-	@echo "profile-build           > Faster build (with profile-guided optimization)"
 	@echo "strip                   > Strip executable"
 	@echo "install                 > Install executable"
 	@echo "clean                   > Clean up"
@@ -789,14 +789,15 @@ help:
 	@echo "icc                     > Intel compiler"
 	@echo "ndk                     > Google NDK to cross-compile for Android"
 	@echo ""
-	@echo "Simple examples. If you don't know what to do, you likely want to run: "
+	@echo "Simple examples. If you don't know what to do, you likely want to run one of: "
 	@echo ""
-	@echo "make -j build ARCH=x86-64  (A portable, slow compile for 64-bit systems)"
-	@echo "make -j build ARCH=x86-32  (A portable, slow compile for 32-bit systems)"
+	@echo "make -j profile-build ARCH=x86-64-avx2    # typically a fast compile for common systems "
+	@echo "make -j profile-build ARCH=x86-64-modern  # A more portable compile for 64-bit systems "
+	@echo "make -j profile-build ARCH=x86-64         # A portable compile for 64-bit systems "
 	@echo ""
-	@echo "Advanced examples, for experienced users looking for performance: "
+	@echo "Advanced examples, for experienced users: "
 	@echo ""
-	@echo "make    help  ARCH=x86-64-bmi2"
+	@echo "make -j profile-build ARCH=x86-64-bmi2"
 	@echo "make -j profile-build ARCH=x86-64-bmi2 COMP=gcc COMPCXX=g++-9.0"
 	@echo "make -j build ARCH=x86-64-ssse3 COMP=clang"
 	@echo ""
@@ -852,7 +853,7 @@ net:
 	$(eval nnuedownloadurl2 := https://github.com/official-stockfish/networks/raw/master/$(nnuenet))
 	$(eval curl_or_wget := $(shell if hash curl 2>/dev/null; then echo "curl -skL"; elif hash wget 2>/dev/null; then echo "wget -qO-"; fi))
 	@if [ "x$(curl_or_wget)" = "x" ]; then \
-	    echo "Automatic download failed: neither curl nor wget is installed. Install one of these tools or download the net manually"; exit 1; \
+	    echo "Neither curl nor wget is installed. Install one of these tools unless the net has been downloaded manually"; \
         fi
 	$(eval shasum_command := $(shell if hash shasum 2>/dev/null; then echo "shasum -a 256 "; elif hash sha256sum 2>/dev/null; then echo "sha256sum "; fi))
 	@if [ "x$(shasum_command)" = "x" ]; then \
@@ -863,7 +864,9 @@ net:
 	      echo "$(nnuenet) available."; \
 	   else \
 	      if [ "x$(curl_or_wget)" != "x" ]; then \
-	         echo "Downloading $${nnuedownloadurl}"; $(curl_or_wget) $${nnuedownloadurl} > $(nnuenet);\
+                 echo "Downloading $${nnuedownloadurl}"; $(curl_or_wget) $${nnuedownloadurl} > $(nnuenet);\
+              else \
+                 echo "No net found and download not possible"; exit 1;\
 	      fi; \
 	   fi; \
 	   if [ "x$(shasum_command)" != "x" ]; then \
