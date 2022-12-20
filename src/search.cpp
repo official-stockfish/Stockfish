@@ -633,16 +633,16 @@ namespace {
         && ttValue != VALUE_NONE // Possible in case of TT access race
         && (tte->bound() & (ttValue >= beta ? BOUND_LOWER : BOUND_UPPER)))
     {
-        // If ttMove is quiet, update move sorting heuristics on TT hit (~1 Elo)
+        // If ttMove is quiet, update move sorting heuristics on TT hit (~2 Elo)
         if (ttMove)
         {
             if (ttValue >= beta)
             {
-                // Bonus for a quiet ttMove that fails high (~3 Elo)
+                // Bonus for a quiet ttMove that fails high (~2 Elo)
                 if (!ttCapture)
                     update_quiet_stats(pos, ss, ttMove, stat_bonus(depth));
 
-                // Extra penalty for early quiet moves of the previous ply (~0 Elo)
+                // Extra penalty for early quiet moves of the previous ply (~0 Elo on STC, ~2 Elo on LTC)
                 if ((ss-1)->moveCount <= 2 && !priorCapture)
                     update_continuation_histories(ss-1, pos.piece_on(prevSq), prevSq, -stat_bonus(depth + 1));
             }
@@ -734,7 +734,7 @@ namespace {
         else // Fall back to (semi)classical complexity for TT hits, the NNUE complexity is lost
             complexity = abs(ss->staticEval - pos.psq_eg_stm());
 
-        // ttValue can be used as a better position evaluation (~4 Elo)
+        // ttValue can be used as a better position evaluation (~7 Elo)
         if (    ttValue != VALUE_NONE
             && (tte->bound() & (ttValue > eval ? BOUND_LOWER : BOUND_UPPER)))
             eval = ttValue;
@@ -750,7 +750,7 @@ namespace {
 
     thisThread->complexityAverage.update(complexity);
 
-    // Use static evaluation difference to improve quiet move ordering (~3 Elo)
+    // Use static evaluation difference to improve quiet move ordering (~4 Elo)
     if (is_ok((ss-1)->currentMove) && !(ss-1)->inCheck && !priorCapture)
     {
         int bonus = std::clamp(-19 * int((ss-1)->staticEval + ss->staticEval), -1914, 1914);
@@ -766,7 +766,7 @@ namespace {
                   :                                    168;
     improving = improvement > 0;
 
-    // Step 7. Razoring.
+    // Step 7. Razoring (~1 Elo).
     // If eval is really low check with qsearch if it can exceed alpha, if it can't,
     // return a fail low.
     if (eval < alpha - 369 - 254 * depth * depth)
@@ -776,7 +776,7 @@ namespace {
             return value;
     }
 
-    // Step 8. Futility pruning: child node (~25 Elo).
+    // Step 8. Futility pruning: child node (~40 Elo).
     // The depth condition is important for mate finding.
     if (   !ss->ttPv
         &&  depth < 8
@@ -785,7 +785,7 @@ namespace {
         &&  eval < 28031) // larger than VALUE_KNOWN_WIN, but smaller than TB wins
         return eval;
 
-    // Step 9. Null move search with verification search (~22 Elo)
+    // Step 9. Null move search with verification search (~35 Elo)
     if (   !PvNode
         && (ss-1)->currentMove != MOVE_NULL
         && (ss-1)->statScore < 17139
@@ -837,7 +837,7 @@ namespace {
 
     probCutBeta = beta + 191 - 54 * improving;
 
-    // Step 10. ProbCut (~4 Elo)
+    // Step 10. ProbCut (~10 Elo)
     // If we have a good enough capture and a reduced search returns a value
     // much above beta, we can (almost) safely prune the previous move.
     if (   !PvNode
@@ -888,7 +888,7 @@ namespace {
     }
 
     // Step 11. If the position is not in TT, decrease depth by 3.
-    // Use qsearch if depth is equal or below zero (~4 Elo)
+    // Use qsearch if depth is equal or below zero (~9 Elo)
     if (    PvNode
         && !ttMove)
         depth -= 3;
@@ -903,7 +903,7 @@ namespace {
 
 moves_loop: // When in check, search starts here
 
-    // Step 12. A small Probcut idea, when we are in check (~0 Elo)
+    // Step 12. A small Probcut idea, when we are in check (~4 Elo)
     probCutBeta = beta + 417;
     if (   ss->inCheck
         && !PvNode
@@ -980,12 +980,12 @@ moves_loop: // When in check, search starts here
 
       Value delta = beta - alpha;
 
-      // Step 14. Pruning at shallow depth (~98 Elo). Depth conditions are important for mate finding.
+      // Step 14. Pruning at shallow depth (~120 Elo). Depth conditions are important for mate finding.
       if (  !rootNode
           && pos.non_pawn_material(us)
           && bestValue > VALUE_TB_LOSS_IN_MAX_PLY)
       {
-          // Skip quiet moves if movecount exceeds our FutilityMoveCount threshold (~7 Elo)
+          // Skip quiet moves if movecount exceeds our FutilityMoveCount threshold (~8 Elo)
           moveCountPruning = moveCount >= futility_move_count(improving, depth);
 
           // Reduced depth of the next LMR search
@@ -994,7 +994,7 @@ moves_loop: // When in check, search starts here
           if (   capture
               || givesCheck)
           {
-              // Futility pruning for captures (~0 Elo)
+              // Futility pruning for captures (~2 Elo)
               if (   !givesCheck
                   && !PvNode
                   && lmrDepth < 7
@@ -1003,7 +1003,7 @@ moves_loop: // When in check, search starts here
                    + captureHistory[movedPiece][to_sq(move)][type_of(pos.piece_on(to_sq(move)))] / 6 < alpha)
                   continue;
 
-              // SEE based pruning (~9 Elo)
+              // SEE based pruning (~11 Elo)
               if (!pos.see_ge(move, Value(-222) * depth))
                   continue;
           }
@@ -1020,23 +1020,23 @@ moves_loop: // When in check, search starts here
 
               history += 2 * thisThread->mainHistory[us][from_to(move)];
 
-              // Futility pruning: parent node (~9 Elo)
+              // Futility pruning: parent node (~13 Elo)
               if (   !ss->inCheck
                   && lmrDepth < 13
                   && ss->staticEval + 106 + 145 * lmrDepth + history / 52 <= alpha)
                   continue;
 
-              // Prune moves with negative SEE (~3 Elo)
+              // Prune moves with negative SEE (~4 Elo)
               if (!pos.see_ge(move, Value(-24 * lmrDepth * lmrDepth - 15 * lmrDepth)))
                   continue;
           }
       }
 
-      // Step 15. Extensions (~66 Elo)
+      // Step 15. Extensions (~100 Elo)
       // We take care to not overdo to avoid search getting stuck.
       if (ss->ply < thisThread->rootDepth * 2)
       {
-          // Singular extension search (~58 Elo). If all moves but one fail low on a
+          // Singular extension search (~94 Elo). If all moves but one fail low on a
           // search of (alpha-s, beta-s), and just one fails high on (alpha, beta),
           // then that move is singular and should be extended. To verify this we do
           // a reduced search on all the other moves but the ttMove and if the
@@ -1095,7 +1095,7 @@ moves_loop: // When in check, search starts here
                    && abs(ss->staticEval) > 82)
               extension = 1;
 
-          // Quiet ttMove extensions (~0 Elo)
+          // Quiet ttMove extensions (~1 Elo)
           else if (   PvNode
                    && move == ttMove
                    && move == ss->killers[0]
@@ -1166,7 +1166,7 @@ moves_loop: // When in check, search starts here
       // Decrease/increase reduction for moves with a good/bad history (~30 Elo)
       r -= ss->statScore / (13000 + 4152 * (depth > 7 && depth < 19));
 
-      // Step 17. Late moves reduction / extension (LMR, ~98 Elo)
+      // Step 17. Late moves reduction / extension (LMR, ~117 Elo)
       // We use various heuristics for the sons of a node after the first son has
       // been searched. In general we would like to reduce them, but there are many
       // cases where we extend a son if it has good chances to be "interesting".
@@ -1462,7 +1462,7 @@ moves_loop: // When in check, search starts here
             if ((ss->staticEval = bestValue = tte->eval()) == VALUE_NONE)
                 ss->staticEval = bestValue = evaluate(pos);
 
-            // ttValue can be used as a better position evaluation (~7 Elo)
+            // ttValue can be used as a better position evaluation (~13 Elo)
             if (    ttValue != VALUE_NONE
                 && (tte->bound() & (ttValue > bestValue ? BOUND_LOWER : BOUND_UPPER)))
                 bestValue = ttValue;
@@ -1520,7 +1520,7 @@ moves_loop: // When in check, search starts here
 
       moveCount++;
 
-      // Futility pruning and moveCount pruning (~5 Elo)
+      // Futility pruning and moveCount pruning (~10 Elo)
       if (    bestValue > VALUE_TB_LOSS_IN_MAX_PLY
           && !givesCheck
           &&  to_sq(move) != prevSq
@@ -1559,7 +1559,7 @@ moves_loop: // When in check, search starts here
                                                                 [pos.moved_piece(move)]
                                                                 [to_sq(move)];
 
-      // Continuation history based pruning (~2 Elo)
+      // Continuation history based pruning (~3 Elo)
       if (   !capture
           && bestValue > VALUE_TB_LOSS_IN_MAX_PLY
           && (*contHist[0])[pos.moved_piece(move)][to_sq(move)] < 0
