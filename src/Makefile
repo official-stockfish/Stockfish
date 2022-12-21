@@ -1009,6 +1009,6 @@ icc-profile-use:
 .depend: $(SRCS)
 	-@$(CXX) $(DEPENDFLAGS) -MM $(SRCS) > $@ 2> /dev/null
 
-ifneq (, $(filter $(MAKECMDGOALS), build profile-build))
+ifeq (, $(filter $(MAKECMDGOALS), help strip install clean net objclean profileclean config-sanity))
 -include .depend
 endif
