@@ -749,6 +749,7 @@ help:
 	@echo "help                    > Display architecture details"
 	@echo "profile-build           > standard build with profile-guided optimization"
 	@echo "build                   > skip profile-guided optimization"
+	@echo "bench                   > alias for build and display the bench"
 	@echo "net                     > Download the default nnue net"
 	@echo "strip                   > Strip executable"
 	@echo "install                 > Install executable"
@@ -811,7 +812,7 @@ else
 endif
 
 
-.PHONY: help build profile-build strip install clean net objclean profileclean \
+.PHONY: help build profile-build bench strip install clean net objclean profileclean \
         config-sanity icc-profile-use icc-profile-make gcc-profile-use gcc-profile-make \
         clang-profile-use clang-profile-make FORCE
 
@@ -832,6 +833,10 @@ profile-build: net config-sanity objclean profileclean
 	@echo ""
 	@echo "Step 4/4. Deleting profile data ..."
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) profileclean
+
+bench: build
+	@echo "Running bench..."
+	@$(PGOBENCH) 2>&1 | grep -Ev '^$$|^info|^best'
 
 strip:
 	$(STRIP) $(EXE)
