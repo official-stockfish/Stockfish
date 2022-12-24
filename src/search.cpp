@@ -787,7 +787,6 @@ namespace {
 
     // Step 9. Null move search with verification search (~35 Elo)
     if (   !PvNode
-        && (ss-1)->currentMove != MOVE_NULL
         && (ss-1)->statScore < 17139
         &&  eval >= beta
         &&  eval >= ss->staticEval
