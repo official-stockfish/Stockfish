@@ -1359,14 +1359,9 @@ moves_loop: // When in check, search starts here
     else if (   (depth >= 5 || PvNode || bestValue < alpha - 65 * depth)
              && !priorCapture)
     {
-        //Assign extra bonus if current node is PvNode or cutNode
-        //or fail low was really bad
-        bool extraBonus =    PvNode
-                          || cutNode;
-
-        bool doubleExtraBonus = extraBonus && bestValue < alpha - 88 * depth;
-
-        update_continuation_histories(ss-1, pos.piece_on(prevSq), prevSq, stat_bonus(depth) * (1 + extraBonus + doubleExtraBonus));
+        // Extra bonuses for PV/Cut nodes or bad fail lows
+        int bonus = 1 + (PvNode || cutNode) + (bestValue < alpha - 88 * depth);
+        update_continuation_histories(ss-1, pos.piece_on(prevSq), prevSq, stat_bonus(depth) * bonus);
     }
 
     if (PvNode)
