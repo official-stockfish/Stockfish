@@ -83,7 +83,7 @@ namespace Stockfish::Eval::NNUE {
   }  // namespace Detail
 
   // Initialize the evaluation function parameters
-  void initialize() {
+  static void initialize() {
 
     Detail::initialize(featureTransformer);
     for (std::size_t i = 0; i < LayerStacks; ++i)
@@ -91,7 +91,7 @@ namespace Stockfish::Eval::NNUE {
   }
 
   // Read network header
-  bool read_header(std::istream& stream, std::uint32_t* hashValue, std::string* desc)
+  static bool read_header(std::istream& stream, std::uint32_t* hashValue, std::string* desc)
   {
     std::uint32_t version, size;
 
@@ -105,7 +105,7 @@ namespace Stockfish::Eval::NNUE {
   }
 
   // Write network header
-  bool write_header(std::ostream& stream, std::uint32_t hashValue, const std::string& desc)
+  static bool write_header(std::ostream& stream, std::uint32_t hashValue, const std::string& desc)
   {
     write_little_endian<std::uint32_t>(stream, Version);
     write_little_endian<std::uint32_t>(stream, hashValue);
@@ -115,7 +115,7 @@ namespace Stockfish::Eval::NNUE {
   }
 
   // Read network parameters
-  bool read_parameters(std::istream& stream) {
+  static bool read_parameters(std::istream& stream) {
 
     std::uint32_t hashValue;
     if (!read_header(stream, &hashValue, &netDescription)) return false;
@@ -127,7 +127,7 @@ namespace Stockfish::Eval::NNUE {
   }
 
   // Write network parameters
-  bool write_parameters(std::ostream& stream) {
+  static bool write_parameters(std::ostream& stream) {
 
     if (!write_header(stream, HashValue, netDescription)) return false;
     if (!Detail::write_parameters(stream, *featureTransformer)) return false;
