@@ -22,6 +22,7 @@
 #include <sstream>
 #include <string>
 
+#include "benchmark.h"
 #include "evaluate.h"
 #include "movegen.h"
 #include "position.h"
@@ -35,8 +36,6 @@
 using namespace std;
 
 namespace Stockfish {
-
-vector<string> setup_bench(const Position&, istream&);
 
 namespace {
 
