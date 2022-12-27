@@ -1514,7 +1514,7 @@ int Tablebases::probe_dtz(Position& pos, ProbeState* result) {
 // A return value false indicates that not all probes were successful.
 bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves) {
 
-    ProbeState result;
+    ProbeState result = OK;
     StateInfo st;
 
     // Obtain 50-move counter for the root position
@@ -1593,7 +1593,7 @@ bool Tablebases::root_probe_wdl(Position& pos, Search::RootMoves& rootMoves) {
 
     static const int WDL_to_rank[] = { -MAX_DTZ, -MAX_DTZ + 101, 0, MAX_DTZ - 101, MAX_DTZ };
 
-    ProbeState result;
+    ProbeState result = OK;
     StateInfo st;
     WDLScore wdl;
 
