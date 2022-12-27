@@ -159,24 +159,24 @@ namespace Trace {
 
   Score scores[TERM_NB][COLOR_NB];
 
-  double to_cp(Value v) { return double(v) / UCI::NormalizeToPawnValue; }
+  static double to_cp(Value v) { return double(v) / UCI::NormalizeToPawnValue; }
 
-  void add(int idx, Color c, Score s) {
+  static void add(int idx, Color c, Score s) {
     scores[idx][c] = s;
   }
 
-  void add(int idx, Score w, Score b = SCORE_ZERO) {
+  static void add(int idx, Score w, Score b = SCORE_ZERO) {
     scores[idx][WHITE] = w;
     scores[idx][BLACK] = b;
   }
 
-  std::ostream& operator<<(std::ostream& os, Score s) {
+  static std::ostream& operator<<(std::ostream& os, Score s) {
     os << std::setw(5) << to_cp(mg_value(s)) << " "
        << std::setw(5) << to_cp(eg_value(s));
     return os;
   }
 
-  std::ostream& operator<<(std::ostream& os, Term t) {
+  static std::ostream& operator<<(std::ostream& os, Term t) {
 
     if (t == MATERIAL || t == IMBALANCE || t == WINNABLE || t == TOTAL)
         os << " ----  ----"    << " | " << " ----  ----";

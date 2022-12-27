@@ -517,7 +517,7 @@ void bindThisThread(size_t) {}
 /// API and returns the best node id for the thread with index idx. Original
 /// code from Texel by Peter Österlund.
 
-int best_node(size_t idx) {
+static int best_node(size_t idx) {
 
   int threads = 0;
   int nodes = 0;
