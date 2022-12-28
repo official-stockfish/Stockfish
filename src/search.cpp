@@ -276,10 +276,13 @@ void Thread::search() {
   int iterIdx = 0;
 
   std::memset(ss-7, 0, 10 * sizeof(Stack));
-  for (int i = 7; i > 0; i--)
+  for (int i = 7; i > 0; --i)
+  {
       (ss-i)->continuationHistory = &this->continuationHistory[0][0][NO_PIECE][0]; // Use as a sentinel
+      (ss-i)->staticEval = VALUE_NONE;
+  }
 
-  for (int i = 0; i <= MAX_PLY + 2; ++i)
+  for (int i = 1; i < MAX_PLY + 3; ++i)
       (ss+i)->ply = i;
 
   ss->pv = pv;
