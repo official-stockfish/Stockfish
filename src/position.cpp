@@ -191,6 +191,17 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
    6) Fullmove number. The number of the full move. It starts at 1, and is
       incremented after Black's move.
 */
+  
+
+  // 0. Make sure there is ony one king for each side
+  std::string fen2 = fenStr.substr(0, fenStr.find_first_of(' '));
+  int K = std::count(fen2.begin(), fen2.end(), 'K');
+  int k = std::count(fenStr.begin(), fenStr.end(), 'k');
+
+  if (K != 1 && k != 1) {
+    sync_cout << "info string invalid FEN (bad number of kings)" << sync_endl;
+    return *this;
+  };
 
   unsigned char col, row, token;
   size_t idx;
