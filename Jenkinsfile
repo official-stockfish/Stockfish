@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     stages {
-        stage('Hello') {
+        stage('Compile code') {
             steps {
          	sh '''
             	#!/bin/sh
