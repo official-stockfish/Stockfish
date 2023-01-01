@@ -80,9 +80,26 @@ T* align_ptr_up(T* ptr)
 }
 
 
-// IsLittleEndian : true if and only if the binary is compiled on a little endian machine
+// IsLittleEndian : true if and only if the binary is compiled for a little endian machine
+
+#if defined(__BYTE_ORDER__) && defined(__ORDER_LITTLE_ENDIAN__)
+
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+
+static constexpr bool IsLittleEndian = true;
+
+#else
+
+static constexpr bool IsLittleEndian = false;
+
+#endif
+
+#else
+
 static inline const union { uint32_t i; char c[4]; } Le = { 0x01020304 };
 static inline const bool IsLittleEndian = (Le.c[0] == 4);
+
+#endif
 
 
 // RunningAverage : a class to calculate a running average of a series of values.
