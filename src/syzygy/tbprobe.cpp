@@ -199,13 +199,10 @@ public:
         }
     }
 
-    // Memory map the file and check it. File should be already open and will be
-    // closed after mapping.
+    // Memory map the file and check it.
     uint8_t* map(void** baseAddress, uint64_t* mapping, TBType type) {
-
-        assert(is_open());
-
-        close(); // Need to re-open to get native file descriptor
+        if (is_open())
+            close(); // Need to re-open to get native file descriptor
 
 #ifndef _WIN32
         struct stat statbuf;
