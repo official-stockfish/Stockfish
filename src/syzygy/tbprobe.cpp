@@ -201,12 +201,8 @@ public:
 
     // Memory map the file and check it.
     uint8_t* map(void** baseAddress, uint64_t* mapping, TBType type) {
-        struct stat buffer; // Needed for file existence check
-
         if (is_open())
             close(); // Need to re-open to get native file descriptor
-        else if (!stat(fname.c_str(), &buffer) == 0)
-            return;
 
 #ifndef _WIN32
         struct stat statbuf;
