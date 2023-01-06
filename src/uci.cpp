@@ -160,7 +160,7 @@ namespace {
     uint64_t num, nodes = 0, cnt = 1;
 
     vector<string> list = setup_bench(pos, args);
-    num = count_if(list.begin(), list.end(), [](string s) { return s.find("go ") == 0 || s.find("eval") == 0; });
+    num = count_if(list.begin(), list.end(), [](const string& s) { return s.find("go ") == 0 || s.find("eval") == 0; });
 
     TimePoint elapsed = now();
 

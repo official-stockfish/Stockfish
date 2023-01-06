@@ -89,7 +89,7 @@ namespace Eval {
     vector<string> dirs = { "<internal>" , "" , CommandLine::binaryDirectory };
     #endif
 
-    for (string directory : dirs)
+    for (const string& directory : dirs)
         if (currentEvalFileName != eval_file)
         {
             if (directory != "<internal>")
