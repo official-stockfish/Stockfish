@@ -76,6 +76,7 @@ void Thread::start_searching() {
   {
       std::lock_guard<std::mutex> lk(mutex);
       searching = true;
+      // Unlock before notifying saves a few CPU-cycles
   }
   cv.notify_one(); // Wake up the thread in idle_loop()
 }
