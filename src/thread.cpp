@@ -73,9 +73,10 @@ void Thread::clear() {
 /// Thread::start_searching() wakes up the thread that will start the search
 
 void Thread::start_searching() {
-
-  std::lock_guard<std::mutex> lk(mutex);
-  searching = true;
+  {
+      std::lock_guard<std::mutex> lk(mutex);
+      searching = true;
+  }
   cv.notify_one(); // Wake up the thread in idle_loop()
 }
 
