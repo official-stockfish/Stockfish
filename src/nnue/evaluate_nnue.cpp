@@ -22,12 +22,10 @@
 #include <set>
 #include <sstream>
 #include <iomanip>
-#include <iomanip>
 #include <fstream>
 
 #include "../evaluate.h"
 #include "../position.h"
-#include "../misc.h"
 #include "../uci.h"
 #include "../types.h"
 
