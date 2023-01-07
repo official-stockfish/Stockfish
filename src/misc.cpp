@@ -41,12 +41,13 @@ typedef WORD(*fun5_t)();
 }
 #endif
 
+#include <cstdlib>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
+#include <string_view>
 #include <vector>
-#include <cstdlib>
 
 #if defined(__linux__) && !defined(__ANDROID__)
 #include <stdlib.h>
@@ -68,7 +69,7 @@ namespace Stockfish {
 namespace {
 
 /// Version number or dev.
-const string version = "dev";
+constexpr string_view version = "dev";
 
 /// Our fancy logging facility. The trick here is to replace cin.rdbuf() and
 /// cout.rdbuf() with two Tie objects that tie cin and cout to a file stream. We
@@ -151,13 +152,13 @@ string engine_info(bool to_uci) {
   stringstream ss;
   ss << "Stockfish " << version << setfill('0');
 
-  if (version == "dev")
+  if constexpr (version == "dev")
   {
       ss << "-";
       #ifdef GIT_DATE
       ss << GIT_DATE;
       #else
-      const string months("Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec");
+      constexpr string_view months("Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec");
       string month, day, year;
       stringstream date(__DATE__); // From compiler, format is "Sep 21 2008"
 
