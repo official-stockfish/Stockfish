@@ -1,8 +1,8 @@
-name: SFnpsArmWinBinariesUpload
+name: SFSnpsArmWinBinariesUpload
 on:
   workflow_dispatch:
 jobs:
-  SFnpsArmTest:
+  SFnpsArmWinBuilds:
     name: ${{ matrix.config.name }}
     runs-on: ${{ matrix.config.os }}
     env:
@@ -15,14 +15,14 @@ jobs:
             os: ubuntu-22.04
             compiler: aarch64-linux-android21-clang++
             comp: ndk
-            run_armv8_tests: true
+            run_armv8_build: true
             shell: bash {0}
             
           - name: Windows 2022 Mingw-w64 GCC x86_64
             os: windows-2022
             compiler: g++
             comp: mingw
-            run_win11_tests: true
+            run_win11_build: true
             msys_sys: mingw64
             msys_env: x86_64-gcc
             shell: msys2 {0}   
@@ -43,11 +43,16 @@ jobs:
           msystem: ${{ matrix.config.msys_sys }}
           install: mingw-w64-${{ matrix.config.msys_env }} make git
 
-      - name: Download the used network from the fishtest framework
-        run: make net
+      - name: Download the SMALL network from the fishtest framework
+        run: |
+            cp evaluateS.h evaluate.h
+            cd nnue
+            cp nnue_architectureS.h nnue_architecture.h
+            cd ..
+            make net
 
-      - name: Test armv8 build
-        if: ${{ matrix.config.run_armv8_tests }}
+      - name: armv8 build
+        if: ${{ matrix.config.run_armv8_build }}
         run: |
             export PATH=$ANDROID_NDK_HOME:$PATH
             export PATH=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH
@@ -57,45 +62,44 @@ jobs:
             cp Application_v8.mk Application.mk
             ndk-build
             cd ../libs/arm64-v8a
-            cp Stockfish ../../SFnps_armv8
+            cp Stockfish ../../SFSnps_armv8
            
       - uses: xresloader/upload-to-github-release@v1
-        if: ${{ matrix.config.run_armv8_tests }}
+        if: ${{ matrix.config.run_armv8_build }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           overwrite: true
-          file: "SFnps_armv8" 
+          file: "SFSnps_armv8" 
           update_latest_release: true
               
       - uses: actions/upload-artifact@v3
-        if: ${{ matrix.config.run_armv8_tests }}
+        if: ${{ matrix.config.run_armv8_build }}
         with:
-          name: SFnps-armv8
-          path: SFnps_armv8
-          #path: /home/runner/work/StockfishNPS/StockfishNPS/SFnps_armv8
+          name: SFSnps-armv8
+          path: SFSnps_armv8
        
       - name: win11 build
-        if: ${{ matrix.config.run_win11_tests }}
+        if: ${{ matrix.config.run_win11_build }}
         run: |
           make clean
           make -j profile-build ARCH=x86-64-modern COMP=$COMP
           make strip ARCH=x86-64-modern COMP=$COMP
-          cp stockfish.exe ../SFnps_modern.exe
+          cp stockfish.exe ../SFSnps_modern.exe
         
       - uses: xresloader/upload-to-github-release@v1
-        if: ${{ matrix.config.run_win11_tests }}
+        if: ${{ matrix.config.run_win11_build }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           overwrite: true
-          file: "SFnps_modern.exe"
+          file: "SFSnps_modern.exe"
           update_latest_release: true
         
       - uses: actions/upload-artifact@v3
-        if: ${{ matrix.config.run_win11_tests }}
+        if: ${{ matrix.config.run_win11_build }}
         with:
-          name: SFnps-modern
-          path: SFnps_modern.exe
-          #path: D:\a\StockfishNPS\StockfishNPS\SFnps_modern.exe   
+          name: SFSnps-modern
+          path: SFSnps_modern.exe
+
           
