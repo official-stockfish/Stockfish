@@ -187,7 +187,7 @@ void ThreadPool::start_thinking(Position& pos, StateListPtr& states,
       Tablebases::rank_root_moves(pos, rootMoves);
 
   // After ownership transfer 'states' becomes empty, so if we stop the search
-  // and call 'go' again without setting a new position states.get() == NULL.
+  // and call 'go' again without setting a new position states.get() == nullptr.
   assert(states.get() || setupStates.get());
 
   if (states.get())
