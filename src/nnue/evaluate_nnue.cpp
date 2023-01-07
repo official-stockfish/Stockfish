@@ -26,7 +26,6 @@
 
 #include "../evaluate.h"
 #include "../position.h"
-#include "../misc.h"
 #include "../uci.h"
 #include "../types.h"
 
@@ -245,14 +244,15 @@ namespace Stockfish::Eval::NNUE {
   }
 
 
-  // format_cp_aligned_dot() converts a Value into (centi)pawns and writes it in a buffer,
-  // always keeping two decimals. The buffer must have capacity for at least 7 chars.
-  static void format_cp_aligned_dot(Value v, char* buffer) {
+  // format_cp_aligned_dot() converts a Value into (centi)pawns, always keeping two decimals.
+  static void format_cp_aligned_dot(Value v, std::stringstream &stream) {
+    const double cp = 1.0 * std::abs(int(v)) / UCI::NormalizeToPawnValue;
 
-    buffer[0] = (v < 0 ? '-' : v > 0 ? '+' : ' ');
-
-    double cp = 1.0 * std::abs(int(v)) / UCI::NormalizeToPawnValue;
-    sprintf(&buffer[1], "%6.2f", cp);
+    stream << (v < 0 ? '-' : v > 0 ? '+' : ' ')
+           << std::setiosflags(std::ios::fixed)
+           << std::setw(6)
+           << std::setprecision(2)
+           << cp;
   }
 
 
@@ -332,17 +332,10 @@ namespace Stockfish::Eval::NNUE {
 
     for (std::size_t bucket = 0; bucket < LayerStacks; ++bucket)
     {
-      char buffer[3][8];
-      std::memset(buffer, '\0', sizeof(buffer));
-
-      format_cp_aligned_dot(t.psqt[bucket], buffer[0]);
-      format_cp_aligned_dot(t.positional[bucket], buffer[1]);
-      format_cp_aligned_dot(t.psqt[bucket] + t.positional[bucket], buffer[2]);
-
-      ss <<  "|  " << bucket    << "        "
-         << " |  " << buffer[0] << "  "
-         << " |  " << buffer[1] << "  "
-         << " |  " << buffer[2] << "  "
+      ss <<  "|  " << bucket    << "        ";
+      ss << " |  "; format_cp_aligned_dot(t.psqt[bucket], ss); ss << "  "
+         << " |  "; format_cp_aligned_dot(t.positional[bucket], ss); ss << "  "
+         << " |  "; format_cp_aligned_dot(t.psqt[bucket] + t.positional[bucket], ss); ss << "  "
          << " |";
       if (bucket == t.correctBucket)
           ss << " <-- this bucket is used";
