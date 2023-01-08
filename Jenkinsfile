@@ -5,8 +5,12 @@ pipeline {
         stage('Compile code') {
             steps {
          	sh '''
-            	#!/bin/sh
-		cd src
+
+asdf
+asdf
+asdfasdf
+
+
     		make help
     		make net
     		make build ARCH=x86-64-modern
@@ -15,5 +19,8 @@ pipeline {
         }
     }
 }
+
+
+//hello
 
 
