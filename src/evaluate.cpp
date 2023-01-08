@@ -66,6 +66,7 @@ namespace Eval {
   bool useNNUE;
   string currentEvalFileName = "None";
 
+  bool pureNNUE;
   int NNUE::RandomEvalPerturb = 0;
   int NNUE::waitms = 0;
 
@@ -79,6 +80,7 @@ namespace Eval {
 
   void NNUE::init() {
 
+    pureNNUE = Options["Pure NNUE"];
     useNNUE = Options["Use NNUE"];
     if (!useNNUE)
         return;
@@ -1062,7 +1064,7 @@ Value Eval::evaluate(const Position& pos, int* complexity) {
   // We use the much less accurate but faster Classical eval when the NNUE
   // option is set to false. Otherwise we use the NNUE eval unless the
   // PSQ advantage is decisive and several pieces remain. (~3 Elo)
-  bool useClassical = !useNNUE || (pos.count<ALL_PIECES>() > 7 && abs(psq) > 1781);
+  bool useClassical = !pureNNUE && !useNNUE || (pos.count<ALL_PIECES>() > 7 && abs(psq) > 1781);
 
   if (useClassical)
       v = Evaluation<NO_TRACE>(pos).value();
