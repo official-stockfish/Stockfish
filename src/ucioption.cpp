@@ -46,6 +46,7 @@ void on_waitms(const Option& o) { Eval::NNUE::waitms = o; }
 void on_eval_perturb(const Option& o) { Eval::NNUE::RandomEvalPerturb = o; }
 void on_tb_path(const Option& o) { Tablebases::init(o); }
 void on_use_NNUE(const Option& ) { Eval::NNUE::init(); }
+void on_pure_NNUE(const Option& ) { Eval::NNUE::init(); }
 void on_eval_file(const Option& ) { Eval::NNUE::init(); }
 
 /// Our case insensitive less() function as required by UCI protocol
@@ -86,6 +87,7 @@ void init(OptionsMap& o) {
   o["Syzygy50MoveRule"]      << Option(true);
   o["SyzygyProbeLimit"]      << Option(7, 0, 7);
   o["Use NNUE"]              << Option(true, on_use_NNUE);
+  o["Pure NNUE"]             << Option(false, on_pure_NNUE);
   o["EvalFile"]              << Option(EvalFileDefaultName, on_eval_file);
 }
 
