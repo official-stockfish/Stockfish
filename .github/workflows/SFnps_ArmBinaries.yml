@@ -1,4 +1,4 @@
-name: Stockfish
+name: SFnpsArmBinaries
 on:
   workflow_dispatch:
   workflow_call:
