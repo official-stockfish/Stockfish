@@ -21,7 +21,7 @@
 
 ### Establish the operating system name
 KERNEL = $(shell uname -s)
-ifeq ($(KERNEL),Linux)
+ifeq ($(KERNEL), Linux)
 	OS = $(shell uname -o)
 endif
 

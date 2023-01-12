@@ -25,91 +25,96 @@
 #include "movepick.h"
 #include "types.h"
 
-namespace Stockfish {
+namespace Stockfish
+{
 
-class Position;
+  class Position;
 
-namespace Search {
+  namespace Search
+  {
 
+    /// Stack struct keeps track of the information we need to remember from nodes
+    /// shallower and deeper in the tree during the search. Each search thread has
+    /// its own array of Stack objects, indexed by the current ply.
 
-/// Stack struct keeps track of the information we need to remember from nodes
-/// shallower and deeper in the tree during the search. Each search thread has
-/// its own array of Stack objects, indexed by the current ply.
+    struct Stack
+    {
+      Move *pv;
+      PieceToHistory *continuationHistory;
+      int ply;
+      Move currentMove;
+      Move excludedMove;
+      Move killers[2];
+      Value staticEval;
+      int statScore;
+      int moveCount;
+      bool inCheck;
+      bool ttPv;
+      bool ttHit;
+      int doubleExtensions;
+      int cutoffCnt;
+    };
 
-struct Stack {
-  Move* pv;
-  PieceToHistory* continuationHistory;
-  int ply;
-  Move currentMove;
-  Move excludedMove;
-  Move killers[2];
-  Value staticEval;
-  int statScore;
-  int moveCount;
-  bool inCheck;
-  bool ttPv;
-  bool ttHit;
-  int doubleExtensions;
-  int cutoffCnt;
-};
+    /// RootMove struct is used for moves at the root of the tree. For each root move
+    /// we store a score and a PV (really a refutation in the case of moves which
+    /// fail low). Score is normally set at -VALUE_INFINITE for all non-pv moves.
 
+    struct RootMove
+    {
 
-/// RootMove struct is used for moves at the root of the tree. For each root move
-/// we store a score and a PV (really a refutation in the case of moves which
-/// fail low). Score is normally set at -VALUE_INFINITE for all non-pv moves.
+      explicit RootMove(Move m) : pv(1, m) {}
+      bool extract_ponder_from_tt(Position &pos);
+      bool operator==(const Move &m) const { return pv[0] == m; }
+      bool operator<(const RootMove &m) const
+      { // Sort in descending order
+        return m.score != score ? m.score < score
+                                : m.previousScore < previousScore;
+      }
 
-struct RootMove {
+      Value score = -VALUE_INFINITE;
+      Value previousScore = -VALUE_INFINITE;
+      Value averageScore = -VALUE_INFINITE;
+      Value uciScore = -VALUE_INFINITE;
+      bool scoreLowerbound = false;
+      bool scoreUpperbound = false;
+      int selDepth = 0;
+      int tbRank = 0;
+      Value tbScore;
+      std::vector<Move> pv;
+    };
 
-  explicit RootMove(Move m) : pv(1, m) {}
-  bool extract_ponder_from_tt(Position& pos);
-  bool operator==(const Move& m) const { return pv[0] == m; }
-  bool operator<(const RootMove& m) const { // Sort in descending order
-    return m.score != score ? m.score < score
-                            : m.previousScore < previousScore;
-  }
+    typedef std::vector<RootMove> RootMoves;
 
-  Value score = -VALUE_INFINITE;
-  Value previousScore = -VALUE_INFINITE;
-  Value averageScore = -VALUE_INFINITE;
-  Value uciScore = -VALUE_INFINITE;
-  bool scoreLowerbound = false;
-  bool scoreUpperbound = false;
-  int selDepth = 0;
-  int tbRank = 0;
-  Value tbScore;
-  std::vector<Move> pv;
-};
+    /// LimitsType struct stores information sent by GUI about available time to
+    /// search the current move, maximum depth/time, or if we are in analysis mode.
 
-typedef std::vector<RootMove> RootMoves;
+    struct LimitsType
+    {
 
+      LimitsType()
+      { // Init explicitly due to broken value-initialization of non POD in MSVC
+        time[WHITE] = time[BLACK] = inc[WHITE] = inc[BLACK] = npmsec = movetime = TimePoint(0);
+        movestogo = depth = mate = perft = infinite = 0;
+        nodes = 0;
+      }
 
-/// LimitsType struct stores information sent by GUI about available time to
-/// search the current move, maximum depth/time, or if we are in analysis mode.
+      bool use_time_management() const
+      {
+        return time[WHITE] || time[BLACK];
+      }
 
-struct LimitsType {
+      std::vector<Move> searchmoves;
+      TimePoint time[COLOR_NB], inc[COLOR_NB], npmsec, movetime, startTime;
+      int movestogo, depth, mate, perft, infinite;
+      int64_t nodes;
+    };
 
-  LimitsType() { // Init explicitly due to broken value-initialization of non POD in MSVC
-    time[WHITE] = time[BLACK] = inc[WHITE] = inc[BLACK] = npmsec = movetime = TimePoint(0);
-    movestogo = depth = mate = perft = infinite = 0;
-    nodes = 0;
-  }
+    extern LimitsType Limits;
 
-  bool use_time_management() const {
-    return time[WHITE] || time[BLACK];
-  }
+    void init();
+    void clear();
 
-  std::vector<Move> searchmoves;
-  TimePoint time[COLOR_NB], inc[COLOR_NB], npmsec, movetime, startTime;
-  int movestogo, depth, mate, perft, infinite;
-  int64_t nodes;
-};
-
-extern LimitsType Limits;
-
-void init();
-void clear();
-
-} // namespace Search
+  } // namespace Search
 
 } // namespace Stockfish
 

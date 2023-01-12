@@ -30,7 +30,8 @@
 
 using namespace Stockfish;
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[])
+{
 
   std::cout << engine_info() << std::endl;
 

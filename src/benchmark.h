@@ -23,11 +23,12 @@
 #include <string>
 #include <vector>
 
-namespace Stockfish {
+namespace Stockfish
+{
 
-class Position;
+  class Position;
 
-std::vector<std::string> setup_bench(const Position&, std::istream&);
+  std::vector<std::string> setup_bench(const Position &, std::istream &);
 
 } // namespace Stockfish
 

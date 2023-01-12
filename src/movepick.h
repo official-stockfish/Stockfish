@@ -27,130 +27,149 @@
 #include "position.h"
 #include "types.h"
 
-namespace Stockfish {
-
-/// StatsEntry stores the stat table value. It is usually a number but could
-/// be a move or even a nested history. We use a class instead of naked value
-/// to directly call history update operator<<() on the entry so to use stats
-/// tables at caller sites as simple multi-dim arrays.
-template<typename T, int D>
-class StatsEntry {
-
-  T entry;
-
-public:
-  void operator=(const T& v) { entry = v; }
-  T* operator&() { return &entry; }
-  T* operator->() { return &entry; }
-  operator const T&() const { return entry; }
-
-  void operator<<(int bonus) {
-    assert(abs(bonus) <= D); // Ensure range is [-D, D]
-    static_assert(D <= std::numeric_limits<T>::max(), "D overflows T");
-
-    entry += bonus - entry * abs(bonus) / D;
-
-    assert(abs(entry) <= D);
-  }
-};
-
-/// Stats is a generic N-dimensional array used to store various statistics.
-/// The first template parameter T is the base type of the array, the second
-/// template parameter D limits the range of updates in [-D, D] when we update
-/// values with the << operator, while the last parameters (Size and Sizes)
-/// encode the dimensions of the array.
-template <typename T, int D, int Size, int... Sizes>
-struct Stats : public std::array<Stats<T, D, Sizes...>, Size>
+namespace Stockfish
 {
-  typedef Stats<T, D, Size, Sizes...> stats;
 
-  void fill(const T& v) {
+  /// StatsEntry stores the stat table value. It is usually a number but could
+  /// be a move or even a nested history. We use a class instead of naked value
+  /// to directly call history update operator<<() on the entry so to use stats
+  /// tables at caller sites as simple multi-dim arrays.
+  template <typename T, int D>
+  class StatsEntry
+  {
 
-    // For standard-layout 'this' points to first struct member
-    assert(std::is_standard_layout<stats>::value);
+    T entry;
 
-    typedef StatsEntry<T, D> entry;
-    entry* p = reinterpret_cast<entry*>(this);
-    std::fill(p, p + sizeof(*this) / sizeof(entry), v);
-  }
-};
+  public:
+    void operator=(const T &v) { entry = v; }
+    T *operator&() { return &entry; }
+    T *operator->() { return &entry; }
+    operator const T &() const { return entry; }
 
-template <typename T, int D, int Size>
-struct Stats<T, D, Size> : public std::array<StatsEntry<T, D>, Size> {};
+    void operator<<(int bonus)
+    {
+      assert(abs(bonus) <= D); // Ensure range is [-D, D]
+      static_assert(D <= std::numeric_limits<T>::max(), "D overflows T");
 
-/// In stats table, D=0 means that the template parameter is not used
-enum StatsParams { NOT_USED = 0 };
-enum StatsType { NoCaptures, Captures };
+      entry += bonus - entry * abs(bonus) / D;
 
-/// ButterflyHistory records how often quiet moves have been successful or
-/// unsuccessful during the current search, and is used for reduction and move
-/// ordering decisions. It uses 2 tables (one for each color) indexed by
-/// the move's from and to squares, see www.chessprogramming.org/Butterfly_Boards
-/// (~11 elo)
-typedef Stats<int16_t, 7183, COLOR_NB, int(SQUARE_NB) * int(SQUARE_NB)> ButterflyHistory;
+      assert(abs(entry) <= D);
+    }
+  };
 
-/// CounterMoveHistory stores counter moves indexed by [piece][to] of the previous
-/// move, see www.chessprogramming.org/Countermove_Heuristic
-typedef Stats<Move, NOT_USED, PIECE_NB, SQUARE_NB> CounterMoveHistory;
+  /// Stats is a generic N-dimensional array used to store various statistics.
+  /// The first template parameter T is the base type of the array, the second
+  /// template parameter D limits the range of updates in [-D, D] when we update
+  /// values with the << operator, while the last parameters (Size and Sizes)
+  /// encode the dimensions of the array.
+  template <typename T, int D, int Size, int... Sizes>
+  struct Stats : public std::array<Stats<T, D, Sizes...>, Size>
+  {
+    typedef Stats<T, D, Size, Sizes...> stats;
 
-/// CapturePieceToHistory is addressed by a move's [piece][to][captured piece type]
-typedef Stats<int16_t, 10692, PIECE_NB, SQUARE_NB, PIECE_TYPE_NB> CapturePieceToHistory;
+    void fill(const T &v)
+    {
 
-/// PieceToHistory is like ButterflyHistory but is addressed by a move's [piece][to]
-typedef Stats<int16_t, 29952, PIECE_NB, SQUARE_NB> PieceToHistory;
+      // For standard-layout 'this' points to first struct member
+      assert(std::is_standard_layout<stats>::value);
 
-/// ContinuationHistory is the combined history of a given pair of moves, usually
-/// the current one given a previous one. The nested history table is based on
-/// PieceToHistory instead of ButterflyBoards.
-/// (~63 elo)
-typedef Stats<PieceToHistory, NOT_USED, PIECE_NB, SQUARE_NB> ContinuationHistory;
+      typedef StatsEntry<T, D> entry;
+      entry *p = reinterpret_cast<entry *>(this);
+      std::fill(p, p + sizeof(*this) / sizeof(entry), v);
+    }
+  };
 
+  template <typename T, int D, int Size>
+  struct Stats<T, D, Size> : public std::array<StatsEntry<T, D>, Size>
+  {
+  };
 
-/// MovePicker class is used to pick one pseudo-legal move at a time from the
-/// current position. The most important method is next_move(), which returns a
-/// new pseudo-legal move each time it is called, until there are no moves left,
-/// when MOVE_NONE is returned. In order to improve the efficiency of the
-/// alpha-beta algorithm, MovePicker attempts to return the moves which are most
-/// likely to get a cut-off first.
-class MovePicker {
+  /// In stats table, D=0 means that the template parameter is not used
+  enum StatsParams
+  {
+    NOT_USED = 0
+  };
+  enum StatsType
+  {
+    NoCaptures,
+    Captures
+  };
 
-  enum PickType { Next, Best };
+  /// ButterflyHistory records how often quiet moves have been successful or
+  /// unsuccessful during the current search, and is used for reduction and move
+  /// ordering decisions. It uses 2 tables (one for each color) indexed by
+  /// the move's from and to squares, see www.chessprogramming.org/Butterfly_Boards
+  /// (~11 elo)
+  typedef Stats<int16_t, 7183, COLOR_NB, int(SQUARE_NB) * int(SQUARE_NB)> ButterflyHistory;
 
-public:
-  MovePicker(const MovePicker&) = delete;
-  MovePicker& operator=(const MovePicker&) = delete;
-  MovePicker(const Position&, Move, Depth, const ButterflyHistory*,
-                                           const CapturePieceToHistory*,
-                                           const PieceToHistory**,
-                                           Move,
-                                           const Move*);
-  MovePicker(const Position&, Move, Depth, const ButterflyHistory*,
-                                           const CapturePieceToHistory*,
-                                           const PieceToHistory**,
-                                           Square);
-  MovePicker(const Position&, Move, Value, const CapturePieceToHistory*);
-  Move next_move(bool skipQuiets = false);
+  /// CounterMoveHistory stores counter moves indexed by [piece][to] of the previous
+  /// move, see www.chessprogramming.org/Countermove_Heuristic
+  typedef Stats<Move, NOT_USED, PIECE_NB, SQUARE_NB> CounterMoveHistory;
 
-  Bitboard threatenedPieces;
+  /// CapturePieceToHistory is addressed by a move's [piece][to][captured piece type]
+  typedef Stats<int16_t, 10692, PIECE_NB, SQUARE_NB, PIECE_TYPE_NB> CapturePieceToHistory;
 
-private:
-  template<PickType T, typename Pred> Move select(Pred);
-  template<GenType> void score();
-  ExtMove* begin() { return cur; }
-  ExtMove* end() { return endMoves; }
+  /// PieceToHistory is like ButterflyHistory but is addressed by a move's [piece][to]
+  typedef Stats<int16_t, 29952, PIECE_NB, SQUARE_NB> PieceToHistory;
 
-  const Position& pos;
-  const ButterflyHistory* mainHistory;
-  const CapturePieceToHistory* captureHistory;
-  const PieceToHistory** continuationHistory;
-  Move ttMove;
-  ExtMove refutations[3], *cur, *endMoves, *endBadCaptures;
-  int stage;
-  Square recaptureSquare;
-  Value threshold;
-  Depth depth;
-  ExtMove moves[MAX_MOVES];
-};
+  /// ContinuationHistory is the combined history of a given pair of moves, usually
+  /// the current one given a previous one. The nested history table is based on
+  /// PieceToHistory instead of ButterflyBoards.
+  /// (~63 elo)
+  typedef Stats<PieceToHistory, NOT_USED, PIECE_NB, SQUARE_NB> ContinuationHistory;
+
+  /// MovePicker class is used to pick one pseudo-legal move at a time from the
+  /// current position. The most important method is next_move(), which returns a
+  /// new pseudo-legal move each time it is called, until there are no moves left,
+  /// when MOVE_NONE is returned. In order to improve the efficiency of the
+  /// alpha-beta algorithm, MovePicker attempts to return the moves which are most
+  /// likely to get a cut-off first.
+  class MovePicker
+  {
+
+    enum PickType
+    {
+      Next,
+      Best
+    };
+
+  public:
+    MovePicker(const MovePicker &) = delete;
+    MovePicker &operator=(const MovePicker &) = delete;
+    MovePicker(const Position &, Move, Depth, const ButterflyHistory *,
+               const CapturePieceToHistory *,
+               const PieceToHistory **,
+               Move,
+               const Move *);
+    MovePicker(const Position &, Move, Depth, const ButterflyHistory *,
+               const CapturePieceToHistory *,
+               const PieceToHistory **,
+               Square);
+    MovePicker(const Position &, Move, Value, const CapturePieceToHistory *);
+    Move next_move(bool skipQuiets = false);
+
+    Bitboard threatenedPieces;
+
+  private:
+    template <PickType T, typename Pred>
+    Move select(Pred);
+    template <GenType>
+    void score();
+    ExtMove *begin() { return cur; }
+    ExtMove *end() { return endMoves; }
+
+    const Position &pos;
+    const ButterflyHistory *mainHistory;
+    const CapturePieceToHistory *captureHistory;
+    const PieceToHistory **continuationHistory;
+    Move ttMove;
+    ExtMove refutations[3], *cur, *endMoves, *endBadCaptures;
+    int stage;
+    Square recaptureSquare;
+    Value threshold;
+    Depth depth;
+    ExtMove moves[MAX_MOVES];
+  };
 
 } // namespace Stockfish
 

@@ -18,7 +18,7 @@
 
 #ifdef _WIN32
 #if _WIN32_WINNT < 0x0601
-#undef  _WIN32_WINNT
+#undef _WIN32_WINNT
 #define _WIN32_WINNT 0x0601 // Force to include needed API prototypes
 #endif
 
@@ -31,13 +31,14 @@
 // versions, so instead of calling them directly (forcing the linker to resolve
 // the calls at compile time), try to load them at runtime. To do this we need
 // first to define the corresponding function pointers.
-extern "C" {
-typedef bool(*fun1_t)(LOGICAL_PROCESSOR_RELATIONSHIP,
-                      PSYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX, PDWORD);
-typedef bool(*fun2_t)(USHORT, PGROUP_AFFINITY);
-typedef bool(*fun3_t)(HANDLE, CONST GROUP_AFFINITY*, PGROUP_AFFINITY);
-typedef bool(*fun4_t)(USHORT, PGROUP_AFFINITY, USHORT, PUSHORT);
-typedef WORD(*fun5_t)();
+extern "C"
+{
+  typedef bool (*fun1_t)(LOGICAL_PROCESSOR_RELATIONSHIP,
+                         PSYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX, PDWORD);
+  typedef bool (*fun2_t)(USHORT, PGROUP_AFFINITY);
+  typedef bool (*fun3_t)(HANDLE, CONST GROUP_AFFINITY *, PGROUP_AFFINITY);
+  typedef bool (*fun4_t)(USHORT, PGROUP_AFFINITY, USHORT, PUSHORT);
+  typedef WORD (*fun5_t)();
 }
 #endif
 
@@ -64,360 +65,382 @@ typedef WORD(*fun5_t)();
 
 using namespace std;
 
-namespace Stockfish {
+namespace Stockfish
+{
 
-namespace {
+  namespace
+  {
 
-/// Version number or dev.
-constexpr string_view version = "dev";
+    /// Version number or dev.
+    constexpr string_view version = "dev";
 
-/// Our fancy logging facility. The trick here is to replace cin.rdbuf() and
-/// cout.rdbuf() with two Tie objects that tie cin and cout to a file stream. We
-/// can toggle the logging of std::cout and std:cin at runtime whilst preserving
-/// usual I/O functionality, all without changing a single line of code!
-/// Idea from http://groups.google.com/group/comp.lang.c++/msg/1d941c0f26ea0d81
+    /// Our fancy logging facility. The trick here is to replace cin.rdbuf() and
+    /// cout.rdbuf() with two Tie objects that tie cin and cout to a file stream. We
+    /// can toggle the logging of std::cout and std:cin at runtime whilst preserving
+    /// usual I/O functionality, all without changing a single line of code!
+    /// Idea from http://groups.google.com/group/comp.lang.c++/msg/1d941c0f26ea0d81
 
-struct Tie: public streambuf { // MSVC requires split streambuf for cin and cout
+    struct Tie : public streambuf
+    { // MSVC requires split streambuf for cin and cout
 
-  Tie(streambuf* b, streambuf* l) : buf(b), logBuf(l) {}
+      Tie(streambuf *b, streambuf *l) : buf(b), logBuf(l) {}
 
-  int sync() override { return logBuf->pubsync(), buf->pubsync(); }
-  int overflow(int c) override { return log(buf->sputc((char)c), "<< "); }
-  int underflow() override { return buf->sgetc(); }
-  int uflow() override { return log(buf->sbumpc(), ">> "); }
+      int sync() override { return logBuf->pubsync(), buf->pubsync(); }
+      int overflow(int c) override { return log(buf->sputc((char)c), "<< "); }
+      int underflow() override { return buf->sgetc(); }
+      int uflow() override { return log(buf->sbumpc(), ">> "); }
 
-  streambuf *buf, *logBuf;
+      streambuf *buf, *logBuf;
 
-  int log(int c, const char* prefix) {
+      int log(int c, const char *prefix)
+      {
 
-    static int last = '\n'; // Single log file
+        static int last = '\n'; // Single log file
 
-    if (last == '\n')
-        logBuf->sputn(prefix, 3);
+        if (last == '\n')
+          logBuf->sputn(prefix, 3);
 
-    return last = logBuf->sputc((char)c);
-  }
-};
+        return last = logBuf->sputc((char)c);
+      }
+    };
 
-class Logger {
-
-  Logger() : in(cin.rdbuf(), file.rdbuf()), out(cout.rdbuf(), file.rdbuf()) {}
- ~Logger() { start(""); }
-
-  ofstream file;
-  Tie in, out;
-
-public:
-  static void start(const std::string& fname) {
-
-    static Logger l;
-
-    if (l.file.is_open())
+    class Logger
     {
-        cout.rdbuf(l.out.buf);
-        cin.rdbuf(l.in.buf);
-        l.file.close();
-    }
 
-    if (!fname.empty())
-    {
-        l.file.open(fname, ifstream::out);
+      Logger() : in(cin.rdbuf(), file.rdbuf()), out(cout.rdbuf(), file.rdbuf()) {}
+      ~Logger() { start(""); }
 
-        if (!l.file.is_open())
+      ofstream file;
+      Tie in, out;
+
+    public:
+      static void start(const std::string &fname)
+      {
+
+        static Logger l;
+
+        if (l.file.is_open())
         {
-            cerr << "Unable to open debug log file " << fname << endl;
-            exit(EXIT_FAILURE);
+          cout.rdbuf(l.out.buf);
+          cin.rdbuf(l.in.buf);
+          l.file.close();
         }
 
-        cin.rdbuf(&l.in);
-        cout.rdbuf(&l.out);
-    }
-  }
-};
+        if (!fname.empty())
+        {
+          l.file.open(fname, ifstream::out);
 
-} // namespace
+          if (!l.file.is_open())
+          {
+            cerr << "Unable to open debug log file " << fname << endl;
+            exit(EXIT_FAILURE);
+          }
 
+          cin.rdbuf(&l.in);
+          cout.rdbuf(&l.out);
+        }
+      }
+    };
 
-/// engine_info() returns the full name of the current Stockfish version.
-/// For local dev compiles we try to append the commit sha and commit date
-/// from git if that fails only the local compilation date is set and "nogit" is specified:
-/// Stockfish dev-YYYYMMDD-SHA
-/// or
-/// Stockfish dev-YYYYMMDD-nogit
-///
-/// For releases (non dev builds) we only include the version number:
-/// Stockfish version
+  } // namespace
 
-string engine_info(bool to_uci) {
-  stringstream ss;
-  ss << "Stockfish " << version << setfill('0');
+  /// engine_info() returns the full name of the current Stockfish version.
+  /// For local dev compiles we try to append the commit sha and commit date
+  /// from git if that fails only the local compilation date is set and "nogit" is specified:
+  /// Stockfish dev-YYYYMMDD-SHA
+  /// or
+  /// Stockfish dev-YYYYMMDD-nogit
+  ///
+  /// For releases (non dev builds) we only include the version number:
+  /// Stockfish version
 
-  if constexpr (version == "dev")
+  string engine_info(bool to_uci)
   {
+    stringstream ss;
+    ss << "Stockfish " << version << setfill('0');
+
+    if constexpr (version == "dev")
+    {
       ss << "-";
-      #ifdef GIT_DATE
+#ifdef GIT_DATE
       ss << GIT_DATE;
-      #else
+#else
       constexpr string_view months("Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec");
       string month, day, year;
       stringstream date(__DATE__); // From compiler, format is "Sep 21 2008"
 
       date >> month >> day >> year;
       ss << year << setw(2) << setfill('0') << (1 + months.find(month) / 4) << setw(2) << setfill('0') << day;
-      #endif
+#endif
 
       ss << "-";
 
-      #ifdef GIT_SHA
+#ifdef GIT_SHA
       ss << GIT_SHA;
-      #else
+#else
       ss << "nogit";
-      #endif
+#endif
+    }
+
+    ss << (to_uci ? "\nid author " : " by ")
+       << "the Stockfish developers (see AUTHORS file)";
+
+    return ss.str();
   }
 
-  ss << (to_uci  ? "\nid author ": " by ")
-     << "the Stockfish developers (see AUTHORS file)";
+  /// compiler_info() returns a string trying to describe the compiler we use
 
-  return ss.str();
-}
+  std::string compiler_info()
+  {
 
+#define stringify2(x) #x
+#define stringify(x) stringify2(x)
+#define make_version_string(major, minor, patch) stringify(major) "." stringify(minor) "." stringify(patch)
 
-/// compiler_info() returns a string trying to describe the compiler we use
+    /// Predefined macros hell:
+    ///
+    /// __GNUC__           Compiler is gcc, Clang or Intel on Linux
+    /// __INTEL_COMPILER   Compiler is Intel
+    /// _MSC_VER           Compiler is MSVC or Intel on Windows
+    /// _WIN32             Building on Windows (any)
+    /// _WIN64             Building on Windows 64 bit
 
-std::string compiler_info() {
+    std::string compiler = "\nCompiled by ";
 
-  #define stringify2(x) #x
-  #define stringify(x) stringify2(x)
-  #define make_version_string(major, minor, patch) stringify(major) "." stringify(minor) "." stringify(patch)
+#ifdef __clang__
+    compiler += "clang++ ";
+    compiler += make_version_string(__clang_major__, __clang_minor__, __clang_patchlevel__);
+#elif __INTEL_COMPILER
+    compiler += "Intel compiler ";
+    compiler += "(version ";
+    compiler += stringify(__INTEL_COMPILER) " update " stringify(__INTEL_COMPILER_UPDATE);
+    compiler += ")";
+#elif _MSC_VER
+    compiler += "MSVC ";
+    compiler += "(version ";
+    compiler += stringify(_MSC_FULL_VER) "." stringify(_MSC_BUILD);
+    compiler += ")";
+#elif defined(__e2k__) && defined(__LCC__)
+#define dot_ver2(n)                   \
+  compiler += (char)'.';              \
+  compiler += (char)('0' + (n) / 10); \
+  compiler += (char)('0' + (n) % 10);
 
-/// Predefined macros hell:
-///
-/// __GNUC__           Compiler is gcc, Clang or Intel on Linux
-/// __INTEL_COMPILER   Compiler is Intel
-/// _MSC_VER           Compiler is MSVC or Intel on Windows
-/// _WIN32             Building on Windows (any)
-/// _WIN64             Building on Windows 64 bit
+    compiler += "MCST LCC ";
+    compiler += "(version ";
+    compiler += std::to_string(__LCC__ / 100);
+    dot_ver2(__LCC__ % 100)
+        dot_ver2(__LCC_MINOR__)
+            compiler += ")";
+#elif __GNUC__
+    compiler += "g++ (GNUC) ";
+    compiler += make_version_string(__GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
+#else
+    compiler += "Unknown compiler ";
+    compiler += "(unknown version)";
+#endif
 
-  std::string compiler = "\nCompiled by ";
+#if defined(__APPLE__)
+    compiler += " on Apple";
+#elif defined(__CYGWIN__)
+    compiler += " on Cygwin";
+#elif defined(__MINGW64__)
+    compiler += " on MinGW64";
+#elif defined(__MINGW32__)
+    compiler += " on MinGW32";
+#elif defined(__ANDROID__)
+    compiler += " on Android";
+#elif defined(__linux__)
+    compiler += " on Linux";
+#elif defined(_WIN64)
+    compiler += " on Microsoft Windows 64-bit";
+#elif defined(_WIN32)
+    compiler += " on Microsoft Windows 32-bit";
+#else
+    compiler += " on unknown system";
+#endif
 
-  #ifdef __clang__
-     compiler += "clang++ ";
-     compiler += make_version_string(__clang_major__, __clang_minor__, __clang_patchlevel__);
-  #elif __INTEL_COMPILER
-     compiler += "Intel compiler ";
-     compiler += "(version ";
-     compiler += stringify(__INTEL_COMPILER) " update " stringify(__INTEL_COMPILER_UPDATE);
-     compiler += ")";
-  #elif _MSC_VER
-     compiler += "MSVC ";
-     compiler += "(version ";
-     compiler += stringify(_MSC_FULL_VER) "." stringify(_MSC_BUILD);
-     compiler += ")";
-  #elif defined(__e2k__) && defined(__LCC__)
-    #define dot_ver2(n) \
-      compiler += (char)'.'; \
-      compiler += (char)('0' + (n) / 10); \
-      compiler += (char)('0' + (n) % 10);
-
-     compiler += "MCST LCC ";
-     compiler += "(version ";
-     compiler += std::to_string(__LCC__ / 100);
-     dot_ver2(__LCC__ % 100)
-     dot_ver2(__LCC_MINOR__)
-     compiler += ")";
-  #elif __GNUC__
-     compiler += "g++ (GNUC) ";
-     compiler += make_version_string(__GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
-  #else
-     compiler += "Unknown compiler ";
-     compiler += "(unknown version)";
-  #endif
-
-  #if defined(__APPLE__)
-     compiler += " on Apple";
-  #elif defined(__CYGWIN__)
-     compiler += " on Cygwin";
-  #elif defined(__MINGW64__)
-     compiler += " on MinGW64";
-  #elif defined(__MINGW32__)
-     compiler += " on MinGW32";
-  #elif defined(__ANDROID__)
-     compiler += " on Android";
-  #elif defined(__linux__)
-     compiler += " on Linux";
-  #elif defined(_WIN64)
-     compiler += " on Microsoft Windows 64-bit";
-  #elif defined(_WIN32)
-     compiler += " on Microsoft Windows 32-bit";
-  #else
-     compiler += " on unknown system";
-  #endif
-
-  compiler += "\nCompilation settings include: ";
-  compiler += (Is64Bit ? " 64bit" : " 32bit");
-  #if defined(USE_VNNI)
+    compiler += "\nCompilation settings include: ";
+    compiler += (Is64Bit ? " 64bit" : " 32bit");
+#if defined(USE_VNNI)
     compiler += " VNNI";
-  #endif
-  #if defined(USE_AVX512)
+#endif
+#if defined(USE_AVX512)
     compiler += " AVX512";
-  #endif
-  compiler += (HasPext ? " BMI2" : "");
-  #if defined(USE_AVX2)
+#endif
+    compiler += (HasPext ? " BMI2" : "");
+#if defined(USE_AVX2)
     compiler += " AVX2";
-  #endif
-  #if defined(USE_SSE41)
+#endif
+#if defined(USE_SSE41)
     compiler += " SSE41";
-  #endif
-  #if defined(USE_SSSE3)
+#endif
+#if defined(USE_SSSE3)
     compiler += " SSSE3";
-  #endif
-  #if defined(USE_SSE2)
+#endif
+#if defined(USE_SSE2)
     compiler += " SSE2";
-  #endif
-  compiler += (HasPopCnt ? " POPCNT" : "");
-  #if defined(USE_MMX)
+#endif
+    compiler += (HasPopCnt ? " POPCNT" : "");
+#if defined(USE_MMX)
     compiler += " MMX";
-  #endif
-  #if defined(USE_NEON)
+#endif
+#if defined(USE_NEON)
     compiler += " NEON";
-  #endif
+#endif
 
-  #if !defined(NDEBUG)
+#if !defined(NDEBUG)
     compiler += " DEBUG";
-  #endif
+#endif
 
-  compiler += "\n__VERSION__ macro expands to: ";
-  #ifdef __VERSION__
-     compiler += __VERSION__;
-  #else
-     compiler += "(undefined macro)";
-  #endif
-  compiler += "\n";
+    compiler += "\n__VERSION__ macro expands to: ";
+#ifdef __VERSION__
+    compiler += __VERSION__;
+#else
+    compiler += "(undefined macro)";
+#endif
+    compiler += "\n";
 
-  return compiler;
-}
+    return compiler;
+  }
 
+  /// Debug functions used mainly to collect run-time statistics
+  static std::atomic<int64_t> hits[2], means[2];
 
-/// Debug functions used mainly to collect run-time statistics
-static std::atomic<int64_t> hits[2], means[2];
+  void dbg_hit_on(bool b)
+  {
+    ++hits[0];
+    if (b)
+      ++hits[1];
+  }
+  void dbg_hit_on(bool c, bool b)
+  {
+    if (c)
+      dbg_hit_on(b);
+  }
+  void dbg_mean_of(int v)
+  {
+    ++means[0];
+    means[1] += v;
+  }
 
-void dbg_hit_on(bool b) { ++hits[0]; if (b) ++hits[1]; }
-void dbg_hit_on(bool c, bool b) { if (c) dbg_hit_on(b); }
-void dbg_mean_of(int v) { ++means[0]; means[1] += v; }
+  void dbg_print()
+  {
 
-void dbg_print() {
-
-  if (hits[0])
+    if (hits[0])
       cerr << "Total " << hits[0] << " Hits " << hits[1]
            << " hit rate (%) " << 100 * hits[1] / hits[0] << endl;
 
-  if (means[0])
+    if (means[0])
       cerr << "Total " << means[0] << " Mean "
            << (double)means[1] / means[0] << endl;
-}
+  }
 
+  /// Used to serialize access to std::cout to avoid multiple threads writing at
+  /// the same time.
 
-/// Used to serialize access to std::cout to avoid multiple threads writing at
-/// the same time.
+  std::ostream &operator<<(std::ostream &os, SyncCout sc)
+  {
 
-std::ostream& operator<<(std::ostream& os, SyncCout sc) {
+    static std::mutex m;
 
-  static std::mutex m;
-
-  if (sc == IO_LOCK)
+    if (sc == IO_LOCK)
       m.lock();
 
-  if (sc == IO_UNLOCK)
+    if (sc == IO_UNLOCK)
       m.unlock();
 
-  return os;
-}
+    return os;
+  }
 
-
-/// Trampoline helper to avoid moving Logger to misc.h
-void start_logger(const std::string& fname) { Logger::start(fname); }
-
+  /// Trampoline helper to avoid moving Logger to misc.h
+  void start_logger(const std::string &fname) { Logger::start(fname); }
 
 /// prefetch() preloads the given address in L1/L2 cache. This is a non-blocking
 /// function that doesn't stall the CPU waiting for data to be loaded from memory,
 /// which can be quite slow.
 #ifdef NO_PREFETCH
 
-void prefetch(void*) {}
+  void prefetch(void *)
+  {
+  }
 
 #else
 
-void prefetch(void* addr) {
+  void prefetch(void *addr)
+  {
 
-#  if defined(__INTEL_COMPILER)
-   // This hack prevents prefetches from being optimized away by
-   // Intel compiler. Both MSVC and gcc seem not be affected by this.
-   __asm__ ("");
-#  endif
+#if defined(__INTEL_COMPILER)
+    // This hack prevents prefetches from being optimized away by
+    // Intel compiler. Both MSVC and gcc seem not be affected by this.
+    __asm__("");
+#endif
 
-#  if defined(__INTEL_COMPILER) || defined(_MSC_VER)
-  _mm_prefetch((char*)addr, _MM_HINT_T0);
-#  else
-  __builtin_prefetch(addr);
-#  endif
-}
+#if defined(__INTEL_COMPILER) || defined(_MSC_VER)
+    _mm_prefetch((char *)addr, _MM_HINT_T0);
+#else
+    __builtin_prefetch(addr);
+#endif
+  }
 
 #endif
 
+  /// std_aligned_alloc() is our wrapper for systems where the c++17 implementation
+  /// does not guarantee the availability of aligned_alloc(). Memory allocated with
+  /// std_aligned_alloc() must be freed with std_aligned_free().
 
-/// std_aligned_alloc() is our wrapper for systems where the c++17 implementation
-/// does not guarantee the availability of aligned_alloc(). Memory allocated with
-/// std_aligned_alloc() must be freed with std_aligned_free().
-
-void* std_aligned_alloc(size_t alignment, size_t size) {
+  void *std_aligned_alloc(size_t alignment, size_t size)
+  {
 
 #if defined(POSIXALIGNEDALLOC)
-  void *mem;
-  return posix_memalign(&mem, alignment, size) ? nullptr : mem;
+    void *mem;
+    return posix_memalign(&mem, alignment, size) ? nullptr : mem;
 #elif defined(_WIN32)
-  return _mm_malloc(size, alignment);
+    return _mm_malloc(size, alignment);
 #else
-  return std::aligned_alloc(alignment, size);
+    return std::aligned_alloc(alignment, size);
 #endif
-}
+  }
 
-void std_aligned_free(void* ptr) {
+  void std_aligned_free(void *ptr)
+  {
 
 #if defined(POSIXALIGNEDALLOC)
-  free(ptr);
+    free(ptr);
 #elif defined(_WIN32)
-  _mm_free(ptr);
+    _mm_free(ptr);
 #else
-  free(ptr);
+    free(ptr);
 #endif
-}
+  }
 
-/// aligned_large_pages_alloc() will return suitably aligned memory, if possible using large pages.
+  /// aligned_large_pages_alloc() will return suitably aligned memory, if possible using large pages.
 
 #if defined(_WIN32)
 
-static void* aligned_large_pages_alloc_windows([[maybe_unused]] size_t allocSize) {
-
-  #if !defined(_WIN64)
-    return nullptr;
-  #else
-
-  HANDLE hProcessToken { };
-  LUID luid { };
-  void* mem = nullptr;
-
-  const size_t largePageSize = GetLargePageMinimum();
-  if (!largePageSize)
-      return nullptr;
-
-  // We need SeLockMemoryPrivilege, so try to enable it for the process
-  if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hProcessToken))
-      return nullptr;
-
-  if (LookupPrivilegeValue(nullptr, SE_LOCK_MEMORY_NAME, &luid))
+  static void *aligned_large_pages_alloc_windows([[maybe_unused]] size_t allocSize)
   {
-      TOKEN_PRIVILEGES tp { };
-      TOKEN_PRIVILEGES prevTp { };
+
+#if !defined(_WIN64)
+    return nullptr;
+#else
+
+    HANDLE hProcessToken{};
+    LUID luid{};
+    void *mem = nullptr;
+
+    const size_t largePageSize = GetLargePageMinimum();
+    if (!largePageSize)
+      return nullptr;
+
+    // We need SeLockMemoryPrivilege, so try to enable it for the process
+    if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hProcessToken))
+      return nullptr;
+
+    if (LookupPrivilegeValue(nullptr, SE_LOCK_MEMORY_NAME, &luid))
+    {
+      TOKEN_PRIVILEGES tp{};
+      TOKEN_PRIVILEGES prevTp{};
       DWORD prevTpLen = 0;
 
       tp.PrivilegeCount = 1;
@@ -430,204 +453,210 @@ static void* aligned_large_pages_alloc_windows([[maybe_unused]] size_t allocSize
               hProcessToken, FALSE, &tp, sizeof(TOKEN_PRIVILEGES), &prevTp, &prevTpLen) &&
           GetLastError() == ERROR_SUCCESS)
       {
-          // Round up size to full pages and allocate
-          allocSize = (allocSize + largePageSize - 1) & ~size_t(largePageSize - 1);
-          mem = VirtualAlloc(
-              nullptr, allocSize, MEM_RESERVE | MEM_COMMIT | MEM_LARGE_PAGES, PAGE_READWRITE);
+        // Round up size to full pages and allocate
+        allocSize = (allocSize + largePageSize - 1) & ~size_t(largePageSize - 1);
+        mem = VirtualAlloc(
+            nullptr, allocSize, MEM_RESERVE | MEM_COMMIT | MEM_LARGE_PAGES, PAGE_READWRITE);
 
-          // Privilege no longer needed, restore previous state
-          AdjustTokenPrivileges(hProcessToken, FALSE, &prevTp, 0, nullptr, nullptr);
+        // Privilege no longer needed, restore previous state
+        AdjustTokenPrivileges(hProcessToken, FALSE, &prevTp, 0, nullptr, nullptr);
       }
+    }
+
+    CloseHandle(hProcessToken);
+
+    return mem;
+
+#endif
   }
 
-  CloseHandle(hProcessToken);
+  void *aligned_large_pages_alloc(size_t allocSize)
+  {
 
-  return mem;
+    // Try to allocate large pages
+    void *mem = aligned_large_pages_alloc_windows(allocSize);
 
-  #endif
-}
-
-void* aligned_large_pages_alloc(size_t allocSize) {
-
-  // Try to allocate large pages
-  void* mem = aligned_large_pages_alloc_windows(allocSize);
-
-  // Fall back to regular, page aligned, allocation if necessary
-  if (!mem)
+    // Fall back to regular, page aligned, allocation if necessary
+    if (!mem)
       mem = VirtualAlloc(nullptr, allocSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 
-  return mem;
-}
+    return mem;
+  }
 
 #else
 
-void* aligned_large_pages_alloc(size_t allocSize) {
+  void *aligned_large_pages_alloc(size_t allocSize)
+  {
 
 #if defined(__linux__)
-  constexpr size_t alignment = 2 * 1024 * 1024; // assumed 2MB page size
+    constexpr size_t alignment = 2 * 1024 * 1024; // assumed 2MB page size
 #else
-  constexpr size_t alignment = 4096; // assumed small page size
+    constexpr size_t alignment = 4096; // assumed small page size
 #endif
 
-  // round up to multiples of alignment
-  size_t size = ((allocSize + alignment - 1) / alignment) * alignment;
-  void *mem = std_aligned_alloc(alignment, size);
+    // round up to multiples of alignment
+    size_t size = ((allocSize + alignment - 1) / alignment) * alignment;
+    void *mem = std_aligned_alloc(alignment, size);
 #if defined(MADV_HUGEPAGE)
-  madvise(mem, size, MADV_HUGEPAGE);
+    madvise(mem, size, MADV_HUGEPAGE);
 #endif
-  return mem;
-}
+    return mem;
+  }
 
 #endif
 
-
-/// aligned_large_pages_free() will free the previously allocated ttmem
+  /// aligned_large_pages_free() will free the previously allocated ttmem
 
 #if defined(_WIN32)
 
-void aligned_large_pages_free(void* mem) {
-
-  if (mem && !VirtualFree(mem, 0, MEM_RELEASE))
+  void aligned_large_pages_free(void *mem)
   {
+
+    if (mem && !VirtualFree(mem, 0, MEM_RELEASE))
+    {
       DWORD err = GetLastError();
       std::cerr << "Failed to free large page memory. Error code: 0x"
                 << std::hex << err
                 << std::dec << std::endl;
       exit(EXIT_FAILURE);
+    }
   }
-}
 
 #else
 
-void aligned_large_pages_free(void *mem) {
-  std_aligned_free(mem);
-}
+  void aligned_large_pages_free(void *mem)
+  {
+    std_aligned_free(mem);
+  }
 
 #endif
 
-
-namespace WinProcGroup {
+  namespace WinProcGroup
+  {
 
 #ifndef _WIN32
 
-void bindThisThread(size_t) {}
+    void bindThisThread(size_t)
+    {
+    }
 
 #else
 
-/// best_node() retrieves logical processor information using Windows specific
-/// API and returns the best node id for the thread with index idx. Original
-/// code from Texel by Peter Österlund.
+    /// best_node() retrieves logical processor information using Windows specific
+    /// API and returns the best node id for the thread with index idx. Original
+    /// code from Texel by Peter Österlund.
 
-static int best_node(size_t idx) {
+    static int best_node(size_t idx)
+    {
 
-  int threads = 0;
-  int nodes = 0;
-  int cores = 0;
-  DWORD returnLength = 0;
-  DWORD byteOffset = 0;
+      int threads = 0;
+      int nodes = 0;
+      int cores = 0;
+      DWORD returnLength = 0;
+      DWORD byteOffset = 0;
 
-  // Early exit if the needed API is not available at runtime
-  HMODULE k32 = GetModuleHandle("Kernel32.dll");
-  auto fun1 = (fun1_t)(void(*)())GetProcAddress(k32, "GetLogicalProcessorInformationEx");
-  if (!fun1)
-      return -1;
+      // Early exit if the needed API is not available at runtime
+      HMODULE k32 = GetModuleHandle("Kernel32.dll");
+      auto fun1 = (fun1_t)(void (*)())GetProcAddress(k32, "GetLogicalProcessorInformationEx");
+      if (!fun1)
+        return -1;
 
-  // First call to GetLogicalProcessorInformationEx() to get returnLength.
-  // We expect the call to fail due to null buffer.
-  if (fun1(RelationAll, nullptr, &returnLength))
-      return -1;
+      // First call to GetLogicalProcessorInformationEx() to get returnLength.
+      // We expect the call to fail due to null buffer.
+      if (fun1(RelationAll, nullptr, &returnLength))
+        return -1;
 
-  // Once we know returnLength, allocate the buffer
-  SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX *buffer, *ptr;
-  ptr = buffer = (SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX*)malloc(returnLength);
+      // Once we know returnLength, allocate the buffer
+      SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX *buffer, *ptr;
+      ptr = buffer = (SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX *)malloc(returnLength);
 
-  // Second call to GetLogicalProcessorInformationEx(), now we expect to succeed
-  if (!fun1(RelationAll, buffer, &returnLength))
-  {
-      free(buffer);
-      return -1;
-  }
-
-  while (byteOffset < returnLength)
-  {
-      if (ptr->Relationship == RelationNumaNode)
-          nodes++;
-
-      else if (ptr->Relationship == RelationProcessorCore)
+      // Second call to GetLogicalProcessorInformationEx(), now we expect to succeed
+      if (!fun1(RelationAll, buffer, &returnLength))
       {
-          cores++;
-          threads += (ptr->Processor.Flags == LTP_PC_SMT) ? 2 : 1;
+        free(buffer);
+        return -1;
       }
 
-      assert(ptr->Size);
-      byteOffset += ptr->Size;
-      ptr = (SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX*)(((char*)ptr) + ptr->Size);
-  }
+      while (byteOffset < returnLength)
+      {
+        if (ptr->Relationship == RelationNumaNode)
+          nodes++;
 
-  free(buffer);
+        else if (ptr->Relationship == RelationProcessorCore)
+        {
+          cores++;
+          threads += (ptr->Processor.Flags == LTP_PC_SMT) ? 2 : 1;
+        }
 
-  std::vector<int> groups;
+        assert(ptr->Size);
+        byteOffset += ptr->Size;
+        ptr = (SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX *)(((char *)ptr) + ptr->Size);
+      }
 
-  // Run as many threads as possible on the same node until core limit is
-  // reached, then move on filling the next node.
-  for (int n = 0; n < nodes; n++)
-      for (int i = 0; i < cores / nodes; i++)
+      free(buffer);
+
+      std::vector<int> groups;
+
+      // Run as many threads as possible on the same node until core limit is
+      // reached, then move on filling the next node.
+      for (int n = 0; n < nodes; n++)
+        for (int i = 0; i < cores / nodes; i++)
           groups.push_back(n);
 
-  // In case a core has more than one logical processor (we assume 2) and we
-  // have still threads to allocate, then spread them evenly across available
-  // nodes.
-  for (int t = 0; t < threads - cores; t++)
-      groups.push_back(t % nodes);
+      // In case a core has more than one logical processor (we assume 2) and we
+      // have still threads to allocate, then spread them evenly across available
+      // nodes.
+      for (int t = 0; t < threads - cores; t++)
+        groups.push_back(t % nodes);
 
-  // If we still have more threads than the total number of logical processors
-  // then return -1 and let the OS to decide what to do.
-  return idx < groups.size() ? groups[idx] : -1;
-}
+      // If we still have more threads than the total number of logical processors
+      // then return -1 and let the OS to decide what to do.
+      return idx < groups.size() ? groups[idx] : -1;
+    }
 
+    /// bindThisThread() set the group affinity of the current thread
 
-/// bindThisThread() set the group affinity of the current thread
+    void bindThisThread(size_t idx)
+    {
 
-void bindThisThread(size_t idx) {
+      // Use only local variables to be thread-safe
+      int node = best_node(idx);
 
-  // Use only local variables to be thread-safe
-  int node = best_node(idx);
+      if (node == -1)
+        return;
 
-  if (node == -1)
-      return;
+      // Early exit if the needed API are not available at runtime
+      HMODULE k32 = GetModuleHandle("Kernel32.dll");
+      auto fun2 = (fun2_t)(void (*)())GetProcAddress(k32, "GetNumaNodeProcessorMaskEx");
+      auto fun3 = (fun3_t)(void (*)())GetProcAddress(k32, "SetThreadGroupAffinity");
+      auto fun4 = (fun4_t)(void (*)())GetProcAddress(k32, "GetNumaNodeProcessorMask2");
+      auto fun5 = (fun5_t)(void (*)())GetProcAddress(k32, "GetMaximumProcessorGroupCount");
 
-  // Early exit if the needed API are not available at runtime
-  HMODULE k32 = GetModuleHandle("Kernel32.dll");
-  auto fun2 = (fun2_t)(void(*)())GetProcAddress(k32, "GetNumaNodeProcessorMaskEx");
-  auto fun3 = (fun3_t)(void(*)())GetProcAddress(k32, "SetThreadGroupAffinity");
-  auto fun4 = (fun4_t)(void(*)())GetProcAddress(k32, "GetNumaNodeProcessorMask2");
-  auto fun5 = (fun5_t)(void(*)())GetProcAddress(k32, "GetMaximumProcessorGroupCount");
+      if (!fun2 || !fun3)
+        return;
 
-  if (!fun2 || !fun3)
-      return;
-
-  if (!fun4 || !fun5)
-  {
-      GROUP_AFFINITY affinity;
-      if (fun2(node, &affinity))                                                 // GetNumaNodeProcessorMaskEx
-          fun3(GetCurrentThread(), &affinity, nullptr);                          // SetThreadGroupAffinity
-  }
-  else
-  {
-      // If a numa node has more than one processor group, we assume they are
-      // sized equal and we spread threads evenly across the groups.
-      USHORT elements, returnedElements;
-      elements = fun5();                                                         // GetMaximumProcessorGroupCount
-      GROUP_AFFINITY *affinity = (GROUP_AFFINITY*)malloc(elements * sizeof(GROUP_AFFINITY));
-      if (fun4(node, affinity, elements, &returnedElements))                     // GetNumaNodeProcessorMask2
-          fun3(GetCurrentThread(), &affinity[idx % returnedElements], nullptr);  // SetThreadGroupAffinity
-      free(affinity);
-  }
-}
+      if (!fun4 || !fun5)
+      {
+        GROUP_AFFINITY affinity;
+        if (fun2(node, &affinity))                      // GetNumaNodeProcessorMaskEx
+          fun3(GetCurrentThread(), &affinity, nullptr); // SetThreadGroupAffinity
+      }
+      else
+      {
+        // If a numa node has more than one processor group, we assume they are
+        // sized equal and we spread threads evenly across the groups.
+        USHORT elements, returnedElements;
+        elements = fun5(); // GetMaximumProcessorGroupCount
+        GROUP_AFFINITY *affinity = (GROUP_AFFINITY *)malloc(elements * sizeof(GROUP_AFFINITY));
+        if (fun4(node, affinity, elements, &returnedElements))                  // GetNumaNodeProcessorMask2
+          fun3(GetCurrentThread(), &affinity[idx % returnedElements], nullptr); // SetThreadGroupAffinity
+        free(affinity);
+      }
+    }
 
 #endif
 
-} // namespace WinProcGroup
+  } // namespace WinProcGroup
 
 #ifdef _WIN32
 #include <direct.h>
@@ -637,52 +666,53 @@ void bindThisThread(size_t idx) {
 #define GETCWD getcwd
 #endif
 
-namespace CommandLine {
+  namespace CommandLine
+  {
 
-string argv0;            // path+name of the executable binary, as given by argv[0]
-string binaryDirectory;  // path of the executable directory
-string workingDirectory; // path of the working directory
+    string argv0;            // path+name of the executable binary, as given by argv[0]
+    string binaryDirectory;  // path of the executable directory
+    string workingDirectory; // path of the working directory
 
-void init([[maybe_unused]] int argc, char* argv[]) {
-    string pathSeparator;
+    void init([[maybe_unused]] int argc, char *argv[])
+    {
+      string pathSeparator;
 
-    // extract the path+name of the executable binary
-    argv0 = argv[0];
+      // extract the path+name of the executable binary
+      argv0 = argv[0];
 
 #ifdef _WIN32
-    pathSeparator = "\\";
-  #ifdef _MSC_VER
-    // Under windows argv[0] may not have the extension. Also _get_pgmptr() had
-    // issues in some windows 10 versions, so check returned values carefully.
-    char* pgmptr = nullptr;
-    if (!_get_pgmptr(&pgmptr) && pgmptr != nullptr && *pgmptr)
+      pathSeparator = "\\";
+#ifdef _MSC_VER
+      // Under windows argv[0] may not have the extension. Also _get_pgmptr() had
+      // issues in some windows 10 versions, so check returned values carefully.
+      char *pgmptr = nullptr;
+      if (!_get_pgmptr(&pgmptr) && pgmptr != nullptr && *pgmptr)
         argv0 = pgmptr;
-  #endif
+#endif
 #else
-    pathSeparator = "/";
+      pathSeparator = "/";
 #endif
 
-    // extract the working directory
-    workingDirectory = "";
-    char buff[40000];
-    char* cwd = GETCWD(buff, 40000);
-    if (cwd)
+      // extract the working directory
+      workingDirectory = "";
+      char buff[40000];
+      char *cwd = GETCWD(buff, 40000);
+      if (cwd)
         workingDirectory = cwd;
 
-    // extract the binary directory path from argv0
-    binaryDirectory = argv0;
-    size_t pos = binaryDirectory.find_last_of("\\/");
-    if (pos == std::string::npos)
+      // extract the binary directory path from argv0
+      binaryDirectory = argv0;
+      size_t pos = binaryDirectory.find_last_of("\\/");
+      if (pos == std::string::npos)
         binaryDirectory = "." + pathSeparator;
-    else
+      else
         binaryDirectory.resize(pos + 1);
 
-    // pattern replacement: "./" at the start of path is replaced by the working directory
-    if (binaryDirectory.find("." + pathSeparator) == 0)
+      // pattern replacement: "./" at the start of path is replaced by the working directory
+      if (binaryDirectory.find("." + pathSeparator) == 0)
         binaryDirectory.replace(0, 1, workingDirectory);
-}
+    }
 
-
-} // namespace CommandLine
+  } // namespace CommandLine
 
 } // namespace Stockfish

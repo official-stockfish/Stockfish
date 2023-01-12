@@ -32,7 +32,8 @@
 
 #include "evaluate_nnue.h"
 
-namespace Stockfish::Eval::NNUE {
+namespace Stockfish::Eval::NNUE
+{
 
   // Input feature converter
   LargePagePtr<FeatureTransformer> featureTransformer;
@@ -44,46 +45,53 @@ namespace Stockfish::Eval::NNUE {
   std::string fileName;
   std::string netDescription;
 
-  namespace Detail {
+  namespace Detail
+  {
+
+    // Initialize the evaluation function parameters
+    template <typename T>
+    void initialize(AlignedPtr<T> &pointer)
+    {
+
+      pointer.reset(reinterpret_cast<T *>(std_aligned_alloc(alignof(T), sizeof(T))));
+      std::memset(pointer.get(), 0, sizeof(T));
+    }
+
+    template <typename T>
+    void initialize(LargePagePtr<T> &pointer)
+    {
+
+      static_assert(alignof(T) <= 4096, "aligned_large_pages_alloc() may fail for such a big alignment requirement of T");
+      pointer.reset(reinterpret_cast<T *>(aligned_large_pages_alloc(sizeof(T))));
+      std::memset(pointer.get(), 0, sizeof(T));
+    }
+
+    // Read evaluation function parameters
+    template <typename T>
+    bool read_parameters(std::istream &stream, T &reference)
+    {
+
+      std::uint32_t header;
+      header = read_little_endian<std::uint32_t>(stream);
+      if (!stream || header != T::get_hash_value())
+        return false;
+      return reference.read_parameters(stream);
+    }
+
+    // Write evaluation function parameters
+    template <typename T>
+    bool write_parameters(std::ostream &stream, const T &reference)
+    {
+
+      write_little_endian<std::uint32_t>(stream, T::get_hash_value());
+      return reference.write_parameters(stream);
+    }
+
+  } // namespace Detail
 
   // Initialize the evaluation function parameters
-  template <typename T>
-  void initialize(AlignedPtr<T>& pointer) {
-
-    pointer.reset(reinterpret_cast<T*>(std_aligned_alloc(alignof(T), sizeof(T))));
-    std::memset(pointer.get(), 0, sizeof(T));
-  }
-
-  template <typename T>
-  void initialize(LargePagePtr<T>& pointer) {
-
-    static_assert(alignof(T) <= 4096, "aligned_large_pages_alloc() may fail for such a big alignment requirement of T");
-    pointer.reset(reinterpret_cast<T*>(aligned_large_pages_alloc(sizeof(T))));
-    std::memset(pointer.get(), 0, sizeof(T));
-  }
-
-  // Read evaluation function parameters
-  template <typename T>
-  bool read_parameters(std::istream& stream, T& reference) {
-
-    std::uint32_t header;
-    header = read_little_endian<std::uint32_t>(stream);
-    if (!stream || header != T::get_hash_value()) return false;
-    return reference.read_parameters(stream);
-  }
-
-  // Write evaluation function parameters
-  template <typename T>
-  bool write_parameters(std::ostream& stream, const T& reference) {
-
-    write_little_endian<std::uint32_t>(stream, T::get_hash_value());
-    return reference.write_parameters(stream);
-  }
-
-  }  // namespace Detail
-
-  // Initialize the evaluation function parameters
-  static void initialize() {
+  static void initialize()
+  {
 
     Detail::initialize(featureTransformer);
     for (std::size_t i = 0; i < LayerStacks; ++i)
@@ -91,21 +99,22 @@ namespace Stockfish::Eval::NNUE {
   }
 
   // Read network header
-  static bool read_header(std::istream& stream, std::uint32_t* hashValue, std::string* desc)
+  static bool read_header(std::istream &stream, std::uint32_t *hashValue, std::string *desc)
   {
     std::uint32_t version, size;
 
-    version     = read_little_endian<std::uint32_t>(stream);
-    *hashValue  = read_little_endian<std::uint32_t>(stream);
-    size        = read_little_endian<std::uint32_t>(stream);
-    if (!stream || version != Version) return false;
+    version = read_little_endian<std::uint32_t>(stream);
+    *hashValue = read_little_endian<std::uint32_t>(stream);
+    size = read_little_endian<std::uint32_t>(stream);
+    if (!stream || version != Version)
+      return false;
     desc->resize(size);
     stream.read(&(*desc)[0], size);
     return !stream.fail();
   }
 
   // Write network header
-  static bool write_header(std::ostream& stream, std::uint32_t hashValue, const std::string& desc)
+  static bool write_header(std::ostream &stream, std::uint32_t hashValue, const std::string &desc)
   {
     write_little_endian<std::uint32_t>(stream, Version);
     write_little_endian<std::uint32_t>(stream, hashValue);
@@ -115,29 +124,39 @@ namespace Stockfish::Eval::NNUE {
   }
 
   // Read network parameters
-  static bool read_parameters(std::istream& stream) {
+  static bool read_parameters(std::istream &stream)
+  {
 
     std::uint32_t hashValue;
-    if (!read_header(stream, &hashValue, &netDescription)) return false;
-    if (hashValue != HashValue) return false;
-    if (!Detail::read_parameters(stream, *featureTransformer)) return false;
+    if (!read_header(stream, &hashValue, &netDescription))
+      return false;
+    if (hashValue != HashValue)
+      return false;
+    if (!Detail::read_parameters(stream, *featureTransformer))
+      return false;
     for (std::size_t i = 0; i < LayerStacks; ++i)
-      if (!Detail::read_parameters(stream, *(network[i]))) return false;
+      if (!Detail::read_parameters(stream, *(network[i])))
+        return false;
     return stream && stream.peek() == std::ios::traits_type::eof();
   }
 
   // Write network parameters
-  static bool write_parameters(std::ostream& stream) {
+  static bool write_parameters(std::ostream &stream)
+  {
 
-    if (!write_header(stream, HashValue, netDescription)) return false;
-    if (!Detail::write_parameters(stream, *featureTransformer)) return false;
+    if (!write_header(stream, HashValue, netDescription))
+      return false;
+    if (!Detail::write_parameters(stream, *featureTransformer))
+      return false;
     for (std::size_t i = 0; i < LayerStacks; ++i)
-      if (!Detail::write_parameters(stream, *(network[i]))) return false;
+      if (!Detail::write_parameters(stream, *(network[i])))
+        return false;
     return (bool)stream;
   }
 
   // Evaluation function. Perform differential calculation.
-  Value evaluate(const Position& pos, bool adjusted, int* complexity) {
+  Value evaluate(const Position &pos, bool adjusted, int *complexity)
+  {
 
     // We manually align the arrays on the stack because with gcc < 9.3
     // overaligning stack variables with alignas() doesn't work correctly.
@@ -146,13 +165,12 @@ namespace Stockfish::Eval::NNUE {
     int delta = 24 - pos.non_pawn_material() / 9560;
 
 #if defined(ALIGNAS_ON_STACK_VARIABLES_BROKEN)
-    TransformedFeatureType transformedFeaturesUnaligned[
-      FeatureTransformer::BufferSize + alignment / sizeof(TransformedFeatureType)];
+    TransformedFeatureType transformedFeaturesUnaligned[FeatureTransformer::BufferSize + alignment / sizeof(TransformedFeatureType)];
 
-    auto* transformedFeatures = align_ptr_up<alignment>(&transformedFeaturesUnaligned[0]);
+    auto *transformedFeatures = align_ptr_up<alignment>(&transformedFeaturesUnaligned[0]);
 #else
     alignas(alignment)
-      TransformedFeatureType transformedFeatures[FeatureTransformer::BufferSize];
+        TransformedFeatureType transformedFeatures[FeatureTransformer::BufferSize];
 #endif
 
     ASSERT_ALIGNED(transformedFeatures, alignment);
@@ -162,16 +180,17 @@ namespace Stockfish::Eval::NNUE {
     const auto positional = network[bucket]->propagate(transformedFeatures);
 
     if (complexity)
-        *complexity = abs(psqt - positional) / OutputScale;
+      *complexity = abs(psqt - positional) / OutputScale;
 
     // Give more value to positional evaluation when adjusted flag is set
     if (adjusted)
-        return static_cast<Value>(((1024 - delta) * psqt + (1024 + delta) * positional) / (1024 * OutputScale));
+      return static_cast<Value>(((1024 - delta) * psqt + (1024 + delta) * positional) / (1024 * OutputScale));
     else
-        return static_cast<Value>((psqt + positional) / OutputScale);
+      return static_cast<Value>((psqt + positional) / OutputScale);
   }
 
-  struct NnueEvalTrace {
+  struct NnueEvalTrace
+  {
     static_assert(LayerStacks == PSQTBuckets);
 
     Value psqt[LayerStacks];
@@ -179,7 +198,8 @@ namespace Stockfish::Eval::NNUE {
     std::size_t correctBucket;
   };
 
-  static NnueEvalTrace trace_evaluate(const Position& pos) {
+  static NnueEvalTrace trace_evaluate(const Position &pos)
+  {
 
     // We manually align the arrays on the stack because with gcc < 9.3
     // overaligning stack variables with alignas() doesn't work correctly.
@@ -187,25 +207,25 @@ namespace Stockfish::Eval::NNUE {
     constexpr uint64_t alignment = CacheLineSize;
 
 #if defined(ALIGNAS_ON_STACK_VARIABLES_BROKEN)
-    TransformedFeatureType transformedFeaturesUnaligned[
-      FeatureTransformer::BufferSize + alignment / sizeof(TransformedFeatureType)];
+    TransformedFeatureType transformedFeaturesUnaligned[FeatureTransformer::BufferSize + alignment / sizeof(TransformedFeatureType)];
 
-    auto* transformedFeatures = align_ptr_up<alignment>(&transformedFeaturesUnaligned[0]);
+    auto *transformedFeatures = align_ptr_up<alignment>(&transformedFeaturesUnaligned[0]);
 #else
     alignas(alignment)
-      TransformedFeatureType transformedFeatures[FeatureTransformer::BufferSize];
+        TransformedFeatureType transformedFeatures[FeatureTransformer::BufferSize];
 #endif
 
     ASSERT_ALIGNED(transformedFeatures, alignment);
 
     NnueEvalTrace t{};
     t.correctBucket = (pos.count<ALL_PIECES>() - 1) / 4;
-    for (IndexType bucket = 0; bucket < LayerStacks; ++bucket) {
+    for (IndexType bucket = 0; bucket < LayerStacks; ++bucket)
+    {
       const auto materialist = featureTransformer->transform(pos, transformedFeatures, bucket);
       const auto positional = network[bucket]->propagate(transformedFeatures);
 
-      t.psqt[bucket] = static_cast<Value>( materialist / OutputScale );
-      t.positional[bucket] = static_cast<Value>( positional / OutputScale );
+      t.psqt[bucket] = static_cast<Value>(materialist / OutputScale);
+      t.positional[bucket] = static_cast<Value>(positional / OutputScale);
     }
 
     return t;
@@ -213,76 +233,84 @@ namespace Stockfish::Eval::NNUE {
 
   constexpr std::string_view PieceToChar(" PNBRQK  pnbrqk");
 
-
   // format_cp_compact() converts a Value into (centi)pawns and writes it in a buffer.
   // The buffer must have capacity for at least 5 chars.
-  static void format_cp_compact(Value v, char* buffer) {
+  static void format_cp_compact(Value v, char *buffer)
+  {
 
-    buffer[0] = (v < 0 ? '-' : v > 0 ? '+' : ' ');
+    buffer[0] = (v < 0 ? '-' : v > 0 ? '+'
+                                     : ' ');
 
     int cp = std::abs(100 * v / UCI::NormalizeToPawnValue);
     if (cp >= 10000)
     {
-        buffer[1] = '0' + cp / 10000; cp %= 10000;
-        buffer[2] = '0' + cp / 1000; cp %= 1000;
-        buffer[3] = '0' + cp / 100;
-        buffer[4] = ' ';
+      buffer[1] = '0' + cp / 10000;
+      cp %= 10000;
+      buffer[2] = '0' + cp / 1000;
+      cp %= 1000;
+      buffer[3] = '0' + cp / 100;
+      buffer[4] = ' ';
     }
     else if (cp >= 1000)
     {
-        buffer[1] = '0' + cp / 1000; cp %= 1000;
-        buffer[2] = '0' + cp / 100; cp %= 100;
-        buffer[3] = '.';
-        buffer[4] = '0' + cp / 10;
+      buffer[1] = '0' + cp / 1000;
+      cp %= 1000;
+      buffer[2] = '0' + cp / 100;
+      cp %= 100;
+      buffer[3] = '.';
+      buffer[4] = '0' + cp / 10;
     }
     else
     {
-        buffer[1] = '0' + cp / 100; cp %= 100;
-        buffer[2] = '.';
-        buffer[3] = '0' + cp / 10; cp %= 10;
-        buffer[4] = '0' + cp / 1;
+      buffer[1] = '0' + cp / 100;
+      cp %= 100;
+      buffer[2] = '.';
+      buffer[3] = '0' + cp / 10;
+      cp %= 10;
+      buffer[4] = '0' + cp / 1;
     }
   }
 
-
   // format_cp_aligned_dot() converts a Value into (centi)pawns, always keeping two decimals.
-  static void format_cp_aligned_dot(Value v, std::stringstream &stream) {
+  static void format_cp_aligned_dot(Value v, std::stringstream &stream)
+  {
     const double cp = 1.0 * std::abs(int(v)) / UCI::NormalizeToPawnValue;
 
-    stream << (v < 0 ? '-' : v > 0 ? '+' : ' ')
+    stream << (v < 0 ? '-' : v > 0 ? '+'
+                                   : ' ')
            << std::setiosflags(std::ios::fixed)
            << std::setw(6)
            << std::setprecision(2)
            << cp;
   }
 
-
   // trace() returns a string with the value of each piece on a board,
   // and a table for (PSQT, Layers) values bucket by bucket.
 
-  std::string trace(Position& pos) {
+  std::string trace(Position &pos)
+  {
 
     std::stringstream ss;
 
-    char board[3*8+1][8*8+2];
+    char board[3 * 8 + 1][8 * 8 + 2];
     std::memset(board, ' ', sizeof(board));
-    for (int row = 0; row < 3*8+1; ++row)
-      board[row][8*8+1] = '\0';
+    for (int row = 0; row < 3 * 8 + 1; ++row)
+      board[row][8 * 8 + 1] = '\0';
 
     // A lambda to output one box of the board
-    auto writeSquare = [&board](File file, Rank rank, Piece pc, Value value) {
-
+    auto writeSquare = [&board](File file, Rank rank, Piece pc, Value value)
+    {
       const int x = ((int)file) * 8;
       const int y = (7 - (int)rank) * 3;
       for (int i = 1; i < 8; ++i)
-         board[y][x+i] = board[y+3][x+i] = '-';
+        board[y][x + i] = board[y + 3][x + i] = '-';
       for (int i = 1; i < 3; ++i)
-         board[y+i][x] = board[y+i][x+8] = '|';
-      board[y][x] = board[y][x+8] = board[y+3][x+8] = board[y+3][x] = '+';
+        board[y + i][x] = board[y + i][x + 8] = '|';
+      board[y][x] = board[y][x + 8] = board[y + 3][x + 8] = board[y + 3][x] = '+';
       if (pc != NO_PIECE)
-        board[y+1][x+4] = PieceToChar[pc];
+        board[y + 1][x + 4] = PieceToChar[pc];
       if (value != VALUE_NONE)
-        format_cp_compact(value, &board[y+2][x+2]);
+        format_cp_compact(value, &board[y + 2][x + 2]);
     };
 
     // We estimate the value of each piece by doing a differential evaluation from
@@ -318,8 +346,8 @@ namespace Stockfish::Eval::NNUE {
       }
 
     ss << " NNUE derived piece values:\n";
-    for (int row = 0; row < 3*8+1; ++row)
-        ss << board[row] << '\n';
+    for (int row = 0; row < 3 * 8 + 1; ++row)
+      ss << board[row] << '\n';
     ss << '\n';
 
     auto t = trace_evaluate(pos);
@@ -333,13 +361,19 @@ namespace Stockfish::Eval::NNUE {
 
     for (std::size_t bucket = 0; bucket < LayerStacks; ++bucket)
     {
-      ss <<  "|  " << bucket    << "        ";
-      ss << " |  "; format_cp_aligned_dot(t.psqt[bucket], ss); ss << "  "
-         << " |  "; format_cp_aligned_dot(t.positional[bucket], ss); ss << "  "
-         << " |  "; format_cp_aligned_dot(t.psqt[bucket] + t.positional[bucket], ss); ss << "  "
+      ss << "|  " << bucket << "        ";
+      ss << " |  ";
+      format_cp_aligned_dot(t.psqt[bucket], ss);
+      ss << "  "
+         << " |  ";
+      format_cp_aligned_dot(t.positional[bucket], ss);
+      ss << "  "
+         << " |  ";
+      format_cp_aligned_dot(t.psqt[bucket] + t.positional[bucket], ss);
+      ss << "  "
          << " |";
       if (bucket == t.correctBucket)
-          ss << " <-- this bucket is used";
+        ss << " <-- this bucket is used";
       ss << '\n';
     }
 
@@ -348,9 +382,9 @@ namespace Stockfish::Eval::NNUE {
     return ss.str();
   }
 
-
   // Load eval, from a file stream or a memory stream
-  bool load_eval(std::string name, std::istream& stream) {
+  bool load_eval(std::string name, std::istream &stream)
+  {
 
     initialize();
     fileName = name;
@@ -358,7 +392,8 @@ namespace Stockfish::Eval::NNUE {
   }
 
   // Save eval, to a file stream or a memory stream
-  bool save_eval(std::ostream& stream) {
+  bool save_eval(std::ostream &stream)
+  {
 
     if (fileName.empty())
       return false;
@@ -367,23 +402,24 @@ namespace Stockfish::Eval::NNUE {
   }
 
   /// Save eval, to a file given by its name
-  bool save_eval(const std::optional<std::string>& filename) {
+  bool save_eval(const std::optional<std::string> &filename)
+  {
 
     std::string actualFilename;
     std::string msg;
 
     if (filename.has_value())
-        actualFilename = filename.value();
+      actualFilename = filename.value();
     else
     {
-        if (currentEvalFileName != EvalFileDefaultName)
-        {
-             msg = "Failed to export a net. A non-embedded net can only be saved if the filename is specified";
+      if (currentEvalFileName != EvalFileDefaultName)
+      {
+        msg = "Failed to export a net. A non-embedded net can only be saved if the filename is specified";
 
-             sync_cout << msg << sync_endl;
-             return false;
-        }
-        actualFilename = EvalFileDefaultName;
+        sync_cout << msg << sync_endl;
+        return false;
+      }
+      actualFilename = EvalFileDefaultName;
     }
 
     std::ofstream stream(actualFilename, std::ios_base::binary);
@@ -395,6 +431,5 @@ namespace Stockfish::Eval::NNUE {
     sync_cout << msg << sync_endl;
     return saved;
   }
-
 
 } // namespace Stockfish::Eval::NNUE
