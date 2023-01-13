@@ -28,7 +28,7 @@ namespace Stockfish::Material {
 
 /// Material::Entry contains various information about a material configuration.
 /// It contains a material imbalance evaluation, a function pointer to a special
-/// endgame evaluation function (which in most cases is NULL, meaning that the
+/// endgame evaluation function (which in most cases is nullptr, meaning that the
 /// standard evaluation function will be used), and scale factors.
 ///
 /// The scale factors are used to scale the evaluation score up or down. For

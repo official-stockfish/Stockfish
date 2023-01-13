@@ -1215,6 +1215,10 @@ moves_loop: // When in check, search starts here
       // Step 18. Full depth search when LMR is skipped. If expected reduction is high, reduce its depth by 1.
       else if (!PvNode || moveCount > 1)
       {
+               // Increase reduction for cut nodes and not ttMove (~1 Elo)
+               if (!ttMove && cutNode)
+                         r += 2;
+
                value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth - (r > 4), !cutNode);
       }
 
@@ -1359,14 +1363,9 @@ moves_loop: // When in check, search starts here
     else if (   (depth >= 5 || PvNode || bestValue < alpha - 65 * depth)
              && !priorCapture)
     {
-        //Assign extra bonus if current node is PvNode or cutNode
-        //or fail low was really bad
-        bool extraBonus =    PvNode
-                          || cutNode;
-
-        bool doubleExtraBonus = extraBonus && bestValue < alpha - 88 * depth;
-
-        update_continuation_histories(ss-1, pos.piece_on(prevSq), prevSq, stat_bonus(depth) * (1 + extraBonus + doubleExtraBonus));
+        // Extra bonuses for PV/Cut nodes or bad fail lows
+        int bonus = 1 + (PvNode || cutNode) + (bestValue < alpha - 88 * depth);
+        update_continuation_histories(ss-1, pos.piece_on(prevSq), prevSq, stat_bonus(depth) * bonus);
     }
 
     if (PvNode)
