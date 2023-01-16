@@ -66,6 +66,7 @@ void init(OptionsMap& o) {
   o["Clear Hash"]            << Option(on_clear_hash);
   o["Ponder"]                << Option(false);
   o["MultiPV"]               << Option(1, 1, 500);
+  o["King Safety"]           << Option(37, 0, 200);
   o["Skill Level"]           << Option(20, 0, 20);
   o["Move Overhead"]         << Option(10, 0, 5000);
   o["Slow Mover"]            << Option(100, 10, 1000);

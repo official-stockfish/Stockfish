@@ -539,7 +539,7 @@ namespace {
 
     Bitboard weak, b1, b2, b3, safe, unsafeChecks = 0;
     Bitboard rookChecks, queenChecks, bishopChecks, knightChecks;
-    int kingDanger = 0;
+    int kingDanger = Options["King Safety"];
     const Square ksq = pos.square<KING>(Us);
 
     // Init the score with king shelter and enemy pawns storm
@@ -607,8 +607,7 @@ namespace {
                  - 873 * !pos.count<QUEEN>(Them)                              // (~24 Elo)
                  - 100 * bool(attackedBy[Us][KNIGHT] & attackedBy[Us][KING])  // (~5 Elo)
                  -   6 * mg_value(score) / 8                                  // (~8 Elo)
-                 -   4 * kingFlankDefense                                     // (~5 Elo)
-                 +  37;                                                       // (~0.5 Elo)
+                 -   4 * kingFlankDefense;                                    // (~5 Elo)
 
     // Transform the kingDanger units into a Score, and subtract it from the evaluation
     if (kingDanger > 100)
