@@ -26,12 +26,12 @@ namespace Stockfish {
 namespace {
 
   template<GenType Type, Direction D>
-  ExtMove* make_promotions(ExtMove* moveList, Square to) {
+  ExtMove* make_promotions(ExtMove* moveList, [[maybe_unused]] Square to) {
 
-    if (Type == CAPTURES || Type == EVASIONS || Type == NON_EVASIONS)
+    if constexpr (Type == CAPTURES || Type == EVASIONS || Type == NON_EVASIONS)
         *moveList++ = make<PROMOTION>(to - D, to, QUEEN);
 
-    if (Type == QUIETS || Type == EVASIONS || Type == NON_EVASIONS)
+    if constexpr (Type == QUIETS || Type == EVASIONS || Type == NON_EVASIONS)
     {
         *moveList++ = make<PROMOTION>(to - D, to, ROOK);
         *moveList++ = make<PROMOTION>(to - D, to, BISHOP);
@@ -60,18 +60,18 @@ namespace {
     Bitboard pawnsNotOn7 = pos.pieces(Us, PAWN) & ~TRank7BB;
 
     // Single and double pawn pushes, no promotions
-    if (Type != CAPTURES)
+    if constexpr (Type != CAPTURES)
     {
         Bitboard b1 = shift<Up>(pawnsNotOn7)   & emptySquares;
         Bitboard b2 = shift<Up>(b1 & TRank3BB) & emptySquares;
 
-        if (Type == EVASIONS) // Consider only blocking squares
+        if constexpr (Type == EVASIONS) // Consider only blocking squares
         {
             b1 &= target;
             b2 &= target;
         }
 
-        if (Type == QUIET_CHECKS)
+        if constexpr (Type == QUIET_CHECKS)
         {
             // To make a quiet check, you either make a direct check by pushing a pawn
             // or push a blocker pawn that is not on the same file as the enemy king.
@@ -102,7 +102,7 @@ namespace {
         Bitboard b2 = shift<UpLeft >(pawnsOn7) & enemies;
         Bitboard b3 = shift<Up     >(pawnsOn7) & emptySquares;
 
-        if (Type == EVASIONS)
+        if constexpr (Type == EVASIONS)
             b3 &= target;
 
         while (b1)
@@ -116,7 +116,7 @@ namespace {
     }
 
     // Standard and en passant captures
-    if (Type == CAPTURES || Type == EVASIONS || Type == NON_EVASIONS)
+    if constexpr (Type == CAPTURES || Type == EVASIONS || Type == NON_EVASIONS)
     {
         Bitboard b1 = shift<UpRight>(pawnsNotOn7) & enemies;
         Bitboard b2 = shift<UpLeft >(pawnsNotOn7) & enemies;
