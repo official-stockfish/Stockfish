@@ -443,33 +443,35 @@ string Position::fen() const {
 }
 
 
-/// Position::slider_blockers() returns a bitboard of all the pieces (both colors)
-/// that are blocking attacks on the square 's' from 'sliders'. A piece blocks a
-/// slider if removing that piece from the board would result in a position where
-/// square 's' is attacked. For example, a king-attack blocking piece can be either
-/// a pinned or a discovered check piece, according if its color is the opposite
-/// or the same of the color of the slider.
+/// Position::slider_blockers() returns a bitboard of all the pieces (both
+/// colors) that are blocking attacks on the square 's' from any sliding pieces
+/// (bishops, rooks, and queens) that are in the 'mask'. Non-sliding pieces in
+/// 'mask' will be ignored. A piece blocks a slider if removing that piece from
+/// the board would result in a position where square 's' is attacked. For
+/// example, a king-attack blocking piece can be either a pinned or a discovered
+/// check piece, according if its color is the opposite or the same of the color
+/// of the slider.
 
-Bitboard Position::slider_blockers(Bitboard sliders, Square s, Bitboard& pinners) const {
+Bitboard Position::slider_blockers(Bitboard mask, Square s, Bitboard& pinners) const {
 
   Bitboard blockers = 0;
   pinners = 0;
 
   // Snipers are sliders that attack 's' when a piece and other snipers are removed
-  Bitboard snipers = (  (attacks_bb<  ROOK>(s) & pieces(QUEEN, ROOK))
-                      | (attacks_bb<BISHOP>(s) & pieces(QUEEN, BISHOP))) & sliders;
-  Bitboard occupancy = pieces() ^ snipers;
+  Bitboard sliders = (  (attacks_bb<  ROOK>(s) & pieces(QUEEN, ROOK))
+                      | (attacks_bb<BISHOP>(s) & pieces(QUEEN, BISHOP))) & mask;
+  Bitboard occupancy = pieces() ^ sliders;
 
-  while (snipers)
+  while (sliders)
   {
-    Square sniperSq = pop_lsb(snipers);
-    Bitboard b = between_bb(s, sniperSq) & occupancy;
+    Square sliderSq = pop_lsb(sliders);
+    Bitboard b = between_bb(s, sliderSq) & occupancy;
 
     if (b && !more_than_one(b))
     {
         blockers |= b;
         if (b & pieces(color_of(piece_on(s))))
-            pinners |= sniperSq;
+            pinners |= sliderSq;
     }
   }
   return blockers;
