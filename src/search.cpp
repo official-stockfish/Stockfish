@@ -81,7 +81,7 @@ namespace {
 
   // History and stats update bonus, based on depth
   int stat_bonus(Depth d) {
-    return std::min((11 * d + 284) * d - 363 , 1650);
+    return std::min(350 * d - 400, 1650);
   }
 
   // Add a small random component to draw evaluations to avoid 3-fold blindness
