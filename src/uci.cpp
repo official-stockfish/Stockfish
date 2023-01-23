@@ -314,8 +314,13 @@ string UCI::value(Value v) {
 
   stringstream ss;
 
-  if (abs(v) < VALUE_MATE_IN_MAX_PLY)
+  if (abs(v) < VALUE_TB_WIN_IN_MAX_PLY)
       ss << "cp " << v * 100 / NormalizeToPawnValue;
+  else if (abs(v) < VALUE_MATE_IN_MAX_PLY)
+  {
+      const int ply = VALUE_MATE_IN_MAX_PLY - 1 - std::abs(v);  // recompute ss->ply
+      ss << "cp " << (v > 0 ? 20000 - ply : -20000 + ply);
+  }
   else
       ss << "mate " << (v > 0 ? VALUE_MATE - v + 1 : -VALUE_MATE - v) / 2;
 
