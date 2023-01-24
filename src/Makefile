@@ -55,9 +55,9 @@ BINDIR = $(PREFIX)/bin
 
 ### Built-in benchmark for pgo-builds
 ifeq ($(SDE_PATH),)
-	PGOBENCH = $(WINE_PATH) ./$(EXE) bench
+	PGOBENCH = $(WINE_PATH) ./$(EXE) bench 16 1 13 default depth nnue
 else
-	PGOBENCH = $(SDE_PATH) -- $(WINE_PATH) ./$(EXE) bench
+	PGOBENCH = $(SDE_PATH) -- $(WINE_PATH) ./$(EXE) bench 16 1 13 default depth nnue
 endif
 
 ### Source and object files
