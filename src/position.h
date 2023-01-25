@@ -124,7 +124,7 @@ public:
 
   // Properties of moves
   bool legal(Move m) const;
-  bool pseudo_legal(const Move m) const;
+  bool pseudo_legal(Move m) const;
   bool capture(Move m) const;
   bool gives_check(Move m) const;
   Piece moved_piece(Move m) const;
