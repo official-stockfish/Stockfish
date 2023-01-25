@@ -153,7 +153,7 @@ namespace Stockfish::Simd {
       asm(
         "vpdpbusd %[b0], %[a0], %[acc]\n\t"
         "vpdpbusd %[b1], %[a1], %[acc]\n\t"
-        : [acc]"+v"(acc)
+        : [acc]"+&v"(acc)
         : [a0]"v"(a0), [b0]"vm"(b0), [a1]"v"(a1), [b1]"vm"(b1)
       );
 #   else
@@ -249,7 +249,7 @@ namespace Stockfish::Simd {
       asm(
         VNNI_PREFIX "vpdpbusd %[b0], %[a0], %[acc]\n\t"
         VNNI_PREFIX "vpdpbusd %[b1], %[a1], %[acc]\n\t"
-        : [acc]"+v"(acc)
+        : [acc]"+&v"(acc)
         : [a0]"v"(a0), [b0]"vm"(b0), [a1]"v"(a1), [b1]"vm"(b1)
       );
 #   else

@@ -81,7 +81,7 @@ namespace {
 
   // History and stats update bonus, based on depth
   int stat_bonus(Depth d) {
-    return std::min((11 * d + 284) * d - 363 , 1650);
+    return std::min(350 * d - 400, 1650);
   }
 
   // Add a small random component to draw evaluations to avoid 3-fold blindness
@@ -96,7 +96,10 @@ namespace {
   struct Skill {
     Skill(int skill_level, int uci_elo) {
         if (uci_elo)
-            level = std::clamp(std::pow((uci_elo - 1346.6) / 143.4, 1 / 0.806), 0.0, 20.0);
+        {
+            double e = double(uci_elo - 1320) / (3190 - 1320);
+            level = std::clamp((((37.2473 * e - 40.8525) * e + 22.2943) * e - 0.311438), 0.0, 19.0);
+        }
         else
             level = double(skill_level);
     }
@@ -1023,11 +1026,16 @@ moves_loop: // When in check, search starts here
 
               history += 2 * thisThread->mainHistory[us][from_to(move)];
 
+              lmrDepth += history / 7208;
+              lmrDepth = std::max(lmrDepth, -2);
+
               // Futility pruning: parent node (~13 Elo)
               if (   !ss->inCheck
                   && lmrDepth < 13
-                  && ss->staticEval + 103 + 136 * lmrDepth + history / 53 <= alpha)
+                  && ss->staticEval + 103 + 136 * lmrDepth <= alpha)
                   continue;
+
+              lmrDepth = std::max(lmrDepth, 0);
 
               // Prune moves with negative SEE (~4 Elo)
               if (!pos.see_ge(move, Value(-25 * lmrDepth * lmrDepth - 16 * lmrDepth)))

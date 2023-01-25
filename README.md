@@ -102,7 +102,7 @@ change them via a chess GUI. This is a list of available UCI options in Stockfis
 
   * #### UCI_Elo
     If enabled by UCI_LimitStrength, aim for an engine strength of the given Elo.
-    This Elo rating has been calibrated at a time control of 60s+0.6s and anchored to CCRL 40/4.
+    This Elo rating has been calibrated at a time control of 120s+1.0s and anchored to +- 100 Elo to CCRL Blitz.
 
   * #### Skill Level
     Lower the Skill Level in order to make Stockfish play weaker (see also UCI_LimitStrength).
