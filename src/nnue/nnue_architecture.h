@@ -80,7 +80,7 @@ struct Network
     return true;
   }
 
-  // Read network parameters
+  // Write network parameters
   bool write_parameters(std::ostream& stream) const {
     if (!fc_0.write_parameters(stream)) return false;
     if (!ac_0.write_parameters(stream)) return false;
