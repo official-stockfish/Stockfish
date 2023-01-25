@@ -179,33 +179,33 @@ namespace Stockfish::Eval::NNUE::Layers {
     static_assert(PaddedInputDimensions >= LargeInputSize, "Something went wrong. This specialization should not have been chosen.");
 
 #if defined (USE_AVX512)
-    static constexpr const IndexType InputSimdWidth = 64;
-    static constexpr const IndexType MaxNumOutputRegs = 16;
+    static constexpr IndexType InputSimdWidth = 64;
+    static constexpr IndexType MaxNumOutputRegs = 16;
 #elif defined (USE_AVX2)
-    static constexpr const IndexType InputSimdWidth = 32;
-    static constexpr const IndexType MaxNumOutputRegs = 8;
+    static constexpr IndexType InputSimdWidth = 32;
+    static constexpr IndexType MaxNumOutputRegs = 8;
 #elif defined (USE_SSSE3)
-    static constexpr const IndexType InputSimdWidth = 16;
-    static constexpr const IndexType MaxNumOutputRegs = 8;
+    static constexpr IndexType InputSimdWidth = 16;
+    static constexpr IndexType MaxNumOutputRegs = 8;
 #elif defined (USE_NEON)
-    static constexpr const IndexType InputSimdWidth = 8;
-    static constexpr const IndexType MaxNumOutputRegs = 8;
+    static constexpr IndexType InputSimdWidth = 8;
+    static constexpr IndexType MaxNumOutputRegs = 8;
 #else
     // The fallback implementation will not have permuted weights.
     // We define these to avoid a lot of ifdefs later.
-    static constexpr const IndexType InputSimdWidth = 1;
-    static constexpr const IndexType MaxNumOutputRegs = 1;
+    static constexpr IndexType InputSimdWidth = 1;
+    static constexpr IndexType MaxNumOutputRegs = 1;
 #endif
 
     // A big block is a region in the weight matrix of the size [PaddedInputDimensions, NumOutputRegs].
     // A small block is a region of size [InputSimdWidth, 1]
 
-    static constexpr const IndexType NumOutputRegs = std::min(MaxNumOutputRegs, OutputDimensions);
-    static constexpr const IndexType SmallBlockSize = InputSimdWidth;
-    static constexpr const IndexType BigBlockSize = NumOutputRegs * PaddedInputDimensions;
-    static constexpr const IndexType NumSmallBlocksInBigBlock = BigBlockSize / SmallBlockSize;
-    static constexpr const IndexType NumSmallBlocksPerOutput = PaddedInputDimensions / SmallBlockSize;
-    static constexpr const IndexType NumBigBlocks = OutputDimensions / NumOutputRegs;
+    static constexpr IndexType NumOutputRegs = std::min(MaxNumOutputRegs, OutputDimensions);
+    static constexpr IndexType SmallBlockSize = InputSimdWidth;
+    static constexpr IndexType BigBlockSize = NumOutputRegs * PaddedInputDimensions;
+    static constexpr IndexType NumSmallBlocksInBigBlock = BigBlockSize / SmallBlockSize;
+    static constexpr IndexType NumSmallBlocksPerOutput = PaddedInputDimensions / SmallBlockSize;
+    static constexpr IndexType NumBigBlocks = OutputDimensions / NumOutputRegs;
 
     static_assert(OutputDimensions % NumOutputRegs == 0);
 
@@ -396,8 +396,8 @@ namespace Stockfish::Eval::NNUE::Layers {
     static_assert(PaddedInputDimensions < LargeInputSize, "Something went wrong. This specialization should not have been chosen.");
 
 #if defined (USE_SSSE3)
-    static constexpr const IndexType OutputSimdWidth = SimdWidth / 4;
-    static constexpr const IndexType InputSimdWidth = SimdWidth;
+    static constexpr IndexType OutputSimdWidth = SimdWidth / 4;
+    static constexpr IndexType InputSimdWidth = SimdWidth;
 #endif
 
     // Hash value embedded in the evaluation file
