@@ -72,22 +72,20 @@ struct Network
 
   // Read network parameters
   bool read_parameters(std::istream& stream) {
-    if (!fc_0.read_parameters(stream)) return false;
-    if (!ac_0.read_parameters(stream)) return false;
-    if (!fc_1.read_parameters(stream)) return false;
-    if (!ac_1.read_parameters(stream)) return false;
-    if (!fc_2.read_parameters(stream)) return false;
-    return true;
+    return   fc_0.read_parameters(stream)
+          && ac_0.read_parameters(stream)
+          && fc_1.read_parameters(stream)
+          && ac_1.read_parameters(stream)
+          && fc_2.read_parameters(stream);
   }
 
-  // Read network parameters
+  // Write network parameters
   bool write_parameters(std::ostream& stream) const {
-    if (!fc_0.write_parameters(stream)) return false;
-    if (!ac_0.write_parameters(stream)) return false;
-    if (!fc_1.write_parameters(stream)) return false;
-    if (!ac_1.write_parameters(stream)) return false;
-    if (!fc_2.write_parameters(stream)) return false;
-    return true;
+    return   fc_0.write_parameters(stream)
+          && ac_0.write_parameters(stream)
+          && fc_1.write_parameters(stream)
+          && ac_1.write_parameters(stream)
+          && fc_2.write_parameters(stream);
   }
 
   std::int32_t propagate(const TransformedFeatureType* transformedFeatures)
