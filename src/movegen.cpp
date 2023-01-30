@@ -184,6 +184,10 @@ namespace {
     static_assert(Type != LEGAL, "Unsupported type in generate_all()");
 
     constexpr bool Checks = Type == QUIET_CHECKS; // Reduce template instantiations
+    constexpr CastlingRights OurCastleAny = Us & ANY_CASTLING;
+    constexpr CastlingRights OurCastleKS  = Us & KING_SIDE;
+    constexpr CastlingRights OurCastleQS  = Us & QUEEN_SIDE;
+
     const Square ksq = pos.square<KING>(Us);
     Bitboard target;
 
@@ -211,8 +215,8 @@ namespace {
         while (b)
             *moveList++ = make_move(ksq, pop_lsb(b));
 
-        if ((Type == QUIETS || Type == NON_EVASIONS) && pos.can_castle(Us & ANY_CASTLING))
-            for (CastlingRights cr : { Us & KING_SIDE, Us & QUEEN_SIDE } )
+        if ((Type == QUIETS || Type == NON_EVASIONS) && pos.can_castle(OurCastleAny))
+            for (CastlingRights cr : { OurCastleKS, OurCastleQS } )
                 if (!pos.castling_impeded(cr) && pos.can_castle(cr))
                     *moveList++ = make<CASTLING>(ksq, pos.castling_rook_square(cr));
     }
