@@ -426,7 +426,8 @@ ifeq ($(COMP),clang)
 		CXX=x86_64-w64-mingw32-clang++
 	endif
 
-	CXXFLAGS += -pedantic -Wextra -Wshadow -Wmissing-prototypes
+	CXXFLAGS += -pedantic -Wextra -Wshadow -Wmissing-prototypes \
+	            -Wconditional-uninitialized
 
 	ifeq ($(filter $(KERNEL),Darwin OpenBSD FreeBSD),)
 	ifeq ($(target_windows),)
