@@ -308,7 +308,7 @@ void UCI::loop(int argc, char* argv[]) {
 /// mate <y>  Mate in 'y' moves (not plies). If the engine is getting mated,
 ///           uses negative values for 'y'.
 
-string UCI::value(Value v) {
+string UCI::value(Value v, Value v2) {
 
   assert(-VALUE_INFINITE < v && v < VALUE_INFINITE);
 
@@ -319,7 +319,10 @@ string UCI::value(Value v) {
   else if (abs(v) < VALUE_MATE_IN_MAX_PLY)
   {
       const int ply = VALUE_MATE_IN_MAX_PLY - 1 - std::abs(v);  // recompute ss->ply
-      ss << "cp " << (v > 0 ? 20000 - ply : -20000 + ply);
+      if (ply == 0)
+          ss << "cp " << (v > 0 ? 20000 : -20000) + v2 * 100 / NormalizeToPawnValue;
+      else
+          ss << "cp " << (v > 0 ? 20000 - ply : -20000 + ply);
   }
   else
       ss << "mate " << (v > 0 ? VALUE_MATE - v + 1 : -VALUE_MATE - v) / 2;
