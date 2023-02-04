@@ -1562,6 +1562,8 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves) {
         if (result == FAIL)
             return false;
 
+        m.dtz = dtz;
+
         // Better moves are ranked higher. Certain wins are ranked equally.
         // Losing moves are ranked equally unless a 50-move draw is in sight.
         int r =  dtz > 0 ? (dtz + cnt50 <= 99 && !rep ? MAX_DTZ : MAX_DTZ - (dtz + cnt50))
