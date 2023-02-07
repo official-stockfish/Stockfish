@@ -101,9 +101,9 @@ namespace {
 
     is >> token; // Consume the "name" token
 
-    // setoption Clear Hash is wrong
-	  if(token == "Clear") 
-		    sync_cout << "No such option: " << name << sync_endl;
+    // warning when there is no token name
+	  if(token != "name") 
+		    sync_cout << "Info string no such option: " << token << sync_endl;
 
     // Read the option name (can contain spaces)
     while (is >> token && token != "value")
