@@ -101,9 +101,9 @@ namespace {
 
     is >> token; // Consume the "name" token
 
-    // warning when there is no token name
+    // Add warning when there is no token name
 	  if(token != "name") 
-		    sync_cout << "Info string no such option: " << token << sync_endl;
+		    sync_cout << "No such token: " << token << sync_endl;
 
     // Read the option name (can contain spaces)
     while (is >> token && token != "value")
