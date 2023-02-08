@@ -102,8 +102,8 @@ namespace {
     is >> token; // Consume the "name" token
 
     // Add warning when there is no token name
-	  if(token != "name") 
-		    sync_cout << "No such token: " << token << sync_endl;
+    if (token != "name") 
+	sync_cout << "No such token: " << token << sync_endl;
 
     // Read the option name (can contain spaces)
     while (is >> token && token != "value")
@@ -115,7 +115,7 @@ namespace {
 
     if (Options.count(name))
         Options[name] = value;
-    else
+    else if (name != "")
         sync_cout << "No such option: " << name << sync_endl;
   }
 
