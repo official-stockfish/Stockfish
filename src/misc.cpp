@@ -448,8 +448,10 @@ void* std_aligned_alloc(size_t alignment, size_t size) {
 #if defined(POSIXALIGNEDALLOC)
   void *mem;
   return posix_memalign(&mem, alignment, size) ? nullptr : mem;
-#elif defined(_WIN32)
+#elif defined(_WIN32) && !defined(_M_ARM) && !defined(_M_ARM64)
   return _mm_malloc(size, alignment);
+#elif defined(_WIN32)
+  return _aligned_malloc(size, alignment);
 #else
   return std::aligned_alloc(alignment, size);
 #endif
@@ -459,8 +461,10 @@ void std_aligned_free(void* ptr) {
 
 #if defined(POSIXALIGNEDALLOC)
   free(ptr);
-#elif defined(_WIN32)
+#elif defined(_WIN32) && !defined(_M_ARM) && !defined(_M_ARM64)
   _mm_free(ptr);
+#elif defined(_WIN32)
+  _aligned_free(ptr);
 #else
   free(ptr);
 #endif
