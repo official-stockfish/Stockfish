@@ -39,9 +39,10 @@ void std_aligned_free(void* ptr);
 void* aligned_large_pages_alloc(size_t size); // memory aligned by page size, min alignment: 4096 bytes
 void aligned_large_pages_free(void* mem); // nop if mem == nullptr
 
-void dbg_hit_on(bool b);
-void dbg_hit_on(bool c, bool b);
-void dbg_mean_of(int v);
+void dbg_hit_on(bool cond, int slot = 0);
+void dbg_mean_of(int64_t value, int slot = 0);
+void dbg_stdev_of(int64_t value, int slot = 0);
+void dbg_correl_of(int64_t value1, int64_t value2, int slot = 0);
 void dbg_print();
 
 typedef std::chrono::milliseconds::rep TimePoint; // A value in milliseconds
