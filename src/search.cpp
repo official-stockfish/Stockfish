@@ -242,8 +242,10 @@ void MainThread::search() {
   bestPreviousScore = bestThread->rootMoves[0].score;
   bestPreviousAverageScore = bestThread->rootMoves[0].averageScore;
 
+#ifndef LIMIT_PV_OUTPUT
   // Send again PV info if we have a new best thread
   if (bestThread != this)
+#endif
       sync_cout << UCI::pv(bestThread->rootPos, bestThread->completedDepth) << sync_endl;
 
   sync_cout << "bestmove " << UCI::move(bestThread->rootMoves[0].pv[0], rootPos.is_chess960());
@@ -389,6 +391,7 @@ void Thread::search() {
               if (Threads.stop)
                   break;
 
+#ifndef LIMIT_PV_OUTPUT
               // When failing high/low give some update (without cluttering
               // the UI) before a re-search.
               if (   mainThread
@@ -396,6 +399,7 @@ void Thread::search() {
                   && (bestValue <= alpha || bestValue >= beta)
                   && Time.elapsed() > 3000)
                   sync_cout << UCI::pv(rootPos, rootDepth) << sync_endl;
+#endif
 
               // In case of failing low/high increase aspiration window and
               // re-search, otherwise exit the loop.
@@ -424,9 +428,11 @@ void Thread::search() {
           // Sort the PV lines searched so far and update the GUI
           std::stable_sort(rootMoves.begin() + pvFirst, rootMoves.begin() + pvIdx + 1);
 
+#ifndef LIMIT_PV_OUTPUT
           if (    mainThread
               && (Threads.stop || pvIdx + 1 == multiPV || Time.elapsed() > 3000))
               sync_cout << UCI::pv(rootPos, rootDepth) << sync_endl;
+#endif
       }
 
       if (!Threads.stop)
@@ -1902,8 +1908,12 @@ string UCI::pv(const Position& pos, Depth depth) {
          << " time "     << elapsed
          << " pv";
 
+#ifndef LIMIT_PV_OUTPUT
       for (Move m : rootMoves[i].pv)
           ss << " " << UCI::move(m, pos.is_chess960());
+#else
+      ss << " " << UCI::move(rootMoves[i].pv[0], pos.is_chess960());
+#endif
   }
 
   return ss.str();
