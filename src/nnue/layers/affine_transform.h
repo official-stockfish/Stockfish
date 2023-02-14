@@ -247,6 +247,9 @@ namespace Stockfish::Eval::NNUE::Layers {
       for (IndexType i = 0; i < OutputDimensions * PaddedInputDimensions; ++i)
         weights[get_weight_index(i)] = read_little_endian<WeightType>(stream);
 
+      if (!is_always_exact())
+        std::cout << "Weights may cause saturation. Result may not be exact.\n";
+
       return !stream.fail();
     }
 
@@ -366,6 +369,51 @@ namespace Stockfish::Eval::NNUE::Layers {
       return output;
     }
 
+    bool is_always_exact() const
+    {
+      bool good = true;
+
+#if (defined (USE_SSSE3) && !defined(USE_VNNI)) || defined (USE_NEON)
+
+      for (IndexType bigBlock = 0; bigBlock < NumBigBlocks; ++bigBlock)
+      {
+        for (IndexType smallBlock = 0; smallBlock < NumSmallBlocksPerOutput; smallBlock += 2)
+        {
+          const WeightType* w =
+                weights
+              + bigBlock * BigBlockSize
+              + smallBlock * SmallBlockSize * NumOutputRegs;
+
+          for (IndexType k = 0; k < NumOutputRegs; ++k)
+          {
+            for (IndexType i = 0; i < InputSimdWidth; i += 2)
+            {
+              // Assuming input cannot be negative.
+              const int worst_case_result =
+                  std::max(0, w[k*InputSimdWidth                 + i+0] * 127)
+                + std::max(0, w[k*InputSimdWidth                 + i+1] * 127)
+                + std::max(0, w[(k+NumOutputRegs)*InputSimdWidth + i+0] * 127)
+                + std::max(0, w[(k+NumOutputRegs)*InputSimdWidth + i+1] * 127);
+
+              if (worst_case_result > 32767)
+              {
+                std::cout << "Weights may cause saturation: "
+                          << (int)w[k*InputSimdWidth                 + i+0] << ", "
+                          << (int)w[k*InputSimdWidth                 + i+1] << ", "
+                          << (int)w[(k+NumOutputRegs)*InputSimdWidth + i+0] << ", "
+                          << (int)w[(k+NumOutputRegs)*InputSimdWidth + i+1] << "\n";
+                good = false;
+              }
+            }
+          }
+        }
+      }
+
+#endif
+
+      return good;
+    }
+
    private:
     using BiasType = OutputType;
     using WeightType = std::int8_t;
@@ -432,6 +480,9 @@ namespace Stockfish::Eval::NNUE::Layers {
         biases[i] = read_little_endian<BiasType>(stream);
       for (IndexType i = 0; i < OutputDimensions * PaddedInputDimensions; ++i)
         weights[get_weight_index(i)] = read_little_endian<WeightType>(stream);
+
+      if (!is_always_exact())
+        std::cout << "Result may not be exact.\n";
 
       return !stream.fail();
     }
@@ -530,6 +581,52 @@ namespace Stockfish::Eval::NNUE::Layers {
 #endif
 
       return output;
+    }
+
+    bool is_always_exact() const
+    {
+      bool good = true;
+
+#if (defined (USE_SSSE3) && !defined(USE_VNNI))
+
+      if constexpr (OutputDimensions % OutputSimdWidth == 0)
+      {
+        constexpr IndexType NumChunks = ceil_to_multiple<IndexType>(InputDimensions, 8) / 4;
+        constexpr IndexType NumRegs = OutputDimensions / OutputSimdWidth;
+
+        for (IndexType i = 0; i < NumChunks; i += 2)
+        {
+          const WeightType* col0 = &weights[(i + 0) * OutputDimensions * 4];
+          const WeightType* col1 = &weights[(i + 1) * OutputDimensions * 4];
+
+          for (IndexType k = 0; k < NumRegs; ++k)
+          {
+            for (IndexType j = 0; j < InputSimdWidth; j += 2)
+            {
+              // Assuming input cannot be negative.
+              const int worst_case_result =
+                  std::max(0, col0[k*InputSimdWidth + j+0] * 127)
+                + std::max(0, col0[k*InputSimdWidth + j+1] * 127)
+                + std::max(0, col1[k*InputSimdWidth + j+0] * 127)
+                + std::max(0, col1[k*InputSimdWidth + j+1] * 127);
+
+              if (worst_case_result > 32767)
+              {
+                std::cout << "Weights may cause saturation: "
+                          << (int)col0[k*InputSimdWidth + j+0] << ", "
+                          << (int)col0[k*InputSimdWidth + j+1] << ", "
+                          << (int)col1[k*InputSimdWidth + j+0] << ", "
+                          << (int)col1[k*InputSimdWidth + j+1] << "\n";
+                good = false;
+              }
+            }
+          }
+        }
+      }
+
+#endif
+
+      return good;
     }
 
    private:
