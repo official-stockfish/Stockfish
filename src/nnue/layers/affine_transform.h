@@ -480,18 +480,14 @@ namespace Stockfish::Eval::NNUE::Layers {
       #define vec_set_32 _mm256_set1_epi32
       #define vec_add_dpbusd_32 Simd::m256_add_dpbusd_epi32
       #define vec_add_dpbusd_32x2 Simd::m256_add_dpbusd_epi32x2
-      #define vec_add_dpbusd_32x4 Simd::m256_add_dpbusd_epi32x4
       #define vec_hadd Simd::m256_hadd
-      #define vec_haddx4 Simd::m256_haddx4
 #elif defined (USE_SSSE3)
       using vec_t = __m128i;
       #define vec_setzero _mm_setzero_si128
       #define vec_set_32 _mm_set1_epi32
       #define vec_add_dpbusd_32 Simd::m128_add_dpbusd_epi32
       #define vec_add_dpbusd_32x2 Simd::m128_add_dpbusd_epi32x2
-      #define vec_add_dpbusd_32x4 Simd::m128_add_dpbusd_epi32x4
       #define vec_hadd Simd::m128_hadd
-      #define vec_haddx4 Simd::m128_haddx4
 #endif
 
 #if defined (USE_SSSE3)
@@ -542,9 +538,7 @@ namespace Stockfish::Eval::NNUE::Layers {
 # undef vec_set_32
 # undef vec_add_dpbusd_32
 # undef vec_add_dpbusd_32x2
-# undef vec_add_dpbusd_32x4
 # undef vec_hadd
-# undef vec_haddx4
 #else
       // Use old implementation for the other architectures.
       affine_transform_non_ssse3<
