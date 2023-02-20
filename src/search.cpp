@@ -987,6 +987,8 @@ moves_loop: // When in check, search starts here
 
       Value delta = beta - alpha;
 
+      Depth r = reduction(improving, depth, moveCount, delta, thisThread->rootDelta);
+
       // Step 14. Pruning at shallow depth (~120 Elo). Depth conditions are important for mate finding.
       if (  !rootNode
           && pos.non_pawn_material(us)
@@ -996,7 +998,7 @@ moves_loop: // When in check, search starts here
           moveCountPruning = moveCount >= futility_move_count(improving, depth);
 
           // Reduced depth of the next LMR search
-          int lmrDepth = std::max(newDepth - reduction(improving, depth, moveCount, delta, thisThread->rootDelta), 0);
+          int lmrDepth = std::max(newDepth - r, 0);
 
           if (   capture
               || givesCheck)
@@ -1132,8 +1134,6 @@ moves_loop: // When in check, search starts here
 
       // Step 16. Make the move
       pos.do_move(move, st, givesCheck);
-
-      Depth r = reduction(improving, depth, moveCount, delta, thisThread->rootDelta);
 
       // Decrease reduction if position is or has been on the PV
       // and node is not likely to fail low. (~3 Elo)
@@ -1371,11 +1371,10 @@ moves_loop: // When in check, search starts here
                          quietsSearched, quietCount, capturesSearched, captureCount, depth);
 
     // Bonus for prior countermove that caused the fail low
-    else if (   (depth >= 5 || PvNode || bestValue < alpha - 65 * depth)
-             && !priorCapture)
+    else if (!priorCapture)
     {
         // Extra bonuses for PV/Cut nodes or bad fail lows
-        int bonus = 1 + (PvNode || cutNode) + (bestValue < alpha - 88 * depth);
+        int bonus = (depth > 4) + (PvNode || cutNode) + (bestValue < alpha - 88 * depth);
         update_continuation_histories(ss-1, pos.piece_on(prevSq), prevSq, stat_bonus(depth) * bonus);
     }
 
