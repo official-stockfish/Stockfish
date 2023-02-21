@@ -72,6 +72,10 @@ namespace Stockfish::Eval::NNUE::Layers {
     const __m64 Zeros = _mm_setzero_si64();
     const auto inputVector = reinterpret_cast<const __m64*>(input);
 
+# elif defined(USE_NEON_DOTPROD)
+    constexpr IndexType NumChunks = ceil_to_multiple<IndexType>(InputDimensions, 16) / 16;
+    const auto inputVector = reinterpret_cast<const int8x16_t*>(input);
+
 # elif defined(USE_NEON)
     constexpr IndexType NumChunks = ceil_to_multiple<IndexType>(InputDimensions, 16) / 16;
     const auto inputVector = reinterpret_cast<const int8x8_t*>(input);
@@ -122,6 +126,14 @@ namespace Stockfish::Eval::NNUE::Layers {
       __m64 sum = _mm_add_pi32(sumLo, sumHi);
       sum = _mm_add_pi32(sum, _mm_unpackhi_pi32(sum, sum));
       output[i] = _mm_cvtsi64_si32(sum);
+
+# elif defined(USE_NEON_DOTPROD)
+      int32x4_t sum = {biases[i]};
+      const auto row = reinterpret_cast<const int8x16_t*>(&weights[offset]);
+      for (IndexType j = 0; j < NumChunks; ++j) {
+        sum = vdotq_s32(sum, inputVector[j], row[j]);
+      }
+      output[i] = vaddvq_s32(sum);
 
 # elif defined(USE_NEON)
       int32x4_t sum = {biases[i]};
@@ -185,6 +197,9 @@ namespace Stockfish::Eval::NNUE::Layers {
     static constexpr IndexType InputSimdWidth = 32;
     static constexpr IndexType MaxNumOutputRegs = 8;
 #elif defined (USE_SSSE3)
+    static constexpr IndexType InputSimdWidth = 16;
+    static constexpr IndexType MaxNumOutputRegs = 8;
+#elif defined (USE_NEON_DOTPROD)
     static constexpr IndexType InputSimdWidth = 16;
     static constexpr IndexType MaxNumOutputRegs = 8;
 #elif defined (USE_NEON)
@@ -292,6 +307,15 @@ namespace Stockfish::Eval::NNUE::Layers {
       #define vec_add_dpbusd_32x2 Simd::m128_add_dpbusd_epi32x2
       #define vec_hadd Simd::m128_hadd
       #define vec_haddx4 Simd::m128_haddx4
+#elif defined (USE_NEON_DOTPROD)
+      using acc_vec_t = int32x4_t;
+      using bias_vec_t = int32x4_t;
+      using weight_vec_t = int8x16_t;
+      using in_vec_t = int8x16_t;
+      #define vec_zero {0}
+      #define vec_add_dpbusd_32x2 Simd::dotprod_m128_add_dpbusd_epi32x2
+      #define vec_hadd Simd::neon_m128_hadd
+      #define vec_haddx4 Simd::neon_m128_haddx4
 #elif defined (USE_NEON)
       using acc_vec_t = int32x4_t;
       using bias_vec_t = int32x4_t;

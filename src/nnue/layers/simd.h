@@ -346,6 +346,19 @@ namespace Stockfish::Simd {
 
 #endif
 
+#if defined (USE_NEON_DOTPROD)
+
+    [[maybe_unused]] static void dotprod_m128_add_dpbusd_epi32x2(
+        int32x4_t& acc,
+        int8x16_t a0, int8x16_t b0,
+        int8x16_t a1, int8x16_t b1) {
+
+        acc = vdotq_s32(acc, a0, b0);
+        acc = vdotq_s32(acc, a1, b1);
+    }
+
+#endif
+
 #if defined (USE_NEON)
 
     [[maybe_unused]] static int neon_m128_reduce_add_epi32(int32x4_t s) {
