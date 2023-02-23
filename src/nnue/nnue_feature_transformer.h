@@ -365,7 +365,7 @@ namespace Stockfish::Eval::NNUE {
     //       by repeatedly applying ->previous from states_to_update[i+1] or states_to_update[i] == nullptr.
     //       computed_st must be reachable by repeatadly applying ->previous on states_to_update[0], if not nullptr.
     template<Color Perspective, size_t N>
-    void update_accumulator_incremetal(const Position& pos, StateInfo* computed_st, StateInfo* states_to_update[N]) const {
+    void update_accumulator_incremental(const Position& pos, StateInfo* computed_st, StateInfo* states_to_update[N]) const {
       static_assert(N > 0);
       assert(states_to_update[N-1] == nullptr);
 
@@ -630,7 +630,7 @@ namespace Stockfish::Eval::NNUE {
       {
         // Only update current position accumulator to minimize work.
         StateInfo* states_to_update[2] = { pos.state(), nullptr };
-        update_accumulator_incremetal<Perspective, 2>(pos, oldest_st, states_to_update);
+        update_accumulator_incremental<Perspective, 2>(pos, oldest_st, states_to_update);
       }
       else
       {
@@ -656,7 +656,7 @@ namespace Stockfish::Eval::NNUE {
         StateInfo *states_to_update[3] =
           { next, next == pos.state() ? nullptr : pos.state(), nullptr };
 
-        update_accumulator_incremetal<Perspective, 3>(pos, oldest_st, states_to_update);
+        update_accumulator_incremental<Perspective, 3>(pos, oldest_st, states_to_update);
       }
       else
       {
