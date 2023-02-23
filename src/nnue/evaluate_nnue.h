@@ -31,6 +31,7 @@ namespace Stockfish::Eval::NNUE {
   constexpr std::uint32_t HashValue =
       FeatureTransformer::get_hash_value() ^ Network::get_hash_value();
 
+
   // Deleter for automating release of memory area
   template <typename T>
   struct AlignedDeleter {
