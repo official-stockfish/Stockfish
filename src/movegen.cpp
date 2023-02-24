@@ -28,7 +28,7 @@ namespace {
   template<GenType Type, Direction D>
   ExtMove* make_promotions(ExtMove* moveList, [[maybe_unused]] Square to) {
 
-    if constexpr (Type == CAPTURES || Type == EVASIONS || Type == NON_EVASIONS)
+    if constexpr (Type == NON_QUIETS || Type == EVASIONS || Type == NON_EVASIONS)
         *moveList++ = make<PROMOTION>(to - D, to, QUEEN);
 
     if constexpr (Type == QUIETS || Type == EVASIONS || Type == NON_EVASIONS)
@@ -60,7 +60,7 @@ namespace {
     Bitboard pawnsNotOn7 = pos.pieces(Us, PAWN) & ~TRank7BB;
 
     // Single and double pawn pushes, no promotions
-    if constexpr (Type != CAPTURES)
+    if constexpr (Type != NON_QUIETS)
     {
         Bitboard b1 = shift<Up>(pawnsNotOn7)   & emptySquares;
         Bitboard b2 = shift<Up>(b1 & TRank3BB) & emptySquares;
@@ -75,7 +75,8 @@ namespace {
         {
             // To make a quiet check, you either make a direct check by pushing a pawn
             // or push a blocker pawn that is not on the same file as the enemy king.
-            // Discovered check promotion has been already generated amongst the captures.
+            // Discovered check queen promotion has been already generated amongst the non-quiets
+            // and discovered check underpromotion has been already generated amongst the quiets.
             Square ksq = pos.square<KING>(Them);
             Bitboard dcCandidatePawns = pos.blockers_for_king(Them) & ~file_bb(ksq);
             b1 &= pawn_attacks_bb(Them, ksq) | shift<   Up>(dcCandidatePawns);
@@ -116,7 +117,7 @@ namespace {
     }
 
     // Standard and en passant captures
-    if constexpr (Type == CAPTURES || Type == EVASIONS || Type == NON_EVASIONS)
+    if constexpr (Type == NON_QUIETS || Type == EVASIONS || Type == NON_EVASIONS)
     {
         Bitboard b1 = shift<UpRight>(pawnsNotOn7) & enemies;
         Bitboard b2 = shift<UpLeft >(pawnsNotOn7) & enemies;
@@ -192,7 +193,7 @@ namespace {
     {
         target = Type == EVASIONS     ?  between_bb(ksq, lsb(pos.checkers()))
                : Type == NON_EVASIONS ? ~pos.pieces( Us)
-               : Type == CAPTURES     ?  pos.pieces(~Us)
+               : Type == NON_QUIETS   ?  pos.pieces(~Us)
                                       : ~pos.pieces(   ); // QUIETS || QUIET_CHECKS
 
         moveList = generate_pawn_moves<Us, Type>(pos, moveList, target);
@@ -223,7 +224,7 @@ namespace {
 } // namespace
 
 
-/// <CAPTURES>     Generates all pseudo-legal captures plus queen promotions
+/// <NON_QUIETS>   Generates all pseudo-legal captures plus queen promotions
 /// <QUIETS>       Generates all pseudo-legal non-captures and underpromotions
 /// <EVASIONS>     Generates all pseudo-legal check evasions when the side to move is in check
 /// <QUIET_CHECKS> Generates all pseudo-legal non-captures giving check, except castling and promotions
@@ -244,7 +245,7 @@ ExtMove* generate(const Position& pos, ExtMove* moveList) {
 }
 
 // Explicit template instantiations
-template ExtMove* generate<CAPTURES>(const Position&, ExtMove*);
+template ExtMove* generate<NON_QUIETS>(const Position&, ExtMove*);
 template ExtMove* generate<QUIETS>(const Position&, ExtMove*);
 template ExtMove* generate<EVASIONS>(const Position&, ExtMove*);
 template ExtMove* generate<QUIET_CHECKS>(const Position&, ExtMove*);

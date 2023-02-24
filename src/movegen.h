@@ -28,7 +28,7 @@ namespace Stockfish {
 class Position;
 
 enum GenType {
-  CAPTURES,
+  NON_QUIETS,
   QUIETS,
   QUIET_CHECKS,
   EVASIONS,

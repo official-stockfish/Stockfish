@@ -1203,7 +1203,7 @@ WDLScore search(Position& pos, ProbeState* result) {
 
     for (const Move move : moveList)
     {
-        if (   !pos.capture(move)
+        if (   ((pos.empty(to_sq(move)) || type_of(move) == CASTLING) && type_of(move) != EN_PASSANT)
             && (!CheckZeroingMoves || type_of(pos.moved_piece(move)) != PAWN))
             continue;
 
@@ -1472,7 +1472,8 @@ int Tablebases::probe_dtz(Position& pos, ProbeState* result) {
 
     for (const Move move : MoveList<LEGAL>(pos))
     {
-        bool zeroing = pos.capture(move) || type_of(pos.moved_piece(move)) == PAWN;
+        bool zeroing =   (!pos.empty(to_sq(move)) && type_of(move) != CASTLING)
+                      || type_of(pos.moved_piece(move)) == PAWN;
 
         pos.do_move(move, st);
 

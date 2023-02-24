@@ -26,10 +26,10 @@ namespace Stockfish {
 namespace {
 
   enum Stages {
-    MAIN_TT, CAPTURE_INIT, GOOD_CAPTURE, REFUTATION, QUIET_INIT, QUIET, BAD_CAPTURE,
+    MAIN_TT, NONQUIET_INIT, GOOD_NONQUIET, REFUTATION, QUIET_INIT, QUIET, BAD_NONQUIET,
     EVASION_TT, EVASION_INIT, EVASION,
     PROBCUT_TT, PROBCUT_INIT, PROBCUT,
-    QSEARCH_TT, QCAPTURE_INIT, QCAPTURE, QCHECK_INIT, QCHECK
+    QSEARCH_TT, QNONQUIET_INIT, QNONQUIET, QCHECK_INIT, QCHECK
   };
 
   // partial_insertion_sort() sorts moves in descending order up to and including
@@ -58,11 +58,11 @@ namespace {
 
 /// MovePicker constructor for the main search
 MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const ButterflyHistory* mh,
-                                                             const CapturePieceToHistory* cph,
+                                                             const NonQuietPieceToHistory* nqh,
                                                              const PieceToHistory** ch,
                                                              Move cm,
                                                              const Move* killers)
-           : pos(p), mainHistory(mh), captureHistory(cph), continuationHistory(ch),
+           : pos(p), mainHistory(mh), nonQuietHistory(nqh), continuationHistory(ch),
              ttMove(ttm), refutations{{killers[0], 0}, {killers[1], 0}, {cm, 0}}, depth(d)
 {
   assert(d > 0);
@@ -74,10 +74,10 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const ButterflyHist
 
 /// MovePicker constructor for quiescence search
 MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const ButterflyHistory* mh,
-                                                             const CapturePieceToHistory* cph,
+                                                             const NonQuietPieceToHistory* nqh,
                                                              const PieceToHistory** ch,
                                                              Square rs)
-           : pos(p), mainHistory(mh), captureHistory(cph), continuationHistory(ch), ttMove(ttm), recaptureSquare(rs), depth(d)
+           : pos(p), mainHistory(mh), nonQuietHistory(nqh), continuationHistory(ch), ttMove(ttm), recaptureSquare(rs), depth(d)
 {
   assert(d <= 0);
 
@@ -86,14 +86,14 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const ButterflyHist
             && pos.pseudo_legal(ttm));
 }
 
-/// MovePicker constructor for ProbCut: we generate captures with SEE greater
+/// MovePicker constructor for ProbCut: we generate captures or queen promotions with SEE greater
 /// than or equal to the given threshold.
-MovePicker::MovePicker(const Position& p, Move ttm, Value th, const CapturePieceToHistory* cph)
-           : pos(p), captureHistory(cph), ttMove(ttm), threshold(th)
+MovePicker::MovePicker(const Position& p, Move ttm, Value th, const NonQuietPieceToHistory* nqh)
+           : pos(p), nonQuietHistory(nqh), ttMove(ttm), threshold(th)
 {
   assert(!pos.checkers());
 
-  stage = PROBCUT_TT + !(ttm && pos.capture(ttm)
+  stage = PROBCUT_TT + !(ttm && pos.is_non_quiet(ttm)
                              && pos.pseudo_legal(ttm)
                              && pos.see_ge(ttm, threshold));
 }
@@ -104,7 +104,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, Value th, const CapturePiece
 template<GenType Type>
 void MovePicker::score() {
 
-  static_assert(Type == CAPTURES || Type == QUIETS || Type == EVASIONS, "Wrong type");
+  static_assert(Type == NON_QUIETS || Type == QUIETS || Type == EVASIONS, "Wrong type");
 
   [[maybe_unused]] Bitboard threatenedByPawn, threatenedByMinor, threatenedByRook;
   if constexpr (Type == QUIETS)
@@ -122,9 +122,9 @@ void MovePicker::score() {
   }
 
   for (auto& m : *this)
-      if constexpr (Type == CAPTURES)
+      if constexpr (Type == NON_QUIETS)
           m.value =  (7 * int(PieceValue[MG][pos.piece_on(to_sq(m))])
-                   +     (*captureHistory)[pos.moved_piece(m)][to_sq(m)][type_of(pos.piece_on(to_sq(m)))]) / 16;
+                   +     (*nonQuietHistory)[pos.moved_piece(m)][to_sq(m)][type_of(pos.piece_on(to_sq(m)))]) / 16;
 
       else if constexpr (Type == QUIETS)
           m.value =  2 * (*mainHistory)[pos.side_to_move()][from_to(m)]
@@ -141,7 +141,7 @@ void MovePicker::score() {
                    +     bool(pos.check_squares(type_of(pos.moved_piece(m))) & to_sq(m)) * 16384;
       else // Type == EVASIONS
       {
-          if (pos.capture(m))
+          if (pos.is_non_quiet(m))
               m.value =  PieceValue[MG][pos.piece_on(to_sq(m))]
                        - Value(type_of(pos.moved_piece(m)))
                        + (1 << 28);
@@ -184,22 +184,22 @@ top:
       ++stage;
       return ttMove;
 
-  case CAPTURE_INIT:
+  case NONQUIET_INIT:
   case PROBCUT_INIT:
-  case QCAPTURE_INIT:
-      cur = endBadCaptures = moves;
-      endMoves = generate<CAPTURES>(pos, cur);
+  case QNONQUIET_INIT:
+      cur = endBadNonQuiets = moves;
+      endMoves = generate<NON_QUIETS>(pos, cur);
 
-      score<CAPTURES>();
+      score<NON_QUIETS>();
       partial_insertion_sort(cur, endMoves, std::numeric_limits<int>::min());
       ++stage;
       goto top;
 
-  case GOOD_CAPTURE:
+  case GOOD_NONQUIET:
       if (select<Next>([&](){
                        return pos.see_ge(*cur, Value(-cur->value)) ?
-                              // Move losing capture to endBadCaptures to be tried later
-                              true : (*endBadCaptures++ = *cur, false); }))
+                              // Move losing non-quiet to endBadNonQuiets to be tried later
+                              true : (*endBadNonQuiets++ = *cur, false); }))
           return *(cur - 1);
 
       // Prepare the pointers to loop over the refutations array
@@ -216,7 +216,7 @@ top:
 
   case REFUTATION:
       if (select<Next>([&](){ return    *cur != MOVE_NONE
-                                    && !pos.capture(*cur)
+                                    && !pos.is_non_quiet(*cur)
                                     &&  pos.pseudo_legal(*cur); }))
           return *(cur - 1);
       ++stage;
@@ -225,7 +225,7 @@ top:
   case QUIET_INIT:
       if (!skipQuiets)
       {
-          cur = endBadCaptures;
+          cur = endBadNonQuiets;
           endMoves = generate<QUIETS>(pos, cur);
 
           score<QUIETS>();
@@ -242,14 +242,14 @@ top:
                                       && *cur != refutations[2].move;}))
           return *(cur - 1);
 
-      // Prepare the pointers to loop over the bad captures
+      // Prepare the pointers to loop over the bad non-quiets
       cur = moves;
-      endMoves = endBadCaptures;
+      endMoves = endBadNonQuiets;
 
       ++stage;
       [[fallthrough]];
 
-  case BAD_CAPTURE:
+  case BAD_NONQUIET:
       return select<Next>([](){ return true; });
 
   case EVASION_INIT:
@@ -266,7 +266,7 @@ top:
   case PROBCUT:
       return select<Next>([&](){ return pos.see_ge(*cur, threshold); });
 
-  case QCAPTURE:
+  case QNONQUIET:
       if (select<Next>([&](){ return   depth > DEPTH_QS_RECAPTURES
                                     || to_sq(*cur) == recaptureSquare; }))
           return *(cur - 1);

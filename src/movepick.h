@@ -80,7 +80,7 @@ struct Stats<T, D, Size> : public std::array<StatsEntry<T, D>, Size> {};
 
 /// In stats table, D=0 means that the template parameter is not used
 enum StatsParams { NOT_USED = 0 };
-enum StatsType { NoCaptures, Captures };
+enum StatsType { Quiets, NonQuiets };
 
 /// ButterflyHistory records how often quiet moves have been successful or
 /// unsuccessful during the current search, and is used for reduction and move
@@ -93,8 +93,8 @@ typedef Stats<int16_t, 7183, COLOR_NB, int(SQUARE_NB) * int(SQUARE_NB)> Butterfl
 /// move, see www.chessprogramming.org/Countermove_Heuristic
 typedef Stats<Move, NOT_USED, PIECE_NB, SQUARE_NB> CounterMoveHistory;
 
-/// CapturePieceToHistory is addressed by a move's [piece][to][captured piece type]
-typedef Stats<int16_t, 10692, PIECE_NB, SQUARE_NB, PIECE_TYPE_NB> CapturePieceToHistory;
+/// NonQuietPieceToHistory is addressed by a move's [piece][to][captured piece type]
+typedef Stats<int16_t, 10692, PIECE_NB, SQUARE_NB, PIECE_TYPE_NB> NonQuietPieceToHistory;
 
 /// PieceToHistory is like ButterflyHistory but is addressed by a move's [piece][to]
 typedef Stats<int16_t, 29952, PIECE_NB, SQUARE_NB> PieceToHistory;
@@ -120,15 +120,15 @@ public:
   MovePicker(const MovePicker&) = delete;
   MovePicker& operator=(const MovePicker&) = delete;
   MovePicker(const Position&, Move, Depth, const ButterflyHistory*,
-                                           const CapturePieceToHistory*,
+                                           const NonQuietPieceToHistory*,
                                            const PieceToHistory**,
                                            Move,
                                            const Move*);
   MovePicker(const Position&, Move, Depth, const ButterflyHistory*,
-                                           const CapturePieceToHistory*,
+                                           const NonQuietPieceToHistory*,
                                            const PieceToHistory**,
                                            Square);
-  MovePicker(const Position&, Move, Value, const CapturePieceToHistory*);
+  MovePicker(const Position&, Move, Value, const NonQuietPieceToHistory*);
   Move next_move(bool skipQuiets = false);
 
   Bitboard threatenedPieces;
@@ -141,10 +141,10 @@ private:
 
   const Position& pos;
   const ButterflyHistory* mainHistory;
-  const CapturePieceToHistory* captureHistory;
+  const NonQuietPieceToHistory* nonQuietHistory;
   const PieceToHistory** continuationHistory;
   Move ttMove;
-  ExtMove refutations[3], *cur, *endMoves, *endBadCaptures;
+  ExtMove refutations[3], *cur, *endMoves, *endBadNonQuiets;
   int stage;
   Square recaptureSquare;
   Value threshold;
