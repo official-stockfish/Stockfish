@@ -384,7 +384,8 @@ inline bool Position::is_chess960() const {
 inline bool Position::capture(Move m) const {
   assert(is_ok(m));
   // Castling is encoded as "king captures rook"
-  return (!empty(to_sq(m)) && type_of(m) != CASTLING) || type_of(m) == EN_PASSANT;
+  return ((    !empty(to_sq(m)) || (type_of(m) == PROMOTION && promotion_type(m) == QUEEN)) && type_of(m) != CASTLING) 
+            || type_of(m) == EN_PASSANT;
 }
 
 inline Piece Position::captured_piece() const {
