@@ -42,8 +42,8 @@ namespace Stockfish::Eval::NNUE {
     "Per feature PSQT values cannot be processed at granularity lower than 8 at a time.");
 
   #ifdef USE_AVX512
-  typedef __m512i vec_t;
-  typedef __m256i psqt_vec_t;
+  using vec_t = __m512i;
+  using psqt_vec_t = __m256i;
   #define vec_load(a) _mm512_load_si512(a)
   #define vec_store(a,b) _mm512_store_si512(a,b)
   #define vec_add_16(a,b) _mm512_add_epi16(a,b)
@@ -66,8 +66,8 @@ namespace Stockfish::Eval::NNUE {
   #define MaxChunkSize 64
 
   #elif USE_AVX2
-  typedef __m256i vec_t;
-  typedef __m256i psqt_vec_t;
+  using vec_t = __m256i;
+  using psqt_vec_t = __m256i;
   #define vec_load(a) _mm256_load_si256(a)
   #define vec_store(a,b) _mm256_store_si256(a,b)
   #define vec_add_16(a,b) _mm256_add_epi16(a,b)
@@ -90,8 +90,8 @@ namespace Stockfish::Eval::NNUE {
   #define MaxChunkSize 32
 
   #elif USE_SSE2
-  typedef __m128i vec_t;
-  typedef __m128i psqt_vec_t;
+  using vec_t = __m128i;
+  using psqt_vec_t = __m128i;
   #define vec_load(a) (*(a))
   #define vec_store(a,b) *(a)=(b)
   #define vec_add_16(a,b) _mm_add_epi16(a,b)
@@ -111,8 +111,8 @@ namespace Stockfish::Eval::NNUE {
   #define MaxChunkSize 16
 
   #elif USE_MMX
-  typedef __m64 vec_t;
-  typedef __m64 psqt_vec_t;
+  using vec_t = __m64;
+  using psqt_vec_t = __m64;
   #define vec_load(a) (*(a))
   #define vec_store(a,b) *(a)=(b)
   #define vec_add_16(a,b) _mm_add_pi16(a,b)
@@ -139,8 +139,8 @@ namespace Stockfish::Eval::NNUE {
   #define MaxChunkSize 8
 
   #elif USE_NEON
-  typedef int16x8_t vec_t;
-  typedef int32x4_t psqt_vec_t;
+  using vec_t = int16x8_t;
+  using psqt_vec_t = int32x4_t;
   #define vec_load(a) (*(a))
   #define vec_store(a,b) *(a)=(b)
   #define vec_add_16(a,b) vaddq_s16(a,b)
