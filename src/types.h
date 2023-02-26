@@ -103,8 +103,8 @@ constexpr bool Is64Bit = true;
 constexpr bool Is64Bit = false;
 #endif
 
-typedef uint64_t Key;
-typedef uint64_t Bitboard;
+using Key = uint64_t;
+using Bitboard = uint64_t;
 
 constexpr int MAX_MOVES = 256;
 constexpr int MAX_PLY   = 246;
@@ -218,7 +218,7 @@ constexpr Value PieceValue[PHASE_NB][PIECE_NB] = {
     VALUE_ZERO, PawnValueEg, KnightValueEg, BishopValueEg, RookValueEg, QueenValueEg, VALUE_ZERO, VALUE_ZERO }
 };
 
-typedef int Depth;
+using Depth = int;
 
 enum : int {
   DEPTH_QS_CHECKS     =  0,
