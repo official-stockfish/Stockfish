@@ -26,8 +26,8 @@
 
 namespace Stockfish {
 
-typedef std::pair<int, int> Range; // Option's min-max values
-typedef Range (RangeFun) (int);
+using Range = std::pair<int, int>; // Option's min-max values
+using RangeFun = Range (int);
 
 // Default Range function, to calculate Option's min-max values
 inline Range default_range(int v) {
@@ -75,7 +75,7 @@ struct SetRange {
 
 class Tune {
 
-  typedef void (PostUpdate) (); // Post-update function
+  using PostUpdate = void (); // Post-update function
 
   Tune() { read_results(); }
   Tune(const Tune&) = delete;

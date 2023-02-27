@@ -62,7 +62,7 @@ struct Entry {
   uint8_t factor[COLOR_NB];
 };
 
-typedef HashTable<Entry, 8192> Table;
+using Table = HashTable<Entry, 8192>;
 
 Entry* probe(const Position& pos);
 

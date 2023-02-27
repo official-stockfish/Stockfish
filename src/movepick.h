@@ -62,14 +62,14 @@ public:
 template <typename T, int D, int Size, int... Sizes>
 struct Stats : public std::array<Stats<T, D, Sizes...>, Size>
 {
-  typedef Stats<T, D, Size, Sizes...> stats;
+  using stats = Stats<T, D, Size, Sizes...>;
 
   void fill(const T& v) {
 
     // For standard-layout 'this' points to first struct member
     assert(std::is_standard_layout<stats>::value);
 
-    typedef StatsEntry<T, D> entry;
+    using entry = StatsEntry<T, D>;
     entry* p = reinterpret_cast<entry*>(this);
     std::fill(p, p + sizeof(*this) / sizeof(entry), v);
   }
@@ -87,23 +87,23 @@ enum StatsType { NoCaptures, Captures };
 /// ordering decisions. It uses 2 tables (one for each color) indexed by
 /// the move's from and to squares, see www.chessprogramming.org/Butterfly_Boards
 /// (~11 elo)
-typedef Stats<int16_t, 7183, COLOR_NB, int(SQUARE_NB) * int(SQUARE_NB)> ButterflyHistory;
+using ButterflyHistory = Stats<int16_t, 7183, COLOR_NB, int(SQUARE_NB) * int(SQUARE_NB)>;
 
 /// CounterMoveHistory stores counter moves indexed by [piece][to] of the previous
 /// move, see www.chessprogramming.org/Countermove_Heuristic
-typedef Stats<Move, NOT_USED, PIECE_NB, SQUARE_NB> CounterMoveHistory;
+using CounterMoveHistory = Stats<Move, NOT_USED, PIECE_NB, SQUARE_NB>;
 
 /// CapturePieceToHistory is addressed by a move's [piece][to][captured piece type]
-typedef Stats<int16_t, 10692, PIECE_NB, SQUARE_NB, PIECE_TYPE_NB> CapturePieceToHistory;
+using CapturePieceToHistory = Stats<int16_t, 10692, PIECE_NB, SQUARE_NB, PIECE_TYPE_NB>;
 
 /// PieceToHistory is like ButterflyHistory but is addressed by a move's [piece][to]
-typedef Stats<int16_t, 29952, PIECE_NB, SQUARE_NB> PieceToHistory;
+using PieceToHistory = Stats<int16_t, 29952, PIECE_NB, SQUARE_NB>;
 
 /// ContinuationHistory is the combined history of a given pair of moves, usually
 /// the current one given a previous one. The nested history table is based on
 /// PieceToHistory instead of ButterflyBoards.
 /// (~63 elo)
-typedef Stats<PieceToHistory, NOT_USED, PIECE_NB, SQUARE_NB> ContinuationHistory;
+using ContinuationHistory = Stats<PieceToHistory, NOT_USED, PIECE_NB, SQUARE_NB>;
 
 
 /// MovePicker class is used to pick one pseudo-legal move at a time from the
