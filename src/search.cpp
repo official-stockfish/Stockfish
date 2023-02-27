@@ -334,7 +334,7 @@ void Thread::search() {
       pvLast = 0;
 
       if (!Threads.increaseDepth)
-         searchAgainCounter++;
+          searchAgainCounter++;
 
       // MultiPV loop. We perform a full root search for each PV line
       for (pvIdx = 0; pvIdx < multiPV && !Threads.stop; ++pvIdx)
@@ -432,9 +432,10 @@ void Thread::search() {
       if (!Threads.stop)
           completedDepth = rootDepth;
 
-      if (rootMoves[0].pv[0] != lastBestMove) {
-         lastBestMove = rootMoves[0].pv[0];
-         lastBestMoveDepth = rootDepth;
+      if (rootMoves[0].pv[0] != lastBestMove)
+      {
+          lastBestMove = rootMoves[0].pv[0];
+          lastBestMoveDepth = rootDepth;
       }
 
       // Have we found a "mate in x"?
@@ -729,7 +730,8 @@ namespace {
         complexity = 0;
         goto moves_loop;
     }
-    else if (excludedMove) {
+    else if (excludedMove)
+    {
         // Providing the hint that this node's accumulator will be used often brings significant Elo gain (13 elo)
         Eval::NNUE::hint_common_parent_position(pos);
         eval = ss->staticEval;
@@ -755,6 +757,7 @@ namespace {
         // Save static evaluation into transposition table
         tte->save(posKey, VALUE_NONE, ss->ttPv, BOUND_NONE, DEPTH_NONE, MOVE_NONE, eval);
     }
+
     thisThread->complexityAverage.update(complexity);
 
     // Use static evaluation difference to improve quiet move ordering (~4 Elo)
@@ -920,10 +923,8 @@ moves_loop: // When in check, search starts here
         && tte->depth() >= depth - 3
         && ttValue >= probCutBeta
         && abs(ttValue) <= VALUE_KNOWN_WIN
-        && abs(beta) <= VALUE_KNOWN_WIN
-       )
+        && abs(beta) <= VALUE_KNOWN_WIN)
         return probCutBeta;
-
 
     const PieceToHistory* contHist[] = { (ss-1)->continuationHistory, (ss-2)->continuationHistory,
                                           nullptr                   , (ss-4)->continuationHistory,
@@ -1099,8 +1100,8 @@ moves_loop: // When in check, search starts here
               else if (ttValue >= beta)
                   extension = -2;
 
-              // If the eval of ttMove is less than alpha and value, we reduce it (negative extension)
-              else if (ttValue <= alpha && ttValue <= value)
+              // If the eval of ttMove is less than value, we reduce it (negative extension)
+              else if (ttValue <= value)
                   extension = -1;
           }
 
@@ -1227,11 +1228,11 @@ moves_loop: // When in check, search starts here
       // Step 18. Full depth search when LMR is skipped. If expected reduction is high, reduce its depth by 1.
       else if (!PvNode || moveCount > 1)
       {
-               // Increase reduction for cut nodes and not ttMove (~1 Elo)
-               if (!ttMove && cutNode)
-                         r += 2;
+          // Increase reduction for cut nodes and not ttMove (~1 Elo)
+          if (!ttMove && cutNode)
+              r += 2;
 
-               value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth - (r > 4), !cutNode);
+          value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth - (r > 4), !cutNode);
       }
 
       // For PV nodes only, do a full PV search on the first move or after a fail
@@ -1271,14 +1272,17 @@ moves_loop: // When in check, search starts here
               rm.selDepth = thisThread->selDepth;
               rm.scoreLowerbound = rm.scoreUpperbound = false;
 
-              if (value >= beta) {
-                 rm.scoreLowerbound = true;
-                 rm.uciScore = beta;
+              if (value >= beta)
+              {
+                  rm.scoreLowerbound = true;
+                  rm.uciScore = beta;
               }
-              else if (value <= alpha) {
-                 rm.scoreUpperbound = true;
-                 rm.uciScore = alpha;
+              else if (value <= alpha)
+              {
+                  rm.scoreUpperbound = true;
+                  rm.uciScore = alpha;
               }
+
               rm.pv.resize(1);
 
               assert((ss+1)->pv);
@@ -1447,7 +1451,8 @@ moves_loop: // When in check, search starts here
     // TT entry depth that we are going to use. Note that in qsearch we use
     // only two types of depth in TT: DEPTH_QS_CHECKS or DEPTH_QS_NO_CHECKS.
     ttDepth = ss->inCheck || depth >= DEPTH_QS_CHECKS ? DEPTH_QS_CHECKS
-                                                  : DEPTH_QS_NO_CHECKS;
+                                                      : DEPTH_QS_NO_CHECKS;
+
     // Step 3. Transposition table lookup
     posKey = pos.key();
     tte = TT.probe(posKey, ss->ttHit);
@@ -1577,7 +1582,6 @@ moves_loop: // When in check, search starts here
       // Do not search moves with bad enough SEE values (~5 Elo)
       if (!pos.see_ge(move, Value(-110)))
           continue;
-
     }
 
       // Speculative prefetch as early as possible
