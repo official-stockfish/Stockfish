@@ -45,7 +45,7 @@ void dbg_stdev_of(int64_t value, int slot = 0);
 void dbg_correl_of(int64_t value1, int64_t value2, int slot = 0);
 void dbg_print();
 
-typedef std::chrono::milliseconds::rep TimePoint; // A value in milliseconds
+using TimePoint = std::chrono::milliseconds::rep; // A value in milliseconds
 static_assert(sizeof(TimePoint) == sizeof(int64_t), "TimePoint should be 64 bits");
 inline TimePoint now() {
   return std::chrono::duration_cast<std::chrono::milliseconds>
@@ -165,7 +165,7 @@ public:
 
 inline uint64_t mul_hi64(uint64_t a, uint64_t b) {
 #if defined(__GNUC__) && defined(IS_64BIT)
-    __extension__ typedef unsigned __int128 uint128;
+    __extension__ using uint128 = unsigned __int128;
     return ((uint128)a * (uint128)b) >> 64;
 #else
     uint64_t aL = (uint32_t)a, aH = a >> 32;

@@ -80,7 +80,7 @@ struct RootMove {
   std::vector<Move> pv;
 };
 
-typedef std::vector<RootMove> RootMoves;
+using RootMoves = std::vector<RootMove>;
 
 
 /// LimitsType struct stores information sent by GUI about available time to

@@ -69,32 +69,33 @@ VPATH = syzygy:nnue:nnue/features
 ### Section 2. High-level Configuration
 ### ==========================================================================
 #
-# flag                --- Comp switch      --- Description
+# flag                --- Comp switch        --- Description
 # ----------------------------------------------------------------------------
 #
-# debug = yes/no      --- -DNDEBUG         --- Enable/Disable debug mode
+# debug = yes/no      --- -DNDEBUG           --- Enable/Disable debug mode
 # sanitize = none/<sanitizer> ... (-fsanitize )
-#                     --- ( undefined )    --- enable undefined behavior checks
-#                     --- ( thread    )    --- enable threading error checks
-#                     --- ( address   )    --- enable memory access checks
-#                     --- ...etc...        --- see compiler documentation for supported sanitizers
-# optimize = yes/no   --- (-O3/-fast etc.) --- Enable/Disable optimizations
-# arch = (name)       --- (-arch)          --- Target architecture
-# bits = 64/32        --- -DIS_64BIT       --- 64-/32-bit operating system
-# prefetch = yes/no   --- -DUSE_PREFETCH   --- Use prefetch asm-instruction
-# popcnt = yes/no     --- -DUSE_POPCNT     --- Use popcnt asm-instruction
-# pext = yes/no       --- -DUSE_PEXT       --- Use pext x86_64 asm-instruction
-# sse = yes/no        --- -msse            --- Use Intel Streaming SIMD Extensions
-# mmx = yes/no        --- -mmmx            --- Use Intel MMX instructions
-# sse2 = yes/no       --- -msse2           --- Use Intel Streaming SIMD Extensions 2
-# ssse3 = yes/no      --- -mssse3          --- Use Intel Supplemental Streaming SIMD Extensions 3
-# sse41 = yes/no      --- -msse4.1         --- Use Intel Streaming SIMD Extensions 4.1
-# avx2 = yes/no       --- -mavx2           --- Use Intel Advanced Vector Extensions 2
-# avxvnni = yes/no    --- -mavxvnni        --- Use Intel Vector Neural Network Instructions AVX
-# avx512 = yes/no     --- -mavx512bw       --- Use Intel Advanced Vector Extensions 512
-# vnni256 = yes/no    --- -mavx512vnni     --- Use Intel Vector Neural Network Instructions 256
-# vnni512 = yes/no    --- -mavx512vnni     --- Use Intel Vector Neural Network Instructions 512
-# neon = yes/no       --- -DUSE_NEON       --- Use ARM SIMD architecture
+#                     --- ( undefined )      --- enable undefined behavior checks
+#                     --- ( thread    )      --- enable threading error checks
+#                     --- ( address   )      --- enable memory access checks
+#                     --- ...etc...          --- see compiler documentation for supported sanitizers
+# optimize = yes/no   --- (-O3/-fast etc.)   --- Enable/Disable optimizations
+# arch = (name)       --- (-arch)            --- Target architecture
+# bits = 64/32        --- -DIS_64BIT         --- 64-/32-bit operating system
+# prefetch = yes/no   --- -DUSE_PREFETCH     --- Use prefetch asm-instruction
+# popcnt = yes/no     --- -DUSE_POPCNT       --- Use popcnt asm-instruction
+# pext = yes/no       --- -DUSE_PEXT         --- Use pext x86_64 asm-instruction
+# sse = yes/no        --- -msse              --- Use Intel Streaming SIMD Extensions
+# mmx = yes/no        --- -mmmx              --- Use Intel MMX instructions
+# sse2 = yes/no       --- -msse2             --- Use Intel Streaming SIMD Extensions 2
+# ssse3 = yes/no      --- -mssse3            --- Use Intel Supplemental Streaming SIMD Extensions 3
+# sse41 = yes/no      --- -msse4.1           --- Use Intel Streaming SIMD Extensions 4.1
+# avx2 = yes/no       --- -mavx2             --- Use Intel Advanced Vector Extensions 2
+# avxvnni = yes/no    --- -mavxvnni          --- Use Intel Vector Neural Network Instructions AVX
+# avx512 = yes/no     --- -mavx512bw         --- Use Intel Advanced Vector Extensions 512
+# vnni256 = yes/no    --- -mavx512vnni       --- Use Intel Vector Neural Network Instructions 256
+# vnni512 = yes/no    --- -mavx512vnni       --- Use Intel Vector Neural Network Instructions 512
+# neon = yes/no       --- -DUSE_NEON         --- Use ARM SIMD architecture
+# dotprod = yes/no    --- -DUSE_NEON_DOTPROD --- Use ARM advanced SIMD Int8 dot product instructions
 #
 # Note that Makefile is space sensitive, so when adding new architectures
 # or modifying existing flags, you have to make sure there are no extra spaces
@@ -116,7 +117,7 @@ ifeq ($(ARCH), $(filter $(ARCH), \
                  x86-64-vnni512 x86-64-vnni256 x86-64-avx512 x86-64-avxvnni x86-64-bmi2 \
                  x86-64-avx2 x86-64-sse41-popcnt x86-64-modern x86-64-ssse3 x86-64-sse3-popcnt \
                  x86-64 x86-32-sse41-popcnt x86-32-sse2 x86-32 ppc-64 ppc-32 e2k \
-                 armv7 armv7-neon armv8 apple-silicon general-64 general-32 riscv64))
+                 armv7 armv7-neon armv8 armv8-dotprod apple-silicon general-64 general-32 riscv64))
    SUPPORTED_ARCH=true
 else
    SUPPORTED_ARCH=false
@@ -140,6 +141,7 @@ avx512 = no
 vnni256 = no
 vnni512 = no
 neon = no
+dotprod = no
 arm_version = 0
 STRIP = strip
 
@@ -308,11 +310,21 @@ ifeq ($(ARCH),armv8)
 	arm_version = 8
 endif
 
+ifeq ($(ARCH),armv8-dotprod)
+	arch = armv8
+	prefetch = yes
+	popcnt = yes
+	neon = yes
+	dotprod = yes
+	arm_version = 8
+endif
+
 ifeq ($(ARCH),apple-silicon)
 	arch = arm64
 	prefetch = yes
 	popcnt = yes
 	neon = yes
+	dotprod = yes
 	arm_version = 8
 endif
 
@@ -675,6 +687,10 @@ ifeq ($(neon),yes)
 	endif
 endif
 
+ifeq ($(dotprod),yes)
+	CXXFLAGS += -march=armv8.2-a+dotprod -DUSE_NEON_DOTPROD
+endif
+
 ### 3.7 pext
 ifeq ($(pext),yes)
 	CXXFLAGS += -DUSE_PEXT
@@ -776,6 +792,7 @@ help:
 	@echo "armv7                   > ARMv7 32-bit"
 	@echo "armv7-neon              > ARMv7 32-bit with popcnt and neon"
 	@echo "armv8                   > ARMv8 64-bit with popcnt and neon"
+	@echo "armv8-dotprod           > ARMv8 64-bit with popcnt, neon and dot product support"
 	@echo "e2k                     > Elbrus 2000"
 	@echo "apple-silicon           > Apple silicon ARM64"
 	@echo "general-64              > unspecified 64-bit"
