@@ -601,7 +601,6 @@ namespace {
 
     assert(0 <= ss->ply && ss->ply < MAX_PLY);
 
-    (ss+1)->ttPv         = false;
     (ss+1)->excludedMove = bestMove = MOVE_NONE;
     (ss+2)->killers[0]   = (ss+2)->killers[1] = MOVE_NONE;
     (ss+2)->cutoffCnt    = 0;
@@ -1075,7 +1074,6 @@ moves_loop: // When in check, search starts here
               Depth singularDepth = (depth - 1) / 2;
 
               ss->excludedMove = move;
-              // the search with excludedMove will update ss->staticEval
               value = search<NonPV>(pos, ss, singularBeta - 1, singularBeta, singularDepth, cutNode);
               ss->excludedMove = MOVE_NONE;
 
