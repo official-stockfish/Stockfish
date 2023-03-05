@@ -1,0 +1,108 @@
+name: Stockfish
+on:
+  workflow_call:
+jobs:
+  Stockfish:
+    name: ${{ matrix.config.name }} ${{ matrix.binaries }}
+    runs-on: ${{ matrix.config.os }}
+    env:
+      COMPILER: ${{ matrix.config.compiler }}
+      COMP: ${{ matrix.config.comp }}
+      EXT: ${{ matrix.config.ext }}
+      OS: ${{ matrix.config.os }}
+      BINARY: ${{ matrix.binaries }}
+    strategy:
+      matrix:
+        config:
+          - name: Ubuntu 20.04 GCC
+            os: ubuntu-20.04
+            compiler: g++
+            comp: gcc
+            shell: bash {0}
+          - name: MacOS 12 Apple Clang
+            os: macos-12
+            compiler: clang++
+            comp: clang
+            shell: bash {0}
+          - name: Windows 2022 Mingw-w64 GCC x86_64
+            os: windows-2022
+            compiler: g++
+            comp: mingw
+            msys_sys: mingw64
+            msys_env: x86_64-gcc
+            shell: msys2 {0}
+            ext: .exe
+        binaries:
+          - x86-64
+          - x86-64-modern
+          - x86-64-avx2
+        exclude:
+          - binaries: x86-64-avx2
+            config: {os: macos-12}
+    defaults:
+      run:
+        working-directory: src
+        shell: ${{ matrix.config.shell }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Download required linux packages
+        if: runner.os == 'Linux'
+        run: sudo apt update
+
+      - name: Setup msys and install required packages
+        if: runner.os == 'Windows'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: ${{ matrix.config.msys_sys }}
+          install: mingw-w64-${{ matrix.config.msys_env }} make git
+
+      - name: Download the used network from the fishtest framework
+        run: make net
+
+      - name: Check compiler
+        run: $COMPILER -v
+
+      - name: Test help target
+        run: make help
+
+      - name: Check git
+        run: git --version
+
+      # Compile profile guided builds
+
+      - name: Compile ${{ matrix.binaries }} build
+        run: |
+          make clean
+          make -j2 profile-build ARCH=$BINARY COMP=$COMP
+          make strip ARCH=$BINARY COMP=$COMP
+          mv ./stockfish$EXT ../stockfish-$OS-$BINARY$EXT
+
+      - name: Remove non src files
+        run: rm -f *.o .depend *.nnue
+
+      - name: Download wiki
+        run: |
+          git clone https://github.com/official-stockfish/Stockfish.wiki.git ../wiki
+          cd ../wiki
+          rm -rf .git
+
+      - name: Create tar archive.
+        run: |
+          cd ..
+          mkdir stockfish
+          cp -r wiki stockfish/
+          cp -r src stockfish/
+          cp stockfish-$OS-$BINARY$EXT stockfish/
+          cp "Top CPU Contributors.txt" stockfish/
+          cp Copying.txt stockfish/
+          cp AUTHORS stockfish/
+          tar -cvf stockfish-$OS-$BINARY.tar stockfish
+
+      - name: Upload binaries
+        uses: actions/upload-artifact@v3
+        with:
+          name: stockfish-${{ matrix.config.os }}-${{ matrix.binaries }}
+          path: stockfish-${{ matrix.config.os }}-${{ matrix.binaries }}.tar
