@@ -99,10 +99,17 @@ jobs:
       - name: Remove non src files
         run: rm -f *.o .depend *.nnue
 
+      - name: Download wiki
+        run: |
+          git clone https://github.com/official-stockfish/Stockfish.wiki.git ../wiki
+          cd ../wiki
+          rm -rf .git
+
       - name: Create tar archive.
         run: |
           cd ..
           mkdir stockfish
+          cp -r wiki stockfish/
           cp -r src stockfish/
           cp stockfish-android-$BINARY$EXT stockfish/
           cp "Top CPU Contributors.txt" stockfish/
