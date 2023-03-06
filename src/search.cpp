@@ -1109,6 +1109,10 @@ moves_loop: // When in check, search starts here
               // If the eval of ttMove is less than value, we reduce it (negative extension)
               else if (ttValue <= value)
                   extension = -1;
+
+              // If the eval of ttMove is less than alpha, we reduce it (negative extension)
+              else if (ttValue <= alpha)
+                  extension = -1;
           }
 
           // Check extensions (~1 Elo)
