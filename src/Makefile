@@ -92,7 +92,7 @@ VPATH = syzygy:nnue:nnue/features
 # avx2 = yes/no       --- -mavx2             --- Use Intel Advanced Vector Extensions 2
 # avxvnni = yes/no    --- -mavxvnni          --- Use Intel Vector Neural Network Instructions AVX
 # avx512 = yes/no     --- -mavx512bw         --- Use Intel Advanced Vector Extensions 512
-# vnni256 = yes/no    --- -mavx512vnni       --- Use Intel Vector Neural Network Instructions 256
+# vnni256 = yes/no    --- -mavx256vnni       --- Use Intel Vector Neural Network Instructions 512 with 256bit operands
 # vnni512 = yes/no    --- -mavx512vnni       --- Use Intel Vector Neural Network Instructions 512
 # neon = yes/no       --- -DUSE_NEON         --- Use ARM SIMD architecture
 # dotprod = yes/no    --- -DUSE_NEON_DOTPROD --- Use ARM advanced SIMD Int8 dot product instructions
@@ -773,10 +773,10 @@ help:
 	@echo ""
 	@echo "Supported archs:"
 	@echo ""
-	@echo "x86-64-vnni512          > x86 64-bit with vnni support 512bit wide"
-	@echo "x86-64-vnni256          > x86 64-bit with vnni support 256bit wide"
+	@echo "x86-64-vnni512          > x86 64-bit with vnni 512bit support"
+	@echo "x86-64-vnni256          > x86 64-bit with vnni 512bit support, limit operands to 256bit wide"
 	@echo "x86-64-avx512           > x86 64-bit with avx512 support"
-	@echo "x86-64-avxvnni          > x86 64-bit with avxvnni support"
+	@echo "x86-64-avxvnni          > x86 64-bit with vnni 256bit support"
 	@echo "x86-64-bmi2             > x86 64-bit with bmi2 support"
 	@echo "x86-64-avx2             > x86 64-bit with avx2 support"
 	@echo "x86-64-sse41-popcnt     > x86 64-bit with sse41 and popcnt support"
