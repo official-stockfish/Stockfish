@@ -131,6 +131,7 @@ distributing. If you make any changes to the source code, these changes must
 also be made available under GPL v3.
 
 
+[build-link]:         https://ci.appveyor.com/nuget/rateel-kcfbjj3x7r4v
 [authors-link]:       https://github.com/official-stockfish/Stockfish/blob/master/AUTHORS
 [build-link]:         https://github.com/official-stockfish/Stockfish/actions/workflows/stockfish.yml
 [commits-link]:       https://github.com/official-stockfish/Stockfish/commits/master
