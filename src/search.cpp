@@ -231,7 +231,7 @@ void MainThread::search() {
       Time.availableNodes += Limits.inc[us] - Threads.nodes_searched();
 
   Thread* bestThread = this;
-  Skill skill = Skill(Options["Skill Level"], Options["UCI_LimitStrength"] ? int(Options["UCI_Elo"]) : 0);
+  Skill skill = Skill(std::lround(Options["Skill Level"]), std::lround(Options["UCI_LimitStrength"]) ? std::lround(Options["UCI_Elo"]) : 0);
 
   if (   int(Options["MultiPV"]) == 1
       && !Limits.depth
@@ -301,7 +301,7 @@ void Thread::search() {
   }
 
   size_t multiPV = size_t(Options["MultiPV"]);
-  Skill skill(Options["Skill Level"], Options["UCI_LimitStrength"] ? int(Options["UCI_Elo"]) : 0);
+  Skill skill(std::lround(Options["Skill Level"]), std::lround(Options["UCI_LimitStrength"]) ? std::lround(Options["UCI_Elo"]) : 0);
 
   // When playing with strength handicap enable MultiPV search that we will
   // use behind the scenes to retrieve a set of possible moves.
