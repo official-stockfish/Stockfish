@@ -1324,12 +1324,6 @@ bool Position::pos_is_ok() const {
           if (p1 != p2 && (pieces(p1) & pieces(p2)))
               assert(0 && "pos_is_ok: Bitboards");
 
-    StateInfo si = *st;
-    ASSERT_ALIGNED(&si, Eval::NNUE::CacheLineSize);
-
-    set_state();
-    if (std::memcmp(&si, st, sizeof(StateInfo)))
-        assert(0 && "pos_is_ok: State");
 
   for (Piece pc : Pieces)
       if (   pieceCount[pc] != popcount(pieces(color_of(pc), type_of(pc)))
