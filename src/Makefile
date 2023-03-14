@@ -589,7 +589,10 @@ ifeq ($(optimize),yes)
 	endif
 ###  -mcpu=native
 	ifeq ($(comp),clang)
-		CXXFLAGS += -fexperimental-new-pass-manager
+		clangmajorversion = $(shell $(CXX) -dumpversion 2>/dev/null | cut -f1 -d.)
+		ifeq ($(shell expr $(clangmajorversion) \< 16),1)
+			CXXFLAGS += -fexperimental-new-pass-manager
+		endif
 	endif
 endif
 

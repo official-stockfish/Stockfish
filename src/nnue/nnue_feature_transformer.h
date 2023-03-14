@@ -363,7 +363,7 @@ namespace Stockfish::Eval::NNUE {
     // NOTE: The parameter states_to_update is an array of position states, ending with nullptr.
     //       All states must be sequential, that is states_to_update[i] must either be reachable
     //       by repeatedly applying ->previous from states_to_update[i+1] or states_to_update[i] == nullptr.
-    //       computed_st must be reachable by repeatadly applying ->previous on states_to_update[0], if not nullptr.
+    //       computed_st must be reachable by repeatedly applying ->previous on states_to_update[0], if not nullptr.
     template<Color Perspective, size_t N>
     void update_accumulator_incremental(const Position& pos, StateInfo* computed_st, StateInfo* states_to_update[N]) const {
       static_assert(N > 0);
