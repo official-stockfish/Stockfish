@@ -393,7 +393,7 @@ inline bool Position::capture(Move m) const {
 // is needed to avoid the generation of duplicate moves.
 inline bool Position::capture_stage(Move m) const {
   assert(is_ok(m));
-  return  capture(m) || (type_of(m) == PROMOTION && promotion_type(m) == QUEEN);
+  return  capture(m) || promotion_type(m) == QUEEN;
 }
 
 inline Piece Position::captured_piece() const {
