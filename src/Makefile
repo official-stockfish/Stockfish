@@ -96,6 +96,8 @@ VPATH = syzygy:nnue:nnue/features
 # vnni512 = yes/no    --- -mavx512vnni       --- Use Intel Vector Neural Network Instructions 512
 # neon = yes/no       --- -DUSE_NEON         --- Use ARM SIMD architecture
 # dotprod = yes/no    --- -DUSE_NEON_DOTPROD --- Use ARM advanced SIMD Int8 dot product instructions
+# aarch_no_fix_cortex = yes/no               --- disable the workaround for the ARM Cortex-A53 erratum number 835769 and 843419
+#
 #
 # Note that Makefile is space sensitive, so when adding new architectures
 # or modifying existing flags, you have to make sure there are no extra spaces
@@ -117,7 +119,7 @@ ifeq ($(ARCH), $(filter $(ARCH), \
                  x86-64-vnni512 x86-64-vnni256 x86-64-avx512 x86-64-avxvnni x86-64-bmi2 \
                  x86-64-avx2 x86-64-sse41-popcnt x86-64-modern x86-64-ssse3 x86-64-sse3-popcnt \
                  x86-64 x86-32-sse41-popcnt x86-32-sse2 x86-32 ppc-64 ppc-32 e2k \
-                 armv7 armv7-neon armv8 armv8-dotprod apple-silicon general-64 general-32 riscv64))
+                 armv7 armv7-neon armv8 armv8-dotprod armv84 armv84-dotprod apple-silicon general-64 general-32 riscv64))
    SUPPORTED_ARCH=true
 else
    SUPPORTED_ARCH=false
@@ -144,6 +146,10 @@ neon = no
 dotprod = no
 arm_version = 0
 STRIP = strip
+
+# Allows multiple "-march=armv8.2-a" extensions (such as +dotprod) to be concatenated
+armext =
+armarch =
 
 ### 2.2 Architecture specific
 
@@ -308,6 +314,7 @@ ifeq ($(ARCH),armv8)
 	popcnt = yes
 	neon = yes
 	arm_version = 8
+        armarch = armv8-a
 endif
 
 ifeq ($(ARCH),armv8-dotprod)
@@ -317,6 +324,31 @@ ifeq ($(ARCH),armv8-dotprod)
 	neon = yes
 	dotprod = yes
 	arm_version = 8
+        armarch = armv8.2-a
+endif
+
+ifeq ($(ARCH),armv84)
+	arch = armv8
+	prefetch = yes
+	popcnt = yes
+	neon = yes
+	dotprod = no
+        aarch_no_fix_cortex = yes
+	arm_version = 8
+        armarch = armv8.4-a
+# We have to explicitly disable dotprod in Armv8.4-A
+	armext:=$(armext)+nodotprod
+endif
+
+ifeq ($(ARCH),armv84-dotprod)
+	arch = armv8
+	prefetch = yes
+	popcnt = yes
+	neon = yes
+	dotprod = yes
+        aarch_no_fix_cortex = yes
+	arm_version = 8
+        armarch = armv8.4-a
 endif
 
 ifeq ($(ARCH),apple-silicon)
@@ -688,7 +720,20 @@ ifeq ($(neon),yes)
 endif
 
 ifeq ($(dotprod),yes)
-	CXXFLAGS += -march=armv8.2-a+dotprod -DUSE_NEON_DOTPROD
+	CXXFLAGS += -DUSE_NEON_DOTPROD
+	armext:=$(armext)+dotprod
+endif
+
+ifneq ($(armext),)
+	CXXFLAGS += -march=$(armarch)$(armext)
+else
+ifneq ($(armarch),)
+	CXXFLAGS += -march=$(armarch)
+endif
+endif
+
+ifeq ($(aarch_no_fix_cortex),yes)
+	CXXFLAGS += -mno-fix-cortex-a53-835769 -mno-fix-cortex-a53-843419
 endif
 
 ### 3.7 pext
@@ -791,8 +836,10 @@ help:
 	@echo "ppc-32                  > PPC 32-bit"
 	@echo "armv7                   > ARMv7 32-bit"
 	@echo "armv7-neon              > ARMv7 32-bit with popcnt and neon"
-	@echo "armv8                   > ARMv8 64-bit with popcnt and neon"
-	@echo "armv8-dotprod           > ARMv8 64-bit with popcnt, neon and dot product support"
+	@echo "armv8                   > ARMv8-A 64-bit with popcnt and neon"
+	@echo "armv8-dotprod           > ARMv8.2-A 64-bit with popcnt, neon and dot product support"
+	@echo "armv84                  > ARMv8.4-A plus all of 'armv8' (no dot product)"
+	@echo "armv84-dotprod          > ARMv8.4-A plus all of 'armv8-dotprod'"
 	@echo "e2k                     > Elbrus 2000"
 	@echo "apple-silicon           > Apple silicon ARM64"
 	@echo "general-64              > unspecified 64-bit"
