@@ -43,6 +43,9 @@ namespace Eval {
 
   namespace NNUE {
 
+    extern int RandomEvalPerturb;
+    extern int waitms;
+    
     void init();
     void verify();
 
