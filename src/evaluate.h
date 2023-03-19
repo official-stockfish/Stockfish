@@ -42,10 +42,7 @@ namespace Eval {
   #define EvalFileDefaultName   "nn-52471d67216a.nnue"
 
   namespace NNUE {
-    //conflict
-    //extern int RandomEvalPerturb;
-    //extern int waitms;
-    //conflict
+   
     std::string trace(Position& pos);
     Value evaluate(const Position& pos, bool adjusted = false, int* complexity = nullptr);
     void hint_common_parent_position(const Position& pos);
