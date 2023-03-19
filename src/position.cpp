@@ -282,7 +282,7 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
 
   chess960 = isChess960;
   thisThread = th;
-  set_state(st);
+  set_state();
 
   assert(pos_is_ok());
 
@@ -313,19 +313,19 @@ void Position::set_castling_right(Color c, Square rfrom) {
 
 /// Position::set_check_info() sets king attacks to detect if a move gives check
 
-void Position::set_check_info(StateInfo* si) const {
+void Position::set_check_info() const {
 
-  si->blockersForKing[WHITE] = slider_blockers(pieces(BLACK), square<KING>(WHITE), si->pinners[BLACK]);
-  si->blockersForKing[BLACK] = slider_blockers(pieces(WHITE), square<KING>(BLACK), si->pinners[WHITE]);
+  st->blockersForKing[WHITE] = slider_blockers(pieces(BLACK), square<KING>(WHITE), st->pinners[BLACK]);
+  st->blockersForKing[BLACK] = slider_blockers(pieces(WHITE), square<KING>(BLACK), st->pinners[WHITE]);
 
   Square ksq = square<KING>(~sideToMove);
 
-  si->checkSquares[PAWN]   = pawn_attacks_bb(~sideToMove, ksq);
-  si->checkSquares[KNIGHT] = attacks_bb<KNIGHT>(ksq);
-  si->checkSquares[BISHOP] = attacks_bb<BISHOP>(ksq, pieces());
-  si->checkSquares[ROOK]   = attacks_bb<ROOK>(ksq, pieces());
-  si->checkSquares[QUEEN]  = si->checkSquares[BISHOP] | si->checkSquares[ROOK];
-  si->checkSquares[KING]   = 0;
+  st->checkSquares[PAWN]   = pawn_attacks_bb(~sideToMove, ksq);
+  st->checkSquares[KNIGHT] = attacks_bb<KNIGHT>(ksq);
+  st->checkSquares[BISHOP] = attacks_bb<BISHOP>(ksq, pieces());
+  st->checkSquares[ROOK]   = attacks_bb<ROOK>(ksq, pieces());
+  st->checkSquares[QUEEN]  = st->checkSquares[BISHOP] | st->checkSquares[ROOK];
+  st->checkSquares[KING]   = 0;
 }
 
 
@@ -334,39 +334,39 @@ void Position::set_check_info(StateInfo* si) const {
 /// The function is only used when a new position is set up, and to verify
 /// the correctness of the StateInfo data when running in debug mode.
 
-void Position::set_state(StateInfo* si) const {
+void Position::set_state() const {
 
-  si->key = si->materialKey = 0;
-  si->pawnKey = Zobrist::noPawns;
-  si->nonPawnMaterial[WHITE] = si->nonPawnMaterial[BLACK] = VALUE_ZERO;
-  si->checkersBB = attackers_to(square<KING>(sideToMove)) & pieces(~sideToMove);
+  st->key = st->materialKey = 0;
+  st->pawnKey = Zobrist::noPawns;
+  st->nonPawnMaterial[WHITE] = st->nonPawnMaterial[BLACK] = VALUE_ZERO;
+  st->checkersBB = attackers_to(square<KING>(sideToMove)) & pieces(~sideToMove);
 
-  set_check_info(si);
+  set_check_info();
 
   for (Bitboard b = pieces(); b; )
   {
       Square s = pop_lsb(b);
       Piece pc = piece_on(s);
-      si->key ^= Zobrist::psq[pc][s];
+      st->key ^= Zobrist::psq[pc][s];
 
       if (type_of(pc) == PAWN)
-          si->pawnKey ^= Zobrist::psq[pc][s];
+          st->pawnKey ^= Zobrist::psq[pc][s];
 
       else if (type_of(pc) != KING)
-          si->nonPawnMaterial[color_of(pc)] += PieceValue[MG][pc];
+          st->nonPawnMaterial[color_of(pc)] += PieceValue[MG][pc];
   }
 
-  if (si->epSquare != SQ_NONE)
-      si->key ^= Zobrist::enpassant[file_of(si->epSquare)];
+  if (st->epSquare != SQ_NONE)
+      st->key ^= Zobrist::enpassant[file_of(st->epSquare)];
 
   if (sideToMove == BLACK)
-      si->key ^= Zobrist::side;
+      st->key ^= Zobrist::side;
 
-  si->key ^= Zobrist::castling[si->castlingRights];
+  st->key ^= Zobrist::castling[st->castlingRights];
 
   for (Piece pc : Pieces)
       for (int cnt = 0; cnt < pieceCount[pc]; ++cnt)
-          si->materialKey ^= Zobrist::psq[pc][cnt];
+          st->materialKey ^= Zobrist::psq[pc][cnt];
 }
 
 
@@ -865,7 +865,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   sideToMove = ~sideToMove;
 
   // Update king attacks used for fast check detection
-  set_check_info(st);
+  set_check_info();
 
   // Calculate the repetition info. It is the ply distance from the previous
   // occurrence of the same position, negative in the 3-fold case, or zero
@@ -1017,7 +1017,7 @@ void Position::do_null_move(StateInfo& newSt) {
 
   sideToMove = ~sideToMove;
 
-  set_check_info(st);
+  set_check_info();
 
   st->repetition = 0;
 
@@ -1320,12 +1320,6 @@ bool Position::pos_is_ok() const {
           if (p1 != p2 && (pieces(p1) & pieces(p2)))
               assert(0 && "pos_is_ok: Bitboards");
 
-  StateInfo si = *st;
-  ASSERT_ALIGNED(&si, Eval::NNUE::CacheLineSize);
-
-  set_state(&si);
-  if (std::memcmp(&si, st, sizeof(StateInfo)))
-      assert(0 && "pos_is_ok: State");
 
   for (Piece pc : Pieces)
       if (   pieceCount[pc] != popcount(pieces(color_of(pc), type_of(pc)))
