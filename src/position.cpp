@@ -282,7 +282,37 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
 
   chess960 = isChess960;
   thisThread = th;
-  set_state();
+  st->key = st->materialKey = 0;
+  st->pawnKey = Zobrist::noPawns;
+  st->nonPawnMaterial[WHITE] = st->nonPawnMaterial[BLACK] = VALUE_ZERO;
+  st->checkersBB = attackers_to(square<KING>(sideToMove)) & pieces(~sideToMove);
+
+  set_check_info();
+
+  for (Bitboard b = pieces(); b; )
+  {
+      Square s = pop_lsb(b);
+      Piece pc = piece_on(s);
+      st->key ^= Zobrist::psq[pc][s];
+
+      if (type_of(pc) == PAWN)
+          st->pawnKey ^= Zobrist::psq[pc][s];
+
+      else if (type_of(pc) != KING)
+          st->nonPawnMaterial[color_of(pc)] += PieceValue[MG][pc];
+  }
+
+  if (st->epSquare != SQ_NONE)
+        st->key ^= Zobrist::enpassant[file_of(st->epSquare)];
+
+  if (sideToMove == BLACK)
+      st->key ^= Zobrist::side;
+
+  st->key ^= Zobrist::castling[st->castlingRights];
+
+  for (Piece pc : Pieces)
+      for (int cnt = 0; cnt < pieceCount[pc]; ++cnt)
+          st->materialKey ^= Zobrist::psq[pc][cnt];
 
   assert(pos_is_ok());
 
@@ -326,47 +356,6 @@ void Position::set_check_info() const {
   st->checkSquares[ROOK]   = attacks_bb<ROOK>(ksq, pieces());
   st->checkSquares[QUEEN]  = st->checkSquares[BISHOP] | st->checkSquares[ROOK];
   st->checkSquares[KING]   = 0;
-}
-
-
-/// Position::set_state() computes the hash keys of the position, and other
-/// data that once computed is updated incrementally as moves are made.
-/// The function is only used when a new position is set up, and to verify
-/// the correctness of the StateInfo data when running in debug mode.
-
-void Position::set_state() const {
-
-  st->key = st->materialKey = 0;
-  st->pawnKey = Zobrist::noPawns;
-  st->nonPawnMaterial[WHITE] = st->nonPawnMaterial[BLACK] = VALUE_ZERO;
-  st->checkersBB = attackers_to(square<KING>(sideToMove)) & pieces(~sideToMove);
-
-  set_check_info();
-
-  for (Bitboard b = pieces(); b; )
-  {
-      Square s = pop_lsb(b);
-      Piece pc = piece_on(s);
-      st->key ^= Zobrist::psq[pc][s];
-
-      if (type_of(pc) == PAWN)
-          st->pawnKey ^= Zobrist::psq[pc][s];
-
-      else if (type_of(pc) != KING)
-          st->nonPawnMaterial[color_of(pc)] += PieceValue[MG][pc];
-  }
-
-  if (st->epSquare != SQ_NONE)
-      st->key ^= Zobrist::enpassant[file_of(st->epSquare)];
-
-  if (sideToMove == BLACK)
-      st->key ^= Zobrist::side;
-
-  st->key ^= Zobrist::castling[st->castlingRights];
-
-  for (Piece pc : Pieces)
-      for (int cnt = 0; cnt < pieceCount[pc]; ++cnt)
-          st->materialKey ^= Zobrist::psq[pc][cnt];
 }
 
 
