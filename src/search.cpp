@@ -1101,15 +1101,15 @@ moves_loop: // When in check, search starts here
               else if (singularBeta >= beta)
                   return singularBeta;
 
-              // If the eval of ttMove is greater than beta, we reduce it (negative extension)
+              // If the eval of ttMove is greater than beta, we reduce it (negative extension) (~7 elo)
               else if (ttValue >= beta)
                   extension = -2 - !PvNode;
 
-              // If the eval of ttMove is less than value, we reduce it (negative extension)
+              // If the eval of ttMove is less than value, we reduce it (negative extension) (~1 elo)
               else if (ttValue <= value)
                   extension = -1;
 
-              // If the eval of ttMove is less than alpha, we reduce it (negative extension)
+              // If the eval of ttMove is less than alpha, we reduce it (negative extension) (~1 elo)
               else if (ttValue <= alpha)
                   extension = -1;
           }
@@ -1163,7 +1163,7 @@ moves_loop: // When in check, search starts here
       if (ttCapture)
           r++;
 
-      // Decrease reduction for PvNodes based on depth
+      // Decrease reduction for PvNodes based on depth (~2 Elo)
       if (PvNode)
           r -= 1 + 12 / (3 + depth);
 
@@ -1176,11 +1176,11 @@ moves_loop: // When in check, search starts here
           && (mp.threatenedPieces & from_sq(move)))
           r--;
 
-      // Increase reduction if next ply has a lot of fail high
+      // Increase reduction if next ply has a lot of fail high (~5 Elo)
       if ((ss+1)->cutoffCnt > 3)
           r++;
 
-      // Decrease reduction if move is a killer and we have a good history
+      // Decrease reduction if move is a killer and we have a good history (~1 Elo)
       if (move == ss->killers[0]
           && (*contHist[0])[movedPiece][to_sq(move)] >= 3722)
           r--;
@@ -1191,7 +1191,7 @@ moves_loop: // When in check, search starts here
                      + (*contHist[3])[movedPiece][to_sq(move)]
                      - 4182;
 
-      // Decrease/increase reduction for moves with a good/bad history (~30 Elo)
+      // Decrease/increase reduction for moves with a good/bad history (~25 Elo)
       r -= ss->statScore / (11791 + 3992 * (depth > 6 && depth < 19));
 
       // Step 17. Late moves reduction / extension (LMR, ~117 Elo)
@@ -1328,7 +1328,7 @@ moves_loop: // When in check, search starts here
               {
                   alpha = value;
 
-                  // Reduce other moves if we have found at least one score improvement
+                  // Reduce other moves if we have found at least one score improvement (~1 elo)
                   if (   depth > 1
                       && depth < 6
                       && beta  <  10534
@@ -1394,7 +1394,7 @@ moves_loop: // When in check, search starts here
         bestValue = std::min(bestValue, maxValue);
 
     // If no good move is found and the previous position was ttPv, then the previous
-    // opponent move is probably good and the new position is added to the search tree.
+    // opponent move is probably good and the new position is added to the search tree. (~7 elo)
     if (bestValue <= alpha)
         ss->ttPv = ss->ttPv || ((ss-1)->ttPv && depth > 3);
 
