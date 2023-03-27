@@ -1163,6 +1163,11 @@ bool Position::see_ge(Move m, Bitboard& occupied, Value threshold) const {
   return bool(res);
 }
 
+bool Position::see_ge(Move m, Value threshold) const {
+    Bitboard occupied;
+    return see_ge(m, occupied, threshold);
+}
+
 
 /// Position::is_draw() tests whether the position is drawn by 50-move rule
 /// or by repetition. It does not detect stalemates.
