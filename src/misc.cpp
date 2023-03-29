@@ -38,6 +38,9 @@ using fun2_t = bool(*)(USHORT, PGROUP_AFFINITY);
 using fun3_t = bool(*)(HANDLE, CONST GROUP_AFFINITY*, PGROUP_AFFINITY);
 using fun4_t = bool(*)(USHORT, PGROUP_AFFINITY, USHORT, PUSHORT);
 using fun5_t = WORD(*)();
+using fun6_t = bool(*)(HANDLE, DWORD, PHANDLE);
+using fun7_t = bool(*)(LPCSTR, LPCSTR, PLUID);
+using fun8_t = bool(*)(HANDLE, BOOL, PTOKEN_PRIVILEGES, DWORD, PTOKEN_PRIVILEGES, PDWORD);
 }
 #endif
 
@@ -488,11 +491,26 @@ static void* aligned_large_pages_alloc_windows([[maybe_unused]] size_t allocSize
   if (!largePageSize)
       return nullptr;
 
+  // Dynamically link OpenProcessToken, LookupPrivilegeValue and AdjustTokenPrivileges
+  HMODULE k32 = GetModuleHandle("Advapi32.dll");
+  auto fun6 = (fun6_t)(void(*)())GetProcAddress(k32, "OpenProcessToken");
+  if (!fun6)
+      return nullptr;
+  auto fun7 = (fun7_t)(void(*)())GetProcAddress(k32, "LookupPrivilegeValueA");
+  if (!fun7)
+      return nullptr;
+  auto fun8 = (fun8_t)(void(*)())GetProcAddress(k32, "AdjustTokenPrivileges");
+  if (!fun8)
+      return nullptr;
+            
+
   // We need SeLockMemoryPrivilege, so try to enable it for the process
-  if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hProcessToken))
+  // OpenProcessToken()
+  if (!fun6(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hProcessToken))
       return nullptr;
 
-  if (LookupPrivilegeValue(nullptr, SE_LOCK_MEMORY_NAME, &luid))
+  // LookupPrivilegeValueA()
+  if (fun7(nullptr, SE_LOCK_MEMORY_NAME, &luid))
   {
       TOKEN_PRIVILEGES tp { };
       TOKEN_PRIVILEGES prevTp { };
@@ -504,7 +522,8 @@ static void* aligned_large_pages_alloc_windows([[maybe_unused]] size_t allocSize
 
       // Try to enable SeLockMemoryPrivilege. Note that even if AdjustTokenPrivileges() succeeds,
       // we still need to query GetLastError() to ensure that the privileges were actually obtained.
-      if (AdjustTokenPrivileges(
+      // AdjustTokenPrivileges()
+      if (fun8(
               hProcessToken, FALSE, &tp, sizeof(TOKEN_PRIVILEGES), &prevTp, &prevTpLen) &&
           GetLastError() == ERROR_SUCCESS)
       {
@@ -514,7 +533,8 @@ static void* aligned_large_pages_alloc_windows([[maybe_unused]] size_t allocSize
               nullptr, allocSize, MEM_RESERVE | MEM_COMMIT | MEM_LARGE_PAGES, PAGE_READWRITE);
 
           // Privilege no longer needed, restore previous state
-          AdjustTokenPrivileges(hProcessToken, FALSE, &prevTp, 0, nullptr, nullptr);
+	  // AdjustTokenPrivileges ()
+          fun8(hProcessToken, FALSE, &prevTp, 0, nullptr, nullptr);
       }
   }
 
