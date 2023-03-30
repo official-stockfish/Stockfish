@@ -157,22 +157,27 @@ string engine_info(bool to_uci) {
   {
       ss << "-";
       #ifdef GIT_DATE
-      ss << GIT_DATE;
+        ss << GIT_DATE;
       #else
-      constexpr string_view months("Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec");
-      string month, day, year;
-      stringstream date(__DATE__); // From compiler, format is "Sep 21 2008"
+        constexpr string_view months("Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec");
+        string month, day, year;
+        stringstream date(__DATE__); // From compiler, format is "Sep 21 2008"
 
-      date >> month >> day >> year;
-      ss << year << setw(2) << setfill('0') << (1 + months.find(month) / 4) << setw(2) << setfill('0') << day;
+        date >> month >> day >> year;
+        ss << year << setw(2) << setfill('0') << (1 + months.find(month) / 4) << setw(2) << setfill('0') << day;
       #endif
 
       ss << "-";
 
       #ifdef GIT_SHA
-      ss << GIT_SHA;
+	#ifdef GIT_SHA_IS_UINT
+          const uint64_t git_sha = GIT_SHA;
+          ss << std::hex << git_sha;
+        #else
+          ss << GIT_SHA;
+        #endif
       #else
-      ss << "nogit";
+        ss << "nogit";
       #endif
   }
 
