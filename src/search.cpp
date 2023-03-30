@@ -206,6 +206,16 @@ void MainThread::search() {
   }
   else
   {
+      int rootComplexity;
+      bestValue = -VALUE_INFINITE;
+
+      if (Eval::useNNUE)
+          Eval::NNUE::evaluate(rootPos, true, &rootComplexity);
+      else
+          Eval::evaluate(rootPos, &rootComplexity);
+
+      complexity = std::min(1.03 + (rootComplexity - 241) / 1552.0, 1.45);
+
       Threads.start_searching(); // start non-main threads
       Thread::search();          // main thread start searching
   }
@@ -310,8 +320,6 @@ void Thread::search() {
       multiPV = std::max(multiPV, (size_t)4);
 
   multiPV = std::min(multiPV, rootMoves.size());
-
-  complexityAverage.set(153, 1);
 
   optimism[us] = optimism[~us] = VALUE_ZERO;
 
@@ -472,10 +480,8 @@ void Thread::search() {
           timeReduction = lastBestMoveDepth + 8 < completedDepth ? 1.57 : 0.65;
           double reduction = (1.4 + mainThread->previousTimeReduction) / (2.08 * timeReduction);
           double bestMoveInstability = 1 + 1.8 * totBestMoveChanges / Threads.size();
-          int complexity = mainThread->complexityAverage.value();
-          double complexPosition = std::min(1.03 + (complexity - 241) / 1552.0, 1.45);
 
-          double totalTime = Time.optimum() * fallingEval * reduction * bestMoveInstability * complexPosition;
+          double totalTime = Time.optimum() * fallingEval * reduction * bestMoveInstability * mainThread->complexity;
 
           // Cap used time in case of a single legal move for a better viewer experience in tournaments
           // yielding correct scores and sufficiently fast moves.
@@ -754,8 +760,6 @@ namespace {
         // Save static evaluation into transposition table
         tte->save(posKey, VALUE_NONE, ss->ttPv, BOUND_NONE, DEPTH_NONE, MOVE_NONE, eval);
     }
-
-    thisThread->complexityAverage.update(complexity);
 
     // Use static evaluation difference to improve quiet move ordering (~4 Elo)
     if (is_ok((ss-1)->currentMove) && !(ss-1)->inCheck && !priorCapture)
