@@ -55,6 +55,10 @@ else
 	PGOBENCH = $(SDE_PATH) -- $(WINE_PATH) ./$(EXE) bench
 endif
 
+### Pattern rule for ispc files
+%.o %_ispc.h: %.ispc
+	ispc -O2 --target=host $< -h $*_ispc.h -o $*.o
+
 ### Source and object files
 SRCS = benchmark.cpp bitbase.cpp bitboard.cpp endgame.cpp evaluate.cpp main.cpp \
 	material.cpp misc.cpp movegen.cpp movepick.cpp pawns.cpp position.cpp psqt.cpp \
@@ -117,7 +121,7 @@ ifeq ($(ARCH), $(filter $(ARCH), \
                  x86-64-vnni512 x86-64-vnni256 x86-64-avx512 x86-64-avxvnni x86-64-bmi2 \
                  x86-64-avx2 x86-64-sse41-popcnt x86-64-modern x86-64-ssse3 x86-64-sse3-popcnt \
                  x86-64 x86-32-sse41-popcnt x86-32-sse2 x86-32 ppc-64 ppc-32 e2k \
-                 armv7 armv7-neon armv8 armv8-dotprod apple-silicon general-64 general-32 riscv64))
+                 armv7 armv7-neon armv8 armv8-dotprod apple-silicon general-64 general-32 riscv64 ispc))
    SUPPORTED_ARCH=true
 else
    SUPPORTED_ARCH=false
@@ -143,6 +147,7 @@ vnni512 = no
 neon = no
 dotprod = no
 arm_version = 0
+ispc = no
 STRIP = strip
 
 ### 2.2 Architecture specific
@@ -352,6 +357,12 @@ endif
 
 ifeq ($(ARCH),riscv64)
 	arch = riscv64
+endif
+
+ifeq ($(ARCH),ispc)
+	arch = any
+	ispc = yes
+	OBJS := nnue/layers/affine_transform.o nnue/nnue_feature_transformer.o $(OBJS)
 endif
 endif
 
@@ -694,6 +705,10 @@ ifeq ($(dotprod),yes)
 	CXXFLAGS += -march=armv8.2-a+dotprod -DUSE_NEON_DOTPROD
 endif
 
+ifeq ($(ispc),yes)
+	CXXFLAGS += -DUSE_ISPC
+endif
+
 ### 3.7 pext
 ifeq ($(pext),yes)
 	CXXFLAGS += -DUSE_PEXT
@@ -904,7 +919,7 @@ net:
 
 # clean binaries and objects
 objclean:
-	@rm -f stockfish stockfish.exe *.o ./syzygy/*.o ./nnue/*.o ./nnue/features/*.o
+	@rm -f stockfish stockfish.exe *.o ./syzygy/*.o ./nnue/*.o ./nnue/features/*.o ./nnue/layers/*.o
 
 # clean auxiliary profiling files
 profileclean:

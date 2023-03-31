@@ -52,6 +52,9 @@
     - inputs are processed in chunks of 4, weights are respectively transposed
     - accumulation happens directly to int32s
 */
+#if defined(USE_ISPC)
+#include "affine_transform_ispc.h"
+#endif
 
 namespace Stockfish::Eval::NNUE::Layers {
 
@@ -144,6 +147,9 @@ namespace Stockfish::Eval::NNUE::Layers {
         sum = vpadalq_s16(sum, product);
       }
       output[i] = sum[0] + sum[1] + sum[2] + sum[3];
+
+# elif defined(USE_ISPC)
+      output[i] = biases[i] + ispc::affine_transform(weights + offset, input, InputDimensions);
 
 # else
       std::int32_t sum = biases[i];

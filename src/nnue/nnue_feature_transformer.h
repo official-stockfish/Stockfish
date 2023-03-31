@@ -27,6 +27,10 @@
 #include <cstring> // std::memset()
 #include <utility> // std::pair
 
+#if defined(USE_ISPC)
+#include "nnue_feature_transformer_ispc.h"
+#endif
+
 namespace Stockfish::Eval::NNUE {
 
   using BiasType       = std::int16_t;
@@ -315,6 +319,12 @@ namespace Stockfish::Eval::NNUE {
               out[j] = vec_msb_pack_16(pa, pb);
           }
 
+#elif defined(USE_ISPC)
+
+          ispc::transform(accumulation[static_cast<int>(perspectives[p])],
+              accumulation[static_cast<int>(perspectives[p])] + HalfDimensions / 2,
+              output + offset, HalfDimensions / 2);
+
 #else
 
           for (IndexType j = 0; j < HalfDimensions / 2; ++j) {
@@ -485,6 +495,29 @@ namespace Stockfish::Eval::NNUE {
         }
       }
 
+#elif defined(USE_ISPC)
+      for (IndexType i = 0; states_to_update[i]; ++i)
+      {
+        std::memcpy(states_to_update[i]->accumulator.accumulation[Perspective],
+            st->accumulator.accumulation[Perspective],
+            HalfDimensions * sizeof(BiasType));
+
+        for (std::size_t k = 0; k < PSQTBuckets; ++k)
+          states_to_update[i]->accumulator.psqtAccumulation[Perspective][k] = st->accumulator.psqtAccumulation[Perspective][k];
+
+        st = states_to_update[i];
+
+        // Difference calculation for the deactivated features
+        ispc::update_accumulator_remove(removed[i].begin(), removed[i].size(),
+            st->accumulator.accumulation[Perspective], st->accumulator.psqtAccumulation[Perspective],
+            weights, psqtWeights, HalfDimensions, PSQTBuckets);
+
+        // Difference calculation for the activated features
+        ispc::update_accumulator_add(added[i].begin(), added[i].size(),
+            st->accumulator.accumulation[Perspective], st->accumulator.psqtAccumulation[Perspective],
+            weights, psqtWeights, HalfDimensions, PSQTBuckets);
+      }
+
 #else
       for (IndexType i = 0; states_to_update[i]; ++i)
       {
@@ -588,6 +621,16 @@ namespace Stockfish::Eval::NNUE {
           vec_store_psqt(&accTilePsqt[k], psqt[k]);
       }
 
+#elif defined(USE_ISPC)
+      std::memcpy(accumulator.accumulation[Perspective], biases,
+          HalfDimensions * sizeof(BiasType));
+
+      for (std::size_t k = 0; k < PSQTBuckets; ++k)
+        accumulator.psqtAccumulation[Perspective][k] = 0;
+
+      ispc::update_accumulator_add(active.begin(), active.size(),
+          accumulator.accumulation[Perspective], accumulator.psqtAccumulation[Perspective],
+          weights, psqtWeights, HalfDimensions, PSQTBuckets);
 #else
       std::memcpy(accumulator.accumulation[Perspective], biases,
           HalfDimensions * sizeof(BiasType));
