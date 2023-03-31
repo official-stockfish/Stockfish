@@ -362,7 +362,8 @@ endif
 ifeq ($(ARCH),ispc)
 	arch = any
 	ispc = yes
-	OBJS := nnue/layers/affine_transform.o nnue/nnue_feature_transformer.o $(OBJS)
+	prefetch = yes
+	OBJS := nnue/layers/affine_transform.o nnue/nnue_feature_transformer.o helpers.o $(OBJS)
 endif
 endif
 

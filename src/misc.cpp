@@ -60,6 +60,10 @@ using fun5_t = WORD(*)();
 #include <stdlib.h>
 #endif
 
+#if defined(USE_ISPC)
+#include "helpers_ispc.h"
+#endif
+
 #include "misc.h"
 #include "thread.h"
 
@@ -431,6 +435,8 @@ void prefetch(void* addr) {
 
 #  if defined(__INTEL_COMPILER) || defined(_MSC_VER)
   _mm_prefetch((char*)addr, _MM_HINT_T0);
+#  elif defined(USE_ISPC)
+  ispc::prefetch(addr);
 #  else
   __builtin_prefetch(addr);
 #  endif
