@@ -170,7 +170,7 @@ string engine_info(bool to_uci) {
       ss << "-";
 
       #ifdef GIT_SHA
-      ss << GIT_SHA;
+      ss << std::hex << GIT_SHA;
       #else
       ss << "nogit";
       #endif
