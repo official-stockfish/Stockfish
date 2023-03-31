@@ -169,7 +169,7 @@ vector<string> setup_bench(const Position& current, istream& is) {
           ++posCounter;
       }
 
-  list.emplace_back("setoption name Use NNUE value true");
+  list.emplace_back("setoption name UCI_EvalMode value Hybrid");
 
   return list;
 }
