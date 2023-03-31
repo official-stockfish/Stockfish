@@ -148,9 +148,6 @@ namespace Stockfish::Eval::NNUE::Layers {
       }
       output[i] = sum[0] + sum[1] + sum[2] + sum[3];
 
-# elif defined(USE_ISPC)
-      output[i] = biases[i] + ispc::affine_transform(weights + offset, input, InputDimensions);
-
 # else
       std::int32_t sum = biases[i];
       for (IndexType j = 0; j < InputDimensions; ++j) {
@@ -382,6 +379,21 @@ namespace Stockfish::Eval::NNUE::Layers {
 # undef vec_add_dpbusd_32x2
 # undef vec_hadd
 # undef vec_haddx4
+
+#elif defined(USE_ISPC)
+
+      static_assert(OutputDimensions % 4 == 0 || OutputDimensions == 1);
+
+      if constexpr (OutputDimensions > 1)
+      {
+        ispc::affine_transform(input, weights, biases, output, InputDimensions,
+                               PaddedInputDimensions, OutputDimensions);
+      }
+      else
+      {
+        output[0] = biases[0] + ispc::affine_transform1(weights, input, InputDimensions);
+      }
+
 #else
       // Use old implementation for the other architectures.
       affine_transform_non_ssse3<
@@ -541,6 +553,21 @@ namespace Stockfish::Eval::NNUE::Layers {
 # undef vec_add_dpbusd_32
 # undef vec_add_dpbusd_32x2
 # undef vec_hadd
+
+#elif defined(USE_ISPC)
+
+      static_assert(OutputDimensions % 4 == 0 || OutputDimensions == 1);
+
+      if constexpr (OutputDimensions > 1)
+      {
+        ispc::affine_transform(input, weights, biases, output, InputDimensions,
+                               PaddedInputDimensions, OutputDimensions);
+      }
+      else
+      {
+        output[0] = biases[0] + ispc::affine_transform1(weights, input, InputDimensions);
+      }
+
 #else
       // Use old implementation for the other architectures.
       affine_transform_non_ssse3<
