@@ -96,6 +96,7 @@ VPATH = syzygy:nnue:nnue/features
 # vnni512 = yes/no    --- -mavx512vnni       --- Use Intel Vector Neural Network Instructions 512
 # neon = yes/no       --- -DUSE_NEON         --- Use ARM SIMD architecture
 # dotprod = yes/no    --- -DUSE_NEON_DOTPROD --- Use ARM advanced SIMD Int8 dot product instructions
+# pthread = yes/no    --- -DUSE_PTHREADS     --- include <pthread.h> (should be "no" for Windows native compilers)
 #
 # Note that Makefile is space sensitive, so when adding new architectures
 # or modifying existing flags, you have to make sure there are no extra spaces
@@ -142,6 +143,7 @@ vnni256 = no
 vnni512 = no
 neon = no
 dotprod = no
+pthread = yes
 arm_version = 0
 STRIP = strip
 
@@ -425,10 +427,11 @@ ifeq ($(COMP),mingw)
 	CXXFLAGS += -pedantic -Wextra -Wshadow -Wmissing-declarations
 endif
 
-ifeq ($(COMP),icc)
-	comp=icc
-	CXX=icpc
-	CXXFLAGS += -diag-disable 1476,10120 -Wcheck -Wabi -Wdeprecated -strict-ansi
+ifeq ($(COMP),icx)
+        comp=icx
+        CXX=icpx
+        CXXFLAGS += --intel -pedantic -Wextra -Wshadow -Wmissing-prototypes \
+                    -Wconditional-uninitialized -Wabi -Wdeprecated
 endif
 
 ifeq ($(COMP),clang)
@@ -499,9 +502,9 @@ ifeq ($(COMP),ndk)
 	LDFLAGS += -static-libstdc++ -pie -lm -latomic
 endif
 
-ifeq ($(comp),icc)
-	profile_make = icc-profile-make
-	profile_use = icc-profile-use
+ifeq ($(comp),icx)
+        profile_make = icx-profile-make
+        profile_use = icx-profile-use
 else ifeq ($(comp),clang)
 	profile_make = clang-profile-make
 	profile_use = clang-profile-use
@@ -535,6 +538,18 @@ endif
 
 ### On mingw use Windows threads, otherwise POSIX
 ifneq ($(comp),mingw)
+	ifeq ($(target_windows),yes)
+		ifeq ($(comp),icx)
+			pthread = no
+		else
+			pthread = yes
+		endif
+        else
+		pthread = yes
+	endif
+endif
+
+ifeq ($(pthread),yes)
 	CXXFLAGS += -DUSE_PTHREADS
 	# On Android Bionic's C library comes with its own pthread implementation bundled in
 	ifneq ($(OS),Android)
@@ -572,7 +587,7 @@ ifeq ($(optimize),yes)
 	endif
 
 	ifeq ($(KERNEL),Darwin)
-		ifeq ($(comp),$(filter $(comp),clang icc))
+		ifeq ($(comp),$(filter $(comp),clang icx))
 			CXXFLAGS += -mdynamic-no-pic
 		endif
 
@@ -608,8 +623,6 @@ endif
 ifeq ($(popcnt),yes)
 	ifeq ($(arch),$(filter $(arch),ppc64 armv7 armv8 arm64))
 		CXXFLAGS += -DUSE_POPCNT
-	else ifeq ($(comp),icc)
-		CXXFLAGS += -msse3 -DUSE_POPCNT
 	else
 		CXXFLAGS += -msse3 -mpopcnt -DUSE_POPCNT
 	endif
@@ -618,63 +631,63 @@ endif
 ### 3.6 SIMD architectures
 ifeq ($(avx2),yes)
 	CXXFLAGS += -DUSE_AVX2
-	ifeq ($(comp),$(filter $(comp),gcc clang mingw))
+	ifeq ($(comp),$(filter $(comp),gcc clang mingw icx))
 		CXXFLAGS += -mavx2 -mbmi
 	endif
 endif
 
 ifeq ($(avxvnni),yes)
 	CXXFLAGS += -DUSE_VNNI -DUSE_AVXVNNI
-	ifeq ($(comp),$(filter $(comp),gcc clang mingw))
+	ifeq ($(comp),$(filter $(comp),gcc clang mingw icx))
 		CXXFLAGS += -mavxvnni
 	endif
 endif
 
 ifeq ($(avx512),yes)
 	CXXFLAGS += -DUSE_AVX512
-	ifeq ($(comp),$(filter $(comp),gcc clang mingw))
+	ifeq ($(comp),$(filter $(comp),gcc clang mingw icx))
 		CXXFLAGS += -mavx512f -mavx512bw
 	endif
 endif
 
 ifeq ($(vnni256),yes)
 	CXXFLAGS += -DUSE_VNNI
-	ifeq ($(comp),$(filter $(comp),gcc clang mingw))
+	ifeq ($(comp),$(filter $(comp),gcc clang mingw icx))
 		CXXFLAGS += -mavx512f -mavx512bw -mavx512vnni -mavx512dq -mavx512vl -mprefer-vector-width=256
 	endif
 endif
 
 ifeq ($(vnni512),yes)
 	CXXFLAGS += -DUSE_VNNI
-	ifeq ($(comp),$(filter $(comp),gcc clang mingw))
-		CXXFLAGS += -mavx512vnni -mavx512dq -mavx512vl
+	ifeq ($(comp),$(filter $(comp),gcc clang mingw icx))
+		CXXFLAGS += -mavx512f -mavx512bw -mavx512vnni -mavx512dq -mavx512vl -mprefer-vector-width=512
 	endif
 endif
 
 ifeq ($(sse41),yes)
 	CXXFLAGS += -DUSE_SSE41
-	ifeq ($(comp),$(filter $(comp),gcc clang mingw))
+	ifeq ($(comp),$(filter $(comp),gcc clang mingw icx))
 		CXXFLAGS += -msse4.1
 	endif
 endif
 
 ifeq ($(ssse3),yes)
 	CXXFLAGS += -DUSE_SSSE3
-	ifeq ($(comp),$(filter $(comp),gcc clang mingw))
+	ifeq ($(comp),$(filter $(comp),gcc clang mingw icx))
 		CXXFLAGS += -mssse3
 	endif
 endif
 
 ifeq ($(sse2),yes)
 	CXXFLAGS += -DUSE_SSE2
-	ifeq ($(comp),$(filter $(comp),gcc clang mingw))
+	ifeq ($(comp),$(filter $(comp),gcc clang mingw icx))
 		CXXFLAGS += -msse2
 	endif
 endif
 
 ifeq ($(mmx),yes)
 	CXXFLAGS += -DUSE_MMX
-	ifeq ($(comp),$(filter $(comp),gcc clang mingw))
+	ifeq ($(comp),$(filter $(comp),gcc clang mingw icx))
 		CXXFLAGS += -mmmx
 	endif
 endif
@@ -697,7 +710,7 @@ endif
 ### 3.7 pext
 ifeq ($(pext),yes)
 	CXXFLAGS += -DUSE_PEXT
-	ifeq ($(comp),$(filter $(comp),gcc clang mingw))
+	ifeq ($(comp),$(filter $(comp),gcc clang mingw icx))
 		CXXFLAGS += -mbmi2
 	endif
 endif
@@ -719,8 +732,11 @@ endif
 ### needs access to the optimization flags.
 ifeq ($(optimize),yes)
 ifeq ($(debug), no)
-	ifeq ($(comp),clang)
+        ifeq ($(comp),$(filter $(comp),clang icx))
 		CXXFLAGS += -flto=full
+		ifeq ($(comp),icx)
+			CXXFLAGS += -fwhole-program-vtables
+                endif
 		ifeq ($(target_windows),yes)
 			CXXFLAGS += -fuse-ld=lld
 		endif
@@ -807,7 +823,7 @@ help:
 	@echo "gcc                     > Gnu compiler (default)"
 	@echo "mingw                   > Gnu compiler with MinGW under Windows"
 	@echo "clang                   > LLVM Clang compiler"
-	@echo "icc                     > Intel compiler"
+	@echo "icx                     > Intel oneAPI DPC++/C++ Compiler"
 	@echo "ndk                     > Google NDK to cross-compile for Android"
 	@echo ""
 	@echo "Simple examples. If you don't know what to do, you likely want to run one of: "
@@ -833,7 +849,9 @@ endif
 
 
 .PHONY: help build profile-build strip install clean net objclean profileclean \
-        config-sanity icc-profile-use icc-profile-make gcc-profile-use gcc-profile-make \
+        config-sanity \
+        icx-profile-use icx-profile-make \
+        gcc-profile-use gcc-profile-make \
         clang-profile-use clang-profile-make FORCE
 
 build: net config-sanity
@@ -949,7 +967,10 @@ config-sanity: net
 	@echo "vnni256: '$(vnni256)'"
 	@echo "vnni512: '$(vnni512)'"
 	@echo "neon: '$(neon)'"
+	@echo "dotprod: '$(dotprod)'"
+	@echo "pthread: '$(pthread)'"
 	@echo "arm_version: '$(arm_version)'"
+	@echo "target_windows: '$(target_windows)'"
 	@echo ""
 	@echo "Flags:"
 	@echo "CXX: $(CXX)"
@@ -978,7 +999,7 @@ config-sanity: net
 	@test "$(vnni256)" = "yes" || test "$(vnni256)" = "no"
 	@test "$(vnni512)" = "yes" || test "$(vnni512)" = "no"
 	@test "$(neon)" = "yes" || test "$(neon)" = "no"
-	@test "$(comp)" = "gcc" || test "$(comp)" = "icc" || test "$(comp)" = "mingw" || test "$(comp)" = "clang" \
+	@test "$(comp)" = "gcc" || test "$(comp)" = "icx" || test "$(comp)" = "mingw" || test "$(comp)" = "clang" \
 	|| test "$(comp)" = "armv7a-linux-androideabi16-clang"  || test "$(comp)" = "aarch64-linux-android21-clang"
 
 $(EXE): $(OBJS)
@@ -1016,15 +1037,17 @@ gcc-profile-use:
 	EXTRALDFLAGS='-lgcov' \
 	all
 
-icc-profile-make:
-	@mkdir -p profdir
+icx-profile-make:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS='-prof-gen=srcpos -prof_dir ./profdir' \
+	EXTRACXXFLAGS='-fprofile-instr-generate ' \
+	EXTRALDFLAGS=' -fprofile-instr-generate' \
 	all
 
-icc-profile-use:
+icx-profile-use:
+	$(XCRUN) llvm-profdata merge -output=stockfish.profdata *.profraw
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS='-prof_use -prof_dir ./profdir' \
+	EXTRACXXFLAGS='-fprofile-instr-use=stockfish.profdata' \
+	EXTRALDFLAGS='-fprofile-use ' \
 	all
 
 .depend: $(SRCS)
