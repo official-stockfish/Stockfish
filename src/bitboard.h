@@ -23,6 +23,10 @@
 
 #include "types.h"
 
+#if defined(USE_ISPC)
+#include "helpers_ispc.h"
+#endif
+
 namespace Stockfish {
 
 namespace Bitbases {
@@ -336,10 +340,12 @@ inline Bitboard attacks_bb(PieceType pt, Square s, Bitboard occupied) {
 inline int popcount(Bitboard b) {
 
 #ifndef USE_POPCNT
-
+#ifdef USE_ISPC
+  return ispc::popcnt64(b);
+#else
   union { Bitboard bb; uint16_t u[4]; } v = { b };
   return PopCnt16[v.u[0]] + PopCnt16[v.u[1]] + PopCnt16[v.u[2]] + PopCnt16[v.u[3]];
-
+#endif
 #elif defined(_MSC_VER) || defined(__INTEL_COMPILER)
 
   return (int)_mm_popcnt_u64(b);

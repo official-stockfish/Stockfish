@@ -20,3 +20,6 @@ export void prefetch(const void *uniform ptr) {
   prefetch_l1(ptr);
 }
 
+export uniform int popcnt64(const uniform int64 x) {
+  return popcnt(x);
+}
