@@ -39,7 +39,7 @@ using fun3_t = bool(*)(HANDLE, CONST GROUP_AFFINITY*, PGROUP_AFFINITY);
 using fun4_t = bool(*)(USHORT, PGROUP_AFFINITY, USHORT, PUSHORT);
 using fun5_t = WORD(*)();
 using fun6_t = bool(*)(HANDLE, DWORD, PHANDLE);
-using fun7_t = bool(*)(LPCSTR, LPCSTR, PLUID);
+using fun7_t = bool(*)(LPCTSTR, LPCTSTR, PLUID);
 using fun8_t = bool(*)(HANDLE, BOOL, PTOKEN_PRIVILEGES, DWORD, PTOKEN_PRIVILEGES, PDWORD);
 }
 #endif
@@ -490,7 +490,7 @@ static void* aligned_large_pages_alloc_windows([[maybe_unused]] size_t allocSize
       return nullptr;
 
   // Dynamically link OpenProcessToken, LookupPrivilegeValue and AdjustTokenPrivileges
-  HMODULE k32 = GetModuleHandle("Advapi32.dll");
+  HMODULE k32 = GetModuleHandle(TEXT("Advapi32.dll"));
   auto fun6 = (fun6_t)(void(*)())GetProcAddress(k32, "OpenProcessToken");
   if (!fun6)
       return nullptr;
