@@ -300,15 +300,13 @@ void Thread::search() {
 
   bestValue = delta = alpha = -VALUE_INFINITE;
   beta = VALUE_INFINITE;
+  optimism[us] = optimism[~us] = VALUE_ZERO;
 
   if (mainThread)
   {
 
       int rootComplexity;
-      if (Eval::useNNUE)
-          Eval::NNUE::evaluate(rootPos, true, &rootComplexity);
-      else
-          Eval::evaluate(rootPos, &rootComplexity);
+      Eval::evaluate(rootPos, &rootComplexity);
 
       mainThread->complexity = std::min(1.03 + (rootComplexity - 241) / 1552.0, 1.45);
 
@@ -329,8 +327,6 @@ void Thread::search() {
       multiPV = std::max(multiPV, (size_t)5);
 
   multiPV = std::min(multiPV, rootMoves.size());
-
-  optimism[us] = optimism[~us] = VALUE_ZERO;
 
   int searchAgainCounter = 0;
 
