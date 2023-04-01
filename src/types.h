@@ -65,7 +65,9 @@
 
 #if defined(_WIN64) && defined(_MSC_VER) // No Makefile used
 #  include <intrin.h> // Microsoft header for _BitScanForward64()
-#  define IS_64BIT
+#    if !defined(IS_64BIT) // Avoid a warning in clang (LLVM) compiler that IS_64BIT is already defined
+#      define IS_64BIT
+#    endif
 #endif
 
 #if defined(USE_POPCNT) && (defined(__INTEL_COMPILER) || defined(_MSC_VER))
