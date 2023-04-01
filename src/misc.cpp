@@ -38,6 +38,9 @@ using fun2_t = bool(*)(USHORT, PGROUP_AFFINITY);
 using fun3_t = bool(*)(HANDLE, CONST GROUP_AFFINITY*, PGROUP_AFFINITY);
 using fun4_t = bool(*)(USHORT, PGROUP_AFFINITY, USHORT, PUSHORT);
 using fun5_t = WORD(*)();
+using fun6_t = bool(*)(HANDLE, DWORD, PHANDLE);
+using fun7_t = bool(*)(LPCSTR, LPCSTR, PLUID);
+using fun8_t = bool(*)(HANDLE, BOOL, PTOKEN_PRIVILEGES, DWORD, PTOKEN_PRIVILEGES, PDWORD);
 }
 #endif
 
@@ -157,7 +160,7 @@ string engine_info(bool to_uci) {
   {
       ss << "-";
       #ifdef GIT_DATE
-      ss << GIT_DATE;
+      ss << stringify(GIT_DATE);
       #else
       constexpr string_view months("Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec");
       string month, day, year;
@@ -170,7 +173,7 @@ string engine_info(bool to_uci) {
       ss << "-";
 
       #ifdef GIT_SHA
-      ss << GIT_SHA;
+      ss << stringify(GIT_SHA);
       #else
       ss << "nogit";
       #endif
@@ -187,8 +190,6 @@ string engine_info(bool to_uci) {
 
 std::string compiler_info() {
 
-  #define stringify2(x) #x
-  #define stringify(x) stringify2(x)
   #define make_version_string(major, minor, patch) stringify(major) "." stringify(minor) "." stringify(patch)
 
 /// Predefined macros hell:
@@ -488,11 +489,26 @@ static void* aligned_large_pages_alloc_windows([[maybe_unused]] size_t allocSize
   if (!largePageSize)
       return nullptr;
 
+  // Dynamically link OpenProcessToken, LookupPrivilegeValue and AdjustTokenPrivileges
+  HMODULE k32 = GetModuleHandle("Advapi32.dll");
+  auto fun6 = (fun6_t)(void(*)())GetProcAddress(k32, "OpenProcessToken");
+  if (!fun6)
+      return nullptr;
+  auto fun7 = (fun7_t)(void(*)())GetProcAddress(k32, "LookupPrivilegeValueA");
+  if (!fun7)
+      return nullptr;
+  auto fun8 = (fun8_t)(void(*)())GetProcAddress(k32, "AdjustTokenPrivileges");
+  if (!fun8)
+      return nullptr;
+            
+
   // We need SeLockMemoryPrivilege, so try to enable it for the process
-  if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hProcessToken))
+  // OpenProcessToken()
+  if (!fun6(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hProcessToken))
       return nullptr;
 
-  if (LookupPrivilegeValue(nullptr, SE_LOCK_MEMORY_NAME, &luid))
+  // LookupPrivilegeValueA()
+  if (fun7(nullptr, SE_LOCK_MEMORY_NAME, &luid))
   {
       TOKEN_PRIVILEGES tp { };
       TOKEN_PRIVILEGES prevTp { };
@@ -504,7 +520,8 @@ static void* aligned_large_pages_alloc_windows([[maybe_unused]] size_t allocSize
 
       // Try to enable SeLockMemoryPrivilege. Note that even if AdjustTokenPrivileges() succeeds,
       // we still need to query GetLastError() to ensure that the privileges were actually obtained.
-      if (AdjustTokenPrivileges(
+      // AdjustTokenPrivileges()
+      if (fun8(
               hProcessToken, FALSE, &tp, sizeof(TOKEN_PRIVILEGES), &prevTp, &prevTpLen) &&
           GetLastError() == ERROR_SUCCESS)
       {
@@ -514,7 +531,8 @@ static void* aligned_large_pages_alloc_windows([[maybe_unused]] size_t allocSize
               nullptr, allocSize, MEM_RESERVE | MEM_COMMIT | MEM_LARGE_PAGES, PAGE_READWRITE);
 
           // Privilege no longer needed, restore previous state
-          AdjustTokenPrivileges(hProcessToken, FALSE, &prevTp, 0, nullptr, nullptr);
+	  // AdjustTokenPrivileges ()
+          fun8(hProcessToken, FALSE, &prevTp, 0, nullptr, nullptr);
       }
   }
 
@@ -605,7 +623,7 @@ static int best_node(size_t idx) {
   DWORD byteOffset = 0;
 
   // Early exit if the needed API is not available at runtime
-  HMODULE k32 = GetModuleHandle("Kernel32.dll");
+  HMODULE k32 = GetModuleHandle(TEXT("Kernel32.dll"));
   auto fun1 = (fun1_t)(void(*)())GetProcAddress(k32, "GetLogicalProcessorInformationEx");
   if (!fun1)
       return -1;
@@ -675,7 +693,7 @@ void bindThisThread(size_t idx) {
       return;
 
   // Early exit if the needed API are not available at runtime
-  HMODULE k32 = GetModuleHandle("Kernel32.dll");
+  HMODULE k32 = GetModuleHandle(TEXT("Kernel32.dll"));
   auto fun2 = (fun2_t)(void(*)())GetProcAddress(k32, "GetNumaNodeProcessorMaskEx");
   auto fun3 = (fun3_t)(void(*)())GetProcAddress(k32, "SetThreadGroupAffinity");
   auto fun4 = (fun4_t)(void(*)())GetProcAddress(k32, "GetNumaNodeProcessorMask2");
