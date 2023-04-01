@@ -160,7 +160,7 @@ string engine_info(bool to_uci) {
   {
       ss << "-";
       #ifdef GIT_DATE
-      ss << GIT_DATE;
+      ss << stringify(GIT_DATE);
       #else
       constexpr string_view months("Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec");
       string month, day, year;
@@ -173,7 +173,7 @@ string engine_info(bool to_uci) {
       ss << "-";
 
       #ifdef GIT_SHA
-      ss << GIT_SHA;
+      ss << stringify(GIT_SHA);
       #else
       ss << "nogit";
       #endif
@@ -190,8 +190,6 @@ string engine_info(bool to_uci) {
 
 std::string compiler_info() {
 
-  #define stringify2(x) #x
-  #define stringify(x) stringify2(x)
   #define make_version_string(major, minor, patch) stringify(major) "." stringify(minor) "." stringify(patch)
 
 /// Predefined macros hell:

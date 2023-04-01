@@ -28,6 +28,9 @@
 
 #include "types.h"
 
+#define stringify2(x) #x
+#define stringify(x) stringify2(x)
+
 namespace Stockfish {
 
 std::string engine_info(bool to_uci = false);
