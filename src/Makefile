@@ -705,13 +705,13 @@ endif
 ### 3.7.1 Try to include git commit sha for versioning
 GIT_SHA = $(shell git rev-parse --short HEAD 2>/dev/null)
 ifneq ($(GIT_SHA), )
-	CXXFLAGS += -DGIT_SHA=\"$(GIT_SHA)\"
+	CXXFLAGS += -DGIT_SHA=$(GIT_SHA)
 endif
 
 ### 3.7.2 Try to include git commit date for versioning
 GIT_DATE = $(shell git show -s --date=format:'%Y%m%d' --format=%cd HEAD 2>/dev/null)
 ifneq ($(GIT_DATE), )
-	CXXFLAGS += -DGIT_DATE=\"$(GIT_DATE)\"
+	CXXFLAGS += -DGIT_DATE=$(GIT_DATE)
 endif
 
 ### 3.8 Link Time Optimization
