@@ -58,7 +58,10 @@ namespace Stockfish::Eval::NNUE {
   constexpr std::size_t CacheLineSize = 64;
 
   // SIMD width (in bytes)
-  #if defined(USE_AVX2)
+  #if defined(USE_AVX512)
+  constexpr std::size_t SimdWidth = 64;
+
+  #elif defined(USE_AVX2)
   constexpr std::size_t SimdWidth = 32;
 
   #elif defined(USE_SSE2)
