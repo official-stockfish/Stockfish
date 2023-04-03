@@ -72,6 +72,12 @@ namespace Stockfish::Eval::NNUE {
 
   #elif defined(USE_NEON)
   constexpr std::size_t SimdWidthPlatform = 16;
+
+  #else
+
+  // Other platforms, such as armv7, should have no SMID
+  constexpr std::size_t SimdWidthPlatform = 0;
+
   #endif
 
   constexpr std::size_t MaxSimdWidth = 32;
