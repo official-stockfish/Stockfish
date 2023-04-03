@@ -192,10 +192,10 @@ namespace Stockfish::Eval::NNUE::Layers {
 
 #if defined (USE_AVX512)
     static constexpr IndexType InputSimdWidth = 64;
-    static constexpr IndexType MaxNumOutputRegs = 16;
+    static constexpr IndexType MaxNumOutputRegs = 32;
 #elif defined (USE_AVX2)
     static constexpr IndexType InputSimdWidth = 32;
-    static constexpr IndexType MaxNumOutputRegs = 8;
+    static constexpr IndexType MaxNumOutputRegs = 16;
 #elif defined (USE_SSSE3)
     static constexpr IndexType InputSimdWidth = 16;
     static constexpr IndexType MaxNumOutputRegs = 8;
@@ -419,7 +419,9 @@ namespace Stockfish::Eval::NNUE::Layers {
 
 #if defined (USE_SSSE3)
     static constexpr IndexType OutputSimdWidth = SimdWidth / 4;
-    static constexpr IndexType InputSimdWidth = SimdWidth;
+    static constexpr IndexType OutputSimdWidthPlatform = SimdWidthPlatform / 4;
+
+    static constexpr IndexType InputSimdWidth = SimdWidthPlatform;
 #endif
 
     // Hash value embedded in the evaluation file
@@ -469,8 +471,14 @@ namespace Stockfish::Eval::NNUE::Layers {
     // Forward propagation
     const OutputType* propagate(
         const InputType* input, OutputType* output) const {
-
-#if defined (USE_AVX2)
+#if defined (USE_AVX512)
+      using vec_t = __m512i;
+      #define vec_setzero _mm512_setzero_si512
+      #define vec_set_32 _mm512_set1_epi32
+      #define vec_add_dpbusd_32 Simd::m512_add_dpbusd_epi32
+      #define vec_add_dpbusd_32x2 Simd::m512_add_dpbusd_epi32x2
+      #define vec_hadd Simd::m512_hadd
+#elif defined (USE_AVX2)
       using vec_t = __m256i;
       #define vec_setzero _mm256_setzero_si256
       #define vec_set_32 _mm256_set1_epi32
@@ -487,14 +495,16 @@ namespace Stockfish::Eval::NNUE::Layers {
 #endif
 
 #if defined (USE_SSSE3)
+
       const auto inputVector = reinterpret_cast<const vec_t*>(input);
 
       static_assert(OutputDimensions % OutputSimdWidth == 0 || OutputDimensions == 1);
+      static_assert(OutputDimensions % OutputSimdWidthPlatform == 0 || OutputDimensions == 1);
 
-      if constexpr (OutputDimensions % OutputSimdWidth == 0)
+      if constexpr (OutputDimensions % OutputSimdWidthPlatform == 0)
       {
         constexpr IndexType NumChunks = ceil_to_multiple<IndexType>(InputDimensions, 8) / 4;
-        constexpr IndexType NumRegs = OutputDimensions / OutputSimdWidth;
+        constexpr IndexType NumRegs = OutputDimensions / OutputSimdWidthPlatform;
 
         const auto input32 = reinterpret_cast<const std::int32_t*>(input);
         const vec_t* biasvec = reinterpret_cast<const vec_t*>(biases);

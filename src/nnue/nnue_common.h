@@ -58,20 +58,24 @@ namespace Stockfish::Eval::NNUE {
   constexpr std::size_t CacheLineSize = 64;
 
   // SIMD width (in bytes)
-  #if defined(USE_AVX2)
-  constexpr std::size_t SimdWidth = 32;
+  #if defined(USE_AVX512)
+  constexpr std::size_t SimdWidthPlatform = 64;
+
+  #elif defined(USE_AVX2)
+  constexpr std::size_t SimdWidthPlatform = 32;
 
   #elif defined(USE_SSE2)
-  constexpr std::size_t SimdWidth = 16;
+  constexpr std::size_t SimdWidthPlatform = 16;
 
   #elif defined(USE_MMX)
-  constexpr std::size_t SimdWidth = 8;
+  constexpr std::size_t SimdWidthPlatform = 8;
 
   #elif defined(USE_NEON)
-  constexpr std::size_t SimdWidth = 16;
+  constexpr std::size_t SimdWidthPlatform = 16;
   #endif
 
   constexpr std::size_t MaxSimdWidth = 32;
+  constexpr std::size_t SimdWidth = std::min(SimdWidthPlatform, MaxSimdWidth);
 
   // Type of input feature after conversion
   using TransformedFeatureType = std::uint8_t;
