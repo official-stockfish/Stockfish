@@ -379,21 +379,6 @@ namespace Stockfish::Eval::NNUE::Layers {
 # undef vec_add_dpbusd_32x2
 # undef vec_hadd
 # undef vec_haddx4
-
-#elif defined(USE_ISPC)
-
-      static_assert(OutputDimensions % 4 == 0 || OutputDimensions == 1);
-
-      if constexpr (OutputDimensions > 1)
-      {
-        ispc::affine_transform(input, weights, biases, output, InputDimensions,
-                               PaddedInputDimensions, OutputDimensions);
-      }
-      else
-      {
-        output[0] = biases[0] + ispc::affine_transform1(weights, input, InputDimensions);
-      }
-
 #else
       // Use old implementation for the other architectures.
       affine_transform_non_ssse3<
@@ -461,6 +446,8 @@ namespace Stockfish::Eval::NNUE::Layers {
     {
 #if defined (USE_SSSE3)
       return get_weight_index_scrambled(i);
+#elif defined (USE_ISPC)
+      return (i % PaddedInputDimensions) * OutputDimensions + i / PaddedInputDimensions;
 #else
       return i;
 #endif
@@ -556,7 +543,7 @@ namespace Stockfish::Eval::NNUE::Layers {
 
 #elif defined(USE_ISPC)
 
-      static_assert(OutputDimensions % 4 == 0 || OutputDimensions == 1);
+      static_assert(OutputDimensions % 16 == 0 || OutputDimensions == 1);
 
       if constexpr (OutputDimensions > 1)
       {

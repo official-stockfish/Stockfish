@@ -20,32 +20,20 @@ export void affine_transform(
     const uniform uint8 input[], const uniform int8 weights[], const uniform int biases[],
     uniform int output[], uniform int InputDimensions, uniform int PaddedInputDimensions,
     uniform int OutputDimensions) {
-  assume(InputDimensions % programCount == 0);
-
-  varying int sum0, sum1, sum2, sum3;
-  uniform int offset0 = 0;
-  uniform int offset1 = PaddedInputDimensions;
-  uniform int offset2 = 2 * PaddedInputDimensions;
-  uniform int offset3 = 3 * PaddedInputDimensions;
-  uniform int step = 4 * PaddedInputDimensions;
-  varying int ij;
-  for (uniform int i = 0; i < OutputDimensions; i += 4) {
-    sum0 = sum1 = sum2 = sum3 = 0;
-    foreach (j = 0 ... InputDimensions) {
+  #define TILE 16
+  assume(OutputDimensions % TILE == 0);
+  uniform int sum[TILE];
+  uniform uint8 ij;
+  for (uniform int i = 0; i < OutputDimensions; i += TILE) {
+    foreach (j = 0 ... TILE) sum[j] = 0;
+    for (uniform int j = 0; j < InputDimensions; j++) {
       ij = input[j];
-      sum0 += weights[offset0 + j] * ij;
-      sum1 += weights[offset1 + j] * ij;
-      sum2 += weights[offset2 + j] * ij;
-      sum3 += weights[offset3 + j] * ij;
+      foreach (k = 0 ... TILE) {
+        sum[k] += weights[j * OutputDimensions + i + k] * (int)ij;
+      }
     }
-    output[i] = biases[i] + reduce_add(sum0);
-    output[i + 1] = biases[i + 1] + reduce_add(sum1);
-    output[i + 2] = biases[i + 2] + reduce_add(sum2);
-    output[i + 3] = biases[i + 3] + reduce_add(sum3);
-    offset0 += step;
-    offset1 += step;
-    offset2 += step;
-    offset3 += step;
+    foreach (j = 0 ... TILE)
+      output[i + j] = biases[i + j] + sum[j];
   }
 }
 
