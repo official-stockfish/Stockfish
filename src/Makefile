@@ -364,6 +364,7 @@ ifeq ($(ARCH),ispc)
 	ispc = yes
 	prefetch = yes
 	OBJS := nnue/layers/affine_transform.o nnue/nnue_feature_transformer.o helpers.o $(OBJS)
+	EXTRACXXFLAGS += -march=native
 endif
 endif
 
