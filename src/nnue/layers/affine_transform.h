@@ -545,7 +545,15 @@ namespace Stockfish::Eval::NNUE::Layers {
 
       static_assert(OutputDimensions % 16 == 0 || OutputDimensions == 1);
 
-      if constexpr (OutputDimensions > 1)
+      if constexpr (OutputDimensions == 16 && InputDimensions == 1024 && PaddedInputDimensions == 1024)
+      {
+        ispc::affine_transform_1024_1024_16(input, weights, biases, output);
+      }
+      else if constexpr (OutputDimensions == 32 && InputDimensions == 30 && PaddedInputDimensions == 32)
+      {
+        ispc::affine_transform_30_32_32(input, weights, biases, output);
+      }
+      else if constexpr (OutputDimensions > 1)
       {
         ispc::affine_transform(input, weights, biases, output, InputDimensions,
                                PaddedInputDimensions, OutputDimensions);

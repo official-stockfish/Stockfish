@@ -54,3 +54,13 @@ export uniform int affine_transform1(const uniform int8 weights[], const uniform
   return reduce_add(sum);
 }
 
+// Specializations for common sizes.
+export void affine_transform_1024_1024_16(const uniform uint8 input[], const uniform int8 weights[],
+                                          const uniform int biases[], uniform int output[]) {
+  affine_transform(input, weights, biases, output, 1024, 1024, 16);
+}
+
+export void affine_transform_30_32_32(const uniform uint8 input[], const uniform int8 weights[],
+                                      const uniform int biases[], uniform int output[]) {
+  affine_transform(input, weights, biases, output, 30, 32, 32);
+}
