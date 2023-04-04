@@ -16,6 +16,12 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+export void clip_relu(const uniform int input[], uniform uint8 output[], uniform int size, uniform uint8 scale) {
+  foreach (j = 0 ... size) {
+    output[j] = max(0, min(127, input[j] >> scale));
+  }
+}
+
 export void affine_transform(
     const uniform uint8 input[], const uniform int8 weights[], const uniform int biases[],
     uniform int output[], uniform int InputDimensions, uniform int PaddedInputDimensions,

@@ -23,6 +23,10 @@
 
 #include "../nnue_common.h"
 
+#if defined(USE_ISPC)
+#include "affine_transform_ispc.h"
+#endif
+
 namespace Stockfish::Eval::NNUE::Layers {
 
   // Clipped ReLU
@@ -162,6 +166,9 @@ namespace Stockfish::Eval::NNUE::Layers {
         out[i] = vmax_s8(vqmovn_s16(shifted), Zero);
       }
       constexpr IndexType Start = NumChunks * (SimdWidth / 2);
+  #elif defined(USE_ISPC)
+      ispc::clip_relu(input, output, InputDimensions, WeightScaleBits);
+      constexpr IndexType Start = InputDimensions;
   #else
       constexpr IndexType Start = 0;
   #endif
