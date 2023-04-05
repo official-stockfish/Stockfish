@@ -1053,7 +1053,7 @@ Value Eval::evaluate(const Position& pos, int* complexity) {
 
   // We use the much less accurate but faster Classical eval when the NNUE
   // option is set to false. Otherwise we use the NNUE eval unless the
-  // PSQ advantage is decisive. (~5 Elo at STC, 1 Elo at LTC)
+  // PSQ advantage is decisive. (~4 Elo at STC, 1 Elo at LTC)
   bool useClassical = !useNNUE || abs(psq) > 2048;
 
   if (useClassical)
