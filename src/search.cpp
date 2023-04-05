@@ -733,7 +733,7 @@ Value Search::Worker::search(
         ss->staticEval = eval = to_corrected_static_eval(unadjustedStaticEval, *thisThread, pos);
 
         // Static evaluation is saved as it was before adjustment by correction history
-        tte->save(posKey, VALUE_NONE, ss->ttPv, BOUND_NONE, DEPTH_NONE, Move::none(),
+        tte->save(posKey, VALUE_NONE, ss->ttPv, BOUND_NONE, DEPTH_UNSEARCHED, Move::none(),
                   unadjustedStaticEval, tt.generation());
     }
 
@@ -1387,8 +1387,11 @@ moves_loop:  // When in check, search starts here
 }
 
 
-// Quiescence search function, which is called by the main search
-// function with zero depth, or recursively with further decreasing depth per call.
+// Quiescence search function, which is called by the main search function with zero depth, or
+// recursively with further decreasing depth per call. With depth <= 0, we "should" be using
+// static eval only, but tactical moves may confuse the static eval. To fight this horizon effect,
+// we implement this qsearch of tactical moves only.
+// See https://www.chessprogramming.org/Horizon_Effect and https://www.chessprogramming.org/Quiescence_Search
 // (~155 Elo)
 template<NodeType nodeType>
 Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth) {
@@ -1446,8 +1449,10 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta,
 
     assert(0 <= ss->ply && ss->ply < MAX_PLY);
 
-    // Decide the replacement and cutoff priority of the qsearch TT entries
-    ttDepth = ss->inCheck || depth >= DEPTH_QS_CHECKS ? DEPTH_QS_CHECKS : DEPTH_QS_NO_CHECKS;
+    // Note that unlike regular search, which stores literal depth, in QS we only store the
+    // current movegen stage. If in check, we search all evasions and thus store
+    // DEPTH_QS_CHECKS. (Evasions may be quiet, and _CHECKS includes quiets.)
+    ttDepth = ss->inCheck || depth >= DEPTH_QS_CHECKS ? DEPTH_QS_CHECKS : DEPTH_QS_NORMAL;
 
     // Step 3. Transposition table lookup
     posKey  = pos.key();
@@ -1499,8 +1504,8 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta,
             if (std::abs(bestValue) < VALUE_TB_WIN_IN_MAX_PLY && !PvNode)
                 bestValue = (3 * bestValue + beta) / 4;
             if (!ss->ttHit)
-                tte->save(posKey, value_to_tt(bestValue, ss->ply), false, BOUND_LOWER, DEPTH_NONE,
-                          Move::none(), unadjustedStaticEval, tt.generation());
+                tte->save(posKey, value_to_tt(bestValue, ss->ply), false, BOUND_LOWER,
+                          DEPTH_UNSEARCHED, Move::none(), unadjustedStaticEval, tt.generation());
 
             return bestValue;
         }
@@ -1514,16 +1519,16 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta,
     const PieceToHistory* contHist[] = {(ss - 1)->continuationHistory,
                                         (ss - 2)->continuationHistory};
 
-    // Initialize a MovePicker object for the current position, and prepare
-    // to search the moves. Because the depth is <= 0 here, only captures,
-    // queen promotions, and other checks (only if depth >= DEPTH_QS_CHECKS)
-    // will be generated.
+    // Initialize a MovePicker object for the current position, and prepare to search the moves.
+    // We presently use two stages of qs movegen, first captures+checks, then captures only.
+    // (When in check, we simply search all evasions.)
+    // (Presently, having the checks stage is worth only 1 Elo, and may be removable in the near future,
+    // which would result in only a single stage of QS movegen.)
     Square     prevSq = ((ss - 1)->currentMove).is_ok() ? ((ss - 1)->currentMove).to_sq() : SQ_NONE;
     MovePicker mp(pos, ttMove, depth, &thisThread->mainHistory, &thisThread->captureHistory,
                   contHist, &thisThread->pawnHistory);
 
-    // Step 5. Loop through all pseudo-legal moves until no moves remain
-    // or a beta cutoff occurs.
+    // Step 5. Loop through all pseudo-legal moves until no moves remain or a beta cutoff occurs.
     while ((move = mp.next_move()) != Move::none())
     {
         assert(move.is_ok());

@@ -187,12 +187,17 @@ constexpr Value PieceValue[PIECE_NB] = {
 using Depth = int;
 
 enum : int {
-    DEPTH_QS_CHECKS    = 0,
-    DEPTH_QS_NO_CHECKS = -1,
-
-    DEPTH_NONE = -6,
-
-    DEPTH_OFFSET = -7  // value used only for TT entry occupancy check
+    // The following DEPTH_ constants are used for TT entries and QS movegen stages. In regular search,
+    // TT depth is literal: the search depth (effort) used to make the corresponding TT value.
+    // In qsearch, however, TT entries only store the current QS movegen stage (which should thus compare
+    // lower than any regular search depth).
+    DEPTH_QS_CHECKS = 0,
+    DEPTH_QS_NORMAL = -1,
+    // For TT entries where no searching at all was done (whether regular or qsearch) we use
+    // _UNSEARCHED, which should thus compare lower than any QS or regular depth. _ENTRY_OFFSET is used
+    // only for the TT entry occupancy check (see tt.cpp), and should thus be lower than _UNSEARCHED.
+    DEPTH_UNSEARCHED   = -6,
+    DEPTH_ENTRY_OFFSET = -7
 };
 
 // clang-format off
