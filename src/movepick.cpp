@@ -69,7 +69,6 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const ButterflyHist
 
   stage = (pos.checkers() ? EVASION_TT : MAIN_TT) +
           !(ttm && pos.pseudo_legal(ttm));
-  threatenedPieces = 0;
 }
 
 /// MovePicker constructor for quiescence search
@@ -106,7 +105,7 @@ void MovePicker::score() {
 
   static_assert(Type == CAPTURES || Type == QUIETS || Type == EVASIONS, "Wrong type");
 
-  [[maybe_unused]] Bitboard threatenedByPawn, threatenedByMinor, threatenedByRook;
+  [[maybe_unused]] Bitboard threatenedByPawn, threatenedByMinor, threatenedByRook, threatenedPieces;
   if constexpr (Type == QUIETS)
   {
       Color us = pos.side_to_move();
