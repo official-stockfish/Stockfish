@@ -490,14 +490,16 @@ static void* aligned_large_pages_alloc_windows([[maybe_unused]] size_t allocSize
       return nullptr;
 
   // Dynamically link OpenProcessToken, LookupPrivilegeValue and AdjustTokenPrivileges
-  HMODULE k32 = GetModuleHandle("Advapi32.dll");
-  auto fun6 = (fun6_t)(void(*)())GetProcAddress(k32, "OpenProcessToken");
+  HMODULE hAdvapi32 = GetModuleHandle(TEXT("Advapi32.dll"));
+  if (!hAdvapi32)
+      hAdvapi32 = LoadLibrary(TEXT("Advapi32.dll"));
+  auto fun6 = (fun6_t)(void(*)())GetProcAddress(hAdvapi32, "OpenProcessToken");
   if (!fun6)
       return nullptr;
-  auto fun7 = (fun7_t)(void(*)())GetProcAddress(k32, "LookupPrivilegeValueA");
+  auto fun7 = (fun7_t)(void(*)())GetProcAddress(hAdvapi32, "LookupPrivilegeValueA");
   if (!fun7)
       return nullptr;
-  auto fun8 = (fun8_t)(void(*)())GetProcAddress(k32, "AdjustTokenPrivileges");
+  auto fun8 = (fun8_t)(void(*)())GetProcAddress(hAdvapi32, "AdjustTokenPrivileges");
   if (!fun8)
       return nullptr;
             
@@ -508,7 +510,7 @@ static void* aligned_large_pages_alloc_windows([[maybe_unused]] size_t allocSize
       return nullptr;
 
   // LookupPrivilegeValueA()
-  if (fun7(nullptr, SE_LOCK_MEMORY_NAME, &luid))
+  if (fun7(nullptr, "SeLockMemoryPrivilege", &luid))
   {
       TOKEN_PRIVILEGES tp { };
       TOKEN_PRIVILEGES prevTp { };
@@ -531,7 +533,7 @@ static void* aligned_large_pages_alloc_windows([[maybe_unused]] size_t allocSize
               nullptr, allocSize, MEM_RESERVE | MEM_COMMIT | MEM_LARGE_PAGES, PAGE_READWRITE);
 
           // Privilege no longer needed, restore previous state
-	  // AdjustTokenPrivileges ()
+          // AdjustTokenPrivileges ()
           fun8(hProcessToken, FALSE, &prevTp, 0, nullptr, nullptr);
       }
   }
