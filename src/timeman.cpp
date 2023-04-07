@@ -39,7 +39,7 @@ void TimeManagement::init(Search::LimitsType& limits, Color us, int ply) {
   // if we have no time, no need to initialize TM, except for the start time,
   // which is used by movetime.
   startTime = limits.startTime;
-  if (limits.time[us] ==0)
+  if (limits.time[us] == 0)
       return;
 
   TimePoint moveOverhead    = TimePoint(Options["Move Overhead"]);
