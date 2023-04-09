@@ -1048,6 +1048,8 @@ make_v:
 
 Value Eval::evaluate(const Position& pos, int* complexity) {
 
+  assert(!pos.checkers());
+
   Value v;
   Value psq = pos.psq_eg_stm();
 
