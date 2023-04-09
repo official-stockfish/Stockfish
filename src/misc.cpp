@@ -513,7 +513,7 @@ static void* aligned_large_pages_alloc_windows([[maybe_unused]] size_t allocSize
       GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hProcessToken))
           return nullptr;
   
-  if (fun7( // LookupPrivilegeValue()
+  if (fun7( // LookupPrivilegeValue(nullptr, SE_LOCK_MEMORY_NAME, &luid)
       nullptr, "SeLockMemoryPrivilege", &luid)) 
   {
       TOKEN_PRIVILEGES tp { };
