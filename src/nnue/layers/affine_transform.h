@@ -31,7 +31,7 @@
   This file contains the definition for a fully connected layer (aka affine transform).
   Two approaches are employed, depending on the sizes of the transform.
 
-  Approach 1:
+  Approach 1 (a specialization for large inputs):
     - used when the PaddedInputDimensions >= 128
     - uses AVX512 if possible
     - processes inputs in batches of 2*InputSimdWidth
@@ -42,9 +42,8 @@
       depends on the architecture (the amount of registers)
     - accumulate + hadd is used
 
-  Approach 2:
+  Approach 2 (a specialization for small inputs):
     - used when the PaddedInputDimensions < 128
-    - does not use AVX512
     - expected use-case is for when PaddedInputDimensions == 32 and InputDimensions <= 32.
       - that's why AVX512 is hard to implement
     - expected use-case is small layers
@@ -169,7 +168,7 @@ namespace Stockfish::Eval::NNUE::Layers {
   constexpr IndexType LargeInputSize = std::numeric_limits<IndexType>::max();
 #endif
 
-  // A specialization for large inputs.
+  // A specialization for large inputs
   template <IndexType InDims, IndexType OutDims>
   class AffineTransform<InDims, OutDims, std::enable_if_t<(ceil_to_multiple<IndexType>(InDims, MaxSimdWidth) >= LargeInputSize)>> {
    public:
@@ -188,7 +187,7 @@ namespace Stockfish::Eval::NNUE::Layers {
 
     using OutputBuffer = OutputType[PaddedOutputDimensions];
 
-    static_assert(PaddedInputDimensions >= LargeInputSize, "Something went wrong. This specialization should not have been chosen.");
+    static_assert(PaddedInputDimensions >= LargeInputSize, "Something went wrong. This specialization (for large inputs) should not have been chosen.");
 
 #if defined (USE_AVX512)
     static constexpr IndexType InputSimdWidth = 64;
@@ -396,6 +395,7 @@ namespace Stockfish::Eval::NNUE::Layers {
     alignas(CacheLineSize) WeightType weights[OutputDimensions * PaddedInputDimensions];
   };
 
+  // A specialization for small inputs
   template <IndexType InDims, IndexType OutDims>
   class AffineTransform<InDims, OutDims, std::enable_if_t<(ceil_to_multiple<IndexType>(InDims, MaxSimdWidth) < LargeInputSize)>> {
    public:
@@ -415,12 +415,7 @@ namespace Stockfish::Eval::NNUE::Layers {
 
     using OutputBuffer = OutputType[PaddedOutputDimensions];
 
-    static_assert(PaddedInputDimensions < LargeInputSize, "Something went wrong. This specialization should not have been chosen.");
-
-#if defined (USE_SSSE3)
-    static constexpr IndexType OutputSimdWidth = SimdWidth / 4;
-    static constexpr IndexType InputSimdWidth = SimdWidth;
-#endif
+    static_assert(PaddedInputDimensions < LargeInputSize, "Something went wrong. This specialization (for small inputs) should not have been chosen.");
 
     // Hash value embedded in the evaluation file
     static constexpr std::uint32_t get_hash_value(std::uint32_t prevHash) {
@@ -470,7 +465,14 @@ namespace Stockfish::Eval::NNUE::Layers {
     const OutputType* propagate(
         const InputType* input, OutputType* output) const {
 
-#if defined (USE_AVX2)
+#if defined (USE_AVX512)
+      using vec_t = __m512i;
+      #define vec_setzero _mm512_setzero_si512
+      #define vec_set_32 _mm512_set1_epi32
+      #define vec_add_dpbusd_32 Simd::m512_add_dpbusd_epi32
+      #define vec_add_dpbusd_32x2 Simd::m512_add_dpbusd_epi32x2
+      #define vec_hadd Simd::m512_hadd
+#elif defined (USE_AVX2)
       using vec_t = __m256i;
       #define vec_setzero _mm256_setzero_si256
       #define vec_set_32 _mm256_set1_epi32
@@ -488,6 +490,8 @@ namespace Stockfish::Eval::NNUE::Layers {
 
 #if defined (USE_SSSE3)
       const auto inputVector = reinterpret_cast<const vec_t*>(input);
+
+      static constexpr IndexType OutputSimdWidth = sizeof(vec_t) / sizeof(OutputType);
 
       static_assert(OutputDimensions % OutputSimdWidth == 0 || OutputDimensions == 1);
 

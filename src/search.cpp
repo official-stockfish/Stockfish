@@ -1028,16 +1028,18 @@ moves_loop: // When in check, search starts here
               {
                   if (depth < 2 - capture)
                       continue;
-                  // don't prune move if a heavy enemy piece (KQR) is under attack after the exchanges
-                  Bitboard leftEnemies = (pos.pieces(~us, QUEEN, ROOK) | pos.pieces(~us, KING)) & occupied;
+                  // Don't prune the move if opp. King/Queen/Rook is attacked by a slider after the exchanges.
+                  // Since in see_ge we don't update occupied when the king recaptures, we also don't prune the
+                  // move when the opp. King gets a discovered slider attack DURING the exchanges.
+                  Bitboard leftEnemies = pos.pieces(~us, ROOK, QUEEN, KING) & occupied;
                   Bitboard attacks = 0;
                   occupied |= to_sq(move);
                   while (leftEnemies && !attacks)
                   {
                       Square sq = pop_lsb(leftEnemies);
-                      attacks |= pos.attackers_to(sq, occupied) & pos.pieces(us) & occupied;
-                      // exclude Queen/Rook(s) which were already threatened before SEE
-                      if (attacks && (sq != pos.square<KING>(~us) && (pos.attackers_to(sq, pos.pieces()) & pos.pieces(us))))
+                      attacks = pos.attackers_to(sq, occupied) & pos.pieces(us) & occupied;
+                      // Exclude Queen/Rook(s) which were already threatened before SEE
+                      if (attacks && sq != pos.square<KING>(~us) && (pos.attackers_to(sq, pos.pieces()) & pos.pieces(us)))
                           attacks = 0;
                   }
                   if (!attacks)
@@ -1345,15 +1347,14 @@ moves_loop: // When in check, search starts here
 
               if (PvNode && value < beta) // Update alpha! Always alpha < beta
               {
-
                   // Reduce other moves if we have found at least one score improvement (~1 Elo)
                   if (   depth > 1
-                      && ((improving && complexity > 971) || (value < (5 * alpha + 75 * beta) / 87) || depth < 6)
+                      && (   (improving && complexity > 971)
+                          || value < (5 * alpha + 75 * beta) / 87
+                          || depth < 6)
                       && beta  <  12535
-                      && value > -12535) {
-                      bool extraReduction = depth > 2 && alpha > -12535 && bestValue != -VALUE_INFINITE && (value - bestValue) > (7 * (beta - alpha)) / 8;
-                      depth -= 1 + extraReduction;
-                  }
+                      && value > -12535)
+                      depth -= 1;
 
                   assert(depth > 0);
                   alpha = value;
