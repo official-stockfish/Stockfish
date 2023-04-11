@@ -1,4 +1,4 @@
-# List of authors for Stockfish
+# List of Stockfish authors
 
 # Founders of the Stockfish project and fishtest infrastructure
 Tord Romstad (romstad)
@@ -6,12 +6,12 @@ Marco Costalba (mcostalba)
 Joona Kiiski (zamar)
 Gary Linscott (glinscott)
 
-# Authors and inventors of NNUE, training, NNUE port
+# Authors and inventors of NNUE, training, and NNUE port
 Yu Nasu (ynasu87)
 Motohiro Isozaki (yaneurao)
 Hisayori Noda (nodchip)
 
-# all other authors of the code in alphabetical order
+# All other authors of Stockfish code (in alphabetical order)
 Aditya (absimaldata)
 Adrian Petrescu (apetresc)
 Ajith Chandy Jose (ajithcj)
@@ -217,8 +217,7 @@ Vince Negri (cuddlestmonkey)
 xefoci7612
 zz4032
 
-
 # Additionally, we acknowledge the authors and maintainers of fishtest,
-# an amazing and essential framework for the development of Stockfish!
+# an amazing and essential framework for Stockfish development!
 #
 # https://github.com/glinscott/fishtest/blob/master/AUTHORS
