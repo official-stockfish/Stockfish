@@ -3,7 +3,9 @@
 
 cff-version: 1.2.0
 title: Stockfish
-message: Please cite this software using metadata from this file.
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
 type: software
 authors:
   - given-names: The Stockfish developers (see AUTHORS file)
