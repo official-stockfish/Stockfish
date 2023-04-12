@@ -4,11 +4,11 @@
 cff-version: 1.2.0
 title: Stockfish
 message: >-
-  If you use this software, please cite it using the
+  If you use cffinit, please cite it using the
   metadata from this file.
 type: software
 authors:
-  - given-names: The Stockfish developers (see AUTHORS file)
+  - name: The Stockfish developers (see AUTHORS file)
 repository-code: 'https://github.com/official-stockfish/Stockfish'
 url: 'https://stockfishchess.org/'
 repository-artifact: 'https://stockfishchess.org/download/'
