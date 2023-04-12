@@ -4,8 +4,8 @@
 cff-version: 1.2.0
 title: Stockfish
 message: >-
-  If you use cffinit, please cite it using the
-  metadata from this file.
+  If you use Stockfish, please cite it using the
+  metadata from this CITATION.cff file.
 type: software
 authors:
   - name: The Stockfish developers (see AUTHORS file)
