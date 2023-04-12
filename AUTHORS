@@ -1,15 +1,15 @@
 # List of Stockfish authors
 
 # Founders of the Stockfish project and fishtest infrastructure
-Tord Romstad (romstad)
-Marco Costalba (mcostalba)
 Joona Kiiski (zamar)
+Tord Romstad (romstad)
 Gary Linscott (glinscott)
+Marco Costalba (mcostalba)
 
 # Authors and inventors of NNUE, training, and NNUE port
 Yu Nasu (ynasu87)
-Motohiro Isozaki (yaneurao)
 Hisayori Noda (nodchip)
+Motohiro Isozaki (yaneurao)
 
 # All other authors of Stockfish code (in alphabetical order)
 Aditya (absimaldata)
@@ -35,93 +35,79 @@ Ben Chaney (Chaneybenjamini)
 Ben Koshy (BKSpurgeon)
 Bill Henry (VoyagerOne)
 Bojun Guo (noobpwnftw, Nooby)
-borg323
 Boštjan Mejak (PedanticHacker)
-braich
 Brian Sheppard (SapphireBrand, briansheppard-toast)
-Bruno de Melo Costa (BM123499)
 Bruno Pellanda (pellanda)
+Bruno de Melo Costa (BM123499)
 Bryan Cross (crossbr)
-candirufish
 Chess13234
 Chris Cain (ceebo)
-clefrks
 Dale Weiler (graphitemaster)
 Dan Schmidt (dfannius)
 Daniel Axtens (daxtens)
 Daniel Dugovic (ddugovic)
 Dariusz Orzechowski (dorzechowski)
-David Zar
 David (dav1312)
+David Zar
 Daylen Yang (daylen)
 Deshawn Mohan-Smith (GoldenRare)
 Dieter Dobbelaere (ddobbelaere)
 DiscanX
 Dominik Schlösser (domschl)
-double-beep
 Douglas Matos Gomes (dsmsgms)
 Dubslow
 Eduardo Cáceres (eduherminio)
 Eelco de Groot (KingDefender)
 Elvin Liu (solarlight2)
-erbsenzaehler
 Ernesto Gatti
-Linmiao Xu (linrock)
 Fabian Beuke (madnight)
 Fabian Fichter (ianfab)
 Fanael Linithien (Fanael)
-fanon
 Fauzi Akram Dabat (FauziAkram)
 Felix Wittmann
-gamander
 Gary Heckman (gheckman)
 George Sobala (gsobala)
-gguliash
 Giacomo Lorenzetti (G-Lorenz)
 Gian-Carlo Pascutto (gcp)
 Gontran Lemaire (gonlem)
 Goodkov Vasiliy Aleksandrovich (goodkov)
 Gregor Cramer
 GuardianRM
-Günther Demetz (pb00067, pb00068)
 Guy Vreuls (gvreuls)
+Günther Demetz (pb00067, pb00068)
 Henri Wiechers
 Hiraoka Takuya (HiraokaTakuya)
-homoSapiensSapiens
 Hongzhi Cheng
 Ivan Ivec (IIvec)
 Jacques B. (Timshel)
+Jake Senne (w1wwwwww)
 Jan Ondruš (hxim)
 Jared Kish (Kurtbusch, kurt22i)
-Jake Senne (w1wwwwww)
 Jarrod Torriero (DU-jdto)
 Jean Gauthier (OuaisBla)
 Jean-Francois Romang (jromang)
 Jekaa
 Jerry Donald Watson (jerrydonaldwatson)
-jjoshua2
-Jonathan Calovski (Mysseno)
 Jonathan Buladas Dumale (SFisGOD)
+Jonathan Calovski (Mysseno)
 Jonathan McDermid (jonathanmcdermid)
 Joost VandeVondele (vondele)
-Jörg Oster (joergoster)
 Joseph Ellis (jhellis3)
 Joseph R. Prostko
 Julian Willemer (NightlyKing)
-jundery
 Justin Blanchard (UncombedCoconut)
+Jörg Oster (joergoster)
 Kelly Wilson
 Ken Takusagawa
 Kian E (KJE-98)
-kinderchocolate
 Kiran Panditrao (Krgp)
 Kojirion
 Krystian Kuzniarek (kuzkry)
 Leonardo Ljubičić (ICCF World Champion)
 Leonid Pechenik (lp--)
 Liam Keegan (lkeegan)
+Linmiao Xu (linrock)
 Linus Arver (listx)
-loco-loco
 Lub van den Berg (ElbertoOne)
 Luca Brivio (lucabrivio)
 Lucas Braesch (lucasart)
@@ -129,7 +115,6 @@ Lyudmil Antonov (lantonov)
 Maciej Żenczykowski (zenczykowski)
 Malcolm Campbell (xoto10)
 Mark Tenzer (31m059)
-marotear
 Matt Ginsberg (mattginsberg)
 Matthew Lai (matthewlai)
 Matthew Sullivan (Matt14916)
@@ -151,13 +136,12 @@ Moez Jellouli (MJZ1977)
 Mohammed Li (tthsqe12)
 Muzhen J (XInTheDark)
 Nathan Rugg (nmrugg)
+Nguyen Pham (nguyenpham)
 Nick Pelling (nickpelling)
 Nicklas Persson (NicklasPersson)
 Niklas Fiekas (niklasf)
 Nikolay Kostov (NikolayIT)
-Nguyen Pham (nguyenpham)
 Norman Schmidt (FireFather)
-notruck
 Ofek Shochat (OfekShochat, ghostway)
 Ondrej Mosnáček (WOnder93)
 Oskar Werkelin Ahlin
@@ -170,17 +154,16 @@ Peter Schneider (pschneider1968)
 Peter Zsifkovits (CoffeeOne)
 PikaCat
 Praveen Kumar Tummala (praveentml)
+Prokop Randáček (ProkopRandacek)
 Rahul Dsilva (silversolver1)
 Ralph Stößer (Ralph Stoesser)
 Raminder Singh
-renouve
 Reuven Peleg (R-Peleg)
 Richard Lloyd (Richard-Lloyd)
 Rodrigo Exterckötter Tjäder
 Rodrigo Roim (roim)
 Ron Britvich (Britvich)
 Ronald de Man (syzygy1, syzygy)
-rqs
 Rui Coelho (ruicoelhopedro)
 Ryan Schmitt
 Ryan Takker
@@ -189,7 +172,6 @@ Sebastian Buchwald (UniQP)
 Sergei Antonov (saproj)
 Sergei Ivanov (svivanov72)
 Sergio Vieri (sergiovieri)
-sf-x
 Shahin M. Shahin (peregrine)
 Shane Booth (shane31)
 Shawn Varghese (xXH4CKST3RXx)
@@ -200,20 +182,38 @@ Stefano Di Martino (StefanoD)
 Steinar Gunderson (sesse)
 Stéphane Nicolet (snicolet)
 Syine Mineta (MinetaS)
-Prokop Randáček (ProkopRandacek)
 Thanar2
-thaspel
-theo77186
 Tom Truscott
 Tom Vijlbrief (tomtor)
 Tomasz Sobczyk (Sopel97)
 Torsten Franz (torfranz, tfranzer)
 Torsten Hellwig (Torom)
 Tracey Emery (basepr1me)
-tttak
 Unai Corzo (unaiic)
 Uri Blass (uriblass)
 Vince Negri (cuddlestmonkey)
+borg323
+braich
+candirufish
+clefrks
+double-beep
+erbsenzaehler
+fanon
+gamander
+gguliash
+homoSapiensSapiens
+jjoshua2
+jundery
+kinderchocolate
+loco-loco
+marotear
+notruck
+renouve
+rqs
+sf-x
+thaspel
+theo77186
+tttak
 xefoci7612
 zz4032
 
