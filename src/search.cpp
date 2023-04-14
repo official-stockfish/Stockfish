@@ -294,12 +294,6 @@ void Thread::search() {
 
   if (mainThread)
   {
-
-      if (!rootPos.checkers())
-      {
-          Eval::evaluate(rootPos);
-      }
-
       if (mainThread->bestPreviousScore == VALUE_INFINITE)
           for (int i = 0; i < 4; ++i)
               mainThread->iterValue[i] = VALUE_ZERO;
