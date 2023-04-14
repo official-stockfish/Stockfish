@@ -327,48 +327,397 @@ namespace Stockfish::Eval::NNUE::Layers {
 #if defined (USE_SSSE3) || defined (USE_NEON)
       const in_vec_t* invec = reinterpret_cast<const in_vec_t*>(input);
 
-      // Perform accumulation to registers for each big block
-      for (IndexType bigBlock = 0; bigBlock < NumBigBlocks; ++bigBlock)
+#if defined (USE_AVX512)
+      if ((NumSmallBlocksPerOutput == 16) && (NumBigBlocks == 1) && (sizeof(weight_vec_t)*8 == 512) && (sizeof(in_vec_t) * 8 == 512))
       {
-        acc_vec_t acc[NumOutputRegs] = { vec_zero };
+          // A special case for large inputs with the loops unrolled
+          // Sequental load to registers gives implicit prefetch hint
+          // and happens faster than scattered loads mixed with other loads (such as from invec[] and weightvec[])
 
-        // Each big block has NumOutputRegs small blocks in each "row", one per register.
-        // We process two small blocks at a time to save on one addition without VNNI.
-        for (IndexType smallBlock = 0; smallBlock < NumSmallBlocksPerOutput; smallBlock += 2)
-        {
-          const weight_vec_t* weightvec =
-            reinterpret_cast<const weight_vec_t*>(
-                weights
-              + bigBlock * BigBlockSize
-              + smallBlock * SmallBlockSize * NumOutputRegs);
+          const in_vec_t ina0 = invec[0 * 2 + 0];
+          const in_vec_t ina1 = invec[1 * 2 + 0];
 
-          const in_vec_t in0 = invec[smallBlock + 0];
-          const in_vec_t in1 = invec[smallBlock + 1];
+          acc_vec_t acc0 = {vec_zero};
+          acc_vec_t acc1 = {vec_zero};
+          acc_vec_t acc2 = {vec_zero};
+          acc_vec_t acc3 = {vec_zero};
+          acc_vec_t acc4 = {vec_zero};
+          acc_vec_t acc5 = {vec_zero};
+          acc_vec_t acc6 = {vec_zero};
+          acc_vec_t acc7 = {vec_zero};
+          acc_vec_t acc8 = {vec_zero};
+          acc_vec_t acc9 = {vec_zero};
+          acc_vec_t acc10 = {vec_zero};
+          acc_vec_t acc11 = {vec_zero};
+          acc_vec_t acc12 = {vec_zero};
+          acc_vec_t acc13 = {vec_zero};
+          acc_vec_t acc14 = {vec_zero};
+          acc_vec_t acc15 = {vec_zero};
 
-          for (IndexType k = 0; k < NumOutputRegs; ++k)
-            vec_add_dpbusd_32x2(acc[k], in0, weightvec[k], in1, weightvec[k + NumOutputRegs]);
-        }
+          const weight_vec_t *weightvec = reinterpret_cast<const weight_vec_t *>(weights + 0 * 2 * SmallBlockSize * NumOutputRegs);
 
-        // Horizontally add all accumulators.
-        if constexpr (NumOutputRegs % 4 == 0)
-        {
-          bias_vec_t* outputvec = reinterpret_cast<bias_vec_t*>(output);
-          const bias_vec_t* biasvec = reinterpret_cast<const bias_vec_t*>(biases);
+          bias_vec_t *outputvec = reinterpret_cast<bias_vec_t *>(output);
+          const bias_vec_t *biasvec = reinterpret_cast<const bias_vec_t *>(biases);
 
-          for (IndexType k = 0; k < NumOutputRegs; k += 4)
+          acc0 = _mm512_dpbusd_epi32(acc0, ina0, weightvec[0 * 2 * NumOutputRegs + 0]);
+          acc1 = _mm512_dpbusd_epi32(acc1, ina0, weightvec[0 * 2 * NumOutputRegs + 1]);
+          acc2 = _mm512_dpbusd_epi32(acc2, ina0, weightvec[0 * 2 * NumOutputRegs + 2]);
+          acc3 = _mm512_dpbusd_epi32(acc3, ina0, weightvec[0 * 2 * NumOutputRegs + 3]);
+          acc4 = _mm512_dpbusd_epi32(acc4, ina0, weightvec[0 * 2 * NumOutputRegs + 4]);
+          acc5 = _mm512_dpbusd_epi32(acc5, ina0, weightvec[0 * 2 * NumOutputRegs + 5]);
+          acc6 = _mm512_dpbusd_epi32(acc6, ina0, weightvec[0 * 2 * NumOutputRegs + 6]);
+          acc7 = _mm512_dpbusd_epi32(acc7, ina0, weightvec[0 * 2 * NumOutputRegs + 7]);
+          acc8 = _mm512_dpbusd_epi32(acc8, ina0, weightvec[0 * 2 * NumOutputRegs + 8]);
+          acc9 = _mm512_dpbusd_epi32(acc9, ina0, weightvec[0 * 2 * NumOutputRegs + 9]);
+          acc10 = _mm512_dpbusd_epi32(acc10, ina0, weightvec[0 * 2 * NumOutputRegs + 10]);
+          acc11 = _mm512_dpbusd_epi32(acc11, ina0, weightvec[0 * 2 * NumOutputRegs + 11]);
+          acc12 = _mm512_dpbusd_epi32(acc12, ina0, weightvec[0 * 2 * NumOutputRegs + 12]);
+          acc13 = _mm512_dpbusd_epi32(acc13, ina0, weightvec[0 * 2 * NumOutputRegs + 13]);
+          acc14 = _mm512_dpbusd_epi32(acc14, ina0, weightvec[0 * 2 * NumOutputRegs + 14]);
+          acc15 = _mm512_dpbusd_epi32(acc15, ina0, weightvec[0 * 2 * NumOutputRegs + 15]);
+
+          const in_vec_t ina2 = invec[2 * 2 + 0];
+
+          acc0 = _mm512_dpbusd_epi32(acc0, ina1, weightvec[1 * 2 * NumOutputRegs + 0]);
+          acc1 = _mm512_dpbusd_epi32(acc1, ina1, weightvec[1 * 2 * NumOutputRegs + 1]);
+          acc2 = _mm512_dpbusd_epi32(acc2, ina1, weightvec[1 * 2 * NumOutputRegs + 2]);
+          acc3 = _mm512_dpbusd_epi32(acc3, ina1, weightvec[1 * 2 * NumOutputRegs + 3]);
+          acc4 = _mm512_dpbusd_epi32(acc4, ina1, weightvec[1 * 2 * NumOutputRegs + 4]);
+          acc5 = _mm512_dpbusd_epi32(acc5, ina1, weightvec[1 * 2 * NumOutputRegs + 5]);
+          acc6 = _mm512_dpbusd_epi32(acc6, ina1, weightvec[1 * 2 * NumOutputRegs + 6]);
+          acc7 = _mm512_dpbusd_epi32(acc7, ina1, weightvec[1 * 2 * NumOutputRegs + 7]);
+          acc8 = _mm512_dpbusd_epi32(acc8, ina1, weightvec[1 * 2 * NumOutputRegs + 8]);
+          acc9 = _mm512_dpbusd_epi32(acc9, ina1, weightvec[1 * 2 * NumOutputRegs + 9]);
+          acc10 = _mm512_dpbusd_epi32(acc10, ina1, weightvec[1 * 2 * NumOutputRegs + 10]);
+          acc11 = _mm512_dpbusd_epi32(acc11, ina1, weightvec[1 * 2 * NumOutputRegs + 11]);
+          acc12 = _mm512_dpbusd_epi32(acc12, ina1, weightvec[1 * 2 * NumOutputRegs + 12]);
+          acc13 = _mm512_dpbusd_epi32(acc13, ina1, weightvec[1 * 2 * NumOutputRegs + 13]);
+          acc14 = _mm512_dpbusd_epi32(acc14, ina1, weightvec[1 * 2 * NumOutputRegs + 14]);
+          acc15 = _mm512_dpbusd_epi32(acc15, ina1, weightvec[1 * 2 * NumOutputRegs + 15]);
+
+          const in_vec_t ina3 = invec[3 * 2 + 0];
+
+          acc0 = _mm512_dpbusd_epi32(acc0, ina2, weightvec[2 * 2 * NumOutputRegs + 0]);
+          acc1 = _mm512_dpbusd_epi32(acc1, ina2, weightvec[2 * 2 * NumOutputRegs + 1]);
+          acc2 = _mm512_dpbusd_epi32(acc2, ina2, weightvec[2 * 2 * NumOutputRegs + 2]);
+          acc3 = _mm512_dpbusd_epi32(acc3, ina2, weightvec[2 * 2 * NumOutputRegs + 3]);
+          acc4 = _mm512_dpbusd_epi32(acc4, ina2, weightvec[2 * 2 * NumOutputRegs + 4]);
+          acc5 = _mm512_dpbusd_epi32(acc5, ina2, weightvec[2 * 2 * NumOutputRegs + 5]);
+          acc6 = _mm512_dpbusd_epi32(acc6, ina2, weightvec[2 * 2 * NumOutputRegs + 6]);
+          acc7 = _mm512_dpbusd_epi32(acc7, ina2, weightvec[2 * 2 * NumOutputRegs + 7]);
+          acc8 = _mm512_dpbusd_epi32(acc8, ina2, weightvec[2 * 2 * NumOutputRegs + 8]);
+          acc9 = _mm512_dpbusd_epi32(acc9, ina2, weightvec[2 * 2 * NumOutputRegs + 9]);
+          acc10 = _mm512_dpbusd_epi32(acc10, ina2, weightvec[2 * 2 * NumOutputRegs + 10]);
+          acc11 = _mm512_dpbusd_epi32(acc11, ina2, weightvec[2 * 2 * NumOutputRegs + 11]);
+          acc12 = _mm512_dpbusd_epi32(acc12, ina2, weightvec[2 * 2 * NumOutputRegs + 12]);
+          acc13 = _mm512_dpbusd_epi32(acc13, ina2, weightvec[2 * 2 * NumOutputRegs + 13]);
+          acc14 = _mm512_dpbusd_epi32(acc14, ina2, weightvec[2 * 2 * NumOutputRegs + 14]);
+          acc15 = _mm512_dpbusd_epi32(acc15, ina2, weightvec[2 * 2 * NumOutputRegs + 15]);
+
+          const in_vec_t ina4 = invec[4 * 2 + 0];
+
+          acc0 = _mm512_dpbusd_epi32(acc0, ina3, weightvec[3 * 2 * NumOutputRegs + 0]);
+          acc1 = _mm512_dpbusd_epi32(acc1, ina3, weightvec[3 * 2 * NumOutputRegs + 1]);
+          acc2 = _mm512_dpbusd_epi32(acc2, ina3, weightvec[3 * 2 * NumOutputRegs + 2]);
+          acc3 = _mm512_dpbusd_epi32(acc3, ina3, weightvec[3 * 2 * NumOutputRegs + 3]);
+          acc4 = _mm512_dpbusd_epi32(acc4, ina3, weightvec[3 * 2 * NumOutputRegs + 4]);
+          acc5 = _mm512_dpbusd_epi32(acc5, ina3, weightvec[3 * 2 * NumOutputRegs + 5]);
+          acc6 = _mm512_dpbusd_epi32(acc6, ina3, weightvec[3 * 2 * NumOutputRegs + 6]);
+          acc7 = _mm512_dpbusd_epi32(acc7, ina3, weightvec[3 * 2 * NumOutputRegs + 7]);
+          acc8 = _mm512_dpbusd_epi32(acc8, ina3, weightvec[3 * 2 * NumOutputRegs + 8]);
+          acc9 = _mm512_dpbusd_epi32(acc9, ina3, weightvec[3 * 2 * NumOutputRegs + 9]);
+          acc10 = _mm512_dpbusd_epi32(acc10, ina3, weightvec[3 * 2 * NumOutputRegs + 10]);
+          acc11 = _mm512_dpbusd_epi32(acc11, ina3, weightvec[3 * 2 * NumOutputRegs + 11]);
+          acc12 = _mm512_dpbusd_epi32(acc12, ina3, weightvec[3 * 2 * NumOutputRegs + 12]);
+          acc13 = _mm512_dpbusd_epi32(acc13, ina3, weightvec[3 * 2 * NumOutputRegs + 13]);
+          acc14 = _mm512_dpbusd_epi32(acc14, ina3, weightvec[3 * 2 * NumOutputRegs + 14]);
+          acc15 = _mm512_dpbusd_epi32(acc15, ina3, weightvec[3 * 2 * NumOutputRegs + 15]);
+
+          const in_vec_t ina5 = invec[5 * 2 + 0];
+
+          acc0 = _mm512_dpbusd_epi32(acc0, ina4, weightvec[4 * 2 * NumOutputRegs + 0]);
+          acc1 = _mm512_dpbusd_epi32(acc1, ina4, weightvec[4 * 2 * NumOutputRegs + 1]);
+          acc2 = _mm512_dpbusd_epi32(acc2, ina4, weightvec[4 * 2 * NumOutputRegs + 2]);
+          acc3 = _mm512_dpbusd_epi32(acc3, ina4, weightvec[4 * 2 * NumOutputRegs + 3]);
+          acc4 = _mm512_dpbusd_epi32(acc4, ina4, weightvec[4 * 2 * NumOutputRegs + 4]);
+          acc5 = _mm512_dpbusd_epi32(acc5, ina4, weightvec[4 * 2 * NumOutputRegs + 5]);
+          acc6 = _mm512_dpbusd_epi32(acc6, ina4, weightvec[4 * 2 * NumOutputRegs + 6]);
+          acc7 = _mm512_dpbusd_epi32(acc7, ina4, weightvec[4 * 2 * NumOutputRegs + 7]);
+          acc8 = _mm512_dpbusd_epi32(acc8, ina4, weightvec[4 * 2 * NumOutputRegs + 8]);
+          acc9 = _mm512_dpbusd_epi32(acc9, ina4, weightvec[4 * 2 * NumOutputRegs + 9]);
+          acc10 = _mm512_dpbusd_epi32(acc10, ina4, weightvec[4 * 2 * NumOutputRegs + 10]);
+          acc11 = _mm512_dpbusd_epi32(acc11, ina4, weightvec[4 * 2 * NumOutputRegs + 11]);
+          acc12 = _mm512_dpbusd_epi32(acc12, ina4, weightvec[4 * 2 * NumOutputRegs + 12]);
+          acc13 = _mm512_dpbusd_epi32(acc13, ina4, weightvec[4 * 2 * NumOutputRegs + 13]);
+          acc14 = _mm512_dpbusd_epi32(acc14, ina4, weightvec[4 * 2 * NumOutputRegs + 14]);
+          acc15 = _mm512_dpbusd_epi32(acc15, ina4, weightvec[4 * 2 * NumOutputRegs + 15]);
+
+          const in_vec_t ina6 = invec[6 * 2 + 0];
+
+          acc0 = _mm512_dpbusd_epi32(acc0, ina5, weightvec[5 * 2 * NumOutputRegs + 0]);
+          acc1 = _mm512_dpbusd_epi32(acc1, ina5, weightvec[5 * 2 * NumOutputRegs + 1]);
+          acc2 = _mm512_dpbusd_epi32(acc2, ina5, weightvec[5 * 2 * NumOutputRegs + 2]);
+          acc3 = _mm512_dpbusd_epi32(acc3, ina5, weightvec[5 * 2 * NumOutputRegs + 3]);
+          acc4 = _mm512_dpbusd_epi32(acc4, ina5, weightvec[5 * 2 * NumOutputRegs + 4]);
+          acc5 = _mm512_dpbusd_epi32(acc5, ina5, weightvec[5 * 2 * NumOutputRegs + 5]);
+          acc6 = _mm512_dpbusd_epi32(acc6, ina5, weightvec[5 * 2 * NumOutputRegs + 6]);
+          acc7 = _mm512_dpbusd_epi32(acc7, ina5, weightvec[5 * 2 * NumOutputRegs + 7]);
+          acc8 = _mm512_dpbusd_epi32(acc8, ina5, weightvec[5 * 2 * NumOutputRegs + 8]);
+          acc9 = _mm512_dpbusd_epi32(acc9, ina5, weightvec[5 * 2 * NumOutputRegs + 9]);
+          acc10 = _mm512_dpbusd_epi32(acc10, ina5, weightvec[5 * 2 * NumOutputRegs + 10]);
+          acc11 = _mm512_dpbusd_epi32(acc11, ina5, weightvec[5 * 2 * NumOutputRegs + 11]);
+          acc12 = _mm512_dpbusd_epi32(acc12, ina5, weightvec[5 * 2 * NumOutputRegs + 12]);
+          acc13 = _mm512_dpbusd_epi32(acc13, ina5, weightvec[5 * 2 * NumOutputRegs + 13]);
+          acc14 = _mm512_dpbusd_epi32(acc14, ina5, weightvec[5 * 2 * NumOutputRegs + 14]);
+          acc15 = _mm512_dpbusd_epi32(acc15, ina5, weightvec[5 * 2 * NumOutputRegs + 15]);
+
+          const in_vec_t ina7 = invec[7 * 2 + 0];
+
+          acc0 = _mm512_dpbusd_epi32(acc0, ina6, weightvec[6 * 2 * NumOutputRegs + 0]);
+          acc1 = _mm512_dpbusd_epi32(acc1, ina6, weightvec[6 * 2 * NumOutputRegs + 1]);
+          acc2 = _mm512_dpbusd_epi32(acc2, ina6, weightvec[6 * 2 * NumOutputRegs + 2]);
+          acc3 = _mm512_dpbusd_epi32(acc3, ina6, weightvec[6 * 2 * NumOutputRegs + 3]);
+          acc4 = _mm512_dpbusd_epi32(acc4, ina6, weightvec[6 * 2 * NumOutputRegs + 4]);
+          acc5 = _mm512_dpbusd_epi32(acc5, ina6, weightvec[6 * 2 * NumOutputRegs + 5]);
+          acc6 = _mm512_dpbusd_epi32(acc6, ina6, weightvec[6 * 2 * NumOutputRegs + 6]);
+          acc7 = _mm512_dpbusd_epi32(acc7, ina6, weightvec[6 * 2 * NumOutputRegs + 7]);
+          acc8 = _mm512_dpbusd_epi32(acc8, ina6, weightvec[6 * 2 * NumOutputRegs + 8]);
+          acc9 = _mm512_dpbusd_epi32(acc9, ina6, weightvec[6 * 2 * NumOutputRegs + 9]);
+          acc10 = _mm512_dpbusd_epi32(acc10, ina6, weightvec[6 * 2 * NumOutputRegs + 10]);
+          acc11 = _mm512_dpbusd_epi32(acc11, ina6, weightvec[6 * 2 * NumOutputRegs + 11]);
+          acc12 = _mm512_dpbusd_epi32(acc12, ina6, weightvec[6 * 2 * NumOutputRegs + 12]);
+          acc13 = _mm512_dpbusd_epi32(acc13, ina6, weightvec[6 * 2 * NumOutputRegs + 13]);
+          acc14 = _mm512_dpbusd_epi32(acc14, ina6, weightvec[6 * 2 * NumOutputRegs + 14]);
+          acc15 = _mm512_dpbusd_epi32(acc15, ina6, weightvec[6 * 2 * NumOutputRegs + 15]);
+
+          const in_vec_t inb0 = invec[0 * 2 + 1];
+
+          acc0 = _mm512_dpbusd_epi32(acc0, ina7, weightvec[7 * 2 * NumOutputRegs + 0]);
+          acc1 = _mm512_dpbusd_epi32(acc1, ina7, weightvec[7 * 2 * NumOutputRegs + 1]);
+          acc2 = _mm512_dpbusd_epi32(acc2, ina7, weightvec[7 * 2 * NumOutputRegs + 2]);
+          acc3 = _mm512_dpbusd_epi32(acc3, ina7, weightvec[7 * 2 * NumOutputRegs + 3]);
+          acc4 = _mm512_dpbusd_epi32(acc4, ina7, weightvec[7 * 2 * NumOutputRegs + 4]);
+          acc5 = _mm512_dpbusd_epi32(acc5, ina7, weightvec[7 * 2 * NumOutputRegs + 5]);
+          acc6 = _mm512_dpbusd_epi32(acc6, ina7, weightvec[7 * 2 * NumOutputRegs + 6]);
+          acc7 = _mm512_dpbusd_epi32(acc7, ina7, weightvec[7 * 2 * NumOutputRegs + 7]);
+          acc8 = _mm512_dpbusd_epi32(acc8, ina7, weightvec[7 * 2 * NumOutputRegs + 8]);
+          acc9 = _mm512_dpbusd_epi32(acc9, ina7, weightvec[7 * 2 * NumOutputRegs + 9]);
+          acc10 = _mm512_dpbusd_epi32(acc10, ina7, weightvec[7 * 2 * NumOutputRegs + 10]);
+          acc11 = _mm512_dpbusd_epi32(acc11, ina7, weightvec[7 * 2 * NumOutputRegs + 11]);
+          acc12 = _mm512_dpbusd_epi32(acc12, ina7, weightvec[7 * 2 * NumOutputRegs + 12]);
+          acc13 = _mm512_dpbusd_epi32(acc13, ina7, weightvec[7 * 2 * NumOutputRegs + 13]);
+          acc14 = _mm512_dpbusd_epi32(acc14, ina7, weightvec[7 * 2 * NumOutputRegs + 14]);
+          acc15 = _mm512_dpbusd_epi32(acc15, ina7, weightvec[7 * 2 * NumOutputRegs + 15]);
+
+          const in_vec_t inb1 = invec[1 * 2 + 1];
+
+          acc0 = _mm512_dpbusd_epi32(acc0, inb0, weightvec[0 * 2 * NumOutputRegs + 0 + NumOutputRegs]);
+          acc1 = _mm512_dpbusd_epi32(acc1, inb0, weightvec[0 * 2 * NumOutputRegs + 1 + NumOutputRegs]);
+          acc2 = _mm512_dpbusd_epi32(acc2, inb0, weightvec[0 * 2 * NumOutputRegs + 2 + NumOutputRegs]);
+          acc3 = _mm512_dpbusd_epi32(acc3, inb0, weightvec[0 * 2 * NumOutputRegs + 3 + NumOutputRegs]);
+          acc4 = _mm512_dpbusd_epi32(acc4, inb0, weightvec[0 * 2 * NumOutputRegs + 4 + NumOutputRegs]);
+          acc5 = _mm512_dpbusd_epi32(acc5, inb0, weightvec[0 * 2 * NumOutputRegs + 5 + NumOutputRegs]);
+          acc6 = _mm512_dpbusd_epi32(acc6, inb0, weightvec[0 * 2 * NumOutputRegs + 6 + NumOutputRegs]);
+          acc7 = _mm512_dpbusd_epi32(acc7, inb0, weightvec[0 * 2 * NumOutputRegs + 7 + NumOutputRegs]);
+          acc8 = _mm512_dpbusd_epi32(acc8, inb0, weightvec[0 * 2 * NumOutputRegs + 8 + NumOutputRegs]);
+          acc9 = _mm512_dpbusd_epi32(acc9, inb0, weightvec[0 * 2 * NumOutputRegs + 9 + NumOutputRegs]);
+          acc10 = _mm512_dpbusd_epi32(acc10, inb0, weightvec[0 * 2 * NumOutputRegs + 10 + NumOutputRegs]);
+          acc11 = _mm512_dpbusd_epi32(acc11, inb0, weightvec[0 * 2 * NumOutputRegs + 11 + NumOutputRegs]);
+          acc12 = _mm512_dpbusd_epi32(acc12, inb0, weightvec[0 * 2 * NumOutputRegs + 12 + NumOutputRegs]);
+          acc13 = _mm512_dpbusd_epi32(acc13, inb0, weightvec[0 * 2 * NumOutputRegs + 13 + NumOutputRegs]);
+          acc14 = _mm512_dpbusd_epi32(acc14, inb0, weightvec[0 * 2 * NumOutputRegs + 14 + NumOutputRegs]);
+          acc15 = _mm512_dpbusd_epi32(acc15, inb0, weightvec[0 * 2 * NumOutputRegs + 15 + NumOutputRegs]);
+
+          const in_vec_t inb2 = invec[2 * 2 + 1];
+
+          acc0 = _mm512_dpbusd_epi32(acc0, inb1, weightvec[1 * 2 * NumOutputRegs + 0 + NumOutputRegs]);
+          acc1 = _mm512_dpbusd_epi32(acc1, inb1, weightvec[1 * 2 * NumOutputRegs + 1 + NumOutputRegs]);
+          acc2 = _mm512_dpbusd_epi32(acc2, inb1, weightvec[1 * 2 * NumOutputRegs + 2 + NumOutputRegs]);
+          acc3 = _mm512_dpbusd_epi32(acc3, inb1, weightvec[1 * 2 * NumOutputRegs + 3 + NumOutputRegs]);
+          acc4 = _mm512_dpbusd_epi32(acc4, inb1, weightvec[1 * 2 * NumOutputRegs + 4 + NumOutputRegs]);
+          acc5 = _mm512_dpbusd_epi32(acc5, inb1, weightvec[1 * 2 * NumOutputRegs + 5 + NumOutputRegs]);
+          acc6 = _mm512_dpbusd_epi32(acc6, inb1, weightvec[1 * 2 * NumOutputRegs + 6 + NumOutputRegs]);
+          acc7 = _mm512_dpbusd_epi32(acc7, inb1, weightvec[1 * 2 * NumOutputRegs + 7 + NumOutputRegs]);
+          acc8 = _mm512_dpbusd_epi32(acc8, inb1, weightvec[1 * 2 * NumOutputRegs + 8 + NumOutputRegs]);
+          acc9 = _mm512_dpbusd_epi32(acc9, inb1, weightvec[1 * 2 * NumOutputRegs + 9 + NumOutputRegs]);
+          acc10 = _mm512_dpbusd_epi32(acc10, inb1, weightvec[1 * 2 * NumOutputRegs + 10 + NumOutputRegs]);
+          acc11 = _mm512_dpbusd_epi32(acc11, inb1, weightvec[1 * 2 * NumOutputRegs + 11 + NumOutputRegs]);
+          acc12 = _mm512_dpbusd_epi32(acc12, inb1, weightvec[1 * 2 * NumOutputRegs + 12 + NumOutputRegs]);
+          acc13 = _mm512_dpbusd_epi32(acc13, inb1, weightvec[1 * 2 * NumOutputRegs + 13 + NumOutputRegs]);
+          acc14 = _mm512_dpbusd_epi32(acc14, inb1, weightvec[1 * 2 * NumOutputRegs + 14 + NumOutputRegs]);
+          acc15 = _mm512_dpbusd_epi32(acc15, inb1, weightvec[1 * 2 * NumOutputRegs + 15 + NumOutputRegs]);
+
+          const in_vec_t inb3 = invec[3 * 2 + 1];
+
+          acc0 = _mm512_dpbusd_epi32(acc0, inb2, weightvec[2 * 2 * NumOutputRegs + 0 + NumOutputRegs]);
+          acc1 = _mm512_dpbusd_epi32(acc1, inb2, weightvec[2 * 2 * NumOutputRegs + 1 + NumOutputRegs]);
+          acc2 = _mm512_dpbusd_epi32(acc2, inb2, weightvec[2 * 2 * NumOutputRegs + 2 + NumOutputRegs]);
+          acc3 = _mm512_dpbusd_epi32(acc3, inb2, weightvec[2 * 2 * NumOutputRegs + 3 + NumOutputRegs]);
+          acc4 = _mm512_dpbusd_epi32(acc4, inb2, weightvec[2 * 2 * NumOutputRegs + 4 + NumOutputRegs]);
+          acc5 = _mm512_dpbusd_epi32(acc5, inb2, weightvec[2 * 2 * NumOutputRegs + 5 + NumOutputRegs]);
+          acc6 = _mm512_dpbusd_epi32(acc6, inb2, weightvec[2 * 2 * NumOutputRegs + 6 + NumOutputRegs]);
+          acc7 = _mm512_dpbusd_epi32(acc7, inb2, weightvec[2 * 2 * NumOutputRegs + 7 + NumOutputRegs]);
+          acc8 = _mm512_dpbusd_epi32(acc8, inb2, weightvec[2 * 2 * NumOutputRegs + 8 + NumOutputRegs]);
+          acc9 = _mm512_dpbusd_epi32(acc9, inb2, weightvec[2 * 2 * NumOutputRegs + 9 + NumOutputRegs]);
+          acc10 = _mm512_dpbusd_epi32(acc10, inb2, weightvec[2 * 2 * NumOutputRegs + 10 + NumOutputRegs]);
+          acc11 = _mm512_dpbusd_epi32(acc11, inb2, weightvec[2 * 2 * NumOutputRegs + 11 + NumOutputRegs]);
+          acc12 = _mm512_dpbusd_epi32(acc12, inb2, weightvec[2 * 2 * NumOutputRegs + 12 + NumOutputRegs]);
+          acc13 = _mm512_dpbusd_epi32(acc13, inb2, weightvec[2 * 2 * NumOutputRegs + 13 + NumOutputRegs]);
+          acc14 = _mm512_dpbusd_epi32(acc14, inb2, weightvec[2 * 2 * NumOutputRegs + 14 + NumOutputRegs]);
+          acc15 = _mm512_dpbusd_epi32(acc15, inb2, weightvec[2 * 2 * NumOutputRegs + 15 + NumOutputRegs]);
+
+          const in_vec_t inb4 = invec[4 * 2 + 1];
+
+          acc0 = _mm512_dpbusd_epi32(acc0, inb3, weightvec[3 * 2 * NumOutputRegs + 0 + NumOutputRegs]);
+          acc1 = _mm512_dpbusd_epi32(acc1, inb3, weightvec[3 * 2 * NumOutputRegs + 1 + NumOutputRegs]);
+          acc2 = _mm512_dpbusd_epi32(acc2, inb3, weightvec[3 * 2 * NumOutputRegs + 2 + NumOutputRegs]);
+          acc3 = _mm512_dpbusd_epi32(acc3, inb3, weightvec[3 * 2 * NumOutputRegs + 3 + NumOutputRegs]);
+          acc4 = _mm512_dpbusd_epi32(acc4, inb3, weightvec[3 * 2 * NumOutputRegs + 4 + NumOutputRegs]);
+          acc5 = _mm512_dpbusd_epi32(acc5, inb3, weightvec[3 * 2 * NumOutputRegs + 5 + NumOutputRegs]);
+          acc6 = _mm512_dpbusd_epi32(acc6, inb3, weightvec[3 * 2 * NumOutputRegs + 6 + NumOutputRegs]);
+          acc7 = _mm512_dpbusd_epi32(acc7, inb3, weightvec[3 * 2 * NumOutputRegs + 7 + NumOutputRegs]);
+          acc8 = _mm512_dpbusd_epi32(acc8, inb3, weightvec[3 * 2 * NumOutputRegs + 8 + NumOutputRegs]);
+          acc9 = _mm512_dpbusd_epi32(acc9, inb3, weightvec[3 * 2 * NumOutputRegs + 9 + NumOutputRegs]);
+          acc10 = _mm512_dpbusd_epi32(acc10, inb3, weightvec[3 * 2 * NumOutputRegs + 10 + NumOutputRegs]);
+          acc11 = _mm512_dpbusd_epi32(acc11, inb3, weightvec[3 * 2 * NumOutputRegs + 11 + NumOutputRegs]);
+          acc12 = _mm512_dpbusd_epi32(acc12, inb3, weightvec[3 * 2 * NumOutputRegs + 12 + NumOutputRegs]);
+          acc13 = _mm512_dpbusd_epi32(acc13, inb3, weightvec[3 * 2 * NumOutputRegs + 13 + NumOutputRegs]);
+          acc14 = _mm512_dpbusd_epi32(acc14, inb3, weightvec[3 * 2 * NumOutputRegs + 14 + NumOutputRegs]);
+          acc15 = _mm512_dpbusd_epi32(acc15, inb3, weightvec[3 * 2 * NumOutputRegs + 15 + NumOutputRegs]);
+
+          const in_vec_t inb5 = invec[5 * 2 + 1];
+
+          acc0 = _mm512_dpbusd_epi32(acc0, inb4, weightvec[4 * 2 * NumOutputRegs + 0 + NumOutputRegs]);
+          acc1 = _mm512_dpbusd_epi32(acc1, inb4, weightvec[4 * 2 * NumOutputRegs + 1 + NumOutputRegs]);
+          acc2 = _mm512_dpbusd_epi32(acc2, inb4, weightvec[4 * 2 * NumOutputRegs + 2 + NumOutputRegs]);
+          acc3 = _mm512_dpbusd_epi32(acc3, inb4, weightvec[4 * 2 * NumOutputRegs + 3 + NumOutputRegs]);
+          acc4 = _mm512_dpbusd_epi32(acc4, inb4, weightvec[4 * 2 * NumOutputRegs + 4 + NumOutputRegs]);
+          acc5 = _mm512_dpbusd_epi32(acc5, inb4, weightvec[4 * 2 * NumOutputRegs + 5 + NumOutputRegs]);
+          acc6 = _mm512_dpbusd_epi32(acc6, inb4, weightvec[4 * 2 * NumOutputRegs + 6 + NumOutputRegs]);
+          acc7 = _mm512_dpbusd_epi32(acc7, inb4, weightvec[4 * 2 * NumOutputRegs + 7 + NumOutputRegs]);
+          acc8 = _mm512_dpbusd_epi32(acc8, inb4, weightvec[4 * 2 * NumOutputRegs + 8 + NumOutputRegs]);
+          acc9 = _mm512_dpbusd_epi32(acc9, inb4, weightvec[4 * 2 * NumOutputRegs + 9 + NumOutputRegs]);
+          acc10 = _mm512_dpbusd_epi32(acc10, inb4, weightvec[4 * 2 * NumOutputRegs + 10 + NumOutputRegs]);
+          acc11 = _mm512_dpbusd_epi32(acc11, inb4, weightvec[4 * 2 * NumOutputRegs + 11 + NumOutputRegs]);
+          acc12 = _mm512_dpbusd_epi32(acc12, inb4, weightvec[4 * 2 * NumOutputRegs + 12 + NumOutputRegs]);
+          acc13 = _mm512_dpbusd_epi32(acc13, inb4, weightvec[4 * 2 * NumOutputRegs + 13 + NumOutputRegs]);
+          acc14 = _mm512_dpbusd_epi32(acc14, inb4, weightvec[4 * 2 * NumOutputRegs + 14 + NumOutputRegs]);
+          acc15 = _mm512_dpbusd_epi32(acc15, inb4, weightvec[4 * 2 * NumOutputRegs + 15 + NumOutputRegs]);
+
+          const in_vec_t inb6 = invec[6 * 2 + 1];
+
+          acc0 = _mm512_dpbusd_epi32(acc0, inb5, weightvec[5 * 2 * NumOutputRegs + 0 + NumOutputRegs]);
+          acc1 = _mm512_dpbusd_epi32(acc1, inb5, weightvec[5 * 2 * NumOutputRegs + 1 + NumOutputRegs]);
+          acc2 = _mm512_dpbusd_epi32(acc2, inb5, weightvec[5 * 2 * NumOutputRegs + 2 + NumOutputRegs]);
+          acc3 = _mm512_dpbusd_epi32(acc3, inb5, weightvec[5 * 2 * NumOutputRegs + 3 + NumOutputRegs]);
+          acc4 = _mm512_dpbusd_epi32(acc4, inb5, weightvec[5 * 2 * NumOutputRegs + 4 + NumOutputRegs]);
+          acc5 = _mm512_dpbusd_epi32(acc5, inb5, weightvec[5 * 2 * NumOutputRegs + 5 + NumOutputRegs]);
+          acc6 = _mm512_dpbusd_epi32(acc6, inb5, weightvec[5 * 2 * NumOutputRegs + 6 + NumOutputRegs]);
+          acc7 = _mm512_dpbusd_epi32(acc7, inb5, weightvec[5 * 2 * NumOutputRegs + 7 + NumOutputRegs]);
+          acc8 = _mm512_dpbusd_epi32(acc8, inb5, weightvec[5 * 2 * NumOutputRegs + 8 + NumOutputRegs]);
+          acc9 = _mm512_dpbusd_epi32(acc9, inb5, weightvec[5 * 2 * NumOutputRegs + 9 + NumOutputRegs]);
+          acc10 = _mm512_dpbusd_epi32(acc10, inb5, weightvec[5 * 2 * NumOutputRegs + 10 + NumOutputRegs]);
+          acc11 = _mm512_dpbusd_epi32(acc11, inb5, weightvec[5 * 2 * NumOutputRegs + 11 + NumOutputRegs]);
+          acc12 = _mm512_dpbusd_epi32(acc12, inb5, weightvec[5 * 2 * NumOutputRegs + 12 + NumOutputRegs]);
+          acc13 = _mm512_dpbusd_epi32(acc13, inb5, weightvec[5 * 2 * NumOutputRegs + 13 + NumOutputRegs]);
+          acc14 = _mm512_dpbusd_epi32(acc14, inb5, weightvec[5 * 2 * NumOutputRegs + 14 + NumOutputRegs]);
+          acc15 = _mm512_dpbusd_epi32(acc15, inb5, weightvec[5 * 2 * NumOutputRegs + 15 + NumOutputRegs]);
+
+          const in_vec_t inb7 = invec[7 * 2 + 1];
+
+          acc0 = _mm512_dpbusd_epi32(acc0, inb6, weightvec[6 * 2 * NumOutputRegs + 0 + NumOutputRegs]);
+          acc1 = _mm512_dpbusd_epi32(acc1, inb6, weightvec[6 * 2 * NumOutputRegs + 1 + NumOutputRegs]);
+          acc2 = _mm512_dpbusd_epi32(acc2, inb6, weightvec[6 * 2 * NumOutputRegs + 2 + NumOutputRegs]);
+          acc3 = _mm512_dpbusd_epi32(acc3, inb6, weightvec[6 * 2 * NumOutputRegs + 3 + NumOutputRegs]);
+          acc4 = _mm512_dpbusd_epi32(acc4, inb6, weightvec[6 * 2 * NumOutputRegs + 4 + NumOutputRegs]);
+          acc5 = _mm512_dpbusd_epi32(acc5, inb6, weightvec[6 * 2 * NumOutputRegs + 5 + NumOutputRegs]);
+          acc6 = _mm512_dpbusd_epi32(acc6, inb6, weightvec[6 * 2 * NumOutputRegs + 6 + NumOutputRegs]);
+          acc7 = _mm512_dpbusd_epi32(acc7, inb6, weightvec[6 * 2 * NumOutputRegs + 7 + NumOutputRegs]);
+          acc8 = _mm512_dpbusd_epi32(acc8, inb6, weightvec[6 * 2 * NumOutputRegs + 8 + NumOutputRegs]);
+          acc9 = _mm512_dpbusd_epi32(acc9, inb6, weightvec[6 * 2 * NumOutputRegs + 9 + NumOutputRegs]);
+          acc10 = _mm512_dpbusd_epi32(acc10, inb6, weightvec[6 * 2 * NumOutputRegs + 10 + NumOutputRegs]);
+          acc11 = _mm512_dpbusd_epi32(acc11, inb6, weightvec[6 * 2 * NumOutputRegs + 11 + NumOutputRegs]);
+          acc12 = _mm512_dpbusd_epi32(acc12, inb6, weightvec[6 * 2 * NumOutputRegs + 12 + NumOutputRegs]);
+          acc13 = _mm512_dpbusd_epi32(acc13, inb6, weightvec[6 * 2 * NumOutputRegs + 13 + NumOutputRegs]);
+          acc14 = _mm512_dpbusd_epi32(acc14, inb6, weightvec[6 * 2 * NumOutputRegs + 14 + NumOutputRegs]);
+          acc15 = _mm512_dpbusd_epi32(acc15, inb6, weightvec[6 * 2 * NumOutputRegs + 15 + NumOutputRegs]);
+
+          acc0 = _mm512_dpbusd_epi32(acc0, inb7, weightvec[7 * 2 * NumOutputRegs + 0 + NumOutputRegs]);
+          acc1 = _mm512_dpbusd_epi32(acc1, inb7, weightvec[7 * 2 * NumOutputRegs + 1 + NumOutputRegs]);
+          acc2 = _mm512_dpbusd_epi32(acc2, inb7, weightvec[7 * 2 * NumOutputRegs + 2 + NumOutputRegs]);
+          acc3 = _mm512_dpbusd_epi32(acc3, inb7, weightvec[7 * 2 * NumOutputRegs + 3 + NumOutputRegs]);
+
+          outputvec[0] = vec_haddx4(acc0, acc1, acc2, acc3, biasvec[0]);
+
+          acc4 = _mm512_dpbusd_epi32(acc4, inb7, weightvec[7 * 2 * NumOutputRegs + 4 + NumOutputRegs]);
+          acc5 = _mm512_dpbusd_epi32(acc5, inb7, weightvec[7 * 2 * NumOutputRegs + 5 + NumOutputRegs]);
+          acc6 = _mm512_dpbusd_epi32(acc6, inb7, weightvec[7 * 2 * NumOutputRegs + 6 + NumOutputRegs]);
+          acc7 = _mm512_dpbusd_epi32(acc7, inb7, weightvec[7 * 2 * NumOutputRegs + 7 + NumOutputRegs]);
+
+          outputvec[1] = vec_haddx4(acc4, acc5, acc6, acc7, biasvec[1]);
+
+          acc8 = _mm512_dpbusd_epi32(acc8, inb7, weightvec[7 * 2 * NumOutputRegs + 8 + NumOutputRegs]);
+          acc9 = _mm512_dpbusd_epi32(acc9, inb7, weightvec[7 * 2 * NumOutputRegs + 9 + NumOutputRegs]);
+          acc10 = _mm512_dpbusd_epi32(acc10, inb7, weightvec[7 * 2 * NumOutputRegs + 10 + NumOutputRegs]);
+          acc11 = _mm512_dpbusd_epi32(acc11, inb7, weightvec[7 * 2 * NumOutputRegs + 11 + NumOutputRegs]);
+
+          outputvec[2] = vec_haddx4(acc8, acc9, acc10, acc11, biasvec[2]);
+
+          acc12 = _mm512_dpbusd_epi32(acc12, inb7, weightvec[7 * 2 * NumOutputRegs + 12 + NumOutputRegs]);
+          acc13 = _mm512_dpbusd_epi32(acc13, inb7, weightvec[7 * 2 * NumOutputRegs + 13 + NumOutputRegs]);
+          acc14 = _mm512_dpbusd_epi32(acc14, inb7, weightvec[7 * 2 * NumOutputRegs + 14 + NumOutputRegs]);
+          acc15 = _mm512_dpbusd_epi32(acc15, inb7, weightvec[7 * 2 * NumOutputRegs + 15 + NumOutputRegs]);
+
+          outputvec[3] = vec_haddx4(acc12, acc13, acc14, acc15, biasvec[3]);
+      }
+      else
+#endif
+      {
+          // General case for large inputs implemented via nested loops
+
+          // Perform accumulation to registers for each big block
+          for (IndexType bigBlock = 0; bigBlock < NumBigBlocks; ++bigBlock)
           {
-            const IndexType idx = (bigBlock * NumOutputRegs + k) / 4;
-            outputvec[idx] = vec_haddx4(acc[k+0], acc[k+1], acc[k+2], acc[k+3], biasvec[idx]);
+              acc_vec_t acc[NumOutputRegs] = { vec_zero };
+
+              // Each big block has NumOutputRegs small blocks in each "row", one per register.
+              // We process two small blocks at a time to save on one addition without VNNI.
+              for (IndexType smallBlock = 0; smallBlock < NumSmallBlocksPerOutput; smallBlock += 2)
+              {
+                  const weight_vec_t* weightvec =
+                      reinterpret_cast<const weight_vec_t*>(
+                          weights
+                          + bigBlock * BigBlockSize
+                          + smallBlock * SmallBlockSize * NumOutputRegs);
+
+                  const in_vec_t in0 = invec[smallBlock + 0];
+                  const in_vec_t in1 = invec[smallBlock + 1];
+
+                  for (IndexType k = 0; k < NumOutputRegs; ++k)
+                      vec_add_dpbusd_32x2(acc[k], in0, weightvec[k], in1, weightvec[k + NumOutputRegs]);
+              }
+
+              // Horizontally add all accumulators.
+              if constexpr (NumOutputRegs % 4 == 0)
+              {
+                  bias_vec_t* outputvec = reinterpret_cast<bias_vec_t*>(output);
+                  const bias_vec_t* biasvec = reinterpret_cast<const bias_vec_t*>(biases);
+
+                  for (IndexType k = 0; k < NumOutputRegs; k += 4)
+                  {
+                      const IndexType idx = (bigBlock * NumOutputRegs + k) / 4;
+                      outputvec[idx] = vec_haddx4(acc[k + 0], acc[k + 1], acc[k + 2], acc[k + 3], biasvec[idx]);
+                  }
+              }
+              else
+              {
+                  for (IndexType k = 0; k < NumOutputRegs; ++k)
+                  {
+                      const IndexType idx = (bigBlock * NumOutputRegs + k);
+                      output[idx] = vec_hadd(acc[k], biases[idx]);
+                  }
+              }
           }
-        }
-        else
-        {
-          for (IndexType k = 0; k < NumOutputRegs; ++k)
-          {
-            const IndexType idx = (bigBlock * NumOutputRegs + k);
-            output[idx] = vec_hadd(acc[k], biases[idx]);
-          }
-        }
       }
 
 # undef vec_zero
