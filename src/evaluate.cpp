@@ -1046,7 +1046,7 @@ make_v:
 /// evaluate() is the evaluator for the outer world. It returns a static
 /// evaluation of the position from the point of view of the side to move.
 
-Value Eval::evaluate(const Position& pos, int* complexity) {
+Value Eval::evaluate(const Position& pos) {
 
   assert(!pos.checkers());
 
@@ -1075,10 +1075,6 @@ Value Eval::evaluate(const Position& pos, int* complexity) {
                         + (424 + optimism) * abs(psq - nnue)
                         ) / 1024;
 
-      // Return hybrid NNUE complexity to caller
-      if (complexity)
-          *complexity = nnueComplexity;
-
       optimism = optimism * (272 + nnueComplexity) / 256;
       v = (nnue * scale + optimism * (scale - 748)) / 1024;
   }
@@ -1088,10 +1084,6 @@ Value Eval::evaluate(const Position& pos, int* complexity) {
 
   // Guarantee evaluation does not hit the tablebase range
   v = std::clamp(v, VALUE_TB_LOSS_IN_MAX_PLY + 1, VALUE_TB_WIN_IN_MAX_PLY - 1);
-
-  // When not using NNUE, return classical complexity to caller
-  if (complexity && useClassical)
-      *complexity = abs(v - psq);
 
   return v;
 }
