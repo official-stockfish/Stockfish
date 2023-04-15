@@ -723,7 +723,10 @@ ifeq ($(debug), no)
 		ifeq ($(comp),icx)
 			CXXFLAGS += -fwhole-program-vtables
 		endif
-		LDFLAGS += -fuse-ld=lld $(CXXFLAGS)
+		ifeq ($(target_windows),yes)
+			LDFLAGS += -fuse-ld=lld
+		endif
+		LDFLAGS += -v $(CXXFLAGS)
 
 # GCC and CLANG use different methods for parallelizing LTO and CLANG pretends to be
 # GCC on some systems.
