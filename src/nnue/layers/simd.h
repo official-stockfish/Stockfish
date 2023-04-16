@@ -73,11 +73,9 @@ namespace Stockfish::Simd {
 #if defined (USE_AVX512)
 
     #if !defined(__GNUC__)
-    #define COMBINE_128X4
+        #define COMBINE_128X4
+        #define SPLIT_128X4
     #endif
-
-    #define SPLIT_128X4
-
 
     #ifdef COMBINE_128X4
     [[maybe_unused]] static __m512i m512_combine_m128x4(__m128i x4, __m128i x3, __m128i x2, __m128i x1) {
