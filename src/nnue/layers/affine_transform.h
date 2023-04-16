@@ -287,6 +287,8 @@ namespace Stockfish::Eval::NNUE::Layers {
       #define vec_add_dpbusd_32x2 Simd::m512_add_dpbusd_epi32x2
       #define vec_hadd Simd::m512_hadd
       #define vec_haddx4 Simd::m512_haddx4
+      #define vec_combine_x4 Simd::m512_combine_m128x4
+      #define vec_split_x4 Simd::m512_split_m128x4
 #elif defined (USE_AVX2)
       using acc_vec_t = __m256i;
       using bias_vec_t = __m128i;
@@ -359,8 +361,8 @@ namespace Stockfish::Eval::NNUE::Layers {
 
           const weight_vec_t *weightvec = reinterpret_cast<const weight_vec_t *>(weights + 0 * 2 * SmallBlockSize * NumOutputRegs);
 
-          bias_vec_t *outputvec = reinterpret_cast<bias_vec_t *>(output);
-          const bias_vec_t *biasvec = reinterpret_cast<const bias_vec_t *>(biases);
+          __m512i *outputvec512 = reinterpret_cast<__m512i *>(output);
+          const __m512i *biasvec512 = reinterpret_cast<const __m512i *>(biases);
 
           vec_add_dpbusd_32(acc0, ina0, weightvec[0 * 2 * NumOutputRegs + 0]);
           vec_add_dpbusd_32(acc1, ina0, weightvec[0 * 2 * NumOutputRegs + 1]);
@@ -653,28 +655,39 @@ namespace Stockfish::Eval::NNUE::Layers {
           vec_add_dpbusd_32(acc2, inb7, weightvec[7 * 2 * NumOutputRegs + 2 + NumOutputRegs]);
           vec_add_dpbusd_32(acc3, inb7, weightvec[7 * 2 * NumOutputRegs + 3 + NumOutputRegs]);
 
-          outputvec[0] = vec_haddx4(acc0, acc1, acc2, acc3, biasvec[0]);
+          bias_vec_t bias0;
+          bias_vec_t bias1;
+          bias_vec_t bias2;
+          bias_vec_t bias3;
+          vec_split_x4(biasvec512[0], bias3, bias2, bias1, bias0);
+
+          const bias_vec_t out0 = vec_haddx4(acc0, acc1, acc2, acc3, bias0);
 
           vec_add_dpbusd_32(acc4, inb7, weightvec[7 * 2 * NumOutputRegs + 4 + NumOutputRegs]);
           vec_add_dpbusd_32(acc5, inb7, weightvec[7 * 2 * NumOutputRegs + 5 + NumOutputRegs]);
           vec_add_dpbusd_32(acc6, inb7, weightvec[7 * 2 * NumOutputRegs + 6 + NumOutputRegs]);
           vec_add_dpbusd_32(acc7, inb7, weightvec[7 * 2 * NumOutputRegs + 7 + NumOutputRegs]);
 
-          outputvec[1] = vec_haddx4(acc4, acc5, acc6, acc7, biasvec[1]);
+          const bias_vec_t out1 = vec_haddx4(acc4, acc5, acc6, acc7, bias1);
 
           vec_add_dpbusd_32(acc8, inb7, weightvec[7 * 2 * NumOutputRegs + 8 + NumOutputRegs]);
           vec_add_dpbusd_32(acc9, inb7, weightvec[7 * 2 * NumOutputRegs + 9 + NumOutputRegs]);
           vec_add_dpbusd_32(acc10, inb7, weightvec[7 * 2 * NumOutputRegs + 10 + NumOutputRegs]);
           vec_add_dpbusd_32(acc11, inb7, weightvec[7 * 2 * NumOutputRegs + 11 + NumOutputRegs]);
 
-          outputvec[2] = vec_haddx4(acc8, acc9, acc10, acc11, biasvec[2]);
+          const bias_vec_t out2 = vec_haddx4(acc8, acc9, acc10, acc11, bias2);
 
           vec_add_dpbusd_32(acc12, inb7, weightvec[7 * 2 * NumOutputRegs + 12 + NumOutputRegs]);
           vec_add_dpbusd_32(acc13, inb7, weightvec[7 * 2 * NumOutputRegs + 13 + NumOutputRegs]);
           vec_add_dpbusd_32(acc14, inb7, weightvec[7 * 2 * NumOutputRegs + 14 + NumOutputRegs]);
           vec_add_dpbusd_32(acc15, inb7, weightvec[7 * 2 * NumOutputRegs + 15 + NumOutputRegs]);
 
-          outputvec[3] = vec_haddx4(acc12, acc13, acc14, acc15, biasvec[3]);
+          const bias_vec_t out3 = vec_haddx4(acc12, acc13, acc14, acc15, bias3);
+          
+          // cobmine four 128-bit vectors in registers to one 512-bit vector
+          // and do one 512-bit memory store
+          outputvec512[0] = vec_combine_x4(out3, out2, out1, out0);
+
       }
       else
 #endif

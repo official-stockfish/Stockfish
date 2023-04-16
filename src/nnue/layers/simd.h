@@ -55,7 +55,41 @@
 
 namespace Stockfish::Simd {
 
+#if defined (USE_AVX2)
+    [[maybe_unused]] static __m256i m256_combine_m128x2(__m128i hi, __m128i lo) {
+        const __m128 h = _mm256_castps256_ps128(_mm256_castsi256_ps(_mm256_castsi128_si256(hi))); // convert __m128i to __m128
+        const __m128 l = _mm256_castps256_ps128(_mm256_castsi256_ps(_mm256_castsi128_si256(lo))); // convert __m128i to __m128
+        __m256 r = _mm256_set_m128(h, l); // combine two __m128 registers into one __m256 register
+        return _mm256_castps_si256(r); // convert __m256 to __m256i
+    }
+
+    [[maybe_unused]] static void m256_split_m128x2(__m256i r, __m128i &hi, __m128i &lo) {
+        const __m256 rps = _mm256_castsi256_ps(r); // convert __m256i to __m256
+        const __m128 h = _mm256_extractf128_ps(rps, 1); // extract highest 128 bits of __m256 to __m128
+        const __m128 l = _mm256_castps256_ps128(rps);   // convert __m256 to __m128 with data loss of higest 128 bits, leaving only lowest 128 bits
+        hi = _mm256_castsi256_si128(_mm256_castps_si256(_mm256_castps128_ps256(h))); // convert __m128 to __m128i
+        lo = _mm256_castsi256_si128(_mm256_castps_si256(_mm256_castps128_ps256(l))); // convert __m128 to __m128i
+    }
+
+#endif
+
 #if defined (USE_AVX512)
+    [[maybe_unused]] static __m512i m512_combine_m128x4(__m128i x4, __m128i x3, __m128i x2, __m128i x1) {
+        const __m256 h = _mm256_castsi256_ps(m256_combine_m128x2(x4, x3)); // combine two 128-bit registers x3 and x4 into one m256-bit register h
+        const __m256 l = _mm256_castsi256_ps(m256_combine_m128x2(x2, x1)); // combine two 128-bit registers x2 and x1 into one m256-bit register l
+        __m512 r = _mm512_insertf32x8(_mm512_castps256_ps512(l), h, 1); // combine two __m256 registers into one __m512 register
+        return _mm512_castps_si512(r);
+    }
+
+    [[maybe_unused]] static void m512_split_m128x4(__m512i r, __m128i &x4, __m128i &x3, __m128i &x2, __m128i &x1) {
+        const __m512 rps = _mm512_castsi512_ps(r);
+        const __m256 h = _mm512_extractf32x8_ps(rps, 1);
+        const __m256 l = _mm512_castps512_ps256(rps);
+        m256_split_m128x2(_mm256_castps_si256(h), x4, x3);
+        m256_split_m128x2(_mm256_castps_si256(l), x2, x1);
+    }
+
+
 
     [[maybe_unused]] static int m512_hadd(__m512i sum, int bias) {
       return _mm512_reduce_add_epi32(sum) + bias;
