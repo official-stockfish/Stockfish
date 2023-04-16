@@ -75,7 +75,7 @@ namespace Stockfish::Simd {
 
 #if defined (USE_AVX512)
 
-    #if !(defined(__GNUC__) && (__GNUC__ < 11))
+    #if !defined(__GNUC__)
     #define COMBINE_128X4
     #define SPLIT_128X4
     #endif
