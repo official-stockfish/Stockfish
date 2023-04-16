@@ -74,12 +74,19 @@ namespace Stockfish::Simd {
 #endif
 
 #if defined (USE_AVX512)
+
+    #if !(defined(__GNUC__) && (__GNUC__ < 11))
+        #define COMBINE_128X4
+    #endif
+
+    #if defined (COMBINE_128X4)
     [[maybe_unused]] static __m512i m512_combine_m128x4(__m128i x4, __m128i x3, __m128i x2, __m128i x1) {
         const __m256 h = _mm256_castsi256_ps(m256_combine_m128x2(x4, x3)); // combine two 128-bit registers x3 and x4 into one m256-bit register h
         const __m256 l = _mm256_castsi256_ps(m256_combine_m128x2(x2, x1)); // combine two 128-bit registers x2 and x1 into one m256-bit register l
         __m512 r = _mm512_insertf32x8(_mm512_castps256_ps512(l), h, 1); // combine two __m256 registers into one __m512 register
         return _mm512_castps_si512(r);
     }
+    #endif
 
     [[maybe_unused]] static void m512_split_m128x4(__m512i r, __m128i &x4, __m128i &x3, __m128i &x2, __m128i &x1) {
         const __m512 rps = _mm512_castsi512_ps(r);

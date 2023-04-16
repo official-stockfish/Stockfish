@@ -287,8 +287,10 @@ namespace Stockfish::Eval::NNUE::Layers {
       #define vec_add_dpbusd_32x2 Simd::m512_add_dpbusd_epi32x2
       #define vec_hadd Simd::m512_hadd
       #define vec_haddx4 Simd::m512_haddx4
-      #define vec_combine_x4 Simd::m512_combine_m128x4
       #define vec_split_x4 Simd::m512_split_m128x4
+      #ifdef COMBINE_128X4
+      #define vec_combine_x4 Simd::m512_combine_m128x4
+      #endif
 #elif defined (USE_AVX2)
       using acc_vec_t = __m256i;
       using bias_vec_t = __m128i;
@@ -361,7 +363,12 @@ namespace Stockfish::Eval::NNUE::Layers {
 
           const weight_vec_t *weightvec = reinterpret_cast<const weight_vec_t *>(weights + 0 * 2 * SmallBlockSize * NumOutputRegs);
 
+#ifdef COMBINE_128X4
           __m512i *outputvec512 = reinterpret_cast<__m512i *>(output);
+#else
+          bias_vec_t* outputvec = reinterpret_cast<bias_vec_t *>(output);
+#endif
+
           const __m512i *biasvec512 = reinterpret_cast<const __m512i *>(biases);
 
           vec_add_dpbusd_32(acc0, ina0, weightvec[0 * 2 * NumOutputRegs + 0]);
@@ -683,11 +690,17 @@ namespace Stockfish::Eval::NNUE::Layers {
           vec_add_dpbusd_32(acc15, inb7, weightvec[7 * 2 * NumOutputRegs + 15 + NumOutputRegs]);
 
           const bias_vec_t out3 = vec_haddx4(acc12, acc13, acc14, acc15, bias3);
-          
+
+#ifdef COMBINE_128X4
           // cobmine four 128-bit vectors in registers to one 512-bit vector
           // and do one 512-bit memory store
           outputvec512[0] = vec_combine_x4(out3, out2, out1, out0);
-
+#else
+          outputvec[0] = out0;
+          outputvec[1] = out1;
+          outputvec[2] = out2;
+          outputvec[3] = out3;
+#endif
       }
       else
 #endif
