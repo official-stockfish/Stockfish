@@ -287,7 +287,9 @@ namespace Stockfish::Eval::NNUE::Layers {
       #define vec_add_dpbusd_32x2 Simd::m512_add_dpbusd_epi32x2
       #define vec_hadd Simd::m512_hadd
       #define vec_haddx4 Simd::m512_haddx4
+      #ifdef SPLIT_128X4
       #define vec_split_x4 Simd::m512_split_m128x4
+      #endif
       #ifdef COMBINE_128X4
       #define vec_combine_x4 Simd::m512_combine_m128x4
       #endif
@@ -369,7 +371,11 @@ namespace Stockfish::Eval::NNUE::Layers {
           bias_vec_t* outputvec = reinterpret_cast<bias_vec_t *>(output);
 #endif
 
+#ifdef SPLIT_128X4
           const __m512i *biasvec512 = reinterpret_cast<const __m512i *>(biases);
+#else
+          const bias_vec_t * biasvec = reinterpret_cast<const bias_vec_t *>(biases);
+#endif
 
           vec_add_dpbusd_32(acc0, ina0, weightvec[0 * 2 * NumOutputRegs + 0]);
           vec_add_dpbusd_32(acc1, ina0, weightvec[0 * 2 * NumOutputRegs + 1]);
@@ -662,11 +668,19 @@ namespace Stockfish::Eval::NNUE::Layers {
           vec_add_dpbusd_32(acc2, inb7, weightvec[7 * 2 * NumOutputRegs + 2 + NumOutputRegs]);
           vec_add_dpbusd_32(acc3, inb7, weightvec[7 * 2 * NumOutputRegs + 3 + NumOutputRegs]);
 
+
+#ifdef SPLIT_128X4
           bias_vec_t bias0;
           bias_vec_t bias1;
           bias_vec_t bias2;
           bias_vec_t bias3;
           vec_split_x4(biasvec512[0], bias3, bias2, bias1, bias0);
+#else
+          const bias_vec_t bias0 = biasvec[0];
+          const bias_vec_t bias1 = biasvec[1];
+          const bias_vec_t bias2 = biasvec[2];
+          const bias_vec_t bias3 = biasvec[3];
+#endif
 
           const bias_vec_t out0 = vec_haddx4(acc0, acc1, acc2, acc3, bias0);
 

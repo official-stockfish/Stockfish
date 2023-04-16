@@ -76,10 +76,12 @@ namespace Stockfish::Simd {
 #if defined (USE_AVX512)
 
     #if !(defined(__GNUC__) && (__GNUC__ < 11))
-        #define COMBINE_128X4
+    #define COMBINE_128X4
+    #define SPLIT_128X4
     #endif
 
-    #if defined (COMBINE_128X4)
+
+    #ifdef COMBINE_128X4
     [[maybe_unused]] static __m512i m512_combine_m128x4(__m128i x4, __m128i x3, __m128i x2, __m128i x1) {
         const __m256 h = _mm256_castsi256_ps(m256_combine_m128x2(x4, x3)); // combine two 128-bit registers x3 and x4 into one m256-bit register h
         const __m256 l = _mm256_castsi256_ps(m256_combine_m128x2(x2, x1)); // combine two 128-bit registers x2 and x1 into one m256-bit register l
@@ -88,6 +90,7 @@ namespace Stockfish::Simd {
     }
     #endif
 
+    #ifdef SPLIT_128X4
     [[maybe_unused]] static void m512_split_m128x4(__m512i r, __m128i &x4, __m128i &x3, __m128i &x2, __m128i &x1) {
         const __m512 rps = _mm512_castsi512_ps(r);
         const __m256 h = _mm512_extractf32x8_ps(rps, 1);
@@ -95,7 +98,7 @@ namespace Stockfish::Simd {
         m256_split_m128x2(_mm256_castps_si256(h), x4, x3);
         m256_split_m128x2(_mm256_castps_si256(l), x2, x1);
     }
-
+    #endif
 
 
     [[maybe_unused]] static int m512_hadd(__m512i sum, int bias) {
