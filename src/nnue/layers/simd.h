@@ -64,11 +64,8 @@ namespace Stockfish::Simd {
     }
 
     [[maybe_unused]] static void m256_split_m128x2(__m256i r, __m128i &hi, __m128i &lo) {
-        const __m256 rps = _mm256_castsi256_ps(r); // convert __m256i to __m256
-        const __m128 h = _mm256_extractf128_ps(rps, 1); // extract highest 128 bits of __m256 to __m128
-        const __m128 l = _mm256_castps256_ps128(rps);   // convert __m256 to __m128 with data loss of higest 128 bits, leaving only lowest 128 bits
-        hi = _mm256_castsi256_si128(_mm256_castps_si256(_mm256_castps128_ps256(h))); // convert __m128 to __m128i
-        lo = _mm256_castsi256_si128(_mm256_castps_si256(_mm256_castps128_ps256(l))); // convert __m128 to __m128i
+        hi = _mm256_extracti128_si256(r, 1);
+        lo = _mm256_castsi256_si128(r);
     }
 
 #endif
@@ -77,8 +74,9 @@ namespace Stockfish::Simd {
 
     #if !defined(__GNUC__)
     #define COMBINE_128X4
-    #define SPLIT_128X4
     #endif
+
+    #define SPLIT_128X4
 
 
     #ifdef COMBINE_128X4
@@ -92,11 +90,18 @@ namespace Stockfish::Simd {
 
     #ifdef SPLIT_128X4
     [[maybe_unused]] static void m512_split_m128x4(__m512i r, __m128i &x4, __m128i &x3, __m128i &x2, __m128i &x1) {
-        const __m512 rps = _mm512_castsi512_ps(r);
-        const __m256 h = _mm512_extractf32x8_ps(rps, 1);
-        const __m256 l = _mm512_castps512_ps256(rps);
-        m256_split_m128x2(_mm256_castps_si256(h), x4, x3);
-        m256_split_m128x2(_mm256_castps_si256(l), x2, x1);
+        
+        x1 = _mm256_castsi256_si128(_mm512_castsi512_si256(r));
+        x2 = _mm256_extracti128_si256(_mm512_castsi512_si256(r), 1);
+        x3 = _mm256_castsi256_si128(_mm512_extracti32x8_epi32(r, 1));
+        x4 = _mm512_extracti32x4_epi32(r, 3);
+        
+        /* alternative version with dependency chain
+        const __m256i h = _mm512_extracti32x8_epi32(r, 1);
+        const __m256i l = _mm512_castsi512_si256(r);
+        m256_split_m128x2(h, x4, x3);
+        m256_split_m128x2(l, x2, x1);
+        */
     }
     #endif
 
