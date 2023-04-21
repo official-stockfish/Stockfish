@@ -1055,8 +1055,9 @@ Value Eval::evaluate(const Position& pos, int* complexity) {
 
   // We use the much less accurate but faster Classical eval when the NNUE
   // option is set to false. Otherwise we use the NNUE eval unless the
-  // PSQ advantage is decisive. (~4 Elo at STC, 1 Elo at LTC)
-  bool useClassical = !useNNUE || abs(psq) > 2048;
+  // PSQ advantage is decisive (~4 Elo at STC, 1 Elo at LTC)
+  // or we are in an endgame with 4 or less pieces left
+  bool useClassical = !useNNUE || abs(psq) > 2048 || popcount(pos.pieces()) <= 4;
 
   if (useClassical)
       v = Evaluation<NO_TRACE>(pos).value();
