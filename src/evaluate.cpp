@@ -1042,6 +1042,11 @@ make_v:
 
 } // namespace Eval
 
+int a1 = 2048,
+    b1 = 1001, b2 = 16,
+    c1 = 272, c2 = 424, c3 = 748;
+
+TUNE(a1, b1, b2, c1, c2, c3);
 
 /// evaluate() is the evaluator for the outer world. It returns a static
 /// evaluation of the position from the point of view of the side to move.
@@ -1056,27 +1061,21 @@ Value Eval::evaluate(const Position& pos) {
   // We use the much less accurate but faster Classical eval when the NNUE
   // option is set to false. Otherwise we use the NNUE eval unless the
   // PSQ advantage is decisive. (~4 Elo at STC, 1 Elo at LTC)
-  bool useClassical = !useNNUE || abs(psq) > 2048;
+  bool useClassical = !useNNUE || abs(psq) > a1;
 
   if (useClassical)
       v = Evaluation<NO_TRACE>(pos).value();
   else
   {
-      int nnueComplexity;
-      int scale = 1001 + pos.non_pawn_material() / 64;
+      int scale = b1 + b2 * pos.non_pawn_material() / 1024;
 
       Color stm = pos.side_to_move();
       Value optimism = pos.this_thread()->optimism[stm];
 
-      Value nnue = NNUE::evaluate(pos, true, &nnueComplexity);
+      Value nnue = NNUE::evaluate(pos, true);
 
-      // Blend nnue complexity with (semi)classical complexity
-      nnueComplexity = (  406 * nnueComplexity
-                        + (424 + optimism) * abs(psq - nnue)
-                        ) / 1024;
-
-      optimism = optimism * (272 + nnueComplexity) / 256;
-      v = (nnue * scale + optimism * (scale - 748)) / 1024;
+      optimism = optimism * (c1 + (c2 + optimism) * abs(psq - nnue) / 1024) / 256;
+      v = (nnue * scale + optimism * (scale - c3)) / 1024;
   }
 
   // Damp down the evaluation linearly when shuffling
