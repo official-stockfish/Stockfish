@@ -1,17 +1,15 @@
-# List of Stockfish authors
-
-# Founders of the Stockfish project and fishtest infrastructure
-Gary Linscott (glinscott)
-Joona Kiiski (zamar)
-Marco Costalba (mcostalba)
+# Founders of the Stockfish project and Fishtest infrastructure
 Tord Romstad (romstad)
+Marco Costalba (mcostalba)
+Joona Kiiski (zamar)
+Gary Linscott (glinscott)
 
 # Authors and inventors of NNUE, training, and NNUE port
-Hisayori Noda (nodchip)
-Motohiro Isozaki (yaneurao)
 Yu Nasu (ynasu87)
+Motohiro Isozaki (yaneurao)
+Hisayori Noda (nodchip)
 
-# All other authors of Stockfish code
+# All other authors of Stockfish code (in alphabetical order)
 Aditya (absimaldata)
 Adrian Petrescu (apetresc)
 Ajith Chandy Jose (ajithcj)
