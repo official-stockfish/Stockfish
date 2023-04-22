@@ -288,20 +288,10 @@ void Thread::search() {
 
   ss->pv = pv;
 
-  bestValue = delta = alpha = -VALUE_INFINITE;
-  beta = VALUE_INFINITE;
-  optimism[WHITE] = optimism[BLACK] = VALUE_ZERO;
+  bestValue = -VALUE_INFINITE;
 
   if (mainThread)
   {
-
-      if (!rootPos.checkers())
-      {
-          int rootComplexity;
-          Eval::evaluate(rootPos, &rootComplexity);
-          mainThread->complexity = std::min(1.03 + (rootComplexity - 241) / 1552.0, 1.45);
-      }
-
       if (mainThread->bestPreviousScore == VALUE_INFINITE)
           for (int i = 0; i < 4; ++i)
               mainThread->iterValue[i] = VALUE_ZERO;
@@ -357,18 +347,15 @@ void Thread::search() {
           selDepth = 0;
 
           // Reset aspiration window starting size
-          if (rootDepth >= 4)
-          {
-              Value prev = rootMoves[pvIdx].averageScore;
-              delta = Value(10) + int(prev) * prev / 16502;
-              alpha = std::max(prev - delta,-VALUE_INFINITE);
-              beta  = std::min(prev + delta, VALUE_INFINITE);
+          Value prev = rootMoves[pvIdx].averageScore;
+          delta = Value(10) + int(prev) * prev / 16502;
+          alpha = std::max(prev - delta,-VALUE_INFINITE);
+          beta  = std::min(prev + delta, VALUE_INFINITE);
 
-              // Adjust optimism based on root move's previousScore
-              int opt = 120 * prev / (std::abs(prev) + 161);
-              optimism[ us] = Value(opt);
-              optimism[~us] = -optimism[us];
-          }
+          // Adjust optimism based on root move's previousScore
+          int opt = 120 * prev / (std::abs(prev) + 161);
+          optimism[ us] = Value(opt);
+          optimism[~us] = -optimism[us];
 
           // Start with a small aspiration window and, in the case of a fail
           // high/low, re-search with a bigger window until we don't fail
@@ -478,7 +465,7 @@ void Thread::search() {
           double reduction = (1.4 + mainThread->previousTimeReduction) / (2.08 * timeReduction);
           double bestMoveInstability = 1 + 1.8 * totBestMoveChanges / Threads.size();
 
-          double totalTime = Time.optimum() * fallingEval * reduction * bestMoveInstability * mainThread->complexity;
+          double totalTime = Time.optimum() * fallingEval * reduction * bestMoveInstability;
 
           // Cap used time in case of a single legal move for a better viewer experience in tournaments
           // yielding correct scores and sufficiently fast moves.
@@ -561,7 +548,7 @@ namespace {
     bool givesCheck, improving, priorCapture, singularQuietLMR;
     bool capture, moveCountPruning, ttCapture;
     Piece movedPiece;
-    int moveCount, captureCount, quietCount, improvement, complexity;
+    int moveCount, captureCount, quietCount, improvement;
 
     // Step 1. Initialize node
     Thread* thisThread = pos.this_thread();
@@ -723,7 +710,6 @@ namespace {
         ss->staticEval = eval = VALUE_NONE;
         improving = false;
         improvement = 0;
-        complexity = 0;
         goto moves_loop;
     }
     else if (excludedMove)
@@ -731,17 +717,15 @@ namespace {
         // Providing the hint that this node's accumulator will be used often brings significant Elo gain (13 Elo)
         Eval::NNUE::hint_common_parent_position(pos);
         eval = ss->staticEval;
-        complexity = abs(ss->staticEval - pos.psq_eg_stm());
     }
     else if (ss->ttHit)
     {
         // Never assume anything about values stored in TT
         ss->staticEval = eval = tte->eval();
         if (eval == VALUE_NONE)
-            ss->staticEval = eval = evaluate(pos, &complexity);
-        else // Fall back to (semi)classical complexity for TT hits, the NNUE complexity is lost
+            ss->staticEval = eval = evaluate(pos);
+        else
         {
-            complexity = abs(ss->staticEval - pos.psq_eg_stm());
             if (PvNode)
                Eval::NNUE::hint_common_parent_position(pos);
         }
@@ -753,7 +737,7 @@ namespace {
     }
     else
     {
-        ss->staticEval = eval = evaluate(pos, &complexity);
+        ss->staticEval = eval = evaluate(pos);
         // Save static evaluation into transposition table
         tte->save(posKey, VALUE_NONE, ss->ttPv, BOUND_NONE, DEPTH_NONE, MOVE_NONE, eval);
     }
@@ -799,15 +783,15 @@ namespace {
         && (ss-1)->statScore < 18755
         &&  eval >= beta
         &&  eval >= ss->staticEval
-        &&  ss->staticEval >= beta - 20 * depth - improvement / 13 + 253 + complexity / 25
+        &&  ss->staticEval >= beta - 20 * depth - improvement / 13 + 253
         && !excludedMove
         &&  pos.non_pawn_material(us)
         && (ss->ply >= thisThread->nmpMinPly))
     {
         assert(eval - beta >= 0);
 
-        // Null move dynamic reduction based on depth, eval and complexity of position
-        Depth R = std::min(int(eval - beta) / 172, 6) + depth / 3 + 4 - (complexity > 825);
+        // Null move dynamic reduction based on depth and eval
+        Depth R = std::min(int(eval - beta) / 172, 6) + depth / 3 + 4;
 
         ss->currentMove = MOVE_NULL;
         ss->continuationHistory = &thisThread->continuationHistory[0][0][NO_PIECE][0];
@@ -1017,17 +1001,15 @@ moves_loop: // When in check, search starts here
               {
                   if (depth < 2 - capture)
                       continue;
-                  // Don't prune the move if opp. King/Queen/Rook is attacked by a slider after the exchanges.
-                  // Since in see_ge we don't update occupied when the king recaptures, we also don't prune the
-                  // move when the opp. King gets a discovered slider attack DURING the exchanges.
-                  Bitboard leftEnemies = pos.pieces(~us, ROOK, QUEEN, KING) & occupied;
+                  // Don't prune the move if opp. King/Queen/Rook gets a discovered attack during or after the exchanges
+                  Bitboard leftEnemies = pos.pieces(~us, KING, QUEEN, ROOK);
                   Bitboard attacks = 0;
                   occupied |= to_sq(move);
                   while (leftEnemies && !attacks)
                   {
                       Square sq = pop_lsb(leftEnemies);
                       attacks = pos.attackers_to(sq, occupied) & pos.pieces(us) & occupied;
-                      // Exclude Queen/Rook(s) which were already threatened before SEE
+                      // Exclude Queen/Rook(s) which were already threatened before SEE (opp King can't be in check when it's our turn)
                       if (attacks && sq != pos.square<KING>(~us) && (pos.attackers_to(sq, pos.pieces()) & pos.pieces(us)))
                           attacks = 0;
                   }
@@ -1187,6 +1169,9 @@ moves_loop: // When in check, search starts here
       if ((ss+1)->cutoffCnt > 3)
           r++;
 
+      else if (move == ttMove)
+          r--;
+
       ss->statScore =  2 * thisThread->mainHistory[us][from_to(move)]
                      + (*contHist[0])[movedPiece][to_sq(move)]
                      + (*contHist[1])[movedPiece][to_sq(move)]
@@ -1331,9 +1316,6 @@ moves_loop: // When in check, search starts here
               {
                   // Reduce other moves if we have found at least one score improvement (~1 Elo)
                   if (   depth > 1
-                      && (   (improving && complexity > 971)
-                          || value < (5 * alpha + 75 * beta) / 87
-                          || depth < 6)
                       && beta  <  12535
                       && value > -12535)
                       depth -= 1;
