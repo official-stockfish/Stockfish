@@ -101,7 +101,7 @@ namespace Stockfish {
 /// are five parameters: TT size in MB, number of search threads that
 /// should be used, the limit value spent for each position, a file name
 /// where to look for positions in FEN format, the type of the limit:
-/// depth, perft, nodes and movetime (in millisecs), and evaluation type
+/// depth, perft, nodes and movetime (in millisecs), and evaluation type:
 /// mixed (default), classical, NNUE.
 ///
 /// bench -> search default positions up to depth 13
@@ -114,6 +114,9 @@ vector<string> setup_bench(const Position& current, istream& is) {
 
   vector<string> fens, list;
   string go, token;
+  enum evalTypeEnum {MIXED, CLASSICAL, NNUE};
+  evalTypeEnum evalTypeE;
+
 
   // Assign default values to missing arguments
   string ttSize    = (is >> token) ? token : "16";
@@ -123,7 +126,22 @@ vector<string> setup_bench(const Position& current, istream& is) {
   string limitType = (is >> token) ? token : "depth";
   string evalType  = (is >> token) ? token : "mixed";
 
+  if (limitType != "depth" &&
+      limitType != "perft" &&
+      limitType != "nodes" &&
+      limitType != "movetime")
+  {
+      string msg1 = "Invalid value for the limit type parameter;";
+      string msg2 = "should be one of the following: depth, perft, nodes, movetime.";
+      sync_cout << "info string ERROR: " << msg1 << sync_endl;
+      sync_cout << "info string ERROR: " << msg2 << sync_endl;
+      exit(EXIT_FAILURE);
+  }
+
+
   go = limitType == "eval" ? "eval" : "go " + limitType + " " + limit;
+
+
 
   if (fenFile == "default")
       fens = Defaults;
@@ -149,6 +167,24 @@ vector<string> setup_bench(const Position& current, istream& is) {
       file.close();
   }
 
+  if (evalType == "classical") 
+      evalTypeE = CLASSICAL; 
+  else
+  if (evalType == "mixed") 
+      evalTypeE = MIXED; 
+  else
+  if (evalType == "nnue" || evalType == "NNUE") 
+      evalTypeE = NNUE; 
+  else
+  {
+     string msg1 = "Invalid value for the evaluation type parameter;";
+     string msg2 = "should be one of the following: mixed, classical, NNUE.";
+     sync_cout << "info string ERROR: " << msg1 << sync_endl;
+     sync_cout << "info string ERROR: " << msg2 << sync_endl;
+     exit(EXIT_FAILURE);
+  }
+
+
   list.emplace_back("setoption name Threads value " + threads);
   list.emplace_back("setoption name Hash value " + ttSize);
   list.emplace_back("ucinewgame");
@@ -160,9 +196,9 @@ vector<string> setup_bench(const Position& current, istream& is) {
           list.emplace_back(fen);
       else
       {
-          if (evalType == "classical" || (evalType == "mixed" && posCounter % 2 == 0))
+          if (evalTypeE == CLASSICAL || (evalTypeE == MIXED && posCounter % 2 == 0))
               list.emplace_back("setoption name Use NNUE value false");
-          else if (evalType == "NNUE" || (evalType == "mixed" && posCounter % 2 != 0))
+          else if (evalTypeE == NNUE || (evalTypeE == MIXED && posCounter % 2 != 0))
               list.emplace_back("setoption name Use NNUE value true");
           list.emplace_back("position fen " + fen);
           list.emplace_back(go);
