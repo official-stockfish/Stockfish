@@ -702,7 +702,7 @@ ifeq ($(pext),yes)
 endif
 
 ### 3.7.1 Try to include git commit sha for versioning
-GIT_SHA = $(shell git rev-parse --short HEAD 2>/dev/null)
+GIT_SHA = $(shell git rev-parse HEAD 2>/dev/null | cut -c 1-8)
 ifneq ($(GIT_SHA), )
 	CXXFLAGS += -DGIT_SHA=$(GIT_SHA)
 endif
