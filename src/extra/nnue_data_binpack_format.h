@@ -5048,11 +5048,21 @@ namespace chess
 
         // Generates all pseudo legal moves for the position.
         // `pos` must be a legal chess position
-        [[nodiscard]] std::vector<Move> generatePseudoLegalMoves(const Position& pos);
+        [[nodiscard]] inline std::vector<Move> generatePseudoLegalMoves(const Position& pos)
+        {
+            std::vector<Move> moves;
+            forEachPseudoLegalMove(pos, [&moves](Move move) { moves.emplace_back(move); });
+            return moves;
+        }
 
         // Generates all legal moves for the position.
         // `pos` must be a legal chess position
-        [[nodiscard]] std::vector<Move> generateLegalMoves(const Position& pos);
+        [[nodiscard]] inline std::vector<Move> generateLegalMoves(const Position& pos)
+        {
+            std::vector<Move> moves;
+            forEachLegalMove(pos, [&moves](Move move) { moves.emplace_back(move); });
+            return moves;
+        }
     }
 
     [[nodiscard]] inline bool Position::isCheck() const
@@ -6835,6 +6845,17 @@ namespace binpack
         {
             return pos.isMoveLegal(move);
         }
+
+        [[nodiscard]] bool isCapturingMove() const
+        {
+            return pos.pieceAt(move.to) != chess::Piece::none() &&
+                   pos.pieceAt(move.to).color() != pos.pieceAt(move.from).color(); // Exclude castling
+        }
+
+        [[nodiscard]] bool isInCheck() const
+        {
+            return pos.isCheck();
+        }
     };
 
     [[nodiscard]] inline TrainingDataEntry packedSfenValueToTrainingDataEntry(const nodchip::PackedSfenValue& psv)
@@ -7109,6 +7130,11 @@ namespace binpack
     {
         std::uint16_t numPlies = 0;
         std::vector<unsigned char> movetext;
+
+        [[nodiscard]] std::size_t numBytes() const
+        {
+            return movetext.size();
+        }
 
         void clear(const TrainingDataEntry& e)
         {
