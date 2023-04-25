@@ -1,17 +1,15 @@
-# List of authors for Stockfish
-
-# Founders of the Stockfish project and fishtest infrastructure
+# Founders of the Stockfish project and Fishtest infrastructure
 Tord Romstad (romstad)
 Marco Costalba (mcostalba)
 Joona Kiiski (zamar)
 Gary Linscott (glinscott)
 
-# Authors and inventors of NNUE, training, NNUE port
+# Authors and inventors of NNUE, training, and NNUE port
 Yu Nasu (ynasu87)
 Motohiro Isozaki (yaneurao)
 Hisayori Noda (nodchip)
 
-# all other authors of the code in alphabetical order
+# All other authors of Stockfish code (in alphabetical order)
 Aditya (absimaldata)
 Adrian Petrescu (apetresc)
 Ajith Chandy Jose (ajithcj)
@@ -47,12 +45,12 @@ Chess13234
 Chris Cain (ceebo)
 clefrks
 Dale Weiler (graphitemaster)
-Dan Schmidt (dfannius)
 Daniel Axtens (daxtens)
 Daniel Dugovic (ddugovic)
+Dan Schmidt (dfannius)
 Dariusz Orzechowski (dorzechowski)
-David Zar
 David (dav1312)
+David Zar
 Daylen Yang (daylen)
 Deshawn Mohan-Smith (GoldenRare)
 Dieter Dobbelaere (ddobbelaere)
@@ -66,7 +64,6 @@ Eelco de Groot (KingDefender)
 Elvin Liu (solarlight2)
 erbsenzaehler
 Ernesto Gatti
-Linmiao Xu (linrock)
 Fabian Beuke (madnight)
 Fabian Fichter (ianfab)
 Fanael Linithien (Fanael)
@@ -83,30 +80,30 @@ Gontran Lemaire (gonlem)
 Goodkov Vasiliy Aleksandrovich (goodkov)
 Gregor Cramer
 GuardianRM
-Günther Demetz (pb00067, pb00068)
 Guy Vreuls (gvreuls)
+Günther Demetz (pb00067, pb00068)
 Henri Wiechers
 Hiraoka Takuya (HiraokaTakuya)
 homoSapiensSapiens
 Hongzhi Cheng
 Ivan Ivec (IIvec)
 Jacques B. (Timshel)
+Jake Senne (w1wwwwww)
 Jan Ondruš (hxim)
 Jared Kish (Kurtbusch, kurt22i)
-Jake Senne (w1wwwwww)
 Jarrod Torriero (DU-jdto)
-Jean Gauthier (OuaisBla)
 Jean-Francois Romang (jromang)
+Jean Gauthier (OuaisBla)
 Jekaa
 Jerry Donald Watson (jerrydonaldwatson)
 jjoshua2
-Jonathan Calovski (Mysseno)
 Jonathan Buladas Dumale (SFisGOD)
+Jonathan Calovski (Mysseno)
 Jonathan McDermid (jonathanmcdermid)
 Joost VandeVondele (vondele)
-Jörg Oster (joergoster)
 Joseph Ellis (jhellis3)
 Joseph R. Prostko
+Jörg Oster (joergoster)
 Julian Willemer (NightlyKing)
 jundery
 Justin Blanchard (UncombedCoconut)
@@ -120,6 +117,7 @@ Krystian Kuzniarek (kuzkry)
 Leonardo Ljubičić (ICCF World Champion)
 Leonid Pechenik (lp--)
 Liam Keegan (lkeegan)
+Linmiao Xu (linrock)
 Linus Arver (listx)
 loco-loco
 Lub van den Berg (ElbertoOne)
@@ -151,11 +149,11 @@ Moez Jellouli (MJZ1977)
 Mohammed Li (tthsqe12)
 Muzhen J (XInTheDark)
 Nathan Rugg (nmrugg)
-Nick Pelling (nickpelling)
+Nguyen Pham (nguyenpham)
 Nicklas Persson (NicklasPersson)
+Nick Pelling (nickpelling)
 Niklas Fiekas (niklasf)
 Nikolay Kostov (NikolayIT)
-Nguyen Pham (nguyenpham)
 Norman Schmidt (FireFather)
 notruck
 Ofek Shochat (OfekShochat, ghostway)
@@ -170,6 +168,7 @@ Peter Schneider (pschneider1968)
 Peter Zsifkovits (CoffeeOne)
 PikaCat
 Praveen Kumar Tummala (praveentml)
+Prokop Randáček (ProkopRandacek)
 Rahul Dsilva (silversolver1)
 Ralph Stößer (Ralph Stoesser)
 Raminder Singh
@@ -178,8 +177,8 @@ Reuven Peleg (R-Peleg)
 Richard Lloyd (Richard-Lloyd)
 Rodrigo Exterckötter Tjäder
 Rodrigo Roim (roim)
-Ron Britvich (Britvich)
 Ronald de Man (syzygy1, syzygy)
+Ron Britvich (Britvich)
 rqs
 Rui Coelho (ruicoelhopedro)
 Ryan Schmitt
@@ -200,13 +199,12 @@ Stefano Di Martino (StefanoD)
 Steinar Gunderson (sesse)
 Stéphane Nicolet (snicolet)
 Syine Mineta (MinetaS)
-Prokop Randáček (ProkopRandacek)
 Thanar2
 thaspel
 theo77186
+Tomasz Sobczyk (Sopel97)
 Tom Truscott
 Tom Vijlbrief (tomtor)
-Tomasz Sobczyk (Sopel97)
 Torsten Franz (torfranz, tfranzer)
 Torsten Hellwig (Torom)
 Tracey Emery (basepr1me)
@@ -217,8 +215,7 @@ Vince Negri (cuddlestmonkey)
 xefoci7612
 zz4032
 
-
 # Additionally, we acknowledge the authors and maintainers of fishtest,
-# an amazing and essential framework for the development of Stockfish!
+# an amazing and essential framework for Stockfish development!
 #
 # https://github.com/glinscott/fishtest/blob/master/AUTHORS
