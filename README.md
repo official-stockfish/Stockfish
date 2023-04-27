@@ -36,10 +36,10 @@ the Glaurung 2.1 chess engine, to analyze chess positions and also to
 compute optimal chess moves with it.
 
 Stockfish **does not include** a graphical user interface (GUI), which
-are required to display a chessboard and to input chess moves. They are
-developed independently from Stockfish and are available on different
-websites. **Read the documentation for your GUI of choice** to get basic
-information about how to use Stockfish with it.
+is required to display a chessboard and to input chess moves. All such
+GUIs are developed independently from Stockfish and are available on
+different websites. **Read the documentation for your GUI of choice**
+to get basic information about how to use Stockfish with it.
 
 Also, see the [Stockfish documentation][wiki-usage-link] for more
 information about how to correctly use the chess engine.
