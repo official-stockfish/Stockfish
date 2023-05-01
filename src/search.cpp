@@ -720,15 +720,9 @@ namespace {
     }
     else if (ss->ttHit)
     {
-        // Never assume anything about values stored in TT
         ss->staticEval = eval = tte->eval();
-        if (eval == VALUE_NONE)
-            ss->staticEval = eval = evaluate(pos);
-        else
-        {
-            if (PvNode)
-               Eval::NNUE::hint_common_parent_position(pos);
-        }
+        if (PvNode)
+            Eval::NNUE::hint_common_parent_position(pos);
 
         // ttValue can be used as a better position evaluation (~7 Elo)
         if (    ttValue != VALUE_NONE
@@ -1472,9 +1466,7 @@ moves_loop: // When in check, search starts here
     {
         if (ss->ttHit)
         {
-            // Never assume anything about values stored in TT
-            if ((ss->staticEval = bestValue = tte->eval()) == VALUE_NONE)
-                ss->staticEval = bestValue = evaluate(pos);
+            ss->staticEval = bestValue = tte->eval();
 
             // ttValue can be used as a better position evaluation (~13 Elo)
             if (    ttValue != VALUE_NONE
