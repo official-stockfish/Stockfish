@@ -126,18 +126,18 @@ void MovePicker::score() {
                    +     (*captureHistory)[pos.moved_piece(m)][to_sq(m)][type_of(pos.piece_on(to_sq(m)))]) / 16;
 
       else if constexpr (Type == QUIETS)
-          m.value =  2 * (*mainHistory)[pos.side_to_move()][from_to(m)]
-                   + 2 * (*continuationHistory[0])[pos.moved_piece(m)][to_sq(m)]
-                   +     (*continuationHistory[1])[pos.moved_piece(m)][to_sq(m)]
-                   +     (*continuationHistory[3])[pos.moved_piece(m)][to_sq(m)]
-                   +     (*continuationHistory[5])[pos.moved_piece(m)][to_sq(m)]
+          m.value =  2 * (*mainHistory)[pos.side_to_move()][from_to(m)]              //(~8 Elo)
+                   + 2 * (*continuationHistory[0])[pos.moved_piece(m)][to_sq(m)]     //(~3 Elo)
+                   +     (*continuationHistory[1])[pos.moved_piece(m)][to_sq(m)]     //(~1 Elo)
+                   +     (*continuationHistory[3])[pos.moved_piece(m)][to_sq(m)]     //(~0 Elo)
+                   +     (*continuationHistory[5])[pos.moved_piece(m)][to_sq(m)]     //(~1 Elo)
                    +     (threatenedPieces & from_sq(m) ?
                            (type_of(pos.moved_piece(m)) == QUEEN && !(to_sq(m) & threatenedByRook)  ? 50000
                           : type_of(pos.moved_piece(m)) == ROOK  && !(to_sq(m) & threatenedByMinor) ? 25000
                           :                                         !(to_sq(m) & threatenedByPawn)  ? 15000
                           :                                                                           0)
-                          :                                                                           0)
-                   +     bool(pos.check_squares(type_of(pos.moved_piece(m))) & to_sq(m)) * 16384;
+                          :                                                                           0)        //(~1 Elo)
+                   +     bool(pos.check_squares(type_of(pos.moved_piece(m))) & to_sq(m)) * 16384;               //(~2 Elo)
       else // Type == EVASIONS
       {
           if (pos.capture_stage(m))
