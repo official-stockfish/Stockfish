@@ -724,11 +724,8 @@ namespace {
         ss->staticEval = eval = tte->eval();
         if (eval == VALUE_NONE)
             ss->staticEval = eval = evaluate(pos);
-        else
-        {
-            if (PvNode)
-               Eval::NNUE::hint_common_parent_position(pos);
-        }
+        else if (PvNode)
+            Eval::NNUE::hint_common_parent_position(pos);
 
         // ttValue can be used as a better position evaluation (~7 Elo)
         if (    ttValue != VALUE_NONE
