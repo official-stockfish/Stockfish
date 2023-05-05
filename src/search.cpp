@@ -1310,7 +1310,13 @@ moves_loop: // When in check, search starts here
               if (PvNode && !rootNode) // Update pv even in fail-high case
                   update_pv(ss->pv, move, (ss+1)->pv);
 
-              if (PvNode && value < beta) // Update alpha! Always alpha < beta
+              if (value >= beta)
+              {
+                  ss->cutoffCnt += 1 + !ttMove;
+                  assert(value >= beta); // Fail high
+                  break;
+              }
+              else
               {
                   // Reduce other moves if we have found at least one score improvement (~1 Elo)
                   if (   depth > 1
@@ -1319,13 +1325,7 @@ moves_loop: // When in check, search starts here
                       depth -= 1;
 
                   assert(depth > 0);
-                  alpha = value;
-              }
-              else
-              {
-                  ss->cutoffCnt += 1 + !ttMove;
-                  assert(value >= beta); // Fail high
-                  break;
+                  alpha = value; // Update alpha! Always alpha < beta
               }
           }
       }
