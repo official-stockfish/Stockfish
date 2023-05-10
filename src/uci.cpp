@@ -71,8 +71,13 @@ namespace {
     pos.set(fen, Options["UCI_Chess960"], &states->back(), Threads.main());
 
     // Parse the move list, if any
-    while (is >> token && (m = UCI::to_move(pos, token)) != MOVE_NONE)
+    while (is >> token)
     {
+        m = UCI::to_move(pos, token);
+
+        if (m == MOVE_NONE)
+          UCI::critical_error("Invalid moves. Illegal move.");
+
         states->emplace_back();
         pos.do_move(m, states->back());
     }
