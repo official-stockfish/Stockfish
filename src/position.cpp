@@ -227,6 +227,26 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
         UCI::critical_error(std::string("Invalid FEN. Invalid piece: ") + std::string(1, token));
   }
 
+  int pawns_w = count<PAWN>(WHITE);
+  int pawns_b = count<PAWN>(BLACK);
+  if (pawns_w > 8)
+    UCI::critical_error("Invalid FEN. WHITE has more than 8 pawns.");
+  if (pawns_b > 8)
+    UCI::critical_error("Invalid FEN. BLACK has more than 8 pawns.");
+
+  int additional_knights_w = std::max((int)count<KNIGHT>(WHITE) - 2, 0);
+  int additional_knights_b = std::max((int)count<KNIGHT>(BLACK) - 2, 0);
+  int additional_bishops_w = std::max((int)count<BISHOP>(WHITE) - 2, 0);
+  int additional_bishops_b = std::max((int)count<BISHOP>(BLACK) - 2, 0);
+  int additional_rooks_w = std::max((int)count<ROOK>(WHITE) - 2, 0);
+  int additional_rooks_b = std::max((int)count<ROOK>(BLACK) - 2, 0);
+  int additional_queens_w = std::max((int)count<QUEEN>(WHITE) - 1, 0);
+  int additional_queens_b = std::max((int)count<QUEEN>(BLACK) - 1, 0);
+  if (additional_knights_w + additional_bishops_w + additional_rooks_w + additional_queens_w > 8 - pawns_w)
+    UCI::critical_error("Invalid FEN. Invalid piece configuration for WHITE.");
+  if (additional_knights_b + additional_bishops_b + additional_rooks_b + additional_queens_b > 8 - pawns_b)
+    UCI::critical_error("Invalid FEN. Invalid piece configuration for BLACK.");
+
   // 2. Active color
   ss >> token;
   if (token != 'w' && token != 'b')
