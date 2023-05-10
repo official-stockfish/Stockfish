@@ -204,6 +204,8 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
 
   ss >> std::noskipws;
 
+  int piece_count = 0;
+
   // 1. Piece placement
   while ((ss >> token) && !isspace(token))
   {
@@ -214,13 +216,21 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
           sq += 2 * SOUTH;
 
       else if ((idx = PieceToChar.find(token)) != string::npos) {
+          if (!is_ok(sq))
+            UCI::critical_error("Invalid FEN. Tried to place a piece on square " + std::to_string(int(sq)));
+          if (++piece_count > 32)
+            UCI::critical_error("Invalid FEN. More than 32 pieces on the board.");
           put_piece(Piece(idx), sq);
           ++sq;
       }
+      else
+        UCI::critical_error(std::string("Invalid FEN. Invalid piece: ") + std::string(1, token));
   }
 
   // 2. Active color
   ss >> token;
+  if (token != 'w' && token != 'b')
+    UCI::critical_error(std::string("Invalid FEN. Invalid side to move: ") + std::string(1, token));
   sideToMove = (token == 'w' ? WHITE : BLACK);
   ss >> token;
 
@@ -245,29 +255,40 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
 
       else if (token >= 'A' && token <= 'H')
           rsq = make_square(File(token - 'A'), relative_rank(c, RANK_1));
+      else if (token == '-')
+        break;
 
       else
-          continue;
+          UCI::critical_error(std::string("Invalid FEN. Expected castling rights. Got: ") + std::string(1, token));
 
       set_castling_right(c, rsq);
   }
+
+  ss >> std::skipws;
 
   // 4. En passant square.
   // Ignore if square is invalid or not on side to move relative rank 6.
   bool enpassant = false;
 
-  if (   ((ss >> col) && (col >= 'a' && col <= 'h'))
-      && ((ss >> row) && (row == (sideToMove == WHITE ? '6' : '3'))))
+  if (((ss >> col) && col != '-') && (ss >> row))
   {
-      st->epSquare = make_square(File(col - 'a'), Rank(row - '1'));
+      if (   (col >= 'a' && col <= 'h')
+          && (row == (sideToMove == WHITE ? '6' : '3')))
+      {
+        st->epSquare = make_square(File(col - 'a'), Rank(row - '1'));
 
-      // En passant square will be considered only if
-      // a) side to move have a pawn threatening epSquare
-      // b) there is an enemy pawn in front of epSquare
-      // c) there is no piece on epSquare or behind epSquare
-      enpassant = pawn_attacks_bb(~sideToMove, st->epSquare) & pieces(sideToMove, PAWN)
-               && (pieces(~sideToMove, PAWN) & (st->epSquare + pawn_push(~sideToMove)))
-               && !(pieces() & (st->epSquare | (st->epSquare + pawn_push(sideToMove))));
+        // En passant square will be considered only if
+        // a) side to move have a pawn threatening epSquare
+        // b) there is an enemy pawn in front of epSquare
+        // c) there is no piece on epSquare or behind epSquare
+        enpassant = pawn_attacks_bb(~sideToMove, st->epSquare) & pieces(sideToMove, PAWN)
+                 && (pieces(~sideToMove, PAWN) & (st->epSquare + pawn_push(~sideToMove)))
+                 && !(pieces() & (st->epSquare | (st->epSquare + pawn_push(sideToMove))));
+      }
+      else
+      {
+        UCI::critical_error("Invalid FEN. Invalid en-passant square.");
+      }
   }
 
   if (!enpassant)
@@ -275,6 +296,9 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
 
   // 5-6. Halfmove clock and fullmove number
   ss >> std::skipws >> st->rule50 >> gamePly;
+
+  if (st->rule50 > 100)
+    UCI::critical_error("Invalid FEN. Rule50 counter outside of range, got: " + std::to_string(st->rule50));
 
   // Convert from fullmove starting from 1 to gamePly starting from 0,
   // handle also common incorrect FEN with fullmove = 0.
@@ -284,7 +308,8 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
   thisThread = th;
   set_state();
 
-  assert(pos_is_ok());
+  if (!pos_is_ok())
+    UCI::critical_error("Invalid FEN.");
 
   return *this;
 }
@@ -1292,42 +1317,65 @@ bool Position::pos_is_ok() const {
 
   constexpr bool Fast = true; // Quick (default) or full check?
 
+  if (   pieceCount[W_KING] != 1
+      || pieceCount[B_KING] != 1)
+  {
+      assert(0 && "pos_is_ok: King count");
+      return false;
+  }
+
   if (   (sideToMove != WHITE && sideToMove != BLACK)
       || piece_on(square<KING>(WHITE)) != W_KING
       || piece_on(square<KING>(BLACK)) != B_KING
       || (   ep_square() != SQ_NONE
           && relative_rank(sideToMove, ep_square()) != RANK_6))
+  {
       assert(0 && "pos_is_ok: Default");
+      return false;
+  }
 
   if (Fast)
       return true;
 
-  if (   pieceCount[W_KING] != 1
-      || pieceCount[B_KING] != 1
-      || attackers_to(square<KING>(~sideToMove)) & pieces(sideToMove))
+  if (attackers_to(square<KING>(~sideToMove)) & pieces(sideToMove))
+  {
       assert(0 && "pos_is_ok: Kings");
+      return false;
+  }
 
   if (   (pieces(PAWN) & (Rank1BB | Rank8BB))
       || pieceCount[W_PAWN] > 8
       || pieceCount[B_PAWN] > 8)
+  {
       assert(0 && "pos_is_ok: Pawns");
+      return false;
+  }
 
   if (   (pieces(WHITE) & pieces(BLACK))
       || (pieces(WHITE) | pieces(BLACK)) != pieces()
       || popcount(pieces(WHITE)) > 16
       || popcount(pieces(BLACK)) > 16)
+  {
       assert(0 && "pos_is_ok: Bitboards");
+      return false;
+  }
 
   for (PieceType p1 = PAWN; p1 <= KING; ++p1)
       for (PieceType p2 = PAWN; p2 <= KING; ++p2)
           if (p1 != p2 && (pieces(p1) & pieces(p2)))
+          {
               assert(0 && "pos_is_ok: Bitboards");
+              return false;
+          }
 
 
   for (Piece pc : Pieces)
       if (   pieceCount[pc] != popcount(pieces(color_of(pc), type_of(pc)))
           || pieceCount[pc] != std::count(board, board + SQUARE_NB, pc))
+      {
           assert(0 && "pos_is_ok: Pieces");
+          return false;
+      }
 
   for (Color c : { WHITE, BLACK })
       for (CastlingRights cr : {c & KING_SIDE, c & QUEEN_SIDE})
@@ -1338,7 +1386,10 @@ bool Position::pos_is_ok() const {
           if (   piece_on(castlingRookSquare[cr]) != make_piece(c, ROOK)
               || castlingRightsMask[castlingRookSquare[cr]] != cr
               || (castlingRightsMask[square<KING>(c)] & cr) != cr)
+          {
               assert(0 && "pos_is_ok: Castling");
+              return false;
+          }
       }
 
   return true;
