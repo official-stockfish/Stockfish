@@ -25,10 +25,9 @@
 
 namespace Stockfish::Pawns {
 
-/// Pawns::Entry contains various information about a pawn structure. A lookup
-/// to the pawn hash table (performed by calling the probe function) returns a
-/// pointer to an Entry object.
-
+// Pawns::Entry contains various information about a pawn structure. A lookup
+// to the pawn hash table (performed by calling the probe function) returns a
+// pointer to an Entry object.
 struct Entry {
 
   Score pawn_score(Color c) const { return scores[c]; }

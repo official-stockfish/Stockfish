@@ -32,18 +32,16 @@ namespace Stockfish {
 ThreadPool Threads; // Global object
 
 
-/// Thread constructor launches the thread and waits until it goes to sleep
-/// in idle_loop(). Note that 'searching' and 'exit' should be already set.
-
+// Thread constructor launches the thread and waits until it goes to sleep
+// in idle_loop(). Note that 'searching' and 'exit' should be already set.
 Thread::Thread(size_t n) : idx(n), stdThread(&Thread::idle_loop, this) {
 
   wait_for_search_finished();
 }
 
 
-/// Thread destructor wakes up the thread in idle_loop() and waits
-/// for its termination. Thread should be already waiting.
-
+// Thread destructor wakes up the thread in idle_loop() and waits
+// for its termination. Thread should be already waiting.
 Thread::~Thread() {
 
   assert(!searching);
@@ -54,8 +52,7 @@ Thread::~Thread() {
 }
 
 
-/// Thread::clear() reset histories, usually before a new game
-
+// Thread::clear() reset histories, usually before a new game
 void Thread::clear() {
 
   counterMoves.fill(MOVE_NONE);
@@ -70,8 +67,7 @@ void Thread::clear() {
 }
 
 
-/// Thread::start_searching() wakes up the thread that will start the search
-
+// Thread::start_searching() wakes up the thread that will start the search
 void Thread::start_searching() {
   mutex.lock();
   searching = true;
@@ -80,8 +76,8 @@ void Thread::start_searching() {
 }
 
 
-/// Thread::wait_for_search_finished() blocks on the condition variable
-/// until the thread has finished searching.
+// Thread::wait_for_search_finished() blocks on the condition variable
+// until the thread has finished searching.
 
 void Thread::wait_for_search_finished() {
 
@@ -90,9 +86,8 @@ void Thread::wait_for_search_finished() {
 }
 
 
-/// Thread::idle_loop() is where the thread is parked, blocked on the
-/// condition variable, when it has no work to do.
-
+// Thread::idle_loop() is where the thread is parked, blocked on the
+// condition variable, when it has no work to do.
 void Thread::idle_loop() {
 
   // If OS already scheduled us on a different group than 0 then don't overwrite
@@ -119,10 +114,9 @@ void Thread::idle_loop() {
   }
 }
 
-/// ThreadPool::set() creates/destroys threads to match the requested number.
-/// Created and launched threads will immediately go to sleep in idle_loop.
-/// Upon resizing, threads are recreated to allow for binding if necessary.
-
+// ThreadPool::set() creates/destroys threads to match the requested number.
+// Created and launched threads will immediately go to sleep in idle_loop.
+// Upon resizing, threads are recreated to allow for binding if necessary.
 void ThreadPool::set(size_t requested) {
 
   if (threads.size() > 0)   // destroy any existing thread(s)
@@ -150,8 +144,7 @@ void ThreadPool::set(size_t requested) {
 }
 
 
-/// ThreadPool::clear() sets threadPool data to initial values
-
+// ThreadPool::clear() sets threadPool data to initial values
 void ThreadPool::clear() {
 
   for (Thread* th : threads)
@@ -164,9 +157,8 @@ void ThreadPool::clear() {
 }
 
 
-/// ThreadPool::start_thinking() wakes up main thread waiting in idle_loop() and
-/// returns immediately. Main thread will wake up other threads and start the search.
-
+// ThreadPool::start_thinking() wakes up main thread waiting in idle_loop() and
+// returns immediately. Main thread will wake up other threads and start the search.
 void ThreadPool::start_thinking(Position& pos, StateListPtr& states,
                                 const Search::LimitsType& limits, bool ponderMode) {
 
@@ -247,8 +239,7 @@ Thread* ThreadPool::get_best_thread() const {
 }
 
 
-/// Start non-main threads
-
+// Start non-main threads
 void ThreadPool::start_searching() {
 
     for (Thread* th : threads)
@@ -257,8 +248,7 @@ void ThreadPool::start_searching() {
 }
 
 
-/// Wait for non-main threads
-
+// Wait for non-main threads
 void ThreadPool::wait_for_search_finished() const {
 
     for (Thread* th : threads)

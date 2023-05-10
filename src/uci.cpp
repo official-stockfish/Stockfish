@@ -227,12 +227,11 @@ namespace {
 } // namespace
 
 
-/// UCI::loop() waits for a command from the stdin, parses it and then calls the appropriate
-/// function. It also intercepts an end-of-file (EOF) indication from the stdin to ensure a
-/// graceful exit if the GUI dies unexpectedly. When called with some command-line arguments,
-/// like running 'bench', the function returns immediately after the command is executed.
-/// In addition to the UCI ones, some additional debug commands are also supported.
-
+// UCI::loop() waits for a command from the stdin, parses it and then calls the appropriate
+// function. It also intercepts an end-of-file (EOF) indication from the stdin to ensure a
+// graceful exit if the GUI dies unexpectedly. When called with some command-line arguments,
+// like running 'bench', the function returns immediately after the command is executed.
+// In addition to the UCI ones, some additional debug commands are also supported.
 void UCI::loop(int argc, char* argv[]) {
 
   Position pos;
@@ -304,12 +303,11 @@ void UCI::loop(int argc, char* argv[]) {
 }
 
 
-/// UCI::value() converts a Value to a string by adhering to the UCI protocol specification:
-///
-/// cp <x>    The score from the engine's point of view in centipawns.
-/// mate <y>  Mate in 'y' moves (not plies). If the engine is getting mated,
-///           uses negative values for 'y'.
-
+// UCI::value() converts a Value to a string by adhering to the UCI protocol specification:
+//
+// cp <x>    The score from the engine's point of view in centipawns.
+// mate <y>  Mate in 'y' moves (not plies). If the engine is getting mated,
+//           uses negative values for 'y'.
 string UCI::value(Value v) {
 
   assert(-VALUE_INFINITE < v && v < VALUE_INFINITE);
@@ -330,9 +328,8 @@ string UCI::value(Value v) {
 }
 
 
-/// UCI::wdl() reports the win-draw-loss (WDL) statistics given an evaluation
-/// and a game ply based on the data gathered for fishtest LTC games.
-
+// UCI::wdl() reports the win-draw-loss (WDL) statistics given an evaluation
+// and a game ply based on the data gathered for fishtest LTC games.
 string UCI::wdl(Value v, int ply) {
 
   stringstream ss;
@@ -346,18 +343,16 @@ string UCI::wdl(Value v, int ply) {
 }
 
 
-/// UCI::square() converts a Square to a string in algebraic notation (g1, a7, etc.)
-
+// UCI::square() converts a Square to a string in algebraic notation (g1, a7, etc.)
 std::string UCI::square(Square s) {
   return std::string{ char('a' + file_of(s)), char('1' + rank_of(s)) };
 }
 
 
-/// UCI::move() converts a Move to a string in coordinate notation (g1f3, a7a8q).
-/// The only special case is castling where the e1g1 notation is printed in
-/// standard chess mode and in e1h1 notation it is printed in Chess960 mode.
-/// Internally, all castling moves are always encoded as 'king captures rook'.
-
+// UCI::move() converts a Move to a string in coordinate notation (g1f3, a7a8q).
+// The only special case is castling where the e1g1 notation is printed in
+// standard chess mode and in e1h1 notation it is printed in Chess960 mode.
+// Internally, all castling moves are always encoded as 'king captures rook'.
 string UCI::move(Move m, bool chess960) {
 
   if (m == MOVE_NONE)
@@ -381,9 +376,8 @@ string UCI::move(Move m, bool chess960) {
 }
 
 
-/// UCI::to_move() converts a string representing a move in coordinate notation
-/// (g1f3, a7a8q) to the corresponding legal Move, if any.
-
+// UCI::to_move() converts a string representing a move in coordinate notation
+// (g1f3, a7a8q) to the corresponding legal Move, if any.
 Move UCI::to_move(const Position& pos, string& str) {
 
   if (str.length() == 5)

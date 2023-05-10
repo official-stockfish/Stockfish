@@ -24,17 +24,16 @@
 
 namespace Stockfish {
 
-/// TTEntry struct is the 10 bytes transposition table entry, defined as below:
-///
-/// key        16 bit
-/// depth       8 bit
-/// generation  5 bit
-/// pv node     1 bit
-/// bound type  2 bit
-/// move       16 bit
-/// value      16 bit
-/// eval value 16 bit
-
+// TTEntry struct is the 10 bytes transposition table entry, defined as below:
+//
+// key        16 bit
+// depth       8 bit
+// generation  5 bit
+// pv node     1 bit
+// bound type  2 bit
+// move       16 bit
+// value      16 bit
+// eval value 16 bit
 struct TTEntry {
 
   Move  move()  const { return (Move )move16; }
@@ -57,12 +56,11 @@ private:
 };
 
 
-/// A TranspositionTable is an array of Cluster, of size clusterCount. Each
-/// cluster consists of ClusterSize number of TTEntry. Each non-empty TTEntry
-/// contains information on exactly one position. The size of a Cluster should
-/// divide the size of a cache line for best performance, as the cacheline is
-/// prefetched when possible.
-
+// A TranspositionTable is an array of Cluster, of size clusterCount. Each
+// cluster consists of ClusterSize number of TTEntry. Each non-empty TTEntry
+// contains information on exactly one position. The size of a Cluster should
+// divide the size of a cache line for best performance, as the cacheline is
+// prefetched when possible.
 class TranspositionTable {
 
   static constexpr int ClusterSize = 3;

@@ -30,7 +30,7 @@
 
 namespace Stockfish {
 
-/// EndgameCode lists all supported endgame functions by corresponding codes
+// EndgameCode lists all supported endgame functions by corresponding codes
 
 enum EndgameCode {
 
@@ -60,14 +60,14 @@ enum EndgameCode {
 };
 
 
-/// Endgame functions can be of two types depending on whether they return a
-/// Value or a ScaleFactor.
+// Endgame functions can be of two types depending on whether they return a
+// Value or a ScaleFactor.
 
 template<EndgameCode E> using
 eg_type = typename std::conditional<(E < SCALING_FUNCTIONS), Value, ScaleFactor>::type;
 
 
-/// Base and derived functors for endgame evaluation and scaling functions
+// Base and derived functors for endgame evaluation and scaling functions
 
 template<typename T>
 struct EndgameBase {
@@ -88,9 +88,9 @@ struct Endgame : public EndgameBase<T> {
 };
 
 
-/// The Endgames namespace handles the pointers to endgame evaluation and scaling
-/// base objects in two std::map. We use polymorphism to invoke the actual
-/// endgame function by calling its virtual operator().
+// The Endgames namespace handles the pointers to endgame evaluation and scaling
+// base objects in two std::map. We use polymorphism to invoke the actual
+// endgame function by calling its virtual operator().
 
 namespace Endgames {
 

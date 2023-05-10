@@ -72,14 +72,14 @@ namespace Stockfish {
 
 namespace {
 
-/// Version number or dev.
+// Version number or dev.
 constexpr string_view version = "dev";
 
-/// Our fancy logging facility. The trick here is to replace cin.rdbuf() and
-/// cout.rdbuf() with two Tie objects that tie cin and cout to a file stream. We
-/// can toggle the logging of std::cout and std:cin at runtime whilst preserving
-/// usual I/O functionality, all without changing a single line of code!
-/// Idea from http://groups.google.com/group/comp.lang.c++/msg/1d941c0f26ea0d81
+// Our fancy logging facility. The trick here is to replace cin.rdbuf() and
+// cout.rdbuf() with two Tie objects that tie cin and cout to a file stream. We
+// can toggle the logging of std::cout and std:cin at runtime whilst preserving
+// usual I/O functionality, all without changing a single line of code!
+// Idea from http://groups.google.com/group/comp.lang.c++/msg/1d941c0f26ea0d81
 
 struct Tie: public streambuf { // MSVC requires split streambuf for cin and cout
 
@@ -142,15 +142,15 @@ public:
 } // namespace
 
 
-/// engine_info() returns the full name of the current Stockfish version.
-/// For local dev compiles we try to append the commit sha and commit date
-/// from git if that fails only the local compilation date is set and "nogit" is specified:
-/// Stockfish dev-YYYYMMDD-SHA
-/// or
-/// Stockfish dev-YYYYMMDD-nogit
-///
-/// For releases (non dev builds) we only include the version number:
-/// Stockfish version
+// engine_info() returns the full name of the current Stockfish version.
+// For local dev compiles we try to append the commit sha and commit date
+// from git if that fails only the local compilation date is set and "nogit" is specified:
+// Stockfish dev-YYYYMMDD-SHA
+// or
+// Stockfish dev-YYYYMMDD-nogit
+//
+// For releases (non dev builds) we only include the version number:
+// Stockfish version
 
 string engine_info(bool to_uci) {
   stringstream ss;
@@ -186,19 +186,19 @@ string engine_info(bool to_uci) {
 }
 
 
-/// compiler_info() returns a string trying to describe the compiler we use
+// compiler_info() returns a string trying to describe the compiler we use
 
 std::string compiler_info() {
 
   #define make_version_string(major, minor, patch) stringify(major) "." stringify(minor) "." stringify(patch)
 
-/// Predefined macros hell:
-///
-/// __GNUC__           Compiler is gcc, Clang or Intel on Linux
-/// __INTEL_COMPILER   Compiler is Intel
-/// _MSC_VER           Compiler is MSVC or Intel on Windows
-/// _WIN32             Building on Windows (any)
-/// _WIN64             Building on Windows 64 bit
+// Predefined macros hell:
+//
+// __GNUC__           Compiler is gcc, Clang or Intel on Linux
+// __INTEL_COMPILER   Compiler is Intel
+// _MSC_VER           Compiler is MSVC or Intel on Windows
+// _WIN32             Building on Windows (any)
+// _WIN64             Building on Windows 64 bit
 
   std::string compiler = "\nCompiled by ";
 
@@ -300,7 +300,7 @@ std::string compiler_info() {
 }
 
 
-/// Debug functions used mainly to collect run-time statistics
+// Debug functions used mainly to collect run-time statistics
 constexpr int MaxDebugSlots = 32;
 
 namespace {
@@ -392,9 +392,8 @@ void dbg_print() {
 }
 
 
-/// Used to serialize access to std::cout to avoid multiple threads writing at
-/// the same time.
-
+// Used to serialize access to std::cout to avoid multiple threads writing at
+// the same time.
 std::ostream& operator<<(std::ostream& os, SyncCout sc) {
 
   static std::mutex m;
@@ -409,13 +408,13 @@ std::ostream& operator<<(std::ostream& os, SyncCout sc) {
 }
 
 
-/// Trampoline helper to avoid moving Logger to misc.h
+// Trampoline helper to avoid moving Logger to misc.h
 void start_logger(const std::string& fname) { Logger::start(fname); }
 
 
-/// prefetch() preloads the given address in L1/L2 cache. This is a non-blocking
-/// function that doesn't stall the CPU waiting for data to be loaded from memory,
-/// which can be quite slow.
+// prefetch() preloads the given address in L1/L2 cache. This is a non-blocking
+// function that doesn't stall the CPU waiting for data to be loaded from memory,
+// which can be quite slow.
 #ifdef NO_PREFETCH
 
 void prefetch(void*) {}
@@ -440,10 +439,9 @@ void prefetch(void* addr) {
 #endif
 
 
-/// std_aligned_alloc() is our wrapper for systems where the c++17 implementation
-/// does not guarantee the availability of aligned_alloc(). Memory allocated with
-/// std_aligned_alloc() must be freed with std_aligned_free().
-
+// std_aligned_alloc() is our wrapper for systems where the c++17 implementation
+// does not guarantee the availability of aligned_alloc(). Memory allocated with
+// std_aligned_alloc() must be freed with std_aligned_free().
 void* std_aligned_alloc(size_t alignment, size_t size) {
 
 #if defined(POSIXALIGNEDALLOC)
@@ -471,7 +469,7 @@ void std_aligned_free(void* ptr) {
 #endif
 }
 
-/// aligned_large_pages_alloc() will return suitably aligned memory, if possible using large pages.
+// aligned_large_pages_alloc() will return suitably aligned memory, if possible using large pages.
 
 #if defined(_WIN32)
 
@@ -580,7 +578,7 @@ void* aligned_large_pages_alloc(size_t allocSize) {
 #endif
 
 
-/// aligned_large_pages_free() will free the previously allocated ttmem
+// aligned_large_pages_free() will free the previously allocated ttmem
 
 #if defined(_WIN32)
 
@@ -613,10 +611,9 @@ void bindThisThread(size_t) {}
 
 #else
 
-/// best_node() retrieves logical processor information using Windows specific
-/// API and returns the best node id for the thread with index idx. Original
-/// code from Texel by Peter Österlund.
-
+// best_node() retrieves logical processor information using Windows specific
+// API and returns the best node id for the thread with index idx. Original
+// code from Texel by Peter Österlund.
 static int best_node(size_t idx) {
 
   int threads = 0;
@@ -685,8 +682,7 @@ static int best_node(size_t idx) {
 }
 
 
-/// bindThisThread() set the group affinity of the current thread
-
+// bindThisThread() set the group affinity of the current thread
 void bindThisThread(size_t idx) {
 
   // Use only local variables to be thread-safe

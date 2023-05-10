@@ -26,14 +26,14 @@
 
 namespace Stockfish::Material {
 
-/// Material::Entry contains various information about a material configuration.
-/// It contains a material imbalance evaluation, a function pointer to a special
-/// endgame evaluation function (which in most cases is nullptr, meaning that the
-/// standard evaluation function will be used), and scale factors.
-///
-/// The scale factors are used to scale the evaluation score up or down. For
-/// instance, in KRB vs KR endgames, the score is scaled down by a factor of 4,
-/// which will result in scores of absolute value less than one pawn.
+// Material::Entry contains various information about a material configuration.
+// It contains a material imbalance evaluation, a function pointer to a special
+// endgame evaluation function (which in most cases is nullptr, meaning that the
+// standard evaluation function will be used), and scale factors.
+//
+// The scale factors are used to scale the evaluation score up or down. For
+// instance, in KRB vs KR endgames, the score is scaled down by a factor of 4,
+// which will result in scores of absolute value less than one pawn.
 
 struct Entry {
 

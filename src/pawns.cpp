@@ -80,11 +80,10 @@ namespace {
   #undef V
 
 
-  /// evaluate() calculates a score for the static pawn structure of the given position.
-  /// We cannot use the location of pieces or king in this function, as the evaluation
-  /// of the pawn structure will be stored in a small cache for speed reasons, and will
-  /// be re-used even when the pieces have moved.
-
+  // evaluate() calculates a score for the static pawn structure of the given position.
+  // We cannot use the location of pieces or king in this function, as the evaluation
+  // of the pawn structure will be stored in a small cache for speed reasons, and will
+  // be re-used even when the pieces have moved.
   template<Color Us>
   Score evaluate(const Position& pos, Pawns::Entry* e) {
 
@@ -203,11 +202,10 @@ namespace {
 namespace Pawns {
 
 
-/// Pawns::probe() looks up the current position's pawns configuration in
-/// the pawns hash table. It returns a pointer to the Entry if the position
-/// is found. Otherwise a new Entry is computed and stored there, so we don't
-/// have to recompute all when the same pawns configuration occurs again.
-
+// Pawns::probe() looks up the current position's pawns configuration in
+// the pawns hash table. It returns a pointer to the Entry if the position
+// is found. Otherwise a new Entry is computed and stored there, so we don't
+// have to recompute all when the same pawns configuration occurs again.
 Entry* probe(const Position& pos) {
 
   Key key = pos.pawn_key();
@@ -225,9 +223,8 @@ Entry* probe(const Position& pos) {
 }
 
 
-/// Entry::evaluate_shelter() calculates the shelter bonus and the storm
-/// penalty for a king, looking at the king file and the two closest files.
-
+// Entry::evaluate_shelter() calculates the shelter bonus and the storm
+// penalty for a king, looking at the king file and the two closest files.
 template<Color Us>
 Score Entry::evaluate_shelter(const Position& pos, Square ksq) const {
 
@@ -264,8 +261,8 @@ Score Entry::evaluate_shelter(const Position& pos, Square ksq) const {
 }
 
 
-/// Entry::do_king_safety() calculates a bonus for king safety. It is called only
-/// when king square changes, which is about 20% of total king_safety() calls.
+// Entry::do_king_safety() calculates a bonus for king safety. It is called only
+// when king square changes, which is about 20% of total king_safety() calls.
 
 template<Color Us>
 Score Entry::do_king_safety(const Position& pos) {

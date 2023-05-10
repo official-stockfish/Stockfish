@@ -64,13 +64,13 @@ namespace Eval {
   bool useNNUE;
   string currentEvalFileName = "None";
 
-  /// NNUE::init() tries to load a NNUE network at startup time, or when the engine
-  /// receives a UCI command "setoption name EvalFile value nn-[a-z0-9]{12}.nnue"
-  /// The name of the NNUE network is always retrieved from the EvalFile option.
-  /// We search the given network in three locations: internally (the default
-  /// network may be embedded in the binary), in the active working directory and
-  /// in the engine directory. Distro packagers may define the DEFAULT_NNUE_DIRECTORY
-  /// variable to have the engine search in a special directory in their distro.
+  // NNUE::init() tries to load a NNUE network at startup time, or when the engine
+  // receives a UCI command "setoption name EvalFile value nn-[a-z0-9]{12}.nnue"
+  // The name of the NNUE network is always retrieved from the EvalFile option.
+  // We search the given network in three locations: internally (the default
+  // network may be embedded in the binary), in the active working directory and
+  // in the engine directory. Distro packagers may define the DEFAULT_NNUE_DIRECTORY
+  // variable to have the engine search in a special directory in their distro.
 
   void NNUE::init() {
 
@@ -116,7 +116,7 @@ namespace Eval {
         }
   }
 
-  /// NNUE::verify() verifies that the last net used was loaded successfully
+  // NNUE::verify() verifies that the last net used was loaded successfully
   void NNUE::verify() {
 
     string eval_file = string(Options["EvalFile"]);
@@ -528,7 +528,6 @@ namespace {
 
 
   // Evaluation::king() assigns bonuses and penalties to a king of a given color
-
   template<Tracing T> template<Color Us>
   Score Evaluation<T>::king() const {
 
@@ -629,7 +628,6 @@ namespace {
 
   // Evaluation::threats() assigns bonuses according to the types of the
   // attacking and the attacked pieces.
-
   template<Tracing T> template<Color Us>
   Score Evaluation<T>::threats() const {
 
@@ -729,7 +727,6 @@ namespace {
 
   // Evaluation::passed() evaluates the passed pawns and candidate passed
   // pawns of the given color.
-
   template<Tracing T> template<Color Us>
   Score Evaluation<T>::passed() const {
 
@@ -825,7 +822,6 @@ namespace {
   // play in the opening. It is based on the number of safe squares on the four central files
   // on ranks 2 to 4. Completely safe squares behind a friendly pawn are counted twice.
   // Finally, the space bonus is multiplied by a weight which decreases according to occupancy.
-
   template<Tracing T> template<Color Us>
   Score Evaluation<T>::space() const {
 
@@ -865,7 +861,6 @@ namespace {
   // Evaluation::winnable() adjusts the midgame and endgame score components, based on
   // the known attacking/defending status of the players. The final value is derived
   // by interpolation from the midgame and endgame values.
-
   template<Tracing T>
   Value Evaluation<T>::winnable(Score score) const {
 
@@ -963,7 +958,6 @@ namespace {
   // Evaluation::value() is the main function of the class. It computes the various
   // parts of the evaluation and returns the value of the position from the point
   // of view of the side to move.
-
   template<Tracing T>
   Value Evaluation<T>::value() {
 
@@ -1044,9 +1038,8 @@ make_v:
 } // namespace Eval
 
 
-/// evaluate() is the evaluator for the outer world. It returns a static
-/// evaluation of the position from the point of view of the side to move.
-
+// evaluate() is the evaluator for the outer world. It returns a static
+// evaluation of the position from the point of view of the side to move.
 Value Eval::evaluate(const Position& pos) {
 
   assert(!pos.checkers());
@@ -1089,11 +1082,10 @@ Value Eval::evaluate(const Position& pos) {
   return v;
 }
 
-/// trace() is like evaluate(), but instead of returning a value, it returns
-/// a string (suitable for outputting to stdout) that contains the detailed
-/// descriptions and values of each evaluation term. Useful for debugging.
-/// Trace scores are from white's point of view
-
+// trace() is like evaluate(), but instead of returning a value, it returns
+// a string (suitable for outputting to stdout) that contains the detailed
+// descriptions and values of each evaluation term. Useful for debugging.
+// Trace scores are from white's point of view
 std::string Eval::trace(Position& pos) {
 
   if (pos.checkers())
