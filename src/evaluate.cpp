@@ -16,6 +16,8 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "evaluate.h"
+
 #include <algorithm>
 #include <cassert>
 #include <cstdlib>
@@ -28,7 +30,6 @@
 #include <vector>
 
 #include "bitboard.h"
-#include "evaluate.h"
 #include "material.h"
 #include "misc.h"
 #include "pawns.h"

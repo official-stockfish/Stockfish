@@ -24,6 +24,7 @@
 #include <iostream>
 #include <algorithm>
 #include <type_traits>
+
 #include "../nnue_common.h"
 #include "simd.h"
 

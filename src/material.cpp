@@ -16,10 +16,11 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "material.h"
+
 #include <cassert>
 #include <cstring>   // For std::memset
 
-#include "material.h"
 #include "thread.h"
 
 using namespace std;

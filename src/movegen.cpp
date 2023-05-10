@@ -16,9 +16,10 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "movegen.h"
+
 #include <cassert>
 
-#include "movegen.h"
 #include "position.h"
 
 namespace Stockfish {

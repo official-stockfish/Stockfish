@@ -16,11 +16,12 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "pawns.h"
+
 #include <algorithm>
 #include <cassert>
 
 #include "bitboard.h"
-#include "pawns.h"
 #include "position.h"
 #include "thread.h"
 

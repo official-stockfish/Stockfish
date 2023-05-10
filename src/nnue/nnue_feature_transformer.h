@@ -24,6 +24,8 @@
 #include "nnue_common.h"
 #include "nnue_architecture.h"
 
+#include "../position.h"
+
 #include <cstring> // std::memset()
 #include <utility> // std::pair
 
