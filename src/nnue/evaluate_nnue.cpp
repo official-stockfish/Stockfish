@@ -141,6 +141,19 @@ namespace Stockfish::Eval::NNUE {
         featureTransformer->hint_common_access(pos);
   }
 
+  // align_ptr_up() : get the first aligned element of an array.
+  // ptr must point to an array of size at least `sizeof(T) * N + alignment` bytes,
+  // where N is the number of elements in the array.
+  template <uintptr_t Alignment, typename T>
+  T* align_ptr_up(T* ptr)
+  {
+    static_assert(alignof(T) < Alignment);
+
+    const uintptr_t ptrint = reinterpret_cast<uintptr_t>(reinterpret_cast<char*>(ptr));
+    return reinterpret_cast<T*>(reinterpret_cast<char*>((ptrint + (Alignment - 1)) / Alignment * Alignment));
+  }
+
+
   // Evaluation function. Perform differential calculation.
   Value evaluate(const Position& pos, bool adjusted, int* complexity) {
 

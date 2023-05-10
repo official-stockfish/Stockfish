@@ -32,6 +32,20 @@ namespace Stockfish {
 
 namespace Stockfish::Eval::NNUE::Features {
 
+  template <typename T, std::size_t MaxSize>
+  class ValueList {
+
+  public:
+    std::size_t size() const { return size_; }
+    void push_back(const T& value) { values_[size_++] = value; }
+    const T* begin() const { return values_; }
+    const T* end() const { return values_ + size_; }
+
+  private:
+    T values_[MaxSize];
+    std::size_t size_ = 0;
+  };
+
   // Feature HalfKAv2_hm: Combination of the position of own king
   // and the position of pieces. Position mirrored such that king always on e..h files.
   class HalfKAv2_hm {

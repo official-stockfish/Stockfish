@@ -70,39 +70,9 @@ std::ostream& operator<<(std::ostream&, SyncCout);
 #define sync_cout std::cout << IO_LOCK
 #define sync_endl std::endl << IO_UNLOCK
 
-
-// align_ptr_up() : get the first aligned element of an array.
-// ptr must point to an array of size at least `sizeof(T) * N + alignment` bytes,
-// where N is the number of elements in the array.
-template <uintptr_t Alignment, typename T>
-T* align_ptr_up(T* ptr)
-{
-  static_assert(alignof(T) < Alignment);
-
-  const uintptr_t ptrint = reinterpret_cast<uintptr_t>(reinterpret_cast<char*>(ptr));
-  return reinterpret_cast<T*>(reinterpret_cast<char*>((ptrint + (Alignment - 1)) / Alignment * Alignment));
-}
-
-
 // IsLittleEndian : true if and only if the binary is compiled on a little endian machine
 static inline const union { uint32_t i; char c[4]; } Le = { 0x01020304 };
 static inline const bool IsLittleEndian = (Le.c[0] == 4);
-
-
-template <typename T, std::size_t MaxSize>
-class ValueList {
-
-public:
-  std::size_t size() const { return size_; }
-  void push_back(const T& value) { values_[size_++] = value; }
-  const T* begin() const { return values_; }
-  const T* end() const { return values_ + size_; }
-
-private:
-  T values_[MaxSize];
-  std::size_t size_ = 0;
-};
-
 
 /// xorshift64star Pseudo-Random Number Generator
 /// This class is based on original code written and dedicated
@@ -162,13 +132,6 @@ inline uint64_t mul_hi64(uint64_t a, uint64_t b) {
 
 namespace WinProcGroup {
   void bindThisThread(size_t idx);
-}
-
-namespace CommandLine {
-  void init(int argc, char* argv[]);
-
-  extern std::string binaryDirectory;  // path of the executable directory
-  extern std::string workingDirectory; // path of the working directory
 }
 
 } // namespace Stockfish

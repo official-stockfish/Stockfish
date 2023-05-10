@@ -87,6 +87,13 @@ Move to_move(const Position& pos, std::string& str);
 
 extern UCI::OptionsMap Options;
 
+namespace CommandLine {
+  void init(int argc, char* argv[]);
+
+  extern std::string binaryDirectory;  // path of the executable directory
+  extern std::string workingDirectory; // path of the working directory
+}
+
 } // namespace Stockfish
 
 #endif // #ifndef UCI_H_INCLUDED
