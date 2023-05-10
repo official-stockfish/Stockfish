@@ -395,4 +395,12 @@ Move UCI::to_move(const Position& pos, string& str) {
   return MOVE_NONE;
 }
 
+void UCI::critical_error(const std::string& message) {
+  // Ideally we would report the error and continue, but UCI does not define such a situation nor
+  // gives any guarantees as to the program's behaviour for the user to rely on,
+  // so the safest option is to terminate.
+  sync_cout << "info string CRITICAL ERROR: " << message << '\n' << sync_endl;
+  std::terminate();
+}
+
 } // namespace Stockfish
