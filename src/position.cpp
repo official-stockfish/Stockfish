@@ -282,9 +282,13 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
 
   chess960 = isChess960;
   thisThread = th;
-  set_state();
 
-  assert(pos_is_ok());
+  if (!pos_is_ok()) {
+      assert(false);
+      exit(EXIT_FAILURE);
+  } else {
+      set_state();
+  }
 
   return *this;
 }
@@ -1285,49 +1289,54 @@ void Position::flip() {
 
 
 /// Position::pos_is_ok() performs some consistency checks for the
-/// position object and raises an asserts if something wrong is detected.
-/// This is meant to be helpful when debugging.
+/// position object and returns false if something wrong is detected.
 
 bool Position::pos_is_ok() const {
-
-  constexpr bool Fast = true; // Quick (default) or full check?
-
   if (   (sideToMove != WHITE && sideToMove != BLACK)
       || piece_on(square<KING>(WHITE)) != W_KING
       || piece_on(square<KING>(BLACK)) != B_KING
       || (   ep_square() != SQ_NONE
-          && relative_rank(sideToMove, ep_square()) != RANK_6))
+          && relative_rank(sideToMove, ep_square()) != RANK_6)) {
       assert(0 && "pos_is_ok: Default");
-
-  if (Fast)
-      return true;
+      return false;
+  }
 
   if (   pieceCount[W_KING] != 1
       || pieceCount[B_KING] != 1
-      || attackers_to(square<KING>(~sideToMove)) & pieces(sideToMove))
+      || attackers_to(square<KING>(~sideToMove)) & pieces(sideToMove)) {
       assert(0 && "pos_is_ok: Kings");
+      return false;
+  }
 
   if (   (pieces(PAWN) & (Rank1BB | Rank8BB))
       || pieceCount[W_PAWN] > 8
-      || pieceCount[B_PAWN] > 8)
+      || pieceCount[B_PAWN] > 8) {
       assert(0 && "pos_is_ok: Pawns");
+        return false;
+  }
 
   if (   (pieces(WHITE) & pieces(BLACK))
       || (pieces(WHITE) | pieces(BLACK)) != pieces()
       || popcount(pieces(WHITE)) > 16
-      || popcount(pieces(BLACK)) > 16)
+      || popcount(pieces(BLACK)) > 16) {
       assert(0 && "pos_is_ok: Bitboards");
+        return false;
+  }
 
   for (PieceType p1 = PAWN; p1 <= KING; ++p1)
       for (PieceType p2 = PAWN; p2 <= KING; ++p2)
-          if (p1 != p2 && (pieces(p1) & pieces(p2)))
+          if (p1 != p2 && (pieces(p1) & pieces(p2))) {
               assert(0 && "pos_is_ok: Bitboards");
+              return false;
+          }
 
 
   for (Piece pc : Pieces)
       if (   pieceCount[pc] != popcount(pieces(color_of(pc), type_of(pc)))
-          || pieceCount[pc] != std::count(board, board + SQUARE_NB, pc))
+          || pieceCount[pc] != std::count(board, board + SQUARE_NB, pc)) {
           assert(0 && "pos_is_ok: Pieces");
+          return false;
+      }
 
   for (Color c : { WHITE, BLACK })
       for (CastlingRights cr : {c & KING_SIDE, c & QUEEN_SIDE})
@@ -1337,8 +1346,10 @@ bool Position::pos_is_ok() const {
 
           if (   piece_on(castlingRookSquare[cr]) != make_piece(c, ROOK)
               || castlingRightsMask[castlingRookSquare[cr]] != cr
-              || (castlingRightsMask[square<KING>(c)] & cr) != cr)
+              || (castlingRightsMask[square<KING>(c)] & cr) != cr) {
               assert(0 && "pos_is_ok: Castling");
+              return false;
+          }
       }
 
   return true;
