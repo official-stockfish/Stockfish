@@ -73,10 +73,13 @@ namespace {
     // Parse the move list, if any
     while (is >> token)
     {
+        if (pos.state()->rule50 > 99)
+            UCI::critical_error("Invalid move. Draw by rule50 reached.");
+
         m = UCI::to_move(pos, token);
 
         if (m == MOVE_NONE)
-          UCI::critical_error("Invalid moves. Illegal move.");
+            UCI::critical_error("Invalid moves. Illegal move.");
 
         states->emplace_back();
         pos.do_move(m, states->back());
