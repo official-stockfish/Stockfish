@@ -378,11 +378,17 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
 
   // Technically, positions with rule50==100 are correct, just no moves can be made further.
   // However, due to human stuff, we want to *support* rule50 up to 150.
-  if (st->rule50 < 0 || st->rule50 > 150)
+  constexpr int max_rule50_fullmoves = 75;
+  if (st->rule50 < 0 || st->rule50 > max_rule50_fullmoves * 2)
       UCI::critical_error("Invalid FEN. Rule50 counter outside of range, got: " + std::to_string(st->rule50));
 
   // https://chess.stackexchange.com/questions/4113/longest-chess-game-possible-maximum-moves
-  if (gamePly < 1 || gamePly > 5900)
+  constexpr int max_moves =   max_rule50_fullmoves - 1
+                            + 32 * max_rule50_fullmoves
+                            + 6 * 8 * max_rule50_fullmoves
+                            + 7 * max_rule50_fullmoves
+                            + 30 * max_rule50_fullmoves;
+  if (gamePly < 1 || gamePly > max_moves)
       UCI::critical_error("Invalid FEN. Full-move counter outside of range, got: " + std::to_string(gamePly));
 
   // Convert from fullmove starting from 1 to gamePly starting from 0,
