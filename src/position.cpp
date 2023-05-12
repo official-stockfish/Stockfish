@@ -377,7 +377,8 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
   }
 
   // Technically, positions with rule50==100 are correct, just no moves can be made further.
-  if (st->rule50 < 0 || st->rule50 > 100)
+  // However, due to human stuff, we want to *support* rule50 up to 150.
+  if (st->rule50 < 0 || st->rule50 > 150)
       UCI::critical_error("Invalid FEN. Rule50 counter outside of range, got: " + std::to_string(st->rule50));
 
   // https://chess.stackexchange.com/questions/4113/longest-chess-game-possible-maximum-moves
