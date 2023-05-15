@@ -157,7 +157,7 @@ void Position::init() {
 /// This function is not very robust - make sure that input FENs are correct,
 /// this is assumed to be the responsibility of the GUI.
 
-Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Thread* th) {
+std::optional<PositionSetError> Position::set(const string& fenStr, bool isChess960, StateInfo* si, Thread* th) {
 /*
    A FEN string defines a particular position using only the ASCII character set.
 
@@ -210,7 +210,7 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
   for (;;)
   {
       if (!(ss >> token))
-          UCI::critical_error("Invalid FEN. Unexpected end of stream.");
+          return PositionSetError("Invalid FEN. Unexpected end of stream.");
 
       if (isspace(token))
           break;
@@ -219,49 +219,49 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
       {
           const int diff = token - '0';
           if (diff < 1 || diff > 8)
-              UCI::critical_error("Invalid FEN. Invalid number of squares to skip.");
+              return PositionSetError("Invalid FEN. Invalid number of squares to skip.");
           file = File(file + diff);
           if (file > FILE_NB)
-              UCI::critical_error("Invalid FEN. Invalid file reached.");
+              return PositionSetError("Invalid FEN. Invalid file reached.");
       }
       else if (token == '/')
       {
           if (file != FILE_NB)
-              UCI::critical_error("Invalid FEN. Trying to end rank when not at the end of it.");
+              return PositionSetError("Invalid FEN. Trying to end rank when not at the end of it.");
 
           --rank;
           file = FILE_A;
 
           if (rank < RANK_1)
-              UCI::critical_error("Invalid FEN. Invalid rank reached.");
+              return PositionSetError("Invalid FEN. Invalid rank reached.");
       }
       else
       {
           const size_t idx = PieceToChar.find(token);
           if (idx == string::npos)
-              UCI::critical_error(std::string("Invalid FEN. Invalid piece: ") + std::string(1, token));
+              return PositionSetError(std::string("Invalid FEN. Invalid piece: ") + std::string(1, token));
           if (++piece_count > 32)
-              UCI::critical_error("Invalid FEN. More than 32 pieces on the board.");
+              return PositionSetError("Invalid FEN. More than 32 pieces on the board.");
 
           const Square sq = make_square(file, rank);
           put_piece(Piece(idx), sq);
 
           ++file;
           if (file > FILE_NB)
-              UCI::critical_error("Invalid FEN. Invalid file reached.");
+              return PositionSetError("Invalid FEN. Invalid file reached.");
       }
   }
 
   if (rank != RANK_1 || file != FILE_NB)
-      UCI::critical_error("Invalid FEN. Board state encoding ended but cursor not at end.");
+      return PositionSetError("Invalid FEN. Board state encoding ended but cursor not at end.");
 
   {
       const int pawns_w = count<PAWN>(WHITE);
       const int pawns_b = count<PAWN>(BLACK);
       if (pawns_w > 8)
-          UCI::critical_error("Invalid FEN. WHITE has more than 8 pawns.");
+          return PositionSetError("Invalid FEN. WHITE has more than 8 pawns.");
       if (pawns_b > 8)
-          UCI::critical_error("Invalid FEN. BLACK has more than 8 pawns.");
+          return PositionSetError("Invalid FEN. BLACK has more than 8 pawns.");
 
       const int additional_knights_w = std::max((int)count<KNIGHT>(WHITE) - 2, 0);
       const int additional_knights_b = std::max((int)count<KNIGHT>(BLACK) - 2, 0);
@@ -272,18 +272,18 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
       const int additional_queens_w = std::max((int)count<QUEEN>(WHITE) - 1, 0);
       const int additional_queens_b = std::max((int)count<QUEEN>(BLACK) - 1, 0);
       if (additional_knights_w + additional_bishops_w + additional_rooks_w + additional_queens_w > 8 - pawns_w)
-          UCI::critical_error("Invalid FEN. Invalid piece configuration for WHITE.");
+          return PositionSetError("Invalid FEN. Invalid piece configuration for WHITE.");
       if (additional_knights_b + additional_bishops_b + additional_rooks_b + additional_queens_b > 8 - pawns_b)
-          UCI::critical_error("Invalid FEN. Invalid piece configuration for BLACK.");
+          return PositionSetError("Invalid FEN. Invalid piece configuration for BLACK.");
   }
 
   ss >> std::ws;
 
   // 2. Active color
   if (!(ss >> token))
-      UCI::critical_error("Invalid FEN. Unexpected end of stream.");
+      return PositionSetError("Invalid FEN. Unexpected end of stream.");
   if (token != 'w' && token != 'b')
-      UCI::critical_error(std::string("Invalid FEN. Invalid side to move: ") + std::string(1, token));
+      return PositionSetError(std::string("Invalid FEN. Invalid side to move: ") + std::string(1, token));
   sideToMove = (token == 'w' ? WHITE : BLACK);
 
   ss >> std::ws;
@@ -297,7 +297,7 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
   for (;;)
   {
       if (!(ss >> token))
-          UCI::critical_error("Invalid FEN. Unexpected end of stream.");
+          return PositionSetError("Invalid FEN. Unexpected end of stream.");
 
       if (isspace(token))
           break;
@@ -306,7 +306,7 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
           break;
 
       if (++num_castling_rights > 4)
-          UCI::critical_error("Invalid FEN. Maximum of 4 castling rights can be specified.");
+          return PositionSetError("Invalid FEN. Maximum of 4 castling rights can be specified.");
 
       Square rsq;
       Color c = islower(token) ? BLACK : WHITE;
@@ -321,10 +321,10 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
       else if (token >= 'A' && token <= 'H')
           rsq = make_square(File(token - 'A'), relative_rank(c, RANK_1));
       else
-          UCI::critical_error(std::string("Invalid FEN. Expected castling rights. Got: ") + std::string(1, token));
+          return PositionSetError(std::string("Invalid FEN. Expected castling rights. Got: ") + std::string(1, token));
 
       if (piece_on(rsq) != rook)
-          UCI::critical_error("Invalid FEN. Trying to set castling rights without required rook.");
+          return PositionSetError("Invalid FEN. Trying to set castling rights without required rook.");
 
       set_castling_right(c, rsq);
   }
@@ -335,11 +335,11 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
   bool enpassant = false;
   unsigned char col, row;
   if (!(ss >> col))
-      UCI::critical_error("Invalid FEN. Unexpected end of stream.");
+      return PositionSetError("Invalid FEN. Unexpected end of stream.");
   if (col != '-')
   {
       if (!(ss >> row))
-          UCI::critical_error("Invalid FEN. Unexpected end of stream.");
+          return PositionSetError("Invalid FEN. Unexpected end of stream.");
 
       if (   (col >= 'a' && col <= 'h')
           && (row == (sideToMove == WHITE ? '6' : '3')))
@@ -355,7 +355,7 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
                   && !(pieces() & (st->epSquare | (st->epSquare + pawn_push(sideToMove))));
       }
       else
-          UCI::critical_error("Invalid FEN. Invalid en-passant square.");
+          return PositionSetError("Invalid FEN. Invalid en-passant square.");
   }
 
   if (!enpassant)
@@ -368,7 +368,7 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
   if (ss >> st->rule50)
   {
       if (!(ss >> gamePly))
-          UCI::critical_error("Invalid FEN. Unexpected end of stream or invalid numbers.");
+          return PositionSetError("Invalid FEN. Unexpected end of stream or invalid numbers.");
   }
   else
   {
@@ -380,7 +380,7 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
   // However, due to human stuff, we want to *support* rule50 up to 150.
   constexpr int max_rule50_fullmoves = 75;
   if (st->rule50 < 0 || st->rule50 > max_rule50_fullmoves * 2)
-      UCI::critical_error("Invalid FEN. Rule50 counter outside of range, got: " + std::to_string(st->rule50));
+      return PositionSetError("Invalid FEN. Rule50 counter outside of range, got: " + std::to_string(st->rule50));
 
   // https://chess.stackexchange.com/questions/4113/longest-chess-game-possible-maximum-moves
   constexpr int max_moves =   max_rule50_fullmoves - 1
@@ -389,7 +389,7 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
                             + 7 * max_rule50_fullmoves
                             + 30 * max_rule50_fullmoves;
   if (gamePly < 1 || gamePly > max_moves)
-      UCI::critical_error("Invalid FEN. Full-move counter outside of range, got: " + std::to_string(gamePly));
+      return PositionSetError("Invalid FEN. Full-move counter outside of range, got: " + std::to_string(gamePly));
 
   // Convert from fullmove starting from 1 to gamePly starting from 0,
   // handle also common incorrect FEN with fullmove = 0.
@@ -399,11 +399,11 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
   thisThread = th;
 
   if (!pos_is_ok())
-      UCI::critical_error("Invalid FEN.");
+      return PositionSetError("Invalid FEN.");
 
   set_state();
 
-  return *this;
+  return std::nullopt;
 }
 
 
@@ -490,7 +490,7 @@ void Position::set_state() const {
 /// the given endgame code string like "KBPKN". It is mainly a helper to
 /// get the material key out of an endgame code.
 
-Position& Position::set(const string& code, Color c, StateInfo* si) {
+std::optional<PositionSetError> Position::set(const string& code, Color c, StateInfo* si) {
 
   assert(code[0] == 'K');
 

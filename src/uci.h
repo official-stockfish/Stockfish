@@ -83,7 +83,7 @@ std::string pv(const Position& pos, Depth depth);
 std::string wdl(Value v, int ply);
 Move to_move(const Position& pos, std::string& str);
 
-[[noreturn]] void critical_error(const std::string& message);
+[[noreturn]] void terminate_on_critical_error(const std::string& message);
 
 } // namespace UCI
 

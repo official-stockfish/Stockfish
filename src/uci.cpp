@@ -68,18 +68,20 @@ namespace {
         return;
 
     states = StateListPtr(new std::deque<StateInfo>(1)); // Drop the old state and create a new one
-    pos.set(fen, Options["UCI_Chess960"], &states->back(), Threads.main());
+    auto err = pos.set(fen, Options["UCI_Chess960"], &states->back(), Threads.main());
+    if (err)
+        UCI::terminate_on_critical_error(err->what());
 
     // Parse the move list, if any
     while (is >> token)
     {
         if (pos.state()->rule50 > 99)
-            UCI::critical_error("Invalid move. Draw by rule50 reached.");
+            UCI::terminate_on_critical_error("Invalid move. Draw by rule50 reached.");
 
         m = UCI::to_move(pos, token);
 
         if (m == MOVE_NONE)
-            UCI::critical_error("Invalid moves. Illegal move.");
+            UCI::terminate_on_critical_error("Invalid moves. Illegal move.");
 
         states->emplace_back();
         pos.do_move(m, states->back());
@@ -403,7 +405,7 @@ Move UCI::to_move(const Position& pos, string& str) {
   return MOVE_NONE;
 }
 
-void UCI::critical_error(const std::string& message) {
+void UCI::terminate_on_critical_error(const std::string& message) {
   // Ideally we would report the error and continue, but UCI does not define such a situation nor
   // gives any guarantees as to the program's behaviour for the user to rely on,
   // so the safest option is to terminate.

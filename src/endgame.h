@@ -109,9 +109,14 @@ namespace Endgames {
   template<EndgameCode E, typename T = eg_type<E>>
   void add(const std::string& code) {
 
+    Position pos;
     StateInfo st;
-    map<T>()[Position().set(code, WHITE, &st).material_key()] = Ptr<T>(new Endgame<E>(WHITE));
-    map<T>()[Position().set(code, BLACK, &st).material_key()] = Ptr<T>(new Endgame<E>(BLACK));
+
+    pos.set(code, WHITE, &st);
+    map<T>()[pos.material_key()] = Ptr<T>(new Endgame<E>(WHITE));
+
+    pos.set(code, BLACK, &st);
+    map<T>()[pos.material_key()] = Ptr<T>(new Endgame<E>(BLACK));
   }
 
   template<typename T>

@@ -363,7 +363,8 @@ TBTable<WDL>::TBTable(const std::string& code) : TBTable() {
     StateInfo st;
     Position pos;
 
-    key = pos.set(code, WHITE, &st).material_key();
+    pos.set(code, WHITE, &st);
+    key = pos.material_key();
     pieceCount = pos.count<ALL_PIECES>();
     hasPawns = pos.pieces(PAWN);
 
@@ -382,7 +383,8 @@ TBTable<WDL>::TBTable(const std::string& code) : TBTable() {
     pawnCount[0] = pos.count<PAWN>(c ? WHITE : BLACK);
     pawnCount[1] = pos.count<PAWN>(c ? BLACK : WHITE);
 
-    key2 = pos.set(code, BLACK, &st).material_key();
+    pos.set(code, BLACK, &st);
+    key2 = pos.material_key();
 }
 
 template<>

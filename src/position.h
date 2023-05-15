@@ -23,6 +23,8 @@
 #include <deque>
 #include <memory> // For std::unique_ptr
 #include <string>
+#include <stdexcept>
+#include <optional>
 
 #include "bitboard.h"
 #include "evaluate.h"
@@ -36,6 +38,10 @@ namespace Stockfish {
 /// StateInfo struct stores information needed to restore a Position object to
 /// its previous state when we retract a move. Whenever a move is made on the
 /// board (by calling Position::do_move), a StateInfo object must be passed.
+
+struct PositionSetError : std::runtime_error {
+  using std::runtime_error::runtime_error;
+};
 
 struct StateInfo {
 
@@ -86,8 +92,8 @@ public:
   Position& operator=(const Position&) = delete;
 
   // FEN string input/output
-  Position& set(const std::string& fenStr, bool isChess960, StateInfo* si, Thread* th);
-  Position& set(const std::string& code, Color c, StateInfo* si);
+  std::optional<PositionSetError> set(const std::string& fenStr, bool isChess960, StateInfo* si, Thread* th);
+  std::optional<PositionSetError> set(const std::string& code, Color c, StateInfo* si);
   std::string fen() const;
 
   // Position representation
