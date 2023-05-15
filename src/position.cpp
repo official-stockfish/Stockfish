@@ -154,8 +154,21 @@ void Position::init() {
 
 
 /// Position::set() initializes the position object with the given FEN string.
-/// This function is not very robust - make sure that input FENs are correct,
-/// this is assumed to be the responsibility of the GUI.
+/// Some validation is performed and positions that are invalid, or not supported,
+/// or potentially not supported, by Stockfish, will be rejected and an error returned.
+/// The state of the Position after an error is undefined. In such case Position::set must be
+/// called again with a valid position before the Position object can be used.
+///
+/// Stockfish informally requires that the position passed to Position::set is reachable from
+/// chess (or any chess960) starting position.
+/// Validation, however, will only reject the following kinds of positions (provided the FEN itself is valid in the first place):
+///   - any side has less or more than 1 king
+///   - opponent's king is in check
+///   - any side has more than 16 pieces
+///   - any side has more than 8 pawns
+///   - any side has material configuration that is unattainable through pawn promotions
+///   - rule50 counter is above 150 (75-move rule, though note that any non-mate position with rule50>100 is considered a draw)
+///   - fullmove counter exceeds the maximum theoretical game length
 
 std::optional<PositionSetError> Position::set(const string& fenStr, bool isChess960, StateInfo* si, Thread* th) {
 /*
@@ -187,10 +200,10 @@ std::optional<PositionSetError> Position::set(const string& fenStr, bool isChess
 
    5) Halfmove clock. This is the number of halfmoves since the last pawn advance
       or capture. This is used to determine if a draw can be claimed under the
-      fifty-move rule.
+      fifty-move rule. This field is optional. Default: 0.
 
    6) Fullmove number. The number of the full move. It starts at 1, and is
-      incremented after Black's move.
+      incremented after Black's move. This field is optional. Default: 1.
 */
 
   unsigned char token;
