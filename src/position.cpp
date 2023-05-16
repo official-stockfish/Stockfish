@@ -215,7 +215,7 @@ std::optional<PositionSetError> Position::set(const string& fenStr, bool isChess
 
   ss >> std::noskipws;
 
-  int piece_count = 0;
+  int numPieces = 0;
   File file = FILE_A;
   Rank rank = RANK_8;
 
@@ -253,7 +253,7 @@ std::optional<PositionSetError> Position::set(const string& fenStr, bool isChess
           const size_t idx = PieceToChar.find(token);
           if (idx == string::npos)
               return PositionSetError(std::string("Invalid FEN. Invalid piece: ") + std::string(1, token));
-          if (++piece_count > 32)
+          if (++numPieces > 32)
               return PositionSetError("Invalid FEN. More than 32 pieces on the board.");
 
           const Square sq = make_square(file, rank);
@@ -269,24 +269,24 @@ std::optional<PositionSetError> Position::set(const string& fenStr, bool isChess
       return PositionSetError("Invalid FEN. Board state encoding ended but cursor not at end.");
 
   {
-      const int pawns_w = count<PAWN>(WHITE);
-      const int pawns_b = count<PAWN>(BLACK);
-      if (pawns_w > 8)
+      const int wPawns = count<PAWN>(WHITE);
+      const int bPawns = count<PAWN>(BLACK);
+      if (wPawns > 8)
           return PositionSetError("Invalid FEN. WHITE has more than 8 pawns.");
-      if (pawns_b > 8)
+      if (bPawns > 8)
           return PositionSetError("Invalid FEN. BLACK has more than 8 pawns.");
 
-      const int additional_knights_w = std::max((int)count<KNIGHT>(WHITE) - 2, 0);
-      const int additional_knights_b = std::max((int)count<KNIGHT>(BLACK) - 2, 0);
-      const int additional_bishops_w = std::max((int)count<BISHOP>(WHITE) - 2, 0);
-      const int additional_bishops_b = std::max((int)count<BISHOP>(BLACK) - 2, 0);
-      const int additional_rooks_w = std::max((int)count<ROOK>(WHITE) - 2, 0);
-      const int additional_rooks_b = std::max((int)count<ROOK>(BLACK) - 2, 0);
-      const int additional_queens_w = std::max((int)count<QUEEN>(WHITE) - 1, 0);
-      const int additional_queens_b = std::max((int)count<QUEEN>(BLACK) - 1, 0);
-      if (additional_knights_w + additional_bishops_w + additional_rooks_w + additional_queens_w > 8 - pawns_w)
+      const int wAdditionalKnights = std::max((int)count<KNIGHT>(WHITE) - 2, 0);
+      const int bAdditionalKnights = std::max((int)count<KNIGHT>(BLACK) - 2, 0);
+      const int wAdditionalBishops = std::max((int)count<BISHOP>(WHITE) - 2, 0);
+      const int bAdditionalBishops = std::max((int)count<BISHOP>(BLACK) - 2, 0);
+      const int wAdditionalRooks = std::max((int)count<ROOK>(WHITE) - 2, 0);
+      const int bAdditionalRooks = std::max((int)count<ROOK>(BLACK) - 2, 0);
+      const int wAdditionalQueens = std::max((int)count<QUEEN>(WHITE) - 1, 0);
+      const int bAdditionalQueens = std::max((int)count<QUEEN>(BLACK) - 1, 0);
+      if (wAdditionalKnights + wAdditionalBishops + wAdditionalRooks + wAdditionalQueens > 8 - wPawns)
           return PositionSetError("Invalid FEN. Invalid piece configuration for WHITE.");
-      if (additional_knights_b + additional_bishops_b + additional_rooks_b + additional_queens_b > 8 - pawns_b)
+      if (bAdditionalKnights + bAdditionalBishops + bAdditionalRooks + bAdditionalQueens > 8 - bPawns)
           return PositionSetError("Invalid FEN. Invalid piece configuration for BLACK.");
   }
 
@@ -391,17 +391,17 @@ std::optional<PositionSetError> Position::set(const string& fenStr, bool isChess
 
   // Technically, positions with rule50==100 are correct, just no moves can be made further.
   // However, due to human stuff, we want to *support* rule50 up to 150.
-  constexpr int max_rule50_fullmoves = 75;
-  if (st->rule50 < 0 || st->rule50 > max_rule50_fullmoves * 2)
+  constexpr int MaxRule50Fullmoves = 75;
+  if (st->rule50 < 0 || st->rule50 > MaxRule50Fullmoves * 2)
       return PositionSetError("Invalid FEN. Rule50 counter outside of range, got: " + std::to_string(st->rule50));
 
   // https://chess.stackexchange.com/questions/4113/longest-chess-game-possible-maximum-moves
-  constexpr int max_moves =   max_rule50_fullmoves - 1
-                            + 32 * max_rule50_fullmoves
-                            + 6 * 8 * max_rule50_fullmoves
-                            + 7 * max_rule50_fullmoves
-                            + 30 * max_rule50_fullmoves;
-  if (gamePly < 1 || gamePly > max_moves)
+  constexpr int MaxMoves =   MaxRule50Fullmoves - 1
+                            + 32 * MaxRule50Fullmoves
+                            + 6 * 8 * MaxRule50Fullmoves
+                            + 7 * MaxRule50Fullmoves
+                            + 30 * MaxRule50Fullmoves;
+  if (gamePly < 1 || gamePly > MaxMoves)
       return PositionSetError("Invalid FEN. Full-move counter outside of range, got: " + std::to_string(gamePly));
 
   // Convert from fullmove starting from 1 to gamePly starting from 0,
