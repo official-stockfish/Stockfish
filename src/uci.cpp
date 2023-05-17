@@ -54,6 +54,8 @@ namespace {
     Move m;
     string token, fen;
 
+    const string fullCommand = is.str();
+
     is >> token;
 
     if (token == "startpos")
@@ -70,18 +72,18 @@ namespace {
     states = StateListPtr(new std::deque<StateInfo>(1)); // Drop the old state and create a new one
     auto err = pos.set(fen, Options["UCI_Chess960"], &states->back(), Threads.main());
     if (err)
-        UCI::terminate_on_critical_error(err->what());
+        UCI::terminate_on_critical_error(fullCommand, err->what());
 
     // Parse the move list, if any
     while (is >> token)
     {
         if (pos.state()->rule50 > 99)
-            UCI::terminate_on_critical_error("Invalid move. Draw by rule50 reached.");
+            UCI::terminate_on_critical_error(fullCommand, "Invalid move. Draw by rule50 reached.");
 
         m = UCI::to_move(pos, token);
 
         if (m == MOVE_NONE)
-            UCI::terminate_on_critical_error("Invalid moves. Illegal move.");
+            UCI::terminate_on_critical_error(fullCommand, "Invalid moves. Illegal move.");
 
         states->emplace_back();
         pos.do_move(m, states->back());
@@ -405,11 +407,11 @@ Move UCI::to_move(const Position& pos, string& str) {
   return MOVE_NONE;
 }
 
-void UCI::terminate_on_critical_error(const std::string& message) {
+void UCI::terminate_on_critical_error(const std::string& fullCommand, const std::string& message) {
   // Ideally we would report the error and continue, but UCI does not define such a situation nor
   // gives any guarantees as to the program's behaviour for the user to rely on,
   // so the safest option is to terminate.
-  sync_cout << "info string CRITICAL ERROR: " << message << '\n' << sync_endl;
+  sync_cout << "info string CRITICAL ERROR: Command `" << fullCommand << "` failed. Reason: " << message << '\n' << sync_endl;
   std::terminate();
 }
 
