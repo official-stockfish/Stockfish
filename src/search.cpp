@@ -1402,7 +1402,7 @@ moves_loop: // When in check, search starts here
   Value qsearch(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth) {
 
     static_assert(nodeType != Root);
-    constexpr bool PvNode = nodeType == PV;
+    constexpr bool PvNode = nodeType == PV && alpha != beta - 1;
 
     assert(alpha >= -VALUE_INFINITE && alpha < beta && beta <= VALUE_INFINITE);
     assert(PvNode || (alpha == beta - 1));
