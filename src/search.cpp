@@ -409,7 +409,7 @@ void Thread::search() {
               else
                   break;
 
-              delta += delta / 4 + 2;
+              delta += delta / 3;
 
               assert(alpha >= -VALUE_INFINITE && beta <= VALUE_INFINITE);
           }
@@ -615,10 +615,9 @@ namespace {
 
     // At non-PV nodes we check for an early TT cutoff
     if (  !PvNode
-        && ss->ttHit
         && !excludedMove
         && tte->depth() > depth - (tte->bound() == BOUND_EXACT)
-        && ttValue != VALUE_NONE // Possible in case of TT access race
+        && ttValue != VALUE_NONE // Possible in case of TT access race or if !ttHit
         && (tte->bound() & (ttValue >= beta ? BOUND_LOWER : BOUND_UPPER)))
     {
         // If ttMove is quiet, update move sorting heuristics on TT hit (~2 Elo)
@@ -835,8 +834,7 @@ namespace {
         // there and in further interactions with transposition table cutoff depth is set to depth - 3
         // because probCut search has depth set to depth - 4 but we also do a move before it
         // so effective depth is equal to depth - 3
-        && !(   ss->ttHit
-             && tte->depth() >= depth - 3
+        && !(   tte->depth() >= depth - 3
              && ttValue != VALUE_NONE
              && ttValue < probCutBeta))
     {
@@ -989,7 +987,7 @@ moves_loop: // When in check, search starts here
                   && lmrDepth < 7
                   && !ss->inCheck
                   && ss->staticEval + 207 + 223 * lmrDepth + PieceValue[EG][pos.piece_on(to_sq(move))]
-                   + captureHistory[movedPiece][to_sq(move)][type_of(pos.piece_on(to_sq(move)))] * 1078 / 7000 < alpha)
+                   + captureHistory[movedPiece][to_sq(move)][type_of(pos.piece_on(to_sq(move)))] / 7 < alpha)
                   continue;
 
               Bitboard occupied;
@@ -1037,7 +1035,7 @@ moves_loop: // When in check, search starts here
               lmrDepth = std::max(lmrDepth, 0);
 
               // Prune moves with negative SEE (~4 Elo)
-              if (!pos.see_ge(move, Value(-27 * lmrDepth * lmrDepth - 33 * lmrDepth / 2)))
+              if (!pos.see_ge(move, Value(-27 * lmrDepth * lmrDepth - 16 * lmrDepth)))
                   continue;
           }
       }
@@ -1317,10 +1315,11 @@ moves_loop: // When in check, search starts here
               else
               {
                   // Reduce other moves if we have found at least one score improvement (~1 Elo)
+                  // Reduce more for depth > 3 and depth < 12 (~1 Elo)
                   if (   depth > 1
                       && beta  <  14001
                       && value > -12754)
-                      depth -= 1;
+                      depth -= depth > 3 && depth < 12 ? 2 : 1;
 
                   assert(depth > 0);
                   alpha = value; // Update alpha! Always alpha < beta
@@ -1452,9 +1451,8 @@ moves_loop: // When in check, search starts here
 
     // At non-PV nodes we check for an early TT cutoff
     if (  !PvNode
-        && ss->ttHit
         && tte->depth() >= ttDepth
-        && ttValue != VALUE_NONE // Only in case of TT access race
+        && ttValue != VALUE_NONE // Only in case of TT access race or if !ttHit
         && (tte->bound() & (ttValue >= beta ? BOUND_LOWER : BOUND_UPPER)))
         return ttValue;
 
