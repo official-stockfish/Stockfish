@@ -615,10 +615,9 @@ namespace {
 
     // At non-PV nodes we check for an early TT cutoff
     if (  !PvNode
-        && ss->ttHit
         && !excludedMove
         && tte->depth() > depth - (tte->bound() == BOUND_EXACT)
-        && ttValue != VALUE_NONE // Possible in case of TT access race
+        && ttValue != VALUE_NONE // Possible in case of TT access race or if !ttHit
         && (tte->bound() & (ttValue >= beta ? BOUND_LOWER : BOUND_UPPER)))
     {
         // If ttMove is quiet, update move sorting heuristics on TT hit (~2 Elo)
@@ -835,8 +834,7 @@ namespace {
         // there and in further interactions with transposition table cutoff depth is set to depth - 3
         // because probCut search has depth set to depth - 4 but we also do a move before it
         // so effective depth is equal to depth - 3
-        && !(   ss->ttHit
-             && tte->depth() >= depth - 3
+        && !(   tte->depth() >= depth - 3
              && ttValue != VALUE_NONE
              && ttValue < probCutBeta))
     {
@@ -1453,9 +1451,8 @@ moves_loop: // When in check, search starts here
 
     // At non-PV nodes we check for an early TT cutoff
     if (  !PvNode
-        && ss->ttHit
         && tte->depth() >= ttDepth
-        && ttValue != VALUE_NONE // Only in case of TT access race
+        && ttValue != VALUE_NONE // Only in case of TT access race or if !ttHit
         && (tte->bound() & (ttValue >= beta ? BOUND_LOWER : BOUND_UPPER)))
         return ttValue;
 
