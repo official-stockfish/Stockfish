@@ -1648,8 +1648,8 @@ moves_loop: // When in check, search starts here
   // value_from_tt() is the inverse of value_to_tt(): it adjusts a mate or TB score
   // from the transposition table (which refers to the plies to mate/be mated from
   // current position) to "plies to mate/be mated (TB win/loss) from the root". However,
-  // for mate scores, to avoid potentially false mate scores related to the 50 moves rule
-  // and the graph history interaction, we return an optimal TB score instead.
+  // to avoid potentially false mate or TB scores related to the 50 moves rule
+  // and the graph history interaction, we return highest non-TB score instead.
 
   Value value_from_tt(Value v, int ply, int r50c) {
 
@@ -1658,10 +1658,10 @@ moves_loop: // When in check, search starts here
 
     if (v >= VALUE_TB_WIN_IN_MAX_PLY)  // TB win or better
     {
-        if (v >= VALUE_MATE_IN_MAX_PLY && VALUE_MATE - v > 99 - r50c)
+        if (v >= VALUE_MATE_IN_MAX_PLY && VALUE_MATE - v > 100 - r50c)
             return VALUE_TB_WIN_IN_MAX_PLY - 1; // do not return a potentially false mate score
 
-        if (VALUE_MATE_IN_MAX_PLY - v > 101 - r50c) //for mates 100th ply does not work; for TB win exactly 100 plies is good since at least a ply has to be a reset.
+        if (VALUE_MATE_IN_MAX_PLY - v > 101 - r50c)
                     return VALUE_TB_WIN_IN_MAX_PLY - 1; // do not return a potentially false TB score
 
         return v - ply;
@@ -1669,10 +1669,10 @@ moves_loop: // When in check, search starts here
 
     if (v <= VALUE_TB_LOSS_IN_MAX_PLY) // TB loss or worse
     {
-        if (v <= VALUE_MATED_IN_MAX_PLY && VALUE_MATE + v > 99 - r50c)
+        if (v <= VALUE_MATED_IN_MAX_PLY && VALUE_MATE + v > 100 - r50c)
             return VALUE_TB_LOSS_IN_MAX_PLY + 1; // do not return a potentially false mate score
 
-        if (VALUE_MATE_IN_MAX_PLY + v > 101 - r50c) //for mates 100th ply does not work; for TB win exactly 100 plies is good since at least a ply has to be a reset.
+        if (VALUE_MATE_IN_MAX_PLY + v > 101 - r50c)
                             return VALUE_TB_LOSS_IN_MAX_PLY + 1; // do not return a potentially false TB score
 
         return v + ply;
