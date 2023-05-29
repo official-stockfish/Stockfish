@@ -1662,7 +1662,7 @@ moves_loop: // When in check, search starts here
             return VALUE_TB_WIN_IN_MAX_PLY - 1; // do not return a potentially false mate score
 
         if (VALUE_MATE_IN_MAX_PLY - v > 101 - r50c)
-                    return VALUE_TB_WIN_IN_MAX_PLY - 1; // do not return a potentially false TB score
+            return VALUE_TB_WIN_IN_MAX_PLY - 1; // do not return a potentially false TB score
 
         return v - ply;
     }
@@ -1673,7 +1673,7 @@ moves_loop: // When in check, search starts here
             return VALUE_TB_LOSS_IN_MAX_PLY + 1; // do not return a potentially false mate score
 
         if (VALUE_MATE_IN_MAX_PLY + v > 101 - r50c)
-                            return VALUE_TB_LOSS_IN_MAX_PLY + 1; // do not return a potentially false TB score
+            return VALUE_TB_LOSS_IN_MAX_PLY + 1; // do not return a potentially false TB score
 
         return v + ply;
     }
