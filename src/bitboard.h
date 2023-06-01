@@ -25,13 +25,6 @@
 
 namespace Stockfish {
 
-namespace Bitbases {
-
-void init();
-bool probe(Square wksq, Square wpsq, Square bksq, Color us);
-
-} // namespace Stockfish::Bitbases
-
 namespace Bitboards {
 
 void init();
