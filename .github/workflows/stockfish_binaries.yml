@@ -100,6 +100,8 @@ jobs:
           cp "Top CPU Contributors.txt" stockfish/
           cp Copying.txt stockfish/
           cp AUTHORS stockfish/
+          cp CITATION.cff stockfish/
+          cp README.md stockfish/
           tar -cvf stockfish-$NAME-$BINARY.tar stockfish
 
       - name: Upload binaries
