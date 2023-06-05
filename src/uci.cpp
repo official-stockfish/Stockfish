@@ -225,36 +225,30 @@ namespace {
 
 } // namespace
 
+static StateListPtr states(new std::deque<StateInfo>(1));
+static Position pos;
 
-/// UCI::loop() waits for a command from the stdin, parses it and then calls the appropriate
-/// function. It also intercepts an end-of-file (EOF) indication from the stdin to ensure a
-/// graceful exit if the GUI dies unexpectedly. When called with some command-line arguments,
-/// like running 'bench', the function returns immediately after the command is executed.
-/// In addition to the UCI ones, some additional debug commands are also supported.
+void UCI::init_pos() {
+    pos.set(StartFEN, false, &states->back(), Threads.main());
+}
 
-void UCI::loop(int argc, char* argv[]) {
-
-  Position pos;
-  string token, cmd;
-  StateListPtr states(new std::deque<StateInfo>(1));
-
-  pos.set(StartFEN, false, &states->back(), Threads.main());
-
-  for (int i = 1; i < argc; ++i)
-      cmd += std::string(argv[i]) + " ";
-
-  do {
-      if (argc == 1 && !getline(cin, cmd)) // Wait for an input or an end-of-file (EOF) indication
-          cmd = "quit";
+/// UCI::execute parses the command and calls the appropriate function.
+/// In addition to the UCI ones, also some additional debug commands are supported.
+void UCI::execute(std::string cmd) {
+  {     // to minimize diff, in the future it will be indented back anyway
+      string token;
 
       istringstream is(cmd);
 
       token.clear(); // Avoid a stale if getline() returns nothing or a blank line
       is >> skipws >> token;
 
-      if (    token == "quit"
-          ||  token == "stop")
+      if (token == "quit") {
           Threads.stop = true;
+          Threads.set(0);
+      } else if (token == "stop") {
+          Threads.stop = true;
+      }
 
       // The GUI sends 'ponderhit' to tell that the user has played the expected move.
       // So, 'ponderhit' is sent if pondering was done on the same move that the user
@@ -299,7 +293,7 @@ void UCI::loop(int argc, char* argv[]) {
       else if (!token.empty() && token[0] != '#')
           sync_cout << "Unknown command: '" << cmd << "'. Type help for more information." << sync_endl;
 
-  } while (token != "quit" && argc == 1); // The command-line arguments are one-shot
+  }
 }
 
 
@@ -383,13 +377,13 @@ string UCI::move(Move m, bool chess960) {
 /// UCI::to_move() converts a string representing a move in coordinate notation
 /// (g1f3, a7a8q) to the corresponding legal Move, if any.
 
-Move UCI::to_move(const Position& pos, string& str) {
+Move UCI::to_move(const Position& _pos, string& str) {
 
   if (str.length() == 5)
       str[4] = char(tolower(str[4])); // The promotion piece character must be lowercased
 
-  for (const auto& m : MoveList<LEGAL>(pos))
-      if (str == UCI::move(m, pos.is_chess960()))
+  for (const auto& m : MoveList<LEGAL>(_pos))
+      if (str == UCI::move(m, _pos.is_chess960()))
           return m;
 
   return MOVE_NONE;

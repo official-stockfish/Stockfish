@@ -24,6 +24,9 @@
 
 #include "types.h"
 
+int sf_init();
+void unblock_readers();
+
 namespace Stockfish {
 
 class Position;
@@ -75,13 +78,14 @@ private:
 };
 
 void init(OptionsMap&);
-void loop(int argc, char* argv[]);
+void init_pos();
+void execute(std::string cmd);
 std::string value(Value v);
 std::string square(Square s);
 std::string move(Move m, bool chess960);
 std::string pv(const Position& pos, Depth depth);
 std::string wdl(Value v, int ply);
-Move to_move(const Position& pos, std::string& str);
+Move to_move(const Position& _pos, std::string& str);
 
 } // namespace UCI
 
