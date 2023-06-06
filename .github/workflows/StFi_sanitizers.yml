@@ -1,4 +1,4 @@
-name: Stockfish
+name: StFi_sanitizers
 on:
   workflow_call:
 jobs:

@@ -1,4 +1,4 @@
-name: Stockfish
+name: StFi_compile_test
 on:
   workflow_call:
 jobs:

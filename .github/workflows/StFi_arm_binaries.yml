@@ -1,4 +1,4 @@
-name: Stockfish
+name: StFi_arm_binaries
 on:
   workflow_call:
 jobs:
