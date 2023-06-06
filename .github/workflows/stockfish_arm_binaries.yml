@@ -115,6 +115,8 @@ jobs:
           cp "Top CPU Contributors.txt" stockfish/
           cp Copying.txt stockfish/
           cp AUTHORS stockfish/
+          cp CITATION.cff stockfish/
+          cp README.md stockfish/
           tar -cvf stockfish-android-$BINARY.tar stockfish
 
       - name: Upload binaries
@@ -122,3 +124,9 @@ jobs:
         with:
           name: stockfish-android-${{ matrix.binaries }}
           path: stockfish-android-${{ matrix.binaries }}.tar
+
+      - name: Release
+        if: startsWith(github.ref_name, 'sf_') && github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v1
+        with:
+          files: stockfish-android-${{ matrix.binaries }}.tar
