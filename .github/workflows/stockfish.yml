@@ -2,15 +2,15 @@ name: Stockfish
 on:
   push:
     tags:        
-      - '*' 
+      - 'Stern' 
     branches:
-      - master
-      - tools
-      - github_ci
+      - Xmaster
+      - Xtools
+      - Xgithub_ci
   pull_request:
     branches:
-      - master
-      - tools
+      - Xmaster
+      - Xtools
 jobs:
   Sanitizers:
     uses: ./.github/workflows/stockfish_sanitizers.yml
