@@ -210,7 +210,6 @@ namespace Stockfish::Eval::NNUE::Layers {
       const auto input32 = reinterpret_cast<const std::int32_t*>(input);
 
       find_nnz<NumChunks>(input32, nnz, count);
-      dbg_mean_of(count);
 
       const vec_t* biasvec = reinterpret_cast<const vec_t*>(biases);
       vec_t acc[NumRegs];
