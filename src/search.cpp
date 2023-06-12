@@ -822,7 +822,7 @@ namespace {
         }
     }
 
-    // Step 10. If the position doesn't a have ttMove, decrease depth by 2
+    // Step 10. If the position doesn't have a ttMove, decrease depth by 2
     // (or by 4 if the TT entry for the current position was hit and the stored depth is greater than or equal to the current depth).
     // Use qsearch if depth is equal or below zero (~9 Elo)
     if (    PvNode
@@ -1052,6 +1052,9 @@ moves_loop: // When in check, search starts here
           // then that move is singular and should be extended. To verify this we do
           // a reduced search on all the other moves but the ttMove and if the
           // result is lower than ttValue minus a margin, then we will extend the ttMove.
+          // Depth margin and singularBeta margin are known for having non-linear scaling.
+          // Their values are optimized to time controls of 180+1.8 and longer
+          // so changing them requires tests at this type of time controls.
           if (   !rootNode
               &&  depth >= 4 - (thisThread->completedDepth > 22) + 2 * (PvNode && tte->is_pv())
               &&  move == ttMove
