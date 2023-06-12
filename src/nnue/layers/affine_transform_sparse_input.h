@@ -36,7 +36,7 @@
 namespace Stockfish::Eval::NNUE::Layers {
 
 #if defined(USE_SSSE3)
-  const std::array<std::array<std::uint16_t, 8>, 256> lookup_indices = [](){
+  alignas(CacheLineSize) inline const std::array<std::array<std::uint16_t, 8>, 256> lookup_indices = [](){
       std::array<std::array<std::uint16_t, 8>, 256> v{};
       for (int i = 0; i < 256; ++i)
       {
@@ -52,7 +52,7 @@ namespace Stockfish::Eval::NNUE::Layers {
       }
       return v;
   }();
-  const std::array<unsigned, 256> lookup_count = [](){
+  alignas(CacheLineSize) inline const std::array<unsigned, 256> lookup_count = [](){
       std::array<unsigned, 256> v;
       for (int i = 0; i < 256; ++i)
       {
@@ -68,6 +68,7 @@ namespace Stockfish::Eval::NNUE::Layers {
       return v;
   }();
 
+  // Find indices of nonzero numbers in an int32_t array
   template<const IndexType InputDimensions>
   void find_nnz(const std::int32_t* input, std::uint16_t* out, IndexType& count_out) {
 #if defined (USE_AVX512)
@@ -80,25 +81,31 @@ namespace Stockfish::Eval::NNUE::Layers {
     using vec_t = __m128i;
     #define vec_nnz(a) _mm_movemask_ps((__m128)_mm_cmpgt_epi32(a, _mm_setzero_si128()))
 #endif
-    constexpr IndexType ChunksPerOutput = std::max<IndexType>(8 * 4 / sizeof(vec_t), 1);
-    constexpr IndexType OutputsPerChunk = std::max<IndexType>(sizeof(vec_t) / 4 / 8, 1);
+    constexpr IndexType InputSimdWidth = sizeof(vec_t) / sizeof(std::int32_t);
+    // The indices are always stored 8 at a time so if InputSimdWidth is less than 8 there needs to be
+    // multiple loads per store and if SimdWidth if more than 8 there need to be multiple stores per load
+    constexpr IndexType ChunkSize = std::max(8 / InputSimdWidth, InputSimdWidth / 8);
+    constexpr IndexType NumChunks = InputDimensions / ChunkSize;
+    constexpr IndexType InputsPerChunk = ChunkSize / InputSimdWidth;
+    constexpr IndexType OutputsPerChunk = ChunkSize / 8;
     const auto inputVector = reinterpret_cast<const vec_t*>(input);
     IndexType count = 0;
     __m128i base = _mm_set1_epi16(0);
     __m128i increment = _mm_set1_epi16(8);
-    for (IndexType i = 0; i < InputDimensions * 4 / sizeof(vec_t); i += ChunksPerOutput)
+    for (IndexType i = 0; i < NumChunks; ++i)
     {
       unsigned nnz = 0;
-      for (IndexType j = 0; j < ChunksPerOutput; ++j)
+      for (IndexType j = 0; j < InputsPerChunk; ++j)
       {
-        const vec_t inputChunk = inputVector[i + j];
-        nnz |= (unsigned)vec_nnz(inputChunk) << j * (8 / ChunksPerOutput);
+        const vec_t inputChunk = inputVector[i * InputsPerChunk + j];
+        nnz |= (unsigned)vec_nnz(inputChunk) << (j * InputSimdWidth);
       }
       for (IndexType j = 0; j < OutputsPerChunk; ++j)
       {
-        const auto index = (nnz >> (j * 8)) & 0xFF;
-        _mm_storeu_si128(reinterpret_cast<__m128i*>(out + count), _mm_loadu_si128(reinterpret_cast<const __m128i*>(&lookup_indices[index])) + base);
-        count += lookup_count[index];
+        const auto lookup = (nnz >> (j * 8)) & 0xFF;
+        const auto offsets = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&lookup_indices[lookup]));
+        _mm_storeu_si128(reinterpret_cast<__m128i*>(out + count), _mm_add_epi16(base, offsets));
+        count += lookup_count[lookup];
         base += increment;
       }
     }
@@ -204,7 +211,7 @@ namespace Stockfish::Eval::NNUE::Layers {
 
       constexpr IndexType NumChunks = ceil_to_multiple<IndexType>(InputDimensions, 8) / ChunkSize;
       constexpr IndexType NumRegs = OutputDimensions / OutputSimdWidth;
-      std::uint16_t nnz[NumChunks + 8];
+      std::uint16_t nnz[NumChunks];
       IndexType count;
 
       const auto input32 = reinterpret_cast<const std::int32_t*>(input);
