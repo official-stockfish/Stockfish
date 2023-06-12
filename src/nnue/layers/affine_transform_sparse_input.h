@@ -36,7 +36,7 @@
 namespace Stockfish::Eval::NNUE::Layers {
 
 #if defined(USE_SSSE3)
-  alignas(CacheLineSize) inline const std::array<std::array<std::uint16_t, 8>, 256> lookup_indices = [](){
+  alignas(CacheLineSize) static inline const std::array<std::array<std::uint16_t, 8>, 256> lookup_indices = [](){
       std::array<std::array<std::uint16_t, 8>, 256> v{};
       for (int i = 0; i < 256; ++i)
       {
@@ -52,7 +52,7 @@ namespace Stockfish::Eval::NNUE::Layers {
       }
       return v;
   }();
-  alignas(CacheLineSize) inline const std::array<unsigned, 256> lookup_count = [](){
+  alignas(CacheLineSize) static inline const std::array<unsigned, 256> lookup_count = [](){
       std::array<unsigned, 256> v;
       for (int i = 0; i < 256; ++i)
       {
@@ -82,18 +82,19 @@ namespace Stockfish::Eval::NNUE::Layers {
     #define vec_nnz(a) _mm_movemask_ps((__m128)_mm_cmpgt_epi32(a, _mm_setzero_si128()))
 #endif
     constexpr IndexType InputSimdWidth = sizeof(vec_t) / sizeof(std::int32_t);
-    // The indices are always stored 8 at a time so if InputSimdWidth is less than 8 there needs to be
-    // multiple loads per store and if SimdWidth if more than 8 there need to be multiple stores per load
-    constexpr IndexType ChunkSize = std::max(8 / InputSimdWidth, InputSimdWidth / 8);
+    // Inputs are processed InputSimdWidth at a time and outputs are processed 8 at a time so we process in chunks of max(InputSimdWidth, 8)
+    constexpr IndexType ChunkSize = std::max<IndexType>(InputSimdWidth, 8);
     constexpr IndexType NumChunks = InputDimensions / ChunkSize;
     constexpr IndexType InputsPerChunk = ChunkSize / InputSimdWidth;
     constexpr IndexType OutputsPerChunk = ChunkSize / 8;
+
     const auto inputVector = reinterpret_cast<const vec_t*>(input);
     IndexType count = 0;
     __m128i base = _mm_set1_epi16(0);
     __m128i increment = _mm_set1_epi16(8);
     for (IndexType i = 0; i < NumChunks; ++i)
     {
+      // bitmask of nonzero values in this chunk
       unsigned nnz = 0;
       for (IndexType j = 0; j < InputsPerChunk; ++j)
       {
@@ -216,6 +217,7 @@ namespace Stockfish::Eval::NNUE::Layers {
 
       const auto input32 = reinterpret_cast<const std::int32_t*>(input);
 
+      // Find indices of nonzero 32bit blocks
       find_nnz<NumChunks>(input32, nnz, count);
 
       const vec_t* biasvec = reinterpret_cast<const vec_t*>(biases);
