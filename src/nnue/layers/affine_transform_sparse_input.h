@@ -34,38 +34,60 @@
 */
 
 namespace Stockfish::Eval::NNUE::Layers {
+#if defined(__GNUC__)  // GCC, Clang, ICC
+
+  static inline IndexType lsb_(std::uint32_t b) {
+    assert(b);
+    return IndexType(__builtin_ctzl(b));
+  }
+
+#elif defined(_MSC_VER)  // MSVC
+
+  static inline IndexType lsb_(std::uint32_t b) {
+    assert(b);
+    unsigned long idx;
+    _BitScanForward(&idx, b);
+    return (IndexType) idx;
+  }
+
+#else  // Compiler is neither GCC nor MSVC compatible
+
+#error "Compiler not supported."
+
+#endif
+
 
 #if defined(USE_SSSE3)
   alignas(CacheLineSize) static inline const std::array<std::array<std::uint16_t, 8>, 256> lookup_indices = [](){
-      std::array<std::array<std::uint16_t, 8>, 256> v{};
-      for (int i = 0; i < 256; ++i)
+    std::array<std::array<std::uint16_t, 8>, 256> v{};
+    for (int i = 0; i < 256; ++i)
+    {
+      int j = i;
+      int k = 0;
+      while(j)
       {
-          int j = i;
-          int k = 0;
-          while(j)
-          {
-              const IndexType lsbIndex = __builtin_ctzl(std::uint32_t(j));
-              j &= j - 1;
-              v[i][k] = lsbIndex;
-              ++k;
-          }
+        const IndexType lsbIndex = lsb_(std::uint32_t(j));
+        j &= j - 1;
+        v[i][k] = lsbIndex;
+        ++k;
       }
-      return v;
+    }
+    return v;
   }();
   alignas(CacheLineSize) static inline const std::array<unsigned, 256> lookup_count = [](){
-      std::array<unsigned, 256> v;
-      for (int i = 0; i < 256; ++i)
+    std::array<unsigned, 256> v;
+    for (int i = 0; i < 256; ++i)
+    {
+      int j = i;
+      int k = 0;
+      while(j)
       {
-          int j = i;
-          int k = 0;
-          while(j)
-          {
-              j &= j - 1;
-              ++k;
-          }
-          v[i] = k;
+        j &= j - 1;
+        ++k;
       }
-      return v;
+      v[i] = k;
+    }
+    return v;
   }();
 
   // Find indices of nonzero numbers in an int32_t array
@@ -107,7 +129,7 @@ namespace Stockfish::Eval::NNUE::Layers {
         const auto offsets = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&lookup_indices[lookup]));
         _mm_storeu_si128(reinterpret_cast<__m128i*>(out + count), _mm_add_epi16(base, offsets));
         count += lookup_count[lookup];
-        base += increment;
+        base = _mm_add_epi16(base, increment);
       }
     }
     count_out = count;
