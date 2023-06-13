@@ -159,6 +159,48 @@ namespace Stockfish::Eval::NNUE {
               write_little_endian<IntType>(stream, values[i]);
   }
 
+  template <typename IntType>
+  inline IntType read_leb_128(std::istream& stream) {
+      static_assert(std::is_signed_v<IntType>, "Not implemented for unsigned types");
+      IntType result = 0, shift = 0;
+      while (true) {
+          std::uint8_t byte;
+          stream.read(reinterpret_cast<char*>(&byte), sizeof(std::uint8_t));
+          result |= (byte & 0x7f) << shift;
+          shift += 7;
+          if ((byte & 0x80) == 0) {
+              return (byte & 0x40) == 0 ? result : result | ~((1 << shift) - 1);
+          }
+      }
+  }
+
+  template <typename IntType>
+  inline void read_leb_128(std::istream& stream, IntType* out, std::size_t count) {
+      for (std::size_t i = 0; i < count; ++i)
+          out[i] = read_leb_128<IntType>(stream);
+  }
+
+  template <typename IntType>
+  inline void write_leb_128(std::ostream& stream, IntType value) {
+      static_assert(std::is_signed_v<IntType>, "Not implemented for unsigned types");
+      while (true) {
+          std::uint8_t byte = value & 0x7f;
+          value >>= 7;
+          if ((value == 0 && (byte & 0x40) == 0) || (value == -1 && (byte & 0x40) != 0)) {
+              stream.write(reinterpret_cast<char*>(&byte), sizeof(std::uint8_t));
+              return;
+          }
+          byte |= 0x80;
+          stream.write(reinterpret_cast<char*>(&byte), sizeof(std::uint8_t));
+      }
+  }
+
+  template <typename IntType>
+  inline void write_leb_128(std::ostream& stream, const IntType* values, std::size_t count) {
+        for (std::size_t i = 0; i < count; ++i)
+            write_leb_128<IntType>(stream, values[i]);
+  }
+
 }  // namespace Stockfish::Eval::NNUE
 
 #endif // #ifndef NNUE_COMMON_H_INCLUDED
