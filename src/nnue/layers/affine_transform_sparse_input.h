@@ -98,10 +98,10 @@ namespace Stockfish::Eval::NNUE::Layers {
     #define vec_nnz(a) _mm512_cmpgt_epi32_mask(a, _mm512_setzero_si512())
 #elif defined (USE_AVX2)
     using vec_t = __m256i;
-    #define vec_nnz(a) _mm256_movemask_ps((__m256)_mm256_cmpgt_epi32(a, _mm256_setzero_si256()))
+    #define vec_nnz(a) _mm256_movemask_ps(_mm256_castsi256_ps(_mm256_cmpgt_epi32(a, _mm256_setzero_si256())))
 #elif defined (USE_SSSE3)
     using vec_t = __m128i;
-    #define vec_nnz(a) _mm_movemask_ps((__m128)_mm_cmpgt_epi32(a, _mm_setzero_si128()))
+    #define vec_nnz(a) _mm_movemask_ps(_mm_castsi128_ps(_mm_cmpgt_epi32(a, _mm_setzero_si128())))
 #endif
     constexpr IndexType InputSimdWidth = sizeof(vec_t) / sizeof(std::int32_t);
     // Inputs are processed InputSimdWidth at a time and outputs are processed 8 at a time so we process in chunks of max(InputSimdWidth, 8)
