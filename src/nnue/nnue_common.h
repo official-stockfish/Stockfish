@@ -162,16 +162,17 @@ namespace Stockfish::Eval::NNUE {
   template <typename IntType>
   inline IntType read_leb_128(std::istream& stream) {
       static_assert(std::is_signed_v<IntType>, "Not implemented for unsigned types");
-      static_assert(sizeof(IntType) <= 8);
       IntType result = 0;
-      for (size_t i = 0; i <= sizeof(IntType); ++i) {
+      size_t shift = 0;
+      do {
           std::uint8_t byte;
           stream.read(reinterpret_cast<char*>(&byte), sizeof(std::uint8_t));
-          result |= (byte & 0x7f) << (i * 7);
+          result |= (byte & 0x7f) << shift;
+          shift += 7;
           if ((byte & 0x80) == 0) {
-              return i == sizeof(IntType) || (byte & 0x40) == 0 ? result : result | ~((1 << (i + 1) * 7) - 1);
+              return sizeof(IntType) * 8 <= shift || (byte & 0x40) == 0 ? result : result | ~((1 << shift) - 1);
           }
-      }
+      } while (shift < sizeof(IntType) * 8);
       assert(false);
       return 0;
   }
