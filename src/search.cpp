@@ -822,7 +822,7 @@ namespace {
         }
     }
 
-    // Step 10. If the position doesn't a have ttMove, decrease depth by 2
+    // Step 10. If the position doesn't have a ttMove, decrease depth by 2
     // (or by 4 if the TT entry for the current position was hit and the stored depth is greater than or equal to the current depth).
     // Use qsearch if depth is equal or below zero (~9 Elo)
     if (    PvNode
@@ -1052,6 +1052,9 @@ moves_loop: // When in check, search starts here
           // then that move is singular and should be extended. To verify this we do
           // a reduced search on all the other moves but the ttMove and if the
           // result is lower than ttValue minus a margin, then we will extend the ttMove.
+          // Depth margin and singularBeta margin are known for having non-linear scaling.
+          // Their values are optimized to time controls of 180+1.8 and longer
+          // so changing them requires tests at this type of time controls.
           if (   !rootNode
               &&  depth >= 4 - (thisThread->completedDepth > 22) + 2 * (PvNode && tte->is_pv())
               &&  move == ttMove
@@ -1461,7 +1464,6 @@ moves_loop: // When in check, search starts here
     // Step 4. Static evaluation of the position
     if (ss->inCheck)
     {
-        ss->staticEval = VALUE_NONE;
         bestValue = futilityBase = -VALUE_INFINITE;
     }
     else
@@ -1478,10 +1480,11 @@ moves_loop: // When in check, search starts here
                 bestValue = ttValue;
         }
         else
+        {
             // In case of null move search use previous static eval with a different sign
-            ss->staticEval = bestValue =
-            (ss-1)->currentMove != MOVE_NULL ? evaluate(pos)
-                                             : -(ss-1)->staticEval;
+            ss->staticEval = bestValue = (ss-1)->currentMove != MOVE_NULL ? evaluate(pos)
+                                                                          : -(ss-1)->staticEval;
+        }
 
         // Stand pat. Return immediately if static value is at least beta
         if (bestValue >= beta)
@@ -1520,97 +1523,98 @@ moves_loop: // When in check, search starts here
     // or a beta cutoff occurs.
     while ((move = mp.next_move()) != MOVE_NONE)
     {
-      assert(is_ok(move));
+        assert(is_ok(move));
 
-      // Check for legality
-      if (!pos.legal(move))
-          continue;
+        // Check for legality
+        if (!pos.legal(move))
+            continue;
 
-      givesCheck = pos.gives_check(move);
-      capture = pos.capture_stage(move);
+        givesCheck = pos.gives_check(move);
+        capture = pos.capture_stage(move);
 
-      moveCount++;
+        moveCount++;
 
-    // Step 6. Pruning.
-    if (bestValue > VALUE_TB_LOSS_IN_MAX_PLY)
-    {
-      // Futility pruning and moveCount pruning (~10 Elo)
-      if (   !givesCheck
-          &&  to_sq(move) != prevSq
-          &&  futilityBase > -VALUE_KNOWN_WIN
-          &&  type_of(move) != PROMOTION)
-      {
-          if (moveCount > 2)
-              continue;
+        // Step 6. Pruning.
+        if (bestValue > VALUE_TB_LOSS_IN_MAX_PLY)
+        {
+            // Futility pruning and moveCount pruning (~10 Elo)
+            if (   !givesCheck
+                &&  to_sq(move) != prevSq
+                &&  futilityBase > -VALUE_KNOWN_WIN
+                &&  type_of(move) != PROMOTION)
+            {
+                if (moveCount > 2)
+                    continue;
 
-          futilityValue = futilityBase + PieceValue[EG][pos.piece_on(to_sq(move))];
+                futilityValue = futilityBase + PieceValue[EG][pos.piece_on(to_sq(move))];
 
-          if (futilityValue <= alpha)
-          {
-              bestValue = std::max(bestValue, futilityValue);
-              continue;
-          }
+                if (futilityValue <= alpha)
+                {
+                    bestValue = std::max(bestValue, futilityValue);
+                    continue;
+                }
 
-          if (futilityBase <= alpha && !pos.see_ge(move, VALUE_ZERO + 1))
-          {
-              bestValue = std::max(bestValue, futilityBase);
-              continue;
-          }
-      }
+                if (futilityBase <= alpha && !pos.see_ge(move, VALUE_ZERO + 1))
+                {
+                    bestValue = std::max(bestValue, futilityBase);
+                    continue;
+                }
+        }
 
-      // We prune after 2nd quiet check evasion where being 'in check' is implicitly checked through the counter
-      // and being a 'quiet' apart from being a tt move is assumed after an increment because captures are pushed ahead.
-      if (quietCheckEvasions > 1)
-          break;
+        // We prune after the second quiet check evasion move, where being 'in check' is
+        // implicitly checked through the counter, and being a 'quiet move' apart from
+        // being a tt move is assumed after an increment because captures are pushed ahead.
+        if (quietCheckEvasions > 1)
+            break;
 
-      // Continuation history based pruning (~3 Elo)
-      if (   !capture
-          && (*contHist[0])[pos.moved_piece(move)][to_sq(move)] < 0
-          && (*contHist[1])[pos.moved_piece(move)][to_sq(move)] < 0)
-          continue;
+        // Continuation history based pruning (~3 Elo)
+        if (   !capture
+            && (*contHist[0])[pos.moved_piece(move)][to_sq(move)] < 0
+            && (*contHist[1])[pos.moved_piece(move)][to_sq(move)] < 0)
+            continue;
 
-      // Do not search moves with bad enough SEE values (~5 Elo)
-      if (!pos.see_ge(move, Value(-95)))
-          continue;
-    }
+        // Do not search moves with bad enough SEE values (~5 Elo)
+        if (!pos.see_ge(move, Value(-95)))
+            continue;
+        }
 
-      // Speculative prefetch as early as possible
-      prefetch(TT.first_entry(pos.key_after(move)));
+        // Speculative prefetch as early as possible
+        prefetch(TT.first_entry(pos.key_after(move)));
 
-      // Update the current move
-      ss->currentMove = move;
-      ss->continuationHistory = &thisThread->continuationHistory[ss->inCheck]
-                                                                [capture]
-                                                                [pos.moved_piece(move)]
-                                                                [to_sq(move)];
+        // Update the current move
+        ss->currentMove = move;
+        ss->continuationHistory = &thisThread->continuationHistory[ss->inCheck]
+                                                                  [capture]
+                                                                  [pos.moved_piece(move)]
+                                                                  [to_sq(move)];
 
-      quietCheckEvasions += !capture && ss->inCheck;
+        quietCheckEvasions += !capture && ss->inCheck;
 
-      // Step 7. Make and search the move
-      pos.do_move(move, st, givesCheck);
-      value = -qsearch<nodeType>(pos, ss+1, -beta, -alpha, depth - 1);
-      pos.undo_move(move);
+        // Step 7. Make and search the move
+        pos.do_move(move, st, givesCheck);
+        value = -qsearch<nodeType>(pos, ss+1, -beta, -alpha, depth - 1);
+        pos.undo_move(move);
 
-      assert(value > -VALUE_INFINITE && value < VALUE_INFINITE);
+        assert(value > -VALUE_INFINITE && value < VALUE_INFINITE);
 
-      // Step 8. Check for a new best move
-      if (value > bestValue)
-      {
-          bestValue = value;
+        // Step 8. Check for a new best move
+        if (value > bestValue)
+        {
+            bestValue = value;
 
-          if (value > alpha)
-          {
-              bestMove = move;
+            if (value > alpha)
+            {
+                bestMove = move;
 
-              if (PvNode) // Update pv even in fail-high case
-                  update_pv(ss->pv, move, (ss+1)->pv);
+                if (PvNode) // Update pv even in fail-high case
+                    update_pv(ss->pv, move, (ss+1)->pv);
 
-              if (PvNode && value < beta) // Update alpha here!
-                  alpha = value;
-              else
-                  break; // Fail high
-          }
-       }
+                if (PvNode && value < beta) // Update alpha here!
+                    alpha = value;
+                else
+                    break; // Fail high
+            }
+        }
     }
 
     // Step 9. Check for mate
