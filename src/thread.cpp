@@ -178,7 +178,7 @@ void ThreadPool::start_thinking(Position& pos, StateListPtr& states,
   Search::RootMoves rootMoves;
 
   for (const auto& m : MoveList<LEGAL>(pos))
-      if (   limits.searchmoves.empty()
+      if (limits.searchmoves.empty()
           || std::count(limits.searchmoves.begin(), limits.searchmoves.end(), m))
           rootMoves.emplace_back(m);
 
@@ -234,7 +234,7 @@ Thread* ThreadPool::get_best_thread() const {
             if (th->rootMoves[0].score > bestThread->rootMoves[0].score)
                 bestThread = th;
         }
-        else if (   th->rootMoves[0].score >= VALUE_TB_WIN_IN_MAX_PLY
+        else if (th->rootMoves[0].score >= VALUE_TB_WIN_IN_MAX_PLY
                  || (   th->rootMoves[0].score > VALUE_TB_LOSS_IN_MAX_PLY
                      && (   votes[th->rootMoves[0].pv[0]] > votes[bestThread->rootMoves[0].pv[0]]
                          || (   votes[th->rootMoves[0].pv[0]] == votes[bestThread->rootMoves[0].pv[0]]

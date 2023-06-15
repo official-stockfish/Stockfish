@@ -173,7 +173,7 @@ namespace {
 
         else if (!neighbours)
         {
-            if (     opposed
+            if (opposed
                 &&  (ourPawns & forward_file_bb(Them, s))
                 && !(theirPawns & adjacent_files_bb(s)))
                 score -= Doubled;

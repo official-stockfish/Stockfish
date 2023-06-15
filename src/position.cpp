@@ -76,7 +76,7 @@ std::ostream& operator<<(std::ostream& os, const Position& pos) {
   for (Bitboard b = pos.checkers(); b; )
       os << UCI::square(pop_lsb(b)) << " ";
 
-  if (    int(Tablebases::MaxCardinality) >= popcount(pos.pieces())
+  if (int(Tablebases::MaxCardinality) >= popcount(pos.pieces())
       && !pos.can_castle(ANY_CASTLING))
   {
       StateInfo st;
@@ -256,7 +256,7 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
   // Ignore if square is invalid or not on side to move relative rank 6.
   bool enpassant = false;
 
-  if (   ((ss >> col) && (col >= 'a' && col <= 'h'))
+  if (((ss >> col) && (col >= 'a' && col <= 'h'))
       && ((ss >> row) && (row == (sideToMove == WHITE ? '6' : '3'))))
   {
       st->epSquare = make_square(File(col - 'a'), Rank(row - '1'));
@@ -587,7 +587,7 @@ bool Position::pseudo_legal(const Move m) const {
       if ((Rank8BB | Rank1BB) & to)
           return false;
 
-      if (   !(pawn_attacks_bb(us, from) & pieces(~us) & to) // Not a capture
+      if (!(pawn_attacks_bb(us, from) & pieces(~us) & to) // Not a capture
           && !((from + pawn_push(us) == to) && empty(to))       // Not a single push
           && !(   (from + 2 * pawn_push(us) == to)              // Not a double push
                && (relative_rank(us, from) == RANK_2)
@@ -638,7 +638,7 @@ bool Position::gives_check(Move m) const {
       return true;
 
   // Is there a discovered check?
-  if (   (blockers_for_king(~sideToMove) & from)
+  if ((blockers_for_king(~sideToMove) & from)
       && !aligned(from, to, square<KING>(~sideToMove)))
       return true;
 
@@ -808,7 +808,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   if (type_of(pc) == PAWN)
   {
       // Set en passant square if the moved pawn can be captured
-      if (   (int(to) ^ int(from)) == 16
+      if ((int(to) ^ int(from)) == 16
           && (pawn_attacks_bb(us, to - pawn_push(us)) & pieces(them, PAWN)))
       {
           st->epSquare = to - pawn_push(us);
@@ -1220,7 +1220,7 @@ bool Position::has_game_cycle(int ply) const {
       stp = stp->previous->previous;
 
       Key moveKey = originalKey ^ stp->key;
-      if (   (j = H1(moveKey), cuckoo[j] == moveKey)
+      if ((j = H1(moveKey), cuckoo[j] == moveKey)
           || (j = H2(moveKey), cuckoo[j] == moveKey))
       {
           Move move = cuckooMove[j];
@@ -1292,7 +1292,7 @@ bool Position::pos_is_ok() const {
 
   constexpr bool Fast = true; // Quick (default) or full check?
 
-  if (   (sideToMove != WHITE && sideToMove != BLACK)
+  if ((sideToMove != WHITE && sideToMove != BLACK)
       || piece_on(square<KING>(WHITE)) != W_KING
       || piece_on(square<KING>(BLACK)) != B_KING
       || (   ep_square() != SQ_NONE
@@ -1302,17 +1302,17 @@ bool Position::pos_is_ok() const {
   if (Fast)
       return true;
 
-  if (   pieceCount[W_KING] != 1
+  if (pieceCount[W_KING] != 1
       || pieceCount[B_KING] != 1
       || attackers_to(square<KING>(~sideToMove)) & pieces(sideToMove))
       assert(0 && "pos_is_ok: Kings");
 
-  if (   (pieces(PAWN) & (Rank1BB | Rank8BB))
+  if ((pieces(PAWN) & (Rank1BB | Rank8BB))
       || pieceCount[W_PAWN] > 8
       || pieceCount[B_PAWN] > 8)
       assert(0 && "pos_is_ok: Pawns");
 
-  if (   (pieces(WHITE) & pieces(BLACK))
+  if ((pieces(WHITE) & pieces(BLACK))
       || (pieces(WHITE) | pieces(BLACK)) != pieces()
       || popcount(pieces(WHITE)) > 16
       || popcount(pieces(BLACK)) > 16)
@@ -1325,7 +1325,7 @@ bool Position::pos_is_ok() const {
 
 
   for (Piece pc : Pieces)
-      if (   pieceCount[pc] != popcount(pieces(color_of(pc), type_of(pc)))
+      if (pieceCount[pc] != popcount(pieces(color_of(pc), type_of(pc)))
           || pieceCount[pc] != std::count(board, board + SQUARE_NB, pc))
           assert(0 && "pos_is_ok: Pieces");
 
@@ -1335,7 +1335,7 @@ bool Position::pos_is_ok() const {
           if (!can_castle(cr))
               continue;
 
-          if (   piece_on(castlingRookSquare[cr]) != make_piece(c, ROOK)
+          if (piece_on(castlingRookSquare[cr]) != make_piece(c, ROOK)
               || castlingRightsMask[castlingRookSquare[cr]] != cr
               || (castlingRightsMask[square<KING>(c)] & cr) != cr)
               assert(0 && "pos_is_ok: Castling");

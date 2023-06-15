@@ -107,14 +107,14 @@ namespace {
     psq        = make_square(File((idx >> 13) & 0x3), Rank(RANK_7 - ((idx >> 15) & 0x7)));
 
     // Invalid if two pieces are on the same square or if a king can be captured
-    if (   distance(ksq[WHITE], ksq[BLACK]) <= 1
+    if (distance(ksq[WHITE], ksq[BLACK]) <= 1
         || ksq[WHITE] == psq
         || ksq[BLACK] == psq
         || (stm == WHITE && (pawn_attacks_bb(WHITE, psq) & ksq[BLACK])))
         result = INVALID;
 
     // Win if the pawn can be promoted without getting captured
-    else if (   stm == WHITE
+    else if (stm == WHITE
              && rank_of(psq) == RANK_7
              && ksq[WHITE] != psq + NORTH
              && (    distance(ksq[BLACK], psq + NORTH) > 1
@@ -122,7 +122,7 @@ namespace {
         result = WIN;
 
     // Draw if it is stalemate or the black king can capture the pawn
-    else if (   stm == BLACK
+    else if (stm == BLACK
              && (  !(attacks_bb<KING>(ksq[BLACK]) & ~(attacks_bb<KING>(ksq[WHITE]) | pawn_attacks_bb(WHITE, psq)))
                  || (attacks_bb<KING>(ksq[BLACK]) & ~attacks_bb<KING>(ksq[WHITE]) & psq)))
         result = DRAW;
@@ -158,7 +158,7 @@ namespace {
         if (rank_of(psq) < RANK_7)      // Single push
             r |= db[index(BLACK, ksq[BLACK], ksq[WHITE], psq + NORTH)];
 
-        if (   rank_of(psq) == RANK_2   // Double push
+        if (rank_of(psq) == RANK_2   // Double push
             && psq + NORTH != ksq[WHITE]
             && psq + NORTH != ksq[BLACK])
             r |= db[index(BLACK, ksq[BLACK], ksq[WHITE], psq + NORTH + NORTH)];

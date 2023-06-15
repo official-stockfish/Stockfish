@@ -252,8 +252,8 @@ void UCI::loop(int argc, char* argv[]) {
       token.clear(); // Avoid a stale if getline() returns nothing or a blank line
       is >> skipws >> token;
 
-      if (    token == "quit"
-          ||  token == "stop")
+      if (token == "quit"
+          || token == "stop")
           Threads.stop = true;
 
       // The GUI sends 'ponderhit' to tell that the user has played the expected move.

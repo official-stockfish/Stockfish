@@ -436,7 +436,7 @@ namespace {
                               & ~pe->pawn_attacks_span(Them);
             Bitboard targets = pos.pieces(Them) & ~pos.pieces(PAWN);
 
-            if (   Pt == KNIGHT
+            if (Pt == KNIGHT
                 && bb & s & ~CenterFiles // on a side outpost
                 && !(b & targets)        // no relevant attacks
                 && (!more_than_one(targets & (s & QueenSide ? QueenSide : KingSide))))
@@ -473,7 +473,7 @@ namespace {
                 // An important Chess960 pattern: a cornered bishop blocked by a friendly
                 // pawn diagonally in front of it is a very serious problem, especially
                 // when that pawn is also blocked.
-                if (   pos.is_chess960()
+                if (pos.is_chess960()
                     && (s == relative_square(Us, SQ_A1) || s == relative_square(Us, SQ_H1)))
                 {
                     Direction d = pawn_push(Us) + (file_of(s) == FILE_A ? EAST : WEST);
@@ -494,7 +494,7 @@ namespace {
             else
             {
                 // If our pawn on this file is blocked, increase penalty
-                if ( pos.pieces(Us, PAWN)
+                if (pos.pieces(Us, PAWN)
                    & shift<Down>(pos.pieces())
                    & file_bb(s))
                 {
@@ -913,7 +913,7 @@ namespace {
         {
             // For pure opposite colored bishops endgames use scale factor
             // based on the number of passed pawns of the strong side.
-            if (   pos.non_pawn_material(WHITE) == BishopValueMg
+            if (pos.non_pawn_material(WHITE) == BishopValueMg
                 && pos.non_pawn_material(BLACK) == BishopValueMg)
                 sf = 18 + 4 * popcount(pe->passed_pawns(strongSide));
             // For every other opposite colored bishops endgames use scale factor
@@ -924,7 +924,7 @@ namespace {
         // For rook endgames with strong side not having overwhelming pawn number advantage
         // and its pawns being on one flank and weak side protecting its pieces with a king
         // use lower scale factor.
-        else if (  pos.non_pawn_material(WHITE) == RookValueMg
+        else if (pos.non_pawn_material(WHITE) == RookValueMg
                 && pos.non_pawn_material(BLACK) == RookValueMg
                 && pos.count<PAWN>(strongSide) - pos.count<PAWN>(~strongSide) <= 1
                 && bool(KingSide & pos.pieces(strongSide, PAWN)) != bool(QueenSide & pos.pieces(strongSide, PAWN))
