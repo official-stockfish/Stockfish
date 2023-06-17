@@ -27,6 +27,7 @@
 
 #include "features/half_ka_v2_hm.h"
 
+#include "layers/affine_transform_sparse_input.h"
 #include "layers/affine_transform.h"
 #include "layers/clipped_relu.h"
 #include "layers/sqr_clipped_relu.h"
@@ -48,7 +49,7 @@ struct Network
   static constexpr int FC_0_OUTPUTS = 15;
   static constexpr int FC_1_OUTPUTS = 32;
 
-  Layers::AffineTransform<TransformedFeatureDimensions, FC_0_OUTPUTS + 1> fc_0;
+  Layers::AffineTransformSparseInput<TransformedFeatureDimensions, FC_0_OUTPUTS + 1> fc_0;
   Layers::SqrClippedReLU<FC_0_OUTPUTS + 1> ac_sqr_0;
   Layers::ClippedReLU<FC_0_OUTPUTS + 1> ac_0;
   Layers::AffineTransform<FC_0_OUTPUTS * 2, FC_1_OUTPUTS> fc_1;
