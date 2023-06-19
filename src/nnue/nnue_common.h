@@ -57,6 +57,9 @@ namespace Stockfish::Eval::NNUE {
   // Size of cache line (in bytes)
   constexpr std::size_t CacheLineSize = 64;
 
+  constexpr const char Leb128MagicString[] = "COMPRESSED_LEB128";
+  constexpr const std::size_t Leb128MagicStringSize = sizeof(Leb128MagicString) - 1;
+
   // SIMD width (in bytes)
   #if defined(USE_AVX2)
   constexpr std::size_t SimdWidth = 32;
@@ -162,6 +165,9 @@ namespace Stockfish::Eval::NNUE {
   template <typename IntType>
   inline void read_leb_128(std::istream& stream, IntType* out, std::size_t count) {
       static_assert(std::is_signed_v<IntType>, "Not implemented for unsigned types");
+      char leb128MagicString[Leb128MagicStringSize];
+      stream.read(leb128MagicString, Leb128MagicStringSize);
+      assert(strncmp(Leb128MagicString, leb128MagicString, Leb128MagicStringSize) == 0);
       const std::uint32_t BUF_SIZE = 4096;
       std::uint8_t buf[BUF_SIZE];
       auto bytes_left = read_little_endian<std::uint32_t>(stream);
@@ -190,6 +196,7 @@ namespace Stockfish::Eval::NNUE {
   template <typename IntType>
   inline void write_leb_128(std::ostream& stream, const IntType* values, std::size_t count) {
       static_assert(std::is_signed_v<IntType>, "Not implemented for unsigned types");
+      stream.write(Leb128MagicString, Leb128MagicStringSize);
       std::uint32_t byte_count = 0;
       for (std::size_t i = 0; i < count; ++i) {
           IntType value = values[i];
