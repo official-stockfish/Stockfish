@@ -1555,23 +1555,23 @@ moves_loop: // When in check, search starts here
                     bestValue = std::max(bestValue, futilityBase);
                     continue;
                 }
-        }
+            }
 
-        // We prune after the second quiet check evasion move, where being 'in check' is
-        // implicitly checked through the counter, and being a 'quiet move' apart from
-        // being a tt move is assumed after an increment because captures are pushed ahead.
-        if (quietCheckEvasions > 1)
-            break;
+            // We prune after the second quiet check evasion move, where being 'in check' is
+            // implicitly checked through the counter, and being a 'quiet move' apart from
+            // being a tt move is assumed after an increment because captures are pushed ahead.
+            if (quietCheckEvasions > 1)
+                break;
 
-        // Continuation history based pruning (~3 Elo)
-        if (   !capture
-            && (*contHist[0])[pos.moved_piece(move)][to_sq(move)] < 0
-            && (*contHist[1])[pos.moved_piece(move)][to_sq(move)] < 0)
-            continue;
+            // Continuation history based pruning (~3 Elo)
+            if (   !capture
+                && (*contHist[0])[pos.moved_piece(move)][to_sq(move)] < 0
+                && (*contHist[1])[pos.moved_piece(move)][to_sq(move)] < 0)
+                continue;
 
-        // Do not search moves with bad enough SEE values (~5 Elo)
-        if (!pos.see_ge(move, Value(-95)))
-            continue;
+            // Do not search moves with bad enough SEE values (~5 Elo)
+            if (!pos.see_ge(move, Value(-95)))
+                continue;
         }
 
         // Speculative prefetch as early as possible
