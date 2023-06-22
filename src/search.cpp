@@ -1323,12 +1323,12 @@ moves_loop: // When in check, search starts here
               }
               else
               {
-                  // Reduce other moves if we have found at least one score improvement (~1 Elo)
-                  // Reduce more for depth > 3 and depth < 12 (~1 Elo)
-                  if (   depth > 1
+                  // Reduce other moves if we have found at least one score improvement (~2 Elo)
+                  if (   depth > 2
+                      && depth < 12
                       && beta  <  14362
                       && value > -12393)
-                      depth -= depth > 3 && depth < 12 ? 2 : 1;
+                      depth -= 2;
 
                   assert(depth > 0);
                   alpha = value; // Update alpha! Always alpha < beta
