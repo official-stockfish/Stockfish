@@ -115,7 +115,7 @@ jobs:
 
       - name: Extract the bench number from the commit history
         run: |
-          git log HEAD | grep "\b[Bb]ench[ :]\+[0-9]\{7\}" | head -n 1 | sed "s/[^0-9]*\([0-9]*\).*/\1/g" > git_sig
+          git log HEAD | grep -o "\b[Bb]ench[ :]\+[1-9][0-9]\{5,9\}\b" | head -n 1 | sed "s/[^0-9]//g" > git_sig
           [ -s git_sig ] && echo "benchref=$(cat git_sig)" >> $GITHUB_ENV && echo "Reference bench:" $(cat git_sig) || echo "No bench found"
 
       - name: Check compiler

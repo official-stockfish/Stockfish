@@ -130,3 +130,29 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: stockfish-android-${{ matrix.binaries }}.tar
+
+      - name: Get last commit sha
+        id: last_commit
+        run: echo "COMMIT_SHA=$(git rev-parse HEAD | cut -c 1-8)" >> $GITHUB_ENV
+
+      - name: Get commit date
+        id: commit_date
+        run: echo "COMMIT_DATE=$(git show -s --date=format:'%Y%m%d' --format=%cd HEAD)" >> $GITHUB_ENV
+
+      # Make sure that an old ci which still runs on master doesn't recreate a prerelease
+      - name: Check Pullable Commits
+        id: check_commits
+        run: |
+          git fetch
+          CHANGES=$(git rev-list HEAD..origin/master --count)
+          echo "CHANGES=$CHANGES" >> $GITHUB_ENV
+
+      - name: Prerelease
+        if: github.ref_name == 'master' && env.CHANGES == '0'
+        continue-on-error: true
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Stockfish dev-${{ env.COMMIT_DATE }}-${{ env.COMMIT_SHA }}
+          tag_name: stockfish-dev-${{ env.COMMIT_DATE }}-${{ env.COMMIT_SHA }}
+          prerelease: true
+          files: stockfish-android-${{ matrix.binaries }}.tar
