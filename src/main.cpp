@@ -63,6 +63,16 @@ int sf_init() {
 void input_reader() {
     std::string cmd;
     while (getline(std::cin, cmd)) {
+#ifndef NDEBUG
+        if (cmd.substr(0, 1) == "#") {
+            continue;
+        }
+        if (cmd.substr(0, 5) == "wait ") {
+            int time = std::stoi(cmd.substr(5));
+            sleep(time);
+            continue;
+        }
+#endif
         UCI::execute(cmd);
         if (cmd == "quit")
             break;
