@@ -207,8 +207,8 @@ namespace {
      // The coefficients of a third-order polynomial fit is based on the fishtest data
      // for two parameters that need to transform eval to the argument of a logistic
      // function.
-     constexpr double as[] = {   1.07390458,   -6.94334517,   31.95090161,  317.75424048};
-     constexpr double bs[] = {  -2.82843814,   16.64518180,  -19.74439200,   68.39499088 };
+     constexpr double as[] = {   0.38036525,   -2.82015070,   23.17882135,  307.36768407};
+     constexpr double bs[] = {  -2.29434733,   13.27689788,  -14.26828904,   63.45318330 };
 
      // Enforce that NormalizeToPawnValue corresponds to a 50% win rate at ply 64
      static_assert(UCI::NormalizeToPawnValue == int(as[0] + as[1] + as[2] + as[3]));
