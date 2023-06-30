@@ -69,7 +69,11 @@ void input_reader() {
         }
         if (cmd.substr(0, 5) == "wait ") {
             int time = std::stoi(cmd.substr(5));
+#if defined(__MINGW32__) || defined(__MINGW64__)
+            Sleep(time);
+#else
             sleep(time);
+#endif
             continue;
         }
 #endif
