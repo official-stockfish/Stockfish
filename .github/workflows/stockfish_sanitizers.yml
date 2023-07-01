@@ -16,7 +16,7 @@ jobs:
             os: ubuntu-20.04
             compiler: g++
             comp: gcc
-            shell: bash {0}
+            shell: bash
         sanitizers:
           - name: Run with thread sanitizer
             make_option: sanitize=thread

@@ -15,22 +15,22 @@ jobs:
             os: ubuntu-20.04
             compiler: g++
             comp: gcc
-            shell: bash {0}
+            shell: bash
           - name: Ubuntu 20.04 Clang
             os: ubuntu-20.04
             compiler: clang++
             comp: clang
-            shell: bash {0}
+            shell: bash
           - name: MacOS 12 Apple Clang
             os: macos-12
             compiler: clang++
             comp: clang
-            shell: bash {0}
+            shell: bash
           - name: MacOS 12 GCC 11
             os: macos-12
             compiler: g++-11
             comp: gcc
-            shell: bash {0}
+            shell: bash
           - name: Windows 2022 Mingw-w64 GCC x86_64
             os: windows-2022
             compiler: g++
