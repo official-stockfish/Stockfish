@@ -20,13 +20,13 @@ jobs:
             compiler: aarch64-linux-android21-clang++
             emu: qemu-aarch64
             comp: ndk
-            shell: bash {0}
+            shell: bash
           - name: Android NDK arm
             os: ubuntu-22.04
             compiler: armv7a-linux-androideabi21-clang++
             emu: qemu-arm
             comp: ndk
-            shell: bash {0}
+            shell: bash
         binaries:
           - armv8
           - armv7

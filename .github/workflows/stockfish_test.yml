@@ -18,38 +18,38 @@ jobs:
             comp: gcc
             run_32bit_tests: true
             run_64bit_tests: true
-            shell: bash {0}
+            shell: bash
           - name: Ubuntu 20.04 Clang
             os: ubuntu-20.04
             compiler: clang++
             comp: clang
             run_32bit_tests: true
             run_64bit_tests: true
-            shell: bash {0}
+            shell: bash
           - name: Android NDK aarch64
             os: ubuntu-22.04
             compiler: aarch64-linux-android21-clang++
             comp: ndk
             run_armv8_tests: true
-            shell: bash {0}
+            shell: bash
           - name: Android NDK arm
             os: ubuntu-22.04
             compiler: armv7a-linux-androideabi21-clang++
             comp: ndk
             run_armv7_tests: true
-            shell: bash {0}
+            shell: bash
           - name: MacOS 12 Apple Clang
             os: macos-12
             compiler: clang++
             comp: clang
             run_64bit_tests: true
-            shell: bash {0}
+            shell: bash
           - name: MacOS 12 GCC 11
             os: macos-12
             compiler: g++-11
             comp: gcc
             run_64bit_tests: true
-            shell: bash {0}
+            shell: bash
           - name: Windows 2022 Mingw-w64 GCC x86_64
             os: windows-2022
             compiler: g++
@@ -115,8 +115,8 @@ jobs:
 
       - name: Extract the bench number from the commit history
         run: |
-          git log HEAD | grep -o "\b[Bb]ench[ :]\+[1-9][0-9]\{5,9\}\b" | head -n 1 | sed "s/[^0-9]//g" > git_sig
-          [ -s git_sig ] && echo "benchref=$(cat git_sig)" >> $GITHUB_ENV && echo "Reference bench:" $(cat git_sig) || echo "No bench found"
+          benchref=$(git log HEAD | grep -m 1 -o -x "[[:space:]]*\b[Bb]ench[ :]\+[1-9][0-9]\{5,7\}\b[[:space:]]*" | sed "s/[^0-9]//g") || true
+          [[ -n "$benchref" ]] && echo "benchref=$benchref" >> $GITHUB_ENV && echo "Reference bench: $benchref" || echo "No bench found"
 
       - name: Check compiler
         run: |
