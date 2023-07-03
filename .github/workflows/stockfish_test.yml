@@ -237,7 +237,7 @@ jobs:
       # armv8 tests
 
       - name: Test armv8 build
-        if: ${{ matrix.config.run_armv8_tests }}
+        if: matrix.config.run_armv8_tests
         run: |
           export PATH=${{ env.ANDROID_NDK_BIN }}:$PATH
           export LDFLAGS="-static -Wno-unused-command-line-argument"
@@ -248,7 +248,7 @@ jobs:
       # armv7 tests
 
       - name: Test armv7 build
-        if: ${{ matrix.config.run_armv7_tests }}
+        if: matrix.config.run_armv7_tests
         run: |
           export PATH=${{ env.ANDROID_NDK_BIN }}:$PATH
           export LDFLAGS="-static -Wno-unused-command-line-argument"
@@ -257,7 +257,7 @@ jobs:
           ../tests/signature.sh $benchref
 
       - name: Test armv7-neon build
-        if: ${{ matrix.config.run_armv7_tests }}
+        if: matrix.config.run_armv7_tests
         run: |
           export PATH=${{ env.ANDROID_NDK_BIN }}:$PATH
           export LDFLAGS="-static -Wno-unused-command-line-argument"
