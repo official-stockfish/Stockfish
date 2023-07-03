@@ -638,9 +638,9 @@ bool Position::gives_check(Move m) const {
       return true;
 
   // Is there a discovered check?
-  if (   (blockers_for_king(~sideToMove) & from)
-      && !aligned(from, to, square<KING>(~sideToMove)))
-      return true;
+  if (blockers_for_king(~sideToMove) & from)
+      return   !aligned(from, to, square<KING>(~sideToMove))
+            || type_of(m) == CASTLING;
 
   switch (type_of(m))
   {
@@ -665,11 +665,9 @@ bool Position::gives_check(Move m) const {
   default: //CASTLING
   {
       // Castling is encoded as 'king captures the rook'
-      Square ksq = square<KING>(~sideToMove);
       Square rto = relative_square(sideToMove, to > from ? SQ_F1 : SQ_D1);
 
-      return   (attacks_bb<ROOK>(rto) & ksq)
-            && (attacks_bb<ROOK>(rto, pieces() ^ from ^ to) & ksq);
+      return check_squares(ROOK) & rto;
   }
   }
 }

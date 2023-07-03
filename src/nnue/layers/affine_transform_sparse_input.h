@@ -24,6 +24,7 @@
 #include <iostream>
 #include <algorithm>
 #include <array>
+#include <bitset>
 #include <type_traits>
 #include "../nnue_common.h"
 #include "affine_transform.h"
@@ -77,16 +78,7 @@ namespace Stockfish::Eval::NNUE::Layers {
   alignas(CacheLineSize) static inline const std::array<unsigned, 256> lookup_count = [](){
     std::array<unsigned, 256> v;
     for (int i = 0; i < 256; ++i)
-    {
-      int j = i;
-      int k = 0;
-      while(j)
-      {
-        j &= j - 1;
-        ++k;
-      }
-      v[i] = k;
-    }
+      v[i] = unsigned(std::bitset<8>(i).count());
     return v;
   }();
 
