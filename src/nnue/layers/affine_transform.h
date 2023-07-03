@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2022 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2023 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -31,7 +31,7 @@
   This file contains the definition for a fully connected layer (aka affine transform).
   Two approaches are employed, depending on the sizes of the transform.
 
-  Approach 1:
+  Approach 1 (a specialization for large inputs):
     - used when the PaddedInputDimensions >= 128
     - uses AVX512 if possible
     - processes inputs in batches of 2*InputSimdWidth
@@ -42,9 +42,8 @@
       depends on the architecture (the amount of registers)
     - accumulate + hadd is used
 
-  Approach 2:
+  Approach 2 (a specialization for small inputs):
     - used when the PaddedInputDimensions < 128
-    - does not use AVX512
     - expected use-case is for when PaddedInputDimensions == 32 and InputDimensions <= 32.
       - that's why AVX512 is hard to implement
     - expected use-case is small layers
@@ -71,6 +70,10 @@ namespace Stockfish::Eval::NNUE::Layers {
     constexpr IndexType NumChunks = ceil_to_multiple<IndexType>(InputDimensions, 8) / 8;
     const __m64 Zeros = _mm_setzero_si64();
     const auto inputVector = reinterpret_cast<const __m64*>(input);
+
+# elif defined(USE_NEON_DOTPROD)
+    constexpr IndexType NumChunks = ceil_to_multiple<IndexType>(InputDimensions, 16) / 16;
+    const auto inputVector = reinterpret_cast<const int8x16_t*>(input);
 
 # elif defined(USE_NEON)
     constexpr IndexType NumChunks = ceil_to_multiple<IndexType>(InputDimensions, 16) / 16;
@@ -123,6 +126,14 @@ namespace Stockfish::Eval::NNUE::Layers {
       sum = _mm_add_pi32(sum, _mm_unpackhi_pi32(sum, sum));
       output[i] = _mm_cvtsi64_si32(sum);
 
+# elif defined(USE_NEON_DOTPROD)
+      int32x4_t sum = {biases[i]};
+      const auto row = reinterpret_cast<const int8x16_t*>(&weights[offset]);
+      for (IndexType j = 0; j < NumChunks; ++j) {
+        sum = vdotq_s32(sum, inputVector[j], row[j]);
+      }
+      output[i] = vaddvq_s32(sum);
+
 # elif defined(USE_NEON)
       int32x4_t sum = {biases[i]};
       const auto row = reinterpret_cast<const int8x8_t*>(&weights[offset]);
@@ -157,7 +168,7 @@ namespace Stockfish::Eval::NNUE::Layers {
   constexpr IndexType LargeInputSize = std::numeric_limits<IndexType>::max();
 #endif
 
-  // A specialization for large inputs.
+  // A specialization for large inputs
   template <IndexType InDims, IndexType OutDims>
   class AffineTransform<InDims, OutDims, std::enable_if_t<(ceil_to_multiple<IndexType>(InDims, MaxSimdWidth) >= LargeInputSize)>> {
    public:
@@ -176,36 +187,39 @@ namespace Stockfish::Eval::NNUE::Layers {
 
     using OutputBuffer = OutputType[PaddedOutputDimensions];
 
-    static_assert(PaddedInputDimensions >= LargeInputSize, "Something went wrong. This specialization should not have been chosen.");
+    static_assert(PaddedInputDimensions >= LargeInputSize, "Something went wrong. This specialization (for large inputs) should not have been chosen.");
 
 #if defined (USE_AVX512)
-    static constexpr const IndexType InputSimdWidth = 64;
-    static constexpr const IndexType MaxNumOutputRegs = 16;
+    static constexpr IndexType InputSimdWidth = 64;
+    static constexpr IndexType MaxNumOutputRegs = 16;
 #elif defined (USE_AVX2)
-    static constexpr const IndexType InputSimdWidth = 32;
-    static constexpr const IndexType MaxNumOutputRegs = 8;
+    static constexpr IndexType InputSimdWidth = 32;
+    static constexpr IndexType MaxNumOutputRegs = 8;
 #elif defined (USE_SSSE3)
-    static constexpr const IndexType InputSimdWidth = 16;
-    static constexpr const IndexType MaxNumOutputRegs = 8;
+    static constexpr IndexType InputSimdWidth = 16;
+    static constexpr IndexType MaxNumOutputRegs = 8;
+#elif defined (USE_NEON_DOTPROD)
+    static constexpr IndexType InputSimdWidth = 16;
+    static constexpr IndexType MaxNumOutputRegs = 8;
 #elif defined (USE_NEON)
-    static constexpr const IndexType InputSimdWidth = 8;
-    static constexpr const IndexType MaxNumOutputRegs = 8;
+    static constexpr IndexType InputSimdWidth = 8;
+    static constexpr IndexType MaxNumOutputRegs = 8;
 #else
     // The fallback implementation will not have permuted weights.
     // We define these to avoid a lot of ifdefs later.
-    static constexpr const IndexType InputSimdWidth = 1;
-    static constexpr const IndexType MaxNumOutputRegs = 1;
+    static constexpr IndexType InputSimdWidth = 1;
+    static constexpr IndexType MaxNumOutputRegs = 1;
 #endif
 
     // A big block is a region in the weight matrix of the size [PaddedInputDimensions, NumOutputRegs].
     // A small block is a region of size [InputSimdWidth, 1]
 
-    static constexpr const IndexType NumOutputRegs = std::min(MaxNumOutputRegs, OutputDimensions);
-    static constexpr const IndexType SmallBlockSize = InputSimdWidth;
-    static constexpr const IndexType BigBlockSize = NumOutputRegs * PaddedInputDimensions;
-    static constexpr const IndexType NumSmallBlocksInBigBlock = BigBlockSize / SmallBlockSize;
-    static constexpr const IndexType NumSmallBlocksPerOutput = PaddedInputDimensions / SmallBlockSize;
-    static constexpr const IndexType NumBigBlocks = OutputDimensions / NumOutputRegs;
+    static constexpr IndexType NumOutputRegs = std::min(MaxNumOutputRegs, OutputDimensions);
+    static constexpr IndexType SmallBlockSize = InputSimdWidth;
+    static constexpr IndexType BigBlockSize = NumOutputRegs * PaddedInputDimensions;
+    static constexpr IndexType NumSmallBlocksInBigBlock = BigBlockSize / SmallBlockSize;
+    static constexpr IndexType NumSmallBlocksPerOutput = PaddedInputDimensions / SmallBlockSize;
+    static constexpr IndexType NumBigBlocks = OutputDimensions / NumOutputRegs;
 
     static_assert(OutputDimensions % NumOutputRegs == 0);
 
@@ -241,8 +255,7 @@ namespace Stockfish::Eval::NNUE::Layers {
 
     // Read network parameters
     bool read_parameters(std::istream& stream) {
-      for (IndexType i = 0; i < OutputDimensions; ++i)
-        biases[i] = read_little_endian<BiasType>(stream);
+      read_little_endian<BiasType>(stream, biases, OutputDimensions);
 
       for (IndexType i = 0; i < OutputDimensions * PaddedInputDimensions; ++i)
         weights[get_weight_index(i)] = read_little_endian<WeightType>(stream);
@@ -252,8 +265,7 @@ namespace Stockfish::Eval::NNUE::Layers {
 
     // Write network parameters
     bool write_parameters(std::ostream& stream) const {
-      for (IndexType i = 0; i < OutputDimensions; ++i)
-          write_little_endian<BiasType>(stream, biases[i]);
+      write_little_endian<BiasType>(stream, biases, OutputDimensions);
 
       for (IndexType i = 0; i < OutputDimensions * PaddedInputDimensions; ++i)
         write_little_endian<WeightType>(stream, weights[get_weight_index(i)]);
@@ -292,6 +304,15 @@ namespace Stockfish::Eval::NNUE::Layers {
       #define vec_add_dpbusd_32x2 Simd::m128_add_dpbusd_epi32x2
       #define vec_hadd Simd::m128_hadd
       #define vec_haddx4 Simd::m128_haddx4
+#elif defined (USE_NEON_DOTPROD)
+      using acc_vec_t = int32x4_t;
+      using bias_vec_t = int32x4_t;
+      using weight_vec_t = int8x16_t;
+      using in_vec_t = int8x16_t;
+      #define vec_zero {0}
+      #define vec_add_dpbusd_32x2 Simd::dotprod_m128_add_dpbusd_epi32x2
+      #define vec_hadd Simd::neon_m128_hadd
+      #define vec_haddx4 Simd::neon_m128_haddx4
 #elif defined (USE_NEON)
       using acc_vec_t = int32x4_t;
       using bias_vec_t = int32x4_t;
@@ -374,6 +395,7 @@ namespace Stockfish::Eval::NNUE::Layers {
     alignas(CacheLineSize) WeightType weights[OutputDimensions * PaddedInputDimensions];
   };
 
+  // A specialization for small inputs
   template <IndexType InDims, IndexType OutDims>
   class AffineTransform<InDims, OutDims, std::enable_if_t<(ceil_to_multiple<IndexType>(InDims, MaxSimdWidth) < LargeInputSize)>> {
    public:
@@ -393,12 +415,7 @@ namespace Stockfish::Eval::NNUE::Layers {
 
     using OutputBuffer = OutputType[PaddedOutputDimensions];
 
-    static_assert(PaddedInputDimensions < LargeInputSize, "Something went wrong. This specialization should not have been chosen.");
-
-#if defined (USE_SSSE3)
-    static constexpr const IndexType OutputSimdWidth = SimdWidth / 4;
-    static constexpr const IndexType InputSimdWidth = SimdWidth;
-#endif
+    static_assert(PaddedInputDimensions < LargeInputSize, "Something went wrong. This specialization (for small inputs) should not have been chosen.");
 
     // Hash value embedded in the evaluation file
     static constexpr std::uint32_t get_hash_value(std::uint32_t prevHash) {
@@ -428,8 +445,7 @@ namespace Stockfish::Eval::NNUE::Layers {
 
     // Read network parameters
     bool read_parameters(std::istream& stream) {
-      for (IndexType i = 0; i < OutputDimensions; ++i)
-        biases[i] = read_little_endian<BiasType>(stream);
+      read_little_endian<BiasType>(stream, biases, OutputDimensions);
       for (IndexType i = 0; i < OutputDimensions * PaddedInputDimensions; ++i)
         weights[get_weight_index(i)] = read_little_endian<WeightType>(stream);
 
@@ -438,8 +454,7 @@ namespace Stockfish::Eval::NNUE::Layers {
 
     // Write network parameters
     bool write_parameters(std::ostream& stream) const {
-      for (IndexType i = 0; i < OutputDimensions; ++i)
-        write_little_endian<BiasType>(stream, biases[i]);
+      write_little_endian<BiasType>(stream, biases, OutputDimensions);
 
       for (IndexType i = 0; i < OutputDimensions * PaddedInputDimensions; ++i)
         write_little_endian<WeightType>(stream, weights[get_weight_index(i)]);
@@ -450,28 +465,33 @@ namespace Stockfish::Eval::NNUE::Layers {
     const OutputType* propagate(
         const InputType* input, OutputType* output) const {
 
-#if defined (USE_AVX2)
+#if defined (USE_AVX512)
+      using vec_t = __m512i;
+      #define vec_setzero _mm512_setzero_si512
+      #define vec_set_32 _mm512_set1_epi32
+      #define vec_add_dpbusd_32 Simd::m512_add_dpbusd_epi32
+      #define vec_add_dpbusd_32x2 Simd::m512_add_dpbusd_epi32x2
+      #define vec_hadd Simd::m512_hadd
+#elif defined (USE_AVX2)
       using vec_t = __m256i;
       #define vec_setzero _mm256_setzero_si256
       #define vec_set_32 _mm256_set1_epi32
       #define vec_add_dpbusd_32 Simd::m256_add_dpbusd_epi32
       #define vec_add_dpbusd_32x2 Simd::m256_add_dpbusd_epi32x2
-      #define vec_add_dpbusd_32x4 Simd::m256_add_dpbusd_epi32x4
       #define vec_hadd Simd::m256_hadd
-      #define vec_haddx4 Simd::m256_haddx4
 #elif defined (USE_SSSE3)
       using vec_t = __m128i;
       #define vec_setzero _mm_setzero_si128
       #define vec_set_32 _mm_set1_epi32
       #define vec_add_dpbusd_32 Simd::m128_add_dpbusd_epi32
       #define vec_add_dpbusd_32x2 Simd::m128_add_dpbusd_epi32x2
-      #define vec_add_dpbusd_32x4 Simd::m128_add_dpbusd_epi32x4
       #define vec_hadd Simd::m128_hadd
-      #define vec_haddx4 Simd::m128_haddx4
 #endif
 
 #if defined (USE_SSSE3)
       const auto inputVector = reinterpret_cast<const vec_t*>(input);
+
+      static constexpr IndexType OutputSimdWidth = sizeof(vec_t) / sizeof(OutputType);
 
       static_assert(OutputDimensions % OutputSimdWidth == 0 || OutputDimensions == 1);
 
@@ -518,9 +538,7 @@ namespace Stockfish::Eval::NNUE::Layers {
 # undef vec_set_32
 # undef vec_add_dpbusd_32
 # undef vec_add_dpbusd_32x2
-# undef vec_add_dpbusd_32x4
 # undef vec_hadd
-# undef vec_haddx4
 #else
       // Use old implementation for the other architectures.
       affine_transform_non_ssse3<

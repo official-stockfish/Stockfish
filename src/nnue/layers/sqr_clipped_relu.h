@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2022 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2023 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -106,7 +106,7 @@ namespace Stockfish::Eval::NNUE::Layers {
 
       for (IndexType i = Start; i < InputDimensions; ++i) {
         output[i] = static_cast<OutputType>(
-            // realy should be /127 but we need to make it fast
+            // really should be /127 but we need to make it fast
             // needs to be accounted for in the trainer
             std::max(0ll, std::min(127ll, (((long long)input[i] * input[i]) >> (2 * WeightScaleBits)) / 128)));
       }

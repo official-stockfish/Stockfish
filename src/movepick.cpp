@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2022 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2023 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -69,7 +69,6 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const ButterflyHist
 
   stage = (pos.checkers() ? EVASION_TT : MAIN_TT) +
           !(ttm && pos.pseudo_legal(ttm));
-  threatenedPieces = 0;
 }
 
 /// MovePicker constructor for quiescence search
@@ -93,20 +92,20 @@ MovePicker::MovePicker(const Position& p, Move ttm, Value th, const CapturePiece
 {
   assert(!pos.checkers());
 
-  stage = PROBCUT_TT + !(ttm && pos.capture(ttm)
+  stage = PROBCUT_TT + !(ttm && pos.capture_stage(ttm)
                              && pos.pseudo_legal(ttm)
                              && pos.see_ge(ttm, threshold));
 }
 
 /// MovePicker::score() assigns a numerical value to each move in a list, used
 /// for sorting. Captures are ordered by Most Valuable Victim (MVV), preferring
-/// captures with a good history. Quiets moves are ordered using the histories.
+/// captures with a good history. Quiets moves are ordered using the history tables.
 template<GenType Type>
 void MovePicker::score() {
 
   static_assert(Type == CAPTURES || Type == QUIETS || Type == EVASIONS, "Wrong type");
 
-  [[maybe_unused]] Bitboard threatenedByPawn, threatenedByMinor, threatenedByRook;
+  [[maybe_unused]] Bitboard threatenedByPawn, threatenedByMinor, threatenedByRook, threatenedPieces;
   if constexpr (Type == QUIETS)
   {
       Color us = pos.side_to_move();
@@ -123,8 +122,8 @@ void MovePicker::score() {
 
   for (auto& m : *this)
       if constexpr (Type == CAPTURES)
-          m.value =  6 * int(PieceValue[MG][pos.piece_on(to_sq(m))])
-                   +     (*captureHistory)[pos.moved_piece(m)][to_sq(m)][type_of(pos.piece_on(to_sq(m)))];
+          m.value =  (7 * int(PieceValue[MG][pos.piece_on(to_sq(m))])
+                   +     (*captureHistory)[pos.moved_piece(m)][to_sq(m)][type_of(pos.piece_on(to_sq(m)))]) / 16;
 
       else if constexpr (Type == QUIETS)
           m.value =  2 * (*mainHistory)[pos.side_to_move()][from_to(m)]
@@ -141,7 +140,7 @@ void MovePicker::score() {
                    +     bool(pos.check_squares(type_of(pos.moved_piece(m))) & to_sq(m)) * 16384;
       else // Type == EVASIONS
       {
-          if (pos.capture(m))
+          if (pos.capture_stage(m))
               m.value =  PieceValue[MG][pos.piece_on(to_sq(m))]
                        - Value(type_of(pos.moved_piece(m)))
                        + (1 << 28);
@@ -158,7 +157,7 @@ Move MovePicker::select(Pred filter) {
 
   while (cur < endMoves)
   {
-      if (T == Best)
+      if constexpr (T == Best)
           std::swap(*cur, *std::max_element(cur, endMoves));
 
       if (*cur != ttMove && filter())
@@ -197,7 +196,7 @@ top:
 
   case GOOD_CAPTURE:
       if (select<Next>([&](){
-                       return pos.see_ge(*cur, Value(-69 * cur->value / 1024)) ?
+                       return pos.see_ge(*cur, Value(-cur->value)) ?
                               // Move losing capture to endBadCaptures to be tried later
                               true : (*endBadCaptures++ = *cur, false); }))
           return *(cur - 1);
@@ -216,7 +215,7 @@ top:
 
   case REFUTATION:
       if (select<Next>([&](){ return    *cur != MOVE_NONE
-                                    && !pos.capture(*cur)
+                                    && !pos.capture_stage(*cur)
                                     &&  pos.pseudo_legal(*cur); }))
           return *(cur - 1);
       ++stage;
