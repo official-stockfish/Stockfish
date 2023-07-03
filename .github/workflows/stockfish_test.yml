@@ -179,6 +179,20 @@ jobs:
           make -j2 ARCH=x86-64-modern optimize=no debug=yes build
           ../tests/signature.sh $benchref
 
+      - name: Test x86-64-bmi2 build
+        if: ${{ matrix.config.run_64bit_tests }} && runner.os != 'macOS'
+        run: |
+          make clean
+          make -j2 ARCH=x86-64-bmi2 build
+          ../tests/signature.sh $benchref
+
+      - name: Test x86-64-avx2 build
+        if: ${{ matrix.config.run_64bit_tests }} && runner.os != 'macOS'
+        run: |
+          make clean
+          make -j2 ARCH=x86-64-avx2 build
+          ../tests/signature.sh $benchref
+
       - name: Test x86-64-modern build
         if: ${{ matrix.config.run_64bit_tests }}
         run: |
