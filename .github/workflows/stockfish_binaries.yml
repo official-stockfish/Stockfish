@@ -42,9 +42,12 @@ jobs:
           - x86-64
           - x86-64-modern
           - x86-64-avx2
+          - x86-64-bmi2
         exclude:
           - binaries: x86-64-avx2
-            config: {os: macos-12}
+            config: { os: macos-12 }
+          - binaries: x86-64-bmi2
+            config: { os: macos-12 }
     defaults:
       run:
         working-directory: src
@@ -165,4 +168,3 @@ jobs:
           tag_name: stockfish-dev-${{ env.COMMIT_DATE }}-${{ env.COMMIT_SHA }}
           prerelease: true
           files: stockfish-${{ matrix.config.simple_name }}-${{ matrix.binaries }}.${{ matrix.config.archive_ext }}
-
