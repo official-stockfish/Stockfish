@@ -103,6 +103,10 @@ jobs:
             echo "ANDROID_NDK_BIN=$ANDROID_NDK_BIN" >> $GITHUB_ENV
           fi
 
+      - name: Download required macOS packages
+        if: runner.os == 'macOS'
+        run: brew install coreutils
+
       - name: Setup msys and install required packages
         if: runner.os == 'Windows'
         uses: msys2/setup-msys2@v2
@@ -115,8 +119,10 @@ jobs:
 
       - name: Extract the bench number from the commit history
         run: |
-          benchref=$(git log HEAD | grep -m 1 -o -x "[[:space:]]*\b[Bb]ench[ :]\+[1-9][0-9]\{5,7\}\b[[:space:]]*" | sed "s/[^0-9]//g") || true
-          [[ -n "$benchref" ]] && echo "benchref=$benchref" >> $GITHUB_ENV && echo "Reference bench: $benchref" || echo "No bench found"
+          for ((n=0; n<100; n++)); do
+            benchref=$(git log HEAD~$n -1 | tac | grep -m 1 -o -x '[[:space:]]*\b[Bb]ench[ :]\+[1-9][0-9]\{5,7\}\b[[:space:]]*' | sed 's/[^0-9]//g') && break || true
+          done
+          [[ -n "$benchref" ]] && echo "benchref=$benchref" >> $GITHUB_ENV && echo "From commit: $(git rev-parse HEAD~$n)" && echo "Reference bench: $benchref" || echo "No bench found"
 
       - name: Check compiler
         run: |
@@ -134,7 +140,7 @@ jobs:
       # x86-32 tests
 
       - name: Test debug x86-32 build
-        if: ${{ matrix.config.run_32bit_tests }}
+        if: matrix.config.run_32bit_tests
         run: |
           export CXXFLAGS="-Werror -D_GLIBCXX_DEBUG"
           make clean
@@ -142,28 +148,28 @@ jobs:
           ../tests/signature.sh $benchref
 
       - name: Test x86-32 build
-        if: ${{ matrix.config.run_32bit_tests }}
+        if: matrix.config.run_32bit_tests
         run: |
           make clean
           make -j2 ARCH=x86-32 build
           ../tests/signature.sh $benchref
 
       - name: Test x86-32-sse41-popcnt build
-        if: ${{ matrix.config.run_32bit_tests }}
+        if: matrix.config.run_32bit_tests
         run: |
           make clean
           make -j2 ARCH=x86-32-sse41-popcnt build
           ../tests/signature.sh $benchref
 
       - name: Test x86-32-sse2 build
-        if: ${{ matrix.config.run_32bit_tests }}
+        if: matrix.config.run_32bit_tests
         run: |
           make clean
           make -j2 ARCH=x86-32-sse2 build
           ../tests/signature.sh $benchref
 
       - name: Test general-32 build
-        if: ${{ matrix.config.run_32bit_tests }}
+        if: matrix.config.run_32bit_tests
         run: |
           make clean
           make -j2 ARCH=general-32 build
@@ -172,36 +178,50 @@ jobs:
       # x86-64 tests
 
       - name: Test debug x86-64-modern build
-        if: ${{ matrix.config.run_64bit_tests }}
+        if: matrix.config.run_64bit_tests
         run: |
           export CXXFLAGS="-Werror -D_GLIBCXX_DEBUG"
           make clean
           make -j2 ARCH=x86-64-modern optimize=no debug=yes build
           ../tests/signature.sh $benchref
 
+      - name: Test x86-64-bmi2 build
+        if: matrix.config.run_64bit_tests && runner.os != 'macOS'
+        run: |
+          make clean
+          make -j2 ARCH=x86-64-bmi2 build
+          ../tests/signature.sh $benchref
+
+      - name: Test x86-64-avx2 build
+        if: matrix.config.run_64bit_tests && runner.os != 'macOS'
+        run: |
+          make clean
+          make -j2 ARCH=x86-64-avx2 build
+          ../tests/signature.sh $benchref
+
       - name: Test x86-64-modern build
-        if: ${{ matrix.config.run_64bit_tests }}
+        if: matrix.config.run_64bit_tests
         run: |
           make clean
           make -j2 ARCH=x86-64-modern build
           ../tests/signature.sh $benchref
 
       - name: Test x86-64-ssse3 build
-        if: ${{ matrix.config.run_64bit_tests }}
+        if: matrix.config.run_64bit_tests
         run: |
           make clean
           make -j2 ARCH=x86-64-ssse3 build
           ../tests/signature.sh $benchref
 
       - name: Test x86-64-sse3-popcnt build
-        if: ${{ matrix.config.run_64bit_tests }}
+        if: matrix.config.run_64bit_tests
         run: |
           make clean
           make -j2 ARCH=x86-64-sse3-popcnt build
           ../tests/signature.sh $benchref
 
       - name: Test x86-64 build
-        if: ${{ matrix.config.run_64bit_tests }}
+        if: matrix.config.run_64bit_tests
         run: |
           make clean
           make -j2 ARCH=x86-64 build
@@ -217,7 +237,7 @@ jobs:
       # armv8 tests
 
       - name: Test armv8 build
-        if: ${{ matrix.config.run_armv8_tests }}
+        if: matrix.config.run_armv8_tests
         run: |
           export PATH=${{ env.ANDROID_NDK_BIN }}:$PATH
           export LDFLAGS="-static -Wno-unused-command-line-argument"
@@ -228,7 +248,7 @@ jobs:
       # armv7 tests
 
       - name: Test armv7 build
-        if: ${{ matrix.config.run_armv7_tests }}
+        if: matrix.config.run_armv7_tests
         run: |
           export PATH=${{ env.ANDROID_NDK_BIN }}:$PATH
           export LDFLAGS="-static -Wno-unused-command-line-argument"
@@ -237,7 +257,7 @@ jobs:
           ../tests/signature.sh $benchref
 
       - name: Test armv7-neon build
-        if: ${{ matrix.config.run_armv7_tests }}
+        if: matrix.config.run_armv7_tests
         run: |
           export PATH=${{ env.ANDROID_NDK_BIN }}:$PATH
           export LDFLAGS="-static -Wno-unused-command-line-argument"
@@ -248,7 +268,7 @@ jobs:
       # Other tests
 
       - name: Check perft and search reproducibility
-        if: ${{ matrix.config.run_64bit_tests }}
+        if: matrix.config.run_64bit_tests
         run: |
           make clean
           make -j2 ARCH=x86-64-modern build
