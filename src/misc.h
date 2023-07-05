@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2022 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2023 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -28,6 +28,9 @@
 
 #include "types.h"
 
+#define stringify2(x) #x
+#define stringify(x) stringify2(x)
+
 namespace Stockfish {
 
 std::string engine_info(bool to_uci = false);
@@ -39,12 +42,13 @@ void std_aligned_free(void* ptr);
 void* aligned_large_pages_alloc(size_t size); // memory aligned by page size, min alignment: 4096 bytes
 void aligned_large_pages_free(void* mem); // nop if mem == nullptr
 
-void dbg_hit_on(bool b);
-void dbg_hit_on(bool c, bool b);
-void dbg_mean_of(int v);
+void dbg_hit_on(bool cond, int slot = 0);
+void dbg_mean_of(int64_t value, int slot = 0);
+void dbg_stdev_of(int64_t value, int slot = 0);
+void dbg_correl_of(int64_t value1, int64_t value2, int slot = 0);
 void dbg_print();
 
-typedef std::chrono::milliseconds::rep TimePoint; // A value in milliseconds
+using TimePoint = std::chrono::milliseconds::rep; // A value in milliseconds
 static_assert(sizeof(TimePoint) == sizeof(int64_t), "TimePoint should be 64 bits");
 inline TimePoint now() {
   return std::chrono::duration_cast<std::chrono::milliseconds>
@@ -84,32 +88,6 @@ T* align_ptr_up(T* ptr)
 static inline const union { uint32_t i; char c[4]; } Le = { 0x01020304 };
 static inline const bool IsLittleEndian = (Le.c[0] == 4);
 
-
-// RunningAverage : a class to calculate a running average of a series of values.
-// For efficiency, all computations are done with integers.
-class RunningAverage {
-  public:
-
-      // Reset the running average to rational value p / q
-      void set(int64_t p, int64_t q)
-        { average = p * PERIOD * RESOLUTION / q; }
-
-      // Update average with value v
-      void update(int64_t v)
-        { average = RESOLUTION * v + (PERIOD - 1) * average / PERIOD; }
-
-      // Test if average is strictly greater than rational a / b
-      bool is_greater(int64_t a, int64_t b) const
-        { return b * average > a * (PERIOD * RESOLUTION); }
-
-      int64_t value() const
-        { return average / (PERIOD * RESOLUTION); }
-
-  private :
-      static constexpr int64_t PERIOD     = 4096;
-      static constexpr int64_t RESOLUTION = 1024;
-      int64_t average;
-};
 
 template <typename T, std::size_t MaxSize>
 class ValueList {
@@ -164,7 +142,7 @@ public:
 
 inline uint64_t mul_hi64(uint64_t a, uint64_t b) {
 #if defined(__GNUC__) && defined(IS_64BIT)
-    __extension__ typedef unsigned __int128 uint128;
+    __extension__ using uint128 = unsigned __int128;
     return ((uint128)a * (uint128)b) >> 64;
 #else
     uint64_t aL = (uint32_t)a, aH = a >> 32;

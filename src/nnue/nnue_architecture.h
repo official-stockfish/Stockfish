@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2022 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2023 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -27,6 +27,7 @@
 
 #include "features/half_ka_v2_hm.h"
 
+#include "layers/affine_transform_sparse_input.h"
 #include "layers/affine_transform.h"
 #include "layers/clipped_relu.h"
 #include "layers/sqr_clipped_relu.h"
@@ -39,7 +40,7 @@ namespace Stockfish::Eval::NNUE {
 using FeatureSet = Features::HalfKAv2_hm;
 
 // Number of input feature dimensions after conversion
-constexpr IndexType TransformedFeatureDimensions = 1024;
+constexpr IndexType TransformedFeatureDimensions = 1536;
 constexpr IndexType PSQTBuckets = 8;
 constexpr IndexType LayerStacks = 8;
 
@@ -48,7 +49,7 @@ struct Network
   static constexpr int FC_0_OUTPUTS = 15;
   static constexpr int FC_1_OUTPUTS = 32;
 
-  Layers::AffineTransform<TransformedFeatureDimensions, FC_0_OUTPUTS + 1> fc_0;
+  Layers::AffineTransformSparseInput<TransformedFeatureDimensions, FC_0_OUTPUTS + 1> fc_0;
   Layers::SqrClippedReLU<FC_0_OUTPUTS + 1> ac_sqr_0;
   Layers::ClippedReLU<FC_0_OUTPUTS + 1> ac_0;
   Layers::AffineTransform<FC_0_OUTPUTS * 2, FC_1_OUTPUTS> fc_1;
@@ -72,22 +73,20 @@ struct Network
 
   // Read network parameters
   bool read_parameters(std::istream& stream) {
-    if (!fc_0.read_parameters(stream)) return false;
-    if (!ac_0.read_parameters(stream)) return false;
-    if (!fc_1.read_parameters(stream)) return false;
-    if (!ac_1.read_parameters(stream)) return false;
-    if (!fc_2.read_parameters(stream)) return false;
-    return true;
+    return   fc_0.read_parameters(stream)
+          && ac_0.read_parameters(stream)
+          && fc_1.read_parameters(stream)
+          && ac_1.read_parameters(stream)
+          && fc_2.read_parameters(stream);
   }
 
-  // Read network parameters
+  // Write network parameters
   bool write_parameters(std::ostream& stream) const {
-    if (!fc_0.write_parameters(stream)) return false;
-    if (!ac_0.write_parameters(stream)) return false;
-    if (!fc_1.write_parameters(stream)) return false;
-    if (!ac_1.write_parameters(stream)) return false;
-    if (!fc_2.write_parameters(stream)) return false;
-    return true;
+    return   fc_0.write_parameters(stream)
+          && ac_0.write_parameters(stream)
+          && fc_1.write_parameters(stream)
+          && ac_1.write_parameters(stream)
+          && fc_2.write_parameters(stream);
   }
 
   std::int32_t propagate(const TransformedFeatureType* transformedFeatures)

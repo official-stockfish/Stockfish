@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2022 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2023 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -56,6 +56,9 @@ namespace Stockfish::Eval::NNUE {
 
   // Size of cache line (in bytes)
   constexpr std::size_t CacheLineSize = 64;
+
+  constexpr const char Leb128MagicString[] = "COMPRESSED_LEB128";
+  constexpr const std::size_t Leb128MagicStringSize = sizeof(Leb128MagicString) - 1;
 
   // SIMD width (in bytes)
   #if defined(USE_AVX2)
@@ -157,6 +160,80 @@ namespace Stockfish::Eval::NNUE {
       else
           for (std::size_t i = 0; i < count; ++i)
               write_little_endian<IntType>(stream, values[i]);
+  }
+
+  template <typename IntType>
+  inline void read_leb_128(std::istream& stream, IntType* out, std::size_t count) {
+      static_assert(std::is_signed_v<IntType>, "Not implemented for unsigned types");
+      char leb128MagicString[Leb128MagicStringSize];
+      stream.read(leb128MagicString, Leb128MagicStringSize);
+      assert(strncmp(Leb128MagicString, leb128MagicString, Leb128MagicStringSize) == 0);
+      const std::uint32_t BUF_SIZE = 4096;
+      std::uint8_t buf[BUF_SIZE];
+      auto bytes_left = read_little_endian<std::uint32_t>(stream);
+      std::uint32_t buf_pos = BUF_SIZE;
+      for (std::size_t i = 0; i < count; ++i) {
+          IntType result = 0;
+          size_t shift = 0;
+          do {
+              if (buf_pos == BUF_SIZE) {
+                  stream.read(reinterpret_cast<char*>(buf), std::min(bytes_left, BUF_SIZE));
+                  buf_pos = 0;
+              }
+              std::uint8_t byte = buf[buf_pos++];
+              --bytes_left;
+              result |= (byte & 0x7f) << shift;
+              shift += 7;
+              if ((byte & 0x80) == 0) {
+                  out[i] = sizeof(IntType) * 8 <= shift || (byte & 0x40) == 0 ? result : result | ~((1 << shift) - 1);
+                  break;
+              }
+          } while (shift < sizeof(IntType) * 8);
+      }
+      assert(bytes_left == 0);
+  }
+
+  template <typename IntType>
+  inline void write_leb_128(std::ostream& stream, const IntType* values, std::size_t count) {
+      static_assert(std::is_signed_v<IntType>, "Not implemented for unsigned types");
+      stream.write(Leb128MagicString, Leb128MagicStringSize);
+      std::uint32_t byte_count = 0;
+      for (std::size_t i = 0; i < count; ++i) {
+          IntType value = values[i];
+          std::uint8_t byte;
+          do {
+              byte = value & 0x7f;
+              value >>= 7;
+              ++byte_count;
+          } while ((byte & 0x40) == 0 ? value != 0 : value != -1);
+      }
+      write_little_endian(stream, byte_count);
+      const std::uint32_t BUF_SIZE = 4096;
+      std::uint8_t buf[BUF_SIZE];
+      std::uint32_t buf_pos = 0;
+      auto flush = [&]() {
+          if (buf_pos > 0) {
+              stream.write(reinterpret_cast<char*>(buf), buf_pos);
+              buf_pos = 0;
+          }
+      };
+      auto write = [&](std::uint8_t byte) {
+          buf[buf_pos++] = byte;
+          if (buf_pos == BUF_SIZE) flush();
+      };
+      for (std::size_t i = 0; i < count; ++i) {
+          IntType value = values[i];
+          while (true) {
+              std::uint8_t byte = value & 0x7f;
+              value >>= 7;
+              if ((byte & 0x40) == 0 ? value == 0 : value == -1) {
+                  write(byte);
+                  break;
+              }
+              write(byte | 0x80);
+          }
+      }
+      flush();
   }
 
 }  // namespace Stockfish::Eval::NNUE

@@ -16,41 +16,19 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <iostream>
+#ifndef BENCHMARK_H_INCLUDED
+#define BENCHMARK_H_INCLUDED
 
-#include "bitboard.h"
-#include "endgame.h"
-#include "position.h"
-#include "psqt.h"
-#include "search.h"
-#include "syzygy/tbprobe.h"
-#include "thread.h"
-#include "tt.h"
-#include "uci.h"
+#include <iosfwd>
+#include <string>
+#include <vector>
 
-using namespace Stockfish;
+namespace Stockfish {
 
-int main(int argc, char* argv[]) {
+class Position;
 
-  Cluster::init();
-  if (Cluster::is_root())
-      std::cout << engine_info() << std::endl;
+std::vector<std::string> setup_bench(const Position&, std::istream&);
 
-  CommandLine::init(argc, argv);
-  UCI::init(Options);
-  Tune::init();
-  PSQT::init();
-  Bitboards::init();
-  Position::init();
-  Bitbases::init();
-  Endgames::init();
-  Threads.set(size_t(Options["Threads"]));
-  Search::clear(); // After threads are up
-  Eval::NNUE::init();
+} // namespace Stockfish
 
-  UCI::loop(argc, argv);
-
-  Threads.set(0);
-  Cluster::finalize();
-  return 0;
-}
+#endif // #ifndef BENCHMARK_H_INCLUDED

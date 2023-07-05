@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2022 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2023 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -36,6 +36,12 @@ TimeManagement Time; // Our global time management object
 
 void TimeManagement::init(Search::LimitsType& limits, Color us, int ply) {
 
+  // if we have no time, no need to initialize TM, except for the start time,
+  // which is used by movetime.
+  startTime = limits.startTime;
+  if (limits.time[us] == 0)
+      return;
+
   TimePoint moveOverhead    = TimePoint(Options["Move Overhead"]);
   TimePoint slowMover       = TimePoint(Options["Slow Mover"]);
   TimePoint npmsec          = TimePoint(Options["nodestime"]);
@@ -58,8 +64,6 @@ void TimeManagement::init(Search::LimitsType& limits, Color us, int ply) {
       limits.inc[us] *= npmsec;
       limits.npmsec = npmsec;
   }
-
-  startTime = limits.startTime;
 
   // Maximum move horizon of 50 moves
   int mtg = limits.movestogo ? std::min(limits.movestogo, 50) : 50;
