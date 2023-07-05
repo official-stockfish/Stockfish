@@ -247,12 +247,13 @@ void MainThread::search() {
   if (bestThread != this)
       sync_cout << UCI::pv(bestThread->rootPos, bestThread->completedDepth) << sync_endl;
 
-  sync_cout << "bestmove " << UCI::move(bestThread->rootMoves[0].pv[0], rootPos.is_chess960());
+  std::stringstream stream;
+  stream << "bestmove " << UCI::move(bestThread->rootMoves[0].pv[0], rootPos.is_chess960());
 
   if (bestThread->rootMoves[0].pv.size() > 1 || bestThread->rootMoves[0].extract_ponder_from_tt(rootPos))
-      std::cout << " ponder " << UCI::move(bestThread->rootMoves[0].pv[1], rootPos.is_chess960());
+      stream << " ponder " << UCI::move(bestThread->rootMoves[0].pv[1], rootPos.is_chess960());
 
-  std::cout << sync_endl;
+  sync_cout << stream.str() << sync_endl;
 }
 
 

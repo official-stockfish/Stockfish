@@ -172,7 +172,7 @@ namespace {
 
         if (token == "go" || token == "eval")
         {
-            cerr << "\nPosition: " << cnt++ << '/' << num << " (" << pos.fen() << ")" << endl;
+            sync_cerr << "\nPosition: " << cnt++ << '/' << num << " (" << pos.fen() << ")" << sync_endl;
             if (token == "go")
             {
                go(pos, is, states);
@@ -191,10 +191,10 @@ namespace {
 
     dbg_print();
 
-    cerr << "\n==========================="
-         << "\nTotal time (ms) : " << elapsed
-         << "\nNodes searched  : " << nodes
-         << "\nNodes/second    : " << 1000 * nodes / elapsed << endl;
+    sync_cerr << "\n==========================="
+              << "\nTotal time (ms) : " << elapsed
+              << "\nNodes searched  : " << nodes
+              << "\nNodes/second    : " << 1000 * nodes / elapsed << sync_endl;
   }
 
   // The win rate model returns the probability of winning (in per mille units) given an

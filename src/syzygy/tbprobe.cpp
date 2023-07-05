@@ -216,7 +216,8 @@ public:
 
         if (statbuf.st_size % 64 != 16)
         {
-            std::cerr << "Corrupt tablebase file " << fname << std::endl;
+            std::string msg = "Corrupt tablebase file " + fname;
+            sync_cerr << msg << sync_endl;
             exit(EXIT_FAILURE);
         }
 
@@ -229,7 +230,8 @@ public:
 
         if (*baseAddress == MAP_FAILED)
         {
-            std::cerr << "Could not mmap() " << fname << std::endl;
+            std::string msg = "Could not mmap() " + fname;
+            sync_cerr << msg << sync_endl;
             exit(EXIT_FAILURE);
         }
 #else
@@ -245,7 +247,8 @@ public:
 
         if (size_low % 64 != 16)
         {
-            std::cerr << "Corrupt tablebase file " << fname << std::endl;
+            std::string msg = "Corrupt tablebase file " + fname;
+            sync_cerr << msg << sync_endl;
             exit(EXIT_FAILURE);
         }
 
@@ -254,7 +257,8 @@ public:
 
         if (!mmap)
         {
-            std::cerr << "CreateFileMapping() failed" << std::endl;
+            std::string msg = "CreateFileMapping() failed";
+            sync_cerr << msg << sync_endl;
             exit(EXIT_FAILURE);
         }
 
@@ -263,8 +267,10 @@ public:
 
         if (!*baseAddress)
         {
-            std::cerr << "MapViewOfFile() failed, name = " << fname
-                      << ", error = " << GetLastError() << std::endl;
+            std::stringstream stream;
+            stream << "MapViewOfFile() failed, name = " << fname
+                   << ", error = " << GetLastError();
+            sync_cerr << stream.str() << sync_endl;
             exit(EXIT_FAILURE);
         }
 #endif
@@ -275,7 +281,7 @@ public:
 
         if (memcmp(data, Magics[type == WDL], 4))
         {
-            std::cerr << "Corrupted table in file " << fname << std::endl;
+            sync_cerr << "Corrupted table in file " << fname << sync_endl;
             unmap(*baseAddress, *mapping);
             return *baseAddress = nullptr, nullptr;
         }
@@ -444,7 +450,8 @@ class TBTables {
                 homeBucket = otherHomeBucket;
             }
         }
-        std::cerr << "TB hash table size too low!" << std::endl;
+        std::string msg = "TB hash table size too low!";
+        sync_cerr << msg << sync_endl;
         exit(EXIT_FAILURE);
     }
 

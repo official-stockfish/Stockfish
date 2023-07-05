@@ -138,7 +138,8 @@ vector<string> setup_bench(const Position& current, istream& is) {
 
       if (!file.is_open())
       {
-          cerr << "Unable to open file " << fenFile << endl;
+          std::string msg = "Unable to open file " + fenFile;
+          sync_cerr << msg << sync_endl;
           exit(EXIT_FAILURE);
       }
 

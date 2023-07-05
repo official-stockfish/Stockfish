@@ -129,7 +129,7 @@ public:
 
         if (!l.file.is_open())
         {
-            cerr << "Unable to open debug log file " << fname << endl;
+            sync_cerr << "Unable to open debug log file " << fname << sync_endl;
             exit(EXIT_FAILURE);
         }
 
@@ -357,26 +357,26 @@ void dbg_print() {
 
     for (int i = 0; i < MaxDebugSlots; ++i)
         if ((n = hit[i][0]))
-            std::cerr << "Hit #" << i
+            sync_cerr << "Hit #" << i
                       << ": Total " << n << " Hits " << hit[i][1]
                       << " Hit Rate (%) " << 100.0 * E(hit[i][1])
-                      << std::endl;
+                      << sync_endl;
 
     for (int i = 0; i < MaxDebugSlots; ++i)
         if ((n = mean[i][0]))
         {
-            std::cerr << "Mean #" << i
+            sync_cerr << "Mean #" << i
                       << ": Total " << n << " Mean " << E(mean[i][1])
-                      << std::endl;
+                      << sync_endl;
         }
 
     for (int i = 0; i < MaxDebugSlots; ++i)
         if ((n = stdev[i][0]))
         {
             double r = sqrtl(E(stdev[i][2]) - sqr(E(stdev[i][1])));
-            std::cerr << "Stdev #" << i
+            sync_cerr << "Stdev #" << i
                       << ": Total " << n << " Stdev " << r
-                      << std::endl;
+                      << sync_endl;
         }
 
     for (int i = 0; i < MaxDebugSlots; ++i)
@@ -385,9 +385,9 @@ void dbg_print() {
             double r = (E(correl[i][5]) - E(correl[i][1]) * E(correl[i][3]))
                        / (  sqrtl(E(correl[i][2]) - sqr(E(correl[i][1])))
                           * sqrtl(E(correl[i][4]) - sqr(E(correl[i][3]))));
-            std::cerr << "Correl. #" << i
+            sync_cerr << "Correl. #" << i
                       << ": Total " << n << " Coefficient " << r
-                      << std::endl;
+                      << sync_endl;
         }
 }
 
@@ -589,9 +589,11 @@ void aligned_large_pages_free(void* mem) {
   if (mem && !VirtualFree(mem, 0, MEM_RELEASE))
   {
       DWORD err = GetLastError();
-      std::cerr << "Failed to free large page memory. Error code: 0x"
-                << std::hex << err
-                << std::dec << std::endl;
+      std::stringstream stream;
+      stream << "Failed to free large page memory. Error code: 0x"
+             << std::hex << err
+             << std::dec;
+      sync_cerr << stream.str() << sync_endl;
       exit(EXIT_FAILURE);
   }
 }
