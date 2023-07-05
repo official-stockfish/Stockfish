@@ -28,10 +28,13 @@ jobs:
             comp: ndk
             shell: bash
         binaries:
+          - armv8-dotprod
           - armv8
           - armv7
           - armv7-neon
         exclude:
+          - binaries: armv8-dotprod
+            config: {compiler: armv7a-linux-androideabi21-clang++}
           - binaries: armv8
             config: {compiler: armv7a-linux-androideabi21-clang++}
           - binaries: armv7
