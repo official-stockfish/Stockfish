@@ -122,7 +122,7 @@ jobs:
           for hash in $(git rev-list -100 HEAD); do
             benchref=$(git show -s $hash | tac | grep -m 1 -o -x '[[:space:]]*\b[Bb]ench[ :]\+[1-9][0-9]\{5,7\}\b[[:space:]]*' | sed 's/[^0-9]//g') && break || true
           done
-          [[ -n "$benchref" ]] && echo "benchref=$benchref" >> $GITHUB_ENV && echo "From commit: $(git rev-parse HEAD~$n)" && echo "Reference bench: $benchref" || echo "No bench found"
+          [[ -n "$benchref" ]] && echo "benchref=$benchref" >> $GITHUB_ENV && echo "From commit: $hash" && echo "Reference bench: $benchref" || echo "No bench found"
 
       - name: Check compiler
         run: |
