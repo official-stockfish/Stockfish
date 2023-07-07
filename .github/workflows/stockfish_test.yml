@@ -119,8 +119,8 @@ jobs:
 
       - name: Extract the bench number from the commit history
         run: |
-          for ((n=0; n<100; n++)); do
-            benchref=$(git log HEAD~$n -1 | tac | grep -m 1 -o -x '[[:space:]]*\b[Bb]ench[ :]\+[1-9][0-9]\{5,7\}\b[[:space:]]*' | sed 's/[^0-9]//g') && break || true
+          for hash in $(git rev-list -100 HEAD); do
+            benchref=$(git show -s $hash | tac | grep -m 1 -o -x '[[:space:]]*\b[Bb]ench[ :]\+[1-9][0-9]\{5,7\}\b[[:space:]]*' | sed 's/[^0-9]//g') && break || true
           done
           [[ -n "$benchref" ]] && echo "benchref=$benchref" >> $GITHUB_ENV && echo "From commit: $(git rev-parse HEAD~$n)" && echo "Reference bench: $benchref" || echo "No bench found"
 
