@@ -62,8 +62,8 @@ namespace Eval {
   string currentEvalFileName = "None";
 
   
-  int NNUE::RandomEvalPerturb = 0;
-  int NNUE::waitms = 0;
+  //int NNUE::RandomEvalPerturb = 0;
+  //int NNUE::waitms = 0;
 
   static double to_cp(Value v) { return double(v) / UCI::NormalizeToPawnValue; }
 
