@@ -751,13 +751,10 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       else
           st->nonPawnMaterial[them] -= PieceValue[MG][captured];
 
-      if (Eval::useNNUE)
-      {
-          dp.dirty_num = 2;  // 1 piece moved, 1 piece captured
-          dp.piece[1] = captured;
-          dp.from[1] = capsq;
-          dp.to[1] = SQ_NONE;
-      }
+      dp.dirty_num = 2;  // 1 piece moved, 1 piece captured
+      dp.piece[1] = captured;
+      dp.from[1] = capsq;
+      dp.to[1] = SQ_NONE;
 
       // Update board and piece lists
       remove_piece(capsq);
@@ -765,7 +762,6 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       // Update material hash key and prefetch access to materialTable
       k ^= Zobrist::psq[captured][capsq];
       st->materialKey ^= Zobrist::psq[captured][pieceCount[captured]];
-      prefetch(thisThread->materialTable[st->materialKey]);
 
       // Reset rule 50 counter
       st->rule50 = 0;
@@ -792,12 +788,9 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   // Move the piece. The tricky Chess960 castling is handled earlier
   if (type_of(m) != CASTLING)
   {
-      if (Eval::useNNUE)
-      {
-          dp.piece[0] = pc;
-          dp.from[0] = from;
-          dp.to[0] = to;
-      }
+      dp.piece[0] = pc;
+      dp.from[0] = from;
+      dp.to[0] = to;
 
       move_piece(from, to);
   }
@@ -823,15 +816,12 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
           remove_piece(to);
           put_piece(promotion, to);
 
-          if (Eval::useNNUE)
-          {
-              // Promoting pawn to SQ_NONE, promoted piece from SQ_NONE
-              dp.to[0] = SQ_NONE;
-              dp.piece[dp.dirty_num] = promotion;
-              dp.from[dp.dirty_num] = SQ_NONE;
-              dp.to[dp.dirty_num] = to;
-              dp.dirty_num++;
-          }
+          // Promoting pawn to SQ_NONE, promoted piece from SQ_NONE
+          dp.to[0] = SQ_NONE;
+          dp.piece[dp.dirty_num] = promotion;
+          dp.from[dp.dirty_num] = SQ_NONE;
+          dp.to[dp.dirty_num] = to;
+          dp.dirty_num++;
 
           // Update hash keys
           k ^= Zobrist::psq[pc][to] ^ Zobrist::psq[promotion][to];
@@ -961,7 +951,7 @@ void Position::do_castling(Color us, Square from, Square& to, Square& rfrom, Squ
   rto = relative_square(us, kingSide ? SQ_F1 : SQ_D1);
   to = relative_square(us, kingSide ? SQ_G1 : SQ_C1);
 
-  if (Do && Eval::useNNUE)
+  if (Do)
   {
       auto& dp = st->dirtyPiece;
       dp.piece[0] = make_piece(us, KING);
