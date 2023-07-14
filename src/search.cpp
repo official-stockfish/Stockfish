@@ -1703,28 +1703,28 @@ moves_loop: // When in check, search starts here
     Piece moved_piece = pos.moved_piece(bestMove);
     PieceType captured;
 
-    int bonus1 = stat_bonus(depth + 1);
+    int quietMoveBonus = stat_bonus(depth + 1);
 
     if (!pos.capture_stage(bestMove))
     {
-        int bonus2 = bestValue > beta + 145 ? bonus1               // larger bonus
-                                            : stat_bonus(depth);   // smaller bonus
+        int bestMoveBonus = bestValue > beta + 145 ? quietMoveBonus  // larger bonus
+                                            : stat_bonus(depth);     // smaller bonus
 
         // Increase stats for the best move in case it was a quiet move
-        update_quiet_stats(pos, ss, bestMove, bonus2);
+        update_quiet_stats(pos, ss, bestMove, bestMoveBonus);
 
         // Decrease stats for all non-best quiet moves
         for (int i = 0; i < quietCount; ++i)
         {
-            thisThread->mainHistory[us][from_to(quietsSearched[i])] << -bonus2;
-            update_continuation_histories(ss, pos.moved_piece(quietsSearched[i]), to_sq(quietsSearched[i]), -bonus2);
+            thisThread->mainHistory[us][from_to(quietsSearched[i])] << -bestMoveBonus;
+            update_continuation_histories(ss, pos.moved_piece(quietsSearched[i]), to_sq(quietsSearched[i]), -bestMoveBonus);
         }
     }
     else
     {
         // Increase stats for the best move in case it was a capture move
         captured = type_of(pos.piece_on(to_sq(bestMove)));
-        captureHistory[moved_piece][to_sq(bestMove)][captured] << bonus1;
+        captureHistory[moved_piece][to_sq(bestMove)][captured] << quietMoveBonus;
     }
 
     // Extra penalty for a quiet early move that was not a TT move or
@@ -1732,14 +1732,14 @@ moves_loop: // When in check, search starts here
     if (   prevSq != SQ_NONE
         && ((ss-1)->moveCount == 1 + (ss-1)->ttHit || ((ss-1)->currentMove == (ss-1)->killers[0]))
         && !pos.captured_piece())
-            update_continuation_histories(ss-1, pos.piece_on(prevSq), prevSq, -bonus1);
+            update_continuation_histories(ss-1, pos.piece_on(prevSq), prevSq, -quietMoveBonus);
 
     // Decrease stats for all non-best capture moves
     for (int i = 0; i < captureCount; ++i)
     {
         moved_piece = pos.moved_piece(capturesSearched[i]);
         captured = type_of(pos.piece_on(to_sq(capturesSearched[i])));
-        captureHistory[moved_piece][to_sq(capturesSearched[i])][captured] << -bonus1;
+        captureHistory[moved_piece][to_sq(capturesSearched[i])][captured] << -quietMoveBonus;
     }
   }
 
