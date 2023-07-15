@@ -22,7 +22,7 @@ jobs:
             comp: gcc
             shell: bash
             archive_ext: tar
-            sde: /home/runner/work/Stockfish/Stockfish/.output/sde-temp-files/sde-external-9.14.0-2022-10-25-lin/sde -future
+            sde: /home/runner/work/Stockfish/Stockfish/.output/sde-temp-files/sde-external-9.14.0-2022-10-25-lin/sde -future --
           - name: MacOS 12 Apple Clang
             os: macos-12
             simple_name: macos
@@ -39,22 +39,29 @@ jobs:
             msys_env: x86_64-gcc
             shell: msys2 {0}
             ext: .exe
-            sde: /d/a/Stockfish/Stockfish/.output/sde-temp-files/sde-external-9.14.0-2022-10-25-win/sde.exe -future
+            sde: /d/a/Stockfish/Stockfish/.output/sde-temp-files/sde-external-9.14.0-2022-10-25-win/sde.exe -future --
             archive_ext: zip
         binaries:
+          - x86-32
           - x86-64
           - x86-64-modern
           - x86-64-avx2
           - x86-64-bmi2
-          # - x86-64-avxvnni needs more recent gcc
+          - x86-64-avxvnni
           - x86-64-avx512
           - x86-64-vnni256
           - x86-64-vnni512
         exclude:
+          - binaries: x86-32
+            config: { os: macos-12 }
+          - binaries: x86-64-avx2
+            config: { os: macos-12 }
           - binaries: x86-64-bmi2
             config: { os: macos-12 }
-          #- binaries: x86-64-avxvnni
-          #  config: { os: macos-12 }
+          - binaries: x86-64-avxvnni
+            config: { os: macos-12 }
+          - binaries: x86-64-avxvnni
+            config: { ubuntu-20.04 }
           - binaries: x86-64-avx512
             config: { os: macos-12 }
           - binaries: x86-64-vnni256
@@ -70,9 +77,17 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Download required linux packages
+      - name: Download required Linux packages
         if: runner.os == 'Linux'
-        run: sudo apt update
+        run: |
+          sudo apt update
+          sudo apt install g++-multilib g++-11-multilib
+
+      - name: Install fixed GCC on Linux
+        if: runner.os == 'Linux'
+        uses: egor-tensin/setup-gcc@v1
+        with:
+          version: 11
 
       - name: Setup msys and install required packages
         if: runner.os == 'Windows'
@@ -80,6 +95,12 @@ jobs:
         with:
           msystem: ${{ matrix.config.msys_sys }}
           install: mingw-w64-${{ matrix.config.msys_env }} make git zip
+
+      - name: Install fixed GCC on Windows
+        if: runner.os == 'Windows'
+        run: |
+          wget https://repo.msys2.org/mingw/x86_64/mingw-w64-x86_64-gcc-11.3.0-2-any.pkg.tar.zst
+          pacman -U mingw-w64-x86_64-gcc-11.3.0-2-any.pkg.tar.zst --noconfirm
 
       - name: Download SDE package
         if: runner.os == 'Linux' || runner.os == 'Windows'
@@ -90,6 +111,13 @@ jobs:
 
       - name: Download the used network from the fishtest framework
         run: make net
+
+      - name: Extract the bench number from the commit history
+        run: |
+          for hash in $(git rev-list -100 HEAD); do
+            benchref=$(git show -s $hash | tac | grep -m 1 -o -x '[[:space:]]*\b[Bb]ench[ :]\+[1-9][0-9]\{5,7\}\b[[:space:]]*' | sed 's/[^0-9]//g') && break || true
+          done
+          [[ -n "$benchref" ]] && echo "benchref=$benchref" >> $GITHUB_ENV && echo "From commit: $hash" && echo "Reference bench: $benchref" || echo "No bench found"
 
       - name: Check compiler
         run: $COMPILER -v
@@ -104,8 +132,9 @@ jobs:
 
       - name: Compile ${{ matrix.binaries }} build
         run: |
-          make -j2 profile-build ARCH=$BINARY COMP=$COMP SDE_PATH="$SDE"
+          make -j2 profile-build ARCH=$BINARY COMP=$COMP WINE_PATH="$SDE"
           make strip ARCH=$BINARY COMP=$COMP
+          WINE_PATH="$SDE" ../tests/signature.sh $benchref
           mv ./stockfish$EXT ../stockfish-$NAME-$BINARY$EXT
 
       - name: Remove non src files
