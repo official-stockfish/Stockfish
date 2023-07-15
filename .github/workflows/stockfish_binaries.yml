@@ -54,6 +54,8 @@ jobs:
         exclude:
           - binaries: x86-32
             config: { os: macos-12 }
+          - binaries: x86-32
+            config: { os: windows-2022}
           - binaries: x86-64-avx2
             config: { os: macos-12 }
           - binaries: x86-64-bmi2
@@ -95,12 +97,6 @@ jobs:
         with:
           msystem: ${{ matrix.config.msys_sys }}
           install: mingw-w64-${{ matrix.config.msys_env }} make git zip
-
-      - name: Install fixed GCC on Windows
-        if: runner.os == 'Windows'
-        run: |
-          wget https://repo.msys2.org/mingw/x86_64/mingw-w64-x86_64-gcc-11.3.0-2-any.pkg.tar.zst
-          pacman -U mingw-w64-x86_64-gcc-11.3.0-2-any.pkg.tar.zst --noconfirm
 
       - name: Download SDE package
         if: runner.os == 'Linux' || runner.os == 'Windows'
