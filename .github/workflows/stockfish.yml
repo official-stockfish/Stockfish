@@ -1,7 +1,7 @@
 name: StockfishStartAll
 on:
   workflow_dispatch:
-on:
+
   push:
     tags:        
       - 'Stern' 
