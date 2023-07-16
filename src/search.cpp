@@ -548,7 +548,7 @@ namespace {
     bool givesCheck, improving, priorCapture, singularQuietLMR;
     bool capture, moveCountPruning, ttCapture;
     Piece movedPiece;
-    int moveCount, captureCount, quietCount, improvement;
+    int moveCount, captureCount, quietCount;
 
     // Step 1. Initialize node
     Thread* thisThread = pos.this_thread();
@@ -708,7 +708,6 @@ namespace {
         // Skip early pruning when in check
         ss->staticEval = eval = VALUE_NONE;
         improving = false;
-        improvement = 0;
         goto moves_loop;
     }
     else if (excludedMove)
@@ -745,14 +744,14 @@ namespace {
         thisThread->mainHistory[~us][from_to((ss-1)->currentMove)] << bonus;
     }
 
-    // Set up the improvement variable, which is the difference between the current
-    // static evaluation and the previous static evaluation at our turn (if we were
-    // in check at our previous move we look at the move prior to it). The improvement
-    // margin and the improving flag are used in various pruning heuristics.
-    improvement =   (ss-2)->staticEval != VALUE_NONE ? ss->staticEval - (ss-2)->staticEval
-                  : (ss-4)->staticEval != VALUE_NONE ? ss->staticEval - (ss-4)->staticEval
-                  :                                    173;
-    improving = improvement > 0;
+    // Set up the improving flag, which is true if current static evaluation is
+    // bigger than the previous static evaluation at our turn (if we were in 
+    // check at our previous move we look at static evaluaion at move prior to it
+    // and if we were in check at move prior to it flag is set to true) and is
+    // false otherwise. The improving flag is used in various pruning heuristics.
+    improving =   (ss-2)->staticEval != VALUE_NONE ? ss->staticEval > (ss-2)->staticEval
+                : (ss-4)->staticEval != VALUE_NONE ? ss->staticEval > (ss-4)->staticEval
+                : true;
 
     // Step 7. Razoring (~1 Elo).
     // If eval is really low check with qsearch if it can exceed alpha, if it can't,
