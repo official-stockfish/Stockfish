@@ -61,11 +61,6 @@ namespace Eval {
 
   string currentEvalFileName = "None";
 
-  //int NNUE::RandomEvalPerturb = 0;
-  //int NNUE::waitms = 0;
-
-  //static double to_cp(Value v) { return double(v) / UCI::NormalizeToPawnValue; }
-
   /// NNUE::init() tries to load a NNUE network at startup time, or when the engine
   /// receives a UCI command "setoption name EvalFile value nn-[a-z0-9]{12}.nnue"
   /// The name of the NNUE network is always retrieved from the EvalFile option.
