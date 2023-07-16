@@ -38,14 +38,14 @@ jobs:
             comp: ndk
             run_armv7_tests: true
             shell: bash
-          - name: MacOS 12 Apple Clang
-            os: macos-12
+          - name: MacOS 13 Apple Clang
+            os: macos-13
             compiler: clang++
             comp: clang
             run_64bit_tests: true
             shell: bash
-          - name: MacOS 12 GCC 11
-            os: macos-12
+          - name: MacOS 13 GCC 11
+            os: macos-13
             compiler: g++-11
             comp: gcc
             run_64bit_tests: true
@@ -177,23 +177,23 @@ jobs:
 
       # x86-64 tests
 
-      - name: Test debug x86-64-sse41-popcnt build
+      - name: Test debug x86-64-avx2 build
         if: matrix.config.run_64bit_tests
         run: |
           export CXXFLAGS="-Werror -D_GLIBCXX_DEBUG"
           make clean
-          make -j2 ARCH=x86-64-sse41-popcnt optimize=no debug=yes build
+          make -j2 ARCH=x86-64-avx2 optimize=no debug=yes build
           ../tests/signature.sh $benchref
 
       - name: Test x86-64-bmi2 build
-        if: matrix.config.run_64bit_tests && runner.os != 'macOS'
+        if: matrix.config.run_64bit_tests
         run: |
           make clean
           make -j2 ARCH=x86-64-bmi2 build
           ../tests/signature.sh $benchref
 
       - name: Test x86-64-avx2 build
-        if: matrix.config.run_64bit_tests && runner.os != 'macOS'
+        if: matrix.config.run_64bit_tests
         run: |
           make clean
           make -j2 ARCH=x86-64-avx2 build
@@ -279,6 +279,6 @@ jobs:
         if: matrix.config.run_64bit_tests
         run: |
           make clean
-          make -j2 ARCH=x86-64-sse41-popcnt build
+          make -j2 ARCH=x86-64-avx2 build
           ../tests/perft.sh
           ../tests/reprosearch.sh
