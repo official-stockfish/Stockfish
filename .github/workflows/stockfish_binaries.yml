@@ -23,8 +23,8 @@ jobs:
             shell: bash
             archive_ext: tar
             sde: /home/runner/work/Stockfish/Stockfish/.output/sde-temp-files/sde-external-9.14.0-2022-10-25-lin/sde -future --
-          - name: MacOS 12 Apple Clang
-            os: macos-12
+          - name: MacOS 13 Apple Clang
+            os: macos-13
             simple_name: macos
             compiler: clang++
             comp: clang
@@ -52,24 +52,20 @@ jobs:
           - x86-64-vnni256
           - x86-64-vnni512
         exclude:
-          - binaries: x86-32
-            config: { os: macos-12 }
-          - binaries: x86-32
-            config: { os: windows-2022}
-          - binaries: x86-64-avx2
-            config: { os: macos-12 }
-          - binaries: x86-64-bmi2
-            config: { os: macos-12 }
-          - binaries: x86-64-avxvnni
-            config: { os: macos-12 }
           - binaries: x86-64-avxvnni
             config: { ubuntu-20.04 }
+          - binaries: x86-32
+            config: { os: windows-2022}
+          - binaries: x86-32
+            config: { os: macos-13 }
+          - binaries: x86-64-avxvnni
+            config: { os: macos-13 }
           - binaries: x86-64-avx512
-            config: { os: macos-12 }
+            config: { os: macos-13 }
           - binaries: x86-64-vnni256
-            config: { os: macos-12 }
+            config: { os: macos-13 }
           - binaries: x86-64-vnni512
-            config: { os: macos-12 }
+            config: { os: macos-13 }
     defaults:
       run:
         working-directory: src
@@ -84,6 +80,10 @@ jobs:
         run: |
           sudo apt update
           sudo apt install g++-multilib g++-11-multilib
+
+      - name: Download required macOS packages
+        if: runner.os == 'macOS'
+        run: brew install coreutils
 
       - name: Install fixed GCC on Linux
         if: runner.os == 'Linux'
@@ -117,6 +117,14 @@ jobs:
 
       - name: Check compiler
         run: $COMPILER -v
+
+      - name: Show g++ cpu info
+        if: runner.os != 'macOS'
+        run: g++ -Q -march=native --help=target
+
+      - name: Show clang++ cpu info
+        if: runner.os == 'macOS'
+        run: clang++ -E - -march=native -###
 
       - name: Test help target
         run: make help
