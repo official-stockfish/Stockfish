@@ -44,7 +44,7 @@ jobs:
         binaries:
           - x86-32
           - x86-64
-          - x86-64-modern
+          - x86-64-sse41-popcnt
           - x86-64-avx2
           - x86-64-bmi2
           - x86-64-avxvnni
