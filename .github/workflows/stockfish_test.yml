@@ -177,12 +177,12 @@ jobs:
 
       # x86-64 tests
 
-      - name: Test debug x86-64-modern build
+      - name: Test debug x86-64-sse41-popcnt build
         if: matrix.config.run_64bit_tests
         run: |
           export CXXFLAGS="-Werror -D_GLIBCXX_DEBUG"
           make clean
-          make -j2 ARCH=x86-64-modern optimize=no debug=yes build
+          make -j2 ARCH=x86-64-sse41-popcnt optimize=no debug=yes build
           ../tests/signature.sh $benchref
 
       - name: Test x86-64-bmi2 build
@@ -199,11 +199,19 @@ jobs:
           make -j2 ARCH=x86-64-avx2 build
           ../tests/signature.sh $benchref
 
+      # Test a deprecated arch
       - name: Test x86-64-modern build
         if: matrix.config.run_64bit_tests
         run: |
           make clean
           make -j2 ARCH=x86-64-modern build
+          ../tests/signature.sh $benchref
+
+      - name: Test x86-64-sse41-popcnt build
+        if: matrix.config.run_64bit_tests
+        run: |
+          make clean
+          make -j2 ARCH=x86-64-sse41-popcnt build
           ../tests/signature.sh $benchref
 
       - name: Test x86-64-ssse3 build
@@ -271,6 +279,6 @@ jobs:
         if: matrix.config.run_64bit_tests
         run: |
           make clean
-          make -j2 ARCH=x86-64-modern build
+          make -j2 ARCH=x86-64-sse41-popcnt build
           ../tests/perft.sh
           ../tests/reprosearch.sh
