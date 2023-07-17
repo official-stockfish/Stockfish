@@ -245,7 +245,7 @@ void MainThread::search() {
 
   // Send again PV info if we have a new best thread
   if (bestThread != this)
-      sync_cout << UCI::pv(bestThread->rootPos, bestThread->rootDepth) << sync_endl;
+      sync_cout << UCI::pv(bestThread->rootPos, bestThread->rootDepth-1) << sync_endl;
 
   sync_cout << "bestmove " << UCI::move(bestThread->rootMoves[0].pv[0], rootPos.is_chess960());
 
