@@ -245,7 +245,7 @@ void MainThread::search() {
 
   // Send again PV info if we have a new best thread
   if (bestThread != this)
-      sync_cout << UCI::pv(bestThread->rootPos, bestThread->completedDepth) << sync_endl;
+      sync_cout << UCI::pv(bestThread->rootPos, bestThread->rootDepth) << sync_endl;
 
   sync_cout << "bestmove " << UCI::move(bestThread->rootMoves[0].pv[0], rootPos.is_chess960());
 
@@ -1939,6 +1939,7 @@ bool RootMove::extract_ponder_from_tt(Position& pos) {
     }
 
     pos.undo_move(pv[0]);
+    pos.this_thread()->nodes.fetch_add(-1, std::memory_order_relaxed);
     return pv.size() > 1;
 }
 
