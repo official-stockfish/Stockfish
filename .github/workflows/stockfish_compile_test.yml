@@ -21,13 +21,13 @@ jobs:
             compiler: clang++
             comp: clang
             shell: bash
-          - name: MacOS 12 Apple Clang
-            os: macos-12
+          - name: MacOS 13 Apple Clang
+            os: macos-13
             compiler: clang++
             comp: clang
             shell: bash
-          - name: MacOS 12 GCC 11
-            os: macos-12
+          - name: MacOS 13 GCC 11
+            os: macos-13
             compiler: g++-11
             comp: gcc
             shell: bash

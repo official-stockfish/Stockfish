@@ -24,7 +24,6 @@
 #include <iostream>
 #include <algorithm>
 #include <array>
-#include <bitset>
 #include <type_traits>
 #include "../nnue_common.h"
 #include "affine_transform.h"
@@ -35,50 +34,16 @@
 */
 
 namespace Stockfish::Eval::NNUE::Layers {
-#if defined(__GNUC__)  // GCC, Clang, ICC
-
-  static inline IndexType lsb_(std::uint32_t b) {
-    assert(b);
-    return IndexType(__builtin_ctzl(b));
-  }
-
-#elif defined(_MSC_VER)  // MSVC
-
-  static inline IndexType lsb_(std::uint32_t b) {
-    assert(b);
-    unsigned long idx;
-    _BitScanForward(&idx, b);
-    return (IndexType) idx;
-  }
-
-#else  // Compiler is neither GCC nor MSVC compatible
-
-#error "Compiler not supported."
-
-#endif
-
 
 #if defined(USE_SSSE3)
   alignas(CacheLineSize) static inline const std::array<std::array<std::uint16_t, 8>, 256> lookup_indices = [](){
     std::array<std::array<std::uint16_t, 8>, 256> v{};
-    for (int i = 0; i < 256; ++i)
+    for (unsigned i = 0; i < 256; ++i)
     {
-      int j = i;
-      int k = 0;
+      std::uint64_t j = i, k = 0;
       while(j)
-      {
-        const IndexType lsbIndex = lsb_(std::uint32_t(j));
-        j &= j - 1;
-        v[i][k] = lsbIndex;
-        ++k;
-      }
+        v[i][k++] = pop_lsb(j);
     }
-    return v;
-  }();
-  alignas(CacheLineSize) static inline const std::array<unsigned, 256> lookup_count = [](){
-    std::array<unsigned, 256> v;
-    for (int i = 0; i < 256; ++i)
-      v[i] = unsigned(std::bitset<8>(i).count());
     return v;
   }();
 
@@ -90,7 +55,11 @@ namespace Stockfish::Eval::NNUE::Layers {
     #define vec_nnz(a) _mm512_cmpgt_epi32_mask(a, _mm512_setzero_si512())
 #elif defined (USE_AVX2)
     using vec_t = __m256i;
-    #define vec_nnz(a) _mm256_movemask_ps(_mm256_castsi256_ps(_mm256_cmpgt_epi32(a, _mm256_setzero_si256())))
+    #if defined(USE_VNNI) && !defined(USE_AVXVNNI)
+        #define vec_nnz(a) _mm256_cmpgt_epi32_mask(a, _mm256_setzero_si256())
+    #else
+        #define vec_nnz(a) _mm256_movemask_ps(_mm256_castsi256_ps(_mm256_cmpgt_epi32(a, _mm256_setzero_si256())))
+    #endif
 #elif defined (USE_SSSE3)
     using vec_t = __m128i;
     #define vec_nnz(a) _mm_movemask_ps(_mm_castsi128_ps(_mm_cmpgt_epi32(a, _mm_setzero_si128())))
@@ -104,8 +73,8 @@ namespace Stockfish::Eval::NNUE::Layers {
 
     const auto inputVector = reinterpret_cast<const vec_t*>(input);
     IndexType count = 0;
-    __m128i base = _mm_set1_epi16(0);
-    __m128i increment = _mm_set1_epi16(8);
+    __m128i base = _mm_setzero_si128();
+    const __m128i increment = _mm_set1_epi16(8);
     for (IndexType i = 0; i < NumChunks; ++i)
     {
       // bitmask of nonzero values in this chunk
@@ -120,7 +89,7 @@ namespace Stockfish::Eval::NNUE::Layers {
         const auto lookup = (nnz >> (j * 8)) & 0xFF;
         const auto offsets = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&lookup_indices[lookup]));
         _mm_storeu_si128(reinterpret_cast<__m128i*>(out + count), _mm_add_epi16(base, offsets));
-        count += lookup_count[lookup];
+        count += popcount(lookup);
         base = _mm_add_epi16(base, increment);
       }
     }

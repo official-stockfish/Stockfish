@@ -303,6 +303,13 @@ void UCI::loop(int argc, char* argv[]) {
 }
 
 
+/// Turns a Value to an integer centipawn number,
+/// without treatment of mate and similar special scores.
+int UCI::to_cp(Value v) {
+
+  return 100 * v / UCI::NormalizeToPawnValue;
+}
+
 /// UCI::value() converts a Value to a string by adhering to the UCI protocol specification:
 ///
 /// cp <x>    The score from the engine's point of view in centipawns.
@@ -316,7 +323,7 @@ string UCI::value(Value v) {
   stringstream ss;
 
   if (abs(v) < VALUE_TB_WIN_IN_MAX_PLY)
-      ss << "cp " << v * 100 / NormalizeToPawnValue;
+      ss << "cp " << UCI::to_cp(v);
   else if (abs(v) < VALUE_MATE_IN_MAX_PLY)
   {
       const int ply = VALUE_MATE_IN_MAX_PLY - 1 - std::abs(v);  // recompute ss->ply
