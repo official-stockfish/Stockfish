@@ -38,21 +38,6 @@
 # include <arm_neon.h>
 #endif
 
-// The inline asm is only safe for GCC, where it is necessary to get good codegen.
-// See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=101693
-// Clang does fine without it.
-// Play around here: https://godbolt.org/z/7EWqrYq51
-#if (defined(__GNUC__) && !defined(__clang__) && !defined(__INTEL_COMPILER))
-#define USE_INLINE_ASM
-#endif
-
-// Use either the AVX512 or AVX-VNNI version of the VNNI instructions.
-#if defined(USE_AVXVNNI)
-#define VNNI_PREFIX "%{vex%} "
-#else
-#define VNNI_PREFIX ""
-#endif
-
 namespace Stockfish::Simd {
 
 #if defined (USE_AVX512)
@@ -117,29 +102,11 @@ namespace Stockfish::Simd {
         __m512i b) {
 
 # if defined (USE_VNNI)
-#   if defined (USE_INLINE_ASM)
-      asm(
-        "vpdpbusd %[b], %[a], %[acc]\n\t"
-        : [acc]"+v"(acc)
-        : [a]"v"(a), [b]"vm"(b)
-      );
-#   else
       acc = _mm512_dpbusd_epi32(acc, a, b);
-#   endif
 # else
-#   if defined (USE_INLINE_ASM)
-      __m512i tmp = _mm512_maddubs_epi16(a, b);
-      asm(
-          "vpmaddwd    %[tmp], %[ones], %[tmp]\n\t"
-          "vpaddd      %[acc], %[tmp], %[acc]\n\t"
-          : [acc]"+v"(acc), [tmp]"+&v"(tmp)
-          : [ones]"v"(_mm512_set1_epi16(1))
-      );
-#   else
       __m512i product0 = _mm512_maddubs_epi16(a, b);
       product0 = _mm512_madd_epi16(product0, _mm512_set1_epi16(1));
       acc = _mm512_add_epi32(acc, product0);
-#   endif
 # endif
     }
 
@@ -149,36 +116,14 @@ namespace Stockfish::Simd {
         __m512i a1, __m512i b1) {
 
 # if defined (USE_VNNI)
-#   if defined (USE_INLINE_ASM)
-      asm(
-        "vpdpbusd %[b0], %[a0], %[acc]\n\t"
-        "vpdpbusd %[b1], %[a1], %[acc]\n\t"
-        : [acc]"+&v"(acc)
-        : [a0]"v"(a0), [b0]"vm"(b0), [a1]"v"(a1), [b1]"vm"(b1)
-      );
-#   else
       acc = _mm512_dpbusd_epi32(acc, a0, b0);
       acc = _mm512_dpbusd_epi32(acc, a1, b1);
-#   endif
 # else
-#   if defined (USE_INLINE_ASM)
-      __m512i tmp0 = _mm512_maddubs_epi16(a0, b0);
-      __m512i tmp1 = _mm512_maddubs_epi16(a1, b1);
-      asm(
-          "vpmaddwd    %[tmp0], %[ones], %[tmp0]\n\t"
-          "vpmaddwd    %[tmp1], %[ones], %[tmp1]\n\t"
-          "vpaddd      %[tmp0], %[tmp1], %[tmp0]\n\t"
-          "vpaddd      %[acc], %[tmp0], %[acc]\n\t"
-          : [acc]"+v"(acc), [tmp0]"+&v"(tmp0), [tmp1]"+&v"(tmp1)
-          : [ones]"v"(_mm512_set1_epi16(1))
-      );
-#   else
       __m512i product0 = _mm512_maddubs_epi16(a0, b0);
       __m512i product1 = _mm512_maddubs_epi16(a1, b1);
       product0 = _mm512_madd_epi16(product0, _mm512_set1_epi16(1));
       product1 = _mm512_madd_epi16(product1, _mm512_set1_epi16(1));
       acc = _mm512_add_epi32(acc, _mm512_add_epi32(product0, product1));
-#   endif
 # endif
     }
 
@@ -214,29 +159,11 @@ namespace Stockfish::Simd {
         __m256i b) {
 
 # if defined (USE_VNNI)
-#   if defined (USE_INLINE_ASM)
-      asm(
-        VNNI_PREFIX "vpdpbusd %[b], %[a], %[acc]\n\t"
-        : [acc]"+v"(acc)
-        : [a]"v"(a), [b]"vm"(b)
-      );
-#   else
       acc = _mm256_dpbusd_epi32(acc, a, b);
-#   endif
 # else
-#   if defined (USE_INLINE_ASM)
-      __m256i tmp = _mm256_maddubs_epi16(a, b);
-      asm(
-          "vpmaddwd    %[tmp], %[ones], %[tmp]\n\t"
-          "vpaddd      %[acc], %[tmp], %[acc]\n\t"
-          : [acc]"+v"(acc), [tmp]"+&v"(tmp)
-          : [ones]"v"(_mm256_set1_epi16(1))
-      );
-#   else
       __m256i product0 = _mm256_maddubs_epi16(a, b);
       product0 = _mm256_madd_epi16(product0, _mm256_set1_epi16(1));
       acc = _mm256_add_epi32(acc, product0);
-#   endif
 # endif
     }
 
@@ -246,36 +173,14 @@ namespace Stockfish::Simd {
         __m256i a1, __m256i b1) {
 
 # if defined (USE_VNNI)
-#   if defined (USE_INLINE_ASM)
-      asm(
-        VNNI_PREFIX "vpdpbusd %[b0], %[a0], %[acc]\n\t"
-        VNNI_PREFIX "vpdpbusd %[b1], %[a1], %[acc]\n\t"
-        : [acc]"+&v"(acc)
-        : [a0]"v"(a0), [b0]"vm"(b0), [a1]"v"(a1), [b1]"vm"(b1)
-      );
-#   else
       acc = _mm256_dpbusd_epi32(acc, a0, b0);
       acc = _mm256_dpbusd_epi32(acc, a1, b1);
-#   endif
 # else
-#   if defined (USE_INLINE_ASM)
-      __m256i tmp0 = _mm256_maddubs_epi16(a0, b0);
-      __m256i tmp1 = _mm256_maddubs_epi16(a1, b1);
-      asm(
-          "vpmaddwd    %[tmp0], %[ones], %[tmp0]\n\t"
-          "vpmaddwd    %[tmp1], %[ones], %[tmp1]\n\t"
-          "vpaddd      %[tmp0], %[tmp1], %[tmp0]\n\t"
-          "vpaddd      %[acc], %[tmp0], %[acc]\n\t"
-          : [acc]"+v"(acc), [tmp0]"+&v"(tmp0), [tmp1]"+&v"(tmp1)
-          : [ones]"v"(_mm256_set1_epi16(1))
-      );
-#   else
       __m256i product0 = _mm256_maddubs_epi16(a0, b0);
       __m256i product1 = _mm256_maddubs_epi16(a1, b1);
       product0 = _mm256_madd_epi16(product0, _mm256_set1_epi16(1));
       product1 = _mm256_madd_epi16(product1, _mm256_set1_epi16(1));
       acc = _mm256_add_epi32(acc, _mm256_add_epi32(product0, product1));
-#   endif
 # endif
     }
 
@@ -304,19 +209,9 @@ namespace Stockfish::Simd {
         __m128i a,
         __m128i b) {
 
-#   if defined (USE_INLINE_ASM)
-      __m128i tmp = _mm_maddubs_epi16(a, b);
-      asm(
-          "pmaddwd    %[ones], %[tmp]\n\t"
-          "paddd      %[tmp], %[acc]\n\t"
-          : [acc]"+v"(acc), [tmp]"+&v"(tmp)
-          : [ones]"v"(_mm_set1_epi16(1))
-      );
-#   else
       __m128i product0 = _mm_maddubs_epi16(a, b);
       product0 = _mm_madd_epi16(product0, _mm_set1_epi16(1));
       acc = _mm_add_epi32(acc, product0);
-#   endif
     }
 
     [[maybe_unused]] static void m128_add_dpbusd_epi32x2(
@@ -324,24 +219,11 @@ namespace Stockfish::Simd {
         __m128i a0, __m128i b0,
         __m128i a1, __m128i b1) {
 
-#   if defined (USE_INLINE_ASM)
-      __m128i tmp0 = _mm_maddubs_epi16(a0, b0);
-      __m128i tmp1 = _mm_maddubs_epi16(a1, b1);
-      asm(
-          "pmaddwd    %[ones], %[tmp0]\n\t"
-          "pmaddwd    %[ones], %[tmp1]\n\t"
-          "paddd      %[tmp1], %[tmp0]\n\t"
-          "paddd      %[tmp0], %[acc]\n\t"
-          : [acc]"+v"(acc), [tmp0]"+&v"(tmp0), [tmp1]"+&v"(tmp1)
-          : [ones]"v"(_mm_set1_epi16(1))
-      );
-#   else
       __m128i product0 = _mm_maddubs_epi16(a0, b0);
       __m128i product1 = _mm_maddubs_epi16(a1, b1);
       product0 = _mm_madd_epi16(product0, _mm_set1_epi16(1));
       product1 = _mm_madd_epi16(product1, _mm_set1_epi16(1));
       acc = _mm_add_epi32(acc, _mm_add_epi32(product0, product1));
-#   endif
     }
 
 #endif
