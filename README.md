@@ -80,11 +80,11 @@ big-endian machines such as Power PC, and other platforms.
 On Unix-like systems, it should be easy to compile Stockfish directly from the
 source code with the included Makefile in the folder `src`. In general, it is
 recommended to run `make help` to see a list of make targets with corresponding
-descriptions.
+descriptions. An example suitable for most Intel and AMD chips:
 
 ```
 cd src
-make -j build ARCH=x86-64-modern
+make -j profile-build ARCH=x86-64-avx2
 ```
 
 Detailed compilation instructions for all platforms can be found in our
