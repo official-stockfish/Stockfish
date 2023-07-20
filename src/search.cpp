@@ -490,6 +490,7 @@ void Thread::search() {
       }
 
       mainThread->iterValue[iterIdx] = bestValue;
+  // Cycle the value of iterIdx among 0, 1, 2, and 3 by keeping only the last bit.
       iterIdx = (iterIdx + 1) & 3;
   }
 
