@@ -1489,9 +1489,9 @@ moves_loop: // When in check, search starts here
         if (bestValue >= beta)
         {
             // Save gathered info in transposition table
+            // bestValue coming from staticEval is guaranteed not to hit the tablebase range
             if (!ss->ttHit)
-                tte->save(posKey, value_to_tt(bestValue, ss->ply), false, BOUND_LOWER,
-                          DEPTH_NONE, MOVE_NONE, ss->staticEval);
+                tte->save(posKey, bestValue, false, BOUND_LOWER, DEPTH_NONE, MOVE_NONE, ss->staticEval);
 
             return bestValue;
         }
