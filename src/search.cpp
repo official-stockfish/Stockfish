@@ -626,7 +626,7 @@ namespace {
     // At non-PV nodes we check for an early TT cutoff
     if (  !PvNode
         && !excludedMove
-        && tte->depth() > depth - (tte->bound() == BOUND_EXACT)
+        && tte->depth() > depth
         && ttValue != VALUE_NONE // Possible in case of TT access race or if !ttHit
         && (tte->bound() & (ttValue >= beta ? BOUND_LOWER : BOUND_UPPER)))
     {
@@ -1506,7 +1506,7 @@ moves_loop: // When in check, search starts here
             return bestValue;
         }
 
-        if (PvNode && bestValue > alpha)
+        if (bestValue > alpha)
             alpha = bestValue;
 
         futilityBase = bestValue + 200;
@@ -1618,7 +1618,7 @@ moves_loop: // When in check, search starts here
                 if (PvNode) // Update pv even in fail-high case
                     update_pv(ss->pv, move, (ss+1)->pv);
 
-                if (PvNode && value < beta) // Update alpha here!
+                if (value < beta) // Update alpha here!
                     alpha = value;
                 else
                     break; // Fail high
@@ -1838,7 +1838,7 @@ void MainThread::check_time() {
       return;
 
   // When using nodes, ensure checking rate is not lower than 0.1% of nodes
-  callsCnt = Limits.nodes ? std::min(1024, int(Limits.nodes / 1024)) : 1024;
+  callsCnt = Limits.nodes ? std::min(512, int(Limits.nodes / 1024)) : 512;
 
   static TimePoint lastInfoTime = now();
 
@@ -1855,7 +1855,7 @@ void MainThread::check_time() {
   if (ponder)
       return;
 
-  if (   (Limits.use_time_management() && (elapsed > Time.maximum() - 10 || stopOnPonderhit))
+  if (   (Limits.use_time_management() && (elapsed > Time.maximum() || stopOnPonderhit))
       || (Limits.movetime && elapsed >= Limits.movetime)
       || (Limits.nodes && Threads.nodes_searched() >= (uint64_t)Limits.nodes))
       Threads.stop = true;
