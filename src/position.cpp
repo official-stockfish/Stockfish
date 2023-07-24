@@ -42,7 +42,7 @@ namespace Zobrist {
   Key psq[PIECE_NB][SQUARE_NB];
   Key enpassant[FILE_NB];
   Key castling[CASTLING_RIGHT_NB];
-  Key side, noPawns;
+  Key side;
 }
 
 namespace {
@@ -125,7 +125,6 @@ void Position::init() {
       Zobrist::castling[cr] = rng.rand<Key>();
 
   Zobrist::side = rng.rand<Key>();
-  Zobrist::noPawns = rng.rand<Key>();
 
   // Prepare the cuckoo tables
   std::memset(cuckoo, 0, sizeof(cuckoo));
