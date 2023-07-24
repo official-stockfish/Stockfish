@@ -23,7 +23,7 @@ jobs:
             comp: gcc
             shell: bash
             archive_ext: tar
-            sde: /home/runner/work/Stockfish/Stockfish/.output/sde-temp-files/sde-external-9.14.0-2022-10-25-lin/sde -future --
+            sde: /home/runner/work/StockfishNPS/StockfishNPS/.output/sde-temp-files/sde-external-9.14.0-2022-10-25-lin/sde -future --
           - name: MacOS 13 Apple Clang
             os: macos-13
             simple_name: macos
@@ -40,7 +40,7 @@ jobs:
             msys_env: x86_64-gcc
             shell: msys2 {0}
             ext: .exe
-            sde: /d/a/Stockfish/Stockfish/.output/sde-temp-files/sde-external-9.14.0-2022-10-25-win/sde.exe -future --
+            sde: /d/a/StockfishNPS/StockfishNPS/.output/sde-temp-files/sde-external-9.14.0-2022-10-25-win/sde.exe -future --
             archive_ext: zip
         binaries:
           - x86-32
