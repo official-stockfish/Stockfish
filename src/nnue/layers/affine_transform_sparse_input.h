@@ -103,7 +103,6 @@ namespace Stockfish::Eval::NNUE::Layers {
   class AffineTransformSparseInput {
    public:
     // Input/output type
-    // Input/output type
     using InputType = std::uint8_t;
     using OutputType = std::int32_t;
 
@@ -135,7 +134,7 @@ namespace Stockfish::Eval::NNUE::Layers {
       return hashValue;
     }
 
-    static IndexType get_weight_index_scrambled(IndexType i)
+    static constexpr IndexType get_weight_index_scrambled(IndexType i)
     {
       return
         (i / ChunkSize) % (PaddedInputDimensions / ChunkSize) * OutputDimensions * ChunkSize +
@@ -143,7 +142,7 @@ namespace Stockfish::Eval::NNUE::Layers {
         i % ChunkSize;
     }
 
-    static IndexType get_weight_index(IndexType i)
+    static constexpr IndexType get_weight_index(IndexType i)
     {
 #if defined (USE_SSSE3)
       return get_weight_index_scrambled(i);
@@ -171,7 +170,7 @@ namespace Stockfish::Eval::NNUE::Layers {
       return !stream.fail();
     }
     // Forward propagation
-    const OutputType* propagate(
+    void propagate(
         const InputType* input, OutputType* output) const {
 
 #if defined (USE_SSSE3)
@@ -230,8 +229,6 @@ namespace Stockfish::Eval::NNUE::Layers {
         PaddedInputDimensions,
         OutputDimensions>(output, weights, biases, input);
 #endif
-
-      return output;
     }
 
    private:

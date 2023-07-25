@@ -171,7 +171,7 @@ namespace Stockfish::Eval::NNUE::Layers {
       return hashValue;
     }
 
-    static IndexType get_weight_index_scrambled(IndexType i)
+    static constexpr IndexType get_weight_index_scrambled(IndexType i)
     {
       return
         (i / 4) % (PaddedInputDimensions / 4) * OutputDimensions * 4 +
@@ -179,7 +179,7 @@ namespace Stockfish::Eval::NNUE::Layers {
         i % 4;
     }
 
-    static IndexType get_weight_index(IndexType i)
+    static constexpr IndexType get_weight_index(IndexType i)
     {
 #if defined (USE_SSSE3)
       return get_weight_index_scrambled(i);
@@ -207,7 +207,7 @@ namespace Stockfish::Eval::NNUE::Layers {
       return !stream.fail();
     }
     // Forward propagation
-    const OutputType* propagate(
+    void propagate(
         const InputType* input, OutputType* output) const {
 
 #if defined (USE_AVX512)
@@ -291,8 +291,6 @@ namespace Stockfish::Eval::NNUE::Layers {
         PaddedInputDimensions,
         OutputDimensions>(output, weights, biases, input);
 #endif
-
-      return output;
     }
 
    private:
