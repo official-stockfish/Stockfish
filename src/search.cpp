@@ -812,11 +812,9 @@ namespace {
 
         pos.undo_null_move();
 
-        if (nullValue >= beta)
+        // Do not return unproven mate or TB scores
+        if (nullValue >= beta && nullValue < VALUE_TB_WIN_IN_MAX_PLY)
         {
-            // Do not return unproven mate or TB scores
-            nullValue = std::min(nullValue, VALUE_TB_WIN_IN_MAX_PLY-1);
-
             if (thisThread->nmpMinPly || depth < 14)
                 return nullValue;
 
