@@ -82,6 +82,7 @@ namespace Stockfish::Eval::NNUE {
 
   }  // namespace Detail
 
+
   // Initialize the evaluation function parameters
   static void initialize() {
 
@@ -187,7 +188,6 @@ namespace Stockfish::Eval::NNUE {
 
     // We manually align the arrays on the stack because with gcc < 9.3
     // overaligning stack variables with alignas() doesn't work correctly.
-
     constexpr uint64_t alignment = CacheLineSize;
 
 #if defined(ALIGNAS_ON_STACK_VARIABLES_BROKEN)
@@ -249,8 +249,9 @@ namespace Stockfish::Eval::NNUE {
   }
 
 
-  // format_cp_aligned_dot() converts a Value into pawns, always keeping two decimals.
+  // format_cp_aligned_dot() converts a Value into pawns, always keeping two decimals
   static void format_cp_aligned_dot(Value v, std::stringstream &stream) {
+  
     const double pawns = std::abs(0.01 * UCI::to_cp(v));
 
     stream << (v < 0 ? '-' : v > 0 ? '+' : ' ')
@@ -263,7 +264,6 @@ namespace Stockfish::Eval::NNUE {
 
   // trace() returns a string with the value of each piece on a board,
   // and a table for (PSQT, Layers) values bucket by bucket.
-
   std::string trace(Position& pos) {
 
     std::stringstream ss;
