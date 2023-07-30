@@ -401,4 +401,5 @@ namespace Stockfish::Eval::NNUE {
   }
 
 
-} // namespace Stockfish::Eval::NNUE
+} 
+
