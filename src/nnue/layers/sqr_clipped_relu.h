@@ -59,7 +59,7 @@ namespace Stockfish::Eval::NNUE::Layers {
     }
 
     // Forward propagation
-    const OutputType* propagate(
+    void propagate(
         const InputType* input, OutputType* output) const {
 
   #if defined(USE_SSE2)
@@ -110,8 +110,6 @@ namespace Stockfish::Eval::NNUE::Layers {
             // needs to be accounted for in the trainer
             std::max(0ll, std::min(127ll, (((long long)input[i] * input[i]) >> (2 * WeightScaleBits)) / 128)));
       }
-
-      return output;
     }
   };
 

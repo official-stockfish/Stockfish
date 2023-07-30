@@ -123,21 +123,45 @@ void MovePicker::score() {
   for (auto& m : *this)
       if constexpr (Type == CAPTURES)
           m.value =  (7 * int(PieceValue[MG][pos.piece_on(to_sq(m))])
-                   +     (*captureHistory)[pos.moved_piece(m)][to_sq(m)][type_of(pos.piece_on(to_sq(m)))]) / 16;
+                   + (*captureHistory)[pos.moved_piece(m)][to_sq(m)][type_of(pos.piece_on(to_sq(m)))]) / 16;
 
       else if constexpr (Type == QUIETS)
-          m.value =  2 * (*mainHistory)[pos.side_to_move()][from_to(m)]
-                   + 2 * (*continuationHistory[0])[pos.moved_piece(m)][to_sq(m)]
-                   +     (*continuationHistory[1])[pos.moved_piece(m)][to_sq(m)]
-                   +     (*continuationHistory[3])[pos.moved_piece(m)][to_sq(m)]
-                   +     (*continuationHistory[5])[pos.moved_piece(m)][to_sq(m)]
-                   +     (threatenedPieces & from_sq(m) ?
-                           (type_of(pos.moved_piece(m)) == QUEEN && !(to_sq(m) & threatenedByRook)  ? 50000
-                          : type_of(pos.moved_piece(m)) == ROOK  && !(to_sq(m) & threatenedByMinor) ? 25000
-                          :                                         !(to_sq(m) & threatenedByPawn)  ? 15000
-                          :                                                                           0)
-                          :                                                                           0)
-                   +     bool(pos.check_squares(type_of(pos.moved_piece(m))) & to_sq(m)) * 16384;
+      {
+          Piece     pc   = pos.moved_piece(m);
+          PieceType pt   = type_of(pos.moved_piece(m));
+          Square    from = from_sq(m);
+          Square    to   = to_sq(m);
+
+          // histories
+          m.value =  2 * (*mainHistory)[pos.side_to_move()][from_to(m)];
+          m.value += 2 * (*continuationHistory[0])[pc][to];
+          m.value +=     (*continuationHistory[1])[pc][to];
+          m.value +=     (*continuationHistory[3])[pc][to];
+          m.value +=     (*continuationHistory[5])[pc][to];
+
+          // bonus for checks
+          m.value += bool(pos.check_squares(pt) & to) * 16384;
+
+          // bonus for escaping from capture
+          m.value += threatenedPieces & from ?
+                       (pt == QUEEN && !(to & threatenedByRook)  ? 50000
+                      : pt == ROOK  && !(to & threatenedByMinor) ? 25000
+                      :                !(to & threatenedByPawn)  ? 15000
+                      :                                            0 )
+                      :                                            0 ;
+
+          // malus for putting piece en prise
+          m.value -= !(threatenedPieces & from) ?
+                        (pt == QUEEN ?   bool(to & threatenedByRook)  * 50000
+                                       + bool(to & threatenedByMinor) * 10000
+                                       + bool(to & threatenedByPawn)  * 20000
+                       : pt == ROOK  ?   bool(to & threatenedByMinor) * 25000
+                                       + bool(to & threatenedByPawn)  * 10000
+                       : pt != PAWN ?    bool(to & threatenedByPawn)  * 15000
+                       :                                                0 )
+                       :                                                0 ;
+      }
+      
       else // Type == EVASIONS
       {
           if (pos.capture_stage(m))
