@@ -38,6 +38,22 @@ jobs:
             comp: ndk
             run_armv7_tests: true
             shell: bash
+          - name: Linux GCC riscv64
+            os: ubuntu-22.04
+            compiler: g++
+            comp: gcc
+            run_riscv64_tests: true
+            base_image: 'riscv64/alpine:edge'
+            platform: linux/riscv64          
+            shell: bash
+          - name: Linux GCC ppc64
+            os: ubuntu-22.04
+            compiler: g++
+            comp: gcc
+            run_ppc64_tests: true
+            base_image: 'ppc64le/alpine:latest'
+            platform: linux/ppc64le          
+            shell: bash
           - name: MacOS 13 Apple Clang
             os: macos-13
             compiler: clang++
@@ -87,7 +103,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt update
-          sudo apt install expect valgrind g++-multilib qemu-user
+          sudo apt install expect valgrind g++-multilib qemu-user-static
 
       - name: Install NDK
         if: runner.os == 'Linux'
@@ -102,6 +118,24 @@ jobs:
             ANDROID_NDK_BIN=$ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin
             echo "ANDROID_NDK_BIN=$ANDROID_NDK_BIN" >> $GITHUB_ENV
           fi
+
+      - name: Set up QEMU
+        if: matrix.config.base_image
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        if: matrix.config.base_image
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build Docker container
+        if: matrix.config.base_image
+        run: |
+          docker buildx build --load -t sf_builder - << EOF
+          FROM ${{ matrix.config.base_image }}
+          WORKDIR /app
+          RUN apk update && apk add make g++
+          CMD sh make_sf.sh
+          EOF
 
       - name: Download required macOS packages
         if: runner.os == 'macOS'
@@ -253,6 +287,15 @@ jobs:
           make -j2 ARCH=armv8 build
           ../tests/signature.sh $benchref
 
+      - name: Test armv8-dotprod build
+        if: matrix.config.run_armv8_tests
+        run: |
+          export PATH=${{ env.ANDROID_NDK_BIN }}:$PATH
+          export LDFLAGS="-static -Wno-unused-command-line-argument"
+          make clean
+          make -j2 ARCH=armv8-dotprod build
+          ../tests/signature.sh $benchref
+
       # armv7 tests
 
       - name: Test armv7 build
@@ -271,6 +314,24 @@ jobs:
           export LDFLAGS="-static -Wno-unused-command-line-argument"
           make clean
           make -j2 ARCH=armv7-neon build
+          ../tests/signature.sh $benchref
+
+      # riscv64 tests
+
+      - name: Test riscv64 build
+        if: matrix.config.run_riscv64_tests
+        run: |
+          echo "export LDFLAGS='-static' && make clean && make -j2 ARCH=riscv64 build" > make_sf.sh
+          docker run --rm --platform ${{ matrix.config.platform }} -v ${{ github.workspace }}/src:/app sf_builder
+          ../tests/signature.sh $benchref
+
+      # ppc64 tests
+
+      - name: Test ppc64 build
+        if: matrix.config.run_ppc64_tests
+        run: |
+          echo "export LDFLAGS='-static' && make clean && make -j2 ARCH=ppc-64 build" > make_sf.sh
+          docker run --rm --platform ${{ matrix.config.platform }} -v ${{ github.workspace }}/src:/app sf_builder
           ../tests/signature.sh $benchref
 
       # Other tests
