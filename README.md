@@ -37,6 +37,7 @@ All mods can be used in any combination together with UCI_Elo and Skill Level se
 [StockfishMediumNPS (SFMnps)](https://github.com/Joachim26/Stockfish) uses old standard 45 MB SFNNv5 nets. This version is stronger than the new standard SFnps for shorter TCs and weaker devices, like Android phones and tablets. Same UCI-settings as SFnps.
 
 
+[StockfishMediumXtremeNPS (SFMXnps)](https://github.com/Joachim26/Stockfish) is an optimized SFMnps and is just the strongest Android engine out there.
 
 [StockfishSmallNPS (SFSnps)](https://github.com/Joachim26/Stockfish) uses a small 12 MB net made by vondele and is on Windows and Android much faster than SFnps and also faster than SFMnps. UCI-settings are identical to SFnps. However, a 'pure NNUE' UCI-option was added. Tests with SFSnps showed comparable speeds and playing strengths with pure and with hybrid evaluation. 
 
