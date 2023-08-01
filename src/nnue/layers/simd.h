@@ -239,6 +239,12 @@ namespace Stockfish::Simd {
         acc = vdotq_s32(acc, a1, b1);
     }
 
+    [[maybe_unused]] static void dotprod_m128_add_dpbusd_epi32(
+        int32x4_t& acc,
+        int8x16_t a, int8x16_t b) {
+
+        acc = vdotq_s32(acc, a, b);
+    }
 #endif
 
 #if defined (USE_NEON)
@@ -277,9 +283,19 @@ namespace Stockfish::Simd {
       product = vmlal_s8(product, a1, b1);
       acc = vpadalq_s16(acc, product);
     }
-
 #endif
 
+#if USE_NEON >= 8
+    [[maybe_unused]] static void neon_m128_add_dpbusd_epi32(
+        int32x4_t& acc,
+        int8x16_t a, int8x16_t b) {
+
+      int16x8_t product0 = vmull_s8(vget_low_s8(a), vget_low_s8(b));
+      int16x8_t product1 = vmull_high_s8(a, b);
+      int16x8_t sum = vpaddq_s16(product0, product1);
+      acc = vpadalq_s16(acc, sum);
+    }
+#endif
 }
 
 #endif // STOCKFISH_SIMD_H_INCLUDED
