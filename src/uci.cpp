@@ -69,7 +69,7 @@ namespace {
         return;
 
     string rfen = fen;
-    regex c("\s*([rnbqkpRNBQKP1-8]+\/){7}([rnbqkpRNBQKP1-8]+)\\s[bw-]\\s(([a-hkqA-HKQ]{1,4})|(-))\\s(([a-h][3-6])|(-))\\s\\d+\\s\\d+ \s*");
+    regex c("\\s*([rnbqkpRNBQKP1-8]+\\/){7}([rnbqkpRNBQKP1-8]+)\\s[bw-]\\s(([a-hkqA-HKQ]{1,4})|(-))\\s(([a-h][3-6])|(-))\\s\\d+\\s\\d+ \\s*");
     if (regex_match(rfen, c));  else { sync_cout << "Invaild fen" << sync_endl; return; }
 
     states = StateListPtr(new std::deque<StateInfo>(1)); // Drop the old state and create a new one
