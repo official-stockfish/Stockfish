@@ -1,0 +1,42 @@
+name: Semantic Pull Request
+
+on:
+  # Read before modifying this workflow:
+  # https://securitylab.github.com/research/github-actions-preventing-pwn-requests/
+  pull_request_target:
+    types:
+      - opened
+      - edited
+      - synchronize
+
+jobs:
+  Check-Bench:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      - name: Check PR body for bench
+        run: |
+          pr_body=$(gh pr view ${{ github.event.pull_request.number }} --json body -q . | jq -r .body)
+
+          bench=$(echo "$pr_body" | tac | grep -m 1 -o -x '[[:space:]]*\b[Bb]ench[ :]\+[1-9][0-9]\{5,7\}\b[[:space:]]*' | sed 's/[^0-9]//g')
+
+          if [[ -z "$bench" ]] && echo "$pr_body" | grep -qi "No functional change."; then
+              gh pr comment ${{ github.event.pull_request.number }} -b \
+              "Hello there! 👋
+
+            I noticed that your pull request doesn't meet our requirements for the 'Bench' or 'Non functional change' criteria.
+
+            Here's some guidance to help you address this:
+
+            - If you're making a functional change, make sure to include the appropriate bench information in the pull request body.
+              The format for the bench information should be: 'Bench: [bench_number]'.
+
+            - If your change is non-functional, please include the phrase 'No functional change.' somewhere in the pull request body.
+
+            If you have any questions or need further assistance, don't hesitate to ask. Thanks for your contribution! 🙌"
+            exit 1
+          fi
