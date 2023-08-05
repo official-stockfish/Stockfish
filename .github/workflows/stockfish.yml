@@ -38,19 +38,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   Sanitizers:
-    needs: Check-Bench
     uses: ./.github/workflows/stockfish_sanitizers.yml
   Tests:
-    needs: Check-Bench
     uses: ./.github/workflows/stockfish_test.yml
   Compiles:
-    needs: Check-Bench
     uses: ./.github/workflows/stockfish_compile_test.yml
   Binaries:
-    needs: Check-Bench
     if: github.ref == 'refs/heads/master' || (startsWith(github.ref_name, 'sf_') && github.ref_type == 'tag')
     uses: ./.github/workflows/stockfish_binaries.yml
   ARM_Binaries:
-    needs: Check-Bench
     if: github.ref == 'refs/heads/master' || (startsWith(github.ref_name, 'sf_') && github.ref_type == 'tag')
     uses: ./.github/workflows/stockfish_arm_binaries.yml
