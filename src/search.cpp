@@ -1047,7 +1047,7 @@ moves_loop: // When in check, search starts here
               lmrDepth = std::max(lmrDepth, 0);
 
               // Prune moves with negative SEE (~4 Elo)
-              if (!pos.see_ge(move, Value(-27 * lmrDepth * lmrDepth - 16 * lmrDepth)))
+              if (!pos.see_ge(move, Value(-31 * lmrDepth * lmrDepth)))
                   continue;
           }
       }
@@ -1505,7 +1505,7 @@ moves_loop: // When in check, search starts here
         if (bestValue > alpha)
             alpha = bestValue;
 
-        futilityBase = bestValue + 200;
+        futilityBase = std::min(ss->staticEval, bestValue) + 200;
     }
 
     const PieceToHistory* contHist[] = { (ss-1)->continuationHistory, (ss-2)->continuationHistory,

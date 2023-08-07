@@ -26,7 +26,6 @@
 
 #include "bitboard.h"
 #include "evaluate.h"
-#include "psqt.h"
 #include "types.h"
 
 #include "nnue/nnue_accumulator.h"
@@ -153,7 +152,6 @@ public:
   bool has_game_cycle(int ply) const;
   bool has_repeated() const;
   int rule50_count() const;
-  Value psq_eg_stm() const;
   Value non_pawn_material(Color c) const;
   Value non_pawn_material() const;
 
@@ -192,7 +190,6 @@ private:
   StateInfo* st;
   int gamePly;
   Color sideToMove;
-  Score psq;
   bool chess960;
 };
 
@@ -321,10 +318,6 @@ inline Key Position::material_key() const {
   return st->materialKey;
 }
 
-inline Value Position::psq_eg_stm() const {
-  return (sideToMove == WHITE ? 1 : -1) * eg_value(psq);
-}
-
 inline Value Position::non_pawn_material(Color c) const {
   return st->nonPawnMaterial[c];
 }
@@ -374,7 +367,6 @@ inline void Position::put_piece(Piece pc, Square s) {
   byColorBB[color_of(pc)] |= s;
   pieceCount[pc]++;
   pieceCount[make_piece(color_of(pc), ALL_PIECES)]++;
-  psq += PSQT::psq[pc][s];
 }
 
 inline void Position::remove_piece(Square s) {
@@ -386,7 +378,6 @@ inline void Position::remove_piece(Square s) {
   board[s] = NO_PIECE;
   pieceCount[pc]--;
   pieceCount[make_piece(color_of(pc), ALL_PIECES)]--;
-  psq -= PSQT::psq[pc][s];
 }
 
 inline void Position::move_piece(Square from, Square to) {
@@ -398,7 +389,6 @@ inline void Position::move_piece(Square from, Square to) {
   byColorBB[color_of(pc)] ^= fromTo;
   board[from] = NO_PIECE;
   board[to] = pc;
-  psq += PSQT::psq[pc][to] - PSQT::psq[pc][from];
 }
 
 inline void Position::do_move(Move m, StateInfo& newSt) {

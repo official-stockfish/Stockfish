@@ -35,7 +35,7 @@
 
 namespace Stockfish::Eval::NNUE::Layers {
 
-#if defined(USE_SSSE3)
+#if (USE_SSSE3 | (USE_NEON >= 8))
   alignas(CacheLineSize) static inline const std::array<std::array<std::uint16_t, 8>, 256> lookup_indices = [](){
     std::array<std::array<std::uint16_t, 8>, 256> v{};
     for (unsigned i = 0; i < 256; ++i)
@@ -50,19 +50,37 @@ namespace Stockfish::Eval::NNUE::Layers {
   // Find indices of nonzero numbers in an int32_t array
   template<const IndexType InputDimensions>
   void find_nnz(const std::int32_t* input, std::uint16_t* out, IndexType& count_out) {
-#if defined (USE_AVX512)
-    using vec_t = __m512i;
-    #define vec_nnz(a) _mm512_cmpgt_epi32_mask(a, _mm512_setzero_si512())
-#elif defined (USE_AVX2)
-    using vec_t = __m256i;
-    #if defined(USE_VNNI) && !defined(USE_AVXVNNI)
-        #define vec_nnz(a) _mm256_cmpgt_epi32_mask(a, _mm256_setzero_si256())
-    #else
-        #define vec_nnz(a) _mm256_movemask_ps(_mm256_castsi256_ps(_mm256_cmpgt_epi32(a, _mm256_setzero_si256())))
+#if defined (USE_SSSE3)
+    #if defined (USE_AVX512)
+        using vec_t = __m512i;
+        #define vec_nnz(a) _mm512_cmpgt_epi32_mask(a, _mm512_setzero_si512())
+    #elif defined (USE_AVX2)
+        using vec_t = __m256i;
+        #if defined(USE_VNNI) && !defined(USE_AVXVNNI)
+            #define vec_nnz(a) _mm256_cmpgt_epi32_mask(a, _mm256_setzero_si256())
+        #else
+            #define vec_nnz(a) _mm256_movemask_ps(_mm256_castsi256_ps(_mm256_cmpgt_epi32(a, _mm256_setzero_si256())))
+        #endif
+    #elif defined (USE_SSSE3)
+        using vec_t = __m128i;
+        #define vec_nnz(a) _mm_movemask_ps(_mm_castsi128_ps(_mm_cmpgt_epi32(a, _mm_setzero_si128())))
     #endif
-#elif defined (USE_SSSE3)
-    using vec_t = __m128i;
-    #define vec_nnz(a) _mm_movemask_ps(_mm_castsi128_ps(_mm_cmpgt_epi32(a, _mm_setzero_si128())))
+    using vec128_t = __m128i;
+    #define vec128_zero _mm_setzero_si128()
+    #define vec128_set_16(a) _mm_set1_epi16(a)
+    #define vec128_load(a) _mm_load_si128(a)
+    #define vec128_storeu(a, b) _mm_storeu_si128(a, b)
+    #define vec128_add(a, b) _mm_add_epi16(a, b)
+#elif defined (USE_NEON)
+    using vec_t = int32x4_t;
+    static const std::uint32_t Mask[4] = {1, 2, 4, 8};
+    #define vec_nnz(a) vaddvq_u32(vandq_u32(vtstq_u32(a, a), vld1q_u32(Mask)))
+    using vec128_t = int16x8_t;
+    #define vec128_zero vdupq_n_u16(0)
+    #define vec128_set_16(a) vdupq_n_u16(a)
+    #define vec128_load(a) vld1q_u16(reinterpret_cast<const std::uint16_t*>(a))
+    #define vec128_storeu(a, b) vst1q_u16(reinterpret_cast<std::uint16_t*>(a), b)
+    #define vec128_add(a, b) vaddq_u16(a, b)
 #endif
     constexpr IndexType InputSimdWidth = sizeof(vec_t) / sizeof(std::int32_t);
     // Inputs are processed InputSimdWidth at a time and outputs are processed 8 at a time so we process in chunks of max(InputSimdWidth, 8)
@@ -73,8 +91,8 @@ namespace Stockfish::Eval::NNUE::Layers {
 
     const auto inputVector = reinterpret_cast<const vec_t*>(input);
     IndexType count = 0;
-    __m128i base = _mm_setzero_si128();
-    const __m128i increment = _mm_set1_epi16(8);
+    vec128_t base = vec128_zero;
+    const vec128_t increment = vec128_set_16(8);
     for (IndexType i = 0; i < NumChunks; ++i)
     {
       // bitmask of nonzero values in this chunk
@@ -87,15 +105,20 @@ namespace Stockfish::Eval::NNUE::Layers {
       for (IndexType j = 0; j < OutputsPerChunk; ++j)
       {
         const auto lookup = (nnz >> (j * 8)) & 0xFF;
-        const auto offsets = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&lookup_indices[lookup]));
-        _mm_storeu_si128(reinterpret_cast<__m128i*>(out + count), _mm_add_epi16(base, offsets));
+        const auto offsets = vec128_load(reinterpret_cast<const vec128_t*>(&lookup_indices[lookup]));
+        vec128_storeu(reinterpret_cast<vec128_t*>(out + count), vec128_add(base, offsets));
         count += popcount(lookup);
-        base = _mm_add_epi16(base, increment);
+        base = vec128_add(base, increment);
       }
     }
     count_out = count;
   }
 # undef vec_nnz
+# undef vec128_zero
+# undef vec128_set_16
+# undef vec128_load
+# undef vec128_storeu
+# undef vec128_add
 #endif
 
   // Sparse input implementation
@@ -117,7 +140,7 @@ namespace Stockfish::Eval::NNUE::Layers {
     static constexpr IndexType PaddedOutputDimensions =
       ceil_to_multiple<IndexType>(OutputDimensions, MaxSimdWidth);
 
-#if defined (USE_SSSE3)
+#if (USE_SSSE3 | (USE_NEON >= 8))
     static constexpr IndexType ChunkSize = 4;
 #else
     static constexpr IndexType ChunkSize = 1;
@@ -144,7 +167,7 @@ namespace Stockfish::Eval::NNUE::Layers {
 
     static constexpr IndexType get_weight_index(IndexType i)
     {
-#if defined (USE_SSSE3)
+#if (USE_SSSE3 | (USE_NEON >= 8))
       return get_weight_index_scrambled(i);
 #else
       return i;
@@ -173,24 +196,34 @@ namespace Stockfish::Eval::NNUE::Layers {
     void propagate(
         const InputType* input, OutputType* output) const {
 
-#if defined (USE_SSSE3)
+#if (USE_SSSE3 | (USE_NEON >= 8))
 #if defined (USE_AVX512)
-      using vec_t = __m512i;
-      #define vec_setzero _mm512_setzero_si512
+      using invec_t = __m512i;
+      using outvec_t = __m512i;
       #define vec_set_32 _mm512_set1_epi32
       #define vec_add_dpbusd_32 Simd::m512_add_dpbusd_epi32
 #elif defined (USE_AVX2)
-      using vec_t = __m256i;
-      #define vec_setzero _mm256_setzero_si256
+      using invec_t = __m256i;
+      using outvec_t = __m256i;
       #define vec_set_32 _mm256_set1_epi32
       #define vec_add_dpbusd_32 Simd::m256_add_dpbusd_epi32
 #elif defined (USE_SSSE3)
-      using vec_t = __m128i;
-      #define vec_setzero _mm_setzero_si128
+      using invec_t = __m128i;
+      using outvec_t = __m128i;
       #define vec_set_32 _mm_set1_epi32
       #define vec_add_dpbusd_32 Simd::m128_add_dpbusd_epi32
+#elif defined (USE_NEON_DOTPROD)
+      using invec_t = int8x16_t;
+      using outvec_t = int32x4_t;
+      #define vec_set_32(a) vreinterpretq_s8_u32(vdupq_n_u32(a))
+      #define vec_add_dpbusd_32 Simd::dotprod_m128_add_dpbusd_epi32
+#elif defined (USE_NEON)
+      using invec_t = int8x16_t;
+      using outvec_t = int32x4_t;
+      #define vec_set_32(a) vreinterpretq_s8_u32(vdupq_n_u32(a))
+      #define vec_add_dpbusd_32 Simd::neon_m128_add_dpbusd_epi32
 #endif
-      static constexpr IndexType OutputSimdWidth = sizeof(vec_t) / sizeof(OutputType);
+      static constexpr IndexType OutputSimdWidth = sizeof(outvec_t) / sizeof(OutputType);
 
       constexpr IndexType NumChunks = ceil_to_multiple<IndexType>(InputDimensions, 8) / ChunkSize;
       constexpr IndexType NumRegs = OutputDimensions / OutputSimdWidth;
@@ -202,24 +235,23 @@ namespace Stockfish::Eval::NNUE::Layers {
       // Find indices of nonzero 32bit blocks
       find_nnz<NumChunks>(input32, nnz, count);
 
-      const vec_t* biasvec = reinterpret_cast<const vec_t*>(biases);
-      vec_t acc[NumRegs];
+      const outvec_t* biasvec = reinterpret_cast<const outvec_t*>(biases);
+      outvec_t acc[NumRegs];
       for (IndexType k = 0; k < NumRegs; ++k)
         acc[k] = biasvec[k];
 
       for (IndexType j = 0; j < count; ++j)
       {
         const auto i = nnz[j];
-        const vec_t in = vec_set_32(input32[i]);
-        const auto col = reinterpret_cast<const vec_t*>(&weights[i * OutputDimensions * ChunkSize]);
+        const invec_t in = vec_set_32(input32[i]);
+        const auto col = reinterpret_cast<const invec_t*>(&weights[i * OutputDimensions * ChunkSize]);
         for (IndexType k = 0; k < NumRegs; ++k)
           vec_add_dpbusd_32(acc[k], in, col[k]);
       }
 
-      vec_t* outptr = reinterpret_cast<vec_t*>(output);
+      outvec_t* outptr = reinterpret_cast<outvec_t*>(output);
       for (IndexType k = 0; k < NumRegs; ++k)
         outptr[k] = acc[k];
-# undef vec_setzero
 # undef vec_set_32
 # undef vec_add_dpbusd_32
 #else
