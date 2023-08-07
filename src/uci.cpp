@@ -112,8 +112,10 @@ namespace {
 
     if (Options.count(name))
         Options[name] = value;
+    else if (name != "")
+        sync_cout << "info string " << name << " not recognized" << sync_endl;
     else
-        sync_cout << "No such option: " << name << sync_endl;
+        sync_cout << "No such option: " << token << sync_endl;
   }
 
 
