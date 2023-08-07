@@ -98,9 +98,10 @@ namespace {
 
   void setoption(istringstream& is) {
 
-    string token, name, value;
+    string token, rtoken, name, value;
 
     is >> token; // Consume the "name" token
+    rtoken = token;
 
     // Read the option name (can contain spaces)
     while (is >> token && token != "value")
@@ -115,7 +116,7 @@ namespace {
     else if (name != "")
         sync_cout << "info string " << name << " not recognized" << sync_endl;
     else
-        sync_cout << "No such option: " << token << sync_endl;
+        sync_cout << "No such option: " << rtoken << sync_endl;
   }
 
 
