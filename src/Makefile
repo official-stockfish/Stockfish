@@ -881,11 +881,18 @@ net:
         fi
 	$(eval shasum_command := $(shell if hash shasum 2>/dev/null; then echo "shasum -a 256 "; elif hash sha256sum 2>/dev/null; then echo "sha256sum "; fi))
 	@if [ "x$(shasum_command)" = "x" ]; then \
-            echo "shasum / sha256sum not found, skipping net validation"; \
-        fi
+        echo "shasum / sha256sum not found, skipping net validation"; \
+	elif test -f "$(nnuenet)"; then \
+	    if [ "$(nnuenet)" != "nn-"`$(shasum_command) $(nnuenet) | cut -c1-12`".nnue" ]; then \
+	        echo "Removing invalid network"; rm -f $(nnuenet); \
+	    else \
+	        echo "Network validated"; break; \
+	    fi; \
+	fi;
 	@for nnuedownloadurl in "$(nnuedownloadurl1)" "$(nnuedownloadurl2)"; do \
 	   if test -f "$(nnuenet)"; then \
 	      echo "$(nnuenet) available."; \
+	      break; \
 	   else \
 	      if [ "x$(curl_or_wget)" != "x" ]; then \
                  echo "Downloading $${nnuedownloadurl}"; $(curl_or_wget) $${nnuedownloadurl} > $(nnuenet);\
