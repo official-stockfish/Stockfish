@@ -157,13 +157,6 @@ enum Phase {
   MG = 0, EG = 1, PHASE_NB = 2
 };
 
-enum ScaleFactor {
-  SCALE_FACTOR_DRAW    = 0,
-  SCALE_FACTOR_NORMAL  = 64,
-  SCALE_FACTOR_MAX     = 128,
-  SCALE_FACTOR_NONE    = 255
-};
-
 enum Bound {
   BOUND_NONE,
   BOUND_UPPER,
