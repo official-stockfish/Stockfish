@@ -98,6 +98,8 @@ namespace {
 
   void setoption(istringstream& is) {
 
+    Threads.main()->wait_for_search_finished();
+
     string token, name, value;
 
     is >> token; // Consume the "name" token

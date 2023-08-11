@@ -92,19 +92,6 @@ template<> void Tune::Entry<Value>::read_option() {
       value = Value(int(Options[name]));
 }
 
-template<> void Tune::Entry<Score>::init_option() {
-  make_option("m" + name, mg_value(value), range);
-  make_option("e" + name, eg_value(value), range);
-}
-
-template<> void Tune::Entry<Score>::read_option() {
-  if (Options.count("m" + name))
-      value = make_score(int(Options["m" + name]), eg_value(value));
-
-  if (Options.count("e" + name))
-      value = make_score(mg_value(value), int(Options["e" + name]));
-}
-
 // Instead of a variable here we have a PostUpdate function: just call it
 template<> void Tune::Entry<Tune::PostUpdate>::init_option() {}
 template<> void Tune::Entry<Tune::PostUpdate>::read_option() { value(); }

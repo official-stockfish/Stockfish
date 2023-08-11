@@ -79,23 +79,6 @@ namespace Stockfish::Simd {
       return _mm512_add_epi32(sum0123a, sum0123b);
     }
 
-    [[maybe_unused]] static __m128i m512_haddx4(
-        __m512i sum0, __m512i sum1, __m512i sum2, __m512i sum3,
-        __m128i bias) {
-
-      __m512i sum = m512_hadd128x16_interleave(sum0, sum1, sum2, sum3);
-
-      __m256i sum256lo = _mm512_castsi512_si256(sum);
-      __m256i sum256hi = _mm512_extracti64x4_epi64(sum, 1);
-
-      sum256lo = _mm256_add_epi32(sum256lo, sum256hi);
-
-      __m128i sum128lo = _mm256_castsi256_si128(sum256lo);
-      __m128i sum128hi = _mm256_extracti128_si256(sum256lo, 1);
-
-      return _mm_add_epi32(_mm_add_epi32(sum128lo, sum128hi), bias);
-    }
-
     [[maybe_unused]] static void m512_add_dpbusd_epi32(
         __m512i& acc,
         __m512i a,
@@ -136,21 +119,6 @@ namespace Stockfish::Simd {
       sum128 = _mm_add_epi32(sum128, _mm_shuffle_epi32(sum128, _MM_PERM_BADC));
       sum128 = _mm_add_epi32(sum128, _mm_shuffle_epi32(sum128, _MM_PERM_CDAB));
       return _mm_cvtsi128_si32(sum128) + bias;
-    }
-
-    [[maybe_unused]] static __m128i m256_haddx4(
-        __m256i sum0, __m256i sum1, __m256i sum2, __m256i sum3,
-        __m128i bias) {
-
-      sum0 = _mm256_hadd_epi32(sum0, sum1);
-      sum2 = _mm256_hadd_epi32(sum2, sum3);
-
-      sum0 = _mm256_hadd_epi32(sum0, sum2);
-
-      __m128i sum128lo = _mm256_castsi256_si128(sum0);
-      __m128i sum128hi = _mm256_extracti128_si256(sum0, 1);
-
-      return _mm_add_epi32(_mm_add_epi32(sum128lo, sum128hi), bias);
     }
 
     [[maybe_unused]] static void m256_add_dpbusd_epi32(
@@ -194,16 +162,6 @@ namespace Stockfish::Simd {
       return _mm_cvtsi128_si32(sum) + bias;
     }
 
-    [[maybe_unused]] static __m128i m128_haddx4(
-        __m128i sum0, __m128i sum1, __m128i sum2, __m128i sum3,
-        __m128i bias) {
-
-      sum0 = _mm_hadd_epi32(sum0, sum1);
-      sum2 = _mm_hadd_epi32(sum2, sum3);
-      sum0 = _mm_hadd_epi32(sum0, sum2);
-      return _mm_add_epi32(sum0, bias);
-    }
-
     [[maybe_unused]] static void m128_add_dpbusd_epi32(
         __m128i& acc,
         __m128i a,
@@ -239,6 +197,12 @@ namespace Stockfish::Simd {
         acc = vdotq_s32(acc, a1, b1);
     }
 
+    [[maybe_unused]] static void dotprod_m128_add_dpbusd_epi32(
+        int32x4_t& acc,
+        int8x16_t a, int8x16_t b) {
+
+        acc = vdotq_s32(acc, a, b);
+    }
 #endif
 
 #if defined (USE_NEON)
@@ -255,19 +219,6 @@ namespace Stockfish::Simd {
       return neon_m128_reduce_add_epi32(sum) + bias;
     }
 
-    [[maybe_unused]] static int32x4_t neon_m128_haddx4(
-        int32x4_t sum0, int32x4_t sum1, int32x4_t sum2, int32x4_t sum3,
-        int32x4_t bias) {
-
-      int32x4_t hsums {
-        neon_m128_reduce_add_epi32(sum0),
-        neon_m128_reduce_add_epi32(sum1),
-        neon_m128_reduce_add_epi32(sum2),
-        neon_m128_reduce_add_epi32(sum3)
-      };
-      return vaddq_s32(hsums, bias);
-    }
-
     [[maybe_unused]] static void neon_m128_add_dpbusd_epi32x2(
         int32x4_t& acc,
         int8x8_t a0, int8x8_t b0,
@@ -277,9 +228,19 @@ namespace Stockfish::Simd {
       product = vmlal_s8(product, a1, b1);
       acc = vpadalq_s16(acc, product);
     }
-
 #endif
 
+#if USE_NEON >= 8
+    [[maybe_unused]] static void neon_m128_add_dpbusd_epi32(
+        int32x4_t& acc,
+        int8x16_t a, int8x16_t b) {
+
+      int16x8_t product0 = vmull_s8(vget_low_s8(a), vget_low_s8(b));
+      int16x8_t product1 = vmull_high_s8(a, b);
+      int16x8_t sum = vpaddq_s16(product0, product1);
+      acc = vpadalq_s16(acc, sum);
+    }
+#endif
 }
 
 #endif // STOCKFISH_SIMD_H_INCLUDED
