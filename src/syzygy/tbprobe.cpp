@@ -18,6 +18,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <cstdint>
 #include <cstring>   // For std::memset and std::memcpy
 #include <deque>
 #include <fstream>
@@ -25,6 +26,8 @@
 #include <list>
 #include <mutex>
 #include <sstream>
+#include <string_view>
+#include <type_traits>
 
 #include "../bitboard.h"
 #include "../movegen.h"
