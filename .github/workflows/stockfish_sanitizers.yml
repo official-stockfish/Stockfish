@@ -12,8 +12,8 @@ jobs:
     strategy:
       matrix:
         config:
-          - name: Ubuntu 20.04 GCC
-            os: ubuntu-20.04
+          - name: Ubuntu 22.04 GCC
+            os: ubuntu-22.04
             compiler: g++
             comp: gcc
             shell: bash
