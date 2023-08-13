@@ -1573,9 +1573,9 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves) {
         // 1 cp to cursed wins and let it grow to 49 cp as the positions gets
         // closer to a real win.
         m.tbScore =  r >= bound ? VALUE_MATE - MAX_PLY - 1
-                   : r >  0     ? Value((std::max( 3, r - (MAX_DTZ - 200)) * int(PawnValueEg)) / 200)
+                   : r >  0     ? Value((std::max( 3, r - (MAX_DTZ - 200)) * int(PawnValue)) / 200)
                    : r == 0     ? VALUE_DRAW
-                   : r > -bound ? Value((std::min(-3, r + (MAX_DTZ - 200)) * int(PawnValueEg)) / 200)
+                   : r > -bound ? Value((std::min(-3, r + (MAX_DTZ - 200)) * int(PawnValue)) / 200)
                    :             -VALUE_MATE + MAX_PLY + 1;
     }
 

@@ -995,32 +995,13 @@ moves_loop: // When in check, search starts here
               if (   !givesCheck
                   && lmrDepth < 7
                   && !ss->inCheck
-                  && ss->staticEval + 197 + 248 * lmrDepth + PieceValue[EG][pos.piece_on(to_sq(move))]
+                  && ss->staticEval + 197 + 248 * lmrDepth + PieceValue[pos.piece_on(to_sq(move))]
                    + captureHistory[movedPiece][to_sq(move)][type_of(pos.piece_on(to_sq(move)))] / 7 < alpha)
                   continue;
 
-              Bitboard occupied;
-              // SEE based pruning (~11 Elo)
-              if (!pos.see_ge(move, occupied, Value(-205) * depth))
-              {
-                 if (depth < 2 - capture)
-                    continue;
-                 // Don't prune the move if opponent Queen/Rook is under discovered attack after the exchanges
-                 // Don't prune the move if opponent King is under discovered attack after or during the exchanges
-                 Bitboard leftEnemies = (pos.pieces(~us, KING, QUEEN, ROOK)) & occupied;
-                 Bitboard attacks = 0;
-                 occupied |= to_sq(move);
-                 while (leftEnemies && !attacks)
-                 {
-                      Square sq = pop_lsb(leftEnemies);
-                      attacks |= pos.attackers_to(sq, occupied) & pos.pieces(us) & occupied;
-                      // Don't consider pieces that were already threatened/hanging before SEE exchanges
-                      if (attacks && (sq != pos.square<KING>(~us) && (pos.attackers_to(sq, pos.pieces()) & pos.pieces(us))))
-                         attacks = 0;
-                 }
-                 if (!attacks)
-                    continue;
-              }
+              // SEE based pruning for captures and checks (~11 Elo)
+              if (!pos.see_ge(move, Value(-205) * depth))
+                  continue;
           }
           else
           {
@@ -1109,7 +1090,7 @@ moves_loop: // When in check, search starts here
 
               // If we are on a cutNode, reduce it based on depth (negative extension) (~1 Elo)
               else if (cutNode)
-                  extension = depth > 8 && depth < 17 ? -3 : -1;
+                  extension = depth < 17 ? -3 : -1;
 
               // If the eval of ttMove is less than value, we reduce it (negative extension) (~1 Elo)
               else if (ttValue <= value)
@@ -1381,8 +1362,9 @@ moves_loop: // When in check, search starts here
     // Bonus for prior countermove that caused the fail low
     else if (!priorCapture && prevSq != SQ_NONE)
     {
-        int bonus = (depth > 5) + (PvNode || cutNode) + (bestValue < alpha - 113 * depth) + ((ss-1)->moveCount > 12);
+        int bonus = (depth > 5) + (PvNode || cutNode) + (bestValue < alpha - 800) + ((ss-1)->moveCount > 12);
         update_continuation_histories(ss-1, pos.piece_on(prevSq), prevSq, stat_bonus(depth) * bonus);
+        thisThread->mainHistory[~us][from_to((ss-1)->currentMove)] << stat_bonus(depth) * bonus / 2;
     }
 
     if (PvNode)
@@ -1418,6 +1400,18 @@ moves_loop: // When in check, search starts here
     assert(alpha >= -VALUE_INFINITE && alpha < beta && beta <= VALUE_INFINITE);
     assert(PvNode || (alpha == beta - 1));
     assert(depth <= 0);
+
+    // Check if we have an upcoming move that draws by repetition, or
+    // if the opponent had an alternative move earlier to this position.
+    if (   depth < 0
+        && pos.rule50_count() >= 3
+        && alpha < VALUE_DRAW
+        && pos.has_game_cycle(ss->ply))
+    {
+        alpha = value_draw(pos.this_thread());
+        if (alpha >= beta)
+            return alpha;
+    }
 
     Move pv[MAX_PLY+1];
     StateInfo st;
@@ -1551,7 +1545,7 @@ moves_loop: // When in check, search starts here
                 if (moveCount > 2)
                     continue;
 
-                futilityValue = futilityBase + PieceValue[EG][pos.piece_on(to_sq(move))];
+                futilityValue = futilityBase + PieceValue[pos.piece_on(to_sq(move))];
 
                 if (futilityValue <= alpha)
                 {
@@ -1799,7 +1793,7 @@ moves_loop: // When in check, search starts here
 
     // RootMoves are already sorted by score in descending order
     Value topScore = rootMoves[0].score;
-    int delta = std::min(topScore - rootMoves[multiPV - 1].score, PawnValueMg);
+    int delta = std::min(topScore - rootMoves[multiPV - 1].score, PawnValue);
     int maxScore = -VALUE_INFINITE;
     double weakness = 120 - 2 * level;
 

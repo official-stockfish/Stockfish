@@ -134,7 +134,7 @@ jobs:
           FROM ${{ matrix.config.base_image }}
           WORKDIR /app
           RUN apk update && apk add make g++
-          CMD sh make_sf.sh
+          CMD ["sh", "script.sh"]
           EOF
 
       - name: Download required macOS packages
@@ -160,10 +160,15 @@ jobs:
 
       - name: Check compiler
         run: |
-          if [ $COMP == ndk ]; then
-            export PATH=${{ env.ANDROID_NDK_BIN }}:$PATH
+          if [ -z "${{ matrix.config.base_image }}" ]; then
+            if [ $COMP == ndk ]; then
+              export PATH=${{ env.ANDROID_NDK_BIN }}:$PATH
+            fi
+            $COMPILER -v
+          else
+            echo "$COMPILER -v" > script.sh
+            docker run --rm --platform ${{ matrix.config.platform }} -v ${{ github.workspace }}/src:/app sf_builder
           fi
-          $COMPILER -v
 
       - name: Test help target
         run: make help
@@ -321,7 +326,7 @@ jobs:
       - name: Test riscv64 build
         if: matrix.config.run_riscv64_tests
         run: |
-          echo "export LDFLAGS='-static' && make clean && make -j2 ARCH=riscv64 build" > make_sf.sh
+          echo "export LDFLAGS='-static' && make clean && make -j2 ARCH=riscv64 build" > script.sh
           docker run --rm --platform ${{ matrix.config.platform }} -v ${{ github.workspace }}/src:/app sf_builder
           ../tests/signature.sh $benchref
 
@@ -330,7 +335,7 @@ jobs:
       - name: Test ppc64 build
         if: matrix.config.run_ppc64_tests
         run: |
-          echo "export LDFLAGS='-static' && make clean && make -j2 ARCH=ppc-64 build" > make_sf.sh
+          echo "export LDFLAGS='-static' && make clean && make -j2 ARCH=ppc-64 build" > script.sh
           docker run --rm --platform ${{ matrix.config.platform }} -v ${{ github.workspace }}/src:/app sf_builder
           ../tests/signature.sh $benchref
 
