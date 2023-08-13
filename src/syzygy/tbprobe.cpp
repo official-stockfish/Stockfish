@@ -18,7 +18,6 @@
 
 #include <algorithm>
 #include <atomic>
-#include <cstdint>
 #include <cstring>   // For std::memset and std::memcpy
 #include <deque>
 #include <fstream>
@@ -26,8 +25,6 @@
 #include <list>
 #include <mutex>
 #include <sstream>
-#include <string_view>
-#include <type_traits>
 
 #include "../bitboard.h"
 #include "../movegen.h"
@@ -1023,7 +1020,7 @@ uint8_t* set_sizes(PairsData* d, uint8_t* data) {
     // frequent adjacent pair of symbols in the source message by a new symbol,
     // reevaluating the frequencies of all of the symbol pairs with respect to
     // the extended alphabet, and then repeating the process.
-    // See http://www.larsson.dogma.net/dcc99.pdf
+    // See https://web.archive.org/web/20201106232444/http://www.larsson.dogma.net/dcc99.pdf
     std::vector<bool> visited(d->symlen.size());
 
     for (Sym sym = 0; sym < d->symlen.size(); ++sym)
