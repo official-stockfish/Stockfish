@@ -103,6 +103,8 @@ Detailed compilation instructions for all platforms can be found in our
 
 ## Contributing
 
+__See [Contributing Guide](./.github/CONTRIBUTING.md).__
+
 ### Donating hardware
 
 Improving Stockfish requires a massive amount of testing. You can donate your
