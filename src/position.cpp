@@ -314,8 +314,8 @@ void Position::set_castling_right(Color c, Square rfrom) {
 
 void Position::set_check_info() const {
 
-  slider_blockers<WHITE>();
-  slider_blockers<BLACK>();
+  slider_blockers(WHITE);
+  slider_blockers(BLACK);
 
   Square ksq = square<KING>(~sideToMove);
 
@@ -441,8 +441,7 @@ string Position::fen() const {
 ///        which pieces prevent king of color c from being in check
 /// into st->pinners[c]:
 ///        which slider pieces of color c are pinning pieces of ~c to the king.
-template <Color c>
-void Position::slider_blockers() const {
+void Position::slider_blockers(Color c) const {
   Square ksq =  square<KING>(c);
   st->blockersForKing[c] = 0;
   st->pinners[~c] = 0;
