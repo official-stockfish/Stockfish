@@ -314,8 +314,8 @@ void Position::set_castling_right(Color c, Square rfrom) {
 
 void Position::set_check_info() const {
 
-  st->blockersForKing[WHITE] = slider_blockers(pieces(BLACK), square<KING>(WHITE), st->pinners[BLACK]);
-  st->blockersForKing[BLACK] = slider_blockers(pieces(WHITE), square<KING>(BLACK), st->pinners[WHITE]);
+  slider_blockers<WHITE>();
+  slider_blockers<BLACK>();
 
   Square ksq = square<KING>(~sideToMove);
 
@@ -436,37 +436,34 @@ string Position::fen() const {
   return ss.str();
 }
 
-
-/// Position::slider_blockers() returns a bitboard of all the pieces (both colors)
-/// that are blocking attacks on the square 's' from 'sliders'. A piece blocks a
-/// slider if removing that piece from the board would result in a position where
-/// square 's' is attacked. For example, a king-attack blocking piece can be either
-/// a pinned or a discovered check piece, according if its color is the opposite
-/// or the same of the color of the slider.
-
-Bitboard Position::slider_blockers(Bitboard sliders, Square s, Bitboard& pinners) const {
-
-  Bitboard blockers = 0;
-  pinners = 0;
+/// Position::slider_blockers() calculates
+/// into st->blockersForKing[c]:
+///        which pieces prevent king of color c from being in check
+/// into st->pinners[c]:
+///        which slider pieces of color c are pinning pieces of ~c to the king.
+template <Color c>
+void Position::slider_blockers() const {
+  Square ksq =  square<KING>(c);
+  st->blockersForKing[c] = 0;
+  st->pinners[~c] = 0;
 
   // Snipers are sliders that attack 's' when a piece and other snipers are removed
-  Bitboard snipers = (  (attacks_bb<  ROOK>(s) & pieces(QUEEN, ROOK))
-                      | (attacks_bb<BISHOP>(s) & pieces(QUEEN, BISHOP))) & sliders;
+  Bitboard snipers = (  (attacks_bb<  ROOK>(ksq) & pieces(QUEEN, ROOK))
+                      | (attacks_bb<BISHOP>(ksq) & pieces(QUEEN, BISHOP))) & pieces(~c);
   Bitboard occupancy = pieces() ^ snipers;
 
   while (snipers)
   {
     Square sniperSq = pop_lsb(snipers);
-    Bitboard b = between_bb(s, sniperSq) & occupancy;
+    Bitboard b = between_bb(ksq, sniperSq) & occupancy;
 
     if (b && !more_than_one(b))
     {
-        blockers |= b;
-        if (b & pieces(color_of(piece_on(s))))
-            pinners |= sniperSq;
+        st->blockersForKing[c] |= b;
+        if (b & pieces(c))
+            st->pinners[~c] |= sniperSq;
     }
   }
-  return blockers;
 }
 
 
