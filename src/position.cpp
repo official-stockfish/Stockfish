@@ -439,8 +439,8 @@ string Position::fen() const {
 /// Position::slider_blockers() calculates
 /// into st->blockersForKing[c]:
 ///        which pieces prevent king of color c from being in check
-/// into st->pinners[c]:
-///        which slider pieces of color c are pinning pieces of ~c to the king.
+/// into st->pinners[~c]:
+///        which slider pieces of color ~c are pinning pieces of color c to the king.
 void Position::slider_blockers(Color c) const {
   Square ksq =  square<KING>(c);
   st->blockersForKing[c] = 0;
