@@ -140,7 +140,7 @@ also be made available under GPL v3.
 [issue-link]:         https://github.com/official-stockfish/Stockfish/issues/new?assignees=&labels=&template=BUG-REPORT.yml
 [discussions-link]:   https://github.com/official-stockfish/Stockfish/discussions/new
 [fishtest-link]:      https://tests.stockfishchess.org/tests
-[guideline-link]:     https://github.com/glinscott/fishtest/wiki/Creating-my-first-test
+[guideline-link]:     https://github.com/official-stockfish/fishtest/wiki/Creating-my-first-test
 [license-link]:       https://github.com/official-stockfish/Stockfish/blob/master/Copying.txt
 [programming-link]:   https://www.chessprogramming.org/Main_Page
 [programmingsf-link]: https://www.chessprogramming.org/Stockfish
@@ -155,7 +155,7 @@ also be made available under GPL v3.
 [wiki-usage-link]:    https://github.com/official-stockfish/Stockfish/wiki/Download-and-usage
 [wiki-compile-link]:  https://github.com/official-stockfish/Stockfish/wiki/Compiling-from-source
 [wiki-commands-link]: https://github.com/official-stockfish/Stockfish/wiki/Commands
-[worker-link]:        https://github.com/glinscott/fishtest/wiki/Running-the-worker
+[worker-link]:        https://github.com/official-stockfish/fishtest/wiki/Running-the-worker
 
 [build-badge]:        https://img.shields.io/github/actions/workflow/status/official-stockfish/Stockfish/stockfish.yml?branch=master&style=for-the-badge&label=stockfish&logo=github
 [commits-badge]:      https://img.shields.io/github/commits-since/official-stockfish/Stockfish/latest?style=for-the-badge
