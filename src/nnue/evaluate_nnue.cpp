@@ -18,6 +18,7 @@
 
 // Code for calculating NNUE evaluation function
 
+#include <cmath>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
