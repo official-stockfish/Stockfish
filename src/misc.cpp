@@ -375,7 +375,7 @@ void dbg_print() {
     for (int i = 0; i < MaxDebugSlots; ++i)
         if ((n = stdev[i][0]))
         {
-            double r = sqrtl(E(stdev[i][2]) - sqr(E(stdev[i][1])));
+            double r = sqrt(E(stdev[i][2]) - sqr(E(stdev[i][1])));
             std::cerr << "Stdev #" << i
                       << ": Total " << n << " Stdev " << r
                       << std::endl;
@@ -385,8 +385,8 @@ void dbg_print() {
         if ((n = correl[i][0]))
         {
             double r = (E(correl[i][5]) - E(correl[i][1]) * E(correl[i][3]))
-                       / (  sqrtl(E(correl[i][2]) - sqr(E(correl[i][1])))
-                          * sqrtl(E(correl[i][4]) - sqr(E(correl[i][3]))));
+                       / (  sqrt(E(correl[i][2]) - sqr(E(correl[i][1])))
+                          * sqrt(E(correl[i][4]) - sqr(E(correl[i][3]))));
             std::cerr << "Correl. #" << i
                       << ": Total " << n << " Coefficient " << r
                       << std::endl;
