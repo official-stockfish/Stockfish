@@ -247,7 +247,22 @@ void MainThread::search() {
   if (bestThread != this)
       sync_cout << UCI::pv(bestThread->rootPos, bestThread->completedDepth) << sync_endl;
 
-  sync_cout << "bestmove " << UCI::move(bestThread->rootMoves[0].pv[0], rootPos.is_chess960());
+  std::string StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+  std::string polishTurn1subFen = "1P6/8/P1PPPPPP/RNBQKBNR w KQ";
+  if (!rootPos.is_chess960() && rootPos.fen() == StartFEN) {
+    // issue best move pawn b4
+    Move polishMove = UCI::to_move(rootPos, "b2b4");
+    sync_cout << "bestmove " << UCI::move(polishMove, rootPos.is_chess960());
+  }
+  else if (!rootPos.is_chess960() && rootPos.fen().find(polishTurn1subFen) != std::string::npos) {
+    // issue best move Bb2
+    Move polishMove = UCI::to_move(rootPos, "c1b4");
+    sync_cout << "bestmove " << UCI::move(polishMove, rootPos.is_chess960());
+  }
+  else
+  {
+    sync_cout << "bestmove " << UCI::move(bestThread->rootMoves[0].pv[0], rootPos.is_chess960());
+  }
 
   if (bestThread->rootMoves[0].pv.size() > 1 || bestThread->rootMoves[0].extract_ponder_from_tt(rootPos))
       std::cout << " ponder " << UCI::move(bestThread->rootMoves[0].pv[1], rootPos.is_chess960());
