@@ -21,14 +21,16 @@
 
 #include <atomic>
 #include <condition_variable>
+#include <cstddef>
+#include <cstdint>
 #include <mutex>
-#include <thread>
 #include <vector>
 
 #include "movepick.h"
 #include "position.h"
 #include "search.h"
 #include "thread_win32_osx.h"
+#include "types.h"
 
 namespace Stockfish {
 

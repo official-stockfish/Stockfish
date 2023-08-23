@@ -16,22 +16,29 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "position.h"
+
 #include <algorithm>
+#include <atomic>
 #include <cassert>
-#include <cstddef> // For offsetof()
-#include <cstring> // For std::memset, std::memcmp
+#include <cctype>
+#include <cstddef>
+#include <cstring>
+#include <initializer_list>
 #include <iomanip>
+#include <iostream>
 #include <sstream>
 #include <string_view>
+#include <utility>
 
 #include "bitboard.h"
 #include "misc.h"
 #include "movegen.h"
-#include "position.h"
+#include "nnue/nnue_common.h"
+#include "syzygy/tbprobe.h"
 #include "thread.h"
 #include "tt.h"
 #include "uci.h"
-#include "syzygy/tbprobe.h"
 
 using std::string;
 

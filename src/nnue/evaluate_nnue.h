@@ -21,9 +21,20 @@
 #ifndef NNUE_EVALUATE_NNUE_H_INCLUDED
 #define NNUE_EVALUATE_NNUE_H_INCLUDED
 
+#include <cstdint>
+#include <iosfwd>
+#include <memory>
+#include <optional>
+#include <string>
+
+#include "../misc.h"
+#include "nnue_architecture.h"
 #include "nnue_feature_transformer.h"
 
-#include <memory>
+namespace Stockfish {
+  class Position;
+  enum Value : int;
+}
 
 namespace Stockfish::Eval::NNUE {
 

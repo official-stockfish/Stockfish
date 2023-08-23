@@ -16,14 +16,17 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <cstddef>
 #include <iostream>
 
 #include "bitboard.h"
+#include "evaluate.h"
+#include "misc.h"
 #include "position.h"
 #include "search.h"
-#include "syzygy/tbprobe.h"
 #include "thread.h"
-#include "tt.h"
+#include "tune.h"
+#include "types.h"
 #include "uci.h"
 
 using namespace Stockfish;

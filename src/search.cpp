@@ -16,25 +16,34 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "search.h"
+
 #include <algorithm>
+#include <array>
+#include <atomic>
 #include <cassert>
 #include <cmath>
-#include <cstring>   // For std::memset
+#include <cstdlib>
+#include <cstring>
+#include <initializer_list>
 #include <iostream>
 #include <sstream>
+#include <string>
+#include <utility>
 
+#include "bitboard.h"
 #include "evaluate.h"
 #include "misc.h"
 #include "movegen.h"
 #include "movepick.h"
+#include "nnue/evaluate_nnue.h"
+#include "nnue/nnue_common.h"
 #include "position.h"
-#include "search.h"
+#include "syzygy/tbprobe.h"
 #include "thread.h"
 #include "timeman.h"
 #include "tt.h"
 #include "uci.h"
-#include "syzygy/tbprobe.h"
-#include "nnue/evaluate_nnue.h"
 
 namespace Stockfish {
 
@@ -1142,7 +1151,7 @@ moves_loop: // When in check, search starts here
       // Decrease reduction if ttMove has been singularly extended (~1 Elo)
       if (singularQuietLMR)
           r--;
-      
+
       // Increase reduction on repetition (~1 Elo)
       if (   move == (ss-4)->currentMove
           && pos.has_repeated())

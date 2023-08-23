@@ -19,12 +19,15 @@
 #ifndef TUNE_H_INCLUDED
 #define TUNE_H_INCLUDED
 
+#include <cstddef>
 #include <memory>
 #include <string>
 #include <type_traits>
+#include <utility>
 #include <vector>
 
 namespace Stockfish {
+enum Value : int;
 
 using Range = std::pair<int, int>; // Option's min-max values
 using RangeFun = Range (int);

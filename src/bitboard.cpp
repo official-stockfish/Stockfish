@@ -16,10 +16,12 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "bitboard.h"
+
 #include <algorithm>
 #include <bitset>
+#include <initializer_list>
 
-#include "bitboard.h"
 #include "misc.h"
 
 namespace Stockfish {

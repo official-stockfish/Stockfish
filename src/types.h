@@ -37,10 +37,7 @@
 ///               | only in 64-bit mode and requires hardware with pext support.
 
 #include <cassert>
-#include <cctype>
 #include <cstdint>
-#include <cstdlib>
-#include <algorithm>
 
 #if defined(_MSC_VER)
 // Disable some silly and noisy warning from MSVC compiler

@@ -19,7 +19,13 @@
 #ifndef TBPROBE_H
 #define TBPROBE_H
 
+#include <string>
+
 #include "../search.h"
+
+namespace Stockfish {
+class Position;
+}
 
 namespace Stockfish::Tablebases {
 
