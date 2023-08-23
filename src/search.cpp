@@ -16,6 +16,8 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "search.h"
+
 #include <algorithm>
 #include <cassert>
 #include <cmath>
@@ -28,7 +30,6 @@
 #include "movegen.h"
 #include "movepick.h"
 #include "position.h"
-#include "search.h"
 #include "thread.h"
 #include "timeman.h"
 #include "tt.h"

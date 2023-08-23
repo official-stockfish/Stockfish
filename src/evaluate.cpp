@@ -16,6 +16,8 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "evaluate.h"
+
 #include <algorithm>
 #include <cassert>
 #include <fstream>
@@ -25,8 +27,8 @@
 #include <streambuf>
 #include <vector>
 
+#include "position.h"
 #include "bitboard.h"
-#include "evaluate.h"
 #include "misc.h"
 #include "thread.h"
 #include "timeman.h"

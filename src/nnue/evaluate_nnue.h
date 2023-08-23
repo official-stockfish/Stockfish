@@ -22,6 +22,7 @@
 #define NNUE_EVALUATE_NNUE_H_INCLUDED
 
 #include "nnue_feature_transformer.h"
+#include "../position.h"
 
 #include <memory>
 

@@ -16,10 +16,12 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "movepick.h"
+
 #include <cassert>
 
 #include "bitboard.h"
-#include "movepick.h"
+#include "position.h"
 
 namespace Stockfish {
 

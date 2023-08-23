@@ -28,6 +28,7 @@
 
 namespace Stockfish {
   struct StateInfo;
+  class Position;
 }
 
 namespace Stockfish::Eval::NNUE::Features {

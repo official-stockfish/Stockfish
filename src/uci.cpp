@@ -16,6 +16,8 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "uci.h"
+
 #include <cassert>
 #include <cmath>
 #include <iostream>
@@ -30,7 +32,6 @@
 #include "thread.h"
 #include "timeman.h"
 #include "tt.h"
-#include "uci.h"
 #include "syzygy/tbprobe.h"
 #include "nnue/evaluate_nnue.h"
 

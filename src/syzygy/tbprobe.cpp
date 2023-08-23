@@ -16,6 +16,8 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "tbprobe.h"
+
 #include <algorithm>
 #include <atomic>
 #include <cstdint>
@@ -35,8 +37,6 @@
 #include "../search.h"
 #include "../types.h"
 #include "../uci.h"
-
-#include "tbprobe.h"
 
 #ifndef _WIN32
 #include <fcntl.h>

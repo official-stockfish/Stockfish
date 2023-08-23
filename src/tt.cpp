@@ -16,6 +16,8 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "tt.h"
+
 #include <cstring>   // For std::memset
 #include <iostream>
 #include <thread>
@@ -23,7 +25,6 @@
 #include "bitboard.h"
 #include "misc.h"
 #include "thread.h"
-#include "tt.h"
 #include "uci.h"
 
 namespace Stockfish {

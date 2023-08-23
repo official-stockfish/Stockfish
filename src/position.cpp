@@ -16,6 +16,8 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "position.h"
+
 #include <algorithm>
 #include <cassert>
 #include <cstddef> // For offsetof()
@@ -27,7 +29,6 @@
 #include "bitboard.h"
 #include "misc.h"
 #include "movegen.h"
-#include "position.h"
 #include "thread.h"
 #include "tt.h"
 #include "uci.h"
