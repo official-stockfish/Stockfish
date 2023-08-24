@@ -18,7 +18,10 @@
 
 #include "movepick.h"
 
+#include <algorithm>
 #include <cassert>
+#include <iterator>
+#include <utility>
 
 #include "bitboard.h"
 #include "position.h"

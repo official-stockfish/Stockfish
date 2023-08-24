@@ -19,9 +19,12 @@
 #ifndef TIMEMAN_H_INCLUDED
 #define TIMEMAN_H_INCLUDED
 
+#include <cstdint>
+
 #include "misc.h"
 #include "search.h"
 #include "thread.h"
+#include "types.h"
 
 namespace Stockfish {
 

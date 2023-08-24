@@ -18,11 +18,13 @@
 
 #include "tt.h"
 
-#include <cstring>   // For std::memset
+#include <cassert>
+#include <cstdlib>
+#include <cstring>
 #include <iostream>
 #include <thread>
+#include <vector>
 
-#include "bitboard.h"
 #include "misc.h"
 #include "thread.h"
 #include "uci.h"

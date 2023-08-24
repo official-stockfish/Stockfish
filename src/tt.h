@@ -19,6 +19,9 @@
 #ifndef TT_H_INCLUDED
 #define TT_H_INCLUDED
 
+#include <cstddef>
+#include <cstdint>
+
 #include "misc.h"
 #include "types.h"
 

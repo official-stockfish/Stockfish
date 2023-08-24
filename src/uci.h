@@ -19,6 +19,8 @@
 #ifndef UCI_H_INCLUDED
 #define UCI_H_INCLUDED
 
+#include <cstddef>
+#include <iosfwd>
 #include <map>
 #include <string>
 

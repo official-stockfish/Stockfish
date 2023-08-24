@@ -16,13 +16,19 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "tune.h"
+
 #include <algorithm>
 #include <iostream>
+#include <map>
 #include <sstream>
+#include <string>
 
-#include "types.h"
-#include "misc.h"
 #include "uci.h"
+
+namespace Stockfish {
+enum Value : int;
+}
 
 using std::string;
 
@@ -108,7 +114,6 @@ template<> void Tune::Entry<Tune::PostUpdate>::read_option() { value(); }
 //
 // Then paste the output below, as the function body
 
-#include <cmath>
 
 namespace Stockfish {
 

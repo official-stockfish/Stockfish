@@ -21,7 +21,10 @@
 #ifndef NNUE_ACCUMULATOR_H_INCLUDED
 #define NNUE_ACCUMULATOR_H_INCLUDED
 
+#include <cstdint>
+
 #include "nnue_architecture.h"
+#include "nnue_common.h"
 
 namespace Stockfish::Eval::NNUE {
 

@@ -20,6 +20,7 @@
 
 #include <algorithm>
 #include <bitset>
+#include <initializer_list>
 
 #include "misc.h"
 

@@ -20,19 +20,22 @@
 
 #include "evaluate_nnue.h"
 
+#include <cmath>
+#include <cstdlib>
+#include <cstring>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
-#include <set>
 #include <sstream>
 #include <string_view>
 
 #include "../evaluate.h"
+#include "../misc.h"
 #include "../position.h"
-#include "../uci.h"
 #include "../types.h"
-#include "../position.h"
-
+#include "../uci.h"
+#include "nnue_accumulator.h"
+#include "nnue_common.h"
 
 namespace Stockfish::Eval::NNUE {
 

@@ -18,16 +18,21 @@
 
 #include "thread.h"
 
+#include <algorithm>
 #include <cassert>
-#include <algorithm> // For std::count
+#include <cstdlib>
+#include <deque>
+#include <initializer_list>
+#include <map>
+#include <memory>
+#include <utility>
 
+#include "misc.h"
 #include "movegen.h"
 #include "search.h"
-
-#include "uci.h"
 #include "syzygy/tbprobe.h"
 #include "tt.h"
-#include "position.h"
+#include "uci.h"
 
 namespace Stockfish {
 
