@@ -436,7 +436,7 @@ string Position::fen() const {
   return ss.str();
 }
 
-/// Position::slider_blockers() calculates
+/// Position::update_slider_blockers() calculates
 /// into st->blockersForKing[c]:
 ///        which pieces prevent king of color c from being in check
 /// into st->pinners[~c]:
