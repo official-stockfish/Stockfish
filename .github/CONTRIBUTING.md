@@ -75,11 +75,12 @@ more details.
 
 Thank you for contributing to Stockfish and helping us make it even better!
 
-[copying-link]: https://github.com/official-stockfish/Stockfish/blob/master/Copying.txt
-[discord-link]: https://discord.gg/GWDRS3kU6R
-[discussions-link]: https://github.com/official-stockfish/Stockfish/discussions/new
-[creating-my-first-test]: https://github.com/glinscott/fishtest/wiki/Creating-my-first-test#create-your-test
-[issue-tracker-link]: https://github.com/official-stockfish/Stockfish/issues
-[linux-compiling-link]: https://github.com/official-stockfish/Stockfish/wiki/Compiling-from-source#linux
+
+[copying-link]:           https://github.com/official-stockfish/Stockfish/blob/master/Copying.txt
+[discord-link]:           https://discord.gg/GWDRS3kU6R
+[discussions-link]:       https://github.com/official-stockfish/Stockfish/discussions/new
+[creating-my-first-test]: https://github.com/official-stockfish/fishtest/wiki/Creating-my-first-test#create-your-test
+[issue-tracker-link]:     https://github.com/official-stockfish/Stockfish/issues
+[linux-compiling-link]:   https://github.com/official-stockfish/Stockfish/wiki/Compiling-from-source#linux
 [windows-compiling-link]: https://github.com/official-stockfish/Stockfish/wiki/Compiling-from-source#windows
-[macos-compiling-link]: https://github.com/official-stockfish/Stockfish/wiki/Compiling-from-source#macos
+[macos-compiling-link]:   https://github.com/official-stockfish/Stockfish/wiki/Compiling-from-source#macos
