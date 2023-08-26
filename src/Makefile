@@ -104,9 +104,13 @@ VPATH = syzygy:nnue:nnue/features
 ### 2.1. General and architecture defaults
 
 ifeq ($(ARCH),)
-   ARCH = x86-64-avx2
-   help_skip_sanity = yes
+   ARCH = native
 endif
+
+ifeq ($(ARCH), native)
+   override ARCH = $(shell ../scripts/get_native_properties.sh | cut -d " " -f 1)
+endif
+
 # explicitly check for the list of supported architectures (as listed with make help),
 # the user can override with `make ARCH=x86-32-vnni256 SUPPORTED_ARCH=true`
 ifeq ($(ARCH), $(filter $(ARCH), \
@@ -757,12 +761,11 @@ endif
 ### Section 4. Public Targets
 ### ==========================================================================
 
-
 help:
 	@echo ""
 	@echo "To compile stockfish, type: "
 	@echo ""
-	@echo "make target ARCH=arch [COMP=compiler] [COMPCXX=cxx]"
+	@echo "make -j target [ARCH=arch] [COMP=compiler] [COMPCXX=cxx]"
 	@echo ""
 	@echo "Supported targets:"
 	@echo ""
@@ -776,6 +779,7 @@ help:
 	@echo ""
 	@echo "Supported archs:"
 	@echo ""
+	@echo "native                  > select the best architecture for the host processor (default)"
 	@echo "x86-64-vnni512          > x86 64-bit with vnni 512bit support"
 	@echo "x86-64-vnni256          > x86 64-bit with vnni 512bit support, limit operands to 256bit wide"
 	@echo "x86-64-avx512           > x86 64-bit with avx512 support"
@@ -822,11 +826,7 @@ help:
 	@echo "make -j profile-build ARCH=x86-64-avxvnni COMP=gcc COMPCXX=g++-12.0"
 	@echo "make -j build ARCH=x86-64-ssse3 COMP=clang"
 	@echo ""
-	@echo "-------------------------------"
-ifeq ($(SUPPORTED_ARCH)$(help_skip_sanity), true)
-	@echo "The selected architecture $(ARCH) will enable the following configuration: "
-	@$(MAKE) ARCH=$(ARCH) COMP=$(COMP) config-sanity
-else
+ifneq ($(SUPPORTED_ARCH), true)
 	@echo "Specify a supported architecture with the ARCH option for more details"
 	@echo ""
 endif
