@@ -193,22 +193,21 @@ std::string compiler_info() {
 
 /// Predefined macros hell:
 ///
-/// __GNUC__           Compiler is gcc, Clang or Intel on Linux
-/// __INTEL_COMPILER   Compiler is Intel
-/// _MSC_VER           Compiler is MSVC or Intel on Windows
-/// _WIN32             Building on Windows (any)
-/// _WIN64             Building on Windows 64 bit
+/// __GNUC__                Compiler is GCC, Clang or ICX
+/// __clang__               Compiler is Clang or ICX
+/// __INTEL_LLVM_COMPILER   Compiler is ICX
+/// _MSC_VER                Compiler is MSVC
+/// _WIN32                  Building on Windows (any)
+/// _WIN64                  Building on Windows 64 bit
 
   std::string compiler = "\nCompiled by ";
 
-  #ifdef __clang__
+  #if defined(__INTEL_LLVM_COMPILER)
+     compiler += "ICX ";
+     compiler += stringify(__INTEL_LLVM_COMPILER);
+  #elif defined(__clang__)
      compiler += "clang++ ";
      compiler += make_version_string(__clang_major__, __clang_minor__, __clang_patchlevel__);
-  #elif __INTEL_COMPILER
-     compiler += "Intel compiler ";
-     compiler += "(version ";
-     compiler += stringify(__INTEL_COMPILER) " update " stringify(__INTEL_COMPILER_UPDATE);
-     compiler += ")";
   #elif _MSC_VER
      compiler += "MSVC ";
      compiler += "(version ";
@@ -425,13 +424,7 @@ void prefetch(void*) {}
 
 void prefetch(void* addr) {
 
-#  if defined(__INTEL_COMPILER)
-   // This hack prevents prefetches from being optimized away by
-   // Intel compiler. Both MSVC and gcc seem not be affected by this.
-   __asm__ ("");
-#  endif
-
-#  if defined(__INTEL_COMPILER) || defined(_MSC_VER)
+#  if defined(_MSC_VER)
   _mm_prefetch((char*)addr, _MM_HINT_T0);
 #  else
   __builtin_prefetch(addr);
