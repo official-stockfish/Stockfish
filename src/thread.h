@@ -67,6 +67,7 @@ public:
   Search::RootMoves rootMoves;
   Depth rootDepth, completedDepth;
   Value rootDelta;
+  Value rootSimpleEval;
   CounterMoveHistory counterMoves;
   ButterflyHistory mainHistory;
   CapturePieceToHistory captureHistory;

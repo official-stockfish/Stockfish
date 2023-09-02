@@ -27,6 +27,7 @@
 #include <memory>
 #include <utility>
 
+#include "evaluate.h"
 #include "misc.h"
 #include "movegen.h"
 #include "search.h"
@@ -212,6 +213,7 @@ void ThreadPool::start_thinking(Position& pos, StateListPtr& states,
       th->rootMoves = rootMoves;
       th->rootPos.set(pos.fen(), pos.is_chess960(), &th->rootState, th);
       th->rootState = setupStates->back();
+      th->rootSimpleEval = Eval::simple_eval(pos, pos.side_to_move());
   }
 
   main()->start_searching();
