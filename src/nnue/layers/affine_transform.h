@@ -21,9 +21,9 @@
 #ifndef NNUE_LAYERS_AFFINE_TRANSFORM_H_INCLUDED
 #define NNUE_LAYERS_AFFINE_TRANSFORM_H_INCLUDED
 
+#include <cstdint>
 #include <iostream>
-#include <algorithm>
-#include <type_traits>
+
 #include "../nnue_common.h"
 #include "simd.h"
 

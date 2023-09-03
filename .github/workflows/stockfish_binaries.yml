@@ -162,6 +162,7 @@ jobs:
           cp AUTHORS stockfish/
           cp CITATION.cff stockfish/
           cp README.md stockfish/
+          cp CONTRIBUTING.md stockfish/
 
       - name: Create tar
         if: runner.os != 'Windows'

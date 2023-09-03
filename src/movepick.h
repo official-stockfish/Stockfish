@@ -20,14 +20,17 @@
 #define MOVEPICK_H_INCLUDED
 
 #include <array>
+#include <cassert>
+#include <cstdint>
+#include <cstdlib>
 #include <limits>
 #include <type_traits>
 
 #include "movegen.h"
-#include "position.h"
 #include "types.h"
 
 namespace Stockfish {
+class Position;
 
 /// StatsEntry stores the stat table value. It is usually a number but could
 /// be a move or even a nested history. We use a class instead of naked value

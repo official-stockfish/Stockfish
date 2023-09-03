@@ -21,14 +21,13 @@
 
 #include <cassert>
 #include <deque>
-#include <memory> // For std::unique_ptr
+#include <iosfwd>
+#include <memory>
 #include <string>
 
 #include "bitboard.h"
-#include "evaluate.h"
-#include "types.h"
-
 #include "nnue/nnue_accumulator.h"
+#include "types.h"
 
 namespace Stockfish {
 
@@ -115,7 +114,7 @@ public:
   // Attacks to/from a given square
   Bitboard attackers_to(Square s) const;
   Bitboard attackers_to(Square s, Bitboard occupied) const;
-  Bitboard slider_blockers(Bitboard sliders, Square s, Bitboard& pinners) const;
+  void update_slider_blockers(Color c) const;
   template<PieceType Pt> Bitboard attacks_by(Color c) const;
 
   // Properties of moves

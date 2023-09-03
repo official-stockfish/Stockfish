@@ -16,10 +16,15 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "movepick.h"
+
+#include <algorithm>
 #include <cassert>
+#include <iterator>
+#include <utility>
 
 #include "bitboard.h"
-#include "movepick.h"
+#include "position.h"
 
 namespace Stockfish {
 
@@ -161,7 +166,7 @@ void MovePicker::score() {
                        :                                                0 )
                        :                                                0 ;
       }
-      
+
       else // Type == EVASIONS
       {
           if (pos.capture_stage(m))

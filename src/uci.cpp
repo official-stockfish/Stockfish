@@ -16,23 +16,30 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "uci.h"
+
+#include <algorithm>
 #include <cassert>
+#include <cctype>
 #include <cmath>
+#include <cstdint>
+#include <cstdlib>
+#include <deque>
 #include <iostream>
+#include <memory>
+#include <optional>
 #include <sstream>
 #include <string>
+#include <vector>
 
 #include "benchmark.h"
 #include "evaluate.h"
+#include "misc.h"
 #include "movegen.h"
+#include "nnue/evaluate_nnue.h"
 #include "position.h"
 #include "search.h"
 #include "thread.h"
-#include "timeman.h"
-#include "tt.h"
-#include "uci.h"
-#include "syzygy/tbprobe.h"
-#include "nnue/evaluate_nnue.h"
 
 using namespace std;
 

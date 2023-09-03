@@ -18,19 +18,24 @@
 
 // Code for calculating NNUE evaluation function
 
+#include "evaluate_nnue.h"
+
+#include <cmath>
+#include <cstdlib>
+#include <cstring>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
-#include <set>
 #include <sstream>
 #include <string_view>
 
 #include "../evaluate.h"
+#include "../misc.h"
 #include "../position.h"
-#include "../uci.h"
 #include "../types.h"
-
-#include "evaluate_nnue.h"
+#include "../uci.h"
+#include "nnue_accumulator.h"
+#include "nnue_common.h"
 
 namespace Stockfish::Eval::NNUE {
 
@@ -251,7 +256,7 @@ namespace Stockfish::Eval::NNUE {
 
   // format_cp_aligned_dot() converts a Value into pawns, always keeping two decimals
   static void format_cp_aligned_dot(Value v, std::stringstream &stream) {
-  
+
     const double pawns = std::abs(0.01 * UCI::to_cp(v));
 
     stream << (v < 0 ? '-' : v > 0 ? '+' : ' ')
