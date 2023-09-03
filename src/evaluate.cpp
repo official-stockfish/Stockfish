@@ -35,6 +35,9 @@
 #include "types.h"
 #include "uci.h"
 
+#include <random>
+#include <chrono>
+
 // Macro to embed the default efficiently updatable neural network (NNUE) file
 // data in the engine binary (using incbin.h, by Dale Weiler).
 // This macro invocation will declare the following three variables
