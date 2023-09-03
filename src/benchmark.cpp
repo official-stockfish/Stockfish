@@ -14,6 +14,7 @@
 
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+bench 1393714 checked with Workflow build
 */
 
 #include "benchmark.h"
