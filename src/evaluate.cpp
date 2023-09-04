@@ -51,13 +51,11 @@
 #endif
 
 
-using namespace std;
-
 namespace Stockfish {
 
 namespace Eval {
 
-  string currentEvalFileName = "None";
+  std::string currentEvalFileName = "None";
 
   /// NNUE::init() tries to load a NNUE network at startup time, or when the engine
   /// receives a UCI command "setoption name EvalFile value nn-[a-z0-9]{12}.nnue"
@@ -69,22 +67,22 @@ namespace Eval {
 
   void NNUE::init() {
 
-    string eval_file = string(Options["EvalFile"]);
+    std::string eval_file = std::string(Options["EvalFile"]);
     if (eval_file.empty())
         eval_file = EvalFileDefaultName;
 
     #if defined(DEFAULT_NNUE_DIRECTORY)
-    vector<string> dirs = { "<internal>" , "" , CommandLine::binaryDirectory , stringify(DEFAULT_NNUE_DIRECTORY) };
+    std::vector<std::string> dirs = { "<internal>" , "" , CommandLine::binaryDirectory , stringify(DEFAULT_NNUE_DIRECTORY) };
     #else
-    vector<string> dirs = { "<internal>" , "" , CommandLine::binaryDirectory };
+    std::vector<std::string> dirs = { "<internal>" , "" , CommandLine::binaryDirectory };
     #endif
 
-    for (const string& directory : dirs)
+    for (const std::string& directory : dirs)
         if (currentEvalFileName != eval_file)
         {
             if (directory != "<internal>")
             {
-                ifstream stream(directory + eval_file, ios::binary);
+                std::ifstream stream(directory + eval_file, std::ios::binary);
                 if (NNUE::load_eval(eval_file, stream))
                     currentEvalFileName = eval_file;
             }
@@ -92,7 +90,7 @@ namespace Eval {
             if (directory == "<internal>" && eval_file == EvalFileDefaultName)
             {
                 // C++ way to prepare a buffer for a memory stream
-                class MemoryBuffer : public basic_streambuf<char> {
+                class MemoryBuffer : public std::basic_streambuf<char> {
                     public: MemoryBuffer(char* p, size_t n) { setg(p, p, p + n); setp(p, p + n); }
                 };
 
@@ -100,7 +98,7 @@ namespace Eval {
                                     size_t(gEmbeddedNNUESize));
                 (void) gEmbeddedNNUEEnd; // Silence warning on unused variable
 
-                istream stream(&buffer);
+                std::istream stream(&buffer);
                 if (NNUE::load_eval(eval_file, stream))
                     currentEvalFileName = eval_file;
             }
@@ -110,18 +108,18 @@ namespace Eval {
   /// NNUE::verify() verifies that the last net used was loaded successfully
   void NNUE::verify() {
 
-    string eval_file = string(Options["EvalFile"]);
+    std::string eval_file = std::string(Options["EvalFile"]);
     if (eval_file.empty())
         eval_file = EvalFileDefaultName;
 
     if (currentEvalFileName != eval_file)
     {
 
-        string msg1 = "Network evaluation parameters compatible with the engine must be available.";
-        string msg2 = "The network file " + eval_file + " was not loaded successfully.";
-        string msg3 = "The UCI option EvalFile might need to specify the full path, including the directory name, to the network file.";
-        string msg4 = "The default net can be downloaded from: https://tests.stockfishchess.org/api/nn/" + std::string(EvalFileDefaultName);
-        string msg5 = "The engine will be terminated now.";
+        std::string msg1 = "Network evaluation parameters compatible with the engine must be available.";
+        std::string msg2 = "The network file " + eval_file + " was not loaded successfully.";
+        std::string msg3 = "The UCI option EvalFile might need to specify the full path, including the directory name, to the network file.";
+        std::string msg4 = "The default net can be downloaded from: https://tests.stockfishchess.org/api/nn/" + std::string(EvalFileDefaultName);
+        std::string msg5 = "The engine will be terminated now.";
 
         sync_cout << "info string ERROR: " << msg1 << sync_endl;
         sync_cout << "info string ERROR: " << msg2 << sync_endl;
