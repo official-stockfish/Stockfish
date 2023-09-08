@@ -79,7 +79,7 @@ static void make_option(const string& n, int v, const SetRange& r) {
   std::cout << n << ","
             << v << ","
             << r(v).first << "," << r(v).second << ","
-            << (r(v).second - r(v).first) / 20.0 << ","
+            << std::max((r(v).second - r(v).first) / 20.0, 0.5) << ","
             << "0.0020"
             << std::endl;
 }
