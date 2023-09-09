@@ -908,7 +908,6 @@ moves_loop: // When in check, search starts here
         && (tte->bound() & BOUND_LOWER)
         && tte->depth() >= depth - 4
         && ttValue >= probCutBeta
-        && abs(ttValue) <= VALUE_KNOWN_WIN
         && abs(beta) <= VALUE_KNOWN_WIN)
         return probCutBeta;
 
