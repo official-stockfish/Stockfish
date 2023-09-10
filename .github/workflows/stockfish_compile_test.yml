@@ -52,8 +52,6 @@ jobs:
         shell: ${{ matrix.config.shell }}
     steps:
       - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
 
       - name: Setup msys and install required packages
         if: runner.os == 'Windows'
