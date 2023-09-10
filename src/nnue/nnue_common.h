@@ -21,10 +21,14 @@
 #ifndef NNUE_COMMON_H_INCLUDED
 #define NNUE_COMMON_H_INCLUDED
 
+#include <algorithm>
+#include <cassert>
+#include <cstdint>
 #include <cstring>
 #include <iostream>
+#include <type_traits>
 
-#include "../misc.h"  // for IsLittleEndian
+#include "../misc.h"
 
 #if defined(USE_AVX2)
 #include <immintrin.h>

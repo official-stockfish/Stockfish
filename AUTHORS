@@ -29,6 +29,7 @@ Aram Tumanian (atumanian)
 Arjun Temurnikar
 Artem Solopiy (EntityFX)
 Auguste Pop
+Balazs Szilagyi
 Balint Pfliegel
 Ben Chaney (Chaneybenjamini)
 Ben Koshy (BKSpurgeon)
@@ -74,6 +75,7 @@ fanon
 Fauzi Akram Dabat (FauziAkram)
 Felix Wittmann
 gamander
+Gabriele Lombardo (gabe)
 Gary Heckman (gheckman)
 George Sobala (gsobala)
 gguliash
@@ -228,4 +230,4 @@ zz4032
 # Additionally, we acknowledge the authors and maintainers of fishtest,
 # an amazing and essential framework for Stockfish development!
 #
-# https://github.com/glinscott/fishtest/blob/master/AUTHORS
+# https://github.com/official-stockfish/fishtest/blob/master/AUTHORS

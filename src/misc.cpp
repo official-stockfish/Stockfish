@@ -16,6 +16,8 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "misc.h"
+
 #ifdef _WIN32
 #if _WIN32_WINNT < 0x0601
 #undef  _WIN32_WINNT
@@ -44,17 +46,19 @@ using fun8_t = bool(*)(HANDLE, BOOL, PTOKEN_PRIVILEGES, DWORD, PTOKEN_PRIVILEGES
 }
 #endif
 
+#include <atomic>
 #include <cmath>
 #include <cstdlib>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <mutex>
 #include <sstream>
 #include <string_view>
-#include <vector>
+
+#include "types.h"
 
 #if defined(__linux__) && !defined(__ANDROID__)
-#include <stdlib.h>
 #include <sys/mman.h>
 #endif
 
@@ -62,9 +66,6 @@ using fun8_t = bool(*)(HANDLE, BOOL, PTOKEN_PRIVILEGES, DWORD, PTOKEN_PRIVILEGES
 #define POSIXALIGNEDALLOC
 #include <stdlib.h>
 #endif
-
-#include "misc.h"
-#include "thread.h"
 
 using namespace std;
 
@@ -280,7 +281,9 @@ std::string compiler_info() {
   #if defined(USE_MMX)
     compiler += " MMX";
   #endif
-  #if defined(USE_NEON)
+  #if defined(USE_NEON_DOTPROD)
+    compiler += " NEON_DOTPROD";
+  #elif defined(USE_NEON)
     compiler += " NEON";
   #endif
 
@@ -373,7 +376,7 @@ void dbg_print() {
     for (int i = 0; i < MaxDebugSlots; ++i)
         if ((n = stdev[i][0]))
         {
-            double r = sqrtl(E(stdev[i][2]) - sqr(E(stdev[i][1])));
+            double r = sqrt(E(stdev[i][2]) - sqr(E(stdev[i][1])));
             std::cerr << "Stdev #" << i
                       << ": Total " << n << " Stdev " << r
                       << std::endl;
@@ -383,8 +386,8 @@ void dbg_print() {
         if ((n = correl[i][0]))
         {
             double r = (E(correl[i][5]) - E(correl[i][1]) * E(correl[i][3]))
-                       / (  sqrtl(E(correl[i][2]) - sqr(E(correl[i][1])))
-                          * sqrtl(E(correl[i][4]) - sqr(E(correl[i][3]))));
+                       / (  sqrt(E(correl[i][2]) - sqr(E(correl[i][1])))
+                          * sqrt(E(correl[i][4]) - sqr(E(correl[i][3]))));
             std::cerr << "Correl. #" << i
                       << ": Total " << n << " Coefficient " << r
                       << std::endl;

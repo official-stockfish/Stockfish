@@ -21,11 +21,18 @@
 #ifndef NNUE_FEATURE_TRANSFORMER_H_INCLUDED
 #define NNUE_FEATURE_TRANSFORMER_H_INCLUDED
 
-#include "nnue_common.h"
-#include "nnue_architecture.h"
+#include <algorithm>
+#include <cassert>
+#include <cstdint>
+#include <cstring>
+#include <iosfwd>
+#include <utility>
 
-#include <cstring> // std::memset()
-#include <utility> // std::pair
+#include "../position.h"
+#include "../types.h"
+#include "nnue_accumulator.h"
+#include "nnue_architecture.h"
+#include "nnue_common.h"
 
 namespace Stockfish::Eval::NNUE {
 

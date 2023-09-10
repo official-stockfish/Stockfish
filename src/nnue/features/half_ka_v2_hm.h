@@ -21,13 +21,15 @@
 #ifndef NNUE_FEATURES_HALF_KA_V2_HM_H_INCLUDED
 #define NNUE_FEATURES_HALF_KA_V2_HM_H_INCLUDED
 
-#include "../nnue_common.h"
+#include <cstdint>
 
-#include "../../evaluate.h"
 #include "../../misc.h"
+#include "../../types.h"
+#include "../nnue_common.h"
 
 namespace Stockfish {
   struct StateInfo;
+  class Position;
 }
 
 namespace Stockfish::Eval::NNUE::Features {

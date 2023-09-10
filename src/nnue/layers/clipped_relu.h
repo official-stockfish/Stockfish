@@ -21,6 +21,10 @@
 #ifndef NNUE_LAYERS_CLIPPED_RELU_H_INCLUDED
 #define NNUE_LAYERS_CLIPPED_RELU_H_INCLUDED
 
+#include <algorithm>
+#include <cstdint>
+#include <iosfwd>
+
 #include "../nnue_common.h"
 
 namespace Stockfish::Eval::NNUE::Layers {
@@ -59,7 +63,7 @@ namespace Stockfish::Eval::NNUE::Layers {
     }
 
     // Forward propagation
-    const OutputType* propagate(
+    void propagate(
         const InputType* input, OutputType* output) const {
 
   #if defined(USE_AVX2)
@@ -170,8 +174,6 @@ namespace Stockfish::Eval::NNUE::Layers {
         output[i] = static_cast<OutputType>(
             std::max(0, std::min(127, input[i] >> WeightScaleBits)));
       }
-
-      return output;
     }
   };
 

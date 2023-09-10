@@ -19,12 +19,15 @@
 #ifndef TUNE_H_INCLUDED
 #define TUNE_H_INCLUDED
 
+#include <cstddef>
 #include <memory>
 #include <string>
 #include <type_traits>
+#include <utility>
 #include <vector>
 
 namespace Stockfish {
+enum Value : int;
 
 using Range = std::pair<int, int>; // Option's min-max values
 using RangeFun = Range (int);
@@ -51,18 +54,17 @@ struct SetRange {
 /// qualifiers from the variables you want to tune and flag them for tuning, so
 /// if you have:
 ///
-///   const Score myScore = S(10, 15);
 ///   const Value myValue[][2] = { { V(100), V(20) }, { V(7), V(78) } };
 ///
 /// If you have a my_post_update() function to run after values have been updated,
 /// and a my_range() function to set custom Option's min-max values, then you just
 /// remove the 'const' qualifiers and write somewhere below in the file:
 ///
-///   TUNE(SetRange(my_range), myScore, myValue, my_post_update);
+///   TUNE(SetRange(my_range), myValue, my_post_update);
 ///
 /// You can also set the range directly, and restore the default at the end
 ///
-///   TUNE(SetRange(-100, 100), myScore, SetDefaultRange);
+///   TUNE(SetRange(-100, 100), myValue, SetDefaultRange);
 ///
 /// In case update function is slow and you have many parameters, you can add:
 ///
@@ -98,7 +100,6 @@ class Tune {
 
     static_assert(   std::is_same<T,   int>::value
                   || std::is_same<T, Value>::value
-                  || std::is_same<T, Score>::value
                   || std::is_same<T, PostUpdate>::value, "Parameter type not supported!");
 
     Entry(const std::string& n, T& v, const SetRange& r) : name(n), value(v), range(r) {}

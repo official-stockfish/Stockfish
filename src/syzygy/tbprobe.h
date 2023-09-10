@@ -19,9 +19,13 @@
 #ifndef TBPROBE_H
 #define TBPROBE_H
 
-#include <ostream>
+#include <string>
 
 #include "../search.h"
+
+namespace Stockfish {
+class Position;
+}
 
 namespace Stockfish::Tablebases {
 
@@ -49,27 +53,6 @@ int probe_dtz(Position& pos, ProbeState* result);
 bool root_probe(Position& pos, Search::RootMoves& rootMoves);
 bool root_probe_wdl(Position& pos, Search::RootMoves& rootMoves);
 void rank_root_moves(Position& pos, Search::RootMoves& rootMoves);
-
-inline std::ostream& operator<<(std::ostream& os, const WDLScore v) {
-
-    os << (v == WDLLoss        ? "Loss" :
-           v == WDLBlessedLoss ? "Blessed loss" :
-           v == WDLDraw        ? "Draw" :
-           v == WDLCursedWin   ? "Cursed win" :
-           v == WDLWin         ? "Win" : "None");
-
-    return os;
-}
-
-inline std::ostream& operator<<(std::ostream& os, const ProbeState v) {
-
-    os << (v == FAIL              ? "Failed" :
-           v == OK                ? "Success" :
-           v == CHANGE_STM        ? "Probed opponent side" :
-           v == ZEROING_BEST_MOVE ? "Best move zeroes DTZ" : "None");
-
-    return os;
-}
 
 } // namespace Stockfish::Tablebases
 

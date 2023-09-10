@@ -19,6 +19,7 @@
 #ifndef SEARCH_H_INCLUDED
 #define SEARCH_H_INCLUDED
 
+#include <cstdint>
 #include <vector>
 
 #include "misc.h"

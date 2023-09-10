@@ -16,33 +16,38 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "tbprobe.h"
+
+#include <sys/stat.h>
 #include <algorithm>
 #include <atomic>
+#include <cassert>
 #include <cstdint>
-#include <cstring>   // For std::memset and std::memcpy
+#include <cstdlib>
+#include <cstring>
 #include <deque>
 #include <fstream>
+#include <initializer_list>
 #include <iostream>
-#include <list>
 #include <mutex>
 #include <sstream>
 #include <string_view>
 #include <type_traits>
+#include <utility>
+#include <vector>
 
 #include "../bitboard.h"
+#include "../misc.h"
 #include "../movegen.h"
 #include "../position.h"
 #include "../search.h"
 #include "../types.h"
 #include "../uci.h"
 
-#include "tbprobe.h"
-
 #ifndef _WIN32
 #include <fcntl.h>
-#include <unistd.h>
 #include <sys/mman.h>
-#include <sys/stat.h>
+#include <unistd.h>
 #else
 #define WIN32_LEAN_AND_MEAN
 #ifndef NOMINMAX
@@ -995,13 +1000,19 @@ uint8_t* set_sizes(PairsData* d, uint8_t* data) {
     d->lowestSym = (Sym*)data;
     d->base64.resize(d->maxSymLen - d->minSymLen + 1);
 
+    // See https://en.wikipedia.org/wiki/Huffman_coding
     // The canonical code is ordered such that longer symbols (in terms of
     // the number of bits of their Huffman code) have lower numeric value,
     // so that d->lowestSym[i] >= d->lowestSym[i+1] (when read as LittleEndian).
     // Starting from this we compute a base64[] table indexed by symbol length
     // and containing 64 bit values so that d->base64[i] >= d->base64[i+1].
-    // See https://en.wikipedia.org/wiki/Huffman_coding
-    for (int i = d->base64.size() - 2; i >= 0; --i) {
+
+    // Implementation note: we first cast the unsigned size_t "base64.size()"
+    // to a signed int "base64_size" variable and then we are able to subtract 2,
+    // avoiding unsigned overflow warnings.
+
+    int base64_size = static_cast<int>(d->base64.size());
+    for (int i = base64_size - 2; i >= 0; --i) {
         d->base64[i] = (d->base64[i + 1] + number<Sym, LittleEndian>(&d->lowestSym[i])
                                          - number<Sym, LittleEndian>(&d->lowestSym[i + 1])) / 2;
 
@@ -1012,10 +1023,10 @@ uint8_t* set_sizes(PairsData* d, uint8_t* data) {
     // than d->base64[i+1] and given the above assert condition, we ensure that
     // d->base64[i] >= d->base64[i+1]. Moreover for any symbol s64 of length i
     // and right-padded to 64 bits holds d->base64[i-1] >= s64 >= d->base64[i].
-    for (size_t i = 0; i < d->base64.size(); ++i)
+    for (int i = 0; i < base64_size; ++i)
         d->base64[i] <<= 64 - i - d->minSymLen; // Right-padding to 64 bits
 
-    data += d->base64.size() * sizeof(Sym);
+    data += base64_size * sizeof(Sym);
     d->symlen.resize(number<uint16_t, LittleEndian>(data)); data += sizeof(uint16_t);
     d->btree = (LR*)data;
 
@@ -1023,7 +1034,7 @@ uint8_t* set_sizes(PairsData* d, uint8_t* data) {
     // frequent adjacent pair of symbols in the source message by a new symbol,
     // reevaluating the frequencies of all of the symbol pairs with respect to
     // the extended alphabet, and then repeating the process.
-    // See http://www.larsson.dogma.net/dcc99.pdf
+    // See https://web.archive.org/web/20201106232444/http://www.larsson.dogma.net/dcc99.pdf
     std::vector<bool> visited(d->symlen.size());
 
     for (Sym sym = 0; sym < d->symlen.size(); ++sym)
@@ -1573,9 +1584,9 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves) {
         // 1 cp to cursed wins and let it grow to 49 cp as the positions gets
         // closer to a real win.
         m.tbScore =  r >= bound ? VALUE_MATE - MAX_PLY - 1
-                   : r >  0     ? Value((std::max( 3, r - (MAX_DTZ - 200)) * int(PawnValueEg)) / 200)
+                   : r >  0     ? Value((std::max( 3, r - (MAX_DTZ - 200)) * int(PawnValue)) / 200)
                    : r == 0     ? VALUE_DRAW
-                   : r > -bound ? Value((std::min(-3, r + (MAX_DTZ - 200)) * int(PawnValueEg)) / 200)
+                   : r > -bound ? Value((std::min(-3, r + (MAX_DTZ - 200)) * int(PawnValue)) / 200)
                    :             -VALUE_MATE + MAX_PLY + 1;
     }
 
