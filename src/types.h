@@ -48,11 +48,12 @@
 
 /// Predefined macros hell:
 ///
-/// __GNUC__           Compiler is gcc, Clang or Intel on Linux
-/// __INTEL_COMPILER   Compiler is Intel
-/// _MSC_VER           Compiler is MSVC or Intel on Windows
-/// _WIN32             Building on Windows (any)
-/// _WIN64             Building on Windows 64 bit
+/// __GNUC__                Compiler is GCC, Clang or ICX
+/// __clang__               Compiler is Clang or ICX
+/// __INTEL_LLVM_COMPILER   Compiler is ICX
+/// _MSC_VER                Compiler is MSVC
+/// _WIN32                  Building on Windows (any)
+/// _WIN64                  Building on Windows 64 bit
 
 #if defined(__GNUC__ ) && (__GNUC__ < 9 || (__GNUC__ == 9 && __GNUC_MINOR__ <= 2)) && defined(_WIN32) && !defined(__clang__)
 #define ALIGNAS_ON_STACK_VARIABLES_BROKEN
@@ -65,12 +66,12 @@
 #  define IS_64BIT
 #endif
 
-#if defined(USE_POPCNT) && (defined(__INTEL_COMPILER) || defined(_MSC_VER))
-#  include <nmmintrin.h> // Intel and Microsoft header for _mm_popcnt_u64()
+#if defined(USE_POPCNT) && defined(_MSC_VER)
+#  include <nmmintrin.h> // Microsoft header for _mm_popcnt_u64()
 #endif
 
-#if !defined(NO_PREFETCH) && (defined(__INTEL_COMPILER) || defined(_MSC_VER))
-#  include <xmmintrin.h> // Intel and Microsoft header for _mm_prefetch()
+#if !defined(NO_PREFETCH) && defined(_MSC_VER)
+#  include <xmmintrin.h> // Microsoft header for _mm_prefetch()
 #endif
 
 #if defined(USE_PEXT)
