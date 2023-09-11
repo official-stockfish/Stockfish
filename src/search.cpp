@@ -1549,15 +1549,27 @@ moves_loop: // When in check, search starts here
 
                 futilityValue = futilityBase + PieceValue[pos.piece_on(to_sq(move))];
 
+                // If static eval + value of piece we are going to capture is much lower
+                // than alpha we can prune this move
                 if (futilityValue <= alpha)
                 {
                     bestValue = std::max(bestValue, futilityValue);
                     continue;
                 }
 
+                // If static eval is much lower than alpha and move is not winning material
+                // we can prune this move
                 if (futilityBase <= alpha && !pos.see_ge(move, VALUE_ZERO + 1))
                 {
                     bestValue = std::max(bestValue, futilityBase);
+                    continue;
+                }
+
+                // If static exchange evaluation is much worse than what is needed to not
+                // fall below alpha we can prune this move
+                if (futilityBase > alpha && !pos.see_ge(move, (alpha - futilityBase) * 4))
+                {
+                    bestValue = alpha;
                     continue;
                 }
             }
