@@ -33,6 +33,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  Analyzers:
+    uses: ./.github/workflows/stockfish_analyzers.yml
   Sanitizers:
     uses: ./.github/workflows/stockfish_sanitizers.yml
   Tests:

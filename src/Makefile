@@ -832,11 +832,14 @@ else
 endif
 
 
-.PHONY: help build profile-build strip install clean net objclean profileclean \
-	config-sanity \
+.PHONY: help analyze build profile-build strip install clean net \
+	objclean profileclean config-sanity \
 	icx-profile-use icx-profile-make \
 	gcc-profile-use gcc-profile-make \
 	clang-profile-use clang-profile-make FORCE
+
+analyze: net config-sanity objclean
+	$(MAKE) -k ARCH=$(ARCH) COMP=$(COMP) $(OBJS)
 
 build: net config-sanity
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) all
