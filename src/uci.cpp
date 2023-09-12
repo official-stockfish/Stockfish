@@ -215,10 +215,10 @@ namespace {
       #endif
     #endif
 */
-    cerr << "\n==========================="
+    std::cerr << "\n==========================="
          << "\nTotal time (ms) : " << elapsed
          << "\nNodes searched  : " << nodes
-         << "\nNodes/second    : " << 1000 * nodes / elapsed << endl;
+         << "\nNodes/second    : " << 1000 * nodes / elapsed << std::endl;
   }
 
   // The win rate model returns the probability of winning (in per mille units) given an
