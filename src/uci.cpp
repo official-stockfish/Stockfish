@@ -204,6 +204,15 @@ namespace {
     elapsed = now() - elapsed + 1; // Ensure positivity to avoid a 'divide by zero'
 
     dbg_print();
+    
+    // GCC PGO fix
+/*
+    #ifdef __GNUC__
+      #ifndef __clang__
+        __gcov_dump();
+      #endif
+    #endif
+*/
 
     std::cerr << "\n==========================="
               << "\nTotal time (ms) : " << elapsed
