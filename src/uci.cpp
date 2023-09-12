@@ -216,9 +216,9 @@ namespace {
     #endif
 */
     std::cerr << "\n==========================="
-         << "\nTotal time (ms) : " << elapsed
-         << "\nNodes searched  : " << nodes
-         << "\nNodes/second    : " << 1000 * nodes / elapsed << std::endl;
+              << "\nTotal time (ms) : " << elapsed
+              << "\nNodes searched  : " << nodes
+              << "\nNodes/second    : " << 1000 * nodes / elapsed << std::endl;
   }
 
   // The win rate model returns the probability of winning (in per mille units) given an
