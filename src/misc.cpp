@@ -200,7 +200,7 @@ std::string compiler_info() {
 /// _WIN32                  Building on Windows (any)
 /// _WIN64                  Building on Windows 64 bit
 
-  std::string compiler = "\nCompiled by ";
+  std::string compiler = "\nCompiled by                : ";
 
   #if defined(__INTEL_LLVM_COMPILER)
      compiler += "ICX ";
@@ -253,8 +253,15 @@ std::string compiler_info() {
      compiler += " on unknown system";
   #endif
 
-  compiler += "\nCompilation settings include: ";
-  compiler += (Is64Bit ? " 64bit" : " 32bit");
+  compiler += "\nCompilation architecture   : ";
+  #if defined(ARCH)
+     compiler += stringify(ARCH);
+  #else
+     compiler += "(undefined architecture)";
+  #endif
+
+  compiler += "\nCompilation settings       : ";
+  compiler += (Is64Bit ? "64bit" : "32bit");
   #if defined(USE_VNNI)
     compiler += " VNNI";
   #endif
@@ -288,12 +295,13 @@ std::string compiler_info() {
     compiler += " DEBUG";
   #endif
 
-  compiler += "\n__VERSION__ macro expands to: ";
+  compiler += "\nCompiler __VERSION__ macro : ";
   #ifdef __VERSION__
      compiler += __VERSION__;
   #else
      compiler += "(undefined macro)";
   #endif
+
   compiler += "\n";
 
   return compiler;
