@@ -525,6 +525,10 @@ namespace {
     constexpr bool PvNode = nodeType != NonPV;
     constexpr bool rootNode = nodeType == Root;
 
+    // Dive into quiescence search when the depth reaches zero
+    if (depth <= 0)
+        return qsearch<PvNode ? PV : NonPV>(pos, ss, alpha, beta);
+
     // Check if we have an upcoming move that draws by repetition, or
     // if the opponent had an alternative move earlier to this position.
     if (   !rootNode
@@ -535,10 +539,6 @@ namespace {
         if (alpha >= beta)
             return alpha;
     }
-
-    // Dive into quiescence search when the depth reaches zero
-    if (depth <= 0)
-        return qsearch<PvNode ? PV : NonPV>(pos, ss, alpha, beta);
 
     assert(-VALUE_INFINITE <= alpha && alpha < beta && beta <= VALUE_INFINITE);
     assert(PvNode || (alpha == beta - 1));
@@ -1407,8 +1407,7 @@ moves_loop: // When in check, search starts here
 
     // Check if we have an upcoming move that draws by repetition, or
     // if the opponent had an alternative move earlier to this position.
-    if (   depth < 0
-        && alpha < VALUE_DRAW
+    if (   alpha < VALUE_DRAW
         && pos.has_game_cycle(ss->ply))
     {
         alpha = value_draw(pos.this_thread());
