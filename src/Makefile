@@ -715,6 +715,11 @@ ifneq ($(GIT_DATE), )
 	CXXFLAGS += -DGIT_DATE=$(GIT_DATE)
 endif
 
+### 3.7.3 Try to include architecture
+ifneq ($(ARCH), )
+	CXXFLAGS += -DARCH=$(ARCH)
+endif
+
 ### 3.8 Link Time Optimization
 ### This is a mix of compile and link time options because the lto link phase
 ### needs access to the optimization flags.
