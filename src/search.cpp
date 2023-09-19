@@ -316,7 +316,7 @@ void Thread::search() {
   // When playing with strength handicap enable MultiPV search that we will
   // use behind-the-scenes to retrieve a set of possible moves.
   if (skill.enabled())
-      multiPV = std::max(multiPV, (size_t)4);
+      multiPV = std::max(multiPV, size_t(4));
 
   multiPV = std::min(multiPV, rootMoves.size());
 
@@ -1861,7 +1861,7 @@ void MainThread::check_time() {
 
   if (   (Limits.use_time_management() && (elapsed > Time.maximum() || stopOnPonderhit))
       || (Limits.movetime && elapsed >= Limits.movetime)
-      || (Limits.nodes && Threads.nodes_searched() >= (uint64_t)Limits.nodes))
+      || (Limits.nodes && Threads.nodes_searched() >= uint64_t(Limits.nodes)))
       Threads.stop = true;
 }
 
@@ -1875,7 +1875,7 @@ string UCI::pv(const Position& pos, Depth depth) {
   TimePoint elapsed = Time.elapsed() + 1;
   const RootMoves& rootMoves = pos.this_thread()->rootMoves;
   size_t pvIdx = pos.this_thread()->pvIdx;
-  size_t multiPV = std::min((size_t)Options["MultiPV"], rootMoves.size());
+  size_t multiPV = std::min(size_t(Options["MultiPV"]), rootMoves.size());
   uint64_t nodesSearched = Threads.nodes_searched();
   uint64_t tbHits = Threads.tb_hits() + (TB::RootInTB ? rootMoves.size() : 0);
 

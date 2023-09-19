@@ -139,7 +139,7 @@ namespace Stockfish::Eval::NNUE {
     if (!Detail::write_parameters(stream, *featureTransformer)) return false;
     for (std::size_t i = 0; i < LayerStacks; ++i)
       if (!Detail::write_parameters(stream, *(network[i]))) return false;
-    return (bool)stream;
+    return bool(stream);
   }
 
   void hint_common_parent_position(const Position& pos) {
@@ -281,8 +281,8 @@ namespace Stockfish::Eval::NNUE {
     // A lambda to output one box of the board
     auto writeSquare = [&board](File file, Rank rank, Piece pc, Value value) {
 
-      const int x = ((int)file) * 8;
-      const int y = (7 - (int)rank) * 3;
+      const int x = int(file) * 8;
+      const int y = (7 - int(rank)) * 3;
       for (int i = 1; i < 8; ++i)
          board[y][x+i] = board[y+3][x+i] = '-';
       for (int i = 1; i < 3; ++i)

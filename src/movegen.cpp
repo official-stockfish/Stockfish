@@ -246,7 +246,7 @@ template<GenType Type>
 ExtMove* generate(const Position& pos, ExtMove* moveList) {
 
   static_assert(Type != LEGAL, "Unsupported type in generate()");
-  assert((Type == EVASIONS) == (bool)pos.checkers());
+  assert((Type == EVASIONS) == bool(pos.checkers()));
 
   Color us = pos.side_to_move();
 

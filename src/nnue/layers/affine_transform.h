@@ -310,7 +310,7 @@ namespace Stockfish::Eval::NNUE::Layers {
         vec_t sum0 = vec_setzero();
         const auto row0 = reinterpret_cast<const vec_t*>(&weights[0]);
 
-        for (int j = 0; j < (int)NumChunks; ++j)
+        for (int j = 0; j < int(NumChunks); ++j)
         {
           const vec_t in = inputVector[j];
           vec_add_dpbusd_32(sum0, in, row0[j]);
