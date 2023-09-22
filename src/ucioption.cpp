@@ -49,6 +49,8 @@ static void on_clear_hash(const Option&) { Search::clear(); }
 static void on_hash_size(const Option& o) { TT.resize(size_t(o)); }
 static void on_logger(const Option& o) { start_logger(o); }
 static void on_threads(const Option& o) { Threads.set(size_t(o)); }
+static void on_waitms(const Option& o) { Eval::NNUE::waitms = o; }
+static void on_eval_perturb(const Option& o) { Eval::NNUE::RandomEvalPerturb = o; }
 static void on_tb_path(const Option& o) { Tablebases::init(o); }
 static void on_eval_file(const Option&) { Eval::NNUE::init(); }
 
@@ -68,6 +70,10 @@ void init(OptionsMap& o) {
 
   o["Debug Log File"]        << Option("", on_logger);
   o["Threads"]               << Option(1, 1, 1024, on_threads);
+  o["Wait ms"]               << Option(0, 0, 100, on_waitms);
+  o["RandomEvalPerturb"]     << Option(0, 0, 100, on_eval_perturb);
+  o["Search_Nodes"]          << Option(0, 0, 500000);
+  o["Search_Depth"]          << Option(0, 0, 20);
   o["Hash"]                  << Option(16, 1, MaxHashMB, on_hash_size);
   o["Clear Hash"]            << Option(on_clear_hash);
   o["Ponder"]                << Option(false);

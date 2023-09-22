@@ -1,0 +1,25 @@
+name: StFi_start
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - Xmaster
+  pull_request:
+    branches:
+      - Xmaster
+jobs:
+  Sanitizers:
+    uses: ./.github/workflows/StFi_sanitizers.yml
+  #Tests:
+  #  uses: ./.github/workflows/StFi_test.yml
+  Compiles:
+    uses: ./.github/workflows/StFi_compile_test.yml
+  Binaries:
+    if: github.ref == 'refs/heads/master'
+    uses: ./.github/workflows/StFi_binaries.yml
+  ARM_Binaries:
+    if: github.ref == 'refs/heads/master'
+    uses: ./.github/workflows/StFi_arm_binaries.yml
+  ArmBinaries:
+    if: github.ref == 'refs/heads/master'
+    uses: ./.github/workflows/SFnps_ArmBinaries.yml
