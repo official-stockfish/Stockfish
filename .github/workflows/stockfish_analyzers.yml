@@ -7,13 +7,13 @@ jobs:
     runs-on: ubuntu-22.04
     defaults:
       run:
-        working-directory: Stockfish/src
+        working-directory: src
         shell: bash
     steps:
       - name: Checkout Stockfish
         uses: actions/checkout@v3
         with:
-          path: Stockfish
+          path: .
 
       - name: Checkout include-what-you-use
         uses: actions/checkout@v3
