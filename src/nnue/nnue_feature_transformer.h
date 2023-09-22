@@ -69,7 +69,7 @@ namespace Stockfish::Eval::NNUE {
   #define vec_add_psqt_32(a,b) _mm256_add_epi32(a,b)
   #define vec_sub_psqt_32(a,b) _mm256_sub_epi32(a,b)
   #define vec_zero_psqt() _mm256_setzero_si256()
-  #define NumRegistersSIMD 32
+  #define NumRegistersSIMD 16
   #define MaxChunkSize 64
 
   #elif USE_AVX2
