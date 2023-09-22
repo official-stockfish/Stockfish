@@ -21,6 +21,7 @@
 #include <algorithm>
 #include <bitset>
 #include <initializer_list>
+#include <future>
 
 #include "misc.h"
 
