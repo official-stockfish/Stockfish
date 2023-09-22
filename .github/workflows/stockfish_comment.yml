@@ -9,7 +9,7 @@ on:
       - completed
 
 jobs:
-  upload:
+  Comment:
     runs-on: ubuntu-latest
     if: >
       github.event.workflow_run.event == 'pull_request'
@@ -23,6 +23,6 @@ jobs:
             await github.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: issue_number,
+              issue_number: {{ github.event.number }} ,
               body: 'Please fix the include errors in this PR.\n\n You can find the errors in the CI run.'
             });
