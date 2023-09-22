@@ -20,9 +20,9 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            await github.issues.createComment({
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number:  context.issue.number ,
-              body: 'Please fix the include errors in this PR.\n\n You can find the errors in the CI run.'
-            });
+              body: '👋 Thanks for contributing!\nPlease fix the include errors in this PR.\nYou can find the errors in the CI run.'
+            })
