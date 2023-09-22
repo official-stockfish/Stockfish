@@ -45,6 +45,7 @@ namespace Stockfish::Eval::NNUE::Layers {
   template <IndexType InputDimensions, IndexType PaddedInputDimensions, IndexType OutputDimensions>
   static void affine_transform_non_ssse3(std::int32_t* output, const std::int8_t* weights, const std::int32_t* biases, const std::uint8_t* input)
   {
+# if defined(USE_SSE2) || defined(USE_MMX) || defined(USE_NEON_DOTPROD) || defined(USE_NEON)
 # if defined(USE_SSE2)
     // At least a multiple of 16, with SSE2.
     constexpr IndexType NumChunks = ceil_to_multiple<IndexType>(InputDimensions, 16) / 16;
@@ -129,17 +130,24 @@ namespace Stockfish::Eval::NNUE::Layers {
       }
       output[i] = sum[0] + sum[1] + sum[2] + sum[3];
 
-# else
-      std::int32_t sum = biases[i];
-      for (IndexType j = 0; j < InputDimensions; ++j) {
-        sum += weights[offset + j] * input[j];
-      }
-      output[i] = sum;
 # endif
     }
 
 # if defined(USE_MMX)
     _mm_empty();
+# endif
+
+# else
+  std::memcpy(output, biases, sizeof(std::int32_t) * OutputDimensions);
+
+  // Traverse weights in transpose order to take advantage of input sparsity
+  for (IndexType i = 0; i < InputDimensions; ++i)
+      if (input[i]) {
+          const std::int8_t* w = &weights[i];
+          const int in = input[i];
+          for (IndexType j = 0; j < OutputDimensions; ++j)
+              output[j] += w[j * PaddedInputDimensions] * in;
+      }
 # endif
   }
 #endif
@@ -302,7 +310,7 @@ namespace Stockfish::Eval::NNUE::Layers {
         vec_t sum0 = vec_setzero();
         const auto row0 = reinterpret_cast<const vec_t*>(&weights[0]);
 
-        for (int j = 0; j < (int)NumChunks; ++j)
+        for (int j = 0; j < int(NumChunks); ++j)
         {
           const vec_t in = inputVector[j];
           vec_add_dpbusd_32(sum0, in, row0[j]);
