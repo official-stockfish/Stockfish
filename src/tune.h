@@ -25,6 +25,7 @@
 #include <type_traits>
 #include <utility>
 #include <vector>
+#include <cassert>
 
 namespace Stockfish {
 enum Value : int;
@@ -34,7 +35,18 @@ using RangeFun = Range (int);
 
 // Default Range function, to calculate Option's min-max values
 inline Range default_range(int v) {
-  return v > 0 ? Range(0, 2 * v) : Range(2 * v, 0);
+  if (v < -6) {
+    return Range(2 * v, 0);
+} else if (v > 6) {
+    return Range(0, 2 * v);
+} else if (v > 0 && v <= 6) {
+    return Range(0, 12);
+} else if (v < 0 && v >= -6) {
+    return Range(-12, 0);
+} else {
+    assert(v == 0);
+    return Range(-6, 6);
+}
 }
 
 struct SetRange {
