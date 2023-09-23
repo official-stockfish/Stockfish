@@ -272,10 +272,9 @@ void MainThread::search() {
 
 void Thread::search() {
 
-  // To allow access to (ss-7) up to (ss+2), the stack must be oversized.
-  // The former is needed to allow update_continuation_histories(ss-1, ...),
-  // which accesses its argument at ss-6, also near the root.
-  // The latter is needed for statScore and killer initialization.
+  // Allocate stack with extra size to allow access from (ss-7) to (ss+2)
+  // (ss-7) is needed for update_continuation_histories(ss-1, ...) which accesses (ss-6)
+  // (ss+2) is needed for initialization of statScore and killers
   Stack stack[MAX_PLY+10], *ss = stack+7;
   Move  pv[MAX_PLY+1];
   Value alpha, beta, delta;
