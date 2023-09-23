@@ -209,7 +209,7 @@ template<> inline int distance<Square>(Square x, Square y) { return SquareDistan
 
 inline int edge_distance(File f) { return std::min(f, File(FILE_H - f)); }
 
-/// attacks_bb(Square) returns the pseudo attacks of the give piece type
+/// attacks_bb(Square) returns the pseudo attacks of the given piece type
 /// assuming an empty board.
 
 template<PieceType Pt>
