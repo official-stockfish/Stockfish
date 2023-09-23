@@ -108,7 +108,7 @@ ifeq ($(ARCH),)
 endif
 
 ifeq ($(ARCH), native)
-   override ARCH = $(shell ../scripts/get_native_properties.sh | cut -d " " -f 1)
+   override ARCH = $(shell $(SHELL) ../scripts/get_native_properties.sh | cut -d " " -f 1)
 endif
 
 # explicitly check for the list of supported architectures (as listed with make help),
