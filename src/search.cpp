@@ -100,7 +100,12 @@ namespace {
     return VALUE_DRAW - 1 + Value(thisThread->nodes & 0x2);
   }
 
-  // Skill structure is used to implement strength limit
+  // Skill structure is used to implement strength limit.
+  // If we have a UCI_Elo, we convert it to an appropriate skill level, anchored to the Stash engine.
+  // This method is based on a fit of the Elo results for games played between the master at various
+  // skill levels and various versions of the Stash engine, all ranked at CCRL.
+  // Skill 0 .. 19 now covers CCRL Blitz Elo from 1320 to 3190, approximately
+  // Reference: https://github.com/vondele/Stockfish/commit/a08b8d4e9711c20acedbfe17d618c3c384b339ec
   struct Skill {
     Skill(int skill_level, int uci_elo) {
         if (uci_elo)
