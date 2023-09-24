@@ -117,34 +117,6 @@ namespace Stockfish::Eval::NNUE {
   #define NumRegistersSIMD (Is64Bit ? 16 : 8)
   #define MaxChunkSize 16
 
-  #elif USE_MMX
-  using vec_t = __m64;
-  using psqt_vec_t = __m64;
-  #define vec_load(a) (*(a))
-  #define vec_store(a,b) *(a)=(b)
-  #define vec_add_16(a,b) _mm_add_pi16(a,b)
-  #define vec_sub_16(a,b) _mm_sub_pi16(a,b)
-  #define vec_mul_16(a,b) _mm_mullo_pi16(a,b)
-  #define vec_zero() _mm_setzero_si64()
-  #define vec_set_16(a) _mm_set1_pi16(a)
-  inline vec_t vec_max_16(vec_t a,vec_t b){
-    vec_t comparison = _mm_cmpgt_pi16(a,b);
-    return _mm_or_si64(_mm_and_si64(comparison, a), _mm_andnot_si64(comparison, b));
-  }
-  inline vec_t vec_min_16(vec_t a,vec_t b){
-    vec_t comparison = _mm_cmpgt_pi16(a,b);
-    return _mm_or_si64(_mm_and_si64(comparison, b), _mm_andnot_si64(comparison, a));
-  }
-  #define vec_msb_pack_16(a,b) _mm_packs_pi16(_mm_srli_pi16(a,7),_mm_srli_pi16(b,7))
-  #define vec_load_psqt(a) (*(a))
-  #define vec_store_psqt(a,b) *(a)=(b)
-  #define vec_add_psqt_32(a,b) _mm_add_pi32(a,b)
-  #define vec_sub_psqt_32(a,b) _mm_sub_pi32(a,b)
-  #define vec_zero_psqt() _mm_setzero_si64()
-  #define vec_cleanup() _mm_empty()
-  #define NumRegistersSIMD 8
-  #define MaxChunkSize 8
-
   #elif USE_NEON
   using vec_t = int16x8_t;
   using psqt_vec_t = int32x4_t;
@@ -334,10 +306,6 @@ namespace Stockfish::Eval::NNUE {
 
 #endif
       }
-
-#if defined(vec_cleanup)
-      vec_cleanup();
-#endif
 
       return psqt;
     } // end of function transform()
@@ -529,10 +497,6 @@ namespace Stockfish::Eval::NNUE {
         }
       }
 #endif
-
-  #if defined(USE_MMX)
-      _mm_empty();
-  #endif
     }
 
     template<Color Perspective>
@@ -613,10 +577,6 @@ namespace Stockfish::Eval::NNUE {
           accumulator.psqtAccumulation[Perspective][k] += psqtWeights[index * PSQTBuckets + k];
       }
 #endif
-
-  #if defined(USE_MMX)
-      _mm_empty();
-  #endif
     }
 
     template<Color Perspective>

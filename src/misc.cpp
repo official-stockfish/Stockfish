@@ -282,9 +282,6 @@ std::string compiler_info() {
     compiler += " SSE2";
   #endif
   compiler += (HasPopCnt ? " POPCNT" : "");
-  #if defined(USE_MMX)
-    compiler += " MMX";
-  #endif
   #if defined(USE_NEON_DOTPROD)
     compiler += " NEON_DOTPROD";
   #elif defined(USE_NEON)
