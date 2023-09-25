@@ -22,7 +22,7 @@
 #include <cstddef>
 #include <memory>
 #include <string>
-#include <type_traits>
+#include <type_traits> // IWYU pragma: keep
 #include <utility>
 #include <vector>
 
@@ -96,11 +96,11 @@ class Tune {
   template<typename T>
   struct Entry : public EntryBase {
 
-    static_assert(!std::is_const<T>::value, "Parameter cannot be const!");
+    static_assert(!std::is_const_v<T>, "Parameter cannot be const!");
 
-    static_assert(   std::is_same<T,   int>::value
-                  || std::is_same<T, Value>::value
-                  || std::is_same<T, PostUpdate>::value, "Parameter type not supported!");
+    static_assert(   std::is_same_v<T, int>
+                  || std::is_same_v<T, Value>
+                  || std::is_same_v<T, PostUpdate>, "Parameter type not supported!");
 
     Entry(const std::string& n, T& v, const SetRange& r) : name(n), value(v), range(r) {}
     void operator=(const Entry&) = delete; // Because 'value' is a reference
