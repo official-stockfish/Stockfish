@@ -103,7 +103,7 @@ namespace Stockfish::Eval::NNUE {
       else
       {
           std::uint8_t u[sizeof(IntType)];
-          typename std::make_unsigned<IntType>::type v = 0;
+          std::make_unsigned_t<IntType> v = 0;
 
           stream.read(reinterpret_cast<char*>(u), sizeof(IntType));
           for (std::size_t i = 0; i < sizeof(IntType); ++i)
@@ -128,7 +128,7 @@ namespace Stockfish::Eval::NNUE {
       else
       {
           std::uint8_t u[sizeof(IntType)];
-          typename std::make_unsigned<IntType>::type v = value;
+          std::make_unsigned_t<IntType> v = value;
 
           std::size_t i = 0;
           // if constexpr to silence the warning about shift by 8
