@@ -14,6 +14,10 @@ jobs:
     if: >
       github.event.workflow_run.event == 'pull_request'
     steps:
+      - name: Debug output
+        run: echo 'ID ${{ context.payload.workflow_run.id }}'
+      - name: Debug output
+        run: echo 'Pull requests ${{ context.payload.workflow_run.pull_requests }}'
       - name: 'Comment on PR'
         uses: actions/github-script@v6
         if: github.event.workflow_run.conclusion != 'success'
