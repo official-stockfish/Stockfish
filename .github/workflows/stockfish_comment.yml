@@ -24,5 +24,8 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: '👋 Thanks for contributing!\nPlease fix the include errors in this PR.\nYou can find the errors in the CI run.'
+              body: |
+                👋 Thanks for contributing!
+                Please fix the include errors in this PR.
+                You can find the errors in the CI run.
             })
