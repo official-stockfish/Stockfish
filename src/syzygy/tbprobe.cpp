@@ -23,7 +23,6 @@
 #include <atomic>
 #include <cassert>
 #include <cstdint>
-#include <cstdlib>
 #include <cstring>
 #include <deque>
 #include <fstream>
