@@ -703,24 +703,24 @@ ifeq ($(pext),yes)
 	endif
 endif
 
-### 3.7.1 Try to include git commit sha for versioning
+### 3.8.1 Try to include git commit sha for versioning
 GIT_SHA = $(shell git rev-parse HEAD 2>/dev/null | cut -c 1-8)
 ifneq ($(GIT_SHA), )
 	CXXFLAGS += -DGIT_SHA=$(GIT_SHA)
 endif
 
-### 3.7.2 Try to include git commit date for versioning
+### 3.8.2 Try to include git commit date for versioning
 GIT_DATE = $(shell git show -s --date=format:'%Y%m%d' --format=%cd HEAD 2>/dev/null)
 ifneq ($(GIT_DATE), )
 	CXXFLAGS += -DGIT_DATE=$(GIT_DATE)
 endif
 
-### 3.7.3 Try to include architecture
+### 3.8.3 Try to include architecture
 ifneq ($(ARCH), )
 	CXXFLAGS += -DARCH=$(ARCH)
 endif
 
-### 3.8 Link Time Optimization
+### 3.9 Link Time Optimization
 ### This is a mix of compile and link time options because the lto link phase
 ### needs access to the optimization flags.
 ifeq ($(optimize),yes)
@@ -755,7 +755,7 @@ ifeq ($(debug), no)
 endif
 endif
 
-### 3.9 Android 5 can only run position independent executables. Note that this
+### 3.10 Android 5 can only run position independent executables. Note that this
 ### breaks Android 4.0 and earlier.
 ifeq ($(OS), Android)
 	CXXFLAGS += -fPIE
