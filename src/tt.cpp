@@ -19,7 +19,6 @@
 #include "tt.h"
 
 #include <cassert>
-#include <cstdlib>
 #include <cstring>
 #include <iostream>
 #include <thread>
