@@ -48,7 +48,6 @@ using fun8_t = bool(*)(HANDLE, BOOL, PTOKEN_PRIVILEGES, DWORD, PTOKEN_PRIVILEGES
 
 #include <atomic>
 #include <cmath>
-#include <cstdlib>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
