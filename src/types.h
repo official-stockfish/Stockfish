@@ -40,7 +40,7 @@
 #include <cstdint>
 
 #if defined(_MSC_VER)
-// Disable some silly and noisy warning from MSVC compiler
+// Disable some silly and noisy warnings from MSVC compiler
 #pragma warning(disable: 4127) // Conditional expression is constant
 #pragma warning(disable: 4146) // Unary minus operator applied to unsigned type
 #pragma warning(disable: 4800) // Forcing value to bool 'true' or 'false'
@@ -405,7 +405,7 @@ constexpr Move make(Square from, Square to, PieceType pt = KNIGHT) {
   return Move(T + ((pt - KNIGHT) << 12) + (from << 6) + to);
 }
 
-/// Based on a congruential pseudo random number generator
+/// Based on a congruential pseudo-random number generator
 constexpr Key make_key(uint64_t seed) {
   return seed * 6364136223846793005ULL + 1442695040888963407ULL;
 }

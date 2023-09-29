@@ -100,10 +100,12 @@ namespace {
     return VALUE_DRAW - 1 + Value(thisThread->nodes & 0x2);
   }
 
-  // Skill structure is used to implement strength limit. If we have an uci_elo then
-  // we convert it to a suitable fractional skill level using anchoring to CCRL Elo
-  // (goldfish 1.13 = 2000) and a fit through Ordo derived Elo for a match (TC 60+0.6)
-  // results spanning a wide range of k values.
+  // Skill structure is used to implement strength limit.
+  // If we have a UCI_Elo, we convert it to an appropriate skill level, anchored to the Stash engine.
+  // This method is based on a fit of the Elo results for games played between the master at various
+  // skill levels and various versions of the Stash engine, all ranked at CCRL.
+  // Skill 0 .. 19 now covers CCRL Blitz Elo from 1320 to 3190, approximately
+  // Reference: https://github.com/vondele/Stockfish/commit/a08b8d4e9711c20acedbfe17d618c3c384b339ec
   struct Skill {
     Skill(int skill_level, int uci_elo) {
         if (uci_elo)
@@ -272,10 +274,9 @@ void MainThread::search() {
 
 void Thread::search() {
 
-  // To allow access to (ss-7) up to (ss+2), the stack must be oversized.
-  // The former is needed to allow update_continuation_histories(ss-1, ...),
-  // which accesses its argument at ss-6, also near the root.
-  // The latter is needed for statScore and killer initialization.
+  // Allocate stack with extra size to allow access from (ss-7) to (ss+2)
+  // (ss-7) is needed for update_continuation_histories(ss-1, ...) which accesses (ss-6)
+  // (ss+2) is needed for initialization of statScore and killers
   Stack stack[MAX_PLY+10], *ss = stack+7;
   Move  pv[MAX_PLY+1];
   Value alpha, beta, delta;
@@ -362,7 +363,7 @@ void Thread::search() {
           alpha = std::max(prev - delta,-VALUE_INFINITE);
           beta  = std::min(prev + delta, VALUE_INFINITE);
 
-          // Adjust optimism based on root move's previousScore
+          // Adjust optimism based on root move's previousScore (~4 Elo)
           int opt = 109 * prev / (std::abs(prev) + 141);
           optimism[ us] = Value(opt);
           optimism[~us] = -optimism[us];
@@ -721,7 +722,7 @@ namespace {
     }
     else if (excludedMove)
     {
-        // Providing the hint that this node's accumulator will be used often brings significant Elo gain (13 Elo)
+        // Providing the hint that this node's accumulator will be used often brings significant Elo gain (~13 Elo)
         Eval::NNUE::hint_common_parent_position(pos);
         eval = ss->staticEval;
     }
@@ -762,7 +763,7 @@ namespace {
                 : (ss-4)->staticEval != VALUE_NONE ? ss->staticEval > (ss-4)->staticEval
                 : true;
 
-    // Step 7. Razoring (~1 Elo).
+    // Step 7. Razoring (~1 Elo)
     // If eval is really low check with qsearch if it can exceed alpha, if it can't,
     // return a fail low.
     if (eval < alpha - 456 - 252 * depth * depth)
@@ -772,7 +773,7 @@ namespace {
             return value;
     }
 
-    // Step 8. Futility pruning: child node (~40 Elo).
+    // Step 8. Futility pruning: child node (~40 Elo)
     // The depth condition is important for mate finding.
     if (   !ss->ttPv
         &&  depth < 9
