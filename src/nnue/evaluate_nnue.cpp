@@ -21,7 +21,6 @@
 #include "evaluate_nnue.h"
 
 #include <cmath>
-#include <cstdlib>
 #include <cstring>
 #include <fstream>
 #include <iomanip>
