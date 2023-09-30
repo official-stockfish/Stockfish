@@ -102,7 +102,7 @@ constexpr Value WDL_to_value[] = {
 template<typename T, int Half = sizeof(T) / 2, int End = sizeof(T) - 1>
 inline void swap_endian(T& x)
 {
-    static_assert(std::is_unsigned<T>::value, "Argument of swap_endian not unsigned");
+    static_assert(std::is_unsigned_v<T>, "Argument of swap_endian not unsigned");
 
     uint8_t tmp, *c = (uint8_t*)&x;
     for (int i = 0; i < Half; ++i)
@@ -332,7 +332,7 @@ struct PairsData {
 // first access, when the corresponding file is memory mapped.
 template<TBType Type>
 struct TBTable {
-    using Ret = typename std::conditional<Type == WDL, WDLScore, int>::type;
+    using Ret = std::conditional_t<Type == WDL, WDLScore, int>;
 
     static constexpr int Sides = Type == WDL ? 2 : 1;
 

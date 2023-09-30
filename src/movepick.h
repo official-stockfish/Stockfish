@@ -24,7 +24,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <limits>
-#include <type_traits>
+#include <type_traits> // IWYU pragma: keep
 
 #include "movegen.h"
 #include "types.h"
@@ -70,7 +70,7 @@ struct Stats : public std::array<Stats<T, D, Sizes...>, Size>
   void fill(const T& v) {
 
     // For standard-layout 'this' points to first struct member
-    assert(std::is_standard_layout<stats>::value);
+    assert(std::is_standard_layout_v<stats>);
 
     using entry = StatsEntry<T, D>;
     entry* p = reinterpret_cast<entry*>(this);

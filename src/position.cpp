@@ -102,8 +102,9 @@ std::ostream& operator<<(std::ostream& os, const Position& pos) {
 }
 
 
-// Marcel van Kervinck's cuckoo algorithm for fast detection of "upcoming repetition"
-// situations. Description of the algorithm in the following paper:
+// Implements Marcel van Kervinck's cuckoo algorithm to detect repetition of positions 
+// for 3-fold repetition draws. The algorithm uses two hash tables with Zobrist hashes to 
+// allow fast detection of recurring positions. For details see:
 // http://web.archive.org/web/20201107002606/https://marcelk.net/2013-04-06/paper/upcoming-rep-v2.pdf
 
 // First and second hash functions for indexing the cuckoo tables
@@ -549,7 +550,7 @@ bool Position::legal(Move m) const {
 
 
 /// Position::pseudo_legal() takes a random move and tests whether the move is
-/// pseudo legal. It is used to validate moves from TT that can be corrupted
+/// pseudo-legal. It is used to validate moves from TT that can be corrupted
 /// due to SMP concurrent access or hash position key aliasing.
 
 bool Position::pseudo_legal(const Move m) const {
@@ -565,7 +566,7 @@ bool Position::pseudo_legal(const Move m) const {
       return checkers() ? MoveList<    EVASIONS>(*this).contains(m)
                         : MoveList<NON_EVASIONS>(*this).contains(m);
 
-  // Is not a promotion, so promotion piece must be empty
+  // Is not a promotion, so the promotion piece must be empty
   assert(promotion_type(m) - KNIGHT == NO_PIECE_TYPE);
 
   // If the 'from' square is not occupied by a piece belonging to the side to
@@ -603,7 +604,7 @@ bool Position::pseudo_legal(const Move m) const {
   {
       if (type_of(pc) != KING)
       {
-          // Double check? In this case a king move is required
+          // Double check? In this case, a king move is required
           if (more_than_one(checkers()))
               return false;
 
@@ -611,7 +612,7 @@ bool Position::pseudo_legal(const Move m) const {
           if (!(between_bb(square<KING>(us), lsb(checkers())) & to))
               return false;
       }
-      // In case of king moves under check we have to remove king so as to catch
+      // In case of king moves under check we have to remove the king so as to catch
       // invalid moves like b1a1 when opposite queen is on c1.
       else if (attackers_to(to, pieces() ^ from) & pieces(~us))
           return false;
@@ -1041,7 +1042,7 @@ Key Position::key_after(Move m) const {
 /// SEE value of move is greater or equal to the given threshold. We'll use an
 /// algorithm similar to alpha-beta pruning with a null window.
 
-bool Position::see_ge(Move m, Bitboard& occupied, Value threshold) const {
+bool Position::see_ge(Move m, Value threshold) const {
 
   assert(is_ok(m));
 
@@ -1060,7 +1061,7 @@ bool Position::see_ge(Move m, Bitboard& occupied, Value threshold) const {
       return true;
 
   assert(color_of(piece_on(from)) == sideToMove);
-  occupied = pieces() ^ from ^ to; // xoring to is important for pinned piece logic
+  Bitboard occupied = pieces() ^ from ^ to; // xoring to is important for pinned piece logic
   Color stm = sideToMove;
   Bitboard attackers = attackers_to(to, occupied);
   Bitboard stmAttackers, bb;
@@ -1091,62 +1092,56 @@ bool Position::see_ge(Move m, Bitboard& occupied, Value threshold) const {
       // the bitboard 'attackers' any X-ray attackers behind it.
       if ((bb = stmAttackers & pieces(PAWN)))
       {
-          occupied ^= least_significant_square_bb(bb);
           if ((swap = PawnValue - swap) < res)
               break;
+          occupied ^= least_significant_square_bb(bb);
 
           attackers |= attacks_bb<BISHOP>(to, occupied) & pieces(BISHOP, QUEEN);
       }
 
       else if ((bb = stmAttackers & pieces(KNIGHT)))
       {
-          occupied ^= least_significant_square_bb(bb);
           if ((swap = KnightValue - swap) < res)
               break;
+          occupied ^= least_significant_square_bb(bb);
       }
 
       else if ((bb = stmAttackers & pieces(BISHOP)))
       {
-          occupied ^= least_significant_square_bb(bb);
           if ((swap = BishopValue - swap) < res)
               break;
+          occupied ^= least_significant_square_bb(bb);
 
           attackers |= attacks_bb<BISHOP>(to, occupied) & pieces(BISHOP, QUEEN);
       }
 
       else if ((bb = stmAttackers & pieces(ROOK)))
       {
-          occupied ^= least_significant_square_bb(bb);
           if ((swap = RookValue - swap) < res)
               break;
+          occupied ^= least_significant_square_bb(bb);
 
           attackers |= attacks_bb<ROOK>(to, occupied) & pieces(ROOK, QUEEN);
       }
 
       else if ((bb = stmAttackers & pieces(QUEEN)))
       {
-          occupied ^= least_significant_square_bb(bb);
           if ((swap = QueenValue - swap) < res)
               break;
+          occupied ^= least_significant_square_bb(bb);
 
           attackers |=  (attacks_bb<BISHOP>(to, occupied) & pieces(BISHOP, QUEEN))
                       | (attacks_bb<ROOK  >(to, occupied) & pieces(ROOK  , QUEEN));
       }
 
       else // KING
-           // If we "capture" with the king but opponent still has attackers,
+           // If we "capture" with the king but the opponent still has attackers,
            // reverse the result.
           return (attackers & ~pieces(stm)) ? res ^ 1 : res;
   }
 
   return bool(res);
 }
-
-bool Position::see_ge(Move m, Value threshold) const {
-    Bitboard occupied;
-    return see_ge(m, occupied, threshold);
-}
-
 
 /// Position::is_draw() tests whether the position is drawn by 50-move rule
 /// or by repetition. It does not detect stalemates.
@@ -1265,7 +1260,7 @@ void Position::flip() {
 
 
 /// Position::pos_is_ok() performs some consistency checks for the
-/// position object and raises an asserts if something wrong is detected.
+/// position object and raise an assert if something wrong is detected.
 /// This is meant to be helpful when debugging.
 
 bool Position::pos_is_ok() const {
