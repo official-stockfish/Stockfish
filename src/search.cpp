@@ -945,16 +945,15 @@ moves_loop: // When in check, search starts here
       if (move == excludedMove)
           continue;
 
-      // At root obey the "searchmoves" option and skip moves not listed in Root
-      // Move List. As a consequence, any illegal move is also skipped. In MultiPV
-      // mode we also skip PV moves that have been already searched and those
-      // of lower "TB rank" if we are in a TB root position.
-      if (rootNode && !std::count(thisThread->rootMoves.begin() + thisThread->pvIdx,
-                                  thisThread->rootMoves.begin() + thisThread->pvLast, move))
+      // Check for legality
+      if (!pos.legal(move))
           continue;
 
-      // Check for legality
-      if (!rootNode && !pos.legal(move))
+      // At root obey the "searchmoves" option and skip moves not listed in Root
+      // Move List. In MultiPV mode we also skip PV moves that have been already
+      // searched and those of lower "TB rank" if we are in a TB root position.
+      if (rootNode && !std::count(thisThread->rootMoves.begin() + thisThread->pvIdx,
+                                  thisThread->rootMoves.begin() + thisThread->pvLast, move))
           continue;
 
       ss->moveCount = ++moveCount;
