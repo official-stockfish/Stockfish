@@ -236,9 +236,10 @@ namespace {
 
 /// <CAPTURES>     Generates all pseudo-legal captures plus queen promotions
 /// <QUIETS>       Generates all pseudo-legal non-captures and underpromotions
-/// <EVASIONS>     Generates all pseudo-legal check evasions when the side to move is in check
-/// <QUIET_CHECKS> Generates all pseudo-legal non-captures giving check, except castling and promotions
+/// <EVASIONS>     Generates all pseudo-legal check evasions
 /// <NON_EVASIONS> Generates all pseudo-legal captures and non-captures
+/// <QUIET_CHECKS> Generates all pseudo-legal non-captures giving check,
+///                except castling and promotions
 ///
 /// Returns a pointer to the end of the move list.
 

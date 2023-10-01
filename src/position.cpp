@@ -102,9 +102,9 @@ std::ostream& operator<<(std::ostream& os, const Position& pos) {
 }
 
 
-// Implements Marcel van Kervinck's cuckoo algorithm to detect repetition of positions 
-// for 3-fold repetition draws. The algorithm uses two hash tables with Zobrist hashes to 
-// allow fast detection of recurring positions. For details see:
+// Implements Marcel van Kervinck's cuckoo algorithm to detect repetition of positions
+// for 3-fold repetition draws. The algorithm uses two hash tables with Zobrist hashes
+// to allow fast detection of recurring positions. For details see:
 // http://web.archive.org/web/20201107002606/https://marcelk.net/2013-04-06/paper/upcoming-rep-v2.pdf
 
 // First and second hash functions for indexing the cuckoo tables
@@ -188,9 +188,9 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
 
    4) En passant target square (in algebraic notation). If there's no en passant
       target square, this is "-". If a pawn has just made a 2-square move, this
-      is the position "behind" the pawn. Following X-FEN standard, this is recorded only
-      if there is a pawn in position to make an en passant capture, and if there really
-      is a pawn that might have advanced two squares.
+      is the position "behind" the pawn. Following X-FEN standard, this is recorded
+      only if there is a pawn in position to make an en passant capture, and if
+      there really is a pawn that might have advanced two squares.
 
    5) Halfmove clock. This is the number of halfmoves since the last pawn advance
       or capture. This is used to determine if a draw can be claimed under the
@@ -587,8 +587,8 @@ bool Position::pseudo_legal(const Move m) const {
           return false;
 
       if (   !(pawn_attacks_bb(us, from) & pieces(~us) & to) // Not a capture
-          && !((from + pawn_push(us) == to) && empty(to))       // Not a single push
-          && !(   (from + 2 * pawn_push(us) == to)              // Not a double push
+          && !((from + pawn_push(us) == to) && empty(to))    // Not a single push
+          && !(   (from + 2 * pawn_push(us) == to)           // Not a double push
                && (relative_rank(us, from) == RANK_2)
                && empty(to)
                && empty(to - pawn_push(us))))
@@ -959,7 +959,7 @@ void Position::do_castling(Color us, Square from, Square& to, Square& rfrom, Squ
   // Remove both pieces first since squares could overlap in Chess960
   remove_piece(Do ? from : to);
   remove_piece(Do ? rfrom : rto);
-  board[Do ? from : to] = board[Do ? rfrom : rto] = NO_PIECE; // Since remove_piece doesn't do this for us
+  board[Do ? from : to] = board[Do ? rfrom : rto] = NO_PIECE; // remove_piece does not do this for us
   put_piece(make_piece(us, KING), Do ? to : from);
   put_piece(make_piece(us, ROOK), Do ? rto : rfrom);
 }
