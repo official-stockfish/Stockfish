@@ -55,11 +55,11 @@ namespace {
 } // namespace
 
 
-/// Constructors of the MovePicker class. As arguments we pass information
-/// to help it to return the (presumably) good moves first, to decide which
+/// Constructors of the MovePicker class. As arguments, we pass information
+/// to help it return the (presumably) good moves first, to decide which
 /// moves to return (in the quiescence search, for instance, we only want to
-/// search captures, promotions, and some checks) and how important good move
-/// ordering is at the current node.
+/// search captures, promotions, and some checks) and how important a good
+/// move ordering is at the current node.
 
 /// MovePicker constructor for the main search
 MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const ButterflyHistory* mh,

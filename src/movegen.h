@@ -19,7 +19,7 @@
 #ifndef MOVEGEN_H_INCLUDED
 #define MOVEGEN_H_INCLUDED
 
-#include <algorithm>
+#include <algorithm> // IWYU pragma: keep
 #include <cstddef>
 
 #include "types.h"
@@ -56,8 +56,9 @@ inline bool operator<(const ExtMove& f, const ExtMove& s) {
 template<GenType>
 ExtMove* generate(const Position& pos, ExtMove* moveList);
 
-/// The MoveList struct is a simple wrapper around generate(). It sometimes comes
-/// in handy to use this class instead of the low level generate() function.
+/// The MoveList struct wraps the generate() function and returns a convenient
+/// list of moves. Using MoveList is sometimes preferable to directly calling
+/// the lower level generate() function.
 template<GenType T>
 struct MoveList {
 

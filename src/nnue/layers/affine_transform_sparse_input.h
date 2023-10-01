@@ -102,7 +102,7 @@ namespace Stockfish::Eval::NNUE::Layers {
       for (IndexType j = 0; j < InputsPerChunk; ++j)
       {
         const vec_t inputChunk = inputVector[i * InputsPerChunk + j];
-        nnz |= (unsigned)vec_nnz(inputChunk) << (j * InputSimdWidth);
+        nnz |= unsigned(vec_nnz(inputChunk)) << (j * InputSimdWidth);
       }
       for (IndexType j = 0; j < OutputsPerChunk; ++j)
       {

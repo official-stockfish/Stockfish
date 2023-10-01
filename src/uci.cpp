@@ -159,7 +159,7 @@ namespace {
 
 
   // bench() is called when the engine receives the "bench" command.
-  // Firstly, a list of UCI commands is set up according to the bench
+  // First, a list of UCI commands is set up according to the bench
   // parameters, then it is run one by one, printing a summary at the end.
 
   void bench(Position& pos, std::istream& args, StateListPtr& states) {
@@ -226,14 +226,14 @@ namespace {
      // Transform the eval to centipawns with limited range
      double x = std::clamp(double(v), -4000.0, 4000.0);
 
-     // Return the win rate in per mille units rounded to the nearest value
+     // Return the win rate in per mille units, rounded to the nearest integer
      return int(0.5 + 1000 / (1 + std::exp((a - x) / b)));
   }
 
 } // namespace
 
 
-/// UCI::loop() waits for a command from the stdin, parses it and then calls the appropriate
+/// UCI::loop() waits for a command from the stdin, parses it, and then calls the appropriate
 /// function. It also intercepts an end-of-file (EOF) indication from the stdin to ensure a
 /// graceful exit if the GUI dies unexpectedly. When called with some command-line arguments,
 /// like running 'bench', the function returns immediately after the command is executed.
