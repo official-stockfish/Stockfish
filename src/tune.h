@@ -49,31 +49,30 @@ struct SetRange {
 #define SetDefaultRange SetRange(default_range)
 
 
-/// Tune class implements the 'magic' code that makes the setup of a fishtest
-/// tuning session as easy as it can be. Mainly you have just to remove const
-/// qualifiers from the variables you want to tune and flag them for tuning, so
-/// if you have:
-///
-///   const Value myValue[][2] = { { V(100), V(20) }, { V(7), V(78) } };
-///
-/// If you have a my_post_update() function to run after values have been updated,
-/// and a my_range() function to set custom Option's min-max values, then you just
-/// remove the 'const' qualifiers and write somewhere below in the file:
-///
-///   TUNE(SetRange(my_range), myValue, my_post_update);
-///
-/// You can also set the range directly, and restore the default at the end
-///
-///   TUNE(SetRange(-100, 100), myValue, SetDefaultRange);
-///
-/// In case update function is slow and you have many parameters, you can add:
-///
-///   UPDATE_ON_LAST();
-///
-/// And the values update, including post update function call, will be done only
-/// once, after the engine receives the last UCI option, that is the one defined
-/// and created as the last one, so the GUI should send the options in the same
-/// order in which have been defined.
+// Tune class implements the 'magic' code that makes the setup of a fishtest tuning
+// session as easy as it can be. Mainly you have just to remove const qualifiers
+// from the variables you want to tune and flag them for tuning, so if you have:
+//
+//   const Value myValue[][2] = { { V(100), V(20) }, { V(7), V(78) } };
+//
+// If you have a my_post_update() function to run after values have been updated,
+// and a my_range() function to set custom Option's min-max values, then you just
+// remove the 'const' qualifiers and write somewhere below in the file:
+//
+//   TUNE(SetRange(my_range), myValue, my_post_update);
+//
+// You can also set the range directly, and restore the default at the end
+//
+//   TUNE(SetRange(-100, 100), myValue, SetDefaultRange);
+//
+// In case update function is slow and you have many parameters, you can add:
+//
+//   UPDATE_ON_LAST();
+//
+// And the values update, including post update function call, will be done only
+// once, after the engine receives the last UCI option, that is the one defined
+// and created as the last one, so the GUI should send the options in the same
+// order in which have been defined.
 
 class Tune {
 
@@ -151,7 +150,7 @@ public:
   static bool update_on_last;
 };
 
-// Some macro magic :-) we define a dummy int variable that compiler initializes calling Tune::add()
+// Some macro magic :-) we define a dummy int variable that the compiler initializes calling Tune::add()
 #define STRINGIFY(x) #x
 #define UNIQUE2(x, y) x ## y
 #define UNIQUE(x, y) UNIQUE2(x, y) // Two indirection levels to expand __LINE__
