@@ -342,8 +342,8 @@ inline bool Position::capture(Move m) const {
           ||  type_of(m) == EN_PASSANT;
 }
 
-// returns true if a move is generated from the capture stage
-// having also queen promotions covered, i.e. consistency with the capture stage move generation
+// Returns true if a move is generated from the capture stage, having also
+// queen promotions covered, i.e. consistency with the capture stage move generation
 // is needed to avoid the generation of duplicate moves.
 inline bool Position::capture_stage(Move m) const {
   assert(is_ok(m));
