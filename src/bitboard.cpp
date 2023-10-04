@@ -46,8 +46,8 @@ namespace {
 
 }
 
-/// safe_destination() returns the bitboard of target square for the given step
-/// from the given square. If the step is off the board, returns empty bitboard.
+// safe_destination() returns the bitboard of target square for the given step
+// from the given square. If the step is off the board, returns empty bitboard.
 
 inline Bitboard safe_destination(Square s, int step) {
     Square to = Square(s + step);
@@ -55,8 +55,8 @@ inline Bitboard safe_destination(Square s, int step) {
 }
 
 
-/// Bitboards::pretty() returns an ASCII representation of a bitboard suitable
-/// to be printed to standard output. Useful for debugging.
+// Bitboards::pretty() returns an ASCII representation of a bitboard suitable
+// to be printed to standard output. Useful for debugging.
 
 std::string Bitboards::pretty(Bitboard b) {
 
@@ -75,8 +75,8 @@ std::string Bitboards::pretty(Bitboard b) {
 }
 
 
-/// Bitboards::init() initializes various bitboard tables. It is called at
-/// startup and relies on global objects to be already zero-initialized.
+// Bitboards::init() initializes various bitboard tables. It is called at
+// startup and relies on global objects to be already zero-initialized.
 
 void Bitboards::init() {
 
