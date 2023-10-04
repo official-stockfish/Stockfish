@@ -33,9 +33,9 @@ class Position;
 namespace Search {
 
 
-/// Stack struct keeps track of the information we need to remember from nodes
-/// shallower and deeper in the tree during the search. Each search thread has
-/// its own array of Stack objects, indexed by the current ply.
+// Stack struct keeps track of the information we need to remember from nodes
+// shallower and deeper in the tree during the search. Each search thread has
+// its own array of Stack objects, indexed by the current ply.
 
 struct Stack {
   Move* pv;
@@ -55,9 +55,9 @@ struct Stack {
 };
 
 
-/// RootMove struct is used for moves at the root of the tree. For each root move
-/// we store a score and a PV (really a refutation in the case of moves which
-/// fail low). Score is normally set at -VALUE_INFINITE for all non-pv moves.
+// RootMove struct is used for moves at the root of the tree. For each root move
+// we store a score and a PV (really a refutation in the case of moves which
+// fail low). Score is normally set at -VALUE_INFINITE for all non-pv moves.
 
 struct RootMove {
 
@@ -84,8 +84,8 @@ struct RootMove {
 using RootMoves = std::vector<RootMove>;
 
 
-/// LimitsType struct stores information sent by GUI about available time to
-/// search the current move, maximum depth/time, or if we are in analysis mode.
+// LimitsType struct stores information sent by GUI about available time to
+// search the current move, maximum depth/time, or if we are in analysis mode.
 
 struct LimitsType {
 
