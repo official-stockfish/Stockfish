@@ -234,14 +234,14 @@ namespace {
 } // namespace
 
 
-/// <CAPTURES>     Generates all pseudo-legal captures plus queen promotions
-/// <QUIETS>       Generates all pseudo-legal non-captures and underpromotions
-/// <EVASIONS>     Generates all pseudo-legal check evasions
-/// <NON_EVASIONS> Generates all pseudo-legal captures and non-captures
-/// <QUIET_CHECKS> Generates all pseudo-legal non-captures giving check,
-///                except castling and promotions
-///
-/// Returns a pointer to the end of the move list.
+// <CAPTURES>     Generates all pseudo-legal captures plus queen promotions
+// <QUIETS>       Generates all pseudo-legal non-captures and underpromotions
+// <EVASIONS>     Generates all pseudo-legal check evasions
+// <NON_EVASIONS> Generates all pseudo-legal captures and non-captures
+// <QUIET_CHECKS> Generates all pseudo-legal non-captures giving check,
+//                except castling and promotions
+//
+// Returns a pointer to the end of the move list.
 
 template<GenType Type>
 ExtMove* generate(const Position& pos, ExtMove* moveList) {
@@ -263,7 +263,7 @@ template ExtMove* generate<QUIET_CHECKS>(const Position&, ExtMove*);
 template ExtMove* generate<NON_EVASIONS>(const Position&, ExtMove*);
 
 
-/// generate<LEGAL> generates all the legal moves in the given position
+// generate<LEGAL> generates all the legal moves in the given position
 
 template<>
 ExtMove* generate<LEGAL>(const Position& pos, ExtMove* moveList) {

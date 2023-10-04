@@ -34,10 +34,10 @@
 
 namespace Stockfish {
 
-/// Thread class keeps together all the thread-related stuff. We use
-/// per-thread pawn and material hash tables so that once we get a
-/// pointer to an entry its life time is unlimited and we don't have
-/// to care about someone changing the entry under our feet.
+// Thread class keeps together all the thread-related stuff. We use
+// per-thread pawn and material hash tables so that once we get a
+// pointer to an entry its lifetime is unlimited and we don't have
+// to care about someone changing the entry under our feet.
 
 class Thread {
 
@@ -75,7 +75,7 @@ public:
 };
 
 
-/// MainThread is a derived class specific for main thread
+// MainThread is a derived class specific for main thread
 
 struct MainThread : public Thread {
 
@@ -94,9 +94,9 @@ struct MainThread : public Thread {
 };
 
 
-/// ThreadPool struct handles all the threads-related stuff like init, starting,
-/// parking and, most importantly, launching a thread. All the access to threads
-/// is done through this class.
+// ThreadPool struct handles all the threads-related stuff like init, starting,
+// parking and, most importantly, launching a thread. All the access to threads
+// is done through this class.
 
 struct ThreadPool {
 

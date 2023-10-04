@@ -169,7 +169,7 @@ namespace {
 } // namespace
 
 
-/// Search::init() is called at startup to initialize various lookup tables
+// Search::init() is called at startup to initialize various lookup tables
 
 void Search::init() {
 
@@ -178,7 +178,7 @@ void Search::init() {
 }
 
 
-/// Search::clear() resets search state to its initial value
+// Search::clear() resets search state to its initial value
 
 void Search::clear() {
 
@@ -191,8 +191,8 @@ void Search::clear() {
 }
 
 
-/// MainThread::search() is started when the program receives the UCI 'go'
-/// command. It searches from the root position and outputs the "bestmove".
+// MainThread::search() is started when the program receives the UCI 'go'
+// command. It searches from the root position and outputs the "bestmove".
 
 void MainThread::search() {
 
@@ -268,9 +268,9 @@ void MainThread::search() {
 }
 
 
-/// Thread::search() is the main iterative deepening loop. It calls search()
-/// repeatedly with increasing depth until the allocated thinking time has been
-/// consumed, the user stops the search, or the maximum search depth is reached.
+// Thread::search() is the main iterative deepening loop. It calls search()
+// repeatedly with increasing depth until the allocated thinking time has been
+// consumed, the user stops the search, or the maximum search depth is reached.
 
 void Thread::search() {
 
@@ -1837,8 +1837,8 @@ moves_loop: // When in check, search starts here
 } // namespace
 
 
-/// MainThread::check_time() is used to print debug info and, more importantly,
-/// to detect when we are out of available time and thus stop the search.
+// MainThread::check_time() is used to print debug info and, more importantly,
+// to detect when we are out of available time and thus stop the search.
 
 void MainThread::check_time() {
 
@@ -1870,8 +1870,8 @@ void MainThread::check_time() {
 }
 
 
-/// UCI::pv() formats PV information according to the UCI protocol. UCI requires
-/// that all (if any) unsearched PV lines are sent using a previous search score.
+// UCI::pv() formats PV information according to the UCI protocol. UCI requires
+// that all (if any) unsearched PV lines are sent using a previous search score.
 
 string UCI::pv(const Position& pos, Depth depth) {
 
@@ -1929,10 +1929,10 @@ string UCI::pv(const Position& pos, Depth depth) {
 }
 
 
-/// RootMove::extract_ponder_from_tt() is called in case we have no ponder move
-/// before exiting the search, for instance, in case we stop the search during a
-/// fail high at root. We try hard to have a ponder move to return to the GUI,
-/// otherwise in case of 'ponder on' we have nothing to think about.
+// RootMove::extract_ponder_from_tt() is called in case we have no ponder move
+// before exiting the search, for instance, in case we stop the search during a
+// fail high at root. We try hard to have a ponder move to return to the GUI,
+// otherwise in case of 'ponder on' we have nothing to think about.
 
 bool RootMove::extract_ponder_from_tt(Position& pos) {
 
