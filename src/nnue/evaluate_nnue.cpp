@@ -375,7 +375,7 @@ namespace Stockfish::Eval::NNUE {
     return write_parameters(stream);
   }
 
-  /// Save eval, to a file given by its name
+  // Save eval, to a file given by its name
   bool save_eval(const std::optional<std::string>& filename) {
 
     std::string actualFilename;
