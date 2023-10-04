@@ -74,7 +74,7 @@ T* align_ptr_up(T* ptr)
 }
 
 
-// IsLittleEndian : true if and only if the binary is compiled on a little endian machine
+// IsLittleEndian : true if and only if the binary is compiled on a little-endian machine
 static inline const union { uint32_t i; char c[4]; } Le = { 0x01020304 };
 static inline const bool IsLittleEndian = (Le.c[0] == 4);
 
@@ -145,8 +145,8 @@ inline uint64_t mul_hi64(uint64_t a, uint64_t b) {
 }
 
 /// Under Windows it is not possible for a process to run on more than one
-/// logical processor group. This usually means to be limited to use max 64
-/// cores. To overcome this, some special platform specific API should be
+/// logical processor group. This usually means being limited to using max 64
+/// cores. To overcome this, some special platform-specific API should be
 /// called to set group affinity for each thread. Original code from Texel by
 /// Peter Österlund.
 
