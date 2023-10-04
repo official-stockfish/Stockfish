@@ -10,3 +10,14 @@ src/-lstdc++.res
 # Neural network for the NNUE evaluation
 **/*.nnue
 
+# IDE's
+
+## Visual Studio Code
+
+.vscode/*
+.history/
+*.vsix
+
+## CLion
+
+.idea/
