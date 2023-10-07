@@ -1550,7 +1550,7 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves) {
         {
             // In case a root move leads to a draw by repetition or 50-move rule,
             // we set dtz to zero. Note: since we are only 1 ply from the root,
-            //  this must be a true 3-fold repetition inside the game history.
+            // this must be a true 3-fold repetition inside the game history.
             dtz = 0;
         }
         else
