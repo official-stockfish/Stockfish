@@ -556,7 +556,7 @@ namespace {
     assert(0 < depth && depth < MAX_PLY);
     assert(!(PvNode && cutNode));
 
-    Move pv[MAX_PLY+1], capturesSearched[32], quietsSearched[64];
+    Move pv[MAX_PLY+1], capturesSearched[32], quietsSearched[32];
     StateInfo st;
     ASSERT_ALIGNED(&st, Eval::NNUE::CacheLineSize);
 
@@ -776,7 +776,8 @@ namespace {
     // Step 7. Razoring (~1 Elo)
     // If eval is really low check with qsearch if it can exceed alpha, if it can't,
     // return a fail low.
-    if (eval < alpha - 456 - 252 * depth * depth)
+    // Adjust razor margin according to cutoffCnt. (~1 Elo)
+    if (eval < alpha - 456 - (252 - 200 * ((ss+1)->cutoffCnt > 3)) * depth * depth)
     {
         value = qsearch<NonPV>(pos, ss, alpha - 1, alpha);
         if (value < alpha)
@@ -789,7 +790,10 @@ namespace {
         &&  depth < 9
         &&  eval - futility_margin(depth, cutNode && !ss->ttHit, improving) - (ss-1)->statScore / 306 >= beta
         &&  eval >= beta
-        &&  eval < 24923) // smaller than TB wins
+        &&  eval < 24923 // smaller than TB wins
+        && !(  !ttCapture
+             && ttMove
+             && thisThread->mainHistory[us][from_to(ttMove)] < 989))
         return eval;
 
     // Step 9. Null move search with verification search (~35 Elo)
@@ -955,16 +959,15 @@ moves_loop: // When in check, search starts here
       if (move == excludedMove)
           continue;
 
-      // At root obey the "searchmoves" option and skip moves not listed in Root
-      // Move List. As a consequence, any illegal move is also skipped. In MultiPV
-      // mode we also skip PV moves that have been already searched and those
-      // of lower "TB rank" if we are in a TB root position.
-      if (rootNode && !std::count(thisThread->rootMoves.begin() + thisThread->pvIdx,
-                                  thisThread->rootMoves.begin() + thisThread->pvLast, move))
+      // Check for legality
+      if (!pos.legal(move))
           continue;
 
-      // Check for legality
-      if (!rootNode && !pos.legal(move))
+      // At root obey the "searchmoves" option and skip moves not listed in Root
+      // Move List. In MultiPV mode we also skip PV moves that have been already
+      // searched and those of lower "TB rank" if we are in a TB root position.
+      if (rootNode && !std::count(thisThread->rootMoves.begin() + thisThread->pvIdx,
+                                  thisThread->rootMoves.begin() + thisThread->pvLast, move))
           continue;
 
       ss->moveCount = ++moveCount;
@@ -994,7 +997,8 @@ moves_loop: // When in check, search starts here
           && bestValue > VALUE_TB_LOSS_IN_MAX_PLY)
       {
           // Skip quiet moves if movecount exceeds our FutilityMoveCount threshold (~8 Elo)
-          moveCountPruning = moveCount >= futility_move_count(improving, depth);
+          if (!moveCountPruning)
+              moveCountPruning = moveCount >= futility_move_count(improving, depth);
 
           // Reduced depth of the next LMR search
           int lmrDepth = newDepth - r;
@@ -1339,12 +1343,12 @@ moves_loop: // When in check, search starts here
 
 
       // If the move is worse than some previously searched move, remember it, to update its stats later
-      if (move != bestMove)
+      if (move != bestMove && moveCount <= 32)
       {
-          if (capture && captureCount < 32)
+          if (capture)
               capturesSearched[captureCount++] = move;
 
-          else if (!capture && quietCount < 64)
+          else
               quietsSearched[quietCount++] = move;
       }
     }

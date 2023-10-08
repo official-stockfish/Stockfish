@@ -45,17 +45,12 @@ namespace Stockfish::Eval::NNUE::Layers {
   template <IndexType InputDimensions, IndexType PaddedInputDimensions, IndexType OutputDimensions>
   static void affine_transform_non_ssse3(std::int32_t* output, const std::int8_t* weights, const std::int32_t* biases, const std::uint8_t* input)
   {
-# if defined(USE_SSE2) || defined(USE_MMX) || defined(USE_NEON_DOTPROD) || defined(USE_NEON)
+# if defined(USE_SSE2) || defined(USE_NEON_DOTPROD) || defined(USE_NEON)
 # if defined(USE_SSE2)
     // At least a multiple of 16, with SSE2.
     constexpr IndexType NumChunks = ceil_to_multiple<IndexType>(InputDimensions, 16) / 16;
     const __m128i Zeros = _mm_setzero_si128();
     const auto inputVector = reinterpret_cast<const __m128i*>(input);
-
-# elif defined(USE_MMX)
-    constexpr IndexType NumChunks = ceil_to_multiple<IndexType>(InputDimensions, 8) / 8;
-    const __m64 Zeros = _mm_setzero_si64();
-    const auto inputVector = reinterpret_cast<const __m64*>(input);
 
 # elif defined(USE_NEON_DOTPROD)
     constexpr IndexType NumChunks = ceil_to_multiple<IndexType>(InputDimensions, 16) / 16;
@@ -92,26 +87,6 @@ namespace Stockfish::Eval::NNUE::Layers {
       sum = _mm_add_epi32(sum, sum_second_32);
       output[i] = _mm_cvtsi128_si32(sum);
 
-# elif defined(USE_MMX)
-      __m64 sumLo = _mm_cvtsi32_si64(biases[i]);
-      __m64 sumHi = Zeros;
-      const auto row = reinterpret_cast<const __m64*>(&weights[offset]);
-      for (IndexType j = 0; j < NumChunks; ++j) {
-        __m64 row_j = row[j];
-        __m64 input_j = inputVector[j];
-        __m64 extendedRowLo = _mm_srai_pi16(_mm_unpacklo_pi8(row_j, row_j), 8);
-        __m64 extendedRowHi = _mm_srai_pi16(_mm_unpackhi_pi8(row_j, row_j), 8);
-        __m64 extendedInputLo = _mm_unpacklo_pi8(input_j, Zeros);
-        __m64 extendedInputHi = _mm_unpackhi_pi8(input_j, Zeros);
-        __m64 productLo = _mm_madd_pi16(extendedRowLo, extendedInputLo);
-        __m64 productHi = _mm_madd_pi16(extendedRowHi, extendedInputHi);
-        sumLo = _mm_add_pi32(sumLo, productLo);
-        sumHi = _mm_add_pi32(sumHi, productHi);
-      }
-      __m64 sum = _mm_add_pi32(sumLo, sumHi);
-      sum = _mm_add_pi32(sum, _mm_unpackhi_pi32(sum, sum));
-      output[i] = _mm_cvtsi64_si32(sum);
-
 # elif defined(USE_NEON_DOTPROD)
       int32x4_t sum = {biases[i]};
       const auto row = reinterpret_cast<const int8x16_t*>(&weights[offset]);
@@ -132,11 +107,6 @@ namespace Stockfish::Eval::NNUE::Layers {
 
 # endif
     }
-
-# if defined(USE_MMX)
-    _mm_empty();
-# endif
-
 # else
   std::memcpy(output, biases, sizeof(std::int32_t) * OutputDimensions);
 
