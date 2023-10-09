@@ -674,7 +674,6 @@ ifeq ($(sse2),yes)
 endif
 
 ifeq ($(mmx),yes)
-	CXXFLAGS += -DUSE_MMX
 	ifeq ($(comp),$(filter $(comp),gcc clang mingw icx))
 		CXXFLAGS += -mmmx
 	endif
@@ -794,11 +793,11 @@ help:
 	@echo "x86-64-sse41-popcnt     > x86 64-bit with sse41 and popcnt support"
 	@echo "x86-64-modern           > deprecated, currently x86-64-sse41-popcnt"
 	@echo "x86-64-ssse3            > x86 64-bit with ssse3 support"
-	@echo "x86-64-sse3-popcnt      > x86 64-bit with sse3 and popcnt support"
+	@echo "x86-64-sse3-popcnt      > x86 64-bit with sse3 compile and popcnt support"
 	@echo "x86-64                  > x86 64-bit generic (with sse2 support)"
 	@echo "x86-32-sse41-popcnt     > x86 32-bit with sse41 and popcnt support"
 	@echo "x86-32-sse2             > x86 32-bit with sse2 support"
-	@echo "x86-32                  > x86 32-bit generic (with mmx and sse support)"
+	@echo "x86-32                  > x86 32-bit generic (with mmx compile support)"
 	@echo "ppc-64                  > PPC 64-bit"
 	@echo "ppc-32                  > PPC 32-bit"
 	@echo "armv7                   > ARMv7 32-bit"
