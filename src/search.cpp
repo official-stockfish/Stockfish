@@ -1506,9 +1506,7 @@ moves_loop: // When in check, search starts here
         futilityBase = std::min(ss->staticEval, bestValue) + 200;
     }
 
-    const PieceToHistory* contHist[] = { (ss-1)->continuationHistory, (ss-2)->continuationHistory,
-                                         (ss-3)->continuationHistory, (ss-4)->continuationHistory,
-                                          nullptr                   , (ss-6)->continuationHistory };
+    const PieceToHistory* contHist[] = {(ss-1)->continuationHistory, (ss-2)->continuationHistory};
 
     // Initialize a MovePicker object for the current position, and prepare
     // to search the moves. Because the depth is <= 0 here, only captures,
