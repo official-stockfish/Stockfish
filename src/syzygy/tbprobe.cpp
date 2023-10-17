@@ -690,6 +690,17 @@ int map_score(TBTable<DTZ>* entry, File f, int value, WDLScore wdl) {
     return value + 1;
 }
 
+// A temporary fix for the compiler bug with AVX-512. (#4450)
+#ifdef USE_AVX512
+    #if defined(__clang__) && defined(__clang_major__) && __clang_major__ >= 15
+        #define CLANG_AVX512_BUG_FIX __attribute__((optnone))
+    #endif
+#endif
+
+#ifndef CLANG_AVX512_BUG_FIX
+    #define CLANG_AVX512_BUG_FIX
+#endif
+
 // Compute a unique index out of a position and use it to probe the TB file. To
 // encode k pieces of the same type and color, first sort the pieces by square in
 // ascending order s1 <= s2 <= ... <= sk then compute the unique index as:
@@ -697,7 +708,8 @@ int map_score(TBTable<DTZ>* entry, File f, int value, WDLScore wdl) {
 //      idx = Binomial[1][s1] + Binomial[2][s2] + ... + Binomial[k][sk]
 //
 template<typename T, typename Ret = typename T::Ret>
-Ret do_probe_table(const Position& pos, T* entry, WDLScore wdl, ProbeState* result) {
+CLANG_AVX512_BUG_FIX Ret
+do_probe_table(const Position& pos, T* entry, WDLScore wdl, ProbeState* result) {
 
     Square     squares[TBPIECES];
     Piece      pieces[TBPIECES];
