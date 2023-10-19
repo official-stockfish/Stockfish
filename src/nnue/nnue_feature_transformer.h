@@ -395,9 +395,9 @@ namespace Stockfish::Eval::NNUE {
       {
           assert(states_to_update[0]);
 
-          auto accTileIn = reinterpret_cast<const vec_t*>(
+          auto accIn = reinterpret_cast<const vec_t*>(
               &st->accumulator.accumulation[Perspective][0]);
-          auto accTileOut = reinterpret_cast<vec_t*>(
+          auto accOut = reinterpret_cast<vec_t*>(
               &states_to_update[0]->accumulator.accumulation[Perspective][0]);
 
           const IndexType offsetR0 = HalfDimensions * removed[0][0];
@@ -408,7 +408,7 @@ namespace Stockfish::Eval::NNUE {
           if (removed[0].size() == 1)
           {
               for (IndexType k = 0; k < HalfDimensions * sizeof(std::int16_t) / sizeof(vec_t); ++k)
-                  accTileOut[k] = vec_add_16(vec_sub_16(accTileIn[k], columnR0[k]), columnA[k]);
+                  accOut[k] = vec_add_16(vec_sub_16(accIn[k], columnR0[k]), columnA[k]);
           }
           else
           {
@@ -416,14 +416,14 @@ namespace Stockfish::Eval::NNUE {
               auto columnR1 = reinterpret_cast<const vec_t*>(&weights[offsetR1]);
 
               for (IndexType k = 0; k < HalfDimensions * sizeof(std::int16_t) / sizeof(vec_t); ++k)
-                  accTileOut[k] = vec_sub_16(
-                                      vec_add_16(accTileIn[k], columnA[k]),
-                                      vec_add_16(columnR0[k], columnR1[k]));       
+                  accOut[k] = vec_sub_16(
+                                  vec_add_16(accIn[k], columnA[k]),
+                                  vec_add_16(columnR0[k], columnR1[k]));       
           }
 
-          auto accTilePsqtIn = reinterpret_cast<const psqt_vec_t*>(
+          auto accPsqtIn = reinterpret_cast<const psqt_vec_t*>(
               &st->accumulator.psqtAccumulation[Perspective][0]);
-          auto accTilePsqtOut = reinterpret_cast<psqt_vec_t*>(
+          auto accPsqtOut = reinterpret_cast<psqt_vec_t*>(
               &states_to_update[0]->accumulator.psqtAccumulation[Perspective][0]);
 
           const IndexType offsetPsqtR0 = PSQTBuckets * removed[0][0];
@@ -434,8 +434,8 @@ namespace Stockfish::Eval::NNUE {
           if (removed[0].size() == 1)
           {
               for (std::size_t k = 0; k < PSQTBuckets * sizeof(std::int32_t) / sizeof(psqt_vec_t); ++k)
-                  accTilePsqtOut[k] = vec_add_psqt_32(vec_sub_psqt_32(
-                      accTilePsqtIn[k], columnPsqtR0[k]), columnPsqtA[k]);
+                  accPsqtOut[k] = vec_add_psqt_32(vec_sub_psqt_32(
+                      accPsqtIn[k], columnPsqtR0[k]), columnPsqtA[k]);
           }
           else
           {
@@ -443,9 +443,9 @@ namespace Stockfish::Eval::NNUE {
               auto columnPsqtR1 = reinterpret_cast<const psqt_vec_t*>(&psqtWeights[offsetPsqtR1]);
 
               for (std::size_t k = 0; k < PSQTBuckets * sizeof(std::int32_t) / sizeof(psqt_vec_t); ++k)
-                  accTilePsqtOut[k] = vec_sub_psqt_32(
-                                          vec_add_psqt_32(accTilePsqtIn[k], columnPsqtA[k]),
-                                          vec_add_psqt_32(columnPsqtR0[k], columnPsqtR1[k]));
+                  accPsqtOut[k] = vec_sub_psqt_32(
+                                      vec_add_psqt_32(accPsqtIn[k], columnPsqtA[k]),
+                                      vec_add_psqt_32(columnPsqtR0[k], columnPsqtR1[k]));
           }
       }
       else
