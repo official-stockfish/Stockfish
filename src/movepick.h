@@ -24,7 +24,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <limits>
-#include <type_traits> // IWYU pragma: keep
+#include <type_traits>  // IWYU pragma: keep
 
 #include "movegen.h"
 #include "types.h"
@@ -39,22 +39,22 @@ class Position;
 template<typename T, int D>
 class StatsEntry {
 
-  T entry;
+    T entry;
 
-public:
-  void operator=(const T& v) { entry = v; }
-  T* operator&() { return &entry; }
-  T* operator->() { return &entry; }
-  operator const T&() const { return entry; }
+   public:
+    void operator=(const T& v) { entry = v; }
+    T*   operator&() { return &entry; }
+    T*   operator->() { return &entry; }
+    operator const T&() const { return entry; }
 
-  void operator<<(int bonus) {
-    assert(abs(bonus) <= D); // Ensure range is [-D, D]
-    static_assert(D <= std::numeric_limits<T>::max(), "D overflows T");
+    void operator<<(int bonus) {
+        assert(abs(bonus) <= D);  // Ensure range is [-D, D]
+        static_assert(D <= std::numeric_limits<T>::max(), "D overflows T");
 
-    entry += (bonus * D - entry * abs(bonus)) / (D * 5 / 4);
+        entry += (bonus * D - entry * abs(bonus)) / (D * 5 / 4);
 
-    assert(abs(entry) <= D);
-  }
+        assert(abs(entry) <= D);
+    }
 };
 
 // Stats is a generic N-dimensional array used to store various statistics.
@@ -62,28 +62,32 @@ public:
 // template parameter D limits the range of updates in [-D, D] when we update
 // values with the << operator, while the last parameters (Size and Sizes)
 // encode the dimensions of the array.
-template <typename T, int D, int Size, int... Sizes>
-struct Stats : public std::array<Stats<T, D, Sizes...>, Size>
-{
-  using stats = Stats<T, D, Size, Sizes...>;
+template<typename T, int D, int Size, int... Sizes>
+struct Stats: public std::array<Stats<T, D, Sizes...>, Size> {
+    using stats = Stats<T, D, Size, Sizes...>;
 
-  void fill(const T& v) {
+    void fill(const T& v) {
 
-    // For standard-layout 'this' points to the first struct member
-    assert(std::is_standard_layout_v<stats>);
+        // For standard-layout 'this' points to the first struct member
+        assert(std::is_standard_layout_v<stats>);
 
-    using entry = StatsEntry<T, D>;
-    entry* p = reinterpret_cast<entry*>(this);
-    std::fill(p, p + sizeof(*this) / sizeof(entry), v);
-  }
+        using entry = StatsEntry<T, D>;
+        entry* p    = reinterpret_cast<entry*>(this);
+        std::fill(p, p + sizeof(*this) / sizeof(entry), v);
+    }
 };
 
-template <typename T, int D, int Size>
-struct Stats<T, D, Size> : public std::array<StatsEntry<T, D>, Size> {};
+template<typename T, int D, int Size>
+struct Stats<T, D, Size>: public std::array<StatsEntry<T, D>, Size> {};
 
 // In stats table, D=0 means that the template parameter is not used
-enum StatsParams { NOT_USED = 0 };
-enum StatsType { NoCaptures, Captures };
+enum StatsParams {
+    NOT_USED = 0
+};
+enum StatsType {
+    NoCaptures,
+    Captures
+};
 
 // ButterflyHistory records how often quiet moves have been successful or
 // unsuccessful during the current search, and is used for reduction and move
@@ -117,42 +121,53 @@ using ContinuationHistory = Stats<PieceToHistory, NOT_USED, PIECE_NB, SQUARE_NB>
 // likely to get a cut-off first.
 class MovePicker {
 
-  enum PickType { Next, Best };
+    enum PickType {
+        Next,
+        Best
+    };
 
-public:
-  MovePicker(const MovePicker&) = delete;
-  MovePicker& operator=(const MovePicker&) = delete;
-  MovePicker(const Position&, Move, Depth, const ButterflyHistory*,
-                                           const CapturePieceToHistory*,
-                                           const PieceToHistory**,
-                                           Move,
-                                           const Move*);
-  MovePicker(const Position&, Move, Depth, const ButterflyHistory*,
-                                           const CapturePieceToHistory*,
-                                           const PieceToHistory**,
-                                           Square);
-  MovePicker(const Position&, Move, Value, const CapturePieceToHistory*);
-  Move next_move(bool skipQuiets = false);
+   public:
+    MovePicker(const MovePicker&)            = delete;
+    MovePicker& operator=(const MovePicker&) = delete;
+    MovePicker(const Position&,
+               Move,
+               Depth,
+               const ButterflyHistory*,
+               const CapturePieceToHistory*,
+               const PieceToHistory**,
+               Move,
+               const Move*);
+    MovePicker(const Position&,
+               Move,
+               Depth,
+               const ButterflyHistory*,
+               const CapturePieceToHistory*,
+               const PieceToHistory**,
+               Square);
+    MovePicker(const Position&, Move, Value, const CapturePieceToHistory*);
+    Move next_move(bool skipQuiets = false);
 
-private:
-  template<PickType T, typename Pred> Move select(Pred);
-  template<GenType> void score();
-  ExtMove* begin() { return cur; }
-  ExtMove* end() { return endMoves; }
+   private:
+    template<PickType T, typename Pred>
+    Move select(Pred);
+    template<GenType>
+    void     score();
+    ExtMove* begin() { return cur; }
+    ExtMove* end() { return endMoves; }
 
-  const Position& pos;
-  const ButterflyHistory* mainHistory;
-  const CapturePieceToHistory* captureHistory;
-  const PieceToHistory** continuationHistory;
-  Move ttMove;
-  ExtMove refutations[3], *cur, *endMoves, *endBadCaptures;
-  int stage;
-  Square recaptureSquare;
-  Value threshold;
-  Depth depth;
-  ExtMove moves[MAX_MOVES];
+    const Position&              pos;
+    const ButterflyHistory*      mainHistory;
+    const CapturePieceToHistory* captureHistory;
+    const PieceToHistory**       continuationHistory;
+    Move                         ttMove;
+    ExtMove                      refutations[3], *cur, *endMoves, *endBadCaptures;
+    int                          stage;
+    Square                       recaptureSquare;
+    Value                        threshold;
+    Depth                        depth;
+    ExtMove                      moves[MAX_MOVES];
 };
 
-} // namespace Stockfish
+}  // namespace Stockfish
 
-#endif // #ifndef MOVEPICK_H_INCLUDED
+#endif  // #ifndef MOVEPICK_H_INCLUDED

@@ -1,0 +1,51 @@
+# This workflow will run clang-format and comment on the PR.
+# Because of security reasons, it is crucial that this workflow
+# executes no shell script nor runs make.
+# Read this before editing: https://securitylab.github.com/research/github-actions-preventing-pwn-requests/
+
+name: Stockfish
+on:
+  pull_request_target:
+    branches:
+      - 'master'
+    paths:
+      - '**.cpp'
+      - '**.h'
+jobs:
+  Stockfish:
+    name: clang-format check
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Run clang-format style check
+        uses: jidicula/clang-format-action@f62da5e3d3a2d88ff364771d9d938773a618ab5e
+        id: clang-format
+        continue-on-error: true
+        with:
+          clang-format-version: '17'
+          exclude-regex: 'incbin'
+
+      - name: Comment on PR
+        if: steps.clang-format.outcome == 'failure'
+        uses: thollander/actions-comment-pull-request@1d3973dc4b8e1399c0620d3f2b1aa5e795465308
+        with:
+          message: |
+            clang-format 17 needs to be run on this PR.
+            If you do not have clang-format installed, the maintainer will run it when merging.
+            For the exact version please see https://packages.ubuntu.com/mantic/clang-format-17.
+
+            _(execution **${{ github.run_id }}** / attempt **${{ github.run_attempt }}**)_
+          comment_tag: execution
+
+      - name: Comment on PR
+        if: steps.clang-format.outcome != 'failure'
+        uses: thollander/actions-comment-pull-request@1d3973dc4b8e1399c0620d3f2b1aa5e795465308
+        with:
+          message: |
+            _(execution **${{ github.run_id }}** / attempt **${{ github.run_attempt }}**)_
+          create_if_not_exists: false
+          comment_tag: execution
+          mode: delete
