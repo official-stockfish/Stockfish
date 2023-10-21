@@ -55,13 +55,13 @@ namespace {
 } // namespace
 
 
-/// Constructors of the MovePicker class. As arguments, we pass information
-/// to help it return the (presumably) good moves first, to decide which
-/// moves to return (in the quiescence search, for instance, we only want to
-/// search captures, promotions, and some checks) and how important a good
-/// move ordering is at the current node.
+// Constructors of the MovePicker class. As arguments, we pass information
+// to help it return the (presumably) good moves first, to decide which
+// moves to return (in the quiescence search, for instance, we only want to
+// search captures, promotions, and some checks) and how important a good
+// move ordering is at the current node.
 
-/// MovePicker constructor for the main search
+// MovePicker constructor for the main search
 MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const ButterflyHistory* mh,
                                                              const CapturePieceToHistory* cph,
                                                              const PieceToHistory** ch,
@@ -76,7 +76,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const ButterflyHist
           !(ttm && pos.pseudo_legal(ttm));
 }
 
-/// MovePicker constructor for quiescence search
+// MovePicker constructor for quiescence search
 MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const ButterflyHistory* mh,
                                                              const CapturePieceToHistory* cph,
                                                              const PieceToHistory** ch,
@@ -90,8 +90,8 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const ButterflyHist
             && pos.pseudo_legal(ttm));
 }
 
-/// MovePicker constructor for ProbCut: we generate captures with SEE greater
-/// than or equal to the given threshold.
+// MovePicker constructor for ProbCut: we generate captures with SEE greater
+// than or equal to the given threshold.
 MovePicker::MovePicker(const Position& p, Move ttm, Value th, const CapturePieceToHistory* cph)
            : pos(p), captureHistory(cph), ttMove(ttm), threshold(th)
 {
@@ -102,9 +102,9 @@ MovePicker::MovePicker(const Position& p, Move ttm, Value th, const CapturePiece
                              && pos.see_ge(ttm, threshold));
 }
 
-/// MovePicker::score() assigns a numerical value to each move in a list, used
-/// for sorting. Captures are ordered by Most Valuable Victim (MVV), preferring
-/// captures with a good history. Quiets moves are ordered using the history tables.
+// MovePicker::score() assigns a numerical value to each move in a list, used
+// for sorting. Captures are ordered by Most Valuable Victim (MVV), preferring
+// captures with a good history. Quiets moves are ordered using the history tables.
 template<GenType Type>
 void MovePicker::score() {
 
@@ -180,8 +180,8 @@ void MovePicker::score() {
       }
 }
 
-/// MovePicker::select() returns the next move satisfying a predicate function.
-/// It never returns the TT move.
+// MovePicker::select() returns the next move satisfying a predicate function.
+// It never returns the TT move.
 template<MovePicker::PickType T, typename Pred>
 Move MovePicker::select(Pred filter) {
 
@@ -198,9 +198,9 @@ Move MovePicker::select(Pred filter) {
   return MOVE_NONE;
 }
 
-/// MovePicker::next_move() is the most important method of the MovePicker class. It
-/// returns a new pseudo-legal move every time it is called until there are no more
-/// moves left, picking the move with the highest score from a list of generated moves.
+// MovePicker::next_move() is the most important method of the MovePicker class. It
+// returns a new pseudo-legal move every time it is called until there are no more
+// moves left, picking the move with the highest score from a list of generated moves.
 Move MovePicker::next_move(bool skipQuiets) {
 
 top:

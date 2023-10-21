@@ -31,9 +31,9 @@
 
 namespace Stockfish {
 
-/// StateInfo struct stores information needed to restore a Position object to
-/// its previous state when we retract a move. Whenever a move is made on the
-/// board (by calling Position::do_move), a StateInfo object must be passed.
+// StateInfo struct stores information needed to restore a Position object to
+// its previous state when we retract a move. Whenever a move is made on the
+// board (by calling Position::do_move), a StateInfo object must be passed.
 
 struct StateInfo {
 
@@ -61,17 +61,17 @@ struct StateInfo {
 };
 
 
-/// A list to keep track of the position states along the setup moves (from the
-/// start position to the position just before the search starts). Needed by
-/// 'draw by repetition' detection. Use a std::deque because pointers to
-/// elements are not invalidated upon list resizing.
+// A list to keep track of the position states along the setup moves (from the
+// start position to the position just before the search starts). Needed by
+// 'draw by repetition' detection. Use a std::deque because pointers to
+// elements are not invalidated upon list resizing.
 using StateListPtr = std::unique_ptr<std::deque<StateInfo>>;
 
 
-/// Position class stores information regarding the board representation as
-/// pieces, side to move, hash keys, castling info, etc. Important methods are
-/// do_move() and undo_move(), used by the search to update node info when
-/// traversing the search tree.
+// Position class stores information regarding the board representation as
+// pieces, side to move, hash keys, castling info, etc. Important methods are
+// do_move() and undo_move(), used by the search to update node info when
+// traversing the search tree.
 class Thread;
 
 class Position {
@@ -342,8 +342,8 @@ inline bool Position::capture(Move m) const {
           ||  type_of(m) == EN_PASSANT;
 }
 
-// returns true if a move is generated from the capture stage
-// having also queen promotions covered, i.e. consistency with the capture stage move generation
+// Returns true if a move is generated from the capture stage, having also
+// queen promotions covered, i.e. consistency with the capture stage move generation
 // is needed to avoid the generation of duplicate moves.
 inline bool Position::capture_stage(Move m) const {
   assert(is_ok(m));

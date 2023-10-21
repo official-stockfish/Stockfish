@@ -41,15 +41,15 @@ const int NormalizeToPawnValue = 328;
 
 class Option;
 
-/// Define a custom comparator, because the UCI options should be case-insensitive
+// Define a custom comparator, because the UCI options should be case-insensitive
 struct CaseInsensitiveLess {
   bool operator() (const std::string&, const std::string&) const;
 };
 
-/// The options container is defined as a std::map
+// The options container is defined as a std::map
 using OptionsMap = std::map<std::string, Option, CaseInsensitiveLess>;
 
-/// The Option class implements each option as specified by the UCI protocol
+// The Option class implements each option as specified by the UCI protocol
 class Option {
 
   using OnChange = void (*)(const Option&);

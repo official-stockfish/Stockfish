@@ -56,9 +56,9 @@ inline bool operator<(const ExtMove& f, const ExtMove& s) {
 template<GenType>
 ExtMove* generate(const Position& pos, ExtMove* moveList);
 
-/// The MoveList struct wraps the generate() function and returns a convenient
-/// list of moves. Using MoveList is sometimes preferable to directly calling
-/// the lower level generate() function.
+// The MoveList struct wraps the generate() function and returns a convenient
+// list of moves. Using MoveList is sometimes preferable to directly calling
+// the lower level generate() function.
 template<GenType T>
 struct MoveList {
 
