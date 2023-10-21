@@ -60,16 +60,16 @@ namespace Eval {
 
   std::string currentEvalFileName = "None";
 
-  int NNUE::RandomEvalPerturb = 0;
-  int NNUE::waitms = 0;
-
-  /// NNUE::init() tries to load a NNUE network at startup time, or when the engine
-  /// receives a UCI command "setoption name EvalFile value nn-[a-z0-9]{12}.nnue"
-  /// The name of the NNUE network is always retrieved from the EvalFile option.
-  /// We search the given network in three locations: internally (the default
-  /// network may be embedded in the binary), in the active working directory and
-  /// in the engine directory. Distro packagers may define the DEFAULT_NNUE_DIRECTORY
-  /// variable to have the engine search in a special directory in their distro.
+  //int NNUE::RandomEvalPerturb = 0;
+  //int NNUE::waitms = 0;
+  //
+  // NNUE::init() tries to load a NNUE network at startup time, or when the engine
+  // receives a UCI command "setoption name EvalFile value nn-[a-z0-9]{12}.nnue"
+  // The name of the NNUE network is always retrieved from the EvalFile option.
+  // We search the given network in three locations: internally (the default
+  // network may be embedded in the binary), in the active working directory and
+  // in the engine directory. Distro packagers may define the DEFAULT_NNUE_DIRECTORY
+  // variable to have the engine search in a special directory in their distro.
 
   void NNUE::init() {
 
