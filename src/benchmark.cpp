@@ -27,6 +27,7 @@
 
 namespace {
 
+// clang-format off
 const std::vector<std::string> Defaults = {
   "setoption name UCI_Chess960 value false",
   "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
@@ -90,8 +91,9 @@ const std::vector<std::string> Defaults = {
   "nqbnrkrb/pppppppp/8/8/8/8/PPPPPPPP/NQBNRKRB w KQkq - 0 1",
   "setoption name UCI_Chess960 value false"
 };
+// clang-format on
 
-} // namespace
+}  // namespace
 
 namespace Stockfish {
 
@@ -109,56 +111,56 @@ namespace Stockfish {
 
 std::vector<std::string> setup_bench(const Position& current, std::istream& is) {
 
-  std::vector<std::string> fens, list;
-  std::string go, token;
+    std::vector<std::string> fens, list;
+    std::string              go, token;
 
-  // Assign default values to missing arguments
-  std::string ttSize    = (is >> token) ? token : "16";
-  std::string threads   = (is >> token) ? token : "1";
-  std::string limit     = (is >> token) ? token : "13";
-  std::string fenFile   = (is >> token) ? token : "default";
-  std::string limitType = (is >> token) ? token : "depth";
+    // Assign default values to missing arguments
+    std::string ttSize    = (is >> token) ? token : "16";
+    std::string threads   = (is >> token) ? token : "1";
+    std::string limit     = (is >> token) ? token : "13";
+    std::string fenFile   = (is >> token) ? token : "default";
+    std::string limitType = (is >> token) ? token : "depth";
 
-  go = limitType == "eval" ? "eval" : "go " + limitType + " " + limit;
+    go = limitType == "eval" ? "eval" : "go " + limitType + " " + limit;
 
-  if (fenFile == "default")
-      fens = Defaults;
+    if (fenFile == "default")
+        fens = Defaults;
 
-  else if (fenFile == "current")
-      fens.push_back(current.fen());
+    else if (fenFile == "current")
+        fens.push_back(current.fen());
 
-  else
-  {
-      std::string fen;
-      std::ifstream file(fenFile);
+    else
+    {
+        std::string   fen;
+        std::ifstream file(fenFile);
 
-      if (!file.is_open())
-      {
-          std::cerr << "Unable to open file " << fenFile << std::endl;
-          exit(EXIT_FAILURE);
-      }
+        if (!file.is_open())
+        {
+            std::cerr << "Unable to open file " << fenFile << std::endl;
+            exit(EXIT_FAILURE);
+        }
 
-      while (getline(file, fen))
-          if (!fen.empty())
-              fens.push_back(fen);
+        while (getline(file, fen))
+            if (!fen.empty())
+                fens.push_back(fen);
 
-      file.close();
-  }
+        file.close();
+    }
 
-  list.emplace_back("setoption name Threads value " + threads);
-  list.emplace_back("setoption name Hash value " + ttSize);
-  list.emplace_back("ucinewgame");
+    list.emplace_back("setoption name Threads value " + threads);
+    list.emplace_back("setoption name Hash value " + ttSize);
+    list.emplace_back("ucinewgame");
 
-  for (const std::string& fen : fens)
-      if (fen.find("setoption") != std::string::npos)
-          list.emplace_back(fen);
-      else
-      {
-          list.emplace_back("position fen " + fen);
-          list.emplace_back(go);
-      }
+    for (const std::string& fen : fens)
+        if (fen.find("setoption") != std::string::npos)
+            list.emplace_back(fen);
+        else
+        {
+            list.emplace_back("position fen " + fen);
+            list.emplace_back(go);
+        }
 
-  return list;
+    return list;
 }
 
-} // namespace Stockfish
+}  // namespace Stockfish

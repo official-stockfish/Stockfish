@@ -32,48 +32,48 @@
 #include "nnue_feature_transformer.h"
 
 namespace Stockfish {
-  class Position;
-  enum Value : int;
+class Position;
+enum Value : int;
 }
 
 namespace Stockfish::Eval::NNUE {
 
-  // Hash value of evaluation function structure
-  constexpr std::uint32_t HashValue =
-      FeatureTransformer::get_hash_value() ^ Network::get_hash_value();
+// Hash value of evaluation function structure
+constexpr std::uint32_t HashValue =
+  FeatureTransformer::get_hash_value() ^ Network::get_hash_value();
 
 
-  // Deleter for automating release of memory area
-  template <typename T>
-  struct AlignedDeleter {
+// Deleter for automating release of memory area
+template<typename T>
+struct AlignedDeleter {
     void operator()(T* ptr) const {
-      ptr->~T();
-      std_aligned_free(ptr);
+        ptr->~T();
+        std_aligned_free(ptr);
     }
-  };
+};
 
-  template <typename T>
-  struct LargePageDeleter {
+template<typename T>
+struct LargePageDeleter {
     void operator()(T* ptr) const {
-      ptr->~T();
-      aligned_large_pages_free(ptr);
+        ptr->~T();
+        aligned_large_pages_free(ptr);
     }
-  };
+};
 
-  template <typename T>
-  using AlignedPtr = std::unique_ptr<T, AlignedDeleter<T>>;
+template<typename T>
+using AlignedPtr = std::unique_ptr<T, AlignedDeleter<T>>;
 
-  template <typename T>
-  using LargePagePtr = std::unique_ptr<T, LargePageDeleter<T>>;
+template<typename T>
+using LargePagePtr = std::unique_ptr<T, LargePageDeleter<T>>;
 
-  std::string trace(Position& pos);
-  Value evaluate(const Position& pos, bool adjusted = false, int* complexity = nullptr);
-  void hint_common_parent_position(const Position& pos);
+std::string trace(Position& pos);
+Value       evaluate(const Position& pos, bool adjusted = false, int* complexity = nullptr);
+void        hint_common_parent_position(const Position& pos);
 
-  bool load_eval(std::string name, std::istream& stream);
-  bool save_eval(std::ostream& stream);
-  bool save_eval(const std::optional<std::string>& filename);
+bool load_eval(std::string name, std::istream& stream);
+bool save_eval(std::ostream& stream);
+bool save_eval(const std::optional<std::string>& filename);
 
 }  // namespace Stockfish::Eval::NNUE
 
-#endif // #ifndef NNUE_EVALUATE_NNUE_H_INCLUDED
+#endif  // #ifndef NNUE_EVALUATE_NNUE_H_INCLUDED
