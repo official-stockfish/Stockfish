@@ -1,16 +1,18 @@
-name: Stockfish
+name: StockfishStartAll
 on:
+  workflow_dispatch:
+
   push:
     tags:        
-      - '*' 
+      - 'Stern' 
     branches:
-      - master
-      - tools
-      - github_ci
+      - Xmaster
+      - Xtools
+      - Xgithub_ci
   pull_request:
     branches:
-      - master
-      - tools
+      - Xmaster
+      - Xtools
 jobs:
   Prerelease:
     if: github.ref == 'refs/heads/master'
