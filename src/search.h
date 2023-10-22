@@ -38,20 +38,20 @@ namespace Search {
 // its own array of Stack objects, indexed by the current ply.
 
 struct Stack {
-  Move* pv;
-  PieceToHistory* continuationHistory;
-  int ply;
-  Move currentMove;
-  Move excludedMove;
-  Move killers[2];
-  Value staticEval;
-  int statScore;
-  int moveCount;
-  bool inCheck;
-  bool ttPv;
-  bool ttHit;
-  int doubleExtensions;
-  int cutoffCnt;
+    Move*           pv;
+    PieceToHistory* continuationHistory;
+    int             ply;
+    Move            currentMove;
+    Move            excludedMove;
+    Move            killers[2];
+    Value           staticEval;
+    int             statScore;
+    int             moveCount;
+    bool            inCheck;
+    bool            ttPv;
+    bool            ttHit;
+    int             doubleExtensions;
+    int             cutoffCnt;
 };
 
 
@@ -61,24 +61,24 @@ struct Stack {
 
 struct RootMove {
 
-  explicit RootMove(Move m) : pv(1, m) {}
-  bool extract_ponder_from_tt(Position& pos);
-  bool operator==(const Move& m) const { return pv[0] == m; }
-  bool operator<(const RootMove& m) const { // Sort in descending order
-    return m.score != score ? m.score < score
-                            : m.previousScore < previousScore;
-  }
+    explicit RootMove(Move m) :
+        pv(1, m) {}
+    bool extract_ponder_from_tt(Position& pos);
+    bool operator==(const Move& m) const { return pv[0] == m; }
+    bool operator<(const RootMove& m) const {  // Sort in descending order
+        return m.score != score ? m.score < score : m.previousScore < previousScore;
+    }
 
-  Value score = -VALUE_INFINITE;
-  Value previousScore = -VALUE_INFINITE;
-  Value averageScore = -VALUE_INFINITE;
-  Value uciScore = -VALUE_INFINITE;
-  bool scoreLowerbound = false;
-  bool scoreUpperbound = false;
-  int selDepth = 0;
-  int tbRank = 0;
-  Value tbScore;
-  std::vector<Move> pv;
+    Value             score           = -VALUE_INFINITE;
+    Value             previousScore   = -VALUE_INFINITE;
+    Value             averageScore    = -VALUE_INFINITE;
+    Value             uciScore        = -VALUE_INFINITE;
+    bool              scoreLowerbound = false;
+    bool              scoreUpperbound = false;
+    int               selDepth        = 0;
+    int               tbRank          = 0;
+    Value             tbScore;
+    std::vector<Move> pv;
 };
 
 using RootMoves = std::vector<RootMove>;
@@ -89,20 +89,18 @@ using RootMoves = std::vector<RootMove>;
 
 struct LimitsType {
 
-  LimitsType() { // Init explicitly due to broken value-initialization of non POD in MSVC
-    time[WHITE] = time[BLACK] = inc[WHITE] = inc[BLACK] = npmsec = movetime = TimePoint(0);
-    movestogo = depth = mate = perft = infinite = 0;
-    nodes = 0;
-  }
+    LimitsType() {  // Init explicitly due to broken value-initialization of non POD in MSVC
+        time[WHITE] = time[BLACK] = inc[WHITE] = inc[BLACK] = npmsec = movetime = TimePoint(0);
+        movestogo = depth = mate = perft = infinite = 0;
+        nodes                                       = 0;
+    }
 
-  bool use_time_management() const {
-    return time[WHITE] || time[BLACK];
-  }
+    bool use_time_management() const { return time[WHITE] || time[BLACK]; }
 
-  std::vector<Move> searchmoves;
-  TimePoint time[COLOR_NB], inc[COLOR_NB], npmsec, movetime, startTime;
-  int movestogo, depth, mate, perft, infinite;
-  int64_t nodes;
+    std::vector<Move> searchmoves;
+    TimePoint         time[COLOR_NB], inc[COLOR_NB], npmsec, movetime, startTime;
+    int               movestogo, depth, mate, perft, infinite;
+    int64_t           nodes;
 };
 
 extern LimitsType Limits;
@@ -110,8 +108,8 @@ extern LimitsType Limits;
 void init();
 void clear();
 
-} // namespace Search
+}  // namespace Search
 
-} // namespace Stockfish
+}  // namespace Stockfish
 
-#endif // #ifndef SEARCH_H_INCLUDED
+#endif  // #ifndef SEARCH_H_INCLUDED
