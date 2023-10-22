@@ -1317,7 +1317,7 @@ WDLScore search(Position& pos, ProbeState* result) {
 }  // namespace
 
 
-// Tablebases::init() is called at startup and after every change to
+// Called at startup and after every change to
 // "SyzygyPath" UCI option to (re)create the various tables. It is not thread
 // safe, nor it needs to be.
 void Tablebases::init(const std::string& paths) {

@@ -49,11 +49,10 @@ namespace {
 const char* StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 
-// position() is called when the engine receives the "position" UCI command.
+// Called when the engine receives the "position" UCI command.
 // It sets up the position that is described in the given FEN string ("fen") or
 // the initial position ("startpos") and then makes the moves given in the following
 // move list ("moves").
-
 void position(Position& pos, std::istringstream& is, StateListPtr& states) {
 
     Move        m;
@@ -83,9 +82,8 @@ void position(Position& pos, std::istringstream& is, StateListPtr& states) {
     }
 }
 
-// trace_eval() prints the evaluation of the current position, consistent with
+// Prints the evaluation of the current position, consistent with
 // the UCI options set so far.
-
 void trace_eval(Position& pos) {
 
     StateListPtr states(new std::deque<StateInfo>(1));
@@ -98,7 +96,7 @@ void trace_eval(Position& pos) {
 }
 
 
-// setoption() is called when the engine receives the "setoption" UCI command.
+// Called when the engine receives the "setoption" UCI command.
 // The function updates the UCI option ("name") to the given value ("value").
 
 void setoption(std::istringstream& is) {
@@ -124,7 +122,7 @@ void setoption(std::istringstream& is) {
 }
 
 
-// go() is called when the engine receives the "go" UCI command. The function
+// Called when the engine receives the "go" UCI command. The function
 // sets the thinking time and other parameters from the input string, then starts
 // with a search.
 
@@ -170,7 +168,7 @@ void go(Position& pos, std::istringstream& is, StateListPtr& states) {
 }
 
 
-// bench() is called when the engine receives the "bench" command.
+// Called when the engine receives the "bench" command.
 // First, a list of UCI commands is set up according to the bench
 // parameters, then it is run one by one, printing a summary at the end.
 
@@ -252,12 +250,11 @@ int win_rate_model(Value v, int ply) {
 }  // namespace
 
 
-// UCI::loop() waits for a command from the stdin, parses it, and then calls the appropriate
+// Waits for a command from the stdin, parses it, and then calls the appropriate
 // function. It also intercepts an end-of-file (EOF) indication from the stdin to ensure a
 // graceful exit if the GUI dies unexpectedly. When called with some command-line arguments,
 // like running 'bench', the function returns immediately after the command is executed.
 // In addition to the UCI ones, some additional debug commands are also supported.
-
 void UCI::loop(int argc, char* argv[]) {
 
     Position     pos;
@@ -346,12 +343,11 @@ void UCI::loop(int argc, char* argv[]) {
 // without treatment of mate and similar special scores.
 int UCI::to_cp(Value v) { return 100 * v / UCI::NormalizeToPawnValue; }
 
-// UCI::value() converts a Value to a string by adhering to the UCI protocol specification:
+// Converts a Value to a string by adhering to the UCI protocol specification:
 //
 // cp <x>    The score from the engine's point of view in centipawns.
 // mate <y>  Mate in 'y' moves (not plies). If the engine is getting mated,
 //           uses negative values for 'y'.
-
 std::string UCI::value(Value v) {
 
     assert(-VALUE_INFINITE < v && v < VALUE_INFINITE);
@@ -372,9 +368,8 @@ std::string UCI::value(Value v) {
 }
 
 
-// UCI::wdl() reports the win-draw-loss (WDL) statistics given an evaluation
+// Reports the win-draw-loss (WDL) statistics given an evaluation
 // and a game ply based on the data gathered for fishtest LTC games.
-
 std::string UCI::wdl(Value v, int ply) {
 
     std::stringstream ss;
@@ -388,18 +383,16 @@ std::string UCI::wdl(Value v, int ply) {
 }
 
 
-// UCI::square() converts a Square to a string in algebraic notation (g1, a7, etc.)
-
+// Converts a Square to a string in algebraic notation (g1, a7, etc.)
 std::string UCI::square(Square s) {
     return std::string{char('a' + file_of(s)), char('1' + rank_of(s))};
 }
 
 
-// UCI::move() converts a Move to a string in coordinate notation (g1f3, a7a8q).
+// Converts a Move to a string in coordinate notation (g1f3, a7a8q).
 // The only special case is castling where the e1g1 notation is printed in
 // standard chess mode and in e1h1 notation it is printed in Chess960 mode.
 // Internally, all castling moves are always encoded as 'king captures rook'.
-
 std::string UCI::move(Move m, bool chess960) {
 
     if (m == MOVE_NONE)
@@ -423,9 +416,8 @@ std::string UCI::move(Move m, bool chess960) {
 }
 
 
-// UCI::to_move() converts a string representing a move in coordinate notation
+// Converts a string representing a move in coordinate notation
 // (g1f3, a7a8q) to the corresponding legal Move, if any.
-
 Move UCI::to_move(const Position& pos, std::string& str) {
 
     if (str.length() == 5)

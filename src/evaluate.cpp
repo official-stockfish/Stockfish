@@ -57,14 +57,13 @@ namespace Eval {
 
 std::string currentEvalFileName = "None";
 
-// NNUE::init() tries to load a NNUE network at startup time, or when the engine
+// Tries to load a NNUE network at startup time, or when the engine
 // receives a UCI command "setoption name EvalFile value nn-[a-z0-9]{12}.nnue"
 // The name of the NNUE network is always retrieved from the EvalFile option.
 // We search the given network in three locations: internally (the default
 // network may be embedded in the binary), in the active working directory and
 // in the engine directory. Distro packagers may define the DEFAULT_NNUE_DIRECTORY
 // variable to have the engine search in a special directory in their distro.
-
 void NNUE::init() {
 
     std::string eval_file = std::string(Options["EvalFile"]);
@@ -111,7 +110,7 @@ void NNUE::init() {
         }
 }
 
-// NNUE::verify() verifies that the last net used was loaded successfully
+// Verifies that the last net used was loaded successfully
 void NNUE::verify() {
 
     std::string eval_file = std::string(Options["EvalFile"]);
@@ -145,19 +144,17 @@ void NNUE::verify() {
 }
 
 
-// simple_eval() returns a static, purely materialistic evaluation of the position
+// Returns a static, purely materialistic evaluation of the position
 // from the point of view of the given color. It can be divided by PawnValue to get
 // an approximation of the material advantage on the board in terms of pawns.
-
 Value Eval::simple_eval(const Position& pos, Color c) {
     return PawnValue * (pos.count<PAWN>(c) - pos.count<PAWN>(~c))
          + (pos.non_pawn_material(c) - pos.non_pawn_material(~c));
 }
 
 
-// evaluate() is the evaluator for the outer world. It returns a static evaluation
+// Evaluate is the evaluator for the outer world. It returns a static evaluation
 // of the position from the point of view of the side to move.
-
 Value Eval::evaluate(const Position& pos) {
 
     assert(!pos.checkers());
@@ -197,11 +194,10 @@ Value Eval::evaluate(const Position& pos) {
     return v;
 }
 
-// trace() is like evaluate(), but instead of returning a value, it returns
+// Like evaluate(), but instead of returning a value, it returns
 // a string (suitable for outputting to stdout) that contains the detailed
 // descriptions and values of each evaluation term. Useful for debugging.
 // Trace scores are from white's point of view
-
 std::string Eval::trace(Position& pos) {
 
     if (pos.checkers())

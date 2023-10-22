@@ -46,18 +46,16 @@ void init_magics(PieceType pt, Bitboard table[], Magic magics[]);
 
 }
 
-// safe_destination() returns the bitboard of target square for the given step
+// Returns the bitboard of target square for the given step
 // from the given square. If the step is off the board, returns empty bitboard.
-
 inline Bitboard safe_destination(Square s, int step) {
     Square to = Square(s + step);
     return is_ok(to) && distance(s, to) <= 2 ? square_bb(to) : Bitboard(0);
 }
 
 
-// Bitboards::pretty() returns an ASCII representation of a bitboard suitable
+// Returns an ASCII representation of a bitboard suitable
 // to be printed to standard output. Useful for debugging.
-
 std::string Bitboards::pretty(Bitboard b) {
 
     std::string s = "+---+---+---+---+---+---+---+---+\n";
@@ -75,9 +73,8 @@ std::string Bitboards::pretty(Bitboard b) {
 }
 
 
-// Bitboards::init() initializes various bitboard tables. It is called at
+// Initializes various bitboard tables. It is called at
 // startup and relies on global objects to be already zero-initialized.
-
 void Bitboards::init() {
 
     for (unsigned i = 0; i < (1 << 16); ++i)
@@ -137,11 +134,10 @@ Bitboard sliding_attack(PieceType pt, Square sq, Bitboard occupied) {
 }
 
 
-// init_magics() computes all rook and bishop attacks at startup. Magic
+// Computes all rook and bishop attacks at startup. Magic
 // bitboards are used to look up attacks of sliding pieces. As a reference see
 // www.chessprogramming.org/Magic_Bitboards. In particular, here we use the so
 // called "fancy" approach.
-
 void init_magics(PieceType pt, Bitboard table[], Magic magics[]) {
 
     // Optimal PRNG seeds to pick the correct magics in the shortest time

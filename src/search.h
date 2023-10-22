@@ -36,7 +36,6 @@ namespace Search {
 // Stack struct keeps track of the information we need to remember from nodes
 // shallower and deeper in the tree during the search. Each search thread has
 // its own array of Stack objects, indexed by the current ply.
-
 struct Stack {
     Move*           pv;
     PieceToHistory* continuationHistory;
@@ -58,14 +57,14 @@ struct Stack {
 // RootMove struct is used for moves at the root of the tree. For each root move
 // we store a score and a PV (really a refutation in the case of moves which
 // fail low). Score is normally set at -VALUE_INFINITE for all non-pv moves.
-
 struct RootMove {
 
     explicit RootMove(Move m) :
         pv(1, m) {}
     bool extract_ponder_from_tt(Position& pos);
     bool operator==(const Move& m) const { return pv[0] == m; }
-    bool operator<(const RootMove& m) const {  // Sort in descending order
+    // Sort in descending order
+    bool operator<(const RootMove& m) const {
         return m.score != score ? m.score < score : m.previousScore < previousScore;
     }
 
@@ -89,7 +88,8 @@ using RootMoves = std::vector<RootMove>;
 
 struct LimitsType {
 
-    LimitsType() {  // Init explicitly due to broken value-initialization of non POD in MSVC
+    // Init explicitly due to broken value-initialization of non POD in MSVC
+    LimitsType() {
         time[WHITE] = time[BLACK] = inc[WHITE] = inc[BLACK] = npmsec = movetime = TimePoint(0);
         movestogo = depth = mate = perft = infinite = 0;
         nodes                                       = 0;

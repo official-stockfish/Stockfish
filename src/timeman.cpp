@@ -29,11 +29,10 @@ namespace Stockfish {
 TimeManagement Time;  // Our global time management object
 
 
-// TimeManagement::init() is called at the beginning of the search and calculates
+// Called at the beginning of the search and calculates
 // the bounds of time allowed for the current game ply. We currently support:
 //      1) x basetime (+ z increment)
 //      2) x moves in y seconds (+ z increment)
-
 void TimeManagement::init(Search::LimitsType& limits, Color us, int ply) {
 
     // If we have no time, no need to initialize TM, except for the start time,

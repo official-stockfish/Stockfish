@@ -58,7 +58,7 @@ enum Stages {
     QCHECK
 };
 
-// partial_insertion_sort() sorts moves in descending order up to and including
+// Sort moves in descending order up to and including
 // a given limit. The order of moves smaller than the limit is left unspecified.
 void partial_insertion_sort(ExtMove* begin, ExtMove* end, int limit) {
 
@@ -103,7 +103,7 @@ MovePicker::MovePicker(const Position&              p,
     stage = (pos.checkers() ? EVASION_TT : MAIN_TT) + !(ttm && pos.pseudo_legal(ttm));
 }
 
-// MovePicker constructor for quiescence search
+// Constructor for quiescence search
 MovePicker::MovePicker(const Position&              p,
                        Move                         ttm,
                        Depth                        d,
@@ -123,7 +123,7 @@ MovePicker::MovePicker(const Position&              p,
     stage = (pos.checkers() ? EVASION_TT : QSEARCH_TT) + !(ttm && pos.pseudo_legal(ttm));
 }
 
-// MovePicker constructor for ProbCut: we generate captures with SEE greater
+// Constructor for ProbCut: we generate captures with SEE greater
 // than or equal to the given threshold.
 MovePicker::MovePicker(const Position& p, Move ttm, Value th, const CapturePieceToHistory* cph) :
     pos(p),
@@ -136,7 +136,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, Value th, const CapturePiece
           + !(ttm && pos.capture_stage(ttm) && pos.pseudo_legal(ttm) && pos.see_ge(ttm, threshold));
 }
 
-// MovePicker::score() assigns a numerical value to each move in a list, used
+// Assigns a numerical value to each move in a list, used
 // for sorting. Captures are ordered by Most Valuable Victim (MVV), preferring
 // captures with a good history. Quiets moves are ordered using the history tables.
 template<GenType Type>
@@ -216,7 +216,7 @@ void MovePicker::score() {
         }
 }
 
-// MovePicker::select() returns the next move satisfying a predicate function.
+// Returns the next move satisfying a predicate function.
 // It never returns the TT move.
 template<MovePicker::PickType T, typename Pred>
 Move MovePicker::select(Pred filter) {
@@ -234,7 +234,7 @@ Move MovePicker::select(Pred filter) {
     return MOVE_NONE;
 }
 
-// MovePicker::next_move() is the most important method of the MovePicker class. It
+// Most important method of the MovePicker class. It
 // returns a new pseudo-legal move every time it is called until there are no more
 // moves left, picking the move with the highest score from a list of generated moves.
 Move MovePicker::next_move(bool skipQuiets) {
