@@ -30,7 +30,6 @@ namespace Stockfish {
 
 // The TimeManagement class computes the optimal time to think depending on
 // the maximum available time, the game move number, and other parameters.
-
 class TimeManagement {
    public:
     void      init(Search::LimitsType& limits, Color us, int ply);

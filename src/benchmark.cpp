@@ -97,7 +97,7 @@ const std::vector<std::string> Defaults = {
 
 namespace Stockfish {
 
-// setup_bench() builds a list of UCI commands to be run by bench. There
+// Builds a list of UCI commands to be run by bench. There
 // are five parameters: TT size in MB, number of search threads that
 // should be used, the limit value spent for each position, a file name
 // where to look for positions in FEN format, and the type of the limit:
@@ -108,7 +108,6 @@ namespace Stockfish {
 // bench 64 1 100000 default nodes  : search default positions for 100K nodes each
 // bench 64 4 5000 current movetime : search current position with 4 threads for 5 sec
 // bench 16 1 5 blah perft          : run a perft 5 on positions in file "blah"
-
 std::vector<std::string> setup_bench(const Position& current, std::istream& is) {
 
     std::vector<std::string> fens, list;

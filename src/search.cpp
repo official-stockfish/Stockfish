@@ -148,7 +148,7 @@ void  update_all_stats(const Position& pos,
                        int             captureCount,
                        Depth           depth);
 
-// perft() is our utility to verify move generation. All the leaf nodes up
+// Utility to verify move generation. All the leaf nodes up
 // to the given depth are generated and counted, and the sum is returned.
 template<bool Root>
 uint64_t perft(Position& pos, Depth depth) {
@@ -179,8 +179,7 @@ uint64_t perft(Position& pos, Depth depth) {
 }  // namespace
 
 
-// Search::init() is called at startup to initialize various lookup tables
-
+// Called at startup to initialize various lookup tables
 void Search::init() {
 
     for (int i = 1; i < MAX_MOVES; ++i)
@@ -188,8 +187,7 @@ void Search::init() {
 }
 
 
-// Search::clear() resets search state to its initial value
-
+// Resets search state to its initial value
 void Search::clear() {
 
     Threads.main()->wait_for_search_finished();
@@ -201,9 +199,8 @@ void Search::clear() {
 }
 
 
-// MainThread::search() is started when the program receives the UCI 'go'
+// Called when the program receives the UCI 'go'
 // command. It searches from the root position and outputs the "bestmove".
-
 void MainThread::search() {
 
     if (Limits.perft)
@@ -277,10 +274,9 @@ void MainThread::search() {
 }
 
 
-// Thread::search() is the main iterative deepening loop. It calls search()
+// Main iterative deepening loop. It calls search()
 // repeatedly with increasing depth until the allocated thinking time has been
 // consumed, the user stops the search, or the maximum search depth is reached.
-
 void Thread::search() {
 
     // Allocate stack with extra size to allow access from (ss-7) to (ss+2):
@@ -521,8 +517,7 @@ void Thread::search() {
 
 namespace {
 
-// search<>() is the main search function for both PV and non-PV nodes
-
+// Main search function for both PV and non-PV nodes
 template<NodeType nodeType>
 Value search(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth, bool cutNode) {
 
@@ -1346,7 +1341,7 @@ moves_loop:  // When in check, search starts here
 }
 
 
-// qsearch() is the quiescence search function, which is called by the main search
+// Quiescence search function, which is called by the main search
 // function with zero depth, or recursively with further decreasing depth per call.
 // (~155 Elo)
 template<NodeType nodeType>
@@ -1593,10 +1588,9 @@ Value qsearch(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth) {
 }
 
 
-// value_to_tt() adjusts a mate or TB score from "plies to mate from the root"
+// Adjusts a mate or TB score from "plies to mate from the root"
 // to "plies to mate from the current position". Standard scores are unchanged.
 // The function is called before storing a value in the transposition table.
-
 Value value_to_tt(Value v, int ply) {
 
     assert(v != VALUE_NONE);
@@ -1605,12 +1599,11 @@ Value value_to_tt(Value v, int ply) {
 }
 
 
-// value_from_tt() is the inverse of value_to_tt(): it adjusts a mate or TB score
+// Inverse of value_to_tt(): it adjusts a mate or TB score
 // from the transposition table (which refers to the plies to mate/be mated from
 // current position) to "plies to mate/be mated (TB win/loss) from the root".
 // However, to avoid potentially false mate scores related to the 50 moves rule
 // and the graph history interaction problem, we return an optimal TB score instead.
-
 Value value_from_tt(Value v, int ply, int r50c) {
 
     if (v == VALUE_NONE)
@@ -1636,8 +1629,7 @@ Value value_from_tt(Value v, int ply, int r50c) {
 }
 
 
-// update_pv() adds current move and appends child pv[]
-
+// Adds current move and appends child pv[]
 void update_pv(Move* pv, Move move, const Move* childPv) {
 
     for (*pv++ = move; childPv && *childPv != MOVE_NONE;)
@@ -1646,8 +1638,7 @@ void update_pv(Move* pv, Move move, const Move* childPv) {
 }
 
 
-// update_all_stats() updates stats at the end of search() when a bestMove is found
-
+// Updates stats at the end of search() when a bestMove is found
 void update_all_stats(const Position& pos,
                       Stack*          ss,
                       Move            bestMove,
@@ -1709,9 +1700,8 @@ void update_all_stats(const Position& pos,
 }
 
 
-// update_continuation_histories() updates histories of the move pairs formed
+// Updates histories of the move pairs formed
 // by moves at ply -1, -2, -4, and -6 with current move.
-
 void update_continuation_histories(Stack* ss, Piece pc, Square to, int bonus) {
 
     for (int i : {1, 2, 3, 4, 6})
@@ -1725,8 +1715,7 @@ void update_continuation_histories(Stack* ss, Piece pc, Square to, int bonus) {
 }
 
 
-// update_quiet_stats() updates move sorting heuristics
-
+// Updates move sorting heuristics
 void update_quiet_stats(const Position& pos, Stack* ss, Move move, int bonus) {
 
     // Update killers
@@ -1751,7 +1740,6 @@ void update_quiet_stats(const Position& pos, Stack* ss, Move move, int bonus) {
 
 // When playing with strength handicap, choose the best move among a set of RootMoves
 // using a statistical rule dependent on 'level'. Idea by Heinz van Saanen.
-
 Move Skill::pick_best(size_t multiPV) {
 
     const RootMoves& rootMoves = Threads.main()->rootMoves;
@@ -1786,9 +1774,8 @@ Move Skill::pick_best(size_t multiPV) {
 }  // namespace
 
 
-// MainThread::check_time() is used to print debug info and, more importantly,
+// Used to print debug info and, more importantly,
 // to detect when we are out of available time and thus stop the search.
-
 void MainThread::check_time() {
 
     if (--callsCnt > 0)
@@ -1819,9 +1806,8 @@ void MainThread::check_time() {
 }
 
 
-// UCI::pv() formats PV information according to the UCI protocol. UCI requires
+// Formats PV information according to the UCI protocol. UCI requires
 // that all (if any) unsearched PV lines are sent using a previous search score.
-
 string UCI::pv(const Position& pos, Depth depth) {
 
     std::stringstream ss;
@@ -1874,11 +1860,10 @@ string UCI::pv(const Position& pos, Depth depth) {
 }
 
 
-// RootMove::extract_ponder_from_tt() is called in case we have no ponder move
+// Called in case we have no ponder move
 // before exiting the search, for instance, in case we stop the search during a
 // fail high at root. We try hard to have a ponder move to return to the GUI,
 // otherwise in case of 'ponder on' we have nothing to think about.
-
 bool RootMove::extract_ponder_from_tt(Position& pos) {
 
     StateInfo st;

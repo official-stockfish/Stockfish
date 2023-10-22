@@ -85,7 +85,7 @@ constexpr IntType ceil_to_multiple(IntType n, IntType base) {
 }
 
 
-// read_little_endian() is our utility to read an integer (signed or unsigned, any size)
+// Utility to read an integer (signed or unsigned, any size)
 // from a stream in little-endian order. We swap the byte order after the read if
 // necessary to return a result with the byte ordering of the compiling machine.
 template<typename IntType>
@@ -110,7 +110,7 @@ inline IntType read_little_endian(std::istream& stream) {
 }
 
 
-// write_little_endian() is our utility to write an integer (signed or unsigned, any size)
+// Utility to write an integer (signed or unsigned, any size)
 // to a stream in little-endian order. We swap the byte order before the write if
 // necessary to always write in little endian order, independently of the byte
 // ordering of the compiling machine.
@@ -141,7 +141,7 @@ inline void write_little_endian(std::ostream& stream, IntType value) {
 }
 
 
-// read_little_endian(s, out, N) : read integers in bulk from a little indian stream.
+// Read integers in bulk from a little indian stream.
 // This reads N integers from stream s and put them in array out.
 template<typename IntType>
 inline void read_little_endian(std::istream& stream, IntType* out, std::size_t count) {
@@ -153,7 +153,7 @@ inline void read_little_endian(std::istream& stream, IntType* out, std::size_t c
 }
 
 
-// write_little_endian(s, values, N) : write integers in bulk to a little indian stream.
+// Write integers in bulk to a little indian stream.
 // This takes N integers from array values and writes them on stream s.
 template<typename IntType>
 inline void write_little_endian(std::ostream& stream, const IntType* values, std::size_t count) {
@@ -165,7 +165,7 @@ inline void write_little_endian(std::ostream& stream, const IntType* values, std
 }
 
 
-// read_leb_128(s, out, N) : read N signed integers from the stream s, putting them in
+// Read N signed integers from the stream s, putting them in
 // the array out. The stream is assumed to be compressed using the signed LEB128 format.
 // See https://en.wikipedia.org/wiki/LEB128 for a description of the compression scheme.
 template<typename IntType>
@@ -215,7 +215,7 @@ inline void read_leb_128(std::istream& stream, IntType* out, std::size_t count) 
 }
 
 
-// write_leb_128(s, values, N) : write signed integers to a stream with LEB128 compression.
+// Write signed integers to a stream with LEB128 compression.
 // This takes N integers from array values, compress them with the LEB128 algorithm and
 // writes the result on the stream s.
 // See https://en.wikipedia.org/wiki/LEB128 for a description of the compression scheme.

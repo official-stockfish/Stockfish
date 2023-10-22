@@ -60,8 +60,7 @@ bool CaseInsensitiveLess::operator()(const string& s1, const string& s2) const {
 }
 
 
-// UCI::init() initializes the UCI options to their hard-coded default values
-
+// Initializes the UCI options to their hard-coded default values
 void init(OptionsMap& o) {
 
     constexpr int MaxHashMB = Is64Bit ? 33554432 : 2048;
@@ -89,9 +88,8 @@ void init(OptionsMap& o) {
 }
 
 
-// operator<<() is used to print all the options default values in chronological
+// Used to print all the options default values in chronological
 // insertion order (the idx field) and in the format defined by the UCI protocol.
-
 std::ostream& operator<<(std::ostream& os, const OptionsMap& om) {
 
     for (size_t idx = 0; idx < om.size(); ++idx)
@@ -172,7 +170,7 @@ bool Option::operator==(const char* s) const {
 }
 
 
-// operator<<() inits options and assigns idx in the correct printing order
+// Inits options and assigns idx in the correct printing order
 
 void Option::operator<<(const Option& o) {
 
@@ -183,10 +181,9 @@ void Option::operator<<(const Option& o) {
 }
 
 
-// operator=() updates currentValue and triggers on_change() action. It's up to
+// Updates currentValue and triggers on_change() action. It's up to
 // the GUI to check for option's limits, but we could receive the new value
 // from the user by console window, so let's check the bounds anyway.
-
 Option& Option::operator=(const string& v) {
 
     assert(!type.empty());

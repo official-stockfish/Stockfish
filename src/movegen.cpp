@@ -241,7 +241,6 @@ ExtMove* generate_all(const Position& pos, ExtMove* moveList) {
 //                except castling and promotions
 //
 // Returns a pointer to the end of the move list.
-
 template<GenType Type>
 ExtMove* generate(const Position& pos, ExtMove* moveList) {
 
