@@ -418,6 +418,7 @@ bool save_eval(const std::optional<std::string>& filename) {
 
     std::ofstream stream(actualFilename, std::ios_base::binary);
     bool          saved = save_eval(stream);
+    stream.close();  // Close the file stream
 
     msg = saved ? "Network saved successfully to " + actualFilename : "Failed to export a net";
 
