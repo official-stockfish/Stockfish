@@ -113,8 +113,8 @@ struct Network {
         ac_1.propagate(buffer.fc_1_out, buffer.ac_1_out);
         fc_2.propagate(buffer.ac_1_out, buffer.fc_2_out);
 
-        // buffer.fc_0_out[FC_0_OUTPUTS] is such that 1.0 is equal to 127*(1<<WeightScaleBits) in quantized form
-        // but we want 1.0 to be equal to 600*OutputScale
+        // buffer.fc_0_out[FC_0_OUTPUTS] is such that 1.0 is equal to 127*(1<<WeightScaleBits) in
+        // quantized form, but we want 1.0 to be equal to 600*OutputScale
         std::int32_t fwdOut =
           int(buffer.fc_0_out[FC_0_OUTPUTS]) * (600 * OutputScale) / (127 * (1 << WeightScaleBits));
         std::int32_t outputValue = buffer.fc_2_out[0] + fwdOut;
