@@ -33,19 +33,19 @@ using namespace Stockfish;
 
 int main(int argc, char* argv[]) {
 
-  std::cout << engine_info() << std::endl;
+    std::cout << engine_info() << std::endl;
 
-  CommandLine::init(argc, argv);
-  UCI::init(Options);
-  Tune::init();
-  Bitboards::init();
-  Position::init();
-  Threads.set(size_t(Options["Threads"]));
-  Search::clear(); // After threads are up
-  Eval::NNUE::init();
+    CommandLine::init(argc, argv);
+    UCI::init(Options);
+    Tune::init();
+    Bitboards::init();
+    Position::init();
+    Threads.set(size_t(Options["Threads"]));
+    Search::clear();  // After threads are up
+    Eval::NNUE::init();
 
-  UCI::loop(argc, argv);
+    UCI::loop(argc, argv);
 
-  Threads.set(0);
-  return 0;
+    Threads.set(0);
+    return 0;
 }
