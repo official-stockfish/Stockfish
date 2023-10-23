@@ -20,6 +20,7 @@
 #define EVALUATE_H_INCLUDED
 
 #include <string>
+#include <optional>
 
 #include "types.h"
 
@@ -29,30 +30,29 @@ class Position;
 
 namespace Eval {
 
-std::string trace(Position& pos);
+  std::string trace(Position& pos);
+  Value evaluate(const Position& pos);
 
-Value simple_eval(const Position& pos, Color c);
-Value evaluate(const Position& pos);
+  extern bool useNNUE;
+  extern std::string currentEvalFileName;
 
-extern std::string currentEvalFileName;
+  // The default net name MUST follow the format nn-[SHA256 first 12 digits].nnue
+  // for the build process (profile-build and fishtest) to work. Do not change the
+  // name of the macro, as it is used in the Makefile.
+  #define EvalFileDefaultName   "nn-e1fb1ade4432.nnue"
 
-// The default net name MUST follow the format nn-[SHA256 first 12 digits].nnue
-// for the build process (profile-build and fishtest) to work. Do not change the
-// name of the macro, as it is used in the Makefile.
-#define EvalFileDefaultName "nn-0000000000a0.nnue"
+  namespace NNUE {
 
-namespace NNUE {
-
-extern int RandomEvalPerturb;
-extern int waitms;
+    extern int RandomEvalPerturb;
+    extern int waitms;
     
-void init();
-void verify();
+    void init();
+    void verify();
 
-}  // namespace NNUE
+  } // namespace NNUE
 
-}  // namespace Eval
+} // namespace Eval
 
-}  // namespace Stockfish
+} // namespace Stockfish
 
-#endif  // #ifndef EVALUATE_H_INCLUDED
+#endif // #ifndef EVALUATE_H_INCLUDED
