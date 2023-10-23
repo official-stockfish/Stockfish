@@ -407,8 +407,8 @@ bool save_eval(const std::optional<std::string>& filename) {
     {
         if (currentEvalFileName != EvalFileDefaultName)
         {
-            msg =
-              "Failed to export a net. A non-embedded net can only be saved if the filename is specified";
+            msg = "Failed to export a net. "
+                  "A non-embedded net can only be saved if the filename is specified";
 
             sync_cout << msg << sync_endl;
             return false;

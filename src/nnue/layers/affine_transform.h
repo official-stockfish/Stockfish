@@ -256,7 +256,8 @@ class AffineTransform {
         else if constexpr (OutputDimensions == 1)
         {
 
-    // We cannot use AVX512 for the last layer because there's only 32 inputs and the buffer is not padded to 64 elements.
+    // We cannot use AVX512 for the last layer because there are only 32 inputs
+    // and the buffer is not padded to 64 elements.
     #if defined(USE_AVX2)
             using vec_t = __m256i;
         #define vec_setzero _mm256_setzero_si256

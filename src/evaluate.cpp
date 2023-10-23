@@ -123,11 +123,11 @@ void NNUE::verify() {
         std::string msg1 =
           "Network evaluation parameters compatible with the engine must be available.";
         std::string msg2 = "The network file " + eval_file + " was not loaded successfully.";
-        std::string msg3 =
-          "The UCI option EvalFile might need to specify the full path, including the directory name, to the network file.";
-        std::string msg4 =
-          "The default net can be downloaded from: https://tests.stockfishchess.org/api/nn/"
-          + std::string(EvalFileDefaultName);
+        std::string msg3 = "The UCI option EvalFile might need to specify the full path, "
+                           "including the directory name, to the network file.";
+        std::string msg4 = "The default net can be downloaded from: "
+                           "https://tests.stockfishchess.org/api/nn/"
+                         + std::string(EvalFileDefaultName);
         std::string msg5 = "The engine will be terminated now.";
 
         sync_cout << "info string ERROR: " << msg1 << sync_endl;
