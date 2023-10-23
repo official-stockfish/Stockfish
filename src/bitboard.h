@@ -298,7 +298,7 @@ inline Square lsb(Bitboard b) {
 
     unsigned long idx;
     _BitScanForward64(&idx, b);
-    return (Square) idx;
+    return Square(idx);
 
     #else  // MSVC, WIN32
     unsigned long idx;
@@ -332,7 +332,7 @@ inline Square msb(Bitboard b) {
 
     unsigned long idx;
     _BitScanReverse64(&idx, b);
-    return (Square) idx;
+    return Square(idx);
 
     #else  // MSVC, WIN32
 

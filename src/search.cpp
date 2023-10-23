@@ -279,9 +279,9 @@ void MainThread::search() {
 // consumed, the user stops the search, or the maximum search depth is reached.
 void Thread::search() {
 
-    // Allocate stack with extra size to allow access from (ss-7) to (ss+2):
-    // (ss-7) is needed for update_continuation_histories(ss-1) which accesses (ss-6),
-    // (ss+2) is needed for initialization of statScore and killers.
+    // Allocate stack with extra size to allow access from (ss - 7) to (ss + 2):
+    // (ss - 7) is needed for update_continuation_histories(ss - 1) which accesses (ss - 6),
+    // (ss + 2) is needed for initialization of cutOffCnt and killers.
     Stack       stack[MAX_PLY + 10], *ss = stack + 7;
     Move        pv[MAX_PLY + 1];
     Value       alpha, beta, delta;
@@ -363,13 +363,13 @@ void Thread::search() {
             selDepth = 0;
 
             // Reset aspiration window starting size
-            Value prev = rootMoves[pvIdx].averageScore;
-            delta      = Value(10) + int(prev) * prev / 17470;
-            alpha      = std::max(prev - delta, -VALUE_INFINITE);
-            beta       = std::min(prev + delta, VALUE_INFINITE);
+            Value avg = rootMoves[pvIdx].averageScore;
+            delta     = Value(10) + int(avg) * avg / 17470;
+            alpha     = std::max(avg - delta, -VALUE_INFINITE);
+            beta      = std::min(avg + delta, VALUE_INFINITE);
 
-            // Adjust optimism based on root move's previousScore (~4 Elo)
-            int opt       = 113 * prev / (std::abs(prev) + 109);
+            // Adjust optimism based on root move's averageScore (~4 Elo)
+            int opt       = 113 * avg / (std::abs(avg) + 109);
             optimism[us]  = Value(opt);
             optimism[~us] = -optimism[us];
 
@@ -582,7 +582,7 @@ Value search(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth, boo
                                                         : value_draw(pos.this_thread());
 
         // Step 3. Mate distance pruning. Even if we mate at the next move our score
-        // would be at best mate_in(ss->ply+1), but if alpha is already bigger because
+        // would be at best mate_in(ss->ply + 1), but if alpha is already bigger because
         // a shorter mate was found upward in the tree then there is no need to search
         // because we will never beat the current alpha. Same logic but with reversed
         // signs apply also in the opposite condition of being mated instead of giving
