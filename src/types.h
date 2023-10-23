@@ -321,21 +321,17 @@ constexpr Square operator-(Square s, Direction d) { return Square(int(s) - int(d
 inline Square&   operator+=(Square& s, Direction d) { return s = s + d; }
 inline Square&   operator-=(Square& s, Direction d) { return s = s - d; }
 
-constexpr Color operator~(Color c) {
-    return Color(c ^ BLACK);  // Toggle color
-}
+// Toggle color
+constexpr Color operator~(Color c) { return Color(c ^ BLACK); }
 
-constexpr Square flip_rank(Square s) {  // Swap A1 <-> A8
-    return Square(s ^ SQ_A8);
-}
+// Swap A1 <-> A8
+constexpr Square flip_rank(Square s) { return Square(s ^ SQ_A8); }
 
-constexpr Square flip_file(Square s) {  // Swap A1 <-> H1
-    return Square(s ^ SQ_H1);
-}
+// Swap A1 <-> H1
+constexpr Square flip_file(Square s) { return Square(s ^ SQ_H1); }
 
-constexpr Piece operator~(Piece pc) {
-    return Piece(pc ^ 8);  // Swap color of piece B_KNIGHT <-> W_KNIGHT
-}
+// Swap color of piece B_KNIGHT <-> W_KNIGHT
+constexpr Piece operator~(Piece pc) { return Piece(pc ^ 8); }
 
 constexpr CastlingRights operator&(Color c, CastlingRights cr) {
     return CastlingRights((c == WHITE ? WHITE_CASTLING : BLACK_CASTLING) & cr);

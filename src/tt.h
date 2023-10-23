@@ -37,7 +37,6 @@ namespace Stockfish {
 // move       16 bit
 // value      16 bit
 // eval value 16 bit
-
 struct TTEntry {
 
     Move  move() const { return Move(move16); }
@@ -65,7 +64,6 @@ struct TTEntry {
 // contains information on exactly one position. The size of a Cluster should
 // divide the size of a cache line for best performance, as the cacheline is
 // prefetched when possible.
-
 class TranspositionTable {
 
     static constexpr int ClusterSize = 3;
