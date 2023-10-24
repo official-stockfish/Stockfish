@@ -130,11 +130,11 @@ inline void write_little_endian(std::ostream& stream, IntType value) {
         {
             for (; i + 1 < sizeof(IntType); ++i)
             {
-                u[i] = (std::uint8_t) v;
+                u[i] = std::uint8_t(v);
                 v >>= 8;
             }
         }
-        u[i] = (std::uint8_t) v;
+        u[i] = std::uint8_t(v);
 
         stream.write(reinterpret_cast<char*>(u), sizeof(IntType));
     }

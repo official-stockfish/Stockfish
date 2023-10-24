@@ -116,7 +116,7 @@ static bool read_header(std::istream& stream, std::uint32_t* hashValue, std::str
 static bool write_header(std::ostream& stream, std::uint32_t hashValue, const std::string& desc) {
     write_little_endian<std::uint32_t>(stream, Version);
     write_little_endian<std::uint32_t>(stream, hashValue);
-    write_little_endian<std::uint32_t>(stream, (std::uint32_t) desc.size());
+    write_little_endian<std::uint32_t>(stream, std::uint32_t(desc.size()));
     stream.write(&desc[0], desc.size());
     return !stream.fail();
 }
@@ -407,8 +407,8 @@ bool save_eval(const std::optional<std::string>& filename) {
     {
         if (currentEvalFileName != EvalFileDefaultName)
         {
-            msg =
-              "Failed to export a net. A non-embedded net can only be saved if the filename is specified";
+            msg = "Failed to export a net. "
+                  "A non-embedded net can only be saved if the filename is specified";
 
             sync_cout << msg << sync_endl;
             return false;
