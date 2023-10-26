@@ -25,6 +25,7 @@
 #include <string>
 
 #include "types.h"
+#include "misc.h"
 
 namespace Stockfish {
 
@@ -82,7 +83,7 @@ int         to_cp(Value v);
 std::string value(Value v);
 std::string square(Square s);
 std::string move(Move m, bool chess960);
-std::string pv(const Position& pos, Depth depth);
+std::string pv(const Position& pos, Depth depth, TimePoint elapsed);
 std::string wdl(Value v, int ply);
 Move        to_move(const Position& pos, std::string& str);
 

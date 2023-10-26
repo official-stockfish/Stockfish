@@ -31,8 +31,10 @@
 #include "search.h"
 #include "thread_win32_osx.h"
 #include "types.h"
+#include "timeman.h"
 
 namespace Stockfish {
+
 
 // Thread class keeps together all the thread-related stuff.
 class Thread {
@@ -52,6 +54,8 @@ class Thread {
     void         start_searching();
     void         wait_for_search_finished();
     size_t       id() const { return idx; }
+
+    TimeManagement tm;
 
     size_t                pvIdx, pvLast;
     std::atomic<uint64_t> nodes, tbHits, bestMoveChanges;
@@ -90,12 +94,12 @@ struct MainThread: public Thread {
     std::atomic_bool ponder;
 };
 
-
 // ThreadPool struct handles all the threads-related stuff like init, starting,
 // parking and, most importantly, launching a thread. All the access to threads
 // is done through this class.
-struct ThreadPool {
+class ThreadPool {
 
+   public:
     void start_thinking(Position&, StateListPtr&, const Search::LimitsType&, bool = false);
     void clear();
     void set(size_t);

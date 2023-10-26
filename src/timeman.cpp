@@ -23,17 +23,24 @@
 
 #include "search.h"
 #include "uci.h"
+#include "thread.h"
 
 namespace Stockfish {
 
-TimeManagement Time;  // Our global time management object
+
+TimePoint TimeManagement::optimum() const { return optimumTime; }
+TimePoint TimeManagement::maximum() const { return maximumTime; }
+TimePoint TimeManagement::elapsed() const {
+    return limits.npmsec ? TimePoint(Threads.nodes_searched()) : now() - startTime;
+}
 
 
 // Called at the beginning of the search and calculates
 // the bounds of time allowed for the current game ply. We currently support:
 //      1) x basetime (+ z increment)
 //      2) x moves in y seconds (+ z increment)
-void TimeManagement::init(Search::LimitsType& limits, Color us, int ply) {
+void TimeManagement::init(const Search::LimitsType& lim, Color us, int ply) {
+    limits = lim;
 
     // If we have no time, no need to initialize TM, except for the start time,
     // which is used by movetime.

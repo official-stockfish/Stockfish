@@ -103,8 +103,6 @@ struct LimitsType {
     int64_t           nodes;
 };
 
-extern LimitsType Limits;
-
 void init();
 void clear();
 
