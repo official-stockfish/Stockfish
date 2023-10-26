@@ -32,6 +32,10 @@
 
 namespace Stockfish {
 
+constexpr int PAWN_HISTORY_SIZE = 512;
+
+inline int pawn_structure(const Position& pos) { return pos.pawn_key() & (PAWN_HISTORY_SIZE - 1); }
+
 // StatsEntry stores the stat table value. It is usually a number but could
 // be a move or even a nested history. We use a class instead of a naked value
 // to directly call history update operator<<() on the entry so to use stats
@@ -89,39 +93,6 @@ enum StatsType {
     Captures
 };
 
-class PawnHistory {
-    static constexpr int max_size = 512;
-    using pawn_type = Stats<int16_t, 8192, COLOR_NB, max_size, PIECE_TYPE_NB, SQUARE_NB>;
-
-   public:
-    auto& get(const Position& pos, Key pawn_key, Move m) {
-        const int pawn_index = pawn_key & (max_size - 1);
-        const int pt         = type_of(pos.moved_piece(m));
-        const int to         = to_sq(m);
-
-        assert(pawn_index >= 0 && pawn_index < max_size);
-        assert(pt >= 0 && pt < PIECE_TYPE_NB);
-        assert(to >= 0 && to < SQUARE_NB);
-        return entry[pos.side_to_move()][pawn_index][pt][to];
-    }
-
-    const auto& get(const Position& pos, Key pawn_key, Move m) const {
-        const int pawn_index = pawn_key & (max_size - 1);
-        const int pt         = type_of(pos.moved_piece(m));
-        const int to         = to_sq(m);
-
-        assert(pawn_index >= 0 && pawn_index < max_size);
-        assert(pt >= 0 && pt < PIECE_TYPE_NB);
-        assert(to >= 0 && to < SQUARE_NB);
-        return entry[pos.side_to_move()][pawn_index][pt][to];
-    }
-
-    void fill(int val) { entry.fill(val); }
-
-   private:
-    pawn_type entry;
-};
-
 // ButterflyHistory records how often quiet moves have been successful or
 // unsuccessful during the current search, and is used for reduction and move
 // ordering decisions. It uses 2 tables (one for each color) indexed by
@@ -145,6 +116,8 @@ using PieceToHistory = Stats<int16_t, 29952, PIECE_NB, SQUARE_NB>;
 // (~63 elo)
 using ContinuationHistory = Stats<PieceToHistory, NOT_USED, PIECE_NB, SQUARE_NB>;
 
+// PawnStructureHistory is addressed by the pawn structure and a move's [piece][to]
+using PawnHistory = Stats<int16_t, 8192, PAWN_HISTORY_SIZE, PIECE_NB, SQUARE_NB>;
 
 // MovePicker class is used to pick one pseudo-legal move at a time from the
 // current position. The most important method is next_move(), which returns a

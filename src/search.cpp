@@ -990,7 +990,7 @@ moves_loop:  // When in check, search starts here
                 int history = (*contHist[0])[movedPiece][to_sq(move)]
                             + (*contHist[1])[movedPiece][to_sq(move)]
                             + (*contHist[3])[movedPiece][to_sq(move)]
-                            + thisThread->pawnHistory.get(pos, pos.pawn_key(), move);
+                            + thisThread->pawnHistory[pawn_structure(pos)][movedPiece][to_sq(move)];
 
                 // Continuation history based pruning (~2 Elo)
                 if (lmrDepth < 6 && history < -3498 * depth)
@@ -1673,13 +1673,15 @@ void update_all_stats(const Position& pos,
 
         // Increase stats for the best move in case it was a quiet move
         update_quiet_stats(pos, ss, bestMove, bestMoveBonus);
-
-        thisThread->pawnHistory.get(pos, pos.pawn_key(), bestMove) << quietMoveBonus;
+        thisThread->pawnHistory[pawn_structure(pos)][moved_piece][to_sq(bestMove)]
+          << quietMoveBonus;
 
         // Decrease stats for all non-best quiet moves
         for (int i = 0; i < quietCount; ++i)
         {
-            thisThread->pawnHistory.get(pos, pos.pawn_key(), quietsSearched[i]) << -bestMoveBonus;
+            thisThread->pawnHistory[pawn_structure(pos)][pos.moved_piece(quietsSearched[i])]
+                                   [to_sq(quietsSearched[i])]
+              << -bestMoveBonus;
             thisThread->mainHistory[us][from_to(quietsSearched[i])] << -bestMoveBonus;
             update_continuation_histories(ss, pos.moved_piece(quietsSearched[i]),
                                           to_sq(quietsSearched[i]), -bestMoveBonus);
