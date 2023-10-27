@@ -28,9 +28,9 @@
 
 #include "movegen.h"
 #include "types.h"
+#include "position.h"
 
 namespace Stockfish {
-class Position;
 
 // StatsEntry stores the stat table value. It is usually a number but could
 // be a move or even a nested history. We use a class instead of a naked value
@@ -89,6 +89,39 @@ enum StatsType {
     Captures
 };
 
+class PawnHistory {
+    static constexpr int max_size = 512;
+    using pawn_type = Stats<int16_t, 8192, COLOR_NB, max_size, PIECE_TYPE_NB, SQUARE_NB>;
+
+   public:
+    auto& get(const Position& pos, Key pawn_key, Move m) {
+        const int pawn_index = pawn_key & (max_size - 1);
+        const int pt         = type_of(pos.moved_piece(m));
+        const int to         = to_sq(m);
+
+        assert(pawn_index >= 0 && pawn_index < max_size);
+        assert(pt >= 0 && pt < PIECE_TYPE_NB);
+        assert(to >= 0 && to < SQUARE_NB);
+        return entry[pos.side_to_move()][pawn_index][pt][to];
+    }
+
+    const auto& get(const Position& pos, Key pawn_key, Move m) const {
+        const int pawn_index = pawn_key & (max_size - 1);
+        const int pt         = type_of(pos.moved_piece(m));
+        const int to         = to_sq(m);
+
+        assert(pawn_index >= 0 && pawn_index < max_size);
+        assert(pt >= 0 && pt < PIECE_TYPE_NB);
+        assert(to >= 0 && to < SQUARE_NB);
+        return entry[pos.side_to_move()][pawn_index][pt][to];
+    }
+
+    void fill(int val) { entry.fill(val); }
+
+   private:
+    pawn_type entry;
+};
+
 // ButterflyHistory records how often quiet moves have been successful or
 // unsuccessful during the current search, and is used for reduction and move
 // ordering decisions. It uses 2 tables (one for each color) indexed by
@@ -135,6 +168,7 @@ class MovePicker {
                const ButterflyHistory*,
                const CapturePieceToHistory*,
                const PieceToHistory**,
+               const PawnHistory&,
                Move,
                const Move*);
     MovePicker(const Position&,
@@ -143,8 +177,9 @@ class MovePicker {
                const ButterflyHistory*,
                const CapturePieceToHistory*,
                const PieceToHistory**,
+               const PawnHistory&,
                Square);
-    MovePicker(const Position&, Move, Value, const CapturePieceToHistory*);
+    MovePicker(const Position&, Move, Value, const CapturePieceToHistory*, const PawnHistory&);
     Move next_move(bool skipQuiets = false);
 
    private:
@@ -159,6 +194,7 @@ class MovePicker {
     const ButterflyHistory*      mainHistory;
     const CapturePieceToHistory* captureHistory;
     const PieceToHistory**       continuationHistory;
+    const PawnHistory&           pawnHistory;
     Move                         ttMove;
     ExtMove                      refutations[3], *cur, *endMoves, *endBadCaptures;
     int                          stage;

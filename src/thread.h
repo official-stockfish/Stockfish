@@ -71,6 +71,7 @@ class Thread {
     ButterflyHistory      mainHistory;
     CapturePieceToHistory captureHistory;
     ContinuationHistory   continuationHistory[2][2];
+    PawnHistory           pawnHistory;
 };
 
 
