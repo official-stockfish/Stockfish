@@ -770,7 +770,7 @@ Value search(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth, boo
             {
                 int bonus = (depth > 6) + (PvNode || cutNode) + (value < alpha - 658) + ((ss-1)->moveCount > 11);
                 update_continuation_histories(ss-1, pos.piece_on(prevSq), prevSq, stat_bonus(depth) * bonus);
-                thisThread->mainHistory[~us][from_to((ss-1)->currentMove)] << stat_bonus(depth) * bonus * 0.57;
+                thisThread->mainHistory[~us][from_to((ss-1)->currentMove)] << stat_bonus(depth) * bonus * 57 / 100;
             }
             return value;
         }
@@ -1329,7 +1329,7 @@ moves_loop:  // When in check, search starts here
         update_continuation_histories(ss - 1, pos.piece_on(prevSq), prevSq,
                                       stat_bonus(depth) * bonus);
         thisThread->mainHistory[~us][from_to((ss - 1)->currentMove)]
-          << stat_bonus(depth) * bonus * 0.61;
+          << stat_bonus(depth) * bonus * 61 / 100;
     }
 
     if (PvNode)
