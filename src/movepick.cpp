@@ -210,7 +210,7 @@ void MovePicker::score() {
                                        : 0)
                        : 0;
 
-            m.value += pawnHistory.get(pos, pos.pawn_key(), m);
+            m.value += pawnHistory[pawn_structure(pos)][pc][to];
         }
 
         else  // Type == EVASIONS
@@ -221,7 +221,7 @@ void MovePicker::score() {
             else
                 m.value = (*mainHistory)[pos.side_to_move()][from_to(m)]
                         + (*continuationHistory[0])[pos.moved_piece(m)][to_sq(m)]
-                        + pawnHistory.get(pos, pos.pawn_key(), m);
+                        + pawnHistory[pawn_structure(pos)][pos.moved_piece(m)][to_sq(m)];
         }
 }
 
