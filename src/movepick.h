@@ -28,9 +28,13 @@
 
 #include "movegen.h"
 #include "types.h"
+#include "position.h"
 
 namespace Stockfish {
-class Position;
+
+constexpr int PAWN_HISTORY_SIZE = 512;
+
+inline int pawn_structure(const Position& pos) { return pos.pawn_key() & (PAWN_HISTORY_SIZE - 1); }
 
 // StatsEntry stores the stat table value. It is usually a number but could
 // be a move or even a nested history. We use a class instead of a naked value
@@ -112,6 +116,8 @@ using PieceToHistory = Stats<int16_t, 29952, PIECE_NB, SQUARE_NB>;
 // (~63 elo)
 using ContinuationHistory = Stats<PieceToHistory, NOT_USED, PIECE_NB, SQUARE_NB>;
 
+// PawnStructureHistory is addressed by the pawn structure and a move's [piece][to]
+using PawnHistory = Stats<int16_t, 8192, PAWN_HISTORY_SIZE, PIECE_NB, SQUARE_NB>;
 
 // MovePicker class is used to pick one pseudo-legal move at a time from the
 // current position. The most important method is next_move(), which returns a
@@ -135,6 +141,7 @@ class MovePicker {
                const ButterflyHistory*,
                const CapturePieceToHistory*,
                const PieceToHistory**,
+               const PawnHistory&,
                Move,
                const Move*);
     MovePicker(const Position&,
@@ -143,8 +150,9 @@ class MovePicker {
                const ButterflyHistory*,
                const CapturePieceToHistory*,
                const PieceToHistory**,
+               const PawnHistory&,
                Square);
-    MovePicker(const Position&, Move, Value, const CapturePieceToHistory*);
+    MovePicker(const Position&, Move, Value, const CapturePieceToHistory*, const PawnHistory&);
     Move next_move(bool skipQuiets = false);
 
    private:
@@ -159,6 +167,7 @@ class MovePicker {
     const ButterflyHistory*      mainHistory;
     const CapturePieceToHistory* captureHistory;
     const PieceToHistory**       continuationHistory;
+    const PawnHistory&           pawnHistory;
     Move                         ttMove;
     ExtMove                      refutations[3], *cur, *endMoves, *endBadCaptures;
     int                          stage;
