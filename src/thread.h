@@ -34,10 +34,7 @@
 
 namespace Stockfish {
 
-// Thread class keeps together all the thread-related stuff. We use
-// per-thread pawn and material hash tables so that once we get a
-// pointer to an entry its lifetime is unlimited and we don't have
-// to care about someone changing the entry under our feet.
+// Thread class keeps together all the thread-related stuff.
 class Thread {
 
     std::mutex              mutex;
