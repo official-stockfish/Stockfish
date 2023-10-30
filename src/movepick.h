@@ -51,7 +51,6 @@ class StatsEntry {
    public:
     void operator=(const T& v) { entry = v; }
     T*   operator&() { return &entry; }
-    T*   operator->() { return &entry; }
     operator const T&() const { return entry; }
 
     void operator<<(int bonus) {
