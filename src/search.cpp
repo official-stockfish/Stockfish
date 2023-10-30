@@ -374,14 +374,13 @@ void Thread::search() {
 
             // Reset aspiration window starting size
             Value avg = rootMoves[pvIdx].averageScore;
-            delta     = Value(10) + int(avg) * avg / 17470;
+            delta     = Value(10) + int(avg) * avg / 15335;
             alpha     = std::max(avg - delta, -VALUE_INFINITE);
             beta      = std::min(avg + delta, VALUE_INFINITE);
 
             // Adjust optimism based on root move's averageScore (~4 Elo)
-            int opt       = 113 * avg / (std::abs(avg) + 109);
-            optimism[us]  = Value(opt);
-            optimism[~us] = -optimism[us];
+            optimism[us]  = 103 * (avg + 33) / (std::abs(avg + 34) + 119);
+            optimism[~us] = -116 * (avg + 40) / (std::abs(avg + 12) + 123);
 
             // Start with a small aspiration window and, in the case of a fail
             // high/low, re-search with a bigger window until we don't fail
@@ -840,16 +839,19 @@ Value search(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth, boo
         }
     }
 
-    // Step 10. If the position doesn't have a ttMove, decrease depth by 2,
-    // or by 4 if the TT entry for the current position was hit and
+    // Step 10. Internal iterative reductions (~9 Elo)
+    // For PV nodes without a ttMove, we decrease depth by 2,
+    // or by 4 if the current position is present in the TT and
     // the stored depth is greater than or equal to the current depth.
-    // Use qsearch if depth is equal or below zero (~9 Elo)
+    // Use qsearch if depth <= 0.
     if (PvNode && !ttMove)
         depth -= 2 + 2 * (ss->ttHit && tte->depth() >= depth);
 
     if (depth <= 0)
         return qsearch<PV>(pos, ss, alpha, beta);
 
+    // For cutNodes without a ttMove, we decrease depth by 2
+    // if current depth >= 8.
     if (cutNode && depth >= 8 && !ttMove)
         depth -= 2;
 
@@ -1139,7 +1141,7 @@ moves_loop:  // When in check, search starts here
         if (PvNode)
             r--;
 
-        // Decrease reduction if ttMove has been singularly extended (~1 Elo)
+        // Decrease reduction if a quiet ttMove has been singularly extended (~1 Elo)
         if (singularQuietLMR)
             r--;
 
@@ -1204,7 +1206,7 @@ moves_loop:  // When in check, search starts here
         // Step 18. Full-depth search when LMR is skipped
         else if (!PvNode || moveCount > 1)
         {
-            // Increase reduction for cut nodes and not ttMove (~1 Elo)
+            // Increase reduction for cut nodes without ttMove (~1 Elo)
             if (!ttMove && cutNode)
                 r += 2;
 
@@ -1734,7 +1736,7 @@ void update_all_stats(const Position& pos,
 
 
 // Updates histories of the move pairs formed
-// by moves at ply -1, -2, -4, and -6 with current move.
+// by moves at ply -1, -2, -3, -4, and -6 with current move.
 void update_continuation_histories(Stack* ss, Piece pc, Square to, int bonus) {
 
     for (int i : {1, 2, 3, 4, 6})
