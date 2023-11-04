@@ -755,6 +755,8 @@ Value search(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth, boo
     {
         int bonus = std::clamp(-18 * int((ss - 1)->staticEval + ss->staticEval), -1812, 1812);
         thisThread->mainHistory[~us][from_to((ss - 1)->currentMove)] << bonus;
+        if (type_of(pos.piece_on(prevSq)) != PAWN && type_of((ss - 1)->currentMove) != PROMOTION)
+            thisThread->pawnHistory[pawn_structure(pos)][pos.piece_on(prevSq)][prevSq] << bonus / 4;
     }
 
     // Set up the improving flag, which is true if current static evaluation is
@@ -774,18 +776,7 @@ Value search(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth, boo
     {
         value = qsearch<NonPV>(pos, ss, alpha - 1, alpha);
         if (value < alpha)
-        {
-            if (!priorCapture && prevSq != SQ_NONE)
-            {
-                int bonus = (depth > 6) + (PvNode || cutNode) + (value < alpha - 658)
-                          + ((ss - 1)->moveCount > 11);
-                update_continuation_histories(ss - 1, pos.piece_on(prevSq), prevSq,
-                                              stat_bonus(depth) * bonus);
-                thisThread->mainHistory[~us][from_to((ss - 1)->currentMove)]
-                  << stat_bonus(depth) * bonus * 57 / 100;
-            }
             return value;
-        }
     }
 
     // Step 8. Futility pruning: child node (~40 Elo)
@@ -878,6 +869,9 @@ Value search(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth, boo
             if (move != excludedMove && pos.legal(move))
             {
                 assert(pos.capture_stage(move));
+
+                // Prefetch the TT entry for the resulting position
+                prefetch(TT.first_entry(pos.key_after(move)));
 
                 ss->currentMove = move;
                 ss->continuationHistory =
@@ -1346,7 +1340,7 @@ moves_loop:  // When in check, search starts here
         update_continuation_histories(ss - 1, pos.piece_on(prevSq), prevSq,
                                       stat_bonus(depth) * bonus);
         thisThread->mainHistory[~us][from_to((ss - 1)->currentMove)]
-          << stat_bonus(depth) * bonus * 61 / 100;
+          << stat_bonus(depth) * bonus / 2;
     }
 
     if (PvNode)
