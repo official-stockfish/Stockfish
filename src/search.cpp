@@ -1140,7 +1140,8 @@ moves_loop:  // When in check, search starts here
         if ((ss + 1)->cutoffCnt > 3)
             r++;
 
-        // Decrease reduction for first generated move (ttMove)
+        // Set reduction to 0 for first generated move (ttMove)
+        // Nullifyies all previous reduction adjustments to ttMove and leaves only history to do them
         else if (move == ttMove)
             r = 0;
 
