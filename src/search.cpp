@@ -94,7 +94,10 @@ constexpr int futility_move_count(bool improving, Depth depth) {
 }
 
 // History and stats update bonus, based on depth
-int stat_bonus(Depth d) { return std::min(357 * d - 483, 1511); }
+int stat_bonus(Depth d) { return std::min(364 * d - 438, 1501); }
+
+// History and stats update malus, based on depth
+int stat_malus(Depth d) { return std::min(452 * d - 452, 1478); }
 
 // Add a small random component to draw evaluations to avoid 3-fold blindness
 Value value_draw(const Thread* thisThread) {
@@ -646,12 +649,12 @@ Value search(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth, boo
                 // the previous ply (~0 Elo on STC, ~2 Elo on LTC).
                 if (prevSq != SQ_NONE && (ss - 1)->moveCount <= 2 && !priorCapture)
                     update_continuation_histories(ss - 1, pos.piece_on(prevSq), prevSq,
-                                                  -stat_bonus(depth + 1));
+                                                  -stat_malus(depth + 1));
             }
             // Penalty for a quiet ttMove that fails low (~1 Elo)
             else if (!ttCapture)
             {
-                int penalty = -stat_bonus(depth);
+                int penalty = -stat_malus(depth);
                 thisThread->mainHistory[us][from_to(ttMove)] << penalty;
                 update_continuation_histories(ss, pos.moved_piece(ttMove), to_sq(ttMove), penalty);
             }
@@ -1040,9 +1043,10 @@ moves_loop:  // When in check, search starts here
             // Singular extension search (~94 Elo). If all moves but one fail low on a
             // search of (alpha-s, beta-s), and just one fails high on (alpha, beta),
             // then that move is singular and should be extended. To verify this we do
-            // a reduced search on all the other moves but the ttMove and if the result
-            // is lower than ttValue minus a margin, then we will extend the ttMove. Note
-            // that depth margin and singularBeta margin are known for having non-linear
+            // a reduced search on the position excluding the ttMove and if the result
+            // is lower than ttValue minus a margin, then we will extend the ttMove.
+
+            // Note: the depth margin and singularBeta margin are known for having non-linear
             // scaling. Their values are optimized to time controls of 180+1.8 and longer
             // so changing them requires tests at this type of time controls.
             // Recursive singular search is avoided.
@@ -1073,22 +1077,28 @@ moves_loop:  // When in check, search starts here
                 }
 
                 // Multi-cut pruning
-                // Our ttMove is assumed to fail high, and now we failed high also on a
-                // reduced search without the ttMove. So we assume this expected cut-node
-                // is not singular, that multiple moves fail high, and we can prune the
-                // whole subtree by returning a softbound.
+                // Our ttMove is assumed to fail high based on the bound of the TT entry,
+                // and if after excluding the ttMove with a reduced search we fail high over the original beta,
+                // we assume this expected cut-node is not singular (multiple moves fail high),
+                // and we can prune the whole subtree by returning a softbound.
                 else if (singularBeta >= beta)
                     return singularBeta;
 
-                // If the eval of ttMove is greater than beta, reduce it (negative extension) (~7 Elo)
+                // Negative extensions
+                // If other moves failed high over (ttValue - margin) without the ttMove on a reduced search,
+                // but we cannot do multi-cut because (ttValue - margin) is lower than the original beta,
+                // we do not know if the ttMove is singular or can do a multi-cut,
+                // so we reduce the ttMove in favor of other moves based on some conditions:
+
+                // If the ttMove is assumed to fail high over currnet beta (~7 Elo)
                 else if (ttValue >= beta)
                     extension = -2 - !PvNode;
 
-                // If we are on a cutNode, reduce it based on depth (negative extension) (~1 Elo)
+                // If we are on a cutNode but the ttMove is not assumed to fail high over current beta (~1 Elo)
                 else if (cutNode)
                     extension = depth < 19 ? -2 : -1;
 
-                // If the eval of ttMove is less than value, reduce it (negative extension) (~1 Elo)
+                // If the ttMove is assumed to fail low over the value of the reduced search (~1 Elo)
                 else if (ttValue <= value)
                     extension = -1;
             }
@@ -1150,9 +1160,10 @@ moves_loop:  // When in check, search starts here
         if ((ss + 1)->cutoffCnt > 3)
             r++;
 
-        // Decrease reduction for first generated move (ttMove)
+        // Set reduction to 0 for first generated move (ttMove)
+        // Nullifies all previous reduction adjustments to ttMove and leaves only history to do them
         else if (move == ttMove)
-            r--;
+            r = 0;
 
         ss->statScore = 2 * thisThread->mainHistory[us][from_to(move)]
                       + (*contHist[0])[movedPiece][to_sq(move)]
@@ -1192,7 +1203,7 @@ moves_loop:  // When in check, search starts here
                 if (newDepth > d)
                     value = -search<NonPV>(pos, ss + 1, -(alpha + 1), -alpha, newDepth, !cutNode);
 
-                int bonus = value <= alpha ? -stat_bonus(newDepth)
+                int bonus = value <= alpha ? -stat_malus(newDepth)
                           : value >= beta  ? stat_bonus(newDepth)
                                            : 0;
 
@@ -1421,9 +1432,7 @@ Value qsearch(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth) {
 
     assert(0 <= ss->ply && ss->ply < MAX_PLY);
 
-    // Decide whether or not to include checks: this fixes also the type of
-    // TT entry depth that we are going to use. Note that in qsearch we use
-    // only two types of depth in TT: DEPTH_QS_CHECKS or DEPTH_QS_NO_CHECKS.
+    // Decide the replacement and cutoff priority of the qsearch TT entries
     ttDepth = ss->inCheck || depth >= DEPTH_QS_CHECKS ? DEPTH_QS_CHECKS : DEPTH_QS_NO_CHECKS;
 
     // Step 3. Transposition table lookup
@@ -1685,6 +1694,7 @@ void update_all_stats(const Position& pos,
     PieceType              captured;
 
     int quietMoveBonus = stat_bonus(depth + 1);
+    int quietMoveMalus = stat_malus(depth + 1);
 
     if (!pos.capture_stage(bestMove))
     {
@@ -1696,15 +1706,18 @@ void update_all_stats(const Position& pos,
         thisThread->pawnHistory[pawn_structure(pos)][moved_piece][to_sq(bestMove)]
           << quietMoveBonus;
 
+        int moveMalus = bestValue > beta + 168 ? quietMoveMalus      // larger malus
+                                               : stat_malus(depth);  // smaller malus
+
         // Decrease stats for all non-best quiet moves
         for (int i = 0; i < quietCount; ++i)
         {
             thisThread->pawnHistory[pawn_structure(pos)][pos.moved_piece(quietsSearched[i])]
                                    [to_sq(quietsSearched[i])]
-              << -bestMoveBonus;
-            thisThread->mainHistory[us][from_to(quietsSearched[i])] << -bestMoveBonus;
+              << -moveMalus;
+            thisThread->mainHistory[us][from_to(quietsSearched[i])] << -moveMalus;
             update_continuation_histories(ss, pos.moved_piece(quietsSearched[i]),
-                                          to_sq(quietsSearched[i]), -bestMoveBonus);
+                                          to_sq(quietsSearched[i]), -moveMalus);
         }
     }
     else
@@ -1720,14 +1733,14 @@ void update_all_stats(const Position& pos,
         && ((ss - 1)->moveCount == 1 + (ss - 1)->ttHit
             || ((ss - 1)->currentMove == (ss - 1)->killers[0]))
         && !pos.captured_piece())
-        update_continuation_histories(ss - 1, pos.piece_on(prevSq), prevSq, -quietMoveBonus);
+        update_continuation_histories(ss - 1, pos.piece_on(prevSq), prevSq, -quietMoveMalus);
 
     // Decrease stats for all non-best capture moves
     for (int i = 0; i < captureCount; ++i)
     {
         moved_piece = pos.moved_piece(capturesSearched[i]);
         captured    = type_of(pos.piece_on(to_sq(capturesSearched[i])));
-        captureHistory[moved_piece][to_sq(capturesSearched[i])][captured] << -quietMoveBonus;
+        captureHistory[moved_piece][to_sq(capturesSearched[i])][captured] << -quietMoveMalus;
     }
 }
 
