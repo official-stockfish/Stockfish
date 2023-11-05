@@ -119,7 +119,7 @@ using PieceToHistory = Stats<int16_t, 29952, PIECE_NB, SQUARE_NB>;
 // (~63 elo)
 using ContinuationHistory = Stats<PieceToHistory, NOT_USED, PIECE_NB, SQUARE_NB>;
 
-// PawnStructureHistory is addressed by the pawn structure and a move's [piece][to]
+// PawnHistory is addressed by the pawn structure and a move's [piece][to]
 using PawnHistory = Stats<int16_t, 8192, PAWN_HISTORY_SIZE, PIECE_NB, SQUARE_NB>;
 
 // MovePicker class is used to pick one pseudo-legal move at a time from the
