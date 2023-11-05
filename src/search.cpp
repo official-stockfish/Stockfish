@@ -1141,7 +1141,7 @@ moves_loop:  // When in check, search starts here
             r++;
 
         // Set reduction to 0 for first generated move (ttMove)
-        // Nullifyies all previous reduction adjustments to ttMove and leaves only history to do them
+        // Nullifies all previous reduction adjustments to ttMove and leaves only history to do them
         else if (move == ttMove)
             r = 0;
 
