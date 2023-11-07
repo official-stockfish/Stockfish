@@ -144,7 +144,7 @@ class MovePicker {
                const ButterflyHistory*,
                const CapturePieceToHistory*,
                const PieceToHistory**,
-               const PawnHistory&,
+               const PawnHistory*,
                Move,
                const Move*);
     MovePicker(const Position&,
@@ -153,9 +153,9 @@ class MovePicker {
                const ButterflyHistory*,
                const CapturePieceToHistory*,
                const PieceToHistory**,
-               const PawnHistory&,
+               const PawnHistory*,
                Square);
-    MovePicker(const Position&, Move, Value, const CapturePieceToHistory*, const PawnHistory&);
+    MovePicker(const Position&, Move, Value, const CapturePieceToHistory*);
     Move next_move(bool skipQuiets = false);
 
    private:
@@ -170,7 +170,7 @@ class MovePicker {
     const ButterflyHistory*      mainHistory;
     const CapturePieceToHistory* captureHistory;
     const PieceToHistory**       continuationHistory;
-    const PawnHistory&           pawnHistory;
+    const PawnHistory*           pawnHistory;
     Move                         ttMove;
     ExtMove                      refutations[3], *cur, *endMoves, *endBadCaptures;
     int                          stage;
