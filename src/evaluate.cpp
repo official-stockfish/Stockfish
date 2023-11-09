@@ -164,7 +164,7 @@ Value Eval::evaluate(const Position& pos) {
     int   shuffling  = pos.rule50_count();
     int   simpleEval = simple_eval(pos, stm) + (int(pos.key() & 7) - 3);
 
-    bool lazy = abs(simpleEval) >= RookValue + KnightValue + 16 * shuffling * shuffling
+    bool lazy = abs(simpleEval) >= RookValue + KnightValue + shuffling * shuffling
                                      + abs(pos.this_thread()->bestValue)
                                      + abs(pos.this_thread()->rootSimpleEval);
 
