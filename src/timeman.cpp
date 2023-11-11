@@ -77,6 +77,8 @@ void TimeManagement::init(Search::LimitsType& limits, Color us, int ply) {
     // Calculate time constants based on current time left.
     double optConstant = std::min(0.00335 + 0.0003 * std::log10(limits.time[us] / 1000.0), 0.0048);
     double maxConstant = std::max(3.6 + 3.0 * std::log10(limits.time[us] / 1000.0), 2.7);
+    double plyPow = std::pow(ply + 3.3, 0.44);
+    double mtgCoeff = 0.88 + ply / 116.4;
 
     // A user may scale time usage by setting UCI option "Slow Mover"
     // Default is 100 and changing this value will probably lose elo.
@@ -87,7 +89,7 @@ void TimeManagement::init(Search::LimitsType& limits, Color us, int ply) {
     // game time for the current move, so also cap to 20% of available game time.
     if (limits.movestogo == 0)
     {
-        optScale = std::min(0.0120 + std::pow(ply + 3.3, 0.44) * optConstant,
+        optScale = std::min(0.0120 + plyPow * optConstant,
                             0.2 * limits.time[us] / double(timeLeft))
                  * optExtra;
         maxScale = std::min(6.8, maxConstant + ply / 12.2);
@@ -96,7 +98,7 @@ void TimeManagement::init(Search::LimitsType& limits, Color us, int ply) {
     // x moves in y seconds (+ z increment)
     else
     {
-        optScale = std::min((0.88 + ply / 116.4) / mtg, 0.88 * limits.time[us] / double(timeLeft));
+        optScale = std::min(mtgCoeff / mtg, 0.88 * limits.time[us] / double(timeLeft));
         maxScale = std::min(6.3, 1.5 + 0.11 * mtg);
     }
 
