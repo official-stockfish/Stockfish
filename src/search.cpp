@@ -382,8 +382,8 @@ void Thread::search() {
             beta      = std::min(avg + delta, VALUE_INFINITE);
 
             // Adjust optimism based on root move's averageScore (~4 Elo)
-            optimism[us]  = 103 * avg / (std::abs(avg) + 119);
-            optimism[~us] = -116 * avg / (std::abs(avg) + 123);
+            optimism[us]  = 110 * avg / (std::abs(avg) + 121);
+            optimism[~us] = -optimism[us];
 
             // Start with a small aspiration window and, in the case of a fail
             // high/low, re-search with a bigger window until we don't fail
@@ -1109,6 +1109,12 @@ moves_loop:  // When in check, search starts here
             // Quiet ttMove extensions (~1 Elo)
             else if (PvNode && move == ttMove && move == ss->killers[0]
                      && (*contHist[0])[movedPiece][to_sq(move)] >= 4194)
+                extension = 1;
+
+            // Recapture extensions (~1 Elo)
+            else if (PvNode && move == ttMove && to_sq(move) == prevSq
+                     && captureHistory[movedPiece][to_sq(move)][type_of(pos.piece_on(to_sq(move)))]
+                          > 4000)
                 extension = 1;
         }
 
