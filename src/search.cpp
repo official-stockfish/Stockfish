@@ -1178,7 +1178,12 @@ moves_loop:  // When in check, search starts here
             // In general we want to cap the LMR depth search at newDepth, but when
             // reduction is negative, we allow this move a limited search extension
             // beyond the first move depth. This may lead to hidden double extensions.
-            Depth d = std::clamp(newDepth - r, 1, newDepth + 1);
+            // NOTE:
+            // In the past this was realized via the std::clamp function but this has
+            // an undefined behavior if max value < min value which was triggered
+            // through some more negative extension tests.
+            // So it was replaced with this save implementation.
+            Depth d = std::max(1, std::min(newDepth - r, newDepth + 1));
 
             value = -search<NonPV>(pos, ss + 1, -(alpha + 1), -alpha, d, true);
 
