@@ -743,15 +743,6 @@ Value search(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth, boo
         tte->save(posKey, VALUE_NONE, ss->ttPv, BOUND_NONE, DEPTH_NONE, MOVE_NONE, eval);
     }
 
-    // Use static evaluation difference to improve quiet move ordering (~4 Elo)
-    if (is_ok((ss - 1)->currentMove) && !(ss - 1)->inCheck && !priorCapture)
-    {
-        int bonus = std::clamp(-18 * int((ss - 1)->staticEval + ss->staticEval), -1812, 1812);
-        thisThread->mainHistory[~us][from_to((ss - 1)->currentMove)] << bonus;
-        if (type_of(pos.piece_on(prevSq)) != PAWN && type_of((ss - 1)->currentMove) != PROMOTION)
-            thisThread->pawnHistory[pawn_structure(pos)][pos.piece_on(prevSq)][prevSq] << bonus / 4;
-    }
-
     // Set up the improving flag, which is true if current static evaluation is
     // bigger than the previous static evaluation at our turn (if we were in
     // check at our previous move we look at static evaluation at move prior to it
@@ -760,6 +751,18 @@ Value search(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth, boo
     improving = (ss - 2)->staticEval != VALUE_NONE ? ss->staticEval > (ss - 2)->staticEval
               : (ss - 4)->staticEval != VALUE_NONE ? ss->staticEval > (ss - 4)->staticEval
                                                    : true;
+
+    if (excludedMove)
+        goto moves_loop;
+
+    // Use static evaluation difference to improve quiet move ordering (~4 Elo)
+    if (is_ok((ss - 1)->currentMove) && !(ss - 1)->inCheck && !priorCapture)
+    {
+        int bonus = std::clamp(-18 * int((ss - 1)->staticEval + ss->staticEval), -1812, 1812);
+        thisThread->mainHistory[~us][from_to((ss - 1)->currentMove)] << bonus;
+        if (type_of(pos.piece_on(prevSq)) != PAWN && type_of((ss - 1)->currentMove) != PROMOTION)
+            thisThread->pawnHistory[pawn_structure(pos)][pos.piece_on(prevSq)][prevSq] << bonus / 4;
+    }
 
     // Step 7. Razoring (~1 Elo)
     // If eval is really low check with qsearch if it can exceed alpha, if it can't,
@@ -784,7 +787,7 @@ Value search(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth, boo
 
     // Step 9. Null move search with verification search (~35 Elo)
     if (!PvNode && (ss - 1)->currentMove != MOVE_NULL && (ss - 1)->statScore < 17257 && eval >= beta
-        && eval >= ss->staticEval && ss->staticEval >= beta - 24 * depth + 281 && !excludedMove
+        && eval >= ss->staticEval && ss->staticEval >= beta - 24 * depth + 281
         && pos.non_pawn_material(us) && ss->ply >= thisThread->nmpMinPly
         && beta > VALUE_TB_LOSS_IN_MAX_PLY)
     {
@@ -858,7 +861,7 @@ Value search(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth, boo
         MovePicker mp(pos, ttMove, probCutBeta - ss->staticEval, &captureHistory);
 
         while ((move = mp.next_move()) != MOVE_NONE)
-            if (move != excludedMove && pos.legal(move))
+            if (pos.legal(move))
             {
                 assert(pos.capture_stage(move));
 
