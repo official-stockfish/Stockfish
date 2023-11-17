@@ -356,9 +356,9 @@ std::string UCI::value(Value v) {
 
     if (abs(v) < VALUE_TB_WIN_IN_MAX_PLY)
         ss << "cp " << UCI::to_cp(v);
-    else if (abs(v) < VALUE_MATE_IN_MAX_PLY)
+    else if (abs(v) <= VALUE_TB)
     {
-        const int ply = VALUE_MATE_IN_MAX_PLY - 1 - std::abs(v);  // recompute ss->ply
+        const int ply = VALUE_TB - std::abs(v);  // recompute ss->ply
         ss << "cp " << (v > 0 ? 20000 - ply : -20000 + ply);
     }
     else

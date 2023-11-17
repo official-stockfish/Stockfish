@@ -678,9 +678,11 @@ Value search(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth, boo
 
                 int drawScore = TB::UseRule50 ? 1 : 0;
 
-                // use the range VALUE_MATE_IN_MAX_PLY to VALUE_TB_WIN_IN_MAX_PLY to score
-                value = wdl < -drawScore ? VALUE_MATED_IN_MAX_PLY + ss->ply + 1
-                      : wdl > drawScore  ? VALUE_MATE_IN_MAX_PLY - ss->ply - 1
+                Value tbValue = VALUE_TB - ss->ply;
+
+                // use the range VALUE_TB to VALUE_TB_WIN_IN_MAX_PLY to score
+                value = wdl < -drawScore ? -tbValue
+                      : wdl > drawScore  ? tbValue
                                          : VALUE_DRAW + 2 * wdl * drawScore;
 
                 Bound b = wdl < -drawScore ? BOUND_UPPER
@@ -1631,25 +1633,38 @@ Value value_to_tt(Value v, int ply) {
 // Inverse of value_to_tt(): it adjusts a mate or TB score
 // from the transposition table (which refers to the plies to mate/be mated from
 // current position) to "plies to mate/be mated (TB win/loss) from the root".
-// However, to avoid potentially false mate scores related to the 50 moves rule
-// and the graph history interaction problem, we return an optimal TB score instead.
+// However, to avoid potentially false mate or TB scores related to the 50 moves rule
+// and the graph history interaction, we return highest non-TB score instead.
+
 Value value_from_tt(Value v, int ply, int r50c) {
 
     if (v == VALUE_NONE)
         return VALUE_NONE;
 
-    if (v >= VALUE_TB_WIN_IN_MAX_PLY)  // TB win or better
+    // handle TB win or better
+    if (v >= VALUE_TB_WIN_IN_MAX_PLY)
     {
-        if (v >= VALUE_MATE_IN_MAX_PLY && VALUE_MATE - v > 99 - r50c)
-            return VALUE_MATE_IN_MAX_PLY - 1;  // do not return a potentially false mate score
+        // Downgrade a potentially false mate score
+        if (v >= VALUE_MATE_IN_MAX_PLY && VALUE_MATE - v > 100 - r50c)
+            return VALUE_TB_WIN_IN_MAX_PLY - 1;
+
+        // Downgrade a potentially false TB score.
+        if (VALUE_TB - v > 100 - r50c)
+            return VALUE_TB_WIN_IN_MAX_PLY - 1;
 
         return v - ply;
     }
 
-    if (v <= VALUE_TB_LOSS_IN_MAX_PLY)  // TB loss or worse
+    // handle TB loss or worse
+    if (v <= VALUE_TB_LOSS_IN_MAX_PLY)
     {
-        if (v <= VALUE_MATED_IN_MAX_PLY && VALUE_MATE + v > 99 - r50c)
-            return VALUE_MATED_IN_MAX_PLY + 1;  // do not return a potentially false mate score
+        // Downgrade a potentially false mate score.
+        if (v <= VALUE_MATED_IN_MAX_PLY && VALUE_MATE + v > 100 - r50c)
+            return VALUE_TB_LOSS_IN_MAX_PLY + 1;
+
+        // Downgrade a potentially false TB score.
+        if (VALUE_TB + v > 100 - r50c)
+            return VALUE_TB_LOSS_IN_MAX_PLY + 1;
 
         return v + ply;
     }
@@ -1866,7 +1881,7 @@ string UCI::pv(const Position& pos, Depth depth) {
         if (v == -VALUE_INFINITE)
             v = VALUE_ZERO;
 
-        bool tb = TB::RootInTB && abs(v) < VALUE_MATE_IN_MAX_PLY;
+        bool tb = TB::RootInTB && abs(v) <= VALUE_TB;
         v       = tb ? rootMoves[i].tbScore : v;
 
         if (ss.rdbuf()->in_avail())  // Not at first line
