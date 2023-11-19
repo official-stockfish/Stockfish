@@ -13,6 +13,7 @@ jobs:
       NAME: ${{ matrix.config.simple_name }}
       BINARY: ${{ matrix.binaries }}
     strategy:
+      fail-fast: false
       matrix:
         config:
           - name: Ubuntu 20.04 GCC
@@ -42,7 +43,6 @@ jobs:
             sde: /d/a/Stockfish/Stockfish/.output/sde-temp-files/sde-external-9.14.0-2022-10-25-win/sde.exe -future --
             archive_ext: zip
         binaries:
-          - x86-32
           - x86-64
           - x86-64-sse41-popcnt
           - x86-64-avx2
@@ -54,10 +54,6 @@ jobs:
         exclude:
           - binaries: x86-64-avxvnni
             config: { ubuntu-20.04 }
-          - binaries: x86-32
-            config: { os: windows-2022}
-          - binaries: x86-32
-            config: { os: macos-13 }
           - binaries: x86-64-avxvnni
             config: { os: macos-13 }
           - binaries: x86-64-avx512
@@ -74,12 +70,6 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
-
-      - name: Download required Linux packages
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt update
-          sudo apt install g++-multilib g++-11-multilib
 
       - name: Download required macOS packages
         if: runner.os == 'macOS'
@@ -100,7 +90,7 @@ jobs:
 
       - name: Download SDE package
         if: runner.os == 'Linux' || runner.os == 'Windows'
-        uses: petarpetrovt/setup-sde@v2.1
+        uses: petarpetrovt/setup-sde@6f4926100f31791716b11d25c0f3f35809d44f84
         with:
           environmentVariableName: SDE_DIR
           sdeVersion: 9.14.0
