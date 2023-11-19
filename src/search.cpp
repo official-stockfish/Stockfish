@@ -264,8 +264,7 @@ void MainThread::search() {
     bestPreviousAverageScore = bestThread->rootMoves[0].averageScore;
 
     // Send again PV info if we have a new best thread
-    if (bestThread != this)
-        sync_cout << UCI::pv(bestThread->rootPos, bestThread->completedDepth) << sync_endl;
+    sync_cout << UCI::pv(bestThread->rootPos, bestThread->completedDepth) << sync_endl;
 
     sync_cout << "bestmove " << UCI::move(bestThread->rootMoves[0].pv[0], rootPos.is_chess960());
 

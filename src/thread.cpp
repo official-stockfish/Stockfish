@@ -25,6 +25,7 @@
 #include <initializer_list>
 #include <map>
 #include <memory>
+#include <iostream>
 #include <utility>
 
 #include "evaluate.h"
@@ -221,10 +222,19 @@ Thread* ThreadPool::get_best_thread() const {
     Thread*                 bestThread = threads.front();
     std::map<Move, int64_t> votes;
     Value                   minScore = VALUE_NONE;
+    double					average = 0;
 
     // Find the minimum score of all threads
     for (Thread* th : threads)
+    {
         minScore = std::min(minScore, th->rootMoves[0].score);
+        average += (double) th->rootMoves[0].score;
+        std::cout << "Score : " << UCI::to_cp(th->rootMoves[0].score) << "\n";
+    }
+
+    average = average / (double) threads.size();
+
+
 
     // Vote according to score and depth, and select the best thread
     auto thread_value = [minScore](Thread* th) {
@@ -233,6 +243,8 @@ Thread* ThreadPool::get_best_thread() const {
 
     for (Thread* th : threads)
         votes[th->rootMoves[0].pv[0]] += thread_value(th);
+
+
 
     for (Thread* th : threads)
         if (abs(bestThread->rootMoves[0].score) >= VALUE_TB_WIN_IN_MAX_PLY)
@@ -245,10 +257,12 @@ Thread* ThreadPool::get_best_thread() const {
                  || (th->rootMoves[0].score > VALUE_TB_LOSS_IN_MAX_PLY
                      && (votes[th->rootMoves[0].pv[0]] > votes[bestThread->rootMoves[0].pv[0]]
                          || (votes[th->rootMoves[0].pv[0]] == votes[bestThread->rootMoves[0].pv[0]]
-                             && thread_value(th) * int(th->rootMoves[0].pv.size() > 2)
-                                  > thread_value(bestThread)
+                             && int(th->rootMoves[0].pv.size() > 2)
+                                  >= thread_value(bestThread)
                                       * int(bestThread->rootMoves[0].pv.size() > 2)))))
             bestThread = th;
+
+    bestThread->rootMoves[0].uciScore = Value(average);
 
     return bestThread;
 }
