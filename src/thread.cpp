@@ -229,7 +229,6 @@ Thread* ThreadPool::get_best_thread() const {
     {
         minScore = std::min(minScore, th->rootMoves[0].score);
         average += (double) th->rootMoves[0].score;
-        std::cout << "Score : " << UCI::to_cp(th->rootMoves[0].score) << "\n";
     }
 
     average = average / (double) threads.size();
