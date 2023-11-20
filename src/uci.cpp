@@ -82,8 +82,8 @@ void position(Position& pos, std::istringstream& is, StateListPtr& states) {
     }
 }
 
-// Prints the evaluation of the current position, consistent with
-// the UCI options set so far.
+// Prints the evaluation of the current position,
+// consistent with the UCI options set so far.
 void trace_eval(Position& pos) {
 
     StateListPtr states(new std::deque<StateInfo>(1));
@@ -122,9 +122,8 @@ void setoption(std::istringstream& is) {
 }
 
 
-// Called when the engine receives the "go" UCI command. The function
-// sets the thinking time and other parameters from the input string, then starts
-// with a search.
+// Called when the engine receives the "go" UCI command. The function sets the
+// thinking time and other parameters from the input string then stars with a search
 
 void go(Position& pos, std::istringstream& is, StateListPtr& states) {
 

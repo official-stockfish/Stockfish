@@ -834,8 +834,7 @@ Value search(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth, boo
     if (depth <= 0)
         return qsearch<PV>(pos, ss, alpha, beta);
 
-    // For cutNodes without a ttMove, we decrease depth by 2
-    // if current depth >= 8.
+    // For cutNodes without a ttMove, we decrease depth by 2 if depth is high enough.
     if (cutNode && depth >= 8 && !ttMove)
         depth -= 2;
 
@@ -1037,7 +1036,7 @@ moves_loop:  // When in check, search starts here
 
             // Note: the depth margin and singularBeta margin are known for having non-linear
             // scaling. Their values are optimized to time controls of 180+1.8 and longer
-            // so changing them requires tests at this type of time controls.
+            // so changing them requires tests at these types of time controls.
             // Recursive singular search is avoided.
             if (!rootNode && move == ttMove && !excludedMove
                 && depth >= 4 - (thisThread->completedDepth > 24) + 2 * (PvNode && tte->is_pv())
@@ -1079,7 +1078,7 @@ moves_loop:  // When in check, search starts here
                 // we do not know if the ttMove is singular or can do a multi-cut,
                 // so we reduce the ttMove in favor of other moves based on some conditions:
 
-                // If the ttMove is assumed to fail high over currnet beta (~7 Elo)
+                // If the ttMove is assumed to fail high over current beta (~7 Elo)
                 else if (ttValue >= beta)
                     extension = -2 - !PvNode;
 
@@ -1155,7 +1154,7 @@ moves_loop:  // When in check, search starts here
         if ((ss + 1)->cutoffCnt > 3)
             r++;
 
-        // Set reduction to 0 for first generated move (ttMove)
+        // Set reduction to 0 for first picked move (ttMove) (~2 Elo)
         // Nullifies all previous reduction adjustments to ttMove and leaves only history to do them
         else if (move == ttMove)
             r = 0;
@@ -1189,8 +1188,9 @@ moves_loop:  // When in check, search starts here
             {
                 // Adjust full-depth search based on LMR results - if the result
                 // was good enough search deeper, if it was bad enough search shallower.
-                const bool doDeeperSearch     = value > (bestValue + 51 + 10 * (newDepth - d));
-                const bool doShallowerSearch  = value < bestValue + newDepth;
+                const bool doDeeperSearch =
+                  value > (bestValue + 51 + 10 * (newDepth - d));             // (~1 Elo)
+                const bool doShallowerSearch = value < bestValue + newDepth;  // (~2 Elo)
 
                 newDepth += doDeeperSearch - doShallowerSearch;
 
@@ -1459,7 +1459,7 @@ Value qsearch(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth) {
                 bestValue = ttValue;
         }
         else
-            // In case of null move search use previous static eval with a different sign
+            // In case of null move search, use previous static eval with a different sign
             ss->staticEval = bestValue =
               (ss - 1)->currentMove != MOVE_NULL ? evaluate(pos) : -(ss - 1)->staticEval;
 

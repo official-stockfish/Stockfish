@@ -371,9 +371,8 @@ void Position::set_state() const {
 }
 
 
-// Overload to initialize the position object with
-// the given endgame code string like "KBPKN". It is mainly a helper to
-// get the material key out of an endgame code.
+// Overload to initialize the position object with the given endgame code string
+// like "KBPKN". It's mainly a helper to get the material key out of an endgame code.
 Position& Position::set(const string& code, Color c, StateInfo* si) {
 
     assert(code[0] == 'K');
@@ -472,8 +471,8 @@ void Position::update_slider_blockers(Color c) const {
 }
 
 
-// Computes a bitboard of all pieces which attack a
-// given square. Slider attacks use the occupied bitboard to indicate occupancy.
+// Computes a bitboard of all pieces which attack a given square.
+// Slider attacks use the occupied bitboard to indicate occupancy.
 Bitboard Position::attackers_to(Square s, Bitboard occupied) const {
 
     return (pawn_attacks_bb(BLACK, s) & pieces(WHITE, PAWN))
@@ -575,8 +574,7 @@ bool Position::pseudo_legal(const Move m) const {
     // Handle the special case of a pawn move
     if (type_of(pc) == PAWN)
     {
-        // We have already handled promotion moves, so destination
-        // cannot be on the 8th/1st rank.
+        // We have already handled promotion moves, so destination cannot be on the 8th/1st rank
         if ((Rank8BB | Rank1BB) & to)
             return false;
 
@@ -639,10 +637,9 @@ bool Position::gives_check(Move m) const {
     case PROMOTION :
         return attacks_bb(promotion_type(m), to, pieces() ^ from) & square<KING>(~sideToMove);
 
-    // En passant capture with check? We have already handled the case
-    // of direct checks and ordinary discovered check, so the only case we
-    // need to handle is the unusual case of a discovered check through
-    // the captured pawn.
+    // En passant capture with check? We have already handled the case of direct
+    // checks and ordinary discovered check, so the only case we need to handle
+    // is the unusual case of a discovered check through the captured pawn.
     case EN_PASSANT : {
         Square   capsq = make_square(file_of(to), rank_of(from));
         Bitboard b     = (pieces() ^ from ^ capsq) | to;
@@ -928,8 +925,8 @@ void Position::undo_move(Move m) {
 }
 
 
-// Helper used to do/undo a castling move. This
-// is a bit tricky in Chess960 where from/to squares can overlap.
+// Helper used to do/undo a castling move. This is a bit
+// tricky in Chess960 where from/to squares can overlap.
 template<bool Do>
 void Position::do_castling(Color us, Square from, Square& to, Square& rfrom, Square& rto) {
 
@@ -1244,8 +1241,8 @@ void Position::flip() {
 }
 
 
-// Performs some consistency checks for the
-// position object and raise an assert if something wrong is detected.
+// Performs some consistency checks for the position object
+// and raise an assert if something wrong is detected.
 // This is meant to be helpful when debugging.
 bool Position::pos_is_ok() const {
 
