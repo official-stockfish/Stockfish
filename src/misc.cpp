@@ -660,7 +660,7 @@ static int best_node(size_t idx) {
             groups.push_back(n);
 
     // In case a core has more than one logical processor (we assume 2) and we
-    // have still threads to allocate, spread them evenly across available nodes.
+    // still have threads to allocate, spread them evenly across available nodes.
     for (int t = 0; t < threads - cores; t++)
         groups.push_back(t % nodes);
 
