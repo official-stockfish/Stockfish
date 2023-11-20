@@ -96,10 +96,9 @@ enum StatsType {
     Captures
 };
 
-// ButterflyHistory records how often quiet moves have been successful or
-// unsuccessful during the current search, and is used for reduction and move
-// ordering decisions. It uses 2 tables (one for each color) indexed by
-// the move's from and to squares, as well as whether the to square is attacked, 
+// ButterflyHistory records how often quiet moves have been successful or unsuccessful
+// during the current search, and is used for reduction and move ordering decisions.
+// It uses 2 tables (one for each color) indexed by the move's from and to squares,
 // see www.chessprogramming.org/Butterfly_Boards (~11 elo)
 using ButterflyHistory = Stats<int16_t, 7183, COLOR_NB, int(SQUARE_NB) * int(SQUARE_NB)>;
 
