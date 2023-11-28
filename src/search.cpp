@@ -164,7 +164,7 @@ uint64_t perft(Position& pos, Depth depth) {
 
     for (const auto& m : MoveList<LEGAL>(pos))
     {
-        if (Root && depth <= 1)
+        if (depth <= 1)
             cnt = 1, nodes++;
         else
         {
