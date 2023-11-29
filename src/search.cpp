@@ -1687,7 +1687,7 @@ void update_all_stats(const Position& pos,
     PieceType              captured;
 
     int quietMoveBonus = stat_bonus(depth + 1);
-    int quietMoveMalus = stat_malus(depth + 1);
+    int quietMoveMalus = stat_malus(depth);
 
     if (!pos.capture_stage(bestMove))
     {
@@ -1898,9 +1898,9 @@ string UCI::pv(const Position& pos, Depth depth) {
 }
 
 
-// Called in case we have no ponder move
-// before exiting the search, for instance, in case we stop the search during a
-// fail high at root. We try hard to have a ponder move to return to the GUI,
+// Called in case we have no ponder move before exiting the search,
+// for instance, in case we stop the search during a fail high at root.
+// We try hard to have a ponder move to return to the GUI,
 // otherwise in case of 'ponder on' we have nothing to think about.
 bool RootMove::extract_ponder_from_tt(Position& pos) {
 
