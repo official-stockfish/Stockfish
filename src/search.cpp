@@ -1328,7 +1328,7 @@ moves_loop:  // When in check, search starts here
     // Step 21. Check for mate and stalemate
     // All legal moves have been searched and if there are no legal moves, it
     // must be a mate or a stalemate. If we are in a singular extension search then
-    // return a fail low score.
+    // return a mate score to trigger double extension.
 
     assert(moveCount || !ss->inCheck || excludedMove || !MoveList<LEGAL>(pos).size());
 
