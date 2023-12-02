@@ -112,15 +112,13 @@ MovePicker::MovePicker(const Position&              p,
                        const ButterflyHistory*      mh,
                        const CapturePieceToHistory* cph,
                        const PieceToHistory**       ch,
-                       const PawnHistory*           ph,
-                       Square                       rs) :
+                       const PawnHistory*           ph) :
     pos(p),
     mainHistory(mh),
     captureHistory(cph),
     continuationHistory(ch),
     pawnHistory(ph),
     ttMove(ttm),
-    recaptureSquare(rs),
     depth(d) {
     assert(d <= 0);
 
@@ -340,8 +338,7 @@ top:
         return select<Next>([&]() { return pos.see_ge(*cur, threshold); });
 
     case QCAPTURE :
-        if (select<Next>(
-              [&]() { return depth > DEPTH_QS_RECAPTURES || to_sq(*cur) == recaptureSquare; }))
+        if (select<Next>([]() { return true; }))
             return *(cur - 1);
 
         // If we did not find any move and we do not try checks, we have finished
