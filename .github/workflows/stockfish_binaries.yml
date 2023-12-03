@@ -23,7 +23,7 @@ jobs:
             comp: gcc
             shell: bash
             archive_ext: tar
-            sde: /home/runner/work/Stockfish/Stockfish/.output/sde-temp-files/sde-external-9.14.0-2022-10-25-lin/sde -future --
+            sde: /home/runner/work/Stockfish/Stockfish/.output/sde-temp-files/sde-external-9.27.0-2023-09-13-lin/sde -future --
           - name: MacOS 13 Apple Clang
             os: macos-13
             simple_name: macos
@@ -40,7 +40,7 @@ jobs:
             msys_env: x86_64-gcc
             shell: msys2 {0}
             ext: .exe
-            sde: /d/a/Stockfish/Stockfish/.output/sde-temp-files/sde-external-9.14.0-2022-10-25-win/sde.exe -future --
+            sde: /d/a/Stockfish/Stockfish/.output/sde-temp-files/sde-external-9.27.0-2023-09-13-win/sde.exe -future --
             archive_ext: zip
         binaries:
           - x86-64
@@ -67,7 +67,7 @@ jobs:
         working-directory: src
         shell: ${{ matrix.config.shell }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -77,7 +77,7 @@ jobs:
 
       - name: Install fixed GCC on Linux
         if: runner.os == 'Linux'
-        uses: egor-tensin/setup-gcc@v1
+        uses: egor-tensin/setup-gcc@eaa888eb19115a521fa72b65cd94fe1f25bbcaac  # @v1.3
         with:
           version: 11
 
@@ -90,10 +90,10 @@ jobs:
 
       - name: Download SDE package
         if: runner.os == 'Linux' || runner.os == 'Windows'
-        uses: petarpetrovt/setup-sde@6f4926100f31791716b11d25c0f3f35809d44f84
+        uses: petarpetrovt/setup-sde@91a1a03434384e064706634125a15f7446d2aafb  # @v2.3
         with:
           environmentVariableName: SDE_DIR
-          sdeVersion: 9.14.0
+          sdeVersion: 9.27.0
 
       - name: Download the used network from the fishtest framework
         run: make net
@@ -183,7 +183,7 @@ jobs:
 
       - name: Release
         if: startsWith(github.ref_name, 'sf_') && github.ref_type == 'tag'
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844  # @v1
         with:
           files: stockfish-${{ matrix.config.simple_name }}-${{ matrix.binaries }}.${{ matrix.config.archive_ext }}
 
@@ -206,7 +206,7 @@ jobs:
       - name: Prerelease
         if: github.ref_name == 'master' && env.CHANGES == '0'
         continue-on-error: true
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844  # @v1
         with:
           name: Stockfish dev-${{ env.COMMIT_DATE }}-${{ env.COMMIT_SHA }}
           tag_name: stockfish-dev-${{ env.COMMIT_DATE }}-${{ env.COMMIT_SHA }}

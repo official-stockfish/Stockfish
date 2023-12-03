@@ -11,12 +11,12 @@ jobs:
         shell: bash
     steps:
       - name: Checkout Stockfish
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           path: Stockfish
 
       - name: Checkout include-what-you-use
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: include-what-you-use/include-what-you-use
           ref: f25caa280dc3277c4086ec345ad279a2463fea0f

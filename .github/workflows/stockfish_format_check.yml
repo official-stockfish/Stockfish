@@ -16,12 +16,12 @@ jobs:
     name: clang-format check
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Run clang-format style check
-        uses: jidicula/clang-format-action@f62da5e3d3a2d88ff364771d9d938773a618ab5e
+        uses: jidicula/clang-format-action@f62da5e3d3a2d88ff364771d9d938773a618ab5e  # @v4.11.0
         id: clang-format
         continue-on-error: true
         with:
@@ -30,7 +30,7 @@ jobs:
 
       - name: Comment on PR
         if: steps.clang-format.outcome == 'failure'
-        uses: thollander/actions-comment-pull-request@1d3973dc4b8e1399c0620d3f2b1aa5e795465308
+        uses: thollander/actions-comment-pull-request@1d3973dc4b8e1399c0620d3f2b1aa5e795465308  # @v2.4.3
         with:
           message: |
             clang-format 17 needs to be run on this PR.
@@ -42,7 +42,7 @@ jobs:
 
       - name: Comment on PR
         if: steps.clang-format.outcome != 'failure'
-        uses: thollander/actions-comment-pull-request@1d3973dc4b8e1399c0620d3f2b1aa5e795465308
+        uses: thollander/actions-comment-pull-request@1d3973dc4b8e1399c0620d3f2b1aa5e795465308  # @v2.4.3
         with:
           message: |
             _(execution **${{ github.run_id }}** / attempt **${{ github.run_attempt }}**)_
