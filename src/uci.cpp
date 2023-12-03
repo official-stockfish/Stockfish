@@ -320,7 +320,7 @@ void UCI::loop(int argc, char* argv[]) {
             std::string                f;
             if (is >> std::skipws >> f)
                 filename = f;
-            Eval::NNUE::save_eval(filename);
+            Eval::NNUE::save_eval(filename, false);
         }
         else if (token == "--help" || token == "help" || token == "--license" || token == "license")
             sync_cout

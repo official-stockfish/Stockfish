@@ -40,14 +40,16 @@
 namespace Stockfish::Eval::NNUE {
 
 // Input feature converter
-LargePagePtr<FeatureTransformer> featureTransformer;
+LargePagePtr<FeatureTransformer<TransformedFeatureDimensionsBig>>   featureTransformerBig;
+LargePagePtr<FeatureTransformer<TransformedFeatureDimensionsSmall>> featureTransformerSmall;
 
 // Evaluation function
-AlignedPtr<Network> network[LayerStacks];
+AlignedPtr<Network<TransformedFeatureDimensionsBig, L2Big, L3Big>>       networkBig[LayerStacks];
+AlignedPtr<Network<TransformedFeatureDimensionsSmall, L2Small, L3Small>> networkSmall[LayerStacks];
 
-// Evaluation function file name
-std::string fileName;
-std::string netDescription;
+// Evaluation function file names
+std::string fileName[2];
+std::string netDescription[2];
 
 namespace Detail {
 
@@ -91,11 +93,20 @@ bool write_parameters(std::ostream& stream, const T& reference) {
 
 
 // Initialize the evaluation function parameters
-static void initialize() {
+static void initialize(bool small) {
 
-    Detail::initialize(featureTransformer);
-    for (std::size_t i = 0; i < LayerStacks; ++i)
-        Detail::initialize(network[i]);
+    if (small)
+    {
+        Detail::initialize(featureTransformerSmall);
+        for (std::size_t i = 0; i < LayerStacks; ++i)
+            Detail::initialize(networkSmall[i]);
+    }
+    else
+    {
+        Detail::initialize(featureTransformerBig);
+        for (std::size_t i = 0; i < LayerStacks; ++i)
+            Detail::initialize(networkBig[i]);
+    }
 }
 
 // Read network header
@@ -122,39 +133,57 @@ static bool write_header(std::ostream& stream, std::uint32_t hashValue, const st
 }
 
 // Read network parameters
-static bool read_parameters(std::istream& stream) {
+static bool read_parameters(std::istream& stream, bool small) {
 
     std::uint32_t hashValue;
-    if (!read_header(stream, &hashValue, &netDescription))
+    if (!read_header(stream, &hashValue, &netDescription[small]))
         return false;
-    if (hashValue != HashValue)
+    if (hashValue != HashValue[small])
         return false;
-    if (!Detail::read_parameters(stream, *featureTransformer))
+    if (!small && !Detail::read_parameters(stream, *featureTransformerBig))
+        return false;
+    if (small && !Detail::read_parameters(stream, *featureTransformerSmall))
         return false;
     for (std::size_t i = 0; i < LayerStacks; ++i)
-        if (!Detail::read_parameters(stream, *(network[i])))
+    {
+        if (!small && !Detail::read_parameters(stream, *(networkBig[i])))
             return false;
+        if (small && !Detail::read_parameters(stream, *(networkSmall[i])))
+            return false;
+    }
     return stream && stream.peek() == std::ios::traits_type::eof();
 }
 
 // Write network parameters
-static bool write_parameters(std::ostream& stream) {
+static bool write_parameters(std::ostream& stream, bool small) {
 
-    if (!write_header(stream, HashValue, netDescription))
+    if (!write_header(stream, HashValue[small], netDescription[small]))
         return false;
-    if (!Detail::write_parameters(stream, *featureTransformer))
+    if (!small && !Detail::write_parameters(stream, *featureTransformerBig))
+        return false;
+    if (small && !Detail::write_parameters(stream, *featureTransformerSmall))
         return false;
     for (std::size_t i = 0; i < LayerStacks; ++i)
-        if (!Detail::write_parameters(stream, *(network[i])))
+    {
+        if (!small && !Detail::write_parameters(stream, *(networkBig[i])))
             return false;
+        if (small && !Detail::write_parameters(stream, *(networkSmall[i])))
+            return false;
+    }
     return bool(stream);
 }
 
 void hint_common_parent_position(const Position& pos) {
-    featureTransformer->hint_common_access(pos);
+
+    int simpleEval = pos.simple_eval();
+    if (abs(simpleEval) > 1100)
+        featureTransformerSmall->hint_common_access(pos);
+    else
+        featureTransformerBig->hint_common_access(pos);
 }
 
 // Evaluation function. Perform differential calculation.
+template<bool Small>
 Value evaluate(const Position& pos, bool adjusted, int* complexity) {
 
     // We manually align the arrays on the stack because with gcc < 9.3
@@ -164,20 +193,27 @@ Value evaluate(const Position& pos, bool adjusted, int* complexity) {
     constexpr int      delta     = 24;
 
 #if defined(ALIGNAS_ON_STACK_VARIABLES_BROKEN)
-    TransformedFeatureType
-      transformedFeaturesUnaligned[FeatureTransformer::BufferSize
-                                   + alignment / sizeof(TransformedFeatureType)];
+    TransformedFeatureType transformedFeaturesUnaligned
+      [FeatureTransformer < Small ? TransformedFeatureDimensionsSmall
+                                  : TransformedFeatureDimensionsBig
+                                      > ::BufferSize + alignment / sizeof(TransformedFeatureType)];
 
     auto* transformedFeatures = align_ptr_up<alignment>(&transformedFeaturesUnaligned[0]);
 #else
-    alignas(alignment) TransformedFeatureType transformedFeatures[FeatureTransformer::BufferSize];
+
+    alignas(alignment) TransformedFeatureType
+      transformedFeatures[FeatureTransformer < Small
+                            ? TransformedFeatureDimensionsSmall
+                            : TransformedFeatureDimensionsBig > ::BufferSize];
 #endif
 
     ASSERT_ALIGNED(transformedFeatures, alignment);
 
-    const int  bucket     = (pos.count<ALL_PIECES>() - 1) / 4;
-    const auto psqt       = featureTransformer->transform(pos, transformedFeatures, bucket);
-    const auto positional = network[bucket]->propagate(transformedFeatures);
+    const int  bucket = (pos.count<ALL_PIECES>() - 1) / 4;
+    const auto psqt   = Small ? featureTransformerSmall->transform(pos, transformedFeatures, bucket)
+                              : featureTransformerBig->transform(pos, transformedFeatures, bucket);
+    const auto positional = Small ? networkSmall[bucket]->propagate(transformedFeatures)
+                                  : networkBig[bucket]->propagate(transformedFeatures);
 
     if (complexity)
         *complexity = abs(psqt - positional) / OutputScale;
@@ -189,6 +225,9 @@ Value evaluate(const Position& pos, bool adjusted, int* complexity) {
     else
         return static_cast<Value>((psqt + positional) / OutputScale);
 }
+
+template Value evaluate<false>(const Position& pos, bool adjusted, int* complexity);
+template Value evaluate<true>(const Position& pos, bool adjusted, int* complexity);
 
 struct NnueEvalTrace {
     static_assert(LayerStacks == PSQTBuckets);
@@ -206,12 +245,13 @@ static NnueEvalTrace trace_evaluate(const Position& pos) {
 
 #if defined(ALIGNAS_ON_STACK_VARIABLES_BROKEN)
     TransformedFeatureType
-      transformedFeaturesUnaligned[FeatureTransformer::BufferSize
+      transformedFeaturesUnaligned[FeatureTransformer<TransformedFeatureDimensionsBig>::BufferSize
                                    + alignment / sizeof(TransformedFeatureType)];
 
     auto* transformedFeatures = align_ptr_up<alignment>(&transformedFeaturesUnaligned[0]);
 #else
-    alignas(alignment) TransformedFeatureType transformedFeatures[FeatureTransformer::BufferSize];
+    alignas(alignment) TransformedFeatureType
+      transformedFeatures[FeatureTransformer<TransformedFeatureDimensionsBig>::BufferSize];
 #endif
 
     ASSERT_ALIGNED(transformedFeatures, alignment);
@@ -220,8 +260,8 @@ static NnueEvalTrace trace_evaluate(const Position& pos) {
     t.correctBucket = (pos.count<ALL_PIECES>() - 1) / 4;
     for (IndexType bucket = 0; bucket < LayerStacks; ++bucket)
     {
-        const auto materialist = featureTransformer->transform(pos, transformedFeatures, bucket);
-        const auto positional  = network[bucket]->propagate(transformedFeatures);
+        const auto materialist = featureTransformerBig->transform(pos, transformedFeatures, bucket);
+        const auto positional  = networkBig[bucket]->propagate(transformedFeatures);
 
         t.psqt[bucket]       = static_cast<Value>(materialist / OutputScale);
         t.positional[bucket] = static_cast<Value>(positional / OutputScale);
@@ -310,7 +350,7 @@ std::string trace(Position& pos) {
 
     // We estimate the value of each piece by doing a differential evaluation from
     // the current base eval, simulating the removal of the piece from its square.
-    Value base = evaluate(pos);
+    Value base = evaluate<false>(pos);
     base       = pos.side_to_move() == WHITE ? base : -base;
 
     for (File f = FILE_A; f <= FILE_H; ++f)
@@ -325,16 +365,16 @@ std::string trace(Position& pos) {
                 auto st = pos.state();
 
                 pos.remove_piece(sq);
-                st->accumulator.computed[WHITE] = false;
-                st->accumulator.computed[BLACK] = false;
+                st->accumulatorBig.computed[WHITE] = false;
+                st->accumulatorBig.computed[BLACK] = false;
 
-                Value eval = evaluate(pos);
+                Value eval = evaluate<false>(pos);
                 eval       = pos.side_to_move() == WHITE ? eval : -eval;
                 v          = base - eval;
 
                 pos.put_piece(pc, sq);
-                st->accumulator.computed[WHITE] = false;
-                st->accumulator.computed[BLACK] = false;
+                st->accumulatorBig.computed[WHITE] = false;
+                st->accumulatorBig.computed[BLACK] = false;
             }
 
             writeSquare(f, r, pc, v);
@@ -379,24 +419,24 @@ std::string trace(Position& pos) {
 
 
 // Load eval, from a file stream or a memory stream
-bool load_eval(std::string name, std::istream& stream) {
+bool load_eval(const std::string name, std::istream& stream, bool small) {
 
-    initialize();
-    fileName = name;
-    return read_parameters(stream);
+    initialize(small);
+    fileName[small] = name;
+    return read_parameters(stream, small);
 }
 
 // Save eval, to a file stream or a memory stream
-bool save_eval(std::ostream& stream) {
+bool save_eval(std::ostream& stream, bool small) {
 
-    if (fileName.empty())
+    if (fileName[small].empty())
         return false;
 
-    return write_parameters(stream);
+    return write_parameters(stream, small);
 }
 
 // Save eval, to a file given by its name
-bool save_eval(const std::optional<std::string>& filename) {
+bool save_eval(const std::optional<std::string>& filename, bool small) {
 
     std::string actualFilename;
     std::string msg;
@@ -405,7 +445,8 @@ bool save_eval(const std::optional<std::string>& filename) {
         actualFilename = filename.value();
     else
     {
-        if (currentEvalFileName != EvalFileDefaultName)
+        if (currentEvalFileName[small]
+            != (small ? EvalFileDefaultNameSmall : EvalFileDefaultNameBig))
         {
             msg = "Failed to export a net. "
                   "A non-embedded net can only be saved if the filename is specified";
@@ -413,11 +454,11 @@ bool save_eval(const std::optional<std::string>& filename) {
             sync_cout << msg << sync_endl;
             return false;
         }
-        actualFilename = EvalFileDefaultName;
+        actualFilename = (small ? EvalFileDefaultNameSmall : EvalFileDefaultNameBig);
     }
 
     std::ofstream stream(actualFilename, std::ios_base::binary);
-    bool          saved = save_eval(stream);
+    bool          saved = save_eval(stream, small);
 
     msg = saved ? "Network saved successfully to " + actualFilename : "Failed to export a net";
 
