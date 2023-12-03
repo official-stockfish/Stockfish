@@ -905,6 +905,7 @@ profileclean:
 	@rm -f stockfish.res
 	@rm -f ./-lstdc++.res
 
+ifneq ("x","x")
 # set up shell variables for the net stuff
 netvariables:
 	$(eval nnuenet := $(shell grep EvalFileDefaultName evaluate.h | grep define | sed 's/.*\(nn-[a-z0-9]\{12\}.nnue\).*/\1/'))
@@ -950,6 +951,8 @@ net: netvariables
 			echo "Network validated"; break; \
 		fi; \
 	fi; \
+
+endif
 
 format:
 	$(CLANG-FORMAT) -i $(SRCS) $(HEADERS) -style=file
