@@ -806,7 +806,7 @@ help:
 	@echo "help                    > Display architecture details"
 	@echo "profile-build           > standard build with profile-guided optimization"
 	@echo "build                   > skip profile-guided optimization"
-	@echo "net                     > Download the default nnue net"
+	@echo "net                     > Download the default nnue nets"
 	@echo "strip                   > Strip executable"
 	@echo "install                 > Install executable"
 	@echo "clean                   > Clean up"
@@ -922,16 +922,7 @@ profileclean:
 	@rm -f stockfish.res
 	@rm -f ./-lstdc++.res
 
-# set up shell variables for the net stuff
-netvariables:
-	$(eval nnuenet := $(shell grep EvalFileDefaultName evaluate.h | grep define | sed 's/.*\(nn-[a-z0-9]\{12\}.nnue\).*/\1/'))
-	$(eval nnuedownloadurl1 := https://tests.stockfishchess.org/api/nn/$(nnuenet))
-	$(eval nnuedownloadurl2 := https://github.com/official-stockfish/networks/raw/master/$(nnuenet))
-	$(eval curl_or_wget := $(shell if hash curl 2>/dev/null; then echo "curl -skL"; elif hash wget 2>/dev/null; then echo "wget -qO-"; fi))
-	$(eval shasum_command := $(shell if hash shasum 2>/dev/null; then echo "shasum -a 256 "; elif hash sha256sum 2>/dev/null; then echo "sha256sum "; fi))
-
-# evaluation network (nnue)
-net: netvariables
+define fetch_network
 	@echo "Default net: $(nnuenet)"
 	@if [ "x$(curl_or_wget)" = "x" ]; then \
 		echo "Neither curl nor wget is installed. Install one of these tools unless the net has been downloaded manually"; \
@@ -966,7 +957,24 @@ net: netvariables
 		if [ "$(nnuenet)" = "nn-"`$(shasum_command) $(nnuenet) | cut -c1-12`".nnue" ]; then \
 			echo "Network validated"; break; \
 		fi; \
-	fi; \
+	fi;
+endef
+
+# set up shell variables for the net stuff
+define netvariables
+$(eval nnuenet := $(shell grep $(1) evaluate.h | grep define | sed 's/.*\(nn-[a-z0-9]\{12\}.nnue\).*/\1/'))
+$(eval nnuedownloadurl1 := https://tests.stockfishchess.org/api/nn/$(nnuenet))
+$(eval nnuedownloadurl2 := https://github.com/official-stockfish/networks/raw/master/$(nnuenet))
+$(eval curl_or_wget := $(shell if hash curl 2>/dev/null; then echo "curl -skL"; elif hash wget 2>/dev/null; then echo "wget -qO-"; fi))
+$(eval shasum_command := $(shell if hash shasum 2>/dev/null; then echo "shasum -a 256 "; elif hash sha256sum 2>/dev/null; then echo "sha256sum "; fi))
+endef
+
+# evaluation network (nnue)
+net:
+	$(call netvariables, EvalFileDefaultNameBig)
+	$(call fetch_network)
+	$(call netvariables, EvalFileDefaultNameSmall)
+	$(call fetch_network)
 
 format:
 	$(CLANG-FORMAT) -i $(SRCS) $(HEADERS) -style=file

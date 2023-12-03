@@ -37,14 +37,28 @@ namespace Stockfish::Eval::NNUE {
 // Input features used in evaluation function
 using FeatureSet = Features::HalfKAv2_hm;
 
-// Number of input feature dimensions after conversion
-constexpr IndexType TransformedFeatureDimensions = 2560;
-constexpr IndexType PSQTBuckets                  = 8;
-constexpr IndexType LayerStacks                  = 8;
+enum NetSize {
+    Big,
+    Small
+};
 
+// Number of input feature dimensions after conversion
+constexpr IndexType TransformedFeatureDimensionsBig = 2560;
+constexpr int       L2Big                           = 15;
+constexpr int       L3Big                           = 32;
+
+constexpr IndexType TransformedFeatureDimensionsSmall = 128;
+constexpr int       L2Small                           = 15;
+constexpr int       L3Small                           = 32;
+
+constexpr IndexType PSQTBuckets = 8;
+constexpr IndexType LayerStacks = 8;
+
+template<IndexType L1, int L2, int L3>
 struct Network {
-    static constexpr int FC_0_OUTPUTS = 15;
-    static constexpr int FC_1_OUTPUTS = 32;
+    static constexpr IndexType TransformedFeatureDimensions = L1;
+    static constexpr int       FC_0_OUTPUTS                 = L2;
+    static constexpr int       FC_1_OUTPUTS                 = L3;
 
     Layers::AffineTransformSparseInput<TransformedFeatureDimensions, FC_0_OUTPUTS + 1> fc_0;
     Layers::SqrClippedReLU<FC_0_OUTPUTS + 1>                                           ac_sqr_0;
@@ -84,13 +98,13 @@ struct Network {
 
     std::int32_t propagate(const TransformedFeatureType* transformedFeatures) {
         struct alignas(CacheLineSize) Buffer {
-            alignas(CacheLineSize) decltype(fc_0)::OutputBuffer fc_0_out;
-            alignas(CacheLineSize) decltype(ac_sqr_0)::OutputType
+            alignas(CacheLineSize) typename decltype(fc_0)::OutputBuffer fc_0_out;
+            alignas(CacheLineSize) typename decltype(ac_sqr_0)::OutputType
               ac_sqr_0_out[ceil_to_multiple<IndexType>(FC_0_OUTPUTS * 2, 32)];
-            alignas(CacheLineSize) decltype(ac_0)::OutputBuffer ac_0_out;
-            alignas(CacheLineSize) decltype(fc_1)::OutputBuffer fc_1_out;
-            alignas(CacheLineSize) decltype(ac_1)::OutputBuffer ac_1_out;
-            alignas(CacheLineSize) decltype(fc_2)::OutputBuffer fc_2_out;
+            alignas(CacheLineSize) typename decltype(ac_0)::OutputBuffer ac_0_out;
+            alignas(CacheLineSize) typename decltype(fc_1)::OutputBuffer fc_1_out;
+            alignas(CacheLineSize) typename decltype(ac_1)::OutputBuffer ac_1_out;
+            alignas(CacheLineSize) typename decltype(fc_2)::OutputBuffer fc_2_out;
 
             Buffer() { std::memset(this, 0, sizeof(*this)); }
         };
@@ -108,7 +122,7 @@ struct Network {
         ac_sqr_0.propagate(buffer.fc_0_out, buffer.ac_sqr_0_out);
         ac_0.propagate(buffer.fc_0_out, buffer.ac_0_out);
         std::memcpy(buffer.ac_sqr_0_out + FC_0_OUTPUTS, buffer.ac_0_out,
-                    FC_0_OUTPUTS * sizeof(decltype(ac_0)::OutputType));
+                    FC_0_OUTPUTS * sizeof(typename decltype(ac_0)::OutputType));
         fc_1.propagate(buffer.ac_sqr_0_out, buffer.fc_1_out);
         ac_1.propagate(buffer.fc_1_out, buffer.ac_1_out);
         fc_2.propagate(buffer.ac_1_out, buffer.fc_2_out);

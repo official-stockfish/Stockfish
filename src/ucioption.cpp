@@ -82,7 +82,9 @@ void init(OptionsMap& o) {
     o["SyzygyProbeDepth"] << Option(1, 1, 100);
     o["Syzygy50MoveRule"] << Option(true);
     o["SyzygyProbeLimit"] << Option(7, 0, 7);
-    o["EvalFile"] << Option(EvalFileDefaultName, on_eval_file);
+    o["EvalFile"] << Option(EvalFileDefaultNameBig, on_eval_file);
+    // Enable this after fishtest workers support EvalFileSmall
+    // o["EvalFileSmall"] << Option(EvalFileDefaultNameSmall, on_eval_file);
 }
 
 
