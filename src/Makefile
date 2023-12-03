@@ -791,6 +791,7 @@ help:
 	@echo "profile-build           > standard build with profile-guided optimization"
 	@echo "build                   > skip profile-guided optimization"
 	@echo "net                     > Download the default nnue net"
+	@echo "net2                    > Download the smaller nnue net"
 	@echo "strip                   > Strip executable"
 	@echo "install                 > Install executable"
 	@echo "clean                   > Clean up"
@@ -857,13 +858,13 @@ endif
 	clang-profile-use clang-profile-make FORCE \
 	format analyze
 
-analyze: net config-sanity objclean
+analyze: net net2 config-sanity objclean
 	$(MAKE) -k ARCH=$(ARCH) COMP=$(COMP) $(OBJS)
 
-build: net config-sanity
+build: net net2 config-sanity
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) all
 
-profile-build: net config-sanity objclean profileclean
+profile-build: net net2 config-sanity objclean profileclean
 	@echo ""
 	@echo "Step 1/4. Building instrumented executable ..."
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_make)
@@ -905,10 +906,9 @@ profileclean:
 	@rm -f stockfish.res
 	@rm -f ./-lstdc++.res
 
-ifneq ("x","x")
 # set up shell variables for the net stuff
 netvariables:
-	$(eval nnuenet := $(shell grep EvalFileDefaultName evaluate.h | grep define | sed 's/.*\(nn-[a-z0-9]\{12\}.nnue\).*/\1/'))
+	$(eval nnuenet := $(shell grep EvalFileDefaultNameBig evaluate.h | grep define | sed 's/.*\(nn-[a-z0-9]\{12\}.nnue\).*/\1/'))
 	$(eval nnuedownloadurl1 := https://tests.stockfishchess.org/api/nn/$(nnuenet))
 	$(eval nnuedownloadurl2 := https://github.com/official-stockfish/networks/raw/master/$(nnuenet))
 	$(eval curl_or_wget := $(shell if hash curl 2>/dev/null; then echo "curl -skL"; elif hash wget 2>/dev/null; then echo "wget -qO-"; fi))
@@ -952,7 +952,51 @@ net: netvariables
 		fi; \
 	fi; \
 
-endif
+netvariables2:
+	$(eval nnuenet := $(shell grep EvalFileDefaultNameSmall evaluate.h | grep define | sed 's/.*\(nn-[a-z0-9]\{12\}.nnue\).*/\1/'))
+	$(eval nnuedownloadurl1 := https://tests.stockfishchess.org/api/nn/$(nnuenet))
+	$(eval nnuedownloadurl2 := https://github.com/official-stockfish/networks/raw/master/$(nnuenet))
+	$(eval curl_or_wget := $(shell if hash curl 2>/dev/null; then echo "curl -skL"; elif hash wget 2>/dev/null; then echo "wget -qO-"; fi))
+	$(eval shasum_command := $(shell if hash shasum 2>/dev/null; then echo "shasum -a 256 "; elif hash sha256sum 2>/dev/null; then echo "sha256sum "; fi))
+
+# evaluation network (nnue)
+net2: netvariables2
+	@echo "Default net: $(nnuenet)"
+	@if [ "x$(curl_or_wget)" = "x" ]; then \
+		echo "Neither curl nor wget is installed. Install one of these tools unless the net has been downloaded manually"; \
+	fi
+	@if [ "x$(shasum_command)" = "x" ]; then \
+		echo "shasum / sha256sum not found, skipping net validation"; \
+	elif test -f "$(nnuenet)"; then \
+		if [ "$(nnuenet)" != "nn-"`$(shasum_command) $(nnuenet) | cut -c1-12`".nnue" ]; then \
+			echo "Removing invalid network"; rm -f $(nnuenet); \
+		fi; \
+	fi;
+	@for nnuedownloadurl in "$(nnuedownloadurl1)" "$(nnuedownloadurl2)"; do \
+		if test -f "$(nnuenet)"; then \
+			echo "$(nnuenet) available : OK"; break; \
+		else \
+			if [ "x$(curl_or_wget)" != "x" ]; then \
+				echo "Downloading $${nnuedownloadurl}"; $(curl_or_wget) $${nnuedownloadurl} > $(nnuenet);\
+			else \
+				echo "No net found and download not possible"; exit 1;\
+			fi; \
+		fi; \
+		if [ "x$(shasum_command)" != "x" ]; then \
+			if [ "$(nnuenet)" != "nn-"`$(shasum_command) $(nnuenet) | cut -c1-12`".nnue" ]; then \
+				echo "Removing failed download"; rm -f $(nnuenet); \
+			fi; \
+		fi; \
+	done
+	@if ! test -f "$(nnuenet)"; then \
+		echo "Failed to download $(nnuenet)."; \
+	fi;
+	@if [ "x$(shasum_command)" != "x" ]; then \
+		if [ "$(nnuenet)" = "nn-"`$(shasum_command) $(nnuenet) | cut -c1-12`".nnue" ]; then \
+			echo "Network validated"; break; \
+		fi; \
+	fi; \
+
 
 format:
 	$(CLANG-FORMAT) -i $(SRCS) $(HEADERS) -style=file
@@ -1076,6 +1120,6 @@ icx-profile-use:
 .depend: $(SRCS)
 	-@$(CXX) $(DEPENDFLAGS) -MM $(SRCS) > $@ 2> /dev/null
 
-ifeq (, $(filter $(MAKECMDGOALS), help strip install clean net objclean profileclean config-sanity))
+ifeq (, $(filter $(MAKECMDGOALS), help strip install clean net net2 objclean profileclean config-sanity))
 -include .depend
 endif
