@@ -37,6 +37,7 @@
 #include "misc.h"
 #include "movegen.h"
 #include "nnue/evaluate_nnue.h"
+#include "nnue/nnue_architecture.h"
 #include "position.h"
 #include "search.h"
 #include "thread.h"
@@ -320,7 +321,7 @@ void UCI::loop(int argc, char* argv[]) {
             std::string                f;
             if (is >> std::skipws >> f)
                 filename = f;
-            Eval::NNUE::save_eval(filename);
+            Eval::NNUE::save_eval(filename, Eval::NNUE::Big);
         }
         else if (token == "--help" || token == "help" || token == "--license" || token == "license")
             sync_cout

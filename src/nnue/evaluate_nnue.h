@@ -39,9 +39,11 @@ class Position;
 namespace Stockfish::Eval::NNUE {
 
 // Hash value of evaluation function structure
-constexpr std::uint32_t HashValue =
-  FeatureTransformer::get_hash_value() ^ Network::get_hash_value();
-
+constexpr std::uint32_t HashValue[2] = {
+  FeatureTransformer<TransformedFeatureDimensionsBig, nullptr>::get_hash_value()
+    ^ Network<TransformedFeatureDimensionsBig, L2Big, L3Big>::get_hash_value(),
+  FeatureTransformer<TransformedFeatureDimensionsSmall, nullptr>::get_hash_value()
+    ^ Network<TransformedFeatureDimensionsSmall, L2Small, L3Small>::get_hash_value()};
 
 // Deleter for automating release of memory area
 template<typename T>
@@ -67,12 +69,13 @@ template<typename T>
 using LargePagePtr = std::unique_ptr<T, LargePageDeleter<T>>;
 
 std::string trace(Position& pos);
-Value       evaluate(const Position& pos, bool adjusted = false, int* complexity = nullptr);
-void        hint_common_parent_position(const Position& pos);
+template<NetSize Net_Size>
+Value evaluate(const Position& pos, bool adjusted = false, int* complexity = nullptr);
+void  hint_common_parent_position(const Position& pos);
 
-bool load_eval(std::string name, std::istream& stream);
-bool save_eval(std::ostream& stream);
-bool save_eval(const std::optional<std::string>& filename);
+bool load_eval(const std::string name, std::istream& stream, NetSize netSize);
+bool save_eval(std::ostream& stream, NetSize netSize);
+bool save_eval(const std::optional<std::string>& filename, NetSize netSize);
 
 }  // namespace Stockfish::Eval::NNUE
 
