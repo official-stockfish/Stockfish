@@ -46,7 +46,7 @@ jobs:
         working-directory: src
         shell: ${{ matrix.config.shell }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -139,7 +139,7 @@ jobs:
 
       - name: Release
         if: startsWith(github.ref_name, 'sf_') && github.ref_type == 'tag'
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844  # @v1
         with:
           files: stockfish-android-${{ matrix.binaries }}.tar
 
@@ -162,7 +162,7 @@ jobs:
       - name: Prerelease
         if: github.ref_name == 'master' && env.CHANGES == '0'
         continue-on-error: true
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844  # @v1
         with:
           name: Stockfish dev-${{ env.COMMIT_DATE }}-${{ env.COMMIT_SHA }}
           tag_name: stockfish-dev-${{ env.COMMIT_DATE }}-${{ env.COMMIT_SHA }}

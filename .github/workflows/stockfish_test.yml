@@ -95,7 +95,7 @@ jobs:
         working-directory: src
         shell: ${{ matrix.config.shell }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -121,11 +121,11 @@ jobs:
 
       - name: Set up QEMU
         if: matrix.config.base_image
-        uses: docker/setup-qemu-action@v2
+        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         if: matrix.config.base_image
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
 
       - name: Build Docker container
         if: matrix.config.base_image
