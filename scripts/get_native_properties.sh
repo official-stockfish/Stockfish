@@ -14,10 +14,9 @@ check_flags() {
 }
 
 # Set the CPU flags list
+# remove underscores and points from flags, e.g. gcc uses avx512vnni, while some cpuinfo can have avx512_vnni, some systems use sse4_1 others sse4.1
 get_flags() {
-  flags="$(awk '/^flags[ \t]*:/{gsub(/^flags[ \t]*:[ \t]*/, ""); line=$0} END{print line}' /proc/cpuinfo) $(awk '/^Features[ \t]*:/{gsub(/^Features[ \t]*:[ \t]*/, ""); line=$0} END{print line}' /proc/cpuinfo)"
-  # remove underscores and points from flags, e.g. gcc uses avx512vnni, while some cpuinfo can have avx512_vnni, some systems use sse4_1 others sse4.1
-  flags=$(printf '%s' "$flags" | sed "s/[_.]//g")
+  flags=$(awk '/^flags[ \t]*:|^Features[ \t]*:/{gsub(/^flags[ \t]*:[ \t]*|^Features[ \t]*:[ \t]*|[_.]/, ""); line=$0} END{print line}' /proc/cpuinfo)
 }
 
 # Check for gcc march "znver1" or "znver2" https://en.wikichip.org/wiki/amd/cpuid
@@ -55,7 +54,7 @@ case $uname_s in
         file_arch='x86-64-sse41-popcnt' # Supported by Rosetta 2
         ;;
       'x86_64')
-        flags=$(sysctl -n machdep.cpu.features machdep.cpu.leaf7_features | tr '\n' ' ' | tr '[:upper:]' '[:lower:]' | sed "s/[_.]//g")
+        flags=$(sysctl -n machdep.cpu.features machdep.cpu.leaf7_features | tr '\n' ' ' | tr '[:upper:]' '[:lower:]' | tr -d '_.')
         set_arch_x86_64
         if [ "$true_arch" = 'x86-64-vnni256' ] || [ "$true_arch" = 'x86-64-avx512' ]; then
            file_arch='x86-64-bmi2'
