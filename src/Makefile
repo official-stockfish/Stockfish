@@ -125,7 +125,7 @@ ifeq ($(ARCH), $(filter $(ARCH), \
                  x86-64-vnni512 x86-64-vnni256 x86-64-avx512 x86-64-avxvnni x86-64-bmi2 \
                  x86-64-avx2 x86-64-sse41-popcnt x86-64-modern x86-64-ssse3 x86-64-sse3-popcnt \
                  x86-64 x86-32-sse41-popcnt x86-32-sse2 x86-32 ppc-64 ppc-32 e2k \
-                 armv7 armv7-neon armv8 armv8-dotprod apple-silicon general-64 general-32 riscv64))
+                 armv7 armv7-neon armv8 armv8-dotprod apple-silicon general-64 general-32 riscv64 loongarch64))
    SUPPORTED_ARCH=true
 else
    SUPPORTED_ARCH=false
@@ -369,6 +369,10 @@ endif
 ifeq ($(ARCH),riscv64)
 	arch = riscv64
 endif
+
+ifeq ($(ARCH),loongarch64)
+	arch = loongarch64
+endif
 endif
 
 
@@ -404,6 +408,8 @@ ifeq ($(COMP),gcc)
 		ifeq ($(ARCH),riscv64)
 			CXXFLAGS += -latomic
 		endif
+	else ifeq ($(ARCH),loongarch64)
+		CXXFLAGS += -latomic
 	else
 		CXXFLAGS += -m$(bits)
 		LDFLAGS += -m$(bits)
@@ -474,6 +480,8 @@ ifeq ($(COMP),clang)
 		ifeq ($(ARCH),riscv64)
 			CXXFLAGS += -latomic
 		endif
+	else ifeq ($(ARCH),loongarch64)
+		CXXFLAGS += -latomic
 	else
 		CXXFLAGS += -m$(bits)
 		LDFLAGS += -m$(bits)
@@ -823,6 +831,7 @@ help:
 	@echo "general-64              > unspecified 64-bit"
 	@echo "general-32              > unspecified 32-bit"
 	@echo "riscv64                 > RISC-V 64-bit"
+	@echo "loongarch64             > LoongArch 64-bit"
 	@echo ""
 	@echo "Supported compilers:"
 	@echo ""
@@ -1004,7 +1013,7 @@ config-sanity: net
 	@test "$(SUPPORTED_ARCH)" = "true"
 	@test "$(arch)" = "any" || test "$(arch)" = "x86_64" || test "$(arch)" = "i386" || \
 	 test "$(arch)" = "ppc64" || test "$(arch)" = "ppc" || test "$(arch)" = "e2k" || \
-	 test "$(arch)" = "armv7" || test "$(arch)" = "armv8" || test "$(arch)" = "arm64" || test "$(arch)" = "riscv64"
+	 test "$(arch)" = "armv7" || test "$(arch)" = "armv8" || test "$(arch)" = "arm64" || test "$(arch)" = "riscv64" || test "$(arch)" = "loongarch64"
 	@test "$(bits)" = "32" || test "$(bits)" = "64"
 	@test "$(prefetch)" = "yes" || test "$(prefetch)" = "no"
 	@test "$(popcnt)" = "yes" || test "$(popcnt)" = "no"
