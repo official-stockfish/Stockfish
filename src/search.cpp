@@ -1462,14 +1462,19 @@ Value qsearch(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth) {
             ss->staticEval = bestValue =
               (ss - 1)->currentMove != MOVE_NULL ? evaluate(pos) : -(ss - 1)->staticEval;
 
-        // Stand pat. Return immediately if static value is at least beta
+        // Stand pat. Return immediately if static value is at least beta for non-Pv nodes
+        // for PvNodes make bestValue between alpha and beta instead
         if (bestValue >= beta)
         {
-            if (!ss->ttHit)
-                tte->save(posKey, value_to_tt(bestValue, ss->ply), false, BOUND_LOWER, DEPTH_NONE,
+            if (!PvNode)
+            {
+                if (!ss->ttHit)
+                    tte->save(posKey, value_to_tt(bestValue, ss->ply), false, BOUND_LOWER, DEPTH_NONE,
                           MOVE_NONE, ss->staticEval);
 
-            return bestValue;
+                return bestValue;
+            }
+            bestValue = (alpha + beta) / 2;
         }
 
         if (bestValue > alpha)
