@@ -76,7 +76,6 @@ void init(OptionsMap& o) {
     o["Slow Mover"] << Option(100, 10, 1000);
     o["nodestime"] << Option(0, 0, 10000);
     o["UCI_Chess960"] << Option(false);
-    o["UCI_AnalyseMode"] << Option(false);
     o["UCI_LimitStrength"] << Option(false);
     o["UCI_Elo"] << Option(1320, 1320, 3190);
     o["UCI_ShowWDL"] << Option(false);
