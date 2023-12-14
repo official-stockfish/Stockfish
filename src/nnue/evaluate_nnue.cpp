@@ -235,11 +235,11 @@ constexpr std::string_view PieceToChar(" PNBRQK  pnbrqk");
 
 // Converts a Value into (centi)pawns and writes it in a buffer.
 // The buffer must have capacity for at least 5 chars.
-static void format_cp_compact(Value v, char* buffer) {
+static void format_cp_compact(Value v, char* buffer, int ply) {
 
     buffer[0] = (v < 0 ? '-' : v > 0 ? '+' : ' ');
 
-    int cp = std::abs(UCI::to_cp(v));
+    int cp = std::abs(UCI::to_cp(v, ply));
     if (cp >= 10000)
     {
         buffer[1] = '0' + cp / 10000;
@@ -271,9 +271,9 @@ static void format_cp_compact(Value v, char* buffer) {
 
 
 // Converts a Value into pawns, always keeping two decimals
-static void format_cp_aligned_dot(Value v, std::stringstream& stream) {
+static void format_cp_aligned_dot(Value v, std::stringstream& stream, int ply) {
 
-    const double pawns = std::abs(0.01 * UCI::to_cp(v));
+    const double pawns = std::abs(0.01 * UCI::to_cp(v, ply));
 
     stream << (v < 0   ? '-'
                : v > 0 ? '+'
@@ -294,7 +294,7 @@ std::string trace(Position& pos) {
         board[row][8 * 8 + 1] = '\0';
 
     // A lambda to output one box of the board
-    auto writeSquare = [&board](File file, Rank rank, Piece pc, Value value) {
+    auto writeSquare = [&board, &pos](File file, Rank rank, Piece pc, Value value) {
         const int x = int(file) * 8;
         const int y = (7 - int(rank)) * 3;
         for (int i = 1; i < 8; ++i)
@@ -305,7 +305,7 @@ std::string trace(Position& pos) {
         if (pc != NO_PIECE)
             board[y + 1][x + 4] = PieceToChar[pc];
         if (value != VALUE_NONE)
-            format_cp_compact(value, &board[y + 2][x + 2]);
+            format_cp_compact(value, &board[y + 2][x + 2], pos.game_ply());
     };
 
     // We estimate the value of each piece by doing a differential evaluation from
@@ -358,13 +358,13 @@ std::string trace(Position& pos) {
     {
         ss << "|  " << bucket << "        ";
         ss << " |  ";
-        format_cp_aligned_dot(t.psqt[bucket], ss);
+        format_cp_aligned_dot(t.psqt[bucket], ss, pos.game_ply());
         ss << "  "
            << " |  ";
-        format_cp_aligned_dot(t.positional[bucket], ss);
+        format_cp_aligned_dot(t.positional[bucket], ss, pos.game_ply());
         ss << "  "
            << " |  ";
-        format_cp_aligned_dot(t.psqt[bucket] + t.positional[bucket], ss);
+        format_cp_aligned_dot(t.psqt[bucket] + t.positional[bucket], ss, pos.game_ply());
         ss << "  "
            << " |";
         if (bucket == t.correctBucket)

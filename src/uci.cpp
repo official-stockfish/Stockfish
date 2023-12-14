@@ -221,30 +221,29 @@ void bench(Position& pos, std::istream& args, StateListPtr& states) {
               << "\nNodes/second    : " << 1000 * nodes / elapsed << std::endl;
 }
 
-// The win rate model returns the probability of winning (in per mille units) given an
-// eval and a game ply. It fits the LTC fishtest statistics rather accurately.
-int win_rate_model(Value v, int ply) {
+std::pair<double, double> win_rate_params(int ply) {
 
-    // The model only captures up to 240 plies, so limit the input and then rescale
-    double m = std::min(240, ply) / 64.0;
+    // The fitted model only uses data for moves in [8, 120], and is anchored at move 32.
+    double m = std::clamp(ply / 2 + 1, 8, 120) / 32.0;
 
-    // The coefficients of a third-order polynomial fit is based on the fishtest data
-    // for two parameters that need to transform eval to the argument of a logistic
-    // function.
-    constexpr double as[] = {0.38036525, -2.82015070, 23.17882135, 307.36768407};
-    constexpr double bs[] = {-2.29434733, 13.27689788, -14.26828904, 63.45318330};
-
-    // Enforce that NormalizeToPawnValue corresponds to a 50% win rate at ply 64
-    static_assert(UCI::NormalizeToPawnValue == int(as[0] + as[1] + as[2] + as[3]));
+    // Return a = p_a(move) and b = p_b(move), see github.com/official-stockfish/WDL_model
+    constexpr double as[] = {-1.83236796, 12.99881028, -14.95254605, 332.18650913};
+    constexpr double bs[] = {-5.25625834, 38.19089529, -84.75989479, 113.30788898};
 
     double a = (((as[0] * m + as[1]) * m + as[2]) * m) + as[3];
     double b = (((bs[0] * m + bs[1]) * m + bs[2]) * m) + bs[3];
 
-    // Transform the eval to centipawns with limited range
-    double x = std::clamp(double(v), -4000.0, 4000.0);
+    return std::pair(a, b);
+}
 
-    // Return the win rate in per mille units, rounded to the nearest integer
-    return int(0.5 + 1000 / (1 + std::exp((a - x) / b)));
+// The win rate model is 1 / (1 + exp((a - eval) / b)), where a = p_a(move) and b = p_b(move).
+// It fits the LTC fishtest statistics rather accurately.
+int win_rate_model(Value v, int ply) {
+
+    auto [a, b] = win_rate_params(ply);
+
+    // Return the win rate in per mille units, rounded to the nearest integer.
+    return int(0.5 + 1000 / (1 + std::exp((a - double(v)) / b)));
 }
 
 }  // namespace
@@ -339,27 +338,23 @@ void UCI::loop(int argc, char* argv[]) {
 }
 
 
-// Turns a Value to an integer centipawn number,
-// without treatment of mate and similar special scores.
-int UCI::to_cp(Value v) { return 100 * v / UCI::NormalizeToPawnValue; }
-
 // Converts a Value to a string by adhering to the UCI protocol specification:
 //
 // cp <x>    The score from the engine's point of view in centipawns.
 // mate <y>  Mate in 'y' moves (not plies). If the engine is getting mated,
 //           uses negative values for 'y'.
-std::string UCI::value(Value v) {
+std::string UCI::to_score(Value v, int ply) {
 
     assert(-VALUE_INFINITE < v && v < VALUE_INFINITE);
 
     std::stringstream ss;
 
     if (abs(v) < VALUE_TB_WIN_IN_MAX_PLY)
-        ss << "cp " << UCI::to_cp(v);
+        ss << "cp " << UCI::to_cp(v, ply);
     else if (abs(v) < VALUE_MATE_IN_MAX_PLY)
     {
-        const int ply = VALUE_MATE_IN_MAX_PLY - 1 - std::abs(v);  // recompute ss->ply
-        ss << "cp " << (v > 0 ? 20000 - ply : -20000 + ply);
+        const int matePly = VALUE_MATE_IN_MAX_PLY - 1 - std::abs(v);  // recompute ss->ply
+        ss << "cp " << (v > 0 ? 20000 - ply : -20000 + matePly);
     }
     else
         ss << "mate " << (v > 0 ? VALUE_MATE - v + 1 : -VALUE_MATE - v) / 2;
@@ -367,6 +362,18 @@ std::string UCI::value(Value v) {
     return ss.str();
 }
 
+// Turns a Value to an integer centipawn number,
+// without treatment of mate and similar special scores.
+int UCI::to_cp(Value v, int ply) {
+
+    // In general, the score can be defined via the the WDL as
+    // (log(1/L - 1) - log(1/W - 1)) / ((log(1/L - 1) + log(1/W - 1))
+    // Based on our win_rate_model, this simply yields v / a.
+
+    auto [a, b] = win_rate_params(ply);
+
+    return round(100 * int(v) / a);
+}
 
 // Reports the win-draw-loss (WDL) statistics given an evaluation
 // and a game ply based on the data gathered for fishtest LTC games.

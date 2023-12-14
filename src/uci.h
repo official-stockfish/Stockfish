@@ -32,13 +32,6 @@ class Position;
 
 namespace UCI {
 
-// Normalizes the internal value as reported by evaluate or search
-// to the UCI centipawn result used in output. This value is derived from
-// the win_rate_model() such that Stockfish outputs an advantage of
-// "100 centipawns" for a position if the engine has a 50% probability to win
-// from this position in self-play at fishtest LTC time control.
-const int NormalizeToPawnValue = 328;
-
 class Option;
 
 // Define a custom comparator, because the UCI options should be case-insensitive
@@ -76,10 +69,15 @@ class Option {
     OnChange    on_change;
 };
 
-void        init(OptionsMap&);
-void        loop(int argc, char* argv[]);
-int         to_cp(Value v);
-std::string value(Value v);
+void init(OptionsMap&);
+void loop(int argc, char* argv[]);
+// Normalizes the internal value as reported by evaluate or search
+// to the UCI centipawn result used in output. This value is derived from
+// the win_rate_model() such that Stockfish outputs an advantage of
+// "100 centipawns" for a position if the engine has a 50% probability to win
+// from this position in self-play at fishtest LTC time control.
+int         to_cp(Value v, int ply);
+std::string to_score(Value v, int ply);
 std::string square(Square s);
 std::string move(Move m, bool chess960);
 std::string pv(const Position& pos, Depth depth);

@@ -223,7 +223,9 @@ void MainThread::search() {
     {
         rootMoves.emplace_back(MOVE_NONE);
         sync_cout << "info depth 0 score "
-                  << UCI::value(rootPos.checkers() ? -VALUE_MATE : VALUE_DRAW) << sync_endl;
+                  << UCI::to_score(rootPos.checkers() ? -VALUE_MATE : VALUE_DRAW,
+                                   rootPos.game_ply())
+                  << sync_endl;
     }
     else
     {
@@ -1874,7 +1876,7 @@ string UCI::pv(const Position& pos, Depth depth) {
 
         ss << "info"
            << " depth " << d << " seldepth " << rootMoves[i].selDepth << " multipv " << i + 1
-           << " score " << UCI::value(v);
+           << " score " << UCI::to_score(v, pos.game_ply());
 
         if (Options["UCI_ShowWDL"])
             ss << UCI::wdl(v, pos.game_ply());
