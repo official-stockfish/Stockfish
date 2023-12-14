@@ -75,7 +75,8 @@ void NNUE::init() {
 
     for (bool small : {false, true})
     {
-        std::string eval_file = std::string(Options[EvFiles[small]]);
+        std::string eval_file =
+          std::string(small ? EvalFileDefaultNameSmall : Options[EvFiles[small]]);
         if (eval_file.empty())
             eval_file = EvFileNames[small];
 
@@ -129,7 +130,8 @@ void NNUE::verify() {
 
     for (bool small : {false, true})
     {
-        std::string eval_file = std::string(Options[EvFiles[small]]);
+        std::string eval_file =
+          std::string(small ? EvalFileDefaultNameSmall : Options[EvFiles[small]]);
         if (eval_file.empty())
             eval_file = EvFileNames[small];
 
@@ -170,15 +172,12 @@ Value Eval::evaluate(const Position& pos) {
     int   shuffling  = pos.rule50_count();
     int   simpleEval = pos.simple_eval();
 
-    int lazyThresholdSimpleEval = 2300;
-    int lazyThresholdSmallNet   = 1100;
-
-    bool lazy = abs(simpleEval) > lazyThresholdSimpleEval;
+    bool lazy = abs(simpleEval) > 2300;
     if (lazy)
         v = Value(simpleEval);
     else
     {
-        bool smallNet = abs(simpleEval) > lazyThresholdSmallNet;
+        bool smallNet = abs(simpleEval) > 1100;
 
         int nnueComplexity;
 

@@ -323,6 +323,9 @@ inline Value Position::non_pawn_material() const {
     return non_pawn_material(WHITE) + non_pawn_material(BLACK);
 }
 
+// Returns a static, purely materialistic evaluation of the position from
+// the point of view of the given color. It can be divided by PawnValue to get
+// an approximation of the material advantage on the board in terms of pawns.
 inline Value Position::simple_eval() const {
     return PawnValue * (count<PAWN>(sideToMove) - count<PAWN>(~sideToMove))
          + (non_pawn_material(sideToMove) - non_pawn_material(~sideToMove));
