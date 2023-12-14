@@ -21,15 +21,17 @@
 
 #include <string>
 
+#include "types.h"
+
 namespace Stockfish {
 
 class Position;
-enum Value : int;
 
 namespace Eval {
 
 std::string trace(Position& pos);
 
+Value simple_eval(const Position& pos, Color c);
 Value evaluate(const Position& pos);
 
 extern std::string currentEvalFileName[2];

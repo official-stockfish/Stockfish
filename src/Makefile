@@ -914,7 +914,7 @@ profileclean:
 	@rm -f stockfish.res
 	@rm -f ./-lstdc++.res
 
-define evaluate_network
+define fetch_network
 	@echo "Default net: $(nnuenet)"
 	@if [ "x$(curl_or_wget)" = "x" ]; then \
 		echo "Neither curl nor wget is installed. Install one of these tools unless the net has been downloaded manually"; \
@@ -964,9 +964,9 @@ endef
 # evaluation network (nnue)
 net:
 	$(call netvariables, EvalFileDefaultNameBig)
-	$(call evaluate_network)
+	$(call fetch_network)
 	$(call netvariables, EvalFileDefaultNameSmall)
-	$(call evaluate_network)
+	$(call fetch_network)
 
 format:
 	$(CLANG-FORMAT) -i $(SRCS) $(HEADERS) -style=file
