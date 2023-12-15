@@ -31,6 +31,7 @@
 #include "incbin/incbin.h"
 #include "misc.h"
 #include "nnue/evaluate_nnue.h"
+#include "nnue/nnue_architecture.h"
 #include "position.h"
 #include "thread.h"
 #include "types.h"

@@ -38,16 +38,11 @@ enum Value : int;
 
 namespace Stockfish::Eval::NNUE {
 
-enum NetSize {
-    Big,
-    Small
-};
-
 // Hash value of evaluation function structure
 constexpr std::uint32_t HashValue[2] = {
-  FeatureTransformer<TransformedFeatureDimensionsBig>::get_hash_value()
+  FeatureTransformer<TransformedFeatureDimensionsBig, nullptr>::get_hash_value()
     ^ Network<TransformedFeatureDimensionsBig, L2Big, L3Big>::get_hash_value(),
-  FeatureTransformer<TransformedFeatureDimensionsSmall>::get_hash_value()
+  FeatureTransformer<TransformedFeatureDimensionsSmall, nullptr>::get_hash_value()
     ^ Network<TransformedFeatureDimensionsSmall, L2Small, L3Small>::get_hash_value()};
 
 // Deleter for automating release of memory area

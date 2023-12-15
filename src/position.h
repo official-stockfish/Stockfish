@@ -20,7 +20,6 @@
 #define POSITION_H_INCLUDED
 
 #include <cassert>
-#include <cstdint>
 #include <deque>
 #include <iosfwd>
 #include <memory>
@@ -28,6 +27,7 @@
 
 #include "bitboard.h"
 #include "nnue/nnue_accumulator.h"
+#include "nnue/nnue_architecture.h"
 #include "types.h"
 
 namespace Stockfish {
@@ -58,24 +58,9 @@ struct StateInfo {
     int        repetition;
 
     // Used by NNUE
-    Eval::NNUE::Accumulator<false> accumulatorBig;
-    Eval::NNUE::Accumulator<true>  accumulatorSmall;
-    DirtyPiece                     dirtyPiece;
-
-    template<bool Small>
-    constexpr std::int16_t* accumulation() {
-        return Small ? (std::int16_t*) accumulatorSmall.accumulation
-                     : (std::int16_t*) accumulatorBig.accumulation;
-    }
-    template<bool Small>
-    constexpr std::int32_t* psqt_accumulation() {
-        return Small ? (std::int32_t*) accumulatorSmall.psqtAccumulation
-                     : (std::int32_t*) accumulatorBig.psqtAccumulation;
-    }
-    template<bool Small>
-    constexpr bool* computed() {
-        return Small ? accumulatorSmall.computed : accumulatorBig.computed;
-    }
+    Eval::NNUE::Accumulator<Eval::NNUE::TransformedFeatureDimensionsBig>   accumulatorBig;
+    Eval::NNUE::Accumulator<Eval::NNUE::TransformedFeatureDimensionsSmall> accumulatorSmall;
+    DirtyPiece dirtyPiece;
 };
 
 

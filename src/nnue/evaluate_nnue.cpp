@@ -40,8 +40,8 @@
 namespace Stockfish::Eval::NNUE {
 
 // Input feature converter
-LargePagePtr<FeatureTransformer<TransformedFeatureDimensionsBig>>   featureTransformerBig;
-LargePagePtr<FeatureTransformer<TransformedFeatureDimensionsSmall>> featureTransformerSmall;
+LargePagePtr<FeatureTransformer<TransformedFeatureDimensionsBig, &StateInfo::accumulatorBig>>   featureTransformerBig;
+LargePagePtr<FeatureTransformer<TransformedFeatureDimensionsSmall, &StateInfo::accumulatorSmall>> featureTransformerSmall;
 
 // Evaluation function
 AlignedPtr<Network<TransformedFeatureDimensionsBig, L2Big, L3Big>>       networkBig[LayerStacks];
@@ -194,9 +194,9 @@ Value evaluate(const Position& pos, bool adjusted, int* complexity) {
 
 #if defined(ALIGNAS_ON_STACK_VARIABLES_BROKEN)
     TransformedFeatureType transformedFeaturesUnaligned
-      [FeatureTransformer < Small ? TransformedFeatureDimensionsSmall
-                                  : TransformedFeatureDimensionsBig
-                                      > ::BufferSize + alignment / sizeof(TransformedFeatureType)];
+      [FeatureTransformer <Small ? TransformedFeatureDimensionsSmall
+                                 : TransformedFeatureDimensionsBig,
+                           nullptr> ::BufferSize + alignment / sizeof(TransformedFeatureType)];
 
     auto* transformedFeatures = align_ptr_up<alignment>(&transformedFeaturesUnaligned[0]);
 #else
@@ -204,7 +204,7 @@ Value evaluate(const Position& pos, bool adjusted, int* complexity) {
     alignas(alignment) TransformedFeatureType
       transformedFeatures[FeatureTransformer < Net_Size == Small
                             ? TransformedFeatureDimensionsSmall
-                            : TransformedFeatureDimensionsBig > ::BufferSize];
+                            : TransformedFeatureDimensionsBig, nullptr > ::BufferSize];
 #endif
 
     ASSERT_ALIGNED(transformedFeatures, alignment);
@@ -245,13 +245,13 @@ static NnueEvalTrace trace_evaluate(const Position& pos) {
 
 #if defined(ALIGNAS_ON_STACK_VARIABLES_BROKEN)
     TransformedFeatureType
-      transformedFeaturesUnaligned[FeatureTransformer<TransformedFeatureDimensionsBig>::BufferSize
+      transformedFeaturesUnaligned[FeatureTransformer<TransformedFeatureDimensionsBig, nullptr>::BufferSize
                                    + alignment / sizeof(TransformedFeatureType)];
 
     auto* transformedFeatures = align_ptr_up<alignment>(&transformedFeaturesUnaligned[0]);
 #else
     alignas(alignment) TransformedFeatureType
-      transformedFeatures[FeatureTransformer<TransformedFeatureDimensionsBig>::BufferSize];
+      transformedFeatures[FeatureTransformer<TransformedFeatureDimensionsBig, nullptr>::BufferSize];
 #endif
 
     ASSERT_ALIGNED(transformedFeatures, alignment);

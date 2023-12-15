@@ -37,6 +37,7 @@
 #include "misc.h"
 #include "movegen.h"
 #include "nnue/evaluate_nnue.h"
+#include "nnue/nnue_architecture.h"
 #include "position.h"
 #include "search.h"
 #include "thread.h"
