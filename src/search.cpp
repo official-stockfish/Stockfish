@@ -1618,6 +1618,9 @@ Value qsearch(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth) {
         return mated_in(ss->ply);  // Plies to mate from the root
     }
 
+    if (abs(bestValue) < VALUE_TB_WIN_IN_MAX_PLY)
+        bestValue = bestValue >= beta ? (3 * bestValue + beta) / 4 : bestValue;
+
     // Save gathered info in transposition table
     tte->save(posKey, value_to_tt(bestValue, ss->ply), pvHit,
               bestValue >= beta ? BOUND_LOWER : BOUND_UPPER, ttDepth, bestMove, ss->staticEval);
