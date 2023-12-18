@@ -521,6 +521,14 @@ ifeq ($(COMP),ndk)
 			STRIP=llvm-strip
 		endif
 	endif
+	ifeq ($(arch),x86_64)
+		CXX=x86_64-linux-android21-clang++
+		ifneq ($(shell which x86_64-linux-android-strip 2>/dev/null),)
+			STRIP=x86_64-linux-android-strip
+		else
+			STRIP=llvm-strip
+		endif
+	endif
 	LDFLAGS += -static-libstdc++ -pie -lm -latomic
 endif
 
