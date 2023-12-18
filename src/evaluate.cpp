@@ -20,13 +20,13 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cmath>
 #include <cstdlib>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <vector>
-#include <cmath>
 
 #include "incbin/incbin.h"
 #include "misc.h"
