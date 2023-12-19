@@ -30,8 +30,7 @@ jobs:
         if: env.COMMIT_SHA != 'null'
         with:
           tag_name: ${{ env.COMMIT_SHA }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
 
   Analyzers:
     uses: ./.github/workflows/stockfish_analyzers.yml

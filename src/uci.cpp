@@ -352,10 +352,10 @@ std::string UCI::to_score(Value v, int ply) {
 
     if (abs(v) < VALUE_TB_WIN_IN_MAX_PLY)
         ss << "cp " << UCI::to_cp(v, ply);
-    else if (abs(v) < VALUE_MATE_IN_MAX_PLY)
+    else if (abs(v) <= VALUE_TB)
     {
-        const int matePly = VALUE_MATE_IN_MAX_PLY - 1 - std::abs(v);  // recompute ss->ply
-        ss << "cp " << (v > 0 ? 20000 - ply : -20000 + matePly);
+        const int matePly = VALUE_TB - std::abs(v);  // recompute ss->ply
+        ss << "cp " << (v > 0 ? 20000 - matePly : -20000 + matePly);
     }
     else
         ss << "mate " << (v > 0 ? VALUE_MATE - v + 1 : -VALUE_MATE - v) / 2;
