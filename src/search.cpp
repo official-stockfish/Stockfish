@@ -854,7 +854,7 @@ Value search(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth, boo
       // So effective depth is equal to depth - 3
       && !(tte->depth() >= depth - 3 && ttValue != VALUE_NONE && ttValue < probCutBeta))
     {
-        assert(probCutBeta < VALUE_INFINITE);
+        assert(probCutBeta < VALUE_INFINITE && probCutBeta > beta);
 
         MovePicker mp(pos, ttMove, probCutBeta - ss->staticEval, &captureHistory);
 
@@ -888,7 +888,8 @@ Value search(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth, boo
                     // Save ProbCut data into transposition table
                     tte->save(posKey, value_to_tt(value, ss->ply), ss->ttPv, BOUND_LOWER, depth - 3,
                               move, ss->staticEval);
-                    return value - (probCutBeta - beta);
+                    return std::abs(value) < VALUE_TB_WIN_IN_MAX_PLY ? value - (probCutBeta - beta)
+                                                                     : value;
                 }
             }
 
@@ -1613,7 +1614,7 @@ Value qsearch(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth) {
         return mated_in(ss->ply);  // Plies to mate from the root
     }
 
-    if (abs(bestValue) < VALUE_TB_WIN_IN_MAX_PLY)
+    if (std::abs(bestValue) < VALUE_TB_WIN_IN_MAX_PLY)
         bestValue = bestValue >= beta ? (3 * bestValue + beta) / 4 : bestValue;
 
     // Save gathered info in transposition table
