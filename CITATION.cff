@@ -2,17 +2,17 @@
 # Visit https://bit.ly/cffinit to generate yours today!
 
 cff-version: 1.2.0
-title: Stockfish
+title: BestV-Fish
 message: >-
   Please cite this software using the metadata from this
   file.
 type: software
 authors:
-  - name: The Stockfish developers (see AUTHORS file)
-repository-code: 'https://github.com/official-stockfish/Stockfish'
-url: 'https://stockfishchess.org/'
-repository-artifact: 'https://stockfishchess.org/download/'
-abstract: Stockfish is a free and strong UCI chess engine.
+  - name: Botli-BOT
+repository-code: 'https://github.com/BOTli-BOT/Stockfish'
+url: 'https://github.com/BOTli-BOT/Stockfish'
+repository-artifact: 'https://github.com/BOTli-BOT/Stockfish'
+abstract: BestV-Chess is a free and strong UCI chess engine derivated from Stockfish. His particularity is to prefer knight than bishop!
 keywords:
   - chess
   - artificial intelligence (AI)
