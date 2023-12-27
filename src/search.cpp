@@ -1124,6 +1124,19 @@ moves_loop:  // When in check, search starts here
         // Step 16. Make the move
         pos.do_move(move, st, givesCheck);
 
+        // Increase reduction for cut nodes (~3 Elo)
+        if (cutNode)
+            r += 2;
+
+        // Increase reduction if next ply has a lot of fail high (~5 Elo)
+        if ((ss + 1)->cutoffCnt > 3)
+            r++;
+
+        // Set reduction to 0 for first picked move (ttMove) (~2 Elo)
+        // Nullifies all previous reduction adjustments to ttMove
+        else if (move == ttMove)
+            r = 0;
+
         // Decrease reduction if position is or has been on the PV (~4 Elo)
         if (ss->ttPv && !likelyFailLow)
             r -= cutNode && tte->depth() >= depth ? 3 : 2;
@@ -1131,10 +1144,6 @@ moves_loop:  // When in check, search starts here
         // Decrease reduction if opponent's move count is high (~1 Elo)
         if ((ss - 1)->moveCount > 7)
             r--;
-
-        // Increase reduction for cut nodes (~3 Elo)
-        if (cutNode)
-            r += 2;
 
         // Increase reduction if ttMove is a capture (~3 Elo)
         if (ttCapture)
@@ -1151,15 +1160,6 @@ moves_loop:  // When in check, search starts here
         // Increase reduction on repetition (~1 Elo)
         if (move == (ss - 4)->currentMove && pos.has_repeated())
             r += 2;
-
-        // Increase reduction if next ply has a lot of fail high (~5 Elo)
-        if ((ss + 1)->cutoffCnt > 3)
-            r++;
-
-        // Set reduction to 0 for first picked move (ttMove) (~2 Elo)
-        // Nullifies all previous reduction adjustments to ttMove and leaves only history to do them
-        else if (move == ttMove)
-            r = 0;
 
         ss->statScore = 2 * thisThread->mainHistory[us][from_to(move)]
                       + (*contHist[0])[movedPiece][to_sq(move)]
