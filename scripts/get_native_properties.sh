@@ -115,6 +115,6 @@ if [ -z "$file_arch" ]; then
   file_arch=$true_arch
 fi
 
-file_name="stockfish-$file_os-$file_arch.$file_ext"
+file_name="BestV-Fish-$file_os-$file_arch.$file_ext"
 
 printf '%s %s\n' "$true_arch" "$file_name"
