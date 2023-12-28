@@ -331,8 +331,7 @@ DebugInfo<6> correl[MaxDebugSlots];
 void dbg_hit_on(bool cond, int slot) {
 
     ++hit[slot][0];
-    if (cond)
-        ++hit[slot][1];
+    ++hit[slot][cond];
 }
 
 void dbg_mean_of(int64_t value, int slot) {
