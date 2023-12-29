@@ -75,7 +75,7 @@ void TimeManagement::init(Search::LimitsType& limits, Color us, int ply) {
 
     // Calculate time constants based on current time left.
     double optConstant = std::min(0.00334 + 0.0003 * std::log10(limits.time[us] / 1000.0), 0.0049);
-    double maxConstant = std::max(3.4 + 3.0 * std::log10(limits.time[us] / 1000.0), 2.76);
+    double maxConstant = 3.4 + 3.0 * std::log10(limits.time[us] / 1000.0);
 
     // x basetime (+ z increment)
     // If there is a healthy increment, timeLeft can exceed actual available
