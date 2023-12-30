@@ -172,8 +172,8 @@ jobs:
           name: stockfish-${{ matrix.config.os }}-${{ matrix.binaries }}
           path: stockfish-${{ matrix.config.simple_name }}-${{ matrix.binaries }}.tar
 
-      # Artifacts automatically get zipped
-      # to avoid double zipping, we use the unzipped directory
+      # Artifacts automatically get zipped.
+      # To avoid double-zipping, we use the unzipped directory
       - name: Upload binaries
         if: runner.os == 'Windows'
         uses: actions/upload-artifact@v3
@@ -195,7 +195,7 @@ jobs:
         id: commit_date
         run: echo "COMMIT_DATE=$(git show -s --date=format:'%Y%m%d' --format=%cd HEAD)" >> $GITHUB_ENV
 
-      # Make sure that an old ci which still runs on master doesn't recreate a prerelease
+      # Make sure that an old ci that still runs on master doesn't recreate a prerelease
       - name: Check Pullable Commits
         id: check_commits
         run: |

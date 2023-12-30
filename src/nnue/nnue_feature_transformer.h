@@ -366,14 +366,14 @@ class FeatureTransformer {
 
         // The size must be enough to contain the largest possible update.
         // That might depend on the feature set and generally relies on the
-        // feature set's update cost calculation to be correct and never
-        // allow updates with more added/removed features than MaxActiveDimensions.
+        // feature set's update cost calculation to be correct and never allow
+        // updates with more added/removed features than MaxActiveDimensions.
         FeatureSet::IndexList removed[N - 1], added[N - 1];
 
         {
             int i =
               N
-              - 2;  // last potential state to update. Skip last element because it must be nullptr.
+              - 2;  // Last potential state to update. Skip last element because it must be nullptr.
             while (states_to_update[i] == nullptr)
                 --i;
 
