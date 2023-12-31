@@ -21,6 +21,7 @@
 
 #include <array>
 #include <cassert>
+#include <cmath>
 #include <cstdint>
 #include <cstdlib>
 #include <limits>
@@ -55,12 +56,12 @@ class StatsEntry {
     operator const T&() const { return entry; }
 
     void operator<<(int bonus) {
-        assert(abs(bonus) <= D);  // Ensure range is [-D, D]
+        assert(std::abs(bonus) <= D);  // Ensure range is [-D, D]
         static_assert(D <= std::numeric_limits<T>::max(), "D overflows T");
 
-        entry += bonus - entry * abs(bonus) / D;
+        entry += bonus - entry * std::abs(bonus) / D;
 
-        assert(abs(entry) <= D);
+        assert(std::abs(entry) <= D);
     }
 };
 
