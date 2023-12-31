@@ -89,7 +89,7 @@ struct Magic {
 extern Magic RookMagics[SQUARE_NB];
 extern Magic BishopMagics[SQUARE_NB];
 
-inline Bitboard square_bb(Square s) {
+constexpr Bitboard square_bb(Square s) {
     assert(is_ok(s));
     return (1ULL << s);
 }
