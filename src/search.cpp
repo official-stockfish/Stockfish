@@ -743,9 +743,11 @@ Value search(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth, boo
         else if (PvNode)
             Eval::NNUE::hint_common_parent_position(pos);
 
-        ss->staticEval = eval = to_static_eval(
+        Value newEval =
           ss->staticEval
-          + Value(thisThread->correctionHistory[us][correction_pawn_structure(pos)] / 32));
+          + thisThread->correctionHistory[us][pawn_structure_index<Correction>(pos)] / 32;
+
+        ss->staticEval = eval = to_static_eval(newEval);
 
         // ttValue can be used as a better position evaluation (~7 Elo)
         if (ttValue != VALUE_NONE && (tte->bound() & (ttValue > eval ? BOUND_LOWER : BOUND_UPPER)))
@@ -755,9 +757,11 @@ Value search(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth, boo
     {
         unadjustedStaticEval = ss->staticEval = eval = evaluate(pos);
 
-        ss->staticEval = eval = to_static_eval(
+        Value newEval =
           ss->staticEval
-          + Value(thisThread->correctionHistory[us][correction_pawn_structure(pos)] / 32));
+          + thisThread->correctionHistory[us][pawn_structure_index<Correction>(pos)] / 32;
+
+        ss->staticEval = eval = to_static_eval(newEval);
 
         // Static evaluation is saved as it was before adjustment by correction history
         tte->save(posKey, VALUE_NONE, ss->ttPv, BOUND_NONE, DEPTH_NONE, MOVE_NONE,
@@ -770,7 +774,8 @@ Value search(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth, boo
         int bonus = std::clamp(-13 * int((ss - 1)->staticEval + ss->staticEval), -1652, 1546);
         thisThread->mainHistory[~us][from_to((ss - 1)->currentMove)] << bonus;
         if (type_of(pos.piece_on(prevSq)) != PAWN && type_of((ss - 1)->currentMove) != PROMOTION)
-            thisThread->pawnHistory[pawn_structure(pos)][pos.piece_on(prevSq)][prevSq] << bonus / 4;
+            thisThread->pawnHistory[pawn_structure_index(pos)][pos.piece_on(prevSq)][prevSq]
+              << bonus / 4;
     }
 
     // Set up the improving flag, which is true if current static evaluation is
@@ -1017,10 +1022,10 @@ moves_loop:  // When in check, search starts here
             }
             else
             {
-                int history = (*contHist[0])[movedPiece][to_sq(move)]
-                            + (*contHist[1])[movedPiece][to_sq(move)]
-                            + (*contHist[3])[movedPiece][to_sq(move)]
-                            + thisThread->pawnHistory[pawn_structure(pos)][movedPiece][to_sq(move)];
+                int history =
+                  (*contHist[0])[movedPiece][to_sq(move)] + (*contHist[1])[movedPiece][to_sq(move)]
+                  + (*contHist[3])[movedPiece][to_sq(move)]
+                  + thisThread->pawnHistory[pawn_structure_index(pos)][movedPiece][to_sq(move)];
 
                 // Continuation history based pruning (~2 Elo)
                 if (lmrDepth < 6 && history < -3752 * depth)
@@ -1393,9 +1398,11 @@ moves_loop:  // When in check, search starts here
     if (!ss->inCheck && (!bestMove || !pos.capture(bestMove))
         && !(bestValue >= beta && bestValue <= ss->staticEval)
         && !(!bestMove && bestValue >= ss->staticEval))
-        thisThread->correctionHistory[us][correction_pawn_structure(pos)]
-          << std::clamp(int(bestValue - ss->staticEval) * depth / 8, -CORRECTION_HISTORY_LIMIT / 4,
-                        CORRECTION_HISTORY_LIMIT / 4);
+    {
+        auto bonus = std::clamp(int(bestValue - ss->staticEval) * depth / 8,
+                                -CORRECTION_HISTORY_LIMIT / 4, CORRECTION_HISTORY_LIMIT / 4);
+        thisThread->correctionHistory[us][pawn_structure_index<Correction>(pos)] << bonus;
+    }
 
     assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
 
@@ -1489,9 +1496,11 @@ Value qsearch(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth) {
             if ((unadjustedStaticEval = ss->staticEval = bestValue = tte->eval()) == VALUE_NONE)
                 unadjustedStaticEval = ss->staticEval = bestValue = evaluate(pos);
 
-            ss->staticEval = bestValue = to_static_eval(
+            Value newEval =
               ss->staticEval
-              + Value(thisThread->correctionHistory[us][correction_pawn_structure(pos)] / 32));
+              + thisThread->correctionHistory[us][pawn_structure_index<Correction>(pos)] / 32;
+
+            ss->staticEval = bestValue = to_static_eval(newEval);
 
             // ttValue can be used as a better position evaluation (~13 Elo)
             if (ttValue != VALUE_NONE
@@ -1503,9 +1512,12 @@ Value qsearch(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth) {
             // In case of null move search, use previous static eval with a different sign
             unadjustedStaticEval = ss->staticEval = bestValue =
               (ss - 1)->currentMove != MOVE_NULL ? evaluate(pos) : -(ss - 1)->staticEval;
-            ss->staticEval = bestValue = to_static_eval(
+
+            Value newEval =
               ss->staticEval
-              + Value(thisThread->correctionHistory[us][correction_pawn_structure(pos)] / 32));
+              + thisThread->correctionHistory[us][pawn_structure_index<Correction>(pos)] / 32;
+
+            ss->staticEval = bestValue = to_static_eval(newEval);
         }
 
         // Stand pat. Return immediately if static value is at least beta
@@ -1760,15 +1772,17 @@ void update_all_stats(const Position& pos,
 
         // Increase stats for the best move in case it was a quiet move
         update_quiet_stats(pos, ss, bestMove, bestMoveBonus);
-        thisThread->pawnHistory[pawn_structure(pos)][moved_piece][to_sq(bestMove)]
-          << quietMoveBonus;
+
+        int pIndex = pawn_structure_index(pos);
+        thisThread->pawnHistory[pIndex][moved_piece][to_sq(bestMove)] << quietMoveBonus;
 
         // Decrease stats for all non-best quiet moves
         for (int i = 0; i < quietCount; ++i)
         {
-            thisThread->pawnHistory[pawn_structure(pos)][pos.moved_piece(quietsSearched[i])]
-                                   [to_sq(quietsSearched[i])]
+            thisThread
+                ->pawnHistory[pIndex][pos.moved_piece(quietsSearched[i])][to_sq(quietsSearched[i])]
               << -quietMoveMalus;
+
             thisThread->mainHistory[us][from_to(quietsSearched[i])] << -quietMoveMalus;
             update_continuation_histories(ss, pos.moved_piece(quietsSearched[i]),
                                           to_sq(quietsSearched[i]), -quietMoveMalus);
