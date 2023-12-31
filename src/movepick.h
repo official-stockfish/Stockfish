@@ -33,15 +33,17 @@
 
 namespace Stockfish {
 
-constexpr int PAWN_HISTORY_SIZE = 512;  // has to be a power of 2
-constexpr int CORRECTION_HISTORY_SIZE = 16384;  // has to be a power of 2
+constexpr int PAWN_HISTORY_SIZE        = 512;    // has to be a power of 2
+constexpr int CORRECTION_HISTORY_SIZE  = 16384;  // has to be a power of 2
 constexpr int CORRECTION_HISTORY_LIMIT = 1024;
 
 static_assert((PAWN_HISTORY_SIZE & (PAWN_HISTORY_SIZE - 1)) == 0,
               "PAWN_HISTORY_SIZE has to be a power of 2");
 
 inline int pawn_structure(const Position& pos) { return pos.pawn_key() & (PAWN_HISTORY_SIZE - 1); }
-inline int correction_pawn_structure(const Position& pos) { return pos.pawn_key() & (CORRECTION_HISTORY_SIZE - 1); }
+inline int correction_pawn_structure(const Position& pos) {
+    return pos.pawn_key() & (CORRECTION_HISTORY_SIZE - 1);
+}
 
 // StatsEntry stores the stat table value. It is usually a number but could
 // be a move or even a nested history. We use a class instead of a naked value
