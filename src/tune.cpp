@@ -26,10 +26,6 @@
 
 #include "uci.h"
 
-namespace Stockfish {
-enum Value : int;
-}
-
 using std::string;
 
 namespace Stockfish {
@@ -90,17 +86,6 @@ template<>
 void Tune::Entry<int>::read_option() {
     if (Options.count(name))
         value = int(Options[name]);
-}
-
-template<>
-void Tune::Entry<Value>::init_option() {
-    make_option(name, value, range);
-}
-
-template<>
-void Tune::Entry<Value>::read_option() {
-    if (Options.count(name))
-        value = Value(int(Options[name]));
 }
 
 // Instead of a variable here we have a PostUpdate function: just call it

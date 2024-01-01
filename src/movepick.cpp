@@ -127,7 +127,7 @@ MovePicker::MovePicker(const Position&              p,
 
 // Constructor for ProbCut: we generate captures with SEE greater
 // than or equal to the given threshold.
-MovePicker::MovePicker(const Position& p, Move ttm, Value th, const CapturePieceToHistory* cph) :
+MovePicker::MovePicker(const Position& p, Move ttm, int th, const CapturePieceToHistory* cph) :
     pos(p),
     captureHistory(cph),
     ttMove(ttm),
@@ -211,8 +211,8 @@ void MovePicker::score() {
         else  // Type == EVASIONS
         {
             if (pos.capture_stage(m))
-                m.value = PieceValue[pos.piece_on(m.to_sq())] - Value(type_of(pos.moved_piece(m)))
-                        + (1 << 28);
+                m.value =
+                  PieceValue[pos.piece_on(m.to_sq())] - type_of(pos.moved_piece(m)) + (1 << 28);
             else
                 m.value = (*mainHistory)[pos.side_to_move()][m.from_to()]
                         + (*continuationHistory[0])[pos.moved_piece(m)][m.to_sq()]
@@ -268,8 +268,7 @@ top:
     case GOOD_CAPTURE :
         if (select<Next>([&]() {
                 // Move losing capture to endBadCaptures to be tried later
-                return pos.see_ge(*cur, Value(-cur->value)) ? true
-                                                            : (*endBadCaptures++ = *cur, false);
+                return pos.see_ge(*cur, -cur->value) ? true : (*endBadCaptures++ = *cur, false);
             }))
             return *(cur - 1);
 

@@ -137,29 +137,33 @@ enum Bound {
     BOUND_EXACT = BOUND_UPPER | BOUND_LOWER
 };
 
-enum Value : int {
-    VALUE_ZERO     = 0,
-    VALUE_DRAW     = 0,
-    VALUE_NONE     = 32002,
-    VALUE_INFINITE = 32001,
+// Value is used as an alias for int16_t, this is done to differentiate between
+// a search value and any other integer value. The values used in search are always
+// supposed to be in the range (-VALUE_NONE, VALUE_NONE] and should not exceed this range.
+using Value = int;
 
-    VALUE_MATE             = 32000,
-    VALUE_MATE_IN_MAX_PLY  = VALUE_MATE - MAX_PLY,
-    VALUE_MATED_IN_MAX_PLY = -VALUE_MATE_IN_MAX_PLY,
+constexpr Value VALUE_ZERO     = 0;
+constexpr Value VALUE_DRAW     = 0;
+constexpr Value VALUE_NONE     = 32002;
+constexpr Value VALUE_INFINITE = 32001;
 
-    VALUE_TB                 = VALUE_MATE_IN_MAX_PLY - 1,
-    VALUE_TB_WIN_IN_MAX_PLY  = VALUE_TB - MAX_PLY,
-    VALUE_TB_LOSS_IN_MAX_PLY = -VALUE_TB_WIN_IN_MAX_PLY,
+constexpr Value VALUE_MATE             = 32000;
+constexpr Value VALUE_MATE_IN_MAX_PLY  = VALUE_MATE - MAX_PLY;
+constexpr Value VALUE_MATED_IN_MAX_PLY = -VALUE_MATE_IN_MAX_PLY;
 
-    // In the code, we make the assumption that these values
-    // are such that non_pawn_material() can be used to uniquely
-    // identify the material on the board.
-    PawnValue   = 208,
-    KnightValue = 781,
-    BishopValue = 825,
-    RookValue   = 1276,
-    QueenValue  = 2538,
-};
+constexpr Value VALUE_TB                 = VALUE_MATE_IN_MAX_PLY - 1;
+constexpr Value VALUE_TB_WIN_IN_MAX_PLY  = VALUE_TB - MAX_PLY;
+constexpr Value VALUE_TB_LOSS_IN_MAX_PLY = -VALUE_TB_WIN_IN_MAX_PLY;
+
+// In the code, we make the assumption that these values
+// are such that non_pawn_material() can be used to uniquely
+// identify the material on the board.
+constexpr Value PawnValue   = 208;
+constexpr Value KnightValue = 781;
+constexpr Value BishopValue = 825;
+constexpr Value RookValue   = 1276;
+constexpr Value QueenValue  = 2538;
+
 
 // clang-format off
 enum PieceType {
@@ -280,7 +284,6 @@ struct DirtyPiece {
         inline T&     operator*=(T& d, int i) { return d = T(int(d) * i); } \
         inline T&     operator/=(T& d, int i) { return d = T(int(d) / i); }
 
-ENABLE_FULL_OPERATORS_ON(Value)
 ENABLE_FULL_OPERATORS_ON(Direction)
 
 ENABLE_INCR_OPERATORS_ON(PieceType)

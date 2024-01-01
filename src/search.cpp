@@ -77,13 +77,13 @@ enum NodeType {
 
 // Futility margin
 Value futility_margin(Depth d, bool noTtCutNode, bool improving) {
-    return Value((116 - 44 * noTtCutNode) * (d - improving));
+    return ((116 - 44 * noTtCutNode) * (d - improving));
 }
 
 // Reductions lookup table initialized at startup
 int Reductions[MAX_MOVES];  // [depth or moveNumber]
 
-Depth reduction(bool i, Depth d, int mn, Value delta, Value rootDelta) {
+Depth reduction(bool i, Depth d, int mn, int delta, int rootDelta) {
     int reductionScale = Reductions[d] * Reductions[mn];
     return (reductionScale + 1346 - int(delta) * 896 / int(rootDelta)) / 1024
          + (!i && reductionScale > 880);
@@ -95,7 +95,7 @@ constexpr int futility_move_count(bool improving, Depth depth) {
 
 // Guarantee evaluation does not hit the tablebase range
 constexpr Value to_static_eval(const Value v) {
-    return std::clamp(v, VALUE_TB_LOSS_IN_MAX_PLY + 1, VALUE_TB_WIN_IN_MAX_PLY - 1);
+    return std::clamp(int(v), VALUE_TB_LOSS_IN_MAX_PLY + 1, VALUE_TB_WIN_IN_MAX_PLY - 1);
 }
 
 // History and stats update bonus, based on depth
@@ -292,13 +292,13 @@ void Thread::search() {
     // (ss + 2) is needed for initialization of cutOffCnt and killers.
     Stack       stack[MAX_PLY + 10], *ss = stack + 7;
     Move        pv[MAX_PLY + 1];
-    Value       alpha, beta, delta;
+    Value       alpha, beta;
     Move        lastBestMove      = Move::none();
     Depth       lastBestMoveDepth = 0;
     MainThread* mainThread        = (this == Threads.main() ? Threads.main() : nullptr);
     double      timeReduction = 1, totBestMoveChanges = 0;
-    Color       us      = rootPos.side_to_move();
-    int         iterIdx = 0;
+    Color       us = rootPos.side_to_move();
+    int         delta, iterIdx = 0;
 
     std::memset(ss - 7, 0, 10 * sizeof(Stack));
     for (int i = 7; i > 0; --i)
@@ -374,7 +374,7 @@ void Thread::search() {
             Value avg = rootMoves[pvIdx].averageScore;
             delta     = Value(9) + int(avg) * avg / 14847;
             alpha     = std::max(avg - delta, -VALUE_INFINITE);
-            beta      = std::min(avg + delta, VALUE_INFINITE);
+            beta      = std::min(avg + delta, int(VALUE_INFINITE));
 
             // Adjust optimism based on root move's averageScore (~4 Elo)
             optimism[us]  = 121 * avg / (std::abs(avg) + 109);
@@ -425,7 +425,7 @@ void Thread::search() {
                 }
                 else if (bestValue >= beta)
                 {
-                    beta = std::min(bestValue + delta, VALUE_INFINITE);
+                    beta = std::min(bestValue + delta, int(VALUE_INFINITE));
                     ++failedHighCnt;
                 }
                 else
@@ -989,7 +989,7 @@ moves_loop:  // When in check, search starts here
         // Calculate new depth for this move
         newDepth = depth - 1;
 
-        Value delta = beta - alpha;
+        int delta = beta - alpha;
 
         Depth r = reduction(improving, depth, moveCount, delta, thisThread->rootDelta);
 
@@ -1018,7 +1018,7 @@ moves_loop:  // When in check, search starts here
                 }
 
                 // SEE based pruning for captures and checks (~11 Elo)
-                if (!pos.see_ge(move, Value(-187) * depth))
+                if (!pos.see_ge(move, -187 * depth))
                     continue;
             }
             else
@@ -1048,7 +1048,7 @@ moves_loop:  // When in check, search starts here
                 lmrDepth = std::max(lmrDepth, 0);
 
                 // Prune moves with negative SEE (~4 Elo)
-                if (!pos.see_ge(move, Value(-26 * lmrDepth * lmrDepth)))
+                if (!pos.see_ge(move, -26 * lmrDepth * lmrDepth))
                     continue;
             }
         }
@@ -1617,7 +1617,7 @@ Value qsearch(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth) {
                 continue;
 
             // Do not search moves with bad enough SEE values (~5 Elo)
-            if (!pos.see_ge(move, Value(-77)))
+            if (!pos.see_ge(move, -77))
                 continue;
         }
 
@@ -1863,7 +1863,7 @@ Move Skill::pick_best(size_t multiPV) {
 
     // RootMoves are already sorted by score in descending order
     Value  topScore = rootMoves[0].score;
-    int    delta    = std::min(topScore - rootMoves[multiPV - 1].score, PawnValue);
+    int    delta    = std::min(topScore - rootMoves[multiPV - 1].score, int(PawnValue));
     int    maxScore = -VALUE_INFINITE;
     double weakness = 120 - 2 * level;
 
