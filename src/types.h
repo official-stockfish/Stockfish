@@ -108,30 +108,6 @@ using Bitboard = uint64_t;
 constexpr int MAX_MOVES = 256;
 constexpr int MAX_PLY   = 246;
 
-// A move needs 16 bits to be stored
-//
-// bit  0- 5: destination square (from 0 to 63)
-// bit  6-11: origin square (from 0 to 63)
-// bit 12-13: promotion piece type - 2 (from KNIGHT-2 to QUEEN-2)
-// bit 14-15: special move flag: promotion (1), en passant (2), castling (3)
-// NOTE: en passant bit is set only when a pawn can be captured
-//
-// Special cases are MOVE_NONE and MOVE_NULL. We can sneak these in because in
-// any normal move destination square is always different from origin square
-// while MOVE_NONE and MOVE_NULL have the same origin and destination square.
-
-enum Move : int {
-    MOVE_NONE,
-    MOVE_NULL = 65
-};
-
-enum MoveType {
-    NORMAL,
-    PROMOTION  = 1 << 14,
-    EN_PASSANT = 2 << 14,
-    CASTLING   = 3 << 14
-};
-
 enum Color {
     WHITE,
     BLACK,
@@ -353,8 +329,6 @@ inline Color color_of(Piece pc) {
     return Color(pc >> 3);
 }
 
-constexpr bool is_ok(Move m) { return m != MOVE_NONE && m != MOVE_NULL; }
-
 constexpr bool is_ok(Square s) { return s >= SQ_A1 && s <= SQ_H8; }
 
 constexpr File file_of(Square s) { return File(s & 7); }
@@ -369,33 +343,80 @@ constexpr Rank relative_rank(Color c, Square s) { return relative_rank(c, rank_o
 
 constexpr Direction pawn_push(Color c) { return c == WHITE ? NORTH : SOUTH; }
 
-constexpr Square from_sq(Move m) {
-    assert(is_ok(m));
-    return Square((m >> 6) & 0x3F);
-}
-
-constexpr Square to_sq(Move m) {
-    assert(is_ok(m));
-    return Square(m & 0x3F);
-}
-
-constexpr int from_to(Move m) { return m & 0xFFF; }
-
-constexpr MoveType type_of(Move m) { return MoveType(m & (3 << 14)); }
-
-constexpr PieceType promotion_type(Move m) { return PieceType(((m >> 12) & 3) + KNIGHT); }
-
-constexpr Move make_move(Square from, Square to) { return Move((from << 6) + to); }
-
-template<MoveType T>
-constexpr Move make(Square from, Square to, PieceType pt = KNIGHT) {
-    return Move(T + ((pt - KNIGHT) << 12) + (from << 6) + to);
-}
 
 // Based on a congruential pseudo-random number generator
 constexpr Key make_key(uint64_t seed) {
     return seed * 6364136223846793005ULL + 1442695040888963407ULL;
 }
+
+
+enum MoveType {
+    NORMAL,
+    PROMOTION  = 1 << 14,
+    EN_PASSANT = 2 << 14,
+    CASTLING   = 3 << 14
+};
+
+// A move needs 16 bits to be stored
+//
+// bit  0- 5: destination square (from 0 to 63)
+// bit  6-11: origin square (from 0 to 63)
+// bit 12-13: promotion piece type - 2 (from KNIGHT-2 to QUEEN-2)
+// bit 14-15: special move flag: promotion (1), en passant (2), castling (3)
+// NOTE: en passant bit is set only when a pawn can be captured
+//
+// Special cases are Move::none() and Move::null(). We can sneak these in because in
+// any normal move destination square is always different from origin square
+// while Move::none() and Move::null() have the same origin and destination square.
+class Move {
+   public:
+    Move() = default;
+    constexpr explicit Move(std::uint16_t d) :
+        data(d) {}
+
+    constexpr Move(Square from, Square to) :
+        data((from << 6) + to) {}
+
+    template<MoveType T>
+    static constexpr Move make(Square from, Square to, PieceType pt = KNIGHT) {
+        return Move(T + ((pt - KNIGHT) << 12) + (from << 6) + to);
+    }
+
+    constexpr Square from_sq() const {
+        assert(is_ok());
+        return Square((data >> 6) & 0x3F);
+    }
+
+    constexpr Square to_sq() const {
+        assert(is_ok());
+        return Square(data & 0x3F);
+    }
+
+    constexpr int from_to() const { return data & 0xFFF; }
+
+    constexpr MoveType type_of() const { return MoveType(data & (3 << 14)); }
+
+    constexpr PieceType promotion_type() const { return PieceType(((data >> 12) & 3) + KNIGHT); }
+
+    constexpr bool is_ok() const { return none().data != data && null().data != data; }
+
+    static constexpr Move null() { return Move(65); }
+    static constexpr Move none() { return Move(0); }
+
+    constexpr bool operator==(const Move& m) const { return data == m.data; }
+    constexpr bool operator!=(const Move& m) const { return data != m.data; }
+
+    constexpr explicit operator bool() const { return data != 0; }
+
+    constexpr std::uint16_t raw() const { return data; }
+
+    struct MoveHash {
+        std::size_t operator()(const Move& m) const { return m.data; }
+    };
+
+   protected:
+    std::uint16_t data;
+};
 
 }  // namespace Stockfish
 

@@ -24,7 +24,7 @@
 #include <cstdlib>
 #include <deque>
 #include <initializer_list>
-#include <map>
+#include <unordered_map>
 #include <memory>
 #include <utility>
 
@@ -66,7 +66,7 @@ Thread::~Thread() {
 // Reset histories, usually before a new game
 void Thread::clear() {
 
-    counterMoves.fill(MOVE_NONE);
+    counterMoves.fill(Move::none());
     mainHistory.fill(0);
     captureHistory.fill(0);
     pawnHistory.fill(0);
@@ -220,9 +220,9 @@ void ThreadPool::start_thinking(Position&                 pos,
 
 Thread* ThreadPool::get_best_thread() const {
 
-    Thread*                 bestThread = threads.front();
-    std::map<Move, int64_t> votes;
-    Value                   minScore = VALUE_NONE;
+    Thread*                                           bestThread = threads.front();
+    std::unordered_map<Move, int64_t, Move::MoveHash> votes;
+    Value                                             minScore = VALUE_NONE;
 
     // Find the minimum score of all threads
     for (Thread* th : threads)

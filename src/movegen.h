@@ -37,12 +37,10 @@ enum GenType {
     LEGAL
 };
 
-struct ExtMove {
-    Move move;
-    int  value;
+struct ExtMove: public Move {
+    int value;
 
-    operator Move() const { return move; }
-    void operator=(Move m) { move = m; }
+    void operator=(Move m) { data = m.raw(); }
 
     // Inhibit unwanted implicit conversions to Move
     // with an ambiguity that yields to a compile error.

@@ -210,7 +210,7 @@ inline Piece Position::piece_on(Square s) const {
 
 inline bool Position::empty(Square s) const { return piece_on(s) == NO_PIECE; }
 
-inline Piece Position::moved_piece(Move m) const { return piece_on(from_sq(m)); }
+inline Piece Position::moved_piece(Move m) const { return piece_on(m.from_sq()); }
 
 inline Bitboard Position::pieces(PieceType pt) const { return byTypeBB[pt]; }
 
@@ -312,16 +312,16 @@ inline int Position::rule50_count() const { return st->rule50; }
 inline bool Position::is_chess960() const { return chess960; }
 
 inline bool Position::capture(Move m) const {
-    assert(is_ok(m));
-    return (!empty(to_sq(m)) && type_of(m) != CASTLING) || type_of(m) == EN_PASSANT;
+    assert(m.is_ok());
+    return (!empty(m.to_sq()) && m.type_of() != CASTLING) || m.type_of() == EN_PASSANT;
 }
 
 // Returns true if a move is generated from the capture stage, having also
 // queen promotions covered, i.e. consistency with the capture stage move generation
 // is needed to avoid the generation of duplicate moves.
 inline bool Position::capture_stage(Move m) const {
-    assert(is_ok(m));
-    return capture(m) || promotion_type(m) == QUEEN;
+    assert(m.is_ok());
+    return capture(m) || m.promotion_type() == QUEEN;
 }
 
 inline Piece Position::captured_piece() const { return st->capturedPiece; }
