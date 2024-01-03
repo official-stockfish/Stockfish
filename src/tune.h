@@ -26,8 +26,6 @@
 #include <utility>
 #include <vector>
 
-#include "types.h"
-
 namespace Stockfish {
 
 using Range    = std::pair<int, int>;  // Option's min-max values
@@ -102,8 +100,7 @@ class Tune {
 
         static_assert(!std::is_const_v<T>, "Parameter cannot be const!");
 
-        static_assert(std::is_same_v<T, int> || std::is_same_v<T, Value>
-                        || std::is_same_v<T, PostUpdate>,
+        static_assert(std::is_same_v<T, int> || std::is_same_v<T, PostUpdate>,
                       "Parameter type not supported!");
 
         Entry(const std::string& n, T& v, const SetRange& r) :
