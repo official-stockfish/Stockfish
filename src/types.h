@@ -414,10 +414,6 @@ class Move {
         std::size_t operator()(const Move& m) const { return m.data; }
     };
 
-    struct MoveEqual {
-        bool operator()(const Move& m1, const Move& m2) const { return m1.data == m2.data; }
-    };
-
    protected:
     std::uint16_t data;
 };

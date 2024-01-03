@@ -220,9 +220,9 @@ void ThreadPool::start_thinking(Position&                 pos,
 
 Thread* ThreadPool::get_best_thread() const {
 
-    Thread*                                                            bestThread = threads.front();
-    std::unordered_map<Move, int64_t, Move::MoveHash, Move::MoveEqual> votes;
-    Value                                                              minScore = VALUE_NONE;
+    Thread*                                           bestThread = threads.front();
+    std::unordered_map<Move, int64_t, Move::MoveHash> votes;
+    Value                                             minScore = VALUE_NONE;
 
     // Find the minimum score of all threads
     for (Thread* th : threads)
