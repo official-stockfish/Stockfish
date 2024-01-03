@@ -25,7 +25,6 @@
 #include <string>
 
 #include "uci.h"
-#include "types.h"
 
 using std::string;
 
