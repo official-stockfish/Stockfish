@@ -25,10 +25,7 @@
 #include <string>
 
 #include "uci.h"
-
-namespace Stockfish {
-using Value = int;
-}
+#include "types.h"
 
 using std::string;
 

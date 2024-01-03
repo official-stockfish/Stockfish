@@ -26,8 +26,9 @@
 #include <utility>
 #include <vector>
 
+#include "types.h"
+
 namespace Stockfish {
-using Value = int;
 
 using Range    = std::pair<int, int>;  // Option's min-max values
 using RangeFun = Range(int);
