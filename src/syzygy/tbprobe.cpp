@@ -863,7 +863,7 @@ do_probe_table(const Position& pos, T* entry, WDLScore wdl, ProbeState* result) 
         int adjust2 = (squares[2] > squares[0]) + (squares[2] > squares[1]);
 
         // First piece is below a1-h8 diagonal. MapA1D1D4[] maps the b1-d1-d3
-        // triangle to 0...5. There are 63 squares for second piece and and 62
+        // triangle to 0...5. There are 63 squares for second piece and 62
         // (mapped to 0...61) for the third.
         if (off_A1H8(squares[0]))
             idx = (MapA1D1D4[squares[0]] * 63 + (squares[1] - adjust1)) * 62 + squares[2] - adjust2;
