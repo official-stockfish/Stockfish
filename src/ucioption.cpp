@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2023 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2024 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -70,7 +70,7 @@ void init(OptionsMap& o) {
     o["Hash"] << Option(16, 1, MaxHashMB, on_hash_size);
     o["Clear Hash"] << Option(on_clear_hash);
     o["Ponder"] << Option(false);
-    o["MultiPV"] << Option(1, 1, 500);
+    o["MultiPV"] << Option(1, 1, MAX_MOVES);
     o["Skill Level"] << Option(20, 0, 20);
     o["Move Overhead"] << Option(10, 0, 5000);
     o["nodestime"] << Option(0, 0, 10000);

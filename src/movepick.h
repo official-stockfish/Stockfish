@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2023 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2024 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -142,7 +142,7 @@ using CorrectionHistory =
 // MovePicker class is used to pick one pseudo-legal move at a time from the
 // current position. The most important method is next_move(), which returns a
 // new pseudo-legal move each time it is called, until there are no moves left,
-// when MOVE_NONE is returned. In order to improve the efficiency of the
+// when Move::none() is returned. In order to improve the efficiency of the
 // alpha-beta algorithm, MovePicker attempts to return the moves which are most
 // likely to get a cut-off first.
 class MovePicker {
@@ -171,7 +171,7 @@ class MovePicker {
                const CapturePieceToHistory*,
                const PieceToHistory**,
                const PawnHistory*);
-    MovePicker(const Position&, Move, Value, const CapturePieceToHistory*);
+    MovePicker(const Position&, Move, int, const CapturePieceToHistory*);
     Move next_move(bool skipQuiets = false);
 
    private:
@@ -190,7 +190,7 @@ class MovePicker {
     Move                         ttMove;
     ExtMove                      refutations[3], *cur, *endMoves, *endBadCaptures;
     int                          stage;
-    Value                        threshold;
+    int                          threshold;
     Depth                        depth;
     ExtMove                      moves[MAX_MOVES];
 };

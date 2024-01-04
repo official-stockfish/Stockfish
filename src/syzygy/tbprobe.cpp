@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2023 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2024 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -1074,7 +1074,7 @@ uint8_t* set_sizes(PairsData* d, uint8_t* data) {
     // See https://web.archive.org/web/20201106232444/http://www.larsson.dogma.net/dcc99.pdf
     std::vector<bool> visited(d->symlen.size());
 
-    for (Sym sym = 0; sym < d->symlen.size(); ++sym)
+    for (std::size_t sym = 0; sym < d->symlen.size(); ++sym)
         if (!visited[sym])
             d->symlen[sym] = set_symlen(d, sym, visited);
 

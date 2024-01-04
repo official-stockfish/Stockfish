@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2023 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2024 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -56,13 +56,15 @@ class Thread {
     size_t                pvIdx, pvLast;
     std::atomic<uint64_t> nodes, tbHits, bestMoveChanges;
     int                   selDepth, nmpMinPly;
-    Value                 bestValue, optimism[COLOR_NB];
+    Value                 bestValue;
+
+    int optimism[COLOR_NB];
 
     Position              rootPos;
     StateInfo             rootState;
     Search::RootMoves     rootMoves;
     Depth                 rootDepth, completedDepth;
-    Value                 rootDelta;
+    int                   rootDelta;
     Value                 rootSimpleEval;
     CounterMoveHistory    counterMoves;
     ButterflyHistory      mainHistory;

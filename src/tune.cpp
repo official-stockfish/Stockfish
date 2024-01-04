@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2023 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2024 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -25,10 +25,6 @@
 #include <string>
 
 #include "uci.h"
-
-namespace Stockfish {
-enum Value : int;
-}
 
 using std::string;
 
@@ -90,17 +86,6 @@ template<>
 void Tune::Entry<int>::read_option() {
     if (Options.count(name))
         value = int(Options[name]);
-}
-
-template<>
-void Tune::Entry<Value>::init_option() {
-    make_option(name, value, range);
-}
-
-template<>
-void Tune::Entry<Value>::read_option() {
-    if (Options.count(name))
-        value = Value(int(Options[name]));
 }
 
 // Instead of a variable here we have a PostUpdate function: just call it
