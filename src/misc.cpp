@@ -476,8 +476,10 @@ static void* aligned_large_pages_alloc_windows([[maybe_unused]] size_t allocSize
     void*  mem = nullptr;
 
     const size_t largePageSize = GetLargePageMinimum();
+    #ifdef _WIN32
     if (!largePageSize)
         return nullptr;
+    #endif
 
     // Dynamically link OpenProcessToken, LookupPrivilegeValue and AdjustTokenPrivileges
 
