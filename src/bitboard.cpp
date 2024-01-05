@@ -117,7 +117,7 @@ void Bitboards::init() {
 
 namespace {
 
-Bitboard sliding_attack(PieceType pt, Square sq, Bitboard occupied) {
+constexpr Bitboard sliding_attack(PieceType pt, Square sq, Bitboard occupied) {
 
     Bitboard  attacks             = 0;
     Direction RookDirections[4]   = {NORTH, SOUTH, EAST, WEST};
