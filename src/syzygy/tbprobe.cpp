@@ -992,9 +992,9 @@ void set_groups(T& e, PairsData* d, int order[], File f) {
     d->groupIdx[n] = idx;
 }
 
-// In recursive pairing, each symbol represents a pair of child symbols. So, read
-// the symbol data in the d->btree[] array and expand each one in its left and
-// right child symbol, until reaching the leaves that represent the symbol's value.
+// In recursive pairing, each symbol represents a pair of child symbols. So, we
+// read the symbol data in the d->btree[] array and expand each one in its left and
+// right child symbols, until reaching the leaves that represent a symbol's value.
 uint8_t set_symlen(PairsData* d, Sym s, std::vector<bool>& visited) {
 
     visited[s] = true;  // We can set it now, because the tree is acyclic
@@ -1022,12 +1022,12 @@ uint8_t* set_sizes(PairsData* d, uint8_t* data) {
     {
         d->blocksNum = d->blockLengthSize = 0;
         d->span = d->sparseIndexSize = 0;        // Broken MSVC zero-init
-        d->minSymLen                 = *data++;  // We store the single value here
+        d->minSymLen                 = *data++;  // Store a single value here
         return data;
     }
 
-    // groupLen[] is a zero-terminated list of group lengths. The last groupIdx[]
-    // element stores the biggest index, which is the TB size.
+    // groupLen[] is a zero-terminated array of group lengths. The last element
+    // of the groupIdx[] array stores the biggest index, which is the TB size.
     uint64_t tbSize = d->groupIdx[std::find(d->groupLen, d->groupLen + 7, 0) - d->groupLen];
 
     d->sizeofBlock     = 1ULL << *data++;
@@ -1036,23 +1036,26 @@ uint8_t* set_sizes(PairsData* d, uint8_t* data) {
     auto padding       = number<uint8_t, LittleEndian>(data++);
     d->blocksNum       = number<uint32_t, LittleEndian>(data);
     data += sizeof(uint32_t);
-    d->blockLengthSize = d->blocksNum + padding;  // Padded to ensure SparseIndex[]
-                                                  // does not point out of range.
+    d->blockLengthSize = d->blocksNum + padding;  // Add a padding to ensure that the
+                                                  // SparseIndex[] table does not point
+                                                  // out of range.
     d->maxSymLen = *data++;
     d->minSymLen = *data++;
     d->lowestSym = (Sym*) data;
     d->base64.resize(d->maxSymLen - d->minSymLen + 1);
 
-    // See https://en.wikipedia.org/wiki/Huffman_coding
-    // The canonical code is ordered such that longer symbols (in terms of
-    // the number of bits of their Huffman coding) have a lower numeric value,
-    // so that d->lowestSym[i] >= d->lowestSym[i+1] (when read as little-endian).
-    // Starting from this, we compute a base64[] table indexed by symbol length
-    // and containing 64-bit values, so that d->base64[i] >= d->base64[i+1].
-
+    // Visit https://en.wikipedia.org/wiki/Huffman_coding for details.
+    //
+    // We order the Huffman coding canonically and in a way that longer symbols
+    // (by their number of bits) have a lower numeric value, such that
+    // d->lowestSym[i] >= d->lowestSym[i+1] when read as the LittleEndian enum.
+    // 
+    // From this onwards, we compute a base64[] table indexed by the symbol's
+    // length to contain 64-bit values, such that d->base64[i] >= d->base64[i+1].
+    //
     // Implementation note: We first cast the unsigned size_t "base64.size()"
     // to a signed int "base64_size" variable, then we are able to subtract 2,
-    // avoiding unsigned overflow warnings.
+    // thus avoiding unsigned overflow warnings.
 
     int base64_size = static_cast<int>(d->base64.size());
     for (int i = base64_size - 2; i >= 0; --i)
@@ -1139,7 +1142,7 @@ void set(T& e, uint8_t* data) {
     assert(e.hasPawns == bool(*data & HasPawns));
     assert((e.key != e.key2) == bool(*data & Split));
 
-    data++;  // First byte stores flags
+    data++;  // The first byte stores flags
 
     const int  sides   = T::Sides == 2 && (e.key != e.key2) ? 2 : 1;
     const File maxFile = e.hasPawns ? FILE_D : FILE_A;
@@ -1191,7 +1194,7 @@ void set(T& e, uint8_t* data) {
     for (File f = FILE_A; f <= maxFile; ++f)
         for (int i = 0; i < sides; i++)
         {
-            data = (uint8_t*) ((uintptr_t(data) + 0x3F) & ~0x3F);  // 64 byte alignment
+            data = (uint8_t*) ((uintptr_t(data) + 0x3F) & ~0x3F);  // 64-byte alignment
             (d = e.get(i, f))->data = data;
             data += d->blocksNum * d->sizeofBlock;
         }
@@ -1209,14 +1212,14 @@ void* mapped(TBTable<Type>& e, const Position& pos) {
     // Use 'acquire' to avoid a thread reading 'ready' == true, while
     // another is still working. A compiler reordering may cause this.
     if (e.ready.load(std::memory_order_acquire))
-        return e.baseAddress;  // Could be nullptr if the file does not exist
+        return e.baseAddress;  // Could a be nullptr if the file does not exist
 
     std::scoped_lock<std::mutex> lk(mutex);
 
     if (e.ready.load(std::memory_order_relaxed))  // Recheck under a lock
         return e.baseAddress;
 
-    // Piece strings in decreasing order for each color, like KPP, KR
+    // The piece strings in decreasing order for each color, like KPP, KR
     std::string fname, w, b;
     for (PieceType pt = KING; pt >= PAWN; --pt)
     {
@@ -1293,18 +1296,18 @@ WDLScore search(Position& pos, ProbeState* result) {
 
             if (value >= WDLWin)
             {
-                *result = ZEROING_BEST_MOVE;  // Winning DTZ-zeroing move
+                *result = ZEROING_BEST_MOVE;  // A winning DTZ move
                 return value;
             }
         }
     }
 
-    // In case we have already searched all the legal moves, we don't have to probe
-    // the TB, because the stored score could be wrong. For example, TB tables
+    // In case we have already searched all the legal moves, we don't have to
+    // probe the TB, because the stored score could be wrong. For example, TBs
     // do not contain information on positions with ep rights, so in this case
-    // the result of probe_wdl_table is wrong. Also, in case of only capture
-    // moves, like in 4K3/4q3/6p1/2k5/6p1/8/8/8 w - - 0 7, we have to
-    // return with the state ZEROING_BEST_MOVE baing set.
+    // the result of probe_wdl_table is wrong. Also, in the case that there are
+    // only capturing moves, like in 4K3/4q3/6p1/2k5/6p1/8/8/8 w - - 0 7, then
+    // we have to return with the state ZEROING_BEST_MOVE being set.
     bool noMoreMoves = (moveCount && moveCount == totalCount);
 
     if (noMoreMoves)
@@ -1358,8 +1361,8 @@ void Tablebases::init(const std::string& paths) {
     for (auto s : diagonal)
         MapA1D1D4[s] = code++;
 
-    // MapKK[] encodes all the 462 possible legal positions of two kings, where
-    // the first is in the a1-d1-d4 triangle. If the first king is on the a1-d4
+    // MapKK[] encodes all 462 possible legal positions of two kings, where the
+    // first one is in the a1-d1-d4 triangle. If the first king is on the a1-d4
     // diagonal, the other one shall not be above the a1-h8 diagonal.
     std::vector<std::pair<int, Square>> bothOnDiagonal;
     code = 0;
@@ -1385,8 +1388,8 @@ void Tablebases::init(const std::string& paths) {
     for (auto p : bothOnDiagonal)
         MapKK[p.first][p.second] = code++;
 
-    // Binomial[] stores binomial coefficients using the Pascal rule. There
-    // are Binomial[k][n] ways to choose k elements from a set of n elements.
+    // Binomial[] stores binomial coefficients using the Pascal rule. There are
+    // Binomial[k][n] ways to choose 'k' elements from a set of 'n' elements.
     Binomial[0][0] = 1;
 
     for (int n = 1; n < 64; n++)               // Squares
@@ -1398,28 +1401,28 @@ void Tablebases::init(const std::string& paths) {
     // available squares when the leading one is in 's'. Moreover the pawn with
     // highest MapPawns[] is the leading pawn, the one nearest the edge, and
     // among pawns with the same file, the one with the lowest rank.
-    int availableSquares = 47;  // Available squares when lead pawn is in a2
+    int availableSquares = 47;  // Available squares when the leading pawn is on a2
 
-    // Init the tables for the encoding of leading pawns group: with 7-men TB we
-    // can have up to 5 leading pawns (KPPPPPK).
+    // Init the tables for the encoding of a leading pawns group. With 7-men TB,
+    // we can have up to 5 leading pawns (KPPPPPK).
     for (int leadPawnsCnt = 1; leadPawnsCnt <= 5; ++leadPawnsCnt)
         for (File f = FILE_A; f <= FILE_D; ++f)
         {
-            // Restart the index at every file because TB table is split
+            // Restart the index at every file, because a TB table is split
             // by file, so we can reuse the same index for different files.
             int idx = 0;
 
             // Sum all possible combinations for a given file, starting with
-            // the leading pawn on rank 2 and increasing the rank.
+            // the leading pawn on rank 2 while increasing that rank.
             for (Rank r = RANK_2; r <= RANK_7; ++r)
             {
                 Square sq = make_square(f, r);
 
-                // Compute MapPawns[] at first pass.
-                // If sq is the leading pawn square, any other pawn cannot be
-                // below or more toward the edge of sq. There are 47 available
-                // squares when sq = a2 and reduced by 2 for any rank increase
-                // due to mirroring: sq == a3 -> no a2, h2, so MapPawns[a3] = 45
+                // Compute MapPawns[] at the first pass. If 'sq' is the square of a
+                // leading pawn, any other pawn cannot be below or more toward the
+                // edge of the 'sq'. There are 47 available squares when 'sq = a2'
+                // and reduced by 2 for any rank increase due to mirroring. So, if
+                // 'sq == a3 -> no a2, h2', then 'MapPawns[a3] = 45'.
                 if (leadPawnsCnt == 1)
                 {
                     MapPawns[sq]            = availableSquares--;
@@ -1428,11 +1431,11 @@ void Tablebases::init(const std::string& paths) {
                 LeadPawnIdx[leadPawnsCnt][sq] = idx;
                 idx += Binomial[leadPawnsCnt - 1][MapPawns[sq]];
             }
-            // After a file is traversed, store the cumulated per-file index
+            // After a file is traversed, store the cumulated index per file
             LeadPawnsSize[leadPawnsCnt][f] = idx;
         }
 
-    // Add entries in TB tables if the corresponding ".rtbw" file exists
+    // Add entries in the TBs if their corresponding ".rtbw" file exists
     for (PieceType p1 = PAWN; p1 < KING; ++p1)
     {
         TBTables.add({KING, p1, KING});
@@ -1481,11 +1484,11 @@ void Tablebases::init(const std::string& paths) {
 // Probe the WDL table for a particular position.
 // If *result != FAIL, the probe was successful.
 // The return value is from the point of view of the side to move:
-// -2 : loss
-// -1 : loss, but draw under 50-move rule
-//  0 : draw
-//  1 : win, but draw under 50-move rule
-//  2 : win
+// -2 : a loss
+// -1 : a loss, but a draw under the 50-move rule
+//  0 : a draw
+//  1 : a win, but a draw under the 50-move rule
+//  2 : a win
 WDLScore Tablebases::probe_wdl(Position& pos, ProbeState* result) {
 
     *result = OK;
@@ -1495,39 +1498,38 @@ WDLScore Tablebases::probe_wdl(Position& pos, ProbeState* result) {
 // Probe the DTZ table for a particular position.
 // If *result != FAIL, the probe was successful.
 // The return value is from the point of view of the side to move:
-//         n < -100 : loss, but draw under 50-move rule
-// -100 <= n < -1   : loss in n ply (assuming 50-move counter == 0)
-//        -1        : loss, the side to move is mated
-//         0        : draw
-//     1 < n <= 100 : win in n ply (assuming 50-move counter == 0)
-//   100 < n        : win, but draw under 50-move rule
+//         n < -100 : a loss, but a draw under the 50-move rule
+// -100 <= n < -1   : a loss in n ply (assuming the 50-move counter == 0)
+//        -1        : a loss, the side to move has been mated
+//         0        : a draw
+//     1 < n <= 100 : a win in n ply (assuming the 50-move counter == 0)
+//   100 < n        : a win, but a draw under the 50-move rule
 //
-// The return value n can be off by 1: a return value -n can mean a loss
-// in n+1 ply and a return value +n can mean a win in n+1 ply. This
-// cannot happen for tables with positions exactly on the "edge" of
-// the 50-move rule.
+// The n return value can be off by 1: the return value of -n can mean a loss
+// in n+1 ply and a return value of +n can mean a win in n+1 ply. This cannot
+// happen for tables with positions exactly on the "edge" of the 50-move rule.
 //
-// This implies that if dtz > 0 is returned, the position is certainly
-// a win if dtz + 50-move-counter <= 99. Care must be taken that the engine
-// picks moves that preserve dtz + 50-move-counter <= 99.
+// This implies that if DTZ > 0 is returned, the position is certainly
+// a win if DTZ + 50-move-counter <= 99. Care must be taken that the engine
+// picks moves that preserves DTZ + 50-move counter <= 99.
 //
 // If n = 100 immediately after a capture or pawn move, then the position
 // is also certainly a win, and during the whole phase until the next
 // capture or pawn move, the inequality to be preserved is
-// dtz + 50-move-counter <= 100.
+// DTZ + 50-move-counter <= 100.
 //
-// In short, if a move is available resulting in dtz + 50-move-counter <= 99,
-// then do not accept moves leading to dtz + 50-move-counter == 100.
+// In short, if a move is available resulting in DTZ + 50-move counter <= 99,
+// then do not accept moves leading to DTZ + 50-move counter == 100.
 int Tablebases::probe_dtz(Position& pos, ProbeState* result) {
 
     *result      = OK;
     WDLScore wdl = search<true>(pos, result);
 
-    if (*result == FAIL || wdl == WDLDraw)  // DTZ tables don't store draws
+    if (*result == FAIL || wdl == WDLDraw)  // The DTZ tables don't store draws
         return 0;
 
-    // DTZ stores a 'don't care value in this case, or even a plain wrong
-    // one as in case the best move is a losing ep, so it cannot be probed.
+    // The DTZ table stores a "don't care" value in this case, or even a plain
+    // wrong one when the best move is a losing ep, so it cannot be probed.
     if (*result == ZEROING_BEST_MOVE)
         return dtz_before_zeroing(wdl);
 
@@ -1539,8 +1541,8 @@ int Tablebases::probe_dtz(Position& pos, ProbeState* result) {
     if (*result != CHANGE_STM)
         return (dtz + 100 * (wdl == WDLBlessedLoss || wdl == WDLCursedWin)) * sign_of(wdl);
 
-    // DTZ stores results for the other side, so we need to do a 1-ply search and
-    // find the winning move that minimizes DTZ.
+    // The DTZ stores results for the other side, so we need to do a 1-ply search
+    // and find the winning move that minimizes DTZ.
     StateInfo st;
     int       minDTZ = 0xFFFF;
 
@@ -1550,10 +1552,10 @@ int Tablebases::probe_dtz(Position& pos, ProbeState* result) {
 
         pos.do_move(move, st);
 
-        // For zeroing moves we want the dtz of the move _before_ doing it,
-        // otherwise we will get the dtz of the next move sequence. Search the
-        // position after the move to get the score sign (because even in a
-        // winning position we could make a losing capture or go for a draw).
+        // For zeroing moves, we want the DTZ of the move before doing it;
+        // otherwise, we will get the DTZ of the next move sequence. We search
+        // the position after the move to get the score sign (because even in a
+        // winning position, we could make a losing capture or go for a draw).
         dtz = zeroing ? -dtz_before_zeroing(search<false>(pos, result)) : -probe_dtz(pos, result);
 
         // If the move mates, force minDTZ to 1
@@ -1565,7 +1567,7 @@ int Tablebases::probe_dtz(Position& pos, ProbeState* result) {
         if (!zeroing)
             dtz += sign_of(dtz);
 
-        // Skip the draws and if we are winning only pick positive dtz
+        // Skip the draws and, if we are winning, only pick positive DTZ
         if (dtz < minDTZ && sign_of(dtz) == sign_of(wdl))
             minDTZ = dtz;
 
@@ -1575,23 +1577,23 @@ int Tablebases::probe_dtz(Position& pos, ProbeState* result) {
             return 0;
     }
 
-    // When there are no legal moves, the position is mate: we return -1
+    // When there are no legal moves, the position is a mate (we return -1)
     return minDTZ == 0xFFFF ? -1 : minDTZ;
 }
 
 
-// Use the DTZ tables to rank root moves.
+// Use the DTZ tables to rank root moves
 //
-// A return value false indicates that not all probes were successful.
+// A false return value indicates that not all probes were successful
 bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves) {
 
     ProbeState result = OK;
     StateInfo  st;
 
-    // Obtain 50-move counter for the root position
+    // Obtain the 50-move rule counter for the root position
     int cnt50 = pos.rule50_count();
 
-    // Check whether a position was repeated since the last zeroing move.
+    // Check whether a position was repeated since the last zeroing move
     bool rep = pos.has_repeated();
 
     int dtz, bound = Options["Syzygy50MoveRule"] ? (MAX_DTZ - 100) : 1;
@@ -1601,7 +1603,7 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves) {
     {
         pos.do_move(m.pv[0], st);
 
-        // Calculate dtz for the current move counting from the root position
+        // Calculate DTZ for the current move, counting from the root position
         if (pos.rule50_count() == 0)
         {
             // In case of a zeroing move, dtz is one of -101/-1/0/1/101
@@ -1610,19 +1612,20 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves) {
         }
         else if (pos.is_draw(1))
         {
-            // In case a root move leads to a draw by repetition or 50-move rule,
-            // we set dtz to zero. Note: since we are only 1 ply from the root,
-            // this must be a true 3-fold repetition inside the game history.
+            // In case a root move leads to a draw by repetition or reaches the
+            // 50-move rule, we set DTZ to zero. Note that since we are only 1 ply
+            // from the root, this must be a true 3-fold repetition inside a game's
+            // history.
             dtz = 0;
         }
         else
         {
-            // Otherwise, take dtz for the new position and correct by 1 ply
+            // Otherwise, take DTZ for the new position and correct by 1 ply
             dtz = -probe_dtz(pos, &result);
             dtz = dtz > 0 ? dtz + 1 : dtz < 0 ? dtz - 1 : dtz;
         }
 
-        // Make sure that a mating move is assigned a dtz value of 1
+        // Make sure that a mating move is assigned a DTZ value of 1
         if (pos.checkers() && dtz == 2 && MoveList<LEGAL>(pos).size() == 0)
             dtz = 1;
 
@@ -1632,14 +1635,14 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves) {
             return false;
 
         // Better moves are ranked higher. Certain wins are ranked equally.
-        // Losing moves are ranked equally unless a 50-move draw is in sight.
+        // Losing moves are ranked equally, unless a 50-move draw is in sight.
         int r    = dtz > 0 ? (dtz + cnt50 <= 99 && !rep ? MAX_DTZ : MAX_DTZ - (dtz + cnt50))
                  : dtz < 0 ? (-dtz * 2 + cnt50 < 100 ? -MAX_DTZ : -MAX_DTZ + (-dtz + cnt50))
                            : 0;
         m.tbRank = r;
 
         // Determine the score to be displayed for this move. Assign at least
-        // 1 cp to cursed wins and let it grow to 49 cp as the positions gets
+        // 1 cp to cursed wins and let it grow to 49 cp as the position gets
         // closer to a real win.
         m.tbScore = r >= bound ? VALUE_MATE - MAX_PLY - 1
                   : r > 0      ? Value((std::max(3, r - (MAX_DTZ - 200)) * int(PawnValue)) / 200)
@@ -1652,10 +1655,10 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves) {
 }
 
 
-// Use the WDL tables to rank root moves.
-// This is a fallback for the case that some or all DTZ tables are missing.
+// Use the WDL tables to rank root moves as a fallback when some or all DTZ tables
+// are missing.
 //
-// A return value false indicates that not all probes were successful.
+// A false return value indicates that not all probes were successful
 bool Tablebases::root_probe_wdl(Position& pos, Search::RootMoves& rootMoves) {
 
     static const int WDL_to_rank[] = {-MAX_DTZ, -MAX_DTZ + 101, 0, MAX_DTZ - 101, MAX_DTZ};
