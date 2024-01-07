@@ -37,7 +37,7 @@ namespace Stockfish::Eval::NNUE {
 // Input features used in evaluation function
 using FeatureSet = Features::HalfKAv2_hm;
 
-enum NetSize {
+enum NetSize : int {
     Big,
     Small
 };

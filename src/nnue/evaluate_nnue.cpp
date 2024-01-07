@@ -28,6 +28,7 @@
 #include <iostream>
 #include <sstream>
 #include <string_view>
+#include <unordered_map>
 
 #include "../evaluate.h"
 #include "../misc.h"
@@ -449,7 +450,7 @@ bool save_eval(const std::optional<std::string>& filename, NetSize netSize) {
         actualFilename = filename.value();
     else
     {
-        if (currentEvalFileName[netSize]
+        if (EvalFiles.at(netSize).selected_name
             != (netSize == Small ? EvalFileDefaultNameSmall : EvalFileDefaultNameBig))
         {
             msg = "Failed to export a net. "
