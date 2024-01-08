@@ -179,10 +179,10 @@ void ThreadPool::start_thinking(Position&                 pos,
 
     main()->wait_for_search_finished();
 
-    main()->stopOnPonderhit = stop = false;
-    increaseDepth                  = true;
-    main()->ponder                 = ponderMode;
-    Search::Limits                 = limits;
+    main()->stopOnPonderhit = stop = abortedSearch = false;
+    increaseDepth                                  = true;
+    main()->ponder                                 = ponderMode;
+    Search::Limits                                 = limits;
     Search::RootMoves rootMoves;
 
     for (const auto& m : MoveList<LEGAL>(pos))
@@ -237,13 +237,23 @@ Thread* ThreadPool::get_best_thread() const {
         votes[th->rootMoves[0].pv[0]] += thread_value(th);
 
     for (Thread* th : threads)
-        if (std::abs(bestThread->rootMoves[0].score) >= VALUE_TB_WIN_IN_MAX_PLY)
+        if (bestThread->rootMoves[0].score >= VALUE_TB_WIN_IN_MAX_PLY)
         {
-            // Make sure we pick the shortest mate / TB conversion or stave off mate the longest
+            // Make sure we pick the shortest mate / TB conversion
             if (th->rootMoves[0].score > bestThread->rootMoves[0].score)
                 bestThread = th;
         }
+        else if (bestThread->rootMoves[0].score != -VALUE_INFINITE
+                 && bestThread->rootMoves[0].score <= VALUE_TB_LOSS_IN_MAX_PLY)
+        {
+            // Make sure we pick the shortest mated / TB conversion
+            if (th->rootMoves[0].score != -VALUE_INFINITE
+                && th->rootMoves[0].score < bestThread->rootMoves[0].score)
+                bestThread = th;
+        }
         else if (th->rootMoves[0].score >= VALUE_TB_WIN_IN_MAX_PLY
+                 || (th->rootMoves[0].score != -VALUE_INFINITE
+                     && th->rootMoves[0].score <= VALUE_TB_LOSS_IN_MAX_PLY)
                  || (th->rootMoves[0].score > VALUE_TB_LOSS_IN_MAX_PLY
                      && (votes[th->rootMoves[0].pv[0]] > votes[bestThread->rootMoves[0].pv[0]]
                          || (votes[th->rootMoves[0].pv[0]] == votes[bestThread->rootMoves[0].pv[0]]

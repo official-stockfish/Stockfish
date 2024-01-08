@@ -81,7 +81,7 @@ struct MainThread: public Thread {
     using Thread::Thread;
 
     void search() override;
-    void check_time();
+    void check_time(Depth completed);
 
     double           previousTimeReduction;
     Value            bestPreviousScore;
@@ -109,7 +109,7 @@ struct ThreadPool {
     void        start_searching();
     void        wait_for_search_finished() const;
 
-    std::atomic_bool stop, increaseDepth;
+    std::atomic_bool stop, abortedSearch, increaseDepth;
 
     auto cbegin() const noexcept { return threads.cbegin(); }
     auto begin() noexcept { return threads.begin(); }

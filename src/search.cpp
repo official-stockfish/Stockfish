@@ -439,14 +439,28 @@ void Thread::search() {
             // Sort the PV lines searched so far and update the GUI
             std::stable_sort(rootMoves.begin() + pvFirst, rootMoves.begin() + pvIdx + 1);
 
-            if (mainThread && (Threads.stop || pvIdx + 1 == multiPV || Time.elapsed() > 3000))
+            if (mainThread
+                && (Threads.stop || pvIdx + 1 == multiPV || Time.elapsed() > 3000)
+                // A thread that aborted search can have mated-in/TB-loss PV and score
+                // that cannot be trusted i.e. it can be delayed or refuted if we have had time
+                // to fully search other root-moves, thus we will suppress this cout
+                // and use later for this thread a proven score/PV (from the previous iteration).
+                && !(Threads.abortedSearch && rootMoves[0].uciScore <= VALUE_TB_LOSS_IN_MAX_PLY))
                 sync_cout << UCI::pv(rootPos, rootDepth) << sync_endl;
         }
 
         if (!Threads.stop)
             completedDepth = rootDepth;
 
-        if (rootMoves[0].pv[0] != lastBestMove)
+        // We make sure not to pick an unproven mated-in scores,
+        // in case this thread prematurely stopped search (aborted-search).
+        if (Threads.abortedSearch && rootMoves[0].score <= VALUE_TB_LOSS_IN_MAX_PLY)
+        {
+            // Create a PV from the last best move for best thread selection.
+            rootMoves[0].pv    = {lastBestMove};
+            rootMoves[0].score = rootMoves[0].previousScore;
+        }
+        else if (rootMoves[0].pv[0] != lastBestMove)
         {
             lastBestMove      = rootMoves[0].pv[0];
             lastBestMoveDepth = rootDepth;
@@ -574,7 +588,7 @@ Value search(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth, boo
 
     // Check for the available remaining time
     if (thisThread == Threads.main())
-        static_cast<MainThread*>(thisThread)->check_time();
+        static_cast<MainThread*>(thisThread)->check_time(thisThread->completedDepth);
 
     // Used to send selDepth info to GUI (selDepth counts from 1, ply from 0)
     if (PvNode && thisThread->selDepth < ss->ply + 1)
@@ -1902,7 +1916,7 @@ Move Skill::pick_best(size_t multiPV) {
 
 // Used to print debug info and, more importantly,
 // to detect when we are out of available time and thus stop the search.
-void MainThread::check_time() {
+void MainThread::check_time(Depth completed) {
 
     if (--callsCnt > 0)
         return;
@@ -1925,10 +1939,20 @@ void MainThread::check_time() {
     if (ponder)
         return;
 
-    if ((Limits.use_time_management() && (elapsed > Time.maximum() || stopOnPonderhit))
-        || (Limits.movetime && elapsed >= Limits.movetime)
-        || (Limits.nodes && Threads.nodes_searched() >= uint64_t(Limits.nodes)))
+    if (
+      // We rely on the fact that we can at least use the mainthread previous root-search score and PV
+      // in a multithreaded environment to prove mated-in scores.
+      completed >= 1
+      && ((Limits.use_time_management() && (elapsed > Time.maximum() || stopOnPonderhit))
+          || (Limits.movetime && elapsed >= Limits.movetime)
+          || (Limits.nodes && Threads.nodes_searched() >= uint64_t(Limits.nodes))))
+    {
         Threads.stop = true;
+
+        // Signal to all threads that they could have had an even better score
+        // if they continued searching other root moves.
+        Threads.abortedSearch = true;
+    }
 }
 
 
