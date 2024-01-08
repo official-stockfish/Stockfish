@@ -312,19 +312,11 @@ top:
                 return *cur != refutations[0] && *cur != refutations[1] && *cur != refutations[2];
             }))
         {
-            Move tmp = *(cur - 1);
-            if ((cur - 1)->value < -7500 && (cur - 1)->value > quiet_threshold(depth))
-            {
-                // Remaining quiets are bad
-                beginBadQuiets = cur;
+            if ((cur - 1)->value > -8000 || (cur - 1)->value <= quiet_threshold(depth))
+                return *(cur - 1);
 
-                // Prepare the pointers to loop over the bad captures
-                cur      = moves;
-                endMoves = endBadCaptures;
-
-                ++stage;
-            }
-            return tmp;
+            // Remaining quiets are bad
+            beginBadQuiets = cur - 1;
         }
 
         // Prepare the pointers to loop over the bad captures
