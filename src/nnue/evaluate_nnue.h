@@ -26,14 +26,20 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <unordered_map>
 
 #include "../misc.h"
+#include "../types.h"
 #include "nnue_architecture.h"
 #include "nnue_feature_transformer.h"
-#include "../types.h"
 
 namespace Stockfish {
 class Position;
+
+namespace Eval {
+struct EvalFile;
+}
+
 }
 
 namespace Stockfish::Eval::NNUE {
@@ -73,9 +79,14 @@ template<NetSize Net_Size>
 Value evaluate(const Position& pos, bool adjusted = false, int* complexity = nullptr);
 void  hint_common_parent_position(const Position& pos);
 
-bool load_eval(const std::string name, std::istream& stream, NetSize netSize);
-bool save_eval(std::ostream& stream, NetSize netSize);
-bool save_eval(const std::optional<std::string>& filename, NetSize netSize);
+std::optional<std::string> load_eval(std::istream& stream, NetSize netSize);
+bool                       save_eval(std::ostream&      stream,
+                                     NetSize            netSize,
+                                     const std::string& name,
+                                     const std::string& netDescription);
+bool                       save_eval(const std::optional<std::string>& filename,
+                                     NetSize                           netSize,
+                                     const std::unordered_map<Eval::NNUE::NetSize, Eval::EvalFile>&);
 
 }  // namespace Stockfish::Eval::NNUE
 

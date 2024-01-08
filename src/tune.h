@@ -28,6 +28,8 @@
 
 namespace Stockfish {
 
+class OptionsMap;
+
 using Range    = std::pair<int, int>;  // Option's min-max values
 using RangeFun = Range(int);
 
@@ -151,7 +153,8 @@ class Tune {
         return instance().add(SetDefaultRange, names.substr(1, names.size() - 2),
                               args...);  // Remove trailing parenthesis
     }
-    static void init() {
+    static void init(OptionsMap& o) {
+        options = &o;
         for (auto& e : instance().list)
             e->init_option();
         read_options();
@@ -160,7 +163,9 @@ class Tune {
         for (auto& e : instance().list)
             e->read_option();
     }
-    static bool update_on_last;
+
+    static bool        update_on_last;
+    static OptionsMap* options;
 };
 
 // Some macro magic :-) we define a dummy int variable that the compiler initializes calling Tune::add()
