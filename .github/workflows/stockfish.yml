@@ -11,6 +11,7 @@ on:
     branches:
       - master
       - tools
+
 jobs:
   Prerelease:
     if: github.ref == 'refs/heads/master'

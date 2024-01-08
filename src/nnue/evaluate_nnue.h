@@ -26,11 +26,13 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <unordered_map>
 
+#include "../evaluate.h"
 #include "../misc.h"
+#include "../types.h"
 #include "nnue_architecture.h"
 #include "nnue_feature_transformer.h"
-#include "../types.h"
 
 namespace Stockfish {
 class Position;
@@ -75,7 +77,9 @@ void  hint_common_parent_position(const Position& pos);
 
 bool load_eval(const std::string name, std::istream& stream, NetSize netSize);
 bool save_eval(std::ostream& stream, NetSize netSize);
-bool save_eval(const std::optional<std::string>& filename, NetSize netSize);
+bool save_eval(const std::optional<std::string>& filename,
+               NetSize                           netSize,
+               const std::unordered_map<Eval::NNUE::NetSize, Eval::EvalFile>&);
 
 }  // namespace Stockfish::Eval::NNUE
 

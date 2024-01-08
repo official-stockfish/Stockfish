@@ -16,104 +16,53 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "ucioption.h"
+
 #include <algorithm>
 #include <cassert>
 #include <cctype>
-#include <cstddef>
-#include <iosfwd>
-#include <istream>
-#include <map>
-#include <ostream>
+#include <iostream>
 #include <sstream>
-#include <string>
+#include <utility>
 
-#include "evaluate.h"
 #include "misc.h"
-#include "search.h"
-#include "syzygy/tbprobe.h"
-#include "thread.h"
-#include "tt.h"
-#include "types.h"
-#include "uci.h"
-
-using std::string;
 
 namespace Stockfish {
 
-UCI::OptionsMap Options;  // Global object
+bool CaseInsensitiveLess::operator()(const std::string& s1, const std::string& s2) const {
 
-namespace UCI {
-
-// 'On change' actions, triggered by an option's value change
-static void on_clear_hash(const Option&) { Search::clear(); }
-static void on_hash_size(const Option& o) { TT.resize(size_t(o)); }
-static void on_logger(const Option& o) { start_logger(o); }
-static void on_threads(const Option& o) { Threads.set(size_t(o)); }
-static void on_tb_path(const Option& o) { Tablebases::init(o); }
-static void on_eval_file(const Option&) { Eval::NNUE::init(); }
-
-// Our case insensitive less() function as required by UCI protocol
-bool CaseInsensitiveLess::operator()(const string& s1, const string& s2) const {
-
-    return std::lexicographical_compare(s1.begin(), s1.end(), s2.begin(), s2.end(),
-                                        [](char c1, char c2) { return tolower(c1) < tolower(c2); });
+    return std::lexicographical_compare(
+      s1.begin(), s1.end(), s2.begin(), s2.end(),
+      [](char c1, char c2) { return std::tolower(c1) < std::tolower(c2); });
 }
 
+void OptionsMap::setoption(std::istringstream& is) {
+    std::string token, name, value;
 
-// Initializes the UCI options to their hard-coded default values
-void init(OptionsMap& o) {
+    is >> token;  // Consume the "name" token
 
-    constexpr int MaxHashMB = Is64Bit ? 33554432 : 2048;
+    // Read the option name (can contain spaces)
+    while (is >> token && token != "value")
+        name += (name.empty() ? "" : " ") + token;
 
-    o["Debug Log File"] << Option("", on_logger);
-    o["Threads"] << Option(1, 1, 1024, on_threads);
-    o["Hash"] << Option(16, 1, MaxHashMB, on_hash_size);
-    o["Clear Hash"] << Option(on_clear_hash);
-    o["Ponder"] << Option(false);
-    o["MultiPV"] << Option(1, 1, MAX_MOVES);
-    o["Skill Level"] << Option(20, 0, 20);
-    o["Move Overhead"] << Option(10, 0, 5000);
-    o["nodestime"] << Option(0, 0, 10000);
-    o["UCI_Chess960"] << Option(false);
-    o["UCI_LimitStrength"] << Option(false);
-    o["UCI_Elo"] << Option(1320, 1320, 3190);
-    o["UCI_ShowWDL"] << Option(false);
-    o["SyzygyPath"] << Option("<empty>", on_tb_path);
-    o["SyzygyProbeDepth"] << Option(1, 1, 100);
-    o["Syzygy50MoveRule"] << Option(true);
-    o["SyzygyProbeLimit"] << Option(7, 0, 7);
-    o["EvalFile"] << Option(EvalFileDefaultNameBig, on_eval_file);
-    // Enable this after fishtest workers support EvalFileSmall
-    // o["EvalFileSmall"] << Option(EvalFileDefaultNameSmall, on_eval_file);
+    // Read the option value (can contain spaces)
+    while (is >> token)
+        value += (value.empty() ? "" : " ") + token;
+
+    if (options_map.count(name))
+        options_map[name] = value;
+    else
+        sync_cout << "No such option: " << name << sync_endl;
 }
 
-
-// Used to print all the options default values in chronological
-// insertion order (the idx field) and in the format defined by the UCI protocol.
-std::ostream& operator<<(std::ostream& os, const OptionsMap& om) {
-
-    for (size_t idx = 0; idx < om.size(); ++idx)
-        for (const auto& it : om)
-            if (it.second.idx == idx)
-            {
-                const Option& o = it.second;
-                os << "\noption name " << it.first << " type " << o.type;
-
-                if (o.type == "string" || o.type == "check" || o.type == "combo")
-                    os << " default " << o.defaultValue;
-
-                if (o.type == "spin")
-                    os << " default " << int(stof(o.defaultValue)) << " min " << o.min << " max "
-                       << o.max;
-
-                break;
-            }
-
-    return os;
+Option OptionsMap::operator[](const std::string& name) const {
+    auto it = options_map.find(name);
+    return it != options_map.end() ? it->second : Option();
 }
 
+Option& OptionsMap::operator[](const std::string& name) { return options_map[name]; }
 
-// Option class constructors and conversion operators
+std::size_t OptionsMap::count(const std::string& name) const { return options_map.count(name); }
 
 Option::Option(const char* v, OnChange f) :
     type("string"),
@@ -184,19 +133,19 @@ void Option::operator<<(const Option& o) {
 // Updates currentValue and triggers on_change() action. It's up to
 // the GUI to check for option's limits, but we could receive the new value
 // from the user by console window, so let's check the bounds anyway.
-Option& Option::operator=(const string& v) {
+Option& Option::operator=(const std::string& v) {
 
     assert(!type.empty());
 
     if ((type != "button" && type != "string" && v.empty())
         || (type == "check" && v != "true" && v != "false")
-        || (type == "spin" && (stof(v) < min || stof(v) > max)))
+        || (type == "spin" && (std::stof(v) < min || std::stof(v) > max)))
         return *this;
 
     if (type == "combo")
     {
         OptionsMap         comboMap;  // To have case insensitive compare
-        string             token;
+        std::string        token;
         std::istringstream ss(defaultValue);
         while (ss >> token)
             comboMap[token] << Option();
@@ -213,6 +162,24 @@ Option& Option::operator=(const string& v) {
     return *this;
 }
 
-}  // namespace UCI
+std::ostream& operator<<(std::ostream& os, const OptionsMap& om) {
+    for (size_t idx = 0; idx < om.options_map.size(); ++idx)
+        for (const auto& it : om.options_map)
+            if (it.second.idx == idx)
+            {
+                const Option& o = it.second;
+                os << "\noption name " << it.first << " type " << o.type;
 
-}  // namespace Stockfish
+                if (o.type == "string" || o.type == "check" || o.type == "combo")
+                    os << " default " << o.defaultValue;
+
+                if (o.type == "spin")
+                    os << " default " << int(stof(o.defaultValue)) << " min " << o.min << " max "
+                       << o.max;
+
+                break;
+            }
+
+    return os;
+}
+}

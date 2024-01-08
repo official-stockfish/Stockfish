@@ -11,6 +11,7 @@ on:
     paths:
       - '**.cpp'
       - '**.h'
+
 jobs:
   Stockfish:
     name: clang-format check

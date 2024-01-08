@@ -27,13 +27,16 @@
 namespace Stockfish {
 
 class Position;
+namespace Search {
+class Worker;
+}
 
 namespace Eval {
 
-std::string trace(Position& pos);
+std::string trace(Position& pos, Search::Worker& workerThread);
 
 int   simple_eval(const Position& pos, Color c);
-Value evaluate(const Position& pos);
+Value evaluate(const Position& pos, const Search::Worker& workerThread);
 
 // The default net name MUST follow the format nn-[SHA256 first 12 digits].nnue
 // for the build process (profile-build and fishtest) to work. Do not change the
@@ -41,20 +44,22 @@ Value evaluate(const Position& pos);
 #define EvalFileDefaultNameBig "nn-baff1edbea57.nnue"
 #define EvalFileDefaultNameSmall "nn-baff1ede1f90.nnue"
 
-namespace NNUE {
-
-enum NetSize : int;
-
-void init();
-void verify();
-
-}  // namespace NNUE
-
 struct EvalFile {
     std::string option_name;
     std::string default_name;
     std::string selected_name;
 };
+
+namespace NNUE {
+
+enum NetSize : int;
+
+void init(const std::string& binaryDirector,
+          const OptionsMap&  Options,
+          std::unordered_map<Eval::NNUE::NetSize, EvalFile>&);
+void verify(const OptionsMap& Options, const std::unordered_map<Eval::NNUE::NetSize, EvalFile>&);
+
+}  // namespace NNUE
 
 extern std::unordered_map<NNUE::NetSize, EvalFile> EvalFiles;
 

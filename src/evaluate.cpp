@@ -34,7 +34,7 @@
 #include "nnue/evaluate_nnue.h"
 #include "nnue/nnue_architecture.h"
 #include "position.h"
-#include "thread.h"
+#include "search.h"
 #include "types.h"
 #include "uci.h"
 
@@ -62,10 +62,6 @@ namespace Stockfish {
 
 namespace Eval {
 
-std::unordered_map<NNUE::NetSize, EvalFile> EvalFiles = {
-  {NNUE::Big, {"EvalFile", EvalFileDefaultNameBig, "None"}},
-  {NNUE::Small, {"EvalFileSmall", EvalFileDefaultNameSmall, "None"}}};
-
 
 // Tries to load a NNUE network at startup time, or when the engine
 // receives a UCI command "setoption name EvalFile value nn-[a-z0-9]{12}.nnue"
@@ -74,7 +70,9 @@ std::unordered_map<NNUE::NetSize, EvalFile> EvalFiles = {
 // network may be embedded in the binary), in the active working directory and
 // in the engine directory. Distro packagers may define the DEFAULT_NNUE_DIRECTORY
 // variable to have the engine search in a special directory in their distro.
-void NNUE::init() {
+void NNUE::init(const std::string&                                 binaryDirectory,
+                const OptionsMap&                                  Options,
+                std::unordered_map<Eval::NNUE::NetSize, EvalFile>& EvalFiles) {
 
     for (auto& [netSize, evalFile] : EvalFiles)
     {
@@ -88,10 +86,10 @@ void NNUE::init() {
             user_eval_file = evalFile.default_name;
 
 #if defined(DEFAULT_NNUE_DIRECTORY)
-        std::vector<std::string> dirs = {"<internal>", "", CommandLine::binaryDirectory,
+        std::vector<std::string> dirs = {"<internal>", "", binaryDirectory,
                                          stringify(DEFAULT_NNUE_DIRECTORY)};
 #else
-        std::vector<std::string> dirs = {"<internal>", "", CommandLine::binaryDirectory};
+        std::vector<std::string> dirs = {"<internal>", "", binaryDirectory};
 #endif
 
         for (const std::string& directory : dirs)
@@ -133,7 +131,8 @@ void NNUE::init() {
 }
 
 // Verifies that the last net used was loaded successfully
-void NNUE::verify() {
+void NNUE::verify(const OptionsMap&                                        Options,
+                  const std::unordered_map<Eval::NNUE::NetSize, EvalFile>& EvalFiles) {
 
     for (const auto& [netSize, evalFile] : EvalFiles)
     {
@@ -183,7 +182,7 @@ int Eval::simple_eval(const Position& pos, Color c) {
 
 // Evaluate is the evaluator for the outer world. It returns a static evaluation
 // of the position from the point of view of the side to move.
-Value Eval::evaluate(const Position& pos) {
+Value Eval::evaluate(const Position& pos, const Search::Worker& workerThread) {
 
     assert(!pos.checkers());
 
@@ -204,7 +203,7 @@ Value Eval::evaluate(const Position& pos) {
         Value nnue = smallNet ? NNUE::evaluate<NNUE::Small>(pos, true, &nnueComplexity)
                               : NNUE::evaluate<NNUE::Big>(pos, true, &nnueComplexity);
 
-        int optimism = pos.this_thread()->optimism[stm];
+        int optimism = workerThread.optimism[stm];
 
         // Blend optimism and eval with nnue complexity and material imbalance
         optimism += optimism * (nnueComplexity + std::abs(simpleEval - nnue)) / 512;
@@ -227,16 +226,16 @@ Value Eval::evaluate(const Position& pos) {
 // a string (suitable for outputting to stdout) that contains the detailed
 // descriptions and values of each evaluation term. Useful for debugging.
 // Trace scores are from white's point of view
-std::string Eval::trace(Position& pos) {
+std::string Eval::trace(Position& pos, Search::Worker& workerThread) {
 
     if (pos.checkers())
         return "Final evaluation: none (in check)";
 
     // Reset any global variable used in eval
-    pos.this_thread()->bestValue       = VALUE_ZERO;
-    pos.this_thread()->rootSimpleEval  = VALUE_ZERO;
-    pos.this_thread()->optimism[WHITE] = VALUE_ZERO;
-    pos.this_thread()->optimism[BLACK] = VALUE_ZERO;
+    workerThread.iterBestValue   = VALUE_ZERO;
+    workerThread.rootSimpleEval  = VALUE_ZERO;
+    workerThread.optimism[WHITE] = VALUE_ZERO;
+    workerThread.optimism[BLACK] = VALUE_ZERO;
 
     std::stringstream ss;
     ss << std::showpoint << std::noshowpos << std::fixed << std::setprecision(2);
@@ -249,7 +248,7 @@ std::string Eval::trace(Position& pos) {
     v = pos.side_to_move() == WHITE ? v : -v;
     ss << "NNUE evaluation        " << 0.01 * UCI::to_cp(v) << " (white side)\n";
 
-    v = evaluate(pos);
+    v = evaluate(pos, workerThread);
     v = pos.side_to_move() == WHITE ? v : -v;
     ss << "Final evaluation       " << 0.01 * UCI::to_cp(v) << " (white side)";
     ss << " [with scaled NNUE, ...]";

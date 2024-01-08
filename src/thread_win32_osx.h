@@ -30,31 +30,35 @@
 #if defined(__APPLE__) || defined(__MINGW32__) || defined(__MINGW64__) || defined(USE_PTHREADS)
 
     #include <pthread.h>
+    #include <functional>
 
 namespace Stockfish {
 
-static const size_t TH_STACK_SIZE = 8 * 1024 * 1024;
-
-template<class T, class P = std::pair<T*, void (T::*)()>>
-void* start_routine(void* ptr) {
-    P* p = reinterpret_cast<P*>(ptr);
-    (p->first->*(p->second))();  // Call member function pointer
-    delete p;
+// free function to be passed to pthread_create()
+inline void* start_routine(void* ptr) {
+    auto func = reinterpret_cast<std::function<void()>*>(ptr);
+         (*func)();  // Call the function
+    delete func;
     return nullptr;
 }
 
 class NativeThread {
-
     pthread_t thread;
 
+    static constexpr size_t TH_STACK_SIZE = 8 * 1024 * 1024;
+
    public:
-    template<class T, class P = std::pair<T*, void (T::*)()>>
-    explicit NativeThread(void (T::*fun)(), T* obj) {
+    template<class Function, class... Args>
+    explicit NativeThread(Function&& fun, Args&&... args) {
+        auto func = new std::function<void()>(
+          std::bind(std::forward<Function>(fun), std::forward<Args>(args)...));
+
         pthread_attr_t attr_storage, *attr = &attr_storage;
         pthread_attr_init(attr);
         pthread_attr_setstacksize(attr, TH_STACK_SIZE);
-        pthread_create(&thread, attr, start_routine<T>, new P(obj, fun));
+        pthread_create(&thread, attr, start_routine, func);
     }
+
     void join() { pthread_join(thread, nullptr); }
 };
 
