@@ -28,7 +28,6 @@
 #include <string>
 #include <unordered_map>
 
-#include "../evaluate.h"
 #include "../misc.h"
 #include "../types.h"
 #include "nnue_architecture.h"
@@ -36,6 +35,11 @@
 
 namespace Stockfish {
 class Position;
+
+namespace Eval {
+struct EvalFile;
+}
+
 }
 
 namespace Stockfish::Eval::NNUE {

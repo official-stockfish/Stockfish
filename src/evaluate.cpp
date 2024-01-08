@@ -37,6 +37,7 @@
 #include "search.h"
 #include "types.h"
 #include "uci.h"
+#include "ucioption.h"
 
 // Macro to embed the default efficiently updatable neural network (NNUE) file
 // data in the engine binary (using incbin.h, by Dale Weiler).

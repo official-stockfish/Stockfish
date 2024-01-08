@@ -27,6 +27,8 @@
 namespace Stockfish {
 
 class Position;
+class OptionsMap;
+
 namespace Search {
 class Worker;
 }
