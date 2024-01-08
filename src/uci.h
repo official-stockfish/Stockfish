@@ -68,8 +68,8 @@ class UCI {
     std::string currentEvalFileName = "None";
 
     std::unordered_map<Eval::NNUE::NetSize, Eval::EvalFile> EvalFiles = {
-      {Eval::NNUE::Big, {"EvalFile", EvalFileDefaultNameBig, "None"}},
-      {Eval::NNUE::Small, {"EvalFileSmall", EvalFileDefaultNameSmall, "None"}}};
+      {Eval::NNUE::Big, {"EvalFile", EvalFileDefaultNameBig, "None", ""}},
+      {Eval::NNUE::Small, {"EvalFileSmall", EvalFileDefaultNameSmall, "None", ""}}};
 
    private:
     TranspositionTable tt;

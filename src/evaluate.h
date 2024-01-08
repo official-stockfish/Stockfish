@@ -48,6 +48,7 @@ struct EvalFile {
     std::string option_name;
     std::string default_name;
     std::string selected_name;
+    std::string netDescription;
 };
 
 namespace NNUE {
@@ -60,8 +61,6 @@ void init(const std::string& binaryDirector,
 void verify(const OptionsMap& Options, const std::unordered_map<Eval::NNUE::NetSize, EvalFile>&);
 
 }  // namespace NNUE
-
-extern std::unordered_map<NNUE::NetSize, EvalFile> EvalFiles;
 
 }  // namespace Eval
 

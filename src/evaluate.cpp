@@ -99,7 +99,7 @@ void NNUE::init(const std::string&                                 binaryDirecto
                 if (directory != "<internal>")
                 {
                     std::ifstream stream(directory + user_eval_file, std::ios::binary);
-                    if (NNUE::load_eval(user_eval_file, stream, netSize))
+                    if (NNUE::load_eval(stream, netSize, evalFile.netDescription))
                         evalFile.selected_name = user_eval_file;
                 }
 
@@ -122,7 +122,7 @@ void NNUE::init(const std::string&                                 binaryDirecto
                     (void) gEmbeddedNNUESmallEnd;
 
                     std::istream stream(&buffer);
-                    if (NNUE::load_eval(user_eval_file, stream, netSize))
+                    if (NNUE::load_eval(stream, netSize, evalFile.netDescription))
                         evalFile.selected_name = user_eval_file;
                 }
             }
