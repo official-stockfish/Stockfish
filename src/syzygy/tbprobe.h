@@ -30,19 +30,19 @@ class Position;
 namespace Stockfish::Tablebases {
 
 enum WDLScore {
-    WDLLoss        = -2,  // Loss
-    WDLBlessedLoss = -1,  // Loss, but draw under 50-move rule
-    WDLDraw        = 0,   // Draw
-    WDLCursedWin   = 1,   // Win, but draw under 50-move rule
-    WDLWin         = 2,   // Win
+    WDLLoss        = -2,  // A loss
+    WDLBlessedLoss = -1,  // A loss, but a draw under the 50-move rule
+    WDLDraw        = 0,   // A draw
+    WDLCursedWin   = 1,   // A win, but a draw under the 50-move rule
+    WDLWin         = 2,   // A win
 };
 
-// Possible states after a probing operation
+// All possible states after a probing operation
 enum ProbeState {
-    FAIL              = 0,   // Probe failed (missing file table)
-    OK                = 1,   // Probe successful
-    CHANGE_STM        = -1,  // DTZ should check the other side
-    ZEROING_BEST_MOVE = 2    // Best move zeroes DTZ (capture or pawn move)
+    FAIL              = 0,   // The probe has failed (missing a table file)
+    OK                = 1,   // The probe was successful
+    CHANGE_STM        = -1,  // The DTZ should check the other playing side
+    ZEROING_BEST_MOVE = 2    // The best move zeroes the DTZ (a capture or a pawn move)
 };
 
 extern int MaxCardinality;
