@@ -94,7 +94,7 @@ class ThreadPool {
     void     start_searching();
     void     wait_for_search_finished() const;
 
-    std::atomic_bool stop, increaseDepth;
+    std::atomic_bool stop, abortedSearch, increaseDepth;
 
     auto cbegin() const noexcept { return threads.cbegin(); }
     auto begin() noexcept { return threads.begin(); }
