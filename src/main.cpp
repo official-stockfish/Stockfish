@@ -32,11 +32,12 @@ int main(int argc, char* argv[]) {
 
     std::cout << engine_info() << std::endl;
 
+    Bitboards::init();
+    Position::init();
+
     UCI uci(argc, argv);
 
     Tune::init(uci.options);
-    Bitboards::init();
-    Position::init();
     Eval::NNUE::init(uci.workingDirectory(), uci.options, uci.evalFiles);
 
     uci.loop();
