@@ -27,7 +27,6 @@
 #include <cstring>
 #include <initializer_list>
 #include <iostream>
-#include <string>
 #include <utility>
 
 #include "bitboard.h"
@@ -57,7 +56,6 @@ Depth ProbeDepth;
 
 namespace TB = Tablebases;
 
-using std::string;
 using Eval::evaluate;
 using namespace Search;
 
