@@ -34,6 +34,9 @@
 
 namespace Stockfish {
 
+namespace Eval::NNUE {
+enum NetSize : int;
+}
 
 namespace Search {
 class Worker;
