@@ -64,8 +64,7 @@ class UCI {
 
     const std::string& workingDirectory() const { return cli.workingDirectory; }
 
-    OptionsMap  options;
-    std::string currentEvalFileName = "None";
+    OptionsMap options;
 
     std::unordered_map<Eval::NNUE::NetSize, Eval::EvalFile> evalFiles;
 

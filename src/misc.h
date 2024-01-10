@@ -179,7 +179,7 @@ void bindThisThread(size_t idx);
 
 struct CommandLine {
    public:
-    CommandLine(int argc, char** argv);
+    CommandLine(int, char**);
 
     int    argc;
     char** argv;
