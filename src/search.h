@@ -173,11 +173,11 @@ class Worker {
    public:
     Worker(ExternalShared& externalShared, std::unique_ptr<ISearchManager> sm, size_t i) :
         // Unpack the ExternalShared struct into member variables
+        thread_idx(i),
+        manager(std::move(sm)),
         options(externalShared.options),
         threads(externalShared.threads),
-        tt(externalShared.tt),
-        manager(std::move(sm)),
-        thread_idx(i) {}
+        tt(externalShared.tt) {}
 
     // Reset histories, usually before a new game
     void clear();
@@ -230,14 +230,14 @@ class Worker {
     Depth     rootDepth, completedDepth;
     Value     rootDelta;
 
-    const OptionsMap&   options;
-    ThreadPool&         threads;
-    TranspositionTable& tt;
+    size_t thread_idx;
 
     // The main thread has a SearchManager, the others have a NullSearchManager
     std::unique_ptr<ISearchManager> manager;
 
-    size_t thread_idx;
+    const OptionsMap&   options;
+    ThreadPool&         threads;
+    TranspositionTable& tt;
 
     friend class Stockfish::ThreadPool;
     friend class Stockfish::UCI;
