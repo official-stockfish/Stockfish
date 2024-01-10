@@ -258,7 +258,7 @@ Thread* ThreadPool::get_best_thread() const {
 
 
 // Start non-main threads
-
+// Will be invoked by main thread after it has started searching
 void ThreadPool::start_searching() {
 
     for (Thread* th : threads)

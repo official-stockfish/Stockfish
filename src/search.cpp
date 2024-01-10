@@ -179,7 +179,7 @@ void Search::init(int size) {
 
 void Search::Worker::start_searching() {
     // Non-main threads go directly to iterative_deepening()
-    if (thread_idx != 0)
+    if (!is_mainthread())
     {
         iterative_deepening();
         return;
