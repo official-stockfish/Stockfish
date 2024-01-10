@@ -49,6 +49,10 @@ constexpr int  MaxHashMB            = Is64Bit ? 33554432 : 2048;
 UCI::UCI(int argc, char** argv) :
     cli(argc, argv) {
 
+    evalFiles = {{Eval::NNUE::Big, {"EvalFile", EvalFileDefaultNameBig, "None", ""}},
+                 {Eval::NNUE::Small, {"EvalFileSmall", EvalFileDefaultNameSmall, "None", ""}}};
+
+
     options["Debug Log File"] << Option("", [](const Option& o) { start_logger(o); });
 
     options["Threads"] << Option(1, 1, 1024, [this](const Option&) {
