@@ -72,19 +72,19 @@ namespace Eval {
 // in the engine directory. Distro packagers may define the DEFAULT_NNUE_DIRECTORY
 // variable to have the engine search in a special directory in their distro.
 void NNUE::init(const std::string&                                 binaryDirectory,
-                const OptionsMap&                                  Options,
-                std::unordered_map<Eval::NNUE::NetSize, EvalFile>& EvalFiles) {
+                const OptionsMap&                                  options,
+                std::unordered_map<Eval::NNUE::NetSize, EvalFile>& evalFiles) {
 
-    for (auto& [netSize, evalFile] : EvalFiles)
+    for (auto& [netSize, evalFile] : evalFiles)
     {
         // Replace with
-        // Options[evalFile.option_name]
+        // options[evalFile.optionName]
         // once fishtest supports the uci option EvalFileSmall
         std::string user_eval_file =
-          netSize == Small ? evalFile.default_name : Options[evalFile.option_name];
+          netSize == Small ? evalFile.defaultName : options[evalFile.optionName];
 
         if (user_eval_file.empty())
-            user_eval_file = evalFile.default_name;
+            user_eval_file = evalFile.defaultName;
 
 #if defined(DEFAULT_NNUE_DIRECTORY)
         std::vector<std::string> dirs = {"<internal>", "", binaryDirectory,
@@ -95,16 +95,16 @@ void NNUE::init(const std::string&                                 binaryDirecto
 
         for (const std::string& directory : dirs)
         {
-            if (evalFile.selected_name != user_eval_file)
+            if (evalFile.selectedName != user_eval_file)
             {
                 if (directory != "<internal>")
                 {
                     std::ifstream stream(directory + user_eval_file, std::ios::binary);
                     if (NNUE::load_eval(stream, netSize, evalFile.netDescription))
-                        evalFile.selected_name = user_eval_file;
+                        evalFile.selectedName = user_eval_file;
                 }
 
-                if (directory == "<internal>" && user_eval_file == evalFile.default_name)
+                if (directory == "<internal>" && user_eval_file == evalFile.defaultName)
                 {
                     // C++ way to prepare a buffer for a memory stream
                     class MemoryBuffer: public std::basic_streambuf<char> {
@@ -124,7 +124,7 @@ void NNUE::init(const std::string&                                 binaryDirecto
 
                     std::istream stream(&buffer);
                     if (NNUE::load_eval(stream, netSize, evalFile.netDescription))
-                        evalFile.selected_name = user_eval_file;
+                        evalFile.selectedName = user_eval_file;
                 }
             }
         }
@@ -132,20 +132,20 @@ void NNUE::init(const std::string&                                 binaryDirecto
 }
 
 // Verifies that the last net used was loaded successfully
-void NNUE::verify(const OptionsMap&                                        Options,
-                  const std::unordered_map<Eval::NNUE::NetSize, EvalFile>& EvalFiles) {
+void NNUE::verify(const OptionsMap&                                        options,
+                  const std::unordered_map<Eval::NNUE::NetSize, EvalFile>& evalFiles) {
 
-    for (const auto& [netSize, evalFile] : EvalFiles)
+    for (const auto& [netSize, evalFile] : evalFiles)
     {
         // Replace with
-        // Options[evalFile.option_name]
+        // options[evalFile.optionName]
         // once fishtest supports the uci option EvalFileSmall
         std::string user_eval_file =
-          netSize == Small ? evalFile.default_name : Options[evalFile.option_name];
+          netSize == Small ? evalFile.defaultName : options[evalFile.optionName];
         if (user_eval_file.empty())
-            user_eval_file = evalFile.default_name;
+            user_eval_file = evalFile.defaultName;
 
-        if (evalFile.selected_name != user_eval_file)
+        if (evalFile.selectedName != user_eval_file)
         {
             std::string msg1 =
               "Network evaluation parameters compatible with the engine must be available.";
@@ -155,7 +155,7 @@ void NNUE::verify(const OptionsMap&                                        Optio
                                "including the directory name, to the network file.";
             std::string msg4 = "The default net can be downloaded from: "
                                "https://tests.stockfishchess.org/api/nn/"
-                             + evalFile.default_name;
+                             + evalFile.defaultName;
             std::string msg5 = "The engine will be terminated now.";
 
             sync_cout << "info string ERROR: " << msg1 << sync_endl;

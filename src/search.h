@@ -171,11 +171,11 @@ class NullSearchManager: public ISearchManager {
 
 class Worker {
    public:
-    Worker(ExternalShared& es, std::unique_ptr<ISearchManager> sm, size_t i) :
+    Worker(ExternalShared& externalShared, std::unique_ptr<ISearchManager> sm, size_t i) :
         // Unpack the ExternalShared struct into member variables
-        options(es.options),
-        threads(es.threads),
-        tt(es.tt),
+        options(externalShared.options),
+        threads(externalShared.threads),
+        tt(externalShared.tt),
         manager(std::move(sm)),
         thread_idx(i) {}
 

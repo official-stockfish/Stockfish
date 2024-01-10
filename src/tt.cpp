@@ -56,7 +56,7 @@ void TTEntry::save(
 // Sets the size of the transposition table,
 // measured in megabytes. Transposition table consists of a power of 2 number
 // of clusters and each cluster consists of ClusterSize number of TTEntry.
-void TranspositionTable::resize(size_t mbSize, int thread_count) {
+void TranspositionTable::resize(size_t mbSize, int threadCount) {
     aligned_large_pages_free(table);
 
     clusterCount = mbSize * 1024 * 1024 / sizeof(Cluster);
@@ -68,25 +68,25 @@ void TranspositionTable::resize(size_t mbSize, int thread_count) {
         exit(EXIT_FAILURE);
     }
 
-    clear(thread_count);
+    clear(threadCount);
 }
 
 
 // Initializes the entire transposition table to zero,
 // in a multi-threaded way.
-void TranspositionTable::clear(size_t thread_count) {
+void TranspositionTable::clear(size_t threadCount) {
     std::vector<std::thread> threads;
 
-    for (size_t idx = 0; idx < size_t(thread_count); ++idx)
+    for (size_t idx = 0; idx < size_t(threadCount); ++idx)
     {
-        threads.emplace_back([this, idx, thread_count]() {
+        threads.emplace_back([this, idx, threadCount]() {
             // Thread binding gives faster search on systems with a first-touch policy
-            if (thread_count > 8)
+            if (threadCount > 8)
                 WinProcGroup::bindThisThread(idx);
 
             // Each thread will zero its part of the hash table
-            const size_t stride = size_t(clusterCount / thread_count), start = size_t(stride * idx),
-                         len = idx != size_t(thread_count) - 1 ? stride : clusterCount - start;
+            const size_t stride = size_t(clusterCount / threadCount), start = size_t(stride * idx),
+                         len = idx != size_t(threadCount) - 1 ? stride : clusterCount - start;
 
             std::memset(&table[start], 0, len * sizeof(Cluster));
         });

@@ -41,10 +41,12 @@ namespace Stockfish {
 
 // Constructor launches the thread and waits until it goes to sleep
 // in idle_loop(). Note that 'searching' and 'exit' should be already set.
-Thread::Thread(Search::ExternalShared& es, std::unique_ptr<Search::ISearchManager> sm, size_t n) :
-    worker(std::make_unique<Search::Worker>(es, std::move(sm), n)),
+Thread::Thread(Search::ExternalShared&                 externalShared,
+               std::unique_ptr<Search::ISearchManager> sm,
+               size_t                                  n) :
+    worker(std::make_unique<Search::Worker>(externalShared, std::move(sm), n)),
     idx(n),
-    nthreads(es.options["Threads"]),
+    nthreads(externalShared.options["Threads"]),
     stdThread(&Thread::idle_loop, this) {
 
     wait_for_search_finished();
@@ -112,7 +114,7 @@ void Thread::idle_loop() {
 // Creates/destroys threads to match the requested number.
 // Created and launched threads will immediately go to sleep in idle_loop.
 // Upon resizing, threads are recreated to allow for binding if necessary.
-void ThreadPool::set(Search::ExternalShared&& es) {
+void ThreadPool::set(Search::ExternalShared&& externalShared) {
 
     if (threads.size() > 0)  // destroy any existing thread(s)
     {
@@ -122,24 +124,25 @@ void ThreadPool::set(Search::ExternalShared&& es) {
             delete threads.back(), threads.pop_back();
     }
 
-    const size_t requested = es.options["Threads"];
+    const size_t requested = externalShared.options["Threads"];
 
     if (requested > 0)  // create new thread(s)
     {
-        threads.push_back(
-          new Thread(es, std::unique_ptr<Search::ISearchManager>(new Search::SearchManager()), 0));
+        threads.push_back(new Thread(
+          externalShared, std::unique_ptr<Search::ISearchManager>(new Search::SearchManager()), 0));
 
 
         while (threads.size() < requested)
-            threads.push_back(new Thread(
-              es, std::unique_ptr<Search::ISearchManager>(new Search::NullSearchManager()),
-              threads.size()));
+            threads.push_back(
+              new Thread(externalShared,
+                         std::unique_ptr<Search::ISearchManager>(new Search::NullSearchManager()),
+                         threads.size()));
         clear();
 
         main_thread()->wait_for_search_finished();
 
         // Reallocate the hash with the new threadpool size
-        es.tt.resize(es.options["Hash"], requested);
+        externalShared.tt.resize(externalShared.options["Hash"], requested);
 
         // Init thread number dependent search params.
         Search::init(requested);

@@ -75,7 +75,7 @@ UCI::UCI(int argc, char** argv) :
     options["Syzygy50MoveRule"] << Option(true);
     options["SyzygyProbeLimit"] << Option(7, 0, 7);
     options["EvalFile"] << Option(EvalFileDefaultNameBig, [this](const Option&) {
-        Eval::NNUE::init(cli.binaryDirectory, options, EvalFiles);
+        Eval::NNUE::init(cli.binaryDirectory, options, evalFiles);
     });
 
     threads.set({options, threads, tt});
@@ -148,7 +148,7 @@ void UCI::loop() {
             std::string                f;
             if (is >> std::skipws >> f)
                 filename = f;
-            Eval::NNUE::save_eval(filename, Eval::NNUE::Big, EvalFiles);
+            Eval::NNUE::save_eval(filename, Eval::NNUE::Big, evalFiles);
         }
         else if (token == "--help" || token == "help" || token == "--license" || token == "license")
             sync_cout
@@ -205,7 +205,7 @@ void UCI::go(Position& pos, std::istringstream& is, StateListPtr& states) {
         else if (token == "ponder")
             ponderMode = true;
 
-    Eval::NNUE::verify(options, EvalFiles);
+    Eval::NNUE::verify(options, evalFiles);
 
     threads.start_thinking(options, pos, states, limits, ponderMode);
 }
@@ -264,7 +264,7 @@ void UCI::trace_eval(Position& pos) {
     Position     p;
     p.set(pos.fen(), options["UCI_Chess960"], &states->back());
 
-    Eval::NNUE::verify(options, EvalFiles);
+    Eval::NNUE::verify(options, evalFiles);
 
     sync_cout << "\n" << Eval::trace(p, *threads.main_thread()->worker.get()) << sync_endl;
 }

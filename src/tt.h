@@ -88,8 +88,8 @@ class TranspositionTable {
     void new_search() { generation8 += GENERATION_DELTA; }  // Lower bits are used for other things
     TTEntry* probe(const Key key, bool& found) const;
     int      hashfull() const;
-    void     resize(size_t mbSize, int thread_count);
-    void     clear(size_t thread_count);
+    void     resize(size_t mbSize, int threadCount);
+    void     clear(size_t threadCount);
 
     TTEntry* first_entry(const Key key) const {
         return &table[mul_hi64(key, clusterCount)].entry[0];

@@ -47,9 +47,13 @@ Value evaluate(const Position& pos, const Search::Worker& workerThread);
 #define EvalFileDefaultNameSmall "nn-baff1ede1f90.nnue"
 
 struct EvalFile {
-    std::string option_name;
-    std::string default_name;
-    std::string selected_name;
+    // UCI option name
+    std::string optionName;
+    // Default net name, will use one of the macros above
+    std::string defaultName;
+    // Selected net name, either via uci option or default
+    std::string selectedName;
+    // Net description extracted from the net file
     std::string netDescription;
 };
 
@@ -57,10 +61,10 @@ namespace NNUE {
 
 enum NetSize : int;
 
-void init(const std::string& binaryDirector,
-          const OptionsMap&  Options,
+void init(const std::string&,
+          const OptionsMap&,
           std::unordered_map<Eval::NNUE::NetSize, EvalFile>&);
-void verify(const OptionsMap& Options, const std::unordered_map<Eval::NNUE::NetSize, EvalFile>&);
+void verify(const OptionsMap&, const std::unordered_map<Eval::NNUE::NetSize, EvalFile>&);
 
 }  // namespace NNUE
 

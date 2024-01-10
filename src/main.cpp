@@ -37,7 +37,7 @@ int main(int argc, char* argv[]) {
     Tune::init(uci.options);
     Bitboards::init();
     Position::init();
-    Eval::NNUE::init(uci.workingDirectory(), uci.options, uci.EvalFiles);
+    Eval::NNUE::init(uci.workingDirectory(), uci.options, uci.evalFiles);
 
     uci.loop();
 

@@ -444,7 +444,7 @@ bool save_eval(std::ostream&      stream,
 // Save eval, to a file given by its name
 bool save_eval(const std::optional<std::string>&                              filename,
                NetSize                                                        netSize,
-               const std::unordered_map<Eval::NNUE::NetSize, Eval::EvalFile>& EvalFiles) {
+               const std::unordered_map<Eval::NNUE::NetSize, Eval::EvalFile>& evalFiles) {
 
     std::string actualFilename;
     std::string msg;
@@ -453,7 +453,7 @@ bool save_eval(const std::optional<std::string>&                              fi
         actualFilename = filename.value();
     else
     {
-        if (EvalFiles.at(netSize).selected_name
+        if (evalFiles.at(netSize).selectedName
             != (netSize == Small ? EvalFileDefaultNameSmall : EvalFileDefaultNameBig))
         {
             msg = "Failed to export a net. "
@@ -466,8 +466,8 @@ bool save_eval(const std::optional<std::string>&                              fi
     }
 
     std::ofstream stream(actualFilename, std::ios_base::binary);
-    bool          saved = save_eval(stream, netSize, EvalFiles.at(netSize).selected_name,
-                                    EvalFiles.at(netSize).netDescription);
+    bool          saved = save_eval(stream, netSize, evalFiles.at(netSize).selectedName,
+                                    evalFiles.at(netSize).netDescription);
 
     msg = saved ? "Network saved successfully to " + actualFilename : "Failed to export a net";
 
