@@ -26,7 +26,6 @@
 
 #include "evaluate.h"
 #include "misc.h"
-#include "nnue/nnue_architecture.h"
 #include "position.h"
 #include "thread.h"
 #include "tt.h"
