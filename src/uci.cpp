@@ -79,7 +79,7 @@ UCI::UCI(int argc, char** argv) :
     options["Syzygy50MoveRule"] << Option(true);
     options["SyzygyProbeLimit"] << Option(7, 0, 7);
     options["EvalFile"] << Option(EvalFileDefaultNameBig, [this](const Option&) {
-        Eval::NNUE::load_networks(cli.binaryDirectory, options, evalFiles);
+        evalFiles = Eval::NNUE::load_networks(cli.binaryDirectory, options, evalFiles);
     });
 
     threads.set({options, threads, tt});
