@@ -67,15 +67,6 @@ Value futility_margin(Depth d, bool noTtCutNode, bool improving) {
     return ((116 - 44 * noTtCutNode) * (d - improving));
 }
 
-// Reductions lookup table initialized at startup
-int Reductions[MAX_MOVES];  // [depth or moveNumber]
-
-Depth reduction(bool i, Depth d, int mn, int delta, int rootDelta) {
-    int reductionScale = Reductions[d] * Reductions[mn];
-    return (reductionScale + 1346 - int(delta) * 896 / int(rootDelta)) / 1024
-         + (!i && reductionScale > 880);
-}
-
 constexpr int futility_move_count(bool improving, Depth depth) {
     return improving ? (3 + depth * depth) : (3 + depth * depth) / 2;
 }
@@ -168,11 +159,16 @@ uint64_t perft(Position& pos, Depth depth) {
 }  // namespace
 
 
-// Called at startup to initialize various lookup tables
-void Search::init(int n_parallel_searches) {
-
-    for (int i = 1; i < MAX_MOVES; ++i)
-        Reductions[i] = int((20.37 + std::log(n_parallel_searches) / 2) * std::log(i));
+Search::Worker::Worker(ExternalShared&                 externalShared,
+                       std::unique_ptr<ISearchManager> sm,
+                       size_t                          thread_id) :
+    // Unpack the ExternalShared struct into member variables
+    thread_idx(thread_id),
+    manager(std::move(sm)),
+    options(externalShared.options),
+    threads(externalShared.threads),
+    tt(externalShared.tt) {
+    clear();
 }
 
 void Search::Worker::start_searching() {
@@ -514,6 +510,10 @@ void Search::Worker::clear() {
             for (auto& to : continuationHistory[inCheck][c])
                 for (auto& h : to)
                     h->fill(-71);
+
+
+    for (int i = 1; i < MAX_MOVES; ++i)
+        reductions[i] = int((20.37 + std::log(size_t(options["Threads"])) / 2) * std::log(i));
 }
 
 
@@ -988,7 +988,7 @@ moves_loop:  // When in check, search starts here
 
         int delta = beta - alpha;
 
-        Depth r = reduction(improving, depth, moveCount, delta, this->rootDelta);
+        Depth r = reduction(improving, depth, moveCount, delta);
 
         // Step 14. Pruning at shallow depth (~120 Elo).
         // Depth conditions are important for mate finding.

@@ -173,13 +173,7 @@ class NullSearchManager: public ISearchManager {
 // of the search history, and storing data required for the search.
 class Worker {
    public:
-    Worker(ExternalShared& externalShared, std::unique_ptr<ISearchManager> sm, size_t i) :
-        // Unpack the ExternalShared struct into member variables
-        thread_idx(i),
-        manager(std::move(sm)),
-        options(externalShared.options),
-        threads(externalShared.threads),
-        tt(externalShared.tt) {}
+    Worker(ExternalShared&, std::unique_ptr<ISearchManager>, size_t);
 
     // Reset histories, usually before a new game
     void clear();
@@ -213,6 +207,12 @@ class Worker {
     template<NodeType nodeType>
     Value qsearch(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth = 0);
 
+    Depth reduction(bool i, Depth d, int mn, int delta) {
+        int reductionScale = reductions[d] * reductions[mn];
+        return (reductionScale + 1346 - int(delta) * 896 / int(rootDelta)) / 1024
+             + (!i && reductionScale > 880);
+    }
+
     // Get a pointer to the search manager, only allowed to be called by the
     // main thread.
     SearchManager* main_manager() const {
@@ -233,6 +233,9 @@ class Worker {
     Value     rootDelta;
 
     size_t thread_idx;
+
+    // Reductions lookup table initialized at startup
+    int reductions[MAX_MOVES];  // [depth or moveNumber]
 
     // The main thread has a SearchManager, the others have a NullSearchManager
     std::unique_ptr<ISearchManager> manager;

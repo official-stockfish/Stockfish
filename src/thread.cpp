@@ -143,9 +143,6 @@ void ThreadPool::set(Search::ExternalShared externalShared) {
 
         // Reallocate the hash with the new threadpool size
         externalShared.tt.resize(externalShared.options["Hash"], requested);
-
-        // Init thread number dependent search params.
-        Search::init(requested);
     }
 }
 
