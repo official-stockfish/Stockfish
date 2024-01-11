@@ -19,8 +19,8 @@
 #ifndef TIMEMAN_H_INCLUDED
 #define TIMEMAN_H_INCLUDED
 
-#include <cstdint>
 #include <cstddef>
+#include <cstdint>
 
 #include "misc.h"
 #include "types.h"
@@ -43,14 +43,16 @@ class TimeManagement {
     TimePoint maximum() const;
     TimePoint elapsed(std::size_t nodes) const;
 
-    std::int64_t availableNodes = 0;  // When in 'nodes as time' mode
+    void clear();
+    void advance_nodes_time(std::size_t nodes);
 
    private:
     TimePoint startTime;
     TimePoint optimumTime;
     TimePoint maximumTime;
 
-    bool useNodesTime = false;  // True if we are in 'nodes as time' mode
+    std::int64_t availableNodes = 0;      // When in 'nodes as time' mode
+    bool         useNodesTime   = false;  // True if we are in 'nodes as time' mode
 };
 
 }  // namespace Stockfish

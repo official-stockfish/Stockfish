@@ -114,7 +114,7 @@ void Thread::idle_loop() {
 // Creates/destroys threads to match the requested number.
 // Created and launched threads will immediately go to sleep in idle_loop.
 // Upon resizing, threads are recreated to allow for binding if necessary.
-void ThreadPool::set(Search::ExternalShared&& externalShared) {
+void ThreadPool::set(Search::ExternalShared externalShared) {
 
     if (threads.size() > 0)  // destroy any existing thread(s)
     {
@@ -160,7 +160,7 @@ void ThreadPool::clear() {
     main_manager()->bestPreviousScore        = VALUE_INFINITE;
     main_manager()->bestPreviousAverageScore = VALUE_INFINITE;
     main_manager()->previousTimeReduction    = 1.0;
-    main_manager()->tm.availableNodes        = 0;
+    main_manager()->tm.clear();
 }
 
 

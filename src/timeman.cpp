@@ -33,6 +33,14 @@ TimePoint TimeManagement::elapsed(size_t nodes) const {
     return useNodesTime ? TimePoint(nodes) : now() - startTime;
 }
 
+void TimeManagement::clear() {
+    availableNodes = 0;  // When in 'nodes as time' mode
+}
+
+void TimeManagement::advance_nodes_time(size_t nodes) {
+    assert(useNodesTime);
+    availableNodes += nodes;
+}
 
 // Called at the beginning of the search and calculates
 // the bounds of time allowed for the current game ply. We currently support:

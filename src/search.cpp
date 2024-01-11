@@ -169,10 +169,10 @@ uint64_t perft(Position& pos, Depth depth) {
 
 
 // Called at startup to initialize various lookup tables
-void Search::init(int size) {
+void Search::init(int n_parallel_searches) {
 
     for (int i = 1; i < MAX_MOVES; ++i)
-        Reductions[i] = int((20.37 + std::log(size) / 2) * std::log(i));
+        Reductions[i] = int((20.37 + std::log(n_parallel_searches) / 2) * std::log(i));
 }
 
 void Search::Worker::start_searching() {
@@ -222,8 +222,8 @@ void Search::Worker::start_searching() {
     // When playing in 'nodes as time' mode, subtract the searched nodes from
     // the available ones before exiting.
     if (limits.npmsec)
-        main_manager()->tm.availableNodes +=
-          limits.inc[rootPos.side_to_move()] - threads.nodes_searched();
+        main_manager()->tm.advance_nodes_time(limits.inc[rootPos.side_to_move()]
+                                              - threads.nodes_searched());
 
     Worker* bestThread = this;
     Skill   skill =

@@ -38,7 +38,8 @@ int main(int argc, char* argv[]) {
     UCI uci(argc, argv);
 
     Tune::init(uci.options);
-    Eval::NNUE::init(uci.workingDirectory(), uci.options, uci.evalFiles);
+
+    uci.evalFiles = Eval::NNUE::load_networks(uci.workingDirectory(), uci.options, uci.evalFiles);
 
     uci.loop();
 

@@ -71,9 +71,9 @@ namespace Eval {
 // network may be embedded in the binary), in the active working directory and
 // in the engine directory. Distro packagers may define the DEFAULT_NNUE_DIRECTORY
 // variable to have the engine search in a special directory in their distro.
-void NNUE::init(const std::string&                                 binaryDirectory,
-                const OptionsMap&                                  options,
-                std::unordered_map<Eval::NNUE::NetSize, EvalFile>& evalFiles) {
+NNUE::EvalFiles NNUE::load_networks(const std::string& rootDirectory,
+                                    const OptionsMap&  options,
+                                    NNUE::EvalFiles    evalFiles) {
 
     for (auto& [netSize, evalFile] : evalFiles)
     {
@@ -87,21 +87,21 @@ void NNUE::init(const std::string&                                 binaryDirecto
             user_eval_file = evalFile.defaultName;
 
 #if defined(DEFAULT_NNUE_DIRECTORY)
-        std::vector<std::string> dirs = {"<internal>", "", binaryDirectory,
+        std::vector<std::string> dirs = {"<internal>", "", rootDirectory,
                                          stringify(DEFAULT_NNUE_DIRECTORY)};
 #else
-        std::vector<std::string> dirs = {"<internal>", "", binaryDirectory};
+        std::vector<std::string> dirs = {"<internal>", "", rootDirectory};
 #endif
 
         for (const std::string& directory : dirs)
         {
-            if (evalFile.selectedName != user_eval_file)
+            if (evalFile.current != user_eval_file)
             {
                 if (directory != "<internal>")
                 {
                     std::ifstream stream(directory + user_eval_file, std::ios::binary);
                     if (NNUE::load_eval(stream, netSize, evalFile.netDescription))
-                        evalFile.selectedName = user_eval_file;
+                        evalFile.current = user_eval_file;
                 }
 
                 if (directory == "<internal>" && user_eval_file == evalFile.defaultName)
@@ -124,11 +124,13 @@ void NNUE::init(const std::string&                                 binaryDirecto
 
                     std::istream stream(&buffer);
                     if (NNUE::load_eval(stream, netSize, evalFile.netDescription))
-                        evalFile.selectedName = user_eval_file;
+                        evalFile.current = user_eval_file;
                 }
             }
         }
     }
+
+    return evalFiles;
 }
 
 // Verifies that the last net used was loaded successfully
@@ -145,7 +147,7 @@ void NNUE::verify(const OptionsMap&                                        optio
         if (user_eval_file.empty())
             user_eval_file = evalFile.defaultName;
 
-        if (evalFile.selectedName != user_eval_file)
+        if (evalFile.current != user_eval_file)
         {
             std::string msg1 =
               "Network evaluation parameters compatible with the engine must be available.";

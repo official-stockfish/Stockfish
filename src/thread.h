@@ -82,7 +82,7 @@ class ThreadPool {
     void
     start_thinking(const OptionsMap&, Position&, StateListPtr&, Search::LimitsType, bool = false);
     void clear();
-    void set(Search::ExternalShared&&);
+    void set(Search::ExternalShared);
 
     Search::SearchManager* main_manager() const {
         return static_cast<Search::SearchManager*>(main_thread()->worker.get()->manager.get());
@@ -111,7 +111,7 @@ class ThreadPool {
 
         uint64_t sum = 0;
         for (Thread* th : threads)
-            sum += th->worker.get()->*member;
+            sum += (th->worker.get()->*member).load(std::memory_order_relaxed);
         return sum;
     }
 };

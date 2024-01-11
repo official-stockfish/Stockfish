@@ -453,7 +453,7 @@ bool save_eval(const std::optional<std::string>&                              fi
         actualFilename = filename.value();
     else
     {
-        if (evalFiles.at(netSize).selectedName
+        if (evalFiles.at(netSize).current
             != (netSize == Small ? EvalFileDefaultNameSmall : EvalFileDefaultNameBig))
         {
             msg = "Failed to export a net. "
@@ -466,7 +466,7 @@ bool save_eval(const std::optional<std::string>&                              fi
     }
 
     std::ofstream stream(actualFilename, std::ios_base::binary);
-    bool          saved = save_eval(stream, netSize, evalFiles.at(netSize).selectedName,
+    bool          saved = save_eval(stream, netSize, evalFiles.at(netSize).current,
                                     evalFiles.at(netSize).netDescription);
 
     msg = saved ? "Network saved successfully to " + actualFilename : "Failed to export a net";
