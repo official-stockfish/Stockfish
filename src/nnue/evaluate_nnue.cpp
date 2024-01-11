@@ -29,6 +29,7 @@
 #include <optional>
 #include <sstream>
 #include <string_view>
+#include <type_traits>
 #include <unordered_map>
 
 #include "../evaluate.h"
