@@ -100,8 +100,13 @@ NNUE::EvalFiles NNUE::load_networks(const std::string& rootDirectory,
                 if (directory != "<internal>")
                 {
                     std::ifstream stream(directory + user_eval_file, std::ios::binary);
-                    if (NNUE::load_eval(stream, netSize, evalFile.netDescription))
-                        evalFile.current = user_eval_file;
+                    auto          description = NNUE::load_eval(stream, netSize);
+
+                    if (description.has_value())
+                    {
+                        evalFile.current        = user_eval_file;
+                        evalFile.netDescription = description.value();
+                    }
                 }
 
                 if (directory == "<internal>" && user_eval_file == evalFile.defaultName)
@@ -123,8 +128,13 @@ NNUE::EvalFiles NNUE::load_networks(const std::string& rootDirectory,
                     (void) gEmbeddedNNUESmallEnd;
 
                     std::istream stream(&buffer);
-                    if (NNUE::load_eval(stream, netSize, evalFile.netDescription))
-                        evalFile.current = user_eval_file;
+                    auto         description = NNUE::load_eval(stream, netSize);
+
+                    if (description.has_value())
+                    {
+                        evalFile.current        = user_eval_file;
+                        evalFile.netDescription = description.value();
+                    }
                 }
             }
         }

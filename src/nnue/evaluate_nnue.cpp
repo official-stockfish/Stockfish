@@ -26,6 +26,7 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <optional>
 #include <sstream>
 #include <string_view>
 #include <unordered_map>
@@ -423,10 +424,12 @@ std::string trace(Position& pos) {
 
 
 // Load eval, from a file stream or a memory stream
-bool load_eval(std::istream& stream, NetSize netSize, std::string& netDescription) {
+std::optional<std::string> load_eval(std::istream& stream, NetSize netSize) {
 
     initialize(netSize);
-    return read_parameters(stream, netSize, netDescription);
+    std::string netDescription;
+    return read_parameters(stream, netSize, netDescription) ? std::make_optional(netDescription)
+                                                            : std::nullopt;
 }
 
 // Save eval, to a file stream or a memory stream
