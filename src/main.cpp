@@ -17,6 +17,7 @@
 */
 
 #include <iostream>
+#include <unordered_map>
 
 #include "bitboard.h"
 #include "evaluate.h"
