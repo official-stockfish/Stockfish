@@ -27,7 +27,6 @@
 #include <cstring>
 #include <initializer_list>
 #include <iostream>
-#include <utility>
 
 #include "bitboard.h"
 #include "evaluate.h"
