@@ -21,6 +21,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cmath>
+#include <cstdint>
 
 #include "search.h"
 #include "ucioption.h"
@@ -38,7 +39,7 @@ void TimeManagement::clear() {
     availableNodes = 0;  // When in 'nodes as time' mode
 }
 
-void TimeManagement::advance_nodes_time(size_t nodes) {
+void TimeManagement::advance_nodes_time(std::int64_t nodes) {
     assert(useNodesTime);
     availableNodes += nodes;
 }
@@ -70,7 +71,7 @@ void TimeManagement::init(Search::LimitsType& limits,
     // must be much lower than the real engine speed.
     if (npmsec)
     {
-        useNodesTime = limits.npmsec;
+        useNodesTime = true;
 
         if (!availableNodes)                            // Only once at game start
             availableNodes = npmsec * limits.time[us];  // Time is in msec

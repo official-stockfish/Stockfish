@@ -186,6 +186,7 @@ void Search::Worker::start_searching() {
         return;
     }
 
+    main_manager()->tm.init(limits, rootPos.side_to_move(), rootPos.game_ply(), options);
     tt.new_search();
 
     if (rootMoves.empty())

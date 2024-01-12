@@ -173,7 +173,6 @@ void ThreadPool::start_thinking(const OptionsMap&  options,
 
     main_manager()->stopOnPonderhit = stop = false;
     main_manager()->ponder                 = ponderMode;
-    main_manager()->tm.init(limits, pos.side_to_move(), pos.game_ply(), options);
 
     increaseDepth = true;
 

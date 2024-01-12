@@ -44,7 +44,7 @@ class TimeManagement {
     TimePoint elapsed(std::size_t nodes) const;
 
     void clear();
-    void advance_nodes_time(std::size_t nodes);
+    void advance_nodes_time(std::int64_t nodes);
 
    private:
     TimePoint startTime;
