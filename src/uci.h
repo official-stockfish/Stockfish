@@ -86,5 +86,4 @@ class UCI {
 }  // namespace Stockfish
 
 
-#endif
-
+#endif  // #ifndef UCI_H_INCLUDED

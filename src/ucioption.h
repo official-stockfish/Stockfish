@@ -78,5 +78,4 @@ class Option {
 };
 
 }
-#endif
-
+#endif  // #ifndef UCIOPTION_H_INCLUDED

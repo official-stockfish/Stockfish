@@ -183,4 +183,3 @@ std::ostream& operator<<(std::ostream& os, const OptionsMap& om) {
     return os;
 }
 }
-
