@@ -39,6 +39,7 @@
 #include "syzygy/tbprobe.h"
 #include "types.h"
 #include "ucioption.h"
+#include "perft.h"
 
 namespace Stockfish {
 
@@ -172,7 +173,6 @@ void UCI::loop() {
 
 void UCI::go(Position& pos, std::istringstream& is, StateListPtr& states) {
 
-
     Search::LimitsType limits;
     std::string        token;
     bool               ponderMode = false;
@@ -210,6 +210,12 @@ void UCI::go(Position& pos, std::istringstream& is, StateListPtr& states) {
             ponderMode = true;
 
     Eval::NNUE::verify(options, evalFiles);
+
+    if (limits.perft)
+    {
+        perft(pos.fen(), limits.perft, options["UCI_Chess960"]);
+        return;
+    }
 
     threads.start_thinking(options, pos, states, limits, ponderMode);
 }
