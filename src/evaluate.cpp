@@ -35,7 +35,6 @@
 #include "nnue/evaluate_nnue.h"
 #include "nnue/nnue_architecture.h"
 #include "position.h"
-#include "search.h"
 #include "types.h"
 #include "uci.h"
 #include "ucioption.h"

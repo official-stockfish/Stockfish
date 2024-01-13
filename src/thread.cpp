@@ -27,7 +27,6 @@
 #include <unordered_map>
 #include <utility>
 
-#include "evaluate.h"
 #include "misc.h"
 #include "movegen.h"
 #include "search.h"
