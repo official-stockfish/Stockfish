@@ -48,8 +48,6 @@ class UCI;
 
 namespace Search {
 
-// Called at startup to initialize various lookup tables, after program startup
-void init(int);
 
 // Stack struct keeps track of the information we need to remember from nodes
 // shallower and deeper in the tree during the search. Each search thread has
@@ -176,6 +174,7 @@ class Worker {
    public:
     Worker(SharedState&, std::unique_ptr<ISearchManager>, size_t);
 
+    // Called at instantiation to initialize Reductions tables
     // Reset histories, usually before a new game
     void clear();
 
