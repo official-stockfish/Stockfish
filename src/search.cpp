@@ -122,36 +122,7 @@ void update_all_stats(const Position& pos,
                       int             captureCount,
                       Depth           depth);
 
-// Utility to verify move generation. All the leaf nodes up
-// to the given depth are generated and counted, and the sum is returned.
-template<bool Root>
-uint64_t perft(Position& pos, Depth depth) {
-
-    StateInfo st;
-    ASSERT_ALIGNED(&st, Eval::NNUE::CacheLineSize);
-
-    uint64_t   cnt, nodes = 0;
-    const bool leaf = (depth == 2);
-
-    for (const auto& m : MoveList<LEGAL>(pos))
-    {
-        if (Root && depth <= 1)
-            cnt = 1, nodes++;
-        else
-        {
-            pos.do_move(m, st);
-            cnt = leaf ? MoveList<LEGAL>(pos).size() : perft<false>(pos, depth - 1);
-            nodes += cnt;
-            pos.undo_move(m);
-        }
-        if (Root)
-            sync_cout << UCI::move(m, pos.is_chess960()) << ": " << cnt << sync_endl;
-    }
-    return nodes;
-}
-
 }  // namespace
-
 
 Search::Worker::Worker(SharedState&                    sharedState,
                        std::unique_ptr<ISearchManager> sm,
@@ -170,13 +141,6 @@ void Search::Worker::start_searching() {
     if (!is_mainthread())
     {
         iterative_deepening();
-        return;
-    }
-
-    if (limits.perft)
-    {
-        nodes = perft<true>(rootPos, limits.perft);
-        sync_cout << "\nNodes searched: " << nodes << "\n" << sync_endl;
         return;
     }
 
