@@ -35,7 +35,6 @@
 #include "nnue/evaluate_nnue.h"
 #include "nnue/nnue_architecture.h"
 #include "position.h"
-#include "search.h"
 #include "types.h"
 #include "uci.h"
 #include "ucioption.h"
@@ -196,7 +195,7 @@ int Eval::simple_eval(const Position& pos, Color c) {
 
 // Evaluate is the evaluator for the outer world. It returns a static evaluation
 // of the position from the point of view of the side to move.
-Value Eval::evaluate(const Position& pos, const Search::Worker& workerThread) {
+Value Eval::evaluate(const Position& pos, int optimism) {
 
     assert(!pos.checkers());
 
@@ -216,8 +215,6 @@ Value Eval::evaluate(const Position& pos, const Search::Worker& workerThread) {
 
         Value nnue = smallNet ? NNUE::evaluate<NNUE::Small>(pos, true, &nnueComplexity)
                               : NNUE::evaluate<NNUE::Big>(pos, true, &nnueComplexity);
-
-        int optimism = workerThread.optimism[stm];
 
         // Blend optimism and eval with nnue complexity and material imbalance
         optimism += optimism * (nnueComplexity + std::abs(simpleEval - nnue)) / 512;
@@ -240,16 +237,10 @@ Value Eval::evaluate(const Position& pos, const Search::Worker& workerThread) {
 // a string (suitable for outputting to stdout) that contains the detailed
 // descriptions and values of each evaluation term. Useful for debugging.
 // Trace scores are from white's point of view
-std::string Eval::trace(Position& pos, Search::Worker& workerThread) {
+std::string Eval::trace(Position& pos) {
 
     if (pos.checkers())
         return "Final evaluation: none (in check)";
-
-    // Reset any global variable used in eval
-    workerThread.iterBestValue   = VALUE_ZERO;
-    workerThread.rootSimpleEval  = VALUE_ZERO;
-    workerThread.optimism[WHITE] = VALUE_ZERO;
-    workerThread.optimism[BLACK] = VALUE_ZERO;
 
     std::stringstream ss;
     ss << std::showpoint << std::noshowpos << std::fixed << std::setprecision(2);
@@ -262,7 +253,7 @@ std::string Eval::trace(Position& pos, Search::Worker& workerThread) {
     v = pos.side_to_move() == WHITE ? v : -v;
     ss << "NNUE evaluation        " << 0.01 * UCI::to_cp(v) << " (white side)\n";
 
-    v = evaluate(pos, workerThread);
+    v = evaluate(pos, VALUE_ZERO);
     v = pos.side_to_move() == WHITE ? v : -v;
     ss << "Final evaluation       " << 0.01 * UCI::to_cp(v) << " (white side)";
     ss << " [with scaled NNUE, ...]";

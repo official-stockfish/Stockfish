@@ -27,7 +27,6 @@
 #include <unordered_map>
 #include <utility>
 
-#include "evaluate.h"
 #include "misc.h"
 #include "movegen.h"
 #include "search.h"
@@ -205,8 +204,7 @@ void ThreadPool::start_thinking(const OptionsMap&  options,
         th->worker->rootDepth = th->worker->completedDepth = 0;
         th->worker->rootMoves                              = rootMoves;
         th->worker->rootPos.set(pos.fen(), pos.is_chess960(), &th->worker->rootState);
-        th->worker->rootState      = setupStates->back();
-        th->worker->rootSimpleEval = Eval::simple_eval(pos, pos.side_to_move());
+        th->worker->rootState = setupStates->back();
     }
 
     main_thread()->start_searching();

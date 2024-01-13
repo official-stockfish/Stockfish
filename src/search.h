@@ -184,10 +184,6 @@ class Worker {
 
     bool is_mainthread() const { return thread_idx == 0; }
 
-    // Public because evaluate uses this
-    Value iterBestValue, optimism[COLOR_NB];
-    Value rootSimpleEval;
-
     // Public because they need to be updatable by the stats
     CounterMoveHistory    counterMoves;
     ButterflyHistory      mainHistory;
@@ -225,6 +221,8 @@ class Worker {
     size_t                pvIdx, pvLast;
     std::atomic<uint64_t> nodes, tbHits, bestMoveChanges;
     int                   selDepth, nmpMinPly;
+
+    Value optimism[COLOR_NB];
 
     Position  rootPos;
     StateInfo rootState;
