@@ -280,7 +280,7 @@ void Search::Worker::iterative_deepening() {
 
     ss->pv = pv;
 
-    iterBestValue = -VALUE_INFINITE;
+    Value bestValue = -VALUE_INFINITE;
 
     if (mainThread)
     {
@@ -357,7 +357,7 @@ void Search::Worker::iterative_deepening() {
                 // for every four searchAgain steps (see issue #2717).
                 Depth adjustedDepth =
                   std::max(1, rootDepth - failedHighCnt - 3 * (searchAgainCounter + 1) / 4);
-                iterBestValue = search<Root>(rootPos, ss, alpha, beta, adjustedDepth, false);
+                bestValue = search<Root>(rootPos, ss, alpha, beta, adjustedDepth, false);
 
                 // Bring the best move to the front. It is critical that sorting
                 // is done with a stable algorithm because all the values but the
@@ -375,7 +375,7 @@ void Search::Worker::iterative_deepening() {
 
                 // When failing high/low give some update (without cluttering
                 // the UI) before a re-search.
-                if (mainThread && multiPV == 1 && (iterBestValue <= alpha || iterBestValue >= beta)
+                if (mainThread && multiPV == 1 && (bestValue <= alpha || bestValue >= beta)
                     && mainThread->tm.elapsed(threads.nodes_searched()) > 3000)
                     sync_cout << UCI::pv(*this, mainThread->tm.elapsed(threads.nodes_searched()),
                                          threads.nodes_searched(), threads.tb_hits(), tt.hashfull(),
@@ -384,18 +384,18 @@ void Search::Worker::iterative_deepening() {
 
                 // In case of failing low/high increase aspiration window and
                 // re-search, otherwise exit the loop.
-                if (iterBestValue <= alpha)
+                if (bestValue <= alpha)
                 {
                     beta  = (alpha + beta) / 2;
-                    alpha = std::max(iterBestValue - delta, -VALUE_INFINITE);
+                    alpha = std::max(bestValue - delta, -VALUE_INFINITE);
 
                     failedHighCnt = 0;
                     if (mainThread)
                         mainThread->stopOnPonderhit = false;
                 }
-                else if (iterBestValue >= beta)
+                else if (bestValue >= beta)
                 {
-                    beta = std::min(iterBestValue + delta, int(VALUE_INFINITE));
+                    beta = std::min(bestValue + delta, int(VALUE_INFINITE));
                     ++failedHighCnt;
                 }
                 else
@@ -428,8 +428,8 @@ void Search::Worker::iterative_deepening() {
         }
 
         // Have we found a "mate in x"?
-        if (limits.mate && iterBestValue >= VALUE_MATE_IN_MAX_PLY
-            && VALUE_MATE - iterBestValue <= 2 * limits.mate)
+        if (limits.mate && bestValue >= VALUE_MATE_IN_MAX_PLY
+            && VALUE_MATE - bestValue <= 2 * limits.mate)
             threads.stop = true;
 
         if (!mainThread)
@@ -449,8 +449,8 @@ void Search::Worker::iterative_deepening() {
         // Do we have time for the next iteration? Can we stop searching now?
         if (limits.use_time_management() && !threads.stop && !mainThread->stopOnPonderhit)
         {
-            double fallingEval = (66 + 14 * (mainThread->bestPreviousAverageScore - iterBestValue)
-                                  + 6 * (mainThread->iterValue[iterIdx] - iterBestValue))
+            double fallingEval = (66 + 14 * (mainThread->bestPreviousAverageScore - bestValue)
+                                  + 6 * (mainThread->iterValue[iterIdx] - bestValue))
                                / 616.6;
             fallingEval = std::clamp(fallingEval, 0.51, 1.51);
 
@@ -483,7 +483,7 @@ void Search::Worker::iterative_deepening() {
                 threads.increaseDepth = true;
         }
 
-        mainThread->iterValue[iterIdx] = iterBestValue;
+        mainThread->iterValue[iterIdx] = bestValue;
         iterIdx                        = (iterIdx + 1) & 3;
     }
 
