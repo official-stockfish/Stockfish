@@ -159,15 +159,15 @@ uint64_t perft(Position& pos, Depth depth) {
 }  // namespace
 
 
-Search::Worker::Worker(ExternalShared&                 externalShared,
+Search::Worker::Worker(SharedState&                    sharedState,
                        std::unique_ptr<ISearchManager> sm,
                        size_t                          thread_id) :
-    // Unpack the ExternalShared struct into member variables
+    // Unpack the SharedState struct into member variables
     thread_idx(thread_id),
     manager(std::move(sm)),
-    options(externalShared.options),
-    threads(externalShared.threads),
-    tt(externalShared.tt) {
+    options(sharedState.options),
+    threads(sharedState.threads),
+    tt(sharedState.tt) {
     clear();
 }
 

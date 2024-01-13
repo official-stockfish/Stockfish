@@ -123,8 +123,8 @@ struct LimitsType {
 
 // The UCI stores the uci options, thread pool, and transposition table.
 // This struct is used to easily forward data to the Search::Worker class.
-struct ExternalShared {
-    ExternalShared(const OptionsMap& o, ThreadPool& tp, TranspositionTable& t) :
+struct SharedState {
+    SharedState(const OptionsMap& o, ThreadPool& tp, TranspositionTable& t) :
         options(o),
         threads(tp),
         tt(t) {}
@@ -136,7 +136,9 @@ struct ExternalShared {
 
 class Worker;
 
-// Null Object Pattern
+// Null Object Pattern, implement a common interface
+// for the SearchManagers. A Null Object will be given to
+// non-mainthread workers.
 class ISearchManager {
    public:
     virtual ~ISearchManager() {}
@@ -172,7 +174,7 @@ class NullSearchManager: public ISearchManager {
 // of the search history, and storing data required for the search.
 class Worker {
    public:
-    Worker(ExternalShared&, std::unique_ptr<ISearchManager>, size_t);
+    Worker(SharedState&, std::unique_ptr<ISearchManager>, size_t);
 
     // Reset histories, usually before a new game
     void clear();

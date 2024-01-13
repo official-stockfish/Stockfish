@@ -43,7 +43,7 @@ using Value = int;
 // the search is finished, it goes back to idle_loop() waiting for a new signal.
 class Thread {
    public:
-    Thread(Search::ExternalShared&, std::unique_ptr<Search::ISearchManager>, size_t);
+    Thread(Search::SharedState&, std::unique_ptr<Search::ISearchManager>, size_t);
     virtual ~Thread();
 
     void   idle_loop();
@@ -82,7 +82,7 @@ class ThreadPool {
     void
     start_thinking(const OptionsMap&, Position&, StateListPtr&, Search::LimitsType, bool = false);
     void clear();
-    void set(Search::ExternalShared);
+    void set(Search::SharedState);
 
     Search::SearchManager* main_manager() const {
         return static_cast<Search::SearchManager*>(main_thread()->worker.get()->manager.get());
