@@ -206,7 +206,6 @@ void ThreadPool::start_thinking(const OptionsMap&  options,
         th->worker->rootMoves                              = rootMoves;
         th->worker->rootPos.set(pos.fen(), pos.is_chess960(), &th->worker->rootState);
         th->worker->rootState      = setupStates->back();
-        th->worker->rootSimpleEval = Eval::simple_eval(pos, pos.side_to_move());
     }
 
     main_thread()->start_searching();
