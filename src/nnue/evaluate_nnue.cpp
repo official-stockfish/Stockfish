@@ -26,8 +26,10 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <optional>
 #include <sstream>
 #include <string_view>
+#include <type_traits>
 #include <unordered_map>
 
 #include "../evaluate.h"
@@ -51,8 +53,6 @@ AlignedPtr<Network<TransformedFeatureDimensionsBig, L2Big, L3Big>>       network
 AlignedPtr<Network<TransformedFeatureDimensionsSmall, L2Small, L3Small>> networkSmall[LayerStacks];
 
 // Evaluation function file names
-std::string fileName[2];
-std::string netDescription[2];
 
 namespace Detail {
 
@@ -136,10 +136,10 @@ static bool write_header(std::ostream& stream, std::uint32_t hashValue, const st
 }
 
 // Read network parameters
-static bool read_parameters(std::istream& stream, NetSize netSize) {
+static bool read_parameters(std::istream& stream, NetSize netSize, std::string& netDescription) {
 
     std::uint32_t hashValue;
-    if (!read_header(stream, &hashValue, &netDescription[netSize]))
+    if (!read_header(stream, &hashValue, &netDescription))
         return false;
     if (hashValue != HashValue[netSize])
         return false;
@@ -158,9 +158,10 @@ static bool read_parameters(std::istream& stream, NetSize netSize) {
 }
 
 // Write network parameters
-static bool write_parameters(std::ostream& stream, NetSize netSize) {
+static bool
+write_parameters(std::ostream& stream, NetSize netSize, const std::string& netDescription) {
 
-    if (!write_header(stream, HashValue[netSize], netDescription[netSize]))
+    if (!write_header(stream, HashValue[netSize], netDescription))
         return false;
     if (netSize == Big && !Detail::write_parameters(stream, *featureTransformerBig))
         return false;
@@ -424,24 +425,30 @@ std::string trace(Position& pos) {
 
 
 // Load eval, from a file stream or a memory stream
-bool load_eval(const std::string name, std::istream& stream, NetSize netSize) {
+std::optional<std::string> load_eval(std::istream& stream, NetSize netSize) {
 
     initialize(netSize);
-    fileName[netSize] = name;
-    return read_parameters(stream, netSize);
+    std::string netDescription;
+    return read_parameters(stream, netSize, netDescription) ? std::make_optional(netDescription)
+                                                            : std::nullopt;
 }
 
 // Save eval, to a file stream or a memory stream
-bool save_eval(std::ostream& stream, NetSize netSize) {
+bool save_eval(std::ostream&      stream,
+               NetSize            netSize,
+               const std::string& name,
+               const std::string& netDescription) {
 
-    if (fileName[netSize].empty())
+    if (name.empty() || name == "None")
         return false;
 
-    return write_parameters(stream, netSize);
+    return write_parameters(stream, netSize, netDescription);
 }
 
 // Save eval, to a file given by its name
-bool save_eval(const std::optional<std::string>& filename, NetSize netSize) {
+bool save_eval(const std::optional<std::string>&                              filename,
+               NetSize                                                        netSize,
+               const std::unordered_map<Eval::NNUE::NetSize, Eval::EvalFile>& evalFiles) {
 
     std::string actualFilename;
     std::string msg;
@@ -450,7 +457,7 @@ bool save_eval(const std::optional<std::string>& filename, NetSize netSize) {
         actualFilename = filename.value();
     else
     {
-        if (EvalFiles.at(netSize).selected_name
+        if (evalFiles.at(netSize).current
             != (netSize == Small ? EvalFileDefaultNameSmall : EvalFileDefaultNameBig))
         {
             msg = "Failed to export a net. "
@@ -463,7 +470,8 @@ bool save_eval(const std::optional<std::string>& filename, NetSize netSize) {
     }
 
     std::ofstream stream(actualFilename, std::ios_base::binary);
-    bool          saved = save_eval(stream, netSize);
+    bool          saved = save_eval(stream, netSize, evalFiles.at(netSize).current,
+                                    evalFiles.at(netSize).netDescription);
 
     msg = saved ? "Network saved successfully to " + actualFilename : "Failed to export a net";
 

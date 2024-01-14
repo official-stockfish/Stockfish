@@ -176,12 +176,17 @@ namespace WinProcGroup {
 void bindThisThread(size_t idx);
 }
 
-namespace CommandLine {
-void init(int argc, char* argv[]);
 
-extern std::string binaryDirectory;   // path of the executable directory
-extern std::string workingDirectory;  // path of the working directory
-}
+struct CommandLine {
+   public:
+    CommandLine(int, char**);
+
+    int    argc;
+    char** argv;
+
+    std::string binaryDirectory;   // path of the executable directory
+    std::string workingDirectory;  // path of the working directory
+};
 
 }  // namespace Stockfish
 

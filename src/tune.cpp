@@ -24,14 +24,15 @@
 #include <sstream>
 #include <string>
 
-#include "uci.h"
+#include "ucioption.h"
 
 using std::string;
 
 namespace Stockfish {
 
 bool                              Tune::update_on_last;
-const UCI::Option*                LastOption = nullptr;
+const Option*                     LastOption = nullptr;
+OptionsMap*                       Tune::options;
 static std::map<std::string, int> TuneResults;
 
 string Tune::next(string& names, bool pop) {
@@ -53,13 +54,13 @@ string Tune::next(string& names, bool pop) {
     return name;
 }
 
-static void on_tune(const UCI::Option& o) {
+static void on_tune(const Option& o) {
 
     if (!Tune::update_on_last || LastOption == &o)
         Tune::read_options();
 }
 
-static void make_option(const string& n, int v, const SetRange& r) {
+static void make_option(OptionsMap* options, const string& n, int v, const SetRange& r) {
 
     // Do not generate option when there is nothing to tune (ie. min = max)
     if (r(v).first == r(v).second)
@@ -68,8 +69,8 @@ static void make_option(const string& n, int v, const SetRange& r) {
     if (TuneResults.count(n))
         v = TuneResults[n];
 
-    Options[n] << UCI::Option(v, r(v).first, r(v).second, on_tune);
-    LastOption = &Options[n];
+    (*options)[n] << Option(v, r(v).first, r(v).second, on_tune);
+    LastOption = &((*options)[n]);
 
     // Print formatted parameters, ready to be copy-pasted in Fishtest
     std::cout << n << "," << v << "," << r(v).first << "," << r(v).second << ","
@@ -79,13 +80,13 @@ static void make_option(const string& n, int v, const SetRange& r) {
 
 template<>
 void Tune::Entry<int>::init_option() {
-    make_option(name, value, range);
+    make_option(options, name, value, range);
 }
 
 template<>
 void Tune::Entry<int>::read_option() {
-    if (Options.count(name))
-        value = int(Options[name]);
+    if (options->count(name))
+        value = int((*options)[name]);
 }
 
 // Instead of a variable here we have a PostUpdate function: just call it

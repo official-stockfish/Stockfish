@@ -198,15 +198,15 @@ void MovePicker::score() {
                                                : 0;
 
             // malus for putting piece en prise
-            m.value -= !(threatenedPieces & from)
-                       ? (pt == QUEEN ? bool(to & threatenedByRook) * 50000
-                                          + bool(to & threatenedByMinor) * 10000
-                                          + bool(to & threatenedByPawn) * 20000
-                          : pt == ROOK ? bool(to & threatenedByMinor) * 25000
-                                           + bool(to & threatenedByPawn) * 10000
-                          : pt != PAWN ? bool(to & threatenedByPawn) * 15000
-                                       : 0)
-                       : 0;
+            m.value -=
+              !(threatenedPieces & from)
+                ? (pt == QUEEN
+                     ? bool(to & threatenedByRook) * 50000 + bool(to & threatenedByMinor) * 10000
+                   : pt == ROOK
+                     ? bool(to & threatenedByMinor) * 25000 + bool(to & threatenedByPawn) * 10000
+                   : pt != PAWN ? bool(to & threatenedByPawn) * 15000
+                                : 0)
+                : 0;
         }
 
         else  // Type == EVASIONS
@@ -312,19 +312,11 @@ top:
                 return *cur != refutations[0] && *cur != refutations[1] && *cur != refutations[2];
             }))
         {
-            Move tmp = *(cur - 1);
-            if ((cur - 1)->value < -7500 && (cur - 1)->value > quiet_threshold(depth))
-            {
-                // Remaining quiets are bad
-                beginBadQuiets = cur;
+            if ((cur - 1)->value > -8000 || (cur - 1)->value <= quiet_threshold(depth))
+                return *(cur - 1);
 
-                // Prepare the pointers to loop over the bad captures
-                cur      = moves;
-                endMoves = endBadCaptures;
-
-                ++stage;
-            }
-            return tmp;
+            // Remaining quiets are bad
+            beginBadQuiets = cur - 1;
         }
 
         // Prepare the pointers to loop over the bad captures

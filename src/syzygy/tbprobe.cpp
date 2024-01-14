@@ -42,7 +42,6 @@
 #include "../position.h"
 #include "../search.h"
 #include "../types.h"
-#include "../uci.h"
 
 #ifndef _WIN32
     #include <fcntl.h>
@@ -1574,7 +1573,7 @@ int Tablebases::probe_dtz(Position& pos, ProbeState* result) {
 // Use the DTZ tables to rank root moves.
 //
 // A return value false indicates that not all probes were successful.
-bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves) {
+bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves, bool rule50) {
 
     ProbeState result = OK;
     StateInfo  st;
@@ -1585,7 +1584,7 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves) {
     // Check whether a position was repeated since the last zeroing move.
     bool rep = pos.has_repeated();
 
-    int dtz, bound = Options["Syzygy50MoveRule"] ? (MAX_DTZ - 100) : 1;
+    int dtz, bound = rule50 ? (MAX_DTZ - 100) : 1;
 
     // Probe and rank each move
     for (auto& m : rootMoves)
@@ -1647,7 +1646,7 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves) {
 // This is a fallback for the case that some or all DTZ tables are missing.
 //
 // A return value false indicates that not all probes were successful.
-bool Tablebases::root_probe_wdl(Position& pos, Search::RootMoves& rootMoves) {
+bool Tablebases::root_probe_wdl(Position& pos, Search::RootMoves& rootMoves, bool rule50) {
 
     static const int WDL_to_rank[] = {-MAX_DTZ, -MAX_DTZ + 101, 0, MAX_DTZ - 101, MAX_DTZ};
 
@@ -1655,7 +1654,6 @@ bool Tablebases::root_probe_wdl(Position& pos, Search::RootMoves& rootMoves) {
     StateInfo  st;
     WDLScore   wdl;
 
-    bool rule50 = Options["Syzygy50MoveRule"];
 
     // Probe and rank each move
     for (auto& m : rootMoves)
