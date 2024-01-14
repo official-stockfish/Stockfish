@@ -29,7 +29,6 @@
 #include <iostream>
 #include <utility>
 
-#include "bitboard.h"
 #include "evaluate.h"
 #include "misc.h"
 #include "movegen.h"
@@ -45,14 +44,6 @@
 #include "ucioption.h"
 
 namespace Stockfish {
-
-namespace Tablebases {
-
-int   Cardinality;
-bool  RootInTB;
-bool  UseRule50;
-Depth ProbeDepth;
-}
 
 namespace TB = Tablebases;
 
@@ -237,7 +228,7 @@ void Search::Worker::start_searching() {
     if (bestThread != this)
         sync_cout << UCI::pv(*bestThread, main_manager()->tm.elapsed(threads.nodes_searched()),
                              threads.nodes_searched(), threads.tb_hits(), tt.hashfull(),
-                             TB::RootInTB)
+                             tbConfig.rootInTB)
                   << sync_endl;
 
     sync_cout << "bestmove " << UCI::move(bestThread->rootMoves[0].pv[0], rootPos.is_chess960());
@@ -379,7 +370,7 @@ void Search::Worker::iterative_deepening() {
                     && mainThread->tm.elapsed(threads.nodes_searched()) > 3000)
                     sync_cout << UCI::pv(*this, mainThread->tm.elapsed(threads.nodes_searched()),
                                          threads.nodes_searched(), threads.tb_hits(), tt.hashfull(),
-                                         TB::RootInTB)
+                                         tbConfig.rootInTB)
                               << sync_endl;
 
                 // In case of failing low/high increase aspiration window and
@@ -414,7 +405,7 @@ void Search::Worker::iterative_deepening() {
                     || mainThread->tm.elapsed(threads.nodes_searched()) > 3000))
                 sync_cout << UCI::pv(*this, mainThread->tm.elapsed(threads.nodes_searched()),
                                      threads.nodes_searched(), threads.tb_hits(), tt.hashfull(),
-                                     TB::RootInTB)
+                                     tbConfig.rootInTB)
                           << sync_endl;
         }
 
@@ -659,13 +650,13 @@ Value Search::Worker::search(
     }
 
     // Step 5. Tablebases probe
-    if (!rootNode && !excludedMove && TB::Cardinality)
+    if (!rootNode && !excludedMove && tbConfig.cardinality)
     {
         int piecesCount = pos.count<ALL_PIECES>();
 
-        if (piecesCount <= TB::Cardinality
-            && (piecesCount < TB::Cardinality || depth >= TB::ProbeDepth) && pos.rule50_count() == 0
-            && !pos.can_castle(ANY_CASTLING))
+        if (piecesCount <= tbConfig.cardinality
+            && (piecesCount < tbConfig.cardinality || depth >= tbConfig.probeDepth)
+            && pos.rule50_count() == 0 && !pos.can_castle(ANY_CASTLING))
         {
             TB::ProbeState err;
             TB::WDLScore   wdl = Tablebases::probe_wdl(pos, &err);
@@ -678,7 +669,7 @@ Value Search::Worker::search(
             {
                 thisThread->tbHits.fetch_add(1, std::memory_order_relaxed);
 
-                int drawScore = TB::UseRule50 ? 1 : 0;
+                int drawScore = tbConfig.useRule50 ? 1 : 0;
 
                 Value tbValue = VALUE_TB - ss->ply;
 
@@ -1962,53 +1953,5 @@ bool RootMove::extract_ponder_from_tt(const TranspositionTable& tt, Position& po
     return pv.size() > 1;
 }
 
-void Tablebases::rank_root_moves(const OptionsMap&  options,
-                                 Position&          pos,
-                                 Search::RootMoves& rootMoves) {
-
-    RootInTB           = false;
-    UseRule50          = bool(options["Syzygy50MoveRule"]);
-    ProbeDepth         = int(options["SyzygyProbeDepth"]);
-    Cardinality        = int(options["SyzygyProbeLimit"]);
-    bool dtz_available = true;
-
-    // Tables with fewer pieces than SyzygyProbeLimit are searched with
-    // ProbeDepth == DEPTH_ZERO
-    if (Cardinality > MaxCardinality)
-    {
-        Cardinality = MaxCardinality;
-        ProbeDepth  = 0;
-    }
-
-    if (Cardinality >= popcount(pos.pieces()) && !pos.can_castle(ANY_CASTLING))
-    {
-        // Rank moves using DTZ tables
-        RootInTB = root_probe(pos, rootMoves, options["Syzygy50MoveRule"]);
-
-        if (!RootInTB)
-        {
-            // DTZ tables are missing; try to rank moves using WDL tables
-            dtz_available = false;
-            RootInTB      = root_probe_wdl(pos, rootMoves, options["Syzygy50MoveRule"]);
-        }
-    }
-
-    if (RootInTB)
-    {
-        // Sort moves according to TB rank
-        std::stable_sort(rootMoves.begin(), rootMoves.end(),
-                         [](const RootMove& a, const RootMove& b) { return a.tbRank > b.tbRank; });
-
-        // Probe during search only if DTZ is not available and we are winning
-        if (dtz_available || rootMoves[0].tbScore <= VALUE_DRAW)
-            Cardinality = 0;
-    }
-    else
-    {
-        // Clean up if root_probe() and root_probe_wdl() have failed
-        for (auto& m : rootMoves)
-            m.tbRank = 0;
-    }
-}
 
 }  // namespace Stockfish
