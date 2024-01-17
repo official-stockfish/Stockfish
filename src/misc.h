@@ -19,12 +19,14 @@
 #ifndef MISC_H_INCLUDED
 #define MISC_H_INCLUDED
 
+#include <algorithm>
 #include <cassert>
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <iosfwd>
 #include <string>
+#include <vector>
 
 #define stringify2(x) #x
 #define stringify(x) stringify2(x)
@@ -187,6 +189,19 @@ struct CommandLine {
     std::string binaryDirectory;   // path of the executable directory
     std::string workingDirectory;  // path of the working directory
 };
+
+namespace Utility {
+
+template<typename T, typename Predicate>
+void move_to_front(std::vector<T>& vec, Predicate pred) {
+    auto it = std::find_if(vec.begin(), vec.end(), pred);
+
+    if (it != vec.end())
+    {
+        std::rotate(vec.begin(), it, it + 1);
+    }
+}
+}
 
 }  // namespace Stockfish
 
