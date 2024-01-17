@@ -34,14 +34,6 @@
 
 namespace Stockfish {
 
-// free function to be passed to pthread_create()
-inline void* start_routine(void* ptr) {
-    auto func = reinterpret_cast<std::function<void()>*>(ptr);
-         (*func)();  // Call the function
-    delete func;
-    return nullptr;
-}
-
 class NativeThread {
     pthread_t thread;
 
@@ -56,6 +48,15 @@ class NativeThread {
         pthread_attr_t attr_storage, *attr = &attr_storage;
         pthread_attr_init(attr);
         pthread_attr_setstacksize(attr, TH_STACK_SIZE);
+
+        auto start_routine = [](void* ptr) -> void* {
+            auto f = reinterpret_cast<std::function<void()>*>(ptr);
+            // Call the function
+            (*f)();
+            delete f;
+            return nullptr;
+        };
+
         pthread_create(&thread, attr, start_routine, func);
     }
 
