@@ -1510,7 +1510,7 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta,
               + thisThread->correctionHistory[us][pawn_structure_index<Correction>(pos)]
                   * std::abs(
                     thisThread->correctionHistory[us][pawn_structure_index<Correction>(pos)])
-                  / 16384;
+                  / 14095;
 
             ss->staticEval = bestValue = to_static_eval(newEval);
 
@@ -1531,7 +1531,7 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta,
               + thisThread->correctionHistory[us][pawn_structure_index<Correction>(pos)]
                   * std::abs(
                     thisThread->correctionHistory[us][pawn_structure_index<Correction>(pos)])
-                  / 16384;
+                  / 14095;
 
             ss->staticEval = bestValue = to_static_eval(newEval);
         }
