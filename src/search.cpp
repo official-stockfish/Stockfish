@@ -72,8 +72,8 @@ constexpr int futility_move_count(bool improving, Depth depth) {
 }
 
 // Add correctionHistory value to raw staticEval and guarantee evaluation does not hit the tablebase range
-Value to_corrected_static_eval(Value v, const Worker& thisThread, const Position& pos) {
-    auto cv = thisThread.correctionHistory[pos.side_to_move()][pawn_structure_index<Correction>(pos)];
+Value to_corrected_static_eval(Value v, Worker* w, const Position& pos) {
+    auto cv = w->correctionHistory[pos.side_to_move()][pawn_structure_index<Correction>(pos)];
     v += cv * std::abs(cv) / 16384;
     return std::clamp(int(v), VALUE_TB_LOSS_IN_MAX_PLY + 1, VALUE_TB_WIN_IN_MAX_PLY - 1);
 }
@@ -740,7 +740,7 @@ Value Search::Worker::search(
         else if (PvNode)
             Eval::NNUE::hint_common_parent_position(pos);
 
-        ss->staticEval = eval = to_corrected_static_eval(unadjustedStaticEval, *this, pos);
+        ss->staticEval = eval = to_corrected_static_eval(unadjustedStaticEval, this, pos);
 
         // ttValue can be used as a better position evaluation (~7 Elo)
         if (ttValue != VALUE_NONE && (tte->bound() & (ttValue > eval ? BOUND_LOWER : BOUND_UPPER)))
@@ -749,7 +749,7 @@ Value Search::Worker::search(
     else
     {
         unadjustedStaticEval = ss->staticEval = eval = evaluate(pos, thisThread->optimism[us]);
-        ss->staticEval = eval = to_corrected_static_eval(unadjustedStaticEval, *this, pos);
+        ss->staticEval = eval = to_corrected_static_eval(unadjustedStaticEval, this, pos);
 
         // Static evaluation is saved as it was before adjustment by correction history
         tte->save(posKey, VALUE_NONE, ss->ttPv, BOUND_NONE, DEPTH_NONE, Move::none(),
@@ -1493,7 +1493,7 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta,
             if ((unadjustedStaticEval = ss->staticEval = bestValue = tte->eval()) == VALUE_NONE)
                 unadjustedStaticEval = ss->staticEval = bestValue =
                   evaluate(pos, thisThread->optimism[us]);
-            ss->staticEval = bestValue = to_corrected_static_eval(unadjustedStaticEval, *this, pos);
+            ss->staticEval = bestValue = to_corrected_static_eval(unadjustedStaticEval, this, pos);
 
             // ttValue can be used as a better position evaluation (~13 Elo)
             if (ttValue != VALUE_NONE
@@ -1506,7 +1506,7 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta,
             unadjustedStaticEval = ss->staticEval = bestValue =
               (ss - 1)->currentMove != Move::null() ? evaluate(pos, thisThread->optimism[us])
                                                     : -(ss - 1)->staticEval;
-            ss->staticEval = bestValue = to_corrected_static_eval(unadjustedStaticEval, *this, pos);
+            ss->staticEval = bestValue = to_corrected_static_eval(unadjustedStaticEval, this, pos);
         }
 
         // Stand pat. Return immediately if static value is at least beta
