@@ -1148,25 +1148,24 @@ moves_loop:  // When in check, search starts here
         thisThread->nodes.fetch_add(1, std::memory_order_relaxed);
         pos.do_move(move, st, givesCheck);
 
-        // Decrease reduction if position is or has been on the PV (~7 Elo)
+        // Decrease reduction if position is or has been on the PV (~5 Elo)
         if (ss->ttPv)
-            r -= !(tte->bound() == BOUND_UPPER && PvNode) + (cutNode && tte->depth() >= depth)
-               + (ttValue > alpha) + (ttValue > beta && tte->depth() >= depth);
+            r -= 1 + (ttValue > alpha) + (ttValue > beta && tte->depth() >= depth);
 
         // Decrease reduction if opponent's move count is high (~1 Elo)
         if ((ss - 1)->moveCount > 7)
             r--;
 
-        // Increase reduction for cut nodes (~3 Elo)
+        // Increase reduction for cut nodes (~4 Elo)
         if (cutNode)
-            r += 2;
+            r += 2 - (tte->depth() >= depth && ss->ttPv);
 
         // Increase reduction if ttMove is a capture (~3 Elo)
         if (ttCapture)
             r++;
 
-        // Decrease reduction for PvNodes (~2 Elo)
-        if (PvNode)
+        // Decrease reduction for PvNodes (~3 Elo)
+        if (PvNode && tte->bound() != BOUND_UPPER)
             r--;
 
         // Decrease reduction if a quiet ttMove has been singularly extended (~1 Elo)
