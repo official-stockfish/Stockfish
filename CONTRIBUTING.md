@@ -19,7 +19,7 @@ making contributions to Stockfish.
 In case you do not have a C++ compiler installed, you can follow the
 instructions from our wiki.
 
-- [Linux][linux-compiling-link]
+- [Ubuntu][ubuntu-compiling-link]
 - [Windows][windows-compiling-link]
 - [macOS][macos-compiling-link]
 
@@ -92,6 +92,6 @@ Thank you for contributing to Stockfish and helping us make it even better!
 [discussions-link]:       https://github.com/official-stockfish/Stockfish/discussions/new
 [creating-my-first-test]: https://github.com/official-stockfish/fishtest/wiki/Creating-my-first-test#create-your-test
 [issue-tracker-link]:     https://github.com/official-stockfish/Stockfish/issues
-[linux-compiling-link]:   https://github.com/official-stockfish/Stockfish/wiki/Compiling-from-source#linux
-[windows-compiling-link]: https://github.com/official-stockfish/Stockfish/wiki/Compiling-from-source#windows
-[macos-compiling-link]:   https://github.com/official-stockfish/Stockfish/wiki/Compiling-from-source#macos
+[ubuntu-compiling-link]:  https://github.com/official-stockfish/Stockfish/wiki/Developers#user-content-installing-a-compiler-1
+[windows-compiling-link]: https://github.com/official-stockfish/Stockfish/wiki/Developers#user-content-installing-a-compiler
+[macos-compiling-link]:   https://github.com/official-stockfish/Stockfish/wiki/Developers#user-content-installing-a-compiler-2

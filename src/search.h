@@ -29,6 +29,7 @@
 #include "misc.h"
 #include "movepick.h"
 #include "position.h"
+#include "syzygy/tbprobe.h"
 #include "timeman.h"
 #include "types.h"
 
@@ -47,7 +48,6 @@ class OptionsMap;
 class UCI;
 
 namespace Search {
-
 
 // Stack struct keeps track of the information we need to remember from nodes
 // shallower and deeper in the tree during the search. Each search thread has
@@ -115,7 +115,7 @@ struct LimitsType {
     std::vector<Move> searchmoves;
     TimePoint         time[COLOR_NB], inc[COLOR_NB], npmsec, movetime, startTime;
     int               movestogo, depth, mate, perft, infinite;
-    int64_t           nodes;
+    uint64_t          nodes;
 };
 
 
@@ -237,6 +237,8 @@ class Worker {
 
     // The main thread has a SearchManager, the others have a NullSearchManager
     std::unique_ptr<ISearchManager> manager;
+
+    Tablebases::Config tbConfig;
 
     const OptionsMap&   options;
     ThreadPool&         threads;
