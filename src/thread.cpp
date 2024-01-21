@@ -210,49 +210,66 @@ void ThreadPool::start_thinking(const OptionsMap&  options,
 
 Thread* ThreadPool::get_best_thread() const {
 
-    Thread*                                           bestThread = threads.front();
     std::unordered_map<Move, int64_t, Move::MoveHash> votes;
-    Value                                             minScore = VALUE_NONE;
+
+    Thread* bestThread = threads.front();
+    Value   minScore   = VALUE_NONE;
 
     // Find the minimum score of all threads
     for (Thread* th : threads)
         minScore = std::min(minScore, th->worker->rootMoves[0].score);
 
     // Vote according to score and depth, and select the best thread
-    auto thread_value = [minScore](Thread* th) {
+    auto thread_voting_value = [minScore](Thread* th) {
         return (th->worker->rootMoves[0].score - minScore + 14) * int(th->worker->completedDepth);
     };
 
     for (Thread* th : threads)
-        votes[th->worker->rootMoves[0].pv[0]] += thread_value(th);
+        votes[th->worker->rootMoves[0].pv[0]] += thread_voting_value(th);
 
     for (Thread* th : threads)
-        if (bestThread->worker->rootMoves[0].score >= VALUE_TB_WIN_IN_MAX_PLY)
+    {
+        const auto bestThreadScore = bestThread->worker->rootMoves[0].score;
+        const auto newThreadScore  = th->worker->rootMoves[0].score;
+
+        const auto bestThreadPV = bestThread->worker->rootMoves[0].pv;
+        const auto newThreadPV  = th->worker->rootMoves[0].pv;
+
+        const auto bestThreadMoveVote = votes[bestThreadPV[0]];
+        const auto newThreadMoveVote  = votes[newThreadPV[0]];
+
+
+        const bool bestThreadInProvenWin = bestThreadScore >= VALUE_TB_WIN_IN_MAX_PLY;
+        const bool newThreadInProvenWin  = newThreadScore >= VALUE_TB_WIN_IN_MAX_PLY;
+
+        const bool bestThreadInProvenLoss =
+          bestThreadScore != -VALUE_INFINITE && bestThreadScore <= VALUE_TB_LOSS_IN_MAX_PLY;
+        const bool newThreadInProvenLoss =
+          newThreadScore != -VALUE_INFINITE && newThreadScore <= VALUE_TB_LOSS_IN_MAX_PLY;
+
+        // Note that we make sure not to pick a thread with truncated-PV for better viewer experience.
+        const bool betterVotingValue =
+          thread_voting_value(th) * int(newThreadPV.size() > 2)
+          > thread_voting_value(bestThread) * int(bestThreadPV.size() > 2);
+
+        if (bestThreadInProvenWin)
         {
             // Make sure we pick the shortest mate / TB conversion
-            if (th->worker->rootMoves[0].score > bestThread->worker->rootMoves[0].score)
+            if (newThreadScore > bestThreadScore)
                 bestThread = th;
         }
-        else if (bestThread->worker->rootMoves[0].score != -VALUE_INFINITE
-                 && bestThread->worker->rootMoves[0].score <= VALUE_TB_LOSS_IN_MAX_PLY)
+        else if (bestThreadInProvenLoss)
         {
             // Make sure we pick the shortest mated / TB conversion
-            if (th->worker->rootMoves[0].score != -VALUE_INFINITE
-                && th->worker->rootMoves[0].score < bestThread->worker->rootMoves[0].score)
+            if (newThreadInProvenLoss && newThreadScore < bestThreadScore)
                 bestThread = th;
         }
-        else if (th->worker->rootMoves[0].score >= VALUE_TB_WIN_IN_MAX_PLY
-                 || (th->worker->rootMoves[0].score != -VALUE_INFINITE
-                     && th->worker->rootMoves[0].score <= VALUE_TB_LOSS_IN_MAX_PLY)
-                 || (th->worker->rootMoves[0].score > VALUE_TB_LOSS_IN_MAX_PLY
-                     && (votes[th->worker->rootMoves[0].pv[0]]
-                           > votes[bestThread->worker->rootMoves[0].pv[0]]
-                         || (votes[th->worker->rootMoves[0].pv[0]]
-                               == votes[bestThread->worker->rootMoves[0].pv[0]]
-                             && thread_value(th) * int(th->worker->rootMoves[0].pv.size() > 2)
-                                  > thread_value(bestThread)
-                                      * int(bestThread->worker->rootMoves[0].pv.size() > 2)))))
+        else if (newThreadInProvenWin || newThreadInProvenLoss
+                 || (newThreadScore > VALUE_TB_LOSS_IN_MAX_PLY
+                     && (newThreadMoveVote > bestThreadMoveVote
+                         || (newThreadMoveVote == bestThreadMoveVote && betterVotingValue))))
             bestThread = th;
+    }
 
     return bestThread;
 }
