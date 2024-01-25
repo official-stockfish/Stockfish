@@ -1,6 +1,8 @@
-name: Stockfish
+name: Stockfish Build and Release
+
 on:
   workflow_call:
+
 jobs:
   Stockfish:
     name: ${{ matrix.config.name }} ${{ matrix.binaries }}
@@ -50,7 +52,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Download required linux packages
+      - name: Download required Linux packages
         if: runner.os == 'Linux'
         run: |
           sudo apt update
@@ -107,7 +109,7 @@ jobs:
           WINE_PATH=$EMU ../tests/signature.sh $benchref
           mv ./stockfish$EXT ../stockfish-android-$BINARY$EXT
 
-      - name: Remove non src files
+      - name: Remove non-src files
         run: rm -f *.o .depend *.nnue
 
       - name: Download wiki
@@ -116,7 +118,7 @@ jobs:
           cd ../wiki
           rm -rf .git
 
-      - name: Create tar archive.
+      - name: Create tar archive
         run: |
           cd ..
           mkdir stockfish
@@ -143,7 +145,7 @@ jobs:
         with:
           files: stockfish-android-${{ matrix.binaries }}.tar
 
-      - name: Get last commit sha
+      - name: Get last commit SHA
         id: last_commit
         run: echo "COMMIT_SHA=$(git rev-parse HEAD | cut -c 1-8)" >> $GITHUB_ENV
 
@@ -151,7 +153,7 @@ jobs:
         id: commit_date
         run: echo "COMMIT_DATE=$(git show -s --date=format:'%Y%m%d' --format=%cd HEAD)" >> $GITHUB_ENV
 
-      # Make sure that an old ci which still runs on master doesn't recreate a prerelease
+      # Make sure that an old CI which still runs on master doesn't recreate a prerelease
       - name: Check Pullable Commits
         id: check_commits
         run: |
