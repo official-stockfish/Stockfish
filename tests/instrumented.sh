@@ -132,7 +132,6 @@ cat << EOF > game.exp
  send "go depth 5\n"
  expect "bestmove"
 
- send "setoption name Skill Level value 10\n"
  send "position startpos\n"
  send "go depth 5\n"
  expect "bestmove"

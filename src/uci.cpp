@@ -67,12 +67,9 @@ UCI::UCI(int argc, char** argv) :
     options["Clear Hash"] << Option([this](const Option&) { search_clear(); });
     options["Ponder"] << Option(false);
     options["MultiPV"] << Option(1, 1, MAX_MOVES);
-    options["Skill Level"] << Option(20, 0, 20);
     options["Move Overhead"] << Option(10, 0, 5000);
     options["nodestime"] << Option(0, 0, 10000);
     options["UCI_Chess960"] << Option(false);
-    options["UCI_LimitStrength"] << Option(false);
-    options["UCI_Elo"] << Option(1320, 1320, 3190);
     options["UCI_ShowWDL"] << Option(false);
     options["SyzygyPath"] << Option("<empty>", [](const Option& o) { Tablebases::init(o); });
     options["SyzygyProbeDepth"] << Option(1, 1, 100);
