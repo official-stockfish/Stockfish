@@ -270,8 +270,6 @@ std::string compiler_info() {
     return compiler;
 }
 
-}  // namespace
-
 // Used to serialize access to std::cout
 // to avoid multiple threads writing at the same time.
 std::ostream& operator<<(std::ostream& os, SyncCout sc) {
@@ -286,11 +284,6 @@ std::ostream& operator<<(std::ostream& os, SyncCout sc) {
 
     return os;
 }
-
-
-// Trampoline helper to avoid moving Logger to misc.h
-void start_logger(const std::string& fname) { Logger::start(fname); }
-
 
 #ifdef NO_PREFETCH
 
