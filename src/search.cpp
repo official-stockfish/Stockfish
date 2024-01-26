@@ -1804,8 +1804,7 @@ void update_quiet_stats(
 }
 }
 
-// Used to print debug info and, more importantly,
-// to detect when we are out of available time and thus stop the search.
+// Detect out of available time and thus stop the search.
 void SearchManager::check_time(Search::Worker& worker) {
     if (--callsCnt > 0)
         return;

@@ -23,7 +23,6 @@
 #include <cctype>
 #include <cstddef>
 #include <cstring>
-#include <initializer_list>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
