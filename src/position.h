@@ -162,10 +162,6 @@ class Position {
     Value non_pawn_material(Color c) const;
     Value non_pawn_material() const;
 
-    // Position consistency check, for debugging
-    bool pos_is_ok() const;
-    void flip();
-
     // Used by NNUE
     StateInfo* state() const;
 

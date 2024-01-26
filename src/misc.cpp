@@ -107,44 +107,6 @@ struct Tie: public std::streambuf {  // MSVC requires split streambuf for cin an
     }
 };
 
-class Logger {
-
-    Logger() :
-        in(std::cin.rdbuf(), file.rdbuf()),
-        out(std::cout.rdbuf(), file.rdbuf()) {}
-    ~Logger() { start(""); }
-
-    std::ofstream file;
-    Tie           in, out;
-
-   public:
-    static void start(const std::string& fname) {
-
-        static Logger l;
-
-        if (l.file.is_open())
-        {
-            std::cout.rdbuf(l.out.buf);
-            std::cin.rdbuf(l.in.buf);
-            l.file.close();
-        }
-
-        if (!fname.empty())
-        {
-            l.file.open(fname, std::ifstream::out);
-
-            if (!l.file.is_open())
-            {
-                std::cerr << "Unable to open debug log file " << fname << std::endl;
-                exit(EXIT_FAILURE);
-            }
-
-            std::cin.rdbuf(&l.in);
-            std::cout.rdbuf(&l.out);
-        }
-    }
-};
-
 }  // namespace
 
 
@@ -308,90 +270,7 @@ std::string compiler_info() {
     return compiler;
 }
 
-
-// Debug functions used mainly to collect run-time statistics
-constexpr int MaxDebugSlots = 32;
-
-namespace {
-
-template<size_t N>
-struct DebugInfo {
-    std::atomic<int64_t> data[N] = {0};
-
-    constexpr inline std::atomic<int64_t>& operator[](int index) { return data[index]; }
-};
-
-DebugInfo<2> hit[MaxDebugSlots];
-DebugInfo<2> mean[MaxDebugSlots];
-DebugInfo<3> stdev[MaxDebugSlots];
-DebugInfo<6> correl[MaxDebugSlots];
-
 }  // namespace
-
-void dbg_hit_on(bool cond, int slot) {
-
-    ++hit[slot][0];
-    if (cond)
-        ++hit[slot][1];
-}
-
-void dbg_mean_of(int64_t value, int slot) {
-
-    ++mean[slot][0];
-    mean[slot][1] += value;
-}
-
-void dbg_stdev_of(int64_t value, int slot) {
-
-    ++stdev[slot][0];
-    stdev[slot][1] += value;
-    stdev[slot][2] += value * value;
-}
-
-void dbg_correl_of(int64_t value1, int64_t value2, int slot) {
-
-    ++correl[slot][0];
-    correl[slot][1] += value1;
-    correl[slot][2] += value1 * value1;
-    correl[slot][3] += value2;
-    correl[slot][4] += value2 * value2;
-    correl[slot][5] += value1 * value2;
-}
-
-void dbg_print() {
-
-    int64_t n;
-    auto    E   = [&n](int64_t x) { return double(x) / n; };
-    auto    sqr = [](double x) { return x * x; };
-
-    for (int i = 0; i < MaxDebugSlots; ++i)
-        if ((n = hit[i][0]))
-            std::cerr << "Hit #" << i << ": Total " << n << " Hits " << hit[i][1]
-                      << " Hit Rate (%) " << 100.0 * E(hit[i][1]) << std::endl;
-
-    for (int i = 0; i < MaxDebugSlots; ++i)
-        if ((n = mean[i][0]))
-        {
-            std::cerr << "Mean #" << i << ": Total " << n << " Mean " << E(mean[i][1]) << std::endl;
-        }
-
-    for (int i = 0; i < MaxDebugSlots; ++i)
-        if ((n = stdev[i][0]))
-        {
-            double r = sqrt(E(stdev[i][2]) - sqr(E(stdev[i][1])));
-            std::cerr << "Stdev #" << i << ": Total " << n << " Stdev " << r << std::endl;
-        }
-
-    for (int i = 0; i < MaxDebugSlots; ++i)
-        if ((n = correl[i][0]))
-        {
-            double r = (E(correl[i][5]) - E(correl[i][1]) * E(correl[i][3]))
-                     / (sqrt(E(correl[i][2]) - sqr(E(correl[i][1])))
-                        * sqrt(E(correl[i][4]) - sqr(E(correl[i][3]))));
-            std::cerr << "Correl. #" << i << ": Total " << n << " Coefficient " << r << std::endl;
-        }
-}
-
 
 // Used to serialize access to std::cout
 // to avoid multiple threads writing at the same time.
