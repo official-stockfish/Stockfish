@@ -260,7 +260,7 @@ void Search::Worker::iterative_deepening() {
                 mainThread->iterValue[i] = mainThread->bestPreviousScore;
     }
 
-    size_t multiPV = std::min(size_t(options["MultiPV"], rootMoves.size()));
+    size_t multiPV = std::min(size_t(options["MultiPV"]), rootMoves.size());
 
     int searchAgainCounter = 0;
 
