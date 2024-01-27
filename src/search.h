@@ -19,6 +19,7 @@
 #ifndef SEARCH_H_INCLUDED
 #define SEARCH_H_INCLUDED
 
+#include <array>
 #include <atomic>
 #include <cassert>
 #include <cstddef>
@@ -153,11 +154,11 @@ class SearchManager: public ISearchManager {
     int                       callsCnt;
     std::atomic_bool          ponder;
 
-    double previousTimeReduction;
-    Value  bestPreviousScore;
-    Value  bestPreviousAverageScore;
-    Value  iterValue[4];
-    bool   stopOnPonderhit;
+    std::array<Value, 4> iterValue;
+    double               previousTimeReduction;
+    Value                bestPreviousScore;
+    Value                bestPreviousAverageScore;
+    bool                 stopOnPonderhit;
 
     size_t id;
 };
@@ -233,7 +234,7 @@ class Worker {
     size_t thread_idx;
 
     // Reductions lookup table initialized at startup
-    int reductions[MAX_MOVES];  // [depth or moveNumber]
+    std::array<int, MAX_MOVES> reductions;  // [depth or moveNumber]
 
     // The main thread has a SearchManager, the others have a NullSearchManager
     std::unique_ptr<ISearchManager> manager;

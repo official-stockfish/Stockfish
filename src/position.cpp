@@ -19,6 +19,7 @@
 #include "position.h"
 
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <cctype>
 #include <cstddef>
@@ -107,9 +108,8 @@ inline int H1(Key h) { return h & 0x1fff; }
 inline int H2(Key h) { return (h >> 16) & 0x1fff; }
 
 // Cuckoo tables with Zobrist hashes of valid reversible moves, and the moves themselves
-Key  cuckoo[8192];
-Move cuckooMove[8192];
-
+std::array<Key, 8192>  cuckoo;
+std::array<Move, 8192> cuckooMove;
 
 // Initializes at startup the various arrays used to compute hash keys
 void Position::init() {
@@ -130,8 +130,8 @@ void Position::init() {
     Zobrist::noPawns = rng.rand<Key>();
 
     // Prepare the cuckoo tables
-    std::memset(cuckoo, 0, sizeof(cuckoo));
-    std::memset(cuckooMove, 0, sizeof(cuckooMove));
+    cuckoo.fill(0);
+    cuckooMove.fill(Move::none());
     [[maybe_unused]] int count = 0;
     for (Piece pc : Pieces)
         for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1)

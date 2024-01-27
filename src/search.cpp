@@ -24,7 +24,6 @@
 #include <cassert>
 #include <cmath>
 #include <cstdlib>
-#include <cstring>
 #include <initializer_list>
 #include <iostream>
 #include <utility>
@@ -212,21 +211,26 @@ void Search::Worker::start_searching() {
 // consumed, the user stops the search, or the maximum search depth is reached.
 void Search::Worker::iterative_deepening() {
 
+    SearchManager* mainThread = (thread_idx == 0 ? main_manager() : nullptr);
+
+    Move pv[MAX_PLY + 1];
+
+    Depth lastBestMoveDepth = 0;
+    Value lastBestScore     = -VALUE_INFINITE;
+    auto  lastBestPV        = std::vector{Move::none()};
+
+    Value  alpha, beta;
+    Value  bestValue     = -VALUE_INFINITE;
+    Color  us            = rootPos.side_to_move();
+    double timeReduction = 1, totBestMoveChanges = 0;
+    int    delta, iterIdx                        = 0;
+
     // Allocate stack with extra size to allow access from (ss - 7) to (ss + 2):
     // (ss - 7) is needed for update_continuation_histories(ss - 1) which accesses (ss - 6),
     // (ss + 2) is needed for initialization of cutOffCnt and killers.
-    Stack             stack[MAX_PLY + 10], *ss = stack + 7;
-    Move              pv[MAX_PLY + 1];
-    Value             alpha, beta;
-    Value             lastBestScore     = -VALUE_INFINITE;
-    std::vector<Move> lastBestPV        = {Move::none()};
-    Depth             lastBestMoveDepth = 0;
-    SearchManager*    mainThread        = (thread_idx == 0 ? main_manager() : nullptr);
-    double            timeReduction = 1, totBestMoveChanges = 0;
-    Color             us = rootPos.side_to_move();
-    int               delta, iterIdx = 0;
+    Stack  stack[MAX_PLY + 10] = {};
+    Stack* ss                  = stack + 7;
 
-    std::memset(ss - 7, 0, 10 * sizeof(Stack));
     for (int i = 7; i > 0; --i)
     {
         (ss - i)->continuationHistory =
@@ -239,16 +243,12 @@ void Search::Worker::iterative_deepening() {
 
     ss->pv = pv;
 
-    Value bestValue = -VALUE_INFINITE;
-
     if (mainThread)
     {
         if (mainThread->bestPreviousScore == VALUE_INFINITE)
-            for (int i = 0; i < 4; ++i)
-                mainThread->iterValue[i] = VALUE_ZERO;
+            mainThread->iterValue.fill(VALUE_ZERO);
         else
-            for (int i = 0; i < 4; ++i)
-                mainThread->iterValue[i] = mainThread->bestPreviousScore;
+            mainThread->iterValue.fill(mainThread->bestPreviousScore);
     }
 
     size_t multiPV = size_t(options["MultiPV"]);
@@ -489,7 +489,7 @@ void Search::Worker::clear() {
                     h->fill(-71);
 
 
-    for (int i = 1; i < MAX_MOVES; ++i)
+    for (size_t i = 1; i < reductions.size(); ++i)
         reductions[i] = int((20.37 + std::log(size_t(options["Threads"])) / 2) * std::log(i));
 }
 
