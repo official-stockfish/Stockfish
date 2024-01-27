@@ -1813,7 +1813,6 @@ void SearchManager::check_time(Search::Worker& worker) {
     callsCnt = worker.limits.nodes ? std::min(512, int(worker.limits.nodes / 1024)) : 512;
 
     TimePoint elapsed = tm.elapsed(worker.threads.nodes_searched());
-    TimePoint tick    = worker.limits.startTime + elapsed;
 
     // We should not stop pondering until told so by the GUI
     if (ponder)
