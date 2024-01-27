@@ -98,36 +98,7 @@ void update_all_stats(const Position& pos,
                       int             captureCount,
                       Depth           depth);
 
-// Utility to verify move generation. All the leaf nodes up
-// to the given depth are generated and counted, and the sum is returned.
-template<bool Root>
-uint64_t perft(Position& pos, Depth depth) {
-
-    StateInfo st;
-    ASSERT_ALIGNED(&st, Eval::NNUE::CacheLineSize);
-
-    uint64_t   cnt, nodes = 0;
-    const bool leaf = (depth == 2);
-
-    for (const auto& m : MoveList<LEGAL>(pos))
-    {
-        if (Root && depth <= 1)
-            cnt = 1, nodes++;
-        else
-        {
-            pos.do_move(m, st);
-            cnt = leaf ? MoveList<LEGAL>(pos).size() : perft<false>(pos, depth - 1);
-            nodes += cnt;
-            pos.undo_move(m);
-        }
-        if (Root)
-            sync_cout << UCI::move(m, pos.is_chess960()) << ": " << cnt << sync_endl;
-    }
-    return nodes;
-}
-
 }  // namespace
-
 
 Search::Worker::Worker(SharedState&                    sharedState,
                        std::unique_ptr<ISearchManager> sm,
@@ -146,13 +117,6 @@ void Search::Worker::start_searching() {
     if (!is_mainthread())
     {
         iterative_deepening();
-        return;
-    }
-
-    if (limits.perft)
-    {
-        nodes = perft<true>(rootPos, limits.perft);
-        sync_cout << "\nNodes searched: " << nodes << "\n" << sync_endl;
         return;
     }
 
@@ -984,10 +948,9 @@ moves_loop:  // When in check, search starts here
                 if (lmrDepth < 6 && history < -4195 * depth)
                     continue;
 
-                history += 69 * thisThread->mainHistory[us][move.from_to()] / 32;
+                history += 2 * thisThread->mainHistory[us][move.from_to()];
 
                 lmrDepth += history / 6992;
-                lmrDepth = std::max(lmrDepth, -1);
 
                 // Futility pruning: parent node (~13 Elo)
                 if (!ss->inCheck && lmrDepth < 15
@@ -1019,7 +982,7 @@ moves_loop:  // When in check, search starts here
             // so changing them requires tests at these types of time controls.
             // Recursive singular search is avoided.
             if (!rootNode && move == ttMove && !excludedMove
-                && depth >= 4 - (thisThread->completedDepth > 31) + 2 * (PvNode && tte->is_pv())
+                && depth >= 4 - (thisThread->completedDepth > 31) + ss->ttPv
                 && std::abs(ttValue) < VALUE_TB_WIN_IN_MAX_PLY && (tte->bound() & BOUND_LOWER)
                 && tte->depth() >= depth - 3)
             {
@@ -1037,7 +1000,7 @@ moves_loop:  // When in check, search starts here
                     singularQuietLMR = !ttCapture;
 
                     // Avoid search explosion by limiting the number of double extensions
-                    if (!PvNode && value < singularBeta - 16 && ss->doubleExtensions <= 12)
+                    if (!PvNode && value < singularBeta - 2 && ss->doubleExtensions <= 12)
                     {
                         extension = 2;
                         depth += depth < 15;
