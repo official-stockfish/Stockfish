@@ -27,6 +27,7 @@
 #include <initializer_list>
 #include <iostream>
 #include <utility>
+#include <sstream>
 
 #include "evaluate.h"
 #include "misc.h"
@@ -192,9 +193,7 @@ void Search::Worker::start_searching() {
 
     // Send again PV info if we have a new best thread
     if (bestThread != this)
-        sync_cout << UCI::pv(*bestThread, main_manager()->tm.elapsed(threads.nodes_searched()),
-                             threads.nodes_searched(), threads.tb_hits(), tt.hashfull(),
-                             tbConfig.rootInTB)
+        sync_cout << main_manager()->pv(*bestThread, threads, tt, bestThread->completedDepth)
                   << sync_endl;
 
     sync_cout << "bestmove " << UCI::move(bestThread->rootMoves[0].pv[0], rootPos.is_chess960());
@@ -336,10 +335,7 @@ void Search::Worker::iterative_deepening() {
                 // the UI) before a re-search.
                 if (mainThread && multiPV == 1 && (bestValue <= alpha || bestValue >= beta)
                     && mainThread->tm.elapsed(threads.nodes_searched()) > 3000)
-                    sync_cout << UCI::pv(*this, mainThread->tm.elapsed(threads.nodes_searched()),
-                                         threads.nodes_searched(), threads.tb_hits(), tt.hashfull(),
-                                         tbConfig.rootInTB)
-                              << sync_endl;
+                    sync_cout << main_manager()->pv(*this, threads, tt, rootDepth) << sync_endl;
 
                 // In case of failing low/high increase aspiration window and
                 // re-search, otherwise exit the loop.
@@ -376,10 +372,7 @@ void Search::Worker::iterative_deepening() {
                 // had time to fully search other root-moves. Thus we suppress this output and
                 // below pick a proven score/PV for this thread (from the previous iteration).
                 && !(threads.abortedSearch && rootMoves[0].uciScore <= VALUE_TB_LOSS_IN_MAX_PLY))
-                sync_cout << UCI::pv(*this, mainThread->tm.elapsed(threads.nodes_searched()),
-                                     threads.nodes_searched(), threads.tb_hits(), tt.hashfull(),
-                                     tbConfig.rootInTB)
-                          << sync_endl;
+                sync_cout << main_manager()->pv(*this, threads, tt, rootDepth) << sync_endl;
         }
 
         if (!threads.stop)
@@ -1876,6 +1869,61 @@ void SearchManager::check_time(Search::Worker& worker) {
           || (worker.limits.movetime && elapsed >= worker.limits.movetime)
           || (worker.limits.nodes && worker.threads.nodes_searched() >= worker.limits.nodes)))
         worker.threads.stop = worker.threads.abortedSearch = true;
+}
+
+std::string SearchManager::pv(const Search::Worker&     worker,
+                              const ThreadPool&         threads,
+                              const TranspositionTable& tt,
+                              Depth                     depth) const {
+    std::stringstream ss;
+
+    const auto  nodes     = threads.nodes_searched();
+    const auto& rootMoves = worker.rootMoves;
+    const auto& pos       = worker.rootPos;
+    size_t      pvIdx     = worker.pvIdx;
+    TimePoint   time      = tm.elapsed(nodes) + 1;
+    size_t      multiPV   = std::min(size_t(worker.options["MultiPV"]), rootMoves.size());
+    uint64_t    tbHits    = threads.tb_hits() + (worker.tbConfig.rootInTB ? rootMoves.size() : 0);
+
+    for (size_t i = 0; i < multiPV; ++i)
+    {
+        bool updated = rootMoves[i].score != -VALUE_INFINITE;
+
+        if (depth == 1 && !updated && i > 0)
+            continue;
+
+        Depth d = updated ? depth : std::max(1, depth - 1);
+        Value v = updated ? rootMoves[i].uciScore : rootMoves[i].previousScore;
+
+        if (v == -VALUE_INFINITE)
+            v = VALUE_ZERO;
+
+        bool tb = worker.tbConfig.rootInTB && std::abs(v) <= VALUE_TB;
+        v       = tb ? rootMoves[i].tbScore : v;
+
+        if (ss.rdbuf()->in_avail())  // Not at first line
+            ss << "\n";
+
+        ss << "info"
+           << " depth " << d << " seldepth " << rootMoves[i].selDepth << " multipv " << i + 1
+           << " score " << UCI::value(v);
+
+        if (worker.options["UCI_ShowWDL"])
+            ss << UCI::wdl(v, pos.game_ply());
+
+        if (i == pvIdx && !tb && updated)  // tablebase- and previous-scores are exact
+            ss << (rootMoves[i].scoreLowerbound
+                     ? " lowerbound"
+                     : (rootMoves[i].scoreUpperbound ? " upperbound" : ""));
+
+        ss << " nodes " << nodes << " nps " << nodes * 1000 / time << " hashfull " << tt.hashfull()
+           << " tbhits " << tbHits << " time " << time << " pv";
+
+        for (Move m : rootMoves[i].pv)
+            ss << " " << UCI::move(m, pos.is_chess960());
+    }
+
+    return ss.str();
 }
 
 // Called in case we have no ponder move before exiting the search,
