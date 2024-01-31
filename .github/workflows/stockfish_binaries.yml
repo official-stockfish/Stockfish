@@ -31,6 +31,13 @@ jobs:
             comp: clang
             shell: bash
             archive_ext: tar
+          - name: MacOS 14 Apple Clang M1
+            os: macos-14
+            simple_name: macos-m1
+            compiler: clang++
+            comp: clang
+            shell: bash
+            archive_ext: tar
           - name: Windows 2022 Mingw-w64 GCC x86_64
             os: windows-2022
             simple_name: windows
@@ -51,9 +58,32 @@ jobs:
           - x86-64-avx512
           - x86-64-vnni256
           - x86-64-vnni512
+          - apple-silicon
         exclude:
+          # Apple M1
+          - binaries: x86-64
+            config: { os: macos-14 }
+          - binaries: x86-64-sse41-popcnt
+            config: { os: macos-14 }
+          - binaries: x86-64-avx2
+            config: { os: macos-14 }
+          - binaries: x86-64-bmi2
+            config: { os: macos-14 }
+          - binaries: x86-64-avxvnni
+            config: { os: macos-14 }
+          - binaries: x86-64-avxvnni
+            config: { os: macos-14 }
+          - binaries: x86-64-avx512
+            config: { os: macos-14 }
+          - binaries: x86-64-vnni256
+            config: { os: macos-14 }
+          - binaries: x86-64-vnni512
+            config: { os: macos-14 }
+
           - binaries: x86-64-avxvnni
             config: { ubuntu-20.04 }
+
+          # Apple x86_64 (no sde)
           - binaries: x86-64-avxvnni
             config: { os: macos-13 }
           - binaries: x86-64-avx512
@@ -62,6 +92,14 @@ jobs:
             config: { os: macos-13 }
           - binaries: x86-64-vnni512
             config: { os: macos-13 }
+
+          # Apple silicon from windows, macos-13 and ubuntu
+          - binaries: apple-silicon
+            config: { os: windows-2022 }
+          - binaries: apple-silicon
+            config: { os: macos-13 }
+          - binaries: apple-silicon
+            config: { os: ubuntu-20.04 }
     defaults:
       run:
         working-directory: src
@@ -77,7 +115,7 @@ jobs:
 
       - name: Install fixed GCC on Linux
         if: runner.os == 'Linux'
-        uses: egor-tensin/setup-gcc@eaa888eb19115a521fa72b65cd94fe1f25bbcaac  # @v1.3
+        uses: egor-tensin/setup-gcc@eaa888eb19115a521fa72b65cd94fe1f25bbcaac # @v1.3
         with:
           version: 11
 
@@ -90,7 +128,7 @@ jobs:
 
       - name: Download SDE package
         if: runner.os == 'Linux' || runner.os == 'Windows'
-        uses: petarpetrovt/setup-sde@91a1a03434384e064706634125a15f7446d2aafb  # @v2.3
+        uses: petarpetrovt/setup-sde@91a1a03434384e064706634125a15f7446d2aafb # @v2.3
         with:
           environmentVariableName: SDE_DIR
           sdeVersion: 9.27.0
@@ -183,7 +221,7 @@ jobs:
 
       - name: Release
         if: startsWith(github.ref_name, 'sf_') && github.ref_type == 'tag'
-        uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844  # @v1
+        uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # @v1
         with:
           files: stockfish-${{ matrix.config.simple_name }}-${{ matrix.binaries }}.${{ matrix.config.archive_ext }}
 
@@ -206,7 +244,7 @@ jobs:
       - name: Prerelease
         if: github.ref_name == 'master' && env.CHANGES == '0'
         continue-on-error: true
-        uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844  # @v1
+        uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # @v1
         with:
           name: Stockfish dev-${{ env.COMMIT_DATE }}-${{ env.COMMIT_SHA }}
           tag_name: stockfish-dev-${{ env.COMMIT_DATE }}-${{ env.COMMIT_SHA }}
