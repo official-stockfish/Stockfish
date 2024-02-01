@@ -1146,11 +1146,7 @@ moves_loop:  // When in check, search starts here
         r -= ss->statScore / 15373;
 
         // Step 17. Late moves reduction / extension (LMR, ~117 Elo)
-        // We use various heuristics for the sons of a node after the first son has
-        // been searched. In general, we would like to reduce them, but there are many
-        // cases where we extend a son if it has good chances to be "interesting".
-        if (depth >= 2 && moveCount > 1 + rootNode
-            && (!ss->ttPv || !capture || (cutNode && (ss - 1)->moveCount > 1)))
+        if (depth >= 2 && moveCount > 1 + rootNode)
         {
             // In general we want to cap the LMR depth search at newDepth, but when
             // reduction is negative, we allow this move a limited search extension
