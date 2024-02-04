@@ -281,7 +281,7 @@ class FeatureTransformer {
               reinterpret_cast<const vec_t*>(&(accumulation[perspectives[p]][HalfDimensions / 2]));
             vec_t* out = reinterpret_cast<vec_t*>(output + offset);
 
-            for (IndexType j = 0; j < NumOutputChunks; j += 1)
+            for (IndexType j = 0; j < NumOutputChunks; ++j)
             {
                 const vec_t sum0a = vec_max_16(vec_min_16(in0[j * 2 + 0], One), Zero);
                 const vec_t sum0b = vec_max_16(vec_min_16(in0[j * 2 + 1], One), Zero);
@@ -676,9 +676,7 @@ class FeatureTransformer {
             update_accumulator_incremental<Perspective, 2>(pos, oldest_st, states_to_update);
         }
         else
-        {
             update_accumulator_refresh<Perspective>(pos);
-        }
     }
 
     template<Color Perspective>
