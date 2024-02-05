@@ -43,22 +43,29 @@ jobs:
             compiler: g++
             comp: gcc
             run_riscv64_tests: true
-            base_image: 'riscv64/alpine:edge'
-            platform: linux/riscv64          
+            base_image: "riscv64/alpine:edge"
+            platform: linux/riscv64
             shell: bash
           - name: Linux GCC ppc64
             os: ubuntu-22.04
             compiler: g++
             comp: gcc
             run_ppc64_tests: true
-            base_image: 'ppc64le/alpine:latest'
-            platform: linux/ppc64le          
+            base_image: "ppc64le/alpine:latest"
+            platform: linux/ppc64le
             shell: bash
           - name: MacOS 13 Apple Clang
             os: macos-13
             compiler: clang++
             comp: clang
             run_64bit_tests: true
+            shell: bash
+          - name: MacOS 14 Apple Clang M1
+            os: macos-14
+            compiler: clang++
+            comp: clang
+            run_64bit_tests: false
+            run_m1_tests: true
             shell: bash
           - name: MacOS 13 GCC 11
             os: macos-13
@@ -279,6 +286,13 @@ jobs:
         run: |
           make clean
           make -j2 ARCH=general-64 build
+          ../tests/signature.sh $benchref
+
+      - name: Test apple-silicon build
+        if: matrix.config.run_m1_tests
+        run: |
+          make clean
+          make -j2 ARCH=apple-silicon build
           ../tests/signature.sh $benchref
 
       # armv8 tests
