@@ -26,6 +26,12 @@ jobs:
             compiler: clang++
             comp: clang
             shell: bash
+          - name: MacOS 14 Apple Clang M1
+            os: macos-14
+            compiler: clang++
+            comp: clang
+            shell: bash
+            m1: true
           - name: MacOS 13 GCC 11
             os: macos-13
             compiler: g++-11
@@ -75,26 +81,37 @@ jobs:
       # x86-64 with newer extensions tests
 
       - name: Compile x86-64-avx2 build
+        if: ${{ ! matrix.config.m1 }}
         run: |
           make clean
           make -j2 ARCH=x86-64-avx2 build
 
       - name: Compile x86-64-bmi2 build
+        if: ${{ ! matrix.config.m1 }}
         run: |
           make clean
           make -j2 ARCH=x86-64-bmi2 build
 
       - name: Compile x86-64-avx512 build
+        if: ${{ ! matrix.config.m1 }}
         run: |
           make clean
           make -j2 ARCH=x86-64-avx512 build
 
       - name: Compile x86-64-vnni512 build
+        if: ${{ ! matrix.config.m1 }}
         run: |
           make clean
           make -j2 ARCH=x86-64-vnni512 build
 
       - name: Compile x86-64-vnni256 build
+        if: ${{ ! matrix.config.m1 }}
         run: |
           make clean
           make -j2 ARCH=x86-64-vnni256 build
+
+      - name: Compile apple-silicon build
+        if: matrix.config.m1
+        run: |
+          make clean
+          make -j2 ARCH=apple-silicon build

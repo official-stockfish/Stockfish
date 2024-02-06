@@ -19,16 +19,19 @@
 #ifndef SEARCH_H_INCLUDED
 #define SEARCH_H_INCLUDED
 
+#include <array>
 #include <atomic>
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <vector>
+#include <string>
 
 #include "misc.h"
 #include "movepick.h"
 #include "position.h"
+#include "syzygy/tbprobe.h"
 #include "timeman.h"
 #include "types.h"
 
@@ -47,7 +50,6 @@ class OptionsMap;
 class UCI;
 
 namespace Search {
-
 
 // Stack struct keeps track of the information we need to remember from nodes
 // shallower and deeper in the tree during the search. Each search thread has
@@ -115,7 +117,7 @@ struct LimitsType {
     std::vector<Move> searchmoves;
     TimePoint         time[COLOR_NB], inc[COLOR_NB], npmsec, movetime, startTime;
     int               movestogo, depth, mate, perft, infinite;
-    int64_t           nodes;
+    uint64_t          nodes;
 };
 
 
@@ -149,15 +151,20 @@ class SearchManager: public ISearchManager {
    public:
     void check_time(Search::Worker& worker) override;
 
+    std::string pv(const Search::Worker&     worker,
+                   const ThreadPool&         threads,
+                   const TranspositionTable& tt,
+                   Depth                     depth) const;
+
     Stockfish::TimeManagement tm;
     int                       callsCnt;
     std::atomic_bool          ponder;
 
-    double previousTimeReduction;
-    Value  bestPreviousScore;
-    Value  bestPreviousAverageScore;
-    Value  iterValue[4];
-    bool   stopOnPonderhit;
+    std::array<Value, 4> iterValue;
+    double               previousTimeReduction;
+    Value                bestPreviousScore;
+    Value                bestPreviousAverageScore;
+    bool                 stopOnPonderhit;
 
     size_t id;
 };
@@ -205,8 +212,8 @@ class Worker {
 
     Depth reduction(bool i, Depth d, int mn, int delta) {
         int reductionScale = reductions[d] * reductions[mn];
-        return (reductionScale + 1346 - int(delta) * 896 / int(rootDelta)) / 1024
-             + (!i && reductionScale > 880);
+        return (reductionScale + 1177 - int(delta) * 776 / int(rootDelta)) / 1024
+             + (!i && reductionScale > 842);
     }
 
     // Get a pointer to the search manager, only allowed to be called by the
@@ -233,10 +240,12 @@ class Worker {
     size_t thread_idx;
 
     // Reductions lookup table initialized at startup
-    int reductions[MAX_MOVES];  // [depth or moveNumber]
+    std::array<int, MAX_MOVES> reductions;  // [depth or moveNumber]
 
     // The main thread has a SearchManager, the others have a NullSearchManager
     std::unique_ptr<ISearchManager> manager;
+
+    Tablebases::Config tbConfig;
 
     const OptionsMap&   options;
     ThreadPool&         threads;

@@ -28,6 +28,7 @@
 #include <optional>
 #include <sstream>
 #include <vector>
+#include <cstdint>
 
 #include "benchmark.h"
 #include "evaluate.h"
@@ -39,11 +40,12 @@
 #include "syzygy/tbprobe.h"
 #include "types.h"
 #include "ucioption.h"
+#include "perft.h"
 
 namespace Stockfish {
 
 constexpr auto StartFEN             = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-constexpr int  NormalizeToPawnValue = 328;
+constexpr int  NormalizeToPawnValue = 345;
 constexpr int  MaxHashMB            = Is64Bit ? 33554432 : 2048;
 
 UCI::UCI(int argc, char** argv) :
@@ -172,7 +174,6 @@ void UCI::loop() {
 
 void UCI::go(Position& pos, std::istringstream& is, StateListPtr& states) {
 
-
     Search::LimitsType limits;
     std::string        token;
     bool               ponderMode = false;
@@ -210,6 +211,12 @@ void UCI::go(Position& pos, std::istringstream& is, StateListPtr& states) {
             ponderMode = true;
 
     Eval::NNUE::verify(options, evalFiles);
+
+    if (limits.perft)
+    {
+        perft(pos.fen(), limits.perft, options["UCI_Chess960"]);
+        return;
+    }
 
     threads.start_thinking(options, pos, states, limits, ponderMode);
 }
@@ -359,88 +366,28 @@ std::string UCI::move(Move m, bool chess960) {
     return move;
 }
 
-std::string UCI::pv(const Search::Worker& workerThread,
-                    TimePoint             elapsed,
-                    uint64_t              nodesSearched,
-                    uint64_t              tb_hits,
-                    int                   hashfull,
-                    bool                  rootInTB) {
-    std::stringstream ss;
-    TimePoint         time      = elapsed + 1;
-    const auto&       rootMoves = workerThread.rootMoves;
-    const auto&       depth     = workerThread.completedDepth;
-    const auto&       pos       = workerThread.rootPos;
-    size_t            pvIdx     = workerThread.pvIdx;
-    size_t            multiPV = std::min(size_t(workerThread.options["MultiPV"]), rootMoves.size());
-    uint64_t          tbHits  = tb_hits + (rootInTB ? rootMoves.size() : 0);
-
-
-    for (size_t i = 0; i < multiPV; ++i)
-    {
-        bool updated = rootMoves[i].score != -VALUE_INFINITE;
-
-        if (depth == 1 && !updated && i > 0)
-            continue;
-
-        Depth d = updated ? depth : std::max(1, depth - 1);
-        Value v = updated ? rootMoves[i].uciScore : rootMoves[i].previousScore;
-
-        if (v == -VALUE_INFINITE)
-            v = VALUE_ZERO;
-
-        bool tb = rootInTB && std::abs(v) <= VALUE_TB;
-        v       = tb ? rootMoves[i].tbScore : v;
-
-        if (ss.rdbuf()->in_avail())  // Not at first line
-            ss << "\n";
-
-        ss << "info"
-           << " depth " << d << " seldepth " << rootMoves[i].selDepth << " multipv " << i + 1
-           << " score " << value(v);
-
-        if (workerThread.options["UCI_ShowWDL"])
-            ss << wdl(v, pos.game_ply());
-
-        if (i == pvIdx && !tb && updated)  // tablebase- and previous-scores are exact
-            ss << (rootMoves[i].scoreLowerbound
-                     ? " lowerbound"
-                     : (rootMoves[i].scoreUpperbound ? " upperbound" : ""));
-
-        ss << " nodes " << nodesSearched << " nps " << nodesSearched * 1000 / time << " hashfull "
-           << hashfull << " tbhits " << tbHits << " time " << time << " pv";
-
-        for (Move m : rootMoves[i].pv)
-            ss << " " << move(m, pos.is_chess960());
-    }
-
-    return ss.str();
-}
-
 namespace {
 // The win rate model returns the probability of winning (in per mille units) given an
 // eval and a game ply. It fits the LTC fishtest statistics rather accurately.
 int win_rate_model(Value v, int ply) {
 
-    // The model only captures up to 240 plies, so limit the input and then rescale
-    double m = std::min(240, ply) / 64.0;
+    // The fitted model only uses data for moves in [8, 120], and is anchored at move 32.
+    double m = std::clamp(ply / 2 + 1, 8, 120) / 32.0;
 
     // The coefficients of a third-order polynomial fit is based on the fishtest data
     // for two parameters that need to transform eval to the argument of a logistic
     // function.
-    constexpr double as[] = {0.38036525, -2.82015070, 23.17882135, 307.36768407};
-    constexpr double bs[] = {-2.29434733, 13.27689788, -14.26828904, 63.45318330};
+    constexpr double as[] = {-2.00568292, 10.45906746, 1.67438883, 334.45864705};
+    constexpr double bs[] = {-4.97134419, 36.15096345, -82.25513499, 117.35186805};
 
-    // Enforce that NormalizeToPawnValue corresponds to a 50% win rate at ply 64
-    static_assert(NormalizeToPawnValue == int(as[0] + as[1] + as[2] + as[3]));
+    // Enforce that NormalizeToPawnValue corresponds to a 50% win rate at move 32.
+    static_assert(NormalizeToPawnValue == int(0.5 + as[0] + as[1] + as[2] + as[3]));
 
     double a = (((as[0] * m + as[1]) * m + as[2]) * m) + as[3];
     double b = (((bs[0] * m + bs[1]) * m + bs[2]) * m) + bs[3];
 
-    // Transform the eval to centipawns with limited range
-    double x = std::clamp(double(v), -4000.0, 4000.0);
-
-    // Return the win rate in per mille units, rounded to the nearest integer
-    return int(0.5 + 1000 / (1 + std::exp((a - x) / b)));
+    // Return the win rate in per mille units, rounded to the nearest integer.
+    return int(0.5 + 1000 / (1 + std::exp((a - double(v)) / b)));
 }
 }
 
