@@ -701,9 +701,9 @@ Value Search::Worker::search(
     else if (ss->ttHit)
     {
         // Never assume anything about values stored in TT
-        unadjustedStaticEval = ss->staticEval = eval = tte->eval();
-        if (eval == VALUE_NONE)
-            unadjustedStaticEval = ss->staticEval = eval = evaluate(pos, thisThread->optimism[us]);
+        unadjustedStaticEval = tte->eval();
+        if (unadjustedStaticEval == VALUE_NONE)
+            unadjustedStaticEval = evaluate(pos, thisThread->optimism[us]);
         else if (PvNode)
             Eval::NNUE::hint_common_parent_position(pos);
 
@@ -715,7 +715,7 @@ Value Search::Worker::search(
     }
     else
     {
-        unadjustedStaticEval = ss->staticEval = eval = evaluate(pos, thisThread->optimism[us]);
+        unadjustedStaticEval = evaluate(pos, thisThread->optimism[us]);
         ss->staticEval = eval = to_corrected_static_eval(unadjustedStaticEval, *thisThread, pos);
 
         // Static evaluation is saved as it was before adjustment by correction history
@@ -1434,9 +1434,9 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta,
         if (ss->ttHit)
         {
             // Never assume anything about values stored in TT
-            if ((unadjustedStaticEval = ss->staticEval = bestValue = tte->eval()) == VALUE_NONE)
-                unadjustedStaticEval = ss->staticEval = bestValue =
-                  evaluate(pos, thisThread->optimism[us]);
+            unadjustedStaticEval = tte->eval();
+            if (unadjustedStaticEval == VALUE_NONE)
+                unadjustedStaticEval = evaluate(pos, thisThread->optimism[us]);
             ss->staticEval = bestValue =
               to_corrected_static_eval(unadjustedStaticEval, *thisThread, pos);
 
@@ -1448,10 +1448,10 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta,
         else
         {
             // In case of null move search, use previous static eval with a different sign
-            unadjustedStaticEval = ss->staticEval = bestValue =
-              (ss - 1)->currentMove != Move::null() ? evaluate(pos, thisThread->optimism[us])
-                                                    : -(ss - 1)->staticEval;
-            ss->staticEval = bestValue =
+            unadjustedStaticEval = (ss - 1)->currentMove != Move::null()
+                                   ? evaluate(pos, thisThread->optimism[us])
+                                   : -(ss - 1)->staticEval;
+            ss->staticEval       = bestValue =
               to_corrected_static_eval(unadjustedStaticEval, *thisThread, pos);
         }
 
