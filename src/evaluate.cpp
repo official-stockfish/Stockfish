@@ -204,25 +204,19 @@ Value Eval::evaluate(const Position& pos, int optimism) {
     int   shuffling  = pos.rule50_count();
     int   simpleEval = simple_eval(pos, stm);
 
-    bool lazy = std::abs(simpleEval) > 2550;
-    if (lazy)
-        v = simpleEval;
-    else
-    {
-        bool smallNet = std::abs(simpleEval) > 1050;
+    bool smallNet = std::abs(simpleEval) > 1050;
 
-        int nnueComplexity;
+    int nnueComplexity;
 
-        Value nnue = smallNet ? NNUE::evaluate<NNUE::Small>(pos, true, &nnueComplexity)
-                              : NNUE::evaluate<NNUE::Big>(pos, true, &nnueComplexity);
+    Value nnue = smallNet ? NNUE::evaluate<NNUE::Small>(pos, true, &nnueComplexity)
+                          : NNUE::evaluate<NNUE::Big>(pos, true, &nnueComplexity);
 
-        // Blend optimism and eval with nnue complexity and material imbalance
-        optimism += optimism * (nnueComplexity + std::abs(simpleEval - nnue)) / 512;
-        nnue -= nnue * (nnueComplexity + std::abs(simpleEval - nnue)) / 32768;
+    // Blend optimism and eval with nnue complexity and material imbalance
+    optimism += optimism * (nnueComplexity + std::abs(simpleEval - nnue)) / 512;
+    nnue -= nnue * (nnueComplexity + std::abs(simpleEval - nnue)) / 32768;
 
-        int npm = pos.non_pawn_material() / 64;
-        v       = (nnue * (915 + npm + 9 * pos.count<PAWN>()) + optimism * (154 + npm)) / 1024;
-    }
+    int npm = pos.non_pawn_material() / 64;
+    v       = (nnue * (915 + npm + 9 * pos.count<PAWN>()) + optimism * (154 + npm)) / 1024;
 
     // Damp down the evaluation linearly when shuffling
     v = v * (200 - shuffling) / 214;
