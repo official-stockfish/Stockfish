@@ -104,7 +104,7 @@ VPATH = syzygy:nnue:nnue/features
 # Note that Makefile is space sensitive, so when adding new architectures
 # or modifying existing flags, you have to make sure there are no extra spaces
 # at the end of the line for flag values.
-#
+# 
 # Example of use for these flags:
 # make build ARCH=x86-64-avx512 debug=yes sanitize="address undefined"
 
