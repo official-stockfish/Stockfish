@@ -732,14 +732,14 @@ Value Search::Worker::search(
     else if (ss->ttHit)
     {
         // Never assume anything about values stored in TT
-        unadjustedStaticEval = ss->staticEval = eval = tte->eval();
-        if (eval == VALUE_NONE)
-            unadjustedStaticEval = ss->staticEval = eval = evaluate(pos, thisThread->optimism[us]);
+        unadjustedStaticEval = tte->eval();
+        if (unadjustedStaticEval == VALUE_NONE)
+            unadjustedStaticEval = evaluate(pos, thisThread->optimism[us]);
         else if (PvNode)
             Eval::NNUE::hint_common_parent_position(pos);
 
         Value newEval =
-          ss->staticEval
+          unadjustedStaticEval
           + thisThread->correctionHistory[us][pawn_structure_index<Correction>(pos)]
               * std::abs(thisThread->correctionHistory[us][pawn_structure_index<Correction>(pos)])
               / 16384;
