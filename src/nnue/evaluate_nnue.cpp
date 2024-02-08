@@ -198,18 +198,17 @@ Value evaluate(const Position& pos, bool adjusted, int* complexity) {
 
 #if defined(ALIGNAS_ON_STACK_VARIABLES_BROKEN)
     TransformedFeatureType
-      transformedFeaturesUnaligned[FeatureTransformer < Small ? TransformedFeatureDimensionsSmall
-                                                              : TransformedFeatureDimensionsBig,
-                                   nullptr
-                                     > ::BufferSize + alignment / sizeof(TransformedFeatureType)];
+      transformedFeaturesUnaligned[FeatureTransformer<Net_Size == Small ? TransformedFeatureDimensionsSmall
+                                                                        : TransformedFeatureDimensionsBig,
+                                   nullptr>::BufferSize + alignment / sizeof(TransformedFeatureType)];
 
     auto* transformedFeatures = align_ptr_up<alignment>(&transformedFeaturesUnaligned[0]);
 #else
 
     alignas(alignment) TransformedFeatureType
-      transformedFeatures[FeatureTransformer < Net_Size == Small ? TransformedFeatureDimensionsSmall
-                                                                 : TransformedFeatureDimensionsBig,
-                          nullptr > ::BufferSize];
+      transformedFeatures[FeatureTransformer<Net_Size == Small ? TransformedFeatureDimensionsSmall
+                                                               : TransformedFeatureDimensionsBig,
+                          nullptr>::BufferSize];
 #endif
 
     ASSERT_ALIGNED(transformedFeatures, alignment);
