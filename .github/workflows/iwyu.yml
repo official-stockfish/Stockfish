@@ -1,4 +1,4 @@
-name: Stockfish
+name: IWYU
 on:
   workflow_call:
 jobs:
@@ -44,4 +44,4 @@ jobs:
           make analyze
           COMP=clang
           CXX=include-what-you-use
-          CXXFLAGS="-stdlib=libc++ -Xiwyu --comment_style=long -Xiwyu --mapping='${{ github.workspace }}/Stockfish/.github/workflows/libcxx17.imp' -Xiwyu --error"
+          CXXFLAGS="-stdlib=libc++ -Xiwyu --comment_style=long -Xiwyu --mapping='${{ github.workspace }}/Stockfish/.github/ci/libcxx17.imp' -Xiwyu --error"

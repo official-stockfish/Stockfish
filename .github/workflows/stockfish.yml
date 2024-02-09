@@ -1,8 +1,8 @@
 name: Stockfish
 on:
   push:
-    tags:        
-      - '*' 
+    tags:
+      - "*"
     branches:
       - master
       - tools
@@ -13,7 +13,7 @@ on:
       - tools
 jobs:
   Prerelease:
-    if: github.ref == 'refs/heads/master'
+    if: github.repository == 'official-stockfish/Stockfish' && (github.ref == 'refs/heads/master' || (startsWith(github.ref_name, 'sf_') && github.ref_type == 'tag'))
     runs-on: ubuntu-latest
     steps:
       # returns null if no pre-release exists
@@ -25,24 +25,52 @@ jobs:
 
           echo "COMMIT_SHA=$(jq -r 'map(select(.prerelease)) | first | .tag_name' <<< $(curl -s https://api.github.com/repos/${{ github.repository_owner }}/Stockfish/releases))" >> $GITHUB_ENV
 
-      # delete old previous pre-release and tag
-      - uses: dev-drprasad/delete-tag-and-release@8cd619d00037e4aeb781909c9a6b03940507d0da  # @v1.0.1
+        # delete old previous pre-release and tag
+      - uses: dev-drprasad/delete-tag-and-release@8cd619d00037e4aeb781909c9a6b03940507d0da # @v1.0.1
         if: env.COMMIT_SHA != 'null'
         with:
           tag_name: ${{ env.COMMIT_SHA }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-
-  Analyzers:
-    uses: ./.github/workflows/stockfish_analyzers.yml
+  Matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+      arm_matrix: ${{ steps.set-arm-matrix.outputs.arm_matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: set-matrix
+        run: |
+          TASKS=$(echo $(cat .github/ci/matrix.json) )
+          echo "MATRIX=$TASKS" >> $GITHUB_OUTPUT
+      - id: set-arm-matrix
+        run: |
+          TASKS_ARM=$(echo $(cat .github/ci/arm_matrix.json) )
+          echo "ARM_MATRIX=$TASKS_ARM" >> $GITHUB_OUTPUT
+  Compilation:
+    needs: [Matrix]
+    uses: ./.github/workflows/compilation.yml
+    with:
+      matrix: ${{ needs.Matrix.outputs.matrix }}
+  ARMCompilation:
+    needs: [Matrix]
+    uses: ./.github/workflows/arm_compilation.yml
+    with:
+      matrix: ${{ needs.Matrix.outputs.arm_matrix }}
+  IWYU:
+    uses: ./.github/workflows/iwyu.yml
   Sanitizers:
-    uses: ./.github/workflows/stockfish_sanitizers.yml
+    uses: ./.github/workflows/sanitizers.yml
   Tests:
-    uses: ./.github/workflows/stockfish_test.yml
-  Compiles:
-    uses: ./.github/workflows/stockfish_compile_test.yml
+    uses: ./.github/workflows/tests.yml
   Binaries:
-    if: github.ref == 'refs/heads/master' || (startsWith(github.ref_name, 'sf_') && github.ref_type == 'tag')
-    uses: ./.github/workflows/stockfish_binaries.yml
+    if: github.repository == 'official-stockfish/Stockfish'
+    needs: [Matrix, Prerelease, Compilation]
+    uses: ./.github/workflows/upload_binaries.yml
+    with:
+      matrix: ${{ needs.Matrix.outputs.matrix }}
   ARM_Binaries:
-    if: github.ref == 'refs/heads/master' || (startsWith(github.ref_name, 'sf_') && github.ref_type == 'tag')
-    uses: ./.github/workflows/stockfish_arm_binaries.yml
+    if: github.repository == 'official-stockfish/Stockfish'
+    needs: [Matrix, Prerelease, ARMCompilation]
+    uses: ./.github/workflows/upload_binaries.yml
+    with:
+      matrix: ${{ needs.Matrix.outputs.arm_matrix }}
