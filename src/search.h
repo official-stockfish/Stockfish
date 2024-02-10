@@ -47,7 +47,6 @@ enum NodeType {
 class TranspositionTable;
 class ThreadPool;
 class OptionsMap;
-class UCI;
 
 namespace Search {
 
