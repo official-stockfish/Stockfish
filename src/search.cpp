@@ -715,7 +715,7 @@ Value Search::Worker::search(
     }
     else
     {
-        unadjustedStaticEval = ss->staticEval = eval = evaluate(pos, thisThread->optimism[us]);
+        unadjustedStaticEval = evaluate(pos, thisThread->optimism[us]);
         ss->staticEval = eval = to_corrected_static_eval(unadjustedStaticEval, *thisThread, pos);
 
         // Static evaluation is saved as it was before adjustment by correction history
@@ -1455,9 +1455,8 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta,
         else
         {
             // In case of null move search, use previous static eval with a different sign
-            unadjustedStaticEval = ss->staticEval = bestValue =
-              (ss - 1)->currentMove != Move::null() ? evaluate(pos, thisThread->optimism[us])
-                                                    : -(ss - 1)->staticEval;
+            unadjustedStaticEval = (ss - 1)->currentMove != Move::null() ? evaluate(pos, thisThread->optimism[us])
+                                                                         : -(ss - 1)->staticEval;
             ss->staticEval = bestValue =
               to_corrected_static_eval(unadjustedStaticEval, *thisThread, pos);
         }
