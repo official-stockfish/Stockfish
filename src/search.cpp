@@ -1615,6 +1615,11 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta,
     return bestValue;
 }
 
+Depth Search::Worker::reduction(bool i, Depth d, int mn, int delta) {
+    int reductionScale = reductions[d] * reductions[mn];
+    return (reductionScale + 1177 - int(delta) * 776 / int(rootDelta)) / 1024
+         + (!i && reductionScale > 842);
+}
 
 namespace {
 // Adjusts a mate or TB score from "plies to mate from the root"
