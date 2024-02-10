@@ -1434,7 +1434,8 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta,
         if (ss->ttHit)
         {
             // Never assume anything about values stored in TT
-            if ((unadjustedStaticEval = tte->eval()) == VALUE_NONE)
+            unadjustedStaticEval = tte->eval();
+            if (unadjustedStaticEval == VALUE_NONE)
                 unadjustedStaticEval = evaluate(pos, thisThread->optimism[us]);
             ss->staticEval = bestValue =
               to_corrected_static_eval(unadjustedStaticEval, *thisThread, pos);
