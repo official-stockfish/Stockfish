@@ -26,11 +26,11 @@ jobs:
           echo "COMMIT_SHA=$(jq -r 'map(select(.prerelease)) | first | .tag_name' <<< $(curl -s https://api.github.com/repos/${{ github.repository_owner }}/Stockfish/releases))" >> $GITHUB_ENV
 
         # delete old previous pre-release and tag
-      - uses: dev-drprasad/delete-tag-and-release@8cd619d00037e4aeb781909c9a6b03940507d0da # @v1.0.1
+      - uses: actions/checkout@v4
+      - run: gh release delete ${{ env.COMMIT_SHA }} --cleanup-tag
         if: env.COMMIT_SHA != 'null'
-        with:
-          tag_name: ${{ env.COMMIT_SHA }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   Matrix:
     runs-on: ubuntu-latest
     outputs:
