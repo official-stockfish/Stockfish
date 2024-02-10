@@ -1,8 +1,8 @@
-name: Stockfish
+name: Sanitizers
 on:
   workflow_call:
 jobs:
-  Stockfish:
+  Test-under-sanitizers:
     name: ${{ matrix.sanitizers.name }}
     runs-on: ${{ matrix.config.os }}
     env:
@@ -10,6 +10,7 @@ jobs:
       COMP: ${{ matrix.config.comp }}
       CXXFLAGS: "-Werror"
     strategy:
+      fail-fast: false
       matrix:
         config:
           - name: Ubuntu 22.04 GCC
@@ -60,5 +61,5 @@ jobs:
         run: |
           export CXXFLAGS="-O1 -fno-inline"
           make clean
-          make -j2 ARCH=x86-64-sse41-popcnt ${{ matrix.sanitizers.make_option }} debug=yes optimize=no build > /dev/null
+          make -j4 ARCH=x86-64-sse41-popcnt ${{ matrix.sanitizers.make_option }} debug=yes optimize=no build > /dev/null
           ../tests/instrumented.sh --${{ matrix.sanitizers.instrumented_option }}
