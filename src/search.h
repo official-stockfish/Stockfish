@@ -249,7 +249,6 @@ class Worker {
     TranspositionTable& tt;
 
     friend class Stockfish::ThreadPool;
-    friend class Stockfish::UCI;
     friend class SearchManager;
 };
 
