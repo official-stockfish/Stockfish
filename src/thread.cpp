@@ -212,7 +212,9 @@ Thread* ThreadPool::get_best_thread() const {
 
     Thread* bestThread = threads.front();
     Value   minScore   = VALUE_NONE;
-    std::unordered_map<Move, int64_t, Move::MoveHash> votes(2 * std::min(size(), bestThread->worker->rootMoves.size())); 
+
+    std::unordered_map<Move, int64_t, Move::MoveHash> votes(
+      2 * std::min(size(), bestThread->worker->rootMoves.size()));
 
     // Find the minimum score of all threads
     for (Thread* th : threads)
