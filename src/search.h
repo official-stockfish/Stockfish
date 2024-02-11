@@ -219,6 +219,8 @@ class Worker {
         return static_cast<SearchManager*>(manager.get());
     }
 
+    std::array<std::array<uint64_t, SQUARE_NB>, SQUARE_NB> effort;
+
     LimitsType limits;
 
     size_t                pvIdx, pvLast;
