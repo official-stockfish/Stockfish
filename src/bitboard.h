@@ -163,7 +163,6 @@ inline Bitboard pawn_attacks_bb(Color c, Square s) {
 inline Bitboard line_bb(Square s1, Square s2) {
 
     assert(is_ok(s1) && is_ok(s2));
-
     return LineBB[s1][s2];
 }
 
@@ -178,7 +177,6 @@ inline Bitboard line_bb(Square s1, Square s2) {
 inline Bitboard between_bb(Square s1, Square s2) {
 
     assert(is_ok(s1) && is_ok(s2));
-
     return BetweenBB[s1][s2];
 }
 
@@ -216,7 +214,6 @@ template<PieceType Pt>
 inline Bitboard attacks_bb(Square s) {
 
     assert((Pt != PAWN) && (is_ok(s)));
-
     return PseudoAttacks[Pt][s];
 }
 
